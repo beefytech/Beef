@@ -12362,7 +12362,7 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 			inlineMethodRequest->mFromModuleRevision = mRevision;
 			inlineMethodRequest->mMethodInstance = methodInstance;					
 			BF_ASSERT(mIsModuleMutable);
-
+			
 			BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in ReferenceExternalMethodInstance\n", inlineMethodRequest, methodInstance, this);
 		}
 	}
@@ -13047,7 +13047,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					inlineMethodRequest->mFunc = methodInstance->mIRFunction;
 					inlineMethodRequest->mFromModuleRevision = mRevision;
 					inlineMethodRequest->mMethodInstance = methodInstance;					
-
+					
 					BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in GetMethodInstance\n", inlineMethodRequest, methodInstance, this);
 					BF_ASSERT(mIsModuleMutable);
 				}
@@ -14650,8 +14650,11 @@ void BfModule::CreateReturn(BfIRValue val)
 		mBfIRBuilder->CreateStore(val, mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()));
 		mBfIRBuilder->CreateRetVoid();
 		return;
-	}
-		
+	}		
+
+	if (mCurMethodInstance->mReturnType->IsVar())
+		return;
+
 	if (mCurMethodInstance->mReturnType->IsValuelessType())
 	{
 		mBfIRBuilder->CreateRetVoid();
@@ -14740,7 +14743,11 @@ void BfModule::EmitDefaultReturn()
 	}
 	else
 	{
-		if (mCurMethodInstance->mReturnType->IsVoid())
+		if (mCurMethodInstance->mReturnType->IsVar())
+		{
+			// Ignore
+		}
+		else if (mCurMethodInstance->mReturnType->IsVoid())
 			mBfIRBuilder->CreateRetVoid();
 		else if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() == -1))
 			mBfIRBuilder->CreateRet(GetDefaultValue(mCurMethodInstance->mReturnType));
@@ -17994,8 +18001,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 	// We set mHasBeenProcessed to true immediately -- this helps avoid stack overflow during recursion for things like
 	//  self-referencing append allocations in ctor@calcAppend
-	methodInstance->mHasBeenProcessed = true;
-	mIncompleteMethodCount--;
+	methodInstance->mHasBeenProcessed = true;	
+	mIncompleteMethodCount--;	
 	BF_ASSERT((mIsSpecialModule) || (mIncompleteMethodCount >= 0));
 
 	auto typeDef = methodInstance->mMethodInstanceGroup->mOwner->mTypeDef;
@@ -18126,7 +18133,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		}
 	}
 
-	BfLogSysM("ProcessMethod %p Unspecialized: %d Module: %p IRFunction: %d Reified: %d\n", methodInstance, mCurTypeInstance->IsUnspecializedType(), this, methodInstance->mIRFunction.mId, methodInstance->mIsReified);
+	BfLogSysM("ProcessMethod %p Unspecialized: %d Module: %p IRFunction: %d Reified: %d Incomplete:%d\n", methodInstance, mCurTypeInstance->IsUnspecializedType(), this, methodInstance->mIRFunction.mId, methodInstance->mIsReified, mIncompleteMethodCount);
 	
 	if (methodInstance->GetImportCallKind() != BfImportCallKind_None)
 	{
@@ -18242,11 +18249,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			BF_ASSERT(unspecializedMethodInstance != methodInstance);
 			if (!unspecializedMethodInstance->mHasBeenProcessed)
 			{
-				// Make sure the unspecialized method is processed so we can take its bindings
-
+				// Make sure the unspecialized method is processed so we can take its bindings				
 				// Clear mCurMethodState so we don't think we're in a local method
 				SetAndRestoreValue<BfMethodState*> prevMethodState_Unspec(mCurMethodState, prevMethodState.mPrevVal);
-				mContext->ProcessMethod(unspecializedMethodInstance);
+				if (unspecializedMethodInstance->mMethodProcessRequest == NULL)
+					unspecializedMethodInstance->mDeclModule->mIncompleteMethodCount++;
+				mContext->ProcessMethod(unspecializedMethodInstance);				
 			}
 			methodState.mGenericTypeBindings = &unspecializedMethodInstance->GetMethodInfoEx()->mGenericTypeBindings;
 		}
@@ -20726,7 +20734,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	closureState.mReturnType = methodInstance->mReturnType;
 	mCompiler->mStats.mMethodsQueued++;
 	mCompiler->UpdateCompletion();
-	declareModule->mIncompleteMethodCount++;	
+	declareModule->mIncompleteMethodCount++;
 	mCompiler->mStats.mMethodsProcessed++;	
 	if (!methodInstance->mIsReified)
 		mCompiler->mStats.mUnreifiedMethodsProcessed++;	
@@ -22156,7 +22164,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	auto func = methodInstance->mIRFunction;
 
 // 	if (methodInstance->mIsReified)
-// 		CheckHotMethod(methodInstance, mangledName);
+// 		CheckHotMethod(methodInstance, mangledName);	
 
 	BfLogSysM("DoMethodDeclaration %s Module: %p Type: %p MethodInst: %p Reified: %d Unspecialized: %d IRFunction: %d MethodId:%llx\n", mangledName.c_str(), this, mCurTypeInstance, methodInstance, methodInstance->mIsReified, mCurTypeInstance->IsUnspecializedType(), methodInstance->mIRFunction.mId, methodInstance->mIdHash);
 	

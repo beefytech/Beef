@@ -183,6 +183,13 @@ namespace Tests
 			IFaceA ifa = cba;
 			Test.Assert(ifa.GetType() == typeof(ClassB));
 
+			ClassF cf = scope .();
+			TestIFaceD(cf);
+			Test.Assert(cf.mA == 999);
+			ClassG cg = scope .();
+			TestIFaceD(cg);
+			Test.Assert(cg.mA == 999);
+
 			GameItem gameItem = scope .();
 			var hitbox = GetHitbox(gameItem);
 			Test.Assert(hitbox.mArea == .() { x=1, y=2, width=3, height=4 });
@@ -267,6 +274,47 @@ namespace Tests
 			return T.SMethod2(val.GetVal());
 		}
 
+		interface IFaceD
+		{
+			int32 Val
+			{
+				get; set;
+			}
+		}
+
+		class ClassF : IFaceD
+		{
+			public int32 mA;
+
+			int32 IFaceD.Val
+			{
+				get
+				{
+					return mA;
+				}
+
+				set
+				{
+					mA = value;
+				}
+			}
+		}
+
+		class ClassG : ClassF
+		{
+
+		}
+
+		static void TestIFaceD<T>(T val) where T : IFaceD
+		{
+			val.Val = 999;
+		}
+
+		static int TestIFaceD2<T>(T val) where T : IFaceD
+		{
+			return val.Val;
+		}
+
 		[Test]
 		public static void TestDefaults()
 		{
@@ -297,6 +345,15 @@ namespace Tests
 			Test.Assert(v == 3234);
 			v = SGet2<ClassE, int16>(ce);
 			Test.Assert(v == 4234);
+
+			ClassF cf = scope .();
+			TestIFaceD(cf);
+			Test.Assert(cf.mA == 999);
+			Test.Assert(TestIFaceD2(cf) == 999);
+			ClassG cg = scope .();
+			TestIFaceD(cg);
+			Test.Assert(cg.mA == 999);
+			Test.Assert(TestIFaceD2(cg) == 999);
 		}
 	}
 }

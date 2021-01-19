@@ -8576,7 +8576,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		prevBindResult.mPrevVal->mCheckedMultipleMethods = true;
 
 	BfModuleMethodInstance moduleMethodInstance = GetSelectedMethod(targetSrc, curTypeInst, methodDef, methodMatcher);
-	if (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc))
+	if ((moduleMethodInstance.mMethodInstance != NULL) && (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc)))
 		return BfTypedValue();
 
 	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
@@ -16498,7 +16498,8 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 				if (bestMethodInstance != NULL)
 				{
 					mPropTarget = mOrigPropTarget;
-					mPropTarget.mType = checkTypeInst;
+					//mPropTarget.mType = checkTypeInst;
+					//mPropTarget = mModule->Cast( mOrigPropTarget, checkTypeInst);
 					return mModule->GetMethodInstanceAtIdx(ifaceMethodEntry.mMethodRef.mTypeInstance, ifaceMethodEntry.mMethodRef.mMethodNum);
 				}
 			}			
@@ -16638,9 +16639,23 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				if (!matchedMethod->mIsStatic)
 				{					
 					auto owner = methodInstance.mMethodInstance->GetOwner();
-					if ((mPropTarget.mValue.IsFake()) && (!mOrigPropTarget.mValue.IsFake()))
-					{
+
+					bool isTypeMatch = mPropTarget.mType == owner;
+					if (owner->IsTypedPrimitive())
+						isTypeMatch |= mPropTarget.mType == owner->GetUnderlyingType();
+
+					if ((!isTypeMatch) ||
+						((mPropTarget.mValue.IsFake()) && (!mOrigPropTarget.mValue.IsFake())))
+					{	
+						auto prevPropTarget = mPropTarget;
+
 						mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, owner);
+
+						if (!mPropTarget)
+						{
+							mModule->Fail("Internal property error", mPropSrc);
+							return BfTypedValue();
+						}
 					}
 
 					if ((mPropGetMethodFlags & BfGetMethodInstanceFlag_DisableObjectAccessChecks) == 0)
@@ -17439,6 +17454,11 @@ void BfExprEvaluator::DoTupleAssignment(BfAssignmentExpression* assignExpr)
 
 void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool evaluatedLeft, BfTypedValue rightValue, BfTypedValue* outCascadeValue)
 {	
+	if (assignExpr->ToString() == "state.StateMachine = this")
+	{
+		NOP;
+	}
+
 	auto binaryOp = BfAssignOpToBinaryOp(assignExpr->mOp);	
 
 	BfExpression* targetNode = assignExpr->mLeft;
@@ -17589,10 +17609,18 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			if (!setMethod->mIsStatic)
 			{
 				auto owner = methodInstance.mMethodInstance->GetOwner();
-				if (mPropTarget.mType != owner)
+				if ((mPropTarget.mType != owner) || 
+					((mPropTarget.mValue.IsFake()) && (!mOrigPropTarget.mValue.IsFake())))
 				{
-					if (mPropDefBypassVirtual)
+					if ((mPropDefBypassVirtual) || (!mPropTarget.mType->IsInterface()))
+					{
 						mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, owner);
+						if (!mPropTarget)
+						{
+							mModule->Fail("Internal property error", mPropSrc);
+							return;
+						}
+					}
 				}
 
 				mModule->EmitObjectAccessCheck(mPropTarget);

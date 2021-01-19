@@ -71,6 +71,8 @@ namespace Tests
 			}
 		}
 
+		
+
 		class ClassB
 		{
 			public StructA B { get; set; }
@@ -88,6 +90,26 @@ namespace Tests
 		{
 			public new int IVal { get => base.IVal + 100; }
 			public override int IVal2 { get => base.IVal2 + 100; }
+		}
+
+		abstract class ClassD
+		{
+			public int32 Val { get; set; }
+		}
+
+		class ClassE : ClassD
+		{
+
+		}
+
+		static void MethodC<T>(T val) where T : ClassD
+		{
+			val.Val = 999;
+		}
+
+		static int MethodD<T>(T val) where T : ClassD
+		{
+			return val.Val;
 		}
 
 		[Test]
@@ -122,6 +144,11 @@ namespace Tests
 			ClassB cb2 = cc;
 			Test.Assert(cb2.IVal == 1);
 			Test.Assert(cb2.IVal2 == 102);
+
+			ClassE ce = scope .();
+			MethodC(ce);
+			Test.Assert(ce.Val == 999);
+			Test.Assert(MethodD(ce) == 999);
 		}
 	}
 }
