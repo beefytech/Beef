@@ -608,6 +608,22 @@ bool BfGenericInferContext::InferGenericArguments(BfMethodInstance* methodInstan
 				for (auto ifaceEntry : typeInstance->mInterfaces)
 					InferGenericArgument(methodInstance, ifaceEntry.mInterfaceType, ifaceConstraint, BfIRValue());
 			}
+
+			if (srcGenericArg->IsGenericParam())
+			{
+				auto genericParamType = (BfGenericParamType*)srcGenericArg;
+
+				BfGenericParamInstance* genericParam = NULL;
+				if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
+					genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericParamType->mGenericParamIdx];
+				else
+					genericParam = mModule->GetGenericParamInstance(genericParamType);
+
+				if (genericParam->mTypeConstraint != NULL)
+					InferGenericArgument(methodInstance, genericParam->mTypeConstraint, ifaceConstraint, BfIRValue());
+				for (auto argIfaceConstraint : genericParam->mInterfaceConstraints)
+					InferGenericArgument(methodInstance, argIfaceConstraint, ifaceConstraint, BfIRValue());
+			}
 		}
 	}
 
@@ -14440,11 +14456,13 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			if (genericArg == NULL)
 			{
 				failed = true;
-				mModule->Fail(StrFormat("Unable to determine generic argument '%s'", methodDef->mGenericParams[checkGenericIdx]->mName.c_str()).c_str(), targetSrc);
+				BfError* error = mModule->Fail(StrFormat("Unable to determine generic argument '%s'", methodDef->mGenericParams[checkGenericIdx]->mName.c_str()).c_str(), targetSrc);
 				if ((genericParam->mTypeConstraint != NULL) && (!genericParam->mTypeConstraint->IsUnspecializedType()))
 					genericArg = genericParam->mTypeConstraint;
 				else
 					genericArg = mModule->mContext->mBfObjectType;
+				if (error != NULL)
+					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), unspecializedMethod->mMethodDef->GetRefNode());
 			}			
 		}
 		
