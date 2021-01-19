@@ -7087,20 +7087,22 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		if ((genericParam->mGenericParamKind == BfGenericParamKind_Type) && (typeGenericArguments != NULL))
 		{
 			if (genericParam->mGenericParamIdx < (int)typeGenericArguments->size())
-				return (*typeGenericArguments)[genericParam->mGenericParamIdx];
+				return FixIntUnknown((*typeGenericArguments)[genericParam->mGenericParamIdx]);
 			BF_ASSERT(allowFail);
 		}
 		if ((genericParam->mGenericParamKind == BfGenericParamKind_Method) && (methodGenericArguments != NULL))
 		{
 			if (genericParam->mGenericParamIdx < (int)methodGenericArguments->size())			
-				return (*methodGenericArguments)[genericParam->mGenericParamIdx];							
+				return FixIntUnknown((*methodGenericArguments)[genericParam->mGenericParamIdx]);
 			BF_ASSERT(allowFail);
 		}		
 		return unspecializedType;
 	}
 
 	if (!unspecializedType->IsUnspecializedType())
+	{
 		return unspecializedType;
+	}	
 
 	if (unspecializedType->IsUnknownSizedArrayType())
 	{

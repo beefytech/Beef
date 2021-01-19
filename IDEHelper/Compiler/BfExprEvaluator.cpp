@@ -319,9 +319,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 				}												
 			}
 			if ((*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] == NULL)
-				mInferredCount++;
-			if ((argType != NULL) && (argType->IsIntUnknown()))
-				argType = mModule->FixIntUnknown(argType);
+				mInferredCount++;			
 			(*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] = argType;
 			if (!mPrevArgValues.IsEmpty())
 				mPrevArgValues[wantGenericParam->mGenericParamIdx] = argValue;			
@@ -1332,7 +1330,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 				auto prevBlock = mModule->mBfIRBuilder->GetInsertBlock();
 								
 				BfExprEvaluator exprEvaluator(mModule);									
-				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_Comptime);
+				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags);
 				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowIntUnknown | BfEvalExprFlags_NoAutoComplete);
 				if ((resolvedArg.mArgFlags & BfArgFlag_ParamsExpr) != 0)
 					exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowParamsExpr);
@@ -2900,6 +2898,9 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 		return bindType;
 
 	if ((mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mCapturing))
+		return bindType;
+
+	if ((mBfEvalExprFlags & BfEvalExprFlags_DeclType) != 0)
 		return bindType;
 
 	BF_ASSERT(!mModule->mCurMethodInstance->mIsUnspecializedVariation);
@@ -7343,7 +7344,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 			{
 				BfExprEvaluator exprEvaluator(mModule);
 				exprEvaluator.mReceivingValue = receivingValue;
-				BfEvalExprFlags flags = (BfEvalExprFlags)((mBfEvalExprFlags & (BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime)) | BfEvalExprFlags_NoCast);
+				BfEvalExprFlags flags = (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast);
 				if ((paramKind == BfParamKind_Params) || (paramKind == BfParamKind_DelegateParam))
 					flags = (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowParamsExpr);
 
@@ -14444,24 +14445,20 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 					genericArg = genericParam->mTypeConstraint;
 				else
 					genericArg = mModule->mContext->mBfObjectType;
-			}
-
-			resolvedGenericArguments.push_back(genericArg);
+			}			
 		}
-		else
-		{	
-			if (genericArg->IsVar())
-			{
-				BF_ASSERT(methodMatcher.mHasVarArguments);
-				hasVarGenerics = true;
-			}
-
-			if (genericArg->IsIntUnknown())
-				genericArg = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-
-			auto resolvedGenericArg = genericArg;
-			resolvedGenericArguments.push_back(resolvedGenericArg);
+		
+		if (genericArg->IsVar())
+		{
+			BF_ASSERT(methodMatcher.mHasVarArguments);
+			hasVarGenerics = true;
 		}
+
+		if (genericArg->IsIntUnknown())
+			genericArg = mModule->FixIntUnknown(genericArg);
+
+		auto resolvedGenericArg = genericArg;
+		resolvedGenericArguments.push_back(genericArg);		
 	}
 
 	BfTypeInstance* foreignType = NULL;
@@ -18015,7 +18012,7 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 
 					if (expr != NULL)
 					{	
-						auto evalFlags = (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_Comptime);
+						auto evalFlags = (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags);
 
 						bool tryDefer = false;						
  						if ((checkArrayType->IsComposite()) && 

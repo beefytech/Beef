@@ -78,6 +78,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_InferReturnType = 0x400000,
 	BfEvalExprFlags_WasMethodRef = 0x800000,
 	BfEvalExprFlags_DeclType = 0x1000000,
+
+	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };
 
 enum BfCastFlags
