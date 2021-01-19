@@ -6200,14 +6200,12 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	deferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
 	SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
 
+	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites);
+
 	if ((target.mType->IsSizedArray()) && (((BfSizedArrayType*)target.mType)->mElementCount == 0))
 	{
 		EmitEnsureInstructionAt();
-		SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites, true);
-		if (forEachStmt->mEmbeddedStatement != NULL)
-			VisitEmbeddedStatement(forEachStmt->mEmbeddedStatement);
-		RestoreScopeState();
-		return;
+		mBfIRBuilder->mIgnoreWrites = true;
 	}
 
 	BfIdentifierNode* nameNode = NULL;
