@@ -901,6 +901,7 @@ public:
 	void FixTypeCode(BfTypeCode& typeCode);
 	int GetSize(BfTypeCode typeCode);
 	static bool IsInt(BfTypeCode typeCode);	
+	static bool IsIntable(BfTypeCode typeCode);
 	static bool IsSigned(BfTypeCode typeCode);	
 	static bool IsFloat(BfTypeCode typeCode);
 	const char* AllocStr(const StringImpl& str);

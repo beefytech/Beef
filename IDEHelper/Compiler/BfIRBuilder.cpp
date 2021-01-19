@@ -335,10 +335,14 @@ int BfIRConstHolder::GetSize(BfTypeCode typeCode)
 	}
 }
 
-
 bool BfIRConstHolder::IsInt(BfTypeCode typeCode)
 {
 	return (typeCode >= BfTypeCode_Int8) && (typeCode <= BfTypeCode_Char32);
+}
+
+bool BfIRConstHolder::IsIntable(BfTypeCode typeCode)
+{
+	return (typeCode >= BfTypeCode_Boolean) && (typeCode <= BfTypeCode_Char32);
 }
 
 bool BfIRConstHolder::IsSigned(BfTypeCode typeCode)
@@ -2876,7 +2880,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 							int flags = 0;
 							String fieldName = fieldDef->mName;
 							if ((constant != NULL) && 
-								((IsInt(constant->mTypeCode)) || (IsFloat(constant->mTypeCode))))
+								((IsIntable(constant->mTypeCode)) || (IsFloat(constant->mTypeCode))))
 							{
 								int64 writeVal = constant->mInt64;
 								if (constant->mTypeCode == BfTypeCode_Float)
