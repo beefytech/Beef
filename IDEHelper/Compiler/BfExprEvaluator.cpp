@@ -320,6 +320,8 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 			}
 			if ((*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] == NULL)
 				mInferredCount++;
+			if ((argType != NULL) && (argType->IsIntUnknown()))
+				argType = mModule->FixIntUnknown(argType);
 			(*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] = argType;
 			if (!mPrevArgValues.IsEmpty())
 				mPrevArgValues[wantGenericParam->mGenericParamIdx] = argValue;			

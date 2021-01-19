@@ -582,10 +582,6 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 	if (resolvedTypeRef->IsGenericTypeInstance())
 	{
 		auto genericTypeInst = (BfTypeInstance*)resolvedTypeRef;
-		//BF_ASSERT(genericTypeInst->mGenericParams.size() <= genericTypeInst->mTypeGenericArguments.size());
-// 		BF_ASSERT((genericTypeInst->mGenericParams.size() == 0) || 
-// 			(genericTypeInst->mGenericParams.size() == genericTypeInst->mTypeGenericArguments.size()));
-
 		for (auto typeGenericArg : genericTypeInst->mGenericTypeInfo->mTypeGenericArguments)
 		{
 			BF_ASSERT((typeGenericArg->mRebuildFlags & BfTypeRebuildFlag_Deleted) == 0);			
@@ -598,6 +594,7 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 						PopulateType(genericArg, BfPopulateType_Declaration);
 				}
 			}
+			BF_ASSERT(!typeGenericArg->IsIntUnknown());
 		}
 	}
 
