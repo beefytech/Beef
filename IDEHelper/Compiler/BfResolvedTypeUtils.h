@@ -547,6 +547,7 @@ public:
 	virtual bool IsArray() { return false; }	
 	virtual bool IsDelegate() { return false; }
 	virtual bool IsFunction() { return false; }
+	virtual bool IsDelegateOrFunction() { return false; }
 	virtual bool IsDelegateFromTypeRef() { return false; }
 	virtual bool IsFunctionFromTypeRef() { return false; }
 	virtual BfDelegateInfo* GetDelegateInfo() { return NULL;  }
@@ -1926,6 +1927,7 @@ public:
 	virtual bool IsUnion() override { return mIsUnion; }
 	virtual bool IsDelegate() override { return mTypeDef->mIsDelegate; }
 	virtual bool IsFunction() override { return mTypeDef->mIsFunction; }
+	virtual bool IsDelegateOrFunction() override { return mTypeDef->mIsDelegate || mTypeDef->mIsFunction; }
 	virtual bool IsString() override;
 	virtual bool IsIntPtrable() override { return (mTypeDef->mTypeCode == BfTypeCode_Object) || (mTypeDef->mTypeCode == BfTypeCode_Interface); };
 	virtual bool IsEnum() override { return mTypeDef->mTypeCode == BfTypeCode_Enum; }
@@ -2139,6 +2141,8 @@ public:
 
 	virtual bool IsFunction() override { return !mTypeDef->mIsDelegate; }
 	virtual bool IsFunctionFromTypeRef() override { return !mTypeDef->mIsDelegate; }
+
+	virtual bool IsDelegateOrFunction() override { return mTypeDef->mIsDelegate || mTypeDef->mIsFunction; }
 
 	virtual bool IsUnspecializedType() override { return mIsUnspecializedType; }
 	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedTypeVariation; }

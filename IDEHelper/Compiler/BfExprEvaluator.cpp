@@ -1218,7 +1218,14 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 		}
 	}
 	else if ((resolvedArg.mArgFlags & BfArgFlag_LambdaBindAttempt) != 0)
-	{				
+	{	
+		if ((argTypedValue) && (argTypedValue.mType->IsMethodRef()) && 
+			((checkType == NULL) || (!checkType->IsMethodRef())))
+		{
+			// This may be from a previous checkMethod, clear it out
+			argTypedValue = BfTypedValue();
+		}
+
 		BfExprEvaluator exprEvaluator(mModule);		
 		exprEvaluator.mExpectingType = checkType;
 		BF_ASSERT(resolvedArg.mExpression->IsA<BfLambdaBindExpression>());
@@ -1246,11 +1253,11 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 				}
 			}
 		}
-		else if ((checkType == NULL) && (origCheckType != NULL) && (origCheckType->IsUnspecializedTypeVariation()) && (genericArgumentsSubstitute != NULL))
+		else if ((checkType == NULL) && (origCheckType != NULL) && (origCheckType->IsUnspecializedTypeVariation()) && (genericArgumentsSubstitute != NULL) && (origCheckType->IsDelegateOrFunction()))
 		{
 			BfMethodInstance* methodInstance = mModule->GetRawMethodInstanceAtIdx(origCheckType->ToTypeInstance(), 0, "Invoke");
 			if (methodInstance != NULL)
-			{				
+			{
 				if ((methodInstance->mReturnType->IsGenericParam()) && (((BfGenericParamType*)methodInstance->mReturnType)->mGenericParamKind == BfGenericParamKind_Method))
 				{
 					bool isValid = true;
