@@ -6572,6 +6572,8 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		{
 			target = MakeAddressable(target);
 			arrayItem = BfTypedValue(CreateIndexedValue(arrayType->mElementType, target.mValue, itrVal, true), arrayType->mElementType, true);
+			if (isRefExpression)
+				arrayItem = BfTypedValue(arrayItem.mValue, CreateRefType(arrayItem.mType));
 		}
 		arrayItem = Cast(forEachStmt->mCollectionExpression, arrayItem, varType, BfCastFlags_Explicit);
 		if ((arrayItem) && (!arrayItem.mValue.IsFake()))
