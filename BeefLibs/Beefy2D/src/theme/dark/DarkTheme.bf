@@ -180,6 +180,8 @@ namespace Beefy.theme.dark
 			ComboBoxFrameless,
 			PanelHeader,
 
+			ExtMethod,
+
             COUNT
         };
 

@@ -2015,6 +2015,8 @@ namespace IDE.ui
                 {
                 case "method":
                     entryIcon = DarkTheme.sDarkTheme.GetImage(.Method);
+				case "extmethod":
+					entryIcon = DarkTheme.sDarkTheme.GetImage(.ExtMethod);
                 case "field":
                     entryIcon = DarkTheme.sDarkTheme.GetImage(.Field);
                 case "property":

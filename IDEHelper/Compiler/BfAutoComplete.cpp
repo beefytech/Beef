@@ -467,6 +467,9 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 			entry.mEntryType = "mixin";
 		}		
 	}	
+	if (methodDef->mMethodType == BfMethodType_Extension)
+		entry.mEntryType = "extmethod";
+
 	if (auto entryAdded = AddEntry(entry, filter))
 	{
 		if (methodDecl != NULL)
@@ -1112,6 +1115,7 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 
 				if (!genericInferContext.InferGenericArgument(methodInstance, targetType, thisType, BfIRValue()))
 					continue;
+				genericInferContext.InferGenericArguments(methodInstance);
 
 				thisType = mModule->ResolveGenericType(thisType, NULL, &genericTypeVector, false);
 				if (thisType == NULL)
@@ -1419,7 +1423,8 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		mModule->PopulateGlobalContainersList(globalLookup);
 		for (auto& globalContainer : mModule->mContext->mCurTypeState->mGlobalContainers)
 		{
-			AddTypeMembers(globalContainer.mTypeInst, true, false, filter, globalContainer.mTypeInst, true, true, false);
+			if (globalContainer.mTypeInst != NULL)
+				AddTypeMembers(globalContainer.mTypeInst, true, false, filter, globalContainer.mTypeInst, true, true, false);
 		}
 	}
 		
@@ -1766,11 +1771,11 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 					AddTypeMembers(typeInst, isStatic, !isStatic, filter, typeInst, false, false, false);
 
 					if (!isStatic)
-					{
+					{						
 						auto checkTypeInst = mModule->mCurTypeInstance;
 						while (checkTypeInst != NULL)
 						{
-							AddExtensionMethods(typeInst, checkTypeInst, filter, allowProtected, allowPrivate);
+							AddExtensionMethods(typeInst, checkTypeInst, filter, true, true);
 							checkTypeInst = mModule->GetOuterType(checkTypeInst);
 						}
 
@@ -1781,8 +1786,9 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 							BfGlobalLookup globalLookup;
 							globalLookup.mKind = BfGlobalLookup::Kind_All;
 							mModule->PopulateGlobalContainersList(globalLookup);
-							for (auto& globalContainer : mModule->mContext->mCurTypeState->mGlobalContainers)							
-								AddExtensionMethods(typeInst, globalContainer.mTypeInst, filter, false, false);
+							for (auto& globalContainer : mModule->mContext->mCurTypeState->mGlobalContainers)
+								if (globalContainer.mTypeInst != NULL)
+									AddExtensionMethods(typeInst, globalContainer.mTypeInst, filter, false, false);
 						}
 
 						BfStaticSearch* staticSearch = mModule->GetStaticSearch();
