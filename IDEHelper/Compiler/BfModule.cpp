@@ -19491,7 +19491,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 							lookupValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(GetThis().mValue, 0, fieldInstance->mDataIdx), fieldInstance->mResolvedType, true);
 						else
 							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mDataIdx);
-						lookupValue = LoadOrAggregateValue(lookupValue);
+						if (!methodInstance->mReturnType->IsRef())
+							lookupValue = LoadOrAggregateValue(lookupValue);
 						CreateReturn(lookupValue.mValue);
 						EmitLifetimeEnds(&mCurMethodState->mHeadScope);
 					}
