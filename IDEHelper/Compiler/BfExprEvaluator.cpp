@@ -20846,14 +20846,30 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 							if ((flags & BfBinOpFlag_IsConstraintCheck) != 0)
 							{
-								// We can't do CheckMethod because circular referencing means we may have to evaluate this before our type is complete,
-								//  which means before method processing has occurred
-								auto returnType = mModule->CheckOperator(checkType, operatorDef, args[0].mTypedValue, args[1].mTypedValue);
-								if (returnType != NULL)
+								if (operatorDef->mGenericParams.IsEmpty())
 								{
-									operatorConstraintReturnType = returnType;
-									methodMatcher.mBestMethodDef = operatorDef;
-									foundExactMatch = true;
+									// Fast check
+									auto returnType = mModule->CheckOperator(checkType, operatorDef, args[0].mTypedValue, args[1].mTypedValue);
+									if (returnType != NULL)
+									{
+										operatorConstraintReturnType = returnType;
+										methodMatcher.mBestMethodDef = operatorDef;
+										methodMatcher.mBestMethodTypeInstance = checkType;
+										foundExactMatch = true;
+									}
+								}
+								else
+								{
+									if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
+									{
+										auto rawMethodInstance = mModule->GetRawMethodInstance(checkType, operatorDef);
+										auto returnType = mModule->ResolveGenericType(rawMethodInstance->mReturnType, NULL, &methodMatcher.mBestMethodGenericArguments);
+										if (returnType != NULL)
+										{
+											operatorConstraintReturnType = returnType;											
+											foundExactMatch = true;
+										}
+									}
 								}
 							}
 							else
@@ -20877,13 +20893,32 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						{
 							if ((flags & BfBinOpFlag_IsConstraintCheck) != 0)
 							{
-								auto returnType = mModule->CheckOperator(checkType, oppositeOperatorDef, args[0].mTypedValue, args[1].mTypedValue);
-								if (returnType != NULL)
+								if (oppositeOperatorDef->mGenericParams.IsEmpty())
 								{
-									operatorConstraintReturnType = returnType;
-									methodMatcher.mBestMethodDef = oppositeOperatorDef;
-									methodMatcher.mSelfType = entry.mSrcType;
-									wasTransformedUsage = true;
+									// Fast check
+									auto returnType = mModule->CheckOperator(checkType, oppositeOperatorDef, args[0].mTypedValue, args[1].mTypedValue);
+									if (returnType != NULL)
+									{
+										operatorConstraintReturnType = returnType;
+										methodMatcher.mBestMethodDef = oppositeOperatorDef;
+										methodMatcher.mBestMethodTypeInstance = checkType;
+										methodMatcher.mSelfType = entry.mSrcType;
+										wasTransformedUsage = true;
+									}
+								}
+								else
+								{
+									if (methodMatcher.CheckMethod(NULL, checkType, oppositeOperatorDef, false))
+									{
+										auto rawMethodInstance = mModule->GetRawMethodInstance(checkType, oppositeOperatorDef);
+										auto returnType = mModule->ResolveGenericType(rawMethodInstance->mReturnType, NULL, &methodMatcher.mBestMethodGenericArguments);
+										if (returnType != NULL)
+										{
+											operatorConstraintReturnType = returnType;
+											methodMatcher.mSelfType = entry.mSrcType;
+											wasTransformedUsage = true;
+										}
+									}
 								}
 							}
 							else

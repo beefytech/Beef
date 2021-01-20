@@ -59,6 +59,11 @@ namespace Tests
 			Test.Assert(i == 100);
 		}
 
+		public static T DoAdd<T>(T lhs, T rhs) where T : operator T + T
+		{
+			return lhs + rhs;
+		}
+
 		[Test]
 		public static void TestOperators()
 		{
@@ -84,6 +89,9 @@ namespace Tests
 			Test.Assert(iNull == 100);
 			Test.Assert(iNull != 99);
 			Test.Assert(!(iNull != 100));
+
+			Test.Assert(DoAdd(iNull, iNull) == 200);
+			Test.Assert(DoAdd(iNull, null) == null);
 		}
 	}
 }
