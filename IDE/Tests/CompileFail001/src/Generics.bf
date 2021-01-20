@@ -1,6 +1,7 @@
 #pragma warning disable 168
 
 using System;
+using System.Collections;
 
 namespace System
 {
@@ -53,6 +54,16 @@ namespace IDETest
 			{
 				function void() f = => MethodA<T2>; //FAIL Method 'IDETest.Generics.ClassA<T1, T2>.MethodA<T2>(int a)' does not match function 'function void()'
 			}
+		}
+
+		static void Method5<A, B>() where A : IEnumerable<B>
+		{
+
+		}
+
+		static void Method6<C, D, E, F>()
+		{
+			Method5<E, F>(); //FAIL Generic argument 'A', declared to be 'E' for 'IDETest.Generics.Method5<E, F>()', must implement 'System.Collections.IEnumerable<F>'
 		}
 	}
 }

@@ -446,7 +446,7 @@ public:
 	BfTypedValue MatchMethod(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& name, 
 		BfResolvedArgs& argValue, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);
 	BfTypedValue MakeCallableTarget(BfAstNode* targetSrc, BfTypedValue target);		
-	BfModuleMethodInstance GetSelectedMethod(BfAstNode* targetSrc, BfTypeInstance* curTypeInst, BfMethodDef* methodDef, BfMethodMatcher& methodMatcher);
+	BfModuleMethodInstance GetSelectedMethod(BfAstNode* targetSrc, BfTypeInstance* curTypeInst, BfMethodDef* methodDef, BfMethodMatcher& methodMatcher, BfType** overrideReturnType = NULL);
 	bool CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail);
 	bool HasVariableDeclaration(BfAstNode* checkNode);
 	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArgs, BfTypedValue* outCascadeValue = NULL);	
@@ -472,6 +472,7 @@ public:
 	void AssignDeferrredTupleAssignData(BfAssignmentExpression* assignExpr, DeferredTupleAssignData& deferredTupleAssignData, BfTypedValue rightValue);
 	void DoTupleAssignment(BfAssignmentExpression* assignExpr);	
 	void FinishDeferredEvals(SizedArrayImpl<BfResolvedArg>& argValues);	
+	void FinishDeferredEvals(BfResolvedArgs& argValues);
 	bool LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifierNode* propName);
 	void DoTypeIntAttr(BfTypeReference* typeRef, BfToken token);
 	//void InitializedSizedArray(BfTupleExpression* createExpr, BfSizedArrayType* arrayType);

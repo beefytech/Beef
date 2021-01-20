@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -39,12 +40,73 @@ namespace Tests
 			}
 		}
 
+		struct Iterator
+		{
+			public static Iterator<decltype(default(TCollection).GetEnumerator()), TSource> Wrap<TCollection, TSource>(TCollection items)
+				where TCollection : concrete, IEnumerable<TSource>
+			{
+				return .(items.GetEnumerator());
+			}
+		}
+
+		struct Iterator<TEnum, TSource> : IDisposable
+			where TEnum : concrete, IEnumerator<TSource>
+		{
+			public TEnum mEnum;
+
+			public this(TEnum items)
+			{
+				mEnum = items;
+			}
+
+			[SkipCall]
+			public void Dispose() { }
+		}
+
+		public static bool SequenceEquals<TLeft, TRight, TSource>(this TLeft left, TRight right)
+			where TLeft : concrete, IEnumerable<TSource>
+			where TRight : concrete, IEnumerable<TSource>
+			where bool : operator TSource == TSource
+		{
+			using (let iterator0 = Iterator.Wrap<TLeft, TSource>(left))
+			{
+				var e0 = iterator0.mEnum;
+				using (let iterator1 = Iterator.Wrap<TRight, TSource>(right))
+				{
+					var e1 = iterator1.mEnum;
+					while (true)
+					{
+						switch (e0.GetNext())
+						{
+						case .Ok(let i0):
+							switch (e1.GetNext())
+							{
+							case .Ok(let i1):
+								if (i0 != i1)
+									return false;
+							case .Err:
+								return false;
+							}
+						case .Err:
+							return e1.GetNext() case .Err;
+						}
+					}
+				}
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
 			let testF = TestFunc<String, delegate bool(String)>.Create(10, scope (s) => s == "Str");
 			Test.Assert(testF.CallCheck("Str"));
 			Test.Assert(!testF.CallCheck("Str2"));
+
+			List<int32> iList = scope .() { 1, 2, 3 };
+			Span<int32> iSpan = iList;
+			Test.Assert(iList.SequenceEquals(iSpan));
+			iList.Add(4);
+			Test.Assert(!iList.SequenceEquals(iSpan));
 		}
 	}
 }
