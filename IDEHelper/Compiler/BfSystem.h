@@ -720,8 +720,7 @@ enum BfCallingConvention : uint8
 	BfCallingConvention_Unspecified,
 	BfCallingConvention_Cdecl,
 	BfCallingConvention_Stdcall,
-	BfCallingConvention_Fastcall,
-	BfCallingConvention_CVarArgs,
+	BfCallingConvention_Fastcall,	
 };
 
 #define BF_METHODNAME_MARKMEMBERS "GCMarkMembers"

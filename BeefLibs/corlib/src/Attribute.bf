@@ -252,12 +252,6 @@ namespace System
 	}
 
 	[AttributeUsage(.Method /*2*/)]
-	public struct CVarArgsAttribute : Attribute
-	{
-
-	}
-
-	[AttributeUsage(.Method /*2*/)]
 	public struct NoReturnAttribute : Attribute
 	{
 

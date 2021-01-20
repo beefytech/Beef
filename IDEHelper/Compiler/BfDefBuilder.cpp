@@ -803,9 +803,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			if (typeRefName == "CLink")
 				methodDef->mCLink = true;
 			else if (typeRefName == "StdCall")
-				methodDef->mCallingConvention = BfCallingConvention_Stdcall;
-			else if (typeRefName == "CVarArgs")
-				methodDef->mCallingConvention = BfCallingConvention_CVarArgs;
+				methodDef->mCallingConvention = BfCallingConvention_Stdcall;			
 			else if (typeRefName == "Inline")
 			{
 				if (methodDef->mIsExtern)
