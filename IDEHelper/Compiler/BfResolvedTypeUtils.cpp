@@ -3381,11 +3381,10 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 	{
 		int hashVal = HASH_DELEGATE;
 		if (delegateTypeRef->mReturnType != NULL)
-			hashVal = ((hashVal ^ (Hash(delegateTypeRef->mReturnType, ctx))) << 5) - hashVal;
+			hashVal = ((hashVal ^ (Hash(delegateTypeRef->mReturnType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
 		else
 			ctx->mFailed = true;
 		
-
 		bool isFirstParam = true;
 
 		for (auto param : delegateTypeRef->mParams)

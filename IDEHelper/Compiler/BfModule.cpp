@@ -20376,7 +20376,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 			BfType* expectType = NULL;
 			if (!methodInstance->mReturnType->IsVoid())
 				expectType = methodInstance->mReturnType;
-			CreateValueFromExpression(bodyExpr, expectType);
+			CreateValueFromExpression(bodyExpr, expectType, BfEvalExprFlags_AllowRefExpr);
 		}
 	};
 

@@ -9978,7 +9978,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		bool failed = false;
 
-		auto returnType = ResolveTypeRef(delegateTypeRef->mReturnType, NULL, BfPopulateType_Declaration);
+		auto returnType = ResolveTypeRef(delegateTypeRef->mReturnType, NULL, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowRef);
 		if (returnType == NULL)
 		{
 			failed = true;
