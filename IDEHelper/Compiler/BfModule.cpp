@@ -11754,7 +11754,7 @@ void BfModule::AggregateSplatIntoAddr(BfTypedValue typedValue, BfIRValue addrVal
 	checkTypeLambda(typedValue.mType, addrVal);	
 }
 
-BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal)
+BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal, bool forceMutable)
 {
 	bool wasReadOnly = typedVal.IsReadOnly();
 
@@ -11775,6 +11775,9 @@ BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal)
 		else
 			mBfIRBuilder->CreateAlignedStore(typedVal.mValue, tempVar, type->mAlign);
 		
+		if (forceMutable)
+			wasReadOnly = false;
+
 		return BfTypedValue(tempVar, type,
 			typedVal.IsThis() ?
 			(wasReadOnly ? BfTypedValueKind_ReadOnlyThisAddr : BfTypedValueKind_ThisAddr) :
@@ -11788,6 +11791,11 @@ BfTypedValue BfModule::RemoveReadOnly(BfTypedValue typedValue)
 	if (typedValue.mKind == BfTypedValueKind_ReadOnlyAddr)
 		typedValue.mKind = BfTypedValueKind_Addr;	
 	return typedValue;
+}
+
+BfTypedValue BfModule::CopyValue(const BfTypedValue& typedValue)
+{
+	return MakeAddressable(LoadValue(typedValue), true);
 }
 
 BfIRValue BfModule::ExtractSplatValue(BfTypedValue typedValue, int componentIdx, BfType* wantType, bool* isAddr)

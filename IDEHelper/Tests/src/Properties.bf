@@ -29,6 +29,7 @@ namespace Tests
 			public this()
 			{
 				B = .();
+				B.mA += 1000;
 			}
 		}
 

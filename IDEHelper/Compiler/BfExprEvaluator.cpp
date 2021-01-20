@@ -4573,6 +4573,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					target = BfTypedValue(allocaInst, primStructType, true);
 				}
 
+				if (target.IsCopyOnMutate())
+					target = mModule->CopyValue(target);
+
 				BfTypedValue targetValue;
 				if ((isBaseLookup) && (!target.IsSplat()))
 				{
@@ -4848,12 +4851,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 										}
 									}
 
-									if (needsCopy)
-									{
-										result = mModule->LoadValue(result);
-										result = mModule->MakeAddressable(result);
-										result = mModule->RemoveReadOnly(result);
-									}
+									if (result.mKind == BfTypedValueKind_Addr)
+										result.mKind = BfTypedValueKind_CopyOnMutateAddr;
 
 									mPropDef = NULL;
 									mPropSrc = NULL;
@@ -16978,8 +16977,11 @@ bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
 	return true;
 }
 
-bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut, bool emitWarning)
+bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut, bool emitWarning, bool skipCopyOnMutate)
 {	
+	if ((!skipCopyOnMutate) && (typedVal.IsCopyOnMutate()))
+		typedVal = mModule->CopyValue(typedVal);
+
 	BfLocalVariable* localVar = NULL;
 	bool isCapturedLocal = false;
 	if (mResultLocalVar != NULL)
@@ -17581,11 +17583,11 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 	}
 
 	ResolveGenericType();
-	auto ptr = mResult;	
+	auto ptr = mResult;
 	mResult = BfTypedValue();
 	if (mPropDef == NULL)
 	{
-		if (!CheckModifyResult(ptr, assignExpr->mOpToken, "assign to"))
+		if (!CheckModifyResult(ptr, assignExpr->mOpToken, "assign to", false, false, true))
 		{
 			if (assignExpr->mRight != NULL)
 				mModule->CreateValueFromExpression(assignExpr->mRight, ptr.mType, BfEvalExprFlags_NoCast);

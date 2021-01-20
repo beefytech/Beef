@@ -1632,8 +1632,9 @@ public:
 	BfTypedValue PrepareConst(BfTypedValue& typedValue);
 	void AggregateSplatIntoAddr(BfTypedValue typedValue, BfIRValue addrVal);
 	BfTypedValue AggregateSplat(BfTypedValue typedValue, BfIRValue* valueArrPtr = NULL);	
-	BfTypedValue MakeAddressable(BfTypedValue typedValue);
+	BfTypedValue MakeAddressable(BfTypedValue typedValue, bool forceMutable = false);
 	BfTypedValue RemoveReadOnly(BfTypedValue typedValue);
+	BfTypedValue CopyValue(const BfTypedValue& typedValue);
 	BfIRValue ExtractSplatValue(BfTypedValue typedValue, int componentIdx, BfType* wantType = NULL, bool* isAddr = NULL);
 	BfTypedValue ExtractValue(BfTypedValue typedValue, BfFieldInstance* fieldInst, int fieldIdx);
 	BfIRValue ExtractValue(BfTypedValue typedValue, int dataIdx);
@@ -1765,7 +1766,7 @@ public:
 	BfMethodRefType* CreateMethodRefType(BfMethodInstance* methodInstance, bool mustAlreadyExist = false);
 	BfType* FixIntUnknown(BfType* type);
 	void FixIntUnknown(BfTypedValue& typedVal, BfType* matchType = NULL);	
-	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);
+	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);	
 	void FixValueActualization(BfTypedValue& typedVal);
 	bool TypeEquals(BfTypedValue& val, BfType* type);
 	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
