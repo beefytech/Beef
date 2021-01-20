@@ -10050,7 +10050,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			auto parentTypeInstance = (BfTypeInstance*)mCurTypeInstance;
 			for (int i = 0; i < parentTypeInstance->mGenericTypeInfo->mGenericParams.size(); i++)
 			{
-				genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(parentTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());
+				genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(parentTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());				
+			}
+			for (int i = 0; i < parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments.size(); i++)
+			{				
 				genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
 				auto typeGenericArg = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[i];
 				genericTypeInst->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
