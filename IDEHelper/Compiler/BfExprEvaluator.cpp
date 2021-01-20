@@ -4832,6 +4832,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 								auto result = LookupField(targetSrc, target, autoFieldName, BfLookupFieldFlag_IgnoreProtection);
 								if (result)
 								{
+									bool needsCopy = true;
+									
 									if (!hasSetter)
 									{
 										if (((mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)) &&
@@ -4840,11 +4842,22 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 											// Allow writing inside ctor
 										}
 										else
+										{
 											result.MakeReadOnly();
+											needsCopy = false;
+										}
 									}
+
+									if (needsCopy)
+									{
+										result = mModule->LoadValue(result);
+										result = mModule->MakeAddressable(result);
+										result = mModule->RemoveReadOnly(result);
+									}
+
 									mPropDef = NULL;
 									mPropSrc = NULL;
-									mOrigPropTarget = NULL;									
+									mOrigPropTarget = NULL;
 									return result;
 								}
 							}
