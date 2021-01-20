@@ -1673,8 +1673,11 @@ void BfPrinter::Visit(BfLambdaBindExpression* lambdaBindExpr)
 {
 	Visit(lambdaBindExpr->ToBase());
 
-	VisitChild(lambdaBindExpr->mNewToken);
-	ExpectSpace();	
+	if (lambdaBindExpr->mNewToken != NULL)
+	{
+		VisitChild(lambdaBindExpr->mNewToken);
+		ExpectSpace();
+	}
 	VisitChild(lambdaBindExpr->mOpenParen);
 	for (int i = 0; i < (int)lambdaBindExpr->mParams.size(); i++)
 	{
@@ -2181,6 +2184,12 @@ void BfPrinter::Visit(BfTupleExpression* tupleExpr)
 	VisitChild(tupleExpr->mOpenParen);
 	for (int i = 0; i < (int)tupleExpr->mValues.size(); i++)
 	{
+		if (i > 0)
+		{
+			VisitChildNoRef(tupleExpr->mCommas.GetSafe(i - 1));
+			ExpectSpace();
+		}
+
 		if (i < (int)tupleExpr->mNames.size())
 		{
 			auto nameNode = tupleExpr->mNames[i];
@@ -2191,12 +2200,7 @@ void BfPrinter::Visit(BfTupleExpression* tupleExpr)
 				ExpectSpace();
 			}
 		}
-
-		if (i > 0)
-		{
-			VisitChildNoRef(tupleExpr->mCommas.GetSafe(i - 1));
-			ExpectSpace();
-		}
+		
 		VisitChild(tupleExpr->mValues[i]);
 	}
 
@@ -2238,7 +2242,7 @@ void BfPrinter::Visit(BfUnaryOperatorExpression* unaryOpExpr)
 	bool postOp = (unaryOpExpr->mOp == BfUnaryOp_PostIncrement) || (unaryOpExpr->mOp == BfUnaryOp_PostDecrement);
 	if (!postOp)
 		VisitChild(unaryOpExpr->mOpToken);
-	if ((unaryOpExpr->mOp == BfUnaryOp_Ref) || (unaryOpExpr->mOp == BfUnaryOp_Mut) || (unaryOpExpr->mOp == BfUnaryOp_Out) || (unaryOpExpr->mOp == BfUnaryOp_Params))
+	if ((unaryOpExpr->mOp == BfUnaryOp_Ref) || (unaryOpExpr->mOp == BfUnaryOp_Mut) || (unaryOpExpr->mOp == BfUnaryOp_Out) || (unaryOpExpr->mOp == BfUnaryOp_Params) || (unaryOpExpr->mOp == BfUnaryOp_Cascade))
 		ExpectSpace();
 	VisitChild(unaryOpExpr->mExpression);
 	if (postOp)
