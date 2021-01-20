@@ -1,7 +1,8 @@
+using System.Collections;
 namespace System
 {
 	[AlwaysInclude]
-	struct SizedArray<T, CSize> where CSize : const int
+	struct SizedArray<T, CSize> : IEnumerable<T> where CSize : const int
 	{
 		protected T[CSize] mVal;
 
@@ -35,6 +36,66 @@ namespace System
 				mVal[i].ToString(strBuffer);
 			}
 			strBuffer.Append(')');
+		}
+
+		public Enumerator GetEnumerator()
+		{
+			return .((T[CSize])this);
+		}
+
+		public struct Enumerator : IEnumerator<T>
+		{
+		    private T[CSize] mList;
+		    private int mIndex;
+		    private T* mCurrent;
+
+		    public this(T[CSize] list)
+		    {
+		        mList = list;
+		        mIndex = 0;
+		        mCurrent = null;
+		    }
+
+		    public bool MoveNext() mut
+		    {
+		        if ((uint(mIndex) < uint(CSize)))
+		        {
+		            mCurrent = &mList[mIndex];
+		            mIndex++;
+		            return true;
+		        }			   
+		        return MoveNextRare();
+		    }
+
+		    private bool MoveNextRare() mut
+		    {
+		    	mIndex = CSize + 1;
+		        mCurrent = null;
+		        return false;
+		    }
+
+		    public T Current
+		    {
+		        get
+		        {
+		            return *mCurrent;
+		        }
+		    }
+
+			public int Index
+			{
+				get
+				{
+					return mIndex - 1;
+				}				
+			}
+
+			public Result<T> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
 		}
 	}
 

@@ -603,6 +603,9 @@ bool BfGenericInferContext::InferGenericArguments(BfMethodInstance* methodInstan
 		{
 			InferGenericArgument(methodInstance, srcGenericArg, ifaceConstraint, BfIRValue());
 			auto typeInstance = srcGenericArg->ToTypeInstance();
+			if (typeInstance == NULL)
+				typeInstance = mModule->GetWrappedStructType(srcGenericArg);
+
 			if (typeInstance != NULL)
 			{
 				for (auto ifaceEntry : typeInstance->mInterfaces)
