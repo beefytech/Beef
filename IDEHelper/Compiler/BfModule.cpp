@@ -7777,7 +7777,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must implement '%s'", genericParamInst->GetName().c_str(), 
-					TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), _TypeToString(checkConstraint).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(checkConstraint).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
