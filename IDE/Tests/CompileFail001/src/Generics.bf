@@ -65,5 +65,25 @@ namespace IDETest
 		{
 			Method5<E, F>(); //FAIL Generic argument 'A', declared to be 'E' for 'IDETest.Generics.Method5<E, F>()', must implement 'System.Collections.IEnumerable<F>'
 		}
+
+		interface IFaceB<T>
+		{
+			void MethodA0();
+		}
+
+		extension IFaceB<T>
+		{
+			void MethodA1();
+		}
+
+		class ClassB<T> : IFaceB<T> //FAIL 'IDETest.Generics.ClassB<T>' does not implement interface member 'IDETest.Generics.IFaceB<T>.MethodA0()'
+		{
+
+		}
+
+		extension ClassB<T>
+		{
+
+		}
 	}
 }

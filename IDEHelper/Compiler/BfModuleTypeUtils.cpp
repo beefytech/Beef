@@ -5543,6 +5543,11 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 							String methodString;
 							///
 							{
+								BfTypeState typeState;
+								typeState.mPrevState = mContext->mCurTypeState;								
+								typeState.mForceActiveTypeDef = declTypeDef;
+								SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+								
 								SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, ifaceMethodInst);
 								methodString = MethodToString(ifaceMethodInst);
 							}
@@ -7621,7 +7626,7 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 			BfGenericExtensionEntry* genericExEntry;
 			if (genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.TryGetValue(lookupTypeDef, &genericExEntry))
 			{				
-				return genericExEntry->mGenericParams[genericParamIdx];				
+				return genericExEntry->mGenericParams[genericParamIdx];
 			}
 			else
 			{
@@ -8113,6 +8118,8 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 {
 	BfTypeDef* useTypeDef = NULL;
 	BfTypeInstance* typeInstance = (typeInstanceOverride != NULL) ? typeInstanceOverride : mCurTypeInstance;
+	if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mForceActiveTypeDef != NULL))
+		return mContext->mCurTypeState->mForceActiveTypeDef;
 	if (typeInstance != NULL)
 		useTypeDef = typeInstance->mTypeDef;
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && (useMixinDecl))
