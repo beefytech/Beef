@@ -638,12 +638,13 @@ namespace IDE
 				return;
 
 			String completeStr = scope $"Completed {curProjectInfo.mExecutedCount} of {curProjectInfo.mTestCount} tests for '{curProjectInfo.mProject.mProjectName}'";
+			QueueOutputLine(completeStr);
 			if (curProjectInfo.mFailedCount > 0)
 			{
-				completeStr.AppendF($" with {curProjectInfo.mFailedCount} failure{((curProjectInfo.mFailedCount != 1) ? "s" : "")}");
+				String failStr = scope $"ERROR: Failed {curProjectInfo.mFailedCount} test{((curProjectInfo.mFailedCount != 1) ? "s" : "")}";
+				QueueOutputLine(failStr);
 			}
-			completeStr.Append("\n");
-			QueueOutputLine(completeStr);
+			QueueOutputLine("");
 		}
 
 		public void TestFailed()
