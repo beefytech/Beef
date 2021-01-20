@@ -211,7 +211,7 @@ namespace System
 	}
 
 	[Ordered]
-	class Array1<T> : Array
+	class Array1<T> : Array, IEnumerable<T>
 	{
 		T mFirstElement;
 
@@ -325,7 +325,7 @@ namespace System
 	}
 
 	[Ordered]
-	class Array2<T> : Array
+	class Array2<T> : Array, IEnumerable<T>
 	{
 		int_arsize mLength1;
 		T mFirstElement;
@@ -426,6 +426,11 @@ namespace System
 			return &mFirstElement;
 		}	
 
+		public Span<T>.Enumerator GetEnumerator()
+		{
+			return .(.(&mFirstElement, mLength));
+		}
+
         protected override void GCMarkMembers()
         {
             for (int i = 0; i < mLength; i++)
@@ -436,7 +441,7 @@ namespace System
 	}
 
 	[Ordered]
-	class Array3<T> : Array
+	class Array3<T> : Array, IEnumerable<T>
 	{
 		int_arsize mLength1;
 		int_arsize mLength2;
@@ -542,6 +547,11 @@ namespace System
 			return &mFirstElement;
 		}	
 
+		public Span<T>.Enumerator GetEnumerator()
+		{
+			return .(.(&mFirstElement, mLength));
+		}
+
 	    protected override void GCMarkMembers()
 	    {
 	        for (int i = 0; i < mLength; i++)
@@ -552,7 +562,7 @@ namespace System
 	}
 
 	[Ordered]
-	class Array4<T> : Array
+	class Array4<T> : Array, IEnumerable<T>
 	{
 		int_arsize mLength1;
 		int_arsize mLength2;
@@ -662,6 +672,11 @@ namespace System
 		{
 			return &mFirstElement;
 		}	
+
+		public Span<T>.Enumerator GetEnumerator()
+		{
+			return .(.(&mFirstElement, mLength));
+		}
 
 	    protected override void GCMarkMembers()
 	    {
