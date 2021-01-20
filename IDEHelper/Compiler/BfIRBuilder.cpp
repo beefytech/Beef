@@ -432,6 +432,9 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 	if (constRHS == NULL)
 		return -1;
 	
+	if (constLHS == constRHS)
+		return 1;
+
 	if (constLHS->mConstType == BfConstType_BitCast)
 		return CheckConstEquality(BfIRValue(BfIRValueFlags_Const, ((BfConstantBitCast*)constLHS)->mTarget), rhs);	
 	if (constRHS->mConstType == BfConstType_BitCast)
@@ -446,6 +449,14 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 			if (lhsZero || rhsZero)
 				return (lhsZero == rhsZero) ? 1 : 0;
 		}
+	}
+
+	if (((constLHS->mConstType == BfConstType_TypeOf) || (constLHS->mConstType == BfConstType_TypeOf_WithData)) &&
+		((constRHS->mConstType == BfConstType_TypeOf) || (constRHS->mConstType == BfConstType_TypeOf_WithData)))
+	{
+		auto typeOfLHS = (BfTypeOf_Const*)constLHS;
+		auto typeOfRHS = (BfTypeOf_Const*)constRHS;
+		return (typeOfLHS->mType == typeOfRHS->mType) ? 1 : 0;
 	}
 
 	if (constLHS->mTypeCode != constRHS->mTypeCode)
@@ -471,8 +482,14 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 				return elemResult;
 		}
 		return 1;
+	}	
+
+	if (constLHS->mConstType == BfConstType_GlobalVar)
+	{
+		// We would have already caught the (constLHS == constRHS) case further up
+		return 0;
 	}
-	
+		
 	return -1;
 }
 
@@ -3865,12 +3882,9 @@ BfIRValue BfIRBuilder::CreateCmpEQ(BfIRValue lhs, BfIRValue rhs)
 	if ((lhs.IsConst()) && (rhs.IsConst()))
 	{			
 		CMP_APPLY(lhs, rhs, ==);
-
-		if ((constLHS->mConstType == BfConstType_GlobalVar) ||
-			(constRHS->mConstType == BfConstType_GlobalVar))
-		{
-			return CreateConst(BfTypeCode_Boolean, (constLHS == constRHS) ? (uint64)1 : (uint64)0);
-		}
+		int eqVal = CheckConstEquality(lhs, rhs);
+		if (eqVal != -1)
+			return CreateConst(BfTypeCode_Boolean, (eqVal == 1) ? (uint64)1 : (uint64)0);
 	}
 
 	auto retVal = WriteCmd(BfIRCmd_CmpEQ, lhs, rhs);	
@@ -3883,12 +3897,9 @@ BfIRValue BfIRBuilder::CreateCmpNE(BfIRValue lhs, BfIRValue rhs)
 	if ((lhs.IsConst()) && (rhs.IsConst()))
 	{	
 		CMP_APPLY(lhs, rhs, !=);
-
-		if ((constLHS->mConstType == BfConstType_GlobalVar) ||
-			(constRHS->mConstType == BfConstType_GlobalVar))
-		{
-			return CreateConst(BfTypeCode_Boolean, (constLHS != constRHS) ? (uint64)1 : (uint64)0);
-		}
+		int eqVal = CheckConstEquality(lhs, rhs);
+		if (eqVal != -1)
+			return CreateConst(BfTypeCode_Boolean, (eqVal == 0) ? (uint64)1 : (uint64)0);
 	}
 
 	auto retVal = WriteCmd(BfIRCmd_CmpNE, lhs, rhs);
