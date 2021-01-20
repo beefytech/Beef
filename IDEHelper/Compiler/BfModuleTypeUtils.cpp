@@ -3910,14 +3910,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						{
 							if (!resolvedFieldType->IsValuelessType())
 							{
-								if (isCRepr)
-								{
-									dataFieldVec.push_back(fieldInstance);
-								}
-								else
-								{
-									dataFieldVec.push_back(fieldInstance);
-								}
+								dataFieldVec.push_back(fieldInstance);								
 							}
 						}
 						else
@@ -7156,6 +7149,18 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			return elementType;
 		elementType = FixIntUnknown(elementType);
 		return CreatePointerType(elementType);
+	}
+
+	if (unspecializedType->IsConcreteInterfaceType())
+	{
+		auto concreteType = (BfConcreteInterfaceType*)unspecializedType;
+		auto elementType = ResolveGenericType(concreteType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
+		if (elementType == NULL)
+			return NULL;
+		auto elementTypeInstance = elementType->ToTypeInstance();
+		if (elementTypeInstance == NULL)
+			return unspecializedType;		
+		return CreateConcreteInterfaceType(elementTypeInstance);
 	}
 
 	if (unspecializedType->IsArray())

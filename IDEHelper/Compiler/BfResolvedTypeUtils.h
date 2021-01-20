@@ -2182,6 +2182,8 @@ public:
 	virtual bool IsConcreteInterfaceType() override { return true; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mInterface; }
+	virtual bool IsUnspecializedType() override { return mInterface->IsUnspecializedType(); }
+	virtual bool IsUnspecializedTypeVariation() override { return mInterface->IsUnspecializedTypeVariation(); }
 };
 
 class BfPointerType : public BfType
