@@ -3841,7 +3841,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 			{				
 				if (((methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Operator) ||
 					 (methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_Dtor) ||
-					(methodDef->mMethodType == BfMethodType_Mixin)) &&
+					(methodDef->mMethodType == BfMethodType_Mixin) || (methodDef->mMethodType == BfMethodType_Extension)) &&
 					(methodDef->mMethodDeclaration != NULL))
 				{
 					methodText = methodDef->ToString();
@@ -3859,7 +3859,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 						refNode = methodDeclaration->mNameNode;
 					module->UpdateSrcPos(refNode, (BfSrcPosFlags)(BfSrcPosFlag_NoSetDebugLoc | BfSrcPosFlag_Force));
 
-					methodText += StrFormat("\tmethod\t%d\t%d", module->mCurFilePosition.mCurLine, module->mCurFilePosition.mCurColumn);
+					const char* typeStr = (methodDef->mMethodType == BfMethodType_Extension) ? "extmethod" : "method";
+
+					methodText += StrFormat("\t%s\t%d\t%d", typeStr, module->mCurFilePosition.mCurLine, module->mCurFilePosition.mCurColumn);
 
 					autoCompleteResultString += methodText;
 				}

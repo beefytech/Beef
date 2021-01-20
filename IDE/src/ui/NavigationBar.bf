@@ -17,6 +17,7 @@ namespace IDE.ui
 		{
 			Unknown,
 			Method,
+			ExtMethod,
 			Property,
 			Class,
 			Enum,
@@ -111,6 +112,7 @@ namespace IDE.ui
 							switch(lineData)
 							{
 							case "method": entry.mEntryType = .Method;
+							case "extmethod": entry.mEntryType = .ExtMethod;
 							case "property": entry.mEntryType = .Property;
 							case "class": entry.mEntryType = .Class;
 							case "enum": entry.mEntryType = .Enum;
@@ -151,6 +153,7 @@ namespace IDE.ui
 				switch (entry.mEntryType)
 				{
 				case .Method: menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Method);
+				case .ExtMethod: menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.ExtMethod);
 				case .Property: menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Property);
 				case .Class: menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Type_Class);
 				case .Enum: menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Type_ValueType);
