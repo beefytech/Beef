@@ -603,7 +603,7 @@ bool BfGenericInferContext::InferGenericArguments(BfMethodInstance* methodInstan
 		{
 			InferGenericArgument(methodInstance, srcGenericArg, ifaceConstraint, BfIRValue());
 			auto typeInstance = srcGenericArg->ToTypeInstance();
-			if (typeInstance == NULL)
+			if ((typeInstance == NULL) && (srcGenericArg->IsWrappableType()))
 				typeInstance = mModule->GetWrappedStructType(srcGenericArg);
 
 			if (typeInstance != NULL)
@@ -4544,9 +4544,12 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				}
 
 				if ((mResultLocalVar != NULL) && (fieldInstance->mMergedDataIdx != -1))
-				{					
-					fieldInstance->GetDataRange(mResultLocalVarField, mResultLocalVarFieldCount);
-					mResultLocalVarRefNode = targetSrc;					
+				{
+					if (mResultLocalVarFieldCount != 1)
+					{
+						fieldInstance->GetDataRange(mResultLocalVarField, mResultLocalVarFieldCount);
+						mResultLocalVarRefNode = targetSrc;
+					}
 				}
 
 				if ((curCheckType->IsIncomplete()) && (!curCheckType->mNeedsMethodProcessing))

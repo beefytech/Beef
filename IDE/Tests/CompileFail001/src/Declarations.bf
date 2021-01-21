@@ -25,5 +25,35 @@ namespace IDETest
 				}
 			}
 		}
+
+		public class ClassD
+		{
+			public int mA;
+			public int mB;
+		}
+
+		public struct StructA
+		{
+			public int32 mA;
+			public int32 mB;
+		}
+
+		public struct StructB
+		{
+			ClassD parent;
+			StructA mSA;
+			int mInnerInt;
+
+			public this(ClassD test)
+			{
+				parent = test;
+				mInnerInt = parent.mA;
+
+				mSA.mA = 123;
+				int a = mSA.mA;
+				int b = mSA.mB; //FAIL
+				mSA.mB = 234;
+			}
+		}
 	}
 }
