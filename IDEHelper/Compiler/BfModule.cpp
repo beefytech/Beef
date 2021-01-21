@@ -20890,7 +20890,20 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 	{
 		if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes == NULL)
 			methodInstance->mMethodInfoEx->mMethodCustomAttributes = new BfMethodCustomAttributes();
-		methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(attributeDirective, attrTarget);
+		methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(attributeDirective, attrTarget);		
+	}
+
+	if ((propertyMethodDeclaration != NULL) && (propertyMethodDeclaration->mPropertyDeclaration->mAttributes != NULL))
+	{
+		if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes != NULL)
+		{
+			GetCustomAttributes(methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes, propertyMethodDeclaration->mPropertyDeclaration->mAttributes, attrTarget);
+		}
+		else
+		{
+			methodInstance->GetMethodInfoEx()->mMethodCustomAttributes = new BfMethodCustomAttributes();
+			methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(propertyMethodDeclaration->mPropertyDeclaration->mAttributes, attrTarget);
+		}
 	}
 	
 	customAttributes = methodInstance->GetCustomAttributes();

@@ -245,7 +245,7 @@ namespace System
 	}
 
 	[Obsolete("Use [CallingConvention(.Stdcall)]", false)]
-	[AttributeUsage(.Method | .Constructor | .Delegate | .Function)]
+	[AttributeUsage(.Method | .Constructor | .Delegate | .Function | .Property)]
 	public struct StdCallAttribute : Attribute
 	{
 
@@ -478,7 +478,7 @@ namespace System
 	{
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Interface)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Interface | .Property)]
 	public struct ObsoleteAttribute : Attribute
 	{
 		public this(bool isError)
@@ -498,7 +498,7 @@ namespace System
 
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Property)]
 	public struct ErrorAttribute : Attribute
 	{
 		public this(String error)
@@ -507,7 +507,7 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Property)]
 	public struct WarnAttribute : Attribute
 	{
 		public this(String error)
