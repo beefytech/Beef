@@ -12946,8 +12946,10 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 			if ((methodInstance->mRequestedByAutocomplete) && (!mCompiler->IsAutocomplete()))
 			{
+				BfLogSysM("Setting mRequestedByAutocomplete=false for method instance %p\n", methodInstance);
 				// We didn't want to process this message yet if it was autocomplete-specific, but now we will
-				AddMethodToWorkList(methodInstance);
+				if (methodInstance->mMethodProcessRequest == NULL)
+					AddMethodToWorkList(methodInstance);
 				methodInstance->mRequestedByAutocomplete = false;
 			}
 
@@ -20893,16 +20895,16 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 		methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(attributeDirective, attrTarget);		
 	}
 
-	if ((propertyMethodDeclaration != NULL) && (propertyMethodDeclaration->mPropertyDeclaration->mAttributes != NULL))
+	if ((propertyMethodDeclaration != NULL) && (propertyMethodDeclaration->mPropertyDeclaration->mAttributes != NULL) && ((attrTarget & BfAttributeTargets_Property) == 0))
 	{
 		if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes != NULL)
 		{
-			GetCustomAttributes(methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes, propertyMethodDeclaration->mPropertyDeclaration->mAttributes, attrTarget);
+			GetCustomAttributes(methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes, propertyMethodDeclaration->mPropertyDeclaration->mAttributes, BfAttributeTargets_Property);
 		}
 		else
 		{
 			methodInstance->GetMethodInfoEx()->mMethodCustomAttributes = new BfMethodCustomAttributes();
-			methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(propertyMethodDeclaration->mPropertyDeclaration->mAttributes, attrTarget);
+			methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(propertyMethodDeclaration->mPropertyDeclaration->mAttributes, BfAttributeTargets_Property);
 		}
 	}
 	
