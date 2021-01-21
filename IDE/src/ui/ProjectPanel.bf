@@ -321,21 +321,33 @@ namespace IDE.ui
 										var destPath = targetProjectFolder.GetFullImportPath(.. scope .());
 										destPath.AppendF($"{Path.DirectorySeparatorChar}{sourceProjectFileItem.mName}");
 
-										if (File.Move(sourcePath, destPath) case .Ok)
+										if (!targetProjectFolder.mChildMap.TryAdd(sourceProjectFileItem.mName, sourceProjectFileItem))
 										{
-											gApp.FileRenamed(sourceProjectFileItem, sourcePath, destPath);
+											fileErrors.Add(scope:: .(destPath));
 										}
 										else
-											fileErrors.Add(scope:: .(destPath));
-
-										if (targetProjectFolder != sourceProjectItem.mParentFolder)
 										{
-											source.mParentItem.RemoveChildItem(source, false);
-											sourceProjectItem.mParentFolder.RemoveChild(sourceProjectItem);
+											if (File.Move(sourcePath, destPath) case .Ok)
+											{
+												gApp.FileRenamed(sourceProjectFileItem, sourcePath, destPath);
 
-											targetListItem.AddChildAtIndex(0, source);
-											targetListItem.mOpenButton.Open(true, false);
-											targetProjectFolder.AddChildAtIndex(0, sourceProjectItem);
+												if (targetProjectFolder != sourceProjectItem.mParentFolder)
+												{
+													source.mParentItem.RemoveChildItem(source, false);
+													sourceProjectItem.mParentFolder.RemoveChild(sourceProjectItem);
+
+													targetListItem.AddChildAtIndex(0, source);
+													targetListItem.mOpenButton.Open(true, false);
+													targetProjectFolder.AddChildAtIndex(0, sourceProjectItem);
+
+													sourceProjectFileItem.RecalcPath();
+												}
+											}
+											else
+											{
+												targetProjectFolder.mChildMap.Remove(sourceProjectFileItem.mName);
+												fileErrors.Add(scope:: .(destPath));
+											}
 										}
 									}
 								}
@@ -2309,18 +2321,17 @@ namespace IDE.ui
 						item = menu.AddItem("Ignore");
 						item.mOnMenuItemSelected.Add(new (item) =>
                             {
-								var selectedItem = GetSelectedItem();
-								if (selectedItem != null)
-								{
-									ProjectItem projectItem;
-                                    mListViewToProjectMap.TryGetValue(selectedItem, out projectItem);
-									DoDeleteItem(selectedItem, null, .Ignore);
-									if (projectItem != null)
+								mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
 									{
-									    projectItem.mIncludeKind = .Ignore;
-										projectItem.mProject.SetChanged();
-									}
-								}
+										ProjectItem projectItem;
+	                                    mListViewToProjectMap.TryGetValue(selectedItem, out projectItem);
+										DoDeleteItem(selectedItem, null, .Ignore);
+										if (projectItem != null)
+										{
+										    projectItem.mIncludeKind = .Ignore;
+											projectItem.mProject.SetChanged();
+										}
+									});
                             });
 					}
 					else if (projectItem.mIncludeKind == .Manual)
@@ -2338,14 +2349,18 @@ namespace IDE.ui
 						item = menu.AddItem("Unignore");
                         item.mOnMenuItemSelected.Add(new (item) =>
                             {
-								var projectItem = GetSelectedProjectItem();
-								if ((projectItem != null) && (projectItem.mIncludeKind == .Ignore))
-                                {
-									if (projectItem.mParentFolder.IsIgnored())
-										projectItem.mIncludeKind = .Auto;
-									else
-										Unignore(projectItem);
-								}
+								mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
+									{
+										ProjectItem projectItem;
+										mListViewToProjectMap.TryGetValue(selectedItem, out projectItem);
+										if (projectItem.mIncludeKind == .Ignore)
+		                                {
+											if (projectItem.mParentFolder.IsIgnored())
+												projectItem.mIncludeKind = .Auto;
+											else
+												Unignore(projectItem);
+										}
+									});
                             });
 					}
 
@@ -2360,54 +2375,58 @@ namespace IDE.ui
 
 							item.mOnMenuItemSelected.Add(new (item) =>
 							    {
-									let projectItem = GetSelectedProjectItem();
-									if (let projectFolder = projectItem as ProjectFolder)
-							        {
-										projectFolder.mProject.SetChanged();
-										projectFolder.mAutoInclude = !projectFolder.mAutoInclude;
-										
-										if (projectFolder.mAutoInclude)
-										{
-											if (HasNonAutoItems(projectFolder))
+									mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
+									{
+										ProjectItem projectItem;
+										mListViewToProjectMap.TryGetValue(selectedItem, out projectItem);
+										if (let projectFolder = projectItem as ProjectFolder)
+								        {
+											projectFolder.mProject.SetChanged();
+											projectFolder.mAutoInclude = !projectFolder.mAutoInclude;
+											
+											if (projectFolder.mAutoInclude)
 											{
-												var dialog = ThemeFactory.mDefault.CreateDialog("Apply to children?",
-													"Do you want to apply auto-include to child items?  Selecting 'no' means that current child items will remain manually specified and only new items will be auto-included.");
-												dialog.AddButton("Yes", new (evt) =>
-													{
-														let projectItem = GetSelectedProjectItem();
-														if (let projectFolder = projectItem as ProjectFolder)
+												if (HasNonAutoItems(projectFolder))
+												{
+													var dialog = ThemeFactory.mDefault.CreateDialog("Apply to children?",
+														"Do you want to apply auto-include to child items?  Selecting 'no' means that current child items will remain manually specified and only new items will be auto-included.");
+													dialog.AddButton("Yes", new (evt) =>
 														{
-															RehupFolder(projectFolder, .ApplyAutoToChildren);
-														}
-													});
-												dialog.AddButton("No", new (evt) =>
-													{
-														let projectItem = GetSelectedProjectItem();
-														if (let projectFolder = projectItem as ProjectFolder)
+															let projectItem = GetSelectedProjectItem();
+															if (let projectFolder = projectItem as ProjectFolder)
+															{
+																RehupFolder(projectFolder, .ApplyAutoToChildren);
+															}
+														});
+													dialog.AddButton("No", new (evt) =>
 														{
-															RehupFolder(projectFolder);
-														}
-													});
-												dialog.PopupWindow(gApp.GetActiveWindow());
+															let projectItem = GetSelectedProjectItem();
+															if (let projectFolder = projectItem as ProjectFolder)
+															{
+																RehupFolder(projectFolder);
+															}
+														});
+													dialog.PopupWindow(gApp.GetActiveWindow());
+												}
+												else
+													RehupFolder(projectFolder);
 											}
 											else
-												RehupFolder(projectFolder);
-										}
-										else
-										//if ((!projectFolder.mAutoInclude) && (!projectFolder.IsAutoInclude()))
-										{
-											// Remove any previously auto-added items
-											for (int childIdx = projectFolder.mChildItems.Count - 1; childIdx >= 0; childIdx--)
+											//if ((!projectFolder.mAutoInclude) && (!projectFolder.IsAutoInclude()))
 											{
-												let childItem = projectFolder.mChildItems[childIdx];
-												if (childItem.mIncludeKind == .Auto)
+												// Remove any previously auto-added items
+												for (int childIdx = projectFolder.mChildItems.Count - 1; childIdx >= 0; childIdx--)
 												{
-													let listViewItem = (ProjectListViewItem)mProjectToListViewMap[childItem];
-													DoDeleteItem(listViewItem, null, .ForceRemove);
+													let childItem = projectFolder.mChildItems[childIdx];
+													if (childItem.mIncludeKind == .Auto)
+													{
+														let listViewItem = (ProjectListViewItem)mProjectToListViewMap[childItem];
+														DoDeleteItem(listViewItem, null, .ForceRemove);
+													}
 												}
 											}
 										}
-									}
+									});
 							    });
 						}
 					}

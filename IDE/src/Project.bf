@@ -280,6 +280,14 @@ namespace IDE
 			if ((wasWatching) && (changePath))
 				StartWatching();
 		}
+
+		public void RecalcPath()
+		{
+			mPath.Clear();
+			mPath.Append(mParentFolder.mPath);
+			mPath.Append(Path.DirectorySeparatorChar);
+			mPath.Append(mName);
+		}
 	}
 
     public class ProjectSource : ProjectFileItem
