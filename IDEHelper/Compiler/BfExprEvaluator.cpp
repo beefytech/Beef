@@ -4838,7 +4838,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 							{								
 								bool hasSetter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget) != NULL;
 								auto autoFieldName = curCheckType->mTypeDef->GetAutoPropertyName(propertyDeclaration);
-								auto result = LookupField(targetSrc, target, autoFieldName, BfLookupFieldFlag_IgnoreProtection);
+								auto result = LookupField(targetSrc, target, autoFieldName, (BfLookupFieldFlags)(BfLookupFieldFlag_IgnoreProtection | BfLookupFieldFlag_IsImplicitThis));
 								if (result)
 								{
 									bool needsCopy = true;
