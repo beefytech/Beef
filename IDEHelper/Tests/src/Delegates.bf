@@ -2,6 +2,17 @@
 
 using System;
 
+namespace System
+{
+	extension Event<T>
+	{
+		public implicit void operator+=(T dlg) mut
+		{
+			Add(dlg);
+		}
+	}
+}
+
 namespace Tests
 {
 	class Delegates
@@ -146,6 +157,9 @@ namespace Tests
 
 			ClassB<int8>.DelegateB dlg2 = scope (val) => val + 123;
 			Test.Assert(dlg2(3) == 126);
+
+			Event<EventHandler> e = .();
+			e += scope (sender, e) => {};
 		}
 
 		public static void Modify(ref int a, ref Splattable b)

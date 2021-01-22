@@ -5008,6 +5008,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			if (argExpr != NULL)
 			{
 				BfDeferEvalChecker deferEvalChecker;
+				deferEvalChecker.mDeferLambdaBind = false;
 				argExpr->Accept(&deferEvalChecker);
 				deferParamEval = deferEvalChecker.mNeedsDeferEval;
 			}
@@ -17762,18 +17763,29 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 		CheckResultForReading(ptr);
 		BfTypedValue leftValue = ptr;
 		
-		auto expectedType = ptr.mType;
-		if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
-			expectedType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
+		bool deferBinop = false;
+		BfDeferEvalChecker deferEvalChecker;
+		deferEvalChecker.mDeferLiterals = false;
+		assignExpr->mRight->Accept(&deferEvalChecker);
+		if (deferEvalChecker.mNeedsDeferEval)
+			deferBinop = true;		
 
-		if ((!rightValue) && (assignExpr->mRight != NULL))
+		if (!deferBinop)
 		{
-			rightValue = mModule->CreateValueFromExpression(assignExpr->mRight, expectedType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
+			auto expectedType = ptr.mType;
+			if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
+				expectedType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
+
+			if ((!rightValue) && (assignExpr->mRight != NULL))
+			{
+				rightValue = mModule->CreateValueFromExpression(assignExpr->mRight, expectedType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
+			}
 		}
 
 		bool handled = false;
+		BfResolvedArgs argValues;
 
-		if (rightValue)
+		if ((rightValue) || (deferBinop))
 		{
 			auto checkTypeInst = leftValue.mType->ToTypeInstance();
 			while (checkTypeInst != NULL)
@@ -17788,8 +17800,26 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 						continue;
 
 					auto paramType = methodInst->GetParamType(0);
-					if (!mModule->CanCast(rightValue, paramType))
-						continue;
+					if (deferBinop)
+					{
+						if (argValues.mArguments == NULL)
+						{
+							SizedArray<BfExpression*, 2> argExprs;
+							argExprs.push_back(assignExpr->mRight);
+							BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
+							argValues.Init(&sizedArgExprs);
+							ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
+						}
+
+						rightValue = ResolveArgValue(argValues.mResolvedArgs[0], paramType);
+						if (!rightValue)
+							continue;
+					}
+					else
+					{
+						if (!mModule->CanCast(rightValue, paramType))
+							continue;
+					}
 
 					mModule->SetElementType(assignExpr->mOpToken, BfSourceElementType_Method);					
 					if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(assignExpr->mOpToken)))
@@ -17817,8 +17847,12 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 
 			if (!handled)
 			{
+				auto flags = BfBinOpFlag_ForceLeftType;
+				if (deferBinop)				
+					flags = (BfBinOpFlags)(flags | BfBinOpFlag_DeferRight);				
+
 				leftValue = mModule->LoadValue(leftValue);
-				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, BfBinOpFlag_ForceLeftType, leftValue, rightValue);
+				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, flags, leftValue, rightValue);
 			}
 		}
 		
@@ -20417,6 +20451,12 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 {
 	bool noClassify = (flags & BfBinOpFlag_NoClassify) != 0;
 	bool forceLeftType = (flags & BfBinOpFlag_ForceLeftType) != 0;
+	bool deferRight = (flags & BfBinOpFlag_DeferRight) != 0;
+
+	if (deferRight)
+	{
+		rightValue = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
+	}
 
 	if ((rightValue.mValue.IsConst()) && (!leftValue.mValue.IsConst()))
 	{
@@ -20646,7 +20686,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	BfIRValue convLeftValue;
 	BfIRValue convRightValue;
 
-	if ((resultType->IsVar()) || (otherType->IsVar()))
+	if (((resultType->IsVar()) || (otherType->IsVar())) && (!deferRight))
 	{
 		bool isComparison = (binaryOp >= BfBinaryOp_Equality) && (binaryOp <= BfBinaryOp_LessThanOrEqual);
 		if (isComparison)
@@ -20794,7 +20834,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		}
 		
 		if (!skipOpOverload)
-		{
+		{			
 			BfBinaryOp findBinaryOp = binaryOp;
 
 			bool isComparison = (binaryOp >= BfBinaryOp_Equality) && (binaryOp <= BfBinaryOp_LessThanOrEqual);
@@ -20802,16 +20842,28 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			for (int pass = 0; pass < 2; pass++)
 			{
 				BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);
-				bool foundOp = false;								
+				bool foundOp = false;							
 
-				SizedArray<BfResolvedArg, 2> args;
 				BfResolvedArg leftArg;
 				leftArg.mExpression = leftExpression;
-				leftArg.mTypedValue = leftValue;				
+				leftArg.mTypedValue = leftValue;
 				BfResolvedArg rightArg;
 				rightArg.mExpression = rightExpression;
 				rightArg.mTypedValue = rightValue;
 
+				if (deferRight)
+				{
+					BfResolvedArgs argValues;
+					SizedArray<BfExpression*, 2> argExprs;
+					argExprs.push_back(BfNodeDynCast<BfExpression>(rightExpression));
+					BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
+					argValues.Init(&sizedArgExprs);
+					ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
+					rightArg = argValues.mResolvedArgs[0];
+				}
+
+				SizedArray<BfResolvedArg, 2> args;
+				
 				if (pass == 0)
 				{
 					args.push_back(leftArg);
@@ -20820,8 +20872,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				else
 				{
 					args.push_back(rightArg);
-					args.push_back(leftArg);					
+					args.push_back(leftArg);
 				}
+				
 				BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
 				methodMatcher.mBfEvalExprFlags = BfEvalExprFlags_NoAutoComplete;
 				BfBaseClassWalker baseClassWalker(leftValue.mType, rightValue.mType, mModule);
@@ -21135,13 +21188,23 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				if (flippedBinaryOp != BfBinaryOp_None)
 					findBinaryOp = flippedBinaryOp;
 			}
-			
+					
 			auto prevResultType = resultType;
 			if ((leftValue.mType->IsPrimitiveType()) && (!rightValue.mType->IsTypedPrimitive()))
 				resultType = leftValue.mType;
 			if ((rightValue.mType->IsPrimitiveType()) && (!leftValue.mType->IsTypedPrimitive()))
 				resultType = rightValue.mType;			
 		}
+	}
+
+	if (deferRight)
+	{
+		auto expectedType = resultType;
+		if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
+			expectedType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);		
+		rightValue = mModule->CreateValueFromExpression(BfNodeDynCast<BfExpression>(rightExpression), expectedType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
+		PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, (BfBinOpFlags)(flags & ~BfBinOpFlag_DeferRight), leftValue, rightValue);
+		return;
 	}
 
 	if (mModule->IsUnboundGeneric(resultType))

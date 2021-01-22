@@ -347,7 +347,8 @@ enum BfBinOpFlags
 	BfBinOpFlag_NoClassify = 1,
 	BfBinOpFlag_ForceLeftType = 2,
 	BfBinOpFlag_IgnoreOperatorWithWrongResult = 4,
-	BfBinOpFlag_IsConstraintCheck = 8
+	BfBinOpFlag_IsConstraintCheck = 8,
+	BfBinOpFlag_DeferRight = 0x10
 };
 
 class BfExprEvaluator : public BfStructuralVisitor

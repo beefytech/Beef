@@ -5,6 +5,8 @@ USING_NS_BF;
 BfDeferEvalChecker::BfDeferEvalChecker()
 {
 	mNeedsDeferEval = false;
+	mDeferLiterals = true;
+	mDeferLambdaBind = true;
 }
 
 void BfDeferEvalChecker::Visit(BfAstNode* attribExpr)
@@ -31,7 +33,8 @@ void BfDeferEvalChecker::Visit(BfLiteralExpression* literalExpr)
 	case BfTypeCode_UIntPtr:
 	case BfTypeCode_IntUnknown:		
 	case BfTypeCode_UIntUnknown:
-		mNeedsDeferEval = true;
+		if (mDeferLiterals)
+			mNeedsDeferEval = true;
 		break;
 	default:
 		mNeedsDeferEval = false;
@@ -80,6 +83,12 @@ void BfDeferEvalChecker::Visit(BfMemberReferenceExpression* memberRefExpr)
 void BfDeferEvalChecker::Visit(BfInvocationExpression* invocationExpr)
 {
 	VisitChild(invocationExpr->mTarget);
+}
+
+void BfDeferEvalChecker::Visit(BfLambdaBindExpression* lambdaBindExpr)
+{
+	if (mDeferLambdaBind)
+		mNeedsDeferEval = true;
 }
 
 void BfDeferEvalChecker::Visit(BfConditionalExpression* condExpr)

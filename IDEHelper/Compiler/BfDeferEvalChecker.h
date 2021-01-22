@@ -9,6 +9,8 @@ class BfDeferEvalChecker : public BfStructuralVisitor
 {
 public:
 	bool mNeedsDeferEval;
+	bool mDeferLambdaBind;
+	bool mDeferLiterals;	
 
 public:
 	BfDeferEvalChecker();
@@ -21,6 +23,7 @@ public:
 	virtual void Visit(BfTupleExpression* tupleExpr) override;
 	virtual void Visit(BfMemberReferenceExpression* memberRefExpr) override;
 	virtual void Visit(BfInvocationExpression* invocationExpr) override;
+	virtual void Visit(BfLambdaBindExpression* lambdaBindExpr) override;
 	virtual void Visit(BfConditionalExpression* condExpr) override;
 	virtual void Visit(BfUnaryOperatorExpression* unaryOpExpr) override;
 	virtual void Visit(BfObjectCreateExpression* objCreateExpr) override;
