@@ -2225,7 +2225,7 @@ NoMatch:
 			auto resolveThisParam = mModule->ResolveGenericType(thisParam, NULL, &mCheckMethodGenericArguments);
 			if (resolveThisParam == NULL)
 				return false;
-			if (!mModule->CanCast(mTarget, resolveThisParam))
+			if (!mModule->CanCast(mTarget, resolveThisParam, BfCastFlags_Explicit))
 				return false;
 		}
 
