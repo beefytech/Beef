@@ -19,7 +19,7 @@ namespace Tests
 #else
 		[CLink]
 #endif
-		public static extern int32 vsprintf(char8* dest, char8* fmt, VarArgs varArgs);
+		public static extern int32 vsprintf(char8* dest, char8* fmt, void* varArgs);
 
 		public static (int, int, int) MethodA(...)
 		{
@@ -64,7 +64,7 @@ namespace Tests
 		{
 			VarArgs vaArgs = .();
 			vaArgs.Start!();
-			int32 result = vsprintf(dest, fmt, vaArgs);
+			int32 result = vsprintf(dest, fmt, vaArgs.ToVAList());
 			vaArgs.End!();
 			return result;
 		}
@@ -82,7 +82,11 @@ namespace Tests
 			Test.Assert(str == "Test 223 2.2 3.3");
 
 			// LLVM 32-bit varargs bug?
-#if !BF_32_BIT
+#if BF_32_BIT && BF_PLATFORM_WINDOWS
+			Test.Assert(MethodA(    12, 23, 123.0f) case (12, 23, ?));
+			Test.Assert(MethodB( 9, 22, 33, 223.0f) case (22, 33, ?));
+			Test.Assert(MethodC(11, 32, 43, 323.0f) case (32, 43, ?));
+#else
 			Test.Assert(MethodA(    12, 23, 123.0f) == (12, 23, 123));
 			Test.Assert(MethodB( 9, 22, 33, 223.0f) == (22, 33, 223));
 			Test.Assert(MethodC(11, 32, 43, 323.0f) == (32, 43, 323));

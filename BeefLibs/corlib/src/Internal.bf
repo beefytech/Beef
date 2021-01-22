@@ -21,9 +21,14 @@ namespace System
 		}
 	}
 
+	[CRepr]
 	struct VarArgs
 	{
+#if BF_PLATFORM_WINDOWS
 		void* mVAList;
+#else
+		int[3] mVAList; // Conservative size for va_list
+#endif
 
 		[Intrinsic("va_start")]
 		static extern void Start(void* vaList);
@@ -50,6 +55,15 @@ namespace System
 			T val = ?;
 			Arg(&mVAList, &val, (.)typeof(T).TypeId);
 			val
+		}
+
+		public void* ToVAList() mut
+		{
+#if BF_PLATFORM_WINDOWS
+			return mVAList;
+#else
+			return &mVAList;
+#endif
 		}
 	}
 
