@@ -2219,6 +2219,16 @@ NoMatch:
 		if (mBestMethodDef != NULL)
 			return false;
 		
+		if (checkMethod->mMethodType == BfMethodType_Extension)
+		{
+			auto thisParam = methodInstance->GetParamType(0);
+			auto resolveThisParam = mModule->ResolveGenericType(thisParam, NULL, &mCheckMethodGenericArguments);
+			if (resolveThisParam == NULL)
+				return false;
+			if (!mModule->CanCast(mTarget, resolveThisParam))
+				return false;
+		}
+
 		if (mBackupMethodDef != NULL)
 		{
 			int prevParamDiff = (int)mBackupMethodDef->GetExplicitParamCount() - (int)mArguments.size();
