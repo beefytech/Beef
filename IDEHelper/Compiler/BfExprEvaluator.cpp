@@ -5008,7 +5008,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			if (argExpr != NULL)
 			{
 				BfDeferEvalChecker deferEvalChecker;
-				deferEvalChecker.mDeferLambdaBind = false;
+				deferEvalChecker.mDeferDelegateBind = false;
 				argExpr->Accept(&deferEvalChecker);
 				deferParamEval = deferEvalChecker.mNeedsDeferEval;
 			}
@@ -21203,7 +21203,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 			expectedType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);		
 		rightValue = mModule->CreateValueFromExpression(BfNodeDynCast<BfExpression>(rightExpression), expectedType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
-		PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, (BfBinOpFlags)(flags & ~BfBinOpFlag_DeferRight), leftValue, rightValue);
+		if (rightValue)
+			PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, (BfBinOpFlags)(flags & ~BfBinOpFlag_DeferRight), leftValue, rightValue);
 		return;
 	}
 

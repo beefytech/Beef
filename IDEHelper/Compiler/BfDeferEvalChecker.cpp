@@ -6,7 +6,7 @@ BfDeferEvalChecker::BfDeferEvalChecker()
 {
 	mNeedsDeferEval = false;
 	mDeferLiterals = true;
-	mDeferLambdaBind = true;
+	mDeferDelegateBind = true;
 }
 
 void BfDeferEvalChecker::Visit(BfAstNode* attribExpr)
@@ -87,7 +87,13 @@ void BfDeferEvalChecker::Visit(BfInvocationExpression* invocationExpr)
 
 void BfDeferEvalChecker::Visit(BfLambdaBindExpression* lambdaBindExpr)
 {
-	if (mDeferLambdaBind)
+	if (mDeferDelegateBind)
+		mNeedsDeferEval = true;
+}
+
+void BfDeferEvalChecker::Visit(BfDelegateBindExpression* delegateBindExpr)
+{
+	if (mDeferDelegateBind)
 		mNeedsDeferEval = true;
 }
 

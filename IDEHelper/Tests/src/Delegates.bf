@@ -158,8 +158,15 @@ namespace Tests
 			ClassB<int8>.DelegateB dlg2 = scope (val) => val + 123;
 			Test.Assert(dlg2(3) == 126);
 
+			void LocalEventHandler(Object sender, EventArgs e)
+			{
+
+			}
+
 			Event<EventHandler> e = .();
-			e += scope (sender, e) => {};
+			e += new (sender, e) => {};
+			e += new => LocalEventHandler;
+			e.Dispose();
 		}
 
 		public static void Modify(ref int a, ref Splattable b)
