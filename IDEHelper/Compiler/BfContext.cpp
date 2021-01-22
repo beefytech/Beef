@@ -695,17 +695,18 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 						//  but it has been referenced now so we need to complete it, OR
 						//  if this is from a newly-reified module
 
-// 						if (false)
-// 						{
-// 							// For debugging
-// 							mScratchModule->PopulateType(type, BfPopulateType_Full);
-// 						}
-
-						BfTypeProcessRequest* typeProcessRequest = mPopulateTypeWorkList.Alloc();
-						typeProcessRequest->mType = type;						
-						mCompiler->mStats.mTypesQueued++;
-						mCompiler->UpdateCompletion();
-						didWork = true;
+						if ((type->IsSpecializedByAutoCompleteMethod()) && (type->mDefineState >= BfTypeDefineState_Defined))
+						{
+							// We don't process methods for these
+						}
+						else
+						{
+							BfTypeProcessRequest* typeProcessRequest = mPopulateTypeWorkList.Alloc();
+							typeProcessRequest->mType = type;
+							mCompiler->mStats.mTypesQueued++;
+							mCompiler->UpdateCompletion();
+							didWork = true;
+						}
 					}
 				}
 			}

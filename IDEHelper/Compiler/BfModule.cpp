@@ -23683,7 +23683,7 @@ bool BfModule::Finish()
 	{
 		for (auto type : mOwnedTypeInstances)
 		{
-			BF_ASSERT(!type->IsIncomplete());
+			BF_ASSERT((!type->IsIncomplete()) || (type->IsSpecializedByAutoCompleteMethod()));
 		}
 	}
 
