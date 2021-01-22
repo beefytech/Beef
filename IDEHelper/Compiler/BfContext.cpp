@@ -2078,6 +2078,7 @@ void BfContext::UpdateRevisedTypes()
 			{
 				auto& codeGenOptions = project->mCodeGenOptions;								
 				
+				buildConfigHashCtx.MixinStr(mCompiler->mOutputDirectory);
 				buildConfigHashCtx.Mixin(project->mAlwaysIncludeAll);
 				buildConfigHashCtx.Mixin(project->mSingleModule);
 

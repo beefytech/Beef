@@ -9028,7 +9028,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 #ifdef BF_PLATFORM_WINDOWS
 			if (moduleFileName.mWroteToLib)
 				fileName = BeLibManager::GetLibFilePath(fileName);
-#endif			
+#endif		
+
 			if (!usedFileNames.TryAdd(fileName, NULL))
 				continue;
 			if (!outString.empty())
