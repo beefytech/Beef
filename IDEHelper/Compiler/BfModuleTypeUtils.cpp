@@ -1284,8 +1284,8 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		{
 			BfConcreteInterfaceType* concreteInterfaceType = (BfConcreteInterfaceType*)resolvedTypeRef;
 			BF_ASSERT(concreteInterfaceType->mInterface->IsInterface());
-			resolvedTypeRef->mSize = concreteInterfaceType->mInterface->mSize;
-			resolvedTypeRef->mAlign = concreteInterfaceType->mInterface->mAlign;
+			resolvedTypeRef->mSize = mContext->mBfObjectType->mSize;
+			resolvedTypeRef->mAlign = mContext->mBfObjectType->mAlign;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
 			return;
 		}
@@ -11850,17 +11850,21 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					auto castedFromValue = Cast(srcNode, typedVal, bestFromType, castFlags);
 					if (!castedFromValue)
 						return BfIRValue();
-
+										
 					BfTypedValue operatorOut;
 					if (ignoreWrites)
-					{						
+					{
+						if (opMethodInstance != NULL)
+							exprEvaluator.PerformCallChecks(opMethodInstance, srcNode);
+
 						if (returnType == toType)
-							return mBfIRBuilder->GetFakeVal();
+							return mBfIRBuilder->GetFakeVal();						
 						operatorOut = GetDefaultTypedValue(returnType);
 					}
 					else
 					{
 						BfModuleMethodInstance moduleMethodInstance = GetMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef, BfTypeVector());
+						exprEvaluator.PerformCallChecks(moduleMethodInstance.mMethodInstance, srcNode);
 
 						SizedArray<BfIRValue, 1> args;
 						exprEvaluator.PushArg(castedFromValue, args);

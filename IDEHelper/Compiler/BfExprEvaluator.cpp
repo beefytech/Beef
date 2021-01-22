@@ -21643,17 +21643,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 		case BfBinaryOp_StrictEquality:
 			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1),
 				mModule->GetPrimitiveType(BfTypeCode_Boolean));
-			break;
+			return;
 		case BfBinaryOp_InEquality:
 		case BfBinaryOp_StrictInEquality:
 			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0),
 				mModule->GetPrimitiveType(BfTypeCode_Boolean));
-			break;
-		default:
-			mModule->Fail("Invalid operation for void", opToken);
-			break;
-		}
-		return;		
+			return;
+		}		
 	}
 
 	if ((!convLeftValue) || (!convRightValue))
