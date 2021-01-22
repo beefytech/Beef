@@ -21141,13 +21141,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			}
 			
 			auto prevResultType = resultType;
-			if (leftValue.mType->IsPrimitiveType())
+			if ((leftValue.mType->IsPrimitiveType()) && (!rightValue.mType->IsTypedPrimitive()))
 				resultType = leftValue.mType;
-			if (rightValue.mType->IsPrimitiveType())
+			if ((rightValue.mType->IsPrimitiveType()) && (!leftValue.mType->IsTypedPrimitive()))
 				resultType = rightValue.mType;			
-
-			if ((prevResultType->IsTypedPrimitive()) && (resultType->IsPrimitiveType()))
-				explicitCast = true;
 		}
 	}
 
