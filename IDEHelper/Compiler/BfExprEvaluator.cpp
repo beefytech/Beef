@@ -20796,7 +20796,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			if ((leftValue.mValue.IsConst()) && (rightValue.mValue.IsConst()))
 				skipOpOverload = true;
 		}
-
+		
 		if (!skipOpOverload)
 		{
 			BfBinaryOp findBinaryOp = binaryOp;
@@ -20843,7 +20843,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						break;
 
 					bool foundExactMatch = false;					
-					Array<BfOperatorDef*> oppositeOperatorDefs;					
+					SizedArray<BfOperatorDef*, 8> oppositeOperatorDefs;
 
 					for (auto operatorDef : checkType->mTypeDef->mOperators)
 					{
@@ -21135,10 +21135,19 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				if (pass == 1)
 					break;			
 				
-				findBinaryOp = BfGetFlippedBinaryOp(findBinaryOp);
-				if (findBinaryOp == BfBinaryOp_None)
-					break;
+				auto flippedBinaryOp = BfGetFlippedBinaryOp(findBinaryOp);				
+				if (flippedBinaryOp != BfBinaryOp_None)
+					findBinaryOp = flippedBinaryOp;
 			}
+			
+			auto prevResultType = resultType;
+			if (leftValue.mType->IsPrimitiveType())
+				resultType = leftValue.mType;
+			if (rightValue.mType->IsPrimitiveType())
+				resultType = rightValue.mType;			
+
+			if ((prevResultType->IsTypedPrimitive()) && (resultType->IsPrimitiveType()))
+				explicitCast = true;
 		}
 	}
 

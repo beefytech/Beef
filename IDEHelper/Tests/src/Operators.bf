@@ -102,6 +102,80 @@ namespace Tests
 			}
 		}
 
+		struct StructD
+		{
+			int mVal;
+
+			public this(int val)
+			{
+				mVal = val;
+			}
+
+			public static implicit operator int(StructD x)
+			{
+			    return x.mVal;
+			}
+
+		    public static implicit operator StructD(int x)
+		    {
+		        return default(StructD);
+		    }
+		}
+
+		struct StructE
+		{
+			float mVal;
+
+			public this(float val)
+			{
+				mVal = val;
+			}
+
+			public static implicit operator float(StructE x)
+			{
+			    return x.mVal;
+			}
+
+		    public static implicit operator StructE(float x)
+		    {
+		        return .(x);
+		    }
+
+			public static StructE operator+(StructE lhs, StructE rhs)
+			{
+				return .(1);
+			}
+
+			public static int operator+(StructE lhs, int rhs)
+			{
+				return 2;
+			}
+
+			public static int operator+(int lhs, StructE rhs)
+			{
+				return 3;
+			}
+		}
+
+		struct StructF
+		{
+			public static int operator+(StructF lhs, int rhs)
+			{
+				return 1;
+			}
+
+			public static int operator+(int lhs, StructF rhs)
+			{
+				return 2;
+			}
+
+			[Commutable]
+			public static int operator+(StructF lhs, float rhs)
+			{
+				return 3;
+			}
+		}
+
 		struct StructOp<T, T2> where T : operator T + T2
 		{
 			public T DoIt(T val, T2 val2)
@@ -316,6 +390,22 @@ namespace Tests
 
 			FlagsRegister fr = .(true, false, true, true);
 			Test.Assert(fr == (uint8)0b10110000);
+
+			StructD sd = .(9);
+			Test.Assert(sd + 10 == 19);
+			Test.Assert(10 + sd == 19);
+
+			StructE se = .(9);
+			Test.Assert(se + 10 == 2);
+			Test.Assert(10 + se == 3);
+			Test.Assert(se + 1.2f == 1);
+			Test.Assert(1.2f + se == 1);
+
+			StructF sf = default;
+			Test.Assert(sf + 10 == 1);
+			Test.Assert(10 + sf == 2);
+			Test.Assert(sf + 1.0f == 3);
+			Test.Assert(2.0f + sf == 3);
 
 			/*let oai = OuterOp<float>.InnerOp<int>.Op(1.0f, 100);
 			Test.Assert(oai == 101.0f);
