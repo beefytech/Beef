@@ -467,7 +467,7 @@ namespace System.Diagnostics
 			mFileFlags = (.)ffi.dwFileFlags;
 
 			// fileVersion is chosen based on best guess. Other fields can be used if appropriate.
-			return (mFileVersion != string.Empty);
+			return (mFileVersion != String.Empty);
 		}
 
 		///

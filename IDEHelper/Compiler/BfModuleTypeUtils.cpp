@@ -6613,7 +6613,7 @@ void BfModule::HandleMethodGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDe
 		mCompiler->mResolvePassData->HandleMethodGenericParam(refNode, typeDef, methodDef, methodGenericParamIdx);
 }
 
-BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, BfPopulateType populateType, bool ignoreErrors, int numGenericArgs)
+BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopulateType populateType, bool ignoreErrors, int numGenericArgs)
 {
 	BfTypeDef* nestedTypeDef = NULL;
 
@@ -6623,6 +6623,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 	BfNamedTypeReference* namedTypeRef = NULL;
 	BfGenericInstanceTypeRef* genericTypeRef = NULL;
 	BfDirectStrTypeReference* directStrTypeRef = NULL;
+	BfIdentifierNode* identifierNode = NULL;
 	if ((namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef)))
 	{
 		//TYPEDEF nestedTypeDef = namedTypeRef->mTypeDef;
@@ -6632,12 +6633,16 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 		namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(genericTypeRef->mElementType);
 		//TYPEDEF nestedTypeDef = namedTypeRef->mTypeDef;
 	}
+	else if ((identifierNode = BfNodeDynCast<BfIdentifierNode>(typeRef)))
+	{
+		//TYPEDEF nestedTypeDef = namedTypeRef->mTypeDef;
+	}
 	else if ((directStrTypeRef = BfNodeDynCast<BfDirectStrTypeReference>(typeRef)))
 	{
 		//
 	}
 
-	BF_ASSERT((namedTypeRef != NULL) || (directStrTypeRef != NULL));
+	BF_ASSERT((identifierNode != NULL) || (namedTypeRef != NULL) || (directStrTypeRef != NULL));
 
 	auto usedOuterType = outerType;
 	if (nestedTypeDef == NULL)
@@ -6645,6 +6650,8 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 		StringView findName;
 		if (namedTypeRef != NULL)
 			findName = namedTypeRef->mNameNode->ToStringView();
+		else if (identifierNode != NULL)
+			findName = identifierNode->ToStringView();
 		else
 			findName = directStrTypeRef->mTypeName;
 
@@ -6744,7 +6751,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 				genericArgs.clear();
 			}
 			else
-			{
+			{				
 				ShowGenericArgCountError(typeRef, (int)nestedTypeDef->mGenericParamDefs.size() - (int)nestedTypeDef->mOuterType->mGenericParamDefs.size());
 				return NULL;
 			}
@@ -8083,7 +8090,7 @@ void BfModule::ShowAmbiguousTypeError(BfAstNode* refNode, BfTypeDef* typeDef, Bf
 	}
 }
 
-void BfModule::ShowGenericArgCountError(BfTypeReference* typeRef, int wantedGenericParams)
+void BfModule::ShowGenericArgCountError(BfAstNode* typeRef, int wantedGenericParams)
 {
 	BfGenericInstanceTypeRef* genericTypeInstRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef);
 
@@ -10361,15 +10368,6 @@ BfTypeInstance* BfModule::GetUnspecializedTypeInstance(BfTypeInstance* typeInst)
 	if (result == NULL)
 		return NULL;
 	return result->ToTypeInstance();
-}
-
-BfType* BfModule::ResolveInnerType(BfType* outerType, BfIdentifierNode* identifier, BfPopulateType populateType, bool ignoreErrors)
-{
-	BfDirectStrTypeReference typeRef;
-	typeRef.Init(identifier->ToString());	
-	// There is no ref node so we ignore errors
-	auto type = ResolveInnerType(outerType, &typeRef, populateType, /*ignoreErrors*/true);
-	return type;
 }
 
 BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeReference*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)

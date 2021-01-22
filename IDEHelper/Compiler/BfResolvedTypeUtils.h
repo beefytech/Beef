@@ -2553,7 +2553,7 @@ class BfTypeUtils
 {
 public:
 	static String HashEncode64(uint64 val); // Note: this only encodes 60 bits
-	static String TypeToString(BfTypeReference* typeRef);
+	static String TypeToString(BfAstNode* typeRef);
 	static String TypeToString(BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None);
 	static bool TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None);
 	static bool TypeEquals(BfType* typeA, BfType* typeB, BfType* selfType);

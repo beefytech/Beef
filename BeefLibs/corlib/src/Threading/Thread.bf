@@ -82,7 +82,7 @@ namespace System.Threading
 
             public static this()
             {
-                var cb = ref Runtime.BfRtCallbacks.sCallbacks;
+                var cb = ref Runtime.BfRtCallbacks.[Friend]sCallbacks;
 
                 cb.[Friend]mThread_Alloc = => Thread_Alloc;
                 cb.[Friend]mThread_GetMainThread = => Thread_GetMainThread;

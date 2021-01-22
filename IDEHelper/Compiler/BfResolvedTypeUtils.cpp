@@ -4548,8 +4548,15 @@ void BfTypeUtils::PopulateType(BfModule* module, BfType* type)
 	module->PopulateType(type);
 }
 
-String BfTypeUtils::TypeToString(BfTypeReference* typeRef)
+String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 {
+	if (auto identifierNode = BfNodeDynCast<BfIdentifierNode>(typeRefNode))
+		return identifierNode->ToString();
+
+	auto typeRef = BfNodeDynCast<BfTypeReference>(typeRefNode);
+	if (typeRef == NULL)
+		return "";
+
 	if (auto typeDefTypeRef = BfNodeDynCast<BfDirectTypeDefReference>(typeRef))
 	{		
 		if (!typeDefTypeRef->mTypeDef->mNamespace.IsEmpty())

@@ -1814,7 +1814,7 @@ public:
 	bool ResolveTypeResult_Validate(BfTypeReference* typeRef, BfType* resolvedTypeRef);
 	BfType* ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTypeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags);
 	void ShowAmbiguousTypeError(BfAstNode* refNode, BfTypeDef* typeDef, BfTypeDef* otherTypeDef);
-	void ShowGenericArgCountError(BfTypeReference* typeRef, int wantedGenericParams);	
+	void ShowGenericArgCountError(BfAstNode* typeRef, int wantedGenericParams);	
 	BfTypeDef* GetActiveTypeDef(BfTypeInstance* typeInstanceOverride = NULL, bool useMixinDecl = false); // useMixinDecl is useful for type lookup, but we don't want the decl project to limit what methods the user can call	
 	BfTypeDef* FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error);
 	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL);
@@ -1828,11 +1828,9 @@ public:
 	BfType* ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0, int numGenericArgs = 0);
 	BfType* ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool resolveGenericParam = true);
 	BfType* ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeReference*>* genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
-	//BfType* ResolveTypeRef(BfIdentifierNode* identifier, const BfSizedArray<BfTypeReference*>& genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	BfType* ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	BfType* ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
-	BfType* ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false, int numGenericArgs = 0);
-	BfType* ResolveInnerType(BfType* outerType, BfIdentifierNode* identifier, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false);
+	BfType* ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false, int numGenericArgs = 0);	
 	BfTypeDef* GetCombinedPartialTypeDef(BfTypeDef* type);
 	BfTypeInstance* GetOuterType(BfType* type);
 	bool IsInnerType(BfType* checkInnerType, BfType* checkOuterType);	
