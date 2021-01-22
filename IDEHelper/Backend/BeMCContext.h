@@ -1330,6 +1330,7 @@ public:
 
 	int mStackSize;
 	bool mUseBP;
+	bool mHasVAStart;
 	int mCurLabelIdx;
 	int mCurPhiIdx;
 	int mMaxCallParamCount; // -1 if we have no calls

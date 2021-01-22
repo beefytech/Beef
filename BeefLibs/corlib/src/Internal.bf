@@ -21,6 +21,38 @@ namespace System
 		}
 	}
 
+	struct VarArgs
+	{
+		void* mVAList;
+
+		[Intrinsic("va_start")]
+		static extern void Start(void* vaList);
+		[Intrinsic("va_end")]
+		static extern void End(void* vaList);
+		[Intrinsic("va_arg")]
+		static extern void Arg(void* vaList, void* destPtr, int32 typeId);
+
+		[Inline]
+		public mixin Start() mut
+		{
+			Start(&mVAList);
+		}
+
+		[Inline]
+		public mixin End() mut
+		{
+			End(&mVAList);
+		}
+
+		[Inline]
+		public mixin Get<T>() mut
+		{
+			T val = ?;
+			Arg(&mVAList, &val, (.)typeof(T).TypeId);
+			val
+		}
+	}
+
 	[AlwaysInclude]
     static class Internal
     {

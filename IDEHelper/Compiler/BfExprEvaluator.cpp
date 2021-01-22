@@ -770,8 +770,11 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		anyIsExtension = true;
 	}
 
-	bool hadEnoughArgs = newMethodInstance->GetParamCount() - newImplicitParamCount < (int)mArguments.size();
-	bool prevHadEnoughArgs = prevMethodInstance->GetParamCount() - prevImplicitParamCount < (int)mArguments.size();
+	int newMethodParamCount = newMethodInstance->GetParamCount();
+	int prevMethodParamCount = prevMethodInstance->GetParamCount();
+
+	bool hadEnoughArgs = newMethodParamCount - newImplicitParamCount < (int)mArguments.size();
+	bool prevHadEnoughArgs = prevMethodParamCount - prevImplicitParamCount < (int)mArguments.size();
 	RETURN_BETTER_OR_WORSE(hadEnoughArgs, prevHadEnoughArgs);
 
 	bool chainSkip = (newMethodInstance->mChainType == BfMethodChainType_ChainMember) || (newMethodInstance->mChainType == BfMethodChainType_ChainSkip);
@@ -807,6 +810,11 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			
 			int newArgIdx = argIdx + newImplicitParamCount;
 			int prevArgIdx = argIdx + prevImplicitParamCount;
+
+			if (newArgIdx >= newMethodParamCount)
+				break;
+			if (prevArgIdx >= prevMethodParamCount)
+				break;
 
  			bool wasGenericParam = (newArgIdx >= 0) && newMethodInstance->WasGenericParam(newArgIdx);
  			bool prevWasGenericParam = (prevArgIdx >= 0) && prevMethodInstance->WasGenericParam(prevArgIdx);

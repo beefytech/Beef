@@ -6,7 +6,6 @@ Unlocked = ["corlib"]
 StartupProject = "Tests"
 
 [Configs.Debug.Win64]
-BfOptimizationLevel = "O0"
 IntermediateType = "ObjectAndIRCode"
 
 [Configs.Test.Win64]

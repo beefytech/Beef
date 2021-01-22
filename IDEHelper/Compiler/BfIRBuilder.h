@@ -456,7 +456,10 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_Shuffle,
 	BfIRIntrinsic_Sin,
 	BfIRIntrinsic_Sqrt,	
-	BfIRIntrinsic_Sub,
+	BfIRIntrinsic_Sub,	
+	BfIRIntrinsic_VAArg,
+	BfIRIntrinsic_VAEnd,
+	BfIRIntrinsic_VAStart,
 	BfIRIntrinsic_Xor,
 
 	BfIRIntrinsic_COUNT,

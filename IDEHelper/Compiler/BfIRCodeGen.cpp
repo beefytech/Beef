@@ -189,6 +189,9 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"sin"},
 	{"sqrt"},
 	{"sub"},
+	{"va_arg"},
+	{"va_end"},
+	{"va_start"},	
 	{"xor"},
 };
 
@@ -2631,6 +2634,9 @@ void BfIRCodeGen::HandleNextCmd()
 				{ llvm::Intrinsic::sin, 0, -1},
 				{ llvm::Intrinsic::sqrt, 0, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // sub,	
+				{ (llvm::Intrinsic::ID)-2, -1}, // va_arg,
+				{ llvm::Intrinsic::vaend, -1}, // va_end,
+				{ llvm::Intrinsic::vastart, -1}, // va_start,
 				{ (llvm::Intrinsic::ID)-2, -1}, // xor
 			};
 			BF_STATIC_ASSERT(BF_ARRAY_COUNT(intrinsics) == BfIRIntrinsic_COUNT);
@@ -3451,6 +3457,16 @@ void BfIRCodeGen::HandleNextCmd()
 						}
 					}
 					break;
+				case BfIRIntrinsic_VAArg:
+					{
+						auto constInt = llvm::dyn_cast<llvm::ConstantInt>(args[2]);
+						auto argType = GetLLVMTypeById((int)constInt->getSExtValue());
+						auto vaArgVal = mIRBuilder->CreateVAArg(args[0], argType);
+
+						auto resultPtr = mIRBuilder->CreateBitCast(args[1], argType->getPointerTo());
+						mIRBuilder->CreateStore(vaArgVal, resultPtr);
+					}
+					break;				
 				default:
 					FatalError("Unhandled intrinsic");
 				}

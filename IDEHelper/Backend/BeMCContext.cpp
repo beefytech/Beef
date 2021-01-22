@@ -1932,6 +1932,7 @@ BeMCContext::BeMCContext(BeCOFFObject* coffObject) : mOut(coffObject->mTextSect.
 	mCurVRegsInit = NULL;
 	mCurVRegsLive = NULL;
 	mUseBP = false;
+	mHasVAStart = false;
 	mInsertInstIdxRef = NULL;
 	mNativeIntType = mCOFFObject->mBeModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
 	mDebugging = false;
@@ -8477,7 +8478,7 @@ void BeMCContext::DoFrameObjPass()
 	}
 
 	mActiveBlock = mBlocks[0];
-
+	
 	if (mUseBP)
 	{
 		AllocInst(BeMCInstKind_Unwind_SetBP, 0);
@@ -8516,6 +8517,36 @@ void BeMCContext::DoFrameObjPass()
 		{
 			AllocInst(BeMCInstKind_Unwind_PushReg, BeMCOperand::FromReg(usedReg), 0);
 			AllocInst(BeMCInstKind_Push, BeMCOperand::FromReg(usedReg), 0);
+		}
+	}
+
+	if (mHasVAStart)
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			auto regSaveVReg = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64)));
+			auto vregInfo = GetVRegInfo(regSaveVReg);
+			vregInfo->mRelTo = BeMCOperand::FromReg(X64Reg_RSP);
+			vregInfo->mRelOffset = BeMCOperand::FromImmediate(i * 8 + 8);
+			vregInfo->mIsExpr = true;
+
+			X64CPURegister reg;
+			switch (i)
+			{
+			case 0:
+				reg = X64Reg_RCX;
+				break;
+			case 1:
+				reg = X64Reg_RDX;
+				break;
+			case 2:
+				reg = X64Reg_R8;
+				break;
+			case 3:
+				reg = X64Reg_R9;
+				break;
+			}
+			AllocInst(BeMCInstKind_Mov, BeMCOperand::ToLoad(regSaveVReg), BeMCOperand::FromReg(reg), 0);
 		}
 	}
 
@@ -15263,7 +15294,7 @@ void BeMCContext::HandleParams()
 	int regIdxOfs = 0;
 	int paramOfs = 0;
 	auto retType = mBeFunction->GetFuncType()->mReturnType;
-
+	
 	X64CPURegister compositeRetReg = X64Reg_None;
 	bool flipFirstRegs = false;
 	if (mBeFunction->HasStructRet())
@@ -15801,7 +15832,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?ConvertType@TestC@BeefTest@bf@@SAPEAVType@System@3@PEAVString@53@@Z");
+	//mDebugging = (function->mName == "?Zoips@TestProgram@BeefTest@bf@@SAXXZ");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
@@ -15871,23 +15902,18 @@ void BeMCContext::Generate(BeFunction* function)
 				break;
 			case BeCallInst::TypeId:
 				{
-// 					auto castedInst = (BeCallInst*)inst;
-// 
-// 					if (auto intrin = BeValueDynCast<BeIntrinsic>(castedInst->mFunc))
-// 					{
-// 						// Not a real call
-// 						switch (intrin->mKind)
-// 						{
-// 						case BfIRIntrinsic_Malloc:
-// 						case BfIRIntrinsic_MemCpy:
-// 						case BfIRIntrinsic_MemMove:
-// 						case BfIRIntrinsic_MemSet:
-// 							mMaxCallParamCount = BF_MAX(mMaxCallParamCount, 4);
-// 							break;
-// 						}
-// 					}
-// 					else
-// 						mMaxCallParamCount = BF_MAX(mMaxCallParamCount, (int)castedInst->mArgs.size());
+					auto castedInst = (BeCallInst*)inst;
+
+					if (auto intrin = BeValueDynCast<BeIntrinsic>(castedInst->mFunc))
+					{
+						// Not a real call
+						switch (intrin->mKind)
+						{
+						case BfIRIntrinsic_VAStart:
+							mHasVAStart = true;
+							break;
+						}
+					}					
 				}
 				break;
 			case BeMemSetInst::TypeId:
@@ -17494,6 +17520,60 @@ void BeMCContext::Generate(BeFunction* function)
 									args.Add(castedInst->mArgs[i].mValue);
 								useAltArgs = true;
 							}
+							break;
+						case BfIRIntrinsic_VAArg:
+							{
+								auto mcListPtr = GetOperand(castedInst->mArgs[0].mValue);
+								auto mcDestVoidPtr = GetOperand(castedInst->mArgs[1].mValue);
+								auto mcType = GetOperand(castedInst->mArgs[2].mValue);
+
+								BeType* beType = mModule->mBeIRCodeGen->GetBeTypeById((int32)mcType.mImmediate);
+								
+								auto mcList = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr)));
+								CreateDefineVReg(mcList);
+								auto listVRegInfo = GetVRegInfo(mcList);
+								listVRegInfo->mRelTo = mcListPtr;
+								listVRegInfo->mIsExpr = true;
+								
+								auto mcSrc = AllocVirtualReg(mModule->mContext->GetPointerTo(beType));
+								CreateDefineVReg(mcSrc);
+								auto srcVRegInfo = GetVRegInfo(mcSrc);
+								srcVRegInfo->mRelTo = BeMCOperand::ToLoad(mcList);
+								srcVRegInfo->mIsExpr = true;
+
+								auto mcDest = AllocVirtualReg(mModule->mContext->GetPointerTo(beType));
+								CreateDefineVReg(mcDest);
+								auto destVRegInfo = GetVRegInfo(mcDest);
+								destVRegInfo->mRelTo = mcDestVoidPtr;
+								destVRegInfo->mIsExpr = true;
+
+								AllocInst(BeMCInstKind_Mov, BeMCOperand::ToLoad(mcDest), BeMCOperand::ToLoad(mcSrc));
+								AllocInst(BeMCInstKind_Add, BeMCOperand::ToLoad(mcList), BeMCOperand::FromImmediate(8));
+							}
+							break;
+						case BfIRIntrinsic_VAEnd:
+							break;
+						case BfIRIntrinsic_VAStart:
+							{
+								auto mcTarget = GetOperand(castedInst->mArgs[0].mValue);
+
+								auto destVal = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr)));
+								auto destVRegInfo = GetVRegInfo(destVal);
+								destVRegInfo->mRelTo = mcTarget;
+								destVRegInfo->mIsExpr = true;
+								CreateDefineVReg(destVal);
+
+								auto nullPtrType = mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr);
+								auto vaStartVal = AllocVirtualReg(nullPtrType);
+								auto vRegInfo = GetVRegInfo(vaStartVal);
+								vRegInfo->mMustExist = true;
+								vRegInfo->mForceMem = true;
+								vRegInfo->mFrameOffset = (int)mBeFunction->mParams.size() * 8 + 8;
+								vRegInfo->mRefCount++;
+								CreateDefineVReg(vaStartVal);
+
+								AllocInst(BeMCInstKind_Mov, BeMCOperand::ToLoad(destVal), BeMCOperand::FromVRegAddr(vaStartVal.mVRegIdx));
+							}							
 							break;
 						default:
 							SoftFail(StrFormat("Intrinsic not handled: '%s'", intrin->mName.c_str()), castedInst->mDbgLoc);
