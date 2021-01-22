@@ -22368,7 +22368,12 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 				auto checkMethodInstance = typeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;				
 				if (checkMethodInstance == NULL)
-					continue;
+				{
+					if ((methodDef->mIsNew) && (methodDef->mDeclaringType->IsExtension()) && (!checkMethod->mDeclaringType->IsExtension()))
+						checkMethodInstance = GetRawMethodInstanceAtIdx(typeInstance, checkMethod->mIdx);
+					if (checkMethodInstance == NULL)
+						continue;
+				}
 
 				if (((checkMethodInstance->mChainType == BfMethodChainType_None) || (checkMethodInstance->mChainType == BfMethodChainType_ChainHead)) &&
 					(checkMethodInstance->GetExplicitInterface() == methodInstance->GetExplicitInterface()) &&
@@ -22436,7 +22441,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 									if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
 										silentlyAllow = true;
 									else if (methodDef->mIsNew)
+									{										
 										silentlyAllow = true;
+									}
 									else
 										extensionWarn = true;
 								}
@@ -22477,9 +22484,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		{			
 			auto baseType = typeInstance->mBaseType;
 			while (baseType != NULL)
-			{					
-				//for (int checkMethodIdx = 0; checkMethodIdx < (int) baseType->mTypeDef->mMethods.size(); checkMethodIdx++)
-
+			{				
 				auto baseTypeDef = baseType->mTypeDef;
 				baseTypeDef->PopulateMemberSets();
 				BfMethodDef* checkMethod = NULL;
@@ -22533,8 +22538,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				baseType = baseType->mBaseType;
 			}
 
-
-			if ((methodDef->mIsNew) && (!foundHiddenMethod))
+			if ((methodDef->mIsNew) && (!foundHiddenMethod) && (!mCurTypeInstance->IsSpecializedType()))
 			{
 				auto propertyDeclaration = methodDef->GetPropertyDeclaration();
 				auto tokenNode = (propertyDeclaration != NULL) ? propertyDeclaration->mNewSpecifier :
