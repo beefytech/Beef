@@ -3697,11 +3697,22 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	//SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(module->mCurMethodState, NULL);
 
 	if (mCeMachine->mAppendAllocInfo != NULL)
-	{
-		if ((mCeMachine->mAppendAllocInfo->mAppendSizeValue) && (!mCeMachine->mAppendAllocInfo->mAppendSizeValue.IsConst()))
+	{		
+		if (mCeMachine->mAppendAllocInfo->mAppendSizeValue)
 		{
-			Fail("Non-constant append alloc");
-			return BfTypedValue();
+			bool isConst = mCeMachine->mAppendAllocInfo->mAppendSizeValue.IsConst();
+			if (isConst)
+			{
+				auto constant = module->mBfIRBuilder->GetConstant(mCeMachine->mAppendAllocInfo->mAppendSizeValue);
+				if (constant->mConstType == BfConstType_Undef)
+					isConst = false;
+			}
+
+			if (!isConst)
+			{
+				Fail("Non-constant append alloc");
+				return BfTypedValue();
+			}
 		}
 	}
 
@@ -3737,13 +3748,20 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 				break;
 		}
 		if (paramType->IsComposite())
-		{
-			auto paramTypeInst = paramType->ToTypeInstance();
-			paramCompositeSize += paramTypeInst->mInstSize;
+		{			
+			paramCompositeSize += paramType->mSize;
 		}
 
 		auto arg = args[argIdx];
-		if (!arg.IsConst())
+		bool isConst = arg.IsConst();
+		if (isConst)
+		{
+			auto constant = module->mBfIRBuilder->GetConstant(arg);
+			if (constant->mConstType == BfConstType_Undef)
+				isConst = false;
+		}
+
+		if (!isConst)
 		{
 			if ((argIdx != thisArgIdx) && (argIdx != appendAllocIdx))
 			{
