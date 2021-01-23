@@ -1254,7 +1254,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 						if (!resolvedArg.mTypedValue)							
 						{
 							// Resolve for real
-							resolvedArg.mTypedValue = mModule->CreateValueFromExpression(lambdaBindExpr, checkType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_NoAutoComplete));
+							resolvedArg.mTypedValue = mModule->CreateValueFromExpression(lambdaBindExpr, checkType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_NoAutoComplete));
 						}
 						argTypedValue = resolvedArg.mTypedValue;
 					}
@@ -1302,7 +1302,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 						auto tryType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute);
 						if (tryType != NULL)
 						{
-							auto inferredReturnType = mModule->CreateValueFromExpression(lambdaBindExpr, tryType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_InferReturnType | BfEvalExprFlags_NoAutoComplete));
+							auto inferredReturnType = mModule->CreateValueFromExpression(lambdaBindExpr, tryType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_InferReturnType | BfEvalExprFlags_NoAutoComplete));
 							if (inferredReturnType.mType != NULL)
 							{								
 								(*genericArgumentsSubstitute)[returnMethodGenericArgIdx] = inferredReturnType.mType;
@@ -1313,7 +1313,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 									if (resolvedType != NULL)
 									{										
 										// Resolve for real
-										resolvedArg.mTypedValue = mModule->CreateValueFromExpression(lambdaBindExpr, resolvedType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_NoAutoComplete));
+										resolvedArg.mTypedValue = mModule->CreateValueFromExpression(lambdaBindExpr, resolvedType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_NoAutoComplete));
 										argTypedValue = resolvedArg.mTypedValue;
 									}
 								}
@@ -3280,7 +3280,7 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 
 	BfTypedValue caseValAddr;
 	if (caseExpr->mValueExpression != NULL)
-    	caseValAddr = mModule->CreateValueFromExpression(caseExpr->mValueExpression);	
+    	caseValAddr = mModule->CreateValueFromExpression(caseExpr->mValueExpression, NULL, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 
 	if ((caseValAddr.mType != NULL) && (caseValAddr.mType->IsPointer()))
 	{
@@ -3420,7 +3420,7 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 		if ((caseMatch.mType->IsStruct()) && (caseMatch.mValue.IsConst()))
 		{
 			// Is it possible this could throw an error twice?  Hope not.
-			caseMatch = mModule->CreateValueFromExpression(caseExpr->mCaseExpression, NULL);
+			caseMatch = mModule->CreateValueFromExpression(caseExpr->mCaseExpression, NULL, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 		}
 	}							 	
 
@@ -6944,7 +6944,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					SetMethodElementType(expr);
 
 				if (!argValue)
- 					argValue = mModule->CreateValueFromExpression(BfNodeDynCast<BfExpression>(arg), wantType, BfEvalExprFlags_NoCast);
+ 					argValue = mModule->CreateValueFromExpression(BfNodeDynCast<BfExpression>(arg), wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 
 				// Add any implicit captures now
 				auto methodRefType = (BfMethodRefType*)wantType;
@@ -7456,7 +7456,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 		SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, mModule->mHadBuildError);
 		auto expr = BfNodeDynCast<BfExpression>(resolvedArg.mExpression);
 		BF_ASSERT(expr != NULL); 		
-		argValue = mModule->CreateValueFromExpression(expr, wantType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr));
+		argValue = mModule->CreateValueFromExpression(expr, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr));
 		if ((argValue) && (wantType != NULL))
 			argValue = mModule->Cast(expr, argValue, wantType);
 	}
@@ -7691,7 +7691,7 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 				{
 					auto expr = BfNodeDynCast<BfExpression>(argValues.mResolvedArgs[tupleFieldIdx].mExpression);
 					BF_ASSERT(expr != NULL);
-					argValue = mModule->CreateValueFromExpression(expr, resolvedFieldType);
+					argValue = mModule->CreateValueFromExpression(expr, resolvedFieldType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 				}
 
 				if (argValue)
@@ -8975,17 +8975,17 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 		else if (((moduleMethodInstance.mMethodInstance->mComptimeFlags & BfComptimeFlag_Comptime) != 0) && (!mModule->mIsComptimeModule))
 		{
-			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
+			if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mComptimeFlags == BfComptimeFlag_None))
+				mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
 		}		
 
 		if (((moduleMethodInstance.mMethodInstance->mComptimeFlags & BfComptimeFlag_OnlyFromComptime) != 0) &&
 			((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) &&
-			(mModule->mCurMethodInstance->mComptimeFlags == BfComptimeFlag_None) &&
+			((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mComptimeFlags == BfComptimeFlag_None)) &&
 			(!mModule->mIsComptimeModule))
 		{
-			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags &~ BfEvalExprFlags_Comptime);
 			mModule->Fail(StrFormat("Method '%s' can only be invoked at comptime. Consider adding [Comptime] to the current method.", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str()), targetSrc);
-		}
+		}		
 
 		result = CreateCall(targetSrc, callTarget, origTarget, methodDef, moduleMethodInstance, bypassVirtual, argValues.mResolvedArgs, &argCascade, skipThis);
 	}
@@ -9908,11 +9908,11 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 			}
 			else if ((addFunctionBindResult.mMethodInstance == NULL) || (addFunctionBindResult.mMethodInstance->GetParamCount() == 0))
 			{
-				mModule->CreateValueFromExpression(elementExpr);
+				mModule->CreateValueFromExpression(elementExpr, NULL, (BfEvalExprFlags)(mBfEvalExprFlags& BfEvalExprFlags_InheritFlags));
 			}
 			else
 			{
-				auto argValue = mModule->CreateValueFromExpression(elementExpr, addFunctionBindResult.mMethodInstance->GetParamType(0));
+				auto argValue = mModule->CreateValueFromExpression(elementExpr, addFunctionBindResult.mMethodInstance->GetParamType(0), (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 				if ((argValue) && (!mModule->mBfIRBuilder->mIgnoreWrites))
 				{
 					SizedArray<BfIRValue, 2> irArgs;
@@ -10263,7 +10263,7 @@ void BfExprEvaluator::Visit(BfUninitializedExpression* uninitialziedExpr)
 
 void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 {
-	auto targetValue = mModule->CreateValueFromExpression(checkTypeExpr->mTarget);
+	auto targetValue = mModule->CreateValueFromExpression(checkTypeExpr->mTarget, NULL, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 	if (!targetValue)
 		return;			
 
@@ -17206,7 +17206,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 	static int sCallCount = 0;
 	sCallCount++;
 
-	auto condResult = mModule->CreateValueFromExpression(condExpr->mConditionExpression, mModule->GetPrimitiveType(BfTypeCode_Boolean));
+	auto condResult = mModule->CreateValueFromExpression(condExpr->mConditionExpression, mModule->GetPrimitiveType(BfTypeCode_Boolean), (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 	if (!condResult)
 		return;
 	
@@ -17246,13 +17246,13 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 		BfExpression* actualExpr = (constResult) ? condExpr->mTrueExpression : condExpr->mFalseExpression;
 		BfExpression* ignoredExpr = (constResult) ? condExpr->mFalseExpression : condExpr->mTrueExpression;
 
-		BfTypedValue actualValue = mModule->CreateValueFromExpression(actualExpr, mExpectingType, BfEvalExprFlags_NoCast);
+		BfTypedValue actualValue = mModule->CreateValueFromExpression(actualExpr, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 		BfTypedValue ignoredValue;
 		//
 		{			
 			auto curBlock = mModule->mBfIRBuilder->GetInsertBlock();
 			SetAndRestoreValue<bool> ignoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
-			ignoredValue = mModule->CreateValueFromExpression(ignoredExpr, mExpectingType, BfEvalExprFlags_NoCast);
+			ignoredValue = mModule->CreateValueFromExpression(ignoredExpr, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 			mModule->mBfIRBuilder->SetInsertPoint(curBlock);
 		}
 
@@ -17289,7 +17289,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 	SetAndRestoreValue<bool> prevInCondBlock(mModule->mCurMethodState->mCurScope->mInnerIsConditional, true);
 
 	mModule->AddBasicBlock(trueBB);	
-	auto trueValue = mModule->CreateValueFromExpression(condExpr->mTrueExpression, mExpectingType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_CreateConditionalScope));
+	auto trueValue = mModule->CreateValueFromExpression(condExpr->mTrueExpression, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_CreateConditionalScope));
 	if ((mExpectingType != NULL) && (trueValue) && (trueValue.mType != mExpectingType))
 	{
 		// In some cases like typed primitives - we CAN individually cast each value which it's a constant still, but not after the merging
@@ -17304,7 +17304,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 	auto trueBlockPos = mModule->mBfIRBuilder->GetInsertBlock();
 
 	mModule->AddBasicBlock(falseBB);
-	auto falseValue = mModule->CreateValueFromExpression(condExpr->mFalseExpression, mExpectingType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_CreateConditionalScope));
+	auto falseValue = mModule->CreateValueFromExpression(condExpr->mFalseExpression, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_CreateConditionalScope));
 	auto falseBlockPos = mModule->mBfIRBuilder->GetInsertBlock();
  	if ((mExpectingType != NULL) && (falseValue) && (falseValue.mType != mExpectingType))
  	{
@@ -20119,7 +20119,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	if (!leftValue)
 	{		
 		if (!rightValue)
-			mModule->CreateValueFromExpression(rightExpression, mExpectingType);
+			mModule->CreateValueFromExpression(rightExpression, mExpectingType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 		return;
 	}
 	if (leftValue.mType->IsRef())
@@ -20170,14 +20170,14 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				if ((constResult) || (HasVariableDeclaration(rightExpression)))
 				{					
 					// Only right side
-					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType);
+					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 					mResult = rightValue;
 				}
 				else
 				{
 					// Always false
 					SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);					
-					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType);
+					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0), boolType);
 				}
 			}
@@ -20192,7 +20192,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				mModule->mBfIRBuilder->CreateCondBr(leftValue.mValue, rhsBB, endBB);
 
 				mModule->AddBasicBlock(rhsBB);
-				rightValue = mModule->CreateValueFromExpression(rightExpression, boolType);				
+				rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 				mModule->mBfIRBuilder->CreateBr(endBB);
 
 				auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
@@ -20232,13 +20232,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				{
 					// Always true					
 					SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);					
-					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType);
+					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1), boolType);
 				}
 				else
 				{
 					// Only right side
-					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType);
+					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 					mResult = rightValue;
 				}
 			}
@@ -20253,7 +20253,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				mModule->mBfIRBuilder->CreateCondBr(leftValue.mValue, endBB, rhsBB);
 
 				mModule->AddBasicBlock(rhsBB);			
-				rightValue = mModule->CreateValueFromExpression(rightExpression, boolType);				
+				rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 				mModule->mBfIRBuilder->CreateBr(endBB);
 
 				auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
@@ -20272,7 +20272,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 		wantType = NULL; // Don't presume
 	wantType = mModule->FixIntUnknown(wantType);
-	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, BfEvalExprFlags_NoCast);
+	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 	if ((!leftValue) || (!rightValue))
 		return;
 
@@ -20284,7 +20284,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	BfTypedValue leftValue;
 	if (leftExpression != NULL)
 	{
-		leftValue = mModule->CreateValueFromExpression(leftExpression, mExpectingType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowIntUnknown));
+		leftValue = mModule->CreateValueFromExpression(leftExpression, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowIntUnknown));
 	}
 	return PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue);	
 }
@@ -21212,7 +21212,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		auto expectedType = resultType;
 		if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 			expectedType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);		
-		rightValue = mModule->CreateValueFromExpression(BfNodeDynCast<BfExpression>(rightExpression), expectedType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
+		rightValue = mModule->CreateValueFromExpression(BfNodeDynCast<BfExpression>(rightExpression), expectedType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
 		if (rightValue)
 			PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, (BfBinOpFlags)(flags & ~BfBinOpFlag_DeferRight), leftValue, rightValue);
 		return;
