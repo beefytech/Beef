@@ -11597,7 +11597,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 	// Check user-defined operators
 	if ((castFlags & BfCastFlags_NoConversionOperator) == 0)
-	{
+	{		
 		auto fromType = typedVal.mType;
 		auto fromTypeInstance = typedVal.mType->ToTypeInstance();
 		auto toTypeInstance = toType->ToTypeInstance();
@@ -11620,7 +11620,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		BfMethodInstance* opMethodInstance = NULL;
 		BfType* opMethodSrcType = NULL;
 		BfOperatorInfo* constraintOperatorInfo = NULL;
-
+		
 		// Normal, lifted, execute
 		for (int pass = 0; pass < 3; pass++)
 		{
@@ -11643,8 +11643,12 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					break;
 			}
 
+			BfType* searchFromType = checkFromType;
+			if (searchFromType->IsSizedArray())
+				searchFromType = GetWrappedStructType(checkFromType);
+
 			bool isConstraintCheck = ((castFlags & BfCastFlags_IsConstraintCheck) != 0);
-			BfBaseClassWalker baseClassWalker(fromType, toType, this);
+			BfBaseClassWalker baseClassWalker(searchFromType, toType, this);
 			
 			while (true)
 			{
@@ -11687,6 +11691,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							methodToType = methodInst->mReturnType;
 						}
 
+						if (methodFromType->IsRef())
+							methodFromType = methodFromType->GetUnderlyingType();
+
 						if (methodFromType->IsSelf())
 							methodFromType = entry.mSrcType;
 						if (methodToType->IsSelf())
@@ -11708,6 +11715,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							}
 
 							int fromDist = GetTypeDistance(methodCheckFromType, checkFromType);
+							if ((fromDist == INT_MAX) && (searchFromType != checkFromType))
+							{
+								fromDist = GetTypeDistance(methodCheckFromType, searchFromType);
+							}
+
 							if (fromDist < 0)
 							{
 								// Allow us to cast a constant int to a smaller type if it satisfies the cast operator
@@ -11842,10 +11854,19 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							}
 						}
 					}
-					
+
 					// Actually perform conversion
 					BfExprEvaluator exprEvaluator(this);
-					auto castedFromValue = Cast(srcNode, typedVal, bestFromType, castFlags);
+					BfTypedValue castedFromValue;
+					if ((typedVal.mType->IsSizedArray()) && (bestFromType->IsInstanceOf(mCompiler->mSizedArrayTypeDef)))
+					{
+						castedFromValue = MakeAddressable(typedVal);
+						if (!bestFromType->IsValuelessType())
+							castedFromValue.mValue = mBfIRBuilder->CreateBitCast(castedFromValue.mValue, mBfIRBuilder->MapTypeInstPtr(bestFromType->ToTypeInstance()));
+						castedFromValue.mType = bestFromType;
+					}											
+					else
+						castedFromValue = Cast(srcNode, typedVal, bestFromType, castFlags);
 					if (!castedFromValue)
 						return BfIRValue();
 										
@@ -11863,6 +11884,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					{
 						BfModuleMethodInstance moduleMethodInstance = GetMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef, BfTypeVector());
 						exprEvaluator.PerformCallChecks(moduleMethodInstance.mMethodInstance, srcNode);
+
+						if (moduleMethodInstance.mMethodInstance->GetParamType(0)->IsRef())						
+							castedFromValue = ToRef(castedFromValue);						
 
 						SizedArray<BfIRValue, 1> args;
 						exprEvaluator.PushArg(castedFromValue, args);

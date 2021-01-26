@@ -176,6 +176,28 @@ namespace Tests
 			}
 		}
 
+		struct StructG : this(int a)
+		{
+			public static StructG operator+(ref StructG lhs, ref StructG rhs)
+			{
+				lhs.a += 1000;
+				rhs.a += 1000;
+
+				return .(lhs.a + rhs.a);
+			}
+
+			public static StructG operator-(ref StructG val)
+			{
+				val.a += 1000;
+				return val;
+			}
+
+			public static implicit operator int(ref StructG val)
+			{
+				return val.a;
+			}
+		}
+
 		struct StructOp<T, T2> where T : operator T + T2
 		{
 			public T DoIt(T val, T2 val2)
@@ -407,6 +429,15 @@ namespace Tests
 			Test.Assert(sf + 1.0f == 3);
 			Test.Assert(2.0f + sf == 3);
 
+			StructG sg = .(100);
+			StructG sg2 = .(200);
+			var sg3 = sg + sg2;
+			var sg4 = -sg3;
+			Test.Assert(sg.a == 1100);
+			Test.Assert(sg2.a == 1200);
+			Test.Assert(sg3.a == 3300);
+			Test.Assert(sg4.a == 3300);
+
 			/*let oai = OuterOp<float>.InnerOp<int>.Op(1.0f, 100);
 			Test.Assert(oai == 101.0f);
 
@@ -442,6 +473,8 @@ namespace Tests
 				mA++;
 			}
 		}
+
+		
 
 		[Test]
 		public static void TestCompareWithCastOperator()
@@ -504,3 +537,4 @@ namespace Tests
 		}
 	}
 }
+

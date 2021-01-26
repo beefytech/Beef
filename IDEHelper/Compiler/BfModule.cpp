@@ -11512,6 +11512,23 @@ BfTypedValue BfModule::RemoveRef(BfTypedValue typedValue)
 	return typedValue;
 }
 
+BfTypedValue BfModule::ToRef(BfTypedValue typedValue, BfRefType* refType)
+{
+	if (refType == NULL)
+		refType = CreateRefType(typedValue.mType);
+
+	if ((refType->mRefKind == BfRefType::RefKind_Mut) && (typedValue.mType->IsObjectOrInterface()))
+	{
+		return LoadValue(typedValue);
+	}
+
+	if (refType->mRefKind == BfRefType::RefKind_Mut)
+		refType = CreateRefType(typedValue.mType);
+
+	typedValue = MakeAddressable(typedValue);	
+	return BfTypedValue(typedValue.mValue, refType);
+}
+
 BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bool isVolatile)
 {
 	if (!typedValue.IsAddr())
@@ -18299,10 +18316,17 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				Fail("Binary operators must declare two parameters", paramErrorRefNode);				
 			}
 			else
-			{				
-				if ((mCurMethodInstance->GetParamType(0) != mCurTypeInstance) && (!mCurMethodInstance->GetParamType(0)->IsSelf()) &&
-					(mCurMethodInstance->GetParamType(1) != mCurTypeInstance) && (!mCurMethodInstance->GetParamType(1)->IsSelf()))
-				{					
+			{
+				auto checkParam0 = mCurMethodInstance->GetParamType(0);
+				if ((checkParam0->IsRef()) && (!checkParam0->IsOut()))
+					checkParam0 = checkParam0->GetUnderlyingType();
+				auto checkParam1 = mCurMethodInstance->GetParamType(1);
+				if ((checkParam1->IsRef()) && (!checkParam1->IsOut()))
+					checkParam1 = checkParam1->GetUnderlyingType();
+
+				if ((checkParam0 != mCurTypeInstance) && (!checkParam0->IsSelf()) &&
+					(checkParam1 != mCurTypeInstance) && (!checkParam1->IsSelf()))
+				{
 					Fail("At least one of the parameters of a binary operator must be the containing type", paramErrorRefNode);
 				}
 			}
@@ -18321,11 +18345,15 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		{
 			if (methodDef->mIsStatic)
 			{
+				auto checkParam0 = mCurMethodInstance->GetParamType(0);
+				if ((checkParam0->IsRef()) && (!checkParam0->IsOut()))
+					checkParam0 = checkParam0->GetUnderlyingType();
+
 				if (methodDef->mParams.size() != 1)
 				{
 					Fail("Unary operators must declare one parameter", paramErrorRefNode);
 				}
-				else if ((mCurMethodInstance->GetParamType(0) != mCurTypeInstance) && (!mCurMethodInstance->GetParamType(0)->IsSelf()))
+				else if ((checkParam0 != mCurTypeInstance) && (!checkParam0->IsSelf()))
 				{
 					Fail("The parameter of a unary operator must be the containing type", paramErrorRefNode);
 				}
@@ -18379,18 +18407,22 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 			else
 			{
-				if ((mCurMethodInstance->GetParamType(0) != mCurTypeInstance) && (!mCurMethodInstance->GetParamType(0)->IsSelf()) && 
+				auto checkParam0 = mCurMethodInstance->GetParamType(0);
+				if ((checkParam0->IsRef()) && (!checkParam0->IsOut()))
+					checkParam0 = checkParam0->GetUnderlyingType();
+				
+				if ((checkParam0 != mCurTypeInstance) && (!checkParam0->IsSelf()) &&
 					(mCurMethodInstance->mReturnType != mCurTypeInstance) && (!mCurMethodInstance->mReturnType->IsSelf()))
 					Fail("User-defined conversion must convert to or from the enclosing type", paramErrorRefNode);
-				if (mCurMethodInstance->GetParamType(0) == mCurMethodInstance->mReturnType)
+				if (checkParam0 == mCurMethodInstance->mReturnType)
 					Fail("User-defined operator cannot take an object of the enclosing type and convert to an object of the enclosing type", operatorDef->mOperatorDeclaration->mReturnType);			
 
 				// On type lookup error we default to 'object', so don't do the 'base class' error if that may have
 				//  happened here
-				if ((!mHadBuildError) || ((mCurMethodInstance->mReturnType != mContext->mBfObjectType) && (mCurMethodInstance->GetParamType(0) != mContext->mBfObjectType)))
+				if ((!mHadBuildError) || ((mCurMethodInstance->mReturnType != mContext->mBfObjectType) && (checkParam0 != mContext->mBfObjectType)))
 				{
 					auto isToBase = TypeIsSubTypeOf(mCurTypeInstance->mBaseType, mCurMethodInstance->mReturnType->ToTypeInstance());
-					bool isFromBase = TypeIsSubTypeOf(mCurTypeInstance->mBaseType, mCurMethodInstance->GetParamType(0)->ToTypeInstance());
+					bool isFromBase = TypeIsSubTypeOf(mCurTypeInstance->mBaseType, checkParam0->ToTypeInstance());
 
 					if ((mCurTypeInstance->IsObject()) && (isToBase || isFromBase))
 						Fail("User-defined conversions to or from a base class are not allowed", paramErrorRefNode);
@@ -22218,16 +22250,22 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		methodDef->mIsVirtual = false;
 	}
 
-	if ((methodDeclaration != NULL) && (methodDeclaration->mMutSpecifier != NULL) && (!mCurTypeInstance->IsBoxed()) && (!methodInstance->mIsForeignMethodDef))
+ 	BfAstNode* mutSpecifier = NULL;
+ 	if (methodDeclaration != NULL)
+ 		mutSpecifier = methodDeclaration->mMutSpecifier;
+ 	else if (methodDef->GetPropertyMethodDeclaration() != NULL)
+ 		mutSpecifier = methodDef->GetPropertyMethodDeclaration()->mMutSpecifier;	
+
+	if ((mutSpecifier != NULL) && (!mCurTypeInstance->IsBoxed()) && (!methodInstance->mIsForeignMethodDef))
 	{
 		if (methodDef->mIsStatic)
-			Warn(0, "Unnecessary 'mut' specifier, static methods have no implicit 'this' target to mutate", methodDeclaration->mMutSpecifier);
+			Warn(0, "Unnecessary 'mut' specifier, static methods have no implicit 'this' target to mutate", mutSpecifier);
 		else if ((!mCurTypeInstance->IsValueType()) && (!mCurTypeInstance->IsInterface()))
-			Warn(0, "Unnecessary 'mut' specifier, methods of reference types are implicitly mutating", methodDeclaration->mMutSpecifier);
+			Warn(0, "Unnecessary 'mut' specifier, methods of reference types are implicitly mutating", mutSpecifier);
 		else if (methodDef->mMethodType == BfMethodType_Ctor)
-			Warn(0, "Unnecessary 'mut' specifier, constructors are implicitly mutating", methodDeclaration->mMutSpecifier);
+			Warn(0, "Unnecessary 'mut' specifier, constructors are implicitly mutating", mutSpecifier);
 		else if (methodDef->mMethodType == BfMethodType_Dtor)
-			Warn(0, "Unnecessary 'mut' specifier, destructors are implicitly mutating", methodDeclaration->mMutSpecifier);
+			Warn(0, "Unnecessary 'mut' specifier, destructors are implicitly mutating", mutSpecifier);
 	}
 	
 	if (isTemporaryFunc)

@@ -52,6 +52,10 @@ namespace Tests
 			ClassA[2] caArr0 = .(ca0, ca0);
 			ClassA[2] caArr1 = .(ca1, ca1);
 			Test.Assert(caArr0 == caArr1);
+
+			Span<int> span = val1;
+			Test.Assert(span[0] == 7);
+			Test.Assert(span[1] == 8);
 		}
 
 		[Test]

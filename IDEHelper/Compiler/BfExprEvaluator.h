@@ -41,6 +41,14 @@ enum BfResolveArgFlags
 	BfResolveArgFlag_FromGenericParam = 2
 };
 
+enum BfCreateFallFlags
+{
+	BfCreateFallFlags_None,
+	BfCreateFallFlags_BypassVirtual = 1,
+	BfCreateFallFlags_SkipThis = 2,
+	BfCreateFallFlags_AllowImplicitRef = 4
+};
+
 class BfResolvedArg
 {
 public:
@@ -186,10 +194,11 @@ public:
 	bool mHadVarConflictingReturnType;
 	bool mBypassVirtual;
 	bool mAllowImplicitThis;
+	bool mAllowImplicitRef;
 	bool mAllowStatic;
 	bool mAllowNonStatic;	
 	bool mSkipImplicitParams;	
-	bool mAutoFlushAmbiguityErrors;
+	bool mAutoFlushAmbiguityErrors;	
 	BfEvalExprFlags mBfEvalExprFlags;
 	int mMethodCheckCount;	
 	BfType* mExplicitInterfaceCheck;	
@@ -435,7 +444,7 @@ public:
 	void AddCallDependencies(BfMethodInstance* methodInstance);
 	void PerformCallChecks(BfMethodInstance* methodInstance, BfAstNode* targetSrc);
 	BfTypedValue CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, bool isTailCall = false);
-	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, bool bypassVirtual, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade = NULL, bool skipThis = false);
+	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, BfCreateFallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade = NULL);
 	BfTypedValue CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target);
 	void MakeBaseConcrete(BfTypedValue& typedValue);
 	void SplatArgs(BfTypedValue value, SizedArrayImpl<BfIRValue>& irArgs);

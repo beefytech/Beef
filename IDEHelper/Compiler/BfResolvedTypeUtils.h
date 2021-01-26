@@ -568,6 +568,8 @@ public:
 	virtual bool IsAllocType() { return false; }
 	virtual bool IsIntPtrable() { return false;  }	
 	virtual bool IsRef() { return false; }	
+	virtual bool IsMut() { return false; }
+	virtual bool IsOut() { return false; }
 	virtual bool IsGenericParam() { return false; }
 	virtual bool IsClosure() { return false; }	
 	virtual bool IsMethodRef() { return false; }
@@ -2280,6 +2282,8 @@ public:
 	virtual bool IsReified() override { return mElementType->IsReified(); }
 
 	virtual bool IsRef() override { return true; }	
+	virtual bool IsMut() override { return mRefKind == RefKind_Mut; }
+	virtual bool IsOut() override { return mRefKind == RefKind_Out; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }

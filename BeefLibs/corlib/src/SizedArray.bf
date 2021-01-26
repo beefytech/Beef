@@ -20,11 +20,23 @@ namespace System
 			return val.mVal;
 		}
 
+		public implicit static operator Span<T> (ref Self val)
+		{
+#unwarn
+			return .(&val.mVal, CSize);
+		}
+
 		public override void ToString(String strBuffer) mut
 		{
 			if (typeof(T) == typeof(char8))
 			{
-				strBuffer.Append((char8*)&mVal, CSize);
+				int len = 0;
+				for (; len < CSize; len++)
+				{
+					if (mVal[len] == default)
+						break;
+				}
+				strBuffer.Append((char8*)&mVal, len);
 				return;
 			}
 
@@ -87,7 +99,7 @@ namespace System
 				get
 				{
 					return mIndex - 1;
-				}				
+				}
 			}
 
 			public Result<T> GetNext() mut
