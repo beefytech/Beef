@@ -25,6 +25,38 @@ namespace System.IO
 
 	class File
 	{
+		public static Result<void, FileError> ReadAll(StringView path, List<uint8> outData)
+		{
+			FileStream fs = scope FileStream();
+			var result = fs.Open(path, .Open, .Read);
+			if (result case .Err(let err))
+				return .Err(.FileOpenError(err));
+
+			while (true)
+			{
+				uint8[4096] buffer;
+				switch (fs.TryRead(.(&buffer, 4096)))
+				{
+				case .Ok(let bytes):
+					if (bytes == 0)
+						return .Ok;
+					outData.AddRange(.(&buffer, bytes));
+				case .Err(let err):
+					return .Err(err);
+				}
+			}
+		}
+
+		public static Result<void> WriteAll(StringView path, Span<uint8> data, bool doAppend = false)
+		{
+			FileStream fs = scope FileStream();
+			var result = fs.Open(path, doAppend ? .Append : .Create, .Write);
+			if (result case .Err)
+				return .Err;
+			fs.TryWrite(.((uint8*)data.Ptr, data.Length));
+			return .Ok;
+		}
+
 		public static Result<void, FileError> ReadAllText(StringView path, String outText, bool preserveLineEnding = false)
 		{
 			StreamReader sr = scope StreamReader();
@@ -48,7 +80,8 @@ namespace System.IO
 			var result = fs.Open(path, doAppend ? .Append : .Create, .Write);
 			if (result case .Err)
 				return .Err;
-			fs.TryWrite(.((uint8*)text.Ptr, text.Length));
+			if (fs.TryWrite(.((uint8*)text.Ptr, text.Length)) case .Err(let err))
+				return .Err(err);
 			return .Ok;
 		}
 
