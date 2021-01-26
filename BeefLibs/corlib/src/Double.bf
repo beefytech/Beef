@@ -198,7 +198,7 @@ namespace System
 		public override void ToString(String strBuffer)
 		{
 			char8[128] outBuff = ?;
-			int len = ToString((float)this, &outBuff);
+			int len = ToString((double)this, &outBuff);
 			strBuffer.Append(&outBuff, len);
 		}
 
@@ -210,12 +210,6 @@ namespace System
 				return;
 			}
 			NumberFormatter.NumberToString(format, (double)this, formatProvider, outString);
-		}
-
-		[Test]
-		public static void Test()
-		{
-
 		}
     }
 }
