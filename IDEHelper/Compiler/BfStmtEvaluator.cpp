@@ -3978,7 +3978,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 			BF_ASSERT(methodInstance->mMethodDef->mName == "~this");
 			SizedArray<BfIRValue, 4> llvmArgs;
 			llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(objectType)));
-			expressionEvaluator.CreateCall(deleteStmt->mDeleteToken, methodInstance, methodInstance->mIRFunction, false, llvmArgs);
+			expressionEvaluator.CreateCall(deleteStmt->mDeleteToken, methodInstance, mBfIRBuilder->GetFakeVal(), false, llvmArgs);
 		}
 
 		if ((deleteStmt->mTargetTypeToken != NULL) && (!isAppendDelete))

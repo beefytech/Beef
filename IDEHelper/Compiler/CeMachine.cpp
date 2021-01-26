@@ -81,6 +81,12 @@ struct CeOpInfo
 	{OPNAME "_I64", OPINFOA, OPINFOB, OPINFOC}, \
 	{OPNAME "_F32", OPINFOA, OPINFOB, OPINFOC}, \
 	{OPNAME "_F64", OPINFOA, OPINFOB, OPINFOC}
+#define CEOPINFO_SIZED_FLOAT_2(OPNAME, OPINFOA, OPINFOB) \
+	{OPNAME "_F32", OPINFOA, OPINFOB}, \
+	{OPNAME "_F64", OPINFOA, OPINFOB}
+#define CEOPINFO_SIZED_FLOAT_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
+	{OPNAME "_F32", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_F64", OPINFOA, OPINFOB, OPINFOC}
 
 static CeOpInfo gOpInfo[] =
 {
@@ -170,13 +176,13 @@ static CeOpInfo gOpInfo[] =
 	{"CeOp_Conv_F64_I64", CEOI_FrameRef, CEOI_FrameRef},
 	{"CeOp_Conv_F64_F32", CEOI_FrameRef, CEOI_FrameRef},
 	
+	CEOPINFO_SIZED_NUMERIC_PLUSF_2("Abs", CEOI_FrameRef, CEOI_FrameRef),
 	{"AddConst_I8", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM8},
 	{"AddConst_I16", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM16},
 	{"AddConst_I32", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM32},
 	{"AddConst_I64", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM64},
 	{"AddConst_F32", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMMF32},
-	{"AddConst_F64", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMMF64},
-
+	{"AddConst_F64", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMMF64},	
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Add", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Sub", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Mul", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
@@ -190,6 +196,25 @@ static CeOpInfo gOpInfo[] =
 	CEOPINFO_SIZED_NUMERIC_3("Shl", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_3("Shr", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_UNUMERIC_3("Shr", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	
+	CEOPINFO_SIZED_FLOAT_2("Acos", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Asin", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Atan", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_3("Atan2", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Ceiling", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Cos", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Cosh", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Exp", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Floor", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Log", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Log10", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_3("Pow", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Round", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Sin", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Sinh", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Sqrt", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Tan", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_FLOAT_2("Tanh", CEOI_FrameRef, CEOI_FrameRef),
 
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_EQ", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_NE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
@@ -207,6 +232,72 @@ static CeOpInfo gOpInfo[] =
 };
 
 static_assert(BF_ARRAY_COUNT(gOpInfo) == (int)CeOp_COUNT, "gOpName incorrect size");
+
+//////////////////////////////////////////////////////////////////////////
+
+static int FloatToString(float d, char* outStr)
+{
+	sprintf(outStr, "%1.9g", d);
+	int len = (int)strlen(outStr);
+	for (int i = 0; outStr[i] != 0; i++)
+	{
+		if (outStr[i] == '.')
+		{
+			int checkC = len - 1;
+			while (true)
+			{
+				char c = outStr[checkC];
+				if (c == '.')
+				{
+					return checkC;
+				}
+				else if (c != '0')
+				{
+					for (int j = i + 1; j <= checkC; j++)
+						if (outStr[j] == 'e')
+							return len;
+					return checkC + 1;
+				}
+				checkC--;
+			}
+		}
+	}
+	return len;
+}
+
+static int DoubleToString(double d, char* outStr)
+{
+	sprintf(outStr, "%1.17g", d);
+	int len = (int)strlen(outStr);
+	for (int i = 0; outStr[i] != 0; i++)
+	{
+		if (outStr[i] == '.')
+		{
+			int checkC = len - 1;
+			while (true)
+			{
+				char c = outStr[checkC];
+				if (c == '.')
+				{
+					return checkC;
+				}
+				else if (c == 'e')
+				{
+					return len;
+				}
+				else if (c != '0')
+				{
+					for (int j = i + 1; j <= checkC; j++)
+						if (outStr[j] == 'e')
+							return len;
+					return checkC + 1;
+				}
+				checkC--;
+			}
+		}
+	}
+	return len;
+}
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -551,6 +642,7 @@ void CeBuilder::EmitBinaryOp(CeOp iOp, CeOp fOp, const CeOperand& lhs, const CeO
 	}
 	else if (lhs.mType->IsFloat())
 	{
+		BF_ASSERT(fOp != CeOp_InvalidOp);
 		if (lhs.mType->mSize == 4)
 			op = fOp;		
 		else if (lhs.mType->mSize == 8)
@@ -1193,7 +1285,6 @@ void CeBuilder::Build()
 
 	auto methodInstance = mCeFunction->mMethodInstance;
 	
-
 	if (methodInstance != NULL)
 	{
 		BfMethodInstance dupMethodInstance;
@@ -1968,10 +2059,12 @@ void CeBuilder::Build()
 										result = ptrValue;
 
 										result = FrameAlloc(elementPtrType);
-										Emit((CeOp)(CeOp_AddConst_I32));
+										EmitSizedOp(CeOp_AddConst_I8, mPtrSize);
 										EmitFrameOffset(result);
 										EmitFrameOffset(ceVal);
 										Emit((int32)(ceIdx1.mImmediate * arrayType->mElementType->GetStride()));
+										if (mPtrSize == 8)
+											Emit((int32)0);
 									}
 								}
 								else
@@ -2079,10 +2172,12 @@ void CeBuilder::Build()
 							if (byteOffset != 0)
 							{
 								result = FrameAlloc(elementPtrType);
-								Emit((CeOp)(CeOp_AddConst_I32));
+								EmitSizedOp(CeOp_AddConst_I8, mPtrSize);
 								EmitFrameOffset(result);
 								EmitFrameOffset(ceVal);
 								Emit((int32)byteOffset);
+								if (mPtrSize == 8)
+									Emit((int32)0);
 							}
 							else
 							{
@@ -2100,10 +2195,12 @@ void CeBuilder::Build()
 							if (byteOffset != 0)
 							{
 								result = FrameAlloc(ptrType);
-								Emit((CeOp)(CeOp_AddConst_I32));
+								EmitSizedOp(CeOp_AddConst_I8, mPtrSize);
 								EmitFrameOffset(result);
 								EmitFrameOffset(ceVal);
 								Emit((int32)byteOffset);
+								if (mPtrSize == 8)
+									Emit((int32)0);
 							}							
 						}
 						else
@@ -2353,6 +2450,9 @@ void CeBuilder::Build()
 					{
 						switch (intrin->mKind)
 						{
+						case BfIRIntrinsic_Abs:													
+							EmitUnaryOp(CeOp_Abs_I8, CeOp_Abs_F32, GetOperand(castedInst->mArgs[0].mValue), result);							
+							break;
 						case BfIRIntrinsic_Cast:
 							{
 								result = GetOperand(castedInst->mArgs[0].mValue);
@@ -2371,9 +2471,24 @@ void CeBuilder::Build()
 								EmitFrameOffset(ceSize);
 							}
 							break;
+
+
 						case BfIRIntrinsic_AtomicFence:
 							// Nothing to do
 							break;
+						case BfIRIntrinsic_AtomicAdd:
+							EmitBinaryOp(CeOp_Add_I8, CeOp_Add_F32, GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), result);							
+							break;
+						case BfIRIntrinsic_AtomicOr:
+							EmitBinaryOp(CeOp_Or_I8, CeOp_InvalidOp, GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), result);
+							break;
+						case BfIRIntrinsic_AtomicSub:
+							EmitBinaryOp(CeOp_Sub_I8, CeOp_Sub_F32, GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), result);
+							break;
+						case BfIRIntrinsic_AtomicXor:
+							EmitBinaryOp(CeOp_Xor_I8, CeOp_InvalidOp, GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), result);
+							break;
+
 						default:
 							Emit(CeOp_Error);
 							Emit((int32)CeErrorKind_Intrinsic);
@@ -2383,6 +2498,81 @@ void CeBuilder::Build()
 					else if (auto beFunction = BeValueDynCast<BeFunction>(castedInst->mFunc))
 					{
 						beFuncType = beFunction->GetFuncType();
+
+						CeFunctionInfo* ceFunctionInfo = NULL;
+						mCeMachine->mNamedFunctionMap.TryGetValue(beFunction->mName, &ceFunctionInfo);
+						if (ceFunctionInfo != NULL)
+						{
+							CeOp ceOp = CeOp_InvalidOp;
+
+							if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_NotSet)
+								mCeMachine->CheckFunctionKind(ceFunctionInfo->mCeFunction);
+
+							if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Abs)
+								ceOp = CeOp_Abs_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Acos)
+								ceOp = CeOp_Acos_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Asin)
+								ceOp = CeOp_Asin_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Atan)
+								ceOp = CeOp_Atan_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Atan2)
+								ceOp = CeOp_Atan2_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Ceiling)
+								ceOp = CeOp_Ceiling_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Cos)
+								ceOp = CeOp_Cos_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Cosh)
+								ceOp = CeOp_Cosh_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Exp)
+								ceOp = CeOp_Exp_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Floor)
+								ceOp = CeOp_Floor_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Log)
+								ceOp = CeOp_Log_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Log10)
+								ceOp = CeOp_Log10_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Pow)
+								ceOp = CeOp_Pow_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Round)
+								ceOp = CeOp_Round_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Sin)
+								ceOp = CeOp_Sin_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Sinh)
+								ceOp = CeOp_Sinh_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Sqrt)
+								ceOp = CeOp_Sqrt_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Tan)
+								ceOp = CeOp_Tan_F32;
+							else if (ceFunctionInfo->mCeFunction->mFunctionKind == CeFunctionKind_Math_Tanh)
+								ceOp = CeOp_Tanh_F32;
+
+							if (ceOp != CeOp_InvalidOp)
+							{
+								if (beFuncType->mReturnType->mSize == 8)
+									ceOp = (CeOp)(ceOp + 1);
+
+								result = FrameAlloc(beFuncType->mReturnType);
+								if (beFuncType->mParams.size() == 1)
+								{
+									auto arg0 = GetOperand(castedInst->mArgs[0].mValue);
+									Emit(ceOp);
+									EmitFrameOffset(result);
+									EmitFrameOffset(arg0);
+								}
+								else
+								{
+									auto arg0 = GetOperand(castedInst->mArgs[0].mValue);
+									auto arg1 = GetOperand(castedInst->mArgs[1].mValue);
+									Emit(ceOp);
+									EmitFrameOffset(result);
+									EmitFrameOffset(arg0);
+									EmitFrameOffset(arg1);
+								}
+								
+								break;
+							}
+						}
 
 						if (beFunction->mName == "malloc")
 						{
@@ -2441,6 +2631,8 @@ void CeBuilder::Build()
 					{
 						CeOperand thisOperand;
 
+						int stackAdjust = 0;
+
 						for (int argIdx = (int)castedInst->mArgs.size() - 1; argIdx >= 0; argIdx--)
 						{
 							auto& arg = castedInst->mArgs[argIdx];
@@ -2448,15 +2640,13 @@ void CeBuilder::Build()
 							if (argIdx == 0)
 								thisOperand = ceArg;
 							EmitSizedOp(CeOp_Push_8, ceArg, NULL, true);
+							stackAdjust += ceArg.mType->mSize;
 						}
-
-						int stackAdjust = 0;
 
 						if (beFuncType->mReturnType->mSize > 0)
 						{
 							Emit(CeOp_AdjustSPConst);
-							Emit((int32)-beFuncType->mReturnType->mSize);
-							stackAdjust += beFuncType->mReturnType->mSize;
+							Emit((int32)-beFuncType->mReturnType->mSize);							
 						}
 
 						if (!ceFunc)
@@ -2550,6 +2740,13 @@ void CeBuilder::Build()
 					auto mcStackVal = GetOperand(castedInst->mStackVal);
 					Emit(CeOp_SetSP);
 					EmitFrameOffset(mcStackVal);
+				}
+				break;
+			case BeComptimeError::TypeId:
+				{
+					auto castedInst = (BeComptimeError*)inst;
+					Emit(CeOp_Error);
+					Emit(castedInst->mError);
 				}
 				break;
 			case BeComptimeGetType::TypeId:
@@ -2752,7 +2949,7 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 			}
 		}
 		 
-		if (emitEntry != NULL)
+		if ((emitEntry != NULL) && (emitEntry->mFile != -1))
 			err += StrFormat(" at line% d:%d in %s", emitEntry->mLine + 1, emitEntry->mColumn + 1, ceFunction->mFiles[emitEntry->mFile].c_str());
 
 		auto moreInfo = passInstance->MoreInfo(err, mCeMachine->mCeModule->mCompiler->GetAutoComplete() != NULL);
@@ -3964,7 +4161,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 		{
 			returnValue = BfTypedValue(module->mBfIRBuilder->CreateConstArrayZero(module->mBfIRBuilder->MapType(returnType)), returnType);
 		}
-		else
+		else if (returnType->IsValuelessType())
 		{
 			returnValue = BfTypedValue(module->mBfIRBuilder->GetFakeVal(), returnType);			
 		}
@@ -4038,6 +4235,20 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 		auto lhs = CE_GETFRAME(T); \
 		auto rhs = CE_GETINST(T); \
 		result = lhs OP rhs; \
+	}
+
+#define CEOP_UNARY_FUNC(OP, T) \
+	{ \
+		auto& result = CE_GETFRAME(T); \
+		auto lhs = CE_GETFRAME(T); \
+		result = OP(lhs); \
+	}
+#define CEOP_BIN_FUNC(OP, T) \
+	{ \
+		auto& result = CE_GETFRAME(T); \
+		auto lhs = CE_GETFRAME(T); \
+		auto rhs = CE_GETFRAME(T); \
+		result = OP(lhs, rhs); \
 	}
 #define CEOP_UNARY(OP, T) \
 	{ \
@@ -4176,8 +4387,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CE_CHECKALLOC(size);
 				uint8* ptr = CeMalloc(size);				
 				CeSetAddrVal(stackPtr + 0, ptr - memStart, ptrSize);
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Free)
 			{
@@ -4185,8 +4394,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				bool success = CeFree(freeAddr);
 				if (!success)
 					_Fail("Invalid heap address");
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_FatalError)
 			{
@@ -4228,6 +4435,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				return false;
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_DynCheckFailed)
+			{
+				_Fail("Dynamic cast check failed");
+				return false;
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_DebugWrite)
 			{
 				int32 ptrVal = *(int32*)((uint8*)stackPtr + 0);
@@ -4237,15 +4449,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				String str;
 				str.Insert(0, strPtr, size);
 				OutputDebugStr(str);
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_DebugWrite_Int)
 			{
 				int32 intVal = *(int32*)((uint8*)stackPtr + 0);
 				OutputDebugStrF("Debug Val: %d\n", intVal);
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectType)
 			{
@@ -4256,8 +4464,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectType(typeId);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectTypeById)
 			{
@@ -4265,8 +4471,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectType(typeId);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);				
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectTypeByName)
 			{
@@ -4280,8 +4484,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectType(typeName);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectSpecializedType)
 			{
@@ -4291,8 +4493,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectSpecializedType(typeAddr, typeSpan);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_GetCustomAttribute)
 			{
@@ -4310,8 +4510,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				*(addr_ce*)(stackPtr + 0) = success;
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethodCount)
 			{
@@ -4325,8 +4523,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				*(int32*)(stackPtr + 0) = (int)typeInfo->mMethodInstances.size();
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethod)
 			{
@@ -4346,8 +4542,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				*(int64*)(stackPtr + 0) = (int64)(intptr)typeInfo->mMethodInstances[methodIdx];
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_ToString)
 			{				
@@ -4362,8 +4556,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				
 				CeSetAddrVal(stackPtr + 0, GetString(mCeMachine->mCeModule->MethodToString(methodInstance)), ptrSize);
 				_FixVariables();
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetName)
 			{				
@@ -4378,8 +4570,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				
 				CeSetAddrVal(stackPtr + 0, GetString(methodInstance->mMethodDef->mName), ptrSize);
 				_FixVariables();
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetInfo)			
 			{	
@@ -4398,9 +4588,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				
 				*(int32*)(stackPtr + 0) = methodInstance->mReturnType->mTypeId;
 				*(int32*)(stackPtr + 4) = methodInstance->GetParamCount();
-				*(int16*)(stackPtr + 4+4) = methodInstance->GetMethodFlags();				
-				handled = true;
-				return true;
+				*(int16*)(stackPtr + 4+4) = methodInstance->GetMethodFlags();								
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetParamInfo)			
 			{	
@@ -4422,9 +4610,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				_FixVariables();
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
 				*(int16*)(stackPtr + 4) = 0; // Flags
-				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);				
-				handled = true;
-				return true;
+				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);								
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitTypeBody)
 			{
@@ -4440,9 +4626,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("Invalid StringView");
 					return false;
 				}
-
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMethodEntry)
 			{
@@ -4460,9 +4643,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("Invalid StringView");
 					return false;
 				}
-
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMethodExit)
 			{
@@ -4479,9 +4659,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("Invalid StringView");
 					return false;
 				}
-
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMixin)
 			{				
@@ -4494,9 +4671,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				mCurModule->CEMixin(mCurTargetSrc, emitStr);
-
-				handled = true;
-				return true;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Sleep)
 			{
@@ -4515,50 +4689,42 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					BfpThread_Sleep(sleepMS);
 					break;
 				}
-
-				handled = true;
-				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSystem_GetTimeStamp)
+			{
+				int64& result = *(int64*)((uint8*)stackPtr + 0);
+				result = BfpSystem_GetTimeStamp();				
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_ToLower)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 4);
-				result = utf8proc_tolower(val);
-				handled = true;
-				return true;
+				result = utf8proc_tolower(val);				
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_ToUpper)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 4);
-				result = utf8proc_toupper(val);
-				handled = true;
-				return true;
+				result = utf8proc_toupper(val);				
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsLower)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 1);
-				result = utf8proc_category(val) == UTF8PROC_CATEGORY_LL;
-				handled = true;
-				return true;
+				result = utf8proc_category(val) == UTF8PROC_CATEGORY_LL;				
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsUpper)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 1);
-				result = utf8proc_category(val) == UTF8PROC_CATEGORY_LU;
-				handled = true;
-				return true;
+				result = utf8proc_category(val) == UTF8PROC_CATEGORY_LU;				
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsWhiteSpace_EX)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 1);
 				auto cat = utf8proc_category(val);
-				result = (cat == UTF8PROC_CATEGORY_ZS) || (cat == UTF8PROC_CATEGORY_ZL) || (cat == UTF8PROC_CATEGORY_ZP);
-				handled = true;
-				return true;
+				result = (cat == UTF8PROC_CATEGORY_ZS) || (cat == UTF8PROC_CATEGORY_ZL) || (cat == UTF8PROC_CATEGORY_ZP);				
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsLetterOrDigit)
 			{
@@ -4579,9 +4745,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					break;
 				default:
 					result = false;
-				}
-				handled = true;
-				return true;
+				}				
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsLetter)
 			{
@@ -4599,9 +4763,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					break;
 				default:
 					result = false;
-				}
-				handled = true;
-				return true;
+				}				
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsNumber)
 			{
@@ -4617,13 +4779,69 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					break;
 				default:
 					result = false;
-				}
-				handled = true;
-				return true;
+				}				
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Double_Strtod)
+			{
+				double& result = *(double*)((uint8*)stackPtr + 0);
+				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 8);
+				addr_ce endAddr = *(addr_ce*)((uint8*)stackPtr + 8 + ptrSize);
+								
+				addr_ce checkAddr = strAddr;				
+				while (true)
+				{
+					if ((uintptr)checkAddr >= (uintptr)memSize)
+					{
+						checkAddr++;
+						break;
+					}
+					if (memStart[checkAddr] == 0)
+						break;
+				}
+				CE_CHECKADDR(strAddr, checkAddr - strAddr + 1);
 
-			Fail(_GetCurFrame(), StrFormat("Unable to invoke extern method '%s'", ceModule->MethodToString(checkFunction->mMethodInstance).c_str()));
-			return false;
+				char* strPtr = (char*)(memStart + strAddr);								
+				char** endPtr = NULL;
+				if (endAddr != NULL)
+					endPtr = (char**)(memStart + endAddr);
+				result = strtod(strPtr, endPtr);
+				if (endAddr != 0)
+				{
+					CE_CHECKADDR(endAddr, ptrSize);
+					CeSetAddrVal(endPtr, (uint8*)endPtr - memStart, ptrSize);
+				}
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Double_Ftoa)
+			{
+				int32& result = *(int32*)((uint8*)stackPtr + 0);
+				float val = *(float*)((uint8*)stackPtr + 4);
+				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 4 + 4);
+
+				char str[256];
+				int count = sprintf(str, "%1.9f", val);
+				CE_CHECKADDR(strAddr, count + 1);
+				memcpy(memStart + strAddr, str, count + 1);
+				result = count;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Double_ToString)
+			{
+				int32& result = *(int32*)((uint8*)stackPtr + 0);
+				double val = *(double*)((uint8*)stackPtr + 4);
+				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 4 + 8);
+
+				char str[256];
+				int count = DoubleToString(val, str);				
+				CE_CHECKADDR(strAddr, count + 1);
+				memcpy(memStart + strAddr, str, count + 1);
+				result = count;
+			}
+			else			
+			{
+				Fail(_GetCurFrame(), StrFormat("Unable to invoke extern method '%s'", ceModule->MethodToString(checkFunction->mMethodInstance).c_str()));
+				return false;
+			}
+			handled = true;
+			return true;
 		}
 
 
@@ -4718,6 +4936,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				break;
 			case CeErrorKind_Intrinsic:
 				_Fail("Intrinsic not allowed");
+				break;
+			case CeErrorKind_ObjectDynCheckFailed:
+				_Fail("Dynamic cast check failed");
 				break;
 			default:
 				_Fail("Operation not allowed");
@@ -4838,6 +5059,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		break;
 		case CeOp_FrameAddr_64:
 		{
+			//if (instPtr - ceFunction->mCode.mVals == 0x9c1)
 			auto& result = CE_GETFRAME(int64);
 			auto addr = &CE_GETFRAME(uint8);
 			result = addr - memStart;
@@ -5041,7 +5263,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_AdjustSPConst:
 		{
 			int32 adjust = CE_GETINST(int32);
-			stackPtr += adjust;
+			stackPtr += adjust;			
 		}
 		break;
 		case CeOp_GetSP:
@@ -5181,11 +5403,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 			BF_ASSERT(memStart == mMemory.mVals);
 			auto callFunction = callEntry.mFunction;
-
-			if (callFunction->mMethodInstance->mMethodDef->mIsLocalMethod)
-			{
-				NOP;
-			}
 
 			if (needsFunctionIds)
 				*(int32*)(framePtr + resultFrameIdx) = callFunction->mId;
@@ -5427,6 +5644,41 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_Conv_F64_F32:
 			CE_CAST(double, float);
 			break;
+
+		case CeOp_Abs_I8:
+			{
+				auto& result = CE_GETFRAME(int8);
+				auto val = CE_GETFRAME(int8);
+				result = (val < 0) ? -val : val;
+			}
+			break;
+		case CeOp_Abs_I16:
+			{
+				auto& result = CE_GETFRAME(int16);
+				auto val = CE_GETFRAME(int16);
+				result = (val < 0) ? -val : val;
+			}
+			break;
+		case CeOp_Abs_I32:
+			{
+				auto& result = CE_GETFRAME(int32);
+				auto val = CE_GETFRAME(int32);
+				result = (val < 0) ? -val : val;
+			}
+			break;
+		case CeOp_Abs_I64:
+			{
+				auto& result = CE_GETFRAME(int64);
+				auto val = CE_GETFRAME(int64);
+				result = (val < 0) ? -val : val;
+			}
+			break;
+		case CeOp_Abs_F32:
+			CEOP_UNARY_FUNC(fabs, float);
+			break;
+		case CeOp_Abs_F64:
+			CEOP_UNARY_FUNC(fabs, double);
+			break;
 		case CeOp_AddConst_I8:
 			CEOP_BIN_CONST(+, int8);
 			break;
@@ -5646,6 +5898,116 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_Shr_U64:
 			CEOP_BIN2(>> , uint64, uint8);
 			break;
+		
+		case CeOp_Acos_F32:
+			CEOP_UNARY_FUNC(acosf, float);
+			break;
+		case CeOp_Acos_F64:
+			CEOP_UNARY_FUNC(acos, double);
+			break;
+		case CeOp_Asin_F32:
+			CEOP_UNARY_FUNC(asinf, float);
+			break;
+		case CeOp_Asin_F64:
+			CEOP_UNARY_FUNC(asin, double);
+			break;
+		case CeOp_Atan_F32:
+			CEOP_UNARY_FUNC(atanf, float);
+			break;
+		case CeOp_Atan_F64:
+			CEOP_UNARY_FUNC(atan, double);
+			break;
+		case CeOp_Atan2_F32:
+			CEOP_BIN_FUNC(atan2f, float);
+			break;
+		case CeOp_Atan2_F64:
+			CEOP_BIN_FUNC(atan2, double);
+			break;
+		case CeOp_Ceiling_F32:
+			CEOP_UNARY_FUNC(ceilf, float);
+			break;
+		case CeOp_Ceiling_F64:
+			CEOP_UNARY_FUNC(ceil, double);
+			break;
+		case CeOp_Cos_F32:
+			CEOP_UNARY_FUNC(cosf, float);
+			break;
+		case CeOp_Cos_F64:
+			CEOP_UNARY_FUNC(cos, double);
+			break;
+		case CeOp_Cosh_F32:
+			CEOP_UNARY_FUNC(coshf, float);
+			break;
+		case CeOp_Cosh_F64:
+			CEOP_UNARY_FUNC(cosh, double);
+			break;
+		case CeOp_Exp_F32:
+			CEOP_UNARY_FUNC(expf, float);
+			break;
+		case CeOp_Exp_F64:
+			CEOP_UNARY_FUNC(exp, double);
+			break;
+		case CeOp_Floor_F32:
+			CEOP_UNARY_FUNC(floorf, float);
+			break;
+		case CeOp_Floor_F64:
+			CEOP_UNARY_FUNC(floor, double);
+			break;
+		case CeOp_Log_F32:
+			CEOP_UNARY_FUNC(logf, float);
+			break;
+		case CeOp_Log_F64:
+			CEOP_UNARY_FUNC(log, double);
+			break;
+		case CeOp_Log10_F32:
+			CEOP_UNARY_FUNC(log10f, float);
+			break;
+		case CeOp_Log10_F64:
+			CEOP_UNARY_FUNC(log10, double);
+			break;
+		case CeOp_Pow_F32:
+			CEOP_BIN_FUNC(powf, float);
+			break;
+		case CeOp_Pow_F64:
+			CEOP_BIN_FUNC(pow, double);
+			break;
+		case CeOp_Round_F32:
+			CEOP_UNARY_FUNC(roundf, float);
+			break;
+		case CeOp_Round_F64:
+			CEOP_UNARY_FUNC(round, double);
+			break;
+		case CeOp_Sin_F32:
+			CEOP_UNARY_FUNC(sinf, float);
+			break;
+		case CeOp_Sin_F64:
+			CEOP_UNARY_FUNC(sin, double);
+			break;
+		case CeOp_Sinh_F32:
+			CEOP_UNARY_FUNC(sinhf, float);
+			break;
+		case CeOp_Sinh_F64:
+			CEOP_UNARY_FUNC(sinh, double);
+			break;
+		case CeOp_Sqrt_F32:
+			CEOP_UNARY_FUNC(sqrtf, float);
+			break;
+		case CeOp_Sqrt_F64:
+			CEOP_UNARY_FUNC(sqrt, double);
+			break;
+		case CeOp_Tan_F32:
+			CEOP_UNARY_FUNC(tanf, float);
+			break;
+		case CeOp_Tan_F64:
+			CEOP_UNARY_FUNC(tan, double);
+			break;
+		case CeOp_Tanh_F32:
+			CEOP_UNARY_FUNC(tanhf, float);
+			break;
+		case CeOp_Tanh_F64:
+			CEOP_UNARY_FUNC(tanh, double);
+			break;
+		
 		case CeOp_Cmp_NE_I8:
 			CEOP_CMP(!= , int8);
 			break;
@@ -6253,10 +6615,9 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 	return CeErrorKind_None;
 }
 
-void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder)
+void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 {
-	AutoTimer autoTimer(mRevisionExecuteTime);
-	SetAndRestoreValue<CeFunction*> prevCEFunction(mPreparingFunction, ceFunction);	
+	ceFunction->mFunctionKind = CeFunctionKind_Normal;
 
 	if (ceFunction->mMethodInstance != NULL)
 	{
@@ -6360,6 +6721,13 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 					ceFunction->mFunctionKind = CeFunctionKind_Malloc;
 				else if (methodDef->mName == "Dbg_RawFree")
 					ceFunction->mFunctionKind = CeFunctionKind_Free;
+				else if (methodDef->mName == "ObjectDynCheckFailed")
+					ceFunction->mFunctionKind = CeFunctionKind_DynCheckFailed;
+			}
+			else if (owner->IsInstanceOf(mCeModule->mCompiler->mPlatformTypeDef))
+			{
+				if (methodDef->mName == "BfpSystem_GetTimeStamp")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetTimeStamp;
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mChar32TypeDef))
 			{
@@ -6380,11 +6748,72 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 				else if (methodDef->mName == "get__IsNumer")
 					ceFunction->mFunctionKind = CeFunctionKind_Char32_IsNumber;
 			}
+			else if (owner->IsInstanceOf(mCeModule->mCompiler->mDoubleTypeDef))
+			{
+				if (methodDef->mName == "strtod")
+					ceFunction->mFunctionKind = CeFunctionKind_Double_Strtod;
+				else if (methodDef->mName == "ftoa")
+					ceFunction->mFunctionKind = CeFunctionKind_Double_Ftoa;
+				if (methodDef->mName == "ToString")
+					ceFunction->mFunctionKind = CeFunctionKind_Double_ToString;				
+			}
+			else if (owner->IsInstanceOf(mCeModule->mCompiler->mMathTypeDef))
+			{
+				if (methodDef->mName == "Abs")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Abs;
+				if (methodDef->mName == "Acos")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Acos;
+				if (methodDef->mName == "Asin")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Asin;
+				if (methodDef->mName == "Atan")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Atan;
+				if (methodDef->mName == "Atan2")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Atan2;
+				if (methodDef->mName == "Ceiling")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Ceiling;
+				if (methodDef->mName == "Cos")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Cos;
+				if (methodDef->mName == "Cosh")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Cosh;
+				if (methodDef->mName == "Exp")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Exp;
+				if (methodDef->mName == "Floor")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Floor;
+				if (methodDef->mName == "Log")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Log;
+				if (methodDef->mName == "Log10")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Log10;
+				if (methodDef->mName == "Mod")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Mod;
+				if (methodDef->mName == "Pow")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Pow;
+				if (methodDef->mName == "Round")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Round;
+				if (methodDef->mName == "Sin")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Sin;
+				if (methodDef->mName == "Sinh")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Sinh;
+				if (methodDef->mName == "Sqrt")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Sqrt;
+				if (methodDef->mName == "Tan")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Tan;
+				if (methodDef->mName == "Tanh")
+					ceFunction->mFunctionKind = CeFunctionKind_Math_Tanh;
+			}
 
 			ceFunction->mInitialized = true;
 			return;
 		}
 	}
+}
+
+void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder)
+{
+	AutoTimer autoTimer(mRevisionExecuteTime);
+	SetAndRestoreValue<CeFunction*> prevCEFunction(mPreparingFunction, ceFunction);	
+
+	if (ceFunction->mFunctionKind == CeFunctionKind_NotSet)
+		CheckFunctionKind(ceFunction);		
 
 	BF_ASSERT(!ceFunction->mInitialized);
 	ceFunction->mInitialized = true;

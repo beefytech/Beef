@@ -16364,11 +16364,33 @@ void BeMCContext::Generate(BeFunction* function)
 					auto mcLHS = GetOperand(castedInst->mLHS);
 					auto mcRHS = GetOperand(castedInst->mRHS);
 
+					auto valType = castedInst->mLHS->GetType();
+
 					auto mcInst = AllocInst(BeMCInstKind_Cmp, mcLHS, mcRHS);
 
 					auto cmpResultIdx = (int)mCmpResults.size();
 					BeCmpResult cmpResult;
-					cmpResult.mCmpKind = castedInst->mCmpKind;
+					cmpResult.mCmpKind = castedInst->mCmpKind;					
+
+					if (valType->IsFloat())
+					{
+						switch (cmpResult.mCmpKind)
+						{
+						case BeCmpKind_SLT:
+							cmpResult.mCmpKind = BeCmpKind_ULT;
+							break;
+						case BeCmpKind_SLE:
+							cmpResult.mCmpKind = BeCmpKind_ULE;
+							break;
+						case BeCmpKind_SGT:
+							cmpResult.mCmpKind = BeCmpKind_UGT;
+							break;
+						case BeCmpKind_SGE:
+							cmpResult.mCmpKind = BeCmpKind_UGE;
+							break;
+						}
+					}
+
 					mCmpResults.push_back(cmpResult);
 
 					result.mKind = BeMCOperandKind_CmpResult;

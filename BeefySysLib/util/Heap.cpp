@@ -169,6 +169,8 @@ ContiguousHeap::AllocRef ContiguousHeap::Alloc(int size)
 
 	auto blockList = (ChList*)mMetadata;
 
+	if (mFreeIdx >= mFreeList.mSize)
+		mFreeIdx = 0;
 	while (true)
 	{
 		for (int itr = 0; itr < (int)mFreeList.size(); itr++)

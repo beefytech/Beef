@@ -375,6 +375,8 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 		
 	mBfObjectTypeDef = NULL;
 	mChar32TypeDef = NULL;
+	mDoubleTypeDef = NULL;
+	mMathTypeDef = NULL;
 	mArray1TypeDef = NULL;
 	mArray2TypeDef = NULL;
 	mArray3TypeDef = NULL;
@@ -412,6 +414,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mInlineAttributeTypeDef = NULL;
 	mThreadTypeDef = NULL;
 	mInternalTypeDef = NULL;
+	mPlatformTypeDef = NULL;
 	mCompilerTypeDef = NULL;
 	mDiagnosticsDebugTypeDef = NULL;
 	mIDisposableTypeDef = NULL;
@@ -6599,6 +6602,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	_GetRequiredType("System.Char8");
 	_GetRequiredType("System.Char16");
 	mChar32TypeDef = _GetRequiredType("System.Char32");
+	mDoubleTypeDef = _GetRequiredType("System.Double");
+	mMathTypeDef = _GetRequiredType("System.Math");
 
 	mBfObjectTypeDef = _GetRequiredType("System.Object");	 
 	mArray1TypeDef = _GetRequiredType("System.Array1", 1);
@@ -6639,6 +6644,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
 	mThreadTypeDef = _GetRequiredType("System.Threading.Thread");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
+	mPlatformTypeDef = _GetRequiredType("System.Platform");
 	mCompilerTypeDef = _GetRequiredType("System.Compiler");
 	mDiagnosticsDebugTypeDef = _GetRequiredType("System.Diagnostics.Debug");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");

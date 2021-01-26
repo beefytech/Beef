@@ -9322,8 +9322,10 @@ bool BfModule::IsTargetingBeefBackend()
 }
 
 bool BfModule::WantsLifetimes()
-{
+{	
 	if (mProject == NULL)
+		return false;
+	if (mBfIRBuilder->mIgnoreWrites)
 		return false;
 	return GetModuleOptions().mOptLevel == BfOptLevel_OgPlus;
 }
@@ -9512,16 +9514,25 @@ void BfModule::EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool al
 		EmitDynamicCastCheck(typedVal, type, endBlock, failBlock, allowNull ? true : false);
 
 		AddBasicBlock(failBlock);
-		SizedArray<BfIRValue, 8> llvmArgs;
-		auto bitAddr = mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(mContext->mBfObjectType));
-		llvmArgs.push_back(bitAddr);
-		llvmArgs.push_back(GetConstValue32(wantTypeId));		
-		auto objDynCheck = GetInternalMethod("ObjectDynCheckFailed");
-		BF_ASSERT(objDynCheck);
-		if (objDynCheck)
+
+		if (mIsComptimeModule)
 		{
-			auto callInst = mBfIRBuilder->CreateCall(objDynCheck.mFunc, llvmArgs);			
+			mBfIRBuilder->Comptime_Error(CeErrorKind_ObjectDynCheckFailed);
 		}
+		else
+		{
+			SizedArray<BfIRValue, 8> llvmArgs;
+			auto bitAddr = mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(mContext->mBfObjectType));
+			llvmArgs.push_back(bitAddr);
+			llvmArgs.push_back(GetConstValue32(wantTypeId));
+			auto objDynCheck = GetInternalMethod("ObjectDynCheckFailed");
+			BF_ASSERT(objDynCheck);
+			if (objDynCheck)
+			{
+				auto callInst = mBfIRBuilder->CreateCall(objDynCheck.mFunc, llvmArgs);
+			}
+		}
+
 		mBfIRBuilder->CreateBr(endBlock);
 
 		AddBasicBlock(endBlock);

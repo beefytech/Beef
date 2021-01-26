@@ -334,9 +334,11 @@ public:
 	CompileState mCompileState;
 
 	Array<BfVDataModule*> mVDataModules;	
-		
-	BfTypeDef* mChar32TypeDef;
+			
 	BfTypeDef* mBfObjectTypeDef;
+	BfTypeDef* mChar32TypeDef;
+	BfTypeDef* mDoubleTypeDef;
+	BfTypeDef* mMathTypeDef;
 
 	BfTypeDef* mArray1TypeDef;
 	BfTypeDef* mArray2TypeDef;
@@ -364,6 +366,7 @@ public:
 	
 	BfTypeDef* mThreadTypeDef;
 	BfTypeDef* mInternalTypeDef;
+	BfTypeDef* mPlatformTypeDef;
 	BfTypeDef* mCompilerTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;

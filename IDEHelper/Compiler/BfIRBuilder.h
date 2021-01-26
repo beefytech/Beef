@@ -287,6 +287,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_Func_SafeRename,
 	BfIRCmd_Func_SetLinkage,
 
+	BfIRCmd_Comptime_Error,
 	BfIRCmd_Comptime_GetBfType,
 	BfIRCmd_Comptime_GetReflectType,
 	BfIRCmd_Comptime_DynamicCastCheck,
@@ -1269,7 +1270,7 @@ public:
 	BfIRValue CreateRet(BfIRValue val);
 	BfIRValue CreateSetRet(BfIRValue val, int returnTypeId);
 	void CreateRetVoid();	
-	void CreateUnreachable();	
+	void CreateUnreachable();
 	void Call_AddAttribute(BfIRValue callInst, int argIdx, BfIRAttribute attr);
 	void Call_AddAttribute(BfIRValue callInst, int argIdx, BfIRAttribute attr, int arg);	
 	void Func_AddAttribute(BfIRFunction func, int argIdx, BfIRAttribute attr);
@@ -1279,6 +1280,7 @@ public:
 	void Func_SafeRename(BfIRFunction func);
 	void Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage);
 	
+	void Comptime_Error(int errorKind);
 	BfIRValue Comptime_GetBfType(int typeId, BfIRType resultType);
 	BfIRValue Comptime_GetReflectType(int typeId, BfIRType resultType);
 	BfIRValue Comptime_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType);

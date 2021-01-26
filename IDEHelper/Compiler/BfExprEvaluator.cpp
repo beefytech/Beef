@@ -21855,19 +21855,19 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;
 	case BfBinaryOp_LessThan:			
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSignedInt()),
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSigned()),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;
 	case BfBinaryOp_LessThanOrEqual:
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpLTE(convLeftValue, convRightValue, resultType->IsSignedInt()),
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpLTE(convLeftValue, convRightValue, resultType->IsSigned()),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;
 	case BfBinaryOp_GreaterThan:
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSignedInt()),
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSigned()),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;
 	case BfBinaryOp_GreaterThanOrEqual:
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpGTE(convLeftValue, convRightValue, resultType->IsSignedInt()),
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpGTE(convLeftValue, convRightValue, resultType->IsSigned()),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;
 	case BfBinaryOp_Compare:				
@@ -21875,7 +21875,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 			auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 			if ((convLeftValue.IsConst()) && (convRightValue.IsConst()))
 			{
-				auto cmpLtVal = mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSignedInt());
+				auto cmpLtVal = mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSigned());
 				auto ltConstant = mModule->mBfIRBuilder->GetConstant(cmpLtVal);
 				if (ltConstant->mBool)
 				{
@@ -21883,7 +21883,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 				}
 				else
 				{
-					auto cmpGtVal = mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSignedInt());
+					auto cmpGtVal = mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSigned());
 					auto rtConstant = mModule->mBfIRBuilder->GetConstant(cmpGtVal);
 					if (rtConstant->mBool)
 						mResult = BfTypedValue(mModule->GetConstValue(1, mModule->GetPrimitiveType(BfTypeCode_IntPtr)), intType);
@@ -21893,8 +21893,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 			}
 			else if ((resultType->IsIntegral()) && (resultType->mSize < intType->mSize))
 			{
-				auto leftIntValue = mModule->mBfIRBuilder->CreateNumericCast(convLeftValue, resultType->IsSignedInt(), BfTypeCode_IntPtr);
-				auto rightIntValue = mModule->mBfIRBuilder->CreateNumericCast(convRightValue, resultType->IsSignedInt(), BfTypeCode_IntPtr);							
+				auto leftIntValue = mModule->mBfIRBuilder->CreateNumericCast(convLeftValue, resultType->IsSigned(), BfTypeCode_IntPtr);
+				auto rightIntValue = mModule->mBfIRBuilder->CreateNumericCast(convRightValue, resultType->IsSigned(), BfTypeCode_IntPtr);							
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateSub(leftIntValue, rightIntValue), intType);
 			}
 			else
@@ -21905,12 +21905,12 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 
 				auto startBlock = mModule->mBfIRBuilder->GetInsertBlock();
 
-				auto cmpLtVal = mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSignedInt());
+				auto cmpLtVal = mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSigned());
 				mModule->mBfIRBuilder->CreateCondBr(cmpLtVal, endBlock, checkGtBlock);
 
 				mModule->mBfIRBuilder->AddBlock(checkGtBlock);
 				mModule->mBfIRBuilder->SetInsertPoint(checkGtBlock);
-				auto cmpGtVal = mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSignedInt());
+				auto cmpGtVal = mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSigned());
 				mModule->mBfIRBuilder->CreateCondBr(cmpGtVal, endBlock, eqBlock);
 
 				mModule->mBfIRBuilder->AddBlock(eqBlock);

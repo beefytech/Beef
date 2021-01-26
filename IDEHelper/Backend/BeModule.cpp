@@ -2451,6 +2451,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 						}
 					}
 					break;
+				DISPLAY_INST1(BeComptimeError, "ComptimeError", mError);
 				DISPLAY_INST1(BeComptimeGetType, "ComptimeGetType", mTypeId);
 				DISPLAY_INST1(BeComptimeGetReflectType, "ComptimeGetReflectType", mTypeId);
 				DISPLAY_INST2(BeComptimeDynamicCastCheck, "ComptimeDynamicCastCheck", mValue, mTypeId);

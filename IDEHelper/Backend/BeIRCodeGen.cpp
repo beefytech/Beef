@@ -2673,6 +2673,15 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, mBeModule->GetInsertBlock());
 		}
 		break;
+	case BfIRCmd_Comptime_Error:
+		{
+			CMD_PARAM(int32, error);
+
+			auto inst = mBeModule->AllocInst<BeComptimeError>();
+			inst->mError = error;			
+			SetResult(curId, inst);
+		}
+		break;
 	case BfIRCmd_Comptime_GetBfType:
 		{
 			CMD_PARAM(int32, typeId);

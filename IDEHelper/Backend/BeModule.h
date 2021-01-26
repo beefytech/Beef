@@ -1348,6 +1348,22 @@ public:
 
 //////////////////////////////////////////////////////////////////////////
 
+class BeComptimeError : public BeInst
+{
+public:
+	BE_VALUE_TYPE(BeComptimeError, BeInst);
+
+public:
+	int mError;	
+
+public:	
+	virtual void HashInst(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		hashCtx.Mixin(mError);
+	}
+};
+
 class BeComptimeGetType : public BeInst
 {
 public:

@@ -4991,6 +4991,12 @@ void BfIRBuilder::Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage)
 	NEW_CMD_INSERTED;
 }
 
+void BfIRBuilder::Comptime_Error(int errorKind)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_Comptime_Error, errorKind);
+	NEW_CMD_INSERTED;
+}
+
 BfIRValue BfIRBuilder::Comptime_GetBfType(int typeId, BfIRType resultType)
 {
 	BfIRValue retVal = WriteCmd(BfIRCmd_Comptime_GetBfType, typeId, resultType);

@@ -32,6 +32,10 @@ class CeFunction;
 	CeOp_##OPNAME##_64, \
 	CeOp_##OPNAME##_X
 
+#define CEOP_SIZED_FLOAT(OPNAME) \
+	CeOp_##OPNAME##_F32, \
+	CeOp_##OPNAME##_F64
+
 #define CEOP_SIZED_NUMERIC(OPNAME) \
 	CeOp_##OPNAME##_I8, \
 	CeOp_##OPNAME##_I16, \
@@ -58,7 +62,8 @@ enum CeErrorKind
 	CeErrorKind_Error,
 	CeErrorKind_GlobalVariable,
 	CeErrorKind_FunctionPointer,
-	CeErrorKind_Intrinsic
+	CeErrorKind_Intrinsic,
+	CeErrorKind_ObjectDynCheckFailed
 };
 
 enum CeOp : int16
@@ -146,6 +151,7 @@ enum CeOp : int16
 	CeOp_Conv_F64_I64,
 	CeOp_Conv_F64_F32,
 
+	CEOP_SIZED_NUMERIC_PLUSF(Abs),
 	CEOP_SIZED_NUMERIC_PLUSF(AddConst),
 	CEOP_SIZED_NUMERIC_PLUSF(Add),
 	CEOP_SIZED_NUMERIC_PLUSF(Sub),
@@ -160,7 +166,26 @@ enum CeOp : int16
 	CEOP_SIZED_NUMERIC(Shl),
 	CEOP_SIZED_NUMERIC(Shr),
 	CEOP_SIZED_UNUMERIC(Shr),
-
+	
+	CEOP_SIZED_FLOAT(Acos),
+	CEOP_SIZED_FLOAT(Asin),
+	CEOP_SIZED_FLOAT(Atan),
+	CEOP_SIZED_FLOAT(Atan2),
+	CEOP_SIZED_FLOAT(Ceiling),
+	CEOP_SIZED_FLOAT(Cos),
+	CEOP_SIZED_FLOAT(Cosh),
+	CEOP_SIZED_FLOAT(Exp),
+	CEOP_SIZED_FLOAT(Floor),
+	CEOP_SIZED_FLOAT(Log),
+	CEOP_SIZED_FLOAT(Log10),	
+	CEOP_SIZED_FLOAT(Pow),
+	CEOP_SIZED_FLOAT(Round),
+	CEOP_SIZED_FLOAT(Sin),
+	CEOP_SIZED_FLOAT(Sinh),
+	CEOP_SIZED_FLOAT(Sqrt),
+	CEOP_SIZED_FLOAT(Tan),
+	CEOP_SIZED_FLOAT(Tanh),
+	
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_EQ),
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_NE),
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_SLT),
@@ -241,11 +266,13 @@ public:
 
 enum CeFunctionKind
 {
+	CeFunctionKind_NotSet,
 	CeFunctionKind_Normal,
 	CeFunctionKind_Extern,
 	CeFunctionKind_OOB,
 	CeFunctionKind_Malloc,
 	CeFunctionKind_Free,
+	CeFunctionKind_DynCheckFailed,
 	CeFunctionKind_FatalError,
 	CeFunctionKind_DebugWrite,
 	CeFunctionKind_DebugWrite_Int,
@@ -260,12 +287,15 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetName,
 	CeFunctionKind_Method_GetInfo,
 	CeFunctionKind_Method_GetParamInfo,
-
+	
 	CeFunctionKind_EmitTypeBody,
 	CeFunctionKind_EmitMethodEntry,
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
+
+	CeFunctionKind_BfpSystem_GetTimeStamp,
 	CeFunctionKind_Sleep,
+
 	CeFunctionKind_Char32_ToLower,
 	CeFunctionKind_Char32_ToUpper,
 	CeFunctionKind_Char32_IsLower,
@@ -274,6 +304,30 @@ enum CeFunctionKind
 	CeFunctionKind_Char32_IsLetterOrDigit,
 	CeFunctionKind_Char32_IsLetter,
 	CeFunctionKind_Char32_IsNumber,
+	CeFunctionKind_Double_Strtod,
+	CeFunctionKind_Double_Ftoa,
+	CeFunctionKind_Double_ToString,
+
+	CeFunctionKind_Math_Abs,
+	CeFunctionKind_Math_Acos,
+	CeFunctionKind_Math_Asin,
+	CeFunctionKind_Math_Atan,
+	CeFunctionKind_Math_Atan2,
+	CeFunctionKind_Math_Ceiling,	
+	CeFunctionKind_Math_Cos,
+	CeFunctionKind_Math_Cosh,
+	CeFunctionKind_Math_Exp,
+	CeFunctionKind_Math_Floor,
+	CeFunctionKind_Math_Log,
+	CeFunctionKind_Math_Log10,
+	CeFunctionKind_Math_Mod,
+	CeFunctionKind_Math_Pow,
+	CeFunctionKind_Math_Round,
+	CeFunctionKind_Math_Sin,
+	CeFunctionKind_Math_Sinh,
+	CeFunctionKind_Math_Sqrt,
+	CeFunctionKind_Math_Tan,
+	CeFunctionKind_Math_Tanh,
 };
 
 class CeConstStructFixup
@@ -369,7 +423,7 @@ public:
 	{
 		mCeFunctionInfo = NULL;
 		mCeInnerFunctionInfo = NULL;
-		mFunctionKind = CeFunctionKind_Normal;
+		mFunctionKind = CeFunctionKind_NotSet;
 		mGenerating = false;
 		mInitialized = false;
 		mMethodInstance = NULL;
@@ -738,6 +792,7 @@ public:
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);			
 	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext);	
 
+	void CheckFunctionKind(CeFunction* ceFunction);
 	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);	
 	void MapFunctionId(CeFunction* ceFunction);
 
