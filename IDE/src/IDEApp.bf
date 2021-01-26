@@ -11220,6 +11220,9 @@ namespace IDE
 				mRequestedWindowRect = .(workX + (workWidth - width)/2, workY + (workHeight - height)/2, width, height);
 			}
 
+			if (!loadedWorkspaceUserData)
+				CreateDefaultLayout();
+
 			//
 			{
 				BFWindow.Flags flags = .Border | .ThickFrame | .Resizable | .SysMenu |
@@ -11246,9 +11249,6 @@ namespace IDE
 					mSettings.Apply();
 				}	
 			}
-
-			if (!loadedWorkspaceUserData)
-				CreateDefaultLayout();
 
 			UpdateTitle();
             mMainWindow.SetMinimumSize(GS!(480), GS!(360));
