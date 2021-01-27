@@ -1303,12 +1303,12 @@ BfExpression* BfReducer::CheckBinaryOperatorPrecedence(BfBinaryOperatorExpressio
 	return resultExpr;
 }
 
-BfAstNode* BfReducer::ReplaceTokenStarter(BfAstNode* astNode, int idx)
+BfAstNode* BfReducer::ReplaceTokenStarter(BfAstNode* astNode, int idx, bool allowIn)
 {
 	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(astNode))
 	{
 		if ((tokenNode->GetToken() == BfToken_As) ||
-			(tokenNode->GetToken() == BfToken_In))
+			((tokenNode->GetToken() == BfToken_In) && (!allowIn)))
 		{
 			if (idx == -1)
 				idx = mVisitorPos.mReadPos;
@@ -5206,7 +5206,7 @@ BfTypeReference* BfReducer::CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRef
 BfTypeReference* BfReducer::CreateRefTypeRef(BfTypeReference* elementType, BfTokenNode* refTokenNode)
 {
 	BfToken refToken = refTokenNode->GetToken();
-	BF_ASSERT((refToken == BfToken_Ref) || (refToken == BfToken_Mut) || (refToken == BfToken_Out));
+	BF_ASSERT((refToken == BfToken_Ref) || (refToken == BfToken_Mut) || (refToken == BfToken_In) || (refToken == BfToken_Out));
 
 	if (elementType->IsA<BfRefTypeRef>())
 	{
@@ -8880,7 +8880,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 	BfAttributeDirective* attributes = NULL;
 	for (int paramIdx = 0; true; paramIdx++)
 	{
-		auto nextNode = ReplaceTokenStarter(mVisitorPos.GetNext(), mVisitorPos.mReadPos + 1);
+		auto nextNode = ReplaceTokenStarter(mVisitorPos.GetNext(), mVisitorPos.mReadPos + 1, true);
 
 		auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 		if (tokenNode != NULL)
@@ -8910,7 +8910,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				return tokenNode;
 
 			if ((paramIdx == 0) && (
-				(token == BfToken_Out) || (token == BfToken_Ref) || (token == BfToken_Mut) ||
+				(token == BfToken_In) || (token == BfToken_Out) || (token == BfToken_Ref) || (token == BfToken_Mut) ||
 				(token == BfToken_Delegate) || (token == BfToken_Function) ||
 				(token == BfToken_Params) || (token == BfToken_LParen) ||
 				(token == BfToken_Var) || (token == BfToken_LBracket) ||
@@ -8942,9 +8942,11 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 			}
 		}
 
+		bool nextNextIsIdentifier = BfNodeIsA<BfIdentifierNode>(mVisitorPos.Get(mVisitorPos.mReadPos + 2));
+
 		attributes = NULL;
 		BfTokenNode* modTokenNode = NULL;
-		nextNode = ReplaceTokenStarter(mVisitorPos.GetNext(), mVisitorPos.mReadPos + 1);
+		nextNode = ReplaceTokenStarter(mVisitorPos.GetNext(), mVisitorPos.mReadPos + 1, nextNextIsIdentifier);
 		tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 		BfTypeReference* typeRef = NULL;
 		if ((tokenNode != NULL) && (tokenNode->GetToken() == BfToken_LBracket))
@@ -8973,7 +8975,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 			}
 			else
 			{
-				if ((token != BfToken_Out) && (token != BfToken_Ref) && (token != BfToken_Mut) && (token != BfToken_Params) && (token != BfToken_ReadOnly))
+				if ((token != BfToken_In) && (token != BfToken_Out) && (token != BfToken_Ref) && (token != BfToken_Mut) && (token != BfToken_Params) && (token != BfToken_ReadOnly))
 				{
 					Fail("Invalid token", tokenNode);
 					return NULL;
@@ -9009,7 +9011,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 		if (modTokenNode != NULL)
 			modToken = modTokenNode->GetToken();
 
-		if ((modTokenNode != NULL) && ((modToken == BfToken_Ref) || (modToken == BfToken_Mut) || (modToken == BfToken_Out)))
+		if ((modTokenNode != NULL) && ((modToken == BfToken_Ref) || (modToken == BfToken_Mut) || (modToken == BfToken_In) || (modToken == BfToken_Out)))
 		{
 			typeRef = CreateRefTypeRef(typeRef, modTokenNode);
 			modTokenNode = NULL;

@@ -569,6 +569,7 @@ public:
 	virtual bool IsIntPtrable() { return false;  }	
 	virtual bool IsRef() { return false; }	
 	virtual bool IsMut() { return false; }
+	virtual bool IsIn() { return false; }
 	virtual bool IsOut() { return false; }
 	virtual bool IsGenericParam() { return false; }
 	virtual bool IsClosure() { return false; }	
@@ -2263,6 +2264,7 @@ public:
 	enum RefKind
 	{
 		RefKind_Ref,
+		RefKind_In,
 		RefKind_Out,
 		RefKind_Mut
 	};
@@ -2283,6 +2285,7 @@ public:
 
 	virtual bool IsRef() override { return true; }	
 	virtual bool IsMut() override { return mRefKind == RefKind_Mut; }
+	virtual bool IsIn() override { return mRefKind == RefKind_In; }
 	virtual bool IsOut() override { return mRefKind == RefKind_Out; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }

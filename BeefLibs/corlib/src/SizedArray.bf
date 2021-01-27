@@ -20,7 +20,7 @@ namespace System
 			return val.mVal;
 		}
 
-		public implicit static operator Span<T> (ref Self val)
+		public implicit static operator Span<T> (in Self val)
 		{
 #unwarn
 			return .(&val.mVal, CSize);

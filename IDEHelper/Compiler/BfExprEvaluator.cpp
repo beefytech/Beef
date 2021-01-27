@@ -2069,7 +2069,8 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			}
 			else
 			{
-				if ((mAllowImplicitRef) && (wantType->IsRef()) && (!argTypedValue.mType->IsRef()))
+				if ((wantType->IsRef()) && (!argTypedValue.mType->IsRef()) &&
+					((mAllowImplicitRef) || (wantType->IsIn())))
 					wantType = wantType->GetUnderlyingType();
 				if (!mModule->CanCast(argTypedValue, wantType))
 					goto NoMatch;
@@ -3662,7 +3663,7 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 				}
 			}
 
-			localResult = BfTypedValue(varDecl->mValue, innerType, BfTypedValueKind_Addr);
+			localResult = BfTypedValue(varDecl->mValue, innerType, varDecl->mIsReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
 		}
 		else
 		{
@@ -7011,8 +7012,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			if (refNode == NULL)
 				refNode = targetSrc;
 
-			if (((callFlags & BfCreateFallFlags_AllowImplicitRef) != 0) &&
-				(wantType->IsRef()) && (!argValue.mType->IsRef()))
+			if ((wantType->IsRef()) && (!argValue.mType->IsRef()) &&
+				(((callFlags & BfCreateFallFlags_AllowImplicitRef) != 0) || (wantType->IsIn())))
 				argValue = mModule->ToRef(argValue, (BfRefType*)wantType);
 
 			if (mModule->mCurMethodState != NULL)

@@ -11490,6 +11490,8 @@ BfTypedValue BfModule::RemoveRef(BfTypedValue typedValue)
 {	
 	if ((typedValue.mType != NULL) && (typedValue.mType->IsRef()))
 	{
+		auto refType = (BfRefType*)typedValue.mType;
+
 		auto elementType = typedValue.mType->GetUnderlyingType();
 		if (typedValue.IsAddr())
 		{
@@ -11507,6 +11509,12 @@ BfTypedValue BfModule::RemoveRef(BfTypedValue typedValue)
 		if (typedValue.mType->IsValuelessType())
 		{
 			BF_ASSERT(typedValue.mValue.IsFake());
+		}
+
+		if (refType->mRefKind == BfRefType::RefKind_In)
+		{
+			if (typedValue.mKind == BfTypedValueKind_Addr)
+				typedValue.mKind = BfTypedValueKind_ReadOnlyAddr;
 		}
 	}
 	return typedValue;
@@ -17275,6 +17283,10 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		{
 			auto refType = (BfRefType*)resolvedType;
 			paramVar->mAssignedKind = (refType->mRefKind != BfRefType::RefKind_Out) ? BfLocalVarAssignKind_Unconditional : BfLocalVarAssignKind_None;
+			if (refType->mRefKind == BfRefType::RefKind_In)
+			{
+				paramVar->mIsReadOnly = true;
+			}
 		}
 		else
 		{
@@ -21736,7 +21748,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 		if ((paramDef != NULL) && (mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) &&
 			(paramDef->mParamKind != BfParamKind_AppendIdx))
+		{
 			mCompiler->mResolvePassData->mAutoComplete->CheckTypeRef(paramDef->mTypeRef, false);
+			if (mCompiler->mResolvePassData->mAutoComplete->IsAutocompleteNode(paramDef->mTypeRef))
+				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("token", "in"), paramDef->mTypeRef->ToString());
+		}
 
 		if ((paramDef != NULL) && (paramDef->mParamDeclaration != NULL) && (paramDef->mParamDeclaration->mAttributes != NULL))
 		{

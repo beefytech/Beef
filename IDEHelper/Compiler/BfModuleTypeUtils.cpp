@@ -9961,6 +9961,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		refType->mRefKind = BfRefType::RefKind_Ref;
 		if (refTypeRef->mRefToken == NULL)
 			refType->mRefKind = BfRefType::RefKind_Ref;
+		else if (refTypeRef->mRefToken->GetToken() == BfToken_In)
+			refType->mRefKind = BfRefType::RefKind_In;
 		else if (refTypeRef->mRefToken->GetToken() == BfToken_Out)
 			refType->mRefKind = BfRefType::RefKind_Out;
 		else if (refTypeRef->mRefToken->GetToken() == BfToken_Mut)
@@ -13211,6 +13213,12 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		if (refType->mRefKind == BfRefType::RefKind_Ref)
 		{
 			str += "ref ";
+			DoTypeToString(str, refType->mElementType, typeNameFlags, genericMethodNameOverrides);
+			return;
+		}
+		else if (refType->mRefKind == BfRefType::RefKind_In)
+		{
+			str += "in ";
 			DoTypeToString(str, refType->mElementType, typeNameFlags, genericMethodNameOverrides);
 			return;
 		}

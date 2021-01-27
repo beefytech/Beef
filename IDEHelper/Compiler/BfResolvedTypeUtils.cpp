@@ -3297,6 +3297,8 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 			auto refKind = BfRefType::RefKind_Ref;
 			if (refType->mRefToken == NULL)
 				refKind = BfRefType::RefKind_Ref;
+			else if (refType->mRefToken->GetToken() == BfToken_In)
+				refKind = BfRefType::RefKind_In;
 			else if (refType->mRefToken->GetToken() == BfToken_Out)
 				refKind = BfRefType::RefKind_Out;
 			else if (refType->mRefToken->GetToken() == BfToken_Mut)
@@ -4176,6 +4178,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		auto refKind = BfRefType::RefKind_Ref;
 		if (rhsRefTypeRef->mRefToken == NULL)
 			refKind = BfRefType::RefKind_Ref;
+		else if (rhsRefTypeRef->mRefToken->GetToken() == BfToken_In)
+			refKind = BfRefType::RefKind_In;
 		else if (rhsRefTypeRef->mRefToken->GetToken() == BfToken_Out)
 			refKind = BfRefType::RefKind_Out;
 		else if (rhsRefTypeRef->mRefToken->GetToken() == BfToken_Mut)
@@ -4612,8 +4616,10 @@ String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 	}
 	if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(typeRef))
 	{
-		return ((refTypeRef->mRefToken->GetToken() == BfToken_Out) ? "out " : "ref ") +
-			TypeToString(refTypeRef->mElementType);
+		String str = BfTokenToString(refTypeRef->mRefToken->GetToken());
+		str += " ";
+		str += TypeToString(refTypeRef->mElementType);
+		return str;
 	}
 	if (auto directStrTypeName = BfNodeDynCast<BfDirectStrTypeReference>(typeRef))
 		return directStrTypeName->mTypeName;

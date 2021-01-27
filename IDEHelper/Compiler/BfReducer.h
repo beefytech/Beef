@@ -178,7 +178,7 @@ public:
 	
 	bool SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeRef, BfTokenNode* tokenNode);
 	BfAstNode* CreateAllocNode(BfTokenNode* newNode);
-	BfAstNode* ReplaceTokenStarter(BfAstNode* astNode, int idx = -1);
+	BfAstNode* ReplaceTokenStarter(BfAstNode* astNode, int idx = -1, bool allowIn = false);
 	BfEnumCaseBindExpression* CreateEnumCaseBindExpression(BfTokenNode* bindToken);
 	BfExpression* CheckBinaryOperatorPrecedence(BfBinaryOperatorExpression* binOpExpression);
 	BfExpression* ApplyToFirstExpression(BfUnaryOperatorExpression* unaryOp, BfExpression* target);
