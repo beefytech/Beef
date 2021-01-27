@@ -764,15 +764,17 @@ int BfMethodInstance::GetStructRetIdx(bool forceStatic)
 		if ((returnTypeInst != NULL) && (returnTypeInst->mHasUnderlyingArray))
 			return -1;
 
-		auto owner = mMethodInstanceGroup->mOwner;
-		if (owner->mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
+		auto thisType = mMethodInstanceGroup->mOwner;
+		if (thisType->mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
 			return 0;
+		if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodInfoEx->mClosureInstanceInfo->mThisOverride != NULL))
+			thisType = mMethodInfoEx->mClosureInstanceInfo->mThisOverride;
 
 		if ((!HasThis()) || (forceStatic))
 			return 0;
-		if (!owner->IsValueType())
+		if (!thisType->IsValueType())
 			return 1;
-		if ((mMethodDef->mIsMutating) || (!owner->IsSplattable()) || ((!AllowsSplatting(-1)) && (!owner->GetLoweredType(BfTypeUsage_Parameter))))
+		if ((mMethodDef->mIsMutating) || (!thisType->IsSplattable()) || ((!AllowsSplatting(-1)) && (!thisType->GetLoweredType(BfTypeUsage_Parameter))))
 			return 1;
 		return 0;		
 	}
@@ -1169,6 +1171,11 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic)
 {
 	module->PopulateType(mReturnType);
+
+	if (mMethodDef->mName.Contains("GroupBy$"))
+	{
+		NOP;
+	}
 
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
