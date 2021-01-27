@@ -6988,6 +6988,8 @@ namespace IDE
 						break;
 					}
 #endif
+					fallthrough;
+				case "-forceSafe":
 					mSafeMode = true;
 					mNoResolve = true;
 				default:
