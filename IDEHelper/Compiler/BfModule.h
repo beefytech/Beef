@@ -1734,6 +1734,7 @@ public:
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind);
 	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers);
 	void DoCEEmit(BfMethodInstance* methodInstance);
+	void DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance);
 	void DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
 	static BfModule* GetModuleFor(BfType* type);
 	void DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance);

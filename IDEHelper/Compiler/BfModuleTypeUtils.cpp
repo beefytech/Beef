@@ -1175,6 +1175,8 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		if ((typeInstance->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->mTypeDeclaration->mAttributes != NULL))
 			typeInstance->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
 
+		if (typeAlias->mGenericTypeInfo != NULL)
+			DoPopulateType_SetGenericDependencies(typeAlias);
 		// Fall through so generic params are populated in DoPopulateType
 	}
 
@@ -2400,6 +2402,31 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 	}
 }
 
+void BfModule::DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance)
+{
+	// Add generic dependencies if needed
+	for (auto genericType : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
+	{
+		if (genericType->IsPrimitiveType())
+			genericType = GetWrappedStructType(genericType);
+		if (genericType != NULL)
+		{
+			AddDependency(genericType, genericTypeInstance, BfDependencyMap::DependencyFlag_TypeGenericArg);
+			BfLogSysM("Adding generic dependency of %p for type %p\n", genericType, genericTypeInstance);
+		}
+	}
+	if ((genericTypeInstance->IsSpecializedType()) &&
+		(!genericTypeInstance->IsDelegateFromTypeRef()) &&
+		(!genericTypeInstance->IsFunctionFromTypeRef()))
+	{
+		// This ensures we rebuild the unspecialized type whenever the specialized type rebuilds. This is important
+		// for generic type binding
+		auto unspecializedTypeInstance = GetUnspecializedTypeInstance(genericTypeInstance);
+		BF_ASSERT(!unspecializedTypeInstance->IsUnspecializedTypeVariation());
+		mContext->mScratchModule->AddDependency(genericTypeInstance, unspecializedTypeInstance, BfDependencyMap::DependencyFlag_UnspecializedType);
+	}
+}
+
 void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
 {
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
@@ -2662,29 +2689,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		if (typeInstance->IsGenericTypeInstance())
 		{
-			auto genericTypeInstance = (BfTypeInstance*)typeInstance;
-
-			// Add generic dependencies if needed
-			for (auto genericType : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
-			{
-				if (genericType->IsPrimitiveType())
-					genericType = GetWrappedStructType(genericType);
-				if (genericType != NULL)
-				{
-					AddDependency(genericType, genericTypeInstance, BfDependencyMap::DependencyFlag_TypeGenericArg);
-					BfLogSysM("Adding generic dependency of %p for type %p\n", genericType, genericTypeInstance);
-				}
-			}
-			if ((genericTypeInstance->IsSpecializedType()) &&
-				(!genericTypeInstance->IsDelegateFromTypeRef()) &&
-				(!genericTypeInstance->IsFunctionFromTypeRef()))
-			{
-				// This ensures we rebuild the unspecialized type whenever the specialized type rebuilds. This is important
-				// for generic type binding
-				auto unspecializedTypeInstance = GetUnspecializedTypeInstance(genericTypeInstance);
-				BF_ASSERT(!unspecializedTypeInstance->IsUnspecializedTypeVariation());
-				mContext->mScratchModule->AddDependency(genericTypeInstance, unspecializedTypeInstance, BfDependencyMap::DependencyFlag_UnspecializedType);
-			}
+			DoPopulateType_SetGenericDependencies(typeInstance);			
 		}
 
 		auto _AddStaticSearch = [&](BfTypeDef* typeDef)
