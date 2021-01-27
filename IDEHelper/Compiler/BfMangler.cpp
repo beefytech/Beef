@@ -541,6 +541,12 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			Mangle(mangleContext, name, refType->mElementType);
 			return;
 		}
+		else if ((refType->mRefKind == BfRefType::RefKind_In) && (!mangleContext.mCCompat))
+		{
+			name += "U2in";
+			Mangle(mangleContext, name, refType->mElementType);
+			return;
+		}
 		else if ((refType->mRefKind == BfRefType::RefKind_Out) && (!mangleContext.mCCompat))
 		{
 			name += "U3out";
@@ -1649,6 +1655,8 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			name += "A";
 		if (refType->mRefKind == BfRefType::RefKind_Mut)
 			name += "mut$";
+		else if (refType->mRefKind == BfRefType::RefKind_In)
+			name += "in$";
 		else if (refType->mRefKind == BfRefType::RefKind_Out)
 			name += "out$";
 		Mangle(mangleContext, name, refType->mElementType);
