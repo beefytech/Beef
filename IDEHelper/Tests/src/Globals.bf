@@ -4,6 +4,10 @@ namespace Tests
 {
 	class Globals
 	{
+		public struct StructA : this(int64 a, int32 b)
+		{
+		}
+
 		static int sVal0 = 123;
 		static int sVal1 = 234;
 		static int sVal2 = 345;
@@ -15,6 +19,12 @@ namespace Tests
 
 		public const int*[3][2] cValsInt = .((&sVal0, &sVal1), (&sVal2, ), );
 		public static int*[3][2] sValsInt = .((&sVal0, &sVal1), (&sVal2, ), );
+
+		public const StructA[2] cValsStruct = .(.(1, 2), .(3, 4));
+		public static StructA[2] sValsStruct = .(.(1, 2), .(3, 4));
+
+		public const StructA cValStruct = cValsStruct[0];
+		public static StructA sValStruct = sValsStruct[0];
 
 		[Test]
 		public static void TestBasics()
@@ -42,6 +52,21 @@ namespace Tests
 			Test.Assert(*(cValsInt[0][0]) == 123);
 			Test.Assert(*(cValsInt[0][1]) == 234);
 			Test.Assert(*(cValsInt[1][0]) == 345);
+
+			Test.Assert(cValsStruct[0].a == 1);
+			Test.Assert(cValsStruct[0].b == 2);
+			Test.Assert(cValsStruct[1].a == 3);
+			Test.Assert(cValsStruct[1].b == 4);
+
+			Test.Assert(sValsStruct[0].a == 1);
+			Test.Assert(sValsStruct[0].b == 2);
+			Test.Assert(sValsStruct[1].a == 3);
+			Test.Assert(sValsStruct[1].b == 4);
+
+			Test.Assert(cValStruct.a == 1);
+			Test.Assert(cValStruct.b == 2);
+			Test.Assert(sValStruct.a == 1);
+			Test.Assert(sValStruct.b == 2);
 
 			const int* iPtr = cValsInt[2][0];
 			Test.Assert(iPtr == null);

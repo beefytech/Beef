@@ -873,7 +873,8 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 			llvm::Value* gepArgs[] = { 
 				llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), idx0),
 				llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), idx1)};
-			llvmValue = llvm::ConstantExpr::getInBoundsGetElementPtr(NULL, target, gepArgs);
+
+			llvmValue = FixGEP(target, llvm::ConstantExpr::getInBoundsGetElementPtr(NULL, target, gepArgs));
 			return;
 		}
 		else if (constType == BfConstType_ExtractValue)
@@ -882,7 +883,7 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 			CMD_PARAM(int, idx0);			
 			unsigned int gepArgs[] = {
 				(unsigned int)idx0 };
-			llvmValue = llvm::ConstantExpr::getExtractValue(target, gepArgs);
+			llvmValue = FixGEP(target, llvm::ConstantExpr::getExtractValue(target, gepArgs));
 			return;
 		}
 		else if (constType == BfConstType_PtrToInt)
