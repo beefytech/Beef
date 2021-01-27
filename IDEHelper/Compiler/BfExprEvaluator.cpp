@@ -7151,7 +7151,6 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			argIdx++;
 		}
 		
-		mModule->AssertErrorState();
 		return mModule->GetDefaultTypedValue(returnType, false, BfDefaultValueKind_Addr);
 	}
 
