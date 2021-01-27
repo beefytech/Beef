@@ -2303,7 +2303,7 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 		// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.				
 		int byteOffset = 0;
 		BeType* elementType = NULL;
-		byteOffset += gepConstant->mIdx0 * ptrType->mElementType->mSize;
+		byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
 
 		if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
 		{
@@ -2312,12 +2312,19 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 			elementType = structMember.mType;
 			byteOffset = structMember.mByteOffset;
 		}
-		else
+		else if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
 		{
 			BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray);
 			auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
 			elementType = arrayType->mElementType;
-			byteOffset = gepConstant->mIdx1 * elementType->mSize;
+			byteOffset = gepConstant->mIdx1 * elementType->GetStride();
+		}
+		else
+		{
+			BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_Vector);
+			auto arrayType = (BeVectorType*)ptrType->mElementType;
+			elementType = arrayType->mElementType;
+			byteOffset = gepConstant->mIdx1 * elementType->GetStride();
 		}
 
 		auto elementPtrType = mModule->mContext->GetPointerTo(elementType);
