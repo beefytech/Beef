@@ -19,6 +19,9 @@ namespace Tests
 			[LinkName(.CPP)]
 			[return: MangleConst]
 			public extern ref float MethodA2([MangleConst]ref float val);
+			[LinkName(.CPP)]
+			[return: MangleConst]
+			public extern ref float MethodA3(in float val);
 		}
 
 		[CRepr]
@@ -399,6 +402,7 @@ namespace Tests
 			Test.Assert(StructA.sVal == 1234);
 			float f = 123;
 			Test.Assert(sa0.MethodA2(ref f) == 123);
+			Test.Assert(sa0.MethodA3(f) == 123);
 
 			StartTest("Func0");
 			Test.Assert(Func0(12, 34) == 3412);
