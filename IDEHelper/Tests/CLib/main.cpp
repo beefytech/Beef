@@ -26,6 +26,11 @@ namespace Tests
 			{
 				return val;
 			}
+
+			const float& MethodA3(const float& val)
+			{
+				return val;
+			}
 		};
 
 		struct StructB
@@ -546,6 +551,7 @@ void UseIt()
 	sa.MethodA1(sa, 1);
 	float f = 123;
 	sa.MethodA2(f);
+	sa.MethodA3(f);
 	Interop::StructB sb;
 	sb.MethodB0(0);
 	sb.MethodB1(sb, 1);
