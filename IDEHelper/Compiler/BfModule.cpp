@@ -6680,16 +6680,19 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			auto interfaceData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectInterfaceDataType->ToTypeInstance(), BfIRPopulateType_Full), interfaceDataVals);
 			interfaces.push_back(interfaceData);
 
-			for (int methodIdx = 0; methodIdx < (int)interface.mInterfaceType->mMethodInstanceGroups.size(); methodIdx++)
+			if (!mIsComptimeModule)
 			{
-				auto ifaceMethodGroup = &interface.mInterfaceType->mMethodInstanceGroups[methodIdx];
-				if (ifaceMethodGroup->mExplicitlyReflected)
+				for (int methodIdx = 0; methodIdx < (int)interface.mInterfaceType->mMethodInstanceGroups.size(); methodIdx++)
 				{
-					wantsIfaceMethods = true;
-					int tableIdx = interface.mStartInterfaceTableIdx + methodIdx;
-					while (tableIdx >= wantsIfaceMethod.size())
-						wantsIfaceMethod.Add(false);
-					wantsIfaceMethod[tableIdx] = true;
+					auto ifaceMethodGroup = &interface.mInterfaceType->mMethodInstanceGroups[methodIdx];
+					if (ifaceMethodGroup->mExplicitlyReflected)
+					{
+						wantsIfaceMethods = true;
+						int tableIdx = interface.mStartInterfaceTableIdx + methodIdx;
+						while (tableIdx >= wantsIfaceMethod.size())
+							wantsIfaceMethod.Add(false);
+						wantsIfaceMethod[tableIdx] = true;
+					}
 				}
 			}
 		}
