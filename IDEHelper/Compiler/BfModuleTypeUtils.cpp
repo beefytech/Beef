@@ -1104,81 +1104,11 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		return;
 	}
 
-	if (resolvedTypeRef->IsTypeAlias())
+	if (resolvedTypeRef->IsTypeAlias())	
 	{
-		auto typeAlias = (BfTypeInstance*)resolvedTypeRef;
-		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
-		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
-		SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
-		BF_ASSERT(mCurMethodInstance == NULL);		
-		auto typeDef = typeAlias->mTypeDef;
-		auto typeAliasDecl = (BfTypeAliasDeclaration*)typeDef->mTypeDeclaration;
-		BfType* aliasToType = NULL;
-
-		resolvedTypeRef->mDefineState = BfTypeDefineState_ResolvingBaseType;
-		BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
-		typeState.mPopulateType = populateType;
-		typeState.mCurBaseTypeRef = typeAliasDecl->mAliasToType;
-		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-		if (!CheckCircularDataError())
-		{
-			if (typeAliasDecl->mAliasToType != NULL)
-				aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);				
-		}
-
-		if (aliasToType != NULL)
-		{
-			if (aliasToType->IsConstExprValue())
-			{
-				Fail(StrFormat("Illegal alias to type '%s'", TypeToString(aliasToType).c_str()), typeAlias->mTypeDef->GetRefNode());
-				aliasToType = NULL;
-			}
-		}
-		
-		if (aliasToType != NULL)
-		{
-			AddDependency(aliasToType, typeAlias, BfDependencyMap::DependencyFlag_DerivedFrom);
-		}
-		else
-			mContext->mFailTypes.Add(typeAlias);
-
-		if (typeAlias->mTypeFailed)
-			aliasToType = NULL;
-		
-		((BfTypeAliasType*)resolvedTypeRef)->mAliasToType = aliasToType;
-
-		if (aliasToType != NULL)
-		{
-			resolvedTypeRef->mSize = aliasToType->mSize;
-			resolvedTypeRef->mAlign = aliasToType->mAlign;
-
-			if (auto aliasToTypeInst = aliasToType->ToTypeInstance())
-			{
-				typeAlias->mInstSize = aliasToTypeInst->mInstSize;
-				typeAlias->mInstAlign = aliasToTypeInst->mInstAlign;
-			}
-			else
-			{
-				typeAlias->mInstSize = aliasToType->mSize;
-				typeAlias->mInstAlign = aliasToType->mAlign;
-			}
-		}
-		else
-		{
-			resolvedTypeRef->mSize = 0;
-			resolvedTypeRef->mAlign = 1;
-			typeAlias->mInstSize = 0;
-			typeAlias->mInstAlign = 1;
-		}
-		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
-		resolvedTypeRef->mRebuildFlags = BfTypeRebuildFlag_None;
-		if ((typeInstance->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->mTypeDeclaration->mAttributes != NULL))
-			typeInstance->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
-
-		if (typeAlias->mGenericTypeInfo != NULL)
-			DoPopulateType_SetGenericDependencies(typeAlias);
-		// Fall through so generic params are populated in DoPopulateType
-	}
+		// Always populate these all the way
+		populateType = BfPopulateType_Data;
+ 	}
 
 	if (resolvedTypeRef->IsSizedArray())
 	{		
@@ -2427,6 +2357,80 @@ void BfModule::DoPopulateType_SetGenericDependencies(BfTypeInstance* genericType
 	}
 }
 
+void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
+{	
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeAlias);
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
+	BF_ASSERT(mCurMethodInstance == NULL);
+	auto typeDef = typeAlias->mTypeDef;
+	auto typeAliasDecl = (BfTypeAliasDeclaration*)typeDef->mTypeDeclaration;
+	BfType* aliasToType = NULL;
+
+	typeAlias->mDefineState = BfTypeDefineState_ResolvingBaseType;
+	BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
+	typeState.mPopulateType = BfPopulateType_Data;
+	typeState.mCurBaseTypeRef = typeAliasDecl->mAliasToType;
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+	if (!CheckCircularDataError())
+	{
+		if (typeAliasDecl->mAliasToType != NULL)
+			aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);
+	}
+
+	if (aliasToType != NULL)
+	{
+		if (aliasToType->IsConstExprValue())
+		{
+			Fail(StrFormat("Illegal alias to type '%s'", TypeToString(aliasToType).c_str()), typeAlias->mTypeDef->GetRefNode());
+			aliasToType = NULL;
+		}
+	}
+
+	if (aliasToType != NULL)
+	{
+		AddDependency(aliasToType, typeAlias, BfDependencyMap::DependencyFlag_DerivedFrom);
+	}
+	else
+		mContext->mFailTypes.Add(typeAlias);
+
+	if (typeAlias->mTypeFailed)
+		aliasToType = NULL;
+
+	((BfTypeAliasType*)typeAlias)->mAliasToType = aliasToType;
+
+	if (aliasToType != NULL)
+	{
+		typeAlias->mSize = aliasToType->mSize;
+		typeAlias->mAlign = aliasToType->mAlign;
+
+		if (auto aliasToTypeInst = aliasToType->ToTypeInstance())
+		{
+			typeAlias->mInstSize = aliasToTypeInst->mInstSize;
+			typeAlias->mInstAlign = aliasToTypeInst->mInstAlign;
+		}
+		else
+		{
+			typeAlias->mInstSize = aliasToType->mSize;
+			typeAlias->mInstAlign = aliasToType->mAlign;
+		}
+	}
+	else
+	{
+		typeAlias->mSize = 0;
+		typeAlias->mAlign = 1;
+		typeAlias->mInstSize = 0;
+		typeAlias->mInstAlign = 1;
+	}
+	typeAlias->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
+	typeAlias->mRebuildFlags = BfTypeRebuildFlag_None;
+	if ((typeAlias->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->mTypeDeclaration->mAttributes != NULL))
+		typeAlias->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
+
+	if (typeAlias->mGenericTypeInfo != NULL)
+		DoPopulateType_SetGenericDependencies(typeAlias);	
+}
+
 void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
 {
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
@@ -2515,6 +2519,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	if (resolvedTypeRef->IsTypeAlias())
 	{
+		prevTypeState.Restore();
+		DoPopulateType_TypeAlias(typeInstance);
+
 		typeInstance->mTypeIncomplete = false;
 		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
 		return;
@@ -8848,6 +8855,21 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					Fail("'SelfBase' type is not usable here", typeRef);
 				}				
 				return ResolveTypeResult(typeRef, baseType, populateType, resolveFlags);
+			}
+			else if (findName == "SelfOuter")
+			{
+				BfType* selfType = mCurTypeInstance;
+				if (selfType->IsBoxed())
+					selfType = selfType->GetUnderlyingType();
+				if ((resolveFlags & BfResolveTypeRefFlag_NoResolveGenericParam) != 0)
+				{
+					if ((selfType->IsSpecializedType()) || (selfType->IsUnspecializedTypeVariation()))
+						selfType = ResolveTypeDef(selfType->ToTypeInstance()->mTypeDef, populateType);
+				}
+				selfType = GetOuterType(mCurTypeInstance);				
+				if (selfType == NULL)
+					Fail("'SelfOuter' type is not usable here", typeRef);
+				return ResolveTypeResult(typeRef, selfType, populateType, resolveFlags);
 			}
 			else if (findName == "ExpectedType")
 			{

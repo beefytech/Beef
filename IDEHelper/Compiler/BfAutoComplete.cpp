@@ -1245,6 +1245,9 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 			if ((AddEntry(AutoCompleteEntry("valuetype", systemTypeDef->mName->mString.mPtr), filter)) && (mIsGetDefinition))
 				showTypeDef = systemTypeDef;			
 		}
+		AddEntry(AutoCompleteEntry("valuetype", "SelfBase"), filter);
+		AddEntry(AutoCompleteEntry("valuetype", "SelfOuter"), filter);
+
 		if (showTypeDef != NULL)
 		{
 			auto showType = mModule->ResolveTypeDef(showTypeDef);
