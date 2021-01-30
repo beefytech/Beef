@@ -6883,6 +6883,12 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 					continue;
 				if (typeInst->mAlwaysIncludeFlags == BfAlwaysIncludeFlag_None)
 					continue;
+				if (typeInst->IsGenericTypeInstance())
+				{
+					if ((!typeInst->IsUnspecializedType()) || (typeInst->IsUnspecializedTypeVariation()))
+						continue;
+				}
+
 				auto requiredModule = typeInst->GetModule();
 				if (requiredModule != NULL)
 					requiredModules.push_back(requiredModule);
@@ -9016,6 +9022,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 
 	for (auto mainModule : moduleList)
 	{
+		BF_ASSERT(!mainModule->mIsDeleting);
+
 		for (auto fileNameIdx : mainModule->mImportFileNames)
 		{
 			auto fileName = bfCompiler->mContext->mStringObjectIdMap[fileNameIdx].mString;

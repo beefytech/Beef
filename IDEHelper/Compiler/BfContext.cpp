@@ -2811,6 +2811,8 @@ void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 {
 	BP_ZONE("BfContext::MarkUsedModules");
 
+	BF_ASSERT(!module->mIsDeleting);
+
 	if (module->mIsScratchModule)
 		return;
 
