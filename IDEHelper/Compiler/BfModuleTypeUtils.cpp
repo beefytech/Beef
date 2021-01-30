@@ -1099,7 +1099,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			}
 			else
 				resolvedTypeRef->mTypeId = mCompiler->mCurTypeId++;
-			
+
 			while (resolvedTypeRef->mTypeId >= (int)mContext->mTypes.size())
 				mContext->mTypes.Add(NULL);
 			mContext->mTypes[resolvedTypeRef->mTypeId] = resolvedTypeRef;
