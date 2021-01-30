@@ -1941,7 +1941,7 @@ public:
 	BF_AST_TYPE(BfReplaceNode, BfAstNode);
 };	BF_AST_DECL(BfReplaceNode, BfAstNode);
 
-//TODO: Should we have a seperate BfIdentifierExpression?
+//TODO: Should we have a separate BfIdentifierExpression?
 class BfIdentifierNode : public BfExpression
 {
 public:

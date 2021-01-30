@@ -4281,7 +4281,7 @@ bool BfReducer::IsTerminatingExpression(BfAstNode* node)
 				chevronDepth++;
 				break;
 			case BfToken_RChevron:
-				// If we find a < and > that are not seperated by parens, that's a generic, which must be a 
+				// If we find a < and > that are not separated by parens, that's a generic, which must be a 
 				//  variable decl if it's not in parens
 				if ((parenDepth == 0) && (chevronDepth > 0))
 					return false;
