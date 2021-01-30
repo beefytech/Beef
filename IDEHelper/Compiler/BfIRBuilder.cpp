@@ -1688,6 +1688,19 @@ void BfIRBuilder::ClearConstData()
 	BF_ASSERT(mStream.GetSize() == 0);
 }
 
+void BfIRBuilder::ClearNonConstData()
+{
+	mMethodTypeMap.Clear();
+	mFunctionMap.Clear();
+	mTypeMap.Clear();
+	mConstMemMap.Clear();
+	mDITemporaryTypes.Clear();
+	mSavedDebugLocs.Clear();
+	mDeferredDbgTypeDefs.Clear();
+	mActiveFunction = BfIRFunction();
+	mInsertBlock = BfIRValue();
+}
+
 void BfIRBuilder::Start(const StringImpl& moduleName, int ptrSize, bool isOptimized)
 {	
 	mHasStarted = true;
@@ -4789,7 +4802,7 @@ BfIRFunctionType BfIRBuilder::MapMethod(BfMethodInstance* methodInstance)
 	bool useCache = (!mModule->mIsSpecialModule) && (methodInstance->mMethodDef->mIdx >= 0);
 
 	if (useCache)
-	{
+	{		
 		BfIRFunctionType* funcType = NULL;
 		if (mMethodTypeMap.TryGetValue(methodInstance, &funcType))
 			return *funcType;

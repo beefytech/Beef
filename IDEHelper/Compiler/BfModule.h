@@ -1555,8 +1555,9 @@ public:
 	BfTypedValue GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType);
 	BfIRValue ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType, bool allowStringId = false);
 	void ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget);
-	void GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs = false, BfCaptureInfo* captureInfo = NULL);
+	void GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs = false, BfCaptureInfo* captureInfo = NULL);	
 	BfCustomAttributes* GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs = false, BfCaptureInfo* captureInfo = NULL);
+	BfCustomAttributes* GetCustomAttributes(BfTypeDef* typeDef);
 	void FinishAttributeState(BfAttributeState* attributeState);
 	void ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered, int& alignOverride, BfType*& underlyingArrayType, int& underlyingArraySize);
 	void ProcessCustomAttributeData();	
@@ -1946,6 +1947,7 @@ public:
 	void Cleanup();
 	void StartNewRevision(RebuildKind rebuildKind = RebuildKind_All, bool force = false);
 	void PrepareForIRWriting(BfTypeInstance* typeInst);
+	void SetupIRBuilder(bool dbgVerifyCodeGen);
 	void EnsureIRBuilder(bool dbgVerifyCodeGen = false);
 	void DbgFinish();
 	BfIRValue CreateForceLinkMarker(BfModule* module, String* outName);

@@ -519,7 +519,7 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
 
 	BfTypeInstance* typeInst = checkType->ToTypeInstance();
 	if (typeInst != NULL)
-	{	
+	{
 		if ((typeInst->mTypeDef->mProject != NULL) && (typeInst->mTypeDef->mProject != curProject))
 		{
 			if (typeInst->mTypeDef->mProject->mTargetType == BfTargetType_BeefDynLib)
@@ -4260,18 +4260,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 	if (tempTypeDef->mTypeDeclaration->mAttributes != NULL)
 	{
-		BfAttributeTargets attrTarget;
-		if (tempTypeDef->mIsDelegate)
-			attrTarget = BfAttributeTargets_Delegate;
-		else if (typeInst->IsEnum())
-			attrTarget = BfAttributeTargets_Enum;
-		else if (typeInst->IsInterface())
-			attrTarget = BfAttributeTargets_Interface;
-		else if (typeInst->IsStruct())
-			attrTarget = BfAttributeTargets_Struct;
-		else
-			attrTarget = BfAttributeTargets_Class;
-		auto customAttrs = module->GetCustomAttributes(tempTypeDef->mTypeDeclaration->mAttributes, attrTarget);
+		auto customAttrs = module->GetCustomAttributes(tempTypeDef);		
 		delete customAttrs;
 	}
 	
@@ -6293,6 +6282,8 @@ void BfCompiler::CompileReified()
 {	
 	BP_ZONE("Compile_ResolveTypeDefs");
 
+	Array<BfTypeDef*> deferTypeDefs;
+
 	for (auto typeDef : mSystem->mTypeDefs)
 	{
 		mSystem->CheckLockYield();
@@ -6328,9 +6319,44 @@ void BfCompiler::CompileReified()
 
 		//TODO: Just because the type is required doesn't mean we want to reify it. Why did we have that check?
 		if ((mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude) && (!isAlwaysInclude))
+		{
+			if (typeDef->mGenericParamDefs.IsEmpty())
+				deferTypeDefs.Add(typeDef);
 			continue;
+		}
 		
 		scratchModule->ResolveTypeDef(typeDef, BfPopulateType_Full);
+	}
+
+	// Resolve remaining typedefs as unreified so we can check their attributes
+	for (auto typeDef : deferTypeDefs)
+	{
+		auto type = mContext->mUnreifiedModule->ResolveTypeDef(typeDef, BfPopulateType_Identity);
+		if (type == NULL)
+			continue;
+		auto typeInst = type->ToTypeInstance();
+		if (typeInst == NULL)
+			continue;
+		if (typeInst->mIsReified)
+			continue;
+
+		mContext->mUnreifiedModule->PopulateType(typeInst, BfPopulateType_Interfaces);
+		if (typeInst->mCustomAttributes == NULL)
+			continue;
+		
+		bool alwaysInclude = false;		
+		for (auto& customAttribute : typeInst->mCustomAttributes->mAttributes)
+		{
+			if (customAttribute.mType->mAttributeData != NULL)
+			{
+				if (customAttribute.mType->mAttributeData->mAlwaysIncludeUser != 0)
+					alwaysInclude = true;
+				if ((customAttribute.mType->mAttributeData->mFlags & BfAttributeFlag_AlwaysIncludeTarget) != 0)
+					alwaysInclude = true;
+			}
+		}		
+		if (alwaysInclude)
+			mContext->mScratchModule->PopulateType(typeInst, BfPopulateType_Full);
 	}
 	
 	if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
@@ -6850,26 +6876,16 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		{
 			SizedArray<BfModule*, 32> requiredModules;
 
-			for (auto typeDef : mSystem->mTypeDefs)
+			for (auto type : mContext->mResolvedTypes)
 			{
-				if (typeDef->mIsPartial)
+				auto typeInst = type->ToTypeInstance();
+				if (typeInst == NULL)
 					continue;
-
-				bool isAlwaysInclude = (typeDef->mIsAlwaysInclude) || (typeDef->mProject->mAlwaysIncludeAll);
-				auto typeOptions = mContext->mScratchModule->GetTypeOptions(typeDef);
-				if (typeOptions != NULL)
-					isAlwaysInclude = typeOptions->Apply(isAlwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType);
-
-				if (isAlwaysInclude)
-				{
-					auto requiredType = mContext->mScratchModule->ResolveTypeDef(typeDef);
-					if (requiredType != NULL)
-					{
-						auto requiredModule = requiredType->GetModule();
-						if (requiredModule != NULL)
-							requiredModules.push_back(requiredModule);
-					}
-				}
+				if (typeInst->mAlwaysIncludeFlags == BfAlwaysIncludeFlag_None)
+					continue;
+				auto requiredModule = typeInst->GetModule();
+				if (requiredModule != NULL)
+					requiredModules.push_back(requiredModule);
 			}
 
 			mContext->mReferencedIFaceSlots.Clear();

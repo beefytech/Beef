@@ -1014,17 +1014,46 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			{				
 				if ((typeModule != NULL) && (!typeModule->mIsReified) && (!typeModule->mReifyQueued))
 				{
-					BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
+					bool canFastReify = false;
+					if (typeModule->mAwaitingInitFinish)
+					{
+						canFastReify = true;
+						for (auto ownedTypes : typeModule->mOwnedTypeInstances)
+							if (ownedTypes->mDefineState > BfTypeDefineState_HasInterfaces)
+								canFastReify = false;
+					}
 
-					BfLogSysM("Queued reification of type %p in module %p in PopulateType\n", resolvedTypeRef, typeModule);
+					if (canFastReify)
+					{
+						BfLogSysM("Setting reified type %p in module %p in PopulateType on module awaiting finish\n", resolvedTypeRef, typeModule);
+						typeModule->mIsReified = true;
+						typeModule->mWantsIRIgnoreWrites = false;						
+						for (auto ownedTypes : typeModule->mOwnedTypeInstances)
+							ownedTypes->mIsReified = true;
+						mCompiler->mStats.mReifiedModuleCount++;
+						if (typeModule->mBfIRBuilder != NULL)
+						{
+							typeModule->mBfIRBuilder->ClearNonConstData();
+							typeModule->mBfIRBuilder->mIgnoreWrites = false;
+							typeModule->SetupIRBuilder(false);
+						}
+						else
+							typeModule->PrepareForIRWriting(resolvedTypeRef->ToTypeInstance());
+					}
+					else
+					{
+						BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
 
-					BF_ASSERT((typeModule != mContext->mUnreifiedModule) && (typeModule != mContext->mScratchModule));
+						BfLogSysM("Queued reification of type %p in module %p in PopulateType\n", resolvedTypeRef, typeModule);
 
-					BF_ASSERT(!typeModule->mIsSpecialModule);
-					// This caused issues - we may need to reify a type and then request a method
-					typeModule->mReifyQueued = true;
-					mContext->mReifyModuleWorkList.Add(typeModule);
-	                //typeModule->ReifyModule();
+						BF_ASSERT((typeModule != mContext->mUnreifiedModule) && (typeModule != mContext->mScratchModule));
+
+						BF_ASSERT(!typeModule->mIsSpecialModule);
+						// This caused issues - we may need to reify a type and then request a method
+						typeModule->mReifyQueued = true;
+						mContext->mReifyModuleWorkList.Add(typeModule);
+						//typeModule->ReifyModule();
+					}
 				}
 			}
 		}
@@ -3342,29 +3371,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	if (typeInstance->mTypeOptionsIdx == -2)
-		SetTypeOptions(typeInstance);
-	
-// 	if (typeInstance->mDefineState == BfTypeDefineState_CETypeInit)
-// 	{
-// 		if (populateType <= BfPopulateType_AllowStaticMethods)
-// 			return;
-// 
-// 		auto refNode = typeDef->GetRefNode();		
-// 		Fail("OnCompile const evaluation creates a data dependency during TypeInit", refNode);
-// 		mCompiler->mCEMachine->Fail("OnCompile const evaluation creates a data dependency during TypeInit");
-// 	}
-// 	else if (typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit)
-// 	{
-// 		typeInstance->mDefineState = BfTypeDefineState_CETypeInit;
-// 		ExecuteCEOnCompile(typeInstance, BfCEOnCompileKind_TypeInit);
-// 
-// 		if (_CheckTypeDone())
-// 			return;				
-// 
-// 		if (typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit)
-// 			typeInstance->mDefineState = BfTypeDefineState_CEPostTypeInit;
-// 	}
-	
+	{
+		SetTypeOptions(typeInstance);		
+	}
+
 	if (populateType <= BfPopulateType_AllowStaticMethods)
 		return;	
 
@@ -3400,6 +3410,17 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if (typeOptions != NULL)
 		{			
 			typeInstance->mHasBeenInstantiated = typeOptions->Apply(typeInstance->HasBeenInstantiated(), BfOptionFlags_ReflectAssumeInstantiated);
+
+			bool alwaysInclude = typeInstance->mAlwaysIncludeFlags != 0;
+			if ((typeOptions->Apply(alwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType)) ||
+				(typeOptions->Apply(alwaysInclude, BfOptionFlags_ReflectAlwaysIncludeAll)))
+			{
+				typeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(typeInstance->mAlwaysIncludeFlags | BfAlwaysIncludeFlag_Type);
+			}
+			else
+			{
+				typeInstance->mAlwaysIncludeFlags = BfAlwaysIncludeFlag_None;
+			}
 		}
 	}
 
@@ -4632,6 +4653,30 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	{
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
 
+		// Don't set these pointers during resolve pass because they may become invalid if it's just a temporary autocomplete method
+		if (mCompiler->mResolvePassData == NULL)
+		{
+			if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
+			{
+				typeInstance->mHasStaticInitMethod = true;
+			}
+
+			if ((methodDef->mMethodType == BfMethodType_Dtor) && (methodDef->mIsStatic))
+			{
+				typeInstance->mHasStaticDtorMethod = true;
+			}
+
+			if ((methodDef->mMethodType == BfMethodType_Normal) && (methodDef->mIsStatic) && (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))
+			{
+				typeInstance->mHasStaticMarkMethod = true;
+			}
+
+			if ((methodDef->mMethodType == BfMethodType_Normal) && (methodDef->mIsStatic) && (methodDef->mName == BF_METHODNAME_FIND_TLS_MEMBERS))
+			{
+				typeInstance->mHasTLSFindMethod = true;
+			}
+		}
+
 		// Thsi MAY be generated already
 		// This should still be set to the default value
 		//BF_ASSERT((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet) || (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude));
@@ -5724,10 +5769,12 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 
 	if ((!methodInstance->mIRFunction) && (methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized) &&
 		(methodInstance->GetImportCallKind() == BfImportCallKind_None))
-	{
+	{		
 		if (!mIsModuleMutable)
 			PrepareForIRWriting(methodInstance->GetOwner());
 		
+		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites);
+
 		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);				
 		if (func)
 		{
@@ -8180,10 +8227,8 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 
 	BfTypeDef* protErrorTypeDef = NULL;
 	BfTypeInstance* protErrorOuterType = NULL;
-
 	
-
-	if (!lookupCtx.HasValidMatch())
+	if ((!lookupCtx.HasValidMatch()) && (typeInstance != NULL))
 	{
 		std::function<bool(BfTypeInstance*)> _CheckType = [&](BfTypeInstance* typeInstance)
 		{
@@ -8233,8 +8278,8 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 		};
 
 		_CheckType(typeInstance);
-	}	
-	
+	}
+
 	if (!lookupCtx.HasValidMatch())
 	{
 		if (mSystem->mTypeDefs.TryGet(findName, NULL))
@@ -8271,6 +8316,12 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 		}
 	}
 	
+	if ((!lookupCtx.HasValidMatch()) && (typeInstance == NULL))
+	{
+		if (useTypeDef->mOuterType != NULL)
+			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef->mOuterType, error);
+	}
+	
 	if ((error != NULL) && (lookupCtx.mAmbiguousTypeDef != NULL))
 	{
 		if (error->mErrorKind == BfTypeLookupError::BfErrorKind_None)		
@@ -8292,8 +8343,10 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	BP_ZONE("BfModule::FindTypeDef_1");
 
 	BfTypeInstance* typeInstance = (typeInstanceOverride != NULL) ? typeInstanceOverride : mCurTypeInstance;
-	if (typeInstance == NULL)
-	{
+	auto useTypeDef = GetActiveTypeDef(typeInstanceOverride, true);
+
+	if ((typeInstance == NULL) && (useTypeDef == NULL))
+	{		
 		BfProject* project = NULL;
 		if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mParser != NULL))
 			project = mCompiler->mResolvePassData->mParser->mProject;
@@ -8310,11 +8363,9 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 		}
 
 		return result;
-	}
+	}	
 
-	auto useTypeDef = GetActiveTypeDef(typeInstanceOverride, true);
-
-	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) && (typeInstance != NULL))
 	{
 		if (mCompiler->mResolvePassData->mAutoCompleteTempTypes.Contains(useTypeDef))
 			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error);
@@ -8327,7 +8378,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 
 	BfTypeLookupEntry* typeLookupEntryPtr = NULL;
 	BfTypeLookupResult* resultPtr = NULL;
-	if (typeInstance->mLookupResults.TryAdd(typeLookupEntry, &typeLookupEntryPtr, &resultPtr))
+	if ((typeInstance != NULL) && (typeInstance->mLookupResults.TryAdd(typeLookupEntry, &typeLookupEntryPtr, &resultPtr)))
 	{
 		typeLookupEntryPtr->mAtomUpdateIdx = typeLookupEntry.mName.GetAtomUpdateIdx();
 
@@ -8353,7 +8404,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	}
 	else
 	{
-		if (resultPtr->mForceLookup)
+		if ((resultPtr == NULL) || (resultPtr->mForceLookup))
 			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error);
 		else
 			return resultPtr->mTypeDef;

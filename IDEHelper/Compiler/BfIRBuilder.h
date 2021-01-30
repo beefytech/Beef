@@ -38,6 +38,7 @@ class BfIRCodeGen;
 class BeIRCodeGen;
 class BfMethodInstance;
 class BfFieldInstance;
+class BfMethodRef;
 
 class BfFileInstance;
 class BfParser;
@@ -974,7 +975,7 @@ public:
 	bool mHasDebugLoc;
 	bool mHasDebugInfo;
 	bool mHasDebugLineInfo;
-	Dictionary<BfMethodInstance*, BfIRFunctionType> mMethodTypeMap;
+	Dictionary<BfMethodRef, BfIRFunctionType> mMethodTypeMap;
 	Dictionary<String, BfIRFunction> mFunctionMap;
 	Dictionary<BfType*, BfIRPopulateType> mTypeMap;
 	Dictionary<int, BfIRValue> mConstMemMap;
@@ -1134,6 +1135,7 @@ public:
 			
 	void GetBufferData(Array<uint8>& outBuffer);
 	void ClearConstData();
+	void ClearNonConstData();
 
 	void Start(const StringImpl& moduleName, int ptrSize, bool isOptimized);
 	void SetBackend(bool isBeefBackend);

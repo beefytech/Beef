@@ -1103,6 +1103,67 @@ void BfModule::PrepareForIRWriting(BfTypeInstance* typeInst)
 	}
 }
 
+void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
+{
+	if (mIsScratchModule)
+	{
+		mBfIRBuilder->mIgnoreWrites = true;
+		BF_ASSERT(!dbgVerifyCodeGen);
+	}
+#ifdef _DEBUG
+	if (mCompiler->mIsResolveOnly)
+	{
+		// For "deep" verification testing
+		/*if (!mIsSpecialModule)
+			dbgVerifyCodeGen = true;*/
+
+			// We only want to turn this off on smaller builds for testing
+		mBfIRBuilder->mIgnoreWrites = true;
+		if (dbgVerifyCodeGen)
+			mBfIRBuilder->mIgnoreWrites = false;
+		if (!mBfIRBuilder->mIgnoreWrites)
+		{
+			// The only purpose of not ignoring writes is so we can verify the codegen one instruction at a time
+			mBfIRBuilder->mDbgVerifyCodeGen = true;
+		}
+	}
+	else if (!mIsReified)
+	{
+		mBfIRBuilder->mIgnoreWrites = true;
+	}
+	else
+	{
+		// We almost always want this to be 'false' unless we need need to be able to inspect the generated LLVM
+		//  code as we walk the AST
+		//mBfIRBuilder->mDbgVerifyCodeGen = true;			
+		if (
+			(mModuleName == "-")
+			//|| (mModuleName == "BeefTest2_ClearColorValue")
+			//|| (mModuleName == "Tests_FuncRefs")
+			)
+			mBfIRBuilder->mDbgVerifyCodeGen = true;
+
+		// Just for testing!
+		//mBfIRBuilder->mIgnoreWrites = true;
+	}
+#else
+	if (mCompiler->mIsResolveOnly)
+	{
+		// Always ignore writes in resolveOnly for release builds
+		mBfIRBuilder->mIgnoreWrites = true;
+	}
+	else
+	{
+		// Just for memory testing!  This breaks everything.
+		//mBfIRBuilder->mIgnoreWrites = true;
+
+		// For "deep" verification testing
+		//mBfIRBuilder->mDbgVerifyCodeGen = true;
+	}
+#endif
+	mWantsIRIgnoreWrites = mBfIRBuilder->mIgnoreWrites;
+}
+
 void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 {
 	BF_ASSERT(!mIsDeleting);
@@ -1121,64 +1182,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 
 		mBfIRBuilder = new BfIRBuilder(this);
 		BfLogSysM("Created mBfIRBuilder %p in %p %s Reified: %d\n", mBfIRBuilder, this, mModuleName.c_str(), mIsReified);
-
-		if (mIsScratchModule)
-		{
-			mBfIRBuilder->mIgnoreWrites = true;
-			BF_ASSERT(!dbgVerifyCodeGen);
-		}
-#ifdef _DEBUG
-		if (mCompiler->mIsResolveOnly)
-		{
-			// For "deep" verification testing
-			/*if (!mIsSpecialModule)
-				dbgVerifyCodeGen = true;*/
-
-			// We only want to turn this off on smaller builds for testing
-			mBfIRBuilder->mIgnoreWrites = true;
-			if (dbgVerifyCodeGen)
-				mBfIRBuilder->mIgnoreWrites = false;
-			if (!mBfIRBuilder->mIgnoreWrites)
-			{
-				// The only purpose of not ignoring writes is so we can verify the codegen one instruction at a time
-				mBfIRBuilder->mDbgVerifyCodeGen = true;
-			}
-		}
-		else if (!mIsReified)
-		{
-			mBfIRBuilder->mIgnoreWrites = true;
-		}
-		else
-		{
-			// We almost always want this to be 'false' unless we need need to be able to inspect the generated LLVM
-			//  code as we walk the AST
-			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
-			if (
-                (mModuleName == "-")
-				//|| (mModuleName == "BeefTest2_ClearColorValue")
-				//|| (mModuleName == "Tests_FuncRefs")
-				)
-				mBfIRBuilder->mDbgVerifyCodeGen = true;
-			
-			// Just for testing!
-			//mBfIRBuilder->mIgnoreWrites = true;
-		}
-#else
-		if (mCompiler->mIsResolveOnly)
-		{
-			// Always ignore writes in resolveOnly for release builds
-			mBfIRBuilder->mIgnoreWrites = true;	
-		}
-		else
-		{
-			// Just for memory testing!  This breaks everything.
-			//mBfIRBuilder->mIgnoreWrites = true;
-
-			// For "deep" verification testing
-			//mBfIRBuilder->mDbgVerifyCodeGen = true;
-		}
-#endif
-		mWantsIRIgnoreWrites = mBfIRBuilder->mIgnoreWrites;		
+		SetupIRBuilder(dbgVerifyCodeGen);
 	}
 }
 
@@ -6937,7 +6941,7 @@ BfIRValue BfModule::FixClassVData(BfIRValue value)
 }
 
 void BfModule::CheckStaticAccess(BfTypeInstance* typeInstance)
-{	
+{
 	// Note: this is not just for perf, it fixes a field var-type resolution issue
 	if (mBfIRBuilder->mIgnoreWrites)
 		return;
@@ -11230,7 +11234,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		
 		if (success)
 		{
-			if (!attrTypeInst->mAttributeData->mAllowMultiple)
+			if ((attrTypeInst->mAttributeData->mFlags & BfAttributeFlag_DisallowAllowMultiple) != 0)
 			{
 				for (auto& prevCustomAttribute : customAttributes->mAttributes)
 				{
@@ -11256,6 +11260,22 @@ BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attribut
 	BfCustomAttributes* customAttributes = new BfCustomAttributes();
 	GetCustomAttributes(customAttributes, attributesDirective, attrType, allowNonConstArgs, captureInfo);
 	return customAttributes;
+}
+
+BfCustomAttributes* BfModule::GetCustomAttributes(BfTypeDef* typeDef)
+{
+	BfAttributeTargets attrTarget;
+	if (typeDef->mIsDelegate)
+		attrTarget = BfAttributeTargets_Delegate;
+	else if (typeDef->mTypeCode == BfTypeCode_Enum)
+		attrTarget = BfAttributeTargets_Enum;
+	else if (typeDef->mTypeCode == BfTypeCode_Interface)
+		attrTarget = BfAttributeTargets_Interface;
+	else if (typeDef->mTypeCode == BfTypeCode_Struct)
+		attrTarget = BfAttributeTargets_Struct;
+	else
+		attrTarget = BfAttributeTargets_Class;
+	return GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, attrTarget);
 }
 
 void BfModule::FinishAttributeState(BfAttributeState* attributeState)
@@ -11290,6 +11310,8 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 			}
 			else if (typeName == "System.AlwaysIncludeAttribute")
 			{
+				mCurTypeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(mCurTypeInstance->mAlwaysIncludeFlags | BfAlwaysIncludeFlag_Type);
+
 				for (auto setProp : customAttribute.mSetProperties)
 				{
 					BfPropertyDef* propertyDef = setProp.mPropertyRef;
@@ -11368,6 +11390,15 @@ void BfModule::ProcessCustomAttributeData()
 						attributeData->mAttributeTargets = (BfAttributeTargets)constant->mInt32;					
 				}
 
+				if (customAttribute.mCtorArgs.size() == 2)
+				{
+					auto constant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
+					if ((constant != NULL) && (mBfIRBuilder->IsInt(constant->mTypeCode)))
+					{
+						attributeData->mFlags = (BfAttributeFlags)constant->mInt32;
+					}
+				}
+
 				for (auto& setProp : customAttribute.mSetProperties)
 				{
 					BfPropertyDef* propDef = setProp.mPropertyRef;
@@ -11375,14 +11406,18 @@ void BfModule::ProcessCustomAttributeData()
 					if (propDef->mName == "AllowMultiple")
 					{						
 						auto constant = mCurTypeInstance->mConstHolder->GetConstant(setProp.mParam.mValue);
-						if (constant != NULL)
-							attributeData->mAllowMultiple = constant->mBool;
+						if ((constant != NULL) && (constant->mBool))
+							attributeData->mFlags = (BfAttributeFlags)(attributeData->mFlags & ~BfAttributeFlag_DisallowAllowMultiple);
+						else
+							attributeData->mFlags = (BfAttributeFlags)(attributeData->mFlags | BfAttributeFlag_DisallowAllowMultiple);
 					}
 					else if (propDef->mName == "Inherited")
 					{
 						auto constant = mCurTypeInstance->mConstHolder->GetConstant(setProp.mParam.mValue);
-						if (constant != NULL)
-							attributeData->mInherited = constant->mBool;
+						if ((constant != NULL) && (constant->mBool))
+							attributeData->mFlags = (BfAttributeFlags)(attributeData->mFlags & ~BfAttributeFlag_NotInherited);
+						else
+							attributeData->mFlags = (BfAttributeFlags)(attributeData->mFlags | BfAttributeFlag_NotInherited);
 					}
 					else if (propDef->mName == "ValidOn")
 					{
@@ -11406,8 +11441,7 @@ void BfModule::ProcessCustomAttributeData()
 	if ((!hasCustomAttribute) && (mCurTypeInstance->mBaseType->mAttributeData != NULL))
 	{		
 		attributeData->mAttributeTargets = mCurTypeInstance->mBaseType->mAttributeData->mAttributeTargets;
-		attributeData->mInherited = mCurTypeInstance->mBaseType->mAttributeData->mInherited;
-		attributeData->mAllowMultiple = mCurTypeInstance->mBaseType->mAttributeData->mAllowMultiple;
+		attributeData->mFlags = mCurTypeInstance->mBaseType->mAttributeData->mFlags;		
 		attributeData->mAlwaysIncludeUser = mCurTypeInstance->mBaseType->mAttributeData->mAlwaysIncludeUser;
 	}
 
@@ -21027,30 +21061,6 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 
 	BfIRFunctionType funcType = mBfIRBuilder->MapMethod(methodInstance);
 
-	// Don't set these pointers during resolve pass because they may become invalid if it's just a temporary autocomplete method
-	if (mCompiler->mResolvePassData == NULL)
-	{
-		if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
-		{
-			typeInstance->mHasStaticInitMethod = true;
-		}
-
-		if ((methodDef->mMethodType == BfMethodType_Dtor) && (methodDef->mIsStatic))
-		{
-			typeInstance->mHasStaticDtorMethod = true;
-		}
-
-		if ((methodDef->mMethodType == BfMethodType_Normal) && (methodDef->mIsStatic) && (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))
-		{
-			typeInstance->mHasStaticMarkMethod = true;
-		}
-
-		if ((methodDef->mMethodType == BfMethodType_Normal) && (methodDef->mIsStatic) && (methodDef->mName == BF_METHODNAME_FIND_TLS_MEMBERS))
-		{
-			typeInstance->mHasTLSFindMethod = true;
-		}
-	}
-
 	if (isTemporaryFunc)
 	{
 		BF_ASSERT(((mCompiler->mIsResolveOnly) && (mCompiler->mResolvePassData->mAutoComplete != NULL)) ||
@@ -23634,6 +23644,8 @@ bool BfModule::Finish()
 
 	if (HasCompiledOutput())
 	{
+		BF_ASSERT(!mBfIRBuilder->mIgnoreWrites);
+
 		DbgFinish();
 
 		if (mAwaitingInitFinish)

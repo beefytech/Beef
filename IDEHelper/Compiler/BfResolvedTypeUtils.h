@@ -1571,21 +1571,27 @@ enum BfAttributeTargets : int32
 	BfAttributeTargets_All          = 0x3FFFFF
 };
 
+enum BfAttributeFlags : int8
+{
+	BfAttributeFlag_None,
+	BfAttributeFlag_DisallowAllowMultiple = 1,
+	BfAttributeFlag_NotInherited = 2,
+	BfAttributeFlag_ReflectAttribute = 4,
+	BfAttributeFlag_AlwaysIncludeTarget = 8
+};
+
 class BfAttributeData
 {
 public:
 	BfAttributeTargets mAttributeTargets;
 	BfAlwaysIncludeFlags mAlwaysIncludeUser;
-	bool mInherited;
-	bool mAllowMultiple;
-
+	BfAttributeFlags mFlags;
 public:
 	BfAttributeData()
 	{
 		mAttributeTargets = BfAttributeTargets_All;
 		mAlwaysIncludeUser = BfAlwaysIncludeFlag_None;
-		mInherited = true;
-		mAllowMultiple = false;
+		mFlags = BfAttributeFlag_None;
 	}
 };
 
