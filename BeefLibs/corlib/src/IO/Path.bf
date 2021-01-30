@@ -356,7 +356,7 @@ namespace System.IO
 
 		    StringComparison compareType = Environment.IsFileSystemCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
-			// On seperate drives?
+			// On separate drives?
 		    if (!String.Equals(driveString1, driveString2, compareType))
 			{
 				outRelPath.Set(fullPath);

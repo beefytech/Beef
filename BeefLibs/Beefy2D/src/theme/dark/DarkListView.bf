@@ -993,7 +993,7 @@ namespace Beefy.theme.dark
 			
 			if (columnIdx != 0)
 			{
-			    g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Seperator), GS!(-2), mHeaderLabelYOfs);
+			    g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Separator), GS!(-2), mHeaderLabelYOfs);
 			}
 
 			if ((mShowColumnGrid) && (columnIdx < mColumns.Count - 1))
