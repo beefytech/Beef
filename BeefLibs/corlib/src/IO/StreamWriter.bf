@@ -15,7 +15,7 @@ namespace System.IO
 		{
 		}
 
-		public this(Stream stream, Encoding encoding, int32 bufferSize, bool ownsStream = false)
+		public this(Stream stream, Encoding encoding, bool ownsStream = false)
 		{
 			Debug.Assert(encoding != null);
 			mStream = stream;
