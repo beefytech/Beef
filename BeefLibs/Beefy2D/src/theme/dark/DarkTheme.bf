@@ -21,7 +21,7 @@ namespace Beefy.theme.dark
             BtnUp,
             BtnOver,
             BtnDown,
-            Seperator,
+            Separator,
             TabActive,
             TabActiveOver,
             TabInactive,
