@@ -948,6 +948,24 @@ namespace IDE.ui
             if (!mIsSourceCode)
                 return true;
 
+			if (gApp.mDeterministic)
+			{
+				//return false;
+
+				if (resolveType == .GetCurrentLocation)
+					return false;
+				if (resolveType == .GetSymbolInfo)
+					return true;
+
+				while ((BfResolveCompiler.mResolveAllWait != 0) ||
+					(BfResolveCompiler.mThreadYieldCount != 0))
+				{
+					BfResolveCompiler.Update();
+				}
+
+				BfResolveCompiler.WaitForBackground();
+			}
+
 			if (resolveParams != null)
 				resolveParams.mResolveType = resolveType;
 
@@ -4947,7 +4965,7 @@ namespace IDE.ui
 	            {
 					if (mHoverResolveTask == null)
 					{
-						if ((!handlingHoverResolveTask) && (ResolveCompiler != null) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning) && (gApp.mSettings.mEditorSettings.mHiliteCursorReferences))
+						if ((!handlingHoverResolveTask) && (ResolveCompiler != null) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning) && (gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic))
 						{
 							ResolveParams resolveParams = new .();
 							resolveParams.mOverrideCursorPos = (int32)textIdx;
@@ -5921,7 +5939,7 @@ namespace IDE.ui
 			if (BFApp.sApp.mIsUpdateBatchStart)
             	sourceEditWidgetContent.mCursorStillTicks++;
 
-            if ((gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (HasFocus(true)) && (mProjectSource != null) /*&& (IDEApp.sApp.mSymbolReferenceHelper == null)*/)
+            if ((gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic) && (HasFocus(true)) && (mProjectSource != null) /*&& (IDEApp.sApp.mSymbolReferenceHelper == null)*/)
             {
                 if ((mEditWidget.mHasFocus) && (mIsBeefSource) && (sourceEditWidgetContent.mCursorStillTicks == 10) && (!sourceEditWidgetContent.mCursorImplicitlyMoved) && (!sourceEditWidgetContent.mVirtualCursorPos.HasValue))
                 {

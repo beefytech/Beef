@@ -254,6 +254,7 @@ namespace IDE
 		// The Beef resolve system is up-to-date with the projects' files, 
 		//  but the Clang resolver only has open files in it
 		public bool mNoResolve = false;
+		public bool mDeterministic = false;
         public BfSystem mBfResolveSystem ~ delete _;
         public BfCompiler mBfResolveCompiler;
         public BfResolveHelper mBfResolveHelper ~ delete _;
@@ -6992,6 +6993,8 @@ namespace IDE
 				case "-forceSafe":
 					mSafeMode = true;
 					mNoResolve = true;
+				case "-deterministic":
+					mDeterministic = true;
 				default:
 					return false;
 				}

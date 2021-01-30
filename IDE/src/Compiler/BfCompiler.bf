@@ -676,7 +676,7 @@ namespace IDE.Compiler
         {
             if ([Friend]mThreadWorker.mThreadRunning)
             {
-				if (mNativeBfCompiler != null)
+				if ((mNativeBfCompiler != null) && (!gApp.mDeterministic))
                 	BfCompiler_Cancel(mNativeBfCompiler);
             }
         }
@@ -685,7 +685,7 @@ namespace IDE.Compiler
 		{
 		    if ([Friend]mThreadWorker.mThreadRunning || [Friend]mThreadWorkerHi.mThreadRunning)
 		    {
-				if (mNativeBfCompiler != null)
+				if ((mNativeBfCompiler != null) && (!gApp.mDeterministic))
 		        	BfCompiler_RequestFastFinish(mNativeBfCompiler);
 		    }
 		}
