@@ -11289,6 +11289,8 @@ void BfModule::FinishAttributeState(BfAttributeState* attributeState)
 
 void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered, int& alignOverride, BfType*& underlyingArrayType, int& underlyingArraySize)
 {
+	if (mCurTypeInstance->mTypeDef->mIsAlwaysInclude)
+		mCurTypeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(mCurTypeInstance->mAlwaysIncludeFlags | BfAlwaysIncludeFlag_Type);
 	if (mCurTypeInstance->mCustomAttributes != NULL)
 	{
 		for (auto& customAttribute : mCurTypeInstance->mCustomAttributes->mAttributes)
@@ -11360,7 +11362,7 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 			if ((customAttribute.mType->mAttributeData != NULL) && ((customAttribute.mType->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_AssumeInstantiated) != 0))
 				mCurTypeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(mCurTypeInstance->mAlwaysIncludeFlags | customAttribute.mType->mAttributeData->mAlwaysIncludeUser);
 		}
-	}
+	}	
 }
 
 // Checking to see if we're an attribute or not
