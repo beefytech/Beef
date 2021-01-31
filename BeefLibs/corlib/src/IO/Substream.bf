@@ -62,9 +62,7 @@ namespace System.IO
 		{
 			var tryData = data;
 			if (mPosition + data.Length > mLength)
-			{
-				tryData.Length = mLength - mPosition;
-			}
+				tryData.Length = (.)(mLength - mPosition);
 
 			switch (mChildStream.TryRead(tryData))
 			{
@@ -80,9 +78,7 @@ namespace System.IO
 		{
 			var tryData = data;
 			if (mPosition + data.Length > mLength)
-			{
-				tryData.Length = mLength - mPosition;
-			}
+				tryData.Length = (.)(mLength - mPosition);
 
 			switch (mChildStream.TryWrite(tryData))
 			{
