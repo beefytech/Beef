@@ -1880,8 +1880,14 @@ void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
 		}
 		else if (constStruct->mType->mTypeCode == BeTypeCode_SizedArray)
 		{
+			BeSizedArrayType* arrayType = (BeSizedArrayType*)constStruct->mType;
 			for (auto& memberVal : constStruct->mMemberValues)
+			{
 				WriteConst(sect, memberVal);
+				int padding = arrayType->mElementType->GetStride() - arrayType->mElementType->mSize;
+				if (padding > 0)
+					sect.mData.WriteZeros(padding);
+			}
 		}
 		else
 			BF_FATAL("Invalid StructConst type");

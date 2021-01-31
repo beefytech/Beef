@@ -899,8 +899,10 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		}
 		else if (constType == BfConstType_Undef)
 		{
-			CMD_PARAM(BeType*, type);
-			beValue = mBeModule->CreateUndefValue(type);
+			CMD_PARAM(BeType*, type);			
+			auto constUndef = mBeModule->mOwnedValues.Alloc<BeUndefConstant>();
+			constUndef->mType = type;
+			beValue = constUndef;
 			return;
 		}
 		else if (constType == BfConstType_TypeOf)

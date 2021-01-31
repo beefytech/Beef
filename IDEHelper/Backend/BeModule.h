@@ -403,9 +403,22 @@ public:
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
 		hashCtx.Mixin(TypeId);
+		hashCtx.Mixin(mType);
 		hashCtx.Mixin(mMemberValues.size());
 		for (auto member : mMemberValues)
 			member->HashReference(hashCtx);
+	}
+};
+
+class BeUndefConstant : public BeConstant
+{
+public:
+	BE_VALUE_TYPE(BeUndefConstant, BeConstant);
+	
+	virtual void HashContent(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(mType);
+		hashCtx.Mixin(TypeId);		
 	}
 };
 

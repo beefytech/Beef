@@ -2949,7 +2949,7 @@ void BeMCContext::CreateStore(BeMCInstKind instKind, const BeMCOperand& val, con
 					//AllocInst(instKind, destOperand, elementVal);
 					CreateStore(instKind, elementVal, destOperand);
 
-					offset += elemType->mSize;
+					offset += elemType->GetStride();
 				}
 				return;
 			}
