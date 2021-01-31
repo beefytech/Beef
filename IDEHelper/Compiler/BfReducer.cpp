@@ -4564,6 +4564,8 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 	{
 		if (auto memberReferenceExpression = BfNodeDynCast<BfMemberReferenceExpression>(firstNode))
 		{
+			SetAndRestoreValue<bool> prevSkipCurrentNodeAssert(mSkipCurrentNodeAssert, true);
+
 			auto qualifiedTypeRef = mAlloc->Alloc<BfQualifiedTypeReference>();
 			ReplaceNode(firstNode, qualifiedTypeRef);
 			BF_ASSERT(memberReferenceExpression->mTarget != NULL);
@@ -4574,6 +4576,8 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 				MEMBER_SET(qualifiedTypeRef, mLeft, leftTypeRef);
 			}
 			MEMBER_SET(qualifiedTypeRef, mDot, memberReferenceExpression->mDotToken);
+			if (memberReferenceExpression->mDotToken->mToken == BfToken_DotDot)
+				Fail("Invalid use of '..' in type reference", memberReferenceExpression->mDotToken);
 			if (memberReferenceExpression->mMemberName != NULL)
 			{
 				MoveNode(memberReferenceExpression->mMemberName, memberReferenceExpression);
