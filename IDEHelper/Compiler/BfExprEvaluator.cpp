@@ -8685,8 +8685,19 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	BfType* overrideReturnType = NULL;
 	BfModuleMethodInstance moduleMethodInstance = GetSelectedMethod(targetSrc, curTypeInst, methodDef, methodMatcher, &overrideReturnType);
-	if ((moduleMethodInstance.mMethodInstance != NULL) && (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc)))
+
+	if ((mModule->mAttributeState != NULL) && ((mModule->mAttributeState->mFlags & (BfAttributeState::Flag_StopOnError | BfAttributeState::Flag_HadError)) == 
+		(BfAttributeState::Flag_StopOnError | BfAttributeState::Flag_HadError)))
+	{
+		FinishDeferredEvals(argValues);
 		return BfTypedValue();
+	}
+
+	if ((moduleMethodInstance.mMethodInstance != NULL) && (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc)))
+	{
+		FinishDeferredEvals(argValues);
+		return BfTypedValue();
+	}
 
 	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
 	{

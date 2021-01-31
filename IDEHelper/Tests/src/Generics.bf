@@ -241,6 +241,12 @@ namespace Tests
 			return 0;
 		}
 
+		static void MethodG<T, TBase>() where T : TBase
+		{
+			T val = default;
+			TBase valBase = val;
+		}
+
 		public static TResult Sum<T, TElem, TDlg, TResult>(this T it, TDlg dlg)
 		    where T: concrete, IEnumerable<TElem>
 		    where TDlg: delegate TResult(TElem)
@@ -278,6 +284,16 @@ namespace Tests
 		    where TElem : operator TElem + TElem
 		{
 		    return .(it.GetEnumerator());
+		}
+
+		class ClassF
+		{
+
+		}
+
+		class ClassG : ClassF
+		{
+
 		}
 
 		[Test]
@@ -339,6 +355,14 @@ namespace Tests
 			Test.Assert(e.GetNext().Value == 2);
 			Test.Assert(e.GetNext().Value == 4);
 			Test.Assert(e.GetNext().Value == 6);
+
+			Test.Assert(
+				[IgnoreErrors(true)]
+				{
+					MethodG<ClassF, ClassG>();
+					true
+				} == false);
+			MethodG<ClassG, ClassF>();
 		}
 	}
 

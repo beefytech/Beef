@@ -7343,10 +7343,9 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 
 				if (constraintType->IsGenericParam())
 				{
-					continue;
+					checkEquality = true;
 				}
-
-				if ((!constraintType->IsTypeInstance()) && (!constraintType->IsSizedArray()))
+				else if ((!constraintType->IsTypeInstance()) && (!constraintType->IsSizedArray()))
 				{
 					if (isUnspecialized)
 					{
@@ -7435,7 +7434,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		return TypeToString(type);
 	};
 
-	bool ignoreErrors = mIgnoreErrors || (errorOut == NULL) ||
+	bool ignoreErrors = (errorOut == NULL) ||
 		((genericParamSource.mMethodInstance == NULL) && (genericParamSource.mTypeInstance == NULL));
 
 	BfType* origCheckArgType = checkArgType;
@@ -7473,7 +7472,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Struct) && 
 		((checkGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_Enum | BfGenericParamFlag_Var)) == 0) && (!checkArgType->IsValueType()))
 	{
-		if (!ignoreErrors)
+		if ((!ignoreErrors) && (PreFail()))
 			*errorOut = Fail(StrFormat("The type '%s' must be a value type in order to use it as parameter '%s' for '%s'",
 				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
@@ -7482,7 +7481,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr) && 
 		((checkGenericParamFlags & (BfGenericParamFlag_StructPtr | BfGenericParamFlag_Var)) == 0) && (!checkArgType->IsPointer()))
 	{
-		if (!ignoreErrors)
+		if ((!ignoreErrors) && (PreFail()))
 			*errorOut = Fail(StrFormat("The type '%s' must be a pointer type in order to use it as parameter '%s' for '%s'",
 				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
@@ -7491,7 +7490,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Class) && 
 		((checkGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Var)) == 0) && (!argMayBeReferenceType))
 	{
-		if (!ignoreErrors)
+		if ((!ignoreErrors) && (PreFail()))
 			*errorOut = Fail(StrFormat("The type '%s' must be a reference type in order to use it as parameter '%s' for '%s'",
 				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
@@ -7504,7 +7503,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			isEnum = true;
 		if (((checkGenericParamFlags & (BfGenericParamFlag_Enum | BfGenericParamFlag_Var)) == 0) && (!isEnum))
 		{
-			if (!ignoreErrors)
+			if ((!ignoreErrors) && (PreFail()))
 				*errorOut = Fail(StrFormat("The type '%s' must be an enum type in order to use it as parameter '%s' for '%s'",
 					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
@@ -7514,7 +7513,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Concrete) &&
 		((checkGenericParamFlags & (BfGenericParamFlag_Interface | BfGenericParamFlag_Var)) == 0) && (checkArgType->IsInterface()))
 	{
-		if (!ignoreErrors)
+		if ((!ignoreErrors) && (PreFail()))
 			*errorOut = Fail(StrFormat("The type '%s' must be an concrete type in order to use it as parameter '%s' for '%s'",
 				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
@@ -7523,7 +7522,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Interface) &&
 		((checkGenericParamFlags & (BfGenericParamFlag_Interface | BfGenericParamFlag_Var)) == 0) && (!checkArgType->IsInterface()))
 	{
-		if (!ignoreErrors)
+		if ((!ignoreErrors) && (PreFail()))
 			*errorOut = Fail(StrFormat("The type '%s' must be an interface type in order to use it as parameter '%s' for '%s'",
 				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
@@ -7533,7 +7532,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (((checkGenericParamFlags & BfGenericParamFlag_Const) == 0) && (!checkArgType->IsConstExprValue()))
 		{
-			if (!ignoreErrors)
+			if ((!ignoreErrors) && (PreFail()))
 				*errorOut = Fail(StrFormat("The type '%s' must be a const value in order to use it as parameter '%s' for '%s'",
 					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
@@ -7543,7 +7542,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (checkArgType->IsConstExprValue())
 		{
-			if (!ignoreErrors)
+			if ((!ignoreErrors) && (PreFail()))
 				*errorOut = Fail(StrFormat("The value '%s' cannot be used for generic type parameter '%s' for '%s'",
 					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
@@ -7562,7 +7561,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 		if (!canDelete)
 		{
-			if (!ignoreErrors)
+			if ((!ignoreErrors) && (PreFail()))
 				*errorOut = Fail(StrFormat("The type '%s' must be a deletable type in order to use it as parameter '%s' for '%s'",
 					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
@@ -7607,7 +7606,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		
 		if (!canAlloc)
 		{
-			if (!ignoreErrors)
+			if ((!ignoreErrors) && (PreFail()))
 				*errorOut = Fail(StrFormat("The type '%s' must have an accessible default constructor in order to use it as parameter '%s' for '%s'",
 					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
@@ -7649,7 +7648,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 							{
 								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue.mInt64))
 								{
-									if (!ignoreErrors)
+									if ((!ignoreErrors) && (PreFail()))
 										*errorOut = Fail(StrFormat("Const generic argument '%s', declared with const '%lld', does not fit into const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
 											constExprValueType->mValue.mInt64, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 									return false;
@@ -7657,7 +7656,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 							}
 							else
 							{
-								if (!ignoreErrors)
+								if ((!ignoreErrors) && (PreFail()))
 									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with integer const '%lld', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
 										constExprValueType->mValue.mInt64, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 								return false;
@@ -7669,7 +7668,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 							{
 								char valStr[64];
 								ExactMinimalDoubleToStr(constExprValueType->mValue.mDouble, valStr);
-								if (!ignoreErrors)
+								if ((!ignoreErrors) && (PreFail()))
 									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with floating point const '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
 										valStr, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 								return false;
@@ -7740,7 +7739,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 			if (!constraintMatched)
 			{
-				if (!ignoreErrors)
+				if ((!ignoreErrors) && (PreFail()))
 					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must derive from '%s'", genericParamInst->GetName().c_str(),
 						TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(convCheckConstraint).c_str(),
 						_TypeToString(genericParamInst->mTypeConstraint).c_str()), checkArgTypeRef);
@@ -7785,7 +7784,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 		if (!implementsInterface)
 		{
-			if (!ignoreErrors)
+			if ((!ignoreErrors) && (PreFail()))
 				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must implement '%s'", genericParamInst->GetName().c_str(), 
 					TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(checkConstraint).c_str()), checkArgTypeRef);
 			return false;
@@ -7832,7 +7831,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			if ((!exprEvaluator.mResult) || 
 				(!CanCast(exprEvaluator.mResult, origCheckArgType, BfCastFlags_NoConversionOperator)))
 			{
-				if (!ignoreErrors)
+				if ((!ignoreErrors) && (PreFail()))
 				{
 					if (genericParamInst->mExternType != NULL)
 						*errorOut = Fail(StrFormat("Binary operation for '%s' must result in '%s' from binary operation '%s %s %s'",
@@ -7887,7 +7886,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 			if (!failedOpName.IsEmpty())
 			{
-				if (!ignoreErrors)
+				if ((!ignoreErrors) && (PreFail()))
 					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must result from %s%s'", genericParamInst->GetName().c_str(),
 						TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(),
 						failedOpName.c_str(), TypeToString(rightType).c_str()

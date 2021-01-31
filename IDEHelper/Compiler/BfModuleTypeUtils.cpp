@@ -10821,104 +10821,113 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	}
 
 	// Generic param -> *
-	if ((typedVal.mType->IsGenericParam()) && (!toType->IsGenericParam()))
+	if (typedVal.mType->IsGenericParam())
 	{
-		if ((typedVal.mKind != Beefy::BfTypedValueKind_GenericConstValue) && (toType == mContext->mBfObjectType))
-		{			
-			// Always allow casting from generic to object
-			return typedVal.mValue;
-		}
-
-		auto _CheckGenericParamInstance = [&](BfGenericParamInstance* genericParamInst)
-		{
-			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
-			{
-				return typedVal.mValue;
-			}
-			if (toType->IsInterface())
-			{
-				for (auto iface : genericParamInst->mInterfaceConstraints)
-					if (TypeIsSubTypeOf(iface, toType->ToTypeInstance()))
-						return mBfIRBuilder->GetFakeVal();
-			}
-
-			if (genericParamInst->mTypeConstraint != NULL)
-			{
-				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
-				auto constraintTypeInst = genericParamInst->mTypeConstraint->ToTypeInstance();
-				if ((constraintTypeInst != NULL) && (constraintTypeInst->mTypeDef == mCompiler->mEnumTypeDef))
-				{
-					// Enum->int
-					if ((explicitCast) && (toType->IsInteger()))
-						return typedVal.mValue;
-				}
-
-				BfTypedValue fromTypedValue;
- 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
- 					fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
- 				else
-					fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
-
-				auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
-				if (result)
-				{
-					if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
-					{
-						// Don't allow cast when we are constrained by a delegate type, because BfMethodRefs can match and we require an actual alloc
-						Fail(StrFormat("Unable to cast '%s' to '%s' because delegate constraints allow valueless direct method references", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
-						return BfIRValue();
-					}
-					return result;
-				}
-			}
-
-			// Generic constrained with class or pointer type -> void*
-			if (toType->IsVoidPtr())
-			{
-				if (((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Interface)) != 0) ||
-					((genericParamInst->mTypeConstraint != NULL) &&
-					((genericParamInst->mTypeConstraint->IsPointer()) || 
-						(genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || 
-						(genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
-				{
-					return typedVal.mValue;
-				}
-			}
-
-			if (toType->IsInteger())
-			{
-				if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Enum) != 0)
-				{
-					return typedVal.mValue;
-				}
-			}
-
-			return BfIRValue();
-		};
-
-		BfIRValue retVal;
-
-		// For these casts, it's just important we get *A* value to work with here, 
-		//  as this is just use for unspecialized parsing.  We don't use the generated code
+		if (toType->IsGenericParam())
 		{
 			auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)typedVal.mType);
-			retVal = _CheckGenericParamInstance(genericParamInst);
-			if (retVal)
-				return retVal;
+			if (genericParamInst->mTypeConstraint == toType)
+				return typedVal.mValue;
 		}
-
-		// Check method generic constraints
-		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))
+		else
 		{
-			for (int genericParamIdx = (int)mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
-				genericParamIdx < mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+			if ((typedVal.mKind != Beefy::BfTypedValueKind_GenericConstValue) && (toType == mContext->mBfObjectType))
 			{
-				auto genericParamInst = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
-				if (genericParamInst->mExternType == typedVal.mType)
+				// Always allow casting from generic to object
+				return typedVal.mValue;
+			}
+
+			auto _CheckGenericParamInstance = [&](BfGenericParamInstance* genericParamInst)
+			{
+				if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
 				{
-					retVal = _CheckGenericParamInstance(genericParamInst);
-					if (retVal)
-						return retVal;
+					return typedVal.mValue;
+				}
+				if (toType->IsInterface())
+				{
+					for (auto iface : genericParamInst->mInterfaceConstraints)
+						if (TypeIsSubTypeOf(iface, toType->ToTypeInstance()))
+							return mBfIRBuilder->GetFakeVal();
+				}
+
+				if (genericParamInst->mTypeConstraint != NULL)
+				{
+					SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+					auto constraintTypeInst = genericParamInst->mTypeConstraint->ToTypeInstance();
+					if ((constraintTypeInst != NULL) && (constraintTypeInst->mTypeDef == mCompiler->mEnumTypeDef))
+					{
+						// Enum->int
+						if ((explicitCast) && (toType->IsInteger()))
+							return typedVal.mValue;
+					}
+
+					BfTypedValue fromTypedValue;
+					if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
+						fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
+					else
+						fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
+
+					auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
+					if (result)
+					{
+						if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
+						{
+							// Don't allow cast when we are constrained by a delegate type, because BfMethodRefs can match and we require an actual alloc
+							Fail(StrFormat("Unable to cast '%s' to '%s' because delegate constraints allow valueless direct method references", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
+							return BfIRValue();
+						}
+						return result;
+					}
+				}
+
+				// Generic constrained with class or pointer type -> void*
+				if (toType->IsVoidPtr())
+				{
+					if (((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Interface)) != 0) ||
+						((genericParamInst->mTypeConstraint != NULL) &&
+							((genericParamInst->mTypeConstraint->IsPointer()) ||
+								(genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) ||
+								(genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
+					{
+						return typedVal.mValue;
+					}
+				}
+
+				if (toType->IsInteger())
+				{
+					if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Enum) != 0)
+					{
+						return typedVal.mValue;
+					}
+				}
+
+				return BfIRValue();
+			};
+
+			BfIRValue retVal;
+
+			// For these casts, it's just important we get *A* value to work with here, 
+			//  as this is just use for unspecialized parsing.  We don't use the generated code
+			{
+				auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)typedVal.mType);
+				retVal = _CheckGenericParamInstance(genericParamInst);
+				if (retVal)
+					return retVal;
+			}
+
+			// Check method generic constraints
+			if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))
+			{
+				for (int genericParamIdx = (int)mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+					genericParamIdx < mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+				{
+					auto genericParamInst = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+					if (genericParamInst->mExternType == typedVal.mType)
+					{
+						retVal = _CheckGenericParamInstance(genericParamInst);
+						if (retVal)
+							return retVal;
+					}
 				}
 			}
 		}
