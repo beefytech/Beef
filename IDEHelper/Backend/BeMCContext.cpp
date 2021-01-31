@@ -16813,12 +16813,12 @@ void BeMCContext::Generate(BeFunction* function)
 								int relScale = 1;
 								if (mcIdx1.IsImmediate())
 								{
-									mcRelOffset = BeMCOperand::FromImmediate(mcIdx1.mImmediate * arrayType->mElementType->mSize);
+									mcRelOffset = BeMCOperand::FromImmediate(mcIdx1.mImmediate * arrayType->mElementType->GetStride());
 								}
 								else
 								{
 									mcRelOffset = mcIdx1;
-									relScale = arrayType->mElementType->mSize;
+									relScale = arrayType->mElementType->GetStride();
 								}
 
 								result = AllocRelativeVirtualReg(elementPtrType, result, mcRelOffset, relScale);
@@ -16847,13 +16847,13 @@ void BeMCContext::Generate(BeFunction* function)
 							{
 								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
 								elementType = arrayType->mElementType;
-								byteOffset = mcIdx1.mImmediate * elementType->mSize;
+								byteOffset = mcIdx1.mImmediate * elementType->GetStride();
 							}
 							else if (ptrType->mElementType->mTypeCode == BeTypeCode_Vector)
 							{
 								auto arrayType = (BeVectorType*)ptrType->mElementType;
 								elementType = arrayType->mElementType;
-								byteOffset = mcIdx1.mImmediate * elementType->mSize;
+								byteOffset = mcIdx1.mImmediate * elementType->GetStride();
 							}
 							else
 							{
@@ -16876,12 +16876,12 @@ void BeMCContext::Generate(BeFunction* function)
 						int relScale = 1;
 						if (mcIdx0.IsImmediate())
 						{
-							mcRelOffset = BeMCOperand::FromImmediate(mcIdx0.mImmediate * ptrType->mElementType->mSize);
+							mcRelOffset = BeMCOperand::FromImmediate(mcIdx0.mImmediate * ptrType->mElementType->GetStride());
 						}
 						else
 						{
 							mcRelOffset = mcIdx0;
-							relScale = ptrType->mElementType->mSize;
+							relScale = ptrType->mElementType->GetStride();
 						}
 
 						result = AllocRelativeVirtualReg(ptrType, result, mcRelOffset, relScale);

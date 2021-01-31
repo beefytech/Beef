@@ -599,6 +599,14 @@ BfIRTypeEntry& BfIRCodeGen::GetTypeEntry(int typeId)
 	return typeEntry;
 }
 
+BfIRTypeEntry* BfIRCodeGen::GetTypeEntry(llvm::Type* type)
+{
+	int typeId = 0;
+	if (!mTypeToTypeIdMap.TryGetValue(type, &typeId))
+		return NULL;
+	return &GetTypeEntry(typeId);
+}
+
 void BfIRCodeGen::SetResult(int id, llvm::Value* value)
 {
 	BfIRCodeGenEntry entry;
@@ -1383,6 +1391,24 @@ llvm::Type* BfIRCodeGen::GetSizeAlignedType(BfIRTypeEntry* typeEntry)
 	return typeEntry->mLLVMType;
 }
 
+llvm::Value* BfIRCodeGen::GetAlignedPtr(llvm::Value* val)
+{
+	if (auto ptrType = llvm::dyn_cast<llvm::PointerType>(val->getType()))
+	{
+		auto elemType = ptrType->getElementType();
+		auto typeEntry = GetTypeEntry(elemType);
+		if (typeEntry != NULL)
+		{
+			auto alignedType = GetSizeAlignedType(typeEntry);
+			if (alignedType != elemType)
+			{
+				return mIRBuilder->CreateBitCast(val, alignedType->getPointerTo());				
+			}
+		}
+	}
+	return NULL;
+}
+
 llvm::Value* BfIRCodeGen::FixGEP(llvm::Value* fromValue, llvm::Value* result)
 {
 	if (auto ptrType = llvm::dyn_cast<llvm::PointerType>(fromValue->getType()))
@@ -1663,6 +1689,7 @@ void BfIRCodeGen::HandleNextCmd()
 			typeEntry.mLLVMType = type;
 			if (typeEntry.mInstLLVMType == NULL)
 				typeEntry.mInstLLVMType = type;
+			mTypeToTypeIdMap[type] = typeId;
 		}
 		break;
 	case BfIRCmd_SetInstType:
@@ -2153,6 +2180,14 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(int, idx0);
+
+			if (auto alignedPtr = GetAlignedPtr(val))
+			{
+				auto gepResult = mIRBuilder->CreateConstInBoundsGEP1_32(NULL, alignedPtr, idx0);
+				SetResult(curId, mIRBuilder->CreateBitCast(gepResult, val->getType()));
+				break;
+			}
+
 			SetResult(curId, mIRBuilder->CreateConstInBoundsGEP1_32(NULL, val, idx0));
 		}
 		break;
@@ -2168,6 +2203,14 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(llvm::Value*, idx0);
+
+			if (auto alignedPtr = GetAlignedPtr(val))
+			{
+				auto gepResult = mIRBuilder->CreateInBoundsGEP(alignedPtr, idx0);
+				SetResult(curId, mIRBuilder->CreateBitCast(gepResult, val->getType()));
+				break;
+			}
+
 			SetResult(curId, mIRBuilder->CreateInBoundsGEP(val, idx0));
 		}
 		break;

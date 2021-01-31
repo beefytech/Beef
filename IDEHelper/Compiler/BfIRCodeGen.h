@@ -116,6 +116,7 @@ public:
 	Array<llvm::Constant*> mConfigConsts64;
 	Dictionary<llvm::Type*, llvm::Value*> mReflectDataMap;
 	Dictionary<llvm::Type*, llvm::Type*> mAlignedTypeToNormalType;
+	Dictionary<llvm::Type*, int> mTypeToTypeIdMap;
 
 public:		
 	void InitTarget();
@@ -123,6 +124,7 @@ public:
 	BfTypeCode GetTypeCode(llvm::Type* type, bool isSigned);
 	llvm::Type* GetLLVMType(BfTypeCode typeCode, bool& isSigned);
 	BfIRTypeEntry& GetTypeEntry(int typeId);
+	BfIRTypeEntry* GetTypeEntry(llvm::Type* type);
 	void SetResult(int id, llvm::Value* value);
 	void SetResult(int id, llvm::Type* value);	
 	void SetResult(int id, llvm::BasicBlock* value);
@@ -135,6 +137,7 @@ public:
 	bool TryMemCpy(llvm::Value* ptr, llvm::Value* val);	
 	bool TryVectorCpy(llvm::Value* ptr, llvm::Value* val);
 	llvm::Type* GetSizeAlignedType(BfIRTypeEntry* typeEntry);
+	llvm::Value* GetAlignedPtr(llvm::Value* val);
 	llvm::Value* FixGEP(llvm::Value* fromValue, llvm::Value* result);
 
 public:
