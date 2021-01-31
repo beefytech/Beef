@@ -13521,6 +13521,50 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 		if (mProject != NULL)
 			return BfTypedValue(GetStringObjectValue(mProject->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
 	}
+
+	if (mCurMethodState->mMixinState != NULL)
+	{
+		if (str == "#CallerLineNum")
+		{
+			return BfTypedValue(GetConstValue(mCurMethodState->mMixinState->mInjectFilePosition.mCurLine + 1), GetPrimitiveType(BfTypeCode_Int32));
+		}
+		else if (str == "#CallerFilePath")
+		{
+			String filePath = "";
+			if (mCurMethodState->mMixinState->mInjectFilePosition.mFileInstance != NULL)
+				filePath = mCurMethodState->mMixinState->mInjectFilePosition.mFileInstance->mParser->mFileName;
+			return BfTypedValue(GetStringObjectValue(filePath), ResolveTypeDef(mCompiler->mStringTypeDef));
+		}
+		else if (str == "#CallerFileName")
+		{
+			String filePath = "";
+			if (mCurMethodState->mMixinState->mInjectFilePosition.mFileInstance != NULL)
+				filePath = mCurMethodState->mMixinState->mInjectFilePosition.mFileInstance->mParser->mFileName;
+			return BfTypedValue(GetStringObjectValue(GetFileName(filePath)), ResolveTypeDef(mCompiler->mStringTypeDef));
+		}
+		else if (str == "#CallerFileDir")
+		{
+			String filePath = "";
+			if (mCurMethodState->mMixinState->mInjectFilePosition.mFileInstance != NULL)
+				filePath = mCurMethodState->mMixinState->mInjectFilePosition.mFileInstance->mParser->mFileName;
+			return BfTypedValue(GetStringObjectValue(GetFileDir(filePath)), ResolveTypeDef(mCompiler->mStringTypeDef));
+		}
+		else if (str == "#CallerMemberName")
+		{
+ 			String memberName = "";
+ 			if (mCurMethodState->mMixinState->mMixinMethodInstance)
+ 				memberName = MethodToString(mCurMethodState->mMixinState->mMixinMethodInstance);
+			return BfTypedValue(GetStringObjectValue(memberName), ResolveTypeDef(mCompiler->mStringTypeDef));
+		}
+		else if (str == "#CallerProject")
+		{
+			BfProject* project = NULL;
+			project = mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mProject;
+			if (project != NULL)
+				return BfTypedValue(GetStringObjectValue(mProject->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
+		}
+	}
+
 	if (str == "#TimeLocal")
 	{
 		time_t rawtime;

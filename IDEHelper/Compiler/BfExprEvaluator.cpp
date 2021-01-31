@@ -6889,6 +6889,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						argValue = BfTypedValue(mModule->GetStringObjectValue(projectName),
 							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
 					}
+					else if (strcmp(globalVar->mName, "#ProjectName") == 0)
+					{
+						String projectName = methodInstance->mMethodDef->mDeclaringType->mProject->mName;
+						argValue = BfTypedValue(mModule->GetStringObjectValue(projectName),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
 					else
 					{
 						argValue = mModule->GetCompilerFieldValue(globalVar->mName);
@@ -15185,6 +15191,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();
 
 	BfMixinState* mixinState = rootMethodState->mMixinStates.Alloc();
+	mixinState->mInjectFilePosition = mModule->mCurFilePosition;
 	mixinState->mPrevMixinState = curMethodState->mMixinState;
 	mixinState->mLocalsStartIdx = (int)mModule->mCurMethodState->mLocals.size();
 	mixinState->mMixinMethodInstance = methodInstance;

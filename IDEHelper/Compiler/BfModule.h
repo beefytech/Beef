@@ -767,6 +767,7 @@ public:
 	BfAstNode* mSource;
 	BfScopeData* mCallerScope;
 	BfScopeData* mTargetScope; // Equals caller scope unless user explicitly calls specifies scope override
+	BfFilePosition mInjectFilePosition;
 	BfMethodInstance* mMixinMethodInstance;
 	BfAstNode* mResultExpr;
 	int mLocalsStartIdx;
