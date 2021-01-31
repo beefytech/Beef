@@ -913,8 +913,13 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 		}
 		else if (constType == BfConstType_AggZero)
 		{
-			CMD_PARAM(llvm::Type*, type);
-			llvmValue = llvm::ConstantAggregateZero::get(type);
+			BfIRTypeEntry* typeEntry = NULL;
+			llvm::Type* type = NULL;
+			Read(type, &typeEntry);
+			if ((wantSizeAligned) && (typeEntry != NULL))			
+				llvmValue = llvm::ConstantAggregateZero::get(GetSizeAlignedType(typeEntry));
+			else
+				llvmValue = llvm::ConstantAggregateZero::get(type);
 			return;
 		}
 		else if (constType == BfConstType_ArrayZero8)
