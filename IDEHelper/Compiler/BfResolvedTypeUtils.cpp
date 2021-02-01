@@ -3420,7 +3420,8 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 	}	
 	else if (auto exprModTypeRef = BfNodeDynCastExact<BfExprModTypeRef>(typeRef))
 	{
-		if (ctx->mResolvedType == NULL)
+		auto cachedResolvedType = ctx->GetCachedResolvedType(typeRef);
+		if (cachedResolvedType == NULL)
 		{
 			if (exprModTypeRef->mTarget != NULL)
 			{
@@ -3454,37 +3455,40 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 				}
 								
 				if ((result) && (exprModTypeRef->mToken->mToken == BfToken_Comptype))
-				{
+				{					
 					auto constant = ctx->mModule->mBfIRBuilder->GetConstant(result.mValue);
 					if (constant != NULL)
 					{
 						if ((constant->mConstType == BfConstType_TypeOf) || (constant->mConstType == BfConstType_TypeOf_WithData))
 						{
 							auto typeOf = (BfTypeOf_Const*)constant;
-							ctx->mResolvedType = typeOf->mType;
+							cachedResolvedType = typeOf->mType;
 						}
 						else if (constant->mConstType == BfConstType_Undef)
 						{							
 							ctx->mHadVar = true;
-							ctx->mResolvedType = ctx->mModule->GetPrimitiveType(BfTypeCode_Var);
+							cachedResolvedType = ctx->mModule->GetPrimitiveType(BfTypeCode_Var);
 						}
 					}
 					
-					if (ctx->mResolvedType == NULL)
+					if (cachedResolvedType == NULL)
 						ctx->mModule->Fail("Constant System.Type value required", exprModTypeRef->mTarget);
 				}
 				else
-					ctx->mResolvedType = result.mType;
+					cachedResolvedType = result.mType;
+
+				if (cachedResolvedType != NULL)
+					ctx->SetCachedResolvedType(typeRef, cachedResolvedType);
 			}
 		}
 
-		if (ctx->mResolvedType == NULL)
+		if (cachedResolvedType == NULL)
 		{
 			ctx->mFailed = true;
 			return 0;
 		}		
 
-		return Hash(ctx->mResolvedType, ctx, flags);
+		return Hash(cachedResolvedType, ctx, flags);
 	}
 	else if (auto constExprTypeRef = BfNodeDynCastExact<BfConstExprTypeRef>(typeRef))
 	{
@@ -3850,6 +3854,24 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 	return genericParamOffset == (int)lhsTypeGenericArguments->size();
 }
 
+BfType* BfResolvedTypeSet::LookupContext::GetCachedResolvedType(BfTypeReference* typeReference)
+{
+	if (typeReference == mRootTypeRef)
+		return mRootResolvedType;
+	BfType** typePtr = NULL;
+	if (mResolvedTypeMap.TryGetValue(typeReference, &typePtr))
+		return *typePtr;
+	return NULL;
+}
+
+void BfResolvedTypeSet::LookupContext::SetCachedResolvedType(BfTypeReference* typeReference, BfType* type)
+{
+	if (typeReference == mRootTypeRef)
+		mRootResolvedType = type;
+	else
+		mResolvedTypeMap[typeReference] = type;
+}
+
 BfType* BfResolvedTypeSet::LookupContext::ResolveTypeRef(BfTypeReference* typeReference)
 {
 	return mModule->ResolveTypeRef(typeReference, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
@@ -3922,8 +3944,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 	
 	if (auto declTypeRef = BfNodeDynCastExact<BfExprModTypeRef>(rhs))
 	{
-		BF_ASSERT(ctx->mResolvedType != NULL);
-		return lhs == ctx->mResolvedType;
+		auto cachedResolveType = ctx->GetCachedResolvedType(rhs);
+		BF_ASSERT(cachedResolveType != NULL);
+		return lhs == cachedResolveType;
 	}
 		
 	// Strip off 'const' - it's just an error when applied to a typeRef in Beef

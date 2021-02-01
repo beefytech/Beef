@@ -2488,7 +2488,8 @@ public:
 		BfTypeReference* mRootTypeRef;
 		BfTypeDef* mRootTypeDef;		
 		BfTypeInstance* mRootOuterTypeInstance;
-		BfType* mResolvedType;		
+		BfType* mRootResolvedType;
+		Dictionary<BfTypeReference*, BfType*> mResolvedTypeMap;
 		BfResolveTypeRefFlags mResolveFlags;		
 		bool mHadVar;
 		bool mFailed;		
@@ -2500,14 +2501,17 @@ public:
 			mRootTypeDef = NULL;
 			mRootOuterTypeInstance = NULL;
 			mModule = NULL;
-			mResolvedType = NULL;
+			mRootResolvedType = NULL;
 			mFailed = false;
 			mHadVar = false;
 			mResolveFlags = BfResolveTypeRefFlag_None;
 		}
 
+		BfType* GetCachedResolvedType(BfTypeReference* typeReference);
+		void SetCachedResolvedType(BfTypeReference* typeReference, BfType* type);
+
 		BfType* ResolveTypeRef(BfTypeReference* typeReference);
-		BfTypeDef* ResolveToTypeDef(BfTypeReference* typeReference, BfType** outType = NULL);
+		BfTypeDef* ResolveToTypeDef(BfTypeReference* typeReference, BfType** outType = NULL);		
 	};
 
 public:
