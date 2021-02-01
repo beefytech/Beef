@@ -3368,7 +3368,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 				auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[i]);
 				if (fieldConstant == NULL)
 					return false;
-				WriteConstant(module, elemsAddr + i * elemType->GetStride(), fieldConstant, elemType);
+				if (!WriteConstant(module, elemsAddr + i * elemType->GetStride(), fieldConstant, elemType))
+					return false;
 			}
 			
 			if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
@@ -3388,7 +3389,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 				auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[i]);
 				if (fieldConstant == NULL)
 					return false;
-				WriteConstant(module, elemsAddr + i * elemType->GetStride(), fieldConstant, elemType);
+				if (!WriteConstant(module, elemsAddr + i * elemType->GetStride(), fieldConstant, elemType))
+					return false;
 			}
 
 			if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
@@ -3415,7 +3417,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 			if (typeInst->mBaseType != NULL)
 			{
 				auto baseConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[0]);
-				WriteConstant(module, addr, baseConstant, typeInst->mBaseType);
+				if (!WriteConstant(module, addr, baseConstant, typeInst->mBaseType))
+					return false;
 			}
 
 			for (auto& fieldInstance : typeInst->mFieldInstances)
@@ -3426,7 +3429,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 				auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[fieldInstance.mDataIdx]);
 				if (fieldConstant == NULL)
 					return false;
-				WriteConstant(module, addr + fieldInstance.mDataOffset, fieldConstant, fieldInstance.mResolvedType);
+				if (!WriteConstant(module, addr + fieldInstance.mDataOffset, fieldConstant, fieldInstance.mResolvedType))
+					return false;
 			}
 		}
 		return true;

@@ -1454,7 +1454,7 @@ BfIRValue BfModule::GetDefaultValue(BfType* type)
 	}
 	if (type->IsVoid())
 		return mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(type));	
-	return mBfIRBuilder->CreateConstStructZero(mBfIRBuilder->MapType(type));
+	return mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(type));
 }
 
 BfTypedValue BfModule::GetFakeTypedValue(BfType* type)
@@ -8440,7 +8440,7 @@ BfIRValue BfModule::GetDbgRawAllocData(BfType* type)
 	}
 
 	SizedArray<BfIRValue, 2> dataValues;
-	dataValues.Add(mBfIRBuilder->CreateConstStructZero(mBfIRBuilder->MapType(dbgRawAllocDataType->mBaseType, BfIRPopulateType_Full)));
+	dataValues.Add(mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(dbgRawAllocDataType->mBaseType, BfIRPopulateType_Full)));
 	dataValues.Add(typeDataRef);
 	dataValues.Add(markFuncPtr);
 	dataValues.Add(mBfIRBuilder->CreateConst(BfTypeCode_Int32, stackCount));

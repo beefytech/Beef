@@ -4492,31 +4492,29 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						mModule->mBfIRBuilder->PopulateType(curCheckType);
 						int tagIdx = -fieldInstance->mDataIdx - 1;
 						if ((mBfEvalExprFlags & BfEvalExprFlags_AllowEnumId) != 0)
-						{								
+						{
 							return BfTypedValue(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx), fieldInstance->mOwner);
 						}
-
 						mModule->PopulateType(fieldInstance->mOwner, BfPopulateType_Data);
-// 						auto agg = mModule->mBfIRBuilder->CreateUndefValue(mModule->mBfIRBuilder->MapType(fieldInstance->mOwner));							
-// 						agg = mModule->mBfIRBuilder->CreateInsertValue(agg, mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx), 2);
+
+						// OLD:
+// 						auto agg = mModule->CreateAlloca(fieldInstance->mOwner);
+// 						auto gep = mModule->mBfIRBuilder->CreateInBoundsGEP(agg, 0, 2);
+// 						mModule->mBfIRBuilder->CreateStore(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx), gep);
 // 
 // 						if (fieldInstance->mResolvedType->mSize != 0)
 // 						{
 // 							mModule->FailAfter("Enum case parameters expected", targetSrc);
 // 						}
 // 
-// 						return BfTypedValue(agg, fieldInstance->mOwner);
+// 						return BfTypedValue(agg, fieldInstance->mOwner, true);
 
-						auto agg = mModule->CreateAlloca(fieldInstance->mOwner);
-						auto gep = mModule->mBfIRBuilder->CreateInBoundsGEP(agg, 0, 2);
-						mModule->mBfIRBuilder->CreateStore(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx), gep);
- 						 
- 						if (fieldInstance->mResolvedType->mSize != 0)
- 						{
- 							mModule->FailAfter("Enum case parameters expected", targetSrc);
- 						}
- 
- 						return BfTypedValue(agg, fieldInstance->mOwner, true);
+						//NEW
+						SizedArray<BfIRValue, 3> values;
+						values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(curCheckType->mBaseType)));
+						values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(curCheckType->GetUnionInnerType())));
+						values.Add(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx));
+						return BfTypedValue(mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(curCheckType), values), curCheckType);						
 					}
 
 					if (fieldInstance->mConstIdx == -1)
@@ -7640,7 +7638,13 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 			BfIRValue enumValue;
 			BfTypedValue result;
 
-			if ((mReceivingValue != NULL) && (mReceivingValue->mType == enumType) && (mReceivingValue->IsAddr()))
+			bool wantConst = IsComptimeEntry();
+
+			if (wantConst)
+			{
+				NOP;
+			}
+			else if ((mReceivingValue != NULL) && (mReceivingValue->mType == enumType) && (mReceivingValue->IsAddr()))
 			{
 				result = *mReceivingValue;
 				mReceivingValue = NULL;
@@ -7651,16 +7655,22 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 				mResultIsTempComposite = true;
 				enumValue = mModule->CreateAlloca(enumType);
 				result = BfTypedValue(enumValue, fieldInstance->mOwner, BfTypedValueKind_TempAddr);
-			}
+			}			
 
 			BF_ASSERT(fieldInstance->mResolvedType->IsTuple());
 			auto tupleType = (BfTypeInstance*)fieldInstance->mResolvedType;
 			mModule->mBfIRBuilder->PopulateType(tupleType);
 	
+			bool constFailed = false;
+			SizedArray<BfIRValue, 8> constTupleMembers;
 			BfIRValue fieldPtr;
 			BfIRValue tuplePtr;
 
-			if (!tupleType->IsValuelessType())
+			if (wantConst)
+			{
+				constTupleMembers.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(tupleType->mBaseType)));
+			}
+			else if (!tupleType->IsValuelessType())
 			{
 				fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(enumValue, 0, 1);
 				auto tuplePtrType = mModule->CreatePointerType(tupleType);
@@ -7688,6 +7698,8 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 					BfError* error = mModule->Fail(StrFormat("Not enough parameters specified, expected %d more.", tupleType->mFieldInstances.size() - (int)argValues.mArguments->size()), refNode);
 					if (error != NULL)
 						mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See enum declaration"), fieldDef->mFieldDeclaration);
+					if (wantConst)
+						constFailed = true;
 					break;
 				}
 				
@@ -7700,13 +7712,22 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 				}
 
 				auto argValue = ResolveArgValue(argValues.mResolvedArgs[tupleFieldIdx], resolvedFieldType, &receivingValue);
-				
+								
+				if (!argValue)
+				{
+					if (wantConst)
+						constFailed = true;
+					continue;
+				}
+				if (argValue.IsValuelessType())
+				{					
+					continue;
+				}
+
 				// Used receiving value?
 				if (argValue.mValue == receivingValue.mValue)
 					continue;
 
-				if ((!argValue) || (argValue.IsValuelessType()))
-					continue;
 				argValue = mModule->AggregateSplat(argValue);
 				argValues.mResolvedArgs[tupleFieldIdx].mExpectedType = resolvedFieldType;
 				if ((argValues.mResolvedArgs[tupleFieldIdx].mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt)) != 0)
@@ -7721,13 +7742,24 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 					// argValue can have a value even if tuplePtr does not have a value. This can happen if we are assigning to a (void) tuple,
 					//  but we have a value that needs to be attempted to be casted to void					
 					argValue = mModule->Cast(argValues.mResolvedArgs[tupleFieldIdx].mExpression, argValue, resolvedFieldType);
-					if (tupleFieldPtr)
+					if (wantConst)
+					{
+						if (!argValue.mValue.IsConst())
+						{
+							mModule->Fail("Field not const", argValues.mResolvedArgs[tupleFieldIdx].mExpression);
+							constFailed = true;
+						}
+						constTupleMembers.Add(argValue.mValue);
+					}
+					else if (tupleFieldPtr)
 					{
 						argValue = mModule->LoadValue(argValue);
 						if (argValue)
 							mModule->mBfIRBuilder->CreateAlignedStore(argValue.mValue, tupleFieldPtr, resolvedFieldType->mAlign);
 					}
 				}
+				else if (wantConst)
+					constFailed = true;
 			}
 
 			if ((intptr)argValues.mResolvedArgs.size() > tupleType->mFieldInstances.size())
@@ -7739,14 +7771,49 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 				BfError* error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", argValues.mResolvedArgs.size() - tupleType->mFieldInstances.size()), errorRef);
 				if (error != NULL)
 					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See enum declaration"), fieldDef->mFieldDeclaration);
+
+				if (wantConst)
+					constFailed = true;
 			}			
-
-			//auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(enumValue, 0, 2);
-
+			
 			auto dscrType = enumType->GetDiscriminatorType();
 			auto dscrField = &enumType->mFieldInstances.back();
-
 			int tagIdx = -fieldInstance->mDataIdx - 1;
+
+			if ((wantConst) && (!constFailed))
+			{
+				auto unionType = enumType->GetUnionInnerType();
+				auto constTuple = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(tupleType, BfIRPopulateType_Full), constTupleMembers);
+				
+				Array<uint8> memArr;
+				memArr.Resize(unionType->mSize);
+				if (!mModule->mBfIRBuilder->WriteConstant(constTuple, memArr.mVals, tupleType))
+				{
+					constFailed = true;
+				}				
+				else
+				{
+					auto unionValue = mModule->mBfIRBuilder->ReadConstant(memArr.mVals, unionType);
+					if (!unionValue)
+					{
+						constFailed = true;
+					}
+					else
+					{
+						SizedArray<BfIRValue, 3> constEnumMembers;
+						constEnumMembers.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(enumType->mBaseType, BfIRPopulateType_Full)));
+						constEnumMembers.Add(unionValue);
+						constEnumMembers.Add(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx));
+						return BfTypedValue(mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(enumType, BfIRPopulateType_Full), constEnumMembers), enumType);
+					}
+				}
+			}			
+			
+			if (constFailed)
+			{
+				return mModule->GetDefaultTypedValue(enumType, false, BfDefaultValueKind_Addr);
+			}
+
 			auto dscFieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(enumValue, 0, dscrField->mDataIdx);
 			mModule->mBfIRBuilder->CreateAlignedStore(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx), dscFieldPtr, 4);
 			return result;
@@ -18598,7 +18665,7 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 
 			Array<BfIRValue> irValues;
 			irValues.Resize(typedValues.mSize + 1);
-			irValues[0] = mModule->mBfIRBuilder->CreateConstStructZero(mModule->mBfIRBuilder->MapType(tupleType->mBaseType));
+			irValues[0] = mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(tupleType->mBaseType));
 
 			for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 			{

@@ -928,7 +928,7 @@ public:
 	BfIRValue CreateConst(BfConstant* fromConst, BfIRConstHolder* fromHolder);
 	BfIRValue CreateConstNull();
 	BfIRValue CreateConstNull(BfIRType nullType);
-	BfIRValue CreateConstStructZero(BfIRType aggType);
+	BfIRValue CreateConstAggZero(BfIRType aggType);
 	BfIRValue CreateConstAgg(BfIRType type, const BfSizedArray<BfIRValue>& values);
 	BfIRValue CreateConstAggCE(BfIRType type, addr_ce ptr);
 	BfIRValue CreateConstArrayZero(BfIRType type, int count);
@@ -936,6 +936,9 @@ public:
 	BfIRValue CreateTypeOf(BfType* type);
 	BfIRValue CreateTypeOf(BfType* type, BfIRValue typeData);
 	BfIRValue GetUndefConstValue(BfIRType type);	
+
+	bool WriteConstant(BfIRValue val, void* ptr, BfType* type);
+	BfIRValue ReadConstant(void* ptr, BfType* type);
 };
 
 enum BfIRPopulateType

@@ -664,7 +664,7 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 	else if (fromConst->mConstType == BfConstType_AggZero)
 	{
 		auto aggZero = (BfConstant*)fromConst;
-		return CreateConstStructZero(fromConst->mIRType);
+		return CreateConstAggZero(fromConst->mIRType);
 	}
 	else if (fromConst->mConstType == BfConstType_Agg)
 	{
@@ -747,7 +747,7 @@ BfIRValue BfIRConstHolder::CreateConstNull(BfIRType ptrType)
 	return irValue;
 }
 
-BfIRValue BfIRConstHolder::CreateConstStructZero(BfIRType aggType)
+BfIRValue BfIRConstHolder::CreateConstAggZero(BfIRType aggType)
 {
 	BfConstant* constant = mTempAlloc.Alloc<BfConstant>();
 	constant->mConstType = BfConstType_AggZero;
@@ -861,6 +861,203 @@ BfIRValue BfIRConstHolder::GetUndefConstValue(BfIRType irType)
 #endif
 	BF_ASSERT((void*)GetConstant(undefVal) == (void*)constUndef);
 	return undefVal;
+}
+
+bool BfIRConstHolder::WriteConstant(BfIRValue val, void* ptr, BfType* type)
+{
+	auto constant = GetConstant(val);
+	if (constant == NULL)
+		return false;
+
+	switch (constant->mTypeCode)
+	{
+	case BfTypeCode_Int8:
+	case BfTypeCode_UInt8:
+	case BfTypeCode_Boolean:
+	case BfTypeCode_Char8:
+		*(int8*)ptr = constant->mInt8;
+		return true;
+	case BfTypeCode_Int16:
+	case BfTypeCode_UInt16:
+	case BfTypeCode_Char16:
+		*(int16*)ptr = constant->mInt16;
+		return true;
+	case BfTypeCode_Int32:
+	case BfTypeCode_UInt32:
+	case BfTypeCode_Char32:
+		*(int32*)ptr = constant->mInt32;
+		return true;
+	case BfTypeCode_Int64:
+	case BfTypeCode_UInt64:
+		*(int64*)ptr = constant->mInt64;
+		return true;
+	case BfTypeCode_NullPtr:
+		if (mModule->mSystem->mPtrSize == 4)
+			*(int32*)ptr = 0;
+		else
+			*(int64*)ptr = 0;
+		return true;
+	case BfTypeCode_Float:
+		*(float*)ptr = (float)constant->mDouble;
+		return true;
+	case BfTypeCode_Double:
+		*(double*)ptr = constant->mDouble;
+		return true;
+	}
+
+	if (constant->mConstType == BfConstType_Agg)
+	{
+		auto aggConstant = (BfConstantAgg*)constant;
+		if (type->IsSizedArray())
+		{
+			auto sizedArrayType = (BfSizedArrayType*)type;
+			for (int i = 0; i < sizedArrayType->mElementCount; i++)
+			{
+				if (!WriteConstant(aggConstant->mValues[i], (uint8*)ptr + (i * sizedArrayType->mElementType->GetStride()), sizedArrayType->mElementType))
+					return false;
+			}
+
+			return false;
+		}
+		else
+		{
+			BF_ASSERT(type->IsStruct());
+
+			mModule->PopulateType(type);
+			auto typeInst = type->ToTypeInstance();
+			int idx = 0;
+
+			if (typeInst->mBaseType != NULL)
+			{				
+				if (!WriteConstant(aggConstant->mValues[0], ptr, typeInst->mBaseType))
+					return false;
+			}
+
+			for (auto& fieldInstance : typeInst->mFieldInstances)
+			{
+				if (fieldInstance.mDataOffset < 0)
+					continue;				
+				if (!WriteConstant(aggConstant->mValues[fieldInstance.mDataIdx], (uint8*)ptr + fieldInstance.mDataOffset, fieldInstance.mResolvedType))
+					return false;
+			}
+		}
+		return true;
+	}
+
+	if (constant->mConstType == BfConstType_AggZero)
+	{
+		BF_ASSERT(type->IsComposite());
+		memset(ptr, 0, type->mSize);
+		return true;
+	}
+
+	if (constant->mConstType == BfConstType_BitCast)
+	{
+		auto constBitCast = (BfConstantBitCast*)constant;
+
+		auto constTarget = mModule->mBfIRBuilder->GetConstantById(constBitCast->mTarget);
+		return WriteConstant(BfIRValue(BfIRValueFlags_Const, constBitCast->mTarget), ptr, type);
+	}
+
+	return false;
+}
+
+BfIRValue BfIRConstHolder::ReadConstant(void* ptr, BfType* type)
+{	
+	if (type->IsPrimitiveType())
+	{
+		auto primType = (BfPrimitiveType*)type;
+		switch (primType->mTypeDef->mTypeCode)
+		{
+		case BfTypeCode_Int8:
+		case BfTypeCode_UInt8:
+		case BfTypeCode_Boolean:
+		case BfTypeCode_Char8:
+			return CreateConst(primType->mTypeDef->mTypeCode, *(int8*)ptr);
+		case BfTypeCode_Int16:
+		case BfTypeCode_UInt16:
+		case BfTypeCode_Char16:
+			return CreateConst(primType->mTypeDef->mTypeCode, *(int16*)ptr);
+		case BfTypeCode_Int32:
+		case BfTypeCode_UInt32:
+		case BfTypeCode_Char32:
+			return CreateConst(primType->mTypeDef->mTypeCode, *(int32*)ptr);
+		case BfTypeCode_Int64:
+		case BfTypeCode_UInt64:
+			return CreateConst(primType->mTypeDef->mTypeCode, *(uint64*)ptr);
+		case BfTypeCode_NullPtr:
+			return CreateConstNull();
+		case BfTypeCode_Float:
+			return CreateConst(primType->mTypeDef->mTypeCode, *(float*)ptr);
+		case BfTypeCode_Double:
+			return CreateConst(primType->mTypeDef->mTypeCode, *(double*)ptr);
+		case BfTypeCode_IntPtr:
+		case BfTypeCode_UIntPtr:
+			if (mModule->mSystem->mPtrSize == 4)
+				return CreateConst(primType->mTypeDef->mTypeCode, *(int32*)ptr);
+			else
+				return CreateConst(primType->mTypeDef->mTypeCode, *(uint64*)ptr);
+		default:
+			return BfIRValue();
+		}
+	}
+
+	if (type->IsTypedPrimitive())
+	{
+		return ReadConstant(ptr, type->GetUnderlyingType());
+	}
+
+	if (type->IsSizedArray())
+	{
+		SizedArray<BfIRValue, 8> irValues;
+
+		auto sizedArrayType = (BfSizedArrayType*)type;
+		for (int i = 0; i < sizedArrayType->mElementCount; i++)
+		{
+			auto val = ReadConstant((uint8*)ptr + (i * sizedArrayType->mElementType->GetStride()), sizedArrayType->mElementType);
+			if (!val)
+				return BfIRValue();
+			irValues.Add(val);
+		}
+
+		BfIRType irType;
+		irType.mKind = BfIRTypeData::TypeKind_TypeId;
+		irType.mId = type->mTypeId;
+		return CreateConstAgg(irType, irValues);
+	}
+
+	if (type->IsStruct())
+	{		
+		mModule->PopulateType(type);
+		auto typeInst = type->ToTypeInstance();
+		int idx = 0;
+
+		SizedArray<BfIRValue, 8> irValues;
+
+		if (typeInst->mBaseType != NULL)
+		{
+			auto val = ReadConstant(ptr, typeInst->mBaseType);
+			if (!val)
+				return BfIRValue();
+			irValues.Add(val);
+		}
+
+		for (auto& fieldInstance : typeInst->mFieldInstances)
+		{
+			if (fieldInstance.mDataOffset < 0)
+				continue;
+			auto val = ReadConstant((uint8*)ptr + fieldInstance.mDataOffset, fieldInstance.mResolvedType);
+			if (!val)
+				return BfIRValue();
+			irValues.Add(val);
+		}
+		BfIRType irType;
+		irType.mKind = BfIRTypeData::TypeKind_TypeId;
+		irType.mId = type->mTypeId;
+		return CreateConstAgg(irType, irValues);		
+	}
+	
+	return BfIRValue();
 }
 
 //////////////////////////////////////////////////////////////////////////

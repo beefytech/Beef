@@ -11351,7 +11351,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
  			return allocaInst;
 		}
 
-		auto zeroNullable = mBfIRBuilder->CreateConstStructZero(mBfIRBuilder->MapType(toType));
+		auto zeroNullable = mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(toType));
 		return zeroNullable;
 	}
 
@@ -11778,7 +11778,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					
 					auto stringCharPtr = GetStringCharPtr(stringId);					
 					SizedArray<BfIRValue, 2> spanFieldVals;
-					spanFieldVals.Add(mBfIRBuilder->CreateConstStructZero(mBfIRBuilder->MapType(svTypeInst->mBaseType->mBaseType)));
+					spanFieldVals.Add(mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(svTypeInst->mBaseType->mBaseType)));
 					spanFieldVals.Add(stringCharPtr);
 					spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, entry->mString.mLength));					
 

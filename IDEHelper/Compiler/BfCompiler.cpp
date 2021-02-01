@@ -2009,7 +2009,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			int dataSize = 16*1024;
 			auto irArrType = bfModule->mBfIRBuilder->GetSizedArrayType(bfModule->mBfIRBuilder->MapType(int8Type), dataSize);
 			String name = "__BFTLS_EXTRA";
-			auto irVal = bfModule->mBfIRBuilder->CreateGlobalVariable(irArrType, false, BfIRLinkageType_External, bfModule->mBfIRBuilder->CreateConstStructZero(irArrType), name, true);
+			auto irVal = bfModule->mBfIRBuilder->CreateGlobalVariable(irArrType, false, BfIRLinkageType_External, bfModule->mBfIRBuilder->CreateConstAggZero(irArrType), name, true);
 			BfIRMDNode dbgArrayType = bfModule->mBfIRBuilder->DbgCreateArrayType(dataSize * 8, 8, bfModule->mBfIRBuilder->DbgGetType(int8Type), dataSize);
 			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, name, name, BfIRMDNode(), 0, dbgArrayType, false, irVal);
 		}

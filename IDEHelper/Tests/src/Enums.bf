@@ -85,6 +85,9 @@ namespace Tests
 			}
 			Test.Assert(a == 3);
 			Test.Assert(b == 4);
+
+			const EnumE e0 = .A;
+			const EnumE e1 = .B(1);
 		}
 
 		[Test]
