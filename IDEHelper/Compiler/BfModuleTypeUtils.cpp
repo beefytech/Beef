@@ -3950,25 +3950,32 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			auto fieldDef = fieldInstance->GetFieldDef();
 
-			BF_ASSERT(fieldInstance->mCustomAttributes == NULL);
+			BF_ASSERT(fieldInstance->mCustomAttributes == NULL);			
 			if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL))
-			{
-				BfTypeState typeState;
-				typeState.mPrevState = mContext->mCurTypeState;
-				typeState.mCurFieldDef = fieldDef;
-				typeState.mCurTypeDef = fieldDef->mDeclaringType;
-				typeState.mTypeInstance = typeInstance;
-				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-
-				fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
-
-				for (auto customAttr : fieldInstance->mCustomAttributes->mAttributes)
+			{	
+				if (auto propDecl = BfNodeDynCast<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
 				{
-					if (TypeToString(customAttr.mType) == "System.ThreadStaticAttribute")
+					// Handled elsewhere
+				}
+				else
+				{
+					BfTypeState typeState;
+					typeState.mPrevState = mContext->mCurTypeState;
+					typeState.mCurFieldDef = fieldDef;
+					typeState.mCurTypeDef = fieldDef->mDeclaringType;
+					typeState.mTypeInstance = typeInstance;
+					SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
+					fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
+
+					for (auto customAttr : fieldInstance->mCustomAttributes->mAttributes)
 					{
-						if ((!fieldDef->mIsStatic) || (fieldDef->mIsConst))
+						if (TypeToString(customAttr.mType) == "System.ThreadStaticAttribute")
 						{
-							Fail("ThreadStatic attribute can only be used on static fields", fieldDef->mFieldDeclaration->mAttributes);
+							if ((!fieldDef->mIsStatic) || (fieldDef->mIsConst))
+							{
+								Fail("ThreadStatic attribute can only be used on static fields", fieldDef->mFieldDeclaration->mAttributes);
+							}
 						}
 					}
 				}
