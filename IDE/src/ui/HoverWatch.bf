@@ -1221,7 +1221,7 @@ namespace IDE.ui
 			int workspaceY;
 			int workspaceWidth;
 			int workspaceHeight;
-			BFApp.sApp.GetWorkspaceRect(out workspaceX, out workspaceY, out workspaceWidth, out workspaceHeight);
+			BFApp.sApp.GetWorkspaceRectFrom((.)listView.mRequestPos.Value.x, (.)listView.mRequestPos.Value.y, 1, 1, out workspaceX, out workspaceY, out workspaceWidth, out workspaceHeight);
 
 			float popupX = listView.mRequestPos.Value.x;
 			float popupY = listView.mRequestPos.Value.y;
