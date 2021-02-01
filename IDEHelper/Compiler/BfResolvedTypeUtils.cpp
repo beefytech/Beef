@@ -1539,6 +1539,7 @@ BfTypeInstance::~BfTypeInstance()
 	ReleaseData();
 	delete mTypeInfoEx;
 	delete mGenericTypeInfo;
+	delete mCeTypeInfo;
 	delete mCustomAttributes;
 	delete mAttributeData;
 	for (auto methodInst : mInternalMethods)

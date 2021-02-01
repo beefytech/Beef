@@ -1916,7 +1916,7 @@ namespace IDE.ui
 					//mProcessResolveCharIdSpan.Dispose();
 
 					resolveParams.mCancelled = true;
-                    if (resolveType == ResolveType.ClassifyFullRefresh)
+                    if ((resolveType == ResolveType.Classify) || (resolveType == ResolveType.ClassifyFullRefresh))
 					{
                         QueueFullRefresh(false);
 					}

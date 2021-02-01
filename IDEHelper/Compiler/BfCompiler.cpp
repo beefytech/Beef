@@ -346,6 +346,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	memset(&mStats, 0, sizeof(mStats));
 	mCompletionPct = 0;	
 	mCanceling = false;
+	mNeedsFullRefresh = false;
 	mFastFinish = false;
 	mHasQueuedTypeRebuilds = false;
 	mIsResolveOnly = isResolveOnly;
@@ -7395,6 +7396,12 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mCanceling = false;
 
 	mContext->ValidateDependencies();
+
+	if (mNeedsFullRefresh)
+	{
+		mNeedsFullRefresh = false;
+		return false;
+	}
 
 	return !didCancel && !mHasQueuedTypeRebuilds;
 }

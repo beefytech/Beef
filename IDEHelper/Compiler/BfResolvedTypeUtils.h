@@ -396,7 +396,6 @@ public:
 
 class BfDependedType;
 class BfTypeInstance;
-class BfTypeInstance;
 class BfPrimitiveType;
 
 enum BfTypeRebuildFlags
@@ -839,6 +838,7 @@ public:
 	bool mDisallowCalling:1;		
 	bool mIsInnerOverride:1;
 	bool mInCEMachine:1;
+	bool mCeCancelled:1;
 	bool mIsDisposed:1;
 	BfMethodChainType mChainType;
 	BfComptimeFlags mComptimeFlags;
@@ -879,6 +879,7 @@ public:
 		mDisallowCalling = false;
 		mIsInnerOverride = false;
 		mInCEMachine = false;
+		mCeCancelled = false;
 		mIsDisposed = false;
 		mChainType = BfMethodChainType_None;
 		mComptimeFlags = BfComptimeFlag_None;
@@ -1787,6 +1788,28 @@ public:
 	void ReportMemory(MemReporter* memReporter);
 };
 
+class BfCeTypeEmitEntry
+{
+public:
+	String mEmitData;
+};
+
+class BfCeTypeInfo
+{
+public:
+	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
+	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
+	Val128 mHash;
+	bool mFailed;
+	BfCeTypeInfo* mNext;
+
+public:
+	BfCeTypeInfo()
+	{
+		mFailed = false;
+		mNext = NULL;
+	}
+};
 
 // Instance of struct or class
 class BfTypeInstance : public BfDependedType
@@ -1804,6 +1827,7 @@ public:
 	BfAttributeData* mAttributeData;
 	BfTypeInfoEx* mTypeInfoEx;
 	BfGenericTypeInfo* mGenericTypeInfo;
+	BfCeTypeInfo* mCeTypeInfo;
 
 	Array<BfTypeInterfaceEntry> mInterfaces;	
 	Array<BfTypeInterfaceMethodEntry> mInterfaceMethodTable;
@@ -1876,6 +1900,7 @@ public:
 		mAttributeData = NULL;
 		mTypeInfoEx = NULL;
 		mGenericTypeInfo = NULL;
+		mCeTypeInfo = NULL;
 		//mClassVData = NULL;
 		mVirtualMethodTableSize = 0;
 		mHotTypeData = NULL;		

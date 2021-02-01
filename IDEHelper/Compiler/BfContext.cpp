@@ -829,7 +829,8 @@ void BfContext::ValidateDependencies()
 void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuildModule, bool placeSpecializiedInPurgatory)
 {
 	BfTypeInstance* typeInst = type->ToTypeInstance();		
-		
+	
+	
 	if (type->IsDeleting())
 	{
 		return;
@@ -865,7 +866,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		
 		return;
 	}
-	
+
 	// We need to verify lookups before we rebuild the type, because a type lookup change needs to count as a TypeDataChanged
 	VerifyTypeLookups(typeInst);
 
@@ -1136,7 +1137,12 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 	{
 		auto dependentType = depItr.mKey;
 		auto dependencyFlags = depItr.mValue.mFlags;
-		
+	
+		if (dependentType->mRevision == mCompiler->mRevision)
+		{
+			continue;
+		}
+
 		auto dependentDType = dependentType->ToDependedType();
 		if (dependentDType != NULL)
 		{
@@ -1217,6 +1223,11 @@ void BfContext::TypeMethodSignaturesChanged(BfTypeInstance* typeInst)
 	{
 		auto dependentType = depItr.mKey;
 		auto dependencyFlags = depItr.mValue.mFlags;
+
+		if (dependentType->mRevision == mCompiler->mRevision)
+		{
+			continue;
+		}
 
 		// We don't need to cascade rebuilding for method-based usage - just rebuild the type directly (unlike TypeDataChanged, which cascades)
 		if ((dependencyFlags & BfDependencyMap::DependencyFlag_Calls) ||

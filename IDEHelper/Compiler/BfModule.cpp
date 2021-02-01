@@ -18163,6 +18163,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	SetAndRestoreValue<BfFilePosition> prevFilePos(mCurFilePosition);	
 	SetAndRestoreValue<bool> prevHadBuildError(mHadBuildError, false);
 	SetAndRestoreValue<bool> prevHadWarning(mHadBuildWarning, false);
+	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors);
 	SetAndRestoreValue<bool> prevIgnoreWarnings(mIgnoreWarnings, mIsComptimeModule);
 
 	if ((methodInstance->mIsReified) &&
@@ -19810,6 +19811,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 
 			DoCEEmit(methodInstance);
+			if (methodInstance->mCeCancelled)
+				mIgnoreErrors = true;
 
 			if (auto fieldDtorBody = BfNodeDynCast<BfFieldDtorDeclaration>(methodDef->mBody))
 			{

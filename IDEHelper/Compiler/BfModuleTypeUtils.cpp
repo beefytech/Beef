@@ -2042,15 +2042,47 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				// We populated before we could finish
 				AssertErrorState();
 			}
-			else if (!ceEmitContext->mEmitData.IsEmpty())
+			else 
 			{
-				String ctxStr = "comptime ApplyToType of ";
-				ctxStr += TypeToString(attrType);
-				ctxStr += " to ";
-				ctxStr += TypeToString(typeInstance);
-				ctxStr += " ";
-				ctxStr += customAttribute.mRef->LocationToString();
-				UpdateCEEmit(ceEmitContext, typeInstance, typeInstance->mTypeDef, ctxStr, customAttribute.mRef);
+				auto owner = methodInstance->GetOwner();
+				int typeId = owner->mTypeId;
+				if ((!result) && (mCompiler->mFastFinish))
+				{
+					if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext == NULL))
+						typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
+					if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext != NULL))
+						typeInstance->mCeTypeInfo->mNext->mFailed = true;
+					if (typeInstance->mCeTypeInfo != NULL)
+					{
+						BfCeTypeEmitEntry* entry = NULL;
+						if (typeInstance->mCeTypeInfo->mTypeIFaceMap.TryGetValue(typeId, &entry))
+						{
+							ceEmitContext->mEmitData = entry->mEmitData;
+						}
+					}
+				}
+				else if (!ceEmitContext->mEmitData.IsEmpty())
+				{
+					if (typeInstance->mCeTypeInfo == NULL)
+						typeInstance->mCeTypeInfo = new BfCeTypeInfo();
+					if (typeInstance->mCeTypeInfo->mNext == NULL)
+						typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
+
+					BfCeTypeEmitEntry entry;
+					entry.mEmitData = ceEmitContext->mEmitData;
+					typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
+				}
+
+				if (!ceEmitContext->mEmitData.IsEmpty())
+				{
+					String ctxStr = "comptime ApplyToType of ";
+					ctxStr += TypeToString(attrType);
+					ctxStr += " to ";
+					ctxStr += TypeToString(typeInstance);
+					ctxStr += " ";
+					ctxStr += customAttribute.mRef->LocationToString();
+					UpdateCEEmit(ceEmitContext, typeInstance, typeInstance->mTypeDef, ctxStr, customAttribute.mRef);
+				}
 			}
 
 			mCompiler->mCEMachine->ReleaseContext(ceContext);
@@ -2211,19 +2243,49 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 
 		auto methodInstance = GetRawMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
 		auto result = mCompiler->mCEMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
-
+		
 		if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
 		{
 			// We populated before we could finish
 			AssertErrorState();
 		}
-		else if (!ceEmitContext->mEmitData.IsEmpty())
-		{
-			String ctxStr = "OnCompile execution of ";
-			ctxStr += MethodToString(methodInstance);
-			ctxStr += " ";
-			ctxStr += methodInstance->mMethodDef->GetRefNode()->LocationToString();
-			UpdateCEEmit(ceEmitContext, typeInstance, methodInstance->mMethodDef->mDeclaringType, ctxStr, methodInstance->mMethodDef->GetRefNode());
+		else
+		{			
+			if ((!result) && (mCompiler->mFastFinish))
+			{
+				if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext == NULL))
+					typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
+				if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext != NULL))
+					typeInstance->mCeTypeInfo->mNext->mFailed = true;
+				if (typeInstance->mCeTypeInfo != NULL)
+				{
+					BfCeTypeEmitEntry* entry = NULL;
+					if (typeInstance->mCeTypeInfo->mOnCompileMap.TryGetValue(methodDef->mIdx, &entry))
+					{
+						ceEmitContext->mEmitData = entry->mEmitData;
+					}
+				}
+			}
+			else if (!ceEmitContext->mEmitData.IsEmpty())
+			{
+				if (typeInstance->mCeTypeInfo == NULL)
+					typeInstance->mCeTypeInfo = new BfCeTypeInfo();
+				if (typeInstance->mCeTypeInfo->mNext == NULL)
+					typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
+
+				BfCeTypeEmitEntry entry;
+				entry.mEmitData = ceEmitContext->mEmitData;
+				typeInstance->mCeTypeInfo->mNext->mOnCompileMap[methodDef->mIdx] = entry;
+			}
+			
+			if (!ceEmitContext->mEmitData.IsEmpty())
+			{
+				String ctxStr = "OnCompile execution of ";
+				ctxStr += MethodToString(methodInstance);
+				ctxStr += " ";
+				ctxStr += methodInstance->mMethodDef->GetRefNode()->LocationToString();
+				UpdateCEEmit(ceEmitContext, typeInstance, methodInstance->mMethodDef->mDeclaringType, ctxStr, methodInstance->mMethodDef->GetRefNode());
+			}
 		}
 
 		if (mCompiler->mCanceling)
@@ -2241,9 +2303,9 @@ void BfModule::DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers)
 	int startFieldCount = typeInstance->mTypeDef->mFields.mSize;
 	int startPropCount = typeInstance->mTypeDef->mProperties.mSize;
 
-	CeEmitContext emitContext;
-	emitContext.mType = typeInstance;
-	ExecuteCEOnCompile(&emitContext, typeInstance, BfCEOnCompileKind_TypeInit);	
+	CeEmitContext ceEmitContext;
+	ceEmitContext.mType = typeInstance;
+	ExecuteCEOnCompile(&ceEmitContext, typeInstance, BfCEOnCompileKind_TypeInit);
 
 	if ((startMethodCount != typeInstance->mTypeDef->mMethods.mSize) ||
 		(startFieldCount != typeInstance->mTypeDef->mFields.mSize) ||
@@ -2305,6 +2367,11 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 
 			auto activeTypeDef = typeInstance->mTypeDef;			
 			auto result = ceContext->Call(customAttribute.mRef, this, applyMethodInstance, args, CeEvalFlags_None, NULL);
+
+			if ((!result) && (mCompiler->mFastFinish))
+			{
+				methodInstance->mCeCancelled = true;
+			}
 
 			if ((!ceEmitContext.mEmitData.IsEmpty()) || (!ceEmitContext.mExitEmitData.IsEmpty()))
 			{
@@ -3710,6 +3777,45 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
  			if (typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit)
  				typeInstance->mDefineState = BfTypeDefineState_CEPostTypeInit;
+
+			if (typeInstance->mCeTypeInfo != NULL)
+			{
+				if (typeInstance->mCeTypeInfo->mNext != NULL)
+				{
+					auto ceInfo = typeInstance->mCeTypeInfo->mNext;
+					HashContext hashCtx;
+					hashCtx.Mixin(ceInfo->mOnCompileMap.mCount);
+					for (auto& kv : ceInfo->mOnCompileMap)
+					{
+						hashCtx.Mixin(kv.mKey);
+						hashCtx.MixinStr(kv.mValue.mEmitData);
+					}
+					hashCtx.Mixin(ceInfo->mTypeIFaceMap.mCount);
+					for (auto& kv : ceInfo->mTypeIFaceMap)
+					{
+						hashCtx.Mixin(kv.mKey);
+						hashCtx.MixinStr(kv.mValue.mEmitData);
+					}
+
+					typeInstance->mCeTypeInfo->mNext->mHash = hashCtx.Finish128();
+
+					if (!typeInstance->mCeTypeInfo->mNext->mFailed)
+					{
+						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
+						{
+							if (mCompiler->mIsResolveOnly)
+								mCompiler->mNeedsFullRefresh = true;
+							mContext->RebuildDependentTypes(typeInstance);
+						}						
+						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
+						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
+						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;
+					}
+					
+					delete typeInstance->mCeTypeInfo->mNext;
+					typeInstance->mCeTypeInfo->mNext = NULL;
+				}
+			}
 
 			if (hadNewMembers)
 			{
