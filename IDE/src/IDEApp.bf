@@ -6588,6 +6588,9 @@ namespace IDE
 							nextTab = checkTab;
 	                });
 			}
+			else {
+				nextTab = tabbedView.GetActiveTab();
+			}
 
 			tabbedView.RemoveTab(tabButton);
 			if (nextTab != null)
