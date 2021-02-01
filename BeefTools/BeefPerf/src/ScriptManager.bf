@@ -26,8 +26,8 @@ namespace BeefPerf
 				public Object mTargetObject;
 			}
 
-			public Dictionary<String, Target> mTargets = new .() ~ DeleteDictionaryAndKeysAndItems!(_);
-			public Dictionary<String, Cmd> mCmds = new .() ~ DeleteDictionaryAndKeysAndItems!(_);
+			public Dictionary<String, Target> mTargets = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
+			public Dictionary<String, Cmd> mCmds = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
 		}
 
 		public class QueuedCmd
@@ -153,7 +153,7 @@ namespace BeefPerf
 
 		public void Clear()
 		{
-			DeleteAndClearItems!(mCmdList);
+			ClearAndDeleteItems!(mCmdList);
 		}
 
 		public void QueueCommandFile(StringView filePath)
