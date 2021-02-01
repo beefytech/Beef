@@ -2910,9 +2910,10 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 			}
 			else if ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType()))
 			{
-				errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
+				errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());				
 				isWhileSpecializing = true;
 			}
+
 			return true;
 		};
 
@@ -2943,17 +2944,10 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 		}		
 	}
 
-	// Keep in mind that all method specializations with generic type instances as its method generic params
-	//  need to be deferred because the specified generic type instance might get deleted at the end of the 
-	//  compilation due to no longer having indirect references removed, and we have to ignore errors from
-	//  those method specializations if that occurs
-	if ((isWhileSpecializing) || (deferError))
-	{
-		BfError* bfError = mCompiler->mPassInstance->DeferFail(errorString, refNode);
-		if (bfError != NULL)
-			bfError->mIsWhileSpecializing = isWhileSpecializing;
-		return bfError;
-	}
+	BfError* bfError = NULL;
+
+	if (isWhileSpecializing)
+		deferError = true;
 
 	if ((!isWhileSpecializing) && (mCurTypeInstance != NULL) && ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType())))
 	{		
@@ -2966,7 +2960,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mEmitRefNode != NULL))
 	{
-		BfError* bfError = mCompiler->mPassInstance->Fail("Emitted code had errors", mCurMethodState->mEmitRefNode);
+		bfError = mCompiler->mPassInstance->Fail("Emitted code had errors", mCurMethodState->mEmitRefNode);
 		if (bfError != NULL)
 			mCompiler->mPassInstance->MoreInfo(errorString, refNode);	
 		return bfError;
@@ -2974,17 +2968,25 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 	// Check mixins
 	{
-		auto checkMethodInstance = mCurMethodState;
-		while (checkMethodInstance != NULL)
+		auto checkMethodState = mCurMethodState;
+		while (checkMethodState != NULL)
 		{
-			auto rootMixinState = checkMethodInstance->GetRootMixinState();
+			auto rootMixinState = checkMethodState->GetRootMixinState();
 			if (rootMixinState != NULL)
 			{
-				BfError* bfError = mCompiler->mPassInstance->Fail(StrFormat("Failed to inject mixin '%s'", MethodToString(rootMixinState->mMixinMethodInstance).c_str()), rootMixinState->mSource);
-				if (bfError != NULL)
-					mCompiler->mPassInstance->MoreInfo(errorString, refNode);
-
-				auto mixinState = checkMethodInstance->mMixinState;
+				String mixinErr = StrFormat("Failed to inject mixin '%s'", MethodToString(rootMixinState->mMixinMethodInstance).c_str());
+				if (deferError)
+					bfError = mCompiler->mPassInstance->DeferFail(mixinErr, rootMixinState->mSource);
+				else
+					bfError = mCompiler->mPassInstance->Fail(mixinErr, rootMixinState->mSource);
+				
+				if (bfError == NULL)
+					return NULL;
+				
+				bfError->mIsWhileSpecializing = isWhileSpecializing;
+				mCompiler->mPassInstance->MoreInfo(errorString, refNode);
+								
+				auto mixinState = checkMethodState->mMixinState;
 				while ((mixinState != NULL) && (mixinState->mPrevMixinState != NULL))
 				{
 					mCompiler->mPassInstance->MoreInfo(StrFormat("Injected from mixin '%s'", MethodToString(mixinState->mPrevMixinState->mMixinMethodInstance).c_str()), mixinState->mSource);
@@ -2994,22 +2996,21 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 				return bfError;
 			}
 
-			checkMethodInstance = checkMethodInstance->mPrevMethodState;
+			checkMethodState = checkMethodState->mPrevMethodState;
 		}
 	}
-
-	BfError* bfError = NULL;
-	if (refNode == NULL)
-		bfError = mCompiler->mPassInstance->Fail(errorString);
-	else
-	{		
-		bfError = mCompiler->mPassInstance->Fail(errorString, refNode);
-	}		
+	
+	if (deferError)
+		bfError = mCompiler->mPassInstance->Fail(errorString, refNode);					
+	else if (refNode == NULL)	
+		bfError = mCompiler->mPassInstance->Fail(errorString);	
+	else	
+		bfError = mCompiler->mPassInstance->Fail(errorString, refNode);	
 	if (bfError != NULL)
 	{
-		bfError->mProject = mProject;
-		bfError->mIsPersistent = isPersistent;
 		bfError->mIsWhileSpecializing = isWhileSpecializing;
+		bfError->mProject = mProject;
+		bfError->mIsPersistent = isPersistent;		
 
 		if ((mCurMethodState != NULL) && (mCurMethodState->mDeferredCallEmitState != NULL) && (mCurMethodState->mDeferredCallEmitState->mCloseNode != NULL))
 			mCompiler->mPassInstance->MoreInfo("Error during deferred statement handling", mCurMethodState->mDeferredCallEmitState->mCloseNode);
