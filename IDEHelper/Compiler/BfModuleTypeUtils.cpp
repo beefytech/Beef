@@ -8982,9 +8982,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			}
 			else if (findName == "SelfBase")
 			{
-				BfType* selfType = mCurTypeInstance;
-				if (selfType->IsInterface())
-					resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);
+				BfType* selfType = mCurTypeInstance;				
+				resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);
 
 				if (selfType->IsBoxed())
 					selfType = selfType->GetUnderlyingType();
@@ -9016,6 +9015,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			else if (findName == "SelfOuter")
 			{
 				BfType* selfType = mCurTypeInstance;
+				resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);
 				if (selfType->IsBoxed())
 					selfType = selfType->GetUnderlyingType();
 				if ((resolveFlags & BfResolveTypeRefFlag_NoResolveGenericParam) != 0)
