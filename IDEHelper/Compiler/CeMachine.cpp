@@ -307,6 +307,8 @@ CeFunction::~CeFunction()
 	for (auto innerFunc : mInnerFunctions)
 		delete innerFunc;
 	delete mCeInnerFunctionInfo;
+
+	BfLogSys(mCeMachine->mCompiler->mSystem, "CeFunction::~CeFunction %p\n", this);
 }
 
 void CeFunction::Print()
@@ -1330,6 +1332,7 @@ void CeBuilder::Build()
 				continue;
 
 			CeFunction* innerFunction = new CeFunction();			
+			innerFunction->mCeMachine = mCeMachine;
 			innerFunction->mIsVarReturn = beFunction->mIsVarReturn;
 			innerFunction->mCeInnerFunctionInfo = new CeInnerFunctionInfo();
 			innerFunction->mCeInnerFunctionInfo->mName = beFunction->mName;
@@ -5364,7 +5367,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			auto resultFrameIdx = CE_GETINST(int32);
 			int32 callIdx = CE_GETINST(int32);
 			auto& callEntry = ceFunction->mCallTable[callIdx];
-			if (callEntry.mBindRevision != mCeMachine->mRevision)
+			if (callEntry.mBindRevision != mCeMachine->mMethodBindRevision)
 			{
 				callEntry.mFunction = NULL;
 				//mNamedFunctionMap.TryGetValue(callEntry.mFunctionName, &callEntry.mFunction);
@@ -5402,7 +5405,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					mCeMachine->PrepareFunction(callEntry.mFunction, NULL);
 				}
 
-				callEntry.mBindRevision = mCeMachine->mRevision;
+				callEntry.mBindRevision = mCeMachine->mMethodBindRevision;
 			}
 
 			BF_ASSERT(memStart == mMemory.mVals);
@@ -6216,6 +6219,7 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCompiler = compiler;
 	mCeModule = NULL;
 	mRevision = 0;
+	mMethodBindRevision = 0;
 	mCurContext = NULL;
 	mExecuteId = -1;
 
@@ -6230,6 +6234,8 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mTempParser = NULL;
 	mTempReducer = NULL;
 	mTempPassInstance = NULL;
+
+	BfLogSys(mCompiler->mSystem, "CeMachine::CeMachine %p\n", this);
 }
 
 
@@ -6309,6 +6315,7 @@ void CeMachine::CompileStarted()
 {
 	mRevisionExecuteTime = 0;
 	mRevision++;
+	mMethodBindRevision++;
 	if (mCeModule != NULL)
 	{
 		delete mCeModule;
@@ -6318,8 +6325,9 @@ void CeMachine::CompileStarted()
 
 void CeMachine::CompileDone()
 {
-	// So things like deleted local methods get recheckeds
+	// So things like deleted local methods get rechecked
 	mRevision++;
+	mMethodBindRevision++;
 	mTypeInfoMap.Clear();
 	mMethodInstanceSet.Clear();
 }
@@ -6343,6 +6351,8 @@ void CeMachine::DerefMethodInfo(CeFunctionInfo* ceFunctionInfo)
 void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 {
 	BfLogSys(methodInstance->GetOwner()->mModule->mSystem, "CeMachine::RemoveMethod %p\n", methodInstance);
+
+	mMethodBindRevision++;
 
 	auto itr = mFunctions.Find(methodInstance);
 	auto ceFunctionInfo = itr->mValue;
@@ -6916,6 +6926,7 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 		BF_ASSERT(ceFunctionInfo->mCeFunction == NULL);
 
 		ceFunction = new CeFunction();		
+		ceFunction->mCeMachine = this;
 		ceFunction->mIsVarReturn = methodInstance->mReturnType->IsVar();
 		ceFunction->mCeFunctionInfo = ceFunctionInfo;
 		ceFunction->mMethodInstance = methodInstance;

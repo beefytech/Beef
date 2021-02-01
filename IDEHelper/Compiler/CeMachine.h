@@ -396,6 +396,7 @@ public:
 class CeFunction
 {
 public:
+	CeMachine* mCeMachine;
 	CeFunctionInfo* mCeFunctionInfo;
 	CeInnerFunctionInfo* mCeInnerFunctionInfo;
 	BfMethodInstance* mMethodInstance;	
@@ -421,6 +422,7 @@ public:
 public:
 	CeFunction()
 	{
+		mCeMachine = NULL;
 		mCeFunctionInfo = NULL;
 		mCeInnerFunctionInfo = NULL;
 		mFunctionKind = CeFunctionKind_NotSet;
@@ -765,6 +767,7 @@ public:
 	BfCompiler* mCompiler;
 	BfModule* mCeModule;
 	int mRevision;
+	int mMethodBindRevision;
 	int mRevisionExecuteTime;	
 	int mCurFunctionId;	
 	int mExecuteId;
