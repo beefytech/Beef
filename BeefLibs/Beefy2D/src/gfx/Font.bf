@@ -862,6 +862,12 @@ namespace Beefy.gfx
                     else if (stringEndMode == FontOverflowMode.Wrap)
                     {
                         int32 maxChars = (int32)GetCharCountToLength(workingStr, width);
+						if (maxChars == 0)
+						{
+							if (workingStr.IsEmpty)
+								break;
+							maxChars = 1;
+						}
 
                         int32 checkIdx = maxChars;
 						if (checkIdx < workingStr.Length)

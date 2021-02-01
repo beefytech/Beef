@@ -332,7 +332,12 @@ namespace Beefy.theme.dark
 				}							 
 
                 using (g.PushColor(mTextColor ?? DarkTheme.COLOR_TEXT))
-                    g.DrawString(mLabel, labelX, 0, .Left, wantWidth, ((nextContentColumn != -1) || (listView.mEndInEllipsis)) ? .Ellipsis : .Overflow);
+				{
+					FontOverflowMode overflowMode = ((nextContentColumn != -1) || (listView.mEndInEllipsis)) ? .Ellipsis : .Overflow;
+					if (listView.mWordWrap)
+						overflowMode = .Wrap;
+                    g.DrawString(mLabel, labelX, 0, .Left, wantWidth, overflowMode);
+				}
             }
         }
 
@@ -893,6 +898,7 @@ namespace Beefy.theme.dark
 		public Color mGridLinesColor = 0x0CFFFFFF;
         public bool mShowHeader = true;
 		public bool mEndInEllipsis;
+		public bool mWordWrap;
         public float mLabelX = DarkTheme.sUnitSize;        
         public float mChildIndent = DarkTheme.sUnitSize;
         public float mOpenButtonX = 0;

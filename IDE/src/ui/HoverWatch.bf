@@ -168,14 +168,21 @@ namespace IDE.ui
 
             public override void Draw(Graphics g)
             {
-                using (g.PushColor(0x80000000))
-                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), 0, 0, mWidth + GS!(8), mHeight + GS!(8));
-
-                using (g.PushColor(0xFFFFFFFF))
-                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth, mHeight);
-
-                 base.Draw(g);                 
+                
+                base.Draw(g);
             }
+
+			public override void DrawAll(Graphics g)
+			{
+				using (g.PushColor(0x80000000))
+				    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), 0, 0, mWidth + GS!(8), mHeight + GS!(8));
+
+				using (g.PushColor(0xFFFFFFFF))
+				    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth, mHeight);
+
+				using (g.PushClip(0, 0, mWidth - GS!(3), mHeight))
+					base.DrawAll(g);
+			}
 
             public override void Update()
             {                
@@ -1029,8 +1036,8 @@ namespace IDE.ui
             {
 				minX = Math.Min(minX, childWidget.mX);
 				minY = Math.Min(minY, childWidget.mY);
-                maxX = Math.Max(maxX, childWidget.mX + childWidget.mWidth + 8);
-                maxY = Math.Max(maxY, childWidget.mY + childWidget.mHeight + 8);
+                maxX = Math.Max(maxX, childWidget.mX + childWidget.mWidth + GS!(8));
+                maxY = Math.Max(maxY, childWidget.mY + childWidget.mHeight + GS!(8));
             }
 
 			mContentWidget.mX = -minX;
@@ -1088,6 +1095,8 @@ namespace IDE.ui
 			bool hasLeftIcon = false;
 			bool hasRightValues = false;
 
+			bool wantWordWrap = false;
+
             listView.mLabelX = GS!(40);
             float childHeights = 0;
             for (WatchListViewItem listViewItem in listView.GetRoot().mChildItems)
@@ -1099,6 +1108,10 @@ namespace IDE.ui
 
                 if (listViewItem.mLabel == null)
                     continue;
+
+
+				if (listViewItem.mWatchEntry.mEvalStr.StartsWith(':'))
+					wantWordWrap = true;
 
                 //nameWidth = Math.Max(nameWidth, font.GetWidth(listViewItem.mLabel));
                 //TODO:
@@ -1144,7 +1157,7 @@ namespace IDE.ui
             listView.mColumns[0].mWidth = nameWidth + listView.mLabelX + GS!(8);
             listView.mColumns[1].mWidth = valueWidth + GS!(10);
 
-            float width = listView.mColumns[0].mWidth + listView.mColumns[1].mWidth + GS!(8);
+            float wantWidth = listView.mColumns[0].mWidth + listView.mColumns[1].mWidth + GS!(8);
             float height = childHeights + GS!(6);
 
             float maxHeight = font.GetLineSpacing() * 12 + 6.001f;
@@ -1201,7 +1214,7 @@ namespace IDE.ui
                         });
 				}
                 height = maxHeight;
-                width += GS!(20);
+                wantWidth += GS!(20);
             }
 
 			int workspaceX;
@@ -1220,7 +1233,7 @@ namespace IDE.ui
 				maxWidth = Math.Min(maxWidth, mTextPanel.mWidgetWindow.mWindowWidth);
 			}
 
-			width = Math.Min(width, maxWidth);
+			var useWidth = Math.Min(wantWidth, maxWidth);
 
 			if (!listView.mIsReversed)
 			{
@@ -1237,12 +1250,30 @@ namespace IDE.ui
 			if (wantsHorzResize)
 			{
 				if (mWidgetWindow != null)
-					width = Math.Max(width, mWidgetWindow.mMouseX - popupX + GS!(12));
+					useWidth = Math.Max(useWidth, mWidgetWindow.mMouseX - popupX + GS!(12));
 			}
 			else
-				width = listView.mWidth;
+				useWidth = listView.mWidth;
 
-            listView.Resize(popupX, popupY, width, height);
+			if ((wantWordWrap) && (useWidth < wantWidth))
+			{
+				for (WatchListViewItem listViewItem in listView.GetRoot().mChildItems)
+				{
+				    if (listViewItem.mLabel == null)
+				        continue;
+
+					listView.mWordWrap = true;
+				    FontMetrics fontMetrics = .();
+				    float nameHeight = font.Draw(null, listViewItem.mLabel, 0, 0, -1, useWidth - GS!(32), FontOverflowMode.Wrap, &fontMetrics);
+
+					float addHeight = nameHeight - listViewItem.mSelfHeight;
+					height += addHeight;
+				}
+
+				listView.mColumns[0].mWidth = useWidth - GS!(2);
+			}
+
+            listView.Resize(popupX, popupY, useWidth, height);
             ResizeWindow();
         }
 
