@@ -1356,6 +1356,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			str += " ";
 		}
 		str += "undef";
+		return;
 	}
 
 	if (auto constant = BeValueDynCast<BeCastConstant>(value))
