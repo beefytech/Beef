@@ -2162,6 +2162,14 @@ namespace IDE.ui
 			if (CheckReadOnly())
 				return false;
 
+			if ((!HasSelection()) && (doComment != null))
+			{
+				CursorToLineEnd();
+				int cursorEndPos = CursorTextPos;
+				CursorToLineStart(false);
+				mSelection = .(CursorTextPos, cursorEndPos);
+			}
+
 		    if ((HasSelection()) && (mSelection.Value.Length > 1))
 		    {
 				var startLineAndCol = CursorLineAndColumn;
