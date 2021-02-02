@@ -1227,7 +1227,7 @@ namespace IDE.ui
 			float popupY = listView.mRequestPos.Value.y;
 
 			int screenX = (int)popupX + (int)mOrigScreenX;
-			int maxWidth = workspaceWidth - screenX;
+			int maxWidth = workspaceWidth - screenX - GS!(8);
 			if (mTextPanel != null)
 			{
 				maxWidth = Math.Min(maxWidth, mTextPanel.mWidgetWindow.mWindowWidth);
