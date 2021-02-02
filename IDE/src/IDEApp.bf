@@ -1241,40 +1241,62 @@ namespace IDE
 			if (mRunningTestScript)
 				return true;
 
+			void CloseTabs()
+			{
+				WithDocumentTabbedViewsOf(window, scope (tabbedView) => {
+					tabbedView.CloseTabs(false, true);
+				});
+			}
+
+			void CloseWindow()
+			{
+				mMainWindow.SetForeground();
+				window.Close(true);
+			}
+
             List<String> changedList = scope List<String>();
 			defer ClearAndDeleteItems(changedList);
-            WithSourceViewPanels(scope (sourceViewPanel) =>
+            WithSourceViewPanelsOf(window, scope (sourceViewPanel) =>
                 {
-                    if ((sourceViewPanel.mWidgetWindow == window) && (sourceViewPanel.HasUnsavedChanges()))
+                    if (sourceViewPanel.HasUnsavedChanges())
 					{
 						var fileName = new String();
 						Path.GetFileName(sourceViewPanel.mFilePath, fileName);
                         changedList.Add(fileName);
 					}
                 });
-            if (changedList.Count == 0)
+
+            if (changedList.Count == 0) {
+				CloseTabs();
                 return true;
+			}
             var aDialog = QuerySaveFiles(changedList, (WidgetWindow)window);
             aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) =>
             {
                 bool hadError = false;
 				// We use a close delay after saving so the user can see we actually saved before closing down
 				var _this = this;
-                WithSourceViewPanels(scope [&] (sourceViewPanel) =>
+                WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
                 	{
-                        if ((!hadError) && (sourceViewPanel.mWidgetWindow == window) && (sourceViewPanel.HasUnsavedChanges()))
+                        if ((!hadError) && (sourceViewPanel.HasUnsavedChanges()))
                             if (!_this.SaveFile(sourceViewPanel))
                                 hadError = true;
                     });
                 if (hadError)
                     return;
-                mMainWindow.SetForeground();
-                window.Close(true);                
+				CloseTabs();
+				CloseWindow();
             });
             aDialog.AddButton("Don't Save", new (evt) =>
             {
-                mMainWindow.SetForeground();
-                window.Close(true);                
+				var _this = this;
+				WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
+					{
+						if (sourceViewPanel.HasUnsavedChanges())
+							_this.RevertSourceViewPanel(sourceViewPanel);
+				    });
+				CloseTabs();
+				CloseWindow();
             });
 
             aDialog.mEscButton = aDialog.AddButton("Cancel");
@@ -5560,30 +5582,32 @@ namespace IDE
                 });
         }
 
-        public void WithDocumentTabbedViews(delegate void(DarkTabbedView) func)
-        {
-            for (int32 windowIdx = 0; windowIdx < mWindows.Count; windowIdx++)
-            {
-                var window = mWindows[windowIdx];
-                var widgetWindow = window as WidgetWindow;
-                if (widgetWindow != null)
-                {
-                    var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
-                    if (widgetWindow == mMainWindow)
-                        darkDockingFrame = mDockingFrame;
+		public void WithDocumentTabbedViewsOf(BFWindow window, delegate void(DarkTabbedView) func)
+		{
+			var widgetWindow = window as WidgetWindow;
+			if (widgetWindow != null)
+			{
+			    var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
+			    if (widgetWindow == mMainWindow)
+			        darkDockingFrame = mDockingFrame;
 
-                    if (darkDockingFrame != null)
-                    {
-                        darkDockingFrame.WithAllDockedWidgets(scope (dockedWidget) =>
-                            {
-                                var tabbedView = dockedWidget as DarkTabbedView;
-                                if (tabbedView != null)
-                                    func(tabbedView);
-                            });
-                    }
-                }
-            }
-        }
+			    if (darkDockingFrame != null)
+			    {
+			        darkDockingFrame.WithAllDockedWidgets(scope (dockedWidget) =>
+			            {
+			                var tabbedView = dockedWidget as DarkTabbedView;
+			                if (tabbedView != null)
+			                    func(tabbedView);
+			            });
+			    }
+			}
+		}
+
+		public void WithDocumentTabbedViews(delegate void(DarkTabbedView) func)
+		{
+			for (let window in mWindows)
+				WithDocumentTabbedViewsOf(window, func);
+		}
 
         public void EnsureDocumentArea()
         {
@@ -5682,13 +5706,19 @@ namespace IDE
 		    return null;
 		}
         
-        public void WithTabs(delegate void(TabbedView.TabButton) func)
-        {
-            WithDocumentTabbedViews(scope (documentTabbedView) =>
-                {
-                    documentTabbedView.WithTabs(func);
-                });
-        }
+		public void WithTabsOf(BFWindow window, delegate void(TabbedView.TabButton) func)
+		{
+			WithDocumentTabbedViewsOf(window, scope (documentTabbedView) =>
+				{
+				    documentTabbedView.WithTabs(func);
+				});
+		}
+
+		public void WithTabs(delegate void(TabbedView.TabButton) func)
+		{
+			for (let window in mWindows)
+				WithTabsOf(window, func);
+		}
 
         public TabbedView.TabButton GetTab(Widget content)
         {
@@ -5701,15 +5731,21 @@ namespace IDE
             return tab;
         }        
 
-        public void WithSourceViewPanels(delegate void(SourceViewPanel) func)
-        {            
-            WithTabs(scope (tab) =>
-                {
-                    var sourceViewPanel = tab.mContent as SourceViewPanel;
-                    if (sourceViewPanel != null)
-                        func(sourceViewPanel);
-                });
-        }
+		public void WithSourceViewPanelsOf(BFWindow window, delegate void(SourceViewPanel) func)
+		{
+			WithTabsOf(window, scope (tab) =>
+				{
+				    var sourceViewPanel = tab.mContent as SourceViewPanel;
+				    if (sourceViewPanel != null)
+				        func(sourceViewPanel);
+				});
+		}
+
+		public void WithSourceViewPanels(delegate void(SourceViewPanel) func)
+		{
+			for (let window in mWindows)
+				WithSourceViewPanelsOf(window, func);
+		}
 
 		TabbedView.TabButton SetupTab(TabbedView tabView, String name, float width, Widget content, bool ownsContent) // 2
 		{
@@ -6463,6 +6499,61 @@ namespace IDE
             aDialog.PopupWindow(mMainWindow);
         }
 
+		void RevertSourceViewPanel(SourceViewPanel sourceViewPanel)
+		{
+			// When we close a Beef file that has modified text, we need to revert by
+			//  reparsing from the actual source file
+		    if (sourceViewPanel.mIsBeefSource)
+		    {
+		        mBfResolveHelper.DeferReparse(sourceViewPanel.mFilePath, null);
+				//mBfResolveHelper.DeferRefreshVisibleViews(null);
+		    }
+
+			var projectSource = sourceViewPanel.mProjectSource;
+		    if (projectSource != null)
+		    {
+		        var editData = GetEditData(projectSource, true);
+		        if (editData != null)
+		        {
+		            var editWidgetContent = editData.mEditWidget.mEditWidgetContent;
+
+					//TODO: Verify this, once we have multiple panes allowed within a single SourceViewContent
+					if (editWidgetContent.mData.mUsers.Count == 1) // Is last view of data...
+					{
+						if ((editData != null) && (editData.mHadRefusedFileChange))
+						{
+							// If we didn't take an external file change then closing the file means we want to revert
+							//  our data to the version on disk
+							sourceViewPanel.Reload();
+						}
+						else
+						{
+							// Undo until we either get to whatever the last saved state was, or until we
+							//  get to a global action like renaming a symbol - we need to leave those
+							//  so the global undo actually works if invoked from another file
+		                    while (editData.HasTextChanged())
+		                    {
+		                        var nextUndoAction = editWidgetContent.mData.mUndoManager.GetLastUndoAction();
+								if (nextUndoAction == null)
+									break;
+		                        if (nextUndoAction is UndoBatchEnd)
+		                        {
+		                            var undoBatchEnd = (UndoBatchEnd)nextUndoAction;
+		                            if (undoBatchEnd.Name.StartsWith("#"))
+		                            {
+		                                break;
+		                            }
+		                        }
+		                        editWidgetContent.mData.mUndoManager.Undo();
+		                    }
+
+							editWidgetContent.mData.mTextIdData.Prepare();
+						}
+					}
+		        }
+			}
+		}
+
         public void CloseDocument(Widget documentPanel)
         {
             bool hasFocus = false;
@@ -6478,59 +6569,7 @@ namespace IDE
                 hasFocus = sourceViewPanel.mEditWidget.mHasFocus;*/
 
             if ((sourceViewPanel != null) && (sourceViewPanel.HasUnsavedChanges()))
-            {
-				// When we close a Beef file that has modified text, we need to revert by 
-				//  reparsing from the actual source file
-                if (sourceViewPanel.mIsBeefSource)
-                {
-                    mBfResolveHelper.DeferReparse(sourceViewPanel.mFilePath, null);
-					//mBfResolveHelper.DeferRefreshVisibleViews(null);
-                }
-
-				var projectSource = sourceViewPanel.mProjectSource;
-                if (projectSource != null)
-                {					
-                    var editData = GetEditData(projectSource, true);
-                    if (editData != null)
-                    {
-                        var editWidgetContent = editData.mEditWidget.mEditWidgetContent;
-
-						//TODO: Verify this, once we have multiple panes allowed within a single SourceViewContent
-						if (editWidgetContent.mData.mUsers.Count == 1) // Is last view of data...
-						{
-							if ((editData != null) && (editData.mHadRefusedFileChange))
-							{
-								// If we didn't take an external file change then closing the file means we want to revert 
-								//  our data to the version on disk
-								sourceViewPanel.Reload();
-							}
-							else
-							{
-								// Undo until we either get to whatever the last saved state was, or until we 
-								//  get to a global action like renaming a symbol - we need to leave those
-								//  so the global undo actually works if invoked from another file
-		                        while (editData.HasTextChanged())
-		                        {
-		                            var nextUndoAction = editWidgetContent.mData.mUndoManager.GetLastUndoAction();
-									if (nextUndoAction == null)
-										break;
-		                            if (nextUndoAction is UndoBatchEnd)
-		                            {
-		                                var undoBatchEnd = (UndoBatchEnd)nextUndoAction;
-		                                if (undoBatchEnd.Name.StartsWith("#"))
-		                                {
-		                                    break;
-		                                }
-		                            }
-		                            editWidgetContent.mData.mUndoManager.Undo();
-		                        }
-
-								editWidgetContent.mData.mTextIdData.Prepare();
-							}
-						}
-                    }
-                }
-            }
+				RevertSourceViewPanel(sourceViewPanel);
 
             DarkTabbedView tabbedView = null;
             DarkTabbedView.DarkTabButton tabButton = null;
