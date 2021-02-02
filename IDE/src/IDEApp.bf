@@ -1273,6 +1273,12 @@ namespace IDE
             });
             aDialog.AddButton("Don't Save", new (evt) =>
             {
+				var _this = this;
+				WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
+					{
+						if (sourceViewPanel.HasUnsavedChanges())
+							_this.RevertSourceViewPanel(sourceViewPanel);
+				    });
                 mMainWindow.SetForeground();
                 window.Close(true);                
             });
@@ -6477,6 +6483,61 @@ namespace IDE
             aDialog.PopupWindow(mMainWindow);
         }
 
+		void RevertSourceViewPanel(SourceViewPanel sourceViewPanel)
+		{
+			// When we close a Beef file that has modified text, we need to revert by
+			//  reparsing from the actual source file
+		    if (sourceViewPanel.mIsBeefSource)
+		    {
+		        mBfResolveHelper.DeferReparse(sourceViewPanel.mFilePath, null);
+				//mBfResolveHelper.DeferRefreshVisibleViews(null);
+		    }
+
+			var projectSource = sourceViewPanel.mProjectSource;
+		    if (projectSource != null)
+		    {
+		        var editData = GetEditData(projectSource, true);
+		        if (editData != null)
+		        {
+		            var editWidgetContent = editData.mEditWidget.mEditWidgetContent;
+
+					//TODO: Verify this, once we have multiple panes allowed within a single SourceViewContent
+					if (editWidgetContent.mData.mUsers.Count == 1) // Is last view of data...
+					{
+						if ((editData != null) && (editData.mHadRefusedFileChange))
+						{
+							// If we didn't take an external file change then closing the file means we want to revert
+							//  our data to the version on disk
+							sourceViewPanel.Reload();
+						}
+						else
+						{
+							// Undo until we either get to whatever the last saved state was, or until we
+							//  get to a global action like renaming a symbol - we need to leave those
+							//  so the global undo actually works if invoked from another file
+		                    while (editData.HasTextChanged())
+		                    {
+		                        var nextUndoAction = editWidgetContent.mData.mUndoManager.GetLastUndoAction();
+								if (nextUndoAction == null)
+									break;
+		                        if (nextUndoAction is UndoBatchEnd)
+		                        {
+		                            var undoBatchEnd = (UndoBatchEnd)nextUndoAction;
+		                            if (undoBatchEnd.Name.StartsWith("#"))
+		                            {
+		                                break;
+		                            }
+		                        }
+		                        editWidgetContent.mData.mUndoManager.Undo();
+		                    }
+
+							editWidgetContent.mData.mTextIdData.Prepare();
+						}
+					}
+		        }
+			}
+		}
+
         public void CloseDocument(Widget documentPanel)
         {
             bool hasFocus = false;
@@ -6492,59 +6553,7 @@ namespace IDE
                 hasFocus = sourceViewPanel.mEditWidget.mHasFocus;*/
 
             if ((sourceViewPanel != null) && (sourceViewPanel.HasUnsavedChanges()))
-            {
-				// When we close a Beef file that has modified text, we need to revert by 
-				//  reparsing from the actual source file
-                if (sourceViewPanel.mIsBeefSource)
-                {
-                    mBfResolveHelper.DeferReparse(sourceViewPanel.mFilePath, null);
-					//mBfResolveHelper.DeferRefreshVisibleViews(null);
-                }
-
-				var projectSource = sourceViewPanel.mProjectSource;
-                if (projectSource != null)
-                {					
-                    var editData = GetEditData(projectSource, true);
-                    if (editData != null)
-                    {
-                        var editWidgetContent = editData.mEditWidget.mEditWidgetContent;
-
-						//TODO: Verify this, once we have multiple panes allowed within a single SourceViewContent
-						if (editWidgetContent.mData.mUsers.Count == 1) // Is last view of data...
-						{
-							if ((editData != null) && (editData.mHadRefusedFileChange))
-							{
-								// If we didn't take an external file change then closing the file means we want to revert 
-								//  our data to the version on disk
-								sourceViewPanel.Reload();
-							}
-							else
-							{
-								// Undo until we either get to whatever the last saved state was, or until we 
-								//  get to a global action like renaming a symbol - we need to leave those
-								//  so the global undo actually works if invoked from another file
-		                        while (editData.HasTextChanged())
-		                        {
-		                            var nextUndoAction = editWidgetContent.mData.mUndoManager.GetLastUndoAction();
-									if (nextUndoAction == null)
-										break;
-		                            if (nextUndoAction is UndoBatchEnd)
-		                            {
-		                                var undoBatchEnd = (UndoBatchEnd)nextUndoAction;
-		                                if (undoBatchEnd.Name.StartsWith("#"))
-		                                {
-		                                    break;
-		                                }
-		                            }
-		                            editWidgetContent.mData.mUndoManager.Undo();
-		                        }
-
-								editWidgetContent.mData.mTextIdData.Prepare();
-							}
-						}
-                    }
-                }
-            }
+				RevertSourceViewPanel(sourceViewPanel);
 
             DarkTabbedView tabbedView = null;
             DarkTabbedView.DarkTabButton tabButton = null;
