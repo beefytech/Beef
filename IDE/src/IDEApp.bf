@@ -1241,6 +1241,19 @@ namespace IDE
 			if (mRunningTestScript)
 				return true;
 
+			void CloseTabs()
+			{
+				WithDocumentTabbedViewsOf(window, scope (tabbedView) => {
+					tabbedView.CloseTabs(false, true);
+				});
+			}
+
+			void CloseWindow()
+			{
+				mMainWindow.SetForeground();
+				window.Close(true);
+			}
+
             List<String> changedList = scope List<String>();
 			defer ClearAndDeleteItems(changedList);
             WithSourceViewPanelsOf(window, scope (sourceViewPanel) =>
@@ -1252,8 +1265,11 @@ namespace IDE
                         changedList.Add(fileName);
 					}
                 });
-            if (changedList.Count == 0)
+
+            if (changedList.Count == 0) {
+				CloseTabs();
                 return true;
+			}
             var aDialog = QuerySaveFiles(changedList, (WidgetWindow)window);
             aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) =>
             {
@@ -1268,8 +1284,8 @@ namespace IDE
                     });
                 if (hadError)
                     return;
-                mMainWindow.SetForeground();
-                window.Close(true);                
+				CloseTabs();
+				CloseWindow();
             });
             aDialog.AddButton("Don't Save", new (evt) =>
             {
@@ -1279,8 +1295,8 @@ namespace IDE
 						if (sourceViewPanel.HasUnsavedChanges())
 							_this.RevertSourceViewPanel(sourceViewPanel);
 				    });
-                mMainWindow.SetForeground();
-                window.Close(true);                
+				CloseTabs();
+				CloseWindow();
             });
 
             aDialog.mEscButton = aDialog.AddButton("Cancel");
