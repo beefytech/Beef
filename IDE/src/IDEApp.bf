@@ -5560,30 +5560,32 @@ namespace IDE
                 });
         }
 
-        public void WithDocumentTabbedViews(delegate void(DarkTabbedView) func)
-        {
-            for (int32 windowIdx = 0; windowIdx < mWindows.Count; windowIdx++)
-            {
-                var window = mWindows[windowIdx];
-                var widgetWindow = window as WidgetWindow;
-                if (widgetWindow != null)
-                {
-                    var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
-                    if (widgetWindow == mMainWindow)
-                        darkDockingFrame = mDockingFrame;
+		public void WithDocumentTabbedViewsOf(BFWindow window, delegate void(DarkTabbedView) func)
+		{
+			var widgetWindow = window as WidgetWindow;
+			if (widgetWindow != null)
+			{
+			    var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
+			    if (widgetWindow == mMainWindow)
+			        darkDockingFrame = mDockingFrame;
 
-                    if (darkDockingFrame != null)
-                    {
-                        darkDockingFrame.WithAllDockedWidgets(scope (dockedWidget) =>
-                            {
-                                var tabbedView = dockedWidget as DarkTabbedView;
-                                if (tabbedView != null)
-                                    func(tabbedView);
-                            });
-                    }
-                }
-            }
-        }
+			    if (darkDockingFrame != null)
+			    {
+			        darkDockingFrame.WithAllDockedWidgets(scope (dockedWidget) =>
+			            {
+			                var tabbedView = dockedWidget as DarkTabbedView;
+			                if (tabbedView != null)
+			                    func(tabbedView);
+			            });
+			    }
+			}
+		}
+
+		public void WithDocumentTabbedViews(delegate void(DarkTabbedView) func)
+		{
+			for (let window in mWindows)
+				WithDocumentTabbedViewsOf(window, func);
+		}
 
         public void EnsureDocumentArea()
         {
@@ -5682,13 +5684,19 @@ namespace IDE
 		    return null;
 		}
         
-        public void WithTabs(delegate void(TabbedView.TabButton) func)
-        {
-            WithDocumentTabbedViews(scope (documentTabbedView) =>
-                {
-                    documentTabbedView.WithTabs(func);
-                });
-        }
+		public void WithTabsOf(BFWindow window, delegate void(TabbedView.TabButton) func)
+		{
+			WithDocumentTabbedViewsOf(window, scope (documentTabbedView) =>
+				{
+				    documentTabbedView.WithTabs(func);
+				});
+		}
+
+		public void WithTabs(delegate void(TabbedView.TabButton) func)
+		{
+			for (let window in mWindows)
+				WithTabsOf(window, func);
+		}
 
         public TabbedView.TabButton GetTab(Widget content)
         {
@@ -5701,15 +5709,21 @@ namespace IDE
             return tab;
         }        
 
-        public void WithSourceViewPanels(delegate void(SourceViewPanel) func)
-        {            
-            WithTabs(scope (tab) =>
-                {
-                    var sourceViewPanel = tab.mContent as SourceViewPanel;
-                    if (sourceViewPanel != null)
-                        func(sourceViewPanel);
-                });
-        }
+		public void WithSourceViewPanelsOf(BFWindow window, delegate void(SourceViewPanel) func)
+		{
+			WithTabsOf(window, scope (tab) =>
+				{
+				    var sourceViewPanel = tab.mContent as SourceViewPanel;
+				    if (sourceViewPanel != null)
+				        func(sourceViewPanel);
+				});
+		}
+
+		public void WithSourceViewPanels(delegate void(SourceViewPanel) func)
+		{
+			for (let window in mWindows)
+				WithSourceViewPanelsOf(window, func);
+		}
 
 		TabbedView.TabButton SetupTab(TabbedView tabView, String name, float width, Widget content, bool ownsContent) // 2
 		{
