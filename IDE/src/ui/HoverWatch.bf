@@ -1257,6 +1257,8 @@ namespace IDE.ui
 
 			if ((wantWordWrap) && (useWidth < wantWidth))
 			{
+				float actualMaxWidth = 0;
+
 				for (WatchListViewItem listViewItem in listView.GetRoot().mChildItems)
 				{
 				    if (listViewItem.mLabel == null)
@@ -1265,10 +1267,13 @@ namespace IDE.ui
 					listView.mWordWrap = true;
 				    FontMetrics fontMetrics = .();
 				    float nameHeight = font.Draw(null, listViewItem.mLabel, 0, 0, -1, useWidth - GS!(32), FontOverflowMode.Wrap, &fontMetrics);
+					actualMaxWidth = Math.Max(actualMaxWidth, fontMetrics.mMaxWidth);
 
 					float addHeight = nameHeight - listViewItem.mSelfHeight;
 					height += addHeight;
 				}
+
+				useWidth = actualMaxWidth + GS!(32);
 
 				listView.mColumns[0].mWidth = useWidth - GS!(2);
 			}

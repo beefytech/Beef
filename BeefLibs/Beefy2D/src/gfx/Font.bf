@@ -887,7 +887,7 @@ namespace Beefy.gfx
                             if (fontMetrics != null)
                                 fontMetrics.mLineCount++;
 
-                            drawHeight += Draw(g, StringView(workingStr, 0, checkIdx), useX, useY, justification, width, stringEndMode, fontMetrics);
+                            drawHeight += Draw(g, StringView(workingStr, 0, checkIdx), useX, useY, justification, width, .Truncate, fontMetrics);
                             useY += GetLineSpacing();                            
                             workingStr.Adjust(checkIdx);
                         }
