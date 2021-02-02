@@ -1243,9 +1243,9 @@ namespace IDE
 
             List<String> changedList = scope List<String>();
 			defer ClearAndDeleteItems(changedList);
-            WithSourceViewPanels(scope (sourceViewPanel) =>
+            WithSourceViewPanelsOf(window, scope (sourceViewPanel) =>
                 {
-                    if ((sourceViewPanel.mWidgetWindow == window) && (sourceViewPanel.HasUnsavedChanges()))
+                    if (sourceViewPanel.HasUnsavedChanges())
 					{
 						var fileName = new String();
 						Path.GetFileName(sourceViewPanel.mFilePath, fileName);
@@ -1260,9 +1260,9 @@ namespace IDE
                 bool hadError = false;
 				// We use a close delay after saving so the user can see we actually saved before closing down
 				var _this = this;
-                WithSourceViewPanels(scope [&] (sourceViewPanel) =>
+                WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
                 	{
-                        if ((!hadError) && (sourceViewPanel.mWidgetWindow == window) && (sourceViewPanel.HasUnsavedChanges()))
+                        if ((!hadError) && (sourceViewPanel.HasUnsavedChanges()))
                             if (!_this.SaveFile(sourceViewPanel))
                                 hadError = true;
                     });
