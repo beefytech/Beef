@@ -9262,12 +9262,22 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 	methodDeclaration->mOpenParen = tokenNode;
 	MoveNode(methodDeclaration->mOpenParen, methodDeclaration);
 
-	if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+	bool isFunction = false;
+	bool isDelegate = false;
+	if ((mCurTypeDecl->mTypeNode != NULL) && (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Function))
+		isFunction = true;
+	else if ((mCurTypeDecl->mTypeNode != NULL) && (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Delegate))
+		isDelegate = true;
+
+	if ((!isFunction) && (!isDelegate))
 	{
-		if (nextToken->mToken == BfToken_This)
+		if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 		{
-			MEMBER_SET(methodDeclaration, mThisToken, nextToken);			
-			mVisitorPos.MoveNext();
+			if (nextToken->mToken == BfToken_This)
+			{
+				MEMBER_SET(methodDeclaration, mThisToken, nextToken);
+				mVisitorPos.MoveNext();
+			}
 		}
 	}
 

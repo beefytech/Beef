@@ -32,7 +32,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_NoReify = 0x200,
 	BfResolveTypeRefFlag_NoCreate = 0x400,
 	BfResolveTypeRefFlag_NoWarnOnMut = 0x800,
-	BfResolveTypeRefFlag_DisallowComptime = 0x1000
+	BfResolveTypeRefFlag_DisallowComptime = 0x1000,
+	BfResolveTypeRefFlag_AllowDotDotDot = 0x2000
 };
 
 enum BfTypeNameFlags : uint16
@@ -443,12 +444,14 @@ public:
 	BfType* mReturnType;	
 	Array<BfType*> mParams;
 	bool mHasExplicitThis;
+	bool mHasVarArgs;
 
 public:
 	BfDelegateInfo()
 	{
 		mReturnType = NULL;
 		mHasExplicitThis = false;
+		mHasVarArgs = false;
 	}
 
 	~BfDelegateInfo()
@@ -2478,7 +2481,8 @@ public:
 	{
 		BfHashFlag_None = 0,
 		BfHashFlag_AllowRef = 1,
-		BfHashFlag_AllowGenericParamConstValue = 2		
+		BfHashFlag_AllowGenericParamConstValue = 2,
+		BfHashFlag_AllowDotDotDot = 4,
 	};
 	
 	class LookupContext

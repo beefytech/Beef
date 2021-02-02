@@ -7628,7 +7628,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		directTypeRef->Init(returnType);
 		methodDef->mReturnTypeRef = directTypeRef;
 		delegateInfo->mReturnType = returnType;		
-		delegateInfo->mHasExplicitThis = unspecializedDelegateInfo->mHasExplicitThis;				
+		delegateInfo->mHasExplicitThis = unspecializedDelegateInfo->mHasExplicitThis;
+		delegateInfo->mHasVarArgs = unspecializedDelegateInfo->mHasVarArgs;
 
 		int paramIdx = 0;
 		for (int paramIdx = 0; paramIdx < (int)paramTypes.size(); paramIdx++)		
@@ -10197,13 +10198,28 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		bool hasMutSpecifier = false;		
 		bool isFirst = true;
 		bool isDelegate = delegateTypeRef->mTypeToken->GetToken() == BfToken_Delegate;
+		bool hasVarArgs = false;
 
 		Array<BfType*> paramTypes;
-		for (auto param : delegateTypeRef->mParams)
+		for (int paramIdx = 0; paramIdx < delegateTypeRef->mParams.size(); paramIdx++)
 		{
+			auto param = delegateTypeRef->mParams[paramIdx];		
 			BfResolveTypeRefFlags resolveTypeFlags = BfResolveTypeRefFlag_AllowRef;
 			if ((param->mNameNode != NULL) && (param->mNameNode->Equals("this")))
 				resolveTypeFlags = (BfResolveTypeRefFlags)(resolveTypeFlags | BfResolveTypeRefFlag_NoWarnOnMut);
+
+			if (paramIdx == delegateTypeRef->mParams.size() - 1)
+			{
+				if (auto dotTypeRef = BfNodeDynCast<BfDotTypeReference>(param->mTypeRef))
+				{
+					if (dotTypeRef->mDotToken->mToken == BfToken_DotDotDot)
+					{
+						hasVarArgs = true;
+						continue;
+					}
+				}
+			}
+
 			auto paramType = ResolveTypeRef(param->mTypeRef, BfPopulateType_Declaration, resolveTypeFlags);
 			if (paramType == NULL)
 			{
@@ -10319,7 +10335,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		}
 
 		auto directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
-		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
+		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);		
 		if (typeDef->mIsDelegate)
 			directTypeRef->Init(delegateType);
 		else
@@ -10332,6 +10348,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		methodDef->mReturnTypeRef = directTypeRef;
 		delegateInfo->mReturnType = returnType;
 		delegateInfo->mHasExplicitThis = functionThisType != NULL;
+		delegateInfo->mHasVarArgs = hasVarArgs;
 		
 		auto hashVal = mContext->mResolvedTypes.Hash(typeRef, &lookupCtx);
 		
@@ -10361,9 +10378,16 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			paramDef->mName = paramName;
 			if ((paramIdx == 0) && (functionThisType != NULL))
 				paramDef->mParamKind = BfParamKind_ExplicitThis;
-			methodDef->mParams.push_back(paramDef);					
+			methodDef->mParams.push_back(paramDef);
 
 			delegateInfo->mParams.Add(paramType);			
+		}
+
+		if (delegateInfo->mHasVarArgs)
+		{
+			BfParameterDef* paramDef = new BfParameterDef();
+			paramDef->mParamKind = BfParamKind_VarArgs;			
+			methodDef->mParams.push_back(paramDef);
 		}
 
 		typeDef->mMethods.push_back(methodDef);
@@ -13073,6 +13097,12 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			auto paramDef = methodDef->mParams[paramIdx];
 			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType | BfTypeNameFlag_ExtendedInfo));
 			
+			if (paramDef->mParamKind == BfParamKind_VarArgs)
+			{
+				str += "...";
+				continue;
+			}
+
 			auto paramType = delegateInfo->mParams[paramIdx];
 			if ((paramIdx == 0) && (delegateInfo->mHasExplicitThis))
 			{

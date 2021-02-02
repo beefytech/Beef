@@ -2736,6 +2736,7 @@ BfResolvedTypeSet::~BfResolvedTypeSet()
 #define HASH_DELEGATE 11
 #define HASH_CONSTEXPR 12
 #define HASH_GLOBAL 13
+#define HASH_DOTDOTDOT 14
 
 BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& outType)
 {
@@ -2808,16 +2809,24 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 
 		auto methodDef = typeInst->mTypeDef->mMethods[0];
 		BF_ASSERT(methodDef->mName == "Invoke");
-		BF_ASSERT(delegateInfo->mParams.size() == methodDef->mParams.size());
+
+		int infoParamCount = (int)delegateInfo->mParams.size();
+		if (delegateInfo->mHasVarArgs)
+			infoParamCount++;
+
+		BF_ASSERT(infoParamCount == methodDef->mParams.size());
 
 		for (int paramIdx = 0; paramIdx < delegateInfo->mParams.size(); paramIdx++)
-		{
+		{			
 			// Parse attributes?			
 			hashVal = ((hashVal ^ (Hash(delegateInfo->mParams[paramIdx], ctx))) << 5) - hashVal;
 			String paramName = methodDef->mParams[paramIdx]->mName;
 			int nameHash = (int)Hash64(paramName.c_str(), (int)paramName.length());
 			hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
 		}
+		
+		if (delegateInfo->mHasVarArgs)			
+			hashVal = ((hashVal ^ HASH_DOTDOTDOT) << 5) - hashVal;							
 
 		return hashVal;
 	}	
@@ -3397,8 +3406,9 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		
 		bool isFirstParam = true;
 
-		for (auto param : delegateTypeRef->mParams)
+		for (int paramIdx = 0; paramIdx < delegateTypeRef->mParams.size(); paramIdx++)		
 		{
+			auto param = delegateTypeRef->mParams[paramIdx];
 			// Parse attributes?
 			BfTypeReference* fieldType = param->mTypeRef;
 
@@ -3410,8 +3420,20 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 						fieldType = refNode->mElementType;
 				}
 			}
+
+			if (paramIdx == delegateTypeRef->mParams.size() - 1)
+			{
+				if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(fieldType))
+				{
+					if (dotTypeRef->mDotToken->mToken == BfToken_DotDotDot)
+					{
+						hashVal = ((hashVal ^ HASH_DOTDOTDOT) << 5) - hashVal;
+						continue;
+					}
+				}
+			}
 			
-			hashVal = ((hashVal ^ (Hash(fieldType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
+			hashVal = ((hashVal ^ (Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef)))) << 5) - hashVal;
 			hashVal = ((hashVal ^ (HashNode(param->mNameNode))) << 5) - hashVal;
 			isFirstParam = true;
 		}
@@ -3511,8 +3533,8 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		hashVal = ((hashVal ^ (Hash(resultType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
 		return hashVal;
 	}
-	else if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(typeRef))
-	{
+	else if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(typeRef))	
+	{		
 		ctx->mModule->ResolveTypeRef(dotTypeRef, BfPopulateType_Identity, ctx->mResolveFlags);
 		ctx->mFailed = true;
 		return 0;
@@ -4009,7 +4031,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 					return false;
 
 				bool handled = false;
-				auto lhsThisType = lhsDelegateInfo->mParams[0];
+				auto lhsThisType = lhsDelegateInfo->mParams[0];				
 
 				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));
 				bool wantsMutating = false;
@@ -4032,11 +4054,16 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			}
 		}
 
-		if (lhsDelegateInfo->mParams.size() != (int)rhsDelegateType->mParams.size())
+		int lhsParamsCount = (int)lhsDelegateInfo->mParams.size();
+		if (lhsDelegateInfo->mHasVarArgs)
+			lhsParamsCount++;
+
+		if (lhsParamsCount != (int)rhsDelegateType->mParams.size())
 			return false;
 		for (int paramIdx = paramRefOfs; paramIdx < lhsDelegateInfo->mParams.size(); paramIdx++)
 		{
-			if (!Equals(lhsDelegateInfo->mParams[paramIdx], rhsDelegateType->mParams[paramIdx]->mTypeRef, ctx))
+			auto paramTypeRef = rhsDelegateType->mParams[paramIdx]->mTypeRef;			
+			if (!Equals(lhsDelegateInfo->mParams[paramIdx], paramTypeRef, ctx))
 				return false;
 			StringView rhsParamName;
 			if (rhsDelegateType->mParams[paramIdx]->mNameNode != NULL)
