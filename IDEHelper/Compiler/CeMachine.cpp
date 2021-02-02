@@ -3530,7 +3530,11 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	if ((constant->mConstType == BfConstType_TypeOf) || (constant->mConstType == BfConstType_TypeOf_WithData))
 	{
 		auto constTypeOf = (BfTypeOf_Const*)constant;
-		CE_GETC(addr_ce) = GetReflectType(constTypeOf->mType->mTypeId);
+		addr_ce typeAddr = GetReflectType(constTypeOf->mType->mTypeId);
+		if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+			CE_GETC(int32) = typeAddr;
+		else
+			CE_GETC(int64) = typeAddr;
 		return true;
 	}
 
@@ -4990,7 +4994,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			int32 typeId = CE_GETINST(int32);
 			auto reflectType = GetReflectType(typeId);
 			_FixVariables();
-			*(addr_ce*)(framePtr + frameOfs) = reflectType;
+			CeSetAddrVal(framePtr + frameOfs, reflectType, ptrSize);			
 		}
 		break;
 		case CeOp_GetString:
@@ -5004,8 +5008,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				_FixVariables();
 				ceStringEntry.mBindExecuteId = mExecuteId;
 			}
-
-			*(addr_ce*)(framePtr + frameOfs) = ceStringEntry.mStringAddr;
+			CeSetAddrVal(framePtr + frameOfs, ceStringEntry.mStringAddr, ptrSize);			
 		}
 		break;
 		case CeOp_Malloc:
@@ -5015,7 +5018,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			CE_CHECKALLOC(size);
 			uint8* mem = CeMalloc(size);
 			_FixVariables();
-			*(addr_ce*)(framePtr + frameOfs) = mem - memStart;
+			CeSetAddrVal(framePtr + frameOfs, mem - memStart, ptrSize);
 		}
 		break;
 		case CeOp_Free:
