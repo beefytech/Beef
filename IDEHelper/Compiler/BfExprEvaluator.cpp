@@ -8861,7 +8861,19 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	{
 		// Just a fake value so we can continue on without generating any code (boxing, conversion, etc)
 		if (target)
+		{
+			if (((target.mType->IsComposite()) || (target.mType->IsTypedPrimitive())))
+			{
+				if ((moduleMethodInstance.mMethodInstance->mMethodDef->mIsMutating) &&
+					((target.IsReadOnly()) || (!target.IsAddr())))
+				{					
+					String err = StrFormat("call mutating method '%s' on", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str());
+					CheckModifyResult(target, targetSrc, err.c_str());					
+				}
+			}
+
 			callTarget = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), targetTypeInst);
+		}
 	}
 	else if (targetTypeInst == callTargetType)
 	{
