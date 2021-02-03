@@ -4900,6 +4900,13 @@ namespace IDE
 			return activePanel.mParent as DarkTabbedView;
 		}
 
+		void SyncWithWorkspacePanel()
+		{
+			var activeSourceViewPanel = GetActiveSourceViewPanel();
+			if (activeSourceViewPanel != null)
+				activeSourceViewPanel.SyncWithWorkspacePanel();
+		}
+
 		[IDECommand]
 		void TabFirst()
 		{
@@ -13537,6 +13544,7 @@ namespace IDE
         [Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
         public static extern bool MessageBeep(MessageBeepType type);
 #endif
+
     }
 
 	static

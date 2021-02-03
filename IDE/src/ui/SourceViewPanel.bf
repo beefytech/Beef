@@ -2445,6 +2445,22 @@ namespace IDE.ui
 			return false;
 		}
 
+		public void SyncWithWorkspacePanel()
+		{
+			if (gApp.mProjectPanel.[Friend]mProjectToListViewMap.TryGet(mProjectSource, var matchKey, var projectListViewItem))
+			{
+				var checkLVItem = projectListViewItem.mParentItem;
+				while (checkLVItem != null)
+				{
+					checkLVItem.Open(true);
+					checkLVItem = (ProjectListViewItem)checkLVItem.mParentItem;
+				}
+
+				projectListViewItem.mListView.GetRoot().SelectItemExclusively(projectListViewItem);
+				projectListViewItem.mListView.EnsureItemVisible(projectListViewItem, false);
+			}
+		}
+
         public override void EditGotFocus()
         {
 			if (mFilePath != null)
@@ -2488,6 +2504,11 @@ namespace IDE.ui
 
 			gApp.mLastActiveSourceViewPanel = this;
 			gApp.mLastActivePanel = this;
+
+			if ((gApp.mSettings.mEditorSettings.mSyncWithWorkspacePanel) && (mProjectSource != null))
+			{
+				SyncWithWorkspacePanel();
+			}
         }
 
         public override void EditLostFocus()

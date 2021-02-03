@@ -288,6 +288,7 @@ namespace IDE
 			Add("Step Out", new => gApp.[Friend]StepOut);
 			Add("Step Over", new => gApp.[Friend]StepOver);
 			Add("Stop Debugging", new => gApp.[Friend]StopRunning);
+			Add("Sync With Workspace Panel", new => gApp.[Friend]SyncWithWorkspacePanel);
 			Add("Tab First", new => gApp.[Friend]TabFirst);
 			Add("Tab Last", new => gApp.[Friend]TabLast);
 			Add("Tab Next", new => gApp.[Friend]TabNext);

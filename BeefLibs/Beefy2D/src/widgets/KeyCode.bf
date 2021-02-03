@@ -117,6 +117,10 @@ namespace Beefy.widgets
 					return (KeyCode)c;
 				if ((c >= 'a') && (c <= 'a'))
 					return (KeyCode)(c.ToUpper);
+				if (c == '[')
+					return (KeyCode)LBracket;
+				if (c == ']')
+					return (KeyCode)RBracket;
 			}
 
 			if (str.StartsWith("0x"))
@@ -134,6 +138,21 @@ namespace Beefy.widgets
 				((this >= (KeyCode)'0') && (this <= (KeyCode)'9')))
 			{
 				((char8)this).ToString(strBuffer);
+				return;
+			}
+
+			char8 c = 0;
+			switch (this)
+			{
+			case LBracket:
+				c = '[';
+			case RBracket:
+				c = ']';
+			default:
+			}
+			if (c != 0)
+			{
+				strBuffer.Append(c);
 				return;
 			}
 

@@ -124,6 +124,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Free Cursor Movement", "mFreeCursorMovement");
 			AddPropertiesItem(category, "Enable File Recovery", "mEnableFileRecovery");
 			AddPropertiesItem(category, "Format on Save", "mFormatOnSave");
+			AddPropertiesItem(category, "Sync with Workspace Panel", "mSyncWithWorkspacePanel");
 
 			category.Open(true, true);
 		}

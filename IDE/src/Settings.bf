@@ -599,6 +599,7 @@ namespace IDE
 			public bool mFreeCursorMovement;
 			public FileRecoveryKind mEnableFileRecovery = .Yes;
 			public bool mFormatOnSave = false;
+			public bool mSyncWithWorkspacePanel = false;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -623,6 +624,7 @@ namespace IDE
 				sd.Add("FreeCursorMovement", mFreeCursorMovement);
 				sd.Add("EnableFileRecovery", mEnableFileRecovery);
 				sd.Add("FormatOnSave", mFormatOnSave);
+				sd.Add("SyncWithWorkspacePanel", mSyncWithWorkspacePanel);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -651,6 +653,7 @@ namespace IDE
 				sd.Get("FreeCursorMovement", ref mFreeCursorMovement);
 				sd.GetEnum<FileRecoveryKind>("EnableFileRecovery", ref mEnableFileRecovery);
 				sd.Get("FormatOnSave", ref mFormatOnSave);
+				sd.Get("SyncWithWorkspacePanel", ref mSyncWithWorkspacePanel);
 			}
 
 			public void SetDefaults()
@@ -796,6 +799,7 @@ namespace IDE
 				Add("Step Out", "Shift+F11");
 				Add("Step Over", "F10");
 				Add("Stop Debugging", "Shift+F5");
+				Add("Sync With Workspace Panel", "Ctrl+[, S");
 				Add("Tab First", "Ctrl+Alt+Home");
 				Add("Tab Last", "Ctrl+Alt+End");
 				Add("Tab Next", "Ctrl+Alt+PageDown");
