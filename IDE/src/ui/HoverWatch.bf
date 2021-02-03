@@ -1221,13 +1221,19 @@ namespace IDE.ui
 			int workspaceY;
 			int workspaceWidth;
 			int workspaceHeight;
-			BFApp.sApp.GetWorkspaceRectFrom((.)listView.mRequestPos.Value.x, (.)listView.mRequestPos.Value.y, 1, 1, out workspaceX, out workspaceY, out workspaceWidth, out workspaceHeight);
 
 			float popupX = listView.mRequestPos.Value.x;
 			float popupY = listView.mRequestPos.Value.y;
 
-			int screenX = (int)popupX + (int)mOrigScreenX;
-			int maxWidth = workspaceWidth - screenX - GS!(8);
+			// GetWorkspaceRectFrom expects virtual screen coordinates
+			int screenX = (.)(popupX + mOrigScreenX);
+			int screenY = (.)(popupY + mOrigScreenY);
+
+			BFApp.sApp.GetWorkspaceRectFrom(screenX, screenY, 1, 1,
+				out workspaceX, out workspaceY, out workspaceWidth, out workspaceHeight);
+
+			int maxWidth = workspaceWidth - screenX + workspaceX - GS!(8);
+
 			if (mTextPanel != null)
 			{
 				maxWidth = Math.Min(maxWidth, mTextPanel.mWidgetWindow.mWindowWidth);
