@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {gen = {Path = "."}}
+
+[Workspace]
+StartupProject = "gen"

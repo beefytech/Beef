@@ -874,10 +874,10 @@ namespace IDE
 						minRTModName.Insert(0, "_");
 
 					if (!is64Bit)
-						linkLine.Append(gApp.mInstallDir, @"lib\x86\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
+						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x86\" ", gApp.mInstallDir, "lib\\x86\\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
 					else
-						linkLine.Append(gApp.mInstallDir, @"lib\x64\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
-					linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib version.lib comdlg32.lib chkstk.obj -ignore:4049 -ignore:4217 ");
+						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x64\" ", gApp.mInstallDir, "lib\\x64\\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
+					linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib version.lib comdlg32.lib -ignore:4049 -ignore:4217 ");
 				}
 
 				for (var libPath in libPaths)
