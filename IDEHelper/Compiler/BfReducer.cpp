@@ -9264,9 +9264,9 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 
 	bool isFunction = false;
 	bool isDelegate = false;
-	if ((mCurTypeDecl->mTypeNode != NULL) && (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Function))
+	if ((mCurTypeDecl != NULL) && (mCurTypeDecl->mTypeNode != NULL) && (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Function))
 		isFunction = true;
-	else if ((mCurTypeDecl->mTypeNode != NULL) && (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Delegate))
+	else if ((mCurTypeDecl != NULL) && (mCurTypeDecl->mTypeNode != NULL) && (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Delegate))
 		isDelegate = true;
 
 	if ((!isFunction) && (!isDelegate))
