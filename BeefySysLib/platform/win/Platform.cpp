@@ -1,3 +1,8 @@
+#define INITKNOWNFOLDERS
+#include <guiddef.h>
+#include <KnownFolders.h>
+#undef INITKNOWNFOLDERS
+
 #pragma warning(disable:4065)
 #pragma warning(disable:4996)
 
