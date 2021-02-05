@@ -237,7 +237,7 @@ namespace Beefy.widgets
                             300, 500,
                             BFWindowBase.Flags.Border | BFWindowBase.Flags.ThickFrame | BFWindowBase.Flags.Resizable | BFWindowBase.Flags.SysMenu |
                             BFWindowBase.Flags.Caption | BFWindowBase.Flags.Minimize | BFWindowBase.Flags.ToolWindow | BFWindowBase.Flags.TopMost |
-                            BFWindowBase.Flags.UseParentMenu,
+                            BFWindowBase.Flags.UseParentMenu | BFWindowBase.Flags.Maximize,
                             subFrame);
                         Dock(subFrame, null, DockingFrame.WidgetAlign.Top);
                         //subFrame.AddDockedWidget(fourthTabbedView, null, DockingFrame.WidgetAlign.Left, false);
