@@ -139,6 +139,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -166,6 +167,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -197,6 +199,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm-3.8\llvm\include;C:\llvm-3.8\bin\include;C:\llvm-3.8\llvm\lib\Target;C:\llvm-3.8\bin\lib\Target\X86;C:\llvm-3.8\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -222,6 +225,7 @@
       <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_11_0_0\llvm\include;..\extern\llvm_win64_11_0_0\include;..\extern\llvm-project_11_0_0\llvm\lib\Target;..\extern\llvm_win64_11_0_0\lib\Target\X86;..\extern\llvm-project_11_0_0\llvm\tools\clang\include;..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -251,6 +255,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm\llvm\include;C:\llvm\src\include;C:\llvm\llvm\lib\Target;C:\llvm\src\lib\Target\X86;C:\llvm\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -275,6 +280,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm\llvm\include;C:\llvm\src\include;C:\llvm\llvm\lib\Target;C:\llvm\src\lib\Target\X86;C:\llvm\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

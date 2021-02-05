@@ -188,6 +188,7 @@
       <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include;third_party/freetype/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -224,6 +225,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -254,6 +256,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;BFSYSLIB_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -282,6 +285,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <AdditionalIncludeDirectories>./; ./platform/win/; third_party/agg-2.4/include; third_party/agg-2.4/include/platform/win32; third_party/; third_party/libffi/i686-pc-cygwin; third_party/libffi/i686-pc-cygwin/include; third_party/libffi/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -311,6 +315,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <PreprocessorDefinitions>BFP_NOEXPORT;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>./; ./platform/win/; ./platform/sdl/; third_party/agg-2.4/include; third_party/agg-2.4/include/platform/win32; third_party/; third_party/libffi/i686-pc-cygwin; third_party/libffi/i686-pc-cygwin/include; third_party/libffi/include; third_party/SDL2-2.0.1/include;;../extern/fbxsdk/include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -348,6 +353,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include;third_party/freetype/include</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -382,6 +388,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>./; ./platform/win/; ./platform/sdl/; third_party/agg-2.4/include; third_party/agg-2.4/include/platform/win32; third_party/; third_party/libffi/i686-pc-cygwin; third_party/libffi/i686-pc-cygwin/include; third_party/libffi/include; third_party/SDL2-2.0.1/include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -413,6 +420,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>./; ./platform/win/; third_party/agg-2.4/include; third_party/agg-2.4/include/platform/win32; third_party/; third_party/libffi/i686-pc-cygwin; third_party/libffi/i686-pc-cygwin/include; third_party/libffi/include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
