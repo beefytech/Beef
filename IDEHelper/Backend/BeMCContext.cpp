@@ -3787,7 +3787,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 6)
+		if (mcOperand.mVRegIdx == 227)
 		{
 			NOP;
 		}
@@ -10361,7 +10361,7 @@ bool BeMCContext::DoLegalization()
 									inst->mArg0.mKind = BeMCOperandKind_SymbolAddr;
 								}
 
-								ReplaceWithNewVReg(inst->mArg0, movInstIdx, true, false);
+								ReplaceWithNewVReg(inst->mArg0, movInstIdx, true, false, true);
 								auto vregInfo = GetVRegInfo(inst->mArg0);
 								vregInfo->mDisableR11 = true;
 								instIdx += 2;
@@ -15839,7 +15839,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Zoips@TestProgram@BeefTest@bf@@SAXXZ");
+	//mDebugging = (function->mName == "?Init@TimeZoneInfo@System@bf@@AEAA?AU?$Result@X@23@UStringView@23@VTimeSpan@23@000PEAV?$Array1@PEAVAdjustmentRule@TimeZoneInfo@System@bf@@@23@_N@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
