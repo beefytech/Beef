@@ -7428,83 +7428,103 @@ namespace IDE
 						return;
 				}
 			}
-
-			var keyState = scope KeyState();
-			keyState.mKeyCode = evt.mKeyCode;
-			keyState.mKeyFlags = evt.mKeyFlags;
-
-			var curKeyMap = mCommands.mKeyMap;
-			bool hadChordState = mKeyChordState != null;
-			if (mKeyChordState != null)
-				curKeyMap = mKeyChordState.mCommandMap;
-			DeleteAndNullify!(mKeyChordState);
-
-			KeyState matchedKey;
-			IDECommandBase commandBase;
-			if (curKeyMap.mMap.TryGet(keyState, out matchedKey, out commandBase))
+			
+			if ((mKeyChordState != null) && (evt.mKeyCode.IsModifier))
 			{
-				if (var commandMap = commandBase as CommandMap)
+				// Ignore
+			}
+			else
+			{
+				var keyState = scope KeyState();
+				keyState.mKeyCode = evt.mKeyCode;
+				keyState.mKeyFlags = evt.mKeyFlags;
+
+				var curKeyMap = mCommands.mKeyMap;
+
+				bool hadChordState = mKeyChordState != null;
+				if (mKeyChordState != null)
+					curKeyMap = mKeyChordState.mCommandMap;
+				var prevKeyChordState = mKeyChordState;
+				defer delete prevKeyChordState;
+				mKeyChordState = null;
+
+				KeyState matchedKey;
+				IDECommandBase commandBase;
+
+				bool hadMatch = curKeyMap.mMap.TryGet(keyState, out matchedKey, out commandBase);
+				if ((!hadMatch) && (prevKeyChordState != null))
 				{
-					mKeyChordState = new .();
-					mKeyChordState.mCommandMap = commandMap;
-					mKeyChordState.mKeyState = matchedKey;
-					evt.mHandled = true;
-					return;
+					// If we have a "Ctrl+A, Ctrl+B" style sequence then also try to match that against "Ctrl+A, B"
+					KeyState rawKeyState = keyState;
+					rawKeyState.mKeyFlags &= ~prevKeyChordState.mKeyState.mKeyFlags;
+					hadMatch = curKeyMap.mMap.TryGet(rawKeyState, out matchedKey, out commandBase);
 				}
-				else if (var command = commandBase as IDECommand)
+
+				if (hadMatch)
 				{
-					bool foundMatch = false;
-					if (useFlags != .None)
+					if (var commandMap = commandBase as CommandMap)
 					{
-						var checkCommand = command;
-						while (checkCommand != null)
-						{
-							bool matches = checkCommand.mContextFlags == .None;
-							if (checkCommand.mContextFlags.HasFlag(.Editor))
-								matches |= useFlags.HasFlag(.Editor);
-							if (checkCommand.mContextFlags.HasFlag(.MainWindow))
-								matches |= useFlags.HasFlag(.MainWindow);
-							if (checkCommand.mContextFlags.HasFlag(.WorkWindow))
-								matches |= useFlags.HasFlag(.WorkWindow);
-
-							if (matches)
-							{
-								checkCommand.mAction();
-								foundMatch = true;
-							}
-							checkCommand = checkCommand.mNext;
-						}
-					}
-
-					if (!foundMatch)
-					{
-						var checkCommand = command;
-						while (checkCommand != null)
-						{
-							if (checkCommand.mContextFlags == .None)
-							{
-								checkCommand.mAction();
-								foundMatch = true;
-							}
-							checkCommand = checkCommand.mNext;
-						}
-					}
-
-					if (foundMatch)
-					{
+						mKeyChordState = new .();
+						mKeyChordState.mCommandMap = commandMap;
+						mKeyChordState.mKeyState = matchedKey;
 						evt.mHandled = true;
 						return;
 					}
+					else if (var command = commandBase as IDECommand)
+					{
+						bool foundMatch = false;
+						if (useFlags != .None)
+						{
+							var checkCommand = command;
+							while (checkCommand != null)
+							{
+								bool matches = checkCommand.mContextFlags == .None;
+								if (checkCommand.mContextFlags.HasFlag(.Editor))
+									matches |= useFlags.HasFlag(.Editor);
+								if (checkCommand.mContextFlags.HasFlag(.MainWindow))
+									matches |= useFlags.HasFlag(.MainWindow);
+								if (checkCommand.mContextFlags.HasFlag(.WorkWindow))
+									matches |= useFlags.HasFlag(.WorkWindow);
+	
+								if (matches)
+								{
+									checkCommand.mAction();
+									foundMatch = true;
+								}
+								checkCommand = checkCommand.mNext;
+							}
+						}
+	
+						if (!foundMatch)
+						{
+							var checkCommand = command;
+							while (checkCommand != null)
+							{
+								if (checkCommand.mContextFlags == .None)
+								{
+									checkCommand.mAction();
+									foundMatch = true;
+								}
+								checkCommand = checkCommand.mNext;
+							}
+						}
+	
+						if (foundMatch)
+						{
+							evt.mHandled = true;
+							return;
+						}
+					}
 				}
-			}
-			else if (!evt.mKeyCode.IsModifier)
-			{
-				// Not found
-				if (hadChordState)
+				else
 				{
-					Beep(.Error);
-					evt.mHandled = true;
-					return;
+					// Not found
+					if (hadChordState)
+					{
+						Beep(.Error);
+						evt.mHandled = true;
+						return;
+					}
 				}
 			}
 
