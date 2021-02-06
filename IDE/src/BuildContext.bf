@@ -874,9 +874,9 @@ namespace IDE
 						minRTModName.Insert(0, "_");
 
 					if (!is64Bit)
-						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x86\" ", gApp.mInstallDir, "lib\\x86\\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
+						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x86\" \"", gApp.mInstallDir, "lib\\x86\\msvcrt.lib\" Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
 					else
-						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x64\" ", gApp.mInstallDir, "lib\\x64\\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
+						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x64\" \"", gApp.mInstallDir, "lib\\x64\\msvcrt.lib\" Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
 					linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib version.lib comdlg32.lib -ignore:4049 -ignore:4217 ");
 				}
 
@@ -1062,17 +1062,8 @@ namespace IDE
 
 						IDEUtils.AppendWithOptionalQuotes(linkLine, resOutPath);
 					}
-					
-					let binPath = (!is64Bit) ? gApp.mSettings.mVSSettings.mBin32Path : gApp.mSettings.mVSSettings.mBin64Path;
-					if (binPath.IsWhiteSpace)
-					{
-						gApp.OutputErrorLine("Visual Studio tool path not configured. Check Visual Studio configuration in File\\Preferences\\Settings.");
-						return false;
-					}
 
 					String linkerPath = scope String();
-					linkerPath.Append(binPath);
-					linkerPath.Append("/link.exe");
 					if (workspaceOptions.mToolsetType == .LLVM)
 					{
 						linkerPath.Clear();
@@ -1096,6 +1087,17 @@ namespace IDE
 
 						if ((mPlatformType == .Windows) && (!is64Bit))
 							linkLine.Append(" /safeseh:no");
+					}
+					else
+					{
+						let binPath = (!is64Bit) ? gApp.mSettings.mVSSettings.mBin32Path : gApp.mSettings.mVSSettings.mBin64Path;
+						if (binPath.IsWhiteSpace)
+						{
+							gApp.OutputErrorLine("Visual Studio tool path not configured. Check Visual Studio configuration in File\\Preferences\\Settings.");
+							return false;
+						}
+						linkerPath.Append(binPath);
+						linkerPath.Append("/link.exe");
 					}
 
 					if (options.mBuildOptions.mBeefLibType != .DynamicDebug)

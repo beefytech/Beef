@@ -7497,7 +7497,7 @@ namespace IDE
 					}
 				}
 			}
-			else
+			else if (!evt.mKeyCode.IsModifier)
 			{
 				// Not found
 				if (hadChordState)
@@ -10411,6 +10411,36 @@ namespace IDE
 #endif
 		}
 
+		public bool IsVisualStudioRequired
+		{
+			get
+			{
+				if (Workspace.PlatformType.GetFromName(mPlatformName) != .Windows)
+					return false;
+				var workspaceOptions = GetCurWorkspaceOptions();
+				if (workspaceOptions.mToolsetType != .LLVM)
+					return true;
+
+				for (var project in mWorkspace.mProjects)
+				{
+					if ((project.mGeneralOptions.mTargetType != .BeefConsoleApplication) &&
+						(project.mGeneralOptions.mTargetType != .BeefGUIApplication) &&
+						(project.mGeneralOptions.mTargetType != .BeefApplication_DynamicLib) &&
+						(project.mGeneralOptions.mTargetType != .BeefApplication_StaticLib))
+					{
+						continue;
+					}
+
+					var options = GetCurProjectOptions(project);
+					if (options == null)
+						continue;
+					if (options.mBuildOptions.mCLibType != .SystemMSVCRT)
+						return true;
+				}
+				return false;
+			}
+		}
+
         protected bool Compile(CompileKind compileKind = .Normal, Project hotProject = null)
         {
 			Debug.Assert(mBuildContext == null);
@@ -10585,7 +10615,7 @@ namespace IDE
 				}
 			}
 
-			if (Workspace.PlatformType.GetFromName(mPlatformName) == .Windows)
+			if ((Workspace.PlatformType.GetFromName(mPlatformName) == .Windows) && (IsVisualStudioRequired))
 			{
 				if (!mSettings.mVSSettings.IsConfigured())
 					mSettings.mVSSettings.SetDefaults();
