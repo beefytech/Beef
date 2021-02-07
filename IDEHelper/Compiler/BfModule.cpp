@@ -10786,6 +10786,9 @@ void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, Bf
 
 void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget, bool allowNonConstArgs, BfCaptureInfo* captureInfo)
 {
+	if (!mCompiler->mHasRequiredTypes)
+		return;
+
 	if ((attributesDirective != NULL) && (mCompiler->mResolvePassData != NULL) && 
 		(attributesDirective->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
 	{
@@ -11076,8 +11079,10 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 							if (assignExpr->mRight != NULL)
 							{
 								BfTypedValue result = constResolver.Resolve(assignExpr->mRight, propType);
-								if (result)
+								if ((result) && (!result.mType->IsVar()))
 								{
+									if (!result.mValue.IsConst())
+										result = GetDefaultTypedValue(result.mType);
 									BF_ASSERT(result.mType == propType);
 									CurrentAddToConstHolder(result.mValue);
 									setProperty.mParam = result;
@@ -19437,7 +19442,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 
 	auto bodyBlock = BfNodeDynCast<BfBlock>(methodDef->mBody);
-	if (methodDef->mBody == NULL)
+	if (!mCompiler->mHasRequiredTypes)
+	{
+		// Skip processing to avoid errors
+	}
+	else if (methodDef->mBody == NULL)
 	{
 		if (methodDeclaration != NULL)
 		{
@@ -22037,7 +22046,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				resolvedParamType = CreateArrayType(mContext->mBfObjectType, 1);
 			}
 
-			if (addParams)
+			if ((addParams) && (resolvedParamType != NULL))
 			{
 				BfMethodParam methodParam;				
 				methodParam.mResolvedType = resolvedParamType;

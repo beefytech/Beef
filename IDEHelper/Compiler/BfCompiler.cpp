@@ -341,11 +341,10 @@ BfCompiler::HotResolveData::~HotResolveData()
 
 BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 {
-	//llvm::DebugFlag = true;
-
 	memset(&mStats, 0, sizeof(mStats));
 	mCompletionPct = 0;	
 	mCanceling = false;
+	mHasRequiredTypes = false;
 	mNeedsFullRefresh = false;
 	mFastFinish = false;
 	mHasQueuedTypeRebuilds = false;
@@ -2146,7 +2145,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 		madeFullPass = false;
 	if ((mResolvePassData != NULL) && (mResolvePassData->mParser != NULL))
 		madeFullPass = false;
-
+	
 	SetAndRestoreValue<bool> prevAssertOnPopulateType(mContext->mAssertOnPopulateType, deleteUnusued && madeFullPass);
 
 	if ((deleteUnusued) && (madeFullPass))
@@ -5220,7 +5219,7 @@ int BfCompiler::GetVTableMethodOffset()
 bool BfCompiler::DoWorkLoop(bool onlyReifiedTypes, bool onlyReifiedMethods)
 {
 	bool hadAnyWork = false;
-
+	
 	while (true)
 	{
 		bool didWork = false;		
@@ -6596,7 +6595,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	
 	BpEnter("Compile_Start");
 
-	bool hasRequiredTypes = true;
+	mHasRequiredTypes = true;
 
 	//HashSet<BfTypeDef*> internalTypeDefs;
 
@@ -6606,7 +6605,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		if (typeDef == NULL)
 		{
 			mPassInstance->Fail(StrFormat("Unable to find system type: %s", typeName.c_str()));
-			hasRequiredTypes = false;
+			mHasRequiredTypes = false;
 		}		
 		return typeDef;
 	};
@@ -6722,21 +6721,17 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mContext->mBfTypeType = NULL;
 	mContext->mBfClassVDataPtrType = NULL;
 
-	if (!hasRequiredTypes)
-	{
-		// Force rebuilding
-		BfLogSysM("Compile missing required types\n");
-		mInInvalidState = true;
-		mOptions.mForceRebuildIdx++;
-		return true;
-	}
+ 	if (!mHasRequiredTypes)
+ 	{
+ 		// Force rebuilding
+ 		BfLogSysM("Compile missing required types\n");
+ 		mOptions.mForceRebuildIdx++;
+ 	}	
 		
 	mSystem->CheckLockYield();
 
 	mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef);
-	VisitSourceExteriorNodes();
-
-	//BF_ASSERT(hasRequiredTypes);
+	VisitSourceExteriorNodes();	
 
 	if (!mIsResolveOnly)
 	{
@@ -6811,19 +6806,14 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	if (mIsResolveOnly)
 		VisitAutocompleteExteriorIdentifiers();	
-
-	if (!hasRequiredTypes)
-	{
-		BfLogSysM("Missing required types\n");		
-	}
-
+	
 	mStats.mTypesQueued = 0;
 	mStats.mMethodsQueued = 0;
 	
 	mStats.mTypesQueued += (int)mContext->mPopulateTypeWorkList.size();
 	mStats.mMethodsQueued += (int)mContext->mMethodWorkList.size();
 
-	if (hasRequiredTypes)
+	//
 	{		
 		mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef, BfPopulateType_Full);
 		
@@ -6864,9 +6854,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 			}
 		}						
 	}
-	
-	if (hasRequiredTypes)
-		ProcessPurgatory(true);
+		
+	ProcessPurgatory(true);
 
 	// Mark used modules
 	if ((mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude) && (!mCanceling))
@@ -6967,7 +6956,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}
 
 	// Generate slot nums
-	if ((!mIsResolveOnly) && (hasRequiredTypes) && (!mCanceling))
+	if ((!mIsResolveOnly) && (!mCanceling))
 	{
 		if ((!IsHotCompile()) || (mHotState->mHasNewInterfaceTypes))
 		{	
@@ -6996,7 +6985,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 				}
 			}
 		}		
-
+		
 		DoWorkLoop();
 
 		BfLogSysM("Compile QueueUnused\n");
@@ -7098,13 +7087,12 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	{
 		DoWorkLoop();
 	}
-	
-	if (hasRequiredTypes)
-		ProcessPurgatory(false);
+		
+	ProcessPurgatory(false);
 	
 	// Old Mark used modules	
 
-	if ((!mIsResolveOnly) && (hasRequiredTypes))
+	if (!mIsResolveOnly)
 	{	
 // 		if ((!mPassInstance->HasFailed()) && (!mCanceling))
 // 		{
@@ -7161,7 +7149,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	String moduleListStr;
 	int numModulesWritten = 0;
-	if ((hasRequiredTypes) && (!mCanceling))
+	if (!mCanceling)
 	{
 		if (!mIsResolveOnly)
 		{
@@ -7250,9 +7238,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	//printf("Compile done, waiting for finish\n");
 
 	while (true)
-	{
-		if (!hasRequiredTypes)
-			break;
+	{		
 		if (mCanceling)
 			mCodeGen.Cancel();
 		bool isDone = mCodeGen.Finish();
@@ -7391,8 +7377,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 // 	gBEMemReporter.Report();
 // 	int memReporterSize = gBEMemReporterSize;
 
-	mLastRevisionAborted = mCanceling || !hasRequiredTypes;
-	bool didCancel = mCanceling && hasRequiredTypes;
+	mLastRevisionAborted = mCanceling;
+	bool didCancel = mCanceling;
 	mCanceling = false;
 
 	mContext->ValidateDependencies();

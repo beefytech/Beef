@@ -416,15 +416,22 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 		}
 		else
 		{	
-			if ((argValue.mValue.IsFake()) && (!argValue.mType->IsValuelessType()))
-			{
-				if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Mixin))
-				{
-					mModule->Fail("Expression does not evaluate to a constant value", argExpr);
-				}
+			bool requiresConst = false;
+			if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Mixin))
+				requiresConst = true;
+
+			if ((requiresConst) && (argValue.mValue.IsFake()) && (!argValue.mType->IsValuelessType()))
+			{				
+				mModule->Fail("Expression does not evaluate to a constant value", argExpr);				
 			}
 
-			llvmArgs.push_back(argValue.mValue);
+			if (!argValue.mType->IsVar())
+			{
+				if ((!requiresConst) || (argValue.mValue.IsConst()) || (argValue.mType->IsValuelessType()))
+					llvmArgs.push_back(argValue.mValue);
+				else
+					llvmArgs.push_back(mModule->GetDefaultValue(argValue.mType));
+			}
 			paramIdx++;
 		}
 		argIdx++;

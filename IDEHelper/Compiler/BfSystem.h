@@ -1006,6 +1006,7 @@ public:
 	bool mIsNextRevision;
 	bool mInDeleteQueue;
 	bool mHasEmitMembers;
+	bool mForceUseNextRevision;
 
 public:
 	BfTypeDef()
@@ -1048,6 +1049,7 @@ public:
 		mIsNextRevision = false;
 		mInDeleteQueue = false;
 		mHasEmitMembers = false;
+		mForceUseNextRevision = false;
 		mDupDetectedRevision = -1;
 		mNestDepth = 0;
 		mOuterType = NULL;
@@ -1500,7 +1502,7 @@ public:
 	Array<BfTypeOptions> mMergedTypeOptions;
 	int mUpdateCnt;
 	bool mWorkspaceConfigChanged;
-	Val128 mWorkspaceConfigHash;	
+	Val128 mWorkspaceConfigHash;
 
 	Array<BfCompiler*> mCompilers;
 

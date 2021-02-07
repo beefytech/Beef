@@ -1810,7 +1810,7 @@ BfSystem::BfSystem()
 	if (gPerfManager == NULL)
 		gPerfManager = new PerfManager();
 	//gPerfManager->StartRecording();
-
+	
 	mAtomUpdateIdx = 0;
 	mAtomCreateIdx = 0;
 	mTypeMapVersion = 1;
@@ -2586,6 +2586,13 @@ void BfSystem::RemoveTypeDef(BfTypeDef* typeDef)
 	mTypeDefs.Remove(typeDef);	
 	AutoCrit autoCrit(mDataLock);
 	
+	if (typeDef->mOuterType != NULL)
+	{		
+		// We are in the outer type's mNestedTypes list
+		BfLogSys(this, "Setting mForceUseNextRevision on outer type %p from %p\n", typeDef->mOuterType, typeDef);
+		typeDef->mOuterType->mForceUseNextRevision = true;
+	}
+
 	// This will get properly handled in UntrackName when we process the mTypeDefDeleteQueue, but this
 	//  mAtomUpdateIdx increment will trigger lookup changes in BfContext::VerifyTypeLookups
 	if (typeDef->mName != mEmptyAtom)
@@ -2797,6 +2804,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mNextRevision = NULL;
 
 	typeDef->mDefState = BfTypeDef::DefState_Defined;	
+	typeDef->mForceUseNextRevision = false;
 
 	VerifyTypeDef(typeDef);
 }

@@ -5979,11 +5979,14 @@ BfArrayType* BfModule::CreateArrayType(BfType* resolvedType, int dimensions)
 	BF_ASSERT(!resolvedType->IsVar());
 	BF_ASSERT(!resolvedType->IsIntUnknown());
 
+	auto arrayTypeDef = mCompiler->GetArrayTypeDef(dimensions);
+	if (arrayTypeDef == NULL)
+		return NULL;
 	auto arrayType = mContext->mArrayTypePool.Get();
 	delete arrayType->mGenericTypeInfo;
 	arrayType->mGenericTypeInfo = new BfGenericTypeInfo();
 	arrayType->mContext = mContext;
-	arrayType->mTypeDef = mCompiler->GetArrayTypeDef(dimensions);
+	arrayType->mTypeDef = arrayTypeDef;
 	arrayType->mDimensions = dimensions;
 	arrayType->mGenericTypeInfo->mTypeGenericArguments.clear();
 	arrayType->mGenericTypeInfo->mTypeGenericArguments.push_back(resolvedType);
@@ -9745,12 +9748,13 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		}
 
 		auto elementType = ResolveTypeRef(arrayTypeRef->mElementType, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);
-		if (elementType == NULL)
+		auto arrayTypeDef = mCompiler->GetArrayTypeDef(arrayTypeRef->mDimensions);
+		if ((elementType == NULL) || (arrayTypeDef == NULL))
 		{
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
-
+		
 		if ((arrayTypeRef->mDimensions == 1) && (arrayTypeRef->mParams.size() == 1))
 		{
 			intptr elementCount = -1;
@@ -9818,7 +9822,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		arrayType->mGenericTypeInfo = new BfGenericTypeInfo();
 		arrayType->mContext = mContext;
 		arrayType->mDimensions = arrayTypeRef->mDimensions;
-		arrayType->mTypeDef = mCompiler->GetArrayTypeDef(arrayType->mDimensions);
+		arrayType->mTypeDef = arrayTypeDef;
 		arrayType->mGenericTypeInfo->mTypeGenericArguments.push_back(elementType);
 		resolvedEntry->mValue = arrayType;
 

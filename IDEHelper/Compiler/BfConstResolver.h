@@ -33,7 +33,7 @@ public:
 	BfConstResolver(BfModule* bfModule);		
 
 	BfTypedValue Resolve(BfExpression* expr, BfType* wantType = NULL, BfConstResolveFlags flags = BfConstResolveFlag_None);
-	bool PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatcher* methodMatcher, Array<BfIRValue>& llvmArgs);			
+	bool PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatcher* methodMatcher, Array<BfIRValue>& llvmArgs);
 };
 
 NS_BF_END

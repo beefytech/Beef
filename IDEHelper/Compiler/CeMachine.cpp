@@ -6255,6 +6255,9 @@ CeMachine::~CeMachine()
 
 	auto _RemoveFunctionInfo = [&](CeFunctionInfo* functionInfo)
 	{
+		if (functionInfo->mMethodInstance != NULL)
+			functionInfo->mMethodInstance->mInCEMachine = false;
+
 		if (functionInfo->mCeFunction != NULL)
 		{
 			// We don't need to actually unmap it at this point
@@ -6932,10 +6935,9 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 		ceFunction->mCeMachine = this;
 		ceFunction->mIsVarReturn = methodInstance->mReturnType->IsVar();
 		ceFunction->mCeFunctionInfo = ceFunctionInfo;
-		ceFunction->mMethodInstance = methodInstance;
-
+		ceFunction->mMethodInstance = methodInstance;		
 		ceFunctionInfo->mMethodInstance = methodInstance;
-		ceFunctionInfo->mCeFunction = ceFunction;
+		ceFunctionInfo->mCeFunction = ceFunction;		
 		MapFunctionId(ceFunction);
 	}
 	
