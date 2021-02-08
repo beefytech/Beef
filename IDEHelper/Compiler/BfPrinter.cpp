@@ -374,6 +374,50 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 	{
 		Visit((BfAstNode*)node);
 		startIdx = node->mSrcStart;
+
+		if (doWrap)
+		{			
+			bool wantWrap = false;
+
+			int spacedWordCount = 0;
+			bool inQuotes = false;
+			auto src = astNodeSrc->mSrc;
+			bool isDefinitelyCode = false;
+			bool hadNonSlash = false;
+
+			for (int i = node->mSrcStart + 1; i < node->mSrcEnd - 1; i++)
+			{
+				char c = src[i];
+				if (c != '/')
+					hadNonSlash = true;
+				if (inQuotes)
+				{
+					if (c == '\\')
+					{
+						i++;
+					}
+					else if (c == '\"')
+					{
+						inQuotes = false;
+					}
+				}
+				else if (c == '"')
+				{
+					inQuotes = true;
+				}
+				else if (c == ' ')
+				{
+					if ((isalpha(src[i - 1])) && (isalpha(src[i + 1])))
+						spacedWordCount++;
+				}
+				else if ((c == '/') && (src[i - 1] == '/') && (hadNonSlash))
+					isDefinitelyCode = true;
+			}
+
+			// If this doesn't look like a sentence then don't try to word wrap
+			if ((isDefinitelyCode) || (spacedWordCount < 4))
+				doWrap = false;
+		}
 	}
 
 	int lineEmittedChars = 0;
