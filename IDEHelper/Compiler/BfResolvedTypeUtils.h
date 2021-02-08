@@ -501,6 +501,7 @@ public:
 	virtual bool HasBeenReferenced() { return mDefineState != BfTypeDefineState_Undefined; }
 	virtual bool HasTypeFailed() { return false; }
 	virtual bool IsDataIncomplete() { return mDefineState == BfTypeDefineState_Undefined; }
+	virtual bool IsFinishingType() { return false;  }
 	virtual bool IsIncomplete() { return mDefineState < BfTypeDefineState_Defined; }
 	virtual bool IsDeleting() { return ((mRebuildFlags & (BfTypeRebuildFlag_Deleted | BfTypeRebuildFlag_DeleteQueued)) != 0); }
 	virtual bool IsDeclared() { return mDefineState >= BfTypeDefineState_Declared; }
@@ -1954,6 +1955,7 @@ public:
 	virtual bool IsReified() override { return mIsReified; }
 	virtual bool NeedsExplicitAlignment() override { return !IsSizeAligned() || mIsPacked; }	
 	virtual bool IsDataIncomplete() override { return ((mTypeIncomplete) || (mBaseTypeMayBeIncomplete)) && (!mNeedsMethodProcessing); }	
+	virtual bool IsFinishingType() override { return mIsFinishingType; }
 	virtual bool IsIncomplete() override { return (mTypeIncomplete) || (mBaseTypeMayBeIncomplete); }
 	virtual bool IsSplattable() override { BF_ASSERT((mInstSize >= 0) || (!IsComposite())); return mIsSplattable; }
 	virtual int GetSplatCount() override;

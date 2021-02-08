@@ -1686,7 +1686,7 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 		{
 			SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
 
-			mModule->PopulateType(checkInnerType);
+			mModule->PopulateType(checkInnerType, checkInnerType->IsValueType() ? BfPopulateType_Data : BfPopulateType_Declaration);
 			if (checkInnerType->mSize > unionSize)
 				unionSize = checkInnerType->mSize;	
 
@@ -2196,7 +2196,7 @@ bool BfTypeInstance::WantsGCMarking()
 		return true; 
 	if ((IsEnum()) && (!IsPayloadEnum()))
 		return false;	
-	BF_ASSERT(mDefineState >= BfTypeDefineState_Defined);
+	BF_ASSERT((mDefineState >= BfTypeDefineState_Defined) || (mTypeFailed));
 	return mWantsGCMarking;
 }
 

@@ -2642,8 +2642,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	
 	if (typeInstance->mIsFinishingType)
 	{
-		// This type already failed
-		return;
+		if (typeInstance->mTypeFailed)
+			return;
 	}
 
 	if (!typeInstance->mTypeFailed)
@@ -3736,7 +3736,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 				if (populateChildType)
 				{
-					BF_ASSERT(!resolvedFieldType->IsDataIncomplete());
+					if (resolvedFieldType->IsFinishingType())
+					{
+						AssertErrorState();
+					}
+					else
+						BF_ASSERT(!resolvedFieldType->IsDataIncomplete());
 				}
 				else
 				{
