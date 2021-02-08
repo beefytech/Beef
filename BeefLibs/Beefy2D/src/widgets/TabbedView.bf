@@ -200,7 +200,8 @@ namespace Beefy.widgets
             {
                 return (mTabbedView.mParentDockingFrame.mParentDockingFrame == null) &&
                     (mTabbedView.mParentDockingFrame.GetDockedWindowCount() == 1) &&
-                    (mTabbedView.GetTabCount() == 1);
+                    (mTabbedView.GetTabCount() == 1) &&
+					mTabbedView.mAutoClose;
             }
 
             void WindowDragLostFocusHandler(BFWindow window, BFWindow newFocus)
@@ -288,7 +289,7 @@ namespace Beefy.widgets
                 if ((refWidget != null) && (refWidget.mWidgetWindow != mWidgetWindow) && (mWidgetWindow != null))
                     mWidgetWindow.SetForeground();
 
-                if (mTabbedView.GetTabCount() == 1)
+                if ((mTabbedView.GetTabCount() == 1) && mTabbedView.mAutoClose)
                 {                    
                     mTabbedView.Dock(frame, refWidget, align);
                     return;
@@ -327,7 +328,7 @@ namespace Beefy.widgets
                     tabbedView.Dock(frame, refWidget, align);                    
                 }
 
-                if (prevTabbedView.GetTabCount() == 0)
+                if ((prevTabbedView.GetTabCount() == 0) && prevTabbedView.mAutoClose)
                 {                    
                     prevTabbedView.mParentDockingFrame.RemoveDockedWidget(prevTabbedView);
                 }
