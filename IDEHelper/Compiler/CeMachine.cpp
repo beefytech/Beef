@@ -4335,7 +4335,7 @@ static void CeSetAddrVal(void* ptr, addr_ce val, int32 ptrSize)
 }
 
 bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType)
-{	
+{
 	auto ceModule = mCeMachine->mCeModule;
 	CeFunction* ceFunction = startFunction;
 	returnType = startFunction->mMethodInstance->mReturnType;
@@ -5406,6 +5406,15 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					auto curFrame = _GetCurFrame();
 					SetAndRestoreValue<CeFrame*> prevFrame(mCurFrame, &curFrame);
 					mCeMachine->PrepareFunction(callEntry.mFunction, NULL);
+				}
+
+				if (callEntry.mFunction->mMethodInstance != NULL)
+				{
+					if (callEntry.mFunction->mMethodInstance->GetOwner()->IsDeleting())
+					{
+						_Fail("Calling method on deleted type");
+						return false;
+					}
 				}
 
 				callEntry.mBindRevision = mCeMachine->mMethodBindRevision;
