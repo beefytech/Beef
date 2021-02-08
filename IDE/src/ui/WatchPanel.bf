@@ -1740,6 +1740,7 @@ namespace IDE.ui
                 evt.mDragKind = .After;
                 dragTarget = (WatchListViewItem)dragTarget.mParentItem;
                 evt.mDragTarget = dragTarget;
+				return;
             }
             if ((dragTarget.mLabel == "") && (dragKind == .After))
                 dragKind = .Before;            
