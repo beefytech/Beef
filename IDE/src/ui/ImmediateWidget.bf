@@ -7,6 +7,7 @@ using Beefy.theme.dark;
 using Beefy.gfx;
 using System.Diagnostics;
 using System.IO;
+using IDE.Debugger;
 
 namespace IDE.ui
 {
@@ -379,7 +380,11 @@ namespace IDE.ui
 				var subItemLabel = result.GetSubItem(1).mLabel;
 				if (subItemLabel == null)
 					subItemLabel = "";
-			    mEditWidgetContent.AppendText(scope String("   ", subItemLabel, "\n"));
+
+				if (result.mWatchEntry.mResultType == .RawText)
+					mEditWidgetContent.AppendText(scope String(subItemLabel, "\n"));
+				else
+			    	mEditWidgetContent.AppendText(scope String("   ", subItemLabel, "\n"));
 
 				if (result.mWatchEntry.mWarnings != null)
 				{
@@ -415,7 +420,11 @@ namespace IDE.ui
 			        for (int32 i = startPos; i < mEditWidgetContent.mData.mTextLength; i++)
 			            mEditWidgetContent.mData.mText[i].mDisplayTypeId = (uint8)SourceElementType.Error;
 			    }
-			    else
+			    else if (result.mWatchEntry.mResultType == .RawText)
+				{
+					// No info button
+				}
+				else
 			    {
 			        mInfoButton.Resize(resultX - GS!(3), resultY - GS!(2), GS!(20), GS!(20));
 			        mEditWidgetContent.AddWidget(mInfoButton);
@@ -547,7 +556,16 @@ namespace IDE.ui
 				}
 				else
 				{
-	                gApp.DebugEvaluate(null, cmdText, val, mEditWidgetContent.CursorTextPos - mEntryStartPos.mIndex - 2);
+					DebugManager.EvalExpressionFlags flags = .None;
+
+					if (cmdText.StartsWith("!raw"))
+					{
+						for (int i < 4)
+							cmdText[i] = ' ';
+						flags |= .RawStr;
+					}
+
+	                gApp.DebugEvaluate(null, cmdText, val, mEditWidgetContent.CursorTextPos - mEntryStartPos.mIndex - 2, .NotSet, flags);
 					gApp.mIsImmediateDebugExprEval = true;
 				}
 			}
@@ -570,7 +588,19 @@ namespace IDE.ui
                     }
 					var info = scope String()..Append(val, idx + ":autocomplete\n".Length);
 					if (!editWidgetContent.mAutoComplete.mIsDocumentationPass)
+					{
+						if ((cmdText.StartsWith("!")) && (!cmdText.Contains(' ')))
+						{
+							if ("!raw".Contains(cmdText))
+								info.Append("cmd\traw\n");
+							if ("!info".Contains(cmdText))
+								info.Append("cmd\tinfo\n");
+							if ("!step".Contains(cmdText))
+								info.Append("cmd\tstep\n");
+						}
+
                     	editWidgetContent.mAutoComplete.SetInfo(info, true, mEntryStartPos.mIndex + 1);
+					}
                 }
                 else if (editWidgetContent.mAutoComplete != null)
                     editWidgetContent.mAutoComplete.Close();                

@@ -96,7 +96,8 @@ namespace IDE.Debugger
 			MemoryAddress		= 0x40,
 			MemoryWatch			= 0x80,
 			Symbol				= 0x100,
-			StepIntoCall		= 0x200
+			StepIntoCall		= 0x200,
+			RawStr				= 0x400,
 		}
 
 		[Reflect]

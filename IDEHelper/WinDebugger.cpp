@@ -9504,6 +9504,11 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 		expressionFlags = (DwEvalExpressionFlags)(expressionFlags & ~DwEvalExpressionFlag_AllowCalls);
 	}
 
+	if ((expressionFlags & DwEvalExpressionFlag_RawStr) != 0)
+	{
+		formatInfo.mRawString = true;
+	}
+
 	auto dbgModule = GetCallStackDbgModule(callStackIdx);
 	auto dbgSubprogram = GetCallStackSubprogram(callStackIdx);
 	DbgCompileUnit* dbgCompileUnit = NULL;
