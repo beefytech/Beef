@@ -842,7 +842,7 @@ BfMethodDef* BfTypeDef::GetMethodByName(const StringImpl& name, int paramCount)
 	auto methodDef = (BfMethodDef*)entry->mMemberDef;
 	while (methodDef != NULL)
 	{		
-		if ((name == methodDef->mName) && ((paramCount == -1) || (paramCount == (int)methodDef->mParams.size())))
+		if (((paramCount == -1) || (paramCount == (int)methodDef->mParams.size())))
 		{
 			if ((bestMethodDef == NULL) ||
 				((bestMethodDef->mDeclaringType->IsExtension()) && (!methodDef->mDeclaringType->IsExtension())))
