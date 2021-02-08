@@ -14785,7 +14785,15 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 		if (unspecializedMethod == NULL)
 			unspecializedMethod = mModule->GetRawMethodInstance(curTypeInst, methodDef);
 
-		BfType* specializedReturnType = mModule->ResolveGenericType(unspecializedMethod->mReturnType, NULL, &methodMatcher.mBestMethodGenericArguments);
+		BfTypeVector* typeGenericArgs = NULL;
+		auto typeUnspecMethodInstance = unspecializedMethod;
+		if (curTypeInst->IsUnspecializedTypeVariation())
+		{
+			typeUnspecMethodInstance = mModule->GetUnspecializedMethodInstance(typeUnspecMethodInstance, true);
+			typeGenericArgs = &curTypeInst->mGenericTypeInfo->mTypeGenericArguments;
+		}	
+		
+		BfType* specializedReturnType = mModule->ResolveGenericType(typeUnspecMethodInstance->mReturnType, typeGenericArgs, &methodMatcher.mBestMethodGenericArguments);
 		if (specializedReturnType != NULL)
 			*overrideReturnType = specializedReturnType;
 	}
