@@ -829,8 +829,7 @@ void BfContext::ValidateDependencies()
 void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuildModule, bool placeSpecializiedInPurgatory)
 {
 	BfTypeInstance* typeInst = type->ToTypeInstance();		
-	
-	
+		
 	if (type->IsDeleting())
 	{
 		return;
@@ -2516,11 +2515,6 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 	BF_ASSERT(!typeInst->IsDeleting());
 	
 	BP_ZONE("BfContext::QueueMethodSpecializations");
-
-	if (typeInst->mTypeId == 578)
-	{
-		NOP;
-	}
 
 	auto module = typeInst->mModule;
 	if (module == NULL)

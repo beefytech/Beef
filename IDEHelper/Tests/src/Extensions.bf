@@ -160,6 +160,32 @@ namespace Tests
 				return 1;
 			}
 		}
+		
+		class ClassF
+		{
+			public static int sVal = 3;
+
+			public int mF0 = 1 ~
+				{
+					sVal += 40;
+				};
+		}
+
+		extension ClassF
+		{
+			public int mF1 = 2 ~
+				{
+					sVal += 500;
+				};
+		}
+
+		class ClassG : ClassF
+		{
+			public int mG0 = 3 ~
+			{
+				sVal += 6000;
+			};
+		}
 
 		extension TClassA<T> where T : IGetExVal
 		{
@@ -226,6 +252,26 @@ namespace Tests
 			ClassE ce = scope .();
 			Test.Assert(ce.mD == 1);
 			Test.Assert(ce.mE == 1);
+
+			///
+			{
+				ClassF cf = scope .();
+			}
+			Test.Assert(ClassF.sVal == 543);
+			///
+			{
+				ClassF.sVal = 3;
+				ClassG cg = scope .();
+			}
+			Test.Assert(ClassF.sVal == 6543);
+			ClassF.sVal = 3;
+			Object obj = new ClassF();
+			delete obj;
+			Test.Assert(ClassF.sVal == 543);
+			ClassF.sVal = 3;
+			obj = new ClassG();
+			delete obj;
+			Test.Assert(ClassF.sVal == 6543);
 		}
 
 		[Test]

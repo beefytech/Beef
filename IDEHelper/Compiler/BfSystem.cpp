@@ -833,12 +833,26 @@ int BfTypeDef::GetSelfGenericParamCount()
 
 BfMethodDef* BfTypeDef::GetMethodByName(const StringImpl& name, int paramCount)
 {
-	for (auto method : mMethods)
-	{
-		if ((name == method->mName) && ((paramCount == -1) || (paramCount == (int)method->mParams.size())))
-			return method;
+	PopulateMemberSets();
+	BfMemberSetEntry* entry = NULL;	
+	if (!mMethodSet.TryGetWith(name, &entry))
+		return NULL;
+
+	BfMethodDef* bestMethodDef = NULL;
+	auto methodDef = (BfMethodDef*)entry->mMemberDef;
+	while (methodDef != NULL)
+	{		
+		if ((name == methodDef->mName) && ((paramCount == -1) || (paramCount == (int)methodDef->mParams.size())))
+		{
+			if ((bestMethodDef == NULL) ||
+				((bestMethodDef->mDeclaringType->IsExtension()) && (!methodDef->mDeclaringType->IsExtension())))
+				bestMethodDef = methodDef;
+		}
+
+		methodDef = methodDef->mNextWithSameName;
 	}
-	return NULL;
+
+	return bestMethodDef;
 }
 
 BfFieldDef* BfTypeDef::GetFieldByName(const StringImpl& name)

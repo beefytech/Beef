@@ -3934,15 +3934,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		bool allowProtected = allowPrivate || TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst);
 		while (checkTypeInst != NULL)
 		{
-			auto checkTypeDef = checkTypeInst->mTypeDef;
-
-			checkTypeDef->PopulateMemberSets();
-			BfMemberSetEntry* entry = NULL;
-			BfMethodDef* dtorMethodDef = NULL;
-			checkTypeDef->mMethodSet.TryGetWith(String("~this"), &entry);
-			if (entry != NULL)
-				dtorMethodDef = (BfMethodDef*)entry->mMemberDef;
-
+			auto dtorMethodDef = checkTypeInst->mTypeDef->GetMethodByName("~this");
 			if (dtorMethodDef)
 			{
 				if (!CheckProtection(dtorMethodDef->mProtection, checkTypeInst->mTypeDef, allowProtected, allowPrivate))

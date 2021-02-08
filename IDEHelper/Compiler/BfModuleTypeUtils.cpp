@@ -2599,8 +2599,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
 	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
-	SetAndRestoreValue<bool> prevHadError(mHadBuildError, false);
-	SetAndRestoreValue<bool> prevHadWarning(mHadBuildWarning, false);
+
+	// WHY were we clearing these values? 
+	//SetAndRestoreValue<bool> prevHadError(mHadBuildError, false);
+	//SetAndRestoreValue<bool> prevHadWarning(mHadBuildWarning, false);
 
 	BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
 	typeState.mPopulateType = populateType;

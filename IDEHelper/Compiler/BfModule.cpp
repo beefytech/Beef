@@ -1916,13 +1916,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 		bool hadDtorCall = false;
 		while (checkBaseType != NULL)
 		{	
-			checkBaseType->mTypeDef->PopulateMemberSets();
-			BfMemberSetEntry* entry = NULL;
-			BfMethodDef* dtorMethodDef = NULL;
-			checkBaseType->mTypeDef->mMethodSet.TryGetWith(String("~this"), &entry);
-			if (entry != NULL)
-				dtorMethodDef = (BfMethodDef*)entry->mMemberDef;
-
+			BfMethodDef* dtorMethodDef = checkBaseType->mTypeDef->GetMethodByName("~this");
 			if (dtorMethodDef != NULL)
 			{				
 				auto dtorMethodInstance = GetMethodInstance(checkBaseType, dtorMethodDef, BfTypeVector());
@@ -15740,13 +15734,7 @@ void BfModule::EmitDtorBody()
 					UpdateSrcPos(typeDef->mTypeDeclaration->mNameNode);
 				}
 
-				checkBaseType->mTypeDef->PopulateMemberSets();
-				BfMemberSetEntry* entry = NULL;
-				BfMethodDef* dtorMethodDef = NULL;
-				checkBaseType->mTypeDef->mMethodSet.TryGetWith(String("~this"), &entry);
-				if (entry != NULL)
-					dtorMethodDef = (BfMethodDef*)entry->mMemberDef;
-
+				BfMethodDef* dtorMethodDef = checkBaseType->mTypeDef->GetMethodByName("~this"); 
 				if (dtorMethodDef != NULL)
 				{
 					auto dtorMethodInstance = GetMethodInstance(checkBaseType, dtorMethodDef, BfTypeVector());
