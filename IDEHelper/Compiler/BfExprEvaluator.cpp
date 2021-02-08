@@ -18713,10 +18713,10 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 	int valueIdx = -1;
 	for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 	{
-		BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
+		BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];		
+		++valueIdx;		
 		if (fieldInstance->mResolvedType->IsValuelessType())
 			continue;
-		++valueIdx;
 		auto typedVal = typedValues[valueIdx];
 		if (!typedVal)
 		{
