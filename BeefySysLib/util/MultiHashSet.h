@@ -164,17 +164,30 @@ public:
 	{
 		auto newHashHeads = (Entry**)TFuncs::AllocateZero(sizeof(Entry*) * newHashSize, alignof(Entry*));
 
+		SizedArray<Entry*, 32> entryList;
+
 		for (int hashIdx = 0; hashIdx < mHashSize; hashIdx++)
 		{
 			Entry* checkEntry = mHashHeads[hashIdx];
-			while (checkEntry != NULL)
+			if (checkEntry != NULL)
 			{
-				auto nextEntry = checkEntry->mNext;
-				int newHashIdx = (checkEntry->mHash & 0x7FFFFFFF) % newHashSize;
-				checkEntry->mNext = newHashHeads[newHashIdx];
-				newHashHeads[newHashIdx] = checkEntry;
-
-				checkEntry = nextEntry;
+				// We want to keep elements with equal hashes in their insert order so we need to 
+				// iterate through the linked list in reverse
+				entryList.Clear();
+				
+				while (checkEntry != NULL)
+				{
+					entryList.Add(checkEntry);
+					checkEntry = checkEntry->mNext;
+				}
+				
+				for (int i = (int)entryList.mSize - 1; i >= 0; i--)
+				{
+					auto checkEntry = entryList[i];					
+					int newHashIdx = (checkEntry->mHash & 0x7FFFFFFF) % newHashSize;
+					checkEntry->mNext = newHashHeads[newHashIdx];
+					newHashHeads[newHashIdx] = checkEntry;
+				}
 			}
 		}
 
