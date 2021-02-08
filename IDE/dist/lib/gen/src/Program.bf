@@ -12,7 +12,8 @@ namespace gen
 {
 	class Program
 	{
-		static String[] sNames = new .[]("comdlg32", "gdi32", "kernel32", "ole32", "netapi32", "ntdll", "rpcrt4", "shell32", "user32", "version", "winmm") ~ delete _;
+		static String[] sNames = new .[]("advapi32", "comdlg32", "crypt32", "d3d11", "dinput8", "gdi32", "kernel32", "ole32", "netapi32",
+			"ntdll", "rpcrt4", "shell32", "shlwapi", "user32", "version", "winmm", "winhttp", "wininet", "WS2_32", "wsock32") ~ delete _;
 
 		public static int Main(String[] args)
 		{
