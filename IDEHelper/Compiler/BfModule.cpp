@@ -1543,7 +1543,7 @@ BfIRValue BfModule::CreateStringCharPtr(const StringImpl& str, int stringId, boo
 }
 
 BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId, bool define)
-{			
+{
 	auto stringTypeInst = ResolveTypeDef(mCompiler->mStringTypeDef, define ? BfPopulateType_Data : BfPopulateType_Declaration)->ToTypeInstance();
 	mBfIRBuilder->PopulateType(stringTypeInst);
 
@@ -5970,6 +5970,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	BfType* reflectFieldDataType = ResolveTypeDef(mCompiler->mReflectFieldDataDef);
 	BfIRValue emptyValueType = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType->ToTypeInstance()->mBaseType), SizedArray<BfIRValue, 1>());
 	
+	if (typeInstance->mTypeDef->mName->ToString() == "TestProgram")
+	{
+		NOP;
+	}
+
 	auto _HandleCustomAttrs = [&](BfCustomAttributes* customAttributes)
 	{
 		if (customAttributes == NULL)
@@ -10996,6 +11001,17 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			continue;
 		}
 
+		if (mModuleName == "BeefTest_TestProgram")
+		{
+			NOP;
+		}
+
+		if ((mIsReified) && (attrTypeInst->mAttributeData != NULL) && ((attrTypeInst->mAttributeData->mFlags & BfAttributeFlag_ReflectAttribute) != 0))
+		{
+			// Reify attribute
+			PopulateType(attrTypeInst);
+		}
+
 		if (mCurTypeInstance != NULL)
 			AddDependency(attrTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_CustomAttribute);
 
@@ -11166,7 +11182,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 							auto propType = methodInstance.mMethodInstance->GetParamType(0);
 							if (assignExpr->mRight != NULL)
 							{
-								BfTypedValue result = constResolver.Resolve(assignExpr->mRight, propType);
+								BfTypedValue result = constResolver.Resolve(assignExpr->mRight, propType, BfConstResolveFlag_NoActualizeValues);
 								if ((result) && (!result.mType->IsVar()))
 								{
 									if (!result.mValue.IsConst())
@@ -11182,7 +11198,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 				}
 
 				if ((!handledExpr) && (assignExpr->mRight != NULL))
-					constResolver.Resolve(assignExpr->mRight);
+					constResolver.Resolve(assignExpr->mRight, NULL, BfConstResolveFlag_NoActualizeValues);
 			}
 			else
 			{
@@ -11202,7 +11218,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 					resolvedArg.mArgFlags = BfArgFlag_DeferredEval;
 				}
 				else
-					resolvedArg.mTypedValue = constResolver.Resolve(arg);
+					resolvedArg.mTypedValue = constResolver.Resolve(arg, NULL, BfConstResolveFlag_NoActualizeValues);
 
 				if (!inPropSet)
 				{										
@@ -11283,7 +11299,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			if ((arg.mArgFlags & BfArgFlag_DeferredEval) != 0)
 			{
 				if (auto expr = BfNodeDynCast<BfExpression>(arg.mExpression))
-					constResolver.Resolve(expr);
+					constResolver.Resolve(expr, NULL, BfConstResolveFlag_NoActualizeValues);
 			}
 		}
 

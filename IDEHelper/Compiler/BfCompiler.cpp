@@ -5106,6 +5106,12 @@ void BfCompiler::MarkStringPool(BfModule* module)
 		stringPoolEntry.mLastUsedRevision = mRevision;
 	}
 
+	for (int stringId : module->mImportFileNames)
+	{
+		BfStringPoolEntry& stringPoolEntry = module->mContext->mStringObjectIdMap[stringId];
+		stringPoolEntry.mLastUsedRevision = mRevision;
+	}
+
 	/*if (module->mOptModule != NULL)
 		MarkStringPool(module->mOptModule);*/
 	auto altModule = module->mNextAltModule;

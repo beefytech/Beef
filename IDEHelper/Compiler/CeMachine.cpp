@@ -3809,7 +3809,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute)
 {
-	module->PopulateType(customAttribute->mType);
+	module->mContext->mUnreifiedModule->PopulateType(customAttribute->mType);
 	auto ceAttrAddr = CeMalloc(customAttribute->mType->mSize) - mMemory.mVals;	
 	BfIRValue ceAttrVal = module->mBfIRBuilder->CreateConstAggCE(module->mBfIRBuilder->MapType(customAttribute->mType, BfIRPopulateType_Identity), ceAttrAddr);
 	BfTypedValue ceAttrTypedValue(ceAttrVal, customAttribute->mType);

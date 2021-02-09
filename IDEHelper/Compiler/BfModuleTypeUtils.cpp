@@ -1029,7 +1029,21 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 						typeModule->mIsReified = true;
 						typeModule->mWantsIRIgnoreWrites = false;						
 						for (auto ownedTypes : typeModule->mOwnedTypeInstances)
+						{
 							ownedTypes->mIsReified = true;
+
+							if (ownedTypes->mCustomAttributes != NULL)
+							{
+								for (auto& attr : ownedTypes->mCustomAttributes->mAttributes)
+								{
+									if ((attr.mType->mAttributeData != NULL) && ((attr.mType->mAttributeData->mFlags & BfCustomAttributeFlags_ReflectAttribute) != 0))
+									{
+										// Reify this attribute
+										typeModule->PopulateType(attr.mType);
+									}
+								}
+							}
+						}
 						mCompiler->mStats.mReifiedModuleCount++;
 						if (typeModule->mBfIRBuilder != NULL)
 						{
@@ -1038,7 +1052,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 							typeModule->SetupIRBuilder(false);
 						}
 						else
-							typeModule->PrepareForIRWriting(resolvedTypeRef->ToTypeInstance());
+							typeModule->PrepareForIRWriting(resolvedTypeRef->ToTypeInstance());						
 					}
 					else
 					{
@@ -2002,7 +2016,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 	for (auto& customAttribute : customAttributes->mAttributes)
 	{			
 		auto attrType = customAttribute.mType;
-		PopulateType(attrType, BfPopulateType_DataAndMethods);
+		mContext->mUnreifiedModule->PopulateType(attrType, BfPopulateType_DataAndMethods);
 		if (attrType->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
 			continue;
 
@@ -2331,7 +2345,7 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 	for (auto& customAttribute : customAttributes->mAttributes)
 	{
 		auto attrType = customAttribute.mType;
-		PopulateType(attrType, BfPopulateType_DataAndMethods);
+		mContext->mUnreifiedModule->PopulateType(attrType, BfPopulateType_DataAndMethods);
 		if (attrType->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
 			continue;
 
@@ -9715,6 +9729,11 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			typeInst = new BfTypeInstance();
 		}
 		typeInst->mTypeDef = typeDef;
+
+		if (((resolveFlags & BfResolveTypeRefFlag_NoReify) != 0) && (mCompiler->mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude))
+		{
+			typeInst->mIsReified = false;
+		}
 
 		if (typeInst->mTypeDef->mGenericParamDefs.size() != 0)
 		{
