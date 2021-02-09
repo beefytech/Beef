@@ -1654,8 +1654,11 @@ String* BfModule::GetStringPoolString(BfIRValue constantStr, BfIRConstHolder * c
 	return NULL;
 }
 
-BfIRValue BfModule::GetStringCharPtr(int stringId)
+BfIRValue BfModule::GetStringCharPtr(int stringId, bool force)
 {
+	if ((mBfIRBuilder->mIgnoreWrites) && (!force))
+		return mBfIRBuilder->CreateConst(BfTypeCode_StringId, stringId);
+
 	BfIRValue* irValue = NULL;
 	if (!mStringCharPtrPool.TryAdd(stringId, NULL, &irValue))
 		return *irValue;
@@ -1670,13 +1673,13 @@ BfIRValue BfModule::GetStringCharPtr(int stringId)
 	return strCharPtrConst;
 }
 
-BfIRValue BfModule::GetStringCharPtr(BfIRValue strValue)
+BfIRValue BfModule::GetStringCharPtr(BfIRValue strValue, bool force)
 {
 	if (strValue.IsConst())
 	{
 		int stringId = GetStringPoolIdx(strValue);
 		BF_ASSERT(stringId != -1);
-		return GetStringCharPtr(stringId);
+		return GetStringCharPtr(stringId, force);
 	}
 
 	BfIRValue charPtrPtr = mBfIRBuilder->CreateInBoundsGEP(strValue, 0, 1);	
@@ -1684,27 +1687,32 @@ BfIRValue BfModule::GetStringCharPtr(BfIRValue strValue)
 	return charPtr;
 }
 
-BfIRValue BfModule::GetStringCharPtr(const StringImpl& str)
+BfIRValue BfModule::GetStringCharPtr(const StringImpl& str, bool force)
 {
-	return GetStringCharPtr(GetStringObjectValue(str));	
+	return GetStringCharPtr(GetStringObjectValue(str, force), force);
 }
 
-BfIRValue BfModule::GetStringObjectValue(int strId)
+BfIRValue BfModule::GetStringObjectValue(int strId, bool define, bool force)
 {	
 	BfIRValue* objValue;
 	if (mStringObjectPool.TryGetValue(strId, &objValue))
 		return *objValue;
 
 	auto stringPoolEntry = mContext->mStringObjectIdMap[strId];
-	return GetStringObjectValue(stringPoolEntry.mString, true);
+	return GetStringObjectValue(stringPoolEntry.mString, define, force);
 }
 
-BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define)
+BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define, bool force)
 {	
 	auto stringType = ResolveTypeDef(mCompiler->mStringTypeDef, define ? BfPopulateType_Data : BfPopulateType_Declaration);
 	mBfIRBuilder->PopulateType(stringType);
 
-	int strId = mContext->GetStringLiteralId(str);
+	int strId = mContext->GetStringLiteralId(str);	
+
+	if ((mBfIRBuilder->mIgnoreWrites) && (!force))
+	{
+		return mBfIRBuilder->CreateConst(BfTypeCode_StringId, strId);
+	}
 
 	BfIRValue* irValuePtr = NULL;
 	if (!mStringObjectPool.TryAdd(strId, NULL, &irValuePtr))
@@ -5900,8 +5908,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 	if (needsTypeNames)
 	{
-		typeNameConst = GetStringObjectValue(typeDef->mName->mString, true);
-		namespaceConst = GetStringObjectValue(typeDef->mNamespace.ToString(), true);
+		typeNameConst = GetStringObjectValue(typeDef->mName->mString, !mIsComptimeModule);
+		namespaceConst = GetStringObjectValue(typeDef->mNamespace.ToString(), !mIsComptimeModule);
 	}
 	else
 	{
@@ -6041,7 +6049,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 							*orderedIdPtr = (int)usedStringIdMap.size() - 1;							
 						}
 
-						GetStringObjectValue(stringId);
+						GetStringObjectValue(stringId, true, true);
 						PUSH_INT8(0xFF); // String
 						PUSH_INT32(*orderedIdPtr);
 						argIdx++;
@@ -6061,7 +6069,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 									*orderedIdPtr = (int)usedStringIdMap.size() - 1;
 								}
 
-								GetStringObjectValue(stringId);
+								GetStringObjectValue(stringId, true, true);
 								PUSH_INT8(0xFF); // String
 								PUSH_INT32(*orderedIdPtr);
 								argIdx++;
@@ -6225,7 +6233,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		BfType* payloadType = typeInstance->GetUnionInnerType();		
 		if (!payloadType->IsValuelessType())
 		{
-			BfIRValue payloadNameConst = GetStringObjectValue("$payload", true);
+			BfIRValue payloadNameConst = GetStringObjectValue("$payload", !mIsComptimeModule);
 			SizedArray<BfIRValue, 8> payloadFieldVals =
 			{
 				emptyValueType,
@@ -6240,7 +6248,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		}
 
 		BfType* dscrType = typeInstance->GetDiscriminatorType();
-		BfIRValue dscrNameConst = GetStringObjectValue("$discriminator", true);
+		BfIRValue dscrNameConst = GetStringObjectValue("$discriminator", !mIsComptimeModule);
 		SizedArray<BfIRValue, 8> dscrFieldVals =
 		{
 			emptyValueType,
@@ -6262,7 +6270,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		BfFieldInstance* fieldInstance = &typeInstance->mFieldInstances[fieldIdx];
 		BfFieldDef* fieldDef = fieldInstance->GetFieldDef();
 
-		BfIRValue fieldNameConst = GetStringObjectValue(fieldDef->mName, true);
+		BfIRValue fieldNameConst = GetStringObjectValue(fieldDef->mName, !mIsComptimeModule);
 
 		int typeId = 0;
 		auto fieldType = fieldInstance->GetResolvedType();
@@ -6538,7 +6546,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				funcVal = mBfIRBuilder->CreateBitCast(moduleMethodInstance.mFunc, voidPtrIRType);
 		}
 				
-		BfIRValue methodNameConst = GetStringObjectValue(methodDef->mName, true);
+		BfIRValue methodNameConst = GetStringObjectValue(methodDef->mName, !mIsComptimeModule);
 						
 		BfMethodFlags methodFlags = defaultMethod->GetMethodFlags();
 		
@@ -6561,7 +6569,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			if (defaultMethod->GetParamIsSplat(paramIdx))
 				paramFlags = (ParamFlags)(paramFlags | ParamFlag_Splat);
 
-			BfIRValue paramNameConst = GetStringObjectValue(paramName, true);
+			BfIRValue paramNameConst = GetStringObjectValue(paramName, !mIsComptimeModule);
 
 			SizedArray<BfIRValue, 8> paramDataVals =
 				{
@@ -10621,17 +10629,18 @@ BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConst
 			auto constVal = mBfIRBuilder->CreateConst(constant, constHolder);
 			BfTypedValue typedValue;
 
+			bool allowUnactualized = mBfIRBuilder->mIgnoreWrites;
 			if (constant->mTypeCode == BfTypeCode_StringId)
 			{
 				if ((wantType->IsInstanceOf(mCompiler->mStringTypeDef)) ||
 					((wantType->IsPointer()) && (wantType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))))
 				{
-					typedValue = BfTypedValue(ConstantToCurrent(constant, constHolder, wantType), wantType);
+					typedValue = BfTypedValue(ConstantToCurrent(constant, constHolder, wantType, allowUnactualized), wantType);
 					return typedValue;
 				}
 
 				auto stringType = ResolveTypeDef(mCompiler->mStringTypeDef);
-				typedValue = BfTypedValue(ConstantToCurrent(constant, constHolder, stringType), stringType);
+				typedValue = BfTypedValue(ConstantToCurrent(constant, constHolder, stringType, allowUnactualized), stringType);
 			}
 			
 			if (!typedValue)
@@ -10675,7 +10684,27 @@ BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConst
 	return BfTypedValue(irValue, wantType, false);
 }
 
-BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType, bool allowStringId)
+bool BfModule::HasUnactializedConstant(BfConstant* constant, BfIRConstHolder* constHolder)
+{
+	if ((constant->mConstType == BfConstType_TypeOf) || (constant->mConstType == BfConstType_TypeOf_WithData))
+		return true;
+	if (constant->mTypeCode == BfTypeCode_StringId)
+		return true;
+
+	if (constant->mConstType == BfConstType_Agg)
+	{
+		auto constArray = (BfConstantAgg*)constant;		
+		for (auto val : constArray->mValues)
+		{
+			if (HasUnactializedConstant(constHolder->GetConstant(val), constHolder))
+				return true;			
+		}		
+	}
+
+	return false;
+}
+
+BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType, bool allowUnactualized)
 {
 	if (constant->mTypeCode == BfTypeCode_NullPtr)
 	{
@@ -10690,18 +10719,25 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 
 	if (constant->mTypeCode == BfTypeCode_StringId)
 	{
-		if (!allowStringId)
+		if (!allowUnactualized)
 		{
 			if ((wantType->IsInstanceOf(mCompiler->mStringTypeDef)) ||
 				((wantType->IsPointer()) && (wantType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))))
 			{
 				const StringImpl& str = mContext->mStringObjectIdMap[constant->mInt32].mString;
-				BfIRValue stringObjConst = GetStringObjectValue(str);
+				BfIRValue stringObjConst = GetStringObjectValue(str, false, true);
 				if (wantType->IsPointer())
-					return GetStringCharPtr(stringObjConst);
+					return GetStringCharPtr(stringObjConst, true);
 				return stringObjConst;
 			}
 		}
+	}
+
+	if (constant->mConstType == Beefy::BfConstType_TypeOf)
+	{
+		auto constTypeOf = (BfTypeOf_Const*)constant;
+		AddDependency(constTypeOf->mType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+		return CreateTypeDataRef(constTypeOf->mType);
 	}
 
 	if (constant->mConstType == BfConstType_Agg)
@@ -11012,8 +11048,8 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 
 					auto& fieldTypeInst = checkTypeInst->mFieldInstances[bestField->mIdx];
 					if (assignExpr->mRight != NULL)
-					{
-						BfTypedValue result = constResolver.Resolve(assignExpr->mRight, fieldTypeInst.mResolvedType);
+					{						
+						BfTypedValue result = constResolver.Resolve(assignExpr->mRight, fieldTypeInst.mResolvedType, BfConstResolveFlag_NoActualizeValues);
 						if (result)
 						{
 							CurrentAddToConstHolder(result.mValue);
@@ -14049,8 +14085,10 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 				if (mBfIRBuilder->HasDebugLocation())
 				{
 					if ((isConstant) && (!didConstToMem))
-					{
-						localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(localVarDef->mConstValue, diVariable);
+					{	
+						BfTypedValue result(localVarDef->mConstValue, localVarDef->mResolvedType);
+						FixValueActualization(result);
+						localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(result.mValue, diVariable);
 					}
 					else
 					{
@@ -18139,7 +18177,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	auto methodDeclaration = methodDef->GetMethodDeclaration();
 
 	if ((methodDef->mHasComptime) && (!mIsComptimeModule))
-		mBfIRBuilder->mIgnoreWrites = true;
+		mBfIRBuilder->mIgnoreWrites = true;	
 
 	if ((methodInstance->mIsReified) && (methodInstance->mVirtualTableIdx != -1))
 	{

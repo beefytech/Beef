@@ -35,7 +35,7 @@ BfConstResolver::BfConstResolver(BfModule* bfModule) : BfExprEvaluator(bfModule)
 }
 
 BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfConstResolveFlags flags)
-{	
+{
 	mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
 
 	// Handle the 'int[?] val = .(1, 2, 3)' case
@@ -137,11 +137,11 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 					int stringId = mModule->GetStringPoolIdx(mResult.mValue);					
 					if (stringId != -1)
 					{
-						if ((flags & BfConstResolveFlag_RemapFromStringId) != 0)
+						if ((flags & BfConstResolveFlag_ActualizeValues) != 0)
 						{
 							prevIgnoreWrites.Restore();
 							mModule->mBfIRBuilder->PopulateType(mResult.mType);
-							return BfTypedValue(mModule->GetStringObjectValue(stringId), mResult.mType);
+							return BfTypedValue(mModule->GetStringObjectValue(stringId, false, true), mResult.mType);
 						}
 
 						return BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_StringId, stringId), toType);
@@ -232,7 +232,9 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	}*/
 
 	mModule->FixIntUnknown(mResult);	
-	mModule->FixValueActualization(mResult);
+
+	if ((flags & BfConstResolveFlag_NoActualizeValues) == 0)
+		mModule->FixValueActualization(mResult, !prevIgnoreWrites.mPrevVal || ((flags & BfConstResolveFlag_ActualizeValues) != 0));
 
 	return mResult;
 }

@@ -15,9 +15,10 @@ enum BfConstResolveFlags
 	BfConstResolveFlag_ExplicitCast = 1,
 	BfConstResolveFlag_NoCast = 2,
 	BfConstResolveFlag_AllowSoftFail = 4,
-	BfConstResolveFlag_RemapFromStringId = 8,
-	BfConstResolveFlag_ArrayInitSize = 0x10,
-	BfConstResolveFlag_AllowGlobalVariable = 0x20,
+	BfConstResolveFlag_ActualizeValues = 8,
+	BfConstResolveFlag_NoActualizeValues = 0x10,
+	BfConstResolveFlag_ArrayInitSize = 0x20,
+	BfConstResolveFlag_AllowGlobalVariable = 0x40,
 };
 
 class BfConstResolver : public BfExprEvaluator

@@ -6439,19 +6439,16 @@ void BfModule::FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs)
 	FixIntUnknown(rhs);
 }
 
-void BfModule::FixValueActualization(BfTypedValue& typedVal)
+void BfModule::FixValueActualization(BfTypedValue& typedVal, bool force)
 {
 	if (!typedVal.mValue.IsConst())
 		return;	
-	if (mBfIRBuilder->mIgnoreWrites)
+	if ((mBfIRBuilder->mIgnoreWrites) && (!force))
 		return;
 	auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
-	if (constant->mConstType == BfConstType_TypeOf)
-	{				
-		auto constTypeOf = (BfTypeOf_Const*)constant;
-		AddDependency(constTypeOf->mType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
-		typedVal.mValue = CreateTypeDataRef(constTypeOf->mType);
-	}
+	if (!HasUnactializedConstant(constant, mBfIRBuilder))
+		return;	
+	typedVal.mValue = ConstantToCurrent(constant, mBfIRBuilder, typedVal.mType, false);
 }
 
 BfTypeInstance* BfModule::GetPrimitiveStructType(BfTypeCode typeCode)
