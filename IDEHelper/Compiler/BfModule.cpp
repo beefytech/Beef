@@ -6025,7 +6025,28 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			PUSH_INT16(0); // mSize
 
 			PUSH_INT32(attr->mType->mTypeId); // mType
-			PUSH_INT16(attr->mCtor->mIdx);
+
+			int ctorIdx = -1;
+			int ctorCount = 0;
+
+			attr->mType->mTypeDef->PopulateMemberSets();			
+			BfMemberSetEntry* entry;
+			if (attr->mType->mTypeDef->mMethodSet.TryGetWith(String("__BfCtor"), &entry))
+			{
+				BfMethodDef* nextMethodDef = (BfMethodDef*)entry->mMemberDef;
+				while (nextMethodDef != NULL)
+				{
+					if (nextMethodDef == attr->mCtor)
+						ctorIdx = ctorCount;
+					nextMethodDef = nextMethodDef->mNextWithSameName;
+					ctorCount++;
+				}
+			}
+
+			BF_ASSERT(ctorIdx != -1);
+			if (ctorIdx != -1)
+				ctorIdx = (ctorCount - 1) - ctorIdx;
+			PUSH_INT16(ctorIdx);
 
 			auto ctorMethodInstance = GetRawMethodInstanceAtIdx(attr->mType, attr->mCtor->mIdx);
 			int argIdx = 0;
@@ -6450,6 +6471,14 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	BfType* reflectParamDataType = ResolveTypeDef(mCompiler->mReflectParamDataDef);
 	BfType* reflectParamDataPtrType = CreatePointerType(reflectParamDataType);
 
+	struct _SortedMethodInfo
+	{
+		BfMethodDef* mMethodDef;
+		BfCustomAttributes* mMethodCustomAttributes;
+	};
+
+	Array<_SortedMethodInfo> sortedMethodList;
+
 	SizedArray<BfIRValue, 16> methodTypes;	
 	for (int methodIdx = 0; methodIdx < (int)typeDef->mMethods.size(); methodIdx++)
 	{
@@ -6462,7 +6491,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodIdx];
 		if (!methodInstanceGroup->IsImplemented())
-			continue;		
+			continue;
 		auto methodDef = typeDef->mMethods[methodIdx];
 		if (methodDef->mIsNoReflect)
 			continue;
@@ -6476,12 +6505,12 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			continue;
 		if (!defaultMethod->mIsReified)
 			continue;
-		
+
 		if ((defaultMethod->mChainType == BfMethodChainType_ChainMember) || (defaultMethod->mChainType == BfMethodChainType_ChainSkip))
 			continue;
 		if (defaultMethod->mMethodDef->mMethodType == BfMethodType_CtorNoBody)
-			continue;		
-		
+			continue;
+
 		auto methodReflectKind = (BfReflectKind)(reflectKind & ~BfReflectKind_User);
 
 		bool includeMethod = reflectIncludeAllMethods;
@@ -6503,10 +6532,10 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				}
 			}
 		}
-		
+
 		if ((!mIsComptimeModule) && (!typeInstance->IsTypeMemberAccessible(methodDef->mDeclaringType, mProject)))
 			continue;
-		
+
 		//
 		{
 			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
@@ -6524,12 +6553,41 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			includeMethod = true;
 		if ((methodDef->mIsStatic) && ((methodReflectKind & BfReflectKind_StaticMethods) != 0))
 			includeMethod = true;
-		
+
 		if ((!includeMethod) && (typeOptions != NULL))
 			includeMethod = ApplyTypeOptionMethodFilters(includeMethod, methodDef, typeOptions);
-		
+
 		if (!includeMethod)
 			continue;
+
+		sortedMethodList.Add({ methodDef, methodCustomAttributes });
+	}
+
+	auto _GetMethodKind = [](BfMethodDef* methodDef)
+	{
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+			return 0;
+		return 1;
+	};
+
+	std::sort(sortedMethodList.begin(), sortedMethodList.end(), [_GetMethodKind](const _SortedMethodInfo& lhs, const _SortedMethodInfo& rhs)
+		{
+			int lhsKind = _GetMethodKind(lhs.mMethodDef);
+			int rhsKind = _GetMethodKind(rhs.mMethodDef);
+			
+			if (lhsKind != rhsKind)
+				return lhsKind < rhsKind;
+			if (lhs.mMethodDef->mName != rhs.mMethodDef->mName)
+				return lhs.mMethodDef->mName < rhs.mMethodDef->mName;
+			return lhs.mMethodDef->mIdx < rhs.mMethodDef->mIdx;
+		});
+
+	for (auto& methodInfo : sortedMethodList)
+	{
+		auto methodDef = methodInfo.mMethodDef;
+		int methodIdx = methodDef->mIdx;
+		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodIdx];
+		auto defaultMethod = methodInstanceGroup->mDefault;
 
 		BfModuleMethodInstance moduleMethodInstance;
 		BfIRValue funcVal = voidPtrNull;
@@ -6550,7 +6608,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						
 		BfMethodFlags methodFlags = defaultMethod->GetMethodFlags();
 		
-		int customAttrIdx = _HandleCustomAttrs(methodCustomAttributes);
+		int customAttrIdx = _HandleCustomAttrs(methodInfo.mMethodCustomAttributes);
 
 		enum ParamFlags
 		{
