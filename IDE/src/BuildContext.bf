@@ -29,12 +29,8 @@ namespace IDE
 		public int32 mUpdateCnt;
 		public Project mHotProject;
 		public Workspace.Options mWorkspaceOptions;
-		public Dictionary<Project, String> mImpLibMap = new .() ~
-		{
-			for (let val in _.Values)
-				delete val;
-			delete _;
-		};
+		public Dictionary<Project, String> mImpLibMap = new .() ~ DeleteDictionaryAndValues!(_);
+		public Dictionary<Project, String> mTargetPathMap = new .() ~ DeleteDictionaryAndValues!(_);
 		public ScriptManager.Context mScriptContext = new .() ~ _.ReleaseLastRef();
 		public ScriptManager mScriptManager ~ delete _;
 
@@ -1218,6 +1214,8 @@ namespace IDE
 				}
 			}
 
+			mTargetPathMap[project] = new String(targetPath);
+
 			if (hotProject == null)
 			{
 				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPreBuildCmds))
@@ -1228,22 +1226,9 @@ namespace IDE
 					completedCompileCmd.mFailed = true;
 				}
 			}
-
-			void DoPostBuild()
-			{
-				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
-				{
-				case .NoCommands:
-				case .HadCommands:
-				case .Failed:
-					completedCompileCmd.mFailed = true;
-				}
-			}
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)
 			{
-				if (hotProject == null)
-					DoPostBuild();
 				return true; 
 			}
 
@@ -1404,8 +1389,32 @@ namespace IDE
 					return false;
 			}
 
-			DoPostBuild();
 		    return true;
+		}
+
+		public bool QueueProjectPostBuild(Project project, Project hotProject, IDEApp.BuildCompletedCmd completedCompileCmd, List<String> hotFileNames, CompileKind compileKind)
+		{
+			if (hotProject != null)
+				return true;
+
+			Project.Options options = gApp.GetCurProjectOptions(project);
+			if (options == null)
+			    return true;
+
+			String targetPath = null;
+			mTargetPathMap.TryGetValue(project, out targetPath);
+			if (targetPath == null)
+				return false;
+
+			switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+			{
+			case .NoCommands:
+			case .HadCommands:
+			case .Failed:
+				completedCompileCmd.mFailed = true;
+			}
+
+			return true;
 		}
 	}
 }

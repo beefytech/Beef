@@ -10252,6 +10252,12 @@ namespace IDE
                     success = false;
             }
 
+			for (var project in orderedProjectList)
+			{
+			    if (!mBuildContext.QueueProjectPostBuild(project, hotProject, completedCompileCmd, hotFileNames, compileKind))
+			        success = false;
+			}
+
             if (hotFileNames.Count > 0)
             {
 				// Why were we rehupping BEFORE hotLoad?
