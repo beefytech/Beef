@@ -10825,14 +10825,17 @@ namespace IDE
 
 			//options.mDebugOptions.mCommand
 
-            String launchPath = scope String();
-            ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPath);
+            String launchPathRel = scope String();
+            ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPathRel);
             String arguments = scope String();
             ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(Arguments)", "debug command arguments", arguments);
             String workingDirRel = scope String();
             ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
 			var workingDir = scope String();
 			Path.GetAbsolutePath(workingDirRel, project.mProjectDir, workingDir);
+
+			String launchPath = scope String();
+			Path.GetAbsolutePath(launchPathRel, workingDir, launchPath);
 
 			String targetPath = scope .();
 			ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(TargetPath)", "Target path", targetPath);
