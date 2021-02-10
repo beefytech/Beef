@@ -9260,21 +9260,23 @@ namespace IDE
 									cmdErr = "Invalid number of arguments";
 							case "Var":
 								break ReplaceBlock;
-							case "TargetDir",
-								 "TargetPath",
-								 "ProjectDir",
+							case "Arguments",
 								 "BuildDir",
-								 "LinkFlags":
+								 "LinkFlags",
+								 "ProjectDir",
+								 "ProjectName",
+								 "TargetDir",
+								 "TargetPath",
+								 "WorkingDir":
 								var selProject = mWorkspace.FindProject(args[0]);
 								if (selProject != null)
 								{
 									Workspace.Options selWorkspaceOptions = gApp.GetCurWorkspaceOptions();
 									Project.Options selOptions = gApp.GetCurProjectOptions(selProject);
-									String selConfigString = scope String()..Append(configString);
-									selConfigString.Remove(i - startIdx + 2 + cmd.Length, parenPos - i - 2 - cmd.Length);
-
-									result.RemoveToEnd(startIdx);
-									return DoResolveConfigString(platformName, selWorkspaceOptions, selProject, selOptions, selConfigString, error, result);
+									String selConfigString = scope $"$({cmd})";
+									replaceStr.Clear();
+									newString = scope:ReplaceBlock .();
+									DoResolveConfigString(platformName, selWorkspaceOptions, selProject, selOptions, selConfigString, error, newString);
 								}
 								else
 									cmdErr = "Unable to find project";
