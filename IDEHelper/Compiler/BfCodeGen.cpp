@@ -439,7 +439,8 @@ void BfCodeGenThread::RunLoop()
 							errorMsg += "\n";
 						errorMsg += "Failed writing IR '" + fileName + "': " + ec.message();						
 					}
-					fs.WriteSNZ(str);
+					else
+						fs.WriteSNZ(str);
 				}
 
 				if (!hasCacheMatch)
