@@ -9164,7 +9164,8 @@ namespace IDE
 
         public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
         {
-			int i = result.Length;
+			int startIdx = result.Length;
+			int i = startIdx;
 			result.Append(configString);
 
 			bool hadError = false;
@@ -9259,6 +9260,26 @@ namespace IDE
 									cmdErr = "Invalid number of arguments";
 							case "Var":
 								break ReplaceBlock;
+							case "TargetDir",
+								 "TargetPath",
+								 "ProjectDir",
+								 "BuildDir",
+								 "LinkFlags":
+								var selProject = mWorkspace.FindProject(args[0]);
+								if (selProject != null)
+								{
+									Workspace.Options selWorkspaceOptions = gApp.GetCurWorkspaceOptions();
+									Project.Options selOptions = gApp.GetCurProjectOptions(selProject);
+									String selConfigString = scope String()..Append(configString);
+									selConfigString.Remove(i - startIdx + 2 + cmd.Length, parenPos - i - 2 - cmd.Length);
+
+									result.RemoveToEnd(startIdx);
+									return DoResolveConfigString(platformName, selWorkspaceOptions, selProject, selOptions, selConfigString, error, result);
+								}
+								else
+									cmdErr = "Unable to find project";
+							default:
+								cmdErr = "Invalid command";
 							}
 
 							if (newString == null)
