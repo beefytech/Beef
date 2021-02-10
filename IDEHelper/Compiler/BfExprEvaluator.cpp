@@ -11918,17 +11918,18 @@ void BfExprEvaluator::VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration*
 	if (auto blockBody = BfNodeDynCast<BfBlock>(body))
 		mModule->VisitChild(blockBody);
 	else if (auto bodyExpr = BfNodeDynCast<BfExpression>(body))
-	{
+	{		
 		auto result = mModule->CreateValueFromExpression(bodyExpr);
 		if ((result) && (mModule->mCurMethodState->mClosureState != NULL) &&
 			(mModule->mCurMethodState->mClosureState->mReturnTypeInferState == BfReturnTypeInferState_Inferring))
-			mModule->mCurMethodState->mClosureState->mReturnType = result.mType;
+			mModule->mCurMethodState->mClosureState->mReturnType = result.mType;		
 	}
 	
 	while (fieldDtor != NULL)
 	{
+		mModule->mCurMethodState->mLeftBlockUncond = false;
 		mModule->VisitChild(fieldDtor->mBody);
-		fieldDtor = fieldDtor->mNextFieldDtor;
+		fieldDtor = fieldDtor->mNextFieldDtor;		
 	}
 }
 
