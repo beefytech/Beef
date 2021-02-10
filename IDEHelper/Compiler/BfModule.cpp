@@ -5969,11 +5969,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	// Fields
 	BfType* reflectFieldDataType = ResolveTypeDef(mCompiler->mReflectFieldDataDef);
 	BfIRValue emptyValueType = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType->ToTypeInstance()->mBaseType), SizedArray<BfIRValue, 1>());
-	
-	if (typeInstance->mTypeDef->mName->ToString() == "TestProgram")
-	{
-		NOP;
-	}
 
 	auto _HandleCustomAttrs = [&](BfCustomAttributes* customAttributes)
 	{
@@ -10999,11 +10994,6 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		{
 			Fail(StrFormat("'%s' is not an attribute class", TypeToString(attrType).c_str()), attributesDirective->mAttributeTypeRef); //CS0616
 			continue;
-		}
-
-		if (mModuleName == "BeefTest_TestProgram")
-		{
-			NOP;
 		}
 
 		if ((mIsReified) && (attrTypeInst->mAttributeData != NULL) && ((attrTypeInst->mAttributeData->mFlags & BfAttributeFlag_ReflectAttribute) != 0))
@@ -18376,7 +18366,36 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 
 	BfLogSysM("ProcessMethod %p Unspecialized: %d Module: %p IRFunction: %d Reified: %d Incomplete:%d\n", methodInstance, mCurTypeInstance->IsUnspecializedType(), this, methodInstance->mIRFunction.mId, methodInstance->mIsReified, mIncompleteMethodCount);
-	
+
+	int importStrNum = -1;
+	auto importKind = methodInstance->GetImportKind();
+	if ((!mCompiler->mIsResolveOnly) &&
+		((importKind == BfImportKind_Import_Static) || (importKind == BfImportKind_Import_Dynamic)))
+	{
+		if (auto customAttr = methodInstance->GetCustomAttributes()->Get(mCompiler->mImportAttributeTypeDef))
+		{
+			if (customAttr->mCtorArgs.size() == 1)
+			{
+				auto fileNameArg = customAttr->mCtorArgs[0];				
+				auto constant = mCurTypeInstance->mConstHolder->GetConstant(fileNameArg);
+				if (constant != NULL)
+				{
+					if (!constant->IsNull())						
+						importStrNum = constant->mInt32;
+				}
+				else
+				{
+					importStrNum = GetStringPoolIdx(fileNameArg, mCurTypeInstance->mConstHolder);
+				}
+				if (importStrNum != -1)
+				{
+					if (!mStringPoolRefs.Contains(importStrNum))
+						mStringPoolRefs.Add(importStrNum);					
+				}
+			}
+		}
+	}
+
 	if (methodInstance->GetImportCallKind() != BfImportCallKind_None)
 	{
 		if (mBfIRBuilder->mIgnoreWrites)
@@ -19558,34 +19577,19 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		}
 
 		bool isDllImport = false;		
-		if (methodInstance->GetImportKind() == BfImportKind_Import_Static)
+		if ((importKind == BfImportKind_Import_Static) || (importKind == BfImportKind_Import_Dynamic))
 		{
-			for (auto customAttr : methodInstance->GetCustomAttributes()->mAttributes)
-			{
-				if (customAttr.mType->mTypeDef->mFullName.ToString() == "System.ImportAttribute")
+			if (importStrNum != -1)
+			{				
+				if (importKind == BfImportKind_Import_Static)
 				{
-					if (customAttr.mCtorArgs.size() == 1)
+					if (!mImportFileNames.Contains(importStrNum))
 					{
-						auto fileNameArg = customAttr.mCtorArgs[0];
-						int strNum = 0;
-						auto constant = mCurTypeInstance->mConstHolder->GetConstant(fileNameArg);
-						if (constant != NULL)
-						{
-							if (constant->IsNull())
-								continue; // Invalid					
-							strNum = constant->mInt32;
-						}
-						else
-						{
-							strNum = GetStringPoolIdx(fileNameArg, mCurTypeInstance->mConstHolder);
-						}
-						if (!mImportFileNames.Contains(strNum))
-							mImportFileNames.Add(strNum);
+						mImportFileNames.Add(importStrNum);
 					}
 				}
+						
 			}
-
-			//mImportFileNames
 		}
 		else if (methodInstance->GetImportKind() == BfImportKind_Import_Dynamic)
 		{
