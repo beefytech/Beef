@@ -1435,6 +1435,7 @@ public:
 	Dictionary<int, BfIRValue> mStringObjectPool;
 	Dictionary<int, BfIRValue> mStringCharPtrPool;
 	Array<int> mStringPoolRefs;	
+	HashSet<int> mUnreifiedStringPoolRefs;
 	
 	Array<BfIRBuilder*> mPrevIRBuilders; // Before extensions	
 	BfIRBuilder* mBfIRBuilder;	

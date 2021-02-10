@@ -1222,7 +1222,10 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 
 	// Clear this here, not in ClearModuleData, so we preserve those references even after writing out module
 	if (rebuildKind != BfModule::RebuildKind_None) // Leave string pool refs for when we need to use things like [LinkName("")] methods bofore re-reification
-		mStringPoolRefs.Clear();	
+	{
+		mStringPoolRefs.Clear();
+		mUnreifiedStringPoolRefs.Clear();
+	}
 	mDllImportEntries.Clear();
 	mImportFileNames.Clear();
 	for (auto& pairVal : mDeferredMethodCallData)
@@ -1657,7 +1660,10 @@ String* BfModule::GetStringPoolString(BfIRValue constantStr, BfIRConstHolder * c
 BfIRValue BfModule::GetStringCharPtr(int stringId, bool force)
 {
 	if ((mBfIRBuilder->mIgnoreWrites) && (!force))
+	{
+		mUnreifiedStringPoolRefs.Add(stringId);			
 		return mBfIRBuilder->CreateConst(BfTypeCode_StringId, stringId);
+	}
 
 	BfIRValue* irValue = NULL;
 	if (!mStringCharPtrPool.TryAdd(stringId, NULL, &irValue))
@@ -1711,6 +1717,7 @@ BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define, boo
 
 	if ((mBfIRBuilder->mIgnoreWrites) && (!force))
 	{
+		mUnreifiedStringPoolRefs.Add(strId);			
 		return mBfIRBuilder->CreateConst(BfTypeCode_StringId, strId);
 	}
 
@@ -10658,6 +10665,7 @@ void BfModule::ClearConstData()
 	mStringObjectPool.Clear();
 	mStringCharPtrPool.Clear();
 	mStringPoolRefs.Clear();
+	mUnreifiedStringPoolRefs.Clear();
 }
 
 BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType)
