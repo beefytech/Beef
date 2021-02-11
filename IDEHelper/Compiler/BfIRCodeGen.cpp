@@ -810,13 +810,17 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 				llvm::GlobalVariable* globalVariable = mLLVMModule->getGlobalVariable(name.c_str(), true);
 				if (globalVariable == NULL)
 				{
-					globalVariable = new llvm::GlobalVariable(
-						*mLLVMModule,
-						varType,
-						isConstant,
-						LLVMMapLinkageType(linkageType),
-						initializer,
-						name.c_str(), NULL, isTLS ? llvm::GlobalValue::GeneralDynamicTLSModel : llvm::GlobalValue::NotThreadLocal);
+					globalVariable = mLLVMModule->getGlobalVariable(name.c_str());
+					if (globalVariable == NULL)
+					{
+						globalVariable = new llvm::GlobalVariable(
+							*mLLVMModule,
+							varType,
+							isConstant,
+							LLVMMapLinkageType(linkageType),
+							initializer,
+							name.c_str(), NULL, isTLS ? llvm::GlobalValue::GeneralDynamicTLSModel : llvm::GlobalValue::NotThreadLocal);
+					}
 				}
 				llvmValue = globalVariable;
 
@@ -2390,13 +2394,17 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(bool, isTLS);
 			CMD_PARAM(llvm::Constant*, initializer);
 
-			auto globalVariable = new llvm::GlobalVariable(
-				*mLLVMModule,
-				varType,
-				isConstant,
-				LLVMMapLinkageType(linkageType),
-				initializer,
-				name.c_str(), NULL, isTLS ? llvm::GlobalValue::GeneralDynamicTLSModel : llvm::GlobalValue::NotThreadLocal);
+			auto globalVariable = mLLVMModule->getGlobalVariable(name.c_str());
+			if (globalVariable == NULL)
+			{
+				globalVariable = new llvm::GlobalVariable(
+					*mLLVMModule,
+					varType,
+					isConstant,
+					LLVMMapLinkageType(linkageType),
+					initializer,
+					name.c_str(), NULL, isTLS ? llvm::GlobalValue::GeneralDynamicTLSModel : llvm::GlobalValue::NotThreadLocal);
+			}
 			SetResult(curId, globalVariable);
 		}
 		break;

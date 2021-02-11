@@ -13722,6 +13722,10 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 	{
 		globalValue = *globalValuePtr;
 		BF_ASSERT(globalValue);
+
+		auto globalVar = (BfGlobalVar*)mBfIRBuilder->GetConstant(globalValue);
+		if ((globalVar->mStreamId == -1) && (!mBfIRBuilder->mIgnoreWrites))
+			mBfIRBuilder->CreateGlobalVariable(globalValue);
 	}
 	else
 	{				
@@ -13753,16 +13757,11 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 				BfIRValue(),
 				staticVarName,
 				IsThreadLocal(fieldInstance));
-
-			if (!mBfIRBuilder->mIgnoreWrites)
-			{
-				// Only store this if we actually did the creation
-				BF_ASSERT(globalValue);
-				mStaticFieldRefs[fieldInstance] = globalValue;
-			}
+			
+			BF_ASSERT(globalValue);
+			mStaticFieldRefs[fieldInstance] = globalValue;
 				
 			BfLogSysM("Mod:%p Type:%p ReferenceStaticField %p -> %p\n", this, fieldInstance->mOwner, fieldInstance, globalValue);
-
 		}
 	}	
 

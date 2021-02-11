@@ -901,6 +901,7 @@ class BfIRConstHolder
 public:
 	BumpAllocatorT<256> mTempAlloc;
 	BfModule* mModule;
+	Dictionary<String, BfIRValue> mGlobalVarMap;
 	
 public:
 	void FixTypeCode(BfTypeCode& typeCode);
@@ -936,6 +937,7 @@ public:
 	BfIRValue CreateTypeOf(BfType* type);
 	BfIRValue CreateTypeOf(BfType* type, BfIRValue typeData);
 	BfIRValue GetUndefConstValue(BfIRType type);	
+	BfIRValue CreateGlobalVariableConstant(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);
 
 	bool WriteConstant(BfIRValue val, void* ptr, BfType* type);
 	BfIRValue ReadConstant(void* ptr, BfType* type);
@@ -979,7 +981,7 @@ public:
 	bool mHasDebugInfo;
 	bool mHasDebugLineInfo;
 	Dictionary<BfMethodRef, BfIRFunctionType> mMethodTypeMap;
-	Dictionary<String, BfIRFunction> mFunctionMap;
+	Dictionary<String, BfIRFunction> mFunctionMap;	
 	Dictionary<BfType*, BfIRPopulateType> mTypeMap;
 	Dictionary<int, BfIRValue> mConstMemMap;
 	Array<BfTypeInstance*> mDITemporaryTypes;	
@@ -1227,6 +1229,7 @@ public:
 	BfIRValue CreateStackRestore(BfIRValue stackVal);
 	
 	BfIRValue CreateGlobalVariable(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);	
+	void CreateGlobalVariable(BfIRValue irValue);
 	void GlobalVar_SetUnnamedAddr(BfIRValue val, bool unnamedAddr);
 	void GlobalVar_SetInitializer(BfIRValue globalVar, BfIRValue initVal);
 	void GlobalVar_SetAlignment(BfIRValue globalVar, int alignment);

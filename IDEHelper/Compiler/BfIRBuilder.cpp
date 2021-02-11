@@ -615,17 +615,7 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 	else if (fromConst->mConstType == BfConstType_GlobalVar)
 	{
 		auto fromGlobalVar = (BfGlobalVar*)fromConst;
-		auto constGV = mTempAlloc.Alloc<BfGlobalVar>();
-		chunkId = mTempAlloc.GetChunkedId(constGV);
-		constGV->mStreamId = -1;
-		constGV->mConstType = BfConstType_GlobalVar;
-		constGV->mType = fromGlobalVar->mType;
-		constGV->mIsConst = fromGlobalVar->mIsConst;
-		constGV->mLinkageType = fromGlobalVar->mLinkageType;
-		constGV->mInitializer = fromGlobalVar->mInitializer;
-		constGV->mName = AllocStr(fromGlobalVar->mName);
-		constGV->mIsTLS = fromGlobalVar->mIsTLS;
-		copiedConst = (BfConstant*)constGV;
+		return CreateGlobalVariableConstant(fromGlobalVar->mType, fromGlobalVar->mIsConst, fromGlobalVar->mLinkageType, fromGlobalVar->mInitializer, fromGlobalVar->mName, fromGlobalVar->mIsTLS);
 	}
 	else if (fromConst->mConstType == BfConstType_GEP32_2)
 	{
@@ -1875,6 +1865,7 @@ void BfIRBuilder::ClearConstData()
 	mTempAlloc.Clear();
 	mConstMemMap.Clear();
 	mFunctionMap.Clear();
+	mGlobalVarMap.Clear();
 	BF_ASSERT(mMethodTypeMap.GetCount() == 0);
 	BF_ASSERT(mTypeMap.GetCount() == 0);
 	BF_ASSERT(mDITemporaryTypes.size() == 0);
@@ -1889,6 +1880,7 @@ void BfIRBuilder::ClearNonConstData()
 {
 	mMethodTypeMap.Clear();
 	mFunctionMap.Clear();
+	mGlobalVarMap.Clear();
 	mTypeMap.Clear();
 	mConstMemMap.Clear();
 	mDITemporaryTypes.Clear();
@@ -2996,11 +2988,6 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 
 						if (fieldInstance->mConstIdx != -1)
 						{
-							if (fieldInstance->GetFieldDef()->mName == "mMembers")
-							{
-								NOP;
-							}
-
 							constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
 							staticValue = mModule->ConstantToCurrent(constant, typeInstance->mConstHolder, resolvedFieldType);
 						}
@@ -4743,39 +4730,55 @@ BfIRValue BfIRBuilder::CreateStackRestore(BfIRValue stackVal)
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::CreateGlobalVariable(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS)
+void BfIRBuilder::CreateGlobalVariable(BfIRValue irValue)
 {
+	auto globalVar = (BfGlobalVar*)GetConstant(irValue);
+	
+	if (!mIgnoreWrites)
+	{
+		BF_ASSERT(globalVar->mStreamId == -1);
+
+		if (globalVar->mInitializer)
+			mHasGlobalDefs = true;
+
+		BfIRValue retVal = WriteCmd(BfIRCmd_GlobalVariable, globalVar->mType, globalVar->mIsConst, (uint8)globalVar->mLinkageType, String(globalVar->mName), globalVar->mIsTLS, globalVar->mInitializer);
+		globalVar->mStreamId = retVal.mId;
+
+		NEW_CMD_INSERTED_IRVALUE;		
+	}
+}
+
+BfIRValue BfIRConstHolder::CreateGlobalVariableConstant(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS)
+{
+	BfIRValue* valuePtr = NULL;
+	if ((!mGlobalVarMap.TryAdd(name, NULL, &valuePtr)) && (!initializer))
+	{
+		return *valuePtr;
+	}
+
 	BF_ASSERT(varType);
 
 	auto constGV = mTempAlloc.Alloc<BfGlobalVar>();
 	int chunkId = mTempAlloc.GetChunkedId(constGV);
 	constGV->mStreamId = -1;
- 	constGV->mConstType = BfConstType_GlobalVar;
-	constGV->mType = varType;	
+	constGV->mConstType = BfConstType_GlobalVar;
+	constGV->mType = varType;
 	constGV->mIsConst = isConstant;
 	constGV->mLinkageType = linkageType;
 	constGV->mInitializer = initializer;
 	constGV->mName = AllocStr(name);
-	constGV->mIsTLS = isTLS;	
+	constGV->mIsTLS = isTLS;
 
-	if (!mIgnoreWrites)
-	{
-		if (initializer)
-			mHasGlobalDefs = true;
+	auto irValue = BfIRValue(BfIRValueFlags_Const, chunkId);;
+	*valuePtr = irValue;
+	return irValue;
+}
 
-		BfIRValue retVal = WriteCmd(BfIRCmd_GlobalVariable, varType, isConstant, (uint8)linkageType, name, isTLS, initializer);
-		constGV->mStreamId = retVal.mId;
-		retVal.mFlags = BfIRValueFlags_Const;
-#ifdef CHECK_CONSTHOLDER
-		retVal.mHolder = this;
-#endif
-		retVal.mId = chunkId;
-		NEW_CMD_INSERTED_IRVALUE;
-		return retVal;
-	}	
-
-	auto irValue = BfIRValue(BfIRValueFlags_Const, chunkId);
-	return irValue;	
+BfIRValue BfIRBuilder::CreateGlobalVariable(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS)
+{
+	auto irValue = CreateGlobalVariableConstant(varType, isConstant, linkageType, initializer, name);	
+	CreateGlobalVariable(irValue);
+	return irValue;
 }
 
 void BfIRBuilder::GlobalVar_SetUnnamedAddr(BfIRValue val, bool unnamedAddr)
