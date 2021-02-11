@@ -13725,7 +13725,10 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 
 		auto globalVar = (BfGlobalVar*)mBfIRBuilder->GetConstant(globalValue);
 		if ((globalVar->mStreamId == -1) && (!mBfIRBuilder->mIgnoreWrites))
+		{
+			mBfIRBuilder->MapType(fieldInstance->mResolvedType);
 			mBfIRBuilder->CreateGlobalVariable(globalValue);
+		}
 	}
 	else
 	{				
