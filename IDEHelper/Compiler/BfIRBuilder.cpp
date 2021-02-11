@@ -4734,10 +4734,8 @@ void BfIRBuilder::CreateGlobalVariable(BfIRValue irValue)
 {
 	auto globalVar = (BfGlobalVar*)GetConstant(irValue);
 	
-	if (!mIgnoreWrites)
+	if ((!mIgnoreWrites) && (globalVar->mStreamId == -1))
 	{
-		BF_ASSERT(globalVar->mStreamId == -1);
-
 		if (globalVar->mInitializer)
 			mHasGlobalDefs = true;
 
@@ -4776,7 +4774,7 @@ BfIRValue BfIRConstHolder::CreateGlobalVariableConstant(BfIRType varType, bool i
 
 BfIRValue BfIRBuilder::CreateGlobalVariable(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS)
 {
-	auto irValue = CreateGlobalVariableConstant(varType, isConstant, linkageType, initializer, name);	
+	auto irValue = CreateGlobalVariableConstant(varType, isConstant, linkageType, initializer, name, isTLS);	
 	CreateGlobalVariable(irValue);
 	return irValue;
 }
