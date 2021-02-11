@@ -13773,7 +13773,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 }
 
 BfTypedValue BfModule::GetThis()
-{
+{	
 	auto useMethodState = mCurMethodState;
 	while ((useMethodState != NULL) && (useMethodState->mClosureState != NULL) && (useMethodState->mClosureState->mCapturing))		
 	{
@@ -13801,33 +13801,6 @@ BfTypedValue BfModule::GetThis()
 		//TODO: Do we allow useMethodState to be NULL anymore?
 		return BfTypedValue();
 	}
-
-// 	if (useMethodState->HasNonStaticMixin())
-// 	{
-// 		auto checkMethodState = useMethodState;
-// 		while (checkMethodState != NULL)
-// 		{
-// 			for (int localIdx = (int)checkMethodState->mLocals.size() - 1; localIdx >= 0; localIdx--)
-// 			{
-// 				auto varDecl = checkMethodState->mLocals[localIdx];
-// 				if (varDecl->mName == "this")
-// 				{
-// 					varDecl->mReadFromId = useMethodState->GetRootMethodState()->mCurAccessId++;
-// 					if (varDecl->mIsSplat)
-// 					{
-// 						return BfTypedValue(varDecl->mValue, varDecl->mResolvedType, BfTypedValueKind_ThisSplatHead);
-// 					}
-// 					else if ((varDecl->mResolvedType->IsValueType()) && (varDecl->mAddr))
-// 					{
-// 						return BfTypedValue(varDecl->mAddr, varDecl->mResolvedType, BfTypedValueKind_ThisAddr);
-// 					}
-// 					return BfTypedValue(varDecl->mValue, varDecl->mResolvedType, varDecl->mResolvedType->IsValueType() ? BfTypedValueKind_ThisAddr : BfTypedValueKind_ThisValue);
-// 				}
-// 			}
-// 		
-// 			checkMethodState = checkMethodState->mPrevMethodState;
-// 		}
-// 	}
 
 	// Check mixin state for 'this'
 	{

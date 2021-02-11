@@ -4248,6 +4248,14 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		mModule->PopulateType(startCheckType, BfPopulateType_BaseType);
 	}
 
+	if ((startCheckType != NULL) && (mModule->mContext->mCurTypeState != NULL))
+	{
+		// Don't allow lookups yet
+		if ((mModule->mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes) &&
+			(startCheckType == mModule->mContext->mCurTypeState->mTypeInstance))
+			return BfTypedValue();
+	}
+
 	String findName;
 	int varSkipCount = 0;
 	if (fieldName.StartsWith('@'))
