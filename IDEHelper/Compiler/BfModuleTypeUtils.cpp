@@ -3022,7 +3022,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			bool populateBase = !typeInstance->mTypeFailed;			
 			auto checkType = ResolveTypeRef(checkTypeRef, BfPopulateType_Declaration);
 			if ((checkType != NULL) && (!checkType->IsInterface()) && (populateBase))
+			{
+				SetAndRestoreValue<BfTypeInstance*> prevBaseType(mContext->mCurTypeState->mCurBaseType, checkType->ToTypeInstance());
 				PopulateType(checkType, BfPopulateType_Data);
+			}
 
 			if (typeInstance->mDefineState >= BfTypeDefineState_Defined)
 			{
@@ -12793,6 +12796,19 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 
 	if (srcType->mDefineState < BfTypeDefineState_HasInterfaces)
 	{
+		if (srcType->mDefineState == BfTypeDefineState_ResolvingBaseType)
+		{
+			auto typeState = mContext->mCurTypeState;
+			while (typeState != NULL)
+			{
+				if ((typeState->mTypeInstance == srcType) && (typeState->mCurBaseType != NULL))
+				{
+					return TypeIsSubTypeOf(typeState->mCurBaseType, wantType, checkAccessibility);
+				}
+				typeState = typeState->mPrevState;
+			}
+		}
+
 		// Type is incomplete.  We don't do the IsIncomplete check here because of re-entry
 		//  While handling 'var' resolution, we don't want to force a PopulateType reentry 
 		//  but we do have enough information for TypeIsSubTypeOf
