@@ -1007,7 +1007,7 @@ namespace IDE
 			if (!gApp.[Friend]mExecutionQueue.IsEmpty)
 			{
 				var nextCmd = gApp.mExecutionQueue[0];
-				if (!(nextCmd is IDEApp.TargetCompletedCmd))
+				if (!(nextCmd is IDEApp.ScriptCmd))
 					return false;
 			}
 

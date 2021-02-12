@@ -118,7 +118,7 @@ namespace IDE
 
 			bool didCommands = false;
 
-			let targetName = scope String("Project ", project.mProjectName);
+			//let targetName = scope String("Project ", project.mProjectName);
 
 			//Console.WriteLine("Executing custom command {0} {1} {2}", highestDateTime, targetDateTime, forceRebuild);
 			for (let origCustomCmd in cmdList)
@@ -159,18 +159,12 @@ namespace IDE
 					didCommands = true;
 				}
 
-				mScriptManager.QueueCommands(customCmd, scope String()..AppendF("project {}", project.mProjectName), .NoLines);
+				let scriptCmd = new IDEApp.ScriptCmd();
+				scriptCmd.mCmd = new String(customCmd);
+				scriptCmd.mPath = new $"project {project.mProjectName}";
+				gApp.mExecutionQueue.Add(scriptCmd);
 				continue;
 			}
-
-			let targetCompleteCmd = new IDEApp.TargetCompletedCmd(project);
-			if (didCommands)
-			{
-				mScriptManager.QueueCommands(scope String()..AppendF("%targetComplete {}", project.mProjectName), targetName, .NoLines);
-				targetCompleteCmd.mIsReady = false;
-				project.mNeedsTargetRebuild = true;
-			}
-			gApp.mExecutionQueue.Add(targetCompleteCmd);
 
 			return didCommands ? .HadCommands : .NoCommands;
 		}

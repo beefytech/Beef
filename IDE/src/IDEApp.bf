@@ -435,6 +435,12 @@ namespace IDE
 			}
         }
 
+		public class ScriptCmd : ExecutionCmd
+		{
+			public String mCmd ~ delete _;
+			public String mPath ~ delete _;
+		}
+
 		public enum ArgsFileKind
 		{
 			None,
@@ -8257,6 +8263,21 @@ namespace IDE
 					}
 				}
 
+				if (let scriptCmd = next as ScriptCmd)
+				{
+					if (mBuildContext?.mScriptManager != null)
+					{
+						if (scriptCmd.mCmd != null)
+						{
+							mBuildContext.mScriptManager.QueueCommands(scriptCmd.mCmd, scriptCmd.mPath, .NoLines);
+							DeleteAndNullify!(scriptCmd.mCmd);
+						}
+
+						if (mBuildContext.mScriptManager.HasQueuedCommands)
+							return;
+					}
+				}
+
 				defer delete next;
                 mExecutionQueue.RemoveAt(0);
 
@@ -8411,6 +8432,11 @@ namespace IDE
 				{
 					if (gApp.mDebugger.mIsRunning)
 						mProfilePanel.StartProfiling(profileCmd.mThreadId, profileCmd.mDesc, profileCmd.mSampleRate);
+				}
+				else if (var scriptCmd = next as ScriptCmd)
+				{
+					// Already handled
+					(void)scriptCmd;
 				}
                 else
                 {
