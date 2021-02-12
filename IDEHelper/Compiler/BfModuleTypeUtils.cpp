@@ -3403,6 +3403,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	
 	for (auto& validateEntry : deferredTypeValidateList)
 	{
+		SetAndRestoreValue<BfTypeReference*> prevAttributeTypeRef(typeState.mCurAttributeTypeRef, validateEntry.mTypeRef);
 		SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, mIgnoreErrors | validateEntry.mIgnoreErrors);
 		ValidateGenericConstraints(validateEntry.mTypeRef, validateEntry.mGenericType, false);
 	}
@@ -4332,34 +4333,41 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	
 	if ((mCompiler->mOptions.mAllowHotSwapping) && (typeInstance->mDefineState < BfTypeDefineState_Defined))
 	{	
-		auto hotTypeVersion = typeInstance->mHotTypeData->mTypeVersions.back();
-
-		if ((typeInstance->mBaseType != NULL) && (typeInstance->mBaseType->mHotTypeData != NULL))
+		if (typeInstance->mHotTypeData == NULL)
 		{
-			hotTypeVersion->mMembers.Add(typeInstance->mBaseType->mHotTypeData->GetLatestVersion());
+			BF_ASSERT(typeInstance->mTypeFailed);
 		}
-
-		for (auto& fieldInst : typeInstance->mFieldInstances)
+		else
 		{
-			auto fieldDef = fieldInst.GetFieldDef();
-			if ((fieldDef == NULL) || (fieldDef->mIsStatic))
-				continue;
-			auto depType = fieldInst.mResolvedType;
+			auto hotTypeVersion = typeInstance->mHotTypeData->mTypeVersions.back();
 
-			while (depType->IsSizedArray())
-				depType = ((BfSizedArrayType*)depType)->mElementType;
-			if (depType->IsStruct())
+			if ((typeInstance->mBaseType != NULL) && (typeInstance->mBaseType->mHotTypeData != NULL))
 			{
-				PopulateType(depType);
-				auto depTypeInst = depType->ToTypeInstance();
-				BF_ASSERT(depTypeInst->mHotTypeData != NULL);
-				if (depTypeInst->mHotTypeData != NULL)
-					hotTypeVersion->mMembers.Add(depTypeInst->mHotTypeData->GetLatestVersion());
+				hotTypeVersion->mMembers.Add(typeInstance->mBaseType->mHotTypeData->GetLatestVersion());
 			}
-		}
 
-		for (auto member : hotTypeVersion->mMembers)
-			member->mRefCount++;
+			for (auto& fieldInst : typeInstance->mFieldInstances)
+			{
+				auto fieldDef = fieldInst.GetFieldDef();
+				if ((fieldDef == NULL) || (fieldDef->mIsStatic))
+					continue;
+				auto depType = fieldInst.mResolvedType;
+
+				while (depType->IsSizedArray())
+					depType = ((BfSizedArrayType*)depType)->mElementType;
+				if (depType->IsStruct())
+				{
+					PopulateType(depType);
+					auto depTypeInst = depType->ToTypeInstance();
+					BF_ASSERT(depTypeInst->mHotTypeData != NULL);
+					if (depTypeInst->mHotTypeData != NULL)
+						hotTypeVersion->mMembers.Add(depTypeInst->mHotTypeData->GetLatestVersion());
+				}
+			}
+
+			for (auto member : hotTypeVersion->mMembers)
+				member->mRefCount++;
+		}
 	}
 
 	if (typeInstance->mDefineState < BfTypeDefineState_Defined)
