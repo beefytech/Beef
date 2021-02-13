@@ -22002,6 +22002,12 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			}
 			else
 			{
+				BfTypeState typeState;
+				typeState.mTypeInstance = mCurTypeInstance;
+				typeState.mCurTypeDef = methodDef->mDeclaringType;
+				//typeState.mCurMethodDef = methodDef;
+				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
 				BfConstResolver constResolver(this);
 				defaultValue = constResolver.Resolve(paramDef->mParamDeclaration->mInitializer, resolvedParamType, (BfConstResolveFlags)(BfConstResolveFlag_NoCast | BfConstResolveFlag_AllowGlobalVariable));
 				if ((defaultValue) && (defaultValue.mType != resolvedParamType))
