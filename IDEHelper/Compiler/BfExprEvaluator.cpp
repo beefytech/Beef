@@ -20615,14 +20615,19 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			return;
 	}
 
-	if ((binaryOp == BfBinaryOp_NullCoalesce) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsObject())))
+	if ((binaryOp == BfBinaryOp_NullCoalesce) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())))
 	{
 		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();
 
 		auto rhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.rhs");
 		auto endBB = mModule->mBfIRBuilder->CreateBlock("nullc.end");
 
-		auto isNull = mModule->mBfIRBuilder->CreateIsNull(leftValue.mValue);
+		BfIRValue isNull;		
+		if (leftValue.mType->IsFunction())
+			isNull = mModule->mBfIRBuilder->CreateIsNull(
+				mModule->mBfIRBuilder->CreateIntToPtr(leftValue.mValue, mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_NullPtr))));
+		else
+			isNull = mModule->mBfIRBuilder->CreateIsNull(leftValue.mValue);
 		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, endBB);
 
 		mModule->AddBasicBlock(rhsBB);		
