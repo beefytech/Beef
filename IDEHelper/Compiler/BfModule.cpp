@@ -15743,7 +15743,11 @@ void BfModule::EmitDtorBody()
 				}
 				else
 				{
-					if (!mCurTypeInstance->IsValueType())
+					if (fieldInst->mResolvedType->IsValuelessType())
+					{
+						value = mBfIRBuilder->GetFakeVal();
+					}
+					else if (!mCurTypeInstance->IsValueType())
 					{
 						auto thisValue = GetThis();
 						value = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInst->mDataIdx);						
