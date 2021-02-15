@@ -8336,7 +8336,7 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 		useTypeDef = typeInstance->mTypeDef;
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && (useMixinDecl))
 		useTypeDef = mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType;
-	else if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mDeclaringType != NULL))
+	else if ((mCurMethodInstance != NULL) && (!mCurMethodInstance->mIsForeignMethodDef) && (mCurMethodInstance->mMethodDef->mDeclaringType != NULL))
 		useTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
 	else if (mContext->mCurTypeState != NULL)
 	{

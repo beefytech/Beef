@@ -22780,6 +22780,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		}
 	}
 
+	if ((methodDef->mIsConcrete) && (!methodInstance->mIsForeignMethodDef) && (!mCurTypeInstance->IsInterface()))
+	{
+		Fail("Only interfaces methods can be declared as 'concrete'", methodDeclaration->mVirtualSpecifier);
+	}
+
 	if ((methodDef->mIsVirtual) && (methodDef->mIsStatic) && (!methodInstance->mIsInnerOverride))
 	{
 		if ((virtualToken != NULL) && (virtualToken->mToken == BfToken_Override) && (methodDef->mDeclaringType->mTypeCode == BfTypeCode_Extension))
