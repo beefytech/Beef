@@ -117,6 +117,11 @@ namespace IDE.ui
 		public int32 mActiveCallStackIdx = -1;
 		public int32 mSelectedCallStackIdx = -1;
 
+		public override String SerializationType
+		{
+			get { return "CallStackPanel"; }
+		}
+
 		public int32 ActiveCallStackIdx
 		{
 			get

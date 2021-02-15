@@ -635,6 +635,10 @@ namespace IDE.ui
 
     public class MemoryPanel : Panel
     {
+		public override String SerializationType
+		{
+			get { return "MemoryPanel"; }
+		}
         public BinaryDataWidget mBinaryDataWidget;
         //public DarkEditWidget mAddressEditWidget;
         //public WatchRefreshButton mWatchRefreshButton;

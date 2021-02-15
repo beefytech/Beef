@@ -181,111 +181,271 @@ namespace Beefy.theme.dark
             }
         }
 
-        public class DarkTabMenuButton : ButtonWidget
-        {
-            public override void Draw(Graphics g)
-            {
-                base.Draw(g);
-                if (mMouseOver || mMouseDown)
-                {
-                    using (g.PushColor(0xFFF7A900))
-                        g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropMenuButton), GS!(-4), GS!(-4));                    
-                }
-                else
-                    g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropMenuButton), GS!(-4), GS!(-4));
-            }
-        }
+		public class DarkTabMenuButton : ButtonWidget
+		{
+			// TODO: create visuals for collapse, expand and hide buttons that blend well with the menu button
+			public override void Draw(Graphics g)
+			{
+				base.Draw(g);
+				if (mMouseOver || mMouseDown)
+					using (g.PushColor(0xFFF7A900))
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropMenuButton), GS!(-4), GS!(-4));
+				else
+					g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropMenuButton), GS!(-4), GS!(-4));
+			}
+		}
+
+		public class DarkTabCollapseButton : ButtonWidget
+		{
+			public override void Draw(Graphics g)
+			{
+				base.Draw(g);
+				if (mMouseOver || mMouseDown)
+					using (g.PushColor(0xFFF7A900))
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.MemoryArrowTripleMiddle), GS!(-4), GS!(-2));
+				else
+					using (g.PushColor(0xFFA9A9CA))
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.MemoryArrowTripleMiddle), GS!(-4), GS!(-2));
+			}
+		}
+
+		public class DarkTabExpandButton : ButtonWidget
+		{
+			public override void Draw(Graphics g)
+			{
+				base.Draw(g);
+				if (mMouseOver || mMouseDown)
+					using (g.PushColor(0xFFF7A900))
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.EditPathNode), GS!(-4), GS!(-3));
+				else
+					using (g.PushColor(0xFFA9A9CA))
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.EditPathNode), GS!(-4), GS!(-3));
+			}
+		}
+
+		public class DarkTabHideButton : ButtonWidget
+		{
+			public override void Draw(Graphics g)
+			{
+				base.Draw(g);
+				if (mMouseOver || mMouseDown)
+					using (g.PushColor(0xFFF7A900))
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Close), GS!(-4), GS!(-3));
+				else
+					using (g.PushColor(0xFFA9A9CA))
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Close), GS!(-4), GS!(-3));
+			}
+		}
 
         public class DarkTabEnd : DarkTabButton
         {
-            public DarkTabMenuButton mMenuButton;
+			public DarkTabMenuButton mMenuButton;
+			public DarkTabCollapseButton mCollapseButton;
+			public DarkTabExpandButton mExpandButton;
+			public DarkTabHideButton mHideButton;
             public int32 mMenuClosedTick;            
 
             public this()
                 : base(true)
             {
-                mMenuButton = new DarkTabMenuButton();
-                AddWidget(mMenuButton);
-                mMenuButton.mOnMouseDown.Add(new => MenuClicked);
+				mMenuButton = new DarkTabMenuButton();
+				AddWidget(mMenuButton);
+				mMenuButton.mOnMouseDown.Add(new => MenuClicked);
+				mCollapseButton = new DarkTabCollapseButton();
+				AddWidget(mCollapseButton);
+				mCollapseButton.mOnMouseDown.Add(new => CollapseClicked);
+				mExpandButton = new DarkTabExpandButton();
+				AddWidget(mExpandButton);
+				mExpandButton.mOnMouseDown.Add(new => ExpandClicked);
+				mHideButton = new DarkTabHideButton();
+				AddWidget(mHideButton);
+				mHideButton.mOnMouseDown.Add(new => HideClicked);
             }
 
             void ShowMenu(float x, float y)
             {
                 Menu menu = new Menu();
-                /*menu.AddItem("Item 1");
-                menu.AddItem("Item 2");
-                menu.AddItem();
-                menu.AddItem("Item 3");*/
+				Menu menuItem = ?;
 
-				var menuItem = menu.AddItem("Frame Type");
-
-				var subItem = menuItem.AddItem("Static");
-				subItem.mOnMenuItemSelected.Add(new (evt) =>
+				bool canShow = mTabbedView.CanShow();
+				menuItem = menu.AddItem(canShow ? "Show|hidden | closed" : "Show");
+				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
-						mTabbedView.mIsFillWidget = false;
-						mTabbedView.mSizePriority = 0;
-						mTabbedView.mRequestedWidth = mTabbedView.mWidth;
-						mTabbedView.GetRootDockingFrame().Rehup();
-						mTabbedView.GetRootDockingFrame().ResizeContent();
+						mTabbedView.ShowIfHiddenAndRehup();
 					});
-				if (!mTabbedView.mIsFillWidget)
-					subItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+				menuItem.SetDisabled(!canShow);
 
-				subItem = menuItem.AddItem("Documents");
-				subItem.mOnMenuItemSelected.Add(new (evt) =>
+				menuItem = menu.AddItem("Hide");
+				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
-						/*for (var tabSibling in mTabbedView.mParentDockingFrame.mDockedWidgets)
-						{
-							tabSibling.mSizePriority = 0;
-							if (mTabbedView.mParentDockingFrame.mSplitType == .Horz)
-								tabSibling.mRequestedWidth = tabSibling.mWidth;
-							else
-								tabSibling.mRequestedHeight = tabSibling.mHeight;
-						}*/
-						mTabbedView.mIsFillWidget = true;
-						mTabbedView.GetRootDockingFrame().Rehup();
-						mTabbedView.GetRootDockingFrame().ResizeContent();
+						HideClicked();
 					});
+				menuItem.SetDisabled(!mTabbedView.CanHide());
+
+				menuItem = menu.AddItem(mTabbedView.IsShown ? "Collapse" : "Restore");
+				menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						CollapseClicked();
+					});
+				if (mTabbedView.IsCollapsed)
+					menuItem.SetDisabled(true);
+				else if (mTabbedView.IsMaximized)
+					menuItem.SetDisabled(false);
+				else
+					menuItem.SetDisabled(!mTabbedView.CanCollapse());
+
+				menuItem = menu.AddItem(mTabbedView.IsCollapsed ? "Expand"  : "Maximize");
+				menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						ExpandClicked();
+					});
+				if (mTabbedView.IsCollapsed)
+					menuItem.SetDisabled(false);
+				else
+					menuItem.SetDisabled(!mTabbedView.CanMaximize());
+
+				menu.AddItem();
+
+				menuItem = menu.AddItem("Settings");
+
+				menu.AddItem();
+
+				var subItem = menuItem.AddItem(mTabbedView.mIsFillWidget ?
+					"Dynamic Sizing|(documents)" : "Dynamic Sizing|(static panels)");
 				if (mTabbedView.mIsFillWidget)
 					subItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+				subItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						if (mTabbedView.mIsFillWidget)
+						{
+							mTabbedView.mIsFillWidget = false;
+							mTabbedView.mSizePriority = 0;
+							mTabbedView.mRequestedWidth = mTabbedView.mWidth;
+						}
+						else
+							mTabbedView.mIsFillWidget = true;
+						mTabbedView.GetRootDockingFrame().Rehup();
+						mTabbedView.GetRootDockingFrame().ResizeContent();
+					});
 
-				menuItem = menu.AddItem("Permanent");
+				subItem = menuItem.AddItem(mTabbedView.mAutoClose ?
+					"Keep Open|(auto-close)" : "Keep Open|(permanent)");
 				if (!mTabbedView.mAutoClose)
-					menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
-				menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					subItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+				subItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
 						mTabbedView.mAutoClose = !mTabbedView.mAutoClose;
 					});
+
+				Menu CreateCheckedMenuItem(Menu item, String prefix, ref VisibilityAction visibility, VisibilityType selector)
+				{
+					var label = scope String()..Append(prefix);
+					let selected = visibility.action == selector;
+					if (selected)
+					{
+						if (let suffix = visibility.label)
+						{
+							label.Append("|");
+							label.Append(suffix);
+						}
+					}
+					let sub = item.AddItem(label);
+					if (selected)
+						sub.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+					sub.mOnMenuItemSelected.Add(new [&] (evt) =>
+						{
+							visibility.action = selected ? .Unspecified : selector;
+						});
+					return sub;
+				}
+
+				for (var visibility in ref mTabbedView.mVisibilityActions)
+				{
+					// If the label isn't valid, don't show this item
+					if (visibility.label == null)
+						continue;
+					menuItem.AddItem();
+					if (visibility.action == .Unspecified)
+						CreateCheckedMenuItem(menuItem, "Visibility (Unchanged)", ref visibility, .Unspecified).SetDisabled(true);
+					CreateCheckedMenuItem(menuItem, "Show", ref visibility, .Show);
+					CreateCheckedMenuItem(menuItem, "Hide", ref visibility, .Hide);
+					CreateCheckedMenuItem(menuItem, "Collapse", ref visibility, .Collapse);
+					CreateCheckedMenuItem(menuItem, "Maximize", ref visibility, .Maximize);
+				}
 
 				menuItem = menu.AddItem("Close");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
 						mTabbedView.CloseTabs(true, true);
 					});
+				menuItem.SetDisabled(mTabbedView.mTabs.Count == 0);
 
 				menuItem = menu.AddItem("Close Tabs");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
 						mTabbedView.CloseTabs(false, true);
 					});
+				menuItem.SetDisabled(mTabbedView.mTabs.Count == 0);
 
 				menuItem = menu.AddItem("Close Tabs Except Current");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
 						mTabbedView.CloseTabs(false, false);
 					});
+				menuItem.SetDisabled(mTabbedView.mTabs.Count < 2);
 
-				menu.AddItem();
+				menuItem = menu.AddItem("Remove Frame");
+				menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						// fixme; doesn't actually remove the frame anymore
+						mTabbedView.CloseTabs(true, true);
+					});
 
-                for (var tab in mTabbedView.mTabs)
-                {
-                    menuItem = menu.AddItem(tab.mLabel);
-                    menuItem.mOnMenuItemSelected.Add(new (selMenuItem) =>
-	                    {
-	                        TabbedView.TabButton activateTab = tab;
-	                        activateTab.Activate();
-	                    });
-                }
+				List<TabButton> tabs = scope List<TabButton>();
+				List<RecentContent> recents = scope List<RecentContent>();
+				mTabbedView.mParentDockingFrame.WithAllDockedWidgets(scope [&] (widget) =>
+					{
+						if (let tabbedView = widget as TabbedView)
+							if (tabbedView == mTabbedView || tabbedView.IsHidden)
+							{
+								for (var tab in tabbedView.mTabs)
+									tabs.Add(tab);
+								if (tabbedView.HasRecentContent())
+									for (let recent in tabbedView.mRecentContents)
+										recents.Add(recent);
+							}
+					});
+				tabs.Sort(scope (lhs, rhs) => { return lhs.mLabel <=> rhs.mLabel; });
+				if (!tabs.IsEmpty)
+					menu.AddItem();
+				for (let tab in tabs)
+				{
+					let label = StackStringFormat!("{}{}", tab.mLabel, tab.mTabbedView.IsHidden ? "|(hidden)" : "");
+					menuItem = menu.AddItem(label);
+					menuItem.mOnMenuItemSelected.Add(new (selMenuItem) =>
+						{
+							if (tab.mTabbedView == mTabbedView)
+								tab.Activate();
+							else
+							{
+								let item = RecentContent() { content = tab.mContent, label = tab.mLabel };
+								mTabbedView.mSharedData.mRecentContentSelected(item);
+							}
+						});
+				}
+				recents.Sort(scope (lhs,rhs) => { return lhs.label <=> rhs.label; });
+				if (tabs.IsEmpty && !recents.IsEmpty)
+					menu.AddItem();
+				for (let item in recents)
+				{
+					let label = StackStringFormat!("{}{}", item.label, "|(closed)");
+					menuItem = menu.AddItem(label);
+					menuItem.mOnMenuItemSelected.Add(new (selMenuItem) =>
+						{
+							// fixme: needs resize tabs
+							mTabbedView.mSharedData.mRecentContentSelected(item);
+						});
+				}
 
                 if (mTabbedView.mPopulateMenuEvent != null)
                     mTabbedView.mPopulateMenuEvent(menu);
@@ -308,6 +468,36 @@ namespace Beefy.theme.dark
                     ShowMenu(mMenuButton.mX + GS!(14), mMenuButton.mY + GS!(14));                    
                 }
             }
+
+			void CollapseClicked(MouseEvent theEvent = null)
+			{
+				if (mTabbedView.IsCollapsed)
+					return;
+				if (mTabbedView.IsMaximized || mTabbedView.CanCollapse())
+				{
+					if (mTabbedView.IsMaximized)
+						mTabbedView.ShowIfMaximizedAndRehup();
+					else if (mTabbedView.IsShown)
+						mTabbedView.CollapseAndRehup();
+					else if (mTabbedView.IsCollapsed)
+						mTabbedView.HideAndRehup();
+				}
+			}
+
+			void ExpandClicked(MouseEvent theEvent = null)
+			{
+				if (mTabbedView.IsCollapsed || mTabbedView.CanMaximize())
+					if (mTabbedView.IsCollapsed)
+						mTabbedView.ShowIfCollapsedAndRehup();
+					else
+						mTabbedView.MaximizeAndRehup();
+			}
+
+			void HideClicked(MouseEvent theEvent = null)
+			{
+				if (mTabbedView.CanHide())
+					mTabbedView.HideAndRehup();
+			}
 
             void MenuClosed(BFWindow window)
             {
@@ -345,8 +535,14 @@ namespace Beefy.theme.dark
             public override void Resize(float x, float y, float width, float height)
             {
                 base.Resize(x, y, width, height);
-                if (mMenuButton != null)
-                    mMenuButton.Resize(mWidth - GS!(20), GS!(3), GS!(14), GS!(12));
+				if (mMenuButton != null)
+					mMenuButton.Resize(mWidth - GS!(20) * 4, GS!(3), GS!(14), GS!(12));
+                if (mCollapseButton != null)
+                    mCollapseButton.Resize(mWidth - GS!(20) * 3, GS!(3), GS!(14), GS!(12));
+				if (mExpandButton != null)
+					mExpandButton.Resize(mWidth - GS!(20) * 2, GS!(3), GS!(14), GS!(12));
+				if (mHideButton != null)
+					mHideButton.Resize(mWidth - GS!(20), GS!(3), GS!(14), GS!(12));
             }
 
             public override bool IsTotalWindowContent()
@@ -396,6 +592,7 @@ namespace Beefy.theme.dark
                 func(tab);
             if (mRightTab != null)
                 func(mRightTab);
+
         }
 
         public override TabButton AddTab(String label, float width, Widget content, bool ownsContent)
@@ -406,12 +603,12 @@ namespace Beefy.theme.dark
             return base.AddTab(label, useWidth, content, ownsContent);
         }
 
-        public override void RemoveTab(TabButton tabButton, bool deleteTab = true)
+        public override void RemoveTab(TabButton tabButton, bool deleteTab = true, bool recentTab = false)
         {
             if (mRightTab == tabButton)
                 SetRightTab(null, deleteTab);
             else
-                base.RemoveTab(tabButton, deleteTab);            
+                base.RemoveTab(tabButton, deleteTab, recentTab);
         }
 
         protected override TabButton CreateTabButton()
@@ -451,8 +648,9 @@ namespace Beefy.theme.dark
 
             if (mRightTab != null)
                 mRightTab.mWidth = mRightTab.mWantWidth;
-            
-            float maxAreaWidth = mWidth - GS!(36);
+
+			let maxTotalAreaWidth = mWidth - GS!(12) - GS!(20) * 4.0f; // was 36 * 1; 24 with spacing?
+            float maxAreaWidth = maxTotalAreaWidth;
             if (mRightTab != null)
                 maxAreaWidth -= mRightTab.mWidth + GS!(2);
 
@@ -470,8 +668,8 @@ namespace Beefy.theme.dark
                 var tabButton = (DarkTabButton)mTabs[tabIdx];
 
 				float useWidth = tabButton.mWantWidth;
-				if (curX + useWidth > mWidth - GS!(36))
-					useWidth = Math.Max(mWidth - GS!(36), 0);
+				if (curX + useWidth > maxTotalAreaWidth)
+					useWidth = Math.Max(maxTotalAreaWidth, 0);
 				useWidth = (float)Math.Round(useWidth);
 
                 tabButton.Resize(curX, tabButton.mY, useWidth, DarkTheme.sUnitSize);
@@ -598,7 +796,7 @@ namespace Beefy.theme.dark
 
             float tabX = 0;
             if (mTabs.Count > 0)
-                tabX = Math.Min(mWidth - GS!(36), mTabs[mTabs.Count - 1].mX + mTabs[mTabs.Count - 1].mWidth);
+                tabX = Math.Min(maxTotalAreaWidth, mTabs[mTabs.Count - 1].mX + mTabs[mTabs.Count - 1].mWidth);
             if (mRightTab != null)
             {
                 if (mRightTab.mIsActive)
@@ -616,7 +814,7 @@ namespace Beefy.theme.dark
 				mChildWidgets.Add(afterTabWidgets[afterTabIdx]);
 			}
 
-            mTabEnd.Resize(tabX, 0, mWidth - tabX - GS!(1), DarkTheme.sUnitSize);
+            mTabEnd.ResizeClamped(tabX, 0, mWidth - tabX - GS!(1), DarkTheme.sUnitSize * 4);
             mChildWidgets.Insert(selInsertPos, mTabEnd);
             
             mNeedResizeTabs = false;
@@ -702,6 +900,7 @@ namespace Beefy.theme.dark
 
 			UpdateTabView(false);
         }
+
 
         public override void Resize(float x, float y, float width, float height)
         {

@@ -62,6 +62,11 @@ namespace IDE.ui
 		public Breakpoint mPendingMemoryBreakpoint ~ { if (_ != null) _.Deref(); };
 		public delegate void(int, int, String) mOnPendingMemoryBreakpoint ~ delete _;
 
+		public override String SerializationType
+		{
+			get { return "BreakpointPanel"; }
+		}
+
         public this()
         {
             mListView = new BreakpointListView();

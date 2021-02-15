@@ -11,6 +11,11 @@ namespace IDE.ui
 {
     public class ImmediatePanel : TextPanel
     {
+		public override String SerializationType
+		{
+			get { return "ImmediatePanel"; }
+		}
+
         ImmediateWidget mImmediateWidget;
 		bool mHasResult;
 		String mQueuedText = new String() ~ delete _;
