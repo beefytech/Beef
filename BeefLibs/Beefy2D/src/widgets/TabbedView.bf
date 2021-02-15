@@ -86,12 +86,12 @@ namespace Beefy.widgets
             public virtual void Activate(bool setFocus = true)
             {
 				bool needsRehup = false;
-				if (mTabbedView.IsCollapsed)
+				if (mMouseDown && mTabbedView.IsCollapsed)
 				{
 					needsRehup = true;
 					mMouseDownIsExpanding = true; // hack; otherwise we generate a tear-off event for this tab
+					mTabbedView.ShowIfCollapsed();
 				}
-				mTabbedView.ShowIfCollapsed();
                 TabButton button = mTabbedView.GetActiveTab();
                 if (button != this)
                 {
