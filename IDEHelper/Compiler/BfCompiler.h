@@ -353,14 +353,14 @@ public:
 	BfTypeDef* mDbgRawAllocDataTypeDef;
 	BfTypeDef* mDeferredCallTypeDef;		
 	BfTypeDef* mDelegateTypeDef;
+	BfTypeDef* mFunctionTypeDef;
 	BfTypeDef* mActionTypeDef;
 	BfTypeDef* mEnumTypeDef;
 	BfTypeDef* mStringTypeDef;
 	BfTypeDef* mStringViewTypeDef;
 	BfTypeDef* mTypeTypeDef;
 	BfTypeDef* mValueTypeTypeDef;	
-	BfTypeDef* mResultTypeDef;
-	BfTypeDef* mFunctionTypeDef;
+	BfTypeDef* mResultTypeDef;	
 	BfTypeDef* mGCTypeDef;	
 	BfTypeDef* mGenericIEnumerableTypeDef;
 	BfTypeDef* mGenericIEnumeratorTypeDef;

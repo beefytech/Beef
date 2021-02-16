@@ -1778,7 +1778,7 @@ public:
 	bool TypeEquals(BfTypedValue& val, BfType* type);
 	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
-	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized);
+	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized, Array<BfTypeReference*>* deferredResolveTypes = NULL);
 	String GenericParamSourceToString(const BfGenericParamSource& genericParamSource);
 	bool CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs = NULL, BfError** errorOut = NULL);
 	BfIRValue AllocLocalVariable(BfType* type, const StringImpl& name, bool doLifetimeEnd = true);

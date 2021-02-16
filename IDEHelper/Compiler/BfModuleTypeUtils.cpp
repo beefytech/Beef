@@ -164,7 +164,8 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 	typeState.mResolveKind = BfTypeState::ResolveKind_BuildingGenericParams;
 	typeState.mTypeInstance = resolvedTypeRef->ToTypeInstance();
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-	
+	Array<BfTypeReference*> deferredResolveTypes;
+
 	BF_ASSERT(mCurMethodInstance == NULL);
 
 	auto genericTypeInst = resolvedTypeRef->ToGenericTypeInstance();
@@ -210,7 +211,7 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 							genericParamInstance->mExternType = GetPrimitiveType(BfTypeCode_Var);
 					}
 
-					ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType());
+					ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType(), &deferredResolveTypes);
 
 					if (genericParamDef != NULL)
 					{
@@ -283,7 +284,7 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 					genericParamInstance->mExternType = GetPrimitiveType(BfTypeCode_Var);
 			}
 
-			ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType());
+			ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType(), &deferredResolveTypes);
 			auto genericParamDef = genericParamInstance->GetGenericParamDef();
 			if (genericParamDef != NULL)
 			{
@@ -294,6 +295,9 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 			}
 		}
 	}
+
+	for (auto typeRef : deferredResolveTypes)
+		auto constraintType = ResolveTypeRef(typeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_None);
 
 	for (auto genericParam : genericTypeInst->mGenericTypeInfo->mGenericParams)
 	{
@@ -337,6 +341,13 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 			return result;
 		}
 		return true;
+	}
+
+	for (auto typeArg : genericTypeInst->mGenericTypeInfo->mTypeGenericArguments)
+	{
+		auto genericArg = typeArg->ToGenericTypeInstance();
+		if (genericArg != NULL)
+			genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, genericArg->mGenericTypeInfo->mMaxGenericDepth + 1);
 	}
 
 	auto typeDef = genericTypeInst->mTypeDef;		
@@ -4973,7 +4984,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 	//
 	{
-		if (typeInstance->IsSpecializedType())
+		if ((typeInstance->IsSpecializedType()) || (typeInstance->IsUnspecializedTypeVariation()))
 			wantsOnDemandMethods = true;
 		else if ((mCompiler->mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude) &&
 			(!typeInstance->IsUnspecializedTypeVariation()))
@@ -7939,7 +7950,7 @@ bool BfModule::ResolveTypeResult_Validate(BfTypeReference* typeRef, BfType* reso
 				if ((curGenericTypeInstance->mDependencyMap.mMinDependDepth > 32) &&
 					(genericTypeInstance->mDependencyMap.mMinDependDepth > 32))
 				{
-					Fail(StrFormat("Generic type dependency depth exceeded for type '{}'", TypeToString(genericTypeInstance).c_str()), typeRef);
+					Fail(StrFormat("Generic type dependency depth exceeded for type '%s'", TypeToString(genericTypeInstance).c_str()), typeRef);
 					return false;
 				}
 
@@ -9724,7 +9735,14 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				CheckUnspecializedGenericType(genericTypeInst, populateType);
 				resolvedEntry->mValue = genericTypeInst;
 				populateModule->InitType(genericTypeInst, populateType);
-				BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);				
+#ifdef _DEBUG
+				if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHash)
+				{
+					int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
+					int typeHash = BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx);
+					BF_ASSERT(refHash == typeHash);
+				}
+#endif
 				return ResolveTypeResult(typeRef, genericTypeInst, populateType, resolveFlags);
 			}
 		}
@@ -9978,15 +9996,16 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			auto parentTypeInstance = outerTypeInstance;
 			if (parentTypeInstance->IsTypeAlias())
 				parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
+			genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, parentTypeInstance->mGenericTypeInfo->mMaxGenericDepth);
 			for (int i = 0; i < startDefGenericParamIdx; i++)
 			{
 				genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(parentTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());
 				genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
 				auto typeGenericArg = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[i];
 				genericTypeInst->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
+				
 			}			
-		}
-		
+		}		
 
 		int wantedGenericParams = genericParamCount - startDefGenericParamIdx;
 		int genericArgDiffCount = (int)genericArguments.size() - wantedGenericParams;
@@ -10005,14 +10024,28 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		for (auto genericArgRef : genericArguments)
 		{
 			auto genericArg = genericArgs[genericParamIdx + startDefGenericParamIdx];
+
+			if (auto genericGenericArg = genericArg->ToGenericTypeInstance())
+			{
+				genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, genericGenericArg->mGenericTypeInfo->mMaxGenericDepth + 1);
+			}
+
 			genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(genericArg);
 			genericTypeInst->mGenericTypeInfo->mTypeGenericArgumentRefs.push_back(genericArgRef);
 
 			genericParamIdx++;
 		}
 
-		resolvedEntry->mValue = genericTypeInst;		
+		if (genericTypeInst->mGenericTypeInfo->mMaxGenericDepth > 64)
+		{
+			Fail("Maximum generic depth exceeded", typeRef);
+			delete genericTypeInst;
+			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+		}
 
+		resolvedEntry->mValue = genericTypeInst;		
+		
 		CheckUnspecializedGenericType(genericTypeInst, populateType);
 		populateModule->InitType(genericTypeInst, populateType);
 
@@ -10027,6 +10060,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			BF_ASSERT(BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx));
 		}
+
+		BfLogSysM("Generic type %p typeHash: %8X\n", genericTypeInst, resolvedEntry->mHash);
 #endif
 
 		BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);		
@@ -10161,7 +10196,14 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		CheckUnspecializedGenericType(genericTypeInst, populateType);
 
 		resolvedEntry->mValue = genericTypeInst;
-		BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);
+#ifdef _DEBUG
+		if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHash)
+		{
+			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
+			int typeHash = BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx);
+			BF_ASSERT(refHash == typeHash);
+		}
+#endif
 		populateModule->InitType(genericTypeInst, populateType);
 		return ResolveTypeResult(typeRef, genericTypeInst, populateType, resolveFlags);
 	}

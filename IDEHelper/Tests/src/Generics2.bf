@@ -95,6 +95,16 @@ namespace Tests
 			}
 		}
 
+		class IFaceA<T0, T1> where T0 : Dictionary<T1, int> where T1 : IHashable
+		{
+			Dictionary<T1, int> mDict;
+		}
+
+		public static void MethodA<T0, T1>() where T0 : Dictionary<T1, int> where T1 : IHashable
+		{
+
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
