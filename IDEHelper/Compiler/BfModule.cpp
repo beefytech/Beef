@@ -15743,7 +15743,11 @@ void BfModule::EmitDtorBody()
 				}
 				else
 				{
-					if (!mCurTypeInstance->IsValueType())
+					if (fieldInst->mResolvedType->IsValuelessType())
+					{
+						value = mBfIRBuilder->GetFakeVal();
+					}
+					else if (!mCurTypeInstance->IsValueType())
 					{
 						auto thisValue = GetThis();
 						value = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInst->mDataIdx);						
@@ -22778,6 +22782,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				Fail("Method does not hide an inherited member. The 'new' keyword is not required", tokenNode, true);				
 			}
 		}
+	}
+
+	if ((methodDef->mIsConcrete) && (!methodInstance->mIsForeignMethodDef) && (!mCurTypeInstance->IsInterface()))
+	{
+		Fail("Only interfaces methods can be declared as 'concrete'", methodDeclaration->mVirtualSpecifier);
 	}
 
 	if ((methodDef->mIsVirtual) && (methodDef->mIsStatic) && (!methodInstance->mIsInnerOverride))

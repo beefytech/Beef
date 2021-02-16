@@ -407,7 +407,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 				}
 				else if (c == ' ')
 				{
-					if ((isalpha(src[i - 1])) && (isalpha(src[i + 1])))
+					if ((isalpha((uint8)src[i - 1])) && (isalpha((uint8)src[i + 1])))
 						spacedWordCount++;
 				}
 				else if ((c == '/') && (src[i - 1] == '/') && (hadNonSlash))

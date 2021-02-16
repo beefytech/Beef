@@ -443,17 +443,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		{
 			methodDef->mIsConcrete = true;
 			methodDef->mIsVirtual = false;
-		}
-
-		if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
-		{
-			//
-		}
-		else
-		{
-			if (methodDef->mIsConcrete)
-				Fail("Only interfaces methods can be declared as 'concrete'", methodDeclaration->mVirtualSpecifier);
-		}
+		}		
 
 		if (methodDef->mIsAbstract)
 		{

@@ -82,17 +82,14 @@ static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, voi
 void NetRequest::Cleanup()
 {
 	if (mCURLMulti != NULL)
-	{
-		curl_multi_remove_handle(mCURLMulti, mCURL);		
-	}
+		curl_multi_remove_handle(mCURLMulti, mCURL);
+	if (mCURL != NULL)	
+		curl_easy_cleanup(mCURL);		
+	if (mCURLMulti != NULL)	
+		curl_multi_cleanup(mCURLMulti);	
 
-	if (mCURL != NULL)
-		curl_easy_cleanup(mCURL);
-
-	if (mCURLMulti != NULL)
-	{
-		curl_multi_cleanup(mCURLMulti);
-	}
+	mCURL = NULL;
+	mCURLMulti = NULL;
 }
 
 void NetRequest::DoTransfer()
@@ -105,65 +102,75 @@ void NetRequest::DoTransfer()
 // 		return;
 // 	}
 
-	BfLogDbg("NetManager starting get on %s\n", mURL.c_str());
-	mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Getting '%s'\n", mURL.c_str()));
-
-	mOutTempPath = mOutPath + "__partial";	
-	
-	mCURLMulti = curl_multi_init();
-
-	mCURL = curl_easy_init();	
-
-	if (mShowTracking)
-	{		
-		mNetManager->mDebugManager->OutputRawMessage(StrFormat("symsrv Getting '%s'", mURL.c_str()));		
-	}
-
-	//OutputDebugStrF("Getting '%s'\n", mURL.c_str());
-
-	curl_easy_setopt(mCURL, CURLOPT_URL, mURL.c_str());
-	curl_easy_setopt(mCURL, CURLOPT_WRITEDATA, (void*)this);
-	curl_easy_setopt(mCURL, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-	curl_easy_setopt(mCURL, CURLOPT_XFERINFODATA, (void*)this);
-	curl_easy_setopt(mCURL, CURLOPT_XFERINFOFUNCTION, TransferInfoCallback);
-	curl_easy_setopt(mCURL, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(mCURL, CURLOPT_NOPROGRESS, 0L);
-	curl_easy_setopt(mCURL, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); // Connects go slow without this
-	//auto result = curl_easy_perform(mCURL);
-
-	CURLMcode mcode = curl_multi_add_handle(mCURLMulti, mCURL);
-	if (mcode != CURLM_OK)
+	long response_code = 0;
+	for (int pass = 0; pass < 3; pass++)
 	{
-		mFailed = true;
-		return;
-	}
-	
-	while (true)
-	{ 
-		int activeCount = 0;
-		curl_multi_perform(mCURLMulti, &activeCount);
-		if (activeCount == 0)
-			break;
+		BfLogDbg("NetManager starting get on %s Pass:%d\n", mURL.c_str(), pass);
+		mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Getting '%s'\n", mURL.c_str()));
 
-		int waitRet = 0;
-		curl_multi_wait(mCURLMulti, NULL, 0, 20, &waitRet);		
+		mOutTempPath = mOutPath + "__partial";
 
-		if (mCancelling)
+		mCURLMulti = curl_multi_init();
+
+		mCURL = curl_easy_init();
+
+		if (mShowTracking)
+		{
+			mNetManager->mDebugManager->OutputRawMessage(StrFormat("symsrv Getting '%s'", mURL.c_str()));
+		}
+
+		//OutputDebugStrF("Getting '%s'\n", mURL.c_str());
+
+		curl_easy_setopt(mCURL, CURLOPT_URL, mURL.c_str());
+		curl_easy_setopt(mCURL, CURLOPT_WRITEDATA, (void*)this);
+		curl_easy_setopt(mCURL, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+		curl_easy_setopt(mCURL, CURLOPT_XFERINFODATA, (void*)this);
+		curl_easy_setopt(mCURL, CURLOPT_XFERINFOFUNCTION, TransferInfoCallback);
+		curl_easy_setopt(mCURL, CURLOPT_FOLLOWLOCATION, 1L);
+		curl_easy_setopt(mCURL, CURLOPT_NOPROGRESS, 0L);
+		curl_easy_setopt(mCURL, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); // Connects go slow without this
+		//auto result = curl_easy_perform(mCURL);
+
+		CURLMcode mcode = curl_multi_add_handle(mCURLMulti, mCURL);
+		if (mcode != CURLM_OK)
 		{
 			mFailed = true;
 			return;
 		}
-	}
 
-// 	if (result != CURLE_OK)
-// 	{
-// 		mFailed = true;
-// 		return;
-// 	}
+		while (true)
+		{
+			int activeCount = 0;
+			curl_multi_perform(mCURLMulti, &activeCount);
+			if (activeCount == 0)
+				break;
+
+			int waitRet = 0;
+			curl_multi_wait(mCURLMulti, NULL, 0, 20, &waitRet);
+
+			if (mCancelling)
+			{
+				mFailed = true;
+				return;
+			}
+		}
+
+		// 	if (result != CURLE_OK)
+		// 	{
+		// 		mFailed = true;
+		// 		return;
+		// 	}
 		
-	long response_code = 0;
-	curl_easy_getinfo(mCURL, CURLINFO_RESPONSE_CODE, &response_code);
-	mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Result for '%s': %d\n", mURL.c_str(), response_code));
+		response_code = 0;
+		curl_easy_getinfo(mCURL, CURLINFO_RESPONSE_CODE, &response_code);
+		mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Result for '%s': %d\n", mURL.c_str(), response_code));
+
+		if ((response_code == 0) || (response_code == 200) || (response_code == 404))
+			break;
+
+		Cleanup();
+		// Try again!
+	}
 
 	if (response_code == 200)
 	{
