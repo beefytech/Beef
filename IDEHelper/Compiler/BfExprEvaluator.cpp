@@ -13833,6 +13833,9 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			mModule->Fail("Too many array dimensions, consider using a jagged array.", objCreateExpr);
 		}
 
+		if (arrayType == NULL)
+			return;
+
 		if (isAppendAlloc)
 			arrayValue = BfTypedValue(mModule->AppendAllocFromType(resultType, BfIRValue(), 0, arraySize, (int)dimLengthVals.size(), isRawArrayAlloc, zeroMemory), arrayType);
 		else

@@ -10339,7 +10339,11 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if ((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsGenericTypeInstance()))
 			wantGeneric = false;
 
-		auto baseDelegateType = ResolveTypeDef(mCompiler->mDelegateTypeDef)->ToTypeInstance();
+		BfTypeInstance* baseDelegateType = NULL;
+		if (mCompiler->mDelegateTypeDef != NULL)
+			baseDelegateType = ResolveTypeDef(mCompiler->mDelegateTypeDef)->ToTypeInstance();
+		else
+			failed = true;
 
 		BfDelegateInfo* delegateInfo = NULL;
 		BfTypeInstance* delegateType = NULL;
@@ -10386,7 +10390,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		Val128 hashContext;
 
 		BfTypeDef* typeDef = new BfTypeDef();
-		typeDef->mProject = baseDelegateType->mTypeDef->mProject;
+		if (baseDelegateType != NULL)
+			typeDef->mProject = baseDelegateType->mTypeDef->mProject;
 		typeDef->mSystem = mCompiler->mSystem;
 		typeDef->mName = mSystem->mEmptyAtom;
 		if (delegateTypeRef->mTypeToken->GetToken() == BfToken_Delegate)
@@ -10418,9 +10423,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);		
 		if (typeDef->mIsDelegate)
 			directTypeRef->Init(delegateType);
+		else if (mCompiler->mFunctionTypeDef == NULL)
+			failed = true;
 		else
 			directTypeRef->Init(ResolveTypeDef(mCompiler->mFunctionTypeDef));
-		typeDef->mBaseTypes.push_back(directTypeRef);		
+		if (!failed)
+			typeDef->mBaseTypes.push_back(directTypeRef);		
 
 		directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
 		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
