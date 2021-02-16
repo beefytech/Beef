@@ -657,8 +657,8 @@ namespace SDL2
 
 		[LinkName("SDL_CreateWindowAndRenderer")]
 		public static extern int CreateWindowAndRenderer(
-			WindowPos width,
-			WindowPos height,
+			int32 width,
+			int32 height,
 			WindowFlags window_flags,
 			out Window* window,
 			out Renderer* renderer
