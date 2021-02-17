@@ -10222,7 +10222,8 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 			bool foundMatch = false;
 
 			auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)checkType);
-			if ((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef)))			
+			if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
+				((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
 				foundMatch = true;			
 
 			if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
@@ -10233,7 +10234,8 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 					genericParamInstance = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
 					if (genericParamInstance->mExternType == type)
 					{
-						if ((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef)))
+						if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
+							((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
 							foundMatch = true;
 					}
 				}
