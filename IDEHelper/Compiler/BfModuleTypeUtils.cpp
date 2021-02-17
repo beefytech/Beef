@@ -11079,7 +11079,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				{
 					SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 					auto constraintTypeInst = genericParamInst->mTypeConstraint->ToTypeInstance();
-					if ((constraintTypeInst != NULL) && (constraintTypeInst->mTypeDef == mCompiler->mEnumTypeDef))
+					if ((constraintTypeInst != NULL) && (constraintTypeInst->mTypeDef == mCompiler->mEnumTypeDef) && (explicitCast))
 					{
 						// Enum->int
 						if ((explicitCast) && (toType->IsInteger()))
@@ -11118,7 +11118,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 				}
 
-				if (toType->IsInteger())
+				if ((toType->IsInteger()) && (explicitCast))
 				{
 					if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Enum) != 0)
 					{
