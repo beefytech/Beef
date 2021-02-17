@@ -22,7 +22,7 @@ IDE\dist\BeefBuild_d -proddir=IDEHelper\Tests\Beef.Linq -test
 CALL bin/msbuild.bat IDEHelper\Tests\CLib\CLib.vcxproj /p:Configuration=Debug /p:Platform=x86
 IDE\dist\BeefBuild_d -proddir=IDEHelper\Tests -test -platform=Win32
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
-IDE\dist\BeefBuild_d -proddir=IDEHelper\Tests\Beef.Linq -test -platform=Win32
+@REM IDE\dist\BeefBuild_d -proddir=IDEHelper\Tests\Beef.Linq -test -platform=Win32
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 @ECHO Testing SysMSVCRT
