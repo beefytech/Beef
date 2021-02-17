@@ -2676,7 +2676,7 @@ size_t BfTypeVectorHash::operator()(const BfTypeVector& typeVec) const
 	size_t hash = typeVec.size();
 	BfResolvedTypeSet::LookupContext ctx;
 	for (auto type : typeVec)
-		hash = ((hash ^ BfResolvedTypeSet::Hash(type, &ctx)) << 5) - hash;
+		hash = ((hash ^ BfResolvedTypeSet::Hash(type, &ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, 0)) << 5) - hash;
 	return hash;
 }
 
@@ -2791,13 +2791,13 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 	if (type->IsBoxed())
 	{
 		BfBoxedType* boxedType = (BfBoxedType*)type;
-		int elemHash = Hash(boxedType->mElementType, ctx) ^ HASH_VAL_BOXED;
+		int elemHash = Hash(boxedType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ HASH_VAL_BOXED;
 		return (elemHash << 5) - elemHash;
 	}
 	else if (type->IsArray())
 	{
 		BfArrayType* arrayType = (BfArrayType*)type;
-		int elemHash = Hash(arrayType->mGenericTypeInfo->mTypeGenericArguments[0], ctx) ^ (arrayType->mDimensions << 8);
+		int elemHash = Hash(arrayType->mGenericTypeInfo->mTypeGenericArguments[0], ctx, BfHashFlag_None, hashSeed) ^ (arrayType->mDimensions << 8);
 		return (elemHash << 5) - elemHash;
 	}	
 	else if (type->IsDelegateFromTypeRef() || type->IsFunctionFromTypeRef())
@@ -2807,7 +2807,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 		
 		auto delegateInfo = type->GetDelegateInfo();
 
-		hashVal = ((hashVal ^ (Hash(delegateInfo->mReturnType, ctx))) << 5) - hashVal;
+		hashVal = ((hashVal ^ (Hash(delegateInfo->mReturnType, ctx, BfHashFlag_None, hashSeed))) << 5) - hashVal;
 
 		auto methodDef = typeInst->mTypeDef->mMethods[0];
 		BF_ASSERT(methodDef->mName == "Invoke");
@@ -2821,7 +2821,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 		for (int paramIdx = 0; paramIdx < delegateInfo->mParams.size(); paramIdx++)
 		{			
 			// Parse attributes?			
-			hashVal = ((hashVal ^ (Hash(delegateInfo->mParams[paramIdx], ctx))) << 5) - hashVal;
+			hashVal = ((hashVal ^ (Hash(delegateInfo->mParams[paramIdx], ctx, BfHashFlag_None, hashSeed))) << 5) - hashVal;
 			String paramName = methodDef->mParams[paramIdx]->mName;
 			int nameHash = (int)Hash64(paramName.c_str(), (int)paramName.length());
 			hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
@@ -2856,7 +2856,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 				BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
 				
 				auto fieldType = fieldInstance->mResolvedType;
-				hashVal = ((hashVal ^ (Hash(fieldType, ctx))) << 5) - hashVal;
+				hashVal = ((hashVal ^ (Hash(fieldType, ctx, BfHashFlag_None, hashSeed))) << 5) - hashVal;
 				BfFieldDef* fieldDef = NULL;
                 if (tupleType->mTypeDef != NULL)
                     fieldDef = fieldInstance->GetFieldDef();
@@ -2890,7 +2890,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 	else if (type->IsPointer())
 	{
 		BfPointerType* pointerType = (BfPointerType*) type;
-		int elemHash = Hash(pointerType->mElementType, ctx) ^ HASH_VAL_PTR;
+		int elemHash = Hash(pointerType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ HASH_VAL_PTR;
 		return (elemHash << 5) - elemHash;
 	}
 	else if (type->IsGenericParam())
@@ -2901,30 +2901,30 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 	else if (type->IsRef())
 	{
 		auto refType = (BfRefType*)type;
-		int elemHash = Hash(refType->mElementType, ctx) ^ (HASH_VAL_REF + (int)refType->mRefKind);
+		int elemHash = Hash(refType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ (HASH_VAL_REF + (int)refType->mRefKind);
 		return (elemHash << 5) - elemHash;
 	}	
 	else if (type->IsModifiedTypeType())
 	{
 		auto modifiedTypeType = (BfModifiedTypeType*)type;
-		int elemHash = Hash(modifiedTypeType->mElementType, ctx) ^ HASH_MODTYPE + (int)modifiedTypeType->mModifiedKind;
+		int elemHash = Hash(modifiedTypeType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ HASH_MODTYPE + (int)modifiedTypeType->mModifiedKind;
 		return (elemHash << 5) - elemHash;
 	}
 	else if (type->IsConcreteInterfaceType())
 	{
 		auto concreteInterfaceType = (BfConcreteInterfaceType*)type;
-		int elemHash = Hash(concreteInterfaceType->mInterface, ctx) ^ HASH_CONCRETE_INTERFACE;
+		int elemHash = Hash(concreteInterfaceType->mInterface, ctx, BfHashFlag_None, hashSeed) ^ HASH_CONCRETE_INTERFACE;
 		return (elemHash << 5) - elemHash;
 	}
 	else if (type->IsSizedArray())
 	{
 		auto sizedArray = (BfSizedArrayType*)type;
-		int elemHash = Hash(sizedArray->mElementType, ctx) ^ HASH_SIZED_ARRAY;
+		int elemHash = Hash(sizedArray->mElementType, ctx, BfHashFlag_None, hashSeed) ^ HASH_SIZED_ARRAY;
 		int hashVal = (elemHash << 5) - elemHash;
 		if (type->IsUnknownSizedArrayType())
 		{
 			auto unknownSizedArray = (BfUnknownSizedArrayType*)type;
-			int elemHash = Hash(unknownSizedArray->mElementCountSource, ctx);
+			int elemHash = Hash(unknownSizedArray->mElementCountSource, ctx, BfHashFlag_None, hashSeed);
 			hashVal = ((hashVal ^ elemHash) << 5) - hashVal;
 		}
 		else
@@ -2944,7 +2944,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 	{
 		BfConstExprValueType* constExprValueType = (BfConstExprValueType*)type;
 		int hashVal = ((int)constExprValueType->mValue.mTypeCode << 17) ^ (constExprValueType->mValue.mInt32 << 3) ^ HASH_CONSTTYPE;
-		hashVal = ((hashVal ^ (Hash(constExprValueType->mType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
+		hashVal = ((hashVal ^ (Hash(constExprValueType->mType, ctx, BfHashFlag_AllowRef, hashSeed))) << 5) - hashVal;
 		return hashVal;
 	}
 	else
@@ -3138,7 +3138,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						ctx->mFailed = true;
 						return 0;
 					}
-					return Hash(underlyingType, ctx, flags);
+					return Hash(underlyingType, ctx, flags, hashSeed);
 				}
 			}
 		}
@@ -3179,13 +3179,13 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		return hashVal;
 	}
 	else if (auto tupleTypeRef = BfNodeDynCastExact<BfTupleTypeRef>(typeRef))
-	{	
+	{
 		int hashVal = HASH_VAL_TUPLE;
 
 		for (int fieldIdx = 0; fieldIdx < (int)tupleTypeRef->mFieldTypes.size(); fieldIdx++)
 		{
 			BfTypeReference* fieldType = tupleTypeRef->mFieldTypes[fieldIdx];
-			hashVal = ((hashVal ^ (Hash(fieldType, ctx))) << 5) - hashVal;
+			hashVal = ((hashVal ^ (Hash(fieldType, ctx, BfHashFlag_None, hashSeed))) << 5) - hashVal;
 
 			int nameHash = 0;		
 			BfIdentifierNode* fieldName = NULL;
@@ -3211,7 +3211,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 	{
 		if ((arrayType->mDimensions == 1) && (arrayType->mParams.size() != 0))
 		{
-			int rawElemHash = Hash(arrayType->mElementType, ctx);
+			int rawElemHash = Hash(arrayType->mElementType, ctx, BfHashFlag_None, hashSeed);
 			int elemHash = rawElemHash ^ HASH_SIZED_ARRAY;
 			int hashVal = (elemHash << 5) - elemHash;
 
@@ -3235,7 +3235,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 				{
-					int elemHash = Hash(typedVal.mType, ctx);
+					int elemHash = Hash(typedVal.mType, ctx, BfHashFlag_None, hashSeed);
 					hashVal = ((hashVal ^ elemHash) << 5) - hashVal;
 					return hashVal;
 				}
@@ -3294,13 +3294,13 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				}
 			}
 
-			int elemHash = Hash(arrayType->mElementType, ctx) ^ (arrayType->mDimensions << 8);
+			int elemHash = Hash(arrayType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ (arrayType->mDimensions << 8);
 			return (elemHash << 5) - elemHash;
 		}
 	}
 	else if (auto pointerType = BfNodeDynCastExact<BfPointerTypeRef>(typeRef))
 	{		
-		int elemHash = Hash(pointerType->mElementType, ctx) ^ HASH_VAL_PTR;
+		int elemHash = Hash(pointerType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ HASH_VAL_PTR;
 		return (elemHash << 5) - elemHash;
 	}
 	else if (auto nullableType = BfNodeDynCastExact<BfNullableTypeRef>(typeRef))
@@ -3326,7 +3326,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			else if (refType->mRefToken->GetToken() == BfToken_Mut)
 				refKind = BfRefType::RefKind_Mut;
 
-			int elemHash = Hash(refType->mElementType, ctx) ^ (HASH_VAL_REF + (int)refKind);
+			int elemHash = Hash(refType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ (HASH_VAL_REF + (int)refKind);
 			return (elemHash << 5) - elemHash;
 		}
 		else
@@ -3370,7 +3370,9 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			ctx->mFailed = true;
 			return 0;
 		}
-		return Hash(resolvedType, ctx);
+		int hashVal = Hash(resolvedType, ctx, BfHashFlag_None, hashSeed);
+		hashSeed = 0;
+		return hashVal;
 	}
 	else if (auto varType = BfNodeDynCastExact<BfVarTypeReference>(typeRef))
 	{
@@ -3393,26 +3395,26 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		if (ctx->mRootTypeRef != retTypeTypeRef)
 		{
 			auto type = ctx->mModule->ResolveTypeRef(retTypeTypeRef, BfPopulateType_Identity, ctx->mResolveFlags);
-			return Hash(type, ctx, flags);
+			return Hash(type, ctx, flags, hashSeed);
 		}
 
-		int elemHash = Hash(retTypeTypeRef->mElementType, ctx) ^ HASH_MODTYPE + retTypeTypeRef->mRetTypeToken->mToken;
+		int elemHash = Hash(retTypeTypeRef->mElementType, ctx, BfHashFlag_None, hashSeed) ^ HASH_MODTYPE + retTypeTypeRef->mRetTypeToken->mToken;
 		return (elemHash << 5) - elemHash;
 	}
 	else if (auto resolvedTypeRef = BfNodeDynCastExact<BfResolvedTypeReference>(typeRef))
 	{
-		return Hash(resolvedTypeRef->mType, ctx);
+		return Hash(resolvedTypeRef->mType, ctx, BfHashFlag_None, hashSeed);
 	}
 	else if (auto constTypeRef = BfNodeDynCastExact<BfConstTypeRef>(typeRef))
 	{
 		// We purposely don't mix in a HASH_CONSTTYPE because there's no such thing as a const type in Beef, so we just strip it
-		return Hash(constTypeRef->mElementType, ctx, flags);
+		return Hash(constTypeRef->mElementType, ctx, flags, hashSeed);
 	}	
 	else if (auto delegateTypeRef = BfNodeDynCastExact<BfDelegateTypeRef>(typeRef))
 	{
 		int hashVal = HASH_DELEGATE;
 		if (delegateTypeRef->mReturnType != NULL)
-			hashVal = ((hashVal ^ (Hash(delegateTypeRef->mReturnType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
+			hashVal = ((hashVal ^ (Hash(delegateTypeRef->mReturnType, ctx, BfHashFlag_AllowRef, hashSeed))) << 5) - hashVal;
 		else
 			ctx->mFailed = true;
 		
@@ -3445,7 +3447,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				}
 			}
 			
-			hashVal = ((hashVal ^ (Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef)))) << 5) - hashVal;
+			hashVal = ((hashVal ^ (Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed))) << 5) - hashVal;
 			hashVal = ((hashVal ^ (HashNode(param->mNameNode))) << 5) - hashVal;
 			isFirstParam = true;
 		}
@@ -3534,7 +3536,11 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		{
 			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);			
 			if ((resultType != NULL) && (resultType->IsGenericParam()))
-				return Hash(resultType, ctx);
+			{
+				int hashVal = Hash(resultType, ctx, BfHashFlag_None, hashSeed);
+				hashSeed = 0;
+				return hashVal;
+			}
 		}
 
 		if (resultType == NULL)
@@ -3544,7 +3550,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		}
 
 		auto hashVal = ((int)result.mTypeCode << 17) ^ (result.mInt32 << 3) ^ HASH_CONSTTYPE;		
-		hashVal = ((hashVal ^ (Hash(resultType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
+		hashVal = ((hashVal ^ (Hash(resultType, ctx, BfHashFlag_AllowRef, hashSeed))) << 5) - hashVal;		
 		return hashVal;
 	}
 	else if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(typeRef))	

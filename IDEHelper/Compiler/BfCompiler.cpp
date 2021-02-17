@@ -8959,9 +8959,10 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 	SetAndRestoreValue<bool> prevIgnoreWarnings(bfCompiler->mContext->mScratchModule->mIgnoreWarnings, true);
 	SetAndRestoreValue<BfResolvePassData*> prevResolvePass(bfCompiler->mResolvePassData, &resolvePass);	
 
-	auto type = bfCompiler->mContext->mScratchModule->ResolveTypeRef(typeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoCreate);
+	auto type = bfCompiler->mContext->mScratchModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_NoCreate);
 	if (type != NULL)
 	{
+		bfCompiler->mContext->mScratchModule->PopulateType(type);
 		outString += "Found";
 		if (auto typeInst = type->ToTypeInstance())
 		{
