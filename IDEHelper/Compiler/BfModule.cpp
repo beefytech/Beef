@@ -3425,10 +3425,11 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 		BfModule* usedModule;
 		if (usedType->IsFunction())
 		{
-			auto typeInst = usedType->ToTypeInstance();
-			if (typeInst->mBaseType == NULL)
-				PopulateType(typeInst);
-			usedModule = typeInst->mBaseType->GetModule();
+			if (mCompiler->mFunctionTypeDef != NULL)
+			{
+				auto functionType = ResolveTypeDef(mCompiler->mFunctionTypeDef)->ToTypeInstance();
+				usedModule = functionType->GetModule();
+			}
 		}
 		else
 			usedModule = usedType->GetModule();
@@ -5244,7 +5245,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		typeFlags |= BfTypeFlags_Delegate;
 	if (type->IsFunction())
 		typeFlags |= BfTypeFlags_Function;
-	if (type->WantsGCMarking())
+	if ((type->mDefineState != BfTypeDefineState_CETypeInit) && (type->WantsGCMarking()))
 		typeFlags |= BfTypeFlags_WantsMarking;
 
 	int virtSlotIdx = -1;
@@ -7217,7 +7218,7 @@ BfIRFunction BfModule::GetBuiltInFunc(BfBuiltInFuncType funcTypeId)
 	return mBuiltInFuncs[(int)funcTypeId];
 }
 
-void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized)
+void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized, Array<BfTypeReference*>* deferredResolveTypes)
 {	
 	BfGenericParamDef* genericParamDef = genericParamInstance->GetGenericParamDef();	
 	BfExternalConstraintDef* externConstraintDef = genericParamInstance->GetExternConstraintDef();
@@ -7323,14 +7324,23 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 		if (bfAutocomplete != NULL)
 			bfAutocomplete->CheckTypeRef(constraintTypeRef, true);
 		//TODO: Constraints may refer to other generic params (of either type or method)
-		//  TO allow resolution, perhaps move this generic param initalization into GetMethodInstance (passing a genericPass bool)
+		//  TO allow resolution, perhaps move this generic param initialization into GetMethodInstance (passing a genericPass bool)
 
 		BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_AllowGenericMethodParamConstValue;
 		if (isUnspecialized)
 			resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_DisallowComptime);
-		auto constraintType = ResolveTypeRef(constraintTypeRef, BfPopulateType_Declaration, resolveFlags);
+		// We we have a deferredResolveTypes then we defer the generic validation, because we may have a case like
+		//  `where T : Dictionay<TElem, int> and TElem : IHashable` and we don't want to throw the error on `T` before we build `TElem`
+		auto constraintType = ResolveTypeRef(constraintTypeRef, (deferredResolveTypes != NULL) ? BfPopulateType_Identity : BfPopulateType_Declaration, resolveFlags);
 		if (constraintType != NULL)
-		{
+		{			
+			if (deferredResolveTypes != NULL)
+			{
+				PopulateType(constraintType, BfPopulateType_Declaration);
+				if (constraintType->IsUnspecializedTypeVariation())
+					deferredResolveTypes->Add(constraintTypeRef);
+			}
+
 			if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
 			{
 				bool isValidTypeCode = false;				
@@ -7511,11 +7521,11 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		origCheckArgType = origCheckArgType->GetUnderlyingType();
 
 	bool argMayBeReferenceType = false;
-
+	
 	int checkGenericParamFlags = 0;
 	if (checkArgType->IsGenericParam())
 	{
-		auto checkGenericParamInst = GetGenericParamInstance((BfGenericParamType*)checkArgType);
+		BfGenericParamInstance* checkGenericParamInst = GetGenericParamInstance((BfGenericParamType*)checkArgType);
 		checkGenericParamFlags = checkGenericParamInst->mGenericParamFlags;
 		if (checkGenericParamInst->mTypeConstraint != NULL)
 			checkArgType = checkGenericParamInst->mTypeConstraint;
@@ -7849,7 +7859,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			if (TypeIsSubTypeOf(wrappedStructType, typeConstraintInst))
 				implementsInterface = true;
 		}
-
+		
 		if (!implementsInterface)
 		{
 			if ((!ignoreErrors) && (PreFail()))
@@ -21616,6 +21626,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	{
 		BfTypeInstance* unspecializedTypeInstance = NULL;
 
+		Array<BfTypeReference*> deferredResolveTypes;
 		for (int genericParamIdx = 0; genericParamIdx < (int)methodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
 		{
 			auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
@@ -21639,8 +21650,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				else
 					genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 			}
-
-			ResolveGenericParamConstraints(genericParam, methodInstance->mIsUnspecialized);
+			
+			ResolveGenericParamConstraints(genericParam, methodInstance->mIsUnspecialized, &deferredResolveTypes);						
 
 			if (genericParamIdx < (int)methodDef->mGenericParams.size())
 			{
@@ -21654,6 +21665,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				}
 			}
 		}
+		for (auto typeRef : deferredResolveTypes)
+			auto constraintType = ResolveTypeRef(typeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_None);
 
 		for (auto genericParam : methodInstance->mMethodInfoEx->mGenericParams)
 		{

@@ -881,16 +881,22 @@ namespace IDE.ui
 		{
 			base.Update();
 
+			if (gApp.mBfResolveCompiler == null)
+				return;
+
 			var focusedItem = (ClassViewListViewItem)mTypeLV.GetRoot().FindFocusedItem();
 			var focusedStr = scope String();
 			if (focusedItem != null)
 				GetName(focusedItem, focusedStr);
 
-			int32 compileRevision = gApp.mBfResolveCompiler.GetCompileRevision();
-			if (mLastCompileRevision != compileRevision)
+			if (gApp.mBfResolveCompiler != null)
 			{
-				mCompileRevisionDirtyDelay = 30;
-				mLastCompileRevision = compileRevision;
+				int32 compileRevision = gApp.mBfResolveCompiler.GetCompileRevision();
+				if (mLastCompileRevision != compileRevision)
+				{
+					mCompileRevisionDirtyDelay = 30;
+					mLastCompileRevision = compileRevision;
+				}
 			}
 
 			if ((mCompileRevisionDirtyDelay > 0) && (--mCompileRevisionDirtyDelay == 0))

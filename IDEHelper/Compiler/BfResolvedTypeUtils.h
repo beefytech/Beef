@@ -1774,6 +1774,7 @@ public:
 	bool mInitializedGenericParams;
 	bool mFinishedGenericParams;	
 	Array<BfProject*> mProjectsReferenced; // Generic methods that only refer to these projects don't need a specialized extension
+	int32 mMaxGenericDepth;
 
 public:
 	BfGenericTypeInfo()
@@ -1785,6 +1786,7 @@ public:
 		mValidatedGenericConstraints = false;
 		mInitializedGenericParams = false;
 		mFinishedGenericParams = false;
+		mMaxGenericDepth = -1;
 	}
 
 	~BfGenericTypeInfo();
@@ -2525,10 +2527,12 @@ public:
 	static BfVariant EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& outType);
 	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset);
 	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* typeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
-	static void HashGenericArguments(BfTypeReference* typeRef, LookupContext* ctx, int& hash);
-	static int Hash(BfType* type, LookupContext* ctx, bool allowRef = false);
-	static int DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None);
-	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None);
+	static void HashGenericArguments(BfTypeReference* typeRef, LookupContext* ctx, int& hash, int hashSeed);
+	static int DoHash(BfType* type, LookupContext* ctx, bool allowRef, int hashSeed);
+	static int Hash(BfType* type, LookupContext* ctx, bool allowRef = false, int hashSeed = 0);
+	static int DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
+	static int DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags, int& hashSeed);
+	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
 	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);	
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);

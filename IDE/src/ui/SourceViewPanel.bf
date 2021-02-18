@@ -5078,7 +5078,11 @@ namespace IDE.ui
 	                    String showMouseoverString = null;
 	                    if (bestError.mError != null)
 	                    {
-	                        showMouseoverString = scope:: String(":", bestError.mError);
+							int maxLen = 16*1024;
+							if (bestError.mError.Length > maxLen)
+	                        	showMouseoverString = scope:: String()..Concat(":", StringView(bestError.mError, 0, maxLen), "...");
+							else
+								showMouseoverString = scope:: String()..Concat(":", bestError.mError);
 
 							if (bestError.mMoreInfo != null)
 							{
@@ -5681,7 +5685,8 @@ namespace IDE.ui
 				}
 			}
 
-            UpdateMouseover();            
+			if (gApp.mIsUpdateBatchStart)
+            	UpdateMouseover();
             
             var compiler = ResolveCompiler;
             var bfSystem = BfResolveSystem;

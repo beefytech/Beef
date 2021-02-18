@@ -398,6 +398,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mDbgRawAllocDataTypeDef = NULL;
 	mDeferredCallTypeDef = NULL;
 	mDelegateTypeDef = NULL;	
+	mFunctionTypeDef = NULL;
 	mActionTypeDef = NULL;
 	mEnumTypeDef = NULL;
 	mFriendAttributeTypeDef = NULL;
@@ -405,8 +406,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mConstEvalAttributeTypeDef = NULL;
 	mNoExtensionAttributeTypeDef = NULL;
 	mCheckedAttributeTypeDef = NULL;
-	mUncheckedAttributeTypeDef = NULL;
-	mFunctionTypeDef = NULL;
+	mUncheckedAttributeTypeDef = NULL;	
 	mGCTypeDef = NULL;
 	mGenericIEnumerableTypeDef = NULL;
 	mGenericIEnumeratorTypeDef = NULL;
@@ -6665,6 +6665,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mDbgRawAllocDataTypeDef = _GetRequiredType("System.DbgRawAllocData");
 	mDeferredCallTypeDef = _GetRequiredType("System.DeferredCall");
 	mDelegateTypeDef = _GetRequiredType("System.Delegate");
+	mFunctionTypeDef = _GetRequiredType("System.Function");
 	mActionTypeDef = _GetRequiredType("System.Action");
 	mEnumTypeDef = _GetRequiredType("System.Enum");
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
@@ -6673,8 +6674,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mNoExtensionAttributeTypeDef = _GetRequiredType("System.NoExtensionAttribute");
 	mCheckedAttributeTypeDef = _GetRequiredType("System.CheckedAttribute");
 	mUncheckedAttributeTypeDef = _GetRequiredType("System.UncheckedAttribute");
-	mResultTypeDef = _GetRequiredType("System.Result", 1);
-	mFunctionTypeDef = _GetRequiredType("System.Function");
+	mResultTypeDef = _GetRequiredType("System.Result", 1);	
 	mGCTypeDef = _GetRequiredType("System.GC");	
 	mGenericIEnumerableTypeDef = _GetRequiredType("System.Collections.IEnumerable", 1);
 	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.IEnumerator", 1);
@@ -8959,9 +8959,10 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 	SetAndRestoreValue<bool> prevIgnoreWarnings(bfCompiler->mContext->mScratchModule->mIgnoreWarnings, true);
 	SetAndRestoreValue<BfResolvePassData*> prevResolvePass(bfCompiler->mResolvePassData, &resolvePass);	
 
-	auto type = bfCompiler->mContext->mScratchModule->ResolveTypeRef(typeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoCreate);
+	auto type = bfCompiler->mContext->mScratchModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_NoCreate);
 	if (type != NULL)
 	{
+		bfCompiler->mContext->mScratchModule->PopulateType(type);
 		outString += "Found";
 		if (auto typeInst = type->ToTypeInstance())
 		{

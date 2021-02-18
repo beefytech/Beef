@@ -1244,7 +1244,7 @@ namespace IDE.ui
 			{
 				var undoBatchStart = new UndoBatchStart("pasteText");
 				mData.mUndoManager.Add(undoBatchStart);
-				defer(stack) mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+				defer:: mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 			}
 
 			if (HasSelection())
@@ -3644,7 +3644,7 @@ namespace IDE.ui
 
             bool hadSuggestion = false;
             List<String> suggestions = scope List<String>();
-			defer (scope) ClearAndDeleteItems(suggestions);
+			defer ClearAndDeleteItems(suggestions);
             spellChecker.GetSuggestions(word, suggestions);
             for (var suggestion in suggestions)
             {
@@ -3789,7 +3789,7 @@ namespace IDE.ui
 	                                else if (bfSystem != null)
 	                                {
 	                                    parser = bfSystem.CreateEmptyParser(null);
-										defer(stack) delete parser;
+										defer:: delete parser;
 	                                    var text = scope String();
 	                                    mEditWidget.GetText(text);
 	                                    parser.SetSource(text, mSourceViewPanel.mFilePath);

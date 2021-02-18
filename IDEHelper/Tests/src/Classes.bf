@@ -1,3 +1,4 @@
+using System;
 namespace Tests
 {
 	class Classes
@@ -21,6 +22,23 @@ namespace Tests
 			public override void OnUnload()
 			{
 			}
+		}
+
+		class ClassA<T0, T1>
+		{
+			//public ClassA<T0, ClassA<T0, T1>> mVal;
+			
+			public ClassA<T0, ClassA<T0, T1>> GetRecursive()
+			{
+				return null;
+			}
+		}
+
+		[Test]
+		static void TestBasics()
+		{
+			ClassA<int, float> ca = scope .();
+			Test.Assert(typeof(decltype(ca.GetRecursive())) == typeof(ClassA<int, ClassA<int, float>>));
 		}
 	}
 }

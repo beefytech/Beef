@@ -1905,9 +1905,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	BfMethodDef* dynamicCastMethod = NULL;
 	BfMethodDef* toStringMethod = NULL;
 	bool needsEqualsMethod = ((mCurTypeDef->mTypeCode == BfTypeCode_Struct) || (mCurTypeDef->mTypeCode == BfTypeCode_Enum)) && (!mCurTypeDef->mIsStatic);	
+	BfMethodDef* equalsOpMethod = NULL;
 	BfMethodDef* equalsMethod = NULL;
-	BfMethodDef* strictEqualsMethod = NULL;
-	
+	BfMethodDef* strictEqualsMethod = NULL;	
+
 	bool needsStaticInit = false;
 	for (int methodIdx = 0; methodIdx < (int)mCurTypeDef->mMethods.size(); methodIdx++)
 	{
@@ -2025,6 +2026,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			{
 				if (method->mName == BF_METHODNAME_MARKMEMBERS_STATIC)
 					_SetMethod(staticMarkMethod, method);
+				if (method->mName == BF_METHODNAME_DEFAULT_EQUALS)
+					_SetMethod(equalsMethod, method);
+				if (method->mName == BF_METHODNAME_DEFAULT_STRICT_EQUALS)
+					_SetMethod(strictEqualsMethod, method);
 			}
 			else
 			{
@@ -2048,7 +2053,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					if ((method->mParams[0]->mTypeRef->ToString() == mCurTypeDef->mName->ToString()) &&
 						(method->mParams[1]->mTypeRef->ToString() == mCurTypeDef->mName->ToString()))
 					{
-						_SetMethod(equalsMethod, method);
+						_SetMethod(equalsOpMethod, method);
 					}
 				}
 			}			
@@ -2287,7 +2292,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 	
-	if ((needsEqualsMethod) && (equalsMethod == NULL))
+	if ((needsEqualsMethod) && (equalsMethod == NULL) && (equalsOpMethod == NULL))
 	{		
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2301,7 +2306,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 
-	if (needsEqualsMethod)
+	if ((needsEqualsMethod) && (strictEqualsMethod == NULL))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);

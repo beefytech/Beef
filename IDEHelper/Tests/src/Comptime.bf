@@ -80,6 +80,21 @@ namespace Tests
 			}
 		}
 
+		[IFaceA("C", InitVal=345)]
+		struct StructA
+		{
+			public int mA = 123;
+
+			[OnCompile(.TypeInit), Comptime]
+			public static void Generate()
+			{
+				Compiler.EmitTypeBody(typeof(Self), """
+					public int32 mB = 234;
+					public int32 GetValB() => mB;
+					""");
+			}
+		}
+
 		enum MethodAErr
 		{
 			ErrorA,
@@ -167,6 +182,13 @@ namespace Tests
 			Test.Assert(ca.GetValB() == 234);
 			Test.Assert(ca.mC == 345);
 			Test.Assert(ca.GetValC() == 345);
+
+			StructA sa = .();
+			Test.Assert(sa.mA == 123);
+			Test.Assert(sa.mB == 234);
+			Test.Assert(sa.GetValB() == 234);
+			Test.Assert(sa.mC == 345);
+			Test.Assert(sa.GetValC() == 345);
 
 			Compiler.Mixin("int val = 99;");
 			Test.Assert(val == 99);

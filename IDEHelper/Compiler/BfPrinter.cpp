@@ -1847,7 +1847,7 @@ void BfPrinter::Visit(BfDeferStatement* deferStmt)
 
 	VisitChild(deferStmt->mDeferToken);
 	VisitChild(deferStmt->mColonToken);
-	VisitChild(deferStmt->mScopeToken);
+	VisitChild(deferStmt->mScopeName);
 
 	if (deferStmt->mBind != NULL)
 	{

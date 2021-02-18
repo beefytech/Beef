@@ -3797,6 +3797,8 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 				}
 				else if (nextTokenNode->GetToken() == BfToken_LParen)
 				{
+					mPassInstance->Warn(0, "Syntax deprecated", nextTokenNode);
+
 					MEMBER_SET(deferStmt, mOpenParen, nextTokenNode);
 					mVisitorPos.MoveNext();
 

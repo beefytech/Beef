@@ -10107,19 +10107,22 @@ void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)
 
 bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifierNode* propName)
 {
-	// We ignore errors because we go through the normal Visit(BfTypeOfExpression) if this fails, which will throw the error again
-	SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
-
 	auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef);
 	
 	BfType* type;
-	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeOfExpr->mTypeRef))
+	//
 	{
-		type = mModule->ResolveTypeRefAllowUnboundGenerics(typeOfExpr->mTypeRef, BfPopulateType_Identity);
-	}
-	else
-	{
-		type = ResolveTypeRef(typeOfExpr->mTypeRef, BfPopulateType_Identity);
+		// We ignore errors because we go through the normal Visit(BfTypeOfExpression) if this fails, which will throw the error again
+		SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
+		if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeOfExpr->mTypeRef))
+		{
+			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
+			type = mModule->ResolveTypeRefAllowUnboundGenerics(typeOfExpr->mTypeRef, BfPopulateType_Identity);
+		}
+		else
+		{
+			type = ResolveTypeRef(typeOfExpr->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_IgnoreLookupError);
+		}
 	}
 
 	if (type == NULL)
@@ -10209,10 +10212,41 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 	else if ((memberName == "MinValue") || (memberName == "MaxValue"))
 	{
 		bool isMin = memberName == "MinValue";
-				
-		BfType* checkType = typeInstance;
+		
+		BfType* checkType = type;
 		if (checkType->IsTypedPrimitive())
 			checkType = checkType->GetUnderlyingType();
+
+		if (checkType->IsGenericParam())
+		{
+			bool foundMatch = false;
+
+			auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)checkType);
+			if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
+				((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
+				foundMatch = true;			
+
+			if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+			{
+				for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+					genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+				{
+					genericParamInstance = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+					if (genericParamInstance->mExternType == type)
+					{
+						if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
+							((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
+							foundMatch = true;
+					}
+				}
+			}
+
+			if (foundMatch)
+			{
+				mResult = mModule->GetDefaultTypedValue(type, false, Beefy::BfDefaultValueKind_Undef);
+				return true;
+			}
+		}
 
 		if (checkType->IsPrimitiveType())
 		{
@@ -10260,15 +10294,15 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 				default: break;
 				}
 			}
-		}
+		}		
 		
-		if (typeInstance->IsEnum())
+		if (type->IsEnum())
 		{
-			mModule->Fail("'MinValue' cannot be used on enums with payloads", propName);			
+			mModule->Fail(StrFormat("'MinValue' cannot be used on enum with payload '%s'", mModule->TypeToString(type).c_str()), propName);
 		}
 		else 
 		{
-			mModule->Fail(StrFormat("'%s' cannot be used on type '%s'", memberName.c_str(), mModule->TypeToString(typeInstance).c_str()), propName);
+			mModule->Fail(StrFormat("'%s' cannot be used on type '%s'", memberName.c_str(), mModule->TypeToString(type).c_str()), propName);
 		}
 	}	
 	else
@@ -13832,6 +13866,9 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			dimLengthVals.RemoveRange(4, dimLengthVals.size() - 4);
 			mModule->Fail("Too many array dimensions, consider using a jagged array.", objCreateExpr);
 		}
+
+		if (arrayType == NULL)
+			return;
 
 		if (isAppendAlloc)
 			arrayValue = BfTypedValue(mModule->AppendAllocFromType(resultType, BfIRValue(), 0, arraySize, (int)dimLengthVals.size(), isRawArrayAlloc, zeroMemory), arrayType);

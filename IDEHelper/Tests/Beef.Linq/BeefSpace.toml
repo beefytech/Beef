@@ -1,0 +1,2 @@
+FileVersion = 1
+Projects = {"Beef.Linq" = {Path = "src"}, "Beef.Linq.Tests" = {Path = "src/test"}}

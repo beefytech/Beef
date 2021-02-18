@@ -738,7 +738,7 @@ namespace IDE.ui
             String val = scope String();
             if (evalString.StartsWith(":", StringComparison.Ordinal))
             {
-				var showString = scope String(evalString, 1);
+				var showString = scope String(4096)..Append(evalString, 1);
 				bool isShowingDoc = showString.Contains('\x01');
 				if (!isShowingDoc)
 				{

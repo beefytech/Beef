@@ -271,7 +271,7 @@ namespace IDE.ui
                 IdSpan liveCharIdData;
                 String liveText = scope:: String();
                 app.FindProjectSourceContent(projectSource, out liveCharIdData, true, liveText, null);
-				defer(stack) liveCharIdData.Dispose();
+				defer:: liveCharIdData.Dispose();
                 
                 var compileInstance = IDEApp.sApp.mWorkspace.GetProjectSourceCompileInstance(projectSource, mHotIdx);
                 if (compileInstance == null)
