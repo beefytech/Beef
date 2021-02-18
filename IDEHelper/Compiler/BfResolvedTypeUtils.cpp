@@ -3138,7 +3138,9 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						ctx->mFailed = true;
 						return 0;
 					}
-					return Hash(underlyingType, ctx, flags, hashSeed);
+					int hashVal = Hash(underlyingType, ctx, flags, hashSeed);
+					hashSeed = 0;
+					return hashVal;
 				}
 			}
 		}
