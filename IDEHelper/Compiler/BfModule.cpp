@@ -5245,7 +5245,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		typeFlags |= BfTypeFlags_Delegate;
 	if (type->IsFunction())
 		typeFlags |= BfTypeFlags_Function;
-	if (type->WantsGCMarking())
+	if ((type->mDefineState != BfTypeDefineState_CETypeInit) && (type->WantsGCMarking()))
 		typeFlags |= BfTypeFlags_WantsMarking;
 
 	int virtSlotIdx = -1;
