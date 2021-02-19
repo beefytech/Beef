@@ -20440,11 +20440,70 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		}
 		return;
 	}
-	
+
 	BfType* wantType = leftValue.mType;
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 		wantType = NULL; // Don't presume
 	wantType = mModule->FixIntUnknown(wantType);
+
+	if ((binaryOp == BfBinaryOp_NullCoalesce) && (leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())))
+	{
+		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();
+
+		auto rhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.rhs");
+		auto endBB = mModule->mBfIRBuilder->CreateBlock("nullc.end");
+
+		BfIRValue isNull;
+		if (leftValue.mType->IsFunction())
+			isNull = mModule->mBfIRBuilder->CreateIsNull(
+				mModule->mBfIRBuilder->CreateIntToPtr(leftValue.mValue, mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_NullPtr))));
+		else
+			isNull = mModule->mBfIRBuilder->CreateIsNull(leftValue.mValue);
+		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, endBB);
+
+		mModule->AddBasicBlock(rhsBB);
+		rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+		if (!rightValue)
+		{
+			mModule->AssertErrorState();
+			return;
+		}
+		else
+		{
+			auto rightToLeftValue = mModule->CastToValue(rightExpression, rightValue, leftValue.mType, BfCastFlags_SilentFail);
+			if (rightToLeftValue)
+			{
+				rightValue = BfTypedValue(rightToLeftValue, leftValue.mType);
+			}
+			else
+			{
+				auto leftToRightValue = mModule->CastToValue(leftExpression, leftValue, rightValue.mType, BfCastFlags_SilentFail);
+				if (leftToRightValue)
+				{
+					leftValue = BfTypedValue(leftToRightValue, rightValue.mType);
+				}
+				else
+				{
+					// Note: Annoying trigraph split for '??'
+					mModule->Fail(StrFormat("Operator '?" "?' cannot be applied to operands of type '%s' and '%s'",
+						mModule->TypeToString(leftValue.mType).c_str(), mModule->TypeToString(rightValue.mType).c_str()), opToken);
+					leftValue = mModule->GetDefaultTypedValue(rightValue.mType);
+				}
+			}
+		}
+
+		mModule->mBfIRBuilder->CreateBr(endBB);
+
+		auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
+		mModule->AddBasicBlock(endBB);
+		auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(leftValue.mType), 2);
+		mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, prevBB);
+		mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
+		mResult = BfTypedValue(phi, leftValue.mType);
+
+		return;
+	}
+	
 	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 	if ((!leftValue) || (!rightValue))
 		return;
@@ -20650,63 +20709,6 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	{
 		if (CheckConstCompare(BfGetOppositeBinaryOp(binaryOp), opToken, rightValue, leftValue))
 			return;
-	}
-
-	if ((binaryOp == BfBinaryOp_NullCoalesce) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())))
-	{
-		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();
-
-		auto rhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.rhs");
-		auto endBB = mModule->mBfIRBuilder->CreateBlock("nullc.end");
-
-		BfIRValue isNull;		
-		if (leftValue.mType->IsFunction())
-			isNull = mModule->mBfIRBuilder->CreateIsNull(
-				mModule->mBfIRBuilder->CreateIntToPtr(leftValue.mValue, mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_NullPtr))));
-		else
-			isNull = mModule->mBfIRBuilder->CreateIsNull(leftValue.mValue);
-		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, endBB);
-
-		mModule->AddBasicBlock(rhsBB);		
-		if (!rightValue)			
-		{
-			mModule->AssertErrorState();
-			return;
-		}
-		else
-		{
-			auto rightToLeftValue = mModule->CastToValue(rightExpression, rightValue, leftValue.mType, BfCastFlags_SilentFail);
-			if (rightToLeftValue)
-			{
-				rightValue = BfTypedValue(rightToLeftValue, leftValue.mType);
-			}
-			else
-			{
-				auto leftToRightValue = mModule->CastToValue(leftExpression, leftValue, rightValue.mType, BfCastFlags_SilentFail);
-				if (leftToRightValue)
-				{
-					leftValue = BfTypedValue(leftToRightValue, rightValue.mType);
-				}
-				else
-				{
-					// Note: Annoying trigraph split for '??'
-					mModule->Fail(StrFormat("Operator '?" "?' cannot be applied to operands of type '%s' and '%s'",
-						mModule->TypeToString(leftValue.mType).c_str(), mModule->TypeToString(rightValue.mType).c_str()), opToken);					
-					leftValue = mModule->GetDefaultTypedValue(rightValue.mType);
-				}
-			}
-		}
-
-		mModule->mBfIRBuilder->CreateBr(endBB);
-
-		auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
-		mModule->AddBasicBlock(endBB);		
-		auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(leftValue.mType), 2);
-		mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, prevBB);
-		mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
-		mResult = BfTypedValue(phi, leftValue.mType);
-		
-		return;
 	}
 
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
