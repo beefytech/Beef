@@ -1,5 +1,6 @@
 #include "BfSourceClassifier.h"
 #include "BfParser.h"
+#include "BeefySysLib/util/BeefPerf.h"
 
 USING_NS_BF;
 
@@ -421,14 +422,22 @@ void BfSourceClassifier::Visit(BfTokenNode* tokenNode)
 
 void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 {
-	BfElementVisitor::Visit(invocationExpr);
+	//BfElementVisitor::Visit(invocationExpr);
+	Visit(invocationExpr->ToBase());
+
+	//BP_ZONE("BfSourceClassifier BfInvocationExpression");
 	
 	BfAstNode* target = invocationExpr->mTarget;
 	if (target == NULL)
 		return;
-
+	
+	VisitChild(invocationExpr->mOpenParen);
+	VisitChild(invocationExpr->mCloseParen);
+	VisitChild(invocationExpr->mGenericArgs);
+	
 	if (auto scopedTarget = BfNodeDynCast<BfScopedInvocationTarget>(target))
 	{
+		VisitChild(target);
 		target = scopedTarget->mTarget;
 		VisitChild(scopedTarget->mScopeName);
 	}
@@ -438,24 +447,32 @@ void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 	{
 		VisitChild(qualifiedName->mLeft);
 		VisitChild(qualifiedName->mDot);
+		VisitChild(qualifiedName->mRight);
 		identifier = qualifiedName->mRight;		
 	}
 	else if ((identifier = BfNodeDynCast<BfIdentifierNode>(target)))
 	{
+		VisitChild(target);
 		// Leave as BfAttributedIdentifierNode if that's the case
-		identifier = target;
+		identifier = target;		
 	}
 	else if (auto qualifiedName = BfNodeDynCast<BfQualifiedNameNode>(target))
 	{
 		VisitChild(qualifiedName->mLeft);
 		VisitChild(qualifiedName->mDot);
+		VisitChild(qualifiedName->mRight);
 		identifier = qualifiedName->mRight;		
 	}
 	else if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(target))
 	{
 		VisitChild(memberRefExpr->mTarget);
 		VisitChild(memberRefExpr->mDotToken);
+		VisitChild(memberRefExpr->mMemberName);
 		identifier = memberRefExpr->mMemberName;		
+	}
+	else
+	{
+		VisitChild(target);
 	}
 
 	if (identifier != NULL)
@@ -469,20 +486,25 @@ void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 		if (identifier != NULL)
 			SetElementType(identifier, BfSourceElementType_Method);
 	}
+
+	for (auto& val : invocationExpr->mArguments)
+		VisitChild(val);
+	for (auto& val : invocationExpr->mCommas)
+		VisitChild(val);
 }
 
 void BfSourceClassifier::Visit(BfIndexerExpression* indexerExpr)
 {
-	BfElementVisitor::Visit(indexerExpr);
+	//BfElementVisitor::Visit(indexerExpr);
+	Visit(indexerExpr->ToBase());
 
 	VisitChild(indexerExpr->mTarget);
 	VisitChild(indexerExpr->mOpenBracket);
-	for (int i = 0; i < (int) indexerExpr->mArguments.size(); i++)
-	{
-		if (i > 0)
-			VisitChild(indexerExpr->mCommas[i - 1]);
-		VisitChild(indexerExpr->mArguments[i]);
-	}
+
+	for (auto& val : indexerExpr->mArguments)
+		VisitChild(val);
+	for (auto& val : indexerExpr->mCommas)
+		VisitChild(val);
 	VisitChild(indexerExpr->mCloseBracket);
 }
 
@@ -522,6 +544,8 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 {	
 	if (!IsInterestedInMember(methodDeclaration))
 		return;
+
+	//BP_ZONE("BfSourceClassifier BfMethodDeclaration");
 
 	SetAndRestoreValue<BfAstNode*> prevMember(mCurMember, methodDeclaration);
 
