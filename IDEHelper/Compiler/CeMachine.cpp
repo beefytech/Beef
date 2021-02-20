@@ -6423,8 +6423,21 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 		if (globalVar->mName.StartsWith("__bfStrObj"))
 		{
 			int stringId = atoi(globalVar->mName.c_str() + 10);
-			addr_ce stringAddr = ceContext->GetString(stringId);
 
+			addr_ce stringAddr;
+			if (data.mQueueFixups)
+			{
+				stringAddr = 0;
+				CeConstStructFixup fixup;
+				fixup.mKind = CeConstStructFixup::Kind_StringPtr;
+				fixup.mValue = stringId;
+				fixup.mOffset = (int)data.mData.mSize;
+				data.mFixups.Add(fixup);
+			}
+			else
+			{
+				stringAddr = ceContext->GetString(stringId);
+			}
 			auto ptr = data.mData.GrowUninitialized(ceModule->mSystem->mPtrSize);
 			int64 addr64 = stringAddr;
 			memcpy(ptr, &addr64, ceModule->mSystem->mPtrSize);
