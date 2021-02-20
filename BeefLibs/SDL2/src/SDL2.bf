@@ -444,7 +444,7 @@ namespace SDL2
 		[LinkName("SDL_ShowMessageBox")]
 		public static extern int32 ShowMessageBox(ref MessageBoxData messageboxdata, out int32 buttonid);
 
-		[LinkName("ShowSimpleMessageBox")]
+		[LinkName("SDL_ShowSimpleMessageBox")]
 		public static extern int SimpleMessageBox(
 			MessageBoxFlags flags,
 			char8* title,
