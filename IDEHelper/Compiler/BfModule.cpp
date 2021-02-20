@@ -11626,14 +11626,17 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 			case BfTypeCode_UIntPtr:
 			case BfTypeCode_IntUnknown:
 			case BfTypeCode_UIntUnknown:
-			case BfTypeCode_Float:
 			case BfTypeCode_Double:
 			case BfTypeCode_Char8:
 			case BfTypeCode_Char16:
 			case BfTypeCode_Char32:
 				variant.mTypeCode = constant->mTypeCode;
 				variant.mInt64 = constant->mInt64;
-				break;				
+				break;
+			case BfTypeCode_Float:
+				variant.mTypeCode = constant->mTypeCode;
+				variant.mSingle = (float)constant->mDouble;
+				break;
 			default:
 				if (refNode != NULL)
 					Fail("Invalid const expression type", refNode);
