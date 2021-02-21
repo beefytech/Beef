@@ -4635,6 +4635,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				bool doAccessCheck = true;
 
+				if ((flags & BfLookupFieldFlag_BindOnly) != 0)
+					doAccessCheck = false;
 				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
 					doAccessCheck = false;
 
@@ -4861,7 +4863,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					}
 
 					// Check for direct auto-property access
-					if (startCheckType == mModule->mCurTypeInstance)
+					if ((startCheckType == mModule->mCurTypeInstance) && ((flags & BfLookupFieldFlag_BindOnly) == 0))
 					{
 						if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mPropDef->mFieldDeclaration))
 						{
