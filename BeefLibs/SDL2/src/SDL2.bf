@@ -444,7 +444,7 @@ namespace SDL2
 		[LinkName("SDL_ShowMessageBox")]
 		public static extern int32 ShowMessageBox(ref MessageBoxData messageboxdata, out int32 buttonid);
 
-		[LinkName("ShowSimpleMessageBox")]
+		[LinkName("SDL_ShowSimpleMessageBox")]
 		public static extern int SimpleMessageBox(
 			MessageBoxFlags flags,
 			char8* title,
@@ -630,6 +630,26 @@ namespace SDL2
 			public const WindowPos Undefined = 0x1FFF0000;
 			public const WindowPos Centered = 0x2FFF0000;
 		}
+		
+		public static int WindowPosUndefinedDisplay(int X)
+		{
+			return ((.) WindowPos.Undefined | X);
+		}
+
+		public static bool WindowPosIsUndefined(int X)
+		{
+			return (X & 0xFFFF0000) == (.) WindowPos.Undefined;
+		}
+
+		public static int WindowPosCenteredDisplay(int X)
+		{
+			return ((.) WindowPos.Centered | X);
+		}
+
+		public static bool WindowPosIsCentered(int X)
+		{
+			return (X & 0xFFFF0000) == (.) WindowPos.Centered;
+		}
 
 		[CRepr]
 		public struct SDL_DisplayMode
@@ -655,10 +675,19 @@ namespace SDL2
 			WindowFlags flags
 		);
 
-		[LinkName("SDL_CreateWindowAndRenderer")]
+		[LinkName("SDL_CreateWindowAndRenderer"), Obsolete("This method uses WindowPos as width and height parameter types. Use other method that uses int32 instead.", false)]
 		public static extern int CreateWindowAndRenderer(
 			WindowPos width,
 			WindowPos height,
+			WindowFlags window_flags,
+			out Window* window,
+			out Renderer* renderer
+		);
+
+		[LinkName("SDL_CreateWindowAndRenderer")]
+		public static extern int CreateWindowAndRenderer(
+			int32 width,
+			int32 height,
 			WindowFlags window_flags,
 			out Window* window,
 			out Renderer* renderer
