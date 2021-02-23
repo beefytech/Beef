@@ -675,7 +675,7 @@ namespace SDL2
 			WindowFlags flags
 		);
 
-		[LinkName("SDL_CreateWindowAndRenderer"), Obsolete("WindowPos has been deprecated in favor of int32.", false)]
+		[LinkName("SDL_CreateWindowAndRenderer"), NoShow, Obsolete("WindowPos has been deprecated in favor of int32.", false)]
 		public static extern int CreateWindowAndRenderer(
 			WindowPos width,
 			WindowPos height,
