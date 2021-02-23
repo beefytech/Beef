@@ -631,24 +631,24 @@ namespace SDL2
 			public const WindowPos Centered = 0x2FFF0000;
 		}
 		
-		public static int WindowPosUndefinedDisplay(int X)
+		public static int32 WindowPosUndefinedDisplay(int32 x)
 		{
-			return ((.) WindowPos.Undefined | X);
+			return ((.)WindowPos.Undefined | x);
 		}
 
-		public static bool WindowPosIsUndefined(int X)
+		public static bool WindowPosIsUndefined(int32 x)
 		{
-			return (X & 0xFFFF0000) == (.) WindowPos.Undefined;
+			return (x & 0xFFFF0000) == (.) WindowPos.Undefined;
 		}
 
-		public static int WindowPosCenteredDisplay(int X)
+		public static int WindowPosCenteredDisplay(int32 x)
 		{
-			return ((.) WindowPos.Centered | X);
+			return ((.) WindowPos.Centered | x);
 		}
 
-		public static bool WindowPosIsCentered(int X)
+		public static bool WindowPosIsCentered(int32 x)
 		{
-			return (X & 0xFFFF0000) == (.) WindowPos.Centered;
+			return (x & 0xFFFF0000) == (.) WindowPos.Centered;
 		}
 
 		[CRepr]
@@ -675,7 +675,7 @@ namespace SDL2
 			WindowFlags flags
 		);
 
-		[LinkName("SDL_CreateWindowAndRenderer"), Obsolete("This method uses WindowPos as width and height parameter types. Use other method that uses int32 instead.", false)]
+		[LinkName("SDL_CreateWindowAndRenderer"), Obsolete("WindowPos has been deprecated in favor of int32.", false)]
 		public static extern int CreateWindowAndRenderer(
 			WindowPos width,
 			WindowPos height,
