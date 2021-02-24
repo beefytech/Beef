@@ -876,7 +876,6 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 							}
 						}
 
-
 						Fail("ConstAgg struct member type mismatch");
 					}
 				}

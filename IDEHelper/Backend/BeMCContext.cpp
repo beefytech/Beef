@@ -8179,6 +8179,9 @@ void BeMCContext::DoInstCombinePass()
 			_RemapEntry remapEntry = { remapPair.mKey, remapPair.mValue };
 			initRemaps.Add(remapEntry);
 		}
+
+		if (vregInfoFrom->mForceMem)
+			vregInfoTo->mForceMem = true;
 	}
 
 	auto _RemapVReg = [&](int& vregIdx)
@@ -15839,7 +15842,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Zoips@TestProgram@BeefTest@bf@@SAXXZ");
+	//mDebugging = (function->mName == "?ParseRegex@Program@Regex@bf@@CAPEAV?$List@?AUStringView@System@bf@@@Collections@System@3@UStringView@63@0@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
