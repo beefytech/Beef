@@ -8323,16 +8323,14 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	{
 		// Check for payload enum initialization first		
 		BfTypedValue enumResult;
-		BfTypeInstance* enumType = NULL;
-		if ((!target) && (mModule->mCurTypeInstance->IsPayloadEnum()))
-		{			
-			enumType = mModule->mCurTypeInstance;
-			//enumResult = CheckEnumCreation(targetSrc, mModule->mCurTypeInstance, methodName, argValues);
-		}
-		else if ((!target) && (target.HasType()) && (targetType->IsPayloadEnum()))
+		BfTypeInstance* enumType = NULL;		
+		if ((!target) && (target.HasType()) && (targetType->IsPayloadEnum()))
 		{
-			enumType = targetType->ToTypeInstance();			
-			//enumResult = CheckEnumCreation(targetSrc, enumType, methodName, argValues);
+			enumType = targetType->ToTypeInstance();					
+		}
+		else if ((!target) && (!target.HasType()) && (mModule->mCurTypeInstance->IsPayloadEnum()))
+		{
+			enumType = mModule->mCurTypeInstance;			
 		}
 
 		if (enumType != NULL)
