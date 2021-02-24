@@ -4386,6 +4386,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					//  handle embedded methodRefs
 					hadNonSplattable = true;
 				}
+				else if (checkType->IsOpaque())
+				{
+					hadNonSplattable = true;
+				}
 				else if (checkType->IsStruct())
 				{					
 					auto checkTypeInstance = checkType->ToTypeInstance();
@@ -4418,6 +4422,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					if (checkType->IsSizedArray())
 						hadNonSplattable = true;
+					
 					dataCount += checkType->GetSplatCount();
 				}
 			};
@@ -4438,6 +4443,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 	if (typeInstance->IsTypedPrimitive())
 		typeInstance->mIsSplattable = true;
+	if (typeInstance->mTypeDef->mIsOpaque)
+		typeInstance->mIsSplattable = false;
 	
 	BF_ASSERT(mContext->mCurTypeState == &typeState);
 
@@ -8651,7 +8658,8 @@ void BfModule::TypeRefNotFound(BfTypeReference* typeRef, const char* appendName)
 	if (typeRef->IsTemporary())
 		return;
 
-	Fail("Type could not be found (are you missing a using directive or library reference?)", typeRef);
+	if (PreFail())
+		Fail("Type could not be found (are you missing a using directive or library reference?)", typeRef);
 
 	if (!mIgnoreErrors)
 	{
