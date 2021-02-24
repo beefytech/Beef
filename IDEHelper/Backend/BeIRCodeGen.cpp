@@ -865,17 +865,17 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 					}
 					else if (valType != structType->mMembers[i].mType)
 					{
-						if ((valType->IsSizedArray()) && (structType->mMembers[i].mType->IsSizedArray()))
+						if (valType->IsSizedArray())
 						{
 							auto valSizedType = (BeSizedArrayType*)valType;
-							auto memberSizedType = (BeSizedArrayType*)structType->mMembers[i].mType;
-							if ((valSizedType->mSize == 0) && (valSizedType->mElementType == memberSizedType->mElementType))
-							{								
-								constant->mType = memberSizedType;
+							if (valSizedType->mSize == 0)
+							{
+								constant->mType = structType->mMembers[i].mType;
 								constStruct->mMemberValues.Add(constant);
 								continue;
 							}
 						}
+
 
 						Fail("ConstAgg struct member type mismatch");
 					}
