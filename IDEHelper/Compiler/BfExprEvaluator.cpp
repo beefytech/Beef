@@ -8462,7 +8462,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		{
 			if ((!resolvedTypeInstance->IsStruct()) && (!resolvedTypeInstance->IsTypedPrimitive()))
 			{
-				mModule->Fail("Objects must be allocated through 'new' or 'scope'", targetSrc);
+				if (mModule->PreFail())
+					mModule->Fail("Objects must be allocated through 'new' or 'scope'", targetSrc);
 				return BfTypedValue();
 			}
 			
@@ -8747,9 +8748,15 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			// Would have caused a parsing error
 		}
 		else if (target.mType != NULL)
-			mModule->Fail(StrFormat("Method '%s' does not exist in type '%s'", methodName.c_str(), mModule->TypeToString(target.mType).c_str()), targetSrc);
+		{
+			if (mModule->PreFail())
+				mModule->Fail(StrFormat("Method '%s' does not exist in type '%s'", methodName.c_str(), mModule->TypeToString(target.mType).c_str()), targetSrc);
+		}
 		else
-			mModule->Fail(StrFormat("Method '%s' does not exist", methodName.c_str()), targetSrc);				
+		{
+			if (mModule->PreFail())
+				mModule->Fail(StrFormat("Method '%s' does not exist", methodName.c_str()), targetSrc);
+		}
 		return BfTypedValue();
 	}	
 
@@ -15898,7 +15905,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				else
 				{
 					gaveUnqualifiedDotError = true;
-					mModule->Fail(StrFormat("Cannot use inferred constructor on type '%s'", mModule->TypeToString(expectingType).c_str()), memberRefExpression->mDotToken);
+					if (mModule->PreFail())
+						mModule->Fail(StrFormat("Cannot use inferred constructor on type '%s'", mModule->TypeToString(expectingType).c_str()), memberRefExpression->mDotToken);
 				}
 			}			
 		}
@@ -18868,6 +18876,8 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 	}
 	else if (memberRefExpr->mMemberName != NULL)
 		findName = memberRefExpr->mMemberName->ToString();
+	else if (memberRefExpr->mDotToken != NULL)
+		mModule->FailAfter("Member name expected", memberRefExpr->mDotToken);
 
 	defer
 	(	
@@ -18938,13 +18948,15 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 	{
 		if (mExpectingType == NULL)
 		{
-			mModule->Fail("Unqualified dot syntax can only be used when the result type can be inferred", nameRefNode);
+			if (mModule->PreFail())
+				mModule->Fail("Unqualified dot syntax can only be used when the result type can be inferred", nameRefNode);
 			return;
 		}
 
-		if (expectingTypeInst == NULL)
+		if (expectingTypeInst == NULL)		
 		{
-			mModule->Fail(StrFormat("Unqualified dot syntax cannot be used with type '%s'", mModule->TypeToString(mExpectingType).c_str()), nameRefNode);
+			if (mModule->PreFail())
+				mModule->Fail(StrFormat("Unqualified dot syntax cannot be used with type '%s'", mModule->TypeToString(mExpectingType).c_str()), nameRefNode);
 			return;
 		}
 
@@ -18952,7 +18964,7 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		{
 			mResult = mModule->GetDefaultTypedValue(mExpectingType);
 			return;
-		}
+		}		
 
 		BfTypedValue expectingVal(expectingTypeInst);
 		mResult = LookupField(memberRefExpr->mMemberName, expectingVal, findName);
@@ -19054,7 +19066,10 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		}
 
 		if (mResult.mType == NULL)
-			mModule->Fail("Unable to find member", nameRefNode);
+		{
+			if (mModule->PreFail())
+				mModule->Fail("Unable to find member", nameRefNode);
+		}
 	}
 
 	if ((isNullCondLookup) && (mPropDef == NULL))
@@ -19064,7 +19079,7 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 	{
 		if (outCascadeValue != NULL)
 			*outCascadeValue = thisValue;
-		else
+		else if (mModule->PreFail())
 			mModule->Fail("Unexpected cascade operation. Chaining can only be used for method invocations", memberRefExpr->mDotToken);
 	}
 }
@@ -21381,7 +21396,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			(binaryOp != BfBinaryOp_LessThan) && (binaryOp != BfBinaryOp_LessThanOrEqual) &&
 			(binaryOp != BfBinaryOp_GreaterThan) && (binaryOp != BfBinaryOp_GreaterThanOrEqual))
 		{
-			mModule->Fail("Invalid operation on pointers", opToken);
+			if (mModule->PreFail())
+				mModule->Fail("Invalid operation on pointers", opToken);
 			return;
 		}				
 		
@@ -21397,7 +21413,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		{
 			if (!BfBinOpEqualityCheck(binaryOp))
 			{
-				mModule->Fail(StrFormat("Invalid operation between '%s' and null", mModule->TypeToString(resultType).c_str()), opToken);
+				if (mModule->PreFail())
+					mModule->Fail(StrFormat("Invalid operation between '%s' and null", mModule->TypeToString(resultType).c_str()), opToken);
 				return;
 			}
 
@@ -21634,9 +21651,12 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					return;
 			}
 
-			mModule->Fail(StrFormat("Operator '%s' cannot be applied to operands of type '%s'",
-				BfGetOpName(binaryOp),
-				mModule->TypeToString(leftValue.mType).c_str()), opToken);
+			if (mModule->PreFail())
+			{
+				mModule->Fail(StrFormat("Operator '%s' cannot be applied to operands of type '%s'",
+					BfGetOpName(binaryOp),
+					mModule->TypeToString(leftValue.mType).c_str()), opToken);
+			}
 			return;
 		}
 		else
@@ -21886,7 +21906,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 					mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				break;
 			default:
-				mModule->Fail("Invalid operation for booleans", opToken);
+				if (mModule->PreFail())
+					mModule->Fail("Invalid operation for booleans", opToken);
 				break;
 			}
 			return;
@@ -21895,7 +21916,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 
 	if ((!resultType->IsIntegral()) && (!resultType->IsFloat()))
 	{
-		mModule->Fail(StrFormat("Cannot perform operation on type '%s'", mModule->TypeToString(resultType).c_str()), opToken);
+		if (mModule->PreFail())
+			mModule->Fail(StrFormat("Cannot perform operation on type '%s'", mModule->TypeToString(resultType).c_str()), opToken);
 		return;
 	}
 
@@ -22052,7 +22074,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 		}
 		break;
 	default:
-		mModule->Fail("Invalid operation", opToken);
+		if (mModule->PreFail())
+			mModule->Fail("Invalid operation", opToken);
 		break;
 	}	
 }

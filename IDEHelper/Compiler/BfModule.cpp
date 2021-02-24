@@ -8072,7 +8072,10 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 		if ((flags & BfEvalExprFlags_InferReturnType) != 0)
 			return exprEvaluator.mResult;
 		if (!mCompiler->mPassInstance->HasFailed())
-			Fail("INTERNAL ERROR: No expression result returned but no error caught in expression evaluator", expr);
+		{
+			if (PreFail())
+				Fail("INTERNAL ERROR: No expression result returned but no error caught in expression evaluator", expr);
+		}
 		return BfTypedValue();
 	}
 	auto typedVal = exprEvaluator.mResult;
@@ -12068,6 +12071,12 @@ BfTypedValue BfModule::ExtractValue(BfTypedValue typedValue, BfFieldInstance* fi
 
 					if (fieldInstance == wantFieldInstance)
 					{
+						if (fieldInstance->mResolvedType->IsValuelessType())
+						{
+							retVal = GetDefaultTypedValue(fieldInstance->mResolvedType);
+							break;
+						}
+
 						bool isAddr = false;
 						BfIRValue val = ExtractSplatValue(typedValue, componentIdx, fieldInstance->mResolvedType, &isAddr);
 						retVal = BfTypedValue(val, fieldInstance->mResolvedType,
@@ -21381,12 +21390,16 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized || mCurTypeInstance->mResolvingVarField);
 	SetAndRestoreValue<bool> prevIsCapturingMethodMatchInfo;	
 	SetAndRestoreValue<bool> prevAllowLockYield(mContext->mAllowLockYield, false);
-	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
+	
 	if (mCompiler->IsAutocomplete())	
 		prevIsCapturingMethodMatchInfo.Init(mCompiler->mResolvePassData->mAutoComplete->mIsCapturingMethodMatchInfo, false);
 	
 	if (mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
 		mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingReference;
+
+	BfMethodState methodState;
+	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
+	methodState.mTempKind = BfMethodState::TempKind_Static;
 
 	defer({ mCurMethodInstance->mHasBeenDeclared = true; });
 
@@ -21889,11 +21902,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 					refNode = paramDef->mParamDeclaration->mModToken;
 				Fail("Cannot specify a default value for a 'params' parameter", refNode);
 			}
-
-			BfMethodState methodState;			
-			SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
-			methodState.mTempKind = BfMethodState::TempKind_Static;
-
+			
 			BfTypedValue defaultValue;
 			if (resolvedParamType->IsConstExprValue())
 			{
