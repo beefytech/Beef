@@ -4605,13 +4605,19 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	if ((typeInstance->IsPayloadEnum()) && (!typeInstance->IsBoxed()))
 	{
+		typeInstance->mAlign = unionInnerType->mAlign;
+
 		int lastTagId = -1;
 		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 		{
 			auto fieldInstance = &fieldInstanceRef;
 			auto fieldDef = fieldInstance->GetFieldDef();
 			if ((fieldDef != NULL) && (fieldInstance->mDataIdx < 0))
+			{
+				BF_ASSERT(fieldInstance->mResolvedType->mAlign >= 1);
+				typeInstance->mAlign = BF_MAX(typeInstance->mAlign, fieldInstance->mResolvedType->mAlign);
 				lastTagId = -fieldInstance->mDataIdx - 1;
+			}
 		}
 
 		auto fieldInstance = &typeInstance->mFieldInstances.back();
@@ -4638,7 +4644,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 		
-		typeInstance->mAlign = BF_MAX(unionInnerType->mAlign, discriminatorType->mAlign);
+		typeInstance->mAlign = BF_MAX(typeInstance->mAlign, discriminatorType->mAlign);
 		typeInstance->mSize = fieldInstance->mDataOffset + discriminatorType->mSize;
 
 		typeInstance->mInstSize = typeInstance->mSize;
