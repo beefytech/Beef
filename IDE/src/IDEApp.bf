@@ -436,6 +436,12 @@ namespace IDE
 			}
         }
 
+		public class ScriptCmd : ExecutionCmd
+		{
+			public String mCmd ~ delete _;
+			public String mPath ~ delete _;
+		}
+
 		public enum ArgsFileKind
 		{
 			None,
@@ -7447,83 +7453,103 @@ namespace IDE
 						return;
 				}
 			}
-
-			var keyState = scope KeyState();
-			keyState.mKeyCode = evt.mKeyCode;
-			keyState.mKeyFlags = evt.mKeyFlags;
-
-			var curKeyMap = mCommands.mKeyMap;
-			bool hadChordState = mKeyChordState != null;
-			if (mKeyChordState != null)
-				curKeyMap = mKeyChordState.mCommandMap;
-			DeleteAndNullify!(mKeyChordState);
-
-			KeyState matchedKey;
-			IDECommandBase commandBase;
-			if (curKeyMap.mMap.TryGet(keyState, out matchedKey, out commandBase))
+			
+			if ((mKeyChordState != null) && (evt.mKeyCode.IsModifier))
 			{
-				if (var commandMap = commandBase as CommandMap)
-				{
-					mKeyChordState = new .();
-					mKeyChordState.mCommandMap = commandMap;
-					mKeyChordState.mKeyState = matchedKey;
-					evt.mHandled = true;
-					return;
-				}
-				else if (var command = commandBase as IDECommand)
-				{
-					bool foundMatch = false;
-					if (useFlags != .None)
-					{
-						var checkCommand = command;
-						while (checkCommand != null)
-						{
-							bool matches = checkCommand.mContextFlags == .None;
-							if (checkCommand.mContextFlags.HasFlag(.Editor))
-								matches |= useFlags.HasFlag(.Editor);
-							if (checkCommand.mContextFlags.HasFlag(.MainWindow))
-								matches |= useFlags.HasFlag(.MainWindow);
-							if (checkCommand.mContextFlags.HasFlag(.WorkWindow))
-								matches |= useFlags.HasFlag(.WorkWindow);
-
-							if (matches)
-							{
-								checkCommand.mAction();
-								foundMatch = true;
-							}
-							checkCommand = checkCommand.mNext;
-						}
-					}
-
-					if (!foundMatch)
-					{
-						var checkCommand = command;
-						while (checkCommand != null)
-						{
-							if (checkCommand.mContextFlags == .None)
-							{
-								checkCommand.mAction();
-								foundMatch = true;
-							}
-							checkCommand = checkCommand.mNext;
-						}
-					}
-
-					if (foundMatch)
-					{
-						evt.mHandled = true;
-						return;
-					}
-				}
+				// Ignore
 			}
 			else
 			{
-				// Not found
-				if (hadChordState)
+				var keyState = scope KeyState();
+				keyState.mKeyCode = evt.mKeyCode;
+				keyState.mKeyFlags = evt.mKeyFlags;
+
+				var curKeyMap = mCommands.mKeyMap;
+
+				bool hadChordState = mKeyChordState != null;
+				if (mKeyChordState != null)
+					curKeyMap = mKeyChordState.mCommandMap;
+				var prevKeyChordState = mKeyChordState;
+				defer delete prevKeyChordState;
+				mKeyChordState = null;
+
+				KeyState matchedKey;
+				IDECommandBase commandBase;
+
+				bool hadMatch = curKeyMap.mMap.TryGet(keyState, out matchedKey, out commandBase);
+				if ((!hadMatch) && (prevKeyChordState != null))
 				{
-					Beep(.Error);
-					evt.mHandled = true;
-					return;
+					// If we have a "Ctrl+A, Ctrl+B" style sequence then also try to match that against "Ctrl+A, B"
+					KeyState rawKeyState = keyState;
+					rawKeyState.mKeyFlags &= ~prevKeyChordState.mKeyState.mKeyFlags;
+					hadMatch = curKeyMap.mMap.TryGet(rawKeyState, out matchedKey, out commandBase);
+				}
+
+				if (hadMatch)
+				{
+					if (var commandMap = commandBase as CommandMap)
+					{
+						mKeyChordState = new .();
+						mKeyChordState.mCommandMap = commandMap;
+						mKeyChordState.mKeyState = matchedKey;
+						evt.mHandled = true;
+						return;
+					}
+					else if (var command = commandBase as IDECommand)
+					{
+						bool foundMatch = false;
+						if (useFlags != .None)
+						{
+							var checkCommand = command;
+							while (checkCommand != null)
+							{
+								bool matches = checkCommand.mContextFlags == .None;
+								if (checkCommand.mContextFlags.HasFlag(.Editor))
+									matches |= useFlags.HasFlag(.Editor);
+								if (checkCommand.mContextFlags.HasFlag(.MainWindow))
+									matches |= useFlags.HasFlag(.MainWindow);
+								if (checkCommand.mContextFlags.HasFlag(.WorkWindow))
+									matches |= useFlags.HasFlag(.WorkWindow);
+	
+								if (matches)
+								{
+									checkCommand.mAction();
+									foundMatch = true;
+								}
+								checkCommand = checkCommand.mNext;
+							}
+						}
+	
+						if (!foundMatch)
+						{
+							var checkCommand = command;
+							while (checkCommand != null)
+							{
+								if (checkCommand.mContextFlags == .None)
+								{
+									checkCommand.mAction();
+									foundMatch = true;
+								}
+								checkCommand = checkCommand.mNext;
+							}
+						}
+	
+						if (foundMatch)
+						{
+							evt.mHandled = true;
+							return;
+						}
+					}
+				}
+				else
+				{
+					// Not found
+					if (hadChordState)
+					{
+						Beep(.Error);
+						evt.mHandled = true;
+						return;
+					}
 				}
 			}
 
@@ -8256,6 +8282,21 @@ namespace IDE
 					}
 				}
 
+				if (let scriptCmd = next as ScriptCmd)
+				{
+					if (mBuildContext?.mScriptManager != null)
+					{
+						if (scriptCmd.mCmd != null)
+						{
+							mBuildContext.mScriptManager.QueueCommands(scriptCmd.mCmd, scriptCmd.mPath, .NoLines);
+							DeleteAndNullify!(scriptCmd.mCmd);
+						}
+
+						if (mBuildContext.mScriptManager.HasQueuedCommands)
+							return;
+					}
+				}
+
 				defer delete next;
                 mExecutionQueue.RemoveAt(0);
 
@@ -8410,6 +8451,11 @@ namespace IDE
 				{
 					if (gApp.mDebugger.mIsRunning)
 						mProfilePanel.StartProfiling(profileCmd.mThreadId, profileCmd.mDesc, profileCmd.mSampleRate);
+				}
+				else if (var scriptCmd = next as ScriptCmd)
+				{
+					// Already handled
+					(void)scriptCmd;
 				}
                 else
                 {
@@ -9163,7 +9209,8 @@ namespace IDE
 
         public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
         {
-			int i = result.Length;
+			int startIdx = result.Length;
+			int i = startIdx;
 			result.Append(configString);
 
 			bool hadError = false;
@@ -9258,6 +9305,28 @@ namespace IDE
 									cmdErr = "Invalid number of arguments";
 							case "Var":
 								break ReplaceBlock;
+							case "Arguments",
+								 "BuildDir",
+								 "LinkFlags",
+								 "ProjectDir",
+								 "ProjectName",
+								 "TargetDir",
+								 "TargetPath",
+								 "WorkingDir":
+								var selProject = mWorkspace.FindProject(args[0]);
+								if (selProject != null)
+								{
+									Workspace.Options selWorkspaceOptions = gApp.GetCurWorkspaceOptions();
+									Project.Options selOptions = gApp.GetCurProjectOptions(selProject);
+									String selConfigString = scope $"$({cmd})";
+									replaceStr.Clear();
+									newString = scope:ReplaceBlock .();
+									DoResolveConfigString(platformName, selWorkspaceOptions, selProject, selOptions, selConfigString, error, newString);
+								}
+								else
+									cmdErr = "Unable to find project";
+							default:
+								cmdErr = "Invalid command";
 							}
 
 							if (newString == null)
@@ -10251,6 +10320,12 @@ namespace IDE
                     success = false;
             }
 
+			for (var project in orderedProjectList)
+			{
+			    if (!mBuildContext.QueueProjectPostBuild(project, hotProject, completedCompileCmd, hotFileNames, compileKind))
+			        success = false;
+			}
+
             if (hotFileNames.Count > 0)
             {
 				// Why were we rehupping BEFORE hotLoad?
@@ -10430,6 +10505,36 @@ namespace IDE
 #endif
 		}
 
+		public bool IsVisualStudioRequired
+		{
+			get
+			{
+				if (Workspace.PlatformType.GetFromName(mPlatformName) != .Windows)
+					return false;
+				var workspaceOptions = GetCurWorkspaceOptions();
+				if (workspaceOptions.mToolsetType != .LLVM)
+					return true;
+
+				for (var project in mWorkspace.mProjects)
+				{
+					if ((project.mGeneralOptions.mTargetType != .BeefConsoleApplication) &&
+						(project.mGeneralOptions.mTargetType != .BeefGUIApplication) &&
+						(project.mGeneralOptions.mTargetType != .BeefApplication_DynamicLib) &&
+						(project.mGeneralOptions.mTargetType != .BeefApplication_StaticLib))
+					{
+						continue;
+					}
+
+					var options = GetCurProjectOptions(project);
+					if (options == null)
+						continue;
+					if (options.mBuildOptions.mCLibType != .SystemMSVCRT)
+						return true;
+				}
+				return false;
+			}
+		}
+
         protected bool Compile(CompileKind compileKind = .Normal, Project hotProject = null)
         {
 			Debug.Assert(mBuildContext == null);
@@ -10604,7 +10709,7 @@ namespace IDE
 				}
 			}
 
-			if (Workspace.PlatformType.GetFromName(mPlatformName) == .Windows)
+			if ((Workspace.PlatformType.GetFromName(mPlatformName) == .Windows) && (IsVisualStudioRequired))
 			{
 				if (!mSettings.mVSSettings.IsConfigured())
 					mSettings.mVSSettings.SetDefaults();
@@ -10788,14 +10893,17 @@ namespace IDE
 
 			//options.mDebugOptions.mCommand
 
-            String launchPath = scope String();
-            ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPath);
+            String launchPathRel = scope String();
+            ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPathRel);
             String arguments = scope String();
             ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(Arguments)", "debug command arguments", arguments);
             String workingDirRel = scope String();
             ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
 			var workingDir = scope String();
 			Path.GetAbsolutePath(workingDirRel, project.mProjectDir, workingDir);
+
+			String launchPath = scope String();
+			Path.GetAbsolutePath(launchPathRel, workingDir, launchPath);
 
 			String targetPath = scope .();
 			ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(TargetPath)", "Target path", targetPath);

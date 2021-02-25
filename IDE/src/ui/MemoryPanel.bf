@@ -284,26 +284,20 @@ namespace IDE.ui
 							s.AppendF("0x{:A}", (uint64)lockRange.mBaseOffset);
                         case RepType.Int8:
 							hasAltS = true;
-							(*(int8*)lockRange.mData.CArray()).ToString(s, (altIntBase == 10) ? "" : "X2", null);
-							if (altIntBase == 10)
-								((UInt64)*(uint8*)lockRange.mData.CArray()).ToString(altS, "", null);
+							(*(int8*)lockRange.mData.CArray()).ToString(s, (intBase == 10) ? "" : "X2", null);
+							((UInt64)*(uint8*)lockRange.mData.CArray()).ToString(altS, (altIntBase == 10) ? "" : "X2", null);
                         case RepType.Int16:
 							hasAltS = true;
-							(*(int16*)lockRange.mData.CArray()).ToString(s, (altIntBase == 10) ? "" : "X4", null);
-							if (altIntBase == 10)
-								((UInt64)*(uint16*)lockRange.mData.CArray()).ToString(altS, "", null);
+							(*(int16*)lockRange.mData.CArray()).ToString(s, (intBase == 10) ? "" : "X4", null);
+							((UInt64)*(uint16*)lockRange.mData.CArray()).ToString(altS, (altIntBase == 10) ? "" : "X4", null);
                         case RepType.Int32:
 							hasAltS = true;
-							(*(int32*)lockRange.mData.CArray()).ToString(s, (altIntBase == 10) ? "" : "X8", null);
-							if (altIntBase == 10)
-								((UInt64)*(uint32*)lockRange.mData.CArray()).ToString(altS, "", null);
+							(*(int32*)lockRange.mData.CArray()).ToString(s, (intBase == 10) ? "" : "X8", null);
+							((UInt64)*(uint32*)lockRange.mData.CArray()).ToString(altS, (altIntBase == 10) ? "" : "X8", null);
                         case RepType.Int64:
 							hasAltS = true;
-							(*(int64*)lockRange.mData.CArray()).ToString(s, (altIntBase == 10) ? "" : "X16", null);
-							if (altIntBase == 0x10)
-								s.Insert(8, '\'');
-							if (altIntBase == 10)
-								((UInt64)*(uint64*)lockRange.mData.CArray()).ToString(altS, "", null);
+							(*(int64*)lockRange.mData.CArray()).ToString(s, (intBase == 10) ? "" : "X16", null);
+							((UInt64)*(uint64*)lockRange.mData.CArray()).ToString(altS, (altIntBase == 10) ? "" : "X16", null);
                         case RepType.Float:
 							(*(float*)lockRange.mData.CArray()).ToString(s);
                         case RepType.Double:

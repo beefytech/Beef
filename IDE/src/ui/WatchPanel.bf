@@ -27,7 +27,8 @@ namespace IDE.ui
         TypeClass 	= 0x80,
         TypeValueType = 0x100,
         Namespace 	= 0x200,
-        Text 		= 0x400
+        Text 		= 0x400,
+		RawText		= 0x800
     }
 
     public class WatchEntry
@@ -1740,6 +1741,7 @@ namespace IDE.ui
                 evt.mDragKind = .After;
                 dragTarget = (WatchListViewItem)dragTarget.mParentItem;
                 evt.mDragTarget = dragTarget;
+				return;
             }
             if ((dragTarget.mLabel == "") && (dragKind == .After))
                 dragKind = .Before;            

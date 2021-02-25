@@ -143,10 +143,11 @@ public:
 
 	BfPopulateType mPopulateType;
 	BfTypeReference* mCurBaseTypeRef;
+	BfTypeInstance* mCurBaseType;
 	BfTypeReference* mCurAttributeTypeRef;
 	BfFieldDef* mCurFieldDef;	
 	BfTypeDef* mCurTypeDef;
-	BfTypeDef* mForceActiveTypeDef;
+	BfTypeDef* mForceActiveTypeDef;	
 	ResolveKind mResolveKind;
 	BfAstNode* mCurVarInitializer;
 	int mArrayInitializerSize;
@@ -160,6 +161,7 @@ public:
 
 		mPopulateType = BfPopulateType_Identity;
 		mCurBaseTypeRef = NULL;
+		mCurBaseType = NULL;
 		mCurFieldDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;

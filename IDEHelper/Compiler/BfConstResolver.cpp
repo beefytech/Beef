@@ -35,7 +35,7 @@ BfConstResolver::BfConstResolver(BfModule* bfModule) : BfExprEvaluator(bfModule)
 }
 
 BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfConstResolveFlags flags)
-{	
+{
 	mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
 
 	// Handle the 'int[?] val = .(1, 2, 3)' case
@@ -137,11 +137,11 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 					int stringId = mModule->GetStringPoolIdx(mResult.mValue);					
 					if (stringId != -1)
 					{
-						if ((flags & BfConstResolveFlag_RemapFromStringId) != 0)
+						if ((flags & BfConstResolveFlag_ActualizeValues) != 0)
 						{
 							prevIgnoreWrites.Restore();
 							mModule->mBfIRBuilder->PopulateType(mResult.mType);
-							return BfTypedValue(mModule->GetStringObjectValue(stringId), mResult.mType);
+							return BfTypedValue(mModule->GetStringObjectValue(stringId, false, true), mResult.mType);
 						}
 
 						return BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_StringId, stringId), toType);
@@ -232,7 +232,9 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	}*/
 
 	mModule->FixIntUnknown(mResult);	
-	mModule->FixValueActualization(mResult);
+
+	if ((flags & BfConstResolveFlag_NoActualizeValues) == 0)
+		mModule->FixValueActualization(mResult, !prevIgnoreWrites.mPrevVal || ((flags & BfConstResolveFlag_ActualizeValues) != 0));
 
 	return mResult;
 }
@@ -416,15 +418,22 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 		}
 		else
 		{	
-			if ((argValue.mValue.IsFake()) && (!argValue.mType->IsValuelessType()))
-			{
-				if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Mixin))
-				{
-					mModule->Fail("Expression does not evaluate to a constant value", argExpr);
-				}
+			bool requiresConst = false;
+			if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Mixin))
+				requiresConst = true;
+
+			if ((requiresConst) && (argValue.mValue.IsFake()) && (!argValue.mType->IsValuelessType()))
+			{				
+				mModule->Fail("Expression does not evaluate to a constant value", argExpr);				
 			}
 
-			llvmArgs.push_back(argValue.mValue);
+			if (!argValue.mType->IsVar())
+			{
+				if ((!requiresConst) || (argValue.mValue.IsConst()) || (argValue.mType->IsValuelessType()))
+					llvmArgs.push_back(argValue.mValue);
+				else
+					llvmArgs.push_back(mModule->GetDefaultValue(argValue.mType));
+			}
 			paramIdx++;
 		}
 		argIdx++;

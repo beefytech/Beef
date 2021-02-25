@@ -3809,7 +3809,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute)
 {
-	module->PopulateType(customAttribute->mType);
+	module->mContext->mUnreifiedModule->PopulateType(customAttribute->mType);
 	auto ceAttrAddr = CeMalloc(customAttribute->mType->mSize) - mMemory.mVals;	
 	BfIRValue ceAttrVal = module->mBfIRBuilder->CreateConstAggCE(module->mBfIRBuilder->MapType(customAttribute->mType, BfIRPopulateType_Identity), ceAttrAddr);
 	BfTypedValue ceAttrTypedValue(ceAttrVal, customAttribute->mType);
@@ -4335,7 +4335,7 @@ static void CeSetAddrVal(void* ptr, addr_ce val, int32 ptrSize)
 }
 
 bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType)
-{	
+{
 	auto ceModule = mCeMachine->mCeModule;
 	CeFunction* ceFunction = startFunction;
 	returnType = startFunction->mMethodInstance->mReturnType;
@@ -5408,6 +5408,15 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					mCeMachine->PrepareFunction(callEntry.mFunction, NULL);
 				}
 
+				if (callEntry.mFunction->mMethodInstance != NULL)
+				{
+					if (callEntry.mFunction->mMethodInstance->GetOwner()->IsDeleting())
+					{
+						_Fail("Calling method on deleted type");
+						return false;
+					}
+				}
+
 				callEntry.mBindRevision = mCeMachine->mMethodBindRevision;
 			}
 
@@ -6255,6 +6264,9 @@ CeMachine::~CeMachine()
 
 	auto _RemoveFunctionInfo = [&](CeFunctionInfo* functionInfo)
 	{
+		if (functionInfo->mMethodInstance != NULL)
+			functionInfo->mMethodInstance->mInCEMachine = false;
+
 		if (functionInfo->mCeFunction != NULL)
 		{
 			// We don't need to actually unmap it at this point
@@ -6411,8 +6423,21 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 		if (globalVar->mName.StartsWith("__bfStrObj"))
 		{
 			int stringId = atoi(globalVar->mName.c_str() + 10);
-			addr_ce stringAddr = ceContext->GetString(stringId);
 
+			addr_ce stringAddr;
+			if (data.mQueueFixups)
+			{
+				stringAddr = 0;
+				CeConstStructFixup fixup;
+				fixup.mKind = CeConstStructFixup::Kind_StringPtr;
+				fixup.mValue = stringId;
+				fixup.mOffset = (int)data.mData.mSize;
+				data.mFixups.Add(fixup);
+			}
+			else
+			{
+				stringAddr = ceContext->GetString(stringId);
+			}
 			auto ptr = data.mData.GrowUninitialized(ceModule->mSystem->mPtrSize);
 			int64 addr64 = stringAddr;
 			memcpy(ptr, &addr64, ceModule->mSystem->mPtrSize);
@@ -6932,10 +6957,9 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 		ceFunction->mCeMachine = this;
 		ceFunction->mIsVarReturn = methodInstance->mReturnType->IsVar();
 		ceFunction->mCeFunctionInfo = ceFunctionInfo;
-		ceFunction->mMethodInstance = methodInstance;
-
+		ceFunction->mMethodInstance = methodInstance;		
 		ceFunctionInfo->mMethodInstance = methodInstance;
-		ceFunctionInfo->mCeFunction = ceFunction;
+		ceFunctionInfo->mCeFunction = ceFunction;		
 		MapFunctionId(ceFunction);
 	}
 	

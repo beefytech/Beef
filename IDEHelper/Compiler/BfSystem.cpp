@@ -833,12 +833,26 @@ int BfTypeDef::GetSelfGenericParamCount()
 
 BfMethodDef* BfTypeDef::GetMethodByName(const StringImpl& name, int paramCount)
 {
-	for (auto method : mMethods)
-	{
-		if ((name == method->mName) && ((paramCount == -1) || (paramCount == (int)method->mParams.size())))
-			return method;
+	PopulateMemberSets();
+	BfMemberSetEntry* entry = NULL;	
+	if (!mMethodSet.TryGetWith(name, &entry))
+		return NULL;
+
+	BfMethodDef* bestMethodDef = NULL;
+	auto methodDef = (BfMethodDef*)entry->mMemberDef;
+	while (methodDef != NULL)
+	{		
+		if (((paramCount == -1) || (paramCount == (int)methodDef->mParams.size())))
+		{
+			if ((bestMethodDef == NULL) ||
+				((bestMethodDef->mDeclaringType->IsExtension()) && (!methodDef->mDeclaringType->IsExtension())))
+				bestMethodDef = methodDef;
+		}
+
+		methodDef = methodDef->mNextWithSameName;
 	}
-	return NULL;
+
+	return bestMethodDef;
 }
 
 BfFieldDef* BfTypeDef::GetFieldByName(const StringImpl& name)
@@ -1810,7 +1824,7 @@ BfSystem::BfSystem()
 	if (gPerfManager == NULL)
 		gPerfManager = new PerfManager();
 	//gPerfManager->StartRecording();
-
+	
 	mAtomUpdateIdx = 0;
 	mAtomCreateIdx = 0;
 	mTypeMapVersion = 1;
@@ -2586,6 +2600,13 @@ void BfSystem::RemoveTypeDef(BfTypeDef* typeDef)
 	mTypeDefs.Remove(typeDef);	
 	AutoCrit autoCrit(mDataLock);
 	
+	if (typeDef->mOuterType != NULL)
+	{		
+		// We are in the outer type's mNestedTypes list
+		BfLogSys(this, "Setting mForceUseNextRevision on outer type %p from %p\n", typeDef->mOuterType, typeDef);
+		typeDef->mOuterType->mForceUseNextRevision = true;
+	}
+
 	// This will get properly handled in UntrackName when we process the mTypeDefDeleteQueue, but this
 	//  mAtomUpdateIdx increment will trigger lookup changes in BfContext::VerifyTypeLookups
 	if (typeDef->mName != mEmptyAtom)
@@ -2797,6 +2818,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mNextRevision = NULL;
 
 	typeDef->mDefState = BfTypeDef::DefState_Defined;	
+	typeDef->mForceUseNextRevision = false;
 
 	VerifyTypeDef(typeDef);
 }

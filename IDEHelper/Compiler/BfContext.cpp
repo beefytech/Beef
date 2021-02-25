@@ -829,8 +829,7 @@ void BfContext::ValidateDependencies()
 void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuildModule, bool placeSpecializiedInPurgatory)
 {
 	BfTypeInstance* typeInst = type->ToTypeInstance();		
-	
-	
+		
 	if (type->IsDeleting())
 	{
 		return;
@@ -2517,11 +2516,6 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 	
 	BP_ZONE("BfContext::QueueMethodSpecializations");
 
-	if (typeInst->mTypeId == 578)
-	{
-		NOP;
-	}
-
 	auto module = typeInst->mModule;
 	if (module == NULL)
 		return;
@@ -2917,10 +2911,21 @@ void BfContext::Cleanup()
 
 	// Clean up deleted BfTypes
 	// These need to get deleted before the modules because we access mModule in the MethodInstance dtors
-	for (auto type : mTypeGraveyard)
+	for (int pass = 0; pass < 2; pass++)
 	{
-		BF_ASSERT(type->mRebuildFlags & BfTypeRebuildFlag_Deleted);
-		delete type;
+		for (int i = 0; i < (int)mTypeGraveyard.size(); i++)		
+		{
+			auto type = mTypeGraveyard[i];
+			if (type == NULL)
+				continue;
+			bool deleteNow = (type->IsBoxed() == (pass == 0));
+			if (!deleteNow)
+				continue;
+
+			BF_ASSERT(type->mRebuildFlags & BfTypeRebuildFlag_Deleted);
+			delete type;
+			mTypeGraveyard[i] = NULL;
+		}
 	}
 	mTypeGraveyard.Clear();
 

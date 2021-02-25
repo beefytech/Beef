@@ -746,7 +746,7 @@ namespace SDL2
 		public static extern int32 GetDisplayMode(int32 displayIndex, int32 modeIndex, out SDL_DisplayMode mode);
 
 		/* Available in 2.0.5 or higher */
-		[LinkName("SDL_GetDisplayMode")]
+		[LinkName("SDL_GetDisplayUsableBounds")]
 		public static extern int SDL_GetDisplayUsableBounds(int displayIndex, out Rect rect);
 
 		[LinkName("SDL_GetNumDisplayModes")]

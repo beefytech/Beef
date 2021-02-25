@@ -29,12 +29,8 @@ namespace IDE
 		public int32 mUpdateCnt;
 		public Project mHotProject;
 		public Workspace.Options mWorkspaceOptions;
-		public Dictionary<Project, String> mImpLibMap = new .() ~
-		{
-			for (let val in _.Values)
-				delete val;
-			delete _;
-		};
+		public Dictionary<Project, String> mImpLibMap = new .() ~ DeleteDictionaryAndValues!(_);
+		public Dictionary<Project, String> mTargetPathMap = new .() ~ DeleteDictionaryAndValues!(_);
 		public ScriptManager.Context mScriptContext = new .() ~ _.ReleaseLastRef();
 		public ScriptManager mScriptManager ~ delete _;
 
@@ -122,7 +118,7 @@ namespace IDE
 
 			bool didCommands = false;
 
-			let targetName = scope String("Project ", project.mProjectName);
+			//let targetName = scope String("Project ", project.mProjectName);
 
 			//Console.WriteLine("Executing custom command {0} {1} {2}", highestDateTime, targetDateTime, forceRebuild);
 			for (let origCustomCmd in cmdList)
@@ -163,18 +159,12 @@ namespace IDE
 					didCommands = true;
 				}
 
-				mScriptManager.QueueCommands(customCmd, scope String()..AppendF("project {}", project.mProjectName), .NoLines);
+				let scriptCmd = new IDEApp.ScriptCmd();
+				scriptCmd.mCmd = new String(customCmd);
+				scriptCmd.mPath = new $"project {project.mProjectName}";
+				gApp.mExecutionQueue.Add(scriptCmd);
 				continue;
 			}
-
-			let targetCompleteCmd = new IDEApp.TargetCompletedCmd(project);
-			if (didCommands)
-			{
-				mScriptManager.QueueCommands(scope String()..AppendF("%targetComplete {}", project.mProjectName), targetName, .NoLines);
-				targetCompleteCmd.mIsReady = false;
-				project.mNeedsTargetRebuild = true;
-			}
-			gApp.mExecutionQueue.Add(targetCompleteCmd);
 
 			return didCommands ? .HadCommands : .NoCommands;
 		}
@@ -874,9 +864,9 @@ namespace IDE
 						minRTModName.Insert(0, "_");
 
 					if (!is64Bit)
-						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x86\" ", gApp.mInstallDir, "lib\\x86\\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
+						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x86\" \"", gApp.mInstallDir, "lib\\x86\\msvcrt.lib\" Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
 					else
-						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x64\" ", gApp.mInstallDir, "lib\\x64\\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
+						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x64\" \"", gApp.mInstallDir, "lib\\x64\\msvcrt.lib\" Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
 					linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib version.lib comdlg32.lib -ignore:4049 -ignore:4217 ");
 				}
 
@@ -1062,17 +1052,8 @@ namespace IDE
 
 						IDEUtils.AppendWithOptionalQuotes(linkLine, resOutPath);
 					}
-					
-					let binPath = (!is64Bit) ? gApp.mSettings.mVSSettings.mBin32Path : gApp.mSettings.mVSSettings.mBin64Path;
-					if (binPath.IsWhiteSpace)
-					{
-						gApp.OutputErrorLine("Visual Studio tool path not configured. Check Visual Studio configuration in File\\Preferences\\Settings.");
-						return false;
-					}
 
 					String linkerPath = scope String();
-					linkerPath.Append(binPath);
-					linkerPath.Append("/link.exe");
 					if (workspaceOptions.mToolsetType == .LLVM)
 					{
 						linkerPath.Clear();
@@ -1096,6 +1077,17 @@ namespace IDE
 
 						if ((mPlatformType == .Windows) && (!is64Bit))
 							linkLine.Append(" /safeseh:no");
+					}
+					else
+					{
+						let binPath = (!is64Bit) ? gApp.mSettings.mVSSettings.mBin32Path : gApp.mSettings.mVSSettings.mBin64Path;
+						if (binPath.IsWhiteSpace)
+						{
+							gApp.OutputErrorLine("Visual Studio tool path not configured. Check Visual Studio configuration in File\\Preferences\\Settings.");
+							return false;
+						}
+						linkerPath.Append(binPath);
+						linkerPath.Append("/link.exe");
 					}
 
 					if (options.mBuildOptions.mBeefLibType != .DynamicDebug)
@@ -1216,6 +1208,8 @@ namespace IDE
 				}
 			}
 
+			mTargetPathMap[project] = new String(targetPath);
+
 			if (hotProject == null)
 			{
 				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPreBuildCmds))
@@ -1226,22 +1220,9 @@ namespace IDE
 					completedCompileCmd.mFailed = true;
 				}
 			}
-
-			void DoPostBuild()
-			{
-				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
-				{
-				case .NoCommands:
-				case .HadCommands:
-				case .Failed:
-					completedCompileCmd.mFailed = true;
-				}
-			}
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)
 			{
-				if (hotProject == null)
-					DoPostBuild();
 				return true; 
 			}
 
@@ -1402,8 +1383,32 @@ namespace IDE
 					return false;
 			}
 
-			DoPostBuild();
 		    return true;
+		}
+
+		public bool QueueProjectPostBuild(Project project, Project hotProject, IDEApp.BuildCompletedCmd completedCompileCmd, List<String> hotFileNames, CompileKind compileKind)
+		{
+			if (hotProject != null)
+				return true;
+
+			Project.Options options = gApp.GetCurProjectOptions(project);
+			if (options == null)
+			    return true;
+
+			String targetPath = null;
+			mTargetPathMap.TryGetValue(project, out targetPath);
+			if (targetPath == null)
+				return false;
+
+			switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+			{
+			case .NoCommands:
+			case .HadCommands:
+			case .Failed:
+				completedCompileCmd.mFailed = true;
+			}
+
+			return true;
 		}
 	}
 }

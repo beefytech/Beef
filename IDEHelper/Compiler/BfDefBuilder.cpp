@@ -443,17 +443,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		{
 			methodDef->mIsConcrete = true;
 			methodDef->mIsVirtual = false;
-		}
-
-		if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
-		{
-			//
-		}
-		else
-		{
-			if (methodDef->mIsConcrete)
-				Fail("Only interfaces methods can be declared as 'concrete'", methodDeclaration->mVirtualSpecifier);
-		}
+		}		
 
 		if (methodDef->mIsAbstract)
 		{
@@ -1775,24 +1765,21 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		bool doInsertNew = true;
 		if (prevRevisionTypeDef != NULL)
 		{
-			mCurTypeDef->mIsNextRevision = true;			
+			mCurTypeDef->mIsNextRevision = true;
 			bfParser->mTypeDefs.Add(prevRevisionTypeDef);
 
 			if (prevRevisionTypeDef->mDefState == BfTypeDef::DefState_AwaitingNewVersion)
 			{
-				delete prevRevisionTypeDef->mNextRevision;
+				if (prevRevisionTypeDef->mNextRevision != NULL)
+				{
+					BfLogSysM("Deleting unused nextRevision %p from prevRevision %p\n", prevRevisionTypeDef->mNextRevision, prevRevisionTypeDef);
+					delete prevRevisionTypeDef->mNextRevision;
+				}
 				prevRevisionTypeDef->mNextRevision = mCurTypeDef;
 				BF_ASSERT(mCurTypeDef->mSystem != NULL);
 				mCurActualTypeDef = prevRevisionTypeDef;
 				doInsertNew = false;
-			}
-			else
-			{
-				if (prevRevisionTypeDef->mNextRevision != NULL)
-					prevRevisionTypeDef = prevRevisionTypeDef->mNextRevision;
-
-				prevRevisionTypeDef = NULL;
-			}
+			}			
 		}
 		else
 		{
@@ -1820,8 +1807,8 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		outerTypeDef->mNestedTypes.push_back(mCurActualTypeDef);
 	}
 
-	BfLogSysM("Creating TypeDef %p Hash:%d from TypeDecl: %p Source: %p ResolvePass: %d AutoComplete:%d\n", mCurTypeDef, mSystem->mTypeDefs.GetHash(mCurTypeDef), typeDeclaration, 
-		typeDeclaration->GetSourceData(), mResolvePassData != NULL, isAutoCompleteTempType);				
+	BfLogSysM("Creating TypeDef %p Hash:%d from TypeDecl: %p Source: %p ResolvePass: %d AutoComplete:%d PrevRevision:%d\n", mCurTypeDef, mSystem->mTypeDefs.GetHash(mCurTypeDef), typeDeclaration, 
+		typeDeclaration->GetSourceData(), mResolvePassData != NULL, isAutoCompleteTempType, prevRevisionTypeDef);				
 	
 	BF_ASSERT(mCurTypeDef->mNameEx == NULL);
 	
@@ -1875,9 +1862,9 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 		if (mCurTypeDef->mFullHash == prevRevisionTypeDef->mFullHash)
 		{
-			if (!mFullRefresh)
+			if ((!mFullRefresh) && (!prevRevisionTypeDef->mForceUseNextRevision))
 			{
-				BfLogSys(bfParser->mSystem, "DefBuilder deleting typeDef with no changes %p\n", prevRevisionTypeDef);
+				BfLogSys(bfParser->mSystem, "DefBuilder deleting typeDef with no changes %p prevRevision: %p\n", mCurTypeDef, prevRevisionTypeDef);
 				prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Defined;
 				BF_ASSERT(prevRevisionTypeDef->mNextRevision == mCurTypeDef);
 				prevRevisionTypeDef->mNextRevision = NULL;
@@ -1918,9 +1905,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	BfMethodDef* dynamicCastMethod = NULL;
 	BfMethodDef* toStringMethod = NULL;
 	bool needsEqualsMethod = ((mCurTypeDef->mTypeCode == BfTypeCode_Struct) || (mCurTypeDef->mTypeCode == BfTypeCode_Enum)) && (!mCurTypeDef->mIsStatic);	
+	BfMethodDef* equalsOpMethod = NULL;
 	BfMethodDef* equalsMethod = NULL;
-	BfMethodDef* strictEqualsMethod = NULL;
-	
+	BfMethodDef* strictEqualsMethod = NULL;	
+
 	bool needsStaticInit = false;
 	for (int methodIdx = 0; methodIdx < (int)mCurTypeDef->mMethods.size(); methodIdx++)
 	{
@@ -1962,7 +1950,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 				auto ctorDeclaration = (BfConstructorDeclaration*)method->mMethodDeclaration;
 				if (method->mHasAppend)
-				{										
+				{				 						
 					mCurTypeDef->mHasAppendCtor = true;
 
 					auto methodDef = new BfMethodDef();
@@ -2038,6 +2026,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			{
 				if (method->mName == BF_METHODNAME_MARKMEMBERS_STATIC)
 					_SetMethod(staticMarkMethod, method);
+				if (method->mName == BF_METHODNAME_DEFAULT_EQUALS)
+					_SetMethod(equalsMethod, method);
+				if (method->mName == BF_METHODNAME_DEFAULT_STRICT_EQUALS)
+					_SetMethod(strictEqualsMethod, method);
 			}
 			else
 			{
@@ -2061,7 +2053,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					if ((method->mParams[0]->mTypeRef->ToString() == mCurTypeDef->mName->ToString()) &&
 						(method->mParams[1]->mTypeRef->ToString() == mCurTypeDef->mName->ToString()))
 					{
-						_SetMethod(equalsMethod, method);
+						_SetMethod(equalsOpMethod, method);
 					}
 				}
 			}			
@@ -2300,7 +2292,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 	
-	if ((needsEqualsMethod) && (equalsMethod == NULL))
+	if ((needsEqualsMethod) && (equalsMethod == NULL) && (equalsOpMethod == NULL))
 	{		
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2314,7 +2306,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 
-	if (needsEqualsMethod)
+	if ((needsEqualsMethod) && (strictEqualsMethod == NULL))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);

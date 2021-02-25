@@ -374,6 +374,50 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 	{
 		Visit((BfAstNode*)node);
 		startIdx = node->mSrcStart;
+
+		if (doWrap)
+		{			
+			bool wantWrap = false;
+
+			int spacedWordCount = 0;
+			bool inQuotes = false;
+			auto src = astNodeSrc->mSrc;
+			bool isDefinitelyCode = false;
+			bool hadNonSlash = false;
+
+			for (int i = node->mSrcStart + 1; i < node->mSrcEnd - 1; i++)
+			{
+				char c = src[i];
+				if (c != '/')
+					hadNonSlash = true;
+				if (inQuotes)
+				{
+					if (c == '\\')
+					{
+						i++;
+					}
+					else if (c == '\"')
+					{
+						inQuotes = false;
+					}
+				}
+				else if (c == '"')
+				{
+					inQuotes = true;
+				}
+				else if (c == ' ')
+				{
+					if ((isalpha((uint8)src[i - 1])) && (isalpha((uint8)src[i + 1])))
+						spacedWordCount++;
+				}
+				else if ((c == '/') && (src[i - 1] == '/') && (hadNonSlash))
+					isDefinitelyCode = true;
+			}
+
+			// If this doesn't look like a sentence then don't try to word wrap
+			if ((isDefinitelyCode) || (spacedWordCount < 4))
+				doWrap = false;
+		}
 	}
 
 	int lineEmittedChars = 0;
@@ -1803,7 +1847,7 @@ void BfPrinter::Visit(BfDeferStatement* deferStmt)
 
 	VisitChild(deferStmt->mDeferToken);
 	VisitChild(deferStmt->mColonToken);
-	VisitChild(deferStmt->mScopeToken);
+	VisitChild(deferStmt->mScopeName);
 
 	if (deferStmt->mBind != NULL)
 	{

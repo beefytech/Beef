@@ -796,6 +796,13 @@ namespace Beefy.theme.dark
                         mDragKind = .None;
                 }
 
+				if (Math.Abs(dY) < mSelfHeight * 0.21f)
+				{
+					mDragKind = .None;
+					mDragTarget = null;
+					return;
+				}
+
 				delete mCurDragEvent;
                 mCurDragEvent = new DragEvent();
                 mCurDragEvent.mX = x;

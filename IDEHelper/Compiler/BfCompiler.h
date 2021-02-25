@@ -323,6 +323,7 @@ public:
 	BfCodeGen mCodeGen;
 	String mOutputDirectory;
 	bool mCanceling;
+	bool mHasRequiredTypes;
 	bool mNeedsFullRefresh;
 	bool mFastFinish;
 	bool mHasQueuedTypeRebuilds; // Infers we had a fast finish that requires a type rebuild
@@ -352,14 +353,14 @@ public:
 	BfTypeDef* mDbgRawAllocDataTypeDef;
 	BfTypeDef* mDeferredCallTypeDef;		
 	BfTypeDef* mDelegateTypeDef;
+	BfTypeDef* mFunctionTypeDef;
 	BfTypeDef* mActionTypeDef;
 	BfTypeDef* mEnumTypeDef;
 	BfTypeDef* mStringTypeDef;
 	BfTypeDef* mStringViewTypeDef;
 	BfTypeDef* mTypeTypeDef;
 	BfTypeDef* mValueTypeTypeDef;	
-	BfTypeDef* mResultTypeDef;
-	BfTypeDef* mFunctionTypeDef;
+	BfTypeDef* mResultTypeDef;	
 	BfTypeDef* mGCTypeDef;	
 	BfTypeDef* mGenericIEnumerableTypeDef;
 	BfTypeDef* mGenericIEnumeratorTypeDef;

@@ -187,9 +187,10 @@ namespace IDE.ui
 		{
 			base.FocusForKeyboard();
 			SetFocus();
-			if (mListView.GetRoot().FindFocusedItem() == null)
+			let root = mListView.GetRoot();
+			if (root.IsOpen && root.FindFocusedItem() == null)
 			{
-				mListView.GetRoot().GetChildAtIndex(0).Focused = true;
+				root.GetChildAtIndex(0).Focused = true;
 			}
 		}
 

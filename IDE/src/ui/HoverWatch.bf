@@ -718,6 +718,14 @@ namespace IDE.ui
             var watch = useListViewItem.mWatchEntry;
             String.NewOrSet!(watch.mName, displayString);
             String.NewOrSet!(watch.mEvalStr, evalString);
+
+			if (watch.mEvalStr.StartsWith("!raw"))
+			{
+				for (int i < 4)
+					watch.mEvalStr[i] =  ' ';
+				watch.mResultType = .RawText;
+			}
+
             useListViewItem.mWatchEntry = watch;
 			if (!isLiteral)
             	useListViewItem.Label = displayString;
@@ -730,7 +738,7 @@ namespace IDE.ui
             String val = scope String();
             if (evalString.StartsWith(":", StringComparison.Ordinal))
             {
-				var showString = scope String(evalString, 1);
+				var showString = scope String(4096)..Append(evalString, 1);
 				bool isShowingDoc = showString.Contains('\x01');
 				if (!isShowingDoc)
 				{
@@ -759,11 +767,13 @@ namespace IDE.ui
 						flags |= .AllowSideEffects | .AllowCalls;
 					if (gApp.mSettings.mDebuggerSettings.mAutoEvaluateProperties)
 						flags |= .AllowProperties;
+					if (watch.mResultType == .RawText)
+						flags |= .RawStr;
 
 					DebugManager.Language language = mLanguage;
 					if (parentWatchEntry != null)
 						language = parentWatchEntry.mLanguage;
-					gApp.DebugEvaluate(null, evalString, val, -1, language, flags);
+					gApp.DebugEvaluate(null, watch.mEvalStr, val, -1, language, flags);
 				}
 				if (val == "!pending")
 				{
@@ -773,6 +783,13 @@ namespace IDE.ui
 				}
 				watch.mIsPending = false;
 			}
+
+			if (watch.mResultType == .RawText)
+			{
+				String.NewOrSet!(valueSubItem.mLabel, val);
+				return useListViewItem;
+			}
+
             var vals = scope List<StringView>(val.Split('\n'));
 
 			//if (!vals[0].IsEmpty)

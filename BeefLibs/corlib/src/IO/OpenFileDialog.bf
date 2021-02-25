@@ -119,7 +119,8 @@ namespace System.IO
 			DeleteAndNullify!(mTitle);
 			DeleteAndNullify!(mInitialDir);
 			DeleteAndNullify!(mDefaultExt);
-			DeleteAndNullify!(mFileNames);
+			DeleteContainerAndItems!(mFileNames);
+			mFileNames = null;
 			DeleteAndNullify!(mFilter);
 			mFilterIndex = 1;
 			mSupportMultiDottedExtensions = false;

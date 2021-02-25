@@ -690,6 +690,8 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				CMD_PARAM(BeConstant*, initializer);
 				CMD_PARAM(String, name);
 				CMD_PARAM(bool, isTLS);
+
+				BF_ASSERT(varType != NULL);
 				
 				auto globalVariable = mBeModule->mGlobalVariables.Alloc();
 				globalVariable->mModule = mBeModule;
@@ -1906,7 +1908,9 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(StringT<256>, name);
 			CMD_PARAM(bool, isTLS);
 			CMD_PARAM(BeConstant*, initializer);
-						
+			
+			BF_ASSERT(varType != NULL);
+
 			auto globalVariable = mBeModule->mGlobalVariables.Alloc();
 			globalVariable->mModule = mBeModule;
 			globalVariable->mType = varType;

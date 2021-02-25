@@ -120,6 +120,7 @@ enum DwEvalExpressionFlags : int16
 	DwEvalExpressionFlag_MemoryWatch = 0x80,
 	DwEvalExpressionFlag_Symbol = 0x100,
 	DwEvalExpressionFlag_StepIntoCalls = 0x200,	
+	DwEvalExpressionFlag_RawStr = 0x400
 };
 
 struct DwDisplayInfo

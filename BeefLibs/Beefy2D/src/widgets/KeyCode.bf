@@ -106,6 +106,24 @@ namespace Beefy.widgets
 
 	extension KeyCode
 	{
+		public bool IsModifier
+		{
+			get
+			{
+				switch (this)
+				{
+				case .LWin,
+					 .RWin,
+					 .Alt,
+					 .Control,
+					 .Command:
+					return true;
+				default:
+					return false;
+				}
+			}
+		}
+
 		public static Result<KeyCode> Parse(StringView str)
 		{
 			if (str.Length == 1)

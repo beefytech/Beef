@@ -239,6 +239,32 @@ namespace Tests
 				switch (methodIdx)
 				{
 				case 0:
+					Test.Assert(methodInfo.Name == "__BfCtor");
+					Test.Assert(methodInfo.IsConstructor);
+				case 1:
+					Test.Assert(methodInfo.Name == "__BfStaticCtor");
+					Test.Assert(methodInfo.IsConstructor);
+				case 2:
+					Test.Assert(methodInfo.Name == "GetA");
+					var result = methodInfo.Invoke(ca, 123).Get();
+					Test.Assert(result.Get<int>() == 1123);
+					result.Dispose();
+					result = methodInfo.Invoke(ca2, 123).Get();
+					Test.Assert(result.Get<int>() == 2123);
+					result.Dispose();
+					result = methodInfo.Invoke(.Create(ca2), .Create(123)).Get();
+					Test.Assert(result.Get<int>() == 2123);
+					result.Dispose();
+				case 3:
+					Test.Assert(methodInfo.Name == "MemberMethodA");
+					var result = methodInfo.Invoke(ca, 100, (int32)20, 3.0f).Get();
+					Test.Assert(result.Get<float>() == 123);
+					result.Dispose();
+
+					result = methodInfo.Invoke(.Create(ca), .Create(100), .Create((int32)20), .Create(3.0f)).Get();
+					Test.Assert(result.Get<float>() == 123);
+					result.Dispose();
+				case 4:
 					StructA sa = .() { mA = 1, mB = 2 };
 
 					Test.Assert(methodInfo.Name == "StaticMethodA");
@@ -291,7 +317,7 @@ namespace Tests
 					let attrC = methodInfo.GetCustomAttribute<AttrCAttribute>().Get();
 					Test.Assert(attrC.mA == 71);
 					Test.Assert(attrC.mB == 72);
-				case 1:
+				case 5:
 					Test.Assert(methodInfo.Name == "StaticMethodB");
 
 					var fieldA = typeInfo.GetField("mA").Value;
@@ -337,33 +363,6 @@ namespace Tests
 					res.Dispose();
 					fieldSAV.Dispose();
 					fieldSStrV.Dispose();
-
-				case 2:
-					Test.Assert(methodInfo.Name == "MemberMethodA");
-					var result = methodInfo.Invoke(ca, 100, (int32)20, 3.0f).Get();
-					Test.Assert(result.Get<float>() == 123);
-					result.Dispose();
-
-					result = methodInfo.Invoke(.Create(ca), .Create(100), .Create((int32)20), .Create(3.0f)).Get();
-					Test.Assert(result.Get<float>() == 123);
-					result.Dispose();
-				case 3:
-					Test.Assert(methodInfo.Name == "GetA");
-					var result = methodInfo.Invoke(ca, 123).Get();
-					Test.Assert(result.Get<int>() == 1123);
-					result.Dispose();
-					result = methodInfo.Invoke(ca2, 123).Get();
-					Test.Assert(result.Get<int>() == 2123);
-					result.Dispose();
-					result = methodInfo.Invoke(.Create(ca2), .Create(123)).Get();
-					Test.Assert(result.Get<int>() == 2123);
-					result.Dispose();
-				case 4:
-					Test.Assert(methodInfo.Name == "__BfStaticCtor");
-					Test.Assert(methodInfo.IsConstructor);
-				case 5:
-					Test.Assert(methodInfo.Name == "__BfCtor");
-					Test.Assert(methodInfo.IsConstructor);
 				case 6:
 					Test.FatalError(); // Shouldn't have any more
 				}
@@ -445,6 +444,8 @@ namespace Tests
 				switch (methodIdx)
 				{
 				case 0:
+					Test.Assert(methodInfo.Name == "__BfCtor");
+				case 1:
 					Test.Assert(methodInfo.Name == "GetA");
 
 					var result = methodInfo.Invoke(sa, 34).Get();
@@ -464,7 +465,7 @@ namespace Tests
 					result = methodInfo.Invoke(.Create(&sa), .Create(34));
 					Test.Assert(result.Get<int32>() == 1234);
 					result.Dispose();
-				case 1:
+				case 2:
 					Test.Assert(methodInfo.Name == "GetB");
 
 					var result = methodInfo.Invoke(sa, 34).Get();
@@ -489,16 +490,15 @@ namespace Tests
 					Test.Assert(sa.mB == 91);
 					result.Dispose();
 
-				case 2:
-					Test.Assert(methodInfo.Name == "MethodA0");
 				case 3:
-					Test.Assert(methodInfo.Name == "MethodA1");
+					Test.Assert(methodInfo.Name == "MethodA0");
 				case 4:
-					Test.Assert(methodInfo.Name == "__BfCtor");
+					Test.Assert(methodInfo.Name == "MethodA1");
 				case 5:
 					Test.Assert(methodInfo.Name == "__Equals");
 				case 6:
 					Test.Assert(methodInfo.Name == "__StrictEquals");
+				
 				default:
 					Test.FatalError(); // Shouldn't have any more
 				}

@@ -276,7 +276,15 @@ namespace IDE.ui
 						SetLabel(item, codeStr);
 
 						let descItem = item.GetSubItem(1);
-						String errStr = scope String(32)..Append(error.mError);
+						String errStr = scope String(32);
+						int maxLen = 4*1024;
+						if (error.mError.Length > maxLen)
+						{
+							errStr.Append(error.mError.Substring(0, maxLen));
+							errStr.Append("...");
+						}
+						else
+							errStr.Append(error.mError);
 						errStr.Replace('\n', ' ');
 
 						SetLabel(descItem, errStr);

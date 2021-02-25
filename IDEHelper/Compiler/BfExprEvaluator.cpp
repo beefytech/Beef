@@ -4248,6 +4248,14 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		mModule->PopulateType(startCheckType, BfPopulateType_BaseType);
 	}
 
+	if ((startCheckType != NULL) && (mModule->mContext->mCurTypeState != NULL))
+	{
+		// Don't allow lookups yet
+		if ((mModule->mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes) &&
+			(startCheckType == mModule->mContext->mCurTypeState->mTypeInstance))
+			return BfTypedValue();
+	}
+
 	String findName;
 	int varSkipCount = 0;
 	if (fieldName.StartsWith('@'))
@@ -4627,6 +4635,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				bool doAccessCheck = true;
 
+				if ((flags & BfLookupFieldFlag_BindOnly) != 0)
+					doAccessCheck = false;
 				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
 					doAccessCheck = false;
 
@@ -4853,7 +4863,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					}
 
 					// Check for direct auto-property access
-					if (startCheckType == mModule->mCurTypeInstance)
+					if ((startCheckType == mModule->mCurTypeInstance) && ((flags & BfLookupFieldFlag_BindOnly) == 0))
 					{
 						if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mPropDef->mFieldDeclaration))
 						{
@@ -10104,19 +10114,22 @@ void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)
 
 bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifierNode* propName)
 {
-	// We ignore errors because we go through the normal Visit(BfTypeOfExpression) if this fails, which will throw the error again
-	SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
-
 	auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef);
 	
 	BfType* type;
-	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeOfExpr->mTypeRef))
+	//
 	{
-		type = mModule->ResolveTypeRefAllowUnboundGenerics(typeOfExpr->mTypeRef, BfPopulateType_Identity);
-	}
-	else
-	{
-		type = ResolveTypeRef(typeOfExpr->mTypeRef, BfPopulateType_Identity);
+		// We ignore errors because we go through the normal Visit(BfTypeOfExpression) if this fails, which will throw the error again
+		SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
+		if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeOfExpr->mTypeRef))
+		{
+			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
+			type = mModule->ResolveTypeRefAllowUnboundGenerics(typeOfExpr->mTypeRef, BfPopulateType_Identity);
+		}
+		else
+		{
+			type = ResolveTypeRef(typeOfExpr->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_IgnoreLookupError);
+		}
 	}
 
 	if (type == NULL)
@@ -10206,10 +10219,41 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 	else if ((memberName == "MinValue") || (memberName == "MaxValue"))
 	{
 		bool isMin = memberName == "MinValue";
-				
-		BfType* checkType = typeInstance;
+		
+		BfType* checkType = type;
 		if (checkType->IsTypedPrimitive())
 			checkType = checkType->GetUnderlyingType();
+
+		if (checkType->IsGenericParam())
+		{
+			bool foundMatch = false;
+
+			auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)checkType);
+			if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
+				((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
+				foundMatch = true;			
+
+			if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+			{
+				for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+					genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+				{
+					genericParamInstance = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+					if (genericParamInstance->mExternType == type)
+					{
+						if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
+							((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
+							foundMatch = true;
+					}
+				}
+			}
+
+			if (foundMatch)
+			{
+				mResult = mModule->GetDefaultTypedValue(type, false, Beefy::BfDefaultValueKind_Undef);
+				return true;
+			}
+		}
 
 		if (checkType->IsPrimitiveType())
 		{
@@ -10257,15 +10301,15 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 				default: break;
 				}
 			}
-		}
+		}		
 		
-		if (typeInstance->IsEnum())
+		if (type->IsEnum())
 		{
-			mModule->Fail("'MinValue' cannot be used on enums with payloads", propName);			
+			mModule->Fail(StrFormat("'MinValue' cannot be used on enum with payload '%s'", mModule->TypeToString(type).c_str()), propName);
 		}
 		else 
 		{
-			mModule->Fail(StrFormat("'%s' cannot be used on type '%s'", memberName.c_str(), mModule->TypeToString(typeInstance).c_str()), propName);
+			mModule->Fail(StrFormat("'%s' cannot be used on type '%s'", memberName.c_str(), mModule->TypeToString(type).c_str()), propName);
 		}
 	}	
 	else
@@ -11923,17 +11967,18 @@ void BfExprEvaluator::VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration*
 	if (auto blockBody = BfNodeDynCast<BfBlock>(body))
 		mModule->VisitChild(blockBody);
 	else if (auto bodyExpr = BfNodeDynCast<BfExpression>(body))
-	{
+	{		
 		auto result = mModule->CreateValueFromExpression(bodyExpr);
 		if ((result) && (mModule->mCurMethodState->mClosureState != NULL) &&
 			(mModule->mCurMethodState->mClosureState->mReturnTypeInferState == BfReturnTypeInferState_Inferring))
-			mModule->mCurMethodState->mClosureState->mReturnType = result.mType;
+			mModule->mCurMethodState->mClosureState->mReturnType = result.mType;		
 	}
 	
 	while (fieldDtor != NULL)
 	{
+		mModule->mCurMethodState->mLeftBlockUncond = false;
 		mModule->VisitChild(fieldDtor->mBody);
-		fieldDtor = fieldDtor->mNextFieldDtor;
+		fieldDtor = fieldDtor->mNextFieldDtor;		
 	}
 }
 
@@ -13829,6 +13874,9 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			mModule->Fail("Too many array dimensions, consider using a jagged array.", objCreateExpr);
 		}
 
+		if (arrayType == NULL)
+			return;
+
 		if (isAppendAlloc)
 			arrayValue = BfTypedValue(mModule->AppendAllocFromType(resultType, BfIRValue(), 0, arraySize, (int)dimLengthVals.size(), isRawArrayAlloc, zeroMemory), arrayType);
 		else
@@ -14790,7 +14838,15 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 		if (unspecializedMethod == NULL)
 			unspecializedMethod = mModule->GetRawMethodInstance(curTypeInst, methodDef);
 
-		BfType* specializedReturnType = mModule->ResolveGenericType(unspecializedMethod->mReturnType, NULL, &methodMatcher.mBestMethodGenericArguments);
+		BfTypeVector* typeGenericArgs = NULL;
+		auto typeUnspecMethodInstance = unspecializedMethod;
+		if (curTypeInst->IsUnspecializedTypeVariation())
+		{
+			typeUnspecMethodInstance = mModule->GetUnspecializedMethodInstance(typeUnspecMethodInstance, true);
+			typeGenericArgs = &curTypeInst->mGenericTypeInfo->mTypeGenericArguments;
+		}	
+		
+		BfType* specializedReturnType = mModule->ResolveGenericType(typeUnspecMethodInstance->mReturnType, typeGenericArgs, &methodMatcher.mBestMethodGenericArguments);
 		if (specializedReturnType != NULL)
 			*overrideReturnType = specializedReturnType;
 	}
@@ -18711,10 +18767,10 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 	int valueIdx = -1;
 	for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 	{
-		BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
+		BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];		
+		++valueIdx;		
 		if (fieldInstance->mResolvedType->IsValuelessType())
 			continue;
-		++valueIdx;
 		auto typedVal = typedValues[valueIdx];
 		if (!typedVal)
 		{
@@ -20399,11 +20455,70 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		}
 		return;
 	}
-	
+
 	BfType* wantType = leftValue.mType;
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 		wantType = NULL; // Don't presume
 	wantType = mModule->FixIntUnknown(wantType);
+
+	if ((binaryOp == BfBinaryOp_NullCoalesce) && (leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())))
+	{
+		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();
+
+		auto rhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.rhs");
+		auto endBB = mModule->mBfIRBuilder->CreateBlock("nullc.end");
+
+		BfIRValue isNull;
+		if (leftValue.mType->IsFunction())
+			isNull = mModule->mBfIRBuilder->CreateIsNull(
+				mModule->mBfIRBuilder->CreateIntToPtr(leftValue.mValue, mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_NullPtr))));
+		else
+			isNull = mModule->mBfIRBuilder->CreateIsNull(leftValue.mValue);
+		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, endBB);
+
+		mModule->AddBasicBlock(rhsBB);
+		rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+		if (!rightValue)
+		{
+			mModule->AssertErrorState();
+			return;
+		}
+		else
+		{
+			auto rightToLeftValue = mModule->CastToValue(rightExpression, rightValue, leftValue.mType, BfCastFlags_SilentFail);
+			if (rightToLeftValue)
+			{
+				rightValue = BfTypedValue(rightToLeftValue, leftValue.mType);
+			}
+			else
+			{
+				auto leftToRightValue = mModule->CastToValue(leftExpression, leftValue, rightValue.mType, BfCastFlags_SilentFail);
+				if (leftToRightValue)
+				{
+					leftValue = BfTypedValue(leftToRightValue, rightValue.mType);
+				}
+				else
+				{
+					// Note: Annoying trigraph split for '??'
+					mModule->Fail(StrFormat("Operator '?" "?' cannot be applied to operands of type '%s' and '%s'",
+						mModule->TypeToString(leftValue.mType).c_str(), mModule->TypeToString(rightValue.mType).c_str()), opToken);
+					leftValue = mModule->GetDefaultTypedValue(rightValue.mType);
+				}
+			}
+		}
+
+		mModule->mBfIRBuilder->CreateBr(endBB);
+
+		auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
+		mModule->AddBasicBlock(endBB);
+		auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(leftValue.mType), 2);
+		mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, prevBB);
+		mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
+		mResult = BfTypedValue(phi, leftValue.mType);
+
+		return;
+	}
+	
 	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 	if ((!leftValue) || (!rightValue))
 		return;
@@ -20609,58 +20724,6 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	{
 		if (CheckConstCompare(BfGetOppositeBinaryOp(binaryOp), opToken, rightValue, leftValue))
 			return;
-	}
-
-	if ((binaryOp == BfBinaryOp_NullCoalesce) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsObject())))
-	{
-		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();
-
-		auto rhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.rhs");
-		auto endBB = mModule->mBfIRBuilder->CreateBlock("nullc.end");
-
-		auto isNull = mModule->mBfIRBuilder->CreateIsNull(leftValue.mValue);
-		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, endBB);
-
-		mModule->AddBasicBlock(rhsBB);		
-		if (!rightValue)			
-		{
-			mModule->AssertErrorState();
-			return;
-		}
-		else
-		{
-			auto rightToLeftValue = mModule->CastToValue(rightExpression, rightValue, leftValue.mType, BfCastFlags_SilentFail);
-			if (rightToLeftValue)
-			{
-				rightValue = BfTypedValue(rightToLeftValue, leftValue.mType);
-			}
-			else
-			{
-				auto leftToRightValue = mModule->CastToValue(leftExpression, leftValue, rightValue.mType, BfCastFlags_SilentFail);
-				if (leftToRightValue)
-				{
-					leftValue = BfTypedValue(leftToRightValue, rightValue.mType);
-				}
-				else
-				{
-					// Note: Annoying trigraph split for '??'
-					mModule->Fail(StrFormat("Operator '?" "?' cannot be applied to operands of type '%s' and '%s'",
-						mModule->TypeToString(leftValue.mType).c_str(), mModule->TypeToString(rightValue.mType).c_str()), opToken);					
-					leftValue = mModule->GetDefaultTypedValue(rightValue.mType);
-				}
-			}
-		}
-
-		mModule->mBfIRBuilder->CreateBr(endBB);
-
-		auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
-		mModule->AddBasicBlock(endBB);		
-		auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(leftValue.mType), 2);
-		mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, prevBB);
-		mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
-		mResult = BfTypedValue(phi, leftValue.mType);
-		
-		return;
 	}
 
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))

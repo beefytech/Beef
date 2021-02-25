@@ -1654,7 +1654,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			if (isConst)
 			{
 				BfConstResolver constResolver(this);
-				initValue = constResolver.Resolve(varDecl->mInitializer, resolvedType, BfConstResolveFlag_RemapFromStringId);
+				initValue = constResolver.Resolve(varDecl->mInitializer, resolvedType, BfConstResolveFlag_ActualizeValues);
 				if (!initValue)							
 					initValue = GetDefaultTypedValue(resolvedType);
 			}
@@ -3934,15 +3934,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		bool allowProtected = allowPrivate || TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst);
 		while (checkTypeInst != NULL)
 		{
-			auto checkTypeDef = checkTypeInst->mTypeDef;
-
-			checkTypeDef->PopulateMemberSets();
-			BfMemberSetEntry* entry = NULL;
-			BfMethodDef* dtorMethodDef = NULL;
-			checkTypeDef->mMethodSet.TryGetWith(String("~this"), &entry);
-			if (entry != NULL)
-				dtorMethodDef = (BfMethodDef*)entry->mMemberDef;
-
+			auto dtorMethodDef = checkTypeInst->mTypeDef->GetMethodByName("~this");
 			if (dtorMethodDef)
 			{
 				if (!CheckProtection(dtorMethodDef->mProtection, checkTypeInst->mTypeDef, allowProtected, allowPrivate))
@@ -6734,7 +6726,13 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 
 	if ((scope == mCurMethodState->mCurScope) && (scope->mCloseNode == NULL))
 	{
-		Warn(0, "This defer will immediately execute. Consider specifying a wider scope target such as 'defer::'", deferStmt->mDeferToken);
+		auto parser = deferStmt->GetParser();
+		if ((parser != NULL) && (parser->mFileName.Contains('|')))
+		{
+			// Is emitted
+		}
+		else
+			Warn(0, "This defer will immediately execute. Consider specifying a wider scope target such as 'defer::'", deferStmt->mDeferToken);
 	}
 
 	if (auto block = BfNodeDynCast<BfBlock>(deferStmt->mTargetNode))
