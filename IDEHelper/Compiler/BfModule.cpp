@@ -16867,6 +16867,11 @@ void BfModule::EmitEnumToStringBody()
 		if (fieldInstance.mConstIdx == -1)
 			continue;
 
+		// Only allow compact 'ValA, ValB' enum declaration fields through
+		auto fieldDecl = fieldInstance.GetFieldDef()->mFieldDeclaration;
+		if ((fieldDecl == NULL) || (fieldDecl->mTypeRef != NULL))
+			continue;
+
 		auto constant = mCurTypeInstance->mConstHolder->GetConstantById(fieldInstance.mConstIdx);
 		if (!handledCases.TryAdd(constant->mInt64, NULL))
 		{
