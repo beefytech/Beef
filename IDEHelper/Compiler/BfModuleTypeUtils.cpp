@@ -3590,26 +3590,34 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, field);
 				
 				BfType* resolvedFieldType = NULL;
-
+				
 				if (field->IsEnumCaseEntry())
 				{
-					fieldInstance->mDataIdx = -(enumCaseEntryIdx++) - 1;
-					resolvedFieldType = typeInstance;
+					if (typeInstance->IsEnum())
+					{
+						fieldInstance->mDataIdx = -(enumCaseEntryIdx++) - 1;
+						resolvedFieldType = typeInstance;
 
-					BfType* payloadType = NULL;
-					if (field->mTypeRef != NULL)
-						payloadType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoResolveGenericParam);
-					if (payloadType == NULL)
-					{
-						if (!typeInstance->IsTypedPrimitive())
-							payloadType = CreateTupleType(BfTypeVector(), Array<String>());
+						BfType* payloadType = NULL;
+						if (field->mTypeRef != NULL)
+							payloadType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoResolveGenericParam);
+						if (payloadType == NULL)
+						{
+							if (!typeInstance->IsTypedPrimitive())
+								payloadType = CreateTupleType(BfTypeVector(), Array<String>());
+						}
+						if (payloadType != NULL)
+						{
+							AddDependency(payloadType, typeInstance, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
+							BF_ASSERT(payloadType->IsTuple());
+							resolvedFieldType = payloadType;
+							fieldInstance->mIsEnumPayloadCase = true;
+						}
 					}
-					if (payloadType != NULL)
+					else
 					{
-						AddDependency(payloadType, typeInstance, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
-						BF_ASSERT(payloadType->IsTuple());
-						resolvedFieldType = payloadType;
-						fieldInstance->mIsEnumPayloadCase = true;
+						Fail("Enum cases can only be declared within enum types", field->GetRefNode(), true);
+						resolvedFieldType = typeInstance;
 					}
 				}
 				else if ((field->mTypeRef != NULL) && ((field->mTypeRef->IsExact<BfVarTypeReference>()) || (field->mTypeRef->IsExact<BfLetTypeReference>()) || (field->mTypeRef->IsExact<BfExprModTypeRef>())))
