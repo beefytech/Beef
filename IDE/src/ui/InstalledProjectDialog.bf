@@ -69,7 +69,7 @@ namespace IDE.ui
 			{
 				InstalledProject installedProject = new .();
 				installedProject.mName = new String(registryEntry.mProjName);
-				switch (registryEntry.mLocation.mVerSpec)
+				switch (registryEntry.mLocation)
 				{
 				case .Path(let path):
 					installedProject.mPath = new String();
@@ -176,13 +176,12 @@ namespace IDE.ui
 
 				let entry = mFilteredList[idx];
 
-				let verSpec = new VerSpecRecord();
-				verSpec.SetSemVer("*");
+				VerSpec verSpec = .SemVer(new .("*"));
+				defer verSpec.Dispose();
 
 				let project = gApp.mProjectPanel.ImportProject(entry.mPath, verSpec);
 				if (project == null)
 				{
-					delete verSpec;
 					return;
 				}
 				if (project.mProjectName != entry.mName)
@@ -195,7 +194,7 @@ namespace IDE.ui
 					{
 						if (projectSpec.mProjectName == project.mProjectName)
 						{
-							projectSpec.mVerSpec.SetPath(relProjectPath);
+							projectSpec.mVerSpec = .Path(new String(relProjectPath));
 						}
 					}
 				}

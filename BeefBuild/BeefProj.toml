@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {Beefy2D = "*", corlib = "*"}
+Dependencies = {Beefy2D = "*", corlib = "*", libgit2 = "*"}
 
 [Project]
 Name = "BeefBuild"
@@ -74,6 +74,9 @@ DebugCommandArguments = "-proddir=..\\..\\BeefPerf -config=Release"
 DebugWorkingDirectory = "$(ProjectDir)\\dist"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 PreprocessorMacros = ["RELEASE", "CLI"]
+
+[Configs.Release.Win64z]
+BuildKind = "StaticLib"
 
 [Configs.Debug2.Win32]
 TargetName = ""

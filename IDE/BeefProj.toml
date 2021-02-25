@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {Beefy2D = "*", corlib = "*", curl = "*"}
+Dependencies = {Beefy2D = "*", corlib = "*", curl = "*", libgit2 = "*"}
 
 [Project]
 Name = "IDE"

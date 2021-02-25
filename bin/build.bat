@@ -47,11 +47,11 @@ CALL bin/msbuild.bat BeefBoot\BeefBoot.vcxproj /p:Configuration=Release /p:Platf
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 @ECHO Building BeefBuild_bootd
-IDE\dist\BeefBoot_d.exe --out="IDE\dist\BeefBuild_bootd.exe" --src=IDE\src --src=BeefBuild\src --src=BeefLibs\corlib\src --src=BeefLibs\Beefy2D\src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDE\dist\Beef042RT64_d.lib IDE\dist\IDEHelper64_d.lib IDE\dist\BeefySysLib64_d.lib"
+IDE\dist\BeefBoot_d.exe --out="IDE\dist\BeefBuild_bootd.exe" --src=IDE\src --src=BeefBuild\src --src=BeefLibs\corlib\src --src=BeefLibs\Beefy2D\src --src=BeefLibs\libgit2\src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDE\dist\Beef042RT64_d.lib IDE\dist\IDEHelper64_d.lib IDE\dist\BeefySysLib64_d.lib"
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 @ECHO Building BeefBuild_boot
-IDE\dist\BeefBoot.exe --out="IDE\dist\BeefBuild_boot.exe" --src=IDE\src --src=BeefBuild\src --src=BeefLibs\corlib\src --src=BeefLibs\Beefy2D\src --define=CLI --define=RELEASE --startup=BeefBuild.Program --linkparams="Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDE\dist\Beef042RT64.lib IDE\dist\IDEHelper64.lib IDE\dist\BeefySysLib64.lib"
+IDE\dist\BeefBoot.exe --out="IDE\dist\BeefBuild_boot.exe" --src=IDE\src --src=BeefBuild\src --src=BeefLibs\corlib\src --src=BeefLibs\Beefy2D\src --src=BeefLibs\libgit2\src --define=CLI --define=RELEASE --startup=BeefBuild.Program --linkparams="Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDE\dist\Beef042RT64.lib IDE\dist\IDEHelper64.lib IDE\dist\BeefySysLib64.lib"
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 @ECHO Building BeefBuild_d

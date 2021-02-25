@@ -84,7 +84,13 @@ namespace IDE.ui
                 if (project != null)
                 {
 					hasChanged = project.mHasChanged;
-					if (project.mLocked)
+					if (project.mDeferState != .None)
+					{
+						//g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(-3), 0);
+						g.DrawString(scope String()..Append('.', 1 + (mUpdateCnt / 20) % 3), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(3), 0);
+						changeX += GS!(12);
+					}
+					else if (project.mLocked)
 					{
 						g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(-3), 0);
 						changeX += GS!(12);
@@ -1986,7 +1992,7 @@ namespace IDE.ui
             }
         }
 
-		public Project ImportProject(String filePath, VerSpecRecord verSpec = null)
+		public Project ImportProject(String filePath, VerSpec verSpec = .None)
 		{
 			if (!File.Exists(filePath))
 			{

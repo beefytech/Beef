@@ -134,6 +134,14 @@ namespace IDE
             Og,            
         }
 
+		public enum ProjectLoadState
+		{
+			None,
+			Loaded,
+			ReadyToLoad,
+			Preparing
+		}
+
         public class ConfigSelection : IHashable, IEquatable
         {
             public bool mEnabled = true;
@@ -368,7 +376,29 @@ namespace IDE
 		public class ProjectSpec
 		{
 			public String mProjectName ~ delete _;
-			public VerSpecRecord mVerSpec ~ delete _;
+			public VerSpec mVerSpec ~ _.Dispose();
+		}
+
+		public class Lock
+		{
+			public enum Location
+			{
+				case Cache;
+				case Local(String path);
+
+				public void Dispose()
+				{
+					switch (this)
+					{
+					case .Cache:
+					case .Local(let path):
+						delete path;
+					}
+				}
+			}
+
+			public String mVersion ~ delete _;
+			public Location mLocation ~ _.Dispose(); 
 		}
 
 		public Monitor mMonitor = new Monitor() ~ delete _;
@@ -378,6 +408,7 @@ namespace IDE
         public List<Project> mProjects = new List<Project>() ~ DeleteContainerAndItems!(_);
 		public List<ProjectSpec> mProjectSpecs = new .() ~ DeleteContainerAndItems!(_);
 		public Dictionary<String, Project> mProjectNameMap = new .() ~ DeleteDictionaryAndKeys!(_);
+		public Dictionary<String, Lock> mProjectLockMap = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
         public Project mStartupProject;
 		public bool mLoading;
 		public bool mNeedsCreate;
@@ -387,6 +418,7 @@ namespace IDE
         public List<CompileInstance> mCompileInstanceList = new List<CompileInstance>() ~ DeleteContainerAndItems!(_); // First item is primary compile, secondaries are hot reloads
 		public List<String> mPlatforms = new List<String>() ~ DeleteContainerAndItems!(_);
 		public bool mIsDebugSession;
+		public ProjectLoadState mProjectLoadState;
 
 		public int32 HotCompileIdx
 		{

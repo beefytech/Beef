@@ -1,6 +1,7 @@
 FileVersion = 1
-Projects = {BeefBuild = {Path = "."}, corlib = "*", Beefy2D = {Path = "../BeefLibs/Beefy2D"}, IDEHelper = {Path = "../IDEHelper"}, Debugger64 = {Path = "../Debugger64"}, BeefySysLib = {Path = "../BeefySysLib"}}
+Projects = {BeefBuild = {Path = "."}, corlib = "*", Beefy2D = {Path = "../BeefLibs/Beefy2D"}, IDEHelper = {Path = "../IDEHelper"}, Debugger64 = {Path = "../Debugger64"}, BeefySysLib = {Path = "../BeefySysLib"}, libgit2 = "*"}
 Unlocked = ["corlib"]
+ExtraPlatforms = ["Linux64"]
 
 [Workspace]
 StartupProject = "BeefBuild"
