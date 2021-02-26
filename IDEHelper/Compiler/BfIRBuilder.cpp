@@ -177,6 +177,11 @@ USING_NS_BF;
 	{ \
 		return GetUndefConstValue(MapType(mModule->GetPrimitiveType(BfTypeCode_Boolean))); \
 	} \
+	if ((constLHS->mTypeCode == BfTypeCode_NullPtr) || (constRHS->mTypeCode == BfTypeCode_NullPtr)) \
+	{ \
+		bool val = constLHS->mTypeCode OP constRHS->mTypeCode; \
+		return CreateConst(BfTypeCode_Boolean, val ? (uint64)1 : (uint64)0); \
+	} \
 	if ((constLHS->mTypeCode < BfTypeCode_Length) && (constRHS->mTypeCode < BfTypeCode_Length)) \
 	{ \
 		BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
