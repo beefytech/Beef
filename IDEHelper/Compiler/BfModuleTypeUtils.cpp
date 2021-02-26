@@ -1312,9 +1312,8 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		case BfTypeCode_Var:
 		case BfTypeCode_Let:
 		{
-			auto objType = mContext->mBfObjectType;
-			primitiveType->mSize = objType->mSize;
-			primitiveType->mAlign = objType->mAlign;
+			primitiveType->mSize = mSystem->mPtrSize;
+			primitiveType->mAlign = mSystem->mPtrSize;			
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
 		}
 		return;
@@ -1415,7 +1414,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		{
 			if (typeInstance->mTypeDef == mCompiler->mBfObjectTypeDef)
 				mContext->mBfObjectType = typeInstance;
-			else
+			else if (mCompiler->mBfObjectTypeDef != NULL)
 				ResolveTypeDef(mCompiler->mBfObjectTypeDef);
 		}
 

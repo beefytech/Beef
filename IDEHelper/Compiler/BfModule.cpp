@@ -2567,7 +2567,8 @@ void BfModule::UpdateExprSrcPos(BfAstNode* astNode, BfSrcPosFlags flags)
 
 void BfModule::UseDefaultSrcPos(BfSrcPosFlags flags, int debugLocOffset)
 {
-	UpdateSrcPos(mCompiler->mBfObjectTypeDef->mTypeDeclaration, flags, debugLocOffset);
+	if (mCompiler->mBfObjectTypeDef != NULL)
+		UpdateSrcPos(mCompiler->mBfObjectTypeDef->mTypeDeclaration, flags, debugLocOffset);
 	SetIllegalSrcPos();
 }
 
@@ -19524,7 +19525,9 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		mBfIRBuilder->ClearDebugLocation();
 		PopulateType(mCurTypeInstance, BfPopulateType_Data);
 		auto thisVal = GetThis();
-		int prevSize = mContext->mBfObjectType->mInstSize;		
+		int prevSize = 0;
+		if (mContext->mBfObjectType != NULL)
+			prevSize = mContext->mBfObjectType->mInstSize;
 		int curSize = mCurTypeInstance->mInstSize;
 		if (curSize > prevSize)
 		{

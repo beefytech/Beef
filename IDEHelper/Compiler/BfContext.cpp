@@ -2723,8 +2723,10 @@ void BfContext::RemoveInvalidWorkItems()
 }
 
 void BfContext::RemapObject()
-{
-	
+{	
+	if (mCompiler->mBfObjectTypeDef == NULL)
+		return;
+
 	// There are several types that get their LLVM type mapped to Object, so make sure to remap that 
 	//  for when Object itself gets recreated
 		
