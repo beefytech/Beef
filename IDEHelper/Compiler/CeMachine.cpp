@@ -3574,18 +3574,22 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(int8));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int8*)ptr);
 		case BfTypeCode_UInt8:
+		case BfTypeCode_Boolean:
+		case BfTypeCode_Char8:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint8));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(uint8*)ptr);
 		case BfTypeCode_Int16:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(int16));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int16*)ptr);
 		case BfTypeCode_UInt16:
+		case BfTypeCode_Char16:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint16));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(uint16*)ptr);
 		case BfTypeCode_Int32:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(int32));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int32*)ptr);
 		case BfTypeCode_UInt32:
+		case BfTypeCode_Char32:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint32));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, (uint64) * (uint32*)ptr);
 		case BfTypeCode_Int64:
