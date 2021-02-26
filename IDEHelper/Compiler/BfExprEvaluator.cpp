@@ -7259,6 +7259,20 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	auto func = moduleMethodInstance.mFunc;	
 	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs);	
 
+	// This gets triggered for non-sret (ie: comptime) composite returns so they aren't considered readonly
+	if ((callResult.mKind == BfTypedValueKind_Value) && (!callResult.mValue.IsConst()) && 
+		(!callResult.mType->IsValuelessType()) && (callResult.mType->IsComposite()) && (!methodInstance->GetLoweredReturnType()))
+	{
+		bool makeAddressable = true;
+		auto typeInstance = callResult.mType->ToTypeInstance();
+		if ((typeInstance != NULL) && (typeInstance->mHasUnderlyingArray))
+			makeAddressable = false;
+		if (makeAddressable)
+		{
+			callResult = mModule->MakeAddressable(callResult, true);
+		}
+	}
+
 	if (argCascades.mSize == 1)
 	{
 		if (argCascade == NULL)
