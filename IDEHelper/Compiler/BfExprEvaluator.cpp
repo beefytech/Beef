@@ -18064,8 +18064,10 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				
 				leftValue = mModule->LoadValue(leftValue);
 
-				if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(assignExpr->mOpToken, assignExpr->mLeft, assignExpr->mRight, leftValue, leftValue.mType)))
+				if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(assignExpr->mOpToken, assignExpr->mLeft, assignExpr->mRight, leftValue, leftValue.mType, &ptr)))
+				{
 					return;
+				}
 
 				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, flags, leftValue, rightValue);
 			}
@@ -20486,7 +20488,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		wantType = NULL; // Don't presume
 	wantType = mModule->FixIntUnknown(wantType);
 
-	if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(opToken, leftExpression, rightExpression, leftValue, wantType)))
+	if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(opToken, leftExpression, rightExpression, leftValue, wantType, NULL)))
 		return;
 		
 	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
@@ -20496,7 +20498,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue, rightValue);
 }
 
-bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, BfExpression* leftExpression, BfExpression* rightExpression, BfTypedValue leftValue, BfType* wantType)
+bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, BfExpression* leftExpression, BfExpression* rightExpression, BfTypedValue leftValue, BfType* wantType, BfTypedValue* assignTo)
 {
 	if ((leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())))
 	{
@@ -20514,13 +20516,17 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, endBB);
 
 		mModule->AddBasicBlock(rhsBB);
-		auto rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+		BfTypedValue rightValue;
+		if (assignTo != NULL)
+			rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags)));
+		else
+			rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 		if (!rightValue)
 		{
 			mModule->AssertErrorState();
 			return true;
 		}
-		else
+		else if (assignTo == NULL)
 		{
 			auto rightToLeftValue = mModule->CastToValue(rightExpression, rightValue, leftValue.mType, BfCastFlags_SilentFail);
 			if (rightToLeftValue)
@@ -20544,14 +20550,25 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 			}
 		}
 
+		if (assignTo != NULL)
+			mModule->mBfIRBuilder->CreateStore(rightValue.mValue, assignTo->mValue);
+
 		mModule->mBfIRBuilder->CreateBr(endBB);
 
 		auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
 		mModule->AddBasicBlock(endBB);
-		auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(leftValue.mType), 2);
-		mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, prevBB);
-		mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
-		mResult = BfTypedValue(phi, leftValue.mType);
+
+		if (assignTo != NULL)
+		{			
+			mResult = *assignTo;
+		}
+		else
+		{
+			auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(leftValue.mType), 2);
+			mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, prevBB);
+			mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
+			mResult = BfTypedValue(phi, leftValue.mType);
+		}
 
 		return true;
 	}
