@@ -1161,7 +1161,14 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 			if (mDebugTarget->mTargetBinary->mBfTypesInfoAddr <= 0)
 			{
 				mDebugTarget->mTargetBinary->ParseSymbolData();				
-				auto entry = mDebugTarget->mTargetBinary->mSymbolNameMap.Find("?sTypes@Type@System@bf@@2PEAPEAV123@A");
+				auto entry = mDebugTarget->mTargetBinary->mSymbolNameMap.Find(
+#ifdef BF_DBG_64
+					"?sTypes@Type@System@bf@@2PEAPEAV123@A"
+#else
+					"?sTypes@Type@System@bf@@2PAPAV123@A"
+#endif
+					);
+				
 				if (entry)
 					mDebugTarget->mTargetBinary->mBfTypesInfoAddr = entry->mValue->mAddress;
 			}
@@ -1307,18 +1314,25 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		int32 mInheritanceId;
 		int32 mInheritanceCount;		
 
-		/*uint8 mInterfaceSlot;
+		uint8 mInterfaceSlot;
 		uint8 mInterfaceCount;
+		int16 mInterfaceMethodCount;
 		int16 mMethodDataCount;
 		int16 mPropertyDataCount;
 		int16 mFieldDataCount;		
+
+#ifdef BF_DBG_32
+		int16 mPadding1;
+#else
+		int8 mPadding1[6];
+#endif
 
 		addr_target mInterfaceDataPtr;
 		addr_target mInterfaceMethodTable;
 		addr_target mMethodDataPtr;
 		addr_target mPropertyDataPtr;
 		addr_target mFieldDataPtr;
-		addr_target mCustomAttrDataPtr;*/
+		addr_target mCustomAttrDataPtr;
 	};
 
 	struct _SpecializedGenericType : _TypeInstance
