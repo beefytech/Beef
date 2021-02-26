@@ -17960,6 +17960,11 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 		if (deferEvalChecker.mNeedsDeferEval)
 			deferBinop = true;		
 
+		if (binaryOp == BfBinaryOp_NullCoalesce)
+		{
+			deferBinop = true;
+		}
+
 		if (!deferBinop)
 		{
 			auto expectedType = ptr.mType;
@@ -18040,8 +18045,12 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				auto flags = BfBinOpFlag_ForceLeftType;
 				if (deferBinop)				
 					flags = (BfBinOpFlags)(flags | BfBinOpFlag_DeferRight);				
-
+				
 				leftValue = mModule->LoadValue(leftValue);
+
+				if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(assignExpr->mOpToken, assignExpr->mLeft, assignExpr->mRight, leftValue, leftValue.mType)))
+					return;
+
 				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, flags, leftValue, rightValue);
 			}
 		}
@@ -20461,7 +20470,19 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		wantType = NULL; // Don't presume
 	wantType = mModule->FixIntUnknown(wantType);
 
-	if ((binaryOp == BfBinaryOp_NullCoalesce) && (leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())))
+	if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(opToken, leftExpression, rightExpression, leftValue, wantType)))
+		return;
+		
+	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+	if ((!leftValue) || (!rightValue))
+		return;
+
+	PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue, rightValue);
+}
+
+bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, BfExpression* leftExpression, BfExpression* rightExpression, BfTypedValue leftValue, BfType* wantType)
+{
+	if ((leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())))
 	{
 		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();
 
@@ -20477,11 +20498,11 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, endBB);
 
 		mModule->AddBasicBlock(rhsBB);
-		rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+		auto rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 		if (!rightValue)
 		{
 			mModule->AssertErrorState();
-			return;
+			return true;
 		}
 		else
 		{
@@ -20516,14 +20537,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
 		mResult = BfTypedValue(phi, leftValue.mType);
 
-		return;
+		return true;
 	}
-	
-	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
-	if ((!leftValue) || (!rightValue))
-		return;
 
-	PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue, rightValue);
+	return false;
 }
 
 void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExpression* rightExpression, BfBinaryOp binaryOp, BfTokenNode* opToken, BfBinOpFlags flags)
