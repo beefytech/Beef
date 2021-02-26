@@ -3668,8 +3668,10 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 		else
 		{
 			BfTypedValueKind kind;
-			if ((varDecl->mResolvedType->IsComposite()) && (varDecl->IsParam()) && (mModule->mCurMethodState->mMixinState == NULL))
+			if ((varDecl->mResolvedType->IsComposite()) && (varDecl->mValue.IsArg()))
+			{
 				kind = varDecl->mIsReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr;
+			}
 			else
 				kind = BfTypedValueKind_Value;
 			localResult = BfTypedValue(varDecl->mValue, varDecl->mResolvedType, kind);
