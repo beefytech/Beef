@@ -3574,18 +3574,22 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(int8));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int8*)ptr);
 		case BfTypeCode_UInt8:
+		case BfTypeCode_Boolean:
+		case BfTypeCode_Char8:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint8));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(uint8*)ptr);
 		case BfTypeCode_Int16:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(int16));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int16*)ptr);
 		case BfTypeCode_UInt16:
+		case BfTypeCode_Char16:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint16));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(uint16*)ptr);
 		case BfTypeCode_Int32:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(int32));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int32*)ptr);
 		case BfTypeCode_UInt32:
+		case BfTypeCode_Char32:
 			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint32));
 			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, (uint64) * (uint32*)ptr);
 		case BfTypeCode_Int64:
@@ -3606,10 +3610,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 	if (bfType->IsTypeInstance())
 	{
 		auto typeInst = bfType->ToTypeInstance();
-
-		if (typeInst->mIsUnion)
-			return BfIRValue();
-
+		
 		uint8* instData = ptr;
 		// 		if ((typeInst->IsObject()) && (!isBaseType))
 		// 		{
@@ -3741,35 +3742,43 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			fieldVals.Add(result);
 		}
 		
-		for (int fieldIdx = 0; fieldIdx < typeInst->mFieldInstances.size(); fieldIdx++)
+		if (typeInst->mIsUnion)
 		{
-			auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
-			if (fieldInstance.mDataOffset < 0)
-				continue;
-
-			if ((fieldInstance.mDataOffset == 0) && (typeInst == mCeMachine->mCompiler->mContext->mBfObjectType))
+			auto unionInnerType = typeInst->GetUnionInnerType();
+			fieldVals.Add(CreateConstant(module, ptr, unionInnerType, outType));						
+		}
+		else
+		{
+			for (int fieldIdx = 0; fieldIdx < typeInst->mFieldInstances.size(); fieldIdx++)
 			{
-				auto vdataPtr = module->GetClassVDataPtr(typeInst);
-				if (fieldInstance.mResolvedType->IsInteger())
-					fieldVals.Add(irBuilder->CreatePtrToInt(vdataPtr, ((BfPrimitiveType*)fieldInstance.mResolvedType)->mTypeDef->mTypeCode));
+				auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
+				if (fieldInstance.mDataOffset < 0)
+					continue;
+
+				if ((fieldInstance.mDataOffset == 0) && (typeInst == mCeMachine->mCompiler->mContext->mBfObjectType))
+				{
+					auto vdataPtr = module->GetClassVDataPtr(typeInst);
+					if (fieldInstance.mResolvedType->IsInteger())
+						fieldVals.Add(irBuilder->CreatePtrToInt(vdataPtr, ((BfPrimitiveType*)fieldInstance.mResolvedType)->mTypeDef->mTypeCode));
+					else
+						fieldVals.Add(vdataPtr);
+					continue;
+				}
+
+				auto result = CreateConstant(module, instData + fieldInstance.mDataOffset, fieldInstance.mResolvedType);
+				if (!result)
+					return BfIRValue();
+
+				if (fieldInstance.mDataIdx == fieldVals.mSize)
+				{
+					fieldVals.Add(result);
+				}
 				else
-					fieldVals.Add(vdataPtr);				
-				continue;
-			}
-
-			auto result = CreateConstant(module, instData + fieldInstance.mDataOffset, fieldInstance.mResolvedType);
-			if (!result)
-				return BfIRValue();
-
-			if (fieldInstance.mDataIdx == fieldVals.mSize)
-			{
-				fieldVals.Add(result);				
-			}
-			else
-			{
-				while (fieldInstance.mDataIdx >= fieldVals.mSize)
-					fieldVals.Add(BfIRValue());
-				fieldVals[fieldInstance.mDataIdx] = result;				
+				{
+					while (fieldInstance.mDataIdx >= fieldVals.mSize)
+						fieldVals.Add(BfIRValue());
+					fieldVals[fieldInstance.mDataIdx] = result;
+				}
 			}
 		}
 				

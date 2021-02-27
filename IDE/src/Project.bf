@@ -1266,16 +1266,32 @@ namespace IDE
 
 		public class Dependency
 		{
-			public VerSpecRecord mVerSpec ~ delete _;
+			public VerSpec mVerSpec ~ _.Dispose();
 			public String mProjectName ~ delete _;
 		}
-        
+
+		public enum DeferState
+		{
+			None,
+			ReadyToLoad,
+			Pending,
+			Searching
+		}
+
+		public class VerReference
+		{
+			public String mSrcProjectName ~ delete _;
+			public VerSpec mVerSpec ~ _.Dispose();
+		}
+
 		public Monitor mMonitor = new Monitor() ~ delete _;
         public String mNamespace = new String() ~ delete _;
         public String mProjectDir = new String() ~ delete _;
         public String mProjectName = new String() ~ delete _;
         public String mProjectPath = new String() ~ delete _;
-		public bool mLoadDeferred;
+		public DeferState mDeferState;
+		public List<VerReference> mVerReferences = new .() ~ DeleteContainerAndItems!(_);
+
         //public String mLastImportDir = new String() ~ delete _;
         public bool mHasChanged;
         public bool mNeedsTargetRebuild;
@@ -1412,15 +1428,20 @@ namespace IDE
 
 		public void DeferLoad(StringView path)
 		{
-			mProjectPath.Set(path);
-			mLoadDeferred = true;
+			if (!path.IsEmpty)
+			{
+				mProjectPath.Set(path);
+				mDeferState = .ReadyToLoad;
+			}
+			else
+				mDeferState = .Pending;
 		}
 
         public bool Load(StringView path)
         {
 			scope AutoBeefPerf("Project.Load");
 
-			mLoadDeferred = false;
+			mDeferState = .None;
 
             mLastGeneratedResVer = 0;
             mCurResVer = 0;
@@ -1546,7 +1567,7 @@ namespace IDE
 			{
 				var dep = mDependencies[0];
 				if ((dep.mProjectName == "corlib") &&
-					(dep.mVerSpec.mVerSpec case .SemVer(let semVer)) &&
+					(dep.mVerSpec case .SemVer(let semVer)) &&
 					(semVer.mVersion == "*"))
 				{
 					isDefaultDependencies = true;
@@ -1885,8 +1906,7 @@ namespace IDE
 			{
 				var dep = new Project.Dependency();
 				dep.mProjectName = new .("corlib");
-				dep.mVerSpec = new .();
-				dep.mVerSpec.SetSemVer("*");
+				dep.mVerSpec = .SemVer(new .("*"));
 				mDependencies.Add(dep);
 			}
 			else
@@ -1896,7 +1916,6 @@ namespace IDE
 					var dep = new Dependency();
 					defer { delete dep; }
 
-					dep.mVerSpec = new VerSpecRecord();
 					if (dep.mVerSpec.Parse(data) case .Err)
 					{
 						var err = scope String();

@@ -137,7 +137,7 @@ namespace IDE
     public class IDEApp : BFApp
     {
 		public static String sRTVersionStr = "042";
-		public const String cVersion = "0.43.0";
+		public const String cVersion = "0.43.1";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -234,6 +234,7 @@ namespace IDE
 		public BFWindow.ShowKind mRequestedShowKind;
         public WakaTime mWakaTime ~ delete _;
 
+		public PackMan mPackMan = new PackMan() ~ delete _;
 		public Settings mSettings = new Settings() ~ delete _;
         public Workspace mWorkspace = new Workspace() ~ delete _;
         public FileWatcher mFileWatcher = new FileWatcher() ~ delete _;
@@ -2216,7 +2217,7 @@ namespace IDE
 			}
         }
 
-        public void AddNewProjectToWorkspace(Project project, VerSpecRecord verSpec = null)
+        public void AddNewProjectToWorkspace(Project project, VerSpec verSpec = .None)
         {
             AddProjectToWorkspace(project);
             mWorkspace.SetChanged();
@@ -2237,21 +2238,19 @@ namespace IDE
 
 			var projectSpec = new Workspace.ProjectSpec();
 			projectSpec.mProjectName = new .(project.mProjectName);
-			if (verSpec != null)
+			if (verSpec != .None)
 			{
 				projectSpec.mVerSpec = verSpec;
 			}
 			else
 			{
-				projectSpec.mVerSpec = new .();
-				projectSpec.mVerSpec.SetPath(relPath);
+				projectSpec.mVerSpec = .Path(new String(relPath));
 			}
 			mWorkspace.mProjectSpecs.Add(projectSpec);
 
 			var dep = new Project.Dependency();
 			dep.mProjectName = new .("corlib");
-			dep.mVerSpec = new .();
-			dep.mVerSpec.SetSemVer("*");
+			dep.mVerSpec = .SemVer(new .("*"));
 			project.mDependencies.Add(dep);
         }
 
@@ -2508,12 +2507,16 @@ namespace IDE
 				for (int projectIdx = 0; projectIdx < mWorkspace.mProjects.Count; projectIdx++)
 				{
 					var project = mWorkspace.mProjects[projectIdx];
-					if (project.mLoadDeferred)
+					if ((project.mDeferState == .ReadyToLoad) || (project.mDeferState == .Pending))
 					{
 						hadLoad = true;
 
 						var projectPath = project.mProjectPath;
-						if (!project.Load(projectPath))
+						if (project.mDeferState == .Pending)
+						{
+							project.mDeferState = .Searching;
+						}
+						else if (!project.Load(projectPath))
 						{
 							OutputErrorLine("Failed to load project '{0}' from '{1}'", project.mProjectName, projectPath);
 							LoadFailed();
@@ -2621,25 +2624,23 @@ namespace IDE
 					
 					project.FinishCreate(false);
 
-					var verSpec = new VerSpecRecord();
-					verSpec.SetSemVer("*");
+					VerSpec verSpec = .SemVer(new .("*"));
+					defer verSpec.Dispose();
 
 					switch (AddProject("corlib", verSpec))
 					{
 					case .Ok(let libProject):
 						var dep = new Project.Dependency();
 						dep.mProjectName = new String("corlib");
-						dep.mVerSpec = verSpec;
+						dep.mVerSpec = verSpec.Duplicate();
 						project.mDependencies.Add(dep);
 					default:
-						delete verSpec;
 					}
 				}
 
 				var projSpec = new Workspace.ProjectSpec();
 				projSpec.mProjectName = new String(project.mProjectName);
-				projSpec.mVerSpec = new VerSpecRecord();
-				projSpec.mVerSpec.SetPath(".");
+				projSpec.mVerSpec = .Path(new String("."));
 				mWorkspace.mProjectSpecs.Add(projSpec);
 
                 mWorkspace.mStartupProject = project;
@@ -2696,7 +2697,6 @@ namespace IDE
 					{
 						var projSpec = new Workspace.ProjectSpec();
 						projSpec.mProjectName = new String(projectName);
-						projSpec.mVerSpec = new VerSpecRecord();
 						mWorkspace.mProjectSpecs.Add(projSpec);
 
 						if (projSpec.mVerSpec.Parse(data) case .Err)
@@ -2785,15 +2785,15 @@ namespace IDE
 			NotFound
 		}
 
-		public Result<Project, ProjectAddError> AddProject(StringView projectName, VerSpecRecord verSpecRecord)
+		public Result<Project, ProjectAddError> AddProject(StringView projectName, VerSpec verSpec)
 		{
-			VerSpecRecord useVerSpecRecord = verSpecRecord;
+			VerSpec useVerSpec = verSpec;
 			String verConfigDir = mWorkspace.mDir;
 
 			if (let project = mWorkspace.FindProject(projectName))
 				return project;
 
-			if (useVerSpecRecord.mVerSpec case .SemVer)
+			if (useVerSpec case .SemVer)
 			{
 				// First pass we just try to use the 'expected' project name
 				FindLoop: for (int pass < 2)
@@ -2809,7 +2809,7 @@ namespace IDE
 
 							if (regEntry.mProjName == projectName)
 							{
-								useVerSpecRecord = regEntry.mLocation;
+								useVerSpec = regEntry.mLocation;
 								verConfigDir = regEntry.mConfigFile.mConfigDir;
 								break FindLoop;
 							}
@@ -2822,7 +2822,7 @@ namespace IDE
 			var project = new Project();
 
 			// For project locking, assume that only anything that is referenced with a path is editable
-			project.mLockedDefault = !(verSpecRecord.mVerSpec case .Path);
+			project.mLockedDefault = !(verSpec case .Path);
 			project.mLocked = project.mLockedDefault;
 
 			mWorkspace.mProjects.Add(project);
@@ -2837,8 +2837,9 @@ namespace IDE
 			}
 
 			String projectFilePath = null;
+			bool isDeferredLoad = false;
 
-			switch (useVerSpecRecord.mVerSpec)
+			switch (useVerSpec)
 			{
 			case .Path(let path):
 				var relPath = scope String(path);
@@ -2852,14 +2853,32 @@ namespace IDE
 				projectFilePath.Append(absPath, "BeefProj.toml");
 			case .SemVer(let semVer):
 				//
+			case .Git(let url, let ver):
+				var verReference = new Project.VerReference();
+				verReference.mSrcProjectName = new String(projectName);
+				verReference.mVerSpec = _.Duplicate();
+				project.mVerReferences.Add(verReference);
+
+				var checkPath = scope String();
+				if (mPackMan.CheckLock(projectName, checkPath))
+				{
+					projectFilePath = scope:: String(checkPath);
+				}
+				else
+					isDeferredLoad = true;
 			default:
 				Fail("Invalid version specifier");
 				return .Err(.InvalidVersionSpec);
 			}
 
-			if (projectFilePath == null)
+			if ((projectFilePath == null) && (!isDeferredLoad))
 			{
 				return .Err(.NotFound);
+			}
+
+			if (isDeferredLoad)
+			{
+				mWorkspace.mProjectLoadState = .Preparing;
 			}
 
 			project.mProjectName.Set(projectName);
@@ -2909,7 +2928,7 @@ namespace IDE
 				for (let configName in configs)
 				{
 					mWorkspace.FixOptions(configName, platformName);
-				}
+				}						  
 			}
 
 			mWorkspace.FixOptions(mConfigName, mPlatformName);

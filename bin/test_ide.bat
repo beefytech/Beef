@@ -12,11 +12,11 @@ SETLOCAL EnableDelayedExpansion
 PUSHD %~dp0..\
 
 @ECHO Testing IDEHelper\Tests\PlatformChange.txt in BeefIDE_d
-%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -platform=Win32 -proddir=%~dp0..\IDEHelper\Tests%TESTPATH% -test=scripts\PlatformChange.txt
+%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -platform=Win32 -proddir=%~dp0..\IDEHelper\Tests -test=scripts\PlatformChange.txt
 @IF !ERRORLEVEL! NEQ 0 GOTO:EOF
 
 @ECHO Testing IDEHelper\Tests\Reify.txt in BeefIDE_d
-%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -proddir=%~dp0..\IDEHelper\Tests%TESTPATH% -test=scripts\Reify.txt
+%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -proddir=%~dp0..\IDEHelper\Tests -test=scripts\Reify.txt
 @IF !ERRORLEVEL! NEQ 0 GOTO:EOF
 
 @SET TESTPATH=IDE\Tests\CompileFail001

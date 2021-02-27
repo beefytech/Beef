@@ -6524,6 +6524,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			{
 				if (mIsComptimeModule)
 				{
+					retVal = LoadValue(retVal);
 					mBfIRBuilder->CreateStore(retVal.mValue, nextResult.mValue);
 				}
 				else

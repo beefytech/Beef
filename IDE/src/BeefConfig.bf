@@ -14,7 +14,7 @@ namespace IDE
 		{
 			public String mProjName ~ delete _;
 			public SemVer mVersion ~ delete _;
-			public VerSpecRecord mLocation ~ delete _;
+			public VerSpec mLocation ~ _.Dispose();
 			public ConfigFile mConfigFile;
 
 			public bool mParsedConfig;
@@ -35,7 +35,7 @@ namespace IDE
 			{
 				entry.mParsedConfig = true;
 
-				if (entry.mLocation.mVerSpec case .Path(let path))
+				if (entry.mLocation case .Path(let path))
 				{
 					String configPath = scope String()..AppendF("{}/BeefProj.toml", path);
 					StructuredData sd = scope .();
@@ -129,7 +129,6 @@ namespace IDE
 				regEntry.mVersion = new SemVer();
 				regEntry.mVersion.Parse(verString).IgnoreError();
 
-				regEntry.mLocation = new VerSpecRecord();
 				using (data.Open("Location"))
 					regEntry.mLocation.Parse(data).IgnoreError();
 			}
@@ -158,8 +157,7 @@ namespace IDE
 						regEntry.mVersion = new SemVer();
 						regEntry.mVersion.Parse("0.0.0");
 
-						regEntry.mLocation = new VerSpecRecord();
-						regEntry.mLocation.SetPath(filePath);
+						regEntry.mLocation = .Path(new String(filePath));
 					}
 					else
 					{

@@ -958,13 +958,12 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 				{
 					if (values[i]->getType() != structType->getElementType(i))
 					{
-						auto valArrayType = llvm::dyn_cast<llvm::ArrayType>(values[i]->getType());
-						auto structArrayType = llvm::dyn_cast<llvm::ArrayType>(structType->getElementType(i));
-						if ((valArrayType != NULL) && (structArrayType != NULL))
+						auto valArrayType = llvm::dyn_cast<llvm::ArrayType>(values[i]->getType());						
+						if (valArrayType != NULL)
 						{
-							if ((valArrayType->getNumElements() == 0) && (valArrayType->getElementType() == structArrayType->getElementType()))
+							if (valArrayType->getNumElements() == 0)
 							{
-								values[i] = llvm::ConstantAggregateZero::get(structArrayType);
+								values[i] = llvm::ConstantAggregateZero::get(structType->getElementType(i));
 							}
 						}
 					}

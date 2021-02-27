@@ -741,8 +741,7 @@ namespace IDE.ui
 							{
 								var dep = new Project.Dependency();
 								dep.mProjectName = new String(listViewItem.mLabel);
-								dep.mVerSpec = new .();
-								dep.mVerSpec.SetSemVer("*");
+								dep.mVerSpec = .SemVer(new .("*"));
 								mProject.mDependencies.Add(dep);
 							}
 						}

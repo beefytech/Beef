@@ -8179,6 +8179,9 @@ void BeMCContext::DoInstCombinePass()
 			_RemapEntry remapEntry = { remapPair.mKey, remapPair.mValue };
 			initRemaps.Add(remapEntry);
 		}
+
+		if (vregInfoFrom->mForceMem)
+			vregInfoTo->mForceMem = true;
 	}
 
 	auto _RemapVReg = [&](int& vregIdx)
@@ -9875,11 +9878,19 @@ bool BeMCContext::DoLegalization()
 					auto arg0Type = GetType(arg0);
 					if (arg0Type->IsInt())
 					{
-						if (arg1.mKind == BeMCOperandKind_NativeReg)
+						auto checkArg1 = arg1;
+						if (checkArg1.mKind == BeMCOperandKind_VRegLoad)
+						{
+							// Handle '*vreg<RAX>' case
+							checkArg1.mKind = BeMCOperandKind_VReg;
+							checkArg1 = GetFixedOperand(checkArg1);
+						}
+
+						if (checkArg1.mKind == BeMCOperandKind_NativeReg)
 						{
 							// We can't allow division by RDX because we need RAX:RDX for the dividend
-							auto divisorReg = GetFullRegister(arg1.mReg);
-							if ((arg1.IsNativeReg()) &&
+							auto divisorReg = GetFullRegister(checkArg1.mReg);
+							if ((checkArg1.IsNativeReg()) &&
 								((divisorReg == X64Reg_RDX) || (divisorReg == X64Reg_RAX)))
 							{
 								BF_ASSERT(inst->mArg1.IsVRegAny());
@@ -15839,7 +15850,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Init@TimeZoneInfo@System@bf@@AEAA?AU?$Result@X@23@UStringView@23@VTimeSpan@23@000PEAV?$Array1@PEAVAdjustmentRule@TimeZoneInfo@System@bf@@@23@_N@Z");
+	//mDebugging = (function->mName == "??Kint2@bf@@SA?A01@01@0@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;

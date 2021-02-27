@@ -31,7 +31,7 @@ CALL ../../bin/build_rt.bat
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 
 @ECHO ---- Building BeefBuild (bootstrapped) ----
-BeefBoot_d.exe --out="BeefBuild_boot.exe" --src=..\src --src=..\..\BeefBuild\src --src=..\..\BeefLibs\corlib\src --src=..\..\BeefLibs\Beefy2D\src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib Beef042RT64_d.lib IDEHelper64_d.lib BeefySysLib64_d.lib"
+BeefBoot_d.exe --out="BeefBuild_boot.exe" --src=..\src --src=..\..\BeefBuild\src --src=..\..\BeefLibs\corlib\src --src=..\..\BeefLibs\Beefy2D\src --src=..\..\BeefLibs\libgit2\src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib Beef042RT64_d.lib IDEHelper64_d.lib BeefySysLib64_d.lib"
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 
 @ECHO ---- Building BeefBuild (Debug) ----

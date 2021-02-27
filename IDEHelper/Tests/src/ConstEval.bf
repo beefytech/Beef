@@ -135,6 +135,16 @@ namespace Tests
 			public const let cVal1 = StrToValue("1.23");
 		}
 
+		[Comptime]
+		static int StrLenMixin(StringView str)
+		{
+		    mixin test()
+			{
+		        str.Length
+		    }
+		    return test!();
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -172,6 +182,7 @@ namespace Tests
 			Test.Assert([ConstEval]MethodB() == 1);
 
 			Test.Assert(MethodC() == 1753);
+			Test.Assert(StrLenMixin("ABCD") == 4);
 		}
 	}
 }

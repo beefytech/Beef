@@ -10,6 +10,8 @@ using Beefy;
 using Beefy.utils;
 using IDE.Util;
 
+
+
 namespace IDE
 {
     public class Program
@@ -17,6 +19,31 @@ namespace IDE
 		//System.Collections.List<System.String> list;
         static int32 Main(String[] args)
         {
+			/*Git.GitApi.git_libgit2_init();
+
+
+			var result = Git.GitApi.git_remote_create_detached(var remote, "https://github.com/beefytech/Beef");
+			result = Git.GitApi.git_remote_connect(remote, .GIT_DIRECTION_FETCH, null, null, null);
+			result = Git.GitApi.git_remote_ls(var remoteHead, var headCount, remote);
+			for (int headIdx < (.)headCount)
+			{
+				StringView name = .(remoteHead[headIdx].name);
+				if (name.StartsWith("refs/tags/"))
+				{
+					StringView tagStr = name.Substring("refs/tags/".Length);
+					Debug.WriteLine($"Tag: {tagStr}");
+				}
+			}
+
+			//Git.GitApi.git_repository_open(var repo, "c:\\Beef");
+			Git.GitApi.git_repository_open(var repo, "https://github.com/beefytech/Beef");
+			Git.GitApi.git_tag_foreach(repo, (name, oid, payload) =>
+				{
+					Debug.WriteLine("Tag {}", StringView(name));
+					return 0;
+				}, null);
+			Git.GitApi.git_libgit2_shutdown();*/
+
 #if SMALLTEST
 			Debug.WriteLine("Hey!\n");
 #else

@@ -1312,9 +1312,8 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		case BfTypeCode_Var:
 		case BfTypeCode_Let:
 		{
-			auto objType = mContext->mBfObjectType;
-			primitiveType->mSize = objType->mSize;
-			primitiveType->mAlign = objType->mAlign;
+			primitiveType->mSize = mSystem->mPtrSize;
+			primitiveType->mAlign = mSystem->mPtrSize;			
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
 		}
 		return;
@@ -1415,7 +1414,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		{
 			if (typeInstance->mTypeDef == mCompiler->mBfObjectTypeDef)
 				mContext->mBfObjectType = typeInstance;
-			else
+			else if (mCompiler->mBfObjectTypeDef != NULL)
 				ResolveTypeDef(mCompiler->mBfObjectTypeDef);
 		}
 
@@ -3621,26 +3620,34 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, field);
 				
 				BfType* resolvedFieldType = NULL;
-
+				
 				if (field->IsEnumCaseEntry())
 				{
-					fieldInstance->mDataIdx = -(enumCaseEntryIdx++) - 1;
-					resolvedFieldType = typeInstance;
+					if (typeInstance->IsEnum())
+					{
+						fieldInstance->mDataIdx = -(enumCaseEntryIdx++) - 1;
+						resolvedFieldType = typeInstance;
 
-					BfType* payloadType = NULL;
-					if (field->mTypeRef != NULL)
-						payloadType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoResolveGenericParam);
-					if (payloadType == NULL)
-					{
-						if (!typeInstance->IsTypedPrimitive())
-							payloadType = CreateTupleType(BfTypeVector(), Array<String>());
+						BfType* payloadType = NULL;
+						if (field->mTypeRef != NULL)
+							payloadType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoResolveGenericParam);
+						if (payloadType == NULL)
+						{
+							if (!typeInstance->IsTypedPrimitive())
+								payloadType = CreateTupleType(BfTypeVector(), Array<String>());
+						}
+						if (payloadType != NULL)
+						{
+							AddDependency(payloadType, typeInstance, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
+							BF_ASSERT(payloadType->IsTuple());
+							resolvedFieldType = payloadType;
+							fieldInstance->mIsEnumPayloadCase = true;
+						}
 					}
-					if (payloadType != NULL)
+					else
 					{
-						AddDependency(payloadType, typeInstance, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
-						BF_ASSERT(payloadType->IsTuple());
-						resolvedFieldType = payloadType;
-						fieldInstance->mIsEnumPayloadCase = true;
+						Fail("Enum cases can only be declared within enum types", field->GetRefNode(), true);
+						resolvedFieldType = typeInstance;
 					}
 				}
 				else if ((field->mTypeRef != NULL) && ((field->mTypeRef->IsExact<BfVarTypeReference>()) || (field->mTypeRef->IsExact<BfLetTypeReference>()) || (field->mTypeRef->IsExact<BfExprModTypeRef>())))
@@ -4429,6 +4436,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					//  handle embedded methodRefs
 					hadNonSplattable = true;
 				}
+				else if (checkType->IsOpaque())
+				{
+					hadNonSplattable = true;
+				}
 				else if (checkType->IsStruct())
 				{					
 					auto checkTypeInstance = checkType->ToTypeInstance();
@@ -4461,6 +4472,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					if (checkType->IsSizedArray())
 						hadNonSplattable = true;
+					
 					dataCount += checkType->GetSplatCount();
 				}
 			};
@@ -4481,6 +4493,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 	if (typeInstance->IsTypedPrimitive())
 		typeInstance->mIsSplattable = true;
+	if (typeInstance->mTypeDef->mIsOpaque)
+		typeInstance->mIsSplattable = false;
 	
 	BF_ASSERT(mContext->mCurTypeState == &typeState);
 
@@ -4641,13 +4655,19 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	if ((typeInstance->IsPayloadEnum()) && (!typeInstance->IsBoxed()))
 	{
+		typeInstance->mAlign = unionInnerType->mAlign;
+
 		int lastTagId = -1;
 		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 		{
 			auto fieldInstance = &fieldInstanceRef;
 			auto fieldDef = fieldInstance->GetFieldDef();
 			if ((fieldDef != NULL) && (fieldInstance->mDataIdx < 0))
+			{
+				BF_ASSERT(fieldInstance->mResolvedType->mAlign >= 1);
+				typeInstance->mAlign = BF_MAX(typeInstance->mAlign, fieldInstance->mResolvedType->mAlign);
 				lastTagId = -fieldInstance->mDataIdx - 1;
+			}
 		}
 
 		auto fieldInstance = &typeInstance->mFieldInstances.back();
@@ -4674,7 +4694,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 		
-		typeInstance->mAlign = BF_MAX(unionInnerType->mAlign, discriminatorType->mAlign);
+		typeInstance->mAlign = BF_MAX(typeInstance->mAlign, discriminatorType->mAlign);
 		typeInstance->mSize = fieldInstance->mDataOffset + discriminatorType->mSize;
 
 		typeInstance->mInstSize = typeInstance->mSize;
@@ -8694,7 +8714,8 @@ void BfModule::TypeRefNotFound(BfTypeReference* typeRef, const char* appendName)
 	if (typeRef->IsTemporary())
 		return;
 
-	Fail("Type could not be found (are you missing a using directive or library reference?)", typeRef);
+	if (PreFail())
+		Fail("Type could not be found (are you missing a using directive or library reference?)", typeRef);
 
 	if (!mIgnoreErrors)
 	{

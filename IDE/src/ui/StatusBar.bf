@@ -167,7 +167,7 @@ namespace IDE.ui
             mConfigComboBox.mDisabled = !canChangeConfig;
             mPlatformComboBox.mDisabled = !canChangeConfig;
 
-			if ((gApp.IsCompiling || gApp.mRunningTestScript) && (mUpdateCnt % 8 == 0))
+			if ((gApp.IsCompiling || gApp.mRunningTestScript || (gApp.mWorkspace.mProjectLoadState == .Preparing)) && (mUpdateCnt % 8 == 0))
 				MarkDirtyEx(8);
 
 			var debugState = gApp.mDebugger.GetRunState();
@@ -397,6 +397,10 @@ namespace IDE.ui
 			else if (mResolveConstEvalStuckTicks > 300)
 			{
 				DrawStatusBox("Const Evaluation");
+			}
+			else if (gApp.mWorkspace.mProjectLoadState == .Preparing)
+			{
+				DrawStatusBox("Loading Projects");
 			}
 			else
 				mStatusBoxUpdateCnt = -1;

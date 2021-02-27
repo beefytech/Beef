@@ -555,6 +555,7 @@ public:
 	virtual bool IsFunctionFromTypeRef() { return false; }
 	virtual BfDelegateInfo* GetDelegateInfo() { return NULL;  }
 	virtual bool IsValueType() { return false; }	
+	virtual bool IsOpaque() { return false; }
 	virtual bool IsValueTypeOrValueTypePtr() { return false; }	
 	virtual bool IsWrappableType() { return false; }
 	virtual bool IsPrimitiveType() { return false; }	
@@ -1964,6 +1965,7 @@ public:
 	virtual bool IsTypeInstance() override { return true; }
 	virtual bool IsInterface() override { return mTypeDef->mTypeCode == BfTypeCode_Interface; }
 	virtual bool IsValueType() override { return (mTypeDef->mTypeCode == BfTypeCode_Struct) || (mTypeDef->mTypeCode == BfTypeCode_Enum); }
+	virtual bool IsOpaque() override { return mTypeDef->mIsOpaque; }
 	virtual bool IsStruct() override { return ((mTypeDef->mTypeCode == BfTypeCode_Struct) || (mTypeDef->mTypeCode == BfTypeCode_Enum)) && (!mIsTypedPrimitive); }	
 	virtual bool IsUnion() override { return mIsUnion; }
 	virtual bool IsDelegate() override { return mTypeDef->mIsDelegate; }

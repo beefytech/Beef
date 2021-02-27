@@ -1725,8 +1725,6 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 		}		
 	}
 
-	unionSize = BF_ALIGN(unionSize, mInstAlign);
-
 	BF_ASSERT(unionInnerType != this);
 
 	// Don't allow a float for the inner type -- to avoid invalid loading invalid FP bit patterns during copies

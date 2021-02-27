@@ -10,6 +10,7 @@ namespace System
 		typealias c_ulonglong = uint64;
 		typealias c_intptr = int;
 		typealias c_uintptr = uint;
+		typealias c_size = uint;
 		typealias c_char = char8;
 		typealias c_uchar = uint8;
 

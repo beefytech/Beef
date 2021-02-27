@@ -3001,12 +3001,14 @@ void BfCompiler::UpdateRevisedTypes()
 	//
 	{
 		BfAtomComposite objectName;
-		mSystem->ParseAtomComposite("System.Object", objectName);
-		for (auto itr = mSystem->mTypeDefs.TryGet(objectName); itr != mSystem->mTypeDefs.end(); ++itr)		
+		if (mSystem->ParseAtomComposite("System.Object", objectName))
 		{
-			BfTypeDef* typeDef = *itr;
-			if ((typeDef->mFullName == objectName) && (typeDef->mTypeCode == BfTypeCode_Object))
-				corlibProjects.Add(typeDef->mProject);			
+			for (auto itr = mSystem->mTypeDefs.TryGet(objectName); itr != mSystem->mTypeDefs.end(); ++itr)
+			{
+				BfTypeDef* typeDef = *itr;
+				if ((typeDef->mFullName == objectName) && (typeDef->mTypeCode == BfTypeCode_Object))
+					corlibProjects.Add(typeDef->mProject);
+			}
 		}
 	}
 
@@ -6742,7 +6744,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		
 	mSystem->CheckLockYield();
 
-	mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef);
+	if (mBfObjectTypeDef != NULL)
+		mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef);
 	VisitSourceExteriorNodes();	
 
 	if (!mIsResolveOnly)
@@ -6827,7 +6830,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	//
 	{		
-		mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef, BfPopulateType_Full);
+		if (mBfObjectTypeDef != NULL)
+			mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef, BfPopulateType_Full);
 		
 		mContext->RemapObject();
 				

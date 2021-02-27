@@ -190,7 +190,7 @@ namespace SDL2
 		[LinkName("TTF_RenderText_Solid")]
 		public static extern SDL.Surface* RenderText_Solid(
 			Font* font,
-			char8 text,
+			char8* text,
 			SDL.Color fg
 		);
 
