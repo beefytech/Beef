@@ -2276,8 +2276,18 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 					//  so the mNextRevision will be ignored
 					auto useTypeDef = lookupEntry.mUseTypeDef;
 					BfTypeDef* ambiguousTypeDef = NULL;
-					BfTypeDef* result = typeInst->mModule->FindTypeDefRaw(lookupEntry.mName, lookupEntry.mNumGenericParams, typeInst, useTypeDef, NULL);
-					if (result != lookupEntryPair.mValue.mTypeDef)
+					BfTypeLookupResult* lookupResult = &lookupEntryPair.mValue;
+
+					BfTypeLookupResultCtx lookupResultCtx;
+					lookupResultCtx.mResult = lookupResult;
+					lookupResultCtx.mIsVerify = true;
+
+					BfTypeDef* result = typeInst->mModule->FindTypeDefRaw(lookupEntry.mName, lookupEntry.mNumGenericParams, typeInst, useTypeDef, NULL, &lookupResultCtx);
+					if ((result == NULL) && (lookupResult->mFoundInnerType))
+					{
+						// Allow this- if there were new types added then the types would be rebuilt already
+					}
+					else if (result != lookupResult->mTypeDef)
 					{
 						isDirty = true;
 					}

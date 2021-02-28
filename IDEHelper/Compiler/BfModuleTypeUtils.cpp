@@ -8382,7 +8382,7 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 	return useTypeDef;
 }
 
-BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error)
+BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error, BfTypeLookupResultCtx* lookupResultCtx)
 {
 	if ((findName.mSize == 1) && (findName.mParts[0]->mIsSystemType))
 	{
@@ -8408,56 +8408,68 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 	BfTypeDef* protErrorTypeDef = NULL;
 	BfTypeInstance* protErrorOuterType = NULL;
 	
-	if ((!lookupCtx.HasValidMatch()) && (typeInstance != NULL))
-	{
-		std::function<bool(BfTypeInstance*)> _CheckType = [&](BfTypeInstance* typeInstance)
-		{
-			auto checkTypeInst = typeInstance;
-			allowPrivate = true;
-			while (checkTypeInst != NULL)
-			{
-				if (!checkTypeInst->mTypeDef->mNestedTypes.IsEmpty())
-				{
-					if (mSystem->FindTypeDef(findName, numGenericArgs, useTypeDef->mProject, checkTypeInst->mTypeDef->mFullNameEx, allowPrivate, &lookupCtx))
-					{
-						if (lookupCtx.HasValidMatch())
-							return true;
+	BfTypeDef* foundInnerType = NULL;
 
-						if ((lookupCtx.mBestTypeDef->mProtection == BfProtection_Private) && (!allowPrivate))
+	if ((lookupResultCtx != NULL) && (lookupResultCtx->mIsVerify))
+	{
+		if (lookupResultCtx->mResult->mFoundInnerType)
+			return lookupCtx.mBestTypeDef;
+	}
+	else
+	{
+		if ((!lookupCtx.HasValidMatch()) && (typeInstance != NULL))
+		{
+			std::function<bool(BfTypeInstance*)> _CheckType = [&](BfTypeInstance* typeInstance)
+			{
+				auto checkTypeInst = typeInstance;
+				allowPrivate = true;
+				while (checkTypeInst != NULL)
+				{
+					if (!checkTypeInst->mTypeDef->mNestedTypes.IsEmpty())
+					{
+						if (mSystem->FindTypeDef(findName, numGenericArgs, useTypeDef->mProject, checkTypeInst->mTypeDef->mFullNameEx, allowPrivate, &lookupCtx))
 						{
-							protErrorTypeDef = lookupCtx.mBestTypeDef;
-							protErrorOuterType = checkTypeInst;
+							foundInnerType = lookupCtx.mBestTypeDef;
+
+							if (lookupCtx.HasValidMatch())
+								return true;
+
+							if ((lookupCtx.mBestTypeDef->mProtection == BfProtection_Private) && (!allowPrivate))
+							{
+								protErrorTypeDef = lookupCtx.mBestTypeDef;
+								protErrorOuterType = checkTypeInst;
+							}
 						}
 					}
+					if (checkTypeInst == skipCheckBaseType)
+						break;
+
+					checkTypeInst = GetBaseType(checkTypeInst);
+					allowPrivate = false;
 				}
-				if (checkTypeInst == skipCheckBaseType)
-					break;
 
-				checkTypeInst = GetBaseType(checkTypeInst);
-				allowPrivate = false;
-			}			
-
-			checkTypeInst = typeInstance;
-			allowPrivate = true;
-			while (checkTypeInst != NULL)
-			{
-				auto outerTypeInst = GetOuterType(checkTypeInst);
-				if (outerTypeInst != NULL)
+				checkTypeInst = typeInstance;
+				allowPrivate = true;
+				while (checkTypeInst != NULL)
 				{
-					if (_CheckType(outerTypeInst))
-						return true;
+					auto outerTypeInst = GetOuterType(checkTypeInst);
+					if (outerTypeInst != NULL)
+					{
+						if (_CheckType(outerTypeInst))
+							return true;
+					}
+					if (checkTypeInst == skipCheckBaseType)
+						break;
+
+					checkTypeInst = GetBaseType(checkTypeInst);
+					allowPrivate = false;
 				}
-				if (checkTypeInst == skipCheckBaseType)
-					break;
-				
-				checkTypeInst = GetBaseType(checkTypeInst);
-				allowPrivate = false;
-			}
 
-			return false;
-		};
+				return false;
+			};
 
-		_CheckType(typeInstance);
+			_CheckType(typeInstance);
+		}
 	}
 
 	if (!lookupCtx.HasValidMatch())
@@ -8515,6 +8527,9 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 	if ((protErrorTypeDef != NULL) && (lookupCtx.mBestTypeDef == protErrorTypeDef) && (error != NULL) && (error->mRefNode != NULL))
 		Fail(StrFormat("'%s.%s' is inaccessible due to its protection level", TypeToString(protErrorOuterType).c_str(), findName.ToString().c_str()), error->mRefNode); // CS0122
 
+	if ((lookupResultCtx != NULL) && (lookupResultCtx->mResult != NULL) && (!lookupResultCtx->mIsVerify) && (foundInnerType != NULL) && (foundInnerType == lookupCtx.mBestTypeDef))
+		lookupResultCtx->mResult->mFoundInnerType = true;
+
 	return lookupCtx.mBestTypeDef;
 }
 
@@ -8569,7 +8584,10 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 
 		BfTypeLookupError localError;
 		BfTypeLookupError* errorPtr = (error != NULL) ? error : &localError;
-		auto typeDef = FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, errorPtr);
+
+		BfTypeLookupResultCtx lookupResultCtx;
+		lookupResultCtx.mResult = resultPtr;
+		auto typeDef = FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, errorPtr, &lookupResultCtx);
 
 		if (prevAllocSize != typeInstance->mLookupResults.size())
 		{

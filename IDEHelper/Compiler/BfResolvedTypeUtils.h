@@ -1668,11 +1668,25 @@ struct BfTypeLookupResult
 {
 	BfTypeDef* mTypeDef;
 	bool mForceLookup;
+	bool mFoundInnerType;
 
 	BfTypeLookupResult()
 	{
 		mTypeDef = NULL;
 		mForceLookup = false;
+		mFoundInnerType = false;
+	}
+};
+
+struct BfTypeLookupResultCtx
+{
+	BfTypeLookupResult* mResult;
+	bool mIsVerify;
+
+	BfTypeLookupResultCtx()
+	{
+		mResult = NULL;
+		mIsVerify = false;
 	}
 };
 
