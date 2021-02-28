@@ -4941,30 +4941,22 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 	if (returnStmt->mExpression == NULL)
 	{
 		MarkScopeLeft(&mCurMethodState->mHeadScope);
-		if (retType->IsVoid())
+		
+		if ((retType != NULL) && (retType->IsVoid()))
 		{
 			EmitReturn(BfTypedValue());
 			return;
 		}
 
-		if (retType != NULL)
-		{
-			Fail("Expected return value", returnStmt);
-			return;
-		}				
-
-		EmitReturn(GetDefaultTypedValue(retType));		
-		return;
+		Fail("Expected return value", returnStmt);
+		if (retType != NULL)			
+			EmitReturn(GetDefaultTypedValue(retType));
+		else
+			EmitReturn(BfTypedValue());
+		return;		
 	}
 
 	BfType* expectingReturnType = retType;
-	if ((expectingReturnType != NULL) && (expectingReturnType->IsVar()))
-	{
-		NOP;
-		// 		expectingReturnType = NULL;
-	}
-
-	
 	BfType* origType;
 	BfExprEvaluator exprEvaluator(this);
 	bool alreadyWritten = false;
