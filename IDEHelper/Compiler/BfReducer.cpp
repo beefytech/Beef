@@ -541,7 +541,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 						if (nextNode != NULL)
 						{
 							mVisitorPos.mReadPos = checkIdx + 1;
-							auto expr = CreateExpression(nextNode, BfReducer::CreateExprFlags_BreakOnRChevron);
+							auto expr = CreateExpression(nextNode, CreateExprFlags_BreakOnRChevron);
 							int endExprReadPos = mVisitorPos.mReadPos;
 							mVisitorPos.mReadPos = prevReadPos;
 
@@ -2345,7 +2345,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 		{
 			BfToken token = tokenNode->GetToken();
 
-			if (((createExprFlags & CreateExprFlags_BreakOnRChevron) != 0) && (token == BfToken_RChevron))
+			if (((createExprFlags & CreateExprFlags_BreakOnRChevron) != 0) && 
+				((token == BfToken_RChevron) || (token == BfToken_RDblChevron)))
 				return exprLeft;
 			
 			if ((token == BfToken_DblPlus) || (token == BfToken_DblMinus))
