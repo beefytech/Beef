@@ -2553,6 +2553,9 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
 
 void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
 {
+	if (populateType == BfPopulateType_Identity)
+		return;
+
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
 	auto typeDef = typeInstance->mTypeDef;	
 

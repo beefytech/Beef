@@ -2276,7 +2276,7 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 					//  so the mNextRevision will be ignored
 					auto useTypeDef = lookupEntry.mUseTypeDef;
 					BfTypeDef* ambiguousTypeDef = NULL;
-					BfTypeDef* result = mSystem->FindTypeDef(lookupEntry.mName, lookupEntry.mNumGenericParams, useTypeDef->mProject, useTypeDef->mNamespaceSearch, &ambiguousTypeDef);
+					BfTypeDef* result = typeInst->mModule->FindTypeDefRaw(lookupEntry.mName, lookupEntry.mNumGenericParams, typeInst, useTypeDef, NULL);
 					if (result != lookupEntryPair.mValue.mTypeDef)
 					{
 						isDirty = true;
