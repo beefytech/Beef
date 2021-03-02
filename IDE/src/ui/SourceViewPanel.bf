@@ -1176,6 +1176,9 @@ namespace IDE.ui
                     resolveParams.mParser = bfSystem.FindParser(projectSource);
                 //if (mCurParser != null)
                 {
+					if (gApp.mWorkspace.mProjectLoadState != .Loaded)
+						return false;
+
 					if (!isHi)
 						Debug.Assert(!mIsPerformingBackgroundClassify);
 

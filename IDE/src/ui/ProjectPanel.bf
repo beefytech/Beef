@@ -506,7 +506,7 @@ namespace IDE.ui
             if ((projectSource != null) && (gApp.IsProjectSourceEnabled(projectSource)))
             {
                 var resolveCompiler = gApp.GetProjectCompilerForFile(projectSource.mName);
-                if (resolveCompiler != null)
+                if ((resolveCompiler != null) && (gApp.mWorkspace.mProjectLoadState == .Loaded))
                 {
                     resolveCompiler.QueueProjectSource(projectSource, .None, false);
                     resolveCompiler.QueueDeferredResolveAll();
@@ -2227,6 +2227,8 @@ namespace IDE.ui
 							//handled = true;
 							isFailedLoad = true;
 						}
+						else if (project.mDeferState != .None)
+							isFailedLoad = true;
 					}
 			    }
 			}
@@ -2456,7 +2458,6 @@ namespace IDE.ui
 					menu.AddItem();
                 }
 
-				//menu.AddItem();
 				if (!isFailedLoad)
 				{
 					item = menu.AddItem("New Folder");

@@ -2456,6 +2456,8 @@ namespace IDE
 
 		void FlushDeferredLoadProjects(bool addToUI = false)
 		{
+			bool hasDeferredProjects = false;
+
 			while (true)
 			{
 				bool hadLoad = false;
@@ -2469,6 +2471,7 @@ namespace IDE
 						var projectPath = project.mProjectPath;
 						if (project.mDeferState == .Pending)
 						{
+							hasDeferredProjects = true;
 							project.mDeferState = .Searching;
 						}
 						else if (!project.Load(projectPath))
@@ -2486,6 +2489,11 @@ namespace IDE
 				if (!hadLoad)
 					break;
 			}
+
+			if (hasDeferredProjects)
+				mWorkspace.mProjectLoadState = .Preparing;
+			else
+				mWorkspace.mProjectLoadState = .Loaded;
 		}
 
         protected void LoadWorkspace(BeefVerb verb)
@@ -4115,9 +4123,14 @@ namespace IDE
 		void Compile()
 		{
 			CompilerLog("IDEApp.Compile");
-
 			for (let project in gApp.mWorkspace.mProjects)
 			{
+				if (project.mDeferState != .None)
+				{
+					OutputErrorLine($"Project '{project.mProjectName}' is still loading.");
+					return;
+				}
+
 				if (project.mFailed)
 				{
 					OutputErrorLine("Project '{}' is not loaded. Retry loading by right clicking on the project in the Workspace panel and selecting 'Retry Load'", project.mProjectName);
@@ -8292,7 +8305,7 @@ namespace IDE
 							DeleteAndNullify!(scriptCmd.mCmd);
 						}
 
-						if (mBuildContext.mScriptManager.HasQueuedCommands)
+						if ((mBuildContext.mScriptManager.HasQueuedCommands) && (!mBuildContext.mScriptManager.mFailed))
 							return;
 					}
 				}
