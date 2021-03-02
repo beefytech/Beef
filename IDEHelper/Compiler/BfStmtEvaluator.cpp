@@ -1943,7 +1943,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	if ((!localDef->mIsReadOnly) || (mHasFullDebugInfo) || (forceAddr))
 	{
 		localDef->mAddr = AllocLocalVariable(localDef->mResolvedType, localDef->mName);		
-		if ((val.mValue) && (!localDef->mResolvedType->IsValuelessType()))
+		if ((val.mValue) && (!localDef->mResolvedType->IsValuelessType()) && (!localDef->mResolvedType->IsVar()))
 		{
 			if (val.IsSplat())
 				AggregateSplatIntoAddr(val, localDef->mAddr);
