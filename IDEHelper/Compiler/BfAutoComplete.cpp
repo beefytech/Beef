@@ -2306,18 +2306,40 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			StringT<128> propName;
 			StringT<256> impl;
 
-			propDeclaration->mNameNode->ToString(propName);
+			if (propDeclaration->mNameNode != NULL)
+				propDeclaration->mNameNode->ToString(propName);
+			else 
+			{
+				StringT<128> args;
+
+				propName += "this[";
+				for (size_t paramIdx = 0, count = methodInst->GetParamCount(); paramIdx < count; ++paramIdx)
+				{
+					if (paramIdx > 0)
+						args += ", ";
+
+					args += mModule->TypeToString(methodInst->GetParamType(paramIdx), nameFlags);
+					args += " ";
+					args += methodDef->mParams[paramIdx]->mName;
+				}
+				propName += args;
+				propName += "]";
+			}
 
 			bool isAbstract = methodDef->mIsAbstract;
 
 			if (propDeclaration->mProtectionSpecifier != NULL)
 				impl += propDeclaration->mProtectionSpecifier->ToString() + " ";
+			else if (isInterface && !isExplicitInterface)
+				impl += "public ";
+
 			if (!isInterface)
 				impl += "override ";
 
 			BfType* propType = methodInst->mReturnType;
 			if (methodDef->mMethodType == BfMethodType_PropertySetter)
 				propType = methodInst->GetParamType(0);
+
 			impl += mModule->TypeToString(propType, nameFlags);
 			impl += " ";
 			if (isExplicitInterface)
