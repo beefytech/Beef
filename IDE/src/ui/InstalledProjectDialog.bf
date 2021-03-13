@@ -177,7 +177,6 @@ namespace IDE.ui
 				let entry = mFilteredList[idx];
 
 				VerSpec verSpec = .SemVer(new .("*"));
-				defer verSpec.Dispose();
 
 				let project = gApp.mProjectPanel.ImportProject(entry.mPath, verSpec);
 				if (project == null)
