@@ -1090,7 +1090,7 @@ namespace IDE.ui
 
 				if (autocomplete != null)
 					autocomplete.SetIgnoreMove(true);
-                mWidgetWindow.Resize((int32)(mOrigScreenX + minX), (int32)(mOrigScreenY + minY), (int32)(maxX - minX), (int32)(maxY - minY));
+                mWidgetWindow.Resize((int32)(mWidgetWindow.mNormX + minX), (int32)(mWidgetWindow.mNormY + minY), (int32)(maxX - minX), (int32)(maxY - minY));
 				if (autocomplete != null)
 					autocomplete.SetIgnoreMove(false);
 			}
