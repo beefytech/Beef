@@ -115,6 +115,22 @@ namespace System.IO
 			return .Ok;
 		}
 
+		//Reads null terminated ASCII string from the stream. Null terminator is read from stream but isn't appended to output string
+		public Result<void> ReadNullTerminatedString(String output)
+		{
+			Result<char8> char0;
+			while(true)
+			{
+				char0 = Read<char8>();
+				if(char0 == .Err)
+					return .Err;
+				if(char0.Value == '\0')
+					return .Ok;
+				
+				output.Append(char0.Value);
+			}
+		}
+
 		public Result<T> Read<T>() where T : struct
 		{
 			T val = ?;
