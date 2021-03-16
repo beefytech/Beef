@@ -63,6 +63,58 @@ namespace System.IO
 		public abstract Result<int> TryWrite(Span<uint8> data);
 		public abstract void Close();
 
+		//Read value from stream without changing position. Position won't change even if it returns .Err
+		public Result<T> Peek<T>() where T : struct
+		{
+			T val = ?;
+			int size = Try!(TryRead(.((uint8*)&val, sizeof(T))));
+			Seek(Position - size, .Absolute);
+			if (size != sizeof(T))
+				return .Err;
+
+			return .Ok(val);
+		}
+
+		//Skip count bytes
+		public void Skip(int64 count)
+		{
+			Seek(Position + count, .Absolute);
+		}
+
+		//Write count null bytes to stream
+		public void WriteNullBytes(int64 count)
+		{
+			if(count <= 0)
+				return;
+
+			int64 nullBytesRemaining = count;
+			int64 emptyData = 0;
+			while (nullBytesRemaining > 0)
+			{
+				int64 writeSize = Math.Min(nullBytesRemaining, sizeof(decltype(emptyData)));
+				TryWrite(.((uint8*)&emptyData, (int)writeSize));
+				nullBytesRemaining -= writeSize;
+			}
+		}
+
+		//Read sized string from stream
+		public Result<void> ReadSizedString(int64 size, String output)
+		{
+			if (size <= 0)
+				return .Err;
+
+			for (int64 i = 0; i < size; i++)
+			{
+				Result<char8> char = Read<char8>();
+				if (char == .Err)
+					return .Err;
+
+				output.Append(char);
+			}
+
+			return .Ok;
+		}
+
 		public Result<T> Read<T>() where T : struct
 		{
 			T val = ?;
