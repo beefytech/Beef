@@ -2195,7 +2195,7 @@ namespace IDE
 			projectSpec.mProjectName = new .(project.mProjectName);
 			if (verSpec != .None)
 			{
-				projectSpec.mVerSpec = verSpec;
+				projectSpec.mVerSpec = verSpec.Duplicate();
 			}
 			else
 			{
