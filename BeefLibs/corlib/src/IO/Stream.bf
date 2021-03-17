@@ -63,6 +63,74 @@ namespace System.IO
 		public abstract Result<int> TryWrite(Span<uint8> data);
 		public abstract void Close();
 
+		//Read value from stream without changing position. Position won't change even if it returns .Err
+		public Result<T> Peek<T>() where T : struct
+		{
+			T val = ?;
+			int size = Try!(TryRead(.((uint8*)&val, sizeof(T))));
+			Seek(Position - size, .Absolute);
+			if (size != sizeof(T))
+				return .Err;
+
+			return .Ok(val);
+		}
+
+		//Skip count bytes
+		public void Skip(int64 count)
+		{
+			Seek(Position + count, .Absolute);
+		}
+
+		//Write count bytes to stream
+		public void Write(uint8 byte, int64 count)
+		{
+			if(count <= 0)
+				return;
+
+			int64 nullBytesRemaining = count;
+			uint8[8] writeData = .(byte, byte, byte, byte, byte, byte, byte, byte);
+			while (nullBytesRemaining > 0)
+			{
+				int64 writeSize = Math.Min(nullBytesRemaining, writeData.Count * sizeof(uint8));
+				TryWrite(.(&writeData[0], (int)writeSize));
+				nullBytesRemaining -= writeSize;
+			}
+		}
+
+		//Read sized string from stream
+		public Result<void> ReadStrSized32(int64 size, String output)
+		{
+			if (size <= 0)
+				return .Err;
+
+			for (int64 i = 0; i < size; i++)
+			{
+				Result<char8> char = Read<char8>();
+				if (char == .Err)
+					return .Err;
+
+				output.Append(char);
+			}
+
+			return .Ok;
+		}
+
+		//Reads null terminated ASCII string from the stream. Null terminator is read from stream but isn't appended to output string
+		public Result<void> ReadStrC(String output)
+		{
+			Result<char8> char0;
+			while(true)
+			{
+				char0 = Read<char8>();
+				if(char0 == .Err)
+					return .Err;
+				if(char0.Value == '\0')
+					return .Ok;
+				
+				output.Append(char0.Value);
+			}
+		}
+
 		public Result<T> Read<T>() where T : struct
 		{
 			T val = ?;
