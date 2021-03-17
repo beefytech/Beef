@@ -81,24 +81,24 @@ namespace System.IO
 			Seek(Position + count, .Absolute);
 		}
 
-		//Write count null bytes to stream
-		public void WriteNullBytes(int64 count)
+		//Write count bytes to stream
+		public void Write(uint8 byte, int64 count)
 		{
 			if(count <= 0)
 				return;
 
 			int64 nullBytesRemaining = count;
-			int64 emptyData = 0;
+			uint8[8] writeData = .(byte, byte, byte, byte, byte, byte, byte, byte);
 			while (nullBytesRemaining > 0)
 			{
-				int64 writeSize = Math.Min(nullBytesRemaining, sizeof(decltype(emptyData)));
-				TryWrite(.((uint8*)&emptyData, (int)writeSize));
+				int64 writeSize = Math.Min(nullBytesRemaining, writeData.Count * sizeof(uint8));
+				TryWrite(.(&writeData[0], (int)writeSize));
 				nullBytesRemaining -= writeSize;
 			}
 		}
 
 		//Read sized string from stream
-		public Result<void> ReadSizedString(int64 size, String output)
+		public Result<void> ReadStrSized32(int64 size, String output)
 		{
 			if (size <= 0)
 				return .Err;
@@ -116,7 +116,7 @@ namespace System.IO
 		}
 
 		//Reads null terminated ASCII string from the stream. Null terminator is read from stream but isn't appended to output string
-		public Result<void> ReadNullTerminatedString(String output)
+		public Result<void> ReadStrC(String output)
 		{
 			Result<char8> char0;
 			while(true)
