@@ -10,6 +10,8 @@ namespace Beefy.input
 		[CallingConvention(.Stdcall), CLink]
 		public static extern char8* BFInput_GetState(void* nativeInputDevice);
 
+		public String mProdName ~ delete _;
+		public String mGUID ~ delete _;
 		void* mNativeInputDevice;
 
 		public ~this()
@@ -36,12 +38,14 @@ namespace Beefy.input
 			outData.Append(BFApp_EnumerateInputDevices());
 		}
 
-		public InputDevice CreateInputDevice(StringView guid)
+		public InputDevice CreateInputDevice(StringView prodName, StringView guid)
 		{
 			void* nativeInputDevice = BFApp_CreateInputDevice(guid.ToScopeCStr!());
 			if (nativeInputDevice == null)
 				return null;
 			InputDevice inputDevice = new .();
+			inputDevice.mProdName = new String(prodName);
+			inputDevice.mGUID = new String(guid);
 			inputDevice.[Friend]mNativeInputDevice = nativeInputDevice;
 			return inputDevice;
 		}
