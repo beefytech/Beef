@@ -556,7 +556,7 @@ namespace IDE.ui
 					mIgnoreMove++;
 					if (mAutoComplete.mInvokeWidget != null)
 						mAutoComplete.mInvokeWidget.mIgnoreMove++;
-					mWidgetWindow.Resize(mWidgetWindow.mX, mWidgetWindow.mY, windowWidth, windowHeight);
+					mWidgetWindow.Resize(mWidgetWindow.mNormX, mWidgetWindow.mNormY, windowWidth, windowHeight);
 					mScrollContent.mWidth = mWidth;
 					//Resize(0, 0, mWidgetWindow.mClientWidth, mWidgetWindow.mClientHeight);
 					mIgnoreMove--;
