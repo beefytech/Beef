@@ -578,7 +578,7 @@ namespace System.Collections
 		public void RemoveRange(int index, int count)
 		{
 			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
-			if (index + count < mSize - 1)
+			if (index + count <= mSize - 1)
 			{
 				for (int i = index; i < mSize - count; i++)
 					mItems[i] = mItems[i + count];
@@ -589,12 +589,29 @@ namespace System.Collections
 #endif
 		}
 
+		/// Will change the order of items in the list
 		public void RemoveAtFast(int index)
 		{
 			Debug.Assert((uint32)index < (uint32)mSize);
 			mSize--;
 			if (mSize > 0)
-	            mItems[index] = mItems[mSize];
+		        mItems[index] = mItems[mSize];
+#if VERSION_LIST
+			mVersion++;
+#endif
+		}
+
+		/// Will change the order of items in the list
+		public void RemoveRangeFast(int index, int count)
+		{
+			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
+			if (index + count <= mSize - 1)
+			{
+				int moveCount = Math.Min(count, mSize - (index + count));
+				for (int i < moveCount)
+					mItems[index + i] = mItems[mSize - moveCount + i];
+			}
+			mSize -= (.)count;
 #if VERSION_LIST
 			mVersion++;
 #endif
