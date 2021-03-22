@@ -16,6 +16,9 @@ enum BfSourceElementType
 	BfSourceElementType_Comment,
 	BfSourceElementType_Method,
 	BfSourceElementType_Type,
+	BfSourceElementType_PrimitiveType,
+	BfSourceElementType_Struct,
+	BfSourceElementType_GenericParam,
 	BfSourceElementType_RefType,
 	BfSourceElementType_Interface,
 	BfSourceElementType_Namespace

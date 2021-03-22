@@ -4069,6 +4069,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 			elemType = BfSourceElementType_Interface;
 		else if (checkTempType->mTypeCode == BfTypeCode_Object)
 			elemType = BfSourceElementType_RefType;
+		else if (checkTempType->mTypeCode == BfTypeCode_Struct)
+			elemType = BfSourceElementType_Struct;
 		mResolvePassData->mSourceClassifier->SetElementType(checkTempType->mTypeDeclaration->mNameNode, elemType);
 	}
 

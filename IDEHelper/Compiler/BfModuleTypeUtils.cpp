@@ -4772,6 +4772,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					elemType = BfSourceElementType_Interface;
 				else if (typeInstance->IsObject())
 					elemType = BfSourceElementType_RefType;
+				else if (typeInstance->IsStruct() || (typeInstance->IsTypedPrimitive() && !typeInstance->IsEnum()))
+					elemType = BfSourceElementType_Struct;
 				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(typeDeclaration->mNameNode, elemType);
 			}
 		}
@@ -8072,10 +8074,35 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				}
 			}
 			
+			BfSourceElementType elemType = BfSourceElementType_Type;
+			{
+				auto typeRef = resolvedTypeRef;
+				while (typeRef->IsTypeAlias())
+				{
+					typeRef = typeRef->GetUnderlyingType();
+					if (typeRef == NULL)
+					{
+						typeRef = resolvedTypeRef;
+						break;
+					}
+				}
+
+				if (typeRef->IsInterface())
+					elemType = BfSourceElementType_Interface;
+				else if (typeRef->IsObject())
+					elemType = BfSourceElementType_RefType;
+				else if (typeRef->IsGenericParam())
+					elemType = BfSourceElementType_GenericParam;
+				else if (typeRef->IsPrimitiveType())
+					elemType = BfSourceElementType_PrimitiveType;
+				else if (typeRef->IsStruct() || (typeRef->IsTypedPrimitive() && !typeRef->IsEnum()))
+					elemType = BfSourceElementType_Struct;
+			}
+
 			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
 			{
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (resolvedTypeRef->IsObjectOrInterface()))
-					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, resolvedTypeRef->IsInterface() ? BfSourceElementType_Interface : BfSourceElementType_RefType);
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (elemType != BfSourceElementType_Type))
+					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, elemType);
 
 				StringView leftString = qualifiedTypeRef->mLeft->ToStringView();
 				BfSizedAtomComposite leftComposite;
@@ -8107,16 +8134,16 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				auto checkNameNode = namedTypeRef->mNameNode;
 				bool setType = false;
 
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (resolvedTypeRef->IsObjectOrInterface()))
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (elemType != BfSourceElementType_Type))
 				{					
 					if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNameNode))
 					{
-						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, resolvedTypeRef->IsInterface() ? BfSourceElementType_Interface : BfSourceElementType_RefType);
+						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, elemType);
 					}
 					else
 					{
 						setType = true;
-						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, resolvedTypeRef->IsInterface() ? BfSourceElementType_Interface : BfSourceElementType_RefType);
+						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, elemType);
 					}
 				}
 
@@ -8921,7 +8948,7 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 		{			
 			auto typeRefSource = identifierNode->GetSourceData();
 			if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mSourceClassifier != NULL) && (typeRefSource != NULL) && (typeRefSource == mCompiler->mResolvePassData->mParser->mSourceData))
-				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(identifierNode, BfSourceElementType_Type);
+				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(identifierNode, BfSourceElementType_GenericParam);
 
 			if (genericParamResult->IsConstExprValue())
 			{

@@ -55,6 +55,8 @@ void BfSourceClassifier::SetElementType(BfAstNode * node, BfTypeCode typeCode)
 		elemType = BfSourceElementType_Interface;
 	else if (typeCode == BfTypeCode_Object)
 		elemType = BfSourceElementType_RefType;
+	else if (typeCode == BfTypeCode_Struct)
+		elemType = BfSourceElementType_Struct;
 	SetElementType(node, elemType);
 }
 
@@ -558,7 +560,7 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 		for (auto& genericParam : methodDeclaration->mGenericParams->mGenericParams)
 		{
 			BfIdentifierNode* typeRef = genericParam;
-			SetElementType(typeRef, BfSourceElementType_Type);
+			SetElementType(typeRef, BfSourceElementType_GenericParam);
 		}
 	}
 
@@ -570,7 +572,7 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 			{
 				BfTypeReference* typeRef = genericConstraint->mTypeRef;
 				if (typeRef != NULL)
-					SetElementType(typeRef, BfSourceElementType_Type);
+					SetElementType(typeRef, BfSourceElementType_GenericParam);
 			}
 		}
 	}
@@ -642,7 +644,7 @@ void BfSourceClassifier::Handle(BfTypeDeclaration* typeDeclaration)
 		for (auto& genericParam : typeDeclaration->mGenericParams->mGenericParams)
 		{
 			BfIdentifierNode* typeRef = genericParam;
-			SetElementType(typeRef, BfSourceElementType_Type);
+			SetElementType(typeRef, BfSourceElementType_GenericParam);
 		}
 	}
 
@@ -654,7 +656,7 @@ void BfSourceClassifier::Handle(BfTypeDeclaration* typeDeclaration)
 
 			BfTypeReference* typeRef = genericConstraint->mTypeRef;
 			if (typeRef != NULL)
-				SetElementType(typeRef, BfSourceElementType_Type);
+				SetElementType(typeRef, BfSourceElementType_GenericParam);
 		}
 	}
 
