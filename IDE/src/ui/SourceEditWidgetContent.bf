@@ -208,6 +208,9 @@ namespace IDE.ui
                 0xFF75715E, // Comment
                 0xFFA6E22A, // Method
 				0xFF66D9EF, // Type
+				0xFF66D9EF, // PrimitiveType
+				0xFF66D9EF, // Struct
+				0xFF66D9EF, // GenericParam
                 0xFF66A0EF, // RefType
 				0xFF9A9EEB, // Interface
                 0xFF7BEEB7, // Namespace

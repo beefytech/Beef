@@ -312,6 +312,9 @@ namespace IDE
 			public Color mComment = 0xFF75715E;
 			public Color mMethod = 0xFFA6E22A;
 			public Color mType = 0xFF66D9EF;
+			public Color mPrimitiveType = 0xFF66D9EF;
+			public Color mStruct = 0xFF66D9EF;
+			public Color mGenericParam = 0xFF66D9EF;
 			public Color mRefType = 0xFF66A0EF;
 			public Color mInterface = 0xFF9A9EEB;
 			public Color mNamespace = 0xFF7BEEB7;
@@ -355,13 +358,22 @@ namespace IDE
 				if (sd.Contains("Type"))
 				{
 					GetColor("Type", ref mType);
+					if (!sd.Contains("PrimitiveType"))
+						mPrimitiveType = mType;
+					if (!sd.Contains("Struct"))
+						mStruct = mType;
 					if (!sd.Contains("RefType"))
 						mRefType = mType;
 					if (!sd.Contains("Interface"))
 						mInterface = mType;
+					if (!sd.Contains("GenericParam"))
+						mGenericParam = mType;
 				}
+				GetColor("PrimitiveType", ref mPrimitiveType);
+				GetColor("Struct", ref mStruct);
 				GetColor("RefType", ref mRefType);
 				GetColor("Interface", ref mInterface);
+				GetColor("GenericParam", ref mGenericParam);
 				GetColor("Namespace", ref mNamespace);
 				GetColor("DisassemblyText", ref mDisassemblyText);
 				GetColor("DisassemblyFileName", ref mDisassemblyFileName);
@@ -380,6 +392,9 @@ namespace IDE
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Comment] = mComment;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Method] = mMethod;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Type] = mType;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.PrimitiveType] = mPrimitiveType;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Struct] = mStruct;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.GenericParam] = mGenericParam;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.RefType] = mRefType;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Interface] = mInterface;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Namespace] = mNamespace;

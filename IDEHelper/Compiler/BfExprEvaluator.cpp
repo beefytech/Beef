@@ -8492,7 +8492,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			}
 			
 			if (auto identifier = BfNodeDynCastExact<BfIdentifierNode>(targetSrc))
-				mModule->SetElementType(identifier, BfSourceElementType_Type);
+				mModule->SetElementType(identifier, resolvedTypeInstance->IsEnum() ? BfSourceElementType_Type : BfSourceElementType_Struct);
 			if (mModule->mCompiler->mResolvePassData != NULL)
 				mModule->mCompiler->mResolvePassData->HandleTypeReference(targetSrc, resolvedTypeInstance->mTypeDef);
 
