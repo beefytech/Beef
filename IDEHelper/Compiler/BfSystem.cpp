@@ -3060,7 +3060,7 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 
 		for (auto fieldDef : partialTypeDef->mFields)
 		{
-			if ((!fieldDef->mIsStatic) && (fieldDef->mFieldDeclaration->mInitializer != NULL))
+			if ((!fieldDef->mIsStatic) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mInitializer != NULL))
 				hasInitializers = true;
 		}
 
