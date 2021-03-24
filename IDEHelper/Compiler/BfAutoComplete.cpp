@@ -2313,7 +2313,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 				StringT<128> args;
 
 				propName += "this[";
-				for (size_t paramIdx = 0, count = methodInst->GetParamCount(); paramIdx < count; ++paramIdx)
+				for (int paramIdx = 0, count = methodInst->GetParamCount(); paramIdx < count; ++paramIdx)
 				{
 					if (paramIdx > 0)
 						args += ", ";
