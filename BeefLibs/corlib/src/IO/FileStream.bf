@@ -91,18 +91,14 @@ namespace System.IO
 		// This is not guaranteed to actually represent the file
 		uint8[] mBuffer;
 		int64 mPosInBuffer;
-		// How far the file contents (not still in buffer) reach into the buffer. Only used in reading and skipping forward inside the buffer, -1 means we didn't need to read yet
+		// How far the file contents (things not in buffer) reach into the buffer. Only used in reading and skipping forward inside the buffer, -1 means we didn't need to read yet
 		int64 mBufferReadCount = -1;
 		// How much of the buffer has been changed. We don't actually have written here yet. Only used in writing
 		int64 mBufferWriteCount;
-		// Buffer has been written to. When true, also guarantees that we have write perms
-		bool mBufferDirty;
 
 		// We need to delete mBuffer in our parent's call to Close()
 		// (because otherwise it's already deleted when we still have to access it there), but that function needs to know we're calling from a destructor
 		bool mDeleting;
-
-		// When Seeking a lot and not very far, note that also providing Read permissions will be much be much faster (see SeekNotRelative())
 
 		public this()
 		{
@@ -242,7 +238,7 @@ namespace System.IO
 
 		public override void Close()
 		{
-			if (mBufferDirty)
+			if (mBufferWriteCount != 0)
 				CommitBuffer();
 
 			base.Close();
@@ -252,7 +248,6 @@ namespace System.IO
 			mPosInBuffer = 0;
 			mBufferReadCount = -1;
 			mBufferWriteCount = 0;
-			mBufferDirty = false;
 
 			if (mDeleting && mBuffer != null)
 				delete mBuffer;
@@ -285,7 +280,7 @@ namespace System.IO
 				// Use buffer to full potential if necessary
 				if (data.Length > mBuffer.Count - mPosInBuffer)
 				{
-					if (mBufferDirty)
+					if (mBufferWriteCount != 0)
 						Try!(CommitBuffer());
 					else
 						Try!(SkipBuffer());
@@ -297,28 +292,19 @@ namespace System.IO
 				mPosInBuffer += data.Length;
 
 				if (mPosInBuffer > mBufferWriteCount)
-				{
 					mBufferWriteCount = mPosInBuffer;
-					mBufferDirty = true;
-				}
 
 				return data.Length;
 			}
 			else // Bigger than or equal to buffer, write directly
 			{
 				// Prepare stream
-				if (mBufferDirty)
+				if (mBufferWriteCount != 0)
 					Try!(CommitBuffer());
 				else if (mPosInBuffer != 0)
 					Try!(SkipBuffer());
 
-				let res = base.TryWrite(data); // buffer will now be at the end of this write
-
-				if (res case .Ok(let num))
-				{
-					return num;
-				}
-				else return .Err;
+				return base.TryWrite(data); // buffer will now be at the end of this write
 			}
 		}
 
@@ -338,18 +324,12 @@ namespace System.IO
 			else // Bigger than or equal to buffer, read directly
 			{
 				// Prepare stream
-				if (mBufferDirty)
+				if (mBufferWriteCount != 0)
 					Try!(CommitBuffer());
 				else if (mPosInBuffer != 0)
 					Try!(SkipBuffer());
 
-				let res = base.TryRead(data); // buffer will now be at the end of this read
-
-				if (res case .Ok(let num))
-				{
-					return num;
-				}
-				else return .Err;
+				return base.TryRead(data); // buffer will now be at the end of this read
 			}
 		}
 
@@ -369,18 +349,12 @@ namespace System.IO
 			else // Bigger than or equal to buffer, read directly
 			{
 				// Prepare stream
-				if (mBufferDirty)
+				if (mBufferWriteCount != 0)
 					Try!(CommitBuffer());
 				else if (mPosInBuffer != 0)
 					Try!(SkipBuffer());
 
-				let res = base.TryRead(data, timeoutMS); // buffer will now be at the end of this read
-
-				if (res case .Ok(let num))
-				{
-					return num;
-				}
-				else return .Err;
+				return base.TryRead(data, timeoutMS); // buffer will now be at the end of this read
 			}
 		}
 
@@ -389,7 +363,7 @@ namespace System.IO
 			// Use buffer to full potential if necessary
 			if (data.Length > mBuffer.Count - mPosInBuffer)
 			{
-				if (mBufferDirty)
+				if (mBufferWriteCount != 0)
 					Try!(CommitBuffer());
 				else
 					Try!(SkipBuffer());
@@ -412,7 +386,7 @@ namespace System.IO
 		// Skip the buffer forward, discarding changes (there are probably none when calling this)
 		Result<void> SkipBuffer()
 		{
-			Debug.Assert(mBufferDirty == false);
+			Debug.Assert(mBufferWriteCount == 0);
 
 			// Seek past current buffer to write data (write will do this for us)
 			let res = base.Seek(mPosInBuffer, .Relative);
@@ -430,7 +404,7 @@ namespace System.IO
 		// write changed buffer to stream
 		Result<void> CommitBuffer()
 		{
-			mBufferDirty = false;
+			// Store for comparison
 			let writeLen = mBufferWriteCount;
 
 			let res = base.TryWrite(.(&mBuffer[0], writeLen)); // Pos in buffer points to the next free place, so can act as count
@@ -516,7 +490,7 @@ namespace System.IO
 
 		int64 SeekNotRelativeOutsideBuffer(int64 value)
 		{
-			if (mBufferDirty)
+			if (mBufferWriteCount != 0)
 				CommitBuffer();
 			else
 			{
@@ -536,7 +510,7 @@ namespace System.IO
 			{
 				let fileLength = Platform.BfpFile_GetFileSize(mBfpFile);
 				
-				if (mBufferDirty)
+				if (mBufferWriteCount != 0)
 				{
 					let bufPosInFile = Platform.BfpFile_Seek(mBfpFile, 0, .Relative);
 					if (bufPosInFile + mBufferWriteCount > fileLength)
@@ -566,7 +540,7 @@ namespace System.IO
 
 		public override void Flush()
 		{
-			if (mBufferDirty)
+			if (mBufferWriteCount != 0)
 				CommitBuffer();
 
 			if (mBfpFile != null)
