@@ -91,13 +91,13 @@ namespace System.IO
 		// This is not guaranteed to actually represent the file
 		uint8[] mBuffer;
 		int64 mPosInBuffer;
-		// How far the file contents (things not in buffer) reach into the buffer. Only used in reading and skipping forward inside the buffer, -1 means we didn't need to read yet
+		// How far the file contents (not things in buffer) reach into the buffer. Only used in reading, -1 means we didn't need to read yet
 		int64 mBufferReadCount = -1;
 		// How much of the buffer has been changed. We don't actually have written here yet. Only used in writing
 		int64 mBufferWriteCount;
 
 		// We need to delete mBuffer in our parent's call to Close()
-		// (because otherwise it's already deleted when we still have to access it there), but that function needs to know we're calling from a destructor
+		// (because otherwise it's already deleted when we still have to access it there and that function needs to know we're calling from a destructor)
 		bool mDeleting;
 
 		public this()
@@ -113,7 +113,7 @@ namespace System.IO
 		{
 			mBfpFile = handle;
 			mFileAccess = access;
-			mBuffer = new .[bufferSize];
+			MakeBuffer(bufferSize);
 		}
 
 		public override bool CanRead
@@ -253,17 +253,12 @@ namespace System.IO
 				delete mBuffer;
 		}
 
+		[Inline]
 		void MakeBuffer(int bufferSize)
 		{
 			Debug.Assert(bufferSize >= 0);
 
-			if (mBuffer != null && mBuffer.Count != bufferSize)
-			{
-				delete mBuffer;
-				mBuffer = new .[bufferSize];
-			}
-			if (mBuffer == null)
-				mBuffer = new .[bufferSize];
+			mBuffer = new .[bufferSize];
 		}
 
 		public override Result<int> TryWrite(Span<uint8> data)
@@ -277,7 +272,7 @@ namespace System.IO
 			// Write into buffer
 			if (data.Length < mBuffer.Count)
 			{
-				// Use buffer to full potential if necessary
+				// Use full buffer capacity if necessary
 				if (data.Length > mBuffer.Count - mPosInBuffer)
 				{
 					if (mBufferWriteCount != 0)
@@ -296,15 +291,15 @@ namespace System.IO
 
 				return data.Length;
 			}
-			else // Bigger than or equal to buffer, write directly
+			else // Write directly
 			{
-				// Prepare stream
+				// Manage buffer
 				if (mBufferWriteCount != 0)
 					Try!(CommitBuffer());
 				else if (mPosInBuffer != 0)
 					Try!(SkipBuffer());
 
-				return base.TryWrite(data); // buffer will now be at the end of this write
+				return base.TryWrite(data);
 			}
 		}
 
@@ -321,15 +316,15 @@ namespace System.IO
 			{
 				return TryReadBuffer(data);
 			}
-			else // Bigger than or equal to buffer, read directly
+			else // Read directly
 			{
-				// Prepare stream
+				// Manage buffer
 				if (mBufferWriteCount != 0)
 					Try!(CommitBuffer());
 				else if (mPosInBuffer != 0)
 					Try!(SkipBuffer());
 
-				return base.TryRead(data); // buffer will now be at the end of this read
+				return base.TryRead(data);
 			}
 		}
 
@@ -346,21 +341,21 @@ namespace System.IO
 			{
 				return TryReadBuffer(data);
 			}
-			else // Bigger than or equal to buffer, read directly
+			else // Read directly
 			{
-				// Prepare stream
+				// Manage buffer
 				if (mBufferWriteCount != 0)
 					Try!(CommitBuffer());
 				else if (mPosInBuffer != 0)
 					Try!(SkipBuffer());
 
-				return base.TryRead(data, timeoutMS); // buffer will now be at the end of this read
+				return base.TryRead(data, timeoutMS);
 			}
 		}
 
 		Result<int> TryReadBuffer(Span<uint8> data)
 		{
-			// Use buffer to full potential if necessary
+			// Use full buffer capacity if necessary
 			if (data.Length > mBuffer.Count - mPosInBuffer)
 			{
 				if (mBufferWriteCount != 0)
@@ -370,12 +365,17 @@ namespace System.IO
 			}
 
 			if (mBufferReadCount == -1 && mPosInBuffer + data.Length >= mBufferWriteCount)
-				Try!(FillBuffer()); // We haven't actually read into the buffer yet. From this point onward, mBufferFill is equal to how far into the buffer the stream reaches
+				Try!(FillBuffer()); // We haven't actually read into the buffer yet. Sets mBufferFill
 
 			var readLength = data.Length;
 			let maxRead = Math.Max(mBufferReadCount, mBufferWriteCount);
-			if (mPosInBuffer + data.Length > maxRead) // Make sure we only read as far as we can
-				readLength = mPosInBuffer + data.Length - maxRead;
+			if (mPosInBuffer + readLength > maxRead) // Make sure we only read as far as we can
+			{
+				readLength += mPosInBuffer - maxRead; // (mPosInBuffer - maxRead) is a negative value
+
+				if (readLength <= 0) // We can't read anything
+					return 0;
+			}
 
 			Internal.MemCpy(data.Ptr, &mBuffer[mPosInBuffer], readLength);
 			mPosInBuffer += readLength;
@@ -383,15 +383,14 @@ namespace System.IO
 			return readLength;
 		}
 
-		// Skip the buffer forward, discarding changes (there are probably none when calling this)
 		Result<void> SkipBuffer()
 		{
 			Debug.Assert(mBufferWriteCount == 0);
 
-			// Seek past current buffer to write data (write will do this for us)
+			// Seek past current buffer
 			let res = base.Seek(mPosInBuffer, .Relative);
 
-			// Reset buffer pos for later
+			// Reset buffer
 			mPosInBuffer = 0;
 			mBufferReadCount = -1;
 			mBufferWriteCount = 0;
@@ -401,15 +400,14 @@ namespace System.IO
 			return .Ok;
 		}
 
-		// write changed buffer to stream
 		Result<void> CommitBuffer()
 		{
 			// Store for comparison
 			let writeLen = mBufferWriteCount;
 
-			let res = base.TryWrite(.(&mBuffer[0], writeLen)); // Pos in buffer points to the next free place, so can act as count
+			let res = base.TryWrite(.(&mBuffer[0], writeLen));
 
-			// go back to mPosInBuffer for next buffer position
+			// Go back to mPosInBuffer for next buffer position
 			if (mPosInBuffer < mBufferWriteCount)
 				base.Seek(mPosInBuffer - mBufferWriteCount, .Relative);
 
@@ -473,7 +471,6 @@ namespace System.IO
 					else
 					{
 						// We cant read, so we really need to move the buffer instead
-						// this is the slower route
 						return SeekNotRelativeOutsideBuffer(value);
 					}
 				}
@@ -497,7 +494,6 @@ namespace System.IO
 				// Reset
 				mPosInBuffer = 0;
 				mBufferReadCount = -1;
-				// mBufferWriteCount should already be 0 here
 			}
 
 			// Next buffer will be acting from here
