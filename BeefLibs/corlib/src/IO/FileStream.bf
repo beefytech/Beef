@@ -31,7 +31,7 @@ namespace System.IO
 
 		public ~this()
 		{
-			Close();
+			Delete();
 		}
 
 		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
@@ -82,6 +82,11 @@ namespace System.IO
 			if (mBfpFile != null)
 				Platform.BfpFile_Flush(mBfpFile);
 		}
+
+		protected virtual void Delete()
+		{
+			Close();
+		}
 	}
 
 	class FileStream : FileStreamBase
@@ -96,17 +101,8 @@ namespace System.IO
 		// How much of the buffer has been changed. We don't actually have written here yet. Only used in writing
 		int64 mBufferWriteCount;
 
-		// We need to delete mBuffer in our parent's call to Close()
-		// (because otherwise it's already deleted when we still have to access it there and that function needs to know we're calling from a destructor)
-		bool mDeleting;
-
 		public this()
 		{
-		}
-
-		public ~this()
-		{
-			mDeleting = true;
 		}
 
 		public this(Platform.BfpFile* handle, FileAccess access, int32 bufferSize, bool isAsync)
@@ -248,17 +244,29 @@ namespace System.IO
 			mPosInBuffer = 0;
 			mBufferReadCount = -1;
 			mBufferWriteCount = 0;
+		}
 
-			if (mDeleting && mBuffer != null)
+		protected override void Delete()
+		{
+			if (mBfpFile != null)
+				Close();
+
+			// Delete here since this is called after our destructor and we still need it in Close()
+			if (mBuffer != null)
 				delete mBuffer;
 		}
 
-		[Inline]
 		void MakeBuffer(int bufferSize)
 		{
 			Debug.Assert(bufferSize >= 0);
 
-			mBuffer = new .[bufferSize];
+			if (mBuffer == null)
+				mBuffer = new .[bufferSize];
+			else if (mBuffer != null && mBuffer.Count != bufferSize)
+			{
+				delete mBuffer;
+				mBuffer = new .[bufferSize];
+			}
 		}
 
 		public override Result<int> TryWrite(Span<uint8> data)
