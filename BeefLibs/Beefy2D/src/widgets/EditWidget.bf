@@ -1700,29 +1700,29 @@ namespace Beefy.widgets
 
 			if (keyChar == '\x7F') // Ctrl+Backspace
 			{
-				int line;
-				int lineChar;
-				GetCursorLineChar(out line, out lineChar);
+				if (!CheckReadOnly())
+				{
+					int line;
+					int lineChar;
+					GetCursorLineChar(out line, out lineChar);
 
-				int startIdx = CursorTextPos;
-				SelectLeft(line, lineChar, true, false);
-				mSelection = EditSelection(CursorTextPos, startIdx);
-				
-				var action = new DeleteSelectionAction(this);
-				action.mMoveCursor = true;
-				mData.mUndoManager.Add(action);
-				action.mCursorTextPos = (.)startIdx;
-				PhysDeleteSelection(true);
+					int startIdx = CursorTextPos;
+					SelectLeft(line, lineChar, true, false);
+					mSelection = EditSelection(CursorTextPos, startIdx);
+					
+					var action = new DeleteSelectionAction(this);
+					action.mMoveCursor = true;
+					mData.mUndoManager.Add(action);
+					action.mCursorTextPos = (.)startIdx;
+					PhysDeleteSelection(true);
+				}
 
 				return;
 			}
 
 			char32 useChar = keyChar;
 
-            mCursorBlinkTicks = 0;			
-
-			if (useChar == '\x7F') // Ctrl+Backspace
-				useChar = '\b';
+            mCursorBlinkTicks = 0;
 
             if (useChar == '\b')
             {
@@ -2511,32 +2511,35 @@ namespace Beefy.widgets
             case KeyCode.Delete:
 				if (mWidgetWindow.IsKeyDown(.Control))
 				{
-					if (mWidgetWindow.IsKeyDown(.Shift))
+					if (!CheckReadOnly())
 					{
+						if (mWidgetWindow.IsKeyDown(.Shift))
+						{
+							int startIdx = CursorTextPos;
+							CursorToLineEnd();
+							mSelection = EditSelection(CursorTextPos, startIdx);
+							var action = new DeleteSelectionAction(this);
+							action.mMoveCursor = true;
+							mData.mUndoManager.Add(action);
+							action.mCursorTextPos = (.)startIdx;
+							PhysDeleteSelection(true);
+							break;
+						}
+
+						int line;
+						int lineChar2;
+						GetCursorLineChar(out line, out lineChar2);
+
 						int startIdx = CursorTextPos;
-						CursorToLineEnd();
+						SelectRight(line, lineChar, true, false);
 						mSelection = EditSelection(CursorTextPos, startIdx);
+
 						var action = new DeleteSelectionAction(this);
 						action.mMoveCursor = true;
 						mData.mUndoManager.Add(action);
 						action.mCursorTextPos = (.)startIdx;
 						PhysDeleteSelection(true);
-						break;
 					}
-
-					int line;
-					int lineChar2;
-					GetCursorLineChar(out line, out lineChar2);
-
-					int startIdx = CursorTextPos;
-					SelectRight(line, lineChar, true, false);
-					mSelection = EditSelection(CursorTextPos, startIdx);
-
-					var action = new DeleteSelectionAction(this);
-					action.mMoveCursor = true;
-					mData.mUndoManager.Add(action);
-					action.mCursorTextPos = (.)startIdx;
-					PhysDeleteSelection(true);
 					break;
 				}
 
