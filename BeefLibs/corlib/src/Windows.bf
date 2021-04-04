@@ -120,7 +120,7 @@ namespace System
 			public int32 mFlags;
 			public int16 mFileOffset = 0;
 			public int16 mFileExtension = 0;
-			public char8* mDefExt;
+			public char16* mDefExt;
 			public int mCustData = 0;
 			public WndProc mHook;
 			public char16* mTemplateName = null;

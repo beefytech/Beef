@@ -425,7 +425,7 @@ namespace System.IO
 			ofn.mCustData = (int)Internal.UnsafeCastToPtr(this);
 	        ofn.mFlagsEx = Windows.OFN_USESHELLITEM;
 	        if (mDefaultExt != null && AddExtension)
-	            ofn.mDefExt = mDefaultExt;
+	            ofn.mDefExt = mDefaultExt.ToScopedNativeWChar!::();
 
 			DeleteContainerAndItems!(mFileNames);
 			mFileNames = null;
