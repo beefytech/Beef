@@ -68,7 +68,7 @@ namespace System.IO
 
 		public override Result<int> TryRead(Span<uint8> data)
 		{
-			int64 spaceLeft = mBufferEnd - mPos;
+			int spaceLeft = (.)(mBufferEnd - mPos);
 			if (data.Length <= spaceLeft)
 			{
 				Internal.MemCpy(data.Ptr, mBuffer.Ptr + (mPos - mBufferPos), data.Length);
@@ -94,7 +94,7 @@ namespace System.IO
 				var result = TryReadUnderlying(mPos, data);
 				if (result case .Ok(let len))
 					mPos += len;
-				return mPos - readStart;
+				return (.)(mPos - readStart);
 			}
 
 			var result = TryReadUnderlying(mPos, mBuffer);
@@ -106,7 +106,7 @@ namespace System.IO
 				int readLen = Math.Min(len, data.Length);
 				Internal.MemCpy(data.Ptr, mBuffer.Ptr, readLen);
 				mPos += readLen;
-				return mPos - readStart;
+				return (.)(mPos - readStart);
 			case .Err:
 				return result;
 			}
@@ -124,7 +124,7 @@ namespace System.IO
 			int writeCount = 0;
 			if (mWriteDirtyEnd >= 0)
 			{
-				int64 spaceLeft = (mBufferPos + mBuffer.Count) - mPos;
+				int spaceLeft = (.)((mBufferPos + mBuffer.Count) - mPos);
 				if (data.Length <= spaceLeft)
 					writeCount = data.Length;
 				else
