@@ -61,7 +61,7 @@ namespace System.IO
 
 		public abstract Result<int> TryRead(Span<uint8> data);
 		public abstract Result<int> TryWrite(Span<uint8> data);
-		public abstract void Close();
+		public abstract Result<void> Close();
 
 		//Read value from stream without changing position. Position won't change even if it returns .Err
 		public Result<T> Peek<T>() where T : struct
@@ -134,10 +134,16 @@ namespace System.IO
 		public Result<T> Read<T>() where T : struct
 		{
 			T val = ?;
-			int size = Try!(TryRead(.((uint8*)&val, sizeof(T))));
-			if (size != sizeof(T))
+			var result = TryRead(.((uint8*)&val, sizeof(T)));
+			switch (result)
+			{
+			case .Ok(let size):
+				if (size != sizeof(T))
+					return .Err;
+				return .Ok(val);
+			case .Err:
 				return .Err;
-			return .Ok(val);
+			}
 		}
 
 		public Result<void> Write<T>(T val) where T : struct
@@ -186,8 +192,9 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public virtual void Flush()
+		public virtual Result<void> Flush()
 		{
+			return .Ok;
 		}
 
 		public void Align(int alignSize)

@@ -31,7 +31,7 @@ namespace System.IO
 
 		public ~this()
 		{
-			Close();
+			Delete();
 		}
 
 		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
@@ -52,7 +52,7 @@ namespace System.IO
 			return numBytesRead;
 		}
 
-		public Result<int> TryRead(Span<uint8> data, int timeoutMS)
+		public virtual Result<int> TryRead(Span<uint8> data, int timeoutMS)
 		{
 			Platform.BfpFileResult result = .Ok;
 			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
@@ -70,21 +70,28 @@ namespace System.IO
 			return numBytesWritten;
 		}
 
-		public override void Close()
+		public override Result<void> Close()
 		{
 			if (mBfpFile != null)
 				Platform.BfpFile_Release(mBfpFile);
 			mBfpFile = null;
+			return .Ok;
 		}
 
-		public override void Flush()
+		public override Result<void> Flush()
 		{
 			if (mBfpFile != null)
 				Platform.BfpFile_Flush(mBfpFile);
+			return .Ok;
+		}
+
+		protected virtual void Delete()
+		{
+			Close();
 		}
 	}
 
-	class FileStream : FileStreamBase
+	class UnbufferedFileStream : FileStreamBase
 	{
 		FileAccess mFileAccess;
 
@@ -211,10 +218,228 @@ namespace System.IO
 			mFileAccess = access;
 		}
 
-		public override void Close()
+		public override Result<void> Close()
 		{
-			base.Close();
 			mFileAccess = default;
+			if (base.Close() case .Err)
+				return .Err;
+			return .Ok;
 		}
+	}
+
+	class BufferedFileStream : BufferedStream
+	{
+		protected Platform.BfpFile* mBfpFile;
+		protected int64 mBfpFilePos;
+		FileAccess mFileAccess;
+
+		public this()
+		{
+			
+		}
+
+		public ~this()
+		{
+			Delete();
+		}
+
+		protected virtual void Delete()
+		{
+			Close();
+		}
+
+		public this(Platform.BfpFile* handle, FileAccess access, int32 bufferSize, bool isAsync)
+		{
+			mBfpFile = handle;
+			mFileAccess = access;
+		}
+
+		public override bool CanRead
+		{
+			get
+			{
+				return mFileAccess.HasFlag(FileAccess.Read);
+			}
+		}
+
+		public override bool CanWrite
+		{
+			get
+			{
+				return mFileAccess.HasFlag(FileAccess.Write);
+			}
+		}
+
+		public Result<void, FileOpenError> Create(StringView path, FileAccess access = .ReadWrite, FileShare share = .None, int bufferSize = 4096, FileOptions options = .None, SecurityAttributes* secAttrs = null)
+		{
+			return Open(path, FileMode.Create, access, share, bufferSize, options, secAttrs);
+		}
+
+		public Result<void, FileOpenError> Open(StringView path, FileAccess access = .ReadWrite, FileShare share = .None, int bufferSize = 4096, FileOptions options = .None, SecurityAttributes* secAttrs = null)
+		{
+			return Open(path, FileMode.Open, access, share, bufferSize, options, secAttrs);
+		}
+
+		public Result<void, FileOpenError> OpenStd(Platform.BfpFileStdKind stdKind)
+		{
+			Platform.BfpFileResult fileResult = .Ok;
+			mBfpFile = Platform.BfpFile_GetStd(stdKind, &fileResult);
+			mFileAccess = .ReadWrite;
+
+			if ((mBfpFile == null) || (fileResult != .Ok))
+			{
+				switch (fileResult)
+				{
+				case .ShareError:
+					return .Err(.SharingViolation);
+				case .NotFound:
+					return .Err(.NotFound);
+				default:
+					return .Err(.Unknown);
+				}
+			}
+			return .Ok;
+		}
+
+		public Result<void, FileOpenError> Open(StringView path, FileMode mode, FileAccess access, FileShare share = .None, int bufferSize = 4096, FileOptions options = .None, SecurityAttributes* secAttrs = null)
+		{
+			Runtime.Assert(mBfpFile == null);
+
+			Platform.BfpFileCreateKind createKind = .CreateAlways;
+			Platform.BfpFileCreateFlags createFlags = .None;
+
+			switch (mode)
+			{
+			case .CreateNew:
+				createKind = .CreateIfNotExists;
+			case .Create:
+				createKind = .CreateAlways;
+			case .Open:
+				createKind = .OpenExisting;
+			case .OpenOrCreate:
+				createKind = .CreateAlways;
+			case .Truncate:
+				createKind = .CreateAlways;
+				createFlags |= .Truncate;
+			case .Append:
+				createKind = .CreateAlways;
+				createFlags |= .Append;
+			}
+
+			if (access.HasFlag(.Read))
+				createFlags |= .Read;
+			if (access.HasFlag(.Write))
+				createFlags |= .Write;
+
+			if (share.HasFlag(.Read))
+				createFlags |= .ShareRead;
+			if (share.HasFlag(.Write))
+				createFlags |= .ShareWrite;
+			if (share.HasFlag(.Delete))
+				createFlags |= .ShareDelete;
+
+			Platform.BfpFileAttributes fileFlags = .Normal;
+			
+			Platform.BfpFileResult fileResult = .Ok;
+			mBfpFile = Platform.BfpFile_Create(path.ToScopeCStr!(128), createKind, createFlags, fileFlags, &fileResult);
+
+			if ((mBfpFile == null) || (fileResult != .Ok))
+			{
+				switch (fileResult)
+				{
+				case .ShareError:
+					return .Err(.SharingViolation);
+				case .NotFound:
+					return .Err(.NotFound);
+				default:
+					return .Err(.Unknown);
+				}
+			}
+			mFileAccess = access;
+
+			MakeBuffer(bufferSize);
+
+			return .Ok;
+		}
+
+		public void Attach(Platform.BfpFile* bfpFile, FileAccess access = .ReadWrite)
+		{
+			Close();
+			mBfpFile = bfpFile;
+			mFileAccess = access;
+		}
+
+		public override Result<void> Close()
+		{
+			var hadError = Flush() case .Err;
+			if (mBfpFile != null)
+				Platform.BfpFile_Release(mBfpFile);
+			mBfpFile = null;
+			mFileAccess = default;
+			if (hadError)
+				return .Err;
+			return .Ok;
+		}
+
+		protected override void UpdateLength()
+		{
+			mUnderlyingLength = Platform.BfpFile_GetFileSize(mBfpFile);
+		}
+
+		protected override Result<int> TryReadUnderlying(int64 pos, Span<uint8> data)
+		{
+			if (mBfpFilePos != pos)
+			{
+				int64 newPos = Platform.BfpFile_Seek(mBfpFile, pos, .Absolute);
+				if (newPos != pos)
+					return .Err;
+				mBfpFilePos = pos;
+			}
+			Platform.BfpFileResult result = .Ok;
+			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, -1, &result);
+			if ((result != .Ok) && (result != .PartialData))
+				return .Err;
+			mBfpFilePos += numBytesRead;
+			return numBytesRead;
+		}
+
+		protected override Result<int> TryWriteUnderlying(int64 pos, Span<uint8> data)
+		{
+			if (mBfpFilePos != pos)
+			{
+				int64 newPos = Platform.BfpFile_Seek(mBfpFile, pos, .Absolute);
+				if (newPos != pos)
+					return .Err;
+				mBfpFilePos = pos;
+			}
+			Platform.BfpFileResult result = .Ok;
+			int numBytesRead = Platform.BfpFile_Write(mBfpFile, data.Ptr, data.Length, -1, &result);
+			if ((result != .Ok) && (result != .PartialData))
+				return .Err;
+			mBfpFilePos += numBytesRead;
+			return numBytesRead;
+		}
+
+		public Result<int> TryRead(Span<uint8> data, int timeoutMS)
+		{
+			if (mBfpFilePos != mPos)
+			{
+				int64 newPos = Platform.BfpFile_Seek(mBfpFile, mPos, .Absolute);
+				if (newPos != mPos)
+					return .Err;
+				mBfpFilePos = mPos;
+			}
+
+			Platform.BfpFileResult result = .Ok;
+			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
+			if ((result != .Ok) && (result != .PartialData))
+				return .Err;
+			return numBytesRead;
+		}
+	}
+
+	class FileStream : BufferedFileStream
+	{
+
 	}
 }

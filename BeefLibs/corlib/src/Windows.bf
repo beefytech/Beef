@@ -1452,6 +1452,9 @@ namespace System
 		public static extern Handle OpenFileMappingA(uint32 dwDesiredAccess, IntBool bInheritHandle, char8* lpName);
 
 		[CLink, CallingConvention(.Stdcall)]
+		public static extern Handle CreateFileMappingA(Handle hFile, SecurityAttributes* securityAttrs, uint32 flProtect, uint32 dwMaximumSizeHigh, uint32 dwMaximumSizeLow, char8* lpName);
+
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void* MapViewOfFile(Handle hFileMappingObject, uint32 dwDesiredAccess, uint32 dwFileOffsetHigh, uint32 dwFileOffsetLow, int dwNumberOfBytesToMap);
 
 		[CLink, CallingConvention(.Stdcall)]

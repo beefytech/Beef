@@ -215,10 +215,19 @@ namespace System
 	{
 		T mFirstElement;
 
+		public T* Ptr
+		{
+			[Inline]
+			get
+			{
+				return &mFirstElement;
+			}
+		}
+
 		public this()
 		{
 		} 
-		
+
 		[Inline]
 		ref T GetRef(int idx)
 		{
@@ -330,6 +339,15 @@ namespace System
 		int_arsize mLength1;
 		T mFirstElement;
 
+		public T* Ptr
+		{
+			[Inline]
+			get
+			{
+				return &mFirstElement;
+			}
+		}
+
 		Array GetSelf()
 		{
 			return this;
@@ -338,7 +356,7 @@ namespace System
 		public this()
 		{
 		} 
-		
+
 		public int GetLength(int dim)
 		{
 			if (dim == 0)
@@ -446,6 +464,15 @@ namespace System
 		int_arsize mLength1;
 		int_arsize mLength2;
 		T mFirstElement;
+
+		public T* Ptr
+		{
+			[Inline]
+			get
+			{
+				return &mFirstElement;
+			}
+		}
 
 		Array GetSelf()
 		{
@@ -568,6 +595,15 @@ namespace System
 		int_arsize mLength2;
 		int_arsize mLength3;
 		T mFirstElement;
+
+		public T* Ptr
+		{
+			[Inline]
+			get
+			{
+				return &mFirstElement;
+			}
+		}
 
 		Array GetSelf()
 		{

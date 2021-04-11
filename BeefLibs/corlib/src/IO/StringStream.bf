@@ -157,9 +157,9 @@ namespace System.IO
 			return .Ok(count);
 		}
 
-		public override void Close()
+		public override Result<void> Close()
 		{
-			
+			return .Ok;
 		}
 	}
 }

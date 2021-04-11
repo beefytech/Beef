@@ -54,9 +54,9 @@ namespace System
 				return .Ok(data.Length);
 			}
 
-			public override void Close()
+			public override Result<void> Close()
 			{
-
+				return .Ok;
 			}
 		}
 

@@ -90,14 +90,14 @@ namespace System.IO
 			}
 		}
 
-		public override void Close()
+		public override Result<void> Close()
 		{
-			mChildStream.Close();
+			return mChildStream.Close();
 		}
 
-		public override void Flush()
+		public override Result<void> Flush()
 		{
-			mChildStream.Flush();
+			return mChildStream.Flush();
 		}
 	}
 }
