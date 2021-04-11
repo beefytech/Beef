@@ -8,30 +8,30 @@ USING_NS_BF;
 
 static BOOL DIEnumDevicesCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
 {
-	DInputManager* _this = (DInputManager*)pvRef;
+	String& outStr = *(String*)pvRef;
 
 	auto AddStr = [&](const StringImpl& str)
 	{
 		for (auto c : str)
 		{
 			if ((c >= 32) && (c < 128))
-				_this->mEnumData += c;
+				outStr += c;
 		}
 	};
 
 	AddStr(UTF8Encode(lpddi->tszInstanceName));
-	_this->mEnumData += "\t";
+	outStr += "\t";
 	AddStr(UTF8Encode(lpddi->tszProductName));
 
 	auto guid = lpddi->guidInstance;
-	_this->mEnumData += StrFormat("\t%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+	outStr += StrFormat("\t%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
 		guid.Data1, guid.Data2, guid.Data3,
 		guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
 		guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 
 	//OutputDebugStrF("Device: %s %s\n", lpddi->tszInstanceName, lpddi->tszProductName);
 
-	_this->mEnumData += "\n";
+	outStr += "\n";
 
 	return TRUE;
 }
@@ -86,10 +86,10 @@ DInputDevice* DInputManager::CreateInputDevice(const StringImpl& guidStr)
 
 String DInputManager::EnumerateDevices()
 {
-	mEnumData.Clear();
+	String str;
 	if (mDirectInput != NULL)
-		mDirectInput->EnumDevices(DI8DEVCLASS_ALL, DIEnumDevicesCallback, this, DIEDFL_ATTACHEDONLY);
-	return mEnumData;
+		mDirectInput->EnumDevices(DI8DEVCLASS_ALL, DIEnumDevicesCallback, &str, DIEDFL_ATTACHEDONLY);
+	return str;
 }
 
 DInputDevice::~DInputDevice()

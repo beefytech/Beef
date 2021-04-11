@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace Beefy.input
 {
@@ -32,6 +33,33 @@ namespace Beefy.input
 
 		[CallingConvention(.Stdcall), CLink]
 		public static extern void* BFApp_CreateInputDevice(char8* guid);
+
+		public Monitor mMonitor = new .() ~ delete _;
+		public String mEnumerateString = new .() ~ delete _;
+		public bool mEnumerating;
+
+		public void CachedEnumerateInputDevices(String outData)
+		{
+			using (mMonitor.Enter())
+			{
+				outData.Append(mEnumerateString);
+
+				if (!mEnumerating)
+				{
+					mEnumerating = true;
+					ThreadPool.QueueUserWorkItem(new () =>
+						{
+							String data = scope .();
+							data.Append(BFApp_EnumerateInputDevices());
+							using (mMonitor.Enter())
+							{
+								mEnumerateString.Set(data);
+								mEnumerating = false;
+							}
+						});
+				}
+			}
+		}
 
 		public void EnumerateInputDevices(String outData)
 		{
