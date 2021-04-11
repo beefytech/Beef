@@ -23,8 +23,7 @@ USING_NS_BF;
 
 #pragma warning(disable:4996)
 
-static String gTempString;
-static UTF16String gTempUTF16String;
+static TLSingleton<String> gBeefySys_TLStrReturn;
 int gPixelsDrawn = 0;
 
 #ifdef BF_PLATFORM_WINDOWS
@@ -93,8 +92,7 @@ BF_EXPORT void BF_CALLTYPE BFApp_Create()
 BF_EXPORT void BF_CALLTYPE BFApp_Delete()
 {
 	delete gBFApp;
-	gBFApp = NULL;
-	gTempUTF16String.Dispose();
+	gBFApp = NULL;	
 	FTFontManager::ClearCache();
 
 	//OutputDebugStrF("Deleting App\n");
@@ -263,8 +261,9 @@ BF_EXPORT void BF_CALLTYPE BFApp_RehupMouse()
 
 BF_EXPORT const char* BF_CALLTYPE BFApp_EnumerateInputDevices()
 {	
-	gTempString = gBFApp->EnumerateInputDevices();
-	return gTempString.c_str();
+	String& outString = *gBeefySys_TLStrReturn.Get();
+	outString = gBFApp->EnumerateInputDevices();
+	return outString.c_str();
 }
 
 BF_EXPORT BFInputDevice* BFApp_CreateInputDevice(const char* guid)
@@ -744,8 +743,9 @@ BF_EXPORT void BF_CALLTYPE BFInput_Destroy(BFInputDevice* inputDevice)
 
 BF_EXPORT const char* BF_CALLTYPE BFInput_GetState(BFInputDevice* inputDevice)
 {
-	gTempString = inputDevice->GetState();
-	return gTempString.c_str();
+	String& outString = *gBeefySys_TLStrReturn.Get();
+	outString = inputDevice->GetState();
+	return outString.c_str();
 }
 
 BF_EXPORT int BF_CALLTYPE BF_TickCount()
