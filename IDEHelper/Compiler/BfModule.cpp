@@ -8014,7 +8014,10 @@ BfTypedValue BfModule::FlushNullConditional(BfTypedValue result, bool ignoreNull
 	auto pendingNullCond = mCurMethodState->mPendingNullConditional;
 
 	if ((result) && (!ignoreNullable))
-	{		
+	{
+		if (result.mType->IsVar())
+			return result;
+
 		auto notNullBB = mBfIRBuilder->GetInsertBlock();
 
 		//TODO: Make this work, needed for 'void' and such		
