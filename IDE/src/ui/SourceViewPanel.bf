@@ -2546,7 +2546,7 @@ namespace IDE.ui
 			base.RemovedFromWindow();
 			CloseOldVersion();
 
-			if (NeedsPostRemoveUpdate)
+			if ((NeedsPostRemoveUpdate) && (!mInPostRemoveUpdatePanels))
 			{
 				//Debug.WriteLine("Adding sourceViewPanel to mPostRemoveUpdatePanel {0}", this);
 				mInPostRemoveUpdatePanels = true;
