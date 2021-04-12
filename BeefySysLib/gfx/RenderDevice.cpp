@@ -133,10 +133,26 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	if (!handled)
 	{
 		imageData->mWantsAlphaPremultiplied = (flags & TextureFlag_NoPremult) == 0;		
-		if (!imageData->LoadFromFile(fileName))
+		if (fileName.StartsWith("@"))
 		{
-			failed = true;
-			BF_FATAL("Failed to load image");
+			int colon = (int)fileName.IndexOf(':');
+			String addrStr = fileName.Substring(1, colon - 1);
+			String lenStr = fileName.Substring(colon + 1);
+			void* addr = (void*)(intptr)strtoll(addrStr.c_str(), NULL, 16);
+			int len = (int)strtol(lenStr.c_str(), NULL, 10);
+			if (!imageData->LoadFromMemory(addr, len))
+			{
+				failed = true;
+				BF_FATAL("Failed to load image");
+			}
+		}
+		else
+		{
+			if (!imageData->LoadFromFile(fileName))
+			{
+				failed = true;
+				BF_FATAL("Failed to load image");
+			}
 		}
 	}
 
