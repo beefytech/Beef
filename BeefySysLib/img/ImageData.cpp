@@ -100,6 +100,14 @@ ImageData* ImageData::Duplicate()
 	return copy;
 }
 
+bool ImageData::LoadFromMemory(void* ptr, int size)
+{		
+	SetSrcData((uint8*)ptr, size);
+	bool result = ReadData();	
+	mSrcData = NULL;	
+	return result;
+}
+
 bool ImageData::LoadFromFile(const StringImpl& path)
 {	
 	int size = 0;
@@ -125,6 +133,7 @@ void ImageData::SetSrcData(uint8* data, int dataLen)
 	mSrcData = data;
 	mSrcDataLen = dataLen;
 }
+
 
 void ImageData::PremultiplyAlpha()
 {

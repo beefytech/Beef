@@ -43,6 +43,7 @@ public:
 	void					Fill(uint32 color);
 	virtual ImageData*		Duplicate();
 	void					SetSrcData(uint8* data, int dataLen);	
+	virtual bool			LoadFromMemory(void* ptr, int size);
 	virtual bool			LoadFromFile(const StringImpl& path);
 	virtual	bool			ReadData() { return false; }
 	virtual void			PremultiplyAlpha();

@@ -13,6 +13,7 @@ class JPEGData : public ImageData
 {
 public:
 	bool					ReadData();
+	void					Compress(int quality);
 };
 
 NS_BF_END;

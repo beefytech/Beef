@@ -4,10 +4,14 @@
 #include "gfx/RenderDevice.h"
 #include "gfx/Texture.h"
 #include "util/PerfTimer.h"
+#include "util/TLSingleton.h"
+#include "img/JPEGData.h"
+
+#pragma warning(disable:4190)
 
 USING_NS_BF;
 
-static UTF16String gTempUTF16String;
+static TLSingleton<String> gResLib_TLStrReturn;
 
 BF_EXPORT PSDReader* BF_CALLTYPE Res_OpenPSD(const char* fileName)
 {
@@ -87,4 +91,20 @@ BF_EXPORT const char* BF_CALLTYPE Res_PSDLayer_GetName(PSDLayerInfo* layerInfo)
 BF_EXPORT int BF_CALLTYPE Res_PSDLayer_IsVisible(PSDLayerInfo* layerInfo)
 {
 	return layerInfo->mVisible ? 1 : 0;
+}
+
+///
+
+BF_EXPORT StringView BF_CALLTYPE Res_JPEGCompress(uint32* bits, int width, int height, int quality)
+{
+	String& outString = *gResLib_TLStrReturn.Get();
+	JPEGData jpegData;
+	jpegData.mBits = bits;
+	jpegData.mWidth = width;
+	jpegData.mHeight = height;
+	jpegData.Compress(quality);
+	jpegData.mBits = NULL;
+	outString.Clear();
+	outString.Insert(0, (char*)jpegData.mSrcData, jpegData.mSrcDataLen);
+	return outString;
 }
