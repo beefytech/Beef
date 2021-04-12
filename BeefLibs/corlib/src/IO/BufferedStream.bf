@@ -69,6 +69,8 @@ namespace System.IO
 		public override Result<int> TryRead(Span<uint8> data)
 		{
 			int spaceLeft = (.)(mBufferEnd - mPos);
+			if (mPos < mBufferPos)
+				spaceLeft = 0;
 			if (data.Length <= spaceLeft)
 			{
 				Internal.MemCpy(data.Ptr, mBuffer.Ptr + (mPos - mBufferPos), data.Length);
