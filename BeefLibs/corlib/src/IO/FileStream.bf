@@ -371,14 +371,14 @@ namespace System.IO
 
 		public override Result<void> Close()
 		{
-			var hadError = Flush() case .Err;
+			let ret = base.Close();
 			if (mBfpFile != null)
 				Platform.BfpFile_Release(mBfpFile);
+
 			mBfpFile = null;
 			mFileAccess = default;
-			if (hadError)
-				return .Err;
-			return .Ok;
+			mBfpFilePos = 0;
+			return ret;
 		}
 
 		protected override void UpdateLength()

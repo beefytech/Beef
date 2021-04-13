@@ -179,7 +179,12 @@ namespace System.IO
 
 		public override Result<void> Close()
 		{
-			return Flush();
+			let ret = Flush();
+			
+			mPos = 0;
+			mBufferPos = -Int32.MinValue;
+			mBufferEnd = -Int32.MinValue;
+			return ret;
 		}
 	}
 }
