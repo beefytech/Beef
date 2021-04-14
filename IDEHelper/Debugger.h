@@ -257,7 +257,7 @@ public:
 	virtual void OutputRawMessage(const StringImpl& msg) = 0;
 	virtual int GetAddrSize() = 0;
 	virtual bool CanOpen(const StringImpl& fileName, DebuggerResult* outResult) = 0;
-	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock) = 0;
+	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled) = 0;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) = 0;
 	virtual void Run() = 0;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) = 0;
