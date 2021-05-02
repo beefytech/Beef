@@ -18586,17 +18586,20 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		{
 			if (methodDef->mIsStatic)
 			{
-				auto checkParam0 = mCurMethodInstance->GetParamType(0);
-				if ((checkParam0->IsRef()) && (!checkParam0->IsOut()))
-					checkParam0 = checkParam0->GetUnderlyingType();
-
 				if (methodDef->mParams.size() != 1)
 				{
 					Fail("Unary operators must declare one parameter", paramErrorRefNode);
 				}
-				else if ((checkParam0 != mCurTypeInstance) && (!checkParam0->IsSelf()))
+				else
 				{
-					Fail("The parameter of a unary operator must be the containing type", paramErrorRefNode);
+					auto checkParam0 = mCurMethodInstance->GetParamType(0);
+					if ((checkParam0->IsRef()) && (!checkParam0->IsOut()))
+						checkParam0 = checkParam0->GetUnderlyingType();
+
+					if ((checkParam0 != mCurTypeInstance) && (!checkParam0->IsSelf()))
+					{
+						Fail("The parameter of a unary operator must be the containing type", paramErrorRefNode);
+					}
 				}
 
 				if (((operatorDef->mOperatorDeclaration->mUnaryOp == BfUnaryOp_Increment) ||
