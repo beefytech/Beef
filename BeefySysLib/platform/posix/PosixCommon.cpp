@@ -928,7 +928,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
         {
             if (firstCharIdx != -1)
             {
-                stringViews.Add(Beefy::StringView(args, firstCharIdx, i - firstCharIdx));
+                stringViews.Add(Beefy::StringView(args + firstCharIdx, i - firstCharIdx));
                 firstCharIdx = -1;
             }
         }
@@ -947,7 +947,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
         }
     }
     if (firstCharIdx != -1)
-        stringViews.Add(Beefy::StringView(args, firstCharIdx, i - firstCharIdx));
+        stringViews.Add(Beefy::StringView(args + firstCharIdx, i - firstCharIdx));
 
     Beefy::Array<char*> argvArr;
 
