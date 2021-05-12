@@ -182,6 +182,18 @@ public:
 		this->mPtr = sv.mPtr;
 		this->mLength = sv.mLength;
 	}
+
+	StringView(const StringView& sv, int offset)
+	{
+		this->mPtr = sv.mPtr + offset;
+		this->mLength = sv.mLength - offset;
+	}
+
+	StringView(const StringView& sv, int offset, int length)
+	{
+		this->mPtr = sv.mPtr + offset;
+		this->mLength = length;
+	}
 	
 	StringView(const StringImpl& str);
 	StringView(const StringImpl& str, int offset);
@@ -907,6 +919,15 @@ public:
 	void Append(const StringImpl& str, const StringImpl& str2);
 	void Append(const StringImpl& str, const StringImpl& str2, const StringImpl& str3);
 	void Append(char c, int count = 1);		
+
+	void Release()
+	{
+		if (IsDynAlloc())
+			DeletePtr();
+		this->mLength = 0;
+		this->mPtr = NULL;
+		this->mAllocSizeAndFlags = 0;		
+	}
 
 	void Clear()
 	{
