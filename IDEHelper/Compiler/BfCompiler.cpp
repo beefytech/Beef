@@ -5312,9 +5312,14 @@ void BfCompiler::PopulateReified()
 
 		BfLogSysM("PopulateReified iteration start\n");
 
-		int typeCount = 0;
+		Array<BfType*> typeList;
+		typeList.Reserve(context->mResolvedTypes.mCount);
 		for (auto type : context->mResolvedTypes)
-		{			
+			typeList.Add(type);
+
+		int typeCount = 0;
+		for (auto type : typeList)
+		{
 			auto module = type->GetModule();
 			typeCount++;
 
