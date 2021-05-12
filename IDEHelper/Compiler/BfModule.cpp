@@ -22767,7 +22767,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				while (checkMethod != NULL)
 				{					
 					if (checkMethod->mMethodDeclaration == NULL)
+					{
+						checkMethod = checkMethod->mNextWithSameName;
 						continue;
+					}
 					
 					if (baseType->mMethodInstanceGroups.size() == 0)
 					{
@@ -22776,9 +22779,15 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 					}
 
 					if (checkMethod == methodDef)
+					{
+						checkMethod = checkMethod->mNextWithSameName;
 						continue;
+					}
 					if (checkMethod->mName != methodDef->mName)
+					{
+						checkMethod = checkMethod->mNextWithSameName;
 						continue;
+					}
 
 					auto checkMethodInstance = GetRawMethodInstanceAtIdx(baseType, checkMethod->mIdx);
 					if (checkMethodInstance != NULL)
