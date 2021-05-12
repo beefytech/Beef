@@ -12261,7 +12261,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 						if (returnType == toType)
 							return mBfIRBuilder->GetFakeVal();						
-						operatorOut = GetDefaultTypedValue(returnType);
+						operatorOut = GetDefaultTypedValue(returnType, false, BfDefaultValueKind_Addr);
 					}
 					else
 					{
