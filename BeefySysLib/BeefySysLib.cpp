@@ -643,14 +643,14 @@ BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVertices2D(int vertexSize, void* vtxDa
 	}
 }
 
-BF_EXPORT void BF_CALLTYPE Gfx_SetShaderConstantData(int slotIdx, void* constData, int size)
+BF_EXPORT void BF_CALLTYPE Gfx_SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size)
 {
-	gBFApp->mRenderDevice->mCurDrawLayer->SetShaderConstantData(slotIdx, constData, size);
+	gBFApp->mRenderDevice->mCurDrawLayer->SetShaderConstantData(usageIdx, slotIdx, constData, size);
 }
 
-BF_EXPORT void BF_CALLTYPE Gfx_SetShaderConstantDataTyped(int slotIdx, void* constData, int size, int* typeData, int typeCount)
+BF_EXPORT void BF_CALLTYPE Gfx_SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount)
 {
-	gBFApp->mRenderDevice->mCurDrawLayer->SetShaderConstantDataTyped(slotIdx, constData, size, typeData, typeCount);
+	gBFApp->mRenderDevice->mCurDrawLayer->SetShaderConstantDataTyped(usageIdx, slotIdx, constData, size, typeData, typeCount);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_QueueRenderCmd(RenderCmd* renderCmd)
@@ -676,6 +676,11 @@ BF_EXPORT void BF_CALLTYPE Gfx_CreateRenderState(RenderState* srcRenderState)
 BF_EXPORT void BF_CALLTYPE RenderState_Delete(RenderState* renderState)
 {
 	delete renderState;
+}
+
+BF_EXPORT void BF_CALLTYPE RenderState_SetTexWrap(RenderState* renderState, bool texWrap)
+{
+	renderState->SetTexWrap(texWrap);
 }
 
 BF_EXPORT void BF_CALLTYPE RenderState_SetClip(RenderState* renderState, float x, float y, float width, float height)

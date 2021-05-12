@@ -326,7 +326,8 @@ enum BfpSysDirectoryKind
 	BfpSysDirectoryKind_AppData_LocalLow,
 	BfpSysDirectoryKind_AppData_Roaming,
 	BfpSysDirectoryKind_Programs,
-	BfpSysDirectoryKind_Programs_Common	
+	BfpSysDirectoryKind_Programs_Common,
+	BfpSysDirectoryKind_Documents
 };
 
 struct BfpFindFileData;

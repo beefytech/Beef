@@ -114,7 +114,7 @@ public:
 	static Quaternion Normalise(const Quaternion& quat)
 	{
 		float len = quat.Norm();
-		float factor = 1.0f / sqrt(len);
+		float factor = 1.0f / sqrtf(len);
 		return quat * factor;		
 	}
 };

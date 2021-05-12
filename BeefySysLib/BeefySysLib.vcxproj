@@ -445,6 +445,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClCompile Include="FileStream.cpp" />
     <ClCompile Include="gfx\DrawLayer.cpp" />
     <ClCompile Include="gfx\FTFont.cpp" />
+    <ClCompile Include="gfx\glTF.cpp" />
     <ClCompile Include="gfx\ModelDef.cpp" />
     <ClCompile Include="gfx\ModelInstance.cpp" />
     <ClCompile Include="gfx\RenderCmd.cpp" />
@@ -1933,6 +1934,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClCompile Include="util\CubicSpline.cpp" />
     <ClCompile Include="util\Hash.cpp" />
     <ClCompile Include="util\Heap.cpp" />
+    <ClCompile Include="util\Json.cpp" />
     <ClCompile Include="util\MappedFile.cpp" />
     <ClCompile Include="util\Matrix4.cpp" />
     <ClCompile Include="util\PerfTimer.cpp" />
@@ -1958,6 +1960,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="gfx\DrawLayer.h" />
     <ClInclude Include="gfx\Font.h" />
     <ClInclude Include="gfx\FTFont.h" />
+    <ClInclude Include="gfx\glTF.h" />
     <ClInclude Include="gfx\ModelDef.h" />
     <ClInclude Include="gfx\ModelInstance.h" />
     <ClInclude Include="gfx\RenderCmd.h" />
@@ -2161,6 +2164,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="util\Hash.h" />
     <ClInclude Include="util\HashSet.h" />
     <ClInclude Include="util\Heap.h" />
+    <ClInclude Include="util\Json.h" />
     <ClInclude Include="util\MappedFile.h" />
     <ClInclude Include="util\Matrix4.h" />
     <ClInclude Include="util\MultiHashSet.h" />

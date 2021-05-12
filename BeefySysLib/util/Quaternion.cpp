@@ -26,11 +26,11 @@ Beefy::Quaternion Beefy::Quaternion::Slerp(float fT, const Quaternion& rkP, cons
 	if ((fabs(fCos) < 1.0f - BF_MS_EPSILON) && (false))
 	{
 		// Standard case (slerp)
-		float fSin = sqrt(1.0f - (fCos * fCos));
-		float fAngle = atan2(fSin, fCos);
+		float fSin = sqrtf(1.0f - (fCos * fCos));
+		float fAngle = atan2f(fSin, fCos);
 		float fInvSin = 1.0f / fSin;
-		float fCoeff0 = sin((1.0f - fT) * fAngle) * fInvSin;
-		float fCoeff1 = sin(fT * fAngle) * fInvSin;
+		float fCoeff0 = sinf((1.0f - fT) * fAngle) * fInvSin;
+		float fCoeff1 = sinf(fT * fAngle) * fInvSin;
 		return fCoeff0 * rkP + fCoeff1 * rkT;
 	}
 	else

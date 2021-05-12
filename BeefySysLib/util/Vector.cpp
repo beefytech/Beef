@@ -13,7 +13,7 @@ Vector3::Vector3(float x, float y, float z)
 
 float Vector3::GetMagnitude() const
 {
-	return sqrt(mX*mX + mY*mY + mZ*mZ);
+	return sqrtf(mX*mX + mY*mY + mZ*mZ);
 }
 
 Vector3 Vector3::Normalize(const Vector3& vec)
@@ -75,4 +75,14 @@ Vector3 Vector3::Transform2(const Vector3& vec, const Quaternion& quat)
 	result.mZ = vec.mZ + z * quat.mW + (quat.mX * y - quat.mY * x);
 
 	return result;
+}
+
+///
+
+Vector4::Vector4(float x, float y, float z, float w)
+{
+	mX = x;
+	mY = y;
+	mZ = z;
+	mW = w;
 }

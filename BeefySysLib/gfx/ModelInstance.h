@@ -11,8 +11,8 @@ class ModelInstance : public RenderCmd
 {
 public:
 	ModelDef* mModelDef;	
-	std::vector<ModelJointTranslation> mJointTranslations;
-	std::vector<bool> mMeshesVisible;
+	Array<ModelJointTranslation> mJointTranslations;
+	Array<bool> mMeshesVisible;
 
 public:
 	ModelInstance(ModelDef* modelDef);

@@ -90,14 +90,23 @@ namespace Beefy.gfx
         public void* mNativeModelDef;        
         public float mFrameRate;
         public int32 mJointCount;
-        public Animation[] mAnims;
-        public Dictionary<String, Animation> mAnimMap = new Dictionary<String, Animation>();
+        public Animation[] mAnims ~ DeleteContainerAndItems!(_);
+        public Dictionary<String, Animation> mAnimMap = new Dictionary<String, Animation>() ~ DeleteDictionaryAndKeys!(_);
 
         [CallingConvention(.Stdcall), CLink]
-        extern static void* Res_OpenFBX(String fileName, void* nativeVertexDef);
+        extern static void* Res_OpenFBX(char8* fileName, void* nativeVertexDef);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void* Res_OpenGLTF(char8* fileName, char8* baseDir, void* nativeVertexDef);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void* Res_OpenModel(char8* fileName, char8* baseDir, void* nativeVertexDef);
 
         [CallingConvention(.Stdcall), CLink]
         extern static void* ModelDef_CreateModelInstance(void* nativeModel);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static char8* ModelDef_GetInfo(void* nativeModel);
 
         [CallingConvention(.Stdcall), CLink]
         extern static float ModelDef_GetFrameRate(void* nativeModel);
@@ -110,6 +119,12 @@ namespace Beefy.gfx
 
         [CallingConvention(.Stdcall), CLink]
         extern static void* ModelDef_GetAnimation(void* nativeModel, int32 animIdx);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_SetTextures(void* nativeModel, int32 meshIdx, int32 primitivesIdx, char8** paths, int32 pathCount);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static Span<uint8> Res_SerializeModel(void* nativeModel);
 
         this(void* nativeModelDef)
         {
@@ -129,9 +144,15 @@ namespace Beefy.gfx
             }
         }
 
-        public static ModelDef LoadModel(String fileName)
+        public static ModelDef LoadModel(String fileName, String baseDir)
         {
-            void* nativeModelDef = Res_OpenFBX(fileName, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+			void* nativeModelDef = null;
+			if (fileName.EndsWith(".bfm", .OrdinalIgnoreCase))
+				nativeModelDef = Res_OpenModel(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+			else if (fileName.EndsWith(".fbx", .OrdinalIgnoreCase))
+            	nativeModelDef = Res_OpenFBX(fileName, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+			else
+				nativeModelDef = Res_OpenGLTF(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
             if (nativeModelDef == null)
                 return null;
             return new ModelDef(nativeModelDef);            
@@ -150,6 +171,22 @@ namespace Beefy.gfx
         {
             return mAnimMap[name];
         }
+
+		public void GetInfo(String str)
+		{
+			str.Append(ModelDef_GetInfo(mNativeModelDef));
+		}
+
+		public void SetTextures(int meshIdx, int primitivesIdx, Span<char8*> paths)
+		{
+			ModelDef_SetTextures(mNativeModelDef, (.)meshIdx, (.)primitivesIdx, paths.Ptr, (.)paths.Length);
+		}
+
+		public void Serialize(List<uint8> data)
+		{
+			var span = Res_SerializeModel(mNativeModelDef);
+			data.AddRange(span);
+		}
     }
 
     public class ModelInstance : RenderCmd

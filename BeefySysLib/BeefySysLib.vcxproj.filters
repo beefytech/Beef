@@ -707,6 +707,12 @@
     <ClCompile Include="util\Heap.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
+    <ClCompile Include="gfx\glTF.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Json.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -1073,6 +1079,12 @@
       <Filter>src\platform\win</Filter>
     </ClInclude>
     <ClInclude Include="util\Heap.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\glTF.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Json.h">
       <Filter>src\util</Filter>
     </ClInclude>
   </ItemGroup>

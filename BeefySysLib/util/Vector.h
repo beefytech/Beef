@@ -94,4 +94,64 @@ public:
 	}
 };
 
+class Vector4
+{
+public:
+	float mX;
+	float mY;
+	float mZ;
+	float mW;
+
+public:
+	Vector4(float x = 0, float y = 0, float z = 0, float w = 0);
+	
+	bool operator==(const Vector4& check) const
+	{
+		return (mX == check.mX) && (mY == check.mY) && (mZ == check.mZ);
+	}
+
+	bool operator!=(const Vector4& check) const
+	{
+		return (mX != check.mX) || (mY != check.mY) || (mZ != check.mZ);
+	}
+	
+	static Vector4 Scale(const Vector4& vec, float scale)
+	{
+		return Vector4(vec.mX * scale, vec.mY * scale, vec.mZ * scale, vec.mW * scale);
+	}
+
+	Vector4 operator +(const Vector4& v2) const
+	{
+		return Vector4(mX + v2.mX, mY + v2.mY, mZ + v2.mZ, mW + v2.mW);
+	}
+
+	Vector4 operator *(const Vector4& v2) const
+	{
+		return Vector4(mX * v2.mX, mY * v2.mY, mZ * v2.mZ, mW * v2.mW);
+	}
+
+	Vector4 operator *(float scale) const
+	{
+		return Vector4(mX * scale, mY * scale, mZ * scale, mW * scale);
+	}
+
+	inline Vector4& operator -= (const Vector4& vec)
+	{
+		mX -= vec.mX;
+		mY -= vec.mY;
+		mZ -= vec.mZ;
+		mW -= vec.mW;
+		return *this;
+	}
+
+	inline Vector4& operator *= (const Vector4& vec)
+	{
+		mX *= vec.mX;
+		mY *= vec.mY;
+		mZ *= vec.mZ;
+		mW *= vec.mW;
+		return *this;
+	}
+};
+
 NS_BF_END;

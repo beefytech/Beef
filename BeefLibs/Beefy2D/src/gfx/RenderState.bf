@@ -31,6 +31,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetClip(void* renderState, float x, float y, float width, float height);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetTexWrap(void* renderState, bool texWrap);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_DisableClip(void* renderState);
 
@@ -103,7 +106,15 @@ namespace Beefy.gfx
                 else
                     RenderState_DisableClip(mNativeRenderState);
             }
-        }        
+        }
+
+		public bool TexWrap
+		{
+			set
+			{
+				RenderState_SetTexWrap(mNativeRenderState, value);
+			}
+		}
     }
 #else
     public class RenderState

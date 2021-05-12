@@ -49,7 +49,7 @@ bool TGAData::ReadData()
 	bool flipped = (hdr->mImageDescriptor & 0x20) != 0;
 
 	mWidth = hdr->mWidth;
-	mHeight = hdr->mWidth;
+	mHeight = hdr->mHeight;
     mBits = new uint32[mWidth * mHeight];
 
 	if (hdr->mDataTypeCode == 10) // RLE
@@ -145,6 +145,67 @@ readSpanHeader:
 										
 					x = 0;
 					destPtr += destAdd;					
+				}
+			}
+
+			NOP;
+		}
+		else if (aMode == 3)
+		{
+			int y = 0;
+			int x = 0;
+
+			readSpanHeader3:
+			int spanLen = 0;
+			uint32 spanColor = 0;
+
+			uint8 spanHeader = *(srcPtr++);
+			spanLen = (spanHeader & 0x7F) + 1;
+			if ((spanHeader & 0x80) != 0)
+			{
+				// Repeat color								
+				int b = *(srcPtr++);
+				int g = *(srcPtr++);
+				int r = *(srcPtr++);
+				int a = 255;
+				
+				spanColor = (a << 24) | (b << 16) | (g << 8) | r;
+
+				for (; y < mHeight; y++)
+				{
+					for (; x < mWidth; x++)
+					{
+						if (spanLen == 0)
+							goto readSpanHeader3;
+						*(destPtr++) = spanColor;
+						spanLen--;
+					}
+
+					x = 0;
+					destPtr += destAdd;
+				}
+			}
+			else
+			{
+				for (; y < mHeight; y++)
+				{
+					for (; x < mWidth; x++)
+					{
+						if (spanLen == 0)
+							goto readSpanHeader3;
+
+						int b = *(srcPtr++);
+						int g = *(srcPtr++);
+						int r = *(srcPtr++);
+						int a = 255;
+						
+						*(destPtr++) = (a << 24) | (b << 16) | (g << 8) | r;
+
+						spanLen--;
+					}
+
+					x = 0;
+					destPtr += destAdd;
 				}
 			}
 

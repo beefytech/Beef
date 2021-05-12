@@ -220,6 +220,7 @@ int32 GetHighestBitSet(int32 n);
 
 uint8* LoadBinaryData(const StringImpl& path, int* size);
 char* LoadTextData(const StringImpl& path, int* size);
+bool LoadTextData(const StringImpl& path, StringImpl& str);
 int64 GetFileTimeWrite(const StringImpl& path);
 String GetFileDir(const StringImpl& path);
 String GetFileName(const StringImpl& path);

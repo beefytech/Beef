@@ -182,6 +182,7 @@ public:
 	bool					mWriteDepthBuffer;
 	DepthFunc				mDepthFunc;	
 	bool					mClipped;
+	bool					mTexWrap;
 	Rect					mClipRect;
 	CullMode				mCullMode;
 
@@ -190,6 +191,7 @@ public:
 	virtual ~RenderState() {}
 
 	virtual void SetShader(Shader* shader) { mShader = shader; }
+	virtual void SetTexWrap(bool wrap) { mTexWrap = wrap; }
 	virtual void SetClipped(bool clipped) { mClipped = clipped; }
 	virtual void SetClipRect(const Rect& rect) { mClipRect = rect; }
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer) { mWriteDepthBuffer = writeDepthBuffer; }
