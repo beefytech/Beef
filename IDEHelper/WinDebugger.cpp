@@ -1003,7 +1003,7 @@ bool WinDebugger::CanOpen(const StringImpl& fileName, DebuggerResult* outResult)
 	return canRead;
 }
 
-void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock)
+void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled)
 {
 	BF_ASSERT(!mIsRunning);
 	mLaunchPath = launchPath;
@@ -1011,6 +1011,7 @@ void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targe
 	mArgs = args;
 	mWorkingDir = workingDir;
 	mEnvBlock = envBlock;
+	mHotSwapEnabled = hotSwapEnabled;
 	mDebugTarget = new DebugTarget(this);
 }
 

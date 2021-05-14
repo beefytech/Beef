@@ -140,7 +140,7 @@ namespace IDE.Debugger
 		static extern bool Debugger_OpenMiniDump(char8* filename);
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern bool Debugger_OpenFile(char8* launchPath, char8* targetPath, char8* args, char8* workingDir, void* envBlockPtr, int32 envBlockLen);
+		static extern bool Debugger_OpenFile(char8* launchPath, char8* targetPath, char8* args, char8* workingDir, void* envBlockPtr, int32 envBlockLen, bool hotSwapEnabled);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_Attach(int32 processId, AttachFlags attachFlags);
@@ -429,7 +429,7 @@ namespace IDE.Debugger
 
 			mIsRunningCompiled = isCompiled;
 			mIsRunningWithHotSwap = hotSwapEnabled;
-			return Debugger_OpenFile(launchPath, targetPath, args, workingDir, envBlock.Ptr, (int32)envBlock.Length);
+			return Debugger_OpenFile(launchPath, targetPath, args, workingDir, envBlock.Ptr, (int32)envBlock.Length, hotSwapEnabled);
 		}
 
 		public void SetSymSrvOptions(String symCacheDir, String symSrvStr, SymSrvFlags symSrvFlags)

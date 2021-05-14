@@ -82,7 +82,7 @@ static bool PathEquals(const String& pathA, String& pathB)
 
 void DebugTarget::SetupTargetBinary()
 {
-	bool wantsHotHeap = mDebugger->mDbgProcessId == 0;
+	bool wantsHotHeap = (mDebugger->mHotSwapEnabled == true && mDebugger->mDbgProcessId == 0);
 
 #ifdef BF_DBG_32
 	if (wantsHotHeap)
