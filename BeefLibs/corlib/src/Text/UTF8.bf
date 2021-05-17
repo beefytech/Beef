@@ -1,7 +1,7 @@
 using System.Diagnostics;
 namespace System.Text
 {
-	class UTF8
+	static class UTF8
 	{
 		public const int8[256] sTrailingBytesForUTF8 =
 		.(

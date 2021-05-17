@@ -1,6 +1,6 @@
 namespace System.Diagnostics.Contracts
 {
-    class Contract
+    static class Contract
     {
         public enum ContractFailureKind
         {
