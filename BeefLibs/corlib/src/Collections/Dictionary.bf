@@ -267,7 +267,11 @@ namespace System.Collections
 			}
 			else
 			{
-				//TODO: IMPORTANT!
+				for (int_cosize i = 0; i < mCount; i++)
+				{
+					if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == value) return true;
+				}
+				//TODO: comparison
 				/*EqualityComparer<TValue> c = EqualityComparer<TValue>.Default;
 				for (int i = 0; i < count; i++)
 				{
