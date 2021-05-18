@@ -2758,7 +2758,7 @@ namespace IDE.ui
 				return;
 			}
 
-            if (mIsReadOnly)
+            if (CheckReadOnly())
             {
                 base.KeyChar(keyChar);
                 return;
