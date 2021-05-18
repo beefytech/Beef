@@ -2951,19 +2951,21 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 				err += mCeMachine->mCeModule->MethodToString(ceFunction->mCeInnerFunctionInfo->mOwner->mMethodInstance, BfMethodNameFlag_OmitParams);
 			}
 		}
-		 
+		
 		if ((emitEntry != NULL) && (emitEntry->mFile != -1))
+		{
 			err += StrFormat(" at line% d:%d in %s", emitEntry->mLine + 1, emitEntry->mColumn + 1, ceFunction->mFiles[emitEntry->mFile].c_str());
 
-		auto moreInfo = passInstance->MoreInfo(err, mCeMachine->mCeModule->mCompiler->GetAutoComplete() != NULL);
-		if ((moreInfo != NULL) && (emitEntry != NULL))
-		{
-			BfErrorLocation* location = new BfErrorLocation();
-			location->mFile = ceFunction->mFiles[emitEntry->mFile];
-			location->mLine = emitEntry->mLine;
-			location->mColumn = emitEntry->mColumn;
-			moreInfo->mLocation = location;
-		}		
+			auto moreInfo = passInstance->MoreInfo(err, mCeMachine->mCeModule->mCompiler->GetAutoComplete() != NULL);
+			if ((moreInfo != NULL))
+			{
+				BfErrorLocation* location = new BfErrorLocation();
+				location->mFile = ceFunction->mFiles[emitEntry->mFile];
+				location->mLine = emitEntry->mLine;
+				location->mColumn = emitEntry->mColumn;
+				moreInfo->mLocation = location;
+			}
+		}
 	}
 
 	return bfError;
