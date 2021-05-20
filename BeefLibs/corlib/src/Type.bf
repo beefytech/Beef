@@ -683,13 +683,7 @@ namespace System
 
 namespace System.Reflection
 {
-    public struct TypeId : int32
-    {
-        public Type ToType()
-        {
-            return Type.[Friend]sTypes[(int32)this];
-        }        
-    }
+    public struct TypeId : int32 {}
 
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class TypeInstance : Type
@@ -1137,7 +1131,7 @@ namespace System.Reflection
 
 		public Type GetGenericArg(int argIdx)
 		{
-			return mResolvedTypeRefs[argIdx].ToType();
+			return Type.GetType(mResolvedTypeRefs[argIdx]);
 		}
 
 		public override void GetFullName(String strBuffer)
