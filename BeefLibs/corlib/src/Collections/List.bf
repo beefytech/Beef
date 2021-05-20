@@ -930,6 +930,59 @@ namespace System.Collections
 		}
 	}
 
+	extension List<T> where T : String
+	{
+		public bool Contains(T item, StringComparison comparison)
+		{
+			if (item == null)
+			{
+			    for (int i = 0; i < mSize; i++)
+			        if (mItems[i] == null)
+			    		return true;
+			    return false;
+			}
+			else
+			{
+				for (int i = 0; i < mSize; i++)
+					if (mItems[i].Equals(item, comparison))
+						return true;
+			    return false;
+			}
+		}
+
+		public int IndexOf(T item, StringComparison comparison)
+		{
+			for (int i = 0; i < mSize; i++)
+				if (mItems[i].Equals(item, comparison))
+					return i;
+			return -1;
+		}
+
+		public int IndexOf(T item, int index, StringComparison comparison)
+		{
+			for (int i = index; i < mSize; i++)
+				if (mItems[i].Equals(item, comparison))
+					return i;
+			return -1;
+		}
+
+		public int IndexOf(T item, int index, int count, StringComparison comparison)
+		{
+			for (int i = index; i < index + count; i++)
+				if (mItems[i].Equals(item, comparison))
+					return i;
+			return -1;
+		}
+
+		public int LastIndexOf(T item, StringComparison comparison)
+		{
+			for (int i = mSize - 1; i >= 0; i--)
+				if (mItems[i].Equals(item, comparison))
+					return i;
+			return -1;
+		}
+	}
+
 	class ListWithAlloc<T> : List<T>
 	{
 		IRawAllocator mAlloc;

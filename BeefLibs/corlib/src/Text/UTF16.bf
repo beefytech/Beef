@@ -1,7 +1,7 @@
 using System.Diagnostics;
 namespace System.Text
 {
-	public class UTF16
+	public static class UTF16
 	{
 		public enum EncodeError
 		{

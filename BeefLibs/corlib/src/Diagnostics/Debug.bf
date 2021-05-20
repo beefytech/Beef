@@ -1,6 +1,6 @@
 namespace System.Diagnostics
 {
-	class Debug
+	static class Debug
 	{
 #if !DEBUG
 		[SkipCall]
