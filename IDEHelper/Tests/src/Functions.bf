@@ -130,6 +130,22 @@ namespace Tests
 			}
 		}
 
+		[CRepr]
+		struct StructCRepr
+		{
+			public int32 something = 1;
+
+			bool Run() => something == 1;
+
+			public static void Test()
+			{
+				StructCRepr sc = .();
+				function bool(StructCRepr this) func = => Run;
+
+				Test.Assert(func(sc));
+			}
+		}
+
 		public static int UseFunc0<T>(function int (T this, float f) func, T a, float b)
 		{
 			return func(a, b);
