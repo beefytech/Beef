@@ -1208,7 +1208,8 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 	{
 		returnType = module->mBfIRBuilder->MapType(mReturnType);
 	}	
-	
+
+	bool hasExplicitThis = false;
 	for (int paramIdx = -1; paramIdx < GetParamCount(); paramIdx++)
 	{
 		BfType* checkType = NULL;
@@ -1223,13 +1224,25 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			else
 			{
 				if (HasExplicitThis())
+				{
 					checkType = GetParamType(0);
+
+					//TODO(BCF): Breaks tests
+					//hasExplicitThis = true;
+				}
 				else
 					checkType = GetOwner();				
 			}
 		}
 		else
 		{
+			if (hasExplicitThis)
+			{
+				// We already looked at this
+				hasExplicitThis = false;
+				continue;
+			}
+
 			checkType = GetParamType(paramIdx);
 		}
 

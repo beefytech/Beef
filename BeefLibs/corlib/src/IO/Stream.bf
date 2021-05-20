@@ -97,10 +97,10 @@ namespace System.IO
 			}
 		}
 
-		//Read sized string from stream
-		public Result<void> ReadStrSized32(int64 size, String output)
+		/// Read sized string from stream
+		public Result<void> ReadStrSized32(int size, String output)
 		{
-			if (size <= 0)
+			if (size < 0)
 				return .Err;
 
 			for (int64 i = 0; i < size; i++)
@@ -115,7 +115,13 @@ namespace System.IO
 			return .Ok;
 		}
 
-		//Reads null terminated ASCII string from the stream. Null terminator is read from stream but isn't appended to output string
+		public Result<void> ReadStrSized32(String output)
+		{
+			int size = Try!(Read<int32>());
+			return ReadStrSized32(size, output);
+		}
+
+		/// Reads null terminated ASCII string from the stream. Null terminator is read from stream but isn't appended to output string
 		public Result<void> ReadStrC(String output)
 		{
 			Result<char8> char0;

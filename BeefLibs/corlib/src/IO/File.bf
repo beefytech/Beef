@@ -23,7 +23,7 @@ namespace System.IO
 		case FileReadError(FileReadError);
 	}
 
-	class File
+	static class File
 	{
 		public static Result<void, FileError> ReadAll(StringView path, List<uint8> outData)
 		{
