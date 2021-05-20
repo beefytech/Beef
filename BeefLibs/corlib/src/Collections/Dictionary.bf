@@ -258,25 +258,9 @@ namespace System.Collections
 
 		public bool ContainsValue(TValue value)
 		{
-			if (value == null)
+			for (int_cosize i = 0; i < mCount; i++)
 			{
-				for (int_cosize i = 0; i < mCount; i++)
-				{
-					if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == null) return true;
-				}
-			}
-			else
-			{
-				for (int_cosize i = 0; i < mCount; i++)
-				{
-					if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == value) return true;
-				}
-				//TODO: comparison
-				/*EqualityComparer<TValue> c = EqualityComparer<TValue>.Default;
-				for (int i = 0; i < count; i++)
-				{
-					if (entries[i].hashCode >= 0 && c.Equals(entries[i].value, value)) return true;
-				}*/
+				if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == null) return true;
 			}
 			return false;
 		}
