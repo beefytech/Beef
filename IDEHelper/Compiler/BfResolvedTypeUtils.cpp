@@ -1226,7 +1226,9 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 				if (HasExplicitThis())
 				{
 					checkType = GetParamType(0);
-					hasExplicitThis = true;
+
+					//TODO(BCF): Breaks tests
+					//hasExplicitThis = true;
 				}
 				else
 					checkType = GetOwner();				
