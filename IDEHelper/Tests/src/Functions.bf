@@ -198,6 +198,8 @@ namespace Tests
 					UseFunc0(func2, sa, 100.0f);
 					true
 				});
+
+			StructCRepr.Test();
 		}
 	}
 }
