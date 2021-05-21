@@ -1209,7 +1209,6 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		returnType = module->mBfIRBuilder->MapType(mReturnType);
 	}	
 
-	bool hasExplicitThis = false;
 	for (int paramIdx = -1; paramIdx < GetParamCount(); paramIdx++)
 	{
 		BfType* checkType = NULL;
@@ -1224,24 +1223,15 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			else
 			{
 				if (HasExplicitThis())
-				{
 					checkType = GetParamType(0);
-
-					//TODO(BCF): Breaks tests
-					//hasExplicitThis = true;
-				}
 				else
 					checkType = GetOwner();				
 			}
 		}
 		else
 		{
-			if (hasExplicitThis)
-			{
-				// We already looked at this
-				hasExplicitThis = false;
-				continue;
-			}
+			if ((paramIdx == 0) && (mMethodDef->mHasExplicitThis))
+				continue; // Skip over the explicit 'this'
 
 			checkType = GetParamType(paramIdx);
 		}
@@ -1355,9 +1345,6 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 		if (checkType2 != NULL)
 			_AddType(checkType2);
-
-		if ((paramIdx == -1) && (mMethodDef->mHasExplicitThis))
-			paramIdx++; // Skip over the explicit 'this'
 	}
 
 	if ((!module->mIsComptimeModule) && (GetStructRetIdx(forceStatic) == 1))
