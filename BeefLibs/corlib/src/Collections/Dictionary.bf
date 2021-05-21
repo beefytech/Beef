@@ -260,7 +260,7 @@ namespace System.Collections
 		{
 			for (int_cosize i = 0; i < mCount; i++)
 			{
-				if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == null) return true;
+				if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == value) return true;
 			}
 			return false;
 		}
