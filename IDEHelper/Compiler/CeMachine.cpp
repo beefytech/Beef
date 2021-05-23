@@ -4627,7 +4627,13 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("Invalid method instance");
 					return false;
 				}
-				
+
+				if (paramIdx < 0 || paramIdx > methodInstance->mParams.mSize)
+				{
+					_Fail("paramIdx is out of range");
+					return false;
+				}
+
 				addr_ce stringAddr = GetString(methodInstance->GetParamName(paramIdx));
 				_FixVariables();
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
