@@ -4628,7 +4628,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 
-				if (paramIdx < 0 || paramIdx > methodInstance->mParams.mSize)
+				if (paramIdx < 0 || paramIdx >= methodInstance->mParams.mSize)
 				{
 					_Fail("paramIdx is out of range");
 					return false;
