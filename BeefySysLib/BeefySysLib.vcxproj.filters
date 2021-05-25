@@ -713,6 +713,12 @@
     <ClCompile Include="util\Json.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
+    <ClCompile Include="util\MathUtils.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Sphere.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -1085,6 +1091,12 @@
       <Filter>src\gfx</Filter>
     </ClInclude>
     <ClInclude Include="util\Json.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\MathUtils.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Sphere.h">
       <Filter>src\util</Filter>
     </ClInclude>
   </ItemGroup>

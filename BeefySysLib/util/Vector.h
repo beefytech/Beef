@@ -36,13 +36,25 @@ public:
 	float mZ;
 
 public:
-	Vector3(float x = 0, float y = 0, float z = 0);
+	Vector3();
+	Vector3(float x, float y, float z);
 
 	float GetMagnitude() const;
+	float GetMagnitudeSquare() const;
 	static Vector3 Normalize(const Vector3& vec);
 	static float Dot(const Vector3& vec1, const Vector3& vec2);
 	static Vector3 CrossProduct(const Vector3& vec1, const Vector3& vec2);
 	
+	static float GetDistance(const Vector3& v0, const Vector3& v1)
+	{
+		return (v0 - v1).GetMagnitude();
+	}
+
+	static float GetDistanceSquare(const Vector3& v0, const Vector3& v1)
+	{
+		return (v0 - v1).GetMagnitudeSquare();
+	}
+
 	bool operator==(const Vector3& check) const
 	{
 		return (mX == check.mX) && (mY == check.mY) && (mZ == check.mZ);			
@@ -54,8 +66,9 @@ public:
 	}
 
 	static Vector3 Transform(const Vector3& vec, const Matrix4& matrix);
+	static Vector3 TransformW(const Vector3& vec, const Matrix4& matrix);
 	static Vector3 Transform(const Vector3& vec, const Quaternion& quat);
-	static Vector3 Transform2(const Vector3& vec, const Quaternion& quat);
+	static Vector3 Transform2(const Vector3& vec, const Quaternion& quat);	
 
 	static Vector3 Scale(const Vector3& vec, float scale)
 	{
@@ -77,12 +90,64 @@ public:
 		return Vector3(mX * scale, mY * scale, mZ * scale);
 	}
 
+	Vector3 operator /(float scale) const
+	{
+		return Vector3(mX / scale, mY / scale, mZ / scale);
+	}
+
+	float operator^(const Vector3& v) // Angle between vectors
+	{
+		return acosf(Dot(*this / this->GetMagnitude(), v / v.GetMagnitude()));
+	}
+	
+	inline Vector3& operator += (const Vector3& vec)
+	{
+		mX += vec.mX;
+		mY += vec.mY;
+		mZ += vec.mZ;
+		return *this;
+	}
+
 	inline Vector3& operator -= (const Vector3& vec)
 	{
 		mX -= vec.mX;
 		mY -= vec.mY;
 		mZ -= vec.mZ;
 		return *this;
+	}
+
+	inline Vector3& operator *= (float num)
+	{
+		mX *= num;
+		mY *= num;
+		mZ *= num;
+		return *this;
+	}
+
+	inline Vector3& operator /= (float num)
+	{
+		mX /= num;
+		mY /= num;
+		mZ /= num;
+		return *this;
+	}
+
+	inline Vector3 operator - (const Vector3& vec) const
+	{
+		Vector3 result;
+		result.mX = mX - vec.mX;
+		result.mY = mY - vec.mY;
+		result.mZ = mZ - vec.mZ;
+		return result;
+	}
+
+	inline Vector3 operator + (const Vector3& vec)
+	{
+		Vector3 result;
+		result.mX = mX + vec.mX;
+		result.mY = mY + vec.mY;
+		result.mZ = mZ + vec.mZ;
+		return result;
 	}
 
 	inline Vector3& operator *= (const Vector3& vec)

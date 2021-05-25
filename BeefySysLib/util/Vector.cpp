@@ -4,6 +4,13 @@
 
 USING_NS_BF;
 
+Vector3::Vector3()
+{
+	mX = 0;
+	mY = 0;
+	mZ = 0;
+}
+
 Vector3::Vector3(float x, float y, float z)
 {
 	mX = x;
@@ -14,6 +21,11 @@ Vector3::Vector3(float x, float y, float z)
 float Vector3::GetMagnitude() const
 {
 	return sqrtf(mX*mX + mY*mY + mZ*mZ);
+}
+
+float Vector3::GetMagnitudeSquare() const
+{
+	return mX * mX + mY * mY + mZ * mZ;
 }
 
 Vector3 Vector3::Normalize(const Vector3& vec)
@@ -39,6 +51,14 @@ Vector3 Vector3::CrossProduct(const Vector3& vec1, const Vector3& vec2)
 }
 
 Vector3 Vector3::Transform(const Vector3& vec, const Matrix4& matrix)
+{
+	return Vector3(
+		(matrix.m00 * vec.mX + matrix.m01 * vec.mY + matrix.m02 * vec.mZ + matrix.m03),
+		(matrix.m10 * vec.mX + matrix.m11 * vec.mY + matrix.m12 * vec.mZ + matrix.m13),
+		(matrix.m20 * vec.mX + matrix.m21 * vec.mY + matrix.m22 * vec.mZ + matrix.m23));
+}
+
+Vector3 Vector3::TransformW(const Vector3& vec, const Matrix4& matrix)
 {
 	float fInvW = 1.0f / (matrix.m30 * vec.mX + matrix.m31 * vec.mY + matrix.m32 * vec.mZ + matrix.m33);
 

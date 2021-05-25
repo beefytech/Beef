@@ -442,7 +442,10 @@ namespace Beefy.gfx
         //static unsafe extern void Gfx_DrawIndexedVertices2D(void* vtxData, int vtxCount, int* idxData, int idxCount, float a, float b, float c, float d, float tx, float ty, float z);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void Gfx_DrawIndexedVertices2D(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount, float a, float b, float c, float d, float tx, float ty, float z);
+        static extern void Gfx_DrawIndexedVertices(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_DrawIndexedVertices2D(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount, float a, float b, float c, float d, float tx, float ty, float z);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_SetShaderConstantData(int32 usageIdx, int32 slotIdx, void* data, int32 size);
@@ -794,14 +797,28 @@ namespace Beefy.gfx
 
         public void DrawIndexedVertices(VertexDefinition vertexDef, void* vertices, int vtxCount, uint16[] indices)
         {
-            Gfx_DrawIndexedVertices2D(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices.CArray(), (int32)indices.Count,
-                mMatrix.a, mMatrix.b, mMatrix.c, mMatrix.d, mMatrix.tx, mMatrix.ty, ZDepth);
+			if (vertexDef.mPosition2DOffset != -1)
+			{
+	            Gfx_DrawIndexedVertices2D(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices.CArray(), (int32)indices.Count,
+	                mMatrix.a, mMatrix.b, mMatrix.c, mMatrix.d, mMatrix.tx, mMatrix.ty, ZDepth);
+			}
+			else
+			{
+				Gfx_DrawIndexedVertices(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices.CArray(), (int32)indices.Count);
+			}
         }
 
         public void DrawIndexedVertices(VertexDefinition vertexDef, void* vertices, int vtxCount, uint16* indices, int idxCount)
         {
-            Gfx_DrawIndexedVertices2D(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices, (int32)idxCount,
-                mMatrix.a, mMatrix.b, mMatrix.c, mMatrix.d, mMatrix.tx, mMatrix.ty, ZDepth);
+			if (vertexDef.mPosition2DOffset != -1)
+			{
+	            Gfx_DrawIndexedVertices2D(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices, (int32)idxCount,
+	                mMatrix.a, mMatrix.b, mMatrix.c, mMatrix.d, mMatrix.tx, mMatrix.ty, ZDepth);
+			}
+			else
+			{
+				Gfx_DrawIndexedVertices(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices, (int32)idxCount);
+			}
         }
 
         public void SetVertexShaderConstantData(int slotIdx, void* data, int size)

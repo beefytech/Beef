@@ -610,6 +610,23 @@ BF_EXPORT void BF_CALLTYPE Gfx_DrawQuads(TextureSegment* textureSegment, Default
 	}
 }
 
+BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVertices(int vertexSize, void* vtxData, int vtxCount, uint16* idxData, int idxCount)
+{
+	DrawLayer* drawLayer = gBFApp->mRenderDevice->mCurDrawLayer;
+
+	uint16 idxOfs;
+	void* drawBatchVtxPtr;
+	uint16* drawBatchIdxPtr;
+	gBFApp->mRenderDevice->mCurDrawLayer->AllocIndexed(vtxCount, idxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
+	BF_ASSERT(gBFApp->mRenderDevice->mCurDrawLayer->mCurDrawBatch->mVtxSize == vertexSize);
+
+	uint16* idxPtr = idxData;
+	for (int idxIdx = 0; idxIdx < idxCount; idxIdx++)
+		*(drawBatchIdxPtr++) = *(idxPtr++) + idxOfs;
+
+	memcpy(drawBatchVtxPtr, vtxData, vertexSize * vtxCount);	
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVertices2D(int vertexSize, void* vtxData, int vtxCount, uint16* idxData, int idxCount, float a, float b, float c, float d, float tx, float ty, float z)
 {
 	DrawLayer* drawLayer = gBFApp->mRenderDevice->mCurDrawLayer;
@@ -683,6 +700,11 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetTexWrap(RenderState* renderState, bool
 	renderState->SetTexWrap(texWrap);
 }
 
+BF_EXPORT void BF_CALLTYPE RenderState_SetWireframe(RenderState* renderState, bool wireframe)
+{
+	renderState->SetWireframe(wireframe);
+}
+
 BF_EXPORT void BF_CALLTYPE RenderState_SetClip(RenderState* renderState, float x, float y, float width, float height)
 {	
 	BF_ASSERT((width >= 0) && (height >= 0));
@@ -718,6 +740,11 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetDepthFunc(RenderState* renderState, in
 BF_EXPORT void BF_CALLTYPE RenderState_SetDepthWrite(RenderState* renderState, int depthWrite)
 {
 	renderState->SetWriteDepthBuffer(depthWrite != 0);
+}
+
+BF_EXPORT void BF_CALLTYPE RenderState_SetTopology(RenderState* renderState, int topology)
+{
+	renderState->SetTopology((Topology3D)topology);
 }
 
 BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition)

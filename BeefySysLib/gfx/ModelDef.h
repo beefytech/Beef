@@ -5,6 +5,8 @@
 #include "util/Vector.h"
 #include "util/Array.h"
 #include "gfx/Texture.h"
+#include "util/Sphere.h"
+#include "util/MathUtils.h"
 #include <vector>
 
 NS_BF_BEGIN;
@@ -151,8 +153,6 @@ class ModelMesh
 {
 public:
 	String mName;	
-	//String mTexFileName;
-	//String mBumpFileName;	
 	Array<ModelPrimitives> mPrimitives;
 };
 
@@ -166,19 +166,83 @@ public:
 	Array<ModelNode*> mChildren;
 };
 
+class ModelBVNode
+{	
+public:
+	enum Kind
+	{
+		Kind_None,
+		Kind_Branch,
+		Kind_Leaf
+	};
+
+public:
+	Sphere mBoundSphere;
+	AABB mBoundAABB;
+
+	union
+	{
+		struct 
+		{
+			int mLeft;
+			int mRight;
+		};
+
+		struct  
+		{
+			int mTriStartIdx;
+			int mTriCount;
+		};
+	};
+
+	Kind mKind;
+
+public:
+	ModelBVNode()
+	{
+		mKind = Kind_None;
+	}
+};
+
 class ModelDef
 {
 public:
+	enum Flags
+	{
+		Flags_None,
+		Flags_HasBounds,
+		Flags_HasBVH,
+	};
+
+public:
 	String mLoadDir;
-	float mFrameRate;
+	float mFrameRate;	
 	Array<ModelMesh> mMeshes;
 	Array<ModelJoint> mJoints;
 	Array<ModelAnimation> mAnims;
 	Array<ModelNode> mNodes;
 	Array<ModelMaterialInstance> mMaterials;
+	
+	Flags mFlags;
+	AABB mBounds;
+	Array<ModelBVNode> mBVNodes;
+	Array<uint16> mBVIndices;
+	Array<Vector3> mBVVertices;
+	Array<int32> mBVTris;
 
+protected:
+	void CalcBounds();
+	void RayIntersect(ModelBVNode* bvNode, const Matrix4& worldMtx, const Vector3& origin, const Vector3& vec, Vector3& outIntersect, float& outDistance);
+	
 public:
+	ModelDef();
 	~ModelDef();
+
+	void Compact();
+	void GetBounds(Vector3& min, Vector3& max);
+
+	void GenerateCollisionData();
+	bool RayIntersect(const Matrix4& worldMtx, const Vector3& origin, const Vector3& vec, Vector3& outIntersect, float& outDistance);
 };
 
 NS_BF_END;

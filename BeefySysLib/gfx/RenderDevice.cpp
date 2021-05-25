@@ -19,9 +19,11 @@ RenderState::RenderState()
 	mWriteDepthBuffer = false;
 	mCullMode = CullMode_None;
 	mDepthFunc = DepthFunc_Always;
+	mTopology = Topology3D_TriangleList;
 	mShader = NULL;	
 	mClipped = false;
 	mTexWrap = false;
+	mWireframe = false;
 }
 
 RenderTarget::RenderTarget()

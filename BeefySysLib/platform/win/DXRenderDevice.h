@@ -95,7 +95,7 @@ typedef std::map<String, DXShaderParam*> DXShaderParamMap;
 
 class DXShader : public Shader
 {
-public:	
+public:		
 	ID3D11InputLayout*		mD3DLayout;
 	ID3D11VertexShader*		mD3DVertexShader;
 	ID3D11PixelShader*		mD3DPixelShader;
@@ -302,7 +302,7 @@ public:
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;
 	virtual RenderState*	CreateRenderState(RenderState* srcRenderState) override;
-	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef) override;			
+	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) override;
 
 public:
 	DXRenderDevice();

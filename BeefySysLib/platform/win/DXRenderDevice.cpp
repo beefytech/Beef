@@ -143,9 +143,9 @@ static int GetBytesPerPixel(DXGI_FORMAT fmt, int& blockSize)
 	case DXGI_FORMAT_BC6H_TYPELESS: return 1;
 	case DXGI_FORMAT_BC6H_UF16: return 1;
 	case DXGI_FORMAT_BC6H_SF16: return 1;
-	case DXGI_FORMAT_BC7_TYPELESS: return 1;
-	case DXGI_FORMAT_BC7_UNORM: return 1;
-	case DXGI_FORMAT_BC7_UNORM_SRGB: return 1;
+	case DXGI_FORMAT_BC7_TYPELESS: blockSize = 4; return 16;
+	case DXGI_FORMAT_BC7_UNORM: blockSize = 4; return 16;
+	case DXGI_FORMAT_BC7_UNORM_SRGB: blockSize = 4; return 16;
 	case DXGI_FORMAT_AYUV: return 1;
 	case DXGI_FORMAT_Y410: return 1;
 	case DXGI_FORMAT_Y416: return 1;
@@ -510,9 +510,17 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 	DXRenderState* dxRenderState = (DXRenderState*)renderState;
 	DXShader* dxShader = (DXShader*)renderState->mShader;
 	
-	if ((renderState->mShader != mPhysRenderState->mShader) && (renderState->mShader != NULL))
+	if (renderState->mTopology != mPhysRenderState->mTopology)
 	{
-		mD3DDeviceContext->PSSetSamplers(0, 1, mPhysRenderState->mTexWrap ? &mD3DWrapSamplerState  : &mD3DDefaultSamplerState);
+		D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		if (dxRenderState->mTopology == Topology3D_LineLine)
+			topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+		mD3DDeviceContext->IASetPrimitiveTopology(topology);
+	}
+
+	if ((renderState->mShader != mPhysRenderState->mShader) && (renderState->mShader != NULL))
+	{		
+		mD3DDeviceContext->PSSetSamplers(0, 1, renderState->mTexWrap ? &mD3DWrapSamplerState  : &mD3DDefaultSamplerState);
 		mD3DDeviceContext->IASetInputLayout(dxShader->mD3DLayout);
 		mD3DDeviceContext->VSSetShader(dxShader->mD3DVertexShader, NULL, 0);
 		mD3DDeviceContext->PSSetShader(dxShader->mD3DPixelShader, NULL, 0);
@@ -591,6 +599,9 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		setRasterizerState = true;
 	}
 
+	if (renderState->mWireframe != mPhysRenderState->mWireframe)
+		setRasterizerState = true;	
+
 	if (setRasterizerState)
 	{
 		if (dxRenderState->mD3DRasterizerState == NULL)
@@ -599,13 +610,13 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			{
 				D3D11_CULL_NONE,
 				D3D11_CULL_FRONT,
-				D3D11_CULL_BACK				
+				D3D11_CULL_BACK
 			};
 
 			D3D11_RASTERIZER_DESC rasterizerState;
 			rasterizerState.CullMode = cullModes[dxRenderState->mCullMode];
 			//rasterizerState.CullMode = D3D11_CULL_BACK;
-			rasterizerState.FillMode = D3D11_FILL_SOLID;
+			rasterizerState.FillMode = renderState->mWireframe ? D3D11_FILL_WIREFRAME : D3D11_FILL_SOLID;
 			rasterizerState.FrontCounterClockwise = false;
 			rasterizerState.DepthBias = 0;
 			rasterizerState.DepthBiasClamp = 0;
@@ -701,7 +712,7 @@ struct DXModelVertex
 	Vector3 mTangent;
 };
 
-ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef)
+ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags)
 {
 	DXModelInstance* dxModelInstance = new DXModelInstance(modelDef);
 
@@ -718,16 +729,17 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef)
 	};	
 
 	auto vertexDefinition = CreateVertexDefinition(vertexDefData, sizeof(vertexDefData) / sizeof(vertexDefData[0]));
-	auto renderState = CreateRenderState(mDefaultRenderState);
-	renderState->mShader = LoadShader(gBFApp->mInstallDir + "/shaders/ModelStd", vertexDefinition);	
+	RenderState* renderState = NULL;
+	if ((flags & ModelCreateFlags_NoSetRenderState) == 0)
+	{
+		renderState = CreateRenderState(mDefaultRenderState);
+		renderState->mShader = LoadShader(gBFApp->mInstallDir + "/shaders/ModelStd", vertexDefinition);
+		renderState->mTexWrap = true;
+		renderState->mDepthFunc = DepthFunc_LessEqual;
+		renderState->mWriteDepthBuffer = true;
+	}
 	delete vertexDefinition;
-
-	//renderState->mCullMode = CullMode_Front;
-
-	renderState->mTexWrap = true;
-	renderState->mDepthFunc = DepthFunc_LessEqual;
-	renderState->mWriteDepthBuffer = true;
-
+	
 	dxModelInstance->mRenderState = renderState;
 
 	////
@@ -1052,7 +1064,8 @@ DXModelInstance::~DXModelInstance()
 
 void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 {	
-	SetRenderState();
+	if (mRenderState != NULL)
+		SetRenderState();
 
 	for (int meshIdx = 0; meshIdx < (int)mDXModelMeshs.size(); meshIdx++)
 	{
@@ -1064,28 +1077,7 @@ void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 		for (auto primIdx = 0; primIdx < (int)dxMesh->mPrimitives.size(); primIdx++)
 		{
 			auto dxPrimitives = &dxMesh->mPrimitives[primIdx];
-
-			if (dxPrimitives->mNumIndices == 11904)
-			{
-				NOP;
-			}
-
-			//TODO:
-			if (dxPrimitives->mNumIndices == 48384)
-				continue;
-
-			if (::GetAsyncKeyState('1'))
-			{
-				if (dxPrimitives->mNumIndices != 9417)
-					continue;
-			}
-			else if (::GetAsyncKeyState('2'))
-			{
-				if (dxPrimitives->mNumIndices != 3684)
-					continue;
-			}
 			
-
 			if (dxPrimitives->mTextures.IsEmpty())
 				continue;
 
@@ -1103,14 +1095,12 @@ void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 }
 
 void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
-{
-#ifndef BF_NO_FBX
+{	
 	mRenderState = drawLayer->mRenderDevice->mCurRenderState;
-
 	BF_ASSERT(mRenderState->mShader->mVertexSize == sizeof(DXModelVertex));
-
 	drawLayer->mCurTextures[0] = NULL;
 
+#ifndef BF_NO_FBX	
 	ModelAnimation* fbxAnim = &mModelDef->mAnims[0];
 
 	Matrix4 jointsMatrices[BF_MAX_NUM_BONES];
@@ -1560,8 +1550,7 @@ bool DXRenderDevice::Init(BFApp* app)
     rasterizerState.AntialiasedLineEnable = false;
 	
 	mD3DDevice->CreateRasterizerState(&rasterizerState, &dxRenderState->mD3DRasterizerState);	
-	mD3DDeviceContext->RSSetState(dxRenderState->mD3DRasterizerState);
-		
+	mD3DDeviceContext->RSSetState(dxRenderState->mD3DRasterizerState);		
 	mD3DDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);	
 
 	ID3D11BlendState* g_pBlendState = NULL;

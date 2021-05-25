@@ -1,3 +1,6 @@
+// This file contains portions of code from the FNA project (github.com/FNA-XNA/FNA),
+// released under the Microsoft Public License
+
 using System;
 using Beefy.gfx;
 
@@ -189,43 +192,50 @@ namespace Beefy.geom
 
         public static void CreateFromRotationMatrix(ref Matrix4 matrix, out Quaternion result)
         {
-            float num8 = (matrix.m11 + matrix.m22) + matrix.m33;
-            if (num8 > 0f)
-            {
-                float num = (float)Math.Sqrt((double)(num8 + 1f));
-                result.mW = num * 0.5f;
-                num = 0.5f / num;
-                result.mX = (matrix.m23 - matrix.m32) * num;
-                result.mY = (matrix.m31 - matrix.m13) * num;
-                result.mZ = (matrix.m12 - matrix.m21) * num;
-            }
-            else if ((matrix.m11 >= matrix.m22) && (matrix.m11 >= matrix.m33))
-            {
-                float num7 = (float)Math.Sqrt((double)(((1f + matrix.m11) - matrix.m22) - matrix.m33));
-                float num4 = 0.5f / num7;
-                result.mX = 0.5f * num7;
-                result.mY = (matrix.m12 + matrix.m21) * num4;
-                result.mZ = (matrix.m13 + matrix.m31) * num4;
-                result.mW = (matrix.m23 - matrix.m32) * num4;
-            }
-            else if (matrix.m22 > matrix.m33)
-            {
-                float num6 = (float)Math.Sqrt((double)(((1f + matrix.m22) - matrix.m11) - matrix.m33));
-                float num3 = 0.5f / num6;
-                result.mX = (matrix.m21 + matrix.m12) * num3;
-                result.mY = 0.5f * num6;
-                result.mZ = (matrix.m32 + matrix.m23) * num3;
-                result.mW = (matrix.m31 - matrix.m13) * num3;
-            }
-            else
-            {
-                float num5 = (float)Math.Sqrt((double)(((1f + matrix.m33) - matrix.m11) - matrix.m22));
-                float num2 = 0.5f / num5;
-                result.mX = (matrix.m31 + matrix.m13) * num2;
-                result.mY = (matrix.m32 + matrix.m23) * num2;
-                result.mZ = 0.5f * num5;
-                result.mW = (matrix.m12 - matrix.m21) * num2;
-            }
+            float sqrt;
+			float half;
+			float scale = matrix.m00 + matrix.m11 + matrix.m22;
+
+			if (scale > 0.0f)
+			{
+				sqrt = (float) Math.Sqrt(scale + 1.0f);
+				result.mW = sqrt * 0.5f;
+				sqrt = 0.5f / sqrt;
+
+				result.mX = (matrix.m21 - matrix.m12) * sqrt;
+				result.mY = (matrix.m02 - matrix.m20) * sqrt;
+				result.mZ = (matrix.m10 - matrix.m01) * sqrt;
+			}
+			else if ((matrix.m00 >= matrix.m11) && (matrix.m00 >= matrix.m22))
+			{
+				sqrt = (float) Math.Sqrt(1.0f + matrix.m00 - matrix.m11 - matrix.m22);
+				half = 0.5f / sqrt;
+
+				result.mX = 0.5f * sqrt;
+				result.mY = (matrix.m10 + matrix.m01) * half;
+				result.mZ = (matrix.m20 + matrix.m02) * half;
+				result.mW = (matrix.m21 - matrix.m12) * half;
+			}
+			else if (matrix.m11 > matrix.m22)
+			{
+				sqrt = (float) Math.Sqrt(1.0f + matrix.m11 - matrix.m00 - matrix.m22);
+				half = 0.5f/sqrt;
+
+				result.mX = (matrix.m01 + matrix.m10)*half;
+				result.mY = 0.5f*sqrt;
+				result.mZ = (matrix.m12 + matrix.m21)*half;
+				result.mW = (matrix.m02 - matrix.m20)*half;
+			}
+			else
+			{
+				sqrt = (float) Math.Sqrt(1.0f + matrix.m22 - matrix.m00 - matrix.m11);
+				half = 0.5f / sqrt;
+
+				result.mX = (matrix.m02 + matrix.m20) * half;
+				result.mY = (matrix.m12 + matrix.m21) * half;
+				result.mZ = 0.5f * sqrt;
+				result.mW = (matrix.m10 - matrix.m01) * half;
+			}
         }
 
         public static Quaternion CreateFromYawPitchRoll(float yaw, float pitch, float roll)

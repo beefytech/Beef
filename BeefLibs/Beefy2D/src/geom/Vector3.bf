@@ -1,3 +1,6 @@
+// This file contains portions of code from the FNA project (github.com/FNA-XNA/FNA),
+// released under the Microsoft Public License
+
 using System;
 using System.Collections;
 using System.Text;
@@ -131,7 +134,7 @@ namespace Beefy.geom
         {
 			Vector3 newVec;
             Normalize(vector, out newVec);
-            return vector;
+            return newVec;
         }
 
         public static void Normalize(Vector3 value, out Vector3 result)
@@ -173,7 +176,7 @@ namespace Beefy.geom
             return new Vector2D((float)Math.Cos(angle) * length, (float)Math.Sin(angle) * length);
         }*/
 
-        public static Vector3 Transform(Vector3 vec, Matrix4 matrix)
+        public static Vector3 TransformW(Vector3 vec, Matrix4 matrix)
         {
 			Vector3 result;
             float fInvW = 1.0f / (matrix.m30 * vec.mX + matrix.m31 * vec.mY + matrix.m32 * vec.mZ + matrix.m33);
@@ -181,8 +184,18 @@ namespace Beefy.geom
             result.mX = (matrix.m00 * vec.mX + matrix.m01 * vec.mY + matrix.m02 * vec.mZ + matrix.m03) * fInvW;
             result.mY = (matrix.m10 * vec.mX + matrix.m11 * vec.mY + matrix.m12 * vec.mZ + matrix.m13) * fInvW;
             result.mZ = (matrix.m20 * vec.mX + matrix.m21 * vec.mY + matrix.m22 * vec.mZ + matrix.m23) * fInvW;
+
 			return result;
         }
+
+		public static Vector3 Transform(Vector3 vec, Matrix4 matrix)
+		{
+			Vector3 result;
+			result.mX = (vec.mX * matrix.m00) + (vec.mY * matrix.m01) + (vec.mZ * matrix.m02) + matrix.m03;
+			result.mY = (vec.mX * matrix.m10) + (vec.mY * matrix.m11) + (vec.mZ * matrix.m12) + matrix.m13;
+			result.mZ = (vec.mX * matrix.m20) + (vec.mY * matrix.m21) + (vec.mZ * matrix.m22) + matrix.m23;
+			return result;
+		}
 
         /*public static void Transform(Vector3[] sourceArray, ref Matrix4 matrix, Vector3[] destinationArray)
         {
@@ -198,6 +211,51 @@ namespace Beefy.geom
                         (position.mX * matrix.m13) + (position.mY * matrix.m23) + (position.mZ * matrix.m33) + matrix.m43);
             }
         }*/
+
+		/// <summary>
+		/// Returns a <see>Vector3</see> pointing in the opposite
+		/// direction of <paramref name="value"/>.
+		/// </summary>
+		/// <param name="value">The vector to negate.</param>
+		/// <returns>The vector negation of <paramref name="value"/>.</returns>
+		public static Vector3 Negate(Vector3 value)
+		{
+		    return .(-value.mX, -value.mY, -value.mZ);
+		}
+
+		/// <summary>
+		/// Stores a <see>Vector3</see> pointing in the opposite
+		/// direction of <paramref name="value"/> in <paramref name="result"/>.
+		/// </summary>
+		/// <param name="value">The vector to negate.</param>
+		/// <param name="result">The vector that the negation of <paramref name="value"/> will be stored in.</param>
+		public static void Negate(Vector3 value, out Vector3 result)
+		{
+		    result.mX = -value.mX;
+		    result.mY = -value.mY;
+		    result.mZ = -value.mZ;
+		}
+
+		/// <summary>
+		/// Creates a new <see cref="Vector3"/> that contains a multiplication of two vectors.
+		/// </summary>
+		/// <param name="value1">Source <see cref="Vector3"/>.</param>
+		/// <param name="value2">Source <see cref="Vector3"/>.</param>
+		/// <returns>The result of the vector multiplication.</returns>
+		public static Vector3 Multiply(Vector3 value1, Vector3 value2)
+		{
+			return .(value1.mX * value2.mX, value1.mY * value2.mY, value1.mZ * value2.mZ);
+		}
+
+		public static Vector3 Multiply(Vector3 value1, float value2)
+		{
+			return .(value1.mX * value2, value1.mY * value2, value1.mZ * value2);
+		}
+
+		public void Normalize() mut
+		{
+		    Normalize(this, out this);
+		}
 
         public static Vector3 Transform(Vector3 vec, Quaternion quat)
         {        
@@ -233,6 +291,11 @@ namespace Beefy.geom
         {
             return Vector3(vec1.mX - vec2.mX, vec1.mY - vec2.mY, vec1.mZ - vec2.mZ);
         }
+
+		public static Vector3 operator -(Vector3 vec1)
+		{
+		    return Vector3(-vec1.mX, -vec1.mY, -vec1.mZ);
+		}
 
         public static Vector3 operator *(Vector3 vec, float scale)
         {
