@@ -2367,7 +2367,7 @@ void BfMangler::HandleParamCustomAttributes(BfAttributeDirective* attributes, bo
 	{
 		if (attributes->mAttributeTypeRef != NULL)
 		{
-			auto typeRefName = attributes->mAttributeTypeRef->ToString();
+			auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
 			if (typeRefName == "MangleConst")
 				isConst = true;
 		}
