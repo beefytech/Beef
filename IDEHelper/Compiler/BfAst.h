@@ -2329,6 +2329,7 @@ public:
 
 	bool IsNamedTypeReference();
 	bool IsTypeDefTypeReference();
+	String ToCleanAttributeString();
 
 };	BF_AST_DECL(BfTypeReference, BfAstNode);
 

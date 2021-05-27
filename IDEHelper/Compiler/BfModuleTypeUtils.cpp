@@ -5158,7 +5158,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			{
 				if (attributes->mAttributeTypeRef != NULL)
 				{
-					auto typeRefName = attributes->mAttributeTypeRef->ToString();
+					auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
 
 					if (typeRefName == "AlwaysInclude")
 						implRequired = true;

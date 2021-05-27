@@ -11367,7 +11367,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 				{
 					if (prevCustomAttribute.mType == attrTypeInst)
 					{
-						Fail(StrFormat("Duplicate '%s' attribute", attributesDirective->mAttributeTypeRef->ToString().c_str()), attributesDirective->mAttributeTypeRef); // CS0579						
+						Fail(StrFormat("Duplicate '%s' attribute", attributesDirective->mAttributeTypeRef->ToCleanAttributeString().c_str()), attributesDirective->mAttributeTypeRef); // CS0579						
 					}
 				}
 			}

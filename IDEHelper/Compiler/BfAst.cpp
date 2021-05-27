@@ -1195,6 +1195,23 @@ bool BfTypeReference::IsTypeDefTypeReference()
 	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>() || IsA<BfDirectTypeDefReference>();
 }
 
+String BfTypeReference::ToCleanAttributeString()
+{
+	// ToString might return something like "System.InlineAttribute", which we want to clean before we test for "Inline"
+	auto typeRefName = ToString();
+	if (typeRefName.EndsWith("Attribute"))
+	{
+		int attribNameStart = (int)typeRefName.LastIndexOf('.');
+		if (attribNameStart != -1)
+			typeRefName.Remove(0, attribNameStart + 1);
+
+		if (typeRefName.EndsWith("Attribute"))
+			typeRefName.RemoveFromEnd(9);
+	}
+
+	return typeRefName;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BfPropertyMethodDeclaration* BfPropertyDeclaration::GetMethod(const StringImpl& findName)
@@ -1262,6 +1279,10 @@ bool BfAttributeDirective::Contains(const StringImpl& findName)
 			return true;
 		if (name.EndsWith("Attribute"))
 		{
+			int attribNameStart = (int)name.LastIndexOf('.');
+			if (attribNameStart != -1)
+				name.Remove(0, attribNameStart + 1);
+
 			name.RemoveToEnd(name.length() - 9);
 			if (findName == name)
 				return true;

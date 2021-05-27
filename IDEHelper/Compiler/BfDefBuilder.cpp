@@ -555,7 +555,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		{
 			if (attributes->mAttributeTypeRef != NULL)
 			{
-				auto typeRefName = attributes->mAttributeTypeRef->ToString();
+				auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
 
 				if (typeRefName == "StdCall")
 					methodDef->mCallingConvention = BfCallingConvention_Stdcall;
@@ -788,7 +788,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 	{		
 		if (attributes->mAttributeTypeRef != NULL)
 		{
-			auto typeRefName = attributes->mAttributeTypeRef->ToString();
+			auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
 
 			if (typeRefName == "CLink")
 				methodDef->mCLink = true;
@@ -874,7 +874,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfTypeDef* 
 	{		
 		if (attributes->mAttributeTypeRef != NULL)
 		{
-			auto typeRefName = attributes->mAttributeTypeRef->ToString();
+			auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
 
 			if (typeRefName == "AlwaysInclude")
 				typeDef->mIsAlwaysInclude = true;
@@ -2098,7 +2098,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 				{
 					if (attributes->mAttributeTypeRef != NULL)
 					{
-						auto typeRefName = attributes->mAttributeTypeRef->ToString();
+						auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
 
 						if (typeRefName == "ThreadStatic")
 							hasThreadStatics = true;
