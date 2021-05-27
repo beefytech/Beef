@@ -1561,6 +1561,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 			"out", "params", "ref", "rettype", "return",
 			"sealed", "sizeof", "scope", "static", "strideof", "struct", "switch", /*"this",*/ "try", "true", "typeof", "unchecked",
 			"using", "var", "virtual", "volatile", "where", "while",
+			"alloctype", "comptype", "decltype", "nullable",
 		};		
 
 		for (int i = 0; i < sizeof(tokens) / sizeof(char*); i++)
