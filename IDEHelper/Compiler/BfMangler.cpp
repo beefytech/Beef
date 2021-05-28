@@ -318,6 +318,11 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 		{
 			name += "_";
 			name += methodDef->mParams[paramIdx]->mName;
+			if (methodDef->mParams[paramIdx]->mParamKind == BfParamKind_VarArgs)
+			{
+				name += "__varargs";
+				continue;
+			}
 			typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
 		}
 		for (auto type : typeVec)
