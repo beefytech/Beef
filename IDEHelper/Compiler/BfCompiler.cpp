@@ -7045,6 +7045,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 				mContext->mUnreifiedModule->ResolveTypeDef(typeDef, BfPopulateType_Full);
 			}
 
+			Array<BfTypeInstance*> typeWorkList;
+
 			for (auto type : mContext->mResolvedTypes)
 			{				
 				auto module = type->GetModule();
@@ -7066,28 +7068,33 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
  					continue;
 
 				if (!typeInst->IsSpecializedType())
-				{					
-					// Find any remaining methods for unreified processing
-					for (auto&& methodInstGroup : typeInst->mMethodInstanceGroups)
+				{	
+					typeWorkList.Add(typeInst);					
+				}
+			}
+
+			for (auto typeInst : typeWorkList)
+			{
+				// Find any remaining methods for unreified processing
+				for (auto&& methodInstGroup : typeInst->mMethodInstanceGroups)
+				{
+					if ((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) ||
+						(methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference))
 					{
-						if ((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) ||
-							(methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference))
-						{							
-							if ((methodInstGroup.mDefault != NULL) && (methodInstGroup.mDefault->mIsForeignMethodDef))
-							{
-								mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodInstGroup.mDefault->mMethodDef, BfTypeVector(),
-									(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_ForeignMethodDef | BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
-								queuedMoreMethods = true;
-							}
-							else
-							{
-								auto methodDef = typeInst->mTypeDef->mMethods[methodInstGroup.mMethodIdx];
-								if (methodDef->mMethodType == BfMethodType_Init)
-									continue;
-								mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodDef, BfTypeVector(),
-									(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
-								queuedMoreMethods = true;
-							}
+						if ((methodInstGroup.mDefault != NULL) && (methodInstGroup.mDefault->mIsForeignMethodDef))
+						{
+							mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodInstGroup.mDefault->mMethodDef, BfTypeVector(),
+								(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_ForeignMethodDef | BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
+							queuedMoreMethods = true;
+						}
+						else
+						{
+							auto methodDef = typeInst->mTypeDef->mMethods[methodInstGroup.mMethodIdx];
+							if (methodDef->mMethodType == BfMethodType_Init)
+								continue;
+							mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodDef, BfTypeVector(),
+								(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
+							queuedMoreMethods = true;
 						}
 					}
 				}
