@@ -254,6 +254,9 @@ DXTexture::DXTexture()
 
 DXTexture::~DXTexture()
 {
+	if (!mPath.IsEmpty())
+		((DXRenderDevice*)mRenderDevice)->mTextureMap.Remove(mPath);
+
 	//OutputDebugStrF("DXTexture::~DXTexture %@\n", this);
 	delete mImageData;
 	if (mD3DResourceView != NULL)
