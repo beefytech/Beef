@@ -254,7 +254,7 @@ DXTexture::DXTexture()
 
 DXTexture::~DXTexture()
 {
-	if (!mPath.IsEmpty())
+	if ((!mPath.IsEmpty()) && (mRenderDevice != NULL))
 		((DXRenderDevice*)mRenderDevice)->mTextureMap.Remove(mPath);
 
 	//OutputDebugStrF("DXTexture::~DXTexture %@\n", this);
@@ -1486,6 +1486,9 @@ DXRenderDevice::DXRenderDevice()
 
 DXRenderDevice::~DXRenderDevice()
 {
+	for (auto& kv : mTextureMap)
+		kv.mValue->mRenderDevice = NULL;
+
 	mD3DVertexBuffer->Release();
 	mD3DIndexBuffer->Release();
 	delete mDefaultRenderState;
