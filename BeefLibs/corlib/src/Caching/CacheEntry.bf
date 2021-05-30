@@ -21,7 +21,7 @@ namespace System.Caching
 
 	public class CacheEntryRemovedArguments
 	{
-		private CacheItem _cacheItem ~ delete _;
+		private CacheItem _cacheItem ~ delete _; // Needs to be deleted here
 		private ObjectCache _source;
 		private CacheEntryRemovedReason _reason;
 
@@ -53,7 +53,6 @@ namespace System.Caching
 	{
 		private String _key;
 		private CacheEntryRemovedReason _reason;
-		private String _regionName;
 		private ObjectCache _source;
 		private CacheItem _updatedCacheItem;
 		private CacheItemPolicy _updatedCacheItemPolicy;
@@ -66,11 +65,6 @@ namespace System.Caching
 		public CacheEntryRemovedReason RemovedReason
 		{
 			get { return _reason; }
-		}
-
-		public String RegionName
-		{
-			get { return _regionName; }
 		}
 
 		public ObjectCache Source
@@ -90,13 +84,12 @@ namespace System.Caching
 			set { _updatedCacheItemPolicy = value; }
 		}
 
-		public this(ObjectCache source, CacheEntryRemovedReason reason, String key, String regionName)
+		public this(ObjectCache source, CacheEntryRemovedReason reason, String key)
 		{
 			Runtime.Assert(source != null && key != null);
 			_source = source;
 			_reason = reason;
 			_key = key;
-			_regionName = regionName;
 		}
 	}
 
@@ -104,6 +97,5 @@ namespace System.Caching
 	{
 		public abstract List<String> CacheKeys { get; }
 		public abstract DateTimeOffset LastModified { get; }
-		public abstract String RegionName { get; }
 	}
 }

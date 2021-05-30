@@ -74,7 +74,6 @@ namespace System.Caching
 	{
 		public String Key { get; set; }
 		public Object Value { get; set; }
-		public String RegionName { get; set; }
 
 		private this() { } // hide default constructor
 
@@ -86,11 +85,6 @@ namespace System.Caching
 		public this(String key, Object value) : this(key)
 		{
 			Value = value;
-		}
-
-		public this(String key, Object value, String regionName) : this(key, value)
-		{
-			RegionName = regionName;
 		}
 	}
 }

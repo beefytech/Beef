@@ -47,47 +47,47 @@ namespace System.Caching
 		//Default indexer property
 		public abstract Object this[String key] { get; set; }
 
-		public abstract CacheEntryChangeMonitor CreateCacheEntryChangeMonitor(IEnumerator<String> keys, String regionName = null);
+		public abstract CacheEntryChangeMonitor CreateCacheEntryChangeMonitor(IEnumerator<String> keys);
 
 		public abstract IEnumerator<(String key, Object value)> GetEnumerator();
 
 		//Existence check for a single item
-		public abstract bool Contains(String key, String regionName = null);
+		public abstract bool Contains(String key);
 
 		//The Add overloads are for adding an item without requiring the existing item to be returned.  This was
 		// requested for Velocity.
-		public virtual bool Add(String key, Object value, DateTimeOffset absoluteExpiration, String regionName = null) =>
-			AddOrGetExisting(key, value, absoluteExpiration, regionName) == null;
+		public virtual bool Add(String key, Object value, DateTimeOffset absoluteExpiration) =>
+			AddOrGetExisting(key, value, absoluteExpiration) == null;
 
 		public virtual bool Add(CacheItem item, CacheItemPolicy policy) => AddOrGetExisting(item, policy) == null;
 
-		public virtual bool Add(String key, Object value, CacheItemPolicy policy, String regionName = null) =>
-			AddOrGetExisting(key, value, policy, regionName) == null;
+		public virtual bool Add(String key, Object value, CacheItemPolicy policy) =>
+			AddOrGetExisting(key, value, policy) == null;
 
-		public abstract Object AddOrGetExisting(String key, Object value, DateTimeOffset absoluteExpiration, String regionName = null);
+		public abstract Object AddOrGetExisting(String key, Object value, DateTimeOffset absoluteExpiration);
 
 		public abstract CacheItem AddOrGetExisting(CacheItem value, CacheItemPolicy policy);
 
-		public abstract Object AddOrGetExisting(String key, Object value, CacheItemPolicy policy, String regionName = null);
+		public abstract Object AddOrGetExisting(String key, Object value, CacheItemPolicy policy);
 
-		public abstract Object Get(String key, String regionName = null);
+		public abstract Object Get(String key);
 
-		public abstract CacheItem GetCacheItem(String key, String regionName = null);
+		public abstract CacheItem GetCacheItem(String key);
 
-		public abstract void Set(String key, Object value, DateTimeOffset absoluteExpiration, String regionName = null);
+		public abstract void Set(String key, Object value, DateTimeOffset absoluteExpiration);
 
 		public abstract void Set(CacheItem item, CacheItemPolicy policy);
 
-		public abstract void Set(String key, Object value, CacheItemPolicy policy, String regionName = null);
+		public abstract void Set(String key, Object value, CacheItemPolicy policy);
 
 		//Get multiple items by keys
-		public abstract Dictionary<String, Object> GetValues(List<String> keys, String regionName = null);
+		public abstract Dictionary<String, Object> GetValues(List<String> keys);
 
-		public virtual Dictionary<String, Object> GetValues(String regionName, params String[] keys) =>
-			GetValues(scope List<String>(keys.GetEnumerator()), regionName);
+		public virtual Dictionary<String, Object> GetValues(params String[] keys) =>
+			GetValues(scope List<String>(keys.GetEnumerator()));
 
-		public abstract Object Remove(String key, String regionName = null);
+		public abstract Object Remove(String key);
 
-		public abstract int64 GetCount(String regionName = null);
+		public abstract int64 GetCount();
 	}
 }
