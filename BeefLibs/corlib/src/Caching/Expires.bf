@@ -123,7 +123,7 @@ namespace System.Caching
 			InitZeroPages();
 		}
 
-		~this()
+		public ~this()
 		{
 			DeletePageArrayAndNull!(_pages);
 			delete _counts;

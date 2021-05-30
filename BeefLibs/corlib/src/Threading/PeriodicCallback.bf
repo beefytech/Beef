@@ -38,7 +38,7 @@ namespace System.Threading
 		/// Creates a new instance of the PeriodicCallback
 		public this(PeriodicCallbackDelegate callback, uint32 interval) : this(callback, (int64)interval) { }
 
-		~this()
+		public ~this()
 		{
 			if (_thread != null)
 				Dispose();
