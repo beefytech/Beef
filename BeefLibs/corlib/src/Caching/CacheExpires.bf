@@ -12,10 +12,10 @@ namespace System.Caching
 		public static readonly TimeSpan MIN_FLUSH_INTERVAL = TimeSpan(0, 0, 1);
 		public static readonly TimeSpan _tsPerBucket = TimeSpan(0, 0, 20);
 		private const int NUMBUCKETS = 30;
-		private static readonly TimeSpan s_tsPerCycle = TimeSpan(30L * CacheExpires._tsPerBucket.Ticks);
+		private static readonly TimeSpan s_tsPerCycle = TimeSpan(30L * _tsPerBucket.Ticks);
 		private readonly MemoryCacheStore _cacheStore;
-		private readonly ExpiresBucket[] _buckets;
-		private PeriodicCallback _timer;
+		private readonly ExpiresBucket[] _buckets = new .[30] ~ DeleteContainerAndItems!(_);
+		private PeriodicCallback _timer = null ~ if (_ != null) delete _;
 		private DateTime _utcLastFlush;
 		private int _inFlush;
 
@@ -23,25 +23,21 @@ namespace System.Caching
 		{
 			DateTime utcNow = DateTime.UtcNow;
 			_cacheStore = cacheStore;
-			_buckets = new ExpiresBucket[30];
 			uint8 b = 0;
 
 			while ((int)b < _buckets.Count)
 			{
-				_buckets[(int)b] = new ExpiresBucket(this, b, utcNow);
+				_buckets[(int)b] = new .(this, b, utcNow);
 				b += 1;
 			}
 		}
 
-		private int UtcCalcExpiresBucket(DateTime utcDate)
-		{
-			int64 num = utcDate.Ticks % CacheExpires.s_tsPerCycle.Ticks;
-			return (int)((num / CacheExpires._tsPerBucket.Ticks + 1L) % 30L);
-		}
+		private int UtcCalcExpiresBucket(DateTime utcDate) =>
+			(int)(((utcDate.Ticks % s_tsPerCycle.Ticks) / _tsPerBucket.Ticks + 1L) % 30L);
 
 		private int FlushExpiredItems(bool checkDelta, bool useInsertBlock)
 		{
-			int num = 0;
+			int flushedCount = 0;
 
 			if (Interlocked.Exchange(ref _inFlush, 1) == 0)
 			{
@@ -49,22 +45,19 @@ namespace System.Caching
 					return 0;
 
 				DateTime utcNow = DateTime.UtcNow;
-				let nowMinFlush = utcNow - _utcLastFlush;
 
-				if (!checkDelta || nowMinFlush >= CacheExpires.MIN_FLUSH_INTERVAL || utcNow < _utcLastFlush)
+				if (!checkDelta || (utcNow - _utcLastFlush) >= MIN_FLUSH_INTERVAL || utcNow < _utcLastFlush)
 				{
 					_utcLastFlush = utcNow;
 
 					for (ExpiresBucket expiresBucket in _buckets)
-						num += expiresBucket.FlushExpiredItems(utcNow, useInsertBlock);
+						flushedCount += expiresBucket.FlushExpiredItems(utcNow, useInsertBlock);
 				}
 
 				Interlocked.Exchange(ref _inFlush, 0);
-
-				return num;
 			}
 
-			return num;
+			return flushedCount;
 		}
 
 		public int FlushExpiredItems(bool useInsertBlock) =>
@@ -80,8 +73,8 @@ namespace System.Caching
 				if (_timer == null)
 				{
 					DateTime utcNow = DateTime.UtcNow;
-					TimeSpan timeSpan = CacheExpires._tsPerBucket - TimeSpan(utcNow.Ticks % CacheExpires._tsPerBucket.Ticks);
-					_timer = new PeriodicCallback(new => TimerCallback, timeSpan.Ticks / 10000L);
+					TimeSpan timeSpan = _tsPerBucket - TimeSpan(utcNow.Ticks % _tsPerBucket.Ticks);
+					_timer = new .(new => TimerCallback, timeSpan.Ticks / 10000L);
 					return;
 				}
 			}
@@ -125,15 +118,15 @@ namespace System.Caching
 		public void UtcUpdate(MemoryCacheEntry cacheEntry, DateTime utcNewExpires)
 		{
 			int expiresBucket = (int)cacheEntry.ExpiresBucket;
-			int num = UtcCalcExpiresBucket(utcNewExpires);
+			int bucketIdx = UtcCalcExpiresBucket(utcNewExpires);
 
-			if (expiresBucket != num)
+			if (expiresBucket != bucketIdx)
 			{
 				if (expiresBucket != 255)
 				{
 					_buckets[expiresBucket].RemoveCacheEntry(cacheEntry);
 					cacheEntry.UtcAbsExp = utcNewExpires;
-					_buckets[num].AddCacheEntry(cacheEntry);
+					_buckets[bucketIdx].AddCacheEntry(cacheEntry);
 					return;
 				}
 			}

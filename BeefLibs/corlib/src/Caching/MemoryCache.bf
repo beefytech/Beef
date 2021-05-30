@@ -14,22 +14,18 @@ namespace System.Caching
 		const int INSERT_BLOCK_WAIT = 10000;
 		const int MAX_COUNT = Int32.MaxValue / 2;
 
-		private Dictionary<String, MemoryCacheEntry> _entries;
-		private readonly Monitor _entriesLock = new Monitor() ~ delete _;
-		private CacheExpires _expires;
-		private CacheUsage _usage;
-		private int _disposed;
-		private WaitEvent _insertBlock;
+		private Dictionary<String, MemoryCacheEntry> _entries = new .() ~ DeleteDictionaryAndValues!(_);
+		private readonly Monitor _entriesLock = new .() ~ delete _;
+		private CacheExpires _expires = new .(this) ~ delete _;
+		private CacheUsage _usage = new .(this);
+		private uint8 _disposed;
+		private WaitEvent _insertBlock = new .(true) ~ delete _;
 		private volatile bool _useInsertBlock;
 		private MemoryCache _cache;
 
 		public this(MemoryCache cache)
 		{
 			_cache = cache;
-			_entries = new Dictionary<String, MemoryCacheEntry>();
-			_expires = new CacheExpires(this);
-			_usage = new CacheUsage(this);
-			_insertBlock = new WaitEvent(true);
 			_expires.EnableExpirationTimer(true);
 		}
 
@@ -46,7 +42,7 @@ namespace System.Caching
 				_usage.Add(entry);
 
 			// One last sanity check to be sure we didn't fall victim to an Add ----
-			if (!entry.CompareExchangeState(EntryState.AddedToCache, EntryState.AddingToCache))
+			if (!entry.CompareExchangeState(.AddedToCache, .AddingToCache))
 			{
 				if (entry.InExpires())
 					_expires.Remove(entry);
@@ -69,8 +65,8 @@ namespace System.Caching
 				if (entry.InUsage())
 					_usage.Remove(entry);
 
-				Runtime.Assert(entry.State == EntryState.RemovingFromCache, "entry.State = EntryState.RemovingFromCache");
-				entry.State = EntryState.RemovedFromCache;
+				Runtime.Assert(entry.State == .RemovingFromCache);
+				entry.State = .RemovedFromCache;
 
 				if (!delayRelease)
 					entry.Release(_cache, reason);
@@ -125,7 +121,7 @@ namespace System.Caching
 						if (existingEntry != null && existingEntry.UtcAbsExp <= DateTime.UtcNow)
 						{
 							toBeReleasedEntry = existingEntry;
-							toBeReleasedEntry.State = EntryState.RemovingFromCache;
+							toBeReleasedEntry.State = .RemovingFromCache;
 							existingEntry = null;
 						}
 					}
@@ -133,13 +129,13 @@ namespace System.Caching
 					// can we add entry to the cache?
 					if (existingEntry == null)
 					{
-						entry.State = EntryState.AddingToCache;
+						entry.State = .AddingToCache;
 						added = true;
 						_entries[key] = entry;
 					}
 				}
 
-				RemoveFromCache(toBeReleasedEntry, CacheEntryRemovedReason.Expired, true);
+				RemoveFromCache(toBeReleasedEntry, .Expired, true);
 			}
 
 			if (added)// add outside of lock
@@ -151,7 +147,7 @@ namespace System.Caching
 			// Call Release after the new entry has been completely added so that the CacheItemRemovedCallback can take
 			// a dependency on the newly inserted item.
 			if (toBeReleasedEntry != null)
-				toBeReleasedEntry.Release(_cache, CacheEntryRemovedReason.Expired);
+				toBeReleasedEntry.Release(_cache, .Expired);
 
 			return existingEntry;
 		}
@@ -170,7 +166,7 @@ namespace System.Caching
 				{
 					for (let e in _entries)
 					{
-						MemoryCacheEntry entry = (MemoryCacheEntry)e.value;
+						MemoryCacheEntry entry = e.value;
 
 						if (entry.UtcAbsExp > DateTime.UtcNow)
 							h[e.key] = entry.Value;
@@ -191,7 +187,7 @@ namespace System.Caching
 				// disable CacheExpires timer
 				_expires.EnableExpirationTimer(false);
 				// build array list of entries
-				List<MemoryCacheEntry> entries = new List<MemoryCacheEntry>(_entries.Count);
+				List<MemoryCacheEntry> entries = new .(_entries.Count);
 
 				using (_entriesLock.Enter())
 				{
@@ -201,17 +197,17 @@ namespace System.Caching
 						entries.Add(entry);
 					}
 
-					for (MemoryCacheEntry entry in entries)
+					for (let entry in entries)
 					{
-						entry.State = EntryState.RemovingFromCache;
+						entry.State = .RemovingFromCache;
 						_entries.Remove(entry.Key);
 					}
 				}
 
 				// release entries outside of lock
-				for (MemoryCacheEntry entry in entries)
+				for (let entry in entries)
 				{
-					RemoveFromCache(entry, CacheEntryRemovedReason.CacheSpecificEviction);
+					RemoveFromCache(entry, .CacheSpecificEviction);
 					delete entry;
 				}
 
@@ -229,7 +225,7 @@ namespace System.Caching
 			// has it expired?
 			if (entry != null && entry.UtcAbsExp <= DateTime.UtcNow)
 			{
-				Remove(key, entry, CacheEntryRemovedReason.Expired);
+				Remove(key, entry, .Expired);
 				delete entry;
 				entry = null;
 			}
@@ -257,7 +253,7 @@ namespace System.Caching
 						{
 							if (entry != null)
 							{
-								entry.State = EntryState.RemovingFromCache;
+								entry.State = .RemovingFromCache;
 								_entries.Remove(key);
 							}
 						}
@@ -289,20 +285,20 @@ namespace System.Caching
 					existingEntry = _entries[key];
 
 					if (existingEntry != null)
-						existingEntry.State = EntryState.RemovingFromCache;
+						existingEntry.State = .RemovingFromCache;
 
-					entry.State = EntryState.AddingToCache;
+					entry.State = .AddingToCache;
 					added = true;
 					_entries[key] = entry;
 				}
 			}
 
-			CacheEntryRemovedReason reason = CacheEntryRemovedReason.Removed;
+			CacheEntryRemovedReason reason = .Removed;
 
 			if (existingEntry != null)
 			{
 				if (existingEntry.UtcAbsExp <= DateTime.UtcNow)
-					reason = CacheEntryRemovedReason.Expired;
+					reason = .Expired;
 
 				RemoveFromCache(existingEntry, reason, true);
 			}
@@ -338,7 +334,7 @@ namespace System.Caching
 			if (toTrim <= 0 || _disposed == 1)
 				return 0;
 
-			int trimmed = 0;// total number of entries trimmed
+			int trimmed = 0; // total number of entries trimmed
 			int trimmedOrExpired = 0;
 
 			trimmedOrExpired = _expires.FlushExpiredItems(true);
@@ -374,7 +370,7 @@ namespace System.Caching
 		private DateTime _utcLastUpdateUsage;
 		private CacheEntryRemovedCallback _callback;
 		private MemoryCacheEntry.SeldomUsedFields _fields ~ delete _;
-		private readonly Monitor _lock = new Monitor() ~ delete _;
+		private readonly Monitor _lock = new .() ~ delete _;
 
 		private class SeldomUsedFields
 		{
@@ -474,7 +470,7 @@ namespace System.Caching
 			_expiresBucket = uint8.MaxValue;
 			_usageEntryRef = UsageEntryRef.INVALID;
 
-			if (priority == CacheItemPriority.NotRemovable)
+			if (priority == .NotRemovable)
 			{
 				_usageBucket = uint8.MaxValue;
 			}
@@ -487,7 +483,7 @@ namespace System.Caching
 
 			if (dependencies != null)
 			{
-				_fields = new MemoryCacheEntry.SeldomUsedFields();
+				_fields = new .();
 				_fields._dependencies = dependencies;
 				_fields._cache = cache;
 			}
@@ -497,16 +493,16 @@ namespace System.Caching
 		{
 			using (_lock.Enter())
 			{
-				if (State <= EntryState.AddedToCache)
+				if (State <= .AddedToCache)
 				{
 					if (_fields == null)
-						_fields = new MemoryCacheEntry.SeldomUsedFields();
+						_fields = new .();
 
 					if (_fields._cache == null)
 						_fields._cache = cache;
 
 					if (_fields._dependents == null)
-						_fields._dependents = new Dictionary<MemoryCacheEntryChangeMonitor, MemoryCacheEntryChangeMonitor>();
+						_fields._dependents = new .();
 
 					_fields._dependents[dependent] = dependent;
 				}
@@ -518,16 +514,15 @@ namespace System.Caching
 			if (_callback == null)
 				return;
 
-			CacheEntryRemovedArguments arguments = new CacheEntryRemovedArguments(cache, reason, new CacheItem(_key, _value));
+			CacheEntryRemovedArguments arguments = scope .(cache, reason, new .(_key, _value));
 			_callback(arguments);
-			delete arguments;
 		}
 
 		public void CallNotifyOnChanged()
 		{
 			if (_fields != null && _fields._dependencies != null)
 			{
-				for (ChangeMonitor changeMonitor in _fields._dependencies)
+				for (let changeMonitor in _fields._dependencies)
 					changeMonitor.NotifyOnChanged(new => OnDependencyChanged);
 			}
 		}
@@ -540,7 +535,7 @@ namespace System.Caching
 			using (_lock.Enter())
 			{
 				if (_fields == null)
-					_fields = new MemoryCacheEntry.SeldomUsedFields();
+					_fields = new .();
 
 				_fields._updateSentinel = (MemoryCacheStore, MemoryCacheEntry)(sentinelStore, sentinelEntry);
 			}
@@ -555,13 +550,13 @@ namespace System.Caching
 		private void OnDependencyChanged(Object state)
 		{
 			if (State == EntryState.AddedToCache)
-				_fields._cache.RemoveEntry(_key, this, CacheEntryRemovedReason.ChangeMonitorChanged);
+				_fields._cache.RemoveEntry(_key, this, .ChangeMonitorChanged);
 		}
 
 		public void Release(MemoryCache cache, CacheEntryRemovedReason reason)
 		{
 			State = EntryState.Closed;
-			Dictionary<MemoryCacheEntryChangeMonitor, MemoryCacheEntryChangeMonitor>.KeyEnumerator keyCollection = default;
+			IEnumerator<MemoryCacheEntryChangeMonitor> keyCollection = null;
 
 			using (_lock.Enter())
 			{
@@ -572,7 +567,7 @@ namespace System.Caching
 				}
 			}
 
-			if (keyCollection != default)
+			if (keyCollection != null)
 			{
 				for (MemoryCacheEntryChangeMonitor memoryCacheEntryChangeMonitor in keyCollection)
 					if (memoryCacheEntryChangeMonitor != null)
@@ -609,12 +604,8 @@ namespace System.Caching
 			MemoryCacheEntry.SeldomUsedFields fields = _fields;
 
 			if (fields != null)
-			{
-				(MemoryCacheStore, MemoryCacheEntry) updateSentinel = fields._updateSentinel;
-
-				if (updateSentinel != default)
-					updateSentinel.0.UpdateExpAndUsage(updateSentinel.1);
-			}
+				if (fields._updateSentinel != default)
+					fields._updateSentinel.0.UpdateExpAndUsage(fields._updateSentinel.1);
 		}
 
 		public void UpdateUsage(DateTime utcNow, CacheUsage usage)
@@ -628,7 +619,7 @@ namespace System.Caching
 				{
 					for (ChangeMonitor changeMonitor in _fields._dependencies)
 					{
-						MemoryCacheEntryChangeMonitor memoryCacheEntryChangeMonitor = changeMonitor as MemoryCacheEntryChangeMonitor;
+						MemoryCacheEntryChangeMonitor memoryCacheEntryChangeMonitor = (MemoryCacheEntryChangeMonitor)changeMonitor;
 
 						if (memoryCacheEntryChangeMonitor != null)
 							for (MemoryCacheEntry memoryCacheEntry in memoryCacheEntryChangeMonitor.Dependencies)
@@ -651,7 +642,7 @@ namespace System.Caching
 			| .CacheEntryUpdateCallback
 			| .CacheEntryRemovedCallback;
 		private static readonly TimeSpan OneYear = TimeSpan(365, 0, 0, 0, 0);
-		private static Monitor s_initLock = new Monitor() ~ delete _;
+		private static Monitor s_initLock = new .() ~ delete _;
 		private static MemoryCache s_defaultCache;
 		private static CacheEntryRemovedCallback s_sentinelRemovedCallback = new => SentinelEntry.OnCacheEntryRemovedCallback;
 		private MemoryCacheStore[] _storeRefs;
@@ -662,8 +653,14 @@ namespace System.Caching
 		private bool _configLess;
 		private bool _useMemoryCacheManager = true;
 
-		private bool IsDisposed { get { return (_disposed == 1); } }
-		public bool ConfigLess { get { return _configLess; } }
+		private bool IsDisposed
+		{
+			get { return (_disposed == 1); }
+		}
+		public bool ConfigLess
+		{
+			get { return _configLess; }
+		}
 
 		private class SentinelEntry
 		{
@@ -704,7 +701,7 @@ namespace System.Caching
 
 				if (changeMonitors != null)
 				{
-					for (ChangeMonitor monitor in changeMonitors)
+					for (let monitor in changeMonitors)
 					{
 						if (monitor != null && monitor.HasChanged)
 						{
@@ -721,7 +718,7 @@ namespace System.Caching
 				// if the monitors have changed we need to dispose them
 				if (hasChanged)
 				{
-					for (ChangeMonitor monitor in changeMonitors)
+					for (let monitor in changeMonitors)
 					{
 						if (monitor != null)
 							monitor.Dispose();
@@ -733,22 +730,22 @@ namespace System.Caching
 
 			public static void OnCacheEntryRemovedCallback(CacheEntryRemovedArguments arguments)
 			{
-				MemoryCache cache = arguments.Source as MemoryCache;
-				SentinelEntry entry = arguments.CacheItem.Value as SentinelEntry;
+				MemoryCache cache = (MemoryCache)arguments.Source;
+				SentinelEntry entry = (SentinelEntry)arguments.CacheItem.Value;
 				CacheEntryRemovedReason reason = arguments.RemovedReason;
 
 				switch (reason)
 				{
-				case CacheEntryRemovedReason.Expired:
+				case .Expired:
 					break;
-				case CacheEntryRemovedReason.ChangeMonitorChanged:
+				case .ChangeMonitorChanged:
 					if (entry.ExpensiveObjectDependency.HasChanged)
-							// If the expensiveObject has been removed explicitly by Cache.Remove, return from the
+						// If the expensiveObject has been removed explicitly by Cache.Remove, return from the
 						// SentinelEntry removed callback thus effectively removing the SentinelEntry from the cache.
 						return;
 
 					break;
-				case CacheEntryRemovedReason.Evicted:
+				case .Evicted:
 					Runtime.FatalError("Fatal error: Reason should never be CacheEntryRemovedReason.Evicted since the entry was inserted as NotRemovable.");
 				default:
 						// do nothing if reason is Removed or CacheSpecificEviction
@@ -756,23 +753,18 @@ namespace System.Caching
 				}
 
 				// invoke update callback
-				CacheEntryUpdateArguments args = new CacheEntryUpdateArguments(cache, reason, entry.Key, null);
+				CacheEntryUpdateArguments args = scope .(cache, reason, entry.Key);
 				entry.CacheEntryUpdateCallback(args);
 				Object expensiveObject = (args.UpdatedCacheItem != null) ? args.UpdatedCacheItem.Value : null;
 				CacheItemPolicy policy = args.UpdatedCacheItemPolicy;
 
 				// Only update the "expensive" Object if the user returns a new Object, a policy with update callback, and the change monitors haven't changed.
 				// (Inserting with change monitors that have already changed will cause recursion.)
-				if (expensiveObject != null && IsPolicyValid(policy))
-				{
+				if (expensiveObject != null && IsPolicyValid(policy)) {
 					cache.Set(entry.Key, expensiveObject, policy);
-				}
-				else
-				{
+				} else {
 					cache.Remove(entry.Key);
 				}
-
-				cache.Remove(entry.Key);
 			}
 		}
 
@@ -807,7 +799,7 @@ namespace System.Caching
 			Runtime.Assert(policy.Priority >= .Default && policy.Priority <= .NotRemovable);
 		}
 
-		// Amount of memory that can be used before the cache begins to forcibly remove items.
+		/// Amount of memory that can be used before the cache begins to forcibly remove items.
 		public int64 CacheMemoryLimit
 		{
 			get { return _stats.CacheMemoryLimit; }
@@ -845,19 +837,19 @@ namespace System.Caching
 			get { return _useMemoryCacheManager; }
 		}
 
-		// Percentage of physical memory that can be used before the cache begins to forcibly remove items.
+		/// Percentage of physical memory that can be used before the cache begins to forcibly remove items.
 		public int64 PhysicalMemoryLimit
 		{
 			get { return _stats.PhysicalMemoryLimit; }
 		}
 
-		// The maximum interval of time after which the cache will update its memory statistics.
+		/// The maximum interval of time after which the cache will update its memory statistics.
 		public TimeSpan PollingInterval
 		{
 			get { return _stats.PollingInterval; }
 		}
 
-		// Only used for Default MemoryCache
+		/// Only used for Default MemoryCache
 		private this()
 		{
 			_name = "Default";
@@ -904,6 +896,7 @@ namespace System.Caching
 			{
 				ValidatePolicy(policy);
 				Runtime.Assert(policy.UpdateCallback == null);
+
 				absExp = policy.AbsoluteExpiration;
 				slidingExp = policy.SlidingExpiration;
 				priority = policy.Priority;
@@ -914,32 +907,27 @@ namespace System.Caching
 			if (IsDisposed)
 			{
 				if (changeMonitors != null)
-				{
 					for (ChangeMonitor monitor in changeMonitors)
-					{
 						if (monitor != null)
 							monitor.Dispose();
-					}
-				}
 
 				return null;
 			}
 
-			MemoryCacheStore store = GetStore(key);
-			MemoryCacheEntry entry = store.AddOrGetExisting(key, new .(key, value, absExp, slidingExp, priority, changeMonitors, removedCallback, this));
+			MemoryCacheEntry entry = GetStore(key).AddOrGetExisting(key, new .(key, value, absExp, slidingExp, priority, changeMonitors, removedCallback, this));
 			return (entry != null) ? entry.Value : null;
 		}
 
-		public override CacheEntryChangeMonitor CreateCacheEntryChangeMonitor(IEnumerator<String> keys, String regionName = null)
+		public override CacheEntryChangeMonitor CreateCacheEntryChangeMonitor(IEnumerator<String> keys)
 		{
-			Runtime.Assert(regionName == null && keys != null);
+			Runtime.Assert(keys != null);
 			List<String> keysClone = new .(keys);
 			Runtime.Assert(keysClone.Count > 0);
 
 			for (String key in keysClone)
 				Runtime.Assert(key != null);
 
-			return new MemoryCacheEntryChangeMonitor(keysClone, regionName, this);
+			return new MemoryCacheEntryChangeMonitor(keysClone, this);
 		}
 
 		public void Dispose()
@@ -963,9 +951,9 @@ namespace System.Caching
 			}
 		}
 
-		private Object GetInternal(String key, String regionName)
+		private Object GetInternal(String key)
 		{
-			Runtime.Assert(regionName == null && key != null);
+			Runtime.Assert(key != null);
 			MemoryCacheEntry entry = GetEntry(key);
 			return (entry != null) ? entry.Value : null;
 		}
@@ -975,8 +963,7 @@ namespace System.Caching
 			if (IsDisposed)
 				return null;
 
-			MemoryCacheStore store = GetStore(key);
-			return store.Get(key);
+			return GetStore(key).Get(key);
 		}
 
 		public override IEnumerator<(String key, Object value)> GetEnumerator()
@@ -990,11 +977,8 @@ namespace System.Caching
 			return new box h.GetEnumerator();
 		}
 
-		public MemoryCacheEntry RemoveEntry(String key, MemoryCacheEntry entry, CacheEntryRemovedReason reason)
-		{
-			MemoryCacheStore store = GetStore(key);
-			return store.Remove(key, entry, reason);
-		}
+		public MemoryCacheEntry RemoveEntry(String key, MemoryCacheEntry entry, CacheEntryRemovedReason reason) =>
+			GetStore(key).Remove(key, entry, reason);
 
 		public int64 Trim(int percent)
 		{
@@ -1012,27 +996,26 @@ namespace System.Caching
 			return trimmed;
 		}
 
-		// Default indexer property
+		/// Default indexer property
 		public override Object this[String key]
 		{
-			get { return GetInternal(key, null); }
-			set { Set(key, value, ObjectCache.InfiniteAbsoluteExpiration); }
+			get { return GetInternal(key); }
+			set { Set(key, value, .InfiniteAbsoluteExpiration); }
 		}
 
-		// Existence check for a single item
-		public override bool Contains(String key, String regionName = null) =>
-			GetInternal(key, regionName) != null;
+		/// Existence check for a single item
+		public override bool Contains(String key) =>
+			GetInternal(key) != null;
 
-		// Breaking bug in System.RuntimeCaching.MemoryCache.AddOrGetExisting (CacheItem, CacheItemPolicy)
+		/// Breaking bug in System.RuntimeCaching.MemoryCache.AddOrGetExisting (CacheItem, CacheItemPolicy)
 		public override bool Add(CacheItem item, CacheItemPolicy policy)
 		{
 			CacheItem existingEntry = AddOrGetExisting(item, policy);
 			return (existingEntry == null || existingEntry.Value == null);
 		}
 
-		public override Object AddOrGetExisting(String key, Object value, DateTimeOffset absoluteExpiration, String regionName = null)
+		public override Object AddOrGetExisting(String key, Object value, DateTimeOffset absoluteExpiration)
 		{
-			Runtime.Assert(regionName == null);
 			CacheItemPolicy policy = new .();
 			policy.AbsoluteExpiration = absoluteExpiration;
 			return AddOrGetExistingInternal(key, value, policy);
@@ -1044,24 +1027,20 @@ namespace System.Caching
 			return new CacheItem(item.Key, AddOrGetExistingInternal(item.Key, item.Value, policy));
 		}
 
-		public override Object AddOrGetExisting(String key, Object value, CacheItemPolicy policy, String regionName = null)
-		{
-			Runtime.Assert(regionName == null);
-			return AddOrGetExistingInternal(key, value, policy);
-		}
+		public override Object AddOrGetExisting(String key, Object value, CacheItemPolicy policy) =>
+			AddOrGetExistingInternal(key, value, policy);
 
-		public override Object Get(String key, String regionName = null) =>
-			GetInternal(key, regionName);
+		public override Object Get(String key) =>
+			GetInternal(key);
 
-		public override CacheItem GetCacheItem(String key, String regionName = null)
+		public override CacheItem GetCacheItem(String key)
 		{
-			Object value = GetInternal(key, regionName);
+			Object value = GetInternal(key);
 			return (value != null) ? new .(key, value) : null;
 		}
 
-		public override void Set(String key, Object value, DateTimeOffset absoluteExpiration, String regionName = null)
+		public override void Set(String key, Object value, DateTimeOffset absoluteExpiration)
 		{
-			Runtime.Assert(regionName == null);
 			CacheItemPolicy policy = new .();
 			policy.AbsoluteExpiration = absoluteExpiration;
 			Set(key, value, policy);
@@ -1073,9 +1052,9 @@ namespace System.Caching
 			Set(item.Key, item.Value, policy);
 		}
 
-		public override void Set(String key, Object value, CacheItemPolicy policy, String regionName = null)
+		public override void Set(String key, Object value, CacheItemPolicy policy)
 		{
-			Runtime.Assert(regionName == null && key != null);
+			Runtime.Assert(key != null);
 			DateTimeOffset absExp = ObjectCache.InfiniteAbsoluteExpiration;
 			TimeSpan slidingExp = ObjectCache.NoSlidingExpiration;
 			CacheItemPriority priority = .Default;
@@ -1102,13 +1081,9 @@ namespace System.Caching
 			if (IsDisposed)
 			{
 				if (changeMonitors != null)
-				{
-					for (ChangeMonitor monitor in changeMonitors)
-					{
+					for (let monitor in changeMonitors)
 						if (monitor != null)
 							monitor.Dispose();
-					}
-				}
 
 				return;
 			}
@@ -1128,7 +1103,7 @@ namespace System.Caching
 			if (IsDisposed)
 			{
 				if (changeMonitors != null)
-					for (ChangeMonitor monitor in changeMonitors)
+					for (let monitor in changeMonitors)
 						if (monitor != null)
 							monitor.Dispose();
 
@@ -1136,9 +1111,8 @@ namespace System.Caching
 			}
 
 			// Insert updatable cache entry
-			MemoryCacheStore store = GetStore(key);
 			MemoryCacheEntry cacheEntry = new .(key, value, ObjectCache.InfiniteAbsoluteExpiration, ObjectCache.NoSlidingExpiration, .NotRemovable, null, null, this);
-			store.Set(key, cacheEntry);
+			GetStore(key).Set(key, cacheEntry);
 
 			// Ensure the sentinel depends on its updatable entry
 			String[?] cacheKeys = .(key);
@@ -1152,20 +1126,18 @@ namespace System.Caching
 			// Insert sentinel entry for the updatable cache entry
 			String sentinelCacheKey = new $"OnUpdateSentinel{key}";
 			MemoryCacheStore sentinelStore = GetStore(sentinelCacheKey);
-			MemoryCacheEntry sentinelCacheEntry = new .(
-				sentinelCacheKey, new SentinelEntry(key, expensiveObjectDep, onUpdateCallback), absoluteExpiration, slidingExpiration,
-				.NotRemovable, changeMonitors, s_sentinelRemovedCallback, this
-			);
+			MemoryCacheEntry sentinelCacheEntry = new .(sentinelCacheKey, new SentinelEntry(key, expensiveObjectDep, onUpdateCallback), absoluteExpiration,
+				slidingExpiration, .NotRemovable, changeMonitors, s_sentinelRemovedCallback, this);
 			sentinelStore.Set(sentinelCacheKey, sentinelCacheEntry);
 			cacheEntry.ConfigureUpdateSentinel(sentinelStore, sentinelCacheEntry);
 		}
 
-		public override Object Remove(String key, String regionName = null) =>
-			Remove(key, CacheEntryRemovedReason.Removed, regionName);
+		public override Object Remove(String key) =>
+			Remove(key, .Removed);
 
-		public Object Remove(String key, CacheEntryRemovedReason reason, String regionName = null)
+		public Object Remove(String key, CacheEntryRemovedReason reason)
 		{
-			Runtime.Assert(regionName == null && key != null);
+			Runtime.Assert(key != null);
 
 			if (IsDisposed)
 				return null;
@@ -1174,37 +1146,31 @@ namespace System.Caching
 			return (entry != null) ? entry.Value : null;
 		}
 
-		public override int64 GetCount(String regionName = null)
+		public override int64 GetCount()
 		{
-			Runtime.Assert(regionName == null);
 			int64 count = 0;
 
 			if (!IsDisposed)
-			{
 				for (var storeRef in _storeRefs)
 					count += storeRef.Count;
-			}
 
 			return count;
 		}
 
-		public int64 GetLastSize(String regionName = null)
-		{
-			Runtime.Assert(regionName == null);
-			return _stats.GetLastSize();
-		}
+		public int64 GetLastSize() =>
+			_stats.GetLastSize();
 
-		public override Dictionary<String, Object> GetValues(List<String> keys, String regionName = null)
+		public override Dictionary<String, Object> GetValues(List<String> keys)
 		{
-			Runtime.Assert(regionName == null && keys != null);
+			Runtime.Assert(keys != null);
 			Dictionary<String, Object> values = null;
 
 			if (!IsDisposed)
 			{
-				for (String key in keys)
+				for (let key in keys)
 				{
 					Runtime.Assert(key != null);
-					Object value = GetInternal(key, null);
+					Object value = GetInternal(key);
 
 					if (value != null)
 					{
@@ -1235,7 +1201,7 @@ namespace System.Caching
 		private DateTime _lastTrimTime;
 		private int _pollingInterval;
 		private PeriodicCallback _timer;
-		private Monitor _timerLock = new Monitor() ~ delete _;
+		private Monitor _timerLock = new .() ~ delete _;
 		private int64 _totalCountBeforeTrim;
 		private CacheMemoryMonitor _cacheMemoryMonitor;
 		private MemoryCache _memoryCache;
@@ -1249,14 +1215,12 @@ namespace System.Caching
 			{
 				if (_timer != null)
 				{
-					PeriodicCallback target = _timer;
-
 					if (_physicalMemoryMonitor.IsAboveHighPressure() || _cacheMemoryMonitor.IsAboveHighPressure())
 					{
 						if (_pollingInterval > 5000)
 						{
 							_pollingInterval = 5000;
-							target.UpdateInterval(_pollingInterval);
+							_timer.UpdateInterval(_pollingInterval);
 						}
 					}
 					else if (_cacheMemoryMonitor.PressureLast > _cacheMemoryMonitor.PressureLow / 2 || _physicalMemoryMonitor.PressureLast > _physicalMemoryMonitor.PressureLow / 2)
@@ -1266,13 +1230,13 @@ namespace System.Caching
 						if (_pollingInterval != num)
 						{
 							_pollingInterval = num;
-							target.UpdateInterval(_pollingInterval);
+							_timer.UpdateInterval(_pollingInterval);
 						}
 					}
 					else if (_pollingInterval != _configPollingInterval)
 					{
 						_pollingInterval = _configPollingInterval;
-						target.UpdateInterval(_pollingInterval);
+						_timer.UpdateInterval(_pollingInterval);
 					}
 				}
 			}
@@ -1345,16 +1309,16 @@ namespace System.Caching
 			{
 				Update();
 				AdjustTimer();
-				int num = Math.Max(minPercent, GetPercentToTrim());
-				int64 count = _memoryCache.GetCount(null);
+				int trimAmount = Math.Max(minPercent, GetPercentToTrim());
+				int64 count = _memoryCache.GetCount();
 				Stopwatch stopwatch = Stopwatch.StartNew();
-				int64 num2 = _memoryCache.Trim(num);
+				int64 trimmed = _memoryCache.Trim(trimAmount);
 				stopwatch.Stop();
 
-				if (num > 0 && num2 > 0L)
-					SetTrimStats(stopwatch.Elapsed.Ticks, count, num2);
+				if (trimAmount > 0 && trimmed > 0L)
+					SetTrimStats(stopwatch.Elapsed.Ticks, count, trimmed);
 
-				result = num2;
+				result = trimmed;
 				delete stopwatch;
 			}
 
@@ -1388,7 +1352,6 @@ namespace System.Caching
 		private static readonly DateTime s_DATETIME_MINVALUE_UTC = DateTime(0L, DateTimeKind.Utc);
 		private const int MAX_CHAR_COUNT_OF_LONG_CONVERTED_TO_HEXADECIMAL_STRING = 16;
 		private List<String> _keys;
-		private String _regionName;
 		private String _uniqueId;
 		private DateTimeOffset _lastModified;
 		private List<MemoryCacheEntry> _dependencies;
@@ -1396,11 +1359,6 @@ namespace System.Caching
 		public override List<String> CacheKeys
 		{
 			get { return new .(_keys.GetEnumerator()); }
-		}
-
-		public override String RegionName
-		{
-			get { return _regionName; }
 		}
 
 		public override String UniqueId
@@ -1420,25 +1378,23 @@ namespace System.Caching
 
 		private this() { }
 
-		public this(List<String> keys, String regionName, MemoryCache cache)
+		public this(List<String> keys, MemoryCache cache)
 		{
 			_keys = keys;
-			_regionName = regionName;
 			InitDisposableMembers(cache);
 		}
 
 		private void InitDisposableMembers(MemoryCache cache)
 		{
 			bool hasChanged = false;
-			_dependencies = new List<MemoryCacheEntry>(_keys.Count);
+			_dependencies = new .(_keys.Count);
 			String uniqueId = scope .();
 
 			if (_keys.Count == 1)
 			{
 				String text = _keys[0];
-				MemoryCacheEntry entry = cache.GetEntry(text);
-				DateTime dateTime = MemoryCacheEntryChangeMonitor.s_DATETIME_MINVALUE_UTC;
-				StartMonitoring(cache, entry, ref hasChanged, ref dateTime);
+				DateTime dateTime = s_DATETIME_MINVALUE_UTC;
+				StartMonitoring(cache, cache.GetEntry(text), ref hasChanged, ref dateTime);
 
 				uniqueId.Append(text);
 				dateTime.Ticks.ToString(uniqueId, "X", CultureInfo.InvariantCulture);
@@ -1451,13 +1407,12 @@ namespace System.Caching
 				for (String key in _keys)
 					capacity += key.Length + 16;
 
-				String stringBuilder = new String(capacity);
+				String stringBuilder = scope .(capacity);
 
-				for (String key in _keys)
+				for (let key in _keys)
 				{
-					MemoryCacheEntry entry = cache.GetEntry(key);
-					DateTime utcCreated = MemoryCacheEntryChangeMonitor.s_DATETIME_MINVALUE_UTC;
-					StartMonitoring(cache, entry, ref hasChanged, ref utcCreated);
+					DateTime utcCreated = s_DATETIME_MINVALUE_UTC;
+					StartMonitoring(cache, cache.GetEntry(key), ref hasChanged, ref utcCreated);
 					stringBuilder.Append(key);
 					utcCreated.Ticks.ToString(stringBuilder, "X", CultureInfo.InvariantCulture);
 
@@ -1483,7 +1438,7 @@ namespace System.Caching
 				entry.AddDependent(cache, this);
 				_dependencies.Add(entry);
 
-				if (entry.State != EntryState.AddedToCache)
+				if (entry.State != .AddedToCache)
 					hasChanged = true;
 
 				utcCreated = entry.UtcCreated;
@@ -1496,7 +1451,7 @@ namespace System.Caching
 		protected override void Dispose(bool disposing)
 		{
 			if (disposing && _dependencies != null)
-				for (MemoryCacheEntry memoryCacheEntry in _dependencies)
+				for (let memoryCacheEntry in _dependencies)
 					if (memoryCacheEntry != null)
 						memoryCacheEntry.RemoveDependent(this);
 		}
