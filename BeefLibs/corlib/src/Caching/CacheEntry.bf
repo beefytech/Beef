@@ -42,12 +42,7 @@ namespace System.Caching
 
 		public this(ObjectCache source, CacheEntryRemovedReason reason, CacheItem cacheItem)
 		{
-			if (source == null)
-				Runtime.FatalError("Fatal error: Argument `source` is NULL");
-
-			if (cacheItem == null)
-				Runtime.FatalError("Fatal error: Argument `cacheItem` is NULL");
-
+			Runtime.Assert(source != null && cacheItem != null);
 			_source = source;
 			_reason = reason;
 			_cacheItem = cacheItem;
@@ -97,12 +92,7 @@ namespace System.Caching
 
 		public this(ObjectCache source, CacheEntryRemovedReason reason, String key, String regionName)
 		{
-			if (source == null)
-				Runtime.FatalError("Fatal error: Argument `source` is NULL");
-
-			if (key == null)
-				Runtime.FatalError("Fatal error: Argument `key` is NULL");
-
+			Runtime.Assert(source != null && key != null);
 			_source = source;
 			_reason = reason;
 			_key = key;

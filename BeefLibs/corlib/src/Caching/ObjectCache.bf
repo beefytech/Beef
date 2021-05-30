@@ -33,8 +33,7 @@ namespace System.Caching
 
 			set
 			{
-				if (value == null)
-					Runtime.FatalError("Fatal error: Argument `value` is NULL");
+				Runtime.Assert(value != null);
 
 				if (Interlocked.CompareExchange(ref _host, value, null) != null)
 					Runtime.FatalError("Fatal error: The property has already been set, and can only be set once.");

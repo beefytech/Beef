@@ -217,7 +217,7 @@ namespace System.Caching
 
 				// MemoryCacheStatistics has been disposed, and therefore nobody should be using _insertBlock except for
 				// potential threads in WaitInsertBlock (which won't care if we call Close).
-				Runtime.Assert(_useInsertBlock == false, "_useInsertBlock == false");
+				Runtime.Assert(_useInsertBlock == false);
 				delete _insertBlock;
 			}
 		}
@@ -318,7 +318,7 @@ namespace System.Caching
 
 		public int64 TrimInternal(int percent)
 		{
-			Runtime.Assert(percent <= 100, "percent <= 100");
+			Runtime.Assert(percent <= 100);
 
 			int count = Count;
 			int toTrim = 0;
@@ -1165,10 +1165,7 @@ namespace System.Caching
 
 		public Object Remove(String key, CacheEntryRemovedReason reason, String regionName = null)
 		{
-			Runtime.Assert(regionName == null);
-
-			if (key == null)
-				Runtime.FatalError("Fatal error: Argument `key` is NULL");
+			Runtime.Assert(regionName == null && key != null);
 
 			if (IsDisposed)
 				return null;
@@ -1199,20 +1196,14 @@ namespace System.Caching
 
 		public override Dictionary<String, Object> GetValues(List<String> keys, String regionName = null)
 		{
-			Runtime.Assert(regionName == null);
-
-			if (keys == null)
-				Runtime.FatalError("Fatal error: Argument `keys` is NULL");
-
+			Runtime.Assert(regionName == null && keys != null);
 			Dictionary<String, Object> values = null;
 
 			if (!IsDisposed)
 			{
 				for (String key in keys)
 				{
-					if (key == null)
-						Runtime.FatalError("Fatal error: The collection `keys` contains a null element.");
-
+					Runtime.Assert(key != null);
 					Object value = GetInternal(key, null);
 
 					if (value != null)

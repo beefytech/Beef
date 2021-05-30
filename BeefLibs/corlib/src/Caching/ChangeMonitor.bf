@@ -107,8 +107,7 @@ namespace System.Caching
 		/// It will be called when the dependency changes, or if it has already changed, it will be called immediately (on the same thread??).
 		public void NotifyOnChanged(OnChangedCallback onChangedCallback)
 		{
-			if (onChangedCallback == null)
-				Runtime.FatalError("Fatal error: Argument `onChangedCallback` is NULL");
+			Runtime.Assert(onChangedCallback != null);
 
 			if (Interlocked.CompareExchange(ref _onChangedCallback, onChangedCallback, null) != null)
 				Runtime.FatalError("Fatal error: The method has already been invoked, and can only be invoked once.");

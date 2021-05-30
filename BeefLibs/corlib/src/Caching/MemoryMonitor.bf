@@ -83,10 +83,7 @@ namespace System.Caching
 
 		protected void InitHistory()
 		{
-			Runtime.Assert(_pressureHigh > 0);
-			Runtime.Assert(_pressureLow > 0);
-			Runtime.Assert(_pressureLow <= _pressureHigh);
-
+			Runtime.Assert(_pressureHigh > 0 && _pressureLow > 0 && _pressureLow <= _pressureHigh);
 			int pressure = GetCurrentPressure();
 			_pressureHist = new int[HISTORY_COUNT];
 
@@ -414,7 +411,7 @@ namespace System.Caching
 			*/
 
 			int64 memory = TotalPhysical;
-			Runtime.Assert(memory != 0, "memory != 0");
+			Runtime.Assert(memory != 0);
 
 			if (memory >= 0x0100000000)
 			{
