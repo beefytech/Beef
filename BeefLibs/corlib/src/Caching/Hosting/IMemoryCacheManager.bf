@@ -4,8 +4,9 @@
 
 namespace System.Caching.Hosting
 {
-	public interface IMemoryCacheManager {
-	    void UpdateCacheSize(int64 size, MemoryCache cache);
-	    void ReleaseCache(MemoryCache cache);
+	public interface IMemoryCacheManager
+	{
+		void UpdateCacheSize(int64 size, MemoryCache cache);
+		void ReleaseCache(MemoryCache cache);
 	}
 }

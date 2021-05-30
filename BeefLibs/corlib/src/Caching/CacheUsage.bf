@@ -25,7 +25,8 @@ namespace System.Caching
 			_buckets = new UsageBucket[1];
 			uint8 b = 0;
 
-			while ((int)b < _buckets.Count) {
+			while ((int)b < _buckets.Count)
+			{
 				_buckets[(int)b] = new UsageBucket(this, b);
 				b += 1;
 			}
@@ -62,8 +63,10 @@ namespace System.Caching
 		{
 			int num = 0;
 
-			if (Interlocked.Exchange(ref _inFlush, 1) == 0) {
-				for (UsageBucket usageBucket in _buckets) {
+			if (Interlocked.Exchange(ref _inFlush, 1) == 0)
+			{
+				for (UsageBucket usageBucket in _buckets)
+				{
 					int num2 = usageBucket.FlushUnderUsedItems(toFlush - num, false);
 					num += num2;
 
@@ -71,8 +74,10 @@ namespace System.Caching
 						break;
 				}
 
-				if (num < toFlush) {
-					for (UsageBucket usageBucket2 in _buckets) {
+				if (num < toFlush)
+				{
+					for (UsageBucket usageBucket2 in _buckets)
+					{
 						int num3 = usageBucket2.FlushUnderUsedItems(toFlush - num, true);
 						num += num3;
 

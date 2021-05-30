@@ -6,41 +6,48 @@ using System.Threading;
 
 namespace System.Caching
 {
-	// This is a multi-thread-safe version of System.Collections.Specialized.BitVector32.
+	/// This is a multi-thread-safe version of System.Collections.Specialized.BitVector32.
 	struct SafeBitVector32
 	{
-	    private volatile int _data;
+		private volatile int _data;
 
-	    public bool this[int bit] {
-	        get {
-	            int data = _data;
-	            return (data & bit) == bit;
-	        }
-	        set mut {
-	            for (;;) {
-	                int oldData = _data;
-	                int newData = value ? (oldData | bit) : (oldData & ~bit);
-	                int result = Interlocked.CompareExchange(ref _data, newData, oldData);
+		public bool this[int bit]
+		{
+			get
+			{
+				int data = _data;
+				return (data & bit) == bit;
+			}
 
-	                if (result == oldData)
-	                    break;
-	            }
-	        }
-	    }
+			set mut
+			{
+				for (;;)
+				{
+					int oldData = _data;
+					int newData = value ? (oldData | bit) : (oldData & ~bit);
+					int result = Interlocked.CompareExchange(ref _data, newData, oldData);
 
-	    public bool ChangeValue(int bit, bool value) mut {
-	        for (;;) {
-	            int oldData = _data;
-	            int newData = value ? (oldData | bit) : (oldData & ~bit);
+					if (result == oldData)
+						break;
+				}
+			}
+		}
 
-	            if (oldData == newData)
-	                return false;
+		public bool ChangeValue(int bit, bool value) mut
+		{
+			for (;;)
+			{
+				int oldData = _data;
+				int newData = value ? (oldData | bit) : (oldData & ~bit);
 
-	            int result = Interlocked.CompareExchange(ref _data, newData, oldData);
+				if (oldData == newData)
+					return false;
 
-	            if (result == oldData)
-	                return true;
-	        }
-	    }
+				int result = Interlocked.CompareExchange(ref _data, newData, oldData);
+
+				if (result == oldData)
+					return true;
+			}
+		}
 	}
 }

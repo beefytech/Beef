@@ -26,7 +26,8 @@ namespace System.Caching
 			_buckets = new ExpiresBucket[30];
 			uint8 b = 0;
 
-			while ((int)b < _buckets.Count) {
+			while ((int)b < _buckets.Count)
+			{
 				_buckets[(int)b] = new ExpiresBucket(this, b, utcNow);
 				b += 1;
 			}
@@ -42,14 +43,16 @@ namespace System.Caching
 		{
 			int num = 0;
 
-			if (Interlocked.Exchange(ref _inFlush, 1) == 0) {
+			if (Interlocked.Exchange(ref _inFlush, 1) == 0)
+			{
 				if (_timer == null)
 					return 0;
 
 				DateTime utcNow = DateTime.UtcNow;
 				let nowMinFlush = utcNow - _utcLastFlush;
 
-				if (!checkDelta || nowMinFlush >= CacheExpires.MIN_FLUSH_INTERVAL || utcNow < _utcLastFlush) {
+				if (!checkDelta || nowMinFlush >= CacheExpires.MIN_FLUSH_INTERVAL || utcNow < _utcLastFlush)
+				{
 					_utcLastFlush = utcNow;
 
 					for (ExpiresBucket expiresBucket in _buckets)
@@ -72,17 +75,22 @@ namespace System.Caching
 
 		public void EnableExpirationTimer(bool enable)
 		{
-			if (enable) {
-				if (_timer == null) {
+			if (enable)
+			{
+				if (_timer == null)
+				{
 					DateTime utcNow = DateTime.UtcNow;
 					TimeSpan timeSpan = CacheExpires._tsPerBucket - TimeSpan(utcNow.Ticks % CacheExpires._tsPerBucket.Ticks);
 					_timer = new PeriodicCallback(new => TimerCallback, timeSpan.Ticks / 10000L);
 					return;
 				}
-			} else {
+			}
+			else
+			{
 				PeriodicCallback timer = _timer;
 
-				if (timer != null && Interlocked.CompareExchange(ref _timer, null, timer) == timer) {
+				if (timer != null && Interlocked.CompareExchange(ref _timer, null, timer) == timer)
+				{
 					timer.Dispose();
 
 					while (_inFlush != 0)
@@ -119,14 +127,18 @@ namespace System.Caching
 			int expiresBucket = (int)cacheEntry.ExpiresBucket;
 			int num = UtcCalcExpiresBucket(utcNewExpires);
 
-			if (expiresBucket != num) {
-				if (expiresBucket != 255) {
+			if (expiresBucket != num)
+			{
+				if (expiresBucket != 255)
+				{
 					_buckets[expiresBucket].RemoveCacheEntry(cacheEntry);
 					cacheEntry.UtcAbsExp = utcNewExpires;
 					_buckets[num].AddCacheEntry(cacheEntry);
 					return;
 				}
-			} else if (expiresBucket != 255) {
+			}
+			else if (expiresBucket != 255)
+			{
 				_buckets[expiresBucket].UtcUpdateCacheEntry(cacheEntry, utcNewExpires);
 			}
 		}

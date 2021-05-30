@@ -1117,6 +1117,25 @@ namespace System
 		    TRUSTEE_W    Trustee;
 		}
 
+		[CRepr]
+		public struct MEMORYSTATUSEX
+		{
+			public int32 dwLength;
+			public int32 dwMemoryLoad;
+			public int64 ullTotalPhys;
+			public int64 ullAvailPhys;
+			public int64 ullTotalPageFile;
+			public int64 ullAvailPageFile;
+			public int64 ullTotalVirtual;
+			public int64 ullAvailVirtual;
+			public int64 ullAvailExtendedVirtual;
+	
+			public void Init() mut
+			{
+				dwLength = typeof(MEMORYSTATUSEX).Size;
+			}
+		}
+
 		[Import("version.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetFileVersionInfoW(char16* lptstrFilename, uint32 dwHandle, uint32 dwLen, void* lpData);
 
@@ -1672,6 +1691,9 @@ namespace System
 			//if (handle.IsInvalid)
             return handle;
         }
+
+		[CLink, CallingConvention(.Stdcall)]
+		public extern static int GlobalMemoryStatusEx(MEMORYSTATUSEX* memoryStatusEx);
 	}
 }
 

@@ -48,10 +48,10 @@ namespace System.Caching
 		public bool Equals(Object value) =>
 			value is ExpiresEntryRef && _ref == ((ExpiresEntryRef)value)._ref;
 
-		public static bool operator !=(ExpiresEntryRef r1, ExpiresEntryRef r2) =>
+		public static bool operator!=(ExpiresEntryRef r1, ExpiresEntryRef r2) =>
 			r1._ref != r2._ref;
 
-		public static bool operator ==(ExpiresEntryRef r1, ExpiresEntryRef r2) =>
+		public static bool operator==(ExpiresEntryRef r1, ExpiresEntryRef r2) =>
 			r1._ref == r2._ref;
 
 		public int GetHashCode() =>
@@ -206,9 +206,12 @@ namespace System.Caching
 			_pages[pageIndex]._pagePrev = -1;
 			_pages[pageIndex]._pageNext = list._head;
 
-			if (list._head != -1) {
+			if (list._head != -1)
+			{
 				_pages[list._head]._pagePrev = pageIndex;
-			} else {
+			}
+			else
+			{
 				list._tail = pageIndex;
 			}
 
@@ -220,9 +223,12 @@ namespace System.Caching
 			_pages[pageIndex]._pageNext = -1;
 			_pages[pageIndex]._pagePrev = list._tail;
 
-			if (list._tail != -1) {
+			if (list._tail != -1)
+			{
 				_pages[list._tail]._pageNext = pageIndex;
-			} else {
+			}
+			else
+			{
 				list._head = pageIndex;
 			}
 
@@ -238,15 +244,21 @@ namespace System.Caching
 
 		private void RemoveFromList(int pageIndex, ref ExpiresPageList list)
 		{
-			if (_pages[pageIndex]._pagePrev != -1) {
+			if (_pages[pageIndex]._pagePrev != -1)
+			{
 				_pages[_pages[pageIndex]._pagePrev]._pageNext = _pages[pageIndex]._pageNext;
-			} else {
+			}
+			else
+			{
 				list._head = _pages[pageIndex]._pageNext;
 			}
 
-			if (_pages[pageIndex]._pageNext != -1) {
+			if (_pages[pageIndex]._pageNext != -1)
+			{
 				_pages[_pages[pageIndex]._pageNext]._pagePrev = _pages[pageIndex]._pagePrev;
-			} else {
+			}
+			else
+			{
 				list._tail = _pages[pageIndex]._pagePrev;
 			}
 
@@ -274,7 +286,8 @@ namespace System.Caching
 
 		private void UpdateMinEntries()
 		{
-			if (_cPagesInUse <= 1) {
+			if (_cPagesInUse <= 1)
+			{
 				_minEntriesInUse = -1;
 				return;
 			}
@@ -296,7 +309,8 @@ namespace System.Caching
 
 			_cPagesInUse--;
 
-			if (_cPagesInUse == 0) {
+			if (_cPagesInUse == 0)
+			{
 				InitZeroPages();
 				return;
 			}
@@ -333,7 +347,8 @@ namespace System.Caching
 			int num = 0;
 			array[num]._cFree = array[num]._cFree + 1;
 
-			if (entries[0]._cFree == 1) {
+			if (entries[0]._cFree == 1)
+			{
 				AddToListHead(pageIndex, ref _freeEntryList);
 				return;
 			}
@@ -344,7 +359,8 @@ namespace System.Caching
 
 		private void Expand()
 		{
-			if (_freePageList._head == -1) {
+			if (_freePageList._head == -1)
+			{
 				int currentPageCount = _pages == null ? 0 : _pages.Count;
 				int newPageCount = currentPageCount * 2;
 				newPageCount = Math.Max(currentPageCount + 10, newPageCount);
@@ -354,7 +370,8 @@ namespace System.Caching
 				for (int i = 0; i < currentPageCount; i++)
 					newPageArr[i] = _pages[i];
 
-				for (int j = currentPageCount; j < newPageArr.Count; j++) {
+				for (int j = currentPageCount; j < newPageArr.Count; j++)
+				{
 					newPageArr[j]._pagePrev = j - 1;
 					newPageArr[j]._pageNext = j + 1;
 				}
@@ -400,12 +417,16 @@ namespace System.Caching
 			int tail = _freeEntryList._tail;
 			int num2 = _freeEntryList._head;
 
-			for (;;) {
+			for (;;)
+			{
 				int pageNext = _pages[num2]._pageNext;
 
-				if (_pages[num2]._entries[0]._cFree > num) {
+				if (_pages[num2]._entries[0]._cFree > num)
+				{
 					MoveToListTail(num2, ref _freeEntryList);
-				} else {
+				}
+				else
+				{
 					MoveToListHead(num2, ref _freeEntryList);
 				}
 
@@ -415,15 +436,18 @@ namespace System.Caching
 				num2 = pageNext;
 			}
 
-			while (_freeEntryList._tail != -1) {
+			while (_freeEntryList._tail != -1)
+			{
 				ExpiresEntry[] entries = _pages[_freeEntryList._tail]._entries;
 				int num3 = _cPagesInUse * 127 - entries[0]._cFree - _cEntriesInUse;
 
 				if (num3 < 127 - entries[0]._cFree)
 					break;
 
-				for (int i = 1; i < entries.Count; i++) {
-					if (entries[i]._cacheEntry != null) {
+				for (int i = 1; i < entries.Count; i++)
+				{
+					if (entries[i]._cacheEntry != null)
+					{
 						ExpiresEntryRef freeExpiresEntry = GetFreeExpiresEntry();
 						MemoryCacheEntry cacheEntry = entries[i]._cacheEntry;
 						cacheEntry.ExpiresEntryReference = freeExpiresEntry;
@@ -443,10 +467,12 @@ namespace System.Caching
 		{
 			using (_lock.Enter())
 			{
-				if ((cacheEntry.State & (EntryState)3) != EntryState.NotInCache) {
+				if ((cacheEntry.State & (EntryState)3) != EntryState.NotInCache)
+				{
 					ExpiresEntryRef expiresEntryRef = cacheEntry.ExpiresEntryReference;
 
-					if (cacheEntry.ExpiresBucket == 255 && expiresEntryRef.IsInvalid) {
+					if (cacheEntry.ExpiresBucket == 255 && expiresEntryRef.IsInvalid)
+					{
 						if (_freeEntryList._head == -1)
 							Expand();
 
@@ -491,9 +517,7 @@ namespace System.Caching
 		public void RemoveCacheEntry(MemoryCacheEntry cacheEntry)
 		{
 			using (_lock.Enter())
-			{
 				RemoveCacheEntryNoLock(cacheEntry);
-			}
 		}
 
 		public void UtcUpdateCacheEntry(MemoryCacheEntry cacheEntry, DateTime utcExpires)
@@ -502,7 +526,8 @@ namespace System.Caching
 			{
 				ExpiresEntryRef expiresEntryRef = cacheEntry.ExpiresEntryReference;
 
-				if (cacheEntry.ExpiresBucket == _bucket && !expiresEntryRef.IsInvalid) {
+				if (cacheEntry.ExpiresBucket == _bucket && !expiresEntryRef.IsInvalid)
+				{
 					ExpiresEntry[] entries = _pages[expiresEntryRef.PageIndex]._entries;
 					int index = expiresEntryRef.Index;
 					RemoveCount(entries[index].u._utcExpires);
@@ -523,7 +548,7 @@ namespace System.Caching
 
 			if (useInsertBlock)
 				_cacheExpires.MemoryCacheStore.BlockInsert();
-			
+
 			using (_lock.Enter())
 			{
 				if (_cEntriesInUse == 0 || GetExpiresCount(utcNow) == 0)
@@ -532,19 +557,26 @@ namespace System.Caching
 				ResetCounts(utcNow);
 				int pagesInUse = _cPagesInUse;
 
-				for (int i = 0; i < _pages.Count; i++) {
+				for (int i = 0; i < _pages.Count; i++)
+				{
 					ExpiresEntry[] entries = _pages[i]._entries;
 
-					if (entries != null) {
+					if (entries != null)
+					{
 						int usedEntries = 127 - entries[0]._cFree;
 
-						for (int j = 1; j < entries.Count; j++) {
+						for (int j = 1; j < entries.Count; j++)
+						{
 							MemoryCacheEntry cacheEntry = entries[j]._cacheEntry;
 
-							if (cacheEntry != null) {
-								if (entries[j].u._utcExpires > utcNow) {
+							if (cacheEntry != null)
+							{
+								if (entries[j].u._utcExpires > utcNow)
+								{
 									AddCount(entries[j].u._utcExpires);
-								} else {
+								}
+								else
+								{
 									cacheEntry.ExpiresBucket = uint8.MaxValue;
 									cacheEntry.ExpiresEntryReference = ExpiresEntryRef.INVALID;
 									entries[j]._cFree = 1;
@@ -579,7 +611,8 @@ namespace System.Caching
 			MemoryCacheStore memoryCacheStore = _cacheExpires.MemoryCacheStore;
 			ExpiresEntryRef entryRef = expiresEntryRef;
 
-			while (!entryRef.IsInvalid) {
+			while (!entryRef.IsInvalid)
+			{
 				ExpiresEntry[] entries = _pages[entryRef.PageIndex]._entries;
 				int index = entryRef.Index;
 				ExpiresEntryRef next = entries[index].u._next;
@@ -592,12 +625,13 @@ namespace System.Caching
 
 			if (useInsertBlock)
 				_cacheExpires.MemoryCacheStore.BlockInsert();
-			
+
 			using (_lock.Enter())
 			{
 				entryRef = expiresEntryRef;
 
-				while (!entryRef.IsInvalid) {
+				while (!entryRef.IsInvalid)
+				{
 					ExpiresEntry[] entries = _pages[entryRef.PageIndex]._entries;
 					int index = entryRef.Index;
 					ExpiresEntryRef next = entries[index].u._next;

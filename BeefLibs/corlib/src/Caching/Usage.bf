@@ -51,10 +51,10 @@ namespace System.Caching
 		public bool Equals(Object value) =>
 			value is UsageEntryRef && _ref == ((UsageEntryRef)value)._ref;
 
-		public static bool operator == (UsageEntryRef r1, UsageEntryRef r2) =>
+		public static bool operator==(UsageEntryRef r1, UsageEntryRef r2) =>
 			r1._ref == r2._ref;
 
-		public static bool operator != (UsageEntryRef r1, UsageEntryRef r2) =>
+		public static bool operator!=(UsageEntryRef r1, UsageEntryRef r2) =>
 			r1._ref != r2._ref;
 
 		public int GetHashCode() =>
@@ -136,9 +136,12 @@ namespace System.Caching
 			_pages[pageIndex].PreviousPage = -1;
 			_pages[pageIndex].NextPage = list.Head;
 
-			if (list.Head != -1) {
+			if (list.Head != -1)
+			{
 				_pages[list.Head].PreviousPage = pageIndex;
-			} else {
+			}
+			else
+			{
 				list.Tail = pageIndex;
 			}
 
@@ -147,15 +150,21 @@ namespace System.Caching
 
 		private void RemoveFromList(int pageIndex, ref UsagePageList list)
 		{
-			if (_pages[pageIndex].PreviousPage != -1) {
+			if (_pages[pageIndex].PreviousPage != -1)
+			{
 				_pages[_pages[pageIndex].PreviousPage].NextPage = _pages[pageIndex].NextPage;
-			} else {
+			}
+			else
+			{
 				list.Head = _pages[pageIndex].NextPage;
 			}
 
-			if (_pages[pageIndex].NextPage != -1) {
+			if (_pages[pageIndex].NextPage != -1)
+			{
 				_pages[_pages[pageIndex].NextPage].PreviousPage = _pages[pageIndex].PreviousPage;
-			} else {
+			}
+			else
+			{
 				list.Tail = _pages[pageIndex].PreviousPage;
 			}
 
@@ -165,7 +174,8 @@ namespace System.Caching
 
 		private void UpdateMinEntries()
 		{
-			if (_cPagesInUse <= 1) {
+			if (_cPagesInUse <= 1)
+			{
 				_minEntriesInUse = -1;
 				return;
 			}
@@ -183,7 +193,8 @@ namespace System.Caching
 			_pages[pageIndex].Entries = null;
 			_cPagesInUse--;
 
-			if (_cPagesInUse == 0) {
+			if (_cPagesInUse == 0)
+			{
 				InitZeroPages();
 				return;
 			}
@@ -219,7 +230,8 @@ namespace System.Caching
 			int pageIndex = entryRef.PageIndex;
 			entries[0].FreeCount = entries[0].FreeCount + 1;
 
-			if (entries[0].FreeCount == 1) {
+			if (entries[0].FreeCount == 1)
+			{
 				AddToListHead(pageIndex, ref _freeEntryList);
 				return;
 			}
@@ -230,7 +242,8 @@ namespace System.Caching
 
 		private void Expand()
 		{
-			if (_freePageList.Head == -1) {
+			if (_freePageList.Head == -1)
+			{
 				int pageCount = _pages == null ? 0 : _pages.Count;
 				int newPageCount = pageCount * 2;
 				newPageCount = Math.Max(pageCount + 10, newPageCount);
@@ -240,7 +253,8 @@ namespace System.Caching
 				for (int i = 0; i < pageCount; i++)
 					pages[i] = _pages[i];
 
-				for (int i = pageCount; i < pages.Count; i++) {
+				for (int i = pageCount; i < pages.Count; i++)
+				{
 					pages[i].PreviousPage = i - 1;
 					pages[i].NextPage = i + 1;
 				}
@@ -251,7 +265,7 @@ namespace System.Caching
 				_freePageList.Tail = pages.Count - 1;
 				_pages = pages;
 			}
-			
+
 			int head = _freePageList.Head;
 			RemoveFromList(head, ref _freePageList);
 
@@ -276,26 +290,33 @@ namespace System.Caching
 			int tail = _freeEntryList.Tail;
 			int pageIndex = _freeEntryList.Head;
 
-			for (;;) {
+			for (;;)
+			{
 				int pageNext = _pages[pageIndex].NextPage;
 
-				if (_pages[pageIndex].Entries[0].FreeCount > 63) {
+				if (_pages[pageIndex].Entries[0].FreeCount > 63)
+				{
 					if (_freeEntryList.Tail == pageIndex)
 						return;
-		
+
 					RemoveFromList(pageIndex, ref _freeEntryList);
-					
+
 					_pages[pageIndex].NextPage = -1;
 					_pages[pageIndex].PreviousPage = _freeEntryList.Tail;
-		
-					if (_freeEntryList.Tail != -1) {
+
+					if (_freeEntryList.Tail != -1)
+					{
 						_pages[_freeEntryList.Tail].NextPage = pageIndex;
-					} else {
+					}
+					else
+					{
 						_freeEntryList.Head = pageIndex;
 					}
-		
+
 					_freeEntryList.Tail = pageIndex;
-				} else {
+				}
+				else
+				{
 					if (_freeEntryList.Head == pageIndex)
 						return;
 
@@ -309,14 +330,17 @@ namespace System.Caching
 				pageIndex = pageNext;
 			}
 
-			while (_freeEntryList.Tail != -1) {
+			while (_freeEntryList.Tail != -1)
+			{
 				UsageEntry[] entries = _pages[_freeEntryList.Tail].Entries;
 
 				if ((_cPagesInUse * 127 - entries[0].FreeCount - _cEntriesInUse) < 127 - entries[0].FreeCount)
 					break;
 
-				for (int i = 1; i < entries.Count; i++) {
-					if (entries[i].CacheEntry != null) {
+				for (int i = 1; i < entries.Count; i++)
+				{
+					if (entries[i].CacheEntry != null)
+					{
 						UsageEntryRef freeUsageEntry = GetFreeUsageEntry();
 						UsageEntryRef usageEntryRef = UsageEntryRef(freeUsageEntry.PageIndex, -freeUsageEntry.Ref1Index);
 						UsageEntryRef tailRef = UsageEntryRef(_freeEntryList.Tail, i);
@@ -333,19 +357,29 @@ namespace System.Caching
 						if (newRefNext == negTailRef)
 							newRefNext = usageEntryRef;
 
-						if (newRefPrev.IsRef1) {
+						if (newRefPrev.IsRef1)
+						{
 							_pages[newRefPrev.PageIndex].Entries[newRefPrev.Ref1Index]._ref1.Next = freeUsageEntry;
-						} else if (newRefPrev.IsRef2) {
+						}
+						else if (newRefPrev.IsRef2)
+						{
 							_pages[newRefPrev.PageIndex].Entries[newRefPrev.Ref2Index]._ref2.Next = freeUsageEntry;
-						} else {
+						}
+						else
+						{
 							_lastRefHead = freeUsageEntry;
 						}
 
-						if (newRefNext.IsRef1) {
+						if (newRefNext.IsRef1)
+						{
 							_pages[newRefNext.PageIndex].Entries[newRefNext.Ref1Index]._ref1.Previous = freeUsageEntry;
-						} else if (newRefNext.IsRef2) {
+						}
+						else if (newRefNext.IsRef2)
+						{
 							_pages[newRefNext.PageIndex].Entries[newRefNext.Ref2Index]._ref2.Previous = freeUsageEntry;
-						} else {
+						}
+						else
+						{
 							_lastRefTail = freeUsageEntry;
 						}
 
@@ -356,19 +390,29 @@ namespace System.Caching
 
 						newRefNext = entries2[freeUsageEntry.Ref1Index]._ref2.Next;
 
-						if (newRefPrev.IsRef1) {
+						if (newRefPrev.IsRef1)
+						{
 							_pages[newRefPrev.PageIndex].Entries[newRefPrev.Ref1Index]._ref1.Next = usageEntryRef;
-						} else if (newRefPrev.IsRef2) {
+						}
+						else if (newRefPrev.IsRef2)
+						{
 							_pages[newRefPrev.PageIndex].Entries[newRefPrev.Ref2Index]._ref2.Next = usageEntryRef;
-						} else {
+						}
+						else
+						{
 							_lastRefHead = usageEntryRef;
 						}
 
-						if (newRefNext.IsRef1) {
+						if (newRefNext.IsRef1)
+						{
 							_pages[newRefNext.PageIndex].Entries[newRefNext.Ref1Index]._ref1.Previous = usageEntryRef;
-						} else if (newRefNext.IsRef2) {
+						}
+						else if (newRefNext.IsRef2)
+						{
 							_pages[newRefNext.PageIndex].Entries[newRefNext.Ref2Index]._ref2.Previous = usageEntryRef;
-						} else {
+						}
+						else
+						{
 							_lastRefTail = usageEntryRef;
 						}
 
@@ -398,47 +442,68 @@ namespace System.Caching
 				entries[ref1Index]._ref1.Previous = UsageEntryRef.INVALID;
 				entries[ref1Index]._ref2.Next = _addRef2Head;
 
-				if (_lastRefHead.IsInvalid) {
+				if (_lastRefHead.IsInvalid)
+				{
 					entries[ref1Index]._ref1.Next = usageEntryRef;
 					entries[ref1Index]._ref2.Previous = freeUsageEntry;
 					_lastRefTail = usageEntryRef;
-				} else {
+				}
+				else
+				{
 					entries[ref1Index]._ref1.Next = _lastRefHead;
 
-					if (_lastRefHead.IsRef1) {
+					if (_lastRefHead.IsRef1)
+					{
 						_pages[_lastRefHead.PageIndex].Entries[_lastRefHead.Ref1Index]._ref1.Previous = freeUsageEntry;
-					} else if (_lastRefHead.IsRef2) {
+					}
+					else if (_lastRefHead.IsRef2)
+					{
 						_pages[_lastRefHead.PageIndex].Entries[_lastRefHead.Ref2Index]._ref2.Previous = freeUsageEntry;
-					} else {
+					}
+					else
+					{
 						_lastRefTail = freeUsageEntry;
 					}
 
 					UsageEntryRef prev;
 					UsageEntryRef usageEntryRef2;
 
-					if (_addRef2Head.IsInvalid) {
+					if (_addRef2Head.IsInvalid)
+					{
 						prev = _lastRefTail;
 						usageEntryRef2 = UsageEntryRef.INVALID;
-					} else {
+					}
+					else
+					{
 						prev = _pages[_addRef2Head.PageIndex].Entries[_addRef2Head.Ref2Index]._ref2.Previous;
 						usageEntryRef2 = _addRef2Head;
 					}
 
 					entries[ref1Index]._ref2.Previous = prev;
 
-					if (prev.IsRef1) {
+					if (prev.IsRef1)
+					{
 						_pages[prev.PageIndex].Entries[prev.Ref1Index]._ref1.Next = usageEntryRef;
-					} else if (prev.IsRef2) {
+					}
+					else if (prev.IsRef2)
+					{
 						_pages[prev.PageIndex].Entries[prev.Ref2Index]._ref2.Next = usageEntryRef;
-					} else {
+					}
+					else
+					{
 						_lastRefHead = usageEntryRef;
 					}
 
-					if (usageEntryRef2.IsRef1) {
+					if (usageEntryRef2.IsRef1)
+					{
 						_pages[usageEntryRef2.PageIndex].Entries[usageEntryRef2.Ref1Index]._ref1.Previous = usageEntryRef;
-					} else if (usageEntryRef2.IsRef2) {
+					}
+					else if (usageEntryRef2.IsRef2)
+					{
 						_pages[usageEntryRef2.PageIndex].Entries[usageEntryRef2.Ref2Index]._ref2.Previous = usageEntryRef;
-					} else {
+					}
+					else
+					{
 						_lastRefTail = usageEntryRef;
 					}
 				}
@@ -456,19 +521,29 @@ namespace System.Caching
 			UsageEntryRef prev = entries[ref1Index]._ref1.Previous;
 			UsageEntryRef next = entries[ref1Index]._ref1.Next;
 
-			if (prev.IsRef1) {
+			if (prev.IsRef1)
+			{
 				_pages[prev.PageIndex].Entries[prev.Ref1Index]._ref1.Next = next;
-			} else if (prev.IsRef2) {
+			}
+			else if (prev.IsRef2)
+			{
 				_pages[prev.PageIndex].Entries[prev.Ref2Index]._ref2.Next = next;
-			} else {
+			}
+			else
+			{
 				_lastRefHead = next;
 			}
 
-			if (next.IsRef1) {
+			if (next.IsRef1)
+			{
 				_pages[next.PageIndex].Entries[next.Ref1Index]._ref1.Previous = prev;
-			} else if (next.IsRef2) {
+			}
+			else if (next.IsRef2)
+			{
 				_pages[next.PageIndex].Entries[next.Ref2Index]._ref2.Previous = prev;
-			} else {
+			}
+			else
+			{
 				_lastRefTail = prev;
 			}
 
@@ -476,19 +551,29 @@ namespace System.Caching
 			next = entries[ref1Index]._ref2.Next;
 			UsageEntryRef negRef = UsageEntryRef(entryRef.PageIndex, -entryRef.Ref1Index);
 
-			if (prev.IsRef1) {
+			if (prev.IsRef1)
+			{
 				_pages[prev.PageIndex].Entries[prev.Ref1Index]._ref1.Next = next;
-			} else if (prev.IsRef2) {
+			}
+			else if (prev.IsRef2)
+			{
 				_pages[prev.PageIndex].Entries[prev.Ref2Index]._ref2.Next = next;
-			} else {
+			}
+			else
+			{
 				_lastRefHead = next;
 			}
 
-			if (next.IsRef1) {
+			if (next.IsRef1)
+			{
 				_pages[next.PageIndex].Entries[next.Ref1Index]._ref1.Previous = prev;
-			} else if (next.IsRef2) {
+			}
+			else if (next.IsRef2)
+			{
 				_pages[next.PageIndex].Entries[next.Ref2Index]._ref2.Previous = prev;
-			} else {
+			}
+			else
+			{
 				_lastRefTail = prev;
 			}
 
@@ -502,7 +587,8 @@ namespace System.Caching
 			{
 				UsageEntryRef usageEntryRef = cacheEntry.UsageEntryReference;
 
-				if (!usageEntryRef.IsInvalid) {
+				if (!usageEntryRef.IsInvalid)
+				{
 					UsageEntry[] entries = _pages[usageEntryRef.PageIndex].Entries;
 					int ref1Index = usageEntryRef.Ref1Index;
 					cacheEntry.UsageEntryReference = UsageEntryRef.INVALID;
@@ -520,26 +606,37 @@ namespace System.Caching
 			{
 				UsageEntryRef usageEntryRef = cacheEntry.UsageEntryReference;
 
-				if (!usageEntryRef.IsInvalid) {
+				if (!usageEntryRef.IsInvalid)
+				{
 					UsageEntry[] entries = _pages[usageEntryRef.PageIndex].Entries;
 					int ref1Index = usageEntryRef.Ref1Index;
 					UsageEntryRef usageEntryRef2 = UsageEntryRef(usageEntryRef.PageIndex, -usageEntryRef.Ref1Index);
 					UsageEntryRef prev = entries[ref1Index]._ref2.Previous;
 					UsageEntryRef next = entries[ref1Index]._ref2.Next;
 
-					if (prev.IsRef1) {
+					if (prev.IsRef1)
+					{
 						_pages[prev.PageIndex].Entries[prev.Ref1Index]._ref1.Next = next;
-					} else if (prev.IsRef2) {
+					}
+					else if (prev.IsRef2)
+					{
 						_pages[prev.PageIndex].Entries[prev.Ref2Index]._ref2.Next = next;
-					} else {
+					}
+					else
+					{
 						_lastRefHead = next;
 					}
 
-					if (next.IsRef1) {
+					if (next.IsRef1)
+					{
 						_pages[next.PageIndex].Entries[next.Ref1Index]._ref1.Previous = prev;
-					} else if (next.IsRef2) {
+					}
+					else if (next.IsRef2)
+					{
 						_pages[next.PageIndex].Entries[next.Ref2Index]._ref2.Previous = prev;
-					} else {
+					}
+					else
+					{
 						_lastRefTail = prev;
 					}
 
@@ -550,30 +647,45 @@ namespace System.Caching
 					prev = entries[ref1Index]._ref2.Previous;
 					next = entries[ref1Index]._ref2.Next;
 
-					if (prev.IsRef1) {
+					if (prev.IsRef1)
+					{
 						_pages[prev.PageIndex].Entries[prev.Ref1Index]._ref1.Next = usageEntryRef2;
-					} else if (prev.IsRef2) {
+					}
+					else if (prev.IsRef2)
+					{
 						_pages[prev.PageIndex].Entries[prev.Ref2Index]._ref2.Next = usageEntryRef2;
-					} else {
+					}
+					else
+					{
 						_lastRefHead = usageEntryRef2;
 					}
 
-					if (next.IsRef1) {
+					if (next.IsRef1)
+					{
 						_pages[next.PageIndex].Entries[next.Ref1Index]._ref1.Previous = usageEntryRef2;
-					} else if (next.IsRef2) {
+					}
+					else if (next.IsRef2)
+					{
 						_pages[next.PageIndex].Entries[next.Ref2Index]._ref2.Previous = usageEntryRef2;
-					} else {
+					}
+					else
+					{
 						_lastRefTail = usageEntryRef2;
 					}
 
 					entries[ref1Index]._ref1.Previous = UsageEntryRef.INVALID;
 					entries[ref1Index]._ref1.Next = _lastRefHead;
 
-					if (_lastRefHead.IsRef1) {
+					if (_lastRefHead.IsRef1)
+					{
 						_pages[_lastRefHead.PageIndex].Entries[_lastRefHead.Ref1Index]._ref1.Previous = usageEntryRef;
-					} else if (_lastRefHead.IsRef2) {
+					}
+					else if (_lastRefHead.IsRef2)
+					{
 						_pages[_lastRefHead.PageIndex].Entries[_lastRefHead.Ref2Index]._ref2.Previous = usageEntryRef;
-					} else {
+					}
+					else
+					{
 						_lastRefTail = usageEntryRef;
 					}
 
@@ -590,8 +702,8 @@ namespace System.Caching
 			UsageEntryRef usageEntryRef = UsageEntryRef.INVALID;
 			int flushedItems = 0;
 			_cacheUsage.MemoryCacheStore.BlockInsert();
-		
-			using (_lock.Enter())	
+
+			using (_lock.Enter())
 			{
 				if (_cEntriesInUse == 0)
 					return 0;
@@ -613,12 +725,12 @@ namespace System.Caching
 					continue;
 				}
 
-				while (_cEntriesInFlush < maxFlush && !usageEntryRef2.IsInvalid) {
+				while (_cEntriesInFlush < maxFlush && !usageEntryRef2.IsInvalid)
+				{
 					UsageEntryRef prev = _pages[usageEntryRef2.PageIndex].Entries[usageEntryRef2.Ref2Index]._ref2.Previous;
 
-					while (prev.IsRef1) {
+					while (prev.IsRef1)
 						prev = _pages[prev.PageIndex].Entries[prev.Ref1Index]._ref1.Previous;
-					}
 
 					UsageEntry[] entries = _pages[usageEntryRef2.PageIndex].Entries;
 					int ref2Idx = usageEntryRef2.Ref2Index;
@@ -630,7 +742,7 @@ namespace System.Caching
 
 					if (!(utcNow - utcDate <= CacheUsage.NEWADD_INTERVAL) || !(utcNow >= utcDate))
 						ProcessEntry!(entries, ref2Idx, prev);
-					
+
 					usageEntryRef2 = prev;
 					continue;
 				}
@@ -646,7 +758,8 @@ namespace System.Caching
 			MemoryCacheStore memoryCacheStore = _cacheUsage.MemoryCacheStore;
 			UsageEntryRef entryRef = usageEntryRef;
 
-			while (!entryRef.IsInvalid) {
+			while (!entryRef.IsInvalid)
+			{
 				UsageEntry[] entries = _pages[entryRef.PageIndex].Entries;
 				int ref1Idx = entryRef.Ref1Index;
 				UsageEntryRef next = entries[ref1Idx]._ref1.Next;
@@ -662,7 +775,8 @@ namespace System.Caching
 			{
 				entryRef = usageEntryRef;
 
-				while (!entryRef.IsInvalid) {
+				while (!entryRef.IsInvalid)
+				{
 					UsageEntry[] entries = _pages[entryRef.PageIndex].Entries;
 					UsageEntryRef next = entries[entryRef.Ref1Index]._ref1.Next;
 					_cEntriesInFlush--;

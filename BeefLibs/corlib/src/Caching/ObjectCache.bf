@@ -7,18 +7,18 @@ using System.Threading;
 
 namespace System.Caching
 {
-    public enum DefaultCacheCapabilities
+	public enum DefaultCacheCapabilities
 	{
-        None = 0x0,
-        InMemoryProvider = 0x1,
-        OutOfProcessProvider = 0x2,
-        CacheEntryChangeMonitors = 0x4,
-        AbsoluteExpirations = 0x8,
-        SlidingExpirations = 0x10,
-        CacheEntryUpdateCallback = 0x20,
-        CacheEntryRemovedCallback = 0x40,
-        CacheRegions = 0x80,
-    }
+		None = 0x0,
+		InMemoryProvider = 0x1,
+		OutOfProcessProvider = 0x2,
+		CacheEntryChangeMonitors = 0x4,
+		AbsoluteExpirations = 0x8,
+		SlidingExpirations = 0x10,
+		CacheEntryUpdateCallback = 0x20,
+		CacheEntryRemovedCallback = 0x40,
+		CacheRegions = 0x80
+	}
 
 	public abstract class ObjectCache : IEnumerable<(String key, Object value)>
 	{
@@ -27,19 +27,21 @@ namespace System.Caching
 		public static readonly DateTimeOffset InfiniteAbsoluteExpiration = DateTimeOffset.MaxValue;
 		public static readonly TimeSpan NoSlidingExpiration = TimeSpan.Zero;
 
-		public static IServiceProvider Host {
-		    get { return _host; }
+		public static IServiceProvider Host
+		{
+			get { return _host; }
 
-		    set { 
-		        if (value == null)
+			set
+			{
+				if (value == null)
 					Runtime.FatalError("Fatal error: Argument `value` is NULL");
 
-		        if (Interlocked.CompareExchange(ref _host, value, null) != null)
+				if (Interlocked.CompareExchange(ref _host, value, null) != null)
 					Runtime.FatalError("Fatal error: The property has already been set, and can only be set once.");
-		    }
+			}
 		}
 
-        public abstract DefaultCacheCapabilities DefaultCacheCapabilities { get; }
+		public abstract DefaultCacheCapabilities DefaultCacheCapabilities { get; }
 
 		public abstract String Name { get; }
 
@@ -53,7 +55,8 @@ namespace System.Caching
 		//Existence check for a single item
 		public abstract bool Contains(String key, String regionName = null);
 
-		//The Add overloads are for adding an item without requiring the existing item to be returned.  This was requested for Velocity.
+		//The Add overloads are for adding an item without requiring the existing item to be returned.  This was
+		// requested for Velocity.
 		public virtual bool Add(String key, Object value, DateTimeOffset absoluteExpiration, String regionName = null) =>
 			AddOrGetExisting(key, value, absoluteExpiration, regionName) == null;
 
