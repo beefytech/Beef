@@ -5889,7 +5889,7 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 }
 
 void BfModule::Visit(BfForEachStatement* forEachStmt)
-{
+{	
 	if ((forEachStmt->mInToken != NULL) && 
 		((forEachStmt->mInToken->GetToken() == BfToken_LChevron) || (forEachStmt->mInToken->GetToken() == BfToken_LessEquals)))
 	{
@@ -5900,7 +5900,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	auto autoComplete = mCompiler->GetAutoComplete();
 	UpdateSrcPos(forEachStmt);	
 
-	BfScopeData scopeData;	
+	BfScopeData scopeData;
 	// We set mIsLoop after the non-looped initializations	
 	if (forEachStmt->mLabelNode != NULL)
 		scopeData.mLabelNode = forEachStmt->mLabelNode->mLabel;
@@ -6287,7 +6287,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		localDef->mAddr = itr.mValue;
 		localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 		localDef->mReadFromId = 0;		
-		localDef->Init();		
+		localDef->Init();
 		UpdateSrcPos(forEachStmt);
 		CheckVariableDef(localDef);
 		AddLocalVariableDef(localDef, true);		
@@ -6400,7 +6400,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			varTypedVal = BfTypedValue(varInst, varType, true);
 		}
 	}	
-
+	
 	// Iterator
 	if (itr)
 	{		
@@ -6422,9 +6422,13 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 				AddDeferredCall(moduleMethodInstance, functionBindResult.mIRArgs, mCurMethodState->mCurScope);
 			}
 		}
-	}
+	}	
 
-	scopeData.mIsLoop = true;
+	BfScopeData innerScopeData;
+	innerScopeData.mValueScopeStart = ValueScopeStart();
+	mCurMethodState->AddScope(&innerScopeData);
+	NewScopeState(true, false);
+	innerScopeData.mIsLoop = true;
 
 	if ((autoComplete != NULL) && (forEachStmt->mVariableTypeRef != NULL))
 		autoComplete->CheckVarResolution(forEachStmt->mVariableTypeRef, varType);
@@ -6432,7 +6436,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	if (isArray || isSizedArray)	
 		mBfIRBuilder->CreateStore(GetConstValue(0), itr.mValue);	
 
-	auto valueScopeStartInner = ValueScopeStart();	
+	auto valueScopeStartInner = ValueScopeStart();
 
 	// We may have a call in the loop body
 	mCurMethodState->mMayNeedThisAccessCheck = true;
@@ -6445,7 +6449,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	BfBreakData breakData;
 	breakData.mIRContinueBlock = incBB;
 	breakData.mIRBreakBlock = endBB;
-	breakData.mScope = &scopeData;
+	breakData.mScope = &innerScopeData;
 	breakData.mInnerValueScopeStart = valueScopeStartInner;
 	breakData.mPrevBreakData = mCurMethodState->mBreakData;	
 	SetAndRestoreValue<BfBreakData*> prevBreakData(mCurMethodState->mBreakData, &breakData);
@@ -6678,6 +6682,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	mCurMethodState->mLeftBlockUncond = false;
 	mCurMethodState->mLeftBlockCond = false;
 
+	RestoreScopeState();
 	RestoreScopeState();
 }
 

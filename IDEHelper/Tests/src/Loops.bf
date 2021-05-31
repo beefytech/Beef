@@ -1,6 +1,7 @@
 #pragma warning disable 168
 
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -10,6 +11,21 @@ namespace Tests
 		{
 			public int32 mA;
 			public int32 mB;
+		}
+
+		class EnumeratorTest : IEnumerator<int32>, IDisposable
+		{
+			public int mDispCount;
+
+			public void Dispose()
+			{
+				mDispCount++;
+			}
+
+			public Result<int32> GetNext()
+			{
+				return .Err;
+			}
 		}
 
 		[Test]
@@ -25,6 +41,37 @@ namespace Tests
 			{
 				StructA sa = val;
 				int idx = @val;
+			}
+
+			var e = scope EnumeratorTest();
+			for (var val in e)
+			{
+			}
+			Test.Assert(e.mDispCount == 1);
+			for (var val in e)
+			{
+				break;
+			}
+			Test.Assert(e.mDispCount == 2);
+			TestEnumerator1(e);
+			Test.Assert(e.mDispCount == 3);
+			TestEnumerator2(e);
+			Test.Assert(e.mDispCount == 4);
+		}
+
+		public static void TestEnumerator1(EnumeratorTest e)
+		{
+			for (var val in e)
+			{
+				return;
+			}
+		}
+
+		public static void TestEnumerator2(EnumeratorTest e)
+		{
+			for (var val in e)
+			{
+				return;
 			}
 		}
 	}
