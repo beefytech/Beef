@@ -34,7 +34,7 @@ namespace IDE
 			case Android;
 			case Wasm;
 
-			public static PlatformType GetFromName(String name)
+			public static PlatformType GetFromName(StringView name)
 			{
 				switch (name)
 				{
