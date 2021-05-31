@@ -1,0 +1,28 @@
+FileVersion = 1
+
+[Project]
+Name = "ImGui"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/$(Configuration)-$(Platform)/cimgui.lib"]
+
+[Configs.Debug.Win32]
+LibPaths = ["$(ProjectDir)/dist/$(Configuration)-$(Platform)/cimgui.lib"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/$(Configuration)-$(Platform)/cimgui.lib"]
+
+[Configs.Release.Win32]
+LibPaths = ["$(ProjectDir)/dist/$(Configuration)-$(Platform)/cimgui.lib"]
+
+[Configs.Paranoid.Win32]
+LibPaths = ["$(ProjectDir)/dist/$(Configuration)-$(Platform)/cimgui.lib"]
+
+[Configs.Paranoid.Win64]
+LibPaths = ["$(ProjectDir)/dist/$(Configuration)-$(Platform)/cimgui.lib"]
+
+[Configs.Test.Win32]
+LibPaths = ["$(ProjectDir)/dist/$(Configuration)-$(Platform)/cimgui.lib"]
+
+[Configs.Test.Win64]
+LibPaths = ["$(ProjectDir)/dist/$(Configuration)-$(Platform)/cimgui.lib"]
