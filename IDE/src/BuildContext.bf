@@ -347,7 +347,9 @@ namespace IDE
 				//TODO: Make an option
 			    if (options.mBuildOptions.mCLibType == Project.CLibType.Static)
 			    {
-			        linkLine.Append("-static-libgcc -static-libstdc++ ");
+					if (mPlatformType != .macOS)
+						linkLine.Append("-static-libgcc ");
+					linkLine.Append("-static-libstdc++ ");
 			    }
 			    else
 			    {
