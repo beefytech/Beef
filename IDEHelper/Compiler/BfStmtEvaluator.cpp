@@ -5901,9 +5901,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	UpdateSrcPos(forEachStmt);	
 
 	BfScopeData scopeData;
-	// We set mIsLoop after the non-looped initializations	
-	if (forEachStmt->mLabelNode != NULL)
-		scopeData.mLabelNode = forEachStmt->mLabelNode->mLabel;
+	// We set mIsLoop after the non-looped initializations		
 	scopeData.mValueScopeStart = ValueScopeStart();
 	mCurMethodState->AddScope(&scopeData);
 	NewScopeState();
@@ -6425,6 +6423,8 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	}	
 
 	BfScopeData innerScopeData;
+	if (forEachStmt->mLabelNode != NULL)
+		innerScopeData.mLabelNode = forEachStmt->mLabelNode->mLabel;
 	innerScopeData.mValueScopeStart = ValueScopeStart();
 	mCurMethodState->AddScope(&innerScopeData);
 	NewScopeState(true, false);
