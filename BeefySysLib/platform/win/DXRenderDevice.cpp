@@ -1513,7 +1513,7 @@ bool DXRenderDevice::Init(BFApp* app)
 	D3D_FEATURE_LEVEL d3dFeatureLevel = (D3D_FEATURE_LEVEL)0;
 	int flags = 0;	
 	//TODO:
-	flags = D3D11_CREATE_DEVICE_DEBUG;
+	//flags = D3D11_CREATE_DEVICE_DEBUG;
 	DXCHECK(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, featureLevelArr, 6, D3D11_SDK_VERSION, &mD3DDevice, &d3dFeatureLevel, &mD3DDeviceContext));
 	OutputDebugStrF("D3D Feature Level: %X\n", d3dFeatureLevel);
 	
