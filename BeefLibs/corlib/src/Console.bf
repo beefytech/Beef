@@ -234,9 +234,9 @@ namespace System
 #endif
 		}
 
-		public static void RemoveCancelKeyPressCallback(ConsoleCancelEventHandler handler)
+		public static void RemoveCancelKeyPressCallback(ConsoleCancelEventHandler handler, bool deleteDelegate = false)
 		{
-			_cancelKeyPress.Remove(handler);
+			_cancelKeyPress.Remove(handler, deleteDelegate);
 			
 #if BF_PLATFORM_WINDOWS
 			if (_cancelKeyPress.Count == 0 && WindowsConsole.CtrlHandlerAdded)
