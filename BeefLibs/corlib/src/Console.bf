@@ -221,5 +221,77 @@ namespace System
 			Write("\x1B[{}m", BackgroundColor.AnsiCode + 10);
 #endif
 		}
+
+		static Event<ConsoleCancelEventHandler> _cancelKeyPress ~ _.Dispose();
+
+		public static void AddCancelKeyPressCallback(ConsoleCancelEventHandler handler)
+		{
+			_cancelKeyPress.Add(handler);
+			
+#if BF_PLATFORM_WINDOWS
+			if (!WindowsConsole.CtrlHandlerAdded)
+				WindowsConsole.AddCtrlHandler();
+#endif
+		}
+
+		public static void RemoveCancelKeyPressCallback(ConsoleCancelEventHandler handler)
+		{
+			_cancelKeyPress.Remove(handler);
+			
+#if BF_PLATFORM_WINDOWS
+			if (_cancelKeyPress.Count == 0 && WindowsConsole.CtrlHandlerAdded)
+				WindowsConsole.RemoveCtrlHandler();
+#endif
+		}
+
+		static void DoConsoleCancelEvent()
+		{
+			bool exitRequested = true;
+
+			if (_cancelKeyPress.Count > 0)
+			{
+				ConsoleCancelEventArgs consoleCancelEventArgs = scope ConsoleCancelEventArgs(.ControlC);
+				_cancelKeyPress(null, consoleCancelEventArgs);
+				exitRequested = !consoleCancelEventArgs.Cancel;
+			}
+
+			if (exitRequested)
+				Environment.Exit(58);
+		}
+
+		
+#if BF_PLATFORM_WINDOWS
+		class WindowsConsole
+		{
+			// Delegate results in an AVE being thrown
+			function bool WindowsCancelHandler(int keyCode);
+
+			static WindowsCancelHandler cancelHandler = => DoWindowsConsoleCancelEvent;
+			public static bool CtrlHandlerAdded = false;
+
+			public static void AddCtrlHandler()
+			{
+				SetConsoleCtrlHandler(cancelHandler, true);
+				CtrlHandlerAdded = true;
+			}
+
+			public static void RemoveCtrlHandler()
+			{
+				SetConsoleCtrlHandler(cancelHandler, false);
+				CtrlHandlerAdded = false;
+			}
+
+			static bool DoWindowsConsoleCancelEvent(int keyCode)
+			{
+				if (keyCode == 0)
+					Console.DoConsoleCancelEvent();
+
+				return keyCode == 0;
+			}
+
+			[CLink, CallingConvention(.Stdcall)]
+			static extern bool SetConsoleCtrlHandler(WindowsCancelHandler handler, bool addHandler);
+		}
+#endif
 	}
 }
