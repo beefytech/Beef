@@ -259,6 +259,8 @@ namespace IDE.ui
         float mOrigY;
 		float mOrigScreenX;
 		float mOrigScreenY;
+		float mTaskbarXOffset;
+		float mTaskbarYOffset;
         bool mIsShown;
 		bool mCreatedWindow;
 		bool mClosed;
@@ -1078,6 +1080,9 @@ namespace IDE.ui
 				WidgetWindow.sOnKeyDown.Add(new => HandleKeyDown);
 
 				widgetWindow.mOnWindowClosed.Add(new (window) => Close());
+
+				mTaskbarXOffset = mOrigScreenX - widgetWindow.mNormX;
+				mTaskbarYOffset = mOrigScreenY - widgetWindow.mNormY;
 			}
             else
 			{
@@ -1090,7 +1095,7 @@ namespace IDE.ui
 
 				if (autocomplete != null)
 					autocomplete.SetIgnoreMove(true);
-                mWidgetWindow.Resize((int32)(mWidgetWindow.mNormX + minX), (int32)(mWidgetWindow.mNormY + minY), (int32)(maxX - minX), (int32)(maxY - minY));
+                mWidgetWindow.Resize((int32)(mOrigScreenX - mTaskbarXOffset + minX), (int32)(mOrigScreenY - mTaskbarYOffset + minY), (int32)(maxX - minX), (int32)(maxY - minY));
 				if (autocomplete != null)
 					autocomplete.SetIgnoreMove(false);
 			}
@@ -1293,6 +1298,7 @@ namespace IDE.ui
 					actualMaxWidth = Math.Max(actualMaxWidth, fontMetrics.mMaxWidth);
 
 					float addHeight = nameHeight - listViewItem.mSelfHeight;
+					listViewItem.mSelfHeight = nameHeight;
 					height += addHeight;
 				}
 
