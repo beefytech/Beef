@@ -2336,6 +2336,8 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 			if (!isInterface)
 				impl += "override ";
+			else if (methodDef->mIsStatic)
+				impl += "static ";
 
 			BfType* propType = methodInst->mReturnType;
 			if (methodDef->mMethodType == BfMethodType_PropertySetter)
