@@ -14747,6 +14747,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 	if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mInlineAttributeTypeDef)))
 	{
 		flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_ForceInline);
+		mModule->mAttributeState->mUsed = true;
 	}
 
 	if ((!mModule->mCurTypeInstance->IsInterface()) && (methodDef->mBody != NULL))

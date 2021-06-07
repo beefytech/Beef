@@ -12538,6 +12538,9 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 	}	
 	
 	bool isInlined = (methodInstance->mAlwaysInline) || ((flags & BfGetMethodInstanceFlag_ForceInline) != 0);
+	if ((methodInstance->mIsIntrinsic) || (methodInstance->mMethodDef->mIsExtern))
+		isInlined = false;
+
 	BfMethodRef methodRef = methodInstance;
 	if (isInlined)
 		methodRef.mMethodRefFlags = (BfMethodRefFlags)(methodRef.mMethodRefFlags | BfMethodRefFlag_AlwaysInclude);
@@ -12711,6 +12714,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		// Don't bother inlining for resolve-only
 		flags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
 	}
+
+	if (methodDef->mIsExtern)
+		flags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
 
 	bool processNow = false;
 	bool keepInCurrentModule = false;
@@ -13256,6 +13262,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 				// We need to refer to a function that was defined in a prior module
 				bool isInlined = (methodInstance->mAlwaysInline) || ((flags & BfGetMethodInstanceFlag_ForceInline) != 0);
+				if (methodInstance->mIsIntrinsic)
+					isInlined = false;
 				methodInstance->mIRFunction = CreateFunctionFrom(methodInstance, false, isInlined);
 				BF_ASSERT((methodInstance->mDeclModule == this) || (methodInstance->mDeclModule == mContext->mUnreifiedModule) || (methodInstance->mDeclModule == NULL));
 				methodInstance->mDeclModule = this;
