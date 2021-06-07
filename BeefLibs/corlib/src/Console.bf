@@ -7,6 +7,12 @@ namespace System
 {
 	public static class Console
 	{
+		public enum CancelKind
+		{
+			CtrlC,
+			CtrlBreak
+		}
+
 		static Encoding InputEncoding = Encoding.ASCII;
 		static Encoding OutputEncoding = Encoding.ASCII;
 		
@@ -15,6 +21,9 @@ namespace System
 
 		static readonly ConsoleColor sOriginalForegroundColor = sForegroundColor;
 		static readonly ConsoleColor sOriginalBackgroundColor = sBackgroundColor;
+
+		static Event<delegate void (CancelKind cancelKind, ref bool terminate)> sOnCancel ~ _.Dispose();
+		static bool sCancelEventRegistered;
 
 		public static ConsoleColor ForegroundColor
 		{
@@ -42,6 +51,31 @@ namespace System
 			public uint16[2] mMaximumWindowSize;
 		}
 
+		public static ref Event<delegate void (CancelKind cancelKind, ref bool terminate)> OnCancel
+		{
+			get
+			{
+				if (!sCancelEventRegistered)
+				{
+					sCancelEventRegistered = true;
+#if BF_PLATFORM_WINDOWS
+					SetConsoleCtrlHandler(=> ConsoleCtrlHandler, true);
+#endif
+				}
+				return ref sOnCancel;
+			}
+		}
+
+#if BF_PLATFORM_WINDOWS
+		[CallingConvention(.Stdcall)]
+		public static Windows.IntBool ConsoleCtrlHandler(int32 ctrlType)
+		{
+			bool terminate = true;
+			if ((ctrlType == 0) || (ctrlType == 1))
+				sOnCancel((.)ctrlType, ref terminate);
+			return terminate ? false : true;
+		}
+
 		[CLink, CallingConvention(.Stdcall)]
 		static extern int SetConsoleTextAttribute(void* hConsoleOutput, uint16 wAttributes);
 
@@ -51,7 +85,11 @@ namespace System
 		[CLink, CallingConvention(.Stdcall)]
 		static extern void* GetStdHandle(uint32 nStdHandle);
 
-#if BF_PLATFORM_WINDOWS
+		[CallingConvention(.Stdcall)]
+		function Windows.IntBool ConsoleCtrlHandler(int32 ctrlType);
+		[CLink, CallingConvention(.Stdcall)]
+		static extern Windows.IntBool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, Windows.IntBool addHandler);
+
 		public static this()
 		{
 			let handle = GetStdHandle(STD_OUTPUT_HANDLE);
