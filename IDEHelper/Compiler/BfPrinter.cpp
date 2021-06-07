@@ -1816,8 +1816,11 @@ void BfPrinter::Visit(BfDeleteStatement* deleteStmt)
 	Visit(deleteStmt->ToBase());
 
 	VisitChild(deleteStmt->mDeleteToken);
+	VisitChild(deleteStmt->mTargetTypeToken);
+	VisitChild(deleteStmt->mAllocExpr);
 	ExpectSpace();
 	VisitChild(deleteStmt->mExpression);
+	
 
 	VisitChild(deleteStmt->mTrailingSemicolon);
 }
