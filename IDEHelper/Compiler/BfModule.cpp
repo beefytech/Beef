@@ -11394,6 +11394,8 @@ BfCustomAttributes* BfModule::GetCustomAttributes(BfTypeDef* typeDef)
 	BfAttributeTargets attrTarget;
 	if (typeDef->mIsDelegate)
 		attrTarget = BfAttributeTargets_Delegate;
+	else if (typeDef->mIsFunction)
+		attrTarget = BfAttributeTargets_Function;
 	else if (typeDef->mTypeCode == BfTypeCode_Enum)
 		attrTarget = BfAttributeTargets_Enum;
 	else if (typeDef->mTypeCode == BfTypeCode_Interface)
