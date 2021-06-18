@@ -15,6 +15,11 @@ namespace IDE.ui
 {    
     public class FindResultsPanel : OutputPanel
     {
+		public override String SerializationType
+		{
+			get { return "FindResultsPanel"; }
+		}
+
         public static String sCurrentDocument = "Current Document";
 		public static String sCurrentProject = "Current Project";
 		public static String sUnlockedProjects = "Unlocked Projects";

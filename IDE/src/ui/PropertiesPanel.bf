@@ -15,6 +15,11 @@ namespace IDE.ui
 {    
     public class PropertiesPanel : Panel
     {
+		public override String SerializationType
+		{
+			get { return "PropertiesPanel"; }
+		}
+
         public override void Serialize(StructuredData data)
         {
             base.Serialize(data);

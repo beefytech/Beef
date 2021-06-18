@@ -181,6 +181,11 @@ namespace IDE.ui
 		public bool mDeselectOnFocusLost = true;
 		public int mThreadCallstackJustClosed = -1;
 
+		public override String SerializationType
+		{
+			get { return "ThreadPanel"; }
+		}
+
         public this()
         {
             mListView = new ThreadListView();

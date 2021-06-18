@@ -10,6 +10,10 @@ namespace IDE.ui
 {
 	class ModulePanel : Panel
 	{
+		public override String SerializationType
+		{
+			get { return "ModulePanel"; }
+		}
 		public IDEListView mListView;
 		bool mModulesDirty = true;
 

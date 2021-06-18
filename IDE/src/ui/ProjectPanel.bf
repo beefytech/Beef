@@ -136,6 +136,11 @@ namespace IDE.ui
 		public bool mSortDirty;
 		public bool mWantsRehup;
 
+		public override String SerializationType
+		{
+			get { return "ProjectPanel"; }
+		}
+
         public this()
         {
             mListView = new ProjectListView();

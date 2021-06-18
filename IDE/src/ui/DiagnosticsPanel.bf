@@ -465,6 +465,11 @@ namespace IDE.ui
 		DbgAllocListView mDbgAllocListView;
 		DarkButton mRefreshButton;
 
+		public override String SerializationType
+		{
+			get { return "DiagnosticsPanel"; }
+		}
+
 		public this()
 		{
 			mSampleStopwatch.Start();

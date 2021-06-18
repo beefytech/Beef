@@ -41,6 +41,14 @@ namespace Beefy.widgets
         public float mEndWidth;
         public float mEndHeight;
 
+		public virtual float CollapsedHeight
+		{
+			get
+			{
+				return 0.0f;
+			}
+		}
+
         public this()
         {
             mClipMouse = true;
@@ -157,13 +165,69 @@ namespace Beefy.widgets
                 UpdateInterpolation();
             }
             else
-                Resize(x, y, width, height);
+                ResizeClamped(x, y, width, height);
         }
 
         public override void Resize(float x, float y, float width, float height)
         {
             base.Resize(x, y, width, height);
         }
+
+		public virtual bool IsShown
+		{
+			get { return true; }
+			set { }
+		}
+
+		public virtual bool IsHidden
+		{
+			get { return false; }
+			set { }
+		}
+
+		public virtual bool IsCollapsed
+		{
+			get { return false; }
+			set { }
+		}
+
+		public virtual bool IsMaximized
+		{
+			get { return false; }
+			set { }
+		}
+
+		public virtual void ShowIfHidden(DockingFrame exceptFrame = null)
+		{
+		}
+
+		public virtual void ShowIfCollapsed(DockingFrame exceptFrame = null)
+		{
+		}
+
+		public virtual void ShowIfMaximized(DockingFrame exceptFrame = null)
+		{
+		}
+
+		public virtual bool HasHidden(DockedWidget exceptWidget = null)
+		{
+			return false;
+		}
+
+		public virtual bool HasAllHidden(DockedWidget exceptWidget = null)
+		{
+			return false;
+		}
+
+		public virtual bool HasCollapsed(DockedWidget exceptWidget = null)
+		{
+			return false;
+		}
+
+		public virtual bool HasMaximized(DockedWidget exceptWidget = null)
+		{
+			return false;
+		}
     }
 
     public class DockingProxy : DockedWidget

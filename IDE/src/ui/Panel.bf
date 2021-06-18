@@ -31,7 +31,24 @@ namespace IDE.ui
 			}
 		}
 
-		public virtual bool WantsSerialization
+
+		public virtual String SerializationType
+		{
+			get
+			{
+				return null;
+			}
+		}
+
+		public bool WantsSerialization
+		{
+			get
+			{
+				return SerializationType != null;
+			}
+		}
+
+		public virtual bool ShouldSaveInRecentContent
 		{
 			get
 			{
@@ -77,83 +94,40 @@ namespace IDE.ui
             return true;
         }
 
+		public static Panel Lookup(StructuredData data)
+		{
+			var type = scope String();
+			data.GetString("Type", type);
+			Panel panel = null;
+
+			gApp.WithStandardPanels(scope [&] (standardPanel) =>
+				{
+					if (type == standardPanel.SerializationType) {
+						panel = standardPanel;
+						return;
+					}
+				});
+
+			return panel;
+		}
+
         public static Panel Create(StructuredData data)
         {
-            var type = scope String();
-            data.GetString("Type", type);
-            Panel panel = null;
+			// Look for singletons
+            Panel panel = Lookup(data);
 
-            if (type == "CallStackPanel")
-                panel = gApp.mCallStackPanel;
-            else if (type == "BreakpointPanel")
-                panel = gApp.mBreakpointPanel;
-			else if (type == "ProfilePanel")
-				panel = gApp.mProfilePanel;
-            else if (type == "OutputPanel")
-            {                
-                panel = gApp.mOutputPanel;
-            }
-            else if (type == "ImmediatePanel")
-            {                
-                panel = gApp.mImmediatePanel;
-            }
-			else if (type == "ErrorsPanel")
-			{                
-			    panel = gApp.mErrorsPanel;
-			}
-            else if (type == "FindResultsPanel")
-            {                
-                panel = gApp.mFindResultsPanel;
-            }
-            else if (type == "ProjectPanel")
-            {             
-                panel = gApp.mProjectPanel;
-            }
-			else if (type == "ClassViewPanel")
-			{             
-			    panel = gApp.mClassViewPanel;
-			}
-            else if (type == "PropertiesPanel")
-            {                
-                panel = gApp.mPropertiesPanel;
-            }
-            else if (type == "SourceViewPanel")
-            {
-                panel = new SourceViewPanel();
-            }
-            else if (type == "DisassemblyPanel")
-            {
-                var disassemblyPanel = new DisassemblyPanel();
-                disassemblyPanel.mIsInitialized = true;
-                panel = disassemblyPanel;
-            }
-            else if (type == "ThreadPanel")
-            {
-                panel = gApp.mThreadPanel;
-            }
-            else if (type == "WatchPanel")
-            {
-                panel = gApp.mWatchPanel;
-            }
-            else if (type == "AutoWatchPanel")
-            {
-                panel = gApp.mAutoWatchPanel;
-            }
-            else if (type == "MemoryPanel")
-            {
-                panel = gApp.mMemoryPanel;
-            }
-			else if (type == "DiagnosticsPanel")
-			{
-			    panel = gApp.mDiagnosticsPanel;
-			}
-			else if (type == "AutoCompletePanel")
-			{
-			    panel = gApp.mAutoCompletePanel;
-			}
-			else if (type == "ModulePanel")
-			{
-			    panel = gApp.mModulePanel;
+			// Create additional Panels if needed
+			if (panel == null) {
+				var type = scope String();
+				data.GetString("Type", type);
+				if (type == "SourceViewPanel")
+					panel = new SourceViewPanel();
+				else if (type == "DisassemblyPanel")
+				{
+					var disassemblyPanel = new DisassemblyPanel();
+					disassemblyPanel.mIsInitialized = true;
+					panel = disassemblyPanel;
+				}
 			}
 
             if (panel != null)

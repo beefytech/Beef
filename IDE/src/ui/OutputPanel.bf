@@ -85,6 +85,11 @@ namespace IDE.ui
 		List<InlineWidgetEntry> mInlineWidgets = new List<InlineWidgetEntry>() ~ delete _;
 		public int32 mHoverWatchLine;
 
+		public override String SerializationType
+		{
+			get { return "OutputPanel"; }
+		}
+
         public override SourceEditWidget EditWidget
         {
             get

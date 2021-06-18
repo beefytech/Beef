@@ -154,6 +154,11 @@ namespace IDE.ui
 			}
 		}
 
+		public override String SerializationType
+		{
+			get { return "ProfilePanel"; }
+		}
+
         public this()
         {
 			mSessionComboBox = new SessionComboBox();

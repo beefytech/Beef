@@ -58,6 +58,11 @@ namespace IDE.ui
 		public int mErrorCount;
 		public int mWarningCount;
 
+		public override String SerializationType
+		{
+			get { return "ErrorsPanel"; }
+		}
+
 		public this()
 		{
 			mErrorLV = new .();

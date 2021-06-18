@@ -297,21 +297,39 @@ namespace Beefy.widgets
 
         public virtual void ResizeContent(bool interpolate = false)
         {
+			int countCollapsed = 0;
+			float collapsedHeight = 0.0f;
+
             float sizeLeft = (mSplitType == SplitType.Horz) ? (mWidth - mWindowMargin*2) : (mHeight - mWindowMargin*2);
             sizeLeft -= (mDockedWidgets.Count - 1) * mWindowSpacing;
 			if (sizeLeft <= 0)
 				return;
    
-            List<DockedWidget> widgetsLeft = scope List<DockedWidget>();
-            for (DockedWidget aDockedWidget in mDockedWidgets)
-            {
-                widgetsLeft.Add(aDockedWidget);
-                if (interpolate)
-                    aDockedWidget.StartInterpolate();
-            }
+			List<DockedWidget> widgetsLeft = scope List<DockedWidget>();
+			for (DockedWidget aDockedWidget in mDockedWidgets)
+			{
+				if (aDockedWidget.IsHidden)
+				{
+				}
+				else if (aDockedWidget.IsCollapsed)
+				{
+					collapsedHeight = aDockedWidget.CollapsedHeight + mWindowMargin * 2;
+					++countCollapsed;
+				}
+				else
+				{
+					widgetsLeft.Add(aDockedWidget);
+					if (interpolate)
+						aDockedWidget.StartInterpolate();
+				}
+			}
 
-			//DockedWidget fillWidget = GetFillWidget();
-			//if (fillWidget != null)
+			if (countCollapsed > 0 && mSplitType == SplitType.Vert) {
+				sizeLeft -= collapsedHeight;
+				if (sizeLeft <= 0) // can this happen?
+					return;
+			}
+
 			{
 				bool hasFillWidget = false;
 				for (int32 widgetIdx = 0; widgetIdx < widgetsLeft.Count; widgetIdx++)
@@ -345,15 +363,8 @@ namespace Beefy.widgets
 				        widgetIdx--;
 				    }
 				}
-
-				//widgetsLeft.Add(fillWidget);
-			    /*if (mSplitType == SplitType.Horz)
-			        fillWidget.mWidth = sizeLeft;
-			    else
-			        fillWidget.mHeight = sizeLeft;*/
 			}
 
-			//if (fillWidget == null)
 			{                
 			    int32 totalPriCount = 0;
 			    int32 newPriCounts = 0;
@@ -426,110 +437,37 @@ namespace Beefy.widgets
 			    }               
 			}
 
-            /*DockedWidget fillWidget = GetFillWidget();
-            if (fillWidget == null)
-            {                
-                int totalPriCount = 0;
-                int newPriCounts = 0;
-                float totalPriAcc = 0.0f;
-                float avgPri = 0;
-
-                foreach (DockedWidget aDockedWidget in widgetsLeft)
-                {
-                    totalPriAcc += aDockedWidget.mSizePriority;
-                    if (aDockedWidget.mSizePriority == 0)
-                        newPriCounts++;
-                    else
-                        totalPriCount++;
-                }
-
-                if (newPriCounts > 0)
-                {
-                    if (totalPriAcc > 0)
-                        avgPri = totalPriAcc / totalPriCount;
-                    else
-                        avgPri = 1.0f / newPriCounts;
-
-                    foreach (DockedWidget aDockedWidget in widgetsLeft)
-                        if (aDockedWidget.mSizePriority == 0)
-                        {
-                            aDockedWidget.mSizePriority = avgPri;
-                            totalPriCount++;
-                            totalPriAcc += aDockedWidget.mSizePriority;
-                        }
-                }
-
-
-                float sharedWidth = sizeLeft;
-
-                for (int widgetIdx = 0; widgetIdx < widgetsLeft.Count; widgetIdx++)
-                {
-                    DockedWidget aDockedWidget = widgetsLeft[widgetIdx];
-
-                    float size = (aDockedWidget.mSizePriority / totalPriAcc) * sharedWidth;
-                    size = (float) Math.Round(size);
-
-                    if (widgetIdx == widgetsLeft.Count - 1)
-                        size = sizeLeft;
-
-                    if (mSplitType == SplitType.Horz)
-                    {
-                        aDockedWidget.mWidth = size;                        
-                    }
-                    else
-                    {
-                        aDockedWidget.mHeight = size;                        
-                    }
-                    
-                    sizeLeft -= size;
-                    widgetsLeft.RemoveAt(widgetIdx);
-                    widgetIdx--;
-                }               
-            }
-            else
-            {
-                widgetsLeft.Remove(fillWidget);
-
-                for (int widgetIdx = 0; widgetIdx < widgetsLeft.Count; widgetIdx++)
-                {
-                    DockedWidget aDockedWidget = widgetsLeft[widgetIdx];
-
-                    float requestedSize = (mSplitType == SplitType.Horz) ? (aDockedWidget.mRequestedWidth) : aDockedWidget.mRequestedHeight;
-                    float size = Math.Max(mMinWindowSize, Math.Min(requestedSize, sizeLeft - (widgetsLeft.Count * mMinWindowSize)));
-
-                    if (mSplitType == SplitType.Horz)
-                        aDockedWidget.mWidth = size;
-                    else
-                        aDockedWidget.mHeight = size;
-
-                    sizeLeft -= size;
-                    widgetsLeft.RemoveAt(widgetIdx);
-                    widgetIdx--;
-                }
-
-                 if (mSplitType == SplitType.Horz)
-                    fillWidget.mWidth = sizeLeft;
-                else
-                    fillWidget.mHeight = sizeLeft;
-            }*/
-
             float curPos = mWindowMargin;
             for (DockedWidget aDockedWidget in mDockedWidgets)
             {
-                float size = (mSplitType == SplitType.Horz) ? aDockedWidget.mWidth : aDockedWidget.mHeight;
-
-                if (mSplitType == SplitType.Horz)
-                {
-                    aDockedWidget.ResizeDocked(curPos, mWindowMargin, size, mHeight - mWindowMargin*2);
-                }
-                else
-                {
-                    aDockedWidget.ResizeDocked(mWindowMargin, curPos, mWidth - mWindowMargin*2, size);
-                }
-
-                curPos += size;
-                curPos += mWindowSpacing;
+                float size = aDockedWidget.IsHidden ? 0.0f : (mSplitType == SplitType.Horz) ? aDockedWidget.mWidth : aDockedWidget.mHeight;
+				if (!aDockedWidget.IsCollapsed)
+				{
+					if (mSplitType == SplitType.Horz)
+					{
+	                    aDockedWidget.ResizeDocked(curPos, mWindowMargin, size, mHeight - mWindowMargin * 2 - collapsedHeight);
+	                }
+	                else
+	                {
+	                    aDockedWidget.ResizeDocked(mWindowMargin, curPos, mWidth - mWindowMargin * 2, size);
+	                }
+					curPos += size;
+					curPos += mWindowSpacing;
+				}
             }
+
+			float collapsedWidth = mWidth / countCollapsed;
+			float innerWidth = collapsedWidth - mWindowMargin * 2;
+			float innerHeight = collapsedHeight - mWindowMargin * 2;
+			int n = 0;
+			for (DockedWidget aDockedWidget in mDockedWidgets)
+			{
+				if (aDockedWidget.IsCollapsed)
+				{
+					aDockedWidget.ResizeDocked(mWindowMargin + n * collapsedWidth, mHeight - collapsedHeight + mWindowMargin, innerWidth, innerHeight);
+					++n;
+				}
+			}
         }
 
         public override void Resize(float x, float y, float width, float height)
@@ -548,6 +486,10 @@ namespace Beefy.widgets
             for (int32 widgetIdx = 0; widgetIdx < mDockedWidgets.Count; widgetIdx++)            
             {
                 DockedWidget aDockedWidget = mDockedWidgets[widgetIdx];
+				if (aDockedWidget.IsHidden)
+					continue;
+				if (aDockedWidget.IsCollapsed)
+					continue; // assumes collapsed down after the visible widgets
                 float size = (mSplitType == SplitType.Horz) ? aDockedWidget.mWidth : aDockedWidget.mHeight;
 
                 float diff = (findPos - curPos) + mWindowSpacing + (mSplitterSize - mWindowSpacing) / 2.0f;
@@ -814,16 +756,32 @@ namespace Beefy.widgets
 
 				DockedWidget resizedWidget = null;
                 DockedWidget widget1 = mDockedWidgets[mDownSplitterNum];
-                DockedWidget widget2 = mDockedWidgets[mDownSplitterNum + 1];
+                DockedWidget widget2 = null;
+
+				for (int i = mDownSplitterNum + 1; i < mDockedWidgets.Count; ++i)
+				{
+					if (mDockedWidgets[i].IsShown)
+					{
+						widget2 = mDockedWidgets[i];
+						break;
+					}
+				}
+
+				if (widget2 == null) {
+					mDownSplitterNum = -1; // validate
+					return;
+				}
 
 				List<DockedWidget> widgetsLeft = scope List<DockedWidget>();
-				float sizeLeft = (mSplitType == SplitType.Horz) ? (mWidth - mWindowMargin*2) : (mHeight - mWindowMargin*2);
+				float sizeLeft = (mSplitType == SplitType.Horz) ? (mWidth - mWindowMargin*2) : (mHeight - mWindowMargin*2 - (HasCollapsed() ? CollapsedHeight + mWindowMargin*2 : 0));
 
 				if ((widget1.mHasFillWidget) && (widget2.mHasFillWidget))
 				{
 					bool foundWidget = false;
 					for (var dockedWidget in mDockedWidgets)
 					{
+						if (dockedWidget.IsHidden || dockedWidget.IsCollapsed)
+							continue;
 						if (dockedWidget == widget1)
 							foundWidget = true;
 						if (dockedWidget.mHasFillWidget)
@@ -869,6 +827,8 @@ namespace Beefy.widgets
 					bool hasFillWidget = false;
 					for (var dockedWidget in mDockedWidgets)
 					{
+						if (dockedWidget.IsHidden || dockedWidget.IsCollapsed)
+							continue;
 						if (dockedWidget.mHasFillWidget)
 							hasFillWidget = true;
 					}
@@ -898,7 +858,8 @@ namespace Beefy.widgets
 					else
 					{
 						for (var dockedWidget in mDockedWidgets)
-							widgetsLeft.Add(dockedWidget);
+							if (dockedWidget.IsShown)
+								widgetsLeft.Add(dockedWidget);
 					}
 				}
 
@@ -990,5 +951,110 @@ namespace Beefy.widgets
             base.Update();
             Simplify();            
         }
+
+		public void ShowAllAndRehup()
+		{
+			if (HasHidden())
+			{
+				for (let widget in mDockedWidgets)
+					widget.ShowIfHidden();
+				GetRootDockingFrame().Rehup();
+				GetRootDockingFrame().ResizeContent();
+			}
+		}
+
+		public override void ShowIfHidden(DockingFrame exceptFrame = null)
+		{
+			bool wasSiblingShown = false;
+			for (let widget in mDockedWidgets)
+			{
+				if (widget != exceptFrame && widget.IsHidden)
+				{
+					widget.ShowIfHidden();
+					wasSiblingShown = true;
+				}
+			}
+			if (!wasSiblingShown && mParentDockingFrame != null)
+				mParentDockingFrame.ShowIfHidden(this);
+		}
+
+		public override void ShowIfMaximized(DockingFrame exceptFrame = null)
+		{
+			if (IsMaximized)
+				IsMaximized = false;
+		}
+
+		public override bool IsHidden
+		{
+			get
+			{
+				if (mParentDockingFrame != null && mParentDockingFrame.HasMaximized(this))
+					return true;
+				for(let widget in mDockedWidgets)
+					if (!widget.IsHidden) return false;
+				return true;
+			}
+		}
+
+		public bool mIsMaximized = false;
+		public override bool IsMaximized
+		{
+			get
+			{
+				return mIsMaximized;
+			}
+			set
+			{
+				mIsMaximized = value;
+			}
+		}
+
+		public override bool HasHidden(DockedWidget exceptWidget = null)
+		{
+			for(let widget in mDockedWidgets)
+				if (widget != exceptWidget && widget.IsHidden) return true;
+			return false;
+		}
+
+		
+		public override bool HasAllHidden(DockedWidget exceptWidget = null)
+		{
+			for(let widget in mDockedWidgets)
+				if (widget != exceptWidget && !widget.IsHidden) return false;
+			return true;
+		}
+
+		public override bool HasCollapsed(DockedWidget exceptWidget = null)
+		{
+			for(let widget in mDockedWidgets)
+				if (widget != exceptWidget && widget.IsCollapsed) return true;
+			return false;
+		}
+
+		public override bool HasMaximized(DockedWidget exceptWidget = null)
+		{
+			for(let widget in mDockedWidgets)
+				if (widget != exceptWidget && widget.IsMaximized) return true;
+			return false;
+		}
+
+		public void RestoreMaximizedWidgetsCovering(DockedWidget widget)
+		{
+			DockingFrame frame = this;
+			if (HasMaximized())
+			{
+				// clear any maximized siblings of widget
+				WithAllDockedWidgets(scope (widget) => { widget.ShowIfMaximized(); });
+			}
+
+			// find the first parent that isn't maxized
+			for(; frame != null; frame = frame.mParentDockingFrame)
+				if (!frame.HasMaximized())
+					break;
+
+			// clear any maximized siblings of that
+			if (frame != null)
+				frame.WithAllDockedWidgets(scope (widget) => { widget.ShowIfMaximized(); });
+		}
     }
 }
