@@ -18864,8 +18864,27 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 	auto opResult = PerformUnaryOperation_TryOperator(thisValue, NULL, BfUnaryOp_NullConditional, dotToken, BfUnaryOpFlag_None);
 	if (opResult)
 		thisValue = opResult;
+	
+	if (thisValue.mType->IsGenericParam())
+	{
+		bool isValid = false;
 
-	//TODO: But make null conditional work for Nullable types
+		auto genericParams = mModule->GetGenericParamInstance((BfGenericParamType*)thisValue.mType);
+		if (genericParams->mTypeConstraint != NULL)
+		{
+			if ((genericParams->mTypeConstraint->IsNullable()) ||
+				(genericParams->mTypeConstraint->IsPointer()) ||
+				(genericParams->mTypeConstraint->IsObjectOrInterface()))
+				isValid = true;			
+		}
+
+		if ((genericParams->mGenericParamFlags & (BfGenericParamFlag_Var | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Class)) != 0)
+			isValid = true;
+
+		if (isValid)
+			return thisValue;
+	}
+
 	if (thisValue.mType->IsNullable())
 	{
 		// Success
