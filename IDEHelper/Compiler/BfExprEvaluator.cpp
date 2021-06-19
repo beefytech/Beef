@@ -10330,6 +10330,12 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 	}	
 	else
 		return false;
+
+	if (type->IsGenericParam())
+	{
+		if (mResult.mType != NULL)
+			mResult = mModule->GetDefaultTypedValue(mResult.mType, false, Beefy::BfDefaultValueKind_Undef);
+	}
 	
 	auto autoComplete = GetAutoComplete();
 	if ((autoComplete != NULL) && (typeOfExpr->mTypeRef != NULL))
