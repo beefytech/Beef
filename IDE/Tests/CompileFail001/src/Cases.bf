@@ -21,5 +21,29 @@ namespace IDETest
 				int a = val1; //FAIL
 			}
 		}
+
+		int Switch1(Result<int> res)
+		{
+			switch (res)
+			{
+			case .Ok(let a):
+				fallthrough;
+			case .Err(let b): //FAIL
+				 return 1;
+			}
+		}
+
+		int Switch2(Result<int> res)
+		{
+			switch (res)
+			{
+			case .Ok(let a):
+				if (a > 0)
+					return 2;
+				fallthrough;
+			case .Err:
+				 return 1;
+			}
+		} //FAIL
 	}
 }

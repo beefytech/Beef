@@ -3621,6 +3621,8 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 		VisitEmbeddedStatement(ifStmt->mTrueStatement);
 	}
 	prevDLA.Restore();
+	if (mCurMethodState->mDeferredLocalAssignData != NULL)
+		mCurMethodState->mDeferredLocalAssignData->mLeftBlock = deferredLocalAssignData.mLeftBlock;
 
 	bool trueHadReturn = mCurMethodState->mHadReturn;	
 
@@ -4365,6 +4367,14 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				hadWhen = true;
 				whenExpr = checkWhenExpr;
 			}
+
+			if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(caseExpr))
+			{
+				if (prevHadFallthrough)
+				{
+					Fail("Destructuring cannot be used when the previous case contains a fallthrough", caseExpr);
+				}
+			}
 		}
 
 		BfIRBlock lastNotEqBlock;
@@ -4664,7 +4674,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			openedScope = false;
 			deferredLocalAssignDataVec[blockIdx].mHadReturn = hadReturn;
 			caseCount++;
-			if ((!hadReturn) && (!mCurMethodState->mDeferredLocalAssignData->mHadFallthrough))
+			if ((!hadReturn) && 
+				((!mCurMethodState->mDeferredLocalAssignData->mHadFallthrough) || (mCurMethodState->mDeferredLocalAssignData->mLeftBlock)))
 				allHadReturns = false;
 
 			if (auto block = BfNodeDynCast<BfBlock>(switchCase->mCodeBlock))
