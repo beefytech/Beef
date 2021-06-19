@@ -1600,6 +1600,7 @@ void BfPrinter::Visit(BfVariableDeclaration* varDecl)
 {
 	//Visit(varDecl->ToBase());
 
+	VisitChild(varDecl->mAttributes);
 	VisitChildWithProceedingSpace(varDecl->mModSpecifier);
 
 	if (varDecl->mPrecedingComma != NULL)
