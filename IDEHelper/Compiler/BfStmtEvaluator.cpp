@@ -3622,7 +3622,7 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 	}
 	prevDLA.Restore();
 	if (mCurMethodState->mDeferredLocalAssignData != NULL)
-		mCurMethodState->mDeferredLocalAssignData->mLeftBlock = deferredLocalAssignData.mLeftBlock;
+		mCurMethodState->mDeferredLocalAssignData->mHadBreak |= deferredLocalAssignData.mHadBreak;
 
 	bool trueHadReturn = mCurMethodState->mHadReturn;	
 
@@ -4675,7 +4675,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			deferredLocalAssignDataVec[blockIdx].mHadReturn = hadReturn;
 			caseCount++;
 			if ((!hadReturn) && 
-				((!mCurMethodState->mDeferredLocalAssignData->mHadFallthrough) || (mCurMethodState->mDeferredLocalAssignData->mLeftBlock)))
+				((!mCurMethodState->mDeferredLocalAssignData->mHadFallthrough) || (mCurMethodState->mDeferredLocalAssignData->mHadBreak)))
 				allHadReturns = false;
 
 			if (auto block = BfNodeDynCast<BfBlock>(switchCase->mCodeBlock))
@@ -5126,7 +5126,10 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 	while (checkLocalAssignData != NULL)
 	{
 		if ((checkLocalAssignData->mScopeData != NULL) && (checkLocalAssignData->mScopeData->mScopeDepth >= breakData->mScope->mScopeDepth))
+		{
 			checkLocalAssignData->mLeftBlock = true;
+			checkLocalAssignData->mHadBreak = true;
+		}
 		checkLocalAssignData = checkLocalAssignData->mChainedAssignData;
 	}
 

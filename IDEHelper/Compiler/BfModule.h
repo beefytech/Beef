@@ -350,10 +350,11 @@ public:
 	BfDeferredLocalAssignData* mChainedAssignData;
 	bool mHadFallthrough;
 	bool mHadReturn;
+	bool mHadBreak;
 	bool mIsUnconditional;
 	bool mIsIfCondition;
 	bool mIfMayBeSkipped;
-	bool mLeftBlock;
+	bool mLeftBlock;	
 
 public:
 	BfDeferredLocalAssignData(BfScopeData* scopeData = NULL)
@@ -362,6 +363,7 @@ public:
 		mVarIdBarrier = -1;
 		mHadFallthrough = false;
 		mHadReturn = false;
+		mHadBreak = false;
 		mChainedAssignData = NULL;
 		mIsChained = false;
 		mIsUnconditional = false;
