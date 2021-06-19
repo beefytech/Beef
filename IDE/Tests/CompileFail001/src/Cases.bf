@@ -22,7 +22,7 @@ namespace IDETest
 			}
 		}
 
-		/*int Switch1(Result<int> res)
+		int Switch1(Result<int> res)
 		{
 			switch (res)
 			{
@@ -31,7 +31,7 @@ namespace IDETest
 			case .Err(let b): //FAIL
 				 return 1;
 			}
-		}*/
+		}
 
 		int Switch2(Result<int> res)
 		{
