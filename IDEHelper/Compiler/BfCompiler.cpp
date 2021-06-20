@@ -418,6 +418,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mCompilerTypeDef = NULL;
 	mDiagnosticsDebugTypeDef = NULL;
 	mIDisposableTypeDef = NULL;
+	mIIntegerTypeDef = NULL;
 	mIPrintableTypeDef = NULL;
 	mIHashableTypeDef = NULL;
 	mIComptimeTypeApply = NULL;
@@ -6695,6 +6696,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mCompilerTypeDef = _GetRequiredType("System.Compiler");
 	mDiagnosticsDebugTypeDef = _GetRequiredType("System.Diagnostics.Debug");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
+	mIIntegerTypeDef = _GetRequiredType("System.IInteger");
 	mIPrintableTypeDef = _GetRequiredType("System.IPrintable");
 	mIHashableTypeDef = _GetRequiredType("System.IHashable");
 	mIComptimeTypeApply = _GetRequiredType("System.IComptimeTypeApply");

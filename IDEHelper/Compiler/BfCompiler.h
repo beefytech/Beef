@@ -372,6 +372,7 @@ public:
 	BfTypeDef* mCompilerTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
+	BfTypeDef* mIIntegerTypeDef;
 	BfTypeDef* mIPrintableTypeDef;
 	BfTypeDef* mIHashableTypeDef;
 	BfTypeDef* mIComptimeTypeApply;

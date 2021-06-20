@@ -10247,7 +10247,16 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 			auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)checkType);
 			if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
 				((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
-				foundMatch = true;			
+				foundMatch = true;		
+
+			else
+			{
+				for (auto constraint : genericParamInstance->mInterfaceConstraints)
+				{
+					if (constraint->IsInstanceOf(mModule->mCompiler->mIIntegerTypeDef))
+						foundMatch = true;
+				}
+			}
 
 			if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
 			{
@@ -10275,7 +10284,7 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		{
 			auto primType = (BfPrimitiveType*)checkType;
 
-			if (typeInstance->IsEnum())
+			if ((typeInstance != NULL) && (typeInstance->IsEnum()))
 			{
 				if (typeInstance->mTypeInfoEx != NULL)
 				{
@@ -10288,31 +10297,43 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 				switch (primType->mTypeDef->mTypeCode)
 				{				
 				case BfTypeCode_Int8:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x80 : 0x7F), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x80 : 0x7F), primType);
 					return true;
 				case BfTypeCode_Int16:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x8000 : 0x7FFF), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x8000 : 0x7FFF), primType);
 					return true;
 				case BfTypeCode_Int32:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x80000000LL : 0x7FFFFFFF), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x80000000LL : 0x7FFFFFFF), primType);
 					return true;
 				case BfTypeCode_Int64:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x8000000000000000LL : (uint64)0x7FFFFFFFFFFFFFFFLL), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x8000000000000000LL : (uint64)0x7FFFFFFFFFFFFFFFLL), primType);
 					return true;
 				case BfTypeCode_UInt8:
 				case BfTypeCode_Char8:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFF), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFF), primType);
 					return true;
 				case BfTypeCode_UInt16:
 				case BfTypeCode_Char16:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFFFF), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFFFF), primType);
 					return true;
 				case BfTypeCode_UInt32:
 				case BfTypeCode_Char32:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFLL), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFLL), primType);
 					return true;
 				case BfTypeCode_UInt64:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), primType);
+					return true;
+				case BfTypeCode_IntPtr:
+					if (mModule->mSystem->mPtrSize == 8)
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x8000000000000000LL : (uint64)0x7FFFFFFFFFFFFFFFLL), primType);
+					else
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x80000000LL : 0x7FFFFFFF), primType);
+					return true;
+				case BfTypeCode_UIntPtr:
+					if (mModule->mSystem->mPtrSize == 8)
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), primType);
+					else
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFLL), primType);
 					return true;
 				default: break;
 				}
