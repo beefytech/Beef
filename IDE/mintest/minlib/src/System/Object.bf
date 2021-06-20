@@ -10,6 +10,11 @@ namespace System
         void Dispose() mut;
     }
 
+	interface IInteger
+	{
+
+	}
+
     interface IPrintable
 	{
 		void Print(String outString);
