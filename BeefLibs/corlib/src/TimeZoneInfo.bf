@@ -253,7 +253,10 @@ namespace System {
 					if (rule != null)
 						rule = rule.Clone();
                     oneYearLocFromUtc = new OffsetAndRule(year, currentYear.BaseUtcOffset, rule);
-                    m_oneYearLocalFromUtc = oneYearLocFromUtc;
+                    if (Interlocked.CompareExchange(ref m_oneYearLocalFromUtc, null, oneYearLocFromUtc) != null) {
+                        delete oneYearLocFromUtc;
+                        oneYearLocFromUtc = m_oneYearLocalFromUtc;
+                    }
                 }
                 return oneYearLocFromUtc;
             }
