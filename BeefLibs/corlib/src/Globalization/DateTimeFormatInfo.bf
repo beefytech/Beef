@@ -29,7 +29,7 @@ namespace System.Globalization
 
 		// cache for the invariant culture.
 		// invariantInfo is constant irrespective of your current culture.
-		private static volatile DateTimeFormatInfo invariantInfo;
+		private static volatile DateTimeFormatInfo invariantInfo ~ delete _;
 
 		// an index which points to a record in Culture Data Table.
 		private CultureData m_cultureData;
@@ -139,6 +139,8 @@ namespace System.Globalization
 		List<Object> ownedObjects = new .() ~ DeleteContainerAndItems!(_);
 
 		public this()
+			: this(CultureInfo.InvariantCulture.[Friend]m_cultureData,
+					GregorianCalendar.[Friend]GetDefaultInstance())
 		{
 
 		}
