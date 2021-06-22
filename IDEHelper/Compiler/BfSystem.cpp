@@ -1701,6 +1701,48 @@ BfError* BfPassInstance::WarnAfter(int warningNumber, const StringImpl& warning,
 	return WarnAt(warningNumber, warning, refNode->GetSourceData(), refNode->GetSrcEnd());
 }
 
+BfError* BfPassInstance::WarnAfterAt(int warningNumber, const StringImpl& error, BfSourceData* bfSource, int srcIdx)
+{
+	BP_ZONE("BfPassInstance::FailAfterAt");
+
+	mFailedIdx++;
+	if ((int)mErrors.size() >= sMaxErrors)
+		return NULL;
+
+	auto bfParser = bfSource->ToParserData();
+	if ((bfParser != NULL) && (warningNumber > 0) && (!bfParser->IsWarningEnabledAtSrcIndex(warningNumber, srcIdx)))
+		return NULL;
+
+	if (!WantsRangeRecorded(bfParser, srcIdx, 1, false))
+		return NULL;
+
+	// Go to start of UTF8 chunk
+// 	int startIdx = srcIdx;
+// 	int spanLenth = 0;
+// 	UTF8GetGraphemeClusterSpan(bfParser->mSrc, bfParser->mOrigSrcLength, srcIdx, startIdx, spanLenth);
+
+	BfError* errorVal = new BfError();
+	errorVal->mIsWarning = true;
+	errorVal->SetSource(this, bfSource);
+	errorVal->mIsAfter = true;
+	errorVal->mError = error;
+	errorVal->mSrcStart = srcIdx;
+	errorVal->mSrcEnd = srcIdx + 1;
+	FixSrcStartAndEnd(bfSource, errorVal->mSrcStart, errorVal->mSrcEnd);
+	mErrorSet.Add(BfErrorEntry(errorVal));
+	mErrors.push_back(errorVal);
+
+	mLastWasDisplayed = WantsRangeDisplayed(bfParser, srcIdx - 1, 2, false);
+	if (mLastWasDisplayed)
+	{
+		String errorStart = "WARNING";
+		/*if ((int)mErrors.size() > 1)
+			errorStart += StrFormat(" #%d", mErrors.size());*/
+		MessageAt(":warn", errorStart + ": " + error, bfParser, srcIdx + 1, 1);
+	}
+	return errorVal;
+}
+
 BfMoreInfo* BfPassInstance::MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags)
 {		
 	if (!mLastWasDisplayed)

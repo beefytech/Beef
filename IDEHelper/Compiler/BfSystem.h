@@ -1375,6 +1375,7 @@ public:
 	BfError* Warn(int warningNumber, const StringImpl& warning);
 	BfError* Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
 	BfError* WarnAfter(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
+	BfError* WarnAfterAt(int warningNumber, const StringImpl& error, BfSourceData* bfSource, int srcIdx);
 
 	BfMoreInfo* MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags = BfFailFlag_None);
 	BfMoreInfo* MoreInfo(const StringImpl& info, bool forceQueue = false);

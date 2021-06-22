@@ -4451,8 +4451,15 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 		{
 			if (!IsSemicolon(nextNode))
 			{
+				bool doWarn = false;
+
 				// Why did we have this BfIdentifierNode check? It failed to throw an error on just things like "{ a }"
-				if (/*(origStmtNode->IsA<BfIdentifierNode>()) || */(origStmtNode->IsA<BfCompoundStatement>()) || (origStmtNode->IsA<BfBlock>()))
+				if (origStmtNode->IsA<BfRepeatStatement>())
+				{
+					// These do require a semicolon
+					doWarn = true;
+				}
+				else if (/*(origStmtNode->IsA<BfIdentifierNode>()) || */(origStmtNode->IsA<BfCompoundStatement>()) || (origStmtNode->IsA<BfBlock>()))
 					return stmt;
 				if (origStmtNode->IsA<BfVariableDeclaration>())
 				{
@@ -4465,7 +4472,12 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 				if (((createStmtFlags & CreateStmtFlags_AllowUnterminatedExpression) != 0) && (origStmtNode->IsA<BfExpression>()) && (nextNode == NULL))
 					return stmt;
 
-				auto error = mPassInstance->FailAfterAt("Semicolon expected", node->GetSourceData(), stmt->GetSrcEnd() - 1);
+				BfError* error;
+				if (doWarn)
+					error = mPassInstance->WarnAfterAt(0, "Semicolon expected", node->GetSourceData(), stmt->GetSrcEnd() - 1);
+				else
+					error = mPassInstance->FailAfterAt("Semicolon expected", node->GetSourceData(), stmt->GetSrcEnd() - 1);
+
 				if ((error != NULL) && (mSource != NULL))
 					error->mProject = mSource->mProject;
 				mPrevStmtHadError = true;
