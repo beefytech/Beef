@@ -965,10 +965,13 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 	}
 	else
 	{
-		if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
-			Fail("Interface properties cannot have field destructors", propertyDeclaration->mFieldDtor);
-		else if (propertyDeclaration->mFieldDtor != NULL)
-			Fail("Properties with method bodies cannot have field destructors", propertyDeclaration->mFieldDtor);
+		if (propertyDeclaration->mFieldDtor != NULL)
+		{
+			if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
+				Fail("Interface properties cannot have field destructors", propertyDeclaration->mFieldDtor);
+			else
+				Fail("Properties with method bodies cannot have field destructors", propertyDeclaration->mFieldDtor);
+		}
 	}
 
 	for (auto methodDeclaration : propertyDeclaration->mMethods)
