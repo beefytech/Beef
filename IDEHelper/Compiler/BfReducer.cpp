@@ -9617,6 +9617,15 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 					break;
 				}
 
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+				{
+					if (tokenNode->mToken == BfToken_FatArrow)
+					{
+						isDone = true;
+						break;
+					}
+				}
+
 				tokenNode = ExpectTokenAfter(genericConstraint, BfToken_Comma, BfToken_LBrace, BfToken_Where, BfToken_Semicolon);
 				if (tokenNode == NULL)
 				{
