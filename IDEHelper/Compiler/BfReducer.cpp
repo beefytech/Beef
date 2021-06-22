@@ -6875,6 +6875,15 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* defe
 			{
 				MEMBER_SET(propertyDeclaration, mDefinitionBlock, block);
 				ReadPropertyBlock(propertyDeclaration, block);
+
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+				{
+					if (tokenNode->mToken == BfToken_Tilde)
+					{
+						auto fieldDtor = CreateFieldDtorDeclaration(tokenNode);
+						MEMBER_SET(propertyDeclaration, mFieldDtor, fieldDtor);
+					}
+				}
 			}
 			else if (isExprBodyProp)
 			{
