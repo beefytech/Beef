@@ -13652,6 +13652,10 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 							int64 dimLength = constant->mInt64;
 							dimLengths.push_back(dimLength);
 						}
+						else if ((constant != NULL) && (constant->mConstType == BfConstType_Undef))
+						{
+							dimLengths.push_back(-1);
+						}
 						else
 						{
 							mModule->Fail("A constant length is required when using an initializer", dimLengthRefs[dim]);
