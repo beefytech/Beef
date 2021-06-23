@@ -977,10 +977,8 @@ void BeMCColorizer::GenerateRegCosts()
 		{
 			auto inst = mcBlock->mInstructions[instIdx];
 
-			if ((inst->IsMov()) && (inst->mArg1.IsNativeReg()) && (!inst->mArg0.IsNativeReg()))
+			if ((inst->IsMov()) && (inst->mArg1.IsNativeReg()) && (inst->mArg0.IsVReg()))
 			{
-				BF_ASSERT(inst->mArg0.IsVReg());
-
 				int vregIdx = mContext->GetUnderlyingVReg(inst->mArg0.mVRegIdx);
 				auto reg = mContext->GetFullRegister(inst->mArg1.mReg);
 
@@ -15850,7 +15848,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "??Kint2@bf@@SA?A01@01@0@Z");
+	mDebugging = (function->mName == "?TestBug@TestProgram@BeefTest@bf@@SAXXZ");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
