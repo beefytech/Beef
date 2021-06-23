@@ -38,6 +38,10 @@ namespace Tests
 		{
 			Test.Assert(0b0111010110111100110100010101 == 123456789);
 			Test.Assert(0o726746425 == 123456789);
+
+			int i0 = 5;
+			int i1 = i0 % 1;
+			Test.Assert(i1 == 0);
 		}
 	}
 }

@@ -16147,7 +16147,7 @@ void BeMCContext::Generate(BeFunction* function)
 					mcMemberRef.mKind = BeMCOperandKind_VRegLoad;
 
 					AllocInst(BeMCInstKind_Mov, mcMemberRef, mcValue);
-					// Our InsertValue always modifies the source aggregrate, it does not make a copy like LLVM's InsertValue would infer.
+					// Our InsertValue always modifies the source aggregate, it does not make a copy like LLVM's InsertValue would infer.
 					//  This is okay because of Beef front end knowledge, but is not general purpose.
 					result = mcAgg;
 				}
@@ -16157,6 +16157,7 @@ void BeMCContext::Generate(BeFunction* function)
 					auto castedInst = (BeNumericCastInst*)inst;
 					auto mcValue = GetOperand(castedInst->mValue);
 					auto fromType = GetType(mcValue);
+
 					if (fromType == castedInst->mToType)
 					{
 						// If it's just a sign change then leave it alone
@@ -16179,6 +16180,10 @@ void BeMCContext::Generate(BeFunction* function)
 							bool doSignExtension = (toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize > fromType->mSize) && (castedInst->mToSigned) && (castedInst->mValSigned);
 							if ((toType->IsFloat()) && (fromType->IsIntable()) && (castedInst->mValSigned))
 								doSignExtension = true;
+
+							if (mcValue.IsImmediate())
+								doSignExtension = false;							
+
 							if (doSignExtension)
 							{
 								AllocInst(BeMCInstKind_MovSX, toValue, mcValue);
