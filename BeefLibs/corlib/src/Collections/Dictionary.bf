@@ -868,6 +868,9 @@ namespace System.Collections
 			{
 				int_cosize curIdx = mIndex - 1;
 				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
 				mIndex = curIdx;
 			}
 
@@ -1016,6 +1019,9 @@ namespace System.Collections
 			{
 				int_cosize curIdx = mIndex - 1;
 				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
 				mIndex = curIdx;
 			}
 
@@ -1119,6 +1125,9 @@ namespace System.Collections
 			{
 				int_cosize curIdx = mIndex - 1;
 				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
 				mIndex = curIdx;
 			}
 
