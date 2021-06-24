@@ -3295,6 +3295,9 @@ bool CeContext::GetStringFromStringView(addr_ce addr, StringImpl& str)
 
 bool CeContext::GetCustomAttribute(BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr)
 {
+	if (customAttributes == NULL)
+		return false;
+
 	BfType* attributeType = GetBfType(attributeTypeId);
 	if (attributeType == NULL)
 		return false;
