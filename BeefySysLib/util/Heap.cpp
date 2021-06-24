@@ -180,10 +180,10 @@ ContiguousHeap::AllocRef ContiguousHeap::Alloc(int size)
 			if (block->mKind == ChBlockKind_Merged)
 			{
 				itr--;
-				if (mFreeIdx >= mFreeList.mSize)
-					mFreeIdx = 0;
 				block->mKind = (ChBlockKind)0;
 				mFreeList.RemoveAtFast(mFreeIdx);
+				if (mFreeIdx >= mFreeList.mSize)
+					mFreeIdx = 0;
 				continue;
 			}
 
