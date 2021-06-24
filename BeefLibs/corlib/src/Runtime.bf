@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace System
 {
-	[StaticInitPriority(100)]
+	[StaticInitPriority(101)]
 	static class Runtime
 	{
 		const int32 cVersion = 8;
