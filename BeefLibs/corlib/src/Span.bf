@@ -48,6 +48,9 @@ namespace System
 
 		public static implicit operator Span<T> (T[] array)
 		{
+			if (array == null)
+				return default;
+			
 			return Span<T>(array);
 		}
 		
