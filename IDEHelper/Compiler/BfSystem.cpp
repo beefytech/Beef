@@ -770,8 +770,16 @@ void BfTypeDef::PopulateMemberSets()
 
 void BfTypeDef::ClearMemberSets()
 {
+	for (auto entry : mMethodSet)
+		((BfMethodDef*)entry.mMemberDef)->mNextWithSameName = NULL;
 	mMethodSet.Clear();
+
+	for (auto entry : mFieldSet)
+		((BfFieldDef*)entry.mMemberDef)->mNextWithSameName = NULL;
 	mFieldSet.Clear();
+
+	for (auto entry : mPropertySet)
+		((BfPropertyDef*)entry.mMemberDef)->mNextWithSameName = NULL;
 	mPropertySet.Clear();
 }
 
