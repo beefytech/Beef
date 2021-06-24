@@ -8375,7 +8375,17 @@ BfIRValue BfModule::AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTar
 		else if (allocTarget.mCustomAllocator)
 		{						
 			auto customTypeInst = allocTarget.mCustomAllocator.mType->ToTypeInstance();
-			if (customTypeInst != NULL)
+			if (customTypeInst == NULL)
+			{
+				if (allocTarget.mCustomAllocator.mType->IsStructPtr())
+					customTypeInst = allocTarget.mCustomAllocator.mType->GetUnderlyingType()->ToTypeInstance();
+			}
+
+			if (customTypeInst == NULL)
+			{
+				Fail(StrFormat("Type '%s' cannot be used as a custom allocator", TypeToString(allocTarget.mCustomAllocator.mType).c_str()), refNode);
+			}
+			else
 			{
 				BfTypedValueExpression typeValueExpr;
 				String allocMethodName = "Alloc";
