@@ -864,6 +864,16 @@ namespace System.Collections
 				mDictionary.mEntries[mCurrentIndex].mValue = value;
 			}
 
+			public void Remove() mut
+			{
+				int_cosize curIdx = mIndex - 1;
+				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
+				mIndex = curIdx;
+			}
+
 			public void Reset() mut
 			{
 #if VERSION_DICTIONARY
@@ -1005,6 +1015,16 @@ namespace System.Collections
 			{
 			}
 
+			public void Remove() mut
+			{
+				int_cosize curIdx = mIndex - 1;
+				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
+				mIndex = curIdx;
+			}
+
 			public void Reset() mut
 			{
 #if VERSION_DICTIONARY
@@ -1099,6 +1119,16 @@ namespace System.Collections
 
 			public void Dispose()
 			{
+			}
+
+			public void Remove() mut
+			{
+				int_cosize curIdx = mIndex - 1;
+				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
+				mIndex = curIdx;
 			}
 
 			public void Reset() mut
