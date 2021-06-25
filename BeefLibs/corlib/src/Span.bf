@@ -16,18 +16,35 @@ namespace System
 
 		public this(T[] array)
 		{
+			if (array == null)
+			{
+				this = default;
+				return;
+			}
 			mPtr = &array.[Friend]GetRef(0);
 			mLength = array.[Friend]mLength;
 		}
 
 		public this(T[] array, int index)
 		{
+			if (array == null)
+			{
+				Debug.Assert(index == 0);
+				this = default;
+				return;
+			}
 			mPtr = &array[index];
 			mLength = array.[Friend]mLength - index;
 		}
 
 		public this(T[] array, int index, int length)
 		{
+			if (array == null)
+			{
+				Debug.Assert(index == 0 && length == 0);
+				this = default;
+				return;
+			}
 			if (length == 0)
 				mPtr = null;
 			else
