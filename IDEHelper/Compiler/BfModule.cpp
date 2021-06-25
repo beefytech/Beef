@@ -7483,8 +7483,8 @@ String BfModule::GenericParamSourceToString(const BfGenericParamSource & generic
 {
 	if (genericParamSource.mMethodInstance != NULL)
 	{		
-		auto methodInst = GetUnspecializedMethodInstance(genericParamSource.mMethodInstance, false);
-		SetAndRestoreValue<BfMethodInstance*> prevMethodInst(methodInst, NULL);
+		//auto methodInst = GetUnspecializedMethodInstance(genericParamSource.mMethodInstance, false);
+		//SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mCurMethodInstance, methodInst);
 		return MethodToString(genericParamSource.mMethodInstance);
 	}
 	else

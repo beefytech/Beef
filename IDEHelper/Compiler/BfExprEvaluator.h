@@ -138,12 +138,14 @@ public:
 	BfTypeVector* mCheckMethodGenericArguments;
 	SizedArray<BfIRValue, 4> mPrevArgValues;
 	int mInferredCount;
+	bool mIgnoreMethodGenericParam;
 
 public:
 	BfGenericInferContext()
 	{
 		mModule = NULL;
 		mInferredCount = 0;
+		mIgnoreMethodGenericParam = false;
 	}
 	bool InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue);
 	int GetUnresolvedCount()

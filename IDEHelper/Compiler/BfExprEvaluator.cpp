@@ -243,6 +243,16 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 	if (argType == NULL)
 		return false;	
 	
+	if (mIgnoreMethodGenericParam)
+	{
+		if (argType->IsGenericParam())
+		{
+			auto genericParamType = (BfGenericParamType*)argType;
+			if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
+				return false;
+		}
+	}
+
 	if (!wantType->IsUnspecializedType())
 		return true;
 
@@ -623,10 +633,12 @@ bool BfGenericInferContext::InferGenericArguments(BfMethodInstance* methodInstan
 				else
 					genericParam = mModule->GetGenericParamInstance(genericParamType);
 
+				// Generic arg references in constraints refer to the caller, not the callee -- so ignore those
+				SetAndRestoreValue<bool> prevIgnoreMethodGenericArg(mIgnoreMethodGenericParam, true);
 				if (genericParam->mTypeConstraint != NULL)
 					InferGenericArgument(methodInstance, genericParam->mTypeConstraint, ifaceConstraint, BfIRValue());
 				for (auto argIfaceConstraint : genericParam->mInterfaceConstraints)
-					InferGenericArgument(methodInstance, argIfaceConstraint, ifaceConstraint, BfIRValue());
+					InferGenericArgument(methodInstance, argIfaceConstraint, ifaceConstraint, BfIRValue());				
 			}
 		}
 	}
