@@ -1,0 +1,8 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Beef.Linq" = "*"}
+
+[Project]
+Name = "Beef.Linq.Tests"
+TargetType = "BeefTest"
+StartupObject = "Befe.Linq.Tests.Program"
+DefaultNamespace = "System.Linq"

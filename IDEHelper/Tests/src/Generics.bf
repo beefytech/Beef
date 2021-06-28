@@ -296,6 +296,18 @@ namespace Tests
 
 		}
 
+		public static void TestGen<T, TItem>(T val)
+			where T : IEnumerable<TItem>
+			where TItem : var
+		{
+		}
+
+		public static void TestPreGen<T>()
+		{
+			List<int> a = default;
+			TestGen(a);
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
