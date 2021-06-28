@@ -36,6 +36,7 @@
 #endif
 
 #endif
+#define STB_SPRINTF_DECORATE(name) BF_stbsp_##name
 #include "../../third_party/stb/stb_sprintf.h"
 #include <cxxabi.h>
 #include <random>
@@ -338,9 +339,9 @@ static void syminfo_callback (void *data, uintptr_t pc, const char *symname, uin
 {
     char str[4096];
     if (symname)
-        stbsp_snprintf(str, 4096, "%@ %s\n", pc, symname);
+        BF_stbsp_snprintf(str, 4096, "%@ %s\n", pc, symname);
     else
-        stbsp_snprintf(str, 4096, "%@\n", pc);
+        BF_stbsp_snprintf(str, 4096, "%@\n", pc);
     BFP_ERRPRINTF("%s", str);
 }
 
@@ -354,7 +355,7 @@ static int full_callback(void *data, uintptr_t pc, const char* filename, int lin
         const char* showName = (demangledName != NULL) ? demangledName : function;
 
         char str[4096];
-        stbsp_snprintf(str, 4096, "%@ %s %s:%d\n", pc, showName, filename?filename:"??", lineno);
+        BF_stbsp_snprintf(str, 4096, "%@ %s %s:%d\n", pc, showName, filename?filename:"??", lineno);
         BFP_ERRPRINTF("%s", str);
 
         if (demangledName != NULL)
