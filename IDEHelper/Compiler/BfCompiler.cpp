@@ -1674,7 +1674,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	
 	bool mainHasArgs = (targetType != BfTargetType_BeefLib_DynamicLib) && (targetType != BfTargetType_BeefLib_StaticLib) &&
 		(mOptions.mPlatformType != BfPlatformType_Wasm);
-	bool mainHasRet = (targetType != BfTargetType_BeefLib_DynamicLib) && (targetType != BfTargetType_BeefLib_StaticLib);
+	bool mainHasRet = ((targetType != BfTargetType_BeefLib_DynamicLib) && (targetType != BfTargetType_BeefLib_StaticLib)) || (isDllMain);
 
 	// Generate "main"
 	if (!IsHotCompile())
