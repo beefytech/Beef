@@ -7,6 +7,7 @@
 #include "platform/PlatformHelper.h"
 
 #ifndef BF_SMALL
+#define STB_SPRINTF_DECORATE(name) BF_stbsp_##name
 #define STB_SPRINTF_IMPLEMENTATION
 #include "third_party/stb/stb_sprintf.h"
 #endif
@@ -811,7 +812,7 @@ String Beefy::vformat(const char* fmt, va_list argPtr)
 {
     String str;
     char buf[STB_SPRINTF_MIN];
-    stbsp_vsprintfcb(StbspCallback, (void*)&str, buf, fmt, argPtr);
+    BF_stbsp_vsprintfcb(StbspCallback, (void*)&str, buf, fmt, argPtr);
     return str;
 }
 #endif
