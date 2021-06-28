@@ -8884,11 +8884,15 @@ namespace IDE
 				{
 					if (project.mGeneralOptions.mTargetType.IsBeefApplication)
 						targetType = .BeefApplication_StaticLib;
+					else if (project.mGeneralOptions.mTargetType == .BeefLib)
+						targetType = .BeefLib_Static;
 				}
 				else if (options.mBuildOptions.mBuildKind == .DynamicLib)
 				{
 					if (project.mGeneralOptions.mTargetType.IsBeefApplication)
 						targetType = .BeefApplication_DynamicLib;
+					else if (project.mGeneralOptions.mTargetType == .BeefLib)
+						targetType = .BeefLib_Dynamic;
 				}
 			}
 
@@ -9418,48 +9422,28 @@ namespace IDE
 
 									let platformType = Workspace.PlatformType.GetFromName(platformName);
 
-									if (options.mBuildOptions.mBuildKind.IsApplicationLib)
+									switch (platformType)
 									{
-										switch (platformType)
-										{
-										case .Windows:
+									case .Windows:
+										if (options.mBuildOptions.mBuildKind == .DynamicLib)
+											newString.Append(".dll");
+										else if ((options.mBuildOptions.mBuildKind == .StaticLib) || (project.mGeneralOptions.mTargetType == .BeefLib))
 											newString.Append(".lib");
-										case .iOS:
-											if (options.mBuildOptions.mBuildKind == .DynamicLib)
-												newString.Append(".dylib");
-											else
-												newString.Append(".a");
-										case .Wasm:
-											if (!newString.Contains('.'))
-												newString.Append(".html");
-										default:
-											if (options.mBuildOptions.mBuildKind == .DynamicLib)
-												newString.Append(".so");
-											else
-												newString.Append(".a");
-										}
-									}
-									else
-									{
-										switch (platformType)
-										{
-										case .Windows:
-											if (project.mGeneralOptions.mTargetType == .BeefLib)
-											    newString.Append(".lib");
-											else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
-											    newString.Append(".dll");
-											else if (project.mGeneralOptions.mTargetType != .CustomBuild)
-											    newString.Append(".exe");
-										case .macOS:
-											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
-												newString.Append(".dylib");
-										case .Wasm:
-											if (!newString.Contains('.'))
-												newString.Append(".html");
-										default:
-											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
-												newString.Append(".so");
-										}
+										else if (project.mGeneralOptions.mTargetType != .CustomBuild)
+										    newString.Append(".exe");
+									case .macOS:
+										if (options.mBuildOptions.mBuildKind == .DynamicLib)
+											newString.Append(".dylib");
+										else if (options.mBuildOptions.mBuildKind == .StaticLib)
+											newString.Append(".a");
+									case .Wasm:
+										if (!newString.Contains('.'))
+											newString.Append(".html");
+									default:
+										if (options.mBuildOptions.mBuildKind == .DynamicLib)
+											newString.Append(".so");
+										else if (options.mBuildOptions.mBuildKind == .StaticLib)
+											newString.Append(".a");
 									}
 		                        }
 								IDEUtils.FixFilePath(newString);
@@ -9480,9 +9464,11 @@ namespace IDE
 							case "LinkFlags":
 								newString = scope:ReplaceBlock String();
 
+								bool isBeefDynLib = (project.mGeneralOptions.mTargetType == .BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
+
 								if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
 									(project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
-									(project.mGeneralOptions.mTargetType == .BeefDynLib) ||
+									(isBeefDynLib) ||
 									(options.mBuildOptions.mBuildKind == .Test))
 								{
 									let platformType = Workspace.PlatformType.GetFromName(platformName);

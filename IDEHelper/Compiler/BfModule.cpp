@@ -16121,7 +16121,10 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 	if (methodInstance->mReturnType->IsVar())
 		mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_VarRet);
 	if (methodDef->mImportKind == BfImportKind_Export)
-		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllExport);
+	{
+		if (methodDef->mDeclaringType->mProject->mTargetType != BfTargetType_BeefLib_StaticLib)
+			mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllExport);
+	}
 	if (methodDef->mIsNoReturn)
 		mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_NoReturn);
 	auto callingConv = GetIRCallingConvention(methodInstance);

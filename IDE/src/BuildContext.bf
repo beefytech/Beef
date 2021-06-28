@@ -296,7 +296,7 @@ namespace IDE
 
 		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
-			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
+			bool isDynLib = (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
 
 			if (options.mBuildOptions.mBuildKind == .StaticLib)
 				isExe = false;
@@ -525,7 +525,7 @@ namespace IDE
 
 		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
-			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
+			bool isDynLib = (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
 
 			if (isExe || isDynLib)
 			{
@@ -761,7 +761,8 @@ namespace IDE
 						}    
 					}
 
-					if (depProject.mGeneralOptions.mTargetType == .BeefDynLib)
+					bool depIsDynLib = (depProject.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (depOptions.mBuildOptions.mBuildKind == .DynamicLib);
+					if (depIsDynLib)
 					{
 						if (mImpLibMap.TryGetValue(depProject, var libPath))
 						{
@@ -797,9 +798,9 @@ namespace IDE
 
 			bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
-			if (options.mBuildOptions.mBuildKind == .StaticLib)
-				isExe = false;
-
+			if (options.mBuildOptions.mBuildKind == .DynamicLib)
+				isExe = true;
+			
 			if (isExe)
 			{
 				String linkLine = scope String();
@@ -814,7 +815,7 @@ namespace IDE
 					linkLine.Append("-subsystem:windows ");
 			    else if (project.mGeneralOptions.mTargetType == .C_GUIApplication)
 			    	linkLine.Append("-subsystem:console ");
-				else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
+				else if (project.mGeneralOptions.mTargetType == .BeefLib)
 				{
 					linkLine.Append("-dll ");
 
@@ -885,7 +886,7 @@ namespace IDE
 
 				linkLine.Append("-nologo ");
 				
-				if ((project.mGeneralOptions.mTargetType == .BeefDynLib) && (workspaceOptions.mAllowHotSwapping) && (is64Bit))
+				if ((project.mGeneralOptions.mTargetType == .BeefLib) && (workspaceOptions.mAllowHotSwapping) && (is64Bit))
 				{
 					// This helps to ensure that DLLs have enough hot swapping space after them
 					int nameHash = targetPath.GetHashCode();
@@ -1204,7 +1205,7 @@ namespace IDE
 					Directory.CreateDirectory(targetDir).IgnoreError();
 			}
 
-			if (project.mGeneralOptions.mTargetType == .BeefDynLib)
+			if (project.mGeneralOptions.mTargetType == .BeefLib)
 			{
 				if (targetPath.EndsWith(".dll", .InvariantCultureIgnoreCase))
 				{

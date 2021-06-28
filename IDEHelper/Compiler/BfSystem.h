@@ -1123,14 +1123,15 @@ enum BfTargetType
 {
 	BfTargetType_BeefConsoleApplication,
 	BfTargetType_BeefWindowsApplication,		
-	BfTargetType_BeefLib,
-	BfTargetType_BeefDynLib,
+	BfTargetType_BeefLib,	
 	BfTargetType_CustomBuild,
 	BfTargetType_BeefTest,
 	BfTargetType_C_ConsoleApplication,
 	BfTargetType_C_WindowsApplication,	
 	BfTargetType_BeefApplication_StaticLib,
-	BfTargetType_BeefApplication_DynamicLib
+	BfTargetType_BeefApplication_DynamicLib,
+	BfTargetType_BeefLib_StaticLib,
+	BfTargetType_BeefLib_DynamicLib,
 };
 
 enum BfProjectFlags
