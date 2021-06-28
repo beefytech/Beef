@@ -564,7 +564,13 @@ void BeFunction::HashContent(BeHashContext& hashCtx)
 	hashCtx.Mixin(TypeId);
 	hashCtx.MixinStr(mName);
 	hashCtx.Mixin(mLinkageType);
-	hashCtx.Mixin(mAlwaysInline);	
+	hashCtx.Mixin(mAlwaysInline);
+	hashCtx.Mixin(mNoUnwind);
+	hashCtx.Mixin(mUWTable);
+	hashCtx.Mixin(mNoReturn);
+	hashCtx.Mixin(mNoFramePointerElim);
+	hashCtx.Mixin(mIsDLLExport);
+	hashCtx.Mixin(mIsDLLImport);
 	hashCtx.Mixin(mCallingConv);
 
 	for (auto block : mBlocks)
