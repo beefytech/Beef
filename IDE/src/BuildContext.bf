@@ -180,7 +180,6 @@ namespace IDE
 #endif
 
 		    //String error = scope String();
-
 		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			if (!isExe)
@@ -298,6 +297,9 @@ namespace IDE
 		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
+
+			if (options.mBuildOptions.mBuildKind == .StaticLib)
+				isExe = false;
 
 			if (isExe || isDynLib)
 			{
@@ -795,6 +797,9 @@ namespace IDE
 
 			bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
+			if (options.mBuildOptions.mBuildKind == .StaticLib)
+				isExe = false;
+
 			if (isExe)
 			{
 				String linkLine = scope String();
