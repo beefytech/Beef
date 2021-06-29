@@ -4871,7 +4871,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						{
 							if ((curCheckType->mTypeDef->HasAutoProperty(propertyDeclaration)) && (propertyDeclaration->mVirtualSpecifier == NULL))
 							{								
-								BfMethodDef* getter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget);
+								BfMethodDef* getter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, BfCheckedKind_NotSet, mPropTarget);
 								BfMethodDef* setter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget);
 
 								bool optAllowed = true;
