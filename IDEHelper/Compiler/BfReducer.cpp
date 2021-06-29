@@ -6892,7 +6892,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* defe
 				{
 					if (tokenNode->mToken == BfToken_Tilde)
 					{
-						auto fieldDtor = CreateFieldDtorDeclaration(tokenNode);
+						auto fieldDtor = CreateFieldDtorDeclaration(propertyDeclaration);
 						MEMBER_SET(propertyDeclaration, mFieldDtor, fieldDtor);
 					}
 				}
