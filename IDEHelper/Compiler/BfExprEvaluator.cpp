@@ -4871,34 +4871,45 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						{
 							if ((curCheckType->mTypeDef->HasAutoProperty(propertyDeclaration)) && (propertyDeclaration->mVirtualSpecifier == NULL))
 							{								
-								bool hasSetter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget) != NULL;
-								auto autoFieldName = curCheckType->mTypeDef->GetAutoPropertyName(propertyDeclaration);
-								auto result = LookupField(targetSrc, target, autoFieldName, (BfLookupFieldFlags)(BfLookupFieldFlag_IgnoreProtection | BfLookupFieldFlag_IsImplicitThis));
-								if (result)
+								BfMethodDef* getter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget);
+								BfMethodDef* setter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget);
+
+								bool optAllowed = true;
+								if ((getter != NULL) && (getter->mBody != NULL))
+									optAllowed = false;
+								if ((setter != NULL) && (setter->mBody != NULL))
+									optAllowed = false;
+
+								if (optAllowed)
 								{
-									bool needsCopy = true;
-									
-									if (!hasSetter)
+									auto autoFieldName = curCheckType->mTypeDef->GetAutoPropertyName(propertyDeclaration);
+									auto result = LookupField(targetSrc, target, autoFieldName, (BfLookupFieldFlags)(BfLookupFieldFlag_IgnoreProtection | BfLookupFieldFlag_IsImplicitThis));
+									if (result)
 									{
-										if (((mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)) &&
-											(startCheckType == mModule->mCurTypeInstance))
+										bool needsCopy = true;
+
+										if (setter == NULL)
 										{
-											// Allow writing inside ctor
+											if (((mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)) &&
+												(startCheckType == mModule->mCurTypeInstance))
+											{
+												// Allow writing inside ctor
+											}
+											else
+											{
+												result.MakeReadOnly();
+												needsCopy = false;
+											}
 										}
-										else
-										{
-											result.MakeReadOnly();
-											needsCopy = false;
-										}
+
+										if (result.mKind == BfTypedValueKind_Addr)
+											result.mKind = BfTypedValueKind_CopyOnMutateAddr;
+
+										mPropDef = NULL;
+										mPropSrc = NULL;
+										mOrigPropTarget = NULL;
+										return result;
 									}
-
-									if (result.mKind == BfTypedValueKind_Addr)
-										result.mKind = BfTypedValueKind_CopyOnMutateAddr;
-
-									mPropDef = NULL;
-									mPropSrc = NULL;
-									mOrigPropTarget = NULL;
-									return result;
 								}
 							}
 						}
