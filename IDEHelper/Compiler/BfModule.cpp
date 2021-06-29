@@ -1915,7 +1915,7 @@ BfIRValue BfModule::CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime,
 	return allocaInst;
 }
 
-void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scopeData, bool condAlloca, bool mayEscape)
+void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scopeData, bool condAlloca, bool mayEscape, BfIRBlock valBlock)
 {
 	//This was removed because we want the alloc to be added to the __deferred list if it's actually a "stack"
 	// 'stack' in a head scopeData is really the same as 'scopeData', so use the simpler scopeData handling	
@@ -1939,7 +1939,15 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 				{
 					bool isDynAlloc = (scopeData != NULL) && (mCurMethodState->mCurScope->IsDyn(scopeData));
 					BfIRValue useVal = val.mValue;
-					useVal = mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapTypeInstPtr(checkBaseType));
+
+					BfIRBlock prevBlock = mBfIRBuilder->GetInsertBlock();
+					if (valBlock)
+						mBfIRBuilder->SetInsertPoint(valBlock);
+					useVal = mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapTypeInstPtr(checkBaseType));					
+					if (!useVal.IsConst())
+						mBfIRBuilder->ClearDebugLocation(useVal);
+					if (valBlock)
+						mBfIRBuilder->SetInsertPoint(prevBlock);
 
 					if (isDynAlloc)
 					{
@@ -1950,7 +1958,9 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 						BF_ASSERT(!IsTargetingBeefBackend());
 						BF_ASSERT(!isDynAlloc);
 						auto valPtr = CreateAlloca(checkBaseType);
+						mBfIRBuilder->ClearDebugLocation_Last();
 						mBfIRBuilder->CreateStore(useVal, valPtr);
+						mBfIRBuilder->ClearDebugLocation_Last();
 						useVal = valPtr;
 					}
 
@@ -1994,7 +2004,10 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 				{
 					SizedArray<BfIRValue, 1> llvmArgs;
 					if (IsTargetingBeefBackend())
+					{
 						llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
+						//mBfIRBuilder->ClearDebugLocation_Last();
+					}
 					else
 						llvmArgs.push_back(val.mValue);
 					llvmArgs.push_back(GetConstValue(val.mType->mSize));
@@ -2023,6 +2036,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 					{
 						SizedArray<BfIRValue, 1> llvmArgs;
 						llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
+						//mBfIRBuilder->ClearDebugLocation_Last();
 						llvmArgs.push_back(clearSize);
 						AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
 					}
@@ -2052,6 +2066,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 					{
 						SizedArray<BfIRValue, 1> llvmArgs;
 						llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
+						//mBfIRBuilder->ClearDebugLocation_Last();
 						AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
 					}
 				}
@@ -8829,13 +8844,14 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					auto allocaInst = mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(byteType), sizeValue);
 					if (!isDynAlloc)
 						mBfIRBuilder->ClearDebugLocation(allocaInst);
+					auto allocaBlock = mBfIRBuilder->GetInsertBlock();
 					mBfIRBuilder->SetAllocaAlignment(allocaInst, allocAlign);
-					if (!isDynAlloc)
-						mBfIRBuilder->SetInsertPoint(prevBlock);
 					auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);
 					mBfIRBuilder->ClearDebugLocation_Last();
+					if (!isDynAlloc)
+						mBfIRBuilder->SetInsertPoint(prevBlock);															
 					if (!noDtorCall)
-						AddStackAlloc(typedVal, BfIRValue(), NULL, scopeData, false, true);
+						AddStackAlloc(typedVal, BfIRValue(), NULL, scopeData, false, true, allocaBlock);
 					InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
 					return typedVal.mValue;
 				}

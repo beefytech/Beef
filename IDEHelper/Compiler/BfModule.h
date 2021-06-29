@@ -1573,7 +1573,7 @@ public:
 	void NewScopeState(bool createLexicalBlock = true, bool flushValueScope = true); // returns prev scope data
 	BfIRValue CreateAlloca(BfType* type, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime = true, const char* name = NULL);
-	void AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false);
+	void AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false, BfIRBlock valBlock = BfIRBlock());
 	void RestoreScoreState_LocalVariables();
 	void RestoreScopeState();	
 	void MarkDynStack(BfScopeData* scope);

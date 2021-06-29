@@ -83,11 +83,15 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 					auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
 					mBfIRBuilder->SetInsertPoint(mCurMethodState->mIRHeadBlock);
 					auto allocaInst = mBfIRBuilder->CreateAlloca(origParamTypes[paramIdx]);
-					mBfIRBuilder->ClearDebugLocation(allocaInst);
+					mBfIRBuilder->ClearDebugLocation_Last();
 					mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 					if (WantsLifetimes())
+					{
 						mBfIRBuilder->CreateLifetimeStart(allocaInst);
+						mBfIRBuilder->ClearDebugLocation_Last();
+					}
 					mBfIRBuilder->CreateStore(scopeArg, allocaInst);
+					mBfIRBuilder->ClearDebugLocation_Last();
 					deferredCallEntry->mScopeArgs[paramIdx] = allocaInst;
 					if (WantsLifetimes())
 						scopeData->mDeferredLifetimeEnds.push_back(allocaInst);

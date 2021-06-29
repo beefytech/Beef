@@ -20555,10 +20555,12 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 	{
 		leftValue = mModule->LoadValue(leftValue);
 
-		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();
-
+		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();		
 		auto rhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.rhs");
 		auto endBB = mModule->mBfIRBuilder->CreateBlock("nullc.end");
+		auto lhsBB = endBB;
+
+		auto endLhsBB = prevBB;
 
 		BfIRValue isNull;
 		if (leftValue.mType->IsFunction())
@@ -20567,7 +20569,6 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 		else
 			isNull = mModule->mBfIRBuilder->CreateIsNull(leftValue.mValue);
 		
-
 		mModule->AddBasicBlock(rhsBB);
 		BfTypedValue rightValue;
 		if (assignTo != NULL)
@@ -20583,7 +20584,7 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 		rightValue = mModule->LoadValue(rightValue);
 		
 		if (assignTo == NULL)
-		{
+		{			
 			auto rightToLeftValue = mModule->CastToValue(rightExpression, rightValue, leftValue.mType, BfCastFlags_SilentFail);
 			if (rightToLeftValue)
 			{
@@ -20591,7 +20592,8 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 			}
 			else
 			{
-				mModule->mBfIRBuilder->SetInsertPoint(prevBB);
+				lhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.lhs", true);
+				mModule->mBfIRBuilder->SetInsertPoint(lhsBB);
 
 				auto leftToRightValue = mModule->CastToValue(leftExpression, leftValue, rightValue.mType, BfCastFlags_SilentFail);
 				if (leftToRightValue)
@@ -20605,7 +20607,9 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 						mModule->TypeToString(leftValue.mType).c_str(), mModule->TypeToString(rightValue.mType).c_str()), opToken);
 					leftValue = mModule->GetDefaultTypedValue(rightValue.mType);
 				}
-
+				
+				mModule->mBfIRBuilder->CreateBr(endBB);
+				endLhsBB = mModule->mBfIRBuilder->GetInsertBlock();
 				mModule->mBfIRBuilder->SetInsertPoint(rhsBB);
 			}
 		}
@@ -20615,10 +20619,10 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 
 		mModule->mBfIRBuilder->CreateBr(endBB);
 		auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
-
+		
 		// Actually add CondBr at start
 		mModule->mBfIRBuilder->SetInsertPoint(prevBB);
-		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, endBB);
+		mModule->mBfIRBuilder->CreateCondBr(isNull, rhsBB, lhsBB);
 		
 		mModule->AddBasicBlock(endBB);
 
@@ -20629,7 +20633,7 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 		else
 		{
 			auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(leftValue.mType), 2);
-			mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, prevBB);
+			mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, endLhsBB);
 			mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
 			mResult = BfTypedValue(phi, leftValue.mType);
 		}
