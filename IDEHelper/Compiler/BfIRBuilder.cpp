@@ -489,11 +489,12 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 		return 1;
 	}	
 
-	if (constLHS->mConstType == BfConstType_GlobalVar)
-	{
-		// We would have already caught the (constLHS == constRHS) case further up
-		return 0;
-	}
+	//TODO: Why did we do this? This made global variable comparisons (ie: sA != sB) const-evaluate to false always
+// 	if (constLHS->mConstType == BfConstType_GlobalVar)
+// 	{
+// 		// We would have already caught the (constLHS == constRHS) case further up
+// 		return 0;
+// 	}
 		
 	return -1;
 }
