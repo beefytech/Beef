@@ -1985,6 +1985,9 @@ namespace Beefy.widgets
         {
 			scope AutoBeefPerf("EWC.Undo");
 
+			if (CheckReadOnly())
+				return;
+
 			//Profiler.StartSampling();
 			if (WantsUndo)
             	mData.mUndoManager.Undo();
@@ -1994,6 +1997,9 @@ namespace Beefy.widgets
         public virtual void Redo()
         {
 			scope AutoBeefPerf("EWC.Redo");
+
+			if (CheckReadOnly())
+				return;
 
 			if (WantsUndo)
             	mData.mUndoManager.Redo();
