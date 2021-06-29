@@ -182,7 +182,11 @@ namespace IDE
 		    //String error = scope String();
 		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
-			if (!isExe)
+			if ((options.mBuildOptions.mBuildKind == .StaticLib) || (options.mBuildOptions.mBuildKind == .DynamicLib))
+			{
+				// Okay
+			}
+			else if (!isExe)
 				return true;
 			
 		    String arCmds = scope String(""); //-O2 -Rpass=inline 
@@ -194,7 +198,10 @@ namespace IDE
 			{
 				if (!obj.IsEmpty)
 				{
-					arCmds.AppendF("ADDMOD {}\n", obj);
+					if (obj.EndsWith(".lib", .OrdinalIgnoreCase))
+						arCmds.AppendF("ADDLIB {}\n", obj);
+					else
+						arCmds.AppendF("ADDMOD {}\n", obj);
 				}
 			}
 			arCmds.AppendF("SAVE\n");
@@ -800,7 +807,7 @@ namespace IDE
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			if (options.mBuildOptions.mBuildKind == .DynamicLib)
 				isExe = true;
-			
+
 			if (isExe)
 			{
 				String linkLine = scope String();
@@ -1387,8 +1394,19 @@ namespace IDE
 					gApp.OutputErrorLine("Project '{}' cannot be linked with the Windows Toolset for platform '{}'", project.mProjectName, mPlatformType);
 					return false;
 				}
-				else if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
-					return false;
+				else
+				{
+					if (options.mBuildOptions.mBuildKind == .StaticLib)
+					{
+						if (!QueueProjectGNUArchive(project, targetPath, workspaceOptions, options, objectsArg))
+							return false;
+					}
+					else
+					{
+						if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
+							return false;
+					}
+				}
 			}
 
 		    return true;
