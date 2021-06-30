@@ -3934,12 +3934,16 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				}
 				checkTypeState = checkTypeState->mPrevState;
 			}
-
-			if ((resolvingFieldDef != NULL) && (resolvingFieldDef->mIdx > 0))
+			
+			if ((resolvingFieldDef != NULL) && (mModule->mCompiler->mResolvePassData != NULL) && (mModule->mCompiler->mResolvePassData->mParser == resolvingFieldDef->mFieldDeclaration->GetParser()))
+			{
+				return mModule->GetDefaultTypedValue(mModule->mCurTypeInstance);
+			}
+			else if ((resolvingFieldDef != NULL) && (resolvingFieldDef->mIdx > 0))
 			{
 				auto enumType = mModule->mCurTypeInstance;
 				if (!enumType->mFieldInstances.IsEmpty())
-				{
+				{					
 					auto fieldInstance = &mModule->mCurTypeInstance->mFieldInstances[resolvingFieldDef->mIdx - 1];
 					if ((fieldInstance->mConstIdx != -1) &&
 						(fieldInstance->mResolvedType == mModule->mCurTypeInstance))
