@@ -194,14 +194,42 @@ namespace IDE
 
 		    arCmds.AppendF("CREATE {}\n", targetPath);
 
+			void AddObject(StringView obj)
+			{
+				if (obj.IsEmpty)
+					return;
+
+				if (obj.EndsWith(".lib", .OrdinalIgnoreCase))
+					arCmds.AppendF("ADDLIB {}\n", obj);
+				else
+					arCmds.AppendF("ADDMOD {}\n", obj);
+			}
+
+			bool inQuote = false;
+			int lastEnd = -1;
+			for (int i < objectsArg.Length)
+			{
+				var c = objectsArg[i];
+				if (c == '"')
+				{
+					if (inQuote)
+						AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
+					inQuote = !inQuote;
+					lastEnd = i;
+				}
+				else if ((c == ' ') && (!inQuote))
+				{
+					AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
+					lastEnd = i;
+				}
+			}
+			AddObject(objectsArg.Substring(lastEnd + 1));
+
 			for (let obj in objectsArg.Split(' '))
 			{
 				if (!obj.IsEmpty)
 				{
-					if (obj.EndsWith(".lib", .OrdinalIgnoreCase))
-						arCmds.AppendF("ADDLIB {}\n", obj);
-					else
-						arCmds.AppendF("ADDMOD {}\n", obj);
+					
 				}
 			}
 			arCmds.AppendF("SAVE\n");

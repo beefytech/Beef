@@ -17,13 +17,17 @@ namespace IDE
 		public const char8 cNativeSlash = Path.DirectorySeparatorChar;
 		public const char8 cOtherSlash = Path.AltDirectorySeparatorChar;        
 
-		public static void AppendWithOptionalQuotes(String targetStr, String srcFileName)
+		public static void AppendWithOptionalQuotes(String targetStr, StringView srcFileName)
 		{
 			bool hasSpace = srcFileName.Contains(' ');
 			bool alreadyQuoted = (srcFileName.Length > 0 && srcFileName[0] == '"' && srcFileName[srcFileName.Length - 1] == '"');
 
 			if (hasSpace && !alreadyQuoted)
-				targetStr.Append("\"", srcFileName, "\"");
+			{
+				targetStr.Append("\"");
+				targetStr.Append(srcFileName);
+				targetStr.Append("\"");
+			}
 			else
 			    targetStr.Append(srcFileName);
 		}
