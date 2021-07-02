@@ -2495,7 +2495,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 							if (auto prevToken = BfNodeDynCast<BfTokenNode>(prevNode))
 							{
 								// This handles such as "dlg = stack => obj.method<int>;"
-								if (prevToken->GetToken() == BfToken_RChevron)
+								if ((prevToken->GetToken() == BfToken_RChevron) || (prevToken->GetToken() == BfToken_RDblChevron))
 									hadEndingToken = true;
 							}
 						}
