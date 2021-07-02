@@ -32,6 +32,7 @@ namespace IDETest
 			TypedPrimitives.Test();
 			Unions.Test();
 			Virtuals.Test();
+			ParseTester.Test();
 
 			Bug001.Test();
 			Bug002.Test();
