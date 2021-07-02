@@ -169,11 +169,31 @@ namespace System
 			bool isNeg = false;
 		    double result = 0;
 			double decimalMultiplier = 0;
+			double exponent = 0;
 			
 			//TODO: Use Number.ParseNumber
 			for (int32 i = 0; i < val.Length; i++)
 			{
 				char8 c = val.Ptr[i];
+
+				//Exponent prefix used in scientific notation. E.g. 1.2E5
+				if((c == 'e') || (c == 'E'))
+				{
+					//Error if there are no numbers after the prefix
+					if(i == val.Length - 1)
+						return .Err;
+
+					//Parse exponent
+					var exponentParseResult = int32.Parse(val.Substring(i + 1));
+					if(exponentParseResult == .Err)
+						return .Err;
+					else
+					{
+						//If exponent is valid discard anything after it
+						exponent = (double)exponentParseResult.Value;
+						break;
+					}
+				}
 
 				if (c == '.')
 				{
@@ -210,7 +230,12 @@ namespace System
 				else
 					return .Err;
 			}
-			return isNeg ? (float)(-result) : (float)result;
+
+			//Calculate final result
+			if(isNeg)
+				result *= -1;
+			result *= Math.Pow(10, exponent);
+			return (float)result;
 		}
     }
 }
