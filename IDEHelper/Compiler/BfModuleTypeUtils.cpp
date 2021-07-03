@@ -5179,6 +5179,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			}
 			if (typeInstance->IncludeAllMethods())
 				implRequired = true;
+			// "AssumeInstantiated" also forces default ctor
+			if (((typeInstance->mAlwaysIncludeFlags & BfAlwaysIncludeFlag_AssumeInstantiated) != 0) &&
+				(methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mParams.IsEmpty()))
+				implRequired = true;
 
 			if ((typeOptionsIncludeAll) && (ApplyTypeOptionMethodFilters(true, methodDef, typeOptions)))
 				implRequired = true;
@@ -5338,6 +5342,11 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 								if (attrTypeInst->mAttributeData != NULL)
 								{
 									if ((attrTypeInst->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_IncludeAllMethods) != 0)
+										forceMethodImpl = true;
+
+									// "AssumeInstantiated" also forces default ctor
+									if (((attrTypeInst->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_AssumeInstantiated) != 0) &&
+										(methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mParams.IsEmpty()))
 										forceMethodImpl = true;
 								}
 							}
