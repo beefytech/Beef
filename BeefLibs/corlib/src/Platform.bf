@@ -337,6 +337,8 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		public static extern BfpFile* BfpFile_GetStd(BfpFileStdKind kind, BfpFileResult* outResult);
 		[CallingConvention(.Stdcall), CLink]
+		public static extern int BfpFile_GetSystemHandle(BfpFile* file);
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void BfpFile_Release(BfpFile* file);
 		[CallingConvention(.Stdcall), CLink]
 		public static extern int BfpFile_Write(BfpFile* file, void* buffer, int size, int timeoutMS, BfpFileResult* outResult);

@@ -29,6 +29,16 @@ namespace System.IO
 			}
 		}
 
+		public int Handle
+		{
+			get
+			{
+				if (mBfpFile == null)
+					return 0;
+				return Platform.BfpFile_GetSystemHandle(mBfpFile);
+			}
+		}
+
 		public ~this()
 		{
 			Delete();
@@ -232,6 +242,16 @@ namespace System.IO
 		protected Platform.BfpFile* mBfpFile;
 		protected int64 mBfpFilePos;
 		FileAccess mFileAccess;
+
+		public int Handle
+		{
+			get
+			{
+				if (mBfpFile == null)
+					return 0;
+				return Platform.BfpFile_GetSystemHandle(mBfpFile);
+			}
+		}
 
 		public this()
 		{

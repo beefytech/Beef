@@ -1941,6 +1941,11 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetStd(BfpFileStdKind kind, BfpFileResu
 	return bfpFile;
 }
 
+BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetSystemHandle(BfpFile* file)
+{
+    return (intptr)file->mHandle;
+}
+
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Release(BfpFile* file)
 {	
 	if ((file->mHandle != -1) && (!file->mIsStd))
