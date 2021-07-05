@@ -13991,8 +13991,11 @@ BfTypedValue BfModule::GetThis()
 				return BfTypedValue(GetDefaultValue(thisType), thisType, BfTypedValueKind_ThisValue);
 		}
 	}
-		
-	auto localDef = useMethodState->mLocals[0];
+	
+	if (mCurMethodInstance == NULL)
+		return BfTypedValue();
+
+	auto localDef = useMethodState->mLocals[0];	
 	auto curMethodOwner = mCurMethodInstance->mMethodInstanceGroup->mOwner;	
 	if ((curMethodOwner->IsStruct()) || (curMethodOwner->IsTypedPrimitive()))
 	{		
