@@ -1617,7 +1617,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			return false;
 	}
 
-	if ((checkMethod->mIsVirtual) && (!checkMethod->mIsOverride) && (!mBypassVirtual) && 
+	if ((checkMethod->mIsVirtual) && (!checkMethod->mIsOverride) && (!mBypassVirtual) &&
 		(targetTypeInstance != NULL) && (targetTypeInstance->IsObject()))
 	{
 		mModule->PopulateType(targetTypeInstance, BfPopulateType_DataAndMethods);
@@ -6394,6 +6394,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						if (delegateInfo->mHasExplicitThis)
 						{							
 							target = mModule->GetDefaultTypedValue(delegateInfo->mParams[0], false, BfDefaultValueKind_Addr);
+							bypassVirtual = true;
 						}
 					}
 					else if (bindResult->mBindType->IsFunction())
@@ -8158,7 +8159,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	methodMatcher.mAllowImplicitThis = allowImplicitThis;
 	methodMatcher.mAllowStatic = !target.mValue;
 	methodMatcher.mAllowNonStatic = !methodMatcher.mAllowStatic;
-	methodMatcher.mAutoFlushAmbiguityErrors = !wantsExtensionCheck;
+	methodMatcher.mAutoFlushAmbiguityErrors = !wantsExtensionCheck;	
 	if (allowImplicitThis)
 	{
 		if (mModule->mCurMethodState == NULL)
@@ -11643,7 +11644,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 						return;
 					}
 				}
-				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType);
+				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType, BfCastFlags_None, bindResult.mFunc);
 			}			
 			if (result)
 				mResult = BfTypedValue(result, mExpectingType);

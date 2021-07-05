@@ -10880,11 +10880,33 @@ bool BfModule::AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNe
 	return true;
 }
 
-BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targetValue, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags)
+BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targetValue, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags, BfIRValue irFunc)
 {	
 	auto invokeMethodInstance = GetDelegateInvokeMethod(toType->ToTypeInstance());
 
-	if (invokeMethodInstance->IsExactMatch(methodInstance, false, true))
+	bool methodsThisMatch = true;	
+	if (invokeMethodInstance->mMethodDef->mIsStatic != methodInstance->mMethodDef->mIsStatic)
+		methodsThisMatch = false;
+	else
+	{
+		if (!methodInstance->mMethodDef->mIsStatic)
+		{
+			BfType* thisType = methodInstance->GetThisType();
+			if (thisType->IsPointer())
+				thisType = thisType->GetUnderlyingType();
+			BfType* invokeThisType = invokeMethodInstance->GetThisType();
+			if (invokeThisType->IsPointer())
+				invokeThisType = invokeThisType->GetUnderlyingType();
+			if (!TypeIsSubTypeOf(thisType->ToTypeInstance(), invokeThisType->ToTypeInstance()))
+				methodsThisMatch = false;
+		}
+	}
+
+	bool methodMatches = methodsThisMatch;
+	if (methodMatches)
+		methodMatches = invokeMethodInstance->IsExactMatch(methodInstance, false, false);
+
+	if (methodMatches)
 	{
 		if (methodInstance->GetOwner()->IsFunction())
 		{
@@ -10892,19 +10914,23 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 			return targetValue.mValue;
 		}
 
-		BfModuleMethodInstance methodRefMethod;
-		if (methodInstance->mDeclModule == this)
-			methodRefMethod = methodInstance;
-		else
-			methodRefMethod = ReferenceExternalMethodInstance(methodInstance);
-		auto dataType = GetPrimitiveType(BfTypeCode_IntPtr);
-		if (!methodRefMethod.mFunc)
+		BfIRFunction bindFuncVal = irFunc;
+		if (!bindFuncVal)
 		{
-			if ((!methodInstance->mIsUnspecialized) && (HasCompiledOutput()))
-				AssertErrorState();
-			return GetDefaultValue(dataType);
+			BfModuleMethodInstance methodRefMethod;
+			if (methodInstance->mDeclModule == this)
+				methodRefMethod = methodInstance;
+			else
+				methodRefMethod = ReferenceExternalMethodInstance(methodInstance);
+			auto dataType = GetPrimitiveType(BfTypeCode_IntPtr);
+			if (!methodRefMethod.mFunc)
+			{
+				if ((!methodInstance->mIsUnspecialized) && (HasCompiledOutput()))
+					AssertErrorState();
+				return GetDefaultValue(dataType);
+			}
+			bindFuncVal = methodRefMethod.mFunc;
 		}
-		auto bindFuncVal = methodRefMethod.mFunc;
 		if (mCompiler->mOptions.mAllowHotSwapping)
 			bindFuncVal = mBfIRBuilder->RemapBindFunction(bindFuncVal);
 		return mBfIRBuilder->CreatePtrToInt(bindFuncVal, BfTypeCode_IntPtr);
@@ -10912,7 +10938,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 
 	if ((castFlags & BfCastFlags_SilentFail) == 0)
 	{
-		if (invokeMethodInstance->IsExactMatch(methodInstance, true, true))
+		if ((methodsThisMatch) && (invokeMethodInstance->IsExactMatch(methodInstance, true, false)))
 		{
 			Fail(StrFormat("Non-static method '%s' cannot match '%s' because it contains captured variables, consider using a delegate or removing captures", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str()), srcNode);
 		}
@@ -10940,7 +10966,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 						invokeThisWasPtr = true;
 					}
 
-					if (invokeThisType == thisType)
+					if (TypeIsSubTypeOf(thisType->ToTypeInstance(), invokeThisType->ToTypeInstance()))
 					{
 						if (invokeThisWasPtr != thisWasPtr)
 						{							
