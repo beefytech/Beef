@@ -72,12 +72,19 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 				SizedArray<BfIRType, 8> origParamTypes;
 				BfIRType origReturnType;
 				deferredCallEntry->mModuleMethodInstance.mMethodInstance->GetIRFunctionInfo(this, origReturnType, origParamTypes);
-				BF_ASSERT(origParamTypes.size() == deferredCallEntry->mScopeArgs.size());
+				
+				int sretIdx = deferredCallEntry->mModuleMethodInstance.mMethodInstance->GetStructRetIdx();
+				BF_ASSERT(origParamTypes.size() == deferredCallEntry->mScopeArgs.size() + ((sretIdx != -1) ? 1 : 0));
 
-				for (int paramIdx = 0; paramIdx < (int)deferredCallEntry->mScopeArgs.size(); paramIdx++)
+				int argIdx = 0;
+				int paramIdx = 0;
+				for (int argIdx = 0; argIdx < (int)deferredCallEntry->mScopeArgs.size(); argIdx++, paramIdx++)
 				{
-					auto scopeArg = deferredCallEntry->mScopeArgs[paramIdx];
-					if ((scopeArg.IsConst()) || (scopeArg.IsFake()))
+					if (argIdx == sretIdx)
+						paramIdx++;
+
+					auto scopeArg = deferredCallEntry->mScopeArgs[argIdx];
+					if ((scopeArg.IsConst()) || (scopeArg.IsFake()))					
 						continue;
 
 					auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
@@ -92,7 +99,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 					}
 					mBfIRBuilder->CreateStore(scopeArg, allocaInst);
 					mBfIRBuilder->ClearDebugLocation_Last();
-					deferredCallEntry->mScopeArgs[paramIdx] = allocaInst;
+					deferredCallEntry->mScopeArgs[argIdx] = allocaInst;
 					if (WantsLifetimes())
 						scopeData->mDeferredLifetimeEnds.push_back(allocaInst);
 				}

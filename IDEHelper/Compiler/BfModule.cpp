@@ -12010,11 +12010,17 @@ BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal, bool forceMutable)
 			return typedVal;
 		BfType* type = typedVal.mType;		
 		PopulateType(type);
-		auto tempVar = CreateAlloca(type);
-		if (typedVal.IsSplat())
-			AggregateSplatIntoAddr(typedVal, tempVar);
+		BfIRValue tempVar;
+		if (typedVal.mValue.IsFake())
+			tempVar = mBfIRBuilder->GetFakeVal();
 		else
-			mBfIRBuilder->CreateAlignedStore(typedVal.mValue, tempVar, type->mAlign);
+		{
+			tempVar = CreateAlloca(type);
+			if (typedVal.IsSplat())
+				AggregateSplatIntoAddr(typedVal, tempVar);
+			else
+				mBfIRBuilder->CreateAlignedStore(typedVal.mValue, tempVar, type->mAlign);
+		}
 		
 		if (forceMutable)
 			wasReadOnly = false;
