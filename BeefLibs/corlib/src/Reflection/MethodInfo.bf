@@ -37,9 +37,20 @@ namespace System.Reflection
 			return mMethodData.mParamData[paramIdx].mName;
 		}
 
+		public Result<T> GetParamCustomAttribute<T>(int paramIdx) where T : Attribute
+		{
+			Debug.Assert((uint)paramIdx < (uint)mMethodData.mParamCount);
+			return mTypeInstance.[Friend]GetCustomAttribute<T>(mMethodData.mParamData[paramIdx].mCustomAttributesIdx);
+		}
+
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
 			return mTypeInstance.[Friend]GetCustomAttribute<T>(mMethodData.mCustomAttributesIdx);
+		}
+
+		public Result<T> GetReturnCustomAttribute<T>() where T : Attribute
+		{
+			return mTypeInstance.[Friend]GetCustomAttribute<T>(mMethodData.mReturnCustomAttributesIdx);
 		}
 
 		public enum CallError

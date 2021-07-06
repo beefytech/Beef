@@ -6501,7 +6501,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	struct _SortedMethodInfo
 	{
 		BfMethodDef* mMethodDef;
-		BfCustomAttributes* mMethodCustomAttributes;
+		BfMethodCustomAttributes* mMethodCustomAttributes;		
 	};
 
 	Array<_SortedMethodInfo> sortedMethodList;
@@ -6542,10 +6542,10 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 		bool includeMethod = reflectIncludeAllMethods;
 
-		BfCustomAttributes* methodCustomAttributes = NULL;
+		BfMethodCustomAttributes* methodCustomAttributes = NULL;		
 		if ((defaultMethod->mMethodInfoEx != NULL) && (defaultMethod->mMethodInfoEx->mMethodCustomAttributes != NULL) && (defaultMethod->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes != NULL))
 		{
-			methodCustomAttributes = defaultMethod->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes;
+			methodCustomAttributes = defaultMethod->mMethodInfoEx->mMethodCustomAttributes;			
 			for (auto& customAttr : defaultMethod->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes->mAttributes)
 			{
 				if (customAttr.mType->mTypeDef->mName->ToString() == "ReflectAttribute")
@@ -6643,7 +6643,13 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						
 		BfMethodFlags methodFlags = defaultMethod->GetMethodFlags();
 		
-		int customAttrIdx = _HandleCustomAttrs(methodInfo.mMethodCustomAttributes);
+		int customAttrIdx = -1;					
+		int returnCustomAttrIdx = -1;
+		if (methodInfo.mMethodCustomAttributes != NULL)
+		{
+			customAttrIdx = _HandleCustomAttrs(methodInfo.mMethodCustomAttributes->mCustomAttributes);
+			returnCustomAttrIdx = _HandleCustomAttrs(methodInfo.mMethodCustomAttributes->mReturnCustomAttributes);
+		}
 
 		enum ParamFlags
 		{
@@ -6664,13 +6670,18 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 			BfIRValue paramNameConst = GetStringObjectValue(paramName, !mIsComptimeModule);
 
+			int paramCustomAttrIdx = -1;
+			if ((methodInfo.mMethodCustomAttributes != NULL) && (paramIdx < (int)methodInfo.mMethodCustomAttributes->mParamCustomAttributes.mSize))
+				paramCustomAttrIdx = _HandleCustomAttrs(methodInfo.mMethodCustomAttributes->mParamCustomAttributes[paramIdx]);
+
 			SizedArray<BfIRValue, 8> paramDataVals =
 				{
 					emptyValueType,
 					paramNameConst,
 					GetConstValue(paramType->mTypeId, typeIdType),
 					GetConstValue((int32)paramFlags, shortType),
-					GetConstValue(customAttrIdx, intType) // defaultIdx
+					GetConstValue(-1, intType), // defaultIdx
+					GetConstValue(paramCustomAttrIdx, intType) // customAttrIdx
 				};
 			auto paramData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapType(reflectParamDataType, BfIRPopulateType_Full), paramDataVals);
 			paramVals.Add(paramData);
@@ -6739,6 +6750,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				GetConstValue(methodIdx, intType),
 				GetConstValue(vDataVal, intType),
 				GetConstValue(customAttrIdx, intType),
+				GetConstValue(returnCustomAttrIdx, intType),
 			};
 		auto methodData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectMethodDataType->ToTypeInstance(), BfIRPopulateType_Full), methodDataVals);
 		methodTypes.push_back(methodData);
@@ -11369,14 +11381,13 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			{
 				Fail(StrFormat("'%s' is not a valid attribute location for this declaration. Valid attribute locations for this declaration are '%s'. All attributes in this block will be ignored.",
 					GetAttributesTargetListString(targetOverride).c_str(), GetAttributesTargetListString(attrTarget).c_str()), attributesDirective->mAttributeTargetSpecifier); // CS0657
-			}
-			
-			success = false;
+				success = false;
+			}						
 		}
 
 		if ((success) && (targetOverride != (BfAttributeTargets)0))
 		{
-			if ((targetOverride == BfAttributeTargets_ReturnValue) && (attrTarget == BfAttributeTargets_Method))
+			if ((mCurMethodInstance != NULL) && (targetOverride == BfAttributeTargets_ReturnValue) && (attrTarget == BfAttributeTargets_Method))
 			{
 				auto methodInfoEx = mCurMethodInstance->GetMethodInfoEx();
 
@@ -11389,11 +11400,9 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 					methodInfoEx->mMethodCustomAttributes->mReturnCustomAttributes->mAttributes.push_back(customAttribute);
 				}
 			}
-			else
-			{
-				// Failed - ignore
-				success = false;
-			}
+			
+			// Mark as failed since we don't actually want to add this to the custom attributes set
+			success = false;			
 		}
 		
 		if (success)

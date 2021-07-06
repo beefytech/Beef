@@ -718,6 +718,7 @@ namespace System.Reflection
 			public int32 mMethodIdx;
 			public int32 mVirtualIdx;
 			public int32 mCustomAttributesIdx;
+			public int32 mReturnCustomAttributesIdx;
         }
 
 		public enum ParamFlags : int16
@@ -734,6 +735,7 @@ namespace System.Reflection
 			public TypeId mType;
 			public ParamFlags mParamFlags;
 			public int32 mDefaultIdx;
+			public int32 mCustomAttributesIdx;
 		}
 
 		public struct InterfaceData
