@@ -3469,9 +3469,12 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 	if ((flags & (BfDependencyMap::DependencyFlag_MethodGenericArg | BfDependencyMap::DependencyFlag_TypeGenericArg)) != 0)
 		depFlag = BfDependencyMap::DependencyFlag_GenericArgRef; // Will cause a rebuild but not an outright deletion of the type
 
-	auto underlyingType = usedType->GetUnderlyingType();
-	if (underlyingType != NULL) 
-		AddDependency(underlyingType, userType, depFlag);
+	if (!usedType->IsGenericTypeInstance())
+	{
+		auto underlyingType = usedType->GetUnderlyingType();
+		if (underlyingType != NULL)
+			AddDependency(underlyingType, userType, depFlag);
+	}
 
 	BfDependedType* checkDType = usedType->ToDependedType();
 	if (checkDType == NULL)
@@ -3491,7 +3494,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 
 	if (!checkDType->mDependencyMap.AddUsedBy(userType, flags))
 		return;
-	if (checkDType->IsGenericTypeInstance())
+	if ((checkDType->IsGenericTypeInstance()) && (!userType->IsMethodRef()))
 	{
 		auto genericTypeInstance = (BfTypeInstance*) checkDType;
 		for (auto genericArg : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
