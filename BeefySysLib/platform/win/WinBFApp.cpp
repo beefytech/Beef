@@ -76,6 +76,22 @@ static BOOL ClipToMonitor(HMONITOR mon, HDC hdc, LPRECT monRect, LPARAM userArg)
 	return TRUE;
 }
 
+static BOOL KeyboardLayoutHasAltGr(HKL layout)
+{
+	BOOL hasAltGr = FALSE;
+	int scancode;
+	for (WORD i = 32; i < 256; ++i)
+	{
+	    scancode = VkKeyScanEx((TCHAR)i, layout);
+	    if ((scancode != -1) && ((scancode & 0x600) == 0x600))
+	    {
+	        hasAltGr = TRUE;
+	        break;
+	    }
+	}
+	return hasAltGr;
+}
+
 WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
 	HINSTANCE hInstance = GetModuleHandle(NULL);
@@ -281,6 +297,9 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		BF_ASSERT(winParent->mHWnd);
 		parent->mChildren.push_back(this);
 	}
+
+	HKL layout = GetKeyboardLayout(0);
+	mKeyLayoutHasAltGr = (KeyboardLayoutHasAltGr(layout) == TRUE);
 }
 
 WinBFWindow::~WinBFWindow()
@@ -880,6 +899,9 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				if (keyCode == VK_APPS)
 					break; // This is handled in WM_CONTEXTMENU
 
+				if ((mKeyLayoutHasAltGr) && (keyCode == VK_MENU) && ((lParam & 0x01000000) != 0))
+					keyCode = VK_RMENU;
+
 				mIsKeyDown[keyCode] = true;				
 				
 				for (auto kv : *menuIDMap)
@@ -899,7 +921,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				if (!mIsMenuKeyHandled)
 				{
-					if (mKeyDownFunc(this, (int) wParam, (lParam & 0x7FFF) != 0))
+					if (mKeyDownFunc(this, keyCode, (lParam & 0x7FFF) != 0))
 					{
 						mIsMenuKeyHandled = true;
 						doResult = true;				
@@ -936,9 +958,11 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		case WM_KEYUP:
 			{
 				int keyCode = (int) wParam;
+				if ((mKeyLayoutHasAltGr) && (keyCode == VK_MENU) && ((lParam & 0x01000000) != 0))
+					keyCode = VK_RMENU;
 				if (mIsKeyDown[keyCode])
 				{
-					mKeyUpFunc(this, (int) wParam);
+					mKeyUpFunc(this, keyCode);
 					mIsKeyDown[keyCode] = false;
 				}
 			}
@@ -1022,6 +1046,10 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				mMovedFunc(this);
 			if (gBFApp->mSysDialogCnt == 0)
 				gBFApp->Process();		
+			break;
+
+		case WM_INPUTLANGCHANGE:
+			mKeyLayoutHasAltGr = (KeyboardLayoutHasAltGr((HKL)lParam) == TRUE);
 			break;
 		}
 		
