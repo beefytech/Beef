@@ -235,7 +235,7 @@ namespace BeefPerf
 			mDockingFrame = mMainFrame.mDockingFrame;
 
 			BFWindow.Flags windowFlags = .Border | .SysMenu | .Caption | .Minimize | .Maximize |
-				.QuitOnClose | .Resizable | .Menu | .SysMenu;
+				.QuitOnClose | .Resizable | .Menu;
 			if (mWantsFullscreen)
 				windowFlags |= BFWindowBase.Flags.Fullscreen;
 
