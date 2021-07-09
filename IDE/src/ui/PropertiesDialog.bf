@@ -44,7 +44,8 @@ namespace IDE.ui
 		{
 			if ((evt.mKeyCode == .Control) ||
 				(evt.mKeyCode == .Shift) ||
-				(evt.mKeyCode == .Alt))
+				(evt.mKeyCode == .Alt) ||
+				(evt.mKeyCode == .RAlt))
 				return;
 
 			if ((evt.mKeyFlags == 0) &&

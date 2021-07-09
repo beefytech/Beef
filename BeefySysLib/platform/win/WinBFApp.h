@@ -52,6 +52,7 @@ public:
 	bool					mSoftHasFocus; // Mostly tracks mHasFocus except for when we get an explicit 'LostFocus' callback	
 
 	bool					mNeedsStateReset;		
+	bool					mKeyLayoutHasAltGr;
 
 public:
 	virtual LRESULT WindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);

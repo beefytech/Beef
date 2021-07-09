@@ -82,6 +82,8 @@ namespace Beefy.widgets
         F12 = 0x7B,
         Numlock = 0x90,
         Scroll = 0x91,
+		RAlt = 0xA5,
+		RMenu = 0xA5,
 		Semicolon = 0xBA,
 		Equals = 0xBB,
 		Comma = 0xBC,
