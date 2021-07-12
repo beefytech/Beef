@@ -758,7 +758,7 @@ bool BfMethodInstance::HasParamsArray()
 
 int BfMethodInstance::GetStructRetIdx(bool forceStatic)
 {		
-	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType()) && (!mIsIntrinsic))
+	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType(NULL, NULL, forceStatic)) && (!mIsIntrinsic))
 	{
 		auto returnTypeInst = mReturnType->ToTypeInstance();
 		if ((returnTypeInst != NULL) && (returnTypeInst->mHasUnderlyingArray))
@@ -792,10 +792,11 @@ bool BfMethodInstance::HasSelf()
 	return false;
 }
 
-bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeCode* loweredTypeCode2)
+bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeCode* loweredTypeCode2, bool forceStatic)
 {
 	// Win32 handler
-	if ((mMethodDef->mIsStatic) && (mReturnType->IsComposite()) && 
+	if (((mMethodDef->mIsStatic) || (forceStatic)) && 
+		(mReturnType->IsComposite()) &&
 		((mReturnType->mSize == 4) || (mReturnType->mSize == 8)))
 	{
 		auto returnTypeInst = mReturnType->ToTypeInstance();
@@ -816,7 +817,7 @@ bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeC
 		}
 	}
 
-	return mReturnType->GetLoweredType(mMethodDef->mIsStatic ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
+	return mReturnType->GetLoweredType((mMethodDef->mIsStatic || forceStatic) ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
 }
 
 bool BfMethodInstance::WantsStructsAttribByVal()
@@ -1179,7 +1180,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
-	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2)))
+	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2, forceStatic)))
 	{
 		auto irReturnType = module->GetIRLoweredType(loweredReturnTypeCode, loweredReturnTypeCode2);
 		returnType = irReturnType;

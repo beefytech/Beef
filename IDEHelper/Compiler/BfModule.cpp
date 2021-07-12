@@ -1135,7 +1135,7 @@ void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
 	{
 		// We almost always want this to be 'false' unless we need need to be able to inspect the generated LLVM
 		//  code as we walk the AST
-		//mBfIRBuilder->mDbgVerifyCodeGen = true;			
+		//mBfIRBuilder->mDbgVerifyCodeGen = true;
 		if (
 			(mModuleName == "-")
 			//|| (mModuleName == "BeefTest2_ClearColorValue")
@@ -15160,6 +15160,7 @@ void BfModule::CreateDelegateInvokeMethod()
 	
 	SizedArray<BfIRType, 8> origParamTypes;
 	BfIRType origReturnType;
+	BfIRType staticReturnType;
 	mCurMethodInstance->GetIRFunctionInfo(this, origReturnType, origParamTypes);
 
 	if (mCurMethodInstance->mReturnType->IsValueType())
@@ -15171,15 +15172,17 @@ void BfModule::CreateDelegateInvokeMethod()
 	int thisIdx = 0;
 	if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
 	{		
-		thisIdx = mCurMethodInstance->GetStructRetIdx() ^ 1;
-		staticFuncArgs.push_back(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()));
+		thisIdx = mCurMethodInstance->GetStructRetIdx() ^ 1;		
 		memberFuncArgs.push_back(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()));
 	}
+
+	if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx(true) != -1))
+		staticFuncArgs.push_back(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()));
 
 	if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() == 0))
 		memberFuncArgs.push_back(BfIRValue()); // Push 'target'
 
-	mCurMethodInstance->GetIRFunctionInfo(this, origReturnType, staticParamTypes, true);
+	mCurMethodInstance->GetIRFunctionInfo(this, staticReturnType, staticParamTypes, true);
 	
 	for (int i = 1; i < (int)mCurMethodState->mLocals.size(); i++)
 	{
@@ -15188,7 +15191,7 @@ void BfModule::CreateDelegateInvokeMethod()
 		exprEvaluator.PushArg(localVal, memberFuncArgs);		
 	}
 
-	auto staticFunc = mBfIRBuilder->CreateFunctionType(origReturnType, staticParamTypes, false);
+	auto staticFunc = mBfIRBuilder->CreateFunctionType(staticReturnType, staticParamTypes, false);
 	auto staticFuncPtr = mBfIRBuilder->GetPointerTo(staticFunc);
 	auto staticFuncPtrPtr = mBfIRBuilder->GetPointerTo(staticFuncPtr);
 
@@ -15233,11 +15236,20 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, staticFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
 		staticResult = mBfIRBuilder->CreateCall(funcPtr, staticFuncArgs);
-		if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
+		if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx(true) != -1))
 		{
 			// Note: since this is a forced static invocation, we know the sret will be the first parameter
 			mBfIRBuilder->Call_AddAttribute(staticResult, 0 + 1, BfIRAttribute_StructRet);
 		}
+
+		// We had a sret for the non-static but no sret for the static (because we have a lowered return type there)
+		if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1) && (mCurMethodInstance->GetStructRetIdx(true) == -1))
+		{
+			auto sretToType = mBfIRBuilder->GetPointerTo(staticReturnType);
+			auto sretCastedPtr = mBfIRBuilder->CreateBitCast(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()), sretToType);
+			mBfIRBuilder->CreateStore(staticResult, sretCastedPtr);
+		}
+
 		if (callingConv == BfIRCallingConv_ThisCall)
 			callingConv = BfIRCallingConv_CDecl;
 		if (callingConv != BfIRCallingConv_CDecl)
