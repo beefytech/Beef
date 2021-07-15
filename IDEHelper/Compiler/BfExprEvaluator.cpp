@@ -9003,7 +9003,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		auto identifierNode = BfNodeDynCast<BfIdentifierNode>(targetSrc);
 		while (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(identifierNode))
 			identifierNode = qualifiedNameNode->mRight;
-		if ((identifierNode != NULL) && (methodDef->mIdx >= 0) && (!isIndirectMethodCall))
+		if ((identifierNode != NULL) && (methodDef->mIdx >= 0) && (!isIndirectMethodCall) && 
+			((targetTypeInst == NULL) || (!targetTypeInst->IsDelegateOrFunction())))
 		{
 			mModule->mCompiler->mResolvePassData->HandleMethodReference(identifierNode, moduleMethodInstance.mMethodInstance->GetOwner()->mTypeDef, methodDef);
 			auto autoComplete = GetAutoComplete();
