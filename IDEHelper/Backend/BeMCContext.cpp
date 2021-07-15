@@ -17517,6 +17517,40 @@ void BeMCContext::Generate(BeFunction* function)
 								AllocInst(BeMCInstKind_DbgBreak);
 							}
 							break;
+						case BfIRIntrinsic_Index:
+							{
+								auto valPtr = GetOperand(castedInst->mArgs[0].mValue);
+								auto idx = GetOperand(castedInst->mArgs[1].mValue);
+								
+								auto valType = GetType(valPtr);
+								if (!valType->IsPointer())
+								{
+									SoftFail("Non-pointer index target", castedInst->mDbgLoc);
+									break;
+								}
+								valType = ((BePointerType*)valType)->mElementType;
+
+								if (!valType->IsVector())
+								{
+									SoftFail("Non-vector index target", castedInst->mDbgLoc);
+									break;
+								}
+
+								auto vectorType = (BeVectorType*)valType;
+								
+								auto elementPtrType = mModule->mContext->GetPointerTo(vectorType->mElementType);
+
+								result = AllocVirtualReg(elementPtrType);
+								CreateDefineVReg(result);
+								auto vregInfo = GetVRegInfo(result);
+								vregInfo->mRelTo = valPtr;																
+								vregInfo->mRelOffset = idx;
+								vregInfo->mRelOffsetScale = vectorType->mElementType->mSize;
+								vregInfo->mIsExpr = true;
+
+								result = CreateLoad(result);
+							}
+							break;
 						case BfIRIntrinsic_MemSet:
 							{
 								if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mArgs[1].mValue))
