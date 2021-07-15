@@ -844,6 +844,8 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
     //printf("BfpSpawn_Create: %s %s %x\n", inTargetPath, args, flags);    
 
+    char* prevWorkingDir = NULL;
+
 	if ((workingDir != NULL) && (workingDir[0] != 0))
 	{
 		if (chdir(workingDir) != 0)
@@ -852,7 +854,18 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 			OUTRESULT(BfpSpawnResult_UnknownError);
 			return NULL;
 		}
+
+        prevWorkingDir = getcwd(NULL, 0);
 	}
+
+    defer(
+        {
+            if (prevWorkingDir != NULL)
+            {
+                chdir(prevWorkingDir);
+                free(prevWorkingDir);
+            }
+        });
 
 	String newArgs;
 	String tempFileName;
