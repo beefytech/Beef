@@ -1500,6 +1500,12 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return ">>=";
 	case BfToken_AndEquals:
 		return "&=";
+	case BfToken_AndMinus:
+		return "&-";
+	case BfToken_AndPlus:
+		return "&+";
+	case BfToken_AndStar:
+		return "&*";
 	case BfToken_OrEquals:
 		return "|=";
 	case BfToken_XorEquals:
@@ -1630,11 +1636,14 @@ int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
 	switch (binOp)
 	{			
 	case BfBinaryOp_Multiply:
+	case BfBinaryOp_OverflowMultiply:
 	case BfBinaryOp_Divide:
-	case BfBinaryOp_Modulus:	
+	case BfBinaryOp_Modulus:
 		return 13;
 	case BfBinaryOp_Add:
-	case BfBinaryOp_Subtract:				
+	case BfBinaryOp_Subtract:
+	case BfBinaryOp_OverflowAdd:
+	case BfBinaryOp_OverflowSubtract:
 		return 12;	
 	case BfBinaryOp_LeftShift:
 	case BfBinaryOp_RightShift:
@@ -1682,6 +1691,9 @@ const char* Beefy::BfGetOpName(BfBinaryOp binOp)
 	case BfBinaryOp_Add: return "+";
 	case BfBinaryOp_Subtract: return "-";
 	case BfBinaryOp_Multiply: return "*";
+	case BfBinaryOp_OverflowAdd: return "&+";
+	case BfBinaryOp_OverflowSubtract: return "&-";
+	case BfBinaryOp_OverflowMultiply: return "&*";
 	case BfBinaryOp_Divide: return "/";
 	case BfBinaryOp_Modulus: return "%";
 	case BfBinaryOp_BitwiseAnd: return "&";
@@ -1742,6 +1754,12 @@ BfBinaryOp Beefy::BfTokenToBinaryOp(BfToken token)
 		return BfBinaryOp_Subtract;
 	case BfToken_Star:
 		return BfBinaryOp_Multiply;
+	case BfToken_AndPlus:
+		return BfBinaryOp_OverflowAdd;
+	case BfToken_AndMinus:
+		return BfBinaryOp_OverflowSubtract;
+	case BfToken_AndStar:
+		return BfBinaryOp_OverflowMultiply;
 	case BfToken_ForwardSlash:
 		return BfBinaryOp_Divide;
 	case BfToken_Modulus:

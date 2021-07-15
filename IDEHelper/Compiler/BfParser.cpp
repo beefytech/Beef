@@ -1549,6 +1549,21 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 				mToken = BfToken_AndEquals;
 				mTokenEnd = ++mSrcIdx;
 			}
+			else if (mSrc[mSrcIdx] == '+')
+			{
+				mToken = BfToken_AndPlus;
+				mTokenEnd = ++mSrcIdx;
+			}
+			else if (mSrc[mSrcIdx] == '-')
+			{
+				mToken = BfToken_AndMinus;
+				mTokenEnd = ++mSrcIdx;
+			}
+			else if (mSrc[mSrcIdx] == '*')
+			{
+				mToken = BfToken_AndStar;
+				mTokenEnd = ++mSrcIdx;
+			}
 			else
 				mToken = BfToken_Ampersand;
 			mSyntaxToken = BfSyntaxToken_Token;

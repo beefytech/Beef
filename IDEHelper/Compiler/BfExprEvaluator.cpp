@@ -21177,11 +21177,20 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			BfBinaryOp findBinaryOp = binaryOp;
 
 			bool isComparison = (binaryOp >= BfBinaryOp_Equality) && (binaryOp <= BfBinaryOp_LessThanOrEqual);
-						
+			
 			for (int pass = 0; pass < 2; pass++)
 			{
 				BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);
-				bool foundOp = false;							
+				BfBinaryOp overflowBinaryOp = BfBinaryOp_None;
+
+				if (findBinaryOp == BfBinaryOp_OverflowAdd)
+					overflowBinaryOp = BfBinaryOp_Add;
+				else if (findBinaryOp == BfBinaryOp_OverflowSubtract)
+					overflowBinaryOp = BfBinaryOp_Subtract;
+				else if (findBinaryOp == BfBinaryOp_OverflowMultiply)
+					overflowBinaryOp = BfBinaryOp_Multiply;
+
+				bool foundOp = false;
 
 				BfResolvedArg leftArg;
 				leftArg.mExpression = leftExpression;
@@ -21225,7 +21234,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				bool invertResult = false;												
 				BfType* operatorConstraintReturnType = NULL;
 
-				bool wasTransformedUsage = pass == 1;
+				bool wasTransformedUsage = (pass == 1);
 
 				while (true)
 				{
@@ -21288,7 +21297,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 								}
 							}
 						}
-						else if (operatorDef->mOperatorDeclaration->mBinOp == oppositeBinaryOp)
+						else if ((operatorDef->mOperatorDeclaration->mBinOp == oppositeBinaryOp) || (operatorDef->mOperatorDeclaration->mBinOp == overflowBinaryOp))
 							oppositeOperatorDefs.Add(operatorDef);							
 					}
 
@@ -21309,7 +21318,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 										methodMatcher.mBestMethodDef = oppositeOperatorDef;
 										methodMatcher.mBestMethodTypeInstance = checkType;
 										methodMatcher.mSelfType = entry.mSrcType;
-										wasTransformedUsage = true;
+										if (oppositeBinaryOp != BfBinaryOp_None)
+											wasTransformedUsage = true;
 									}
 								}
 								else
@@ -21322,7 +21332,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 										{
 											operatorConstraintReturnType = returnType;
 											methodMatcher.mSelfType = entry.mSrcType;
-											wasTransformedUsage = true;
+											if (oppositeBinaryOp != BfBinaryOp_None)
+												wasTransformedUsage = true;
 										}
 									}
 								}
@@ -21332,7 +21343,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 								if (methodMatcher.CheckMethod(NULL, checkType, oppositeOperatorDef, false))
 								{									
 									methodMatcher.mSelfType = entry.mSrcType;
-									wasTransformedUsage = true;
+									if (oppositeBinaryOp != BfBinaryOp_None)
+										wasTransformedUsage = true;
 								}
 							}
 						}
@@ -21526,12 +21538,12 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				
 				if (pass == 1)
 					break;			
-				
-				auto flippedBinaryOp = BfGetFlippedBinaryOp(findBinaryOp);				
+												
+				auto flippedBinaryOp = BfGetFlippedBinaryOp(findBinaryOp);
 				if (flippedBinaryOp != BfBinaryOp_None)
-					findBinaryOp = flippedBinaryOp;
+					findBinaryOp = flippedBinaryOp;				
 			}
-					
+			
 			auto prevResultType = resultType;
 			if ((leftValue.mType->IsPrimitiveType()) && (!rightValue.mType->IsTypedPrimitive()))
 				resultType = leftValue.mType;
@@ -21567,7 +21579,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		}
 
 		//TODO: Allow all pointer comparisons, but only allow SUBTRACTION between equal pointer types
-		if (binaryOp == BfBinaryOp_Subtract)
+		if ((binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_OverflowSubtract))
 		{			
 			if (!mModule->CanCast(*otherTypedValue, resultType))
 			{
@@ -21622,7 +21634,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 		// One pointer
 		if ((!otherType->IsIntegral()) ||
-			((binaryOp != BfBinaryOp_Add) && (binaryOp != BfBinaryOp_Subtract)))
+			((binaryOp != BfBinaryOp_Add) && (binaryOp != BfBinaryOp_Subtract) && (binaryOp != BfBinaryOp_OverflowAdd) && (binaryOp != BfBinaryOp_OverflowSubtract)))
 		{
 			_OpFail();
 			return;
@@ -21632,7 +21644,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		BfIRValue addValue = otherTypedValue->mValue;		
 		if ((!otherTypedValue->mType->IsSigned()) && (otherTypedValue->mType->mSize < mModule->mSystem->mPtrSize))		
 			addValue = mModule->mBfIRBuilder->CreateNumericCast(addValue, false, BfTypeCode_UIntPtr);
-		if (binaryOp == BfBinaryOp_Subtract)
+		if ((binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_OverflowSubtract))
 		{
 			if (resultTypeSrc == rightExpression)			
 				mModule->Fail("Cannot subtract a pointer from an integer", resultTypeSrc);
@@ -21731,7 +21743,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				}
 
 				// Allow integer offsetting
-				if ((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract))
+				if ((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_OverflowAdd) || (binaryOp == BfBinaryOp_OverflowSubtract))
 				{
 					if (otherType->IsIntegral())
 						needsOtherCast = false;
@@ -21954,7 +21966,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				if (rightValue.mType->IsIntegral())
 					explicitCast = true;
 			}			
-			else if (((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract)) && (resultType->IsChar()) && (otherType->IsInteger()))
+			else if (((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_OverflowAdd) || (binaryOp == BfBinaryOp_OverflowSubtract)) && (resultType->IsChar()) && (otherType->IsInteger()))
 			{
 				// charVal += intVal;
 				explicitCast = true;
@@ -21980,14 +21992,15 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			}
 			else
 			{
-				if ((binaryOp == BfBinaryOp_Subtract) && (resultType->IsChar()) && (otherType->IsChar()))
+				if (((binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_OverflowSubtract)) && 
+					(resultType->IsChar()) && (otherType->IsChar()))
 				{
 					// "wchar - char" subtraction will always fit into int32, because of unicode range
 					resultType = mModule->GetPrimitiveType(BfTypeCode_Int32);
 					explicitCast = true;
 				}
 				else if ((otherType->IsChar()) &&
-					((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract)))
+					((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_OverflowAdd) || (binaryOp == BfBinaryOp_OverflowSubtract)))
 				{
 					mModule->Fail(StrFormat("Cannot perform operation between types '%s' and '%s'", 
 						mModule->TypeToString(leftValue.mType).c_str(),
@@ -22142,6 +22155,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 	
 	if ((resultType->IsChar()) &&
 		((binaryOp == BfBinaryOp_Multiply) || 
+		 (binaryOp == BfBinaryOp_OverflowMultiply) ||
 		 (binaryOp == BfBinaryOp_Divide) ||
 		 (binaryOp == BfBinaryOp_Modulus)))
 	{
@@ -22151,15 +22165,18 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 
 	switch (binaryOp)
 	{
-	case BfBinaryOp_Add:		
+	case BfBinaryOp_Add:
+	case BfBinaryOp_OverflowAdd:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateAdd(convLeftValue, convRightValue), resultType);		
 		mModule->CheckRangeError(resultType, opToken);
 		break;
-	case BfBinaryOp_Subtract:		
+	case BfBinaryOp_Subtract:
+	case BfBinaryOp_OverflowSubtract:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateSub(convLeftValue, convRightValue), resultType);
 		mModule->CheckRangeError(resultType, opToken);
 		break;
-	case BfBinaryOp_Multiply:		
+	case BfBinaryOp_Multiply:
+	case BfBinaryOp_OverflowMultiply:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateMul(convLeftValue, convRightValue), resultType);
 		mModule->CheckRangeError(resultType, opToken);
 		break;

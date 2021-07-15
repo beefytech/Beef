@@ -198,6 +198,41 @@ namespace Tests
 			}
 		}
 
+		struct StructH
+		{
+			public static int operator+(StructH lhs, int rhs)
+			{
+				return 1;
+			}
+
+			public static int operator+(int lhs, StructH rhs)
+			{
+				return 2;
+			}
+
+			[Commutable]
+			public static int operator+(StructH lhs, float rhs)
+			{
+				return 3;
+			}
+
+			public static int operator&+(StructH lhs, int rhs)
+			{
+				return 4;
+			}
+
+			public static int operator&+(int lhs, StructH rhs)
+			{
+				return 5;
+			}
+
+			[Commutable]
+			public static int operator&+(StructH lhs, float rhs)
+			{
+				return 6;
+			}
+		}
+
 		struct StructOp<T, T2> where T : operator T + T2
 		{
 			public T DoIt(T val, T2 val2)
@@ -428,6 +463,20 @@ namespace Tests
 			Test.Assert(10 + sf == 2);
 			Test.Assert(sf + 1.0f == 3);
 			Test.Assert(2.0f + sf == 3);
+			Test.Assert(sf &+ 10 == 1);
+			Test.Assert(10 &+ sf == 2);
+			Test.Assert(sf &+ 1.0f == 3);
+			Test.Assert(2.0f &+ sf == 3);
+
+			StructH sh = default;
+			Test.Assert(sh + 10 == 1);
+			Test.Assert(10 + sh == 2);
+			Test.Assert(sh + 1.0f == 3);
+			Test.Assert(2.0f + sh == 3);
+			Test.Assert(sh &+ 10 == 4);
+			Test.Assert(10 &+ sh == 5);
+			Test.Assert(sh &+ 1.0f == 6);
+			Test.Assert(2.0f &+ sh == 6);
 
 			StructG sg = .(100);
 			StructG sg2 = .(200);

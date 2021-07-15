@@ -754,6 +754,15 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 			case BfBinaryOp_Multiply:
 				methodName = "ml";
 				break;
+			case BfBinaryOp_OverflowAdd:
+				methodName = "opl";
+				break;
+			case BfBinaryOp_OverflowSubtract:
+				methodName = "omi";
+				break;
+			case BfBinaryOp_OverflowMultiply:
+				methodName = "oml";
+				break;
 			case BfBinaryOp_Divide:
 				methodName = "dv";
 				break;
@@ -1871,6 +1880,15 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 				break;
 			case BfBinaryOp_Multiply:
 				name += "?D";
+				break;
+			case BfBinaryOp_OverflowAdd:
+				name += "?OH";
+				break;
+			case BfBinaryOp_OverflowSubtract:
+				name += "?OG";
+				break;
+			case BfBinaryOp_OverflowMultiply:
+				name += "?OD";
 				break;
 			case BfBinaryOp_Divide:
 				name += "?K";
