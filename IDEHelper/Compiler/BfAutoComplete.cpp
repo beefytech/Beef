@@ -2970,6 +2970,9 @@ void BfAutoComplete::CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 	if (typeInstance == NULL)
 		return;	
 
+	if (typeInstance->IsInterface())
+		return;
+
 	for (auto& ifaceTypeInst : typeInstance->mInterfaces)
 	{
 		Array<BfMethodInstance*> missingMethods;
