@@ -16250,14 +16250,14 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			BfType* type;
 			{
 				//SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);				
-				type = mModule->ResolveTypeRef(qualifiedName->mLeft, NULL, BfPopulateType_DataAndMethods, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_IgnoreLookupError));
+				type = mModule->ResolveTypeRef(qualifiedName->mLeft, NULL, BfPopulateType_DataAndMethods, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowGlobalContainer | BfResolveTypeRefFlag_IgnoreLookupError));
 			}
 
 			if (type == NULL)
 			{
 				//SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
 				
-				type = mModule->ResolveTypeRef(qualifiedName, methodGenericArguments, BfPopulateType_DataAndMethods, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_IgnoreLookupError));
+				type = mModule->ResolveTypeRef(qualifiedName, methodGenericArguments, BfPopulateType_DataAndMethods, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowGlobalContainer | BfResolveTypeRefFlag_IgnoreLookupError));
 				if (type != NULL)
 				{
 					// This is a CTOR call, treat it as such

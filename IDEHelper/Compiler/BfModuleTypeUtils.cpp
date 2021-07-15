@@ -8418,7 +8418,7 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 	return useTypeDef;
 }
 
-BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error, BfTypeLookupResultCtx* lookupResultCtx)
+BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error, BfTypeLookupResultCtx* lookupResultCtx, BfResolveTypeRefFlags resolveFlags)
 {
 	if ((findName.mSize == 1) && (findName.mParts[0]->mIsSystemType))
 	{
@@ -8566,10 +8566,13 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 	if ((lookupResultCtx != NULL) && (lookupResultCtx->mResult != NULL) && (!lookupResultCtx->mIsVerify) && (foundInnerType != NULL) && (foundInnerType == lookupCtx.mBestTypeDef))
 		lookupResultCtx->mResult->mFoundInnerType = true;
 
+	if (((resolveFlags & BfResolveTypeRefFlag_AllowGlobalContainer) == 0) && (lookupCtx.mBestTypeDef != NULL) && (lookupCtx.mBestTypeDef->IsGlobalsContainer()))
+		return NULL;
+
 	return lookupCtx.mBestTypeDef;
 }
 
-BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error)
+BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error, BfResolveTypeRefFlags resolveFlags)
 {
 	BP_ZONE("BfModule::FindTypeDef_1");
 
@@ -8599,7 +8602,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) && (typeInstance != NULL))
 	{
 		if (mCompiler->mResolvePassData->mAutoCompleteTempTypes.Contains(useTypeDef))
-			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error);
+			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error, NULL, resolveFlags);
 	}
 
 	BfTypeLookupEntry typeLookupEntry;
@@ -8623,7 +8626,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 
 		BfTypeLookupResultCtx lookupResultCtx;
 		lookupResultCtx.mResult = resultPtr;
-		auto typeDef = FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, errorPtr, &lookupResultCtx);
+		auto typeDef = FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, errorPtr, &lookupResultCtx, resolveFlags);
 
 		if (prevAllocSize != typeInstance->mLookupResults.size())
 		{
@@ -8639,21 +8642,20 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	else
 	{
 		if ((resultPtr == NULL) || (resultPtr->mForceLookup))
-			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error);
+			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error, NULL, resolveFlags);
 		else
 			return resultPtr->mTypeDef;
-	}
-	
+	}	
 }
 
-BfTypeDef* BfModule::FindTypeDef(const StringImpl& typeName, int numGenericArgs, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error)
+BfTypeDef* BfModule::FindTypeDef(const StringImpl& typeName, int numGenericArgs, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error, BfResolveTypeRefFlags resolveFlags)
 {
 	BP_ZONE("BfModule::FindTypeDef_4");
 
 	BfSizedAtomComposite findName;
 	if (!mSystem->ParseAtomComposite(typeName, findName))
 		return NULL;
-	auto result = FindTypeDef(findName, numGenericArgs, typeInstanceOverride, error);
+	auto result = FindTypeDef(findName, numGenericArgs, typeInstanceOverride, error, resolveFlags);
 	// Don't allow just finding extensions here. This can happen in some 'using static' cases but generally shouldn't happen
 	if ((result != NULL) && (result->mTypeCode == BfTypeCode_Extension))
 		return NULL; 	
@@ -8727,7 +8729,7 @@ BfTypeDef* BfModule::FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeI
 	}
 #endif
 
-	auto typeDef = FindTypeDef(findName, numGenericParams, typeInstanceOverride, error);
+	auto typeDef = FindTypeDef(findName, numGenericParams, typeInstanceOverride, error, resolveFlags);
 //TYPEDEF 	if (namedTypeRef != NULL)
 // 		namedTypeRef->mTypeDef = typeDef;
 

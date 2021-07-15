@@ -33,7 +33,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_NoCreate = 0x400,
 	BfResolveTypeRefFlag_NoWarnOnMut = 0x800,
 	BfResolveTypeRefFlag_DisallowComptime = 0x1000,
-	BfResolveTypeRefFlag_AllowDotDotDot = 0x2000
+	BfResolveTypeRefFlag_AllowDotDotDot = 0x2000,
+	BfResolveTypeRefFlag_AllowGlobalContainer = 0x4000
 };
 
 enum BfTypeNameFlags : uint16
