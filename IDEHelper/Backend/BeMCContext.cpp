@@ -7667,11 +7667,16 @@ void BeMCContext::DoInstCombinePass()
 						continue;
 					}
 				}
-				else if ((mcAddr.mKind == BeMCOperandKind_Symbol) || (mcAddr.mKind == BeMCOperandKind_SymbolAddr))
+				else if (mcAddr.mKind == BeMCOperandKind_SymbolAddr)
 				{
 					// No actual load needed - just keep it as a Direct reference
 					inst->mKind = BeMCInstKind_Def;
 					//wantUnwrapVRegs.Add(inst->mArg0.mVRegIdx);
+					continue;
+				}
+				else if (mcAddr.mKind == BeMCOperandKind_Symbol)
+				{
+					//TODO: We used to have this as a 'inst->mKind = BeMCInstKind_Def;' case also, but that messed up post-increment (ie: gVal++) values
 					continue;
 				}
 
@@ -15848,7 +15853,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?TestBug@TestProgram@BeefTest@bf@@SAXXZ");
+	//mDebugging = (function->mName == "?GetVal@TestProgram@BeefTest@bf@@CATint@@XZ");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
