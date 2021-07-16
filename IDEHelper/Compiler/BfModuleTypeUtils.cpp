@@ -2781,6 +2781,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				AssertErrorState();
 				typeInstance->mTypeFailed = true;
 			}
+
+			if (_CheckTypeDone())
+			{
+				prevDefineState.CancelRestore();
+				return;
+			}
 		}
 
 		// Incase we had re-entry, work this through ourselves again here
@@ -3022,9 +3028,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			baseType = ResolveTypeDef(mCompiler->mFunctionTypeDef)->ToTypeInstance();
 	}
 	else
-	{
+	{		
 		for (auto checkTypeRef : typeDef->mBaseTypes)
 		{
+			if ((typeInstance->mDefineState == BfTypeDefineState_ResolvingBaseType) && (typeInstance->mTypeFailed))
+				break;
+
 			auto declTypeDef = typeDef;
 			if (typeDef->mIsCombinedPartial)
 				declTypeDef = typeDef->mPartials.front();
@@ -3032,8 +3041,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, checkTypeRef);
 			SetAndRestoreValue<BfTypeDefineState> prevDefineState(typeInstance->mDefineState, BfTypeDefineState_ResolvingBaseType);						
 
-			bool populateBase = !typeInstance->mTypeFailed;			
-			auto checkType = ResolveTypeRef(checkTypeRef, BfPopulateType_Declaration);
+			bool populateBase = !typeInstance->mTypeFailed;
+			BfType* checkType = checkType = ResolveTypeRef(checkTypeRef, BfPopulateType_Declaration);
+
 			if ((checkType != NULL) && (!checkType->IsInterface()) && (populateBase))
 			{
 				SetAndRestoreValue<BfTypeInstance*> prevBaseType(mContext->mCurTypeState->mCurBaseType, checkType->ToTypeInstance());
@@ -3138,6 +3148,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						}
 					}
 				}
+
+				if (_CheckTypeDone())
+				{
+					prevDefineState.CancelRestore();
+					return;
+				}
 			}
 			else
 			{
@@ -3149,6 +3165,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		wantPopulateInterfaces = true;		
 	}
+
+	if (_CheckTypeDone())
+		return;
 
 	if (resolvedTypeRef->IsBoxed())
 	{
