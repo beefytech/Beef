@@ -5845,8 +5845,6 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 	// Cond
 	auto valueScopeStart = ValueScopeStart();
 	auto localVal = mBfIRBuilder->CreateLoad(localDef->mAddr);
-	if ((forEachStmt->mCollectionExpression != NULL) && (!didInference))
-		target = CreateValueFromExpression(forEachStmt->mCollectionExpression, varType);
 	if (!target)
 	{
 		// Soldier on

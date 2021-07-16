@@ -28,6 +28,13 @@ namespace Tests
 			}
 		}
 
+		static int sGetValCount = 0;
+
+		static int GetVal()
+		{
+			return 10 + sGetValCount++;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -57,6 +64,14 @@ namespace Tests
 			Test.Assert(e.mDispCount == 3);
 			TestEnumerator2(e);
 			Test.Assert(e.mDispCount == 4);
+
+			int iterations = 0;
+			for (int i < GetVal())
+			{
+				iterations++;
+			}
+			Test.Assert(iterations == 10);
+			Test.Assert(sGetValCount == 1);
 		}
 
 		public static void TestEnumerator1(EnumeratorTest e)
