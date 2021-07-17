@@ -8510,7 +8510,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			if (auto identifier = BfNodeDynCastExact<BfIdentifierNode>(targetSrc))
 				mModule->SetElementType(identifier, resolvedTypeInstance->IsEnum() ? BfSourceElementType_Type : BfSourceElementType_Struct);
 			if (mModule->mCompiler->mResolvePassData != NULL)
-				mModule->mCompiler->mResolvePassData->HandleTypeReference(targetSrc, resolvedTypeInstance->mTypeDef);
+			{
+				if (!BfNodeIsA<BfMemberReferenceExpression>(targetSrc))
+					mModule->mCompiler->mResolvePassData->HandleTypeReference(targetSrc, resolvedTypeInstance->mTypeDef);
+			}
 
 			BfTypedValue structInst;
 			mModule->PopulateType(resolvedTypeInstance);
