@@ -279,6 +279,12 @@ namespace IDE
 
 				project.mLastDidBuild = true;
 		    }
+			else
+			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
+			}
 
 			return true;
 		}
@@ -546,6 +552,12 @@ namespace IDE
 					project.mLastDidBuild = true;
 			    }
 			}
+			else
+			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
+			}
 
 			return true;
 		}
@@ -645,6 +657,12 @@ namespace IDE
 
 					project.mLastDidBuild = true;
 			    }
+			}
+			else
+			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
 			}
 
 			return true;
@@ -1155,6 +1173,12 @@ namespace IDE
 					project.mLastDidBuild = true;
 			    }
 			}
+			else
+			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
+			}
 
 			return true;
 		}
@@ -1266,6 +1290,10 @@ namespace IDE
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)
 			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
+
 				return true; 
 			}
 
