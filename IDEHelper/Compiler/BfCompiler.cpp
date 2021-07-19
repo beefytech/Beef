@@ -4357,8 +4357,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 		{
 			BfResolveTypeRefFlags flags = BfResolveTypeRefFlag_None;
 			if (fieldDecl->mInitializer != NULL)
-				flags = (BfResolveTypeRefFlags)(flags | BfResolveTypeRefFlag_AllowUnknownSizedArray);
-			module->ResolveTypeRef(fieldDef->mTypeRef, {}, BfPopulateType_Identity, flags);
+				flags = (BfResolveTypeRefFlags)(flags | BfResolveTypeRefFlag_AllowInferredSizedArray);
+			module->ResolveTypeRef(fieldDef->mTypeRef, BfPopulateType_Identity, flags);
 		}
 		mResolvePassData->mAutoComplete->CheckTypeRef(fieldDef->mTypeRef, true);
 	

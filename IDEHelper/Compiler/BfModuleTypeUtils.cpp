@@ -3686,7 +3686,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 				else
 				{										
-					resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
+					resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowInferredSizedArray));
 					if (resolvedFieldType == NULL)
 					{
 						// Failed, just put in placeholder 'var'
@@ -9735,7 +9735,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
-	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime | BfResolveTypeRefFlag_AllowUnknownSizedArray));
+	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime | BfResolveTypeRefFlag_AllowInferredSizedArray));
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
