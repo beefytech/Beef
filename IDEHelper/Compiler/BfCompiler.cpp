@@ -4355,7 +4355,10 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 		if (fieldDef->mTypeRef != NULL)
 		{
-			module->ResolveTypeRef(fieldDef->mTypeRef);			
+			BfResolveTypeRefFlags flags = BfResolveTypeRefFlag_None;
+			if (fieldDecl->mInitializer != NULL)
+				flags = (BfResolveTypeRefFlags)(flags | BfResolveTypeRefFlag_AllowUnknownSizedArray);
+			module->ResolveTypeRef(fieldDef->mTypeRef, {}, BfPopulateType_Identity, flags);
 		}
 		mResolvePassData->mAutoComplete->CheckTypeRef(fieldDef->mTypeRef, true);
 	

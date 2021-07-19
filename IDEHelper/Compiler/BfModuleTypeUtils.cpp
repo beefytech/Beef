@@ -9735,7 +9735,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
-	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime));
+	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime | BfResolveTypeRefFlag_AllowUnknownSizedArray));
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
@@ -9923,7 +9923,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
 				}
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
-				{
+				{					
 					BfUnknownSizedArrayType* arrayType = new BfUnknownSizedArrayType();
 					arrayType->mContext = mContext;
 					arrayType->mElementType = elementType;

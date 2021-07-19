@@ -15723,7 +15723,7 @@ void BfModule::CreateStaticCtor()
 							BfType* wantType = NULL;
 							if ((!BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef)) && (!BfNodeIsA<BfLetTypeReference>(fieldDef->mTypeRef)))
 							{
-								wantType = ResolveTypeRef(fieldDef->mTypeRef);
+								wantType = ResolveTypeRef(fieldDef->mTypeRef, {}, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowUnknownSizedArray);
 							}							
 							CreateValueFromExpression(fieldDef->mInitializer, wantType, BfEvalExprFlags_FieldInitializer);
 						}						

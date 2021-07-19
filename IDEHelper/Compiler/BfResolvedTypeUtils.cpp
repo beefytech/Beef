@@ -3259,6 +3259,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					else if (constant->mConstType == BfConstType_Undef)
 					{
 						elementCount = -1; // Marker for undef
+						if ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnknownSizedArray) == 0)
+						{
+							ctx->mModule->Fail("Invalid use of inferred-sized array", sizeExpr);
+						}
 					}
 					else
 					{
