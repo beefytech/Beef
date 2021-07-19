@@ -4824,8 +4824,13 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						mPropTarget = BfTypedValue(curCheckType);
 					else if (isBaseLookup)
 					{
-						mPropTarget = mModule->Cast(targetSrc, target, curCheckType);
-						BF_ASSERT(mPropTarget);
+						if (target.mValue.IsFake())
+							mPropTarget = BfTypedValue(target.mValue, curCheckType);
+						else
+						{
+							mPropTarget = mModule->Cast(targetSrc, target, curCheckType);
+							BF_ASSERT(mPropTarget);
+						}
 					}
 					else
 						mPropTarget = target;
