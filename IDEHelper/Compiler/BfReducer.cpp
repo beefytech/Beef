@@ -368,7 +368,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 	}
 	int chevronDepth = 0;
 	bool identifierExpected = true;
-	bool hadEndBracket = false;
+	int endBracket = -1;
 	int bracketDepth = 0;
 	int parenDepth = 0;
 	bool hadTupleComma = false;
@@ -388,8 +388,12 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 		auto checkTokenNode = BfNodeDynCast<BfTokenNode>(checkNode);
 		if (checkTokenNode != NULL)
 		{
-			if (hadEndBracket)
+			if (endBracket != -1)
+			{
+				if (outEndNode)
+					*outEndNode = endBracket;
 				return false;
+			}
 
 			BfToken checkToken = checkTokenNode->GetToken();
 			if (bracketDepth > 0)
@@ -650,7 +654,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 				}
 				else if (checkToken == BfToken_RBracket)
 				{
-					hadEndBracket = true;
+					endBracket = checkIdx;
 				}
 				else if ((checkToken == BfToken_Star) || (checkToken == BfToken_Question))
 				{
