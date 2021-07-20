@@ -5738,6 +5738,10 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 {	
 	UpdateSrcPos(forEachStmt);
 
+	auto startBB = mBfIRBuilder->GetInsertBlock();
+	auto condBB = mBfIRBuilder->CreateBlock("forless.cond", true);
+	mBfIRBuilder->SetInsertPoint(condBB);
+
 	BfScopeData scopeData;
 	// We set mIsLoop later	
 	if (forEachStmt->mLabelNode != NULL)
@@ -5800,6 +5804,9 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 			target = GetDefaultTypedValue(varType);
 	}
 	PopulateType(varType, BfPopulateType_Data);	
+
+	auto condEndBB = mBfIRBuilder->GetInsertBlock();
+	mBfIRBuilder->SetInsertPoint(startBB);
 	
 	BfLocalVariable* localDef = new BfLocalVariable(); 	
 	localDef->mNameNode = BfNodeDynCast<BfIdentifierNode>(forEachStmt->mVariableName);
@@ -5822,8 +5829,7 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 	localDef->Init();
 	UpdateExprSrcPos(forEachStmt->mVariableName);
 	AddLocalVariableDef(localDef, true);
-
-	auto condBB = mBfIRBuilder->CreateBlock("forless.cond", true);
+	
 	auto bodyBB = mBfIRBuilder->CreateBlock("forless.body");
 	auto incBB = mBfIRBuilder->CreateBlock("forless.inc");
 	auto endBB = mBfIRBuilder->CreateBlock("forless.end");
@@ -5837,7 +5843,7 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 	SetAndRestoreValue<BfBreakData*> prevBreakData(mCurMethodState->mBreakData, &breakData);
 
 	mBfIRBuilder->CreateBr(condBB);
-	mBfIRBuilder->SetInsertPoint(condBB);
+	mBfIRBuilder->SetInsertPoint(condEndBB);
 	if (forEachStmt->mCollectionExpression != NULL)
 		UpdateExprSrcPos(forEachStmt->mCollectionExpression);
 	BfIRValue conditionValue;

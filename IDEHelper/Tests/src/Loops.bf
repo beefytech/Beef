@@ -32,7 +32,7 @@ namespace Tests
 
 		static int GetVal()
 		{
-			return 10 + sGetValCount++;
+			return 10 + sGetValCount++ / 2;
 		}
 
 		[Test]
@@ -70,8 +70,8 @@ namespace Tests
 			{
 				iterations++;
 			}
-			Test.Assert(iterations == 10);
-			Test.Assert(sGetValCount == 1);
+			Test.Assert(iterations == 19);
+			Test.Assert(sGetValCount == 20);
 		}
 
 		public static void TestEnumerator1(EnumeratorTest e)
