@@ -19587,14 +19587,14 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					mBfIRBuilder->PopulateType(methodInstance->mReturnType);
 					auto returnType = BfTypedValue(mBfIRBuilder->GetArgument(methodInstance->GetStructRetIdx()), methodInstance->mReturnType, true);
 					exprEvaluator.mReceivingValue = &returnType;
-					auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, true);
+					auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, BfCreateCallFlags_TailCall);
 					BF_ASSERT(exprEvaluator.mReceivingValue == NULL); // Ensure it was actually used
 					mBfIRBuilder->CreateRetVoid();
 				}
 				else
 				{
 					mBfIRBuilder->PopulateType(methodInstance->mReturnType);
-					auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, true);
+					auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, BfCreateCallFlags_TailCall);
 					if (mCurMethodInstance->mReturnType->IsValueType())
 						retVal = LoadValue(retVal);
 					CreateReturn(retVal.mValue);

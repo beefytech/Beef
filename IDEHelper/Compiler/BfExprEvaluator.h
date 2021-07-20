@@ -41,12 +41,14 @@ enum BfResolveArgFlags
 	BfResolveArgFlag_FromGenericParam = 2
 };
 
-enum BfCreateFallFlags
+enum BfCreateCallFlags
 {
-	BfCreateFallFlags_None,
-	BfCreateFallFlags_BypassVirtual = 1,
-	BfCreateFallFlags_SkipThis = 2,
-	BfCreateFallFlags_AllowImplicitRef = 4
+	BfCreateCallFlags_None,
+	BfCreateCallFlags_BypassVirtual = 1,
+	BfCreateCallFlags_SkipThis = 2,
+	BfCreateCallFlags_AllowImplicitRef = 4,
+	BfCreateCallFlags_TailCall = 8,
+	BfCreateCallFlags_GenericParamThis = 0x10
 };
 
 class BfResolvedArg
@@ -444,8 +446,8 @@ public:
 	BfTypedValue LookupIdentifier(BfIdentifierNode* identifierNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void AddCallDependencies(BfMethodInstance* methodInstance);
 	void PerformCallChecks(BfMethodInstance* methodInstance, BfAstNode* targetSrc);
-	BfTypedValue CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, bool isTailCall = false);
-	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, BfCreateFallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade = NULL);
+	BfTypedValue CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, BfCreateCallFlags callFlags = BfCreateCallFlags_None);
+	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, BfCreateCallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade = NULL);
 	BfTypedValue CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target);
 	void MakeBaseConcrete(BfTypedValue& typedValue);
 	void SplatArgs(BfTypedValue value, SizedArrayImpl<BfIRValue>& irArgs);

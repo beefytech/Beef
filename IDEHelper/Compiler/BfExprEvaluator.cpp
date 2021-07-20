@@ -5214,7 +5214,7 @@ void BfExprEvaluator::PerformCallChecks(BfMethodInstance* methodInstance, BfAstN
 		mModule->CheckErrorAttributes(methodInstance->GetOwner(), methodInstance, customAttributes, targetSrc);	
 }
 
-BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret, bool isTailCall)
+BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret, BfCreateCallFlags callFlags)
 {
 // 	static int sCallIdx = 0;
 // 	if (!mModule->mCompiler->mIsResolveOnly)
@@ -5457,6 +5457,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			{
 				doConstReturn = true;
 			}
+			else if (((callFlags & BfCreateCallFlags_GenericParamThis) != 0) && (methodInstance->GetOwner()->IsInterface()))
+			{
+				mModule->Warn(0, "Concrete method may fail to comptime during specialization", targetSrc);
+				doConstReturn = true;
+			}
 			else
 			{
 				CeEvalFlags evalFlags = CeEvalFlags_None;				
@@ -5502,7 +5507,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			{
 				if (returnType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
 				{
-					if (mExpectingType->IsUndefSizedArray())
+					if ((mExpectingType != NULL) && (mExpectingType->IsUndefSizedArray()))
 					{
 						if (returnType->GetUnderlyingType() == mExpectingType->GetUnderlyingType())
 							return mModule->GetDefaultTypedValue(mExpectingType, true, BfDefaultValueKind_Undef);
@@ -5922,7 +5927,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		//argIdx++;
 	}
 		
-	if (isTailCall)
+	if ((callFlags & BfCreateCallFlags_TailCall) != 0)
 		mModule->mBfIRBuilder->SetTailCall(callInst);		
 
 	if (methodDef->mIsNoReturn)
@@ -6001,9 +6006,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodMatcher* methodMatcher, BfTyped
 
 	PerformCallChecks(moduleMethodInstance.mMethodInstance, methodMatcher->mTargetSrc);
 	
-	BfCreateFallFlags callFlags = BfCreateFallFlags_None;
+	BfCreateCallFlags callFlags = BfCreateCallFlags_None;
 	if (methodMatcher->mAllowImplicitRef)
-		callFlags = (BfCreateFallFlags)(callFlags | BfCreateFallFlags_AllowImplicitRef);
+		callFlags = (BfCreateCallFlags)(callFlags | BfCreateCallFlags_AllowImplicitRef);
 	return CreateCall(methodMatcher->mTargetSrc, target, BfTypedValue(), methodMatcher->mBestMethodDef, moduleMethodInstance, callFlags, methodMatcher->mArguments);
 }
 
@@ -6335,10 +6340,10 @@ void BfExprEvaluator::AddCallDependencies(BfMethodInstance* methodInstance)
 }
 
 //TODO: delete argumentsZ
-BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValue& inTarget, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance moduleMethodInstance, BfCreateFallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade)
+BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValue& inTarget, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance moduleMethodInstance, BfCreateCallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade)
 {
-	bool bypassVirtual = (callFlags & BfCreateFallFlags_BypassVirtual) != 0;
-	bool skipThis = (callFlags & BfCreateFallFlags_SkipThis) != 0;;
+	bool bypassVirtual = (callFlags & BfCreateCallFlags_BypassVirtual) != 0;
+	bool skipThis = (callFlags & BfCreateCallFlags_SkipThis) != 0;;
 
 	static int sCallIdx = 0;
  	if (!mModule->mCompiler->mIsResolveOnly)
@@ -7050,7 +7055,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				refNode = targetSrc;
 
 			if ((wantType->IsRef()) && (!argValue.mType->IsRef()) &&
-				(((callFlags & BfCreateFallFlags_AllowImplicitRef) != 0) || (wantType->IsIn())))
+				(((callFlags & BfCreateCallFlags_AllowImplicitRef) != 0) || (wantType->IsIn())))
 				argValue = mModule->ToRef(argValue, (BfRefType*)wantType);
 
 			if (mModule->mCurMethodState != NULL)
@@ -7277,8 +7282,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		return BfTypedValue();
 	}
 
+	BfCreateCallFlags physCallFlags = BfCreateCallFlags_None;
+	if ((origTarget.mType != NULL) && (origTarget.mType->IsGenericParam()))
+		physCallFlags = (BfCreateCallFlags)(physCallFlags | BfCreateCallFlags_GenericParamThis);
+
 	auto func = moduleMethodInstance.mFunc;	
-	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs);	
+	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs, NULL, physCallFlags);
 
 	// This gets triggered for non-sret (ie: comptime) composite returns so they aren't considered readonly
 	if ((callResult.mKind == BfTypedValueKind_Value) && (!callResult.mValue.IsConst()) && 
@@ -7480,7 +7489,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	if (isFailurePass)
 		mModule->Fail(StrFormat("'%s' is inaccessible due to its protection level", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str()), targetSrc);	
 	prevBindResult.Restore();
-	return CreateCall(methodMatcher.mTargetSrc, target, BfTypedValue(), methodMatcher.mBestMethodDef, moduleMethodInstance, BfCreateFallFlags_None, methodMatcher.mArguments);
+	return CreateCall(methodMatcher.mTargetSrc, target, BfTypedValue(), methodMatcher.mBestMethodDef, moduleMethodInstance, BfCreateCallFlags_None, methodMatcher.mArguments);
 }
 
 static int sInvocationIdx = 0;
@@ -9155,11 +9164,11 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			mModule->Fail(StrFormat("Method '%s' can only be invoked at comptime. Consider adding [Comptime] to the current method.", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str()), targetSrc);
 		}		
 
-		BfCreateFallFlags subCallFlags = BfCreateFallFlags_None;
+		BfCreateCallFlags subCallFlags = BfCreateCallFlags_None;
 		if (bypassVirtual)
-			subCallFlags = (BfCreateFallFlags)(subCallFlags | BfCreateFallFlags_BypassVirtual);
+			subCallFlags = (BfCreateCallFlags)(subCallFlags | BfCreateCallFlags_BypassVirtual);
 		if (skipThis)
-			subCallFlags = (BfCreateFallFlags)(subCallFlags | BfCreateFallFlags_SkipThis);
+			subCallFlags = (BfCreateCallFlags)(subCallFlags | BfCreateCallFlags_SkipThis);
 		result = CreateCall(targetSrc, callTarget, origTarget, methodDef, moduleMethodInstance, subCallFlags, argValues.mResolvedArgs, &argCascade);
 	}
 	
@@ -9720,13 +9729,19 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 				{
 					mResult = LookupField(nameRight, BfTypedValue(genericParamInstance->mTypeConstraint), findName);
 					if ((mResult) || (mPropDef != NULL))
+					{
+						mOrigPropTarget = lookupType;
 						return;
+					}
 				}
 				for (auto constraint : genericParamInstance->mInterfaceConstraints)
 				{
 					mResult = LookupField(nameRight, BfTypedValue(constraint), findName);
 					if ((mResult) || (mPropDef != NULL))
+					{
+						mOrigPropTarget = lookupType;
 						return;
+					}
 				}
 			}
 
@@ -17059,7 +17074,10 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 					}
 				}
 				else
-					mResult = CreateCall(mPropSrc, methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
+				{
+					BfCreateCallFlags callFlags = mOrigPropTarget.mType->IsGenericParam() ? BfCreateCallFlags_GenericParamThis : BfCreateCallFlags_None;
+					mResult = CreateCall(mPropSrc, methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args, NULL, callFlags);
+				}
 				if (mResult.mType != NULL)
 				{
 					if ((mResult.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))
@@ -21817,7 +21835,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			argValues.push_back(resolvedArg);
 			resolvedArg.mTypedValue = rightValue;
 			argValues.push_back(resolvedArg);
-			mResult = CreateCall(opToken, BfTypedValue(), BfTypedValue(), moduleMethodInstance.mMethodInstance->mMethodDef, moduleMethodInstance, BfCreateFallFlags_None, argValues);
+			mResult = CreateCall(opToken, BfTypedValue(), BfTypedValue(), moduleMethodInstance.mMethodInstance->mMethodDef, moduleMethodInstance, BfCreateCallFlags_None, argValues);
 			if ((mResult) && 
 				((binaryOp == BfBinaryOp_InEquality) || (binaryOp == BfBinaryOp_StrictInEquality)))
 				mResult.mValue = mModule->mBfIRBuilder->CreateNot(mResult.mValue);
