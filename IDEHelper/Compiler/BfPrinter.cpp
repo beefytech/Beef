@@ -2287,7 +2287,7 @@ void BfPrinter::Visit(BfUnaryOperatorExpression* unaryOpExpr)
 {
 	Visit(unaryOpExpr->ToBase());
 
-	bool postOp = (unaryOpExpr->mOp == BfUnaryOp_PostIncrement) || (unaryOpExpr->mOp == BfUnaryOp_PostDecrement);
+	bool postOp = (unaryOpExpr->mOp == BfUnaryOp_PostIncrement) || (unaryOpExpr->mOp == BfUnaryOp_PostDecrement) || (unaryOpExpr->mOp == BfUnaryOp_PartialRangeFrom);
 	if (!postOp)
 		VisitChild(unaryOpExpr->mOpToken);
 	if ((unaryOpExpr->mOp == BfUnaryOp_Ref) || (unaryOpExpr->mOp == BfUnaryOp_Mut) || (unaryOpExpr->mOp == BfUnaryOp_Out) || (unaryOpExpr->mOp == BfUnaryOp_Params) || (unaryOpExpr->mOp == BfUnaryOp_Cascade))

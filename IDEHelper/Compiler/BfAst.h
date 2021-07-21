@@ -232,6 +232,7 @@ enum BfToken : uint8
 	BfToken_Dot,
 	BfToken_DotDot,
 	BfToken_DotDotDot,
+	BfToken_DotDotLess,
 	BfToken_QuestionDot,
 	BfToken_QuestionLBracket,
 	BfToken_AutocompleteDot,
@@ -1821,7 +1822,9 @@ enum BfBinaryOp
 	BfBinaryOp_ConditionalOr,
 	BfBinaryOp_NullCoalesce,
 	BfBinaryOp_Is,
-	BfBinaryOp_As
+	BfBinaryOp_As,
+	BfBinaryOp_Range,
+	BfBinaryOp_ClosedRange,
 };
 
 enum BfAssignmentOp
@@ -1859,7 +1862,10 @@ enum BfUnaryOp
 	BfUnaryOp_Out,
 	BfUnaryOp_Mut,
 	BfUnaryOp_Params,
-	BfUnaryOp_Cascade
+	BfUnaryOp_Cascade,
+	BfUnaryOp_PartialRangeUpTo,
+	BfUnaryOp_PartialRangeThrough,
+	BfUnaryOp_PartialRangeFrom,
 };
 
 class BfTokenNode : public BfAstNode

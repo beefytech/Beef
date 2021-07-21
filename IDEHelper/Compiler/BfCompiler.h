@@ -347,6 +347,8 @@ public:
 	BfTypeDef* mArray3TypeDef;
 	BfTypeDef* mArray4TypeDef;
 	BfTypeDef* mSpanTypeDef;	
+	BfTypeDef* mRangeTypeDef;
+	BfTypeDef* mClosedRangeTypeDef;
 		
 	BfTypeDef* mClassVDataTypeDef;	
 	

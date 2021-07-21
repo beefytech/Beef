@@ -20433,7 +20433,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	}
 	if (leftValue.mType->IsRef())
 		leftValue.mType = leftValue.mType->GetUnderlyingType();
-
+	
 	if ((binaryOp == BfBinaryOp_ConditionalAnd) || (binaryOp == BfBinaryOp_ConditionalOr))
 	{
  		if (mModule->mCurMethodState->mDeferredLocalAssignData != NULL)
@@ -20670,7 +20670,7 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 		mModule->AddBasicBlock(endBB);
 
 		if (assignTo != NULL)
-		{			
+		{
 			mResult = *assignTo;
 		}
 		else
@@ -20689,12 +20689,35 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 
 void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExpression* rightExpression, BfBinaryOp binaryOp, BfTokenNode* opToken, BfBinOpFlags flags)
 {	
+	if ((binaryOp == BfBinaryOp_Range) || (binaryOp == BfBinaryOp_ClosedRange))
+	{
+		auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
+
+		auto allocType = mModule->ResolveTypeDef((binaryOp == BfBinaryOp_Range) ? mModule->mCompiler->mRangeTypeDef : mModule->mCompiler->mClosedRangeTypeDef)->ToTypeInstance();		
+		auto alloca = mModule->CreateAlloca(allocType);
+
+		SizedArray<BfExpression*, 2> argExprs;
+		argExprs.Add(leftExpression);
+		argExprs.Add(rightExpression);
+
+		BfSizedArray<BfExpression*> args = argExprs;
+
+		BfResolvedArgs argValues;
+		argValues.Init(&args);
+		ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
+
+		mResult = BfTypedValue(alloca, allocType, true);
+		MatchConstructor(opToken, NULL, mResult, allocType, argValues, true, false);
+
+		return;
+	}
+
 	BfTypedValue leftValue;
 	if (leftExpression != NULL)
 	{
 		leftValue = mModule->CreateValueFromExpression(leftExpression, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowIntUnknown));
 	}
-	return PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue);	
+	PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue);	
 }
 
 bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken, const BfTypedValue& leftValue, const BfTypedValue& rightValue)

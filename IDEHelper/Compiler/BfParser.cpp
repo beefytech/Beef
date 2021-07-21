@@ -2316,6 +2316,13 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 					mToken = BfToken_DotDotDot;
 					mSyntaxToken = BfSyntaxToken_Token;
 				}
+				else if (mSrc[mSrcIdx + 1] == '<')
+				{
+					mSrcIdx += 2;
+					mTokenEnd = mSrcIdx;
+					mToken = BfToken_DotDotLess;
+					mSyntaxToken = BfSyntaxToken_Token;
+				}
 				else
 				{
 					mSrcIdx++;
@@ -2526,8 +2533,15 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 
 					bool endNumber = false;
 
+					bool hasDot = c == '.';
+					if ((hasDot) && (mSrc[mSrcIdx] == '.'))
+					{
+						// Skip float parsing if we have a double-dot `1..` case
+						hasDot = false;
+					}					
+
 					// The 'prevIsDot' helps tuple lookups like "tuple.0.0", interpreting those as two integers rather than a float
-					if (((c == '.') && (!prevIsDot)) || (hasExp))
+					if (((hasDot) && (!prevIsDot)) || (hasExp))
 					{
 						// Switch to floating point mode
 						//double dVal = val;

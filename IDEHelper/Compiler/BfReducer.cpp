@@ -2353,12 +2353,22 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				((token == BfToken_RChevron) || (token == BfToken_RDblChevron)))
 				return exprLeft;
 			
-			if ((token == BfToken_DblPlus) || (token == BfToken_DblMinus))
-			{
-				// Post-increment, post-decrement
+			BfUnaryOp postUnaryOp = BfUnaryOp_None;
+			if (token == BfToken_DblPlus)
+				postUnaryOp = BfUnaryOp_PostIncrement;
+			if (token == BfToken_DblMinus)
+				postUnaryOp = BfUnaryOp_PostDecrement;
+
+			if (token == BfToken_DotDotDot)
+			{				
+				//TODO: Detect if this is a BfUnaryOp_PartialRangeFrom
+			}
+
+			if (postUnaryOp != BfUnaryOp_None)
+			{				
 				auto unaryOpExpr = mAlloc->Alloc<BfUnaryOperatorExpression>();
 				ReplaceNode(exprLeft, unaryOpExpr);
-				unaryOpExpr->mOp = (token == BfToken_DblPlus) ? BfUnaryOp_PostIncrement : BfUnaryOp_PostDecrement;
+				unaryOpExpr->mOp = postUnaryOp;
 				MEMBER_SET(unaryOpExpr, mOpToken, tokenNode);
 				MEMBER_SET(unaryOpExpr, mExpression, exprLeft);
 				exprLeft = unaryOpExpr;

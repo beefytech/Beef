@@ -72,6 +72,16 @@ namespace Tests
 			}
 			Test.Assert(iterations == 19);
 			Test.Assert(sGetValCount == 20);
+
+			int total = 0;
+			for (int i in 1..<10)
+				total += i;
+			Test.Assert(total == 1+2+3+4+5+6+7+8+9);
+
+			total = 0;
+			for (int i in 1...10)
+				total += i;
+			Test.Assert(total == 1+2+3+4+5+6+7+8+9+10);
 		}
 
 		public static void TestEnumerator1(EnumeratorTest e)

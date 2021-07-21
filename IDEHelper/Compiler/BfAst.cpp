@@ -1545,6 +1545,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "..";
 	case BfToken_DotDotDot:
 		return "...";
+	case BfToken_DotDotLess:
+		return "..<";
 	case BfToken_QuestionDot:
 		return "?.";
 	case BfToken_QuestionLBracket:
@@ -1639,22 +1641,24 @@ int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
 	case BfBinaryOp_OverflowMultiply:
 	case BfBinaryOp_Divide:
 	case BfBinaryOp_Modulus:
-		return 13;
+		return 14;
 	case BfBinaryOp_Add:
 	case BfBinaryOp_Subtract:
 	case BfBinaryOp_OverflowAdd:
 	case BfBinaryOp_OverflowSubtract:
-		return 12;	
+		return 13;	
 	case BfBinaryOp_LeftShift:
 	case BfBinaryOp_RightShift:
-		return 11;
+		return 12;
 	case BfBinaryOp_BitwiseAnd:
-		return 10;
+		return 11;
 	case BfBinaryOp_ExclusiveOr:
-		return 9;
+		return 10;
 	case BfBinaryOp_BitwiseOr:
+		return 9;
+	case BfBinaryOp_Range:
+	case BfBinaryOp_ClosedRange:
 		return 8;
-	// "Range" inserted here if we were copying swift	
 	case BfBinaryOp_Is:
 	case BfBinaryOp_As:
 		return 7;
@@ -1715,6 +1719,8 @@ const char* Beefy::BfGetOpName(BfBinaryOp binOp)
 	case BfBinaryOp_NullCoalesce: return "??";
 	case BfBinaryOp_Is: return "is";
 	case BfBinaryOp_As: return "as";
+	case BfBinaryOp_Range: return "..<";
+	case BfBinaryOp_ClosedRange: return "...";
 	default: return "???";
 	}
 }
@@ -1740,6 +1746,9 @@ const char* Beefy::BfGetOpName(BfUnaryOp unaryOp)
 	case BfUnaryOp_Mut: return "mut";
 	case BfUnaryOp_Params: return "params";
 	case BfUnaryOp_Cascade: return "..";
+	case BfUnaryOp_PartialRangeUpTo: return "..<";
+	case BfUnaryOp_PartialRangeThrough: return "...";
+	case BfUnaryOp_PartialRangeFrom: return "...";
 	default: return "???";
 	}
 }
@@ -1798,6 +1807,10 @@ BfBinaryOp Beefy::BfTokenToBinaryOp(BfToken token)
 		return BfBinaryOp_ConditionalOr;
 	case BfToken_DblQuestion:
 		return BfBinaryOp_NullCoalesce;
+	case BfToken_DotDotLess:
+		return BfBinaryOp_Range;
+	case BfToken_DotDotDot:
+		return BfBinaryOp_ClosedRange;
 	default:
 		return BfBinaryOp_None;
 	}
@@ -1835,6 +1848,10 @@ BfUnaryOp Beefy::BfTokenToUnaryOp(BfToken token)
 		return BfUnaryOp_Params;
 	case BfToken_DotDot:
 		return BfUnaryOp_Cascade;
+	case BfToken_DotDotDot:
+		return BfUnaryOp_PartialRangeThrough;
+	case BfToken_DotDotLess:
+		return BfUnaryOp_PartialRangeUpTo;
 	default:
 		return BfUnaryOp_None;
 	}
