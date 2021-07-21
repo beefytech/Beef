@@ -3785,7 +3785,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 227)
+		if (mcOperand.mVRegIdx == 7)
 		{
 			NOP;
 		}
@@ -7816,6 +7816,8 @@ void BeMCContext::DoInstCombinePass()
 						continue;
 
 					if ((vregInfoDest->mIsExpr) || (vregInfoCheck->mIsExpr))
+						continue;
+					if ((vregInfoCheck->mForceMem) && (!vregInfoDest->mForceMem))
 						continue;
 
 					if ((!vregInfoDest->mForceMerge) && (!vregInfoDest->mIsRetVal))
@@ -15853,7 +15855,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?GetVal@TestProgram@BeefTest@bf@@CATint@@XZ");
+	//mDebugging = (function->mName == "?Negate__im@TimeSpan@System@bf@@SA?AU?$Result@VTimeSpan@System@bf@@@23@_J@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
