@@ -148,6 +148,7 @@ namespace System.Collections
 
 		public int Count
 		{
+			[Inline]
 			get
 			{
 				return mSize;

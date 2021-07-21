@@ -35,7 +35,8 @@ namespace System
 		}
 
 		public bool IsEmpty
-		{							
+		{
+			[Inline]
 			get
 			{
 				return mLength == 0;
