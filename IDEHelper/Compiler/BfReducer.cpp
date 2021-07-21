@@ -5777,11 +5777,17 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 		return fieldDeclaration;
 	}
 
+	bool hasSemicolon = false;
+
 	auto fieldDtor = CreateFieldDtorDeclaration(fieldDeclaration);
 	if (fieldDtor != NULL)
+	{
 		fieldDeclaration->mFieldDtor = fieldDtor;
+		if (fieldDtor->mBody != NULL)
+			hasSemicolon = !fieldDtor->mBody->IsMissingSemicolon();
+	}
 
-	if (ExpectTokenAfter(fieldDeclaration, BfToken_Semicolon, BfToken_Comma) != NULL)
+	if ((!hasSemicolon) && (ExpectTokenAfter(fieldDeclaration, BfToken_Semicolon, BfToken_Comma) != NULL))
 	{
 		// This gets taken later
 		mVisitorPos.mReadPos--;
