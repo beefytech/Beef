@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections;
+using System.Diagnostics;
 
 namespace Tests
 {
@@ -75,13 +76,63 @@ namespace Tests
 
 			int total = 0;
 			for (int i in 1..<10)
+			{
+				if (i == 5)
+					Test.Assert(total == 1+2+3+4);
 				total += i;
+			}
 			Test.Assert(total == 1+2+3+4+5+6+7+8+9);
 
 			total = 0;
 			for (int i in 1...10)
+			{
+				if (i == 5)
+					Test.Assert(total == 1+2+3+4);
 				total += i;
+			}
 			Test.Assert(total == 1+2+3+4+5+6+7+8+9+10);
+
+			total = 0;
+			for (int i in (1..<10).Reversed)
+			{
+				if (i == 5)
+					Test.Assert(total == 9+8+7+6);
+				total += i;
+
+			}
+			Test.Assert(total == 9+8+7+6+5+4+3+2+1);
+
+			total = 0;
+			for (int i in (1...10).Reversed)
+			{
+				if (i == 5)
+					Test.Assert(total == 10+9+8+7+6);
+				total += i;
+
+			}
+			Test.Assert(total == 10+9+8+7+6+5+4+3+2+1);
+
+			Test.Assert(!(1...3).Contains(0));
+			Test.Assert((1...3).Contains(1));
+			Test.Assert((1...3).Contains(2));
+			Test.Assert((1...3).Contains(3));
+			Test.Assert(!(1...3).Contains(4));
+
+			Test.Assert(!(1..<3).Contains(0));
+			Test.Assert((1..<3).Contains(1));
+			Test.Assert((1..<3).Contains(2));
+			Test.Assert(!(1..<3).Contains(3));
+
+			Test.Assert((1...3).Contains(1...3));
+			Test.Assert((1...3).Contains(1...2));
+			Test.Assert(!(1...3).Contains(1...4));
+			Test.Assert((1...3).Contains(2..<3));
+			Test.Assert((1...3).Contains(2..<4));
+			Test.Assert(!(1...3).Contains(2..<5));
+			Test.Assert(!(1..<3).Contains(1...3));
+			Test.Assert((1..<3).Contains(1..<3));
+			Test.Assert(!(1..<3).Contains(1..<4));
+
 		}
 
 		public static void TestEnumerator1(EnumeratorTest e)

@@ -79,10 +79,29 @@ namespace System
 				return mEnd == mStart;
 			}
 		}
+
+		public ReverseEnumerator Reversed
+		{
+			[Inline]
+			get
+			{
+				return ReverseEnumerator(mEnd - 1, mStart);
+			}
+		}
 		
 		public bool Contains(int idx)
 		{
-			return (idx >= mStart) && (idx < mStart);
+			return (idx >= mStart) && (idx < mEnd);
+		}
+
+		public bool Contains(Range val)
+		{
+			return (val.[Friend]mStart >= mStart) && (val.[Friend]mEnd <= mEnd);
+		}
+
+		public bool Contains(ClosedRange val)
+		{
+			return (val.[Friend]mStart >= mStart) && (val.[Friend]mEnd <= mEnd - 1);
 		}
 
 		public void Clear() mut
@@ -135,7 +154,41 @@ namespace System
 					return .Err;
 				return ++mIndex;
 			}
+		}
 
+		public struct ReverseEnumerator : IEnumerator<int>
+		{
+		    private int mEnd;
+		    private int mIndex;
+
+			[Inline]
+		    public this(int start, int end)
+		    {
+		        mIndex = start + 1;
+		        mEnd = end;
+		    }
+
+		    public void Dispose()
+		    {
+		    }
+
+		    public ref int Index
+		    {
+		        get mut
+		        {
+		            return ref mIndex;
+		        }
+		    }
+
+			public int End => mEnd;
+
+			[Inline]
+			public Result<int> GetNext() mut
+			{
+				if (mIndex <= mEnd)
+					return .Err;
+				return --mIndex;
+			}
 		}
 	}
 
@@ -210,10 +263,29 @@ namespace System
 				return mEnd == mStart;
 			}
 		}
+
+		public Range.ReverseEnumerator Reversed
+		{
+			[Inline]
+			get
+			{
+				return Range.ReverseEnumerator(mEnd, mStart);
+			}
+		}
 		
 		public bool Contains(int idx)
 		{
-			return (idx >= mStart) && (idx < mStart);
+			return (idx >= mStart) && (idx <= mEnd);
+		}
+
+		public bool Contains(Range val)
+		{
+			return (val.[Friend]mStart >= mStart) && (val.[Friend]mEnd - 1 <= mEnd);
+		}
+
+		public bool Contains(ClosedRange val)
+		{
+			return (val.[Friend]mStart >= mStart) && (val.[Friend]mEnd <= mEnd);
 		}
 
 		public void Clear() mut
