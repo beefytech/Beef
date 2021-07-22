@@ -3611,6 +3611,9 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 		return BfIRValue();
 	}
+	
+	if (bfType->IsTypedPrimitive())
+		return CreateConstant(module, ptr, bfType->GetUnderlyingType(), outType);
 
 	if (bfType->IsTypeInstance())
 	{
@@ -3745,8 +3748,8 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			if (!result)
 				return BfIRValue();
 			fieldVals.Add(result);
-		}
-		
+		}				
+
 		if (typeInst->mIsUnion)
 		{
 			auto unionInnerType = typeInst->GetUnionInnerType();
