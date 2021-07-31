@@ -520,7 +520,7 @@ namespace IDE.ui
 			}
 		}
 
-		ProjectSource FilteredProjectSource
+		public ProjectSource FilteredProjectSource
 		{
 			get
 			{
