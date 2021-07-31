@@ -6245,7 +6245,8 @@ namespace IDE
 			}
 
 			int32 emitRevision = -1;
-			//
+			
+			if (useFilePath != null)
 			{
 				int barPos = useFilePath.IndexOf('|');
 				if (barPos != -1)
