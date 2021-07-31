@@ -1476,6 +1476,7 @@ public:
 	bool mAddedToCount;
 	bool mHasForceLinkMarker;
 	bool mIsReified;
+	bool mGeneratesCode;
 	bool mReifyQueued;
 	bool mWantsIRIgnoreWrites;
 	bool mHasGenericMethods;
@@ -1947,6 +1948,7 @@ public:
 	void Init(bool isFullRebuild = true);		
 	bool WantsFinishModule();
 	void FinishInit();
+	void CalcGeneratesCode();
 	void ReifyModule();
 	void UnreifyModule();
 	void Cleanup();

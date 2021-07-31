@@ -1038,6 +1038,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 					{
 						BfLogSysM("Setting reified type %p in module %p in PopulateType on module awaiting finish\n", resolvedTypeRef, typeModule);
 						typeModule->mIsReified = true;
+						typeModule->CalcGeneratesCode();
 						typeModule->mWantsIRIgnoreWrites = false;						
 						for (auto ownedTypes : typeModule->mOwnedTypeInstances)
 						{
@@ -6049,7 +6050,15 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 	methodProcessRequest->mFromModule = this;
 
 	if ((!mCompiler->mIsResolveOnly) && (methodInstance->mIsReified))
+	{
+		if ((!mIsModuleMutable) && (!mIsScratchModule))
+		{
+			BF_ASSERT(!mGeneratesCode);
+			StartNewRevision(BfModule::RebuildKind_None);
+		}
+
 		BF_ASSERT(mIsModuleMutable || mReifyQueued);
+	}
 
 	BF_ASSERT(mBfIRBuilder != NULL);
 

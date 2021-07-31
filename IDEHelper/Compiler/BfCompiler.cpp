@@ -7072,7 +7072,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		{
 			if (!module->mIsSpecialModule)
 			{
-				if ((module->mIsReified) && (module->mIsModuleMutable))
+				if ((module->HasCompiledOutput()) && (module->mIsModuleMutable))
 				{						
 					module->Finish();
 				}

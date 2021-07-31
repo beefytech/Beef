@@ -829,7 +829,7 @@ BfModule* gLastCreatedModule = NULL;
 BfModule::BfModule(BfContext* context, const StringImpl& moduleName)	
 {
 	BfLogSys(context->mSystem, "BfModule::BFModule %p %s\n", this, moduleName.c_str());
-	
+
 	gLastCreatedModule = this;
 
 	mContext = context;
@@ -847,6 +847,7 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mUsedSlotCount = -1;
 	
 	mIsReified = true;
+	mGeneratesCode = true;
 	mReifyQueued = false;
 	mIsSpecialModule = false;
 	mIsComptimeModule = false;
@@ -1048,6 +1049,20 @@ void BfModule::FinishInit()
 	mAwaitingInitFinish = false;	
 }
 
+void BfModule::CalcGeneratesCode()
+{
+	if ((!mIsReified) || (mIsScratchModule))
+	{
+		mGeneratesCode = false;
+		return;
+	}
+
+	mGeneratesCode = false;
+	for (auto typeInst : mOwnedTypeInstances)
+		if (!typeInst->IsInterface())
+			mGeneratesCode = true;
+}
+
 void BfModule::ReifyModule()
 {	
 	BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
@@ -1055,9 +1070,10 @@ void BfModule::ReifyModule()
 	BfLogSysM("ReifyModule %@ %s\n", this, mModuleName.c_str());
 	BF_ASSERT((this != mContext->mScratchModule) && (this != mContext->mUnreifiedModule));
 	mIsReified = true;
+	CalcGeneratesCode();
 	mReifyQueued = false;
 	StartNewRevision(RebuildKind_SkipOnDemandTypes, true);
-	mCompiler->mStats.mModulesReified++;
+	mCompiler->mStats.mModulesReified++;	
 }
 
 void BfModule::UnreifyModule()
@@ -1065,6 +1081,7 @@ void BfModule::UnreifyModule()
 	BfLogSysM("UnreifyModule %p %s\n", this, mModuleName.c_str());
 	BF_ASSERT((this != mContext->mScratchModule) && (this != mContext->mUnreifiedModule));
 	mIsReified = false;	
+	CalcGeneratesCode();
 	mReifyQueued = false;
 	StartNewRevision(RebuildKind_None, true);
 	mCompiler->mStats.mModulesUnreified++;
@@ -1126,8 +1143,8 @@ void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
 			// The only purpose of not ignoring writes is so we can verify the codegen one instruction at a time
 			mBfIRBuilder->mDbgVerifyCodeGen = true;
 		}
-	}
-	else if (!mIsReified)
+	}	
+	else if (!mGeneratesCode)
 	{
 		mBfIRBuilder->mIgnoreWrites = true;
 	}
@@ -9475,10 +9492,10 @@ bool BfModule::WantsLifetimes()
 
 bool BfModule::HasCompiledOutput()
 {
-	return (!mSystem->mIsResolveOnly) && (mIsReified) && (!mIsComptimeModule);
+	return (!mSystem->mIsResolveOnly) && (mGeneratesCode) && (!mIsComptimeModule);
 }
 
-// We will skip the object access check for any occurances of this value
+// We will skip the object access check for any occurrences of this value
 void BfModule::SkipObjectAccessCheck(BfTypedValue typedVal)
 {
 	if ((mBfIRBuilder->mIgnoreWrites) || (!typedVal.mType->IsObjectOrInterface()) || (mCurMethodState == NULL) || (mCurMethodState->mIgnoreObjectAccessCheck))
@@ -13107,9 +13124,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			MarkDerivedDirty(typeInst);
 
-			if (mIsScratchModule)
+			if (!HasCompiledOutput())
 			{
-				BfLogSysM("Marking scratch module method instance as reified: %p\n", methodInstance);
+				BfLogSysM("Marking non-compiled-output module method instance as reified: %p\n", methodInstance);
 				_SetReified();
 				CheckHotMethod(methodInstance, "");
 			}
@@ -23923,14 +23940,16 @@ bool BfModule::Finish()
 	if (mUsedSlotCount != -1)
 	{
 		BF_ASSERT(mCompiler->mMaxInterfaceSlots != -1);
-		mUsedSlotCount = mCompiler->mMaxInterfaceSlots;		
+		mUsedSlotCount = mCompiler->mMaxInterfaceSlots;
 	}
+
+	if ((!mGeneratesCode) && (!mAddedToCount))
+		return true;
 
 	BF_ASSERT(mAddedToCount);
 	mAddedToCount = false;
 	mAwaitingFinish = false;
 	
-
 	mCompiler->mStats.mModulesFinished++;	
 
 	if (HasCompiledOutput())
@@ -24053,13 +24072,13 @@ bool BfModule::Finish()
 		if ((writeModule) && (!mBfIRBuilder->mIgnoreWrites))
 			mCompiler->mCodeGen.WriteObjectFile(this, outputPath, codeGenOptions);		
 		mLastModuleWrittenRevision = mCompiler->mRevision;		
-	}
+	}	
 	else
 	{
 		for (auto type : mOwnedTypeInstances)
 		{
 			BF_ASSERT((!type->IsIncomplete()) || (type->IsSpecializedByAutoCompleteMethod()));
-		}
+		}		
 	}
 
 	for (auto& specModulePair : mSpecializedMethodModules)
@@ -24129,8 +24148,7 @@ void BfModule::ClearModuleData(bool clearTransientData)
 		mAddedToCount = false;
 	}
 
-	mDICompileUnit = BfIRMDNode();
-	mIsModuleMutable = false;	
+	mDICompileUnit = BfIRMDNode();	
 	if (clearTransientData)
 		mIncompleteMethodCount = 0;	
 	mHasGenericMethods = false;
@@ -24165,7 +24183,8 @@ void BfModule::ClearModuleData(bool clearTransientData)
 	if (mNextAltModule != NULL)
 		mNextAltModule->ClearModuleData();
 	
-	BfLogSysM("ClearModuleData. Deleting IRBuilder: %p\n", mBfIRBuilder);		
+	BfLogSysM("ClearModuleData. Deleting IRBuilder: %p\n", mBfIRBuilder);			
+	mIsModuleMutable = false;
 	delete mBfIRBuilder;
 	mBfIRBuilder = NULL;	
 	mWantsIRIgnoreWrites = false;

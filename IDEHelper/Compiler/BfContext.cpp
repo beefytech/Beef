@@ -61,12 +61,14 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mScratchModule->mIsSpecialModule = true;
 	mScratchModule->mIsScratchModule = true;
 	mScratchModule->mIsReified = true;
+	mScratchModule->mGeneratesCode = false;
 	mScratchModule->Init();	
 
 	mUnreifiedModule = new BfModule(this, "");
 	mUnreifiedModule->mIsSpecialModule = true;	
 	mUnreifiedModule->mIsScratchModule = true;
 	mUnreifiedModule->mIsReified = false;
+	mUnreifiedModule->mGeneratesCode = false;
 	mUnreifiedModule->Init();	
 
 	mValueTypeDeinitSentinel = (BfMethodInstance*)1;
@@ -158,7 +160,7 @@ void BfContext::AssignModule(BfType* type)
 	// We used to have this "IsReified" check, but we DO want to create modules for unreified types even if they remain unused.
 	//  What was that IsReified check catching?
 	//  It screwed up the reification of generic types- they just got switched to mScratchModule from mUnreifiedModule, but didn't ever generate code.
-	if (/*(!type->IsReified()) ||*/ (type->IsUnspecializedType()) || (type->IsInterface()) || (type->IsVar()) || (type->IsTypeAlias()) || (type->IsFunction()))
+	if (/*(!type->IsReified()) ||*/ (type->IsUnspecializedType()) || (type->IsVar()) || (type->IsTypeAlias()) || (type->IsFunction()))
 	{
 		if (typeInst->mIsReified)
 			module = mScratchModule;
@@ -203,7 +205,7 @@ void BfContext::AssignModule(BfType* type)
 		{
 			String moduleName = GenerateModuleName(typeInst);
 			module = new BfModule(this, moduleName);
-			module->mIsReified = typeInst->mIsReified;
+			module->mIsReified = typeInst->mIsReified;			
 			module->mProject = project;
 			typeInst->mModule = module;
 			BF_ASSERT(!mLockModules);
@@ -220,6 +222,8 @@ void BfContext::AssignModule(BfType* type)
 		BF_ASSERT(localTypeInst->mContext == this);
 		module->mOwnedTypeInstances.push_back(localTypeInst);
 	}
+
+	module->CalcGeneratesCode();
 
 	if (needsModuleInit)
 		module->Init();
