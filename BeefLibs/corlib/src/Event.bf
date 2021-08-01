@@ -136,7 +136,7 @@ namespace System
 			}
 		}
 
-		public void Remove(T compareDelegate, bool deleteDelegate = false) mut
+		public Result<void> Remove(T compareDelegate, bool deleteDelegate = false) mut
 		{
 			Object data = Target;
 
@@ -150,9 +150,7 @@ namespace System
 						break;
 					}
 				if (idx == -1)
-				{
-					Runtime.FatalError("Not found");
-				}
+					return .Err;
 
 				if (deleteDelegate)
 					delete list[idx];
@@ -177,18 +175,14 @@ namespace System
 			else
 			{
 				T dlgMember = (T)data;				
-				if (Delegate.Equals(compareDelegate, dlgMember))
-				{
-					if (deleteDelegate)
-						delete dlgMember;
-					Target = null;
-					return;
-				}
-				else
-				{
-					Runtime.FatalError("Not found");
-				}
+				if (!Delegate.Equals(compareDelegate, dlgMember))
+					return .Err;
+				if (deleteDelegate)
+					delete dlgMember;
+				Target = null;
 			}
+
+			return .Ok;
 		}
 
 		public rettype(T) Invoke(params T p) mut
