@@ -304,7 +304,7 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		public static extern int64 BfpFile_Seek(BfpFile* file, int64 offset, BfpFileSeekKind seekKind);
 		[CallingConvention(.Stdcall), CLink]
-		public static extern void BfpFile_Truncate(BfpFile* file);
+		public static extern void BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult);
 		[CallingConvention(.Stdcall), CLink]
 		public static extern BfpTimeStamp BfpFile_GetTime_LastWrite(char8* path);
 		[CallingConvention(.Stdcall), CLink]

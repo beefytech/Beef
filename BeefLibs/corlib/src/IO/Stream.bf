@@ -203,6 +203,11 @@ namespace System.IO
 			return .Ok;
 		}
 
+		public virtual Result<void> SetLength(int64 length)
+		{
+			return .Err;
+		}
+
 		public void Align(int alignSize)
 		{
 			int64 pos = Length;

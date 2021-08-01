@@ -235,6 +235,32 @@ namespace System.IO
 				return .Err;
 			return .Ok;
 		}
+
+		public override Result<void> SetLength(int64 length)
+		{
+			int64 pos = Position;
+
+			if (pos != length)
+				Seek(length);
+
+			Platform.BfpFileResult result = .Ok;
+			Platform.BfpFile_Truncate(mBfpFile, &result);
+			if (result != .Ok)
+			{
+				Seek(pos);
+				return .Err;
+			}
+
+			if (pos != length)
+			{
+				if (pos < length)
+					Seek(pos);
+				else
+					Seek(0, .FromEnd);
+			}
+
+			return .Ok;
+		}
 	}
 
 	class BufferedFileStream : BufferedStream
@@ -451,6 +477,40 @@ namespace System.IO
 			if ((result != .Ok) && (result != .PartialData))
 				return .Err;
 			return numBytesRead;
+		}
+
+		public override Result<void> SetLength(int64 length)
+		{
+			Try!(Flush());
+
+			int64 pos = Position;
+
+			if (pos != length || pos != mBfpFilePos)
+			{
+				Try!(SeekUnderlying(length));
+				mPos = length;
+			}
+
+			Platform.BfpFileResult result = .Ok;
+			Platform.BfpFile_Truncate(mBfpFile, &result);
+			if (result != .Ok)
+			{
+				Try!(SeekUnderlying(pos));
+				return .Err;
+			}
+
+			mUnderlyingLength = length;
+			mPos = Math.Min(pos, Length);
+
+			if (pos != length)
+			{
+				if (pos < length)
+					Try!(SeekUnderlying(pos));
+				else
+					Try!(SeekUnderlying(0, .FromEnd));
+			}
+
+			return .Ok;
 		}
 	}
 

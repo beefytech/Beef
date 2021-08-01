@@ -3023,9 +3023,14 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileS
 	return newPos.QuadPart;
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file)
+BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult)
 {
-	SetEndOfFile(file->mHandle);
+	if (!SetEndOfFile(file->mHandle))
+	{
+		OUTRESULT(BfpFileResult_UnknownError);
+		return;
+	}
+	OUTRESULT(BfpFileResult_Ok);
 }
 
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path)
