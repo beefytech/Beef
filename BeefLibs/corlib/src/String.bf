@@ -2130,6 +2130,82 @@ namespace System
 			TrimEnd();
 		}
 
+		public void TrimEnd(char32 trimChar)
+		{
+			let ptr = Ptr;
+			for (int i = mLength - 1; i >= 0; i--)
+			{
+				char8 c = ptr[i];
+				if (c >= (char8)0x80)
+				{
+					var (c32, idx, len) = GetChar32WithBacktrack(i);
+					if (c32 != trimChar)
+					{
+						if (i < mLength - 1)
+							RemoveToEnd(i + 1);
+						return;
+					}
+					i = idx;
+				}
+				else if ((char32)c != trimChar)
+				{
+					if (i < mLength - 1)
+						RemoveToEnd(i + 1);
+					return;
+				}
+			}
+			Clear();
+		}
+
+		public void TrimEnd(char8 trimChar)
+		{
+			TrimEnd((char32)trimChar);
+		}
+
+		public void TrimStart(char32 trimChar)
+		{
+			let ptr = Ptr;
+			for (int i = 0; i < mLength; i++)
+			{
+				char8 c = ptr[i];
+				if (c >= (char8)0x80)
+				{
+					var (c32, len) = GetChar32(i);
+					if (c32 != trimChar)
+					{
+						if (i > 0)
+							Remove(0, i);
+						return;
+					}
+					i += len - 1;
+				}
+				else if ((char32)c != trimChar)
+				{
+					if (i > 0)
+						Remove(0, i);
+					return;
+				}
+			}
+			Clear();
+		}
+
+		public void TrimStart(char8 trimChar)
+		{
+			TrimStart((char32)trimChar);
+		}
+
+		public void Trim(char32 trimChar)
+		{
+			TrimStart(trimChar);
+			TrimEnd(trimChar);
+		}
+
+		public void Trim(char8 trimChar)
+		{
+			TrimStart((.)trimChar);
+			TrimEnd((.)trimChar);
+		}
+
 		public void Join(StringView sep, IEnumerator<String> enumerable)
 		{
 			bool isFirst = true;
@@ -3128,6 +3204,92 @@ namespace System
 		{
 			TrimStart();
 			TrimEnd();
+		}
+
+		public void TrimEnd(char32 trimChar) mut
+		{
+			let ptr = Ptr;
+			for (int i = mLength - 1; i >= 0; i--)
+			{
+				char8 c = ptr[i];
+				if (c >= (char8)0x80)
+				{
+					var (c32, idx, len) = GetChar32WithBacktrack(i);
+					if (c32 != trimChar)
+					{
+						if (i < mLength - 1)
+						{
+							mLength = i + 1;
+						}	
+						return;
+					}
+					i = idx;
+				}
+				else if (c != (char32)trimChar)
+				{
+					if (i < mLength - 1)
+					{
+						mLength = i + 1;
+					}
+					return;
+				}
+			}
+			Clear();
+		}
+
+		public void TrimEnd(char8 trimChar) mut
+		{
+			TrimEnd((char32)trimChar);
+		}
+
+		public void TrimStart(char32 trimChar) mut
+		{
+			let ptr = Ptr;
+			for (int i = 0; i < mLength; i++)
+			{
+				char8 c = ptr[i];
+				if (c >= (char8)0x80)
+				{
+					var (c32, len) = GetChar32(i);
+					if (c32 != trimChar)
+					{
+						if (i > 0)
+						{
+							mPtr += i;
+							mLength -= i;
+						}	
+						return;
+					}
+					i += len - 1;
+				}
+				else if (c != (char32)trimChar)
+				{
+					if (i > 0)
+					{
+						mPtr += i;
+						mLength -= i;
+					}
+					return;
+				}
+			}
+			Clear();
+		}
+
+		public void TrimStart(char8 trimChar) mut
+		{
+			TrimStart((char32)trimChar);
+		}
+
+		public void Trim(char32 trimChar) mut
+		{
+			TrimStart(trimChar);
+			TrimEnd(trimChar);
+		}
+
+		public void Trim(char8 trimChar) mut
+		{
+			TrimStart((.)trimChar);
+			TrimEnd((.)trimChar);
 		}
 
 		public bool StartsWith(char8 c)
