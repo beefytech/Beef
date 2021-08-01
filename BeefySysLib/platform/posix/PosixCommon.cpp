@@ -1858,6 +1858,10 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 		}
         return result;
 	};
+    
+    // POSIX doesn't need the OpenAlways kind.
+    if (createKind == BfpFileCreateKind_OpenAlways)
+        createKind = BfpFileCreateKind_CreateAlways;
 
 	BfpFile* bfpFile = NULL;
 

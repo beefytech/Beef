@@ -271,6 +271,7 @@ namespace System
 			CreateAlways,
 			CreateIfNotExists,
 			OpenExisting,
+			OpenAlways,
 		};
 
 		public enum BfpFileCreateFlags : int32

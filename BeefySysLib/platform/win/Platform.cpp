@@ -2741,8 +2741,12 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 			creationDisposition = CREATE_ALWAYS;
 	}
 	else if (createKind == BfpFileCreateKind_CreateIfNotExists)
-	{		
+	{
 		creationDisposition = CREATE_NEW;
+	}
+	else if (createKind == BfpFileCreateKind_OpenAlways)
+	{
+		creationDisposition = OPEN_ALWAYS;
 	}
 	else
 	{

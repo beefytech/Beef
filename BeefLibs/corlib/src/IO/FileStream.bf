@@ -178,7 +178,7 @@ namespace System.IO
 			case .Open:
 				createKind = .OpenExisting;
 			case .OpenOrCreate:
-				createKind = .CreateAlways;
+				createKind = .OpenAlways;
 			case .Truncate:
 				createKind = .CreateAlways;
 				createFlags |= .Truncate;
@@ -337,7 +337,7 @@ namespace System.IO
 			case .Open:
 				createKind = .OpenExisting;
 			case .OpenOrCreate:
-				createKind = .CreateAlways;
+				createKind = .OpenAlways;
 			case .Truncate:
 				createKind = .CreateAlways;
 				createFlags |= .Truncate;

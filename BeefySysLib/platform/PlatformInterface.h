@@ -344,6 +344,7 @@ enum BfpFileCreateKind
 	BfpFileCreateKind_CreateAlways,
 	BfpFileCreateKind_CreateIfNotExists,
 	BfpFileCreateKind_OpenExisting,
+	BfpFileCreateKind_OpenAlways
 };
 
 enum BfpFileCreateFlags
