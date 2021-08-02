@@ -405,7 +405,7 @@ namespace Beefy.utils
 				return;
 			switch (obj.GetType())
 			{
-			case typeof(Int32): val = (int32)obj;
+			case typeof(Int64): val = (.)(int64)obj;
 			default:
 			}
 		}
@@ -417,7 +417,7 @@ namespace Beefy.utils
 				return;
 			switch (obj.GetType())
 			{
-			case typeof(Int32): val = (int32)obj;
+			case typeof(Int64): val = (int64)obj;
 			case typeof(Float): val = (float)obj;
 			default:
 			}
@@ -496,9 +496,9 @@ namespace Beefy.utils
         public int32 GetInt(String name, int32 theDefault = 0)
         {
             Object aVal = Get(name);
-            if ((aVal == null) || (!(aVal is int32)))
+            if ((aVal == null) || (!(aVal is int64)))
                 return theDefault;
-            return (int32)aVal;
+            return (int32)(int64)aVal;
         }
 
         public int64 GetLong(String name, int64 theDefault = 0)
@@ -519,6 +519,8 @@ namespace Beefy.utils
 
             if (aVal is int32)
                 return (uint64)(int32)aVal;
+			if (aVal is int64)
+				return (uint64)(int64)aVal;
 
             if ((aVal == null) || (!(aVal is uint64)))
                 return theDefault;
@@ -534,6 +536,7 @@ namespace Beefy.utils
 			{
 			case typeof(Float): return (float)val;
 			case typeof(Int32): return (int32)val;
+			case typeof(Int64): return (int64)val;
 			case typeof(Int): return (int)val;
 			default: return theDefault;
 			}
@@ -634,9 +637,9 @@ namespace Beefy.utils
         public int32 GetCurInt(int32 theDefault = 0)
         {
             Object aVal = GetCurrent();
-            if ((aVal == null) || (!(aVal is int32)))
+            if ((aVal == null) || (!(aVal is int64)))
                 return theDefault;
-            return (int32)aVal;
+            return (.)(int64)aVal;
         }
 
         public uint32 GetCurUInt(uint32 theDefault = 0)
@@ -1786,7 +1789,7 @@ namespace Beefy.utils
 								}
 								else
 								{
-									var parseVal = int32.Parse(strView);
+									var parseVal = int64.Parse(strView);
 									if (parseVal case .Ok(var intVal))
 										aValue = new:mBumpAllocator box intVal;
 									else
@@ -2187,7 +2190,7 @@ namespace Beefy.utils
 						}
 					}
 
-					switch (Int32.Parse(value))
+					switch (Int64.Parse(value))
 					{
 					case .Err: return null;
 					case .Ok(let num): return new:mBumpAllocator box num;
