@@ -12026,6 +12026,8 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 		if (allowCast)
 		{
+			if (typedVal.IsAddr())
+				typedVal = LoadValue(typedVal);
 			return mBfIRBuilder->CreateNumericCast(typedVal.mValue, typedVal.mType->IsSigned(), toTypeCode);
 		}
 	}
