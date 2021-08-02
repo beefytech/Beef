@@ -13,6 +13,9 @@
 
 #include "BeefySysLib/util/AllocDebug.h"
 
+#define STB_SPRINTF_DECORATE(name) BF_stbsp_##name
+#include "../../third_party/stb/stb_sprintf.h"
+
 USING_NS_BF;
 using namespace llvm;
 
@@ -64,11 +67,8 @@ void Beefy::DoBfLog(int fileIdx, const char* fmt ...)
 
 	va_list argList;
 	va_start(argList, fmt);
-#ifdef _WIN32
-	int numChars = _vsnprintf(lineStr + strOfs, maxChars, fmt, argList);
-#else
-	int numChars = vsnprintf(lineStr+ strOfs, maxChars, fmt, argList);
-#endif
+
+	int numChars = BF_stbsp_vsnprintf(lineStr + strOfs, maxChars, fmt, argList);
 	if (numChars <= maxChars)
 	{		
 		if (strOfs + numChars > 0)

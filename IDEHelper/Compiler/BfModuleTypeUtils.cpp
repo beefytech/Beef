@@ -4426,7 +4426,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	CheckAddFailType();
 	
-	BfLogSysM("Setting mNeedsMethodProcessing on %p\n", typeInstance);
+	BF_ASSERT_REL(typeInstance->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotting);
+
+	BfLogSysM("Setting mNeedsMethodProcessing=true on %p\n", typeInstance);
 	typeInstance->mNeedsMethodProcessing = true;
 	typeInstance->mIsFinishingType = false;
 
@@ -4830,7 +4832,17 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 {	
 	if (typeInstance->IsSpecializedByAutoCompleteMethod())
 		return;
-	
+		
+	if (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotting)
+	{
+		BfLogSysM("DoTypeInstanceMethodProcessing %p re-entrancy exit\n", typeInstance);
+		return;
+	}
+
+	BF_ASSERT_REL(typeInstance->mNeedsMethodProcessing);
+	BF_ASSERT_REL(typeInstance->mDefineState == BfTypeDefineState_Defined);
+	typeInstance->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotting;
+
 	BF_ASSERT(typeInstance->mModule == this);
 
 	//TODO: This is new, make sure this is in the right place
@@ -4839,9 +4851,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 	AutoDisallowYield disableYield(mSystem);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
-	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);	
 
-	BfLogSysM("DoTypeInstanceMethodProcessing: %p %s Revision:%d\n", typeInstance, TypeToString(typeInstance).c_str(), typeInstance->mRevision);
+	BfLogSysM("DoTypeInstanceMethodProcessing: %p %s Revision:%d DefineState:%d\n", typeInstance, TypeToString(typeInstance).c_str(), typeInstance->mRevision, typeInstance->mDefineState);
 
 	auto typeDef = typeInstance->mTypeDef;
 
@@ -4929,7 +4941,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 			// Reserve empty entries
 			for (int methodIdx = 0; methodIdx < (int)interfaceTypeDef->mMethods.size(); methodIdx++)			
-				typeInstance->mInterfaceMethodTable.push_back(BfTypeInterfaceMethodEntry());			
+				typeInstance->mInterfaceMethodTable.push_back(BfTypeInterfaceMethodEntry());
 		}		
 	}
 
@@ -5288,6 +5300,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		}
 	}
 
+	BF_ASSERT_REL(typeInstance->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted);
 	BfLogSysM("Starting DoTypeInstanceMethodProcessing %p GetMethodInstance pass.  OnDemandMethods: %d\n", typeInstance, mOnDemandMethodCount);
 
 	// Def passes. First non-overrides then overrides (for in-place overrides in methods)
@@ -5721,7 +5734,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 									auto checkIFaceMethodInst = checkIFaceInst->mMethodInstanceGroups[checkIMethodIdx].mDefault;
 									if ((checkIFaceMethodInst != NULL) && (checkIFaceMethodInst->mMethodDef->mIsOverride))
 									{
-										if (CompareMethodSignatures(checkIFaceMethodInst, ifaceMethodInst))
+										bool cmpResult = CompareMethodSignatures(checkIFaceMethodInst, ifaceMethodInst);										
+										if (cmpResult)
 										{
 											bool isBetter = TypeIsSubTypeOf(checkIFaceInst, bestInterface);
 											bool isWorse = TypeIsSubTypeOf(bestInterface, checkIFaceInst);
@@ -5819,6 +5833,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 								methodString = MethodToString(ifaceMethodInst);
 							}
 
+							OutputDebugStrF("Failed in %s %p\n", mModuleName.c_str(), this);
+
 							BfTypeDeclaration* typeDecl = declTypeDef->mTypeDeclaration;
 							BfError* error = Fail(StrFormat("'%s' does not implement interface member '%s'", TypeToString(typeInstance).c_str(), methodString.c_str()), typeDecl->mNameNode, true);
 							if ((matchedMethod != NULL) && (error != NULL))
@@ -5880,7 +5896,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	mCompiler->mStats.mTypesPopulated++;		
 	mCompiler->UpdateCompletion();
 
-	BfLogSysM("Finished DoTypeInstanceMethodProcessing %p.  OnDemandMethods: %d  Virtual Size: %d\n", typeInstance, mOnDemandMethodCount, typeInstance->mVirtualMethodTable.size());
+	BF_ASSERT_REL(!typeInstance->mNeedsMethodProcessing);
+
+	BfLogSysM("Finished DoTypeInstanceMethodProcessing %p.  OnDemandMethods: %d  Virtual Size: %d InterfaceMethodTableSize: %d\n", typeInstance, mOnDemandMethodCount, typeInstance->mVirtualMethodTable.size(), typeInstance->mInterfaceMethodTable.size());
 }
 
 void BfModule::RebuildMethods(BfTypeInstance* typeInstance)
@@ -5888,6 +5906,9 @@ void BfModule::RebuildMethods(BfTypeInstance* typeInstance)
 	if (typeInstance->IsIncomplete())
 		return;
 	
+	BfLogSysM("RebuildMethods setting mNeedsMethodProcessing=true on %p\n", typeInstance);
+
+	BF_ASSERT_REL(typeInstance->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotting);
 	typeInstance->mNeedsMethodProcessing = true;
 	typeInstance->mDefineState = BfTypeDefineState_Defined;
 	typeInstance->mTypeIncomplete = true;

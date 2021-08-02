@@ -436,6 +436,7 @@ enum BfTypeDefineState : uint8
 	BfTypeDefineState_CEPostTypeInit,
 	BfTypeDefineState_Defined,
 	BfTypeDefineState_CEAfterFields,
+	BfTypeDefineState_DefinedAndMethodsSlotting,
 	BfTypeDefineState_DefinedAndMethodsSlotted,
 };
 

@@ -11079,8 +11079,10 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		BfTypeInstance* attrTypeInst = NULL;
 		if (attrType == NULL)
 			continue;
-		mContext->mUnreifiedModule->PopulateType(attrType, BfPopulateType_DataAndMethods); 
 		attrTypeInst = attrType->ToTypeInstance();
+		if ((attrTypeInst != NULL) && (attrTypeInst->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotting))
+			mContext->mUnreifiedModule->PopulateType(attrType, BfPopulateType_DataAndMethods); 
+		
 		if ((attrTypeInst == NULL) || (!TypeIsSubTypeOf(attrTypeInst, baseAttrTypeInst)) || (attrTypeInst->mAttributeData == NULL))
 		{
 			Fail(StrFormat("'%s' is not an attribute class", TypeToString(attrType).c_str()), attributesDirective->mAttributeTypeRef); //CS0616
@@ -16315,8 +16317,8 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 					addDeref = resolvedTypeRef->mSize;
 				}
 				else if ((methodInstance->WantsStructsAttribByVal()) && (!resolvedTypeRef->IsSizedArray()))
-				{
-					mBfIRBuilder->PopulateType(resolvedTypeRef);
+				{					
+					mBfIRBuilder->PopulateType(resolvedTypeRef, BfIRPopulateType_Full);
 					BF_ASSERT(resolvedTypeRef->mAlign > 0);
 					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal, mSystem->mPtrSize);
 				}
@@ -23546,7 +23548,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
  					}
  				}
  			}
-
+						
 			if (doesMethodSignatureMatch)
 			{										
 				usedMethod = true;
@@ -23587,15 +23589,15 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						storeIFaceMethod = isBetter;
 					}
 				}					
-			}			
-
+			}
+			
 			if (storeIFaceMethod)
 			{
 				if (methodInstance->GetNumGenericParams() != 0)
 					_AddVirtualDecl(iMethodInst);
 				*iMethodPtr = methodInstance;
 			}
-
+			
 			checkMethodDef = checkMethodDef->mNextWithSameName;
 		}		
 

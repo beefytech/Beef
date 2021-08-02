@@ -838,7 +838,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	{
 		return;
 	}
-
+	
 	type->mDirty = true;
 	
 	bool wantDeleteType = (type->IsOnDemand()) && (deleteOnDemandTypes);
@@ -869,6 +869,8 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		
 		return;
 	}
+
+	BF_ASSERT_REL(typeInst->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotting);
 
 	// We need to verify lookups before we rebuild the type, because a type lookup change needs to count as a TypeDataChanged
 	VerifyTypeLookups(typeInst);

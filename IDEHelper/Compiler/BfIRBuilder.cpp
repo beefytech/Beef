@@ -3604,7 +3604,15 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 // 		isDefiningModule = true;
 
 	if ((isDefiningModule) || (type->IsValueType()))
-		populateModule->PopulateType(type, BfPopulateType_DataAndMethods);
+	{
+		if ((typeInstance != NULL) && (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotting))
+		{
+			// Don't re-enter
+			BfLogSys(mModule->mSystem, "BfIRBuilder::CreateTypeDefinition avoided PopulateType BfPopulateType_DataAndMethods re-entry typeInst: %p\n", typeInstance);
+		}
+		else
+			populateModule->PopulateType(type, BfPopulateType_DataAndMethods);
+	}
 
 	if ((!isDefiningModule) && (!type->IsUnspecializedType()) && (type->IsValueType()) && (mHasDebugInfo))
 	{
