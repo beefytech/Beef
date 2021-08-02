@@ -917,6 +917,12 @@ namespace CURL
 			return WrapResult((ReturnCode)curl_easy_setopt(mCURL, (int)option, (int)(void*)val.CStr()));
 		}
 
+		public Result<void, ReturnCode> SetOpt(Option option, StringView val)
+		{
+			Debug.Assert((int)option / 10000 == 1);
+			return WrapResult((ReturnCode)curl_easy_setopt(mCURL, (int)option, (int)(void*)scope String(4096)..Append(val).CStr()));
+		}
+
 		public Result<void, ReturnCode> SetOpt(Option option, int val)
 		{
 			Debug.Assert(((int)option / 10000 == 0) || ((int)option / 10000 == 3));
