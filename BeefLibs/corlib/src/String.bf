@@ -3137,11 +3137,33 @@ namespace System
 			return Ptr[0] == c;
 		}
 
+		public bool StartsWith(char32 c)
+		{
+			if (c < '\x80')
+				return StartsWith((char8)c);
+			if (mLength == 0)
+				return false;
+			return UTF8.Decode(Ptr, mLength).c == c;
+		}
+
 		public bool EndsWith(char8 c)
 		{
 			if (mLength == 0)
 				return false;
 			return Ptr[mLength - 1] == c;
+		}
+
+		public bool EndsWith(char32 c)
+		{
+			if (c < '\x80')
+				return EndsWith((char8)c);
+			if (mLength == 0)
+				return false;
+			char8* ptr = Ptr;
+			int idx = mLength - 1;
+			while ((idx > 0) && ((uint8)ptr[idx] & 0xC0 == 0x80))
+				idx--;
+			return UTF8.Decode(ptr + idx, mLength - idx).c == c;
 		}
 
 		public void QuoteString(String outString)
