@@ -447,8 +447,6 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 
 		if (methodDef->mIsAbstract)
 		{
-			if ((!mCurTypeDef->mIsAbstract) && (mCurTypeDef->mTypeCode != BfTypeCode_Interface))
-				Fail("Method is abstract but it is contained in non-abstract class", methodDeclaration);
 			if (methodDeclaration->mBody != NULL)
 				Fail("Abstract method cannot declare a body", methodDeclaration);
 		}

@@ -5582,7 +5582,11 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				{
 					if (methodInstance->mMethodDef->mIsAbstract)
 					{
-						if (!typeInstance->IsUnspecializedTypeVariation())
+						if (typeInstance->mVirtualMethodTable[methodIdx].mDeclaringMethod.mTypeInstance == typeInstance)
+						{
+							Fail("Method is abstract but it is declared in non-abstract class", methodInstance->mMethodDef->GetRefNode());
+						}
+						else if (!typeInstance->IsUnspecializedTypeVariation())
 						{
 							if (Fail(StrFormat("'%s' does not implement inherited abstract method '%s'", TypeToString(typeInstance).c_str(), MethodToString(methodInstance).c_str()), typeDef->mTypeDeclaration->mNameNode, true) != NULL)
 								mCompiler->mPassInstance->MoreInfo("Abstract method declared", methodInstance->mMethodDef->GetRefNode());
