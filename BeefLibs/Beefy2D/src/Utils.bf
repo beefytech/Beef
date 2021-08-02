@@ -295,11 +295,13 @@ namespace Beefy
 
         public static Result<void> WriteTextFile(StringView path, StringView text)
         {
-			var stream = scope FileStream();
-			if (stream.Create(path) case .Err)
-			{
+			var stream = scope UnbufferedFileStream();
+			if (stream.Open(path, .OpenOrCreate, .Write) case .Err)
 				return .Err;
-			}
+
+			if (stream.SetLength(text.Length) case .Err)
+				return .Err;
+				
             if (stream.WriteStrUnsized(text) case .Err)
 				return .Err;
             

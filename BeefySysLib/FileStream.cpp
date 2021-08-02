@@ -219,7 +219,8 @@ void SysFileStream::SetSizeFast(int size)
 	
 	int curPos = GetPos();
 	SetPos(size);
-	BfpFile_Truncate(mFile);	
+	BfpFileResult result = BfpFileResult_Ok;
+	BfpFile_Truncate(mFile, &result);	
 	SetPos(curPos);
 	return;	
 }

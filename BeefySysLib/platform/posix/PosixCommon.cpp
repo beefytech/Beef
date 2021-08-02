@@ -1858,6 +1858,10 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 		}
         return result;
 	};
+    
+    // POSIX doesn't need the OpenAlways kind.
+    if (createKind == BfpFileCreateKind_OpenAlways)
+        createKind = BfpFileCreateKind_CreateAlways;
 
 	BfpFile* bfpFile = NULL;
 
@@ -2079,13 +2083,15 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileS
     return lseek64(file->mHandle, offset, whence);
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file)
+BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult)
 {
     int64 curPos = (int64)lseek64(file->mHandle, 0, SEEK_CUR);
 	if (ftruncate64(file->mHandle, curPos) != 0)
-	{
-		//TODO: Report error?
-	}
+    {
+        OUTRESULT(BfpFileResult_UnknownError);
+        return;
+    }
+    OUTRESULT(BfpFileResult_Ok);
 }
 
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path)

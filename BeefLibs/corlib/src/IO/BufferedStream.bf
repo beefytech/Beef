@@ -88,14 +88,12 @@ namespace System.IO
 				data.RemoveFromStart((.)spaceLeft);
 			}
 
-			if (mWriteDirtyPos >= 0)
-				Try!(Flush());
+			Try!(Flush());
 
 			if ((mBuffer == null) || (data.Length > mBuffer.Count))
 			{
-				var result = TryReadUnderlying(mPos, data);
-				if (result case .Ok(let len))
-					mPos += len;
+				let len = Try!(TryReadUnderlying(mPos, data));
+				mPos += len;
 				return (.)(mPos - readStart);
 			}
 
@@ -148,10 +146,9 @@ namespace System.IO
 
 			if ((mBuffer == null) || (data.Length > mBuffer.Count))
 			{
-				var result = TryWriteUnderlying(mPos, data);
-				if (result case .Ok(let len))
-					mPos += len;
-				writeCount += result;
+				let len = Try!(TryWriteUnderlying(mPos, data));
+				mPos += len;
+				writeCount += len;
 				return writeCount;
 			}
 

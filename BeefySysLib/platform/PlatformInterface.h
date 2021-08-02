@@ -344,6 +344,7 @@ enum BfpFileCreateKind
 	BfpFileCreateKind_CreateAlways,
 	BfpFileCreateKind_CreateIfNotExists,
 	BfpFileCreateKind_OpenExisting,
+	BfpFileCreateKind_OpenAlways
 };
 
 enum BfpFileCreateFlags
@@ -421,7 +422,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Flush(BfpFile* file);
 BFP_EXPORT int64 BFP_CALLTYPE BfpFile_GetFileSize(BfpFile* file);
 BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileSeekKind seekKind);
-BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file);
+BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult);
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path);
 BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFile_GetAttributes(const char* path, BfpFileResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpFile_SetAttributes(const char* path, BfpFileAttributes attribs, BfpFileResult* outResult);
