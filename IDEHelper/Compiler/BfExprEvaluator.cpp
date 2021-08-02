@@ -12069,6 +12069,9 @@ void BfExprEvaluator::VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration*
 
 BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lambdaBindExpr, BfAllocTarget& allocTarget)
 {	
+	if (mModule->mCurMethodState == NULL)
+		return NULL;
+
 	auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();	
 	BfAstNodeList cacheNodeList;
 	cacheNodeList.mList.Add(lambdaBindExpr);
@@ -12301,6 +12304,8 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 	Val128 val128(delegateTypeInstance->mTypeId);
 
+	bool isConstEval = ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0);
+
 	BfMethodState methodState;
 	methodState.mPrevMethodState = mModule->mCurMethodState;
 	BfIRFunctionType funcType;
@@ -12309,7 +12314,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	funcType = mModule->mBfIRBuilder->CreateFunctionType(mModule->mBfIRBuilder->MapType(voidType), paramTypes, false);
 
 	auto prevInsertBlock = mModule->mBfIRBuilder->GetInsertBlock();
-	BF_ASSERT(prevInsertBlock);
+	BF_ASSERT(prevInsertBlock || isConstEval);
 	auto prevActiveFunction = mModule->mBfIRBuilder->GetActiveFunction();
 	mModule->mBfIRBuilder->SaveDebugLocation();
 
@@ -12887,7 +12892,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 	prevMethodState.Restore();
 	mModule->mBfIRBuilder->SetActiveFunction(prevActiveFunction);
-	if (!prevInsertBlock.IsFake())
+	if ((prevInsertBlock) && (!prevInsertBlock.IsFake()))
 		mModule->mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 
 	// Just a check
@@ -13069,7 +13074,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	}
 
 	prevClosureState.Restore();
-	if (!prevInsertBlock.IsFake())
+	if ((prevInsertBlock) && (!prevInsertBlock.IsFake()))
 		mModule->mBfIRBuilder->SetInsertPoint(prevInsertBlock);		
 
 	for (auto& capturedEntry : capturedEntries)

@@ -13648,8 +13648,11 @@ void BfModule::SetupMethodIdHash(BfMethodInstance* methodInstance)
 	if (methodInstance->mMethodDef->mIsLocalMethod)
 	{
 		auto outmostMethodInstance = mCurMethodState->GetRootMethodState()->mMethodInstance;
-		BF_ASSERT((outmostMethodInstance->mIdHash != 0) || (outmostMethodInstance->mIsAutocompleteMethod));
-		hashCtx.Mixin(outmostMethodInstance->mIdHash);
+		if (outmostMethodInstance != NULL)
+		{
+			BF_ASSERT((outmostMethodInstance->mIdHash != 0) || (outmostMethodInstance->mIsAutocompleteMethod));
+			hashCtx.Mixin(outmostMethodInstance->mIdHash);
+		}
 	}	
 
 	methodInstance->mIdHash = (int64)hashCtx.Finish64();
@@ -20396,7 +20399,7 @@ String BfModule::GetLocalMethodName(const StringImpl& baseName, BfAstNode* ancho
 	}
 
 	auto rootMethodState = mCurMethodState->GetRootMethodState();
-	if (rootMethodState->mMethodInstance->mMethodInfoEx != NULL)
+	if ((rootMethodState != NULL) && (rootMethodState->mMethodInstance != NULL) && (rootMethodState->mMethodInstance->mMethodInfoEx != NULL))
 	{
 		for (auto methodGenericArg : rootMethodState->mMethodInstance->mMethodInfoEx->mMethodGenericArguments)
 		{
@@ -20454,7 +20457,7 @@ BfMethodDef* BfModule::GetLocalMethodDef(BfLocalMethod* localMethod)
 	BfMethodDef* outerMethodDef = NULL;
 	if (localMethod->mOuterLocalMethod != NULL)
 		outerMethodDef = localMethod->mOuterLocalMethod->mMethodDef;
-	else
+	else if (rootMethodState->mMethodInstance != NULL)
 		outerMethodDef = rootMethodState->mMethodInstance->mMethodDef;
 
 	if (methodDeclaration != NULL)
@@ -20585,14 +20588,14 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	// Ignore the outermost method's generic method arguments for the purpose of determining if we are the 'default' (ie: unspecialized)
 	//  version of this method for this pass through the outermost method
 	int dependentGenericStartIdx = 0;
-	if (rootMethodState->mMethodInstance->mMethodInfoEx != NULL)
+	if ((rootMethodState->mMethodInstance != NULL) && (rootMethodState->mMethodInstance->mMethodInfoEx != NULL))
 		dependentGenericStartIdx = (int)rootMethodState->mMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
 	
 	BfMethodInstance* outerMethodInstance = mCurMethodInstance;
 	
 	if (methodGenericArguments.size() == 0)
 	{
-		if (rootMethodState->mMethodInstance->mMethodInfoEx != NULL)
+		if ((rootMethodState->mMethodInstance != NULL) && (rootMethodState->mMethodInstance->mMethodInfoEx != NULL))
 			sanitizedMethodGenericArguments = rootMethodState->mMethodInstance->mMethodInfoEx->mMethodGenericArguments;
 	}
 	else
@@ -21677,11 +21680,14 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		//  over the local method each time
 		auto rootMethodInstance = prevMethodState.mPrevVal->GetRootMethodState()->mMethodInstance;
 		dependentGenericStartIdx = 0;
-		if (rootMethodInstance->mMethodInfoEx != NULL)
-			dependentGenericStartIdx = (int)rootMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+		if (rootMethodInstance != NULL)
+		{
+			if (rootMethodInstance->mMethodInfoEx != NULL)
+				dependentGenericStartIdx = (int)rootMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
 
-		methodInstance->mIsUnspecialized = rootMethodInstance->mIsUnspecialized;
-		methodInstance->mIsUnspecializedVariation = rootMethodInstance->mIsUnspecializedVariation;
+			methodInstance->mIsUnspecialized = rootMethodInstance->mIsUnspecialized;
+			methodInstance->mIsUnspecializedVariation = rootMethodInstance->mIsUnspecializedVariation;
+		}
 	}
 
 	for (int genericArgIdx = dependentGenericStartIdx; genericArgIdx < (int) methodInstance->GetNumGenericArguments(); genericArgIdx++)
