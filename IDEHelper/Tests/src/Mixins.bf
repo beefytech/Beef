@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -47,6 +48,31 @@ namespace Tests
 			a = 234;
 		}
 
+		public static mixin CircularMixin<T>(T value)
+			where T : var
+		{
+			10
+		}
+
+		public static mixin CircularMixin<K, V>(Dictionary<K, V> value)
+			where K : var, IHashable
+			where V : var
+		{
+			
+			int total = 0;
+			if (value == null)
+				total += 1;
+			else
+			{
+				for (let (k, v) in ref value)
+				{
+					total += CircularMixin!(k);
+					total += CircularMixin!(*v);
+				}
+			}
+			total + 100
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -73,6 +99,10 @@ namespace Tests
 					CheckStr(sv.ToScopeCStr!());
 				};
 			func("Test");
+
+			Dictionary<int, Dictionary<int, int>> test = scope .() {(1,null)};
+			int val = CircularMixin!(test);
+			Test.Assert(val == 211);
 		}
 
 		[Test]

@@ -15200,38 +15200,40 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	
 	auto curMethodState = mModule->mCurMethodState;
 	//
-	{
-		bool hasCircularRef = false;
 
-		auto checkMethodState = curMethodState;
-		while (checkMethodState != NULL)
-		{			
-			auto curMixinState = checkMethodState->mMixinState;
-			while (curMixinState != NULL)
-			{
-				if (curMixinState->mSource == targetSrc)				
-					hasCircularRef = true;									
-				curMixinState = curMixinState->mPrevMixinState;
-			}
-
-			if ((checkMethodState->mClosureState != NULL) && (checkMethodState->mClosureState->mActiveDeferredLocalMethod != NULL))
-			{
-				for (auto& mixinRecord : checkMethodState->mClosureState->mActiveDeferredLocalMethod->mMixinStateRecords)
-				{
-					if (mixinRecord.mSource == targetSrc)					
-						hasCircularRef = true;					
-				}
-			}
-
-			checkMethodState = checkMethodState->mPrevMethodState;
-		}
-
-		if (hasCircularRef)
-		{
-			mModule->Fail("Circular reference detected between mixins", targetSrc);
-			return;
-		}
-	}
+	// Why was this required? It doesn't check for matching generic args (we only want to throw an error if we call back into a mixin with the same generic args as before)
+// 	{
+// 		bool hasCircularRef = false;
+// 
+// 		auto checkMethodState = curMethodState;
+// 		while (checkMethodState != NULL)
+// 		{			
+// 			auto curMixinState = checkMethodState->mMixinState;
+// 			while (curMixinState != NULL)
+// 			{
+// 				if (curMixinState->mSource == targetSrc)				
+// 					hasCircularRef = true;									
+// 				curMixinState = curMixinState->mPrevMixinState;
+// 			}
+// 
+// 			if ((checkMethodState->mClosureState != NULL) && (checkMethodState->mClosureState->mActiveDeferredLocalMethod != NULL))
+// 			{
+// 				for (auto& mixinRecord : checkMethodState->mClosureState->mActiveDeferredLocalMethod->mMixinStateRecords)
+// 				{
+// 					if (mixinRecord.mSource == targetSrc)					
+// 						hasCircularRef = true;					
+// 				}
+// 			}
+// 
+// 			checkMethodState = checkMethodState->mPrevMethodState;
+// 		}
+// 
+// 		if (hasCircularRef)
+// 		{
+// 			mModule->Fail("Circular reference detected between mixins", targetSrc);
+// 			return;
+// 		}
+// 	}
 	
 	auto moduleMethodInstance = GetSelectedMethod(targetSrc, methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher);
 	if (!moduleMethodInstance)

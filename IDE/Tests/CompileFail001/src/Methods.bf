@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace IDETest
 {
@@ -55,11 +56,39 @@ namespace IDETest
 
 		}
 
+		public static mixin MixinA()
+		{
+			MixinA!(); //FAIL
+		}
+
+		public static mixin MixinB<T>(T val) where T : var
+		{
+		}
+
+		public static mixin MixinB<T, T2>(T val) where T : List<T2>
+		{
+			MixinB!(val);
+		}
+
+		public static mixin MixinC<T>(T val) where T : var
+		{
+		}
+
+		public static mixin MixinC<T, T2>(T val) where T : List<T2>
+		{
+			if (!val.IsEmpty)
+				MixinC!(val.Front);
+		}
+
 		public static void Test()
 		{
 			ClassB cb = scope .();
 			MethodA(cb, 123); //FAIL
 			MethodB(cb, 234); //FAIL
+
+			List<List<int>> list = scope .();
+			MixinB!(list); //FAIL
+			MixinC!(list);
 		}
 	}
 }
