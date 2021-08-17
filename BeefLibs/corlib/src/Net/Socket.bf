@@ -5,6 +5,7 @@ namespace System.Net
 {
 	class Socket
 	{
+		const uint16 WINSOCK_VERSION = 0x0202;
 		const int32 WSAENETRESET    = 10052;
 		const int32 WSAECONNABORTED = 10053;
 		const int32 WSAECONNRESET   = 10054;
@@ -169,6 +170,9 @@ namespace System.Net
 #if BF_PLATFORM_WINDOWS
 		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSAStartup(uint16 versionRequired, WSAData* wsaData);
+		
+		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
+		static extern int32 WSACleanup();
 
 		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSAGetLastError();
@@ -230,11 +234,22 @@ namespace System.Net
 #endif
 		}
 
-		public static void Init()
+		public static int32 Init(uint16 versionRequired = WINSOCK_VERSION)
 		{
 #if BF_PLATFORM_WINDOWS
 			WSAData wsaData = default;
-			WSAStartup(0x202, &wsaData);
+			return WSAStartup(versionRequired, &wsaData);
+#else
+			return 0;
+#endif
+		}
+		
+		public static int32 Uninit()
+		{
+#if BF_PLATFORM_WINDOWS
+			return WSACleanup();
+#else
+			return 0;
 #endif
 		}
 
