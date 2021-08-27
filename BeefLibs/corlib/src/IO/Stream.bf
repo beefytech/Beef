@@ -103,16 +103,17 @@ namespace System.IO
 			if (size < 0)
 				return .Err;
 
-			for (int64 i = 0; i < size; i++)
+			int prevLen = output.Length;
+			char8* buf = output.PrepareBuffer(size);
+			switch (TryRead(.((uint8*)buf, size)))
 			{
-				Result<char8> char = Read<char8>();
-				if (char == .Err)
-					return .Err;
-
-				output.Append(char);
+			case .Ok(let readLen):
+				if (readLen < size)
+					output.Length = prevLen + readLen;
+				return .Ok;
+			case .Err:
+				return .Err;
 			}
-
-			return .Ok;
 		}
 
 		public Result<void> ReadStrSized32(String output)
