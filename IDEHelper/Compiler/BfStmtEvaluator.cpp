@@ -1252,7 +1252,8 @@ void BfModule::TryInitVar(BfAstNode* checkNode, BfLocalVariable* localVar, BfTyp
 			if (localVar->mAddr)
 			{
 				initValue = LoadValue(initValue);
-				mBfIRBuilder->CreateAlignedStore(initValue.mValue, localVar->mAddr, initValue.mType->mAlign);
+				if (!initValue.mType->IsVar())
+					mBfIRBuilder->CreateAlignedStore(initValue.mValue, localVar->mAddr, initValue.mType->mAlign);
 			}
 
 			if ((varType->IsPointer()) || (varType->IsObjectOrInterface()))

@@ -12403,6 +12403,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			methodDef->mParams.push_back(paramDef);
 
 			localVar->mResolvedType = invokeMethodInstance->GetParamType(paramIdx);
+			mModule->PopulateType(localVar->mResolvedType);
 			localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 			localVar->mReadFromId = 0;
 
