@@ -300,7 +300,7 @@ namespace System.Collections
 				return (int32)hashCode & 0x7FFFFFFF;
 			if (sizeof(int_cosize) == 8)
 				return (int_cosize)(hashCode & 0x7FFFFFFF'FFFFFFFFL);
-			return ((int32)hashCode ^ (int32)(hashCode >> 33)) & 0x7FFFFFFF;
+			return ((int32)hashCode ^ (int32)((int64)hashCode >> 33)) & 0x7FFFFFFF;
 		}
 
 		[DisableObjectAccessChecks]
