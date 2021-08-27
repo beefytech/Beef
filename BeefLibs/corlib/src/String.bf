@@ -1542,7 +1542,7 @@ namespace System
 			mLength = newLength;
 		}
 
-		public void Insert(int_strsize idx, char8 c)
+		public void Insert(int idx, char8 c)
 		{
 			Contract.Requires(idx >= 0);
 
@@ -1557,7 +1557,7 @@ namespace System
 			mLength = newLength;
 		}
 
-		public void Insert(int_strsize idx, char8 c, int count)
+		public void Insert(int idx, char8 c, int count)
 		{
 			Contract.Requires(idx >= 0);
 
@@ -1576,7 +1576,7 @@ namespace System
 			mLength = newLength;
 		}
 
-		public void Insert(int_strsize idx, char32 c)
+		public void Insert(int idx, char32 c)
 		{
 			Contract.Requires(idx >= 0);
 
@@ -1625,7 +1625,7 @@ namespace System
 			}
 		}
 
-		public void Insert(int_strsize idx, char32 c, int count)
+		public void Insert(int idx, char32 c, int count)
 		{
 			Contract.Requires(idx >= 0);
 
@@ -2347,6 +2347,7 @@ namespace System
 
 		public RawEnumerator RawChars
 		{
+			[Inline]
 			get
 			{
 				return RawEnumerator(Ptr, 0, mLength);
@@ -2355,6 +2356,7 @@ namespace System
 
 		public UTF8Enumerator DecodedChars
 		{
+			[Inline]
 			get
 			{
 				return UTF8Enumerator(Ptr, 0, mLength);
@@ -2516,6 +2518,7 @@ namespace System
 			int_strsize mIdx;
 			int_strsize mLength;
 
+			[Inline]
 			public this(char8* ptr, int idx, int length)
 			{
 				mPtr = ptr;
@@ -2525,11 +2528,13 @@ namespace System
 
 			public char8 Current
 			{
+				[Inline]
 			    get
 			    {
 			        return mPtr[mIdx];
 			    }
 
+				[Inline]
 				set
 				{
 					mPtr[mIdx] = value;
@@ -2538,6 +2543,7 @@ namespace System
 
 			public ref char8 CurrentRef
 			{
+				[Inline]
 			    get
 			    {
 			        return ref mPtr[mIdx];
@@ -2546,6 +2552,7 @@ namespace System
 
 			public int Index
 			{
+				[Inline]
 				get
 				{
 					return mIdx;
@@ -2554,42 +2561,29 @@ namespace System
 
 			public int Length
 			{
+				[Inline]
 				get
 				{
 					return mLength;
 				}				
 			}
 
-			public void Dispose()
-			{
-
-			}
-
-			public void Reset()
-			{
-
-			}
-
-			public bool MoveNext() mut
+			[Inline]
+			public Result<char8> GetNext() mut
 			{
 				++mIdx;
 				if (mIdx >= mLength)
-					return false;
-				return true;
-			}
-
-			public Result<char8> GetNext() mut
-			{
-				if (!MoveNext())
 					return .Err;
-				return Current;
+				return mPtr[mIdx];
 			}
 
+			[Inline]
 			public Result<char8*> GetNextRef() mut
 			{
-				if (!MoveNext())
+				++mIdx;
+				if (mIdx >= mLength)
 					return .Err;
-				return &CurrentRef;
+				return &mPtr[mIdx];
 			}
 		}
 
@@ -2988,6 +2982,13 @@ namespace System
 				return String.[Friend]CompareOrdinalIgnoreCaseHelper(val1.mPtr, val1.mLength, val2.mPtr, val2.mLength);
 			else
 				return String.[Friend]CompareOrdinalHelper(val1.mPtr, val1.mLength, val2.mPtr, val2.mLength);
+		}
+
+		public int CompareTo(StringView strB, bool ignoreCase = false)
+		{
+			if (ignoreCase)
+				return String.[Friend]CompareOrdinalIgnoreCaseHelper(Ptr, Length, strB.Ptr, strB.Length);
+			return String.[Friend]CompareOrdinalHelper(Ptr, Length, strB.Ptr, strB.Length);
 		}
 
 		public bool Equals(StringView str)
