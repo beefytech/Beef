@@ -865,12 +865,12 @@ namespace Beefy.gfx
             float d = m.d * height;
 
             Gfx_AllocTris(image.mNativeTextureSegment, 6);
-            Gfx_SetDrawVertex(0, m.tx, m.ty, 0, u1, 0, mColor);
-            Gfx_SetDrawVertex(1, m.tx + a, m.ty + b, 0, u2, 0, mColor);
-            Gfx_SetDrawVertex(2, m.tx + c, m.ty + d, 0, u1, 1, mColor);
+            Gfx_SetDrawVertex(0, m.tx, m.ty, 0, u1, v1, mColor);
+            Gfx_SetDrawVertex(1, m.tx + a, m.ty + b, 0, u2, v1, mColor);
+            Gfx_SetDrawVertex(2, m.tx + c, m.ty + d, 0, u1, v2, mColor);
             Gfx_CopyDrawVertex(3, 2);
             Gfx_CopyDrawVertex(4, 1);
-            Gfx_SetDrawVertex(5, m.tx + (a + c), m.ty + (b + d), 0, u2, 1, mColor);
+            Gfx_SetDrawVertex(5, m.tx + (a + c), m.ty + (b + d), 0, u2, v2, mColor);
         }
 
         // Untranslated
