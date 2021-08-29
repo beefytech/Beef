@@ -851,6 +851,7 @@ namespace IDE
 
 			var fileDialog = scope OpenFileDialog();
 			fileDialog.Title = "Open File";
+			fileDialog.SetFilter("All files (*.*)|*.*");
 			fileDialog.Multiselect = true;
 			fileDialog.ValidateNames = true;
 			if (!fullDir.IsEmpty)
@@ -1460,8 +1461,14 @@ namespace IDE
 		public bool SaveFileAs(SourceViewPanel sourceViewPanel)
 		{
 #if !CLI
+			String fullDir = scope .();
+			Path.GetDirectoryPath(sourceViewPanel.mFilePath, fullDir);
+
 			SaveFileDialog dialog = scope .();
+			dialog.SetFilter("All files (*.*)|*.*");
 			//dialog.ValidateNames = true;
+			if (!fullDir.IsEmpty)
+				dialog.InitialDirectory = fullDir;
 
 			if (sourceViewPanel.mFilePath != null)
 			{
