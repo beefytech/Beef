@@ -17781,6 +17781,7 @@ void BfExprEvaluator::AssignDeferrredTupleAssignData(BfAssignmentExpression* ass
 		BfTypedValue elementValue;
 		if (fieldInstance->mDataIdx >= 0)
 		{	
+			rightValue = mModule->LoadOrAggregateValue(rightValue);
 			auto extractedValue = mModule->mBfIRBuilder->CreateExtractValue(rightValue.mValue, fieldInstance->mDataIdx);
 			elementValue = BfTypedValue(extractedValue, fieldInstance->GetResolvedType());
 			if (child.mInnerTuple != NULL)
