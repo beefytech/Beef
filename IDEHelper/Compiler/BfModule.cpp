@@ -15049,13 +15049,9 @@ void BfModule::EmitReturn(const BfTypedValue& val)
 	else
 	{
 		EmitDeferredScopeCalls(false, NULL);
-
 		if (val)
 		{
-			if (mCurMethodInstance->mReturnType->IsValuelessType())
-				mBfIRBuilder->CreateRetVoid();
-			else
-				mBfIRBuilder->CreateRet(val.mValue);
+			BF_ASSERT(mBfIRBuilder->mIgnoreWrites);
 		}
 	}
 
@@ -15803,6 +15799,10 @@ void BfModule::EmitDtorBody()
 	if (auto bodyBlock = BfNodeDynCast<BfBlock>(methodDef->mBody))
 	{		
 		VisitEmbeddedStatement(bodyBlock);
+		
+		// We don't have an exit block and no return was actually emitted, so we set this to false to ensure a proper ret emission later
+		mCurMethodState->mHadReturn = false;
+		
 		if (bodyBlock->mCloseBrace != NULL)
 		{
 			UpdateSrcPos(bodyBlock->mCloseBrace);						
