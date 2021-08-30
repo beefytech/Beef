@@ -15801,11 +15801,7 @@ void BfModule::EmitDtorBody()
 
 	if (auto bodyBlock = BfNodeDynCast<BfBlock>(methodDef->mBody))
 	{		
-		VisitEmbeddedStatement(bodyBlock);
-		
-		// We don't have an exit block and no return was actually emitted, so we set this to false to ensure a proper ret emission later
-		mCurMethodState->mHadReturn = false;
-		
+		VisitEmbeddedStatement(bodyBlock);				
 		if (bodyBlock->mCloseBrace != NULL)
 		{
 			UpdateSrcPos(bodyBlock->mCloseBrace);						
