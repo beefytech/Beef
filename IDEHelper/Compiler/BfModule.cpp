@@ -12966,7 +12966,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	bool isExternalExtensionMethod = false; 
 	if ((!typeInst->IsUnspecializedType()) && (!isUnspecializedPass))
 	{
-		if (((flags & BfGetMethodInstanceFlag_ForeignMethodDef) == 0) && (methodDef->mDeclaringType->mProject != typeInst->mTypeDef->mProject))
+		if (((flags & BfGetMethodInstanceFlag_ForeignMethodDef) == 0) &&
+			(methodDef->mDeclaringType != NULL) &&
+			(methodDef->mDeclaringType->mProject != typeInst->mTypeDef->mProject))
 		{
 			auto specProject = methodDef->mDeclaringType->mProject;
 
