@@ -15759,6 +15759,9 @@ void BfModule::CreateStaticCtor()
 
 void BfModule::EmitDtorBody()
 {	
+	if (!mCurMethodState->mIRExitBlock)
+		mCurMethodState->mIRExitBlock = mBfIRBuilder->CreateBlock("exit", true);
+
 	if (mCurTypeInstance->IsClosure())
 	{
 		BfFieldInstance* fieldInstance = &mCurTypeInstance->mFieldInstances.back();
