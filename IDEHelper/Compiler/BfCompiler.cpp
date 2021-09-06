@@ -2089,9 +2089,6 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
 
 			SmallVector<BfIRValue, 2> startArgs;
-			startArgs.push_back(bfModule->mBfIRBuilder->CreateConstNull());
-			startArgs.push_back(bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 1));
-			startArgs.push_back(bfModule->mBfIRBuilder->CreateConstNull());
 			bfModule->mBfIRBuilder->CreateCall(mainFunc, startArgs);
 			bfModule->mBfIRBuilder->CreateRetVoid();			
 
@@ -2102,9 +2099,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bfModule->mBfIRBuilder->SetActiveFunction(func);
 			entryBlock = bfModule->mBfIRBuilder->CreateBlock("main", true);
 			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
-			SmallVector<BfIRValue, 2> stopArgs;			
-			startArgs[1] = bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0);
-			bfModule->mBfIRBuilder->CreateCall(mainFunc, startArgs);
+			SmallVector<BfIRValue, 2> stopArgs;						
+			bfModule->mBfIRBuilder->CreateCall(shutdownFunc, startArgs);
 			bfModule->mBfIRBuilder->CreateRetVoid();
 		}
 	}
