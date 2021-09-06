@@ -2675,7 +2675,7 @@ namespace System
 				return;
 
 			int i = sb.Length + (end - start);
-			sb.Length = i;
+			sb.PrepareBuffer(i);
 
 			var end;
 			var start;

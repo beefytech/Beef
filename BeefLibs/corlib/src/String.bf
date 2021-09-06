@@ -329,7 +329,7 @@ namespace System
 
 			set
 			{
-				Debug.Assert((uint)mLength <= (uint)value);
+				Debug.Assert((uint)value <= (uint)mLength);
 				mLength = (int_strsize)value;
 			}
 		}
