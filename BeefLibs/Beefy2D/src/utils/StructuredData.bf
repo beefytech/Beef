@@ -2363,6 +2363,8 @@ namespace Beefy.utils
 					continue;
 				if (c == '{')
 					isJson = true;
+				if (c == '[')
+					isJson = true;
 				break;
 			}
 
