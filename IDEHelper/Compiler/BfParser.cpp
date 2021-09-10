@@ -3058,6 +3058,10 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 						else if (SrcPtrHasToken("nullable"))
 							mToken = BfToken_Nullable;
 						break;
+					case TOKEN_HASH('o', 'f', 'f', 's'):
+						if (SrcPtrHasToken("offsetof"))
+							mToken = BfToken_OffsetOf;
+						break;
 					case TOKEN_HASH('o', 'p', 'e', 'r'):
 						if (SrcPtrHasToken("operator"))
 							mToken = BfToken_Operator;

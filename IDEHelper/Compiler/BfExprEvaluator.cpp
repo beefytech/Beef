@@ -10409,8 +10409,11 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 	return true;
 }
 
-void BfExprEvaluator::DoTypeIntAttr(BfTypeReference* typeRef, BfToken token)
+void BfExprEvaluator::DoTypeIntAttr(BfTypeReference* typeRef, BfTokenNode* commaToken, BfIdentifierNode* memberName, BfToken token)
 {	
+	auto autoComplete = GetAutoComplete();
+	
+
 	auto type = mModule->ResolveTypeRef(typeRef, BfPopulateType_Data, BfResolveTypeRefFlag_AutoComplete);
 	if (type == NULL)
 		return;
@@ -10431,6 +10434,72 @@ void BfExprEvaluator::DoTypeIntAttr(BfTypeReference* typeRef, BfToken token)
 	case BfToken_AlignOf: attrVal = type->mAlign; break;
 	case BfToken_StrideOf: attrVal = type->GetStride(); break;
 	default: break;
+	}
+
+	if (token == BfToken_OffsetOf)
+	{		
+		bool found = false;
+		String findName;
+		if (memberName != NULL)
+			findName = memberName->ToString();
+
+		BfAstNode* refNode = typeRef;
+		if (memberName != NULL)
+			refNode = memberName;
+
+		auto checkTypeInst = typeInst;
+		while (checkTypeInst != NULL)
+		{
+			checkTypeInst->mTypeDef->PopulateMemberSets();
+
+			String filter;
+			if ((autoComplete != NULL) && (autoComplete->InitAutocomplete(commaToken, memberName, filter)))
+			{
+				auto activeTypeDef = mModule->GetActiveTypeDef();
+				mModule->PopulateType(checkTypeInst);
+				
+				BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
+				for (auto fieldDef : checkTypeInst->mTypeDef->mFields)
+				{
+					if (fieldDef->mIsStatic)
+						continue;
+
+					if (!mModule->CheckProtection(protectionCheckFlags, typeInst, fieldDef->mDeclaringType->mProject, fieldDef->mProtection, typeInst))
+						continue;
+
+					if ((!typeInst->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, mModule)) ||
+						(!typeInst->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
+						continue;
+
+					auto& fieldInst = checkTypeInst->mFieldInstances[fieldDef->mIdx];
+					autoComplete->AddField(checkTypeInst, fieldDef, &fieldInst, filter);
+				}
+			}
+
+			BfMemberSetEntry* memberSetEntry = NULL;
+			if (checkTypeInst->mTypeDef->mFieldSet.TryGetWith(findName, &memberSetEntry))
+			{
+				auto fieldDef = (BfFieldDef*)memberSetEntry->mMemberDef;
+				if (fieldDef != NULL)
+				{
+					if (fieldDef->mIsStatic)
+						mModule->Fail(StrFormat("Cannot generate an offset from static field '%s.%s'", mModule->TypeToString(type).c_str(), fieldDef->mName.c_str()), refNode);
+
+					mModule->PopulateType(checkTypeInst);
+					auto& fieldInst = checkTypeInst->mFieldInstances[fieldDef->mIdx];
+					attrVal = fieldInst.mDataOffset;					
+					found = true;
+					break;
+				}
+			}
+
+			checkTypeInst = checkTypeInst->mBaseType;
+		}
+
+		if (!found)
+		{
+			mModule->Fail(StrFormat("Unable to locate field '%s.%s'", mModule->TypeToString(type).c_str(), findName.c_str()), refNode);
+		}
 	}
 
 	bool isUndefVal = false;
@@ -10458,17 +10527,22 @@ void BfExprEvaluator::DoTypeIntAttr(BfTypeReference* typeRef, BfToken token)
 
 void BfExprEvaluator::Visit(BfSizeOfExpression* sizeOfExpr)
 {
-	DoTypeIntAttr(sizeOfExpr->mTypeRef, BfToken_SizeOf);
+	DoTypeIntAttr(sizeOfExpr->mTypeRef, NULL, NULL, BfToken_SizeOf);
 }
 
 void BfExprEvaluator::Visit(BfAlignOfExpression* alignOfExpr)
 {
-	DoTypeIntAttr(alignOfExpr->mTypeRef, BfToken_AlignOf);
+	DoTypeIntAttr(alignOfExpr->mTypeRef, NULL, NULL, BfToken_AlignOf);
 }
 
 void BfExprEvaluator::Visit(BfStrideOfExpression* strideOfExpr)
 {
-	DoTypeIntAttr(strideOfExpr->mTypeRef, BfToken_StrideOf);
+	DoTypeIntAttr(strideOfExpr->mTypeRef, NULL, NULL, BfToken_StrideOf);
+}
+
+void BfExprEvaluator::Visit(BfOffsetOfExpression* offsetOfExpr)
+{	
+	DoTypeIntAttr(offsetOfExpr->mTypeRef, offsetOfExpr->mCommaToken, offsetOfExpr->mMemberName, BfToken_OffsetOf);
 }
 
 void BfExprEvaluator::Visit(BfDefaultExpression* defaultExpr)

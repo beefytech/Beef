@@ -1653,6 +1653,17 @@ void BfPrinter::Visit(BfSizeOfExpression* sizeOfExpr)
 	VisitChild(sizeOfExpr->mCloseParen);
 }
 
+void BfPrinter::Visit(BfOffsetOfExpression* offsetOfExpr)
+{
+	VisitChild(offsetOfExpr->mToken);
+	VisitChild(offsetOfExpr->mOpenParen);
+	VisitChild(offsetOfExpr->mTypeRef);	
+	VisitChild(offsetOfExpr->mCommaToken);
+	ExpectSpace();
+	VisitChild(offsetOfExpr->mMemberName);
+	VisitChild(offsetOfExpr->mCloseParen);
+}
+
 void BfPrinter::Visit(BfDefaultExpression* defaultExpr)
 {
 	Visit(defaultExpr->ToBase());

@@ -168,6 +168,7 @@ public:
 	virtual void Visit(BfParameterDeclaration* paramDecl) override;	
 	virtual void Visit(BfTypeOfExpression* typeOfExpr) override;
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr) override;
+	virtual void Visit(BfOffsetOfExpression* offsetOfExpr) override;
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;
 	virtual void Visit(BfCheckTypeExpression* checkTypeExpr) override;
 	virtual void Visit(BfDynamicCastExpression* dynCastExpr) override;

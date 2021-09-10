@@ -1871,6 +1871,26 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				MEMBER_SET_CHECKED(typeAttrExpr, mCloseParen, tokenNode);
 				exprLeft = typeAttrExpr;
 			}
+			else if (token == BfToken_OffsetOf)
+			{
+				BfOffsetOfExpression* typeAttrExpr = mAlloc->Alloc<BfOffsetOfExpression>();
+				ReplaceNode(tokenNode, typeAttrExpr);
+				typeAttrExpr->mToken = tokenNode;
+				tokenNode = ExpectTokenAfter(typeAttrExpr, BfToken_LParen);
+				MEMBER_SET_CHECKED(typeAttrExpr, mOpenParen, tokenNode);
+				auto typeRef = CreateTypeRefAfter(typeAttrExpr);
+				MEMBER_SET_CHECKED(typeAttrExpr, mTypeRef, typeRef);
+
+				tokenNode = ExpectTokenAfter(typeAttrExpr, BfToken_Comma);
+				MEMBER_SET_CHECKED(typeAttrExpr, mCommaToken, tokenNode);
+
+				auto nameNode = ExpectIdentifierAfter(typeAttrExpr);
+				MEMBER_SET_CHECKED(typeAttrExpr, mMemberName, nameNode);
+
+				tokenNode = ExpectTokenAfter(typeAttrExpr, BfToken_RParen);
+				MEMBER_SET_CHECKED(typeAttrExpr, mCloseParen, tokenNode);
+				exprLeft = typeAttrExpr;
+			}
 			else if (token == BfToken_Default)
 			{
 				auto defaultExpr = mAlloc->Alloc<BfDefaultExpression>();

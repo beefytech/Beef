@@ -492,6 +492,16 @@ void BfElementVisitor::Visit(BfTypeAttrExpression* typeAttrExpr)
 	VisitChild(typeAttrExpr->mCloseParen);
 }
 
+void BfElementVisitor::Visit(BfOffsetOfExpression* offsetOfExpr)
+{
+	VisitChild(offsetOfExpr->mToken);
+	VisitChild(offsetOfExpr->mOpenParen);
+	VisitChild(offsetOfExpr->mTypeRef);
+	VisitChild(offsetOfExpr->mCommaToken);
+	VisitChild(offsetOfExpr->mMemberName);
+	VisitChild(offsetOfExpr->mCloseParen);
+}
+
 void BfElementVisitor::Visit(BfDefaultExpression* defaultExpr)
 {
 	Visit(defaultExpr->ToBase());

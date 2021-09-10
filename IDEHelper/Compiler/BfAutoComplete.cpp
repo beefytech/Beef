@@ -987,11 +987,12 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 
 bool BfAutoComplete::InitAutocomplete(BfAstNode* dotNode, BfAstNode* nameNode, String& filter)
 {	
+	bool isDot = (dotNode != NULL) && (dotNode->mToken == BfToken_Dot);
 	if (IsAutocompleteNode(nameNode))
 	{
 		auto bfParser = nameNode->GetSourceData()->ToParser();
 
-		if (mIsGetDefinition)
+		if ((mIsGetDefinition) || (!isDot))
 		{
 			mInsertStartIdx = nameNode->GetSrcStart();
 			mInsertEndIdx = nameNode->GetSrcEnd();
@@ -1002,11 +1003,15 @@ bool BfAutoComplete::InitAutocomplete(BfAstNode* dotNode, BfAstNode* nameNode, S
 			mInsertEndIdx = std::min(bfParser->mCursorIdx + 1, nameNode->GetSrcEnd());
 		}
 
-		filter.Append(bfParser->mSrc + mInsertStartIdx, mInsertEndIdx - mInsertStartIdx);
+		filter.Append(bfParser->mSrc + nameNode->GetSrcStart(), mInsertEndIdx - nameNode->GetSrcStart());
 		return true;
 	}
 
-	if ((dotNode != NULL) && (IsAutocompleteNode(dotNode, 0, 1)))
+	int lenAdd = 0;
+	if (!isDot)
+		lenAdd++;
+
+	if ((dotNode != NULL) && (IsAutocompleteNode(dotNode, lenAdd, 1)))
 	{
 		mInsertStartIdx = dotNode->GetSrcEnd();
 		mInsertEndIdx = dotNode->GetSrcEnd();
@@ -1558,7 +1563,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 			"alignof", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "default", "defer",
 			"delegate", "delete", "do", "else", "false", "finally", 
 			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "new", "mixin", "null",
-			"out", "params", "ref", "rettype", "return",
+			"offsetof", "out", "params", "ref", "rettype", "return",
 			"sealed", "sizeof", "scope", "static", "strideof", "struct", "switch", /*"this",*/ "try", "true", "typeof", "unchecked",
 			"using", "var", "virtual", "volatile", "where", "while",
 			"alloctype", "comptype", "decltype", "nullable",

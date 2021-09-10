@@ -346,6 +346,11 @@ void BfStructuralVisitor::Visit(BfStrideOfExpression* strideOfExpr)
 	Visit(strideOfExpr->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfOffsetOfExpression* offsetOfExpr)
+{
+	Visit(offsetOfExpr->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfDefaultExpression* defaultExpr)
 {
 	Visit(defaultExpr->ToBase());
@@ -1398,6 +1403,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "null";
 	case BfToken_Nullable:
 		return "nullable";
+	case BfToken_OffsetOf:
+		return "offsetof";
 	case BfToken_Operator:
 		return "operator";
 	case BfToken_Out:

@@ -158,6 +158,7 @@ enum BfToken : uint8
 	BfToken_New,	
 	BfToken_Null,
 	BfToken_Nullable,
+	BfToken_OffsetOf,
 	BfToken_Operator,
 	BfToken_Out,
 	BfToken_Override,
@@ -367,6 +368,7 @@ class BfTypedValueExpression;
 class BfTypeAttrExpression;
 class BfSizeOfExpression;
 class BfAlignOfExpression;
+class BfOffsetOfExpression;
 class BfStrideOfExpression;
 class BfDefaultExpression;
 class BfUninitializedExpression;
@@ -490,6 +492,7 @@ public:
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr);	
 	virtual void Visit(BfAlignOfExpression* alignOfExpr);
 	virtual void Visit(BfStrideOfExpression* strideOfExpr);	
+	virtual void Visit(BfOffsetOfExpression* offsetOfExpr);
 	virtual void Visit(BfDefaultExpression* defaultExpr);
 	virtual void Visit(BfUninitializedExpression* uninitializedExpr);
 	virtual void Visit(BfCheckTypeExpression* checkTypeExpr);
@@ -2652,7 +2655,7 @@ public:
 class BfAlignOfExpression : public BfTypeAttrExpression
 {
 public:
-	BF_AST_TYPE(BfAlignOfExpression, BfTypeAttrExpression);
+	BF_AST_TYPE(BfAlignOfExpression, BfTypeAttrExpression);	
 };	BF_AST_DECL(BfAlignOfExpression, BfTypeAttrExpression);
 
 class BfStrideOfExpression : public BfTypeAttrExpression
@@ -2660,6 +2663,15 @@ class BfStrideOfExpression : public BfTypeAttrExpression
 public:
 	BF_AST_TYPE(BfStrideOfExpression, BfTypeAttrExpression);	
 };	BF_AST_DECL(BfStrideOfExpression, BfTypeAttrExpression);
+
+class BfOffsetOfExpression : public BfTypeAttrExpression
+{
+public:
+	BF_AST_TYPE(BfOffsetOfExpression, BfTypeAttrExpression);
+
+	BfTokenNode* mCommaToken;
+	BfIdentifierNode* mMemberName;
+};	BF_AST_DECL(BfOffsetOfExpression, BfTypeAttrExpression);
 
 class BfDefaultExpression : public BfExpression
 {

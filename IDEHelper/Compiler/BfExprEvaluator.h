@@ -487,7 +487,7 @@ public:
 	void FinishDeferredEvals(SizedArrayImpl<BfResolvedArg>& argValues);	
 	void FinishDeferredEvals(BfResolvedArgs& argValues);
 	bool LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifierNode* propName);
-	void DoTypeIntAttr(BfTypeReference* typeRef, BfToken token);
+	void DoTypeIntAttr(BfTypeReference* typeRef, BfTokenNode* commaToken, BfIdentifierNode* memberName, BfToken token);
 	//void InitializedSizedArray(BfTupleExpression* createExpr, BfSizedArrayType* arrayType);
 	void InitializedSizedArray(BfSizedArrayType* sizedArrayType, BfTokenNode* openToken, const BfSizedArray<BfExpression*>& values, const BfSizedArray<BfTokenNode*>& commas, BfTokenNode* closeToken, BfTypedValue* receivingValue = NULL);
 	void CheckDotToken(BfTokenNode* tokenNode);
@@ -518,6 +518,7 @@ public:
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr) override;
 	virtual void Visit(BfAlignOfExpression* alignOfExpr) override;
 	virtual void Visit(BfStrideOfExpression* strideOfExpr) override;	
+	virtual void Visit(BfOffsetOfExpression* offsetOfExpr) override;
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;
 	virtual void Visit(BfUninitializedExpression* uninitialziedExpr) override;
 	virtual void Visit(BfCheckTypeExpression* checkTypeExpr) override;
