@@ -2357,15 +2357,31 @@ namespace Beefy.utils
 			mNextKeys.Reserve(guessItems);
 
 			bool isJson = false;
+			bool mayBeJsonArray = false;
 			for (char8 c in mSource.RawChars)
 			{
 				if (c.IsWhiteSpace)
 					continue;
-				if (c == '{')
-					isJson = true;
-				if (c == '[')
-					isJson = true;
-				break;
+
+				if (mayBeJsonArray)
+				{
+					if (c == '[')
+						continue; // Still ambiguous
+					if ((c == '{') || (c == '"'))
+						isJson = true;
+					break;
+				}
+				else
+				{
+					if (c == '{')
+						isJson = true;
+					if (c == '[')
+					{
+						mayBeJsonArray = true;
+						continue;
+					}
+					break;
+				}
 			}
 
 			int32 aLineNum = 1;
