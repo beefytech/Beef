@@ -3401,9 +3401,17 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 							}
 							else
 							{
+								auto exprEvaluator = mCurMethodState->mCurScope->mExprEvaluator;
+
 								// Evaluate last child as an expression
-								mCurMethodState->mCurScope->mExprEvaluator->VisitChild(expr);
-								mCurMethodState->mCurScope->mExprEvaluator->FinishExpressionResult();
+								exprEvaluator->VisitChild(expr);
+								exprEvaluator->FinishExpressionResult();
+
+								if ((exprEvaluator->mResult) && (!exprEvaluator->mResult.mType->IsValuelessType()) && (!exprEvaluator->mResult.IsAddr()))
+								{
+									// We need to make sure we don't retain any values through the scope's ValueScopeHardEnd
+									exprEvaluator->mResult = MakeAddressable(exprEvaluator->mResult);
+								}
 							}
 
 							break;
