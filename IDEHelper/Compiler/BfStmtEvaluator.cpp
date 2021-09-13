@@ -3409,7 +3409,9 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 
 								if ((exprEvaluator->mResult) && (!exprEvaluator->mResult.mType->IsValuelessType()) && (!exprEvaluator->mResult.IsAddr()))
 								{
-									// We need to make sure we don't retain any values through the scope's ValueScopeHardEnd
+									FixIntUnknown(exprEvaluator->mResult, exprEvaluator->mExpectingType);
+									// We need to make sure we don't retain any values through the scope's ValueScopeHardEnd - and extend alloca through previous scope
+									SetAndRestoreValue<BfScopeData*> prevScope(mCurMethodState->mCurScope, mCurMethodState->mCurScope->mPrevScope);
 									exprEvaluator->mResult = MakeAddressable(exprEvaluator->mResult);
 								}
 							}
