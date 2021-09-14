@@ -3226,6 +3226,8 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 	int startLocalMethod = 0; // was -1
 	auto rootMethodState = mCurMethodState->GetRootMethodState();
 
+	BfIRBlock startInsertBlock = mBfIRBuilder->GetInsertBlock();	
+
 	bool allowLocalMethods = mCurMethodInstance != NULL;
 	//int startDeferredLocalIdx = (int)rootMethodState->mDeferredLocalMethods.size();
 	
@@ -3407,16 +3409,31 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 								exprEvaluator->VisitChild(expr);
 								exprEvaluator->FinishExpressionResult();
 
-								if ((exprEvaluator->mResult) && (!exprEvaluator->mResult.mType->IsValuelessType()) && (!exprEvaluator->mResult.IsAddr()))
-								{
-									auto useScope = mCurMethodState->mCurScope;
-									if ((useScope != NULL) && (useScope->mPrevScope != NULL))
-										useScope = useScope->mPrevScope;
+								if ((exprEvaluator->mResult) && (!exprEvaluator->mResult.mType->IsValuelessType()) && (!exprEvaluator->mResult.IsAddr()) && (!exprEvaluator->mResult.mValue.IsFake()))
+								{									
+									if ((mCurMethodState->mCurScope != NULL) && (mCurMethodState->mCurScope->mPrevScope != NULL))																		
+									{
+										// We need to make sure we don't retain any values through the scope's ValueScopeHardEnd - and extend alloca through previous scope
 
-									FixIntUnknown(exprEvaluator->mResult, exprEvaluator->mExpectingType);
-									// We need to make sure we don't retain any values through the scope's ValueScopeHardEnd - and extend alloca through previous scope
-									SetAndRestoreValue<BfScopeData*> prevScope(mCurMethodState->mCurScope, useScope);
-									exprEvaluator->mResult = MakeAddressable(exprEvaluator->mResult);
+										bool wasReadOnly = exprEvaluator->mResult.IsReadOnly();
+										FixIntUnknown(exprEvaluator->mResult, exprEvaluator->mExpectingType);										
+										auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();										
+										auto tempVar = CreateAlloca(exprEvaluator->mResult.mType, false, "blockExpr");
+										mBfIRBuilder->SetInsertPointAtStart(startInsertBlock);
+										auto lifetimeStart = mBfIRBuilder->CreateLifetimeStart(tempVar);
+										mBfIRBuilder->ClearDebugLocation(lifetimeStart);
+										
+										mCurMethodState->mCurScope->mPrevScope->mDeferredLifetimeEnds.push_back(tempVar);
+										mBfIRBuilder->SetInsertPoint(prevInsertBlock);
+										if (exprEvaluator->mResult.IsSplat())
+											AggregateSplatIntoAddr(exprEvaluator->mResult, tempVar);
+										else
+											mBfIRBuilder->CreateAlignedStore(exprEvaluator->mResult.mValue, tempVar, exprEvaluator->mResult.mType->mAlign);
+										exprEvaluator->mResult = BfTypedValue(tempVar, exprEvaluator->mResult.mType,
+											exprEvaluator->mResult.IsThis() ?
+											(wasReadOnly ? BfTypedValueKind_ReadOnlyThisAddr : BfTypedValueKind_ThisAddr) :
+											(wasReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr));										
+									}
 								}
 							}
 
