@@ -175,12 +175,13 @@ namespace System.IO
 				createKind = .CreateIfNotExists;
 			case .Create:
 				createKind = .CreateAlways;
+				createFlags |= .Truncate;
 			case .Open:
 				createKind = .OpenExisting;
 			case .OpenOrCreate:
 				createKind = .OpenAlways;
 			case .Truncate:
-				createKind = .CreateAlways;
+				createKind = .OpenExisting;
 				createFlags |= .Truncate;
 			case .Append:
 				createKind = .CreateAlways;
