@@ -5846,7 +5846,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 							mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_NoCapture);
 							addDeref = paramType->mSize;
 						}
-						else if ((methodInstance->WantsStructsAttribByVal()) && (!paramType->IsSizedArray()))
+						else if (methodInstance->WantsStructsAttribByVal(paramType))
 						{
 							mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_ByVal, mModule->mSystem->mPtrSize);
 						}

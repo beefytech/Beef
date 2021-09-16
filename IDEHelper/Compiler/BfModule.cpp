@@ -16320,7 +16320,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 					PopulateType(resolvedTypeRef, BfPopulateType_Data);
 					addDeref = resolvedTypeRef->mSize;
 				}
-				else if ((methodInstance->WantsStructsAttribByVal()) && (!resolvedTypeRef->IsSizedArray()))
+				else if (methodInstance->WantsStructsAttribByVal(resolvedTypeRef))
 				{					
 					mBfIRBuilder->PopulateType(resolvedTypeRef, BfIRPopulateType_Full);
 					BF_ASSERT(resolvedTypeRef->mAlign > 0);

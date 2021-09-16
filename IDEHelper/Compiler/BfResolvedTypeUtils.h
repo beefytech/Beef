@@ -933,7 +933,7 @@ public:
 	int GetStructRetIdx(bool forceStatic = false);
 	bool HasSelf();
 	bool GetLoweredReturnType(BfTypeCode* loweredTypeCode = NULL, BfTypeCode* loweredTypeCode2 = NULL, bool forceStatic = false);	
-	bool WantsStructsAttribByVal();
+	bool WantsStructsAttribByVal(BfType* paramType);
 	bool IsAutocompleteMethod() { /*return mIdHash == -1;*/ return mIsAutocompleteMethod; }
 	bool IsSkipCall(bool bypassVirtual = false);	
 	bool IsVarArgs();

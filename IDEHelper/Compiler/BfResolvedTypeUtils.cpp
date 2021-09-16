@@ -820,13 +820,15 @@ bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeC
 	return mReturnType->GetLoweredType((mMethodDef->mIsStatic || forceStatic) ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
 }
 
-bool BfMethodInstance::WantsStructsAttribByVal()
+bool BfMethodInstance::WantsStructsAttribByVal(BfType* paramType)
 {
 	auto owner = GetOwner();
 	if ((owner->mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) &&
 		(owner->mModule->mCompiler->mOptions.mMachineType == BfMachineType_x64))
 		return false;
-	return true;
+
+	auto typeInst = paramType->ToTypeInstance();
+	return (typeInst != NULL) && (typeInst->mIsCRepr);
 }
 
 bool BfMethodInstance::IsSkipCall(bool bypassVirtual)
