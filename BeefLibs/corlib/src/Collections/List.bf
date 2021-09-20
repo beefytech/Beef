@@ -535,7 +535,7 @@ namespace System.Collections
 			if (mSize == AllocSize) EnsureCapacity(mSize + 1, true);
 			if (index < mSize)
 			{
-				Internal.MemCpy(mItems + index + 1, mItems + index, (mSize - index) * strideof(T), alignof(T));
+				Internal.MemMove(mItems + index + 1, mItems + index, (mSize - index) * strideof(T), alignof(T));
 			}
 			mItems[index] = item;
 			mSize++;
@@ -554,7 +554,7 @@ namespace System.Collections
 			if (mSize + addCount > AllocSize) EnsureCapacity(mSize + addCount, true);
 			if (index < mSize)
 			{
-				Internal.MemCpy(mItems + index + addCount, mItems + index, (mSize - index) * strideof(T), alignof(T));
+				Internal.MemMove(mItems + index + addCount, mItems + index, (mSize - index) * strideof(T), alignof(T));
 			}
 			Internal.MemCpy(mItems + index, items.Ptr, addCount * strideof(T));
 			mSize += (int_cosize)addCount;
@@ -568,7 +568,7 @@ namespace System.Collections
 			Debug.Assert((uint)index < (uint)mSize);
 			if (index < mSize - 1)
 			{
-				Internal.MemCpy(mItems + index, mItems + index + 1, (mSize - index - 1) * strideof(T), alignof(T));
+				Internal.MemMove(mItems + index, mItems + index + 1, (mSize - index - 1) * strideof(T), alignof(T));
 			}
 			mSize--;
 #if VERSION_LIST

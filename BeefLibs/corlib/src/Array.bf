@@ -277,7 +277,7 @@ namespace System
 			Debug.Assert(length >= 0);
 			Debug.Assert((uint)srcOffset + (uint)length <= (uint)mLength);
 			Debug.Assert((uint)dstOffset + (uint)length <= (uint)arrayTo.mLength);
-			Internal.MemCpy(&arrayTo.GetRef(dstOffset), &GetRef(srcOffset), strideof(T) * length, alignof(T));
+			Internal.MemMove(&arrayTo.GetRef(dstOffset), &GetRef(srcOffset), strideof(T) * length, alignof(T));
 		}
 
 		public void CopyTo<T2>(T2[] arrayTo, int srcOffset, int dstOffset, int length) where T2 : operator explicit T
@@ -300,17 +300,18 @@ namespace System
 		public void CopyTo(Span<T> destination)
 		{
 			Debug.Assert(destination.[Friend]mLength >= mLength);
-			Internal.MemCpy(destination.Ptr, &GetRef(0), strideof(T) * mLength, alignof(T));
+			Internal.MemMove(destination.Ptr, &GetRef(0), strideof(T) * mLength, alignof(T));
 		}
 
 		public void CopyTo(Span<T> destination, int srcOffset)
 		{
 			Debug.Assert((uint)srcOffset + (uint)destination.[Friend]mLength <= (uint)mLength);
-			Internal.MemCpy(destination.Ptr, &GetRef(srcOffset), strideof(T) * (destination.[Friend]mLength - srcOffset), alignof(T));
+			Internal.MemMove(destination.Ptr, &GetRef(srcOffset), strideof(T) * (destination.[Friend]mLength - srcOffset), alignof(T));
 		}
 
 		public void CopyTo<T2>(Span<T2> destination, int srcOffset) where T2 : operator explicit T
 		{
+			//TODO: Handle src/dest overlap (MemMove)
 			Debug.Assert((uint)srcOffset + (uint)destination.[Friend]mLength <= (uint)mLength);
 			var ptr = destination.[Friend]mPtr;
 			for (int i = 0; i < destination.[Friend]mLength; i++)
