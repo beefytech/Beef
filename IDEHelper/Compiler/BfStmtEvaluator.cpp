@@ -3423,7 +3423,8 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 										auto lifetimeStart = mBfIRBuilder->CreateLifetimeStart(tempVar);
 										mBfIRBuilder->ClearDebugLocation(lifetimeStart);
 										
-										mCurMethodState->mCurScope->mPrevScope->mDeferredLifetimeEnds.push_back(tempVar);
+										if (!mBfIRBuilder->mIgnoreWrites)
+											mCurMethodState->mCurScope->mPrevScope->mDeferredLifetimeEnds.push_back(tempVar);
 										mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 										if (exprEvaluator->mResult.IsSplat())
 											AggregateSplatIntoAddr(exprEvaluator->mResult, tempVar);
