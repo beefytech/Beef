@@ -9883,6 +9883,62 @@ bool BeMCContext::DoLegalization()
 					auto arg0Type = GetType(arg0);
 					if (arg0Type->IsInt())
 					{
+						// We can't allow division by RDX because we need RAX:RDX for the dividend
+						bool needRegDisable = false;
+						std::function<void(BeMCOperand)> _CheckReg = [&](BeMCOperand operand)
+						{
+							if (!operand)
+								return;
+
+							if (operand.mKind == BeMCOperandKind_NativeReg)
+							{
+								auto divisorReg = GetFullRegister(operand.mReg);
+								if ((divisorReg == X64Reg_RDX) || (divisorReg == X64Reg_RAX))
+									needRegDisable = true;
+							}
+
+							auto vregInfo = GetVRegInfo(operand);
+							if (vregInfo != NULL)
+							{
+								auto divisorReg = GetFullRegister(vregInfo->mReg);
+								if ((divisorReg == X64Reg_RDX) || (divisorReg == X64Reg_RAX))
+									needRegDisable = true;
+
+								_CheckReg(vregInfo->mRelTo);
+								_CheckReg(vregInfo->mRelOffset);
+
+								if ((needRegDisable) &&
+									((!vregInfo->mDisableRAX) || (!vregInfo->mDisableRDX)))
+								{
+									if (mDebugging)
+									{
+										NOP;
+									}
+
+									vregInfo->mDisableRAX = true;
+									vregInfo->mDisableRDX = true;
+									isFinalRun = false;
+									if (debugging)
+										OutputDebugStrF(" Div/Rem invalid reg\n");
+								}
+							}
+						};
+
+						needRegDisable = false;
+						_CheckReg(arg1);
+						if ((instIdx > 0) && (regPreserveDepth > 0))
+						{
+							auto prevInst = mcBlock->mInstructions[instIdx - 1];
+							if (prevInst->mKind == BeMCInstKind_Mov)
+							{
+								// Check replaced 'mov' (which is inside PreserveVolatile sections)
+								needRegDisable = false;
+								_CheckReg(prevInst->mArg1);
+							}
+						}
+
+						///
+
 						auto checkArg1 = arg1;
 						if (checkArg1.mKind == BeMCOperandKind_VRegLoad)
 						{
@@ -15855,7 +15911,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Negate__im@TimeSpan@System@bf@@SA?AU?$Result@VTimeSpan@System@bf@@@23@_J@Z");
+	//mDebugging = (function->mName == "?DrawCard@Stats@NecroCard@bf@@QEAAX_N@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
