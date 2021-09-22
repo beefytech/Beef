@@ -470,6 +470,7 @@ namespace Beefy.utils
             Object val = Get(name);
 
 			outString.Clear();
+
             if (val is uint64)
                 val.ToString(outString);
 
@@ -493,61 +494,112 @@ namespace Beefy.utils
 			return;
         }
 
-        public int32 GetInt(String name, int32 theDefault = 0)
-        {
-            Object aVal = Get(name);
-            if ((aVal == null) || (!(aVal is int64)))
-                return theDefault;
-            return (int32)(int64)aVal;
-        }
-
-        public int64 GetLong(String name, int64 theDefault = 0)
-        {
-            Object aVal = Get(name);
-
-            if (aVal is int32)
-                return (int64)(int32)aVal;
-
-            if ((aVal == null) || (!(aVal is int64)))
-                return theDefault;
-            return (int64)aVal;
-        }
-
-        public uint64 GetULong(String name, uint64 theDefault = 0)
-        {
-            Object aVal = Get(name);
-
-            if (aVal is int32)
-                return (uint64)(int32)aVal;
-			if (aVal is int64)
-				return (uint64)(int64)aVal;
-
-            if ((aVal == null) || (!(aVal is uint64)))
-                return theDefault;
-            return (uint64)aVal;
-        }
-
-        public float GetFloat(String name, float theDefault = 0)
+        public int32 GetInt(String name, int32 defaultVal = 0)
         {
             Object val = Get(name);
-			if (val == null)
-				return theDefault;
+            if (val == null)
+                return defaultVal;
 			switch (val.GetType())
 			{
-			case typeof(Float): return (float)val;
-			case typeof(Int32): return (int32)val;
-			case typeof(Int64): return (int64)val;
-			case typeof(Int): return (int)val;
-			default: return theDefault;
+			case typeof(Float): return (.)(float)val;
+			case typeof(Int32): return (.)(int32)val;
+			case typeof(Int64): return (.)(int64)val;
+			case typeof(Int): return (.)(int)val;
+			case typeof(String):
+				if (int32.Parse((String)val) case .Ok(var fVal))
+					return (.)fVal;
+				return defaultVal;
+			case typeof(StringView):
+				if (int32.Parse((StringView)val) case .Ok(var fVal))
+					return (.)fVal;
+				return defaultVal;
+			default: return defaultVal;
 			}
         }
 
-        public bool GetBool(String name, bool theDefault = false)
+        public int64 GetLong(String name, int64 defaultVal = 0)
         {
-            Object aVal = Get(name);
-            if ((aVal == null) || (!(aVal is bool)))
-                return theDefault;
-            return (bool)aVal;
+            Object val = Get(name);
+			if (val == null)
+			    return defaultVal;
+			switch (val.GetType())
+			{
+			case typeof(Float): return (.)(float)val;
+			case typeof(Int32): return (.)(int32)val;
+			case typeof(Int64): return (.)(int64)val;
+			case typeof(Int): return (.)(int)val;
+			case typeof(String):
+				if (int64.Parse((String)val) case .Ok(var parsedVal))
+					return (.)parsedVal;
+				return defaultVal;
+			case typeof(StringView):
+				if (int64.Parse((StringView)val) case .Ok(var parsedVal))
+					return (.)parsedVal;
+				return defaultVal;
+			default: return defaultVal;
+			}
+        }
+
+        public uint64 GetULong(String name, uint64 defaultVal = 0)
+        {
+            Object val = Get(name);
+			if (val == null)
+			    return defaultVal;
+			switch (val.GetType())
+			{
+			case typeof(Float): return (.)(float)val;
+			case typeof(Int32): return (.)(int32)val;
+			case typeof(Int64): return (.)(int64)val;
+			case typeof(Int): return (.)(int)val;
+			case typeof(String):
+				if (int64.Parse((String)val) case .Ok(var parsedVal))
+					return (.)parsedVal;
+				return defaultVal;
+			case typeof(StringView):
+				if (int64.Parse((StringView)val) case .Ok(var parsedVal))
+					return (.)parsedVal;
+				return defaultVal;
+			default: return defaultVal;
+			}
+        }
+
+        public float GetFloat(String name, float defaultVal = 0)
+        {
+            Object val = Get(name);
+			if (val == null)
+				return defaultVal;
+			switch (val.GetType())
+			{
+			case typeof(Float): return (.)(float)val;
+			case typeof(Int32): return (.)(int32)val;
+			case typeof(Int64): return (.)(int64)val;
+			case typeof(Int): return (.)(int)val;
+			case typeof(String):
+				if (float.Parse((String)val) case .Ok(var parsedVal))
+					return parsedVal;
+				return defaultVal;
+			case typeof(StringView):
+				if (float.Parse((StringView)val) case .Ok(var parsedVal))
+					return parsedVal;
+				return defaultVal;
+			default: return defaultVal;
+			}
+        }
+
+        public bool GetBool(String name, bool defaultVal = false)
+        {
+            Object val = Get(name);
+			if (val == null)
+			    return defaultVal;
+			switch (val.GetType())
+			{
+			case typeof(Boolean): return (bool)val;
+			case typeof(String):
+				if (bool.Parse((String)val) case .Ok(var parsedVal))
+					return (.)parsedVal;
+				return defaultVal;
+			default: return defaultVal;
+			}
         }
 
         public T GetEnum<T>(String name, T defaultVal = default(T)) where T : enum
@@ -2347,6 +2399,223 @@ namespace Beefy.utils
 			}
 		}
 
+		Result<void, Error> LoadXMLHelper(String contentStr, Values values, ref int32 idx, ref int32 lineNum)
+		{
+			LoadSection loadRoot = scope LoadSection();
+			loadRoot.mSectionDict = new Dictionary<String, LoadSection>();
+			loadRoot.mCurrentEntry = CurrentEntry(values);
+			//LoadSection loadSection = loadRoot;
+			//CurrentEntry currentEntry = default;
+
+			char8* cPtr = contentStr.CStr();
+
+			char8 NextChar()
+			{
+				char8 c = cPtr[idx];
+				if (c != 0)
+					idx++;
+				return c;
+			}
+
+			char8* GetCharPtr()
+			{
+				return &cPtr[idx];
+			}
+
+			char8 PeekNextChar()
+			{
+				return cPtr[idx];
+			}
+
+			void EatWhiteSpace()
+			{
+				while (true)
+				{
+					char8 nextC = PeekNextChar();
+					if ((nextC != ' ') && (nextC != '\t'))
+						return;
+					idx++;
+				}
+			}
+
+			void ReadSection(ref CurrentEntry arrayEntry)
+			{
+				char8* dataStart = null;
+
+				void FlushData()
+				{
+					if (dataStart != null)
+					{
+						StringView valueSV = StringView(dataStart, GetCharPtr() - dataStart - 1);
+						valueSV.Trim();
+						String value = new:mBumpAllocator String(valueSV);
+						DoAdd(ref arrayEntry, value);
+					}
+
+					dataStart = null;
+				}
+
+				MainLoop: while (true)
+				{
+				    char8 c = NextChar();
+					if (c == 0)
+					{
+						break;
+					}
+
+					if (c == '<')
+					{
+						FlushData();
+
+						EatWhiteSpace();
+						c = PeekNextChar();
+						if (c == '/')
+						{
+							// Is closing
+							while (true)
+							{
+								c = NextChar();
+								if ((c == 0) || (c == '>'))
+									return;
+							}
+						}
+
+						NamedValues childNamedValues = null;
+						CurrentEntry childTableEntry = default;
+
+						void EnsureChildEntry()
+						{
+							if (childNamedValues != null)
+								return;
+							childNamedValues = new:mBumpAllocator NamedValues();
+							childTableEntry = CurrentEntry(childNamedValues);
+							DoAdd(ref arrayEntry, childNamedValues);
+						}
+
+						char8* namePtr = null;
+						char8* nameEndPtr = null;
+						char8* equalPtr = null;
+						char8* valuePtr = null;
+
+						while (true)
+						{
+							c = NextChar();
+							if (c.IsWhiteSpace)
+							{
+								if ((namePtr != null) && (nameEndPtr == null))
+									nameEndPtr = GetCharPtr() - 1;
+								continue;
+							}
+
+							if (valuePtr != null)
+							{
+								if (c == '"')
+								{
+									EnsureChildEntry();
+									StringView name = StringView(namePtr, nameEndPtr - namePtr + 1);
+									name.Trim();
+									StringView valueSV = StringView(valuePtr, GetCharPtr() - valuePtr - 1);
+									String value = new:mBumpAllocator String(valueSV);
+									DoAdd(ref childTableEntry, name, value);
+
+									namePtr = null;
+									nameEndPtr = null;
+									equalPtr = null;
+									valuePtr = null;
+									continue;
+								}
+								continue;
+							}
+
+							if ((c == '?') || (c == '/'))
+							{
+								// Wait for close. Not nested.
+								while (true)
+								{
+									c = NextChar();
+									if ((c == 0) || (c == '>'))
+										continue MainLoop;
+								}
+							}
+
+							if (c == '>')
+							{
+								// Closing, but we're nested
+								EnsureChildEntry();
+								Values childArrayValues = new:mBumpAllocator Values();
+								CurrentEntry childArrayEntry = CurrentEntry(childArrayValues);
+								DoAdd(ref childTableEntry, ".", childArrayValues);
+
+								ReadSection(ref childArrayEntry);
+								continue MainLoop;
+							}
+
+							if (namePtr == null)
+							{
+								namePtr = GetCharPtr() - 1;
+								continue;
+							}
+
+							if (equalPtr == null)
+							{
+								if (c == '=')
+								{
+									equalPtr = GetCharPtr() - 1;
+									if (nameEndPtr == null)
+										nameEndPtr = equalPtr - 1;
+									continue;
+								}
+							}
+							else
+							{
+								if (c == '"')
+								{
+									valuePtr = GetCharPtr();
+									continue;
+								}
+							}
+
+							if (nameEndPtr == null)
+								continue;
+
+							// Flush
+							StringView name = StringView(namePtr, nameEndPtr - namePtr + 1);
+							name.Trim();
+
+							if (name.IsEmpty)
+								continue;
+
+							EnsureChildEntry();
+							if (childTableEntry.mLastKey == -1)
+							{
+								Object value = new:mBumpAllocator String(name);
+								DoAdd(ref childTableEntry, "", value);
+							}
+							else
+							{
+								Object value = new:mBumpAllocator box true;
+								DoAdd(ref childTableEntry, name, value);
+							}
+
+							namePtr = null;
+							nameEndPtr = null;
+							idx--;
+							continue;
+						}
+					}
+
+					if ((!c.IsWhiteSpace) && (dataStart == null))
+						dataStart = GetCharPtr() - 1;
+				}
+
+				FlushData();
+			}
+
+			ReadSection(ref loadRoot.mCurrentEntry);
+
+			return .Ok;
+		}
+
 		protected Result<void, Error> Load()
 		{
 			EnsureHasData();
@@ -2357,6 +2626,7 @@ namespace Beefy.utils
 			mNextKeys.Reserve(guessItems);
 
 			bool isJson = false;
+			bool isXml = false;
 			bool mayBeJsonArray = false;
 			for (char8 c in mSource.RawChars)
 			{
@@ -2375,6 +2645,8 @@ namespace Beefy.utils
 				{
 					if (c == '{')
 						isJson = true;
+					if (c == '<')
+						isXml = true;
 					if (c == '[')
 					{
 						mayBeJsonArray = true;
@@ -2393,6 +2665,14 @@ namespace Beefy.utils
 				if (result case .Err(var err))
 					return .Err(err);
 				objResult = result.Get();
+			}
+			else if (isXml)
+			{
+				var values = new:mBumpAllocator Values();
+				let result = LoadXMLHelper(mSource, values, ref anIdx, ref aLineNum);
+				if (result case .Err(var err))
+					return .Err(err);
+				objResult = values;
 			}
 			else
 			{
