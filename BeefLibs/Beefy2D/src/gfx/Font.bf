@@ -171,16 +171,33 @@ namespace Beefy.gfx
 						{
 							if (valType == 1)
 							{
-								String fontName = new String(&fontNameArr);
+								String fontName = scope String(&fontNameArr);
 								int parenPos = fontName.IndexOf(" (");
 								if (parenPos != -1)
 									fontName.RemoveToEnd(parenPos);
 								fontName.ToUpper();
-								String fontPath = new String(&data);
-								if ((!fontPath.EndsWith(".TTF", .OrdinalIgnoreCase)) || (!sFontNameMap.TryAdd(fontName, fontPath)))
+								String fontPath = scope String(&data);
+								if ((!fontPath.EndsWith(".TTF", .OrdinalIgnoreCase)) && (!fontPath.EndsWith(".TTC", .OrdinalIgnoreCase)))
+									continue;
+
+								if (fontName.Contains('&'))
 								{
-									delete fontName;
-									delete fontPath;
+									int collectionIdx = 0;
+									for (var namePart in fontName.Split('&', .RemoveEmptyEntries))
+									{
+										namePart.Trim();
+										if (sFontNameMap.TryAddAlt(namePart, var keyPtr, var valuePtr))
+										{
+											*keyPtr = new String(namePart);
+											*valuePtr = new $"{fontPath}@{collectionIdx}";
+											collectionIdx++;
+										}
+									}
+								}
+								else if (sFontNameMap.TryAdd(fontName, var keyPtr, var valuePtr))
+								{
+									*keyPtr = new String(fontName);
+									*valuePtr = new String(fontPath);
 								}
 							}
 						}

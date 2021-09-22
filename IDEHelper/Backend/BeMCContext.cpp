@@ -9910,11 +9910,6 @@ bool BeMCContext::DoLegalization()
 								if ((needRegDisable) &&
 									((!vregInfo->mDisableRAX) || (!vregInfo->mDisableRDX)))
 								{
-									if (mDebugging)
-									{
-										NOP;
-									}
-
 									vregInfo->mDisableRAX = true;
 									vregInfo->mDisableRDX = true;
 									isFinalRun = false;

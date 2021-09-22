@@ -144,7 +144,16 @@ bool FTFont::Load(const StringImpl& fileName, float pointSize)
 
 		face->mFileName = fileName;
 		FT_Face ftFace = NULL;
-		auto error = FT_New_Face(gFTLibrary, fileName.c_str(), 0, &ftFace);		
+
+		String useFileName = fileName;
+		int faceIdx = 0;
+		int atPos = (int)useFileName.IndexOf('@');
+		if (atPos != -1)
+		{
+			faceIdx = atoi(useFileName.c_str() + atPos + 1);
+			useFileName.RemoveToEnd(atPos);
+		}
+		auto error = FT_New_Face(gFTLibrary, useFileName.c_str(), faceIdx, &ftFace);		
 		face->mFTFace = ftFace;
 	}
 	else
