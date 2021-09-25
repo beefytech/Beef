@@ -5061,12 +5061,20 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 
 					if (tokenNode == NULL)
 					{
+						if ((!params.IsEmpty()) && (!BfNodeIsExact<BfTokenNode>(params.back())))
+						{
+							FailAfter("Expected ','", params.back());
+							hasFailed = true;
+							break;
+						}
+
 						BfExpression* sizeExpr = CreateExpressionAfter(arrayType);
 						if (sizeExpr == NULL)
 						{
 							hasFailed = true;
 							break;
 						}
+
 						MoveNode(sizeExpr, arrayType);
 						params.push_back(sizeExpr);
 					}
