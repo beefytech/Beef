@@ -13772,6 +13772,11 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 						if ((constant != NULL) && (mModule->mBfIRBuilder->IsInt(constant->mTypeCode)))
 						{
 							int64 dimLength = constant->mInt64;
+							if (dimLength < 0)
+							{								
+								mModule->Fail(StrFormat("Invalid array dimension '%lld'", dimLength), dimLengthRefs[dim]);
+								dimLength = -1;
+							}
 							dimLengths.push_back(dimLength);
 						}
 						else if ((constant != NULL) && (constant->mConstType == BfConstType_Undef))
