@@ -1911,6 +1911,8 @@ bool BfAutoComplete::CheckExplicitInterface(BfTypeInstance* interfaceType, BfAst
 	else
 		return false;
 	
+	mModule->PopulateType(interfaceType, BfPopulateType_DataAndMethods);
+
 	String filter;
 	if (isAutocompletingName)
 		filter = GetFilter(memberName);
@@ -2544,7 +2546,7 @@ void BfAutoComplete::CheckProperty(BfPropertyDeclaration* propertyDeclaration)
 	{
 		BfTypeInstance* typeInst = NULL;
 
-		auto type = mModule->ResolveTypeRef(propertyDeclaration->mExplicitInterface, BfPopulateType_DataAndMethods);
+		auto type = mModule->ResolveTypeRef(propertyDeclaration->mExplicitInterface, BfPopulateType_Identity);
 		if (type != NULL)
 			typeInst = type->ToTypeInstance();
 

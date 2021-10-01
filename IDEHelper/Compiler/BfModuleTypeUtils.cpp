@@ -6860,13 +6860,18 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType
 	return resolvedtypeDefType;
 }
 
-// Get BaseClass even when we haven't populated the type yet2
+// Get BaseClass even when we haven't populated the type yet
 BfTypeInstance* BfModule::GetBaseType(BfTypeInstance* typeInst)
 {
-	if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mTypeInstance == typeInst))
+	if (typeInst->mBaseType == NULL)
 	{
-		if (typeInst->mBaseType == NULL)
-			return NULL;
+		auto checkTypeState = mContext->mCurTypeState;
+		while (checkTypeState != NULL)
+		{
+			if (checkTypeState->mTypeInstance == typeInst)
+				return NULL;
+			checkTypeState = checkTypeState->mPrevState;
+		}
 	}
 
 	if ((typeInst->mBaseType == NULL) && (typeInst != mContext->mBfObjectType))	
