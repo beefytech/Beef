@@ -9448,6 +9448,8 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 			{
 				// In process of typing - just eat identifier so we don't error out on whole method
 				MoveNode(identifierAfter, ctorDecl);
+				mVisitorPos.MoveNext();
+				AddErrorNode(identifierAfter);
 			}
 
 			if (attributeDirective != NULL)
