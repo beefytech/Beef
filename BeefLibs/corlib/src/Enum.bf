@@ -40,7 +40,7 @@ namespace System
 			int i = Count(type);
 			if (strBuffer.Count != i)
 			{
-					// if strBuffer is Stack Allocated and incorrect size this will throw an error
+				// if strBuffer is Stack Allocated and incorrect size this will throw an error
 				delete strBuffer;
 				strBuffer = new StringView[i];
 			}
@@ -62,7 +62,7 @@ namespace System
 			int i = Count(type);
 			if (iVals.Count != i)
 			{
-					// if iValsr is Stack Allocated and incorrect size this will throw an error
+				// if iVals is Stack Allocated and incorrect size this will throw an error
 				delete iVals;
 				iVals = new int[i];
 			}
