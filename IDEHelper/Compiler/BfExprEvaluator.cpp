@@ -3935,7 +3935,10 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				checkTypeState = checkTypeState->mPrevState;
 			}
 			
-			if ((resolvingFieldDef != NULL) && (mModule->mCompiler->mResolvePassData != NULL) && (mModule->mCompiler->mResolvePassData->mParser == resolvingFieldDef->mFieldDeclaration->GetParser()))
+			if ((resolvingFieldDef != NULL) && 
+				(mModule->mCompiler->mResolvePassData != NULL) && 
+				(mModule->mCompiler->mResolvePassData->mParser == resolvingFieldDef->mFieldDeclaration->GetParser()) &&
+				(GetAutoComplete() != NULL))
 			{
 				return mModule->GetDefaultTypedValue(mModule->mCurTypeInstance);
 			}
