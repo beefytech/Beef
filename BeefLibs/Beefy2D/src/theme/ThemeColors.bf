@@ -130,6 +130,9 @@ namespace Beefy.theme
 			{
 				Type type = GetType((Types)i);
 				mColors[i] = new uint32[Enum.Count(type)];
+				for (int j=0;j<mColors[i].Count;j++) {
+					mColors[i][j] = sColors[i][j];
+				}
 			}
 		}
 
