@@ -30,6 +30,19 @@ namespace System
 			return .Err;
 		}
 
+		public static Result<int> Parse(Type type, StringView str, bool ignoreCase = false)
+		{
+			if (type.IsEnum)
+			{
+				for (var field in type.GetFields())
+				{
+					if (str.Equals(field.[Friend]mFieldData.mName, ignoreCase))
+						return .Ok(field.[Friend]mFieldData.mData);
+				}
+			}
+			return .Err;
+		}
+
 		public static void GetNames<T>(ref StringView[] strBuffer) where T : enum
 		{
 			GetNames(typeof(T), ref strBuffer);
