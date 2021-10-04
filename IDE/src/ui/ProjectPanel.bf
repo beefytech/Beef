@@ -57,14 +57,14 @@ namespace IDE.ui
 			if ((projectItem != null) && (projectItem.mParentFolder != null))
 			{
 				if (projectItem.mIncludeKind == .Manual)
-					color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceManualIncludeText);
+					color = Color.Mult(color, ThemeColors.Colors.WorkspaceManualIncludeText.Color);
 				else if (projectItem.mIncludeKind == .Ignore)
-					color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceIgnoredText);
+					color = Color.Mult(color,ThemeColors.Colors.WorkspaceIgnoredText.Color);
 
 				if (let projectSource = projectItem as ProjectSource)
 				{
 					if (projectSource.mLoadFailed)
-						color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceFailedText);
+						color = Color.Mult(color, ThemeColors.Colors.WorkspaceFailedText.Color);
 				}
 
 				mTextColor = color;
@@ -489,8 +489,8 @@ namespace IDE.ui
             UpdateColors();
             DarkListViewItem listViewItem = (DarkListViewItem)item;
 			listViewItem.AllowDragging = true;
-            listViewItem.mFocusColor = gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText;
-            listViewItem.mSelectColor = gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText;
+             listViewItem.mFocusColor = ThemeColors.Colors.WorkspaceDisabledText.Color;
+            listViewItem.mSelectColor = ThemeColors.Colors.WorkspaceDisabledText.Color;
         }
 
         void UpdateColors()
@@ -2110,9 +2110,9 @@ namespace IDE.ui
                 listViewItem.mIsBold = checkProject == IDEApp.sApp.mWorkspace.mStartupProject;
 
                 var projectOptions = IDEApp.sApp.GetCurProjectOptions(checkProject);
-                listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, (projectOptions != null) ? gApp.mSettings.mUISettings.mColors.mText : gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText);
+                listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, (projectOptions != null) ? ThemeColors.Colors.Text.Color : ThemeColors.Colors.WorkspaceDisabledText.Color);
 				if (checkProject.mFailed)
-					listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, gApp.mSettings.mUISettings.mColors.mWorkspaceFailedText);
+					listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, ThemeColors.Colors.WorkspaceFailedText.Color);
             }
         }
 
