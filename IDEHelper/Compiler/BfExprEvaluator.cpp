@@ -19603,7 +19603,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 
 	bool isUndefIndex = false;
 
-	auto indexArgument = mModule->CreateValueFromExpression(indexerExpr->mArguments[0]);
+	auto indexArgument = mModule->CreateValueFromExpression(indexerExpr->mArguments[0], mModule->GetPrimitiveType(BfTypeCode_IntPtr), BfEvalExprFlags_NoCast);
 	if (!indexArgument)
 		return;
 	if (!indexArgument.mType->IsIntegral())
