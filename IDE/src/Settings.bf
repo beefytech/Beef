@@ -320,10 +320,6 @@ namespace IDE
 					{
 						// Use Color from Toml
 						colors.SetColor(types, s, color);
-					} else {
-						// Use Default Color
-						ThemeColors.GetColor(types, s, ref color);
-						colors.SetColor(types,s, color);
 					}
 				}
 				delete mColorNames;
