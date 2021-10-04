@@ -4767,31 +4767,38 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	{		
 		if (switchValue.mType->IsEnum())
 		{
-			auto enumType = switchValue.mType->ToTypeInstance();
-			if (enumType->IsPayloadEnum())
+			if (hadConstMatch)
 			{
-				int lastTagId = -1;
-				for (auto& field : enumType->mFieldInstances)
-				{
-					auto fieldDef = field.GetFieldDef();
-					if (fieldDef == NULL)
-						continue;
-					if (field.mDataIdx < 0)
-						lastTagId = -field.mDataIdx - 1;
-				}
-				isComprehensive = lastTagId == (int)handledCases.size() - 1;
+				// Already handled
 			}
 			else
 			{
-				for (auto& field : enumType->mFieldInstances)
+				auto enumType = switchValue.mType->ToTypeInstance();
+				if (enumType->IsPayloadEnum())
 				{
-					auto fieldDef = field.GetFieldDef();
-					if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mTypeRef == NULL))
+					int lastTagId = -1;
+					for (auto& field : enumType->mFieldInstances)
 					{
-						if (field.mConstIdx != -1)
+						auto fieldDef = field.GetFieldDef();
+						if (fieldDef == NULL)
+							continue;
+						if (field.mDataIdx < 0)
+							lastTagId = -field.mDataIdx - 1;
+					}
+					isComprehensive = lastTagId == (int)handledCases.size() - 1;
+				}
+				else
+				{
+					for (auto& field : enumType->mFieldInstances)
+					{
+						auto fieldDef = field.GetFieldDef();
+						if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mTypeRef == NULL))
 						{
-							auto constant = enumType->mConstHolder->GetConstantById(field.mConstIdx);
-							isComprehensive &= handledCases.ContainsKey(constant->mInt64);
+							if (field.mConstIdx != -1)
+							{
+								auto constant = enumType->mConstHolder->GetConstantById(field.mConstIdx);
+								isComprehensive &= handledCases.ContainsKey(constant->mInt64);
+							}
 						}
 					}
 				}
