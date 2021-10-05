@@ -399,6 +399,9 @@ namespace IDE
 
 					using (sd.Open("Colors"))
 						mColors.Deserialize(sd,"Colors");
+
+					using (sd.Open("Theme"))
+						mColors.Deserialize(sd,"Theme");
 				}
 
 				for (let theme in mTheme)
