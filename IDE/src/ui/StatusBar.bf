@@ -11,6 +11,7 @@ using IDE.Debugger;
 using IDE;
 using System.Diagnostics;
 using IDE.Compiler;
+using Beefy.theme;
 
 namespace IDE.ui
 {

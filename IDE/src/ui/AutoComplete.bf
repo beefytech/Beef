@@ -729,7 +729,7 @@ namespace IDE.ui
 							    using (g.PushColor(0xFFFFFFFF))
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Menu), drawX, drawY, mRightBoxAdjust - GS!(8), drawHeight - GS!(8));
 
-								using (g.PushColor(ThemeColors.Colors.AutoCompleteDocText.Color))
+								using (g.PushColor(ThemeColors.Theme.AutoCompleteDocText.Color))
 									g.DrawString(docParser.ShowDocString, drawX + GS!(8), drawY + GS!(4), .Left, mDocWidth - GS!(20), .Wrap);
 							}
 						}
@@ -955,7 +955,7 @@ namespace IDE.ui
 					numStr.AppendF("{0}/{1}", mSelectIdx + 1, mEntryList.Count);
 					if (g != null)
 					{
-					    using (g.PushColor(ThemeColors.Colors.AutoCompleteSubText.Color))
+					    using (g.PushColor(ThemeColors.Theme.AutoCompleteSubText.Color))
 					        g.DrawString(numStr, curX, curY);
 					}
 					curX += font.GetWidth(numStr) + GS!(8);
@@ -1011,7 +1011,7 @@ namespace IDE.ui
 
 					if (g != null)
 					{
-						using (g.PushColor(((sectionIdx == cursorSection) && (isParam)) ?ThemeColors.Colors.AutoCompleteActiveText.Color : ThemeColors.Colors.Text.Color))
+						using (g.PushColor(((sectionIdx == cursorSection) && (isParam)) ?ThemeColors.Theme.AutoCompleteActiveText.Color : ThemeColors.Theme.Text.Color))
 							g.DrawString(sectionStr, curX, curY);
 					}
 			        curX += sectionWidth;
@@ -1047,7 +1047,7 @@ namespace IDE.ui
 							curY += font.GetLineSpacing() + GS!(4);
 							if (g != null)
 							{
-								using (g.PushColor(ThemeColors.Colors.AutoCompleteDocText.Color))
+								using (g.PushColor(ThemeColors.Theme.AutoCompleteDocText.Color))
 									docHeight = g.DrawString(docString, curX, curY, .Left, maxDocWidth, .Wrap);
 							}
 							else
@@ -1084,12 +1084,12 @@ namespace IDE.ui
 							curY += font.GetLineSpacing() + GS!(4);
 							if (g != null)
 							{
-								using (g.PushColor(ThemeColors.Colors.Text.Color))
+								using (g.PushColor(ThemeColors.Theme.Text.Color))
 								{
 									g.DrawString(scope String(paramName.Length + 1)..AppendF("{0}:", paramName), curX, curY, .Left, mWidth, .Ellipsis);
 								}
 
-								using (g.PushColor(ThemeColors.Colors.AutoCompleteDocText.Color))
+								using (g.PushColor(ThemeColors.Theme.AutoCompleteDocText.Color))
 								{
 									g.DrawString(paramDoc, curX + font.GetWidth(paramName) + font.GetWidth(": "), curY, .Left, mWidth, .Ellipsis);
 								}

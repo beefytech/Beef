@@ -10,6 +10,7 @@ using Beefy.events;
 using Beefy.theme.dark;
 using Beefy.gfx;
 using Beefy.geom;
+using Beefy.theme;
 
 namespace IDE.ui
 {

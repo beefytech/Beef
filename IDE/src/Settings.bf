@@ -349,7 +349,7 @@ namespace IDE
 
 			public void Apply()
 			{
-				int cnt = Enum.Count<ThemeColors.Types>()
+				int cnt = Enum.Count<ThemeColors.Types>();
 				StringView[] colorNames = new StringView[cnt];
 				ThemeColors.GetNames(ref colorNames);
 
@@ -358,26 +358,6 @@ namespace IDE
 					colors.SetColors(t);
 				}
 				delete colorNames;
-
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Normal] = ThemeColors.Colors.Code.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Keyword] = ThemeColors.Colors.Keyword.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Literal] = ThemeColors.Colors.Literal.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Identifier] = ThemeColors.Colors.Identifier.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Comment] = ThemeColors.Colors.Comment.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Method] = ThemeColors.Colors.Method.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Type] = ThemeColors.Colors.Type.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.PrimitiveType] = ThemeColors.Colors.PrimitiveType.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Struct] = ThemeColors.Colors.Struct.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.GenericParam] = ThemeColors.Colors.GenericParam.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.RefType] = ThemeColors.Colors.RefType.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Interface] = ThemeColors.Colors.Interface.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Namespace] = ThemeColors.Colors.Namespace.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_Text] = ThemeColors.Colors.DisassemblyText.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_FileName] = ThemeColors.Colors.DisassemblyFileName.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Error] = ThemeColors.Colors.Error.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildError] = ThemeColors.Colors.BuildError.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildWarning] = ThemeColors.Colors.BuildWarning.Color;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.VisibleWhiteSpace] = ThemeColors.Colors.VisibleWhiteSpace.Color;
 
 			}
 		}

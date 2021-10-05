@@ -11,6 +11,7 @@ using Beefy.theme.dark;
 using Beefy.events;
 using Beefy.geom;
 using System.IO;
+using Beefy.theme;
 
 namespace IDE.ui
 {

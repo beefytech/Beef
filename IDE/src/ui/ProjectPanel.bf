@@ -57,14 +57,14 @@ namespace IDE.ui
 			if ((projectItem != null) && (projectItem.mParentFolder != null))
 			{
 				if (projectItem.mIncludeKind == .Manual)
-					color = Color.Mult(color, ThemeColors.Colors.WorkspaceManualIncludeText.Color);
+					color = Color.Mult(color, ThemeColors.Theme.WorkspaceManualIncludeText.Color);
 				else if (projectItem.mIncludeKind == .Ignore)
-					color = Color.Mult(color,ThemeColors.Colors.WorkspaceIgnoredText.Color);
+					color = Color.Mult(color,ThemeColors.Theme.WorkspaceIgnoredText.Color);
 
 				if (let projectSource = projectItem as ProjectSource)
 				{
 					if (projectSource.mLoadFailed)
-						color = Color.Mult(color, ThemeColors.Colors.WorkspaceFailedText.Color);
+						color = Color.Mult(color, ThemeColors.Theme.WorkspaceFailedText.Color);
 				}
 
 				mTextColor = color;
@@ -489,8 +489,8 @@ namespace IDE.ui
             UpdateColors();
             DarkListViewItem listViewItem = (DarkListViewItem)item;
 			listViewItem.AllowDragging = true;
-             listViewItem.mFocusColor = ThemeColors.Colors.WorkspaceDisabledText.Color;
-            listViewItem.mSelectColor = ThemeColors.Colors.WorkspaceDisabledText.Color;
+             listViewItem.mFocusColor = ThemeColors.Theme.WorkspaceDisabledText.Color;
+            listViewItem.mSelectColor = ThemeColors.Theme.WorkspaceDisabledText.Color;
         }
 
         void UpdateColors()
@@ -2110,9 +2110,9 @@ namespace IDE.ui
                 listViewItem.mIsBold = checkProject == IDEApp.sApp.mWorkspace.mStartupProject;
 
                 var projectOptions = IDEApp.sApp.GetCurProjectOptions(checkProject);
-                listViewItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, (projectOptions != null) ? ThemeColors.Colors.Text.Color : ThemeColors.Colors.WorkspaceDisabledText.Color);
+                listViewItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, (projectOptions != null) ? ThemeColors.Theme.Text.Color : ThemeColors.Theme.WorkspaceDisabledText.Color);
 				if (checkProject.mFailed)
-					listViewItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Colors.WorkspaceFailedText.Color);
+					listViewItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Theme.WorkspaceFailedText.Color);
             }
         }
 

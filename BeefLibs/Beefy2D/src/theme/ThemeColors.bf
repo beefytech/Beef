@@ -125,7 +125,7 @@ namespace Beefy.theme
 		*/
 
 
-		static uint32[][] sColors ~ DeleteContainerAndItems!(_);
+		public static uint32[][] sColors ~ DeleteContainerAndItems!(_);
 		public uint32[][] mColors ~ DeleteContainerAndItems!(_);
 
 		static this()

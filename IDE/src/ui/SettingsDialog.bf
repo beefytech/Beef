@@ -4,6 +4,7 @@ using Beefy.gfx;
 using System.Collections;
 using System.Diagnostics;
 using Beefy.geom;
+using Beefy.theme;
 
 namespace IDE.ui
 {
