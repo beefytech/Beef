@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 namespace Tests
 {
@@ -21,6 +23,10 @@ namespace Tests
 			Test.Assert(sa.mA == 11);
 			Test.Assert(sa.mB == 22);
 			Test.Assert(sa.mC == 33);
+
+			var val = arr[(.)1];
+			int[3] arr2 = .(1, 2, 3);
+			var val2 = arr2[(.)1];
 
 #if BF_64_BIT
 			/*int a = (int)(void*)&sa - (int)Internal.UnsafeCastToPtr(arr);

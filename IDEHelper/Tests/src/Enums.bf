@@ -114,6 +114,13 @@ namespace Tests
 			}
 			Test.Assert(val == 0);
 
+			const EnumA cea = .A;
+			switch (cea)
+			{
+			case .A:
+				val = 123;
+			}
+
 			ee = .B(10);
 			
 		}
