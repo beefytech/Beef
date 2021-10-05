@@ -13,7 +13,7 @@ namespace Beefy.theme
 
 			// Template
 
-			// Add new theme.toml headings here. Don't forget to add to Settings.LoadTheme
+			// Add new theme.toml headings here. Automatically processed by UISettings.Apply.LoadTheme
 		}
 
 		// And add them here as Types. There should be 1 for each Enum below in the same order as specified in the Enum

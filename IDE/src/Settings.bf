@@ -47,7 +47,7 @@ namespace IDE
 				mManuallySet = sd.GetBool("ManuallySet");
 				if ((!mManuallySet) && (!mBin64Path.IsEmpty))
 					return;
-				
+
 				sd.GetString("Bin32Path", mBin32Path);
 				sd.GetString("Bin64Path", mBin64Path);
 
@@ -314,7 +314,7 @@ namespace IDE
 				int cnt = Enum.Count(t);
 				StringView[] colorNames = new StringView[cnt];
 				ThemeColors.GetNames(name, ref colorNames);
-				uint32 color=0;
+				uint32 color = 0;
 
 				for (let s in colorNames)
 				{
@@ -353,12 +353,12 @@ namespace IDE
 				StringView[] colorNames = new StringView[cnt];
 				ThemeColors.GetNames(ref colorNames);
 
-				for (let s in colorNames) {
+				for (let s in colorNames)
+				{
 					ThemeColors.Types t = Enum.Parse<ThemeColors.Types>(s);
 					colors.SetColors(t);
 				}
 				delete colorNames;
-
 			}
 		}
 
@@ -397,11 +397,16 @@ namespace IDE
 					if (sd.Load(themeFilePath) case .Err)
 						return;
 
-					using (sd.Open("Colors"))
-						mColors.Deserialize(sd,"Colors");
+					int cnt = Enum.Count<ThemeColors.Types>();
+					StringView[] colorNames = new StringView[cnt];
+					ThemeColors.GetNames(ref colorNames);
 
-					using (sd.Open("Theme"))
-						mColors.Deserialize(sd,"Theme");
+					for (let s in colorNames)
+					{
+						using (sd.Open(s))
+							mColors.Deserialize(sd, s);
+					}
+					delete colorNames;
 				}
 
 				for (let theme in mTheme)
@@ -515,7 +520,7 @@ namespace IDE
 			{
 				sd.Get("Scale", ref mScale);
 				ClearAndDeleteItems(mTheme);
-				for (sd.Enumerate("Theme"))
+				for ( sd.Enumerate("Theme"))
 				{
 					var str = new String();
 					sd.GetCurString(str);
@@ -546,7 +551,7 @@ namespace IDE
 				No,
 				Yes,
 				BackupOnly
-			}	
+			}
 
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
@@ -597,13 +602,13 @@ namespace IDE
 			public void Deserialize(StructuredData sd)
 			{
 				ClearAndDeleteItems(mFonts);
-				for (sd.Enumerate("Fonts"))
+				for ( sd.Enumerate("Fonts"))
 				{
 					var str = new String();
 					sd.GetCurString(str);
 					mFonts.Add(str);
 				}
-				sd.Get("UIScale", ref gApp.mSettings.mUISettings.mScale); // Legacy
+				sd.Get("UIScale", ref gApp.mSettings.mUISettings.mScale);// Legacy
 				sd.Get("FontSize", ref mFontSize);
 				sd.Get("AutoCompleteShowKind", ref mAutoCompleteShowKind);
 				sd.Get("AutoCompleteRequireControl", ref mAutoCompleteRequireControl);
@@ -644,8 +649,6 @@ namespace IDE
 					if (gApp.mSpellChecker != null)
 						DeleteAndNullify!(gApp.mSpellChecker);
 				}
-
-				
 			}
 		}
 
