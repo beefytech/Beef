@@ -96,7 +96,7 @@ namespace Beefy.theme.dark
 
                 if ((mHasFocus) || (mEditWidget.mHasFocus))
                 {
-                    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+                    using (g.PushColor(ThemeColors.Theme.SelectedOutline.Color))
                         g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Outline), 0, 0, mWidth, mHeight);
                 }
 
@@ -132,14 +132,14 @@ namespace Beefy.theme.dark
 						float fontHeight = g.mFont.GetHeight();
 
                         //g.DrawString(label, mLabelX, (mHeight - GS!(24)) / 2, mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
-						using (g.PushColor(DarkTheme.COLOR_TEXT))
+						using (g.PushColor(ThemeColors.Theme.Text.Color))
 							g.DrawString(label, mLabelX, (mHeight - fontHeight) / 2 - (int)GS!(3.5f), mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
                     }
                 }
 
 				if (mHasFocus)
 				{
-				    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+				    using (g.PushColor(ThemeColors.Theme.SelectedOutline.Color))
 				        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Outline), GS!(2), 0, mWidth - GS!(4), mHeight - GS!(4));
 				}
             }

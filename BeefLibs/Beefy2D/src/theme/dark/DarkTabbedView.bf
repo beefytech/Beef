@@ -130,7 +130,7 @@ namespace Beefy.theme.dark
                 if ((mLabel != null) && (drawWidth > GS!(16)))
                 {
                     //using (g.PushColor(((DarkTabbedView)mParent).mTextColor))
-                    using (g.PushColor(mTextColor ?? DarkTheme.COLOR_TEXT))
+                    using (g.PushColor(mTextColor ?? ThemeColors.Theme.Text.Color))
 					{
 						float textWidth = g.mFont.GetWidth(mLabel);
 						float useWidth = mWidth - GS!(12)*2;

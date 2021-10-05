@@ -278,7 +278,7 @@ namespace IDE.ui
                 int32 column;
                 sourceViewPanel.GetCursorPosition(out line, out column);
 
-				using (g.PushColor(DarkTheme.COLOR_TEXT))
+				using (g.PushColor(ThemeColors.Theme.Text.Color))
 				{
 					if (gApp.mSettings.mEnableDevMode)
 						g.DrawString(StackStringFormat!("Idx {0}", sourceViewPanel.mEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
@@ -367,7 +367,7 @@ namespace IDE.ui
 				if (mCancelSymSrvButton != null)
 					mCancelSymSrvButton.mX = completionRect.Right - GS!(16);
 
-				using (g.PushColor(DarkTheme.COLOR_TEXT))
+				using (g.PushColor(ThemeColors.Theme.Text.Color))
 					g.DrawString(str, x, statusLabelPos, FontAlign.Centered, len);
 			}
 
@@ -419,7 +419,7 @@ namespace IDE.ui
 
 			if (gApp.mSettings.mEnableDevMode)
 			{
-				using (g.PushColor(DarkTheme.COLOR_TEXT))
+				using (g.PushColor(ThemeColors.Theme.Text.Color))
 	            	g.DrawString(StackStringFormat!("FPS: {0}", gApp.mLastFPS), GS!(32), 0);
 
 	            String resolveStr = scope String();

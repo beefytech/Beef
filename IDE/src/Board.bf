@@ -71,7 +71,7 @@ namespace IDE
 
             g.SetFont(mFont);
 
-            using (g.PushColor(DarkTheme.COLOR_BKG))
+            using (g.PushColor(ThemeColors.Theme.Background.Color))
                 g.FillRect(0, 0, mWidth, mHeight);
 
             using (g.PushColor(Color.Black))

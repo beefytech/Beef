@@ -185,13 +185,6 @@ namespace Beefy.theme.dark
             COUNT
         };
 
-		public static uint32 COLOR_TEXT                = 0xFFFFFFFF;
-        public static uint32 COLOR_WINDOW              = 0xFF595962;
-        public static uint32 COLOR_BKG                 = 0xFF26262A;
-        public static uint32 COLOR_SELECTED_OUTLINE    = 0xFFCFAE11;
-        public static uint32 COLOR_MENU_FOCUSED        = 0xFFE5A910;
-        public static uint32 COLOR_MENU_SELECTED       = 0xFFCB9B80;
-
 		public static float sScale = 1.0f;
 		public static int32 sSrcImgScale = 1;
 		public static int32 sSrcImgUnitSize = 20;

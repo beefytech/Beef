@@ -430,7 +430,7 @@ namespace IDE.ui
 					if (mAutoCompleteListWidget.mSelectIdx != -1)
 					{
 						var selectedEntry = mAutoCompleteListWidget.mEntryList[mAutoCompleteListWidget.mSelectIdx];
-						using (g.PushColor(DarkTheme.COLOR_MENU_FOCUSED))
+						using (g.PushColor(ThemeColors.Theme.MenuFocused.Color))
 						{
 							let dispWidth = g.mFont.GetWidth(selectedEntry.mEntryDisplay) + GS!(24);
 

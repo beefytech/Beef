@@ -40,7 +40,7 @@ namespace Beefy.theme.dark
 						leftStr.RemoveToEnd(barIdx);
 					}
 
-					using (g.PushColor(DarkTheme.COLOR_TEXT))
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 					{
 						g.DrawString(leftStr, GS!(36), 0);
 						if (!rightStr.IsEmpty)
@@ -324,7 +324,7 @@ namespace Beefy.theme.dark
 
                 if (itemIdx == mSelectIdx)
                 {
-                    using (g.PushColor(DarkTheme.COLOR_MENU_FOCUSED))
+                    using (g.PushColor(ThemeColors.Theme.MenuFocused.Color))
                         g.DrawButton(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.MenuSelect), GS!(4), curY, mWidth - GS!(6));
                 }
 

@@ -905,7 +905,7 @@ namespace Beefy.theme.dark
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.EditBox), 0, 0, mWidth, mHeight);
                 if (mHasFocus)
                 {
-                    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+                    using (g.PushColor(ThemeColors.Theme.SelectedOutline.Color))
                         g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Outline), 0, 0, mWidth, mHeight);
                 }
             }

@@ -53,7 +53,7 @@ namespace Beefy.theme.dark
         {
 			if (mDrawBkg)
 			{
-	            using (g.PushColor(DarkTheme.COLOR_BKG))
+	            using (g.PushColor(ThemeColors.Theme.Background.Color))
 	                g.FillRect(0, 0, mWidth, mHeight);
 			}
             base.Draw(g);            

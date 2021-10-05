@@ -310,11 +310,13 @@ namespace IDE
 				}
 
 				ThemeColors.Types types = Enum.Parse<ThemeColors.Types>(name);
-				StringView[] mColorNames = new StringView[0];
-				ThemeColors.GetNames(name, ref mColorNames);
+				Type t = ThemeColors.GetType(types);
+				int cnt = Enum.Count(t);
+				StringView[] colorNames = new StringView[cnt];
+				ThemeColors.GetNames(name, ref colorNames);
 				uint32 color=0;
 
-				for (let s in mColorNames)
+				for (let s in colorNames)
 				{
 					if (GetColor(s, ref color))
 					{
@@ -322,7 +324,7 @@ namespace IDE
 						colors.SetColor(types, s, color);
 					}
 				}
-				delete mColorNames;
+				delete colorNames;
 
 				if (types == ThemeColors.Types.Colors)
 				{
@@ -347,15 +349,15 @@ namespace IDE
 
 			public void Apply()
 			{
+				int cnt = Enum.Count<ThemeColors.Types>()
+				StringView[] colorNames = new StringView[cnt];
+				ThemeColors.GetNames(ref colorNames);
 
-				StringView[] mColorNames = new StringView[0];
-				ThemeColors.GetNames(ref mColorNames);
-
-				for (let s in mColorNames) {
+				for (let s in colorNames) {
 					ThemeColors.Types t = Enum.Parse<ThemeColors.Types>(s);
 					colors.SetColors(t);
 				}
-				delete mColorNames;
+				delete colorNames;
 
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Normal] = ThemeColors.Colors.Code.Color;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Keyword] = ThemeColors.Colors.Keyword.Color;
@@ -377,12 +379,6 @@ namespace IDE
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildWarning] = ThemeColors.Colors.BuildWarning.Color;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.VisibleWhiteSpace] = ThemeColors.Colors.VisibleWhiteSpace.Color;
 
-				DarkTheme.COLOR_TEXT = ThemeColors.Colors.Text.Color;
-				DarkTheme.COLOR_WINDOW = ThemeColors.Colors.Window.Color;
-				DarkTheme.COLOR_BKG = ThemeColors.Colors.Background.Color;
-				DarkTheme.COLOR_SELECTED_OUTLINE = ThemeColors.Colors.SelectedOutline.Color;
-				DarkTheme.COLOR_MENU_FOCUSED = ThemeColors.Colors.MenuFocused.Color;
-				DarkTheme.COLOR_MENU_SELECTED = ThemeColors.Colors.MenuSelected.Color;
 			}
 		}
 

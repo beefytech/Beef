@@ -8,6 +8,7 @@ namespace Beefy.theme
 		{
 			// Generated via code
 			Colors,
+			Theme,
 			Widget
 
 			// Template
@@ -15,26 +16,14 @@ namespace Beefy.theme
 			// Add new theme.toml headings here
 		}
 
-		// And add them here as Types. There should be 1 for each Enum below in the same order as specified in the Enum above
+		// And add them here as Types. There should be 1 for each Enum below in the same order as specified in the Enum
+		// above
 
-		static Type[?] mTypes = .( typeof(Colors), typeof(Widget) );
+		static Type[?] mTypes = .(typeof(Colors), typeof(Theme), typeof(Widget));
 
 		// Generated via code
 		public enum Colors
 		{
-			case Text;
-			case Window;
-			case Background;
-			case SelectedOutline;
-			case MenuFocused;
-			case MenuSelected;
-			case AutoCompleteSubText;
-			case AutoCompleteDocText;
-			case AutoCompleteActiveText;
-			case WorkspaceDisabledText;
-			case WorkspaceFailedText;
-			case WorkspaceManualIncludeText;
-			case WorkspaceIgnoredText;
 			case Code;
 			case Keyword;
 			case Literal;
@@ -64,6 +53,35 @@ namespace Beefy.theme
 				set
 				{
 					sColors[(int)Types.Colors][(int)this] = value;
+				}
+			}
+		}
+
+		public enum Theme
+		{
+			case Text;
+			case Window;
+			case Background;
+			case SelectedOutline;
+			case MenuFocused;
+			case MenuSelected;
+			case AutoCompleteSubText;
+			case AutoCompleteDocText;
+			case AutoCompleteActiveText;
+			case WorkspaceDisabledText;
+			case WorkspaceFailedText;
+			case WorkspaceManualIncludeText;
+			case WorkspaceIgnoredText;
+
+			public uint32 Color
+			{
+				get
+				{
+					return sColors[(int)Types.Theme][(int)this];
+				}
+				set
+				{
+					sColors[(int)Types.Theme][(int)this] = value;
 				}
 			}
 		}
@@ -130,7 +148,8 @@ namespace Beefy.theme
 			{
 				Type type = GetType((Types)i);
 				mColors[i] = new uint32[Enum.Count(type)];
-				for (int j=0;j<mColors[i].Count;j++) {
+				for (int j = 0; j < mColors[i].Count; j++)
+				{
 					mColors[i][j] = sColors[i][j];
 				}
 			}
@@ -141,19 +160,6 @@ namespace Beefy.theme
 			// Generated via code
 
 			// Colors
-			Colors.Text.Color = 0xFFFFFFFF;
-			Colors.Window.Color = 0xFF44444D;
-			Colors.Background.Color = 0xFF1C1C24;
-			Colors.SelectedOutline.Color = 0xFFCFAE11;
-			Colors.MenuFocused.Color = 0xFFE5A910;
-			Colors.MenuSelected.Color = 0xFFCB9B80;
-			Colors.AutoCompleteSubText.Color = 0xFFB0B0B0;
-			Colors.AutoCompleteDocText.Color = 0xFFC0C0C0;
-			Colors.AutoCompleteActiveText.Color = 0xFFB0B0FF;
-			Colors.WorkspaceDisabledText.Color = 0xFFA0A0A0;
-			Colors.WorkspaceFailedText.Color = 0xFFE04040;
-			Colors.WorkspaceManualIncludeText.Color = 0xFFE0E0FF;
-			Colors.WorkspaceIgnoredText.Color = 0xFF909090;
 
 			Colors.Code.Color = 0xFFFFFFFF;
 			Colors.Keyword.Color = 0xFFE1AE9A;
@@ -174,6 +180,22 @@ namespace Beefy.theme
 			Colors.BuildError.Color = 0xFFFF8080;
 			Colors.BuildWarning.Color = 0xFFFFFF80;
 			Colors.VisibleWhiteSpace.Color = 0xFF9090C0;
+
+			//Theme
+
+			Theme.Text.Color = 0xFFFFFFFF;
+			Theme.Window.Color = 0xFF44444D;
+			Theme.Background.Color = 0xFF1C1C24;
+			Theme.SelectedOutline.Color = 0xFFCFAE11;
+			Theme.MenuFocused.Color = 0xFFE5A910;
+			Theme.MenuSelected.Color = 0xFFCB9B80;
+			Theme.AutoCompleteSubText.Color = 0xFFB0B0B0;
+			Theme.AutoCompleteDocText.Color = 0xFFC0C0C0;
+			Theme.AutoCompleteActiveText.Color = 0xFFB0B0FF;
+			Theme.WorkspaceDisabledText.Color = 0xFFA0A0A0;
+			Theme.WorkspaceFailedText.Color = 0xFFE04040;
+			Theme.WorkspaceManualIncludeText.Color = 0xFFE0E0FF;
+			Theme.WorkspaceIgnoredText.Color = 0xFF909090;
 
 			//Widget
 
@@ -202,7 +224,7 @@ namespace Beefy.theme
 		{
 			mColors[(int)type][ix] = color;
 		}
-		
+
 		public void SetColor(Types types, StringView name, uint32 color)
 		{
 			int t = GetEnumValue(types, name);
@@ -263,7 +285,7 @@ namespace Beefy.theme
 		public static int GetEnumValue(Types types, StringView name)
 		{
 			Type t = GetType(types);
-			int i = Enum.Parse(t,name);
+			int i = Enum.Parse(t, name);
 			return i;
 		}
 

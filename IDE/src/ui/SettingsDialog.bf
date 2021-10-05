@@ -74,7 +74,7 @@ namespace IDE.ui
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 			var (category, propEntry) = AddPropertiesItem(root, "General");
 			category.mIsBold = true;
-			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+			category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, cHeaderColor);
 
 			AddPropertiesItem(category, "Scale", "mScale");
 			AddPropertiesItem(category, "Theme", "mTheme");
@@ -89,7 +89,7 @@ namespace IDE.ui
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 			var (category, propEntry) = AddPropertiesItem(root, "General");
 			category.mIsBold = true;
-			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+			category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, cHeaderColor);
 			AddPropertiesItem(category, "Font", "mFonts");
 			AddPropertiesItem(category, "Font Size", "mFontSize");
 			AddPropertiesItem(category, "Autocomplete", "mAutoCompleteShowKind");
@@ -136,7 +136,7 @@ namespace IDE.ui
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 			var (category, propEntry) = AddPropertiesItem(root, "General");
 			category.mIsBold = true;
-			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+			category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, cHeaderColor);
 			AddPropertiesItem(category, "Worker Threads", "mWorkerThreads");
 			category.Open(true, true);
 		}
@@ -204,7 +204,7 @@ namespace IDE.ui
 				let keyEntry = (KeyEntry)propEntry.mTarget;
 
 				let listViewItem = (DarkListViewItem)propEntry.mListViewItem.GetSubItem(1);
-				listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, keyEntry.mHasConflict ? 0xFFFF8080 : 0xFFFFFFFF);
+				listViewItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, keyEntry.mHasConflict ? 0xFFFF8080 : 0xFFFFFFFF);
 			}
 		}
 

@@ -113,7 +113,7 @@ namespace Beefy.theme.dark
 
 			if (mHasFocus)
 			{
-			    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+			    using (g.PushColor(ThemeColors.Theme.SelectedOutline.Color))
 			        g.DrawButton(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Outline), 0, 0, mWidth);
 			}
 
