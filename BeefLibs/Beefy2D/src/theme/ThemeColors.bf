@@ -24,6 +24,8 @@ namespace Beefy.theme
 		// Generated via code
 		public enum Colors
 		{
+			// Note: Do NOT change the order of these entries
+
 			case Code;
 			case Keyword;
 			case Literal;
