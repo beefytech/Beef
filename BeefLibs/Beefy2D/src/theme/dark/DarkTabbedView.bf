@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.widgets;
@@ -23,7 +24,7 @@ namespace Beefy.theme.dark
                 base.Draw(g);
                 if (mMouseOver)
                 {
-                    using (g.PushColor(mMouseDown ? 0xFFFF0000 : Color.White))
+                    using (g.PushColor(mMouseDown ? ThemeColors.Widget.DarkTabButtonClose006.Color : ThemeColors.Widget.DarkButton002.Color))
                         g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.CloseOver), GS!(-4), GS!(-4));
                 }
                 else
@@ -122,7 +123,7 @@ namespace Beefy.theme.dark
 				if ((mIsActive) && (DarkTheme.sScale != 1.0f))
 				{
 					// When scaling, we can end up with a subpixel we don't want
-					//using (g.PushColor(0xFFFF0000))
+					//using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose006.Color))
 						g.DrawButton(DarkTheme.sDarkTheme.mWindowTopImage, GS!(2), (float)Math.Ceiling(DarkTheme.sScale * (20)) - 1, drawWidth - GS!(4));
 				}
 
@@ -170,7 +171,7 @@ namespace Beefy.theme.dark
             {
                 if (!mAlreadyContains)
                 {
-                    using (g.PushColor(0x60FFFFFF))
+                    using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose007.Color))
                         g.DrawBox(DarkTheme.sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.WhiteCircle], mTabbedView.mX - GS!(6), mTabbedView.mY - GS!(6), mTabbedView.mWidth + GS!(6) * 2, GS!(32));
                 }
             }
@@ -188,7 +189,7 @@ namespace Beefy.theme.dark
                 base.Draw(g);
                 if (mMouseOver || mMouseDown)
                 {
-                    using (g.PushColor(0xFFF7A900))
+                    using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose008.Color))
                         g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropMenuButton), GS!(-4), GS!(-4));                    
                 }
                 else
@@ -333,7 +334,7 @@ namespace Beefy.theme.dark
 
                 /*if (mMouseOver)
                 {
-                    using (g.PushColor(0x80FF0000))
+                    using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose009.Color))
                         g.FillRect(0, 0, mWidth, mHeight);
                 }*/
             }
@@ -422,7 +423,7 @@ namespace Beefy.theme.dark
         public override void Draw(Graphics g)
         {
             base.Draw(g);
-            using (g.PushColor(0x80FFFFFF))
+            using (g.PushColor(ThemeColors.Widget.DarkButton003.Color))
                 g.DrawButton(DarkTheme.sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.TabInactive], 0, 0, mWidth);
             g.DrawBox(DarkTheme.sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.Window], 0, mTabHeight - GS!(2), mWidth, mHeight - mTabHeight + GS!(2));
         }
@@ -749,7 +750,7 @@ namespace Beefy.theme.dark
         
         public virtual void DrawDockPreview(Graphics g, TabButton tabButton)
         {
-            using (g.PushColor(0x80FFFFFF))
+            using (g.PushColor(ThemeColors.Widget.DarkButton003.Color))
             {                    
                 g.DrawBox(DarkTheme.sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.Window], 0, mTabHeight - GS!(2), mWidth, mHeight - mTabHeight + GS!(2));   
                 using (g.PushTranslate(tabButton.mX, tabButton.mY))

@@ -703,7 +703,7 @@ namespace IDE.ui
 		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 		    /*var (category, ?) = AddPropertiesItem(root, "General");
 		    category.mIsBold = true;
-		    category.mTextColor = 0xFFE8E8E8;*/
+		    category.mTextColor = ThemeColors.Panel.WorkspaceProperties001.Color;*/
 			
 			AddPropertiesItem(root, "Preprocessor Macros", "mPreprocessorMacros");
 			DistinctOptionBuilder dictinctOptionBuilder = scope .(this);
@@ -738,10 +738,10 @@ namespace IDE.ui
 					if (allocType == .Custom)
 					{
 						mallocSubItem.Label = mallocPropEntry.mCurValue.Get<String>();
-						mallocSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFFFFFFF);
+						mallocSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.WorkspaceProperties002.Color);
 						mallocPropEntry.mDisabled = false;
 						freeSubItem.Label = freePropEntry.mCurValue.Get<String>();
-						freeSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFFFFFFF);
+						freeSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.WorkspaceProperties002.Color);
 						freePropEntry.mDisabled = false;
 					}
 					else
@@ -767,9 +767,9 @@ namespace IDE.ui
 							freeSubItem.Label = "tcfree";
 						}
 
-						mallocSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFC0C0C0);
+						mallocSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.WorkspaceProperties003.Color);
 						mallocPropEntry.mDisabled = true;
-						freeSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFC0C0C0);
+						freeSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.WorkspaceProperties003.Color);
 						freePropEntry.mDisabled = true;
 					}
 					return false;

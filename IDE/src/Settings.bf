@@ -349,7 +349,7 @@ namespace IDE
 
 			public void Apply()
 			{
-				int cnt = Enum.Count<ThemeColors.Types>();
+				int cnt = Enum.Count(typeof(ThemeColors.Types));
 				StringView[] colorNames = new StringView[cnt];
 				ThemeColors.GetNames(ref colorNames);
 
@@ -397,7 +397,7 @@ namespace IDE
 					if (sd.Load(themeFilePath) case .Err)
 						return;
 
-					int cnt = Enum.Count<ThemeColors.Types>();
+					int cnt = Enum.Count(typeof(ThemeColors.Types));
 					StringView[] colorNames = new StringView[cnt];
 					ThemeColors.GetNames(ref colorNames);
 

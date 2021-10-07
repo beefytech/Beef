@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -415,7 +416,7 @@ namespace IDE.Debugger
 
 		public void Draw(Graphics g, bool isOldCompiledVersion)
 		{
-			uint32 color = Color.White;
+			uint32 color = ThemeColors.TrackedTextElement.Breakpoint001.Color;
 			bool isBreakEx = (mCondition != null) || (mLogging != null) || (mHitCountBreakKind != .None);
 			Image image = DarkTheme.sDarkTheme.GetImage(isBreakEx ? .RedDotEx : .RedDot);
 			Image threadImage = null;
@@ -432,12 +433,12 @@ namespace IDE.Debugger
 				}
 				else if (!isOldCompiledVersion)
 				{
-				    //color = (breakpoint.IsBound()) ? Color.White : 0x8080FFFF;
+				    //color = (breakpoint.IsBound()) ? ThemeColors.TrackedTextElement.Breakpoint001.Color : ThemeColors.TrackedTextElement.Breakpoint002.Color;
 				    if ((!IsBound()) || (mThreadId == 0))
 				        image = DarkTheme.sDarkTheme.GetImage(isBreakEx ? DarkTheme.ImageIdx.RedDotExUnbound : DarkTheme.ImageIdx.RedDotUnbound);
 				}
 				else
-				    color = 0x8080FFFF;
+				    color = ThemeColors.TrackedTextElement.Breakpoint002.Color;
 
 				if (mThreadId == -1)
 				{

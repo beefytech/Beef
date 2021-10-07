@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -43,7 +44,7 @@ namespace IDE.ui
             g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.PanelHeader), 0, 0, mWidth, mHeight);
             g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
 			float y = GS!(6);
-            using (g.PushColor(0xFFFFFFFF))
+            using (g.PushColor(ThemeColors.Widget.TypeArea022.Color))
             {
 				for (var str in mLabel.Split('\n'))
                 {
@@ -59,7 +60,7 @@ namespace IDE.ui
             if (mFlashPct > 0)
             {
                 float showPct = Math.Max(0.0f, (Math.Sin(mFlashPct * Math.PI_f * 4))) * 0.25f;
-                using (g.PushColor(Color.Get(0xFFFFFFFF, showPct)))
+                using (g.PushColor(Color.Get(ThemeColors.Widget.TypeArea022.Color, showPct)))
                     g.FillRect(0, 0, mWidth, mHeight);
             }
         }

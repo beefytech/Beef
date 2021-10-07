@@ -192,7 +192,7 @@ namespace IDE.ui
 
 			var (category, propEntry) = AddPropertiesItem(root, "Distinct Build Options");
 			var subItem = (DarkListViewItem)category.CreateSubItem(1);
-			subItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFC0C0C0);
+			subItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.DistinctOptionBuilder.DistinctOptionBuilder001.Color);
 			subItem.Label = "<Add New>...";
 			subItem.mOnMouseDown.Add(new (evt) =>
 		        {
@@ -262,7 +262,7 @@ namespace IDE.ui
 			if ((typeNames.IsEmpty) || (typeNames == propEntry.mNotSetString))
 			{
 				subItem.Label = propEntry.mNotSetString;
-				subItem.mTextColor = 0xFFC0C0C0;
+				subItem.mTextColor = ThemeColors.DistinctOptionBuilder.DistinctOptionBuilder001.Color;
 			}
 			else
 			{
@@ -282,7 +282,7 @@ namespace IDE.ui
 							isValid = false;
 					}
 				}
-				subItem.mTextColor = isValid ? 0xFFFFFFFF : 0xFFFF8080;
+				subItem.mTextColor = isValid ? ThemeColors.DistinctOptionBuilder.DistinctOptionBuilder002.Color : ThemeColors.DistinctOptionBuilder.DistinctOptionBuilder003.Color;
 				propEntry.mColorOverride = subItem.mTextColor;
 			}
 		}

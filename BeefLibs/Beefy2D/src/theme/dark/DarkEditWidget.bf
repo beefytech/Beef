@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Diagnostics;
 using System.Text;
@@ -12,7 +13,7 @@ namespace Beefy.theme.dark
     {
         public Font mFont;                
         public uint32[] mTextColors = sDefaultColors;
-        public uint32 mHiliteColor = 0xFF2f5c88;
+        public uint32 mHiliteColor = ThemeColors.Widget.DarkEditWidgetContent024.Color;
         public uint32 mUnfocusedHiliteColor = 0x00000000;
         public int32 mRecalcSizeLineNum = -1;
         public float mRecalcSizeCurMaxWidth = 0;
@@ -23,7 +24,7 @@ namespace Beefy.theme.dark
 		public uint32 mViewWhiteSpaceColor;
 		public bool mScrollToStartOnLostFocus;
 
-		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;
+		protected static uint32[] sDefaultColors = new uint32[] ( ThemeColors.Widget.DarkButton002.Color ) ~ delete _;
 
         public this(EditWidgetContent refContent = null) : base(refContent)
         {
@@ -520,7 +521,7 @@ namespace Beefy.theme.dark
 
             g.PopMatrix();
 
-			/*using (g.PushColor(0x4000FF00))
+			/*using (g.PushColor(ThemeColors.Widget.DarkEditWidgetContent025.Color))
 				g.FillRect(-8, -8, mWidth + 16, mHeight + 16);*/
 
 			/*if (mDbgX != -1)
@@ -910,7 +911,7 @@ namespace Beefy.theme.dark
                 }
             }
 
-			/*using (g.PushColor(0x40FF0000))
+			/*using (g.PushColor(ThemeColors.Widget.DarkEditWidgetContent026.Color))
 				g.FillRect(0, 0, mWidth, mHeight);*/
         }
 

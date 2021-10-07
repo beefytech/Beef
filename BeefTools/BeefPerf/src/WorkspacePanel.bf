@@ -2,6 +2,7 @@ using Beefy.widgets;
 using Beefy.gfx;
 using Beefy.theme.dark;
 using System;
+using Beefy.theme;
 
 namespace BeefPerf
 {
@@ -66,7 +67,7 @@ namespace BeefPerf
 
 					if (gApp.mCurSession == session)
 					{
-						using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+						using (g.PushColor(ThemeColors.Theme.SelectedOutline.Color))
 							g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Outline), 0, 0, width, boxHeight);
 					}
 

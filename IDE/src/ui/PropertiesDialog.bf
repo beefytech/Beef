@@ -371,7 +371,7 @@ namespace IDE.ui
 			}*/
         }
 
-        protected const uint32 cHeaderColor = 0xFFE8E8E8;
+        protected static uint32 cHeaderColor = ThemeColors.PropEntry.PropEntry001.Color;
 
 		public class CategoryListViewItem : DarkListViewItem
 		{
@@ -379,7 +379,7 @@ namespace IDE.ui
 
 			public override void DrawSelect(Graphics g)
 			{
-			    using (g.PushColor(mListView.mHasFocus ? 0xFFFFFFFF : 0x80FFFFFF))
+			    using (g.PushColor(mListView.mHasFocus ? ThemeColors.PropEntry.PropEntry002.Color : ThemeColors.PropEntry.PropEntry003.Color))
 			        base.DrawSelect(g);
 			}
 		}
@@ -419,8 +419,8 @@ namespace IDE.ui
 				SelfToOtherTranslate(mListView, 0, 0, var parentX, var parentY);
 				var width = mListView.mColumns[0].mWidth;
 
-				using (g.PushColor(mListView.mHasFocus ? 0xFFFFFFFF : 0x80FFFFFF))
-					using (g.PushColor(0x20FFFFFF))
+				using (g.PushColor(mListView.mHasFocus ? ThemeColors.PropEntry.PropEntry002.Color : ThemeColors.PropEntry.PropEntry003.Color))
+					using (g.PushColor(ThemeColors.PropEntry.PropEntry004.Color))
 						g.FillRect(-parentX, 0, width, mHeight);
 			}
 		}
@@ -850,7 +850,7 @@ namespace IDE.ui
         {
             var item = (CategoryListViewItem)parent.CreateChildItem();
             item.Label = name;
-            item.mFocusColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFA0A0A0);
+            item.mFocusColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.PropEntry.PropEntry005.Color);
             item.mOnMouseDown.Add(new => CategoryValueClicked);
 			item.mCategoryIdx = (int32)mCategoryListViewItems.Count;
 			mCategoryListViewItems.Add(item);
@@ -1004,7 +1004,7 @@ namespace IDE.ui
 					{
 						if (int64.Parse(newValue, .HexNumber) case .Ok(let intVal))
 						{
-							editingProp.mCurValue = Variant.Create((Color)((uint32)intVal | 0xFF000000));
+							editingProp.mCurValue = Variant.Create((Color)((uint32)intVal | ThemeColors.PropEntry.PropEntry006.Color));
 						}
 						else
 						{
@@ -1086,7 +1086,7 @@ namespace IDE.ui
                     for (var comboBox in propEntry.mComboBoxes)
                     {
                         if (comboBox.mCurMenuWidget != null)
-                            comboBox.mBkgColor = 0x20FFFFFF;
+                            comboBox.mBkgColor = ThemeColors.PropEntry.PropEntry004.Color;
                         else
                             comboBox.mBkgColor = 0;
                     }
@@ -1505,7 +1505,7 @@ namespace IDE.ui
                     else
                     {
                         childItem.Label = "";
-                        childSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFC0C0C0);
+                        childSubItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.PropEntry.PropEntry007.Color);
                     }
                     childSubItem.Label = curValue;
 					FixLabel(childSubItem);
@@ -1547,7 +1547,7 @@ namespace IDE.ui
 			{
 				let valStr = scope String();
 				int32 intVal = propEntry.mCurValue.Get<int32>();
-				(intVal & 0x00FFFFFF).ToString(valStr, "X6", null);
+				(intVal & (int32)ThemeColors.PropEntry.PropEntry008.Color).ToString(valStr, "X6", null);
 				valueItem.Label = valStr;
 			}
 			else if (curVariantType == typeof(float))
@@ -1569,14 +1569,14 @@ namespace IDE.ui
 			if (areDifferent)
 			{
 				valueItem.Label = "<Multiple Values>";
-				valueItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFC0C0C0);
+				valueItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.PropEntry.PropEntry007.Color);
 			}
 			else if (propEntry.mColorOverride.HasValue)
 				valueItem.mTextColor = propEntry.mColorOverride.Value;
 			else if (isNotSet)
-				valueItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFC0C0C0);
+				valueItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.PropEntry.PropEntry007.Color);
 			else
-				valueItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFFFFFFF);
+				valueItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.PropEntry.PropEntry002.Color);
         }
 
         void GetEnumDisp(String enumDisp)
@@ -2006,7 +2006,7 @@ namespace IDE.ui
         {
             var item = (DarkListViewItem)parent.CreateChildItem();
             item.Label = name;
-            item.mFocusColor = Color.Mult(ThemeColors.Theme.Text.Color, 0xFFA0A0A0);
+            item.mFocusColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.PropEntry.PropEntry005.Color);
 			item.mOnMouseDown.Add(new => PropValueClicked);
             let propEntry = SetupPropertiesItem(item, name, propName, optionValues, flags);
             return (item, propEntry);

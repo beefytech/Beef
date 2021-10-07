@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.IO;
 using System.Text;
@@ -354,8 +355,8 @@ namespace IDE.ui
         {
             base.DrawAll(g);
 
-            //Outline(g, mCategorySelector, 0, 0, 0xFF404040);
-            //Outline(g, mCategorySelector, -1, -1, 0xFF202020);
+            //Outline(g, mCategorySelector, 0, 0, ThemeColors.Widget.OpenFileInSolutionDialog018.Color);
+            //Outline(g, mCategorySelector, -1, -1, ThemeColors.Widget.OpenFileInSolutionDialog019.Color);
 
             Outline(g, mFileList, 0, 0, IDEApp.cDialogOutlineLightColor);
             Outline(g, mFileList, -1, -1, IDEApp.cDialogOutlineDarkColor);

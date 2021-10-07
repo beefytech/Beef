@@ -179,7 +179,7 @@ namespace IDE.ui
 	                float indent = mTextInsets.mLeft;
 	                float strStarts = indent + g.mFont.GetWidth(scope String(text, 0, watchEditWidget.mErrorStart));
 	                float strEnds = indent + g.mFont.GetWidth(scope String(text, 0, Math.Min(watchEditWidget.mErrorEnd, text.Length)));
-	                using (g.PushColor(0xFFFF4040))
+	                using (g.PushColor(ThemeColors.WatchEntry.WatchEntry001.Color))
 	                    IDEApp.sApp.DrawSquiggle(g, strStarts, GS!(2), strEnds - strStarts);
 				}
             }
@@ -415,7 +415,7 @@ namespace IDE.ui
 			base.DrawAll(g);
 			if (Content.mIsReadOnly)
 			{
-				using (g.PushColor(0x60404040))
+				using (g.PushColor(ThemeColors.WatchEntry.WatchEntry002.Color))
 					g.FillRect(0, 0, mWidth, mHeight);
 			}	
 		}
@@ -495,8 +495,8 @@ namespace IDE.ui
 
 		public this()
 		{
-			mHiliteColor = 0xFF384858;
-			mUnfocusedHiliteColor = 0x80384858;
+			mHiliteColor = ThemeColors.WatchEntry.WatchEntry003.Color;
+			mUnfocusedHiliteColor = ThemeColors.WatchEntry.WatchEntry004.Color;
 		}
 
         public override bool AllowChar(char32 theChar)
@@ -537,7 +537,7 @@ namespace IDE.ui
 
 		    if ((flags & (uint8)SourceElementFlags.Find_Matches) != 0)
 		    {
-		        return 0x50FFE0B0;
+		        return ThemeColors.WatchEntry.WatchEntry005.Color;
 		    }
 
 		    return hasFocus ? mHiliteColor : mUnfocusedHiliteColor;
@@ -547,7 +547,7 @@ namespace IDE.ui
 		{
 			if ((flags & (uint8)SourceElementFlags.Find_Matches) != 0)
 			{
-			    using (g.PushColor(0x34FFE0B0))
+			    using (g.PushColor(ThemeColors.WatchEntry.WatchEntry006.Color))
 			        g.FillRect(x, y, width, mFont.GetLineSpacing());
 
 			    DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)SourceElementFlags.Find_Matches));
@@ -565,7 +565,7 @@ namespace IDE.ui
 
 		public override void DrawAll(Graphics g)
 		{
-			using (g.PushColor(0xD0FFFFFF))
+			using (g.PushColor(ThemeColors.WatchEntry.WatchEntry007.Color))
 				base.DrawAll(g);
 		}
 	}
@@ -794,7 +794,7 @@ namespace IDE.ui
             g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(130), textY);
             g.DrawString(StackStringFormat!("Col {0}", col + 1), mWidth - GS!(70), textY);
 
-			//using (g.PushColor(0xD0FFFFFF))
+			//using (g.PushColor(ThemeColors.WatchEntry.WatchEntry007.Color))
 				base.DrawAll(g);
         }
 
@@ -1163,13 +1163,13 @@ namespace IDE.ui
 
         public override void Draw(Graphics g)
         {
-            uint32 color = Color.White;
+            uint32 color = ThemeColors.WatchEntry.WatchEntry008.Color;
             var headItem = (WatchListViewItem)GetSubItem(0);
             var valueItem = (WatchListViewItem)GetSubItem(1);
             if (headItem.mDisabled)
-                color = 0x80FFFFFF;
+                color = ThemeColors.WatchEntry.WatchEntry009.Color;
             else if (mFailed)
-                color = 0xFFFF4040;
+                color = ThemeColors.WatchEntry.WatchEntry001.Color;
             
             var watchListView = (WatchListView)mListView;
             if (IsBold)
@@ -1219,7 +1219,7 @@ namespace IDE.ui
                     imageIdx = .IconError;
 
                 var listView = (WatchListView)mListView;
-                using (g.PushColor(headItem.mDisabled ? 0x80FFFFFF : Color.White))
+                using (g.PushColor(headItem.mDisabled ? ThemeColors.WatchEntry.WatchEntry009.Color : ThemeColors.WatchEntry.WatchEntry008.Color))
                 {
                     g.Draw(DarkTheme.sDarkTheme.GetImage(imageIdx), listView.mLabelX - GS!(22), 0);
 
@@ -1240,7 +1240,7 @@ namespace IDE.ui
 				subStr.Append(mLabel, 0, Math.Min(mErrorEnd, mLabel.Length));
                 float strEnds = labelX + g.mFont.GetWidth(subStr);
                 strEnds = Math.Min(mListView.mColumns[0].mWidth - LabelX + labelX, strEnds);
-                using (g.PushColor(0xFFFF4040))
+                using (g.PushColor(ThemeColors.WatchEntry.WatchEntry001.Color))
                     IDEApp.sApp.DrawSquiggle(g, strStarts, GS!(2), strEnds - strStarts);
             }
         }
@@ -1889,7 +1889,7 @@ namespace IDE.ui
         public override void DrawAll(Graphics g)
         {
             bool showDisabled = (mDisabled) && (mDisabledTicks > 40);
-            using (g.PushColor(showDisabled ? 0x80FFFFFF : Color.White))
+            using (g.PushColor(showDisabled ? ThemeColors.WatchEntry.WatchEntry009.Color : ThemeColors.WatchEntry.WatchEntry008.Color))
                 base.DrawAll(g);
         }
 

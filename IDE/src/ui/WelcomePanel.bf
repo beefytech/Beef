@@ -1,4 +1,4 @@
-using Beefy.gfx;
+using Beefy.gfx; using Beefy.theme;
 using Beefy.theme.dark;
 using System;
 using Beefy.widgets;
@@ -16,7 +16,7 @@ namespace IDE.ui
 
 			public override void Draw(Graphics g)
 			{
-				using (g.PushColor(mMouseOver ? 0xFFFFFFFF : 0x80FFFFFF))
+				using (g.PushColor(mMouseOver ? ThemeColors.Panel.WorkspaceProperties002.Color : ThemeColors.Panel.WelcomePanel004.Color))
 					using (g.PushScale(DarkTheme.sScale, DarkTheme.sScale))
 						g.Draw(mImage);
 
@@ -110,15 +110,15 @@ namespace IDE.ui
 
 		public override void Draw(Graphics g)
 		{
-			using (g.PushColor(0x40000000))
+			using (g.PushColor(ThemeColors.Panel.WelcomePanel005.Color))
 				g.FillRect(mWidth/2 - GS!(500), YOfs - GS!(24), GS!(500)*2, GS!(570));
 
 			g.SetFont(mLargeFont);
-			using (g.PushColor(0xFFE0E0FF))
+			using (g.PushColor(ThemeColors.Panel.WelcomePanel006.Color))
 				g.DrawString("Welcome to Beef", 0, GS!(0) + YOfs, .Centered, mWidth);
 
 			g.SetFont(mMedFont);
-			g.DrawString(scope String()..AppendF("Click on a sample projects below\n{}or{}\nCreate a project from the File menu", Font.EncodeColor(0xFFA0A0A0), Font.EncodePopColor()),
+			g.DrawString(scope String()..AppendF("Click on a sample projects below\n{}or{}\nCreate a project from the File menu", Font.EncodeColor(ThemeColors.Panel.WelcomePanel007.Color), Font.EncodePopColor()),
 				GS!(32), GS!(95) + YOfs, .Centered, mWidth - GS!(64));
 		}
 

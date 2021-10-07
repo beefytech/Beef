@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.widgets;
@@ -76,7 +77,7 @@ namespace Beefy.theme.dark
             g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
             if (mLabel != null)
             {
-                using (g.PushColor(mDisabled ? 0x80FFFFFF : Color.White))
+                using (g.PushColor(mDisabled ? ThemeColors.Widget.DarkButton003.Color : ThemeColors.Widget.DarkButton002.Color))
                 {
 					using (g.PushColor(ThemeColors.Theme.Text.Color))
 						DarkTheme.DrawUnderlined(g, mLabel, GS!(2), (mHeight - GS!(20)) / 2 + mLabelYOfs, .Centered, mWidth - GS!(4), .Truncate);

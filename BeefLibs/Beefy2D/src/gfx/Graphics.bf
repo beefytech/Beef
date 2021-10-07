@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.utils;
@@ -65,13 +66,13 @@ namespace Beefy.gfx
         const int32 COLOR_STACK_SIZE = 256;
         public Color[] mColorStack = new Color[COLOR_STACK_SIZE] ~ delete _;
         public int32 mColorStackIdx = 0;
-        public Color mColor = Color.White;
+        public Color mColor = ThemeColors.GraphicsBase.GraphicsBase001.Color;
 
         /*protected DisposeProxy mZDepthDisposeProxy;
         const int COLOR_STACK_SIZE = 256;
         public uint[] mColorStack = new uint[COLOR_STACK_SIZE];
         public int mColorStackIdx = 0;
-        public uint mColor = Color.White;*/
+        public uint mColor = ThemeColors.GraphicsBase.GraphicsBase001.Color;*/
 
         StateStack<float> mZDepthStack ~ _.Dispose();
 
@@ -121,7 +122,7 @@ namespace Beefy.gfx
                 mMatrixStack[i] = Matrix.IdentityMatrix;
             mMatrix = mMatrixStack[0];
             
-            mColorStack[0] = Color.White;            
+            mColorStack[0] = ThemeColors.GraphicsBase.GraphicsBase001.Color;            
         }
 
         public ~this()
@@ -148,7 +149,7 @@ namespace Beefy.gfx
             PushMatrixOverride(Matrix.IdentityMatrix);
             PushRenderState(mDefaultRenderState);
             PushClipDisable();
-            PushColorOverride(Color.White);
+            PushColorOverride(ThemeColors.GraphicsBase.GraphicsBase001.Color);
             PushZDepth(0.0f);
         }
 
@@ -295,7 +296,7 @@ namespace Beefy.gfx
 
         public void SetColor(Color color)
         {
-            Color physColor = (color & 0xFF00FF00) | ((color & 0x00FF0000) >> 16) | ((color & 0x000000FF) << 16);
+            Color physColor = (color & ThemeColors.GraphicsBase.GraphicsBase002.Color) | ((color & ThemeColors.GraphicsBase.GraphicsBase003.Color) >> 16) | ((color & ThemeColors.GraphicsBase.GraphicsBase004.Color) << 16);
 
             if (mColorStackIdx > 0)
                 mColor = mColorStack[mColorStackIdx] = Color.Mult(mColorStack[mColorStackIdx - 1], physColor);
@@ -925,12 +926,14 @@ namespace Beefy.gfx
             Gfx_AllocTris(image.mNativeTextureSegment, vertices);            
         }
 
-        public void PolyVertex(int32 idx, float x, float y, float u, float v, Color color = Color.White)
+        public void PolyVertex(int32 idx, float x, float y, float u, float v, Color color = 0)
         {
+			uint32 tColor = color;
+			if (tColor==0) tColor = ThemeColors.GraphicsBase.GraphicsBase001.Color;
             Matrix m = mMatrix;
             float aX = m.tx + m.a * x + m.c * y;
             float aY = m.ty + m.b * x + m.d * y;
-            Gfx_SetDrawVertex(idx, aX, aY, 0, u, v, color);
+            Gfx_SetDrawVertex(idx, aX, aY, 0, u, v, tColor);
         }
 
         public void PolyVertexCopy(int32 idx, int32 srcIdx)
@@ -1260,8 +1263,9 @@ namespace Beefy.gfx
             //TODO:Implement
         }
 
-        public void PolyVertex(int idx, float x, float y, float u, float v, uint color = Color.White)
+        public void PolyVertex(int idx, float x, float y, float u, float v, uint color = 0)
         {
+	// ThemeColors.GraphicsBase.GraphicsBase001.Color
             //TODO:Implement
         }
 

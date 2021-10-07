@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.gfx;
@@ -10,7 +11,7 @@ namespace Beefy.widgets
     {
         public Font mFont;
         public String mLabel ~ delete _;
-        public uint32 mColor = Color.White;
+        public uint32 mColor = ThemeColors.Widget.DarkButton002.Color;
 		public FontAlign mAlign = .Left;
 
         public override void Draw(Graphics g)

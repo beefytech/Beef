@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -292,7 +293,7 @@ namespace IDE.ui
 
 				for (int j < 10)
 				{
-					Font.StrEncodeColor(0xfffebd57, testStr);
+					Font.StrEncodeColor(ThemeColors.Widget.OutputWidgetContent027.Color, testStr);
 					testStr.Append('A' + j);
 					Font.StrEncodePopColor(testStr);
 				}

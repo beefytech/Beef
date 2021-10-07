@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.widgets;
@@ -149,7 +150,7 @@ namespace Beefy.theme.dark
 		{
 			if (mDisabled)
 			{
-				using (g.PushColor(0x80FFFFFF))
+				using (g.PushColor(ThemeColors.Widget.DarkButton003.Color))
 					base.DrawAll(g);
 			}
 			else

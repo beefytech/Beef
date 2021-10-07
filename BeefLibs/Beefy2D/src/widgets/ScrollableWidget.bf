@@ -21,7 +21,7 @@ namespace Beefy.widgets
         public override void Draw(Graphics g)
         {
             base.Draw(g);
-            //using (g.PushColor(0x80FF0000))
+            //using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose009.Color))
                 //g.FillRect(0, 0, mWidth, mHeight);
         }
 

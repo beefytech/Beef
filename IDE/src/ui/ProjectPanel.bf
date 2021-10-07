@@ -43,7 +43,7 @@ namespace IDE.ui
         public override void DrawSelect(Graphics g)
         {
 			let projectPanel = ((ProjectListView)mListView).mProjectPanel;
-            using (g.PushColor((mListView.mParent.mHasFocus || (projectPanel.mMenuWidget != null)) ? 0xFFFFFFFF : 0x80FFFFFF))
+            using (g.PushColor((mListView.mParent.mHasFocus || (projectPanel.mMenuWidget != null)) ? ThemeColors.Widget.TypeArea022.Color : ThemeColors.Widget.DarkButton003.Color))
                 base.DrawSelect(g);
         }
 
@@ -2566,7 +2566,7 @@ namespace IDE.ui
         {
             base.Draw(g);
 
-            /*using (g.PushColor(0x80FF0000))
+            /*using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose009.Color))
                 g.FillRect(0, 0, mWidth, mHeight);*/            
         }
 

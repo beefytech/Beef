@@ -48,7 +48,7 @@ namespace IDE.ui
 				if (absX >= parent.mColumns[0].mWidth)
 					return;
 
-				using (g.PushColor(0xFFB0B0B0))
+				using (g.PushColor(ThemeColors.Widget.SessionComboBox017.Color))
 					g.FillRect((int)ArrowCenterY, GS!(14), barWidth, (int)lastItem.mY - (int)GS!(4.8f));
 			}
 
@@ -62,7 +62,7 @@ namespace IDE.ui
 				{
 					if ((mVisible) && (mColumnIdx == 0) && (mX > 10))
 					{
-						using (g.PushColor(0xFFB0B0B0))
+						using (g.PushColor(ThemeColors.Widget.SessionComboBox017.Color))
 						{
 							float horzWidth = GS!(13) - 3 - barWidth;
 							if (mOpenButton == null)
