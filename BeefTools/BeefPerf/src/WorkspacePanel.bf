@@ -2,6 +2,7 @@ using Beefy.widgets;
 using Beefy.gfx;
 using Beefy.theme.dark;
 using System;
+using Beefy.theme;
 
 namespace BeefPerf
 {
