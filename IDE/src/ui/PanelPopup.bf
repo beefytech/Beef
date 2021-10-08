@@ -1,4 +1,4 @@
-using Beefy.theme.dark;
+using Beefy.theme.dark; using Beefy.theme;
 using Beefy.widgets;
 using Beefy.events;
 using Beefy;
@@ -34,14 +34,14 @@ namespace IDE.ui
 		{
 			//g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Window), 0, 0, mWidth, mHeight);
 
-			/*using (g.PushColor(0x80FF0000))
+			/*using (g.PushColor(ThemeColors.Panel.PanelPopup010.Color))
 				g.FillRect(0, 0, mWidth, mHeight);*/
 
-			using (g.PushColor(0x80000000))
+			using (g.PushColor(ThemeColors.Panel.PanelPopup011.Color))
 			    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), GS!(2), 0 + GS!(2), mWidth - GS!(2), mHeight - GS!(2));
 
 			base.Draw(g);
-			using (g.PushColor(0xFFFFFFFF))
+			using (g.PushColor(ThemeColors.Panel.WorkspaceProperties002.Color))
 			    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth - GS!(8), mHeight - GS!(8));
 		}
 

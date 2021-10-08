@@ -266,7 +266,7 @@ namespace Beefy.theme.dark
 
             /*if (mDepth != 0)
             {
-                using (g.PushColor(0x400000FF))
+                using (g.PushColor(ThemeColors.Widget.DarkTreeOpenButton010.Color))
                     g.FillRect(1, 1, mWidth - 2, mHeight - 2);
             }*/
 
@@ -625,7 +625,7 @@ namespace Beefy.theme.dark
 
 							if (mDragKind == .Inside)
 							{
-								using (g.PushColor(0xFF6f9761))
+								using (g.PushColor(ThemeColors.Widget.DarkTreeOpenButton011.Color))
 								{
 									//g.FillRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(22));
 									//g.OutlineRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(20));
@@ -647,7 +647,7 @@ namespace Beefy.theme.dark
 						        /*if (-curY + targetY > mHeight)                    
 						            wasTargetBelowBottom = true;*/                    
 
-						        using (g.PushColor(0xFF95A68F))
+						        using (g.PushColor(ThemeColors.Widget.DarkTreeOpenButton012.Color))
 						            g.FillRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(2));
 							}
 						}
@@ -673,7 +673,7 @@ namespace Beefy.theme.dark
 
 					if (mDragKind == .Inside)
 					{
-						using (g.PushColor(0xFF95A68F))
+						using (g.PushColor(ThemeColors.Widget.DarkTreeOpenButton012.Color))
 							g.FillRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(22));
 					}
 					else
@@ -690,7 +690,7 @@ namespace Beefy.theme.dark
 	                    if (-curY + targetY > mHeight)                    
 	                        wasTargetBelowBottom = true;                    
 
-	                    using (g.PushColor(0xFF95A68F))
+	                    using (g.PushColor(ThemeColors.Widget.DarkTreeOpenButton012.Color))
 	                        g.FillRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(2));
 					}
                 }
@@ -902,7 +902,7 @@ namespace Beefy.theme.dark
         public float mDragOffset = 0;
         public bool mShowColumnGrid;
         public bool mShowGridLines;
-		public Color mGridLinesColor = 0x0CFFFFFF;
+		public Color mGridLinesColor = ThemeColors.Widget.DarkTreeOpenButton013.Color;
         public bool mShowHeader = true;
 		public bool mEndInEllipsis;
 		public bool mWordWrap;
@@ -1011,7 +1011,7 @@ namespace Beefy.theme.dark
 
 			if ((mShowColumnGrid) && (columnIdx < mColumns.Count - 1))
 			{
-			    DrawColumnGridColumn(g, column.mWidth, DarkTheme.sUnitSize, mHeight - DarkTheme.sUnitSize - 1, 0xFF707070);
+			    DrawColumnGridColumn(g, column.mWidth, DarkTheme.sUnitSize, mHeight - DarkTheme.sUnitSize - 1, ThemeColors.Widget.DarkTreeOpenButton014.Color);
 			}
 
 			float sortArrowX = g.mFont.GetWidth(column.mLabel) + DarkTheme.sUnitSize/2;
@@ -1070,7 +1070,7 @@ namespace Beefy.theme.dark
 
                             if ((mShowColumnGrid) && (columnIdx < mColumns.Count - 1))
                             {
-                                DrawColumnGridColumn(g, curX, GS!(4), mHeight - GS!(8), 0xFF888888);
+                                DrawColumnGridColumn(g, curX, GS!(4), mHeight - GS!(8), ThemeColors.Widget.DarkTreeOpenButton015.Color);
                             }
                         }
                     }

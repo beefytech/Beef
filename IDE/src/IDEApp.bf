@@ -135,8 +135,8 @@ namespace IDE
 		public static readonly String sPlatform32Name = "Unknown32";
 #endif
 
-        public const uint32 cDialogOutlineLightColor = 0xFF404040;
-        public const uint32 cDialogOutlineDarkColor = 0xFF202020;
+        public static uint32 cDialogOutlineLightColor = ThemeColors.ArgBuilder.ArgBuilder001.Color;
+        public static uint32 cDialogOutlineDarkColor = ThemeColors.ArgBuilder.ArgBuilder002.Color;
 
 		public static bool sExitTest;
 
@@ -2620,7 +2620,7 @@ namespace IDE
 				ShowPanel(mOutputPanel, false);
 
 				/*var str = scope String();
-				Font.StrEncodeColor(0xfffef860, str);
+				Font.StrEncodeColor(ThemeColors.ArgBuilder.ArgBuilder003.Color, str);
 				str.AppendF("Created new workspace in '{0}'", mWorkspace.mDir);
 				Font.StrEncodePopColor(str);
 				OutputLine(str);*/
@@ -5893,7 +5893,7 @@ namespace IDE
 					else if (sourceViewPanel.mLoadFailed)
 					{
 						g.SetFont(IDEApp.sApp.mCodeFont);
-						using (g.PushColor(0xFFFF8080))
+						using (g.PushColor(ThemeColors.ArgBuilder.ArgBuilder004.Color))
 							g.DrawString("!", mWantWidth - DarkTheme.sUnitSize, 0);
 					}
 				}
@@ -5911,8 +5911,8 @@ namespace IDE
 				{
 					if (profilePanel.IsSamplingHidden)
 					{
-						//using (g.PushColor(((mUpdateCnt / 20) % 2 == 0) ? 0xFFF0F0F0 : 0xFFFFFFFF))
-						using (g.PushColor(0x80FFFFFF))
+						//using (g.PushColor(((mUpdateCnt / 20) % 2 == 0) ? ThemeColors.ArgBuilder.ArgBuilder005.Color : ThemeColors.ArgBuilder.ArgBuilder006.Color))
+						using (g.PushColor(ThemeColors.ArgBuilder.ArgBuilder007.Color))
 							g.Draw(DarkTheme.sDarkTheme.GetImage(.RedDot), GS!(8), GS!(0));
 					}
 				}
@@ -6011,7 +6011,7 @@ namespace IDE
         void MakeTabPermanent(DarkTabbedView.DarkTabButton tabButton)
         {
             tabButton.mDragHelper.mAllowDrag = false;
-            tabButton.mTextColor = Color.White;
+            tabButton.mTextColor = ThemeColors.ArgBuilder.ArgBuilder008.Color;
             tabButton.mIsRightTab = false;            
             var darkTabbedView = (DarkTabbedView)tabButton.mTabbedView;
             darkTabbedView.SetRightTab(null, false);
@@ -6028,8 +6028,8 @@ namespace IDE
 
             var editWidgetContent = (SourceEditWidgetContent)editWidget.Content;
 			//mEditWidget.mVertScrollbar.mScrollIncrement = editWidgetContent.mFont.GetLineSpacing();
-            editWidgetContent.mHiliteColor = 0xFF384858;
-            editWidgetContent.mUnfocusedHiliteColor = 0x80384858;
+            editWidgetContent.mHiliteColor = ThemeColors.ArgBuilder.ArgBuilder009.Color;
+            editWidgetContent.mUnfocusedHiliteColor = ThemeColors.ArgBuilder.ArgBuilder010.Color;
 
             return editWidget;
         }
@@ -6386,7 +6386,7 @@ namespace IDE
                     Debug.Assert(tabbedView.mRightTab == null);
                 }
 
-                newTabButton.mTextColor = 0xFFC8C8C8;
+                newTabButton.mTextColor = ThemeColors.ArgBuilder.ArgBuilder011.Color;
                 newTabButton.mIsRightTab = true;
                 tabbedView.SetRightTab(newTabButton);
             }
@@ -7190,7 +7190,7 @@ namespace IDE
             {
                 base.Draw(g);
 
-                using (g.PushColor(0xFFFFFFFF))
+                using (g.PushColor(ThemeColors.ArgBuilder.ArgBuilder006.Color))
                     g.FillRect(0, 0, 80, 80);
             }
         }
@@ -7287,7 +7287,7 @@ namespace IDE
 			var outStr = warnStr;
 #else
 			var outStr = scope String();
-			outStr.AppendF("{0}{1}{2}", Font.EncodeColor(0xfffef860), warnStr, Font.EncodePopColor());
+			outStr.AppendF("{0}{1}{2}", Font.EncodeColor(ThemeColors.ArgBuilder.ArgBuilder003.Color), warnStr, Font.EncodePopColor());
 #endif
 
 			OutputLine(outStr);

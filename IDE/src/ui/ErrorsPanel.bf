@@ -1,4 +1,5 @@
 using Beefy.widgets;
+using Beefy.theme;
 using Beefy.theme.dark;
 using IDE.Compiler;
 using System.Collections;
@@ -31,7 +32,7 @@ namespace IDE.ui
 				bool hasFocus = mListView.mHasFocus;
 				if ((mWidgetWindow.mFocusWidget != null) && (mWidgetWindow.mFocusWidget.HasParent(mListView)))
 					hasFocus = true;
-			    using (g.PushColor(hasFocus ? 0xFFFFFFFF : 0x80FFFFFF))
+			    using (g.PushColor(hasFocus ? ThemeColors.Widget.TypeArea022.Color : ThemeColors.Widget.DarkButton003.Color))
 			        base.DrawSelect(g);
 			}
 			
@@ -269,7 +270,7 @@ namespace IDE.ui
 						item.mColumn = error.mColumn;
 
 						String codeStr = scope String(32);
-						codeStr.AppendF(error.mIsWarning ? "{}Warning" : "{}Error", Font.EncodeColor(error.mIsWarning ? 0xFFFFFF80 : 0xFFFF8080));
+						codeStr.AppendF(error.mIsWarning ? "{}Warning" : "{}Error", Font.EncodeColor(error.mIsWarning ? ThemeColors.Widget.ErrorsListViewItem034.Color : ThemeColors.Widget.FindListViewItem032.Color));
 						if (error.mCode != 0)
 							codeStr.AppendF(" {}", error.mCode);
 						codeStr.AppendF("{}", Font.EncodePopColor());

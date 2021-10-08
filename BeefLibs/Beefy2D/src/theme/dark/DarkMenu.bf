@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.widgets;
@@ -29,7 +30,7 @@ namespace Beefy.theme.dark
 				let darkMenuWidget = (DarkMenuWidget)mMenuWidget;
 				g.SetFont(mMenuItem.mBold ? darkMenuWidget.mBoldFont : darkMenuWidget.mFont);
 
-				using (g.PushColor(mMenuItem.mDisabled ? 0xFFA8A8A8 : 0xFFFFFFFF))
+				using (g.PushColor(mMenuItem.mDisabled ? ThemeColors.Widget.DarkMenuItem035.Color : ThemeColors.Widget.TypeArea022.Color))
 				{
 					StringView leftStr = mMenuItem.mLabel;
 					StringView rightStr = default;
@@ -54,7 +55,7 @@ namespace Beefy.theme.dark
 
             if (mMenuItem.IsParent)
             {
-				using (g.PushColor(mMenuItem.mDisabled ? 0xFFA8A8A8 : 0xFFFFFFFF))
+				using (g.PushColor(mMenuItem.mDisabled ? ThemeColors.Widget.DarkMenuItem035.Color : ThemeColors.Widget.TypeArea022.Color))
                 	g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.RightArrow), mWidth - GS!(16), 0);
             }
         }
@@ -169,11 +170,11 @@ namespace Beefy.theme.dark
         {
             base.Draw(g);
 
-            using (g.PushColor(0x80000000))
+            using (g.PushColor(ThemeColors.Widget.DarkMenuItem036.Color))
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), GS!(2), mDrawY + GS!(2), mWidth - GS!(2), mDrawHeight - GS!(2));
 
             base.Draw(g);
-            using (g.PushColor(0xFFFFFFFF))
+            using (g.PushColor(ThemeColors.Widget.TypeArea022.Color))
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, mDrawY, mWidth - GS!(8), mDrawHeight - GS!(8));
         }
 
@@ -308,7 +309,7 @@ namespace Beefy.theme.dark
 
         public override void Draw(Graphics g)
         {
-            /*using (g.PushColor(0xFFFF0000))
+            /*using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose006.Color))
                 g.FillRect(0, 0, mWidth, mHeight);*/
 
             float mDrawHeight = mHeight;

@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -103,7 +104,7 @@ namespace IDE.ui
             darkEditContent.mOnEscape = new () => EscapeHandler();
             darkEditContent.mFont = IDEApp.sApp.mCodeFont;
 			//darkEditContent.mFont = DarkTheme.sDarkTheme.mSmallFont;
-            darkEditContent.mUnfocusedHiliteColor = (darkEditContent.mHiliteColor & 0x00FFFFFF) | 0x60000000;
+            darkEditContent.mUnfocusedHiliteColor = (darkEditContent.mHiliteColor & ThemeColors.Widget.OutputActionButton004.Color) | ThemeColors.Widget.OutputActionButton005.Color;
             AddWidget(mOutputWidget);
         }
 

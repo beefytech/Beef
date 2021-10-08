@@ -1,4 +1,5 @@
 using Beefy.theme.dark;
+using Beefy.theme;
 using System;
 using Beefy.widgets;
 using Beefy.gfx;
@@ -39,7 +40,7 @@ namespace IDE.ui
 				let parent = (ClassViewListView)mListView;
 				if (parent.mPanel.mFindClassDialog != null)
 					hasFocus = true;
-		        using (g.PushColor(hasFocus ? 0xFFFFFFFF : 0x80FFFFFF))
+		        using (g.PushColor(hasFocus ? ThemeColors.Widget.TypeArea022.Color : ThemeColors.Widget.DarkButton003.Color))
 		            base.DrawSelect(g);
 		    }
 
@@ -179,7 +180,7 @@ namespace IDE.ui
 			public override void DrawAll(Beefy.gfx.Graphics g)
 			{
 				base.DrawAll(g);
-				using (g.PushColor(0x80FFFFFF))
+				using (g.PushColor(ThemeColors.Widget.DarkButton003.Color))
 					g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Bkg), 0, mHeight - GS!(1), mWidth, GS!(4));
 			}
 		}
@@ -1024,7 +1025,7 @@ namespace IDE.ui
 			{
 				widget.SelfToOtherTranslate(this, 0, 0, var x, var y);
 
-				using (g.PushColor(0x60505050))
+				using (g.PushColor(ThemeColors.Widget.TypeArea023.Color))
 					g.FillRect(x, y, widget.Width, widget.Height);
 				IDEUtils.DrawWait(g, x + widget.Width/2, y + widget.Height/2, life);
 			}

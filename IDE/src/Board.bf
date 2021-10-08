@@ -74,12 +74,12 @@ namespace IDE
             using (g.PushColor(ThemeColors.Theme.Background.Color))
                 g.FillRect(0, 0, mWidth, mHeight);
 
-            using (g.PushColor(Color.Black))
+            using (g.PushColor(ThemeColors.Widget.Board038.Color))
                 g.FillRect(0, 60, 500, 60);
 
-            //g.mColor = 0xFF000000;
-            g.mColor = 0xFFFFFFFF;
-            //g.mColor = 0xD080F080;
+            //g.mColor = ThemeColors.Widget.ImmediateWidgetContent029.Color;
+            g.mColor = ThemeColors.Widget.TypeArea022.Color;
+            //g.mColor = ThemeColors.Widget.Board039.Color;
                         
             //g.Draw(mSegment, 0, 0);
 
@@ -87,17 +87,17 @@ namespace IDE
             matrix.Rotate(0.2f);
 
             
-            using (g.PushColor(Color.Black))
+            using (g.PushColor(ThemeColors.Widget.Board038.Color))
                 g.DrawString(String.Format("{0} This is a test of the font system, pretty cool!", mUpdateCnt), 30, 300);
                         
             g.mFont = mFont;
             using (g.PushMatrix(ref matrix))
                 g.DrawString("This is a test of the font system, pretty cool!\nI think!", 30, 62);
 
-            using (g.PushColor(0xFFFF0000))
+            using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose006.Color))
                 g.FillRect(mMouseX - 1, mMouseY - 1, 3, 3);
 
-            g.FillRectGradient(20, 20, 40, 40, 0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFFFFFFFF);
+            g.FillRectGradient(20, 20, 40, 40, ThemeColors.Widget.DarkTabButtonClose006.Color, ThemeColors.Widget.Board040.Color, ThemeColors.Widget.Board041.Color, ThemeColors.Widget.TypeArea022.Color);
 
             //g.Draw(mTexture, 20 * (mCount % 3), 20);
 

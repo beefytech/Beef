@@ -31,8 +31,8 @@ namespace IDE.ui
 
         public class HoverListViewItem : WatchListViewItem
         {
-			public const uint cActionColor = 0xFFB0B0FF;
-			public const uint cActionOverColor = 0xFFE0E0FF;
+			public static uint32 cActionColor = ThemeColors.PendingWatch.PendingWatch001.Color;
+			public static uint32 cActionOverColor = ThemeColors.PendingWatch.PendingWatch002.Color;
 
             public List<PendingWatch> mPendingWatches = new List<PendingWatch>() ~ DeleteContainerAndItems!(_);
             public HoverListView mChildrenListView;
@@ -174,10 +174,10 @@ namespace IDE.ui
 
 			public override void DrawAll(Graphics g)
 			{
-				using (g.PushColor(0x80000000))
+				using (g.PushColor(ThemeColors.PendingWatch.PendingWatch003.Color))
 				    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), 0, 0, mWidth + GS!(8), mHeight + GS!(8));
 
-				using (g.PushColor(0xFFFFFFFF))
+				using (g.PushColor(ThemeColors.PendingWatch.PendingWatch004.Color))
 				    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth, mHeight);
 
 				using (g.PushClip(0, 0, mWidth - GS!(3), mHeight))
@@ -228,7 +228,7 @@ namespace IDE.ui
 			{
 				base.Draw(g);
 
-				/*using (g.PushColor(0x40FF0000))
+				/*using (g.PushColor(ThemeColors.PendingWatch.PendingWatch005.Color))
 					g.FillRect(-10000, -10000, 20000, 20000);*/
 			}
 		}
@@ -293,7 +293,7 @@ namespace IDE.ui
             base.Draw(g);
 
             // To debug window area
-            /*using (g.PushColor(0x20000000))
+            /*using (g.PushColor(ThemeColors.PendingWatch.PendingWatch006.Color))
                 g.FillRect(0, 0, mWidth, mHeight);*/
         }
 

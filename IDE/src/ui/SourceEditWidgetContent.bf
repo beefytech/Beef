@@ -200,33 +200,6 @@ namespace IDE.ui
 		public bool mIgnoreKeyChar; // This fixes cases where a KeyDown changes focus to us but then we get a KeyChar that doesn't belong to us
 		public bool mIgnoreSetHistory;
         public static uint32[] sTextColors = ThemeColors.sColors[(int)ThemeColors.Types.Colors];
-		/* new uint32[]
-            (
-                0xFFFFFFFF, // Normal
-                0xFFE1AE9A, // Keyword
-                0XFFC8A0FF, // Literal
-                0xFFFFFFFF, // Identifier
-                0xFF75715E, // Comment
-                0xFFA6E22A, // Method
-				0xFF66D9EF, // Type
-				0xFF66D9EF, // PrimitiveType
-				0xFF66D9EF, // Struct
-				0xFF66D9EF, // GenericParam
-                0xFF66A0EF, // RefType
-				0xFF9A9EEB, // Interface
-                0xFF7BEEB7, // Namespace
-
-                0xFFB0B0B0, // Disassembly_Text
-                0XFFFF0000, // Disassembly_FileName
-
-                0xFFFF0000, // Error
-
-				0xFFFF8080, // BuildError
-				0xFFFFFF80, // BuildWarning
-
-				0xFF9090C0, // VisibleWhiteSpace
-            ) ~ delete _;
-		*/
 		bool mHasCustomColors;
 		FastCursorState mFastCursorState ~ delete _;
 		public HashSet<int32> mCurParenPairIdSet = new .() ~ delete _;
@@ -596,7 +569,7 @@ namespace IDE.ui
             if ((flags & (uint8)SourceElementFlags.SymbolReference) != 0)
             {
                 bool isRenameSymbol = (IDEApp.sApp.mSymbolReferenceHelper != null) && (IDEApp.sApp.mSymbolReferenceHelper.mKind == SymbolReferenceHelper.Kind.Rename);
-                using (g.PushColor(isRenameSymbol ? (uint32)0x28FFFFFF : (uint32)0x18FFFFFF))
+                using (g.PushColor(isRenameSymbol ? (uint32)ThemeColors.SourceEditBatchHelper.SourceEditBatchHelper014.Color : (uint32)ThemeColors.SourceEditBatchHelper.SourceEditBatchHelper015.Color))
                     g.FillRect(x, y, width, mFont.GetLineSpacing());
 
                 DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)SourceElementFlags.SymbolReference));
@@ -605,7 +578,7 @@ namespace IDE.ui
 
 			if ((flags & (uint8)SourceElementFlags.Find_CurrentSelection) != 0)
 			{
-			    using (g.PushColor(0x80FFE0B0))
+			    using (g.PushColor(ThemeColors.SourceEditBatchHelper.SourceEditBatchHelper016.Color))
 			        g.FillRect(x, y, width, mFont.GetLineSpacing());
 
 			    DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)(SourceElementFlags.Find_CurrentSelection | .Find_Matches)));
@@ -614,7 +587,7 @@ namespace IDE.ui
 
             if ((flags & (uint8)SourceElementFlags.Find_Matches) != 0)
             {
-                using (g.PushColor(0x50D0C090))
+                using (g.PushColor(ThemeColors.SourceEditBatchHelper.SourceEditBatchHelper017.Color))
                     g.FillRect(x, y, width, mFont.GetLineSpacing());
 
                 DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)SourceElementFlags.Find_Matches));
@@ -645,15 +618,15 @@ namespace IDE.ui
 
                 if (elementFlags.HasFlag(SourceElementFlags.Error))
                 {
-                    underlineColor = 0xFFFF0000;
+                    underlineColor = ThemeColors.SourceEditBatchHelper.SourceEditBatchHelper010.Color;
                 }
                 else if (elementFlags.HasFlag(SourceElementFlags.Warning))
                 {
-                    underlineColor = 0xFFFFD200;
+                    underlineColor = ThemeColors.SourceEditBatchHelper.SourceEditBatchHelper018.Color;
                 }
                 else if (elementFlags.HasFlag(SourceElementFlags.SpellingError))
                 {
-					underlineColor = 0x80FFD200;
+					underlineColor = ThemeColors.SourceEditBatchHelper.SourceEditBatchHelper019.Color;
                 }
 
                 if (underlineColor != 0)
@@ -4321,7 +4294,7 @@ namespace IDE.ui
 
             if ((flags & (uint8)SourceElementFlags.Find_Matches) != 0)
             {
-                return 0x50FFE0B0;
+                return ThemeColors.SourceEditBatchHelper.SourceEditBatchHelper020.Color;
             }
 
             return hasFocus ? mHiliteColor : mUnfocusedHiliteColor;

@@ -877,7 +877,7 @@ namespace IDE.ui
             // column header
             using (g.PushClip(0, 0, mWidth, GS!(mColumnHeaderHeight)))
             {
-                using (g.PushColor(0xFFFFFFFF))
+                using (g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent001.Color))
                 {
                     g.SetFont(mFont);
                     float strViewColumnStart = GS!(mColumnDisplayStart) + mBytesPerDisplayLine*GS!(mColumnDisplayStride) + GS!(mStrViewDisplayStartOffset);
@@ -908,7 +908,7 @@ namespace IDE.ui
                 float displayAdj = (float)(-mShowPositionDisplayOffset * lineSpacing);
                 using (g.PushTranslate(0, displayAdj))
                 {
-                    using (g.PushColor(0xFFFFFFFF))
+                    using (g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent001.Color))
                     {
                         //ulong lineStart = mCurPosition / mBytesPerDisplayLine;
                         int lockSize = lineCount * mBytesPerDisplayLine;
@@ -1076,7 +1076,7 @@ namespace IDE.ui
                                             int relStart = (int)curKeySelection.mSelStart - (int)mCurPosition;
                                             if ((relStart - (relStart % mBytesPerDisplayLine)) == baseOffset)
                                             {
-                                                using (g.PushColor(0x40808000))
+                                                using (g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent002.Color))
                                                 {
                                                     g.FillRect(GS!(mColumnDisplayStart), curKeySelection.mBinRect.mY - displayAdj, (strViewColumnStart + mBytesPerDisplayLine*GS!(mStrViewDisplayStride)) - mColumnDisplayStart, curKeySelection.mBinRect.mHeight);
                                                 }
@@ -1094,7 +1094,7 @@ namespace IDE.ui
                                             uint8 val = lockRange.mData[baseOffset + i];
                                             if (mLastSnapshotDiff.Changed(mCurPosition + baseOffset + i))
                                             {
-                                                colorScope = g.PushColor(0xff60C0D0);
+                                                colorScope = g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent003.Color);
                                             }
 
 											var str = scope String();
@@ -1112,7 +1112,7 @@ namespace IDE.ui
                                             if (valChar.IsControl || (valChar == '\u{2028}') || (valChar == '\u{2029}')) // unicode line/paragraph separators, also unprintable
                                             {
                                                 valChar = '.';
-                                                colorScope = g.PushColor(0xffffa000);
+                                                colorScope = g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent004.Color);
                                             }
 
 											str.Clear();
@@ -1132,11 +1132,11 @@ namespace IDE.ui
                                                     Rect secondaryRect = mCurHoverSelection.mInStrView ? mCurHoverSelection.mBinRect : mCurHoverSelection.mStrRect;
                                                     int cursorBarXAdj = mCurHoverSelection.mInStrView ? 0 : 3;
 
-                                                    using (g.PushColor(0xffffffff))
+                                                    using (g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent005.Color))
                                                     {
                                                         g.FillRect(primaryRect.mX + cursorBarXAdj + GS!(8)*mCurHoverSelection.mSubChar + GS!(1), primaryRect.mY - displayAdj, GS!(2), primaryRect.mHeight);
                                                     }
-                                                    using (g.PushColor(0xffc0c0c0))
+                                                    using (g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent006.Color))
                                                     {
                                                         g.OutlineRect(secondaryRect.mX, secondaryRect.mY - displayAdj, secondaryRect.mWidth, secondaryRect.mHeight, GS!(1));
                                                     }
@@ -1162,7 +1162,7 @@ namespace IDE.ui
                                                     Rect primaryRect = curKeySelection.mInStrView ? curKeySelection.mStrRect : curKeySelection.mBinRect;
                                                     Rect secondaryRect = curKeySelection.mInStrView ? curKeySelection.mBinRect : curKeySelection.mStrRect;
 
-                                                    using (g.PushColor(0x80A0A0A0))
+                                                    using (g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent007.Color))
                                                     {
                                                         g.FillRect(secondaryRect.mX, secondaryRect.mY - displayAdj, secondaryRect.mWidth, secondaryRect.mHeight);
                                                     }
@@ -1379,7 +1379,7 @@ namespace IDE.ui
                                                             rectW -= 4;
                                                         }
 
-                                                        using (g.PushColor(0xFF2f5c88)) //CDH TODO: same as DarkEditWidgetContent.mHiliteColor, link symbolically?
+                                                        using (g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent008.Color)) //CDH TODO: same as DarkEditWidgetContent.mHiliteColor, link symbolically?
                                                         {
                                                             g.FillRect(rectX, rectY, rectW, rectH);
                                                         }
@@ -1488,7 +1488,7 @@ namespace IDE.ui
                                 }
                                                     
                                 g.SetFont(useFont);
-                                using (g.PushColor(0xffffffff))
+                                using (g.PushColor(ThemeColors.BinaryDataContent.BinaryDataContent005.Color))
                                 {
                                     g.DrawString(te.mDisplayName, barX + GS!(2), barY + GS!(1), FontAlign.Left);
                                 }
@@ -2247,7 +2247,7 @@ namespace IDE.ui
                     }
                     else if (trackedExpr.StartsWith("&"))
                     {
-                        //displayColor = 0x8000c000;
+                        //displayColor = ThemeColors.BinaryDataContent.BinaryDataContent009.Color;
                         displayName = StringView(trackedExpr, 1);
 
                         if (int.Parse(addrStr) case .Ok(out trackedMemStart))
@@ -2268,7 +2268,7 @@ namespace IDE.ui
                     }
                     else if (trackedExpr.StartsWith("?"))
                     {
-                        //displayColor = 0x8000c000;
+                        //displayColor = ThemeColors.BinaryDataContent.BinaryDataContent009.Color;
                         displayName = StringView(trackedExpr, 1);
 						trackedExpr.Clear();
 						trackedExpr.Append("&");

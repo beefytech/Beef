@@ -1,4 +1,4 @@
-using System;
+using System; using Beefy.theme;
 using Beefy.utils;
 using System.Diagnostics;
 using System.Collections;
@@ -34,7 +34,7 @@ namespace IDE.ui
 			{
 				base.DrawAll(g);
 
-				/*using (g.PushColor(0x40FF0000))
+				/*using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel012.Color))
 					g.FillRect(8, 8, mWidth - 16, mHeight - 16);*/
 			}
 		}
@@ -238,12 +238,12 @@ namespace IDE.ui
 
 				using (g.PushTranslate(xOfs, yOfs))
 				{
-					using (g.PushColor(0xA0000000))
+					using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel013.Color))
 					{
 						g.FillRect(0, 0, width, height);
 					}
 
-					using (g.PushColor(0x40FFFFFF))
+					using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel014.Color))
 					{
 						g.OutlineRect(-1, -1, width + 2, height + 2);
 					}
@@ -255,7 +255,7 @@ namespace IDE.ui
 					{
 						using (g.PushClip(0, 0, width, height))
 						{
-							using (g.PushColor(0xFF00FF00))
+							using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel015.Color))
 							{
 								float prevY = 0;
 
@@ -319,7 +319,7 @@ namespace IDE.ui
 
 								g.DrawString(drawStr, labelX, -GS!(19), .Centered);
 
-								using (g.PushColor(0x70FFFFFF))
+								using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel016.Color))
 									g.FillRect(x, 0, 1, height);
 							}
 
@@ -331,14 +331,14 @@ namespace IDE.ui
 								
 								float x = (int)((addIdx / (data.mSamples.Count - 1)) * width);
 
-								using (g.PushColor(0xA0FFFFFF))
+								using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel017.Color))
 									g.FillRect(x, 0, 1, height);
 
 								if (drawLabels)
 								{
-									uint32 color = 0xFFFFFFFF;
+									uint32 color = ThemeColors.Panel.WorkspaceProperties002.Color;
 									if (Math.Abs(x - labelX) < labelWidth / 2 + GS!(20))
-										color = 0x60FFFFFF;
+										color = ThemeColors.Panel.DiagnosticsPanel018.Color;
 									using (g.PushColor(color))
 										g.DrawString(scope String()..AppendF("{}:{:00}", findTime / 60, findTime % 60), x + GS!(2), -GS!(20), .Centered);
 								}
@@ -392,7 +392,7 @@ namespace IDE.ui
 						double segValue = segIdx * segSize;
 
 						float drawY = (int)((1 - segValue / maxValue) * (height - 1));
-						using (g.PushColor(0x40FFFFFF))
+						using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel014.Color))
 							g.FillRect(0, drawY, width, 1);
 						if (drawLabels)
 						{
@@ -436,7 +436,7 @@ namespace IDE.ui
 
 				let dataRect = GetDataRect();
 
-				using (g.PushColor(0x20FFFFFF))
+				using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel019.Color))
 					g.FillRect(0, 0, mWidth, mHeight);
 
 				DrawData(g, mData, mTimes, dataRect.mX, dataRect.mY, dataRect.mWidth, dataRect.mHeight);

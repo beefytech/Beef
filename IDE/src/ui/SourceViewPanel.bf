@@ -3274,7 +3274,7 @@ namespace IDE.ui
 			Path.GetFileName(mFilePath, fileName);
 			String headerStr = scope String();
 			if (isRepeat)
-				headerStr.AppendF("{0} Failed to retrieve file '{1}'.{2} The following command can be rerun to retry:\n{3}\nWARNING: This is a security risk if this PDB comes from an untrusted source.", Font.EncodeColor(0xFFFF8080), fileName, Font.EncodePopColor(), mOldVerLoadCmd);
+				headerStr.AppendF("{0} Failed to retrieve file '{1}'.{2} The following command can be rerun to retry:\n{3}\nWARNING: This is a security risk if this PDB comes from an untrusted source.", Font.EncodeColor(ThemeColors.HoverResolveTask.HoverResolveTask001.Color), fileName, Font.EncodePopColor(), mOldVerLoadCmd);
 			else
 				headerStr.AppendF("The file '{0}' can be loaded from a source server by executing the embedded command:\n{1}\nWARNING: This is a security risk if this PDB comes from an untrusted source.", fileName, mOldVerLoadCmd);
 			mPanelHeader.Label = headerStr;
@@ -4104,10 +4104,10 @@ namespace IDE.ui
 							float iconY = 0 + drawLineNum * lineSpacing + (lineSpacing - DarkTheme.sUnitSize + GS!(5)) / 2;
 
 							// Just leave last digit visible
-							/*using (g.PushColor(0xFF595959))
+							/*using (g.PushColor(ThemeColors.HoverResolveTask.HoverResolveTask002.Color))
 								g.FillRect(4, iconY, editX - 14, 20);*/
 
-							using (g.PushColor((breakpointCount % 2 == 0) ? 0xFFFFFFFF : 0xFFC0C0C0))
+							using (g.PushColor((breakpointCount % 2 == 0) ? ThemeColors.HoverResolveTask.HoverResolveTask003.Color : ThemeColors.HoverResolveTask.HoverResolveTask004.Color))
 	                            using (g.PushTranslate(iconX, iconY))
 	                            {                                
 	                                breakpoint.Draw(g, mIsOldCompiledVersion);
@@ -4141,7 +4141,7 @@ namespace IDE.ui
                                 float yPos;
                                 darkEditWidgetContent.GetTextCoordAtLineChar(historyEntry.mLineNum, historyEntry.mColumn, out xPos, out yPos);
 
-                                using (g.PushColor(0x60FFFFFF))
+                                using (g.PushColor(ThemeColors.HoverResolveTask.HoverResolveTask005.Color))
                                     g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.IconBookmark), mEditWidget.mX + xPos,
                                             0 + historyEntry.mLineNum * lineSpacing);
                             }
@@ -4151,7 +4151,7 @@ namespace IDE.ui
 					if (gApp.mSettings.mEditorSettings.mShowLineNumbers)
 					{
 						String lineStr = scope String(16);
-						using (g.PushColor(0x80FFFFFF))
+						using (g.PushColor(ThemeColors.HoverResolveTask.HoverResolveTask006.Color))
 						{
 						    for (int lineIdx = lineStart; lineIdx < lineEnd; lineIdx++)
 						    {
@@ -4244,7 +4244,7 @@ namespace IDE.ui
 				IDEUtils.DrawLock(g, mEditWidget.mX - GS!(20), mHeight - GS!(20), IsReadOnly, mLockFlashPct);
 			}
 
-            /*using (g.PushColor(0x80FF0000))
+            /*using (g.PushColor(ThemeColors.HoverResolveTask.HoverResolveTask007.Color))
                 g.FillRect(0, 0, mWidth, mHeight);*/
         }
 
@@ -4967,7 +4967,7 @@ namespace IDE.ui
 								var showString = docParser.ShowDocString;
 								if (!String.IsNullOrEmpty(showString))
 								{
-									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.AppendF("\n{}", Font.EncodeColor(ThemeColors.HoverResolveTask.HoverResolveTask004.Color));
 									debugExpr.Append(showString);
 								}
 							}
@@ -6413,7 +6413,7 @@ namespace IDE.ui
 			DarkEditWidgetContent darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
 			darkEditWidgetContent.mViewWhiteSpaceColor = gApp.mViewWhiteSpace.Bool ? darkEditWidgetContent.mTextColors[(int)SourceElementType.VisibleWhiteSpace] : 0;
 
-			/*using (g.PushColor(0x50FFFFFF))
+			/*using (g.PushColor(ThemeColors.HoverResolveTask.HoverResolveTask008.Color))
 				g.FillRect(0, 0, mWidth, mHeight);*/
 
             //IDEApp.sApp.mBfResolveSystem.PerfZoneStart("SourceViewPanel.DrawAll");
@@ -6421,7 +6421,7 @@ namespace IDE.ui
 
             if (mHotFileIdx != -1)
             {                
-                /*using (g.PushColor(0x50D0D0D0))                
+                /*using (g.PushColor(ThemeColors.HoverResolveTask.HoverResolveTask009.Color))                
                     g.FillRect(0, 0, mWidth, mHeight);*/
             }
 
@@ -6432,7 +6432,7 @@ namespace IDE.ui
             //        foreach (var breakpointView in GetTrackedElementList())
             //        {
             //            /*var breakpoint = breakpointView.mTrackedElement as Breakpoint;
-            //            using (g.PushColor((breakpoint.GetAddress() != 0) ? Color.White : 0x8080FFFF))
+            //            using (g.PushColor((breakpoint.GetAddress() != 0) ? ThemeColors.HoverResolveTask.HoverResolveTask010.Color : ThemeColors.HoverResolveTask.HoverResolveTask011.Color))
             //            {                            
             //                var sourceEditWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
             //                float breakX;
@@ -6444,7 +6444,7 @@ namespace IDE.ui
             //            var historyEntry = breakpointView.mTrackedElement as HistoryEntry;
             //            if (historyEntry != null)
             //            {
-            //                using (g.PushColor(0x8080FFFF))
+            //                using (g.PushColor(ThemeColors.HoverResolveTask.HoverResolveTask011.Color))
             //                {
             //                    var sourceEditWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
             //                    float breakX;

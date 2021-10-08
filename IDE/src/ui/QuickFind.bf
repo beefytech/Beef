@@ -648,7 +648,7 @@ namespace IDE.ui
         public override void Draw(Beefy.gfx.Graphics g)
         {                        
             base.Draw(g);
-            using (g.PushColor(0xFFFFFFFF))
+            using (g.PushColor(ThemeColors.Widget.TypeArea022.Color))
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth - GS!(8), mHeight - GS!(8));
         }
 
@@ -665,19 +665,19 @@ namespace IDE.ui
 
             if ((!mFoundMatches) && (!String.IsNullOrWhiteSpace(findText)))
             {
-                using (g.PushColor(0xFFFF0000))
+                using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose006.Color))
                     g.OutlineRect(mFindEditWidget.mX, mFindEditWidget.mY, mFindEditWidget.mWidth, mFindEditWidget.mHeight);
             }
 
             if ((!mFindEditWidget.mHasFocus) && (findText.Length == 0))
             {
-                using (g.PushColor(Color.Mult(ThemeColors.Theme.Text.Color, 0x60FFFFFF)))
+                using (g.PushColor(Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Widget.DarkTabButtonClose007.Color)))
                     g.DrawString("Find...", mFindEditWidget.mX + GS!(4), mFindEditWidget.mY);
             }
 
             if ((mReplaceEditWidget != null) && (!mReplaceEditWidget.mHasFocus) && (replaceText.Length == 0))
             {
-                using (g.PushColor(Color.Mult(ThemeColors.Theme.Text.Color, 0x60FFFFFF)))
+                using (g.PushColor(Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Widget.DarkTabButtonClose007.Color)))
                     g.DrawString("Replace...", mReplaceEditWidget.mX + 4, mReplaceEditWidget.mY);
             }
 

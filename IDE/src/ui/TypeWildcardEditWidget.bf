@@ -1,4 +1,4 @@
-using Beefy.theme.dark;
+using Beefy.theme.dark; using Beefy.theme;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -10,7 +10,7 @@ namespace IDE.ui
 {
 	class TypeWildcardEditWidget : ExpressionEditWidget
 	{
-		uint32[] mColors = new .(0xFFFFFFFF, 0xFFFF8080) ~ delete _;
+		uint32[] mColors = new .(ThemeColors.Panel.WorkspaceProperties002.Color, ThemeColors.Panel.TypeWildcardEditWidget008.Color) ~ delete _;
 		int mLastEvalIdx = -1;
 
 		public this()
@@ -133,7 +133,7 @@ namespace IDE.ui
 					float width = mWidth - GS!(16);
 					float height = g.mFont.GetWrapHeight(str, width);
 
-					using (g.PushColor(0xFFA0A0A0))
+					using (g.PushColor(ThemeColors.Panel.WelcomePanel007.Color))
 						g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Window), -GS!(1), -height - GS!(12), mWidth + GS!(2), height + GS!(13));
 
 					g.DrawString(str, GS!(8), -height - GS!(7), .Left, width, .Wrap);

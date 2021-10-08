@@ -324,17 +324,17 @@ namespace IDE.ui
 				
 				if (mOwnsWindow)
 				{
-	                using (g.PushColor(0x80000000))
+	                using (g.PushColor(ThemeColors.AutoComplete.AutoComplete001.Color))
 	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), GS!(2), GS!(2), boxWidth, drawHeight - GS!(2));
 
 	                base.Draw(g);
-	                using (g.PushColor(0xFFFFFFFF))
+	                using (g.PushColor(ThemeColors.AutoComplete.AutoComplete002.Color))
 	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, boxWidth - GS!(6), drawHeight - GS!(8));
 				}
 
                 g.SetFont(IDEApp.sApp.mCodeFont);
 
-				/*using (g.PushColor(0x80FF0000))
+				/*using (g.PushColor(ThemeColors.AutoComplete.AutoComplete003.Color))
 					g.FillRect(0, 0, mWidth, mHeight);*/
             }
 
@@ -723,10 +723,10 @@ namespace IDE.ui
 								//float drawHeight = GS!(32);
 								float drawHeight = mDocHeight;
 
-							    using (g.PushColor(0x80000000))
+							    using (g.PushColor(ThemeColors.AutoComplete.AutoComplete001.Color))
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.DropShadow), drawX + GS!(2), drawY + GS!(2), mRightBoxAdjust - GS!(2), drawHeight - GS!(2));
 
-							    using (g.PushColor(0xFFFFFFFF))
+							    using (g.PushColor(ThemeColors.AutoComplete.AutoComplete002.Color))
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Menu), drawX, drawY, mRightBoxAdjust - GS!(8), drawHeight - GS!(8));
 
 								using (g.PushColor(ThemeColors.Theme.AutoCompleteDocText.Color))
@@ -737,7 +737,7 @@ namespace IDE.ui
 						{
 							/*float drawX = GS!(8);
 							float drawY = mHeight + GS!(2);
-							using (g.PushColor(0xFFC0C0C0))
+							using (g.PushColor(ThemeColors.AutoComplete.AutoComplete004.Color))
 								g.DrawString(docParser.ShowDocString, drawX, drawY, .Left, mWidth - drawX, .Wrap);*/
 						}
 					}
@@ -747,7 +747,7 @@ namespace IDE.ui
 			public override void DrawAll(Graphics g)
 			{
 				base.DrawAll(g);
-				/*using (g.PushColor(0x20FF0000))
+				/*using (g.PushColor(ThemeColors.AutoComplete.AutoComplete005.Color))
 					g.FillRect(0, 0, mWidth, mHeight);*/
 			}
 
@@ -1070,7 +1070,7 @@ namespace IDE.ui
 					/*curY += font.GetLineSpacing() + GS!(4);
 					if (g != null)
 					{
-						using (g.PushColor(0xFFC0C0C0))
+						using (g.PushColor(ThemeColors.AutoComplete.AutoComplete004.Color))
 							g.DrawString(docString, curX, curY, .Left, mWidth, .Ellipsis);
 					}
 					extWidth = Math.Max(extWidth, font.GetWidth(docString) + GS!(48));
