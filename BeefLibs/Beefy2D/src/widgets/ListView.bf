@@ -339,7 +339,7 @@ namespace Beefy.widgets
                 }
                 else
                 {
-					if (item.Selected)
+					if ((item.Selected) && (item.mMouseOver))
 					{
 						item.mOnMouseUp.AddFront(new => ItemMouseUpHandler);
 
