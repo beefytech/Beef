@@ -9626,13 +9626,15 @@ bool BeMCContext::DoLegalization()
 									}
 									else
 									{
-										// This may be a local variable that failed to be assigned to a reg, create a scratch local with a forced reg
-										auto scratchReg = AllocVirtualReg(errorVRegInfo->mType, 2, false);
-										auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
+										// This may be a local variable that failed to be assigned to a reg, create a scratch local with a forced reg										
 										auto errorVReg = BeMCOperand::FromVReg(rmInfo.mErrorVReg);
+										auto errorVRegLoad = BeMCOperand::ToLoad(errorVReg);
 
 										if ((vregInfo->mRelTo == errorVReg) || (vregInfo->mRelOffset == errorVReg))
 										{
+											auto scratchReg = AllocVirtualReg(errorVRegInfo->mType, 2, false);
+											auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
+
 											CreateDefineVReg(scratchReg, instIdx++);
 											AllocInst(BeMCInstKind_Mov, scratchReg, errorVReg, instIdx++);
 											isFinalRun = false;
@@ -9651,6 +9653,32 @@ bool BeMCContext::DoLegalization()
 												scratchVRegInfo->mForceReg = true;
 												CheckForce(scratchVRegInfo);
 												vregInfo->mRelOffset.mVRegIdx = scratchReg.mVRegIdx;
+											}
+										}
+										else if ((vregInfo->mRelTo == errorVRegLoad) || (vregInfo->mRelOffset == errorVRegLoad))
+										{
+											auto scratchType = GetType(errorVRegLoad);											
+											auto scratchReg = AllocVirtualReg(scratchType, 2, false);
+											auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
+
+											CreateDefineVReg(scratchReg, instIdx++);
+											AllocInst(BeMCInstKind_Mov, scratchReg, errorVRegLoad, instIdx++);
+											isFinalRun = false;
+											if (debugging)
+												OutputDebugStrF(" RM failed, scratch vreg\n");
+											vregExprChangeSet.Add(scratchReg.mVRegIdx);
+
+											if (vregInfo->mRelTo == errorVRegLoad)
+											{
+												scratchVRegInfo->mForceReg = true;
+												CheckForce(scratchVRegInfo);
+												vregInfo->mRelTo = scratchReg;
+											}
+											else if (vregInfo->mRelOffset == errorVRegLoad)
+											{
+												scratchVRegInfo->mForceReg = true;
+												CheckForce(scratchVRegInfo);
+												vregInfo->mRelOffset = scratchReg;
 											}
 										}
 										else
@@ -15906,7 +15934,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?DrawCard@Stats@NecroCard@bf@@QEAAX_N@Z");
+	mDebugging = (function->mName == "?PopulateComboBox$ny@PropertyPanel@Editor@Cobalt@bf@@QEAAXPEAVMenu@widgets@Beefy@4@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
