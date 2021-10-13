@@ -1156,9 +1156,11 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 			{
 				bool hadChange = false;
 
-				if ((dependencyFlags & BfDependencyMap::DependencyFlag_DerivedFrom) ||
-					(dependencyFlags & BfDependencyMap::DependencyFlag_ValueTypeMemberData) ||
-					(dependencyFlags & BfDependencyMap::DependencyFlag_NameReference))
+				if ((dependencyFlags & 
+					(BfDependencyMap::DependencyFlag_DerivedFrom |
+					 BfDependencyMap::DependencyFlag_ValueTypeMemberData) |
+					 BfDependencyMap::DependencyFlag_NameReference |
+					BfDependencyMap::DependencyFlag_ValueTypeSizeDep) != 0)
 				{
 					hadChange = true;					
 				}

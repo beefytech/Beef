@@ -3365,6 +3365,12 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 	if (usedType == userType)
 		return;	
 
+	if (((flags & BfDependencyMap::DependencyFlag_ConstValue) != 0) && (mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_FieldType))
+	{
+		// This can be an `int32[UsedType.cVal]` type reference
+		flags = (BfDependencyMap::DependencyFlags)(flags | BfDependencyMap::DependencyFlag_ValueTypeSizeDep);
+	}
+
 	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsAutocompleteMethod))
 	{
 		if (userType->IsMethodRef())

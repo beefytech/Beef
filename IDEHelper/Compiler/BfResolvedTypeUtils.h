@@ -115,6 +115,7 @@ public:
 		DependencyFlag_NameReference		= 0x1000000,
 		DependencyFlag_VirtualCall			= 0x2000000,
 		DependencyFlag_WeakReference		= 0x4000000, // Keeps alive but won't rebuild		
+		DependencyFlag_ValueTypeSizeDep		= 0x8000000, // IE: int32[DepType.cVal]
 
 		DependencyFlag_DependentUsageMask = ~(DependencyFlag_UnspecializedType | DependencyFlag_MethodGenericArg | DependencyFlag_GenericArgRef)
 	};

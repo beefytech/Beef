@@ -2597,6 +2597,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				DoTypeInstanceMethodProcessing(typeInstance);
 			return true;
 		}
+		if (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotted)
+			return true;
 		return false;
 	};
 
@@ -3641,6 +3643,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					continue;
 
 				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, field);
+				SetAndRestoreValue<BfTypeState::ResolveKind> prevResolveKind(mContext->mCurTypeState->mResolveKind, BfTypeState::ResolveKind_FieldType);
 				
 				BfType* resolvedFieldType = NULL;
 				
@@ -4427,6 +4430,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	CheckAddFailType();
 	
 	BF_ASSERT_REL(typeInstance->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotting);
+	BF_ASSERT_REL(typeInstance->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotted);
 
 	BfLogSysM("Setting mNeedsMethodProcessing=true on %p\n", typeInstance);
 	typeInstance->mNeedsMethodProcessing = true;

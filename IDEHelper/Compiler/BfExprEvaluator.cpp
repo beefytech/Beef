@@ -4422,7 +4422,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				}
 					
 				mModule->PopulateType(resolvedFieldType, BfPopulateType_Data);					
-				mModule->AddDependency(curCheckType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
+				mModule->AddDependency(curCheckType, mModule->mCurTypeInstance, field->mIsConst ? BfDependencyMap::DependencyFlag_ConstValue : BfDependencyMap::DependencyFlag_ReadFields);
 				if (fieldInstance->mHadConstEval)
 				{
 					mModule->AddDependency(curCheckType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ConstEvalConstField);
