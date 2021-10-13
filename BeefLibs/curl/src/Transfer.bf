@@ -195,6 +195,11 @@ namespace CURL
 			return mResult;
 		}
 
+		public void GetContentType(String outContentType)
+		{
+			mCurl.GetInfo(.ContentType, outContentType);
+		}
+
 		public void Cancel(bool wait = false)
 		{
 			mCancelling = true;

@@ -876,7 +876,7 @@ namespace CURL
 		static extern int curl_easy_perform(void* curl);
 
 		[CLink, CallingConvention(.Stdcall)]
-		static extern void* curl_easy_getinfo(void* curl, Option option, void* ptr);
+		static extern void* curl_easy_getinfo(void* curl, CurlInfo info, void* ptr);
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern void* curl_easy_reset(void* curl);
@@ -939,6 +939,16 @@ namespace CURL
 		{
 			Debug.Assert((int)option / 10000 == 2);
 			return WrapResult((ReturnCode)curl_easy_setopt(mCURL, (int)option, (int)funcPtr));
+		}
+
+		public Result<void> GetInfo(CurlInfo info, String val)
+		{
+			char8* ptr = null;
+			curl_easy_getinfo(mCURL, info, &ptr);
+			if (ptr == null)
+				return .Err;
+			val.Append(ptr);
+			return .Ok;
 		}
 
 		public Result<void, ReturnCode> Perform()
