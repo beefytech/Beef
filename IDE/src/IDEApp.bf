@@ -5888,7 +5888,8 @@ namespace IDE
 	                if (sourceViewPanel.HasUnsavedChanges())
 					{
 						g.SetFont(IDEApp.sApp.mTinyCodeFont);
-	                    g.DrawString("*", mWantWidth - DarkTheme.sUnitSize + GS!(2), 0);
+   						using (g.PushColor(ThemeColors.ArgBuilder.ArgBuilder004.Color))
+							g.DrawString("*", mWantWidth - DarkTheme.sUnitSize + GS!(2), 0);
 					}
 					else if (sourceViewPanel.mLoadFailed)
 					{
@@ -5904,7 +5905,8 @@ namespace IDE
 						g.SetFont(IDEApp.sApp.mTinyCodeFont);
 						String rotChars = @"/-\|";
 						StringView sv = .(rotChars, (mUpdateCnt / 16) % 4, 1);
-						g.DrawString(sv, mWantWidth - DarkTheme.sUnitSize, 0);
+						using (g.PushColor(ThemeColors.ArgBuilder.ArgBuilder004.Color))
+							g.DrawString(sv, mWantWidth - DarkTheme.sUnitSize, 0);
 					}
 				}
 				else if (let profilePanel = mContent as ProfilePanel)

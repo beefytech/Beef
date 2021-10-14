@@ -359,6 +359,14 @@ namespace IDE
 					colors.SetColors(t);
 				}
 				delete colorNames;
+
+				// Refresh color constants
+				IDEApp.cDialogOutlineLightColor = ThemeColors.ArgBuilder.ArgBuilder001.Color;
+				IDEApp.cDialogOutlineDarkColor = ThemeColors.ArgBuilder.ArgBuilder002.Color;
+				HoverWatch.HoverListViewItem.cActionColor = ThemeColors.PendingWatch.PendingWatch001.Color;
+				HoverWatch.HoverListViewItem.cActionOverColor = ThemeColors.PendingWatch.PendingWatch002.Color;
+ 		        PropertiesDialog.PropEntry.cHeaderColor = ThemeColors.PropEntry.PropEntry001.Color;
+				DarkEditWidgetContent.sDefaultColors[0] = ThemeColors.Widget.DarkButton002.Color;
 			}
 		}
 

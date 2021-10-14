@@ -179,11 +179,12 @@ namespace Beefy.theme.dark
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth, mHeight);
 
             g.SetFont(mFont);
+					using (g.PushColor(ThemeColors.Theme.Text.Color)) {
 			if (mIsClipped)
             	g.DrawString(mText, GS!(8), GS!(5), .Left, mWidth - GS!(16), .Ellipsis);
 			else
 				g.DrawString(mText, 0, GS!(5), .Centered, mWidth);
-
+					}
             if (mAllowResize)
                 g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ResizeGrabber), mWidth - GS!(22), mHeight - GS!(22));
         }

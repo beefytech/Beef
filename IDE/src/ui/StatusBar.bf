@@ -341,6 +341,7 @@ namespace IDE.ui
                 using (g.PushColor(ThemeColors.Widget.StatusBar047.Color))
                     g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
                 g.DrawString("Source Changed", GS!(200), statusLabelPos, FontAlign.Centered, GS!(120));
             }
 
@@ -469,6 +470,7 @@ namespace IDE.ui
 	            }*/
 	
 	            if (resolveStr.Length != 0)
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 	                g.DrawString(resolveStr, GS!(100), 0);
 			}
         }

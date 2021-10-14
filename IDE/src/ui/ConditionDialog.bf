@@ -7,6 +7,7 @@ using Beefy.theme.dark;
 using Beefy.widgets;
 using IDE.Debugger;
 using System.Diagnostics;
+using Beefy.theme;
 
 namespace IDE.ui
 {
@@ -369,6 +370,7 @@ namespace IDE.ui
         {
             base.Draw(g);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color)) {
             g.DrawString("Breakpoint Condition", mConditionEdit.mX, mConditionEdit.mY - GS!(20));
 			g.DrawString("Thread Id", mThreadEdit.mX, mThreadEdit.mY - GS!(20));
             g.DrawString("Log String", mLogEdit.mX, mLogEdit.mY - GS!(20));
@@ -377,6 +379,7 @@ namespace IDE.ui
 			var str = scope String();
 			str.AppendF("Current: {0}", mStartingHitCount);
 			g.DrawString(str, mWidth - GS!(16) - GS!(8), mHitCountEdit.mY - GS!(19), .Right);
+					}
         }
     }
 }

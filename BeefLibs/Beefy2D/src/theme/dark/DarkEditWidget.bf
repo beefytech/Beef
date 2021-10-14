@@ -24,7 +24,7 @@ namespace Beefy.theme.dark
 		public uint32 mViewWhiteSpaceColor;
 		public bool mScrollToStartOnLostFocus;
 
-		protected static uint32[] sDefaultColors = new uint32[] ( ThemeColors.Widget.DarkButton002.Color ) ~ delete _;
+		public static uint32[] sDefaultColors = new uint32[] ( ThemeColors.Widget.DarkButton002.Color ) ~ delete _;
 
         public this(EditWidgetContent refContent = null) : base(refContent)
         {
@@ -145,7 +145,7 @@ namespace Beefy.theme.dark
 				if (str.Length == 0)
 					return;
 
-				g.DrawString(str, x, y);
+						g.DrawString(str, x, y);
 
 				if (mViewWhiteSpaceColor != 0)
 				{

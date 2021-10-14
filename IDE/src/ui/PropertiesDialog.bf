@@ -181,7 +181,7 @@ namespace IDE.ui
 			}
         }
 
-        protected class PropEntry
+        public class PropEntry
         {
 			public enum Flags
 			{
@@ -371,7 +371,7 @@ namespace IDE.ui
 			}*/
         }
 
-        protected static uint32 cHeaderColor = ThemeColors.PropEntry.PropEntry001.Color;
+        public static uint32 cHeaderColor = ThemeColors.PropEntry.PropEntry001.Color;
 
 		public class CategoryListViewItem : DarkListViewItem
 		{

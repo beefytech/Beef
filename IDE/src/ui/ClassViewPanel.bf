@@ -87,6 +87,7 @@ namespace IDE.ui
 		            if (project != null)
 		                hasChanged = project.mHasChanged;
 		            if (hasChanged)
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 		                g.DrawString("*", g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + 1, 0);
 		        }
 		    }

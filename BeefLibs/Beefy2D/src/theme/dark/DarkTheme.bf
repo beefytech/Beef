@@ -507,6 +507,7 @@ namespace Beefy.theme.dark
 
 				FontMetrics fm = .();
 				label.Append(str, underlinePos + 1);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 				g.DrawString(label, x, y, alignment, width, overflowMode, &fm);
 
 				float drawX;
@@ -522,6 +523,7 @@ namespace Beefy.theme.dark
 			}
 			else
 			{
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 				g.DrawString(str, x, y, alignment, width, overflowMode);
 			}
 		}

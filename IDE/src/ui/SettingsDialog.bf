@@ -482,6 +482,7 @@ namespace IDE.ui
 					using (g.PushColor(0x80000000))
 						g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 					g.DrawString(helpStr, rect.mX + GS!(20), rect.mY + GS!(20), .Left, rect.mWidth - GS!(40), .Wrap);
 				}
 			}

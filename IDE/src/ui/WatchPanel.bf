@@ -790,9 +790,11 @@ namespace IDE.ui
 				textPosString.Append(charStr);
 			}
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color)) {
 			g.DrawString(textPosString, 16, textY, .Left, mWidth - GS!(140), .Ellipsis);
             g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(130), textY);
             g.DrawString(StackStringFormat!("Col {0}", col + 1), mWidth - GS!(70), textY);
+					}
 
 			//using (g.PushColor(ThemeColors.WatchEntry.WatchEntry007.Color))
 				base.DrawAll(g);

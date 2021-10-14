@@ -317,6 +317,7 @@ namespace IDE.ui
 
 								labelX = Math.Clamp(x, labelWidth / 2, width - labelWidth / 2);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 								g.DrawString(drawStr, labelX, -GS!(19), .Centered);
 
 								using (g.PushColor(ThemeColors.Panel.DiagnosticsPanel016.Color))
@@ -398,6 +399,7 @@ namespace IDE.ui
 						{
 							var labelStr = scope String();
 							ValToString(segValue, labelStr);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 							g.DrawString(labelStr, -xOfs, drawY - GS!(10), .Right, xOfs - GS!(4));
 						}
 					}
@@ -442,6 +444,7 @@ namespace IDE.ui
 				DrawData(g, mData, mTimes, dataRect.mX, dataRect.mY, dataRect.mWidth, dataRect.mHeight);
 
 				g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 				g.DrawString(mLabel, -GS!(0), -GS!(0), .Centered, dataRect.mX);
 			}
 		}

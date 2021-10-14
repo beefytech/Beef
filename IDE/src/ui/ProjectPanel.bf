@@ -87,6 +87,7 @@ namespace IDE.ui
 					if (project.mDeferState != .None)
 					{
 						//g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(-3), 0);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 						g.DrawString(scope String()..Append('.', 1 + (mUpdateCnt / 20) % 3), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(3), 0);
 						changeX += GS!(12);
 					}
@@ -97,7 +98,8 @@ namespace IDE.ui
 					}
 				}
                 if (hasChanged)
-                    g.DrawString("*", changeX, 0);
+ 					using (g.PushColor(ThemeColors.Theme.Text.Color))
+                   g.DrawString("*", changeX, 0);
             }
         }
 

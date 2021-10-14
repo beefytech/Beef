@@ -118,6 +118,7 @@ namespace IDE.ui
 				g.DrawString("Welcome to Beef", 0, GS!(0) + YOfs, .Centered, mWidth);
 
 			g.SetFont(mMedFont);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 			g.DrawString(scope String()..AppendF("Click on a sample projects below\n{}or{}\nCreate a project from the File menu", Font.EncodeColor(ThemeColors.Panel.WelcomePanel007.Color), Font.EncodePopColor()),
 				GS!(32), GS!(95) + YOfs, .Centered, mWidth - GS!(64));
 		}

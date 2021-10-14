@@ -558,7 +558,9 @@ namespace IDE.ui
             queuedTextEntry.mY = y;
             queuedTextEntry.mTypeIdAndFlags = typeIdAndFlags;
             mQueuedText.Add(queuedTextEntry);
-            return DoDrawText(null, str, x, y);
+
+            using (g.PushColor(mTextColors[typeIdAndFlags & 0xFF]))
+				return DoDrawText(null, str, x, y);
         }
 
         public override void DrawSectionFlagsOver(Graphics g, float x, float y, float width, uint8 flags)

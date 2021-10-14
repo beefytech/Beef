@@ -402,7 +402,8 @@ namespace IDE.ui
                         g.Draw(mIcon, 0, 0);
 
                     g.SetFont(IDEApp.sApp.mCodeFont);
-                    g.DrawString(mEntryDisplay, GS!(20), 0);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
+                    	g.DrawString(mEntryDisplay, GS!(20), 0);
                 }                
             }
 

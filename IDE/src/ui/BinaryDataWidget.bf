@@ -871,6 +871,7 @@ namespace IDE.ui
             //g.DrawString(string.Format("CacheRev: {0}", mContent.mCacheRevision), 150, 0);
             if (mInfiniteScrollbar != null)
             {
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
                 g.DrawString(string.Format("Thumb: {0}, Accel: {1}, Vel: {2}, DO: {3}", mInfiniteScrollbar.mScrollThumbFrac, mInfiniteScrollbar.mScrollAccel, mInfiniteScrollbar.mScrollVelocity, mCurPositionDisplayOffset), 150, 30);
             }
             */            
@@ -1067,6 +1068,7 @@ namespace IDE.ui
 										}
 										str.Remove(0, spaceCount);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
                                         g.DrawString(str, GS!(4), GS!(mColumnHeaderHeight) + (lineIdx * lineSpacing), FontAlign.Left);
 
                                         g.SetFont(mFont);

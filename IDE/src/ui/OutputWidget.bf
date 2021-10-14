@@ -298,6 +298,7 @@ namespace IDE.ui
 					Font.StrEncodePopColor(testStr);
 				}
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 				g.DrawString(testStr, 20, 300 + i * 20);
 			}*/
 		}

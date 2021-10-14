@@ -972,6 +972,7 @@ namespace IDE.ui
 				}
 
 				if (drawStr != null)
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 					g.DrawString(drawStr, border, GS!(5), FontAlign.Centered, mWidth - border * 2 - GS!(8), FontOverflowMode.Ellipsis); 
 
                 if (mUpdatingProjectSources != null)
@@ -981,6 +982,7 @@ namespace IDE.ui
 					drawString.AppendF("{0} {1} in {2} {3}",
 						symCount, (symCount == 1) ? "reference" : "references",
 						mUpdatingProjectSources.Count, (mUpdatingProjectSources.Count == 1) ? "file" : "files");
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
                     g.DrawString(drawString, GS!(8), GS!(22), FontAlign.Centered, mWidth - GS!(8) - GS!(16));
 
 					if (lockedFileCount > 0)

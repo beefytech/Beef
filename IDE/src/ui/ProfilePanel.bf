@@ -14,7 +14,7 @@ using IDE.Debugger;
 
 
 namespace IDE.ui
-{	
+{
 	class ProfilePanel : Panel
 	{
 		class ProfileListViewItem : DarkListViewItem
@@ -67,7 +67,7 @@ namespace IDE.ui
 							float horzWidth = GS!(13) - 3 - barWidth;
 							if (mOpenButton == null)
 								horzWidth += GS!(4);
-		                    g.FillRect(-mX + (int)(ArrowCenterY + GS!(0.7f)), GS!(9), horzWidth, barWidth);
+							g.FillRect(-mX + (int)(ArrowCenterY + GS!(0.7f)), GS!(9), horzWidth, barWidth);
 						}
 					}
 				}
@@ -124,12 +124,12 @@ namespace IDE.ui
 			}
 		}
 
-        ProfileListView mListView;
+		ProfileListView mListView;
 		public SessionComboBox mSessionComboBox;
 		public DarkComboBox mThreadComboBox;
 		DarkButton mStopButton;
-        public bool mThreadsDirty = true;
-        public int32 mThreadIdx;
+		public bool mThreadsDirty = true;
+		public int32 mThreadIdx;
 		public int32 mDisabledTicks;
 		public DbgProfiler mProfiler;
 		public List<int32> mThreadList = new List<int32>() ~ delete _;
@@ -154,8 +154,8 @@ namespace IDE.ui
 			}
 		}
 
-        public this()
-        {
+		public this()
+		{
 			mSessionComboBox = new SessionComboBox();
 			mSessionComboBox.mPopulateMenuAction.Add(new => PopulateSessionList);
 			AddWidget(mSessionComboBox);
@@ -171,18 +171,18 @@ namespace IDE.ui
 						mProfiler.Stop();
 				});
 
-			mThreadComboBox = new DarkComboBox();            
+			mThreadComboBox = new DarkComboBox();
 			mThreadComboBox.mPopulateMenuAction.Add(new => PopulateThreadList);
 			AddWidget(mThreadComboBox);
 			mTabWidgets.Add(mThreadComboBox);
 
-            mListView = new ProfileListView();
-            mListView.InitScrollbars(true, true);
-            mListView.mHorzScrollbar.mPageSize = GS!(100);
-            mListView.mHorzScrollbar.mContentSize = GS!(500);
-            mListView.mVertScrollbar.mPageSize = GS!(100);
-            mListView.mVertScrollbar.mContentSize = GS!(500);
-            mListView.UpdateScrollbars();
+			mListView = new ProfileListView();
+			mListView.InitScrollbars(true, true);
+			mListView.mHorzScrollbar.mPageSize = GS!(100);
+			mListView.mHorzScrollbar.mContentSize = GS!(500);
+			mListView.mVertScrollbar.mPageSize = GS!(100);
+			mListView.mVertScrollbar.mContentSize = GS!(500);
+			mListView.UpdateScrollbars();
 			mListView.mOnMouseDown.Add(new (mouseArgs) =>
 				{
 					SetFocus();
@@ -190,26 +190,26 @@ namespace IDE.ui
 			mListView.mOnItemMouseDown.Add(new => ValueMouseDown);
 			mTabWidgets.Add(mListView);
 
-            //mListView.mDragEndHandler += HandleDragEnd;
-            //mListView.mDragUpdateHandler += HandleDragUpdate;
+			//mListView.mDragEndHandler += HandleDragEnd;
+			//mListView.mDragUpdateHandler += HandleDragUpdate;
 
-            AddWidget(mListView);
+			AddWidget(mListView);
 
-            //mListView.mMouseDownHandler += ListViewMouseDown;
+			//mListView.mMouseDownHandler += ListViewMouseDown;
 
-            ListViewColumn column = mListView.AddColumn(300, "Function");
-            column.mMinWidth = 100;
+			ListViewColumn column = mListView.AddColumn(300, "Function");
+			column.mMinWidth = 100;
 
-            column = mListView.AddColumn(80, "Total CPU %");
-            column.mMinWidth = 60;
-            column = mListView.AddColumn(80, "Self CPU %");
-            column.mMinWidth = 60;
+			column = mListView.AddColumn(80, "Total CPU %");
+			column.mMinWidth = 60;
+			column = mListView.AddColumn(80, "Self CPU %");
+			column.mMinWidth = 60;
 			column = mListView.AddColumn(90, "Total CPU (ms)");
 			column.mMinWidth = 60;
 			column = mListView.AddColumn(90, "Self CPU (ms)");
 			column.mMinWidth = 60;
-            //RebuildUI();
-        }
+			//RebuildUI();
+		}
 
 		public void Clear()
 		{
@@ -327,7 +327,7 @@ namespace IDE.ui
 				}
 
 				subItem = menu.AddItem(str);
-				subItem.mOnMenuItemSelected.Add(new (item) => { Show(threadId, threadStr); } ~ delete threadStr);
+				subItem.mOnMenuItemSelected.Add(new (item) => { Show(threadId, threadStr); });
 			}
 		}
 
@@ -350,7 +350,7 @@ namespace IDE.ui
 
 			var str = scope String();
 			mProfiler.GetCallTree(threadId, str, false);
-			
+
 			List<DarkListViewItem> itemStack = scope List<DarkListViewItem>();
 			DarkListViewItem curItem = (DarkListViewItem)mListView.GetRoot();
 
@@ -360,7 +360,7 @@ namespace IDE.ui
 			mProfiler.GetOverview(overview);
 
 			int32 totalSamples = 0;
-			float sampleTimeMult = 1000.0f / overview.mSamplesPerSecond; // 1ms per sample
+			float sampleTimeMult = 1000.0f / overview.mSamplesPerSecond;// 1ms per sample
 
 			for (var lineView in str.Split('\n'))
 			{
@@ -371,20 +371,20 @@ namespace IDE.ui
 				{
 					curItem = itemStack.PopBack();
 
-					curItem.mChildItems.Sort(scope (baseA, baseB) => 
-			        	{
+					curItem.mChildItems.Sort(scope (baseA, baseB) =>
+						{
 							var a = (ProfileListViewItem)baseA;
 							var b = (ProfileListViewItem)baseB;
 							return (b.mChildSamples + b.mSelfSamples) - (a.mChildSamples + a.mSelfSamples);
-			            });
+						});
 
 					continue;
 				}
-				
+
 				var dataList = scope List<StringView>(line.Split('\t'));
-				
+
 				ProfileListViewItem newItem = (ProfileListViewItem)curItem.CreateChildItem();
-				newItem.mLabel = new String(dataList[0]);				
+				newItem.mLabel = new String(dataList[0]);
 				//newItem.mOnMouseDown.Add(new => ValueClicked);
 
 				var selfStr = scope String(dataList[1]);
@@ -487,7 +487,7 @@ namespace IDE.ui
 					continue;
 				var dataItr = entry.Split('\t');
 				int32 threadId = int32.Parse(dataItr.GetNext());
-				
+
 				mThreadList.Add(threadId);
 			}
 
@@ -499,48 +499,48 @@ namespace IDE.ui
 			ResizeComponents();
 		}
 
-        public override void Serialize(StructuredData data)
-        {
-            base.Serialize(data);
+		public override void Serialize(StructuredData data)
+		{
+			base.Serialize(data);
 
-            data.Add("Type", "ProfilePanel");
-        }
+			data.Add("Type", "ProfilePanel");
+		}
 
-        public override bool Deserialize(StructuredData data)
-        {
-            return base.Deserialize(data);
-        }
+		public override bool Deserialize(StructuredData data)
+		{
+			return base.Deserialize(data);
+		}
 
-        void ValueMouseDown(ListViewItem item, float x, float y, int32 btnNum, int32 btnCount)
-        {
+		void ValueMouseDown(ListViewItem item, float x, float y, int32 btnNum, int32 btnCount)
+		{
 #unwarn
-            DarkListViewItem baseItem = (DarkListViewItem)item.GetSubItem(0);
+			DarkListViewItem baseItem = (DarkListViewItem)item.GetSubItem(0);
 
 			ListViewItemMouseDown(item, x, y, btnNum, btnCount);
 
-            if ((btnNum == 0) && (btnCount > 1))
-            {
-                /*for (int childIdx = 0; childIdx < mListView.GetRoot().GetChildCount(); childIdx++)
-                {
-                    var checkListViewItem = mListView.GetRoot().GetChildAtIndex(childIdx);
-                    checkListViewItem.IconImage = null;
-                }
+			if ((btnNum == 0) && (btnCount > 1))
+			{
+				/*for (int childIdx = 0; childIdx < mListView.GetRoot().GetChildCount(); childIdx++)
+				{
+					var checkListViewItem = mListView.GetRoot().GetChildAtIndex(childIdx);
+					checkListViewItem.IconImage = null;
+				}
 
-                int selectedIdx = mListView.GetRoot().GetIndexOfChild(item);
+				int selectedIdx = mListView.GetRoot().GetIndexOfChild(item);
 
-                int threadId = int.Parse(item.mLabel);
-                IDEApp.sApp.mDebugger.SetActiveThread(threadId);                
-                IDEApp.sApp.mDebugger.mCallStackDirty = true;
-                IDEApp.sApp.mCallStackPanel.MarkCallStackDirty();
-                IDEApp.sApp.mCallStackPanel.Update();
-                IDEApp.sApp.mWatchPanel.MarkWatchesDirty(true);
-                IDEApp.sApp.mAutoWatchPanel.MarkWatchesDirty(true);
-                IDEApp.sApp.mMemoryPanel.MarkViewDirty();
-                IDEApp.sApp.ShowPCLocation(IDEApp.sApp.mDebugger.mSelectedCallStackIdx, false, true);
-                
-                item.IconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ArrowRight);*/
-            }
-        }
+				int threadId = int.Parse(item.mLabel);
+				IDEApp.sApp.mDebugger.SetActiveThread(threadId);                
+				IDEApp.sApp.mDebugger.mCallStackDirty = true;
+				IDEApp.sApp.mCallStackPanel.MarkCallStackDirty();
+				IDEApp.sApp.mCallStackPanel.Update();
+				IDEApp.sApp.mWatchPanel.MarkWatchesDirty(true);
+				IDEApp.sApp.mAutoWatchPanel.MarkWatchesDirty(true);
+				IDEApp.sApp.mMemoryPanel.MarkViewDirty();
+				IDEApp.sApp.ShowPCLocation(IDEApp.sApp.mDebugger.mSelectedCallStackIdx, false, true);
+				
+				item.IconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ArrowRight);*/
+			}
+		}
 
 		void ResizeComponents()
 		{
@@ -561,27 +561,27 @@ namespace IDE.ui
 			}
 		}
 
-        public override void Resize(float x, float y, float width, float height)
-        {
-            base.Resize(x, y, width, height);
+		public override void Resize(float x, float y, float width, float height)
+		{
+			base.Resize(x, y, width, height);
 
 			ResizeComponents();
-        }
+		}
 
-        public void MarkThreadsDirty()
-        {
-            mThreadsDirty = true;
-        }
+		public void MarkThreadsDirty()
+		{
+			mThreadsDirty = true;
+		}
 
-        public override void LostFocus()
-        {
-            base.LostFocus();
-            mListView.GetRoot().SelectItemExclusively(null);
-        }
+		public override void LostFocus()
+		{
+			base.LostFocus();
+			mListView.GetRoot().SelectItemExclusively(null);
+		}
 
-        public override void Update()
-        {
-            base.Update();
+		public override void Update()
+		{
+			base.Update();
 
 			if (mUserProfiler != null)
 			{
@@ -599,7 +599,7 @@ namespace IDE.ui
 				}
 			}
 
-            if (mProfiler != null)
+			if (mProfiler != null)
 			{
 				++mOverviewAge;
 				if (mOverviewAge >= 15)
@@ -621,7 +621,7 @@ namespace IDE.ui
 			else
 				mSessionComboBox.mIsRecording = false;
 			ResizeComponents();
-        }
+		}
 
 		public void ForcedUpdate()
 		{
@@ -640,40 +640,44 @@ namespace IDE.ui
 			}
 		}
 
-        public override void DrawAll(Graphics g)
-        {
-            base.DrawAll(g);
-        }
+		public override void DrawAll(Graphics g)
+		{
+			base.DrawAll(g);
+		}
 
 		public override void Draw(Graphics g)
 		{
 			base.Draw(g);
 
 			g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
-			g.DrawString("Session", mSessionComboBox.mX - GS!(2), mSessionComboBox.mY, .Right);
-			g.DrawString("Thread", mThreadComboBox.mX - GS!(2), mThreadComboBox.mY, .Right);
-
-			if ((mProfiler != null) && (mShowOverview != null))
+			using (g.PushColor(ThemeColors.Theme.Text.Color))
 			{
-				g.DrawString(StackStringFormat!("Rate: {0} Hz", mShowOverview.mSamplesPerSecond), GS!(320), GS!(2));
-				int32 seconds = (mShowOverview.mRecordedTicks / 1000);
-				g.DrawString(StackStringFormat!("Length: {0}:{1:00}.{2}", seconds / 60, seconds % 60, (mShowOverview.mRecordedTicks % 1000)/100), GS!(320), GS!(22));
+				g.DrawString("Session", mSessionComboBox.mX - GS!(2), mSessionComboBox.mY, .Right);
+				g.DrawString("Thread", mThreadComboBox.mX - GS!(2), mThreadComboBox.mY, .Right);
 
-				seconds = (mShowOverview.mEndedTicks / 1000);
-				if (seconds > 60*60)
-					g.DrawString(StackStringFormat!("Age: {0}:{1:00}:{2:00}", seconds / 60 / 60, (seconds / 60) % 60, seconds % 60), GS!(420), GS!(22));
-				else
-					g.DrawString(StackStringFormat!("Age: {0}:{1:00}", seconds / 60, seconds % 60), GS!(420), GS!(22));
+				if ((mProfiler != null) && (mShowOverview != null))
+				{
+					g.DrawString(StackStringFormat!("Rate: {0} Hz", mShowOverview.mSamplesPerSecond), GS!(320), GS!(2));
+					int32 seconds = (mShowOverview.mRecordedTicks / 1000);
+					g.DrawString(StackStringFormat!("Length: {0}:{1:00}.{2}", seconds / 60, seconds % 60, (mShowOverview.mRecordedTicks % 1000) / 100), GS!(320), GS!(22));
 
-				g.DrawString(StackStringFormat!("Samples: {0}", mShowOverview.mTotalActualSamples), GS!(420), GS!(2));
-				g.DrawString(StackStringFormat!("Missed Samples: {0}", mShowOverview.mTotalVirtualSamples - mShowOverview.mTotalActualSamples), GS!(550), GS!(2));
+					seconds = (mShowOverview.mEndedTicks / 1000);
+					if (seconds > 60 * 60)
+						g.DrawString(StackStringFormat!("Age: {0}:{1:00}:{2:00}", seconds / 60 / 60, (seconds / 60) % 60, seconds % 60), GS!(420), GS!(22));
+					else
+						g.DrawString(StackStringFormat!("Age: {0}:{1:00}", seconds / 60, seconds % 60), GS!(420), GS!(22));
+
+					g.DrawString(StackStringFormat!("Samples: {0}", mShowOverview.mTotalActualSamples), GS!(420), GS!(2));
+					g.DrawString(StackStringFormat!("Missed Samples: {0}", mShowOverview.mTotalVirtualSamples - mShowOverview.mTotalActualSamples), GS!(550), GS!(2));
+				}
 			}
 
 			if (mTickCreated != 0)
 			{
-				
+
 				/*String text = scope String();
 				text.AppendF("{0}s ago", (int32)(Utils.GetTickCount() - mTickCreated) / 1000);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 				g.DrawString(text, mWidth - 4, 2, FontAlign.Right);*/
 			}
 		}
@@ -689,5 +693,5 @@ namespace IDE.ui
 			base.MouseDown(x, y, btn, btnCount);
 			SetFocus();
 		}
-    }
+	}
 }

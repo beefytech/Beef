@@ -136,6 +136,7 @@ namespace IDE.ui
 					using (g.PushColor(ThemeColors.Panel.WelcomePanel007.Color))
 						g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Window), -GS!(1), -height - GS!(12), mWidth + GS!(2), height + GS!(13));
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 					g.DrawString(str, GS!(8), -height - GS!(7), .Left, width, .Wrap);
 				}
 			}
