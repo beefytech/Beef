@@ -5473,6 +5473,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
 				if (constRet)
 				{
+					auto constant = mModule->mBfIRBuilder->GetConstant(constRet.mValue);					
 					BF_ASSERT(!constRet.mType->IsVar());
 					return constRet;
 				}
@@ -5518,8 +5519,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 							return mModule->GetDefaultTypedValue(mExpectingType, true, BfDefaultValueKind_Undef);
 					}
 				}
-
-				return mModule->GetDefaultTypedValue(returnType, true, BfDefaultValueKind_Undef);
+				
+				return mModule->GetDefaultTypedValue(returnType, true, BfDefaultValueKind_Addr);
 			}
 
 			return _GetDefaultReturnValue();
