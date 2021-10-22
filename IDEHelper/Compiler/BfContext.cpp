@@ -2889,13 +2889,14 @@ void BfContext::Finish()
 
 void BfContext::Cleanup()
 {
+	BfLogSysM("BfContext::Cleanup() MethodWorkList: %d LocalMethodGraveyard: %d\n", mMethodWorkList.size(), mLocalMethodGraveyard.size());
+
 	// Can't clean up LLVM types, they are allocated with a bump allocator
 	RemoveInvalidFailTypes();	
 
 	mCompiler->mCompileState = BfCompiler::CompileState_Cleanup;
 
-	// We can't remove the local methods if they still may be referenced by a BfMethodRefType used to specialize a method
-	if (mMethodWorkList.empty())
+	///
 	{
 		Array<BfLocalMethod*> survivingLocalMethods;
 
@@ -2920,6 +2921,14 @@ void BfContext::Cleanup()
 			}
 			else if ((localMethod->mMethodInstanceGroup != NULL) && (localMethod->mMethodInstanceGroup->mRefCount > 0))
 			{
+				BfLogSysM("BfContext::Cleanup surviving local method with refs %p\n", localMethod);
+				localMethod->Dispose();
+				survivingLocalMethods.push_back(localMethod);
+			}
+			else if (!mMethodWorkList.empty())
+			{
+				// We can't remove the local methods if they still may be referenced by a BfMethodRefType used to specialize a method
+				BfLogSysM("BfContext::Cleanup surviving local method %p\n", localMethod);
 				localMethod->Dispose();
 				survivingLocalMethods.push_back(localMethod);
 			}
