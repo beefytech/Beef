@@ -5520,7 +5520,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					}
 				}
 				
-				return mModule->GetDefaultTypedValue(returnType, true, BfDefaultValueKind_Addr);
+				return mModule->GetDefaultTypedValue(returnType, true, BfDefaultValueKind_Undef);
 			}
 
 			return _GetDefaultReturnValue();
