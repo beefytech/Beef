@@ -7144,7 +7144,7 @@ BfIRFunction BfModule::GetIntrinsic(BfMethodInstance* methodInstance, bool repor
 			auto constant = methodOwner->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);			
 			String error;
 			
-			if ((constant != NULL) && (constant->mTypeCode = BfTypeCode_StringId))
+			if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_StringId))
 			{
 				int stringId = constant->mInt32;
 				auto entry = mContext->mStringObjectIdMap[stringId];
@@ -12042,7 +12042,7 @@ BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal, bool forceMutable)
 		wasReadOnly = true; // Any non-addr is implicitly read-only
 	
 		//static int gCallIdx = 0;
-
+		FixValueActualization(typedVal);
 		if (typedVal.IsAddr())
 			return typedVal;
 		BfType* type = typedVal.mType;		
