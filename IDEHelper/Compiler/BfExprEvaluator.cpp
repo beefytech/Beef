@@ -12310,7 +12310,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	(
 		{
 			if (autoComplete != NULL)
-				autoComplete->mIsCapturingMethodMatchInfo = (wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo);
+				autoComplete->mIsCapturingMethodMatchInfo = (wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo) && (autoComplete->mMethodMatchInfo != NULL);
 		}
 	);	
 
@@ -15220,7 +15220,12 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	}
 
 	auto autoComplete = GetAutoComplete();
-	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo) && (autoComplete->mMethodMatchInfo->mInstanceList.size() != 0))
+	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo) && (autoComplete->mMethodMatchInfo == NULL))
+	{
+		NOP;
+	}
+
+	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo) && (autoComplete->mMethodMatchInfo != NULL) && (autoComplete->mMethodMatchInfo->mInstanceList.size() != 0))
 		autoComplete->mIsCapturingMethodMatchInfo = false;
 
 	BfMethodMatcher methodMatcher(targetSrc, mModule, name, args, methodGenericArgs);
