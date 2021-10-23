@@ -2679,6 +2679,98 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if (!typeInstance->mTypeFailed)
 		CheckCircularDataError();
 
+	if (typeInstance->mDefineState < BfTypeDefineState_Declaring)
+	{
+		typeInstance->mDefineState = BfTypeDefineState_Declaring;
+
+		if (typeInstance->IsGenericTypeInstance())
+		{
+			DoPopulateType_SetGenericDependencies(typeInstance);
+		}
+
+		auto _AddStaticSearch = [&](BfTypeDef* typeDef)
+		{
+			if (!typeDef->mStaticSearch.IsEmpty())
+			{
+				BfStaticSearch* staticSearch;
+				if (typeInstance->mStaticSearchMap.TryAdd(typeDef, NULL, &staticSearch))
+				{
+					SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, typeDef);
+					for (auto typeRef : typeDef->mStaticSearch)
+					{
+						auto staticType = ResolveTypeRef(typeRef, NULL, BfPopulateType_Identity);
+						if (staticType != NULL)
+						{
+							auto staticTypeInst = staticType->ToTypeInstance();
+							if (staticTypeInst == NULL)
+							{
+								Fail(StrFormat("Type '%s' cannot be used in a 'using static' declaration", TypeToString(staticType).c_str()), typeRef);
+							}
+							else
+							{
+								staticSearch->mStaticTypes.Add(staticTypeInst);
+								AddDependency(staticTypeInst, typeInstance, BfDependencyMap::DependencyFlag_StaticValue);
+							}
+						}
+					}
+				}
+			}
+			if (!typeDef->mInternalAccessSet.IsEmpty())
+			{
+				BfInternalAccessSet* internalAccessSet;
+				if (typeInstance->mInternalAccessMap.TryAdd(typeDef, NULL, &internalAccessSet))
+				{
+					for (auto typeRef : typeDef->mInternalAccessSet)
+					{
+						if ((typeRef->IsA<BfNamedTypeReference>()) ||
+							(typeRef->IsA<BfQualifiedTypeReference>()))
+						{
+							String checkNamespaceStr;
+							typeRef->ToString(checkNamespaceStr);
+							BfAtomComposite checkNamespace;
+							if (mSystem->ParseAtomComposite(checkNamespaceStr, checkNamespace))
+							{
+								if (mSystem->ContainsNamespace(checkNamespace, typeDef->mProject))
+								{
+									mSystem->RefAtomComposite(checkNamespace);
+									internalAccessSet->mNamespaces.Add(checkNamespace);
+									continue;
+								}
+							}
+						}
+
+						BfType* internalType = NULL;
+						if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
+							internalType = mContext->mScratchModule->ResolveTypeRefAllowUnboundGenerics(typeRef, BfPopulateType_Identity);
+						else
+							internalType = ResolveTypeRef(typeRef, NULL, BfPopulateType_Identity);
+						if (internalType != NULL)
+						{
+							auto internalTypeInst = internalType->ToTypeInstance();
+							if (internalTypeInst == NULL)
+							{
+								Fail(StrFormat("Type '%s' cannot be used in a 'using internal' declaration", TypeToString(internalType).c_str()), typeRef);
+							}
+							else
+							{
+								internalAccessSet->mTypes.Add(internalTypeInst);
+								AddDependency(internalTypeInst, typeInstance, BfDependencyMap::DependencyFlag_StaticValue);
+							}
+						}
+					}
+				}
+			}
+		};
+
+		if (typeDef->mIsCombinedPartial)
+		{
+			for (auto partialTypeDef : typeDef->mPartials)
+				_AddStaticSearch(partialTypeDef);
+		}
+		else
+			_AddStaticSearch(typeDef);
+	}
+
 	bool underlyingTypeDeferred = false;
 	BfType* underlyingType = NULL;	
 	if (typeInstance->mBaseType != NULL)
@@ -2734,7 +2826,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				else
 				{
 					AssertErrorState();
-					typeInstance->mTypeFailed = true;
+					TypeFailed(typeInstance);
 				}
 			}
 
@@ -2782,7 +2874,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			else
 			{
 				AssertErrorState();
-				typeInstance->mTypeFailed = true;
+				TypeFailed(typeInstance);
 			}
 
 			if (_CheckTypeDone())
@@ -2824,97 +2916,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	// Partial population break out point
-	if (typeInstance->mDefineState < BfTypeDefineState_Declared)
-	{
+
+	if (typeInstance->mDefineState < BfTypeDefineState_Declared)	
 		typeInstance->mDefineState = BfTypeDefineState_Declared;
-
-		if (typeInstance->IsGenericTypeInstance())
-		{
-			DoPopulateType_SetGenericDependencies(typeInstance);			
-		}
-
-		auto _AddStaticSearch = [&](BfTypeDef* typeDef)
-		{			
-			if (!typeDef->mStaticSearch.IsEmpty())
-			{
-				BfStaticSearch* staticSearch;
-				if (typeInstance->mStaticSearchMap.TryAdd(typeDef, NULL, &staticSearch))
-				{
-					SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, typeDef);
-					for (auto typeRef : typeDef->mStaticSearch)
-					{
-						auto staticType = ResolveTypeRef(typeRef, NULL, BfPopulateType_Identity);
-						if (staticType != NULL)
-						{
-							auto staticTypeInst = staticType->ToTypeInstance();
-							if (staticTypeInst == NULL)
-							{
-								Fail(StrFormat("Type '%s' cannot be used in a 'using static' declaration", TypeToString(staticType).c_str()), typeRef);
-							}
-							else
-							{
-								staticSearch->mStaticTypes.Add(staticTypeInst);
-								AddDependency(staticTypeInst, typeInstance, BfDependencyMap::DependencyFlag_StaticValue);
-							}
-						}
-					}
-				}
-			}
-			if (!typeDef->mInternalAccessSet.IsEmpty())
-			{
-				BfInternalAccessSet* internalAccessSet;
-				if (typeInstance->mInternalAccessMap.TryAdd(typeDef, NULL, &internalAccessSet))
-				{
-					for (auto typeRef : typeDef->mInternalAccessSet)
-					{
-						if ((typeRef->IsA<BfNamedTypeReference>()) ||
-							(typeRef->IsA<BfQualifiedTypeReference>()))
-						{
-							String checkNamespaceStr;
-							typeRef->ToString(checkNamespaceStr);
-							BfAtomComposite checkNamespace;
-							if (mSystem->ParseAtomComposite(checkNamespaceStr, checkNamespace))
-							{
-								if (mSystem->ContainsNamespace(checkNamespace, typeDef->mProject))
-								{
-									mSystem->RefAtomComposite(checkNamespace);
-									internalAccessSet->mNamespaces.Add(checkNamespace);
-									continue;
-								}
-							}
-						}
-
-						BfType* internalType = NULL;
-						if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))						
-							internalType = mContext->mScratchModule->ResolveTypeRefAllowUnboundGenerics(typeRef, BfPopulateType_Identity);
-						else
-							internalType = ResolveTypeRef(typeRef, NULL, BfPopulateType_Identity);
-						if (internalType != NULL)
-						{
-							auto internalTypeInst = internalType->ToTypeInstance();
-							if (internalTypeInst == NULL)
-							{
-								Fail(StrFormat("Type '%s' cannot be used in a 'using internal' declaration", TypeToString(internalType).c_str()), typeRef);
-							}
-							else
-							{
-								internalAccessSet->mTypes.Add(internalTypeInst);
-								AddDependency(internalTypeInst, typeInstance, BfDependencyMap::DependencyFlag_StaticValue);
-							}
-						}
-					}
-				}
-			}
-		};
-
-		if (typeDef->mIsCombinedPartial)
-		{
-			for (auto partialTypeDef : typeDef->mPartials)
-				_AddStaticSearch(partialTypeDef);
-		}
-		else
-			_AddStaticSearch(typeDef);
-	}
+	
 	if (populateType == BfPopulateType_Declaration)
 	{
 		return;

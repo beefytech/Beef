@@ -430,6 +430,7 @@ class BfTypeDIReplaceCallback;
 enum BfTypeDefineState : uint8
 {
 	BfTypeDefineState_Undefined,
+	BfTypeDefineState_Declaring,
 	BfTypeDefineState_Declared,
 	BfTypeDefineState_ResolvingBaseType,	
 	BfTypeDefineState_HasInterfaces,
