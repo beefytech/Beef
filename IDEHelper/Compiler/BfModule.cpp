@@ -12888,7 +12888,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			if ((!mIsComptimeModule) && (mIsReified) && (!instModule->mIsReified))
 			{
-				if (!typeInst->IsUnspecializedTypeVariation())
+				if (!typeInst->IsUnspecializedType())
 				{
 					if (!instModule->mReifyQueued)
 					{
