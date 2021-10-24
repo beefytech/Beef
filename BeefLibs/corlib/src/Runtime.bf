@@ -102,7 +102,7 @@ namespace System
 			function void* (int size) mAlloc;
 			function void (void* ptr) mFree;
 			function void (Object obj) mObject_Delete;
-			function void (Object obj, String str) mObject_ToString;
+			void* mUnused0;
 			function Type (Object obj) mObject_GetType;
 			function void (Object obj) mObject_GCMarkMembers;
 			function Object (Object obj, int32 typeId) mObject_DynamicCastToTypeId;
@@ -139,13 +139,6 @@ namespace System
 			static void Object_Delete(Object obj)
 			{
 				delete obj;
-			}
-
-			static void Object_ToString(Object obj, String str)
-			{
-#if BF_DBG_RUNTIME
-				obj.ToString(str);
-#endif
 			}
 
 			static Type Object_GetType(Object obj)
@@ -241,7 +234,6 @@ namespace System
 				mAlloc = => Alloc;
 				mFree = => Free;
 				mObject_Delete = => Object_Delete;
-				mObject_ToString = => Object_ToString;
 				mObject_GetType = => Object_GetType;
 				mObject_GCMarkMembers = => Object_GCMarkMembers;
 			    mObject_DynamicCastToTypeId = => Object_DynamicCastToTypeId;
