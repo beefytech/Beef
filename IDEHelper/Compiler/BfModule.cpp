@@ -3490,7 +3490,14 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 
 	auto depFlag = flags;
 	if ((flags & (BfDependencyMap::DependencyFlag_MethodGenericArg | BfDependencyMap::DependencyFlag_TypeGenericArg)) != 0)
-		depFlag = BfDependencyMap::DependencyFlag_GenericArgRef; // Will cause a rebuild but not an outright deletion of the type
+	{
+		if (usedType->IsDependendType())
+		{
+			// Cause a rebuild but not an outright deletion of the type
+			// We can only do this if the 'usedType' can actually hold the dependency which can actually trigger a deletion chain
+			depFlag = BfDependencyMap::DependencyFlag_GenericArgRef; 
+		}
+	}
 
 	if (!usedType->IsGenericTypeInstance())
 	{
