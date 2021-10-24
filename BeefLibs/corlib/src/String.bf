@@ -1010,16 +1010,94 @@ namespace System
 
 		public ref char8 this[int index]
 		{
+			[Checked]
 			get
 			{
 				Debug.Assert((uint)index < (uint)mLength);
 				return ref Ptr[index];
 			}
 
+			[Unchecked, Inline]
+			get
+			{
+				return ref Ptr[index];
+			}
+
+			[Checked]
 			set
 			{
 				Debug.Assert((uint)index < (uint)mLength);
 				Ptr[index] = value;
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				Ptr[index] = value;
+			}
+		}
+
+		public ref char8 this[Index index]
+		{
+			[Checked]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				Debug.Assert((uint)idx < (uint)mLength);
+				return ref Ptr[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				return ref Ptr[idx];
+			}
+
+			[Checked]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				Debug.Assert((uint)idx < (uint)mLength);
+				Ptr[idx] = value;
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				Ptr[idx] = value;
+			}
+		}
+
+		public StringView this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				return StringView(Ptr, Length)[range];
 			}
 		}
 
@@ -2889,6 +2967,97 @@ namespace System
 		{
 			mPtr = ptr;
 			mLength = length;
+		}
+
+		public ref char8 this[int index]
+		{
+			[Checked]
+		    get
+			{
+				Runtime.Assert((uint)index < (uint)mLength);
+				return ref mPtr[index];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				return ref mPtr[index];
+			}
+		}
+
+		public ref char8 this[Index index]
+		{
+			[Checked]
+		    get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mLength);
+				return ref mPtr[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				return ref mPtr[idx];
+			}
+		}
+
+		public StringView this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				char8* start;
+				switch (range.mStart)
+				{
+				case .FromFront(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + offset;
+				case .FromEnd(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + mLength - 1 - offset;
+				}
+				char8* end;
+				if (range.mIsClosed)
+				{
+					switch (range.mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset < (uint)mLength);
+						end = mPtr + offset + 1;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)offset < (uint)mLength);
+						end = mPtr + mLength - offset;
+					}
+				}
+				else
+				{
+					switch (range.mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + offset;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + mLength - 1 - offset;
+					}
+				}
+
+				return .(start, end - start);
+			}
 		}
 
 		public String.RawEnumerator RawChars
