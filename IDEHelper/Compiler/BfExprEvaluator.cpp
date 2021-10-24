@@ -15220,11 +15220,6 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	}
 
 	auto autoComplete = GetAutoComplete();
-	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo) && (autoComplete->mMethodMatchInfo == NULL))
-	{
-		NOP;
-	}
-
 	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo) && (autoComplete->mMethodMatchInfo != NULL) && (autoComplete->mMethodMatchInfo->mInstanceList.size() != 0))
 		autoComplete->mIsCapturingMethodMatchInfo = false;
 
@@ -19797,6 +19792,13 @@ void BfExprEvaluator::Visit(BfUnaryOperatorExpression* unaryOpExpr)
 
 void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags)
 {
+	if ((unaryOpExpr == NULL) && (unaryOp == BfUnaryOp_PartialRangeThrough))
+	{
+		PerformBinaryOperation(NULL, NULL, BfBinaryOp_ClosedRange, opToken, BfBinOpFlag_None);
+		return;
+	}
+
+	///
 	{
 		// If this is a cast, we don't want the value to be coerced before the unary operator is applied.
 		// WAIT: Why not?
@@ -20456,8 +20458,32 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			mModule->Fail("Illegal use of argument cascade expression", opToken);
 		}
 		break;
+	case BfUnaryOp_FromEnd:
+		{
+			CheckResultForReading(mResult);
+			auto value = mModule->Cast(unaryOpExpr, mResult, mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+			value = mModule->LoadValue(value);
+			if (value)
+			{
+				auto indexType = mModule->ResolveTypeDef(mModule->mCompiler->mIndexTypeDef);
+				auto alloca = mModule->CreateAlloca(indexType);
+				mModule->mBfIRBuilder->CreateStore(value.mValue, mModule->mBfIRBuilder->CreateInBoundsGEP(mModule->mBfIRBuilder->CreateInBoundsGEP(alloca, 0, 1), 0, 1));
+				mModule->mBfIRBuilder->CreateStore(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, 1), mModule->mBfIRBuilder->CreateInBoundsGEP(alloca, 0, 2));
+				mResult = BfTypedValue(alloca, indexType, BfTypedValueKind_Addr);
+			}									
+		}
+		break;
+	case BfUnaryOp_PartialRangeUpTo:
+		PerformBinaryOperation(NULL, unaryOpExpr, BfBinaryOp_Range, opToken, BfBinOpFlag_None);
+		break;
+	case BfUnaryOp_PartialRangeThrough:
+		PerformBinaryOperation(NULL, unaryOpExpr, BfBinaryOp_ClosedRange, opToken, BfBinOpFlag_None);
+		break;
+	case BfUnaryOp_PartialRangeFrom:
+		PerformBinaryOperation(unaryOpExpr, NULL, BfBinaryOp_ClosedRange, opToken, BfBinOpFlag_None);
+		break;
 	default:
-		mModule->Fail("INTERNAL ERROR: Unhandled unary operator", unaryOpExpr);
+		mModule->Fail(StrFormat("Illegal use of '%s' unary operator", BfGetOpName(unaryOp)), unaryOpExpr);
 		break;
 	}
 
@@ -20792,12 +20818,74 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	{
 		auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 
-		auto allocType = mModule->ResolveTypeDef((binaryOp == BfBinaryOp_Range) ? mModule->mCompiler->mRangeTypeDef : mModule->mCompiler->mClosedRangeTypeDef)->ToTypeInstance();		
+		bool isIndexExpr = false;
+		BfTypeDef* typeDef = NULL;		
+		if (auto unaryOpExpr = BfNodeDynCast<BfUnaryOperatorExpression>(leftExpression))
+			if (unaryOpExpr->mOp == BfUnaryOp_FromEnd)
+				isIndexExpr = true;
+		if (rightExpression == NULL)
+			isIndexExpr = true;
+		if (auto unaryOpExpr = BfNodeDynCast<BfUnaryOperatorExpression>(rightExpression))
+			if (unaryOpExpr->mOp == BfUnaryOp_FromEnd)
+				isIndexExpr = true;		
+
+		if (isIndexExpr)
+			typeDef = mModule->mCompiler->mIndexRangeTypeDef;
+		else
+			typeDef = (binaryOp == BfBinaryOp_Range) ? mModule->mCompiler->mRangeTypeDef : mModule->mCompiler->mClosedRangeTypeDef;
+
+		auto allocType = mModule->ResolveTypeDef(typeDef)->ToTypeInstance();		
 		auto alloca = mModule->CreateAlloca(allocType);
 
+		BfTypedValueExpression leftTypedValueExpr;
+		BfTypedValueExpression rightTypedValueExpr;
+		BfTypedValueExpression isClosedTypedValueExpr;
+
 		SizedArray<BfExpression*, 2> argExprs;
-		argExprs.Add(leftExpression);
-		argExprs.Add(rightExpression);
+		if (leftExpression != NULL)
+		{
+			argExprs.Add(leftExpression);
+		}
+		else
+		{
+			leftTypedValueExpr.mRefNode = opToken;
+			leftTypedValueExpr.mTypedValue = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+			argExprs.Add(&leftTypedValueExpr);
+		}
+
+		if (rightExpression != NULL)
+		{
+			argExprs.Add(rightExpression);
+		}
+		else
+		{
+			// Add as a `^0`
+			auto indexType = mModule->ResolveTypeDef(mModule->mCompiler->mIndexTypeDef)->ToTypeInstance();
+			rightTypedValueExpr.mRefNode = opToken;
+
+			auto valueTypeEmpty = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mBaseType), {});
+
+			SizedArray<BfIRValue, 8> tupleMembers;
+			tupleMembers.Add(valueTypeEmpty);
+			tupleMembers.Add(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
+			auto tupleValue = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mFieldInstances[0].mResolvedType), tupleMembers);
+
+			SizedArray<BfIRValue, 8> indexMembers;
+			indexMembers.Add(valueTypeEmpty);
+			indexMembers.Add(tupleValue);
+			indexMembers.Add(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, 1));
+			auto indexValue = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType), indexMembers);
+
+			rightTypedValueExpr.mTypedValue = BfTypedValue(indexValue, indexType);
+			argExprs.Add(&rightTypedValueExpr);
+		}
+
+		if (isIndexExpr)
+		{
+			isClosedTypedValueExpr.mRefNode = opToken;
+			isClosedTypedValueExpr.mTypedValue = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, (binaryOp == BfBinaryOp_ClosedRange) ? 1 : 0), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+			argExprs.Add(&isClosedTypedValueExpr);
+		}
 
 		BfSizedArray<BfExpression*> args = argExprs;
 

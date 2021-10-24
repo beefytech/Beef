@@ -349,6 +349,8 @@ public:
 	BfTypeDef* mSpanTypeDef;	
 	BfTypeDef* mRangeTypeDef;
 	BfTypeDef* mClosedRangeTypeDef;
+	BfTypeDef* mIndexTypeDef;
+	BfTypeDef* mIndexRangeTypeDef;
 		
 	BfTypeDef* mClassVDataTypeDef;	
 	

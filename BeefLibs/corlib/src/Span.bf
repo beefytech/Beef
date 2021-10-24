@@ -134,6 +134,53 @@ namespace System
 			}
 	    }
 
+		public Span<T> this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				T* start;
+				switch (range.mStart)
+				{
+				case .FromFront(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + offset;
+				case .FromEnd(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + mLength - 1 - offset;
+				}
+				T* end;
+				if (range.mIsClosed)
+				{
+					switch (range.mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset < (uint)mLength);
+						end = mPtr + offset + 1;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)offset < (uint)mLength);
+						end = mPtr + mLength - offset;
+					}
+				}
+				else
+				{
+					switch (range.mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + offset;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + mLength - 1 - offset;
+					}
+				}
+
+				return .(start, end - start);
+			}
+		}
+
 		public Span<T> Slice(int index)
 		{
 			Debug.Assert((uint)index <= (uint)mLength);

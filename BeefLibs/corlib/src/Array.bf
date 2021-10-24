@@ -260,6 +260,17 @@ namespace System
 			}
 		}
 
+		public Span<T> this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				return Span<T>(&mFirstElement, mLength)[range];
+			}
+		}
+
 		[Inline]
 		public T* CArray()
 		{

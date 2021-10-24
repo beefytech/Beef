@@ -2277,14 +2277,15 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 					CreateExprFlags innerFlags = (CreateExprFlags)(rhsCreateExprFlags | CreateExprFlags_EarlyExit);
 					if (unaryOp == BfUnaryOp_Cascade)
-					{
 						innerFlags = (CreateExprFlags)(innerFlags | (createExprFlags & CreateExprFlags_AllowVariableDecl));
-					}
+
+					if (unaryOp == BfUnaryOp_PartialRangeThrough) // This allows for just a naked '...'
+						innerFlags = (CreateExprFlags)(innerFlags | CreateExprFlags_AllowEmpty);					
 
 					// Don't attempt binary or unary operations- they will always be lower precedence
 					unaryOpExpr->mExpression = CreateExpressionAfter(unaryOpExpr, innerFlags);
 					if (unaryOpExpr->mExpression == NULL)
-						return NULL;
+						return unaryOpExpr;
 					MoveNode(unaryOpExpr->mExpression, unaryOpExpr);
 				}
 
@@ -2356,7 +2357,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 	if (exprLeft == NULL)
 	{
-		Fail("Expected expression", node);
+		if ((createExprFlags & CreateExprFlags_AllowEmpty) == 0)
+			Fail("Expected expression", node);
 		return NULL;
 	}
 
@@ -2377,7 +2379,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			if (token == BfToken_DblPlus)
 				postUnaryOp = BfUnaryOp_PostIncrement;
 			if (token == BfToken_DblMinus)
-				postUnaryOp = BfUnaryOp_PostDecrement;
+				postUnaryOp = BfUnaryOp_PostDecrement;			
 
 			if (token == BfToken_DotDotDot)
 			{				
@@ -2700,17 +2702,36 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			{
 				if ((createExprFlags & CreateExprFlags_EarlyExit) != 0)
 					return exprLeft;
-				auto binOpExpression = mAlloc->Alloc<BfBinaryOperatorExpression>();
-				ReplaceNode(exprLeft, binOpExpression);
-				binOpExpression->mLeft = exprLeft;
-				binOpExpression->mOp = binOp;
-				MEMBER_SET(binOpExpression, mOpToken, tokenNode);
+
 				mVisitorPos.MoveNext();
 
 				// We only need to check binary operator precedence at the "top level" binary operator
 				rhsCreateExprFlags = (CreateExprFlags)(rhsCreateExprFlags | CreateExprFlags_NoCheckBinOpPrecedence);
 
-				auto exprRight = CreateExpressionAfter(binOpExpression, rhsCreateExprFlags);
+				if (tokenNode->mToken == BfToken_DotDotDot)
+					rhsCreateExprFlags = (CreateExprFlags)(rhsCreateExprFlags | CreateExprFlags_AllowEmpty);
+
+				BfExpression* exprRight = CreateExpressionAfter(tokenNode, rhsCreateExprFlags);
+
+				if (exprRight == NULL)
+				{
+					if (tokenNode->mToken == BfToken_DotDotDot)
+					{
+						auto unaryOpExpression = mAlloc->Alloc<BfUnaryOperatorExpression>();
+						ReplaceNode(exprLeft, unaryOpExpression);
+						unaryOpExpression->mExpression = exprLeft;
+						unaryOpExpression->mOp = BfUnaryOp_PartialRangeFrom;
+						MEMBER_SET(unaryOpExpression, mOpToken, tokenNode);
+						return unaryOpExpression;
+					}
+				}
+
+				auto binOpExpression = mAlloc->Alloc<BfBinaryOperatorExpression>();
+				ReplaceNode(exprLeft, binOpExpression);
+				binOpExpression->mLeft = exprLeft;
+				binOpExpression->mOp = binOp;
+				MEMBER_SET(binOpExpression, mOpToken, tokenNode);
+				
 				if (exprRight == NULL)
 					return binOpExpression;
 				MEMBER_SET(binOpExpression, mRight, exprRight);

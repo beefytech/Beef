@@ -26,7 +26,8 @@ public:
 		CreateExprFlags_ExitOnParenExpr = 0x80,
 		CreateExprFlags_NoCheckBinOpPrecedence = 0x100,
 		CreateExprFlags_BreakOnCascade = 0x200,
-		CreateExprFlags_EarlyExit = 0x400 // Don't attempt binary or ternary operations
+		CreateExprFlags_EarlyExit = 0x400, // Don't attempt binary or ternary operations
+		CreateExprFlags_AllowEmpty = 0x800
 	};
 
 	enum CreateStmtFlags

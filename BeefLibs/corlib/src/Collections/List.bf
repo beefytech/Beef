@@ -211,6 +211,17 @@ namespace System.Collections
 			}
 		}
 
+		public Span<T> this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				return Span<T>(mItems, mSize)[range];
+			}
+		}
+
 		public ref T Front
 		{
 			get

@@ -384,6 +384,8 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mSpanTypeDef = NULL;
 	mRangeTypeDef = NULL;
 	mClosedRangeTypeDef = NULL;
+	mIndexTypeDef = NULL;
+	mIndexRangeTypeDef = NULL;
 	mAttributeTypeDef = NULL;
 	mAttributeUsageAttributeTypeDef = NULL;	
 	mClassVDataTypeDef = NULL;
@@ -6723,6 +6725,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mSpanTypeDef = _GetRequiredType("System.Span", 1);
 	mRangeTypeDef = _GetRequiredType("System.Range");
 	mClosedRangeTypeDef = _GetRequiredType("System.ClosedRange");
+	mIndexTypeDef = _GetRequiredType("System.Index");
+	mIndexRangeTypeDef = _GetRequiredType("System.IndexRange");
 	mAttributeTypeDef = _GetRequiredType("System.Attribute");
 	mAttributeUsageAttributeTypeDef = _GetRequiredType("System.AttributeUsageAttribute");	
 	mClassVDataTypeDef = _GetRequiredType("System.ClassVData");
