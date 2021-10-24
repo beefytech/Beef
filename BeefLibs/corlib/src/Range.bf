@@ -217,9 +217,9 @@ namespace System
 
 	struct IndexRange : RangeExpression
 	{
-		public Index mStart;
-		public Index mEnd;
-		public bool mIsClosed;
+		protected Index mStart;
+		protected Index mEnd;
+		protected bool mIsClosed;
 
 		public this()
 		{

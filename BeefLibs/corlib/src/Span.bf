@@ -177,7 +177,7 @@ namespace System
 			get
 			{
 				T* start;
-				switch (range.mStart)
+				switch (range.[Friend]mStart)
 				{
 				case .FromFront(let offset):
 					Debug.Assert((uint)offset <= (uint)mLength);
@@ -187,9 +187,9 @@ namespace System
 					start = mPtr + mLength - 1 - offset;
 				}
 				T* end;
-				if (range.mIsClosed)
+				if (range.[Friend]mIsClosed)
 				{
-					switch (range.mEnd)
+					switch (range.[Friend]mEnd)
 					{
 					case .FromFront(let offset):
 						Debug.Assert((uint)offset < (uint)mLength);
@@ -201,7 +201,7 @@ namespace System
 				}
 				else
 				{
-					switch (range.mEnd)
+					switch (range.[Friend]mEnd)
 					{
 					case .FromFront(let offset):
 						Debug.Assert((uint)offset <= (uint)mLength);
