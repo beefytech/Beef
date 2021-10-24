@@ -211,6 +211,65 @@ namespace System.Collections
 			}
 		}
 
+		public ref T this[Index index]
+		{
+			[Checked]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mSize - 1 - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mSize);
+				return ref mItems[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mSize - 1 - offset;
+				}
+				return ref mItems[idx];
+			}
+
+			[Checked]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mSize - 1 - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mSize);
+				mItems[idx] = value;
+#if VERSION_LIST
+				mVersion++;
+#endif
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mSize - 1 - offset;
+				}
+				mItems[idx] = value;
+#if VERSION_LIST
+				mVersion++;
+#endif
+			}
+		}
+
 		public Span<T> this[IndexRange range]
 		{
 #if !DEBUG

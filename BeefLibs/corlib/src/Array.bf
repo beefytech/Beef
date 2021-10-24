@@ -260,6 +260,35 @@ namespace System
 			}
 		}
 
+		public ref T this[Index index]
+		{
+			[Checked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				if ((uint)idx >= (uint)mLength)
+					Internal.ThrowIndexOutOfRange(1);
+				return ref (&mFirstElement)[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				return ref (&mFirstElement)[idx];
+			}
+		}
+
 		public Span<T> this[IndexRange range]
 		{
 #if !DEBUG

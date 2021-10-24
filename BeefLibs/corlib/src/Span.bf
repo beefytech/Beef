@@ -127,12 +127,47 @@ namespace System
 		
 		public ref T this[int index]
 	    {
-	    	[Inline]
+	    	[Checked]
 	        get
+			{
+				Runtime.Assert((uint)index < (uint)mLength);
+				return ref mPtr[index];
+			}
+
+			[Unchecked, Inline]
+			get
 			{
 				return ref mPtr[index];
 			}
 	    }
+
+		public ref T this[Index index]
+		{
+			[Checked]
+		    get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mLength);
+				return ref mPtr[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				}
+				return ref mPtr[idx];
+			}
+		}
 
 		public Span<T> this[IndexRange range]
 		{
