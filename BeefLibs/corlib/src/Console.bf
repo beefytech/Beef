@@ -51,6 +51,11 @@ namespace System
 			public uint16[2] mMaximumWindowSize;
 		}
 
+		[CRepr]
+		struct COORD : this(int16 X, int16 Y)
+		{
+		}
+
 		public static ref Event<delegate void (CancelKind cancelKind, ref bool terminate)> OnCancel
 		{
 			get
@@ -77,18 +82,25 @@ namespace System
 		}
 
 		[CLink, CallingConvention(.Stdcall)]
-		static extern int SetConsoleTextAttribute(void* hConsoleOutput, uint16 wAttributes);
+		static extern Windows.IntBool SetConsoleTextAttribute(Windows.Handle hConsoleOutput, uint16 wAttributes);
 
 		[CLink, CallingConvention(.Stdcall)]
-		static extern int GetConsoleScreenBufferInfo(void* hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo);
+		static extern Windows.IntBool GetConsoleScreenBufferInfo(Windows.Handle hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo);
 
 		[CLink, CallingConvention(.Stdcall)]
-		static extern void* GetStdHandle(uint32 nStdHandle);
+		static extern Windows.Handle GetStdHandle(uint32 nStdHandle);
 
 		[CallingConvention(.Stdcall)]
 		function Windows.IntBool ConsoleCtrlHandler(int32 ctrlType);
 		[CLink, CallingConvention(.Stdcall)]
 		static extern Windows.IntBool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, Windows.IntBool addHandler);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern Windows.IntBool FillConsoleOutputCharacterW(Windows.Handle hConsoleOutput, char16 cCharacter, uint32 nLength, COORD dwWriteCoord, uint32* lpNumberOfCharsWritten);
+		[CLink, CallingConvention(.Stdcall)]
+		static extern Windows.IntBool FillConsoleOutputAttribute(Windows.Handle hConsoleOutput, uint16 wAttribute, uint32 nLength, COORD dwWriteCoord, uint32* lpNumberOfAttrsWritten);
+		[CLink, CallingConvention(.Stdcall)]
+		static extern Windows.IntBool SetConsoleCursorPosition(Windows.Handle hConsoleOutput, COORD dwCursorPosition);
 
 		public static this()
 		{
@@ -257,6 +269,49 @@ namespace System
 #else
 			Write("\x1B[{}m", ForegroundColor.AnsiCode);
 			Write("\x1B[{}m", BackgroundColor.AnsiCode + 10);
+#endif
+		}
+
+		public static void Clear()
+		{
+#if BF_PLATFORM_WINDOWS
+			Windows.Handle hStdOut;
+			CONSOLE_SCREEN_BUFFER_INFO csbi;
+			uint32 count;
+			uint32 cellCount;
+			COORD homeCoords = .(0, 0);
+			
+			hStdOut = GetStdHandle( STD_OUTPUT_HANDLE );
+			if (hStdOut == .InvalidHandle)
+				return;
+
+			/* Get the number of cells in the current buffer */
+			if (!GetConsoleScreenBufferInfo( hStdOut, out csbi ))
+				return;
+			cellCount = csbi.mSize[0] * csbi.mSize[1];
+			
+			/* Fill the entire buffer with spaces */
+			if (!FillConsoleOutputCharacterW(
+			  hStdOut,
+			  ' ',
+			  cellCount,
+			  homeCoords,
+			  &count
+			  )) return;
+
+			/* Fill the entire buffer with the current colors and attributes */
+			if (!FillConsoleOutputAttribute(
+			  hStdOut,
+			  csbi.mAttributes,
+			  cellCount,
+			  homeCoords,
+			  &count
+			  )) return;
+
+			/* Move the cursor home */
+			SetConsoleCursorPosition( hStdOut, homeCoords );
+#else
+			Write("\x1B[H\x1B[J");
 #endif
 		}
 	}
