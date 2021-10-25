@@ -135,6 +135,24 @@ namespace Tests
 			}
 		}
 
+		public struct StructN
+		{
+			public int mA = 123;
+		}
+
+		public struct StructO
+		{
+			public StructN mA;
+		}
+
+		public static StructN GetStructN()
+		{
+			var sn = StructN();
+			var so = scope StructO();
+			so.mA = sn;
+			return sn;
+		}
+
 		[Test]
 		static void TestBasics()
 		{
@@ -168,6 +186,9 @@ namespace Tests
 			Test.Assert(sm.a == 12);
 			Test.Assert(sm.b == 23);
 			Test.Assert(sm.c == 200);
+
+			StructN sn = GetStructN();
+			Test.Assert(sn.mA == 123);
 		}
 
 		[Test]

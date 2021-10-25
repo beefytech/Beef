@@ -1261,11 +1261,6 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 	int totalRegs32 = 0;
 	int totalRegs16 = 0;
 
-	if (mContext->mDebugging)
-	{
-		NOP;
-	}
-
 	SizedArray<X64CPURegister, 32> validRegs;
 	if (regKind == BeMCColorizer::RegKind_Ints)
 	{
@@ -1619,11 +1614,6 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 						bestReg = reg;
 				}
 			}
-		}
-
-		if (vregInfo->mType->IsVector())
-		{
-			NOP;
 		}
 
 		if (vregInfo->mSpilled)
@@ -3785,7 +3775,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 7)
+		if (mcOperand.mVRegIdx == 8)
 		{
 			NOP;
 		}
@@ -4182,6 +4172,33 @@ bool BeMCContext::CouldBeReg(const BeMCOperand& operand)
 
 	return true;
 }
+
+// bool BeMCContext::CouldBeReg(const BeMCOperand& operand)
+// {
+// 	if (operand.mKind != BeMCOperandKind_VReg)
+// 		return false;
+// 
+// 	auto vregInfo = GetVRegInfo(operand);
+// 	if ((vregInfo->mIsRetVal) && (mCompositeRetVRegIdx != -1) && (mCompositeRetVRegIdx != operand.mVRegIdx))
+// 	{
+// 		return CouldBeReg(BeMCOperand::FromVReg(mCompositeRetVRegIdx));
+// 	}
+// 
+// 	if (vregInfo->mReg != X64Reg_None)
+// 		return true;
+// 
+// 	if (vregInfo->mForceMem)
+// 		return false;
+// 
+// 	if (vregInfo->mIsExpr)
+// 	{
+// 		if (vregInfo->mRelOffset)
+// 			return false;		
+// 		return CouldBeReg(vregInfo->mRelTo);
+// 	}
+// 
+// 	return !vregInfo->mType->IsNonVectorComposite();
+// }
 
 bool BeMCContext::CheckForce(BeMCVRegInfo* vregInfo)
 {
@@ -6050,6 +6067,12 @@ void BeMCContext::GetValAddr(const BeMCOperand& operand, X64CPURegister& reg, in
 	while (vregInfo->IsDirectRelTo())
 	{
 		vregInfo = GetVRegInfo(vregInfo->mRelTo);
+	}
+
+	if ((mCompositeRetVRegIdx == operand.mVRegIdx) && (vregInfo->mReg != X64Reg_None))
+	{
+		reg = vregInfo->mReg;
+		return;
 	}
 
 	reg = mUseBP ? X64Reg_RBP : X64Reg_RSP;
@@ -8389,12 +8412,7 @@ void BeMCContext::DoRegAssignPass()
 
 void BeMCContext::DoFrameObjPass()
 {
-	BF_ASSERT(mBlocks.size() == 1);
-
-	if (mDebugging)
-	{
-		NOP;
-	}
+	BF_ASSERT(mBlocks.size() == 1);	
 
 	SetCurrentInst(NULL);
 
@@ -9797,7 +9815,6 @@ bool BeMCContext::DoLegalization()
 						for (int* argIdxPtr : vregIndices)
 						{
 							auto mcArg = BeMCOperand::FromEncoded(*argIdxPtr);
-
 							BeRMParamsInfo rmInfo;
 							GetRMParams(mcArg, rmInfo);
 							if ((rmInfo.mMode != BeMCRMMode_Direct) || (rmInfo.mRegB != X64Reg_None) || (rmInfo.mRegA == X64Reg_R11))
@@ -10464,9 +10481,8 @@ bool BeMCContext::DoLegalization()
 								isFinalRun = false;
 							}
 							continue;
-						}
-						// Struct = Struct
-						else //if (arg1.mKind == BeMCOperandKind_VReg)
+						}						
+						else // Struct = Struct
 						{
 							auto arg0Addr = OperandToAddr(arg0);
 							auto arg1Addr = OperandToAddr(arg1);
@@ -11335,11 +11351,6 @@ void BeMCContext::DoRegFinalization()
 
 			if (inst->IsMov())
 			{
-				if (mDebugging)
-				{
-					NOP;
-				}
-
 				bool removeInst = false;
 
 				if (GetFixedOperand(inst->mArg0) == GetFixedOperand(inst->mArg1))
@@ -11369,11 +11380,6 @@ void BeMCContext::DoRegFinalization()
 			{
 			case BeMCInstKind_PreserveVolatiles:
 			{
-				if (mDebugging)
-				{
-					NOP;
-				}
-
 				int preserveIdx;
 				BeMCInst* preserveInst;
 				BeMCInst* restoreInst;
@@ -13207,7 +13213,7 @@ void BeMCContext::DoCodeEmission()
 					X64CPURegister srcReg = X64Reg_R11;
 					int destOfs = 0;
 					int srcOfs = 0;
-
+					
 					if (inst->mArg1)
 					{
 						BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_VRegPair);
@@ -13447,18 +13453,8 @@ void BeMCContext::DoCodeEmission()
 				break;
 			case BeMCInstKind_Mov:
 				{
-					if (mDebugging)
-					{
-						NOP;
-					}
-
 					if (inst->mArg1.mKind == BeMCOperandKind_ConstAgg)
 					{
-						if (mDebugging)
-						{
-							NOP;
-						}
-
 						EmitAggMov(inst->mArg0, inst->mArg1);
 						break;
 					}
@@ -15934,7 +15930,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?PopulateComboBox$ny@PropertyPanel@Editor@Cobalt@bf@@QEAAXPEAVMenu@widgets@Beefy@4@@Z");
+	mDebugging = (function->mName == "?Load@TestProgram@BeefTest@bf@@SA?AUHandle@23@XZ");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
