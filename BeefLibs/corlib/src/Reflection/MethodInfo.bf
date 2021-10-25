@@ -18,6 +18,7 @@ namespace System.Reflection
 		    mMethodData = methodData;
 		}
 
+		public TypeInstance DeclaringType => mTypeInstance;
 		public bool IsInitialized => mMethodData != null;
 		public StringView Name => mMethodData.[Friend]mName;
 		public int ParamCount => mMethodData.[Friend]mParamCount;
@@ -788,7 +789,15 @@ namespace System.Reflection
 				{
 					mIdx++;
 					if (mIdx == mTypeInstance.[Friend]mMethodDataCount)
-						return false;
+					{
+						if (mBindingFlags.HasFlag(.DeclaredOnly))
+							return false;
+						if (mTypeInstance.[Friend]mBaseType == 0)
+							return false;
+						mTypeInstance = Type.[Friend]GetType(mTypeInstance.[Friend]mBaseType) as TypeInstance;
+						mIdx = -1;
+						continue;
+					}	
 					var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
 					bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (methodData.mFlags.HasFlag(.Static)));
 					matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!methodData.mFlags.HasFlag(.Static)));
