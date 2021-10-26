@@ -8686,6 +8686,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				prevBindResult.Restore();
 				auto fieldTypeInst = fieldVal.mType->ToTypeInstance();
 				MarkResultUsed();
+				if (mFunctionBindResult != NULL)
+				{
+					mFunctionBindResult->mOrigTarget = BfTypedValue();
+				}
 				return MatchMethod(targetSrc, NULL, fieldVal, false, false, "Invoke", argValues, methodGenericArguments, checkedKind);
 			}
 			if (fieldVal.mType->IsVar())
