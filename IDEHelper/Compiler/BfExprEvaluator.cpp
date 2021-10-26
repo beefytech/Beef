@@ -5049,6 +5049,9 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		{
 			if (unaryOpExpr->mOp == BfUnaryOp_Cascade)
 			{
+				if ((mBfEvalExprFlags & BfEvalExprFlags_InCascade) != 0)
+					mModule->Fail("Cascade already specified on call target", unaryOpExpr->mOpToken);
+
 				resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_Cascade);
 				argExpr = unaryOpExpr->mExpression;
 			}
