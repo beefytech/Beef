@@ -210,6 +210,25 @@ namespace Beefy.gfx
                 }
             }
         }
+
+		public Image[] CreateImageCels(int32 cols, int32 rows)
+		{
+		    int32 celW = mSrcWidth / cols;
+		    int32 celH = mSrcHeight / rows;
+
+		    Debug.Assert(celW * cols == mSrcWidth);
+		    Debug.Assert(celH * rows == mSrcHeight);
+
+			Image[] celImages = new .[cols * rows];
+		    for (int32 row = 0; row < rows; row++)
+		    {
+		        for (int32 col = 0; col < cols; col++)
+		        {
+		            celImages[row * cols + col] = CreateImageSegment(col * celW, row * celH, celW, celH);
+		        }
+		    }
+			return celImages;
+		}
     }
 #else    
     public class Image : IDrawable
