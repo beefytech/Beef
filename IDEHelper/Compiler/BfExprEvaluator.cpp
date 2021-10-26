@@ -20859,7 +20859,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		}
 		else
 		{
-			// Add as a `^0`
+			// Add as a `^1`
 			auto indexType = mModule->ResolveTypeDef(mModule->mCompiler->mIndexTypeDef)->ToTypeInstance();
 			rightTypedValueExpr.mRefNode = opToken;
 
@@ -20867,7 +20867,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 
 			SizedArray<BfIRValue, 8> tupleMembers;
 			tupleMembers.Add(valueTypeEmpty);
-			tupleMembers.Add(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
+			tupleMembers.Add(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1));
 			auto tupleValue = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mFieldInstances[0].mResolvedType), tupleMembers);
 
 			SizedArray<BfIRValue, 8> indexMembers;

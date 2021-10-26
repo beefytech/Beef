@@ -145,23 +145,26 @@ namespace Tests
 			Test.Assert(total == 20+30+40+50+60+70+80+90+100);
 
 			total = 0;
-			for (int i in iList[...^1])
+			for (int i in iList[...^2])
 				total += i;
 			Test.Assert(total == 10+20+30+40+50+60+70+80+90);
 
 			total = 0;
-			for (int i in iList[..<^1])
+			for (int i in iList[..<^2])
 				total += i;
 			Test.Assert(total == 10+20+30+40+50+60+70+80);
 
 			total = 0;
-			for (int i in iList[...^1][1...^1])
+			for (int i in iList[...^2][1...^2])
 				total += i;
 			Test.Assert(total == 20+30+40+50+60+70+80);
 
 			var str = scope String();
 			(2...^3).ToString(str);
 			Test.Assert(str == "2...^3");
+
+			int[] iEmptyArr = scope .();
+			var emptySpan = iEmptyArr[...];
 		}
 
 		public static void TestEnumerator1(EnumeratorTest e)

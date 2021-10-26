@@ -269,7 +269,7 @@ namespace System
 				switch (index)
 				{
 				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				case .FromEnd(let offset): idx = mLength - offset;
 				}
 				if ((uint)idx >= (uint)mLength)
 					Internal.ThrowIndexOutOfRange(1);
@@ -283,7 +283,7 @@ namespace System
 				switch (index)
 				{
 				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				case .FromEnd(let offset): idx = mLength - offset;
 				}
 				return ref (&mFirstElement)[idx];
 			}

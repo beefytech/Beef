@@ -220,7 +220,7 @@ namespace System.Collections
 				switch (index)
 				{
 				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mSize - 1 - offset;
+				case .FromEnd(let offset): idx = mSize - offset;
 				}
 				Runtime.Assert((uint)idx < (uint)mSize);
 				return ref mItems[idx];
@@ -233,7 +233,7 @@ namespace System.Collections
 				switch (index)
 				{
 				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mSize - 1 - offset;
+				case .FromEnd(let offset): idx = mSize - offset;
 				}
 				return ref mItems[idx];
 			}
@@ -245,7 +245,7 @@ namespace System.Collections
 				switch (index)
 				{
 				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mSize - 1 - offset;
+				case .FromEnd(let offset): idx = mSize - offset;
 				}
 				Runtime.Assert((uint)idx < (uint)mSize);
 				mItems[idx] = value;
@@ -261,7 +261,7 @@ namespace System.Collections
 				switch (index)
 				{
 				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mSize - 1 - offset;
+				case .FromEnd(let offset): idx = mSize - offset;
 				}
 				mItems[idx] = value;
 #if VERSION_LIST

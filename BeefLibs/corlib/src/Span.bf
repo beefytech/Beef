@@ -150,7 +150,7 @@ namespace System
 				switch (index)
 				{
 				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				case .FromEnd(let offset): idx = mLength - offset;
 				}
 				Runtime.Assert((uint)idx < (uint)mLength);
 				return ref mPtr[idx];
@@ -163,7 +163,7 @@ namespace System
 				switch (index)
 				{
 				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mLength - 1 - offset;
+				case .FromEnd(let offset): idx = mLength - offset;
 				}
 				return ref mPtr[idx];
 			}
@@ -184,7 +184,7 @@ namespace System
 					start = mPtr + offset;
 				case .FromEnd(let offset):
 					Debug.Assert((uint)offset <= (uint)mLength);
-					start = mPtr + mLength - 1 - offset;
+					start = mPtr + mLength - offset;
 				}
 				T* end;
 				if (range.[Friend]mIsClosed)
@@ -195,8 +195,8 @@ namespace System
 						Debug.Assert((uint)offset < (uint)mLength);
 						end = mPtr + offset + 1;
 					case .FromEnd(let offset):
-						Debug.Assert((uint)offset < (uint)mLength);
-						end = mPtr + mLength - offset;
+						Debug.Assert((uint)(offset - 1) <= (uint)mLength);
+						end = mPtr + mLength - offset + 1;
 					}
 				}
 				else
@@ -208,7 +208,7 @@ namespace System
 						end = mPtr + offset;
 					case .FromEnd(let offset):
 						Debug.Assert((uint)offset <= (uint)mLength);
-						end = mPtr + mLength - 1 - offset;
+						end = mPtr + mLength - offset;
 					}
 				}
 
