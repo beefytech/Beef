@@ -1175,11 +1175,6 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 {
 	module->PopulateType(mReturnType);
 
-	if (mMethodDef->mName.Contains("GroupBy$"))
-	{
-		NOP;
-	}
-
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
 	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2, forceStatic)))
@@ -1260,7 +1255,10 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 				checkLowered = true;
 		}
 		else
-		{			
+		{	
+			if ((checkType->IsComposite()) && (checkType->IsIncomplete()))
+				module->PopulateType(checkType, BfPopulateType_Data);
+
 			if (checkType->IsMethodRef())
 			{
 				doSplat = true;
