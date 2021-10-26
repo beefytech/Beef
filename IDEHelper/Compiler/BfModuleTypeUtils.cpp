@@ -9153,17 +9153,22 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			if (findName == "Self")
 			{
 				BfType* selfType = mCurTypeInstance;
-				if (selfType->IsInterface()) // For interfaces, 'Self' refers to the identity of the implementing type, so we use a placeholder
-					return GetPrimitiveType(BfTypeCode_Self);
-				else				
-					resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);				
-
-				if (selfType->IsBoxed())
-					selfType = selfType->GetUnderlyingType();
-				if ((resolveFlags & BfResolveTypeRefFlag_NoResolveGenericParam) != 0)
+				if (selfType->IsTypeAlias())
+					selfType = GetOuterType(selfType);
+				if (selfType != NULL)
 				{
-					if ((selfType->IsSpecializedType()) || (selfType->IsUnspecializedTypeVariation()))
-						selfType = ResolveTypeDef(selfType->ToTypeInstance()->mTypeDef, populateType);
+					if (selfType->IsInterface()) // For interfaces, 'Self' refers to the identity of the implementing type, so we use a placeholder
+						return GetPrimitiveType(BfTypeCode_Self);
+					else
+						resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);
+
+					if (selfType->IsBoxed())
+						selfType = selfType->GetUnderlyingType();
+					if ((resolveFlags & BfResolveTypeRefFlag_NoResolveGenericParam) != 0)
+					{
+						if ((selfType->IsSpecializedType()) || (selfType->IsUnspecializedTypeVariation()))
+							selfType = ResolveTypeDef(selfType->ToTypeInstance()->mTypeDef, populateType);
+					}
 				}
 				if (selfType != NULL)
 				{
@@ -9180,15 +9185,19 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			}
 			else if (findName == "SelfBase")
 			{
-				BfType* selfType = mCurTypeInstance;				
-				resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);
-
-				if (selfType->IsBoxed())
-					selfType = selfType->GetUnderlyingType();
-				if ((resolveFlags & BfResolveTypeRefFlag_NoResolveGenericParam) != 0)
+				BfType* selfType = mCurTypeInstance;
+				if (selfType->IsTypeAlias())
+					selfType = GetOuterType(selfType);				
+				if (selfType != NULL)
 				{
-					if ((selfType->IsSpecializedType()) || (selfType->IsUnspecializedTypeVariation()))
-						selfType = ResolveTypeDef(selfType->ToTypeInstance()->mTypeDef, populateType);
+					resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);
+					if (selfType->IsBoxed())
+						selfType = selfType->GetUnderlyingType();
+					if ((resolveFlags & BfResolveTypeRefFlag_NoResolveGenericParam) != 0)
+					{
+						if ((selfType->IsSpecializedType()) || (selfType->IsUnspecializedTypeVariation()))
+							selfType = ResolveTypeDef(selfType->ToTypeInstance()->mTypeDef, populateType);
+					}
 				}
 				BfType* baseType = NULL;
 				if (selfType != NULL)
@@ -9213,15 +9222,20 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			else if (findName == "SelfOuter")
 			{
 				BfType* selfType = mCurTypeInstance;
-				resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);
-				if (selfType->IsBoxed())
-					selfType = selfType->GetUnderlyingType();
-				if ((resolveFlags & BfResolveTypeRefFlag_NoResolveGenericParam) != 0)
+				if (selfType->IsTypeAlias())
+					selfType = GetOuterType(selfType);
+				if (selfType != NULL)
 				{
-					if ((selfType->IsSpecializedType()) || (selfType->IsUnspecializedTypeVariation()))
-						selfType = ResolveTypeDef(selfType->ToTypeInstance()->mTypeDef, populateType);
+					resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_FromIndirectSource);
+					if (selfType->IsBoxed())
+						selfType = selfType->GetUnderlyingType();
+					if ((resolveFlags & BfResolveTypeRefFlag_NoResolveGenericParam) != 0)
+					{
+						if ((selfType->IsSpecializedType()) || (selfType->IsUnspecializedTypeVariation()))
+							selfType = ResolveTypeDef(selfType->ToTypeInstance()->mTypeDef, populateType);
+					}
+					selfType = GetOuterType(selfType->ToTypeInstance());
 				}
-				selfType = GetOuterType(mCurTypeInstance);				
 				if (selfType == NULL)
 					Fail("'SelfOuter' type is not usable here", typeRef);
 				return ResolveTypeResult(typeRef, selfType, populateType, resolveFlags);
