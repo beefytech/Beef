@@ -299,6 +299,8 @@ namespace System
 			return Enumerator(this);
 		}
 
+		public ReverseEnumerator Reversed => ReverseEnumerator(this);
+
 		public override void ToString(String strBuffer)
 		{
 			strBuffer.Append("(");
@@ -362,6 +364,95 @@ namespace System
 				get
 				{
 					return mIndex - 1;
+				}				
+			}
+
+			public int Length
+			{
+				get
+				{
+					return mList.mLength;
+				}				
+			}
+
+		    public void Reset() mut
+		    {
+		        mIndex = 0;
+		        mCurrent = null;
+		    }
+
+
+			public Result<T> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+
+			public Result<T*> GetNextRef() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return &CurrentRef;
+			}
+		}
+
+		public struct ReverseEnumerator : IEnumerator<T>, IRefEnumerator<T*>
+		{
+		    private Span<T> mList;
+		    private int mIndex;
+		    private T* mCurrent;
+
+		    public this(Span<T> list)
+		    {
+		        mList = list;
+		        mIndex = list.mLength - 1;
+		        mCurrent = null;
+		    }
+
+		    public void Dispose()
+		    {
+		    }
+
+		    public bool MoveNext() mut
+		    {
+		        if (mIndex >= 0)
+		        {
+		            mCurrent = &mList.mPtr[mIndex];
+		            mIndex--;
+		            return true;
+		        }			   
+		        return MoveNextRare();
+		    }
+
+		    private bool MoveNextRare() mut
+		    {
+		    	mIndex = mList.mLength + 1;
+		        mCurrent = null;
+		        return false;
+		    }
+
+		    public T Current
+		    {
+		        get
+		        {
+		            return *mCurrent;
+		        }
+		    }
+
+			public ref T CurrentRef
+			{
+			    get
+			    {
+			        return ref *mCurrent;
+			    }
+			}
+
+			public int Index
+			{
+				get
+				{
+					return mIndex + 1;
 				}				
 			}
 
