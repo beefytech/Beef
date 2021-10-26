@@ -9008,7 +9008,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 
 			if ((paramIdx == 0) && (
 				(token == BfToken_In) || (token == BfToken_Out) || (token == BfToken_Ref) || (token == BfToken_Mut) ||
-				(token == BfToken_Delegate) || (token == BfToken_Function) ||
+				(token == BfToken_Delegate) || (token == BfToken_Function) || (token == BfToken_Decltype) ||
 				(token == BfToken_Params) || (token == BfToken_LParen) ||
 				(token == BfToken_Var) || (token == BfToken_LBracket) ||
 				(token == BfToken_ReadOnly) || (token == BfToken_DotDotDot)))
@@ -9064,7 +9064,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 		{
 			BfToken token = tokenNode->GetToken();
 			if ((token == BfToken_Var) || (token == BfToken_LParen) ||
-				(token == BfToken_Delegate) || (token == BfToken_Function) ||
+				(token == BfToken_Delegate) || (token == BfToken_Function) || (token == BfToken_Decltype) ||
 				(token == BfToken_DotDotDot))
 			{
 				mVisitorPos.MoveNext();
