@@ -1,4 +1,4 @@
-delete mConstHolder; #include "BeefySysLib/util/AllocDebug.h"
+#include "BeefySysLib/util/AllocDebug.h"
 
 #include "BfCompiler.h"
 #include "BfParser.h"
