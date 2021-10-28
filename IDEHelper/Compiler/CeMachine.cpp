@@ -3362,7 +3362,17 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		auto aggConstant = (BfConstantAgg*)constant;
 		if (type->IsSizedArray())
 		{
-			return false;
+			auto sizedArrayType = (BfSizedArrayType*)type;
+			for (int i = 0; i < sizedArrayType->mSize; i++)
+			{
+				auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[i]);
+				if (fieldConstant == NULL)
+					return false;
+				if (!WriteConstant(module, addr + i * sizedArrayType->mElementType->mSize, fieldConstant, sizedArrayType->mElementType))
+					return false;
+			}
+
+			return true;
 		}
 		else if (type->IsArray())
 		{
@@ -3476,6 +3486,13 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 		auto constTarget = module->mBfIRBuilder->GetConstantById(constBitCast->mTarget);
 		return WriteConstant(module, addr, constTarget, type);
+	}
+
+	if (constant->mConstType == BfConstType_BitCastNull)
+	{
+		BF_ASSERT(type->IsPointer() || type->IsObjectOrInterface());
+		memset(mMemory.mVals + addr, 0, type->mSize);
+		return true;
 	}
 	
 	if (constant->mConstType == BfConstType_GEP32_2)
@@ -4110,9 +4127,8 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 		auto constant = module->mBfIRBuilder->GetConstant(arg);
 		if (paramType->IsComposite())
-		{
-			auto paramTypeInst = paramType->ToTypeInstance();
-			useCompositeAddr -= paramTypeInst->mInstSize;
+		{			
+			useCompositeAddr -= paramType->mSize;
 			if (!WriteConstant(module, useCompositeAddr, constant, paramType, isParams))
 			{
 				Fail(StrFormat("Failed to process argument for param '%s'", methodInstance->GetParamName(paramIdx).c_str()));
