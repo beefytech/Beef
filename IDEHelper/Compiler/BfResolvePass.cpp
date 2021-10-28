@@ -55,44 +55,50 @@ void BfResolvePassData::RecordReplaceNode(BfAstNode* node)
 }
 
 void BfResolvePassData::HandleMethodReference(BfAstNode* node, BfTypeDef* typeDef, BfMethodDef* methodDef)
-{	
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Method) && (mSymbolReferenceTypeDef == typeDef) && (mSymbolReferenceMethodIdx == methodDef->mIdx))	
+{
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Method) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+		(mSymbolReferenceMethodIdx == methodDef->mIdx) && (!methodDef->mDeclaringType->IsEmitted()))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandleFieldReference(BfAstNode* node, BfTypeDef* typeDef, BfFieldDef* fieldDef)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Field) && (mSymbolReferenceTypeDef == typeDef) && (mSymbolReferenceFieldIdx == fieldDef->mIdx))
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Field) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+		(mSymbolReferenceFieldIdx == fieldDef->mIdx) && (!fieldDef->mDeclaringType->IsEmitted()))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandlePropertyReference(BfAstNode* node, BfTypeDef* typeDef, BfPropertyDef* propDef)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Property) && (mSymbolReferenceTypeDef == typeDef) && (mSymbolReferencePropertyIdx == propDef->mIdx))
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Property) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+		(mSymbolReferencePropertyIdx == propDef->mIdx) && (!propDef->mDeclaringType->IsEmitted()))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandleLocalReference(BfIdentifierNode* identifier, BfTypeDef* typeDef, BfMethodDef* methodDef, int localVarIdx)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Local) && (mSymbolReferenceTypeDef == typeDef) && (mSymbolReferenceMethodIdx == methodDef->mIdx) && (localVarIdx == mSymbolReferenceLocalIdx))
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Local) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+		(mSymbolReferenceMethodIdx == methodDef->mIdx) && (localVarIdx == mSymbolReferenceLocalIdx) && (!methodDef->mDeclaringType->IsEmitted()))
 		RecordReplaceNode(identifier);
 }
 
 void BfResolvePassData::HandleTypeGenericParam(BfAstNode* node, BfTypeDef* typeDef, int genericParamIdx)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_TypeGenericParam) && (mSymbolReferenceTypeDef == typeDef) && (genericParamIdx == mSymbolTypeGenericParamIdx))
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_TypeGenericParam) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && (genericParamIdx == mSymbolTypeGenericParamIdx))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandleMethodGenericParam(BfAstNode* node, BfTypeDef* typeDef, BfMethodDef* methodDef, int genericParamIdx)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_MethodGenericParam) && (mSymbolReferenceTypeDef == typeDef) && (mSymbolReferenceMethodIdx == methodDef->mIdx) && (genericParamIdx == mSymbolMethodGenericParamIdx))
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_MethodGenericParam) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+		(mSymbolReferenceMethodIdx == methodDef->mIdx) && (genericParamIdx == mSymbolMethodGenericParamIdx) && (!methodDef->mDeclaringType->IsEmitted()))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandleLocalReference(BfIdentifierNode* identifier, BfIdentifierNode* origNameNode, BfTypeDef* typeDef, BfMethodDef* methodDef, int localVarIdx)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Local) && (mSymbolReferenceTypeDef == typeDef) && (mSymbolReferenceMethodIdx == methodDef->mIdx) && (localVarIdx == mSymbolReferenceLocalIdx))
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Local) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+		(mSymbolReferenceMethodIdx == methodDef->mIdx) && (localVarIdx == mSymbolReferenceLocalIdx) && (!methodDef->mDeclaringType->IsEmitted()))
 	{
 		if (origNameNode == NULL)
 			origNameNode = identifier;

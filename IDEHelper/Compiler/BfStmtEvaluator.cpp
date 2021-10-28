@@ -3908,8 +3908,8 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		bool canAlwaysDelete = checkType->IsDelegate() || checkType->IsFunction() || checkType->IsArray();
 		if (auto checkTypeInst = checkType->ToTypeInstance())
 		{
-			if ((checkTypeInst->mTypeDef == mCompiler->mDelegateTypeDef) || 
-				(checkTypeInst->mTypeDef == mCompiler->mFunctionTypeDef))
+			if ((checkTypeInst->IsInstanceOf(mCompiler->mDelegateTypeDef)) || 
+				(checkTypeInst->IsInstanceOf(mCompiler->mFunctionTypeDef)))
 				canAlwaysDelete = true;
 		}
 
@@ -6064,7 +6064,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			if (genericParamInst->mTypeConstraint->IsGenericTypeInstance())
 			{
 				auto genericConstraintType = (BfTypeInstance*)genericParamInst->mTypeConstraint;				
-				if (genericConstraintType->mTypeDef == mCompiler->mSizedArrayTypeDef)
+				if (genericConstraintType->IsInstanceOf(mCompiler->mSizedArrayTypeDef))
 				{
 					varType = genericConstraintType->mGenericTypeInfo->mTypeGenericArguments[0];
 					isVarEnumerator = true;
@@ -6160,7 +6160,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 
 			auto _CheckInterface = [&](BfTypeInstance* interface)
 			{
-				if (interface->mTypeDef == (isRefExpression ? mCompiler->mGenericIRefEnumeratorTypeDef : mCompiler->mGenericIEnumeratorTypeDef))
+				if (interface->IsInstanceOf(isRefExpression ? mCompiler->mGenericIRefEnumeratorTypeDef : mCompiler->mGenericIEnumeratorTypeDef))
 				{
 					if (genericItrInterface != NULL)
 					{
@@ -6192,7 +6192,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					_CheckInterface(interface);	
 				}
 
-				if (enumeratorTypeInst->mTypeDef == (isRefExpression ? mCompiler->mGenericIRefEnumeratorTypeDef : mCompiler->mGenericIEnumeratorTypeDef))
+				if (enumeratorTypeInst->IsInstanceOf(isRefExpression ? mCompiler->mGenericIRefEnumeratorTypeDef : mCompiler->mGenericIEnumeratorTypeDef))
 				{
 					itrInterface = enumeratorTypeInst;
 					genericItrInterface = itrInterface->ToGenericTypeInstance();

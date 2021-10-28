@@ -1734,8 +1734,8 @@ public:
 	BfModuleOptions GetModuleOptions();
 	BfCheckedKind GetDefaultCheckedKind();
 	void FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext);
-	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& src);
-	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& ctxString, BfAstNode* refNode);
+	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, const StringImpl& src);
+	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode);
 	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes);
 	void CEMixin(BfAstNode* refNode, const StringImpl& src);
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind);

@@ -1815,7 +1815,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		outerTypeDef->mNestedTypes.push_back(mCurActualTypeDef);
 	}
 
-	BfLogSysM("Creating TypeDef %p Hash:%d from TypeDecl: %p Source: %p ResolvePass: %d AutoComplete:%d PrevRevision:%d\n", mCurTypeDef, mSystem->mTypeDefs.GetHash(mCurTypeDef), typeDeclaration, 
+	BfLogSysM("Creating TypeDef %p Hash:%d from TypeDecl: %p Source: %p ResolvePass: %d AutoComplete:%d PrevRevision:%d\n", mCurTypeDef, mCurTypeDef->mHash, typeDeclaration, 
 		typeDeclaration->GetSourceData(), mResolvePassData != NULL, isAutoCompleteTempType, prevRevisionTypeDef);				
 	
 	BF_ASSERT(mCurTypeDef->mNameEx == NULL);

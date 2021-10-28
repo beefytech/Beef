@@ -1822,7 +1822,7 @@ public:
 
 class BfCeTypeInfo
 {
-public:
+public:	
 	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
 	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
 	Val128 mHash;
@@ -1833,7 +1833,7 @@ public:
 	BfCeTypeInfo()
 	{
 		mFailed = false;
-		mNext = NULL;
+		mNext = NULL;		
 	}
 };
 
@@ -1963,9 +1963,10 @@ public:
 	
 	~BfTypeInstance();	
 	
-	void ReleaseData();
+	void Dispose();
+	void ReleaseData();	
 
-	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { return typeDef == mTypeDef; }
+	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { return typeDef->GetDefinition() == mTypeDef->GetDefinition(); }
 	virtual BfModule* GetModule() override { return mModule; }
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }

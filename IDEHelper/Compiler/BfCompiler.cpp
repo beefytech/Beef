@@ -2935,7 +2935,7 @@ void BfCompiler::UpdateRevisedTypes()
 		auto typeDef = *typeDefItr;
 		auto origTypeDef = typeDef;
 		if (typeDef->mNextRevision != NULL)
-			typeDef = typeDef->mNextRevision;		
+			typeDef = typeDef->mNextRevision;
 		if (typeDef->mDupDetectedRevision == mRevision)
 		{
 			++typeDefItr;
@@ -4750,6 +4750,7 @@ void BfCompiler::GetSymbolReferences()
 		if ((typeDef == NULL) || (typeDef->mTypeDeclaration == NULL))
 			return;
 
+		typeDef = typeDef->GetLatest();
 		mResolvePassData->mSymbolReferenceTypeDef = typeDef;
 		auto replaceType = module->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);
 		module->PopulateType(replaceType);
@@ -4764,7 +4765,7 @@ void BfCompiler::GetSymbolReferences()
 				for (auto type : mContext->mResolvedTypes)
 				{
 					auto typeInst = type->ToTypeInstance();
-					if ((typeInst != replaceTypeInst) && (typeInst != NULL) && (typeInst->mTypeDef == typeDef))
+					if ((typeInst != replaceTypeInst) && (typeInst != NULL) && (typeInst->mTypeDef->GetLatest() == typeDef))
 						AddDepsToRebuildTypeList(typeInst, rebuildTypeInstList);
 				}
 			}
@@ -8711,11 +8712,13 @@ int BfCompiler::GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer)
 		return -1;
 
 	auto typeDef = typeInst->mTypeDef;
-
-	if (typeDef->mEmitParser == NULL)
+	if (typeDef->mEmitParent == NULL)
+		return -1;
+	auto emitParser = typeDef->mSource->ToParser();
+	if (emitParser == NULL)
 		return -1;
 	if (outBuffer != NULL)
-		outBuffer->Append(typeDef->mEmitParser->mSrc, typeDef->mEmitParser->mSrcLength);
+		outBuffer->Append(emitParser->mSrc, emitParser->mSrcLength);
 	return typeInst->mRevision;
 }
 

@@ -2675,7 +2675,7 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 			auto mixinOwner = mCurMethodState->mMixinState->mMixinMethodInstance->GetOwner();
 			curCheckType = mixinOwner;
 		}
-		bool allowPrivate = (curCheckType != NULL) && (memberOwner->mTypeDef == curCheckType->mTypeDef);
+		bool allowPrivate = (curCheckType != NULL) && (memberOwner->IsInstanceOf(curCheckType->mTypeDef));
 		if (curCheckType != NULL)
 			allowPrivate |= IsInnerType(curCheckType->mTypeDef, memberOwner->mTypeDef);
 		if (allowPrivate)
@@ -3561,7 +3561,7 @@ bool BfModule::IsAttribute(BfTypeInstance* typeInst)
 	auto checkTypeInst = typeInst;
 	while (checkTypeInst != NULL)
 	{
-		if (checkTypeInst->mTypeDef == mCompiler->mAttributeTypeDef)
+		if (checkTypeInst->IsInstanceOf(mCompiler->mAttributeTypeDef))
 			return true;
 
 		checkTypeInst = checkTypeInst->mBaseType;
@@ -3685,10 +3685,10 @@ bool BfModule::CheckInternalProtection(BfTypeDef* usingTypeDef)
 
 	for (auto internalType : internalAccessSet->mTypes)
 	{
-		auto checkTypeDef = usingTypeDef;
+		auto checkTypeDef = usingTypeDef->GetDefinition();
 		while (checkTypeDef != NULL)
 		{
-			if (checkTypeDef == internalType->mTypeDef)
+			if (checkTypeDef == internalType->mTypeDef->GetDefinition())
 				return true;
 			checkTypeDef = checkTypeDef->mOuterType;
 		}
@@ -4222,7 +4222,7 @@ bool BfModule::IsThreadLocal(BfFieldInstance * fieldInstance)
 	{
 		for (auto customAttr : fieldInstance->mCustomAttributes->mAttributes)
 		{
-			if (customAttr.mType->ToTypeInstance()->mTypeDef == mCompiler->mThreadStaticAttributeTypeDef)
+			if (customAttr.mType->ToTypeInstance()->IsInstanceOf(mCompiler->mThreadStaticAttributeTypeDef))
 				return true;			
 		}
 	}
@@ -4429,7 +4429,7 @@ void BfModule::CreateDynamicCastMethod()
 		BfTypeVector genericArgs;
 		for (int i = 0; i < (int) genericTypeInst->mGenericParamDefs.size(); i++)
 			genericArgs.push_back(GetGenericParamType(BfGenericParamKind_Type, i));
-		auto unboundType = ResolveTypeDef(mCurTypeInstance->mTypeDef, genericArgs, BfPopulateType_Declaration);
+		auto unboundType = ResolveTypeDef(mCurTypeInstance->mTypeDef->GetDefinition(), genericArgs, BfPopulateType_Declaration);
 		typeMatches.push_back(unboundType->mTypeId);
 	}
 
@@ -4447,9 +4447,9 @@ void BfModule::CreateDynamicCastMethod()
 		}
 
 		auto innerTypeInst = innerType->ToTypeInstance();
-		if ((innerTypeInst->mTypeDef == mCompiler->mSizedArrayTypeDef) ||
-			(innerTypeInst->mTypeDef == mCompiler->mPointerTTypeDef) ||
-			(innerTypeInst->mTypeDef == mCompiler->mMethodRefTypeDef))
+		if ((innerTypeInst->IsInstanceOf(mCompiler->mSizedArrayTypeDef)) ||
+			(innerTypeInst->IsInstanceOf(mCompiler->mPointerTTypeDef)) ||
+			(innerTypeInst->IsInstanceOf(mCompiler->mMethodRefTypeDef)))
 		{
 			PopulateType(innerTypeInst);
 			//TODO: What case was this supposed to handle?
@@ -6118,7 +6118,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					auto argType = ctorMethodInstance->GetParamType(argIdx);
 					if (argType->IsObject())
 					{
-						BF_ASSERT(argType->ToTypeInstance()->mTypeDef == mCompiler->mStringTypeDef);
+						BF_ASSERT(argType->ToTypeInstance()->IsInstanceOf(mCompiler->mStringTypeDef));
 
 						int stringId = constant->mInt32;
 						int* orderedIdPtr;
@@ -6980,7 +6980,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	{
 		auto genericTypeInstance = typeInstance->ToGenericTypeInstance();
 		auto reflectSpecializedGenericType = ResolveTypeDef(mCompiler->mReflectSpecializedGenericType);
-		auto unspecializedType = ResolveTypeDef(typeInstance->mTypeDef);
+		auto unspecializedType = ResolveTypeDef(typeInstance->mTypeDef->GetDefinition());
 
 		SizedArray<BfIRValue, 4> resolvedTypes;
 		for (auto typeGenericArg : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
@@ -7864,7 +7864,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					if (convCheckConstraint->IsGenericTypeInstance())
 					{
 						auto convCheckConstraintInst = (BfTypeInstance*)convCheckConstraint;
-						if (convCheckConstraintInst->mTypeDef == mCompiler->mSizedArrayTypeDef)
+						if (convCheckConstraintInst->IsInstanceOf(mCompiler->mSizedArrayTypeDef))
 						{
 							if (convCheckConstraintInst->mGenericTypeInfo->mTypeGenericArguments[0] == sizedArrayType->mElementType)
 							{
@@ -9577,17 +9577,18 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 	
 	auto irb = mBfIRBuilder;
 
+	auto checkBB = irb->CreateBlock("as.check");
+	auto isNull = irb->CreateIsNull(targetValue.mValue);
+	mBfIRBuilder->CreateCondBr(isNull, nullSucceeds ? trueBlock : falseBlock, checkBB);
+
 	if (mIsComptimeModule)
 	{
+		AddBasicBlock(checkBB);
 		auto callResult = mBfIRBuilder->Comptime_DynamicCastCheck(targetValue.mValue, targetType->mTypeId, mBfIRBuilder->MapType(mContext->mBfObjectType));
 		auto cmpResult = mBfIRBuilder->CreateCmpNE(callResult, GetDefaultValue(mContext->mBfObjectType));
 		irb->CreateCondBr(cmpResult, trueBlock, falseBlock);
 		return;
-	}
-
-	auto checkBB = irb->CreateBlock("as.check");
-	auto isNull = irb->CreateIsNull(targetValue.mValue);
-	mBfIRBuilder->CreateCondBr(isNull, nullSucceeds ? trueBlock : falseBlock, checkBB);
+	}	
 
 	auto intType = GetPrimitiveType(BfTypeCode_IntPtr);
 	auto intPtrType = CreatePointerType(intType);
@@ -10045,8 +10046,10 @@ BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* met
 	
 	if (methodInstance->mMethodDef->mIsLocalMethod)
 		return methodInstance;
+	if (methodInstance->mMethodDef->mDeclaringType->IsEmitted())
+		return methodInstance;
 
-	auto unspecializedType = ResolveTypeDef(genericType->mTypeDef);	
+	auto unspecializedType = ResolveTypeDef(genericType->mTypeDef->GetDefinition());	
 	if (unspecializedType == NULL)
 	{
 		AssertErrorState();
@@ -11055,7 +11058,6 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			//  We solve it by having a 'bypass' for known attributes that Object depends on
 			if ((attributesDirective->mArguments.empty()) && (autoComplete == NULL) && (attrType != NULL) && (attrType->IsTypeInstance()))
 			{
-				//if (attrTypeDef == mCompiler->mCReprAttributeTypeDef)
 				if (attrType->IsInstanceOf(mCompiler->mCReprAttributeTypeDef))
 				{										
 					for (auto methodDef : attrTypeDef->mMethods)
@@ -11576,7 +11578,7 @@ void BfModule::ProcessCustomAttributeData()
 	auto checkTypeInst = mCurTypeInstance->mBaseType;
 	while (checkTypeInst != NULL)
 	{
-		if (checkTypeInst->mTypeDef == mCompiler->mAttributeTypeDef)
+		if (checkTypeInst->IsInstanceOf(mCompiler->mAttributeTypeDef))
 			isAttribute = true;
 		checkTypeInst = checkTypeInst->mBaseType;
 	}
@@ -11590,7 +11592,7 @@ void BfModule::ProcessCustomAttributeData()
 	{
 		for (auto& customAttribute : mCurTypeInstance->mCustomAttributes->mAttributes)
 		{			
-			if (customAttribute.mType->mTypeDef == mCompiler->mAttributeUsageAttributeTypeDef)
+			if (customAttribute.mType->IsInstanceOf(mCompiler->mAttributeUsageAttributeTypeDef))
 			{
 				if (customAttribute.mCtorArgs.size() > 0)
 				{
@@ -13480,7 +13482,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		methodInstance->GetMethodInfoEx()->mForeignType = foreignType;
 	}
 	
-	if ((typeInst->mTypeDef == mCompiler->mValueTypeTypeDef) && (methodDef->mName == BF_METHODNAME_EQUALS))
+	if ((typeInst->IsInstanceOf(mCompiler->mValueTypeTypeDef)) && (methodDef->mName == BF_METHODNAME_EQUALS))
 	{
 		if (!lookupMethodGenericArguments.empty())
 		{
@@ -17281,8 +17283,8 @@ void BfModule::EmitIteratorBlock(bool& skipBody)
 	auto retTypeInst = mCurMethodInstance->mReturnType->ToGenericTypeInstance();	
 	if (retTypeInst != NULL)
 	{
-		if ((retTypeInst->mTypeDef == mCompiler->mGenericIEnumerableTypeDef) || 
-			(retTypeInst->mTypeDef == mCompiler->mGenericIEnumeratorTypeDef))
+		if ((retTypeInst->IsInstanceOf(mCompiler->mGenericIEnumerableTypeDef)) || 
+			(retTypeInst->IsInstanceOf(mCompiler->mGenericIEnumeratorTypeDef)))
 		{						
 			innerRetType = retTypeInst->mGenericTypeInfo->mTypeGenericArguments[0];
 		}		
@@ -17729,7 +17731,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 					auto typeInstConstraint = genericParamInstance->mTypeConstraint->ToTypeInstance();
 					if ((genericParamInstance->mTypeConstraint->IsDelegate()) || (genericParamInstance->mTypeConstraint->IsFunction()) || 
 						((typeInstConstraint != NULL) && 
-						 ((typeInstConstraint->mTypeDef == mCompiler->mDelegateTypeDef) || (typeInstConstraint->mTypeDef == mCompiler->mFunctionTypeDef))))
+						 ((typeInstConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))))
 					{
 						BfLocalVariable* localVar = new BfLocalVariable();
 						localVar->mName = paramDef->mName;
@@ -18630,7 +18632,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		methodState.mGenericTypeBindings = &methodInstance->GetMethodInfoEx()->mGenericTypeBindings;
 	}
 	else if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) || 
-		((mCurTypeInstance->IsGenericTypeInstance()) && (!isGenericVariation) && (!methodInstance->mMethodDef->mIsLocalMethod))))
+		((mCurTypeInstance->IsGenericTypeInstance()) && (!isGenericVariation) && (!methodInstance->mMethodDef->mIsLocalMethod) && (!methodInstance->mMethodDef->mDeclaringType->IsEmitted()))))
 	{
 		unspecializedMethodInstance = GetUnspecializedMethodInstance(methodInstance, !methodInstance->mMethodDef->mIsLocalMethod);
 
@@ -19590,7 +19592,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 			else
 			{
-				BF_ASSERT(innerMethodInstance.mMethodInstance->mMethodDef == methodDef);
+				BF_ASSERT(!innerMethodInstance.mMethodInstance->mMethodDef->mDeclaringType->IsEmitted());
+				auto innerMethodDef = innerMethodInstance.mMethodInstance->mMethodDef;
+				if (innerType->mTypeDef->IsEmitted())
+					innerMethodDef = innerType->mTypeDef->mEmitParent->mMethods[innerMethodDef->mIdx];
+
+				BF_ASSERT(innerMethodDef == methodDef);
 
 				SizedArray<BfIRValue, 8> innerParams;
 				BfExprEvaluator exprEvaluator(this);
@@ -19853,7 +19860,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			skipBody = true;
 			skipEndChecks = true;
 		}
-		else if ((methodDef->mName == BF_METHODNAME_EQUALS) && (typeDef == mCompiler->mValueTypeTypeDef))
+		else if ((methodDef->mName == BF_METHODNAME_EQUALS) && (typeDef->GetDefinition() == mCompiler->mValueTypeTypeDef))
 		{
 			CreateValueTypeEqualsMethod(false);
 			skipBody = true;
@@ -22226,7 +22233,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 			auto resolvedParamTypeInst = resolvedParamType->ToTypeInstance();
 
-			if ((resolvedParamTypeInst != NULL) && (resolvedParamTypeInst->mTypeDef == mCompiler->mSpanTypeDef))
+			if ((resolvedParamTypeInst != NULL) && (resolvedParamTypeInst->IsInstanceOf(mCompiler->mSpanTypeDef)))
 			{
 				// Span<T>
 				isValid = true;
@@ -22274,7 +22281,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 					}
 					else if ((genericParamInstance->mTypeConstraint->IsDelegate()) || (genericParamInstance->mTypeConstraint->IsFunction()) ||
 						((genericParamInstance != NULL) && (typeInstConstraint != NULL) &&
-						 ((typeInstConstraint->mTypeDef == mCompiler->mDelegateTypeDef) || (typeInstConstraint->mTypeDef == mCompiler->mFunctionTypeDef))))
+						 ((typeInstConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))))
 					{										
 						mCurMethodInstance->mHadGenericDelegateParams = true;
 						isValid = true;
@@ -22286,7 +22293,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				auto paramTypeInst = resolvedParamType->ToTypeInstance();
 				if ((paramTypeInst != NULL) &&
-					((paramTypeInst->mTypeDef == mCompiler->mDelegateTypeDef) || (paramTypeInst->mTypeDef == mCompiler->mFunctionTypeDef)))
+					((paramTypeInst->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (paramTypeInst->IsInstanceOf(mCompiler->mFunctionTypeDef))))
 				{
 					// If we have a 'params T' and 'T' gets specialized with actually 'Delegate' or 'Function' then just ignore it
 					isValid = true;

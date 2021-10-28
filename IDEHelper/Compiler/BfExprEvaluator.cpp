@@ -285,7 +285,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 							if (checkArgType->IsGenericTypeInstance())
 							{
 								auto argGenericType = (BfTypeInstance*)checkArgType;
-								if (argGenericType->mTypeDef == wantGenericType->mTypeDef)
+								if (argGenericType->mTypeDef->GetLatest() == wantGenericType->mTypeDef->GetLatest())
 								{
 									for (int genericArgIdx = 0; genericArgIdx < (int)argGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); genericArgIdx++)
 										InferGenericArgument(methodInstance, argGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], wantGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], BfIRValue());
@@ -294,7 +294,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 							else if (checkArgType->IsSizedArray())
 							{
 								auto sizedArrayType = (BfSizedArrayType*)checkArgType;
-								if (wantGenericType->mTypeDef == mModule->mCompiler->mSizedArrayTypeDef)
+								if (wantGenericType->IsInstanceOf(mModule->mCompiler->mSizedArrayTypeDef))
 								{
 									InferGenericArgument(methodInstance, sizedArrayType->mElementType, wantGenericType->mGenericTypeInfo->mTypeGenericArguments[0], BfIRValue());
 									auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
@@ -305,7 +305,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 							else if (checkArgType->IsPointer())
 							{
 								auto pointerType = (BfPointerType*)checkArgType;
-								if (wantGenericType->mTypeDef == mModule->mCompiler->mPointerTTypeDef)
+								if (wantGenericType->IsInstanceOf(mModule->mCompiler->mPointerTTypeDef))
 								{
 									InferGenericArgument(methodInstance, pointerType->mElementType, wantGenericType->mGenericTypeInfo->mTypeGenericArguments[0], BfIRValue());
 								}
@@ -2644,7 +2644,7 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 			BfTypeInterfaceEntry* bestIFaceEntry = NULL;
 			auto checkTypeInst = checkType->ToTypeInstance();			
 
-			if (mBestMethodTypeInstance->mTypeDef == mModule->mCompiler->mIHashableTypeDef)
+			if (mBestMethodTypeInstance->IsInstanceOf(mModule->mCompiler->mIHashableTypeDef))
 			{
 				if ((origTarget != NULL) && (origTarget->mType->IsPointer()) && (staticResult != NULL))
 				{					
@@ -5280,7 +5280,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		}
 	}
 
-	if ((methodInstance->GetOwner()->mTypeDef == mModule->mCompiler->mDeferredCallTypeDef) &&
+	if ((methodInstance->GetOwner()->IsInstanceOf(mModule->mCompiler->mDeferredCallTypeDef)) &&
 		(methodInstance->mMethodDef->mName == "Cancel"))
 	{
 		if (mModule->mCurMethodState != NULL)
@@ -6545,7 +6545,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					if (argValue.mType == mModule->GetPrimitiveType(BfTypeCode_Float))
 						argValue = mModule->Cast(argValues[argExprIdx].mExpression, argValue, mModule->GetPrimitiveType(BfTypeCode_Double));
 
-					if ((typeInst != NULL) && (typeInst->mTypeDef == mModule->mCompiler->mStringTypeDef))
+					if ((typeInst != NULL) && (typeInst->IsInstanceOf(mModule->mCompiler->mStringTypeDef)))
 					{
 						BfType* charType = mModule->GetPrimitiveType(BfTypeCode_Char8);
 						BfType* charPtrType = mModule->CreatePointerType(charType);
@@ -7423,7 +7423,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 
 	auto methodDef = methodMatcher.mBestMethodDef;
 	if (mModule->mCompiler->mResolvePassData != NULL)
-		mModule->mCompiler->mResolvePassData->HandleMethodReference(targetSrc, curTypeInst->mTypeDef, methodDef);
+		mModule->mCompiler->mResolvePassData->HandleMethodReference(targetSrc, curTypeInst->mTypeDef->GetDefinition(), methodDef);
 
 	// There should always be a constructor
 	BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
@@ -8649,7 +8649,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				if (genericParamInstance->mTypeConstraint != NULL)
 					typeInstConstraint = genericParamInstance->mTypeConstraint->ToTypeInstance();
 				if ((typeInstConstraint != NULL) &&
-					((typeInstConstraint->mTypeDef == mModule->mCompiler->mDelegateTypeDef) || (typeInstConstraint->mTypeDef == mModule->mCompiler->mFunctionTypeDef)))
+					((typeInstConstraint->IsInstanceOf(mModule->mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mModule->mCompiler->mFunctionTypeDef))))
 				{
 					MarkResultUsed();
 
@@ -14619,7 +14619,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 		{
 			for (auto& attrib : customAttrs->mAttributes)
 			{
-				if (attrib.mType->mTypeDef == mModule->mCompiler->mAlignAttributeTypeDef)
+				if (attrib.mType->IsInstanceOf(mModule->mCompiler->mAlignAttributeTypeDef))
 				{
 					allocTarget.mAlignOverride = 16; // System conservative default
 
@@ -14637,7 +14637,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 						}
 					}
 				}
-				else if (attrib.mType->mTypeDef == mModule->mCompiler->mFriendAttributeTypeDef)				
+				else if (attrib.mType->IsInstanceOf(mModule->mCompiler->mFriendAttributeTypeDef))
 					allocTarget.mIsFriend = true;				
 			}
 
@@ -16479,7 +16479,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				if (!value)
 					return;
 				auto typeInst = value.mType->ToTypeInstance();
-				if ((typeInst != NULL) && (typeInst->mTypeDef == mModule->mCompiler->mStringTypeDef))
+				if ((typeInst != NULL) && (typeInst->IsInstanceOf(mModule->mCompiler->mStringTypeDef)))
 					value = mModule->Cast(arg, value, charPtrType);
 				if ((value.mType->IsFloat()) && (value.mType->mSize != 8)) // Always cast float to double
 					value = mModule->Cast(arg, value, mModule->GetPrimitiveType(BfTypeCode_Double));
@@ -17035,7 +17035,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 		if (mPropTarget.mType->IsGenericTypeInstance())
 		{
 			auto genericTypeInst = (BfTypeInstance*)mPropTarget.mType;
-			if (genericTypeInst->mTypeDef == mModule->mCompiler->mSizedArrayTypeDef)
+			if (genericTypeInst->IsInstanceOf(mModule->mCompiler->mSizedArrayTypeDef))
 			{				
 				if (mPropDef->mName == "Count")
 				{
@@ -20435,7 +20435,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				{
 					auto isValid = false;
 					auto genericTypeInst = mResult.mType->ToGenericTypeInstance();
-					if ((genericTypeInst != NULL) && (genericTypeInst->mTypeDef == mModule->mCompiler->mSpanTypeDef))
+					if ((genericTypeInst != NULL) && (genericTypeInst->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
 						isValid = true;
 					else if (mResult.mType->IsArray())
 						isValid = true;

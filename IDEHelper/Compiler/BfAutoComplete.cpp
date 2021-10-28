@@ -445,7 +445,7 @@ bool BfAutoComplete::IsAttribute(BfTypeInstance* typeInst)
 	auto checkTypeInst = typeInst;
 	while (checkTypeInst != NULL)
 	{
-		if (checkTypeInst->mTypeDef == mModule->mCompiler->mAttributeTypeDef)
+		if (checkTypeInst->mTypeDef->GetLatest() == mModule->mCompiler->mAttributeTypeDef->GetLatest())
 			return true;
 
 		checkTypeInst = checkTypeInst->mBaseType;
@@ -515,6 +515,8 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 
 void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bool onlyAttribute)
 {
+	BF_ASSERT(typeDef->mDefState != BfTypeDef::DefState_Emitted);
+
 	if (typeDef->mTypeDeclaration == NULL)
 		return;
 
@@ -615,9 +617,9 @@ void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& f
 void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate, bool onlyAttribute)
 {	
 	if (typeInst != mModule->mCurTypeInstance)
-		AddTypeDef(typeInst->mTypeDef, filter, onlyAttribute);
+		AddTypeDef(typeInst->mTypeDef->GetDefinition(), filter, onlyAttribute);
 
-	auto typeDef = typeInst->mTypeDef;
+	auto typeDef = typeInst->mTypeDef->GetDefinition();
 	for (auto nestedTypeDef : typeDef->mNestedTypes)
 	{
 		if (nestedTypeDef->mIsPartial)

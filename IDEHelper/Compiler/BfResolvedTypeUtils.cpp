@@ -1,4 +1,4 @@
-#include "BeefySysLib/util/AllocDebug.h"
+delete mConstHolder; #include "BeefySysLib/util/AllocDebug.h"
 
 #include "BfCompiler.h"
 #include "BfParser.h"
@@ -1551,6 +1551,11 @@ BfTypeInstance::~BfTypeInstance()
 		delete localMethod;
 	delete mHotTypeData;
 	delete mConstHolder;
+	if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
+	{
+		mMethodInstanceGroups.Clear();
+		delete mTypeDef;
+	}
 }
 
 void BfTypeInstance::ReleaseData()
@@ -1562,6 +1567,13 @@ void BfTypeInstance::ReleaseData()
 			mModule->mSystem->ReleaseAtomComposite(namespaceComposite);
 	}
 	mInternalAccessMap.Clear();
+}
+
+void BfTypeInstance::Dispose()
+{
+	delete mGenericTypeInfo;
+	mGenericTypeInfo = NULL;
+	mTypeDef = NULL;
 }
 
 int BfTypeInstance::GetSplatCount()
@@ -1577,7 +1589,7 @@ int BfTypeInstance::GetSplatCount()
 
 bool BfTypeInstance::IsString()
 { 
-	return mTypeDef == mContext->mCompiler->mStringTypeDef;
+	return IsInstanceOf(mContext->mCompiler->mStringTypeDef);
 }
 
 int BfTypeInstance::GetOrigVTableSize()
@@ -2277,7 +2289,7 @@ bool BfTypeInstance::IsSpecializedByAutoCompleteMethod()
 
 bool BfTypeInstance::IsNullable()
 { 
-	return (mTypeDef == mContext->mCompiler->mNullableTypeDef);
+	return IsInstanceOf(mContext->mCompiler->mNullableTypeDef);
 }
 
 bool BfTypeInstance::HasVarConstraints()
@@ -2463,7 +2475,10 @@ BfClosureType::~BfClosureType()
 {
 	mMethodInstanceGroups.Clear();
 	if (mCreatedTypeDef)
+	{
 		delete mTypeDef;
+		mTypeDef = NULL;
+	}
 	for (auto directAllocNode : mDirectAllocNodes)
 		delete directAllocNode;
 }
@@ -2542,6 +2557,7 @@ BfDelegateType::~BfDelegateType()
 {	
 	mMethodInstanceGroups.Clear();
 	delete mTypeDef;	
+	mTypeDef = NULL;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2559,7 +2575,10 @@ BfTupleType::~BfTupleType()
 {
 	mMethodInstanceGroups.Clear();
 	if (mCreatedTypeDef)
+	{
 		delete mTypeDef;
+		mTypeDef = NULL;
+	}
 	delete mSource;
 }
 
@@ -2694,7 +2713,7 @@ bool BfTypeVectorEquals::operator()(const BfTypeVector& lhs, const BfTypeVector&
 bool BfCustomAttributes::Contains(BfTypeDef* typeDef)
 {
 	for (auto& customAttr : mAttributes)
-		if (customAttr.mType->mTypeDef == typeDef)
+		if (customAttr.mType->mTypeDef->GetDefinition() == typeDef)
 			return true;
 	return false;
 }
@@ -2702,7 +2721,7 @@ bool BfCustomAttributes::Contains(BfTypeDef* typeDef)
 BfCustomAttribute* BfCustomAttributes::Get(BfTypeDef * typeDef)
 {
 	for (auto& customAttr : mAttributes)
-		if (customAttr.mType->mTypeDef == typeDef)
+		if (customAttr.mType->mTypeDef->GetDefinition() == typeDef)
 			return &customAttr;
 	return NULL;
 }
@@ -3696,7 +3715,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			BfTypeInstance* rhsGenericType = (BfTypeInstance*)rhs;
 			if (lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size() != rhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size())
 				return false;
-			if (lhsGenericType->mTypeDef != rhsGenericType->mTypeDef)
+			if (lhsGenericType->mTypeDef->GetDefinition() != rhsGenericType->mTypeDef->GetDefinition())
 				return false;
 			for (int i = 0; i < (int)lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); i++)
 			{
@@ -3705,7 +3724,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			}
 		}
 
-		return lhsInst->mTypeDef == rhsInst->mTypeDef;
+		return lhsInst->mTypeDef->GetDefinition() == rhsInst->mTypeDef->GetDefinition();
 	}
 	else if (lhs->IsPrimitiveType())
 	{
@@ -3850,7 +3869,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 		if ((rhsTypeDef != NULL) && (rootOuterTypeInstance != NULL))
 		{
 			// See if we're referring to an non-generic inner type where the outer type is generic
-			if (lhsGenericType->mTypeDef != rhsTypeDef)
+			if (lhsGenericType->mTypeDef->GetDefinition() != rhsTypeDef->GetDefinition())
 				return false;
 
 			BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(rootOuterTypeInstance->mTypeDef, rhsTypeDef->mOuterType);
@@ -3881,7 +3900,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 	}
 
 	BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(rhsGenericTypeInstRef);
-	if (elementTypeDef != lhsGenericType->mTypeDef)
+	if (elementTypeDef->GetDefinition() != lhsGenericType->mTypeDef->GetDefinition())
 		return false;
 
 	int genericParamOffset = 0;
@@ -3955,7 +3974,7 @@ BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* t
 	auto typeInst = type->ToTypeInstance();
 	if (typeInst == NULL)
 		return NULL;
-	return typeInst->mTypeDef;
+	return typeInst->mTypeDef->GetDefinition();
 }
 
 bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx)
@@ -4190,7 +4209,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			if (rhsTypeDef == NULL)
 				return false;
 
-			return lhsInst->mTypeDef == rhsTypeDef;
+			return lhsInst->IsInstanceOf(rhsTypeDef);
 		}		
 	}
 	else if (lhs->IsPrimitiveType())
