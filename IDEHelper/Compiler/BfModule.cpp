@@ -8172,11 +8172,15 @@ BF_NOINLINE void BfModule::EvaluateWithNewScope(BfExprEvaluator& exprEvaluator, 
 	BfScopeData newScope;
 	newScope.mOuterIsConditional = true;
 	newScope.mAllowTargeting = false;
-	mCurMethodState->AddScope(&newScope);
-	NewScopeState(true, false);
+	if (mCurMethodState != NULL)
+	{
+		mCurMethodState->AddScope(&newScope);
+		NewScopeState(true, false);
+	}
 	exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | flags);
 	exprEvaluator.Evaluate(expr, (flags & BfEvalExprFlags_PropogateNullConditional) != 0, (flags & BfEvalExprFlags_IgnoreNullConditional) != 0, (flags & BfEvalExprFlags_AllowSplat) != 0);
-	RestoreScopeState();
+	if (mCurMethodState != NULL)
+		RestoreScopeState();
 }
 
 BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator, BfExpression* expr, BfType* wantTypeRef, BfEvalExprFlags flags, BfType** outOrigType)
