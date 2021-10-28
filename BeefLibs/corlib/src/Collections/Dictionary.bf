@@ -277,6 +277,19 @@ namespace System.Collections
 				return false;
 			}
 		}
+
+		public bool ContainsAlt<TAltKey>((TAltKey key, TValue value) kvPair) where TAltKey : IHashable where bool : operator TKey == TAltKey
+		{
+			TValue value;
+			if (TryGetValueAlt(kvPair.key, out value))
+			{
+				return value == kvPair.value;
+			}
+			else
+			{
+				return false;
+			}
+		}
 		
 		public void CopyTo(Span<KeyValuePair> kvPair)
 		{
