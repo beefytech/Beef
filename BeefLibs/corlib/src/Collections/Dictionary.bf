@@ -739,6 +739,18 @@ namespace System.Collections
 			return false;
 		}
 
+		public bool TryGetValueAlt<TAltKey>(TAltKey key, out TValue value) where TAltKey : IHashable where bool : operator TKey == TAltKey
+		{
+			int_cosize i = (int_cosize)FindEntryAlt<TAltKey>(key);
+			if (i >= 0)
+			{
+				value = mEntries[i].mValue;
+				return true;
+			}
+			value = default(TValue);
+			return false;
+		}
+
 		public bool TryGet(TKey key, out TKey matchKey, out TValue value)
 		{
 			int_cosize i = (int_cosize)FindEntry(key);
