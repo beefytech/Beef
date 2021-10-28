@@ -7478,14 +7478,14 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		if ((valueCount == 0) || (bitsLeft != 0))
 		{
 			if (valueCount > 0)
-				retVal += " | ";			
-			retVal += StrFormat("%d", bitsLeft);
+				retVal += " | ";
+			retVal += StrFormat("%lld", bitsLeft);
 
 			if (language == DbgLanguage_C)
 			{
 				if (valueCount > 0)
 					editVal += " | ";
-				editVal += StrFormat("%d", bitsLeft);
+				editVal += StrFormat("%lld", bitsLeft);
 			}
 		}
 		
