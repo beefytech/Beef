@@ -3020,16 +3020,24 @@ void BfExprEvaluator::Evaluate(BfAstNode* astNode, bool propogateNullConditional
 	// ParenthesizedExpression breaks null conditional chain
 	if (astNode->IsExact<BfParenthesizedExpression>())
 		propogateNullConditional = false;
+	
+	bool scopeWasConditional = false;
 
 	BfPendingNullConditional* pendingNullCond = NULL;
+	mInsidePendingNullable = false;
 	if (mModule->mCurMethodState != NULL)
 	{
+		scopeWasConditional = mModule->mCurMethodState->mCurScope->mIsConditional;
 		pendingNullCond = mModule->mCurMethodState->mPendingNullConditional;
 		if (!propogateNullConditional)
 			mModule->mCurMethodState->mPendingNullConditional = NULL;
-	}
-	mInsidePendingNullable = pendingNullCond != NULL;
-
+		if (pendingNullCond != NULL)
+		{
+			mInsidePendingNullable = true;
+			mModule->mCurMethodState->mCurScope->mIsConditional = true;
+		}
+	}	
+	
 	astNode->Accept(this);			
 	GetResult();
 
@@ -3042,11 +3050,17 @@ void BfExprEvaluator::Evaluate(BfAstNode* astNode, bool propogateNullConditional
 	if ((mBfEvalExprFlags & BfEvalExprFlags_AllowIntUnknown) == 0)
 		mModule->FixIntUnknown(mResult);
 
-	if ((!propogateNullConditional) && (mModule->mCurMethodState != NULL))
+	if (mModule->mCurMethodState != NULL)
 	{
-		if (mModule->mCurMethodState->mPendingNullConditional != NULL)
-			mResult = mModule->FlushNullConditional(mResult, ignoreNullConditional);
-		mModule->mCurMethodState->mPendingNullConditional = pendingNullCond;
+		if (mInsidePendingNullable)
+			mModule->mCurMethodState->mCurScope->mIsConditional = scopeWasConditional;
+
+		if (!propogateNullConditional)
+		{
+			if (mModule->mCurMethodState->mPendingNullConditional != NULL)
+				mResult = mModule->FlushNullConditional(mResult, ignoreNullConditional);
+			mModule->mCurMethodState->mPendingNullConditional = pendingNullCond;
+		}
 	}
 }
 
