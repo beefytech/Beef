@@ -32,11 +32,31 @@ namespace System
 					if (matched.[Friend]mMethodData != null)
 						return .Err(.MultipleResults);
 					else
-					        matched = methodInfo;
+					    matched = methodInfo;
 				}
 			}
 
 			if (matched.[Friend]mMethodData == null)
+				return .Err(.NoResults);
+			return .Ok(matched);
+		}
+
+		[Comptime]
+		public virtual Result<ComptimeMethodInfo, MethodError> GetMethod(StringView methodName, BindingFlags bindingFlags = cDefaultLookup)
+		{
+			ComptimeMethodInfo matched = default;
+			for (let methodInfo in ComptimeMethodInfo.Enumerator(this as TypeInstance, bindingFlags))
+			{
+				if (methodInfo.Name == methodName)
+				{
+					if (matched.mNativeMethodInstance != 0)
+						return .Err(.MultipleResults);
+					else
+					    matched = methodInfo;
+				}
+			}
+
+			if (matched.mNativeMethodInstance == 0)
 				return .Err(.NoResults);
 			return .Ok(matched);
 		}

@@ -29,8 +29,8 @@ namespace System.Reflection
 			get
 			{
 				if (Compiler.IsComptime)
-					Type.[Friend]Comptime_Method_GetName(mNativeMethodInstance);
-				return "";
+					return Type.[Friend]Comptime_Method_GetName(mNativeMethodInstance);
+				return "?";
 			}
 		}
 		public int ParamCount
