@@ -467,6 +467,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				else
 				{
 					module->PopulateType(typeInst);
+					if (methodSpecializationRequest.mMethodIdx >= typeInst->mTypeDef->mMethods.mSize)
+						continue;
 					methodDef = typeInst->mTypeDef->mMethods[methodSpecializationRequest.mMethodIdx];
 				}
 
