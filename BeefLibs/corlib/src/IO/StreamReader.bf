@@ -256,7 +256,7 @@ namespace System.IO
 		        {
 		            char8 ch = tmpCharBuffer[i];
 
-		            // Note the following common line feed char8s:
+		            // Note the following common line feed chars:
 		            // \n - UNIX   \r\n - DOS   \r - Mac
 		            if (ch == '\r' || ch == '\n')
 		            {
@@ -481,7 +481,7 @@ namespace System.IO
 			}
 			while (mCharLen == 0);
 
-            //Console.WriteLine("ReadBuffer called.  char8s: "+char8Len);
+            //Console.WriteLine("ReadBuffer called.  chars: "+char8Len);
 			return mCharLen;
 		}
 
@@ -522,7 +522,7 @@ namespace System.IO
 				repeat
 				{
 					char8 ch = mCharBuffer[i];
-                    // Note the following common line feed char8s:
+                    // Note the following common line feed chars:
                     // \n - UNIX   \r\n - DOS   \r - Mac
 					if (ch == '\r' || ch == '\n')
 					{

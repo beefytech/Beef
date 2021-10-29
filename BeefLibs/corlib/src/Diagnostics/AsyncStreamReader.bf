@@ -19,7 +19,7 @@ namespace System.Diagnostics
 		private char8[] char8Buffer;
 		// Record the number of valid bytes in the byteBuffer, for a few checks.
 
-		// This is the maximum number of char8s we can get from one call to 
+		// This is the maximum number of chars we can get from one call to 
 		// ReadBuffer.  Used so ReadBuffer can tell when to copy data into
 		// a user's char8[] directly, instead of our internal char8[].
 		private int32 mMaxCharsPerBuffer;
@@ -194,7 +194,7 @@ namespace System.Diagnostics
 			int lineStart = 0;
 			int len = sb.Length;
 
-			// skip a beginning '\n' char8acter of new block if last block ended 
+			// skip a beginning '\n' character of new block if last block ended 
 			// with '\r'
 			if (bLastCarriageReturn && (len > 0) && sb[0] == '\n')
 			{
@@ -206,7 +206,7 @@ namespace System.Diagnostics
 			while (currentIndex < len)
 			{
 				char8 ch = sb[currentIndex];
-				// Note the following common line feed char8s:
+				// Note the following common line feed chars:
 				// \n - UNIX   \r\n - DOS   \r - Mac
 				if (ch == '\r' || ch == '\n')
 				{
@@ -214,7 +214,7 @@ namespace System.Diagnostics
 					s.Append(sb, lineStart, currentIndex - lineStart);
 
 					lineStart = currentIndex + 1;
-					// skip the "\n" char8acter following "\r" char8acter
+					// skip the "\n" character following "\r" character
 					if ((ch == '\r') && (lineStart < len) && (sb[lineStart] == '\n'))
 					{
 						lineStart++;
@@ -232,7 +232,7 @@ namespace System.Diagnostics
 			{
 				bLastCarriageReturn = true;
 			}
-			// Keep the rest char8acaters which can't form a new line in string builder.
+			// Keep the rest characaters which can't form a new line in string builder.
 			if (lineStart < len)
 			{
 				if (lineStart == 0)

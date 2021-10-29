@@ -1778,7 +1778,7 @@ namespace System
 
                 //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 
-                // uppercase both char8s - notice that we need just one compare per char8
+                // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1786,7 +1786,7 @@ namespace System
 				if (charA != charB)
 					return false;
 
-                // Next char8
+                // Next char
 				curA++;curB++;
 				curLength--;
 			}
@@ -1811,7 +1811,7 @@ namespace System
 
                 //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 
-                // uppercase both char8s - notice that we need just one compare per char8
+                // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1819,7 +1819,7 @@ namespace System
 				if (charA != charB)
 					return charA - charB;
 
-                // Next char8
+                // Next char
 				a++;b++;
 				length--;
 			}
@@ -1839,7 +1839,7 @@ namespace System
 				int_strsize charB = (int_strsize)*b;
 
 			    //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
-			    // uppercase both char8s - notice that we need just one compare per char8
+			    // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1847,7 +1847,7 @@ namespace System
 				if (charA != charB)
 					return charA - charB;
 
-			    // Next char8
+			    // Next char
 				a++;b++;
 				length--;
 			}

@@ -4277,7 +4277,7 @@ namespace IDE.ui
 
                 if (mProcessingCharData[srcIdx].mCharId != destText[destIdx].mCharId)
                 {
-                    // Id doesn't match, char8acter must have been deleted
+                    // Id doesn't match, character must have been deleted
                     srcIdx++;
                     continue;
                 }

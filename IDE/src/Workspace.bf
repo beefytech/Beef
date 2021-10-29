@@ -1401,7 +1401,7 @@ namespace IDE
                         {
                             if (curColumn == column)
                                 return charId;
-                            // For column == -1, use first non-whitespace char8
+                            // For column == -1, use first non-whitespace char
                             if ((column == -1) && (!c.IsWhiteSpace))
                                 return charId;
                         }
