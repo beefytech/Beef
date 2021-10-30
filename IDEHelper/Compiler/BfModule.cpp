@@ -16755,7 +16755,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 							mCompiler->mResolvePassData->mSourceClassifier->SetElementType(fieldDef->mInitializer, BfSourceElementType_Normal);
 							mCompiler->mResolvePassData->mSourceClassifier->VisitChild(fieldDef->mInitializer);
 
-							auto wantType = ResolveTypeRef(fieldDef->mTypeRef);
+							auto wantType = ResolveTypeRef(fieldDef->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowInferredSizedArray);
 							if ((wantType != NULL) &&
 								((wantType->IsVar()) || (wantType->IsLet()) || (wantType->IsRef())))
 								wantType = NULL;

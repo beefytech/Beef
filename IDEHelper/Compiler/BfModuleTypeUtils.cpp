@@ -3729,8 +3729,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					// For 'let', make read-only
 				}
 				else
-				{										
-					resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowInferredSizedArray));
+				{	
+					BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_NoResolveGenericParam;
+					if (field->mInitializer != NULL)
+						resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowInferredSizedArray);
+					resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, resolveFlags);
 					if (resolvedFieldType == NULL)
 					{
 						// Failed, just put in placeholder 'var'
