@@ -297,7 +297,7 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public static void InternalCombine(String target, params String[] components)
+		public static void InternalCombine(String target, params StringView[] components)
 		{
 			for (var component in components)
 			{
