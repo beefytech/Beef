@@ -1655,7 +1655,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 		if (attrIdentifier != NULL)
 		{
 			BfAttributeState attributeState;
-			attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_MemberAccess);
+			attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_MemberAccess | BfAttributeTargets_Invocation);
 			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);
 			if ((attributeState.mCustomAttributes != NULL) && (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef)))
 			{
