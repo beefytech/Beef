@@ -3497,7 +3497,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				attrTarget = BfAttributeTargets_Enum;
 			else if (typeInstance->IsInterface())
 				attrTarget = BfAttributeTargets_Interface;
-			else if (typeInstance->IsStruct())
+			else if ((typeInstance->IsStruct()) || (typeInstance->IsTypedPrimitive()))
 				attrTarget = BfAttributeTargets_Struct;
 			else
 				attrTarget = BfAttributeTargets_Class;
