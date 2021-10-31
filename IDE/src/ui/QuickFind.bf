@@ -74,23 +74,24 @@ namespace IDE.ui
 		public class CaseSensitiveSwitch : DarkButton
 		{
 			QuickFind mQuickFind;
-			public static bool mActive;
+			public static bool sActive;
 
 			public this(QuickFind quickFind)
 			{
 				mQuickFind = quickFind;
 				Label = "Ww";
 
-				mOnMouseClick.Add(new (mouseArgs) => {
-					mActive = !mActive;
-
-					mQuickFind.mCurFindIdx = -1;
-					mQuickFind.FindAll();
-					mQuickFind.ShowCurrentSelection();
-				});
+				mOnMouseClick.Add(new (mouseArgs) =>
+					{
+						sActive = !sActive;
+	
+						mQuickFind.mCurFindIdx = -1;
+						mQuickFind.FindAll();
+						mQuickFind.ShowCurrentSelection();
+					});
 			}
 
-			public override Color TextColor => mActive ? Color.Get(75, 225, 225) : DarkTheme.COLOR_TEXT;
+			public override Color TextColor => sActive ? Color.Get(75, 225, 225) : DarkTheme.COLOR_TEXT;
 		}
 
         public TextPanel mPanel;
@@ -413,7 +414,7 @@ namespace IDE.ui
 			String findTextLower;
 			String findTextUpper;
 
-			if (!CaseSensitiveSwitch.mActive) {
+			if (!CaseSensitiveSwitch.sActive) {
 				findTextLower = scope:: String(findText);
 				findTextLower.ToLower();
 
@@ -469,7 +470,7 @@ namespace IDE.ui
                 bool isEqual = true;
                 for (int32 i = 0; i < findText.Length; i++)
                 {
-					if (CaseSensitiveSwitch.mActive)
+					if (CaseSensitiveSwitch.sActive)
 					{
 						if (editContent.mData.mText[i + startIdx].mChar != findText[i])
 						{
