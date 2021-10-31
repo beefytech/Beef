@@ -423,6 +423,7 @@ public:
 	bool mIsDeferredBlock;
 	bool mAllowVariableDeclarations;
 	bool mInInitBlock;
+	BfMixinState* mMixinState;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
 	BfExprEvaluator* mExprEvaluator;
@@ -445,6 +446,7 @@ public:
 		mPrevScope = NULL;
 		mLocalVarStart = 0;
 		mLabelNode = NULL;
+		mMixinState = NULL;
 		mAstBlock = NULL;
 		mCloseNode = NULL;
 		mExprEvaluator = NULL;

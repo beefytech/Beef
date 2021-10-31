@@ -1814,6 +1814,7 @@ void BfModule::NewScopeState(bool createLexicalBlock, bool flushValueScope)
 	}
 	mCurMethodState->mCurScope->mLocalVarStart = (int)mCurMethodState->mLocals.size();	
 	mCurMethodState->mCurScope->mBlock = mBfIRBuilder->MaybeChainNewBlock((!mCurMethodState->mCurScope->mLabel.empty()) ? mCurMethodState->mCurScope->mLabel : "newScope");
+	mCurMethodState->mCurScope->mMixinState = mCurMethodState->mMixinState;
 }
 
 void BfModule::RestoreScoreState_LocalVariables()
@@ -14708,6 +14709,8 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 			{
 				if (deferredCallEntry->mDeferredBlock != NULL)
 				{
+					SetAndRestoreValue<BfMixinState*> prevMixinState(mCurMethodState->mMixinState, checkScope->mMixinState);
+
 					if (checkScope == &mCurMethodState->mHeadScope)
 						CreateRetValLocal();
 
@@ -14868,6 +14871,7 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 				deferredCallEmitState.mCloseNode = deferCloseNode;
 				SetAndRestoreValue<BfDeferredCallEmitState*> prevDeferredCallEmitState(mCurMethodState->mDeferredCallEmitState, &deferredCallEmitState);
 				SetAndRestoreValue<bool> prevIgnoredWrites(mBfIRBuilder->mIgnoreWrites, deferredCallEntry->mIgnored);
+				SetAndRestoreValue<BfMixinState*> prevMixinState(mCurMethodState->mMixinState, checkScope->mMixinState);
 
 				if (deferCloseNode != NULL)
 				{										
