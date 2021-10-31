@@ -20904,7 +20904,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 			auto indexType = mModule->ResolveTypeDef(mModule->mCompiler->mIndexTypeDef)->ToTypeInstance();
 			rightTypedValueExpr.mRefNode = opToken;
 
-			auto valueTypeEmpty = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mBaseType), {});
+			auto valueTypeEmpty = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mBaseType->mBaseType), {});
+			SizedArray<BfIRValue, 8> enumMembers;
+			enumMembers.Add(valueTypeEmpty);
+			auto enumValue = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mBaseType), enumMembers);
 
 			SizedArray<BfIRValue, 8> tupleMembers;
 			tupleMembers.Add(valueTypeEmpty);
@@ -20912,7 +20915,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 			auto tupleValue = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mFieldInstances[0].mResolvedType), tupleMembers);
 
 			SizedArray<BfIRValue, 8> indexMembers;
-			indexMembers.Add(valueTypeEmpty);
+			indexMembers.Add(enumValue);
 			indexMembers.Add(tupleValue);
 			indexMembers.Add(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, 1));
 			auto indexValue = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType), indexMembers);
