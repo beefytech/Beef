@@ -7675,6 +7675,24 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		return false;
 	}
 
+	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) &&
+		((checkGenericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Var)) == 0))
+	{
+		if ((!ignoreErrors) && (PreFail()))
+			*errorOut = Fail(StrFormat("Must add 'where %s : new' constraint in order to use type as parameter '%s' for '%s'",
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+		return false;
+	}
+
+	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Delete) &&
+		((checkGenericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var)) == 0))
+	{
+		if ((!ignoreErrors) && (PreFail()))
+			*errorOut = Fail(StrFormat("Must add 'where %s : delete' constraint in order to use type as parameter '%s' for '%s'",
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+		return false;
+	}
+
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
 	{
 		if (((checkGenericParamFlags & BfGenericParamFlag_Const) == 0) && (!checkArgType->IsConstExprValue()))
