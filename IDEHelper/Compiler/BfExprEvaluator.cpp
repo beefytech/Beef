@@ -5074,7 +5074,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 
 		if (auto unaryOpExpr = BfNodeDynCastExact<BfUnaryOperatorExpression>(argExpr))
 		{
-			if (unaryOpExpr->mOp == BfUnaryOp_Cascade)
+			if ((unaryOpExpr->mOp == BfUnaryOp_Cascade) && ((flags & BfResolveArgsFlag_FromIndexer) == 0))
 			{
 				if ((mBfEvalExprFlags & BfEvalExprFlags_InCascade) != 0)
 					mModule->Fail("Cascade already specified on call target", unaryOpExpr->mOpToken);
@@ -19471,7 +19471,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		SizedArray<BfExpression*, 2> argExprs;		
 		BfSizedArray<BfExpression*> sizedArgExprs(indexerExpr->mArguments);
 		BfResolvedArgs argValues(&sizedArgExprs);
-		ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
+		ResolveArgValues(argValues, (BfResolveArgsFlags)(BfResolveArgsFlag_DeferParamEval | BfResolveArgsFlag_FromIndexer));
 		//exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, NULL);
 
 		mIndexerValues = argValues.mResolvedArgs;

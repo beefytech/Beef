@@ -31,7 +31,8 @@ enum BfResolveArgsFlags
 	BfResolveArgsFlag_DeferParamValues = 2, // We still evaluate but don't generate code until the method is selected (for SkipCall support)
 	BfResolveArgsFlag_DeferParamEval = 4,
 	BfResolveArgsFlag_AllowUnresolvedTypes = 8,
-	BfResolveArgsFlag_InsideStringInterpolationAlloc = 0x10
+	BfResolveArgsFlag_InsideStringInterpolationAlloc = 0x10,
+	BfResolveArgsFlag_FromIndexer = 0x20
 };
 
 enum BfResolveArgFlags
