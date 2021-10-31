@@ -18348,6 +18348,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 	if (ptr.mType->IsVar())
 	{
 		mResult = ptr;
+		MarkResultAssigned();
 		return;
 	}
 	if (convVal.mValue)
