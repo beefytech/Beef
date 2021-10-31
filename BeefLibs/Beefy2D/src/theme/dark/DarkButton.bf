@@ -75,14 +75,16 @@ namespace Beefy.theme.dark
 
             g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
             if (mLabel != null)
-            {
-                using (g.PushColor(mDisabled ? 0x80FFFFFF : Color.White))
-                {
-					using (g.PushColor(DarkTheme.COLOR_TEXT))
+			{
+				using (g.PushColor(mDisabled ? 0x80FFFFFF : Color.White))
+				{
+					using (g.PushColor(TextColor))
 						DarkTheme.DrawUnderlined(g, mLabel, GS!(2), (mHeight - GS!(20)) / 2 + mLabelYOfs, .Centered, mWidth - GS!(4), .Truncate);
-                }
-            }
+				}
+			}
         }
+
+		public virtual Color TextColor => DarkTheme.COLOR_TEXT;
 
 		public override void Update()
 		{

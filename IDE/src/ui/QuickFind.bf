@@ -71,9 +71,32 @@ namespace IDE.ui
             }
         }
 
+		public class CaseSensitiveSwitch : DarkButton
+		{
+			QuickFind mQuickFind;
+			public static bool mActive;
+
+			public this(QuickFind quickFind)
+			{
+				mQuickFind = quickFind;
+				Label = "Ww";
+
+				mOnMouseClick.Add(new (mouseArgs) => {
+					mActive = !mActive;
+
+					mQuickFind.mCurFindIdx = -1;
+					mQuickFind.FindAll();
+					mQuickFind.ShowCurrentSelection();
+				});
+			}
+
+			public override Color TextColor => mActive ? Color.Get(75, 225, 225) : DarkTheme.COLOR_TEXT;
+		}
+
         public TextPanel mPanel;
 		public EditWidget mEditWidget;
-        public EditWidget mFindEditWidget;
+		public EditWidget mFindEditWidget;
+        public CaseSensitiveSwitch mCaseSensitiveWidget;
         public EditWidget mReplaceEditWidget;
         public int32 mLastActiveCursorPos;
         bool mHasNewActiveCursorPos;
@@ -105,7 +128,11 @@ namespace IDE.ui
             mFindEditWidget = new FindEdit(this);
             mFindEditWidget.Content.SelectAll();
             mFindEditWidget.mOnKeyDown.Add(new => KeyDownHandler);
-            AddWidget(mFindEditWidget);            
+            AddWidget(mFindEditWidget);
+
+			mCaseSensitiveWidget = new CaseSensitiveSwitch(this);
+			mCaseSensitiveWidget.mOnKeyDown.Add(new => KeyDownHandler);
+			AddWidget(mCaseSensitiveWidget);
 
             if (isReplace)
             {
@@ -236,7 +263,7 @@ namespace IDE.ui
 
             if (evt.mKeyCode == KeyCode.Tab)
             {
-                IDEUtils.SelectNextChildWidget(this, mWidgetWindow.IsKeyDown(KeyCode.Shift));
+				Widget.HandleTab(mWidgetWindow.IsKeyDown(KeyCode.Shift) ? -1 : 1, mChildWidgets);
             }
             
             //int replaceCount = -1;
@@ -383,10 +410,16 @@ namespace IDE.ui
             if (findText.Length == 0)
                 return false;
 
-            String findTextLower = scope String(findText);
-            findTextLower.ToLower();
-            String findTextUpper = scope String(findText);
-            findTextUpper.ToUpper();
+			String findTextLower;
+			String findTextUpper;
+
+			if (!CaseSensitiveSwitch.mActive) {
+				findTextLower = scope:: String(findText);
+				findTextLower.ToLower();
+
+				findTextUpper = scope:: String(findText);
+				findTextUpper.ToUpper();
+			}
 
             if ((mCurFindIdx == -1) && (mSelectionStart != null))
             {
@@ -436,12 +469,23 @@ namespace IDE.ui
                 bool isEqual = true;
                 for (int32 i = 0; i < findText.Length; i++)
                 {
-                    if ((editContent.mData.mText[i + startIdx].mChar != findTextLower[i]) &&
-                        (editContent.mData.mText[i + startIdx].mChar != findTextUpper[i]))
-                    {
-                        isEqual = false;
-                        break;
-                    }
+					if (CaseSensitiveSwitch.mActive)
+					{
+						if (editContent.mData.mText[i + startIdx].mChar != findText[i])
+						{
+							isEqual = false;
+							break;
+						}
+					}
+					else
+					{
+						if ((editContent.mData.mText[i + startIdx].mChar != findTextLower[i]) &&
+						    (editContent.mData.mText[i + startIdx].mChar != findTextUpper[i]))
+						{
+						    isEqual = false;
+						    break;
+						}
+					}
                 }
                 if (isEqual)
                 {
@@ -723,7 +767,8 @@ namespace IDE.ui
         public override void Resize(float x, float y, float width, float height)
         {
             base.Resize(x, y, width, height);
-            mFindEditWidget.Resize(GS!(6), GS!(6), width - GS!(20), GS!(22));
+			mFindEditWidget.Resize(GS!(6), GS!(6), width - GS!(20 + 40), GS!(22));
+            mCaseSensitiveWidget.Resize(GS!(6) + width - GS!(20 + 36), GS!(6), GS!(36), GS!(22));
 
             if (mReplaceEditWidget != null)
                 mReplaceEditWidget.Resize(GS!(6), GS!(6 + 22 + 4), width - GS!(20), GS!(22));
@@ -750,6 +795,8 @@ namespace IDE.ui
 			if (mHasFocus)
 				return true;
 			if (mFindEditWidget.mHasFocus)
+				return true;
+			if (mCaseSensitiveWidget.mHasFocus)
 				return true;
 			if ((mReplaceEditWidget != null) && (mReplaceEditWidget.mHasFocus))
 				return true;
