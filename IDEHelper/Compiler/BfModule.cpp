@@ -7464,7 +7464,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				if (constraintType->IsVar())
 				{
 					// From a `comptype` generic undef resolution. Ignore.
-					genericParamInstance->mGenericParamFlags |= BfGenericParamFlag_ComptypeExpr;
+					genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | BfGenericParamFlag_ComptypeExpr);
 					genericParamInstance->mComptypeConstraint.Add(constraintTypeRef);
 					continue;
 				}
@@ -7526,7 +7526,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 							if ((startingTypeConstraint != NULL) && (startingTypeConstraint->IsDelegate()))
 							{
 								// 'System.Delegate' means that we are expecting an actual delegate instance.  Simulate this by wanting a class.
-								genericParamInstance->mGenericParamFlags |= BfGenericParamFlag_Class;
+								genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | BfGenericParamFlag_Class);
 							}
 						}
 						else

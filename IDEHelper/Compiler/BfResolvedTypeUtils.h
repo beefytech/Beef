@@ -1118,7 +1118,7 @@ public:
 class BfGenericParamInstance 
 {
 public:	
-	int mGenericParamFlags;
+	BfGenericParamFlags mGenericParamFlags;
 	BfType* mExternType;
 	Array<BfTypeInstance*> mInterfaceConstraints;
 	Array<BfGenericOperatorConstraintInstance> mOperatorConstraints;
@@ -1129,7 +1129,7 @@ public:
 	BfGenericParamInstance()
 	{
 		mExternType = NULL;
-		mGenericParamFlags = 0;
+		mGenericParamFlags = BfGenericParamFlag_None;
 		mTypeConstraint = NULL;
 		mRefCount = 1;
 	}

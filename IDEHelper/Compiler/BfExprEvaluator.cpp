@@ -7917,27 +7917,30 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 
 bool BfExprEvaluator::CheckGenericCtor(BfGenericParamType* genericParamType, BfResolvedArgs& argValues, BfAstNode* targetSrc)
 {
-	auto genericConstraint = mModule->GetGenericParamInstance(genericParamType);
+	BfGenericParamFlags genericParamFlags = BfGenericParamFlag_None;
+	BfType* typeConstraint = NULL;
+	auto genericParam = mModule->GetMergedGenericParamData((BfGenericParamType*)genericParamType, genericParamFlags, typeConstraint);
+
 	bool success = true;
 	
 	if ((argValues.mArguments != NULL) && (argValues.mArguments->size() != 0))
 	{
-		mModule->Fail(StrFormat("Only default parameterless constructors can be called on generic argument '%s'", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		mModule->Fail(StrFormat("Only default parameterless constructors can be called on generic argument '%s'", genericParam->GetGenericParamDef()->mName.c_str()), targetSrc);
 		success = false;
 	}
-	else if ((genericConstraint->mGenericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Struct)) == 0)
+	else if ((genericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Struct | BfGenericParamFlag_Var)) == 0)
 	{
-		mModule->Fail(StrFormat("Must add 'where %s : new, struct' constraint to generic parameter to instantiate type", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		mModule->Fail(StrFormat("Must add 'where %s : new, struct' constraint to generic parameter to instantiate type", genericParam->GetGenericParamDef()->mName.c_str()), targetSrc);
 		success = false;
 	}
-	else if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_New) == 0)
+	else if ((genericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Var)) == 0)
 	{
-		mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericParam->GetGenericParamDef()->mName.c_str()), targetSrc);
 		success = false;
 	}
-	else if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_Struct) == 0)
+	else if ((genericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_Var)) == 0)
 	{
-		mModule->Fail(StrFormat("Must add 'where %s : struct' constraint to generic parameter to instantiate type without allocator", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		mModule->Fail(StrFormat("Must add 'where %s : struct' constraint to generic parameter to instantiate type without allocator", genericParam->GetGenericParamDef()->mName.c_str()), targetSrc);
 		success = false;
 	}	
 
@@ -14200,16 +14203,19 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	bool isGenericParam = unresolvedTypeRef->IsGenericParam();
 	if (resolvedTypeRef->IsGenericParam())
 	{
-		auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)resolvedTypeRef);
-		if (genericParam->mTypeConstraint == NULL)
+		BfGenericParamFlags genericParamFlags = BfGenericParamFlag_None;
+		BfType* typeConstraint = NULL;
+		auto genericParam = mModule->GetMergedGenericParamData((BfGenericParamType*)resolvedTypeRef, genericParamFlags, typeConstraint);
+		
+		if (typeConstraint == NULL)
 		{
-			if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+			if ((genericParamFlags & BfGenericParamFlag_Var) != 0)
 			{
 				// Allow it
 			}
 			else
 			{
-				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_New) == 0)
+				if ((genericParamFlags & BfGenericParamFlag_New) == 0)
 				{
 					mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericParam->GetName().c_str()), objCreateExpr->mTypeRef);
 				}
@@ -14220,13 +14226,13 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			}
 		}
 		
-		if (((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsValueType())) ||
-			((genericParam->mGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr)) != 0))
+		if (((typeConstraint != NULL) && (typeConstraint->IsValueType())) ||
+			((genericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr)) != 0))
 		{
 			resultType = mModule->CreatePointerType(resolvedTypeRef);
 		}
-		else if (((genericParam->mTypeConstraint != NULL) && (!genericParam->mTypeConstraint->IsValueType())) ||
-			((genericParam->mGenericParamFlags & (BfGenericParamFlag_Class)) != 0))
+		else if (((typeConstraint != NULL) && (!typeConstraint->IsValueType())) ||
+			((genericParamFlags & (BfGenericParamFlag_Class)) != 0))
 		{
 			// Leave as 'T'
 			resultType = resolvedTypeRef;

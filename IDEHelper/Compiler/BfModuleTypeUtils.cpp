@@ -102,7 +102,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 		auto rootGenericParamInstance = genericTypeInst->mGenericTypeInfo->mGenericParams[paramIdx];
 		genericParamInstance->mTypeConstraint = rootGenericParamInstance->mTypeConstraint;
 		genericParamInstance->mInterfaceConstraints = rootGenericParamInstance->mInterfaceConstraints;
-		genericParamInstance->mGenericParamFlags |= rootGenericParamInstance->mGenericParamFlags;
+		genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | rootGenericParamInstance->mGenericParamFlags);
 
 		ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType());
 	}
@@ -390,25 +390,25 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 		// If the outer had a type flag and the inner has a specific type constraint, then see if those are compatible
 		auto outerFlags = checkOuter->mGenericParamFlags;
 		if ((outerFlags & BfGenericParamFlag_Enum) != 0)
-			outerFlags |= BfGenericParamFlag_Struct;
+			outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_Struct);
 
 		if (checkOuter->mTypeConstraint != NULL)
 		{
 			if (checkOuter->mTypeConstraint->IsStruct())
-				outerFlags |= BfGenericParamFlag_Struct;
+				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_Struct);
 			else if (checkOuter->mTypeConstraint->IsStructOrStructPtr())
-				outerFlags |= BfGenericParamFlag_StructPtr;
+				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_StructPtr);
 			else if (checkOuter->mTypeConstraint->IsObject())
-				outerFlags |= BfGenericParamFlag_Class;
+				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_Class);
 			else if (checkOuter->mTypeConstraint->IsEnum())
-				outerFlags |= BfGenericParamFlag_Enum | BfGenericParamFlag_Struct;
+				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_Enum | BfGenericParamFlag_Struct);
 			else if (checkOuter->mTypeConstraint->IsInterface())
-				outerFlags |= BfGenericParamFlag_Interface;
+				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_Interface);
 		}
 
 		auto innerFlags = checkInner->mGenericParamFlags;
 		if ((innerFlags & BfGenericParamFlag_Enum) != 0)
-			innerFlags |= BfGenericParamFlag_Struct;
+			innerFlags = (BfGenericParamFlags)(innerFlags | BfGenericParamFlag_Struct);
 
 		if (((innerFlags | outerFlags) & ~BfGenericParamFlag_Var) != (outerFlags & ~BfGenericParamFlag_Var))
 			return false;
@@ -8055,6 +8055,30 @@ void BfModule::GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInsta
 	BF_ASSERT(genericTypeInst != NULL);
 	for (auto entry : genericTypeInst->mGenericTypeInfo->mGenericParams)
 		genericParamInstances.Add(entry);
+}
+
+BfGenericParamInstance* BfModule::GetMergedGenericParamData(BfGenericParamType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint)
+{	
+	BfGenericParamInstance* genericParam = GetGenericParamInstance(type);
+	outFlags = genericParam->mGenericParamFlags;
+	outTypeConstraint = genericParam->mTypeConstraint;
+
+	// Check method generic constraints
+	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))
+	{
+		for (int genericParamIdx = (int)mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+			genericParamIdx < mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+		{
+			auto genericParam = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+			if (genericParam->mExternType == type)
+			{
+				outFlags = (BfGenericParamFlags)(outFlags | genericParam->mGenericParamFlags);
+				if (genericParam->mTypeConstraint != NULL)
+					outTypeConstraint = genericParam->mTypeConstraint;
+			}
+		}
+	}
+	return genericParam;
 }
 
 BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* type)
