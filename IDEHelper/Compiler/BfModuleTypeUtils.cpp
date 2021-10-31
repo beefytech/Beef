@@ -4050,6 +4050,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if ((fieldInstance->GetFieldDef() != NULL) && (fieldInstance->GetFieldDef()->mIsConst))
 			{
 				// Resolve later
+				AddDependency(resolvedFieldType, typeInstance, BfDependencyMap::DependencyFlag_ConstValue);
 			}
 			else if (fieldInstance->GetFieldDef() != NULL)
 			{
