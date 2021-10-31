@@ -5847,7 +5847,7 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 	return fieldDeclaration;
 }
 
-BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNode* deferredHeadNode)
+BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, int depth, BfAstNode* deferredHeadNode)
 {
 	BfToken token = tokenNode->GetToken();
 
@@ -5867,8 +5867,9 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 			return NULL;
 		}
 
+		SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, attributes, !declStarted);
 		mVisitorPos.MoveNext();
-		auto memberNode = ReadTypeMember(nextNode, 0, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
+		auto memberNode = ReadTypeMember(nextNode, true, depth, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
 		if (memberNode == NULL)
 			return NULL;
 
@@ -6151,7 +6152,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 	if (nextNode != NULL)
 	{
 		mVisitorPos.MoveNext();
-		typeMember = ReadTypeMember(nextNode, depth + 1);
+		typeMember = ReadTypeMember(nextNode, true, depth + 1);
 	}
 
 	auto memberDecl = BfNodeDynCast<BfMemberDeclaration>(typeMember);
@@ -6571,7 +6572,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 	}
 }
 
-BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* deferredHeadNode)
+BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int depth, BfAstNode* deferredHeadNode)
 {
 // 	SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node, false);
 // 	if (depth == 0)
@@ -6618,10 +6619,8 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* defe
 		}
 		else
 		{
-			SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, tokenNode, false);
-			if (depth == 0)
-				prevTypeMemberNodeStart.Set();
-			return ReadTypeMember(tokenNode, depth, deferredHeadNode);
+			SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, tokenNode, !declStarted);			
+			return ReadTypeMember(tokenNode, declStarted, depth, deferredHeadNode);
 		}
 	}
 	else if (auto block = BfNodeDynCast<BfBlock>(node))
@@ -8024,6 +8023,7 @@ BfAstNode* BfReducer::HandleTopLevel(BfBlock* node)
 			mVisitorPos.Write(child); // Just keep it...
 			continue;
 		}
+		SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, tokenNode);
 		auto newNode = CreateTopLevelObject(tokenNode, NULL);
 		hadPrevFail = newNode == NULL;
 
@@ -8240,7 +8240,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			FailAfter("Expected type declaration", tokenNode);
 			return NULL;
 		}
-
+		
 		mVisitorPos.MoveNext();
 		auto topLevelObject = CreateTopLevelObject(nextToken, attributes);
 		if (topLevelObject == NULL)
@@ -8294,7 +8294,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			return NULL;
 		}
 		mVisitorPos.MoveNext();
-
+		
 		auto topLevelObject = CreateTopLevelObject(nextToken, attributes);
 		if (topLevelObject == NULL)
 		{
@@ -8490,7 +8490,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		typeDeclaration->mNameNode = identifierNode;
 		ReplaceNode(tokenNode, typeDeclaration);
 		MoveNode(identifierNode, typeDeclaration);
-		typeDeclaration->mDocumentation = FindDocumentation(typeDeclaration);
+		typeDeclaration->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 
 		auto nextNode = mVisitorPos.GetNext();
 		auto chevronToken = BfNodeDynCast<BfTokenNode>(nextNode);
