@@ -4951,7 +4951,7 @@ namespace IDE.ui
 					if ((!String.IsNullOrEmpty(mHoverResolveTask?.mResult)))
 					{
 						origDebugExpr = scope:: String();
-						origDebugExpr.Set(debugExpr);
+						origDebugExpr.Set("");
 
 						debugExpr.Set(mHoverResolveTask.mResult);
 

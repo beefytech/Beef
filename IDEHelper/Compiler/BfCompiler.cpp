@@ -4304,7 +4304,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 			if (autoComplete->mResolveType == BfResolveType_GetResultString)
 			{
 				autoComplete->mResultString = ":";
-				autoComplete->mResultString += module->TypeToString(typeInst);
+				autoComplete->mResultString += module->TypeToString(typeInst, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
 			}
 		}		
 	}	

@@ -570,7 +570,7 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 			auto typeInst = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
 			StringT<1024> str;
 			if (typeInst != NULL)
-				str = mModule->TypeToString(typeInst, BfTypeNameFlag_ExtendedInfo);
+				str = mModule->TypeToString(typeInst, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
 			if (typeDef->mTypeDeclaration->mDocumentation != NULL)
 			{
 				if (!str.IsEmpty())
@@ -2627,7 +2627,7 @@ void BfAutoComplete::CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedT
 		if (mResolveType == BfResolveType_GetResultString)
 		{
 			mResultString = ":";
-			mResultString += mModule->TypeToString(resolvedType);
+			mResultString += mModule->TypeToString(resolvedType, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
 		}
 	}
 }
@@ -2651,11 +2651,11 @@ void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue
 	auto constant = mModule->mBfIRBuilder->GetConstant(typedValue.mValue);
 	if (BfIRConstHolder::IsInt(constant->mTypeCode))
 	{
-		mResultString = StrFormat("%lld", constant->mInt64);
+		mResultString = StrFormat(":%lld", constant->mInt64);
 	}
 	else if (BfIRConstHolder::IsFloat(constant->mTypeCode))
 	{
-		mResultString = StrFormat("%f", constant->mDouble);
+		mResultString = StrFormat(":%f", constant->mDouble);
 	}	
 }
 
