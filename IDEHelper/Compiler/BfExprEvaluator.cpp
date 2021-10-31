@@ -3050,6 +3050,19 @@ void BfExprEvaluator::Evaluate(BfAstNode* astNode, bool propogateNullConditional
 	if ((mBfEvalExprFlags & BfEvalExprFlags_AllowIntUnknown) == 0)
 		mModule->FixIntUnknown(mResult);
 
+	if (!mModule->mBfIRBuilder->mIgnoreWrites)
+	{
+		if (mResult.mValue.IsConst())
+		{
+			auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
+			if (constant->mConstType == BfConstType_TypeOf)
+			{
+				auto typeOfConst = (BfTypeOf_Const*)constant;
+				mResult.mValue = mModule->CreateTypeDataRef(typeOfConst->mType);
+			}
+		}
+	}
+
 	if (mModule->mCurMethodState != NULL)
 	{
 		if (mInsidePendingNullable)
