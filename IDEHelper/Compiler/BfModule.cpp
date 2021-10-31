@@ -7674,25 +7674,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
-
-	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) &&
-		((checkGenericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Var)) == 0))
-	{
-		if ((!ignoreErrors) && (PreFail()))
-			*errorOut = Fail(StrFormat("Must add 'where %s : new' constraint in order to use type as parameter '%s' for '%s'",
-				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
-		return false;
-	}
-
-	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Delete) &&
-		((checkGenericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var)) == 0))
-	{
-		if ((!ignoreErrors) && (PreFail()))
-			*errorOut = Fail(StrFormat("Must add 'where %s : delete' constraint in order to use type as parameter '%s' for '%s'",
-				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
-		return false;
-	}
-
+	
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
 	{
 		if (((checkGenericParamFlags & BfGenericParamFlag_Const) == 0) && (!checkArgType->IsConstExprValue()))
@@ -7721,19 +7703,25 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			canDelete = true;
 		else if (checkArgType->IsObjectOrInterface())
 			canDelete = true;
-		else if ((checkGenericParamFlags & BfGenericParamFlag_Delete) != 0)
+		else if ((checkGenericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var)) != 0)
 			canDelete = true;
 
 		if (!canDelete)
 		{
 			if ((!ignoreErrors) && (PreFail()))
-				*errorOut = Fail(StrFormat("The type '%s' must be a deletable type in order to use it as parameter '%s' for '%s'",
-					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+			{
+				if (checkArgType->IsGenericParam())
+					*errorOut = Fail(StrFormat("Must add 'where %s : delete' constraint in order to use type as parameter '%s' for '%s'",
+						TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				else
+					*errorOut = Fail(StrFormat("The type '%s' must be a deletable type in order to use it as parameter '%s' for '%s'",
+						TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+			}
 			return false;
 		}
 	}
 
-	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) != 0)
+	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) != 0)		
 	{
 		bool canAlloc = false;
 		if (auto checkTypeInst = checkArgType->ToTypeInstance())
@@ -7749,6 +7737,19 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				bool hadProtected = false;
 				while (checkMethodDef != NULL)
 				{
+					if (!checkMethodDef->mParams.IsEmpty())
+					{
+						auto firstParam = checkMethodDef->mParams[0];
+						if ((firstParam->mParamDeclaration != NULL) && (firstParam->mParamDeclaration->mInitializer != NULL))
+						{
+							// Allow all-default params
+						}
+						else
+						{
+							checkMethodDef = checkMethodDef->mNextWithSameName;
+							continue;
+						}
+					}
 					if (checkMethodDef->mProtection == BfProtection_Public)
 					{
 						canAlloc = true;
@@ -7763,6 +7764,10 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					canAlloc = TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst, false);
 			}
 		}
+		else if (checkArgType->IsGenericParam())
+		{
+			canAlloc = (checkGenericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Var)) != 0;
+		}
 		else
 		{
 			// Any primitive types and stuff can be allocated
@@ -7772,8 +7777,14 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		if (!canAlloc)
 		{
 			if ((!ignoreErrors) && (PreFail()))
-				*errorOut = Fail(StrFormat("The type '%s' must have an accessible default constructor in order to use it as parameter '%s' for '%s'",
-					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+			{
+				if (checkArgType->IsGenericParam())
+					*errorOut = Fail(StrFormat("Must add 'where %s : new' constraint in order to use type as parameter '%s' for '%s'",
+						TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				else
+					*errorOut = Fail(StrFormat("The type '%s' must have an accessible default constructor in order to use it as parameter '%s' for '%s'",
+						TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+			}
 			return false;
 		}
 	}
