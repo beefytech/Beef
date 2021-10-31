@@ -7675,7 +7675,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
-	
+
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
 	{
 		if (((checkGenericParamFlags & BfGenericParamFlag_Const) == 0) && (!checkArgType->IsConstExprValue()))
@@ -7684,7 +7684,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				*errorOut = Fail(StrFormat("The type '%s' must be a const value in order to use it as parameter '%s' for '%s'",
 					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
-		}		
+		}
 	}
 	else
 	{
@@ -7696,7 +7696,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			return false;
 		}
 	}
-	
+
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Delete) != 0)
 	{
 		bool canDelete = false;
@@ -7722,7 +7722,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		}
 	}
 
-	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) != 0)		
+	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) != 0)
 	{
 		bool canAlloc = false;
 		if (auto checkTypeInst = checkArgType->ToTypeInstance())
@@ -7741,7 +7741,8 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					if (!checkMethodDef->mParams.IsEmpty())
 					{
 						auto firstParam = checkMethodDef->mParams[0];
-						if ((firstParam->mParamDeclaration != NULL) && (firstParam->mParamDeclaration->mInitializer != NULL))
+						if (((firstParam->mParamKind == BfParamKind_Params) || (firstParam->mParamKind == BfParamKind_AppendIdx) || (firstParam->mParamKind == BfParamKind_VarArgs)) ||
+							((firstParam->mParamDeclaration != NULL) && (firstParam->mParamDeclaration->mInitializer != NULL)))
 						{
 							// Allow all-default params
 						}
