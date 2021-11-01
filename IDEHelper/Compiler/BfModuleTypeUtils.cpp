@@ -10358,10 +10358,15 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			for (int i = 0; i < parentTypeInstance->mGenericTypeInfo->mGenericParams.size(); i++)
 			{
 				actualTupleType->mGenericTypeInfo->mGenericParams.push_back(parentTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());
+			}
+
+			for (int i = 0; i < parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments.size(); i++)
+			{
 				actualTupleType->mGenericTypeInfo->mTypeGenericArguments.push_back(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
 				auto typeGenericArg = actualTupleType->mGenericTypeInfo->mTypeGenericArguments[i];
 				actualTupleType->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
 			}
+
 			CheckUnspecializedGenericType(actualTupleType, populateType);			
 			if (isUnspecialized)
 			{
