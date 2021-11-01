@@ -8903,6 +8903,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	if (!moduleMethodInstance)
 	{
 		FinishDeferredEvals(argValues);
+		if (mModule->IsInUnspecializedGeneric())
+			return mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
 		return BfTypedValue();
 	}
 

@@ -14146,8 +14146,10 @@ bool BfModule::IsInSpecializedSection()
 
 bool BfModule::IsInUnspecializedGeneric()
 {
-	if (mCurMethodInstance != NULL)
-		return mCurMethodInstance->mIsUnspecialized;
+	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized))
+		return true;
+	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsUnspecializedType()))
+		return true;
 	return false;
 }
 
