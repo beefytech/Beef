@@ -7770,7 +7770,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			canAlloc = (checkGenericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Var)) != 0;
 		}
-		else
+		else if (checkArgType->IsPrimitiveType())
 		{
 			// Any primitive types and stuff can be allocated
 			canAlloc = true;

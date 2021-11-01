@@ -1102,7 +1102,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 
 		for (auto kv : externConstraints)
 		{
-			SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(kv.mValue.mParams[1], kv.mValue.mParams[0]), mModule->AreConstraintsSubset(kv.mValue.mParams[0], kv.mValue.mParams[1]));
+			SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(kv.mValue.mParams[0], kv.mValue.mParams[1]), mModule->AreConstraintsSubset(kv.mValue.mParams[1], kv.mValue.mParams[0]));
 		}
 
 		if ((isBetter) || (isWorse))
@@ -8127,6 +8127,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	{		
 		if (targetType->IsWrappableType())
 		{
+			if ((targetType->IsPrimitiveType()) && (methodName.IsEmpty()))
+				return mModule->GetDefaultTypedValue(targetType);
 			targetTypeInst = mModule->GetWrappedStructType(targetType);
 		}
 		else if (targetType->IsGenericParam())
@@ -8517,6 +8519,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				if ((refType != NULL) && (refType->IsPrimitiveType()))
 				{
 					FinishDeferredEvals(argValues);
+
+					if (argValues.mResolvedArgs.IsEmpty())
+						return mModule->GetDefaultTypedValue(refType);
 
 					if (argValues.mResolvedArgs.size() != 1)
 					{
@@ -16178,6 +16183,10 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				{
 					// Silently allow
 					gaveUnqualifiedDotError = true;
+				}
+				else if (expectingType->IsPrimitiveType())
+				{
+					// Allow
 				}
 				else
 				{
