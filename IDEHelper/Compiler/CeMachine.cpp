@@ -3644,38 +3644,47 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 		// 			CE_CREATECONST_CHECKPTR(instData, typeInst->mInstSize);
 		// 		}
 
-		if (typeInst->IsInstanceOf(mCeMachine->mCompiler->mStringTypeDef))
+		if (typeInst->IsObjectOrInterface())
 		{
-			BfTypeInstance* stringTypeInst = (BfTypeInstance*)ceModule->ResolveTypeDef(mCeMachine->mCompiler->mStringTypeDef, BfPopulateType_Data);
-			module->PopulateType(stringTypeInst);
-
-			auto lenByteCount = stringTypeInst->mFieldInstances[0].mResolvedType->mSize;
-			auto lenOffset = stringTypeInst->mFieldInstances[0].mDataOffset;
-			auto allocSizeOffset = stringTypeInst->mFieldInstances[1].mDataOffset;
-			auto ptrOffset = stringTypeInst->mFieldInstances[2].mDataOffset;
-
-			int32 lenVal = *(int32*)(instData + lenOffset);
-
-			char* charPtr = NULL;
-
-			if (lenByteCount == 4)
+			addr_ce addr = *(addr_ce*)(ptr);
+			if (addr == 0)
 			{
-				int32 allocSizeVal = *(int32*)(instData + allocSizeOffset);
-				if ((allocSizeVal & 0x40000000) != 0)
-				{
-					int32 ptrVal = *(int32*)(instData + ptrOffset);
-					charPtr = (char*)(ptrVal + memStart);
-				}
-				else
-				{
-					charPtr = (char*)(instData + ptrOffset);
-				}
+				return irBuilder->CreateConstNull(irBuilder->MapType(typeInst));
 			}
+			instData = memStart + addr;
 
-			CE_CREATECONST_CHECKPTR(charPtr, lenVal);
-			String str(charPtr, lenVal);
-			return module->GetStringObjectValue(str);
-			
+			if (typeInst->IsInstanceOf(mCeMachine->mCompiler->mStringTypeDef))
+			{
+				BfTypeInstance* stringTypeInst = (BfTypeInstance*)ceModule->ResolveTypeDef(mCeMachine->mCompiler->mStringTypeDef, BfPopulateType_Data);
+				module->PopulateType(stringTypeInst);
+
+				auto lenByteCount = stringTypeInst->mFieldInstances[0].mResolvedType->mSize;
+				auto lenOffset = stringTypeInst->mFieldInstances[0].mDataOffset;
+				auto allocSizeOffset = stringTypeInst->mFieldInstances[1].mDataOffset;
+				auto ptrOffset = stringTypeInst->mFieldInstances[2].mDataOffset;
+
+				int32 lenVal = *(int32*)(instData + lenOffset);
+
+				char* charPtr = NULL;
+
+				if (lenByteCount == 4)
+				{
+					int32 allocSizeVal = *(int32*)(instData + allocSizeOffset);
+					if ((allocSizeVal & 0x40000000) != 0)
+					{
+						int32 ptrVal = *(int32*)(instData + ptrOffset);
+						charPtr = (char*)(ptrVal + memStart);
+					}
+					else
+					{
+						charPtr = (char*)(instData + ptrOffset);
+					}
+				}
+
+				CE_CREATECONST_CHECKPTR(charPtr, lenVal);
+				String str(charPtr, lenVal);
+				return module->GetStringObjectValue(str);
+			}
 		}
 
 		if (typeInst->IsInstanceOf(mCeMachine->mCompiler->mStringViewTypeDef))
@@ -4183,7 +4192,18 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	if (success)
 	{
 		BfTypedValue retValue;
-		if ((retInstAddr != 0) || (allocThisInstAddr != 0))
+		if (returnType->IsObject())
+		{
+			BfType* usedReturnType = returnType;
+			BfIRValue constVal = CreateConstant(module, (uint8*)&retInstAddr, returnType, &usedReturnType);
+			if (constVal)
+				returnValue = BfTypedValue(constVal, usedReturnType);
+			else
+			{
+				Fail("Failed to encode return argument");
+			}
+		}
+		else if ((retInstAddr != 0) || (allocThisInstAddr != 0))
 		{
 			auto* retPtr = memStart + retInstAddr;
 			if (allocThisInstAddr != 0)
