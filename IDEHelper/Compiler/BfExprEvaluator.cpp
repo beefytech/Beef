@@ -1098,11 +1098,11 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		};
 
 		_GetParams(0, newMethodInstance);
-		_GetParams(0, prevMethodInstance);
+		_GetParams(1, prevMethodInstance);
 
 		for (auto kv : externConstraints)
 		{
-			SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(kv.mValue.mParams[0], kv.mValue.mParams[1]), mModule->AreConstraintsSubset(kv.mValue.mParams[1], kv.mValue.mParams[0]));
+			SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(kv.mValue.mParams[1], kv.mValue.mParams[0]), mModule->AreConstraintsSubset(kv.mValue.mParams[0], kv.mValue.mParams[1]));
 		}
 
 		if ((isBetter) || (isWorse))
@@ -2176,6 +2176,29 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		//  And if neither better nor worse then they are equally good, which is not allowed either
 		if (((!isBetter) && (!isWorse)) || ((isBetter) && (isWorse)))
 		{
+			if (!mHasVarArguments)
+			{
+				// If we are ambiguous based on a subset of an extern 'var' constraint then don't throw an error
+				auto _CheckMethodInfo = [&](BfMethodInstance* checkMethodInstance)
+				{
+					if (checkMethodInstance->mMethodInfoEx == NULL)
+						return;
+					for (auto genericParam : checkMethodInstance->mMethodInfoEx->mGenericParams)
+					{
+						if ((genericParam->mExternType == NULL) || (!genericParam->mExternType->IsGenericParam()))
+							continue;
+						auto genericParamType = (BfGenericParamType*)genericParam->mExternType;
+						if (genericParamType->mGenericParamKind != BfGenericParamKind_Type)
+							continue;
+						auto externGenericParam = mModule->GetGenericParamInstance(genericParamType);
+						if ((externGenericParam->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+							mHasVarArguments = true;
+					}
+				};
+				_CheckMethodInfo(methodInstance);
+				_CheckMethodInfo(prevMethodInstance);
+			}
+			
 			if (mHasVarArguments)
 			{
 				if (methodInstance->mReturnType != prevMethodInstance->mReturnType)
