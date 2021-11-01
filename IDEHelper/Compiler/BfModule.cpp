@@ -16578,6 +16578,12 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 	bool calledCtorNoBody = false;
 	
+	if ((mCurTypeInstance->IsTypedPrimitive()) && (!mCurTypeInstance->IsValuelessType()))
+	{
+		// Zero out typed primitives in ctor
+		mBfIRBuilder->CreateStore(GetDefaultValue(mCurTypeInstance->GetUnderlyingType()), mBfIRBuilder->GetArgument(0));
+	}		
+
 	if ((!mCurTypeInstance->IsBoxed()) && (methodDef->mMethodType == BfMethodType_Ctor) && (!hadThisInitializer))
 	{
 		// Call the root type's default ctor (with no body) to initialize its fields and call the chained ctors		
@@ -17039,7 +17045,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			else
 				autoComplete->mIsCapturingMethodMatchInfo = false;
 		}
-	}	
+	}
 }
 
 void BfModule::EmitEnumToStringBody()
