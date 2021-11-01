@@ -380,9 +380,9 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter)
 {
 	if (checkOuter == NULL)
-		return true;
-	if (checkInner == NULL)
 		return false;
+	if (checkInner == NULL)
+		return true;
 
 	// Added new flags?
 	if ((checkInner->mGenericParamFlags | checkOuter->mGenericParamFlags) != checkOuter->mGenericParamFlags)
