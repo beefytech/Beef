@@ -176,9 +176,16 @@ namespace System.Net
 
 		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSAGetLastError();
+#elif BF_PLATFORM_LINUX
+		[LinkName("__errno_location")]
+		static extern int32* _errno();
+#elif BF_PLATFORM_MACOS
+		[LinkName("__error")]
+		static extern int32* _errno();
 #else
 		[CLink]
 		static int32 errno;
+		static int32* _errno() => &errno;
 #endif
 
 		[CLink, CallingConvention(.Stdcall)]
@@ -258,7 +265,7 @@ namespace System.Net
 #if BF_PLATFORM_WINDOWS
 			return WSAGetLastError();
 #else
-			return errno;
+			return *_errno();
 #endif
 		}
 
