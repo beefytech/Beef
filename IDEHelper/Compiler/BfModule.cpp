@@ -2197,7 +2197,7 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 			bool deferFullAnalysis = mCurMethodState->GetRootMethodState()->mLocalMethodCache.size() != 0;
 
 			// We may have init blocks that we aren't processing here...
-			if ((mCurMethodInstance->mIsAutocompleteMethod) && (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor))
+			if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsAutocompleteMethod) && (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor))
 				deferFullAnalysis = true;
 
 			//bool deferFullAnalysis = true;
@@ -14571,6 +14571,8 @@ BfTypeOptions* BfModule::GetTypeOptions()
 {
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMethodTypeOptions != NULL))
 		return mCurMethodState->mMethodTypeOptions;
+	if (mCurMethodInstance == NULL)
+		return NULL;
 	return mSystem->GetTypeOptions(mCurTypeInstance->mTypeOptionsIdx);
 }
 
@@ -15123,7 +15125,7 @@ void BfModule::EmitDefaultReturn()
 	}
 	else
 	{
-		if (mCurMethodInstance->mReturnType->IsVar())
+		if ((mCurMethodInstance == NULL) || (mCurMethodInstance->mReturnType->IsVar()))
 		{
 			// Ignore
 		}

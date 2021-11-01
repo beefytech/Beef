@@ -2523,6 +2523,9 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
 	auto typeAliasDecl = (BfTypeAliasDeclaration*)typeDef->mTypeDeclaration;
 	BfType* aliasToType = NULL;
 
+	if (typeAlias->mBaseType == NULL)
+		typeAlias->mBaseType = ResolveTypeDef(mCompiler->mValueTypeTypeDef)->ToTypeInstance();
+
 	typeAlias->mDefineState = BfTypeDefineState_ResolvingBaseType;
 	BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
 	typeState.mPopulateType = BfPopulateType_Data;
