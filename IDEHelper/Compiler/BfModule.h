@@ -1517,10 +1517,11 @@ public:
 	void SetFail();
 	void VerifyOnDemandMethods();
 	bool IsSkippingExtraResolveChecks();
+	bool AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing);
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false, bool deferError = false);
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	
-	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false);
+	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false, bool showInSpecialized = false);
 	void CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc);
 	void CheckRangeError(BfType* type, BfAstNode* refNode);
 	bool CheckCircularDataError();

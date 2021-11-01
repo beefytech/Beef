@@ -1589,7 +1589,7 @@ void BfPassInstance::SilentFail()
 	mFailedIdx++;
 }
 
-BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, BfSourceData* bfSource, int srcIdx, int srcLen)
+BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, BfSourceData* bfSource, int srcIdx, int srcLen, bool isDeferred)
 {
 	mLastWasAdded = false;
 	if ((int) mErrors.size() >= sMaxErrors)
@@ -1599,7 +1599,7 @@ BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, Bf
 	if ((bfParser != NULL) && (warningNumber > 0) && (!bfParser->IsWarningEnabledAtSrcIndex(warningNumber, srcIdx)))
 		return NULL;
 
-	if (!WantsRangeRecorded(bfParser, srcIdx, srcLen, true))
+	if (!WantsRangeRecorded(bfParser, srcIdx, srcLen, true, isDeferred))
 		return NULL;
 
 	mWarnIdx++;
@@ -1614,21 +1614,25 @@ BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, Bf
 	errorVal->mError = warning;
 	errorVal->mSrcStart = srcIdx;
 	errorVal->mSrcEnd = srcIdx + srcLen;
+	errorVal->mIsDeferred = isDeferred;
 	FixSrcStartAndEnd(bfSource, errorVal->mSrcStart, errorVal->mSrcEnd);
 	mErrorSet.Add(BfErrorEntry(errorVal));
 	mErrors.push_back(errorVal);
 	++mWarningCount;
 	mLastWasAdded = true;
 
-	mLastWasDisplayed = WantsRangeDisplayed(bfParser, srcIdx, srcLen, true);
-	if (mLastWasDisplayed)		
+	if (!isDeferred)
 	{
-		String errorStart = "WARNING";
-		if ((int)mErrors.size() > 1)
-			errorStart += StrFormat("(%d)", mErrors.size());
-		if (warningNumber > 0)
-			errorStart += StrFormat(": BF%04d", warningNumber);
-		MessageAt(":warn", errorStart + ": " + warning, bfParser, srcIdx);
+		mLastWasDisplayed = WantsRangeDisplayed(bfParser, srcIdx, srcLen, true);
+		if (mLastWasDisplayed)
+		{
+			String errorStart = "WARNING";
+			if ((int)mErrors.size() > 1)
+				errorStart += StrFormat("(%d)", mErrors.size());
+			if (warningNumber > 0)
+				errorStart += StrFormat(": BF%04d", warningNumber);
+			MessageAt(":warn", errorStart + ": " + warning, bfParser, srcIdx);
+		}
 	}
 	return errorVal;
 }
@@ -1645,7 +1649,7 @@ BfError* BfPassInstance::Warn(int warningNumber, const StringImpl& warning)
 	return NULL;
 }
 
-BfError* BfPassInstance::Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode)
+BfError* BfPassInstance::Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode, bool isDeferred)
 {
 	BP_ZONE("BfPassInstance::Warn");
 
@@ -1666,7 +1670,7 @@ BfError* BfPassInstance::Warn(int warningNumber, const StringImpl& warning, BfAs
 	}	
 
 	if (refNode != NULL)
-		return WarnAt(warningNumber, warning, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());
+		return WarnAt(warningNumber, warning, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength(), isDeferred);
 	else
 		return Warn(warningNumber, warning);
 }
@@ -1798,15 +1802,39 @@ void BfPassInstance::TryFlushDeferredError()
 	// This can happen in the case of an internal compiler error, where we believe we've satisfied
 	//   generic constraints but we generate an error on the specialization but not the unspecialized version
 	bool hasDisplayedError = false;
-	for (int pass = 0; pass < 2; pass++)	
+	bool hasDisplayedWarning = false;	
+	for (int pass = 0; pass < 2; pass++)
 	{
 		for (auto& error : mErrors)
 		{
-			if (!error->mIsWarning)
+			if (error->mIsWarning)
+			{
+				if (!error->mIsDeferred)
+					hasDisplayedWarning = true;
+				else if ((pass == 1) && (!hasDisplayedWarning))
+				{
+					String errorText = "WARNING ";					
+					if (error->mWarningNumber > 0)
+						errorText += StrFormat(": BF%04d", error->mWarningNumber);
+					errorText += ": ";
+					errorText += error->mError;
+
+					MessageAt(":warning", errorText, error->mSource, error->mSrcStart, error->mSrcEnd - error->mSrcStart);
+
+					for (auto moreInfo : error->mMoreInfo)
+					{
+						if (moreInfo->mSource != NULL)
+							MessageAt(":warning", " > " + moreInfo->mInfo, moreInfo->mSource, moreInfo->mSrcStart, moreInfo->mSrcEnd - moreInfo->mSrcStart);
+						else
+							OutputLine(":warning " + moreInfo->mInfo);
+					}
+				}
+			}
+			else
 			{
 				if (!error->mIsDeferred)
 					hasDisplayedError = true;				
-				else if (pass == 1)				
+				else if ((pass == 1) && (!hasDisplayedError))
 				{
 					MessageAt(":error", "ERROR: " + error->mError, error->mSource, error->mSrcStart, error->mSrcEnd - error->mSrcStart);				
 
@@ -1819,10 +1847,7 @@ void BfPassInstance::TryFlushDeferredError()
 					}
 				}
 			}
-		}
-
-		if ((pass == 0) && (hasDisplayedError))
-			break;
+		}		
 	}
 }
 

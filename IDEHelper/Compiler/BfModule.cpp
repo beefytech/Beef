@@ -2844,6 +2844,102 @@ bool BfModule::IsSkippingExtraResolveChecks()
 	return mCompiler->IsSkippingExtraResolveChecks();
 }
 
+bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing)
+{
+	bool isWhileSpecializingMethod = false;
+	if ((mIsSpecialModule) && (mModuleName == "vdata"))
+		errorString += StrFormat("\n  while generating vdata for project '%s'", mProject->mName.c_str());
+	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend))
+		errorString += StrFormat("\n  while generating append size calculating method");
+	else if (refNode == NULL)
+	{
+		if (mCurTypeInstance != NULL)
+			errorString += StrFormat("\n  while compiling '%s'", TypeToString(mCurTypeInstance, BfTypeNameFlags_None).c_str());
+		else if (mProject != NULL)
+			errorString += StrFormat("\n  while compiling project '%s'", mProject->mName.c_str());
+	}
+
+	if (mCurTypeInstance != NULL)
+	{
+		auto _CheckMethodInstance = [&](BfMethodInstance* methodInstance)
+		{
+			// Propogate the fail all the way to the main method (assuming we're in a local method or lambda)
+			methodInstance->mHasFailed = true;
+
+			bool isSpecializedMethod = ((methodInstance != NULL) && (!methodInstance->mIsUnspecialized) && (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mMethodGenericArguments.size() != 0));
+			if (isSpecializedMethod)
+			{
+				//auto unspecializedMethod = &mCurMethodInstance->mMethodInstanceGroup->mMethodSpecializationMap.begin()->second;
+				auto unspecializedMethod = methodInstance->mMethodInstanceGroup->mDefault;
+				if (unspecializedMethod == methodInstance)
+				{
+					// This is a local method inside a generic method
+					BF_ASSERT(methodInstance->mMethodDef->mIsLocalMethod);
+				}
+				else
+				{
+					if (unspecializedMethod->mHasFailed)
+						return false; // At least SOME error has already been reported
+				}
+			}
+
+			if (isSpecializedMethod)
+			{
+				errorString += StrFormat("\n  while specializing method '%s'", MethodToString(methodInstance).c_str());
+				isWhileSpecializing = true;
+				isWhileSpecializingMethod = true;
+			}
+			else if ((methodInstance != NULL) && (methodInstance->mIsForeignMethodDef))
+			{
+				errorString += StrFormat("\n  while implementing default interface method '%s'", MethodToString(methodInstance).c_str());
+				isWhileSpecializing = true;
+				isWhileSpecializingMethod = true;
+			}
+			else if ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType()))
+			{
+				errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
+				isWhileSpecializing = true;
+			}
+
+			return true;
+		};
+
+		bool hadMethodInstance = false;
+		if (mCurMethodState != NULL)
+		{
+			auto checkMethodState = mCurMethodState;
+			while (checkMethodState != NULL)
+			{
+				auto methodInstance = checkMethodState->mMethodInstance;
+				if (methodInstance == NULL)
+				{
+					checkMethodState = checkMethodState->mPrevMethodState;
+					continue;
+				}
+
+				hadMethodInstance = true;
+				if (!_CheckMethodInstance(methodInstance))
+					return false;
+				checkMethodState = checkMethodState->mPrevMethodState;
+			}
+		}
+
+		if ((!hadMethodInstance) && (mCurMethodInstance != NULL))
+		{
+			if (!_CheckMethodInstance(mCurMethodInstance))
+				return false;
+		}
+	}
+
+	if ((!isWhileSpecializing) && (mCurTypeInstance != NULL) && ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType())))
+	{
+		errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
+		isWhileSpecializing = true;
+	}
+	
+	return true;
+}
+
 BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPersistent, bool deferError)
 {
 	BP_ZONE("BfModule::Fail");
@@ -2899,104 +2995,14 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 	BfLogSysM("BfModule::Fail module %p type %p %s\n", this, mCurTypeInstance, error.c_str());
 	
- 	String errorString = error;
-	bool isWhileSpecializing = false;
-	bool isWhileSpecializingMethod = false;		
-
-	if ((mIsSpecialModule) && (mModuleName == "vdata"))
-		errorString += StrFormat("\n  while generating vdata for project '%s'", mProject->mName.c_str());	
-	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend))
-		errorString += StrFormat("\n  while generating append size calculating method");
-	else if (refNode == NULL)
-	{
-		if (mCurTypeInstance != NULL)		
-			errorString += StrFormat("\n  while compiling '%s'", TypeToString(mCurTypeInstance, BfTypeNameFlags_None).c_str());		
-		else if (mProject != NULL)
-			errorString += StrFormat("\n  while compiling project '%s'", mProject->mName.c_str());
-	}	
-
-	if (mCurTypeInstance != NULL)
-	{	
-		auto _CheckMethodInstance = [&](BfMethodInstance* methodInstance)
-		{
-			// Propogate the fail all the way to the main method (assuming we're in a local method or lambda)
-			methodInstance->mHasFailed = true;
-
-			bool isSpecializedMethod = ((methodInstance != NULL) && (!methodInstance->mIsUnspecialized) && (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mMethodGenericArguments.size() != 0));
-			if (isSpecializedMethod)
-			{
-				//auto unspecializedMethod = &mCurMethodInstance->mMethodInstanceGroup->mMethodSpecializationMap.begin()->second;
-				auto unspecializedMethod = methodInstance->mMethodInstanceGroup->mDefault;
-				if (unspecializedMethod == methodInstance)
-				{
-					// This is a local method inside a generic method
-					BF_ASSERT(methodInstance->mMethodDef->mIsLocalMethod);
-				}
-				else 
-				{
-					if (unspecializedMethod->mHasFailed)
-						return false; // At least SOME error has already been reported
-				}
-			}
-
-			if (isSpecializedMethod)
-			{
-				errorString += StrFormat("\n  while specializing method '%s'", MethodToString(methodInstance).c_str());
-				isWhileSpecializing = true;
-				isWhileSpecializingMethod = true;
-			}
-			else if ((methodInstance != NULL) && (methodInstance->mIsForeignMethodDef))
-			{
-				errorString += StrFormat("\n  while implementing default interface method '%s'", MethodToString(methodInstance).c_str());
-				isWhileSpecializing = true;
-				isWhileSpecializingMethod = true;
-			}
-			else if ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType()))
-			{
-				errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());				
-				isWhileSpecializing = true;
-			}
-
-			return true;
-		};
-
-		bool hadMethodInstance = false;
-		if (mCurMethodState != NULL)
-		{
-			auto checkMethodState = mCurMethodState;
-			while (checkMethodState != NULL)
-			{
-				auto methodInstance = checkMethodState->mMethodInstance;
-				if (methodInstance == NULL)
-				{
-					checkMethodState = checkMethodState->mPrevMethodState;
-					continue;
-				}
-
-				hadMethodInstance = true;
-				if (!_CheckMethodInstance(methodInstance))
-					return NULL;
-				checkMethodState = checkMethodState->mPrevMethodState;
-			}
-		}
-		
-		if ((!hadMethodInstance) && (mCurMethodInstance != NULL))
-		{
-			if (!_CheckMethodInstance(mCurMethodInstance))
-				return NULL;
-		}		
-	}
-
+ 	String errorString = error;	
+	bool isWhileSpecializing = false;	
+	if (!AddErrorContext(errorString, refNode, isWhileSpecializing))
+		return false;
+	
 	BfError* bfError = NULL;
-
 	if (isWhileSpecializing)
 		deferError = true;
-
-	if ((!isWhileSpecializing) && (mCurTypeInstance != NULL) && ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType())))
-	{		
-		errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
-		isWhileSpecializing = true;
-	}
 
 	if (!mHadBuildError)
 		mHadBuildError = true;
@@ -3085,7 +3091,7 @@ BfError* BfModule::FailAfter(const StringImpl& error, BfAstNode* refNode)
 	return bfError;
 }
 
-BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode, bool isPersistent)
+BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode, bool isPersistent, bool showInSpecialized)
 {
 	if (mIgnoreErrors || mIgnoreWarnings)
 		return NULL;
@@ -3113,20 +3119,32 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 	{		
 		return NULL;
 	}
-
+	
 	// Right now we're only warning on the unspecialized declarations, we may revisit this
 	if (mCurMethodInstance != NULL)
 	{
 		if (mCurMethodInstance->IsSpecializedGenericMethodOrType())
-			return NULL;
+		{
+			if (!showInSpecialized)			
+				return NULL;
+		}
 		if (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend)
 			return NULL; // No ctorCalcAppend warnings
 	}
 	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsSpecializedType()))
-		return NULL;
+	{
+		if (!showInSpecialized)		
+			return NULL;
+	}
 
 	if (refNode != NULL)
 		refNode = BfNodeToNonTemporary(refNode);
+
+	String warningString = warning;
+	bool isWhileSpecializing = false;
+	if (!AddErrorContext(warningString, refNode, isWhileSpecializing))
+		return false;
+	bool deferWarning = isWhileSpecializing;
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
 	{
@@ -3139,17 +3157,18 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 	{
 		BfError* bfError = mCompiler->mPassInstance->Warn(warningNum, "Emitted code had errors", mCurMethodState->mEmitRefNode);
 		if (bfError != NULL)
-			mCompiler->mPassInstance->MoreInfo(warning, refNode);
+			mCompiler->mPassInstance->MoreInfo(warningString, refNode);
 		return bfError;
 	}
 
 	BfError* bfError;
 	if (refNode != NULL)
-		bfError = mCompiler->mPassInstance->WarnAt(warningNum, warning, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());
+		bfError = mCompiler->mPassInstance->WarnAt(warningNum, warningString, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());
 	else
-		bfError = mCompiler->mPassInstance->Warn(warningNum, warning);
+		bfError = mCompiler->mPassInstance->Warn(warningNum, warningString);
 	if (bfError != NULL)
 	{
+		bfError->mIsWhileSpecializing = isWhileSpecializing;
 		bfError->mProject = mProject;
 		AddFailType(mCurTypeInstance);
 
@@ -3229,7 +3248,7 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 		if (isError)
 			error = Fail(err, targetSrc);
 		else
-			error = Warn(0, err, targetSrc);
+			error = Warn(0, err, targetSrc, false, true);
 		if (error != NULL)
 			_AddDeclarationMoreInfo();
 	}
@@ -3262,7 +3281,7 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 		if (str != NULL)
 			err += *str;
 		err += "'";
-		if (Warn(0, err, targetSrc) != NULL)
+		if (Warn(0, err, targetSrc, false, true) != NULL)
 			_AddDeclarationMoreInfo();
 	}
 }
@@ -7590,7 +7609,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	if (origCheckArgType->IsRef())
 		origCheckArgType = origCheckArgType->GetUnderlyingType();
 
-	bool argMayBeReferenceType = false;
+	bool argIsReferenceType = false;
 	
 	int checkGenericParamFlags = 0;
 	if (checkArgType->IsGenericParam())
@@ -7600,18 +7619,18 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		if (checkGenericParamInst->mTypeConstraint != NULL)
 			checkArgType = checkGenericParamInst->mTypeConstraint;
 		
-		if ((checkGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr)) != 0)
-		{
-			argMayBeReferenceType = false;
-		}
-		else
-		{
-			argMayBeReferenceType = true;
-		}
+// 		if ((checkGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr)) != 0)
+// 		{
+// 			argMayBeReferenceType = false;
+// 		}
+// 		else
+// 		{
+// 			argMayBeReferenceType = true;
+// 		}
 	}
 
 	if (checkArgType->IsObjectOrInterface())
-		argMayBeReferenceType = true;
+		argIsReferenceType = true;
 
 	BfTypeInstance* typeConstraintInst = NULL;
 	if (genericParamInst->mTypeConstraint != NULL)
@@ -7636,7 +7655,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	}
 
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Class) && 
-		((checkGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Var)) == 0) && (!argMayBeReferenceType))
+		((checkGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Var)) == 0) && (!argIsReferenceType))
 	{
 		if ((!ignoreErrors) && (PreFail()))
 			*errorOut = Fail(StrFormat("The type '%s' must be a reference type in order to use it as parameter '%s' for '%s'",

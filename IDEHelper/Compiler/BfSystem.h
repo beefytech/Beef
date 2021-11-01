@@ -1383,11 +1383,12 @@ public:
 	void MessageAt(const StringImpl& msgPrefix, const StringImpl& error, BfSourceData* bfSource, int srcIdx, int srcLen = 1, BfFailFlags flags = BfFailFlag_None);
 	void FixSrcStartAndEnd(BfSourceData* source, int& startIdx, int& endIdx);
 
-	BfError* WarnAt(int warningNumber, const StringImpl& warning, BfSourceData* bfSource, int srcIdx, int srcLen = 1);
+	BfError* WarnAt(int warningNumber, const StringImpl& warning, BfSourceData* bfSource, int srcIdx, int srcLen = 1, bool isDeferred = false);
 	BfError* Warn(int warningNumber, const StringImpl& warning);
-	BfError* Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
+	BfError* Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode, bool isDeferred = false);
+	BfError* DeferWarn(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
 	BfError* WarnAfter(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
-	BfError* WarnAfterAt(int warningNumber, const StringImpl& error, BfSourceData* bfSource, int srcIdx);
+	BfError* WarnAfterAt(int warningNumber, const StringImpl& error, BfSourceData* bfSource, int srcIdx);	
 
 	BfMoreInfo* MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags = BfFailFlag_None);
 	BfMoreInfo* MoreInfo(const StringImpl& info, bool forceQueue = false);
