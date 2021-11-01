@@ -55,13 +55,9 @@ namespace System.Linq
 		}
 
 
-		struct ContainsTest : IEnumerable<int>, IEnumerator<int>
+		struct ContainsTest : IEnumerator<int>
 		{
 			int mState = 0;
-			public Self GetEnumerator()
-			{
-				return this;
-			}
 
 			public Result<int> GetNext() mut
 			{
