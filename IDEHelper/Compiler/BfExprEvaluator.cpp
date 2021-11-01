@@ -4213,7 +4213,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			}
 		}
 
-		if (mModule->mCurMethodInstance->mIsUnspecialized)
+		if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
 		{
 			if (genericParamInst->mTypeConstraint != NULL)
 				target.mType = genericParamInst->mTypeConstraint;
