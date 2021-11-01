@@ -115,6 +115,7 @@ public:
 		DependencyFlag_NameReference		= 0x1000000,
 		DependencyFlag_VirtualCall			= 0x2000000,
 		DependencyFlag_WeakReference		= 0x4000000, // Keeps alive but won't rebuild		
+		DependencyFlag_ValueTypeSizeDep		= 0x8000000, // IE: int32[DepType.cVal]
 
 		DependencyFlag_DependentUsageMask = ~(DependencyFlag_UnspecializedType | DependencyFlag_MethodGenericArg | DependencyFlag_GenericArgRef)
 	};
@@ -429,6 +430,7 @@ class BfTypeDIReplaceCallback;
 enum BfTypeDefineState : uint8
 {
 	BfTypeDefineState_Undefined,
+	BfTypeDefineState_Declaring,
 	BfTypeDefineState_Declared,
 	BfTypeDefineState_ResolvingBaseType,	
 	BfTypeDefineState_HasInterfaces,
@@ -1116,7 +1118,7 @@ public:
 class BfGenericParamInstance 
 {
 public:	
-	int mGenericParamFlags;
+	BfGenericParamFlags mGenericParamFlags;
 	BfType* mExternType;
 	Array<BfTypeInstance*> mInterfaceConstraints;
 	Array<BfGenericOperatorConstraintInstance> mOperatorConstraints;
@@ -1127,7 +1129,7 @@ public:
 	BfGenericParamInstance()
 	{
 		mExternType = NULL;
-		mGenericParamFlags = 0;
+		mGenericParamFlags = BfGenericParamFlag_None;
 		mTypeConstraint = NULL;
 		mRefCount = 1;
 	}
@@ -1820,7 +1822,7 @@ public:
 
 class BfCeTypeInfo
 {
-public:
+public:	
 	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
 	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
 	Val128 mHash;
@@ -1831,7 +1833,7 @@ public:
 	BfCeTypeInfo()
 	{
 		mFailed = false;
-		mNext = NULL;
+		mNext = NULL;		
 	}
 };
 
@@ -1961,9 +1963,10 @@ public:
 	
 	~BfTypeInstance();	
 	
-	void ReleaseData();
+	void Dispose();
+	void ReleaseData();	
 
-	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { return typeDef == mTypeDef; }
+	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { return typeDef->GetDefinition() == mTypeDef->GetDefinition(); }
 	virtual BfModule* GetModule() override { return mModule; }
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }

@@ -459,7 +459,7 @@ namespace Beefy.widgets
 			public UndoManager mUndoManager = new UndoManager() ~ delete _;
 			public int32 mNextCharId = 1; //
 			public int32 mCurTextVersionId = 1; // Changes when text is modified
-			//public int mCurComplexChangeId = 1; // Changes when text is modified by more than a single-char8acter insertion or deletion
+			//public int mCurComplexChangeId = 1; // Changes when text is modified by more than a single-character insertion or deletion
 
 			public List<EditWidgetContent> mUsers = new List<EditWidgetContent>() ~ delete _;
 

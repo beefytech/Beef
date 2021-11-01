@@ -1724,7 +1724,7 @@ namespace IDE.ui
 
                 if ((!SelectEntry(curString)) && (curString.Length > 0))
                 {
-                    // If we can't find any matches, at least select a string that starts with the right char8acter
+                    // If we can't find any matches, at least select a string that starts with the right character
                     curString.RemoveToEnd(1);
                     SelectEntry(curString);
                 }

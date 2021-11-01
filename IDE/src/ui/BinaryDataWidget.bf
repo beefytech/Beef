@@ -1555,7 +1555,7 @@ namespace IDE.ui
             bool inStrView = false;
             bool checkSubChar = true;
             float testX = curX;
-            curX += 4; // offset by half a char8acter
+            curX += 4; // offset by half a character
             testX -= GS!(mColumnDisplayStart);
             testX /= (float)GS!(mColumnDisplayStride);
             if (testX < 0.0f)

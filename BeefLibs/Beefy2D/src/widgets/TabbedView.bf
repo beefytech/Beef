@@ -162,7 +162,7 @@ namespace Beefy.widgets
                 if ((mSrcDraggingWindow != null) && (mSrcDraggingWindow.mCaptureWidget != null))
 					mSrcDraggingWindow.ReleaseMouseCaptures();
 
-                mTabbedView.mParentDockingFrame.GetRootDockingFrame().HideDragTarget(this, !mDragHelper.mAborted);
+                mTabbedView.mParentDockingFrame?.GetRootDockingFrame().HideDragTarget(this, !mDragHelper.mAborted);
                 if (mNewDraggingWindow != null)
                 {
                     mNewDraggingWindow.mOnWindowLostFocus.Remove(scope => WindowDragLostFocusHandler, true);
@@ -176,7 +176,7 @@ namespace Beefy.widgets
 
             public void MouseDrag(float x, float y, float dX, float dY)
             {
-               	mTabbedView.mParentDockingFrame.GetRootDockingFrame().ShowDragTarget(this);                
+               	mTabbedView.mParentDockingFrame?.GetRootDockingFrame().ShowDragTarget(this);                
             }
 
             public override void MouseUp(float x, float y, int32 btn)
@@ -198,6 +198,8 @@ namespace Beefy.widgets
 
             public virtual bool IsTotalWindowContent()
             {
+				if (mTabbedView.mParentDockingFrame == null)
+					return false;
                 return (mTabbedView.mParentDockingFrame.mParentDockingFrame == null) &&
                     (mTabbedView.mParentDockingFrame.GetDockedWindowCount() == 1) &&
                     (mTabbedView.GetTabCount() == 1) &&

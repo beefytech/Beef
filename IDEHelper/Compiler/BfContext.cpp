@@ -467,6 +467,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				else
 				{
 					module->PopulateType(typeInst);
+					if (methodSpecializationRequest.mMethodIdx >= typeInst->mTypeDef->mMethods.mSize)
+						continue;
 					methodDef = typeInst->mTypeDef->mMethods[methodSpecializationRequest.mMethodIdx];
 				}
 
@@ -726,6 +728,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 void BfContext::HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTempType)
 {
+	BF_ASSERT(typeDef->mEmitParent == NULL);
+
 	if ((mCompiler->mResolvePassData == NULL) || (!typeDef->HasSource(mCompiler->mResolvePassData->mParser)))
 		return;
 
@@ -899,7 +903,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		RebuildDependentTypes(typeInst);
 	}	
 	
-	if (typeInst->mTypeDef->mDefState == BfTypeDef::DefState_Deleted)
+	if (typeInst->mTypeDef->GetDefinition()->mDefState == BfTypeDef::DefState_Deleted)
 		return;	
 		
 	if (typeInst->mDefineState == BfTypeDefineState_Undefined)
@@ -1053,7 +1057,14 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	delete typeInst->mTypeInfoEx;
 	typeInst->mTypeInfoEx = NULL;
 	
-	typeInst->mTypeDef->ClearEmitted();
+	if (typeInst->mTypeDef->mEmitParent != NULL)
+	{
+		auto emitTypeDef = typeInst->mTypeDef;
+		typeInst->mTypeDef = emitTypeDef->mEmitParent;
+		delete emitTypeDef;
+	}
+
+	//typeInst->mTypeDef->ClearEmitted();
 	for (auto localMethod : typeInst->mOwnedLocalMethods)
 		delete localMethod;
 	typeInst->mOwnedLocalMethods.Clear();
@@ -1156,9 +1167,11 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 			{
 				bool hadChange = false;
 
-				if ((dependencyFlags & BfDependencyMap::DependencyFlag_DerivedFrom) ||
-					(dependencyFlags & BfDependencyMap::DependencyFlag_ValueTypeMemberData) ||
-					(dependencyFlags & BfDependencyMap::DependencyFlag_NameReference))
+				if ((dependencyFlags & 
+					(BfDependencyMap::DependencyFlag_DerivedFrom |
+					 BfDependencyMap::DependencyFlag_ValueTypeMemberData |
+					 BfDependencyMap::DependencyFlag_NameReference |
+					 BfDependencyMap::DependencyFlag_ValueTypeSizeDep)) != 0)
 				{
 					hadChange = true;					
 				}
@@ -1890,12 +1903,21 @@ void BfContext::UpdateRevisedTypes()
 			continue;
 
 		auto typeDef = typeInst->mTypeDef;		
+
+		if (typeDef->mEmitParent != NULL)
+		{
+			auto emitTypeDef = typeDef;
+			typeDef = typeDef->mEmitParent;
+			if (typeDef->mNextRevision != NULL)
+				emitTypeDef->mDefState = BfTypeDef::DefState_EmittedDirty;
+		}
+
 		if (typeDef->mProject->mDisabled)
 		{
 			DeleteType(type);
 			continue;
 		}
-
+		
 		typeInst->mRebuildFlags = BfTypeRebuildFlag_None;
 						
 		if (typeDef->mIsPartial)
@@ -1944,14 +1966,19 @@ void BfContext::UpdateRevisedTypes()
 		auto typeDef = typeInst->mTypeDef;
 
 		bool isTypeDefinedInContext = true;		
-		
+
+		if (typeDef->mEmitParent != NULL)
+		{
+			typeDef = typeDef->mEmitParent;
+		}
+
 		if (typeDef->mDefState == BfTypeDef::DefState_Deleted)
 		{			
 			HandleChangedTypeDef(typeDef);
 			DeleteType(typeInst);
 			continue;
 		}
-
+		
 		if (typeDef->mDefState == BfTypeDef::DefState_InlinedInternals_Changed)
 		{
 			TypeInlineMethodInternalsChanged(typeInst);
@@ -2567,7 +2594,7 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 		}		
 
 		bool allowMismatch = false;
-		if ((methodRef.mTypeInstance->mTypeDef == mCompiler->mInternalTypeDef) || (methodRef.mTypeInstance->mTypeDef == mCompiler->mGCTypeDef))
+		if ((methodRef.mTypeInstance->IsInstanceOf(mCompiler->mInternalTypeDef)) || (methodRef.mTypeInstance->IsInstanceOf(mCompiler->mGCTypeDef)))
 			allowMismatch = true;
 
 		// The signature hash better not have changed, because if it did then we should have rebuilding 'module'
@@ -2575,7 +2602,9 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 		int newSignatureHash = (int)methodRef.mTypeInstance->mTypeDef->mSignatureHash;
 		BF_ASSERT((newSignatureHash == methodRef.mSignatureHash) || (allowMismatch));
 
-		auto methodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
+		BfMethodDef* methodDef = NULL;
+		if (methodRef.mMethodNum < methodRef.mTypeInstance->mTypeDef->mMethods.mSize)
+			methodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
 
 		auto targetContext = methodRef.mTypeInstance->mContext;
 		BfMethodSpecializationRequest* specializationRequest = targetContext->mMethodSpecializationWorkList.Alloc();
@@ -2887,13 +2916,14 @@ void BfContext::Finish()
 
 void BfContext::Cleanup()
 {
+	BfLogSysM("BfContext::Cleanup() MethodWorkList: %d LocalMethodGraveyard: %d\n", mMethodWorkList.size(), mLocalMethodGraveyard.size());
+
 	// Can't clean up LLVM types, they are allocated with a bump allocator
 	RemoveInvalidFailTypes();	
 
 	mCompiler->mCompileState = BfCompiler::CompileState_Cleanup;
 
-	// We can't remove the local methods if they still may be referenced by a BfMethodRefType used to specialize a method
-	if (mMethodWorkList.empty())
+	///
 	{
 		Array<BfLocalMethod*> survivingLocalMethods;
 
@@ -2918,6 +2948,14 @@ void BfContext::Cleanup()
 			}
 			else if ((localMethod->mMethodInstanceGroup != NULL) && (localMethod->mMethodInstanceGroup->mRefCount > 0))
 			{
+				BfLogSysM("BfContext::Cleanup surviving local method with refs %p\n", localMethod);
+				localMethod->Dispose();
+				survivingLocalMethods.push_back(localMethod);
+			}
+			else if (!mMethodWorkList.empty())
+			{
+				// We can't remove the local methods if they still may be referenced by a BfMethodRefType used to specialize a method
+				BfLogSysM("BfContext::Cleanup surviving local method %p\n", localMethod);
 				localMethod->Dispose();
 				survivingLocalMethods.push_back(localMethod);
 			}

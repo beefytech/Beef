@@ -103,13 +103,13 @@ namespace Beefy.widgets
             }
         }
 
-        public bool HorzScrollTo(double horzPos)
+        public bool HorzScrollTo(double horzPos, bool immediate = false)
         {
             double aHorzPos = Math.Max(0, Math.Min(horzPos, mScrollContent.mWidth - mScrollContentContainer.mWidth));
             if (aHorzPos == mHorzPos.mDest)
                 return false;
 
-            mHorzPos.Set(aHorzPos);
+            mHorzPos.Set(aHorzPos, immediate);
             if (mHorzScrollbar != null)
             {
                 mHorzScrollbar.mContentPos = mHorzPos.v;

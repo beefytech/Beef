@@ -133,6 +133,47 @@ namespace Tests
 			Test.Assert((1..<3).Contains(1..<3));
 			Test.Assert(!(1..<3).Contains(1..<4));
 
+			List<int> iList = scope .() { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+			total = 0;
+			for (int i in iList[...])
+				total += i;
+			Test.Assert(total == 10+20+30+40+50+60+70+80+90+100);
+
+			total = 0;
+			for (int i in iList[1...])
+				total += i;
+			Test.Assert(total == 20+30+40+50+60+70+80+90+100);
+
+			total = 0;
+			for (int i in iList[...^2])
+				total += i;
+			Test.Assert(total == 10+20+30+40+50+60+70+80+90);
+
+			total = 0;
+			for (int i in iList[..<^2])
+				total += i;
+			Test.Assert(total == 10+20+30+40+50+60+70+80);
+
+			int itr = 0;
+			total = 0;
+			for (int i in iList[...^2][1...^2].Reversed)
+			{
+				if (itr == 1)
+					Test.Assert(i == 70);
+				total += i;
+				++itr;
+			}
+			Test.Assert(total == 80+70+60+50+40+30+20);
+
+			var str = scope String();
+			(2...^3).ToString(str);
+			Test.Assert(str == "2...^3");
+
+			int[] iEmptyArr = scope .();
+			var emptySpan = iEmptyArr[...];
+
+			for (var i in emptySpan.Reversed)
+				Test.FatalError();
 		}
 
 		public static void TestEnumerator1(EnumeratorTest e)

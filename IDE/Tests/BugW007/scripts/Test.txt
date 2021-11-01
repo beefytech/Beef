@@ -1,0 +1,13 @@
+# This tests that renaming namespace properly deletes types
+
+ShowFile("src/Program.bf")
+
+Compile()
+
+Sleep(1000)
+GotoText("//Test")
+AdjustCursor(-1, 0)
+InsertText("2")
+Sleep(1000)
+
+Compile()

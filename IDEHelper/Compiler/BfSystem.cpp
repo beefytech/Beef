@@ -611,7 +611,7 @@ void BfTypeDef::Reset()
 
 void BfTypeDef::FreeMembers()
 {	
-	if (!mIsCombinedPartial)
+	if ((!mIsCombinedPartial) && (mEmitParent == NULL))
 		mSystem->RemoveNamespaceUsage(mNamespace, mProject);	
 
 	if (mName != NULL)
@@ -679,53 +679,6 @@ void BfTypeDef::FreeMembers()
 	mIsNextRevision = false;
 }
 
-void BfTypeDef::ClearEmitted()
-{
-	for (auto& partial : mPartials)
-		partial->ClearEmitted();
-
-	if (mEmitParser != NULL)
-	{
-		mEmitParser->mRefCount--;
-		BF_ASSERT(mEmitParser->mRefCount >= 0);
-		mEmitParser = NULL;
-	}
-
-	if (mHasEmitMembers)
-	{
-		for (int methodIdx = (int)mMethods.size() - 1; methodIdx >= 0; methodIdx--)
-		{
-			auto methodDef = mMethods[methodIdx];
-			if ((methodDef->mAddedAfterEmit) ||
-				((methodDef->mMethodDeclaration != NULL) && (methodDef->mMethodDeclaration->IsEmitted())))
-			{
-				delete methodDef;
-				mMethods.RemoveAt(methodIdx);
-			}
-		}
-
-		for (int fieldIdx = (int)mFields.size() - 1; fieldIdx >= 0; fieldIdx--)
-		{
-			auto fieldDef = mFields[fieldIdx];
-			if ((fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->IsEmitted()))
-			{
-				delete fieldDef;
-				mFields.RemoveAt(fieldIdx);
-			}
-		}
-
-		for (int propIdx = (int)mProperties.size() - 1; propIdx >= 0; propIdx--)
-		{
-			auto propDef = mProperties[propIdx];
-			if ((propDef->mFieldDeclaration != NULL) && (propDef->mFieldDeclaration->IsEmitted()))
-			{
-				delete propDef;
-				mProperties.RemoveAt(propIdx);
-			}
-		}
-	}
-}
-
 void BfTypeDef::PopulateMemberSets()
 {
 	if ((!mMethodSet.IsEmpty()) || (!mFieldSet.IsEmpty()) || (!mPropertySet.IsEmpty()))
@@ -783,9 +736,39 @@ void BfTypeDef::ClearMemberSets()
 	mPropertySet.Clear();
 }
 
+void BfTypeDef::ClearOldMemberSets()
+{
+	if ((mMethodSet.mCount > 0) && (mMethods.mSize > mMethodSet.mCount))
+	{
+		for (auto entry : mMethodSet)
+			((BfMethodDef*)entry.mMemberDef)->mNextWithSameName = NULL;
+		mMethodSet.Clear();
+	}
+
+	if ((mFieldSet.mCount > 0) && (mFields.mSize > mFieldSet.mCount))
+	{
+		for (auto entry : mFieldSet)
+			((BfFieldDef*)entry.mMemberDef)->mNextWithSameName = NULL;
+		mFieldSet.Clear();
+	}
+
+	if ((mPropertySet.mCount > 0) && (mProperties.mSize > mPropertySet.mCount))
+	{
+		for (auto entry : mPropertySet)
+			((BfPropertyDef*)entry.mMemberDef)->mNextWithSameName = NULL;
+		mPropertySet.Clear();
+	}
+}
+
 BfTypeDef::~BfTypeDef()
 {
-	BfLogSysM("BfTypeDef::~BfTypeDef %08X\n", this);
+	BfLogSysM("BfTypeDef::~BfTypeDef %p\n", this);
+
+	if ((mHash == -1330357811) && (IsEmitted()))
+	{
+		NOP;
+	}
+
 	delete mNextRevision;
 	FreeMembers();
 
@@ -793,12 +776,6 @@ BfTypeDef::~BfTypeDef()
 	{
 		mSource->mRefCount--;
 		BF_ASSERT(mSource->mRefCount >= 0);
-	}
-
-	if (mEmitParser != NULL)
-	{
-		mEmitParser->mRefCount--;
-		BF_ASSERT(mEmitParser->mRefCount >= 0);
 	}
 }
 
@@ -2679,7 +2656,10 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 {
 	BfLogSys(this, "InjectNewRevision from %p (decl:%p) into %p (decl:%p)\n", typeDef->mNextRevision, typeDef->mNextRevision->mTypeDeclaration, typeDef, typeDef->mTypeDeclaration);
 
-	typeDef->ClearEmitted();
+	if (typeDef->mName->ToString() == "Zonk")
+	{
+		NOP;
+	}
 
 	bool setDeclaringType = !typeDef->mIsCombinedPartial;
 
@@ -2740,7 +2720,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 				methodDef->mCodeChanged = true;
 			nextMethodDef->mParams.Clear();
 			nextMethodDef->mGenericParams.Clear();
-		}						
+		}
 	}
 	else
 	{	
@@ -3195,6 +3175,266 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 
 	VerifyTypeDef(compositeTypeDef);
 	VerifyTypeDef(nextRevision);
+}
+
+void BfSystem::CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* fromTypeDef)
+{
+	BfLogSys(this, "CopyTypeDef %p from %p Hash: %d\n", typeDef, fromTypeDef, fromTypeDef->mHash);
+
+	for (auto fromMethodDef : fromTypeDef->mMethods)
+	{		
+		BfMethodDef* methodDef;
+		if (fromMethodDef->mIsOperator)
+		{
+			auto fromOperatorDef = (BfOperatorDef*)fromMethodDef;
+			auto operatorDef = new BfOperatorDef();
+			methodDef = operatorDef;
+			*operatorDef = *fromOperatorDef;
+		}
+		else
+		{
+			methodDef = new BfMethodDef();
+			*methodDef = *fromMethodDef;
+		}					
+
+		for (int paramIdx = 0; paramIdx < fromMethodDef->mParams.mSize; paramIdx++)
+		{
+			auto fromParamDef = fromMethodDef->mParams[paramIdx];
+			BfParameterDef* paramDef = new BfParameterDef();
+			*paramDef = *fromParamDef;			
+			methodDef->mParams[paramIdx] = paramDef;
+		}
+
+		for (int genericParamIdx = 0; genericParamIdx < fromMethodDef->mGenericParams.mSize; genericParamIdx++)
+		{
+			auto fromGenericParam = fromMethodDef->mGenericParams[genericParamIdx];
+			BfGenericParamDef* genericParam = new BfGenericParamDef();
+			*genericParam = *fromGenericParam;
+			methodDef->mGenericParams[genericParamIdx] = genericParam;
+		}
+
+		methodDef->mNextWithSameName = NULL;
+		typeDef->mMethods.Add(methodDef);
+	}
+
+	for (auto operatorDef : fromTypeDef->mOperators)
+	{
+		auto methodDef = typeDef->mMethods[operatorDef->mIdx];
+		BF_ASSERT(methodDef->mIsOperator);
+		if (methodDef->mIsOperator)
+			typeDef->mOperators.Add((BfOperatorDef*)methodDef);
+	}
+
+	for (auto fromPropDef : fromTypeDef->mProperties)
+	{		
+		BfPropertyDef* propDef = new BfPropertyDef();		
+		*propDef = *fromPropDef;
+		for (auto& methodDef : propDef->mMethods)		
+			methodDef = typeDef->mMethods[methodDef->mIdx];		
+		propDef->mNextWithSameName = NULL;
+		typeDef->mProperties.Add(propDef);
+	}
+
+	for (auto fromField : fromTypeDef->mFields)
+	{
+		BfFieldDef* fieldDef = new BfFieldDef();
+		*fieldDef = *fromField;
+		fieldDef->mNextWithSameName = NULL;
+		typeDef->mFields.Add(fieldDef);
+	}
+		
+	typeDef->mSystem = fromTypeDef->mSystem;
+	typeDef->mProject = fromTypeDef->mProject;
+	typeDef->mPartialIdx = fromTypeDef->mPartialIdx;
+	typeDef->mTypeDeclaration = fromTypeDef->mTypeDeclaration;
+	typeDef->mHash = fromTypeDef->mHash;
+	typeDef->mSignatureHash = fromTypeDef->mSignatureHash;
+	typeDef->mFullHash = fromTypeDef->mFullHash;
+	typeDef->mInlineHash = fromTypeDef->mInlineHash;
+	typeDef->mNestDepth = fromTypeDef->mNestDepth;
+
+	typeDef->mOuterType = fromTypeDef->mOuterType;
+	//typeDef->mOuterType = fromTypeDef->mOuterType;	
+	typeDef->mNamespace = fromTypeDef->mNamespace;	
+
+	typeDef->mName = fromTypeDef->mName;
+	if (typeDef->mName != mEmptyAtom)
+		typeDef->mName->mRefCount++;
+
+	//typeDef->mName = fromTypeDef->mName;
+	typeDef->mNameEx = fromTypeDef->mNameEx;
+	if (typeDef->mNameEx != NULL)
+		typeDef->mNameEx->mRefCount++;	
+	//typeDef->mNameEx = fromTypeDef->mNameEx;
+	//typeDef->mFullName = fromTypeDef->mFullName;
+
+	typeDef->mFullNameEx = fromTypeDef->mFullNameEx;
+	//RefAtomComposite(typeDef->mFullNameEx);
+
+	typeDef->mProtection = fromTypeDef->mProtection;
+
+	typeDef->mTypeCode = fromTypeDef->mTypeCode;
+
+	typeDef->mTypeCode = fromTypeDef->mTypeCode;
+
+	typeDef->mIsAlwaysInclude = fromTypeDef->mIsAlwaysInclude;
+	typeDef->mIsNoDiscard = fromTypeDef->mIsNoDiscard;
+	typeDef->mIsPartial = fromTypeDef->mIsPartial;
+	typeDef->mIsExplicitPartial = fromTypeDef->mIsExplicitPartial;
+	//mPartialUsed	
+	typeDef->mIsCombinedPartial = fromTypeDef->mIsCombinedPartial;
+	typeDef->mIsDelegate = fromTypeDef->mIsDelegate;
+	typeDef->mIsFunction = fromTypeDef->mIsFunction;
+	typeDef->mIsClosure = fromTypeDef->mIsClosure;
+	typeDef->mIsAbstract = fromTypeDef->mIsAbstract;
+	typeDef->mIsStatic = fromTypeDef->mIsStatic;
+	typeDef->mHasAppendCtor = fromTypeDef->mHasAppendCtor;
+	typeDef->mHasCEOnCompile = fromTypeDef->mHasCEOnCompile;
+	typeDef->mHasCtorNoBody = fromTypeDef->mHasCtorNoBody;
+	typeDef->mHasOverrideMethods = fromTypeDef->mHasOverrideMethods;
+	typeDef->mHasExtensionMethods = fromTypeDef->mHasExtensionMethods;
+	typeDef->mIsOpaque = fromTypeDef->mIsOpaque;
+
+	typeDef->mDupDetectedRevision = fromTypeDef->mDupDetectedRevision;
+	
+	typeDef->mDirectAllocNodes = fromTypeDef->mDirectAllocNodes;
+	fromTypeDef->mDirectAllocNodes.Clear();
+	
+	typeDef->mNamespaceSearch = fromTypeDef->mNamespaceSearch;
+	for (auto name : typeDef->mNamespaceSearch)
+		RefAtomComposite(name);
+
+	typeDef->mStaticSearch = fromTypeDef->mStaticSearch;
+	typeDef->mInternalAccessSet = fromTypeDef->mInternalAccessSet;
+	
+	for (auto fromGenericParamDef : fromTypeDef->mGenericParamDefs)
+	{
+		BfGenericParamDef* genericParamDef = new BfGenericParamDef();
+		*genericParamDef = *fromGenericParamDef;
+		typeDef->mGenericParamDefs.Add(genericParamDef);
+	}	
+
+	typeDef->mExternalConstraints = fromTypeDef->mExternalConstraints;	
+
+	typeDef->mBaseTypes = fromTypeDef->mBaseTypes;
+	typeDef->mNestedTypes = fromTypeDef->mNestedTypes;
+	
+	typeDef->mPartials = fromTypeDef->mPartials;
+			
+	VerifyTypeDef(typeDef);
+}
+
+void BfSystem::UpdateEmittedTypeDef(BfTypeDef* typeDef)
+{
+	auto fromTypeDef = typeDef->mEmitParent;
+
+	BF_ASSERT(fromTypeDef->mNextRevision == NULL);
+
+	BfLogSys(this, "UpdateTypeDefCopy %p from %p (decl:%p)\n", typeDef, fromTypeDef, fromTypeDef->mTypeDeclaration);
+
+	BF_ASSERT((typeDef->mDefState == BfTypeDef::DefState_Emitted) || (typeDef->mDefState == BfTypeDef::DefState_EmittedDirty));
+	BF_ASSERT((fromTypeDef->mDefState != BfTypeDef::DefState_Emitted) && (fromTypeDef->mDefState != BfTypeDef::DefState_EmittedDirty));
+
+	typeDef->mTypeDeclaration = fromTypeDef->mTypeDeclaration;
+	typeDef->mOuterType = fromTypeDef->mOuterType;
+
+	for (int methodIdx = 0; methodIdx < (int)typeDef->mMethods.size(); methodIdx++)
+	{		
+		auto methodDef = typeDef->mMethods[methodIdx];
+		if (methodIdx >= fromTypeDef->mMethods.mSize)
+		{
+			BF_ASSERT(methodDef->mDeclaringType == typeDef);
+			continue;
+		}
+
+		BF_ASSERT(methodDef->mDeclaringType != typeDef);
+
+		for (auto param : methodDef->mParams)
+			delete param;
+		for (auto genericParam : methodDef->mGenericParams)
+			delete genericParam;
+
+		auto fromMethodDef = fromTypeDef->mMethods[methodIdx];
+
+		if ((fromMethodDef->mIsOperator) && (methodDef->mIsOperator))
+		{
+			auto fromOperatorDef = (BfOperatorDef*)fromMethodDef;
+			auto operatorDef = (BfOperatorDef*)methodDef;
+			*operatorDef = *fromOperatorDef;
+		}
+		else
+		{
+			*methodDef = *fromMethodDef;
+		}
+
+		for (int paramIdx = 0; paramIdx < fromMethodDef->mParams.mSize; paramIdx++)
+		{
+			auto fromParamDef = fromMethodDef->mParams[paramIdx];
+			BfParameterDef* paramDef = new BfParameterDef();
+			*paramDef = *fromParamDef;
+			methodDef->mParams[paramIdx] = paramDef;
+		}
+
+		for (int genericParamIdx = 0; genericParamIdx < fromMethodDef->mGenericParams.mSize; genericParamIdx++)
+		{
+			auto fromGenericParam = fromMethodDef->mGenericParams[genericParamIdx];
+			BfGenericParamDef* genericParam = new BfGenericParamDef();
+			*genericParam = *fromGenericParam;
+			methodDef->mGenericParams[genericParamIdx] = genericParam;
+		}						
+	}
+
+	typeDef->mOperators.Clear();
+	for (auto operatorDef : fromTypeDef->mOperators)
+	{
+		auto methodDef = typeDef->mMethods[operatorDef->mIdx];
+		BF_ASSERT(methodDef->mIsOperator);
+		if (methodDef->mIsOperator)
+			typeDef->mOperators.Add((BfOperatorDef*)methodDef);
+	}
+
+	for (int fieldIdx = 0; fieldIdx < typeDef->mFields.mSize; fieldIdx++)
+	{
+		auto fieldDef = typeDef->mMethods[fieldIdx];
+		if (fieldIdx >= fromTypeDef->mFields.mSize)
+		{
+			BF_ASSERT(fieldDef->mDeclaringType == typeDef);
+			continue;
+		}
+
+		BF_ASSERT(fieldDef->mDeclaringType != typeDef);
+		auto fromFieldDef = fromTypeDef->mMethods[fieldIdx];
+		fieldDef->mDeclaringType = fromFieldDef->mDeclaringType;
+	}
+
+	for (int propertyIdx = 0; propertyIdx < typeDef->mProperties.mSize; propertyIdx++)
+	{
+		auto propertyDef = typeDef->mProperties[propertyIdx];
+		if (propertyIdx >= fromTypeDef->mProperties.mSize)
+		{
+			BF_ASSERT(propertyDef->mDeclaringType == typeDef);
+			continue;
+		}
+
+		BF_ASSERT(propertyDef->mDeclaringType != typeDef);
+		auto fromPropertyDef = fromTypeDef->mProperties[propertyIdx];
+		propertyDef->mDeclaringType = fromPropertyDef->mDeclaringType;
+	}	
+
+	typeDef->mGenericParamDefs.Clear();
+	for (auto fromGenericParamDef : fromTypeDef->mGenericParamDefs)
+	{
+		BfGenericParamDef* genericParamDef = new BfGenericParamDef();
+		*genericParamDef = *fromGenericParamDef;
+		typeDef->mGenericParamDefs.Add(genericParamDef);
+	}
+
+	typeDef->mPartials = fromTypeDef->mPartials;
+
+	if (typeDef->mDefState == BfTypeDef::DefState_EmittedDirty)
+		typeDef->mDefState = BfTypeDef::DefState_Emitted;
+
+	BF_ASSERT(typeDef->mDefState == BfTypeDef::DefState_Emitted);
 }
 
 BfTypeDef* BfSystem::GetCombinedPartial(BfTypeDef* typeDef)

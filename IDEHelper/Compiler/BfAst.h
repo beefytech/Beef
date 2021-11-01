@@ -1866,6 +1866,7 @@ enum BfUnaryOp
 	BfUnaryOp_Mut,
 	BfUnaryOp_Params,
 	BfUnaryOp_Cascade,
+	BfUnaryOp_FromEnd,
 	BfUnaryOp_PartialRangeUpTo,
 	BfUnaryOp_PartialRangeThrough,
 	BfUnaryOp_PartialRangeFrom,

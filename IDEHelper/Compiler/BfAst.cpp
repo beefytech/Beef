@@ -1753,9 +1753,10 @@ const char* Beefy::BfGetOpName(BfUnaryOp unaryOp)
 	case BfUnaryOp_Mut: return "mut";
 	case BfUnaryOp_Params: return "params";
 	case BfUnaryOp_Cascade: return "..";
+	case BfUnaryOp_FromEnd: return "^";
 	case BfUnaryOp_PartialRangeUpTo: return "..<";
 	case BfUnaryOp_PartialRangeThrough: return "...";
-	case BfUnaryOp_PartialRangeFrom: return "...";
+	case BfUnaryOp_PartialRangeFrom: return "...";	
 	default: return "???";
 	}
 }
@@ -1855,6 +1856,8 @@ BfUnaryOp Beefy::BfTokenToUnaryOp(BfToken token)
 		return BfUnaryOp_Params;
 	case BfToken_DotDot:
 		return BfUnaryOp_Cascade;
+	case BfToken_Carat:
+		return BfUnaryOp_FromEnd;
 	case BfToken_DotDotDot:
 		return BfUnaryOp_PartialRangeThrough;
 	case BfToken_DotDotLess:

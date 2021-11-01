@@ -706,12 +706,18 @@ BfBlock* BfParser::ParseInlineBlock(int spaceIdx, int endIdx)
 	mSrcIdx = spaceIdx;
 	BfAstNode* startNode = NULL;
 	int usedEndIdx = spaceIdx;
+	int usedLineNum = mLineNum;
+	int usedLineStart = mLineStart;
+
 	while (true)
 	{
 		NextToken(endIdx + 1);
 		if (mSyntaxToken == BfSyntaxToken_HIT_END_IDX)
 		{
 			mSrcIdx = usedEndIdx;
+			mLineNum = usedLineNum;
+			mLineStart = usedLineStart;
+
 			auto lastNode = mSidechannelRootNode->GetLast();
 			if (lastNode != NULL)
 				mSrcIdx = std::max(mSrcIdx, lastNode->GetSrcEnd());
@@ -719,6 +725,8 @@ BfBlock* BfParser::ParseInlineBlock(int spaceIdx, int endIdx)
 		}
 
 		usedEndIdx = mSrcIdx;
+		usedLineStart = mLineStart;
+		usedLineNum = mLineNum;
 
 		auto childNode = CreateNode();
 		if (childNode == NULL)

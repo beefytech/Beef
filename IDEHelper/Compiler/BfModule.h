@@ -423,6 +423,7 @@ public:
 	bool mIsDeferredBlock;
 	bool mAllowVariableDeclarations;
 	bool mInInitBlock;
+	BfMixinState* mMixinState;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
 	BfExprEvaluator* mExprEvaluator;
@@ -445,6 +446,7 @@ public:
 		mPrevScope = NULL;
 		mLocalVarStart = 0;
 		mLabelNode = NULL;
+		mMixinState = NULL;
 		mAstBlock = NULL;
 		mCloseNode = NULL;
 		mExprEvaluator = NULL;
@@ -1734,8 +1736,8 @@ public:
 	BfModuleOptions GetModuleOptions();
 	BfCheckedKind GetDefaultCheckedKind();
 	void FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext);
-	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& src);
-	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& ctxString, BfAstNode* refNode);
+	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, const StringImpl& src);
+	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode);
 	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes);
 	void CEMixin(BfAstNode* refNode, const StringImpl& src);
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind);
@@ -1818,6 +1820,7 @@ public:
 	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type);	
 	void GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInstance*, 4>& genericParamInstance);
+	BfGenericParamInstance* GetMergedGenericParamData(BfGenericParamType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint);
 	BfTypeInstance* GetBaseType(BfTypeInstance* typeInst);
 	void HandleTypeGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, int typeGenericParamIdx);
 	void HandleMethodGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, BfMethodDef* methodDef, int typeGenericParamIdx);

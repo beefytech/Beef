@@ -8,6 +8,24 @@ namespace System
 
 	}
 
+	enum Index
+	{
+		case FromFront(int offset);
+		case FromEnd(int offset);
+
+		public override void ToString(String strBuffer)
+		{
+			switch (this)
+			{
+			case .FromFront(let offset):
+				offset.ToString(strBuffer);
+			case .FromEnd(let offset):
+				strBuffer.Append('^');
+				offset.ToString(strBuffer);
+			}
+		}
+	}
+
 	struct Range : RangeExpression, IEnumerable<int>
 	{
 		protected int mStart;
@@ -110,6 +128,11 @@ namespace System
 			mEnd = 0;
 		}
 
+		public static operator IndexRange(Range list)
+		{
+			return .(.FromFront(list.mStart), .FromFront(list.mEnd), false);
+		}
+
 		[Inline]
 		public Enumerator GetEnumerator()
 		{
@@ -189,6 +212,103 @@ namespace System
 					return .Err;
 				return --mIndex;
 			}
+		}
+	}
+
+	struct IndexRange : RangeExpression
+	{
+		protected Index mStart;
+		protected Index mEnd;
+		protected bool mIsClosed;
+
+		public this()
+		{
+			this = default;
+		}
+
+		[Inline]
+		public this(Index start, Index end, bool isClosed=true)
+		{
+			mStart = start;
+			mEnd = end;
+			mIsClosed = isClosed;
+		}
+
+		[Inline]
+		public this(int start, Index end, bool isClosed=true)
+		{
+			mStart = .FromFront(start);
+			mEnd = end;
+			mIsClosed = isClosed;
+		}
+
+		[Inline]
+		public this(Index start, int end, bool isClosed=true)
+		{
+			mStart = start;
+			mEnd = .FromFront(end);
+			mIsClosed = isClosed;
+		}
+
+		[Inline]
+		public this(int start, int end, bool isClosed=true)
+		{
+			mStart = .FromFront(start);
+			mEnd = .FromFront(end);
+			mIsClosed = isClosed;
+		}
+
+		public Index Start
+		{
+			[Inline]
+			get
+			{
+				return mStart;
+			}
+
+			[Inline]
+			set	mut
+			{
+				mStart = value;
+			}
+		}
+
+		public Index End
+		{
+			[Inline]
+			get
+			{
+				return mEnd;
+			}
+
+			set mut
+			{
+				mEnd = value;
+			}
+		}
+
+		public bool IsClosed
+		{
+			[Inline]
+			get
+			{
+				return mIsClosed;
+			}
+
+			set mut
+			{
+				mIsClosed = value;
+			}
+		}
+
+		public override void ToString(String strBuffer)
+		{
+			mStart.ToString(strBuffer);
+			if (mIsClosed)
+				strBuffer.Append("...");
+			else
+				strBuffer.Append("..<");
+			mEnd.ToString(strBuffer);
 		}
 	}
 
@@ -292,6 +412,11 @@ namespace System
 		{
 			mStart = 0;
 			mEnd = 0;
+		}
+
+		public static operator IndexRange(ClosedRange list)
+		{
+			return .(.FromFront(list.mStart), .FromFront(list.mEnd), true);
 		}
 
 		[Inline]

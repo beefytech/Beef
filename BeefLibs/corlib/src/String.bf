@@ -1010,16 +1010,94 @@ namespace System
 
 		public ref char8 this[int index]
 		{
+			[Checked]
 			get
 			{
 				Debug.Assert((uint)index < (uint)mLength);
 				return ref Ptr[index];
 			}
 
+			[Unchecked, Inline]
+			get
+			{
+				return ref Ptr[index];
+			}
+
+			[Checked]
 			set
 			{
 				Debug.Assert((uint)index < (uint)mLength);
 				Ptr[index] = value;
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				Ptr[index] = value;
+			}
+		}
+
+		public ref char8 this[Index index]
+		{
+			[Checked]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Debug.Assert((uint)idx < (uint)mLength);
+				return ref Ptr[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				return ref Ptr[idx];
+			}
+
+			[Checked]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Debug.Assert((uint)idx < (uint)mLength);
+				Ptr[idx] = value;
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Ptr[idx] = value;
+			}
+		}
+
+		public StringView this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				return StringView(Ptr, Length)[range];
 			}
 		}
 
@@ -1700,7 +1778,7 @@ namespace System
 
                 //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 
-                // uppercase both char8s - notice that we need just one compare per char8
+                // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1708,7 +1786,7 @@ namespace System
 				if (charA != charB)
 					return false;
 
-                // Next char8
+                // Next char
 				curA++;curB++;
 				curLength--;
 			}
@@ -1733,7 +1811,7 @@ namespace System
 
                 //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 
-                // uppercase both char8s - notice that we need just one compare per char8
+                // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1741,7 +1819,7 @@ namespace System
 				if (charA != charB)
 					return charA - charB;
 
-                // Next char8
+                // Next char
 				a++;b++;
 				length--;
 			}
@@ -1761,7 +1839,7 @@ namespace System
 				int_strsize charB = (int_strsize)*b;
 
 			    //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
-			    // uppercase both char8s - notice that we need just one compare per char8
+			    // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1769,7 +1847,7 @@ namespace System
 				if (charA != charB)
 					return charA - charB;
 
-			    // Next char8
+			    // Next char
 				a++;b++;
 				length--;
 			}
@@ -2889,6 +2967,97 @@ namespace System
 		{
 			mPtr = ptr;
 			mLength = length;
+		}
+
+		public ref char8 this[int index]
+		{
+			[Checked]
+		    get
+			{
+				Runtime.Assert((uint)index < (uint)mLength);
+				return ref mPtr[index];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				return ref mPtr[index];
+			}
+		}
+
+		public ref char8 this[Index index]
+		{
+			[Checked]
+		    get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mLength);
+				return ref mPtr[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				return ref mPtr[idx];
+			}
+		}
+
+		public StringView this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				char8* start;
+				switch (range.[Friend]mStart)
+				{
+				case .FromFront(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + offset;
+				case .FromEnd(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + mLength - offset;
+				}
+				char8* end;
+				if (range.[Friend]mIsClosed)
+				{
+					switch (range.[Friend]mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset < (uint)mLength);
+						end = mPtr + offset + 1;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)(offset - 1) <= (uint)mLength);
+						end = mPtr + mLength - offset + 1;
+					}
+				}
+				else
+				{
+					switch (range.[Friend]mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + offset;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + mLength - offset;
+					}
+				}
+
+				return .(start, end - start);
+			}
 		}
 
 		public String.RawEnumerator RawChars

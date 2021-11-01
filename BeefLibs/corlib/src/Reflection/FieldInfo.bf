@@ -20,53 +20,13 @@ namespace System.Reflection
 	        mFieldData = fieldData;
 	    }
 
-	    public int32 MemberOffset
-	    {
-	        get
-	        {
-	            return (int32)mFieldData.mData;
-	        }
-	    }
-
-	    public Type FieldType
-	    {
-	        get
-	        {
-	            return Type.[Friend]GetType(mFieldData.mFieldTypeId);
-	        }
-	    }
-
-		public bool IsConst
-		{
-			get
-			{
-				return mFieldData.mFlags.HasFlag(.Const);
-			}
-		}
-
-		public bool IsStatic
-		{
-			get
-			{
-				return mFieldData.mFlags.HasFlag(.Static);
-			}
-		}
-
-		public bool IsInstanceField
-		{
-			get
-			{
-				return !mFieldData.mFlags.HasFlag(.Static) && !mFieldData.mFlags.HasFlag(.Const);
-			}
-		}
-
-		public StringView Name
-		{
-			get
-			{
-				return mFieldData.mName;
-			}
-		}
+		public TypeInstance DeclaringType => mTypeInstance;
+	    public int32 MemberOffset => (int32)mFieldData.mData;
+	    public Type FieldType => Type.[Friend]GetType(mFieldData.mFieldTypeId);
+		public bool IsConst => mFieldData.mFlags.HasFlag(.Const);
+		public bool IsStatic => mFieldData.mFlags.HasFlag(.Static);
+		public bool IsInstanceField => !mFieldData.mFlags.HasFlag(.Static) && !mFieldData.mFlags.HasFlag(.Const);
+		public StringView Name => mFieldData.mName;
 
 	    public Result<void, Error> SetValue(Object obj, Object value)
 	    {    
@@ -525,7 +485,15 @@ namespace System.Reflection
 				{
 					mIdx++;
 					if (mIdx == mTypeInstance.[Friend]mFieldDataCount)
-						return false;
+					{
+						if (mBindingFlags.HasFlag(.DeclaredOnly))
+							return false;
+						if (mTypeInstance.[Friend]mBaseType == 0)
+							return false;
+						mTypeInstance = Type.[Friend]GetType(mTypeInstance.[Friend]mBaseType) as TypeInstance;
+						mIdx = -1;
+						continue;
+					}
 					var fieldData = &mTypeInstance.[Friend]mFieldDataPtr[mIdx];
 					bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (fieldData.mFlags.HasFlag(FieldFlags.Static)));
 					matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!fieldData.mFlags.HasFlag(FieldFlags.Static)));

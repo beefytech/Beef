@@ -277,6 +277,19 @@ namespace System.Collections
 				return false;
 			}
 		}
+
+		public bool ContainsAlt<TAltKey>((TAltKey key, TValue value) kvPair) where TAltKey : IHashable where bool : operator TKey == TAltKey
+		{
+			TValue value;
+			if (TryGetValueAlt(kvPair.key, out value))
+			{
+				return value == kvPair.value;
+			}
+			else
+			{
+				return false;
+			}
+		}
 		
 		public void CopyTo(Span<KeyValuePair> kvPair)
 		{
@@ -730,6 +743,18 @@ namespace System.Collections
 		public bool TryGetValue(TKey key, out TValue value)
 		{
 			int_cosize i = (int_cosize)FindEntry(key);
+			if (i >= 0)
+			{
+				value = mEntries[i].mValue;
+				return true;
+			}
+			value = default(TValue);
+			return false;
+		}
+
+		public bool TryGetValueAlt<TAltKey>(TAltKey key, out TValue value) where TAltKey : IHashable where bool : operator TKey == TAltKey
+		{
+			int_cosize i = (int_cosize)FindEntryAlt<TAltKey>(key);
 			if (i >= 0)
 			{
 				value = mEntries[i].mValue;

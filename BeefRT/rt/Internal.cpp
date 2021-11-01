@@ -84,8 +84,7 @@ namespace bf
 			BFRT_EXPORT static Object* UnsafeCastToObject(void* inPtr);
 			BFRT_EXPORT static void* UnsafeCastToPtr(Object* obj);
 			BFRT_EXPORT static void ObjectDynCheck(Object* object, int typeId, bool allowNull);
-			BFRT_EXPORT static void ObjectDynCheckFailed(Object* object, int typeId);
-			BFRT_EXPORT static void Throw(Exception* ex);
+			BFRT_EXPORT static void ObjectDynCheckFailed(Object* object, int typeId);			
 			BFRT_EXPORT static void ThrowIndexOutOfRange(intptr stackOffset);
 			BFRT_EXPORT static void FatalError(String* error, intptr stackOffset = 0);
 			BFRT_EXPORT static void MemCpy(void* dest, void* src, intptr length);
@@ -393,24 +392,6 @@ Object* Internal::UnsafeCastToObject(void* inPtr)
 void* Internal::UnsafeCastToPtr(Object* obj)
 {
 	return (void*)obj;
-}
-
-void Internal::Throw(Exception* ex)
-{	
-	bf::System::String* exStr = gBfRtCallbacks.String_Alloc();
-	gBfRtCallbacks.Object_ToString(ex, exStr);
-
-    Beefy::String errorStr = StrFormat("FATAL: %s", exStr->CStr());
-	SETUP_ERROR(errorStr.c_str(), 1);
-	BF_DEBUG_BREAK();
-	gBfRtCallbacks.DebugMessageData_Fatal();
-
-    printf("Thrown: %s", errorStr.c_str());
-    //TODO: What about capturing callstack?
-
-    exit(3);
-
-	//throw ex;
 }
 
 void Internal::ThrowIndexOutOfRange(intptr stackOffset)

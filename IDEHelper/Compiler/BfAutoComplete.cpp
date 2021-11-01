@@ -445,7 +445,7 @@ bool BfAutoComplete::IsAttribute(BfTypeInstance* typeInst)
 	auto checkTypeInst = typeInst;
 	while (checkTypeInst != NULL)
 	{
-		if (checkTypeInst->mTypeDef == mModule->mCompiler->mAttributeTypeDef)
+		if (checkTypeInst->mTypeDef->GetLatest() == mModule->mCompiler->mAttributeTypeDef->GetLatest())
 			return true;
 
 		checkTypeInst = checkTypeInst->mBaseType;
@@ -515,6 +515,8 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 
 void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bool onlyAttribute)
 {
+	BF_ASSERT(typeDef->mDefState != BfTypeDef::DefState_Emitted);
+
 	if (typeDef->mTypeDeclaration == NULL)
 		return;
 
@@ -568,7 +570,7 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 			auto typeInst = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
 			StringT<1024> str;
 			if (typeInst != NULL)
-				str = mModule->TypeToString(typeInst, BfTypeNameFlag_ExtendedInfo);
+				str = mModule->TypeToString(typeInst, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
 			if (typeDef->mTypeDeclaration->mDocumentation != NULL)
 			{
 				if (!str.IsEmpty())
@@ -615,9 +617,9 @@ void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& f
 void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate, bool onlyAttribute)
 {	
 	if (typeInst != mModule->mCurTypeInstance)
-		AddTypeDef(typeInst->mTypeDef, filter, onlyAttribute);
+		AddTypeDef(typeInst->mTypeDef->GetDefinition(), filter, onlyAttribute);
 
-	auto typeDef = typeInst->mTypeDef;
+	auto typeDef = typeInst->mTypeDef->GetDefinition();
 	for (auto nestedTypeDef : typeDef->mNestedTypes)
 	{
 		if (nestedTypeDef->mIsPartial)
@@ -1653,7 +1655,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 		if (attrIdentifier != NULL)
 		{
 			BfAttributeState attributeState;
-			attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_MemberAccess);
+			attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_MemberAccess | BfAttributeTargets_Invocation);
 			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);
 			if ((attributeState.mCustomAttributes != NULL) && (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef)))
 			{
@@ -2625,7 +2627,7 @@ void BfAutoComplete::CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedT
 		if (mResolveType == BfResolveType_GetResultString)
 		{
 			mResultString = ":";
-			mResultString += mModule->TypeToString(resolvedType);
+			mResultString += mModule->TypeToString(resolvedType, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
 		}
 	}
 }
@@ -2649,11 +2651,11 @@ void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue
 	auto constant = mModule->mBfIRBuilder->GetConstant(typedValue.mValue);
 	if (BfIRConstHolder::IsInt(constant->mTypeCode))
 	{
-		mResultString = StrFormat("%lld", constant->mInt64);
+		mResultString = StrFormat(":%lld", constant->mInt64);
 	}
 	else if (BfIRConstHolder::IsFloat(constant->mTypeCode))
 	{
-		mResultString = StrFormat("%f", constant->mDouble);
+		mResultString = StrFormat(":%f", constant->mDouble);
 	}	
 }
 

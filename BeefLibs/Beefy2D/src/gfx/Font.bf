@@ -113,13 +113,13 @@ namespace Beefy.gfx
 		enum MarkPosition
 		{
 			AboveC, // Center
-			AboveR, // Left edge of mark aligned on center of char8
-			AboveE, // Center of mark aligned on right edge of char8
+			AboveR, // Left edge of mark aligned on center of char
+			AboveE, // Center of mark aligned on right edge of char
 			BelowC,
 			BelowR,
 			OverC,
 			OverE,
-			TopR, // Center of edge aligned to top of char8
+			TopR, // Center of edge aligned to top of char
 		}
 
         const int32 LOW_CHAR_COUNT = 128;
@@ -799,7 +799,7 @@ namespace Beefy.gfx
 					else if (newMatrix.tx > clipRect.mX + clipRect.mWidth)
 					{
 						isFullyClipped = true;
-						if ((newMatrix.a > 0) && (fontMetrics == null)) // Forward? If so, all future char8s will clip
+						if ((newMatrix.a > 0) && (fontMetrics == null)) // Forward? If so, all future chars will clip
 							break;
 					}
 				}

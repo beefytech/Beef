@@ -3371,7 +3371,8 @@ namespace IDE.ui
 
                         int textStartPos = lineChar - (int32)trimmedLineText.Length;
                         String tabStartStr = scope String();
-                        tabStartStr.Append(lineText, 0, textStartPos);
+						if (textStartPos > 0)
+                        	tabStartStr.Append(lineText, 0, textStartPos);
                         int32 columnPos = (int32)(GetTabbedWidth(tabStartStr, 0) / mCharWidth + 0.001f);
                         if (wantLineColumn > columnPos)
                         {
