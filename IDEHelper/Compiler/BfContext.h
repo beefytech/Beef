@@ -138,7 +138,7 @@ public:
 public:
 	BfTypeState* mPrevState;
 
-	BfTypeInstance* mTypeInstance;
+	BfType* mType;
 	BfTypeDef* mGlobalContainerCurUserTypeDef;
 	Array<BfGlobalContainerEntry> mGlobalContainers; // All global containers that are visible	
 
@@ -157,7 +157,7 @@ public:
 	BfTypeState()
 	{
 		mPrevState = NULL;
-		mTypeInstance = NULL;
+		mType = NULL;
 		mGlobalContainerCurUserTypeDef = NULL;
 
 		mPopulateType = BfPopulateType_Identity;
@@ -172,14 +172,15 @@ public:
 		mResolveKind = ResolveKind_None;
 	}
 
-	BfTypeState(BfTypeInstance* typeInstance, BfTypeState* prevState = NULL)
+	BfTypeState(BfType* type, BfTypeState* prevState = NULL)
 	{
 		mPrevState = prevState;
-		mTypeInstance = typeInstance;
+		mType = type;
 		mGlobalContainerCurUserTypeDef = NULL;
 
 		mPopulateType = BfPopulateType_Declaration;
 		mCurBaseTypeRef = NULL;
+		mCurBaseType = NULL;
 		mCurFieldDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;

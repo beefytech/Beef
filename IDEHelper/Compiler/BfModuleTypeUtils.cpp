@@ -60,7 +60,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 
 	BfTypeState typeState;
 	typeState.mPrevState = mContext->mCurTypeState;
-	typeState.mTypeInstance = genericTypeInst;
+	typeState.mType = genericTypeInst;
 	typeState.mCurTypeDef = partialTypeDef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
@@ -123,7 +123,7 @@ bool BfModule::InitGenericParams(BfType* resolvedTypeRef)
 	BfTypeState typeState;
 	typeState.mPrevState = mContext->mCurTypeState;
 	typeState.mResolveKind = BfTypeState::ResolveKind_BuildingGenericParams;
-	typeState.mTypeInstance = resolvedTypeRef->ToTypeInstance();
+	typeState.mType = resolvedTypeRef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);	
 
 	BF_ASSERT(mCurMethodInstance == NULL);
@@ -162,7 +162,7 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 	BfTypeState typeState;
 	typeState.mPrevState = mContext->mCurTypeState;
 	typeState.mResolveKind = BfTypeState::ResolveKind_BuildingGenericParams;
-	typeState.mTypeInstance = resolvedTypeRef->ToTypeInstance();
+	typeState.mType = resolvedTypeRef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 	Array<BfTypeReference*> deferredResolveTypes;
 
@@ -925,11 +925,12 @@ bool BfModule::CheckCircularDataError()
 		{
 			if (checkTypeState->mPopulateType == BfPopulateType_Declaration)
 				return hadError;
-			if ((checkIdx > 0) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL))
+			if ((checkIdx > 0) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL) &&
+				((checkTypeState->mType == NULL) || (checkTypeState->mType->IsTypeInstance())))
 				return hadError;
 		}
 
-		if ((checkTypeState->mTypeInstance == mCurTypeInstance) && (checkIdx > 0))
+		if ((checkTypeState->mType == mCurTypeInstance) && (checkIdx > 0))
 			break;
 		checkTypeState = checkTypeState->mPrevState;
 		checkIdx++;
@@ -949,7 +950,8 @@ bool BfModule::CheckCircularDataError()
 			continue;
 		}
 
-		if ((checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL) )
+		if ((checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL) &&
+			((checkTypeState->mType == NULL) || (checkTypeState->mType->IsTypeInstance())))
 			return hadError;
 
 		// We only get one chance to fire off these errors, they can't be ignored.
@@ -964,21 +966,27 @@ bool BfModule::CheckCircularDataError()
 		{
 			Fail(StrFormat("Base type '%s' causes a data cycle", BfTypeUtils::TypeToString(checkTypeState->mCurBaseTypeRef).c_str()), checkTypeState->mCurBaseTypeRef, true);
 		}
-		else if (checkTypeState->mCurFieldDef->mFieldDeclaration != NULL)
+		else if ((checkTypeState->mCurFieldDef != NULL) && (checkTypeState->mCurFieldDef->mFieldDeclaration != NULL))
 		{
-			Fail(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(checkTypeState->mTypeInstance).c_str(), checkTypeState->mCurFieldDef->mName.c_str()),
+			Fail(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str(), checkTypeState->mCurFieldDef->mName.c_str()),
 				checkTypeState->mCurFieldDef->mFieldDeclaration->mTypeRef, true);
 		}
+		else if (checkTypeState->mCurFieldDef != NULL)
+		{
+			Fail(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str(), checkTypeState->mCurFieldDef->mName.c_str()));
+		}
 		else
 		{
-			Fail(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(checkTypeState->mTypeInstance).c_str(), checkTypeState->mCurFieldDef->mName.c_str()));
+			Fail(StrFormat("Type '%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str()));
 		}
 
-		auto module = GetModuleFor(checkTypeState->mTypeInstance);
+		auto typeInstance = checkTypeState->mType->ToTypeInstance();
+
+		auto module = GetModuleFor(checkTypeState->mType);
 		if (module != NULL)
-			module->TypeFailed(checkTypeState->mTypeInstance);
-		else
-			checkTypeState->mTypeInstance->mTypeFailed = true;
+			module->TypeFailed(typeInstance);
+		else if (typeInstance != NULL)
+			typeInstance->mTypeFailed = true;
 
 		checkTypeState = checkTypeState->mPrevState;
 	}
@@ -1189,9 +1197,10 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		if (elementType->IsValueType())
 		{
 			resolvedTypeRef->mDefineState = BfTypeDefineState_ResolvingBaseType;
-			BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
-			typeState.mPopulateType = populateType;			
+			BfTypeState typeState(arrayType, mContext->mCurTypeState);
+			typeState.mPopulateType = BfPopulateType_Data;
 			SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, NULL);
 
 			if (!CheckCircularDataError())
 			{
@@ -3509,7 +3518,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				BfTypeState typeState;
 				typeState.mPrevState = mContext->mCurTypeState;				
 				typeState.mResolveKind = BfTypeState::ResolveKind_Attributes;
-				typeState.mTypeInstance = typeInstance;
+				typeState.mType = typeInstance;
 				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 				// This allows us to avoid reentrancy when checking for inner types
@@ -3969,7 +3978,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				typeState.mPrevState = mContext->mCurTypeState;
 				typeState.mCurTypeDef = propDef->mDeclaringType;
 				typeState.mCurFieldDef = propDef;
-				typeState.mTypeInstance = typeInstance;
+				typeState.mType = typeInstance;
 				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 				BfAttributeTargets target = BfAttributeTargets_Property;
@@ -4078,7 +4087,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					typeState.mPrevState = mContext->mCurTypeState;
 					typeState.mCurFieldDef = fieldDef;
 					typeState.mCurTypeDef = fieldDef->mDeclaringType;
-					typeState.mTypeInstance = typeInstance;
+					typeState.mType = typeInstance;
 					SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 					fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
@@ -4584,7 +4593,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			BfTypeState typeState;
 			typeState.mPrevState = mContext->mCurTypeState;
 			typeState.mCurTypeDef = propDef->mDeclaringType;
-			typeState.mTypeInstance = typeInstance;
+			typeState.mType = typeInstance;
 			SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 			ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowRef);
 		}
@@ -6937,7 +6946,7 @@ BfTypeInstance* BfModule::GetBaseType(BfTypeInstance* typeInst)
 		auto checkTypeState = mContext->mCurTypeState;
 		while (checkTypeState != NULL)
 		{
-			if (checkTypeState->mTypeInstance == typeInst)
+			if (checkTypeState->mType == typeInst)
 				return NULL;
 			checkTypeState = checkTypeState->mPrevState;
 		}
@@ -8125,7 +8134,7 @@ bool BfModule::ResolveTypeResult_Validate(BfTypeReference* typeRef, BfType* reso
 				if (curGenericTypeInstance->mGenericTypeInfo->mHadValidateErrors)
 					doValidate = false;
 			}
-			if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mCurBaseTypeRef != NULL) && (!mContext->mCurTypeState->mTypeInstance->IsTypeAlias())) // We validate constraints for base types later
+			if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mCurBaseTypeRef != NULL) && (!mContext->mCurTypeState->mType->IsTypeAlias())) // We validate constraints for base types later
 				doValidate = false;
 		}
 
@@ -8564,9 +8573,9 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 	if (mContext->mCurTypeState != NULL)
 	{
 		if (mContext->mCurTypeState->mCurBaseTypeRef != NULL)
-			skipCheckBaseType = mContext->mCurTypeState->mTypeInstance;
+			skipCheckBaseType = mContext->mCurTypeState->mType->ToTypeInstance();
 		if (mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_BuildingGenericParams)
-			skipCheckBaseType = mContext->mCurTypeState->mTypeInstance;
+			skipCheckBaseType = mContext->mCurTypeState->mType->ToTypeInstance();
 	}
 
 	BfTypeDefLookupContext lookupCtx;
@@ -13119,7 +13128,7 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 			auto typeState = mContext->mCurTypeState;
 			while (typeState != NULL)
 			{
-				if ((typeState->mTypeInstance == srcType) && (typeState->mCurBaseType != NULL))
+				if ((typeState->mType == srcType) && (typeState->mCurBaseType != NULL))
 				{
 					return TypeIsSubTypeOf(typeState->mCurBaseType, wantType, checkAccessibility);
 				}

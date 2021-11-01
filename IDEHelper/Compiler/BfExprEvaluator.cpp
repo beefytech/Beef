@@ -2483,7 +2483,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 				while (checkTypeState != NULL)
 				{
 					if ((checkTypeState->mResolveKind == BfTypeState::ResolveKind_ResolvingVarType) &&
-						(checkTypeState->mTypeInstance == typeInstance))
+						(checkTypeState->mType == typeInstance))
 						isResolvingVarField = true;
 					checkTypeState = checkTypeState->mPrevState;
 				}
@@ -3979,7 +3979,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			{
 				if (checkTypeState->mCurFieldDef != NULL)
 				{
-					if (checkTypeState->mTypeInstance == mModule->mCurTypeInstance)
+					if (checkTypeState->mType == mModule->mCurTypeInstance)
 						resolvingFieldDef = checkTypeState->mCurFieldDef;
 				}
 				checkTypeState = checkTypeState->mPrevState;
@@ -4046,7 +4046,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 
 	if (!thisValue.HasType())			
 	{		
-		if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mTypeInstance == mModule->mCurTypeInstance) &&
+		if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mType == mModule->mCurTypeInstance) &&
 			(mModule->mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes))
 		{
 			// Can't do static lookups yet
@@ -4311,7 +4311,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 	{
 		// Don't allow lookups yet
 		if ((mModule->mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes) &&
-			(startCheckType == mModule->mContext->mCurTypeState->mTypeInstance))
+			(startCheckType == mModule->mContext->mCurTypeState->mType))
 			return BfTypedValue();
 	}
 
@@ -4479,7 +4479,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mCurFieldDef != NULL))
 					{
 						// If we're initializing another const field then also set it as having const eval
-						auto resolvingFieldInstance = &mModule->mContext->mCurTypeState->mTypeInstance->mFieldInstances[mModule->mContext->mCurTypeState->mCurFieldDef->mIdx];
+						auto resolvingFieldInstance = &mModule->mContext->mCurTypeState->mType->ToTypeInstance()->mFieldInstances[mModule->mContext->mCurTypeState->mCurFieldDef->mIdx];
 						if (resolvingFieldInstance->GetFieldDef()->mIsConst)
 							resolvingFieldInstance->mHadConstEval = true;
 					}
@@ -15319,7 +15319,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 	if ((methodMatcher.mBestMethodDef == NULL) && (target.mType == NULL) && (mModule->mContext->mCurTypeState != NULL))
 	{
-		BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mTypeInstance);
+		BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mType);
 		BfGlobalLookup globalLookup;
 		globalLookup.mKind = BfGlobalLookup::Kind_Method;
 		globalLookup.mName = name;

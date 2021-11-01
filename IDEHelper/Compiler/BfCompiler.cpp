@@ -4268,7 +4268,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 #endif
 					
 	SetAndRestoreValue<BfTypeInstance*> prevType(module->mCurTypeInstance, typeInst);
-	typeState.mTypeInstance = typeInst;
+	typeState.mType = typeInst;
 	
 	BfGenericExtensionEntry* genericExEntry = NULL;
 	bool hadTempExtensionInfo = false;

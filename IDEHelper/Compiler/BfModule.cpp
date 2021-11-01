@@ -2998,7 +2998,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
  	String errorString = error;	
 	bool isWhileSpecializing = false;	
 	if (!AddErrorContext(errorString, refNode, isWhileSpecializing))
-		return false;
+		return NULL;
 	
 	BfError* bfError = NULL;
 	if (isWhileSpecializing)
@@ -3143,7 +3143,7 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 	String warningString = warning;
 	bool isWhileSpecializing = false;
 	if (!AddErrorContext(warningString, refNode, isWhileSpecializing))
-		return false;
+		return NULL;
 	bool deferWarning = isWhileSpecializing;
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
@@ -4093,7 +4093,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 
 	BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
-	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState, mContext->mCurTypeState->mTypeInstance != typeInstance);
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState, mContext->mCurTypeState->mType != typeInstance);
 
 	auto typeDef = typeInstance->mTypeDef;
 
@@ -4140,7 +4140,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	{	
 		BfTypeState typeState;
 		typeState.mPrevState = mContext->mCurTypeState;
-		typeState.mTypeInstance = typeInstance;
+		typeState.mType = typeInstance;
 		typeState.mCurFieldDef = field;
 		typeState.mResolveKind = BfTypeState::ResolveKind_ResolvingVarType;
 		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
@@ -4291,7 +4291,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 				ceExecuteId = mCompiler->mCEMachine->mExecuteId;
 
 			BfTypeState typeState;			
-			typeState.mTypeInstance = mCurTypeInstance;
+			typeState.mType = mCurTypeInstance;
 			typeState.mCurTypeDef = fieldDef->mDeclaringType;
 			typeState.mCurFieldDef = fieldDef;
 			SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
@@ -10360,7 +10360,7 @@ BfOperatorInfo* BfModule::GetOperatorInfo(BfTypeInstance* typeInstance, BfOperat
 		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
 
 		BfTypeState typeState;		
-		typeState.mTypeInstance = typeInstance;
+		typeState.mType = typeInstance;
 		typeState.mCurTypeDef = operatorDef->mDeclaringType;
 		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
@@ -22239,7 +22239,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			else
 			{
 				BfTypeState typeState;
-				typeState.mTypeInstance = mCurTypeInstance;
+				typeState.mType = mCurTypeInstance;
 				typeState.mCurTypeDef = methodDef->mDeclaringType;
 				//typeState.mCurMethodDef = methodDef;
 				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);

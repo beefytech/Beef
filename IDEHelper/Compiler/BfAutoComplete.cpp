@@ -1424,9 +1424,9 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		}
 	}
 
-	if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mTypeInstance != NULL))
+	if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mType != NULL))
 	{
-		BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mTypeInstance);
+		BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mType);
 
 		BfGlobalLookup globalLookup;
 		globalLookup.mKind = BfGlobalLookup::Kind_All;
@@ -1790,9 +1790,9 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 							checkTypeInst = mModule->GetOuterType(checkTypeInst);
 						}
 
-						if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mTypeInstance != NULL))
+						if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mType != NULL))
 						{
-							BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mTypeInstance);
+							BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mType);
 
 							BfGlobalLookup globalLookup;
 							globalLookup.mKind = BfGlobalLookup::Kind_All;
