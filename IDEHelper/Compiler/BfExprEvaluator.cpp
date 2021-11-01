@@ -1071,6 +1071,17 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		RETURN_RESULTS;
 	}
 
+	// For operators, prefer explicit comparison over '<=>' comparison operator
+	if ((!isBetter) && (!isWorse))
+	{
+		if ((prevMethodDef->mIsOperator) && (newMethodDef->mIsOperator))
+		{
+			bool newIsComparison = ((BfOperatorDeclaration*)newMethodDef->mMethodDeclaration)->mBinOp == BfBinaryOp_Compare;
+			bool prevIsComparison = ((BfOperatorDeclaration*)prevMethodDef->mMethodDeclaration)->mBinOp == BfBinaryOp_Compare;
+			RETURN_BETTER_OR_WORSE(!newIsComparison, !prevIsComparison);
+		}
+	}
+
 	if ((newMethodInstance->mMethodDef->mExternalConstraints.size() != 0) || (prevMethodInstance->mMethodDef->mExternalConstraints.size() != 0))
 	{	
 		struct GenericParamPair
@@ -1119,18 +1130,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		// If both are empty partials then just bind to either
 		isWorse = true;
 		RETURN_RESULTS;
-	}
-	
-	// For operators, prefer explicit comparison over '<=>' comparison operator
-	if ((!isBetter) && (!isWorse))
-	{
-		if ((prevMethodDef->mIsOperator) && (newMethodDef->mIsOperator))
-		{
-			bool newIsComparison = ((BfOperatorDeclaration*)newMethodDef->mMethodDeclaration)->mBinOp == BfBinaryOp_Compare;
-			bool prevIsComparison = ((BfOperatorDeclaration*)prevMethodDef->mMethodDeclaration)->mBinOp == BfBinaryOp_Compare;			
-			RETURN_BETTER_OR_WORSE(!newIsComparison, !prevIsComparison);
-		}
-	}
+	}		
 
 	// For extensions, select the version in the most-specific project (only applicable for ctors)
 	if ((!isBetter) && (!isWorse))
