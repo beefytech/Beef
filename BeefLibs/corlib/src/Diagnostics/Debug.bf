@@ -44,6 +44,11 @@ namespace System.Diagnostics
 			Write(line.Ptr, line.Length);
 		}
 
+		public static void Write(StringView sv)
+		{
+			Write(sv.[Friend]mPtr, sv.[Friend]mLength);
+		}
+
 		public static void Write(String fmt, params Object[] args)
 		{
 			String str = scope String(4096);
