@@ -1966,7 +1966,7 @@ public:
 	void Dispose();
 	void ReleaseData();	
 
-	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { return typeDef->GetDefinition() == mTypeDef->GetDefinition(); }
+	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { if (typeDef == NULL) return false; return typeDef->GetDefinition() == mTypeDef->GetDefinition(); }
 	virtual BfModule* GetModule() override { return mModule; }
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
