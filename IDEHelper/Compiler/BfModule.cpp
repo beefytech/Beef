@@ -1734,7 +1734,10 @@ BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define, boo
 
 	if ((mBfIRBuilder->mIgnoreWrites) && (!force))
 	{
-		mUnreifiedStringPoolRefs.Add(strId);			
+		auto refModule = this;
+		if ((this == mContext->mUnreifiedModule) && (mCurTypeInstance != NULL))
+			refModule = mCurTypeInstance->mModule;
+		refModule->mUnreifiedStringPoolRefs.Add(strId);
 		return mBfIRBuilder->CreateConst(BfTypeCode_StringId, strId);
 	}
 
