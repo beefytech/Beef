@@ -1942,6 +1942,7 @@ public:
 	BfIRValue GetClassVDataPtr(BfTypeInstance* typeInstance);
 	BfIRValue CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTypeInstance* implTypeInst, int startVirtIdx);
 	BfIRValue CreateTypeDataRef(BfType* type);
+	void EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType, BfIRValue arg, SizedArrayImpl<uint8>& data, Dictionary<int, int>& usedStringIdMap);
 	BfIRValue CreateTypeData(BfType* type, Dictionary<int, int>& usedStringIdMap, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData);
 	BfIRValue FixClassVData(BfIRValue value);
 

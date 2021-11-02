@@ -46,11 +46,13 @@ namespace Tests
 		{
 			public int32 mA;
 			public float mB;
+			public Type mC;
 
-			public this(int32 a, float b)
+			public this(int32 a, float b, Type c)
 			{
 				mA = a;
 				mB = b;
+				mC = c;
 			}
 		}
 
@@ -69,7 +71,7 @@ namespace Tests
 			public static int32 sA = 234;
 			public static String sStr = "AA";
 
-			[AlwaysInclude, AttrC(71, 72)]
+			[AlwaysInclude, AttrC(71, 72, typeof(float))]
 			static float StaticMethodA(int32 a, int32 b, float c, ref int32 d, ref StructA sa)
 			{
 				d += a + b;
@@ -169,7 +171,7 @@ namespace Tests
 			}
 		}
 
-		[Reflect(.All), AttrC(1, 2)]
+		[Reflect(.All), AttrC(1, 2, typeof(StringView))]
 		class ClassB
 		{
 			[AttrA(11, 22, "StrA")]
@@ -317,6 +319,7 @@ namespace Tests
 					let attrC = methodInfo.GetCustomAttribute<AttrCAttribute>().Get();
 					Test.Assert(attrC.mA == 71);
 					Test.Assert(attrC.mB == 72);
+					Test.Assert(attrC.mC == typeof(float));
 				case 5:
 					Test.Assert(methodInfo.Name == "StaticMethodB");
 
@@ -418,6 +421,7 @@ namespace Tests
 			let attrC = typeof(ClassB).GetCustomAttribute<AttrCAttribute>().Get();
 			Test.Assert(attrC.mA == 1);
 			Test.Assert(attrC.mB == 2);
+			Test.Assert(attrC.mC == typeof(StringView));
 
 			ClassC c = scope .();
 			Test.Assert(typeof(ClassC).GetField("mA").Value.Name == "mA");

@@ -5152,6 +5152,121 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 	return mBfIRBuilder->CreateTypeOf(type, globalVariable);
 }
 
+void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType, BfIRValue arg, SizedArrayImpl<uint8>& data, Dictionary<int, int>& usedStringIdMap)
+{
+#define PUSH_INT8(val) data.push_back((uint8)val)
+#define PUSH_INT16(val) { data.push_back(val & 0xFF); data.push_back((val >> 8) & 0xFF); }
+#define PUSH_INT32(val) { data.push_back(val & 0xFF); data.push_back((val >> 8) & 0xFF); data.push_back((val >> 16) & 0xFF); data.push_back((val >> 24) & 0xFF); }
+#define PUSH_INT64(val) { data.push_back(val & 0xFF); data.push_back((val >> 8) & 0xFF); data.push_back((val >> 16) & 0xFF); data.push_back((val >> 24) & 0xFF); \
+			data.push_back((val >> 32) & 0xFF); data.push_back((val >> 40) & 0xFF); data.push_back((val >> 48) & 0xFF); data.push_back((val >> 56) & 0xFF); }
+
+	auto constant = typeInstance->mConstHolder->GetConstant(arg);
+	bool handled = false;
+
+	if (constant == NULL)
+	{
+		Fail(StrFormat("Unhandled attribute constant data in '%s'", TypeToString(typeInstance).c_str()));
+		return;
+	}
+
+	if (argType->IsObject())
+	{
+		if (argType->IsInstanceOf(mCompiler->mStringTypeDef))
+		{
+			int stringId = constant->mInt32;
+			int* orderedIdPtr;
+			if (usedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
+			{
+				*orderedIdPtr = (int)usedStringIdMap.size() - 1;
+			}
+
+			GetStringObjectValue(stringId, true, true);
+			PUSH_INT8(0xFF); // String
+			PUSH_INT32(*orderedIdPtr);
+			return;
+		}
+	}
+
+	if (argType->IsPointer())
+	{
+		if (argType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))
+		{
+			if (constant->mTypeCode == BfTypeCode_StringId)
+			{
+				int stringId = constant->mInt32;
+				int* orderedIdPtr;
+				if (usedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
+				{
+					*orderedIdPtr = (int)usedStringIdMap.size() - 1;
+				}
+
+				GetStringObjectValue(stringId, true, true);
+				PUSH_INT8(0xFF); // String
+				PUSH_INT32(*orderedIdPtr);
+				return;
+			}
+		}
+	}
+
+	PUSH_INT8(constant->mTypeCode);
+	if ((constant->mTypeCode == BfTypeCode_Int64) ||
+		(constant->mTypeCode == BfTypeCode_UInt64) ||
+		(constant->mTypeCode == BfTypeCode_Double))
+	{
+		PUSH_INT64(constant->mInt64);
+	}
+	else if ((constant->mTypeCode == BfTypeCode_Int32) ||
+		(constant->mTypeCode == BfTypeCode_UInt32) ||
+		(constant->mTypeCode == BfTypeCode_Char32))
+	{
+		PUSH_INT32(constant->mInt32);
+	}
+	else if (constant->mTypeCode == BfTypeCode_Float)
+	{
+		float val = (float)constant->mDouble;
+		PUSH_INT32(*(int*)&val);
+	}
+	else if ((constant->mTypeCode == BfTypeCode_Int16) ||
+		(constant->mTypeCode == BfTypeCode_UInt16) ||
+		(constant->mTypeCode == BfTypeCode_Char16))
+	{
+		PUSH_INT16(constant->mInt16);
+	}
+	else if ((constant->mTypeCode == BfTypeCode_Int8) ||
+		(constant->mTypeCode == BfTypeCode_UInt8) ||
+		(constant->mTypeCode == BfTypeCode_Boolean) ||
+		(constant->mTypeCode == BfTypeCode_Char8))
+	{
+		PUSH_INT8(constant->mInt8);
+	}
+	else if (constant->mConstType == BfConstType_TypeOf)
+	{
+		auto typeOf = (BfTypeOf_Const*)constant;
+		PUSH_INT32(typeOf->mType->mTypeId);
+	}
+	else if (constant->mConstType == BfConstType_AggZero)
+	{
+		for (int i = 0; i < argType->mSize; i++)
+			data.Add(0);
+	}
+// 	else if (constant->mConstType == BfConstType_Agg)
+// 	{
+// 		BF_ASSERT(argType->IsComposite());
+// 		if (argType->IsSizedArray())
+// 		{
+// 			auto argSizedArrayType = (BfSizedArrayType*)argType;
+// 		}
+// 		else
+// 		{
+// 			auto argTypeInstance = argType->ToTypeInstance();
+// 		}
+// 	}
+	else
+	{
+		Fail(StrFormat("Unhandled attribute constant data in '%s'", TypeToString(typeInstance).c_str()));
+	}	
+}
+
 BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStringIdMap, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData)
 {
 	if ((mCompiler->IsHotCompile()) && (!type->mDirty))
@@ -6089,9 +6204,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 #define PUSH_INT8(val) data.push_back((uint8)val)
 #define PUSH_INT16(val) { data.push_back(val & 0xFF); data.push_back((val >> 8) & 0xFF); }
 #define PUSH_INT32(val) { data.push_back(val & 0xFF); data.push_back((val >> 8) & 0xFF); data.push_back((val >> 16) & 0xFF); data.push_back((val >> 24) & 0xFF); }
-#define PUSH_INT64(val) { data.push_back(val & 0xFF); data.push_back((val >> 8) & 0xFF); data.push_back((val >> 16) & 0xFF); data.push_back((val >> 24) & 0xFF); \
-			data.push_back((val >> 32) & 0xFF); data.push_back((val >> 40) & 0xFF); data.push_back((val >> 48) & 0xFF); data.push_back((val >> 56) & 0xFF); }
-
 		SizedArray<uint8, 16> data;
 
 		int customAttrIdx = (int)customAttrs.size();
@@ -6133,96 +6245,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			
 			for (auto arg : attr->mCtorArgs)
 			{
-				auto constant = typeInstance->mConstHolder->GetConstant(arg);
-				bool handled = false;
-
-				if (constant != NULL)
-				{
-					auto argType = ctorMethodInstance->GetParamType(argIdx);
-					if (argType->IsObject())
-					{
-						BF_ASSERT(argType->ToTypeInstance()->IsInstanceOf(mCompiler->mStringTypeDef));
-
-						int stringId = constant->mInt32;
-						int* orderedIdPtr;
-						if (usedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
-						{
-							*orderedIdPtr = (int)usedStringIdMap.size() - 1;							
-						}
-
-						GetStringObjectValue(stringId, true, true);
-						PUSH_INT8(0xFF); // String
-						PUSH_INT32(*orderedIdPtr);
-						argIdx++;
-						continue;
-					}
-
-					if (argType->IsPointer())
-					{
-						if (argType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))
-						{
-							if (constant->mTypeCode == BfTypeCode_StringId)
-							{
-								int stringId = constant->mInt32;
-								int* orderedIdPtr;
-								if (usedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
-								{
-									*orderedIdPtr = (int)usedStringIdMap.size() - 1;
-								}
-
-								GetStringObjectValue(stringId, true, true);
-								PUSH_INT8(0xFF); // String
-								PUSH_INT32(*orderedIdPtr);
-								argIdx++;
-								continue;
-							}
-						}
-					}
-
-					PUSH_INT8(constant->mTypeCode);
-					if ((constant->mTypeCode == BfTypeCode_Int64) ||
-						(constant->mTypeCode == BfTypeCode_UInt64) ||
-						(constant->mTypeCode == BfTypeCode_Double))
-					{
-						PUSH_INT64(constant->mInt64);
-					}
-					else if ((constant->mTypeCode == BfTypeCode_Int32) ||
-						(constant->mTypeCode == BfTypeCode_UInt32) ||
-						(constant->mTypeCode == BfTypeCode_Char32))
-					{
-						PUSH_INT32(constant->mInt32);
-					}
-					else if (constant->mTypeCode == BfTypeCode_Float)
-					{
-						float val = (float)constant->mDouble;
-						PUSH_INT32(*(int*)&val);
-					}
-					else if ((constant->mTypeCode == BfTypeCode_Int16) ||
-						(constant->mTypeCode == BfTypeCode_UInt16) ||
-						(constant->mTypeCode == BfTypeCode_Char16))
-					{
-						PUSH_INT16(constant->mInt16);
-					}
-					else if ((constant->mTypeCode == BfTypeCode_Int8) ||
-						(constant->mTypeCode == BfTypeCode_UInt8) ||
-						(constant->mTypeCode == BfTypeCode_Boolean) ||
-						(constant->mTypeCode == BfTypeCode_Char8))
-					{
-						PUSH_INT8(constant->mInt8);
-					}
-					else
-					{
-						Fail(StrFormat("Unhandled attribute constant data in '%s'", TypeToString(type).c_str()));
-					}
-				}
-				else if (!handled)
-				{
-					BFMODULE_FATAL(this, "Unhandled");
-				}
-
+				auto argType = ctorMethodInstance->GetParamType(argIdx);
+				EncodeAttributeData(typeInstance, argType, arg, data, usedStringIdMap);
 				argIdx++;
 			}
-
+			
 			int size = (int)data.size() - sizeIdx;
 			*((uint16*)&data[sizeIdx]) = size;
 		}
