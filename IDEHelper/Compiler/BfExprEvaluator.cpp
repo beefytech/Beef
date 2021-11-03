@@ -8151,7 +8151,29 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		if (targetType->IsWrappableType())
 		{
 			if ((targetType->IsPrimitiveType()) && (methodName.IsEmpty()))
-				return mModule->GetDefaultTypedValue(targetType);
+			{
+				if (argValues.mArguments->IsEmpty())
+				{
+					return mModule->GetDefaultTypedValue(targetType);
+				}
+				else if (argValues.mArguments->mSize == 1)
+				{
+					FinishDeferredEvals(argValues);
+					
+					// This is just a primitive cast
+					auto& resolvedArg = argValues.mResolvedArgs[0];
+					BfTypedValue castedValue;
+					BfTypedValue castTarget = resolvedArg.mTypedValue;
+					if (resolvedArg.mTypedValue)
+					{
+						castTarget = mModule->LoadValue(castTarget);
+						castedValue = mModule->Cast(targetSrc, castTarget, targetType, BfCastFlags_Explicit);
+					}
+					if (!castedValue)
+						castedValue = mModule->GetDefaultTypedValue(targetType);
+					return castedValue;
+				}
+			}
 			targetTypeInst = mModule->GetWrappedStructType(targetType);
 		}
 		else if (targetType->IsGenericParam())
