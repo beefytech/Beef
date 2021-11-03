@@ -584,10 +584,22 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 	}
 	else if (type->IsSizedArray())
 	{
-		BfSizedArrayType* arrayType = (BfSizedArrayType*)type;
-		name += StrFormat("A%d_");
-		Mangle(mangleContext, name, arrayType->mElementType);
-		return;
+		if (type->IsUnknownSizedArrayType())
+		{
+			BfUnknownSizedArrayType* arrayType = (BfUnknownSizedArrayType*)type;
+			name += "A_";
+			Mangle(mangleContext, name, arrayType->mElementType);
+			name += "_";
+			Mangle(mangleContext, name, arrayType->mElementCountSource);
+			return;
+		}
+		else
+		{
+			BfSizedArrayType* arrayType = (BfSizedArrayType*)type;
+			name += StrFormat("A%d_", arrayType->mElementCount);
+			Mangle(mangleContext, name, arrayType->mElementType);
+			return;
+		}
 	}
 	else if (type->IsMethodRef())
 	{
@@ -1714,7 +1726,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 
 			name += "?$_ARRAY@";			
 			Mangle(mangleContext, name, arrType->mElementType);
-			MangleConst(mangleContext, name, arrType->mSize);
+			MangleConst(mangleContext, name, arrType->mElementCount);
 			name += '@';
 		}
 	}
