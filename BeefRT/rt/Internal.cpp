@@ -400,6 +400,12 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 {
 	if (gClientPipe != NULL)
 	{
+		if (gTestBreakOnFailure)
+		{
+			SETUP_ERROR("Index out of range", (int)(2 + stackOffset));
+			BF_DEBUG_BREAK();
+		}
+
 		Beefy::String str = ":TestFail\tIndex out of range\n";		
 		TestString(str);
 		exit(1);
@@ -415,9 +421,15 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 }
 
 void Internal::FatalError(bf::System::String* error, intptr stackOffset)
-{	
+{		
 	if (gClientPipe != NULL)
 	{
+		if (gTestBreakOnFailure)
+		{
+			SETUP_ERROR(error->CStr(), (int)(2 + stackOffset));
+			BF_DEBUG_BREAK();
+		}
+
 		Beefy::String str = ":TestFail\t";
 		str += error->CStr();
 		str.Replace('\n', '\r');
