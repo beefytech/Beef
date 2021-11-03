@@ -301,7 +301,7 @@ namespace IDE
 									testEntry.mExecuted = true;
 
 									String clientCmd = scope $":TestRun\t{testInstance.mCurTestIdx}";
-									if ((gApp.mTestBreakOnFailure) && (mDebug))
+									if ((gApp.mTestBreakOnFailure) && (mDebug) && (!testEntry.mShouldFail))
 										clientCmd.Append("\tFailBreak");
 									clientCmd.Append("\n");
 

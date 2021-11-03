@@ -1015,6 +1015,7 @@ public:
 	}
 
 	void ReplaceLargerHelper(const StringView& find, const StringView& replace);
+	void Replace(char find, char replace);
 	void Replace(const StringView& find, const StringView& replace);
 	void TrimEnd();	
 	void TrimStart();	

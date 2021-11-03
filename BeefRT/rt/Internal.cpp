@@ -214,18 +214,20 @@ static void TestReadCmd(Beefy::String& str);
 
 static void Internal_FatalError(const char* error)
 {
-	if (gClientPipe != NULL)
+	if ((gClientPipe != NULL) && (!gTestBreakOnFailure))
 	{
 		Beefy::String str = ":TestFatal\t";
 		str += error;
+		str.Replace('\n', '\r');
 		str += "\n";
 		TestString(str);
 
  		Beefy::String result;
- 		TestReadCmd(result);
+ 		TestReadCmd(result);		
+		exit(1);
 	}
-
-	BfpSystem_FatalError(error, "BEEF FATAL ERROR");
+	else
+		BfpSystem_FatalError(error, "BEEF FATAL ERROR");
 }
 
 extern "C" BFRT_EXPORT int BF_CALLTYPE ftoa(float val, char* str)
@@ -396,6 +398,13 @@ void* Internal::UnsafeCastToPtr(Object* obj)
 
 void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 {
+	if (gClientPipe != NULL)
+	{
+		Beefy::String str = ":TestFail\tIndex out of range\n";		
+		TestString(str);
+		exit(1);
+	}
+
 	if ((stackOffset != -1) && (::IsDebuggerPresent()))
 	{
 		SETUP_ERROR("Index out of range", (int)(2 + stackOffset));
@@ -406,7 +415,17 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 }
 
 void Internal::FatalError(bf::System::String* error, intptr stackOffset)
-{		
+{	
+	if (gClientPipe != NULL)
+	{
+		Beefy::String str = ":TestFail\t";
+		str += error->CStr();
+		str.Replace('\n', '\r');
+		str += "\n";
+		TestString(str);
+		exit(1);
+	}
+	
 	if ((stackOffset != -1) && (::IsDebuggerPresent()))
 	{
 		SETUP_ERROR(error->CStr(), (int)(2 + stackOffset));
@@ -640,6 +659,7 @@ void Internal::Test_Error(char* error)
 	{
 		Beefy::String str = ":TestFail\t";
 		str += error;
+		str.Replace('\n', '\r');
 		str += "\n";
 		TestString(str);
 	}
@@ -651,12 +671,7 @@ void Internal::Test_Write(char* strPtr)
 	{
 		Beefy::String str = ":TestWrite\t";
 		str += strPtr;
-		for (char& c : str)
-		{
-			if (c == '\n')
-				c = '\r';
-		}
-
+		str.Replace('\n', '\r');
 		str += "\n";
 		TestString(str);
 	}

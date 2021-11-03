@@ -690,6 +690,16 @@ void StringImpl::ReplaceLargerHelper(const StringView& find, const StringView& r
 	mLength = (int_strsize)destLength;
 }
 
+void StringImpl::Replace(char find, char replace)
+{
+	auto ptr = GetMutablePtr();
+	for (int i = 0; i < mLength; i++)
+	{
+		if (ptr[i] == find)
+			ptr[i] = replace;
+	}
+}
+
 void StringImpl::Replace(const StringView& find, const StringView & replace)
 {
 	if (replace.mLength > find.mLength)
