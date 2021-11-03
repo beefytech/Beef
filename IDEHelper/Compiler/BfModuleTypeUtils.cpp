@@ -899,8 +899,10 @@ void BfModule::TypeFailed(BfTypeInstance* typeInstance)
 }
 
 bool BfModule::CheckCircularDataError()
-{
-	bool hadError = false;
+{	
+	// Find two loops of mCurTypeInstance. Just finding one loop can give some false errors.
+
+	BfTypeState* circularTypeStateEnd = NULL;
 
 	int checkIdx = 0;
 	auto checkTypeState = mContext->mCurTypeState;
@@ -908,7 +910,7 @@ bool BfModule::CheckCircularDataError()
 	while (true)
 	{
 		if (checkTypeState == NULL)
-			return hadError;
+			return false;
 
 		if (checkTypeState->mResolveKind == BfTypeState::ResolveKind_UnionInnerType)
 		{
@@ -919,28 +921,36 @@ bool BfModule::CheckCircularDataError()
 		if (isPreBaseCheck)
 		{
 			if (checkTypeState->mPopulateType != BfPopulateType_Declaration)
-				return hadError;
+				return false;
 		}
 		else
 		{
 			if (checkTypeState->mPopulateType == BfPopulateType_Declaration)
-				return hadError;
+				return false;
 			if ((checkIdx > 0) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL) &&
 				((checkTypeState->mType == NULL) || (checkTypeState->mType->IsTypeInstance())))
-				return hadError;
+				return false;
 		}
 
 		if ((checkTypeState->mType == mCurTypeInstance) && (checkIdx > 0))
-			break;
+		{
+			if (circularTypeStateEnd == NULL)
+				circularTypeStateEnd = checkTypeState;
+			else
+				break;
+		}
 		checkTypeState = checkTypeState->mPrevState;
 		checkIdx++;
 	}
 
-
+	bool hadError = false;
 	checkTypeState = mContext->mCurTypeState->mPrevState;
 	while (true)
 	{
 		if (checkTypeState == NULL)
+			return hadError;
+
+		if (checkTypeState == circularTypeStateEnd)
 			return hadError;
 
 		if (checkTypeState->mResolveKind == BfTypeState::ResolveKind_UnionInnerType)
@@ -1222,7 +1232,16 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		}
 		if (arrayType->mElementCount > 0)
 		{
-		 	arrayType->mSize = (int)(arrayType->mElementType->GetStride() * arrayType->mElementCount);
+			arrayType->mSize = (int)(arrayType->mElementType->GetStride() * arrayType->mElementCount);
+			if (arrayType->mElementType->mSize > 0)
+			{
+				int64 maxElements = 0x7FFFFFFF / arrayType->mElementType->GetStride();
+				if (arrayType->mElementCount > maxElements)
+				{
+					Fail(StrFormat("Array size overflow: %s", TypeToString(arrayType).c_str()));
+					arrayType->mSize = 0x7FFFFFFF;
+				}
+			}
 			arrayType->mAlign = std::max((int32)arrayType->mElementType->mAlign, 1);
 		}
 		else if (arrayType->mElementCount < 0)
@@ -1236,6 +1255,8 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			arrayType->mSize = 0;
 			arrayType->mAlign = 1;
 		}
+
+		BF_ASSERT(arrayType->mSize >= 0);
 
 		if (!typeFailed)
 			arrayType->mWantsGCMarking = elementType->WantsGCMarking();
@@ -4874,7 +4895,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			FinishGenericParams(resolvedTypeRef);
 	}
 
-	if (populateType == BfPopulateType_Data)
+	if (populateType <= BfPopulateType_Data)
 		return;
 
 	disableYield.Release();
@@ -4884,7 +4905,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		if (typeInstance->mNeedsMethodProcessing) // May have been handled by GetRawMethodInstanceAtIdx above
 			DoTypeInstanceMethodProcessing(typeInstance);
-	}	
+	}
 }
 
 void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)

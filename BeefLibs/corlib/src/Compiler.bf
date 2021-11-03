@@ -37,7 +37,7 @@ namespace System
 		public static extern String CallerProject;
 
 		[LinkName("#CallerExpression")]
-		public static extern String[Int32.MaxValue] CallerExpression;
+		public static extern String[0x0FFFFFFF] CallerExpression;
 
 		[LinkName("#ProjectName")]
 		public static extern String ProjectName;

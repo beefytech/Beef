@@ -1140,7 +1140,7 @@ void BfContext::RebuildDependentTypes(BfDependedType* dType)
 //   (obviously) doesn't change the data layout of ClassC
 //  Calls: non-cascading dependency, since it's independent of data layout ConstValue: non-cascading data change
 void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange)
-{	
+{
 	BfLogSysM("TypeDataChanged %p\n", dType);
 
 	auto rebuildFlag = isNonStaticDataChange ? BfTypeRebuildFlag_NonStaticChange : BfTypeRebuildFlag_StaticChange;
@@ -1153,12 +1153,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 	{
 		auto dependentType = depItr.mKey;
 		auto dependencyFlags = depItr.mValue.mFlags;
-	
-		if (dependentType->mRevision == mCompiler->mRevision)
-		{
-			continue;
-		}
-
+		
 		auto dependentDType = dependentType->ToDependedType();
 		if (dependentDType != NULL)
 		{
@@ -1200,32 +1195,38 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 			if (dependencyFlags & BfDependencyMap::DependencyFlag_ConstValue)
 			{
 				TypeDataChanged(dependentDType, false);
-
-				
+								
 				// The ConstValue dependency may be that dependentType used one of our consts as
 				//  a default value to a method param, so assume callsites need rebuilding
 				if (dependentTypeInstance != NULL)
 					TypeMethodSignaturesChanged(dependentTypeInstance);
 			}
 
-			// We need to include DependencyFlag_ParamOrReturnValue because it could be a struct that changes its splatting ability
-			//  We can't ONLY check against structs, though, because a type could change from a class to a struct
-			if (dependencyFlags & 
-				(BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_ParamOrReturnValue | 
-				 BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_MethodGenericArg | 
-				 BfDependencyMap::DependencyFlag_Allocates))
+			if (dependentType->mRevision != mCompiler->mRevision)
 			{
-				RebuildType(dependentType);
+				// We need to include DependencyFlag_ParamOrReturnValue because it could be a struct that changes its splatting ability
+							//  We can't ONLY check against structs, though, because a type could change from a class to a struct
+				if (dependencyFlags &
+					(BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_ParamOrReturnValue |
+						BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_MethodGenericArg |
+						BfDependencyMap::DependencyFlag_Allocates))
+				{
+					RebuildType(dependentType);
+				}
 			}
 		}
 		else
 		{
-			// Not a type instance, probably something like a sized array
-			RebuildType(dependentType);
+			if (dependentType->mRevision != mCompiler->mRevision)
+			{
+				// Not a type instance, probably something like a sized array
+				RebuildType(dependentType);
+			}
 		}
 	}
-		
-	RebuildType(dType);	
+	
+	if (dType->mRevision != mCompiler->mRevision)	
+		RebuildType(dType);	
 }
 
 void BfContext::TypeMethodSignaturesChanged(BfTypeInstance* typeInst)
@@ -1242,21 +1243,19 @@ void BfContext::TypeMethodSignaturesChanged(BfTypeInstance* typeInst)
 		auto dependentType = depItr.mKey;
 		auto dependencyFlags = depItr.mValue.mFlags;
 
-		if (dependentType->mRevision == mCompiler->mRevision)
+		if (dependentType->mRevision != mCompiler->mRevision)
 		{
-			continue;
-		}
-
-		// We don't need to cascade rebuilding for method-based usage - just rebuild the type directly (unlike TypeDataChanged, which cascades)
-		if ((dependencyFlags & BfDependencyMap::DependencyFlag_Calls) ||
-			(dependencyFlags & BfDependencyMap::DependencyFlag_VirtualCall) ||
-			(dependencyFlags & BfDependencyMap::DependencyFlag_InlinedCall) ||
-			(dependencyFlags & BfDependencyMap::DependencyFlag_MethodGenericArg) ||
-			(dependencyFlags & BfDependencyMap::DependencyFlag_CustomAttribute) ||
-			(dependencyFlags & BfDependencyMap::DependencyFlag_DerivedFrom) ||
-			(dependencyFlags & BfDependencyMap::DependencyFlag_ImplementsInterface))
-		{
-			RebuildType(dependentType);
+			// We don't need to cascade rebuilding for method-based usage - just rebuild the type directly (unlike TypeDataChanged, which cascades)
+			if ((dependencyFlags & BfDependencyMap::DependencyFlag_Calls) ||
+				(dependencyFlags & BfDependencyMap::DependencyFlag_VirtualCall) ||
+				(dependencyFlags & BfDependencyMap::DependencyFlag_InlinedCall) ||
+				(dependencyFlags & BfDependencyMap::DependencyFlag_MethodGenericArg) ||
+				(dependencyFlags & BfDependencyMap::DependencyFlag_CustomAttribute) ||
+				(dependencyFlags & BfDependencyMap::DependencyFlag_DerivedFrom) ||
+				(dependencyFlags & BfDependencyMap::DependencyFlag_ImplementsInterface))
+			{
+				RebuildType(dependentType);
+			}
 		}
 	}
 }
@@ -1271,12 +1270,16 @@ void BfContext::TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst)
 	for (auto& depItr : typeInst->mDependencyMap)
 	{
 		auto dependentType = depItr.mKey;
+		
 		auto dependencyFlags = depItr.mValue.mFlags;
 
-		// We don't need to cascade rebuilding for method-based usage - just rebuild the type directly (unlike TypeDataChanged, which cascades)
-		if ((dependencyFlags & BfDependencyMap::DependencyFlag_InlinedCall) != 0)
+		if (dependentType->mRevision != mCompiler->mRevision)
 		{
-			RebuildType(dependentType);
+			// We don't need to cascade rebuilding for method-based usage - just rebuild the type directly (unlike TypeDataChanged, which cascades)
+			if ((dependencyFlags & BfDependencyMap::DependencyFlag_InlinedCall) != 0)
+			{
+				RebuildType(dependentType);
+			}
 		}
 	}
 }
@@ -1299,14 +1302,16 @@ void BfContext::TypeConstEvalChanged(BfTypeInstance* typeInst)
 			auto depTypeInst = dependentType->ToTypeInstance();
 			if (depTypeInst != NULL)
 				TypeConstEvalChanged(depTypeInst);
-			RebuildType(dependentType);
+			if (dependentType->mRevision != mCompiler->mRevision)
+				RebuildType(dependentType);
 		}
 		else if ((dependencyFlags & BfDependencyMap::DependencyFlag_ConstEvalConstField) != 0)
 		{
 			auto depTypeInst = dependentType->ToTypeInstance();
 			if (depTypeInst != NULL)
 				TypeConstEvalFieldChanged(depTypeInst);
-			RebuildType(dependentType);
+			if (dependentType->mRevision != mCompiler->mRevision)
+				RebuildType(dependentType);
 		}
 	}
 }
@@ -1328,7 +1333,8 @@ void BfContext::TypeConstEvalFieldChanged(BfTypeInstance* typeInst)
 			auto depTypeInst = dependentType->ToTypeInstance();
 			if (depTypeInst != NULL)
 				TypeConstEvalFieldChanged(depTypeInst);
-			RebuildType(dependentType);
+			if (dependentType->mRevision != mCompiler->mRevision)
+				RebuildType(dependentType);
 		}
 	}
 }
