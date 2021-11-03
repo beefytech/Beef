@@ -4347,7 +4347,8 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 	{
 		if (fieldInstance->mResolvedType->IsUndefSizedArray())
 		{
-			AssertErrorState();
+			if ((!mBfIRBuilder->mIgnoreWrites) && (!mCompiler->mFastFinish))
+				AssertErrorState();
 		}
 		else
 		{
@@ -15141,12 +15142,15 @@ void BfModule::EmitReturn(const BfTypedValue& val)
 				}
 				else if (mIsComptimeModule)
 				{
-					mBfIRBuilder->CreateSetRet(val.mValue, val.mType->mTypeId);
+					if (!val.mType->IsValuelessType())
+						mBfIRBuilder->CreateSetRet(val.mValue, val.mType->mTypeId);
+					else
+						mBfIRBuilder->CreateSetRet(BfIRValue(), val.mType->mTypeId);
 				}
 				else
 				{
 					// Just ignore
-					BF_ASSERT(mCurMethodInstance->mReturnType->IsVar());					
+					BF_ASSERT(mCurMethodInstance->mReturnType->IsVar());
 				}
 			}
 		}

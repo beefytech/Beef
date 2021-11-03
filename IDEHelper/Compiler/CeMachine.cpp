@@ -3239,7 +3239,7 @@ void CeContext::PrepareConstStructEntry(CeConstStructData& constEntry)
 {
 	if (constEntry.mHash.IsZero())
 	{
-		constEntry.mHash = Hash128(&constEntry.mData[0], constEntry.mData.mSize);
+		constEntry.mHash = Hash128(constEntry.mData.mVals, constEntry.mData.mSize);
 		if (!constEntry.mFixups.IsEmpty())		
 			constEntry.mHash = Hash128(&constEntry.mFixups[0], constEntry.mFixups.mSize * sizeof(CeConstStructFixup), constEntry.mHash);
 	}
