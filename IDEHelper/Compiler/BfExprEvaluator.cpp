@@ -10158,8 +10158,8 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 				SizedArray<BfExpression*, 2> argExprs;
 				argExprs.push_back(elementExpr);
 				BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
-				BfResolvedArgs argValues(&sizedArgExprs);				
-				exprEvaluator.ResolveArgValues(argValues);
+				BfResolvedArgs argValues(&sizedArgExprs);
+				exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 				exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, NULL);
 
 				if (addFunctionBindResult.mMethodInstance != NULL)
