@@ -15966,25 +15966,31 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	}	
 
 	if (auto blockBody = BfNodeDynCast<BfBlock>(methodDef->mBody))
+	{
 		mModule->VisitCodeBlock(blockBody);
 
-	if (mixinState->mResultExpr != NULL)
-	{
-		if (auto exprNode = BfNodeDynCast<BfExpression>(mixinState->mResultExpr))
+		if (mixinState->mResultExpr != NULL)
 		{
-			if (!exprNode->IsA<BfBlock>())
+			if (auto exprNode = BfNodeDynCast<BfExpression>(mixinState->mResultExpr))
 			{
-				// Mixin expression result
-				mModule->UpdateSrcPos(exprNode);
-				VisitChild(exprNode);
-				FinishExpressionResult();
-				ResolveGenericType();
-				//mResult = mModule->LoadValue(mResult);				
+				if (!exprNode->IsA<BfBlock>())
+				{
+					// Mixin expression result
+					mModule->UpdateSrcPos(exprNode);
+					VisitChild(exprNode);
+					FinishExpressionResult();
+					ResolveGenericType();
+				}
 			}
 		}
-	}
 
-	GetResult();	
+		GetResult();
+	}
+	else if (auto expr = BfNodeDynCast<BfExpression>(methodDef->mBody))
+	{
+		mModule->UpdateSrcPos(expr);
+		mResult = mModule->CreateValueFromExpression(expr);
+	}	
 
 	if (!mResult)
 	{
@@ -16013,8 +16019,15 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	}	
 
 	if (auto blockBody = BfNodeDynCast<BfBlock>(methodDef->mBody))
+	{
 		if (blockBody->mCloseBrace != NULL)
 			mModule->UpdateSrcPos(blockBody->mCloseBrace);
+	}
+	else if (auto methodDeclaration = BfNodeDynCast<BfMethodDeclaration>(methodDef->mMethodDeclaration))
+	{
+		if (methodDeclaration->mFatArrowToken != NULL)
+			mModule->UpdateSrcPos(methodDeclaration->mFatArrowToken);
+	}
 	
 	mModule->RestoreScopeState();	
 	
