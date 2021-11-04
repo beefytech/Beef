@@ -21478,19 +21478,6 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				return;
 			}
 		}
-
-		// Valueless types always compare as 'equal'
-		if (leftValue.mType == rightValue.mType)
-		{
-			mModule->PopulateType(leftValue.mType);
-			if (leftValue.mType->IsValuelessType())
-			{
-				auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
-					bool isEqual = (binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality);
-					mResult = BfTypedValue(mModule->GetConstValue(isEqual ? 1 : 0, boolType), boolType);
-					return;
-			}
-		}
 	}
 
 	if ((leftValue.mType->IsTypeInstance()) || (leftValue.mType->IsGenericParam()) || 
@@ -22204,6 +22191,47 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					else
 						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(intLHS.mValue, intRHS.mValue), boolType);
 					return;
+				}
+
+				// Valueless types always compare as 'equal' if we can ensure no members could have an equality operator overload
+				if (leftValue.mType->IsComposite())
+				{
+					mModule->PopulateType(leftValue.mType);					
+					if (leftValue.mType->IsValuelessType())
+					{
+						bool mayHaveEqualOverload = false;
+						auto leftTypeInst = leftValue.mType->ToTypeInstance();
+						if (leftTypeInst != NULL)
+						{
+							std::function<bool(BfType*)> _HasTypeInstance = [&](BfType* type)
+							{
+								if (type == NULL)
+									return false;
+
+								if (type->IsTypeInstance())
+									return true;
+
+								if (type->IsSizedArray())
+									return _HasTypeInstance(((BfSizedArrayType*)type)->mElementType);
+
+								return false;
+							};
+
+							for (auto& fieldInstance : leftTypeInst->mFieldInstances)
+							{
+								if (_HasTypeInstance(fieldInstance.mResolvedType))
+									mayHaveEqualOverload = true;
+							}
+						}
+
+						if (!mayHaveEqualOverload)
+						{
+							auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
+							bool isEqual = (binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality);
+							mResult = BfTypedValue(mModule->GetConstValue(isEqual ? 1 : 0, boolType), boolType);
+							return;
+						}
+					}
 				}
 
 				if (_CallValueTypeEquals())
