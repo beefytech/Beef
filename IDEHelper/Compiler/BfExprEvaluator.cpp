@@ -4564,19 +4564,18 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						}
 						mModule->PopulateType(fieldInstance->mOwner, BfPopulateType_Data);
 
-						// OLD:
-// 						auto agg = mModule->CreateAlloca(fieldInstance->mOwner);
-// 						auto gep = mModule->mBfIRBuilder->CreateInBoundsGEP(agg, 0, 2);
-// 						mModule->mBfIRBuilder->CreateStore(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx), gep);
-// 
-// 						if (fieldInstance->mResolvedType->mSize != 0)
-// 						{
-// 							mModule->FailAfter("Enum case parameters expected", targetSrc);
-// 						}
-// 
-// 						return BfTypedValue(agg, fieldInstance->mOwner, true);
-
-						//NEW
+						if (auto fieldTypeInstance = fieldInstance->mResolvedType->ToTypeInstance())
+						{
+							bool hasFields = false;
+							for (auto& fieldInstance : fieldTypeInstance->mFieldInstances)
+							{
+								if (!fieldInstance.mResolvedType->IsVoid())
+									hasFields = true;
+							}
+							if (hasFields)
+								mModule->FailAfter("Enum payload arguments expected", targetSrc);
+						}
+						
 						SizedArray<BfIRValue, 3> values;
 						values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(curCheckType->mBaseType)));
 						values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(curCheckType->GetUnionInnerType())));
