@@ -8984,10 +8984,19 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 						mBfIRBuilder->ClearDebugLocation(allocaInst);
 					auto allocaBlock = mBfIRBuilder->GetInsertBlock();
 					mBfIRBuilder->SetAllocaAlignment(allocaInst, allocAlign);
-					auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);
-					mBfIRBuilder->ClearDebugLocation_Last();
+					
+					BfTypedValue typedVal;					
 					if (!isDynAlloc)
-						mBfIRBuilder->SetInsertPoint(prevBlock);															
+					{
+						mBfIRBuilder->SetInsertPoint(mCurMethodState->mIRInitBlock);
+						typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);
+						mBfIRBuilder->ClearDebugLocation_Last();
+						mBfIRBuilder->SetInsertPoint(prevBlock);
+						allocaBlock = mCurMethodState->mIRInitBlock;
+					}
+					else
+						typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);					
+
 					if (!noDtorCall)
 						AddStackAlloc(typedVal, BfIRValue(), NULL, scopeData, false, true, allocaBlock);
 					InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
@@ -20277,7 +20286,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 	
 	if (mCurMethodState->mIRExitBlock)
-	{
+	{ 
 		for (auto preExitBlock : mCurMethodState->mHeadScope.mAtEndBlocks)
 			mBfIRBuilder->MoveBlockToEnd(preExitBlock);
 
