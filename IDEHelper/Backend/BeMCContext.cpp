@@ -16748,7 +16748,16 @@ void BeMCContext::Generate(BeFunction* function)
 					auto castedInst = (BeLifetimeEndInst*)inst;
 					auto mcPtr = GetOperand(castedInst->mPtr, false, true);
 					if (mcPtr)
-						AllocInst(BeMCInstKind_LifetimeStart, mcPtr);
+					{
+						auto vregInfo = GetVRegInfo(mcPtr);
+						if ((vregInfo != NULL) && (vregInfo->mHasDynLife))
+						{
+							// This alloca had an assignment (ie: `mov vregX, [RBP+homeSize0]`) so it must be defined at the mov
+							// This may indicate incorrectly generated code where we thought an alloca would be in the head but it isn't
+						}
+						else
+							AllocInst(BeMCInstKind_LifetimeStart, mcPtr);
+					}
 				}
 				break;
 			case BeLifetimeExtendInst::TypeId:
