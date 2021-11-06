@@ -5991,7 +5991,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	}
 
 	BfTypedValue target;
-	if (forEachStmt->mCollectionExpression != NULL)
+	if (collectionExpr != NULL)
 		target = CreateValueFromExpression(collectionExpr);
 	if (!target)
 	{
