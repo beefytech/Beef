@@ -999,10 +999,18 @@ namespace IDE.ui
 					}
 					if (sectionIdx == cursorSection)
 					{
-						int lastSpace = sectionStr.LastIndexOf(' ');
+						paramName = sectionStr;
+						int eqPos = paramName.IndexOf('=');
+						if (eqPos != -1)
+						{
+							paramName.RemoveToEnd(eqPos);
+							paramName.Trim();
+						}
+						
+						int lastSpace = paramName.LastIndexOf(' ');
 						if (lastSpace != -1)
 						{
-							paramName = .(sectionStr, lastSpace + 1);
+							paramName = .(paramName, lastSpace + 1);
 							if (paramName.EndsWith(','))
 								paramName.RemoveFromEnd(1);
 						}
