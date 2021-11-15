@@ -15,6 +15,11 @@ namespace System.IO
 			mOwnsData = true;
 		}
 
+		public this(List<uint8> data)
+		{
+			mData = data;
+		}
+
 		public uint8* Ptr
 		{
 			get
@@ -110,6 +115,102 @@ namespace System.IO
 		{
 			mPosition = Math.Max(mPosition - count, 0);
 			mData.RemoveRange(0, count);
+		}
+	}
+
+	class DynMemStreamSequential : Stream
+	{
+		List<uint8> mData ~ { if (mOwnsData) delete _; };
+		bool mOwnsData;
+
+		public this()
+		{
+			mData = new .();
+			mOwnsData = true;
+		}
+
+		public this(List<uint8> data)
+		{
+			mData = data;
+		}
+
+		public uint8* Ptr
+		{
+			get
+			{
+				return mData.Ptr;
+			}
+		}
+		
+		public Span<uint8> Content
+		{
+			get
+			{
+				return mData;
+			}
+		}
+
+		public override int64 Position
+		{
+			get
+			{
+				return mData.Count;
+			}
+
+			set
+			{
+				Runtime.FatalError();
+			}
+		}
+
+		public override int64 Length
+		{
+			get
+			{
+				return mData.Count;
+			}
+		}
+
+		public override bool CanRead
+		{
+			get
+			{
+				return true;
+			}
+		}
+
+		public override bool CanWrite
+		{
+			get
+			{
+				return true;
+			}
+		}
+
+		public List<uint8> TakeOwnership()
+		{
+			Debug.Assert(mOwnsData);
+			mOwnsData = false;
+			return mData;
+		}
+
+		public override Result<int> TryRead(Span<uint8> data)
+		{
+			return .Err;
+		}
+
+		public override Result<int> TryWrite(Span<uint8> data)
+		{
+			let count = data.Length;
+			if (count == 0)
+				return .Ok(0);
+			Internal.MemCpy(mData.GrowUnitialized(count), data.Ptr, count);
+			return .Ok(count);
+		}
+
+		public override Result<void> Close()
+		{
+			return .Ok;
 		}
 	}
 }
