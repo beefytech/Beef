@@ -22354,7 +22354,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 					mCurMethodInstance->mDefaultValues.Add(defaultValue);
 				}
 			}
-		}		
+		}
 
 		if ((paramDef != NULL) && (paramDef->mParamKind == BfParamKind_Params))
 		{	
@@ -22444,10 +22444,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				methodParam.mResolvedType = resolvedParamType;
 				methodParam.mParamDefIdx = paramDefIdx;				
 				mCurMethodInstance->mParams.push_back(methodParam);
-			}			
+			}
 
 			if (paramDefIdx < (int)methodDef->mParams.size() - 1)
-			{
+			{				
 				Fail("Only the last parameter can specify 'params'", paramDef->mParamDeclaration->mModToken);
 			}
 		}

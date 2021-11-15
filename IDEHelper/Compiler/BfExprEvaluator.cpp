@@ -9966,6 +9966,9 @@ void BfExprEvaluator::Visit(BfBaseExpression* baseExpr)
 		return;
 	}
 
+	if ((mBfEvalExprFlags & BfEvalExprFlags_AllowBase) == 0)
+		mModule->Fail("Use of keyword 'base' is not valid in this context", baseExpr);
+
 	auto baseType = mModule->mCurTypeInstance->mBaseType;
 	if (baseType == NULL)
 		baseType = mModule->mContext->mBfObjectType;	
@@ -9976,6 +9979,12 @@ void BfExprEvaluator::Visit(BfBaseExpression* baseExpr)
 
 	mModule->PopulateType(baseType, BfPopulateType_Data);
 	mResult = mModule->Cast(baseExpr, mResult, baseType, BfCastFlags_Explicit);
+	if (mResult.IsSplat())
+		mResult.mKind = BfTypedValueKind_BaseSplatHead;
+	else if (mResult.IsAddr())
+		mResult.mKind = BfTypedValueKind_BaseAddr;
+	else if (mResult)
+		mResult.mKind = BfTypedValueKind_BaseValue;
 }
 
 void BfExprEvaluator::Visit(BfMixinExpression* mixinExpr)
@@ -17200,7 +17209,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				mResult = mModule->GetDefaultTypedValue(methodInstance.mMethodInstance->mReturnType);
 			}
 			else
-			{
+			{				
 				SizedArray<BfIRValue, 4> args;
 				if (!matchedMethod->mIsStatic)
 				{					
@@ -17225,66 +17234,11 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 					}
 
 					if ((mPropGetMethodFlags & BfGetMethodInstanceFlag_DisableObjectAccessChecks) == 0)
-						mModule->EmitObjectAccessCheck(mPropTarget);
-					PushThis(mPropSrc, mPropTarget, methodInstance.mMethodInstance, args);
-				}
-
-				bool failed = false;
-				for (int paramIdx = 0; paramIdx < (int)mIndexerValues.size(); paramIdx++)
-				{
-					auto refNode = mIndexerValues[paramIdx].mExpression;
-					auto wantType = methodInstance.mMethodInstance->GetParamType(paramIdx);
-					auto argValue = ResolveArgValue(mIndexerValues[paramIdx], wantType);
-					if (refNode == NULL)
-						refNode = mPropSrc;
-					BfTypedValue val;
-					if (argValue)
-						val = mModule->Cast(refNode, argValue, wantType);
-					if (!val)
-						failed = true;
-					else
-						PushArg(val, args);
-				}
-
-				if (mPropDefBypassVirtual)
-				{
-					auto methodDef = methodInstance.mMethodInstance->mMethodDef;
-					if ((methodDef->mIsAbstract) && (mPropDefBypassVirtual))
-					{
-						mModule->Fail(StrFormat("Abstract base property method '%s' cannot be invoked", mModule->MethodToString(methodInstance.mMethodInstance).c_str()), mPropSrc);
-					}
-				}
-
-				if (failed)
-				{
-					auto returnType = methodInstance.mMethodInstance->mReturnType;
-					auto methodDef = methodInstance.mMethodInstance->mMethodDef;
-					if (returnType->IsRef())
-					{
-						auto result = mModule->GetDefaultTypedValue(returnType->GetUnderlyingType(), true, BfDefaultValueKind_Addr);
-						if (methodDef->mIsReadOnly)
-							result.mKind = BfTypedValueKind_ReadOnlyAddr;
-						return result;
-					}
-					else
-					{
-						auto val = mModule->GetDefaultTypedValue(returnType, true, (GetStructRetIdx(methodInstance.mMethodInstance) != -1) ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
-						if (val.mKind == BfTypedValueKind_Addr)
-							val.mKind = BfTypedValueKind_TempAddr;
-						return val;
-					}
-				}
-				else
-				{
-					BfCreateCallFlags callFlags = mOrigPropTarget.mType->IsGenericParam() ? BfCreateCallFlags_GenericParamThis : BfCreateCallFlags_None;
-					mResult = CreateCall(mPropSrc, methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args, NULL, callFlags);
-				}
-				if (mResult.mType != NULL)
-				{
-					if ((mResult.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))
-						mModule->Fail("Property type reference failed to resolve", mPropSrc);
-					BF_ASSERT(!mResult.mType->IsRef());
-				}
+						mModule->EmitObjectAccessCheck(mPropTarget);					
+				}		
+				
+				auto callFlags = mPropDefBypassVirtual ? BfCreateCallFlags_BypassVirtual : BfCreateCallFlags_None;
+				mResult = CreateCall(mPropSrc, mPropTarget, mOrigPropTarget, matchedMethod, methodInstance, callFlags, mIndexerValues, NULL);
 			}
 		}
 
@@ -18149,7 +18103,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			}			
 			else
 			{
-				auto wantType = methodInstance.mMethodInstance->GetParamType(methodInstance.mMethodInstance->GetParamCount() - 1);
+				auto wantType = methodInstance.mMethodInstance->GetParamType(0);
 				if (rightValue)
 				{
 					convVal = mModule->Cast(assignExpr->mRight, rightValue, wantType);
@@ -18173,7 +18127,10 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			if (mPropSrc != NULL)
 				mModule->UpdateExprSrcPos(mPropSrc);
 
-			SizedArray<BfIRValue, 4> args;
+			BfResolvedArg valueArg;
+			valueArg.mTypedValue = convVal;
+			mIndexerValues.Insert(0, valueArg);
+			
 			if (!setMethod->mIsStatic)
 			{
 				auto owner = methodInstance.mMethodInstance->GetOwner();
@@ -18190,34 +18147,10 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 						}
 					}
 				}
-
-				mModule->EmitObjectAccessCheck(mPropTarget);
-				PushThis(mPropSrc, mPropTarget, methodInstance.mMethodInstance, args);				
 			}
-	
-			for (int paramIdx = 0; paramIdx < (int)mIndexerValues.size(); paramIdx++)
-			{
-				auto refNode = mIndexerValues[paramIdx].mExpression;
-				auto wantType = methodInstance.mMethodInstance->GetParamType(paramIdx);
-				auto argValue = ResolveArgValue(mIndexerValues[paramIdx], wantType);
-				if (refNode == NULL)
-					refNode = mPropSrc;
-				BfTypedValue val;
-				if (argValue)
-					val = mModule->Cast(refNode, argValue, wantType);
-				if (!val)
-				{
-					mPropDef = NULL;
-					return;
-				}
-				PushArg(val, args);
-			}
-	
-			PushArg(convVal, args);
 
-			if (methodInstance)
-				CreateCall(assignExpr, methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
-	
+			auto callFlags = mPropDefBypassVirtual ? BfCreateCallFlags_BypassVirtual : BfCreateCallFlags_None;
+			mResult = CreateCall(mPropSrc, mPropTarget, mOrigPropTarget, setMethod, methodInstance, callFlags, mIndexerValues, NULL);
 			mPropDef = NULL;
 			mResult = convVal;
 			return;
@@ -19478,7 +19411,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 	{
 		///
 		{
-			SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoLookupError), pass == 0);
+			SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoLookupError | BfEvalExprFlags_AllowBase), pass == 0);
 			VisitChild(indexerExpr->mTarget);
 		}
 		ResolveGenericType();
@@ -19636,36 +19569,28 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 
 				if (foundProp != NULL)
 				{
-					int indexDiff = matchedIndexCount - (int)mIndexerValues.size();
-					if (indexDiff > 0)
+
+					mPropSrc = indexerExpr->mOpenBracket;
+					mPropDef = foundProp;
+					if (foundProp->mIsStatic)
 					{
-						mModule->Fail(StrFormat("Expected %d more indices", indexDiff), indexerExpr->mTarget);
-						//mModule->mCompiler->mPassInstance->MoreInfo("See method declaration", methodInstance->mMethodDef->mMethodDeclaration);
-					}
-					else if (indexDiff < 0)
-					{
-						mModule->Fail(StrFormat("Expected %d fewer indices", -indexDiff), indexerExpr->mTarget);
+						mPropTarget = BfTypedValue(curCheckType);
 					}
 					else
-					{						
-						mPropSrc = indexerExpr->mOpenBracket;
-						mPropDef = foundProp;
-						if (foundProp->mIsStatic)
-						{
-							mPropTarget = BfTypedValue(curCheckType);
-						}
+					{
+						if (target.mType != foundPropTypeInst)
+							mPropTarget = mModule->Cast(indexerExpr->mTarget, target, foundPropTypeInst);
 						else
-						{
-							if (target.mType != foundPropTypeInst)
-								mPropTarget = mModule->Cast(indexerExpr->mTarget, target, foundPropTypeInst);
-							else
-								mPropTarget = target;
-						}
-						mOrigPropTarget = mPropTarget;
-						if (isInlined)
-							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
-						mPropCheckedKind = checkedKind;						
+							mPropTarget = target;
 					}
+					mOrigPropTarget = mPropTarget;
+					if (isInlined)
+						mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
+					mPropCheckedKind = checkedKind;
+
+					if ((target.IsBase()) && (mPropDef->IsVirtual()))
+						mPropDefBypassVirtual = true;
+
 					return;
 				}
 

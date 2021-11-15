@@ -624,7 +624,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		paramDef->mTypeRef = paramDecl->mTypeRef;
 		paramDef->mMethodGenericParamIdx = mSystem->GetGenericParamIdx(methodDef->mGenericParams, paramDef->mTypeRef);
 		if (paramDecl->mModToken == NULL)
-			paramDef->mParamKind = BfParamKind_Normal;		
+			paramDef->mParamKind = BfParamKind_Normal;
 		else if (paramDecl->mModToken->mToken == BfToken_Params)
 			paramDef->mParamKind = BfParamKind_Params;
 		else if ((paramDecl->mModToken->mToken == BfToken_ReadOnly) && (isAutoCtor))
@@ -1034,6 +1034,10 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 				paramDef->mName = paramDecl->mNameNode->ToString();
 				paramDef->mTypeRef = paramDecl->mTypeRef;
 				paramDef->mMethodGenericParamIdx = mSystem->GetGenericParamIdx(methodDef->mGenericParams, paramDef->mTypeRef);
+				if (paramDecl->mModToken == NULL)
+					paramDef->mParamKind = BfParamKind_Normal;
+				else if (paramDecl->mModToken->mToken == BfToken_Params)
+					paramDef->mParamKind = BfParamKind_Params;
 				methodDef->mParams.push_back(paramDef);
 			}
 		}
@@ -1068,13 +1072,13 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 			if (BfNodeDynCast<BfTokenNode>(methodDeclaration->mBody) != NULL)
 				methodDef->mIsMutating = true; // Don't require "set mut;", just "set;"
 			
-			auto paramDef = new BfParameterDef();		
+			auto paramDef = new BfParameterDef();					
 			paramDef->mName = "value";
 			if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(propertyDeclaration->mTypeRef))		
 			 	paramDef->mTypeRef = refTypeRef->mElementType;		
 			else
 			 	paramDef->mTypeRef = propertyDeclaration->mTypeRef;
-			methodDef->mParams.push_back(paramDef);					
+			methodDef->mParams.Insert(0, paramDef);					
 			propertyDef->mMethods.Add(methodDef);
 		}
 		else
