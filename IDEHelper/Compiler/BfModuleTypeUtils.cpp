@@ -932,7 +932,7 @@ bool BfModule::CheckCircularDataError()
 				return false;
 		}
 
-		if ((checkTypeState->mType == mCurTypeInstance) && (checkIdx > 0))
+		if ((checkTypeState->mType == mCurTypeInstance) && (checkIdx > 1))
 		{
 			if (circularTypeStateEnd == NULL)
 				circularTypeStateEnd = checkTypeState;
