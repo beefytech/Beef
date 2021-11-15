@@ -10999,6 +10999,26 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		return CreateTypeDataRef(constTypeOf->mType);
 	}
 
+	if (constant->mConstType == BfConstType_PtrToInt)
+	{
+		auto fromPtrToInt = (BfConstantPtrToInt*)constant;
+		auto fromTarget = constHolder->GetConstantById(fromPtrToInt->mTarget);		
+		return mBfIRBuilder->CreatePtrToInt(ConstantToCurrent(fromTarget, constHolder, NULL), fromPtrToInt->mToTypeCode);
+	}
+
+ 	if (constant->mConstType == BfConstType_IntToPtr)
+	{
+		auto fromPtrToInt = (BfConstantIntToPtr*)constant;				
+		auto fromTarget = constHolder->GetConstantById(fromPtrToInt->mTarget);
+		BfIRType toIRType = fromPtrToInt->mToType;
+		if (toIRType.mKind == BfIRTypeData::TypeKind_TypeId)
+		{
+			auto toType = mContext->mTypes[toIRType.mId];
+			toIRType = mBfIRBuilder->MapType(toType);
+		}
+		return mBfIRBuilder->CreateIntToPtr(ConstantToCurrent(fromTarget, constHolder, NULL), toIRType);
+	}
+
 	if (constant->mConstType == BfConstType_Agg)
 	{		
 		auto constArray = (BfConstantAgg*)constant;

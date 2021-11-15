@@ -716,6 +716,29 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		else
 			return CreateConstNull();
 	}
+	else if (fromConst->mConstType == BfConstType_PtrToInt)
+	{
+		auto fromPtrToInt = (BfConstantPtrToInt*)fromConst;
+		auto fromTarget = fromHolder->GetConstantById(fromPtrToInt->mTarget);
+		auto copiedTarget = CreateConst(fromTarget, fromHolder);
+		auto ptrToInt = mTempAlloc.Alloc<BfConstantPtrToInt>();
+		ptrToInt->mConstType = BfConstType_PtrToInt;
+		ptrToInt->mTarget = copiedTarget.mId;
+		ptrToInt->mToTypeCode = fromPtrToInt->mToTypeCode;
+		copiedConst = (BfConstant*)ptrToInt;
+	}
+	else if (fromConst->mConstType == BfConstType_IntToPtr)
+	{
+		auto fromPtrToInt = (BfConstantIntToPtr*)fromConst;
+		auto fromTarget = fromHolder->GetConstantById(fromPtrToInt->mTarget);
+		auto copiedTarget = CreateConst(fromTarget, fromHolder);
+		auto ptrToInt = mTempAlloc.Alloc<BfConstantIntToPtr>();
+		ptrToInt->mConstType = BfConstType_IntToPtr;
+		ptrToInt->mTarget = copiedTarget.mId;
+		ptrToInt->mToType = fromPtrToInt->mToType;
+		copiedConst = (BfConstant*)ptrToInt;
+	}
+
 	else
 	{
 		BF_FATAL("not handled");
