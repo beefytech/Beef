@@ -567,10 +567,14 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 	{
 		if ((CheckDocumentation(entryAdded, NULL)) && (entryAdded->mDocumentation == NULL))
 		{
-			auto typeInst = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
+			auto type = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
 			StringT<1024> str;
-			if (typeInst != NULL)
-				str = mModule->TypeToString(typeInst, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
+			if (type != NULL)
+			{
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, type->ToTypeInstance());
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
+				str = mModule->TypeToString(type, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
+			}
 			if (typeDef->mTypeDeclaration->mDocumentation != NULL)
 			{
 				if (!str.IsEmpty())
