@@ -18153,6 +18153,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			mResult = CreateCall(mPropSrc, mPropTarget, mOrigPropTarget, setMethod, methodInstance, callFlags, mIndexerValues, NULL);
 			mPropDef = NULL;
 			mResult = convVal;
+			mIndexerValues.Clear();
 			return;
 		}
 	}
