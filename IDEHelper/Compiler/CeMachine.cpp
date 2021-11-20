@@ -5466,6 +5466,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				{
 					auto curFrame = _GetCurFrame();
 					SetAndRestoreValue<CeFrame*> prevFrame(mCurFrame, &curFrame);
+					BF_ASSERT(!callEntry.mFunction->mInitialized);
 					mCeMachine->PrepareFunction(callEntry.mFunction, NULL);
 				}
 
@@ -6915,8 +6916,14 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 	AutoTimer autoTimer(mRevisionExecuteTime);
 	SetAndRestoreValue<CeFunction*> prevCEFunction(mPreparingFunction, ceFunction);	
 
+	BF_ASSERT(!ceFunction->mInitialized);
+
 	if (ceFunction->mFunctionKind == CeFunctionKind_NotSet)
-		CheckFunctionKind(ceFunction);		
+	{
+		CheckFunctionKind(ceFunction);
+		if (ceFunction->mInitialized)
+			return;
+	}
 
 	BF_ASSERT(!ceFunction->mInitialized);
 	ceFunction->mInitialized = true;
