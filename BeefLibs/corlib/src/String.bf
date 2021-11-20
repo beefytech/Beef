@@ -2817,6 +2817,14 @@ namespace System
 				return mMatchPos;
 			}
 		}
+		
+		public int32 MatchIndex
+		{
+			get
+			{
+				return mCurCount - 1;
+			}
+		}
 
 		public bool HasMore
 		{
