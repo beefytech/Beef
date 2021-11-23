@@ -8499,14 +8499,15 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	
 	populateModule->PopulateType(resolvedTypeRef, populateType);
 	
-	if ((typeInstance != NULL) && (typeInstance->mTypeDef != NULL) && (typeInstance->mTypeDef->mProtection == BfProtection_Internal) && (typeInstance->mTypeDef->mOuterType == NULL))
+	if ((typeInstance != NULL) && (typeInstance->mTypeDef != NULL) && (typeInstance->mTypeDef->mProtection == BfProtection_Internal) && 
+		(typeInstance->mTypeDef->mOuterType == NULL) &&	(!typeRef->IsTemporary()))
 	{
 		if (!CheckProtection(typeInstance->mTypeDef->mProtection, typeInstance->mTypeDef, false, false))
 			Fail(StrFormat("'%s' is inaccessible due to its protection level", TypeToString(typeInstance).c_str()), typeRef); // CS0122
 	}
 
 	if ((populateType > BfPopulateType_Identity) && (!ResolveTypeResult_Validate(typeRef, resolvedTypeRef)))
-		return NULL;	
+		return NULL;
 	
 	if (populateType != BfPopulateType_IdentityNoRemapAlias)
 	{

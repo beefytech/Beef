@@ -234,7 +234,10 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	mModule->FixIntUnknown(mResult);	
 
 	if ((flags & BfConstResolveFlag_NoActualizeValues) == 0)
+	{
+		prevIgnoreWrites.Restore();
 		mModule->FixValueActualization(mResult, !prevIgnoreWrites.mPrevVal || ((flags & BfConstResolveFlag_ActualizeValues) != 0));
+	}
 
 	return mResult;
 }
