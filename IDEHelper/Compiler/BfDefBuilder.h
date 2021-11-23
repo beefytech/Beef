@@ -16,6 +16,7 @@ public:
 	BfSystem* mSystem;
 	BfPassInstance* mPassInstance;
 	BfTypeDef* mCurTypeDef;
+	BfTypeDef* mCurDeclaringTypeDef;
 	BfTypeDef* mCurActualTypeDef;
 	bool mFullRefresh;
 	bool mIsComptime;

@@ -16566,7 +16566,7 @@ void BfModule::EmitInitBlocks(const std::function<void(BfAstNode*)>& initBlockCa
 
 	for (; initMethodDef != NULL; initMethodDef = initMethodDef->mNextWithSameName)
 	{
-		if (initMethodDef->mDeclaringType != methodDef->mDeclaringType)
+		if (initMethodDef->mDeclaringType->GetDefinition() != methodDef->mDeclaringType->GetDefinition())
 			continue;
 		if (initMethodDef->mMethodType != BfMethodType_Init)
 			continue;
@@ -20617,7 +20617,7 @@ BfMethodDef* BfModule::GetLocalMethodDef(BfLocalMethod* localMethod)
 		defBuilder.mCurSource = localMethod->mMethodDeclaration->GetParser();
 		defBuilder.mPassInstance = mCompiler->mPassInstance;
 		defBuilder.mCurTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
-		
+		defBuilder.mCurDeclaringTypeDef = defBuilder.mCurTypeDef;
 		methodDef = defBuilder.CreateMethodDef(methodDeclaration, outerMethodDef);
 	}
 	else

@@ -2068,6 +2068,13 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 	BfDefBuilder defBuilder(mSystem);
 	defBuilder.mCurSource = emitParser;
 	defBuilder.mCurTypeDef = typeInstance->mTypeDef;
+	defBuilder.mCurDeclaringTypeDef = typeInstance->mTypeDef;
+
+	if (typeInstance->mTypeDef->mIsCombinedPartial)
+	{
+		// Always define generated methods on the primary type declaration
+		defBuilder.mCurDeclaringTypeDef = typeInstance->mTypeDef->mPartials[0]->GetLatest();
+	}
 	defBuilder.mPassInstance = mCompiler->mPassInstance;
 	defBuilder.mIsComptime = true;
 	defBuilder.DoVisitChild(typeDeclaration->mDefineNode);

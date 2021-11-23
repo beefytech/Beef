@@ -59,6 +59,7 @@ BfDefBuilder::BfDefBuilder(BfSystem* bfSystem)
 	mPassInstance = NULL;
 	mSystem = bfSystem;
 	mCurTypeDef = NULL;
+	mCurDeclaringTypeDef = NULL;
 	mCurActualTypeDef = NULL;
 	mFullRefresh = false;
 	mIsComptime = false;
@@ -391,7 +392,7 @@ void BfDefBuilder::Visit(BfConstructorDeclaration* ctorDeclaration)
 }
 
 BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaration, BfMethodDef* outerMethodDef)
-{
+{	
 	BfMethodDef* methodDef;
 
 	if (auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDeclaration))
@@ -403,8 +404,9 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	}
 	else
 		methodDef = new BfMethodDef();
-	
-	methodDef->mDeclaringType = mCurTypeDef;
+
+	BF_ASSERT(mCurDeclaringTypeDef != NULL);
+	methodDef->mDeclaringType = mCurDeclaringTypeDef;
 	methodDef->mMethodDeclaration = methodDeclaration;
 	methodDef->mExplicitInterface = methodDeclaration->mExplicitInterface;
 	methodDef->mReturnTypeRef = methodDeclaration->mReturnType;	
@@ -703,7 +705,8 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 			fieldDef->mName = paramDef->mName;
 			fieldDef->mTypeRef = paramDef->mTypeRef;
 			fieldDef->mProtection = BfProtection_Public;
-			fieldDef->mDeclaringType = mCurTypeDef;
+			BF_ASSERT(mCurDeclaringTypeDef != NULL);
+			fieldDef->mDeclaringType = mCurDeclaringTypeDef;			
 			fieldDef->mIdx = mCurTypeDef->mFields.mSize;
 			if ((paramDef->mParamDeclaration->mModToken != NULL) &&
 				(paramDef->mParamDeclaration->mModToken->mToken == BfToken_ReadOnly))
@@ -923,7 +926,8 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 	propertyDef->mTypeRef = propertyDeclaration->mTypeRef;
 	propertyDef->mInitializer = NULL;
 	propertyDef->mFieldDeclaration = propertyDeclaration;
-	propertyDef->mDeclaringType = mCurTypeDef;
+	BF_ASSERT(mCurDeclaringTypeDef != NULL);
+	propertyDef->mDeclaringType = mCurDeclaringTypeDef;	
 
 	if (auto varType = BfNodeDynCast<BfLetTypeReference>(propertyDef->mTypeRef))		
 		propertyDef->mIsReadOnly = true;
@@ -948,7 +952,8 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 	if (needsAutoProperty)
 	{
 		BfFieldDef* fieldDef = new BfFieldDef();
-		fieldDef->mDeclaringType = mCurTypeDef;
+		BF_ASSERT(mCurDeclaringTypeDef != NULL);
+		fieldDef->mDeclaringType = mCurDeclaringTypeDef;
 		fieldDef->mFieldDeclaration = propertyDeclaration;
 		fieldDef->mProtection = BfProtection_Hidden;
 		fieldDef->mIsStatic = propertyDef->mIsStatic;
@@ -989,7 +994,8 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
-		methodDef->mDeclaringType = mCurTypeDef;
+		BF_ASSERT(mCurDeclaringTypeDef != NULL);
+		methodDef->mDeclaringType = mCurDeclaringTypeDef;
 		methodDef->mMethodDeclaration = methodDeclaration;
 		methodDef->mProtection = propertyDef->mProtection;
 		methodDef->mWantsBody = (methodDeclaration->mBody != NULL) && (WantsNode(methodDeclaration->mBody));
@@ -1108,7 +1114,8 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 	auto fieldDef = new BfFieldDef();
 	mCurTypeDef->mFields.push_back(fieldDef);	
 	fieldDef->mFieldDeclaration = fieldDeclaration;
-	fieldDef->mDeclaringType = mCurTypeDef;
+	BF_ASSERT(mCurDeclaringTypeDef != NULL);
+	fieldDef->mDeclaringType = mCurDeclaringTypeDef;
 	if (fieldDeclaration->mNameNode != NULL)
 		fieldDef->mName = fieldDeclaration->mNameNode->ToString();
 	fieldDef->mProtection = GetProtection(fieldDeclaration->mProtectionSpecifier);	
@@ -1160,7 +1167,7 @@ void BfDefBuilder::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
 
 BfFieldDef* BfDefBuilder::AddField(BfTypeDef* typeDef, BfTypeReference* fieldType, const StringImpl& fieldName)
 {
-	BfFieldDef* fieldDef = new BfFieldDef();	
+	BfFieldDef* fieldDef = new BfFieldDef();
 	fieldDef->mDeclaringType = typeDef;
 	fieldDef->mTypeRef = fieldType;
 	fieldDef->mName = fieldName;
@@ -1409,6 +1416,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		actualOuterTypeDef = actualOuterTypeDef->mOuterType;
 
 	SetAndRestoreValue<BfTypeDef*> prevTypeDef(mCurTypeDef, new BfTypeDef());
+	SetAndRestoreValue<BfTypeDef*> prevDeclaringTypeDef(mCurDeclaringTypeDef, mCurTypeDef);
 	SetAndRestoreValue<BfTypeDef*> prevActualTypeDef(mCurActualTypeDef, mCurTypeDef);
 
 	mCurTypeDef->mSystem = mSystem;
@@ -1967,7 +1975,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 					auto methodDef = new BfMethodDef();
 					mCurTypeDef->mMethods.Insert(methodIdx + 1, methodDef);
-					methodDef->mDeclaringType = mCurTypeDef;
+					BF_ASSERT(mCurDeclaringTypeDef != NULL);
+					methodDef->mDeclaringType = mCurDeclaringTypeDef;					
 					methodDef->mName = BF_METHODNAME_CALCAPPEND;
 					methodDef->mProtection = BfProtection_Public;					
 					methodDef->mMethodType = BfMethodType_CtorCalcAppend;
@@ -2240,7 +2249,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	{		
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
-		methodDef->mDeclaringType = mCurTypeDef;
+		BF_ASSERT(mCurDeclaringTypeDef != NULL);
+		methodDef->mDeclaringType = mCurDeclaringTypeDef;
 		methodDef->mName = BF_METHODNAME_ENUM_HASFLAG;
 		methodDef->mReturnTypeRef = mSystem->mDirectBoolTypeRef;
 		methodDef->mProtection = BfProtection_Public;
@@ -2251,7 +2261,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		{
 			auto methodDef = new BfMethodDef();
 			mCurTypeDef->mMethods.push_back(methodDef);
-			methodDef->mDeclaringType = mCurTypeDef;			
+			BF_ASSERT(mCurDeclaringTypeDef != NULL);
+			methodDef->mDeclaringType = mCurDeclaringTypeDef;
 			methodDef->mName = BF_METHODNAME_ENUM_GETUNDERLYING;
 			methodDef->mReturnTypeRef = mSystem->mDirectSelfBaseTypeRef;
 			methodDef->mMethodType = BfMethodType_PropertyGetter;
@@ -2261,7 +2272,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			auto propDef = new BfPropertyDef();
 			mCurTypeDef->mProperties.Add(propDef);
 			propDef->mTypeRef = mSystem->mDirectSelfBaseTypeRef;
-			propDef->mDeclaringType = mCurTypeDef;
+			BF_ASSERT(mCurDeclaringTypeDef != NULL);
+			methodDef->mDeclaringType = mCurDeclaringTypeDef;
 			propDef->mName = "Underlying";
 			propDef->mMethods.Add(methodDef);
 			propDef->mProtection = BfProtection_Public;
@@ -2271,7 +2283,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		{
 			auto methodDef = new BfMethodDef();
 			mCurTypeDef->mMethods.push_back(methodDef);
-			methodDef->mDeclaringType = mCurTypeDef;
+			BF_ASSERT(mCurDeclaringTypeDef != NULL);
+			methodDef->mDeclaringType = mCurDeclaringTypeDef;
 			methodDef->mIsMutating = true;
 			methodDef->mName = BF_METHODNAME_ENUM_GETUNDERLYINGREF;
 			methodDef->mReturnTypeRef = mSystem->mDirectRefSelfBaseTypeRef;
@@ -2282,7 +2295,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			auto propDef = new BfPropertyDef();
 			mCurTypeDef->mProperties.Add(propDef);
 			propDef->mTypeRef = mSystem->mDirectRefSelfBaseTypeRef;
-			propDef->mDeclaringType = mCurTypeDef;
+			BF_ASSERT(mCurDeclaringTypeDef != NULL);
+			propDef->mDeclaringType = mCurDeclaringTypeDef;
 			propDef->mName = "UnderlyingRef";
 			propDef->mMethods.Add(methodDef);
 			propDef->mProtection = BfProtection_Public;
@@ -2293,7 +2307,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
-		methodDef->mDeclaringType = mCurTypeDef;
+		BF_ASSERT(mCurDeclaringTypeDef != NULL);
+		methodDef->mDeclaringType = mCurDeclaringTypeDef;
 		methodDef->mName = BF_METHODNAME_TO_STRING;
 		methodDef->mReturnTypeRef = mSystem->mDirectVoidTypeRef;
 		methodDef->mProtection = BfProtection_Public;
@@ -2308,7 +2323,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	{		
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
-		methodDef->mDeclaringType = mCurTypeDef;
+		BF_ASSERT(mCurDeclaringTypeDef != NULL);
+		methodDef->mDeclaringType = mCurDeclaringTypeDef;
 		methodDef->mName = BF_METHODNAME_DEFAULT_EQUALS;
 		methodDef->mReturnTypeRef = mSystem->mDirectBoolTypeRef;
 		methodDef->mProtection = BfProtection_Private;
@@ -2322,7 +2338,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
-		methodDef->mDeclaringType = mCurTypeDef;
+		BF_ASSERT(mCurDeclaringTypeDef != NULL);
+		methodDef->mDeclaringType = mCurDeclaringTypeDef;
 		methodDef->mName = BF_METHODNAME_DEFAULT_STRICT_EQUALS;
 		methodDef->mReturnTypeRef = mSystem->mDirectBoolTypeRef;
 		methodDef->mProtection = BfProtection_Private;

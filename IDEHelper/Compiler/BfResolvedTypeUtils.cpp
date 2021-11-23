@@ -2621,6 +2621,7 @@ void BfTupleType::Finish()
 
 	BfDefBuilder bfDefBuilder(bfSystem);
 	bfDefBuilder.mCurTypeDef = mTypeDef;
+	bfDefBuilder.mCurDeclaringTypeDef = mTypeDef;
 	bfDefBuilder.FinishTypeDef(true);
 }
 

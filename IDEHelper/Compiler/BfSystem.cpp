@@ -3220,7 +3220,10 @@ void BfSystem::CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* fromTypeDef)
 		{
 			methodDef = new BfMethodDef();
 			*methodDef = *fromMethodDef;
-		}					
+		}
+
+		if (methodDef->mDeclaringType == fromTypeDef)
+			methodDef->mDeclaringType = typeDef;
 
 		for (int paramIdx = 0; paramIdx < fromMethodDef->mParams.mSize; paramIdx++)
 		{
@@ -3254,6 +3257,8 @@ void BfSystem::CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* fromTypeDef)
 	{		
 		BfPropertyDef* propDef = new BfPropertyDef();		
 		*propDef = *fromPropDef;
+		if (propDef->mDeclaringType == fromTypeDef)
+			propDef->mDeclaringType = typeDef;
 		for (auto& methodDef : propDef->mMethods)		
 			methodDef = typeDef->mMethods[methodDef->mIdx];		
 		propDef->mNextWithSameName = NULL;
@@ -3264,6 +3269,8 @@ void BfSystem::CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* fromTypeDef)
 	{
 		BfFieldDef* fieldDef = new BfFieldDef();
 		*fieldDef = *fromField;
+		if (fieldDef->mDeclaringType == fromTypeDef)
+			fieldDef->mDeclaringType = typeDef;
 		fieldDef->mNextWithSameName = NULL;
 		typeDef->mFields.Add(fieldDef);
 	}
