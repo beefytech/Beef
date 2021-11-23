@@ -9228,7 +9228,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetSymbolReferences(BfCompiler* bfC
 	std::map<String, String*> sortedParserMap;	
 	for (auto& parserDataPair : resolvePassData->mFoundSymbolReferencesParserData)
 	{
-		sortedParserMap.insert(std::make_pair(parserDataPair.mKey->mFileName, &parserDataPair.mValue));
+		if (!parserDataPair.mKey->mFileName.Contains('|'))
+			sortedParserMap.insert(std::make_pair(parserDataPair.mKey->mFileName, &parserDataPair.mValue));
 	}
 
 	for (auto& parserData : sortedParserMap)

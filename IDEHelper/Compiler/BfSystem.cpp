@@ -2141,18 +2141,21 @@ void BfSystem::SanityCheckAtomComposite(const BfAtomComposite& atomComposite)
 
 void BfSystem::TrackName(BfTypeDef* typeDef)
 {	
-	for (int i = 0; i < (int)typeDef->mFullName.mSize - 1; i++)
+	if (!typeDef->IsEmitted())
 	{
-		auto prevAtom = typeDef->mFullName.mParts[i];
-		auto atom = typeDef->mFullName.mParts[i + 1];
-		int* countPtr;
-		if (atom->mPrevNamesMap.TryAdd(prevAtom, NULL, &countPtr))
+		for (int i = 0; i < (int)typeDef->mFullName.mSize - 1; i++)
 		{
-			*countPtr = 1;
-		}
-		else
-		{
-			(*countPtr)++;
+			auto prevAtom = typeDef->mFullName.mParts[i];
+			auto atom = typeDef->mFullName.mParts[i + 1];
+			int* countPtr;
+			if (atom->mPrevNamesMap.TryAdd(prevAtom, NULL, &countPtr))
+			{
+				*countPtr = 1;
+			}
+			else
+			{
+				(*countPtr)++;
+			}
 		}
 	}
 }
@@ -2165,7 +2168,7 @@ void BfSystem::UntrackName(BfTypeDef* typeDef)
 		nameAtom->mAtomUpdateIdx = ++mAtomUpdateIdx;
 	}
 
-	if (!typeDef->mIsCombinedPartial)
+	if ((!typeDef->mIsCombinedPartial) && (!typeDef->IsEmitted()))
 	{
 		for (int i = 0; i < (int)typeDef->mFullName.mSize - 1; i++)
 		{
@@ -3036,7 +3039,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 	{
 		BfPropertyDef* newProp = new BfPropertyDef();
 		*newProp = *prop;
-
+		BF_ASSERT(newProp->mDeclaringType != NULL);
 		for (int methodIdx = 0; methodIdx < (int)newProp->mMethods.size(); methodIdx++)
 			newProp->mMethods[methodIdx] = typeDef->mMethods[startMethodIdx + newProp->mMethods[methodIdx]->mIdx];
 		typeDef->mProperties.push_back(newProp);
@@ -3298,7 +3301,7 @@ void BfSystem::CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* fromTypeDef)
 	if (typeDef->mNameEx != NULL)
 		typeDef->mNameEx->mRefCount++;	
 	//typeDef->mNameEx = fromTypeDef->mNameEx;
-	//typeDef->mFullName = fromTypeDef->mFullName;
+	typeDef->mFullName = fromTypeDef->mFullName;
 
 	typeDef->mFullNameEx = fromTypeDef->mFullNameEx;
 	//RefAtomComposite(typeDef->mFullNameEx);
