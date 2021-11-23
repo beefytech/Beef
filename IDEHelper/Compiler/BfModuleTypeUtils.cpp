@@ -2361,7 +2361,11 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		auto methodInstance = GetRawMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
 		auto result = mCompiler->mCEMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
 		
-		if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
+		if ((onCompileKind == BfCEOnCompileKind_TypeDone) && (typeInstance->mDefineState > BfTypeDefineState_CETypeInit))
+		{
+			// Type done, okay			
+		}
+		else if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
 		{
 			// We populated before we could finish
 			AssertErrorState();
@@ -4530,7 +4534,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		typeInstance->mDefineState = BfTypeDefineState_Defined;
 		if (!typeInstance->IsBoxed())
+		{
 			ExecuteCEOnCompile(NULL, typeInstance, BfCEOnCompileKind_TypeDone);
+			if (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotted)
+				return;
+		}
 	}
 
 	if (typeInstance->mTypeFailed)
