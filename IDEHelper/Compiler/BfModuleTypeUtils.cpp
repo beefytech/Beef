@@ -9780,6 +9780,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 						if (invokeMethodInstance != NULL)
 						{
 							resolvedType = invokeMethodInstance->mReturnType;
+							if ((resolvedType != NULL) && (resolvedType->IsRef()))
+								resolvedType = resolvedType->GetUnderlyingType();
 							return ResolveTypeResult(typeRef, resolvedType, populateType, resolveFlags);
 						}
 					}
@@ -9813,6 +9815,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					{
 						auto methodRefType = (BfMethodRefType*)innerType;
 						resolvedType = methodRefType->mMethodRef->mReturnType;
+						if ((resolvedType != NULL) && (resolvedType->IsRef()))
+							resolvedType = resolvedType->GetUnderlyingType();
 						return ResolveTypeResult(typeRef, resolvedType, populateType, resolveFlags);
 					}
 				}

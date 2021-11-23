@@ -3420,6 +3420,8 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		if (ctx->mRootTypeRef != retTypeTypeRef)
 		{
 			auto type = ctx->mModule->ResolveTypeRef(retTypeTypeRef, BfPopulateType_Identity, ctx->mResolveFlags);
+			if ((type != NULL) && (type->IsRef()))
+				type = type->GetUnderlyingType();
 			return Hash(type, ctx, flags, hashSeed);
 		}
 
@@ -3512,7 +3514,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					else
 					{
 						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, NULL, BfEvalExprFlags_DeclType);
-					}
+					}					
 				}
 								
 				if ((result) && (exprModTypeRef->mToken->mToken == BfToken_Comptype))
@@ -3537,6 +3539,9 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				}
 				else
 					cachedResolvedType = result.mType;
+
+				if ((cachedResolvedType != NULL) && (cachedResolvedType->IsRef()))
+					cachedResolvedType = cachedResolvedType->GetUnderlyingType();
 
 				if (cachedResolvedType != NULL)
 					ctx->SetCachedResolvedType(typeRef, cachedResolvedType);
@@ -3999,6 +4004,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		if (auto retTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(rhs))
 		{
 			auto resolvedType = ctx->mModule->ResolveTypeRef(rhs);
+			if ((resolvedType != NULL) && (resolvedType->IsRef()))
+				resolvedType = resolvedType->GetUnderlyingType();
 			return lhs == resolvedType;
 		}
 	}
