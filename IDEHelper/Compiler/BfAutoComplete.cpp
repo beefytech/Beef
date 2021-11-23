@@ -586,8 +586,13 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 	}
 }
 
-bool BfAutoComplete::CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate)
+bool BfAutoComplete::CheckProtection(BfProtection protection, BfTypeDef* typeDef, bool allowProtected, bool allowPrivate)
 {
+	if ((protection == BfProtection_Internal) && (typeDef != NULL))
+	{
+		return mModule->CheckProtection(protection, typeDef, allowProtected, allowPrivate);			
+	}
+
 	return (mHasFriendSet) || (protection == BfProtection_Public) ||
 		((protection == BfProtection_Protected) && (allowProtected)) ||
 		((protection == BfProtection_Private) && (allowPrivate));
@@ -609,7 +614,7 @@ void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& f
 {	
 	for (auto innerType : typeInst->mTypeDef->mNestedTypes)
 	{
-		if (CheckProtection(innerType->mProtection, allowProtected, allowPrivate))
+		if (CheckProtection(innerType->mProtection, innerType, allowProtected, allowPrivate))
 			AddTypeDef(innerType, filter);
 	}	
 
@@ -633,7 +638,7 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 				continue;
 		}
 
-	 	if (CheckProtection(nestedTypeDef->mProtection, allowProtected, allowPrivate))
+	 	if (CheckProtection(nestedTypeDef->mProtection, nestedTypeDef, allowProtected, allowPrivate))
 	 		AddTypeDef(nestedTypeDef, filter, onlyAttribute);
 	}
 
@@ -887,7 +892,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 		if (fieldDef->mIsNoShow)
 			continue;
 		
-		if ((fieldDef->mIsStatic) && (CheckProtection(fieldDef->mProtection, allowProtected, allowPrivate)))
+		if ((fieldDef->mIsStatic) && (CheckProtection(fieldDef->mProtection, fieldDef->mDeclaringType, allowProtected, allowPrivate)))
 		{
 			if (!mModule->CanCast(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), fieldInst.mResolvedType), selfType))
 				continue;
@@ -920,7 +925,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 
 		bool canUseMethod;
 		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Mixin);		
-		canUseMethod &= CheckProtection(methodDef->mProtection, allowProtected, allowPrivate);
+		canUseMethod &= CheckProtection(methodDef->mProtection, methodDef->mDeclaringType, allowProtected, allowPrivate);
 		
 		if (methodDef->mMethodType != BfMethodType_Normal)
 			continue;
@@ -973,7 +978,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 		if (methodInstance->mReturnType != selfType)
 			continue;
 
-		if (CheckProtection(propDef->mProtection, allowProtected, allowPrivate))
+		if (CheckProtection(propDef->mProtection, propDef->mDeclaringType, allowProtected, allowPrivate))
 		{
 			if (propDef->HasExplicitInterface())
 				continue;
@@ -1038,7 +1043,7 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 		auto fieldDef = fieldInst.GetFieldDef();
 		if ((fieldDef != NULL) && (fieldDef->mIsConst) && 
 			((fieldInst.mResolvedType == typeInst) || (fieldInst.mIsEnumPayloadCase)) && 
-			(CheckProtection(fieldDef->mProtection, allowProtected, allowPrivate)))
+			(CheckProtection(fieldDef->mProtection, fieldDef->mDeclaringType, allowProtected, allowPrivate)))
 		{
 			if ((!typeInst->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, mModule)) ||
 				(!typeInst->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
@@ -1088,7 +1093,7 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 			continue;
 		
 		bool canUseMethod = true;		
-		canUseMethod &= CheckProtection(methodDef->mProtection, allowProtected, allowPrivate);
+		canUseMethod &= CheckProtection(methodDef->mProtection, methodDef->mDeclaringType, allowProtected, allowPrivate);
 		
 		auto methodInstance = mModule->GetRawMethodInstanceAtIdx(extensionContainer, methodDef->mIdx);
 		if (methodInstance == NULL)

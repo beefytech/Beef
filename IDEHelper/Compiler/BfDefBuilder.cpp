@@ -1449,7 +1449,9 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	mCurTypeDef->mProtection = (outerTypeDef == NULL) ? BfProtection_Public : BfProtection_Private;	
 	if (typeDeclaration->mProtectionSpecifier != NULL)
 	{
-		if ((outerTypeDef == NULL) && (typeDeclaration->mProtectionSpecifier->GetToken() != BfToken_Public))
+		if ((outerTypeDef == NULL) && 
+			(typeDeclaration->mProtectionSpecifier->GetToken() != BfToken_Public) &&
+			(typeDeclaration->mProtectionSpecifier->GetToken() != BfToken_Internal))
 		{
 			//CS1527
 			Fail("Elements defined in a namespace cannot be explicitly declared as private or protected", typeDeclaration->mProtectionSpecifier);

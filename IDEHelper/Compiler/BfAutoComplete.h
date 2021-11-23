@@ -179,7 +179,7 @@ public:
 	int mDefTypeGenericParamIdx;
 
 public:	
-	bool CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate);
+	bool CheckProtection(BfProtection protection, BfTypeDef* typeDef, bool allowProtected, bool allowPrivate);
 	String GetFilter(BfAstNode* node);
 	const char* GetTypeName(BfType* type);
 	int GetCursorIdx(BfAstNode* node);
