@@ -2273,7 +2273,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			mCurTypeDef->mProperties.Add(propDef);
 			propDef->mTypeRef = mSystem->mDirectSelfBaseTypeRef;
 			BF_ASSERT(mCurDeclaringTypeDef != NULL);
-			methodDef->mDeclaringType = mCurDeclaringTypeDef;
+			propDef->mDeclaringType = mCurDeclaringTypeDef;
 			propDef->mName = "Underlying";
 			propDef->mMethods.Add(methodDef);
 			propDef->mProtection = BfProtection_Public;
