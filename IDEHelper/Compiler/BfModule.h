@@ -1708,6 +1708,7 @@ public:
 	bool InitGenericParams(BfType* resolvedTypeRef);
 	bool FinishGenericParams(BfType* resolvedTypeRef);
 	bool ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstance* genericTypeInstance, bool ignoreErrors);
+	BfType* ResolveGenericMethodTypeRef(BfTypeReference* typeRef, BfMethodInstance* methodInstance, BfGenericParamInstance* genericParamInstance, BfTypeVector* methodGenericArgsOverride);
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
 	bool CheckConstraintState(BfAstNode* refNode);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);

@@ -109,6 +109,8 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 
 	for (auto genericParam : genericExEntry->mGenericParams)
 	{
+		if (!genericParam->mExternType->IsGenericParam())
+			AddDependency(genericParam->mExternType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 		for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
 			AddDependency(constraintTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 		if (genericParam->mTypeConstraint != NULL)
@@ -301,6 +303,8 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 
 	for (auto genericParam : genericTypeInst->mGenericTypeInfo->mGenericParams)
 	{
+		if (!genericParam->mExternType->IsGenericParam())
+			AddDependency(genericParam->mExternType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 		for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
 			AddDependency(constraintTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 		if (genericParam->mTypeConstraint != NULL)
@@ -375,6 +379,28 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 	}	
 
 	return true;
+}
+
+BfType* BfModule::ResolveGenericMethodTypeRef(BfTypeReference* typeRef, BfMethodInstance* methodInstance, BfGenericParamInstance* genericParamInstance, BfTypeVector* methodGenericArgsOverride)
+{
+	BfConstraintState constraintSet;
+	constraintSet.mPrevState = mContext->mCurConstraintState;
+	constraintSet.mGenericParamInstance = genericParamInstance;
+	constraintSet.mMethodInstance = methodInstance;
+	constraintSet.mMethodGenericArgsOverride = methodGenericArgsOverride;
+
+	SetAndRestoreValue<BfConstraintState*> prevConstraintSet(mContext->mCurConstraintState, &constraintSet);
+	if (!CheckConstraintState(NULL))
+		return NULL;
+
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, methodInstance->GetOwner());
+	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
+
+	BfType* type = ResolveTypeRef(typeRef);
+	if (type == NULL)
+		type = GetPrimitiveType(BfTypeCode_Var);
+	return type;
 }
 
 bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter)

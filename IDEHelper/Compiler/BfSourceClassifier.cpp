@@ -572,7 +572,12 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 			{
 				BfTypeReference* typeRef = genericConstraint->mTypeRef;
 				if (typeRef != NULL)
-					SetElementType(typeRef, BfSourceElementType_GenericParam);
+				{
+					if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
+						SetElementType(typeRef, BfSourceElementType_GenericParam);						
+					else
+						VisitChild(typeRef);
+				}
 			}
 		}
 	}

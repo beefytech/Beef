@@ -21956,6 +21956,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 		for (auto genericParam : methodInstance->mMethodInfoEx->mGenericParams)
 		{
+			if (!genericParam->mExternType->IsGenericParam())
+				AddDependency(genericParam->mExternType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 			for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
 				AddDependency(constraintTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 			if (genericParam->mTypeConstraint != NULL)

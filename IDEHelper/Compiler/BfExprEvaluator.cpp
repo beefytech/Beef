@@ -1547,7 +1547,7 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfMethodInstance* methodInstan
 					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL, BfUnaryOpFlag_IsConstraintCheck);
 				
 					if (exprEvaluator.mResult)
-						checkArgType = exprEvaluator.mResult.mType;					
+						checkArgType = exprEvaluator.mResult.mType;
 				}
 			}			
 		}
@@ -1557,21 +1557,9 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfMethodInstance* methodInstan
 	{
 		for (auto comptypeConstraint : genericParamInst->mComptypeConstraint)
 		{
-			BfConstraintState constraintSet;
-			constraintSet.mPrevState = mModule->mContext->mCurConstraintState;
-			constraintSet.mGenericParamInstance = genericParamInst;
-			constraintSet.mMethodInstance = methodInstance;
-			constraintSet.mMethodGenericArgsOverride = methodGenericArgs;
-			
-			SetAndRestoreValue<BfConstraintState*> prevConstraintSet(mModule->mContext->mCurConstraintState, &constraintSet);
-			if (!mModule->CheckConstraintState(NULL))
-				return false;
-
-			SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mModule->mCurMethodInstance, methodInstance);
-			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mModule->mCurTypeInstance, methodInstance->GetOwner());
-			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
-
-			checkArgType = mModule->ResolveTypeRef(comptypeConstraint);
+			checkArgType = mModule->ResolveGenericMethodTypeRef(comptypeConstraint, methodInstance, genericParamInst, methodGenericArgs);
+			if (checkArgType == NULL)
+				return false;			
 		}
 	}
 
@@ -2138,7 +2126,21 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	{
 		auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[checkMethod->mGenericParams.size() + externConstraintIdx];
 		BF_ASSERT(genericParam->mExternType != NULL);
- 		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericParam->mExternType, NULL, genericParam, genericArgumentsSubstitute, NULL))
+		auto externType = genericParam->mExternType;
+		BfTypeVector* externGenericArgumentsSubstitute = genericArgumentsSubstitute;
+
+		if (externType->IsVar())
+		{
+			auto& externConstraint = checkMethod->mExternalConstraints[externConstraintIdx];
+			if (externConstraint.mTypeRef != NULL)
+			{
+				externType = mModule->ResolveGenericMethodTypeRef(externConstraint.mTypeRef, methodInstance, genericParam, genericArgumentsSubstitute);
+				if (externType == NULL)
+					goto NoMatch;
+			}
+		}
+
+ 		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), externType, NULL, genericParam, externGenericArgumentsSubstitute, NULL))
  			goto NoMatch;
 	}
 
