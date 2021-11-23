@@ -8880,7 +8880,13 @@ namespace IDE
 					{
 						targetType = .BeefTest;
 						if (mTestManager != null)
-							mTestManager.AddProject(project);
+						{
+							String workingDirRel = scope String();
+							ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
+							var workingDir = scope String();
+							Path.GetAbsolutePath(workingDirRel, project.mProjectDir, workingDir);
+							mTestManager.AddProject(project, workingDir);
+						}
 					}
 					else
 					{
