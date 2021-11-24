@@ -4011,7 +4011,14 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 		{
 			auto constant = module->mBfIRBuilder->GetConstant(arg);
 			if (constant->mConstType == BfConstType_Undef)
-				isConst = false;
+			{
+				if (paramType->IsInstanceOf(module->mCompiler->mTypeTypeDef))
+				{
+					args[argIdx] = module->CreateTypeDataRef(module->GetPrimitiveType(BfTypeCode_None));
+				}
+				else
+					isConst = false;
+			}
 		}
 
 		if (!isConst)
