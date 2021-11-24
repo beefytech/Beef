@@ -1926,6 +1926,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	BfMethodDef* staticMarkMethod = NULL;
 	BfMethodDef* dynamicCastMethod = NULL;
 	BfMethodDef* toStringMethod = NULL;
+	BfMethodDef* getUnderlyingMethod = NULL;
 	bool needsEqualsMethod = ((mCurTypeDef->mTypeCode == BfTypeCode_Struct) || (mCurTypeDef->mTypeCode == BfTypeCode_Enum)) && (!mCurTypeDef->mIsStatic);	
 	BfMethodDef* equalsOpMethod = NULL;
 	BfMethodDef* equalsMethod = NULL;
@@ -2061,8 +2062,13 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 				if (method->mName == BF_METHODNAME_DYNAMICCAST)
 					_SetMethod(dynamicCastMethod, method);
 				if (method->mName == BF_METHODNAME_TO_STRING)
-					_SetMethod(toStringMethod, method);
+					_SetMethod(toStringMethod, method);				
 			}
+		}
+		else if (method->mMethodType == BfMethodType_PropertyGetter)
+		{
+			if (method->mName == BF_METHODNAME_ENUM_GETUNDERLYING)
+				_SetMethod(getUnderlyingMethod, method);
 		}
 		else if ((method->mMethodType == BfMethodType_Operator) &&
 			(method->mIsStatic) &&			
@@ -2247,7 +2253,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if (toStringMethod != NULL)
 		wantsToString = false;
 	
-	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (!isPayloadEnum))
+	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (!isPayloadEnum) && (getUnderlyingMethod == NULL))
 	{		
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);

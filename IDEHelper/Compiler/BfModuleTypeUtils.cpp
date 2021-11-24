@@ -2108,7 +2108,13 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 
 	typeInstance->mTypeDef->ClearOldMemberSets();
 
-	FinishCEParseContext(refNode, typeInstance, &ceParseContext);	
+	FinishCEParseContext(refNode, typeInstance, &ceParseContext);
+
+	if (typeInstance->mTypeDef->mEmitParent != NULL)
+	{
+		// Remove generated fields like the 'underlying type' enum field
+		typeInstance->mFieldInstances.Resize(typeInstance->mTypeDef->mEmitParent->mFields.mSize);
+	}
 }
 
 void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes)
@@ -4000,7 +4006,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 
 			if (hadNewMembers)
-			{				
+			{
 				DoPopulateType(resolvedTypeRef, populateType);
 				return;
 			}
