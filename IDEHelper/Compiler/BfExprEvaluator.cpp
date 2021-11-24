@@ -5521,6 +5521,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 				mModule->Warn(0, "Concrete method may fail to comptime during specialization", targetSrc);
 				doConstReturn = true;
 			}
+			else if (methodDef->mIsVirtual)
+			{
+				// This could only really be the case for a Type, since no other 'this' could qualify as const
+			}
 			else
 			{
 				CeEvalFlags evalFlags = CeEvalFlags_None;				
