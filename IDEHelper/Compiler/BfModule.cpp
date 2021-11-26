@@ -3464,20 +3464,25 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 		if (addType)
 		{
 			auto checkTypeInst = checkType->ToTypeInstance();
-			auto hotTypeVersion = checkTypeInst->mHotTypeData->GetLatestVersion();
-			BF_ASSERT(hotTypeVersion != NULL);
+			if (checkTypeInst->mHotTypeData != NULL)
+			{
+				auto hotTypeVersion = checkTypeInst->mHotTypeData->GetLatestVersion();
+				BF_ASSERT(hotTypeVersion != NULL);
+				if (hotTypeVersion != NULL)
+				{
+					bool isAllocation = ((flags & BfDependencyMap::DependencyFlag_Allocates) != 0);
+					if (((flags & BfDependencyMap::DependencyFlag_LocalUsage) != 0) &&
+						(checkType->IsComposite()))
+						isAllocation = true;
 
-			bool isAllocation = ((flags & BfDependencyMap::DependencyFlag_Allocates) != 0);
- 			if (((flags & BfDependencyMap::DependencyFlag_LocalUsage) != 0) &&
- 				(checkType->IsComposite()))
- 				isAllocation = true;
-
-			if (isAllocation)
-			{				
-				mCurMethodState->mHotDataReferenceBuilder->mAllocatedData.Add(hotTypeVersion);
+					if (isAllocation)
+					{
+						mCurMethodState->mHotDataReferenceBuilder->mAllocatedData.Add(hotTypeVersion);
+					}
+					else
+						mCurMethodState->mHotDataReferenceBuilder->mUsedData.Add(hotTypeVersion);
+				}
 			}
-			else
-				mCurMethodState->mHotDataReferenceBuilder->mUsedData.Add(hotTypeVersion);
 		}
 	}
 
@@ -6432,9 +6437,10 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			}
 		}
 		else if (fieldInstance->GetFieldDef()->mIsStatic)
-		{
-			auto refVal = ReferenceStaticField(fieldInstance);
-
+		{			
+			BfTypedValue refVal;
+			if (!mIsComptimeModule) // This can create circular reference issues for a `Self` static
+				refVal = ReferenceStaticField(fieldInstance);
 			if (refVal.mValue.IsConst())
 			{
 				auto constant = mBfIRBuilder->GetConstant(refVal.mValue);

@@ -84,6 +84,8 @@ namespace Tests
 		struct StructA
 		{
 			public int mA = 123;
+			public static StructA sSA;
+			public const StructA cSA = .();
 
 			[OnCompile(.TypeInit), Comptime]
 			public static void Generate()

@@ -1178,11 +1178,6 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			else
 				resolvedTypeRef->mTypeId = mCompiler->mCurTypeId++;
 
-			if (resolvedTypeRef->mTypeId == 2568)
-			{
-				NOP;
-			}
-
 			while (resolvedTypeRef->mTypeId >= (int)mContext->mTypes.size())
 				mContext->mTypes.Add(NULL);
 			mContext->mTypes[resolvedTypeRef->mTypeId] = resolvedTypeRef;
@@ -2158,6 +2153,9 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			
 			auto result = ceContext->Call(customAttribute.mRef, this, methodInstance, args, CeEvalFlags_None, NULL);
 
+			if (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotted)
+				return;
+
 			if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
 			{
 				// We populated before we could finish
@@ -2438,6 +2436,9 @@ void BfModule::DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers)
 	ceEmitContext.mType = typeInstance;
 	ExecuteCEOnCompile(&ceEmitContext, typeInstance, BfCEOnCompileKind_TypeInit);
 	hadNewMembers = (typeInstance->mTypeDef->mEmitParent != NULL);
+
+	if (ceEmitContext.mFailed)
+		TypeFailed(typeInstance);
 }
 
 void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
@@ -3939,26 +3940,46 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 
+		bool tryCE = true;
  		if (typeInstance->mDefineState == BfTypeDefineState_CETypeInit)
  		{
  			if (populateType <= BfPopulateType_AllowStaticMethods)
  				return;
  
-			String error = "OnCompile const evaluation creates a data dependency during TypeInit";
-			if (mCompiler->mCEMachine->mCurBuilder != NULL)
+			int foundTypeCount = 0;
+			auto typeState = mContext->mCurTypeState;
+			while (typeState != NULL)
 			{
-				error += StrFormat(" during const-eval generation of '%s'", MethodToString(mCompiler->mCEMachine->mCurBuilder->mCeFunction->mMethodInstance).c_str());
+				if (typeState->mType == typeInstance)
+				{
+					foundTypeCount++;
+					if (foundTypeCount == 2)
+						break;
+				}
+				typeState = typeState->mPrevState;
 			}
 
- 			auto refNode = typeDef->GetRefNode();		
- 			Fail(error, refNode);
-			if ((mCompiler->mCEMachine->mCurContext != NULL) && (mCompiler->mCEMachine->mCurContext->mCurFrame != NULL))
- 				mCompiler->mCEMachine->mCurContext->Fail(*mCompiler->mCEMachine->mCurContext->mCurFrame, error);
-			else if (mCompiler->mCEMachine->mCurContext != NULL)
-				mCompiler->mCEMachine->mCurContext->Fail(error);
+			if ((foundTypeCount >= 2) || (typeInstance->mTypeDef->IsEmitted()))
+			{
+				String error = "OnCompile const evaluation creates a data dependency during TypeInit";
+				if (mCompiler->mCEMachine->mCurBuilder != NULL)
+				{
+					error += StrFormat(" during const-eval generation of '%s'", MethodToString(mCompiler->mCEMachine->mCurBuilder->mCeFunction->mMethodInstance).c_str());
+				}
+
+				auto refNode = typeDef->GetRefNode();
+				Fail(error, refNode);
+				if ((mCompiler->mCEMachine->mCurContext != NULL) && (mCompiler->mCEMachine->mCurContext->mCurFrame != NULL))
+					mCompiler->mCEMachine->mCurContext->Fail(*mCompiler->mCEMachine->mCurContext->mCurFrame, error);
+				else if (mCompiler->mCEMachine->mCurContext != NULL)
+					mCompiler->mCEMachine->mCurContext->Fail(error);
+			}
  		}
- 		else if (typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit)
- 		{			
+ 		
+		if ((typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit) && (tryCE))
+ 		{	
+			BF_ASSERT(!typeInstance->mTypeDef->IsEmitted());
+
  			typeInstance->mDefineState = BfTypeDefineState_CETypeInit;
 			bool hadNewMembers = false;
 			DoCEEmit(typeInstance, hadNewMembers);		
@@ -3991,9 +4012,17 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					{
 						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
 						{
+							int prevDeletedTypes = mCompiler->mStats.mTypesDeleted;
 							if (mCompiler->mIsResolveOnly)
 								mCompiler->mNeedsFullRefresh = true;
+							BfLogSysM("Type %p hash changed, rebuilding dependent types\n", typeInstance);
 							mContext->RebuildDependentTypes(typeInstance);
+							
+							if (mCompiler->mStats.mTypesDeleted != prevDeletedTypes)
+							{
+								BfLogSysM("Type %p hash changed, rebuilding dependent types - updating after deleting types\n", typeInstance);
+								mContext->UpdateAfterDeletingTypes();
+							}
 						}						
 						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
 						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
@@ -6205,6 +6234,15 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 	auto typeInstance = methodInstance->GetOwner();
 		
 	BfMethodProcessRequest* methodProcessRequest = mContext->mMethodWorkList.Alloc();
+	if (mCompiler->mCompileState == BfCompiler::CompileState_Unreified)
+	{
+		if (methodInstance->mIsReified)
+		{
+			BfLogSysM("Marking method %d as unreified due to CompileState_Unreified\n", methodInstance);
+			methodInstance->mIsReified = false;
+		}
+	}
+		//BF_ASSERT(!methodInstance->mIsReified);
 	methodProcessRequest->mType = typeInstance;
 	methodProcessRequest->mMethodInstance = methodInstance;	
 	methodProcessRequest->mRevision = typeInstance->mRevision;
@@ -9976,6 +10014,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	if (!inserted)
 	{
 		BF_ASSERT(resolvedEntry->mValue != NULL);
+		BF_ASSERT(!resolvedEntry->mValue->IsDeleting());
 		return ResolveTypeResult(typeRef, resolvedEntry->mValue, populateType, resolveFlags);
 	}
 

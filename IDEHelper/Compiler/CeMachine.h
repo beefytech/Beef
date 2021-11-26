@@ -396,13 +396,21 @@ public:
 class CeFunction
 {
 public:
+	enum InitializeState
+	{
+		InitializeState_None,
+		InitializeState_Initializing,
+		InitializeState_Initializing_ReEntry,
+		InitializeState_Initialized
+	};
+
+public:
 	CeMachine* mCeMachine;
 	CeFunctionInfo* mCeFunctionInfo;
 	CeInnerFunctionInfo* mCeInnerFunctionInfo;
 	BfMethodInstance* mMethodInstance;	
-	CeFunctionKind mFunctionKind;
-	bool mGenerating;
-	bool mInitialized;
+	CeFunctionKind mFunctionKind;	
+	InitializeState mInitializeState;
 	bool mFailed;
 	bool mIsVarReturn;
 	Array<uint8> mCode;	
@@ -425,9 +433,8 @@ public:
 		mCeMachine = NULL;
 		mCeFunctionInfo = NULL;
 		mCeInnerFunctionInfo = NULL;
-		mFunctionKind = CeFunctionKind_NotSet;
-		mGenerating = false;
-		mInitialized = false;
+		mFunctionKind = CeFunctionKind_NotSet;		
+		mInitializeState = InitializeState_None;
 		mMethodInstance = NULL;
 		mFailed = false;
 		mIsVarReturn = false;
@@ -682,11 +689,13 @@ public:
 	BfMethodInstance* mMethodInstance;
 	String mEmitData;
 	String mExitEmitData;
+	bool mFailed;
 
 	CeEmitContext()
 	{
 		mType = NULL;		
 		mMethodInstance = NULL;
+		mFailed = false;
 	}
 };
 
@@ -694,6 +703,7 @@ class CeContext
 {
 public:
 	CeMachine* mCeMachine;
+	CeContext* mPrevContext;
 	int mReflectTypeIdOffset;
 	int mExecuteId;
 	CeEvalFlags mCurEvalFlags;

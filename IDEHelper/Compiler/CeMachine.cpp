@@ -1120,7 +1120,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 					if (checkBuilder->mInnerFunctionMap.TryGetValue(beFunction, &innerFunctionIdx))
 					{
 						auto innerFunction = checkBuilder->mCeFunction->mInnerFunctions[innerFunctionIdx];
-						if (!innerFunction->mInitialized)
+						if (innerFunction->mInitializeState < CeFunction::InitializeState_Initialized)
 							mCeMachine->PrepareFunction(innerFunction, checkBuilder);
 
 						CeOperand result = FrameAlloc(mCeMachine->GetBeContext()->GetPrimitiveType((sizeof(BfMethodInstance*) == 8) ? BeTypeCode_Int64 : BeTypeCode_Int32));
@@ -1288,7 +1288,7 @@ void CeBuilder::Build()
 	auto methodInstance = mCeFunction->mMethodInstance;
 	
 	if (methodInstance != NULL)
-	{
+	{		
 		BfMethodInstance dupMethodInstance;
 		dupMethodInstance.CopyFrom(methodInstance);
 		auto methodDef = methodInstance->mMethodDef;
@@ -1313,7 +1313,9 @@ void CeBuilder::Build()
 
 		int startFunctionCount = (int)beModule->mFunctions.size();
 		ProcessMethod(methodInstance, &dupMethodInstance);		
-		
+		if (mCeFunction->mInitializeState == CeFunction::InitializeState_Initialized)
+			return;
+
 		if (!dupMethodInstance.mIRFunction)
 		{
 			mCeFunction->mFailed = true;
@@ -2855,6 +2857,7 @@ void CeBuilder::Build()
 
 CeContext::CeContext()
 {
+	mPrevContext = NULL;
 	mCurEvalFlags = CeEvalFlags_None;
 	mCeMachine = NULL;
 	mReflectTypeIdOffset = -1;
@@ -2876,6 +2879,8 @@ CeContext::~CeContext()
 
 BfError* CeContext::Fail(const StringImpl& error)
 {
+	if (mCurEmitContext != NULL)
+		mCurEmitContext->mFailed = true;
 	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurTargetSrc, (mCurEvalFlags & CeEvalFlags_PersistantError) != 0);
 	if (bfError == NULL)
 		return NULL;
@@ -2885,6 +2890,8 @@ BfError* CeContext::Fail(const StringImpl& error)
 
 BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 {
+	if (mCurEmitContext != NULL)
+		mCurEmitContext->mFailed = true;
 	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurTargetSrc, 
 		(mCurEvalFlags & CeEvalFlags_PersistantError) != 0,
 		((mCurEvalFlags & CeEvalFlags_DeferIfNotOnlyError) != 0) && !mCurModule->mHadBuildError);
@@ -2965,6 +2972,10 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 				location->mColumn = emitEntry->mColumn;
 				moreInfo->mLocation = location;
 			}
+		}
+		else
+		{
+			auto moreInfo = passInstance->MoreInfo(err, mCeMachine->mCeModule->mCompiler->GetAutoComplete() != NULL);
 		}
 	}
 
@@ -3939,6 +3950,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 	AutoTimer autoTimer(mCeMachine->mRevisionExecuteTime);
 
+	SetAndRestoreValue<CeContext*> curPrevContext(mPrevContext, mCeMachine->mCurContext);
  	SetAndRestoreValue<CeContext*> prevContext(mCeMachine->mCurContext, this);
 	SetAndRestoreValue<CeEvalFlags> prevEvalFlags(mCurEvalFlags, flags);
 	SetAndRestoreValue<BfAstNode*> prevTargetSrc(mCurTargetSrc, targetSrc);
@@ -4042,13 +4054,24 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	bool added = false;
 	CeFunction* ceFunction = mCeMachine->GetFunction(methodInstance, BfIRValue(), added);
 
-	if (ceFunction->mGenerating)
+	if (ceFunction->mInitializeState == CeFunction::InitializeState_Initializing_ReEntry)
 	{
-		Fail("Recursive var-inference");
+		String error = "Comptime method preparation recursion";		
+		auto curContext = this;
+		while (curContext != NULL)
+		{
+			if (curContext->mCurMethodInstance != NULL)
+				error += StrFormat("\n  %s", module->MethodToString(curContext->mCurMethodInstance).c_str());
+
+			curContext = curContext->mPrevContext;
+			if ((curContext != NULL) && (curContext->mCurMethodInstance == mCurMethodInstance))
+				break;
+		}
+		Fail(error);
 		return BfTypedValue();
 	}
 
-	if (!ceFunction->mInitialized)
+	if (ceFunction->mInitializeState < CeFunction::InitializeState_Initialized)
 		mCeMachine->PrepareFunction(ceFunction, NULL);	
 
 	auto stackPtr = &mMemory[0] + BF_CE_STACK_SIZE;
@@ -4926,7 +4949,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 		if (!checkFunction->mFailed)
 			return true;
-		auto error = Fail(_GetCurFrame(), StrFormat("Method call '%s' failed", ceModule->MethodToString(checkFunction->mMethodInstance).c_str()));
+		auto error = Fail(_GetCurFrame(), StrFormat("Method call preparation '%s' failed", ceModule->MethodToString(checkFunction->mMethodInstance).c_str()));
 		if ((error != NULL) && (!checkFunction->mGenError.IsEmpty()))
 			mCeMachine->mCompiler->mPassInstance->MoreInfo("Comptime method generation error: " + checkFunction->mGenError);
 		return false;
@@ -5394,7 +5417,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 					bool added = false;
 					ctorCallFunction = mCeMachine->GetFunction(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, added);
-					if (!ctorCallFunction->mInitialized)
+					if (ctorCallFunction->mInitializeState < CeFunction::InitializeState_Initialized)
 						mCeMachine->PrepareFunction(ctorCallFunction, NULL);
 				}
 
@@ -5469,11 +5492,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				callEntry.mFunction = callEntry.mFunctionInfo->mCeFunction;
-				if (!callEntry.mFunction->mInitialized)
+				if (callEntry.mFunction->mInitializeState < CeFunction::InitializeState_Initialized)
 				{
 					auto curFrame = _GetCurFrame();
 					SetAndRestoreValue<CeFrame*> prevFrame(mCurFrame, &curFrame);
-					BF_ASSERT(!callEntry.mFunction->mInitialized);
+					BF_ASSERT(callEntry.mFunction->mInitializeState < CeFunction::InitializeState_Initialized);
 					mCeMachine->PrepareFunction(callEntry.mFunction, NULL);
 				}
 
@@ -6912,7 +6935,7 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Tanh;
 			}
 
-			ceFunction->mInitialized = true;
+			ceFunction->mInitializeState = CeFunction::InitializeState_Initialized;
 			return;
 		}
 	}
@@ -6923,19 +6946,27 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 	AutoTimer autoTimer(mRevisionExecuteTime);
 	SetAndRestoreValue<CeFunction*> prevCEFunction(mPreparingFunction, ceFunction);	
 
-	BF_ASSERT(!ceFunction->mInitialized);
+	BF_ASSERT(ceFunction->mInitializeState <= CeFunction::InitializeState_Initialized);
 
 	if (ceFunction->mFunctionKind == CeFunctionKind_NotSet)
 	{
 		CheckFunctionKind(ceFunction);
-		if (ceFunction->mInitialized)
+		if (ceFunction->mInitializeState == CeFunction::InitializeState_Initialized)
 			return;
 	}
 
-	BF_ASSERT(!ceFunction->mInitialized);
-	ceFunction->mInitialized = true;
-	ceFunction->mGenerating = true;	
+	BF_ASSERT(ceFunction->mInitializeState <= CeFunction::InitializeState_Initialized);
+	if (ceFunction->mInitializeState == CeFunction::InitializeState_Initializing_ReEntry)
+	{
+		//Fail("Function generation re-entry");
+		return;
+	}
 
+	if (ceFunction->mInitializeState == CeFunction::InitializeState_Initializing)
+		ceFunction->mInitializeState = CeFunction::InitializeState_Initializing_ReEntry;
+	else
+		ceFunction->mInitializeState = CeFunction::InitializeState_Initializing;
+	
 	CeBuilder ceBuilder;
 	SetAndRestoreValue<CeBuilder*> prevBuilder(mCurBuilder, &ceBuilder);
 	ceBuilder.mParentBuilder = parentBuilder;
@@ -6944,7 +6975,7 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 	ceBuilder.mCeFunction = ceFunction;	
 	ceBuilder.Build();
 
-	ceFunction->mGenerating = false;
+	ceFunction->mInitializeState = CeFunction::InitializeState_Initialized;
 
 	/*if (!ceFunction->mCode.IsEmpty())
 	{
@@ -6980,8 +7011,8 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 	CeFunction* ceFunction = NULL;
 	if (!mFunctions.TryAdd(methodInstance, NULL, &functionInfoPtr))	
 	{
-		ceFunctionInfo = *functionInfoPtr;
-		BF_ASSERT(ceFunctionInfo->mCeFunction != NULL);
+		ceFunctionInfo = *functionInfoPtr;		
+		BF_ASSERT(ceFunctionInfo->mCeFunction != NULL);		
 		return ceFunctionInfo->mCeFunction;
 	}
 
@@ -7048,7 +7079,7 @@ CeFunction* CeMachine::GetPreparedFunction(BfMethodInstance* methodInstance)
 	auto ceFunction = GetFunction(methodInstance, BfIRValue(), added);
 	if (ceFunction == NULL)
 		return NULL;
-	if (!ceFunction->mInitialized)
+	if (ceFunction->mInitializeState < CeFunction::InitializeState_Initialized)
 		PrepareFunction(ceFunction, NULL);
 	return ceFunction;
 }
