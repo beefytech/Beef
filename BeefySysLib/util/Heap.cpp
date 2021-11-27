@@ -1,5 +1,6 @@
 #include "Heap.h"
 #include "DLIList.h"
+#include "HashSet.h"
 
 USING_NS_BF;
 
@@ -129,19 +130,31 @@ ContiguousHeap::~ContiguousHeap()
 	free(mMetadata);
 }
 
+//#define BFCE_DEBUG_HEAP
+
 void ContiguousHeap::Clear(int maxAllocSize)
 {
+#ifdef BFCE_DEBUG_HEAP
+	OutputDebugStrF("ContiguousHeap::Clear\n");
+#endif
+
 	if (mBlockDataOfs == 0)
 		return;
-
-	mBlockDataOfs = 0;
-	mFreeList.Clear();
+	
 	if ((mMemorySize != -1) && (mMemorySize > maxAllocSize))
-	{
+	{		
 		free(mMetadata);
 		mMetadata = NULL;
 		mMemorySize = 0;
+		mBlockDataOfs = 0;
+		mFreeList.Clear();
 		return;
+	}
+
+	for (auto idx : mFreeList)
+	{
+		auto block = CH_REL_TO_ABS(idx);
+		block->mKind = (ChBlockKind)0;
 	}
 
 	auto blockList = (ChList*)mMetadata;
@@ -155,19 +168,30 @@ void ContiguousHeap::Clear(int maxAllocSize)
 				break;
 			block = CH_REL_TO_ABS(block->mNext);
 		}
-	}	
+	}
+
 	blockList->mHead = -1;
-	blockList->mTail = -1;		
+	blockList->mTail = -1;
+	mBlockDataOfs = 0;
+	mFreeList.Clear();
+
+	Validate();
 }
 
-//static int gAllocCount = 0;
+static int gAllocCount = 0;
 
 ContiguousHeap::AllocRef ContiguousHeap::Alloc(int size)
 {
 	if (size == 0)
 		return 0;
 
-	//int allocCount = ++gAllocCount;
+#ifdef BFCE_DEBUG_HEAP
+	int allocCount = ++gAllocCount;
+	if (allocCount == 358)
+	{
+		NOP;
+	}	
+#endif
 
 	size = BF_ALIGN(size, 16);
 
@@ -183,7 +207,9 @@ ContiguousHeap::AllocRef ContiguousHeap::Alloc(int size)
 			
 			if (block->mKind == ChBlockKind_Merged)
 			{
-				//OutputDebugStrF("ContiguousHeap::Alloc %d removing merged %d\n", allocCount, (uint8*)block - (uint8*)mMetadata);
+#ifdef BFCE_DEBUG_HEAP
+				OutputDebugStrF("ContiguousHeap::Alloc %d removing merged %d\n", allocCount, (uint8*)block - (uint8*)mMetadata);
+#endif
 
 				itr--;
 				block->mKind = (ChBlockKind)0;
@@ -211,18 +237,34 @@ ContiguousHeap::AllocRef ContiguousHeap::Alloc(int size)
 					else
 					{
 						BF_ASSERT(newBlock->mKind == ChBlockKind_Merged);
+#ifdef BFCE_DEBUG_HEAP
+						BF_ASSERT(mFreeList.Contains(CH_ABS_TO_REL(newBlock)));
+#endif
 					}
 					newBlock->mPrev = -1;
 					newBlock->mNext = -1;
 					newBlock->mSize = block->mSize - size;
 					newBlock->mKind = ChBlockKind_Unused;	
 					blockList->AddAfter(CH_ABS_TO_REL(block), CH_ABS_TO_REL(newBlock));
-					block->mSize = size;
-					
-					//OutputDebugStrF("ContiguousHeap::Alloc %d alloc %d size: %d remainder in %d size: %d\n", allocCount, CH_ABS_TO_REL(block), size, CH_ABS_TO_REL(newBlock), newBlock->mSize);
+					block->mSize = size;					
+
+#ifdef BFCE_DEBUG_HEAP
+					OutputDebugStrF("ContiguousHeap::Alloc %d alloc %d size: %d remainder in %d size: %d\n", allocCount, CH_ABS_TO_REL(block), size, CH_ABS_TO_REL(newBlock), newBlock->mSize);					
+#endif
+				}
+				else
+				{
+#ifdef BFCE_DEBUG_HEAP
+					OutputDebugStrF("ContiguousHeap::Alloc %d alloc %d size: %d\n", allocCount, CH_ABS_TO_REL(block), size);
+#endif
 				}
 
 				block->mKind = ChBlockKind_Used;
+
+#ifdef BFCE_DEBUG_HEAP
+				Validate();
+#endif
+
 				return CH_ABS_TO_REL(block);
 			}
 
@@ -255,7 +297,10 @@ ContiguousHeap::AllocRef ContiguousHeap::Alloc(int size)
 
 		mFreeList.Add(CH_ABS_TO_REL(block));
 
-		//OutputDebugStrF("ContiguousHeap::Alloc %d alloc %d size: %d\n", allocCount, (uint8*)block - (uint8*)mMetadata, block->mSize);
+#ifdef BFCE_DEBUG_HEAP
+		Validate();
+		OutputDebugStrF("ContiguousHeap::Alloc %d alloc %d size: %d\n", allocCount, (uint8*)block - (uint8*)mMetadata, block->mSize);
+#endif
 
 		if (mFreeIdx >= mFreeList.mSize)
 			mFreeIdx = 0;
@@ -267,12 +312,30 @@ bool ContiguousHeap::Free(AllocRef ref)
 	if ((ref < 0) || (ref > mMemorySize - sizeof(ChBlock)))
 		return false;
 
+#ifdef BFCE_DEBUG_HEAP
+	int allocCount = ++gAllocCount;
+	if (allocCount == 64)
+	{
+		NOP;
+	}
+#endif
+
 	auto blockList = (ChList*)mMetadata;
  	auto block = CH_REL_TO_ABS(ref);
  	
 	if (block->mKind != ChBlockKind_Used)
+	{
+#ifdef BFCE_DEBUG_HEAP
+		OutputDebugStrF("Invalid free\n");
+		Validate();
+#endif
 		return false;
+	}
 	
+#ifdef BFCE_DEBUG_HEAP
+	OutputDebugStrF("ContiguousHeap::Free %d block:%d size: %d\n", allocCount, CH_ABS_TO_REL(block), block->mSize);
+#endif
+
 	int headAccSize = 0;
 	auto mergeHead = block;
 	while (mergeHead->mPrev != -1)
@@ -285,6 +348,9 @@ bool ContiguousHeap::Free(AllocRef ref)
 		mergeHead->mKind = ChBlockKind_Merged;
 		blockList->Remove(CH_ABS_TO_REL(mergeHead));
 		mergeHead = checkBlock;
+#ifdef BFCE_DEBUG_HEAP
+		OutputDebugStrF(" Setting Merged block %d\n", CH_ABS_TO_REL(mergeHead));
+#endif
 	}
 
 	int tailAccSize = 0;
@@ -299,6 +365,9 @@ bool ContiguousHeap::Free(AllocRef ref)
 			tailAccSize += mergeTail->mSize;
 			mergeTail->mKind = ChBlockKind_Merged;
 			blockList->Remove(CH_ABS_TO_REL(mergeTail));
+#ifdef BFCE_DEBUG_HEAP
+			OutputDebugStrF(" Setting Merged block %d\n", CH_ABS_TO_REL(mergeTail));
+#endif
 			if (nextBlock == NULL)
 				break;
 			mergeTail = nextBlock;
@@ -313,7 +382,15 @@ bool ContiguousHeap::Free(AllocRef ref)
 	}
 	mergeHead->mKind = ChBlockKind_Unused;
 
-	//OutputDebugStrF("ContiguousHeap::Free %d size: %d\n", CH_ABS_TO_REL(mergeHead), mergeHead->mSize);
+	if (mergeHead != block)
+	{
+		// We weren't in the free list so don't mark as Merged
+		block->mKind = (ChBlockKind)0;
+	}
+
+#ifdef BFCE_DEBUG_HEAP
+	Validate();
+#endif
 
 	return true;
 }
@@ -360,9 +437,103 @@ void ContiguousHeap::DebugDump()
 	}
 
 	str += "\nFree List:\n";
-	for (auto val : mFreeList)
-		str += StrFormat("@%d\n", val);
+	for (auto idx : mFreeList)
+	{
+		auto block = CH_REL_TO_ABS(idx);
+		char* kind = "??";
+		if (block->mKind == ChBlockKind_Unused)
+			kind = "Unused";
+		else
+			kind = "Merged";
+		str += StrFormat("@%d %s\n", idx, kind);
+	}
 	str += "\n";
 
 	OutputDebugStrF(str.c_str());
+}
+
+void ContiguousHeap::Validate()
+{
+	if (!mFreeList.IsEmpty())
+	{
+		BF_ASSERT_REL(mMetadata != NULL);
+	}
+
+	HashSet<int> freeSet;
+	for (auto idx : mFreeList)
+		freeSet.Add(idx);
+	
+	auto blockList = (ChList*)mMetadata;
+
+	bool deepValidate = true;
+
+	if (deepValidate)
+	{
+		if (blockList->mHead != -1)
+		{
+			int totalSize = 0;
+
+			auto block = CH_REL_TO_ABS(blockList->mHead);
+			auto blockEnd = (ChBlock*)((uint8*)blockList + mMemorySize);
+
+			while (block != blockEnd)
+			{
+				switch (block->mKind)
+				{
+				case (ChBlockKind)0:
+					BF_ASSERT_REL(!freeSet.Contains(CH_ABS_TO_REL(block)));
+					break;
+				case ChBlockKind_Unused:
+					BF_ASSERT_REL(freeSet.Remove(CH_ABS_TO_REL(block)));
+					break;
+				case ChBlockKind_Merged:
+					BF_ASSERT_REL(freeSet.Remove(CH_ABS_TO_REL(block)));
+					break;
+				case ChBlockKind_Used:
+					BF_ASSERT_REL(!freeSet.Contains(CH_ABS_TO_REL(block)));
+					break;
+				default:
+					BF_FATAL("Invalid state");
+				}
+
+				block = (ChBlock*)((uint8*)block + 16);				
+			}
+			BF_ASSERT_REL(freeSet.IsEmpty());
+		}
+	}
+	else
+	{
+		if (blockList->mHead != -1)
+		{
+			int totalSize = 0;
+
+			auto block = CH_REL_TO_ABS(blockList->mHead);
+			while (block != NULL)
+			{
+				switch (block->mKind)
+				{
+				case ChBlockKind_Unused:
+					BF_ASSERT_REL(freeSet.Remove(CH_ABS_TO_REL(block)));
+					break;
+				case ChBlockKind_Used:
+					BF_ASSERT_REL(!freeSet.Contains(CH_ABS_TO_REL(block)));
+					break;
+				default:
+					BF_FATAL("Invalid state");
+				}
+
+				if (block->mNext == -1)
+					break;
+				block = CH_REL_TO_ABS(block->mNext);
+			}
+		}
+	}
+
+	for (auto idx : freeSet)
+	{
+		auto block = CH_REL_TO_ABS(idx);
+		BF_ASSERT_REL(block->mKind == ChBlockKind_Merged);
+	}
+
+	//BF_ASSERT(freeSet.IsEmpty());
 }
