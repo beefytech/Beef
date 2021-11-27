@@ -126,9 +126,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	wc.lpfnWndProc = WindowProcStub;
 	wc.lpszClassName = L"BFWindow";
 	wc.lpszMenuName = NULL;	
-	RegisterClassW(&wc);
-
-	
+	RegisterClassW(&wc);	
 
 	int requestedX = x;
 	int requestedY = y;
@@ -278,7 +276,10 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mAlphaMaskPixels = NULL;
 	mAlphaMaskWidth = 0;
 	mAlphaMaskHeight = 0;
-	mNeedsStateReset = false;
+	mNeedsStateReset = false;	
+	mAwaitKeyReleases = false;
+	mAwaitKeyEventTick = 0;
+	mFocusLostTick = ::GetTickCount();
 
 	if (windowFlags & BFWINDOW_DEST_ALPHA)
 	{
@@ -351,6 +352,8 @@ void WinBFWindow::SetTitle(const char* title)
 
 void WinBFWindow::LostFocus(BFWindow* newFocus)
 {		
+	///OutputDebugStrF("Lost focus\n");
+	mFocusLostTick = ::GetTickCount();
 	WinBFWindow* bfNewFocus = (WinBFWindow*)newFocus;
 	mSoftHasFocus = false;
 	for (int i = 0; i < KEYCODE_MAX; i++)
@@ -373,6 +376,9 @@ void WinBFWindow::LostFocus(BFWindow* newFocus)
 
 void WinBFWindow::SetForeground()
 {
+	bool hadFocus = mHasFocus;
+	DWORD prevFocusLostTick = mFocusLostTick;
+
 	if (mFlags & BFWINDOW_FAKEFOCUS)
 	{
 		mHasFocus = true;
@@ -382,8 +388,13 @@ void WinBFWindow::SetForeground()
 
 	::SetFocus(mHWnd);
 	::SetForegroundWindow(mHWnd);
+	if ((!hadFocus) && (::GetTickCount() - prevFocusLostTick >= 1000))
+	{
+		mAwaitKeyReleases = true;
+		mAwaitKeyEventTick = ::GetTickCount();
+	}
 
-	//OutputDebugStrF("SetForeground %p\n", mHWnd);
+	//OutputDebugStrF("SetForeground %p %d %d %d\n", mHWnd, hadFocus, ::GetTickCount() - prevFocusLostTick, mAwaitKeyReleases);
 }
 
 static POINT gLastScreenMouseCoords = { -1, -1 };
@@ -405,6 +416,30 @@ void WinBFWindow::RehupMouseOver(bool isMouseOver)
 		mIsMouseInside = false;
 		mMouseLeaveFunc(this);
 	}
+}
+
+bool WinBFWindow::CheckKeyReleases(bool isKeyDown)
+{
+	if (!mAwaitKeyReleases)
+		return true;
+
+	// Time expired with no key presses
+	if ((mAwaitKeyEventTick != 0) && (::GetTickCount() - mAwaitKeyEventTick > 120))
+	{
+		mAwaitKeyReleases = false;
+		return true;
+	}
+	mAwaitKeyEventTick = 0;
+
+	bool hasKeyDown = false;
+	uint8 keysDown[256] = { 0 };
+	::GetKeyboardState((PBYTE)&keysDown);	
+	for (int i = 0; i < 256; i++)
+		if (keysDown[i] & 0x80)
+			hasKeyDown = true;
+	if (!hasKeyDown)
+		mAwaitKeyReleases = false;
+	return !mAwaitKeyReleases;
 }
 
 LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -876,6 +911,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				//NOTE: This line broke Alt+Gr for braces and such. Determine why this was needed.
 				//if ((!mIsKeyDown[VK_MENU]) && (!mIsKeyDown[VK_CONTROL]))
+				if (CheckKeyReleases(true))
 				{
 					for (int i = 0; i < (lParam & 0x7FFF); i++)
 						mKeyCharFunc(this, (WCHAR)wParam);
@@ -921,7 +957,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				if (!mIsMenuKeyHandled)
 				{
-					if (mKeyDownFunc(this, keyCode, (lParam & 0x7FFF) != 0))
+					if ((CheckKeyReleases(true)) && (mKeyDownFunc(this, keyCode, (lParam & 0x7FFF) != 0)))
 					{
 						mIsMenuKeyHandled = true;
 						doResult = true;				
@@ -940,8 +976,9 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 						(aMenu->mKeyShift == mIsKeyDown[VK_SHIFT]) &&
 						(aMenu->mKeyCtrl == mIsKeyDown[VK_CONTROL]) &&
 						(aMenu->mKeyAlt == mIsKeyDown[VK_MENU]))
-					{						
-						doResult = true;			
+					{			
+						if (CheckKeyReleases(true))
+							doResult = true;			
 						break;
 					}					
 				}
@@ -965,6 +1002,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					mKeyUpFunc(this, keyCode);
 					mIsKeyDown[keyCode] = false;
 				}
+				CheckKeyReleases(false);
 			}
 			break;			
 		case WM_SYSCOMMAND:
@@ -1000,7 +1038,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				if ((!isFocused) && (mHasFocus))
 				{
 					mSoftHasFocus = false;
-					mHasFocus = false;
+					mHasFocus = false;					
 					LostFocus(NULL);
 					mLostFocusFunc(this);
 					//OutputDebugStrF("Timer detected lost focus %p\r\n", hWnd);
