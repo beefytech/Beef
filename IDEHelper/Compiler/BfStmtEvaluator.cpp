@@ -4343,6 +4343,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	mBfIRBuilder->SetInsertPoint(noSwitchBlock);
 
 	bool isPayloadEnum = switchValue.mType->IsPayloadEnum();
+	bool isTuple = switchValue.mType->IsTuple();
 	bool isIntegralSwitch = switchValue.mType->IsIntegral() || (intCoercibleType != NULL) || ((switchValue.mType->IsEnum()) && (!isPayloadEnum));
 
 	auto _ShowCaseError = [&] (int64 id, BfAstNode* errNode)
@@ -4433,6 +4434,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			}
 		}
 
+		bool wantsOpenedScope = isPayloadEnum || isTuple;
+
 		BfIRBlock lastNotEqBlock;
 		for (BfExpression* caseExpr : switchCase->mCaseExpressions)
 		{
@@ -4441,7 +4444,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			if (auto checkWhenExpr = BfNodeDynCast<BfWhenExpression>(caseExpr))
 				continue;
 
-			if ((!openedScope) && (isPayloadEnum))
+			if ((!openedScope) && (wantsOpenedScope))
 			{					
 				openedScope = true;
 
