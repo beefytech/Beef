@@ -9375,7 +9375,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				if (selfType != NULL)
 				{
 					auto selfTypeInst = selfType->ToTypeInstance();
-					if ((selfTypeInst != NULL) && (selfTypeInst->mTypeDef->IsGlobalsContainer()))
+					if ((selfTypeInst != NULL) && (selfTypeInst->mTypeDef->IsGlobalsContainer()) && ((resolveFlags & BfResolveTypeRefFlag_AllowGlobalsSelf) == 0))
 						selfType = NULL;
 				}
 

@@ -10264,7 +10264,7 @@ void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)
 	}
 	else
 	{
-		type = ResolveTypeRef(typeOfExpr->mTypeRef, BfPopulateType_Identity);
+		type = ResolveTypeRef(typeOfExpr->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGlobalsSelf);
 	}
 	
 	if (type == NULL)
