@@ -4034,6 +4034,19 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 			}
 
+			if ((typeInstance->mTypeDef->IsEmitted()) && (typeInstance->mCeTypeInfo == NULL))
+			{
+				BF_ASSERT(mCompiler->mCanceling);
+				if (mCompiler->mCanceling)
+				{
+					TypeFailed(typeInstance);
+					auto prevTypeDef = typeInstance->mTypeDef->mEmitParent;
+					delete typeInstance->mTypeDef;
+					typeInstance->mTypeDef = prevTypeDef;
+					hadNewMembers = false;
+				}
+			}
+
 			if (hadNewMembers)
 			{
 				DoPopulateType(resolvedTypeRef, populateType);
