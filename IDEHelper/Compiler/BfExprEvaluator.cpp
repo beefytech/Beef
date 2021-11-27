@@ -8940,13 +8940,14 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		{
 			BfType* retType = mModule->GetPrimitiveType(BfTypeCode_Var);
 
-			if ((!methodMatcher.mHadVarConflictingReturnType) && (methodMatcher.mBestRawMethodInstance != NULL) && (!methodMatcher.mBestRawMethodInstance->mReturnType->IsUnspecializedTypeVariation()))
+			if ((!methodMatcher.mHadVarConflictingReturnType) && (methodMatcher.mBestRawMethodInstance != NULL) && (!methodMatcher.mBestRawMethodInstance->mReturnType->IsUnspecializedTypeVariation()) &&
+				(prevBindResult.mPrevVal == NULL))
 			{
 				if ((!methodMatcher.mBestRawMethodInstance->mReturnType->IsGenericParam()) ||
 					(((BfGenericParamType*)methodMatcher.mBestRawMethodInstance->mReturnType)->mGenericParamKind != BfGenericParamKind_Method))
 					retType = methodMatcher.mBestRawMethodInstance->mReturnType;
 			}
-						
+
 			return mModule->GetDefaultTypedValue(retType, true, BfDefaultValueKind_Addr);
 		}
 	}
