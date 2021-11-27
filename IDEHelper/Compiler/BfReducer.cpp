@@ -9103,6 +9103,16 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 			{
 				if ((token != BfToken_In) && (token != BfToken_Out) && (token != BfToken_Ref) && (token != BfToken_Mut) && (token != BfToken_Params) && (token != BfToken_ReadOnly))
 				{
+					if (attributes != NULL)
+					{
+						auto paramDecl = mAlloc->Alloc<BfParameterDeclaration>();
+						ReplaceNode(attributes, paramDecl);
+						MoveNode(paramDecl, node);
+						params->push_back(paramDecl);
+						MEMBER_SET(paramDecl, mAttributes, attributes);
+						attributes = NULL;
+					}
+
 					Fail("Invalid token", tokenNode);
 					return NULL;
 				}

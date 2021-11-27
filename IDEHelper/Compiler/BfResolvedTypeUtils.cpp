@@ -3474,7 +3474,8 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				}
 			}
 			
-			hashVal = ((hashVal ^ (Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed))) << 5) - hashVal;
+			if (fieldType != NULL)
+				hashVal = ((hashVal ^ (Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed))) << 5) - hashVal;
 			hashVal = ((hashVal ^ (HashNode(param->mNameNode))) << 5) - hashVal;
 			isFirstParam = true;
 		}
