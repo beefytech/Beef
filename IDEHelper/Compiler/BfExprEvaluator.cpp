@@ -18128,7 +18128,10 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 						mModule->AssertErrorState();
 						return;
 					}
-					convVal = mModule->CreateValueFromExpression(assignExpr->mRight, wantType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_PendingPropSet));
+					BfEvalExprFlags exprFlags = (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_PendingPropSet);
+					if (wantType->IsRef())
+						exprFlags = (BfEvalExprFlags)(exprFlags | BfEvalExprFlags_AllowRefExpr);
+					convVal = mModule->CreateValueFromExpression(assignExpr->mRight, wantType, exprFlags);
 				}
 				if (!convVal)
 				{

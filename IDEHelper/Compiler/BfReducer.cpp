@@ -6392,6 +6392,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 
 		String accessorName;
 		BfTokenNode* mutSpecifier = NULL;
+		BfTokenNode* refSpecifier = NULL;
 
 		while (true)
 		{
@@ -6459,8 +6460,18 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 		BfAstNode* bodyAfterNode = accessorIdentifier;
 
 		BfAstNode* body = NULL;
-
+		
 		auto tokenNode = BfNodeDynCast<BfTokenNode>(child);
+		if ((tokenNode != NULL) && (tokenNode->GetToken() == BfToken_Ref) && (accessorName == "set"))
+		{			
+			refSpecifier = tokenNode;
+			bodyAfterNode = tokenNode;
+
+			mVisitorPos.MoveNext();
+			child = mVisitorPos.GetNext();
+			tokenNode = BfNodeDynCast<BfTokenNode>(child);
+		}
+
 		if ((tokenNode != NULL) && (tokenNode->GetToken() == BfToken_Mut))
 		{
 			if (mutSpecifier != NULL)
@@ -6472,8 +6483,8 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 
 			mVisitorPos.MoveNext();
 			child = mVisitorPos.GetNext();
-		}
-
+		}		
+		
 		bool handled = false;
 		BfTokenNode* fatArrowToken = NULL;
 		BfAstNode* endSemicolon = NULL;
@@ -6543,6 +6554,8 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 				AddErrorNode(accessorIdentifier);
 			if (mutSpecifier != NULL)
 				AddErrorNode(mutSpecifier);
+			if (refSpecifier != NULL)
+				AddErrorNode(refSpecifier);
 			continue;
 		}
 
@@ -6561,6 +6574,8 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 		{
 			MEMBER_SET(method, mBody, body);
 		}
+		if (refSpecifier != NULL)
+			MEMBER_SET(method, mSetRefSpecifier, refSpecifier);
 		if (mutSpecifier != NULL)
 			MEMBER_SET(method, mMutSpecifier, mutSpecifier);
 		// 		if ((accessorBlock != NULL) && (IsNodeRelevant(propertyDeclaration)))

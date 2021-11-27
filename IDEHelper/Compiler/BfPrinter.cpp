@@ -2545,6 +2545,8 @@ void BfPrinter::Visit(BfPropertyMethodDeclaration* propertyMethodDeclaration)
 	ExpectSpace();		
 	QueueVisitChild(propertyMethodDeclaration->mNameNode);
 	ExpectSpace();
+	QueueVisitChild(propertyMethodDeclaration->mSetRefSpecifier);
+	ExpectSpace();
 	QueueVisitChild(propertyMethodDeclaration->mMutSpecifier);
 	ExpectSpace();
 	QueueVisitChild(propertyMethodDeclaration->mFatArrowToken);

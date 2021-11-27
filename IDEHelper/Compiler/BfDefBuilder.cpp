@@ -1078,12 +1078,19 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 			if (BfNodeDynCast<BfTokenNode>(methodDeclaration->mBody) != NULL)
 				methodDef->mIsMutating = true; // Don't require "set mut;", just "set;"
 			
-			auto paramDef = new BfParameterDef();					
+			auto paramDef = new BfParameterDef();
 			paramDef->mName = "value";
-			if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(propertyDeclaration->mTypeRef))		
-			 	paramDef->mTypeRef = refTypeRef->mElementType;		
+			paramDef->mTypeRef = propertyDeclaration->mTypeRef;
+			if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(propertyDeclaration->mTypeRef))
+			{
+				if (methodDeclaration->mSetRefSpecifier == NULL)
+					paramDef->mTypeRef = refTypeRef->mElementType;
+			}
 			else
-			 	paramDef->mTypeRef = propertyDeclaration->mTypeRef;
+			{
+				if (methodDeclaration->mSetRefSpecifier != NULL)
+					Fail("Property setter 'ref' can only be used with a 'ref' property type", methodDeclaration->mSetRefSpecifier);
+			}
 			methodDef->mParams.Insert(0, paramDef);					
 			propertyDef->mMethods.Add(methodDef);
 		}

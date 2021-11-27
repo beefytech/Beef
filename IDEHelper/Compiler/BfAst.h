@@ -3099,6 +3099,7 @@ public:
 	BfPropertyDeclaration* mPropertyDeclaration;
 	BfAttributeDirective* mAttributes;
 	BfAstNode* mProtectionSpecifier;
+	BfTokenNode* mSetRefSpecifier;
 	BfTokenNode* mMutSpecifier;	
 	BfIdentifierNode* mNameNode;
 	BfTokenNode* mFatArrowToken;
