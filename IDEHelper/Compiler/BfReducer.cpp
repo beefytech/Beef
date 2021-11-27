@@ -6973,6 +6973,20 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 
 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 				{
+					if (tokenNode->mToken == BfToken_AssignEquals)
+					{
+						MEMBER_SET(propertyDeclaration, mEqualsNode, tokenNode);
+						mVisitorPos.MoveNext();
+						auto initExpr = CreateExpressionAfter(propertyDeclaration);
+						if (initExpr != NULL)
+						{
+							MEMBER_SET(propertyDeclaration, mInitializer, initExpr);
+						}
+					}
+				}
+
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+				{
 					if (tokenNode->mToken == BfToken_Tilde)
 					{
 						auto fieldDtor = CreateFieldDtorDeclaration(propertyDeclaration);

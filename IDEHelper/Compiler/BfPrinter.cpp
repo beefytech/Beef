@@ -2586,8 +2586,8 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	
 	if (indexerDeclaration != NULL)
 	{
-		QueueVisitChild(indexerDeclaration->mThisToken);		
-		QueueVisitChild(indexerDeclaration->mOpenBracket);		
+		QueueVisitChild(indexerDeclaration->mThisToken);
+		QueueVisitChild(indexerDeclaration->mOpenBracket);
 		for (int i = 0; i < (int)indexerDeclaration->mParams.size(); i++)
 		{
 			if (i > 0)
@@ -2599,12 +2599,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 		}
 		QueueVisitChild(indexerDeclaration->mCloseBracket);
 		ExpectSpace();
-	}	
-
-	QueueVisitChild(propertyDeclaration->mEqualsNode);
-	ExpectSpace();
-	QueueVisitChild(propertyDeclaration->mInitializer);
-	FlushVisitChild();
+	}
 
 	if (auto block = BfNodeDynCast<BfBlock>(propertyDeclaration->mDefinitionBlock))
 	{
@@ -2627,6 +2622,12 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 			QueueVisitChild(method->mBody);
 		}
 	}
+
+	ExpectSpace();
+	QueueVisitChild(propertyDeclaration->mEqualsNode);
+	ExpectSpace();
+	QueueVisitChild(propertyDeclaration->mInitializer);
+	FlushVisitChild();
 
 	//QueueVisitChild(propertyDeclaration->mTrailingSemicolon);
 

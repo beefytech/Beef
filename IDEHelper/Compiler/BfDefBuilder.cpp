@@ -962,12 +962,21 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 			fieldDef->mTypeRef = refTypeRef->mElementType;
 		fieldDef->mName = mCurTypeDef->GetAutoPropertyName(propertyDeclaration);		
 		fieldDef->mIdx = (int)mCurTypeDef->mFields.size();
+		fieldDef->mInitializer = propertyDeclaration->mInitializer;
 		mCurTypeDef->mFields.push_back(fieldDef);
 
 		mCurTypeDef->mSignatureHash = HashString(fieldDef->mName, mCurTypeDef->mSignatureHash);
 	}
 	else
 	{
+		if (propertyDeclaration->mInitializer != NULL)
+		{
+			if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
+				Fail("Interface properties cannot have initializers", propertyDeclaration->mInitializer);
+			else
+				Fail("Properties with method bodies cannot have initializers", propertyDeclaration->mInitializer);
+		}
+
 		if (propertyDeclaration->mFieldDtor != NULL)
 		{
 			if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
