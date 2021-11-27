@@ -4151,6 +4151,8 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 					}
 				}
 			}
+			else if (afterTypeRefNode == NULL)
+				isLocalVariable = false;
 		}
 	}
 
