@@ -870,6 +870,7 @@ public:
 	bool HasBody();
 	bool IsEmptyPartial();	
 	bool IsDefaultCtor();
+	bool IsCtorOrInit();
 	String ToString();		
 	int GetExplicitParamCount();
 };

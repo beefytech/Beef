@@ -526,6 +526,11 @@ bool BfMethodDef::IsDefaultCtor()
 	return ((mMethodType == BfMethodType_Ctor) || (mMethodType == BfMethodType_CtorNoBody)) && (mParams.IsEmpty());
 }
 
+bool BfMethodDef::IsCtorOrInit()
+{
+	return (mMethodType >= BfMethodType_CtorCalcAppend) && (mMethodType <= BfMethodType_Init);
+}
+
 String BfMethodDef::ToString()
 {	
 	String methodText;	

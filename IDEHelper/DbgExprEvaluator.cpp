@@ -5276,7 +5276,10 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 				if (!memberType->IsStruct())
 					Fail("Failed to lookup splat member", (lookupNode != NULL) ? lookupNode : targetNode);
 
- 				BF_ASSERT((target.mVariable != NULL) || (target.mType->GetByteCount() == 0));
+				if ((target.mVariable == NULL) && (target.mType->GetByteCount() != 0))
+					Fail("Splat variable not found", (lookupNode != NULL) ? lookupNode : targetNode);
+
+ 				//BF_ASSERT((target.mVariable != NULL) || (target.mType->GetByteCount() == 0));
  				mResult = target;
  				mResult.mType = memberType;
  			}						

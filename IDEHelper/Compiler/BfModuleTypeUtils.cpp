@@ -2019,6 +2019,24 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, const Strin
 		emitTypeDef->mSource = emitParser;
 		emitParser->mRefCount++;
 		emitParser->SetSource(src.c_str(), src.mLength);
+
+		// If we emit only from method attributes then we will already have method instances created
+		auto _FixMethod = [&](BfMethodInstance* methodInstance)
+		{
+			if (methodInstance == NULL)
+				return;
+			methodInstance->mMethodDef = emitTypeDef->mMethods[methodInstance->mMethodDef->mIdx];				
+		};
+
+		for (auto& methodInstanceGroup : typeInstance->mMethodInstanceGroups)
+		{
+			_FixMethod(methodInstanceGroup.mDefault);
+			if (methodInstanceGroup.mMethodSpecializationMap != NULL)
+			{
+				for (auto& kv : *methodInstanceGroup.mMethodSpecializationMap)
+					_FixMethod(kv.mValue);
+			}
+		};
 	}
 	else
 	{		
@@ -2830,6 +2848,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if (!typeDef->mInternalAccessSet.IsEmpty())
 			{
 				BfInternalAccessSet* internalAccessSet;
+				BF_ASSERT(!typeDef->IsEmitted());
 				if (typeInstance->mInternalAccessMap.TryAdd(typeDef, NULL, &internalAccessSet))
 				{
 					for (auto typeRef : typeDef->mInternalAccessSet)
@@ -3973,6 +3992,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					mCompiler->mCEMachine->mCurContext->Fail(*mCompiler->mCEMachine->mCurContext->mCurFrame, error);
 				else if (mCompiler->mCEMachine->mCurContext != NULL)
 					mCompiler->mCEMachine->mCurContext->Fail(error);
+				tryCE = false;
 			}
  		}
  		
@@ -8674,15 +8694,15 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 	if (typeInstance != NULL)
 		useTypeDef = typeInstance->mTypeDef->GetDefinition();
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && (useMixinDecl))
-		useTypeDef = mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType;
+		useTypeDef = mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->GetDefinition();
 	else if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mDeclaringType != NULL))
-		useTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
+		useTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType->GetDefinition();
 	else if (mContext->mCurTypeState != NULL)
 	{
 		if ((mContext->mCurTypeState->mCurFieldDef != NULL) && (mContext->mCurTypeState->mCurFieldDef->mDeclaringType != NULL))
-			useTypeDef = mContext->mCurTypeState->mCurFieldDef->mDeclaringType;
+			useTypeDef = mContext->mCurTypeState->mCurFieldDef->mDeclaringType->GetDefinition();
 		else if (mContext->mCurTypeState->mCurTypeDef != NULL)
-			useTypeDef = mContext->mCurTypeState->mCurTypeDef;
+			useTypeDef = mContext->mCurTypeState->mCurTypeDef->GetDefinition();
 	}
 	return useTypeDef;
 }

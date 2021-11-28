@@ -4608,7 +4608,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				{
 					mModule->CheckStaticAccess(curCheckType);
 					auto retVal = mModule->ReferenceStaticField(fieldInstance);						
-					bool isStaticCtor = (mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor) &&
+					bool isStaticCtor = (mModule->mCurMethodInstance != NULL) && 
+						(mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) &&
 						(mModule->mCurMethodInstance->mMethodDef->mIsStatic);
 					if ((field->mIsReadOnly) && (!isStaticCtor))
 					{
@@ -4652,7 +4653,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				bool isTemporary = target.IsTempAddr();
 				bool wantsLoadValue = false;
 				bool wantsReadOnly = false;
-				if ((field->mIsReadOnly) && (mModule->mCurMethodInstance != NULL) && ((mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Ctor) || (!target.IsThis())))
+				if ((field->mIsReadOnly) && (mModule->mCurMethodInstance != NULL) && ((!mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) || (!target.IsThis())))
 					wantsReadOnly = true;
 										
 				bool isComposite = target.mType->IsComposite();
