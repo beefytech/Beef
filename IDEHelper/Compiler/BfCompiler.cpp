@@ -4579,7 +4579,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 		}
 	}
 		
-	if ((mResolvePassData->mAutoComplete->mDefType == actualTypeDef) && (mResolvePassData->mAutoComplete->mDefMethod != NULL))
+	if ((mResolvePassData->mAutoComplete->mDefType != NULL) && (mResolvePassData->mAutoComplete->mDefType->GetDefinition() == actualTypeDef) && 
+		(mResolvePassData->mAutoComplete->mDefMethod != NULL))
 	{		
 		BfMethodDef* tempDefMethod = NULL;
 		for (auto checkMethod : tempTypeDef->mMethods)
@@ -4672,7 +4673,7 @@ void BfCompiler::AddToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeIn
 	if (mResolvePassData->mParser != NULL)
 	{
 		// Only find references within the current file
-		if (!typeInst->mTypeDef->HasSource(mResolvePassData->mParser))
+		if (!typeInst->mTypeDef->GetDefinition()->HasSource(mResolvePassData->mParser))
 			return;
 	}
 

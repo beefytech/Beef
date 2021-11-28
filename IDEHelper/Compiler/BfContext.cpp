@@ -519,7 +519,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				auto owner = methodInstance->mMethodInstanceGroup->mOwner;
 
 				BF_ASSERT(!module->mAwaitingFinish);
-				if ((resolveParser != NULL) && (methodInstance->mMethodDef->mDeclaringType != NULL) && (methodInstance->mMethodDef->mDeclaringType->mSource != resolveParser))
+				if ((resolveParser != NULL) && (methodInstance->mMethodDef->mDeclaringType != NULL) && (methodInstance->mMethodDef->mDeclaringType->GetDefinition()->mSource != resolveParser))
 				{					
 					continue;
 				}
