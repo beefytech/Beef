@@ -507,6 +507,7 @@ public:
 	BfParameterDeclaration* mParamDeclaration;
 	int mMethodGenericParamIdx;
 	BfParamKind mParamKind;
+	uint8 mNamePrefixCount; // Number of @'s
 
 public:
 	BfParameterDef()
@@ -515,7 +516,9 @@ public:
 		mMethodGenericParamIdx = -1;
 		mParamKind = BfParamKind_Normal;
 		mParamDeclaration = NULL;		
+		mNamePrefixCount = 0;
 	}
+	void SetName(BfAstNode* nameNode);
 };
 
 class BfMemberDef
@@ -528,6 +531,7 @@ public:
 #endif
 	BfTypeDef* mDeclaringType;
 	BfProtection mProtection;
+	uint8 mNamePrefixCount; // Number of @'s
 	bool mIsStatic;
 	bool mIsNoShow;
 	bool mIsReadOnly;
@@ -538,6 +542,7 @@ public:
 	{
 		mDeclaringType = NULL;
 		mProtection = BfProtection_Public;
+		mNamePrefixCount = 0;
 		mIsStatic = false;
 		mIsNoShow = false;
 		mIsReadOnly = false;
@@ -547,6 +552,8 @@ public:
 	virtual ~BfMemberDef()
 	{
 	}
+
+	void SetName(BfAstNode* nameNode);
 };
 
 class BfFieldDef : public BfMemberDef

@@ -3852,6 +3852,9 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			{
 				auto varDecl = entry->mLocalVar;
 
+				if (varDecl != NULL)
+					varSkipCount -= varDecl->mNamePrefixCount;
+					
 				while ((varSkipCount > 0) && (varDecl != NULL))
 				{
 					varDecl = varDecl->mShadowedLocal;
@@ -4347,9 +4350,13 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			if (curCheckType->mTypeDef->mFieldSet.TryGetWith(findName, &entry))
 				nextField = (BfFieldDef*)entry->mMemberDef;
 
+			if (nextField != NULL)
+				varSkipCount -= nextField->mNamePrefixCount;
+
 			while ((varSkipCount > 0) && (nextField != NULL))
 			{
 				nextField = nextField->mNextWithSameName;
+				varSkipCount--;
 			}
 
 			BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;

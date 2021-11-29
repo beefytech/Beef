@@ -161,6 +161,7 @@ public:
 	int mWrittenToId;
 	int mReadFromId;
 	int mParamIdx;
+	uint8 mNamePrefixCount;
 	bool mIsThis;
 	bool mHasLocalStructBacking;
 	bool mIsStruct;	
@@ -187,6 +188,7 @@ public:
 		mLocalVarId = -1;
 		mCompositeCount = -1;
 		mParamIdx = -2;
+		mNamePrefixCount = 0;
 		mIsThis = false;
 		mHasLocalStructBacking = false;
 		mIsStruct = false;

@@ -946,7 +946,7 @@ int BfMethodInstance::GetImplicitParamCount()
 	return 0;
 }
 
-void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name)
+void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name, int& namePrefixCount)
 {
 	if (paramIdx == -1)
 	{
@@ -972,16 +972,25 @@ void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name)
 		if (methodParam->mDelegateParamNameCombine)
 			name = paramDef->mName + "__" + invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
 		else
-			invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx, name);
+			invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx, name, namePrefixCount);
 		return;
 	}
 	name = paramDef->mName;
+	namePrefixCount = paramDef->mNamePrefixCount;
 }
 
 String BfMethodInstance::GetParamName(int paramIdx)
+{	
+	String paramName;
+	int namePrefixCount = 0;
+	GetParamName(paramIdx, paramName, namePrefixCount);
+	return paramName;
+}
+
+String BfMethodInstance::GetParamName(int paramIdx, int& namePrefixCount)
 {
 	String paramName;
-	GetParamName(paramIdx, paramName);
+	GetParamName(paramIdx, paramName, namePrefixCount);
 	return paramName;
 }
 

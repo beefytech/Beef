@@ -15,10 +15,12 @@ public:
 	const char* mEntryType;
 	const char* mDisplay;
 	const char* mDocumentation;
+	int8 mNamePrefixCount;
 
 public:
 	AutoCompleteEntry()
 	{
+		mNamePrefixCount = 0;
 	}
 
 	AutoCompleteEntry(const char* entryType, const char* display)
@@ -26,6 +28,7 @@ public:
 		mEntryType = entryType;
 		mDisplay = display;
 		mDocumentation = NULL;
+		mNamePrefixCount = 0;
 	}
 
 	AutoCompleteEntry(const char* entryType, const StringImpl& display)
@@ -33,6 +36,15 @@ public:
 		mEntryType = entryType;
 		mDisplay = display.c_str();
 		mDocumentation = NULL;
+		mNamePrefixCount = 0;
+	}
+
+	AutoCompleteEntry(const char* entryType, const StringImpl& display, int namePrefixCount)
+	{
+		mEntryType = entryType;
+		mDisplay = display.c_str();
+		mDocumentation = NULL;
+		mNamePrefixCount = (int8)namePrefixCount;
 	}
 	
 	bool operator==(const AutoCompleteEntry& other) const
@@ -88,8 +100,9 @@ public:
 	int mInsertStartIdx;
 	int mInsertEndIdx;
 
-	bool DoesFilterMatch(const char* entry, const char* filter);	
+	bool DoesFilterMatch(const char* entry, const char* filter);		
 	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter);	
+	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry, const char* filter);
 	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry);
 
 	AutoCompleteBase();

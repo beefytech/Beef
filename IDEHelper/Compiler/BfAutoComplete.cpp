@@ -27,8 +27,15 @@ AutoCompleteBase::~AutoCompleteBase()
 
 AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter)
 {
-	if (!DoesFilterMatch(entry.mDisplay, filter.c_str()))
-		return NULL;		
+	if ((!DoesFilterMatch(entry.mDisplay, filter.c_str())) || (entry.mNamePrefixCount < 0))
+		return NULL;
+	return AddEntry(entry);
+}
+
+AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const char* filter)
+{
+	if ((!DoesFilterMatch(entry.mDisplay, filter)) || (entry.mNamePrefixCount < 0))
+		return NULL;
 	return AddEntry(entry);
 }
 
@@ -44,9 +51,10 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
 	{
 		insertedEntry->mEntryType = entry.mEntryType;
 
-		int size = (int)strlen(entry.mDisplay) + 1;
+		const char* display = entry.mDisplay;		
+		int size = (int)strlen(display) + 1;
 		insertedEntry->mDisplay = (char*)mAlloc.AllocBytes(size);
-		memcpy((char*)insertedEntry->mDisplay, entry.mDisplay, size);		
+		memcpy((char*)insertedEntry->mDisplay, display, size);
 	}
 
 	return insertedEntry;
@@ -455,8 +463,15 @@ bool BfAutoComplete::IsAttribute(BfTypeInstance* typeInst)
 
 void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef, BfMethodInstance* methodInstance, BfMethodDeclaration* methodDecl, const StringImpl& methodName, const StringImpl& filter)
 {
+	int wantPrefixCount = 0;
+	const char* filterStr = filter.c_str();
+	while (filterStr[0] == '@')
+	{
+		filterStr++;
+		wantPrefixCount++;
+	}	
 	String replaceName;
-	AutoCompleteEntry entry("method", methodName);
+	AutoCompleteEntry entry("method", methodName, methodDef->mNamePrefixCount - wantPrefixCount);
 	if (methodDecl != NULL)
 	{
 		if (methodDecl->mMixinSpecifier != NULL)
@@ -470,7 +485,7 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 	if (methodDef->mMethodType == BfMethodType_Extension)
 		entry.mEntryType = "extmethod";
 
-	if (auto entryAdded = AddEntry(entry, filter))
+	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
 		if (methodDecl != NULL)
 		{			
@@ -654,8 +669,15 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 
 void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, BfFieldInstance* fieldInstance, const StringImpl& filter)
 {	
-	AutoCompleteEntry entry(GetTypeName(fieldInstance->mResolvedType), fieldDef->mName);
-	if (auto entryAdded = AddEntry(entry, filter))
+	int wantPrefixCount = 0;
+	const char* filterStr = filter.c_str();
+	while (filterStr[0] == '@')
+	{
+		filterStr++;
+		wantPrefixCount++;
+	}	
+	AutoCompleteEntry entry(GetTypeName(fieldInstance->mResolvedType), fieldDef->mName, fieldDef->mNamePrefixCount - wantPrefixCount);
+	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
 		auto documentation = (fieldDef->mFieldDeclaration != NULL) ? fieldDef->mFieldDeclaration->mDocumentation : NULL;
 		if (CheckDocumentation(entryAdded, documentation))
@@ -693,11 +715,18 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 
 void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, const StringImpl& filter)
 {
+	int wantPrefixCount = 0;
+	const char* filterStr = filter.c_str();
+	while (filterStr[0] == '@')
+	{
+		filterStr++;
+		wantPrefixCount++;
+	}	
 	BfCommentNode* documentation = NULL;
 	if (propDef->mFieldDeclaration != NULL)
 		documentation = propDef->mFieldDeclaration->mDocumentation;
-	AutoCompleteEntry entry("property", propDef->mName);
-	if (auto entryAdded = AddEntry(entry, filter))
+	AutoCompleteEntry entry("property", propDef->mName, propDef->mNamePrefixCount - wantPrefixCount);
+	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
 		if (CheckDocumentation(entryAdded, documentation))
 		{
@@ -1508,9 +1537,9 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 							(*findIdx)++;
 						}
 
-						if (*findIdx == varSkipCount)
+						if (varSkipCount - local->mNamePrefixCount - *findIdx == 0)
 						{
-							if ((AddEntry(AutoCompleteEntry(GetTypeName(local->mResolvedType), local->mName), wantName)) && (mIsGetDefinition))
+							if ((AddEntry(AutoCompleteEntry(GetTypeName(local->mResolvedType), local->mName, varSkipCount - local->mNamePrefixCount - *findIdx), wantName)) && (mIsGetDefinition))
 							{
 							}
 						}
@@ -1628,8 +1657,16 @@ String BfAutoComplete::GetFilter(BfAstNode* node)
 		auto bfParser = node->GetSourceData()->ToParser();
 		int cursorIdx = bfParser->mCursorIdx;
 		filter = filter.Substring(0, BF_CLAMP(cursorIdx - node->GetSrcStart(), 0, (int)filter.length()));
-		mInsertEndIdx = cursorIdx;
+		mInsertEndIdx = cursorIdx;	
 	}
+
+	const char* cPtr = filter.c_str();
+	while (cPtr[0] == '@')
+	{
+		mInsertStartIdx++;
+		cPtr++;		
+	}
+
 	return filter;
 }
 

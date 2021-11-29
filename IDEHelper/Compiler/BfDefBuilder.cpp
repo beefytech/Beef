@@ -566,13 +566,13 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	else if (methodDeclaration->mMixinSpecifier != NULL)
 	{
 		if (methodDeclaration->mNameNode != NULL)
-			methodDef->mName = methodDeclaration->mNameNode->ToString();
+			methodDef->SetName(methodDeclaration->mNameNode);
 		methodDef->mMethodType = BfMethodType_Mixin;		
 	}
 	else
 	{
 		if (methodDeclaration->mNameNode != NULL)
-			methodDef->mName = methodDeclaration->mNameNode->ToString();		
+			methodDef->SetName(methodDeclaration->mNameNode);
 		methodDef->mMethodType = BfMethodType_Normal;
 
 		if ((methodDeclaration->mThisToken != NULL) && (!methodDeclaration->mParams.IsEmpty()))
@@ -622,7 +622,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		auto paramDef = new BfParameterDef();
 		paramDef->mParamDeclaration = paramDecl;
 		if (paramDecl->mNameNode != NULL)
-			paramDef->mName = paramDecl->mNameNode->ToString();
+			paramDef->SetName(paramDecl->mNameNode);
 		paramDef->mTypeRef = paramDecl->mTypeRef;
 		paramDef->mMethodGenericParamIdx = mSystem->GetGenericParamIdx(methodDef->mGenericParams, paramDef->mTypeRef);
 		if (paramDecl->mModToken == NULL)
@@ -703,6 +703,11 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		{
 			auto fieldDef = new BfFieldDef();
 			fieldDef->mName = paramDef->mName;
+			while (fieldDef->mName.StartsWith("@"))
+			{
+				fieldDef->mNamePrefixCount++;
+				fieldDef->mName.Remove(0);
+			}
 			fieldDef->mTypeRef = paramDef->mTypeRef;
 			fieldDef->mProtection = BfProtection_Public;
 			BF_ASSERT(mCurDeclaringTypeDef != NULL);
@@ -918,7 +923,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 	propertyDef->mIsStatic = propertyDeclaration->mStaticSpecifier != NULL;
 	propertyDef->mIsReadOnly = propertyDeclaration->mReadOnlySpecifier != NULL;
 	if (propertyDeclaration->mNameNode != NULL)
-		propertyDef->mName = propertyDeclaration->mNameNode->ToString();
+		propertyDef->SetName(propertyDeclaration->mNameNode);
 	else if (propertyDeclaration->IsA<BfIndexerDeclaration>())
 	{		
 		propertyDef->mName = "[]";
@@ -965,7 +970,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 		fieldDef->mInitializer = propertyDeclaration->mInitializer;
 		mCurTypeDef->mFields.push_back(fieldDef);
 
-		mCurTypeDef->mSignatureHash = HashString(fieldDef->mName, mCurTypeDef->mSignatureHash);
+		mCurTypeDef->mSignatureHash = HashString(fieldDef->mName, mCurTypeDef->mSignatureHash + fieldDef->mNamePrefixCount);
 	}
 	else
 	{
@@ -1046,7 +1051,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 				auto paramDef = new BfParameterDef();
 				BfParameterDeclaration* paramDecl = indexerDeclaration->mParams[paramIdx];
 				paramDef->mParamDeclaration = paramDecl;
-				paramDef->mName = paramDecl->mNameNode->ToString();
+				paramDef->SetName(paramDecl->mNameNode);
 				paramDef->mTypeRef = paramDecl->mTypeRef;
 				paramDef->mMethodGenericParamIdx = mSystem->GetGenericParamIdx(methodDef->mGenericParams, paramDef->mTypeRef);
 				if (paramDecl->mModToken == NULL)
@@ -1133,7 +1138,7 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 	BF_ASSERT(mCurDeclaringTypeDef != NULL);
 	fieldDef->mDeclaringType = mCurDeclaringTypeDef;
 	if (fieldDeclaration->mNameNode != NULL)
-		fieldDef->mName = fieldDeclaration->mNameNode->ToString();
+		fieldDef->SetName(fieldDeclaration->mNameNode);
 	fieldDef->mProtection = GetProtection(fieldDeclaration->mProtectionSpecifier);	
 	if (isEnumEntryDecl)
 		fieldDef->mProtection = BfProtection_Public;	
@@ -2012,6 +2017,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					{
 						BfParameterDef* newParam = new BfParameterDef();
 						newParam->mName = param->mName;
+						newParam->mNamePrefixCount = param->mNamePrefixCount;
 						newParam->mTypeRef = param->mTypeRef;
 						newParam->mMethodGenericParamIdx = param->mMethodGenericParamIdx;
 						methodDef->mParams.push_back(newParam);

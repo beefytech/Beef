@@ -17695,7 +17695,9 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		prevIgnoreErrors.Restore();
 		PopulateType(resolvedType, BfPopulateType_Declaration);
 		paramVar->mResolvedType = resolvedType;
-		paramVar->mName = methodInstance->GetParamName(paramIdx);
+		int namePrefixCount = 0;
+		paramVar->mName = methodInstance->GetParamName(paramIdx, namePrefixCount);
+		paramVar->mNamePrefixCount = (uint8)namePrefixCount;
 		paramVar->mNameNode = methodInstance->GetParamNameNode(paramIdx);
 		if (!isParamSkipped)
 		{
@@ -17818,6 +17820,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 				auto paramInst = &methodInstance->mParams[paramIdx];
 				auto paramDef = methodDef->mParams[paramInst->mParamDefIdx];
 				localVar->mName = paramDef->mName;
+				localVar->mNamePrefixCount = paramDef->mNamePrefixCount;
 				localVar->mResolvedType = ResolveTypeRef(paramDef->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
 				localVar->mCompositeCount = 0;
 				DoAddLocalVariable(localVar);

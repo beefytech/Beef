@@ -383,6 +383,30 @@ BfSizedAtomComposite::~BfSizedAtomComposite()
 
 //////////////////////////////////////////////////////////////////////////
 
+void BfMemberDef::SetName(BfAstNode* nameNode)
+{
+	StringView sv = nameNode->ToStringView();
+	while ((!sv.IsEmpty()) && (sv[0] == '@'))
+	{
+		sv.RemoveFromStart(1);
+		mNamePrefixCount++;
+	}
+	mName = sv;
+}
+
+void BfParameterDef::SetName(BfAstNode* nameNode)
+{
+	StringView sv = nameNode->ToStringView();
+	while ((!sv.IsEmpty()) && (sv[0] == '@'))
+	{
+		sv.RemoveFromStart(1);
+		mNamePrefixCount++;
+	}
+	mName = sv;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 bool BfPropertyDef::IsVirtual()
 {
 	if (((BfPropertyDeclaration*)mFieldDeclaration)->mVirtualSpecifier)
@@ -4484,3 +4508,5 @@ BF_EXPORT void BF_CALLTYPE BfSystem_Log(BfSystem* bfSystem, char* str)
 	BfLogSys(bfSystem, str);
 	BfLogSys(bfSystem, "\n");
 }
+
+

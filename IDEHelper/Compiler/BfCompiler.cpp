@@ -7959,10 +7959,13 @@ void BfCompiler::GenerateAutocompleteInfo()
 						}
 						else
 							methodText += bfModule->TypeToString(type, BfTypeNameFlag_ResolveGenericParamNames, genericMethodNameOverridesPtr);
-						methodInstance->GetParamName(paramIdx, paramName);
+						int namePrefixCount = 0;
+						methodInstance->GetParamName(paramIdx, paramName, namePrefixCount);
 						if (!paramName.IsEmpty())
 						{
 							methodText += " ";
+							for (int i = 0; i < namePrefixCount; i++)
+								methodText += "@";
 							methodText += paramName;
 						}
 
@@ -8013,16 +8016,18 @@ void BfCompiler::GenerateAutocompleteInfo()
 				continue;
 
 			autoCompleteResultString += String(entry->mEntryType);
-			autoCompleteResultString += "\t";
+			autoCompleteResultString += '\t';
+			for (int i = 0; i < entry->mNamePrefixCount; i++)
+				autoCompleteResultString += '@';
 			autoCompleteResultString += String(entry->mDisplay);
 
 			if (entry->mDocumentation != NULL)
-			{				
+			{
 				autoCompleteResultString += '\x03';
 				autoCompleteResultString += entry->mDocumentation;
 			}
 
-			autoCompleteResultString += "\n";
+			autoCompleteResultString += '\n';
 		}
 	}
 }
@@ -8043,9 +8048,9 @@ String BfCompiler::GetTypeDefList()
 			if (projectIds.TryAdd(curProject, NULL, &projectIdPtr))
 			{
 				*projectIdPtr = (int)projectIds.size() - 1;
-				result += "+";
+				result += '+';
 				result += curProject->mName;
-				result += "\n";
+				result += '\n';
 			}
 			else
 			{
@@ -8059,21 +8064,21 @@ String BfCompiler::GetTypeDefList()
 		{
 			if (typeDef->IsGlobalsContainer())
 			{
-				result += "g";
+				result += 'g';
 				if (!typeDef->mNamespace.IsEmpty())
 				{
 					typeDef->mNamespace.ToString(result);
-					result += ".";
+					result += '.';
 				}
 				result += ":static\n";
 				continue;
 			}
 			else if (typeDef->mTypeCode == BfTypeCode_Interface)
-				result += "i";
+				result += 'i';
 			else if (typeDef->mTypeCode == BfTypeCode_Object)
-				result += "c";
+				result += 'c';
 			else
-				result += "v";
+				result += 'v';
 			result += BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName) + "\n";
 		}
 	}

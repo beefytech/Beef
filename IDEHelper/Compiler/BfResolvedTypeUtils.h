@@ -946,8 +946,9 @@ public:
 	bool AllowsSplatting(int paramIdx);
 	int GetParamCount();
 	int GetImplicitParamCount();	
-	void GetParamName(int paramIdx, StringImpl& name);
-	String GetParamName(int paramIdx);	
+	void GetParamName(int paramIdx, StringImpl& name, int& namePrefixCount);
+	String GetParamName(int paramIdx);
+	String GetParamName(int paramIdx, int& namePrefixCount);
 	BfType* GetParamType(int paramIdx, bool returnUnderlyingParamsType = false);
 	bool GetParamIsSplat(int paramIdx);
 	BfParamKind GetParamKind(int paramIdx);

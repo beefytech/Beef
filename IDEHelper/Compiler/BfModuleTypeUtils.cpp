@@ -13058,8 +13058,10 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 
 					if (!explicitCast)
 					{
-						fromMethodInst->GetParamName(paramIdx, fromParamName);
-						toMethodInst->GetParamName(paramIdx, toParamName);
+						int fromNamePrefixCount = 0;
+						int toNamePrefixCount = 0;
+						fromMethodInst->GetParamName(paramIdx, fromParamName, fromNamePrefixCount);
+						toMethodInst->GetParamName(paramIdx, toParamName, toNamePrefixCount);
 						if ((!fromParamName.IsEmpty()) && (!toParamName.IsEmpty()))
 							nameMatches = fromParamName == toParamName;
 					}
