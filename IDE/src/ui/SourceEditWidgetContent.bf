@@ -2237,6 +2237,41 @@ namespace IDE.ui
 
 			return false;
 		}
+		
+		public void DeleteAllRight()
+		{
+			int startPos;
+			int endPos;
+			if (HasSelection())
+			{
+				mSelection.ValueRef.GetAsForwardSelect(out startPos, out endPos);
+			}
+			else
+			{
+				startPos = endPos = CursorTextPos;
+			}
+
+			int line;
+			int lineChar;
+			GetLineCharAtIdx(endPos, out line, out lineChar);
+
+			let lineText = scope String();
+			GetLineText(line, lineText);
+
+			endPos += lineText.Length - lineChar;
+
+			if (startPos == endPos)
+			{
+				return;
+			}
+
+			mSelection = EditSelection();
+			mSelection.ValueRef.mStartPos = (int32)startPos;
+			mSelection.ValueRef.mEndPos = (int32)endPos;
+			DeleteSelection();
+
+			CursorTextPos = startPos;
+		}
 
 		public void DuplicateLine()
 		{

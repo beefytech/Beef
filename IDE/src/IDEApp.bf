@@ -2409,6 +2409,12 @@ namespace IDE
 			//CloseWorkspace();
 			//FinishShowingNewWorkspace();
 		}
+		
+		[IDECommand]
+		void DeleteAllRight()
+		{
+			GetActiveSourceEditWidgetContent()?.DeleteAllRight();
+		}
 
 		[IDECommand]
 		void DuplicateLine()
