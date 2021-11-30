@@ -472,7 +472,7 @@ namespace Beefy.widgets
             return activeTab;
         }
 
-        public virtual TabButton AddTab(String label, float width, Widget content, bool ownsContent)
+        public virtual TabButton AddTab(String label, float width, Widget content, bool ownsContent, int insertIdx)
         {
             TabButton aTabButton = CreateTabButton();
             aTabButton.mTabbedView = this;
@@ -481,7 +481,7 @@ namespace Beefy.widgets
             aTabButton.mWantWidth = width;
             aTabButton.mHeight = mTabHeight;
             aTabButton.mContent = content;
-            AddTab(aTabButton, 0);            
+            AddTab(aTabButton, insertIdx);
             return aTabButton;
         }
 

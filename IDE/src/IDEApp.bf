@@ -5807,7 +5807,7 @@ namespace IDE
 
 		TabbedView.TabButton SetupTab(TabbedView tabView, String name, float width, Widget content, bool ownsContent) // 2
 		{
-			TabbedView.TabButton tabButton = tabView.AddTab(name, width, content, ownsContent);
+			TabbedView.TabButton tabButton = tabView.AddTab(name, width, content, ownsContent, GetTabInsertIndex(tabView));
 			if ((var panel = content as Panel) && (var darkTabButton = tabButton as DarkTabbedView.DarkTabButton))
 			{
 				darkTabButton.mTabWidthOffset = panel.TabWidthOffset;
