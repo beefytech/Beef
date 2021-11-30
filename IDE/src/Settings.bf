@@ -416,8 +416,15 @@ namespace IDE
 
 		public class UISettings
 		{
+			public enum InsertNewTabsKind
+			{
+				LeftOfExistingTabs,
+				RightOfExistingTabs,
+			}
+
 			public Colors mColors = new .() ~ delete _;
 			public float mScale = 100;
+			public InsertNewTabsKind mInsertNewTabs = .LeftOfExistingTabs;
 			public List<String> mTheme = new .() ~ DeleteContainerAndItems!(_);
 
 			public void SetDefaults()
@@ -557,6 +564,7 @@ namespace IDE
 					for (let str in mTheme)
 						sd.Add(str);
 				}
+				sd.Add("InsertNewTabs", mInsertNewTabs);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -569,6 +577,7 @@ namespace IDE
 					sd.GetCurString(str);
 					mTheme.Add(str);
 				}
+				sd.Get("InsertNewTabs", ref mInsertNewTabs);
 			}
 		}
 
