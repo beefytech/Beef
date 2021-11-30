@@ -13,6 +13,8 @@ namespace IDE.ui
 {
 	class ClassViewPanel : Panel
 	{
+		private static String sLastSearchString = new String() ~ delete _;
+
 		public class ClassViewListViewItem : IDEListViewItem
 		{
 		    public float mLabelOffset;
@@ -406,6 +408,15 @@ namespace IDE.ui
 				mSearchEdit.mOnSubmit.Add(new (evt) =>
 					{
 						mWantsSubmit = true;
+					});
+
+				mSearchEdit.SetText(sLastSearchString);
+				mSearchEdit.Content.SelectAll();
+
+				findClassDialog.mOnClosed.Add(new () =>
+					{
+						sLastSearchString.Clear();
+						mSearchEdit.GetText(sLastSearchString);
 					});
 			}
 
