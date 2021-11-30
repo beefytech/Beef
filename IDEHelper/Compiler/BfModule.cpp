@@ -827,7 +827,7 @@ public:
 BfModule* gLastCreatedModule = NULL;
 
 BfModule::BfModule(BfContext* context, const StringImpl& moduleName)	
-{
+{	
 	BfLogSys(context->mSystem, "BfModule::BFModule %p %s\n", this, moduleName.c_str());
 
 	gLastCreatedModule = this;
@@ -21354,8 +21354,9 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 
 					if (CompareMethodSignatures(localMethod->mMethodInstanceGroup->mDefault, checkMethodInstance))
 					{
-						auto bfError = Fail("Method already declared with the same parameter types", methodInstance->mMethodDef->GetRefNode(), true);
-						if (bfError != NULL)
+						String error = "Method already declared with the same parameter types";
+						auto bfError = Fail(error, methodInstance->mMethodDef->GetRefNode(), true);
+						if ((bfError != NULL) && (methodInstance->mMethodDef->GetRefNode() != checkMethodInstance->mMethodDef->GetRefNode()))
 							mCompiler->mPassInstance->MoreInfo("First declaration", checkMethodInstance->mMethodDef->GetRefNode());
 					}
 				}
@@ -23008,8 +23009,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 										StrFormat("This method hides a method in the root type definition. Use the 'new' keyword if the hiding was intentional. Note that this method is not callable from project '%s'.",
 											checkMethod->mDeclaringType->mProject->mName.c_str()), refNode);
 								else
-									bfError = Fail("Method already declared with the same parameter types", refNode, true);
-								if (bfError != NULL)
+								{
+									bfError = Fail(StrFormat("Method '%s' already declared with the same parameter types", MethodToString(checkMethodInstance).c_str()), refNode, true);									
+								}
+								if ((bfError != NULL) && (checkMethod->GetRefNode() != refNode))
 									mCompiler->mPassInstance->MoreInfo("First declaration", checkMethod->GetRefNode());
 							}
 						}
@@ -24098,7 +24101,7 @@ bool BfModule::Finish()
 {	
 	BP_ZONE("BfModule::Finish");
 	BfLogSysM("BfModule finish: %p\n", this);
-	
+
 	if (mHadBuildError)
 	{
 		// Don't AssertErrorState here, this current pass may not have failed but
@@ -24147,7 +24150,7 @@ bool BfModule::Finish()
 		mIsModuleMutable = false;
 		//mOutFileNames.Clear();
 
-		BF_ASSERT((int)mOutFileNames.size() >= mExtensionCount);
+		BF_ASSERT(((int)mOutFileNames.size() >= mExtensionCount) || (mParentModule != NULL));
 
 		bool writeModule = mBfIRBuilder->HasExports();
 		String outputPath;
