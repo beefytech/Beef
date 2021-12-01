@@ -432,6 +432,7 @@ namespace IDE
 				DeleteAndNullify!(mColors);
 				mColors = new .();
 				mScale = 100;
+				mInsertNewTabs = .LeftOfExistingTabs;
 				ClearAndDeleteItems(mTheme);
 			}
 
