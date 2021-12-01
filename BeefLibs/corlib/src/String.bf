@@ -3588,6 +3588,34 @@ namespace System
 			return StringSplitEnumerator(Ptr, Length, separators, count, options);
 		}
 
+		public String Intern()
+		{
+			using (String.[Friend]sMonitor.Enter())
+			{
+				bool needsLiteralPass = String.[Friend]sInterns.Count == 0;
+				String* internalLinkPtr = *((String**)(String.[Friend]sStringLiterals));
+				if (internalLinkPtr != String.[Friend]sPrevInternLinkPtr)
+				{
+					String.[Friend]sPrevInternLinkPtr = internalLinkPtr;
+					needsLiteralPass = true;
+				}
+				if (needsLiteralPass)
+					String.[Friend]CheckLiterals(String.[Friend]sStringLiterals);
+
+				String* entryPtr;
+				if (String.[Friend]sInterns.TryAddAlt(this, out entryPtr))
+				{
+					String result = new String(mLength + 1);
+					result.Append(this);
+					result.EnsureNullTerminator();
+					*entryPtr = result;
+					String.[Friend]sOwnedInterns.Add(result);
+					return result;
+				}
+				return *entryPtr;
+			}
+		}
+
 		public static operator StringView (String str)
 		{
 			StringView sv;
