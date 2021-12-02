@@ -6,6 +6,8 @@
 
 USING_NS_BF;
 
+static TLSingleton<Array<uint8>> gCompression_TLDataReturn;
+
 bool Compression::Compress(Span<uint8> inData, Array<uint8>& outData)
 {
 	outData.Reserve(128);
@@ -65,7 +67,7 @@ bool Compression::Decompress(Span<uint8> inData, Array<uint8>& outData)
 	zs.next_out = outData.mVals;
 	zs.avail_out = outData.mAllocSize;
 
-	inflateInit(&zs, Z_BEST_COMPRESSION);
+	inflateInit(&zs);
 
 	bool isDone = false;
 	bool hadError = false;
@@ -101,8 +103,9 @@ bool Compression::Decompress(Span<uint8> inData, Array<uint8>& outData)
 //////////////////////////////////////////////////////////////////////////
 
 BF_EXPORT Span<uint8> BF_CALLTYPE Compression_Compress(void* ptr, int size)
-{
-	Array<uint8> outData;
+{	
+	auto& outData = *gCompression_TLDataReturn.Get();
+	outData.Reserve(128);
 	if (!Compression::Compress(Span<uint8>((uint8*)ptr, size), outData))	
 		return Span<uint8>();	
 	uint8* outPtr = outData.mVals;
@@ -112,15 +115,11 @@ BF_EXPORT Span<uint8> BF_CALLTYPE Compression_Compress(void* ptr, int size)
 
 BF_EXPORT Span<uint8> BF_CALLTYPE Compression_Decompress(void* ptr, int size)
 {
-	Array<uint8> outData;
+	auto& outData = *gCompression_TLDataReturn.Get();
+	outData.Reserve(128);
 	if (!Compression::Decompress(Span<uint8>((uint8*)ptr, size), outData))
 		return Span<uint8>();
 	uint8* outPtr = outData.mVals;
 	outData.mVals = NULL;
 	return Span<uint8>(outPtr, outData.mSize);
-}
-
-BF_EXPORT void BF_CALLTYPE Compression_Free(void* ptr)
-{
-	delete ptr;
 }
