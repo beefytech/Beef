@@ -47,7 +47,8 @@ public:
 
 	Span()
 	{
-
+		mVals = NULL;
+		mSize = 0;
 	}
 
 	Span(T* mPtr, intptr size)
