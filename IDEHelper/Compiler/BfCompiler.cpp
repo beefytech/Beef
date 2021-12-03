@@ -9361,10 +9361,9 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 	options->mCLongSize = 4;
 	if ((options->mMachineType == BfMachineType_AArch64) || (options->mMachineType == BfMachineType_x64))
 	{
-		if ((options->mPlatformType == BfPlatformType_macOS) || (options->mPlatformType == BfPlatformType_iOS) || 
-			(options->mPlatformType == BfPlatformType_Linux) || (options->mPlatformType == BfPlatformType_Android))
+		if (options->mPlatformType != BfPlatformType_Windows)
 			options->mCLongSize = 8;
-	}	
+	}
 	
 	bfCompiler->mCodeGen.SetMaxThreads(maxWorkerThreads);
 
