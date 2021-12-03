@@ -719,6 +719,9 @@
     <ClCompile Include="util\Sphere.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
+    <ClCompile Include="util\Compress.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -1097,6 +1100,9 @@
       <Filter>src\util</Filter>
     </ClInclude>
     <ClInclude Include="util\Sphere.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Compress.h">
       <Filter>src\util</Filter>
     </ClInclude>
   </ItemGroup>

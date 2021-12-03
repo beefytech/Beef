@@ -421,7 +421,7 @@ void ContiguousHeap::DebugDump()
 				str += "Merged";
 				break;
 			default:
-				str += "??????";				
+				str += "??????";
 			}
 
 			str += "\n";
@@ -440,7 +440,7 @@ void ContiguousHeap::DebugDump()
 	for (auto idx : mFreeList)
 	{
 		auto block = CH_REL_TO_ABS(idx);
-		char* kind = "??";
+		const char* kind = "??";
 		if (block->mKind == ChBlockKind_Unused)
 			kind = "Unused";
 		else
