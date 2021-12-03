@@ -15,6 +15,9 @@ CLibType = "Static"
 BeefLibType = "Static"
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.pdb\")"]
 
+[Configs.Debug.Linux64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/libBeefySysLib_d.so\")"]
+
 [Configs.Release.Win32]
 OtherLinkFlags = ""
 PreprocessorMacros = ["RELEASE", "BF32"]
@@ -22,6 +25,9 @@ PreprocessorMacros = ["RELEASE", "BF32"]
 [Configs.Release.Win64]
 OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/dist/BeefySysLib64.lib"
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64.pdb\")"]
+
+[Configs.Release.Linux64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/libBeefySysLib.so\")"]
 
 [Configs.Paranoid.Win32]
 CLibType = "Static"
@@ -38,3 +44,15 @@ BeefLibType = "Static"
 [Configs.Test.Win64]
 CLibType = "Static"
 BeefLibType = "Static"
+
+[Configs.DebugOpt.Win32]
+OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/BeefySysLib32_d.lib\""
+BeefLibType = "Static"
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib32_d.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib32_d.pdb\")"]
+PreprocessorMacros = ["DEBUG", "BF32"]
+
+[Configs.DebugOpt.Win64]
+OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/BeefySysLib64.lib\""
+CLibType = "Static"
+BeefLibType = "Static"
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64.pdb\")"]
