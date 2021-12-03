@@ -108,8 +108,7 @@ BF_EXPORT Span<uint8> BF_CALLTYPE Compression_Compress(void* ptr, int size)
 	outData.Reserve(128);
 	if (!Compression::Compress(Span<uint8>((uint8*)ptr, size), outData))	
 		return Span<uint8>();	
-	uint8* outPtr = outData.mVals;
-	outData.mVals = NULL;
+	uint8* outPtr = outData.mVals;	
 	return Span<uint8>(outPtr, outData.mSize);
 }
 
@@ -119,7 +118,6 @@ BF_EXPORT Span<uint8> BF_CALLTYPE Compression_Decompress(void* ptr, int size)
 	outData.Reserve(128);
 	if (!Compression::Decompress(Span<uint8>((uint8*)ptr, size), outData))
 		return Span<uint8>();
-	uint8* outPtr = outData.mVals;
-	outData.mVals = NULL;
+	uint8* outPtr = outData.mVals;	
 	return Span<uint8>(outPtr, outData.mSize);
 }
