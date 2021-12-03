@@ -59,6 +59,10 @@ ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefRT.a libBeefRT.a
 ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefySysLib.$LIBEXT libBeefySysLib.$LIBEXT
 ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.$LIBEXT libIDEHelper.$LIBEXT
 
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefRT_d.a ../../BeefLibs/Beefy2D/dist/libBeefRT_d.a
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefySysLib_d.$LIBEXT ../../BeefLibs/Beefy2D/dist/libBeefySysLib_d.$LIBEXT
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libIDEHelper_d.$LIBEXT ../../BeefLibs/Beefy2D/dist/libIDEHelper_d.$LIBEXT
+
 ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefRT.a ../../BeefLibs/Beefy2D/dist/libBeefRT.a
 ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefySysLib.$LIBEXT ../../BeefLibs/Beefy2D/dist/libBeefySysLib.$LIBEXT
 ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.$LIBEXT ../../BeefLibs/Beefy2D/dist/libIDEHelper.$LIBEXT
