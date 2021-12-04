@@ -23,6 +23,10 @@ namespace System
 	{
 	}
 
+	interface ICharacter
+	{
+	}
+
 	[Obsolete("Consider operator constraint such as `where bool : operator T == T`", false)]
 	interface IOpEquals
 	{

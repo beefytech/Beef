@@ -1,6 +1,6 @@
 namespace System
 {
-	struct Char32 : char32, IHashable, IIsNaN
+	struct Char32 : char32, ICharacter, IHashable, IIsNaN
 	{
 	    public int GetHashCode()
 		{
