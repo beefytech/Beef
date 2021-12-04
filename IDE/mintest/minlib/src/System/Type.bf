@@ -1117,7 +1117,7 @@ namespace System.Reflection
 			let genericType = GetGenericArg(0);
 			let arraySize = [Friend]mInstSize - genericType.Size + genericType.Stride * count;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, 1);
+			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, Compiler.Options.AllocStackCount);
 #else
 			void* mem = new [Align(16)] uint8[arraySize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);

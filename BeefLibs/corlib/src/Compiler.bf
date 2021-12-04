@@ -18,6 +18,12 @@ namespace System
 			}
 		}
 
+		public static class Options
+		{
+			[LinkName("#AllocStackCount")]
+			public static extern int32 AllocStackCount;
+		}
+
 		[LinkName("#CallerLineNum")]
 		public static extern int CallerLineNum;
 

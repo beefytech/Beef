@@ -143,7 +143,7 @@ namespace System.Reflection
 			let objType = typeof(Object) as TypeInstance;
 
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, mInstSize, mInstAlign, 1);
+			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, mInstSize, mInstAlign, Compiler.Options.AllocStackCount);
 #else
 			void* mem = new [Align(16)] uint8[mInstSize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);

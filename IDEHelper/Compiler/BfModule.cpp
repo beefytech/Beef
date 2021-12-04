@@ -13876,6 +13876,10 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 		if (mProject != NULL)
 			return BfTypedValue(GetStringObjectValue(mProject->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
 	}
+	if (str == "#AllocStackCount")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mAllocStackCount), GetPrimitiveType(BfTypeCode_Int32));
+	}
 
 	if (mCurMethodState->mMixinState != NULL)
 	{
