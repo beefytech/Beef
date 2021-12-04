@@ -5467,7 +5467,15 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			boxedTypeId = boxedType->mTypeId;
 	}
 
-	SizedArray<BfIRValue, 8> typeDataParams =
+	int stackCount = 0;
+	if ((typeInstance != NULL) && (typeInstance->mTypeOptionsIdx != -1))
+	{
+		auto typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
+		if (typeOptions->mAllocStackTraceDepth != -1)
+			stackCount = BF_MIN(0xFF, BF_MAX(0x01, typeOptions->mAllocStackTraceDepth));
+	}
+
+	SizedArray<BfIRValue, 9> typeDataParams =
 	{
 		objectData,
 		GetConstValue(type->mSize, intType), // mSize
@@ -5476,7 +5484,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		GetConstValue(typeFlags, intType), // mTypeFlags
 		GetConstValue(memberDataOffset, intType), // mMemberDataOffset		
 		GetConstValue(typeCode, byteType), // mTypeCode
-		GetConstValue(type->mAlign, byteType),
+		GetConstValue(type->mAlign, byteType), // mAlign
+		GetConstValue(stackCount, byteType), // mAllocStackCountOverride
 	};
 	auto typeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(mContext->mBfTypeType, BfIRPopulateType_Full), typeDataParams);
 		

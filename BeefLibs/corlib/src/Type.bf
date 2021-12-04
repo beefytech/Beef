@@ -20,13 +20,14 @@ namespace System
 
 		protected const BindingFlags cDefaultLookup = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 
-        protected int32 mSize;
-        protected TypeId mTypeId;
-        protected TypeId mBoxedType;
-        protected TypeFlags mTypeFlags;
-        protected int32 mMemberDataOffset;
-        protected TypeCode mTypeCode;
-        protected uint8 mAlign;
+		protected int32 mSize;
+		protected TypeId mTypeId;
+		protected TypeId mBoxedType;
+		protected TypeFlags mTypeFlags;
+		protected int32 mMemberDataOffset;
+		protected TypeCode mTypeCode;
+		protected uint8 mAlign;
+		protected uint8 mAllocStackCountOverride;
 
 		public static TypeId TypeIdEnd
 		{
@@ -1187,7 +1188,10 @@ namespace System.Reflection
 			let genericType = GetGenericArg(0);
 			let arraySize = [Friend]mInstSize - genericType.Size + genericType.Stride * count;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, Compiler.Options.AllocStackCount);
+			int32 stackCount = Compiler.Options.AllocStackCount;
+			if (mAllocStackCountOverride != 0)
+				stackCount = mAllocStackCountOverride;
+			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, stackCount);
 #else
 			void* mem = new [Align(16)] uint8[arraySize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);
