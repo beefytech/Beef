@@ -102,22 +102,24 @@ bool Compression::Decompress(Span<uint8> inData, Array<uint8>& outData)
 
 //////////////////////////////////////////////////////////////////////////
 
-BF_EXPORT Span<uint8> BF_CALLTYPE Compression_Compress(void* ptr, int size)
+BF_EXPORT bool BF_CALLTYPE Compression_Compress(void* ptr, intptr size, void** outPtr, intptr* outSize)
 {	
 	auto& outData = *gCompression_TLDataReturn.Get();
 	outData.Reserve(128);
 	if (!Compression::Compress(Span<uint8>((uint8*)ptr, size), outData))	
-		return Span<uint8>();	
-	uint8* outPtr = outData.mVals;	
-	return Span<uint8>(outPtr, outData.mSize);
+		return false;	
+	*outPtr = outData.mVals;	
+	*outSize = outData.mSize;	
+	return true;
 }
 
-BF_EXPORT Span<uint8> BF_CALLTYPE Compression_Decompress(void* ptr, int size)
+BF_EXPORT bool BF_CALLTYPE Compression_Decompress(void* ptr, intptr size, void** outPtr, intptr* outSize)
 {
 	auto& outData = *gCompression_TLDataReturn.Get();
 	outData.Reserve(128);
 	if (!Compression::Decompress(Span<uint8>((uint8*)ptr, size), outData))
-		return Span<uint8>();
-	uint8* outPtr = outData.mVals;	
-	return Span<uint8>(outPtr, outData.mSize);
+		return false;
+	*outPtr = outData.mVals;
+	*outSize = outData.mSize;
+	return true;
 }
