@@ -1,7 +1,7 @@
 namespace System
 {
 #unwarn
-	struct Char8 : char8, IHashable, IIsNaN
+	struct Char8 : char8, ICharacter, IHashable, IIsNaN
 	{
 		bool IIsNaN.IsNaN
 		{
