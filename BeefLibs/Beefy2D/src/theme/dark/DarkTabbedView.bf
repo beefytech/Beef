@@ -398,12 +398,12 @@ namespace Beefy.theme.dark
                 func(mRightTab);
         }
 
-        public override TabButton AddTab(String label, float width, Widget content, bool ownsContent)
+        public override TabButton AddTab(String label, float width, Widget content, bool ownsContent, int insertIdx)
         {
 			float useWidth = width;
             if (useWidth == 0)
                 useWidth = DarkTheme.sDarkTheme.mSmallFont.GetWidth(label) + GS!(30);
-            return base.AddTab(label, useWidth, content, ownsContent);
+            return base.AddTab(label, useWidth, content, ownsContent, insertIdx);
         }
 
         public override void RemoveTab(TabButton tabButton, bool deleteTab = true)

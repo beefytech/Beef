@@ -5807,7 +5807,7 @@ namespace IDE
 
 		TabbedView.TabButton SetupTab(TabbedView tabView, String name, float width, Widget content, bool ownsContent) // 2
 		{
-			TabbedView.TabButton tabButton = tabView.AddTab(name, width, content, ownsContent);
+			TabbedView.TabButton tabButton = tabView.AddTab(name, width, content, ownsContent, GetTabInsertIndex(tabView));
 			if ((var panel = content as Panel) && (var darkTabButton = tabButton as DarkTabbedView.DarkTabButton))
 			{
 				darkTabButton.mTabWidthOffset = panel.TabWidthOffset;
@@ -5840,7 +5840,7 @@ namespace IDE
             newTabButton.mWantWidth = newTabButton.GetWantWidth();
             newTabButton.mHeight = tabbedView.mTabHeight; 
             newTabButton.mContent = disassemblyPanel;
-            tabbedView.AddTab(newTabButton);
+            tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
             
             newTabButton.mCloseClickedEvent.Add(new () => CloseDocument(disassemblyPanel));
             newTabButton.Activate();
@@ -5849,6 +5849,14 @@ namespace IDE
 			mLastActivePanel = disassemblyPanel;
             return disassemblyPanel;
         }
+
+		int GetTabInsertIndex(TabbedView tabs)
+		{
+			if (mSettings.mUISettings.mInsertNewTabs == .RightOfExistingTabs)
+				return tabs.mTabs.Count;
+			else
+				return 0;
+		}
 
         public class SourceViewTab : DarkTabbedView.DarkTabButton
         {
@@ -6021,7 +6029,7 @@ namespace IDE
             tabButton.mIsRightTab = false;            
             var darkTabbedView = (DarkTabbedView)tabButton.mTabbedView;
             darkTabbedView.SetRightTab(null, false);
-            darkTabbedView.AddTab(tabButton);
+            darkTabbedView.AddTab(tabButton, GetTabInsertIndex(darkTabbedView));
             tabButton.Activate();
         }
 
@@ -6397,7 +6405,7 @@ namespace IDE
                 tabbedView.SetRightTab(newTabButton);
             }
             else
-                tabbedView.AddTab(newTabButton);
+                tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
             newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(sourceViewPanel));
             newTabButton.Activate(setFocus);
             if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
