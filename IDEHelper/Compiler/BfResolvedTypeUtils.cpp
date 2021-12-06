@@ -3293,9 +3293,13 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 							ctx->mModule->Fail("Invalid use of inferred-sized array", sizeExpr);
 						}
 					}
+					else if (!BfIRBuilder::IsInt(constant->mTypeCode))
+					{
+						ctx->mFailed = true;
+						ctx->mModule->Fail("Array size not a constant value", arrayType->mParams[0]);
+					}
 					else
 					{
-						BF_ASSERT(BfIRBuilder::IsInt(constant->mTypeCode));
 						elementCount = (intptr)constant->mInt64;
 						if (elementCount < 0)
 						{
@@ -4362,13 +4366,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 					return false;				
 				
 				auto constant = ctx->mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
-				if (constant->mConstType == BfConstType_Undef)
+				if ((constant->mConstType == BfConstType_Undef) || (!BfIRBuilder::IsInt(constant->mTypeCode)))
 				{
 					elementCount = -1; // Marker for undef
 				}
 				else
 				{
-					BF_ASSERT(BfIRBuilder::IsInt(constant->mTypeCode));
 					elementCount = (intptr)constant->mInt64;
 					BF_ASSERT(elementCount >= 0); // Should have been caught in hash					
 				}
