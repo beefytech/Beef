@@ -1429,12 +1429,7 @@ namespace System
 			return -1;
 		}
 
-		public bool Contains(String str)
-		{
-			return IndexOf(str) != -1;
-		}
-
-		public bool Contains(String str, bool ignoreCase)
+		public bool Contains(StringView str, bool ignoreCase = false)
 		{
 			return IndexOf(str, ignoreCase) != -1;
 		}
@@ -3291,9 +3286,9 @@ namespace System
 			return false;
 		}
 
-		public bool Contains(StringView stringView)
+		public bool Contains(StringView stringView, bool ignoreCase = false)
 		{
-			return IndexOf(stringView) != -1;
+			return IndexOf(stringView, ignoreCase) != -1;
 		}
 
 		public bool StartsWith(StringView b, StringComparison comparisonType = StringComparison.Ordinal)
