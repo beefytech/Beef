@@ -1840,6 +1840,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	static int mangleIdx = 0;
 	mangleIdx++;
 	
+	int startNameLen = name.mLength;
 	if ((methodInst->mMethodDef->mCLink) && (!methodInst->mMangleWithIdx))
 	{
 		name += methodInst->mMethodDef->mName;
@@ -1860,7 +1861,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	HandleCustomAttributes(methodInst->GetCustomAttributes(), typeInst->mConstHolder, mangleContext.mModule, name, isCMangle, mangleContext.mCPPMangle);
 	if (isCMangle)
 		name += methodInst->mMethodDef->mName;
-	if (!name.IsEmpty())
+	if (name.mLength > startNameLen)
 		return;
 	
 	name += '?';
