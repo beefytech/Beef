@@ -1,6 +1,7 @@
 using System.Diagnostics;
 namespace System.Text
 {
+	[StaticInitPriority(100)]
 	abstract class Encoding
 	{
 		public enum DecodeError
