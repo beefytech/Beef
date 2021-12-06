@@ -12309,16 +12309,16 @@ namespace IDE
 					}
                     hadMessages = true;                    
                     int paramIdx = msg.IndexOf(' ');
-					String cmd = scope String();
-					String param = scope String();
+					StringView cmd = default;
+					StringView param = default;
 
 					if (paramIdx > 0)
 					{
-                    	cmd.Append(msg, 0, paramIdx);
-                    	param.Append(msg, paramIdx + 1);
+						cmd = msg.Substring(0, paramIdx);
+						param = msg.Substring(paramIdx + 1);
 					}
 					else
-						cmd.Append(msg);
+						cmd = msg;
 
 					bool isOutput = (cmd == "msg") || (cmd == "dbgEvalMsg") || (cmd == "log");
 					if (cmd == "msgLo")
@@ -12356,7 +12356,7 @@ namespace IDE
 
 						while (true)
 						{
-							String errorMsg = null;
+							StringView errorMsg = default;
 
 							int infoPos = param.IndexOf("\x01");
 							if (infoPos == 0)
@@ -12368,7 +12368,7 @@ namespace IDE
 								if (endPos == -1)
 									break;
 								String leakStr = scope String(param, 1, endPos - 1);
-								param.Remove(0, endPos + 1);
+								param.RemoveFromStart(endPos + 1);
 								int itemIdx = 0;
 								for (var itemView in leakStr.Split('\t'))
 								{
@@ -12410,12 +12410,12 @@ namespace IDE
 								tempStr.Clear();
 								tempStr.Append(param, 0, infoPos);
 								errorMsg = tempStr;
-								param.Remove(0, infoPos);
+								param.RemoveFromStart(infoPos);
 							}
 							else
 								errorMsg = param;
 
-							if (errorMsg != null)
+							if (!errorMsg.IsEmpty)
 							{
 								if (isFirstMsg)
 								{
@@ -12427,19 +12427,19 @@ namespace IDE
 										mOutputPanel.Update();
 									}
 
-									OutputLineSmart(scope String("ERROR: ", errorMsg));
+									OutputLineSmart(scope String("ERROR: ", scope String(errorMsg)));
 									if (gApp.mRunningTestScript)
 									{
 										// The 'OutputLineSmart' would already call 'Fail' when running test scripts
 									}
 									else
 									{
-										Fail(errorMsg);
+										Fail(scope String(errorMsg));
 									}
 									isFirstMsg = false;
 								}
 								else
-									Output(errorMsg);
+									Output(scope String(errorMsg));
 							}
 
 							if (infoPos == -1)

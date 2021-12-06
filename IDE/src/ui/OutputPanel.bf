@@ -84,6 +84,8 @@ namespace IDE.ui
 		List<QueuedDisplayChange> mQueuedDisplayChanges = new List<QueuedDisplayChange>() ~ delete _;
 		List<InlineWidgetEntry> mInlineWidgets = new List<InlineWidgetEntry>() ~ delete _;
 		public int32 mHoverWatchLine;
+		public float mLastInlineMinY;
+		public float mLastInlineMaxY;
 
         public override SourceEditWidget EditWidget
         {
@@ -198,10 +200,10 @@ namespace IDE.ui
 			}
 		}
 
-		public override void Update()
+		public override void UpdateAll()
 		{
-			base.Update();
-
+			base.UpdateAll();
+			
 			var editData = mOutputWidget.mEditWidgetContent.mData;
 
 			int lineStartZero = -1;
@@ -210,6 +212,8 @@ namespace IDE.ui
 				lineStartZero = editData.mLineStarts[0];
 				Debug.Assert(lineStartZero <= editData.mTextLength);
 			}
+
+			bool hasNewInlineWidgets = false;
 
 			UpdateHoverWatch();
 			if (mQueuedText.Length > 0)
@@ -232,7 +236,7 @@ namespace IDE.ui
 					if (queuedDisplayChange.mWidget != null)
 					{
 						var widget = queuedDisplayChange.mWidget;
-						mOutputWidget.mEditWidgetContent.AddWidget(queuedDisplayChange.mWidget);
+						hasNewInlineWidgets = true;
 						mOutputWidget.Content.GetLineCharAtIdx(startLen + queuedDisplayChange.mOfs, out line, out lineChar);
 						mOutputWidget.Content.GetTextCoordAtLineChar(line, lineChar, var xOfs, var yOfs);
 
@@ -256,6 +260,27 @@ namespace IDE.ui
 
 				mQueuedText.Clear();
 				mQueuedDisplayChanges.Clear();
+			}
+
+			float minY = -mOutputWidget.mEditWidgetContent.mY;
+			float maxY = minY + mOutputWidget.mHeight;
+
+			if ((gApp.mIsUpdateBatchStart) || (hasNewInlineWidgets) || (mLastInlineMinY != minY) || (mLastInlineMaxY != maxY))
+			{
+				for (var inlineWidget in ref mInlineWidgets)
+				{
+					bool isVisible = (inlineWidget.mWidget.mY + inlineWidget.mWidget.mHeight >= minY) && (inlineWidget.mWidget.mY < maxY);
+					if ((inlineWidget.mWidget.mParent != null) != isVisible)
+					{
+						if (isVisible)
+							mOutputWidget.mEditWidgetContent.AddWidget(inlineWidget.mWidget);
+						else
+							inlineWidget.mWidget.RemoveSelf();
+					}
+				}
+
+				mLastInlineMinY = minY;
+				mLastInlineMaxY = maxY;
 			}
 		}
 

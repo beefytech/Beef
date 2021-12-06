@@ -421,8 +421,13 @@ void BFGC::RawShutdown()
 		gDbgErrorString = errorStr;
 		gDbgErrorString += "\n";
 
+		int passLeakCount = 0;
+
 		for (auto& rawLeak : mSweepInfo.mRawLeaks)
 		{
+			if (passLeakCount == 20000) // Only display so many...
+				break;
+
 			Beefy::String typeName;
 			if (rawLeak.mRawAllocData->mType != NULL)
 				typeName = rawLeak.mRawAllocData->mType->GetFullName() + "*";
@@ -451,6 +456,8 @@ void BFGC::RawShutdown()
 
 			if (gDbgErrorString.length() < 256)
 				gDbgErrorString += StrFormat("   %s\n", leakStr.c_str());
+
+			passLeakCount++;
 		}
 
 		BF_ASSERT(mSweepInfo.mLeakCount > 0);
