@@ -2627,6 +2627,8 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	QueueVisitChild(propertyDeclaration->mEqualsNode);
 	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mInitializer);
+	ExpectSpace();
+	QueueVisitChild(propertyDeclaration->mFieldDtor);
 	FlushVisitChild();
 
 	//QueueVisitChild(propertyDeclaration->mTrailingSemicolon);
