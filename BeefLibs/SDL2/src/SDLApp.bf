@@ -117,8 +117,12 @@ namespace SDL2
 			SDL.EventState(.JoyDeviceAdded, .Disable);
 			SDL.EventState(.JoyDeviceRemoved, .Disable);
 
-			mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mWidth, mHeight, .Shown);
+			mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mWidth, mHeight, .Hidden);
 			mRenderer = SDL.CreateRenderer(mWindow, -1, .Accelerated);
+			SDL.ShowWindow(mWindow);
+			SDL.SetRenderDrawColor(mRenderer, 0, 0, 0, 255);
+			SDL.RenderClear(mRenderer);
+			SDL.RenderPresent(mRenderer);
 			mScreen = SDL.GetWindowSurface(mWindow);
 			SDLImage.Init(.PNG | .JPG);
 			mHasAudio = SDLMixer.OpenAudio(44100, SDLMixer.MIX_DEFAULT_FORMAT, 2, 4096) >= 0;
