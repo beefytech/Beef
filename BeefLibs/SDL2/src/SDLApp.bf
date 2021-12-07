@@ -191,9 +191,9 @@ namespace SDL2
 			if (sound == null)
 				return;
 
+			SDLMixer.VolumeChunk(sound.mChunk, (int32)(volume * 128));
 			int32 channel = SDLMixer.PlayChannel(-1, sound.mChunk, 0);
 			//SDLMixer.SetPanning()
-			SDLMixer.Volume(channel, (int32)(volume * 128));
 		}
 
 		public void Render()
