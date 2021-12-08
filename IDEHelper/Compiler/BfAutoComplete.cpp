@@ -6,6 +6,9 @@
 #include "BfFixits.h"
 #include "BfResolvedTypeUtils.h"
 
+#define FTS_FUZZY_MATCH_IMPLEMENTATION
+#include "FtsFuzzyMatch.h"
+
 #pragma warning(disable:4996)
 
 using namespace llvm;
@@ -25,16 +28,16 @@ AutoCompleteBase::~AutoCompleteBase()
 	Clear();
 }
 
-AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter)
+AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const StringImpl& filter)
 {
-	if ((!DoesFilterMatch(entry.mDisplay, filter.c_str())) || (entry.mNamePrefixCount < 0))
+	if ((!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, entry.mMatches, sizeof(entry.mMatches))) || (entry.mNamePrefixCount < 0))
 		return NULL;
 	return AddEntry(entry);
 }
 
-AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const char* filter)
+AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const char* filter)
 {
-	if ((!DoesFilterMatch(entry.mDisplay, filter)) || (entry.mNamePrefixCount < 0))
+	if ((!DoesFilterMatch(entry.mDisplay, filter, entry.mScore, entry.mMatches, sizeof(entry.mMatches))) || (entry.mNamePrefixCount < 0))
 		return NULL;
 	return AddEntry(entry);
 }
@@ -60,7 +63,7 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
 	return insertedEntry;
 }
 
-bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter)
+bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, int& score, uint8* matches, int maxMatches)
 {	
 	if (mIsGetDefinition)
 	{
@@ -73,12 +76,28 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter)
 	if (!mIsAutoComplete)
 		return false;
 
-	if (filter[0] == 0)
+	if (filter[0] == '\0')
+	{
+		// Kinda dirty
+		matches[0] = UINT8_MAX;
+		matches[1] = 0;
 		return true;
+	}
 
 	int filterLen = (int)strlen(filter);
 	int entryLen = (int)strlen(entry);
 
+	if (filterLen > entryLen)
+	{
+		// Kinda dirty
+		matches[0] = UINT8_MAX;
+		matches[1] = 0;
+		return false;
+	}
+
+	// TODO: also do matches (but probably optimize them)
+	return fts::fuzzy_match(filter, entry, score, matches, maxMatches);
+	/*
 	bool hasUnderscore = false;
 	bool checkInitials = filterLen > 1;
 	for (int i = 0; i < (int)filterLen; i++)
@@ -126,6 +145,7 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter)
 		return false;
 	*(initialStrP++) = 0;
 	return strnicmp(filter, initialStr, filterLen) == 0;
+	*/
 }
 
 void AutoCompleteBase::Clear()
@@ -550,7 +570,9 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 			return;
 		}
 
-		if (!DoesFilterMatch(name.c_str(), filter.c_str()))
+		int score;
+		uint8 matches[256];
+		if (!DoesFilterMatch(name.c_str(), filter.c_str(), score, matches, sizeof(matches)))
 			return;		
 
 		auto type = mModule->ResolveTypeDef(typeDef, BfPopulateType_Declaration);
@@ -1128,8 +1150,10 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 		if (methodInstance == NULL)
 			continue;
 
+		int score;
+		uint8 matches[256];
 		// Do filter match first- may be cheaper than generic validation
-		if (!DoesFilterMatch(methodDef->mName.c_str(), filter.c_str()))
+		if (!DoesFilterMatch(methodDef->mName.c_str(), filter.c_str(), score, matches, sizeof(matches)))
 			continue;
 
 		auto thisType = methodInstance->GetParamType(0);		

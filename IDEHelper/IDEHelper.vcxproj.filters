@@ -399,5 +399,6 @@
     <ClInclude Include="Compiler\CeMachine.h">
       <Filter>Compiler</Filter>
     </ClInclude>
+    <ClInclude Include="Compiler\FtsFuzzyMatch.h" />
   </ItemGroup>
 </Project>

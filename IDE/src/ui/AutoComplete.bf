@@ -382,6 +382,7 @@ namespace IDE.ui
                 public String mEntryInsert;
 				public String mDocumentation;
                 public Image mIcon;
+				public List<uint8> mMatchIndices;
 
 				public float Y
 				{
@@ -401,7 +402,31 @@ namespace IDE.ui
                         g.Draw(mIcon, 0, 0);
 
                     g.SetFont(IDEApp.sApp.mCodeFont);
-                    g.DrawString(mEntryDisplay, GS!(20), 0);
+					
+					float offset = GS!(20);
+
+					// TODO(FUZZY): this is not unicode compatible
+					for(int i < mEntryDisplay.Length)
+					{
+						char8 c = mEntryDisplay[i];
+
+						if(mMatchIndices.Contains((uint8)i))
+						{
+							g.PushColor(.Blue);
+						}
+						else
+						{
+							g.PushColor(.White);
+						}
+
+						g.DrawString(.(&c, 1), offset, 0);
+
+						offset += IDEApp.sApp.mCodeFont.GetWidth(.(&c, 1));
+
+						g.PopColor();
+					}
+					
+                    //g.DrawString(mEntryDisplay, GS!(20), 0);
                 }                
             }
 
@@ -602,8 +627,8 @@ namespace IDE.ui
 	                mMaxWidth = Math.Max(mMaxWidth, entryWidth);
 				}*/
             }
-
-            public void AddEntry(StringView entryType, StringView entryDisplay, Image icon, StringView entryInsert = default, StringView documentation = default)
+			
+			public void AddEntry(StringView entryType, StringView entryDisplay, Image icon, StringView entryInsert = default, StringView documentation = default, List<uint8> matchIndices = null)
             {                
                 var entryWidget = new:mAlloc EntryWidget();
                 entryWidget.mAutoCompleteListWidget = this;
@@ -614,6 +639,9 @@ namespace IDE.ui
 				if (!documentation.IsEmpty)
 					entryWidget.mDocumentation = new:mAlloc String(documentation);
                 entryWidget.mIcon = icon;
+				// TODO(FUZZY): There may be a better way
+				if (matchIndices != null && !matchIndices.IsEmpty)
+					entryWidget.mMatchIndices = new:mAlloc List<uint8>(matchIndices.GetEnumerator());
 
                 UpdateEntry(entryWidget, mEntryList.Count);
                 mEntryList.Add(entryWidget);
@@ -1981,9 +2009,9 @@ namespace IDE.ui
 
             InvokeWidget oldInvokeWidget = null;
             String selectString = null;
+			List<uint8> matchIndices = new:ScopedAlloc! .(256);
 			for (var entryView in info.Split('\n'))
             {
-				
 				Image entryIcon = null;
 				StringView entryType = StringView(entryView);
 				int tabPos = entryType.IndexOf('\t');
@@ -1993,13 +2021,34 @@ namespace IDE.ui
 					entryDisplay = StringView(entryView, tabPos + 1);
 					entryType = StringView(entryType, 0, tabPos);
 				}
+				StringView matches = default;
+				int matchesPos = entryDisplay.IndexOf('\x02');
+				matchIndices.Clear();
+				if (matchesPos != -1)
+				{
+					matches = StringView(entryDisplay, matchesPos + 1);
+					entryDisplay = StringView(entryDisplay, 0, matchesPos);
+
+					for(var sub in matches.Split(','))
+					{
+						if(sub == "X")
+							break;
+
+						var result = int64.Parse(sub, .HexNumber);
+
+						Debug.Assert((result case .Ok(let value)) && value <= uint8.MaxValue);
+
+						// TODO(FUZZY): we could save start and length instead of single chars
+						matchIndices.Add((uint8)result.Value);
+					}
+				}
 
 				StringView documentation = default;
-				int docPos = entryDisplay.IndexOf('\x03');
+				int docPos = matches.IndexOf('\x03');
 				if (docPos != -1)
 				{
-					documentation = StringView(entryDisplay, docPos + 1);
-					entryDisplay = StringView(entryDisplay, 0, docPos);
+					documentation = StringView(matches, docPos + 1);
+					matches = StringView(matches, 0, docPos);
 				}
 
 				StringView entryInsert = default;
@@ -2128,7 +2177,7 @@ namespace IDE.ui
 						if (!mInvokeOnly)
 						{
 							mIsFixit |= entryType == "fixit";
-                            mAutoCompleteListWidget.AddEntry(entryType, entryDisplay, entryIcon, entryInsert, documentation);
+                            mAutoCompleteListWidget.AddEntry(entryType, entryDisplay, entryIcon, entryInsert, documentation, matchIndices);
 						}
                     }                        
                 }

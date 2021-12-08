@@ -8007,7 +8007,9 @@ void BfCompiler::GenerateAutocompleteInfo()
 		}
 		std::sort(entries.begin(), entries.end(), [](AutoCompleteEntry* lhs, AutoCompleteEntry* rhs)
 			{
-				return stricmp(lhs->mDisplay, rhs->mDisplay) < 0;
+				// TODO(FUZZY): SORT BY Score
+				return lhs->mScore > rhs->mScore;
+				//return stricmp(lhs->mDisplay, rhs->mDisplay) < 0;
 			});
 				
 		String docString;
@@ -8021,6 +8023,28 @@ void BfCompiler::GenerateAutocompleteInfo()
 			for (int i = 0; i < entry->mNamePrefixCount; i++)
 				autoCompleteResultString += '@';
 			autoCompleteResultString += String(entry->mDisplay);
+
+			// TODO(FUZZY): OUTPUT
+			// TODO(FUZZY): this is not really efficient
+			autoCompleteResultString += "\x02";
+			for (int i = 0; i < 256; i++)
+			{
+				int match = entry->mMatches[i];
+
+				// no more matches after this
+				if (match == 0 && i != 0)
+					break;
+
+				// Need max 3 chars (largest Hex (FF) + '\0')
+				char buffer[3];
+
+				_itoa_s(match, buffer, 16);
+
+				autoCompleteResultString += String(buffer);
+				autoCompleteResultString += ",";
+			}
+
+			autoCompleteResultString += "X";
 
 			if (entry->mDocumentation != NULL)
 			{
