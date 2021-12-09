@@ -329,7 +329,7 @@ namespace System
 
 			set
 			{
-				Debug.Assert((uint)mLength <= (uint)value);
+				Debug.Assert((uint)value <= (uint)mLength);
 				mLength = (int_strsize)value;
 			}
 		}
@@ -1010,16 +1010,94 @@ namespace System
 
 		public ref char8 this[int index]
 		{
+			[Checked]
 			get
 			{
 				Debug.Assert((uint)index < (uint)mLength);
 				return ref Ptr[index];
 			}
 
+			[Unchecked, Inline]
+			get
+			{
+				return ref Ptr[index];
+			}
+
+			[Checked]
 			set
 			{
 				Debug.Assert((uint)index < (uint)mLength);
 				Ptr[index] = value;
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				Ptr[index] = value;
+			}
+		}
+
+		public ref char8 this[Index index]
+		{
+			[Checked]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Debug.Assert((uint)idx < (uint)mLength);
+				return ref Ptr[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				return ref Ptr[idx];
+			}
+
+			[Checked]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Debug.Assert((uint)idx < (uint)mLength);
+				Ptr[idx] = value;
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Ptr[idx] = value;
+			}
+		}
+
+		public StringView this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				return StringView(Ptr, Length)[range];
 			}
 		}
 
@@ -1351,12 +1429,7 @@ namespace System
 			return -1;
 		}
 
-		public bool Contains(String str)
-		{
-			return IndexOf(str) != -1;
-		}
-
-		public bool Contains(String str, bool ignoreCase)
+		public bool Contains(StringView str, bool ignoreCase = false)
 		{
 			return IndexOf(str, ignoreCase) != -1;
 		}
@@ -1542,7 +1615,7 @@ namespace System
 			mLength = newLength;
 		}
 
-		public void Insert(int_strsize idx, char8 c)
+		public void Insert(int idx, char8 c)
 		{
 			Contract.Requires(idx >= 0);
 
@@ -1557,7 +1630,7 @@ namespace System
 			mLength = newLength;
 		}
 
-		public void Insert(int_strsize idx, char8 c, int count)
+		public void Insert(int idx, char8 c, int count)
 		{
 			Contract.Requires(idx >= 0);
 
@@ -1576,7 +1649,7 @@ namespace System
 			mLength = newLength;
 		}
 
-		public void Insert(int_strsize idx, char32 c)
+		public void Insert(int idx, char32 c)
 		{
 			Contract.Requires(idx >= 0);
 
@@ -1625,7 +1698,7 @@ namespace System
 			}
 		}
 
-		public void Insert(int_strsize idx, char32 c, int count)
+		public void Insert(int idx, char32 c, int count)
 		{
 			Contract.Requires(idx >= 0);
 
@@ -1700,7 +1773,7 @@ namespace System
 
                 //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 
-                // uppercase both char8s - notice that we need just one compare per char8
+                // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1708,7 +1781,7 @@ namespace System
 				if (charA != charB)
 					return false;
 
-                // Next char8
+                // Next char
 				curA++;curB++;
 				curLength--;
 			}
@@ -1733,7 +1806,7 @@ namespace System
 
                 //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 
-                // uppercase both char8s - notice that we need just one compare per char8
+                // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1741,7 +1814,7 @@ namespace System
 				if (charA != charB)
 					return charA - charB;
 
-                // Next char8
+                // Next char
 				a++;b++;
 				length--;
 			}
@@ -1761,7 +1834,7 @@ namespace System
 				int_strsize charB = (int_strsize)*b;
 
 			    //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
-			    // uppercase both char8s - notice that we need just one compare per char8
+			    // uppercase both chars - notice that we need just one compare per char
 				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
 				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
@@ -1769,7 +1842,7 @@ namespace System
 				if (charA != charB)
 					return charA - charB;
 
-			    // Next char8
+			    // Next char
 				a++;b++;
 				length--;
 			}
@@ -2130,6 +2203,82 @@ namespace System
 			TrimEnd();
 		}
 
+		public void TrimEnd(char32 trimChar)
+		{
+			let ptr = Ptr;
+			for (int i = mLength - 1; i >= 0; i--)
+			{
+				char8 c = ptr[i];
+				if (c >= (char8)0x80)
+				{
+					var (c32, idx, len) = GetChar32WithBacktrack(i);
+					if (c32 != trimChar)
+					{
+						if (i < mLength - 1)
+							RemoveToEnd(i + 1);
+						return;
+					}
+					i = idx;
+				}
+				else if ((char32)c != trimChar)
+				{
+					if (i < mLength - 1)
+						RemoveToEnd(i + 1);
+					return;
+				}
+			}
+			Clear();
+		}
+
+		public void TrimEnd(char8 trimChar)
+		{
+			TrimEnd((char32)trimChar);
+		}
+
+		public void TrimStart(char32 trimChar)
+		{
+			let ptr = Ptr;
+			for (int i = 0; i < mLength; i++)
+			{
+				char8 c = ptr[i];
+				if (c >= (char8)0x80)
+				{
+					var (c32, len) = GetChar32(i);
+					if (c32 != trimChar)
+					{
+						if (i > 0)
+							Remove(0, i);
+						return;
+					}
+					i += len - 1;
+				}
+				else if ((char32)c != trimChar)
+				{
+					if (i > 0)
+						Remove(0, i);
+					return;
+				}
+			}
+			Clear();
+		}
+
+		public void TrimStart(char8 trimChar)
+		{
+			TrimStart((char32)trimChar);
+		}
+
+		public void Trim(char32 trimChar)
+		{
+			TrimStart(trimChar);
+			TrimEnd(trimChar);
+		}
+
+		public void Trim(char8 trimChar)
+		{
+			TrimStart((.)trimChar);
+			TrimEnd((.)trimChar);
+		}
+
 		public void Join(StringView sep, IEnumerator<String> enumerable)
 		{
 			bool isFirst = true;
@@ -2271,6 +2420,7 @@ namespace System
 
 		public RawEnumerator RawChars
 		{
+			[Inline]
 			get
 			{
 				return RawEnumerator(Ptr, 0, mLength);
@@ -2279,6 +2429,7 @@ namespace System
 
 		public UTF8Enumerator DecodedChars
 		{
+			[Inline]
 			get
 			{
 				return UTF8Enumerator(Ptr, 0, mLength);
@@ -2440,6 +2591,7 @@ namespace System
 			int_strsize mIdx;
 			int_strsize mLength;
 
+			[Inline]
 			public this(char8* ptr, int idx, int length)
 			{
 				mPtr = ptr;
@@ -2449,11 +2601,13 @@ namespace System
 
 			public char8 Current
 			{
+				[Inline]
 			    get
 			    {
 			        return mPtr[mIdx];
 			    }
 
+				[Inline]
 				set
 				{
 					mPtr[mIdx] = value;
@@ -2462,6 +2616,7 @@ namespace System
 
 			public ref char8 CurrentRef
 			{
+				[Inline]
 			    get
 			    {
 			        return ref mPtr[mIdx];
@@ -2470,6 +2625,7 @@ namespace System
 
 			public int Index
 			{
+				[Inline]
 				get
 				{
 					return mIdx;
@@ -2478,42 +2634,29 @@ namespace System
 
 			public int Length
 			{
+				[Inline]
 				get
 				{
 					return mLength;
 				}				
 			}
 
-			public void Dispose()
-			{
-
-			}
-
-			public void Reset()
-			{
-
-			}
-
-			public bool MoveNext() mut
+			[Inline]
+			public Result<char8> GetNext() mut
 			{
 				++mIdx;
 				if (mIdx >= mLength)
-					return false;
-				return true;
-			}
-
-			public Result<char8> GetNext() mut
-			{
-				if (!MoveNext())
 					return .Err;
-				return Current;
+				return mPtr[mIdx];
 			}
 
+			[Inline]
 			public Result<char8*> GetNextRef() mut
 			{
-				if (!MoveNext())
+				++mIdx;
+				if (mIdx >= mLength)
 					return .Err;
-				return &CurrentRef;
+				return &mPtr[mIdx];
 			}
 		}
 
@@ -2669,6 +2812,14 @@ namespace System
 				return mMatchPos;
 			}
 		}
+		
+		public int32 MatchIndex
+		{
+			get
+			{
+				return mCurCount - 1;
+			}
+		}
 
 		public bool HasMore
 		{
@@ -2821,6 +2972,97 @@ namespace System
 			mLength = length;
 		}
 
+		public ref char8 this[int index]
+		{
+			[Checked]
+		    get
+			{
+				Runtime.Assert((uint)index < (uint)mLength);
+				return ref mPtr[index];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				return ref mPtr[index];
+			}
+		}
+
+		public ref char8 this[Index index]
+		{
+			[Checked]
+		    get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mLength);
+				return ref mPtr[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				return ref mPtr[idx];
+			}
+		}
+
+		public StringView this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				char8* start;
+				switch (range.[Friend]mStart)
+				{
+				case .FromFront(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + offset;
+				case .FromEnd(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + mLength - offset;
+				}
+				char8* end;
+				if (range.[Friend]mIsClosed)
+				{
+					switch (range.[Friend]mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset < (uint)mLength);
+						end = mPtr + offset + 1;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)(offset - 1) <= (uint)mLength);
+						end = mPtr + mLength - offset + 1;
+					}
+				}
+				else
+				{
+					switch (range.[Friend]mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + offset;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + mLength - offset;
+					}
+				}
+
+				return .(start, end - start);
+			}
+		}
+
 		public String.RawEnumerator RawChars
 		{
 			get
@@ -2912,6 +3154,13 @@ namespace System
 				return String.[Friend]CompareOrdinalIgnoreCaseHelper(val1.mPtr, val1.mLength, val2.mPtr, val2.mLength);
 			else
 				return String.[Friend]CompareOrdinalHelper(val1.mPtr, val1.mLength, val2.mPtr, val2.mLength);
+		}
+
+		public int CompareTo(StringView strB, bool ignoreCase = false)
+		{
+			if (ignoreCase)
+				return String.[Friend]CompareOrdinalIgnoreCaseHelper(Ptr, Length, strB.Ptr, strB.Length);
+			return String.[Friend]CompareOrdinalHelper(Ptr, Length, strB.Ptr, strB.Length);
 		}
 
 		public bool Equals(StringView str)
@@ -3037,9 +3286,9 @@ namespace System
 			return false;
 		}
 
-		public bool Contains(StringView stringView)
+		public bool Contains(StringView stringView, bool ignoreCase = false)
 		{
-			return IndexOf(stringView) != -1;
+			return IndexOf(stringView, ignoreCase) != -1;
 		}
 
 		public bool StartsWith(StringView b, StringComparison comparisonType = StringComparison.Ordinal)
@@ -3130,6 +3379,92 @@ namespace System
 			TrimEnd();
 		}
 
+		public void TrimEnd(char32 trimChar) mut
+		{
+			let ptr = Ptr;
+			for (int i = mLength - 1; i >= 0; i--)
+			{
+				char8 c = ptr[i];
+				if (c >= (char8)0x80)
+				{
+					var (c32, idx, len) = GetChar32WithBacktrack(i);
+					if (c32 != trimChar)
+					{
+						if (i < mLength - 1)
+						{
+							mLength = i + 1;
+						}	
+						return;
+					}
+					i = idx;
+				}
+				else if (c != (char32)trimChar)
+				{
+					if (i < mLength - 1)
+					{
+						mLength = i + 1;
+					}
+					return;
+				}
+			}
+			Clear();
+		}
+
+		public void TrimEnd(char8 trimChar) mut
+		{
+			TrimEnd((char32)trimChar);
+		}
+
+		public void TrimStart(char32 trimChar) mut
+		{
+			let ptr = Ptr;
+			for (int i = 0; i < mLength; i++)
+			{
+				char8 c = ptr[i];
+				if (c >= (char8)0x80)
+				{
+					var (c32, len) = GetChar32(i);
+					if (c32 != trimChar)
+					{
+						if (i > 0)
+						{
+							mPtr += i;
+							mLength -= i;
+						}	
+						return;
+					}
+					i += len - 1;
+				}
+				else if (c != (char32)trimChar)
+				{
+					if (i > 0)
+					{
+						mPtr += i;
+						mLength -= i;
+					}
+					return;
+				}
+			}
+			Clear();
+		}
+
+		public void TrimStart(char8 trimChar) mut
+		{
+			TrimStart((char32)trimChar);
+		}
+
+		public void Trim(char32 trimChar) mut
+		{
+			TrimStart(trimChar);
+			TrimEnd(trimChar);
+		}
+
+		public void Trim(char8 trimChar) mut
+		{
+			TrimStart((.)trimChar);
+			TrimEnd((.)trimChar);
+		}
+
 		public bool StartsWith(char8 c)
 		{
 			if (mLength == 0)
@@ -3137,11 +3472,33 @@ namespace System
 			return Ptr[0] == c;
 		}
 
+		public bool StartsWith(char32 c)
+		{
+			if (c < '\x80')
+				return StartsWith((char8)c);
+			if (mLength == 0)
+				return false;
+			return UTF8.Decode(Ptr, mLength).c == c;
+		}
+
 		public bool EndsWith(char8 c)
 		{
 			if (mLength == 0)
 				return false;
 			return Ptr[mLength - 1] == c;
+		}
+
+		public bool EndsWith(char32 c)
+		{
+			if (c < '\x80')
+				return EndsWith((char8)c);
+			if (mLength == 0)
+				return false;
+			char8* ptr = Ptr;
+			int idx = mLength - 1;
+			while ((idx > 0) && ((uint8)ptr[idx] & 0xC0 == 0x80))
+				idx--;
+			return UTF8.Decode(ptr + idx, mLength - idx).c == c;
 		}
 
 		public void QuoteString(String outString)
@@ -3224,6 +3581,34 @@ namespace System
 		public StringSplitEnumerator Split(char8[] separators, int count = Int32.MaxValue, StringSplitOptions options = .None)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, count, options);
+		}
+
+		public String Intern()
+		{
+			using (String.[Friend]sMonitor.Enter())
+			{
+				bool needsLiteralPass = String.[Friend]sInterns.Count == 0;
+				String* internalLinkPtr = *((String**)(String.[Friend]sStringLiterals));
+				if (internalLinkPtr != String.[Friend]sPrevInternLinkPtr)
+				{
+					String.[Friend]sPrevInternLinkPtr = internalLinkPtr;
+					needsLiteralPass = true;
+				}
+				if (needsLiteralPass)
+					String.[Friend]CheckLiterals(String.[Friend]sStringLiterals);
+
+				String* entryPtr;
+				if (String.[Friend]sInterns.TryAddAlt(this, out entryPtr))
+				{
+					String result = new String(mLength + 1);
+					result.Append(this);
+					result.EnsureNullTerminator();
+					*entryPtr = result;
+					String.[Friend]sOwnedInterns.Add(result);
+					return result;
+				}
+				return *entryPtr;
+			}
 		}
 
 		public static operator StringView (String str)

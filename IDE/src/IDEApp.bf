@@ -119,7 +119,7 @@ namespace IDE
     public class IDEApp : BFApp
     {
 		public static String sRTVersionStr = "042";
-		public const String cVersion = "0.43.1";
+		public const String cVersion = "0.43.2";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -851,6 +851,7 @@ namespace IDE
 
 			var fileDialog = scope OpenFileDialog();
 			fileDialog.Title = "Open File";
+			fileDialog.SetFilter("All files (*.*)|*.*");
 			fileDialog.Multiselect = true;
 			fileDialog.ValidateNames = true;
 			if (!fullDir.IsEmpty)
@@ -1460,8 +1461,14 @@ namespace IDE
 		public bool SaveFileAs(SourceViewPanel sourceViewPanel)
 		{
 #if !CLI
+			String fullDir = scope .();
+			Path.GetDirectoryPath(sourceViewPanel.mFilePath, fullDir);
+
 			SaveFileDialog dialog = scope .();
+			dialog.SetFilter("All files (*.*)|*.*");
 			//dialog.ValidateNames = true;
+			if (!fullDir.IsEmpty)
+				dialog.InitialDirectory = fullDir;
 
 			if (sourceViewPanel.mFilePath != null)
 			{
@@ -2401,6 +2408,12 @@ namespace IDE
 
 			//CloseWorkspace();
 			//FinishShowingNewWorkspace();
+		}
+		
+		[IDECommand]
+		void DeleteAllRight()
+		{
+			GetActiveSourceEditWidgetContent()?.DeleteAllRight();
 		}
 
 		[IDECommand]
@@ -5794,7 +5807,7 @@ namespace IDE
 
 		TabbedView.TabButton SetupTab(TabbedView tabView, String name, float width, Widget content, bool ownsContent) // 2
 		{
-			TabbedView.TabButton tabButton = tabView.AddTab(name, width, content, ownsContent);
+			TabbedView.TabButton tabButton = tabView.AddTab(name, width, content, ownsContent, GetTabInsertIndex(tabView));
 			if ((var panel = content as Panel) && (var darkTabButton = tabButton as DarkTabbedView.DarkTabButton))
 			{
 				darkTabButton.mTabWidthOffset = panel.TabWidthOffset;
@@ -5827,7 +5840,7 @@ namespace IDE
             newTabButton.mWantWidth = newTabButton.GetWantWidth();
             newTabButton.mHeight = tabbedView.mTabHeight; 
             newTabButton.mContent = disassemblyPanel;
-            tabbedView.AddTab(newTabButton);
+            tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
             
             newTabButton.mCloseClickedEvent.Add(new () => CloseDocument(disassemblyPanel));
             newTabButton.Activate();
@@ -5836,6 +5849,14 @@ namespace IDE
 			mLastActivePanel = disassemblyPanel;
             return disassemblyPanel;
         }
+
+		int GetTabInsertIndex(TabbedView tabs)
+		{
+			if (mSettings.mUISettings.mInsertNewTabs == .RightOfExistingTabs)
+				return tabs.mTabs.Count;
+			else
+				return 0;
+		}
 
         public class SourceViewTab : DarkTabbedView.DarkTabButton
         {
@@ -6008,7 +6029,7 @@ namespace IDE
             tabButton.mIsRightTab = false;            
             var darkTabbedView = (DarkTabbedView)tabButton.mTabbedView;
             darkTabbedView.SetRightTab(null, false);
-            darkTabbedView.AddTab(tabButton);
+            darkTabbedView.AddTab(tabButton, GetTabInsertIndex(darkTabbedView));
             tabButton.Activate();
         }
 
@@ -6245,7 +6266,8 @@ namespace IDE
 			}
 
 			int32 emitRevision = -1;
-			//
+			
+			if (useFilePath != null)
 			{
 				int barPos = useFilePath.IndexOf('|');
 				if (barPos != -1)
@@ -6383,7 +6405,7 @@ namespace IDE
                 tabbedView.SetRightTab(newTabButton);
             }
             else
-                tabbedView.AddTab(newTabButton);
+                tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
             newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(sourceViewPanel));
             newTabButton.Activate(setFocus);
             if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
@@ -8872,7 +8894,13 @@ namespace IDE
 					{
 						targetType = .BeefTest;
 						if (mTestManager != null)
-							mTestManager.AddProject(project);
+						{
+							String workingDirRel = scope String();
+							ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
+							var workingDir = scope String();
+							Path.GetAbsolutePath(workingDirRel, project.mProjectDir, workingDir);
+							mTestManager.AddProject(project, workingDir);
+						}
 					}
 					else
 					{
@@ -8884,11 +8912,15 @@ namespace IDE
 				{
 					if (project.mGeneralOptions.mTargetType.IsBeefApplication)
 						targetType = .BeefApplication_StaticLib;
+					else if (project.mGeneralOptions.mTargetType == .BeefLib)
+						targetType = .BeefLib_Static;
 				}
 				else if (options.mBuildOptions.mBuildKind == .DynamicLib)
 				{
 					if (project.mGeneralOptions.mTargetType.IsBeefApplication)
 						targetType = .BeefApplication_DynamicLib;
+					else if (project.mGeneralOptions.mTargetType == .BeefLib)
+						targetType = .BeefLib_Dynamic;
 				}
 			}
 
@@ -9418,48 +9450,28 @@ namespace IDE
 
 									let platformType = Workspace.PlatformType.GetFromName(platformName);
 
-									if (options.mBuildOptions.mBuildKind.IsApplicationLib)
+									switch (platformType)
 									{
-										switch (platformType)
-										{
-										case .Windows:
+									case .Windows:
+										if (options.mBuildOptions.mBuildKind == .DynamicLib)
+											newString.Append(".dll");
+										else if ((options.mBuildOptions.mBuildKind == .StaticLib) || (project.mGeneralOptions.mTargetType == .BeefLib))
 											newString.Append(".lib");
-										case .iOS:
-											if (options.mBuildOptions.mBuildKind == .DynamicLib)
-												newString.Append(".dylib");
-											else
-												newString.Append(".a");
-										case .Wasm:
-											if (!newString.Contains('.'))
-												newString.Append(".html");
-										default:
-											if (options.mBuildOptions.mBuildKind == .DynamicLib)
-												newString.Append(".so");
-											else
-												newString.Append(".a");
-										}
-									}
-									else
-									{
-										switch (platformType)
-										{
-										case .Windows:
-											if (project.mGeneralOptions.mTargetType == .BeefLib)
-											    newString.Append(".lib");
-											else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
-											    newString.Append(".dll");
-											else if (project.mGeneralOptions.mTargetType != .CustomBuild)
-											    newString.Append(".exe");
-										case .macOS:
-											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
-												newString.Append(".dylib");
-										case .Wasm:
-											if (!newString.Contains('.'))
-												newString.Append(".html");
-										default:
-											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
-												newString.Append(".so");
-										}
+										else if (project.mGeneralOptions.mTargetType != .CustomBuild)
+										    newString.Append(".exe");
+									case .macOS:
+										if (options.mBuildOptions.mBuildKind == .DynamicLib)
+											newString.Append(".dylib");
+										else if (options.mBuildOptions.mBuildKind == .StaticLib)
+											newString.Append(".a");
+									case .Wasm:
+										if (!newString.Contains('.'))
+											newString.Append(".html");
+									default:
+										if (options.mBuildOptions.mBuildKind == .DynamicLib)
+											newString.Append(".so");
+										else if (options.mBuildOptions.mBuildKind == .StaticLib)
+											newString.Append(".a");
 									}
 		                        }
 								IDEUtils.FixFilePath(newString);
@@ -9480,9 +9492,11 @@ namespace IDE
 							case "LinkFlags":
 								newString = scope:ReplaceBlock String();
 
+								bool isBeefDynLib = (project.mGeneralOptions.mTargetType == .BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
+
 								if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
 									(project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
-									(project.mGeneralOptions.mTargetType == .BeefDynLib) ||
+									(isBeefDynLib) ||
 									(options.mBuildOptions.mBuildKind == .Test))
 								{
 									let platformType = Workspace.PlatformType.GetFromName(platformName);
@@ -10578,7 +10592,7 @@ namespace IDE
 				}
 			}
 
-			if ((mWorkspace.mStartupProject != null) && (mWorkspace.mStartupProject.mGeneralOptions.mTargetType == .BeefTest))
+			if ((compileKind != .Test) && (mWorkspace.mStartupProject != null) && (mWorkspace.mStartupProject.mGeneralOptions.mTargetType == .BeefTest))
 			{
 				OutputErrorLine("Test project '{}' has been selected as the Startup Project. Use the 'Test' menu to run or debug tests.", mWorkspace.mStartupProject.mProjectName);
 				return false;
@@ -12295,16 +12309,16 @@ namespace IDE
 					}
                     hadMessages = true;                    
                     int paramIdx = msg.IndexOf(' ');
-					String cmd = scope String();
-					String param = scope String();
+					StringView cmd = default;
+					StringView param = default;
 
 					if (paramIdx > 0)
 					{
-                    	cmd.Append(msg, 0, paramIdx);
-                    	param.Append(msg, paramIdx + 1);
+						cmd = msg.Substring(0, paramIdx);
+						param = msg.Substring(paramIdx + 1);
 					}
 					else
-						cmd.Append(msg);
+						cmd = msg;
 
 					bool isOutput = (cmd == "msg") || (cmd == "dbgEvalMsg") || (cmd == "log");
 					if (cmd == "msgLo")
@@ -12342,7 +12356,7 @@ namespace IDE
 
 						while (true)
 						{
-							String errorMsg = null;
+							StringView errorMsg = default;
 
 							int infoPos = param.IndexOf("\x01");
 							if (infoPos == 0)
@@ -12354,7 +12368,7 @@ namespace IDE
 								if (endPos == -1)
 									break;
 								String leakStr = scope String(param, 1, endPos - 1);
-								param.Remove(0, endPos + 1);
+								param.RemoveFromStart(endPos + 1);
 								int itemIdx = 0;
 								for (var itemView in leakStr.Split('\t'))
 								{
@@ -12396,12 +12410,12 @@ namespace IDE
 								tempStr.Clear();
 								tempStr.Append(param, 0, infoPos);
 								errorMsg = tempStr;
-								param.Remove(0, infoPos);
+								param.RemoveFromStart(infoPos);
 							}
 							else
 								errorMsg = param;
 
-							if (errorMsg != null)
+							if (!errorMsg.IsEmpty)
 							{
 								if (isFirstMsg)
 								{
@@ -12413,19 +12427,19 @@ namespace IDE
 										mOutputPanel.Update();
 									}
 
-									OutputLineSmart(scope String("ERROR: ", errorMsg));
+									OutputLineSmart(scope String("ERROR: ", scope String(errorMsg)));
 									if (gApp.mRunningTestScript)
 									{
 										// The 'OutputLineSmart' would already call 'Fail' when running test scripts
 									}
 									else
 									{
-										Fail(errorMsg);
+										Fail(scope String(errorMsg));
 									}
 									isFirstMsg = false;
 								}
 								else
-									Output(errorMsg);
+									Output(scope String(errorMsg));
 							}
 
 							if (infoPos == -1)

@@ -180,10 +180,13 @@ namespace IDE
 #endif
 
 		    //String error = scope String();
-
 		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
-			if (!isExe)
+			if ((options.mBuildOptions.mBuildKind == .StaticLib) || (options.mBuildOptions.mBuildKind == .DynamicLib))
+			{
+				// Okay
+			}
+			else if (!isExe)
 				return true;
 			
 		    String arCmds = scope String(""); //-O2 -Rpass=inline 
@@ -191,11 +194,42 @@ namespace IDE
 
 		    arCmds.AppendF("CREATE {}\n", targetPath);
 
+			void AddObject(StringView obj)
+			{
+				if (obj.IsEmpty)
+					return;
+
+				if (obj.EndsWith(".lib", .OrdinalIgnoreCase))
+					arCmds.AppendF("ADDLIB {}\n", obj);
+				else
+					arCmds.AppendF("ADDMOD {}\n", obj);
+			}
+
+			bool inQuote = false;
+			int lastEnd = -1;
+			for (int i < objectsArg.Length)
+			{
+				var c = objectsArg[i];
+				if (c == '"')
+				{
+					if (inQuote)
+						AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
+					inQuote = !inQuote;
+					lastEnd = i;
+				}
+				else if ((c == ' ') && (!inQuote))
+				{
+					AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
+					lastEnd = i;
+				}
+			}
+			AddObject(objectsArg.Substring(lastEnd + 1));
+
 			for (let obj in objectsArg.Split(' '))
 			{
 				if (!obj.IsEmpty)
 				{
-					arCmds.AppendF("ADDMOD {}\n", obj);
+					
 				}
 			}
 			arCmds.AppendF("SAVE\n");
@@ -245,6 +279,12 @@ namespace IDE
 
 				project.mLastDidBuild = true;
 		    }
+			else
+			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
+			}
 
 			return true;
 		}
@@ -297,7 +337,10 @@ namespace IDE
 
 		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
-			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
+			bool isDynLib = (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
+
+			if (options.mBuildOptions.mBuildKind == .StaticLib)
+				isExe = false;
 
 			if (isExe || isDynLib)
 			{
@@ -347,7 +390,9 @@ namespace IDE
 				//TODO: Make an option
 			    if (options.mBuildOptions.mCLibType == Project.CLibType.Static)
 			    {
-			        linkLine.Append("-static-libgcc -static-libstdc++ ");
+					if (mPlatformType != .macOS)
+						linkLine.Append("-static-libgcc ");
+					linkLine.Append("-static-libstdc++ ");
 			    }
 			    else
 			    {
@@ -507,6 +552,12 @@ namespace IDE
 					project.mLastDidBuild = true;
 			    }
 			}
+			else
+			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
+			}
 
 			return true;
 		}
@@ -521,7 +572,7 @@ namespace IDE
 
 		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
-			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
+			bool isDynLib = (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
 
 			if (isExe || isDynLib)
 			{
@@ -606,6 +657,12 @@ namespace IDE
 
 					project.mLastDidBuild = true;
 			    }
+			}
+			else
+			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
 			}
 
 			return true;
@@ -757,7 +814,8 @@ namespace IDE
 						}    
 					}
 
-					if (depProject.mGeneralOptions.mTargetType == .BeefDynLib)
+					bool depIsDynLib = (depProject.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (depOptions.mBuildOptions.mBuildKind == .DynamicLib);
+					if (depIsDynLib)
 					{
 						if (mImpLibMap.TryGetValue(depProject, var libPath))
 						{
@@ -793,6 +851,9 @@ namespace IDE
 
 			bool isTest = options.mBuildOptions.mBuildKind == .Test;
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
+			if (options.mBuildOptions.mBuildKind == .DynamicLib)
+				isExe = true;
+
 			if (isExe)
 			{
 				String linkLine = scope String();
@@ -807,7 +868,7 @@ namespace IDE
 					linkLine.Append("-subsystem:windows ");
 			    else if (project.mGeneralOptions.mTargetType == .C_GUIApplication)
 			    	linkLine.Append("-subsystem:console ");
-				else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
+				else if (project.mGeneralOptions.mTargetType == .BeefLib)
 				{
 					linkLine.Append("-dll ");
 
@@ -878,7 +939,7 @@ namespace IDE
 
 				linkLine.Append("-nologo ");
 				
-				if ((project.mGeneralOptions.mTargetType == .BeefDynLib) && (workspaceOptions.mAllowHotSwapping) && (is64Bit))
+				if ((project.mGeneralOptions.mTargetType == .BeefLib) && (workspaceOptions.mAllowHotSwapping) && (is64Bit))
 				{
 					// This helps to ensure that DLLs have enough hot swapping space after them
 					int nameHash = targetPath.GetHashCode();
@@ -1112,6 +1173,12 @@ namespace IDE
 					project.mLastDidBuild = true;
 			    }
 			}
+			else
+			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
+			}
 
 			return true;
 		}
@@ -1197,7 +1264,7 @@ namespace IDE
 					Directory.CreateDirectory(targetDir).IgnoreError();
 			}
 
-			if (project.mGeneralOptions.mTargetType == .BeefDynLib)
+			if (project.mGeneralOptions.mTargetType == .BeefLib)
 			{
 				if (targetPath.EndsWith(".dll", .InvariantCultureIgnoreCase))
 				{
@@ -1223,6 +1290,10 @@ namespace IDE
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)
 			{
+				var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+				tagetCompletedCmd.mOnlyIfNotFailed = true;
+				gApp.mExecutionQueue.Add(tagetCompletedCmd);
+
 				return true; 
 			}
 
@@ -1379,8 +1450,19 @@ namespace IDE
 					gApp.OutputErrorLine("Project '{}' cannot be linked with the Windows Toolset for platform '{}'", project.mProjectName, mPlatformType);
 					return false;
 				}
-				else if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
-					return false;
+				else
+				{
+					if (options.mBuildOptions.mBuildKind == .StaticLib)
+					{
+						if (!QueueProjectGNUArchive(project, targetPath, workspaceOptions, options, objectsArg))
+							return false;
+					}
+					else
+					{
+						if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
+							return false;
+					}
+				}
 			}
 
 		    return true;

@@ -9,7 +9,7 @@ class Span
 {
 public:
 	T* mVals;
-	int mSize;
+	intptr mSize;
 
 public:
 	struct Iterator
@@ -47,16 +47,17 @@ public:
 
 	Span()
 	{
-
+		mVals = NULL;
+		mSize = 0;
 	}
 
-	Span(T* mPtr, int size)
+	Span(T* mPtr, intptr size)
 	{
-		mSize = (int)refVec.size();		
-		mVals = NULL;
+		mVals = mPtr;
+		mSize = size;		
 	}
 	
-	T& operator[](int idx) const
+	T& operator[](intptr idx) const
 	{
 		return mVals[idx];
 	}
@@ -76,7 +77,7 @@ public:
 		return mVals[mSize - 1];
 	}
 
-	int size() const
+	intptr size() const
 	{
 		return mSize;
 	}
@@ -91,7 +92,7 @@ public:
 		return mSize == 0;
 	}
 
-	T Get(int idx)
+	T Get(intptr idx)
 	{
 		if ((idx < 0) || (idx >= mSize))
 			return (T)0;
@@ -99,7 +100,7 @@ public:
 	}
 
 	template <typename T2>
-	T2 GetAs(int idx)
+	T2 GetAs(intptr idx)
 	{
 		if ((idx < 0) || (idx >= mSize))
 			return (T2)0;
@@ -120,7 +121,7 @@ public:
 		return mVals[0];
 	}
 
-	void SetSize(int size)
+	void SetSize(intptr size)
 	{
 		BF_ASSERT(size <= mSize);
 		mSize = size;

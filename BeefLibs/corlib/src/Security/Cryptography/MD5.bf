@@ -1,5 +1,35 @@
 namespace System.Security.Cryptography
 {
+	struct HashEncode
+	{
+		// Only 63 chars - skip zero
+		const char8[?] cHash64bToChar = .( 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+		'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F',
+		'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+		'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_' );
+		public static void HashEncode64(uint64 val, String outStr)
+		{
+			var val;
+			if ((int64)val < 0)
+			{
+				uint64 flippedNum = (uint64)-(int64)val;
+				// Only flip if the encoded result would actually be shorter
+				if (flippedNum <= 0x00FFFFFFFFFFFFFFL)
+				{
+					val = flippedNum;
+					outStr.Append('_');
+				}
+			}
+
+			for (int i = 0; i < 10; i++)
+			{
+				int charIdx = (int)((val >> (i * 6)) & 0x3F) - 1;
+				if (charIdx != -1)
+					outStr.Append(cHash64bToChar[charIdx]);
+			}
+		}
+	}
+
 	struct MD5Hash
 	{
 		public uint8[16] mHash;
@@ -49,6 +79,14 @@ namespace System.Security.Cryptography
 			{
 				val.ToString(strBuffer, "X2", null);
 			}
+		}
+
+		public void Encode(String outStr)
+		{
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[0], outStr);
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[1], outStr);
 		}
 	}
 

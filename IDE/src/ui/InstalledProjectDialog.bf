@@ -128,6 +128,7 @@ namespace IDE.ui
 		    mEditWidget.GetText(filterString);
 		    filterString.Trim();
 
+			mFilteredList.Clear();
 		    for (var installedProject in mInstalledProjectList)
 		    {
 				if ((!filterString.IsEmpty) && (installedProject.mName.IndexOf(filterString, true) == -1))

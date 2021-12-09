@@ -271,6 +271,7 @@ namespace System
 			CreateAlways,
 			CreateIfNotExists,
 			OpenExisting,
+			OpenAlways,
 		};
 
 		public enum BfpFileCreateFlags : int32
@@ -337,6 +338,8 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		public static extern BfpFile* BfpFile_GetStd(BfpFileStdKind kind, BfpFileResult* outResult);
 		[CallingConvention(.Stdcall), CLink]
+		public static extern int BfpFile_GetSystemHandle(BfpFile* file);
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void BfpFile_Release(BfpFile* file);
 		[CallingConvention(.Stdcall), CLink]
 		public static extern int BfpFile_Write(BfpFile* file, void* buffer, int size, int timeoutMS, BfpFileResult* outResult);
@@ -349,7 +352,7 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		public static extern int64 BfpFile_Seek(BfpFile* file, int64 offset, BfpFileSeekKind seekKind);
 		[CallingConvention(.Stdcall), CLink]
-		public static extern void BfpFile_Truncate(BfpFile* file);
+		public static extern void BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult);
 		[CallingConvention(.Stdcall), CLink]
 		public static extern BfpTimeStamp BfpFile_GetTime_LastWrite(char8* path);
 		[CallingConvention(.Stdcall), CLink]
@@ -410,7 +413,8 @@ namespace System
 			AppData_LocalLow,
 			AppData_Roaming,
 			Programs,
-			Programs_Common
+			Programs_Common,
+			Documents
 		}
 
 		public static Result<void, Platform.Result> GetStrHelper(String outStr, delegate void (char8* outPtr, int32* outSize, Result* outResult) func)

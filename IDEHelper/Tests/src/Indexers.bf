@@ -24,6 +24,14 @@ namespace Tests
 					return 234;
 				}
 			}
+
+			public int BaseIndex
+			{
+				get
+				{
+					return base[2];
+				}
+			}
 		}
 
 		class ClassC : ClassB
@@ -33,7 +41,7 @@ namespace Tests
 
 		struct StructA
 		{
-			int mA;
+			public int mA;
 
 			public int this[int index]
 			{
@@ -45,6 +53,25 @@ namespace Tests
 				get mut
 				{
 					return 2;
+				}
+			}
+
+			public int this[params int[] indices]
+			{
+				get mut
+				{
+					int total = 0;
+					for (var i in indices)
+						total += i;
+					mA += total;
+					return total;
+				}
+
+				set mut
+				{
+					for (var i in indices)
+						mA += i;
+					mA += value * 1000;
 				}
 			}
 		}
@@ -61,12 +88,20 @@ namespace Tests
 			Test.Assert(value == 234);
 			value = ca[0];
 			Test.Assert(value == 234);
+			value = cb.BaseIndex;
+			Test.Assert(value == 123);
 
 			StructA sa = default;
 			let sa2 = sa;
 
 			Test.Assert(sa[0] == 2);
 			Test.Assert(sa2[0] == 1);
+
+			sa[3, 4, 5] = 9;
+			Test.Assert(sa.mA == 9012);
+			int a = sa[3, 4, 5];
+			Test.Assert(a == 12);
+			Test.Assert(sa.mA == 9024);
 		}
 	}
 }

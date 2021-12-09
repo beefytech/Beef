@@ -84,7 +84,7 @@ namespace bf
 				void*(*Alloc)(intptr size);
 				void(*Free)(void* ptr);
 				void(*Object_Delete)(bf::System::Object* obj);
-				void(*Object_ToString)(bf::System::Object* obj, bf::System::String* str);
+				void* mUnused0;
 				bf::System::Type* (*Object_GetType)(bf::System::Object* obj);
 				void(*Object_GCMarkMembers)(bf::System::Object* obj);
 				bf::System::Object* (*Object_DynamicCastToTypeId)(bf::System::Object* obj, int typeId);

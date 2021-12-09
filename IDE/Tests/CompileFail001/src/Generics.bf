@@ -85,5 +85,23 @@ namespace IDETest
 		{
 
 		}
+
+		public static void TestGen<T, TItem>(T val)
+			where T : IEnumerator<TItem>
+			where TItem : var
+		{
+			Console.WriteLine(typeof(decltype(val)).ToString(.. scope .()));
+		}
+
+		public static void TestPreGen<T>()
+		{
+			T a = default;
+			TestGen(a); //FAIL Unable to determine generic argument 'TItem'
+		}
+
+		public static void TestGenBug()
+		{
+			TestPreGen<List<int>>();
+		}
 	}
 }

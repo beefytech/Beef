@@ -427,6 +427,7 @@ public:
 	String mTargetPath;
 	String mArgs;
 	String mWorkingDir;
+	bool mHotSwapEnabled;
 	Array<uint8> mEnvBlock;	
 	DebugTarget* mEmptyDebugTarget;
 	DebugTarget* mDebugTarget;
@@ -617,7 +618,7 @@ public:
 	virtual void OutputRawMessage(const StringImpl& msg) override;
 	virtual int GetAddrSize() override;
 	virtual bool CanOpen(const StringImpl& fileName, DebuggerResult* outResult) override;
-	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock) override;
+	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled) override;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) override;
 	virtual void Run() override;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;	

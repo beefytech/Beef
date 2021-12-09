@@ -716,7 +716,7 @@ namespace System
 					++inIdx;
 					++outIdx;
 				}
-				else // We need to physically move char8acters once we've found an equal span
+				else // We need to physically move characters once we've found an equal span
 				{
 					ptr[outIdx++] = ptr[inIdx++];
 				}

@@ -26,7 +26,8 @@ public:
 		CreateExprFlags_ExitOnParenExpr = 0x80,
 		CreateExprFlags_NoCheckBinOpPrecedence = 0x100,
 		CreateExprFlags_BreakOnCascade = 0x200,
-		CreateExprFlags_EarlyExit = 0x400 // Don't attempt binary or ternary operations
+		CreateExprFlags_EarlyExit = 0x400, // Don't attempt binary or ternary operations
+		CreateExprFlags_AllowEmpty = 0x800
 	};
 
 	enum CreateStmtFlags
@@ -186,8 +187,8 @@ public:
 	BfTokenNode* ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken, bool requireNames);
 	BfTokenNode* ReadArguments(BfAstNode* parentNode, BfAstNode* afterNode, SizedArrayImpl<BfExpression*>* arguments, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken, bool allowSkippedArgs = false, CreateExprFlags createExprFlags = CreateExprFlags_None);
 	void ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, BfBlock* block);
-	BfAstNode* ReadTypeMember(BfTokenNode* node, int depth = 0, BfAstNode* deferredHeadNode = NULL);
-	BfAstNode* ReadTypeMember(BfAstNode* node, int depth = 0, BfAstNode* deferredHeadNode = NULL);
+	BfAstNode* ReadTypeMember(BfTokenNode* node, bool declStarted = false, int depth = 0, BfAstNode* deferredHeadNode = NULL);
+	BfAstNode* ReadTypeMember(BfAstNode* node, bool declStarted = false, int depth = 0, BfAstNode* deferredHeadNode = NULL);
 	BfIdentifierNode* CompactQualifiedName(BfAstNode* leftNode);
 	void TryIdentifierConvert(int readPos);
 	void CreateQualifiedNames(BfAstNode* node);

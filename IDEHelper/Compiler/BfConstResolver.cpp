@@ -116,7 +116,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	if ((mResult) && (wantType != NULL))
 	{
 		auto typeInst = mResult.mType->ToTypeInstance();
-		if ((typeInst != NULL) && (typeInst->mTypeDef == mModule->mCompiler->mStringTypeDef))
+		if ((typeInst != NULL) && (typeInst->IsInstanceOf(mModule->mCompiler->mStringTypeDef)))
 		{
 			BfType* toType = wantType;
 			if (toType == NULL)
@@ -234,7 +234,10 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	mModule->FixIntUnknown(mResult);	
 
 	if ((flags & BfConstResolveFlag_NoActualizeValues) == 0)
+	{
+		prevIgnoreWrites.Restore();
 		mModule->FixValueActualization(mResult, !prevIgnoreWrites.mPrevVal || ((flags & BfConstResolveFlag_ActualizeValues) != 0));
+	}
 
 	return mResult;
 }

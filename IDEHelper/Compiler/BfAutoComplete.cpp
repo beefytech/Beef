@@ -27,8 +27,15 @@ AutoCompleteBase::~AutoCompleteBase()
 
 AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter)
 {
-	if (!DoesFilterMatch(entry.mDisplay, filter.c_str()))
-		return NULL;		
+	if ((!DoesFilterMatch(entry.mDisplay, filter.c_str())) || (entry.mNamePrefixCount < 0))
+		return NULL;
+	return AddEntry(entry);
+}
+
+AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const char* filter)
+{
+	if ((!DoesFilterMatch(entry.mDisplay, filter)) || (entry.mNamePrefixCount < 0))
+		return NULL;
 	return AddEntry(entry);
 }
 
@@ -44,9 +51,10 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
 	{
 		insertedEntry->mEntryType = entry.mEntryType;
 
-		int size = (int)strlen(entry.mDisplay) + 1;
+		const char* display = entry.mDisplay;		
+		int size = (int)strlen(display) + 1;
 		insertedEntry->mDisplay = (char*)mAlloc.AllocBytes(size);
-		memcpy((char*)insertedEntry->mDisplay, entry.mDisplay, size);		
+		memcpy((char*)insertedEntry->mDisplay, display, size);
 	}
 
 	return insertedEntry;
@@ -445,7 +453,7 @@ bool BfAutoComplete::IsAttribute(BfTypeInstance* typeInst)
 	auto checkTypeInst = typeInst;
 	while (checkTypeInst != NULL)
 	{
-		if (checkTypeInst->mTypeDef == mModule->mCompiler->mAttributeTypeDef)
+		if (checkTypeInst->mTypeDef->GetLatest() == mModule->mCompiler->mAttributeTypeDef->GetLatest())
 			return true;
 
 		checkTypeInst = checkTypeInst->mBaseType;
@@ -455,8 +463,15 @@ bool BfAutoComplete::IsAttribute(BfTypeInstance* typeInst)
 
 void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef, BfMethodInstance* methodInstance, BfMethodDeclaration* methodDecl, const StringImpl& methodName, const StringImpl& filter)
 {
+	int wantPrefixCount = 0;
+	const char* filterStr = filter.c_str();
+	while (filterStr[0] == '@')
+	{
+		filterStr++;
+		wantPrefixCount++;
+	}	
 	String replaceName;
-	AutoCompleteEntry entry("method", methodName);
+	AutoCompleteEntry entry("method", methodName, methodDef->mNamePrefixCount - wantPrefixCount);
 	if (methodDecl != NULL)
 	{
 		if (methodDecl->mMixinSpecifier != NULL)
@@ -470,7 +485,7 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 	if (methodDef->mMethodType == BfMethodType_Extension)
 		entry.mEntryType = "extmethod";
 
-	if (auto entryAdded = AddEntry(entry, filter))
+	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
 		if (methodDecl != NULL)
 		{			
@@ -515,6 +530,8 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 
 void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bool onlyAttribute)
 {
+	BF_ASSERT(typeDef->mDefState != BfTypeDef::DefState_Emitted);
+
 	if (typeDef->mTypeDeclaration == NULL)
 		return;
 
@@ -565,10 +582,14 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 	{
 		if ((CheckDocumentation(entryAdded, NULL)) && (entryAdded->mDocumentation == NULL))
 		{
-			auto typeInst = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
+			auto type = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
 			StringT<1024> str;
-			if (typeInst != NULL)
-				str = mModule->TypeToString(typeInst, BfTypeNameFlag_ExtendedInfo);
+			if (type != NULL)
+			{
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, type->ToTypeInstance());
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
+				str = mModule->TypeToString(type, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
+			}
 			if (typeDef->mTypeDeclaration->mDocumentation != NULL)
 			{
 				if (!str.IsEmpty())
@@ -580,8 +601,13 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 	}
 }
 
-bool BfAutoComplete::CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate)
+bool BfAutoComplete::CheckProtection(BfProtection protection, BfTypeDef* typeDef, bool allowProtected, bool allowPrivate)
 {
+	if ((protection == BfProtection_Internal) && (typeDef != NULL))
+	{
+		return mModule->CheckProtection(protection, typeDef, allowProtected, allowPrivate);			
+	}
+
 	return (mHasFriendSet) || (protection == BfProtection_Public) ||
 		((protection == BfProtection_Protected) && (allowProtected)) ||
 		((protection == BfProtection_Private) && (allowPrivate));
@@ -603,7 +629,7 @@ void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& f
 {	
 	for (auto innerType : typeInst->mTypeDef->mNestedTypes)
 	{
-		if (CheckProtection(innerType->mProtection, allowProtected, allowPrivate))
+		if (CheckProtection(innerType->mProtection, innerType, allowProtected, allowPrivate))
 			AddTypeDef(innerType, filter);
 	}	
 
@@ -615,9 +641,9 @@ void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& f
 void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate, bool onlyAttribute)
 {	
 	if (typeInst != mModule->mCurTypeInstance)
-		AddTypeDef(typeInst->mTypeDef, filter, onlyAttribute);
+		AddTypeDef(typeInst->mTypeDef->GetDefinition(), filter, onlyAttribute);
 
-	auto typeDef = typeInst->mTypeDef;
+	auto typeDef = typeInst->mTypeDef->GetDefinition();
 	for (auto nestedTypeDef : typeDef->mNestedTypes)
 	{
 		if (nestedTypeDef->mIsPartial)
@@ -627,7 +653,7 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 				continue;
 		}
 
-	 	if (CheckProtection(nestedTypeDef->mProtection, allowProtected, allowPrivate))
+	 	if (CheckProtection(nestedTypeDef->mProtection, nestedTypeDef, allowProtected, allowPrivate))
 	 		AddTypeDef(nestedTypeDef, filter, onlyAttribute);
 	}
 
@@ -643,8 +669,15 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 
 void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, BfFieldInstance* fieldInstance, const StringImpl& filter)
 {	
-	AutoCompleteEntry entry(GetTypeName(fieldInstance->mResolvedType), fieldDef->mName);
-	if (auto entryAdded = AddEntry(entry, filter))
+	int wantPrefixCount = 0;
+	const char* filterStr = filter.c_str();
+	while (filterStr[0] == '@')
+	{
+		filterStr++;
+		wantPrefixCount++;
+	}	
+	AutoCompleteEntry entry(GetTypeName(fieldInstance->mResolvedType), fieldDef->mName, fieldDef->mNamePrefixCount - wantPrefixCount);
+	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
 		auto documentation = (fieldDef->mFieldDeclaration != NULL) ? fieldDef->mFieldDeclaration->mDocumentation : NULL;
 		if (CheckDocumentation(entryAdded, documentation))
@@ -682,11 +715,18 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 
 void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, const StringImpl& filter)
 {
+	int wantPrefixCount = 0;
+	const char* filterStr = filter.c_str();
+	while (filterStr[0] == '@')
+	{
+		filterStr++;
+		wantPrefixCount++;
+	}	
 	BfCommentNode* documentation = NULL;
 	if (propDef->mFieldDeclaration != NULL)
 		documentation = propDef->mFieldDeclaration->mDocumentation;
-	AutoCompleteEntry entry("property", propDef->mName);
-	if (auto entryAdded = AddEntry(entry, filter))
+	AutoCompleteEntry entry("property", propDef->mName, propDef->mNamePrefixCount - wantPrefixCount);
+	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
 		if (CheckDocumentation(entryAdded, documentation))
 		{
@@ -881,7 +921,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 		if (fieldDef->mIsNoShow)
 			continue;
 		
-		if ((fieldDef->mIsStatic) && (CheckProtection(fieldDef->mProtection, allowProtected, allowPrivate)))
+		if ((fieldDef->mIsStatic) && (CheckProtection(fieldDef->mProtection, fieldDef->mDeclaringType, allowProtected, allowPrivate)))
 		{
 			if (!mModule->CanCast(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), fieldInst.mResolvedType), selfType))
 				continue;
@@ -914,7 +954,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 
 		bool canUseMethod;
 		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Mixin);		
-		canUseMethod &= CheckProtection(methodDef->mProtection, allowProtected, allowPrivate);
+		canUseMethod &= CheckProtection(methodDef->mProtection, methodDef->mDeclaringType, allowProtected, allowPrivate);
 		
 		if (methodDef->mMethodType != BfMethodType_Normal)
 			continue;
@@ -967,7 +1007,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 		if (methodInstance->mReturnType != selfType)
 			continue;
 
-		if (CheckProtection(propDef->mProtection, allowProtected, allowPrivate))
+		if (CheckProtection(propDef->mProtection, propDef->mDeclaringType, allowProtected, allowPrivate))
 		{
 			if (propDef->HasExplicitInterface())
 				continue;
@@ -987,11 +1027,12 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 
 bool BfAutoComplete::InitAutocomplete(BfAstNode* dotNode, BfAstNode* nameNode, String& filter)
 {	
+	bool isDot = (dotNode != NULL) && (dotNode->mToken == BfToken_Dot);
 	if (IsAutocompleteNode(nameNode))
 	{
 		auto bfParser = nameNode->GetSourceData()->ToParser();
 
-		if (mIsGetDefinition)
+		if ((mIsGetDefinition) || (!isDot))
 		{
 			mInsertStartIdx = nameNode->GetSrcStart();
 			mInsertEndIdx = nameNode->GetSrcEnd();
@@ -1002,11 +1043,15 @@ bool BfAutoComplete::InitAutocomplete(BfAstNode* dotNode, BfAstNode* nameNode, S
 			mInsertEndIdx = std::min(bfParser->mCursorIdx + 1, nameNode->GetSrcEnd());
 		}
 
-		filter.Append(bfParser->mSrc + mInsertStartIdx, mInsertEndIdx - mInsertStartIdx);
+		filter.Append(bfParser->mSrc + nameNode->GetSrcStart(), mInsertEndIdx - nameNode->GetSrcStart());
 		return true;
 	}
 
-	if ((dotNode != NULL) && (IsAutocompleteNode(dotNode, 0, 1)))
+	int lenAdd = 0;
+	if (!isDot)
+		lenAdd++;
+
+	if ((dotNode != NULL) && (IsAutocompleteNode(dotNode, lenAdd, 1)))
 	{
 		mInsertStartIdx = dotNode->GetSrcEnd();
 		mInsertEndIdx = dotNode->GetSrcEnd();
@@ -1027,7 +1072,7 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 		auto fieldDef = fieldInst.GetFieldDef();
 		if ((fieldDef != NULL) && (fieldDef->mIsConst) && 
 			((fieldInst.mResolvedType == typeInst) || (fieldInst.mIsEnumPayloadCase)) && 
-			(CheckProtection(fieldDef->mProtection, allowProtected, allowPrivate)))
+			(CheckProtection(fieldDef->mProtection, fieldDef->mDeclaringType, allowProtected, allowPrivate)))
 		{
 			if ((!typeInst->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, mModule)) ||
 				(!typeInst->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
@@ -1077,7 +1122,7 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 			continue;
 		
 		bool canUseMethod = true;		
-		canUseMethod &= CheckProtection(methodDef->mProtection, allowProtected, allowPrivate);
+		canUseMethod &= CheckProtection(methodDef->mProtection, methodDef->mDeclaringType, allowProtected, allowPrivate);
 		
 		auto methodInstance = mModule->GetRawMethodInstanceAtIdx(extensionContainer, methodDef->mIdx);
 		if (methodInstance == NULL)
@@ -1417,9 +1462,9 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		}
 	}
 
-	if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mTypeInstance != NULL))
+	if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mType != NULL))
 	{
-		BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mTypeInstance);
+		BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mType);
 
 		BfGlobalLookup globalLookup;
 		globalLookup.mKind = BfGlobalLookup::Kind_All;
@@ -1492,9 +1537,9 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 							(*findIdx)++;
 						}
 
-						if (*findIdx == varSkipCount)
+						if (varSkipCount - local->mNamePrefixCount - *findIdx == 0)
 						{
-							if ((AddEntry(AutoCompleteEntry(GetTypeName(local->mResolvedType), local->mName), wantName)) && (mIsGetDefinition))
+							if ((AddEntry(AutoCompleteEntry(GetTypeName(local->mResolvedType), local->mName, varSkipCount - local->mNamePrefixCount - *findIdx), wantName)) && (mIsGetDefinition))
 							{
 							}
 						}
@@ -1558,9 +1603,10 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 			"alignof", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "default", "defer",
 			"delegate", "delete", "do", "else", "false", "finally", 
 			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "new", "mixin", "null",
-			"out", "params", "ref", "rettype", "return",
+			"offsetof", "out", "params", "ref", "rettype", "return",
 			"sealed", "sizeof", "scope", "static", "strideof", "struct", "switch", /*"this",*/ "try", "true", "typeof", "unchecked",
 			"using", "var", "virtual", "volatile", "where", "while",
+			"alloctype", "comptype", "decltype", "nullable",
 		};		
 
 		for (int i = 0; i < sizeof(tokens) / sizeof(char*); i++)
@@ -1611,8 +1657,16 @@ String BfAutoComplete::GetFilter(BfAstNode* node)
 		auto bfParser = node->GetSourceData()->ToParser();
 		int cursorIdx = bfParser->mCursorIdx;
 		filter = filter.Substring(0, BF_CLAMP(cursorIdx - node->GetSrcStart(), 0, (int)filter.length()));
-		mInsertEndIdx = cursorIdx;
+		mInsertEndIdx = cursorIdx;	
 	}
+
+	const char* cPtr = filter.c_str();
+	while (cPtr[0] == '@')
+	{
+		mInsertStartIdx++;
+		cPtr++;		
+	}
+
 	return filter;
 }
 
@@ -1647,7 +1701,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 		if (attrIdentifier != NULL)
 		{
 			BfAttributeState attributeState;
-			attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_MemberAccess);
+			attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_MemberAccess | BfAttributeTargets_Invocation);
 			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);
 			if ((attributeState.mCustomAttributes != NULL) && (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef)))
 			{
@@ -1782,9 +1836,9 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 							checkTypeInst = mModule->GetOuterType(checkTypeInst);
 						}
 
-						if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mTypeInstance != NULL))
+						if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mType != NULL))
 						{
-							BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mTypeInstance);
+							BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mType);
 
 							BfGlobalLookup globalLookup;
 							globalLookup.mKind = BfGlobalLookup::Kind_All;
@@ -1905,6 +1959,8 @@ bool BfAutoComplete::CheckExplicitInterface(BfTypeInstance* interfaceType, BfAst
 	else
 		return false;
 	
+	mModule->PopulateType(interfaceType, BfPopulateType_DataAndMethods);
+
 	String filter;
 	if (isAutocompletingName)
 		filter = GetFilter(memberName);
@@ -2335,6 +2391,8 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 			if (!isInterface)
 				impl += "override ";
+			else if (methodDef->mIsStatic)
+				impl += "static ";
 
 			BfType* propType = methodInst->mReturnType;
 			if (methodDef->mMethodType == BfMethodType_PropertySetter)
@@ -2536,7 +2594,7 @@ void BfAutoComplete::CheckProperty(BfPropertyDeclaration* propertyDeclaration)
 	{
 		BfTypeInstance* typeInst = NULL;
 
-		auto type = mModule->ResolveTypeRef(propertyDeclaration->mExplicitInterface, BfPopulateType_DataAndMethods);
+		auto type = mModule->ResolveTypeRef(propertyDeclaration->mExplicitInterface, BfPopulateType_Identity);
 		if (type != NULL)
 			typeInst = type->ToTypeInstance();
 
@@ -2615,7 +2673,7 @@ void BfAutoComplete::CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedT
 		if (mResolveType == BfResolveType_GetResultString)
 		{
 			mResultString = ":";
-			mResultString += mModule->TypeToString(resolvedType);
+			mResultString += mModule->TypeToString(resolvedType, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
 		}
 	}
 }
@@ -2639,11 +2697,11 @@ void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue
 	auto constant = mModule->mBfIRBuilder->GetConstant(typedValue.mValue);
 	if (BfIRConstHolder::IsInt(constant->mTypeCode))
 	{
-		mResultString = StrFormat("%lld", constant->mInt64);
+		mResultString = StrFormat(":%lld", constant->mInt64);
 	}
 	else if (BfIRConstHolder::IsFloat(constant->mTypeCode))
 	{
-		mResultString = StrFormat("%f", constant->mDouble);
+		mResultString = StrFormat(":%f", constant->mDouble);
 	}	
 }
 
@@ -2966,6 +3024,9 @@ void BfAutoComplete::CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 		return;
 	if (typeInstance == NULL)
 		return;	
+
+	if (typeInstance->IsInterface())
+		return;
 
 	for (auto& ifaceTypeInst : typeInstance->mInterfaces)
 	{

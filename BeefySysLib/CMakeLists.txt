@@ -278,6 +278,7 @@ file(GLOB SRC_FILES
     util/BSpline.cpp
     util/CatmullRom.cpp
     util/ChunkedDataBuffer.cpp
+    util/Compress.cpp
     util/CubicFuncSpline.cpp
     util/CubicSpline.cpp
     util/FileEnumerator.cpp
@@ -285,11 +286,13 @@ file(GLOB SRC_FILES
     util/Heap.cpp
     util/Json.cpp
     util/MappedFile.cpp
+    util/MathUtils.cpp
     util/Matrix4.cpp
     util/PerfTimer.cpp
     util/Point.cpp
     util/PolySpline.cpp
     util/Quaternion.cpp
+    util/Sphere.cpp
     util/String.cpp
     util/StackHelper.cpp
     util/ThreadPool.cpp

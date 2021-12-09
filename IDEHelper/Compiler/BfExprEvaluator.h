@@ -31,7 +31,8 @@ enum BfResolveArgsFlags
 	BfResolveArgsFlag_DeferParamValues = 2, // We still evaluate but don't generate code until the method is selected (for SkipCall support)
 	BfResolveArgsFlag_DeferParamEval = 4,
 	BfResolveArgsFlag_AllowUnresolvedTypes = 8,
-	BfResolveArgsFlag_InsideStringInterpolationAlloc = 0x10
+	BfResolveArgsFlag_InsideStringInterpolationAlloc = 0x10,
+	BfResolveArgsFlag_FromIndexer = 0x20
 };
 
 enum BfResolveArgFlags
@@ -41,12 +42,14 @@ enum BfResolveArgFlags
 	BfResolveArgFlag_FromGenericParam = 2
 };
 
-enum BfCreateFallFlags
+enum BfCreateCallFlags
 {
-	BfCreateFallFlags_None,
-	BfCreateFallFlags_BypassVirtual = 1,
-	BfCreateFallFlags_SkipThis = 2,
-	BfCreateFallFlags_AllowImplicitRef = 4
+	BfCreateCallFlags_None,
+	BfCreateCallFlags_BypassVirtual = 1,
+	BfCreateCallFlags_SkipThis = 2,
+	BfCreateCallFlags_AllowImplicitRef = 4,
+	BfCreateCallFlags_TailCall = 8,
+	BfCreateCallFlags_GenericParamThis = 0x10
 };
 
 class BfResolvedArg
@@ -137,13 +140,13 @@ public:
 	BfModule* mModule;
 	BfTypeVector* mCheckMethodGenericArguments;
 	SizedArray<BfIRValue, 4> mPrevArgValues;
-	int mInferredCount;
+	int mInferredCount;	
 
 public:
 	BfGenericInferContext()
 	{
 		mModule = NULL;
-		mInferredCount = 0;
+		mInferredCount = 0;		
 	}
 	bool InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue);
 	int GetUnresolvedCount()
@@ -198,7 +201,7 @@ public:
 	bool mAllowStatic;
 	bool mAllowNonStatic;	
 	bool mSkipImplicitParams;	
-	bool mAutoFlushAmbiguityErrors;	
+	bool mAutoFlushAmbiguityErrors;
 	BfEvalExprFlags mBfEvalExprFlags;
 	int mMethodCheckCount;	
 	BfType* mExplicitInterfaceCheck;	
@@ -444,8 +447,8 @@ public:
 	BfTypedValue LookupIdentifier(BfIdentifierNode* identifierNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void AddCallDependencies(BfMethodInstance* methodInstance);
 	void PerformCallChecks(BfMethodInstance* methodInstance, BfAstNode* targetSrc);
-	BfTypedValue CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, bool isTailCall = false);
-	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, BfCreateFallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade = NULL);
+	BfTypedValue CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, BfCreateCallFlags callFlags = BfCreateCallFlags_None);
+	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, BfCreateCallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade = NULL);
 	BfTypedValue CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target);
 	void MakeBaseConcrete(BfTypedValue& typedValue);
 	void SplatArgs(BfTypedValue value, SizedArrayImpl<BfIRValue>& irArgs);
@@ -485,7 +488,7 @@ public:
 	void FinishDeferredEvals(SizedArrayImpl<BfResolvedArg>& argValues);	
 	void FinishDeferredEvals(BfResolvedArgs& argValues);
 	bool LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifierNode* propName);
-	void DoTypeIntAttr(BfTypeReference* typeRef, BfToken token);
+	void DoTypeIntAttr(BfTypeReference* typeRef, BfTokenNode* commaToken, BfIdentifierNode* memberName, BfToken token);
 	//void InitializedSizedArray(BfTupleExpression* createExpr, BfSizedArrayType* arrayType);
 	void InitializedSizedArray(BfSizedArrayType* sizedArrayType, BfTokenNode* openToken, const BfSizedArray<BfExpression*>& values, const BfSizedArray<BfTokenNode*>& commas, BfTokenNode* closeToken, BfTypedValue* receivingValue = NULL);
 	void CheckDotToken(BfTokenNode* tokenNode);
@@ -516,6 +519,7 @@ public:
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr) override;
 	virtual void Visit(BfAlignOfExpression* alignOfExpr) override;
 	virtual void Visit(BfStrideOfExpression* strideOfExpr) override;	
+	virtual void Visit(BfOffsetOfExpression* offsetOfExpr) override;
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;
 	virtual void Visit(BfUninitializedExpression* uninitialziedExpr) override;
 	virtual void Visit(BfCheckTypeExpression* checkTypeExpr) override;

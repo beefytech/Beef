@@ -234,9 +234,8 @@ namespace BeefPerf
 			mMainFrame = new MainFrame();
 			mDockingFrame = mMainFrame.mDockingFrame;
 
-			BFWindow.Flags windowFlags = BFWindow.Flags.Border | BFWindow.Flags.SysMenu | //| BFWindow.Flags.CaptureMediaKeys |
-			    BFWindow.Flags.Caption | BFWindow.Flags.Minimize | BFWindow.Flags.QuitOnClose | BFWindowBase.Flags.Resizable |
-                BFWindow.Flags.Menu | BFWindow.Flags.SysMenu;
+			BFWindow.Flags windowFlags = .Border | .SysMenu | .Caption | .Minimize | .Maximize |
+				.QuitOnClose | .Resizable | .Menu;
 			if (mWantsFullscreen)
 				windowFlags |= BFWindowBase.Flags.Fullscreen;
 
@@ -336,7 +335,7 @@ namespace BeefPerf
 
 		void SetupTab(TabbedView tabbedView, String label, Widget widget)
 		{
-			var tabButton = tabbedView.AddTab(label, 0, widget, false);
+			var tabButton = tabbedView.AddTab(label, 0, widget, false, 0);
 			tabButton.mCloseClickedEvent.Add(new () =>
 				{
 					var tabbedView = tabButton.mTabbedView;
@@ -921,7 +920,7 @@ namespace BeefPerf
 		        TabbedView tabbedView = FindTabbedView(mDockingFrame, -1, 1);
 		        if (tabbedView != null)
 				{
-		            tabButton = tabbedView.AddTab(name, width, tabContent, ownsContent);
+		            tabButton = tabbedView.AddTab(name, width, tabContent, ownsContent, 0);
 					result = ShowTabResult.OpenedNew;
 				}
 		    }

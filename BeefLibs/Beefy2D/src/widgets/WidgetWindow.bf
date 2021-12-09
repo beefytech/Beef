@@ -121,7 +121,7 @@ namespace Beefy.widgets
             KeyFlags keyFlags = default;
             if (IsKeyDown(KeyCode.Shift))
                 keyFlags |= KeyFlags.Shift;
-            if (IsKeyDown(KeyCode.Control))
+            if ((IsKeyDown(KeyCode.Control)) && (!IsKeyDown(KeyCode.RAlt)))
                 keyFlags |= KeyFlags.Ctrl;
             if (IsKeyDown(KeyCode.Menu))
                 keyFlags |= KeyFlags.Alt;
@@ -137,7 +137,7 @@ namespace Beefy.widgets
         {   
          	if (mRootWidget == null)
 				 return;
-
+			
             base.Draw(g);			
             mRootWidget.DrawAll(g);            
         }

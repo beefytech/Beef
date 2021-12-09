@@ -99,8 +99,8 @@ public:
 	virtual DrawBatch*		AllocateBatch(int minVtxCount, int minIdxCount);
 	void					QueueRenderCmd(RenderCmd* renderCmd);
 	virtual RenderCmd*		CreateSetTextureCmd(int textureIdx, Texture* texture) = 0;
-	virtual void			SetShaderConstantData(int slotIdx, void* constData, int size) = 0;
-	virtual void			SetShaderConstantDataTyped(int slotIdx, void* constData, int size, int* typeData, int typeCount);
+	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) = 0;
+	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount);
 
 public:
 	DrawLayer();

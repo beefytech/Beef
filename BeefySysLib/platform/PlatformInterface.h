@@ -326,7 +326,8 @@ enum BfpSysDirectoryKind
 	BfpSysDirectoryKind_AppData_LocalLow,
 	BfpSysDirectoryKind_AppData_Roaming,
 	BfpSysDirectoryKind_Programs,
-	BfpSysDirectoryKind_Programs_Common	
+	BfpSysDirectoryKind_Programs_Common,
+	BfpSysDirectoryKind_Documents
 };
 
 struct BfpFindFileData;
@@ -343,6 +344,7 @@ enum BfpFileCreateKind
 	BfpFileCreateKind_CreateAlways,
 	BfpFileCreateKind_CreateIfNotExists,
 	BfpFileCreateKind_OpenExisting,
+	BfpFileCreateKind_OpenAlways
 };
 
 enum BfpFileCreateFlags
@@ -412,6 +414,7 @@ enum BfpFileStdKind
 
 BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* name, BfpFileCreateKind createKind, BfpFileCreateFlags createFlags, BfpFileAttributes createdFileAttr, BfpFileResult* outResult);
 BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetStd(BfpFileStdKind kind, BfpFileResult* outResult);
+BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetSystemHandle(BfpFile* file);
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Release(BfpFile* file);
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Close(BfpFile* file, BfpFileResult* outResult);
 BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Write(BfpFile* file, const void* buffer, intptr size, int timeoutMS, BfpFileResult* outResult);
@@ -419,7 +422,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Flush(BfpFile* file);
 BFP_EXPORT int64 BFP_CALLTYPE BfpFile_GetFileSize(BfpFile* file);
 BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileSeekKind seekKind);
-BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file);
+BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult);
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path);
 BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFile_GetAttributes(const char* path, BfpFileResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpFile_SetAttributes(const char* path, BfpFileAttributes attribs, BfpFileResult* outResult);

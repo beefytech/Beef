@@ -657,13 +657,13 @@ namespace IDE.ui
 			{
 				g.DrawString(StackStringFormat!("Rate: {0} Hz", mShowOverview.mSamplesPerSecond), GS!(320), GS!(2));
 				int32 seconds = (mShowOverview.mRecordedTicks / 1000);
-				g.DrawString(StackStringFormat!("Length: {0}:{1:02}.{2}", seconds / 60, seconds % 60, (mShowOverview.mRecordedTicks % 1000)/100), GS!(320), GS!(22));
+				g.DrawString(StackStringFormat!("Length: {0}:{1:00}.{2}", seconds / 60, seconds % 60, (mShowOverview.mRecordedTicks % 1000)/100), GS!(320), GS!(22));
 
 				seconds = (mShowOverview.mEndedTicks / 1000);
 				if (seconds > 60*60)
-					g.DrawString(StackStringFormat!("Age: {0}:{1:02}:{2:02}", seconds / 60 / 60, (seconds / 60) % 60, seconds % 60), GS!(420), GS!(22));
+					g.DrawString(StackStringFormat!("Age: {0}:{1:00}:{2:00}", seconds / 60 / 60, (seconds / 60) % 60, seconds % 60), GS!(420), GS!(22));
 				else
-					g.DrawString(StackStringFormat!("Age: {0}:{1:02}", seconds / 60, seconds % 60), GS!(420), GS!(22));
+					g.DrawString(StackStringFormat!("Age: {0}:{1:00}", seconds / 60, seconds % 60), GS!(420), GS!(22));
 
 				g.DrawString(StackStringFormat!("Samples: {0}", mShowOverview.mTotalActualSamples), GS!(420), GS!(2));
 				g.DrawString(StackStringFormat!("Missed Samples: {0}", mShowOverview.mTotalVirtualSamples - mShowOverview.mTotalActualSamples), GS!(550), GS!(2));

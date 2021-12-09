@@ -311,7 +311,7 @@ namespace BeefPerf
 						{
 							var str = scope::String();
 							if (argView.UnQuoteString(str) case .Err)
-								Fail("Failed to unquote string");
+								Fail($"Failed to unquote string: {argView}\nCmd:{cmdLineView}");
 							args.Add(str);
 							isLiteralString = false;
 						}
@@ -322,7 +322,7 @@ namespace BeefPerf
 							case .Ok(let val):
 								args.Add(scope:: box val);
 							case .Err:
-								Fail("Failed to parse float");
+								Fail($"Failed to parse float: {argView}\nCmd:{cmdLineView}");
 								return;
 							}
 						}
@@ -333,7 +333,7 @@ namespace BeefPerf
 							case .Ok(let val):
 								args.Add(scope:: box val);
 							case .Err:
-								Fail("Failed to parse double");
+								Fail($"Failed to parse double: {argView}\nCmd:{cmdLineView}");
 								return;
 							}
 						}
@@ -344,7 +344,7 @@ namespace BeefPerf
 							case .Ok(let val):
 								args.Add(scope:: box val);
 							case .Err:
-								Fail("Failed to parse int");
+								Fail($"Failed to parse int: {argView}\nCmd:{cmdLineView}");
 								return;
 							}
 						}

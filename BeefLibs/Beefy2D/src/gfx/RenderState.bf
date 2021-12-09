@@ -19,6 +19,12 @@ namespace Beefy.gfx
         Always
     }
 
+	public enum Topology
+	{
+		TriangleList,
+		LineList
+	}
+
 #if !STUDIO_CLIENT
     public class RenderState
     {        
@@ -31,6 +37,12 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetClip(void* renderState, float x, float y, float width, float height);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetTexWrap(void* renderState, bool texWrap);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetWireframe(void* renderState, bool wireframe);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_DisableClip(void* renderState);
 
@@ -42,6 +54,9 @@ namespace Beefy.gfx
 
         [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetDepthWrite(void* nativeRenderState, int32 depthWrite);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetTopology(void* nativeRenderState, int32 topology);
 
         public void* mNativeRenderState;
         public bool mIsFromDefaultRenderState;
@@ -103,7 +118,31 @@ namespace Beefy.gfx
                 else
                     RenderState_DisableClip(mNativeRenderState);
             }
-        }        
+        }
+
+		public bool TexWrap
+		{
+			set
+			{
+				RenderState_SetTexWrap(mNativeRenderState, value);
+			}
+		}
+
+		public bool Wireframe
+		{
+			set
+			{
+				RenderState_SetWireframe(mNativeRenderState, value);
+			}
+		}
+
+		public Topology Topology
+		{
+			set
+			{
+				RenderState_SetTopology(mNativeRenderState, (.)value);
+			}
+		}
     }
 #else
     public class RenderState

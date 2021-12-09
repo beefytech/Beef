@@ -26,6 +26,7 @@ public:
 	AllocRef Alloc(int size);
 	bool Free(AllocRef ref);	
 
+	void Validate();
 	void DebugDump();	
 };
 

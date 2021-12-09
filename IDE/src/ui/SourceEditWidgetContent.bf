@@ -2237,6 +2237,41 @@ namespace IDE.ui
 
 			return false;
 		}
+		
+		public void DeleteAllRight()
+		{
+			int startPos;
+			int endPos;
+			if (HasSelection())
+			{
+				mSelection.ValueRef.GetAsForwardSelect(out startPos, out endPos);
+			}
+			else
+			{
+				startPos = endPos = CursorTextPos;
+			}
+
+			int line;
+			int lineChar;
+			GetLineCharAtIdx(endPos, out line, out lineChar);
+
+			let lineText = scope String();
+			GetLineText(line, lineText);
+
+			endPos += lineText.Length - lineChar;
+
+			if (startPos == endPos)
+			{
+				return;
+			}
+
+			mSelection = EditSelection();
+			mSelection.ValueRef.mStartPos = (int32)startPos;
+			mSelection.ValueRef.mEndPos = (int32)endPos;
+			DeleteSelection();
+
+			CursorTextPos = startPos;
+		}
 
 		public void DuplicateLine()
 		{
@@ -2758,7 +2793,7 @@ namespace IDE.ui
 				return;
 			}
 
-            if (mIsReadOnly)
+            if ((AllowChar(keyChar)) && (CheckReadOnly()))
             {
                 base.KeyChar(keyChar);
                 return;
@@ -3394,7 +3429,8 @@ namespace IDE.ui
 
                         int textStartPos = lineChar - (int32)trimmedLineText.Length;
                         String tabStartStr = scope String();
-                        tabStartStr.Append(lineText, 0, textStartPos);
+						if (textStartPos > 0)
+                        	tabStartStr.Append(lineText, 0, textStartPos);
                         int32 columnPos = (int32)(GetTabbedWidth(tabStartStr, 0) / mCharWidth + 0.001f);
                         if (wantLineColumn > columnPos)
                         {
@@ -3818,7 +3854,7 @@ namespace IDE.ui
 	                        });
 
 						// Fixits
-						if ((mSourceViewPanel.mIsBeefSource) && (mSourceViewPanel.mProjectSource != null) && (gApp.mSymbolReferenceHelper?.IsLocked != true))
+						if ((mSourceViewPanel.mIsBeefSource) && (mSourceViewPanel.FilteredProjectSource != null) && (gApp.mSymbolReferenceHelper?.IsLocked != true))
 						{
 							ResolveParams resolveParams = scope .();
 							mSourceViewPanel.DoClassify(ResolveType.GetFixits, resolveParams, true);

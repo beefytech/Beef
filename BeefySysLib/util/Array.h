@@ -744,6 +744,14 @@ public:
 			SetBufferSize(this->mAllocSize + this->mAllocSize / 2 + 1);
 		new (&this->mVals[this->mSize++]) T(val);
 	}
+
+	T& GetSafeRef(int idx)
+	{
+		BF_ASSERT(idx >= 0);
+		while (idx >= this->mSize)
+			this->Add(T());
+		return this->mVals[idx];
+	}
 };
 
 // POD
@@ -1055,6 +1063,14 @@ public:
 		this->mVals[this->mSize++] = val;
 	}		
 
+	T& GetSafeRef(int idx)
+	{
+		BF_ASSERT(idx >= 0);
+		while (idx >= this->mSize)
+			this->Add(T());
+		return this->mVals[idx];
+	}
+
 	T* GrowUninitialized(int addSize)
 	{
 		if (this->mSize + addSize > this->mAllocSize)
@@ -1104,6 +1120,46 @@ public:
 	_ArrayImpl& operator=(Array&& val)
 	{
 		return _ArrayImpl::operator=(val);
+	}
+};
+
+template <typename T>
+class OwnedArray : public Array<T*>
+{
+public:
+	typedef Array<T*> _Base;
+
+	~OwnedArray()
+	{
+		for (auto item : *this)
+			delete item;
+	}
+
+	void Clear()
+	{
+		for (auto item : *this)
+			delete item;
+		_Base::Clear();
+	}
+
+	void ClearWithoutDeleting()
+	{
+		_Base::Clear();
+	}
+
+	T* Alloc()
+	{
+		T* item = new T();
+		_Base::push_back(item);
+		return item;
+	}
+
+	template <typename T2>
+	T2* Alloc()
+	{
+		T2* item = new T2();
+		_Base::push_back(item);
+		return item;
 	}
 };
 

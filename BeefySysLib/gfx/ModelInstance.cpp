@@ -6,8 +6,8 @@ ModelInstance::ModelInstance(ModelDef* modelDef)
 {
 	mNext = NULL;
 	mModelDef = modelDef;
-	mJointTranslations.resize(mModelDef->mJoints.size());
-	mMeshesVisible.insert(mMeshesVisible.begin(), mModelDef->mMeshes.size(), true);
+	mJointTranslations.Resize(mModelDef->mJoints.size());	
+	mMeshesVisible.Insert(0, mModelDef->mMeshes.size(), true);
 }
 
 void Beefy::ModelInstance::SetJointPosition(int jointIdx, const ModelJointTranslation& jointTranslation)

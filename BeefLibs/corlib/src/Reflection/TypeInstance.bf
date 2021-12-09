@@ -32,11 +32,31 @@ namespace System
 					if (matched.[Friend]mMethodData != null)
 						return .Err(.MultipleResults);
 					else
-					        matched = methodInfo;
+					    matched = methodInfo;
 				}
 			}
 
 			if (matched.[Friend]mMethodData == null)
+				return .Err(.NoResults);
+			return .Ok(matched);
+		}
+
+		[Comptime]
+		public virtual Result<ComptimeMethodInfo, MethodError> GetMethod(StringView methodName, BindingFlags bindingFlags = cDefaultLookup)
+		{
+			ComptimeMethodInfo matched = default;
+			for (let methodInfo in ComptimeMethodInfo.Enumerator(this as TypeInstance, bindingFlags))
+			{
+				if (methodInfo.Name == methodName)
+				{
+					if (matched.mNativeMethodInstance != 0)
+						return .Err(.MultipleResults);
+					else
+					    matched = methodInfo;
+				}
+			}
+
+			if (matched.mNativeMethodInstance == 0)
 				return .Err(.NoResults);
 			return .Ok(matched);
 		}
@@ -123,7 +143,10 @@ namespace System.Reflection
 			let objType = typeof(Object) as TypeInstance;
 
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, mInstSize, mInstAlign, 1);
+			int32 stackCount = Compiler.Options.AllocStackCount;
+			if (mAllocStackCountOverride != 0)
+				stackCount = mAllocStackCountOverride;
+			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, mInstSize, mInstAlign, stackCount);
 #else
 			void* mem = new [Align(16)] uint8[mInstSize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);

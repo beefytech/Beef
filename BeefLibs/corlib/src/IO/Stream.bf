@@ -97,25 +97,32 @@ namespace System.IO
 			}
 		}
 
-		//Read sized string from stream
-		public Result<void> ReadStrSized32(int64 size, String output)
+		/// Read sized string from stream
+		public Result<void> ReadStrSized32(int size, String output)
 		{
-			if (size <= 0)
+			if (size < 0)
 				return .Err;
 
-			for (int64 i = 0; i < size; i++)
+			int prevLen = output.Length;
+			char8* buf = output.PrepareBuffer(size);
+			switch (TryRead(.((uint8*)buf, size)))
 			{
-				Result<char8> char = Read<char8>();
-				if (char == .Err)
-					return .Err;
-
-				output.Append(char);
+			case .Ok(let readLen):
+				if (readLen < size)
+					output.Length = prevLen + readLen;
+				return .Ok;
+			case .Err:
+				return .Err;
 			}
-
-			return .Ok;
 		}
 
-		//Reads null terminated ASCII string from the stream. Null terminator is read from stream but isn't appended to output string
+		public Result<void> ReadStrSized32(String output)
+		{
+			int size = Try!(Read<int32>());
+			return ReadStrSized32(size, output);
+		}
+
+		/// Reads null terminated ASCII string from the stream. Null terminator is read from stream but isn't appended to output string
 		public Result<void> ReadStrC(String output)
 		{
 			Result<char8> char0;
@@ -195,6 +202,11 @@ namespace System.IO
 		public virtual Result<void> Flush()
 		{
 			return .Ok;
+		}
+
+		public virtual Result<void> SetLength(int64 length)
+		{
+			return .Err;
 		}
 
 		public void Align(int alignSize)

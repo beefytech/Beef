@@ -69,6 +69,7 @@ public:
 	virtual void Visit(BfLocalMethodDeclaration* methodDecl);
 	virtual void Visit(BfParameterDeclaration* paramDecl);		
 	virtual void Visit(BfTypeAttrExpression* typeAttrExpr);		
+	virtual void Visit(BfOffsetOfExpression* offsetOfExpr);
 	virtual void Visit(BfDefaultExpression* defaultExpr);
 	virtual void Visit(BfUninitializedExpression* uninitializedExpr);
 	virtual void Visit(BfCheckTypeExpression* checkTypeExpr);

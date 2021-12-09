@@ -243,6 +243,7 @@ namespace System
 			}
 		}
 
+		[AlwaysInclude]
         public static String[] CreateParamsArray()
 		{
 			char8* cmdLine = GetCommandLineArgs();
@@ -347,6 +348,7 @@ namespace System
 		    return strVals;
 		}
 
+		[AlwaysInclude]
         public static void DeleteStringArray(String[] arr)
         {
             for (var str in arr)

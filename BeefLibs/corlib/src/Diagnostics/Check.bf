@@ -1,6 +1,6 @@
 namespace System.Diagnostics
 {
-	class Check
+	static class Check
 	{
 
 		[Unchecked, SkipCall]

@@ -382,6 +382,10 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mArray3TypeDef = NULL;
 	mArray4TypeDef = NULL;
 	mSpanTypeDef = NULL;
+	mRangeTypeDef = NULL;
+	mClosedRangeTypeDef = NULL;
+	mIndexTypeDef = NULL;
+	mIndexRangeTypeDef = NULL;
 	mAttributeTypeDef = NULL;
 	mAttributeUsageAttributeTypeDef = NULL;	
 	mClassVDataTypeDef = NULL;
@@ -418,6 +422,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mCompilerTypeDef = NULL;
 	mDiagnosticsDebugTypeDef = NULL;
 	mIDisposableTypeDef = NULL;
+	mIIntegerTypeDef = NULL;
 	mIPrintableTypeDef = NULL;
 	mIHashableTypeDef = NULL;
 	mIComptimeTypeApply = NULL;
@@ -520,11 +525,12 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
 	BfTypeInstance* typeInst = checkType->ToTypeInstance();
 	if (typeInst != NULL)
 	{
-		if ((typeInst->mTypeDef->mProject != NULL) && (typeInst->mTypeDef->mProject != curProject))
-		{
-			if (typeInst->mTypeDef->mProject->mTargetType == BfTargetType_BeefDynLib)
-				return false;
-		}
+		//TODO: Why was this here?
+// 		if ((typeInst->mTypeDef->mProject != NULL) && (typeInst->mTypeDef->mProject != curProject))
+// 		{
+// 			if (typeInst->mTypeDef->mProject->mTargetType == BfTargetType_BeefDynLib)
+// 				return false;
+// 		}
 
 		if (checkType->IsInterface())
 			return typeInst->mIsReified;
@@ -1216,11 +1222,12 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 				baseType = baseType->mBaseType;
 			}
 
-			if (module->mProject != bfModule->mProject)
-			{
-				if ((module->mProject != NULL) && (module->mProject->mTargetType == BfTargetType_BeefDynLib))
-					continue;
-			}
+			//TODO: What was this for? 
+// 			if (module->mProject != bfModule->mProject)
+// 			{
+// 				if ((module->mProject != NULL) && (module->mProject->mTargetType == BfTargetType_BeefDynLib))
+// 					continue;
+// 			}
 
 			if (typeInst->mHasStaticInitMethod)		
 				sortedStaticInitMap.insert(std::make_pair(bfModule->TypeToString(type), typeInst));
@@ -1291,6 +1298,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	}
 	
 	BfTypeInstance* stringType = bfModule->ResolveTypeDef(mStringTypeDef, BfPopulateType_Data)->ToTypeInstance();
+	BfTypeInstance* stringViewType = bfModule->ResolveTypeDef(mStringViewTypeDef, BfPopulateType_Data)->ToTypeInstance();
 	BfTypeInstance* reflectSpecializedTypeInstance = bfModule->ResolveTypeDef(mReflectSpecializedGenericType)->ToTypeInstance();
 	BfTypeInstance* reflectUnspecializedTypeInstance = bfModule->ResolveTypeDef(mReflectUnspecializedGenericType)->ToTypeInstance();
 	BfTypeInstance* reflectArrayTypeInstance = bfModule->ResolveTypeDef(mReflectArrayType)->ToTypeInstance();
@@ -1301,7 +1309,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	bool needsTypeList = bfModule->IsMethodImplementedAndReified(typeDefType, "GetType");
 	bool needsObjectTypeData = needsTypeList || bfModule->IsMethodImplementedAndReified(vdataContext->mBfObjectType, "RawGetType") || bfModule->IsMethodImplementedAndReified(vdataContext->mBfObjectType, "GetType");	
 	bool needsTypeNames = bfModule->IsMethodImplementedAndReified(typeDefType, "GetName") || bfModule->IsMethodImplementedAndReified(typeDefType, "GetFullName");
-	bool needsStringLiteralList = (mOptions.mAllowHotSwapping) || (bfModule->IsMethodImplementedAndReified(stringType, "Intern"));
+	bool needsStringLiteralList = (mOptions.mAllowHotSwapping) || (bfModule->IsMethodImplementedAndReified(stringType, "Intern")) || (bfModule->IsMethodImplementedAndReified(stringViewType, "Intern"));
 
 	Dictionary<int, int> usedStringIdMap;
 
@@ -1661,8 +1669,18 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	if ((targetType == BfTargetType_BeefWindowsApplication) && (mOptions.mPlatformType != BfPlatformType_Windows))
 		targetType = BfTargetType_BeefConsoleApplication;
 
-	bool isPosixDynLib = (targetType == BfTargetType_BeefDynLib) && (mOptions.mPlatformType != BfPlatformType_Windows);
+	bool isConsoleApplication = (targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefTest);
+	if ((targetType == BfTargetType_BeefWindowsApplication) && (mOptions.mPlatformType != BfPlatformType_Windows))
+		isConsoleApplication = true;
+
+	bool isDllMain = (targetType == BfTargetType_BeefLib_DynamicLib) && (mOptions.mPlatformType == BfPlatformType_Windows);
+	bool isPosixDynLib = ((targetType == BfTargetType_BeefLib_DynamicLib) || (targetType == BfTargetType_BeefLib_StaticLib)) && 
+		(mOptions.mPlatformType != BfPlatformType_Windows);
 	
+	bool mainHasArgs = (targetType != BfTargetType_BeefLib_DynamicLib) && (targetType != BfTargetType_BeefLib_StaticLib) &&
+		(mOptions.mPlatformType != BfPlatformType_Wasm);
+	bool mainHasRet = ((targetType != BfTargetType_BeefLib_DynamicLib) && (targetType != BfTargetType_BeefLib_StaticLib)) || (isDllMain);
+
 	// Generate "main"
 	if (!IsHotCompile())
 	{
@@ -1670,7 +1688,9 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 		BfIRFunctionType mainFuncType;
 		BfIRFunction mainFunc;
-		if ((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefTest))
+		BfIRFunctionType shutdownFuncType;
+		BfIRFunction shutdownFunc;
+		if (isConsoleApplication)
 		{
 			SmallVector<BfIRType, 2> paramTypes;
 			paramTypes.push_back(int32Type);
@@ -1679,7 +1699,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
             mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "main");			
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}
-		else if (targetType == BfTargetType_BeefDynLib)
+		else if (isDllMain)
 		{		
 			SmallVector<BfIRType, 4> paramTypes;
 			paramTypes.push_back(nullPtrType); // hinstDLL			
@@ -1707,15 +1727,43 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		}		
 		else
 		{
-			SmallVector<BfIRType, 2> paramTypes;
-			if (mOptions.mPlatformType != BfPlatformType_Wasm)
+			BfIRFunction combinedFunc;
+
+			SmallVector<BfIRType, 2> paramTypes;			
+			if (mainHasArgs)
 			{
 				paramTypes.push_back(int32Type);
 				paramTypes.push_back(nullPtrType);
 			}
-			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
-			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "BeefMain");
+			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(mainHasRet ? int32Type : voidType, paramTypes, false);
+			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "BeefStart");
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
+
+			combinedFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "BeefMain");
+			bfModule->SetupIRMethod(NULL, combinedFunc, false);
+
+			paramTypes.clear();
+			shutdownFuncType = bfModule->mBfIRBuilder->CreateFunctionType(voidType, paramTypes, false);
+			shutdownFunc = bfModule->mBfIRBuilder->CreateFunction(shutdownFuncType, BfIRLinkageType_External, "BeefStop");
+			bfModule->SetupIRMethod(NULL, shutdownFunc, false);
+
+			bfModule->mBfIRBuilder->SetActiveFunction(combinedFunc);
+			auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
+			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
+
+			SmallVector<BfIRValue, 1> args;
+			if (mainHasArgs)
+			{
+				args.push_back(bfModule->mBfIRBuilder->GetArgument(0));
+				args.push_back(bfModule->mBfIRBuilder->GetArgument(1));
+			}
+			auto res = bfModule->mBfIRBuilder->CreateCall(mainFunc, args);
+			args.clear();
+			bfModule->mBfIRBuilder->CreateCall(shutdownFunc, args);
+			if (mainHasArgs)
+				bfModule->mBfIRBuilder->CreateRet(res);
+			else
+				bfModule->mBfIRBuilder->CreateRetVoid();
 		}
 
 		bfModule->mBfIRBuilder->SetActiveFunction(mainFunc);
@@ -1745,13 +1793,16 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bfModule->SetupIRMethod(NULL, setCmdLineFunc, false);
 
             SmallVector<BfIRValue, 2> args;
-            args.push_back(bfModule->mBfIRBuilder->GetArgument(0));
-            args.push_back(bfModule->mBfIRBuilder->GetArgument(1));
+			if (mainHasArgs)
+			{
+				args.push_back(bfModule->mBfIRBuilder->GetArgument(0));
+				args.push_back(bfModule->mBfIRBuilder->GetArgument(1));
+			}
             bfModule->mBfIRBuilder->CreateCall(setCmdLineFunc, args);
         }
 		
 		BfIRBlock initSkipBlock;
-		if (targetType == BfTargetType_BeefDynLib)
+		if (isDllMain)
 		{
 			auto initBlock = bfModule->mBfIRBuilder->CreateBlock("doInit", false);
 			initSkipBlock = bfModule->mBfIRBuilder->CreateBlock("skipInit", false);
@@ -1959,18 +2010,19 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 			if (!hadRet)
 				retValue = bfModule->GetConstValue32(0);
-		}	
-		else if (targetType == BfTargetType_BeefDynLib)
+		}
+		else
 		{
-			retValue = bfModule->GetConstValue32(1);
+			if (mainHasRet)
+				retValue = bfModule->GetConstValue32(1);
 		}
 
 		if (targetType == BfTargetType_BeefTest)
 			EmitTestMethod(bfModule, testMethods, retValue);
-
+		
 		BfIRBlock deinitSkipBlock;
-		if (targetType == BfTargetType_BeefDynLib)
-		{			
+		if (isDllMain)
+		{
 			auto deinitBlock = bfModule->mBfIRBuilder->CreateBlock("doDeinit", false);
 			deinitSkipBlock = bfModule->mBfIRBuilder->CreateBlock("skipDeinit", false);
 			auto cmpResult = bfModule->mBfIRBuilder->CreateCmpEQ(bfModule->mBfIRBuilder->GetArgument(1), bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0));
@@ -1981,12 +2033,27 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 		if (mOptions.mPlatformType != BfPlatformType_Wasm)
 		{
+			auto prevBlock = bfModule->mBfIRBuilder->GetInsertBlock();
+			if (shutdownFunc)
+			{
+				bfModule->mBfIRBuilder->SetActiveFunction(shutdownFunc);
+				auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
+				bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
+			}
+
 			bfModule->mBfIRBuilder->CreateCall(dtorFunc, SizedArray<BfIRValue, 0>());
 
 			BfModuleMethodInstance shutdownMethod = bfModule->GetInternalMethod("Shutdown");
 			if (shutdownMethod)
 			{
 				bfModule->mBfIRBuilder->CreateCall(shutdownMethod.mFunc, SizedArray<BfIRValue, 0>());
+			}
+
+			if (shutdownFunc)
+			{
+				bfModule->mBfIRBuilder->CreateRetVoid();
+				bfModule->mBfIRBuilder->SetActiveFunction(mainFunc);
+				bfModule->mBfIRBuilder->SetInsertPoint(prevBlock);
 			}
 		}
 
@@ -2025,9 +2092,6 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
 
 			SmallVector<BfIRValue, 2> startArgs;
-			startArgs.push_back(bfModule->mBfIRBuilder->CreateConstNull());
-			startArgs.push_back(bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 1));
-			startArgs.push_back(bfModule->mBfIRBuilder->CreateConstNull());
 			bfModule->mBfIRBuilder->CreateCall(mainFunc, startArgs);
 			bfModule->mBfIRBuilder->CreateRetVoid();			
 
@@ -2038,9 +2102,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bfModule->mBfIRBuilder->SetActiveFunction(func);
 			entryBlock = bfModule->mBfIRBuilder->CreateBlock("main", true);
 			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
-			SmallVector<BfIRValue, 2> stopArgs;			
-			startArgs[1] = bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0);
-			bfModule->mBfIRBuilder->CreateCall(mainFunc, startArgs);
+			SmallVector<BfIRValue, 2> stopArgs;						
+			bfModule->mBfIRBuilder->CreateCall(shutdownFunc, startArgs);
 			bfModule->mBfIRBuilder->CreateRetVoid();
 		}
 	}
@@ -2873,7 +2936,7 @@ void BfCompiler::UpdateRevisedTypes()
 		auto typeDef = *typeDefItr;
 		auto origTypeDef = typeDef;
 		if (typeDef->mNextRevision != NULL)
-			typeDef = typeDef->mNextRevision;		
+			typeDef = typeDef->mNextRevision;
 		if (typeDef->mDupDetectedRevision == mRevision)
 		{
 			++typeDefItr;
@@ -4206,7 +4269,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 #endif
 					
 	SetAndRestoreValue<BfTypeInstance*> prevType(module->mCurTypeInstance, typeInst);
-	typeState.mTypeInstance = typeInst;
+	typeState.mType = typeInst;
 	
 	BfGenericExtensionEntry* genericExEntry = NULL;
 	bool hadTempExtensionInfo = false;
@@ -4242,7 +4305,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 			if (autoComplete->mResolveType == BfResolveType_GetResultString)
 			{
 				autoComplete->mResultString = ":";
-				autoComplete->mResultString += module->TypeToString(typeInst);
+				autoComplete->mResultString += module->TypeToString(typeInst, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
 			}
 		}		
 	}	
@@ -4293,7 +4356,10 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 		if (fieldDef->mTypeRef != NULL)
 		{
-			module->ResolveTypeRef(fieldDef->mTypeRef);			
+			BfResolveTypeRefFlags flags = BfResolveTypeRefFlag_None;
+			if ((fieldDecl != NULL) && (fieldDecl->mInitializer != NULL))
+				flags = (BfResolveTypeRefFlags)(flags | BfResolveTypeRefFlag_AllowInferredSizedArray);
+			module->ResolveTypeRef(fieldDef->mTypeRef, BfPopulateType_Identity, flags);
 		}
 		mResolvePassData->mAutoComplete->CheckTypeRef(fieldDef->mTypeRef, true);
 	
@@ -4514,7 +4580,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 		}
 	}
 		
-	if ((mResolvePassData->mAutoComplete->mDefType == actualTypeDef) && (mResolvePassData->mAutoComplete->mDefMethod != NULL))
+	if ((mResolvePassData->mAutoComplete->mDefType != NULL) && (mResolvePassData->mAutoComplete->mDefType->GetDefinition() == actualTypeDef) && 
+		(mResolvePassData->mAutoComplete->mDefMethod != NULL))
 	{		
 		BfMethodDef* tempDefMethod = NULL;
 		for (auto checkMethod : tempTypeDef->mMethods)
@@ -4607,7 +4674,7 @@ void BfCompiler::AddToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeIn
 	if (mResolvePassData->mParser != NULL)
 	{
 		// Only find references within the current file
-		if (!typeInst->mTypeDef->HasSource(mResolvePassData->mParser))
+		if (!typeInst->mTypeDef->GetDefinition()->HasSource(mResolvePassData->mParser))
 			return;
 	}
 
@@ -4685,6 +4752,7 @@ void BfCompiler::GetSymbolReferences()
 		if ((typeDef == NULL) || (typeDef->mTypeDeclaration == NULL))
 			return;
 
+		typeDef = typeDef->GetLatest();
 		mResolvePassData->mSymbolReferenceTypeDef = typeDef;
 		auto replaceType = module->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);
 		module->PopulateType(replaceType);
@@ -4699,7 +4767,7 @@ void BfCompiler::GetSymbolReferences()
 				for (auto type : mContext->mResolvedTypes)
 				{
 					auto typeInst = type->ToTypeInstance();
-					if ((typeInst != replaceTypeInst) && (typeInst != NULL) && (typeInst->mTypeDef == typeDef))
+					if ((typeInst != replaceTypeInst) && (typeInst != NULL) && (typeInst->mTypeDef->GetLatest() == typeDef))
 						AddDepsToRebuildTypeList(typeInst, rebuildTypeInstList);
 				}
 			}
@@ -5312,9 +5380,14 @@ void BfCompiler::PopulateReified()
 
 		BfLogSysM("PopulateReified iteration start\n");
 
-		int typeCount = 0;
+		Array<BfType*> typeList;
+		typeList.Reserve(context->mResolvedTypes.mCount);
 		for (auto type : context->mResolvedTypes)
-		{			
+			typeList.Add(type);
+
+		int typeCount = 0;
+		for (auto type : typeList)
+		{
 			auto module = type->GetModule();
 			typeCount++;
 
@@ -6652,7 +6725,11 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mArray2TypeDef = _GetRequiredType("System.Array2", 1);
 	mArray3TypeDef = _GetRequiredType("System.Array3", 1);
 	mArray4TypeDef = _GetRequiredType("System.Array4", 1);
-	mSpanTypeDef = _GetRequiredType("System.Span", 1);	
+	mSpanTypeDef = _GetRequiredType("System.Span", 1);
+	mRangeTypeDef = _GetRequiredType("System.Range");
+	mClosedRangeTypeDef = _GetRequiredType("System.ClosedRange");
+	mIndexTypeDef = _GetRequiredType("System.Index");
+	mIndexRangeTypeDef = _GetRequiredType("System.IndexRange");
 	mAttributeTypeDef = _GetRequiredType("System.Attribute");
 	mAttributeUsageAttributeTypeDef = _GetRequiredType("System.AttributeUsageAttribute");	
 	mClassVDataTypeDef = _GetRequiredType("System.ClassVData");
@@ -6690,6 +6767,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mCompilerTypeDef = _GetRequiredType("System.Compiler");
 	mDiagnosticsDebugTypeDef = _GetRequiredType("System.Diagnostics.Debug");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
+	mIIntegerTypeDef = _GetRequiredType("System.IInteger");
 	mIPrintableTypeDef = _GetRequiredType("System.IPrintable");
 	mIHashableTypeDef = _GetRequiredType("System.IHashable");
 	mIComptimeTypeApply = _GetRequiredType("System.IComptimeTypeApply");
@@ -6765,7 +6843,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 			}
 
 			if ((bfProject->mTargetType != BfTargetType_BeefConsoleApplication) && (bfProject->mTargetType != BfTargetType_BeefWindowsApplication) &&
-				(bfProject->mTargetType != BfTargetType_BeefDynLib) &&
+				(bfProject->mTargetType != BfTargetType_BeefLib_DynamicLib) && (bfProject->mTargetType != BfTargetType_BeefLib_StaticLib) &&
 				(bfProject->mTargetType != BfTargetType_C_ConsoleApplication) && (bfProject->mTargetType != BfTargetType_C_WindowsApplication) &&
 				(bfProject->mTargetType != BfTargetType_BeefTest) &&
 				(bfProject->mTargetType != BfTargetType_BeefApplication_StaticLib) && (bfProject->mTargetType != BfTargetType_BeefApplication_DynamicLib))
@@ -6997,7 +7075,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		{
 			if (!module->mIsSpecialModule)
 			{
-				if ((module->mIsReified) && (module->mIsModuleMutable))
+				if ((module->HasCompiledOutput()) && (module->mIsModuleMutable))
 				{						
 					module->Finish();
 				}
@@ -7040,6 +7118,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 				mContext->mUnreifiedModule->ResolveTypeDef(typeDef, BfPopulateType_Full);
 			}
 
+			Array<BfTypeInstance*> typeWorkList;
+
 			for (auto type : mContext->mResolvedTypes)
 			{				
 				auto module = type->GetModule();
@@ -7061,28 +7141,33 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
  					continue;
 
 				if (!typeInst->IsSpecializedType())
-				{					
-					// Find any remaining methods for unreified processing
-					for (auto&& methodInstGroup : typeInst->mMethodInstanceGroups)
+				{	
+					typeWorkList.Add(typeInst);					
+				}
+			}
+
+			for (auto typeInst : typeWorkList)
+			{
+				// Find any remaining methods for unreified processing
+				for (auto&& methodInstGroup : typeInst->mMethodInstanceGroups)
+				{
+					if ((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) ||
+						(methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference))
 					{
-						if ((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) ||
-							(methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference))
-						{							
-							if ((methodInstGroup.mDefault != NULL) && (methodInstGroup.mDefault->mIsForeignMethodDef))
-							{
-								mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodInstGroup.mDefault->mMethodDef, BfTypeVector(),
-									(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_ForeignMethodDef | BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
-								queuedMoreMethods = true;
-							}
-							else
-							{
-								auto methodDef = typeInst->mTypeDef->mMethods[methodInstGroup.mMethodIdx];
-								if (methodDef->mMethodType == BfMethodType_Init)
-									continue;
-								mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodDef, BfTypeVector(),
-									(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
-								queuedMoreMethods = true;
-							}
+						if ((methodInstGroup.mDefault != NULL) && (methodInstGroup.mDefault->mIsForeignMethodDef))
+						{
+							mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodInstGroup.mDefault->mMethodDef, BfTypeVector(),
+								(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_ForeignMethodDef | BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
+							queuedMoreMethods = true;
+						}
+						else
+						{
+							auto methodDef = typeInst->mTypeDef->mMethods[methodInstGroup.mMethodIdx];
+							if (methodDef->mMethodType == BfMethodType_Init)
+								continue;
+							mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodDef, BfTypeVector(),
+								(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
+							queuedMoreMethods = true;
 						}
 					}
 				}
@@ -7875,10 +7960,13 @@ void BfCompiler::GenerateAutocompleteInfo()
 						}
 						else
 							methodText += bfModule->TypeToString(type, BfTypeNameFlag_ResolveGenericParamNames, genericMethodNameOverridesPtr);
-						methodInstance->GetParamName(paramIdx, paramName);
+						int namePrefixCount = 0;
+						methodInstance->GetParamName(paramIdx, paramName, namePrefixCount);
 						if (!paramName.IsEmpty())
 						{
 							methodText += " ";
+							for (int i = 0; i < namePrefixCount; i++)
+								methodText += "@";
 							methodText += paramName;
 						}
 
@@ -7929,16 +8017,18 @@ void BfCompiler::GenerateAutocompleteInfo()
 				continue;
 
 			autoCompleteResultString += String(entry->mEntryType);
-			autoCompleteResultString += "\t";
+			autoCompleteResultString += '\t';
+			for (int i = 0; i < entry->mNamePrefixCount; i++)
+				autoCompleteResultString += '@';
 			autoCompleteResultString += String(entry->mDisplay);
 
 			if (entry->mDocumentation != NULL)
-			{				
+			{
 				autoCompleteResultString += '\x03';
 				autoCompleteResultString += entry->mDocumentation;
 			}
 
-			autoCompleteResultString += "\n";
+			autoCompleteResultString += '\n';
 		}
 	}
 }
@@ -7959,9 +8049,9 @@ String BfCompiler::GetTypeDefList()
 			if (projectIds.TryAdd(curProject, NULL, &projectIdPtr))
 			{
 				*projectIdPtr = (int)projectIds.size() - 1;
-				result += "+";
+				result += '+';
 				result += curProject->mName;
-				result += "\n";
+				result += '\n';
 			}
 			else
 			{
@@ -7975,21 +8065,21 @@ String BfCompiler::GetTypeDefList()
 		{
 			if (typeDef->IsGlobalsContainer())
 			{
-				result += "g";
+				result += 'g';
 				if (!typeDef->mNamespace.IsEmpty())
 				{
 					typeDef->mNamespace.ToString(result);
-					result += ".";
+					result += '.';
 				}
 				result += ":static\n";
 				continue;
 			}
 			else if (typeDef->mTypeCode == BfTypeCode_Interface)
-				result += "i";
+				result += 'i';
 			else if (typeDef->mTypeCode == BfTypeCode_Object)
-				result += "c";
+				result += 'c';
 			else
-				result += "v";
+				result += 'v';
 			result += BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName) + "\n";
 		}
 	}
@@ -8629,11 +8719,13 @@ int BfCompiler::GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer)
 		return -1;
 
 	auto typeDef = typeInst->mTypeDef;
-
-	if (typeDef->mEmitParser == NULL)
+	if (typeDef->mEmitParent == NULL)
+		return -1;
+	auto emitParser = typeDef->mSource->ToParser();
+	if (emitParser == NULL)
 		return -1;
 	if (outBuffer != NULL)
-		outBuffer->Append(typeDef->mEmitParser->mSrc, typeDef->mEmitParser->mSrcLength);
+		outBuffer->Append(emitParser->mSrc, emitParser->mSrcLength);
 	return typeInst->mRevision;
 }
 
@@ -9058,8 +9150,9 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 					canReference = false;
  				if (bfProject != project)
  				{
- 					if (project->mTargetType == BfTargetType_BeefDynLib)
- 						canReference = false;
+					//TODO: What was this for?
+//  				if (project->mTargetType == BfTargetType_BeefDynLib)
+//  					canReference = false;
  				}
 			}
 			if (!canReference)
@@ -9142,7 +9235,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetSymbolReferences(BfCompiler* bfC
 	std::map<String, String*> sortedParserMap;	
 	for (auto& parserDataPair : resolvePassData->mFoundSymbolReferencesParserData)
 	{
-		sortedParserMap.insert(std::make_pair(parserDataPair.mKey->mFileName, &parserDataPair.mValue));
+		if (!parserDataPair.mKey->mFileName.Contains('|'))
+			sortedParserMap.insert(std::make_pair(parserDataPair.mKey->mFileName, &parserDataPair.mValue));
 	}
 
 	for (auto& parserData : sortedParserMap)
@@ -9268,10 +9362,9 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 	options->mCLongSize = 4;
 	if ((options->mMachineType == BfMachineType_AArch64) || (options->mMachineType == BfMachineType_x64))
 	{
-		if ((options->mPlatformType == BfPlatformType_macOS) || (options->mPlatformType == BfPlatformType_iOS) || 
-			(options->mPlatformType == BfPlatformType_Linux) || (options->mPlatformType == BfPlatformType_Android))
+		if (options->mPlatformType != BfPlatformType_Windows)
 			options->mCLongSize = 8;
-	}	
+	}
 	
 	bfCompiler->mCodeGen.SetMaxThreads(maxWorkerThreads);
 

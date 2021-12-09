@@ -339,9 +339,9 @@ void DrawLayer::SetTexture(int texIdx, Texture* texture)
 	}
 }
 
-void DrawLayer::SetShaderConstantDataTyped(int slotIdx, void* constData, int size, int* typeData, int typeCount)
+void DrawLayer::SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount)
 {
-	SetShaderConstantData(slotIdx, constData, size);
+	SetShaderConstantData(usageIdx, slotIdx, constData, size);
 }
 
 ///
@@ -390,5 +390,6 @@ BF_EXPORT void BF_CALLTYPE DrawLayer_DrawToRenderTarget(DrawLayer* drawLayer, Te
 	renderDevice->PhysSetRenderState(renderDevice->mDefaultRenderState);
 	renderDevice->PhysSetRenderTarget(textureSegment->mTexture);	
 	drawLayer->Draw();
+	drawLayer->Clear();
 	renderDevice->mCurRenderTarget = prevTarget;
 }

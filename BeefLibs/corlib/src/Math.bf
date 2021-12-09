@@ -24,7 +24,9 @@ namespace System
 
 		private static float[7] sRoundPower10Single = .(
 			1E0f, 1E1f, 1E2f, 1E3f, 1E4f, 1E5f, 1E6f);
-        
+
+		private static float sMachineEpsilonFloat = GetMachineEpsilonFloat();
+
         public const double PI_d = 3.14159265358979323846;
         public const double E_d = 2.7182818284590452354;
 		public const float PI_f = 3.14159265358979323846f;
@@ -47,6 +49,33 @@ namespace System
 		public static extern double Cosh(double d);
         public static extern float Floor(float f);
 		public static extern double Floor(double d);
+
+		public static bool WithinEpsilon(float a, float b)
+		{
+			return Math.Abs(a - b) < sMachineEpsilonFloat;
+		}
+
+		/// <summary>
+		/// Find the current machine's Epsilon for the float data type.
+		/// (That is, the largest float, e,  where e == 0.0f is true.)
+		/// </summary>
+		private static float GetMachineEpsilonFloat()
+		{
+			float machineEpsilon = 1.0f;
+			float comparison;
+
+			/* Keep halving the working value of machineEpsilon until we get a number that
+			 * when added to 1.0f will still evaluate as equal to 1.0f.
+			 */
+			repeat
+			{
+				machineEpsilon *= 0.5f;
+				comparison = 1.0f + machineEpsilon;
+			}
+			while (comparison > 1.0f);
+
+			return machineEpsilon;
+		}
 
 		private static float InternalRound(float value, int32 digits, MidpointRounding mode)
 		{
@@ -475,6 +504,126 @@ namespace System
 		public static int64 Align(int64 val, int64 align)
 		{
 			return ((val) + (align - 1)) & ~(align - 1);
+		}
+
+		/// Interpolates between two values using a cubic equation.
+		/// @param name Source value.
+		/// @param name Source value.
+		/// @param name Weighting value.
+		/// @returns Interpolated value.
+		public static float SmoothStep(float value1, float value2, float amount)
+		{
+			/* It is expected that 0 < amount < 1.
+			 * If amount < 0, return value1.
+			 * If amount > 1, return value2.
+			 */
+			float result = Clamp(amount, 0f, 1f);
+			result = Hermite(value1, 0f, value2, 0f, result);
+
+			return result;
+		}
+
+		/// Performs a Hermite spline interpolation.
+		/// @param value1 Source position.
+		/// @param tangent1 Source tangent.
+		/// @param value2 Source position.
+		/// @param tangent2 Source tangent.
+		/// @param amount Weighting factor.
+		/// @returns The result of the Hermite spline interpolation.
+		public static float Hermite(
+			float value1,
+			float tangent1,
+			float value2,
+			float tangent2,
+			float amount
+		) {
+			/* All transformed to double not to lose precision
+			 * Otherwise, for high numbers of param:amount the result is NaN instead
+			 * of Infinity.
+			 */
+			double v1 = value1, v2 = value2, t1 = tangent1, t2 = tangent2, s = amount;
+			double result;
+			double sCubed = s * s * s;
+			double sSquared = s * s;
+
+			if (WithinEpsilon(amount, 0f))
+			{
+				result = value1;
+			}
+			else if (WithinEpsilon(amount, 1f))
+			{
+				result = value2;
+			}
+			else
+			{
+				result = (
+					((2 * v1 - 2 * v2 + t2 + t1) * sCubed) +
+					((3 * v2 - 3 * v1 - 2 * t1 - t2) * sSquared) +
+					(t1 * s) +
+					v1
+				);
+			}
+
+			return (float) result;
+		}
+
+		/// Returns the Cartesian coordinate for one axis of a point that is defined by a
+		/// given triangle and two normalized barycentric (areal) coordinates.
+		/// <param name="value1">
+		/// The coordinate on one axis of vertex 1 of the defining triangle.
+		/// </param>
+		/// <param name="value2">
+		/// The coordinate on the same axis of vertex 2 of the defining triangle.
+		/// </param>
+		/// <param name="value3">
+		/// The coordinate on the same axis of vertex 3 of the defining triangle.
+		/// </param>
+		/// <param name="amount1">
+		/// The normalized barycentric (areal) coordinate b2, equal to the weighting factor
+		/// for vertex 2, the coordinate of which is specified in value2.
+		/// </param>
+		/// @param amount2
+		/// The normalized barycentric (areal) coordinate b3, equal to the weighting factor
+		/// for vertex 3, the coordinate of which is specified in value3.
+		/// </param>
+		/// @returns Cartesian coordinate of the specified point with respect to the axis being used.
+		public static float Barycentric(
+			float value1,
+			float value2,
+			float value3,
+			float amount1,
+			float amount2
+		) {
+			return value1 + (value2 - value1) * amount1 + (value3 - value1) * amount2;
+		}
+
+		/// Performs a Catmull-Rom interpolation using the specified positions.
+		/// @param value1 The first position in the interpolation.
+		/// @param value2">The second position in the interpolation.
+		/// @param value3">The third position in the interpolation.
+		/// @param value4">The fourth position in the interpolation.
+		/// @param name="amount">Weighting factor.
+		/// @returns A position that is the result of the Catmull-Rom interpolation.
+		public static float CatmullRom(
+			float value1,
+			float value2,
+			float value3,
+			float value4,
+			float amount
+		) {
+			/* Using formula from http://www.mvps.org/directx/articles/catmull/
+			 * Internally using doubles not to lose precision.
+			 */
+			double amountSquared = amount * amount;
+			double amountCubed = amountSquared * amount;
+			return (float) (
+				0.5 *
+				(
+					((2.0 * value2 + (value3 - value1) * amount) +
+					((2.0 * value1 - 5.0 * value2 + 4.0 * value3 - value4) * amountSquared) +
+					(3.0 * value2 - value1 - 3.0 * value3 + value4) * amountCubed)
+				)
+			);
 		}
     }
 }

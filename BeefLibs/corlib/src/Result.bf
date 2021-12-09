@@ -20,22 +20,26 @@ namespace System
 
 		public T Value
 		{
+			[Inline]
 			get
 			{
 				return Unwrap();
 			}
 		}
 
+		[Inline]
 		public static implicit operator Result<T>(T value)
 		{
 		    return .Ok(value);
 		}
 
+		[Inline]
 		public static implicit operator T(Result<T> result)
 		{
 			return result.Unwrap();
 		}
 
+		[Inline]
 		public void IgnoreError()
 		{
 		}

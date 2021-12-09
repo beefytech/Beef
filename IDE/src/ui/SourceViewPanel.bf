@@ -520,7 +520,7 @@ namespace IDE.ui
 			}
 		}
 
-		ProjectSource FilteredProjectSource
+		public ProjectSource FilteredProjectSource
 		{
 			get
 			{
@@ -4277,7 +4277,7 @@ namespace IDE.ui
 
                 if (mProcessingCharData[srcIdx].mCharId != destText[destIdx].mCharId)
                 {
-                    // Id doesn't match, char8acter must have been deleted
+                    // Id doesn't match, character must have been deleted
                     srcIdx++;
                     continue;
                 }
@@ -4951,7 +4951,7 @@ namespace IDE.ui
 					if ((!String.IsNullOrEmpty(mHoverResolveTask?.mResult)))
 					{
 						origDebugExpr = scope:: String();
-						origDebugExpr.Set(debugExpr);
+						origDebugExpr.Set("");
 
 						debugExpr.Set(mHoverResolveTask.mResult);
 

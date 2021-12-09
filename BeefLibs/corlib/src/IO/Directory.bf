@@ -240,7 +240,7 @@ namespace System.IO
 		}
 	}
 
-	struct FileEnumerator : IEnumerator<FileFindEntry>
+	struct FileEnumerator : IEnumerator<FileFindEntry>, IDisposable
 	{
 		String mSearchStr;
 		Platform.BfpFindFileData* mFindFileData;

@@ -173,6 +173,10 @@ namespace System
 		    //  or the memory would already be registered with the GC
 		}
 
+		public static mixin Mark<T>(T val)
+		{
+		}
+
 		public static mixin Mark<TSizedArray, T, Size>(TSizedArray val) where Size : const int where TSizedArray : SizedArray<T, Size>
 		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK

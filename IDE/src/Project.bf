@@ -866,14 +866,6 @@ namespace IDE
 			case StaticLib;
 			case DynamicLib;
 			case NotSupported;
-
-			public bool IsApplicationLib
-			{
-				get
-				{
-					return (this == .StaticLib) || (this == .DynamicLib);
-				}
-			}
 		}
 
         public enum COptimizationLevel
@@ -916,13 +908,14 @@ namespace IDE
 			case BeefConsoleApplication,
 				 BeefGUIApplication,
 				 BeefLib,
-				 BeefDynLib,
 				 CustomBuild,
 				 BeefTest,
 				 C_ConsoleApplication,
 				 C_GUIApplication,
 				 BeefApplication_StaticLib,
-				 BeefApplication_DynamicLib;
+				 BeefApplication_DynamicLib,
+				 BeefLib_Static,
+				 BeefLib_Dynamic;
 
 		 	public bool IsBeef
 		 	{
@@ -933,7 +926,6 @@ namespace IDE
 					case BeefConsoleApplication,
 						 BeefGUIApplication,
 						 BeefLib,
-						 BeefDynLib,
 						 BeefTest:
 						return true;
 					default:
@@ -950,6 +942,22 @@ namespace IDE
 					{
 					case BeefConsoleApplication,
 						 BeefGUIApplication:
+						return true;
+					default:
+						return false;
+					}
+				}
+			}
+
+			public bool IsBeefApplicationOrLib
+			{
+				get
+				{
+					switch (this)
+					{
+					case BeefConsoleApplication,
+						 BeefGUIApplication,
+						 BeefLib:
 						return true;
 					default:
 						return false;
@@ -1863,7 +1871,8 @@ namespace IDE
 					strs.Add(cmd);
 				}
 			}
-			
+
+			bool isBeefDynLib = false;
 			using (data.Open("Project"))
 			{
 				if (!IsSingleFile)
@@ -1889,6 +1898,9 @@ namespace IDE
 					mGeneralOptions.mTargetType = .BeefGUIApplication;
 				case "C_WindowsApplication":
 					mGeneralOptions.mTargetType = .C_GUIApplication;
+				case "BeefDynLib":
+					mGeneralOptions.mTargetType = .BeefLib;
+					isBeefDynLib = true;
 				default:
 					mGeneralOptions.mTargetType = data.GetEnum<TargetType>("TargetType", GetDefaultTargetType());
 				}
@@ -1962,6 +1974,8 @@ namespace IDE
                  
 					// Build
 					options.mBuildOptions.mBuildKind = data.GetEnum<BuildKind>("BuildKind", isTest ? .Test : .Normal);
+					if ((isBeefDynLib) && (options.mBuildOptions.mBuildKind == .Normal))
+						options.mBuildOptions.mBuildKind = .DynamicLib;
 				    data.GetString("TargetDirectory", options.mBuildOptions.mTargetDirectory, "$(BuildDir)");
 				    data.GetString("TargetName", options.mBuildOptions.mTargetName, "$(ProjectName)");
 				    data.GetString("OtherLinkFlags", options.mBuildOptions.mOtherLinkFlags, "$(LinkFlags)");

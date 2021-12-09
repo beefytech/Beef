@@ -1600,6 +1600,7 @@ void BfPrinter::Visit(BfVariableDeclaration* varDecl)
 {
 	//Visit(varDecl->ToBase());
 
+	VisitChild(varDecl->mAttributes);
 	VisitChildWithProceedingSpace(varDecl->mModSpecifier);
 
 	if (varDecl->mPrecedingComma != NULL)
@@ -1650,6 +1651,17 @@ void BfPrinter::Visit(BfSizeOfExpression* sizeOfExpr)
 	VisitChild(sizeOfExpr->mOpenParen);
 	VisitChild(sizeOfExpr->mTypeRef);
 	VisitChild(sizeOfExpr->mCloseParen);
+}
+
+void BfPrinter::Visit(BfOffsetOfExpression* offsetOfExpr)
+{
+	VisitChild(offsetOfExpr->mToken);
+	VisitChild(offsetOfExpr->mOpenParen);
+	VisitChild(offsetOfExpr->mTypeRef);	
+	VisitChild(offsetOfExpr->mCommaToken);
+	ExpectSpace();
+	VisitChild(offsetOfExpr->mMemberName);
+	VisitChild(offsetOfExpr->mCloseParen);
 }
 
 void BfPrinter::Visit(BfDefaultExpression* defaultExpr)
@@ -1816,8 +1828,11 @@ void BfPrinter::Visit(BfDeleteStatement* deleteStmt)
 	Visit(deleteStmt->ToBase());
 
 	VisitChild(deleteStmt->mDeleteToken);
+	VisitChild(deleteStmt->mTargetTypeToken);
+	VisitChild(deleteStmt->mAllocExpr);
 	ExpectSpace();
 	VisitChild(deleteStmt->mExpression);
+	
 
 	VisitChild(deleteStmt->mTrailingSemicolon);
 }
@@ -2283,7 +2298,7 @@ void BfPrinter::Visit(BfUnaryOperatorExpression* unaryOpExpr)
 {
 	Visit(unaryOpExpr->ToBase());
 
-	bool postOp = (unaryOpExpr->mOp == BfUnaryOp_PostIncrement) || (unaryOpExpr->mOp == BfUnaryOp_PostDecrement);
+	bool postOp = (unaryOpExpr->mOp == BfUnaryOp_PostIncrement) || (unaryOpExpr->mOp == BfUnaryOp_PostDecrement) || (unaryOpExpr->mOp == BfUnaryOp_PartialRangeFrom);
 	if (!postOp)
 		VisitChild(unaryOpExpr->mOpToken);
 	if ((unaryOpExpr->mOp == BfUnaryOp_Ref) || (unaryOpExpr->mOp == BfUnaryOp_Mut) || (unaryOpExpr->mOp == BfUnaryOp_Out) || (unaryOpExpr->mOp == BfUnaryOp_Params) || (unaryOpExpr->mOp == BfUnaryOp_Cascade))
@@ -2530,6 +2545,8 @@ void BfPrinter::Visit(BfPropertyMethodDeclaration* propertyMethodDeclaration)
 	ExpectSpace();		
 	QueueVisitChild(propertyMethodDeclaration->mNameNode);
 	ExpectSpace();
+	QueueVisitChild(propertyMethodDeclaration->mSetRefSpecifier);
+	ExpectSpace();
 	QueueVisitChild(propertyMethodDeclaration->mMutSpecifier);
 	ExpectSpace();
 	QueueVisitChild(propertyMethodDeclaration->mFatArrowToken);
@@ -2569,8 +2586,8 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	
 	if (indexerDeclaration != NULL)
 	{
-		QueueVisitChild(indexerDeclaration->mThisToken);		
-		QueueVisitChild(indexerDeclaration->mOpenBracket);		
+		QueueVisitChild(indexerDeclaration->mThisToken);
+		QueueVisitChild(indexerDeclaration->mOpenBracket);
 		for (int i = 0; i < (int)indexerDeclaration->mParams.size(); i++)
 		{
 			if (i > 0)
@@ -2582,12 +2599,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 		}
 		QueueVisitChild(indexerDeclaration->mCloseBracket);
 		ExpectSpace();
-	}	
-
-	QueueVisitChild(propertyDeclaration->mEqualsNode);
-	ExpectSpace();
-	QueueVisitChild(propertyDeclaration->mInitializer);
-	FlushVisitChild();
+	}
 
 	if (auto block = BfNodeDynCast<BfBlock>(propertyDeclaration->mDefinitionBlock))
 	{
@@ -2610,6 +2622,14 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 			QueueVisitChild(method->mBody);
 		}
 	}
+
+	ExpectSpace();
+	QueueVisitChild(propertyDeclaration->mEqualsNode);
+	ExpectSpace();
+	QueueVisitChild(propertyDeclaration->mInitializer);
+	ExpectSpace();
+	QueueVisitChild(propertyDeclaration->mFieldDtor);
+	FlushVisitChild();
 
 	//QueueVisitChild(propertyDeclaration->mTrailingSemicolon);
 

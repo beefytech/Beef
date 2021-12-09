@@ -999,10 +999,18 @@ namespace IDE.ui
 					}
 					if (sectionIdx == cursorSection)
 					{
-						int lastSpace = sectionStr.LastIndexOf(' ');
+						paramName = sectionStr;
+						int eqPos = paramName.IndexOf('=');
+						if (eqPos != -1)
+						{
+							paramName.RemoveToEnd(eqPos);
+							paramName.Trim();
+						}
+						
+						int lastSpace = paramName.LastIndexOf(' ');
 						if (lastSpace != -1)
 						{
-							paramName = .(sectionStr, lastSpace + 1);
+							paramName = .(paramName, lastSpace + 1);
 							if (paramName.EndsWith(','))
 								paramName.RemoveFromEnd(1);
 						}
@@ -1722,7 +1730,7 @@ namespace IDE.ui
 
                 if ((!SelectEntry(curString)) && (curString.Length > 0))
                 {
-                    // If we can't find any matches, at least select a string that starts with the right char8acter
+                    // If we can't find any matches, at least select a string that starts with the right character
                     curString.RemoveToEnd(1);
                     SelectEntry(curString);
                 }

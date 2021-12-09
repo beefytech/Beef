@@ -84,8 +84,7 @@ namespace bf
 			BFRT_EXPORT static Object* UnsafeCastToObject(void* inPtr);
 			BFRT_EXPORT static void* UnsafeCastToPtr(Object* obj);
 			BFRT_EXPORT static void ObjectDynCheck(Object* object, int typeId, bool allowNull);
-			BFRT_EXPORT static void ObjectDynCheckFailed(Object* object, int typeId);
-			BFRT_EXPORT static void Throw(Exception* ex);
+			BFRT_EXPORT static void ObjectDynCheckFailed(Object* object, int typeId);			
 			BFRT_EXPORT static void ThrowIndexOutOfRange(intptr stackOffset);
 			BFRT_EXPORT static void FatalError(String* error, intptr stackOffset = 0);
 			BFRT_EXPORT static void MemCpy(void* dest, void* src, intptr length);
@@ -215,18 +214,20 @@ static void TestReadCmd(Beefy::String& str);
 
 static void Internal_FatalError(const char* error)
 {
-	if (gClientPipe != NULL)
+	if ((gClientPipe != NULL) && (!gTestBreakOnFailure))
 	{
 		Beefy::String str = ":TestFatal\t";
 		str += error;
+		str.Replace('\n', '\r');
 		str += "\n";
 		TestString(str);
 
  		Beefy::String result;
- 		TestReadCmd(result);
+ 		TestReadCmd(result);		
+		exit(1);
 	}
-
-	BfpSystem_FatalError(error, "BEEF FATAL ERROR");
+	else
+		BfpSystem_FatalError(error, "BEEF FATAL ERROR");
 }
 
 extern "C" BFRT_EXPORT int BF_CALLTYPE ftoa(float val, char* str)
@@ -395,26 +396,21 @@ void* Internal::UnsafeCastToPtr(Object* obj)
 	return (void*)obj;
 }
 
-void Internal::Throw(Exception* ex)
-{	
-	bf::System::String* exStr = gBfRtCallbacks.String_Alloc();
-	gBfRtCallbacks.Object_ToString(ex, exStr);
-
-    Beefy::String errorStr = StrFormat("FATAL: %s", exStr->CStr());
-	SETUP_ERROR(errorStr.c_str(), 1);
-	BF_DEBUG_BREAK();
-	gBfRtCallbacks.DebugMessageData_Fatal();
-
-    printf("Thrown: %s", errorStr.c_str());
-    //TODO: What about capturing callstack?
-
-    exit(3);
-
-	//throw ex;
-}
-
 void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 {
+	if (gClientPipe != NULL)
+	{
+		if (gTestBreakOnFailure)
+		{
+			SETUP_ERROR("Index out of range", (int)(2 + stackOffset));
+			BF_DEBUG_BREAK();
+		}
+
+		Beefy::String str = ":TestFail\tIndex out of range\n";		
+		TestString(str);
+		exit(1);
+	}
+
 	if ((stackOffset != -1) && (::IsDebuggerPresent()))
 	{
 		SETUP_ERROR("Index out of range", (int)(2 + stackOffset));
@@ -426,6 +422,22 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 
 void Internal::FatalError(bf::System::String* error, intptr stackOffset)
 {		
+	if (gClientPipe != NULL)
+	{
+		if (gTestBreakOnFailure)
+		{
+			SETUP_ERROR(error->CStr(), (int)(2 + stackOffset));
+			BF_DEBUG_BREAK();
+		}
+
+		Beefy::String str = ":TestFail\t";
+		str += error->CStr();
+		str.Replace('\n', '\r');
+		str += "\n";
+		TestString(str);
+		exit(1);
+	}
+	
 	if ((stackOffset != -1) && (::IsDebuggerPresent()))
 	{
 		SETUP_ERROR(error->CStr(), (int)(2 + stackOffset));
@@ -659,6 +671,7 @@ void Internal::Test_Error(char* error)
 	{
 		Beefy::String str = ":TestFail\t";
 		str += error;
+		str.Replace('\n', '\r');
 		str += "\n";
 		TestString(str);
 	}
@@ -670,12 +683,7 @@ void Internal::Test_Write(char* strPtr)
 	{
 		Beefy::String str = ":TestWrite\t";
 		str += strPtr;
-		for (char& c : str)
-		{
-			if (c == '\n')
-				c = '\r';
-		}
-
+		str.Replace('\n', '\r');
 		str += "\n";
 		TestString(str);
 	}

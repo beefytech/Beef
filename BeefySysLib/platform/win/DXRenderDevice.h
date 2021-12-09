@@ -44,6 +44,7 @@
 #include "gfx/DrawLayer.h"
 #include "gfx/ModelInstance.h"
 #include "util/HashSet.h"
+#include "util/Dictionary.h"
 #include <map>
 
 NS_BF_BEGIN;
@@ -55,6 +56,7 @@ class DXRenderDevice;
 class DXTexture : public Texture
 {
 public:
+	String					mPath;
 	DXRenderDevice*			mRenderDevice;
 	ID3D11Texture2D*		mD3DTexture;
 	ID3D11ShaderResourceView* mD3DResourceView;
@@ -93,7 +95,7 @@ typedef std::map<String, DXShaderParam*> DXShaderParamMap;
 
 class DXShader : public Shader
 {
-public:	
+public:		
 	ID3D11InputLayout*		mD3DLayout;
 	ID3D11VertexShader*		mD3DVertexShader;
 	ID3D11PixelShader*		mD3DPixelShader;
@@ -124,8 +126,8 @@ class DXDrawLayer : public DrawLayer
 public:	
 	virtual DrawBatch*		CreateDrawBatch();	
 	virtual RenderCmd*		CreateSetTextureCmd(int textureIdx, Texture* texture) override;
-	virtual void			SetShaderConstantData(int slotIdx, void* constData, int size) override;
-	virtual void			SetShaderConstantDataTyped(int slotIdx, void* constData, int size, int* typeData, int typeCount) override;
+	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) override;
+	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount) override;
 
 public:	
 	DXDrawLayer();	
@@ -203,32 +205,40 @@ public:
 	void IndalidateDepthStencilState();	
 
 	virtual void SetClipped(bool clipped);
+	virtual void SetTexWrap(bool clipped);
 	virtual void SetClipRect(const Rect& rect);
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer);
 	virtual void SetDepthFunc(DepthFunc depthFunc);
 };
 
-class DXModelMesh
+class DXModelPrimitives
 {
 public:
+	String					mMaterialName;
 	int						mNumIndices;
 	int						mNumVertices;
-	DXTexture*				mTexture;
+	Array<DXTexture*>		mTextures;	
 
 	ID3D11Buffer*			mD3DIndexBuffer;
 	//TODO: Split the vertex buffer up into static and dynamic buffers
 	ID3D11Buffer*			mD3DVertexBuffer;
 
 public:
-	DXModelMesh();
-	~DXModelMesh();
+	DXModelPrimitives();
+	~DXModelPrimitives();
+};
+
+class DXModelMesh
+{
+public:
+	Array<DXModelPrimitives> mPrimitives;
 };
 
 class DXModelInstance : public ModelInstance
 {
 public:	
 	DXRenderDevice*			mD3DRenderDevice;	
-	std::vector<DXModelMesh> mDXModelMeshs;	
+	Array<DXModelMesh>		mDXModelMeshs;	
 
 public:
 	DXModelInstance(ModelDef* modelDef);
@@ -274,6 +284,7 @@ public:
 	ID3D11DeviceContext*	mD3DDeviceContext;
 	ID3D11BlendState*		mD3DNormalBlendState;		
 	ID3D11SamplerState*		mD3DDefaultSamplerState;
+	ID3D11SamplerState*		mD3DWrapSamplerState;
 	bool					mHasVSync;
 
 	ID3D11Buffer*			mD3DVertexBuffer;
@@ -282,14 +293,16 @@ public:
 	int						mIdxByteIdx;	
 
 	HashSet<DXRenderState*>	mRenderStates;
-	HashSet<DXTexture*>		mTextures;	
-		
+	HashSet<DXTexture*>		mTextures;
+	Dictionary<String, DXTexture*> mTextureMap;
+	Dictionary<int, ID3D11Buffer*> mBufferMap;
+			
 public:		
 	virtual void			PhysSetRenderState(RenderState* renderState) override;
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;
 	virtual RenderState*	CreateRenderState(RenderState* srcRenderState) override;
-	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef) override;			
+	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) override;
 
 public:
 	DXRenderDevice();
@@ -302,6 +315,7 @@ public:
 	void					FrameStart() override;
 	void					FrameEnd() override;
 
+	Texture*				LoadTexture(const StringImpl& fileName, int flags) override;
 	Texture*				LoadTexture(ImageData* imageData, int flags) override;
 	Texture*				CreateDynTexture(int width, int height) override;
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;

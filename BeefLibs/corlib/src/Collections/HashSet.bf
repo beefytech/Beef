@@ -196,7 +196,13 @@ namespace System.Collections
 			return false;
 		}
 
+		[Obsolete("Method renamed to ContainsAlt", false)]
 		public bool ContainsWith<TAltKey>(TAltKey item) where TAltKey : IHashable where bool : operator T == TAltKey
+		{
+			return ContainsAlt(item);
+		}
+
+		public bool ContainsAlt<TAltKey>(TAltKey item) where TAltKey : IHashable where bool : operator T == TAltKey
 		{
 			if (mBuckets != null)
 			{
@@ -344,6 +350,11 @@ namespace System.Collections
 		public bool TryAdd(T item, out T* entryPtr)
 		{
 			return Add(item, out entryPtr);
+		}
+
+		public bool TryAddAlt<TAltKey>(TAltKey item, out T* entryPtr) where TAltKey : IHashable where bool : operator T == TAltKey
+		{
+			return AddAlt(item, out entryPtr);
 		}
 
 		public void CopyTo(T[] array) { CopyTo(array, 0, mCount); }
@@ -625,6 +636,71 @@ namespace System.Collections
 			}
 			mSlots[index].mHashCode = hashCode;
 			mSlots[index].mValue = value;
+			mSlots[index].mNext = mBuckets[bucket] - 1;
+			mBuckets[bucket] = index + 1;
+			mCount++;
+#if VERSION_HASHSET
+			mVersion++;
+#endif
+
+#if FEATURE_RANDOMIZED_STRING_HASHING && !FEATURE_NETCORE
+			if(collisionCount > HashHelpers.HashCollisionThreshold && HashHelpers.IsWellKnownEqualityComparer(m_comparer)) {
+				m_comparer = (IEqualityComparer<T>) HashHelpers.GetRandomizedEqualityComparer(m_comparer);
+				SetCapacity(m_buckets.Length, true);
+			}
+#endif // FEATURE_RANDOMIZED_STRING_HASHING
+
+			entryPtr = &mSlots[index].mValue;
+			return true;
+		}
+
+		/// Adds value to HashSet if not contained already
+		/// @return true if added and false if already present
+		/// @param value value to find
+		/// @param entryPtr ponter to entry
+		public bool AddAlt<TAltKey>(TAltKey value, out T* entryPtr) where TAltKey : IHashable where bool : operator T == TAltKey
+		{
+			if (mBuckets == null)
+			{
+				Initialize(0);
+			}
+
+			int32 hashCode = (int32)InternalGetHashCodeAlt(value);
+			int32 bucket = hashCode % (int32)mBuckets.Count;
+#if FEATURE_RANDOMIZED_STRING_HASHING && !FEATURE_NETCORE
+			int collisionCount = 0;
+#endif
+			for (int32 i = mBuckets[hashCode % mBuckets.Count] - 1; i >= 0; i = mSlots[i].mNext)
+			{
+				if (mSlots[i].mHashCode == hashCode && /*m_comparer.Equals*/(mSlots[i].mValue == value))
+				{
+					entryPtr = &mSlots[i].mValue;
+					return false;
+				}
+#if FEATURE_RANDOMIZED_STRING_HASHING && !FEATURE_NETCORE
+				collisionCount++;
+#endif
+			}
+
+			int32 index;
+			if (mFreeList >= 0)
+			{
+				index = mFreeList;
+				mFreeList = mSlots[index].mNext;
+			}
+			else
+			{
+				if (mLastIndex == mSlots.Count)
+				{
+					IncreaseCapacity();
+					// this will change during resize
+					bucket = hashCode % (int32)mBuckets.Count;
+				}
+				index = mLastIndex;
+				mLastIndex++;
+			}
+			mSlots[index].mHashCode = hashCode;
+			//mSlots[index].mValue = value;
 			mSlots[index].mNext = mBuckets[bucket] - 1;
 			mBuckets[bucket] = index + 1;
 			mCount++;
@@ -1063,6 +1139,15 @@ namespace System.Collections
 		/// Workaround Comparers that throw ArgumentNullException for GetHashCode(null).
 		/// @return hash code
 		private int InternalGetHashCode(T item)
+		{
+			if (item == null)
+			{
+				return 0;
+			}
+			return item.GetHashCode() & Lower31BitMask;
+		}
+
+		private int InternalGetHashCodeAlt<TAltKey>(TAltKey item) where TAltKey : IHashable
 		{
 			if (item == null)
 			{

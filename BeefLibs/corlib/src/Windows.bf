@@ -48,8 +48,8 @@ namespace System
 			public struct VTable
 			{
 				public function HResult(COM_IUnknown* self, ref Guid riid, void** result) QueryInterface;
-				public function HResult(COM_IUnknown* self) AddRef;
-				public function HResult(COM_IUnknown* self) Release;
+				public function uint32(COM_IUnknown* self) AddRef;
+				public function uint32(COM_IUnknown* self) Release;
 			}
 
 			public enum HResult : int32

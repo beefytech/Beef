@@ -48,127 +48,141 @@ USING_NS_BF;
 	auto constRHS = GetConstantById(rhs.mId); \
 	if (constLHS->mConstType == BfConstType_Undef) return lhs; \
 	if (constRHS->mConstType == BfConstType_Undef) return rhs; \
-		BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
-	uint64 val = 0; \
-	switch (constLHS->mTypeCode) \
+	if ((constLHS->mTypeCode < BfTypeCode_Length) && (constRHS->mTypeCode < BfTypeCode_Length)) \
 	{ \
-	case BfTypeCode_Boolean: val = OP(constLHS->mInt8, constRHS->mInt8); break; \
-	case BfTypeCode_Int8: val = OP(constLHS->mInt8, constRHS->mInt8); break; \
-	case BfTypeCode_Char8: val = OP(constLHS->mUInt8, constRHS->mUInt8); break; \
-	case BfTypeCode_UInt8: val = OP(constLHS->mUInt8, constRHS->mUInt8); break; \
-	case BfTypeCode_Int16: val = OP(constLHS->mInt16, constRHS->mInt16); break; \
-	case BfTypeCode_UInt16: val = OP(constLHS->mUInt16, constRHS->mUInt16); break; \
-	case BfTypeCode_Char16: val = OP(constLHS->mUInt16, constRHS->mUInt16); break; \
-	case BfTypeCode_Int32: val = OP(constLHS->mInt32, constRHS->mInt32); break; \
-	case BfTypeCode_UInt32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
-	case BfTypeCode_Char32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
-	case BfTypeCode_Int64: val = OP(constLHS->mInt64, constRHS->mInt64); break; \
-	case BfTypeCode_UInt64: val = OP(constLHS->mUInt64, constRHS->mUInt64); break; \
-	case BfTypeCode_Float: \
-	case BfTypeCode_Double: \
-		return CreateConst(constLHS->mTypeCode, OP(constLHS->mDouble, constRHS->mDouble)); break; \
-	default: break; \
-	} \
-	return CreateConst(constLHS->mTypeCode, val);
+		BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
+		uint64 val = 0; \
+		switch (constLHS->mTypeCode) \
+		{ \
+		case BfTypeCode_Boolean: val = OP(constLHS->mInt8, constRHS->mInt8); break; \
+		case BfTypeCode_Int8: val = OP(constLHS->mInt8, constRHS->mInt8); break; \
+		case BfTypeCode_Char8: val = OP(constLHS->mUInt8, constRHS->mUInt8); break; \
+		case BfTypeCode_UInt8: val = OP(constLHS->mUInt8, constRHS->mUInt8); break; \
+		case BfTypeCode_Int16: val = OP(constLHS->mInt16, constRHS->mInt16); break; \
+		case BfTypeCode_UInt16: val = OP(constLHS->mUInt16, constRHS->mUInt16); break; \
+		case BfTypeCode_Char16: val = OP(constLHS->mUInt16, constRHS->mUInt16); break; \
+		case BfTypeCode_Int32: val = OP(constLHS->mInt32, constRHS->mInt32); break; \
+		case BfTypeCode_UInt32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
+		case BfTypeCode_Char32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
+		case BfTypeCode_Int64: val = OP(constLHS->mInt64, constRHS->mInt64); break; \
+		case BfTypeCode_UInt64: val = OP(constLHS->mUInt64, constRHS->mUInt64); break; \
+		case BfTypeCode_Float: \
+		case BfTypeCode_Double: \
+			return CreateConst(constLHS->mTypeCode, OP(constLHS->mDouble, constRHS->mDouble)); break; \
+		default: break; \
+		} \
+		return CreateConst(constLHS->mTypeCode, val); \
+	}
 
 #define INT_BINOPFUNC_APPLY(lhs, rhs, OP) \
 	auto constLHS = GetConstantById(lhs.mId); \
 	auto constRHS = GetConstantById(rhs.mId); \
 	if (constLHS->mConstType == BfConstType_Undef) return lhs; \
 	if (constRHS->mConstType == BfConstType_Undef) return rhs; \
-	BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
-	uint64 val = 0; \
-	switch (constLHS->mTypeCode) \
+	if ((constLHS->mTypeCode < BfTypeCode_Length) && (constRHS->mTypeCode < BfTypeCode_Length)) \
 	{ \
-	case BfTypeCode_Boolean: val = OP(constLHS->mInt8, constRHS->mInt8); break; \
-	case BfTypeCode_Int8: val = OP(constLHS->mInt8, constRHS->mInt8); break; \
-	case BfTypeCode_Char8: val = OP(constLHS->mUInt8, constRHS->mUInt8); break; \
-	case BfTypeCode_UInt8: val = OP(constLHS->mUInt8, constRHS->mUInt8); break; \
-	case BfTypeCode_Int16: val = OP(constLHS->mInt16, constRHS->mInt16); break; \
-	case BfTypeCode_UInt16: val = OP(constLHS->mUInt16, constRHS->mUInt16); break; \
-	case BfTypeCode_Char16: val = OP(constLHS->mUInt16, constRHS->mUInt16); break; \
-	case BfTypeCode_Int32: val = OP(constLHS->mInt32, constRHS->mInt32); break; \
-	case BfTypeCode_UInt32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
-	case BfTypeCode_Char32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
-	case BfTypeCode_Int64: val = OP(constLHS->mInt64, constRHS->mInt64); break; \
-	case BfTypeCode_UInt64: val = OP(constLHS->mUInt64, constRHS->mUInt64); break; \
-	default: break; \
-	} \
-	return CreateConst(constLHS->mTypeCode, val);
-
+		BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
+		uint64 val = 0; \
+		switch (constLHS->mTypeCode) \
+		{ \
+		case BfTypeCode_Boolean: val = OP(constLHS->mInt8, constRHS->mInt8); break; \
+		case BfTypeCode_Int8: val = OP(constLHS->mInt8, constRHS->mInt8); break; \
+		case BfTypeCode_Char8: val = OP(constLHS->mUInt8, constRHS->mUInt8); break; \
+		case BfTypeCode_UInt8: val = OP(constLHS->mUInt8, constRHS->mUInt8); break; \
+		case BfTypeCode_Int16: val = OP(constLHS->mInt16, constRHS->mInt16); break; \
+		case BfTypeCode_UInt16: val = OP(constLHS->mUInt16, constRHS->mUInt16); break; \
+		case BfTypeCode_Char16: val = OP(constLHS->mUInt16, constRHS->mUInt16); break; \
+		case BfTypeCode_Int32: val = OP(constLHS->mInt32, constRHS->mInt32); break; \
+		case BfTypeCode_UInt32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
+		case BfTypeCode_Char32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
+		case BfTypeCode_Int64: val = OP(constLHS->mInt64, constRHS->mInt64); break; \
+		case BfTypeCode_UInt64: val = OP(constLHS->mUInt64, constRHS->mUInt64); break; \
+		default: break; \
+		} \
+		return CreateConst(constLHS->mTypeCode, val); \
+	}
 
 #define BINOP_APPLY(lhs, rhs, OP) \
 	auto constLHS = GetConstantById(lhs.mId); \
 	auto constRHS = GetConstantById(rhs.mId); \
 	if (constLHS->mConstType == BfConstType_Undef) return lhs; \
 	if (constRHS->mConstType == BfConstType_Undef) return rhs; \
-	BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
-	uint64 val = 0; \
-	switch (constLHS->mTypeCode) \
+	if ((constLHS->mTypeCode < BfTypeCode_Length) && (constRHS->mTypeCode < BfTypeCode_Length)) \
 	{ \
-	case BfTypeCode_Boolean: val = constLHS->mInt8 OP constRHS->mInt8; break; \
-	case BfTypeCode_Int8: val = constLHS->mInt8 OP constRHS->mInt8; break; \
-	case BfTypeCode_Char8: val = constLHS->mUInt8 OP constRHS->mUInt8; break; \
-	case BfTypeCode_UInt8: val = constLHS->mUInt8 OP constRHS->mUInt8; break; \
-	case BfTypeCode_Int16: val = constLHS->mInt16 OP constRHS->mInt16; break; \
-	case BfTypeCode_UInt16: val = constLHS->mUInt16 OP constRHS->mUInt16; break; \
-	case BfTypeCode_Char16: val = constLHS->mUInt16 OP constRHS->mUInt16; break; \
-	case BfTypeCode_Int32: val = constLHS->mInt32 OP constRHS->mInt32; break; \
-	case BfTypeCode_UInt32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
-	case BfTypeCode_Char32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
-	case BfTypeCode_Int64: val = constLHS->mInt64 OP constRHS->mInt64; break; \
-	case BfTypeCode_UInt64: val = constLHS->mUInt64 OP constRHS->mUInt64; break; \
-	case BfTypeCode_Float: \
-	case BfTypeCode_Double: \
-		return CreateConst(constLHS->mTypeCode, constLHS->mDouble OP constRHS->mDouble); break; \
-	default: break; \
-	} \
-	return CreateConst(constLHS->mTypeCode, val);
+		BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
+		uint64 val = 0; \
+		switch (constLHS->mTypeCode) \
+		{ \
+		case BfTypeCode_Boolean: val = constLHS->mInt8 OP constRHS->mInt8; break; \
+		case BfTypeCode_Int8: val = constLHS->mInt8 OP constRHS->mInt8; break; \
+		case BfTypeCode_Char8: val = constLHS->mUInt8 OP constRHS->mUInt8; break; \
+		case BfTypeCode_UInt8: val = constLHS->mUInt8 OP constRHS->mUInt8; break; \
+		case BfTypeCode_Int16: val = constLHS->mInt16 OP constRHS->mInt16; break; \
+		case BfTypeCode_UInt16: val = constLHS->mUInt16 OP constRHS->mUInt16; break; \
+		case BfTypeCode_Char16: val = constLHS->mUInt16 OP constRHS->mUInt16; break; \
+		case BfTypeCode_Int32: val = constLHS->mInt32 OP constRHS->mInt32; break; \
+		case BfTypeCode_UInt32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
+		case BfTypeCode_Char32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
+		case BfTypeCode_Int64: val = constLHS->mInt64 OP constRHS->mInt64; break; \
+		case BfTypeCode_UInt64: val = constLHS->mUInt64 OP constRHS->mUInt64; break; \
+		case BfTypeCode_Float: \
+		case BfTypeCode_Double: \
+			return CreateConst(constLHS->mTypeCode, constLHS->mDouble OP constRHS->mDouble); break; \
+		default: break; \
+		} \
+		return CreateConst(constLHS->mTypeCode, val); \
+	}
 
 #define INT_BINOP_APPLY(constLHS, constRHS, OP) \
 	if (constLHS->mConstType == BfConstType_Undef) return lhs; \
 	if (constRHS->mConstType == BfConstType_Undef) return rhs; \
-	BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
-	uint64 val = 0; \
-	switch (constLHS->mTypeCode) \
+	if ((constLHS->mTypeCode < BfTypeCode_Length) && (constRHS->mTypeCode < BfTypeCode_Length)) \
 	{ \
-	case BfTypeCode_Int8: return CreateConst(constLHS->mTypeCode, constLHS->mInt8 OP constRHS->mInt8); \
-	case BfTypeCode_Char8: return CreateConst(constLHS->mTypeCode, constLHS->mUInt8 OP constRHS->mUInt8); \
-	case BfTypeCode_UInt8: return CreateConst(constLHS->mTypeCode, constLHS->mUInt8 OP constRHS->mUInt8); \
-	case BfTypeCode_Int16: return CreateConst(constLHS->mTypeCode, constLHS->mInt16 OP constRHS->mInt16); \
-	case BfTypeCode_UInt16: return CreateConst(constLHS->mTypeCode, constLHS->mUInt16 OP constRHS->mUInt16); \
-	case BfTypeCode_Char16: return CreateConst(constLHS->mTypeCode, constLHS->mUInt16 OP constRHS->mUInt16); \
-	case BfTypeCode_Int32: return CreateConst(constLHS->mTypeCode, constLHS->mInt32 OP constRHS->mInt32); \
-	case BfTypeCode_UInt32: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mUInt32 OP constRHS->mUInt32)); \
-	case BfTypeCode_Char32: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mUInt32 OP constRHS->mUInt32)); \
-	case BfTypeCode_Int64: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mInt64 OP constRHS->mInt64)); \
-	case BfTypeCode_UInt64: return CreateConst(constLHS->mTypeCode, constLHS->mUInt64 OP constRHS->mUInt64); \
-	default: break; \
+		BF_ASSERT(constLHS->mTypeCode == constRHS->mTypeCode); \
+		uint64 val = 0; \
+		switch (constLHS->mTypeCode) \
+		{ \
+		case BfTypeCode_Int8: return CreateConst(constLHS->mTypeCode, constLHS->mInt8 OP constRHS->mInt8); \
+		case BfTypeCode_Char8: return CreateConst(constLHS->mTypeCode, constLHS->mUInt8 OP constRHS->mUInt8); \
+		case BfTypeCode_UInt8: return CreateConst(constLHS->mTypeCode, constLHS->mUInt8 OP constRHS->mUInt8); \
+		case BfTypeCode_Int16: return CreateConst(constLHS->mTypeCode, constLHS->mInt16 OP constRHS->mInt16); \
+		case BfTypeCode_UInt16: return CreateConst(constLHS->mTypeCode, constLHS->mUInt16 OP constRHS->mUInt16); \
+		case BfTypeCode_Char16: return CreateConst(constLHS->mTypeCode, constLHS->mUInt16 OP constRHS->mUInt16); \
+		case BfTypeCode_Int32: return CreateConst(constLHS->mTypeCode, constLHS->mInt32 OP constRHS->mInt32); \
+		case BfTypeCode_UInt32: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mUInt32 OP constRHS->mUInt32)); \
+		case BfTypeCode_Char32: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mUInt32 OP constRHS->mUInt32)); \
+		case BfTypeCode_Int64: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mInt64 OP constRHS->mInt64)); \
+		case BfTypeCode_UInt64: return CreateConst(constLHS->mTypeCode, constLHS->mUInt64 OP constRHS->mUInt64); \
+		default: break; \
+		} \
 	}
 
 #define UNARYOP_APPLY(val, OP) \
 	auto constVal = GetConstantById(val.mId); \
 	if (constVal->mConstType == BfConstType_Undef) return val; \
-	uint64 val = 0; \
-	switch (constVal->mTypeCode) \
+	if (constVal->mTypeCode < BfTypeCode_Length) \
 	{ \
-	case BfTypeCode_Int8: val = OP constVal->mInt8; break; \
-	case BfTypeCode_UInt8: val = OP constVal->mUInt8; break; \
-	case BfTypeCode_Char8: val = OP constVal->mUInt8; break; \
-	case BfTypeCode_Int16: val = OP constVal->mInt16; break; \
-	case BfTypeCode_UInt16: val = OP constVal->mUInt16; break; \
-	case BfTypeCode_Char16: val = OP constVal->mUInt16; break; \
-	case BfTypeCode_Int32: val = OP constVal->mInt32; break; \
-	case BfTypeCode_UInt32: val = OP constVal->mUInt32; break; \
-	case BfTypeCode_Char32: val = OP constVal->mUInt32; break; \
-	case BfTypeCode_Int64: val = OP constVal->mInt64; break; \
-	case BfTypeCode_UInt64: val = OP constVal->mUInt64; break; \
-	case BfTypeCode_Float: \
-	case BfTypeCode_Double: \
-		return CreateConst(constVal->mTypeCode, OP constVal->mDouble); break; \
-	default: break; \
-	} \
-	return CreateConst(constVal->mTypeCode, val);
+		uint64 val = 0; \
+		switch (constVal->mTypeCode) \
+		{ \
+		case BfTypeCode_Int8: val = OP constVal->mInt8; break; \
+		case BfTypeCode_UInt8: val = OP constVal->mUInt8; break; \
+		case BfTypeCode_Char8: val = OP constVal->mUInt8; break; \
+		case BfTypeCode_Int16: val = OP constVal->mInt16; break; \
+		case BfTypeCode_UInt16: val = OP constVal->mUInt16; break; \
+		case BfTypeCode_Char16: val = OP constVal->mUInt16; break; \
+		case BfTypeCode_Int32: val = OP constVal->mInt32; break; \
+		case BfTypeCode_UInt32: val = OP constVal->mUInt32; break; \
+		case BfTypeCode_Char32: val = OP constVal->mUInt32; break; \
+		case BfTypeCode_Int64: val = OP constVal->mInt64; break; \
+		case BfTypeCode_UInt64: val = OP constVal->mUInt64; break; \
+		case BfTypeCode_Float: \
+		case BfTypeCode_Double: \
+			return CreateConst(constVal->mTypeCode, OP constVal->mDouble); break; \
+		default: break; \
+		} \
+		return CreateConst(constVal->mTypeCode, val); \
+	}
 
 #define CMP_APPLY(lhs, rhs, OP) \
 	auto constLHS = GetConstantById(lhs.mId); \
@@ -489,11 +503,12 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 		return 1;
 	}	
 
-	if (constLHS->mConstType == BfConstType_GlobalVar)
-	{
-		// We would have already caught the (constLHS == constRHS) case further up
-		return 0;
-	}
+	//TODO: Why did we do this? This made global variable comparisons (ie: sA != sB) const-evaluate to false always
+// 	if (constLHS->mConstType == BfConstType_GlobalVar)
+// 	{
+// 		// We would have already caught the (constLHS == constRHS) case further up
+// 		return 0;
+// 	}
 		
 	return -1;
 }
@@ -701,6 +716,29 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		else
 			return CreateConstNull();
 	}
+	else if (fromConst->mConstType == BfConstType_PtrToInt)
+	{
+		auto fromPtrToInt = (BfConstantPtrToInt*)fromConst;
+		auto fromTarget = fromHolder->GetConstantById(fromPtrToInt->mTarget);
+		auto copiedTarget = CreateConst(fromTarget, fromHolder);
+		auto ptrToInt = mTempAlloc.Alloc<BfConstantPtrToInt>();
+		ptrToInt->mConstType = BfConstType_PtrToInt;
+		ptrToInt->mTarget = copiedTarget.mId;
+		ptrToInt->mToTypeCode = fromPtrToInt->mToTypeCode;
+		copiedConst = (BfConstant*)ptrToInt;
+	}
+	else if (fromConst->mConstType == BfConstType_IntToPtr)
+	{
+		auto fromPtrToInt = (BfConstantIntToPtr*)fromConst;
+		auto fromTarget = fromHolder->GetConstantById(fromPtrToInt->mTarget);
+		auto copiedTarget = CreateConst(fromTarget, fromHolder);
+		auto ptrToInt = mTempAlloc.Alloc<BfConstantIntToPtr>();
+		ptrToInt->mConstType = BfConstType_IntToPtr;
+		ptrToInt->mTarget = copiedTarget.mId;
+		ptrToInt->mToType = fromPtrToInt->mToType;
+		copiedConst = (BfConstant*)ptrToInt;
+	}
+
 	else
 	{
 		BF_FATAL("not handled");
@@ -3603,7 +3641,15 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 // 		isDefiningModule = true;
 
 	if ((isDefiningModule) || (type->IsValueType()))
-		populateModule->PopulateType(type, BfPopulateType_DataAndMethods);
+	{
+		if ((typeInstance != NULL) && (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotting))
+		{
+			// Don't re-enter
+			BfLogSys(mModule->mSystem, "BfIRBuilder::CreateTypeDefinition avoided PopulateType BfPopulateType_DataAndMethods re-entry typeInst: %p\n", typeInstance);
+		}
+		else
+			populateModule->PopulateType(type, BfPopulateType_DataAndMethods);
+	}
 
 	if ((!isDefiningModule) && (!type->IsUnspecializedType()) && (type->IsValueType()) && (mHasDebugInfo))
 	{

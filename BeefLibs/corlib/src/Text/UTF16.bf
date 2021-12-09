@@ -1,7 +1,7 @@
 using System.Diagnostics;
 namespace System.Text
 {
-	public class UTF16
+	public static class UTF16
 	{
 		public enum EncodeError
 		{
@@ -140,10 +140,10 @@ namespace System.Text
 
 		public static int GetMaxEncodedLen(int utf8Len)
 		{
-			//  Consider all incoming char8s are < \u80, each incoming char88 equals one outgoing char816 (utfLen * 1)
-			//  For char8s from \u80 to \u7FF, then two incoming char88 equals one outgoing char816 (utfLen * 0.5)
-			//  For char8s from \u800 to \u7FFF, then three incoming char88 equals one or two char816s (utfLen * 0.33) to (utfLen * 0.67)
-			//  For char8s from \u1000 to \u10FFFF, then four incoming char88 equals two outgoing char816s (utfLen * 0.5)
+			//  Consider all incoming chars are < \u80, each incoming char8 equals one outgoing char16 (utfLen * 1)
+			//  For chars from \u80 to \u7FF, then two incoming char8 equals one outgoing char16 (utfLen * 0.5)
+			//  For chars from \u800 to \u7FFF, then three incoming char8 equals one or two char16s (utfLen * 0.33) to (utfLen * 0.67)
+			//  For chars from \u1000 to \u10FFFF, then four incoming char8 equals two outgoing char16s (utfLen * 0.5)
 			return utf8Len;
 		}
 
@@ -211,7 +211,7 @@ namespace System.Text
 				if (c <= '\u{FFFF}')
 				{
 #if BF_UTF_PEDANTIC
-					// Illegal UTF16 char8?
+					// Illegal UTF16 char?
 					Debug.Assert((c <= '\u{D7FF}') || (c >= '\u{E000}'));
 #endif
 					EncodeChar((char16)c);

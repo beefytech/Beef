@@ -29,6 +29,16 @@ namespace System.IO
 			}
 		}
 
+		public int Handle
+		{
+			get
+			{
+				if (mBfpFile == null)
+					return 0;
+				return Platform.BfpFile_GetSystemHandle(mBfpFile);
+			}
+		}
+
 		public ~this()
 		{
 			Delete();
@@ -165,12 +175,13 @@ namespace System.IO
 				createKind = .CreateIfNotExists;
 			case .Create:
 				createKind = .CreateAlways;
+				createFlags |= .Truncate;
 			case .Open:
 				createKind = .OpenExisting;
 			case .OpenOrCreate:
-				createKind = .CreateAlways;
+				createKind = .OpenAlways;
 			case .Truncate:
-				createKind = .CreateAlways;
+				createKind = .OpenExisting;
 				createFlags |= .Truncate;
 			case .Append:
 				createKind = .CreateAlways;
@@ -225,6 +236,32 @@ namespace System.IO
 				return .Err;
 			return .Ok;
 		}
+
+		public override Result<void> SetLength(int64 length)
+		{
+			int64 pos = Position;
+
+			if (pos != length)
+				Seek(length);
+
+			Platform.BfpFileResult result = .Ok;
+			Platform.BfpFile_Truncate(mBfpFile, &result);
+			if (result != .Ok)
+			{
+				Seek(pos);
+				return .Err;
+			}
+
+			if (pos != length)
+			{
+				if (pos < length)
+					Seek(pos);
+				else
+					Seek(0, .FromEnd);
+			}
+
+			return .Ok;
+		}
 	}
 
 	class BufferedFileStream : BufferedStream
@@ -232,6 +269,32 @@ namespace System.IO
 		protected Platform.BfpFile* mBfpFile;
 		protected int64 mBfpFilePos;
 		FileAccess mFileAccess;
+
+		public int Handle
+		{
+			get
+			{
+				if (mBfpFile == null)
+					return 0;
+				return Platform.BfpFile_GetSystemHandle(mBfpFile);
+			}
+		}
+
+		public override bool CanRead
+		{
+			get
+			{
+				return mFileAccess.HasFlag(FileAccess.Read);
+			}
+		}
+
+		public override bool CanWrite
+		{
+			get
+			{
+				return mFileAccess.HasFlag(FileAccess.Write);
+			}
+		}
 
 		public this()
 		{
@@ -252,22 +315,6 @@ namespace System.IO
 		{
 			mBfpFile = handle;
 			mFileAccess = access;
-		}
-
-		public override bool CanRead
-		{
-			get
-			{
-				return mFileAccess.HasFlag(FileAccess.Read);
-			}
-		}
-
-		public override bool CanWrite
-		{
-			get
-			{
-				return mFileAccess.HasFlag(FileAccess.Write);
-			}
 		}
 
 		public Result<void, FileOpenError> Create(StringView path, FileAccess access = .ReadWrite, FileShare share = .None, int bufferSize = 4096, FileOptions options = .None, SecurityAttributes* secAttrs = null)
@@ -317,7 +364,7 @@ namespace System.IO
 			case .Open:
 				createKind = .OpenExisting;
 			case .OpenOrCreate:
-				createKind = .CreateAlways;
+				createKind = .OpenAlways;
 			case .Truncate:
 				createKind = .CreateAlways;
 				createFlags |= .Truncate;
@@ -386,15 +433,20 @@ namespace System.IO
 			mUnderlyingLength = Platform.BfpFile_GetFileSize(mBfpFile);
 		}
 
+		protected Result<void> SeekUnderlying(int64 offset, Platform.BfpFileSeekKind seekKind = .Absolute)
+		{
+			int64 newPos = Platform.BfpFile_Seek(mBfpFile, offset, seekKind);
+			Result<void> result = ((seekKind == .Absolute) && (newPos != offset)) ? .Err : .Ok;
+			if (result case .Ok)
+				mBfpFilePos = newPos;
+			return result;
+		}
+
 		protected override Result<int> TryReadUnderlying(int64 pos, Span<uint8> data)
 		{
 			if (mBfpFilePos != pos)
-			{
-				int64 newPos = Platform.BfpFile_Seek(mBfpFile, pos, .Absolute);
-				if (newPos != pos)
-					return .Err;
-				mBfpFilePos = pos;
-			}
+				Try!(SeekUnderlying(pos));
+
 			Platform.BfpFileResult result = .Ok;
 			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, -1, &result);
 			if ((result != .Ok) && (result != .PartialData))
@@ -406,12 +458,8 @@ namespace System.IO
 		protected override Result<int> TryWriteUnderlying(int64 pos, Span<uint8> data)
 		{
 			if (mBfpFilePos != pos)
-			{
-				int64 newPos = Platform.BfpFile_Seek(mBfpFile, pos, .Absolute);
-				if (newPos != pos)
-					return .Err;
-				mBfpFilePos = pos;
-			}
+				Try!(SeekUnderlying(pos));
+
 			Platform.BfpFileResult result = .Ok;
 			int numBytesRead = Platform.BfpFile_Write(mBfpFile, data.Ptr, data.Length, -1, &result);
 			if ((result != .Ok) && (result != .PartialData))
@@ -423,18 +471,47 @@ namespace System.IO
 		public Result<int> TryRead(Span<uint8> data, int timeoutMS)
 		{
 			if (mBfpFilePos != mPos)
-			{
-				int64 newPos = Platform.BfpFile_Seek(mBfpFile, mPos, .Absolute);
-				if (newPos != mPos)
-					return .Err;
-				mBfpFilePos = mPos;
-			}
+				Try!(SeekUnderlying(mPos));
 
 			Platform.BfpFileResult result = .Ok;
 			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
 			if ((result != .Ok) && (result != .PartialData))
 				return .Err;
 			return numBytesRead;
+		}
+
+		public override Result<void> SetLength(int64 length)
+		{
+			Try!(Flush());
+
+			int64 pos = Position;
+
+			if (pos != length || pos != mBfpFilePos)
+			{
+				Try!(SeekUnderlying(length));
+				mPos = length;
+			}
+
+			Platform.BfpFileResult result = .Ok;
+			Platform.BfpFile_Truncate(mBfpFile, &result);
+			if (result != .Ok)
+			{
+				Try!(SeekUnderlying(pos));
+				return .Err;
+			}
+
+			mUnderlyingLength = length;
+			mPos = Math.Min(pos, Length);
+
+			if (pos != length)
+			{
+				if (pos < length)
+					Try!(SeekUnderlying(pos));
+				else
+					Try!(SeekUnderlying(0, .FromEnd));
+			}
+
+			return .Ok;
 		}
 	}
 

@@ -2519,6 +2519,8 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_SetInsertPoint:
 		{			
 			CMD_PARAM(llvm::BasicBlock*, block);
+			if (mLockedBlocks.Contains(block))
+				Fail("Attempt to modify locked block");
 			mIRBuilder->SetInsertPoint(block);
 		}
 		break;
@@ -3861,6 +3863,8 @@ void BfIRCodeGen::HandleNextCmd()
 
 			if (!useAsm)
 			{
+				mLockedBlocks.Add(irBuilder->GetInsertBlock());
+
 				// This is generates slower code than the inline asm in debug mode, but can optimize well in release
 				auto int8Ty = llvm::Type::getInt8Ty(*mLLVMContext);			
 				auto int8Ptr = irBuilder->CreateBitCast(val, int8Ty->getPointerTo());

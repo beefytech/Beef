@@ -318,6 +318,11 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 		{
 			name += "_";
 			name += methodDef->mParams[paramIdx]->mName;
+			if (methodDef->mParams[paramIdx]->mParamKind == BfParamKind_VarArgs)
+			{
+				name += "__varargs";
+				continue;
+			}
 			typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
 		}
 		for (auto type : typeVec)
@@ -579,10 +584,22 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 	}
 	else if (type->IsSizedArray())
 	{
-		BfSizedArrayType* arrayType = (BfSizedArrayType*)type;
-		name += StrFormat("A%d_");
-		Mangle(mangleContext, name, arrayType->mElementType);
-		return;
+		if (type->IsUnknownSizedArrayType())
+		{
+			BfUnknownSizedArrayType* arrayType = (BfUnknownSizedArrayType*)type;
+			name += "A_";
+			Mangle(mangleContext, name, arrayType->mElementType);
+			name += "_";
+			Mangle(mangleContext, name, arrayType->mElementCountSource);
+			return;
+		}
+		else
+		{
+			BfSizedArrayType* arrayType = (BfSizedArrayType*)type;
+			name += StrFormat("A%d_", arrayType->mElementCount);
+			Mangle(mangleContext, name, arrayType->mElementType);
+			return;
+		}
 	}
 	else if (type->IsMethodRef())
 	{
@@ -748,6 +765,15 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 				break;
 			case BfBinaryOp_Multiply:
 				methodName = "ml";
+				break;
+			case BfBinaryOp_OverflowAdd:
+				methodName = "opl";
+				break;
+			case BfBinaryOp_OverflowSubtract:
+				methodName = "omi";
+				break;
+			case BfBinaryOp_OverflowMultiply:
+				methodName = "oml";
 				break;
 			case BfBinaryOp_Divide:
 				methodName = "dv";
@@ -1700,7 +1726,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 
 			name += "?$_ARRAY@";			
 			Mangle(mangleContext, name, arrType->mElementType);
-			MangleConst(mangleContext, name, arrType->mSize);
+			MangleConst(mangleContext, name, arrType->mElementCount);
 			name += '@';
 		}
 	}
@@ -1814,6 +1840,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	static int mangleIdx = 0;
 	mangleIdx++;
 	
+	int startNameLen = name.mLength;
 	if ((methodInst->mMethodDef->mCLink) && (!methodInst->mMangleWithIdx))
 	{
 		name += methodInst->mMethodDef->mName;
@@ -1834,7 +1861,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	HandleCustomAttributes(methodInst->GetCustomAttributes(), typeInst->mConstHolder, mangleContext.mModule, name, isCMangle, mangleContext.mCPPMangle);
 	if (isCMangle)
 		name += methodInst->mMethodDef->mName;
-	if (!name.IsEmpty())
+	if (name.mLength > startNameLen)
 		return;
 	
 	name += '?';
@@ -1866,6 +1893,15 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 				break;
 			case BfBinaryOp_Multiply:
 				name += "?D";
+				break;
+			case BfBinaryOp_OverflowAdd:
+				name += "?OH";
+				break;
+			case BfBinaryOp_OverflowSubtract:
+				name += "?OG";
+				break;
+			case BfBinaryOp_OverflowMultiply:
+				name += "?OD";
 				break;
 			case BfBinaryOp_Divide:
 				name += "?K";
@@ -2367,7 +2403,7 @@ void BfMangler::HandleParamCustomAttributes(BfAttributeDirective* attributes, bo
 	{
 		if (attributes->mAttributeTypeRef != NULL)
 		{
-			auto typeRefName = attributes->mAttributeTypeRef->ToString();
+			auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
 			if (typeRefName == "MangleConst")
 				isConst = true;
 		}

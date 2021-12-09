@@ -745,7 +745,7 @@ BF_EXPORT int BF_CALLTYPE Debugger_GetAddrSize()
 	return gDebugger->GetAddrSize();
 }
 
-BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char* targetPath, const char* args, const char* workingDir, void* envBlockPtr, int envBlockSize)
+BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char* targetPath, const char* args, const char* workingDir, void* envBlockPtr, int envBlockSize, bool hotSwapEnabled)
 {
 	BF_ASSERT(gDebugger == NULL);
 
@@ -775,7 +775,7 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 			envBlock.Insert(0, (uint8*)envBlockPtr, envBlockSize);
 	}
 
-	gDebugger->OpenFile(launchPath, targetPath, args, workingDir, envBlock);
+	gDebugger->OpenFile(launchPath, targetPath, args, workingDir, envBlock, hotSwapEnabled);
 	return true;
 }
 

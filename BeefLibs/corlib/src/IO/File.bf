@@ -23,7 +23,7 @@ namespace System.IO
 		case FileReadError(FileReadError);
 	}
 
-	class File
+	static class File
 	{
 		public static Result<void, FileError> ReadAll(StringView path, List<uint8> outData)
 		{
@@ -49,7 +49,7 @@ namespace System.IO
 
 		public static Result<void> WriteAll(StringView path, Span<uint8> data, bool doAppend = false)
 		{
-			FileStream fs = scope FileStream();
+			UnbufferedFileStream fs = scope UnbufferedFileStream();
 			var result = fs.Open(path, doAppend ? .Append : .Create, .Write);
 			if (result case .Err)
 				return .Err;
@@ -76,7 +76,7 @@ namespace System.IO
 
 		public static Result<void> WriteAllText(StringView path, StringView text, bool doAppend = false)
 		{
-			FileStream fs = scope FileStream();
+			UnbufferedFileStream fs = scope UnbufferedFileStream();
 			var result = fs.Open(path, doAppend ? .Append : .Create, .Write);
 			if (result case .Err)
 				return .Err;
@@ -87,7 +87,7 @@ namespace System.IO
 
 		public static Result<void> WriteAllText(StringView path, StringView text, Encoding encoding)
 		{
-			FileStream fs = scope FileStream();
+			UnbufferedFileStream fs = scope UnbufferedFileStream();
 
 			int len = encoding.GetEncodedSize(text);
 			uint8* data = new uint8[len]*;

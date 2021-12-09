@@ -26,7 +26,7 @@ namespace System.Collections
 		{
 			public TKey mKey;           // Key of entry
 			public TValue mValue;         // Value of entry
-			public int32 mHashCode;    // Lower 31 bits of hash code, -1 if unused
+			public int_cosize mHashCode;    // some bits of hash code, -1 if unused
 			public int_cosize mNext;        // Index of next entry, -1 if last
 		}
 
@@ -34,7 +34,7 @@ namespace System.Collections
 		Entry* mEntries;
 		int_cosize mAllocSize;
 		int_cosize mCount;
-		int_cosize mFreeList;
+		int_cosize  mFreeList;
 		int_cosize mFreeCount;
 #if VERSION_DICTIONARY
 		private int32 mVersion;
@@ -258,21 +258,9 @@ namespace System.Collections
 
 		public bool ContainsValue(TValue value)
 		{
-			if (value == null)
+			for (int_cosize i = 0; i < mCount; i++)
 			{
-				for (int_cosize i = 0; i < mCount; i++)
-				{
-					if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == null) return true;
-				}
-			}
-			else
-			{
-				//TODO: IMPORTANT!
-				/*EqualityComparer<TValue> c = EqualityComparer<TValue>.Default;
-				for (int i = 0; i < count; i++)
-				{
-					if (entries[i].hashCode >= 0 && c.Equals(entries[i].value, value)) return true;
-				}*/
+				if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == value) return true;
 			}
 			return false;
 		}
@@ -281,6 +269,19 @@ namespace System.Collections
 		{
 			TValue value;
 			if (TryGetValue(kvPair.key, out value))
+			{
+				return value == kvPair.value;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		public bool ContainsAlt<TAltKey>((TAltKey key, TValue value) kvPair) where TAltKey : IHashable where bool : operator TKey == TAltKey
+		{
+			TValue value;
+			if (TryGetValueAlt(kvPair.key, out value))
 			{
 				return value == kvPair.value;
 			}
@@ -306,12 +307,21 @@ namespace System.Collections
 			return Enumerator(this, Enumerator.[Friend]KeyValuePair);
 		}
 
+		static int_cosize GetKeyHash(int hashCode)
+		{
+			if (sizeof(int) == 4)
+				return (int32)hashCode & 0x7FFFFFFF;
+			if (sizeof(int_cosize) == 8)
+				return (int_cosize)(hashCode & 0x7FFFFFFF'FFFFFFFFL);
+			return ((int32)hashCode ^ (int32)((int64)hashCode >> 33)) & 0x7FFFFFFF;
+		}
+
 		[DisableObjectAccessChecks]
 		private int FindEntry(TKey key)
 		{
 			if (mBuckets != null)
 			{
-				int hashCode = key.GetHashCode() & 0x7FFFFFFF;
+				int_cosize hashCode = GetKeyHash(key.GetHashCode());
 				for (int i = mBuckets[hashCode % mAllocSize]; i >= 0; i = mEntries[i].mNext)
 				{
 					if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key)) return i;
@@ -329,7 +339,7 @@ namespace System.Collections
 		{
 			if (mBuckets != null)
 			{
-				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
+				int_cosize hashCode = GetKeyHash(key.GetHashCode());
 				for (int_cosize i = mBuckets[hashCode % mAllocSize]; i >= 0; i = mEntries[i].mNext)
 				{
 					if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key)) return i;
@@ -350,10 +360,10 @@ namespace System.Collections
 		private void Insert(TKey key, TValue value, bool add)
 		{
 			if (mBuckets == null) Initialize(0);
-			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
-			int_cosize targetBucket = hashCode % (int_cosize)mAllocSize;
+			int_cosize hashCode = GetKeyHash(key.GetHashCode());
+			int targetBucket = hashCode % mAllocSize;
 
-			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
+			for (int i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
 			{
 				if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key))
 				{
@@ -402,7 +412,7 @@ namespace System.Collections
 		private bool Insert(TKey key, bool add, out TKey* keyPtr, out TValue* valuePtr, Entry** outOldData)
 		{
 			if (mBuckets == null) Initialize(0);
-			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
+			int_cosize hashCode = GetKeyHash(key.GetHashCode());
 			int_cosize targetBucket = hashCode % (int_cosize)mAllocSize;
 			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
 			{
@@ -458,9 +468,9 @@ namespace System.Collections
 		private bool InsertAlt<TAltKey>(TAltKey key, bool add, out TKey* keyPtr, out TValue* valuePtr, Entry** outOldData) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			if (mBuckets == null) Initialize(0);
-			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
-			int_cosize targetBucket = hashCode % (int_cosize)mAllocSize;
-			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
+			int_cosize hashCode = GetKeyHash(key.GetHashCode());
+			int targetBucket = hashCode % (int_cosize)mAllocSize;
+			for (int i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
 			{
 				if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key))
 				{
@@ -541,7 +551,7 @@ namespace System.Collections
 				{
 					if (newEntries[i].mHashCode != -1)
 					{
-						newEntries[i].mHashCode = (int32)newEntries[i].mKey.GetHashCode() & 0x7FFFFFFF;
+						newEntries[i].mHashCode = GetKeyHash(newEntries[i].mKey.GetHashCode());
 					}
 				}
 			}
@@ -572,7 +582,7 @@ namespace System.Collections
 		{
 			if (mBuckets != null)
 			{
-				int hashCode = key.GetHashCode() & 0x7FFFFFFF;
+				int_cosize hashCode = GetKeyHash(key.GetHashCode());
 				int bucket = hashCode % (int_cosize)mAllocSize;
 				int last = -1;
 				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
@@ -609,7 +619,7 @@ namespace System.Collections
 		{
 			if (mBuckets != null)
 			{
-				int hashCode = key.GetHashCode() & 0x7FFFFFFF;
+				int_cosize hashCode = GetKeyHash(key.GetHashCode());
 				int bucket = hashCode % (int_cosize)mAllocSize;
 				int last = -1;
 				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
@@ -653,8 +663,8 @@ namespace System.Collections
 			if (mBuckets != null)
 			{
 				
-				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
-				int_cosize bucket = hashCode % (int_cosize)mAllocSize;
+				int_cosize hashCode = GetKeyHash(key.GetHashCode());
+				int bucket = hashCode % (int_cosize)mAllocSize;
 				int_cosize last = -1;
 				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
 				{
@@ -694,8 +704,8 @@ namespace System.Collections
 			if (mBuckets != null)
 			{
 				
-				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
-				int_cosize bucket = hashCode % (int_cosize)mAllocSize;
+				int_cosize hashCode = GetKeyHash(key.GetHashCode());
+				int bucket = hashCode % (int_cosize)mAllocSize;
 				int_cosize last = -1;
 				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
 				{
@@ -733,6 +743,18 @@ namespace System.Collections
 		public bool TryGetValue(TKey key, out TValue value)
 		{
 			int_cosize i = (int_cosize)FindEntry(key);
+			if (i >= 0)
+			{
+				value = mEntries[i].mValue;
+				return true;
+			}
+			value = default(TValue);
+			return false;
+		}
+
+		public bool TryGetValueAlt<TAltKey>(TAltKey key, out TValue value) where TAltKey : IHashable where bool : operator TKey == TAltKey
+		{
+			int_cosize i = (int_cosize)FindEntryAlt<TAltKey>(key);
 			if (i >= 0)
 			{
 				value = mEntries[i].mValue;
@@ -876,6 +898,16 @@ namespace System.Collections
 				mDictionary.mEntries[mCurrentIndex].mValue = value;
 			}
 
+			public void Remove() mut
+			{
+				int_cosize curIdx = mIndex - 1;
+				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
+				mIndex = curIdx;
+			}
+
 			public void Reset() mut
 			{
 #if VERSION_DICTIONARY
@@ -1017,6 +1049,16 @@ namespace System.Collections
 			{
 			}
 
+			public void Remove() mut
+			{
+				int_cosize curIdx = mIndex - 1;
+				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
+				mIndex = curIdx;
+			}
+
 			public void Reset() mut
 			{
 #if VERSION_DICTIONARY
@@ -1111,6 +1153,16 @@ namespace System.Collections
 
 			public void Dispose()
 			{
+			}
+
+			public void Remove() mut
+			{
+				int_cosize curIdx = mIndex - 1;
+				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+#if VERSION_DICTIONARY
+				mVersion = mDictionary.mVersion;
+#endif
+				mIndex = curIdx;
 			}
 
 			public void Reset() mut

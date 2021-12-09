@@ -62,6 +62,14 @@ public:
 	{
 		return StrFormat("%lX%lX", mHigh, mLow);
 	}
+
+	Val128 operator+(int rLow)
+	{
+		Val128 result;
+		result.mLow += mLow + rLow;
+		result.mHigh = mHigh;
+		return result;
+	}
 };
 
 static bool operator!=(const Val128& l, int rLow)

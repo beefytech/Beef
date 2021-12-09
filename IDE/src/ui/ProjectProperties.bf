@@ -622,7 +622,6 @@ namespace IDE.ui
 					"Console Application",
 					"GUI Application",
 					"Library",
-					"Dynamic Library",
 					"Custom Build",
 					"Test"
 				));

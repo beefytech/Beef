@@ -507,6 +507,7 @@ public:
 	BfParameterDeclaration* mParamDeclaration;
 	int mMethodGenericParamIdx;
 	BfParamKind mParamKind;
+	uint8 mNamePrefixCount; // Number of @'s
 
 public:
 	BfParameterDef()
@@ -515,7 +516,9 @@ public:
 		mMethodGenericParamIdx = -1;
 		mParamKind = BfParamKind_Normal;
 		mParamDeclaration = NULL;		
+		mNamePrefixCount = 0;
 	}
+	void SetName(BfAstNode* nameNode);
 };
 
 class BfMemberDef
@@ -528,6 +531,7 @@ public:
 #endif
 	BfTypeDef* mDeclaringType;
 	BfProtection mProtection;
+	uint8 mNamePrefixCount; // Number of @'s
 	bool mIsStatic;
 	bool mIsNoShow;
 	bool mIsReadOnly;
@@ -538,6 +542,7 @@ public:
 	{
 		mDeclaringType = NULL;
 		mProtection = BfProtection_Public;
+		mNamePrefixCount = 0;
 		mIsStatic = false;
 		mIsNoShow = false;
 		mIsReadOnly = false;
@@ -547,6 +552,8 @@ public:
 	virtual ~BfMemberDef()
 	{
 	}
+
+	void SetName(BfAstNode* nameNode);
 };
 
 class BfFieldDef : public BfMemberDef
@@ -870,6 +877,7 @@ public:
 	bool HasBody();
 	bool IsEmptyPartial();	
 	bool IsDefaultCtor();
+	bool IsCtorOrInit();
 	String ToString();		
 	int GetExplicitParamCount();
 };
@@ -941,7 +949,9 @@ public:
 		DefState_InlinedInternals_Changed, // Code within methods, including inlined methods, changed
 		DefState_Internals_Changed, // Only code within a non-inlined methods changed
 		DefState_Refresh,
-		DefState_Deleted
+		DefState_Deleted,
+		DefState_Emitted,
+		DefState_EmittedDirty
 	};
 
 public:
@@ -950,13 +960,13 @@ public:
 	BfSystem* mSystem;
 	BfProject* mProject;
 	BfTypeDeclaration* mTypeDeclaration;
-	BfSource* mSource;
-	BfParser* mEmitParser;
+	BfSource* mSource;	
 	DefState mDefState;	
 	Val128 mSignatureHash; // Data, methods, etc
 	Val128 mFullHash;	
 	Val128 mInlineHash;
 	
+	BfTypeDef* mEmitParent;
 	BfTypeDef* mOuterType;
 	BfAtomComposite mNamespace;
 	BfAtom* mName;
@@ -1004,8 +1014,7 @@ public:
 	bool mHasOverrideMethods;	
 	bool mIsOpaque;
 	bool mIsNextRevision;
-	bool mInDeleteQueue;
-	bool mHasEmitMembers;
+	bool mInDeleteQueue;	
 	bool mForceUseNextRevision;
 
 public:
@@ -1029,8 +1038,7 @@ public:
 		mIsPartial = false;
 		mIsCombinedPartial = false;
 		mTypeDeclaration = NULL;
-		mSource = NULL;
-		mEmitParser = NULL;
+		mSource = NULL;		
 		mDefState = DefState_New;
 		mHash = 0;		
 		mPartialIdx = -1;
@@ -1047,11 +1055,11 @@ public:
 		mIsOpaque = false;
 		mPartialUsed = false;
 		mIsNextRevision = false;
-		mInDeleteQueue = false;
-		mHasEmitMembers = false;
+		mInDeleteQueue = false;		
 		mForceUseNextRevision = false;
 		mDupDetectedRevision = -1;
 		mNestDepth = 0;
+		mEmitParent = NULL;
 		mOuterType = NULL;
 		mTypeDeclaration = NULL;		
 		mNextRevision = NULL;		
@@ -1062,9 +1070,9 @@ public:
 	bool IsGlobalsContainer();	
 	void Reset();
 	void FreeMembers();
-	void ClearEmitted();
 	void PopulateMemberSets();
 	void ClearMemberSets();
+	void ClearOldMemberSets();
 	void RemoveGenericParamDef(BfGenericParamDef* genericParamDef);	
 	int GetSelfGenericParamCount();
 	String ToString();
@@ -1074,8 +1082,19 @@ public:
 	String GetAutoPropertyName(BfPropertyDeclaration* propertyDeclaration);
 	BfAstNode* GetRefNode();
 
+	bool IsEmitted() { return mEmitParent != NULL; }
+
+	BfTypeDef* GetDefinition()
+	{
+		if (mEmitParent != NULL)
+			return mEmitParent;
+		return this;
+	}
+
 	BfTypeDef* GetLatest()
 	{
+		if (mEmitParent != NULL)
+			return mEmitParent->GetLatest();
 		if (mNextRevision != NULL)
 			return mNextRevision;
 		return this;
@@ -1123,14 +1142,15 @@ enum BfTargetType
 {
 	BfTargetType_BeefConsoleApplication,
 	BfTargetType_BeefWindowsApplication,		
-	BfTargetType_BeefLib,
-	BfTargetType_BeefDynLib,
+	BfTargetType_BeefLib,	
 	BfTargetType_CustomBuild,
 	BfTargetType_BeefTest,
 	BfTargetType_C_ConsoleApplication,
 	BfTargetType_C_WindowsApplication,	
 	BfTargetType_BeefApplication_StaticLib,
-	BfTargetType_BeefApplication_DynamicLib
+	BfTargetType_BeefApplication_DynamicLib,
+	BfTargetType_BeefLib_StaticLib,
+	BfTargetType_BeefLib_DynamicLib,
 };
 
 enum BfProjectFlags
@@ -1371,10 +1391,12 @@ public:
 	void MessageAt(const StringImpl& msgPrefix, const StringImpl& error, BfSourceData* bfSource, int srcIdx, int srcLen = 1, BfFailFlags flags = BfFailFlag_None);
 	void FixSrcStartAndEnd(BfSourceData* source, int& startIdx, int& endIdx);
 
-	BfError* WarnAt(int warningNumber, const StringImpl& warning, BfSourceData* bfSource, int srcIdx, int srcLen = 1);
+	BfError* WarnAt(int warningNumber, const StringImpl& warning, BfSourceData* bfSource, int srcIdx, int srcLen = 1, bool isDeferred = false);
 	BfError* Warn(int warningNumber, const StringImpl& warning);
-	BfError* Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
+	BfError* Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode, bool isDeferred = false);
+	BfError* DeferWarn(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
 	BfError* WarnAfter(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
+	BfError* WarnAfterAt(int warningNumber, const StringImpl& error, BfSourceData* bfSource, int srcIdx);	
 
 	BfMoreInfo* MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags = BfFailFlag_None);
 	BfMoreInfo* MoreInfo(const StringImpl& info, bool forceQueue = false);
@@ -1610,6 +1632,9 @@ public:
 	void InjectNewRevision(BfTypeDef* typeDef);
 	void AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* compositeTypeDef, BfTypeDef* partialTypeDef);
 	void FinishCompositePartial(BfTypeDef* compositeTypeDef);	
+	void CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* nextTypeDef);
+	void UpdateEmittedTypeDef(BfTypeDef* typeDef);
+
 	BfTypeDef* GetCombinedPartial(BfTypeDef* typeDef);
 	BfTypeDef* GetOuterTypeNonPartial(BfTypeDef* typeDef);
 	

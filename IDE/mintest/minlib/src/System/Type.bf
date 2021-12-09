@@ -20,13 +20,14 @@ namespace System
 
 		protected const BindingFlags cDefaultLookup = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 
-        protected int32 mSize;
-        protected TypeId mTypeId;
-        protected TypeId mBoxedType;
-        protected TypeFlags mTypeFlags;
-        protected int32 mMemberDataOffset;
-        protected TypeCode mTypeCode;
-        protected uint8 mAlign;
+		protected int32 mSize;
+		protected TypeId mTypeId;
+		protected TypeId mBoxedType;
+		protected TypeFlags mTypeFlags;
+		protected int32 mMemberDataOffset;
+		protected TypeCode mTypeCode;
+		protected uint8 mAlign;
+		protected uint8 mAllocStackCountOverride;
 
 		public static TypeId TypeIdEnd
 		{
@@ -679,6 +680,7 @@ namespace System.Reflection
 			public int32 mMethodIdx;
 			public int32 mVirtualIdx;
 			public int32 mCustomAttributesIdx;
+			public int32 mReturnCustomAttributesIdx;
         }
 
 		public enum ParamFlags : int16
@@ -695,6 +697,7 @@ namespace System.Reflection
 			public TypeId mType;
 			public ParamFlags mParamFlags;
 			public int32 mDefaultIdx;
+			public int32 mCustomAttributesIdx;
 		}
 
 		public struct InterfaceData
@@ -1115,7 +1118,10 @@ namespace System.Reflection
 			let genericType = GetGenericArg(0);
 			let arraySize = [Friend]mInstSize - genericType.Size + genericType.Stride * count;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, 1);
+			int32 stackCount = Compiler.Options.AllocStackCount;
+			if (mAllocStackCountOverride != 0)
+				stackCount = mAllocStackCountOverride;
+			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, stackCount);
 #else
 			void* mem = new [Align(16)] uint8[arraySize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);

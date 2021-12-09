@@ -19,8 +19,11 @@ RenderState::RenderState()
 	mWriteDepthBuffer = false;
 	mCullMode = CullMode_None;
 	mDepthFunc = DepthFunc_Always;
+	mTopology = Topology3D_TriangleList;
 	mShader = NULL;	
 	mClipped = false;
+	mTexWrap = false;
+	mWireframe = false;
 }
 
 RenderTarget::RenderTarget()
@@ -103,8 +106,8 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	int dotPos = (int)fileName.LastIndexOf('.');
 	String ext;
 	if (dotPos != -1)
-		ext = fileName.Substring(dotPos);
-	
+		ext = fileName.Substring(dotPos);		
+
 	ImageData* imageData = NULL;
 	bool handled = false;
 	bool failed = false;

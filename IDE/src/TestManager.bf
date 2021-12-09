@@ -16,6 +16,7 @@ namespace IDE
 			public int32 mExecutedCount;
 			public int32 mSkipCount;
 			public int32 mFailedCount;
+			public String mWorkingDir ~ delete _;
 		}
 
 		public class TestEntry
@@ -78,10 +79,11 @@ namespace IDE
 			return true;
 		}
 
-		public void AddProject(Project project)
+		public void AddProject(Project project, StringView workingDir)
 		{
 			var projectInfo = new ProjectInfo();
 			projectInfo.mProject = project;
+			projectInfo.mWorkingDir = new String(workingDir);
 			mProjectInfos.Add(projectInfo);
 		}
 
@@ -141,7 +143,7 @@ namespace IDE
 				startInfo.CreateNoWindow = !gApp.mTestEnableConsole;
 				startInfo.SetFileName(curProjectInfo.mTestExePath);
 				startInfo.SetArguments(testInstance.mArgs);
-				startInfo.SetWorkingDirectory(testInstance.mWorkingDir);
+				startInfo.SetWorkingDirectory(curProjectInfo.mWorkingDir);
 				mTestInstance.mProcess = new SpawnedProcess();
 				if (testInstance.mProcess.Start(startInfo) case .Err)
 				{
@@ -301,7 +303,7 @@ namespace IDE
 									testEntry.mExecuted = true;
 
 									String clientCmd = scope $":TestRun\t{testInstance.mCurTestIdx}";
-									if ((gApp.mTestBreakOnFailure) && (mDebug))
+									if ((gApp.mTestBreakOnFailure) && (mDebug) && (!testEntry.mShouldFail))
 										clientCmd.Append("\tFailBreak");
 									clientCmd.Append("\n");
 
@@ -591,7 +593,7 @@ namespace IDE
 
 				//mTestInstance.mWorkingDir = new String();
 				//Path.GetDirectoryName(curProjectInfo.mTestExePath, mTestInstance.mWorkingDir);
-				mTestInstance.mWorkingDir = new String(gApp.mInstallDir);
+				mTestInstance.mWorkingDir = new String(curProjectInfo.mWorkingDir);
 
 				mTestInstance.mPipeServer = new NamedPipe();
 				if (mTestInstance.mPipeServer.Create(".", mTestInstance.mPipeName, .AllowTimeouts) case .Err)

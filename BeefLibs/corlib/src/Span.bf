@@ -16,18 +16,35 @@ namespace System
 
 		public this(T[] array)
 		{
+			if (array == null)
+			{
+				this = default;
+				return;
+			}
 			mPtr = &array.[Friend]GetRef(0);
 			mLength = array.[Friend]mLength;
 		}
 
 		public this(T[] array, int index)
 		{
+			if (array == null)
+			{
+				Debug.Assert(index == 0);
+				this = default;
+				return;
+			}
 			mPtr = &array[index];
 			mLength = array.[Friend]mLength - index;
 		}
 
 		public this(T[] array, int index, int length)
 		{
+			if (array == null)
+			{
+				Debug.Assert(index == 0 && length == 0);
+				this = default;
+				return;
+			}
 			if (length == 0)
 				mPtr = null;
 			else
@@ -110,12 +127,94 @@ namespace System
 		
 		public ref T this[int index]
 	    {
-	    	[Inline]
+	    	[Checked]
 	        get
+			{
+				Runtime.Assert((uint)index < (uint)mLength);
+				return ref mPtr[index];
+			}
+
+			[Unchecked, Inline]
+			get
 			{
 				return ref mPtr[index];
 			}
 	    }
+
+		public ref T this[Index index]
+		{
+			[Checked]
+		    get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mLength);
+				return ref mPtr[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mLength - offset;
+				}
+				return ref mPtr[idx];
+			}
+		}
+
+		public Span<T> this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				T* start;
+				switch (range.[Friend]mStart)
+				{
+				case .FromFront(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + offset;
+				case .FromEnd(let offset):
+					Debug.Assert((uint)offset <= (uint)mLength);
+					start = mPtr + mLength - offset;
+				}
+				T* end;
+				if (range.[Friend]mIsClosed)
+				{
+					switch (range.[Friend]mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset < (uint)mLength);
+						end = mPtr + offset + 1;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)(offset - 1) <= (uint)mLength);
+						end = mPtr + mLength - offset + 1;
+					}
+				}
+				else
+				{
+					switch (range.[Friend]mEnd)
+					{
+					case .FromFront(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + offset;
+					case .FromEnd(let offset):
+						Debug.Assert((uint)offset <= (uint)mLength);
+						end = mPtr + mLength - offset;
+					}
+				}
+
+				return .(start, end - start);
+			}
+		}
 
 		public Span<T> Slice(int index)
 		{
@@ -200,6 +299,8 @@ namespace System
 			return Enumerator(this);
 		}
 
+		public ReverseEnumerator Reversed => ReverseEnumerator(this);
+
 		public override void ToString(String strBuffer)
 		{
 			strBuffer.Append("(");
@@ -263,6 +364,95 @@ namespace System
 				get
 				{
 					return mIndex - 1;
+				}				
+			}
+
+			public int Length
+			{
+				get
+				{
+					return mList.mLength;
+				}				
+			}
+
+		    public void Reset() mut
+		    {
+		        mIndex = 0;
+		        mCurrent = null;
+		    }
+
+
+			public Result<T> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+
+			public Result<T*> GetNextRef() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return &CurrentRef;
+			}
+		}
+
+		public struct ReverseEnumerator : IEnumerator<T>, IRefEnumerator<T*>
+		{
+		    private Span<T> mList;
+		    private int mIndex;
+		    private T* mCurrent;
+
+		    public this(Span<T> list)
+		    {
+		        mList = list;
+		        mIndex = list.mLength - 1;
+		        mCurrent = null;
+		    }
+
+		    public void Dispose()
+		    {
+		    }
+
+		    public bool MoveNext() mut
+		    {
+		        if (mIndex >= 0)
+		        {
+		            mCurrent = &mList.mPtr[mIndex];
+		            mIndex--;
+		            return true;
+		        }			   
+		        return MoveNextRare();
+		    }
+
+		    private bool MoveNextRare() mut
+		    {
+		    	mIndex = mList.mLength + 1;
+		        mCurrent = null;
+		        return false;
+		    }
+
+		    public T Current
+		    {
+		        get
+		        {
+		            return *mCurrent;
+		        }
+		    }
+
+			public ref T CurrentRef
+			{
+			    get
+			    {
+			        return ref *mCurrent;
+			    }
+			}
+
+			public int Index
+			{
+				get
+				{
+					return mIndex + 1;
 				}				
 			}
 

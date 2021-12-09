@@ -117,6 +117,7 @@ public:
 	Dictionary<llvm::Type*, llvm::Value*> mReflectDataMap;
 	Dictionary<llvm::Type*, llvm::Type*> mAlignedTypeToNormalType;
 	Dictionary<llvm::Type*, int> mTypeToTypeIdMap;
+	HashSet<llvm::BasicBlock*> mLockedBlocks;
 
 public:		
 	void InitTarget();

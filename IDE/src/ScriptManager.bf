@@ -963,35 +963,38 @@ namespace IDE
 					return false;
 			}*/
 
-			if (gApp.mLastActiveSourceViewPanel != null)
+			if (!ScriptManager.sActiveManager.mIsBuildScript)
 			{
-				var sourceViewPanel = gApp.mLastActiveSourceViewPanel;
-				if (sourceViewPanel.HasFocus())
+				if (gApp.mLastActiveSourceViewPanel != null)
 				{
-					if (sourceViewPanel.[Friend]mOldVerLoadExecutionInstance != null)
-						return false;
-					if (!sourceViewPanel.mDeferredResolveResults.IsEmpty)
-						return false;
+					var sourceViewPanel = gApp.mLastActiveSourceViewPanel;
+					if (sourceViewPanel.HasFocus())
+					{
+						if (sourceViewPanel.[Friend]mOldVerLoadExecutionInstance != null)
+							return false;
+						if (!sourceViewPanel.mDeferredResolveResults.IsEmpty)
+							return false;
 
-					if (sourceViewPanel.[Friend]mWantsFastClassify)
-						return false;
-					if (sourceViewPanel.[Friend]mWantsFullClassify)
-						return false;
-					if (sourceViewPanel.[Friend]mWantsFullRefresh) 
+						if (sourceViewPanel.[Friend]mWantsFastClassify)
+							return false;
+						if (sourceViewPanel.[Friend]mWantsFullClassify)
+							return false;
+						if (sourceViewPanel.[Friend]mWantsFullRefresh) 
+							return false;
+					}
+				}
+
+				if ((gApp.mBfResolveCompiler != null) && (gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()))
+					return false;
+				if (gApp.[Friend]mDeferredOpen != .None)
+					return false;
+				if ((gApp.mExecutionPaused) && (gApp.mDebugger.IsPaused()))
+				{
+					if (gApp.mWantsRehupCallstack)
 						return false;
 				}
 			}
 
-			if ((gApp.mBfResolveCompiler != null) && (gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()))
-				return false;
-			if (gApp.[Friend]mDeferredOpen != .None)
-				return false;
-
-			if ((gApp.mExecutionPaused) && (gApp.mDebugger.IsPaused()))
-			{
-				if (gApp.mWantsRehupCallstack)
-					return false;
-			}
 			if (gApp.mWantsClean || gApp.mWantsBeefClean)
 				return false;
 
@@ -1011,7 +1014,7 @@ namespace IDE
 					return false;
 			}
 
-			if (gApp.mDebugger == null)
+			if ((gApp.mDebugger == null) || (ScriptManager.sActiveManager.mIsBuildScript))
 				return true;
 
 			if ((!ScriptManager.sActiveManager.mIsBuildScript) && (gApp.AreTestsRunning()))

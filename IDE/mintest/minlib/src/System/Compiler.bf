@@ -2,6 +2,12 @@ namespace System
 {
 	class Compiler
 	{
+		public static class Options
+		{
+			[LinkName("#AllocStackCount")]
+			public static extern int32 AllocStackCount;
+		}
+
 		[LinkName("#CallerLineNum")]
 		public static extern int CallerLineNum;
 
@@ -21,7 +27,7 @@ namespace System
 		public static extern String CallerProject;
 
 		[LinkName("#CallerExpression")]
-		public static extern String[Int32.MaxValue] CallerExpression;
+		public static extern String[0x0FFFFFFF] CallerExpression;
 
 		[LinkName("#ProjectName")]
 		public static extern String ProjectName;

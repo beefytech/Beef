@@ -49,6 +49,14 @@ public:
 		Read((void*) &val, sizeof(T));
 	}
 
+	template <typename T>
+	T ReadT()
+	{
+		T val;
+		Read((void*)&val, sizeof(T));
+		return val;
+	}
+
 	virtual void			Write(float val);
 	virtual void			Write(uint8 val);
 	virtual void			Write(int8 val);

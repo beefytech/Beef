@@ -7,6 +7,7 @@
 #include "platform/PlatformHelper.h"
 
 #ifndef BF_SMALL
+#define STB_SPRINTF_DECORATE(name) BF_stbsp_##name
 #define STB_SPRINTF_IMPLEMENTATION
 #include "third_party/stb/stb_sprintf.h"
 #endif
@@ -811,7 +812,7 @@ String Beefy::vformat(const char* fmt, va_list argPtr)
 {
     String str;
     char buf[STB_SPRINTF_MIN];
-    stbsp_vsprintfcb(StbspCallback, (void*)&str, buf, fmt, argPtr);
+    BF_stbsp_vsprintfcb(StbspCallback, (void*)&str, buf, fmt, argPtr);
     return str;
 }
 #endif
@@ -942,6 +943,21 @@ char* Beefy::LoadTextData(const StringImpl& path, int* size)
 	fclose(fP);
 	return data;
 }
+
+bool Beefy::LoadTextData(const StringImpl& path, StringImpl& str)
+{
+	int size = 0;
+	char* data = LoadTextData(path, &size);
+	if (data == NULL)
+		return false;
+	if ((str.mAllocSizeAndFlags & StringImpl::DynAllocFlag) != 0)
+		str.Release();	
+	str.mPtr = data;
+	str.mAllocSizeAndFlags = size | StringImpl::DynAllocFlag | StringImpl::StrPtrFlag;
+	str.mLength = size;
+	return true;
+}
+
 
 #ifdef BF_MINGW
 unsigned long long __cdecl _byteswap_uint64(unsigned long long _Int64)
@@ -1263,3 +1279,4 @@ void Beefy::BFFatalError(const char* message, const char* file, int line)
 {
 	BFFatalError(String(message), String(file), line);
 }
+

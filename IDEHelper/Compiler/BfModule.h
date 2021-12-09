@@ -78,6 +78,7 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_InferReturnType = 0x400000,
 	BfEvalExprFlags_WasMethodRef = 0x800000,
 	BfEvalExprFlags_DeclType = 0x1000000,
+	BfEvalExprFlags_AllowBase = 0x2000000,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };
@@ -160,6 +161,7 @@ public:
 	int mWrittenToId;
 	int mReadFromId;
 	int mParamIdx;
+	uint8 mNamePrefixCount;
 	bool mIsThis;
 	bool mHasLocalStructBacking;
 	bool mIsStruct;	
@@ -186,6 +188,7 @@ public:
 		mLocalVarId = -1;
 		mCompositeCount = -1;
 		mParamIdx = -2;
+		mNamePrefixCount = 0;
 		mIsThis = false;
 		mHasLocalStructBacking = false;
 		mIsStruct = false;
@@ -350,10 +353,11 @@ public:
 	BfDeferredLocalAssignData* mChainedAssignData;
 	bool mHadFallthrough;
 	bool mHadReturn;
+	bool mHadBreak;
 	bool mIsUnconditional;
 	bool mIsIfCondition;
 	bool mIfMayBeSkipped;
-	bool mLeftBlock;
+	bool mLeftBlock;	
 
 public:
 	BfDeferredLocalAssignData(BfScopeData* scopeData = NULL)
@@ -362,6 +366,7 @@ public:
 		mVarIdBarrier = -1;
 		mHadFallthrough = false;
 		mHadReturn = false;
+		mHadBreak = false;
 		mChainedAssignData = NULL;
 		mIsChained = false;
 		mIsUnconditional = false;
@@ -421,6 +426,7 @@ public:
 	bool mIsDeferredBlock;
 	bool mAllowVariableDeclarations;
 	bool mInInitBlock;
+	BfMixinState* mMixinState;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
 	BfExprEvaluator* mExprEvaluator;
@@ -443,6 +449,7 @@ public:
 		mPrevScope = NULL;
 		mLocalVarStart = 0;
 		mLabelNode = NULL;
+		mMixinState = NULL;
 		mAstBlock = NULL;
 		mCloseNode = NULL;
 		mExprEvaluator = NULL;
@@ -1474,6 +1481,7 @@ public:
 	bool mAddedToCount;
 	bool mHasForceLinkMarker;
 	bool mIsReified;
+	bool mGeneratesCode;
 	bool mReifyQueued;
 	bool mWantsIRIgnoreWrites;
 	bool mHasGenericMethods;
@@ -1512,10 +1520,11 @@ public:
 	void SetFail();
 	void VerifyOnDemandMethods();
 	bool IsSkippingExtraResolveChecks();
+	bool AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing);
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false, bool deferError = false);
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	
-	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false);
+	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false, bool showInSpecialized = false);
 	void CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc);
 	void CheckRangeError(BfType* type, BfAstNode* refNode);
 	bool CheckCircularDataError();
@@ -1571,7 +1580,7 @@ public:
 	void NewScopeState(bool createLexicalBlock = true, bool flushValueScope = true); // returns prev scope data
 	BfIRValue CreateAlloca(BfType* type, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime = true, const char* name = NULL);
-	void AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false);
+	void AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false, BfIRBlock valBlock = BfIRBlock());
 	void RestoreScoreState_LocalVariables();
 	void RestoreScopeState();	
 	void MarkDynStack(BfScopeData* scope);
@@ -1599,7 +1608,7 @@ public:
 	bool CanCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	bool AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNeedsMemberCasting);
 	BfTypedValue BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType /*Can be System.Object or interface*/, const BfAllocTarget& allocTarget, bool callDtor = true);
-	BfIRValue CastToFunction(BfAstNode* srcNode, const BfTypedValue& targetValue, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
+	BfIRValue CastToFunction(BfAstNode* srcNode, const BfTypedValue& targetValue, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags = BfCastFlags_None, BfIRValue irFunc = BfIRValue());
 	BfIRValue CastToValue(BfAstNode* srcNode, BfTypedValue val, BfType* toType, BfCastFlags castFlags = BfCastFlags_None, BfCastResultFlags* resultFlags = NULL);
 	BfTypedValue Cast(BfAstNode* srcNode, const BfTypedValue& val, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	BfPrimitiveType* GetIntCoercibleType(BfType* type);
@@ -1701,6 +1710,7 @@ public:
 	bool InitGenericParams(BfType* resolvedTypeRef);
 	bool FinishGenericParams(BfType* resolvedTypeRef);
 	bool ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstance* genericTypeInstance, bool ignoreErrors);
+	BfType* ResolveGenericMethodTypeRef(BfTypeReference* typeRef, BfMethodInstance* methodInstance, BfGenericParamInstance* genericParamInstance, BfTypeVector* methodGenericArgsOverride);
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
 	bool CheckConstraintState(BfAstNode* refNode);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
@@ -1731,8 +1741,8 @@ public:
 	BfModuleOptions GetModuleOptions();
 	BfCheckedKind GetDefaultCheckedKind();
 	void FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext);
-	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& src);
-	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& ctxString, BfAstNode* refNode);
+	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, const StringImpl& src);
+	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode);
 	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes);
 	void CEMixin(BfAstNode* refNode, const StringImpl& src);
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind);
@@ -1793,7 +1803,7 @@ public:
 	void CheckTupleVariableDeclaration(BfTupleExpression* tupleExpr, BfType* initType);
 	void HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, BfTupleExpression* tupleExpr, BfTypedValue initTupleValue, bool isReadOnly, bool isConst, bool forceAddr, BfIRBlock* declBlock = NULL);
 	void HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl);
-	void HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArray<BfExpression*>& arguments, BfAstNode* tooFewRef, BfIRValue phiVal, BfIRBlock& matchedBlock, BfIRBlock falseBlock, bool& hadConditional, bool clearOutOnMismatch);
+	void HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArray<BfExpression*>& arguments, BfAstNode* tooFewRef, BfIRValue phiVal, BfIRBlock& matchedBlockStart, BfIRBlock& matchedBlockEnd, BfIRBlock& falseBlockStart, BfIRBlock& falseBlockEnd, bool& hadConditional, bool clearOutOnMismatch);
 	BfTypedValue TryCaseTupleMatch(BfTypedValue tupleVal, BfTupleExpression* tupleExpr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, bool& hadConditional, bool clearOutOnMismatch);
 	BfTypedValue TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVal, BfExpression* expr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, int& uncondTagId, bool& hadConditional, bool clearOutOnMismatch);
 	BfTypedValue HandleCaseBind(BfTypedValue enumVal, const BfTypedValue& tagVal, BfEnumCaseBindExpression* bindExpr, BfIRBlock* eqBlock = NULL, BfIRBlock* notEqBlock = NULL, BfIRBlock* matchBlock = NULL, int* outEnumIdx = NULL);
@@ -1815,6 +1825,7 @@ public:
 	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type);	
 	void GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInstance*, 4>& genericParamInstance);
+	BfGenericParamInstance* GetMergedGenericParamData(BfGenericParamType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint);
 	BfTypeInstance* GetBaseType(BfTypeInstance* typeInst);
 	void HandleTypeGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, int typeGenericParamIdx);
 	void HandleMethodGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, BfMethodDef* methodDef, int typeGenericParamIdx);
@@ -1823,9 +1834,9 @@ public:
 	void ShowAmbiguousTypeError(BfAstNode* refNode, BfTypeDef* typeDef, BfTypeDef* otherTypeDef);
 	void ShowGenericArgCountError(BfAstNode* typeRef, int wantedGenericParams);	
 	BfTypeDef* GetActiveTypeDef(BfTypeInstance* typeInstanceOverride = NULL, bool useMixinDecl = false); // useMixinDecl is useful for type lookup, but we don't want the decl project to limit what methods the user can call	
-	BfTypeDef* FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error, BfTypeLookupResultCtx* lookupResultCtx = NULL);
-	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL);
-	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL);
+	BfTypeDef* FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error, BfTypeLookupResultCtx* lookupResultCtx = NULL, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
+	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
+	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	BfTypeDef* FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL, int numGenericParams = 0, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	BfTypedValue TryLookupGenericConstVaue(BfIdentifierNode* identifierNode, BfType* expectingType);
 	void CheckTypeRefFixit(BfAstNode* typeRef, const char* appendName = NULL);
@@ -1935,6 +1946,7 @@ public:
 	BfIRValue GetClassVDataPtr(BfTypeInstance* typeInstance);
 	BfIRValue CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTypeInstance* implTypeInst, int startVirtIdx);
 	BfIRValue CreateTypeDataRef(BfType* type);
+	void EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType, BfIRValue arg, SizedArrayImpl<uint8>& data, Dictionary<int, int>& usedStringIdMap);
 	BfIRValue CreateTypeData(BfType* type, Dictionary<int, int>& usedStringIdMap, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData);
 	BfIRValue FixClassVData(BfIRValue value);
 
@@ -1945,6 +1957,7 @@ public:
 	void Init(bool isFullRebuild = true);		
 	bool WantsFinishModule();
 	void FinishInit();
+	void CalcGeneratesCode();
 	void ReifyModule();
 	void UnreifyModule();
 	void Cleanup();

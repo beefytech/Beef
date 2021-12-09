@@ -33,7 +33,10 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_NoCreate = 0x400,
 	BfResolveTypeRefFlag_NoWarnOnMut = 0x800,
 	BfResolveTypeRefFlag_DisallowComptime = 0x1000,
-	BfResolveTypeRefFlag_AllowDotDotDot = 0x2000
+	BfResolveTypeRefFlag_AllowDotDotDot = 0x2000,
+	BfResolveTypeRefFlag_AllowGlobalContainer = 0x4000,
+	BfResolveTypeRefFlag_AllowInferredSizedArray = 0x8000,
+	BfResolveTypeRefFlag_AllowGlobalsSelf = 0x10000,
 };
 
 enum BfTypeNameFlags : uint16
@@ -113,6 +116,7 @@ public:
 		DependencyFlag_NameReference		= 0x1000000,
 		DependencyFlag_VirtualCall			= 0x2000000,
 		DependencyFlag_WeakReference		= 0x4000000, // Keeps alive but won't rebuild		
+		DependencyFlag_ValueTypeSizeDep		= 0x8000000, // IE: int32[DepType.cVal]
 
 		DependencyFlag_DependentUsageMask = ~(DependencyFlag_UnspecializedType | DependencyFlag_MethodGenericArg | DependencyFlag_GenericArgRef)
 	};
@@ -427,6 +431,7 @@ class BfTypeDIReplaceCallback;
 enum BfTypeDefineState : uint8
 {
 	BfTypeDefineState_Undefined,
+	BfTypeDefineState_Declaring,
 	BfTypeDefineState_Declared,
 	BfTypeDefineState_ResolvingBaseType,	
 	BfTypeDefineState_HasInterfaces,
@@ -434,6 +439,7 @@ enum BfTypeDefineState : uint8
 	BfTypeDefineState_CEPostTypeInit,
 	BfTypeDefineState_Defined,
 	BfTypeDefineState_CEAfterFields,
+	BfTypeDefineState_DefinedAndMethodsSlotting,
 	BfTypeDefineState_DefinedAndMethodsSlotted,
 };
 
@@ -929,8 +935,8 @@ public:
 	bool HasParamsArray();
 	int GetStructRetIdx(bool forceStatic = false);
 	bool HasSelf();
-	bool GetLoweredReturnType(BfTypeCode* loweredTypeCode = NULL, BfTypeCode* loweredTypeCode2 = NULL);	
-	bool WantsStructsAttribByVal();
+	bool GetLoweredReturnType(BfTypeCode* loweredTypeCode = NULL, BfTypeCode* loweredTypeCode2 = NULL, bool forceStatic = false);	
+	bool WantsStructsAttribByVal(BfType* paramType);
 	bool IsAutocompleteMethod() { /*return mIdHash == -1;*/ return mIsAutocompleteMethod; }
 	bool IsSkipCall(bool bypassVirtual = false);	
 	bool IsVarArgs();
@@ -940,8 +946,9 @@ public:
 	bool AllowsSplatting(int paramIdx);
 	int GetParamCount();
 	int GetImplicitParamCount();	
-	void GetParamName(int paramIdx, StringImpl& name);
-	String GetParamName(int paramIdx);	
+	void GetParamName(int paramIdx, StringImpl& name, int& namePrefixCount);
+	String GetParamName(int paramIdx);
+	String GetParamName(int paramIdx, int& namePrefixCount);
 	BfType* GetParamType(int paramIdx, bool returnUnderlyingParamsType = false);
 	bool GetParamIsSplat(int paramIdx);
 	BfParamKind GetParamKind(int paramIdx);
@@ -1113,7 +1120,7 @@ public:
 class BfGenericParamInstance 
 {
 public:	
-	int mGenericParamFlags;
+	BfGenericParamFlags mGenericParamFlags;
 	BfType* mExternType;
 	Array<BfTypeInstance*> mInterfaceConstraints;
 	Array<BfGenericOperatorConstraintInstance> mOperatorConstraints;
@@ -1124,7 +1131,7 @@ public:
 	BfGenericParamInstance()
 	{
 		mExternType = NULL;
-		mGenericParamFlags = 0;
+		mGenericParamFlags = BfGenericParamFlag_None;
 		mTypeConstraint = NULL;
 		mRefCount = 1;
 	}
@@ -1817,7 +1824,7 @@ public:
 
 class BfCeTypeInfo
 {
-public:
+public:	
 	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
 	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
 	Val128 mHash;
@@ -1828,7 +1835,7 @@ public:
 	BfCeTypeInfo()
 	{
 		mFailed = false;
-		mNext = NULL;
+		mNext = NULL;		
 	}
 };
 
@@ -1958,9 +1965,10 @@ public:
 	
 	~BfTypeInstance();	
 	
-	void ReleaseData();
+	void Dispose();
+	void ReleaseData();	
 
-	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { return typeDef == mTypeDef; }
+	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { if (typeDef == NULL) return false; return typeDef->GetDefinition() == mTypeDef->GetDefinition(); }
 	virtual BfModule* GetModule() override { return mModule; }
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }

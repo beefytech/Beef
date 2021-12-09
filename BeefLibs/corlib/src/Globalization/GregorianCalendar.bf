@@ -63,7 +63,7 @@ namespace System.Globalization {
             0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366
         ) ~ delete _;
 
-        private static volatile Calendar s_defaultInstance;
+        private static volatile Calendar s_defaultInstance ~ delete _;
 
 
 #region Serialization 

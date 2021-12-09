@@ -1003,7 +1003,7 @@ bool WinDebugger::CanOpen(const StringImpl& fileName, DebuggerResult* outResult)
 	return canRead;
 }
 
-void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock)
+void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled)
 {
 	BF_ASSERT(!mIsRunning);
 	mLaunchPath = launchPath;
@@ -1011,6 +1011,7 @@ void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targe
 	mArgs = args;
 	mWorkingDir = workingDir;
 	mEnvBlock = envBlock;
+	mHotSwapEnabled = hotSwapEnabled;
 	mDebugTarget = new DebugTarget(this);
 }
 
@@ -7477,14 +7478,14 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		if ((valueCount == 0) || (bitsLeft != 0))
 		{
 			if (valueCount > 0)
-				retVal += " | ";			
-			retVal += StrFormat("%d", bitsLeft);
+				retVal += " | ";
+			retVal += StrFormat("%lld", bitsLeft);
 
 			if (language == DbgLanguage_C)
 			{
 				if (valueCount > 0)
 					editVal += " | ";
-				editVal += StrFormat("%d", bitsLeft);
+				editVal += StrFormat("%lld", bitsLeft);
 			}
 		}
 		

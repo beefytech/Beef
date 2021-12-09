@@ -48,7 +48,13 @@ namespace Beefy.gfx
 
     #if !STUDIO_CLIENT
     extension ModelDef
-    {        
+    {
+		public enum ModelCreateFlags
+		{
+			None = 0,
+			NoSetRenderState = 1
+		}
+
         public class Animation
         {            
             public void* mNativeModelDefAnimation;
@@ -90,14 +96,32 @@ namespace Beefy.gfx
         public void* mNativeModelDef;        
         public float mFrameRate;
         public int32 mJointCount;
-        public Animation[] mAnims;
-        public Dictionary<String, Animation> mAnimMap = new Dictionary<String, Animation>();
+        public Animation[] mAnims ~ DeleteContainerAndItems!(_);
+        public Dictionary<String, Animation> mAnimMap = new Dictionary<String, Animation>() ~ DeleteDictionaryAndKeys!(_);
 
         [CallingConvention(.Stdcall), CLink]
-        extern static void* Res_OpenFBX(String fileName, void* nativeVertexDef);
+        extern static void* Res_OpenFBX(char8* fileName, void* nativeVertexDef);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void* Res_OpenGLTF(char8* fileName, char8* baseDir, void* nativeVertexDef);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void* Res_OpenModel(char8* fileName, char8* baseDir, void* nativeVertexDef);
 
         [CallingConvention(.Stdcall), CLink]
-        extern static void* ModelDef_CreateModelInstance(void* nativeModel);
+        extern static void* ModelDef_CreateModelInstance(void* nativeModel, ModelCreateFlags flags);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_Compact(void* nativeModel);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_SetBaseDir(void* nativeModel, char8* baseDir);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static char8* ModelDef_GetInfo(void* nativeModel);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_GetBounds(void* nativeModel, out Vector3 min, out Vector3 max);
 
         [CallingConvention(.Stdcall), CLink]
         extern static float ModelDef_GetFrameRate(void* nativeModel);
@@ -110,6 +134,15 @@ namespace Beefy.gfx
 
         [CallingConvention(.Stdcall), CLink]
         extern static void* ModelDef_GetAnimation(void* nativeModel, int32 animIdx);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_SetTextures(void* nativeModel, int32 meshIdx, int32 primitivesIdx, char8** paths, int32 pathCount);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static bool ModelDef_RayIntersect(void* nativeModel, Matrix4 worldMtx, Vector3 origin, Vector3 vec, out Vector3 outIntersect, out float outDistance);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static Span<uint8> Res_SerializeModel(void* nativeModel);
 
         this(void* nativeModelDef)
         {
@@ -129,17 +162,23 @@ namespace Beefy.gfx
             }
         }
 
-        public static ModelDef LoadModel(String fileName)
+        public static ModelDef LoadModel(String fileName, String baseDir)
         {
-            void* nativeModelDef = Res_OpenFBX(fileName, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+			void* nativeModelDef = null;
+			if (fileName.EndsWith(".gltf", .OrdinalIgnoreCase))
+				nativeModelDef = Res_OpenGLTF(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+			else if (fileName.EndsWith(".fbx", .OrdinalIgnoreCase))
+            	nativeModelDef = Res_OpenFBX(fileName, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+			else
+				nativeModelDef = Res_OpenModel(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
             if (nativeModelDef == null)
                 return null;
             return new ModelDef(nativeModelDef);            
         }
 
-        public ModelInstance CreateInstance()
+        public ModelInstance CreateInstance(ModelCreateFlags flags = .None)
         {
-            void* nativeModelInstance = ModelDef_CreateModelInstance(mNativeModelDef);
+            void* nativeModelInstance = ModelDef_CreateModelInstance(mNativeModelDef, flags);
             if (nativeModelInstance == null)
                 return null;
             var modelInstance = new ModelInstance(nativeModelInstance, this);            
@@ -150,6 +189,42 @@ namespace Beefy.gfx
         {
             return mAnimMap[name];
         }
+
+		public void GetInfo(String str)
+		{
+			str.Append(ModelDef_GetInfo(mNativeModelDef));
+		}
+
+		public void GetBounds(out Vector3 min, out Vector3 max)
+		{
+			ModelDef_GetBounds(mNativeModelDef, out min, out max);
+		}
+
+		public void Compact()
+		{
+			ModelDef_Compact(mNativeModelDef);
+		}
+
+		public void SetBaseDir(StringView baseDir)
+		{
+			ModelDef_SetBaseDir(mNativeModelDef, baseDir.ToScopeCStr!());
+		}
+
+		public void SetTextures(int meshIdx, int primitivesIdx, Span<char8*> paths)
+		{
+			ModelDef_SetTextures(mNativeModelDef, (.)meshIdx, (.)primitivesIdx, paths.Ptr, (.)paths.Length);
+		}
+
+		public void Serialize(List<uint8> data)
+		{
+			var span = Res_SerializeModel(mNativeModelDef);
+			data.AddRange(span);
+		}
+
+		public bool RayIntersect(Matrix4 worldMtx, Vector3 origin, Vector3 vec, out Vector3 outIntersect, out float outDistance)
+		{
+			return ModelDef_RayIntersect(mNativeModelDef, worldMtx, origin, vec, out outIntersect, out outDistance);
+		}	
     }
 
     public class ModelInstance : RenderCmd

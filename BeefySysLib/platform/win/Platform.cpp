@@ -2637,6 +2637,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sy
 	case BfpSysDirectoryKind_Programs_Common:
 		_GetKnownFolder(FOLDERID_CommonPrograms);
 		return;	
+	case BfpSysDirectoryKind_Documents:
+		_GetKnownFolder(FOLDERID_Documents);
+		return;
 	}
 
 	TryStringOut(path, outPath, inOutPathLen, (BfpResult*)outResult);
@@ -2738,8 +2741,12 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 			creationDisposition = CREATE_ALWAYS;
 	}
 	else if (createKind == BfpFileCreateKind_CreateIfNotExists)
-	{		
+	{
 		creationDisposition = CREATE_NEW;
+	}
+	else if (createKind == BfpFileCreateKind_OpenAlways)
+	{
+		creationDisposition = OPEN_ALWAYS;
 	}
 	else
 	{
@@ -2819,6 +2826,11 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetStd(BfpFileStdKind kind, BfpFileResu
 	bfpFile->mIsStd = true;
 	
 	return bfpFile;	
+}
+
+BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetSystemHandle(BfpFile* file)
+{
+	return (intptr)file->mHandle;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Release(BfpFile* file)
@@ -3011,9 +3023,14 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileS
 	return newPos.QuadPart;
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file)
+BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult)
 {
-	SetEndOfFile(file->mHandle);
+	if (!SetEndOfFile(file->mHandle))
+	{
+		OUTRESULT(BfpFileResult_UnknownError);
+		return;
+	}
+	OUTRESULT(BfpFileResult_Ok);
 }
 
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path)

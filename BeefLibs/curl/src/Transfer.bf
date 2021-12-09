@@ -8,7 +8,8 @@ namespace CURL
 {
 	class Transfer
 	{
-		CURL.Easy mCurl = new CURL.Easy() ~ delete _;
+		CURL.Easy mCurl;
+		bool mOwns;
 		bool mCancelling = false;
 		List<uint8> mData = new List<uint8>() ~ delete _;
 		Stopwatch mStatsTimer = new Stopwatch() ~ delete _;
@@ -59,7 +60,13 @@ namespace CURL
 
 		public this()
 		{
+			mCurl = new CURL.Easy();
+			mOwns = true;
+		}
 
+		public this(CURL.Easy curl)
+		{
+			mCurl = curl;
 		}
 
 		public ~this()
@@ -67,6 +74,9 @@ namespace CURL
 			mCancelling = true;
 			if (mRunning)
 				mDoneEvent.WaitFor();
+
+			if (mOwns)
+				delete mCurl;
 		}
 
 		int GetCurBytesPerSecond()
@@ -119,7 +129,7 @@ namespace CURL
 			return count;
 		}
 
-		public void Init(String url)
+		public void Init(StringView url)
 		{
 			function int(void *p, int dltotal, int dlnow, int ultotal, int ulnow) callback = => Callback;
 			mCurl.SetOptFunc(.XferInfoFunction, (void*)callback);
@@ -133,6 +143,13 @@ namespace CURL
 			mCurl.SetOpt(.URL, url);
 			mCurl.SetOpt(.NoProgress, false);
 			mCurl.SetOpt(.IPResolve, (int)CURL.Easy.IPResolve.V4);
+			mCurl.SetOpt(.HTTPGet, true);
+		}
+
+		public void InitPost(String url, String param)
+		{
+			Init(url);
+			mCurl.SetOpt(.Postfields, param);
 		}
 
 		public Result<Span<uint8>> Perform()
@@ -176,6 +193,11 @@ namespace CURL
 			if (mDoneEvent != null)
 				mDoneEvent.WaitFor();
 			return mResult;
+		}
+
+		public void GetContentType(String outContentType)
+		{
+			mCurl.GetInfo(.ContentType, outContentType);
 		}
 
 		public void Cancel(bool wait = false)

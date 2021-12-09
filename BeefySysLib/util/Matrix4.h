@@ -109,6 +109,15 @@ public:
 	}
 
 	static Matrix4 CreateTransform(const Vector3& position, const Vector3& scale, const Quaternion& orientation);
+
+	static float Determinant(float m11, float m12, float m13,
+		float m21, float m22, float m23,
+		float m31, float m32, float m33)
+	{
+		return m11 * (m22 * m33 - m32 * m23) -
+			m21 * (m12 * m33 - m32 * m13) +
+			m31 * (m12 * m23 - m22 * m13);
+	}
 };
 
 NS_BF_END;

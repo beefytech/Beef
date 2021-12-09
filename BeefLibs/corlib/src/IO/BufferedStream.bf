@@ -68,7 +68,7 @@ namespace System.IO
 
 		public override Result<int> TryRead(Span<uint8> data)
 		{
-			int spaceLeft = (.)(mBufferEnd - mPos);
+			int64 spaceLeft = (.)(mBufferEnd - mPos);
 			if (mPos < mBufferPos)
 				spaceLeft = 0;
 			if (data.Length <= spaceLeft)
@@ -83,19 +83,17 @@ namespace System.IO
 			var data;
 			if (spaceLeft > 0)
 			{
-				Internal.MemCpy(data.Ptr, mBuffer.Ptr + (mPos - mBufferPos), spaceLeft);
+				Internal.MemCpy(data.Ptr, mBuffer.Ptr + (mPos - mBufferPos), (.)spaceLeft);
 				mPos += spaceLeft;
-				data.RemoveFromStart(spaceLeft);
+				data.RemoveFromStart((.)spaceLeft);
 			}
 
-			if (mWriteDirtyPos >= 0)
-				Try!(Flush());
+			Try!(Flush());
 
 			if ((mBuffer == null) || (data.Length > mBuffer.Count))
 			{
-				var result = TryReadUnderlying(mPos, data);
-				if (result case .Ok(let len))
-					mPos += len;
+				let len = Try!(TryReadUnderlying(mPos, data));
+				mPos += len;
 				return (.)(mPos - readStart);
 			}
 
@@ -148,10 +146,9 @@ namespace System.IO
 
 			if ((mBuffer == null) || (data.Length > mBuffer.Count))
 			{
-				var result = TryWriteUnderlying(mPos, data);
-				if (result case .Ok(let len))
-					mPos += len;
-				writeCount += result;
+				let len = Try!(TryWriteUnderlying(mPos, data));
+				mPos += len;
+				writeCount += len;
 				return writeCount;
 			}
 

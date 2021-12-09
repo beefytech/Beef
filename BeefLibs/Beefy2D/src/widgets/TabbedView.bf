@@ -162,7 +162,7 @@ namespace Beefy.widgets
                 if ((mSrcDraggingWindow != null) && (mSrcDraggingWindow.mCaptureWidget != null))
 					mSrcDraggingWindow.ReleaseMouseCaptures();
 
-                mTabbedView.mParentDockingFrame.GetRootDockingFrame().HideDragTarget(this, !mDragHelper.mAborted);
+                mTabbedView.mParentDockingFrame?.GetRootDockingFrame().HideDragTarget(this, !mDragHelper.mAborted);
                 if (mNewDraggingWindow != null)
                 {
                     mNewDraggingWindow.mOnWindowLostFocus.Remove(scope => WindowDragLostFocusHandler, true);
@@ -176,7 +176,7 @@ namespace Beefy.widgets
 
             public void MouseDrag(float x, float y, float dX, float dY)
             {
-               	mTabbedView.mParentDockingFrame.GetRootDockingFrame().ShowDragTarget(this);                
+               	mTabbedView.mParentDockingFrame?.GetRootDockingFrame().ShowDragTarget(this);                
             }
 
             public override void MouseUp(float x, float y, int32 btn)
@@ -198,6 +198,8 @@ namespace Beefy.widgets
 
             public virtual bool IsTotalWindowContent()
             {
+				if (mTabbedView.mParentDockingFrame == null)
+					return false;
                 return (mTabbedView.mParentDockingFrame.mParentDockingFrame == null) &&
                     (mTabbedView.mParentDockingFrame.GetDockedWindowCount() == 1) &&
                     (mTabbedView.GetTabCount() == 1) &&
@@ -318,7 +320,7 @@ namespace Beefy.widgets
                     //tabbedView.mSharedData.mOpenNewWindowDelegate = mTabbedView.mSharedData.mOpenNewWindowDelegate;
                     tabbedView.SetRequestedSize(mTabbedView.mWidth, mTabbedView.mHeight);
                     mTabbedView.RemoveTab(this, false);
-                    tabbedView.AddTab(this);
+                    tabbedView.AddTab(this, 0);
 
                     float rootX;
                     float rootY;
@@ -470,7 +472,7 @@ namespace Beefy.widgets
             return activeTab;
         }
 
-        public virtual TabButton AddTab(String label, float width, Widget content, bool ownsContent)
+        public virtual TabButton AddTab(String label, float width, Widget content, bool ownsContent, int insertIdx)
         {
             TabButton aTabButton = CreateTabButton();
             aTabButton.mTabbedView = this;
@@ -479,7 +481,7 @@ namespace Beefy.widgets
             aTabButton.mWantWidth = width;
             aTabButton.mHeight = mTabHeight;
             aTabButton.mContent = content;
-            AddTab(aTabButton);            
+            AddTab(aTabButton, insertIdx);
             return aTabButton;
         }
 
@@ -499,7 +501,7 @@ namespace Beefy.widgets
             return bestIdx;    
         }
 
-        public virtual void AddTab(TabButton tabButton, int insertIdx = 0)
+        public virtual void AddTab(TabButton tabButton, int insertIdx)
         {
             AddWidget(tabButton);
             mTabs.Insert(insertIdx, tabButton);

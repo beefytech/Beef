@@ -5276,7 +5276,10 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 				if (!memberType->IsStruct())
 					Fail("Failed to lookup splat member", (lookupNode != NULL) ? lookupNode : targetNode);
 
- 				BF_ASSERT((target.mVariable != NULL) || (target.mType->GetByteCount() == 0));
+				if ((target.mVariable == NULL) && (target.mType->GetByteCount() != 0))
+					Fail("Splat variable not found", (lookupNode != NULL) ? lookupNode : targetNode);
+
+ 				//BF_ASSERT((target.mVariable != NULL) || (target.mType->GetByteCount() == 0));
  				mResult = target;
  				mResult.mType = memberType;
  			}						
@@ -5975,13 +5978,13 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 
 		// One pointer
 		if ((!otherType->IsInteger()) ||
-			((binaryOp != BfBinaryOp_Add) && (binaryOp != BfBinaryOp_Subtract) && (!isCompare)))
+			((binaryOp != BfBinaryOp_Add) && (binaryOp != BfBinaryOp_Subtract) && (binaryOp != BfBinaryOp_OverflowAdd) && (binaryOp != BfBinaryOp_OverflowSubtract) && (!isCompare)))
 		{
 			Fail("Can only add or subtract integer values from pointers", rightExpression);
 			return;
 		}
 
-		if ((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract))
+		if ((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_OverflowAdd) || (binaryOp == BfBinaryOp_OverflowSubtract))
 		{
 			auto underlyingType = otherType->GetUnderlyingType();
 			mResult.mType = resultType;
@@ -6262,6 +6265,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 	switch (binaryOp)
 	{
 	case BfBinaryOp_Add:
+	case BfBinaryOp_OverflowAdd:
 		if (resultType->mTypeCode == DbgType_Single)
 			mResult.mSingle = convLeftValue.mSingle + convRightValue.mSingle;
 		else if (resultType->mTypeCode == DbgType_Double)
@@ -6270,6 +6274,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			mResult.mInt64 = convLeftValue.GetInt64() + convRightValue.GetInt64();			
 		break;
 	case BfBinaryOp_Subtract:
+	case BfBinaryOp_OverflowSubtract:
 		if (resultType->mTypeCode == DbgType_Single)
 			mResult.mSingle = convLeftValue.mSingle - convRightValue.mSingle;
 		else if (resultType->mTypeCode == DbgType_Double)
@@ -6278,6 +6283,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			mResult.mInt64 = convLeftValue.GetInt64() - convRightValue.GetInt64();
 		break;
 	case BfBinaryOp_Multiply:
+	case BfBinaryOp_OverflowMultiply:
 		if (resultType->mTypeCode == DbgType_Single)
 			mResult.mSingle = convLeftValue.mSingle * convRightValue.mSingle;
 		else if (resultType->mTypeCode == DbgType_Double)

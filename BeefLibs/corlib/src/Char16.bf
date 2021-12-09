@@ -1,6 +1,6 @@
 namespace System
 {
-	struct Char16 : char16, IHashable, IIsNaN
+	struct Char16 : char16, ICharacter, IHashable, IIsNaN
 	{
 		const int UNICODE_PLANE00_END = 0x00ffff;
 		// The starting codepoint for Unicode plane 1.  Plane 1 contains 0x010000 ~ 0x01ffff.

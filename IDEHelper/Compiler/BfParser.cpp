@@ -706,12 +706,18 @@ BfBlock* BfParser::ParseInlineBlock(int spaceIdx, int endIdx)
 	mSrcIdx = spaceIdx;
 	BfAstNode* startNode = NULL;
 	int usedEndIdx = spaceIdx;
+	int usedLineNum = mLineNum;
+	int usedLineStart = mLineStart;
+
 	while (true)
 	{
 		NextToken(endIdx + 1);
 		if (mSyntaxToken == BfSyntaxToken_HIT_END_IDX)
 		{
 			mSrcIdx = usedEndIdx;
+			mLineNum = usedLineNum;
+			mLineStart = usedLineStart;
+
 			auto lastNode = mSidechannelRootNode->GetLast();
 			if (lastNode != NULL)
 				mSrcIdx = std::max(mSrcIdx, lastNode->GetSrcEnd());
@@ -719,6 +725,8 @@ BfBlock* BfParser::ParseInlineBlock(int spaceIdx, int endIdx)
 		}
 
 		usedEndIdx = mSrcIdx;
+		usedLineStart = mLineStart;
+		usedLineNum = mLineNum;
 
 		auto childNode = CreateNode();
 		if (childNode == NULL)
@@ -1549,6 +1557,21 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 				mToken = BfToken_AndEquals;
 				mTokenEnd = ++mSrcIdx;
 			}
+			else if (mSrc[mSrcIdx] == '+')
+			{
+				mToken = BfToken_AndPlus;
+				mTokenEnd = ++mSrcIdx;
+			}
+			else if (mSrc[mSrcIdx] == '-')
+			{
+				mToken = BfToken_AndMinus;
+				mTokenEnd = ++mSrcIdx;
+			}
+			else if (mSrc[mSrcIdx] == '*')
+			{
+				mToken = BfToken_AndStar;
+				mTokenEnd = ++mSrcIdx;
+			}
 			else
 				mToken = BfToken_Ampersand;
 			mSyntaxToken = BfSyntaxToken_Token;
@@ -2301,6 +2324,13 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 					mToken = BfToken_DotDotDot;
 					mSyntaxToken = BfSyntaxToken_Token;
 				}
+				else if (mSrc[mSrcIdx + 1] == '<')
+				{
+					mSrcIdx += 2;
+					mTokenEnd = mSrcIdx;
+					mToken = BfToken_DotDotLess;
+					mSyntaxToken = BfSyntaxToken_Token;
+				}
 				else
 				{
 					mSrcIdx++;
@@ -2511,8 +2541,15 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 
 					bool endNumber = false;
 
+					bool hasDot = c == '.';
+					if ((hasDot) && (mSrc[mSrcIdx] == '.'))
+					{
+						// Skip float parsing if we have a double-dot `1..` case
+						hasDot = false;
+					}					
+
 					// The 'prevIsDot' helps tuple lookups like "tuple.0.0", interpreting those as two integers rather than a float
-					if (((c == '.') && (!prevIsDot)) || (hasExp))
+					if (((hasDot) && (!prevIsDot)) || (hasExp))
 					{
 						// Switch to floating point mode
 						//double dVal = val;
@@ -3028,6 +3065,10 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 							mToken = BfToken_Null;
 						else if (SrcPtrHasToken("nullable"))
 							mToken = BfToken_Nullable;
+						break;
+					case TOKEN_HASH('o', 'f', 'f', 's'):
+						if (SrcPtrHasToken("offsetof"))
+							mToken = BfToken_OffsetOf;
 						break;
 					case TOKEN_HASH('o', 'p', 'e', 'r'):
 						if (SrcPtrHasToken("operator"))

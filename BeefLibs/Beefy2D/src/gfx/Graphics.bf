@@ -78,7 +78,11 @@ namespace Beefy.gfx
         protected DisposeProxy mClipDisposeProxy ~ delete _;
         const int32 CLIP_STACK_SIZE = 256;
         public Rect?[] mClipStack = new Rect?[CLIP_STACK_SIZE] ~ delete _;
-		
+
+		public bool mTexWrap;
+		protected DisposeProxy mTexWrapDisableProxy ~ delete _;
+		protected DisposeProxy mTexWrapEnableProxy ~ delete _;
+
         public int32 mClipStackIdx = 0;
         public Rect? mClipRect = null;
 
@@ -106,6 +110,10 @@ namespace Beefy.gfx
             mClipDisposeProxy = new DisposeProxy();
             mClipDisposeProxy.mDisposeProxyDelegate = new => PopClip;
             mRenderStateDisposeProxy = new DisposeProxy();
+			mTexWrapDisableProxy = new DisposeProxy();
+			mTexWrapDisableProxy.mDisposeProxyDelegate = new () => { PopTexWrap(false); };
+			mTexWrapEnableProxy = new DisposeProxy();
+			mTexWrapEnableProxy.mDisposeProxyDelegate = new () => { PopTexWrap(true); };
 
             mWhiteDot = Image.LoadFromFile("!white");
 
@@ -341,15 +349,15 @@ namespace Beefy.gfx
             Rect rectThing = mClipRect.Value;
             mClipRect = rectThing;
 
-			var clipRenderState = AllocRenderState(mDefaultShader, mClipRect);
+			var clipRenderState = AllocRenderState(mDefaultShader, mClipRect, mTexWrap);
 
             //clipRenderState.ClipRect = mClipRect;
-            PushRenderState(clipRenderState);            
+            PushRenderState(clipRenderState);
 
             return mClipDisposeProxy;
         }
 
-		RenderState AllocRenderState(Shader shader, Rect? clipRect)
+		RenderState AllocRenderState(Shader shader, Rect? clipRect, bool texWrap)
 		{
 			RenderState renderState = null;
 			var curRenderState = mRenderStateStack[mRenderStateStackIdx];
@@ -365,6 +373,7 @@ namespace Beefy.gfx
 			}
 			else
 			    renderState = RenderState.Create(curRenderState);
+			renderState.TexWrap = texWrap;
 			renderState.Shader = shader;
 			renderState.ClipRect = clipRect;
 			return renderState;
@@ -375,16 +384,33 @@ namespace Beefy.gfx
 			mClipStackIdx++;
 			mClipStack[mClipStackIdx] = null;
 			mClipRect = null;
-			var clipRenderState = AllocRenderState(mDefaultShader, null);
+			var clipRenderState = AllocRenderState(mDefaultShader, mClipRect, mTexWrap);
             //clipRenderState.ClipRect = null;
             PushRenderState(clipRenderState);
 
             return mClipDisposeProxy;
         }
 
+		public DisposeProxy PushTexWrap(bool texWrap)
+		{
+			bool prevTexWrap = mTexWrap;
+			mTexWrap = texWrap;
+
+			var clipRenderState = AllocRenderState(mDefaultShader, mClipRect, mTexWrap);
+			PushRenderState(clipRenderState);
+
+			return prevTexWrap ? mTexWrapEnableProxy : mTexWrapDisableProxy;
+		}
+
+		protected void PopTexWrap(bool texWrap)
+		{
+			mTexWrap = texWrap;
+			PopRenderState();
+		}
+
 		public void PushTextRenderState()
 		{
-			var textRenderState = AllocRenderState(mTextShader, mClipRect);
+			var textRenderState = AllocRenderState(mTextShader, mClipRect, mTexWrap);
 			//textRenderState.ClipRect = mClipRect;
 			//textRenderState.Shader = mTextShader;
 			PushRenderState(textRenderState);
@@ -416,13 +442,16 @@ namespace Beefy.gfx
         //static unsafe extern void Gfx_DrawIndexedVertices2D(void* vtxData, int vtxCount, int* idxData, int idxCount, float a, float b, float c, float d, float tx, float ty, float z);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void Gfx_DrawIndexedVertices2D(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount, float a, float b, float c, float d, float tx, float ty, float z);
+        static extern void Gfx_DrawIndexedVertices(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_DrawIndexedVertices2D(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount, float a, float b, float c, float d, float tx, float ty, float z);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void Gfx_SetShaderConstantData(int32 slotIdx, void* data, int32 size);
+        static extern void Gfx_SetShaderConstantData(int32 usageIdx, int32 slotIdx, void* data, int32 size);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void Gfx_SetShaderConstantDataTyped(int32 slotIdx, void* data, int32 size, int32* typeData, int32 typeCount);
+        static extern void Gfx_SetShaderConstantDataTyped(int usageIdx, int32 slotIdx, void* data, int32 size, int32* typeData, int32 typeCount);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_DrawQuads(void* textureSegment, Vertex3D* vertices, int32 vtxCount);
@@ -768,32 +797,57 @@ namespace Beefy.gfx
 
         public void DrawIndexedVertices(VertexDefinition vertexDef, void* vertices, int vtxCount, uint16[] indices)
         {
-            Gfx_DrawIndexedVertices2D(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices.CArray(), (int32)indices.Count,
-                mMatrix.a, mMatrix.b, mMatrix.c, mMatrix.d, mMatrix.tx, mMatrix.ty, ZDepth);
+			if (vertexDef.mPosition2DOffset != -1)
+			{
+	            Gfx_DrawIndexedVertices2D(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices.CArray(), (int32)indices.Count,
+	                mMatrix.a, mMatrix.b, mMatrix.c, mMatrix.d, mMatrix.tx, mMatrix.ty, ZDepth);
+			}
+			else
+			{
+				Gfx_DrawIndexedVertices(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices.CArray(), (int32)indices.Count);
+			}
         }
 
         public void DrawIndexedVertices(VertexDefinition vertexDef, void* vertices, int vtxCount, uint16* indices, int idxCount)
         {
-            Gfx_DrawIndexedVertices2D(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices, (int32)idxCount,
-                mMatrix.a, mMatrix.b, mMatrix.c, mMatrix.d, mMatrix.tx, mMatrix.ty, ZDepth);
+			if (vertexDef.mPosition2DOffset != -1)
+			{
+	            Gfx_DrawIndexedVertices2D(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices, (int32)idxCount,
+	                mMatrix.a, mMatrix.b, mMatrix.c, mMatrix.d, mMatrix.tx, mMatrix.ty, ZDepth);
+			}
+			else
+			{
+				Gfx_DrawIndexedVertices(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices, (int32)idxCount);
+			}
         }
 
-        public void SetShaderConstantData(int slotIdx, void* data, int size)
+        public void SetVertexShaderConstantData(int slotIdx, void* data, int size)
         {
-            Gfx_SetShaderConstantData((int32)slotIdx, data, (int32)size);
+            Gfx_SetShaderConstantData(0, (int32)slotIdx, data, (int32)size);
         }
 
-        public void SetShaderConstantData(int32 slotIdx, void* data, ConstantDataDefinition constantDataDefinition)
+		public void SetPixelShaderConstantData(int slotIdx, void* data, int size)
+		{
+		    Gfx_SetShaderConstantData(1, (int32)slotIdx, data, (int32)size);
+		}
+
+        public void SetVertexShaderConstantData(int32 slotIdx, void* data, ConstantDataDefinition constantDataDefinition)
         {
             int32* dataTypesPtr = (int32*)constantDataDefinition.mDataTypes.CArray();
-            Gfx_SetShaderConstantDataTyped(slotIdx, data, constantDataDefinition.mDataSize, dataTypesPtr, (int32)constantDataDefinition.mDataTypes.Count);
+            Gfx_SetShaderConstantDataTyped(0, slotIdx, data, constantDataDefinition.mDataSize, dataTypesPtr, (int32)constantDataDefinition.mDataTypes.Count);
         }
 
-        public void SetShaderConstantData(int32 slotIdx, Matrix4 matrix)
+		public void SetVertexShaderConstantData(int32 slotIdx, Matrix4 matrix)
+		{
+			var mtx = matrix;
+		    Gfx_SetShaderConstantData(0, slotIdx, &mtx, (int32)sizeof(Matrix4));
+		}
+
+        public void SetPixelShaderConstantData(int32 slotIdx, Matrix4 matrix)
         {
 			var mtx = matrix;
-            Gfx_SetShaderConstantData(slotIdx, &mtx, (int32)sizeof(Matrix4));
-        }        
+            Gfx_SetShaderConstantData(1, slotIdx, &mtx, (int32)sizeof(Matrix4));
+        }
 
         public float DrawString(StringView theString, float x, float y, FontAlign alignment = FontAlign.Left, float width = 0, FontOverflowMode overflowMode = FontOverflowMode.Overflow, FontMetrics* fontMetrics = null)
         {
@@ -811,12 +865,12 @@ namespace Beefy.gfx
             float d = m.d * height;
 
             Gfx_AllocTris(image.mNativeTextureSegment, 6);
-            Gfx_SetDrawVertex(0, m.tx, m.ty, 0, u1, 0, mColor);
-            Gfx_SetDrawVertex(1, m.tx + a, m.ty + b, 0, u2, 0, mColor);
-            Gfx_SetDrawVertex(2, m.tx + c, m.ty + d, 0, u1, 1, mColor);
+            Gfx_SetDrawVertex(0, m.tx, m.ty, 0, u1, v1, mColor);
+            Gfx_SetDrawVertex(1, m.tx + a, m.ty + b, 0, u2, v1, mColor);
+            Gfx_SetDrawVertex(2, m.tx + c, m.ty + d, 0, u1, v2, mColor);
             Gfx_CopyDrawVertex(3, 2);
             Gfx_CopyDrawVertex(4, 1);
-            Gfx_SetDrawVertex(5, m.tx + (a + c), m.ty + (b + d), 0, u2, 1, mColor);
+            Gfx_SetDrawVertex(5, m.tx + (a + c), m.ty + (b + d), 0, u2, v2, mColor);
         }
 
         // Untranslated

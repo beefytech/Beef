@@ -15,7 +15,7 @@ namespace System.IO
 		public const char8 DirectorySeparatorChar = '/';
 #endif //BF_PLATFORM_WINDOWS
 		
-		// Platform specific alternate directory separator char8acter.  
+		// Platform specific alternate directory separator character.  
 		// This is backslash ('\') on Unix, and slash ('/') on Windows 
 		// and MacOS.
 		// 
@@ -25,7 +25,7 @@ namespace System.IO
 		public const char8 AltDirectorySeparatorChar = '\\';
 #endif //BF_PLATFORM_WINDOWS
 	
-		// Platform specific volume separator char8acter.  This is colon (':')
+		// Platform specific volume separator character.  This is colon (':')
 		// on Windows and MacOS, and slash ('/') on Unix.  This is mostly
 		// useful for parsing paths like "c:\windows" or "MacVolume:System Folder".  
 		// 
@@ -37,7 +37,7 @@ namespace System.IO
 
 		// Make this public sometime.
 		// The max total path is 260, and the max individual component length is 255. 
-		// For example, D:\<256 char8 file name> isn't legal, even though it's under 260 char8s.
+		// For example, D:\<256 char file name> isn't legal, even though it's under 260 chars.
 		protected const int32 MaxPath = 260;
 		private const int32 MaxDirectoryLength = 255;
 
@@ -297,7 +297,7 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public static void InternalCombine(String target, params String[] components)
+		public static void InternalCombine(String target, params StringView[] components)
 		{
 			for (var component in components)
 			{

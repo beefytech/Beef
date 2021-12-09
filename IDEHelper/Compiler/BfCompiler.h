@@ -347,6 +347,10 @@ public:
 	BfTypeDef* mArray3TypeDef;
 	BfTypeDef* mArray4TypeDef;
 	BfTypeDef* mSpanTypeDef;	
+	BfTypeDef* mRangeTypeDef;
+	BfTypeDef* mClosedRangeTypeDef;
+	BfTypeDef* mIndexTypeDef;
+	BfTypeDef* mIndexRangeTypeDef;
 		
 	BfTypeDef* mClassVDataTypeDef;	
 	
@@ -372,6 +376,7 @@ public:
 	BfTypeDef* mCompilerTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
+	BfTypeDef* mIIntegerTypeDef;
 	BfTypeDef* mIPrintableTypeDef;
 	BfTypeDef* mIHashableTypeDef;
 	BfTypeDef* mIComptimeTypeApply;

@@ -148,6 +148,7 @@ namespace System.Collections
 
 		public int Count
 		{
+			[Inline]
 			get
 			{
 				return mSize;
@@ -207,6 +208,76 @@ namespace System.Collections
 #if VERSION_LIST
 				mVersion++;
 #endif
+			}
+		}
+
+		public ref T this[Index index]
+		{
+			[Checked]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mSize - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mSize);
+				return ref mItems[idx];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mSize - offset;
+				}
+				return ref mItems[idx];
+			}
+
+			[Checked]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mSize - offset;
+				}
+				Runtime.Assert((uint)idx < (uint)mSize);
+				mItems[idx] = value;
+#if VERSION_LIST
+				mVersion++;
+#endif
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				int idx;
+				switch (index)
+				{
+				case .FromFront(let offset): idx = offset;
+				case .FromEnd(let offset): idx = mSize - offset;
+				}
+				mItems[idx] = value;
+#if VERSION_LIST
+				mVersion++;
+#endif
+			}
+		}
+
+		public Span<T> this[IndexRange range]
+		{
+#if !DEBUG
+			[Inline]
+#endif
+			get
+			{
+				return Span<T>(mItems, mSize)[range];
 			}
 		}
 
@@ -534,7 +605,7 @@ namespace System.Collections
 			if (mSize == AllocSize) EnsureCapacity(mSize + 1, true);
 			if (index < mSize)
 			{
-				Internal.MemCpy(mItems + index + 1, mItems + index, (mSize - index) * strideof(T), alignof(T));
+				Internal.MemMove(mItems + index + 1, mItems + index, (mSize - index) * strideof(T), alignof(T));
 			}
 			mItems[index] = item;
 			mSize++;
@@ -553,7 +624,7 @@ namespace System.Collections
 			if (mSize + addCount > AllocSize) EnsureCapacity(mSize + addCount, true);
 			if (index < mSize)
 			{
-				Internal.MemCpy(mItems + index + addCount, mItems + index, (mSize - index) * strideof(T), alignof(T));
+				Internal.MemMove(mItems + index + addCount, mItems + index, (mSize - index) * strideof(T), alignof(T));
 			}
 			Internal.MemCpy(mItems + index, items.Ptr, addCount * strideof(T));
 			mSize += (int_cosize)addCount;
@@ -567,7 +638,7 @@ namespace System.Collections
 			Debug.Assert((uint)index < (uint)mSize);
 			if (index < mSize - 1)
 			{
-				Internal.MemCpy(mItems + index, mItems + index + 1, (mSize - index - 1) * strideof(T), alignof(T));
+				Internal.MemMove(mItems + index, mItems + index + 1, (mSize - index - 1) * strideof(T), alignof(T));
 			}
 			mSize--;
 #if VERSION_LIST
@@ -927,6 +998,59 @@ namespace System.Collections
 		public void Sort()
 		{
 			Sort(scope (lhs, rhs) => lhs <=> rhs);
+		}
+	}
+
+	extension List<T> where T : String
+	{
+		public bool Contains(T item, StringComparison comparison)
+		{
+			if (item == null)
+			{
+			    for (int i = 0; i < mSize; i++)
+			        if (mItems[i] == null)
+			    		return true;
+			    return false;
+			}
+			else
+			{
+				for (int i = 0; i < mSize; i++)
+					if (mItems[i].Equals(item, comparison))
+						return true;
+			    return false;
+			}
+		}
+
+		public int IndexOf(T item, StringComparison comparison)
+		{
+			for (int i = 0; i < mSize; i++)
+				if (mItems[i].Equals(item, comparison))
+					return i;
+			return -1;
+		}
+
+		public int IndexOf(T item, int index, StringComparison comparison)
+		{
+			for (int i = index; i < mSize; i++)
+				if (mItems[i].Equals(item, comparison))
+					return i;
+			return -1;
+		}
+
+		public int IndexOf(T item, int index, int count, StringComparison comparison)
+		{
+			for (int i = index; i < index + count; i++)
+				if (mItems[i].Equals(item, comparison))
+					return i;
+			return -1;
+		}
+
+		public int LastIndexOf(T item, StringComparison comparison)
+		{
+			for (int i = mSize - 1; i >= 0; i--)
+				if (mItems[i].Equals(item, comparison))
+					return i;
+			return -1;
 		}
 	}
 

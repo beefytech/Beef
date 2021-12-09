@@ -143,6 +143,12 @@ enum CullMode : int8
 	CullMode_Back
 };
 
+enum Topology3D : int8
+{
+	Topology3D_TriangleList,
+	Topology3D_LineLine
+};
+
 enum TextureFlag : int8
 {
 	TextureFlag_Additive = 1,
@@ -182,18 +188,24 @@ public:
 	bool					mWriteDepthBuffer;
 	DepthFunc				mDepthFunc;	
 	bool					mClipped;
+	bool					mTexWrap;
+	bool					mWireframe;
 	Rect					mClipRect;
 	CullMode				mCullMode;
+	Topology3D				mTopology;
 
 public:
 	RenderState();
 	virtual ~RenderState() {}
 
 	virtual void SetShader(Shader* shader) { mShader = shader; }
+	virtual void SetTexWrap(bool wrap) { mTexWrap = wrap; }
+	virtual void SetWireframe(bool wireframe) { mWireframe = wireframe; }
 	virtual void SetClipped(bool clipped) { mClipped = clipped; }
 	virtual void SetClipRect(const Rect& rect) { mClipRect = rect; }
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer) { mWriteDepthBuffer = writeDepthBuffer; }
 	virtual void SetDepthFunc(DepthFunc depthFunc) { mDepthFunc = depthFunc; }
+	virtual void SetTopology(Topology3D topology) { mTopology = topology; }
 };
 
 class PoolData
@@ -239,6 +251,12 @@ public:
 	}
 };
 
+enum ModelCreateFlags
+{
+	ModelCreateFlags_None = 0,
+	ModelCreateFlags_NoSetRenderState = 1
+};
+
 class RenderDevice
 {
 public:	
@@ -270,7 +288,7 @@ public:
 	virtual void			RemoveRenderWindow(RenderWindow* renderWindow);
 	
 	virtual RenderState*	CreateRenderState(RenderState* srcRenderState);
-	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef) { return NULL; }
+	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) { return NULL; }
 	virtual VertexDefinition* CreateVertexDefinition(VertexDefData* elementData, int numElements);	
 
 	virtual void			FrameStart() = 0;

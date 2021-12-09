@@ -8,10 +8,11 @@ namespace System.Threading
     public delegate void ThreadStart();
     public delegate void ParameterizedThreadStart(Object obj);
 
+	[StaticInitPriority(100)]
     public sealed class Thread
     {
         private int mInternalThread;
-        private int32 mPriority;
+        private ThreadPriority mPriority = .Normal;
         public int32 mMaxStackSize;
         private String mName ~ delete _;
         private Delegate mDelegate;
@@ -21,7 +22,7 @@ namespace System.Threading
         bool mAutoDelete;
         public static Thread sMainThread = new Thread() ~ delete _;
         
-        [StaticInitPriority(101)]
+        [StaticInitPriority(102)]
         struct RuntimeThreadInit
         {
             static Object Thread_Alloc()
@@ -67,6 +68,8 @@ namespace System.Threading
 
 				if (thread.mName != null)
 					thread.InformThreadNameChange(thread.mName);
+				if (thread.mPriority != .Normal)
+					thread.SetPriorityNative((.)thread.mPriority);
 
                 int32 stackStart = 0;
                 thread.SetStackStart((void*)&stackStart);
@@ -219,8 +222,18 @@ namespace System.Threading
 
         public ThreadPriority Priority
         {
-            get { return (ThreadPriority)GetPriorityNative(); }
-            set { SetPriorityNative((int32)value); }
+            get
+			{
+				if (mInternalThread != 0)
+					return (ThreadPriority)GetPriorityNative();
+				return mPriority;
+			}
+            set
+			{
+				mPriority = value;
+				if (mInternalThread != 0)
+					SetPriorityNative((int32)value);
+			}
         }
 		[CallingConvention(.Cdecl)]
         private extern int32 GetPriorityNative();

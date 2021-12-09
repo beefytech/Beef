@@ -64,6 +64,8 @@ namespace IDE.ui
         public bool mFilterChanged;
         public volatile bool mExitingThread;
         public Thread mDateThread;
+
+		static String sLastSearchString = new String() ~ delete _;
         
         public this()
         {
@@ -91,9 +93,15 @@ namespace IDE.ui
             AddWidget(mFileList);
             mTabWidgets.Add(mFileList);
 
-            mEditWidget = AddEdit("");
+            mEditWidget = AddEdit(sLastSearchString);
             mEditWidget.mOnKeyDown.Add(new => EditKeyDownHandler);
             mEditWidget.mOnContentChanged.Add(new (evt) => { mFilterChanged = true; });
+
+			mOnClosed.Add(new () =>
+				{
+					sLastSearchString.Clear();
+					mEditWidget.GetText(sLastSearchString);
+				});
         }
 
         void ShutdownThread()

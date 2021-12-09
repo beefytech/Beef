@@ -727,7 +727,7 @@ namespace Beefy
 							0.10f,  0.00f,  1.05f, 0,
 							    0,      0,      0, 1);*/
 
-						mGraphics.SetShaderConstantData(0, &mColorMatrix.ValueRef, mColorMatrixDataDef);
+						mGraphics.SetVertexShaderConstantData(0, &mColorMatrix.ValueRef, mColorMatrixDataDef);
 					}
                     window.Draw(mGraphics);
                     window.PostDraw(mGraphics);

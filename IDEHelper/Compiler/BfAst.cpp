@@ -346,6 +346,11 @@ void BfStructuralVisitor::Visit(BfStrideOfExpression* strideOfExpr)
 	Visit(strideOfExpr->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfOffsetOfExpression* offsetOfExpr)
+{
+	Visit(offsetOfExpr->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfDefaultExpression* defaultExpr)
 {
 	Visit(defaultExpr->ToBase());
@@ -1195,6 +1200,23 @@ bool BfTypeReference::IsTypeDefTypeReference()
 	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>() || IsA<BfDirectTypeDefReference>();
 }
 
+String BfTypeReference::ToCleanAttributeString()
+{
+	// ToString might return something like "System.InlineAttribute", which we want to clean before we test for "Inline"
+	auto typeRefName = ToString();
+	if (typeRefName.EndsWith("Attribute"))
+	{
+		int attribNameStart = (int)typeRefName.LastIndexOf('.');
+		if (attribNameStart != -1)
+			typeRefName.Remove(0, attribNameStart + 1);
+
+		if (typeRefName.EndsWith("Attribute"))
+			typeRefName.RemoveFromEnd(9);
+	}
+
+	return typeRefName;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BfPropertyMethodDeclaration* BfPropertyDeclaration::GetMethod(const StringImpl& findName)
@@ -1262,6 +1284,10 @@ bool BfAttributeDirective::Contains(const StringImpl& findName)
 			return true;
 		if (name.EndsWith("Attribute"))
 		{
+			int attribNameStart = (int)name.LastIndexOf('.');
+			if (attribNameStart != -1)
+				name.Remove(0, attribNameStart + 1);
+
 			name.RemoveToEnd(name.length() - 9);
 			if (findName == name)
 				return true;
@@ -1377,6 +1403,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "null";
 	case BfToken_Nullable:
 		return "nullable";
+	case BfToken_OffsetOf:
+		return "offsetof";
 	case BfToken_Operator:
 		return "operator";
 	case BfToken_Out:
@@ -1479,6 +1507,12 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return ">>=";
 	case BfToken_AndEquals:
 		return "&=";
+	case BfToken_AndMinus:
+		return "&-";
+	case BfToken_AndPlus:
+		return "&+";
+	case BfToken_AndStar:
+		return "&*";
 	case BfToken_OrEquals:
 		return "|=";
 	case BfToken_XorEquals:
@@ -1518,6 +1552,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "..";
 	case BfToken_DotDotDot:
 		return "...";
+	case BfToken_DotDotLess:
+		return "..<";
 	case BfToken_QuestionDot:
 		return "?.";
 	case BfToken_QuestionLBracket:
@@ -1609,22 +1645,27 @@ int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
 	switch (binOp)
 	{			
 	case BfBinaryOp_Multiply:
+	case BfBinaryOp_OverflowMultiply:
 	case BfBinaryOp_Divide:
-	case BfBinaryOp_Modulus:	
-		return 13;
+	case BfBinaryOp_Modulus:
+		return 14;
 	case BfBinaryOp_Add:
-	case BfBinaryOp_Subtract:				
-		return 12;	
+	case BfBinaryOp_Subtract:
+	case BfBinaryOp_OverflowAdd:
+	case BfBinaryOp_OverflowSubtract:
+		return 13;	
 	case BfBinaryOp_LeftShift:
 	case BfBinaryOp_RightShift:
-		return 11;
+		return 12;
 	case BfBinaryOp_BitwiseAnd:
-		return 10;
+		return 11;
 	case BfBinaryOp_ExclusiveOr:
-		return 9;
+		return 10;
 	case BfBinaryOp_BitwiseOr:
+		return 9;
+	case BfBinaryOp_Range:
+	case BfBinaryOp_ClosedRange:
 		return 8;
-	// "Range" inserted here if we were copying swift	
 	case BfBinaryOp_Is:
 	case BfBinaryOp_As:
 		return 7;
@@ -1661,6 +1702,9 @@ const char* Beefy::BfGetOpName(BfBinaryOp binOp)
 	case BfBinaryOp_Add: return "+";
 	case BfBinaryOp_Subtract: return "-";
 	case BfBinaryOp_Multiply: return "*";
+	case BfBinaryOp_OverflowAdd: return "&+";
+	case BfBinaryOp_OverflowSubtract: return "&-";
+	case BfBinaryOp_OverflowMultiply: return "&*";
 	case BfBinaryOp_Divide: return "/";
 	case BfBinaryOp_Modulus: return "%";
 	case BfBinaryOp_BitwiseAnd: return "&";
@@ -1682,6 +1726,8 @@ const char* Beefy::BfGetOpName(BfBinaryOp binOp)
 	case BfBinaryOp_NullCoalesce: return "??";
 	case BfBinaryOp_Is: return "is";
 	case BfBinaryOp_As: return "as";
+	case BfBinaryOp_Range: return "..<";
+	case BfBinaryOp_ClosedRange: return "...";
 	default: return "???";
 	}
 }
@@ -1707,6 +1753,10 @@ const char* Beefy::BfGetOpName(BfUnaryOp unaryOp)
 	case BfUnaryOp_Mut: return "mut";
 	case BfUnaryOp_Params: return "params";
 	case BfUnaryOp_Cascade: return "..";
+	case BfUnaryOp_FromEnd: return "^";
+	case BfUnaryOp_PartialRangeUpTo: return "..<";
+	case BfUnaryOp_PartialRangeThrough: return "...";
+	case BfUnaryOp_PartialRangeFrom: return "...";	
 	default: return "???";
 	}
 }
@@ -1721,6 +1771,12 @@ BfBinaryOp Beefy::BfTokenToBinaryOp(BfToken token)
 		return BfBinaryOp_Subtract;
 	case BfToken_Star:
 		return BfBinaryOp_Multiply;
+	case BfToken_AndPlus:
+		return BfBinaryOp_OverflowAdd;
+	case BfToken_AndMinus:
+		return BfBinaryOp_OverflowSubtract;
+	case BfToken_AndStar:
+		return BfBinaryOp_OverflowMultiply;
 	case BfToken_ForwardSlash:
 		return BfBinaryOp_Divide;
 	case BfToken_Modulus:
@@ -1759,6 +1815,10 @@ BfBinaryOp Beefy::BfTokenToBinaryOp(BfToken token)
 		return BfBinaryOp_ConditionalOr;
 	case BfToken_DblQuestion:
 		return BfBinaryOp_NullCoalesce;
+	case BfToken_DotDotLess:
+		return BfBinaryOp_Range;
+	case BfToken_DotDotDot:
+		return BfBinaryOp_ClosedRange;
 	default:
 		return BfBinaryOp_None;
 	}
@@ -1796,6 +1856,12 @@ BfUnaryOp Beefy::BfTokenToUnaryOp(BfToken token)
 		return BfUnaryOp_Params;
 	case BfToken_DotDot:
 		return BfUnaryOp_Cascade;
+	case BfToken_Carat:
+		return BfUnaryOp_FromEnd;
+	case BfToken_DotDotDot:
+		return BfUnaryOp_PartialRangeThrough;
+	case BfToken_DotDotLess:
+		return BfUnaryOp_PartialRangeUpTo;
 	default:
 		return BfUnaryOp_None;
 	}

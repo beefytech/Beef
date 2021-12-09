@@ -158,6 +158,7 @@ enum BfToken : uint8
 	BfToken_New,	
 	BfToken_Null,
 	BfToken_Nullable,
+	BfToken_OffsetOf,
 	BfToken_Operator,
 	BfToken_Out,
 	BfToken_Override,
@@ -210,6 +211,9 @@ enum BfToken : uint8
 	BfToken_ShiftLeftEquals,
 	BfToken_ShiftRightEquals,
 	BfToken_AndEquals,
+	BfToken_AndMinus,
+	BfToken_AndPlus,
+	BfToken_AndStar,
 	BfToken_OrEquals,
 	BfToken_XorEquals,
 	BfToken_NullCoalsceEquals,
@@ -229,6 +233,7 @@ enum BfToken : uint8
 	BfToken_Dot,
 	BfToken_DotDot,
 	BfToken_DotDotDot,
+	BfToken_DotDotLess,
 	BfToken_QuestionDot,
 	BfToken_QuestionLBracket,
 	BfToken_AutocompleteDot,
@@ -363,6 +368,7 @@ class BfTypedValueExpression;
 class BfTypeAttrExpression;
 class BfSizeOfExpression;
 class BfAlignOfExpression;
+class BfOffsetOfExpression;
 class BfStrideOfExpression;
 class BfDefaultExpression;
 class BfUninitializedExpression;
@@ -486,6 +492,7 @@ public:
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr);	
 	virtual void Visit(BfAlignOfExpression* alignOfExpr);
 	virtual void Visit(BfStrideOfExpression* strideOfExpr);	
+	virtual void Visit(BfOffsetOfExpression* offsetOfExpr);
 	virtual void Visit(BfDefaultExpression* defaultExpr);
 	virtual void Visit(BfUninitializedExpression* uninitializedExpr);
 	virtual void Visit(BfCheckTypeExpression* checkTypeExpr);
@@ -1795,6 +1802,9 @@ enum BfBinaryOp
 	BfBinaryOp_Add,
 	BfBinaryOp_Subtract,
 	BfBinaryOp_Multiply,
+	BfBinaryOp_OverflowAdd,
+	BfBinaryOp_OverflowSubtract,
+	BfBinaryOp_OverflowMultiply,
 	BfBinaryOp_Divide,
 	BfBinaryOp_Modulus,
 	BfBinaryOp_BitwiseAnd,
@@ -1815,7 +1825,9 @@ enum BfBinaryOp
 	BfBinaryOp_ConditionalOr,
 	BfBinaryOp_NullCoalesce,
 	BfBinaryOp_Is,
-	BfBinaryOp_As
+	BfBinaryOp_As,
+	BfBinaryOp_Range,
+	BfBinaryOp_ClosedRange,
 };
 
 enum BfAssignmentOp
@@ -1853,7 +1865,11 @@ enum BfUnaryOp
 	BfUnaryOp_Out,
 	BfUnaryOp_Mut,
 	BfUnaryOp_Params,
-	BfUnaryOp_Cascade
+	BfUnaryOp_Cascade,
+	BfUnaryOp_FromEnd,
+	BfUnaryOp_PartialRangeUpTo,
+	BfUnaryOp_PartialRangeThrough,
+	BfUnaryOp_PartialRangeFrom,
 };
 
 class BfTokenNode : public BfAstNode
@@ -2329,6 +2345,7 @@ public:
 
 	bool IsNamedTypeReference();
 	bool IsTypeDefTypeReference();
+	String ToCleanAttributeString();
 
 };	BF_AST_DECL(BfTypeReference, BfAstNode);
 
@@ -2639,7 +2656,7 @@ public:
 class BfAlignOfExpression : public BfTypeAttrExpression
 {
 public:
-	BF_AST_TYPE(BfAlignOfExpression, BfTypeAttrExpression);
+	BF_AST_TYPE(BfAlignOfExpression, BfTypeAttrExpression);	
 };	BF_AST_DECL(BfAlignOfExpression, BfTypeAttrExpression);
 
 class BfStrideOfExpression : public BfTypeAttrExpression
@@ -2647,6 +2664,15 @@ class BfStrideOfExpression : public BfTypeAttrExpression
 public:
 	BF_AST_TYPE(BfStrideOfExpression, BfTypeAttrExpression);	
 };	BF_AST_DECL(BfStrideOfExpression, BfTypeAttrExpression);
+
+class BfOffsetOfExpression : public BfTypeAttrExpression
+{
+public:
+	BF_AST_TYPE(BfOffsetOfExpression, BfTypeAttrExpression);
+
+	BfTokenNode* mCommaToken;
+	BfIdentifierNode* mMemberName;
+};	BF_AST_DECL(BfOffsetOfExpression, BfTypeAttrExpression);
 
 class BfDefaultExpression : public BfExpression
 {
@@ -3073,6 +3099,7 @@ public:
 	BfPropertyDeclaration* mPropertyDeclaration;
 	BfAttributeDirective* mAttributes;
 	BfAstNode* mProtectionSpecifier;
+	BfTokenNode* mSetRefSpecifier;
 	BfTokenNode* mMutSpecifier;	
 	BfIdentifierNode* mNameNode;
 	BfTokenNode* mFatArrowToken;

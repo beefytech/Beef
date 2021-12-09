@@ -112,13 +112,13 @@ namespace Beefy.gfx
 		enum MarkPosition
 		{
 			AboveC, // Center
-			AboveR, // Left edge of mark aligned on center of char8
-			AboveE, // Center of mark aligned on right edge of char8
+			AboveR, // Left edge of mark aligned on center of char
+			AboveE, // Center of mark aligned on right edge of char
 			BelowC,
 			BelowR,
 			OverC,
 			OverE,
-			TopR, // Center of edge aligned to top of char8
+			TopR, // Center of edge aligned to top of char
 		}
 
         const int32 LOW_CHAR_COUNT = 128;
@@ -171,16 +171,33 @@ namespace Beefy.gfx
 						{
 							if (valType == 1)
 							{
-								String fontName = new String(&fontNameArr);
+								String fontName = scope String(&fontNameArr);
 								int parenPos = fontName.IndexOf(" (");
 								if (parenPos != -1)
 									fontName.RemoveToEnd(parenPos);
 								fontName.ToUpper();
-								String fontPath = new String(&data);
-								if ((!fontPath.EndsWith(".TTF", .OrdinalIgnoreCase)) || (!sFontNameMap.TryAdd(fontName, fontPath)))
+								String fontPath = scope String(&data);
+								if ((!fontPath.EndsWith(".TTF", .OrdinalIgnoreCase)) && (!fontPath.EndsWith(".TTC", .OrdinalIgnoreCase)))
+									continue;
+
+								if (fontName.Contains('&'))
 								{
-									delete fontName;
-									delete fontPath;
+									int collectionIdx = 0;
+									for (var namePart in fontName.Split('&', .RemoveEmptyEntries))
+									{
+										namePart.Trim();
+										if (sFontNameMap.TryAddAlt(namePart, var keyPtr, var valuePtr))
+										{
+											*keyPtr = new String(namePart);
+											*valuePtr = new $"{fontPath}@{collectionIdx}";
+											collectionIdx++;
+										}
+									}
+								}
+								else if (sFontNameMap.TryAdd(fontName, var keyPtr, var valuePtr))
+								{
+									*keyPtr = new String(fontName);
+									*valuePtr = new String(fontPath);
 								}
 							}
 						}
@@ -781,7 +798,7 @@ namespace Beefy.gfx
 					else if (newMatrix.tx > clipRect.mX + clipRect.mWidth)
 					{
 						isFullyClipped = true;
-						if ((newMatrix.a > 0) && (fontMetrics == null)) // Forward? If so, all future char8s will clip
+						if ((newMatrix.a > 0) && (fontMetrics == null)) // Forward? If so, all future chars will clip
 							break;
 					}
 				}

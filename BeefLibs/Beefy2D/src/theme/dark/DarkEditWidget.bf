@@ -424,9 +424,9 @@ namespace Beefy.theme.dark
 
                     if (selEnd > selStart)
                     {
-						String selPrevString = scope String(selStart);
+						String selPrevString = new:ScopedAlloc! String(selStart);
 						selPrevString.Append(sectionText, 0, selStart);
-						String selIncludeString = scope String(selEnd);
+						String selIncludeString = new:ScopedAlloc! String(selEnd);
 						selIncludeString.Append(sectionText, 0, selEnd);
 
                         float selStartX = GetTabbedWidth(selPrevString, curX);
@@ -473,7 +473,7 @@ namespace Beefy.theme.dark
 
                             if (isInside)
                             {
-								String subText = scope String(mCursorTextPos - lineDrawStart);
+								String subText = new:ScopedAlloc! String(mCursorTextPos - lineDrawStart);
 								subText.Append(sectionText, 0, mCursorTextPos - lineDrawStart);
                                 aX = GetTabbedWidth(subText, curX);
                             }
@@ -587,7 +587,7 @@ namespace Beefy.theme.dark
 
             if (char8Count < lineText.Length)
             {
-				String subString = scope String(char8Count);
+				String subString = new:ScopedAlloc! String(char8Count);
 				subString.Append(lineText, 0, char8Count);
                 float subWidth = GetTabbedWidth(subString, 0);
 

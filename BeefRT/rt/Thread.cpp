@@ -53,12 +53,12 @@ void Thread::SetJoinOnDelete(bool joinOnDelete)
 
 int Thread::GetPriorityNative()
 {
-	return (int)BfpThread_GetPriority(GetInternalThread()->mThreadHandle, NULL);
+	return (int)BfpThread_GetPriority(GetInternalThread()->mThreadHandle, NULL) + 2;
 }
 
 void Thread::SetPriorityNative(int priority)
 {
-	return BfpThread_SetPriority(GetInternalThread()->mThreadHandle, (BfpThreadPriority)priority, NULL);	
+	return BfpThread_SetPriority(GetInternalThread()->mThreadHandle, (BfpThreadPriority)(priority - 2), NULL);	
 }
 
 bool Thread::GetIsAlive()

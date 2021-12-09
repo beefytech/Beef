@@ -17,16 +17,16 @@ namespace System.IO
         /// Opens an existing file. Fails if the file does not exist.
 		Open = 3,
     
-        // Opens the file if it exists. Otherwise, creates a new file.
+        /// Opens the file if it exists. Otherwise, creates a new file.
 		OpenOrCreate = 4,
     
-        // Opens an existing file. Once opened, the file is truncated so that its
-        // size is zero bytes. The calling process must open the file with at least
-        // WRITE access. Fails if the file does not exist.
+        /// Opens an existing file. Once opened, the file is truncated so that its
+        /// size is zero bytes. The calling process must open the file with at least
+        /// WRITE access. Fails if the file does not exist.
 		Truncate = 5,
         
-        // Opens the file if it exists and seeks to the end.  Otherwise, 
-        // creates a new file.
+        /// Opens the file if it exists and seeks to the end.  Otherwise, 
+        /// creates a new file.
 		Append = 6,
 	}
 }

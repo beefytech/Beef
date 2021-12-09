@@ -175,6 +175,17 @@ namespace System
 			{
 				char8 c = val.Ptr[i];
 
+				//Exponent prefix used in scientific notation. E.g. 1.2E5
+				if ((c == 'e') || (c == 'E'))
+				{
+					//Error if there are no numbers after the prefix
+					if(i == val.Length - 1)
+						return .Err;
+					var exponent = Try!(int32.Parse(val.Substring(i + 1)));
+					result *= Math.Pow(10, (double)exponent);
+					break;
+				}
+
 				if (c == '.')
 				{
 					if (decimalMultiplier != 0)

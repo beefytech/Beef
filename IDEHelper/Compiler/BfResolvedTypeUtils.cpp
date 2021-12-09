@@ -758,7 +758,7 @@ bool BfMethodInstance::HasParamsArray()
 
 int BfMethodInstance::GetStructRetIdx(bool forceStatic)
 {		
-	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType()) && (!mIsIntrinsic))
+	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType(NULL, NULL, forceStatic)) && (!mIsIntrinsic))
 	{
 		auto returnTypeInst = mReturnType->ToTypeInstance();
 		if ((returnTypeInst != NULL) && (returnTypeInst->mHasUnderlyingArray))
@@ -792,10 +792,11 @@ bool BfMethodInstance::HasSelf()
 	return false;
 }
 
-bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeCode* loweredTypeCode2)
+bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeCode* loweredTypeCode2, bool forceStatic)
 {
 	// Win32 handler
-	if ((mMethodDef->mIsStatic) && (mReturnType->IsComposite()) && 
+	if (((mMethodDef->mIsStatic) || (forceStatic)) && 
+		(mReturnType->IsComposite()) &&
 		((mReturnType->mSize == 4) || (mReturnType->mSize == 8)))
 	{
 		auto returnTypeInst = mReturnType->ToTypeInstance();
@@ -816,16 +817,18 @@ bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeC
 		}
 	}
 
-	return mReturnType->GetLoweredType(mMethodDef->mIsStatic ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
+	return mReturnType->GetLoweredType((mMethodDef->mIsStatic || forceStatic) ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
 }
 
-bool BfMethodInstance::WantsStructsAttribByVal()
+bool BfMethodInstance::WantsStructsAttribByVal(BfType* paramType)
 {
 	auto owner = GetOwner();
 	if ((owner->mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) &&
 		(owner->mModule->mCompiler->mOptions.mMachineType == BfMachineType_x64))
 		return false;
-	return true;
+
+	auto typeInst = paramType->ToTypeInstance();
+	return (typeInst != NULL) && (typeInst->mIsCRepr);
 }
 
 bool BfMethodInstance::IsSkipCall(bool bypassVirtual)
@@ -943,7 +946,7 @@ int BfMethodInstance::GetImplicitParamCount()
 	return 0;
 }
 
-void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name)
+void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name, int& namePrefixCount)
 {
 	if (paramIdx == -1)
 	{
@@ -969,16 +972,25 @@ void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name)
 		if (methodParam->mDelegateParamNameCombine)
 			name = paramDef->mName + "__" + invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
 		else
-			invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx, name);
+			invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx, name, namePrefixCount);
 		return;
 	}
 	name = paramDef->mName;
+	namePrefixCount = paramDef->mNamePrefixCount;
 }
 
 String BfMethodInstance::GetParamName(int paramIdx)
+{	
+	String paramName;
+	int namePrefixCount = 0;
+	GetParamName(paramIdx, paramName, namePrefixCount);
+	return paramName;
+}
+
+String BfMethodInstance::GetParamName(int paramIdx, int& namePrefixCount)
 {
 	String paramName;
-	GetParamName(paramIdx, paramName);
+	GetParamName(paramIdx, paramName, namePrefixCount);
 	return paramName;
 }
 
@@ -1172,14 +1184,9 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 {
 	module->PopulateType(mReturnType);
 
-	if (mMethodDef->mName.Contains("GroupBy$"))
-	{
-		NOP;
-	}
-
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
-	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2)))
+	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2, forceStatic)))
 	{
 		auto irReturnType = module->GetIRLoweredType(loweredReturnTypeCode, loweredReturnTypeCode2);
 		returnType = irReturnType;
@@ -1208,7 +1215,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 	{
 		returnType = module->mBfIRBuilder->MapType(mReturnType);
 	}	
-	
+
 	for (int paramIdx = -1; paramIdx < GetParamCount(); paramIdx++)
 	{
 		BfType* checkType = NULL;
@@ -1230,6 +1237,9 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		}
 		else
 		{
+			if ((paramIdx == 0) && (mMethodDef->mHasExplicitThis))
+				continue; // Skip over the explicit 'this'
+
 			checkType = GetParamType(paramIdx);
 		}
 
@@ -1254,7 +1264,10 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 				checkLowered = true;
 		}
 		else
-		{			
+		{	
+			if ((checkType->IsComposite()) && (checkType->IsIncomplete()))
+				module->PopulateType(checkType, BfPopulateType_Data);
+
 			if (checkType->IsMethodRef())
 			{
 				doSplat = true;
@@ -1342,9 +1355,6 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 		if (checkType2 != NULL)
 			_AddType(checkType2);
-
-		if ((paramIdx == -1) && (mMethodDef->mHasExplicitThis))
-			paramIdx++; // Skip over the explicit 'this'
 	}
 
 	if ((!module->mIsComptimeModule) && (GetStructRetIdx(forceStatic) == 1))
@@ -1550,6 +1560,11 @@ BfTypeInstance::~BfTypeInstance()
 		delete localMethod;
 	delete mHotTypeData;
 	delete mConstHolder;
+	if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
+	{
+		mMethodInstanceGroups.Clear();
+		delete mTypeDef;
+	}
 }
 
 void BfTypeInstance::ReleaseData()
@@ -1561,6 +1576,13 @@ void BfTypeInstance::ReleaseData()
 			mModule->mSystem->ReleaseAtomComposite(namespaceComposite);
 	}
 	mInternalAccessMap.Clear();
+}
+
+void BfTypeInstance::Dispose()
+{
+	delete mGenericTypeInfo;
+	mGenericTypeInfo = NULL;
+	mTypeDef = NULL;
 }
 
 int BfTypeInstance::GetSplatCount()
@@ -1576,7 +1598,7 @@ int BfTypeInstance::GetSplatCount()
 
 bool BfTypeInstance::IsString()
 { 
-	return mTypeDef == mContext->mCompiler->mStringTypeDef;
+	return IsInstanceOf(mContext->mCompiler->mStringTypeDef);
 }
 
 int BfTypeInstance::GetOrigVTableSize()
@@ -2276,7 +2298,7 @@ bool BfTypeInstance::IsSpecializedByAutoCompleteMethod()
 
 bool BfTypeInstance::IsNullable()
 { 
-	return (mTypeDef == mContext->mCompiler->mNullableTypeDef);
+	return IsInstanceOf(mContext->mCompiler->mNullableTypeDef);
 }
 
 bool BfTypeInstance::HasVarConstraints()
@@ -2462,7 +2484,10 @@ BfClosureType::~BfClosureType()
 {
 	mMethodInstanceGroups.Clear();
 	if (mCreatedTypeDef)
+	{
 		delete mTypeDef;
+		mTypeDef = NULL;
+	}
 	for (auto directAllocNode : mDirectAllocNodes)
 		delete directAllocNode;
 }
@@ -2541,6 +2566,7 @@ BfDelegateType::~BfDelegateType()
 {	
 	mMethodInstanceGroups.Clear();
 	delete mTypeDef;	
+	mTypeDef = NULL;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2558,7 +2584,10 @@ BfTupleType::~BfTupleType()
 {
 	mMethodInstanceGroups.Clear();
 	if (mCreatedTypeDef)
+	{
 		delete mTypeDef;
+		mTypeDef = NULL;
+	}
 	delete mSource;
 }
 
@@ -2601,6 +2630,7 @@ void BfTupleType::Finish()
 
 	BfDefBuilder bfDefBuilder(bfSystem);
 	bfDefBuilder.mCurTypeDef = mTypeDef;
+	bfDefBuilder.mCurDeclaringTypeDef = mTypeDef;
 	bfDefBuilder.FinishTypeDef(true);
 }
 
@@ -2693,7 +2723,7 @@ bool BfTypeVectorEquals::operator()(const BfTypeVector& lhs, const BfTypeVector&
 bool BfCustomAttributes::Contains(BfTypeDef* typeDef)
 {
 	for (auto& customAttr : mAttributes)
-		if (customAttr.mType->mTypeDef == typeDef)
+		if (customAttr.mType->mTypeDef->GetDefinition() == typeDef)
 			return true;
 	return false;
 }
@@ -2701,7 +2731,7 @@ bool BfCustomAttributes::Contains(BfTypeDef* typeDef)
 BfCustomAttribute* BfCustomAttributes::Get(BfTypeDef * typeDef)
 {
 	for (auto& customAttr : mAttributes)
-		if (customAttr.mType->mTypeDef == typeDef)
+		if (customAttr.mType->mTypeDef->GetDefinition() == typeDef)
 			return &customAttr;
 	return NULL;
 }
@@ -3258,10 +3288,18 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					else if (constant->mConstType == BfConstType_Undef)
 					{
 						elementCount = -1; // Marker for undef
+						if ((arrayType->IsInferredSize()) && ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowInferredSizedArray) == 0))
+						{
+							ctx->mModule->Fail("Invalid use of inferred-sized array", sizeExpr);
+						}
+					}
+					else if (!BfIRBuilder::IsInt(constant->mTypeCode))
+					{
+						ctx->mFailed = true;
+						ctx->mModule->Fail("Array size not a constant value", arrayType->mParams[0]);
 					}
 					else
 					{
-						BF_ASSERT(BfIRBuilder::IsInt(constant->mTypeCode));
 						elementCount = (intptr)constant->mInt64;
 						if (elementCount < 0)
 						{
@@ -3395,6 +3433,8 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		if (ctx->mRootTypeRef != retTypeTypeRef)
 		{
 			auto type = ctx->mModule->ResolveTypeRef(retTypeTypeRef, BfPopulateType_Identity, ctx->mResolveFlags);
+			if ((type != NULL) && (type->IsRef()))
+				type = type->GetUnderlyingType();
 			return Hash(type, ctx, flags, hashSeed);
 		}
 
@@ -3447,7 +3487,8 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				}
 			}
 			
-			hashVal = ((hashVal ^ (Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed))) << 5) - hashVal;
+			if (fieldType != NULL)
+				hashVal = ((hashVal ^ (Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed))) << 5) - hashVal;
 			hashVal = ((hashVal ^ (HashNode(param->mNameNode))) << 5) - hashVal;
 			isFirstParam = true;
 		}
@@ -3487,7 +3528,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					else
 					{
 						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, NULL, BfEvalExprFlags_DeclType);
-					}
+					}					
 				}
 								
 				if ((result) && (exprModTypeRef->mToken->mToken == BfToken_Comptype))
@@ -3512,6 +3553,9 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				}
 				else
 					cachedResolvedType = result.mType;
+
+				if ((cachedResolvedType != NULL) && (cachedResolvedType->IsRef()))
+					cachedResolvedType = cachedResolvedType->GetUnderlyingType();
 
 				if (cachedResolvedType != NULL)
 					ctx->SetCachedResolvedType(typeRef, cachedResolvedType);
@@ -3691,7 +3735,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			BfTypeInstance* rhsGenericType = (BfTypeInstance*)rhs;
 			if (lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size() != rhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size())
 				return false;
-			if (lhsGenericType->mTypeDef != rhsGenericType->mTypeDef)
+			if (lhsGenericType->mTypeDef->GetDefinition() != rhsGenericType->mTypeDef->GetDefinition())
 				return false;
 			for (int i = 0; i < (int)lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); i++)
 			{
@@ -3700,7 +3744,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			}
 		}
 
-		return lhsInst->mTypeDef == rhsInst->mTypeDef;
+		return lhsInst->mTypeDef->GetDefinition() == rhsInst->mTypeDef->GetDefinition();
 	}
 	else if (lhs->IsPrimitiveType())
 	{
@@ -3845,7 +3889,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 		if ((rhsTypeDef != NULL) && (rootOuterTypeInstance != NULL))
 		{
 			// See if we're referring to an non-generic inner type where the outer type is generic
-			if (lhsGenericType->mTypeDef != rhsTypeDef)
+			if (lhsGenericType->mTypeDef->GetDefinition() != rhsTypeDef->GetDefinition())
 				return false;
 
 			BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(rootOuterTypeInstance->mTypeDef, rhsTypeDef->mOuterType);
@@ -3876,7 +3920,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 	}
 
 	BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(rhsGenericTypeInstRef);
-	if (elementTypeDef != lhsGenericType->mTypeDef)
+	if (elementTypeDef->GetDefinition() != lhsGenericType->mTypeDef->GetDefinition())
 		return false;
 
 	int genericParamOffset = 0;
@@ -3950,7 +3994,7 @@ BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* t
 	auto typeInst = type->ToTypeInstance();
 	if (typeInst == NULL)
 		return NULL;
-	return typeInst->mTypeDef;
+	return typeInst->mTypeDef->GetDefinition();
 }
 
 bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx)
@@ -3974,6 +4018,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		if (auto retTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(rhs))
 		{
 			auto resolvedType = ctx->mModule->ResolveTypeRef(rhs);
+			if ((resolvedType != NULL) && (resolvedType->IsRef()))
+				resolvedType = resolvedType->GetUnderlyingType();
 			return lhs == resolvedType;
 		}
 	}
@@ -4185,7 +4231,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			if (rhsTypeDef == NULL)
 				return false;
 
-			return lhsInst->mTypeDef == rhsTypeDef;
+			return lhsInst->IsInstanceOf(rhsTypeDef);
 		}		
 	}
 	else if (lhs->IsPrimitiveType())
@@ -4320,13 +4366,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 					return false;				
 				
 				auto constant = ctx->mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
-				if (constant->mConstType == BfConstType_Undef)
+				if ((constant->mConstType == BfConstType_Undef) || (!BfIRBuilder::IsInt(constant->mTypeCode)))
 				{
 					elementCount = -1; // Marker for undef
 				}
 				else
 				{
-					BF_ASSERT(BfIRBuilder::IsInt(constant->mTypeCode));
 					elementCount = (intptr)constant->mInt64;
 					BF_ASSERT(elementCount >= 0); // Should have been caught in hash					
 				}

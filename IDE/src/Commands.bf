@@ -198,6 +198,7 @@ namespace IDE
 			Add("Compile File", new => gApp.Cmd_CompileFile);
 			Add("Debug All Tests", new () => { gApp.[Friend]RunTests(true, true); });
 			Add("Debug Normal Tests", new () => { gApp.[Friend]RunTests(false, true); });
+			Add("Delete All Right", new => gApp.[Friend]DeleteAllRight);
 			Add("Duplicate Line", new () => { gApp.[Friend]DuplicateLine(); });
 			Add("Exit", new => gApp.[Friend]Cmd_Exit);
 			Add("Find All References", new => gApp.Cmd_FindAllReferences);

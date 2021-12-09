@@ -36,6 +36,7 @@
 #endif
 
 #endif
+#define STB_SPRINTF_DECORATE(name) BF_stbsp_##name
 #include "../../third_party/stb/stb_sprintf.h"
 #include <cxxabi.h>
 #include <random>
@@ -338,9 +339,9 @@ static void syminfo_callback (void *data, uintptr_t pc, const char *symname, uin
 {
     char str[4096];
     if (symname)
-        stbsp_snprintf(str, 4096, "%@ %s\n", pc, symname);
+        BF_stbsp_snprintf(str, 4096, "%@ %s\n", pc, symname);
     else
-        stbsp_snprintf(str, 4096, "%@\n", pc);
+        BF_stbsp_snprintf(str, 4096, "%@\n", pc);
     BFP_ERRPRINTF("%s", str);
 }
 
@@ -354,7 +355,7 @@ static int full_callback(void *data, uintptr_t pc, const char* filename, int lin
         const char* showName = (demangledName != NULL) ? demangledName : function;
 
         char str[4096];
-        stbsp_snprintf(str, 4096, "%@ %s %s:%d\n", pc, showName, filename?filename:"??", lineno);
+        BF_stbsp_snprintf(str, 4096, "%@ %s %s:%d\n", pc, showName, filename?filename:"??", lineno);
         BFP_ERRPRINTF("%s", str);
 
         if (demangledName != NULL)
@@ -843,6 +844,8 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
     //printf("BfpSpawn_Create: %s %s %x\n", inTargetPath, args, flags);    
 
+    char* prevWorkingDir = NULL;
+
 	if ((workingDir != NULL) && (workingDir[0] != 0))
 	{
 		if (chdir(workingDir) != 0)
@@ -851,7 +854,18 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 			OUTRESULT(BfpSpawnResult_UnknownError);
 			return NULL;
 		}
+
+        prevWorkingDir = getcwd(NULL, 0);
 	}
+
+    defer(
+        {
+            if (prevWorkingDir != NULL)
+            {
+                chdir(prevWorkingDir);
+                free(prevWorkingDir);
+            }
+        });
 
 	String newArgs;
 	String tempFileName;
@@ -928,7 +942,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
         {
             if (firstCharIdx != -1)
             {
-                stringViews.Add(Beefy::StringView(args, firstCharIdx, i - firstCharIdx));
+                stringViews.Add(Beefy::StringView(args + firstCharIdx, i - firstCharIdx));
                 firstCharIdx = -1;
             }
         }
@@ -947,7 +961,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
         }
     }
     if (firstCharIdx != -1)
-        stringViews.Add(Beefy::StringView(args, firstCharIdx, i - firstCharIdx));
+        stringViews.Add(Beefy::StringView(args + firstCharIdx, i - firstCharIdx));
 
     Beefy::Array<char*> argvArr;
 
@@ -1844,6 +1858,10 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 		}
         return result;
 	};
+    
+    // POSIX doesn't need the OpenAlways kind.
+    if (createKind == BfpFileCreateKind_OpenAlways)
+        createKind = BfpFileCreateKind_CreateAlways;
 
 	BfpFile* bfpFile = NULL;
 
@@ -1938,6 +1956,11 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetStd(BfpFileStdKind kind, BfpFileResu
 	bfpFile->mIsStd = true;
 
 	return bfpFile;
+}
+
+BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetSystemHandle(BfpFile* file)
+{
+    return (intptr)file->mHandle;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Release(BfpFile* file)
@@ -2060,13 +2083,15 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileS
     return lseek64(file->mHandle, offset, whence);
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file)
+BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult)
 {
     int64 curPos = (int64)lseek64(file->mHandle, 0, SEEK_CUR);
 	if (ftruncate64(file->mHandle, curPos) != 0)
-	{
-		//TODO: Report error?
-	}
+    {
+        OUTRESULT(BfpFileResult_UnknownError);
+        return;
+    }
+    OUTRESULT(BfpFileResult_Ok);
 }
 
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path)

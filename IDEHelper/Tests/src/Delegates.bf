@@ -114,6 +114,18 @@ namespace Tests
 			public delegate int DelegateB(T val);
 		}
 
+		[CRepr]
+		struct Vector3f
+		{
+			public float mX;
+			public float mY;
+		}
+
+		static Vector3f GetVector3f()
+		{
+			return .() { mX = 101, mY = 102 };
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -167,6 +179,9 @@ namespace Tests
 			e += new (sender, e) => {};
 			e += new => LocalEventHandler;
 			e.Dispose();
+
+			delegate Vector3f() vecDlg = scope => GetVector3f;
+			Test.Assert(vecDlg().mX == 101);
 		}
 
 		public static void Modify(ref int a, ref Splattable b)

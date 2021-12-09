@@ -8,16 +8,29 @@ namespace Tests
 	{
 		class ClassA
 		{
-			int mA = 123;
+			public int mA = 123;
 
 			public int GetA(float f)
 			{
 				return mA + (int)f;
 			}
 
+			public virtual int GetB(float f)
+			{
+				return mA + (int)f + 1000;
+			}
+
 			public int GetT<T>(T val) where T : var
 			{
 				return mA + (int)val;
+			}
+		}
+
+		class ClassB : ClassA
+		{
+			public override int GetB(float f)
+			{
+				return mA + (int)f + 2000;
 			}
 		}
 
@@ -130,6 +143,22 @@ namespace Tests
 			}
 		}
 
+		[CRepr]
+		struct StructCRepr
+		{
+			public int32 something = 1;
+
+			bool Run() => something == 1;
+
+			public static void Test()
+			{
+				StructCRepr sc = .();
+				function bool(StructCRepr this) func = => Run;
+
+				Test.Assert(func(sc));
+			}
+		}
+
 		public static int UseFunc0<T>(function int (T this, float f) func, T a, float b)
 		{
 			return func(a, b);
@@ -143,7 +172,9 @@ namespace Tests
 		[Test]
 		public static void TestBasics()
 		{
-			ClassA ca = scope .();
+			ClassA ca = scope ClassA();
+			ClassA ca2 = scope ClassB();
+
 			StructA sa = .();
 			StructB sb = .();
 
@@ -152,6 +183,17 @@ namespace Tests
 			Test.Assert(func0(ca, 100.0f) == 223);
 			func0 = => ca.GetT<float>;
 			Test.Assert(func0(ca, 100.0f) == 223);
+
+			func0 = => ca.GetB;
+			Test.Assert(func0(ca, 100.0f) == 1223);
+			func0 = => ca2.GetB;
+			Test.Assert(func0(ca, 100.0f) == 2223);
+			func0 = => ClassA.GetB;
+			Test.Assert(func0(ca, 100.0f) == 1223);
+			func0 = => ClassB.GetB;
+			Test.Assert(func0(ca, 100.0f) == 2223);
+
+			func0 = => ca.GetA;
 
 			function int (StructA this, float f) func1 = => sa.GetA;
 			var func1b = func1;
@@ -182,6 +224,8 @@ namespace Tests
 					UseFunc0(func2, sa, 100.0f);
 					true
 				});
+
+			StructCRepr.Test();
 		}
 	}
 }

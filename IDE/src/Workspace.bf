@@ -34,7 +34,7 @@ namespace IDE
 			case Android;
 			case Wasm;
 
-			public static PlatformType GetFromName(String name)
+			public static PlatformType GetFromName(StringView name)
 			{
 				switch (name)
 				{
@@ -1401,7 +1401,7 @@ namespace IDE
                         {
                             if (curColumn == column)
                                 return charId;
-                            // For column == -1, use first non-whitespace char8
+                            // For column == -1, use first non-whitespace char
                             if ((column == -1) && (!c.IsWhiteSpace))
                                 return charId;
                         }
