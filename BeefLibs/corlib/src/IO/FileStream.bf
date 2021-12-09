@@ -296,6 +296,15 @@ namespace System.IO
 			}
 		}
 
+		public override int64 Position
+		{
+			set
+			{
+				// Matches the behavior of Platform.BfpFile_Seek(mBfpFile, value, .Absolute);
+				mPos = Math.Max(value, 0);
+			}
+		}
+
 		public this()
 		{
 			
@@ -414,6 +423,27 @@ namespace System.IO
 			Close();
 			mBfpFile = bfpFile;
 			mFileAccess = access;
+		}
+
+		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
+		{
+			int64 newPos;
+			switch (seekKind)
+			{
+			case .Absolute:
+				newPos = pos;
+			case .FromEnd:
+				newPos = Length + pos;
+			case .Relative:
+				newPos = mPos + pos;
+			}
+
+			// Matches the behaviour of Platform.BfpFile_Seek(mBfpFile, value, .Absolute);
+			mPos = Math.Max(newPos, 0);
+			if (seekKind == .Absolute && newPos < 0)
+				return .Err;
+
+			return .Ok;
 		}
 
 		public override Result<void> Close()
