@@ -2162,6 +2162,8 @@ namespace IDE.ui
 
 		public bool ToggleComment(bool? doComment = null)
 		{
+			if (gApp.mSettings.mEditorSettings.mToggleCommentAlt) return ToggleCommentAlt(doComment);
+
 			if (CheckReadOnly())
 				return false;
 

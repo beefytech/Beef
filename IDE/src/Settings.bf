@@ -650,6 +650,7 @@ namespace IDE
 				sd.Add("EnableFileRecovery", mEnableFileRecovery);
 				sd.Add("FormatOnSave", mFormatOnSave);
 				sd.Add("SyncWithWorkspacePanel", mSyncWithWorkspacePanel);
+				sd.Add("ToggleCommentAlt", mToggleCommentAlt);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -679,6 +680,7 @@ namespace IDE
 				sd.GetEnum<FileRecoveryKind>("EnableFileRecovery", ref mEnableFileRecovery);
 				sd.Get("FormatOnSave", ref mFormatOnSave);
 				sd.Get("SyncWithWorkspacePanel", ref mSyncWithWorkspacePanel);
+				sd.Get("ToggleCommentAlt", ref mToggleCommentAlt);
 			}
 
 			public void SetDefaults()

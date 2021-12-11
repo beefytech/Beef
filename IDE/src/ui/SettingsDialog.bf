@@ -126,7 +126,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Enable File Recovery", "mEnableFileRecovery");
 			AddPropertiesItem(category, "Format on Save", "mFormatOnSave");
 			AddPropertiesItem(category, "Sync with Workspace Panel", "mSyncWithWorkspacePanel");
-
+			AddPropertiesItem(category, "Toggle comment alternate style", "mToggleCommentAlt");
 			category.Open(true, true);
 		}
 
