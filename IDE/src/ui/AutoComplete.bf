@@ -405,28 +405,24 @@ namespace IDE.ui
 					
 					float offset = GS!(20);
 
-					// TODO(FUZZY): this is not unicode compatible
-					for(int i < mEntryDisplay.Length)
+					int index = 0;
+					for(char32 c in mEntryDisplay.DecodedChars)
+					loop:
 					{
-						char8 c = mEntryDisplay[i];
-
-						if(mMatchIndices.Contains((uint8)i))
+						if(mMatchIndices.Contains((uint8)index))
 						{
-							g.PushColor(.Blue);
-						}
-						else
-						{
-							g.PushColor(.White);
+							g.PushColor(DarkTheme.COLOR_MENU_FOCUSED);
+							defer:loop g.PopColor();
 						}
 
-						g.DrawString(.(&c, 1), offset, 0);
+						let str = StringView(mEntryDisplay, index, @c.NextIndex - index);
 
-						offset += IDEApp.sApp.mCodeFont.GetWidth(.(&c, 1));
+						g.DrawString(str, offset, 0);
 
-						g.PopColor();
+						offset += IDEApp.sApp.mCodeFont.GetWidth(str);
+
+						index = @c.NextIndex;
 					}
-					
-                    //g.DrawString(mEntryDisplay, GS!(20), 0);
                 }                
             }
 

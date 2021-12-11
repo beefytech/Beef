@@ -37,6 +37,8 @@
 
 #include <cstdio>
 
+#include "BeefySysLib/util/UTF8.h"
+
 // Public interface
 namespace fts {
     static bool fuzzy_match_simple(char const* pattern, char const* str);
@@ -102,8 +104,14 @@ namespace fts {
         bool first_match = true;
         while (*pattern != '\0' && *str != '\0') {
 
+            int patternOffset = 0;
+            uint32 patternChar = Beefy::u8_nextchar((char*)pattern, &patternOffset);
+            int strOffset = 0;
+            uint32 strChar = Beefy::u8_nextchar((char*)str, &strOffset);
+
+            // TODO: tolower only works for A-Z
             // Found match
-            if (tolower(*pattern) == tolower(*str)) {
+            if (tolower(patternChar) == tolower(strChar)) {
 
                 // Supplied matches buffer was too short
                 if (nextMatch >= maxMatches)
@@ -118,7 +126,7 @@ namespace fts {
                 // Recursive call that "skips" this match
                 uint8_t recursiveMatches[256];
                 int recursiveScore;
-                if (fuzzy_match_recursive(pattern, str + 1, recursiveScore, strBegin, matches, recursiveMatches, sizeof(recursiveMatches), nextMatch, recursionCount, recursionLimit)) {
+                if (fuzzy_match_recursive(pattern, str + strOffset, recursiveScore, strBegin, matches, recursiveMatches, sizeof(recursiveMatches), nextMatch, recursionCount, recursionLimit)) {
 
                     // Pick best recursive score
                     if (!recursiveMatch || recursiveScore > bestRecursiveScore) {
@@ -132,9 +140,9 @@ namespace fts {
                 matches[nextMatch++] = (uint8_t)(str - strBegin);
                 // Clear the next char so that we know which match is the last one
                 matches[nextMatch + 1] = 0;
-                ++pattern;
+                pattern += patternOffset;
             }
-            ++str;
+            str += strOffset;
         }
 
         // Determine if full pattern was matched
@@ -172,19 +180,27 @@ namespace fts {
             for (int i = 0; i < nextMatch; ++i) {
                 uint8_t currIdx = matches[i];
 
+                int currOffset = currIdx;
+                uint32 curr = Beefy::u8_nextchar((char*)strBegin, &currOffset);
+
                 if (i > 0) {
                     uint8_t prevIdx = matches[i - 1];
 
+                    int offsetPrevidx = prevIdx;
+                    Beefy::u8_inc((char*)strBegin, &offsetPrevidx);
+
                     // Sequential
-                    if (currIdx == (prevIdx + 1))
+                    if (currIdx == offsetPrevidx)
                         outScore += sequential_bonus;
                 }
 
                 // Check for bonuses based on neighbor character value
                 if (currIdx > 0) {
+                    int neighborOffset = currIdx;
+                    Beefy::u8_dec((char*)strBegin, &neighborOffset);
+                    uint32 neighbor = Beefy::u8_nextchar((char*)strBegin, &neighborOffset);
+
                     // Camel case
-                    char neighbor = strBegin[currIdx - 1];
-                    char curr = strBegin[currIdx];
                     if (::islower(neighbor) && ::isupper(curr))
                         outScore += camel_bonus;
 
