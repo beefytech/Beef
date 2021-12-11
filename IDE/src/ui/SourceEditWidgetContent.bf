@@ -2280,7 +2280,23 @@ namespace IDE.ui
 
 				int firstCharPos = minPos + (startLen - afterTrimStart);
 				int lastCharPos = maxPos - (afterTrimStart - afterTrimEnd);
-				if ((doComment != true) && (trimmedStr.Contains("//"))) 
+
+				int q = 0;
+				var nc = trimmedStr.Count('\n');
+
+				if(afterTrimEnd == 0)
+				{
+					if (undoBatchStart != null)
+						mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+
+					CursorLineAndColumn = startLineAndCol;
+
+					if (doComment == null)
+						mSelection = null;
+
+					return false; // not sure if this should be false in blank/only whitespace selection case
+				}
+				else if ((doComment != true) && (trimmedStr.Contains("//"))) 
 				{
 					for (int i = firstCharPos; i < lastCharPos - 1; i++)
 					{
@@ -2298,9 +2314,7 @@ namespace IDE.ui
 					}
 					mSelection = EditSelection(minPos, lastCharPos);
 				}
-				int q = 0;
-				var nc = trimmedStr.Count('\n');
-				if ((doComment != true) && (trimmedStr.StartsWith("/*")))
+				else if ((doComment != true) && (trimmedStr.StartsWith("/*")))
 				{
 					if (trimmedStr.EndsWith("*/\n"))
 					{
