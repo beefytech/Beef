@@ -300,6 +300,11 @@ int BfPrinter::CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx)
 
 void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 {
+	if ((!mOutString.IsEmpty()) && (!isspace((uint8)mOutString[mOutString.mLength - 1])))
+	{
+		Write(" ");
+	}
+
 	bool wasExpectingNewLine = mExpectingNewLine;
 
 	mTriviaIdx = std::max(mTriviaIdx, node->GetTriviaStart());
@@ -1759,9 +1764,14 @@ void BfPrinter::Visit(BfLambdaBindExpression* lambdaBindExpr)
 		else
 		{
 			ExpectSpace();
-			VisitChild(lambdaBindExpr->mBody);		
+			VisitChild(lambdaBindExpr->mBody);
 		}
-	}	
+	}
+	VisitChild(lambdaBindExpr->mDtor);
+	mNextStateModify.mExpectingSpace = false;
+	mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
+	mCurIndentLevel = mNextStateModify.mWantVirtualIndent;
+	mVirtualIndentLevel = mNextStateModify.mWantVirtualIndent;
 }
 
 void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
@@ -2643,7 +2653,7 @@ void BfPrinter::Visit(BfIndexerDeclaration* indexerDeclaration)
 }
 
 void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
-{		
+{
 	bool isEnumDecl = false;
 
 	if (auto enumEntry = BfNodeDynCast<BfEnumEntryDeclaration>(fieldDeclaration))
@@ -2703,18 +2713,10 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 		QueueVisitChild(fieldDeclaration->mInitializer);
 	}
 
-	auto fieldDtor = fieldDeclaration->mFieldDtor;
-	while (fieldDtor != NULL)
-	{
-		ExpectSpace();
-		QueueVisitChild(fieldDtor->mTildeToken);
-		ExpectSpace();
-		QueueVisitChild(fieldDtor->mBody);
-		fieldDtor = fieldDtor->mNextFieldDtor;
-	}
-
 	mNextStateModify.mExpectingSpace = false;
 	FlushVisitChild();
+	VisitChild(fieldDeclaration->mFieldDtor);
+	mNextStateModify.mExpectingSpace = false;
 }
 
 void BfPrinter::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
@@ -2761,6 +2763,32 @@ void BfPrinter::Visit(BfTypeAliasDeclaration* typeDeclaration)
 	ExpectSpace();
 	VisitChild(typeDeclaration->mAliasToType);
 	VisitChild(typeDeclaration->mEndSemicolon);
+}
+
+void BfPrinter::Visit(BfFieldDtorDeclaration* fieldDtorDeclaration)
+{	
+	ExpectSpace();	
+	if (fieldDtorDeclaration->mBody != NULL)
+	{
+		if (fieldDtorDeclaration->mBody->IsA<BfBlock>())
+		{
+			ExpectNewLine();
+			ExpectIndent();
+			VisitChild(fieldDtorDeclaration->mTildeToken);
+			VisitChild(fieldDtorDeclaration->mBody);
+			ExpectUnindent();
+		}
+		else
+		{
+			VisitChild(fieldDtorDeclaration->mTildeToken);
+			ExpectSpace();
+			VisitChild(fieldDtorDeclaration->mBody);
+		}
+	}
+	else
+		VisitChild(fieldDtorDeclaration->mTildeToken);
+
+	VisitChild(fieldDtorDeclaration->mNextFieldDtor);
 }
 
 void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
