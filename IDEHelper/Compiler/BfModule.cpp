@@ -15278,7 +15278,7 @@ void BfModule::AssertErrorState()
 	{
 		if (mCurTypeInstance->mTypeFailed)
 			return;
-		if (mCurTypeInstance->mTypeDef->mSource->mParsingFailed)
+		if ((mCurTypeInstance->mTypeDef->mSource != NULL) && (mCurTypeInstance->mTypeDef->mSource->mParsingFailed))
 			return;
 	}
 	if (mCurMethodInstance != NULL)
