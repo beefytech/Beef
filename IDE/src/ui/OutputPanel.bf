@@ -327,7 +327,7 @@ namespace IDE.ui
                 int lineIdx = (curLine + lineOfs) % lineCount;
 
                 if (content.GotoRefrenceAtLine(lineIdx))
-                    break;                
+                    break;
             }
         }
 

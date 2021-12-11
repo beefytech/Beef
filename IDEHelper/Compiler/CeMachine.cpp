@@ -1288,7 +1288,7 @@ void CeBuilder::Build()
 	auto methodInstance = mCeFunction->mMethodInstance;
 	
 	if (methodInstance != NULL)
-	{		
+	{
 		BfMethodInstance dupMethodInstance;
 		dupMethodInstance.CopyFrom(methodInstance);
 		auto methodDef = methodInstance->mMethodDef;
@@ -1638,10 +1638,10 @@ void CeBuilder::Build()
 						EmitBinaryOp(CeOp_Shl_I8, CeOp_InvalidOp, ceLHS, ceRHS, result);
 						break;
 					case BeBinaryOpKind_RightShift:
-						EmitBinaryOp(CeOp_Shr_I8, CeOp_InvalidOp, ceLHS, ceRHS, result);
+						EmitBinaryOp(CeOp_Shr_U8, CeOp_InvalidOp, ceLHS, ceRHS, result);
 						break;
 					case BeBinaryOpKind_ARightShift:
-						EmitBinaryOp(CeOp_Shr_U8, CeOp_InvalidOp, ceLHS, ceRHS, result);
+						EmitBinaryOp(CeOp_Shr_I8, CeOp_InvalidOp, ceLHS, ceRHS, result);
 						break;
 					default:
 						Fail("Invalid binary op");
@@ -2476,7 +2476,18 @@ void CeBuilder::Build()
 								EmitFrameOffset(ceSize);
 							}
 							break;
+						case BfIRIntrinsic_MemSet:
+							{
+								CeOperand ceDestPtr = GetOperand(castedInst->mArgs[0].mValue);
+								CeOperand ceValue = GetOperand(castedInst->mArgs[1].mValue);
+								CeOperand ceSize = GetOperand(castedInst->mArgs[2].mValue);
 
+								Emit(CeOp_MemSet);
+								EmitFrameOffset(ceDestPtr);
+								EmitFrameOffset(ceValue);
+								EmitFrameOffset(ceSize);
+							}
+							break;
 
 						case BfIRIntrinsic_AtomicFence:
 							// Nothing to do

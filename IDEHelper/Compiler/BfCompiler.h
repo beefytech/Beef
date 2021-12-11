@@ -374,6 +374,7 @@ public:
 	BfTypeDef* mInternalTypeDef;
 	BfTypeDef* mPlatformTypeDef;
 	BfTypeDef* mCompilerTypeDef;
+	BfTypeDef* mCompilerGeneratorTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
 	BfTypeDef* mIIntegerTypeDef;
@@ -511,9 +512,15 @@ public:
 	void ProcessAutocompleteTempType();	
 	void GetSymbolReferences();	
 	void Cancel();
-	void RequestFastFinish();
+	void RequestFastFinish();	
 	String GetTypeDefList();
-	String GetTypeDefMatches(const StringImpl& searchSrc);
+	String GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args);
+	void HandleGeneratorErrors(StringImpl& result);
+	String GetGeneratorTypeDefList();
+	String GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args);
+	String GetGeneratorGenData(const StringImpl& typeName, const StringImpl& args);
+	String GetTypeDefMatches(const StringImpl& searchSrc);	
+	void GetTypeDefs(const StringImpl& typeName, Array<BfTypeDef*>& typeDefs);
 	String GetTypeDefInfo(const StringImpl& typeName);	
 	int GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer);
 

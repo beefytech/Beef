@@ -11789,7 +11789,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		if (mExpectingType->IsFunction())
 		{
 			BfIRValue result;
-			if ((hasIncompatibleCallingConventions) && (mModule->HasCompiledOutput()))
+			if ((hasIncompatibleCallingConventions) && (mModule->HasExecutedOutput()))
 			{
 				//
 				{
@@ -11949,7 +11949,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 	// Do we need a special delegate type for this?
 	if (((captureThisByValue) || (needsSplat) || (implicitParamCount > 0) /*|| (hasIncompatibleCallingConventions)*/) &&
-		(mModule->HasCompiledOutput()))
+		(mModule->HasExecutedOutput()))
 	{
 		hasCaptures = true;
 		auto curProject = mModule->mCurTypeInstance->mTypeDef->mProject;
@@ -12030,7 +12030,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 	// Do we need specialized calling code for this?
 	BfIRValue funcValue;
 	if (((needsSplat) || (implicitParamCount > 0) || (hasIncompatibleCallingConventions)) && 
-		(mModule->HasCompiledOutput()))
+		(mModule->HasExecutedOutput()))
 	{
 		int fieldIdx = 0;
 		for (int implicitParamIdx = bindMethodInstance->HasThis() ? -1 : 0; implicitParamIdx < implicitParamCount; implicitParamIdx++)
@@ -12208,7 +12208,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 	// >> delegate.mTarget = bindResult.mTarget
 	BfIRValue valPtr;
-	if (mModule->HasCompiledOutput())
+	if (mModule->HasExecutedOutput())
 	{
 		if ((implicitParamCount > 0) || (needsSplat)) // Point back to self, it contains capture data
 			valPtr = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_NullPtr));
@@ -12226,7 +12226,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 		if (!funcValue)
 		{
-			if ((mModule->HasCompiledOutput()) && (!mModule->mBfIRBuilder->mIgnoreWrites))
+			if ((mModule->HasExecutedOutput()) && (!mModule->mBfIRBuilder->mIgnoreWrites))
 				mModule->AssertErrorState();
 			return;
 		}
@@ -13188,7 +13188,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	mModule->mIncompleteMethodCount++;
 	SetAndRestoreValue<BfClosureState*> prevClosureState(mModule->mCurMethodState->mClosureState, &closureState);
 
-	if (mModule->HasCompiledOutput())
+	if (mModule->HasExecutedOutput())
 		mModule->SetupIRMethod(methodInstance, methodInstance->mIRFunction, methodInstance->mAlwaysInline);
 
 	// This keeps us from giving errors twice.  ProcessMethod can give errors when we capture by value but needed to
@@ -14415,7 +14415,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	{	
 		if (!bindResult.mFunc)
 		{
-			BF_ASSERT((!mModule->HasCompiledOutput()) || (mModule->mBfIRBuilder->mIgnoreWrites));
+			BF_ASSERT((!mModule->HasExecutedOutput()) || (mModule->mBfIRBuilder->mIgnoreWrites));
 			appendSizeValue = mModule->GetConstValue(0);
 		}
 		else
@@ -19717,7 +19717,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				}
 			}
 		}
-		else if (((mModule->HasCompiledOutput()) || (mModule->mIsComptimeModule)) && 
+		else if (((mModule->HasExecutedOutput()) || (mModule->mIsComptimeModule)) &&
 			(wantsChecks))
 		{
 			if (checkedKind == BfCheckedKind_NotSet)

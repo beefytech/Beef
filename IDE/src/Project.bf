@@ -37,6 +37,7 @@ namespace IDE
         public ProjectFolder mParentFolder;
         public String mName = new String() ~ delete _;
         public String mComment = new String() ~ delete _;
+		public bool mDetached;
 
 		public virtual bool IncludeInMap
 		{
@@ -105,6 +106,7 @@ namespace IDE
 
 		public virtual void Detach()
 		{
+			mDetached = true;
 			ReleaseRef();
 		}
     }

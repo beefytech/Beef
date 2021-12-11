@@ -9617,6 +9617,11 @@ bool BfModule::HasCompiledOutput()
 	return (!mSystem->mIsResolveOnly) && (mGeneratesCode) && (!mIsComptimeModule);
 }
 
+bool BfModule::HasExecutedOutput()
+{
+	return ((!mSystem->mIsResolveOnly) && (mGeneratesCode)) || (mIsComptimeModule);
+}
+
 // We will skip the object access check for any occurrences of this value
 void BfModule::SkipObjectAccessCheck(BfTypedValue typedVal)
 {
@@ -15818,7 +15823,7 @@ void BfModule::CreateStaticCtor()
 	auto methodDef = mCurMethodInstance->mMethodDef;
 	
 	BfIRBlock exitBB;
-	if ((HasCompiledOutput()) && (!mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mChainType != BfMethodChainType_ChainMember))
+	if ((HasExecutedOutput()) && (!mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mChainType != BfMethodChainType_ChainMember))
 	{
 		auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
 		auto didStaticInitVarAddr = mBfIRBuilder->CreateGlobalVariable(			
@@ -17041,7 +17046,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					break;
 			}
 
-			if ((HasCompiledOutput()) && (matchedMethod != NULL))
+			if ((HasExecutedOutput()) && (matchedMethod != NULL))
 			{
 				SizedArray<BfIRValue, 1> args;
 				auto ctorBodyMethodInstance = GetMethodInstance(mCurTypeInstance->mBaseType, matchedMethod, BfTypeVector());
@@ -18486,7 +18491,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		return;
 	}
 
-	if (HasCompiledOutput())
+	if (HasExecutedOutput())
 	{
 		BF_ASSERT(mIsModuleMutable);
 	}
@@ -19713,7 +19718,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		skipBody = true;
 		skipEndChecks = true;
 		
-		if ((HasCompiledOutput()) || (mIsComptimeModule))
+		if (HasExecutedOutput())
 		{
 			// Clear out DebugLoc - to mark the ".addr" code as part of prologue
 			mBfIRBuilder->ClearDebugLocation();
@@ -19977,7 +19982,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		else if ((mCurTypeInstance->IsEnum()) && (!mCurTypeInstance->IsBoxed()) && (methodDef->mName == BF_METHODNAME_TO_STRING))
 		{
 			auto enumType = ResolveTypeDef(mCompiler->mEnumTypeDef);
-			if ((HasCompiledOutput()) || (mIsComptimeModule))
+			if (HasExecutedOutput())
 			{
 				EmitEnumToStringBody();
 			}
@@ -19990,7 +19995,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		else if ((mCurTypeInstance->IsTuple()) && (!mCurTypeInstance->IsBoxed()) && (methodDef->mName == BF_METHODNAME_TO_STRING))
 		{
 			auto enumType = ResolveTypeDef(mCompiler->mEnumTypeDef);
-			if ((HasCompiledOutput()) || (mIsComptimeModule))
+			if (HasExecutedOutput())
 			{
 				EmitTupleToStringBody();
 			}
@@ -20032,7 +20037,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				{
 					mBfIRBuilder->CreateRetVoid();
 				}
-				else if ((HasCompiledOutput()) || (mIsComptimeModule))
+				else if (HasExecutedOutput())
 				{
 					String autoPropName = typeDef->GetAutoPropertyName(propertyDeclaration);
 					BfFieldInstance* fieldInstance = GetFieldByName(mCurTypeInstance, autoPropName);

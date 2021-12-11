@@ -792,15 +792,95 @@ namespace IDE.ui
 			}
         }
 
-        public void NewClass(ProjectFolder folder)
+        public void GenerateCode(ProjectFolder folder)
         {
-            DarkDialog dialog = (DarkDialog)ThemeFactory.mDefault.CreateDialog("New Class", "Class Name");
+            /*DarkDialog dialog = (DarkDialog)ThemeFactory.mDefault.CreateDialog("New Class", "Class Name");
             dialog.mMinWidth = GS!(300);
             dialog.mDefaultButton = dialog.AddButton("OK", new (evt) => DoNewClass(folder, evt));
             dialog.mEscButton = dialog.AddButton("Cancel");
             dialog.AddEdit("Unnamed");
-            dialog.PopupWindow(gApp.GetActiveWindow());
+            dialog.PopupWindow(gApp.GetActiveWindow());*/
+
+			var dialog = new GenerateDialog(folder);
+			dialog.PopupWindow(gApp.GetActiveWindow());
         }
+
+		public void Regenerate(bool allowHashMismatch)
+		{
+			mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
+				{
+					if (mListViewToProjectMap.GetValue(selectedItem) case .Ok(var sourceProjectItem))
+					{
+						var dialog = new GenerateDialog(sourceProjectItem, allowHashMismatch);
+						dialog.PopupWindow(gApp.GetActiveWindow());
+					}
+				});
+		}
+
+		public void Regenerate(ProjectSource projectSource, StringView fileText)
+		{
+			var sourceViewPanel = gApp.ShowProjectItem(projectSource, false);
+			sourceViewPanel.mEditWidget.SetText(scope .(fileText));
+		}
+
+		public void Generate(ProjectFolder folder, StringView fileName, StringView fileText)
+		{
+			let project = folder.mProject;
+			if (project.mNeedsCreate)
+				project.FinishCreate();
+			String relFileName = scope .(fileName);
+			if (!relFileName.Contains('.'))
+				relFileName.Append(".bf");
+
+			String fullFilePath = scope String();
+			String relPath = scope String();
+			folder.GetRelDir(relPath);
+			if (relPath.Length > 0)
+				relPath.Append("/");
+			relPath.Append(relFileName);
+			folder.mProject.GetProjectFullPath(relPath, fullFilePath);
+			String dirName = scope String();
+			Path.GetDirectoryPath(fullFilePath, dirName);
+			Directory.CreateDirectory(dirName).IgnoreError();
+
+			if (File.Exists(fullFilePath))
+			{
+				var error = scope String();
+				error.AppendF("File '{0}' already exists", fullFilePath);
+				IDEApp.sApp.Fail(error);
+				return;
+			}
+
+			if (File.WriteAllText(fullFilePath, fileText) case .Err)
+			{
+				var error = scope String();
+				error.AppendF("Failed to create file '{0}'", fullFilePath);
+				gApp.Fail(error);
+				return;
+			}
+
+			ProjectSource projectSource = new ProjectSource();
+			projectSource.mIncludeKind = (folder.mIncludeKind == .Auto) ? .Auto : .Manual;
+			projectSource.mName.Set(relFileName);
+			projectSource.mPath = new String();
+			folder.mProject.GetProjectRelPath(fullFilePath, projectSource.mPath);
+			projectSource.mProject = folder.mProject;
+			projectSource.mParentFolder = folder;
+			folder.AddChild(projectSource);
+			let projectItem = AddProjectItem(projectSource);
+			if (projectItem != null)
+			{
+				mListView.GetRoot().SelectItemExclusively(projectItem);
+				mListView.EnsureItemVisible(projectItem, false);
+			}
+			Sort();
+			if (folder.mIncludeKind != .Auto)
+				folder.mProject.SetChanged();
+
+			gApp.RecordHistoryLocation(true);
+			gApp.ShowProjectItem(projectSource);
+			gApp.RecordHistoryLocation(true);
+		}
 
         void DoNewClass(ProjectFolder folder, DialogEvent evt)
         {
@@ -1470,7 +1550,10 @@ namespace IDE.ui
 			}
 
 			if (doReleaseRef)
+			{
+				projectItem.mDetached = true;
 				projectItem.ReleaseRef();
+			}
 			//TODO: Defer this, projectItem is needed for a backgrounded QueueProjectSourceRemoved
 			//delete projectItem;
         }
@@ -2471,17 +2554,26 @@ namespace IDE.ui
 							}
 					    });
 	
-					item = menu.AddItem("New Class...");
+					item = menu.AddItem("Generate...");
 					item.mOnMenuItemSelected.Add(new (item) =>
 					    {
 							var projectFolder = GetSelectedProjectFolder();
 							if (projectFolder != null)
 					        {
 								if (CheckProjectModify(projectFolder.mProject))
-									NewClass(projectFolder);
+									GenerateCode(projectFolder);
 							}
 					    });
-	
+
+					if ((projectItem != null) && (projectItem is ProjectSource) && (!isProject))
+					{
+						item = menu.AddItem("Regenerate");
+						item.mOnMenuItemSelected.Add(new (item) =>
+						    {
+								Regenerate(false);
+						    });
+					}
+
 					item = menu.AddItem("Import File...");
 					item.mOnMenuItemSelected.Add(new (item) => { mImportFileDeferred = true; /* ImportFile();*/ });
 	

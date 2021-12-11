@@ -256,7 +256,10 @@ namespace Beefy.widgets
         public virtual void PopupWindow(WidgetWindow parentWindow, float offsetX = 0, float offsetY = 0)
         {
             if (mClosed)
+			{
+				BFApp.sApp.DeferDelete(this);
                 return;
+			}
 
             mInPopupWindow = true;
 

@@ -1633,6 +1633,7 @@ public:
 	bool IsTargetingBeefBackend();
 	bool WantsLifetimes();
 	bool HasCompiledOutput();
+	bool HasExecutedOutput();
 	void SkipObjectAccessCheck(BfTypedValue typedVal);
 	void EmitObjectAccessCheck(BfTypedValue typedVal);	
 	void EmitEnsureInstructionAt();
