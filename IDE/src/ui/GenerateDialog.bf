@@ -788,7 +788,7 @@ namespace IDE.ui
 				g.DrawString(label, widget.mX + GS!(6), widget.mY - GS!(20));
 			}
 
-			DrawLabel(mKindBar, mRegenerating ? "Regenerating ..." : "Using Generator");
+			DrawLabel(mKindBar, mRegenerating ? "Regenerating ..." : "Generator");
 			for (var uiEntry in mUIEntries)
 				DrawLabel(uiEntry.mWidget, uiEntry.mLabel);
 		}
@@ -848,7 +848,7 @@ namespace IDE.ui
 			if (mThreadState == .Executing)
 			{
 				var bfCompiler = gApp.mBfResolveCompiler;
-				bfCompiler.RequestFastFinish();
+				bfCompiler.RequestFastFinish(true);
 				bfCompiler.WaitForBackground();
 			}
 			base.Close();
