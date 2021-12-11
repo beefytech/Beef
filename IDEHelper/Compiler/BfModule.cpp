@@ -15283,9 +15283,11 @@ void BfModule::AssertErrorState()
 	}
 	if (mCurMethodInstance != NULL)
 	{
-		if ((mCurMethodInstance->mMethodDef->mDeclaringType != NULL) && (mCurMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
+		if ((mCurMethodInstance->mMethodDef->mDeclaringType != NULL) && (mCurMethodInstance->mMethodDef->mDeclaringType != NULL) && (mCurMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
 			return;
-		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && (mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
+		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && 
+			(mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mSource != NULL) &&
+			(mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
 			return;
 	}
 
