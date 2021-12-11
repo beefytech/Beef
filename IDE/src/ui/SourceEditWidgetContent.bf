@@ -2295,7 +2295,7 @@ namespace IDE.ui
 								i++;
 							}
 						}
-			}
+					}
 					mSelection = EditSelection(minPos, lastCharPos);
 				}
 				int q = 0;
@@ -2355,7 +2355,7 @@ namespace IDE.ui
 					}
 
 					for (int i = firstCharPos + 1; i < maxPos + q; i++)
-			{
+					{
 						CursorTextPos = i; // needed to add i < maxPos + q; for this to work with InsertAtCursor
 						InsertAtCursor("//"); q++; q++;
 
@@ -2365,7 +2365,7 @@ namespace IDE.ui
 						}
 					}
 					mSelection = EditSelection(minPos, maxPos + q);
-			}
+				}
 
 				if (undoBatchStart != null)
 					mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
