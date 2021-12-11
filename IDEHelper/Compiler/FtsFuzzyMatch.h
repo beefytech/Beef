@@ -38,6 +38,7 @@
 #include <cstdio>
 
 #include "BeefySysLib/util/UTF8.h"
+#include "BeefySysLib/third_party/utf8proc/utf8proc.h"
 
 // Public interface
 namespace fts {
@@ -81,6 +82,16 @@ namespace fts {
         return fuzzy_internal::fuzzy_match_recursive(pattern, str, outScore, str, nullptr, matches, maxMatches, 0, recursionCount, recursionLimit);
     }
 
+    bool IsLower(uint32 c)
+    {
+        return utf8proc_category(c) == UTF8PROC_CATEGORY_LL;
+    }
+
+    bool IsUpper(uint32 c)
+    {
+        return utf8proc_category(c) == UTF8PROC_CATEGORY_LU;
+    }
+
     // Private implementation
     static bool fuzzy_internal::fuzzy_match_recursive(const char* pattern, const char* str, int& outScore,
         const char* strBegin, uint8_t const* srcMatches, uint8_t* matches, int maxMatches,
@@ -111,7 +122,7 @@ namespace fts {
 
             // TODO: tolower only works for A-Z
             // Found match
-            if (tolower(patternChar) == tolower(strChar)) {
+            if (utf8proc_tolower(patternChar) == utf8proc_tolower(strChar)) {
 
                 // Supplied matches buffer was too short
                 if (nextMatch >= maxMatches)
@@ -201,7 +212,7 @@ namespace fts {
                     uint32 neighbor = Beefy::u8_nextchar((char*)strBegin, &neighborOffset);
 
                     // Camel case
-                    if (::islower(neighbor) && ::isupper(curr))
+                    if (IsLower(neighbor) && IsUpper(curr))
                         outScore += camel_bonus;
 
                     // Separator
