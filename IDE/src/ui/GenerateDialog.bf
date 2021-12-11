@@ -256,7 +256,11 @@ namespace IDE.ui
 
 			mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable | .PopupPosition;
 
-			AddOkCancelButtons(new (evt) => { CreateClass(); }, null, 0, 1);
+			AddOkCancelButtons(new (evt) =>
+				{
+					Submit();
+					evt.mCloseDialog = false;
+				}, null, 0, 1);
 
 			Title = "Generate";
 
@@ -484,11 +488,6 @@ namespace IDE.ui
 		protected override void RehupMinSize()
 		{
 			mWidgetWindow.SetMinimumSize(GS!(240), (.)mUIHeight + GS!(24), true);
-		}
-
-		void CreateClass()
-		{
-			//mClassViewPanel.[Friend]mSearchEdit.mOnSubmit(null);
 		}
 
 		void ShowError(StringView error)
