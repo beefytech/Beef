@@ -6373,16 +6373,23 @@ void BfExprEvaluator::FinishDeferredEvals(BfResolvedArgs& argValues)
 			auto variableDeclaration = BfNodeDynCast<BfVariableDeclaration>((*argValues.mArguments)[argIdx]);
 			if ((variableDeclaration != NULL) && (variableDeclaration->mNameNode != NULL))
 			{
-				BfLocalVariable* localVar = new BfLocalVariable();				
-				localVar->mName = variableDeclaration->mNameNode->ToString();				
-				localVar->mResolvedType = mModule->GetPrimitiveType(BfTypeCode_Var);
-				localVar->mAddr = mModule->mBfIRBuilder->GetFakeVal();
-				localVar->mReadFromId = 0;
-				localVar->mWrittenToId = 0;
-				localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
-				mModule->CheckVariableDef(localVar);
-				localVar->Init();
-				mModule->AddLocalVariableDef(localVar, true);
+				if (mModule->mCurMethodState == NULL)
+				{
+					mModule->Fail("Illegal local variable", variableDeclaration);
+				}
+				else
+				{
+					BfLocalVariable* localVar = new BfLocalVariable();
+					localVar->mName = variableDeclaration->mNameNode->ToString();
+					localVar->mResolvedType = mModule->GetPrimitiveType(BfTypeCode_Var);
+					localVar->mAddr = mModule->mBfIRBuilder->GetFakeVal();
+					localVar->mReadFromId = 0;
+					localVar->mWrittenToId = 0;
+					localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
+					mModule->CheckVariableDef(localVar);
+					localVar->Init();
+					mModule->AddLocalVariableDef(localVar, true);
+				}
 			}
 		}
 	}
