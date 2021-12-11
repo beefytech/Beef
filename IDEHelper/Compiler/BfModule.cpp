@@ -15823,7 +15823,7 @@ void BfModule::CreateStaticCtor()
 	auto methodDef = mCurMethodInstance->mMethodDef;
 	
 	BfIRBlock exitBB;
-	if ((HasExecutedOutput()) && (!mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mChainType != BfMethodChainType_ChainMember))
+	if ((HasCompiledOutput()) && (!mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mChainType != BfMethodChainType_ChainMember))
 	{
 		auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
 		auto didStaticInitVarAddr = mBfIRBuilder->CreateGlobalVariable(			
