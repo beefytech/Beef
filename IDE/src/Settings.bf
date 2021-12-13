@@ -625,6 +625,7 @@ namespace IDE
 			public FileRecoveryKind mEnableFileRecovery = .Yes;
 			public bool mFormatOnSave = false;
 			public bool mSyncWithWorkspacePanel = false;
+			public bool mToggleCommentAlt = false;
 
 			public void Serialize(StructuredData sd)
 			{
