@@ -2456,7 +2456,15 @@ namespace IDE.ui
                             });
 					}
 
-					if (let projectFolder = projectItem as ProjectFolder)
+					if (projectItem is ProjectSource)
+					{
+						item = menu.AddItem("Regenerate");
+						item.mOnMenuItemSelected.Add(new (item) =>
+						    {
+								Regenerate(false);
+						    });
+					}
+					else if (let projectFolder = projectItem as ProjectFolder)
 					{
 						//if (projectFolder.mIncludeKind == .Manual)
 						{
@@ -2554,7 +2562,7 @@ namespace IDE.ui
 							}
 					    });
 	
-					item = menu.AddItem("Generate...");
+					item = menu.AddItem("Generate File...");
 					item.mOnMenuItemSelected.Add(new (item) =>
 					    {
 							var projectFolder = GetSelectedProjectFolder();
@@ -2564,15 +2572,6 @@ namespace IDE.ui
 									GenerateCode(projectFolder);
 							}
 					    });
-
-					if ((projectItem != null) && (projectItem is ProjectSource) && (!isProject))
-					{
-						item = menu.AddItem("Regenerate");
-						item.mOnMenuItemSelected.Add(new (item) =>
-						    {
-								Regenerate(false);
-						    });
-					}
 
 					item = menu.AddItem("Import File...");
 					item.mOnMenuItemSelected.Add(new (item) => { mImportFileDeferred = true; /* ImportFile();*/ });
