@@ -845,6 +845,13 @@ namespace IDE
 
 						childFileItem.OnRename(childFileItem.mPath, newChildPath);
 
+						String oldFullName = scope String();
+						mProject.GetProjectFullPath(childFileItem.mPath, oldFullName);
+						String newFullName = scope String();
+						mProject.GetProjectFullPath(newChildPath, newFullName);
+
+						IDEApp.sApp.FileRenamed(childFileItem, oldFullName, newFullName);
+
 						childFileItem.mPath.Set(newChildPath);
 					}
 				}
