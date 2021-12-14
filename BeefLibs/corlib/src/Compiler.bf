@@ -27,6 +27,7 @@ namespace System
 			public StringView WorkspaceName => mParams["WorkspaceName"];
 			public StringView WorkspaceDir => mParams["WorkspaceDir"];
 			public StringView DateTime => mParams["DateTime"];
+			public bool IsRegenererating => mParams.GetValueOrDefault("Regenerating") == "True";
 
 			public void Fail(StringView error)
 			{

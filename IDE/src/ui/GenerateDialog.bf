@@ -256,11 +256,14 @@ namespace IDE.ui
 
 			mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable | .PopupPosition;
 
-			AddOkCancelButtons(new (evt) =>
-				{
-					Submit();
-					evt.mCloseDialog = false;
-				}, null, 0, 1);
+			if (!mRegenerating)
+			{
+				AddOkCancelButtons(new (evt) =>
+					{
+						Submit();
+						evt.mCloseDialog = false;
+					}, null, 0, 1);
+			}
 
 			Title = "Generate File";
 
@@ -399,6 +402,9 @@ namespace IDE.ui
 					return;
 				using (gApp.mMonitor.Enter())
 				{
+					if (mRegenerating)
+						args.Append("Regenerating\tTrue\n");
+
 					args.AppendF(
 						$"""
 						ProjectName\t{mProjectName}
@@ -496,6 +502,7 @@ namespace IDE.ui
 		{
 			if (mOutputPanel == null)
 			{
+				IDEApp.Beep(.Error);
 				mOutputPanel = new OutputPanel();
 				AddWidget(mOutputPanel);
 				ResizeComponents();
@@ -677,6 +684,11 @@ namespace IDE.ui
 							Close();
 						}
 
+						if ((hadError) && (mRegenerating) && (mOutputPanel == null))
+						{
+							Close();
+						}
+
 						if (mPendingUIFocus)
 						{
 							mPendingUIFocus = false;
@@ -695,8 +707,8 @@ namespace IDE.ui
 						{
 							mSubmitting = false;
 							mSubmitQueued = false;
-							mDefaultButton.mDisabled = false;
-							mEscButton.mDisabled = false;
+							mDefaultButton?.mDisabled = false;
+							mEscButton?.mDisabled = false;
 						}
 					}
 					else
@@ -802,7 +814,7 @@ namespace IDE.ui
 			if (mThreadWaitCount > 10)
 			{
 				using (g.PushColor(0x60505050))
-					g.FillRect(0, 0, mWidth, mHeight - GS!(40));
+					g.FillRect(0, 0, mWidth, mHeight - ((mDefaultButton != null) ? GS!(40) : GS!(0)));
 				IDEUtils.DrawWait(g, mWidth/2, mHeight/2, mUpdateCnt);
 			}
 		}
@@ -840,7 +852,7 @@ namespace IDE.ui
 			if (mOutputPanel != null)
 			{
 				float startY = mKindBar.mVisible ? GS!(60) : GS!(36);
-				mOutputPanel.Resize(insetSize, startY, mWidth - insetSize - insetSize, Math.Max(mHeight - startY - GS!(44), GS!(32)));
+				mOutputPanel.Resize(insetSize, startY, mWidth - insetSize - insetSize, Math.Max(mHeight - startY - ((mDefaultButton != null) ? GS!(44) : GS!(12)), GS!(32)));
 				mUIHeight = Math.Max(mUIHeight, GS!(160));
 			}
 		}
