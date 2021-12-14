@@ -16212,6 +16212,8 @@ void BfModule::EmitDtorBody()
 
 BfIRValue BfModule::CreateDllImportGlobalVar(BfMethodInstance* methodInstance, bool define)
 {
+	BF_ASSERT(methodInstance->mIsReified);
+
 	auto typeInstance = methodInstance->GetOwner();
 
 	bool foundDllImportAttr = false;
@@ -22791,18 +22793,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		//BF_ASSERT(mCompiler->IsAutocomplete());
 		BfLogSysM("DoMethodDeclaration isTemporaryFunc bailout\n");
 		return; // Bail out early for autocomplete pass
-	}			
-
-	if ((methodInstance->GetImportCallKind() != BfImportCallKind_None) && (!mBfIRBuilder->mIgnoreWrites) && (!methodInstance->mIRFunction))
-	{		
-		BfLogSysM("DllImportGlobalVar DoMethodDeclaration processing %p\n", methodInstance);		
-		// If this is in an extension then we did create the global variable already in the original obj
-		bool doDefine = mExtensionCount == 0;
-		BfIRValue dllImportGlobalVar = CreateDllImportGlobalVar(methodInstance, doDefine);
-		func = mBfIRBuilder->GetFakeVal();
-		methodInstance->mIRFunction = func;
-		BF_ASSERT(dllImportGlobalVar);
-		mFuncReferences[mCurMethodInstance] = dllImportGlobalVar;		
 	}
 
 	//TODO: We used to have this (this != mContext->mExternalFuncModule) check, but it caused us to keep around 
