@@ -2970,10 +2970,10 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		diFieldTypes.push_back(memberType);
 	}
 
-	bool isPayloadEnum = (typeInstance->IsEnum()) && (!typeInstance->IsTypedPrimitive());
-	for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
+	bool isPayloadEnum = (typeInstance->IsEnum()) && (!typeInstance->IsTypedPrimitive());	
+	for (int fieldIdx = 0; fieldIdx < typeInstance->mFieldInstances.mSize; fieldIdx++)		
 	{
-		auto fieldInstance = &fieldInstanceRef;
+		auto fieldInstance = &typeInstance->mFieldInstances[fieldIdx];
 		if (!fieldInstance->mFieldIncluded)
 			continue;
 		auto fieldDef = fieldInstance->GetFieldDef();
@@ -3091,18 +3091,15 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								{										
 									staticValue = ConstToMemory(staticValue);
 									wasMadeAddr = true;									
-								}								
-								else if (resolvedFieldType->IsPointer())
+								}
+								else if (constant->mTypeCode == BfTypeCode_StringId)
 								{
 									int stringId = constant->mInt32;
 									const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
-									staticValue = mModule->GetStringCharPtr(str);
-								}								
-								else if (constant->mTypeCode == BfTypeCode_StringId)
-								{
-									int stringId = constant->mInt32;									
-									const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
-									staticValue = mModule->GetStringObjectValue(str);																		
+									if (resolvedFieldType->IsPointer())
+										staticValue = mModule->GetStringCharPtr(str);									
+									else																		
+										staticValue = mModule->GetStringObjectValue(str);																		
 								}
 								else
 								{
