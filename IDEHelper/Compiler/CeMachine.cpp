@@ -4983,7 +4983,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		if (*fastFinishPtr)
 		{
 			if (*cancelingPtr)
-				_Fail("Comptime evaluation canceled");
+			{
+				if ((mCurModule != NULL) && (mCurModule->mCurTypeInstance != NULL))
+					mCurModule->DeferRebuildType(mCurModule->mCurTypeInstance);
+				else
+					_Fail("Comptime evaluation canceled");
+			}
 			return false;
 		}
 
