@@ -120,14 +120,16 @@ namespace System.IO
 			Windows.COM_IFileOpenDialog* openDialog = (.)dialog;
 			if (Multiselect)
 			{
-				openDialog.VT.GetResults(openDialog, let results);
+				Windows.COM_IShellItemArray* results = null;
+				openDialog.VT.GetResults(openDialog, out results);
 
 				if (results != null)
 				{
 					results.VT.GetCount(results, let count);
 					for (uint32 i < count)
 					{
-						results.VT.GetItemAt(results, i, let item);
+						Windows.COM_IShellItem* item = null;
+						results.VT.GetItemAt(results, i, out item);
 						if (item != null)
 						{
 							let filePath = GetFilePathFromShellItem!(item);
@@ -140,7 +142,8 @@ namespace System.IO
 			}
 			else
 			{
-				openDialog.VT.GetResult(openDialog, let shellItem);
+				Windows.COM_IShellItem* shellItem = null;
+				openDialog.VT.GetResult(openDialog, out shellItem);
 	
 				if (shellItem != null)
 				{

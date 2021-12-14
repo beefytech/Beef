@@ -109,7 +109,8 @@ namespace System.IO
 			}
 
 			Windows.COM_IFileSaveDialog* saveDialog = (.)dialog;
-			saveDialog.VT.GetResult(saveDialog, let shellItem);
+			Windows.COM_IShellItem* shellItem = null;
+			saveDialog.VT.GetResult(saveDialog, out shellItem);
 
 			if (shellItem != null)
 			{

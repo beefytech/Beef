@@ -99,19 +99,29 @@ namespace System.IO
 		private Result<void> SetFileTypes(Windows.COM_IFileDialog* dialog)
 		{
 		    List<Windows.COMDLG_FILTERSPEC> filterItems = scope .();
-			GetFilterItems(filterItems, mFilter);
 
-			if (filterItems.Count == 0)
-				return .Ok;
-
-			defer
+			// Expected input types
+			// "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+			// "Image Files(*.BMP;*.JPG;*.GIF)|*.BMP;*.JPG;*.GIF|All files (*.*)|*.*"
+			if (!String.IsNullOrEmpty(mFilter))
 			{
-				for (var filter in filterItems)
-				{
-					delete filter.pszName;
-					delete filter.pszSpec;
-				}
+			    StringView[] tokens = mFilter.Split!('|');
+			    if (0 == tokens.Count % 2)
+			    {
+			        // All even numbered tokens should be labels
+			        // Odd numbered tokens are the associated extensions
+			        for (int i = 1; i < tokens.Count; i += 2)
+			        {
+			            Windows.COMDLG_FILTERSPEC ext;
+			            ext.pszSpec = tokens[i].ToScopedNativeWChar!::(); // This may be a semicolon delimited list of extensions (that's ok)
+			            ext.pszName = tokens[i - 1].ToScopedNativeWChar!::();
+			            filterItems.Add(ext);
+			        }
+			    }
 			}
+
+			if (filterItems.IsEmpty)
+				return .Ok;
 
 		    Windows.COM_IUnknown.HResult hr = dialog.VT.SetFileTypes(dialog, (uint32)filterItems.Count, filterItems.Ptr);
 		    if (hr.Failed)
@@ -122,37 +132,6 @@ namespace System.IO
 				return .Err;
 
 			return .Ok;
-		}
-
-		private static void GetFilterItems(List<Windows.COMDLG_FILTERSPEC> list, String filter)
-		{
-			mixin ToHeapWChar(var str)
-			{
-				int encodedLen = System.Text.UTF16.GetEncodedLen(str);
-				char16* buf = new char16[encodedLen]* ( ? );
-				System.Text.UTF16.Encode(str, buf, encodedLen);
-				buf
-			}
-
-		    // Expected input types
-		    // "Text files (*.txt)|*.txt|All files (*.*)|*.*"
-		    // "Image Files(*.BMP;*.JPG;*.GIF)|*.BMP;*.JPG;*.GIF|All files (*.*)|*.*"
-		    if (!String.IsNullOrEmpty(filter))
-		    {
-		        StringView[] tokens = filter.Split!('|');
-		        if (0 == tokens.Count % 2)
-		        {
-		            // All even numbered tokens should be labels
-		            // Odd numbered tokens are the associated extensions
-		            for (int i = 1; i < tokens.Count; i += 2)
-		            {
-		                Windows.COMDLG_FILTERSPEC ext;
-		                ext.pszSpec = ToHeapWChar!(tokens[i]); // This may be a semicolon delimited list of extensions (that's ok)
-		                ext.pszName = ToHeapWChar!(tokens[i - 1]);
-		                list.Add(ext);
-		            }
-		        }
-		    }
 		}
 	}
 }
