@@ -1019,8 +1019,7 @@ void BeCOFFObject::DbgStartSection(int sectionNum)
 void BeCOFFObject::DbgEndSection()
 {
 	auto& outS = mDebugSSect.mData;	
-	int totalLen = outS.GetPos() - mSectionStartPos;
-	BF_ASSERT(totalLen <= 0xFFFF);
+	int totalLen = outS.GetPos() - mSectionStartPos;	
 	*((int32*)&outS.mData[mSectionStartPos - 4]) = totalLen;	
 	mSectionStartPos = -1;
 	while ((outS.GetPos() & 3) != 0)
