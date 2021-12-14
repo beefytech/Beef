@@ -2927,6 +2927,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		{			
 			bool hadType = false;
 
+			BfAstNode* deferredErrorNode = NULL;
+			char* deferredError = NULL;
+
 			for (auto baseTypeRef : typeDef->mBaseTypes)
 			{
 				SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, baseTypeRef);
@@ -2946,12 +2949,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						}
 						else
 						{
-							Fail("Underlying enum type already specified", baseTypeRef);
+							deferredError = "Underlying enum type already specified";
+							deferredErrorNode = baseTypeRef;
 						}
 					}
 					else
 					{
-						Fail("Invalid underlying enum type", baseTypeRef);
+						deferredError = "Invalid underlying enum type";
+						deferredErrorNode = baseTypeRef;
 					}
 				}
 				else
@@ -2960,6 +2965,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					TypeFailed(typeInstance);
 				}
 			}
+
+			if (deferredError != NULL)
+				Fail(deferredError, deferredErrorNode, true);
 
 			if (underlyingType == NULL)
 			{
