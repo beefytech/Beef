@@ -16478,7 +16478,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 				auto elementType = refType->mElementType;
 				PopulateType(elementType, BfPopulateType_Data);
 				addDeref = elementType->mSize;
-				if ((addDeref <= 0) && (!elementType->IsValuelessType()))
+				if ((addDeref <= 0) && (!elementType->IsValuelessType()) && (!elementType->IsOpaque()))
 					AssertErrorState();
 			}
 			if ((resolvedTypeRef->IsComposite()) && (!resolvedTypeRef->IsTypedPrimitive()))
