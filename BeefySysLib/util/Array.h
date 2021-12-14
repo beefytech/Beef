@@ -830,8 +830,8 @@ public:
 		else if (size > this->mSize)
 		{
 			Reserve(size);
-			while (size > this->mSize)
-				this->mVals[this->mSize++] = T();
+			memset(&this->mVals[this->mSize], 0, (size - this->mSize) * sizeof(T));
+			this->mSize = (int_cosize)size;
 		}		
 	}
 
