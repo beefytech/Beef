@@ -355,7 +355,7 @@ namespace IDE
 			return .SimpleSource;
 		}
 
-		public override void Dispose()
+		public void ClearEditData()
 		{
 			if (mEditData != null)
 			{
@@ -363,6 +363,11 @@ namespace IDE
 			    mEditData.Deref();
 				mEditData = null;
 			}
+		}
+
+		public override void Dispose()
+		{
+			ClearEditData();
 		}
 
 		public override void Detach()
