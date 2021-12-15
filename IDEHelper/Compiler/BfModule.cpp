@@ -10524,7 +10524,7 @@ bool BfModule::HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodNa
 }
 
 StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* typeGenericArgs, BfTypeVector* methodGenericArgs)
-{	
+{
 	auto methodDef = methodInst->mMethodDef;
 	bool allowResolveGenericParamNames = ((methodNameFlags & BfMethodNameFlag_ResolveGenericParamNames) != 0);
 
@@ -10769,8 +10769,16 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 
 	if (accessorString.length() != 0)
 	{
-		methodName += " " + accessorString;
+		methodName += " ";
+		methodName += accessorString;
 	}
+
+	if ((methodNameFlags & BfMethodNameFlag_IncludeMut) != 0)
+	{
+		if ((methodDef->mIsMutating) && (methodInst->GetOwner()->IsValueType()))
+			methodName += " mut";
+	}
+
 	return methodName;
 }
 

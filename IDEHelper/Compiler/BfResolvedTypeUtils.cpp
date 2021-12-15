@@ -1298,15 +1298,6 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			}							
 		}
 
-// 		if ((paramIdx == 0) && (GetParamName(0) == "this") && (checkType->IsPointer()))
-// 		{
-// 			// We don't actually pass a this pointer for mut methods in valueless structs
-// 			auto underlyingType = checkType->GetUnderlyingType();
-// 			module->PopulateType(underlyingType, BfPopulateType_Data);
-// 			if (underlyingType->IsValuelessType())
-// 				continue;
-// 		}
-
 		if (checkType->CanBeValuelessType())
 			module->PopulateType(checkType, BfPopulateType_Data);
 		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))

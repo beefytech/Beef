@@ -11140,8 +11140,7 @@ void BfExprEvaluator::Visit(BfCastExpression* castExpr)
 bool BfExprEvaluator::IsExactMethodMatch(BfMethodInstance* methodA, BfMethodInstance* methodB, bool ignoreImplicitParams)
 {	
 	if (methodA->mReturnType != methodB->mReturnType)
-		return false;
-
+		return false;	
 	int implicitParamCountA = methodA->GetImplicitParamCount();
 	if (methodA->HasExplicitThis())
 		implicitParamCountA++;
@@ -11703,7 +11702,11 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 	}
 	else
 	{
-		if (!IsExactMethodMatch(methodInstance, bindMethodInstance, true))
+		bool isExactMethodMatch = IsExactMethodMatch(methodInstance, bindMethodInstance, true);
+		if ((mExpectingType != NULL) && (mExpectingType->IsFunction()) && (methodInstance->mMethodDef->mIsMutating != bindMethodInstance->mMethodDef->mIsMutating))
+			isExactMethodMatch = false;
+
+		if (!isExactMethodMatch)
 		{
 			if (bindResult.mCheckedMultipleMethods)
 			{
@@ -11711,8 +11714,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					mModule->TypeToString(delegateTypeInstance).c_str()), delegateBindExpr->mTarget);
 			}
 			else
-			{
-				mModule->Fail(StrFormat("Method '%s' does not match %s '%s'", mModule->MethodToString(bindMethodInstance).c_str(), bindTypeName,
+			{				
+				mModule->Fail(StrFormat("Method '%s' does not match %s '%s'", mModule->MethodToString(bindMethodInstance, (BfMethodNameFlags)(BfMethodNameFlag_IncludeReturnType | BfMethodNameFlag_IncludeMut)).c_str(), bindTypeName,
 					mModule->TypeToString(delegateTypeInstance).c_str()), delegateBindExpr->mTarget);
 			}
 			mResult = BfTypedValue();
@@ -11732,7 +11735,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 	}
 
 	bool hasIncompatibleCallingConventions = !mModule->mSystem->IsCompatibleCallingConvention(methodInstance->mCallingConvention, bindMethodInstance->mCallingConvention);
-
+	
 	auto _GetInvokeMethodName = [&]()
 	{
 		String methodName = "Invoke$";
@@ -11806,11 +11809,14 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 				if (result)
 				{
-					String methodName = _GetInvokeMethodName();
+					String methodName = _GetInvokeMethodName();					
 
 					SizedArray<BfIRType, 8> irParamTypes;
 					BfIRType irReturnType;
-					bindMethodInstance->GetIRFunctionInfo(mModule, irReturnType, irParamTypes);
+					methodInstance->GetIRFunctionInfo(mModule, irReturnType, irParamTypes);
+
+					int thisFuncParamIdx = methodInstance->GetThisIdx();
+					int thisBindParamIdx = methodInstance->GetThisIdx();
 
 					auto prevActiveFunction = mModule->mBfIRBuilder->GetActiveFunction();
 					auto prevInsertBlock = mModule->mBfIRBuilder->GetInsertBlock();
