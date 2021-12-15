@@ -19,7 +19,7 @@ namespace System.IO
 
 			set
 			{
-				mPos = Math.Min(value, Length);
+				mPos = value;
 			}
 		}
 
@@ -43,20 +43,16 @@ namespace System.IO
 
 		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
 		{
-			int64 length = Length;
-
-			int64 newPos;
 			switch (seekKind)
 			{
 			case .Absolute:
-				mPos = Math.Min(pos, length);
-				if (pos > length)
-					return .Err;
+				mPos = pos;
 			case .FromEnd:
-				newPos = length - pos;
+				mPos = Length + pos;
 			case .Relative:
-				mPos = Math.Min(mPos + pos, length);
+				mPos = mPos + pos;
 			}
+
 			return .Ok;
 		}
 
@@ -176,7 +172,12 @@ namespace System.IO
 
 		public override Result<void> Close()
 		{
-			return Flush();
+			let ret = Flush();
+			
+			mPos = 0;
+			mBufferPos = -Int32.MinValue;
+			mBufferEnd = -Int32.MinValue;
+			return ret;
 		}
 	}
 }
