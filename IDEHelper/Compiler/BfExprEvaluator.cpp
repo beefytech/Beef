@@ -11715,7 +11715,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 			}
 			else
 			{				
-				mModule->Fail(StrFormat("Method '%s' does not match %s '%s'", mModule->MethodToString(bindMethodInstance, (BfMethodNameFlags)(BfMethodNameFlag_IncludeReturnType | BfMethodNameFlag_IncludeMut)).c_str(), bindTypeName,
+				mModule->Fail(StrFormat("Method '%s' does not match %s '%s'", mModule->MethodToString(bindMethodInstance, (BfMethodNameFlags)(BfMethodNameFlag_ResolveGenericParamNames | BfMethodNameFlag_IncludeReturnType | BfMethodNameFlag_IncludeMut)).c_str(), bindTypeName,
 					mModule->TypeToString(delegateTypeInstance).c_str()), delegateBindExpr->mTarget);
 			}
 			mResult = BfTypedValue();
