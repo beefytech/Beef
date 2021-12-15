@@ -7,7 +7,7 @@
 #include "BfResolvedTypeUtils.h"
 
 #define FTS_FUZZY_MATCH_IMPLEMENTATION
-#include "FtsFuzzyMatch.h"
+#include "../third_party/FtsFuzzyMatch.h"
 
 #pragma warning(disable:4996)
 

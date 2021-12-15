@@ -47,6 +47,7 @@ namespace fts {
     static bool fuzzy_match(char const* pattern, char const* str, int& outScore, uint8_t* matches, int maxMatches);
 }
 
+BF_EXPORT bool BF_CALLTYPE fts_fuzzy_match(char const* pattern, char const* str, int& outScore, uint8_t* matches, int maxMatches);
 
 #ifdef FTS_FUZZY_MATCH_IMPLEMENTATION
 namespace fts {
@@ -244,6 +245,11 @@ namespace fts {
         }
     }
 } // namespace fts
+
+BF_EXPORT bool BF_CALLTYPE fts_fuzzy_match(char const* pattern, char const* str, int& outScore, uint8_t* matches, int maxMatches)
+{
+    return fts::fuzzy_match(pattern, str, outScore, matches, maxMatches);
+}
 
 #endif // FTS_FUZZY_MATCH_IMPLEMENTATION
 

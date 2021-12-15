@@ -400,7 +400,7 @@
     <ClInclude Include="Compiler\BfUtil.h" />
     <ClInclude Include="Compiler\BfVarDeclChecker.h" />
     <ClInclude Include="Compiler\CeMachine.h" />
-    <ClInclude Include="Compiler\FtsFuzzyMatch.h" />
+    <ClInclude Include="third_party\FtsFuzzyMatch.h" />
     <ClInclude Include="Compiler\MemReporter.h" />
     <ClInclude Include="DbgMiniDump.h" />
     <ClInclude Include="Debugger.h" />

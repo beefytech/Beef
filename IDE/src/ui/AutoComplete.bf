@@ -1597,70 +1597,22 @@ namespace IDE.ui
 			    mInvokeWidget.mIgnoreMove += ignoreMove ? 1 : -1;	
 		}
 
+		// IDEHelper/third_party/FtsFuzzyMatch.h 
+		[CallingConvention(.Stdcall), CLink]
+		static extern bool fts_fuzzy_match(char8* pattern, char8* str, ref int outScore, uint8* matches, int maxMatches);
+
 		bool DoesFilterMatch(String entry, String filter)
-		{	
+		{
 			if (filter.Length == 0)
 				return true;
 
-			char8* entryPtr = entry.Ptr;
-			char8* filterPtr = filter.Ptr;
-
-			int filterLen = (int)filter.Length;
-			int entryLen = (int)entry.Length;
-
-			bool hasUnderscore = false;
-			bool checkInitials = filterLen > 1;
-			for (int i = 0; i < (int)filterLen; i++)
-			{
-				char8 c = filterPtr[i];
-				if (c == '_')
-					hasUnderscore = true;
-				else if (filterPtr[i].IsLower)
-					checkInitials = false;
-			}
-
-			if (hasUnderscore)
-				//return strnicmp(filter, entry, filterLen) == 0;
-				return (entryLen >= filterLen) && (String.Compare(entryPtr, filterLen, filterPtr, filterLen, true) == 0);
-
-			char8[256] initialStr;
-			char8* initialStrP = &initialStr;
-
-			//String initialStr;
-			bool prevWasUnderscore = false;
-			
-			for (int entryIdx = 0; entryIdx < entryLen; entryIdx++)
-			{
-				char8 entryC = entryPtr[entryIdx];
-
-				if (entryC == '_')
-				{
-					prevWasUnderscore = true;
-					continue;
-				}
-
-				if ((entryIdx == 0) || (prevWasUnderscore) || (entryC.IsUpper) || (entryC.IsDigit))
-				{
-					/*if (strnicmp(filter, entry + entryIdx, filterLen) == 0)
-						return true;*/
-					if ((entryLen - entryIdx >= filterLen) && (String.Compare(entryPtr + entryIdx, filterLen, filterPtr, filterLen, true) == 0))
-						return true;
-					if (checkInitials)
-						*(initialStrP++) = entryC;
-				}
-				prevWasUnderscore = false;
-
-				if (filterLen == 1)
-					break; // Don't check inners for single-character case
-			}	
-
-			if (!checkInitials)
+			if (filter.Length > entry.Length)
 				return false;
-			int initialLen = initialStrP - (char8*)&initialStr;
-			return (initialLen >= filterLen) && (String.Compare(&initialStr, filterLen, filterPtr, filterLen, true) == 0);
 
-			//*(initialStrP++) = 0;
-			//return strnicmp(filter, initialStr, filterLen) == 0;
+			int score = 0;
+			uint8[256] matches = ?;
+
+			return fts_fuzzy_match(filter.CStr(), entry.CStr(), ref score, &matches, matches.Count);
 		}
 
         void UpdateData(String selectString, bool changedAfterInfo)
@@ -1718,7 +1670,7 @@ namespace IDE.ui
                     for (int i < mAutoCompleteListWidget.mFullEntryList.Count)
                     {
                         var entry = mAutoCompleteListWidget.mFullEntryList[i];
-                        //if (String.Compare(entry.mEntryDisplay, 0, curString, 0, curString.Length, true) == 0)
+
 						if (DoesFilterMatch(entry.mEntryDisplay, curString))
                         {
 							mAutoCompleteListWidget.mEntryList.Add(entry);
@@ -1876,6 +1828,7 @@ namespace IDE.ui
 
 		public void UpdateInfo(String info)
 		{
+			List<uint8> matchIndices = new:ScopedAlloc! .(256);
 			for (var entryView in info.Split('\n'))
 			{
 				StringView entryType = StringView(entryView);
@@ -1886,13 +1839,35 @@ namespace IDE.ui
 					entryDisplay = StringView(entryView, tabPos + 1);
 					entryType = StringView(entryType, 0, tabPos);
 				}
+				
+				StringView matches = default;
+				int matchesPos = entryDisplay.IndexOf('\x02');
+				matchIndices.Clear();
+				if (matchesPos != -1)
+				{
+					matches = StringView(entryDisplay, matchesPos + 1);
+					entryDisplay = StringView(entryDisplay, 0, matchesPos);
+
+					for(var sub in matches.Split(','))
+					{
+						if(sub.StartsWith('X'))
+							break;
+
+						var result = int64.Parse(sub, .HexNumber);
+
+						Debug.Assert((result case .Ok(let value)) && value <= uint8.MaxValue);
+
+						// TODO(FUZZY): we could save start and length instead of single chars
+						matchIndices.Add((uint8)result.Value);
+					}
+				}
 
 				StringView documentation = default;
-				int docPos = entryDisplay.IndexOf('\x03');
+				int docPos = matches.IndexOf('\x03');
 				if (docPos != -1)
 				{
-					documentation = StringView(entryDisplay, docPos + 1);
-					entryDisplay = StringView(entryDisplay, 0, docPos);
+					documentation = StringView(matches, docPos + 1);
+					matches = StringView(matches, 0, docPos);
 				}
 
 				StringView entryInsert = default;
@@ -1915,15 +1890,27 @@ namespace IDE.ui
 				case "select":
 				default:
 				    {
-						if ((!documentation.IsEmpty) && (mAutoCompleteListWidget != null))
+						if (((!documentation.IsEmpty) || (!matchIndices.IsEmpty)) && (mAutoCompleteListWidget != null))
 						{
 							while (entryIdx < mAutoCompleteListWidget.mEntryList.Count)
 							{
 								let entry = mAutoCompleteListWidget.mEntryList[entryIdx];
 								if ((entry.mEntryDisplay == entryDisplay) && (entry.mEntryType == entryType))
 								{
-									if (entry.mDocumentation == null)
+									if (!matchIndices.IsEmpty)
+									{
+										if (entry.mMatchIndices == null)
+											entry.mMatchIndices = new:(mAutoCompleteListWidget.[Friend]mAlloc) List<uint8>(matchIndices.GetEnumerator());
+										else
+										{
+											entry.mMatchIndices.Clear();
+											entry.mMatchIndices.AddRange(matchIndices);
+										}
+									}
+
+									if ((!documentation.IsEmpty) && entry.mDocumentation == null)
 										entry.mDocumentation = new:(mAutoCompleteListWidget.[Friend]mAlloc) String(documentation);
+
 									break;
 								}
 								entryIdx++;
@@ -2017,6 +2004,7 @@ namespace IDE.ui
 					entryDisplay = StringView(entryView, tabPos + 1);
 					entryType = StringView(entryType, 0, tabPos);
 				}
+
 				StringView matches = default;
 				int matchesPos = entryDisplay.IndexOf('\x02');
 				matchIndices.Clear();
@@ -2027,7 +2015,7 @@ namespace IDE.ui
 
 					for(var sub in matches.Split(','))
 					{
-						if(sub == "X")
+						if(sub.StartsWith('X'))
 							break;
 
 						var result = int64.Parse(sub, .HexNumber);
