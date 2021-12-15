@@ -52,7 +52,7 @@ namespace IDETest
 
 			void MethodB()
 			{
-				function void() f = => MethodA<T2>; //FAIL Method 'IDETest.Generics.ClassA<T1, T2>.MethodA<T2>(int a)' does not match function 'function void()'
+				function void() f = => MethodA<T2>; //FAIL Method 'void IDETest.Generics.ClassA<T1, T2>.MethodA<T2>(int a)' does not match function 'function void()'
 			}
 		}
 
