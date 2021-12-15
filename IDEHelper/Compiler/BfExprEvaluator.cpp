@@ -3578,7 +3578,7 @@ void BfExprEvaluator::GetLiteral(BfAstNode* refNode, const BfVariant& variant)
 		if ((mExpectingType != NULL) && (mExpectingType->IsIntegral()) && (mExpectingType->IsChar() == IsCharType(variant.mTypeCode)))
 		{
 			auto primType = (BfPrimitiveType*)mExpectingType;
-			if (mModule->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, variant.mInt64))
+			if (mModule->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, variant.mUInt64))
 			{
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, variant.mUInt64), mExpectingType);
 				break;

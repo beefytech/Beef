@@ -226,6 +226,7 @@ public:
 	void SetSource(const char* data, int length);	
 	void MoveSource(const char* data, int length); // Takes ownership of data ptr
 	void RefSource(const char* data, int length);
+	void MakeNegative(uint64& val, bool& hadOverflow);
 	void NextToken(int endIdx = -1, bool outerIsInterpolate = false);
 	BfAstNode* CreateNode();	
 		

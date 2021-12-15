@@ -7889,7 +7889,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 						{
 							if (BfIRConstHolder::IsInt(primType->mTypeDef->mTypeCode))
 							{
-								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue.mInt64))
+								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue.mUInt64))
 								{
 									if ((!ignoreErrors) && (PreFail()))
 										*errorOut = Fail(StrFormat("Const generic argument '%s', declared with const '%lld', does not fit into const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),

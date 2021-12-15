@@ -1610,6 +1610,7 @@ public:
 
 	void CreateBasicTypes();	
 	bool DoesLiteralFit(BfTypeCode typeCode, int64 value);
+	bool DoesLiteralFit(BfTypeCode typeCode, uint64 value);
 	BfParser* CreateParser(BfProject* bfProject);	
 	BfCompiler* CreateCompiler(bool isResolveOnly);			
 	BfProject* GetProject(const StringImpl& projName);
