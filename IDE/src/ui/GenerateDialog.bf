@@ -653,7 +653,7 @@ namespace IDE.ui
 						{
 							for (char8 c in fileName.RawChars)
 							{
-								if (!c.IsLetterOrDigit)
+								if (!c.IsLetterOrDigit && c != '_')
 								{
 									gApp.Fail(scope $"Invalid generated file name: {fileName}");
 									hadError = true;
