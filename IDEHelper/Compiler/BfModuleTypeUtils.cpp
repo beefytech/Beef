@@ -11513,29 +11513,37 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				{
 					SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 					auto constraintTypeInst = genericParamInst->mTypeConstraint->ToTypeInstance();
-					if ((constraintTypeInst != NULL) && (constraintTypeInst->IsInstanceOf(mCompiler->mEnumTypeDef)) && (explicitCast))
+
+					if ((constraintTypeInst != NULL) && (constraintTypeInst->IsDelegateOrFunction()))
 					{
-						// Enum->int
-						if ((explicitCast) && (toType->IsInteger()))
-							return typedVal.mValue;
+						// Could be a methodref - can't cast to anything else												
 					}
-
-					BfTypedValue fromTypedValue;
-					if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
-						fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
 					else
-						fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
-
-					auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
-					if (result)
 					{
-						if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
+						if ((constraintTypeInst != NULL) && (constraintTypeInst->IsInstanceOf(mCompiler->mEnumTypeDef)) && (explicitCast))
 						{
-							// Don't allow cast when we are constrained by a delegate type, because BfMethodRefs can match and we require an actual alloc
-							Fail(StrFormat("Unable to cast '%s' to '%s' because delegate constraints allow valueless direct method references", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
-							return BfIRValue();
+							// Enum->int
+							if ((explicitCast) && (toType->IsInteger()))
+								return typedVal.mValue;
 						}
-						return result;
+
+						BfTypedValue fromTypedValue;
+						if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
+							fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
+						else
+							fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
+
+						auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
+						if (result)
+						{
+							if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
+							{
+								// Don't allow cast when we are constrained by a delegate type, because BfMethodRefs can match and we require an actual alloc
+								Fail(StrFormat("Unable to cast '%s' to '%s' because delegate constraints allow valueless direct method references", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
+								return BfIRValue();
+							}
+							return result;
+						}
 					}
 				}
 
