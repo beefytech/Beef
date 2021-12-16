@@ -699,6 +699,11 @@ public:
 		mMethodInstance = NULL;
 		mFailed = false;
 	}
+
+	bool HasEmissions()
+	{
+		return !mEmitData.IsEmpty() || !mInterfaces.IsEmpty();
+	}
 };
 
 class CeContext

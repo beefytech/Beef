@@ -2201,7 +2201,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 						}
 					}
 				}
-				else if (!ceEmitContext->mEmitData.IsEmpty())
+				else if (ceEmitContext->HasEmissions())
 				{
 					if (typeInstance->mCeTypeInfo == NULL)
 						typeInstance->mCeTypeInfo = new BfCeTypeInfo();
@@ -2213,7 +2213,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 					typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
 				}
 
-				if (!ceEmitContext->mEmitData.IsEmpty())
+				if (ceEmitContext->HasEmissions())
 				{
 					String ctxStr = "comptime ApplyToType of ";
 					ctxStr += TypeToString(attrType);
