@@ -5090,7 +5090,9 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 
 		BfExprEvaluator exprEvaluator(mModule);
 		exprEvaluator.mResolveGenericParam = (flags & BfResolveArgsFlag_AllowUnresolvedTypes) == 0;
-		exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr);
+		exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr |
+			(mBfEvalExprFlags & (BfEvalExprFlags_Comptime)));
+
 		bool handled = false;
 		bool evaluated = false;
 
