@@ -11811,7 +11811,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 			if (allowCast)
 			{
-				if (ignoreWrites)
+				if ((ignoreWrites) && (!typedVal.mValue.IsConst()))
 					return mBfIRBuilder->GetFakeVal();
 				return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
 			}

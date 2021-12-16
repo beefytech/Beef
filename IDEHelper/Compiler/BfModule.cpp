@@ -10873,8 +10873,15 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 	auto origConst = irVal;		
 	if ((constant->mConstType == BfConstType_BitCast) || (constant->mConstType == BfConstType_BitCastNull))
 	{
-		auto bitcast = (BfConstantBitCast*)constant;
-		constant = mBfIRBuilder->GetConstantById(bitcast->mTarget);
+		auto bitcast = (BfConstantBitCast*)constant;		
+		BfIRValue newVal;
+		if (bitcast->mTarget)
+		{
+			newVal = BfIRValue(BfIRValueFlags_Const, bitcast->mTarget);
+			CurrentAddToConstHolder(newVal);
+		}
+		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstBitCast(newVal, bitcast->mToType);
+		return;
 	}
 
 	irVal = mCurTypeInstance->CreateConst(constant, mBfIRBuilder);		
@@ -10999,7 +11006,7 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 			wantType = mContext->mTypes[constant->mIRType.mId];
 
 		if (wantType == NULL)
-			return constHolder->CreateConstNull();
+			return mBfIRBuilder->CreateConstNull();
 
 		return GetDefaultValue(wantType);
 	}
@@ -11047,8 +11054,21 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		return mBfIRBuilder->CreateIntToPtr(ConstantToCurrent(fromTarget, constHolder, NULL), toIRType);
 	}
 
+	if ((constant->mConstType == BfConstType_BitCast) || (constant->mConstType == BfConstType_BitCastNull))
+	{
+		auto bitcast = (BfConstantBitCast*)constant;
+		auto fromTarget = constHolder->GetConstantById(bitcast->mTarget);
+		BfIRType toIRType = bitcast->mToType;
+		if (toIRType.mKind == BfIRTypeData::TypeKind_TypeId)
+		{
+			auto toType = mContext->mTypes[toIRType.mId];
+			toIRType = mBfIRBuilder->MapType(toType);
+		}
+		return mBfIRBuilder->CreateBitCast(ConstantToCurrent(fromTarget, constHolder, NULL), toIRType);
+	}
+
 	if (constant->mConstType == BfConstType_Agg)
-	{		
+	{
 		auto constArray = (BfConstantAgg*)constant;
 
 		if ((wantType == NULL) && (constArray->mType.mKind == BfIRTypeData::TypeKind_TypeId))

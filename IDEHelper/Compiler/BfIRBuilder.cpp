@@ -857,6 +857,26 @@ BfIRValue BfIRConstHolder::CreateConstArrayZero(int count)
 	return irValue;
 }
 
+BfIRValue BfIRConstHolder::CreateConstBitCast(BfIRValue val, BfIRType type)
+{
+	auto constVal = GetConstant(val);
+
+	auto bitCast = mTempAlloc.Alloc<BfConstantBitCast>();
+	if ((constVal == NULL) || (constVal->IsNull()))
+		bitCast->mConstType = BfConstType_BitCastNull;
+	else
+		bitCast->mConstType = BfConstType_BitCast;
+	bitCast->mTarget = val.mId;
+	bitCast->mToType = type;
+
+	BfIRValue castedVal(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(bitCast));
+#ifdef CHECK_CONSTHOLDER
+	castedVal.mHolder = this;
+#endif
+	BF_ASSERT((void*)GetConstant(castedVal) == (void*)bitCast);
+	return castedVal;
+}
+
 BfIRValue BfIRConstHolder::CreateTypeOf(BfType* type)
 {
 	BfTypeOf_Const* typeOf = mTempAlloc.Alloc<BfTypeOf_Const>();
@@ -4414,25 +4434,7 @@ BfIRValue BfIRBuilder::CreateNot(BfIRValue val)
 BfIRValue BfIRBuilder::CreateBitCast(BfIRValue val, BfIRType type)
 {
 	if (val.IsConst())
-	{
-		auto constVal = GetConstant(val);
-
-		auto bitCast = mTempAlloc.Alloc<BfConstantBitCast>();		
-		if (constVal->IsNull())
-			bitCast->mConstType = BfConstType_BitCastNull;
-		else
-			bitCast->mConstType = BfConstType_BitCast;
-		bitCast->mTarget = val.mId;
-		bitCast->mToType = type;
-
-		BfIRValue castedVal(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(bitCast));		
-#ifdef CHECK_CONSTHOLDER
-		castedVal.mHolder = this;
-#endif
-		BF_ASSERT((void*)GetConstant(castedVal) == (void*)bitCast);
-		return castedVal;
-	}
-	
+		return CreateConstBitCast(val, type);	
 	auto retVal = WriteCmd(BfIRCmd_BitCast, val, type);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;
