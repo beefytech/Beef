@@ -2110,6 +2110,7 @@ public:
 		mBoxedBaseType = NULL;
 		mBoxedFlags = BoxedFlags_None;
 	}
+	~BfBoxedType();
 
 	virtual bool IsBoxed() override { return true; }
 

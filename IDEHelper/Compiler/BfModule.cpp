@@ -15286,7 +15286,7 @@ void BfModule::AssertErrorState()
 	{
 		if (mCurTypeInstance->mTypeFailed)
 			return;
-		if ((mCurTypeInstance->mTypeDef->mSource != NULL) && (mCurTypeInstance->mTypeDef->mSource->mParsingFailed))
+		if ((mCurTypeInstance->mTypeDef->GetDefinition()->mSource != NULL) && (mCurTypeInstance->mTypeDef->GetDefinition()->mSource->mParsingFailed))
 			return;
 	}
 	if (mCurMethodInstance != NULL)
@@ -19762,12 +19762,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					mBfIRBuilder->CreateRetVoid();
 			}
 			else
-			{
-				BF_ASSERT(!innerMethodInstance.mMethodInstance->mMethodDef->mDeclaringType->IsEmitted());
+			{				
 				auto innerMethodDef = innerMethodInstance.mMethodInstance->mMethodDef;
-				if (innerType->mTypeDef->IsEmitted())
-					innerMethodDef = innerType->mTypeDef->mEmitParent->mMethods[innerMethodDef->mIdx];
-
 				BF_ASSERT(innerMethodDef == methodDef);
 
 				SizedArray<BfIRValue, 8> innerParams;

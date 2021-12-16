@@ -174,7 +174,60 @@ namespace Tests
 			public float mY;
 			public float mZ;
 		}
+		
+		class SerializationContext
+		{
+			public String mStr = new String() ~ delete _;
+			public void Serialize<T>(String name, T val) where T : struct
+			{
+				mStr.AppendF($"{name} {val}\n");
+			}
+		}
 
+		interface ISerializable
+		{
+			void Serialize(SerializationContext ctx);
+		}
+
+		[AttributeUsage(.Enum | .Struct | .Class, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
+		struct SerializableAttribute : Attribute, IComptimeTypeApply
+		{
+			[Comptime]
+			public void ApplyToType(Type type)
+			{
+				const String SERIALIZE_NAME = "void ISerializable.Serialize(SerializationContext ctx)\n";
+
+				String serializeBuffer = new .();
+
+				Compiler.Assert(!type.IsUnion);
+
+				for (let field in type.GetFields())
+				{
+					if (!field.IsInstanceField || field.DeclaringType != type)
+						continue;
+
+					serializeBuffer.AppendF($"\n\tctx.Serialize(\"{field.Name}\", {field.Name});");
+				}
+
+				Compiler.EmitTypeBody(type, scope $"{SERIALIZE_NAME}{{{serializeBuffer}\n}}\n");
+			}
+		}
+
+		[Serializable]
+		struct Foo : this(float x, float y), ISerializable
+		{
+		}
+
+		public class ComponentHandler<T>
+			where T : struct
+		{
+			uint8* data;
+			protected override void GCMarkMembers()
+			{
+				T* ptr = (T*)data;
+				GC.Mark!((*ptr));
+			}
+		}
 		[Test]
 		public static void TestBasics()
 		{
@@ -209,6 +262,12 @@ namespace Tests
 				4 mY
 				8 mZ
 				""");
+
+			Foo bar = .(10, 2);
+			ISerializable iSer = bar;
+			SerializationContext serCtx = scope .();
+			iSer.Serialize(serCtx);
+			Test.Assert(serCtx.mStr == "x 10\ny 2\n");
 		}
 	}
 }

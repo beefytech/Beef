@@ -793,11 +793,6 @@ BfTypeDef::~BfTypeDef()
 {
 	BfLogSysM("BfTypeDef::~BfTypeDef %p\n", this);
 
-	if ((mHash == -1330357811) && (IsEmitted()))
-	{
-		NOP;
-	}
-
 	delete mNextRevision;
 	FreeMembers();
 
@@ -3728,10 +3723,14 @@ void BfSystem::RemoveOldData()
 	{
 		AutoCrit autoCrit(mDataLock);
 
-		for (auto typeDef : mTypeDefDeleteQueue)
+		for (int i = 0; i < (int)mTypeDefDeleteQueue.size(); i++)		
+		{
+			auto typeDef = mTypeDefDeleteQueue[i];
+			mTypeDefDeleteQueue[i] = NULL;
+			BfLogSys(this, "RemoveOldData deleting from mTypeDefDeleteQueue %p\n", typeDef);
 			delete typeDef;
+		}
 		mTypeDefDeleteQueue.Clear();
-
 		
 		if (!mProjectDeleteQueue.IsEmpty())
 		{

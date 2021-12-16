@@ -2747,7 +2747,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		resolvedTypeRef->mSize = typeInstance->mAlign = mSystem->mPtrSize;
 	}
 	
-	BF_ASSERT((typeInstance->mMethodInstanceGroups.size() == 0) || (typeInstance->mMethodInstanceGroups.size() == typeDef->mMethods.size()) || (typeInstance->mCeTypeInfo != NULL));
+	BF_ASSERT((typeInstance->mMethodInstanceGroups.size() == 0) || (typeInstance->mMethodInstanceGroups.size() == typeDef->mMethods.size()) || (typeInstance->mCeTypeInfo != NULL) || (typeInstance->IsBoxed()));
 	typeInstance->mMethodInstanceGroups.Resize(typeDef->mMethods.size());
 	for (int i = 0; i < (int)typeInstance->mMethodInstanceGroups.size(); i++)
 	{
@@ -3701,6 +3701,15 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			innerType = CreatePointerType(innerType);
 		if (innerType->IsIncomplete())
 			PopulateType(innerType, BfPopulateType_Data);		
+
+		auto innerTypeInst = innerType->ToTypeInstance();
+		if ((innerTypeInst != NULL) && (typeInstance->mTypeDef != innerTypeInst->mTypeDef))
+		{
+			// Rebuild with proper typedef (generally from inner type comptime emission)
+			typeInstance->mTypeDef = innerTypeInst->mTypeDef;
+			DoPopulateType(resolvedTypeRef, populateType);
+			return;
+		}
 
 		auto baseType = typeInstance->mBaseType;
 		dataPos = baseType->mInstSize;
@@ -5666,15 +5675,15 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 						}
 						else
 						{
-							auto matchedMethodDef = matchedMethod->mMethodDef;
-							if (matchedMethodDef->mDeclaringType->IsEmitted())
-							{
-								Fail("Boxed interface binding error to emitted method", mCurTypeInstance->mTypeDef->GetRefNode());
-								continue;
-							}
-
-							if (underlyingTypeInstance->mTypeDef->IsEmitted())
-								matchedMethodDef = underlyingTypeInstance->mTypeDef->mEmitParent->mMethods[matchedMethodDef->mIdx];
+ 							auto matchedMethodDef = matchedMethod->mMethodDef;
+// 							if (matchedMethodDef->mDeclaringType->IsEmitted())
+// 							{
+// 								Fail("Boxed interface binding error to emitted method", mCurTypeInstance->mTypeDef->GetRefNode());
+// 								continue;
+// 							}
+// 
+// 							if (underlyingTypeInstance->mTypeDef->IsEmitted())
+// 								matchedMethodDef = underlyingTypeInstance->mTypeDef->mEmitParent->mMethods[matchedMethodDef->mIdx];
 
 							if (!matchedMethod->mIsForeignMethodDef)
 							{

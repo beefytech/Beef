@@ -1554,6 +1554,7 @@ BfTypeInstance::~BfTypeInstance()
 	if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
 	{
 		mMethodInstanceGroups.Clear();
+		BfLogSys(mModule->mSystem, "Type %p dtor deleting typeDef %p\n", this, mTypeDef);
 		delete mTypeDef;
 	}
 }
@@ -2626,6 +2627,12 @@ void BfTupleType::Finish()
 }
 
 //////////////////////////////////////////////////////////////////////////
+
+BfBoxedType::~BfBoxedType()
+{
+	if (mTypeDef->mEmitParent != NULL)
+		mTypeDef = mTypeDef->mEmitParent;
+}
 
 BfType* BfBoxedType::GetModifiedElementType()
 {	
