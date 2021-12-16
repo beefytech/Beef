@@ -163,7 +163,7 @@ namespace System
 		public static mixin Mark<T>(T val) where T : struct
 		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK
-		    val.[Friend]GCMarkMembers();
+		    val.[Friend, Unbound]GCMarkMembers();
 #endif
 		}
 
