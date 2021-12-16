@@ -2630,7 +2630,7 @@ void BfTupleType::Finish()
 
 BfBoxedType::~BfBoxedType()
 {
-	if (mTypeDef->mEmitParent != NULL)
+	if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
 		mTypeDef = mTypeDef->mEmitParent;
 }
 
