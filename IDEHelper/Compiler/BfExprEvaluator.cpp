@@ -10148,6 +10148,12 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 
 	for (auto elementExpr : initExpr->mValues)
 	{
+		if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0)
+		{
+			mModule->Fail("Comptime cannot evaluate initializer expressions", elementExpr);
+			break;
+		}
+
 		bool wasValidInitKind = false;
 
 		if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(elementExpr))
