@@ -2631,7 +2631,7 @@ void BfTupleType::Finish()
 BfBoxedType::~BfBoxedType()
 {
 	if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
-		mTypeDef = mTypeDef->mEmitParent;
+		mTypeDef = NULL;
 }
 
 BfType* BfBoxedType::GetModifiedElementType()
