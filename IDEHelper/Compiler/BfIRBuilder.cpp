@@ -866,6 +866,7 @@ BfIRValue BfIRConstHolder::CreateConstBitCast(BfIRValue val, BfIRType type)
 		bitCast->mConstType = BfConstType_BitCastNull;
 	else
 		bitCast->mConstType = BfConstType_BitCast;
+	BF_ASSERT(val.mId != -1);
 	bitCast->mTarget = val.mId;
 	bitCast->mToType = type;
 

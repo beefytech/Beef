@@ -10880,6 +10880,8 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 			newVal = BfIRValue(BfIRValueFlags_Const, bitcast->mTarget);
 			CurrentAddToConstHolder(newVal);
 		}
+		else
+			newVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstNull();
 		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstBitCast(newVal, bitcast->mToType);
 		return;
 	}
