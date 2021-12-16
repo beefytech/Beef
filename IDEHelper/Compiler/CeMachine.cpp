@@ -4740,6 +4740,17 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitAddInterface)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr);
+				int32 ifaceTypeId = *(int32*)((uint8*)stackPtr + sizeof(int32));				
+				if ((mCurEmitContext == NULL) || (mCurEmitContext->mType->mTypeId != typeId))
+				{
+					_Fail("Code cannot be emitted for this type in this context");
+					return false;
+				}
+				mCurEmitContext->mInterfaces.Add(ifaceTypeId);
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMethodEntry)
 			{
 				int64 methodHandle = *(int64*)((uint8*)stackPtr);
@@ -6832,6 +6843,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				if (methodDef->mName == "Comptime_EmitTypeBody")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_EmitTypeBody;
+				}
+				if (methodDef->mName == "Comptime_EmitAddInterface")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_EmitAddInterface;
 				}
 				else if (methodDef->mName == "Comptime_EmitMethodEntry")
 				{

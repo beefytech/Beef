@@ -1828,6 +1828,7 @@ class BfCeTypeInfo
 public:	
 	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
 	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
+	Array<int> mPendingInterfaces;
 	Val128 mHash;
 	bool mFailed;
 	BfCeTypeInfo* mNext;

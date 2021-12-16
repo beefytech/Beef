@@ -289,6 +289,7 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetParamInfo,
 	
 	CeFunctionKind_EmitTypeBody,
+	CeFunctionKind_EmitAddInterface,
 	CeFunctionKind_EmitMethodEntry,
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
@@ -687,6 +688,7 @@ class CeEmitContext
 public:
 	BfType* mType;
 	BfMethodInstance* mMethodInstance;
+	Array<int32> mInterfaces;
 	String mEmitData;
 	String mExitEmitData;
 	bool mFailed;

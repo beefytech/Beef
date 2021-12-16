@@ -257,6 +257,7 @@ namespace System
 		static extern void* Comptime_MethodBuilder_EmitStr(void* native, StringView str);
 		static extern void* Comptime_CreateMethod(int32 typeId, StringView methodName, Type returnType, MethodFlags methodFlags);
 		static extern void Comptime_EmitTypeBody(int32 typeId, StringView text);
+		static extern void Comptime_EmitAddInterface(int32 typeId, int32 ifaceTypeId);
 		static extern void Comptime_EmitMethodEntry(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMethodExit(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMixin(StringView text);
@@ -273,6 +274,12 @@ namespace System
 		public static void EmitTypeBody(Type owner, StringView text)
 		{
 			Comptime_EmitTypeBody((.)owner.TypeId, text);
+		}
+
+		[Comptime(OnlyFromComptime=true)]
+		public static void EmitAddInterface(Type owner, Type iface)
+		{
+			Comptime_EmitAddInterface((.)owner.TypeId, (.)iface.TypeId);
 		}
 
 		[Comptime(OnlyFromComptime=true)]

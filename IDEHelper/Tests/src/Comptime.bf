@@ -210,11 +210,12 @@ namespace Tests
 				}
 
 				Compiler.EmitTypeBody(type, scope $"{SERIALIZE_NAME}{{{serializeBuffer}\n}}\n");
+				Compiler.EmitAddInterface(type, typeof(ISerializable));
 			}
 		}
 
 		[Serializable]
-		struct Foo : this(float x, float y), ISerializable
+		struct Foo : this(float x, float y)
 		{
 		}
 

@@ -2076,6 +2076,9 @@ void BfModule::FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInst
 
 void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode)
 {
+	for (int ifaceTypeId : ceEmitContext->mInterfaces)
+		typeInstance->mCeTypeInfo->mPendingInterfaces.Add(ifaceTypeId);
+	
 	if (ceEmitContext->mEmitData.IsEmpty())
 		return;
 		
@@ -3313,6 +3316,27 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		wantPopulateInterfaces = true;		
 	}
 
+	if ((typeInstance->mCeTypeInfo != NULL) && (!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty()))
+	{
+		for (auto ifaceTypeId : typeInstance->mCeTypeInfo->mPendingInterfaces)
+		{
+			auto ifaceType = mContext->mTypes[ifaceTypeId];
+			if ((ifaceType == NULL) || (!ifaceType->IsInterface()))
+				continue;
+			auto ifaceInst = ifaceType->ToTypeInstance();
+
+			if (ifaceSet.Add(ifaceInst))
+			{
+				// Not base type
+				BfInterfaceDecl ifaceDecl;
+				ifaceDecl.mIFaceTypeInst = ifaceInst;
+				ifaceDecl.mTypeRef = NULL;
+				ifaceDecl.mDeclaringType = typeDef->GetDefinition();
+				interfaces.Add(ifaceDecl);
+			}
+		}		
+	}
+
 	if (_CheckTypeDone())
 		return;
 
@@ -3703,12 +3727,22 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			PopulateType(innerType, BfPopulateType_Data);		
 
 		auto innerTypeInst = innerType->ToTypeInstance();
-		if ((innerTypeInst != NULL) && (typeInstance->mTypeDef != innerTypeInst->mTypeDef))
+		if (innerTypeInst != NULL)
 		{
-			// Rebuild with proper typedef (generally from inner type comptime emission)
-			typeInstance->mTypeDef = innerTypeInst->mTypeDef;
-			DoPopulateType(resolvedTypeRef, populateType);
-			return;
+			if (typeInstance->mTypeDef != innerTypeInst->mTypeDef)
+			{
+				// Rebuild with proper typedef (generally from inner type comptime emission)
+				typeInstance->mTypeDef = innerTypeInst->mTypeDef;
+				DoPopulateType(resolvedTypeRef, populateType);
+				return;
+			}
+
+			while (typeInstance->mInterfaces.mSize < innerTypeInst->mInterfaces.mSize)
+			{
+				auto ifaceEntry = innerTypeInst->mInterfaces[typeInstance->mInterfaces.mSize];
+				typeInstance->mInterfaces.Add(ifaceEntry);
+				AddDependency(ifaceEntry.mInterfaceType, typeInstance, BfDependencyMap::DependencyFlag_ImplementsInterface);
+			}
 		}
 
 		auto baseType = typeInstance->mBaseType;
@@ -4014,8 +4048,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
  		}
  		
 		if ((typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit) && (tryCE))
- 		{	
+ 		{
 			BF_ASSERT(!typeInstance->mTypeDef->IsEmitted());
+
+			if (typeInstance->mCeTypeInfo != NULL)			
+				typeInstance->mCeTypeInfo->mPendingInterfaces.Clear();
 
  			typeInstance->mDefineState = BfTypeDefineState_CETypeInit;
 			bool hadNewMembers = false;
@@ -4071,6 +4108,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 			}
 
+			if ((typeInstance->mCeTypeInfo != NULL) && (!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty()))
+				hadNewMembers = true;
+			
 			if ((typeInstance->mTypeDef->IsEmitted()) && (typeInstance->mCeTypeInfo == NULL))
 			{
 				BF_ASSERT(mCompiler->mCanceling);
@@ -5676,15 +5716,6 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 						else
 						{
  							auto matchedMethodDef = matchedMethod->mMethodDef;
-// 							if (matchedMethodDef->mDeclaringType->IsEmitted())
-// 							{
-// 								Fail("Boxed interface binding error to emitted method", mCurTypeInstance->mTypeDef->GetRefNode());
-// 								continue;
-// 							}
-// 
-// 							if (underlyingTypeInstance->mTypeDef->IsEmitted())
-// 								matchedMethodDef = underlyingTypeInstance->mTypeDef->mEmitParent->mMethods[matchedMethodDef->mIdx];
-
 							if (!matchedMethod->mIsForeignMethodDef)
 							{
 								BfMethodInstanceGroup* boxedMethodInstanceGroup = &typeInstance->mMethodInstanceGroups[matchedMethod->mMethodDef->mIdx];
@@ -5693,7 +5724,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 									boxedMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 									VerifyOnDemandMethods();
 								}
-							}							
+							}
 
 							auto methodFlags = matchedMethod->mIsForeignMethodDef ? BfGetMethodInstanceFlag_ForeignMethodDef : BfGetMethodInstanceFlag_None;
 							methodFlags = (BfGetMethodInstanceFlags)(methodFlags | BfGetMethodInstanceFlag_MethodInstanceOnly);
