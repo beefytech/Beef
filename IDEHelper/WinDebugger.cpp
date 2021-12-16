@@ -8415,7 +8415,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 				evalStr += ", refid=\"" + referenceId + ".[]\"";
 				if (isReadOnly)
 					evalStr += ", ne";
-				retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, (int)sizeValue.GetInt64() / dimSize1, 50000) +
+				retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, sizeValue.GetInt64() / dimSize1, 50000) +
 					"\t[{0}]\t" + evalStr;
 			}
 			else if (lowerDimSizes.size() == 2)
@@ -8431,7 +8431,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 					evalStr += ", refid=\"" + referenceId + ".[]\"";
 					if (isReadOnly)
 						evalStr += ", ne";
-					retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, (int)sizeValue.GetInt64() / dimSize1 / dimSize2, 50000) +
+					retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, sizeValue.GetInt64() / dimSize1 / dimSize2, 50000) +
 						"\t[{0}]\t" + evalStr;
 				}
 			}
@@ -8449,7 +8449,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 					evalStr += ", refid=\"" + referenceId + ".[]\"";
 					if (isReadOnly)
 						evalStr += ", ne";
-					retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, (int)sizeValue.GetInt64() / dimSize1 / dimSize2 / dimSize3, 50000) +
+					retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, sizeValue.GetInt64() / dimSize1 / dimSize2 / dimSize3, 50000) +
 						"\t[{0}]\t" + evalStr;
 				}
 			}
@@ -8459,7 +8459,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 				evalStr += ", refid=\"" + referenceId + ".[]\"";
 				if (isReadOnly)
 					evalStr += ", ne";
-				retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, (int)sizeValue.GetInt64(), 50000) +
+				retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, sizeValue.GetInt64(), 50000) +
 					"\t[{0}]\t" + evalStr;
 			}
 		}
@@ -8476,7 +8476,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 			evalStr += ", refid=\"" + referenceId + ".[]\"";
 			if (isReadOnly)
 				evalStr += ", ne";
-			retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, (int)sizeValue.GetInt64(), 50000) +
+			retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, sizeValue.GetInt64(), 50000) +
 				"\t[{0}]\t" + evalStr;			
 		}
 	}
