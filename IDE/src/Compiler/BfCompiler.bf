@@ -243,13 +243,13 @@ namespace IDE.Compiler
         public void GetAutocompleteInfo(String outAutocompleteInfo)
         {
             char8* result = BfCompiler_GetAutocompleteInfo(mNativeBfCompiler);
-			scope String(result).MoveTo(outAutocompleteInfo);
+			outAutocompleteInfo.Append(StringView(result));
         }
 
         public void GetSymbolReferences(BfPassInstance passInstance, BfResolvePassData resolvePassData, String outSymbolReferences)
         {
             char8* result = BfCompiler_GetSymbolReferences(mNativeBfCompiler, passInstance.mNativeBfPassInstance, resolvePassData.mNativeResolvePassData);
-            scope String(result).MoveTo(outSymbolReferences);
+            outSymbolReferences.Append(StringView(result));
         }
 
         /*public void UpdateRenameSymbols(BfPassInstance passInstance, BfResolvePassData resolvePassData)

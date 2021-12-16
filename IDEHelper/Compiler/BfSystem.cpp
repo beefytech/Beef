@@ -3763,6 +3763,7 @@ void BfSystem::RemoveOldData()
 
 void BfSystem::VerifyTypeDef(BfTypeDef* typeDef)
 {
+#if defined _DEBUG && false
 	auto _FindTypeDef = [&](BfTypeReference* typeRef)
 	{
 		if (auto directStrTypeRef = BfNodeDynCast<BfDirectStrTypeReference>(typeRef))
@@ -3796,6 +3797,7 @@ void BfSystem::VerifyTypeDef(BfTypeDef* typeDef)
 			_FindTypeDef(paramDef->mTypeRef);
 		}
 	}
+#endif
 }
 
 BfTypeOptions* BfSystem::GetTypeOptions(int optionsIdx)
