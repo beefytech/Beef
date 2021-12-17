@@ -7787,9 +7787,16 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		}
 	}
 
+	if (checkArgType->IsPointer())
+	{
+		auto ptrType = (BfPointerType*)checkArgType;		
+		checkArgType = ptrType->mElementType;
+	}
+
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) != 0)
 	{
 		bool canAlloc = false;
+
 		if (auto checkTypeInst = checkArgType->ToTypeInstance())
 		{
 			if (checkTypeInst->IsObjectOrStruct())
@@ -7857,13 +7864,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	}
 
 	if ((genericParamInst->mInterfaceConstraints.IsEmpty()) && (genericParamInst->mOperatorConstraints.IsEmpty()) && (genericParamInst->mTypeConstraint == NULL))
-		return true;
-	
-	if (checkArgType->IsPointer())
-	{
-		auto ptrType = (BfPointerType*)checkArgType;
-		checkArgType = ptrType->mElementType;
-	}
+		return true;		
 
 	if (genericParamInst->mTypeConstraint != NULL)
 	{

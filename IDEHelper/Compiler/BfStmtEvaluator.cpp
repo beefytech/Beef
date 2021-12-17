@@ -3925,6 +3925,10 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		{
 			if (genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
 				return;
+			if (genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr)
+				return;
+			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Struct) && (checkType->IsPointer()))
+				return;
 			Fail(StrFormat("Must add 'where %s : delete' constraint to generic parameter to delete generic type '%s'",
 				genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
 			return;
