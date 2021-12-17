@@ -220,6 +220,7 @@ public:
 	virtual void Visit(BfFieldDeclaration* fieldDeclaration) override;
 	virtual void Visit(BfEnumCaseDeclaration* enumCaseDeclaration) override;
 	virtual void Visit(BfTypeAliasDeclaration* typeDeclaration) override;
+	virtual void Visit(BfFieldDtorDeclaration* fieldDtorDeclaration) override;
 	virtual void Visit(BfTypeDeclaration* typeDeclaration) override;
 	virtual void Visit(BfUsingDirective* usingDirective) override;
 	virtual void Visit(BfUsingModDirective* usingDirective) override;

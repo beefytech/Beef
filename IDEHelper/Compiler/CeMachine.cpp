@@ -1288,7 +1288,7 @@ void CeBuilder::Build()
 	auto methodInstance = mCeFunction->mMethodInstance;
 	
 	if (methodInstance != NULL)
-	{		
+	{
 		BfMethodInstance dupMethodInstance;
 		dupMethodInstance.CopyFrom(methodInstance);
 		auto methodDef = methodInstance->mMethodDef;
@@ -1638,10 +1638,10 @@ void CeBuilder::Build()
 						EmitBinaryOp(CeOp_Shl_I8, CeOp_InvalidOp, ceLHS, ceRHS, result);
 						break;
 					case BeBinaryOpKind_RightShift:
-						EmitBinaryOp(CeOp_Shr_I8, CeOp_InvalidOp, ceLHS, ceRHS, result);
+						EmitBinaryOp(CeOp_Shr_U8, CeOp_InvalidOp, ceLHS, ceRHS, result);
 						break;
 					case BeBinaryOpKind_ARightShift:
-						EmitBinaryOp(CeOp_Shr_U8, CeOp_InvalidOp, ceLHS, ceRHS, result);
+						EmitBinaryOp(CeOp_Shr_I8, CeOp_InvalidOp, ceLHS, ceRHS, result);
 						break;
 					default:
 						Fail("Invalid binary op");
@@ -2476,7 +2476,18 @@ void CeBuilder::Build()
 								EmitFrameOffset(ceSize);
 							}
 							break;
+						case BfIRIntrinsic_MemSet:
+							{
+								CeOperand ceDestPtr = GetOperand(castedInst->mArgs[0].mValue);
+								CeOperand ceValue = GetOperand(castedInst->mArgs[1].mValue);
+								CeOperand ceSize = GetOperand(castedInst->mArgs[2].mValue);
 
+								Emit(CeOp_MemSet);
+								EmitFrameOffset(ceDestPtr);
+								EmitFrameOffset(ceValue);
+								EmitFrameOffset(ceSize);
+							}
+							break;
 
 						case BfIRIntrinsic_AtomicFence:
 							// Nothing to do
@@ -4729,6 +4740,17 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitAddInterface)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr);
+				int32 ifaceTypeId = *(int32*)((uint8*)stackPtr + sizeof(int32));				
+				if ((mCurEmitContext == NULL) || (mCurEmitContext->mType->mTypeId != typeId))
+				{
+					_Fail("Code cannot be emitted for this type in this context");
+					return false;
+				}
+				mCurEmitContext->mInterfaces.Add(ifaceTypeId);
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMethodEntry)
 			{
 				int64 methodHandle = *(int64*)((uint8*)stackPtr);
@@ -4972,7 +4994,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		if (*fastFinishPtr)
 		{
 			if (*cancelingPtr)
-				_Fail("Comptime evaluation canceled");
+			{
+				if ((mCurModule != NULL) && (mCurModule->mCurTypeInstance != NULL))
+					mCurModule->DeferRebuildType(mCurModule->mCurTypeInstance);
+				else
+					_Fail("Comptime evaluation canceled");
+			}
 			return false;
 		}
 
@@ -6816,6 +6843,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				if (methodDef->mName == "Comptime_EmitTypeBody")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_EmitTypeBody;
+				}
+				if (methodDef->mName == "Comptime_EmitAddInterface")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_EmitAddInterface;
 				}
 				else if (methodDef->mName == "Comptime_EmitMethodEntry")
 				{

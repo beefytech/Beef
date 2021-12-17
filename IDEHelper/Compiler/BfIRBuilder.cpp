@@ -857,6 +857,27 @@ BfIRValue BfIRConstHolder::CreateConstArrayZero(int count)
 	return irValue;
 }
 
+BfIRValue BfIRConstHolder::CreateConstBitCast(BfIRValue val, BfIRType type)
+{
+	auto constVal = GetConstant(val);
+
+	auto bitCast = mTempAlloc.Alloc<BfConstantBitCast>();
+	if ((constVal == NULL) || (constVal->IsNull()))
+		bitCast->mConstType = BfConstType_BitCastNull;
+	else
+		bitCast->mConstType = BfConstType_BitCast;
+	BF_ASSERT(val.mId != -1);
+	bitCast->mTarget = val.mId;
+	bitCast->mToType = type;
+
+	BfIRValue castedVal(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(bitCast));
+#ifdef CHECK_CONSTHOLDER
+	castedVal.mHolder = this;
+#endif
+	BF_ASSERT((void*)GetConstant(castedVal) == (void*)bitCast);
+	return castedVal;
+}
+
 BfIRValue BfIRConstHolder::CreateTypeOf(BfType* type)
 {
 	BfTypeOf_Const* typeOf = mTempAlloc.Alloc<BfTypeOf_Const>();
@@ -2970,10 +2991,10 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		diFieldTypes.push_back(memberType);
 	}
 
-	bool isPayloadEnum = (typeInstance->IsEnum()) && (!typeInstance->IsTypedPrimitive());
-	for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
+	bool isPayloadEnum = (typeInstance->IsEnum()) && (!typeInstance->IsTypedPrimitive());	
+	for (int fieldIdx = 0; fieldIdx < typeInstance->mFieldInstances.mSize; fieldIdx++)		
 	{
-		auto fieldInstance = &fieldInstanceRef;
+		auto fieldInstance = &typeInstance->mFieldInstances[fieldIdx];
 		if (!fieldInstance->mFieldIncluded)
 			continue;
 		auto fieldDef = fieldInstance->GetFieldDef();
@@ -3091,18 +3112,15 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								{										
 									staticValue = ConstToMemory(staticValue);
 									wasMadeAddr = true;									
-								}								
-								else if (resolvedFieldType->IsPointer())
+								}
+								else if (constant->mTypeCode == BfTypeCode_StringId)
 								{
 									int stringId = constant->mInt32;
 									const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
-									staticValue = mModule->GetStringCharPtr(str);
-								}								
-								else if (constant->mTypeCode == BfTypeCode_StringId)
-								{
-									int stringId = constant->mInt32;									
-									const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
-									staticValue = mModule->GetStringObjectValue(str);																		
+									if (resolvedFieldType->IsPointer())
+										staticValue = mModule->GetStringCharPtr(str);									
+									else																		
+										staticValue = mModule->GetStringObjectValue(str);																		
 								}
 								else
 								{
@@ -4417,25 +4435,7 @@ BfIRValue BfIRBuilder::CreateNot(BfIRValue val)
 BfIRValue BfIRBuilder::CreateBitCast(BfIRValue val, BfIRType type)
 {
 	if (val.IsConst())
-	{
-		auto constVal = GetConstant(val);
-
-		auto bitCast = mTempAlloc.Alloc<BfConstantBitCast>();		
-		if (constVal->IsNull())
-			bitCast->mConstType = BfConstType_BitCastNull;
-		else
-			bitCast->mConstType = BfConstType_BitCast;
-		bitCast->mTarget = val.mId;
-		bitCast->mToType = type;
-
-		BfIRValue castedVal(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(bitCast));		
-#ifdef CHECK_CONSTHOLDER
-		castedVal.mHolder = this;
-#endif
-		BF_ASSERT((void*)GetConstant(castedVal) == (void*)bitCast);
-		return castedVal;
-	}
-	
+		return CreateConstBitCast(val, type);	
 	auto retVal = WriteCmd(BfIRCmd_BitCast, val, type);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;

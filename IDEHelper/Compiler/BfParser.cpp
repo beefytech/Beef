@@ -2447,10 +2447,9 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 					mTokenEnd = mSrcIdx;
 					return;
 				}
-
-				bool wasNeg = false;
+				
 				bool hadOverflow = false;
-				int64 val = 0;
+				uint64 val = 0;
 				int numberBase = 10;
 				int expVal = 0;
 				int expSign = 0;
@@ -2460,8 +2459,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 				int hexDigits = 0;
 				if (c == '-')
 				{
-					wasNeg = true; //TODO: This never actually gets set any more (eaten as BfToken_Minus above).  Move checks that use this to later in pipeline, then remove this
-					c = mSrc[mSrcIdx++];
+					BF_FATAL("Parsing error");
 				}
 
 				val = c - '0';
@@ -2641,7 +2639,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 								// This is actually a integer followed by an Int32 call (like 123.ToString)
 								mSrcIdx -= 2;
 								mTokenEnd = mSrcIdx;
-								mLiteral.mInt64 = val;
+								mLiteral.mUInt64 = val;
 								mLiteral.mTypeCode = BfTypeCode_IntUnknown;
 								mSyntaxToken = BfSyntaxToken_Literal;
 								return;
@@ -2668,26 +2666,23 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 					if (endNumber)
 					{
 						mTokenEnd = mSrcIdx - 1;
-						mSrcIdx--;
-						if (wasNeg)
-							val = -val;
+						mSrcIdx--;						
 
 						if ((numberBase == 0x10) &&
 							((hexDigits >= 16) || ((hadSeps) && (hexDigits > 8)) || ((hadLeadingHexSep) && (hexDigits == 8))))
 						{
 							if (hexDigits > 16)
 								mPassInstance->FailAt("Too many hex digits for int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
-							mLiteral.mInt64 = val;
-							if ((val < 0) && (!wasNeg))
+							mLiteral.mUInt64 = val;
+							if (val >= 0x8000000000000000)
 								mLiteral.mTypeCode = BfTypeCode_UInt64;
 							else
 								mLiteral.mTypeCode = BfTypeCode_Int64;
 						}
 						else
 						{
-							mLiteral.mInt64 = val;
+							mLiteral.mUInt64 = val;
 							mLiteral.mTypeCode = BfTypeCode_IntUnknown;
-
 
 							if ((numberBase == 0x10) && (hexDigits == 7))
 								mLiteral.mWarnType = BfWarning_BF4201_Only7Hex;							
@@ -2699,7 +2694,12 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 								mPassInstance->FailAt("Value doesn't fit into int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 								mLiteral.mTypeCode = BfTypeCode_Int64;
 							}
-							else if ((val < -0x80000000LL) || (val > 0xFFFFFFFFLL))
+							//else if ((val < -0x80000000LL) || (val > 0xFFFFFFFFLL))
+							else if (val >= 0x8000000000000000)
+							{
+								mLiteral.mTypeCode = BfTypeCode_UInt64;
+							}
+							else if (val > 0xFFFFFFFFLL)
 							{								
 								mLiteral.mTypeCode = BfTypeCode_Int64;
 							}							
@@ -2709,7 +2709,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 						return;
 					}
 
-					int64 prevVal = val;
+					uint64 prevVal = val;
 					if ((c >= '0') && (c <= '9') && (c < '0' + numberBase))
 					{
 						if (numberBase == 0x10)
@@ -2731,9 +2731,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 					}
 					
 					else if ((c == 'u') || (c == 'U'))
-					{
-						if (wasNeg)
-							val = -val;
+					{						
 						if ((mSrc[mSrcIdx] == 'l') || (mSrc[mSrcIdx] == 'L'))
 						{
 							if (mSrc[mSrcIdx] == 'l')
@@ -2744,7 +2742,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 							mLiteral.mUInt64 = (uint64)val;
 							if (hexDigits > 16)
 								mPassInstance->FailAt("Too many hex digits for int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
-							else if ((hadOverflow) || (wasNeg))
+							else if (hadOverflow)
 								mPassInstance->FailAt("Value doesn't fit into uint64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 							mSyntaxToken = BfSyntaxToken_Literal;
 							return;
@@ -2752,7 +2750,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 						mTokenEnd = mSrcIdx;
 						mLiteral.mTypeCode = BfTypeCode_UIntPtr;
 						mLiteral.mUInt32 = (uint32)val;
-						if ((hadOverflow) || (wasNeg) || ((uint64)val != (uint64)mLiteral.mUInt32))
+						if ((hadOverflow) || ((uint64)val != (uint64)mLiteral.mUInt32))
 							mPassInstance->FailAt("Value doesn't fit into uint32", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 						mSyntaxToken = BfSyntaxToken_Literal;
 						return;
@@ -2760,9 +2758,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 					else if ((c == 'l') || (c == 'L'))
 					{
 						if (c == 'l')
-							TokenFail("Uppercase 'L' required for int64");
-						if (wasNeg)
-							val = -val;
+							TokenFail("Uppercase 'L' required for int64");						
 						if ((mSrc[mSrcIdx] == 'u') || (mSrc[mSrcIdx] == 'U'))
 						{
 							mSrcIdx++;
@@ -2771,25 +2767,24 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 							mLiteral.mUInt64 = (uint64)val;
 							if (hexDigits > 16)
 								mPassInstance->FailAt("Too many hex digits for int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
-							else if ((hadOverflow) || (wasNeg))
+							else if (hadOverflow)
 								mPassInstance->FailAt("Value doesn't fit into uint64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 							mSyntaxToken = BfSyntaxToken_Literal;
 							return;
-						}
+						}						
 						mTokenEnd = mSrcIdx;
 						mLiteral.mTypeCode = BfTypeCode_Int64;
 						mLiteral.mInt64 = (int64)val;
-
-						bool signMatched = true;
-						if (val != 0)
-							signMatched = (val < 0) == wasNeg;
-
+						if (val == 0x8000000000000000)
+							mLiteral.mTypeCode = BfTypeCode_UInt64; 
+						else if (val >= 0x8000000000000000)
+							hadOverflow = true;
 						if (numberBase == 0x10)
 						{
 							if (hexDigits > 16)
 								mPassInstance->FailAt("Too many hex digits for int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 						}
-						else if ((hadOverflow) || (!signMatched))
+						else if (hadOverflow)
 							mPassInstance->FailAt("Value doesn't fit into int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 						mSyntaxToken = BfSyntaxToken_Literal;
 						return;
@@ -2813,17 +2808,14 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 					else
 					{
 						mTokenEnd = mSrcIdx - 1;
-						mSrcIdx--;
-						if (wasNeg)
-							val = -val;
-						mLiteral.mInt64 = val;
+						mSrcIdx--;						
+						mLiteral.mUInt64 = val;
 						mLiteral.mTypeCode = BfTypeCode_IntUnknown;
 						mSyntaxToken = BfSyntaxToken_Literal;
 						TokenFail("Unexpected character while parsing number", 0);
 						return;
 					}
-
-					//if ((val < 0) && (val != -0x8000000000000000))
+					
 					if ((uint64)prevVal > (uint64)val)
 						hadOverflow = true;
 				}

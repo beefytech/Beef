@@ -793,11 +793,6 @@ BfTypeDef::~BfTypeDef()
 {
 	BfLogSysM("BfTypeDef::~BfTypeDef %p\n", this);
 
-	if ((mHash == -1330357811) && (IsEmitted()))
-	{
-		NOP;
-	}
-
 	delete mNextRevision;
 	FreeMembers();
 
@@ -2282,6 +2277,41 @@ bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, int64 value)
 	return false;
 }
 
+bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, uint64 value)
+{	
+	if (typeCode == BfTypeCode_IntPtr)
+		typeCode = (mPtrSize == 4) ? BfTypeCode_Int32 : BfTypeCode_Int64;
+	if (typeCode == BfTypeCode_UIntPtr)
+		typeCode = (mPtrSize == 4) ? BfTypeCode_UInt32 : BfTypeCode_UInt64;
+
+	if (value >= 0x8000000000000000)
+		return typeCode == BfTypeCode_UInt64;
+
+	switch (typeCode)
+	{
+	case BfTypeCode_Int8:
+		return (value < 0x80);
+	case BfTypeCode_Int16:
+		return (value < 0x8000);
+	case BfTypeCode_Int32:
+		return (value < 0x80000000LL);
+	case BfTypeCode_Int64:
+		return true;
+
+	case BfTypeCode_UInt8:
+		return (value < 0x100);
+	case BfTypeCode_UInt16:
+		return (value < 0x10000);
+	case BfTypeCode_UInt32:
+		return (value < 0x100000000LL);
+	case BfTypeCode_UInt64:
+		return true;
+	default: break;
+	}
+
+	return false;
+}
+
 BfParser* BfSystem::CreateParser(BfProject* bfProject)
 {
 	AutoCrit crit(mDataLock);
@@ -3693,10 +3723,14 @@ void BfSystem::RemoveOldData()
 	{
 		AutoCrit autoCrit(mDataLock);
 
-		for (auto typeDef : mTypeDefDeleteQueue)
+		for (int i = 0; i < (int)mTypeDefDeleteQueue.size(); i++)		
+		{
+			auto typeDef = mTypeDefDeleteQueue[i];
+			mTypeDefDeleteQueue[i] = NULL;
+			BfLogSys(this, "RemoveOldData deleting from mTypeDefDeleteQueue %p\n", typeDef);
 			delete typeDef;
+		}
 		mTypeDefDeleteQueue.Clear();
-
 		
 		if (!mProjectDeleteQueue.IsEmpty())
 		{
@@ -3729,6 +3763,7 @@ void BfSystem::RemoveOldData()
 
 void BfSystem::VerifyTypeDef(BfTypeDef* typeDef)
 {
+#if defined _DEBUG && false
 	auto _FindTypeDef = [&](BfTypeReference* typeRef)
 	{
 		if (auto directStrTypeRef = BfNodeDynCast<BfDirectStrTypeReference>(typeRef))
@@ -3762,6 +3797,7 @@ void BfSystem::VerifyTypeDef(BfTypeDef* typeDef)
 			_FindTypeDef(paramDef->mTypeRef);
 		}
 	}
+#endif
 }
 
 BfTypeOptions* BfSystem::GetTypeOptions(int optionsIdx)

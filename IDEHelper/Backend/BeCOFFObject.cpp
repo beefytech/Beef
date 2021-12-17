@@ -555,6 +555,7 @@ void BeCOFFObject::DbgTEndTag()
 	BF_ASSERT(mTTagStartPos != -1);
 	DbgTAlign();
 	int tagSize = mDebugTSect.mData.GetPos() - mTTagStartPos;	
+	BF_ASSERT(tagSize <= 0xFFFF);
 	*((int16*)&mDebugTSect.mData.mData[mTTagStartPos]) = (int16)(tagSize - 2);
 	mTTagStartPos = -1;
 }
@@ -597,11 +598,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 			DbgGetTypeId(structType->mDerivedFrom);
 			for (auto member : structType->mMembers)
 			{
-				auto type = member->mType;
-				//TODO:
-				//if (member->mName == "VersionName")
-					//continue;
-
+				auto type = member->mType;				
 				DbgGetTypeId(type);
 			}
 			for (auto func : structType->mMethods)
@@ -627,7 +624,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 			auto _CheckFieldOverflow = [&]()
 			{
 				int tagSize = mDebugTSect.mData.GetPos() - mTTagStartPos;
-				if (tagSize >= 2000)
+				if (tagSize >= 0xE000)
 				{
 					int extFieldListTag = mCurTagId++;
 
@@ -1013,8 +1010,7 @@ void BeCOFFObject::DbgGenerateTypeInfo()
 void BeCOFFObject::DbgStartSection(int sectionNum)
 {
 	auto& outS = mDebugSSect.mData;	
-	BF_ASSERT(mSectionStartPos == -1);
-	
+	BF_ASSERT(mSectionStartPos == -1);	
 	outS.Write((int32)sectionNum);
 	outS.Write(0); // Temporary - size
 	mSectionStartPos = outS.GetPos();
@@ -1023,7 +1019,7 @@ void BeCOFFObject::DbgStartSection(int sectionNum)
 void BeCOFFObject::DbgEndSection()
 {
 	auto& outS = mDebugSSect.mData;	
-	int totalLen = outS.GetPos() - mSectionStartPos;
+	int totalLen = outS.GetPos() - mSectionStartPos;	
 	*((int32*)&outS.mData[mSectionStartPos - 4]) = totalLen;	
 	mSectionStartPos = -1;
 	while ((outS.GetPos() & 3) != 0)
@@ -1132,7 +1128,7 @@ void BeCOFFObject::DbgSEndTag()
 {
 	BF_ASSERT(mSTagStartPos != -1);
 	int tagSize = mDebugSSect.mData.GetPos() - mSTagStartPos;
-
+	BF_ASSERT(tagSize <= 0xFFFF);
 	*((uint16*)&mDebugSSect.mData.mData[mSTagStartPos]) = (uint16)(tagSize - 2);
 	mSTagStartPos = -1;
 }
@@ -2146,7 +2142,7 @@ bool BeCOFFObject::Generate(BeModule* module, const StringImpl& fileName)
 	if (mWriteToLib)
 	{
 		DynMemStream memStream;
-		
+
 		Generate(module);
 
 		mStream = &memStream;

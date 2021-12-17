@@ -7889,7 +7889,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 						{
 							if (BfIRConstHolder::IsInt(primType->mTypeDef->mTypeCode))
 							{
-								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue.mInt64))
+								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue.mUInt64))
 								{
 									if ((!ignoreErrors) && (PreFail()))
 										*errorOut = Fail(StrFormat("Const generic argument '%s', declared with const '%lld', does not fit into const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
@@ -9617,6 +9617,11 @@ bool BfModule::HasCompiledOutput()
 	return (!mSystem->mIsResolveOnly) && (mGeneratesCode) && (!mIsComptimeModule);
 }
 
+bool BfModule::HasExecutedOutput()
+{
+	return ((!mSystem->mIsResolveOnly) && (mGeneratesCode)) || (mIsComptimeModule);
+}
+
 // We will skip the object access check for any occurrences of this value
 void BfModule::SkipObjectAccessCheck(BfTypedValue typedVal)
 {
@@ -10519,7 +10524,7 @@ bool BfModule::HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodNa
 }
 
 StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* typeGenericArgs, BfTypeVector* methodGenericArgs)
-{	
+{
 	auto methodDef = methodInst->mMethodDef;
 	bool allowResolveGenericParamNames = ((methodNameFlags & BfMethodNameFlag_ResolveGenericParamNames) != 0);
 
@@ -10764,8 +10769,16 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 
 	if (accessorString.length() != 0)
 	{
-		methodName += " " + accessorString;
+		methodName += " ";
+		methodName += accessorString;
 	}
+
+	if ((methodNameFlags & BfMethodNameFlag_IncludeMut) != 0)
+	{
+		if ((methodDef->mIsMutating) && (methodInst->GetOwner()->IsValueType()))
+			methodName += " mut";
+	}
+
 	return methodName;
 }
 
@@ -10860,8 +10873,17 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 	auto origConst = irVal;		
 	if ((constant->mConstType == BfConstType_BitCast) || (constant->mConstType == BfConstType_BitCastNull))
 	{
-		auto bitcast = (BfConstantBitCast*)constant;
-		constant = mBfIRBuilder->GetConstantById(bitcast->mTarget);
+		auto bitcast = (BfConstantBitCast*)constant;		
+		BfIRValue newVal;
+		if (bitcast->mTarget)
+		{
+			newVal = BfIRValue(BfIRValueFlags_Const, bitcast->mTarget);
+			CurrentAddToConstHolder(newVal);
+		}
+		else
+			newVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstNull();
+		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstBitCast(newVal, bitcast->mToType);
+		return;
 	}
 
 	irVal = mCurTypeInstance->CreateConst(constant, mBfIRBuilder);		
@@ -10986,7 +11008,7 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 			wantType = mContext->mTypes[constant->mIRType.mId];
 
 		if (wantType == NULL)
-			return constHolder->CreateConstNull();
+			return mBfIRBuilder->CreateConstNull();
 
 		return GetDefaultValue(wantType);
 	}
@@ -11034,8 +11056,21 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		return mBfIRBuilder->CreateIntToPtr(ConstantToCurrent(fromTarget, constHolder, NULL), toIRType);
 	}
 
+	if ((constant->mConstType == BfConstType_BitCast) || (constant->mConstType == BfConstType_BitCastNull))
+	{
+		auto bitcast = (BfConstantBitCast*)constant;
+		auto fromTarget = constHolder->GetConstantById(bitcast->mTarget);
+		BfIRType toIRType = bitcast->mToType;
+		if (toIRType.mKind == BfIRTypeData::TypeKind_TypeId)
+		{
+			auto toType = mContext->mTypes[toIRType.mId];
+			toIRType = mBfIRBuilder->MapType(toType);
+		}
+		return mBfIRBuilder->CreateBitCast(ConstantToCurrent(fromTarget, constHolder, NULL), toIRType);
+	}
+
 	if (constant->mConstType == BfConstType_Agg)
-	{		
+	{
 		auto constArray = (BfConstantAgg*)constant;
 
 		if ((wantType == NULL) && (constArray->mType.mKind == BfIRTypeData::TypeKind_TypeId))
@@ -14456,7 +14491,7 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 	if ((localVarDef->mNameNode != NULL) && (mCurMethodInstance != NULL))
 	{		
 		bool isClosureProcessing = (mCurMethodState->mClosureState != NULL) && (!mCurMethodState->mClosureState->mCapturing);		
-		if ((!isClosureProcessing) && (mCompiler->mResolvePassData != NULL) && (localVarDef->mNameNode != NULL) && (!mIsComptimeModule))
+		if ((!isClosureProcessing) && (mCompiler->mResolvePassData != NULL) && (localVarDef->mNameNode != NULL) && (rootMethodState->mMethodInstance != NULL) && (!mIsComptimeModule))
 			mCompiler->mResolvePassData->HandleLocalReference(localVarDef->mNameNode, rootMethodState->mMethodInstance->GetOwner()->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, localVarDef->mLocalVarId);
 	}
 	
@@ -15273,14 +15308,18 @@ void BfModule::AssertErrorState()
 	{
 		if (mCurTypeInstance->mTypeFailed)
 			return;
-		if (mCurTypeInstance->mTypeDef->mSource->mParsingFailed)
+		if ((mCurTypeInstance->mTypeDef->GetDefinition()->mSource != NULL) && (mCurTypeInstance->mTypeDef->GetDefinition()->mSource->mParsingFailed))
 			return;
 	}
 	if (mCurMethodInstance != NULL)
 	{
-		if ((mCurMethodInstance->mMethodDef->mDeclaringType != NULL) && (mCurMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
+		if ((mCurMethodInstance->mMethodDef->mDeclaringType != NULL) && 
+			(mCurMethodInstance->mMethodDef->mDeclaringType->mSource != NULL) && 
+			(mCurMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
 			return;
-		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && (mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
+		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && 
+			(mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mSource != NULL) &&
+			(mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
 			return;
 	}
 
@@ -16203,6 +16242,8 @@ void BfModule::EmitDtorBody()
 
 BfIRValue BfModule::CreateDllImportGlobalVar(BfMethodInstance* methodInstance, bool define)
 {
+	BF_ASSERT(methodInstance->mIsReified);
+
 	auto typeInstance = methodInstance->GetOwner();
 
 	bool foundDllImportAttr = false;
@@ -16467,7 +16508,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 				auto elementType = refType->mElementType;
 				PopulateType(elementType, BfPopulateType_Data);
 				addDeref = elementType->mSize;
-				if ((addDeref <= 0) && (!elementType->IsValuelessType()))
+				if ((addDeref <= 0) && (!elementType->IsValuelessType()) && (!elementType->IsOpaque()))
 					AssertErrorState();
 			}
 			if ((resolvedTypeRef->IsComposite()) && (!resolvedTypeRef->IsTypedPrimitive()))
@@ -17041,7 +17082,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					break;
 			}
 
-			if ((HasCompiledOutput()) && (matchedMethod != NULL))
+			if ((HasExecutedOutput()) && (matchedMethod != NULL))
 			{
 				SizedArray<BfIRValue, 1> args;
 				auto ctorBodyMethodInstance = GetMethodInstance(mCurTypeInstance->mBaseType, matchedMethod, BfTypeVector());
@@ -18486,7 +18527,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		return;
 	}
 
-	if (HasCompiledOutput())
+	if (HasExecutedOutput())
 	{
 		BF_ASSERT(mIsModuleMutable);
 	}
@@ -19713,7 +19754,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		skipBody = true;
 		skipEndChecks = true;
 		
-		if ((HasCompiledOutput()) || (mIsComptimeModule))
+		if (HasExecutedOutput())
 		{
 			// Clear out DebugLoc - to mark the ".addr" code as part of prologue
 			mBfIRBuilder->ClearDebugLocation();
@@ -19743,12 +19784,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					mBfIRBuilder->CreateRetVoid();
 			}
 			else
-			{
-				BF_ASSERT(!innerMethodInstance.mMethodInstance->mMethodDef->mDeclaringType->IsEmitted());
+			{				
 				auto innerMethodDef = innerMethodInstance.mMethodInstance->mMethodDef;
-				if (innerType->mTypeDef->IsEmitted())
-					innerMethodDef = innerType->mTypeDef->mEmitParent->mMethods[innerMethodDef->mIdx];
-
 				BF_ASSERT(innerMethodDef == methodDef);
 
 				SizedArray<BfIRValue, 8> innerParams;
@@ -19977,7 +20014,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		else if ((mCurTypeInstance->IsEnum()) && (!mCurTypeInstance->IsBoxed()) && (methodDef->mName == BF_METHODNAME_TO_STRING))
 		{
 			auto enumType = ResolveTypeDef(mCompiler->mEnumTypeDef);
-			if ((HasCompiledOutput()) || (mIsComptimeModule))
+			if (HasExecutedOutput())
 			{
 				EmitEnumToStringBody();
 			}
@@ -19990,7 +20027,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		else if ((mCurTypeInstance->IsTuple()) && (!mCurTypeInstance->IsBoxed()) && (methodDef->mName == BF_METHODNAME_TO_STRING))
 		{
 			auto enumType = ResolveTypeDef(mCompiler->mEnumTypeDef);
-			if ((HasCompiledOutput()) || (mIsComptimeModule))
+			if (HasExecutedOutput())
 			{
 				EmitTupleToStringBody();
 			}
@@ -20032,7 +20069,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				{
 					mBfIRBuilder->CreateRetVoid();
 				}
-				else if ((HasCompiledOutput()) || (mIsComptimeModule))
+				else if (HasExecutedOutput())
 				{
 					String autoPropName = typeDef->GetAutoPropertyName(propertyDeclaration);
 					BfFieldInstance* fieldInstance = GetFieldByName(mCurTypeInstance, autoPropName);
@@ -22782,18 +22819,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		//BF_ASSERT(mCompiler->IsAutocomplete());
 		BfLogSysM("DoMethodDeclaration isTemporaryFunc bailout\n");
 		return; // Bail out early for autocomplete pass
-	}			
-
-	if ((methodInstance->GetImportCallKind() != BfImportCallKind_None) && (!mBfIRBuilder->mIgnoreWrites) && (!methodInstance->mIRFunction))
-	{		
-		BfLogSysM("DllImportGlobalVar DoMethodDeclaration processing %p\n", methodInstance);		
-		// If this is in an extension then we did create the global variable already in the original obj
-		bool doDefine = mExtensionCount == 0;
-		BfIRValue dllImportGlobalVar = CreateDllImportGlobalVar(methodInstance, doDefine);
-		func = mBfIRBuilder->GetFakeVal();
-		methodInstance->mIRFunction = func;
-		BF_ASSERT(dllImportGlobalVar);
-		mFuncReferences[mCurMethodInstance] = dllImportGlobalVar;		
 	}
 
 	//TODO: We used to have this (this != mContext->mExternalFuncModule) check, but it caused us to keep around 

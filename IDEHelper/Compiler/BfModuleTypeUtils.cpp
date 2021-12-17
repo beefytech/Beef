@@ -2076,6 +2076,9 @@ void BfModule::FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInst
 
 void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode)
 {
+	for (int ifaceTypeId : ceEmitContext->mInterfaces)
+		typeInstance->mCeTypeInfo->mPendingInterfaces.Add(ifaceTypeId);
+	
 	if (ceEmitContext->mEmitData.IsEmpty())
 		return;
 		
@@ -2198,7 +2201,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 						}
 					}
 				}
-				else if (!ceEmitContext->mEmitData.IsEmpty())
+				else if (ceEmitContext->HasEmissions())
 				{
 					if (typeInstance->mCeTypeInfo == NULL)
 						typeInstance->mCeTypeInfo = new BfCeTypeInfo();
@@ -2210,7 +2213,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 					typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
 				}
 
-				if (!ceEmitContext->mEmitData.IsEmpty())
+				if (ceEmitContext->HasEmissions())
 				{
 					String ctxStr = "comptime ApplyToType of ";
 					ctxStr += TypeToString(attrType);
@@ -2747,7 +2750,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		resolvedTypeRef->mSize = typeInstance->mAlign = mSystem->mPtrSize;
 	}
 	
-	BF_ASSERT((typeInstance->mMethodInstanceGroups.size() == 0) || (typeInstance->mMethodInstanceGroups.size() == typeDef->mMethods.size()) || (typeInstance->mCeTypeInfo != NULL));
+	BF_ASSERT((typeInstance->mMethodInstanceGroups.size() == 0) || (typeInstance->mMethodInstanceGroups.size() == typeDef->mMethods.size()) || (typeInstance->mCeTypeInfo != NULL) || (typeInstance->IsBoxed()));
 	typeInstance->mMethodInstanceGroups.Resize(typeDef->mMethods.size());
 	for (int i = 0; i < (int)typeInstance->mMethodInstanceGroups.size(); i++)
 	{
@@ -2927,6 +2930,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		{			
 			bool hadType = false;
 
+			BfAstNode* deferredErrorNode = NULL;
+			char* deferredError = NULL;
+
 			for (auto baseTypeRef : typeDef->mBaseTypes)
 			{
 				SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, baseTypeRef);
@@ -2946,12 +2952,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						}
 						else
 						{
-							Fail("Underlying enum type already specified", baseTypeRef);
+							deferredError = "Underlying enum type already specified";
+							deferredErrorNode = baseTypeRef;
 						}
 					}
 					else
 					{
-						Fail("Invalid underlying enum type", baseTypeRef);
+						deferredError = "Invalid underlying enum type";
+						deferredErrorNode = baseTypeRef;
 					}
 				}
 				else
@@ -2960,6 +2968,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					TypeFailed(typeInstance);
 				}
 			}
+
+			if (deferredError != NULL)
+				Fail(deferredError, deferredErrorNode, true);
 
 			if (underlyingType == NULL)
 			{
@@ -3303,6 +3314,27 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 
 		wantPopulateInterfaces = true;		
+	}
+
+	if ((typeInstance->mCeTypeInfo != NULL) && (!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty()))
+	{
+		for (auto ifaceTypeId : typeInstance->mCeTypeInfo->mPendingInterfaces)
+		{
+			auto ifaceType = mContext->mTypes[ifaceTypeId];
+			if ((ifaceType == NULL) || (!ifaceType->IsInterface()))
+				continue;
+			auto ifaceInst = ifaceType->ToTypeInstance();
+
+			if (ifaceSet.Add(ifaceInst))
+			{
+				// Not base type
+				BfInterfaceDecl ifaceDecl;
+				ifaceDecl.mIFaceTypeInst = ifaceInst;
+				ifaceDecl.mTypeRef = NULL;
+				ifaceDecl.mDeclaringType = typeDef->GetDefinition();
+				interfaces.Add(ifaceDecl);
+			}
+		}		
 	}
 
 	if (_CheckTypeDone())
@@ -3694,6 +3726,25 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if (innerType->IsIncomplete())
 			PopulateType(innerType, BfPopulateType_Data);		
 
+		auto innerTypeInst = innerType->ToTypeInstance();
+		if (innerTypeInst != NULL)
+		{
+			if (typeInstance->mTypeDef != innerTypeInst->mTypeDef)
+			{
+				// Rebuild with proper typedef (generally from inner type comptime emission)
+				typeInstance->mTypeDef = innerTypeInst->mTypeDef;
+				DoPopulateType(resolvedTypeRef, populateType);
+				return;
+			}
+
+			while (typeInstance->mInterfaces.mSize < innerTypeInst->mInterfaces.mSize)
+			{
+				auto ifaceEntry = innerTypeInst->mInterfaces[typeInstance->mInterfaces.mSize];
+				typeInstance->mInterfaces.Add(ifaceEntry);
+				AddDependency(ifaceEntry.mInterfaceType, typeInstance, BfDependencyMap::DependencyFlag_ImplementsInterface);
+			}
+		}
+
 		auto baseType = typeInstance->mBaseType;
 		dataPos = baseType->mInstSize;
 		int alignSize = BF_MAX(innerType->mAlign, baseType->mInstAlign);
@@ -3997,8 +4048,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
  		}
  		
 		if ((typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit) && (tryCE))
- 		{	
+ 		{
 			BF_ASSERT(!typeInstance->mTypeDef->IsEmitted());
+
+			if (typeInstance->mCeTypeInfo != NULL)			
+				typeInstance->mCeTypeInfo->mPendingInterfaces.Clear();
 
  			typeInstance->mDefineState = BfTypeDefineState_CETypeInit;
 			bool hadNewMembers = false;
@@ -4054,6 +4108,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 			}
 
+			if ((typeInstance->mCeTypeInfo != NULL) && (!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty()))
+				hadNewMembers = true;
+			
 			if ((typeInstance->mTypeDef->IsEmitted()) && (typeInstance->mCeTypeInfo == NULL))
 			{
 				BF_ASSERT(mCompiler->mCanceling);
@@ -5658,16 +5715,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 						}
 						else
 						{
-							auto matchedMethodDef = matchedMethod->mMethodDef;
-							if (matchedMethodDef->mDeclaringType->IsEmitted())
-							{
-								Fail("Boxed interface binding error to emitted method", mCurTypeInstance->mTypeDef->GetRefNode());
-								continue;
-							}
-
-							if (underlyingTypeInstance->mTypeDef->IsEmitted())
-								matchedMethodDef = underlyingTypeInstance->mTypeDef->mEmitParent->mMethods[matchedMethodDef->mIdx];
-
+ 							auto matchedMethodDef = matchedMethod->mMethodDef;
 							if (!matchedMethod->mIsForeignMethodDef)
 							{
 								BfMethodInstanceGroup* boxedMethodInstanceGroup = &typeInstance->mMethodInstanceGroups[matchedMethod->mMethodDef->mIdx];
@@ -5676,7 +5724,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 									boxedMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 									VerifyOnDemandMethods();
 								}
-							}							
+							}
 
 							auto methodFlags = matchedMethod->mIsForeignMethodDef ? BfGetMethodInstanceFlag_ForeignMethodDef : BfGetMethodInstanceFlag_None;
 							methodFlags = (BfGetMethodInstanceFlags)(methodFlags | BfGetMethodInstanceFlag_MethodInstanceOnly);
@@ -11505,29 +11553,37 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				{
 					SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 					auto constraintTypeInst = genericParamInst->mTypeConstraint->ToTypeInstance();
-					if ((constraintTypeInst != NULL) && (constraintTypeInst->IsInstanceOf(mCompiler->mEnumTypeDef)) && (explicitCast))
+
+					if ((constraintTypeInst != NULL) && (constraintTypeInst->IsDelegateOrFunction()))
 					{
-						// Enum->int
-						if ((explicitCast) && (toType->IsInteger()))
-							return typedVal.mValue;
+						// Could be a methodref - can't cast to anything else												
 					}
-
-					BfTypedValue fromTypedValue;
-					if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
-						fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
 					else
-						fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
-
-					auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
-					if (result)
 					{
-						if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
+						if ((constraintTypeInst != NULL) && (constraintTypeInst->IsInstanceOf(mCompiler->mEnumTypeDef)) && (explicitCast))
 						{
-							// Don't allow cast when we are constrained by a delegate type, because BfMethodRefs can match and we require an actual alloc
-							Fail(StrFormat("Unable to cast '%s' to '%s' because delegate constraints allow valueless direct method references", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
-							return BfIRValue();
+							// Enum->int
+							if ((explicitCast) && (toType->IsInteger()))
+								return typedVal.mValue;
 						}
-						return result;
+
+						BfTypedValue fromTypedValue;
+						if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
+							fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
+						else
+							fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
+
+						auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
+						if (result)
+						{
+							if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
+							{
+								// Don't allow cast when we are constrained by a delegate type, because BfMethodRefs can match and we require an actual alloc
+								Fail(StrFormat("Unable to cast '%s' to '%s' because delegate constraints allow valueless direct method references", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
+								return BfIRValue();
+							}
+							return result;
+						}
 					}
 				}
 
@@ -11755,7 +11811,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 			if (allowCast)
 			{
-				if (ignoreWrites)
+				if ((ignoreWrites) && (!typedVal.mValue.IsConst()))
 					return mBfIRBuilder->GetFakeVal();
 				return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
 			}

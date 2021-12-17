@@ -1298,15 +1298,6 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			}							
 		}
 
-// 		if ((paramIdx == 0) && (GetParamName(0) == "this") && (checkType->IsPointer()))
-// 		{
-// 			// We don't actually pass a this pointer for mut methods in valueless structs
-// 			auto underlyingType = checkType->GetUnderlyingType();
-// 			module->PopulateType(underlyingType, BfPopulateType_Data);
-// 			if (underlyingType->IsValuelessType())
-// 				continue;
-// 		}
-
 		if (checkType->CanBeValuelessType())
 			module->PopulateType(checkType, BfPopulateType_Data);
 		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
@@ -1563,6 +1554,7 @@ BfTypeInstance::~BfTypeInstance()
 	if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
 	{
 		mMethodInstanceGroups.Clear();
+		BfLogSys(mModule->mSystem, "Type %p dtor deleting typeDef %p\n", this, mTypeDef);
 		delete mTypeDef;
 	}
 }
@@ -2635,6 +2627,12 @@ void BfTupleType::Finish()
 }
 
 //////////////////////////////////////////////////////////////////////////
+
+BfBoxedType::~BfBoxedType()
+{
+	if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
+		mTypeDef = NULL;
+}
 
 BfType* BfBoxedType::GetModifiedElementType()
 {	

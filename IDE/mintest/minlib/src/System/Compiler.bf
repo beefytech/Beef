@@ -2,6 +2,11 @@ namespace System
 {
 	class Compiler
 	{
+		public class Generator
+		{
+
+		}
+
 		public static class Options
 		{
 			[LinkName("#AllocStackCount")]

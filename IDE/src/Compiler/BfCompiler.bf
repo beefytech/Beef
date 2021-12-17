@@ -95,6 +95,15 @@ namespace IDE.Compiler
 		static extern char8* BfCompiler_GetUsedOutputFileNames(void* bfCompiler, void* bfProject, bool flushQueuedHotFiles, out bool hadOutputChanges);
 
 		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetGeneratorTypeDefList(void* bfCompiler);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetGeneratorInitData(void* bfCompiler, char8* typeDefName, char8* args);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetGeneratorGenData(void* bfCompiler, char8* typeDefName, char8* args);
+
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetTypeDefList(void* bfCompiler);
 
 		[CallingConvention(.Stdcall), CLink]
@@ -234,13 +243,13 @@ namespace IDE.Compiler
         public void GetAutocompleteInfo(String outAutocompleteInfo)
         {
             char8* result = BfCompiler_GetAutocompleteInfo(mNativeBfCompiler);
-			scope String(result).MoveTo(outAutocompleteInfo);
+			outAutocompleteInfo.Append(StringView(result));
         }
 
         public void GetSymbolReferences(BfPassInstance passInstance, BfResolvePassData resolvePassData, String outSymbolReferences)
         {
             char8* result = BfCompiler_GetSymbolReferences(mNativeBfCompiler, passInstance.mNativeBfPassInstance, resolvePassData.mNativeResolvePassData);
-            scope String(result).MoveTo(outSymbolReferences);
+            outSymbolReferences.Append(StringView(result));
         }
 
         /*public void UpdateRenameSymbols(BfPassInstance passInstance, BfResolvePassData resolvePassData)
@@ -674,17 +683,21 @@ namespace IDE.Compiler
 
         public override void RequestCancelBackground()
         {
-            if ([Friend]mThreadWorker.mThreadRunning)
+            if (mThreadWorker.mThreadRunning)
             {
 				if ((mNativeBfCompiler != null) && (!gApp.mDeterministic))
                 	BfCompiler_Cancel(mNativeBfCompiler);
             }
         }
 
-		public override void RequestFastFinish()
+		public override void RequestFastFinish(bool force = false)
 		{
-		    if ([Friend]mThreadWorker.mThreadRunning || [Friend]mThreadWorkerHi.mThreadRunning)
+		    if (mThreadWorker.mThreadRunning || mThreadWorkerHi.mThreadRunning)
 		    {
+				if ((!force) &&
+					((!mThreadWorker.mAllowFastFinish) || (!mThreadWorkerHi.mAllowFastFinish)))
+					return;
+
 				if ((mNativeBfCompiler != null) && (!gApp.mDeterministic))
 		        	BfCompiler_RequestFastFinish(mNativeBfCompiler);
 		    }
@@ -708,6 +721,21 @@ namespace IDE.Compiler
 		public int32 GetCurConstEvalExecuteId()
 		{
 			return BfCompiler_GetCurConstEvalExecuteId(mNativeBfCompiler);
+		}
+
+		public void GetGeneratorTypeDefList(String outStr)
+		{
+			outStr.Append(BfCompiler_GetGeneratorTypeDefList(mNativeBfCompiler));
+		}
+
+		public void GetGeneratorInitData(String typeDefName, String args, String outStr)
+		{
+			outStr.Append(BfCompiler_GetGeneratorInitData(mNativeBfCompiler, typeDefName, args));
+		}
+
+		public void GetGeneratorGenData(String typeDefName, String args, String outStr)
+		{
+			outStr.Append(BfCompiler_GetGeneratorGenData(mNativeBfCompiler, typeDefName, args));
 		}
 
 		public void GetTypeDefList(String outStr)

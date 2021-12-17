@@ -1,8 +1,189 @@
 using System.Reflection;
+using System.Diagnostics;
+using System.Collections;
+using System.Security.Cryptography;
+
 namespace System
 {
 	static class Compiler
 	{
+		public abstract class Generator
+		{
+			public enum Flags
+			{
+				None = 0,
+				AllowRegenerate = 1
+			}
+
+			public String mCmdInfo = new String() ~ delete _;
+			public Dictionary<StringView, StringView> mParams = new .() ~ delete _;
+			public abstract String Name { get; }
+
+			public StringView ProjectName => mParams["ProjectName"];
+			public StringView ProjectDir => mParams["ProjectDir"];
+			public StringView FolderDir => mParams["FolderDir"];
+			public StringView Namespace => mParams["Namespace"];
+			public StringView DefaultNamespace => mParams["DefaultNamespace"];
+			public StringView WorkspaceName => mParams["WorkspaceName"];
+			public StringView WorkspaceDir => mParams["WorkspaceDir"];
+			public StringView DateTime => mParams["DateTime"];
+			public bool IsRegenerating => mParams.GetValueOrDefault("Regenerating") == "True";
+
+			public void Fail(StringView error)
+			{
+				mCmdInfo.AppendF("error\t");
+				error.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\n");
+			}
+
+			public void AddEdit(StringView dataName, StringView label, StringView defaultValue)
+			{
+				mCmdInfo.AppendF($"addEdit\t");
+				dataName.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				label.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				defaultValue.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\n");
+			}
+
+			public void AddCombo(StringView dataName, StringView label, StringView defaultValue, Span<StringView> values)
+			{
+				mCmdInfo.AppendF($"addCombo\t");
+				dataName.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				label.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				defaultValue.QuoteString(mCmdInfo);
+				for (var value in values)
+				{
+					mCmdInfo.Append("\t");
+					value.QuoteString(mCmdInfo);
+				}
+				mCmdInfo.Append("\n");
+			}
+
+			public void AddCheckbox(StringView dataName, StringView label, bool defaultValue)
+			{
+				mCmdInfo.AppendF($"addCheckbox\t");
+				dataName.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				label.QuoteString(mCmdInfo);
+				mCmdInfo.AppendF($"\t{defaultValue}\n");
+			}
+
+			public bool GetString(StringView key, String outVal)
+			{
+				if (mParams.TryGetAlt(key, var matchKey, var value))
+				{
+					outVal.Append(value);
+					return true;
+				}
+				return false;
+			}
+
+			public virtual void InitUI()
+			{
+			}
+
+			public virtual void Generate(String outFileName, String outText, ref Flags generateFlags)
+			{
+			}
+
+			static String GetName<T>() where T : Generator
+			{
+				T val = scope T();
+				String str = val.Name;
+				return str;
+			}
+
+			void HandleArgs(String args)
+			{
+				for (var line in args.Split('\n', .RemoveEmptyEntries))
+				{
+					int tabPos = line.IndexOf('\t');
+					var key = line.Substring(0, tabPos);
+					var value = line.Substring(tabPos + 1);
+					if (mParams.TryAdd(key, var keyPtr, var valuePtr))
+					{
+						*keyPtr = key;
+						*valuePtr = value;
+					}
+				}
+			}
+
+			static String InitUI<T>(String args) where T : Generator
+			{
+				T val = scope T();
+				val.HandleArgs(args);
+				val.InitUI();
+				return val.mCmdInfo;
+			}
+
+			static String Generate<T>(String args) where T : Generator
+			{
+				T val = scope T();
+				val.HandleArgs(args);
+				String fileName = scope .();
+				String outText = scope .();
+				Flags flags = .None;
+				val.Generate(fileName, outText, ref flags);
+				val.mCmdInfo.Append("fileName\t");
+				fileName.QuoteString(val.mCmdInfo);
+				val.mCmdInfo.Append("\n");
+				val.mCmdInfo.Append("data\n");
+
+				if (flags.HasFlag(.AllowRegenerate))
+				{
+					bool writeArg = false;
+					for (var line in args.Split('\n', .RemoveEmptyEntries))
+					{
+						int tabPos = line.IndexOf('\t');
+						var key = line.Substring(0, tabPos);
+						var value = line.Substring(tabPos + 1);
+
+						if (key == "Generator")
+							writeArg = true;
+						if (writeArg)
+						{
+							val.mCmdInfo.AppendF($"// {key}={value}\n");
+						}
+					}
+					var hash = MD5.Hash(.((.)outText.Ptr, outText.Length));
+					val.mCmdInfo.AppendF($"// GenHash={hash}\n\n");
+				}
+				val.mCmdInfo.Append(outText);
+				return val.mCmdInfo;
+			}
+		}
+
+		public class NewClassGenerator : Generator
+		{
+			public override String Name => "New Class";
+			
+			public override void InitUI()
+			{
+				AddEdit("name", "Class Name", "");
+			}
+
+			public override void Generate(String outFileName, String outText, ref Flags generateFlags)
+			{
+				var name = mParams["name"];
+				if (name.EndsWith(".bf", .OrdinalIgnoreCase))
+					name.RemoveFromEnd(3);
+				outFileName.Append(name);
+				outText.AppendF(
+					$"""
+					namespace {Namespace}
+					{{
+						class {name}
+						{{
+						}}
+					}}
+					""");
+			}
+		}
+
 		public struct MethodBuilder
 		{
 			void* mNative;
@@ -43,7 +224,7 @@ namespace System
 		public static extern String CallerProject;
 
 		[LinkName("#CallerExpression")]
-		public static extern String[0x0FFFFFFF] CallerExpression;
+		public static extern String[0x00FFFFFF] CallerExpression;
 
 		[LinkName("#ProjectName")]
 		public static extern String ProjectName;
@@ -76,6 +257,7 @@ namespace System
 		static extern void* Comptime_MethodBuilder_EmitStr(void* native, StringView str);
 		static extern void* Comptime_CreateMethod(int32 typeId, StringView methodName, Type returnType, MethodFlags methodFlags);
 		static extern void Comptime_EmitTypeBody(int32 typeId, StringView text);
+		static extern void Comptime_EmitAddInterface(int32 typeId, int32 ifaceTypeId);
 		static extern void Comptime_EmitMethodEntry(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMethodExit(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMixin(StringView text);
@@ -92,6 +274,12 @@ namespace System
 		public static void EmitTypeBody(Type owner, StringView text)
 		{
 			Comptime_EmitTypeBody((.)owner.TypeId, text);
+		}
+
+		[Comptime(OnlyFromComptime=true)]
+		public static void EmitAddInterface(Type owner, Type iface)
+		{
+			Comptime_EmitAddInterface((.)owner.TypeId, (.)iface.TypeId);
 		}
 
 		[Comptime(OnlyFromComptime=true)]

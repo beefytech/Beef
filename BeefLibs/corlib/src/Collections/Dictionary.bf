@@ -578,6 +578,43 @@ namespace System.Collections
 			return oldPtr;
 		}
 
+		private bool RemoveEntry(int32 hashCode, int_cosize index)
+		{
+			if (mBuckets != null)
+			{
+				int bucket = hashCode % (int_cosize)mAllocSize;
+				int lastIndex = -1;
+
+				for (int_cosize i = mBuckets[bucket]; i >= 0; lastIndex = i, i = mEntries[i].mNext)
+				{
+					if (i == index)
+					{
+						if (lastIndex < 0)
+						{
+							mBuckets[bucket] = mEntries[index].mNext;
+						}
+						else
+						{
+							mEntries[lastIndex].mNext = mEntries[index].mNext;
+						}
+						mEntries[index].mHashCode = -1;
+						mEntries[index].mNext = mFreeList;
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+						mEntries[index].mKey = default;
+						mEntries[index].mValue = default;
+#endif
+						mFreeList = index;
+						mFreeCount++;
+#if VERSION_DICTIONARY
+						mVersion++;
+#endif
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		public bool Remove(TKey key)
 		{
 			if (mBuckets != null)
@@ -901,7 +938,7 @@ namespace System.Collections
 			public void Remove() mut
 			{
 				int_cosize curIdx = mIndex - 1;
-				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+				mDictionary.RemoveEntry(mDictionary.mEntries[curIdx].mHashCode, curIdx);
 #if VERSION_DICTIONARY
 				mVersion = mDictionary.mVersion;
 #endif
@@ -1052,7 +1089,7 @@ namespace System.Collections
 			public void Remove() mut
 			{
 				int_cosize curIdx = mIndex - 1;
-				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+				mDictionary.RemoveEntry(mDictionary.mEntries[curIdx].mHashCode, curIdx);
 #if VERSION_DICTIONARY
 				mVersion = mDictionary.mVersion;
 #endif
@@ -1158,7 +1195,7 @@ namespace System.Collections
 			public void Remove() mut
 			{
 				int_cosize curIdx = mIndex - 1;
-				mDictionary.Remove(mDictionary.mEntries[curIdx].mKey);
+				mDictionary.RemoveEntry(mDictionary.mEntries[curIdx].mHashCode, curIdx);
 #if VERSION_DICTIONARY
 				mVersion = mDictionary.mVersion;
 #endif

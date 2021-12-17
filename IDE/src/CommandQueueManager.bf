@@ -15,9 +15,10 @@ namespace IDE
 		public Action mOnThreadDone ~ delete _;
 		[ThreadStatic]
 		public static bool mBpSetThreadName;
+		public bool mAllowFastFinish;
 		WaitEvent mWaitEvent = new WaitEvent() ~ delete _;
 
-		public void DoBackground(ThreadStart threadStart, Action onThreadDone = null, int maxWait = 0)
+		public void DoBackground(ThreadStart threadStart, Action onThreadDone = null, int maxWait = 0, bool allowFastFinish = true)
 		{
 		    Debug.Assert(Thread.CurrentThread == IDEApp.sApp.mMainThread);
 
@@ -26,6 +27,7 @@ namespace IDE
 
 			BeefPerf.Event("DoBackground:starting", "");
 
+			mAllowFastFinish = allowFastFinish;
 		    mOnThreadDone = onThreadDone;
 		    mThreadRunning = true;
 			mWaitEvent.Reset();
@@ -47,6 +49,7 @@ namespace IDE
 				delete threadStart;
 		        mThread = null;
 		        mThreadRunning = false;
+				mAllowFastFinish = true;
 				BeefPerf.Event("DoBackground:threadEnd", "");
 
 				mWaitEvent.Set();
@@ -132,7 +135,7 @@ namespace IDE
 
         }
 
-		public virtual void RequestFastFinish()
+		public virtual void RequestFastFinish(bool force = false)
 		{
 
 		}
@@ -190,15 +193,20 @@ namespace IDE
             return (mThreadWorker.mThreadRunning || mThreadWorkerHi.mThreadRunning);
         }
 
+		public bool IsPerformingBackgroundOperationHi()
+		{
+		    return (mThreadWorkerHi.mThreadRunning);
+		}
+
         public void DoBackground(ThreadStart threadStart, Action onThreadDone = null, int maxWait = 0)
         {
 			CancelBackground();
             mThreadWorker.DoBackground(threadStart, onThreadDone, maxWait);
         }
 
-		public void DoBackgroundHi(ThreadStart threadStart, Action onThreadDone = null)
+		public void DoBackgroundHi(ThreadStart threadStart, Action onThreadDone = null, bool allowFastFinish = true)
 		{
-		 	mThreadWorkerHi.DoBackground(threadStart, onThreadDone);
+		 	mThreadWorkerHi.DoBackground(threadStart, onThreadDone, 0, allowFastFinish);
 		}
 
 		public void CheckThreadDone()

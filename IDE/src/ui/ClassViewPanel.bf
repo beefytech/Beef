@@ -598,10 +598,14 @@ namespace IDE.ui
 				}
 			}
 
+			var bfSystem = gApp.mBfResolveSystem;
+
 			String typeName = scope .();
 			GetName(item, typeName);
 			String info = scope .();
+			bfSystem.Lock(0);
 			gApp.mBfResolveCompiler.GetTypeDefInfo(typeName, info);
+			bfSystem.Unlock();
 
 			for (let str in info.Split('\n'))
 			{

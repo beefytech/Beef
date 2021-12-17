@@ -61,7 +61,8 @@ enum BfMethodNameFlags : uint8
 	BfMethodNameFlag_ResolveGenericParamNames = 1,
 	BfMethodNameFlag_OmitTypeName = 2,
 	BfMethodNameFlag_IncludeReturnType = 4,
-	BfMethodNameFlag_OmitParams = 8
+	BfMethodNameFlag_OmitParams = 8,
+	BfMethodNameFlag_IncludeMut = 0x10
 };
 
 enum BfGetMethodInstanceFlags : uint16
@@ -1827,6 +1828,7 @@ class BfCeTypeInfo
 public:	
 	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
 	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
+	Array<int> mPendingInterfaces;
 	Val128 mHash;
 	bool mFailed;
 	BfCeTypeInfo* mNext;
@@ -2109,6 +2111,7 @@ public:
 		mBoxedBaseType = NULL;
 		mBoxedFlags = BoxedFlags_None;
 	}
+	~BfBoxedType();
 
 	virtual bool IsBoxed() override { return true; }
 

@@ -21,8 +21,7 @@ namespace System
         public const double NegativeInfinity = (double)(- 1.0 / (double)(0.0));
         public const double PositiveInfinity = (double)1.0 / (double)(0.0);
         public const double NaN = (double)0.0 / (double)0.0;
-        
-        static double NegativeZero = BitConverter.Convert<int64, double>(0x8000000000000000UL);
+        public const double NegativeZero = -0.0;
 
 		public static int operator<=>(Double a, Double b)
 		{

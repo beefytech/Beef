@@ -37,6 +37,7 @@ namespace IDE
         public ProjectFolder mParentFolder;
         public String mName = new String() ~ delete _;
         public String mComment = new String() ~ delete _;
+		public bool mDetached;
 
 		public virtual bool IncludeInMap
 		{
@@ -105,6 +106,7 @@ namespace IDE
 
 		public virtual void Detach()
 		{
+			mDetached = true;
 			ReleaseRef();
 		}
     }
@@ -353,7 +355,7 @@ namespace IDE
 			return .SimpleSource;
 		}
 
-		public override void Dispose()
+		public void ClearEditData()
 		{
 			if (mEditData != null)
 			{
@@ -361,6 +363,11 @@ namespace IDE
 			    mEditData.Deref();
 				mEditData = null;
 			}
+		}
+
+		public override void Dispose()
+		{
+			ClearEditData();
 		}
 
 		public override void Detach()
@@ -842,6 +849,13 @@ namespace IDE
 						newChildPath.Append(childFileItem.mPath, oldPath.Length);
 
 						childFileItem.OnRename(childFileItem.mPath, newChildPath);
+
+						String oldFullName = scope String();
+						mProject.GetProjectFullPath(childFileItem.mPath, oldFullName);
+						String newFullName = scope String();
+						mProject.GetProjectFullPath(newChildPath, newFullName);
+
+						IDEApp.sApp.FileRenamed(childFileItem, oldFullName, newFullName);
 
 						childFileItem.mPath.Set(newChildPath);
 					}

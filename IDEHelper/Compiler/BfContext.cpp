@@ -892,6 +892,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		return;		
 	}
 	
+	if ((typeInst->IsBoxed()) && (typeInst->mTypeDef->mEmitParent != NULL))
+		typeInst->mTypeDef = typeInst->mTypeDef->mEmitParent;
+
 	if (mSystem->mWorkspaceConfigChanged)
 	{
 		typeInst->mTypeOptionsIdx = -2;
@@ -1060,8 +1063,12 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	if (typeInst->mTypeDef->mEmitParent != NULL)
 	{
 		auto emitTypeDef = typeInst->mTypeDef;
-		typeInst->mTypeDef = emitTypeDef->mEmitParent;
-		delete emitTypeDef;
+		typeInst->mTypeDef = emitTypeDef->mEmitParent;		
+		BfLogSysM("Type %p queueing delete of typeDef %p, resetting typeDef to %p\n", typeInst, emitTypeDef, typeInst->mTypeDef);
+		emitTypeDef->mDefState = BfTypeDef::DefState_Deleted;
+		AutoCrit autoCrit(mSystem->mDataLock);
+		BF_ASSERT(!mSystem->mTypeDefDeleteQueue.Contains(emitTypeDef));
+		mSystem->mTypeDefDeleteQueue.push_back(emitTypeDef);
 	}
 
 	//typeInst->mTypeDef->ClearEmitted();
@@ -1912,10 +1919,17 @@ void BfContext::UpdateRevisedTypes()
 
 		if (typeDef->mEmitParent != NULL)
 		{
-			auto emitTypeDef = typeDef;
-			typeDef = typeDef->mEmitParent;
-			if (typeDef->mNextRevision != NULL)
-				emitTypeDef->mDefState = BfTypeDef::DefState_EmittedDirty;
+			if (typeDef->mDefState == BfTypeDef::DefState_Deleted)
+			{
+				typeInst->mTypeDef = typeDef->mEmitParent;
+			}
+			else
+			{
+				auto emitTypeDef = typeDef;
+				typeDef = typeDef->mEmitParent;
+				if (typeDef->mNextRevision != NULL)
+					emitTypeDef->mDefState = BfTypeDef::DefState_EmittedDirty;
+			}
 		}
 
 		if (typeDef->mProject->mDisabled)

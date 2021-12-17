@@ -1295,7 +1295,7 @@ namespace IDE.ui
                         addrsCount = mWatchSeriesInfo.mAddrs.Length / entryAddrSize;
 
                     int totalCount = mWatchSeriesInfo.mCount;
-                    if (totalCount == -1)
+                    if ((totalCount == -1) && (mWatchSeriesInfo.mContinuationData != null))
                     {                        
                         //int wantNewCount = Math.Min(idx + 32, mWatchSeriesInfo.mCount) - addrsCount;
                         bool continuationDone = false;

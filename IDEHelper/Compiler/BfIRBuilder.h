@@ -934,6 +934,7 @@ public:
 	BfIRValue CreateConstAggCE(BfIRType type, addr_ce ptr);
 	BfIRValue CreateConstArrayZero(BfIRType type, int count);
 	BfIRValue CreateConstArrayZero(int count);
+	BfIRValue CreateConstBitCast(BfIRValue val, BfIRType type);
 	BfIRValue CreateTypeOf(BfType* type);
 	BfIRValue CreateTypeOf(BfType* type, BfIRValue typeData);
 	BfIRValue GetUndefConstValue(BfIRType type);	

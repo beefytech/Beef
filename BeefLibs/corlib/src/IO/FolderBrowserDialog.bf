@@ -57,7 +57,7 @@ namespace System.IO
 			ShowNewFolderButton = true;
 		}
 
-		protected Result<DialogResult> RunDialog_New(Windows.HWnd hWndOwner, FolderBrowserDialog.COM_IFileDialog* fileDialog)
+		protected Result<DialogResult> RunDialog_New(Windows.HWnd hWndOwner, Windows.COM_IFileDialog* fileDialog)
 		{
 			//COM_IFileDialogEvents evts;
 			/*COM_IFileDialogEvents.VTable funcs;
@@ -106,8 +106,8 @@ namespace System.IO
 
 			if (!mSelectedPath.IsEmpty)
 			{
-				COM_IShellItem* folderShellItem = null;
-				Windows.SHCreateItemFromParsingName(mSelectedPath.ToScopedNativeWChar!(), null, COM_IShellItem.sIID, (void**)&folderShellItem);
+				Windows.COM_IShellItem* folderShellItem = null;
+				Windows.SHCreateItemFromParsingName(mSelectedPath.ToScopedNativeWChar!(), null, Windows.COM_IShellItem.sIID, (void**)&folderShellItem);
 				if (folderShellItem != null)
 				{
 					fileDialog.VT.SetDefaultFolder(fileDialog, folderShellItem);
@@ -121,7 +121,7 @@ namespace System.IO
 			DialogResult result = .Cancel;
 
 			mSelectedPath.Clear();
-			COM_IShellItem* shellItem = null;
+			Windows.COM_IShellItem* shellItem = null;
 			fileDialog.VT.GetResult(fileDialog, out shellItem);
 			if (shellItem != null)
 			{
@@ -142,10 +142,10 @@ namespace System.IO
 
 		protected override Result<DialogResult> RunDialog(Windows.HWnd hWndOwner)
 		{
-			FolderBrowserDialog.COM_IFileDialog* fileDialog = null;
+			Windows.COM_IFileDialog* fileDialog = null;
 			Windows.COM_IUnknown.HResult hr;
 			//if (mFolderKind == .Open)
-				hr = Windows.COM_IUnknown.CoCreateInstance(ref FolderBrowserDialog.COM_IFileDialog.sCLSID, null, .INPROC_SERVER, ref FolderBrowserDialog.COM_IFileDialog.sIID, (void**)&fileDialog);
+				hr = Windows.COM_IUnknown.CoCreateInstance(ref Windows.COM_IFileDialog.sCLSID, null, .INPROC_SERVER, ref Windows.COM_IFileDialog.sIID, (void**)&fileDialog);
 			//else
 				//hr = Windows.COM_IUnknown.CoCreateInstance(ref FolderBrowserDialog.COM_FileSaveDialog.sCLSID, null, .INPROC_SERVER, ref FolderBrowserDialog.COM_FileSaveDialog.sIID, (void**)&fileDialog);
 			if (hr == 0)
@@ -218,143 +218,6 @@ namespace System.IO
                     break;
             }
             return 0;
-		}
-
-		struct FDE_SHAREVIOLATION_RESPONSE;
-		struct FDE_OVERWRITE_RESPONSE;
-
-		struct COM_IFileDialogEvents : Windows.COM_IUnknown
-		{
-			public struct VTable : Windows.COM_IUnknown.VTable
-			{
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnFileOk;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* psiFolder) OnFolderChanging;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnFolderChange;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnSelectionChange;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, FDE_SHAREVIOLATION_RESPONSE* pResponse) OnShareViolation;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnTypeChange;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* shellItem, FDE_OVERWRITE_RESPONSE* response) OnOverwrite;
-
-			}
-		}
-
-		struct COM_IShellItem : Windows.COM_IUnknown
-		{
-			public static Guid sIID = .(0x43826d1e, 0xe718, 0x42ee, 0xbc, 0x55, 0xa1, 0xe2, 0x61, 0xc3, 0x7b, 0xfe);
-
-			public enum SIGDN : uint32
-			{
-			    NORMALDISPLAY = 0x00000000,           // SHGDN_NORMAL
-			    PARENTRELATIVEPARSING = 0x80018001,   // SHGDN_INFOLDER | SHGDN_FORPARSING
-			    DESKTOPABSOLUTEPARSING = 0x80028000,  // SHGDN_FORPARSING
-			    PARENTRELATIVEEDITING = 0x80031001,   // SHGDN_INFOLDER | SHGDN_FOREDITING
-			    DESKTOPABSOLUTEEDITING = 0x8004c000,  // SHGDN_FORPARSING | SHGDN_FORADDRESSBAR
-			    FILESYSPATH = 0x80058000,             // SHGDN_FORPARSING
-			    URL = 0x80068000,                     // SHGDN_FORPARSING
-			    PARENTRELATIVEFORADDRESSBAR = 0x8007c001,     // SHGDN_INFOLDER | SHGDN_FORPARSING | SHGDN_FORADDRESSBAR
-			    PARENTRELATIVE = 0x80080001           // SHGDN_INFOLDER
-			}
-
-			public struct VTable : Windows.COM_IUnknown.VTable
-			{
-				public function HResult(COM_IShellItem* self, void* pbc, ref Guid bhid, ref Guid riid, void** ppv) BindToHandler;
-				public function HResult(COM_IShellItem* self, out COM_IShellItem* ppsi) GetParent;
-				public function HResult(COM_IShellItem* self, SIGDN sigdnName, out char16* ppszName) GetDisplayName;
-				public function HResult(COM_IShellItem* self, uint sfgaoMask, out uint psfgaoAttribs) GetAttributes;
-				public function HResult(COM_IShellItem* self, COM_IShellItem* psi, uint32 hint, out int32 piOrder) Compare;
-
-			}
-			public new VTable* VT
-			{
-				get
-				{
-					return (.)mVT;
-				}
-			}
-		}
-
-		struct COMDLG_FILTERSPEC
-		{
-		    public char16* pszName;
-		    public char16* pszSpec;
-		}
-
-		enum FDAP : uint32
-		{
-		    FDAP_BOTTOM = 0x00000000,
-		    FDAP_TOP = 0x00000001,
-		}
-
-		public struct COM_IFileDialog : Windows.COM_IUnknown
-		{
-			public static Guid sIID = .(0x42f85136, 0xdb7e, 0x439c, 0x85, 0xf1, 0xe4, 0x07, 0x5d, 0x13, 0x5f, 0xc8);
-			public static Guid sCLSID = .(0xdc1c5a9c, 0xe88a, 0x4dde, 0xa5, 0xa1, 0x60, 0xf8, 0x2a, 0x20, 0xae, 0xf7);
-
-			///s
-			public enum FOS : uint32
-			{
-			    OVERWRITEPROMPT = 0x00000002,
-			    STRICTFILETYPES = 0x00000004,
-			    NOCHANGEDIR = 0x00000008,
-			    PICKFOLDERS = 0x00000020,
-			    FORCEFILESYSTEM = 0x00000040,
-			    ALLNONSTORAGEITEMS = 0x00000080,
-			    NOVALIDATE = 0x00000100,
-			    ALLOWMULTISELECT = 0x00000200,
-			    PATHMUSTEXIST = 0x00000800,
-			    FILEMUSTEXIST = 0x00001000,
-			    CREATEPROMPT = 0x00002000,
-			    SHAREAWARE = 0x00004000,
-			    NOREADONLYRETURN = 0x00008000,
-			    NOTESTFILECREATE = 0x00010000,
-			    HIDEMRUPLACES = 0x00020000,
-			    HIDEPINNEDPLACES = 0x00040000,
-			    NODEREFERENCELINKS = 0x00100000,
-			    DONTADDTORECENT = 0x02000000,
-			    FORCESHOWHIDDEN = 0x10000000,
-			    DEFAULTNOMINIMODE = 0x20000000
-			}
-
-			public struct VTable : Windows.COM_IUnknown.VTable
-			{
-			    public function HResult(COM_IFileDialog* self, Windows.HWnd parent) Show;
-			    public function HResult(COM_IFileDialog* self, uint cFileTypes, COMDLG_FILTERSPEC* rgFilterSpec) SetFileTypes;
-			    public function HResult(COM_IFileDialog* self, uint iFileType) SetFileTypeIndex;
-			    public function HResult(COM_IFileDialog* self, out uint piFileType) GetFileTypeIndex;
-			    public function HResult(COM_IFileDialog* self, COM_IFileDialogEvents* pfde, out uint pdwCookie) Advise;
-			    public function HResult(COM_IFileDialog* self, uint dwCookie) Unadvise;
-				public function HResult(COM_IFileDialog* self, FOS fos) SetOptions;
-				public function HResult(COM_IFileDialog* self, out FOS pfos) GetOptions;
-				public function HResult(COM_IFileDialog* self, COM_IShellItem* psi) SetDefaultFolder;
-				public function HResult(COM_IFileDialog* self, COM_IShellItem* psi) SetFolder;
-				public function HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetFolder;
-				public function HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetCurrentSelection;
-				public function HResult(COM_IFileDialog* self, char16* pszName) SetFileName;
-				public function HResult(COM_IFileDialog* self, out char16* pszName) GetFileName;
-				public function HResult(COM_IFileDialog* self, char16* pszTitle) SetTitle;
-				public function HResult(COM_IFileDialog* self, char16* pszText) SetOkButtonLabel;
-				public function HResult(COM_IFileDialog* self, char16* pszLabel) SetFileNameLabel;
-				public function HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetResult;
-				public function HResult(COM_IFileDialog* self, COM_IShellItem* psi, FDAP fdap) AddPlace;
-				public function HResult(COM_IFileDialog* self, char16* pszDefaultExtension) SetDefaultExtension;
-				public function HResult(COM_IFileDialog* self, int hr) Close;
-				public function HResult(COM_IFileDialog* self, ref Guid guid) SetClientGuid;
-				public function HResult(COM_IFileDialog* self) ClearClientData;
-				public function HResult(COM_IFileDialog* self, void* pFilter) SetFilter;
-			}
-			public new VTable* VT
-			{
-				get
-				{
-					return (.)mVT;
-				}
-			}
-		}
-
-		public struct COM_FileSaveDialog : COM_IFileDialog
-		{
-			public static new Guid sIID = .(0x84bccd23, 0x5fde, 0x4cdb, 0xae, 0xa4, 0xaf, 0x64, 0xb8, 0x3d, 0x78, 0xab);
-			public static new Guid sCLSID = .(0xC0B4E2F3, 0xBA21, 0x4773, 0x8D, 0xBA, 0x33, 0x5E, 0xC9, 0x46, 0xEB, 0x8B);
 		}
 	}	
 }

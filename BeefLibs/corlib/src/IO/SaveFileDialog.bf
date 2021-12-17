@@ -94,6 +94,48 @@ namespace System.IO
 
 			return DialogResult.OK;
 		}
+
+		protected override void ProcessVistaFiles(Windows.COM_IFileDialog* dialog, System.Collections.List<String> files)
+		{
+			mixin GetFilePathFromShellItem(Windows.COM_IShellItem* shellItem)
+			{
+				String str = null;
+				if (shellItem.VT.GetDisplayName(shellItem, .FILESYSPATH, let cStr) == .OK)
+				{
+					str = new String()..Append(cStr);
+					Windows.COM_IUnknown.CoTaskMemFree(cStr);
+				}
+				str
+			}
+
+			Windows.COM_IFileSaveDialog* saveDialog = (.)dialog;
+			Windows.COM_IShellItem* shellItem = null;
+			saveDialog.VT.GetResult(saveDialog, out shellItem);
+
+			if (shellItem != null)
+			{
+				let filePath = GetFilePathFromShellItem!(shellItem);
+				if (filePath != null)
+					files.Add(filePath);
+				shellItem.VT.Release(shellItem);
+			}
+		}
+
+		protected override Result<Windows.COM_IFileDialog*> CreateVistaDialog()
+		{
+			Windows.COM_IFileDialog* fileDialog = null;
+
+		    Windows.COM_IUnknown.HResult hr = (Windows.COM_IUnknown.CoCreateInstance(
+		        ref Windows.COM_IFileSaveDialog.sCLSID,
+		        null,
+		        .INPROC_SERVER | .LOCAL_SERVER | .REMOTE_SERVER,
+		        ref Windows.COM_IFileSaveDialog.sIID,
+		        (void**)&fileDialog));
+		    if (hr.Failed)
+				return .Err;
+
+		    return fileDialog;
+		}
 	}
 }
 

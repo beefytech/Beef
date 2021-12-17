@@ -1647,7 +1647,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		{
 			"abstract", "base", "class", "const", 
 			"delegate", "extern", "enum", "explicit", "extension", "function",
-			"interface", "in", "internal", "mixin", "namespace", "new",
+			"interface", "in", "implicit", "internal", "mixin", "namespace", "new",
 			"operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "rettype", "return",
 			"scope", "sealed", "static", "struct", "this", "typealias",
 			"using", "virtual", "volatile", "T", "where"
