@@ -6973,7 +6973,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							filePath = mModule->mCurFilePosition.mFileInstance->mParser->mFileName;
 						argValue = BfTypedValue(mModule->GetStringObjectValue(filePath),
 							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
-					}
+					}					
 					else if (strcmp(globalVar->mName, "#CallerFileName") == 0)
 					{
 						String filePath = "";
@@ -6989,6 +6989,24 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							filePath = mModule->mCurFilePosition.mFileInstance->mParser->mFileName;
 						argValue = BfTypedValue(mModule->GetStringObjectValue(GetFileDir(filePath)),
 							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
+					else if (strcmp(globalVar->mName, "#CallerTypeName") == 0)
+					{
+						String typeName = "";
+						if (mModule->mCurTypeInstance != NULL)
+							typeName = mModule->TypeToString(mModule->mCurTypeInstance);
+						argValue = BfTypedValue(mModule->GetStringObjectValue(typeName),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
+					else if (strcmp(globalVar->mName, "#CallerType") == 0)
+					{
+						auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef);
+						BfType* type = mModule->mCurTypeInstance;
+						if (type != NULL)
+						{
+							mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+							argValue = BfTypedValue(mModule->CreateTypeDataRef(type), typeType);
+						}
 					}
 					else if (strcmp(globalVar->mName, "#CallerMemberName") == 0)
 					{

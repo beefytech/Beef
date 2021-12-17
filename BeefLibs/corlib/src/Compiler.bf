@@ -217,6 +217,12 @@ namespace System
 		[LinkName("#CallerFileDir")]
 		public static extern String CallerFileDir;
 
+		[LinkName("#CallerType")]
+		public static extern Type CallerType;
+
+		[LinkName("#CallerTypeName")]
+		public static extern String CallerTypeName;
+
 		[LinkName("#CallerMemberName")]
 		public static extern String CallerMemberName;
 
