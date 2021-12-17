@@ -14491,7 +14491,7 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 	if ((localVarDef->mNameNode != NULL) && (mCurMethodInstance != NULL))
 	{		
 		bool isClosureProcessing = (mCurMethodState->mClosureState != NULL) && (!mCurMethodState->mClosureState->mCapturing);		
-		if ((!isClosureProcessing) && (mCompiler->mResolvePassData != NULL) && (localVarDef->mNameNode != NULL) && (!mIsComptimeModule))
+		if ((!isClosureProcessing) && (mCompiler->mResolvePassData != NULL) && (localVarDef->mNameNode != NULL) && (rootMethodState->mMethodInstance != NULL) && (!mIsComptimeModule))
 			mCompiler->mResolvePassData->HandleLocalReference(localVarDef->mNameNode, rootMethodState->mMethodInstance->GetOwner()->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, localVarDef->mLocalVarId);
 	}
 	

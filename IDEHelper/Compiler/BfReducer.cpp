@@ -5912,12 +5912,9 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 		ReplaceNode(tokenNode, operatorDecl);
 		operatorDecl->mOperatorToken = tokenNode;
 
-		auto nextIdentifier = ExpectIdentifierAfter(operatorDecl, "type");
-		if (nextIdentifier == NULL)
-			return operatorDecl;
-		mVisitorPos.mReadPos--; // Backtrack, that's part of our type
-
 		auto typeRef = CreateTypeRefAfter(operatorDecl);
+		if (typeRef == NULL)
+			return operatorDecl;
 		MEMBER_SET_CHECKED(operatorDecl, mReturnType, typeRef);
 		operatorDecl->mIsConvOperator = true;
 
