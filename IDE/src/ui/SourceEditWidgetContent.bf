@@ -2244,11 +2244,8 @@ namespace IDE.ui
 				noStar = true;
 			}
 
-
 			if (true || (HasSelection()) && (mSelection.Value.Length > 0))
 			{
-				//int cursorEndPos = CursorTextPos;
-
 				// set selection to begin from line start
 				int lineIdx;
 				int lineChar;
@@ -2280,7 +2277,6 @@ namespace IDE.ui
 				//int lastCharPos = maxPos - (afterTrimStart - afterTrimEnd);
 
 				int q = 0;
-				//var nc = trimmedStr.Count('\n');
 
 				if (doComment != false)
 				{
@@ -2303,7 +2299,6 @@ namespace IDE.ui
 					mSelection = EditSelection(minPos, maxPos + q);
 				}
 
-				
 				if (undoBatchStart != null)
 					mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 
@@ -2323,6 +2318,7 @@ namespace IDE.ui
 			if (CheckReadOnly())
 				return false;
 			bool noStar = false;
+
 			var startLineAndCol = CursorLineAndColumn;
 			if ((!HasSelection()) && (doComment != null))
 			{
@@ -2335,10 +2331,9 @@ namespace IDE.ui
 
 			if ((HasSelection()) && (mSelection.Value.Length > 0))
 			{
-
 				int lineIdx;
 				int lineChar;
-				GetLineCharAtIdx(mSelection.GetValueOrDefault().MinPos,out lineIdx, out lineChar);
+				GetLineCharAtIdx(mSelection.GetValueOrDefault().MinPos, out lineIdx, out lineChar);
 				MoveCursorTo(lineIdx, 0);
 				mSelection = .(CursorTextPos, mSelection.GetValueOrDefault().MaxPos);
 
@@ -2385,7 +2380,7 @@ namespace IDE.ui
 				{
 					for (int i = firstCharPos; i <= lastCharPos; i++)
 					{
-						if ((minPos == 0 && i==0) || (minPos>=0 && SafeGetChar(i - 1) == '\n' || SafeGetChar(i - 1) == '\t'))
+						if ((minPos == 0 && i == 0) || (minPos>=0 && SafeGetChar(i - 1) == '\n' || SafeGetChar(i - 1) == '\t'))
 						if (SafeGetChar(i - 0) == '/' && SafeGetChar(i + 1) == '/')
 						{
 							mSelection = EditSelection(i - 0, i + 2);
@@ -2416,8 +2411,8 @@ namespace IDE.ui
 							mSelection = EditSelection(firstCharPos, lastCharPos - 4);
 					}
 				}
-				else if (doComment != false && minPos >=0 && ((nc<=1 && (SafeGetChar(minPos-1) != ' ' && SafeGetChar(minPos-1) != '\t') && SafeGetChar(minPos-1) != '\n')
-															|| nc>=1 && (SafeGetChar(maxPos-1) != ' ' && SafeGetChar(maxPos-1) != '\t') && SafeGetChar(maxPos-1) != '\n'))
+				else if (doComment != false && minPos >=0 && ((nc <= 1 && (SafeGetChar(minPos-1) != ' ' && SafeGetChar(minPos-1) != '\t') && SafeGetChar(minPos-1) != '\n')
+															|| nc >= 1 && (SafeGetChar(maxPos-1) != ' ' && SafeGetChar(maxPos-1) != '\t') && SafeGetChar(maxPos-1) != '\n'))
 				{ //if selection is from beginning of the line then we want to use // comment, that's why the check for line count and ' ' and tab
 					CursorTextPos = firstCharPos;
 					if (noStar) {
