@@ -17,12 +17,15 @@ public:
 	const char* mDocumentation;
 	int8 mNamePrefixCount;
 	int mScore;
-	uint8 mMatches[256];
+	uint8* mMatches;
+	uint8 mMatchesLength;
 
 public:
 	AutoCompleteEntry()
 	{
 		mNamePrefixCount = 0;
+		mMatches = nullptr;
+		mMatchesLength = 0;
 	}
 
 	AutoCompleteEntry(const char* entryType, const char* display)
@@ -32,6 +35,8 @@ public:
 		mDocumentation = NULL;
 		mNamePrefixCount = 0;
 		mScore = 0;
+		mMatches = nullptr;
+		mMatchesLength = 0;
 	}
 
 	AutoCompleteEntry(const char* entryType, const StringImpl& display)
@@ -41,6 +46,8 @@ public:
 		mDocumentation = NULL;
 		mNamePrefixCount = 0;
 		mScore = 0;
+		mMatches = nullptr;
+		mMatchesLength = 0;
 	}
 
 	AutoCompleteEntry(const char* entryType, const StringImpl& display, int namePrefixCount)
@@ -50,8 +57,10 @@ public:
 		mDocumentation = NULL;
 		mNamePrefixCount = (int8)namePrefixCount;
 		mScore = 0;
+		mMatches = nullptr;
+		mMatchesLength = 0;
 	}
-	
+
 	bool operator==(const AutoCompleteEntry& other) const
 	{
 		return strcmp(mDisplay, other.mDisplay) == 0;

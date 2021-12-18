@@ -409,7 +409,7 @@ namespace IDE.ui
 					for(char32 c in mEntryDisplay.DecodedChars)
 					loop:
 					{
-						if(mMatchIndices.Contains((uint8)index))
+						if(mMatchIndices?.Contains((uint8)index) == true)
 						{
 							g.PushColor(DarkTheme.COLOR_MENU_FOCUSED);
 							defer:loop g.PopColor();

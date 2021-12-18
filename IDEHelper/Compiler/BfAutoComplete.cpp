@@ -30,20 +30,68 @@ AutoCompleteBase::~AutoCompleteBase()
 
 AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const StringImpl& filter)
 {
-	if ((!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, entry.mMatches, sizeof(entry.mMatches))) || (entry.mNamePrefixCount < 0))
+	uint8 matches[256];
+	
+	if (!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
+
+	if (matches[0] != UINT8_MAX)
+	{
+		for (uint8 i = 0;; i++)
+		{
+			uint8 matchIndex = matches[i];
+			
+			if ((matchIndex == 0 && i != 0) || i == UINT8_MAX)
+			{
+				entry.mMatchesLength = i;
+				break;
+			}
+		}
+
+		if (entry.mMatches != nullptr)
+			delete entry.mMatches;
+
+		entry.mMatches = new uint8[entry.mMatchesLength];
+
+		memcpy(entry.mMatches, matches, entry.mMatchesLength);
+	}
+
 	return AddEntry(entry);
 }
 
 AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const char* filter)
 {
-	if ((!DoesFilterMatch(entry.mDisplay, filter, entry.mScore, entry.mMatches, sizeof(entry.mMatches))) || (entry.mNamePrefixCount < 0))
+	uint8 matches[256];
+
+	if (!DoesFilterMatch(entry.mDisplay, filter, entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
+
+	if (matches[0] != UINT8_MAX)
+	{
+		for (uint8 i = 0;; i++)
+		{
+			uint8 matchIndex = matches[i];
+
+			if ((matchIndex == 0 && i != 0) || i == UINT8_MAX)
+			{
+				entry.mMatchesLength = i;
+				break;
+			}
+		}
+
+		if (entry.mMatches != nullptr)
+			delete entry.mMatches;
+
+		entry.mMatches = new uint8[entry.mMatchesLength];
+
+		memcpy(entry.mMatches, matches, entry.mMatchesLength);
+	}
+
 	return AddEntry(entry);
 }
 
 AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
-{	
+{
 	if (mEntriesSet.mAllocSize == 0)
 	{
 		mEntriesSet.Reserve(128);
@@ -58,13 +106,16 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
 		int size = (int)strlen(display) + 1;
 		insertedEntry->mDisplay = (char*)mAlloc.AllocBytes(size);
 		memcpy((char*)insertedEntry->mDisplay, display, size);
+
+		insertedEntry->mMatches = (uint8*)mAlloc.AllocBytes(insertedEntry->mMatchesLength);
+		memcpy((char*)insertedEntry->mMatches, entry.mMatches, insertedEntry->mMatchesLength);
 	}
 
 	return insertedEntry;
 }
 
 bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, int& score, uint8* matches, int maxMatches)
-{	
+{
 	if (mIsGetDefinition)
 	{
 		int entryLen = (int)strlen(entry);
@@ -95,57 +146,7 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, in
 		return false;
 	}
 
-	// TODO: also do matches (but probably optimize them)
 	return fts::fuzzy_match(filter, entry, score, matches, maxMatches);
-	/*
-	bool hasUnderscore = false;
-	bool checkInitials = filterLen > 1;
-	for (int i = 0; i < (int)filterLen; i++)
-	{
-		char c = filter[i];
-		if (c == '_')
-			hasUnderscore = true;
-		else if (islower((uint8)filter[i]))
-			checkInitials = false;
-	}
-
-	if (hasUnderscore)
-		return strnicmp(filter, entry, filterLen) == 0;
-
-	char initialStr[256];
-	char* initialStrP = initialStr;
-
-	//String initialStr;
-	bool prevWasUnderscore = false;
-	
-	for (int entryIdx = 0; entryIdx < entryLen; entryIdx++)
-	{
-		char entryC = entry[entryIdx];
-
-		if (entryC == '_')
-		{
-			prevWasUnderscore = true;
-			continue;
-		}
-
-		if ((entryIdx == 0) || (prevWasUnderscore) || (isupper((uint8)entryC) || (isdigit((uint8)entryC))))
-		{
-			if (strnicmp(filter, entry + entryIdx, filterLen) == 0)
-				return true;
-			if (checkInitials)
-				*(initialStrP++) = entryC;
-		}
-		prevWasUnderscore = false;
-
-		if (filterLen == 1)
-			break; // Don't check inners for single-character case
-	}	
-
-	if (!checkInitials)
-		return false;
-	*(initialStrP++) = 0;
-	return strnicmp(filter, initialStr, filterLen) == 0;
-	*/
 }
 
 void AutoCompleteBase::Clear()

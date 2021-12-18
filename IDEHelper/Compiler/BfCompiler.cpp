@@ -8024,25 +8024,24 @@ void BfCompiler::GenerateAutocompleteInfo()
 				autoCompleteResultString += '@';
 			autoCompleteResultString += String(entry->mDisplay);
 
-			autoCompleteResultString += "\x02";
-			for (int i = 0; i < 256; i++)
+			if (entry->mMatchesLength > 0)
 			{
-				int match = entry->mMatches[i];
+				autoCompleteResultString += "\x02";
+				for (int i = 0; i < entry->mMatchesLength; i++)
+				{
+					int match = entry->mMatches[i];
 
-				// no more matches after this
-				if (match == 0 && i != 0)
-					break;
+					// Need max 3 chars (largest Hex (FF) + '\0')
+					char buffer[3];
 
-				// Need max 3 chars (largest Hex (FF) + '\0')
-				char buffer[3];
+					_itoa_s(match, buffer, 16);
 
-				_itoa_s(match, buffer, 16);
+					autoCompleteResultString += String(buffer);
+					autoCompleteResultString += ",";
+				}
 
-				autoCompleteResultString += String(buffer);
-				autoCompleteResultString += ",";
+				autoCompleteResultString += "X";
 			}
-
-			autoCompleteResultString += "X";
 
 			if (entry->mDocumentation != NULL)
 			{
