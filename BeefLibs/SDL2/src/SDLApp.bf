@@ -117,12 +117,8 @@ namespace SDL2
 			SDL.EventState(.JoyDeviceAdded, .Disable);
 			SDL.EventState(.JoyDeviceRemoved, .Disable);
 
-			mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mWidth, mHeight, .Hidden);
+			mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mWidth, mHeight, .Hidden); // Initially hide window
 			mRenderer = SDL.CreateRenderer(mWindow, -1, .Accelerated);
-			SDL.ShowWindow(mWindow);
-			SDL.SetRenderDrawColor(mRenderer, 0, 0, 0, 255);
-			SDL.RenderClear(mRenderer);
-			SDL.RenderPresent(mRenderer);
 			mScreen = SDL.GetWindowSurface(mWindow);
 			SDLImage.Init(.PNG | .JPG);
 			mHasAudio = SDLMixer.OpenAudio(44100, SDLMixer.MIX_DEFAULT_FORMAT, 2, 4096) >= 0;
@@ -249,7 +245,9 @@ namespace SDL2
 				if (curPhysTickCount == 0)
 				{
 					// Initial render
-					Render();
+					Render();                
+					// Show initially hidden window, mitigates white flash on slow startups
+					SDL.ShowWindow(mWindow); 
 				}
 				else
 				{
