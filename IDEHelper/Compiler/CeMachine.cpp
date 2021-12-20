@@ -5385,23 +5385,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		}
 
 		++instIdx;
-
-		if (ceFunction->mMethodInstance->mMethodDef->mName == "ReadAll")
-		{
-			NOP;
-		}
-
-		if (instIdx >= /*0xBC0*/0xBA0)
-		{
-			NOP;
-		}
-
-// 		if (instIdx == 0x444)
-// 		{
-// 			_CrtCheckMemory();
-// 			NOP;
-// 		}
-
 		CeOp op = CE_GETINST(CeOp);
 		switch (op)
 		{
