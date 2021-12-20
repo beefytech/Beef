@@ -28,19 +28,16 @@ AutoCompleteBase::~AutoCompleteBase()
 	Clear();
 }
 
-AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const StringImpl& filter)
+inline void UpdateEntryMatchindices(uint8* matches, AutoCompleteEntry& entry)
 {
-	uint8 matches[256];
-	
-	if (!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
-		return NULL;
-
 	if (matches[0] != UINT8_MAX)
 	{
+		// Count entries in matches
+		// Note: entry.mMatchesLength should be the amount of unicode-codepoints in the filter
 		for (uint8 i = 0;; i++)
 		{
 			uint8 matchIndex = matches[i];
-			
+
 			if ((matchIndex == 0 && i != 0) || i == UINT8_MAX)
 			{
 				entry.mMatchesLength = i;
@@ -48,15 +45,33 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const St
 			}
 		}
 
-		if (entry.mMatches != nullptr)
-			delete entry.mMatches;
+		//assert(entry.mMatches != nullptr);
 
-		entry.mMatches = new uint8[entry.mMatchesLength];
-
-		memcpy(entry.mMatches, matches, entry.mMatchesLength);
+		entry.mMatches = matches;
 	}
+	else
+	{
+		entry.mMatches = nullptr;
+		entry.mMatchesLength = 0;
+	}
+}
 
-	return AddEntry(entry);
+AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const StringImpl& filter)
+{
+	uint8 matches[256];
+	
+	if (!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
+		return NULL;
+
+	UpdateEntryMatchindices(matches, entry);
+
+	auto result = AddEntry(entry);
+	
+	// Reset matches because the array will be invalid after return
+	entry.mMatches = nullptr;
+	entry.mMatchesLength = 0;
+
+	return result;
 }
 
 AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const char* filter)
@@ -66,28 +81,15 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const ch
 	if (!DoesFilterMatch(entry.mDisplay, filter, entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
 
-	if (matches[0] != UINT8_MAX)
-	{
-		for (uint8 i = 0;; i++)
-		{
-			uint8 matchIndex = matches[i];
+	UpdateEntryMatchindices(matches, entry);
 
-			if ((matchIndex == 0 && i != 0) || i == UINT8_MAX)
-			{
-				entry.mMatchesLength = i;
-				break;
-			}
-		}
+	auto result = AddEntry(entry);
 
-		if (entry.mMatches != nullptr)
-			delete entry.mMatches;
+	// Reset matches because the array will be invalid after return
+	entry.mMatches = nullptr;
+	entry.mMatchesLength = 0;
 
-		entry.mMatches = new uint8[entry.mMatchesLength];
-
-		memcpy(entry.mMatches, matches, entry.mMatchesLength);
-	}
-
-	return AddEntry(entry);
+	return result;
 }
 
 AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
@@ -140,9 +142,6 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, in
 
 	if (filterLen > entryLen)
 	{
-		// Kinda dirty
-		matches[0] = UINT8_MAX;
-		matches[1] = 0;
 		return false;
 	}
 

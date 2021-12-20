@@ -8007,8 +8007,12 @@ void BfCompiler::GenerateAutocompleteInfo()
 		{
 			entries.Add(&entry);
 		}
+
 		std::sort(entries.begin(), entries.end(), [](AutoCompleteEntry* lhs, AutoCompleteEntry* rhs)
 			{
+				if (lhs->mScore == rhs->mScore)
+					return stricmp(lhs->mDisplay, rhs->mDisplay) < 0;
+
 				return lhs->mScore > rhs->mScore;
 			});
 				

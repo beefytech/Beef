@@ -383,6 +383,7 @@ namespace IDE.ui
 				public String mDocumentation;
                 public Image mIcon;
 				public List<uint8> mMatchIndices;
+				public int32 mScore;
 
 				public float Y
 				{
@@ -423,7 +424,20 @@ namespace IDE.ui
 
 						index = @c.NextIndex;
 					}
-                }                
+                } 
+
+				public void SetMatches(Span<uint8> matchIndices)
+				{
+					mMatchIndices?.Clear();
+	
+					if (!matchIndices.IsEmpty)
+					{
+						if(mMatchIndices == null)
+							mMatchIndices = new:(mAutoCompleteListWidget.mAlloc) List<uint8>(matchIndices.Length);
+						
+						mMatchIndices.AddRange(matchIndices);
+					}
+				}               
             }
 
             class Content : Widget
@@ -635,14 +649,13 @@ namespace IDE.ui
 				if (!documentation.IsEmpty)
 					entryWidget.mDocumentation = new:mAlloc String(documentation);
                 entryWidget.mIcon = icon;
-				// TODO(FUZZY): There may be a better way
-				if (matchIndices != null && !matchIndices.IsEmpty)
-					entryWidget.mMatchIndices = new:mAlloc List<uint8>(matchIndices.GetEnumerator());
+
+				entryWidget.SetMatches(matchIndices);
 
                 UpdateEntry(entryWidget, mEntryList.Count);
                 mEntryList.Add(entryWidget);
                 //mScrollContent.AddWidget(entryWidget);
-            }            
+            }
 
             public void EnsureSelectionVisible()
             {
@@ -1599,21 +1612,49 @@ namespace IDE.ui
 
 		// IDEHelper/third_party/FtsFuzzyMatch.h 
 		[CallingConvention(.Stdcall), CLink]
-		static extern bool fts_fuzzy_match(char8* pattern, char8* str, ref int outScore, uint8* matches, int maxMatches);
+		static extern bool fts_fuzzy_match(char8* pattern, char8* str, ref int32 outScore, uint8* matches, int maxMatches);
 
-		bool DoesFilterMatch(String entry, String filter)
+		/// Checks whether the given entry matches the filter and updates its score and match indices accordingly.
+		bool UpdateFilterMatch(AutoCompleteListWidget.EntryWidget entry, String filter)
 		{
 			if (filter.Length == 0)
 				return true;
 
-			if (filter.Length > entry.Length)
+			if (filter.Length > entry.mEntryDisplay.Length)
 				return false;
 
-			int score = 0;
+			int32 score = 0;
 			uint8[256] matches = ?;
 
-			return fts_fuzzy_match(filter.CStr(), entry.CStr(), ref score, &matches, matches.Count);
+			if (!fts_fuzzy_match(filter.CStr(), entry.mEntryDisplay.CStr(), ref score, &matches, matches.Count))
+			{
+				entry.SetMatches(Span<uint8>(null, 0));
+				entry.mScore = score;
+				return false;
+			}
+			
+			// Should be the amount of Unicode-codepoints in filter though it' probably faster to do it this way
+			int matchesLength = 0;
+
+			for (uint8 i = 0;; i++)
+			{
+				uint8 matchIndex = matches[i];
+				
+				if ((matchIndex == 0 && i != 0) || i == uint8.MaxValue)
+				{
+					matchesLength = i;
+					break;
+				}
+			}
+
+			entry.SetMatches(Span<uint8>(&matches, matchesLength));
+			entry.mScore = score;
+
+			return true;
 		}
+
+		[LinkName("_stricmp")]
+		static extern int32 stricmp(char8* lhs, char8* rhs);
 
         void UpdateData(String selectString, bool changedAfterInfo)
         {
@@ -1671,10 +1712,9 @@ namespace IDE.ui
                     {
                         var entry = mAutoCompleteListWidget.mFullEntryList[i];
 
-						if (DoesFilterMatch(entry.mEntryDisplay, curString))
+						if (UpdateFilterMatch(entry, curString))
                         {
 							mAutoCompleteListWidget.mEntryList.Add(entry);
-                            mAutoCompleteListWidget.UpdateEntry(entry, visibleCount);
                             visibleCount++;
                         }
                         else
@@ -1682,6 +1722,22 @@ namespace IDE.ui
                             mAutoCompleteListWidget.UpdateEntry(entry, -1);
                         }                                        
                     }
+
+					// sort entries because the scores probably have changed
+					mAutoCompleteListWidget.mEntryList.Sort(scope (left, right) =>
+						{
+							if (left.mScore > right.mScore)
+								return -1;
+							else if (left.mScore < right.mScore)
+								return 1;
+							else
+								return ((stricmp(left.mEntryDisplay.CStr(), right.mEntryDisplay.CStr()) < 0) ? -1 : 1);
+						});
+
+					for (int i < mAutoCompleteListWidget.mEntryList.Count)
+					{
+						mAutoCompleteListWidget.UpdateEntry(mAutoCompleteListWidget.mEntryList[i], i);
+					}
 
                     if ((visibleCount == 0) && (mInvokeSrcPositions == null))
                     {
