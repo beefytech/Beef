@@ -5255,7 +5255,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				CeInternalData* internalData = NULL;
 				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
-				int64 result = BfpFile_Write(internalData->mFile, memStart + bufferPtr, bufferSize, timeoutMS, (BfpFileResult*)(memStart + outResultAddr));
+				int64 result = BfpFile_Write(internalData->mFile, memStart + bufferPtr, bufferSize, timeoutMS, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 				CeSetAddrVal(resultPtr, result, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_Create)
@@ -5294,7 +5294,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto bfpSpawn = BfpSpawn_Create(targetPath.c_str(), 
 					(argsAddr == 0) ? NULL : args.c_str(),
 					(workingDirAddr == 0) ? NULL : workingDir.c_str(),
-					(envAddr == 0) ? NULL : env.c_str(), (BfpSpawnFlags)flags, (BfpSpawnResult*)(memStart + outResultAddr));
+					(envAddr == 0) ? NULL : env.c_str(), (BfpSpawnFlags)flags, (outResultAddr == 0) ? NULL : (BfpSpawnResult*)(memStart + outResultAddr));
 				if (bfpSpawn != NULL)
 				{					
 					CeInternalData* internalData = new CeInternalData();
@@ -5375,11 +5375,13 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + 1 + ptrSize + ptrSize + ptrSize);
 
 				CE_CHECKADDR(outExitCodeAddr, ptrSize);
-				CE_CHECKADDR(outResultAddr, 4);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
 
 				CeInternalData* internalData = NULL;
 				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_Spawn);
 				
+				int outExitCode = 0;
 				int timeLeft = waitMS;
 				do
 				{
@@ -5395,14 +5397,14 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						waitTime = BF_MIN(timeLeft, 20);
 						timeLeft -= waitTime;
 					}
-
-					int outExitCode = 0;
-					result = BfpSpawn_WaitFor(internalData->mSpawn, waitTime, &outExitCode, (BfpSpawnResult*)(memStart + outResultAddr));
+					
+					result = BfpSpawn_WaitFor(internalData->mSpawn, waitTime, &outExitCode, (outResultAddr == 0) ? NULL : (BfpSpawnResult*)(memStart + outResultAddr));
 					if (result)
 						break;
 					if (waitTime == 0)
 						break;					
 				} while (true);
+				*(int*)(memStart + outExitCodeAddr) = outExitCode;
 			}
 			else
 			{
