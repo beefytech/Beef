@@ -3913,7 +3913,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 			if (isLet || isVar)
 				fieldType = GetPrimitiveType(BfTypeCode_Var);
 			else
-				fieldType = ResolveTypeRef(fieldDef->mTypeRef);
+				fieldType = ResolveTypeRef(fieldDef->mTypeRef,BfPopulateType_Identity, BfResolveTypeRefFlag_AllowInferredSizedArray);
 			if (fieldType == NULL)
 				fieldType = mContext->mBfObjectType;
 		}
