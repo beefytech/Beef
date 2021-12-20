@@ -2927,7 +2927,7 @@ void BfCompiler::GenerateDynCastData()
 
 void BfCompiler::UpdateRevisedTypes()
 {
-	BfLogSysM("UpdateRevisedTypes\n");
+	BfLogSysM("BfCompiler::UpdateRevisedTypes\n");
 	BP_ZONE("BfCompiler::UpdateRevisedTypes");	
 		
 	// See if we have any name conflicts and remove those

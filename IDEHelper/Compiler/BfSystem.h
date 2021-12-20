@@ -1180,6 +1180,7 @@ public:
 	BfSystem* mSystem;
 	String mName;
 	String mSafeName;
+	String mDirectory;
 	Array<BfProject*> mDependencies;
 	BfTargetType mTargetType;
 	BfCodeGenOptions mCodeGenOptions;	

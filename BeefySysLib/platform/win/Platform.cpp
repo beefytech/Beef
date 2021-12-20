@@ -2909,6 +2909,12 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 			//TODO: this doesn't set file stream location.  It only works for streams like pipes, sockets, etc
 			if (::ReadFileEx(file->mHandle, buffer, (uint32)size, &overlapped, OverlappedReadComplete))
 			{
+				if (file->mAsyncData == NULL)
+				{
+					OUTRESULT(BfpFileResult_InvalidParameter);
+					return 0;
+				}
+
 				if (!file->mAsyncData->WaitAndResetEvent(timeoutMS))
 				{
 					::CancelIoEx(file->mHandle, &overlapped);

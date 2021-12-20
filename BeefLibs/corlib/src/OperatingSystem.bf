@@ -118,6 +118,9 @@ namespace System
 
 		public this()
 		{
+			if (Compiler.IsComptime)
+				return;
+
 #if BF_PLATFORM_WINDOWS
 			bool isWinSrv()
 			{

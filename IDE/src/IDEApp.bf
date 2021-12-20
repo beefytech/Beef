@@ -9167,6 +9167,13 @@ namespace IDE
 			bool doCompile = false;
 			if (lastCompileHadMessages)
 				doCompile = true;
+
+			bool needsComptime = true;
+			for (var project in mWorkspace.mProjects)
+			{
+				//Set needsComptime
+			}
+
 			if ((!workspaceOptions.mIncrementalBuild) && (!lastCompileHadMessages))
 			{
 				tryQueueFiles = false;
@@ -9176,6 +9183,9 @@ namespace IDE
 						tryQueueFiles = true;
 				}
 			}
+
+			if (needsComptime)
+				tryQueueFiles = true;
 
 			if (hotProject != null)
 			{
@@ -9209,6 +9219,9 @@ namespace IDE
 	                    success = false;
 	            }
 			}
+
+			if (needsComptime)
+				doCompile = true;
 
             if (!success)
 			{

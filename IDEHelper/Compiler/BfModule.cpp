@@ -4297,7 +4297,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 			int ceExecuteId = -1;
 			if (mCompiler->mCEMachine != NULL)
 				ceExecuteId = mCompiler->mCEMachine->mExecuteId;
-
+			
 			BfTypeState typeState;			
 			typeState.mType = mCurTypeInstance;
 			typeState.mCurTypeDef = fieldDef->mDeclaringType;

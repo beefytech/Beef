@@ -229,6 +229,9 @@ namespace Tests
 				GC.Mark!((*ptr));
 			}
 		}
+
+		const String cTest0 = Compiler.ReadText("Test0.txt");
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -269,6 +272,8 @@ namespace Tests
 			SerializationContext serCtx = scope .();
 			iSer.Serialize(serCtx);
 			Test.Assert(serCtx.mStr == "x 10\ny 2\n");
+
+			Test.Assert(cTest0 == "Test\n0");
 		}
 	}
 }

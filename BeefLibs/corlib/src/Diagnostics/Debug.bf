@@ -106,5 +106,24 @@ namespace System.Diagnostics
 			if (gIsDebuggerPresent)
 				Break();
 		}
+
+		public static void WriteMemory(Span<uint8> mem)
+		{
+			String str = scope .();
+			for (int i < mem.Length)
+			{
+				if ((i != 0) && (i % 16 == 0))
+					str.Append('\n');
+				str.AppendF($" {mem.[Friend]mPtr[i]:X2}");
+			}
+			str.Append('\n');
+			Write(str);
+		}
+
+		public static void WriteMemory<T>(T result)
+		{
+#unwarn
+			WriteMemory(.((.)&result, sizeof(T)));
+		}
 	}
 }

@@ -14543,8 +14543,10 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		{				
 			if (typeInstance->IsObject())
 			{	
+				bool hasRealtimeLeakCheck = (mModule->mCompiler->mOptions.mEnableRealtimeLeakCheck) && (!IsComptime());
+
 				bool wantsCtorClear = true;
-				if (mModule->mCompiler->mOptions.mEnableRealtimeLeakCheck)
+				if (hasRealtimeLeakCheck)
 				{
 					// Dbg_ObjectAlloc clears internally so we don't need to call CtorClear for those
 					if ((!isStackAlloc) && (!allocTarget.mCustomAllocator) && (allocTarget.mScopedInvocationTarget == NULL))
@@ -14566,7 +14568,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 					}
 				}
 
-				if ((!mModule->mIsComptimeModule) && (isStackAlloc) && (mModule->mCompiler->mOptions.mEnableRealtimeLeakCheck))
+				if ((!mModule->mIsComptimeModule) && (isStackAlloc) && (hasRealtimeLeakCheck))
 				{
 					BfMethodInstance* markMethod = mModule->GetRawMethodByName(mModule->mContext->mBfObjectType, "GCMarkMembers");
 					BF_ASSERT(markMethod != NULL);

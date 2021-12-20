@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Diagnostics;
 using System.Collections;
 using System.Security.Cryptography;
+using System.IO;
 
 namespace System
 {
@@ -305,6 +306,22 @@ namespace System
 		{
 			if (Compiler.IsComptime)
 				Comptime_EmitMixin(text);
+		}
+
+		[Comptime]
+		public static Span<uint8> ReadBinary(StringView path)
+		{
+			List<uint8> data = scope .();
+			File.ReadAll(path, data);
+			return data;
+		}
+
+		[Comptime]
+		public static String ReadText(StringView path)
+		{
+			String data = scope .();
+			File.ReadAllText(path, data);
+			return data;
 		}
 	}
 }

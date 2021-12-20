@@ -4159,11 +4159,12 @@ BF_EXPORT const char* BF_CALLTYPE BfSystem_GetNamespaceSearch(BfSystem* bfSystem
 	return outString.c_str();
 }
 
-BF_EXPORT BfProject* BF_CALLTYPE BfSystem_CreateProject(BfSystem* bfSystem, const char* projectName)
+BF_EXPORT BfProject* BF_CALLTYPE BfSystem_CreateProject(BfSystem* bfSystem, const char* projectName, const char* projectDir)
 {
 	AutoCrit autoCrit(bfSystem->mDataLock);
 	BfProject* bfProject = new BfProject();
 	bfProject->mName = projectName;
+	bfProject->mDirectory = projectDir;
 	bfProject->mSystem = bfSystem;
 	bfProject->mIdx = (int)bfSystem->mProjects.size();
 	bfSystem->mProjects.push_back(bfProject);	

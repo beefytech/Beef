@@ -1189,7 +1189,10 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			}
 		}
 
-		BfLogSysM("PopulateType: %p %s populateType:%d ResolveOnly:%d Reified:%d AutoComplete:%d Ctx:%p Mod:%p TypeId:%d\n", resolvedTypeRef, TypeToString(resolvedTypeRef, BfTypeNameFlags_None).c_str(), populateType, mCompiler->mIsResolveOnly, mIsReified, mCompiler->IsAutocomplete(), mContext, this, resolvedTypeRef->mTypeId);
+		BfTypeDef* typeDef = NULL;
+		if (typeInstance != NULL)
+			typeDef = typeInstance->mTypeDef;
+		BfLogSysM("PopulateType: %p %s populateType:%d ResolveOnly:%d Reified:%d AutoComplete:%d Ctx:%p Mod:%p TypeId:%d TypeDef:%p\n", resolvedTypeRef, TypeToString(resolvedTypeRef, BfTypeNameFlags_None).c_str(), populateType, mCompiler->mIsResolveOnly, mIsReified, mCompiler->IsAutocomplete(), mContext, this, resolvedTypeRef->mTypeId, typeDef);
 
 		BF_ASSERT(!resolvedTypeRef->IsDeleting());
 	}
@@ -2078,7 +2081,7 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 {
 	for (int ifaceTypeId : ceEmitContext->mInterfaces)
 		typeInstance->mCeTypeInfo->mPendingInterfaces.Add(ifaceTypeId);
-	
+		
 	if (ceEmitContext->mEmitData.IsEmpty())
 		return;
 		
@@ -2166,12 +2169,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			if (!attrType->IsValuelessType())
 				args.Add(attrVal);
 			args.Add(mBfIRBuilder->CreateTypeOf(typeInstance));
-			
-			//TESTING
-// 			mCompiler->mCEMachine->ReleaseContext(ceContext);			
-// 			ceContext = mCompiler->mCEMachine->AllocContext();
-// 			ceContext->mMemory.mSize = ceContext->mMemory.mAllocSize;
-			
+
 			auto result = ceContext->Call(customAttribute.mRef, this, methodInstance, args, CeEvalFlags_None, NULL);
 
 			if (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotted)
@@ -2182,7 +2180,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				// We populated before we could finish
 				AssertErrorState();
 			}
-			else 
+			else
 			{
 				auto owner = methodInstance->GetOwner();
 				int typeId = owner->mTypeId;
@@ -3732,6 +3730,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if (typeInstance->mTypeDef != innerTypeInst->mTypeDef)
 			{
 				// Rebuild with proper typedef (generally from inner type comptime emission)
+				BfLogSysM("Boxed type %p overriding typeDef to %p from inner type %p\n", typeInstance, innerTypeInst->mTypeDef, innerType);
 				typeInstance->mTypeDef = innerTypeInst->mTypeDef;
 				DoPopulateType(resolvedTypeRef, populateType);
 				return;

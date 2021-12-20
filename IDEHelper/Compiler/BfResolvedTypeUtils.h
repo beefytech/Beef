@@ -1823,23 +1823,7 @@ public:
 	String mEmitData;
 };
 
-class BfCeTypeInfo
-{
-public:	
-	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
-	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
-	Array<int> mPendingInterfaces;
-	Val128 mHash;
-	bool mFailed;
-	BfCeTypeInfo* mNext;
-
-public:
-	BfCeTypeInfo()
-	{
-		mFailed = false;
-		mNext = NULL;		
-	}
-};
+class BfCeTypeInfo;
 
 // Instance of struct or class
 class BfTypeInstance : public BfDependedType
