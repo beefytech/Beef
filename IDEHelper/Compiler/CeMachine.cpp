@@ -5,6 +5,7 @@
 #include "BfParser.h"
 #include "BfReducer.h"
 #include "BfExprEvaluator.h"
+#include "BfResolvePass.h"
 #include "../Backend/BeIRCodeGen.h"
 #include "BeefySysLib/platform/PlatformHelper.h"
 
@@ -1332,14 +1333,20 @@ void CeBuilder::Build()
 		mCeMachine->mCeModule->mStaticFieldRefs.Clear();
 
 		int startFunctionCount = (int)beModule->mFunctions.size();
-		ProcessMethod(methodInstance, &dupMethodInstance);		
+		///
+		{			
+			BfAutoComplete* prevAutoComplete = NULL;
+			if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
+			{
+				prevAutoComplete = mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete;
+				mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = NULL;
+			}
+			ProcessMethod(methodInstance, &dupMethodInstance);
+			if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
+				mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = prevAutoComplete;
+		}
 		if (mCeFunction->mInitializeState == CeFunction::InitializeState_Initialized)
 			return;
-
-		if (methodInstance->mMethodDef->mName == "DecodeToUTF8")
-		{
-			NOP;
-		}
 
 		if (!dupMethodInstance.mIRFunction)
 		{
@@ -4653,12 +4660,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				if (ceModule->mSystem->mPtrSize == 4)
 				{
 					int32 intVal = *(int32*)((uint8*)stackPtr + 0);
-					OutputDebugStrF("Debug Val: %d\n", intVal);
+					OutputDebugStrF("Debug Val: %d %X\n", intVal, intVal);
 				}
 				else
 				{
 					int64 intVal = *(int64*)((uint8*)stackPtr + 0);
-					OutputDebugStrF("Debug Val: %lld\n", intVal);
+					OutputDebugStrF("Debug Val: %lld %llX\n", intVal, intVal);
 				}
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectType)
@@ -5378,6 +5385,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		}
 
 		++instIdx;
+
+		if (ceFunction->mMethodInstance->mMethodDef->mName == "ReadAll")
+		{
+			NOP;
+		}
 
 		if (instIdx >= /*0xBC0*/0xBA0)
 		{

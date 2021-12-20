@@ -8470,7 +8470,7 @@ void BfModule::InitTypeInst(BfTypedValue typedValue, BfScopeData* scopeData, boo
 	mBfIRBuilder->PopulateType(typedValue.mType);
 	auto vObjectAddr = mBfIRBuilder->CreateInBoundsGEP(typedValue.mValue, 0, 0);
 	bool isAutocomplete = mCompiler->IsAutocomplete();
-		
+
 	BfIRValue vDataRef;
 	if (!isAutocomplete)
 	{				
@@ -18477,6 +18477,11 @@ void BfModule::EmitGCFindTLSMembers()
 void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 {
 	BP_ZONE_F("BfModule::ProcessMethod %s", BP_DYN_STR(methodInstance->mMethodDef->mName.c_str()));
+
+	if (mIsComptimeModule)
+	{
+		BF_ASSERT(!mCompiler->IsAutocomplete());
+	}
 
 	if (mAwaitingInitFinish)
 		FinishInit();
