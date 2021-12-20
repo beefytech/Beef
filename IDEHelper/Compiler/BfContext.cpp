@@ -1947,6 +1947,7 @@ void BfContext::UpdateRevisedTypes()
 
 			for (auto& kv : typeInst->mCeTypeInfo->mRebuildMap)
 			{
+				mCompiler->mHasComptimeRebuilds = true;
 				if (kv.mKey.mKind == CeRebuildKey::Kind_File)
 				{
 					String* keyPtr = NULL;

@@ -328,7 +328,9 @@ public:
 	bool mFastFinish;
 	bool mHasQueuedTypeRebuilds; // Infers we had a fast finish that requires a type rebuild
 	bool mHadCancel;
-	bool mWantsDeferMethodDecls;		
+	bool mWantsDeferMethodDecls;
+	bool mLastHadComptimeRebuilds;
+	bool mHasComptimeRebuilds;
 	bool mInInvalidState;
 	float mCompletionPct;
 	int mHSPreserveIdx;

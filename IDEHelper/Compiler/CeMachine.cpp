@@ -3031,6 +3031,7 @@ void CeContext::AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value)
 	if (mCurModule->mCurTypeInstance->mCeTypeInfo == NULL)
 		mCurModule->mCurTypeInstance->mCeTypeInfo = new BfCeTypeInfo();
 	mCurModule->mCurTypeInstance->mCeTypeInfo->mRebuildMap[key] = value;
+	mCurModule->mCompiler->mHasComptimeRebuilds = true;
 }
 
 uint8* CeContext::CeMalloc(int size)

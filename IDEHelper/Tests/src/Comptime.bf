@@ -231,7 +231,8 @@ namespace Tests
 		}
 
 		const String cTest0 = Compiler.ReadText("Test0.txt");
-
+		const uint8[?] cTest0Binary = Compiler.ReadBinary("Test0.txt");
+		
 		[Test]
 		public static void TestBasics()
 		{
@@ -274,6 +275,7 @@ namespace Tests
 			Test.Assert(serCtx.mStr == "x 10\ny 2\n");
 
 			Test.Assert(cTest0 == "Test\n0");
+			Test.Assert((cTest0Binary[0] == (.)'T') && ((cTest0Binary.Count == 6) || (cTest0Binary.Count == 7)));
 		}
 	}
 }

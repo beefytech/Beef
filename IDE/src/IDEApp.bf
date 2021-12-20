@@ -9168,11 +9168,7 @@ namespace IDE
 			if (lastCompileHadMessages)
 				doCompile = true;
 
-			bool needsComptime = true;
-			for (var project in mWorkspace.mProjects)
-			{
-				//Set needsComptime
-			}
+			bool needsComptime = bfCompiler.GetLastHadComptimeRebuilds();
 
 			if ((!workspaceOptions.mIncrementalBuild) && (!lastCompileHadMessages))
 			{

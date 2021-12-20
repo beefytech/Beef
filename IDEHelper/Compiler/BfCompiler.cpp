@@ -360,6 +360,8 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	//mMaxInterfaceSlots = 16;
 	mMaxInterfaceSlots = -1;
 	mInterfaceSlotCountChanged = false;
+	mLastHadComptimeRebuilds = false;
+	mHasComptimeRebuilds = false;
 	
 	mHSPreserveIdx = 0;
 	mCompileLogFP = NULL;
@@ -6561,6 +6563,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	// Inc revision for next run through Compile
 	mRevision++;
+	mHasComptimeRebuilds = false;
 	int revision = mRevision;
 	BfLogSysM("Compile Start. Revision: %d. HasParser:%d AutoComplete:%d\n", revision, 
 		(mResolvePassData != NULL) && (mResolvePassData->mParser != NULL), 
@@ -7493,6 +7496,11 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		mNeedsFullRefresh = false;
 		return false;
 	}
+
+	if (didCancel)
+		mLastHadComptimeRebuilds = mHasComptimeRebuilds || mLastHadComptimeRebuilds;
+	else
+		mLastHadComptimeRebuilds = mHasComptimeRebuilds;
 
 	return !didCancel && !mHasQueuedTypeRebuilds;
 }
@@ -9079,6 +9087,11 @@ BF_EXPORT int BF_CALLTYPE BfCompiler_GetCurConstEvalExecuteId(BfCompiler* bfComp
 	if (bfCompiler->mCEMachine->mCurContext->mCurMethodInstance == NULL)
 		return -1;
 	return bfCompiler->mCEMachine->mExecuteId;
+}
+
+BF_EXPORT float BF_CALLTYPE BfCompiler_GetLastHadComptimeRebuilds(BfCompiler* bfCompiler)
+{
+	return bfCompiler->mLastHadComptimeRebuilds;
 }
 
 BF_EXPORT void BF_CALLTYPE BfCompiler_Cancel(BfCompiler* bfCompiler)
