@@ -5266,26 +5266,35 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce workingDirAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
 				addr_ce envAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize);
 				int flags = *(int*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize + ptrSize);
-				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize + ptrSize + 4);
 
 				String targetPath;
 				CE_CHECKADDR_STR(targetPath, targetPathAddr);
 				String args;
-				CE_CHECKADDR_STR(args, argsAddr);
+				if (argsAddr != 0)
+					CE_CHECKADDR_STR(args, argsAddr);
 				String workingDir;
-				CE_CHECKADDR_STR(workingDir, workingDirAddr);
+				if (workingDirAddr != 0)
+					CE_CHECKADDR_STR(workingDir, workingDirAddr);
 				String env;
-				CE_CHECKADDR_STR(env, envAddr);
+				if (envAddr != 0)
+					CE_CHECKADDR_STR(env, envAddr);
 				CE_CHECKADDR(outResultAddr, 4);
+				
+				if ((targetPath.Contains('/')) || (targetPath.Contains('\\')))
+				{
+					BfProject* activeProject = NULL;
+					auto activeTypeDef = mCurModule->GetActiveTypeDef();
+					if (activeTypeDef != NULL)
+						activeProject = activeTypeDef->mProject;
+					if (activeProject != NULL)
+						targetPath = GetAbsPath(targetPath, activeProject->mDirectory);
+				}
 
-				BfProject* activeProject = NULL;
-				auto activeTypeDef = mCurModule->GetActiveTypeDef();
-				if (activeTypeDef != NULL)
-					activeProject = activeTypeDef->mProject;
-				if (activeProject != NULL)
-					targetPath = GetAbsPath(targetPath, activeProject->mDirectory);
-
-				auto bfpSpawn = BfpSpawn_Create(targetPath.c_str(), args.c_str(), workingDir.c_str(), env.c_str(), (BfpSpawnFlags)flags, (BfpSpawnResult*)(memStart + outResultAddr));
+				auto bfpSpawn = BfpSpawn_Create(targetPath.c_str(), 
+					(argsAddr == 0) ? NULL : args.c_str(),
+					(workingDirAddr == 0) ? NULL : workingDir.c_str(),
+					(envAddr == 0) ? NULL : env.c_str(), (BfpSpawnFlags)flags, (BfpSpawnResult*)(memStart + outResultAddr));
 				if (bfpSpawn != NULL)
 				{					
 					CeInternalData* internalData = new CeInternalData();
