@@ -8473,7 +8473,7 @@ void BfModule::InitTypeInst(BfTypedValue typedValue, BfScopeData* scopeData, boo
 
 	BfIRValue vDataRef;
 	if (!isAutocomplete)
-	{				
+	{
 		vDataRef = GetClassVDataPtr(typeInstance);
 	}
 

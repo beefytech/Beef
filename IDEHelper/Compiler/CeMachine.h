@@ -547,10 +547,11 @@ public:
 	}
 };
 
-#define BF_CE_STACK_SIZE 4*1024*1024
-#define BF_CE_INITIAL_MEMORY BF_CE_STACK_SIZE + 128*1024
-#define BF_CE_MAX_MEMORY 128*1024*1024
-#define BF_CE_MAX_CARRYOVER_MEMORY BF_CE_STACK_SIZE * 2
+#define BF_CE_DEFAULT_STACK_SIZE 4*1024*1024
+#define BF_CE_DEFAULT_HEAP_SIZE 128*1024
+#define BF_CE_INITIAL_MEMORY BF_CE_DEFAULT_STACK_SIZE + BF_CE_DEFAULT_HEAP_SIZE
+#define BF_CE_MAX_MEMORY 0x7FFFFFFF
+#define BF_CE_MAX_CARRYOVER_MEMORY BF_CE_DEFAULT_STACK_SIZE * 2
 #define BF_CE_MAX_CARRYOVER_HEAP 1024*1024
 
 enum CeOperandInfoKind
@@ -812,6 +813,7 @@ public:
 	ContiguousHeap* mHeap;
 	Array<CeFrame> mCallStack;
 	Array<uint8> mMemory;
+	int mStackSize;
 	Dictionary<int, addr_ce> mStringMap;
 	Dictionary<int, addr_ce> mReflectMap;
 	Dictionary<Val128, addr_ce> mConstDataMap;	

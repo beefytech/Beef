@@ -1282,6 +1282,12 @@ void CeBuilder::HandleParams()
 void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance* dupMethodInstance)
 {
 	SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(mCeMachine->mCeModule->mCurMethodState, NULL);
+	BfAutoComplete* prevAutoComplete = NULL;
+	if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
+	{
+		prevAutoComplete = mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete;
+		mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = NULL;
+	}
 
 	auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
 	auto irBuilder = mCeMachine->mCeModule->mBfIRBuilder;
@@ -1296,6 +1302,9 @@ void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance
 	mCeMachine->mCeModule->ProcessMethod(dupMethodInstance, true);
 	irCodeGen->SetState(beState);
 	irBuilder->SetState(irState);
+	
+	if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
+		mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = prevAutoComplete;
 }
 
 void CeBuilder::Build()
@@ -1333,18 +1342,7 @@ void CeBuilder::Build()
 		mCeMachine->mCeModule->mStaticFieldRefs.Clear();
 
 		int startFunctionCount = (int)beModule->mFunctions.size();
-		///
-		{			
-			BfAutoComplete* prevAutoComplete = NULL;
-			if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
-			{
-				prevAutoComplete = mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete;
-				mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = NULL;
-			}
-			ProcessMethod(methodInstance, &dupMethodInstance);
-			if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
-				mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = prevAutoComplete;
-		}
+		ProcessMethod(methodInstance, &dupMethodInstance);			
 		if (mCeFunction->mInitializeState == CeFunction::InitializeState_Initialized)
 			return;
 
@@ -2905,6 +2903,7 @@ CeContext::CeContext()
 	mCeMachine = NULL;
 	mReflectTypeIdOffset = -1;
 	mExecuteId = -1;
+	mStackSize = -1;
 
 	mCurTargetSrc = NULL;	
 	mHeap = new	ContiguousHeap();
@@ -3045,7 +3044,7 @@ uint8* CeContext::CeMalloc(int size)
 {
 #ifdef CE_ENABLE_HEAP
 	auto heapRef = mHeap->Alloc(size);	
-	auto ceAddr = BF_CE_STACK_SIZE + heapRef;
+	auto ceAddr = mStackSize + heapRef;
 	int sizeDelta = (ceAddr + size) - mMemory.mSize;
 	if (sizeDelta > 0)
 		mMemory.GrowUninitialized(sizeDelta);
@@ -3058,7 +3057,7 @@ uint8* CeContext::CeMalloc(int size)
 bool CeContext::CeFree(addr_ce addr)
 {
 #ifdef CE_ENABLE_HEAP
-	ContiguousHeap::AllocRef heapRef = addr - BF_CE_STACK_SIZE;
+	ContiguousHeap::AllocRef heapRef = addr - mStackSize;
 	return mHeap->Free(heapRef);
 #else
 	return true;
@@ -3747,6 +3746,19 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 						charPtr = (char*)(instData + ptrOffset);
 					}
 				}
+				else
+				{
+					int64 allocSizeVal = *(int64*)(instData + allocSizeOffset);
+					if ((allocSizeVal & 0x4000000000000000LL) != 0)
+					{
+						int32 ptrVal = *(int32*)(instData + ptrOffset);
+						charPtr = (char*)(ptrVal + memStart);
+					}
+					else
+					{
+						charPtr = (char*)(instData + ptrOffset);
+					}
+				}
 
 				CE_CREATECONST_CHECKPTR(charPtr, lenVal);
 				String str(charPtr, lenVal);
@@ -4130,7 +4142,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	if (ceFunction->mInitializeState < CeFunction::InitializeState_Initialized)
 		mCeMachine->PrepareFunction(ceFunction, NULL);	
 
-	auto stackPtr = &mMemory[0] + BF_CE_STACK_SIZE;
+	auto stackPtr = &mMemory[0] + mStackSize;
 	auto* memStart = &mMemory[0];
 
 	BfTypeInstance* thisType = methodInstance->GetOwner();
@@ -4152,6 +4164,23 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 			allocThisSize += appendSizeConstant->mInt32;
 		}
 
+		if (allocThisSize >= mStackSize / 4)
+		{
+			// Resize stack a reasonable size
+			mStackSize = BF_ALIGN(allocThisSize, 0x100000) + BF_CE_DEFAULT_STACK_SIZE;
+			int64 memSize = mStackSize + BF_CE_DEFAULT_HEAP_SIZE;
+			if (memSize > BF_CE_MAX_MEMORY)
+			{
+				Fail("Return value too large (>2GB)");
+				return BfTypedValue();
+			}
+			
+			if (memSize > mMemory.mSize)
+				mMemory.Resize(memSize);
+			stackPtr = &mMemory[0] + mStackSize;
+			memStart = &mMemory[0];
+		}
+
 		stackPtr -= allocThisSize;
 		auto allocThisPtr = stackPtr;
 		memset(allocThisPtr, 0, allocThisSize);
@@ -4168,6 +4197,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	{
 		stackPtr -= ceModule->mSystem->mPtrSize;
 		memset(stackPtr, 0, ceModule->mSystem->mPtrSize);
+		*(addr_ce*)(stackPtr) = (addr_ce)(allocThisInstAddr + thisType->mInstSize);
 		allocAppendIdxAddr = stackPtr - memStart;
 	}
 
@@ -4301,7 +4331,14 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 			}
 
 			BfType* usedReturnType = returnType;
-			BfIRValue constVal = CreateConstant(module, retPtr, returnType, &usedReturnType);
+			BfIRValue constVal;
+			if (returnType->IsObject())
+			{
+				addr_ce retAddr = retPtr - memStart;
+				constVal = CreateConstant(module, (uint8*)&retAddr, returnType, &usedReturnType);
+			}
+			else
+				constVal = CreateConstant(module, retPtr, returnType, &usedReturnType);
 			if (constVal)
 				returnValue = BfTypedValue(constVal, usedReturnType);
 			else
@@ -4334,9 +4371,10 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	}
 
 #define CE_CHECKALLOC(SIZE) \
-	if ((SIZE < 0) || (uintptr)memSize + (uintptr)SIZE > BF_CE_MAX_MEMORY) \
+	if ((SIZE < 0) || (SIZE >= 0x80000000LL) || ((uintptr)memSize + (uintptr)SIZE > BF_CE_MAX_MEMORY)) \
 	{ \
-		_Fail("Maximum memory size exceeded"); \
+		_Fail("Maximum memory size exceeded (2GB)"); \
+		return false; \
 	}
 
 // This check will fail for addresses < 64K (null pointer), or out-of-bounds
@@ -4347,7 +4385,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 		return false; \
 	}
 #define CE_CHECKADDR(ADDR, SIZE) \
-	if (((ADDR) - 0x10000) + (SIZE) > (memSize - 0x10000)) \
+	if (((ADDR) < 0x10000) || ((ADDR) + (SIZE) > memSize)) \
 	{ \
 		_Fail("Access violation"); \
 		return false; \
@@ -4588,7 +4626,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Malloc)
 			{
-				int32 size = *(int32*)((uint8*)stackPtr + 4);
+				int64 size;
+				if (ptrSize == 4)
+					size = *(int32*)((uint8*)stackPtr + 4);
+				else
+					size = *(int64*)((uint8*)stackPtr + 8);
 				CE_CHECKALLOC(size);
 				uint8* ptr = CeMalloc(size);				
 				CeSetAddrVal(stackPtr + 0, ptr - memStart, ptrSize);
@@ -4621,6 +4663,19 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				{
 					int32 allocSizeVal = *(int32*)(strInst + allocSizeOffset);
 					if ((allocSizeVal & 0x40000000) != 0)
+					{
+						int32 ptrVal = *(int32*)(strInst + ptrOffset);
+						charPtr = (char*)(ptrVal + memStart);
+					}
+					else
+					{
+						charPtr = (char*)(strInst + ptrOffset);
+					}
+				}
+				else
+				{
+					int64 allocSizeVal = *(int64*)(strInst + allocSizeOffset);
+					if ((allocSizeVal & 0x4000000000000000LL) != 0)
 					{
 						int32 ptrVal = *(int32*)(strInst + ptrOffset);
 						charPtr = (char*)(ptrVal + memStart);
@@ -4671,7 +4726,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectType)
 			{
 				addr_ce objAddr = *(addr_ce*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
-				CE_CHECKADDR(addr_ce, 4);
+				CE_CHECKADDR(objAddr, 4);
 				int32 typeId = *(int32*)(objAddr + memStart);
 
 				auto reflectType = GetReflectType(typeId);
@@ -5370,6 +5425,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 	int callCount = 0;
 	int instIdx = 0;
 
+	CE_CHECKSTACK();
+
 	while (true)
 	{
 		if (*fastFinishPtr)
@@ -5512,7 +5569,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_Malloc:
 		{
 			auto frameOfs = CE_GETINST(int32);
-			int32 size = CE_GETFRAME(int32);
+			int64 size;
+			if (ptrSize == 4)
+				size = CE_GETFRAME(int32);
+			else
+				size = CE_GETFRAME(int64);
 			CE_CHECKALLOC(size);
 			uint8* mem = CeMalloc(size);
 			_FixVariables();
@@ -7632,7 +7693,8 @@ CeContext* CeMachine::AllocContext()
 	ceContext->mCurEmitContext = mCurEmitContext;	
 	mCurEmitContext = NULL;	
 	mExecuteId++;	
-	ceContext->mMemory.Resize(BF_CE_STACK_SIZE);
+	ceContext->mStackSize = BF_CE_DEFAULT_STACK_SIZE;
+	ceContext->mMemory.Resize(ceContext->mStackSize);
 	ceContext->mExecuteId = mExecuteId;
 	ceContext->mCurHandleId = 0;
 	return ceContext;
