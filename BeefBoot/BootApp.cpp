@@ -47,7 +47,7 @@ BF_IMPORT void BF_CALLTYPE BfSystem_ReportMemory(void* bfSystem);
 BF_IMPORT void BF_CALLTYPE BfSystem_Delete(void* bfSystem);
 BF_IMPORT void* BF_CALLTYPE BfSystem_CreatePassInstance(void* bfSystem);
 BF_IMPORT void* BF_CALLTYPE BfSystem_CreateCompiler(void* bfSystem, bool isResolveOnly);
-BF_IMPORT void* BF_CALLTYPE BfSystem_CreateProject(void* bfSystem, const char* projectName);
+BF_IMPORT void* BF_CALLTYPE BfSystem_CreateProject(void* bfSystem, const char* projectName, const char* projectDir);
 BF_IMPORT void BF_CALLTYPE BfParser_Delete(void* bfParser);
 BF_IMPORT void BF_CALLTYPE BfSystem_AddTypeOptions(void* bfSystem, const char* filter, int32 simdSetting, int32 optimizationLevel, int32 emitDebugInfo, int32 arrayBoundsCheck,
 	int32 initLocalVariables, int32 emitDynamicCastCheck, int32 emitObjectAccessCheck, int32 allocStackTraceDepth);
@@ -790,12 +790,12 @@ bool BootApp::Compile()
 		projectName.RemoveToEnd(dotPos);
 	if (projectName.IsEmpty())
 		projectName.Append("BeefProject");
-
-	mProject = BfSystem_CreateProject(mSystem, projectName.c_str());
+	
+	mProject = BfSystem_CreateProject(mSystem, projectName.c_str(), GetFileDir(mTargetPath).c_str());
 	
 	if (mIsCERun)
 	{
-		mCELibProject = BfSystem_CreateProject(mSystem, "BeefLib");		
+		mCELibProject = BfSystem_CreateProject(mSystem, "BeefLib", GetFileDir(mTargetPath).c_str());
 
 		BfProjectFlags flags = BfProjectFlags_None;
 		BfProject_SetOptions(mCELibProject, BfTargetType_BeefLib, "", mDefines.c_str(), mOptLevel, 0, 0, 0, flags);		
