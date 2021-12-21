@@ -2450,7 +2450,7 @@ namespace IDE
 		{
 			var sewc = GetActiveSourceEditWidgetContent();
 			if (sewc != null)
-				sewc.ToggleComment(true);
+				sewc.ToggleComment();
 		}
 
 		[IDECommand]
