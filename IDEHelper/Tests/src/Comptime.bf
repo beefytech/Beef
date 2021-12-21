@@ -230,6 +230,38 @@ namespace Tests
 			}
 		}
 
+		[CheckEnum]
+		enum EnumA
+		{
+			case A(int64 aa);
+			case B(float bb);
+		}
+
+		[AttributeUsage(.All)]
+		public struct CheckEnumAttribute : Attribute, IComptimeTypeApply
+		{
+			public void ApplyToType(Type type)
+			{
+				int fieldIdx = 0;
+				for (var field in type.GetFields())
+				{
+					switch (fieldIdx)
+					{
+					case 0:
+						Test.Assert(field.Name == "$payload");
+						Test.Assert(field.MemberOffset == 0);
+						Test.Assert(field.FieldType == typeof(int64));
+					case 1:
+						Test.Assert(field.Name == "$discriminator");
+						Test.Assert(field.MemberOffset == 8);
+						Test.Assert(field.FieldType == typeof(int8));
+					}
+					fieldIdx++;
+				}
+				Test.Assert(fieldIdx == 4);
+			}
+		}
+
 		const String cTest0 = Compiler.ReadText("Test0.txt");
 		const String cTest1 = new String('A', 12);
 		const uint8[?] cTest0Binary = Compiler.ReadBinary("Test0.txt");

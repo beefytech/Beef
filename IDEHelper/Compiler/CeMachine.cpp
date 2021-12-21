@@ -6081,6 +6081,13 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					{
 						if (iface.mInterfaceType == ifaceType)
 						{
+							if (valueType->mInterfaceMethodTable.IsEmpty())
+								ceModule->PopulateType(valueType, BfPopulateType_Full_Force);
+							if (valueType->mInterfaceMethodTable.IsEmpty())
+							{
+								_Fail("Empty interface table");
+								return false;
+							}
 							methodInstance = valueType->mInterfaceMethodTable[iface.mStartInterfaceTableIdx + methodIdx].mMethodRef;
 							break;
 						}
