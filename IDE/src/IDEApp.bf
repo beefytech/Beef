@@ -4896,6 +4896,14 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void SafeModeToggle()
+		{
+			mSafeMode = !mSafeMode;
+			mNoResolve = mSafeMode;
+			mWantsBeefClean = true;
+		}
+
+		[IDECommand]
 		public void ShowKeyboardShortcuts()
 		{
 		    /*var workspaceProperties = new SettingsDialog();
@@ -5331,6 +5339,7 @@ namespace IDE
 			AddMenuItem(prefMenu, "&Settings", "Settings");
 			AddMenuItem(prefMenu, "Reload Settings", "Reload Settings");
 			AddMenuItem(prefMenu, "Reset UI", "Reset UI");
+			AddMenuItem(prefMenu, "Safe Mode", "Safe Mode Toggle", new (menu) => { menu.SetCheckState(mSafeMode ? 1 : 0); }, null, true, mSafeMode ? 1 : 0);
 			AddMenuItem(subMenu, "Close Workspace", "Close Workspace", new => UpdateMenuItem_HasWorkspace);
             AddMenuItem(subMenu, "E&xit", "Exit");
 
@@ -12078,11 +12087,11 @@ namespace IDE
 						if (mErrorsPanel != null)
 							mErrorsPanel.ClearParserErrors(null);
 
-                        delete mBfResolveCompiler;
-                        delete mBfResolveSystem;
-						delete mBfResolveHelper;
-                        delete mBfBuildCompiler;
-                        delete mBfBuildSystem;
+                        DeleteAndNullify!(mBfResolveCompiler);
+                        DeleteAndNullify!(mBfResolveSystem);
+						DeleteAndNullify!(mBfResolveHelper);
+                        DeleteAndNullify!(mBfBuildCompiler);
+                        DeleteAndNullify!(mBfBuildSystem);
 						
 						///
                         mDebugger.FullReportMemory();
@@ -13736,7 +13745,6 @@ namespace IDE
         [Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
         public static extern bool MessageBeep(MessageBeepType type);
 #endif
-
     }
 
 	static

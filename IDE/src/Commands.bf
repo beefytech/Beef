@@ -253,6 +253,7 @@ namespace IDE
 			Add("Run Normal Tests", new () => { gApp.[Friend]RunTests(false, false); });
 			Add("Run To Cursor", new => gApp.[Friend]RunToCursor);
 			Add("Run Without Compiling", new => gApp.[Friend]RunWithoutCompiling);
+			Add("Safe Mode Toggle", new () => { gApp.SafeModeToggle(); });
 			Add("Save All", new () => { gApp.SaveAll(); });
 			Add("Save As", new () => { gApp.SaveAs(); });
 			Add("Save File", new => gApp.SaveFile);

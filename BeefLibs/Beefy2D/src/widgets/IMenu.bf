@@ -10,6 +10,7 @@ namespace Beefy.widgets
     public interface IMenu
     {
 		void SetDisabled(bool enable);
+		void SetCheckState(int32 checkState);
     }
 
 	public interface IMenuContainer
