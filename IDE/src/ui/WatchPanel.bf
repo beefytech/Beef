@@ -2765,7 +2765,10 @@ namespace IDE.ui
 							{
 								String evalStr = scope String();
 								CompactChildExpression(listViewItem, evalStr);
-								evalStr.Insert(0, "&");
+								if (evalStr.StartsWith("*"))
+									evalStr.Remove(0, 1);
+								else
+									evalStr.Insert(0, "&");
 								gApp.mBreakpointPanel.CreateMemoryBreakpoint(evalStr);
 								gApp.MarkDirty();
 							});
