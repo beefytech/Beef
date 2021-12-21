@@ -2318,6 +2318,7 @@ namespace IDE.ui
 			if (CheckReadOnly())
 				return false;
 			bool noStar = false;
+			var prevSelection = mSelection;
 
 			var startLineAndCol = CursorLineAndColumn;
 			if ((!HasSelection()) && (doComment != null))
@@ -2447,6 +2448,10 @@ namespace IDE.ui
 						}
 					}
 					mSelection = EditSelection(minPos, maxPos + q);
+				}
+				else
+				{
+					mSelection = prevSelection;
 				}
 
 				if (undoBatchStart != null)
