@@ -625,6 +625,7 @@ namespace IDE
 			public FileRecoveryKind mEnableFileRecovery = .Yes;
 			public bool mFormatOnSave = false;
 			public bool mSyncWithWorkspacePanel = false;
+			public int32 mWrapCommentsAt = 0;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -650,6 +651,7 @@ namespace IDE
 				sd.Add("EnableFileRecovery", mEnableFileRecovery);
 				sd.Add("FormatOnSave", mFormatOnSave);
 				sd.Add("SyncWithWorkspacePanel", mSyncWithWorkspacePanel);
+				sd.Add("WrapCommentsAt", mWrapCommentsAt);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -679,6 +681,7 @@ namespace IDE
 				sd.GetEnum<FileRecoveryKind>("EnableFileRecovery", ref mEnableFileRecovery);
 				sd.Get("FormatOnSave", ref mFormatOnSave);
 				sd.Get("SyncWithWorkspacePanel", ref mSyncWithWorkspacePanel);
+				sd.Get("WrapCommentsAt", ref mWrapCommentsAt);
 			}
 
 			public void SetDefaults()
