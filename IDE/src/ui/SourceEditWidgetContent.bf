@@ -2272,6 +2272,38 @@ namespace IDE.ui
 					break;
 				minPos--;
 			}
+
+			bool hadMaxChar = false;
+			int checkMaxPos = maxPos;
+			while (checkMaxPos > 0)
+			{
+				var c = mData.mText[checkMaxPos - 1].mChar;
+				if (c == '\n')
+					break;
+				if ((c != '\t') && (c != ' '))
+				{
+					hadMaxChar = true;
+					break;
+				}
+				checkMaxPos--;
+			}
+
+			if (!hadMaxChar)
+			{
+				checkMaxPos = maxPos;
+				while (checkMaxPos < mData.mTextLength)
+				{
+					var c = mData.mText[checkMaxPos].mChar;
+					if (c == '\n')
+						break;
+					if ((c != '\t') && (c != ' '))
+					{
+						maxPos = checkMaxPos + 1;
+						break;
+					}
+					checkMaxPos++;
+				}
+			}
 		
 			int wantLineCol = -1;
 			int lineStartCol = 0;
