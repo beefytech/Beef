@@ -3800,13 +3800,14 @@ BF_EXPORT bool BF_CALLTYPE BfParser_Reduce(BfParser* bfParser, BfPassInstance* b
 }
 
 static Array<int> gCharMapping;
-BF_EXPORT const char* BF_CALLTYPE BfParser_Format(BfParser* bfParser, int formatStart, int formatEnd, int** outCharMapping)
+BF_EXPORT const char* BF_CALLTYPE BfParser_Format(BfParser* bfParser, int formatStart, int formatEnd, int** outCharMapping, int maxCol)
 {
 	BP_ZONE("BfParser_Reduce");
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
 	gCharMapping.Clear();
 	BfPrinter bfPrinter(bfParser->mRootNode, bfParser->mSidechannelRootNode, bfParser->mErrorRootNode);
+	bfPrinter.mMaxCol = maxCol;
 	bfPrinter.mFormatStart = formatStart;
 	bfPrinter.mFormatEnd = formatEnd;
 	bfPrinter.mCharMapping = &gCharMapping;
