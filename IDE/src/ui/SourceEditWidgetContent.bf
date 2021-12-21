@@ -2265,7 +2265,7 @@ namespace IDE.ui
 			int maxPos = mSelection.GetValueOrDefault().MaxPos;
 			mSelection = null;
 
-			while (minPos >= 0)
+			while (minPos > 0)
 			{
 				var c = mData.mText[minPos - 1].mChar;
 				if (c == '\n')
@@ -2279,7 +2279,35 @@ namespace IDE.ui
 
 			for (int i = minPos; i < maxPos; i++)
 			{
-				bool isSpace = false;
+				var c = mData.mText[i].mChar;
+				if (didLineComment)
+				{
+					if (c == '\n')
+					{
+						didLineComment = false;
+						lineStartCol = 0;
+					}
+					continue;
+				}
+				if (c == '\t')
+					lineStartCol += 4;
+				else if (c == ' ')
+					lineStartCol++;
+				else
+				{
+					if (wantLineCol == -1)
+						wantLineCol = lineStartCol;
+					else
+						wantLineCol = Math.Min(wantLineCol, lineStartCol);
+					didLineComment = true;
+				}
+			}
+			wantLineCol = Math.Max(0, wantLineCol);
+
+			didLineComment = false;
+			lineStartCol = 0;
+			for (int i = minPos; i < maxPos; i++)
+			{
 				var c = mData.mText[i].mChar;
 				if (didLineComment)
 				{
@@ -2296,27 +2324,11 @@ namespace IDE.ui
 					commentNow = true;
 
 				if (c == '\t')
-				{
 					lineStartCol += 4;
-					isSpace = true;
-				}
 				else if (c == ' ')
-				{
 					lineStartCol++;
-					isSpace = true;
-				}
-
-				if (!isSpace)
-				{
-					if (c == '\n')
-					{
-						
-					}
-
+				else
 					commentNow = true;
-					if (wantLineCol == -1)
-						wantLineCol = lineStartCol;
-				}
 
 				if (commentNow)
 				{
