@@ -194,6 +194,8 @@ namespace IDE
 			Add("Close Document", new () => { gApp.[Friend]TryCloseCurrentDocument(); });
 			Add("Close Panel", new () => { gApp.[Friend]TryCloseCurrentPanel(); });
 			Add("Close Workspace", new => gApp.[Friend]Cmd_CloseWorkspaceAndSetupNew);
+			Add("Comment Block", new => gApp.[Friend]CommentBlock);
+			Add("Comment Lines", new => gApp.[Friend]CommentLines);
 			Add("Comment Selection", new => gApp.[Friend]CommentSelection);
 			Add("Compile File", new => gApp.Cmd_CompileFile);
 			Add("Debug All Tests", new () => { gApp.[Friend]RunTests(true, true); });

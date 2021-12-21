@@ -300,11 +300,8 @@ int BfPrinter::CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx)
 
 void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 {
-	if ((!mOutString.IsEmpty()) && (!isspace((uint8)mOutString[mOutString.mLength - 1])))
-	{
-		Write(" ");
-	}
-
+	bool startsWithSpace = false;
+	
 	bool wasExpectingNewLine = mExpectingNewLine;
 
 	mTriviaIdx = std::max(mTriviaIdx, node->GetTriviaStart());
@@ -315,12 +312,17 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 	for (int i = mTriviaIdx; i < srcEnd; i++)
 	{
 		char c = astNodeSrc->mSrc[i];
+		if ((i == mTriviaIdx) && (isspace((uint8)c)))
+			startsWithSpace = true;
+
 		if ((c == '\n') && (i < node->GetSrcStart()))
 			crCount++;
 		if (((c != ' ') && (c != '\t')) || (!mReformatting))
 			endIdx = i + 1;
 	}
 
+	bool wantsPrefixSpace = (!mOutString.IsEmpty()) && (!isspace((uint8)mOutString[mOutString.mLength - 1]));
+	
 	bool expectingNewLine = mNextStateModify.mWantNewLineIdx != mVirtualNewLineIdx;
 	
 	int startIdx = mTriviaIdx;
@@ -333,7 +335,10 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 		if ((origLineSpacing != -1) && (lineStart != -1))
 		{
 			for (int i = 0; i < crCount; i++)
+			{
 				Write("\n");
+				wantsPrefixSpace = false;
+			}
 			startIdx = node->GetSrcStart();
 			// Leave left-aligned preprocessor nodes
 			if ((node->GetSourceData()->mSrc[node->GetSrcStart()] != '#') || (origLineSpacing > 0))
@@ -439,6 +444,10 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 		bool emitChar = true;
 		
 		char c = astNodeSrc->mSrc[srcIdx];
+
+ 		if ((wantsPrefixSpace) && (isspace((uint8)c)))
+ 			wantsPrefixSpace = false;
+
 		if (c == '\n')
 		{
 			isNewLine = true;
@@ -592,7 +601,12 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 				}
 			}
 
-			FlushIndent();			
+			if (wantsPrefixSpace)
+			{
+				mQueuedSpaceCount++;
+				wantsPrefixSpace = false;
+			}
+			FlushIndent();
 
 			for (int idx = startIdx; idx <= BF_MIN(srcIdx, endIdx - 1); idx++)
 			{
@@ -1038,6 +1052,8 @@ void BfPrinter::Visit(BfLabelableStatement* labelableStmt)
 void BfPrinter::Visit(BfCommentNode* commentNode)
 {	
 	WriteIgnoredNode(commentNode);
+	if (commentNode->mCommentKind == BfCommentKind_Line)
+		ExpectNewLine();
 }
 
 void BfPrinter::Visit(BfPreprocesorIgnoredSectionNode* preprocesorIgnoredSection)

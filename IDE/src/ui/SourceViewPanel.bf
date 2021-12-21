@@ -546,11 +546,6 @@ namespace IDE.ui
 
 		public ~this()
 		{
-			if (mProjectSource?.mEditData?.HasTextChanged() == true)
-			{
-				mProjectSource.ClearEditData();
-			}
-
 			if (mInPostRemoveUpdatePanels)
 			{
 				//Debug.WriteLine("Removing sourceViewPanel from mPostRemoveUpdatePanel {0} in ~this ", this);
@@ -1185,7 +1180,7 @@ namespace IDE.ui
                 //if (mCurParser != null)
                 {
 					if (gApp.mWorkspace.mProjectLoadState != .Loaded)
-						return false;
+						return true;
 
 					if (!isHi)
 						Debug.Assert(!mIsPerformingBackgroundClassify);
@@ -2332,6 +2327,11 @@ namespace IDE.ui
         {
 			if (mDisposed)
 				return;
+
+			if (mProjectSource?.mEditData?.HasTextChanged() == true)
+			{
+				mProjectSource.ClearEditData();
+			}
 
 			ProcessDeferredResolveResults(-1);
 

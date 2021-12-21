@@ -2314,6 +2314,11 @@ namespace IDE
 					widget.RemoveSelf();
 			}
 
+			WithSourceViewPanels(scope (sourceViewPanel) =>
+				{
+					sourceViewPanel.Dispose();
+				});
+
 			if (!mRunningTestScript)
 			{
 				mActiveDocumentsTabbedView = null;
@@ -2422,6 +2427,22 @@ namespace IDE
 			var sewc = GetActiveSourceEditWidgetContent();
 			if (sewc != null)
 				sewc.DuplicateLine();
+		}
+
+		[IDECommand]
+		void CommentBlock()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.CommentBlock();
+		}
+
+		[IDECommand]
+		void CommentLines()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.CommentLines();
 		}
 
 		[IDECommand]
@@ -5386,6 +5407,8 @@ namespace IDE
 			advancedEditMenu.AddMenuItem(null);
 			AddMenuItem(advancedEditMenu, "Make Uppercase", "Make Uppercase");
 			AddMenuItem(advancedEditMenu, "Make Lowercase", "Make Lowercase");
+			AddMenuItem(advancedEditMenu, "Comment Block", "Comment Block");
+			AddMenuItem(advancedEditMenu, "Comment Lines", "Comment Lines");
 			AddMenuItem(advancedEditMenu, "Comment Selection", "Comment Selection");
 			AddMenuItem(advancedEditMenu, "Uncomment Selection", "Uncomment Selection");
 			AddMenuItem(advancedEditMenu, "Reformat Document", "Reformat Document");
@@ -5712,14 +5735,20 @@ namespace IDE
 				{
 					let sewc = editWidget.mEditWidgetContent as SourceEditWidgetContent;
 					if (sewc != null)
-						return sewc;
+					{
+						if (sewc.mEditWidget.mHasFocus)
+							return sewc;
+						return null;
+					}
 				}
 			}
 
 			var activeTextPanel = GetActivePanel() as TextPanel;
 			if (activeTextPanel != null)
 			{
-				return activeTextPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
+				let sewc = activeTextPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
+				if ((sewc != null) && (sewc.mEditWidget.mHasFocus))
+					return sewc;
 			}
 
 			return null;

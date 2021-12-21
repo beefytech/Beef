@@ -139,7 +139,8 @@ namespace IDE.ui
             mOutputWidget.SetText("");
 			for (var widgetEntry in mInlineWidgets)
 			{
-				widgetEntry.mWidget.RemoveSelf();
+				if (widgetEntry.mWidget.mParent != null)
+					widgetEntry.mWidget.RemoveSelf();
 				delete widgetEntry.mWidget;
 			}
 			mInlineWidgets.Clear();
