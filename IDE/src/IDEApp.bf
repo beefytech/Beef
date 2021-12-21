@@ -2314,6 +2314,11 @@ namespace IDE
 					widget.RemoveSelf();
 			}
 
+			WithSourceViewPanels(scope (sourceViewPanel) =>
+				{
+					sourceViewPanel.Dispose();
+				});
+
 			if (!mRunningTestScript)
 			{
 				mActiveDocumentsTabbedView = null;
@@ -5712,14 +5717,20 @@ namespace IDE
 				{
 					let sewc = editWidget.mEditWidgetContent as SourceEditWidgetContent;
 					if (sewc != null)
-						return sewc;
+					{
+						if (sewc.mEditWidget.mHasFocus)
+							return sewc;
+						return null;
+					}
 				}
 			}
 
 			var activeTextPanel = GetActivePanel() as TextPanel;
 			if (activeTextPanel != null)
 			{
-				return activeTextPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
+				let sewc = activeTextPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
+				if ((sewc != null) && (sewc.mEditWidget.mHasFocus))
+					return sewc;
 			}
 
 			return null;

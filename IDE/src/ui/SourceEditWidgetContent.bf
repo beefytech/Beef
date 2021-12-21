@@ -2275,6 +2275,9 @@ namespace IDE.ui
 
 		public void DuplicateLine()
 		{
+			if ((CheckReadOnly()) || (!mAllowVirtualCursor))
+				return;
+
 			UndoBatchStart undoBatchStart = new UndoBatchStart("duplicateLine");
 			mData.mUndoManager.Add(undoBatchStart);
 
