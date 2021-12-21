@@ -2446,7 +2446,7 @@ namespace IDE
 		}
 
 		[IDECommand]
-		void CommentSelection()
+		void CommentToggle()
 		{
 			var sewc = GetActiveSourceEditWidgetContent();
 			if (sewc != null)
@@ -5409,7 +5409,7 @@ namespace IDE
 			AddMenuItem(advancedEditMenu, "Make Lowercase", "Make Lowercase");
 			AddMenuItem(advancedEditMenu, "Comment Block", "Comment Block");
 			AddMenuItem(advancedEditMenu, "Comment Lines", "Comment Lines");
-			AddMenuItem(advancedEditMenu, "Comment Selection", "Comment Selection");
+			AddMenuItem(advancedEditMenu, "Comment Toggle", "Comment Toggle");
 			AddMenuItem(advancedEditMenu, "Uncomment Selection", "Uncomment Selection");
 			AddMenuItem(advancedEditMenu, "Reformat Document", "Reformat Document");
 			mViewWhiteSpace.mMenu = AddMenuItem(advancedEditMenu, "View White Space", "View White Space", null, null, true, mViewWhiteSpace.Bool ? 1 : 0);
