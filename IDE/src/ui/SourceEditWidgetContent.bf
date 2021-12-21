@@ -2437,9 +2437,6 @@ namespace IDE.ui
 				int firstCharPos = minPos + (startLen - afterTrimStart);
 				int lastCharPos = maxPos - (afterTrimStart - afterTrimEnd);
 
-				int q = 0;
-				var nc = trimmedStr.Count('\n');
-
 				if (afterTrimEnd == 0)
 				{
 					if (undoBatchStart != null)
@@ -2486,10 +2483,8 @@ namespace IDE.ui
 							mSelection = EditSelection(firstCharPos, lastCharPos - 4);
 					}
 				}
-				else if (doComment != false && minPos >=0 && ((nc <= 1 && (SafeGetChar(minPos-1) != ' ' && SafeGetChar(minPos-1) != '\t') && SafeGetChar(minPos-1) != '\n')
-															|| nc >= 1 && (SafeGetChar(maxPos-1) != ' ' && SafeGetChar(maxPos-1) != '\t') && SafeGetChar(maxPos-1) != '\n'))
+				else if (doComment != false)
 				{ //if selection is from beginning of the line then we want to use // comment, that's why the check for line count and ' ' and tab
-					CursorTextPos = firstCharPos;
 					if (doLineComment)
 					{
 						CursorTextPos = minPos;
@@ -2497,6 +2492,7 @@ namespace IDE.ui
 					}
 					else
 					{
+						CursorTextPos = firstCharPos;
 						InsertAtCursor("/*");
 						CursorTextPos = lastCharPos + 2;
 						InsertAtCursor("*/");
@@ -2508,20 +2504,6 @@ namespace IDE.ui
 					else
 						CursorTextPos = startTextPos + 2;
 					startLineAndCol = null;
-				}
-				else if (doComment != false)
-				{
-					for (int i = firstCharPos; i < maxPos + q; i++)
-					{
-						CursorTextPos = i; // needed to add i < maxPos + q; for this to work with InsertAtCursor
-						InsertAtCursor("//"); q++; q++;
-
-						while (SafeGetChar(i) != '\n' && i < maxPos + q)
-						{
-							i++;
-						}
-					}
-					mSelection = EditSelection(minPos, maxPos + q);
 				}
 				else
 				{
