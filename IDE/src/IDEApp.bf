@@ -10795,7 +10795,7 @@ namespace IDE
 					Beef requires the Microsoft C++ build tools for Visual Studio 2013 or later, but they don't seem to be installed.
 
 					Install just Microsoft Visual C++ Build Tools or the entire Visual Studio suite from:
-					    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019
+					    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
 					""";
 
 #if CLI
@@ -10806,7 +10806,7 @@ namespace IDE
 					dlg.AddOkCancelButtons(new (dlg) =>
 						{
 							ProcessStartInfo psi = scope ProcessStartInfo();
-							psi.SetFileName("https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019");
+							psi.SetFileName("https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022");
 							psi.UseShellExecute = true;
 							psi.SetVerb("Open");
 							var process = scope SpawnedProcess();
