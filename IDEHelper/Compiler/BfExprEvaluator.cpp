@@ -19770,7 +19770,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 
 				auto indexType = (BfPrimitiveType*)indexArgument.mType;
 
-				if (!mModule->mSystem->DoesLiteralFit(indexType->mTypeDef->mTypeCode, sizedArrayType->mElementCount))
+				if (!mModule->mSystem->DoesLiteralFit(indexType->mTypeDef->mTypeCode, (int64)sizedArrayType->mElementCount))
 				{
 					// We need to upsize the index so we can compare it against the larger elementCount
 					indexType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
@@ -22447,6 +22447,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0),
 				mModule->GetPrimitiveType(BfTypeCode_Boolean));
 			return;
+		default:
+			break;
 		}		
 	}
 
