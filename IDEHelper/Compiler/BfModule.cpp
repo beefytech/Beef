@@ -11835,7 +11835,7 @@ bool BfModule::TryGetConstString(BfIRConstHolder* constHolder, BfIRValue irValue
 	BfStringPoolEntry* entry = NULL;
 	if (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry))
 	{
-		str = entry->mString;
+		str += entry->mString;
 	}
 	else
 	{
