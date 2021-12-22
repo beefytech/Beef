@@ -3393,7 +3393,7 @@ namespace IDE.ui
                 return;
             }
 
-			if ((keyChar == '/') && (ToggleComment()))
+			if ((keyChar == '/') && (HasSelection()) && (ToggleComment()))
 			{
 				return;
 			}
