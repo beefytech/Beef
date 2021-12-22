@@ -498,7 +498,9 @@ BfImportKind BfMethodDef::GetImportKindFromPath(const StringImpl& filePath)
 {
 	String fileExt = GetFileExtension(filePath);
 
-	if ((fileExt.Equals(".DLL", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
+	if ((fileExt.Equals(".DYLIB", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
+		(fileExt.Equals(".SO", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
+		(fileExt.Equals(".DLL", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
 		(fileExt.Equals(".EXE", StringImpl::CompareKind_OrdinalIgnoreCase)))
 	{
 		return BfImportKind_Import_Dynamic;
