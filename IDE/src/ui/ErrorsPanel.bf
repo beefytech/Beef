@@ -153,7 +153,7 @@ namespace IDE.ui
 							bfError.mMoreInfo = new List<BfPassInstance.BfError>();
 						bfError.mMoreInfo.Add(moreInfo);
 					}
-					}
+				}
 
 				function int(int lhs, int rhs) ascLambda = (lhs, rhs) => lhs <=> rhs;
 				bfl.Sort(scope (lhs, rhs) => ascLambda(lhs.mFilePath.GetHashCode()+lhs.mSrcStart, rhs.mFilePath.GetHashCode()+rhs.mSrcStart));
