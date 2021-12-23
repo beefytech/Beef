@@ -136,17 +136,15 @@ namespace IDE.ui
 					ClearAndDeleteItems(mResolveErrors);
 					mResolveErrors.Capacity = mResolveErrors.Count;
 				}
-
+				var bfl = scope:: List<BfPassInstance.BfError>();
 				for (int32 errorIdx = 0; errorIdx < errorCount; errorIdx++)
 				{
 				    BfPassInstance.BfError bfError = new BfPassInstance.BfError();
 				    passInstance.GetErrorData(errorIdx, bfError, true);
+					if (bfError.mFilePath == null)
+						bfError.mFilePath = new String(""); //for sort below
 
-					if (bfError.mIsWarning)
-						mWarningCount++;
-					else
-						mErrorCount++;
-
+					bfl.Add(bfError);
 					for (int32 moreInfoIdx < bfError.mMoreInfoCount)
 					{
 						BfPassInstance.BfError moreInfo = new BfPassInstance.BfError();
@@ -155,12 +153,26 @@ namespace IDE.ui
 							bfError.mMoreInfo = new List<BfPassInstance.BfError>();
 						bfError.mMoreInfo.Add(moreInfo);
 					}
+					}
+
+				function int(int lhs, int rhs) ascLambda = (lhs, rhs) => lhs <=> rhs;
+				bfl.Sort(scope (lhs, rhs) => ascLambda(lhs.mFilePath.GetHashCode()+lhs.mSrcStart, rhs.mFilePath.GetHashCode()+rhs.mSrcStart));
+				
+				for (int32 errorIdx = 0; errorIdx < bfl.Count; errorIdx++)
+				{
+					var bfError = bfl[errorIdx];
+
+					if (bfError.mIsWarning)
+					{
+						mWarningCount++;
+					}
+					else
+						mErrorCount++;
 
 					if (passKind == .Parse)
 					{
 						if (bfError.mFilePath == null)
 							bfError.mFilePath = new String("");
-
 						bool added = mParseErrors.TryAdd(bfError.mFilePath, var keyPtr, var valuePtr);
 						if (added)
 						{
@@ -169,8 +181,9 @@ namespace IDE.ui
 						}
 						(*valuePtr).Add(bfError);
 					}
-					else
+					else {
 				    	mResolveErrors.Add(bfError);
+					}
 
 					mDataId++;
 				}
@@ -354,7 +367,6 @@ namespace IDE.ui
 		public override void Update()
 		{
 			base.Update();
-
 			if (!mVisible)
 			{
 				// Very dirty
@@ -369,6 +381,7 @@ namespace IDE.ui
 			else
 				mDirtyTicks++;
 
+			if(mDirtyTicks==0)
 			ProcessErrors();
 		}
 		
@@ -379,6 +392,7 @@ namespace IDE.ui
 		
 		public void ShowErrorNext()
 		{
+			if(mDirtyTicks==0)
 			ProcessErrors();
 
 			bool foundFocused = false;
