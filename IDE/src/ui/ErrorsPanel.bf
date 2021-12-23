@@ -382,7 +382,7 @@ namespace IDE.ui
 				mDirtyTicks++;
 
 			if(mDirtyTicks==0)
-			ProcessErrors();
+				ProcessErrors();
 		}
 		
 		public void SetNeedsResolveAll()
@@ -393,7 +393,7 @@ namespace IDE.ui
 		public void ShowErrorNext()
 		{
 			if(mDirtyTicks==0)
-			ProcessErrors();
+				ProcessErrors();
 
 			bool foundFocused = false;
 			let root = mErrorLV.GetRoot();
