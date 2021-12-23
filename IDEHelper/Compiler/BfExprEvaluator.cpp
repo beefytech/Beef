@@ -10200,6 +10200,17 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 
 				if ((fieldResult) || (mPropDef != NULL))
 				{
+					if (mResultFieldInstance != NULL)
+					{
+						auto autoComplete = GetAutoComplete();
+						if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(identifierNode)))
+						{
+							auto fieldDef = mResultFieldInstance->GetFieldDef();
+							if (fieldDef != NULL)
+								autoComplete->SetDefinitionLocation(fieldDef->GetRefNode());
+						}
+					}
+					
 					mResult = fieldResult;
 					PerformAssignment(assignExpr, true, BfTypedValue());
 					mResult = BfTypedValue();
