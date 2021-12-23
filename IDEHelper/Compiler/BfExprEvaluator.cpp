@@ -4919,7 +4919,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(targetSrc)))
 						{
 							if (autoComplete->mIsGetDefinition)
-								autoComplete->SetDefinitionLocation(basePropDef->GetRefNode(), true);
+								autoComplete->SetDefinitionLocation(basePropDef->GetRefNode());
 							autoComplete->mDefProp = basePropDef;
 							autoComplete->mDefType = baseTypeInst->mTypeDef;
 						}
