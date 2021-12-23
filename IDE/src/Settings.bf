@@ -757,7 +757,8 @@ namespace IDE
 				Add("Close Document", "Ctrl+W");
 				Add("Compile File", "Ctrl+F7");
 				Add("Comment Block", "Ctrl+K, Ctrl+C");
-				Add("Comment Lines", "Ctrl+K, Ctrl+L");
+				Add("Comment Lines", "Ctrl+K, Ctrl+/");
+				Add("Comment Toggle", "Ctrl+K, Ctrl+T");
 				Add("Duplicate Line", "Ctrl+D");
 				Add("Find Class", "Alt+Shift+L");
 				Add("Find in Document", "Ctrl+F");
