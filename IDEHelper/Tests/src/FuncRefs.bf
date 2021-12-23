@@ -57,6 +57,14 @@ namespace Tests
 			return dlg(val[0]);
 		}
 
+		static void TestWrap<T>(T del, bool b = false) where T : delegate void()
+		{
+			Action ac = scope () => {
+				del();
+			};
+			ac();
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -78,6 +86,10 @@ namespace Tests
 			List<float> fList = scope .() { 1.2f, 2.3f };
 			Test.Assert(DoOnListA(fList, (val) => val + 100) == 101.2f);
 			Test.Assert(DoOnListB((val) => val + 200, fList) == 201.2f);
+
+			int a = 222;
+			TestWrap(() => { a += 100; });
+			Test.Assert(a == 322);
 		}
 
 		struct MethodRefHolder<T> where T : delegate int(int num)
