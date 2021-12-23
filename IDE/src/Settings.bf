@@ -894,7 +894,10 @@ namespace IDE
 							{
 								curCmdMap = (*valuePtr) as CommandMap;
 								if (curCmdMap == null)
+								{
+									curCmdMap.FailValues.Add(ideCommand);
 									break;
+								}
 							}
 							else
 							{
@@ -907,7 +910,10 @@ namespace IDE
 										if (checkPrevCmd.mContextFlags == ideCommand.mContextFlags)
 											gApp.OutputLineSmart("ERROR: The same key is bound for '{0}' and '{1}'", checkPrevCmd.mName, entry.mCommand);
 										if (checkPrevCmd.mNext == null)
+										{
+											curCmdMap.FailValues.Add(ideCommand);
 											break;
+										}
 										checkPrevCmd = checkPrevCmd.mNext;
 									}
 									checkPrevCmd.mNext = ideCommand;

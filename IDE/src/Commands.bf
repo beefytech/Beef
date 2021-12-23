@@ -9,7 +9,7 @@ namespace IDE
 	{
 		public KeyCode mKeyCode;
 		public KeyFlags mKeyFlags;
-		
+
 		public int GetHashCode()
 		{
 			return (int)mKeyCode | (int)mKeyFlags << 16;
@@ -121,10 +121,21 @@ namespace IDE
 	class CommandMap : IDECommandBase
 	{
 		public Dictionary<KeyState, IDECommandBase> mMap = new .() ~ delete _;
+		public List<IDECommandBase> mFailValues ~ delete _;
+
+		public List<IDECommandBase> FailValues
+		{
+			get
+			{
+				if (mFailValues == null)
+					mFailValues = new .();
+				return mFailValues;
+			}
+		}
 
 		public void Clear()
 		{
-			for (let val in mMap.Values)
+			void Release(IDECommandBase val)
 			{
 				if (var cmdMap = val as CommandMap)
 					delete cmdMap;
@@ -135,6 +146,15 @@ namespace IDE
 					val.mParent = null;
 					ideCommand.mNext = null;
 				}
+			}
+
+			for (let val in mMap.Values)
+				Release(val);
+			if (mFailValues != null)
+			{
+				for (var val in mFailValues)
+					Release(val);
+				mFailValues.Clear();
 			}
 			mMap.Clear();
 		}
