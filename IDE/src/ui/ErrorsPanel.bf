@@ -181,9 +181,8 @@ namespace IDE.ui
 						}
 						(*valuePtr).Add(bfError);
 					}
-					else {
-				    	mResolveErrors.Add(bfError);
-					}
+					else
+						mResolveErrors.Add(bfError);
 
 					mDataId++;
 				}
@@ -367,6 +366,7 @@ namespace IDE.ui
 		public override void Update()
 		{
 			base.Update();
+			
 			if (!mVisible)
 			{
 				// Very dirty
