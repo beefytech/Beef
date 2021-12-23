@@ -11441,7 +11441,7 @@ BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfMethodI
 			BfMethodInstance* methodRefMethodInst = methodRefType->mMethodRef;
 
 			BF_ASSERT(methodRefMethodInst == methodInstance);
-
+			
 			auto paramType = methodInstance->GetParamType(paramIdx);
 
 			int dataIdx = methodRefType->GetDataIdxFromParamIdx(paramIdx);

@@ -3957,7 +3957,7 @@ namespace IDE
 		    if (sourceViewPanel != null)
 		    {
 				if (sourceViewPanel.mEditWidget.mEditWidgetContent.GetCursorLineChar(var line, var lineChar))
-					sourceViewPanel.UpdateMouseover(true, true, line, lineChar);
+					sourceViewPanel.UpdateMouseover(true, true, line, lineChar, true);
 			}
 		}
 

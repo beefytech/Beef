@@ -160,6 +160,8 @@ namespace IDE.ui
 	{
 		public int32 mCursorPos;
 		public String mResult ~ delete _;
+		public int32? mLine;
+		public int32? mLineChar;
 
 		public ~this()
 		{
@@ -4722,7 +4724,7 @@ namespace IDE.ui
 			delete parser;
 		}
 
-		public void UpdateMouseover(bool mouseoverFired, bool mouseInbounds, int line, int lineChar)
+		public void UpdateMouseover(bool mouseoverFired, bool mouseInbounds, int line, int lineChar, bool isManual = false)
 		{
 
 			
@@ -5008,6 +5010,11 @@ namespace IDE.ui
 
 							mHoverResolveTask = new HoverResolveTask();
 							mHoverResolveTask.mCursorPos = (int32)textIdx;
+							if (isManual)
+							{
+								mHoverResolveTask.mLine = (.)line;
+								mHoverResolveTask.mLineChar = (.)lineChar;
+							}
 						}
 					}
 
@@ -5201,6 +5208,16 @@ namespace IDE.ui
 #if IDE_C_SUPPORT
 			hasClangHoverErrorData = mClangHoverErrorData != null;
 #endif
+
+			if (mHoverResolveTask != null)
+			{
+				if (mHoverResolveTask.mLine != null)
+				{
+					UpdateMouseover(true, true, mHoverResolveTask.mLine.Value, mHoverResolveTask.mLineChar.Value, true);
+					return;
+				}
+			}
+			
 		    if (((mouseoverFired) || (mHoverWatch != null) || (hasClangHoverErrorData) || (mHoverResolveTask?.mResult != null)) && 
 		        (mousePos.x >= 0))
 		    {
