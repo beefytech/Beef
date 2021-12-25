@@ -78,6 +78,8 @@ namespace IDE.Compiler
 		public bool mCancelled;
 		public int32 mTextVersion = -1;
 		public bool mIsUserRequested;
+
+		public bool mDoFuzzyAutoComplete;
     }
 
     public class BfParser : ILeakIdentifiable
@@ -126,7 +128,7 @@ namespace IDE.Compiler
         static extern char8* BfParser_GetDebugExpressionAt(void* bfParser, int32 cursorIdx);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void* BfParser_CreateResolvePassData(void* bfSystem, int32 resolveType);
+        static extern void* BfParser_CreateResolvePassData(void* bfSystem, int32 resolveType, bool doFuzzyAutoComplete);
 
         [CallingConvention(.Stdcall), CLink]
         static extern bool BfParser_BuildDefs(void* bfParser, void* bfPassInstance, void* bfResolvePassData, bool fullRefresh);
@@ -253,10 +255,10 @@ namespace IDE.Compiler
             BfParser_GenerateAutoCompletionFrom(mNativeBfParser, srcPosition);
         }
 
-        public BfResolvePassData CreateResolvePassData(ResolveType resolveType = ResolveType.Autocomplete)
+        public BfResolvePassData CreateResolvePassData(ResolveType resolveType = ResolveType.Autocomplete, bool doFuzzyAutoComplete = false)
         {
             var resolvePassData = new BfResolvePassData();
-            resolvePassData.mNativeResolvePassData = BfParser_CreateResolvePassData(mNativeBfParser, (int32)resolveType);
+            resolvePassData.mNativeResolvePassData = BfParser_CreateResolvePassData(mNativeBfParser, (int32)resolveType, doFuzzyAutoComplete);
             return resolvePassData;
         }
 

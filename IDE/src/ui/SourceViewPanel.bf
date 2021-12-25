@@ -622,6 +622,7 @@ namespace IDE.ui
 
 			ResolveParams resolveParams = new ResolveParams();
 			resolveParams.mIsUserRequested = options.HasFlag(.UserRequested);
+			resolveParams.mDoFuzzyAutoComplete = gApp.mSettings.mEditorSettings.mFuzzyAutoComplete;
 			Classify(.Autocomplete, resolveParams);
 			if (!resolveParams.mInDeferredList)
 				delete resolveParams;
@@ -1853,7 +1854,9 @@ namespace IDE.ui
             /*else (!isFullClassify) -- do we ever need to do this?
                 parser.SetCursorIdx(mEditWidget.mEditWidgetContent.CursorTextPos);*/
 
-            var resolvePassData = parser.CreateResolvePassData(resolveType);
+			bool doFuzzyAutoComplete = resolveParams?.mDoFuzzyAutoComplete ?? false;
+
+            var resolvePassData = parser.CreateResolvePassData(resolveType, doFuzzyAutoComplete);
             if (resolveParams != null)
             {
                 if (resolveParams.mLocalId != -1)

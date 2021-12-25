@@ -111,6 +111,7 @@ public:
 
 	bool mIsGetDefinition;
 	bool mIsAutoComplete;
+	bool mDoFuzzyAutoComplete;
 	int mInsertStartIdx;
 	int mInsertEndIdx;
 
@@ -240,7 +241,7 @@ public:
 	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);	
 
 public:
-	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete);
+	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete, bool doFuzzyAutoComplete = false);
 	~BfAutoComplete();
 
 	void SetModule(BfModule* module);

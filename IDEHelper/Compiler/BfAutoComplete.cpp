@@ -19,6 +19,7 @@ AutoCompleteBase::AutoCompleteBase()
 {
 	mIsGetDefinition = false;
 	mIsAutoComplete = true;
+	mDoFuzzyAutoComplete = false;
 	mInsertStartIdx = -1;
 	mInsertEndIdx = -1;
 }
@@ -44,8 +45,6 @@ inline void UpdateEntryMatchindices(uint8* matches, AutoCompleteEntry& entry)
 				break;
 			}
 		}
-
-		//assert(entry.mMatches != nullptr);
 
 		entry.mMatches = matches;
 	}
@@ -129,23 +128,71 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, in
 	if (!mIsAutoComplete)
 		return false;
 
+	matches[0] = UINT8_MAX;
+
 	if (filter[0] == '\0')
-	{
-		// Kinda dirty
-		matches[0] = UINT8_MAX;
-		matches[1] = 0;
 		return true;
-	}
 
 	int filterLen = (int)strlen(filter);
 	int entryLen = (int)strlen(entry);
 
 	if (filterLen > entryLen)
-	{
 		return false;
-	}
 
-	return fts::fuzzy_match(filter, entry, score, matches, maxMatches);
+	if (mDoFuzzyAutoComplete)
+	{
+		return fts::fuzzy_match(filter, entry, score, matches, maxMatches);
+	}
+	else
+	{
+		bool hasUnderscore = false;
+		bool checkInitials = filterLen > 1;
+		for (int i = 0; i < (int)filterLen; i++)
+		{
+			char c = filter[i];
+			if (c == '_')
+				hasUnderscore = true;
+			else if (islower((uint8)filter[i]))
+				checkInitials = false;
+		}
+
+		if (hasUnderscore)
+			return strnicmp(filter, entry, filterLen) == 0;
+
+		char initialStr[256];
+		char* initialStrP = initialStr;
+
+		//String initialStr;
+		bool prevWasUnderscore = false;
+
+		for (int entryIdx = 0; entryIdx < entryLen; entryIdx++)
+		{
+			char entryC = entry[entryIdx];
+
+			if (entryC == '_')
+			{
+				prevWasUnderscore = true;
+				continue;
+			}
+
+			if ((entryIdx == 0) || (prevWasUnderscore) || (isupper((uint8)entryC) || (isdigit((uint8)entryC))))
+			{
+				if (strnicmp(filter, entry + entryIdx, filterLen) == 0)
+					return true;
+				if (checkInitials)
+					*(initialStrP++) = entryC;
+			}
+			prevWasUnderscore = false;
+
+			if (filterLen == 1)
+				break; // Don't check inners for single-character case
+		}
+
+		if (!checkInitials)
+			return false;
+		*(initialStrP++) = 0;
+		return strnicmp(filter, initialStr, filterLen) == 0;
+	}
 }
 
 void AutoCompleteBase::Clear()
@@ -157,7 +204,7 @@ void AutoCompleteBase::Clear()
 
 //////////////////////////////////////////////////////////////////////////
 
-BfAutoComplete::BfAutoComplete(BfResolveType resolveType)
+BfAutoComplete::BfAutoComplete(BfResolveType resolveType, bool doFuzzyAutoComplete)
 {
 	mResolveType = resolveType;
 	mModule = NULL;
@@ -173,6 +220,8 @@ BfAutoComplete::BfAutoComplete(BfResolveType resolveType)
 		(resolveType == BfResolveType_GetSymbolInfo) ||
 		(resolveType == BfResolveType_GoToDefinition);
 	mIsAutoComplete = (resolveType == BfResolveType_Autocomplete);
+
+	mDoFuzzyAutoComplete = doFuzzyAutoComplete;
 
 	mGetDefinitionNode = NULL;
 	mShowAttributeProperties = NULL;

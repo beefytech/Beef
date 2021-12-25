@@ -1615,7 +1615,7 @@ namespace IDE.ui
 		static extern bool fts_fuzzy_match(char8* pattern, char8* str, ref int32 outScore, uint8* matches, int maxMatches);
 
 		/// Checks whether the given entry matches the filter and updates its score and match indices accordingly.
-		bool UpdateFilterMatch(AutoCompleteListWidget.EntryWidget entry, String filter)
+		bool DoesFilterMatchFuzzy(AutoCompleteListWidget.EntryWidget entry, String filter)
 		{
 			if (filter.Length == 0)
 				return true;
@@ -1651,6 +1651,72 @@ namespace IDE.ui
 			entry.mScore = score;
 
 			return true;
+		}
+
+		bool DoesFilterMatch(String entry, String filter)
+		{	
+			if (filter.Length == 0)
+				return true;
+
+			char8* entryPtr = entry.Ptr;
+			char8* filterPtr = filter.Ptr;
+
+			int filterLen = (int)filter.Length;
+			int entryLen = (int)entry.Length;
+
+			bool hasUnderscore = false;
+			bool checkInitials = filterLen > 1;
+			for (int i = 0; i < (int)filterLen; i++)
+			{
+				char8 c = filterPtr[i];
+				if (c == '_')
+					hasUnderscore = true;
+				else if (filterPtr[i].IsLower)
+					checkInitials = false;
+			}
+
+			if (hasUnderscore)
+				//return strnicmp(filter, entry, filterLen) == 0;
+				return (entryLen >= filterLen) && (String.Compare(entryPtr, filterLen, filterPtr, filterLen, true) == 0);
+
+			char8[256] initialStr;
+			char8* initialStrP = &initialStr;
+
+			//String initialStr;
+			bool prevWasUnderscore = false;
+			
+			for (int entryIdx = 0; entryIdx < entryLen; entryIdx++)
+			{
+				char8 entryC = entryPtr[entryIdx];
+
+				if (entryC == '_')
+				{
+					prevWasUnderscore = true;
+					continue;
+				}
+
+				if ((entryIdx == 0) || (prevWasUnderscore) || (entryC.IsUpper) || (entryC.IsDigit))
+				{
+					/*if (strnicmp(filter, entry + entryIdx, filterLen) == 0)
+						return true;*/
+					if ((entryLen - entryIdx >= filterLen) && (String.Compare(entryPtr + entryIdx, filterLen, filterPtr, filterLen, true) == 0))
+						return true;
+					if (checkInitials)
+						*(initialStrP++) = entryC;
+				}
+				prevWasUnderscore = false;
+
+				if (filterLen == 1)
+					break; // Don't check inners for single-character case
+			}	
+
+			if (!checkInitials)
+				return false;
+			int initialLen = initialStrP - (char8*)&initialStr;
+			return (initialLen >= filterLen) && (String.Compare(&initialStr, filterLen, filterPtr, filterLen, true) == 0);
+
+			//*(initialStrP++) = 0;
+			//return strnicmp(filter, initialStr, filterLen) == 0;
 		}
 
 		[LinkName("_stricmp")]
@@ -1708,13 +1774,21 @@ namespace IDE.ui
 					if (curString == ".")
 						curString.Clear();
 
+					bool doFuzzyAutoComplete = gApp.mSettings.mEditorSettings.mFuzzyAutoComplete;
+
                     for (int i < mAutoCompleteListWidget.mFullEntryList.Count)
                     {
                         var entry = mAutoCompleteListWidget.mFullEntryList[i];
 
-						if (UpdateFilterMatch(entry, curString))
+						if (doFuzzyAutoComplete && DoesFilterMatchFuzzy(entry, curString))
                         {
 							mAutoCompleteListWidget.mEntryList.Add(entry);
+                            visibleCount++;
+                        }
+						else if (!doFuzzyAutoComplete && DoesFilterMatch(entry.mEntryDisplay, curString))
+                        {
+							mAutoCompleteListWidget.mEntryList.Add(entry);
+							mAutoCompleteListWidget.UpdateEntry(entry, visibleCount);
                             visibleCount++;
                         }
                         else
@@ -1723,20 +1797,23 @@ namespace IDE.ui
                         }                                        
                     }
 
-					// sort entries because the scores probably have changed
-					mAutoCompleteListWidget.mEntryList.Sort(scope (left, right) =>
-						{
-							if (left.mScore > right.mScore)
-								return -1;
-							else if (left.mScore < right.mScore)
-								return 1;
-							else
-								return ((stricmp(left.mEntryDisplay.CStr(), right.mEntryDisplay.CStr()) < 0) ? -1 : 1);
-						});
-
-					for (int i < mAutoCompleteListWidget.mEntryList.Count)
+					if (doFuzzyAutoComplete)
 					{
-						mAutoCompleteListWidget.UpdateEntry(mAutoCompleteListWidget.mEntryList[i], i);
+						// sort entries because the scores probably have changed
+						mAutoCompleteListWidget.mEntryList.Sort(scope (left, right) =>
+							{
+								if (left.mScore > right.mScore)
+									return -1;
+								else if (left.mScore < right.mScore)
+									return 1;
+								else
+									return ((stricmp(left.mEntryDisplay.CStr(), right.mEntryDisplay.CStr()) < 0) ? -1 : 1);
+							});
+	
+						for (int i < mAutoCompleteListWidget.mEntryList.Count)
+						{
+							mAutoCompleteListWidget.UpdateEntry(mAutoCompleteListWidget.mEntryList[i], i);
+						}
 					}
 
                     if ((visibleCount == 0) && (mInvokeSrcPositions == null))
