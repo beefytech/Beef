@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -944,10 +945,10 @@ namespace IDE.ui
 			}
 
             base.Draw(g);
-            using (g.PushColor((lockedFileCount == 0) ? 0xFFFFFFFF : 0xFFF0B0B0))
+            using (g.PushColor((lockedFileCount == 0) ? ThemeColors.ReplaceSymbolData.ReplaceSymbolData001.Color : ThemeColors.ReplaceSymbolData.ReplaceSymbolData002.Color))
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth - GS!(8), boxHeight);
 
-            using (g.PushColor(0xFFE0E0E0))
+            using (g.PushColor(ThemeColors.ReplaceSymbolData.ReplaceSymbolData003.Color))
             {
                 g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
 				float border = GS!(8);
@@ -971,6 +972,7 @@ namespace IDE.ui
 				}
 
 				if (drawStr != null)
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 					g.DrawString(drawStr, border, GS!(5), FontAlign.Centered, mWidth - border * 2 - GS!(8), FontOverflowMode.Ellipsis); 
 
                 if (mUpdatingProjectSources != null)
@@ -980,12 +982,13 @@ namespace IDE.ui
 					drawString.AppendF("{0} {1} in {2} {3}",
 						symCount, (symCount == 1) ? "reference" : "references",
 						mUpdatingProjectSources.Count, (mUpdatingProjectSources.Count == 1) ? "file" : "files");
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
                     g.DrawString(drawString, GS!(8), GS!(22), FontAlign.Centered, mWidth - GS!(8) - GS!(16));
 
 					if (lockedFileCount > 0)
 					{
 						g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
-						using (g.PushColor(((mUpdateCnt > 200) || (mUpdateCnt / 10 % 2 == 0)) ? 0xFFFF7070 : 0xFFFFB0B0))
+						using (g.PushColor(((mUpdateCnt > 200) || (mUpdateCnt / 10 % 2 == 0)) ? ThemeColors.ReplaceSymbolData.ReplaceSymbolData004.Color : ThemeColors.ReplaceSymbolData.ReplaceSymbolData005.Color))
 							g.DrawString(scope String()..AppendF("{} {} LOCKED!", lockedFileCount, (lockedFileCount == 1) ? "FILE" : "FILES"),
 								GS!(8), GS!(38), FontAlign.Centered, mWidth - GS!(8) - GS!(16));
 					}

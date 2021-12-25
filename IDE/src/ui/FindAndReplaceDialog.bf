@@ -6,6 +6,7 @@ using Beefy;
 using Beefy.gfx;
 using Beefy.theme.dark;
 using Beefy.widgets;
+using Beefy.theme;
 
 namespace IDE.ui
 {    
@@ -322,11 +323,13 @@ namespace IDE.ui
         {
             base.Draw(g);
 
-            g.DrawString("Find what:", 6, mEditWidget.mY - GS!(18));
-			if (mReplaceWidget != null)
-				g.DrawString("Replace with:", GS!(6), mReplaceWidget.mY - GS!(18));
-            g.DrawString("Look in:", GS!(6), mLocationCombo.mY - GS!(18));
-			g.DrawString("Look at these file types:", GS!(6), mFileTypesCombo.mY - GS!(18));
+            using (g.PushColor(ThemeColors.Theme.Text.Color)) {
+            	g.DrawString("Find what:", 6, mEditWidget.mY - GS!(18));
+				if (mReplaceWidget != null)
+					g.DrawString("Replace with:", GS!(6), mReplaceWidget.mY - GS!(18));
+	            g.DrawString("Look in:", GS!(6), mLocationCombo.mY - GS!(18));
+				g.DrawString("Look at these file types:", GS!(6), mFileTypesCombo.mY - GS!(18));
+			}
         }
 
 		public override void Update()

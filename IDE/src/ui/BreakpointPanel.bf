@@ -647,7 +647,7 @@ namespace IDE.ui
 					subItem.mOnMouseClick.Add(new => ListViewItemClicked);
                 }
                 var listViewItem = (BreakpointListViewItem)root.GetChildAtIndex(breakIdx);
-                listViewItem.mTextColor = Color.White;
+                listViewItem.mTextColor = ThemeColors.Widget.DarkButton002.Color;
 
 				listViewItem.mIsBold = breakpoint.IsActiveBreakpoint();
 
@@ -655,9 +655,9 @@ namespace IDE.ui
 				breakpoint.ToString_Location(locString);
 				listViewItem.Label = locString;
 				if (breakpoint.IsBound())
-					listViewItem.mTextColor = 0xFFFFFFFF;
+					listViewItem.mTextColor = ThemeColors.Widget.TypeArea022.Color;
 				else
-					listViewItem.mTextColor = 0x80FFFFFF;
+					listViewItem.mTextColor = ThemeColors.Widget.DarkButton003.Color;
 
 				// Condition
 				var subItem = listViewItem.GetSubItem(2);

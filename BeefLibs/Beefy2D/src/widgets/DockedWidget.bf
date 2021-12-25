@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.gfx;
@@ -89,7 +90,7 @@ namespace Beefy.widgets
 
         public virtual void DrawDockPreview(Graphics g)
         {
-            using (g.PushColor(0x80FFFFFF))
+            using (g.PushColor(ThemeColors.Widget.DarkButton003.Color))
                 DrawAll(g);
         }
 

@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.widgets;
@@ -113,7 +114,7 @@ namespace Beefy.theme.dark
 
 			if (mHasFocus)
 			{
-			    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+			    using (g.PushColor(ThemeColors.Theme.SelectedOutline.Color))
 			        g.DrawButton(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Outline), 0, 0, mWidth);
 			}
 
@@ -149,7 +150,7 @@ namespace Beefy.theme.dark
 		{
 			if (mDisabled)
 			{
-				using (g.PushColor(0x80FFFFFF))
+				using (g.PushColor(ThemeColors.Widget.DarkButton003.Color))
 					base.DrawAll(g);
 			}
 			else

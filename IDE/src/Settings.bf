@@ -10,6 +10,7 @@ using Beefy.theme.dark;
 using System.IO;
 using IDE.ui;
 using System.Diagnostics;
+using Beefy.theme;
 
 namespace IDE
 {
@@ -46,7 +47,7 @@ namespace IDE
 				mManuallySet = sd.GetBool("ManuallySet");
 				if ((!mManuallySet) && (!mBin64Path.IsEmpty))
 					return;
-				
+
 				sd.GetString("Bin32Path", mBin32Path);
 				sd.GetString("Bin64Path", mBin64Path);
 
@@ -291,128 +292,84 @@ namespace IDE
 
 		public class Colors
 		{
-			public Color mText = 0xFFFFFFFF;
-			public Color mWindow = 0xFF44444D;
-			public Color mBackground = 0xFF1C1C24;
-			public Color mSelectedOutline = 0xFFCFAE11;
-			public Color mMenuFocused = 0xFFE5A910;
-			public Color mMenuSelected = 0xFFCB9B80;
-			public Color mAutoCompleteSubText = 0xFFB0B0B0;
-			public Color mAutoCompleteDocText = 0xFFC0C0C0;
-			public Color mAutoCompleteActiveText = 0xFFB0B0FF;
-			public Color mWorkspaceDisabledText = 0xFFA0A0A0;
-			public Color mWorkspaceFailedText = 0xFFE04040;
-			public Color mWorkspaceManualIncludeText = 0xFFE0E0FF;
-			public Color mWorkspaceIgnoredText = 0xFF909090;
+			ThemeColors colors = new .() ~ delete _;
 
-			public Color mCode = 0xFFFFFFFF;
-			public Color mKeyword = 0xFFE1AE9A;
-			public Color mLiteral = 0XFFC8A0FF;
-			public Color mIdentifier = 0xFFFFFFFF;
-			public Color mComment = 0xFF75715E;
-			public Color mMethod = 0xFFA6E22A;
-			public Color mType = 0xFF66D9EF;
-			public Color mPrimitiveType = 0xFF66D9EF;
-			public Color mStruct = 0xFF66D9EF;
-			public Color mGenericParam = 0xFF66D9EF;
-			public Color mRefType = 0xFF66A0EF;
-			public Color mInterface = 0xFF9A9EEB;
-			public Color mNamespace = 0xFF7BEEB7;
-			public Color mDisassemblyText = 0xFFB0B0B0;
-			public Color mDisassemblyFileName = 0XFFFF0000;
-			public Color mError = 0xFFFF0000;
-			public Color mBuildError = 0xFFFF8080;
-			public Color mBuildWarning = 0xFFFFFF80;
-			public Color mVisibleWhiteSpace = 0xFF9090C0;
-
-			public void Deserialize(StructuredData sd)
+			public void Deserialize(StructuredData sd, StringView name)
 			{
-				void GetColor(String name, ref Color color)
+				bool GetColor(StringView name, ref uint32 color)
 				{
-					sd.Get(name, ref *(int32*)&color);
+					if (sd.Contains(name))
+					{
+						sd.Get(name, ref *(int32*)&color);
 
-					if ((color & 0xFF000000) == 0)
-						color |= 0xFF000000;
+						if ((color & 0xFF000000) == 0)
+							color |= 0xFF000000;
+						return true;
+					}
+					return false;
 				}
 
-				GetColor("Text", ref mText);
-				GetColor("Window", ref mWindow);
-				GetColor("Background", ref mBackground);
-				GetColor("SelectedOutline", ref mSelectedOutline);
-				GetColor("MenuFocused", ref mMenuFocused);
-				GetColor("MenuSelected", ref mMenuSelected);
-				GetColor("AutoCompleteSubText", ref mAutoCompleteSubText);
-				GetColor("AutoCompleteDocText", ref mAutoCompleteDocText);
-				GetColor("AutoCompleteActiveText", ref mAutoCompleteActiveText);
-				GetColor("WorkspaceDisabledText", ref mWorkspaceDisabledText);
-				GetColor("WorkspaceFailedText", ref mWorkspaceFailedText);
-				GetColor("WorkspaceManualIncludeText", ref mWorkspaceManualIncludeText);
-				GetColor("WorkspaceIgnoredText", ref mWorkspaceIgnoredText);
+				ThemeColors.Types types = Enum.Parse<ThemeColors.Types>(name);
+				Type t = ThemeColors.GetType(types);
+				int cnt = Enum.Count(t);
+				StringView[] colorNames = new StringView[cnt];
+				ThemeColors.GetNames(name, ref colorNames);
+				uint32 color = 0;
 
-				GetColor("Code", ref mCode);
-				GetColor("Keyword", ref mKeyword);
-				GetColor("Literal", ref mLiteral);
-				GetColor("Identifier", ref mIdentifier);
-				GetColor("Comment", ref mComment);
-				GetColor("Method", ref mMethod);
-				if (sd.Contains("Type"))
+				for (let s in colorNames)
 				{
-					GetColor("Type", ref mType);
-					if (!sd.Contains("PrimitiveType"))
-						mPrimitiveType = mType;
-					if (!sd.Contains("Struct"))
-						mStruct = mType;
-					if (!sd.Contains("RefType"))
-						mRefType = mType;
-					if (!sd.Contains("Interface"))
-						mInterface = mType;
-					if (!sd.Contains("GenericParam"))
-						mGenericParam = mType;
+					if (GetColor(s, ref color))
+					{
+						// Use Color from Toml
+						colors.SetColor(types, s, color);
+					}
 				}
-				GetColor("PrimitiveType", ref mPrimitiveType);
-				GetColor("Struct", ref mStruct);
-				GetColor("RefType", ref mRefType);
-				GetColor("Interface", ref mInterface);
-				GetColor("GenericParam", ref mGenericParam);
-				GetColor("Namespace", ref mNamespace);
-				GetColor("DisassemblyText", ref mDisassemblyText);
-				GetColor("DisassemblyFileName", ref mDisassemblyFileName);
-				GetColor("Error", ref mError);
-				GetColor("BuildError", ref mBuildError);
-				GetColor("BuildWarning", ref mBuildWarning);
-				GetColor("VisibleWhiteSpace", ref mVisibleWhiteSpace);
+				delete colorNames;
+
+				if (types == ThemeColors.Types.Colors)
+				{
+					if (sd.Contains("Type"))
+					{
+						GetColor("Type", ref color);
+						uint32[] colorLine = colors.mColors[(int)ThemeColors.Types.Colors];
+
+						if (!sd.Contains("PrimitiveType"))
+							colorLine[(int)ThemeColors.Colors.PrimitiveType] = color;
+						if (!sd.Contains("Struct"))
+							colorLine[(int)ThemeColors.Colors.Struct] = color;
+						if (!sd.Contains("RefType"))
+							colorLine[(int)ThemeColors.Colors.RefType] = color;
+						if (!sd.Contains("Interface"))
+							colorLine[(int)ThemeColors.Colors.Interface] = color;
+						if (!sd.Contains("GenericParam"))
+							colorLine[(int)ThemeColors.Colors.GenericParam] = color;
+					}
+				}
 			}
 
 			public void Apply()
 			{
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Normal] = mCode;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Keyword] = mKeyword;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Literal] = mLiteral;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Identifier] = mIdentifier;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Comment] = mComment;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Method] = mMethod;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Type] = mType;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.PrimitiveType] = mPrimitiveType;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Struct] = mStruct;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.GenericParam] = mGenericParam;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.RefType] = mRefType;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Interface] = mInterface;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Namespace] = mNamespace;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_Text] = mDisassemblyText;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_FileName] = mDisassemblyFileName;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Error] = mError;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildError] = mBuildError;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildWarning] = mBuildWarning;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.VisibleWhiteSpace] = mVisibleWhiteSpace;
+				int cnt = Enum.Count(typeof(ThemeColors.Types));
+				StringView[] colorNames = new StringView[cnt];
+				ThemeColors.GetNames(ref colorNames);
 
-				DarkTheme.COLOR_TEXT = mText;
-				DarkTheme.COLOR_WINDOW = mWindow;
-				DarkTheme.COLOR_BKG = mBackground;
-				DarkTheme.COLOR_SELECTED_OUTLINE = mSelectedOutline;
-				DarkTheme.COLOR_MENU_FOCUSED = mMenuFocused;
-				DarkTheme.COLOR_MENU_SELECTED = mMenuSelected;
+				for (let s in colorNames)
+				{
+					ThemeColors.Types t = Enum.Parse<ThemeColors.Types>(s);
+					colors.SetColors(t);
+				}
+				delete colorNames;
+
+				// Refresh color constants
+				IDEApp.cDialogOutlineLightColor = ThemeColors.ArgBuilder.ArgBuilder001.Color;
+				IDEApp.cDialogOutlineDarkColor = ThemeColors.ArgBuilder.ArgBuilder002.Color;
+				HoverWatch.HoverListViewItem.cActionColor = ThemeColors.PendingWatch.PendingWatch001.Color;
+				HoverWatch.HoverListViewItem.cActionOverColor = ThemeColors.PendingWatch.PendingWatch002.Color;
+ 		        PropertiesDialog.PropEntry.cHeaderColor = ThemeColors.PropEntry.PropEntry001.Color;
+				DarkEditWidgetContent.sDefaultColors[0] = ThemeColors.Widget.DarkButton002.Color;
 			}
 		}
+
 
 		public class UISettings
 		{
@@ -456,8 +413,16 @@ namespace IDE
 					if (sd.Load(themeFilePath) case .Err)
 						return;
 
-					using (sd.Open("Colors"))
-						mColors.Deserialize(sd);
+					int cnt = Enum.Count(typeof(ThemeColors.Types));
+					StringView[] colorNames = new StringView[cnt];
+					ThemeColors.GetNames(ref colorNames);
+
+					for (let s in colorNames)
+					{
+						using (sd.Open(s))
+							mColors.Deserialize(sd, s);
+					}
+					delete colorNames;
 				}
 
 				for (let theme in mTheme)
@@ -572,7 +537,7 @@ namespace IDE
 			{
 				sd.Get("Scale", ref mScale);
 				ClearAndDeleteItems(mTheme);
-				for (sd.Enumerate("Theme"))
+				for ( sd.Enumerate("Theme"))
 				{
 					var str = new String();
 					sd.GetCurString(str);
@@ -604,7 +569,7 @@ namespace IDE
 				No,
 				Yes,
 				BackupOnly
-			}	
+			}
 
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
@@ -657,13 +622,13 @@ namespace IDE
 			public void Deserialize(StructuredData sd)
 			{
 				ClearAndDeleteItems(mFonts);
-				for (sd.Enumerate("Fonts"))
+				for ( sd.Enumerate("Fonts"))
 				{
 					var str = new String();
 					sd.GetCurString(str);
 					mFonts.Add(str);
 				}
-				sd.Get("UIScale", ref gApp.mSettings.mUISettings.mScale); // Legacy
+				sd.Get("UIScale", ref gApp.mSettings.mUISettings.mScale);// Legacy
 				sd.Get("FontSize", ref mFontSize);
 				sd.Get("AutoCompleteShowKind", ref mAutoCompleteShowKind);
 				sd.Get("AutoCompleteRequireControl", ref mAutoCompleteRequireControl);
@@ -705,8 +670,6 @@ namespace IDE
 					if (gApp.mSpellChecker != null)
 						DeleteAndNullify!(gApp.mSpellChecker);
 				}
-
-				
 			}
 		}
 

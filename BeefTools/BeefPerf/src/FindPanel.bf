@@ -1,4 +1,4 @@
-using Beefy.widgets;
+using Beefy.widgets; using Beefy.theme;
 using Beefy.theme.dark;
 using Beefy.gfx;
 using System.Collections;
@@ -63,7 +63,7 @@ namespace BeefPerf
 				if (listViewItem.mVirtualIdx >= mFindPanel.mSearchState.mFoundEntries.Count)
 				{
 					listViewItem.mLabel = new String("--- Results Trimmed ---");
-					listViewItem.mTextColor = 0xFF808080;
+					listViewItem.mTextColor = ThemeColors.Widget.FindListViewItem031.Color;
 					var subItem = listViewItem.CreateSubItem(1);
 					subItem.mLabel = new String();
 					subItem = listViewItem.CreateSubItem(2);
@@ -858,7 +858,7 @@ namespace BeefPerf
 
 				var listViewItem = (DarkListViewItem)mListView.GetRoot().CreateChildItem();
 				listViewItem.Label = error;
-				listViewItem.mTextColor = 0xFFFF8080;
+				listViewItem.mTextColor = ThemeColors.Widget.FindListViewItem032.Color;
 
 				mFailed = true;
 			}

@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.widgets;
@@ -96,7 +97,7 @@ namespace Beefy.theme.dark
 
                 if ((mHasFocus) || (mEditWidget.mHasFocus))
                 {
-                    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+                    using (g.PushColor(ThemeColors.Theme.SelectedOutline.Color))
                         g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Outline), 0, 0, mWidth, mHeight);
                 }
 
@@ -120,7 +121,7 @@ namespace Beefy.theme.dark
 
             if (mEditWidget == null)
             {
-                using (g.PushColor(mDisabled ? 0x80FFFFFF : Color.White))
+                using (g.PushColor(mDisabled ? ThemeColors.Widget.DarkButton003.Color : ThemeColors.Widget.DarkButton002.Color))
                 {
                     g.Draw(DarkTheme.sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.ComboEnd], mWidth - GS!(25), (mHeight - GS!(24)) / 2 + yOfs);
 
@@ -132,19 +133,19 @@ namespace Beefy.theme.dark
 						float fontHeight = g.mFont.GetHeight();
 
                         //g.DrawString(label, mLabelX, (mHeight - GS!(24)) / 2, mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
-						using (g.PushColor(DarkTheme.COLOR_TEXT))
+						using (g.PushColor(ThemeColors.Theme.Text.Color))
 							g.DrawString(label, mLabelX, (mHeight - fontHeight) / 2 - (int)GS!(3.5f), mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
                     }
                 }
 
 				if (mHasFocus)
 				{
-				    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+				    using (g.PushColor(ThemeColors.Theme.SelectedOutline.Color))
 				        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Outline), GS!(2), 0, mWidth - GS!(4), mHeight - GS!(4));
 				}
             }
 
-			/*using (g.PushColor(0x1FFF0000))
+			/*using (g.PushColor(ThemeColors.Widget.DarkComboBox016.Color))
 				g.FillRect(0, 0, mWidth, mHeight);*/
         }
 

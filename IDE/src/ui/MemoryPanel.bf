@@ -770,7 +770,7 @@ namespace IDE.ui
             base.Draw(g);
             /*if (mAutoExprRefresh)
             {
-                using (g.PushColor(0x80FFFF00))
+                using (g.PushColor(ThemeColors.Widget.MemoryRepListView037.Color))
                 {
                     g.FillRect(mWatchRefreshButton.mX, mWatchRefreshButton.mY, mWatchRefreshButton.mWidth, mWatchRefreshButton.mHeight);
                 }

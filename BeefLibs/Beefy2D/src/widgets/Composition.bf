@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Reflection;
@@ -930,7 +931,7 @@ namespace Beefy.widgets
             //g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.UIBoneJoint), startX - 9, startY - 9);
             //g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.UIBoneJoint), endX - 9, endY - 9);
 
-            /*using (g.PushColor(Color.Red))
+            /*using (g.PushColor(ThemeColors.CompositionDef.CompositionDef001.Color))
                 g.FillRect(endX, endY, 2, 2);*/
         }
     }

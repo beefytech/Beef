@@ -11,6 +11,7 @@ using IDE.Debugger;
 using IDE;
 using System.Diagnostics;
 using IDE.Compiler;
+using Beefy.theme;
 
 namespace IDE.ui
 {
@@ -247,15 +248,15 @@ namespace IDE.ui
         {
             bool atError = gApp.mDebugger.GetRunState() == DebugManager.RunState.Exception;
 
-            uint32 bkgColor = 0xFF404040;
+            uint32 bkgColor = ThemeColors.Widget.OpenFileInSolutionDialog018.Color;
             if (atError)
-                bkgColor = 0xFF800000;
+                bkgColor = ThemeColors.Widget.StatusBar042.Color;
             if (gApp.IsCompiling)
-                bkgColor = 0xFF35306A;
+                bkgColor = ThemeColors.Widget.StatusBar043.Color;
             else if (gApp.mDebugger.mIsRunning)
-                bkgColor = 0xFFB65D08;
+                bkgColor = ThemeColors.Widget.StatusBar044.Color;
 			else if (gApp.AreTestsRunning())
-				bkgColor = 0xFF562143;
+				bkgColor = ThemeColors.Widget.StatusBar045.Color;
 
             using (g.PushColor(bkgColor))
                 g.FillRect(0, 0, mWidth, mHeight);
@@ -278,7 +279,7 @@ namespace IDE.ui
                 int32 column;
                 sourceViewPanel.GetCursorPosition(out line, out column);
 
-				using (g.PushColor(DarkTheme.COLOR_TEXT))
+				using (g.PushColor(ThemeColors.Theme.Text.Color))
 				{
 					if (gApp.mSettings.mEnableDevMode)
 						g.DrawString(StackStringFormat!("Idx {0}", sourceViewPanel.mEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
@@ -287,7 +288,7 @@ namespace IDE.ui
 				}
             }
 
-            using (g.PushColor(0xFF101010))
+            using (g.PushColor(ThemeColors.Widget.StatusBar046.Color))
             {                
                 //g.FillRect(50 + ((mUpdateCnt) % 50) * 2, 0, 3, mHeight);
             }
@@ -325,21 +326,22 @@ namespace IDE.ui
             if (completionPct.HasValue)
             {                
                 Rect completionRect = Rect(GS!(200), GS!(2), GS!(120), GS!(15));
-                using (g.PushColor(0xFF000000))
+                using (g.PushColor(ThemeColors.Widget.ImmediateWidgetContent029.Color))
                     g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
                 completionRect.Inflate(GS!(-1), GS!(-1));
-                using (g.PushColor(0xFF00FF00))
+                using (g.PushColor(ThemeColors.Widget.Board040.Color))
                     g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth * completionPct.Value, completionRect.mHeight);
             }
             else if ((gApp.mDebugger.mIsRunning) && (gApp.HaveSourcesChanged()))
             {
                 Rect completionRect = Rect(GS!(200), GS!(1), GS!(120), GS!(17));
-                using (g.PushColor(0x60000000))
+                using (g.PushColor(ThemeColors.Widget.OutputActionButton005.Color))
                     g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
                 completionRect.Inflate(-1, -1);
-                using (g.PushColor(0x40202080))
+                using (g.PushColor(ThemeColors.Widget.StatusBar047.Color))
                     g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
                 g.DrawString("Source Changed", GS!(200), statusLabelPos, FontAlign.Centered, GS!(120));
             }
 
@@ -351,7 +353,7 @@ namespace IDE.ui
 				float len = GS!(200);
 				float x = GS!(350);
 				Rect completionRect = Rect(x, GS!(1), len, GS!(17));
-				using (g.PushColor(0x60000000))
+				using (g.PushColor(ThemeColors.Widget.OutputActionButton005.Color))
 				    g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
 				completionRect.Inflate(-1, -1);
 				//float pulseSpeed = Math.Min(mStatusBoxUpdateCnt * 0.001f, 0.2f);
@@ -367,7 +369,7 @@ namespace IDE.ui
 				if (mCancelSymSrvButton != null)
 					mCancelSymSrvButton.mX = completionRect.Right - GS!(16);
 
-				using (g.PushColor(DarkTheme.COLOR_TEXT))
+				using (g.PushColor(ThemeColors.Theme.Text.Color))
 					g.DrawString(str, x, statusLabelPos, FontAlign.Centered, len);
 			}
 
@@ -419,7 +421,7 @@ namespace IDE.ui
 
 			if (gApp.mSettings.mEnableDevMode)
 			{
-				using (g.PushColor(DarkTheme.COLOR_TEXT))
+				using (g.PushColor(ThemeColors.Theme.Text.Color))
 	            	g.DrawString(StackStringFormat!("FPS: {0}", gApp.mLastFPS), GS!(32), 0);
 
 	            String resolveStr = scope String();
@@ -468,6 +470,7 @@ namespace IDE.ui
 	            }*/
 	
 	            if (resolveStr.Length != 0)
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 	                g.DrawString(resolveStr, GS!(100), 0);
 			}
         }

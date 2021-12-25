@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.IO;
@@ -668,7 +669,7 @@ namespace Beefy.gfx
 
 		public static void StrEncodeColor(uint32 color, String outString)
 		{
-			uint32 colorVal = (color >> 1) & 0x7F7F7F7F;
+			uint32 colorVal = (color >> 1) & ThemeColors.CharData.CharData001.Color;
 			outString.Append('\x01');
 			outString.Append((char8*)&colorVal, 4);
 		}
@@ -682,7 +683,7 @@ namespace Beefy.gfx
 		{
 			char8[5] val;
 			val[0] = '\x01';
-			*((uint32*)&val[1]) = (color >> 1) & 0x7F7F7F7F;
+			*((uint32*)&val[1]) = (color >> 1) & ThemeColors.CharData.CharData001.Color;
 			return val;
 		}
 

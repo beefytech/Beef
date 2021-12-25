@@ -10,6 +10,7 @@ using Beefy.widgets;
 using Beefy.theme.dark;
 using Beefy.geom;
 using Beefy.utils;
+using Beefy.theme;
 
 namespace IDE.ui
 {
@@ -323,17 +324,17 @@ namespace IDE.ui
 				
 				if (mOwnsWindow)
 				{
-	                using (g.PushColor(0x80000000))
+	                using (g.PushColor(ThemeColors.AutoComplete.AutoComplete001.Color))
 	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), GS!(2), GS!(2), boxWidth, drawHeight - GS!(2));
 
 	                base.Draw(g);
-	                using (g.PushColor(0xFFFFFFFF))
+	                using (g.PushColor(ThemeColors.AutoComplete.AutoComplete002.Color))
 	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, boxWidth - GS!(6), drawHeight - GS!(8));
 				}
 
                 g.SetFont(IDEApp.sApp.mCodeFont);
 
-				/*using (g.PushColor(0x80FF0000))
+				/*using (g.PushColor(ThemeColors.AutoComplete.AutoComplete003.Color))
 					g.FillRect(0, 0, mWidth, mHeight);*/
             }
 
@@ -401,7 +402,8 @@ namespace IDE.ui
                         g.Draw(mIcon, 0, 0);
 
                     g.SetFont(IDEApp.sApp.mCodeFont);
-                    g.DrawString(mEntryDisplay, GS!(20), 0);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
+                    	g.DrawString(mEntryDisplay, GS!(20), 0);
                 }                
             }
 
@@ -429,7 +431,7 @@ namespace IDE.ui
 					if (mAutoCompleteListWidget.mSelectIdx != -1)
 					{
 						var selectedEntry = mAutoCompleteListWidget.mEntryList[mAutoCompleteListWidget.mSelectIdx];
-						using (g.PushColor(DarkTheme.COLOR_MENU_FOCUSED))
+						using (g.PushColor(ThemeColors.Theme.MenuFocused.Color))
 						{
 							let dispWidth = g.mFont.GetWidth(selectedEntry.mEntryDisplay) + GS!(24);
 
@@ -722,13 +724,13 @@ namespace IDE.ui
 								//float drawHeight = GS!(32);
 								float drawHeight = mDocHeight;
 
-							    using (g.PushColor(0x80000000))
+							    using (g.PushColor(ThemeColors.AutoComplete.AutoComplete001.Color))
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.DropShadow), drawX + GS!(2), drawY + GS!(2), mRightBoxAdjust - GS!(2), drawHeight - GS!(2));
 
-							    using (g.PushColor(0xFFFFFFFF))
+							    using (g.PushColor(ThemeColors.AutoComplete.AutoComplete002.Color))
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Menu), drawX, drawY, mRightBoxAdjust - GS!(8), drawHeight - GS!(8));
 
-								using (g.PushColor(gApp.mSettings.mUISettings.mColors.mAutoCompleteDocText))
+								using (g.PushColor(ThemeColors.Theme.AutoCompleteDocText.Color))
 									g.DrawString(docParser.ShowDocString, drawX + GS!(8), drawY + GS!(4), .Left, mDocWidth - GS!(20), .Wrap);
 							}
 						}
@@ -736,7 +738,7 @@ namespace IDE.ui
 						{
 							/*float drawX = GS!(8);
 							float drawY = mHeight + GS!(2);
-							using (g.PushColor(0xFFC0C0C0))
+							using (g.PushColor(ThemeColors.AutoComplete.AutoComplete004.Color))
 								g.DrawString(docParser.ShowDocString, drawX, drawY, .Left, mWidth - drawX, .Wrap);*/
 						}
 					}
@@ -746,7 +748,7 @@ namespace IDE.ui
 			public override void DrawAll(Graphics g)
 			{
 				base.DrawAll(g);
-				/*using (g.PushColor(0x20FF0000))
+				/*using (g.PushColor(ThemeColors.AutoComplete.AutoComplete005.Color))
 					g.FillRect(0, 0, mWidth, mHeight);*/
 			}
 
@@ -954,7 +956,7 @@ namespace IDE.ui
 					numStr.AppendF("{0}/{1}", mSelectIdx + 1, mEntryList.Count);
 					if (g != null)
 					{
-					    using (g.PushColor(gApp.mSettings.mUISettings.mColors.mAutoCompleteSubText))
+					    using (g.PushColor(ThemeColors.Theme.AutoCompleteSubText.Color))
 					        g.DrawString(numStr, curX, curY);
 					}
 					curX += font.GetWidth(numStr) + GS!(8);
@@ -1018,7 +1020,7 @@ namespace IDE.ui
 
 					if (g != null)
 					{
-						using (g.PushColor(((sectionIdx == cursorSection) && (isParam)) ? gApp.mSettings.mUISettings.mColors.mAutoCompleteActiveText : gApp.mSettings.mUISettings.mColors.mText))
+						using (g.PushColor(((sectionIdx == cursorSection) && (isParam)) ?ThemeColors.Theme.AutoCompleteActiveText.Color : ThemeColors.Theme.Text.Color))
 							g.DrawString(sectionStr, curX, curY);
 					}
 			        curX += sectionWidth;
@@ -1054,7 +1056,7 @@ namespace IDE.ui
 							curY += font.GetLineSpacing() + GS!(4);
 							if (g != null)
 							{
-								using (g.PushColor(gApp.mSettings.mUISettings.mColors.mAutoCompleteDocText))
+								using (g.PushColor(ThemeColors.Theme.AutoCompleteDocText.Color))
 									docHeight = g.DrawString(docString, curX, curY, .Left, maxDocWidth, .Wrap);
 							}
 							else
@@ -1077,7 +1079,7 @@ namespace IDE.ui
 					/*curY += font.GetLineSpacing() + GS!(4);
 					if (g != null)
 					{
-						using (g.PushColor(0xFFC0C0C0))
+						using (g.PushColor(ThemeColors.AutoComplete.AutoComplete004.Color))
 							g.DrawString(docString, curX, curY, .Left, mWidth, .Ellipsis);
 					}
 					extWidth = Math.Max(extWidth, font.GetWidth(docString) + GS!(48));
@@ -1091,12 +1093,12 @@ namespace IDE.ui
 							curY += font.GetLineSpacing() + GS!(4);
 							if (g != null)
 							{
-								using (g.PushColor(gApp.mSettings.mUISettings.mColors.mText))
+								using (g.PushColor(ThemeColors.Theme.Text.Color))
 								{
 									g.DrawString(scope String(paramName.Length + 1)..AppendF("{0}:", paramName), curX, curY, .Left, mWidth, .Ellipsis);
 								}
 
-								using (g.PushColor(gApp.mSettings.mUISettings.mColors.mAutoCompleteDocText))
+								using (g.PushColor(ThemeColors.Theme.AutoCompleteDocText.Color))
 								{
 									g.DrawString(paramDoc, curX + font.GetWidth(paramName) + font.GetWidth(": "), curY, .Left, mWidth, .Ellipsis);
 								}

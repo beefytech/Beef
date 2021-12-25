@@ -4,6 +4,7 @@ using Beefy.gfx;
 using System;
 using System.Collections;
 using IDE.Debugger;
+using Beefy.theme;
 
 namespace IDE.ui
 {
@@ -111,6 +112,7 @@ namespace IDE.ui
 		{
 		    base.Draw(g);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 		    g.DrawString("Memory Address", mAddressEdit.mX, mAddressEdit.mY - GS!(20));
 		    //g.DrawString("Project Directory", mDialogEditWidget.mX, mDialogEditWidget.mY - 20);
 		}

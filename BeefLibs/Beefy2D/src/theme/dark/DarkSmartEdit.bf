@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy;
@@ -85,7 +86,7 @@ namespace Beefy.theme.dark
                 g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.RightArrowDisabled), endX - 5, 0);
             }
 
-            using (g.PushColor(0xFFCC9600))
+            using (g.PushColor(ThemeColors.Widget.DarkSmartEdit001.Color))
                 g.DrawString(mText, 0, 0);
         }
 

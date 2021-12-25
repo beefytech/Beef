@@ -3,6 +3,7 @@ using Beefy.widgets;
 using IDE.util;
 using System;
 using Beefy.gfx;
+using Beefy.theme;
 
 namespace IDE.ui
 {
@@ -140,6 +141,7 @@ namespace IDE.ui
 
 		public void DrawLabel(Graphics g, Widget widget, StringView label)
 		{
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 			g.DrawString(label, widget.mX, widget.mY - GS!(18));
 		}
 	}

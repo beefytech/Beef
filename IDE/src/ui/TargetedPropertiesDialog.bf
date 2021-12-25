@@ -779,9 +779,9 @@ namespace IDE.ui
 
             var font = DarkTheme.sDarkTheme.mSmallFont;
             g.SetFont(font);
-            using (g.PushColor(mConfigComboBox.mDisabled ? 0x60FFFFFF : 0xFFFFFFFF))
+            using (g.PushColor(mConfigComboBox.mDisabled ? ThemeColors.ConfigDataGroup.ConfigDataGroup001.Color : ThemeColors.ConfigDataGroup.ConfigDataGroup002.Color))
                 g.DrawString(sConfigLabel, mConfigComboBox.mX - font.GetWidth(sConfigLabel) - GS!(6), mConfigComboBox.mY + GS!(0));
-            using (g.PushColor(mPlatformComboBox.mDisabled ? 0x60FFFFFF : 0xFFFFFFFF))
+            using (g.PushColor(mPlatformComboBox.mDisabled ? ThemeColors.ConfigDataGroup.ConfigDataGroup001.Color : ThemeColors.ConfigDataGroup.ConfigDataGroup002.Color))
                 g.DrawString(sPlatformLabel, mPlatformComboBox.mX - font.GetWidth(sPlatformLabel) - GS!(6), mPlatformComboBox.mY + GS!(0));
         }
 

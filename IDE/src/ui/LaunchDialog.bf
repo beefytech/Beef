@@ -8,6 +8,7 @@ using Beefy.theme.dark;
 using Beefy.widgets;
 using System.IO;
 using System.Diagnostics;
+using Beefy.theme;
 
 namespace IDE.ui
 {    
@@ -440,10 +441,12 @@ namespace IDE.ui
         {
             base.Draw(g);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color)) {
 			g.DrawString("Target Path:", GS!(6), mTargetCombo.mY - GS!(18));
             g.DrawString("Arguments:", GS!(6), mArgumentsCombo.mY - GS!(18));
             g.DrawString("Working Directory:", GS!(6), mWorkingDirCombo.mY - GS!(18));
 			g.DrawString("Environment Variables:", GS!(6), mEnvironmentCombo.mY - GS!(18));
+					}
         }
 
 		public override void Update()

@@ -205,12 +205,12 @@ namespace IDE.ui
 					DarkListViewItem subLVItem = (DarkListViewItem)lvItem.GetSubItem(1);
 					if (subLVItem.mLabel.StartsWith("!"))
 					{
-						subLVItem.mTextColor = 0xFFFF8080;
+						subLVItem.mTextColor = ThemeColors.Panel.TypeWildcardEditWidget008.Color;
 						subLVItem.mLabel.Remove(0, 1);
 					}
 					else
 					{
-						subLVItem.mTextColor = 0xFFFFFFFF;
+						subLVItem.mTextColor = ThemeColors.Panel.WorkspaceProperties002.Color;
 					}
 
 					++idx;

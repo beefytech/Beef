@@ -1,5 +1,5 @@
 FileVersion = 1
-Projects = {Tests = {Path = "."}, LibA = {Path = "LibA"}, LibB = {Path = "LibB"}, LibC = {Path = "LibC"}, TestsB = {Path = "TestsB"}}
+Projects = {Tests = {Path = "."}, LibA = {Path = "LibA"}, LibB = {Path = "LibB"}, LibC = {Path = "LibC"}, TestsB = {Path = "TestsB"}, BeefTest = {Path = "c:/Development/BeefTest"}}
 Unlocked = ["corlib"]
 
 [Workspace]

@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -92,7 +93,7 @@ namespace IDE.ui
 			base.DrawAll(g);
 			if (!mIsValid)
 			{
-				using (g.PushColor(0xFFFF0000))
+				using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose006.Color))
 					g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Outline), mEditWidget.mX, mEditWidget.mY, mEditWidget.mWidth, mEditWidget.mHeight);
 			}
 		}

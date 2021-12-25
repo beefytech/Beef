@@ -111,7 +111,7 @@ namespace Beefy.theme.dark
         {
             base.Draw(g);
 
-            using (g.PushColor(DarkTheme.COLOR_WINDOW))
+            using (g.PushColor(ThemeColors.Theme.Window.Color))
                 g.FillRect(0, 0, mWidth, mHeight);            
 
             if (mIcon != null)
@@ -119,6 +119,7 @@ namespace Beefy.theme.dark
 
             g.SetFont(mFont);
             if (mText != null)
+            using (g.PushColor(ThemeColors.Theme.Text.Color))
                 g.DrawString(mText, mTextInsets.mLeft, mTextInsets.mTop, FontAlign.Left, mWidth - mTextInsets.Horz, FontOverflowMode.Wrap);
         }
     }

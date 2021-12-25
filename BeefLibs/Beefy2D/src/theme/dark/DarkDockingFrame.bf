@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.widgets;
@@ -53,7 +54,7 @@ namespace Beefy.theme.dark
         {
 			if (mDrawBkg)
 			{
-	            using (g.PushColor(DarkTheme.COLOR_BKG))
+	            using (g.PushColor(ThemeColors.Theme.Background.Color))
 	                g.FillRect(0, 0, mWidth, mHeight);
 			}
             base.Draw(g);            
@@ -82,7 +83,7 @@ namespace Beefy.theme.dark
             {
                 if (mDraggingAlign == WidgetAlign.Inside)
                 {
-                    using (g.PushColor(0x30FFFFFF))
+                    using (g.PushColor(ThemeColors.Widget.DarkDockingFrame020.Color))
                         g.DrawBox(DarkTheme.sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.WhiteCircle], mDraggingRef.mX, mDraggingRef.mY, mDraggingRef.mWidth, mDraggingRef.mHeight);
                 }
                 else

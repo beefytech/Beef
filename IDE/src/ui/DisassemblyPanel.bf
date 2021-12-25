@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Diagnostics;
@@ -84,8 +85,8 @@ namespace IDE.ui
                             continue;
                         
                         uint32 color = jumpEntry.mIsReverse ? 
-                            (isHilighted ? 0xFFffeafe : 0xFF8a7489) :
-                            (isHilighted ? 0xFFeaf5ff : 0xFF72828f);
+                            (isHilighted ? ThemeColors.JumpEntry.JumpEntry001.Color : ThemeColors.JumpEntry.JumpEntry002.Color) :
+                            (isHilighted ? ThemeColors.JumpEntry.JumpEntry003.Color : ThemeColors.JumpEntry.JumpEntry004.Color);
 
                         float minY = 0 + minLine * lineSpacing + GS!(6);
                         float maxY = 0 + maxLine * lineSpacing + GS!(6);
@@ -868,7 +869,7 @@ namespace IDE.ui
                     int lineStart = Math.Max(0, (int32)((-mEditWidget.Content.Y) / lineSpacing) - 1);
                     int lineEnd = Math.Min(mLineDatas.Count, lineStart + (int32)(mHeight / lineSpacing) + 3);
 
-                    using (g.PushColor(0x80FFFFFF))
+                    using (g.PushColor(ThemeColors.JumpEntry.JumpEntry005.Color))
                     {                                                
                         for (int lineIdx = lineStart; lineIdx < lineEnd; lineIdx++)
                         {

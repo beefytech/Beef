@@ -1,4 +1,5 @@
 using Beefy.utils;
+using Beefy.theme;
 using Beefy.theme.dark;
 using Beefy.widgets;
 
@@ -69,14 +70,14 @@ namespace IDE.ui
 				DocumentationParser docParser = scope .(selectedEntry.mDocumentation);
 				float drawX = GS!(6);
 				float drawY = GS!(4);
-				using (g.PushColor(0xFFC0C0C0))
+				using (g.PushColor(ThemeColors.Widget.CommentArea021.Color))
 					g.DrawString(docParser.ShowDocString, drawX, drawY, .Left, mWidth - drawX - GS!(8), .Wrap);
 			}
 
 			public override void DrawAll(Beefy.gfx.Graphics g)
 			{
 				base.DrawAll(g);
-				using (g.PushColor(0x80FFFFFF))
+				using (g.PushColor(ThemeColors.Widget.DarkButton003.Color))
 					g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Bkg), 0, -GS!(6), mWidth, GS!(6));
 			}
 		}

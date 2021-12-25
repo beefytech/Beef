@@ -1,4 +1,4 @@
- using System;
+using System;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +10,7 @@ using Beefy.events;
 using Beefy.theme.dark;
 using Beefy.gfx;
 using Beefy.geom;
+using Beefy.theme;
 
 namespace IDE.ui
 {
@@ -633,7 +634,7 @@ namespace IDE.ui
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 			var (category, ?) = AddPropertiesItem(root, "Resources");
 			category.mIsBold = true;
-			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
+			category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.WorkspaceProperties001.Color);
 			var (listViewItem, propEntry) = AddPropertiesItem(category, "Icon File", "mIconFile");
 			(listViewItem, propEntry) = AddPropertiesItem(category, "Manifest File", "mManifestFile");
 			category.Open(true, true);
@@ -655,7 +656,7 @@ namespace IDE.ui
 		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 		    var (category, ?) = AddPropertiesItem(root, "General");
 		    category.mIsBold = true;
-		    category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
+		    category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.WorkspaceProperties001.Color);
 			AddPropertiesItem(category, "Options", "mOptions");
 		    //parent.MakeParent();
 		    category.Open(true, true);
@@ -713,7 +714,7 @@ namespace IDE.ui
                 
                 var (listViewItem, propItem) = AddPropertiesItem(category, projectName);
                 if (IDEApp.sApp.mWorkspace.FindProject(projectName) == null)
-                    listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFFF6060);
+                    listViewItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.ProjectProperties009.Color);
 
                 var subItem = listViewItem.CreateSubItem(1);
 
@@ -793,7 +794,7 @@ namespace IDE.ui
 		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 		    var (category, ?) = AddPropertiesItem(root, "General");
 		    category.mIsBold = true;
-		    category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
+		    category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.WorkspaceProperties001.Color);
 			
 			AddPropertiesItem(category, "Startup Object", "mStartupObject");
 			AddPropertiesItem(category, "Default Namespace", "mDefaultNamespace");
@@ -811,13 +812,13 @@ namespace IDE.ui
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
             var (category, propEntry) = AddPropertiesItem(root, "General");
             category.mIsBold = true;
-            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
+            category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Panel.WorkspaceProperties001.Color);
             AddPropertiesItem(category, "Preprocessor Macros", "mBeefOptions.mPreprocessorMacros");
             category.Open(true, true);
 
             (category, propEntry) = AddPropertiesItem(root, "Code Generation");
             category.mIsBold = true;
-            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+            category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, cHeaderColor);
 			AddPropertiesItem(category, "Reloc Model", "mBeefOptions.mRelocType");
 			AddPropertiesItem(category, "PIC Level", "mBeefOptions.mPICLevel");
             AddPropertiesItem(category, "Optimization Level", "mBeefOptions.mOptimizationLevel",
@@ -842,7 +843,7 @@ namespace IDE.ui
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
             var (category, propEntry) = AddPropertiesItem(root, "General");
             category.mIsBold = true;
-            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+            category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, cHeaderColor);
             AddPropertiesItem(category, "Compiler", "mCOptions.mCompilerType");            
             AddPropertiesItem(category, "Other C Flags", "mCOptions.mOtherCFlags");
             AddPropertiesItem(category, "Other C++ Flags", "mCOptions.mOtherCPPFlags");
@@ -855,7 +856,7 @@ namespace IDE.ui
 
             (category, propEntry) = AddPropertiesItem(root, "Code Generation", "");
             category.mIsBold = true;
-            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+            category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, cHeaderColor);
             AddPropertiesItem(category, "Disable C++ Exceptions", "mCOptions.mDisableExceptions",
                 scope String[] ( "No", "Yes (-fno-exceptions)" )); // -fno-exceptions
             AddPropertiesItem(category, "SIMD Instructions", "mCOptions.mSIMD"); // -msse, -msse2, -msse4.1, -mno-sse
@@ -879,7 +880,7 @@ namespace IDE.ui
 
             (category, propEntry) = AddPropertiesItem(root, "Warnings", "");
             category.mIsBold = true;
-            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+            category.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, cHeaderColor);
             AddPropertiesItem(category, "All warnings", "mCOptions.mAllWarnings",
                 scope String[] ( "No", "Yes (-Wall)" )); // -Wall
             AddPropertiesItem(category, "Effective C++ Violations", "mCOptions.mEffectiveCPPViolations",
@@ -906,7 +907,7 @@ namespace IDE.ui
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
             //var category = AddPropertiesItem(root, "General");
             //category.mIsBold = true;
-            //category.mTextColor = 0xFFE8E8E8;
+            //category.mTextColor = ThemeColors.Panel.WorkspaceProperties001.Color;
             var (category, propEntry) = AddPropertiesItem(root, "Command", "mDebugOptions.mCommand", null, .BrowseForFile);
 			propEntry.mRelPath = new String(mProject.mProjectDir);
             AddPropertiesItem(root, "Command Arguments", "mDebugOptions.mCommandArguments");
@@ -924,7 +925,7 @@ namespace IDE.ui
 		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 		    //var category = AddPropertiesItem(root, "General");
 		    //category.mIsBold = true;
-		    //category.mTextColor = 0xFFE8E8E8;
+		    //category.mTextColor = ThemeColors.Panel.WorkspaceProperties001.Color;
 			var (category, propEntry) = AddPropertiesItem(root, "Debug Target", "mBuildOptions.mTargetName", null, .BrowseForFile);
 			propEntry.mRelPath = new String(mProject.mProjectDir);
 		    (category, propEntry) = AddPropertiesItem(root, "Debug Command", "mDebugOptions.mCommand", null, .BrowseForFile);

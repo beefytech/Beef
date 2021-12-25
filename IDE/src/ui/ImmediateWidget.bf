@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -62,22 +63,22 @@ namespace IDE.ui
                 GetLineCharAtIdx(watchEditWidget.mErrorEnd, out line, out lineChar);
                 GetTextCoordAtLineChar(line, lineChar, out endX, out endY);
 
-                using (g.PushColor(0xFFFF4040))
+                using (g.PushColor(ThemeColors.Widget.ImmediateWidgetContent028.Color))
                     IDEApp.sApp.DrawSquiggle(g, startX, startY, endX - startX);
             }
 
 			//TEST:
 			/*g.SetFont(IDEApp.sApp.mCodeFont);
-			using (g.PushColor(0xFFFFFFFF))
+			using (g.PushColor(ThemeColors.Widget.TypeArea022.Color))
 				g.FillRect(0, 0, 200, 50);
-			using (g.PushColor(0xFF000000))
+			using (g.PushColor(ThemeColors.Widget.ImmediateWidgetContent029.Color))
 			{
 				g.DrawString("Hey Bro, goofy man!", 4, 4);
 			}
 
-			using (g.PushColor(0xFF000000))
+			using (g.PushColor(ThemeColors.Widget.ImmediateWidgetContent029.Color))
 				g.FillRect(0, 50, 200, 50);
-			using (g.PushColor(0xFFFFFFFF))
+			using (g.PushColor(ThemeColors.Widget.TypeArea022.Color))
 			{
 				g.DrawString("Hey Bro, goofy man!", 4, 50 + 4);
 			}*/

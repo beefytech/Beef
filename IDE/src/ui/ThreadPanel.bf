@@ -41,6 +41,7 @@ namespace IDE.ui
 				//
 
 				g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 				g.DrawString(mLabel, GS!(6), GS!(0), .Left, width - GS!(42), .Ellipsis);
 
 				g.Draw(DarkTheme.sDarkTheme.GetImage(.ComboEnd), width - GS!(36), (mHeight - GS!(24)) / 2);

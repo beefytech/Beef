@@ -30,6 +30,83 @@ namespace System
 			return .Err;
 		}
 
+		public static Result<int> Parse(Type type, StringView str, bool ignoreCase = false)
+		{
+			if (type.IsEnum)
+			{
+				for (var field in type.GetFields())
+				{
+					if (str.Equals(field.[Friend]mFieldData.mName, ignoreCase))
+						return .Ok(field.[Friend]mFieldData.mData);
+				}
+			}
+			return .Err;
+		}
+
+		public static void GetNames<T>(ref StringView[] strBuffer) where T : enum
+		{
+			GetNames(typeof(T), ref strBuffer);
+		}
+
+		public static void GetNames(Type type, ref StringView[] strBuffer)
+		{
+			if (type.IsEnum)
+			{
+				int i = Count(type);
+				if (strBuffer.Count != i)
+				{
+					// if strBuffer is Stack Allocated and incorrect size this will throw an error
+					delete strBuffer;
+					strBuffer = new StringView[i];
+				}
+				i = 0;
+				for (let field in type.GetFields())
+				{
+					strBuffer[i] = field.Name;
+					i++;
+				}
+			}
+		}
+
+		public static void GetValues<T>(ref int[] iVals) where T : enum
+		{
+			GetValues(typeof(T), ref iVals);
+		}
+
+		public static void GetValues(Type type, ref int[] iVals)
+		{
+			if (type.IsEnum)
+			{
+				int i = Count(type);
+				if (iVals.Count != i)
+				{
+					// if iVals is Stack Allocated and incorrect size this will throw an error
+					delete iVals;
+					iVals = new int[i];
+				}
+				i = 0;
+				for (let field in type.GetFields())
+				{
+					iVals[i] = field.[Friend]mFieldData.[Friend]mData;
+					i++;
+				}
+			}
+		}
+
+		public static int Count<T>() where T : enum
+		{
+			return Count(typeof(T));
+		}
+
+		public static int Count(Type type)
+		{
+			if (type.IsEnum)
+			{
+				return type.FieldCount;
+			}
+			return 0;
+		}
+
 		/*public override void ToString(String strBuffer) mut
 		{
 			Type type = GetType();

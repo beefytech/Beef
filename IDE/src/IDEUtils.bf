@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -273,7 +274,7 @@ namespace IDE
 
 					using (g.PushTranslate(x - GS!(22), y - GS!(22)))
 					{
-					    using (g.PushColor(Color.Get(0x00FF0000, alpha)))
+					    using (g.PushColor(Color.Get(ThemeColors.IDEUtils.IDEUtils001.Color, alpha)))
 					    {
 					        using (g.PushScale(scale, scale, GS!(32), GS!(32)))
 					            g.Draw(IDEApp.sApp.mCircleImage);
@@ -282,7 +283,7 @@ namespace IDE
 				}
 			}
 
-			using (g.PushColor(isLocked ? 0xFFFFFFFF : 0x80000000))
+			using (g.PushColor(isLocked ? ThemeColors.IDEUtils.IDEUtils002.Color : ThemeColors.IDEUtils.IDEUtils003.Color))
 			{
 				var x;
 				var y;
@@ -301,14 +302,14 @@ namespace IDE
 		{
 			char8* insertChars = scope char8[5]*;
 			insertChars[0] = (char8)1;
-			*(uint32*)(insertChars + 1) = (color >> 1) & 0x7F7F7F7F;
+			*(uint32*)(insertChars + 1) = (color >> 1) & ThemeColors.IDEUtils.IDEUtils004.Color;
 			str.Insert(idx, scope String(insertChars, 5));
 		}
 
 		public static void ModifyColorChange(String str, int idx, uint32 color)
 		{
 			char8* insertPos = str.Ptr + idx;
-			*(uint32*)(insertPos + 1) = (color >> 1) & 0x7F7F7F7F;
+			*(uint32*)(insertPos + 1) = (color >> 1) & ThemeColors.IDEUtils.IDEUtils004.Color;
 		}
 
 		public enum CodeKind
@@ -353,7 +354,7 @@ namespace IDE
 
 				if ((c == '<') && (i == 0))
 				{
-					uint32 color = 0xFFA0A0A0;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
+					uint32 color = ThemeColors.IDEUtils.IDEUtils005.Color;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
 					InsertColorChange(label, 0, color);
 					label.Append('\x02');
 					break;
@@ -387,7 +388,7 @@ namespace IDE
 							}
 						}
 
-						uint32 color = 0xFFA0A0A0;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
+						uint32 color = ThemeColors.IDEUtils.IDEUtils005.Color;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
 						InsertColorChange(label, 0, color);
 						awaitingBang = false;
 
@@ -403,7 +404,7 @@ namespace IDE
 				}
 				else if (c == '$')
 				{
-					uint32 color = 0xFF80A080;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
+					uint32 color = ThemeColors.IDEUtils.IDEUtils006.Color;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
 					InsertColorChange(label, i, color);
 					i += 5;
 				}
@@ -499,7 +500,7 @@ namespace IDE
 						{
 							char8* insertChars = label.CStr() + lastTopStart;
 							uint32 color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method];
-							*(uint32*)(insertChars + 1) = (color >> 1) & 0x7F7F7F7F;
+							*(uint32*)(insertChars + 1) = (color >> 1) & ThemeColors.IDEUtils.IDEUtils004.Color;
 						}
 						else
 						{

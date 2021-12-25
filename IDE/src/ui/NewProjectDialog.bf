@@ -244,8 +244,10 @@ namespace IDE.ui
         {
             base.Draw(g);
 
+					using (g.PushColor(ThemeColors.Theme.Text.Color)) {
 			g.DrawString("Project Directory", mDirectoryEdit.mX, mDirectoryEdit.mY - GS!(20));
             g.DrawString("Project Name", mNameEdit.mX, mNameEdit.mY - GS!(20));
+					}
         }
     }
 

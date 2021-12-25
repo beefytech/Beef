@@ -494,7 +494,7 @@ namespace BeefPerf
 					threadEndX = mPerfView.GetXFromTick(mPerfView.mSession.mCurTick);
 				if (g != null)
 				{
-					using (g.PushColor(0x10FFFFFF))
+					using (g.PushColor(ThemeColors.HiliteZone.HiliteZone001.Color))
 						g.FillRect(threadStartX, yOfs, threadEndX - threadStartX + 1, trackHeight + 1);
 				}
 
@@ -510,13 +510,13 @@ namespace BeefPerf
 				var lastDrawEndXForDepth = scope int64[maxTrackDepth];
 				var showSelection = mPerfView.mSelection;
 
-				uint32 color = 0xA000FF00;
+				uint32 color = ThemeColors.HiliteZone.HiliteZone002.Color;
 
 				int32 insideSelectAtDepth = -1;
 
 				Header: if (g != null)
 				{
-					/*using (g.PushColor(0xFF000000))
+					/*using (g.PushColor(ThemeColors.HiliteZone.HiliteZone003.Color))
 					{
 						g.FillRect(0 + xOfs, 0 + yOfs, 200, 20);
 					}
@@ -575,7 +575,7 @@ namespace BeefPerf
 					if (dbgColorDataList)
 					{
 						mDbgStreamDataCount++;
-						color = (uint32)((mDbgStreamDataCount * 0x12345678) ^ (mDbgStreamDataCount * 0x17654321)) & 0x00FFFFFF | 0xE0000000;
+						color = (uint32)((mDbgStreamDataCount * 0x12345678) ^ (mDbgStreamDataCount * 0x17654321)) & ThemeColors.HiliteZone.HiliteZone004.Color | ThemeColors.HiliteZone.HiliteZone005.Color;
 					}
 
 					if (autoLOD)
@@ -807,7 +807,7 @@ namespace BeefPerf
 
 							if (g != null)
 							{
-								//using (g.PushColor(0xFF00A000))
+								//using (g.PushColor(ThemeColors.HiliteZone.HiliteZone006.Color))
 								using (g.PushColor(color))
 									g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 
@@ -895,7 +895,7 @@ namespace BeefPerf
 								}
 								else
 								{
-									uint32 dbgColor = (uint32)((mSmallCount * 0x12345678) ^ (mSmallCount * 0x17654321)) & 0x00FFFFFF | 0xE0000000;
+									uint32 dbgColor = (uint32)((mSmallCount * 0x12345678) ^ (mSmallCount * 0x17654321)) & ThemeColors.HiliteZone.HiliteZone004.Color | ThemeColors.HiliteZone.HiliteZone005.Color;
 									using (g.PushColor(dbgColor))
 										g.OutlineRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 								}
@@ -972,7 +972,7 @@ namespace BeefPerf
                 if (name != null)
                     rectWidth = Math.Min(font.GetWidth(name) + 56, 300);
 
-				/*using (g.PushColor(isGroup ? 0x80A0A0A0 : 0x80FFFFFF))
+				/*using (g.PushColor(isGroup ? ThemeColors.HiliteZone.HiliteZone007.Color : ThemeColors.HiliteZone.HiliteZone008.Color))
 					g.FillRect(rectWidth + xOfs, 10 + yOfs, mPerfView.mWidth, 2);*/
 
 				float drawY = yOfs;
@@ -1014,7 +1014,7 @@ namespace BeefPerf
 				if (g == null)
 					return;
 
-				using (g.PushColor(isGroup ? 0xFFA0A0A0 : 0xFFFFFFFF))
+				using (g.PushColor(isGroup ? ThemeColors.HiliteZone.HiliteZone009.Color : ThemeColors.HiliteZone.HiliteZone010.Color))
 					g.DrawBox(DarkTheme.sDarkTheme.GetImage(.WhiteBox), 0 + xOfs, 0 + drawY, rectWidth, 20);
 				if (name != null)
 				{
@@ -1073,7 +1073,7 @@ namespace BeefPerf
 
 						float height = group.GetHeight();
 
-						using (g.PushColor(0xFF303030))
+						using (g.PushColor(ThemeColors.HiliteZone.HiliteZone011.Color))
 							g.FillRect(1 + selfXOfs, 20 + selfYOfs, 3, height - 32);*/
 					}
 				}
@@ -1130,7 +1130,7 @@ namespace BeefPerf
 								{
 									if (nodeHeight > 24)
 									{
-										using (g.PushColor(0x60A0A0A0))
+										using (g.PushColor(ThemeColors.HiliteZone.HiliteZone012.Color))
 										{
 											g.FillRect(1 + xOfs, 20 + yOfs, 3, nodeHeight - 24);
 											//g.FillRect(1 + xOfs, nodeHeight - 4 - 3 + yOfs, 8, 3);
@@ -1159,7 +1159,7 @@ namespace BeefPerf
 					if (g != null)
 					{
 						float height = group.GetHeight();
-						using (g.PushColor(0x60606060))
+						using (g.PushColor(ThemeColors.HiliteZone.HiliteZone013.Color))
 							g.FillRect(1 + selfXOfs, 20 + selfYOfs, 3, height - 24);
 					}
 				}
@@ -1203,7 +1203,7 @@ namespace BeefPerf
 					{
 						int32 fromX = mPerfView.GetXFromTick(mPerfView.mSelectionFromTick);
 						int32 toX = mPerfView.GetXFromTick(mPerfView.mSelectionToTick);
-						using (g.PushColor(0x80404080))
+						using (g.PushColor(ThemeColors.HiliteZone.HiliteZone014.Color))
 							g.FillRect(fromX, 0, toX - fromX, mPerfView.mHeight);
 					}
 				}
@@ -1224,8 +1224,8 @@ namespace BeefPerf
 					yOfs = yOfsStart;
 					if (g != null)
 					{
-						/*uint32 colorLeft = 0xFF202020;
-						uint32 colorRight = 0x00202020;
+						/*uint32 colorLeft = ThemeColors.HiliteZone.HiliteZone015.Color;
+						uint32 colorRight = ThemeColors.HiliteZone.HiliteZone016.Color;
 						g.FillRectGradient(0, 0, 60, mPerfView.mHeight, colorLeft, colorLeft, colorLeft, colorLeft);
 						g.FillRectGradient(60, 0, 16, mPerfView.mHeight, colorLeft, colorRight, colorLeft, colorRight);*/
 					}
@@ -1233,7 +1233,7 @@ namespace BeefPerf
 					DrawHeader(g, null, null, 4, mPerfView.mNodeRoot.GetHeight() - 22 + yOfs);
 					/*if (g != null)
 					{
-						using (g.PushColor(0x60A0A0A0))
+						using (g.PushColor(ThemeColors.HiliteZone.HiliteZone012.Color))
 							g.FillRect(4, mPerfView.mNodeRoot.GetHeight() - 22 + yOfsStart, 64, 3);
 					}*/
 
@@ -1246,7 +1246,7 @@ namespace BeefPerf
 
 				if ((g != null) && (mPerfView.mSession.mFirstTick != 0))
 				{
-					using (g.PushColor(0xFF202020))
+					using (g.PushColor(ThemeColors.HiliteZone.HiliteZone015.Color))
 						g.FillRect(0, 0, mPerfView.mWidth, 15);
 
 					double usPerTick = mPerfView.mSession.GetTicksToUSScale();
@@ -1324,7 +1324,7 @@ namespace BeefPerf
 						//0:00:03.123456 {with zeroes trimmed}
 
 						str.AppendF("{0}:{1:02}:", (int32)((timeUS / 60 / 60 / 1000000)), (int32)((timeUS / 60 / 1000000) % 60));
-						using (g.PushColor(0x80FFFFFF))
+						using (g.PushColor(ThemeColors.HiliteZone.HiliteZone008.Color))
 							g.DrawString(str, xOfs + 4, -2);
 
 						xOfs += g.mFont.GetWidth(str);
@@ -1399,7 +1399,7 @@ namespace BeefPerf
 			/*if (group.mName != null)
 			{
 				float xOfs = 8;
-				using (g.PushColor(0xFF000000))
+				using (g.PushColor(ThemeColors.HiliteZone.HiliteZone003.Color))
 				{
 					g.FillRect(0 + xOfs, 0 + yOfs, 200, 20);
 				}

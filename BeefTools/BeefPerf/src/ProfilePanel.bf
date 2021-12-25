@@ -1,4 +1,4 @@
-using Beefy.widgets;
+using Beefy.widgets; using Beefy.theme;
 using Beefy.theme.dark;
 using Beefy.gfx;
 using System.Collections;
@@ -84,7 +84,7 @@ namespace BeefPerf
 
 				if (((mProfilePanel.mProfileCtx != null) && (!mProfilePanel.mProfileCtx.mDone)) || (mProfilePanel.mSorting))
 				{
-					using (g.PushColor(0xA0595959))
+					using (g.PushColor(ThemeColors.Widget.ProfileListViewItem033.Color))
 						g.FillRect(0, 20, mWidth - 20, mHeight - 20);
 					BPUtils.DrawWait(g, mWidth / 2, mHeight / 2);
 				}

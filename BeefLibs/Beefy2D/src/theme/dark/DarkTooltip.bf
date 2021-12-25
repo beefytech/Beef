@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -171,18 +172,19 @@ namespace Beefy.theme.dark
         {
             base.Draw(g);
 
-            using (g.PushColor(0x80000000))
+            using (g.PushColor(ThemeColors.DarkTooltipManager.DarkTooltipManager001.Color))
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), 0, 0, mWidth + cShadowSize, mHeight + cShadowSize);
 
-            using (g.PushColor(0xFFFFFFFF))
+            using (g.PushColor(ThemeColors.DarkTooltipManager.DarkTooltipManager002.Color))
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth, mHeight);
 
             g.SetFont(mFont);
+					using (g.PushColor(ThemeColors.Theme.Text.Color)) {
 			if (mIsClipped)
             	g.DrawString(mText, GS!(8), GS!(5), .Left, mWidth - GS!(16), .Ellipsis);
 			else
 				g.DrawString(mText, 0, GS!(5), .Centered, mWidth);
-
+					}
             if (mAllowResize)
                 g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ResizeGrabber), mWidth - GS!(22), mHeight - GS!(22));
         }

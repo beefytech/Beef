@@ -43,13 +43,13 @@ namespace IDE.ui
         public override void DrawSelect(Graphics g)
         {
 			let projectPanel = ((ProjectListView)mListView).mProjectPanel;
-            using (g.PushColor((mListView.mParent.mHasFocus || (projectPanel.mMenuWidget != null)) ? 0xFFFFFFFF : 0x80FFFFFF))
+            using (g.PushColor((mListView.mParent.mHasFocus || (projectPanel.mMenuWidget != null)) ? ThemeColors.Widget.TypeArea022.Color : ThemeColors.Widget.DarkButton003.Color))
                 base.DrawSelect(g);
         }
 
         public override void Draw(Graphics g)
         {
-			uint32 color = DarkTheme.COLOR_TEXT;
+			uint32 color = ThemeColors.Theme.Text.Color;
 			let projectPanel = ((ProjectListView)mListView).mProjectPanel;
 
 			ProjectItem projectItem;
@@ -57,14 +57,14 @@ namespace IDE.ui
 			if ((projectItem != null) && (projectItem.mParentFolder != null))
 			{
 				if (projectItem.mIncludeKind == .Manual)
-					color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceManualIncludeText);
+					color = Color.Mult(color, ThemeColors.Theme.WorkspaceManualIncludeText.Color);
 				else if (projectItem.mIncludeKind == .Ignore)
-					color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceIgnoredText);
+					color = Color.Mult(color,ThemeColors.Theme.WorkspaceIgnoredText.Color);
 
 				if (let projectSource = projectItem as ProjectSource)
 				{
 					if (projectSource.mLoadFailed)
-						color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceFailedText);
+						color = Color.Mult(color, ThemeColors.Theme.WorkspaceFailedText.Color);
 				}
 
 				mTextColor = color;
@@ -87,6 +87,7 @@ namespace IDE.ui
 					if (project.mDeferState != .None)
 					{
 						//g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(-3), 0);
+					using (g.PushColor(ThemeColors.Theme.Text.Color))
 						g.DrawString(scope String()..Append('.', 1 + (mUpdateCnt / 20) % 3), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(3), 0);
 						changeX += GS!(12);
 					}
@@ -97,7 +98,8 @@ namespace IDE.ui
 					}
 				}
                 if (hasChanged)
-                    g.DrawString("*", changeX, 0);
+ 					using (g.PushColor(ThemeColors.Theme.Text.Color))
+                   g.DrawString("*", changeX, 0);
             }
         }
 
@@ -489,8 +491,8 @@ namespace IDE.ui
             UpdateColors();
             DarkListViewItem listViewItem = (DarkListViewItem)item;
 			listViewItem.AllowDragging = true;
-            listViewItem.mFocusColor = gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText;
-            listViewItem.mSelectColor = gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText;
+             listViewItem.mFocusColor = ThemeColors.Theme.WorkspaceDisabledText.Color;
+            listViewItem.mSelectColor = ThemeColors.Theme.WorkspaceDisabledText.Color;
         }
 
         void UpdateColors()
@@ -2193,9 +2195,9 @@ namespace IDE.ui
                 listViewItem.mIsBold = checkProject == IDEApp.sApp.mWorkspace.mStartupProject;
 
                 var projectOptions = IDEApp.sApp.GetCurProjectOptions(checkProject);
-                listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, (projectOptions != null) ? gApp.mSettings.mUISettings.mColors.mText : gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText);
+                listViewItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, (projectOptions != null) ? ThemeColors.Theme.Text.Color : ThemeColors.Theme.WorkspaceDisabledText.Color);
 				if (checkProject.mFailed)
-					listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, gApp.mSettings.mUISettings.mColors.mWorkspaceFailedText);
+					listViewItem.mTextColor = Color.Mult(ThemeColors.Theme.Text.Color, ThemeColors.Theme.WorkspaceFailedText.Color);
             }
         }
 
@@ -2657,7 +2659,7 @@ namespace IDE.ui
         {
             base.Draw(g);
 
-            /*using (g.PushColor(0x80FF0000))
+            /*using (g.PushColor(ThemeColors.Widget.DarkTabButtonClose009.Color))
                 g.FillRect(0, 0, mWidth, mHeight);*/            
         }
 

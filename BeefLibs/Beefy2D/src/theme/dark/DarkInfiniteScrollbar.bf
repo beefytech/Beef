@@ -1,4 +1,5 @@
 using System;
+using Beefy.theme;
 using System.Collections;
 using System.Text;
 using Beefy.gfx;
@@ -109,7 +110,7 @@ namespace Beefy.theme.dark
 			let thumbPos = GetThumbPos();
 			bool isOver = mMouseOver && thumbPos.Contains(mLastMouseX, mLastMouseY);
 
-			using (g.PushColor(0x40000000))
+			using (g.PushColor(ThemeColors.Widget.DarkInfiniteScrollbar030.Color))
 			{
 				float y0 = mHeight / 2;
 				float y1 = thumbPos.mY + thumbPos.mHeight / 2;

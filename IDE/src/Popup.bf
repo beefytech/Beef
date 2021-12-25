@@ -1,5 +1,6 @@
 #if false
 
+using Beefy.theme;
 using System;
 using System.Collections;
 using System.Linq;
@@ -14,7 +15,7 @@ namespace IDE
         public override void Draw(Graphics g)
         {
             base.Draw(g);
-            using (g.PushColor(0xFFFF8080))
+            using (g.PushColor(ThemeColors.Widget.FindListViewItem032.Color))
                 g.FillRect(0, 0, mWidth - 20, mHeight - 20);            
         }
     }
