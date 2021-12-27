@@ -1965,6 +1965,22 @@ namespace System
 				return EqualsIgnoreCaseHelper(a.Ptr, b.Ptr, a.mLength);
 			return EqualsHelper(a.Ptr, b.Ptr, a.mLength);
 		}
+		
+		public bool Equals(StringView str)
+		{
+			if (mLength != str.[Friend]mLength)
+				return false;
+			return EqualsHelper(str.Ptr, mPtr, mLength);
+		}
+
+		public bool Equals(StringView str, StringComparison comparisonType = StringComparison.Ordinal)
+		{
+			if (mLength != str.[Friend]mLength)
+				return false;
+			if (comparisonType == StringComparison.OrdinalIgnoreCase)
+				return EqualsIgnoreCaseHelper(str.Ptr, mPtr, mLength);
+			return EqualsHelper(str.Ptr, mPtr, mLength);
+		}
 
 		public bool StartsWith(StringView b, StringComparison comparisonType = StringComparison.Ordinal)
 		{
@@ -2277,6 +2293,36 @@ namespace System
 		{
 			TrimStart((.)trimChar);
 			TrimEnd((.)trimChar);
+		}
+		
+		public void PadLeft(int totalWidth, char8 paddingChar)
+		{
+			Insert(0, paddingChar, totalWidth - Length);
+		}
+
+		public void PadLeft(int totalWidth, char32 paddingChar)
+		{
+			Insert(0, paddingChar, totalWidth - Length);
+		}
+
+		public void PadLeft(int totalWidth)
+		{
+			Insert(0, ' ', totalWidth - Length);
+		}
+
+		public void PadRight(int totalWidth, char8 paddingChar)
+		{
+			Append(paddingChar, totalWidth - Length);
+		}
+
+		public void PadRight(int totalWidth, char32 paddingChar)
+		{
+			Append(paddingChar, totalWidth - Length);
+		}
+
+		public void PadRight(int totalWidth)
+		{
+			Append(' ', totalWidth - Length);
 		}
 
 		public void Join(StringView sep, IEnumerator<String> enumerable)
