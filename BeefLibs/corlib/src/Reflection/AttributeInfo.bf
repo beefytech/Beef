@@ -105,7 +105,8 @@ namespace System.Reflection
 					argIdx++;
 			    }
 				
-				methodInfo.Invoke(targetAttr, params args);
+				if (methodInfo.Invoke(targetAttr, params args) case .Ok(var val))
+					val.Dispose();
 			    return .Ok;
 			}
 
