@@ -78,6 +78,7 @@ namespace IDE.Compiler
 		public bool mCancelled;
 		public int32 mTextVersion = -1;
 		public bool mIsUserRequested;
+		public Stopwatch mStopwatch ~ delete _;
     }
 
     public class BfParser : ILeakIdentifiable

@@ -618,6 +618,8 @@ namespace IDE.ui
 		    //Classify(options.HasFlag(.HighPriority) ? ResolveType.Autocomplete_HighPri : ResolveType.Autocomplete);
 
 			ResolveParams resolveParams = new ResolveParams();
+			if (gApp.mDbgTimeAutocomplete)
+				resolveParams.mStopwatch = new .()..Start();
 			resolveParams.mIsUserRequested = options.HasFlag(.UserRequested);
 			Classify(.Autocomplete, resolveParams);
 			if (!resolveParams.mInDeferredList)
@@ -5539,6 +5541,13 @@ namespace IDE.ui
 				//Debug.WriteLine($"HandleResolveResult {resolveResult}");
 
 				HandleResolveResult(resolveResult.mResolveType, resolveResult.mAutocompleteInfo, resolveResult);
+
+				if (resolveResult.mStopwatch != null)
+				{
+					resolveResult.mStopwatch.Stop();
+					if (var autoComplete = GetAutoComplete())
+						Debug.WriteLine($"Autocomplete {resolveResult.mStopwatch.ElapsedMilliseconds}ms entries: {autoComplete.mAutoCompleteListWidget.mEntryList.Count}");
+				}
 
 				//Debug.WriteLine("ProcessDeferredResolveResults finished {0}", resolveResult.mResolveType);
 
