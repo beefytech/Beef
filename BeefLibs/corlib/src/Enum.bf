@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Collections;
 
 namespace System
 {
@@ -43,13 +44,19 @@ namespace System
 			return false;
 		}
 
-		public static readonly EnumValuesEnumerator<TEnum> GetValues<TEnum>()
+		public static EnumEnumerator<TEnum> GetEnumerator<TEnum>()
+			where TEnum : enum
+		{
+		    return .();
+		}
+
+		public static EnumValuesEnumerator<TEnum> GetValues<TEnum>()
 			where TEnum : enum
 		{
 		    return .();
 		}
 		
-		public static readonly EnumNamesEnumerator<TEnum> GetNames<TEnum>()
+		public static EnumNamesEnumerator<TEnum> GetNames<TEnum>()
 			where TEnum : enum
 		{
 		    return .();
@@ -113,6 +120,25 @@ namespace System
 			}
 
 			public Result<FieldInfo> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct EnumEnumerator<TEnum> : EnumFieldsEnumerator<TEnum>, IEnumerator<(StringView name, TEnum value)>
+			where TEnum : enum
+		{
+			public new (StringView name, TEnum value) Current
+			{
+				get
+				{
+					return ((.)base.Current.[Friend]mFieldData.[Friend]mName, (.)base.Current.[Friend]mFieldData.[Friend]mData);
+				}
+			}
+
+			public new Result<(StringView name, TEnum value)> GetNext() mut
 			{
 				if (!MoveNext())
 					return .Err;
