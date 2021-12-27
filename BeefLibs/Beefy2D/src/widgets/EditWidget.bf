@@ -2366,7 +2366,14 @@ namespace Beefy.widgets
             case KeyCode.Down:
                 {                        
                     int32 aDir = (keyCode == KeyCode.Up) ? -1 : 1;
-                    bool didSelectionMove = PrepareForCursorMove(aDir);
+					if ((mSelection != null) && (!mWidgetWindow.IsKeyDown(KeyCode.Shift)))
+					{
+						var lineAndCol = CursorLineAndColumn;
+						var usePos = (aDir < 0) ? (int32)mSelection.Value.MinPos : mSelection.Value.MaxPos;
+						GetLineCharAtIdx(usePos, var selLine, var selLineChar);
+						CursorLineAndColumn = .(selLine, lineAndCol.mColumn);
+						mSelection = null;
+					}
                     
                     GetCursorLineChar(out lineIdx, out lineChar);
 
@@ -2403,9 +2410,6 @@ namespace Beefy.widgets
 						mCursorWantX = wantedX;
                         
                     }
-
-                    if (didSelectionMove)                        
-                        CursorToLineStart(false);                        
                 }
                 break;
             case KeyCode.Home:
