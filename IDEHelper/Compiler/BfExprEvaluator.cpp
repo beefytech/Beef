@@ -5410,7 +5410,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			return result;
 		}
 		else
-		{						
+		{
 			auto val = mModule->GetDefaultTypedValue(returnType, true, (GetStructRetIdx(methodInstance) != -1) ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
 			if (val.mKind == BfTypedValueKind_Addr)
 				val.mKind = BfTypedValueKind_RestrictedTempAddr;

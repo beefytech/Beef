@@ -21850,11 +21850,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 {
 	BP_ZONE("BfModule::BfMethodDeclaration");	
 
-	if (mCurTypeInstance->IsFunctionFromTypeRef())
-	{
-		NOP;
-	}
-
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized || mCurTypeInstance->mResolvingVarField);
@@ -22187,6 +22182,13 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		
 		if (resolvedReturnType == NULL)
 			resolvedReturnType = GetPrimitiveType(BfTypeCode_Var);
+
+		if ((methodDef->mIsReadOnly) && (!resolvedReturnType->IsRef()))
+		{
+			if (auto methodDeclaration = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration))
+				if (methodDeclaration->mReadOnlySpecifier != NULL)
+					Fail("Readonly specifier is only valid on 'ref' return types", methodDeclaration->mReadOnlySpecifier);
+		}
 	}
 	else
 	{
