@@ -1251,7 +1251,7 @@ namespace System.Reflection
         SpecialName             = 0x0080,     // field is special.  Name describes how.
         EnumPayload				= 0x0100,
 		EnumDiscriminator		= 0x0200,
-		EnumFlags				= 0x0400
+		EnumCase				= 0x0400
     }
 
 	public enum MethodFlags : uint16
