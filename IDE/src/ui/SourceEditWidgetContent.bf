@@ -2390,6 +2390,19 @@ namespace IDE.ui
 			return true;
 		}
 
+		void FixSelection()
+		{
+			if (!HasSelection())
+				return;
+			if (CursorTextPos >= mSelection.Value.MaxPos)
+				CursorTextPos = mSelection.Value.MaxPos;
+			if (mSelection.Value.MaxPos - mSelection.Value.MinPos <= 1)
+			{
+				mSelection = null;
+				return;
+			}
+		}	
+
 		public bool ToggleComment(bool? doComment = null)
 		{
 			if (CheckReadOnly())
@@ -2518,6 +2531,8 @@ namespace IDE.ui
 
 				if (prevSelection == null)
 					mSelection = null;
+
+				FixSelection();
 
 				return true;
 			}
