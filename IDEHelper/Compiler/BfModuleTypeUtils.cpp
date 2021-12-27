@@ -7583,7 +7583,7 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 	{		
 		BfTypeLookupError error;
 		error.mRefNode = typeRef;
-		BfTypeDef* typeDef = FindTypeDef(typeRef, NULL, &error, numGenericParams);		
+		BfTypeDef* typeDef = FindTypeDef(typeRef, NULL, &error, numGenericParams, resolveFlags);		
 		if (typeDef != NULL)
 		{
 			BfAutoComplete* autoComplete = NULL;
@@ -7614,6 +7614,8 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 			if (typeRef->IsA<BfNamedTypeReference>())
 			{
 				String findName = typeRef->ToString();
+				if ((resolveFlags & BfResolveTypeRefFlag_Attribute) != 0)
+					findName += "Attribute";
 				if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsGenericTypeInstance()))
 				{
 					auto genericTypeInst = (BfTypeInstance*)mCurTypeInstance;
@@ -10105,7 +10107,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
-	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime | BfResolveTypeRefFlag_AllowInferredSizedArray));
+	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | 
+		BfResolveTypeRefFlag_DisallowComptime | BfResolveTypeRefFlag_AllowInferredSizedArray | BfResolveTypeRefFlag_Attribute));
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
@@ -10382,7 +10385,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		BfTypeVector genericArgs;
 
 		BfType* type = NULL;
-		BfTypeDef* typeDef = ResolveGenericInstanceDef(genericTypeInstRef, &type);
+		BfTypeDef* typeDef = ResolveGenericInstanceDef(genericTypeInstRef, &type, resolveFlags);
 		if(ambiguousTypeDef != NULL)
 			ShowAmbiguousTypeError(typeRef, typeDef, ambiguousTypeDef);
 		if (typeDef == NULL)

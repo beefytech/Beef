@@ -3021,7 +3021,8 @@ int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, 
 	BfResolveTypeRefFlags resolveFlags = ctx->mResolveFlags;
 	if ((flags & BfHashFlag_AllowGenericParamConstValue) != 0)
 		resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowGenericParamConstValue);
-
+	if (!isHeadType)
+		resolveFlags = (BfResolveTypeRefFlags)(resolveFlags &~ BfResolveTypeRefFlag_Attribute);
 	auto resolvedType = ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, resolveFlags);
 	if (resolvedType == NULL)
 	{
@@ -3917,7 +3918,9 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 		return false;
 	}
 
-	BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(rhsGenericTypeInstRef);
+	BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(rhsGenericTypeInstRef, NULL, ctx->mResolveFlags);
+	if (elementTypeDef == NULL)
+		return false;
 	if (elementTypeDef->GetDefinition() != lhsGenericType->mTypeDef->GetDefinition())
 		return false;
 
