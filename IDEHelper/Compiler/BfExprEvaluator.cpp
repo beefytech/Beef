@@ -11492,7 +11492,7 @@ BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfMethodI
 					return lookupVal;
 				}				
 			}
-			if (paramType->IsComposite())
+			if ((paramType->IsComposite()) && (methodRefTarget.IsAddr()))
 				return BfTypedValue(mModule->mBfIRBuilder->CreateInBoundsGEP(methodRefTarget.mValue, 0, dataIdx), paramType, true);
 			return BfTypedValue(mModule->ExtractValue(methodRefTarget, dataIdx), paramType);						
 		}
