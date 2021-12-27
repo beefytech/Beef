@@ -30,12 +30,118 @@ namespace System
 			return .Err;
 		}
 
-		/*public override void ToString(String strBuffer) mut
+		public static bool IsDefined<T>(T value)
+			where T : enum
 		{
-			Type type = GetType();
-			int32* iPtr = (int32*)((int)(&this) + (int)type.Size);
-			EnumToString(type, strBuffer, *iPtr);
-			//EnumToString(GetType(), )
-		}*/
+			var typeInst = (TypeInstance)typeof(T);
+			for (var field in typeInst.GetFields())
+			{
+				if (field.[Friend]mFieldData.[Friend]mData == (.)value)
+					return true;
+			}
+
+			return false;
+		}
+
+		public static readonly EnumValuesEnumerator<TEnum> GetValues<TEnum>()
+			where TEnum : enum
+		{
+		    return .();
+		}
+		
+		public static readonly EnumNamesEnumerator<TEnum> GetNames<TEnum>()
+			where TEnum : enum
+		{
+		    return .();
+		}
+
+		private struct EnumFieldsEnumeratorWrapper<TEnum>
+			where TEnum : enum
+		{
+			FieldInfo.Enumerator mEnumerator;
+
+			public this()
+			{
+				mEnumerator = typeof(TEnum).GetFields();
+			}
+
+			public int Index
+			{
+				get
+				{
+					return mEnumerator.Index;
+				}				
+			}
+
+			public int Count
+			{
+				get
+				{
+					return mEnumerator.mTypeInstance.[Friend]mFieldDataCount;
+				}				
+			}
+
+			public FieldInfo Current
+			{
+				get
+				{
+					return (.)mEnumerator.Current;
+				}
+			}
+
+			public bool MoveNext() mut
+			{
+				return mEnumerator.MoveNext();
+			}
+
+			public void Dispose()
+			{
+			}
+
+			public Result<FieldInfo> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct EnumValuesEnumerator<TEnum> : EnumFieldsEnumeratorWrapper<TEnum>, IEnumerator<TEnum>
+			where TEnum : enum
+		{
+			public new TEnum Current
+			{
+				get
+				{
+					return (.)base.Current.[Friend]mFieldData.[Friend]mData;
+				}
+			}
+
+			public new Result<TEnum> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct EnumNamesEnumerator<TEnum> : EnumFieldsEnumeratorWrapper<TEnum>, IEnumerator<StringView>
+			where TEnum : enum
+		{
+			public new StringView Current
+			{
+				get
+				{
+					return (.)base.Current.[Friend]mFieldData.[Friend]mName;
+				}
+			}
+
+			public new Result<StringView> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
 	}
 }
