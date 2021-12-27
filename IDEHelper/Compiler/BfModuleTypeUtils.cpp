@@ -10569,8 +10569,11 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				wantGeneric = true;
 			if (type->IsUnspecializedType())
 				isUnspecialized = true;
-			BF_ASSERT(!type->IsVar());
-
+			if (type->IsVar())
+			{
+				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+			}
 			types.push_back(type);
 			names.push_back(fieldName);
 		}
