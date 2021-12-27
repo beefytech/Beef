@@ -2366,7 +2366,7 @@ namespace Beefy.widgets
             case KeyCode.Down:
                 {                        
                     int32 aDir = (keyCode == KeyCode.Up) ? -1 : 1;
-					if ((mSelection != null) && (!mWidgetWindow.IsKeyDown(KeyCode.Shift)))
+					if ((HasSelection()) && (!mWidgetWindow.IsKeyDown(KeyCode.Shift)))
 					{
 						var lineAndCol = CursorLineAndColumn;
 						var usePos = (aDir < 0) ? (int32)mSelection.Value.MinPos : mSelection.Value.MaxPos;
