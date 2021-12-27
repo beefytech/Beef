@@ -3455,7 +3455,9 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 						}
 						else if ((mCurMethodInstance->IsMixin()) && (mCurMethodState->mCurScope == &mCurMethodState->mHeadScope))
 						{
-							// Silently allow...
+							// Only in mixin definition - result ignored
+							CreateValueFromExpression(expr);
+							break;
 						}
 						else
 						{
