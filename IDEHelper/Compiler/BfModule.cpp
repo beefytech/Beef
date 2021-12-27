@@ -6368,7 +6368,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		FieldFlags_Const = 0x40,
 		FieldFlags_SpecialName = 0x80,
 		FieldFlags_EnumPayload = 0x100,
-		FieldFlags_EnumDiscriminator = 0x200
+		FieldFlags_EnumDiscriminator = 0x200,
+		FieldFlags_EnumCase = 0x400
 	};
 
 	if ((typeInstance->IsPayloadEnum()) && (!typeInstance->IsBoxed()))
@@ -6434,6 +6435,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Static);
 		if (fieldDef->mIsConst)
 			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Const);
+		if (fieldDef->IsEnumCaseEntry())
+			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_EnumCase);
 
 		int customAttrIdx = _HandleCustomAttrs(fieldInstance->mCustomAttributes);
 		BfIRValue constValue;		
