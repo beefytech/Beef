@@ -30,12 +30,132 @@ namespace System
 			return .Err;
 		}
 
-		/*public override void ToString(String strBuffer) mut
+		public static bool IsDefined<T>(T value)
+			where T : enum
 		{
-			Type type = GetType();
-			int32* iPtr = (int32*)((int)(&this) + (int)type.Size);
-			EnumToString(type, strBuffer, *iPtr);
-			//EnumToString(GetType(), )
-		}*/
+			var typeInst = (TypeInstance)typeof(T);
+			for (var field in typeInst.GetFields())
+			{
+				if (field.[Friend]mFieldData.[Friend]mData == (.)value)
+					return true;
+			}
+
+			return false;
+		}
+
+		public static readonly EnumValuesEnumerator<TEnum> GetValues<TEnum>()
+			where TEnum : enum
+		{
+		    return .();
+		}
+		
+		public static readonly EnumNamesEnumerator<TEnum> GetNames<TEnum>()
+			where TEnum : enum
+		{
+		    return .();
+		}
+
+		private struct EnumFieldsEnumerator<TEnum>
+			where TEnum : enum
+		{
+			TypeInstance mTypeInstance;
+			int32 mIdx;
+
+			public this()
+			{
+			    mTypeInstance = typeof(TEnum) as TypeInstance;
+			    mIdx = -1;
+			}
+
+			public void Reset() mut
+			{
+			    mIdx = -1;
+			}
+
+			public void Dispose()
+			{
+			}
+
+			public bool MoveNext() mut
+			{
+				if (mTypeInstance == null)
+					return false;
+
+				TypeInstance.FieldData* fieldData = null;
+
+				repeat
+				{
+					mIdx++;
+					if (mIdx == mTypeInstance.[Friend]mFieldDataCount)
+						return false;
+					fieldData = &mTypeInstance.[Friend]mFieldDataPtr[mIdx];
+				}
+				while (!fieldData.mFlags.HasFlag(.EnumCase));
+
+			    return true;
+			}
+
+			public FieldInfo Current
+			{
+			    get
+			    {
+					var fieldData = &mTypeInstance.[Friend]mFieldDataPtr[mIdx];
+			        return FieldInfo(mTypeInstance, fieldData);
+			    }
+			}
+
+			public int32 Index
+			{
+				get
+				{
+					return mIdx;
+				}
+			}
+
+			public Result<FieldInfo> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct EnumValuesEnumerator<TEnum> : EnumFieldsEnumerator<TEnum>, IEnumerator<TEnum>
+			where TEnum : enum
+		{
+			public new TEnum Current
+			{
+				get
+				{
+					return (.)base.Current.[Friend]mFieldData.[Friend]mData;
+				}
+			}
+
+			public new Result<TEnum> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct EnumNamesEnumerator<TEnum> : EnumFieldsEnumerator<TEnum>, IEnumerator<StringView>
+			where TEnum : enum
+		{
+			public new StringView Current
+			{
+				get
+				{
+					return (.)base.Current.[Friend]mFieldData.[Friend]mName;
+				}
+			}
+
+			public new Result<StringView> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
 	}
 }
