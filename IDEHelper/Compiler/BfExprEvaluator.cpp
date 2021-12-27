@@ -7116,7 +7116,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					 	if (methodRefType->WantsDataPassedAsSplat(dataIdx))
 					 		SplatArgs(lookupVal, irArgs);
 						else
+						{
+							if (lookupVal.mType->IsComposite())
+								lookupVal = mModule->MakeAddressable(lookupVal, false);
 							irArgs.push_back(lookupVal.mValue);
+						}
 					}
 				}
 

@@ -65,6 +65,34 @@ namespace Tests
 			ac();
 		}
 
+		struct Vector2 : this(float x, float y)
+		{
+		}
+
+		class TestA
+		{
+			Vector2 mVec = .(11, 22);
+
+			public Vector2 Vec
+			{
+				set
+				{
+					DoIt(() =>
+						{
+							Test.Assert(mVec.x == 11);
+							Test.Assert(mVec.y == 22);
+							Test.Assert(value.x == 33);
+							Test.Assert(value.y == 44);
+						});
+				}
+			}
+
+			public void DoIt<TDlg>(TDlg dlg) where TDlg : delegate void()
+			{
+				dlg();
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -90,6 +118,9 @@ namespace Tests
 			int a = 222;
 			TestWrap(() => { a += 100; });
 			Test.Assert(a == 322);
+
+			TestA ta = scope .();
+			ta.Vec = .(33, 44);
 		}
 
 		struct MethodRefHolder<T> where T : delegate int(int num)
