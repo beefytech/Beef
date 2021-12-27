@@ -452,6 +452,7 @@ public:
 	Array<BfType*> mParams;
 	bool mHasExplicitThis;
 	bool mHasVarArgs;
+	BfCallingConvention mCallingConvention;
 
 public:
 	BfDelegateInfo()
@@ -459,6 +460,7 @@ public:
 		mReturnType = NULL;
 		mHasExplicitThis = false;
 		mHasVarArgs = false;
+		mCallingConvention = BfCallingConvention_Unspecified;
 	}
 
 	~BfDelegateInfo()
@@ -1582,7 +1584,9 @@ enum BfAttributeTargets : int32
 	BfAttributeTargets_Delete       = 0x80000,
 	BfAttributeTargets_Alias        = 0x100000,
 	BfAttributeTargets_Block		= 0x200000,
-	BfAttributeTargets_All          = 0x3FFFFF
+	BfAttributeTargets_DelegateTypeRef = 0x400000,
+	BfAttributeTargets_FunctionTypeRef = 0x800000,
+	BfAttributeTargets_All          = 0xFFFFFF
 };
 
 enum BfAttributeFlags : int8
@@ -2510,6 +2514,7 @@ public:
 		BfType* mRootResolvedType;
 		Dictionary<BfTypeReference*, BfType*> mResolvedTypeMap;
 		BfResolveTypeRefFlags mResolveFlags;		
+		BfCallingConvention mCallingConvention;
 		bool mHadVar;
 		bool mFailed;		
 
@@ -2524,6 +2529,7 @@ public:
 			mFailed = false;
 			mHadVar = false;
 			mResolveFlags = BfResolveTypeRefFlag_None;
+			mCallingConvention = BfCallingConvention_Unspecified;
 		}
 
 		BfType* GetCachedResolvedType(BfTypeReference* typeReference);

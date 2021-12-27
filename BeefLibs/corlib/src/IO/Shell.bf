@@ -9,7 +9,7 @@ namespace System.IO
 		{
 			public struct VTable : COM_IUnknown.VTable
 			{
-				public function HResult(COM_IPersistFile* self, Guid* pClassID) GetClassID;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IPersistFile* self, Guid* pClassID) GetClassID;
 			}
 		}
 
@@ -19,11 +19,11 @@ namespace System.IO
 
 			public struct VTable : COM_IPersist.VTable
 			{
-				public function HResult(COM_IPersistFile* self) IsDirty;
-				public function HResult(COM_IPersistFile* self, char16* pszFileName) Load;
-				public function HResult(COM_IPersistFile* self, char16* pszFileName, Windows.IntBool remember) Save;
-				public function HResult(COM_IPersistFile* self, char16* pszFileName) SaveCompleted;
-				public function HResult(COM_IPersistFile* self, char16* pszName) GetCurFile;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IPersistFile* self) IsDirty;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IPersistFile* self, char16* pszFileName) Load;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IPersistFile* self, char16* pszFileName, Windows.IntBool remember) Save;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IPersistFile* self, char16* pszFileName) SaveCompleted;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IPersistFile* self, char16* pszName) GetCurFile;
 			}
 			public new VTable* VT
 			{
@@ -43,24 +43,24 @@ namespace System.IO
 
 			public struct VTable : Windows.COM_IUnknown.VTable
 			{
-				public function HResult(COM_IShellLink* self, char16* pszFile, int32 cch, Windows.NativeFindData* pfd, uint32 fFlags) GetPath;
-				public function HResult(COM_IShellLink* self, IDLIST** ppidl) GetIDList;
-				public function HResult(COM_IShellLink* self, IDLIST* pidl) SetIDList;
-				public function HResult(COM_IShellLink* self, char16* pszName, int32 cch) GetDescription;
-				public function HResult(COM_IShellLink* self, char16* pszName) SetDescription;
-				public function HResult(COM_IShellLink* self, char16* pszDir, int32 cch) GetWorkingDirectory;
-				public function HResult(COM_IShellLink* self, char16* pszDir) SetWorkingDirectory;
-				public function HResult(COM_IShellLink* self, char16* pszArgs, int32 cch) GetArguments;
-				public function HResult(COM_IShellLink* self, char16* pszArgs) SetArguments;
-				public function HResult(COM_IShellLink* self, uint16 *pwHotkey) GetHotkey;
-				public function HResult(COM_IShellLink* self, uint16 wHotkey) SetHotkey;
-				public function HResult(COM_IShellLink* self, int32 *piShowCmd) GetShowCmd;
-				public function HResult(COM_IShellLink* self, int32 iShowCmd) SetShowCmd;
-				public function HResult(COM_IShellLink* self, char16* pszIconPath, int32 cch, int32 *piIcon) GetIconLocation;
-				public function HResult(COM_IShellLink* self, char16* pszIconPath, int32 iIcon) SetIconLocation;
-				public function HResult(COM_IShellLink* self, char16* pszPathRel, uint32 dwReserved) SetRelativePath;
-				public function HResult(COM_IShellLink* self, Windows.HWnd hwnd, uint32 fFlags) Resolve;
-				public function HResult(COM_IShellLink* self, char16* pszFile) SetPath;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszFile, int32 cch, Windows.NativeFindData* pfd, uint32 fFlags) GetPath;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, IDLIST** ppidl) GetIDList;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, IDLIST* pidl) SetIDList;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszName, int32 cch) GetDescription;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszName) SetDescription;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszDir, int32 cch) GetWorkingDirectory;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszDir) SetWorkingDirectory;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszArgs, int32 cch) GetArguments;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszArgs) SetArguments;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, uint16 *pwHotkey) GetHotkey;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, uint16 wHotkey) SetHotkey;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, int32 *piShowCmd) GetShowCmd;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, int32 iShowCmd) SetShowCmd;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszIconPath, int32 cch, int32 *piIcon) GetIconLocation;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszIconPath, int32 iIcon) SetIconLocation;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszPathRel, uint32 dwReserved) SetRelativePath;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, Windows.HWnd hwnd, uint32 fFlags) Resolve;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellLink* self, char16* pszFile) SetPath;
 			    
 			}
 			public new VTable* VT

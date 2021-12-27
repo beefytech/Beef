@@ -11144,8 +11144,11 @@ void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, Bf
 	}
 }
 
-void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget, bool allowNonConstArgs, BfCaptureInfo* captureInfo)
+void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget, BfGetCustomAttributesFlags flags, BfCaptureInfo* captureInfo)
 {
+	bool allowNonConstArgs = (flags & BfGetCustomAttributesFlags_AllowNonConstArgs) != 0;
+	bool keepConstsInModule = (flags & BfGetCustomAttributesFlags_KeepConstsInModule) != 0;
+
 	if (!mCompiler->mHasRequiredTypes)
 		return;
 
@@ -11389,7 +11392,8 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 						BfTypedValue result = constResolver.Resolve(assignExpr->mRight, fieldTypeInst.mResolvedType, BfConstResolveFlag_NoActualizeValues);
 						if (result)
 						{
-							CurrentAddToConstHolder(result.mValue);
+							if (!keepConstsInModule)
+								CurrentAddToConstHolder(result.mValue);
 							setField.mParam = result;
 							customAttribute.mSetField.push_back(setField);
 						}
@@ -11451,7 +11455,8 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 									if (!result.mValue.IsConst())
 										result = GetDefaultTypedValue(result.mType);
 									BF_ASSERT(result.mType == propType);
-									CurrentAddToConstHolder(result.mValue);
+									if (!keepConstsInModule)
+										CurrentAddToConstHolder(result.mValue);
 									setProperty.mParam = result;
 									customAttribute.mSetProperties.push_back(setProperty);
 								}
@@ -11567,10 +11572,13 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		}
 
 		// Move all those to the constHolder
-		for (auto& ctorArg : customAttribute.mCtorArgs)
-		{			
-			if (ctorArg.IsConst())
-				CurrentAddToConstHolder(ctorArg);			
+		if (!keepConstsInModule)
+		{
+			for (auto& ctorArg : customAttribute.mCtorArgs)
+			{
+				if (ctorArg.IsConst())
+					CurrentAddToConstHolder(ctorArg);
+			}
 		}
 		
 		if (attributesDirective->mAttributeTargetSpecifier != NULL)
@@ -11627,10 +11635,10 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 	ValidateCustomAttributes(customAttributes, attrTarget);
 }
 
-BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs, BfCaptureInfo* captureInfo)
+BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags, BfCaptureInfo* captureInfo)
 {
 	BfCustomAttributes* customAttributes = new BfCustomAttributes();
-	GetCustomAttributes(customAttributes, attributesDirective, attrType, allowNonConstArgs, captureInfo);
+	GetCustomAttributes(customAttributes, attributesDirective, attrType, flags, captureInfo);
 	return customAttributes;
 }
 
@@ -15480,7 +15488,11 @@ void BfModule::CreateDelegateInvokeMethod()
 
 	mBfIRBuilder->AddBlock(doneBB);
 	mBfIRBuilder->SetInsertPoint(doneBB);
-	if ((mCurMethodInstance->mReturnType->IsValuelessType()) || 
+	if (mCurMethodInstance->mReturnType->IsVar())
+	{
+		// Do nothing
+	}
+	else if ((mCurMethodInstance->mReturnType->IsValuelessType()) || 
 		((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1)))
 	{
 		mBfIRBuilder->CreateRetVoid();
@@ -21553,6 +21565,10 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 			}
 		}
 	}
+	
+	auto delegateInfo = typeInstance->GetDelegateInfo();
+	if ((delegateInfo != NULL) && (methodInstance->mMethodDef->mMethodType == BfMethodType_Normal) && (methodInstance->mMethodDef->mName == "Invoke"))
+		methodInstance->mCallingConvention = delegateInfo->mCallingConvention;
 }
 
 void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& mangledName, bool isTemporaryFunc, bool* outIsIntrinsic)
@@ -21830,6 +21846,11 @@ static void StackOverflow()
 void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool isTemporaryFunc, bool addToWorkList)
 {
 	BP_ZONE("BfModule::BfMethodDeclaration");	
+
+	if (mCurTypeInstance->IsFunctionFromTypeRef())
+	{
+		NOP;
+	}
 
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped

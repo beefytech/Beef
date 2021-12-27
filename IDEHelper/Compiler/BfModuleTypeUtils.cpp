@@ -9370,6 +9370,28 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 	return BfTypedValue();
 }
 
+void BfModule::GetDelegateTypeRefAttributes(BfDelegateTypeRef* delegateTypeRef, BfCallingConvention& callingConvention)
+{
+	if (delegateTypeRef->mAttributes == NULL)
+		return;
+
+	BfCaptureInfo captureInfo;
+	auto customAttributes = GetCustomAttributes(delegateTypeRef->mAttributes, (BfAttributeTargets)(BfAttributeTargets_DelegateTypeRef | BfAttributeTargets_FunctionTypeRef), BfGetCustomAttributesFlags_KeepConstsInModule);
+	if (customAttributes != NULL)
+	{
+		auto linkNameAttr = customAttributes->Get(mCompiler->mCallingConventionAttributeTypeDef);
+		if (linkNameAttr != NULL)
+		{
+			if (linkNameAttr->mCtorArgs.size() == 1)
+			{
+				auto constant = mBfIRBuilder->GetConstant(linkNameAttr->mCtorArgs[0]);
+				if (constant != NULL)
+					callingConvention = (BfCallingConvention)constant->mInt32;
+			}
+		}
+	}	
+}
+
 BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags, int numGenericArgs)
 {
 	BP_ZONE("BfModule::ResolveTypeRef");
@@ -10113,6 +10135,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
 	BfResolvedTypeSet::Entry* resolvedEntry = NULL;
+	if (auto delegateTypeRef = BfNodeDynCastExact<BfDelegateTypeRef>(typeRef))
+		GetDelegateTypeRefAttributes(delegateTypeRef, lookupCtx.mCallingConvention);	
+
 	auto inserted = mContext->mResolvedTypes.Insert(typeRef, &lookupCtx, &resolvedEntry);	
 
 	if (resolvedEntry == NULL)
@@ -10867,7 +10892,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			dlgType->mIsUnspecializedTypeVariation = isUnspecialized;
 			delegateType = dlgType;
 		}
-				
+
+		delegateInfo->mCallingConvention = lookupCtx.mCallingConvention;
+		
 		Val128 hashContext;
 
 		BfTypeDef* typeDef = new BfTypeDef();
@@ -13123,9 +13150,11 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 		
 		auto fromMethodInst = GetRawMethodByName(fromTypeInst, "Invoke", -1, true);
 		auto toMethodInst = GetRawMethodByName(toTypeInst, "Invoke", -1, true);
-				
+		
+		auto toDelegateInfo = toTypeInst->GetDelegateInfo();
+
 		if ((fromMethodInst != NULL) && (toMethodInst != NULL) &&
-			(fromMethodInst->mMethodDef->mCallingConvention == toMethodInst->mMethodDef->mCallingConvention) &&
+			(fromMethodInst->mCallingConvention == toMethodInst->mCallingConvention) &&
 			(fromMethodInst->mMethodDef->mIsMutating == toMethodInst->mMethodDef->mIsMutating) &&
 			(fromMethodInst->mReturnType == toMethodInst->mReturnType) &&			
 			(fromMethodInst->GetParamCount() == toMethodInst->GetParamCount()))
@@ -13706,6 +13735,25 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			str += "delegate ";
 		else
 			str += "function ";
+
+		if (delegateInfo->mCallingConvention != BfCallingConvention_Unspecified)
+		{
+			str += "[CallingConvention(";
+			switch (delegateInfo->mCallingConvention)
+			{
+			case BfCallingConvention_Cdecl:
+				str += ".Cdecl";
+				break;
+			case BfCallingConvention_Stdcall:
+				str += ".Stdcall";
+				break;
+			case BfCallingConvention_Fastcall:
+				str += ".Fastcall";
+				break;
+			}
+			str += ")] ";
+		}
+
 		DoTypeToString(str, delegateInfo->mReturnType, typeNameFlags, genericMethodNameOverrides);
 		str += "(";
 

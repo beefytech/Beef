@@ -14769,7 +14769,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 
 	if (attributeDirective != NULL)
 	{
-		auto customAttrs = mModule->GetCustomAttributes(attributeDirective, BfAttributeTargets_Alloc, true, &allocTarget.mCaptureInfo);
+		auto customAttrs = mModule->GetCustomAttributes(attributeDirective, BfAttributeTargets_Alloc, BfGetCustomAttributesFlags_AllowNonConstArgs, &allocTarget.mCaptureInfo);
 		if (customAttrs != NULL)
 		{
 			for (auto& attrib : customAttrs->mAttributes)

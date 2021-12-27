@@ -1585,8 +1585,9 @@ void BfPrinter::Visit(BfDelegateTypeRef* typeRef)
 
 	VisitChild(typeRef->mTypeToken);
 	ExpectSpace();
-	VisitChild(typeRef->mReturnType);
 	VisitChild(typeRef->mAttributes);
+	ExpectSpace();
+	VisitChild(typeRef->mReturnType);	
 	VisitChild(typeRef->mOpenParen);
 
 	for (int i = 0; i < (int)typeRef->mParams.size(); i++)
