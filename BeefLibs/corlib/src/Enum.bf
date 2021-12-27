@@ -55,47 +55,61 @@ namespace System
 		    return .();
 		}
 
-		private struct EnumFieldsEnumeratorWrapper<TEnum>
+		private struct EnumFieldsEnumerator<TEnum>
 			where TEnum : enum
 		{
-			FieldInfo.Enumerator mEnumerator;
+			TypeInstance mTypeInstance;
+			int32 mIdx;
 
 			public this()
 			{
-				mEnumerator = typeof(TEnum).GetFields();
+			    mTypeInstance = typeof(TEnum) as TypeInstance;
+			    mIdx = -1;
 			}
 
-			public int Index
+			public void Reset() mut
 			{
-				get
-				{
-					return mEnumerator.Index;
-				}				
-			}
-
-			public int Count
-			{
-				get
-				{
-					return mEnumerator.mTypeInstance.[Friend]mFieldDataCount;
-				}				
-			}
-
-			public FieldInfo Current
-			{
-				get
-				{
-					return (.)mEnumerator.Current;
-				}
-			}
-
-			public bool MoveNext() mut
-			{
-				return mEnumerator.MoveNext();
+			    mIdx = -1;
 			}
 
 			public void Dispose()
 			{
+			}
+
+			public bool MoveNext() mut
+			{
+				if (mTypeInstance == null)
+					return false;
+
+				TypeInstance.FieldData* fieldData = null;
+
+				repeat
+				{
+					mIdx++;
+					if (mIdx == mTypeInstance.[Friend]mFieldDataCount)
+						return false;
+					fieldData = &mTypeInstance.[Friend]mFieldDataPtr[mIdx];
+				}
+				while (!fieldData.mFlags.HasFlag(.EnumCase));
+
+			    return true;
+			}
+
+			public FieldInfo Current
+			{
+			    get
+			    {
+					var fieldData = &mTypeInstance.[Friend]mFieldDataPtr[mIdx];
+			        return FieldInfo(mTypeInstance, fieldData);
+			    }
+			}
+
+			public int32 Index
+			{
+				get
+				{
+					return mIdx;
+				}
 			}
 
 			public Result<FieldInfo> GetNext() mut
@@ -106,7 +120,7 @@ namespace System
 			}
 		}
 
-		public struct EnumValuesEnumerator<TEnum> : EnumFieldsEnumeratorWrapper<TEnum>, IEnumerator<TEnum>
+		public struct EnumValuesEnumerator<TEnum> : EnumFieldsEnumerator<TEnum>, IEnumerator<TEnum>
 			where TEnum : enum
 		{
 			public new TEnum Current
@@ -125,7 +139,7 @@ namespace System
 			}
 		}
 
-		public struct EnumNamesEnumerator<TEnum> : EnumFieldsEnumeratorWrapper<TEnum>, IEnumerator<StringView>
+		public struct EnumNamesEnumerator<TEnum> : EnumFieldsEnumerator<TEnum>, IEnumerator<StringView>
 			where TEnum : enum
 		{
 			public new StringView Current
