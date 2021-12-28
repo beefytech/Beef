@@ -8053,12 +8053,8 @@ void BfCompiler::GenerateAutocompleteInfo()
 				for (int i = 0; i < entry->mMatchesLength; i++)
 				{
 					int match = entry->mMatches[i];
-
-					// Need max 3 chars (largest Hex (FF) + '\0')
-					char buffer[3];
-
-					_itoa_s(match, buffer, 16);
-
+					char buffer[16];
+					itoa(match, buffer, 16);
 					autoCompleteResultString += String(buffer);
 					autoCompleteResultString += ",";
 				}
