@@ -16,11 +16,16 @@ public:
 	const char* mDisplay;
 	const char* mDocumentation;
 	int8 mNamePrefixCount;
+	int mScore;
+	uint8* mMatches;
+	uint8 mMatchesLength;
 
 public:
 	AutoCompleteEntry()
 	{
 		mNamePrefixCount = 0;
+		mMatches = nullptr;
+		mMatchesLength = 0;
 	}
 
 	AutoCompleteEntry(const char* entryType, const char* display)
@@ -29,6 +34,9 @@ public:
 		mDisplay = display;
 		mDocumentation = NULL;
 		mNamePrefixCount = 0;
+		mScore = 0;
+		mMatches = nullptr;
+		mMatchesLength = 0;
 	}
 
 	AutoCompleteEntry(const char* entryType, const StringImpl& display)
@@ -37,6 +45,9 @@ public:
 		mDisplay = display.c_str();
 		mDocumentation = NULL;
 		mNamePrefixCount = 0;
+		mScore = 0;
+		mMatches = nullptr;
+		mMatchesLength = 0;
 	}
 
 	AutoCompleteEntry(const char* entryType, const StringImpl& display, int namePrefixCount)
@@ -45,8 +56,11 @@ public:
 		mDisplay = display.c_str();
 		mDocumentation = NULL;
 		mNamePrefixCount = (int8)namePrefixCount;
+		mScore = 0;
+		mMatches = nullptr;
+		mMatchesLength = 0;
 	}
-	
+
 	bool operator==(const AutoCompleteEntry& other) const
 	{
 		return strcmp(mDisplay, other.mDisplay) == 0;
@@ -97,12 +111,13 @@ public:
 
 	bool mIsGetDefinition;
 	bool mIsAutoComplete;
+	bool mDoFuzzyAutoComplete;
 	int mInsertStartIdx;
 	int mInsertEndIdx;
 
-	bool DoesFilterMatch(const char* entry, const char* filter);		
-	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter);	
-	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry, const char* filter);
+	bool DoesFilterMatch(const char* entry, const char* filter, int& score, uint8* matches, int maxMatches);
+	AutoCompleteEntry* AddEntry(AutoCompleteEntry& entry, const StringImpl& filter);	
+	AutoCompleteEntry* AddEntry(AutoCompleteEntry& entry, const char* filter);
 	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry);
 
 	AutoCompleteBase();
@@ -226,7 +241,7 @@ public:
 	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);	
 
 public:
-	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete);
+	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete, bool doFuzzyAutoComplete = false);
 	~BfAutoComplete();
 
 	void SetModule(BfModule* module);

@@ -8026,9 +8026,13 @@ void BfCompiler::GenerateAutocompleteInfo()
 		{
 			entries.Add(&entry);
 		}
+
 		std::sort(entries.begin(), entries.end(), [](AutoCompleteEntry* lhs, AutoCompleteEntry* rhs)
 			{
-				return stricmp(lhs->mDisplay, rhs->mDisplay) < 0;
+				if (lhs->mScore == rhs->mScore)
+					return stricmp(lhs->mDisplay, rhs->mDisplay) < 0;
+
+				return lhs->mScore > rhs->mScore;
 			});
 				
 		String docString;
@@ -8042,6 +8046,25 @@ void BfCompiler::GenerateAutocompleteInfo()
 			for (int i = 0; i < entry->mNamePrefixCount; i++)
 				autoCompleteResultString += '@';
 			autoCompleteResultString += String(entry->mDisplay);
+
+			if (entry->mMatchesLength > 0)
+			{
+				autoCompleteResultString += "\x02";
+				for (int i = 0; i < entry->mMatchesLength; i++)
+				{
+					int match = entry->mMatches[i];
+
+					// Need max 3 chars (largest Hex (FF) + '\0')
+					char buffer[3];
+
+					_itoa_s(match, buffer, 16);
+
+					autoCompleteResultString += String(buffer);
+					autoCompleteResultString += ",";
+				}
+
+				autoCompleteResultString += "X";
+			}
 
 			if (entry->mDocumentation != NULL)
 			{

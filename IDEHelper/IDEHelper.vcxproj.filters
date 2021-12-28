@@ -24,6 +24,9 @@
     <Filter Include="Beef">
       <UniqueIdentifier>{83b97406-2f83-49ad-bbbc-3ff70ecda6bb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="third_party">
+      <UniqueIdentifier>{d36777f2-b326-4a8c-84a3-5c2f39153f75}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Compiler\BfAst.cpp">
@@ -398,6 +401,9 @@
     <ClInclude Include="Compiler\BfNamespaceVisitor.h" />
     <ClInclude Include="Compiler\CeMachine.h">
       <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\FtsFuzzyMatch.h">
+      <Filter>third_party</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

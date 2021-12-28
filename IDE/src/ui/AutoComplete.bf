@@ -382,6 +382,8 @@ namespace IDE.ui
                 public String mEntryInsert;
 				public String mDocumentation;
                 public Image mIcon;
+				public List<uint8> mMatchIndices;
+				public int32 mScore;
 
 				public float Y
 				{
@@ -401,8 +403,41 @@ namespace IDE.ui
                         g.Draw(mIcon, 0, 0);
 
                     g.SetFont(IDEApp.sApp.mCodeFont);
-                    g.DrawString(mEntryDisplay, GS!(20), 0);
-                }                
+					
+					float offset = GS!(20);
+
+					int index = 0;
+					for(char32 c in mEntryDisplay.DecodedChars)
+					loop:
+					{
+						if(mMatchIndices?.Contains((uint8)index) == true)
+						{
+							g.PushColor(DarkTheme.COLOR_MENU_FOCUSED);
+							defer:loop g.PopColor();
+						}
+
+						let str = StringView(mEntryDisplay, index, @c.NextIndex - index);
+
+						g.DrawString(str, offset, 0);
+
+						offset += IDEApp.sApp.mCodeFont.GetWidth(str);
+
+						index = @c.NextIndex;
+					}
+                } 
+
+				public void SetMatches(Span<uint8> matchIndices)
+				{
+					mMatchIndices?.Clear();
+	
+					if (!matchIndices.IsEmpty)
+					{
+						if(mMatchIndices == null)
+							mMatchIndices = new:(mAutoCompleteListWidget.mAlloc) List<uint8>(matchIndices.Length);
+						
+						mMatchIndices.AddRange(matchIndices);
+					}
+				}               
             }
 
             class Content : Widget
@@ -602,8 +637,8 @@ namespace IDE.ui
 	                mMaxWidth = Math.Max(mMaxWidth, entryWidth);
 				}*/
             }
-
-            public void AddEntry(StringView entryType, StringView entryDisplay, Image icon, StringView entryInsert = default, StringView documentation = default)
+			
+			public void AddEntry(StringView entryType, StringView entryDisplay, Image icon, StringView entryInsert = default, StringView documentation = default, List<uint8> matchIndices = null)
             {                
                 var entryWidget = new:mAlloc EntryWidget();
                 entryWidget.mAutoCompleteListWidget = this;
@@ -615,10 +650,12 @@ namespace IDE.ui
 					entryWidget.mDocumentation = new:mAlloc String(documentation);
                 entryWidget.mIcon = icon;
 
+				entryWidget.SetMatches(matchIndices);
+
                 UpdateEntry(entryWidget, mEntryList.Count);
                 mEntryList.Add(entryWidget);
                 //mScrollContent.AddWidget(entryWidget);
-            }            
+            }
 
             public void EnsureSelectionVisible()
             {
@@ -1574,6 +1611,49 @@ namespace IDE.ui
 			    mInvokeWidget.mIgnoreMove += ignoreMove ? 1 : -1;	
 		}
 
+		// IDEHelper/third_party/FtsFuzzyMatch.h 
+		[CallingConvention(.Stdcall), CLink]
+		static extern bool fts_fuzzy_match(char8* pattern, char8* str, ref int32 outScore, uint8* matches, int maxMatches);
+
+		/// Checks whether the given entry matches the filter and updates its score and match indices accordingly.
+		bool DoesFilterMatchFuzzy(AutoCompleteListWidget.EntryWidget entry, String filter)
+		{
+			if (filter.Length == 0)
+				return true;
+
+			if (filter.Length > entry.mEntryDisplay.Length)
+				return false;
+
+			int32 score = 0;
+			uint8[256] matches = ?;
+
+			if (!fts_fuzzy_match(filter.CStr(), entry.mEntryDisplay.CStr(), ref score, &matches, matches.Count))
+			{
+				entry.SetMatches(Span<uint8>(null, 0));
+				entry.mScore = score;
+				return false;
+			}
+			
+			// Should be the amount of Unicode-codepoints in filter though it' probably faster to do it this way
+			int matchesLength = 0;
+
+			for (uint8 i = 0;; i++)
+			{
+				uint8 matchIndex = matches[i];
+				
+				if ((matchIndex == 0 && i != 0) || i == uint8.MaxValue)
+				{
+					matchesLength = i;
+					break;
+				}
+			}
+
+			entry.SetMatches(Span<uint8>(&matches, matchesLength));
+			entry.mScore = score;
+
+			return true;
+		}
+
 		bool DoesFilterMatch(String entry, String filter)
 		{	
 			if (filter.Length == 0)
@@ -1640,6 +1720,9 @@ namespace IDE.ui
 			//return strnicmp(filter, initialStr, filterLen) == 0;
 		}
 
+		[LinkName("_stricmp")]
+		static extern int32 stricmp(char8* lhs, char8* rhs);
+
         void UpdateData(String selectString, bool changedAfterInfo)
         {
 			if ((mInsertEndIdx != -1) && (mInsertEndIdx < mInsertStartIdx))
@@ -1692,14 +1775,21 @@ namespace IDE.ui
 					if (curString == ".")
 						curString.Clear();
 
+					bool doFuzzyAutoComplete = gApp.mSettings.mEditorSettings.mFuzzyAutoComplete;
+
                     for (int i < mAutoCompleteListWidget.mFullEntryList.Count)
                     {
                         var entry = mAutoCompleteListWidget.mFullEntryList[i];
-                        //if (String.Compare(entry.mEntryDisplay, 0, curString, 0, curString.Length, true) == 0)
-						if (DoesFilterMatch(entry.mEntryDisplay, curString))
+
+						if (doFuzzyAutoComplete && DoesFilterMatchFuzzy(entry, curString))
                         {
 							mAutoCompleteListWidget.mEntryList.Add(entry);
-                            mAutoCompleteListWidget.UpdateEntry(entry, visibleCount);
+                            visibleCount++;
+                        }
+						else if (!doFuzzyAutoComplete && DoesFilterMatch(entry.mEntryDisplay, curString))
+                        {
+							mAutoCompleteListWidget.mEntryList.Add(entry);
+							mAutoCompleteListWidget.UpdateEntry(entry, visibleCount);
                             visibleCount++;
                         }
                         else
@@ -1707,6 +1797,25 @@ namespace IDE.ui
                             mAutoCompleteListWidget.UpdateEntry(entry, -1);
                         }                                        
                     }
+
+					if (doFuzzyAutoComplete)
+					{
+						// sort entries because the scores probably have changed
+						mAutoCompleteListWidget.mEntryList.Sort(scope (left, right) =>
+							{
+								if (left.mScore > right.mScore)
+									return -1;
+								else if (left.mScore < right.mScore)
+									return 1;
+								else
+									return ((stricmp(left.mEntryDisplay.CStr(), right.mEntryDisplay.CStr()) < 0) ? -1 : 1);
+							});
+	
+						for (int i < mAutoCompleteListWidget.mEntryList.Count)
+						{
+							mAutoCompleteListWidget.UpdateEntry(mAutoCompleteListWidget.mEntryList[i], i);
+						}
+					}
 
                     if ((visibleCount == 0) && (mInvokeSrcPositions == null))
                     {
@@ -1853,6 +1962,7 @@ namespace IDE.ui
 
 		public void UpdateInfo(String info)
 		{
+			List<uint8> matchIndices = new:ScopedAlloc! .(256);
 			for (var entryView in info.Split('\n'))
 			{
 				StringView entryType = StringView(entryView);
@@ -1863,13 +1973,35 @@ namespace IDE.ui
 					entryDisplay = StringView(entryView, tabPos + 1);
 					entryType = StringView(entryType, 0, tabPos);
 				}
+				
+				StringView matches = default;
+				int matchesPos = entryDisplay.IndexOf('\x02');
+				matchIndices.Clear();
+				if (matchesPos != -1)
+				{
+					matches = StringView(entryDisplay, matchesPos + 1);
+					entryDisplay = StringView(entryDisplay, 0, matchesPos);
+
+					for(var sub in matches.Split(','))
+					{
+						if(sub.StartsWith('X'))
+							break;
+
+						var result = int64.Parse(sub, .HexNumber);
+
+						Debug.Assert((result case .Ok(let value)) && value <= uint8.MaxValue);
+
+						// TODO(FUZZY): we could save start and length instead of single chars
+						matchIndices.Add((uint8)result.Value);
+					}
+				}
 
 				StringView documentation = default;
-				int docPos = entryDisplay.IndexOf('\x03');
+				int docPos = matches.IndexOf('\x03');
 				if (docPos != -1)
 				{
-					documentation = StringView(entryDisplay, docPos + 1);
-					entryDisplay = StringView(entryDisplay, 0, docPos);
+					documentation = StringView(matches, docPos + 1);
+					matches = StringView(matches, 0, docPos);
 				}
 
 				StringView entryInsert = default;
@@ -1892,15 +2024,27 @@ namespace IDE.ui
 				case "select":
 				default:
 				    {
-						if ((!documentation.IsEmpty) && (mAutoCompleteListWidget != null))
+						if (((!documentation.IsEmpty) || (!matchIndices.IsEmpty)) && (mAutoCompleteListWidget != null))
 						{
 							while (entryIdx < mAutoCompleteListWidget.mEntryList.Count)
 							{
 								let entry = mAutoCompleteListWidget.mEntryList[entryIdx];
 								if ((entry.mEntryDisplay == entryDisplay) && (entry.mEntryType == entryType))
 								{
-									if (entry.mDocumentation == null)
+									if (!matchIndices.IsEmpty)
+									{
+										if (entry.mMatchIndices == null)
+											entry.mMatchIndices = new:(mAutoCompleteListWidget.[Friend]mAlloc) List<uint8>(matchIndices.GetEnumerator());
+										else
+										{
+											entry.mMatchIndices.Clear();
+											entry.mMatchIndices.AddRange(matchIndices);
+										}
+									}
+
+									if ((!documentation.IsEmpty) && entry.mDocumentation == null)
 										entry.mDocumentation = new:(mAutoCompleteListWidget.[Friend]mAlloc) String(documentation);
+
 									break;
 								}
 								entryIdx++;
@@ -1982,9 +2126,9 @@ namespace IDE.ui
 
             InvokeWidget oldInvokeWidget = null;
             String selectString = null;
+			List<uint8> matchIndices = new:ScopedAlloc! .(256);
 			for (var entryView in info.Split('\n'))
             {
-				
 				Image entryIcon = null;
 				StringView entryType = StringView(entryView);
 				int tabPos = entryType.IndexOf('\t');
@@ -1995,12 +2139,34 @@ namespace IDE.ui
 					entryType = StringView(entryType, 0, tabPos);
 				}
 
+				StringView matches = default;
+				int matchesPos = entryDisplay.IndexOf('\x02');
+				matchIndices.Clear();
+				if (matchesPos != -1)
+				{
+					matches = StringView(entryDisplay, matchesPos + 1);
+					entryDisplay = StringView(entryDisplay, 0, matchesPos);
+
+					for(var sub in matches.Split(','))
+					{
+						if(sub.StartsWith('X'))
+							break;
+
+						var result = int64.Parse(sub, .HexNumber);
+
+						Debug.Assert((result case .Ok(let value)) && value <= uint8.MaxValue);
+
+						// TODO(FUZZY): we could save start and length instead of single chars
+						matchIndices.Add((uint8)result.Value);
+					}
+				}
+
 				StringView documentation = default;
-				int docPos = entryDisplay.IndexOf('\x03');
+				int docPos = matches.IndexOf('\x03');
 				if (docPos != -1)
 				{
-					documentation = StringView(entryDisplay, docPos + 1);
-					entryDisplay = StringView(entryDisplay, 0, docPos);
+					documentation = StringView(matches, docPos + 1);
+					matches = StringView(matches, 0, docPos);
 				}
 
 				StringView entryInsert = default;
@@ -2129,7 +2295,7 @@ namespace IDE.ui
 						if (!mInvokeOnly)
 						{
 							mIsFixit |= entryType == "fixit";
-                            mAutoCompleteListWidget.AddEntry(entryType, entryDisplay, entryIcon, entryInsert, documentation);
+                            mAutoCompleteListWidget.AddEntry(entryType, entryDisplay, entryIcon, entryInsert, documentation, matchIndices);
 						}
                     }                        
                 }

@@ -2071,7 +2071,7 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 {
 	for (int ifaceTypeId : ceEmitContext->mInterfaces)
 		typeInstance->mCeTypeInfo->mPendingInterfaces.Add(ifaceTypeId);
-		
+
 	if (ceEmitContext->mEmitData.IsEmpty())
 		return;
 		

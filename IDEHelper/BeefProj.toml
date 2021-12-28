@@ -508,3 +508,11 @@ Path = "X86Target.h"
 [[ProjectFolder.Items]]
 Type = "Source"
 Path = "X86XmmInfo.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Name = "third_party"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "third_party/FtsFuzzyMatch.h"

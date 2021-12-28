@@ -548,6 +548,11 @@ namespace IDE.ui
 
 		public ~this()
 		{
+			if (mProjectSource?.mEditData?.HasTextChanged() == true)
+			{
+				mProjectSource.ClearEditData();
+			}
+
 			if (mInPostRemoveUpdatePanels)
 			{
 				//Debug.WriteLine("Removing sourceViewPanel from mPostRemoveUpdatePanel {0} in ~this ", this);
@@ -623,6 +628,7 @@ namespace IDE.ui
 			if (gApp.mDbgPerfAutocomplete)
 				resolveParams.mProfileInstance = Profiler.StartSampling("Autocomplete").GetValueOrDefault();
 			resolveParams.mIsUserRequested = options.HasFlag(.UserRequested);
+			resolveParams.mDoFuzzyAutoComplete = gApp.mSettings.mEditorSettings.mFuzzyAutoComplete;
 			Classify(.Autocomplete, resolveParams);
 			if (!resolveParams.mInDeferredList)
 				delete resolveParams;
@@ -1854,7 +1860,9 @@ namespace IDE.ui
             /*else (!isFullClassify) -- do we ever need to do this?
                 parser.SetCursorIdx(mEditWidget.mEditWidgetContent.CursorTextPos);*/
 
-            var resolvePassData = parser.CreateResolvePassData(resolveType);
+			bool doFuzzyAutoComplete = resolveParams?.mDoFuzzyAutoComplete ?? false;
+
+            var resolvePassData = parser.CreateResolvePassData(resolveType, doFuzzyAutoComplete);
             if (resolveParams != null)
             {
                 if (resolveParams.mLocalId != -1)

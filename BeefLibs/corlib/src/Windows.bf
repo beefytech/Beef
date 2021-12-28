@@ -1131,7 +1131,6 @@ namespace System
 				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, FDE_SHAREVIOLATION_RESPONSE* pResponse) OnShareViolation;
 				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnTypeChange;
 				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* shellItem, FDE_OVERWRITE_RESPONSE* response) OnOverwrite;
-
 			}
 		}
 
@@ -1159,7 +1158,6 @@ namespace System
 				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItem* self, SIGDN sigdnName, out char16* ppszName) GetDisplayName;
 				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItem* self, uint sfgaoMask, out uint psfgaoAttribs) GetAttributes;
 				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItem* self, COM_IShellItem* psi, uint32 hint, out int32 piOrder) Compare;
-
 			}
 			public new VTable* VT
 			{

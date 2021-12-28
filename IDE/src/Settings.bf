@@ -604,7 +604,7 @@ namespace IDE
 				No,
 				Yes,
 				BackupOnly
-			}	
+			}
 
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
@@ -613,6 +613,7 @@ namespace IDE
 			public bool mAutoCompleteRequireTab = false;
 			public bool mAutoCompleteOnEnter = true;
 			public bool mAutoCompleteShowDocumentation = true;
+			public bool mFuzzyAutoComplete = false;
 			public bool mShowLocatorAnim = true;
 			public bool mHiliteCursorReferences = true;
 			public bool mLockEditing;
@@ -640,6 +641,7 @@ namespace IDE
 				sd.Add("AutoCompleteRequireTab", mAutoCompleteRequireTab);
 				sd.Add("AutoCompleteOnEnter", mAutoCompleteOnEnter);
 				sd.Add("AutoCompleteShowDocumentation", mAutoCompleteShowDocumentation);
+				sd.Add("FuzzyAutoComplete", mFuzzyAutoComplete);
 				sd.Add("ShowLocatorAnim", mShowLocatorAnim);
 				sd.Add("HiliteCursorReferences", mHiliteCursorReferences);
 				sd.Add("LockEditing", mLockEditing);
@@ -670,6 +672,7 @@ namespace IDE
 				sd.Get("AutoCompleteRequireTab", ref mAutoCompleteRequireTab);
 				sd.Get("AutoCompleteOnEnter", ref mAutoCompleteOnEnter);
 				sd.Get("AutoCompleteShowDocumentation", ref mAutoCompleteShowDocumentation);
+				sd.Get("FuzzyAutoComplete", ref mFuzzyAutoComplete);
 				sd.Get("ShowLocatorAnim", ref mShowLocatorAnim);
 				sd.Get("HiliteCursorReferences", ref mHiliteCursorReferences);
 				sd.Get("LockEditing", ref mLockEditing);

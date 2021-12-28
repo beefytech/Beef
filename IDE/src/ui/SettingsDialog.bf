@@ -98,6 +98,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Autocomplete Require Tab", "mAutoCompleteRequireTab");
 			AddPropertiesItem(category, "Autocomplete on Enter", "mAutoCompleteOnEnter");
 			AddPropertiesItem(category, "Autocomplete Show Documentation", "mAutoCompleteShowDocumentation");
+			AddPropertiesItem(category, "Fuzzy Autocomplete", "mFuzzyAutoComplete");
 			AddPropertiesItem(category, "Show Locator Animation", "mShowLocatorAnim");
 			AddPropertiesItem(category, "Hilite Symbol at Cursor", "mHiliteCursorReferences");
 

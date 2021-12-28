@@ -6,6 +6,9 @@
 #include "BfFixits.h"
 #include "BfResolvedTypeUtils.h"
 
+#define FTS_FUZZY_MATCH_IMPLEMENTATION
+#include "../third_party/FtsFuzzyMatch.h"
+
 #pragma warning(disable:4996)
 
 using namespace llvm;
@@ -16,6 +19,7 @@ AutoCompleteBase::AutoCompleteBase()
 {
 	mIsGetDefinition = false;
 	mIsAutoComplete = true;
+	mDoFuzzyAutoComplete = false;
 	mInsertStartIdx = -1;
 	mInsertEndIdx = -1;
 }
@@ -25,22 +29,70 @@ AutoCompleteBase::~AutoCompleteBase()
 	Clear();
 }
 
-AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter)
+inline void UpdateEntryMatchindices(uint8* matches, AutoCompleteEntry& entry)
 {
-	if ((!DoesFilterMatch(entry.mDisplay, filter.c_str())) || (entry.mNamePrefixCount < 0))
-		return NULL;
-	return AddEntry(entry);
+	if (matches[0] != UINT8_MAX)
+	{
+		// Count entries in matches
+		// Note: entry.mMatchesLength should be the amount of unicode-codepoints in the filter
+		for (uint8 i = 0;; i++)
+		{
+			uint8 matchIndex = matches[i];
+
+			if ((matchIndex == 0 && i != 0) || i == UINT8_MAX)
+			{
+				entry.mMatchesLength = i;
+				break;
+			}
+		}
+
+		entry.mMatches = matches;
+	}
+	else
+	{
+		entry.mMatches = nullptr;
+		entry.mMatchesLength = 0;
+	}
 }
 
-AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const char* filter)
+AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const StringImpl& filter)
 {
-	if ((!DoesFilterMatch(entry.mDisplay, filter)) || (entry.mNamePrefixCount < 0))
+	uint8 matches[256];
+	
+	if (!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
-	return AddEntry(entry);
+
+	UpdateEntryMatchindices(matches, entry);
+
+	auto result = AddEntry(entry);
+	
+	// Reset matches because the array will be invalid after return
+	entry.mMatches = nullptr;
+	entry.mMatchesLength = 0;
+
+	return result;
+}
+
+AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const char* filter)
+{
+	uint8 matches[256];
+
+	if (!DoesFilterMatch(entry.mDisplay, filter, entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
+		return NULL;
+
+	UpdateEntryMatchindices(matches, entry);
+
+	auto result = AddEntry(entry);
+
+	// Reset matches because the array will be invalid after return
+	entry.mMatches = nullptr;
+	entry.mMatchesLength = 0;
+
+	return result;
 }
 
 AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
-{	
+{
 	if (mEntriesSet.mAllocSize == 0)
 	{
 		mEntriesSet.Reserve(128);
@@ -55,13 +107,16 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
 		int size = (int)strlen(display) + 1;
 		insertedEntry->mDisplay = (char*)mAlloc.AllocBytes(size);
 		memcpy((char*)insertedEntry->mDisplay, display, size);
+
+		insertedEntry->mMatches = (uint8*)mAlloc.AllocBytes(insertedEntry->mMatchesLength);
+		memcpy((char*)insertedEntry->mMatches, entry.mMatches, insertedEntry->mMatchesLength);
 	}
 
 	return insertedEntry;
 }
 
-bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter)
-{	
+bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, int& score, uint8* matches, int maxMatches)
+{
 	if (mIsGetDefinition)
 	{
 		int entryLen = (int)strlen(entry);
@@ -73,59 +128,71 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter)
 	if (!mIsAutoComplete)
 		return false;
 
-	if (filter[0] == 0)
+	matches[0] = UINT8_MAX;
+
+	if (filter[0] == '\0')
 		return true;
 
 	int filterLen = (int)strlen(filter);
 	int entryLen = (int)strlen(entry);
 
-	bool hasUnderscore = false;
-	bool checkInitials = filterLen > 1;
-	for (int i = 0; i < (int)filterLen; i++)
-	{
-		char c = filter[i];
-		if (c == '_')
-			hasUnderscore = true;
-		else if (islower((uint8)filter[i]))
-			checkInitials = false;
-	}
-
-	if (hasUnderscore)
-		return strnicmp(filter, entry, filterLen) == 0;
-
-	char initialStr[256];
-	char* initialStrP = initialStr;
-
-	//String initialStr;
-	bool prevWasUnderscore = false;
-	
-	for (int entryIdx = 0; entryIdx < entryLen; entryIdx++)
-	{
-		char entryC = entry[entryIdx];
-
-		if (entryC == '_')
-		{
-			prevWasUnderscore = true;
-			continue;
-		}
-
-		if ((entryIdx == 0) || (prevWasUnderscore) || (isupper((uint8)entryC) || (isdigit((uint8)entryC))))
-		{
-			if (strnicmp(filter, entry + entryIdx, filterLen) == 0)
-				return true;
-			if (checkInitials)
-				*(initialStrP++) = entryC;
-		}
-		prevWasUnderscore = false;
-
-		if (filterLen == 1)
-			break; // Don't check inners for single-character case
-	}	
-
-	if (!checkInitials)
+	if (filterLen > entryLen)
 		return false;
-	*(initialStrP++) = 0;
-	return strnicmp(filter, initialStr, filterLen) == 0;
+
+	if (mDoFuzzyAutoComplete)
+	{
+		return fts::fuzzy_match(filter, entry, score, matches, maxMatches);
+	}
+	else
+	{
+		bool hasUnderscore = false;
+		bool checkInitials = filterLen > 1;
+		for (int i = 0; i < (int)filterLen; i++)
+		{
+			char c = filter[i];
+			if (c == '_')
+				hasUnderscore = true;
+			else if (islower((uint8)filter[i]))
+				checkInitials = false;
+		}
+
+		if (hasUnderscore)
+			return strnicmp(filter, entry, filterLen) == 0;
+
+		char initialStr[256];
+		char* initialStrP = initialStr;
+
+		//String initialStr;
+		bool prevWasUnderscore = false;
+
+		for (int entryIdx = 0; entryIdx < entryLen; entryIdx++)
+		{
+			char entryC = entry[entryIdx];
+
+			if (entryC == '_')
+			{
+				prevWasUnderscore = true;
+				continue;
+			}
+
+			if ((entryIdx == 0) || (prevWasUnderscore) || (isupper((uint8)entryC) || (isdigit((uint8)entryC))))
+			{
+				if (strnicmp(filter, entry + entryIdx, filterLen) == 0)
+					return true;
+				if (checkInitials)
+					*(initialStrP++) = entryC;
+			}
+			prevWasUnderscore = false;
+
+			if (filterLen == 1)
+				break; // Don't check inners for single-character case
+		}
+
+		if (!checkInitials)
+			return false;
+		*(initialStrP++) = 0;
+		return strnicmp(filter, initialStr, filterLen) == 0;
+	}
 }
 
 void AutoCompleteBase::Clear()
@@ -137,7 +204,7 @@ void AutoCompleteBase::Clear()
 
 //////////////////////////////////////////////////////////////////////////
 
-BfAutoComplete::BfAutoComplete(BfResolveType resolveType)
+BfAutoComplete::BfAutoComplete(BfResolveType resolveType, bool doFuzzyAutoComplete)
 {
 	mResolveType = resolveType;
 	mModule = NULL;
@@ -153,6 +220,8 @@ BfAutoComplete::BfAutoComplete(BfResolveType resolveType)
 		(resolveType == BfResolveType_GetSymbolInfo) ||
 		(resolveType == BfResolveType_GoToDefinition);
 	mIsAutoComplete = (resolveType == BfResolveType_Autocomplete);
+
+	mDoFuzzyAutoComplete = doFuzzyAutoComplete;
 
 	mGetDefinitionNode = NULL;
 	mShowAttributeProperties = NULL;
@@ -550,7 +619,9 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 			return;
 		}
 
-		if (!DoesFilterMatch(name.c_str(), filter.c_str()))
+		int score;
+		uint8 matches[256];
+		if (!DoesFilterMatch(name.c_str(), filter.c_str(), score, matches, sizeof(matches)))
 			return;		
 
 		auto type = mModule->ResolveTypeDef(typeDef, BfPopulateType_Declaration);
@@ -1128,8 +1199,10 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 		if (methodInstance == NULL)
 			continue;
 
+		int score;
+		uint8 matches[256];
 		// Do filter match first- may be cheaper than generic validation
-		if (!DoesFilterMatch(methodDef->mName.c_str(), filter.c_str()))
+		if (!DoesFilterMatch(methodDef->mName.c_str(), filter.c_str(), score, matches, sizeof(matches)))
 			continue;
 
 		auto thisType = methodInstance->GetParamType(0);		
