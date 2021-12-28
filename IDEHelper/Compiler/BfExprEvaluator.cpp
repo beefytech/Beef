@@ -22477,6 +22477,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 		auto primType = (BfPrimitiveType*)resultType;
 		if (primType->mTypeDef->mTypeCode == BfTypeCode_Boolean)
 		{
+			bool passThrough = false;
 			switch (binaryOp)
 			{
 			case BfBinaryOp_Equality:
@@ -22503,16 +22504,20 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateXor(convLeftValue, convRightValue),
 					mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				break;
+			case BfBinaryOp_Compare:
+				passThrough = true;
+				break;
 			default:
 				if (mModule->PreFail())
 					mModule->Fail("Invalid operation for booleans", opToken);
 				break;
 			}
-			return;
+			if (!passThrough)
+				return;
 		}
 	}
 
-	if ((!resultType->IsIntegral()) && (!resultType->IsFloat()))
+	if ((!resultType->IsIntegralOrBool()) && (!resultType->IsFloat()))
 	{
 		if (mModule->PreFail())
 			mModule->Fail(StrFormat("Cannot perform operation on type '%s'", mModule->TypeToString(resultType).c_str()), opToken);
@@ -22617,7 +22622,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpGTE(convLeftValue, convRightValue, resultType->IsSigned()),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;
-	case BfBinaryOp_Compare:				
+	case BfBinaryOp_Compare:
 		{
 			auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 			if ((convLeftValue.IsConst()) && (convRightValue.IsConst()))
@@ -22638,7 +22643,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 						mResult = BfTypedValue(mModule->GetConstValue(0, mModule->GetPrimitiveType(BfTypeCode_IntPtr)), intType);
 				}
 			}
-			else if ((resultType->IsIntegral()) && (resultType->mSize < intType->mSize))
+			else if ((resultType->IsIntegralOrBool()) && (resultType->mSize < intType->mSize))
 			{
 				auto leftIntValue = mModule->mBfIRBuilder->CreateNumericCast(convLeftValue, resultType->IsSigned(), BfTypeCode_IntPtr);
 				auto rightIntValue = mModule->mBfIRBuilder->CreateNumericCast(convRightValue, resultType->IsSigned(), BfTypeCode_IntPtr);							

@@ -571,6 +571,7 @@ public:
 	virtual bool IsBoolean() { return false; }
 	virtual bool IsInteger() { return false; }
 	virtual bool IsIntegral() { return false; }
+	virtual bool IsIntegralOrBool() { return false; }
 	virtual bool IsIntPtr() { return false; }
 	virtual bool IsSigned() { return false; }
 	virtual bool IsSignedInt() { return false; }
@@ -627,6 +628,7 @@ public:
 	virtual bool IsValueTypeOrValueTypePtr() override { return true; }
 	virtual bool IsBoolean() override { return mTypeDef->mTypeCode == BfTypeCode_Boolean; }
 	virtual bool IsIntegral() override { return (mTypeDef->mTypeCode >= BfTypeCode_Int8) && (mTypeDef->mTypeCode <= BfTypeCode_Char32); }
+	virtual bool IsIntegralOrBool() override { return (mTypeDef->mTypeCode >= BfTypeCode_Boolean) && (mTypeDef->mTypeCode <= BfTypeCode_Char32); }
 	virtual bool IsInteger() override { return (mTypeDef->mTypeCode >= BfTypeCode_Int8) && (mTypeDef->mTypeCode <= BfTypeCode_UIntUnknown); }	
 	virtual bool IsIntPtr() override { return (mTypeDef->mTypeCode == BfTypeCode_IntPtr) || (mTypeDef->mTypeCode == BfTypeCode_UIntPtr); }
 	virtual bool IsIntPtrable() override 
