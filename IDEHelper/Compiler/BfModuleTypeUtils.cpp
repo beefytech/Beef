@@ -5650,7 +5650,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 					}
 				}
 
-				if (typeInstance->mTypeDef->mProject->mTargetType == BfTargetType_BeefTest)
+				if (methodInstance->mMethodDef->mDeclaringType->mProject->mTargetType == BfTargetType_BeefTest)
 				{
 					if ((customAttributes != NULL) && (customAttributes->Contains(mCompiler->mTestAttributeTypeDef)))
 					{
