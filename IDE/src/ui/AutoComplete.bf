@@ -1677,7 +1677,6 @@ namespace IDE.ui
 			}
 
 			if (hasUnderscore)
-				//return strnicmp(filter, entry, filterLen) == 0;
 				return (entryLen >= filterLen) && (String.Compare(entryPtr, filterLen, filterPtr, filterLen, true) == 0);
 
 			char8[256] initialStr;
@@ -1698,8 +1697,6 @@ namespace IDE.ui
 
 				if ((entryIdx == 0) || (prevWasUnderscore) || (entryC.IsUpper) || (entryC.IsDigit))
 				{
-					/*if (strnicmp(filter, entry + entryIdx, filterLen) == 0)
-						return true;*/
 					if ((entryLen - entryIdx >= filterLen) && (String.Compare(entryPtr + entryIdx, filterLen, filterPtr, filterLen, true) == 0))
 						return true;
 					if (checkInitials)
@@ -1715,13 +1712,7 @@ namespace IDE.ui
 				return false;
 			int initialLen = initialStrP - (char8*)&initialStr;
 			return (initialLen >= filterLen) && (String.Compare(&initialStr, filterLen, filterPtr, filterLen, true) == 0);
-
-			//*(initialStrP++) = 0;
-			//return strnicmp(filter, initialStr, filterLen) == 0;
 		}
-
-		[LinkName("_stricmp")]
-		static extern int32 stricmp(char8* lhs, char8* rhs);
 
         void UpdateData(String selectString, bool changedAfterInfo)
         {
@@ -1808,7 +1799,7 @@ namespace IDE.ui
 								else if (left.mScore < right.mScore)
 									return 1;
 								else
-									return ((stricmp(left.mEntryDisplay.CStr(), right.mEntryDisplay.CStr()) < 0) ? -1 : 1);
+									return String.Compare(left.mEntryDisplay, right.mEntryDisplay, true);
 							});
 	
 						for (int i < mAutoCompleteListWidget.mEntryList.Count)
