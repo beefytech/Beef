@@ -704,23 +704,13 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 
 void BfModule::AddFieldDependency(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfType* fieldType)
 {
-	auto fieldTypeInstance = fieldType->ToTypeInstance();
+	auto depFlag = fieldType->IsValueType() ? BfDependencyMap::DependencyFlag_ValueTypeMemberData : BfDependencyMap::DependencyFlag_PtrMemberData;
+	AddDependency(fieldType, typeInstance, depFlag);
 
-	if (fieldTypeInstance == NULL)
-	{
-		auto underlyingType = fieldType->GetUnderlyingType();
-		if (underlyingType != NULL)
-			AddFieldDependency(typeInstance, fieldInstance, underlyingType);
-		return;
-	}
-
-	auto depFlag = fieldTypeInstance->IsValueType() ? BfDependencyMap::DependencyFlag_ValueTypeMemberData : BfDependencyMap::DependencyFlag_PtrMemberData;
-	AddDependency(fieldTypeInstance, typeInstance, depFlag);
-
-	if ((fieldTypeInstance->IsStruct()) && (fieldTypeInstance->IsGenericTypeInstance()))
+	if ((fieldType->IsStruct()) && (fieldType->IsGenericTypeInstance()))
 	{
 		// When we're a generic struct, our data layout can depend on our generic parameters as well
-		auto genericTypeInstance = (BfTypeInstance*)fieldTypeInstance;
+		auto genericTypeInstance = (BfTypeInstance*)fieldType;
 		for (auto typeGenericArg : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
 			AddFieldDependency(typeInstance, fieldInstance, typeGenericArg);
 	}

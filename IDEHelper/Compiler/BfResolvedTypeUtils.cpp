@@ -2664,6 +2664,8 @@ int BfArrayType::GetLengthBitCount()
 
 int BfMethodRefType::GetCaptureDataCount()
 {
+	if (mMethodRef == NULL)
+		return 0;
 	return (int)mDataToParamIdx.size();
 }
 
