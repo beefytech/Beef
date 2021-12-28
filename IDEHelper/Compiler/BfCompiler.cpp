@@ -827,7 +827,7 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 
 	auto _CheckMethod = [&](BfTypeInstance* typeInstance, BfMethodInstance* methodInstance)
 	{
-		auto project = typeInstance->mTypeDef->mProject;
+		auto project = methodInstance->mMethodDef->mDeclaringType->mProject;
 		if (project->mTargetType != BfTargetType_BeefTest)
 			return;
 		if (project != bfModule->mProject)
@@ -897,6 +897,16 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 		if (typeInstance == NULL)
 			continue;
 
+		if (typeInstance->mTypeDef->IsGlobalsContainer())
+		{
+			NOP;
+		}
+
+		if (typeInstance->mTypeDef->mProject->mName == "BeefTest")
+		{
+			NOP;
+		}
+
 		if (typeInstance->IsUnspecializedType())
 			continue;
 
@@ -915,7 +925,8 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 		auto methodInstance = testMethod.mMethodInstance;
 		auto typeInstance = methodInstance->GetOwner();
 		testMethod.mName += bfModule->TypeToString(typeInstance);
-		testMethod.mName += ".";
+		if (!testMethod.mName.IsEmpty())
+			testMethod.mName += ".";
 		testMethod.mName += methodInstance->mMethodDef->mName;
 
 		testMethod.mName += "\t";
