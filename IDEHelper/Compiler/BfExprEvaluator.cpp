@@ -1961,6 +1961,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				goto NoMatch;
 
 			auto paramsArrayType = methodInstance->GetParamType(paramIdx);
+			paramsArrayType = mModule->ResolveGenericType(paramsArrayType, NULL, genericArgumentsSubstitute);
 			
 			if ((mArguments[argIdx].mArgFlags & BfArgFlag_ParamsExpr) != 0)
 			{				
