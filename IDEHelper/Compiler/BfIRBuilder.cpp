@@ -2631,6 +2631,8 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		if (methodInstance != NULL)
 			name += BfTypeUtils::HashEncode64(methodInstance->mIdHash).c_str();
 
+		BF_ASSERT(methodInstance != NULL);
+
 		if ((wantDIData) && (methodInstance != NULL))
 		{	
 			auto typeDeclaration = methodInstance->GetOwner()->mTypeDef->mTypeDeclaration;			

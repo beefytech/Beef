@@ -11957,8 +11957,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 				if (bindResult.mTarget.IsSplat())
 					target = mModule->AggregateSplat(bindResult.mTarget, &bindResult.mIRArgs[0]);
 				else
-					target = mModule->LoadValue(bindResult.mTarget);
-				
+					target = bindResult.mTarget;
+
 				mModule->mBfIRBuilder->CreateStore(target.mValue, elemPtr);
 				
 				mResult = BfTypedValue(methodRefPtr, methodRefType, true);

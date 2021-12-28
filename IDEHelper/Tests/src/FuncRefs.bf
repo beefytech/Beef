@@ -69,9 +69,21 @@ namespace Tests
 		{
 		}
 
+		class Invoker
+		{
+			public int mA = 111;
+
+			public void Invoke()
+			{
+				mA += 222;
+			}
+		}
+
 		class TestA
 		{
 			Vector2 mVec = .(11, 22);
+			Event<Action> mEvt ~ _.Dispose();
+			Action mAct;
 
 			public Vector2 Vec
 			{
@@ -84,6 +96,17 @@ namespace Tests
 							Test.Assert(value.x == 33);
 							Test.Assert(value.y == 44);
 						});
+					Invoker invoker = scope .();
+					mEvt.Add(new => invoker);
+					DoIt(=> mEvt);
+					Test.Assert(invoker.mA == 333);
+					DoIt(=> invoker);
+					Test.Assert(invoker.mA == 555);
+					mAct = scope => invoker;
+					mAct();
+					Test.Assert(invoker.mA == 777);
+					DoIt(=> mAct);
+					Test.Assert(invoker.mA == 999);
 				}
 			}
 
