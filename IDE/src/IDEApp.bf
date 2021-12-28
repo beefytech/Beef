@@ -689,9 +689,15 @@ namespace IDE
 				mSymbolReferenceHelper.Close();
 
 			if (mBfBuildCompiler != null)
+			{
+				mBfBuildCompiler.RequestFastFinish();
             	mBfBuildCompiler.CancelBackground();
+			}
 			if (mBfResolveCompiler != null)
+			{
+				mBfResolveCompiler.RequestFastFinish();
             	mBfResolveCompiler.CancelBackground();
+			}
 
 #if IDE_C_SUPPORT
             mDepClang.CancelBackground();
