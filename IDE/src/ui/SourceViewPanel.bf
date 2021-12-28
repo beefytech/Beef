@@ -5556,7 +5556,7 @@ namespace IDE.ui
 				{
 					resolveResult.mStopwatch.Stop();
 					if (var autoComplete = GetAutoComplete())
-						Debug.WriteLine($"Autocomplete {resolveResult.mStopwatch.ElapsedMilliseconds}ms entries: {autoComplete.mAutoCompleteListWidget.mEntryList.Count}");
+						Debug.WriteLine($"Autocomplete {resolveResult.mStopwatch.ElapsedMilliseconds}ms entries: {(autoComplete.mAutoCompleteListWidget?.mEntryList.Count).GetValueOrDefault()}");
 				}
 
 				//Debug.WriteLine("ProcessDeferredResolveResults finished {0}", resolveResult.mResolveType);
