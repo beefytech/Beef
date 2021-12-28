@@ -2115,8 +2115,6 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 	defBuilder.DoVisitChild(typeDeclaration->mDefineNode);
 	defBuilder.FinishTypeDef(typeInstance->mTypeDef->mTypeCode == BfTypeCode_Enum);
 
-	typeInstance->mTypeDef->ClearOldMemberSets();
-
 	FinishCEParseContext(refNode, typeInstance, &ceParseContext);
 
 	if (typeInstance->mTypeDef->mEmitParent != NULL)

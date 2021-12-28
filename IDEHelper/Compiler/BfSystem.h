@@ -935,6 +935,24 @@ struct BfMemberSetEntry
 	}
 };
 
+class BfTypeDefMemberSet : public HashSet<BfMemberSetEntry>
+{
+public:	
+	int mSourceSize;
+
+public:
+	BfTypeDefMemberSet()
+	{		
+		mSourceSize = 0;
+	}
+
+	void Clear()
+	{
+		HashSet<BfMemberSetEntry>::Clear();
+		mSourceSize = 0;
+	}
+};
+
 // For partial classes, the first entry in the map will contain the combined data 
 class BfTypeDef
 {
@@ -980,9 +998,9 @@ public:
 	Array<BfFieldDef*> mFields;	
 	Array<BfPropertyDef*> mProperties;
 	Array<BfMethodDef*> mMethods;
-	HashSet<BfMemberSetEntry> mMethodSet;
-	HashSet<BfMemberSetEntry> mFieldSet;
-	HashSet<BfMemberSetEntry> mPropertySet;
+	BfTypeDefMemberSet mMethodSet;
+	BfTypeDefMemberSet mFieldSet;
+	BfTypeDefMemberSet mPropertySet;
 	Array<BfOperatorDef*> mOperators;	
 	Array<BfGenericParamDef*> mGenericParamDefs;	
 	Array<BfExternalConstraintDef> mExternalConstraints;
@@ -1072,7 +1090,6 @@ public:
 	void FreeMembers();
 	void PopulateMemberSets();
 	void ClearMemberSets();
-	void ClearOldMemberSets();
 	void RemoveGenericParamDef(BfGenericParamDef* genericParamDef);	
 	int GetSelfGenericParamCount();
 	String ToString();

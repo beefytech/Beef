@@ -712,11 +712,9 @@ void BfTypeDef::FreeMembers()
 
 void BfTypeDef::PopulateMemberSets()
 {
-	if ((!mMethodSet.IsEmpty()) || (!mFieldSet.IsEmpty()) || (!mPropertySet.IsEmpty()))
-		return;
-
-	for (auto methodDef : mMethods)
+	while (mMethodSet.mSourceSize < mMethods.mSize)
 	{
+		auto methodDef = mMethods[mMethodSet.mSourceSize++];
 		BF_ASSERT(methodDef->mNextWithSameName == NULL);
 
 		BfMemberSetEntry* entry;
@@ -724,11 +722,12 @@ void BfTypeDef::PopulateMemberSets()
 		{
 			methodDef->mNextWithSameName = (BfMethodDef*)entry->mMemberDef;
 			entry->mMemberDef = methodDef;
-		}
+		}		
 	}
 
-	for (auto fieldDef : mFields)
+	while (mFieldSet.mSourceSize < mFields.mSize)
 	{
+		auto fieldDef = mFields[mFieldSet.mSourceSize++];
 		BF_ASSERT(fieldDef->mNextWithSameName == NULL);
 
 		BfMemberSetEntry* entry;
@@ -739,8 +738,9 @@ void BfTypeDef::PopulateMemberSets()
 		}
 	}
 
-	for (auto propDef : mProperties)
+	while (mPropertySet.mSourceSize < mProperties.mSize)
 	{
+		auto propDef = mProperties[mPropertySet.mSourceSize++];
 		BF_ASSERT(propDef->mNextWithSameName == NULL);
 
 		BfMemberSetEntry* entry;
@@ -765,30 +765,6 @@ void BfTypeDef::ClearMemberSets()
 	for (auto entry : mPropertySet)
 		((BfPropertyDef*)entry.mMemberDef)->mNextWithSameName = NULL;
 	mPropertySet.Clear();
-}
-
-void BfTypeDef::ClearOldMemberSets()
-{
-	if ((mMethodSet.mCount > 0) && (mMethods.mSize > mMethodSet.mCount))
-	{
-		for (auto entry : mMethodSet)
-			((BfMethodDef*)entry.mMemberDef)->mNextWithSameName = NULL;
-		mMethodSet.Clear();
-	}
-
-	if ((mFieldSet.mCount > 0) && (mFields.mSize > mFieldSet.mCount))
-	{
-		for (auto entry : mFieldSet)
-			((BfFieldDef*)entry.mMemberDef)->mNextWithSameName = NULL;
-		mFieldSet.Clear();
-	}
-
-	if ((mPropertySet.mCount > 0) && (mProperties.mSize > mPropertySet.mCount))
-	{
-		for (auto entry : mPropertySet)
-			((BfPropertyDef*)entry.mMemberDef)->mNextWithSameName = NULL;
-		mPropertySet.Clear();
-	}
 }
 
 BfTypeDef::~BfTypeDef()
