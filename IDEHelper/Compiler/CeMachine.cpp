@@ -5121,6 +5121,93 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				memcpy(memStart + strAddr, str, count + 1);
 				result = count;
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Create)
+			{
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);				
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				BfpDirectory_Create(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Rename)
+			{
+				addr_ce srcAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce destAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String srcPath;
+				CE_CHECKADDR_STR(srcPath, srcAddr);
+				String destPath;
+				CE_CHECKADDR_STR(destPath, destAddr);
+				BfpDirectory_Rename(srcPath.c_str(), destPath.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Delete)
+			{
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);				
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				BfpDirectory_Delete(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_GetCurrent)
+			{
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				
+				CE_CHECKADDR(sizeAddr, 4);
+				int& nameSize = *(int*)(memStart + sizeAddr);
+				CE_CHECKADDR(nameAddr, nameSize);
+				char* namePtr = (char*)(memStart + nameAddr);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				BfpDirectory_GetCurrent(namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_SetCurrent)
+			{
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);				
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				BfpDirectory_SetCurrent(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Exists)
+			{
+				bool& result = *(bool*)((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 1);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				result = BfpDirectory_Exists(path.c_str());
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_GetSysDirectory)
+			{
+				BfpSysDirectoryKind sysDirKind = *(BfpSysDirectoryKind*)((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 4);
+				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + 4 + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + 4 + ptrSize + ptrSize);
+				
+				CE_CHECKADDR(sizeAddr, 4);
+				int& nameSize = *(int*)(memStart + sizeAddr);
+				CE_CHECKADDR(nameAddr, nameSize);
+				char* namePtr = (char*)(memStart + nameAddr);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				BfpDirectory_GetSysDirectory(sysDirKind, namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Close)
 			{
 				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);	
@@ -5258,6 +5345,156 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				int64 result = BfpFile_Write(internalData->mFile, memStart + bufferPtr, bufferSize, timeoutMS, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 				CeSetAddrVal(resultPtr, result, ptrSize);
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetTime_LastWrite)
+			{
+				BfpTimeStamp& result = *(BfpTimeStamp*)((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 8);
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				result = BfpFile_GetTime_LastWrite(path.c_str());
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetAttributes)
+			{
+				BfpFileAttributes& result = *(BfpFileAttributes*)((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 4);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + 4);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				
+				result = BfpFile_GetAttributes(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_SetAttributes)
+			{				
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				BfpFileAttributes attribs = *(BfpFileAttributes*)((uint8*)stackPtr + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				BfpFile_SetAttributes(path.c_str(), attribs, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Copy)
+			{
+				addr_ce srcAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce destAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				BfpFileCopyKind fileCopyKind = *(BfpFileCopyKind*)((uint8*)stackPtr + ptrSize + ptrSize);				
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + 4);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String srcPath;
+				CE_CHECKADDR_STR(srcPath, srcAddr);
+				String destPath;
+				CE_CHECKADDR_STR(destPath, destAddr);
+				BfpFile_Copy(srcPath.c_str(), destPath.c_str(), fileCopyKind, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Rename)
+			{
+				addr_ce srcAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce destAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String srcPath;
+				CE_CHECKADDR_STR(srcPath, srcAddr);
+				String destPath;
+				CE_CHECKADDR_STR(destPath, destAddr);
+				BfpFile_Rename(srcPath.c_str(), destPath.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Delete)
+			{
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);				
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				BfpFile_Delete(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Exists)
+			{
+				bool& result = *(bool*)((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 1);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				result = BfpFile_Exists(path.c_str());
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetTempPath)
+			{				
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				
+				CE_CHECKADDR(sizeAddr, 4);
+				int& nameSize = *(int*)(memStart + sizeAddr);
+				CE_CHECKADDR(nameAddr, nameSize);
+				char* namePtr = (char*)(memStart + nameAddr);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				BfpFile_GetTempPath(namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetTempFileName)
+			{
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				
+				CE_CHECKADDR(sizeAddr, 4);
+				int& nameSize = *(int*)(memStart + sizeAddr);
+				CE_CHECKADDR(nameAddr, nameSize);
+				char* namePtr = (char*)(memStart + nameAddr);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				BfpFile_GetTempFileName(namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetFullPath)
+			{
+				addr_ce srcAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+				
+				String srcPath;
+				CE_CHECKADDR_STR(srcPath, srcAddr);
+
+				CE_CHECKADDR(sizeAddr, 4);
+				int& nameSize = *(int*)(memStart + sizeAddr);
+				CE_CHECKADDR(nameAddr, nameSize);
+				char* namePtr = (char*)(memStart + nameAddr);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				BfpFile_GetFullPath(srcPath.c_str(), namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetActualPath)
+			{
+				addr_ce srcAddr = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+				
+				String srcPath;
+				CE_CHECKADDR_STR(srcPath, srcAddr);
+
+				CE_CHECKADDR(sizeAddr, 4);
+				int& nameSize = *(int*)(memStart + sizeAddr);
+				CE_CHECKADDR(nameAddr, nameSize);
+				char* namePtr = (char*)(memStart + nameAddr);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				BfpFile_GetActualPath(srcPath.c_str(), namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_Create)
 			{
 				void* resultPtr = ((uint8*)stackPtr + 0);
@@ -5279,7 +5516,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				String env;
 				if (envAddr != 0)
 					CE_CHECKADDR_STR(env, envAddr);
-				CE_CHECKADDR(outResultAddr, 4);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
 				
 				if ((targetPath.Contains('/')) || (targetPath.Contains('\\')))
 				{
@@ -5405,6 +5643,124 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						break;					
 				} while (true);
 				*(int*)(memStart + outExitCodeAddr) = outExitCode;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_FindFirstFile)
+			{
+				void* resultPtr = ((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				int flags = *(int*)((uint8*)stackPtr + ptrSize + ptrSize);				
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + 4);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+				
+				BfProject* activeProject = NULL;
+				auto activeTypeDef = mCurModule->GetActiveTypeDef();
+				if (activeTypeDef != NULL)
+					activeProject = activeTypeDef->mProject;
+				if (activeProject != NULL)
+					path = GetAbsPath(path, activeProject->mDirectory);
+
+				auto bfpFindFileData = BfpFindFileData_FindFirstFile(path.c_str(), (BfpFindFileFlags)flags, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+				if (bfpFindFileData != NULL)
+				{					
+// 					auto timeStamp = BfpFile_GetTime_LastWrite(path.c_str());
+// 					if (timeStamp != 0)
+// 					{							
+// 						CeRebuildKey rebuildKey;
+// 						rebuildKey.mKind = CeRebuildKey::Kind_File;
+// 						rebuildKey.mString = path;
+// 
+// 						CeRebuildValue rebuildValue;
+// 						rebuildValue.mInt = timeStamp;
+// 
+// 						AddRebuild(rebuildKey, rebuildValue);
+// 					}					
+
+					CeInternalData* internalData = new CeInternalData();
+					internalData->mKind = CeInternalData::Kind_FindFileData;
+					internalData->mFindFileData = bfpFindFileData;
+					mInternalDataMap[++mCurHandleId] = internalData;
+					CeSetAddrVal(resultPtr, mCurHandleId, ptrSize);
+				}
+				else
+					CeSetAddrVal(resultPtr, 0, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_FindNextFile)
+			{
+				bool& result = *(bool*)((uint8*)stackPtr + 0);
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 1);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
+				result = BfpFindFileData_FindNextFile(internalData->mFindFileData);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_GetFileName)
+			{
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+				
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
+				CE_CHECKADDR(sizeAddr, 4);
+				int& nameSize = *(int*)(memStart + sizeAddr);
+				CE_CHECKADDR(nameAddr, nameSize);
+				char* namePtr = (char*)(memStart + nameAddr);
+
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				BfpFindFileData_GetFileName(internalData->mFindFileData, namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_GetTime_LastWrite)
+			{
+				BfpTimeStamp& result = *(BfpTimeStamp*)((uint8*)stackPtr + 0);
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 8);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
+				result = BfpFindFileData_GetTime_LastWrite(internalData->mFindFileData);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_GetTime_Created)
+			{
+				BfpTimeStamp& result = *(BfpTimeStamp*)((uint8*)stackPtr + 0);
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 8);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
+				result = BfpFindFileData_GetTime_Created(internalData->mFindFileData);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_GetTime_Access)
+			{
+				BfpTimeStamp& result = *(BfpTimeStamp*)((uint8*)stackPtr + 0);
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 8);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
+				result = BfpFindFileData_GetTime_Access(internalData->mFindFileData);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_GetFileAttributes)
+			{
+				BfpFileAttributes& result = *(BfpFileAttributes*)((uint8*)stackPtr + 0);
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 4);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
+				result = BfpFindFileData_GetFileAttributes(internalData->mFindFileData);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_GetFileSize)
+			{
+				int64& result = *(int64*)((uint8*)stackPtr + 0);
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 8);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
+				result = BfpFindFileData_GetFileSize(internalData->mFindFileData);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFindFileData_Release)
+			{
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 0);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
+				internalData->mReleased = true;
 			}
 			else
 			{
@@ -7357,8 +7713,21 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mPlatformTypeDef))
 			{
-				if (methodDef->mName == "BfpSystem_GetTimeStamp")
-					ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetTimeStamp;
+				if (methodDef->mName == "BfpDirectory_Create")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_Create;
+				else if (methodDef->mName == "BfpDirectory_Rename")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_Rename;
+				else if (methodDef->mName == "BfpDirectory_Delete")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_Delete;
+				else if (methodDef->mName == "BfpDirectory_GetCurrent")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_GetCurrent;
+				else if (methodDef->mName == "BfpDirectory_SetCurrent")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_SetCurrent;
+				else if (methodDef->mName == "BfpDirectory_Exists")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_Exists;
+				else if (methodDef->mName == "BfpDirectory_GetSysDirectory")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_GetSysDirectory;				
+				
 				else if (methodDef->mName == "BfpFile_Close")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Close;
 				else if (methodDef->mName == "BfpFile_Create")
@@ -7377,6 +7746,29 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Truncate;
 				else if (methodDef->mName == "BfpFile_Write")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Write;
+				else if (methodDef->mName == "BfpFile_GetTime_LastWrite")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_GetTime_LastWrite;
+				else if (methodDef->mName == "BfpFile_GetAttributes")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_GetAttributes;
+				else if (methodDef->mName == "BfpFile_SetAttributes")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_SetAttributes;
+				else if (methodDef->mName == "BfpFile_Copy")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Copy;
+				else if (methodDef->mName == "BfpFile_Rename")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Rename;
+				else if (methodDef->mName == "BfpFile_Delete")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Delete;
+				else if (methodDef->mName == "BfpFile_Exists")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Exists;
+				else if (methodDef->mName == "BfpFile_GetTempPath")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_GetTempPath;
+				else if (methodDef->mName == "BfpFile_GetTempFileName")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_GetTempFileName;
+				else if (methodDef->mName == "BfpFile_GetFullPath")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_GetFullPath;
+				else if (methodDef->mName == "BfpFile_GetActualPath")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_GetActualPath;
+
 				else if (methodDef->mName == "BfpSpawn_Create")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpSpawn_Create;
 				else if (methodDef->mName == "BfpSpawn_GetStdHandles")
@@ -7387,6 +7779,28 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 					ceFunction->mFunctionKind = CeFunctionKind_BfpSpawn_Release;
 				else if (methodDef->mName == "BfpSpawn_WaitFor")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpSpawn_WaitFor;
+
+				else if (methodDef->mName == "BfpFindFileData_FindFirstFile")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_FindFirstFile;
+				else if (methodDef->mName == "BfpFindFileData_FindNextFile")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_FindNextFile;
+				else if (methodDef->mName == "BfpFindFileData_GetFileName")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_GetFileName;
+				else if (methodDef->mName == "BfpFindFileData_GetTime_LastWrite")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_GetTime_LastWrite;
+				else if (methodDef->mName == "BfpFindFileData_GetTime_Created")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_GetTime_Created;
+				else if (methodDef->mName == "BfpFindFileData_GetTime_Access")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_GetTime_Access;
+				else if (methodDef->mName == "BfpFindFileData_GetFileAttributes")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_GetFileAttributes;
+				else if (methodDef->mName == "BfpFindFileData_GetFileSize")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_GetFileSize;
+				else if (methodDef->mName == "BfpFindFileData_Release")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_Release;
+				
+				else if (methodDef->mName == "BfpSystem_GetTimeStamp")
+						ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetTimeStamp;
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mChar32TypeDef))
 			{

@@ -132,11 +132,9 @@ namespace System.IO
 			return (IEnumerator<Result<String>>)null;
 		}*/
 
-		static extern bool Exists(char8* fileName);
-
 		public static bool Exists(StringView fileName)
 		{
-			return Exists(fileName.ToScopeCStr!());
+			return Platform.BfpFile_Exists(fileName.ToScopeCStr!());
 		}
 
 		public static Result<void, Platform.BfpFileResult> Delete(StringView fileName)

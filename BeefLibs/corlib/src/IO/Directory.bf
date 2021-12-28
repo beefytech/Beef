@@ -5,11 +5,9 @@ namespace System.IO
 {
 	public static class Directory
 	{
-		static extern bool Exists(char8* fileName);
-
 		public static bool Exists(StringView fileName)
 		{
-			return Exists(fileName.ToScopeCStr!());
+			return Platform.BfpDirectory_Exists(fileName.ToScopeCStr!());
 		}
 
 		public static Result<void, Platform.BfpFileResult> CreateDirectory(StringView fullPath)
