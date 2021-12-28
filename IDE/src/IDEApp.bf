@@ -170,6 +170,7 @@ namespace IDE
 		public bool mPauseOnExit;
 		public bool mDbgDelayedAutocomplete;
 		public bool mDbgTimeAutocomplete;
+		public bool mDbgPerfAutocomplete;
 		public BeefConfig mBeefConfig = new BeefConfig() ~ delete _;
 		public List<String> mDeferredFails = new .() ~ DeleteContainerAndItems!(_);
 		public String mInitialCWD = new .() ~ delete _;
@@ -5270,6 +5271,11 @@ namespace IDE
 			menu.SetDisabled(!mDebugger.mIsRunning);
 		}
 
+		public void UpdateMenuItem_DebugOrTestRunning(IMenu menu)
+		{
+			menu.SetDisabled(!mDebugger.mIsRunning && (mTestManager == null));
+		}
+
 		public void UpdateMenuItem_DebugStopped_HasWorkspace(IMenu menu)
 		{
 			menu.SetDisabled(mDebugger.mIsRunning || !mWorkspace.IsInitialized);
@@ -5431,6 +5437,7 @@ namespace IDE
 				internalEditMenu.AddMenuItem("Hilight Cursor References", null, new (menu) => { ToggleCheck(menu, ref gApp.mSettings.mEditorSettings.mHiliteCursorReferences); }, null, null, true, gApp.mSettings.mEditorSettings.mHiliteCursorReferences ? 1 : 0);
 				internalEditMenu.AddMenuItem("Delayed Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgDelayedAutocomplete); }, null, null, true, gApp.mDbgDelayedAutocomplete ? 1 : 0);
 				internalEditMenu.AddMenuItem("Time Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgTimeAutocomplete); }, null, null, true, gApp.mDbgTimeAutocomplete ? 1 : 0);
+				internalEditMenu.AddMenuItem("Perf Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgPerfAutocomplete); }, null, null, true, gApp.mDbgPerfAutocomplete ? 1 : 0);
 			}
 
 			//////////
@@ -5490,7 +5497,7 @@ namespace IDE
 			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
-			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugRunning);
+			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugOrTestRunning);
             AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
             AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
             AddMenuItem(subMenu, "Show &Disassembly", "Show Disassembly");
