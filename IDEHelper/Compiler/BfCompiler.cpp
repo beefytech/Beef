@@ -897,16 +897,6 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 		if (typeInstance == NULL)
 			continue;
 
-		if (typeInstance->mTypeDef->IsGlobalsContainer())
-		{
-			NOP;
-		}
-
-		if (typeInstance->mTypeDef->mProject->mName == "BeefTest")
-		{
-			NOP;
-		}
-
 		if (typeInstance->IsUnspecializedType())
 			continue;
 
@@ -1034,8 +1024,11 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 			else
 			{
 				for (int defaultIdx = 0; defaultIdx < (int)methodInstance->mDefaultValues.size(); defaultIdx++)
-				{
-					auto castedVal = bfModule->Cast(methodInstance->mMethodDef->GetRefNode(), methodInstance->mDefaultValues[defaultIdx], methodInstance->GetParamType(defaultIdx));
+				{										
+					auto constHolder = methodInstance->GetOwner()->mConstHolder;
+					auto defaultTypedValue = methodInstance->mDefaultValues[defaultIdx];
+					auto defaultVal = bfModule->ConstantToCurrent(constHolder->GetConstant(defaultTypedValue.mValue), constHolder, defaultTypedValue.mType);
+					auto castedVal = bfModule->Cast(methodInstance->mMethodDef->GetRefNode(), BfTypedValue(defaultVal, defaultTypedValue.mType), methodInstance->GetParamType(defaultIdx));
 					if (castedVal)
 					{
 						BfExprEvaluator exprEvaluator(bfModule);
@@ -7035,27 +7028,34 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 				if (hasTests)
 				{
+					HashSet<BfProject*> projectSet;
+
 					for (auto type : mContext->mResolvedTypes)
 					{						
 						auto typeInstance = type->ToTypeInstance();
-						if ((typeInstance != NULL) &&
-							(typeInstance->mTypeDef->mProject->mTargetType == BfTargetType_BeefTest))
-						{
-							bool typeHasTest = false;
+						if (typeInstance != NULL)
+						{														
 							for (auto& methodInstanceGroup : typeInstance->mMethodInstanceGroups)
 							{
 								if (methodInstanceGroup.mDefault != NULL)
 								{
 									auto methodInstance = methodInstanceGroup.mDefault;
+									auto project = methodInstance->mMethodDef->mDeclaringType->mProject;									
+									if (project->mTargetType != BfTargetType_BeefTest)
+										continue;
 									if ((methodInstance->GetCustomAttributes() != NULL) &&
 										(methodInstance->GetCustomAttributes()->Contains(mTestAttributeTypeDef)))
 									{
-										typeHasTest = true;
+										projectSet.Add(project);										
 									}
 								}
 							}
-							if (typeHasTest)
-								mContext->MarkUsedModules(typeInstance->mTypeDef->mProject, typeInstance->mModule);
+							if (!projectSet.IsEmpty())
+							{
+								for (auto project : projectSet)
+									mContext->MarkUsedModules(project, typeInstance->mModule);
+								projectSet.Clear();
+							}
 						}
 					}
 				}
