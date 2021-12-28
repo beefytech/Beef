@@ -2368,11 +2368,16 @@ namespace Beefy.widgets
                     int32 aDir = (keyCode == KeyCode.Up) ? -1 : 1;
 					if ((HasSelection()) && (!mWidgetWindow.IsKeyDown(KeyCode.Shift)))
 					{
-						var lineAndCol = CursorLineAndColumn;
-						var usePos = (aDir < 0) ? (int32)mSelection.Value.MinPos : mSelection.Value.MaxPos;
-						GetLineCharAtIdx(usePos, var selLine, var selLineChar);
-						CursorLineAndColumn = .(selLine, lineAndCol.mColumn);
-						mSelection = null;
+						if (mAllowVirtualCursor)
+						{
+							var lineAndCol = CursorLineAndColumn;
+							var usePos = (aDir < 0) ? (int32)mSelection.Value.MinPos : mSelection.Value.MaxPos;
+							GetLineCharAtIdx(usePos, var selLine, var selLineChar);
+							CursorLineAndColumn = .(selLine, lineAndCol.mColumn);
+							mSelection = null;
+						}
+						else
+							PrepareForCursorMove(aDir);
 					}
                     
                     GetCursorLineChar(out lineIdx, out lineChar);
