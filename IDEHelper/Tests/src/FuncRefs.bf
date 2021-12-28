@@ -57,6 +57,65 @@ namespace Tests
 			return dlg(val[0]);
 		}
 
+		static void TestWrap<T>(T del, bool b = false) where T : delegate void()
+		{
+			Action ac = scope () => {
+				del();
+			};
+			ac();
+		}
+
+		struct Vector2 : this(float x, float y)
+		{
+		}
+
+		class Invoker
+		{
+			public int mA = 111;
+
+			public void Invoke()
+			{
+				mA += 222;
+			}
+		}
+
+		class TestA
+		{
+			Vector2 mVec = .(11, 22);
+			Event<Action> mEvt ~ _.Dispose();
+			Action mAct;
+
+			public Vector2 Vec
+			{
+				set
+				{
+					DoIt(() =>
+						{
+							Test.Assert(mVec.x == 11);
+							Test.Assert(mVec.y == 22);
+							Test.Assert(value.x == 33);
+							Test.Assert(value.y == 44);
+						});
+					Invoker invoker = scope .();
+					mEvt.Add(new => invoker);
+					DoIt(=> mEvt);
+					Test.Assert(invoker.mA == 333);
+					DoIt(=> invoker);
+					Test.Assert(invoker.mA == 555);
+					mAct = scope => invoker;
+					mAct();
+					Test.Assert(invoker.mA == 777);
+					DoIt(=> mAct);
+					Test.Assert(invoker.mA == 999);
+				}
+			}
+
+			public void DoIt<TDlg>(TDlg dlg) where TDlg : delegate void()
+			{
+				dlg();
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -78,6 +137,13 @@ namespace Tests
 			List<float> fList = scope .() { 1.2f, 2.3f };
 			Test.Assert(DoOnListA(fList, (val) => val + 100) == 101.2f);
 			Test.Assert(DoOnListB((val) => val + 200, fList) == 201.2f);
+
+			int a = 222;
+			TestWrap(() => { a += 100; });
+			Test.Assert(a == 322);
+
+			TestA ta = scope .();
+			ta.Vec = .(33, 44);
 		}
 
 		struct MethodRefHolder<T> where T : delegate int(int num)

@@ -10,12 +10,23 @@ namespace System.Diagnostics
 
 	struct ProfileInstance : int32
 	{
-		public void Dispose()
+		public bool HasValue
 		{
+			get
+			{
+				return this != 0;
+			}
+		}
+
+		public void Dispose() mut
+		{
+			if (this == 0)
+				return;
 			String str = scope String();
 			str.Append("StopSampling\t");
 			((int32)this).ToString(str);
 			Internal.ProfilerCmd(str);
+			this = 0;
 		}
 	}
 

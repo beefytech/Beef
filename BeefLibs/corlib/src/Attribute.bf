@@ -30,6 +30,8 @@ namespace System
 		Delete       = 0x80000,
 		Alias        = 0x100000,
 		Block        = 0x200000,
+		DelegateTypeRef = 0x400000,
+		FunctionTypeRef = 0x800000,
 
 		Types		 = .Struct | .Enum | .Function | .Class | .Interface,
 		ValueTypes	 = .Struct | .Enum | .Function,
@@ -227,7 +229,7 @@ namespace System
 
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Delegate | .Function)]
+	[AttributeUsage(.Method | .Constructor | .Delegate | .Function | .DelegateTypeRef | .FunctionTypeRef)]
 	public struct CallingConventionAttribute : Attribute
 	{
 		public enum Kind

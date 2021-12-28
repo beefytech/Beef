@@ -452,6 +452,7 @@ public:
 	Array<BfType*> mParams;
 	bool mHasExplicitThis;
 	bool mHasVarArgs;
+	BfCallingConvention mCallingConvention;
 
 public:
 	BfDelegateInfo()
@@ -459,6 +460,7 @@ public:
 		mReturnType = NULL;
 		mHasExplicitThis = false;
 		mHasVarArgs = false;
+		mCallingConvention = BfCallingConvention_Unspecified;
 	}
 
 	~BfDelegateInfo()
@@ -569,6 +571,7 @@ public:
 	virtual bool IsBoolean() { return false; }
 	virtual bool IsInteger() { return false; }
 	virtual bool IsIntegral() { return false; }
+	virtual bool IsIntegralOrBool() { return false; }
 	virtual bool IsIntPtr() { return false; }
 	virtual bool IsSigned() { return false; }
 	virtual bool IsSignedInt() { return false; }
@@ -625,6 +628,7 @@ public:
 	virtual bool IsValueTypeOrValueTypePtr() override { return true; }
 	virtual bool IsBoolean() override { return mTypeDef->mTypeCode == BfTypeCode_Boolean; }
 	virtual bool IsIntegral() override { return (mTypeDef->mTypeCode >= BfTypeCode_Int8) && (mTypeDef->mTypeCode <= BfTypeCode_Char32); }
+	virtual bool IsIntegralOrBool() override { return (mTypeDef->mTypeCode >= BfTypeCode_Boolean) && (mTypeDef->mTypeCode <= BfTypeCode_Char32); }
 	virtual bool IsInteger() override { return (mTypeDef->mTypeCode >= BfTypeCode_Int8) && (mTypeDef->mTypeCode <= BfTypeCode_UIntUnknown); }	
 	virtual bool IsIntPtr() override { return (mTypeDef->mTypeCode == BfTypeCode_IntPtr) || (mTypeDef->mTypeCode == BfTypeCode_UIntPtr); }
 	virtual bool IsIntPtrable() override 
@@ -1582,7 +1586,9 @@ enum BfAttributeTargets : int32
 	BfAttributeTargets_Delete       = 0x80000,
 	BfAttributeTargets_Alias        = 0x100000,
 	BfAttributeTargets_Block		= 0x200000,
-	BfAttributeTargets_All          = 0x3FFFFF
+	BfAttributeTargets_DelegateTypeRef = 0x400000,
+	BfAttributeTargets_FunctionTypeRef = 0x800000,
+	BfAttributeTargets_All          = 0xFFFFFF
 };
 
 enum BfAttributeFlags : int8
@@ -1823,23 +1829,7 @@ public:
 	String mEmitData;
 };
 
-class BfCeTypeInfo
-{
-public:	
-	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
-	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
-	Array<int> mPendingInterfaces;
-	Val128 mHash;
-	bool mFailed;
-	BfCeTypeInfo* mNext;
-
-public:
-	BfCeTypeInfo()
-	{
-		mFailed = false;
-		mNext = NULL;		
-	}
-};
+class BfCeTypeInfo;
 
 // Instance of struct or class
 class BfTypeInstance : public BfDependedType
@@ -2526,6 +2516,7 @@ public:
 		BfType* mRootResolvedType;
 		Dictionary<BfTypeReference*, BfType*> mResolvedTypeMap;
 		BfResolveTypeRefFlags mResolveFlags;		
+		BfCallingConvention mCallingConvention;
 		bool mHadVar;
 		bool mFailed;		
 
@@ -2540,6 +2531,7 @@ public:
 			mFailed = false;
 			mHadVar = false;
 			mResolveFlags = BfResolveTypeRefFlag_None;
+			mCallingConvention = BfCallingConvention_Unspecified;
 		}
 
 		BfType* GetCachedResolvedType(BfTypeReference* typeReference);

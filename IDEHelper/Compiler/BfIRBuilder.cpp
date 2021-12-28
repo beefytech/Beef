@@ -2627,9 +2627,13 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		BfMethodInstance* methodInstance = methodRefType->mMethodRef;
 
 		String name = "_BF_MethodRef_";
-		name += BfTypeUtils::HashEncode64(methodInstance->mIdHash).c_str();
 
-		if (wantDIData)
+		if (methodInstance != NULL)
+			name += BfTypeUtils::HashEncode64(methodInstance->mIdHash).c_str();
+
+		BF_ASSERT(methodInstance != NULL);
+
+		if ((wantDIData) && (methodInstance != NULL))
 		{	
 			auto typeDeclaration = methodInstance->GetOwner()->mTypeDef->mTypeDeclaration;			
 

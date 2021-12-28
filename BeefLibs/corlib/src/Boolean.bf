@@ -17,6 +17,11 @@ namespace System
 		    strBuffer.Append(((bool)this) ? TrueString : FalseString);
 		}
 
+		public static int operator<=>(Boolean a, Boolean b)
+		{
+			return (SelfBase)a <=> (SelfBase)b;
+		}
+
 		public int GetHashCode()
 		{
 			return ((bool)this) ? 1 : 0;

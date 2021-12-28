@@ -78,8 +78,9 @@ namespace IDE.Compiler
 		public bool mCancelled;
 		public int32 mTextVersion = -1;
 		public bool mIsUserRequested;
-
 		public bool mDoFuzzyAutoComplete;
+		public Stopwatch mStopwatch ~ delete _;
+		public ProfileInstance mProfileInstance ~ _.Dispose();
     }
 
     public class BfParser : ILeakIdentifiable
@@ -122,7 +123,7 @@ namespace IDE.Compiler
         static extern bool BfParser_Reduce(void* bfParser, void* bfPassInstance);
 
         [CallingConvention(.Stdcall), CLink]        
-        static extern char8* BfParser_Format(void* bfParser, int32 formatEnd, int32 formatStart, out int32* outCharMapping);
+        static extern char8* BfParser_Format(void* bfParser, int32 formatEnd, int32 formatStart, out int32* outCharMapping, int32 maxCol);
 
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BfParser_GetDebugExpressionAt(void* bfParser, int32 cursorIdx);
@@ -209,8 +210,9 @@ namespace IDE.Compiler
         public void Reformat(int formatStart, int formatEnd, out int32[] char8Mapping, String str)
         {                                    
             int32* char8MappingPtr;
-            var stringPtr = BfParser_Format(mNativeBfParser, (int32)formatStart, (int32)formatEnd, out char8MappingPtr);
-			str.Append(stringPtr);
+            var maxCol = gApp.mSettings.mEditorSettings.mWrapCommentsAt;
+            var stringPtr = BfParser_Format(mNativeBfParser, (int32)formatStart, (int32)formatEnd, out char8MappingPtr, maxCol);
+            str.Append(stringPtr);
 
             char8Mapping = new int32[str.Length];
             for (int32 i = 0; i < char8Mapping.Count; i++)

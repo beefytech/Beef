@@ -90,13 +90,13 @@ namespace Beefy.widgets
 		Minus = 0xBD,
 		Period = 0xBE,
 		Slash = 0xBF,
+		Tilde = 0xC0,
 		Grave = 0xC0,
 		LBracket = 0xDB,
 		Backslash = 0xDC,
 		RBracket = 0xDD,
 		Apostrophe = 0xDE,
 		Backtick = 0xDF,
-        Tilde = 0xC0,
         Command = 0xF0,
         COUNT = 0xFF,
 
@@ -141,6 +141,16 @@ namespace Beefy.widgets
 					return (KeyCode)LBracket;
 				if (c == ']')
 					return (KeyCode)RBracket;
+				if (c == '/')
+					return (KeyCode)Slash;
+				if (c == '\\')
+					return (KeyCode)Backslash;
+				if (c == '`')
+					return (KeyCode)Tilde;
+				if (c == '.')
+					return (KeyCode)Period;
+				if (c == ',')
+					return (KeyCode)Comma;
 			}
 
 			if (str.StartsWith("0x"))
@@ -168,6 +178,10 @@ namespace Beefy.widgets
 				c = '[';
 			case RBracket:
 				c = ']';
+			case .Slash:
+				c = '/';
+			case .Backslash:
+				c = '\\';
 			default:
 			}
 			if (c != 0)

@@ -47,9 +47,9 @@ namespace System
 
 			public struct VTable
 			{
-				public function HResult(COM_IUnknown* self, ref Guid riid, void** result) QueryInterface;
-				public function uint32(COM_IUnknown* self) AddRef;
-				public function uint32(COM_IUnknown* self) Release;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IUnknown* self, ref Guid riid, void** result) QueryInterface;
+				public function [CallingConvention(.Stdcall)] uint32(COM_IUnknown* self) AddRef;
+				public function [CallingConvention(.Stdcall)] uint32(COM_IUnknown* self) Release;
 			}
 
 			public enum HResult : int32
@@ -1124,14 +1124,13 @@ namespace System
 
 			public struct VTable : Windows.COM_IUnknown.VTable
 			{
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnFileOk;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* psiFolder) OnFolderChanging;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnFolderChange;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnSelectionChange;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, FDE_SHAREVIOLATION_RESPONSE* pResponse) OnShareViolation;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnTypeChange;
-				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* shellItem, FDE_OVERWRITE_RESPONSE* response) OnOverwrite;
-
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnFileOk;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* psiFolder) OnFolderChanging;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnFolderChange;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnSelectionChange;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, FDE_SHAREVIOLATION_RESPONSE* pResponse) OnShareViolation;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnTypeChange;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* shellItem, FDE_OVERWRITE_RESPONSE* response) OnOverwrite;
 			}
 		}
 
@@ -1154,12 +1153,11 @@ namespace System
 
 			public struct VTable : Windows.COM_IUnknown.VTable
 			{
-				public function HResult(COM_IShellItem* self, void* pbc, ref Guid bhid, ref Guid riid, void** ppv) BindToHandler;
-				public function HResult(COM_IShellItem* self, out COM_IShellItem* ppsi) GetParent;
-				public function HResult(COM_IShellItem* self, SIGDN sigdnName, out char16* ppszName) GetDisplayName;
-				public function HResult(COM_IShellItem* self, uint sfgaoMask, out uint psfgaoAttribs) GetAttributes;
-				public function HResult(COM_IShellItem* self, COM_IShellItem* psi, uint32 hint, out int32 piOrder) Compare;
-
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItem* self, void* pbc, ref Guid bhid, ref Guid riid, void** ppv) BindToHandler;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItem* self, out COM_IShellItem* ppsi) GetParent;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItem* self, SIGDN sigdnName, out char16* ppszName) GetDisplayName;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItem* self, uint sfgaoMask, out uint psfgaoAttribs) GetAttributes;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItem* self, COM_IShellItem* psi, uint32 hint, out int32 piOrder) Compare;
 			}
 			public new VTable* VT
 			{
@@ -1207,13 +1205,13 @@ namespace System
 
 			public struct VTable : Windows.COM_IUnknown.VTable
 			{
-				public function HResult(COM_IShellItemArray* self, void* pbc, ref Guid rbhid, ref Guid riid, out void* ppvOut) BindToHandler;
-				public function HResult(COM_IShellItemArray* self, GETPROPERTYSTOREFLAGS flags, ref Guid riid, out void* ppv) GetPropertyStore;
-				public function HResult(COM_IShellItemArray* self, ref PROPERTYKEY keyType, ref Guid riid, out void* ppv) GetPropertyDescriptionList;
-				public function HResult(COM_IShellItemArray* self, SIATTRIBFLAGS dwAttribFlags, uint32 sfgaoMask, out uint32 psfgaoAttribs) GetAttributes;
-				public function HResult(COM_IShellItemArray* self, out uint32 pdwNumItems) GetCount;
-				public function HResult(COM_IShellItemArray* self, uint32 dwIndex, out COM_IShellItem* ppsi) GetItemAt;
-				public function HResult(COM_IShellItemArray* self, out void* ppenumShellItems) EnumItems;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItemArray* self, void* pbc, ref Guid rbhid, ref Guid riid, out void* ppvOut) BindToHandler;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItemArray* self, GETPROPERTYSTOREFLAGS flags, ref Guid riid, out void* ppv) GetPropertyStore;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItemArray* self, ref PROPERTYKEY keyType, ref Guid riid, out void* ppv) GetPropertyDescriptionList;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItemArray* self, SIATTRIBFLAGS dwAttribFlags, uint32 sfgaoMask, out uint32 psfgaoAttribs) GetAttributes;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItemArray* self, out uint32 pdwNumItems) GetCount;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItemArray* self, uint32 dwIndex, out COM_IShellItem* ppsi) GetItemAt;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IShellItemArray* self, out void* ppenumShellItems) EnumItems;
 			}
 			public new VTable* VT
 			{
@@ -1268,30 +1266,30 @@ namespace System
 
 			public struct VTable : Windows.COM_IUnknown.VTable
 			{
-			    public function HResult(COM_IFileDialog* self, Windows.HWnd parent) Show;
-			    public function HResult(COM_IFileDialog* self, uint cFileTypes, COMDLG_FILTERSPEC* rgFilterSpec) SetFileTypes;
-			    public function HResult(COM_IFileDialog* self, uint iFileType) SetFileTypeIndex;
-			    public function HResult(COM_IFileDialog* self, out uint piFileType) GetFileTypeIndex;
-			    public function HResult(COM_IFileDialog* self, COM_IFileDialogEvents* pfde, out uint pdwCookie) Advise;
-			    public function HResult(COM_IFileDialog* self, uint dwCookie) Unadvise;
-				public function HResult(COM_IFileDialog* self, FOS fos) SetOptions;
-				public function HResult(COM_IFileDialog* self, out FOS pfos) GetOptions;
-				public function HResult(COM_IFileDialog* self, COM_IShellItem* psi) SetDefaultFolder;
-				public function HResult(COM_IFileDialog* self, COM_IShellItem* psi) SetFolder;
-				public function HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetFolder;
-				public function HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetCurrentSelection;
-				public function HResult(COM_IFileDialog* self, char16* pszName) SetFileName;
-				public function HResult(COM_IFileDialog* self, out char16* pszName) GetFileName;
-				public function HResult(COM_IFileDialog* self, char16* pszTitle) SetTitle;
-				public function HResult(COM_IFileDialog* self, char16* pszText) SetOkButtonLabel;
-				public function HResult(COM_IFileDialog* self, char16* pszLabel) SetFileNameLabel;
-				public function HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetResult;
-				public function HResult(COM_IFileDialog* self, COM_IShellItem* psi, FDAP fdap) AddPlace;
-				public function HResult(COM_IFileDialog* self, char16* pszDefaultExtension) SetDefaultExtension;
-				public function HResult(COM_IFileDialog* self, int hr) Close;
-				public function HResult(COM_IFileDialog* self, ref Guid guid) SetClientGuid;
-				public function HResult(COM_IFileDialog* self) ClearClientData;
-				public function HResult(COM_IFileDialog* self, void* pFilter) SetFilter;
+			    public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, Windows.HWnd parent) Show;
+			    public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, uint cFileTypes, COMDLG_FILTERSPEC* rgFilterSpec) SetFileTypes;
+			    public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, uint iFileType) SetFileTypeIndex;
+			    public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, out uint piFileType) GetFileTypeIndex;
+			    public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, COM_IFileDialogEvents* pfde, out uint pdwCookie) Advise;
+			    public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, uint dwCookie) Unadvise;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, FOS fos) SetOptions;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, out FOS pfos) GetOptions;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, COM_IShellItem* psi) SetDefaultFolder;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, COM_IShellItem* psi) SetFolder;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetFolder;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetCurrentSelection;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, char16* pszName) SetFileName;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, out char16* pszName) GetFileName;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, char16* pszTitle) SetTitle;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, char16* pszText) SetOkButtonLabel;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, char16* pszLabel) SetFileNameLabel;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, out COM_IShellItem* ppsi) GetResult;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, COM_IShellItem* psi, FDAP fdap) AddPlace;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, char16* pszDefaultExtension) SetDefaultExtension;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, int hr) Close;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, ref Guid guid) SetClientGuid;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self) ClearClientData;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileDialog* self, void* pFilter) SetFilter;
 			}
 			public new VTable* VT
 			{
@@ -1314,8 +1312,8 @@ namespace System
 
 			public struct VTable : COM_IFileDialog.VTable
 			{
-				public function HResult(COM_IFileOpenDialog* self, out COM_IShellItemArray* ppenum) GetResults;
-				public function HResult(COM_IFileOpenDialog* self, out COM_IShellItemArray* ppsai) GetSelectedItems;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileOpenDialog* self, out COM_IShellItemArray* ppenum) GetResults;
+				public function [CallingConvention(.Stdcall)] HResult(COM_IFileOpenDialog* self, out COM_IShellItemArray* ppsai) GetSelectedItems;
 			}
 			public new VTable* VT
 			{

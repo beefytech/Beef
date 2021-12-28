@@ -626,6 +626,7 @@ namespace IDE
 			public FileRecoveryKind mEnableFileRecovery = .Yes;
 			public bool mFormatOnSave = false;
 			public bool mSyncWithWorkspacePanel = false;
+			public int32 mWrapCommentsAt = 0;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -652,6 +653,7 @@ namespace IDE
 				sd.Add("EnableFileRecovery", mEnableFileRecovery);
 				sd.Add("FormatOnSave", mFormatOnSave);
 				sd.Add("SyncWithWorkspacePanel", mSyncWithWorkspacePanel);
+				sd.Add("WrapCommentsAt", mWrapCommentsAt);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -682,6 +684,7 @@ namespace IDE
 				sd.GetEnum<FileRecoveryKind>("EnableFileRecovery", ref mEnableFileRecovery);
 				sd.Get("FormatOnSave", ref mFormatOnSave);
 				sd.Get("SyncWithWorkspacePanel", ref mSyncWithWorkspacePanel);
+				sd.Get("WrapCommentsAt", ref mWrapCommentsAt);
 			}
 
 			public void SetDefaults()
@@ -756,7 +759,9 @@ namespace IDE
 				Add("Cancel Build", "Ctrl+Break");
 				Add("Close Document", "Ctrl+W");
 				Add("Compile File", "Ctrl+F7");
-				Add("Comment Selection", "Ctrl+K, Ctrl+C");
+				Add("Comment Block", "Ctrl+K, Ctrl+C");
+				Add("Comment Lines", "Ctrl+K, Ctrl+/");
+				Add("Comment Toggle", "Ctrl+K, Ctrl+T");
 				Add("Duplicate Line", "Ctrl+D");
 				Add("Find Class", "Alt+Shift+L");
 				Add("Find in Document", "Ctrl+F");
@@ -892,7 +897,10 @@ namespace IDE
 							{
 								curCmdMap = (*valuePtr) as CommandMap;
 								if (curCmdMap == null)
+								{
+									curCmdMap.FailValues.Add(ideCommand);
 									break;
+								}
 							}
 							else
 							{
@@ -905,7 +913,10 @@ namespace IDE
 										if (checkPrevCmd.mContextFlags == ideCommand.mContextFlags)
 											gApp.OutputLineSmart("ERROR: The same key is bound for '{0}' and '{1}'", checkPrevCmd.mName, entry.mCommand);
 										if (checkPrevCmd.mNext == null)
+										{
+											curCmdMap.FailValues.Add(ideCommand);
 											break;
+										}
 										checkPrevCmd = checkPrevCmd.mNext;
 									}
 									checkPrevCmd.mNext = ideCommand;

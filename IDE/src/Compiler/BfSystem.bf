@@ -51,7 +51,7 @@ namespace IDE.Compiler
 		static extern char8* BfSystem_GetNamespaceSearch(void* bfSystem, char8* typeName, void* project);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void* BfSystem_CreateProject(void* bfSystem, char8* projectName);
+        static extern void* BfSystem_CreateProject(void* bfSystem, char8* projectName, char8* projectDir);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfSystem_ClearTypeOptions(void* bfSystem);
@@ -142,7 +142,7 @@ namespace IDE.Compiler
         {
             using (mMonitor.Enter())
             {
-                var bfProject = CreateProject(project.mProjectName);
+                var bfProject = CreateProject(project.mProjectName, project.mProjectDir);
                 mProjectMap[project] = bfProject;
             }
         }
@@ -188,10 +188,10 @@ namespace IDE.Compiler
 				outNamespaceSearch.Append(namespaceSearch);
 		}
 
-        public BfProject CreateProject(String projectName)
+        public BfProject CreateProject(String projectName, String projectDir)
         {
             BfProject project = new BfProject();
-            project.mNativeBfProject = BfSystem_CreateProject(mNativeBfSystem, projectName);
+            project.mNativeBfProject = BfSystem_CreateProject(mNativeBfSystem, projectName, projectDir);
             return project;
         }
 

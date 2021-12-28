@@ -2664,6 +2664,8 @@ int BfArrayType::GetLengthBitCount()
 
 int BfMethodRefType::GetCaptureDataCount()
 {
+	if (mMethodRef == NULL)
+		return 0;
 	return (int)mDataToParamIdx.size();
 }
 
@@ -3021,7 +3023,8 @@ int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, 
 	BfResolveTypeRefFlags resolveFlags = ctx->mResolveFlags;
 	if ((flags & BfHashFlag_AllowGenericParamConstValue) != 0)
 		resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowGenericParamConstValue);
-
+	if (!isHeadType)
+		resolveFlags = (BfResolveTypeRefFlags)(resolveFlags &~ BfResolveTypeRefFlag_Attribute);
 	auto resolvedType = ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, resolveFlags);
 	if (resolvedType == NULL)
 	{
@@ -3669,6 +3672,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			BfDelegateInfo* rhsDelegateInfo = rhs->GetDelegateInfo();
 			if (lhsInst->mTypeDef->mIsDelegate != rhsInst->mTypeDef->mIsDelegate)
 				return false;
+			if (lhsDelegateInfo->mCallingConvention != rhsDelegateInfo->mCallingConvention)
+				return false;
 
 			auto lhsMethodDef = lhsInst->mTypeDef->mMethods[0];
 			auto rhsMethodDef = rhsInst->mTypeDef->mMethods[0];
@@ -3917,7 +3922,9 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 		return false;
 	}
 
-	BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(rhsGenericTypeInstRef);
+	BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(rhsGenericTypeInstRef, NULL, ctx->mResolveFlags);
+	if (elementTypeDef == NULL)
+		return false;
 	if (elementTypeDef->GetDefinition() != lhsGenericType->mTypeDef->GetDefinition())
 		return false;
 
@@ -4088,8 +4095,16 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 		if ((lhs->IsDelegate()) != rhsIsDelegate)
 			return false;
+		
+		BfCallingConvention rhsCallingConvention = BfCallingConvention_Unspecified;
+		if (ctx->mRootTypeRef == rhsDelegateType)
+			rhsCallingConvention = ctx->mCallingConvention;
+		else
+			ctx->mModule->GetDelegateTypeRefAttributes(rhsDelegateType, rhsCallingConvention);
+		if (lhsDelegateInfo->mCallingConvention != rhsCallingConvention)
+			return false;
 		if (!Equals(lhsDelegateInfo->mReturnType, rhsDelegateType->mReturnType, ctx))
-			return false;		
+			return false;
 
 		bool isMutating = true;
 

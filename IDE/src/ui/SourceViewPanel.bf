@@ -160,6 +160,8 @@ namespace IDE.ui
 	{
 		public int32 mCursorPos;
 		public String mResult ~ delete _;
+		public int32? mLine;
+		public int32? mLineChar;
 
 		public ~this()
 		{
@@ -621,6 +623,10 @@ namespace IDE.ui
 		    //Classify(options.HasFlag(.HighPriority) ? ResolveType.Autocomplete_HighPri : ResolveType.Autocomplete);
 
 			ResolveParams resolveParams = new ResolveParams();
+			if (gApp.mDbgTimeAutocomplete)
+				resolveParams.mStopwatch = new .()..Start();
+			if (gApp.mDbgPerfAutocomplete)
+				resolveParams.mProfileInstance = Profiler.StartSampling("Autocomplete").GetValueOrDefault();
 			resolveParams.mIsUserRequested = options.HasFlag(.UserRequested);
 			resolveParams.mDoFuzzyAutoComplete = gApp.mSettings.mEditorSettings.mFuzzyAutoComplete;
 			Classify(.Autocomplete, resolveParams);
@@ -1186,7 +1192,7 @@ namespace IDE.ui
                 //if (mCurParser != null)
                 {
 					if (gApp.mWorkspace.mProjectLoadState != .Loaded)
-						return false;
+						return true;
 
 					if (!isHi)
 						Debug.Assert(!mIsPerformingBackgroundClassify);
@@ -2335,6 +2341,11 @@ namespace IDE.ui
         {
 			if (mDisposed)
 				return;
+
+			if (mProjectSource?.mEditData?.HasTextChanged() == true)
+			{
+				mProjectSource.ClearEditData();
+			}
 
 			ProcessDeferredResolveResults(-1);
 
@@ -4725,7 +4736,7 @@ namespace IDE.ui
 			delete parser;
 		}
 
-		public void UpdateMouseover(bool mouseoverFired, bool mouseInbounds, int line, int lineChar)
+		public void UpdateMouseover(bool mouseoverFired, bool mouseInbounds, int line, int lineChar, bool isManual = false)
 		{
 
 			
@@ -5011,6 +5022,11 @@ namespace IDE.ui
 
 							mHoverResolveTask = new HoverResolveTask();
 							mHoverResolveTask.mCursorPos = (int32)textIdx;
+							if (isManual)
+							{
+								mHoverResolveTask.mLine = (.)line;
+								mHoverResolveTask.mLineChar = (.)lineChar;
+							}
 						}
 					}
 
@@ -5204,6 +5220,16 @@ namespace IDE.ui
 #if IDE_C_SUPPORT
 			hasClangHoverErrorData = mClangHoverErrorData != null;
 #endif
+
+			if (mHoverResolveTask != null)
+			{
+				if (mHoverResolveTask.mLine != null)
+				{
+					UpdateMouseover(true, true, mHoverResolveTask.mLine.Value, mHoverResolveTask.mLineChar.Value, true);
+					return;
+				}
+			}
+			
 		    if (((mouseoverFired) || (mHoverWatch != null) || (hasClangHoverErrorData) || (mHoverResolveTask?.mResult != null)) && 
 		        (mousePos.x >= 0))
 		    {
@@ -5525,6 +5551,13 @@ namespace IDE.ui
 				//Debug.WriteLine($"HandleResolveResult {resolveResult}");
 
 				HandleResolveResult(resolveResult.mResolveType, resolveResult.mAutocompleteInfo, resolveResult);
+
+				if (resolveResult.mStopwatch != null)
+				{
+					resolveResult.mStopwatch.Stop();
+					if (var autoComplete = GetAutoComplete())
+						Debug.WriteLine($"Autocomplete {resolveResult.mStopwatch.ElapsedMilliseconds}ms entries: {autoComplete.mAutoCompleteListWidget.mEntryList.Count}");
+				}
 
 				//Debug.WriteLine("ProcessDeferredResolveResults finished {0}", resolveResult.mResolveType);
 

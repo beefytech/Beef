@@ -76,6 +76,9 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 BfCompiler_GetCurConstEvalExecuteId(void* bfCompiler);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern bool BfCompiler_GetLastHadComptimeRebuilds(void* bfCompiler);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_Delete(void* bfCompiler);
 
@@ -833,6 +836,11 @@ namespace IDE.Compiler
 					mWantsRemoveOldData = false;
 				}
 			}
+		}
+
+		public bool GetLastHadComptimeRebuilds()
+		{
+			return BfCompiler_GetLastHadComptimeRebuilds(mNativeBfCompiler);
 		}
     }
 }

@@ -26,6 +26,7 @@
 #include "BfSourceClassifier.h"
 #include "BfAutoComplete.h"
 #include "BfResolvePass.h"
+#include "CeMachine.h"
 
 #pragma warning(pop)
 
@@ -1850,6 +1851,7 @@ void BfContext::PreUpdateRevisedTypes()
 void BfContext::UpdateRevisedTypes()
 {
 	BP_ZONE("BfContext::UpdateRevisedTypes");
+	BfLogSysM("BfContext::UpdateRevisedTypes\n");
 
 	int wantPtrSize;
 	if ((mCompiler->mOptions.mMachineType == BfMachineType_x86) |
@@ -1889,6 +1891,9 @@ void BfContext::UpdateRevisedTypes()
 	bool wantsDebugInfo = (mCompiler->mOptions.mEmitDebugInfo);
 	
 	Array<BfTypeInstance*> defStateChangedQueue;
+	Array<BfTypeInstance*> defEmitParentCheckQueue;
+
+	Dictionary<String, uint64> lastWriteTimeMap;
 
 	// Do primary 'rebuild' scan
 	for (auto type : mResolvedTypes)
@@ -1917,20 +1922,8 @@ void BfContext::UpdateRevisedTypes()
 
 		auto typeDef = typeInst->mTypeDef;		
 
-		if (typeDef->mEmitParent != NULL)
-		{
-			if (typeDef->mDefState == BfTypeDef::DefState_Deleted)
-			{
-				typeInst->mTypeDef = typeDef->mEmitParent;
-			}
-			else
-			{
-				auto emitTypeDef = typeDef;
-				typeDef = typeDef->mEmitParent;
-				if (typeDef->mNextRevision != NULL)
-					emitTypeDef->mDefState = BfTypeDef::DefState_EmittedDirty;
-			}
-		}
+		if (typeDef->mEmitParent != NULL)		
+			defEmitParentCheckQueue.Add(typeInst);
 
 		if (typeDef->mProject->mDisabled)
 		{
@@ -1939,13 +1932,39 @@ void BfContext::UpdateRevisedTypes()
 		}
 		
 		typeInst->mRebuildFlags = BfTypeRebuildFlag_None;
-						
+		
 		if (typeDef->mIsPartial)
 		{
 			// This was a type that wasn't marked as partial before but now it is, so it doesn't need its own typedef
 			//  since we will have a separate type instance for the combined partials
 			DeleteType(type);
 			continue;
+		}
+
+		if (typeInst->mCeTypeInfo != NULL)
+		{
+			bool changed = false;
+
+			for (auto& kv : typeInst->mCeTypeInfo->mRebuildMap)
+			{
+				mCompiler->mHasComptimeRebuilds = true;
+				if (kv.mKey.mKind == CeRebuildKey::Kind_File)
+				{
+					String* keyPtr = NULL;
+					uint64* valuePtr = NULL;
+					if (lastWriteTimeMap.TryAdd(kv.mKey.mString, &keyPtr, &valuePtr))
+					{
+						*valuePtr = BfpFile_GetTime_LastWrite(kv.mKey.mString.c_str());
+					}
+					if (*valuePtr != kv.mValue.mInt)
+						changed = true;
+				}
+			}
+
+			if (changed)
+			{
+				RebuildType(typeInst);
+			}
 		}
 
 		if ((typeInst->mHotTypeData != NULL) && (!mCompiler->IsHotCompile()))
@@ -2038,6 +2057,31 @@ void BfContext::UpdateRevisedTypes()
 			{
 				BfLogSysM("Rebuilding failed type %p\n", typeInst);
 				RebuildType(typeInst);
+			}
+		}
+	}
+
+	for (auto typeInst : defEmitParentCheckQueue)
+	{
+		if (typeInst->IsDeleting())
+			continue;
+		auto typeDef = typeInst->mTypeDef;
+		if (typeDef->mEmitParent != NULL)
+		{
+			if (typeDef->mDefState == BfTypeDef::DefState_Deleted)
+			{
+				BfLogSysM("Type %p typeDef %p deleted, setting to emitParent %p\n", typeInst, typeDef, typeDef->mEmitParent);
+				typeInst->mTypeDef = typeDef->mEmitParent;
+			}
+			else
+			{
+				auto emitTypeDef = typeDef;
+				typeDef = typeDef->mEmitParent;
+				if (typeDef->mNextRevision != NULL)
+				{
+					BfLogSysM("Type %p typeDef %p emitparent %p has next revision, setting emittedDirty\n", typeInst, emitTypeDef, typeDef);
+					emitTypeDef->mDefState = BfTypeDef::DefState_EmittedDirty;
+				}
 			}
 		}
 	}

@@ -72,7 +72,7 @@ namespace System
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;			
+			char8* addlPtr = append char8[bufferSize]*(?);			
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 			mLength = 0;
 		}
@@ -82,7 +82,7 @@ namespace System
 		{
 		    let bufferSize = 16 - sizeof(char8*);
 #unwarn
-		    char8* addlPtr = append char8[bufferSize]*;            
+		    char8* addlPtr = append char8[bufferSize]*(?);            
 		    mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 		    mLength = 0;
 		}
@@ -93,7 +93,7 @@ namespace System
 			let count = str.mLength;
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;			
+			char8* addlPtr = append char8[bufferSize]*(?);			
 			Internal.MemCpy(Ptr, str.Ptr, count);
 			mLength = count;
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
@@ -106,7 +106,7 @@ namespace System
 			let count = str.mLength - offset;
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;
+			char8* addlPtr = append char8[bufferSize]*(?);
 			let ptr = Ptr;
 			let srcPtr = str.Ptr;
 			for (int_strsize i = 0; i < count; i++)
@@ -123,7 +123,7 @@ namespace System
 
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;            
+			char8* addlPtr = append char8[bufferSize]*(?);
 			let ptr = Ptr;
 			let srcPtr = str.Ptr;
 			for (int i = 0; i < count; i++)
@@ -137,7 +137,7 @@ namespace System
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;            
+			char8* addlPtr = append char8[bufferSize]*(?);
 			let ptr = Ptr;
 			for (int_strsize i = 0; i < count; i++)
 			    ptr[i] = c;
@@ -151,7 +151,7 @@ namespace System
 			let count = Internal.CStrLen(char8Ptr);
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;            
+			char8* addlPtr = append char8[bufferSize]*(?);        
 			let ptr = Ptr;
 			for (int_strsize i = 0; i < count; i++)
 			    ptr[i] = char8Ptr[i];
@@ -164,7 +164,7 @@ namespace System
 		{
 		    int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-		    char8* addlPtr = append char8[bufferSize]*;            
+		    char8* addlPtr = append char8[bufferSize]*(?);
 			let ptr = Ptr;
 		    for (int i = 0; i < count; i++)
 		        ptr[i] = char8Ptr[i];
@@ -178,7 +178,7 @@ namespace System
 			let count = UTF16.GetLengthAsUTF8(char16Ptr);
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;
+			char8* addlPtr = append char8[bufferSize]*(?);
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 			mLength = 0;
 			UTF16.Decode(char16Ptr, this);
@@ -190,7 +190,7 @@ namespace System
 			let count = UTF16.GetLengthAsUTF8(chars);
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;
+			char8* addlPtr = append char8[bufferSize]*(?);
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 			mLength = 0;
 			UTF16.Decode(chars, this);
@@ -202,7 +202,7 @@ namespace System
 			let tryBufferSize = strView.Length - sizeof(char8*);
 			let bufferSize = (tryBufferSize >= 0) ? tryBufferSize : 0;
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;			
+			char8* addlPtr = append char8[bufferSize]*(?);
 			let ptr = Ptr;
 			Internal.MemCpy(ptr, strView.Ptr, strView.Length);
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
@@ -215,7 +215,7 @@ namespace System
 			let count = strView.Length + (flags.HasFlag(.NullTerminate) ? 1 : 0);
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;			
+			char8* addlPtr = append char8[bufferSize]*(?);			
 			let ptr = Ptr;
 			Internal.MemCpy(ptr, strView.Ptr, strView.Length);
 			if (flags.HasFlag(.NullTerminate))
@@ -232,7 +232,7 @@ namespace System
 			let count = strView.Length - offset;
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;            
+			char8* addlPtr = append char8[bufferSize]*(?);            
 			let ptr = Ptr;
 			let srcPtr = strView.Ptr;
 			for (int i = 0; i < count; i++)
@@ -249,7 +249,7 @@ namespace System
 
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;            
+			char8* addlPtr = append char8[bufferSize]*(?);            
 			let ptr = Ptr;
 			let srcPtr = strView.Ptr;
 			for (int i = 0; i < count; i++)
@@ -263,7 +263,7 @@ namespace System
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;            
+			char8* addlPtr = append char8[bufferSize]*(?);            
 			let ptr = Ptr;
 			for (int i = 0; i < count; i++)
 			    ptr[i] = chars[i + offset];
@@ -285,7 +285,7 @@ namespace System
 			int count = StrLengths(strs);
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
-			char8* addlPtr = append char8[bufferSize]*;
+			char8* addlPtr = append char8[bufferSize]*(?);
 			let ptr = Ptr;
 			int curIdx = 0;
 			for (var str in strs)
@@ -1965,6 +1965,22 @@ namespace System
 				return EqualsIgnoreCaseHelper(a.Ptr, b.Ptr, a.mLength);
 			return EqualsHelper(a.Ptr, b.Ptr, a.mLength);
 		}
+		
+		public bool Equals(StringView str)
+		{
+			if (mLength != str.[Friend]mLength)
+				return false;
+			return EqualsHelper(str.Ptr, mPtr, mLength);
+		}
+
+		public bool Equals(StringView str, StringComparison comparisonType = StringComparison.Ordinal)
+		{
+			if (mLength != str.[Friend]mLength)
+				return false;
+			if (comparisonType == StringComparison.OrdinalIgnoreCase)
+				return EqualsIgnoreCaseHelper(str.Ptr, mPtr, mLength);
+			return EqualsHelper(str.Ptr, mPtr, mLength);
+		}
 
 		public bool StartsWith(StringView b, StringComparison comparisonType = StringComparison.Ordinal)
 		{
@@ -2277,6 +2293,36 @@ namespace System
 		{
 			TrimStart((.)trimChar);
 			TrimEnd((.)trimChar);
+		}
+		
+		public void PadLeft(int totalWidth, char8 paddingChar)
+		{
+			Insert(0, paddingChar, totalWidth - Length);
+		}
+
+		public void PadLeft(int totalWidth, char32 paddingChar)
+		{
+			Insert(0, paddingChar, totalWidth - Length);
+		}
+
+		public void PadLeft(int totalWidth)
+		{
+			Insert(0, ' ', totalWidth - Length);
+		}
+
+		public void PadRight(int totalWidth, char8 paddingChar)
+		{
+			Append(paddingChar, totalWidth - Length);
+		}
+
+		public void PadRight(int totalWidth, char32 paddingChar)
+		{
+			Append(paddingChar, totalWidth - Length);
+		}
+
+		public void PadRight(int totalWidth)
+		{
+			Append(' ', totalWidth - Length);
 		}
 
 		public void Join(StringView sep, IEnumerator<String> enumerable)

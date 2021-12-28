@@ -360,6 +360,8 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	//mMaxInterfaceSlots = 16;
 	mMaxInterfaceSlots = -1;
 	mInterfaceSlotCountChanged = false;
+	mLastHadComptimeRebuilds = false;
+	mHasComptimeRebuilds = false;
 	
 	mHSPreserveIdx = 0;
 	mCompileLogFP = NULL;
@@ -825,7 +827,7 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 
 	auto _CheckMethod = [&](BfTypeInstance* typeInstance, BfMethodInstance* methodInstance)
 	{
-		auto project = typeInstance->mTypeDef->mProject;
+		auto project = methodInstance->mMethodDef->mDeclaringType->mProject;
 		if (project->mTargetType != BfTargetType_BeefTest)
 			return;
 		if (project != bfModule->mProject)
@@ -913,7 +915,8 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 		auto methodInstance = testMethod.mMethodInstance;
 		auto typeInstance = methodInstance->GetOwner();
 		testMethod.mName += bfModule->TypeToString(typeInstance);
-		testMethod.mName += ".";
+		if (!testMethod.mName.IsEmpty())
+			testMethod.mName += ".";
 		testMethod.mName += methodInstance->mMethodDef->mName;
 
 		testMethod.mName += "\t";
@@ -1021,8 +1024,11 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 			else
 			{
 				for (int defaultIdx = 0; defaultIdx < (int)methodInstance->mDefaultValues.size(); defaultIdx++)
-				{
-					auto castedVal = bfModule->Cast(methodInstance->mMethodDef->GetRefNode(), methodInstance->mDefaultValues[defaultIdx], methodInstance->GetParamType(defaultIdx));
+				{										
+					auto constHolder = methodInstance->GetOwner()->mConstHolder;
+					auto defaultTypedValue = methodInstance->mDefaultValues[defaultIdx];
+					auto defaultVal = bfModule->ConstantToCurrent(constHolder->GetConstant(defaultTypedValue.mValue), constHolder, defaultTypedValue.mType);
+					auto castedVal = bfModule->Cast(methodInstance->mMethodDef->GetRefNode(), BfTypedValue(defaultVal, defaultTypedValue.mType), methodInstance->GetParamType(defaultIdx));
 					if (castedVal)
 					{
 						BfExprEvaluator exprEvaluator(bfModule);
@@ -2927,7 +2933,7 @@ void BfCompiler::GenerateDynCastData()
 
 void BfCompiler::UpdateRevisedTypes()
 {
-	BfLogSysM("UpdateRevisedTypes\n");
+	BfLogSysM("BfCompiler::UpdateRevisedTypes\n");
 	BP_ZONE("BfCompiler::UpdateRevisedTypes");	
 		
 	// See if we have any name conflicts and remove those
@@ -6561,6 +6567,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	// Inc revision for next run through Compile
 	mRevision++;
+	mHasComptimeRebuilds = false;
 	int revision = mRevision;
 	BfLogSysM("Compile Start. Revision: %d. HasParser:%d AutoComplete:%d\n", revision, 
 		(mResolvePassData != NULL) && (mResolvePassData->mParser != NULL), 
@@ -7021,27 +7028,34 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 				if (hasTests)
 				{
+					HashSet<BfProject*> projectSet;
+
 					for (auto type : mContext->mResolvedTypes)
 					{						
 						auto typeInstance = type->ToTypeInstance();
-						if ((typeInstance != NULL) &&
-							(typeInstance->mTypeDef->mProject->mTargetType == BfTargetType_BeefTest))
-						{
-							bool typeHasTest = false;
+						if (typeInstance != NULL)
+						{														
 							for (auto& methodInstanceGroup : typeInstance->mMethodInstanceGroups)
 							{
 								if (methodInstanceGroup.mDefault != NULL)
 								{
 									auto methodInstance = methodInstanceGroup.mDefault;
+									auto project = methodInstance->mMethodDef->mDeclaringType->mProject;									
+									if (project->mTargetType != BfTargetType_BeefTest)
+										continue;
 									if ((methodInstance->GetCustomAttributes() != NULL) &&
 										(methodInstance->GetCustomAttributes()->Contains(mTestAttributeTypeDef)))
 									{
-										typeHasTest = true;
+										projectSet.Add(project);										
 									}
 								}
 							}
-							if (typeHasTest)
-								mContext->MarkUsedModules(typeInstance->mTypeDef->mProject, typeInstance->mModule);
+							if (!projectSet.IsEmpty())
+							{
+								for (auto project : projectSet)
+									mContext->MarkUsedModules(project, typeInstance->mModule);
+								projectSet.Clear();
+							}
 						}
 					}
 				}
@@ -7493,6 +7507,11 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		mNeedsFullRefresh = false;
 		return false;
 	}
+
+	if (didCancel)
+		mLastHadComptimeRebuilds = mHasComptimeRebuilds || mLastHadComptimeRebuilds;
+	else
+		mLastHadComptimeRebuilds = mHasComptimeRebuilds;
 
 	return !didCancel && !mHasQueuedTypeRebuilds;
 }
@@ -9102,6 +9121,11 @@ BF_EXPORT int BF_CALLTYPE BfCompiler_GetCurConstEvalExecuteId(BfCompiler* bfComp
 	if (bfCompiler->mCEMachine->mCurContext->mCurMethodInstance == NULL)
 		return -1;
 	return bfCompiler->mCEMachine->mExecuteId;
+}
+
+BF_EXPORT float BF_CALLTYPE BfCompiler_GetLastHadComptimeRebuilds(BfCompiler* bfCompiler)
+{
+	return bfCompiler->mLastHadComptimeRebuilds;
 }
 
 BF_EXPORT void BF_CALLTYPE BfCompiler_Cancel(BfCompiler* bfCompiler)

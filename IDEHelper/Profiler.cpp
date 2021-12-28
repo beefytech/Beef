@@ -8,12 +8,12 @@ typedef LONG KPRIORITY;
 
 USING_NS_BF_DBG;
 
-enum SYSTEM_INFORMATION_CLASS 
+enum SYSTEM_INFORMATION_CLASS
 {
 	SystemProcessInformation = 5
 }; // SYSTEM_INFORMATION_CLASS
 
-struct CLIENT_ID 
+struct CLIENT_ID
 {
 	HANDLE UniqueProcess;
 	HANDLE UniqueThread;
@@ -81,14 +81,14 @@ struct SYSTEM_PROCESS_INFORMATION
 	SYSTEM_THREAD           Threads[1];
 };
 
-typedef NTSTATUS(NTAPI *NtQuerySystemInformation_t)(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG);
+typedef NTSTATUS(NTAPI* NtQuerySystemInformation_t)(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG);
 static NtQuerySystemInformation_t NtQuerySystemInformation = NULL;
 static HMODULE ntdll = NULL;
 
 DbgProfiler::DbgProfiler(WinDebugger* debugger) : mShutdownEvent(true)
 {
 	mDebugger = debugger;
-	mIsRunning = false;	
+	mIsRunning = false;
 	mWantsClear = false;
 
 	mSamplesPerSecond = 1000;
@@ -101,6 +101,13 @@ DbgProfiler::DbgProfiler(WinDebugger* debugger) : mShutdownEvent(true)
 	mEndTick = 0;
 
 	mDebugger->AddProfiler(this);
+
+	mIdleSymbolNames.Add("ZwDelayExecution");
+	mIdleSymbolNames.Add("ZwWaitForWorkViaWorkerFactory");
+	mIdleSymbolNames.Add("NtWaitForAlertByThreadId");
+	mIdleSymbolNames.Add("NtWaitForSingleObject");
+	mIdleSymbolNames.Add("NtWaitForMultipleObjects");
+	mIdleSymbolNames.Add("ZwRemoveIoCompletion");
 }
 
 DbgProfiler::~DbgProfiler()
@@ -113,14 +120,14 @@ DbgProfiler::~DbgProfiler()
 }
 
 static SYSTEM_PROCESS_INFORMATION* CaptureProcessInfo()
-{		
+{
 	WCHAR path[MAX_PATH];
 	GetSystemDirectory(path, MAX_PATH);
-	wcscat(path, L"\\ntdll.dll");	
-	ntdll = GetModuleHandle(path);	
+	wcscat(path, L"\\ntdll.dll");
+	ntdll = GetModuleHandle(path);
 	if (ntdll == NULL)
 		return NULL;
-	NtQuerySystemInformation = (NtQuerySystemInformation_t)GetProcAddress(ntdll, "NtQuerySystemInformation");	
+	NtQuerySystemInformation = (NtQuerySystemInformation_t)GetProcAddress(ntdll, "NtQuerySystemInformation");
 
 	uint allocSize = 1024;
 	uint8* data = NULL;
@@ -134,7 +141,7 @@ static SYSTEM_PROCESS_INFORMATION* CaptureProcessInfo()
 
 		if (status != STATUS_INFO_LENGTH_MISMATCH)
 			return (SYSTEM_PROCESS_INFORMATION*)data;
-		
+
 		allocSize = wantSize + 4096;
 		delete data;
 	}
@@ -148,8 +155,8 @@ void DbgProfiler::DoClear()
 		delete val.mProcId;
 }
 
-ProfileProcId* DbgProfiler::Get(const StringImpl& str)
-{	
+ProfileProcId* DbgProfiler::Get(const StringImpl& str, bool* outIsNew)
+{
 	ProfileProdIdEntry checkEntry;
 	checkEntry.mProcId = (ProfileProcId*)&str;
 
@@ -158,11 +165,16 @@ ProfileProcId* DbgProfiler::Get(const StringImpl& str)
 	{
 		auto procId = new ProfileProcId();
 		procId->mProcName = str;
-		entryPtr->mProcId = procId;
+		procId->mIsIdle = false;
+		entryPtr->mProcId = procId;		
+		if (outIsNew != NULL)
+			*outIsNew = true;
 		return procId;
 	}
 	else
 	{
+		if (outIsNew != NULL)
+			*outIsNew = false;
 		return entryPtr->mProcId;
 	}
 }
@@ -170,7 +182,7 @@ ProfileProcId* DbgProfiler::Get(const StringImpl& str)
 void DbgProfiler::ThreadProc()
 {
 	//TODO: Do timing smarter, handle delays and slow stack traces and stuff
-	
+
 	//timeBeginPeriod(1);
 
 	BF_ASSERT(mTotalVirtualSamples == 0);
@@ -184,7 +196,7 @@ void DbgProfiler::ThreadProc()
 	uint32 accumMS = 0;
 
 	int totalWait = 0;
-	int totalWait2  = 0;
+	int totalWait2 = 0;
 	int iterations = 0;
 	HashSet<int> idleThreadSet;
 
@@ -218,9 +230,11 @@ void DbgProfiler::ThreadProc()
 		iterations++;
 		DWORD startTick0 = timeGetTime();
 		idleThreadSet.Clear();
-		
+
 		SYSTEM_PROCESS_INFORMATION* processData = NULL;
-		std::unique_ptr<SYSTEM_PROCESS_INFORMATION> ptrDelete(processData);				
+		std::unique_ptr<SYSTEM_PROCESS_INFORMATION> ptrDelete(processData);
+
+		//processData = CaptureProcessInfo();
 
 		auto curProcessData = processData;
 		while (true)
@@ -235,6 +249,7 @@ void DbgProfiler::ThreadProc()
 					auto& threadInfo = curProcessData->Threads[threadIdx];
 					if ((threadInfo.State == StateWait) || (threadInfo.State == StateTerminated))
 						idleThreadSet.Add((int)(intptr)threadInfo.ClientId.UniqueThread);
+					break;
 				}
 			}
 
@@ -242,12 +257,12 @@ void DbgProfiler::ThreadProc()
 				break;
 			curProcessData = (SYSTEM_PROCESS_INFORMATION*)((intptr)curProcessData + curProcessData->NextEntryOffset);
 		}
-				
+
 		if (mShutdownEvent.WaitFor(0))
 		{
 			break;
 		}
-		
+
 		DWORD tickNow = timeGetTime();
 		accumMS += (int)(tickNow - prevSampleTick);
 		prevSampleTick = tickNow;
@@ -284,21 +299,21 @@ void DbgProfiler::ThreadProc()
 
 		mTotalVirtualSamples += curSampleCount;
 		mTotalActualSamples++;
-				
+
 		int threadIdx = 0;
 		while (true)
-		{			
+		{
 			int startTick = timeGetTime();
 
-			AutoCrit autoCrit(mDebugger->mDebugManager->mCritSect);			
-			
-			if (mDebugger->mRunState != RunState_Running)			
-				break;			
+			AutoCrit autoCrit(mDebugger->mDebugManager->mCritSect);
+
+			if (mDebugger->mRunState != RunState_Running)
+				break;
 
 			if (threadIdx >= mDebugger->mThreadList.size())
 				break;
 
-			auto thread = mDebugger->mThreadList[threadIdx];			
+			auto thread = mDebugger->mThreadList[threadIdx];
 
 			if ((mTargetThreadId > 0) && (thread->mThreadId != mTargetThreadId))
 			{
@@ -321,20 +336,22 @@ void DbgProfiler::ThreadProc()
 				profileThreadInfo = *profileThreadInfoPtr;
 			}
 
-			profileThreadInfo->mTotalSamples += curSampleCount;
-
 			bool isThreadIdle = idleThreadSet.Contains(thread->mThreadId);
 
+			profileThreadInfo->mTotalSamples += curSampleCount;
+			if (isThreadIdle)
+				profileThreadInfo->mTotalIdleSamples += curSampleCount;
+
 			mDebugger->mActiveThread = thread;
-			
-			::SuspendThread(thread->mHThread);			
+
+			::SuspendThread(thread->mHThread);
 
 			CPURegisters registers;
 			mDebugger->PopulateRegisters(&registers);
 
 			int stackSize = 0;
-			for (int stackIdx = 0 ; stackIdx < maxStackTrace; stackIdx++)
-			{				
+			for (int stackIdx = 0; stackIdx < maxStackTrace; stackIdx++)
+			{
 				auto pc = registers.GetPC();
 				if (pc <= 0xFFFF)
 				{
@@ -353,7 +370,7 @@ void DbgProfiler::ThreadProc()
 
 			ProfileAddrEntry* insertedProfileEntry = AddToSet(mProfileAddrEntrySet, stackTrace, stackSize);
 			if (insertedProfileEntry->mEntryIdx == -1)
-			{				
+			{
 				insertedProfileEntry->mEntryIdx = (int)mProfileAddrEntrySet.size(); // Starts at '1'				
 				mPendingProfileEntries.Add(*insertedProfileEntry);
 			}
@@ -365,7 +382,7 @@ void DbgProfiler::ThreadProc()
 					entryIdx = -entryIdx;
 				profileThreadInfo->mProfileAddrEntries.push_back(entryIdx);
 			}
-			
+
 			::ResumeThread(thread->mHThread);
 
 			int elapsedTime = timeGetTime() - startTick;
@@ -379,7 +396,7 @@ void DbgProfiler::ThreadProc()
 		}
 	}
 
-	mIsRunning = false;	
+	mIsRunning = false;
 
 	mEndTick = BFTickCount();
 }
@@ -394,7 +411,7 @@ void DbgProfiler::Start()
 	BF_ASSERT(!mIsRunning);
 
 	mNeedsProcessing = true;
-	mIsRunning = true;	
+	mIsRunning = true;
 	auto thread = BfpThread_Create(ThreadProcThunk, (void*)this, 128 * 1024, BfpThreadCreateFlag_StackSizeReserve);
 	BfpThread_Release(thread);
 }
@@ -439,22 +456,25 @@ String DbgProfiler::GetThreadList()
 	for (auto threadId : mThreadIdList)
 	{
 		auto threadInfo = mThreadInfo[threadId];
-		result += StrFormat("%d\t%s\n", threadId, threadInfo->mName.c_str());
+		int cpuUsage = 0;
+		if (threadInfo->mTotalSamples > 0)
+			cpuUsage = 100 - (threadInfo->mTotalIdleSamples * 100 / threadInfo->mTotalSamples);
+		result += StrFormat("%d\t%d\t%s\n", threadId, cpuUsage, threadInfo->mName.c_str());
 	}
 
 	return result;
 }
 
 void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries, int rangeStart, int rangeEnd, int stackIdx, ProfileProcId* findProc)
-{	
+{
 	struct _QueuedEntry
 	{
 		int mRangeIdx;
 		int mRangeEnd;
-		int mStackIdx;		
+		int mStackIdx;
 	};
 	Array<_QueuedEntry> workQueue;
-	
+
 	auto _AddEntries = [&](int rangeStart, int rangeEnd, int stackIdx, ProfileProcId* findProc)
 	{
 		int selfSampleCount = 0;
@@ -521,7 +541,7 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 		_QueuedEntry entry;
 		entry.mRangeIdx = rangeStart;
 		entry.mRangeEnd = rangeEnd;
-		entry.mStackIdx = stackIdx;		
+		entry.mStackIdx = stackIdx;
 		workQueue.Add(entry);
 	};
 	_AddEntries(rangeStart, rangeEnd, stackIdx, findProc);
@@ -529,7 +549,7 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 	while (!workQueue.IsEmpty())
 	{
 		auto& entry = workQueue.back();
-				
+
 		bool addedChild = false;
 		while (entry.mRangeIdx < entry.mRangeEnd)
 		{
@@ -539,7 +559,7 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 				entry.mRangeIdx++;
 				continue;
 			}
-			
+
 			int nextStackIdx = entry.mStackIdx + 1;
 			auto nextFindProc = procEntry->mData[procEntry->mSize - 1 - nextStackIdx];
 			_AddEntries(entry.mRangeIdx, entry.mRangeEnd, nextStackIdx, nextFindProc);
@@ -552,7 +572,7 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 			if (entry.mStackIdx != -1)
 				str += "-\n";
 			workQueue.pop_back();
-		}		
+		}
 	}
 }
 
@@ -608,7 +628,10 @@ void DbgProfiler::HandlePendingEntries()
 						symbolName += StrFormat("0x%@", addr);
 					}
 
-					procId = Get(symbolName);
+					bool isNew = false;
+					procId = Get(symbolName, &isNew);
+					if (isNew)
+						procId->mIsIdle = mIdleSymbolNames.Contains(symbolName);
 				}
 
 				if (reverse)
@@ -640,11 +663,11 @@ void DbgProfiler::Process()
 	AutoCrit autoCrit(mDebugger->mDebugManager->mCritSect);
 
 	mNeedsProcessing = false;
-	
+
 	int time = mTotalActiveSamplingMS;
 
 	BF_ASSERT(mProfileAddrEntries.IsEmpty());
-	
+
 	mProfileAddrEntries.Resize(mProfileAddrEntrySet.size() + 1);
 	for (auto& val : mProfileAddrEntrySet)
 		mProfileAddrEntries[val.mEntryIdx] = &val;
@@ -654,16 +677,35 @@ void DbgProfiler::Process()
 	for (auto& val : mProfileProcEntrySet)
 		mProfileProcEntries[val.mEntryIdx] = &val;
 
+	for (auto threadKV : mThreadInfo)
+	{
+		auto threadInfo = threadKV.mValue;
+		
+		for (auto addrEntryIdx : threadInfo->mProfileAddrEntries)
+		{
+			if (addrEntryIdx < 0)
+			{
+				addrEntryIdx = -addrEntryIdx;
+			}
+
+			int procEntryIdx = mProfileAddrToProcMap[addrEntryIdx];
+			auto procEntry = mProfileProcEntries[procEntryIdx];
+			
+			auto curProc = procEntry->mData[0];
+			if (curProc->mIsIdle)
+				threadInfo->mTotalIdleSamples++;			
+		}
+	}
 }
 
 String DbgProfiler::GetCallTree(int threadId, bool reverse)
-{	
+{
 	if (mNeedsProcessing)
 		Process();
 
 	AutoCrit autoCrit(mDebugger->mDebugManager->mCritSect);
 
-	BF_ASSERT(!mIsRunning);	
+	BF_ASSERT(!mIsRunning);
 
 	Array<ProfileProcEntry*> procEntries;
 
@@ -714,10 +756,10 @@ String DbgProfiler::GetCallTree(int threadId, bool reverse)
 	int idleTicks = totalSampleCount - totalActiveSampleCount;
 	if (idleTicks != 0)
 		str += StrFormat("<Idle>\t%d\t0\n-\n", idleTicks);
-		
+
 	AddEntries(str, procEntries, 0, (int)procEntries.size(), -1, NULL);
-		
-	str += "-\n";	
+
+	str += "-\n";
 
 	//BF_ASSERT(childSampleCount == totalSampleCount);
 

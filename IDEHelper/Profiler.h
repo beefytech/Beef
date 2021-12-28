@@ -67,6 +67,7 @@ class ProfileProcId
 {
 public:
 	String mProcName;
+	bool mIsIdle;
 };
 
 class ProfileProdIdEntry
@@ -104,12 +105,14 @@ class ProfileThreadInfo
 public:
 	Array<int> mProfileAddrEntries;
 	int mTotalSamples;
+	int mTotalIdleSamples;
 	String mName;
 
 public:
 	ProfileThreadInfo()
 	{
 		mTotalSamples = 0;
+		mTotalIdleSamples = 0;
 	}
 };
 
@@ -143,6 +146,7 @@ public:
 
 	Dictionary<void*, ProfileProcId*> mProcMap; // Keyed on either DwSubprogram or DwSymbol. Multiple pointers can reference the same ProfileProcId (in the case of inlined functions, for example)	
 	HashSet<ProfileProdIdEntry> mUniqueProcSet;	
+	HashSet<String> mIdleSymbolNames;
 
 public:
 	void ThreadProc();
@@ -171,7 +175,7 @@ public:
 	void HandlePendingEntries();
 	void Process();
 	void DoClear();
-	ProfileProcId* Get(const StringImpl& str);
+	ProfileProcId* Get(const StringImpl& str, bool* outIsNew = NULL);
 
 public:
 	DbgProfiler(WinDebugger* debugger);

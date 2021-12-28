@@ -622,7 +622,17 @@ public:
 		str.mLength = (int_strsize)strlen(charPtr);
 		str.mAllocSizeAndFlags = str.mLength | StrPtrFlag;
 		return str;
-	}	
+	}
+
+	static StringImpl MakeRef(const char* charPtr, intptr length)
+	{
+		StringImpl str;
+		// This is just a ref - called when we pass a literal to a method (for example)
+		str.mPtr = (char*)charPtr;
+		str.mLength = (int_strsize)length;
+		str.mAllocSizeAndFlags = str.mLength | StrPtrFlag;
+		return str;
+	}
 
 	static StringImpl MakeRef(const StringView& strView)
 	{

@@ -9,7 +9,7 @@ namespace IDE
 	{
 		public KeyCode mKeyCode;
 		public KeyFlags mKeyFlags;
-		
+
 		public int GetHashCode()
 		{
 			return (int)mKeyCode | (int)mKeyFlags << 16;
@@ -121,10 +121,21 @@ namespace IDE
 	class CommandMap : IDECommandBase
 	{
 		public Dictionary<KeyState, IDECommandBase> mMap = new .() ~ delete _;
+		public List<IDECommandBase> mFailValues ~ delete _;
+
+		public List<IDECommandBase> FailValues
+		{
+			get
+			{
+				if (mFailValues == null)
+					mFailValues = new .();
+				return mFailValues;
+			}
+		}
 
 		public void Clear()
 		{
-			for (let val in mMap.Values)
+			void Release(IDECommandBase val)
 			{
 				if (var cmdMap = val as CommandMap)
 					delete cmdMap;
@@ -135,6 +146,15 @@ namespace IDE
 					val.mParent = null;
 					ideCommand.mNext = null;
 				}
+			}
+
+			for (let val in mMap.Values)
+				Release(val);
+			if (mFailValues != null)
+			{
+				for (var val in mFailValues)
+					Release(val);
+				mFailValues.Clear();
 			}
 			mMap.Clear();
 		}
@@ -194,7 +214,9 @@ namespace IDE
 			Add("Close Document", new () => { gApp.[Friend]TryCloseCurrentDocument(); });
 			Add("Close Panel", new () => { gApp.[Friend]TryCloseCurrentPanel(); });
 			Add("Close Workspace", new => gApp.[Friend]Cmd_CloseWorkspaceAndSetupNew);
-			Add("Comment Selection", new => gApp.[Friend]CommentSelection);
+			Add("Comment Block", new => gApp.[Friend]CommentBlock, .Editor);
+			Add("Comment Lines", new => gApp.[Friend]CommentLines, .Editor);
+			Add("Comment Toggle", new => gApp.[Friend]CommentToggle, .Editor);
 			Add("Compile File", new => gApp.Cmd_CompileFile);
 			Add("Debug All Tests", new () => { gApp.[Friend]RunTests(true, true); });
 			Add("Debug Normal Tests", new () => { gApp.[Friend]RunTests(false, true); });
@@ -251,6 +273,7 @@ namespace IDE
 			Add("Run Normal Tests", new () => { gApp.[Friend]RunTests(false, false); });
 			Add("Run To Cursor", new => gApp.[Friend]RunToCursor);
 			Add("Run Without Compiling", new => gApp.[Friend]RunWithoutCompiling);
+			Add("Safe Mode Toggle", new () => { gApp.SafeModeToggle(); });
 			Add("Save All", new () => { gApp.SaveAll(); });
 			Add("Save As", new () => { gApp.SaveAs(); });
 			Add("Save File", new => gApp.SaveFile);

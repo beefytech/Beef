@@ -23,6 +23,16 @@ namespace Tests
 {
 	class Generics
 	{
+		struct StructA : IDisposable
+		{
+			int mA = 123;
+
+			public void Dispose()
+			{
+
+			}
+		}
+
 		class ClassA : IDisposable, LibA.IVal
 		{
 			int LibA.IVal.Val
@@ -172,12 +182,20 @@ namespace Tests
 			delete val;
 		}
 
-		public static void Alloc2<T>() where T : new, delete, IDisposable, struct
+		public static void Alloc2<T>() where T : new, IDisposable, struct
 		{
 			alloctype(T) val = new T();
 			T* val2 = val;
 			val2.Dispose();
 			delete val;
+		}
+
+		public static void Alloc3<T>() where T : new, IDisposable, struct*
+		{
+			T val2 = default;
+			if (val2 != null)
+				val2.Dispose();
+			delete val2;
 		}
 
 		public class ClassE
@@ -311,6 +329,9 @@ namespace Tests
 		[Test]
 		public static void TestBasics()
 		{
+			Alloc2<StructA>();
+			Alloc3<StructA*>();
+
 			MethodD(scope => MethodC);
 
 			List<Entry> list = scope .();

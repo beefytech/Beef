@@ -1383,6 +1383,13 @@ enum BfDeferredBlockFlags
 	BfDeferredBlockFlag_MoveNewBlocksToEnd = 8,
 };
 
+enum BfGetCustomAttributesFlags
+{
+	BfGetCustomAttributesFlags_None = 0,
+	BfGetCustomAttributesFlags_AllowNonConstArgs = 1,
+	BfGetCustomAttributesFlags_KeepConstsInModule = 2
+};
+
 class BfVDataExtEntry
 {
 public:
@@ -1567,8 +1574,8 @@ public:
 	BfTypedValue GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType);		
 	BfIRValue ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType, bool allowUnactualized = false);
 	void ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget);
-	void GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs = false, BfCaptureInfo* captureInfo = NULL);	
-	BfCustomAttributes* GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs = false, BfCaptureInfo* captureInfo = NULL);
+	void GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags = BfGetCustomAttributesFlags_None, BfCaptureInfo* captureInfo = NULL);
+	BfCustomAttributes* GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags = BfGetCustomAttributesFlags_None, BfCaptureInfo* captureInfo = NULL);
 	BfCustomAttributes* GetCustomAttributes(BfTypeDef* typeDef);
 	void FinishAttributeState(BfAttributeState* attributeState);
 	void ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered, int& alignOverride, BfType*& underlyingArrayType, int& underlyingArraySize);
@@ -1744,13 +1751,15 @@ public:
 	void FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext);
 	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, const StringImpl& src);
 	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode);
-	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes);
+	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes, bool underlyingTypeDeferred);
 	void CEMixin(BfAstNode* refNode, const StringImpl& src);
-	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind);
-	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers);
+	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind, bool underlyingTypeDeferred);
+	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers, bool underlyingTypeDeferred);
 	void DoCEEmit(BfMethodInstance* methodInstance);
 	void DoPopulateType_TypeAlias(BfTypeInstance* typeAlias);
-	void DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance);
+	void DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance);	
+	void DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred, HashContext* dataMemberHashCtx, BfType* unionInnerType);
+	void DoPopulateType_CeCheckEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred);
 	void DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
 	static BfModule* GetModuleFor(BfType* type);
 	void DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance);
@@ -1844,6 +1853,7 @@ public:
 	void CheckIdentifierFixit(BfAstNode* node);
 	void TypeRefNotFound(BfTypeReference* typeRef, const char* appendName = NULL);
 	bool ValidateTypeWildcard(BfTypeReference* typeRef, bool isAttributeRef);	
+	void GetDelegateTypeRefAttributes(BfDelegateTypeRef* delegateTypeRef, BfCallingConvention& callingConvention);
 	BfType* ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0, int numGenericArgs = 0);
 	BfType* ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool resolveGenericParam = true);
 	BfType* ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeReference*>* genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);

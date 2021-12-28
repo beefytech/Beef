@@ -183,7 +183,7 @@ namespace Tests
 				mStr.AppendF($"{name} {val}\n");
 			}
 		}
-
+                              
 		interface ISerializable
 		{
 			void Serialize(SerializationContext ctx);
@@ -229,6 +229,43 @@ namespace Tests
 				GC.Mark!((*ptr));
 			}
 		}
+
+		[CheckEnum]
+		enum EnumA
+		{
+			case A(int64 aa);
+			case B(float bb);
+		}
+
+		[AttributeUsage(.All)]
+		public struct CheckEnumAttribute : Attribute, IComptimeTypeApply
+		{
+			public void ApplyToType(Type type)
+			{
+				int fieldIdx = 0;
+				for (var field in type.GetFields())
+				{
+					switch (fieldIdx)
+					{
+					case 0:
+						Test.Assert(field.Name == "$payload");
+						Test.Assert(field.MemberOffset == 0);
+						Test.Assert(field.FieldType == typeof(int64));
+					case 1:
+						Test.Assert(field.Name == "$discriminator");
+						Test.Assert(field.MemberOffset == 8);
+						Test.Assert(field.FieldType == typeof(int8));
+					}
+					fieldIdx++;
+				}
+				Test.Assert(fieldIdx == 4);
+			}
+		}
+
+		const String cTest0 = Compiler.ReadText("Test0.txt");
+		const String cTest1 = new String('A', 12);
+		const uint8[?] cTest0Binary = Compiler.ReadBinary("Test0.txt");
+		
 		[Test]
 		public static void TestBasics()
 		{
@@ -269,6 +306,11 @@ namespace Tests
 			SerializationContext serCtx = scope .();
 			iSer.Serialize(serCtx);
 			Test.Assert(serCtx.mStr == "x 10\ny 2\n");
+
+			Test.Assert(cTest0 == "Test\n0");
+			Test.Assert(cTest1 == "AAAAAAAAAAAA");
+			Test.Assert((Object)cTest1 == (Object)"AAAAAAAAAAAA");
+			Test.Assert((cTest0Binary[0] == (.)'T') && ((cTest0Binary.Count == 6) || (cTest0Binary.Count == 7)));
 		}
 	}
 }

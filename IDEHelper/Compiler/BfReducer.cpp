@@ -281,9 +281,52 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 
 				int endNode = -1;
 
+				bool failed = false;
+
 				// Return type
 				auto checkNode = mVisitorPos.GetCurrent();
-				if ((checkNode == NULL) || (!IsTypeReference(checkNode, BfToken_LParen, &endNode, couldBeExpr, isGenericType, isTuple)))
+				if (auto checkToken = BfNodeDynCast<BfTokenNode>(checkNode))
+				{
+					if (checkToken->mToken == BfToken_LBracket)
+					{
+						while (true)
+						{
+							mVisitorPos.mReadPos++;
+							checkNode = mVisitorPos.GetCurrent();
+							if (checkNode == NULL)
+							{
+								failed = true;
+								break;
+							}
+
+							if (BfNodeIsA<BfBlock>(checkNode))
+							{
+								failed = true;
+								break;
+							}
+
+							if (checkToken = BfNodeDynCast<BfTokenNode>(checkNode))
+							{
+								if (checkToken->mToken == BfToken_RBracket)
+								{
+									mVisitorPos.mReadPos++;
+									checkNode = mVisitorPos.GetCurrent();
+									break;
+								}
+								if ((checkToken->mToken != BfToken_Comma) &&
+									(checkToken->mToken != BfToken_Dot) &&
+									(checkToken->mToken != BfToken_LParen) &&
+									(checkToken->mToken != BfToken_RParen))
+								{
+									failed = true;
+									break;
+								}
+							}
+						}
+					}
+				}
+
+				if ((failed) || (checkNode == NULL) || (!IsTypeReference(checkNode, BfToken_LParen, &endNode, couldBeExpr, isGenericType, isTuple)))
 				{
 					if (outEndNode != NULL)
 						*outEndNode = endNode;
@@ -4805,6 +4848,14 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					auto delegateTypeRef = mAlloc->Alloc<BfDelegateTypeRef>();
 					ReplaceNode(firstNode, delegateTypeRef);
 					MEMBER_SET(delegateTypeRef, mTypeToken, tokenNode);
+
+					auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
+					if ((nextToken != NULL) && (nextToken->mToken == BfToken_LBracket))
+					{
+						mVisitorPos.MoveNext();
+						auto attribs = CreateAttributeDirective(nextToken);
+						MEMBER_SET_CHECKED(delegateTypeRef, mAttributes, attribs);
+					}
 
 					auto returnType = CreateTypeRefAfter(delegateTypeRef);
 					MEMBER_SET_CHECKED(delegateTypeRef, mReturnType, returnType);

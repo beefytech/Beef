@@ -616,5 +616,10 @@ namespace Beefy.widgets
 		{
 			mDisabled = disabled;
 		}
+
+		public void SetCheckState(int32 checkState)
+		{
+			
+		}
     }
 }

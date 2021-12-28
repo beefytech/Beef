@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace System
 {
-    struct Variant
+    struct Variant : IDisposable
 	{
 		enum ObjectType
 		{

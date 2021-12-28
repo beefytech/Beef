@@ -5,7 +5,10 @@
 #include "BfParser.h"
 #include "BfReducer.h"
 #include "BfExprEvaluator.h"
+#include "BfResolvePass.h"
 #include "../Backend/BeIRCodeGen.h"
+#include "BeefySysLib/platform/PlatformHelper.h"
+
 extern "C"
 {
 #include "BeefySysLib/third_party/utf8proc/utf8proc.h"
@@ -297,6 +300,24 @@ static int DoubleToString(double d, char* outStr)
 		}
 	}
 	return len;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+CeInternalData::~CeInternalData()
+{
+	switch (mKind)
+	{
+	case Kind_File:
+		BfpFile_Release(mFile);
+		break;
+	case Kind_FindFileData:
+		BfpFindFileData_Release(mFindFileData);
+		break;
+	case Kind_Spawn:
+		BfpSpawn_Release(mSpawn);
+		break;
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1261,6 +1282,12 @@ void CeBuilder::HandleParams()
 void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance* dupMethodInstance)
 {
 	SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(mCeMachine->mCeModule->mCurMethodState, NULL);
+	BfAutoComplete* prevAutoComplete = NULL;
+	if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
+	{
+		prevAutoComplete = mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete;
+		mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = NULL;
+	}
 
 	auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
 	auto irBuilder = mCeMachine->mCeModule->mBfIRBuilder;
@@ -1275,6 +1302,9 @@ void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance
 	mCeMachine->mCeModule->ProcessMethod(dupMethodInstance, true);
 	irCodeGen->SetState(beState);
 	irBuilder->SetState(irState);
+	
+	if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
+		mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = prevAutoComplete;
 }
 
 void CeBuilder::Build()
@@ -1312,7 +1342,7 @@ void CeBuilder::Build()
 		mCeMachine->mCeModule->mStaticFieldRefs.Clear();
 
 		int startFunctionCount = (int)beModule->mFunctions.size();
-		ProcessMethod(methodInstance, &dupMethodInstance);		
+		ProcessMethod(methodInstance, &dupMethodInstance);			
 		if (mCeFunction->mInitializeState == CeFunction::InitializeState_Initialized)
 			return;
 
@@ -2873,6 +2903,7 @@ CeContext::CeContext()
 	mCeMachine = NULL;
 	mReflectTypeIdOffset = -1;
 	mExecuteId = -1;
+	mStackSize = -1;
 
 	mCurTargetSrc = NULL;	
 	mHeap = new	ContiguousHeap();
@@ -2886,6 +2917,7 @@ CeContext::CeContext()
 CeContext::~CeContext()
 {
 	delete mHeap;
+	BF_ASSERT(mInternalDataMap.IsEmpty());
 }
 
 BfError* CeContext::Fail(const StringImpl& error)
@@ -2996,11 +3028,23 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 //////////////////////////////////////////////////////////////////////////
 
 
+void CeContext::AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value)
+{
+	if (mCurModule == NULL)
+		return;
+	if (mCurModule->mCurTypeInstance == NULL)
+		return;
+	if (mCurModule->mCurTypeInstance->mCeTypeInfo == NULL)
+		mCurModule->mCurTypeInstance->mCeTypeInfo = new BfCeTypeInfo();
+	mCurModule->mCurTypeInstance->mCeTypeInfo->mRebuildMap[key] = value;
+	mCurModule->mCompiler->mHasComptimeRebuilds = true;
+}
+
 uint8* CeContext::CeMalloc(int size)
 {
 #ifdef CE_ENABLE_HEAP
 	auto heapRef = mHeap->Alloc(size);	
-	auto ceAddr = BF_CE_STACK_SIZE + heapRef;
+	auto ceAddr = mStackSize + heapRef;
 	int sizeDelta = (ceAddr + size) - mMemory.mSize;
 	if (sizeDelta > 0)
 		mMemory.GrowUninitialized(sizeDelta);
@@ -3013,7 +3057,7 @@ uint8* CeContext::CeMalloc(int size)
 bool CeContext::CeFree(addr_ce addr)
 {
 #ifdef CE_ENABLE_HEAP
-	ContiguousHeap::AllocRef heapRef = addr - BF_CE_STACK_SIZE;
+	ContiguousHeap::AllocRef heapRef = addr - mStackSize;
 	return mHeap->Free(heapRef);
 #else
 	return true;
@@ -3702,6 +3746,19 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 						charPtr = (char*)(instData + ptrOffset);
 					}
 				}
+				else
+				{
+					int64 allocSizeVal = *(int64*)(instData + allocSizeOffset);
+					if ((allocSizeVal & 0x4000000000000000LL) != 0)
+					{
+						int32 ptrVal = *(int32*)(instData + ptrOffset);
+						charPtr = (char*)(ptrVal + memStart);
+					}
+					else
+					{
+						charPtr = (char*)(instData + ptrOffset);
+					}
+				}
 
 				CE_CREATECONST_CHECKPTR(charPtr, lenVal);
 				String str(charPtr, lenVal);
@@ -4085,7 +4142,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	if (ceFunction->mInitializeState < CeFunction::InitializeState_Initialized)
 		mCeMachine->PrepareFunction(ceFunction, NULL);	
 
-	auto stackPtr = &mMemory[0] + BF_CE_STACK_SIZE;
+	auto stackPtr = &mMemory[0] + mStackSize;
 	auto* memStart = &mMemory[0];
 
 	BfTypeInstance* thisType = methodInstance->GetOwner();
@@ -4107,6 +4164,23 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 			allocThisSize += appendSizeConstant->mInt32;
 		}
 
+		if (allocThisSize >= mStackSize / 4)
+		{
+			// Resize stack a reasonable size
+			mStackSize = BF_ALIGN(allocThisSize, 0x100000) + BF_CE_DEFAULT_STACK_SIZE;
+			int64 memSize = mStackSize + BF_CE_DEFAULT_HEAP_SIZE;
+			if (memSize > BF_CE_MAX_MEMORY)
+			{
+				Fail("Return value too large (>2GB)");
+				return BfTypedValue();
+			}
+			
+			if (memSize > mMemory.mSize)
+				mMemory.Resize(memSize);
+			stackPtr = &mMemory[0] + mStackSize;
+			memStart = &mMemory[0];
+		}
+
 		stackPtr -= allocThisSize;
 		auto allocThisPtr = stackPtr;
 		memset(allocThisPtr, 0, allocThisSize);
@@ -4123,6 +4197,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	{
 		stackPtr -= ceModule->mSystem->mPtrSize;
 		memset(stackPtr, 0, ceModule->mSystem->mPtrSize);
+		*(addr_ce*)(stackPtr) = (addr_ce)(allocThisInstAddr + thisType->mInstSize);
 		allocAppendIdxAddr = stackPtr - memStart;
 	}
 
@@ -4256,7 +4331,14 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 			}
 
 			BfType* usedReturnType = returnType;
-			BfIRValue constVal = CreateConstant(module, retPtr, returnType, &usedReturnType);
+			BfIRValue constVal;
+			if (returnType->IsObject())
+			{
+				addr_ce retAddr = retPtr - memStart;
+				constVal = CreateConstant(module, (uint8*)&retAddr, returnType, &usedReturnType);
+			}
+			else
+				constVal = CreateConstant(module, retPtr, returnType, &usedReturnType);
 			if (constVal)
 				returnValue = BfTypedValue(constVal, usedReturnType);
 			else
@@ -4289,9 +4371,10 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	}
 
 #define CE_CHECKALLOC(SIZE) \
-	if ((SIZE < 0) || (uintptr)memSize + (uintptr)SIZE > BF_CE_MAX_MEMORY) \
+	if ((SIZE < 0) || (SIZE >= 0x80000000LL) || ((uintptr)memSize + (uintptr)SIZE > BF_CE_MAX_MEMORY)) \
 	{ \
-		_Fail("Maximum memory size exceeded"); \
+		_Fail("Maximum memory size exceeded (2GB)"); \
+		return false; \
 	}
 
 // This check will fail for addresses < 64K (null pointer), or out-of-bounds
@@ -4302,9 +4385,62 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 		return false; \
 	}
 #define CE_CHECKADDR(ADDR, SIZE) \
-	if (((ADDR) - 0x10000) + (SIZE) > (memSize - 0x10000)) \
+	if (((ADDR) < 0x10000) || ((ADDR) + (SIZE) > memSize)) \
 	{ \
 		_Fail("Access violation"); \
+		return false; \
+	}
+
+#define CE_CHECKADDR_STR(STRNAME, ADDR) \
+	{ \
+		addr_ce checkAddr = ADDR; \
+		while (true) \
+		{ \
+			if ((uintptr)checkAddr >= (uintptr)memSize) \
+			{ \
+				break; \
+			} \
+			if (memStart[checkAddr] == 0) \
+			{ \
+				CE_CHECKADDR(ADDR, checkAddr - ADDR + 1); \
+				STRNAME = String::MakeRef((char*)memStart + ADDR, checkAddr - ADDR + 1); \
+				break; \
+			} \
+			checkAddr++; \
+		} \
+	}
+
+#define CE_GET_INTERNAL(VAR, ID, KIND) \
+	if (!mInternalDataMap.TryGetValue((int)ID, &VAR)) \
+	{ \
+		_Fail("Invalid internal resource id"); \
+		return false; \
+	} \
+	if (VAR->mKind != KIND) \
+	{ \
+		_Fail("Invalid internal resource kind"); \
+		return false; \
+	} \
+	if (VAR->mReleased) \
+	{ \
+		_Fail("Resource already released"); \
+		return false; \
+	}
+
+#define CE_REMOVE_INTERNAL(VAR, ID, KIND) \
+	if (!mInternalDataMap.Remove((int)ID, &VAR)) \
+	{ \
+		_Fail("Invalid internal resource id"); \
+		return false; \
+	} \
+	if (VAR->mKind != KIND) \
+	{ \
+		_Fail("Invalid internal resource kind"); \
+		return false; \
+	} \
+	if (VAR->mReleased) \
+	{ \
+		_Fail("Resource already released"); \
 		return false; \
 	}
 
@@ -4422,7 +4558,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	instPtr = &ceFunction->mCode[0]; \
 	CE_CHECKSTACK();
 
-static void CeSetAddrVal(void* ptr, addr_ce val, int32 ptrSize)
+static void CeSetAddrVal(void* ptr, int64 val, int32 ptrSize)
 {
 	if (ptrSize == 4)
 		*(int32*)(ptr) = (int32)val;
@@ -4490,7 +4626,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Malloc)
 			{
-				int32 size = *(int32*)((uint8*)stackPtr + 4);
+				int64 size;
+				if (ptrSize == 4)
+					size = *(int32*)((uint8*)stackPtr + 4);
+				else
+					size = *(int64*)((uint8*)stackPtr + 8);
 				CE_CHECKALLOC(size);
 				uint8* ptr = CeMalloc(size);				
 				CeSetAddrVal(stackPtr + 0, ptr - memStart, ptrSize);
@@ -4532,6 +4672,19 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						charPtr = (char*)(strInst + ptrOffset);
 					}
 				}
+				else
+				{
+					int64 allocSizeVal = *(int64*)(strInst + allocSizeOffset);
+					if ((allocSizeVal & 0x4000000000000000LL) != 0)
+					{
+						int32 ptrVal = *(int32*)(strInst + ptrOffset);
+						charPtr = (char*)(ptrVal + memStart);
+					}
+					else
+					{
+						charPtr = (char*)(strInst + ptrOffset);
+					}
+				}
 
 				int32 ptrVal = *(int32*)(strInst + ptrOffset);
 
@@ -4559,13 +4712,21 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_DebugWrite_Int)
 			{
-				int32 intVal = *(int32*)((uint8*)stackPtr + 0);
-				OutputDebugStrF("Debug Val: %d\n", intVal);
+				if (ceModule->mSystem->mPtrSize == 4)
+				{
+					int32 intVal = *(int32*)((uint8*)stackPtr + 0);
+					OutputDebugStrF("Debug Val: %d %X\n", intVal, intVal);
+				}
+				else
+				{
+					int64 intVal = *(int64*)((uint8*)stackPtr + 0);
+					OutputDebugStrF("Debug Val: %lld %llX\n", intVal, intVal);
+				}
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectType)
 			{
 				addr_ce objAddr = *(addr_ce*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
-				CE_CHECKADDR(addr_ce, 4);
+				CE_CHECKADDR(objAddr, 4);
 				int32 typeId = *(int32*)(objAddr + memStart);
 
 				auto reflectType = GetReflectType(typeId);
@@ -4911,7 +5072,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 8);
 				addr_ce endAddr = *(addr_ce*)((uint8*)stackPtr + 8 + ptrSize);
 								
-				addr_ce checkAddr = strAddr;				
+				addr_ce checkAddr = strAddr;		
 				while (true)
 				{
 					if ((uintptr)checkAddr >= (uintptr)memSize)
@@ -4921,10 +5082,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					}
 					if (memStart[checkAddr] == 0)
 						break;
+					checkAddr++;
 				}
 				CE_CHECKADDR(strAddr, checkAddr - strAddr + 1);
 
-				char* strPtr = (char*)(memStart + strAddr);								
+				char* strPtr = (char*)(memStart + strAddr);
 				char** endPtr = NULL;
 				if (endAddr != NULL)
 					endPtr = (char**)(memStart + endAddr);
@@ -4959,7 +5121,292 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				memcpy(memStart + strAddr, str, count + 1);
 				result = count;
 			}
-			else			
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Close)
+			{
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);	
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				
+				CE_CHECKADDR(outResultAddr, 4);
+
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
+				BfpFile_Close(internalData->mFile, (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Create)
+			{
+				void* resultPtr = ((uint8*)stackPtr + 0);
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				int createKind = *(int*)((uint8*)stackPtr + ptrSize + ptrSize);
+				int createFlags = *(int*)((uint8*)stackPtr + ptrSize + ptrSize + 4);
+				int createFileAttrs = *(int*)((uint8*)stackPtr + ptrSize + ptrSize + 4 + 4);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + 4 + 4 + 4);
+
+				String path;
+				CE_CHECKADDR_STR(path, nameAddr);
+				CE_CHECKADDR(outResultAddr, 4);
+				
+				BfProject* activeProject = NULL;
+				auto activeTypeDef = mCurModule->GetActiveTypeDef();
+				if (activeTypeDef != NULL)
+					activeProject = activeTypeDef->mProject;
+				if (activeProject != NULL)				
+					path = GetAbsPath(path, activeProject->mDirectory);
+
+				auto bfpFile = BfpFile_Create(path.c_str(), (BfpFileCreateKind)createKind, (BfpFileCreateFlags)createFlags, (BfpFileAttributes)createFileAttrs, (BfpFileResult*)(memStart + outResultAddr));
+				if (bfpFile != NULL)
+				{
+					if ((createKind == BfpFileCreateKind_OpenExisting) || (createKind == BfpFileCreateKind_OpenAlways))
+					{
+						auto timeStamp = BfpFile_GetTime_LastWrite(path.c_str());
+						if (timeStamp != 0)
+						{							
+							CeRebuildKey rebuildKey;
+							rebuildKey.mKind = CeRebuildKey::Kind_File;
+							rebuildKey.mString = path;
+
+							CeRebuildValue rebuildValue;
+							rebuildValue.mInt = timeStamp;
+
+							AddRebuild(rebuildKey, rebuildValue);
+						}
+					}
+
+					CeInternalData* internalData = new CeInternalData();
+					internalData->mKind = CeInternalData::Kind_File;
+					internalData->mFile = bfpFile;
+					mInternalDataMap[++mCurHandleId] = internalData;
+					CeSetAddrVal(resultPtr, mCurHandleId, ptrSize);
+				}
+				else
+					CeSetAddrVal(resultPtr, 0, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Flush)
+			{
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
+				BfpFile_Flush(internalData->mFile);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetFileSize)
+			{
+				int64& result = *(int64*)((uint8*)stackPtr + 0);
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 8);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
+				result = BfpFile_GetFileSize(internalData->mFile);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Read)
+			{
+				void* resultPtr = ((uint8*)stackPtr + 0);
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce bufferPtr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				intptr bufferSize = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+				int timeoutMS = *(int32*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize + ptrSize);
+
+				CE_CHECKADDR(bufferPtr, bufferSize);
+				CE_CHECKADDR(outResultAddr, 4);
+
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
+				int64 result = BfpFile_Read(internalData->mFile, memStart + bufferPtr, bufferSize, timeoutMS, (BfpFileResult*)(memStart + outResultAddr));
+				CeSetAddrVal(resultPtr, result, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Release)
+			{
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);
+
+				CeInternalData* internalData = NULL;
+				CE_REMOVE_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
+				delete internalData;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Seek)
+			{
+				int64& result = *(int64*)((uint8*)stackPtr + 0);
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 8);
+				int64 offset = *(int64*)((uint8*)stackPtr + 8 + ptrSize);
+				int seekKind = *(int*)((uint8*)stackPtr + 8 + ptrSize + 8);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
+				result = BfpFile_Seek(internalData->mFile, offset, (BfpFileSeekKind)seekKind);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Truncate)
+			{
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);	
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				
+				CE_CHECKADDR(outResultAddr, 4);
+
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
+				BfpFile_Truncate(internalData->mFile, (BfpFileResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Write)
+			{
+				void* resultPtr = ((uint8*)stackPtr + 0);
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce bufferPtr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				intptr bufferSize = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+				int timeoutMS = *(int32*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize + ptrSize);
+
+				CE_CHECKADDR(bufferPtr, bufferSize);
+				CE_CHECKADDR(outResultAddr, 4);
+
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
+				int64 result = BfpFile_Write(internalData->mFile, memStart + bufferPtr, bufferSize, timeoutMS, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
+				CeSetAddrVal(resultPtr, result, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_Create)
+			{
+				void* resultPtr = ((uint8*)stackPtr + 0);
+				addr_ce targetPathAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce argsAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				addr_ce workingDirAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+				addr_ce envAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize);
+				int flags = *(int*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize + ptrSize + ptrSize + 4);
+
+				String targetPath;
+				CE_CHECKADDR_STR(targetPath, targetPathAddr);
+				String args;
+				if (argsAddr != 0)
+					CE_CHECKADDR_STR(args, argsAddr);
+				String workingDir;
+				if (workingDirAddr != 0)
+					CE_CHECKADDR_STR(workingDir, workingDirAddr);
+				String env;
+				if (envAddr != 0)
+					CE_CHECKADDR_STR(env, envAddr);
+				CE_CHECKADDR(outResultAddr, 4);
+				
+				if ((targetPath.Contains('/')) || (targetPath.Contains('\\')))
+				{
+					BfProject* activeProject = NULL;
+					auto activeTypeDef = mCurModule->GetActiveTypeDef();
+					if (activeTypeDef != NULL)
+						activeProject = activeTypeDef->mProject;
+					if (activeProject != NULL)
+						targetPath = GetAbsPath(targetPath, activeProject->mDirectory);
+				}
+
+				auto bfpSpawn = BfpSpawn_Create(targetPath.c_str(), 
+					(argsAddr == 0) ? NULL : args.c_str(),
+					(workingDirAddr == 0) ? NULL : workingDir.c_str(),
+					(envAddr == 0) ? NULL : env.c_str(), (BfpSpawnFlags)flags, (outResultAddr == 0) ? NULL : (BfpSpawnResult*)(memStart + outResultAddr));
+				if (bfpSpawn != NULL)
+				{					
+					CeInternalData* internalData = new CeInternalData();
+					internalData->mKind = CeInternalData::Kind_Spawn;
+					internalData->mSpawn = bfpSpawn;
+					mInternalDataMap[++mCurHandleId] = internalData;
+					CeSetAddrVal(resultPtr, mCurHandleId, ptrSize);
+				}
+				else
+					CeSetAddrVal(resultPtr, 0, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_GetStdHandles)
+			{
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 0);
+				addr_ce outStdInAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce outStdOutAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				addr_ce outStdErrAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+
+				CE_CHECKADDR(outStdInAddr, ptrSize);
+				CE_CHECKADDR(outStdOutAddr, ptrSize);
+				CE_CHECKADDR(outStdErrAddr, ptrSize);
+
+				BfpFile* outStdIn = NULL;
+				BfpFile* outStdOut = NULL;
+				BfpFile* outStdErr = NULL;
+
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_Spawn);				
+				BfpSpawn_GetStdHandles(internalData->mSpawn,
+					(outStdInAddr != 0) ? &outStdIn : NULL,
+					(outStdOutAddr != 0) ? &outStdOut : NULL,
+					(outStdErrAddr != 0) ? &outStdErr : NULL);
+				
+				auto _SetHandle = [&](addr_ce addr, BfpFile* file)
+				{
+					if (addr == 0)
+						return;
+					if (file != NULL)
+					{
+						CeInternalData* internalData = new CeInternalData();
+						internalData->mKind = CeInternalData::Kind_File;
+						internalData->mFile = file;
+						mInternalDataMap[++mCurHandleId] = internalData;
+						CeSetAddrVal(memStart + addr, mCurHandleId, ptrSize);
+					}
+				};
+				
+				_SetHandle(outStdInAddr, outStdIn);
+				_SetHandle(outStdOutAddr, outStdOut);
+				_SetHandle(outStdErrAddr, outStdErr);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_Kill)
+			{
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 0);
+				int exitCode = *(int*)((uint8*)stackPtr + ptrSize);
+				int killFlags = *(int*)((uint8*)stackPtr + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+
+				CE_CHECKADDR(outResultAddr, 4);
+
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_Spawn);
+				BfpSpawn_Kill(internalData->mSpawn, exitCode, (BfpKillFlags)killFlags, (BfpSpawnResult*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_Release)
+			{
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 0);
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_Spawn);
+				internalData->mReleased = true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_WaitFor)
+			{
+				bool& result = *(bool*)((uint8*)stackPtr + 0);
+				addr_ce spawnId = *(addr_ce*)((uint8*)stackPtr + 1);
+				int waitMS = *(int*)((uint8*)stackPtr + 1 + ptrSize);
+				addr_ce outExitCodeAddr = *(addr_ce*)((uint8*)stackPtr + 1 + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + 1 + ptrSize + ptrSize + ptrSize);
+
+				CE_CHECKADDR(outExitCodeAddr, ptrSize);
+				if (outResultAddr != 0)
+					CE_CHECKADDR(outResultAddr, 4);
+
+				CeInternalData* internalData = NULL;
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_Spawn);
+				
+				int outExitCode = 0;
+				int timeLeft = waitMS;
+				do
+				{
+					if (*fastFinishPtr)
+					{
+						result = false;
+						break;
+					}
+
+					int waitTime = 20;
+					if (timeLeft >= 0)
+					{
+						waitTime = BF_MIN(timeLeft, 20);
+						timeLeft -= waitTime;
+					}
+					
+					result = BfpSpawn_WaitFor(internalData->mSpawn, waitTime, &outExitCode, (outResultAddr == 0) ? NULL : (BfpSpawnResult*)(memStart + outResultAddr));
+					if (result)
+						break;
+					if (waitTime == 0)
+						break;					
+				} while (true);
+				*(int*)(memStart + outExitCodeAddr) = outExitCode;
+			}
+			else
 			{
 				Fail(_GetCurFrame(), StrFormat("Unable to invoke extern method '%s'", ceModule->MethodToString(checkFunction->mMethodInstance).c_str()));
 				return false;
@@ -4989,6 +5436,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 	int callCount = 0;
 	int instIdx = 0;
 
+	CE_CHECKSTACK();
+
 	while (true)
 	{
 		if (*fastFinishPtr)
@@ -5004,7 +5453,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		}
 
 		++instIdx;
-
 		CeOp op = CE_GETINST(CeOp);
 		switch (op)
 		{
@@ -5132,7 +5580,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_Malloc:
 		{
 			auto frameOfs = CE_GETINST(int32);
-			int32 size = CE_GETFRAME(int32);
+			int64 size;
+			if (ptrSize == 4)
+				size = CE_GETFRAME(int32);
+			else
+				size = CE_GETFRAME(int64);
 			CE_CHECKALLOC(size);
 			uint8* mem = CeMalloc(size);
 			_FixVariables();
@@ -5580,7 +6032,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 			auto valueType = bfType->ToTypeInstance();
 			if (valueType->mVirtualMethodTable.IsEmpty())
-				ceModule->PopulateType(valueType, BfPopulateType_DataAndMethods);
+				ceModule->PopulateType(valueType, BfPopulateType_Full_Force);
+			if (valueType->mVirtualMethodTable.IsEmpty())
+			{
+				_Fail("Empty virtual table");
+				return false;
+			}
 			auto methodInstance = (BfMethodInstance*)valueType->mVirtualMethodTable[virtualIdx].mImplementingMethod;
 
 			auto callFunction = mCeMachine->GetPreparedFunction(methodInstance);
@@ -5624,6 +6081,13 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					{
 						if (iface.mInterfaceType == ifaceType)
 						{
+							if (valueType->mInterfaceMethodTable.IsEmpty())
+								ceModule->PopulateType(valueType, BfPopulateType_Full_Force);
+							if (valueType->mInterfaceMethodTable.IsEmpty())
+							{
+								_Fail("Empty interface table");
+								return false;
+							}
 							methodInstance = valueType->mInterfaceMethodTable[iface.mStartInterfaceTableIdx + methodIdx].mMethodRef;
 							break;
 						}
@@ -6338,6 +6802,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			_Fail("Unhandled op");
 			return false;
 		}
+
+		//BF_ASSERT(_CrtCheckMemory() != 0);
 	}
 
 	return true;
@@ -6359,7 +6825,7 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCurBuilder = NULL;
 	mPreparingFunction = NULL;
 
-	mCurEmitContext = NULL;
+	mCurEmitContext = NULL;	
 
 	mAppendAllocInfo = NULL;
 	mTempParser = NULL;
@@ -6893,6 +7359,34 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 			{
 				if (methodDef->mName == "BfpSystem_GetTimeStamp")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetTimeStamp;
+				else if (methodDef->mName == "BfpFile_Close")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Close;
+				else if (methodDef->mName == "BfpFile_Create")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Create;
+				else if (methodDef->mName == "BfpFile_Flush")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Flush;
+				else if (methodDef->mName == "BfpFile_GetFileSize")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_GetFileSize;
+				else if (methodDef->mName == "BfpFile_Read")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Read;
+				else if (methodDef->mName == "BfpFile_Release")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Release;
+				else if (methodDef->mName == "BfpFile_Seek")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Seek;
+				else if (methodDef->mName == "BfpFile_Truncate")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Truncate;
+				else if (methodDef->mName == "BfpFile_Write")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Write;
+				else if (methodDef->mName == "BfpSpawn_Create")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSpawn_Create;
+				else if (methodDef->mName == "BfpSpawn_GetStdHandles")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSpawn_GetStdHandles;
+				else if (methodDef->mName == "BfpSpawn_Kill")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSpawn_Kill;
+				else if (methodDef->mName == "BfpSpawn_Release")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSpawn_Release;
+				else if (methodDef->mName == "BfpSpawn_WaitFor")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSpawn_WaitFor;
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mChar32TypeDef))
 			{
@@ -6926,45 +7420,45 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 			{
 				if (methodDef->mName == "Abs")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Abs;
-				if (methodDef->mName == "Acos")
+				else if (methodDef->mName == "Acos")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Acos;
-				if (methodDef->mName == "Asin")
+				else if (methodDef->mName == "Asin")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Asin;
-				if (methodDef->mName == "Atan")
+				else if (methodDef->mName == "Atan")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Atan;
-				if (methodDef->mName == "Atan2")
+				else if (methodDef->mName == "Atan2")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Atan2;
-				if (methodDef->mName == "Ceiling")
+				else if (methodDef->mName == "Ceiling")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Ceiling;
-				if (methodDef->mName == "Cos")
+				else if (methodDef->mName == "Cos")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Cos;
-				if (methodDef->mName == "Cosh")
+				else if (methodDef->mName == "Cosh")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Cosh;
-				if (methodDef->mName == "Exp")
+				else if (methodDef->mName == "Exp")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Exp;
-				if (methodDef->mName == "Floor")
+				else if (methodDef->mName == "Floor")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Floor;
-				if (methodDef->mName == "Log")
+				else if (methodDef->mName == "Log")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Log;
-				if (methodDef->mName == "Log10")
+				else if (methodDef->mName == "Log10")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Log10;
-				if (methodDef->mName == "Mod")
+				else if (methodDef->mName == "Mod")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Mod;
-				if (methodDef->mName == "Pow")
+				else if (methodDef->mName == "Pow")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Pow;
-				if (methodDef->mName == "Round")
+				else if (methodDef->mName == "Round")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Round;
-				if (methodDef->mName == "Sin")
+				else if (methodDef->mName == "Sin")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Sin;
-				if (methodDef->mName == "Sinh")
+				else if (methodDef->mName == "Sinh")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Sinh;
-				if (methodDef->mName == "Sqrt")
+				else if (methodDef->mName == "Sqrt")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Sqrt;
-				if (methodDef->mName == "Tan")
+				else if (methodDef->mName == "Tan")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Tan;
-				if (methodDef->mName == "Tanh")
+				else if (methodDef->mName == "Tanh")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Tanh;
-			}
+			}			
 
 			ceFunction->mInitializeState = CeFunction::InitializeState_Initialized;
 			return;
@@ -7214,11 +7708,13 @@ CeContext* CeMachine::AllocContext()
 		ceContext->mMemory.Reserve(BF_CE_INITIAL_MEMORY);
 	}
 
-	ceContext->mCurEmitContext = mCurEmitContext;
-	mCurEmitContext = NULL;
+	ceContext->mCurEmitContext = mCurEmitContext;	
+	mCurEmitContext = NULL;	
 	mExecuteId++;	
-	ceContext->mMemory.Resize(BF_CE_STACK_SIZE);
+	ceContext->mStackSize = BF_CE_DEFAULT_STACK_SIZE;
+	ceContext->mMemory.Resize(ceContext->mStackSize);
 	ceContext->mExecuteId = mExecuteId;
+	ceContext->mCurHandleId = 0;
 	return ceContext;
 }
 
@@ -7234,9 +7730,12 @@ void CeMachine::ReleaseContext(CeContext* ceContext)
 	ceContext->mStaticFieldMap.Clear();
 	ceContext->mHeap->Clear(BF_CE_MAX_CARRYOVER_HEAP);
 	ceContext->mReflectTypeIdOffset = -1;	
-	mCurEmitContext = ceContext->mCurEmitContext;
-	ceContext->mCurEmitContext = NULL;
+	mCurEmitContext = ceContext->mCurEmitContext;	
+	ceContext->mCurEmitContext = NULL;	
 	mContextList.Add(ceContext);
+	for (auto kv : ceContext->mInternalDataMap)	
+		delete kv.mValue;
+	ceContext->mInternalDataMap.Clear();
 }
 
 BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
@@ -7246,3 +7745,5 @@ BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	ReleaseContext(ceContext);	
 	return result;
 }
+
+

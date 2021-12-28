@@ -169,6 +169,8 @@ namespace IDE
 		public bool mLastCompileHadMessages;
 		public bool mPauseOnExit;
 		public bool mDbgDelayedAutocomplete;
+		public bool mDbgTimeAutocomplete;
+		public bool mDbgPerfAutocomplete;
 		public BeefConfig mBeefConfig = new BeefConfig() ~ delete _;
 		public List<String> mDeferredFails = new .() ~ DeleteContainerAndItems!(_);
 		public String mInitialCWD = new .() ~ delete _;
@@ -2314,6 +2316,11 @@ namespace IDE
 					widget.RemoveSelf();
 			}
 
+			WithSourceViewPanels(scope (sourceViewPanel) =>
+				{
+					sourceViewPanel.Dispose();
+				});
+
 			if (!mRunningTestScript)
 			{
 				mActiveDocumentsTabbedView = null;
@@ -2425,11 +2432,27 @@ namespace IDE
 		}
 
 		[IDECommand]
-		void CommentSelection()
+		void CommentBlock()
 		{
 			var sewc = GetActiveSourceEditWidgetContent();
 			if (sewc != null)
-				sewc.ToggleComment(true);
+				sewc.CommentBlock();
+		}
+
+		[IDECommand]
+		void CommentLines()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.CommentLines();
+		}
+
+		[IDECommand]
+		void CommentToggle()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.ToggleComment();
 		}
 
 		[IDECommand]
@@ -3936,7 +3959,7 @@ namespace IDE
 		    if (sourceViewPanel != null)
 		    {
 				if (sourceViewPanel.mEditWidget.mEditWidgetContent.GetCursorLineChar(var line, var lineChar))
-					sourceViewPanel.UpdateMouseover(true, true, line, lineChar);
+					sourceViewPanel.UpdateMouseover(true, true, line, lineChar, true);
 			}
 		}
 
@@ -4875,6 +4898,14 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void SafeModeToggle()
+		{
+			mSafeMode = !mSafeMode;
+			mNoResolve = mSafeMode;
+			mWantsBeefClean = true;
+		}
+
+		[IDECommand]
 		public void ShowKeyboardShortcuts()
 		{
 		    /*var workspaceProperties = new SettingsDialog();
@@ -5240,6 +5271,11 @@ namespace IDE
 			menu.SetDisabled(!mDebugger.mIsRunning);
 		}
 
+		public void UpdateMenuItem_DebugOrTestRunning(IMenu menu)
+		{
+			menu.SetDisabled(!mDebugger.mIsRunning && (mTestManager == null));
+		}
+
 		public void UpdateMenuItem_DebugStopped_HasWorkspace(IMenu menu)
 		{
 			menu.SetDisabled(mDebugger.mIsRunning || !mWorkspace.IsInitialized);
@@ -5310,6 +5346,7 @@ namespace IDE
 			AddMenuItem(prefMenu, "&Settings", "Settings");
 			AddMenuItem(prefMenu, "Reload Settings", "Reload Settings");
 			AddMenuItem(prefMenu, "Reset UI", "Reset UI");
+			AddMenuItem(prefMenu, "Safe Mode", "Safe Mode Toggle", new (menu) => { menu.SetCheckState(mSafeMode ? 1 : 0); }, null, true, mSafeMode ? 1 : 0);
 			AddMenuItem(subMenu, "Close Workspace", "Close Workspace", new => UpdateMenuItem_HasWorkspace);
             AddMenuItem(subMenu, "E&xit", "Exit");
 
@@ -5386,7 +5423,9 @@ namespace IDE
 			advancedEditMenu.AddMenuItem(null);
 			AddMenuItem(advancedEditMenu, "Make Uppercase", "Make Uppercase");
 			AddMenuItem(advancedEditMenu, "Make Lowercase", "Make Lowercase");
-			AddMenuItem(advancedEditMenu, "Comment Selection", "Comment Selection");
+			AddMenuItem(advancedEditMenu, "Comment Block", "Comment Block");
+			AddMenuItem(advancedEditMenu, "Comment Lines", "Comment Lines");
+			AddMenuItem(advancedEditMenu, "Comment Toggle", "Comment Toggle");
 			AddMenuItem(advancedEditMenu, "Uncomment Selection", "Uncomment Selection");
 			AddMenuItem(advancedEditMenu, "Reformat Document", "Reformat Document");
 			mViewWhiteSpace.mMenu = AddMenuItem(advancedEditMenu, "View White Space", "View White Space", null, null, true, mViewWhiteSpace.Bool ? 1 : 0);
@@ -5397,6 +5436,8 @@ namespace IDE
 				var internalEditMenu = subMenu.AddMenuItem("Internal");
 				internalEditMenu.AddMenuItem("Hilight Cursor References", null, new (menu) => { ToggleCheck(menu, ref gApp.mSettings.mEditorSettings.mHiliteCursorReferences); }, null, null, true, gApp.mSettings.mEditorSettings.mHiliteCursorReferences ? 1 : 0);
 				internalEditMenu.AddMenuItem("Delayed Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgDelayedAutocomplete); }, null, null, true, gApp.mDbgDelayedAutocomplete ? 1 : 0);
+				internalEditMenu.AddMenuItem("Time Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgTimeAutocomplete); }, null, null, true, gApp.mDbgTimeAutocomplete ? 1 : 0);
+				internalEditMenu.AddMenuItem("Perf Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgPerfAutocomplete); }, null, null, true, gApp.mDbgPerfAutocomplete ? 1 : 0);
 			}
 
 			//////////
@@ -5456,7 +5497,7 @@ namespace IDE
 			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
-			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugRunning);
+			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugOrTestRunning);
             AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
             AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
             AddMenuItem(subMenu, "Show &Disassembly", "Show Disassembly");
@@ -5712,14 +5753,20 @@ namespace IDE
 				{
 					let sewc = editWidget.mEditWidgetContent as SourceEditWidgetContent;
 					if (sewc != null)
-						return sewc;
+					{
+						if (sewc.mEditWidget.mHasFocus)
+							return sewc;
+						return null;
+					}
 				}
 			}
 
 			var activeTextPanel = GetActivePanel() as TextPanel;
 			if (activeTextPanel != null)
 			{
-				return activeTextPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
+				let sewc = activeTextPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
+				if ((sewc != null) && (sewc.mEditWidget.mHasFocus))
+					return sewc;
 			}
 
 			return null;
@@ -9167,6 +9214,9 @@ namespace IDE
 			bool doCompile = false;
 			if (lastCompileHadMessages)
 				doCompile = true;
+
+			bool needsComptime = bfCompiler.GetLastHadComptimeRebuilds();
+
 			if ((!workspaceOptions.mIncrementalBuild) && (!lastCompileHadMessages))
 			{
 				tryQueueFiles = false;
@@ -9176,6 +9226,9 @@ namespace IDE
 						tryQueueFiles = true;
 				}
 			}
+
+			if (needsComptime)
+				tryQueueFiles = true;
 
 			if (hotProject != null)
 			{
@@ -9209,6 +9262,9 @@ namespace IDE
 	                    success = false;
 	            }
 			}
+
+			if (needsComptime)
+				doCompile = true;
 
             if (!success)
 			{
@@ -10748,7 +10804,7 @@ namespace IDE
 					Beef requires the Microsoft C++ build tools for Visual Studio 2013 or later, but they don't seem to be installed.
 
 					Install just Microsoft Visual C++ Build Tools or the entire Visual Studio suite from:
-					    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019
+					    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
 					""";
 
 #if CLI
@@ -10759,7 +10815,7 @@ namespace IDE
 					dlg.AddOkCancelButtons(new (dlg) =>
 						{
 							ProcessStartInfo psi = scope ProcessStartInfo();
-							psi.SetFileName("https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019");
+							psi.SetFileName("https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022");
 							psi.UseShellExecute = true;
 							psi.SetVerb("Open");
 							var process = scope SpawnedProcess();
@@ -12040,11 +12096,11 @@ namespace IDE
 						if (mErrorsPanel != null)
 							mErrorsPanel.ClearParserErrors(null);
 
-                        delete mBfResolveCompiler;
-                        delete mBfResolveSystem;
-						delete mBfResolveHelper;
-                        delete mBfBuildCompiler;
-                        delete mBfBuildSystem;
+                        DeleteAndNullify!(mBfResolveCompiler);
+                        DeleteAndNullify!(mBfResolveSystem);
+						DeleteAndNullify!(mBfResolveHelper);
+                        DeleteAndNullify!(mBfBuildCompiler);
+                        DeleteAndNullify!(mBfBuildSystem);
 						
 						///
                         mDebugger.FullReportMemory();
@@ -13698,7 +13754,6 @@ namespace IDE
         [Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
         public static extern bool MessageBeep(MessageBeepType type);
 #endif
-
     }
 
 	static

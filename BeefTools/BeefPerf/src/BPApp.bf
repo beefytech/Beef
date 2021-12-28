@@ -505,7 +505,7 @@ namespace BeefPerf
 			subMenu = root.AddMenuItem("&Debug");
 			subMenu.AddMenuItem("GC Collect", null, new (menu) =>
 				{
-				    if (Profiler.StartSampling() case .Ok(let id))
+				    if (Profiler.StartSampling() case .Ok(var id))
 					{
 						GC.Collect();
 						id.Dispose();

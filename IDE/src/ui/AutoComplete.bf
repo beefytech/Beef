@@ -1165,6 +1165,7 @@ namespace IDE.ui
 			}
         }
 
+		public Stopwatch mStopwatch ~ delete _;
         public EditWidget mTargetEditWidget;
         public Event<Action> mOnAutoCompleteInserted ~ _.Dispose();
         public Event<Action> mOnClosed ~ _.Dispose();

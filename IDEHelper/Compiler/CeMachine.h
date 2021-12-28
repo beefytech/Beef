@@ -264,6 +264,37 @@ public:
 	}
 };
 
+class CeInternalData
+{
+public:
+	enum Kind
+	{
+		Kind_None,
+		Kind_File,
+		Kind_FindFileData,
+		Kind_Spawn
+	};
+
+public:
+	Kind mKind;
+	bool mReleased;
+
+	union
+	{
+		BfpFile* mFile;
+		BfpFindFileData* mFindFileData;
+		BfpSpawn* mSpawn;
+	};
+
+	CeInternalData()
+	{
+		mKind = Kind_None;
+		mReleased = false;
+	}
+
+	~CeInternalData();
+};
+
 enum CeFunctionKind
 {
 	CeFunctionKind_NotSet,
@@ -293,6 +324,21 @@ enum CeFunctionKind
 	CeFunctionKind_EmitMethodEntry,
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
+
+	CeFunctionKind_BfpFile_Close,
+	CeFunctionKind_BfpFile_Create,
+	CeFunctionKind_BfpFile_Flush,
+	CeFunctionKind_BfpFile_GetFileSize,
+	CeFunctionKind_BfpFile_Read,
+	CeFunctionKind_BfpFile_Release,
+	CeFunctionKind_BfpFile_Seek,
+	CeFunctionKind_BfpFile_Truncate,
+	CeFunctionKind_BfpFile_Write,
+	CeFunctionKind_BfpSpawn_Create,
+	CeFunctionKind_BfpSpawn_GetStdHandles,
+	CeFunctionKind_BfpSpawn_Kill,
+	CeFunctionKind_BfpSpawn_Release,
+	CeFunctionKind_BfpSpawn_WaitFor,
 
 	CeFunctionKind_BfpSystem_GetTimeStamp,
 	CeFunctionKind_Sleep,
@@ -328,7 +374,7 @@ enum CeFunctionKind
 	CeFunctionKind_Math_Sinh,
 	CeFunctionKind_Math_Sqrt,
 	CeFunctionKind_Math_Tan,
-	CeFunctionKind_Math_Tanh,
+	CeFunctionKind_Math_Tanh,	
 };
 
 class CeConstStructFixup
@@ -501,10 +547,11 @@ public:
 	}
 };
 
-#define BF_CE_STACK_SIZE 4*1024*1024
-#define BF_CE_INITIAL_MEMORY BF_CE_STACK_SIZE + 128*1024
-#define BF_CE_MAX_MEMORY 128*1024*1024
-#define BF_CE_MAX_CARRYOVER_MEMORY BF_CE_STACK_SIZE * 2
+#define BF_CE_DEFAULT_STACK_SIZE 4*1024*1024
+#define BF_CE_DEFAULT_HEAP_SIZE 128*1024
+#define BF_CE_INITIAL_MEMORY BF_CE_DEFAULT_STACK_SIZE + BF_CE_DEFAULT_HEAP_SIZE
+#define BF_CE_MAX_MEMORY 0x7FFFFFFF
+#define BF_CE_MAX_CARRYOVER_MEMORY BF_CE_DEFAULT_STACK_SIZE * 2
 #define BF_CE_MAX_CARRYOVER_HEAP 1024*1024
 
 enum CeOperandInfoKind
@@ -683,12 +730,40 @@ public:
 	BfIRValue mAppendSizeValue;
 };
 
+class CeRebuildKey
+{
+public:
+	enum Kind
+	{
+		Kind_None,
+		Kind_File
+	};
+
+public:
+	Kind mKind;
+	String mString;
+
+	bool operator==(const CeRebuildKey& other) const
+	{
+		return (mKind == other.mKind) && (mString == other.mString);
+	}
+};
+
+class CeRebuildValue
+{
+public:
+	union
+	{
+		uint64 mInt;
+	};
+};
+
 class CeEmitContext
 {
 public:
-	BfType* mType;
+	BfType* mType;	
 	BfMethodInstance* mMethodInstance;
-	Array<int32> mInterfaces;
+	Array<int32> mInterfaces;	
 	String mEmitData;
 	String mExitEmitData;
 	bool mFailed;
@@ -706,6 +781,25 @@ public:
 	}
 };
 
+class BfCeTypeInfo
+{
+public:
+	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
+	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
+	Array<int> mPendingInterfaces;
+	Dictionary<CeRebuildKey, CeRebuildValue> mRebuildMap;
+	Val128 mHash;
+	bool mFailed;
+	BfCeTypeInfo* mNext;
+
+public:
+	BfCeTypeInfo()
+	{
+		mFailed = false;
+		mNext = NULL;
+	}
+};
+
 class CeContext
 {
 public:
@@ -719,19 +813,21 @@ public:
 	ContiguousHeap* mHeap;
 	Array<CeFrame> mCallStack;
 	Array<uint8> mMemory;
+	int mStackSize;
 	Dictionary<int, addr_ce> mStringMap;
 	Dictionary<int, addr_ce> mReflectMap;
 	Dictionary<Val128, addr_ce> mConstDataMap;	
 	HashSet<int> mStaticCtorExecSet;	
 	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
-	Dictionary<void*, addr_ce> mMemToCtxMap;
+	Dictionary<int, CeInternalData*> mInternalDataMap;
+	int mCurHandleId;
 
 	BfMethodInstance* mCurMethodInstance;
 	BfType* mCurExpectingType;
 	BfAstNode* mCurTargetSrc;
 	BfModule* mCurModule;
 	CeFrame* mCurFrame;
-	CeEmitContext* mCurEmitContext;
+	CeEmitContext* mCurEmitContext;	
 
 public:
 	CeContext();
@@ -740,6 +836,7 @@ public:
 	BfError* Fail(const StringImpl& error);
 	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
 
+	void AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value);
 	uint8* CeMalloc(int size);
 	bool CeFree(addr_ce addr);
 	addr_ce CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elemsAddr);
@@ -791,7 +888,7 @@ public:
 	CeAppendAllocInfo* mAppendAllocInfo;
 	
 	CeContext* mCurContext;
-	CeEmitContext* mCurEmitContext;	
+	CeEmitContext* mCurEmitContext;
 	CeBuilder* mCurBuilder;
 	CeFunction* mPreparingFunction;		
 
@@ -838,3 +935,15 @@ public:
 };
 
 NS_BF_END
+
+namespace std
+{
+	template <>
+	struct hash<Beefy::CeRebuildKey>
+	{
+		size_t operator()(const Beefy::CeRebuildKey& key) const
+		{
+			return BeefHash<Beefy::String>()(key.mString) ^ (size_t)key.mKind;
+		}
+	};	
+}

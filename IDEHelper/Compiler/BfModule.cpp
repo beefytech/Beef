@@ -3913,7 +3913,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 			if (isLet || isVar)
 				fieldType = GetPrimitiveType(BfTypeCode_Var);
 			else
-				fieldType = ResolveTypeRef(fieldDef->mTypeRef);
+				fieldType = ResolveTypeRef(fieldDef->mTypeRef,BfPopulateType_Identity, BfResolveTypeRefFlag_AllowInferredSizedArray);
 			if (fieldType == NULL)
 				fieldType = mContext->mBfObjectType;
 		}
@@ -4297,7 +4297,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 			int ceExecuteId = -1;
 			if (mCompiler->mCEMachine != NULL)
 				ceExecuteId = mCompiler->mCEMachine->mExecuteId;
-
+			
 			BfTypeState typeState;			
 			typeState.mType = mCurTypeInstance;
 			typeState.mCurTypeDef = fieldDef->mDeclaringType;
@@ -6368,7 +6368,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		FieldFlags_Const = 0x40,
 		FieldFlags_SpecialName = 0x80,
 		FieldFlags_EnumPayload = 0x100,
-		FieldFlags_EnumDiscriminator = 0x200
+		FieldFlags_EnumDiscriminator = 0x200,
+		FieldFlags_EnumCase = 0x400
 	};
 
 	if ((typeInstance->IsPayloadEnum()) && (!typeInstance->IsBoxed()))
@@ -6434,6 +6435,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Static);
 		if (fieldDef->mIsConst)
 			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Const);
+		if (fieldDef->IsEnumCaseEntry())
+			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_EnumCase);
 
 		int customAttrIdx = _HandleCustomAttrs(fieldInstance->mCustomAttributes);
 		BfIRValue constValue;		
@@ -7787,9 +7790,16 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		}
 	}
 
+	if (checkArgType->IsPointer())
+	{
+		auto ptrType = (BfPointerType*)checkArgType;		
+		checkArgType = ptrType->mElementType;
+	}
+
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) != 0)
 	{
 		bool canAlloc = false;
+
 		if (auto checkTypeInst = checkArgType->ToTypeInstance())
 		{
 			if (checkTypeInst->IsObjectOrStruct())
@@ -7857,13 +7867,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	}
 
 	if ((genericParamInst->mInterfaceConstraints.IsEmpty()) && (genericParamInst->mOperatorConstraints.IsEmpty()) && (genericParamInst->mTypeConstraint == NULL))
-		return true;
-	
-	if (checkArgType->IsPointer())
-	{
-		auto ptrType = (BfPointerType*)checkArgType;
-		checkArgType = ptrType->mElementType;
-	}
+		return true;		
 
 	if (genericParamInst->mTypeConstraint != NULL)
 	{
@@ -8469,10 +8473,10 @@ void BfModule::InitTypeInst(BfTypedValue typedValue, BfScopeData* scopeData, boo
 	mBfIRBuilder->PopulateType(typedValue.mType);
 	auto vObjectAddr = mBfIRBuilder->CreateInBoundsGEP(typedValue.mValue, 0, 0);
 	bool isAutocomplete = mCompiler->IsAutocomplete();
-		
+
 	BfIRValue vDataRef;
 	if (!isAutocomplete)
-	{				
+	{
 		vDataRef = GetClassVDataPtr(typeInstance);
 	}
 
@@ -11143,8 +11147,11 @@ void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, Bf
 	}
 }
 
-void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget, bool allowNonConstArgs, BfCaptureInfo* captureInfo)
+void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget, BfGetCustomAttributesFlags flags, BfCaptureInfo* captureInfo)
 {
+	bool allowNonConstArgs = (flags & BfGetCustomAttributesFlags_AllowNonConstArgs) != 0;
+	bool keepConstsInModule = (flags & BfGetCustomAttributesFlags_KeepConstsInModule) != 0;
+
 	if (!mCompiler->mHasRequiredTypes)
 		return;
 
@@ -11388,7 +11395,8 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 						BfTypedValue result = constResolver.Resolve(assignExpr->mRight, fieldTypeInst.mResolvedType, BfConstResolveFlag_NoActualizeValues);
 						if (result)
 						{
-							CurrentAddToConstHolder(result.mValue);
+							if (!keepConstsInModule)
+								CurrentAddToConstHolder(result.mValue);
 							setField.mParam = result;
 							customAttribute.mSetField.push_back(setField);
 						}
@@ -11450,7 +11458,8 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 									if (!result.mValue.IsConst())
 										result = GetDefaultTypedValue(result.mType);
 									BF_ASSERT(result.mType == propType);
-									CurrentAddToConstHolder(result.mValue);
+									if (!keepConstsInModule)
+										CurrentAddToConstHolder(result.mValue);
 									setProperty.mParam = result;
 									customAttribute.mSetProperties.push_back(setProperty);
 								}
@@ -11566,10 +11575,13 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		}
 
 		// Move all those to the constHolder
-		for (auto& ctorArg : customAttribute.mCtorArgs)
-		{			
-			if (ctorArg.IsConst())
-				CurrentAddToConstHolder(ctorArg);			
+		if (!keepConstsInModule)
+		{
+			for (auto& ctorArg : customAttribute.mCtorArgs)
+			{
+				if (ctorArg.IsConst())
+					CurrentAddToConstHolder(ctorArg);
+			}
 		}
 		
 		if (attributesDirective->mAttributeTargetSpecifier != NULL)
@@ -11626,10 +11638,10 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 	ValidateCustomAttributes(customAttributes, attrTarget);
 }
 
-BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs, BfCaptureInfo* captureInfo)
+BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags, BfCaptureInfo* captureInfo)
 {
 	BfCustomAttributes* customAttributes = new BfCustomAttributes();
-	GetCustomAttributes(customAttributes, attributesDirective, attrType, allowNonConstArgs, captureInfo);
+	GetCustomAttributes(customAttributes, attributesDirective, attrType, flags, captureInfo);
 	return customAttributes;
 }
 
@@ -11834,7 +11846,7 @@ bool BfModule::TryGetConstString(BfIRConstHolder* constHolder, BfIRValue irValue
 	BfStringPoolEntry* entry = NULL;
 	if (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry))
 	{
-		str = entry->mString;
+		str += entry->mString;
 	}
 	else
 	{
@@ -15479,7 +15491,11 @@ void BfModule::CreateDelegateInvokeMethod()
 
 	mBfIRBuilder->AddBlock(doneBB);
 	mBfIRBuilder->SetInsertPoint(doneBB);
-	if ((mCurMethodInstance->mReturnType->IsValuelessType()) || 
+	if (mCurMethodInstance->mReturnType->IsVar())
+	{
+		// Do nothing
+	}
+	else if ((mCurMethodInstance->mReturnType->IsValuelessType()) || 
 		((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1)))
 	{
 		mBfIRBuilder->CreateRetVoid();
@@ -18476,6 +18492,11 @@ void BfModule::EmitGCFindTLSMembers()
 void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 {
 	BP_ZONE_F("BfModule::ProcessMethod %s", BP_DYN_STR(methodInstance->mMethodDef->mName.c_str()));
+
+	if (mIsComptimeModule)
+	{
+		BF_ASSERT(!mCompiler->IsAutocomplete());
+	}
 
 	if (mAwaitingInitFinish)
 		FinishInit();
@@ -21547,6 +21568,10 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 			}
 		}
 	}
+	
+	auto delegateInfo = typeInstance->GetDelegateInfo();
+	if ((delegateInfo != NULL) && (methodInstance->mMethodDef->mMethodType == BfMethodType_Normal) && (methodInstance->mMethodDef->mName == "Invoke"))
+		methodInstance->mCallingConvention = delegateInfo->mCallingConvention;
 }
 
 void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& mangledName, bool isTemporaryFunc, bool* outIsIntrinsic)
@@ -22157,6 +22182,13 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		
 		if (resolvedReturnType == NULL)
 			resolvedReturnType = GetPrimitiveType(BfTypeCode_Var);
+
+		if ((methodDef->mIsReadOnly) && (!resolvedReturnType->IsRef()))
+		{
+			if (auto methodDeclaration = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration))
+				if (methodDeclaration->mReadOnlySpecifier != NULL)
+					Fail("Readonly specifier is only valid on 'ref' return types", methodDeclaration->mReadOnlySpecifier);
+		}
 	}
 	else
 	{

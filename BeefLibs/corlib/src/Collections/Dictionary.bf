@@ -311,6 +311,7 @@ namespace System.Collections
 		{
 			if (sizeof(int) == 4)
 				return (int32)hashCode & 0x7FFFFFFF;
+#unwarn
 			if (sizeof(int_cosize) == 8)
 				return (int_cosize)(hashCode & 0x7FFFFFFF'FFFFFFFFL);
 			return ((int32)hashCode ^ (int32)((int64)hashCode >> 33)) & 0x7FFFFFFF;

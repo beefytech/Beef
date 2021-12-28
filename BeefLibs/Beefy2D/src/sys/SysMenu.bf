@@ -69,6 +69,12 @@ namespace Beefy.sys
 			Modify(mText, mHotKey, mBitmap, mEnabled, mCheckState, mRadioCheck);
 		}
 
+		public void SetCheckState(int32 checkState)
+		{
+			mCheckState = checkState;
+			Modify(mText, mHotKey, mBitmap, mEnabled, mCheckState, mRadioCheck);
+		}
+
 		public void SetHotKey(StringView hotKey)
 		{
 			if (hotKey.IsNull)

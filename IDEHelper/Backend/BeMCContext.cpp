@@ -2171,6 +2171,8 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 			auto vregInfo = GetVRegInfo(tlsVReg);
 			vregInfo->mMustExist = true;
 			vregInfo->mForceReg = true;
+			vregInfo->mDisableR12 = true;
+			vregInfo->mDisableR13 = true;
 			mTLSVRegIdx = tlsVReg.mVRegIdx;
 		}
 
@@ -15930,7 +15932,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Load@TestProgram@BeefTest@bf@@SA?AUHandle@23@XZ");
+	//mDebugging = (function->mName == "?InitThread@Foo@BeefTest@bf@@CA?AU?$Result@X@System@3@H@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;

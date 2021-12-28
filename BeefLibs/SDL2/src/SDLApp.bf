@@ -117,7 +117,7 @@ namespace SDL2
 			SDL.EventState(.JoyDeviceAdded, .Disable);
 			SDL.EventState(.JoyDeviceRemoved, .Disable);
 
-			mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mWidth, mHeight, .Shown);
+			mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mWidth, mHeight, .Hidden); // Initially hide window
 			mRenderer = SDL.CreateRenderer(mWindow, -1, .Accelerated);
 			mScreen = SDL.GetWindowSurface(mWindow);
 			SDLImage.Init(.PNG | .JPG);
@@ -246,7 +246,9 @@ namespace SDL2
 				if (curPhysTickCount == 0)
 				{
 					// Initial render
-					Render();
+					Render();                
+					// Show initially hidden window, mitigates white flash on slow startups
+					SDL.ShowWindow(mWindow); 
 				}
 				else
 				{
