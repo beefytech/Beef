@@ -4676,13 +4676,14 @@ String BfTypeUtils::HashEncode64(uint64 val)
 			outStr.Append('_');
 		}
 	}
-	
-	for (int i = 0; i < 10; i++)
+
+	while (val > 0)
 	{
-		int charIdx = (int)((val >> (i * 6)) & 0x3F) - 1;
-		if (charIdx != -1)
-			outStr.Append(cHash64bToChar[charIdx]);
+		int charIdx = val % 0x3F;
+		val /= 0x3F;
+		outStr.Append(cHash64bToChar[charIdx]);		
 	}
+
 	return outStr;
 }
 
