@@ -101,13 +101,14 @@ DbgProfiler::DbgProfiler(WinDebugger* debugger) : mShutdownEvent(true)
 	mEndTick = 0;
 
 	mDebugger->AddProfiler(this);
-
-	mIdleSymbolNames.Add("ZwDelayExecution");
-	mIdleSymbolNames.Add("ZwWaitForWorkViaWorkerFactory");
+	
+	mIdleSymbolNames.Add("NtUserGetMessage");
 	mIdleSymbolNames.Add("NtWaitForAlertByThreadId");
-	mIdleSymbolNames.Add("NtWaitForSingleObject");
 	mIdleSymbolNames.Add("NtWaitForMultipleObjects");
+	mIdleSymbolNames.Add("NtWaitForSingleObject");
+	mIdleSymbolNames.Add("ZwDelayExecution");
 	mIdleSymbolNames.Add("ZwRemoveIoCompletion");
+	mIdleSymbolNames.Add("ZwWaitForWorkViaWorkerFactory");
 }
 
 DbgProfiler::~DbgProfiler()
