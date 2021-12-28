@@ -19055,7 +19055,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	
 	if (wantsDIData)
 	{
-		BP_ZONE("BfModule::BfMethodDeclaration.DISetup");		
+		BP_ZONE("BfModule::DoMethodDeclaration.DISetup");		
 
 		BfIRMDNode diFuncType = mBfIRBuilder->DbgCreateSubroutineType(diParams);
 
@@ -21848,7 +21848,7 @@ static void StackOverflow()
 // methodDeclaration is NULL for default constructors
 void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool isTemporaryFunc, bool addToWorkList)
 {
-	BP_ZONE("BfModule::BfMethodDeclaration");	
+	BP_ZONE("BfModule::DoMethodDeclaration");	
 
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped
