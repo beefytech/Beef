@@ -107,6 +107,7 @@ DbgProfiler::DbgProfiler(WinDebugger* debugger) : mShutdownEvent(true)
 	mIdleSymbolNames.Add("NtWaitForAlertByThreadId");
 	mIdleSymbolNames.Add("NtWaitForSingleObject");
 	mIdleSymbolNames.Add("NtWaitForMultipleObjects");
+	mIdleSymbolNames.Add("ZwRemoveIoCompletion");
 }
 
 DbgProfiler::~DbgProfiler()
