@@ -620,6 +620,8 @@ namespace IDE.ui
 			ResolveParams resolveParams = new ResolveParams();
 			if (gApp.mDbgTimeAutocomplete)
 				resolveParams.mStopwatch = new .()..Start();
+			if (gApp.mDbgPerfAutocomplete)
+				resolveParams.mProfileInstance = Profiler.StartSampling("Autocomplete").GetValueOrDefault();
 			resolveParams.mIsUserRequested = options.HasFlag(.UserRequested);
 			Classify(.Autocomplete, resolveParams);
 			if (!resolveParams.mInDeferredList)

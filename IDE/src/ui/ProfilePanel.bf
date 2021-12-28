@@ -293,6 +293,10 @@ namespace IDE.ui
 			}
 		}
 
+		struct ThreadEntry : this(int32 mThreadId, int32 mCPUUsage, StringView mName)
+		{
+		}
+
 		void PopulateThreadList(Menu menu)
 		{
 			if (mProfiler == null)
@@ -307,6 +311,7 @@ namespace IDE.ui
 			var threadListStr = scope String();
 			mProfiler.GetThreadList(threadListStr);
 
+			List<ThreadEntry> entries = scope .();
 			for (var entry in threadListStr.Split('\n'))
 			{
 				if (entry.Length == 0)
@@ -314,20 +319,35 @@ namespace IDE.ui
 
 				var dataItr = entry.Split('\t');
 
-				int32 threadId = int32.Parse(dataItr.GetNext());
-				StringView threadName = dataItr.GetNext();
+				ThreadEntry threadEntry = default;
+				threadEntry.mThreadId = int32.Parse(dataItr.GetNext());
+				threadEntry.mCPUUsage = int32.Parse(dataItr.GetNext());
+				threadEntry.mName = dataItr.GetNext();
+				entries.Add(threadEntry);
+			}
 
+			entries.Sort(scope (lhs, rhs) =>
+				{
+					int cmp = rhs.mCPUUsage <=> lhs.mCPUUsage;
+					if (cmp == 0)
+						cmp = lhs.mThreadId <=> rhs.mThreadId;
+					return cmp;
+				});
+
+			for (var entry in entries)
+			{
 				String threadStr = null;
 				var str = scope String();
-				str.AppendF("{0}", threadId);
-				if (!threadName.IsEmpty)
+				str.AppendF("{0}", entry.mThreadId);
+				str.AppendF($" ({entry.mCPUUsage}%)");
+				if (!entry.mName.IsEmpty)
 				{
-					threadStr = new String(threadName);
-					str.AppendF(" - {0}", threadName);
+					threadStr = new String(entry.mName);
+					str.AppendF($" - {entry.mName}");
 				}
 
 				subItem = menu.AddItem(str);
-				subItem.mOnMenuItemSelected.Add(new (item) => { Show(threadId, threadStr); } ~ delete threadStr);
+				subItem.mOnMenuItemSelected.Add(new (item) => { Show(entry.mThreadId, threadStr); } ~ delete threadStr);
 			}
 		}
 

@@ -79,6 +79,7 @@ namespace IDE.Compiler
 		public int32 mTextVersion = -1;
 		public bool mIsUserRequested;
 		public Stopwatch mStopwatch ~ delete _;
+		public ProfileInstance mProfileInstance ~ _.Dispose();
     }
 
     public class BfParser : ILeakIdentifiable
