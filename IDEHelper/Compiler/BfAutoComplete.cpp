@@ -29,7 +29,7 @@ AutoCompleteBase::~AutoCompleteBase()
 	Clear();
 }
 
-inline void UpdateEntryMatchindices(uint8* matches, AutoCompleteEntry& entry)
+inline void UpdateEntryMatchIndices(uint8* matches, const AutoCompleteEntry& entry)
 {
 	if (matches[0] != UINT8_MAX)
 	{
@@ -55,14 +55,14 @@ inline void UpdateEntryMatchindices(uint8* matches, AutoCompleteEntry& entry)
 	}
 }
 
-AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const StringImpl& filter)
+AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter)
 {
 	uint8 matches[256];
 	
 	if (!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
 
-	UpdateEntryMatchindices(matches, entry);
+	UpdateEntryMatchIndices(matches, entry);
 
 	auto result = AddEntry(entry);
 	
@@ -73,14 +73,14 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const St
 	return result;
 }
 
-AutoCompleteEntry* AutoCompleteBase::AddEntry(AutoCompleteEntry& entry, const char* filter)
+AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const char* filter)
 {
 	uint8 matches[256];
 
 	if (!DoesFilterMatch(entry.mDisplay, filter, entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
 
-	UpdateEntryMatchindices(matches, entry);
+	UpdateEntryMatchIndices(matches, entry);
 
 	auto result = AddEntry(entry);
 

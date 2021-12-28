@@ -15,10 +15,10 @@ public:
 	const char* mEntryType;
 	const char* mDisplay;
 	const char* mDocumentation;
-	int8 mNamePrefixCount;
-	int mScore;
-	uint8* mMatches;
-	uint8 mMatchesLength;
+	mutable int8 mNamePrefixCount;
+	mutable int mScore;
+	mutable uint8* mMatches;
+	mutable uint8 mMatchesLength;
 
 public:
 	AutoCompleteEntry()
@@ -62,7 +62,7 @@ public:
 	}
 
 	bool operator==(const AutoCompleteEntry& other) const
-	{
+	{	
 		return strcmp(mDisplay, other.mDisplay) == 0;
 	}
 };
@@ -75,16 +75,16 @@ struct BeefHash<Beefy::AutoCompleteEntry>
 	size_t operator()(const Beefy::AutoCompleteEntry& val)
 	{		
 		intptr hash = 0;
-		const char* curPtr = val.mDisplay;		
+		const char* curPtr = val.mDisplay;
 		while (true)
 		{
 			char c = *(curPtr++);
 			if (c == 0)
 				break;
-			hash = (hash ^ (intptr)c) - hash;			
+			hash = ((hash ^ (intptr)c) << 5) - hash;
 		}
 
-		return (size_t)hash;
+		return hash;
 	}
 };
 
@@ -116,8 +116,8 @@ public:
 	int mInsertEndIdx;
 
 	bool DoesFilterMatch(const char* entry, const char* filter, int& score, uint8* matches, int maxMatches);
-	AutoCompleteEntry* AddEntry(AutoCompleteEntry& entry, const StringImpl& filter);	
-	AutoCompleteEntry* AddEntry(AutoCompleteEntry& entry, const char* filter);
+	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter);
+	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry, const char* filter);
 	AutoCompleteEntry* AddEntry(const AutoCompleteEntry& entry);
 
 	AutoCompleteBase();
