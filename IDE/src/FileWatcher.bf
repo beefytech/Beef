@@ -55,8 +55,8 @@ namespace IDE
         Dictionary<String, DepInfo> mWatchedFiles = new Dictionary<String, DepInfo>() ~ DeleteDictionaryAndKeysAndValues!(_); // Including ref count
         List<ChangeRecord> mChangeList = new .() ~ DeleteContainerAndItems!(_);
 		Dictionary<String, ChangeRecord> mChangeMap = new .() ~ delete _;
-        HashSet<Object> mDependencyChangeSet = new .() ~ delete _;
-		List<Object> mDependencyChangeList = new .() ~ delete _;
+        HashSet<void*> mDependencyChangeSet = new .() ~ delete _;
+		List<void*> mDependencyChangeList = new .() ~ delete _;
         List<QueuedRefreshEntry> mQueuedRefreshWatcherEntries = new List<QueuedRefreshEntry>() ~ delete _;
 		public Monitor mMonitor = new Monitor() ~ delete _;
 		List<QueuedFileChange> mQueuedFileChanges = new List<QueuedFileChange>() ~ DeleteContainerAndItems!(_);
@@ -205,8 +205,9 @@ namespace IDE
 						projectItem = tryProjectItem;
                     if (dep != null)
 					{
-                        if (mDependencyChangeSet.Add(dep))
-							mDependencyChangeList.Add(dep);
+						var depPtr = Internal.UnsafeCastToPtr(dep);
+                        if (mDependencyChangeSet.Add(depPtr))
+							mDependencyChangeList.Add(depPtr);
 					}
 				}
 
@@ -565,7 +566,7 @@ namespace IDE
                 }
 
 				if (dependentObject != null)
-					mDependencyChangeSet.Remove(dependentObject);
+					mDependencyChangeSet.Remove(Internal.UnsafeCastToPtr(dependentObject));
             }
 #endif
         }
@@ -656,11 +657,14 @@ namespace IDE
         {
             using (mMonitor.Enter())
             {
-                if (mDependencyChangeList.IsEmpty)
-                    return null;
-                Object dep = mDependencyChangeList.PopFront();
-                mDependencyChangeSet.Remove(dep);
-                return dep;
+				while (true)
+				{
+	                if (mDependencyChangeList.IsEmpty)
+	                    return null;
+	                var dep = mDependencyChangeList.PopFront();
+					if (mDependencyChangeSet.Remove(dep))
+	                	return Internal.UnsafeCastToObject(dep);
+				}
             }
         }
 
@@ -668,7 +672,9 @@ namespace IDE
 		{
 			using (mMonitor.Enter())
 			{
-				mDependencyChangeSet.Add(obj);
+				var depPtr = Internal.UnsafeCastToPtr(obj);
+				if (mDependencyChangeSet.Add(depPtr))
+					mDependencyChangeList.Add(depPtr);
 			}
 		}
     }
