@@ -3028,16 +3028,38 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 //////////////////////////////////////////////////////////////////////////
 
 
-void CeContext::AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value)
+bool CeContext::AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value)
 {
 	if (mCurModule == NULL)
-		return;
+		return false;
 	if (mCurModule->mCurTypeInstance == NULL)
-		return;
+		return false;
+	if ((mCurEvalFlags & CeEvalFlags_NoRebuild) != 0)
+		return false;
 	if (mCurModule->mCurTypeInstance->mCeTypeInfo == NULL)
 		mCurModule->mCurTypeInstance->mCeTypeInfo = new BfCeTypeInfo();
 	mCurModule->mCurTypeInstance->mCeTypeInfo->mRebuildMap[key] = value;
 	mCurModule->mCompiler->mHasComptimeRebuilds = true;
+	return true;
+}
+
+void CeContext::AddFileRebuild(const StringImpl& path)
+{
+	auto timeStamp = BfpFile_GetTime_LastWrite(path.c_str());
+	if (timeStamp != 0)
+	{
+		String fixedPath = FixPathAndCase(path);
+
+		CeRebuildKey rebuildKey;
+		rebuildKey.mKind = CeRebuildKey::Kind_File;
+		rebuildKey.mString = fixedPath;
+
+		CeRebuildValue rebuildValue;
+		rebuildValue.mInt = timeStamp;
+
+		if (AddRebuild(rebuildKey, rebuildValue))
+			mCurModule->mCompiler->mRebuildFileSet.Add(fixedPath);
+	}
 }
 
 uint8* CeContext::CeMalloc(int size)
@@ -5243,21 +5265,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				if (bfpFile != NULL)
 				{
 					if ((createKind == BfpFileCreateKind_OpenExisting) || (createKind == BfpFileCreateKind_OpenAlways))
-					{
-						auto timeStamp = BfpFile_GetTime_LastWrite(path.c_str());
-						if (timeStamp != 0)
-						{							
-							CeRebuildKey rebuildKey;
-							rebuildKey.mKind = CeRebuildKey::Kind_File;
-							rebuildKey.mString = path;
-
-							CeRebuildValue rebuildValue;
-							rebuildValue.mInt = timeStamp;
-
-							AddRebuild(rebuildKey, rebuildValue);
-						}
-					}
-
+						AddFileRebuild(path);
 					CeInternalData* internalData = new CeInternalData();
 					internalData->mKind = CeInternalData::Kind_File;
 					internalData->mFile = bfpFile;
@@ -5351,6 +5359,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 8);
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				AddFileRebuild(path);
 				result = BfpFile_GetTime_LastWrite(path.c_str());
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetAttributes)
@@ -5363,7 +5372,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
-				
+				AddFileRebuild(path);
 				result = BfpFile_GetAttributes(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_SetAttributes)
@@ -5425,6 +5434,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				AddFileRebuild(path);
 				result = BfpFile_Exists(path.c_str());
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetTempPath)
@@ -5551,9 +5561,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce outStdOutAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
 				addr_ce outStdErrAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
 
-				CE_CHECKADDR(outStdInAddr, ptrSize);
-				CE_CHECKADDR(outStdOutAddr, ptrSize);
-				CE_CHECKADDR(outStdErrAddr, ptrSize);
+				if (outStdInAddr != 0)
+					CE_CHECKADDR(outStdInAddr, ptrSize);
+				if (outStdOutAddr != 0)
+					CE_CHECKADDR(outStdOutAddr, ptrSize);
+				if (outStdErrAddr != NULL)
+					CE_CHECKADDR(outStdErrAddr, ptrSize);
 
 				BfpFile* outStdIn = NULL;
 				BfpFile* outStdOut = NULL;
@@ -5580,9 +5593,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					}
 				};
 				
-				_SetHandle(outStdInAddr, outStdIn);
-				_SetHandle(outStdOutAddr, outStdOut);
-				_SetHandle(outStdErrAddr, outStdErr);
+				if (outStdInAddr != NULL)
+					_SetHandle(outStdInAddr, outStdIn);
+				if (outStdOutAddr != NULL)
+					_SetHandle(outStdOutAddr, outStdOut);
+				if (outStdErrAddr != NULL)
+					_SetHandle(outStdErrAddr, outStdErr);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_Kill)
 			{
@@ -5665,19 +5681,17 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				auto bfpFindFileData = BfpFindFileData_FindFirstFile(path.c_str(), (BfpFindFileFlags)flags, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 				if (bfpFindFileData != NULL)
-				{					
-// 					auto timeStamp = BfpFile_GetTime_LastWrite(path.c_str());
-// 					if (timeStamp != 0)
-// 					{							
-// 						CeRebuildKey rebuildKey;
-// 						rebuildKey.mKind = CeRebuildKey::Kind_File;
-// 						rebuildKey.mString = path;
-// 
-// 						CeRebuildValue rebuildValue;
-// 						rebuildValue.mInt = timeStamp;
-// 
-// 						AddRebuild(rebuildKey, rebuildValue);
-// 					}					
+				{
+					String dir = GetFileDir(path);
+					dir = FixPathAndCase(dir);
+					dir.Append(DIR_SEP_CHAR);
+
+					CeRebuildKey rebuildKey;
+					rebuildKey.mKind = CeRebuildKey::Kind_Directory;
+					rebuildKey.mString = dir;
+					CeRebuildValue rebuildValue; 
+					if (AddRebuild(rebuildKey, rebuildValue))
+						mCurModule->mCompiler->mRebuildFileSet.Add(dir);
 
 					CeInternalData* internalData = new CeInternalData();
 					internalData->mKind = CeInternalData::Kind_FindFileData;

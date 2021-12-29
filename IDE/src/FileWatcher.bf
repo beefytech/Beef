@@ -55,7 +55,8 @@ namespace IDE
         Dictionary<String, DepInfo> mWatchedFiles = new Dictionary<String, DepInfo>() ~ DeleteDictionaryAndKeysAndValues!(_); // Including ref count
         List<ChangeRecord> mChangeList = new .() ~ DeleteContainerAndItems!(_);
 		Dictionary<String, ChangeRecord> mChangeMap = new .() ~ delete _;
-        List<Object> mDependencyChangeList = new List<Object>() ~ delete _;
+        HashSet<Object> mDependencyChangeSet = new .() ~ delete _;
+		List<Object> mDependencyChangeList = new .() ~ delete _;
         List<QueuedRefreshEntry> mQueuedRefreshWatcherEntries = new List<QueuedRefreshEntry>() ~ delete _;
 		public Monitor mMonitor = new Monitor() ~ delete _;
 		List<QueuedFileChange> mQueuedFileChanges = new List<QueuedFileChange>() ~ DeleteContainerAndItems!(_);
@@ -85,6 +86,14 @@ namespace IDE
         void FileChanged(String filePath, String newPath, WatcherChangeTypes changeType)
         {
 			bool isDirectory = filePath.EndsWith(Path.DirectorySeparatorChar);
+
+			if (!filePath.EndsWith('*'))
+			{
+				String starPath = Path.GetDirectoryPath(filePath, .. scope .());
+				starPath.Append(Path.DirectorySeparatorChar);
+				starPath.Append('*');
+				FileChanged(starPath, null, .Changed);
+			}
 
 			var newPath;
 			if (isDirectory)
@@ -194,9 +203,10 @@ namespace IDE
 				{
 					if (var tryProjectItem = dep as ProjectItem)
 						projectItem = tryProjectItem;
-                    if ((dep != null) && (!mDependencyChangeList.Contains(dep)))
-                    {
-                        mDependencyChangeList.Add(dep);
+                    if (dep != null)
+					{
+                        if (mDependencyChangeSet.Add(dep))
+							mDependencyChangeList.Add(dep);
 					}
 				}
 
@@ -535,7 +545,8 @@ namespace IDE
 				String outKey;
                 if (!mWatchedFiles.TryGet(fixedFilePath, out outKey, out depInfo))
 					return;
-                depInfo.mDependentObjects.Remove(dependentObject);
+				if (dependentObject != null)
+                	depInfo.mDependentObjects.Remove(dependentObject);
 
                 if (depInfo.mDependentObjects.Count == 0)
                 {
@@ -553,7 +564,8 @@ namespace IDE
 					delete depInfo;
                 }
 
-				mDependencyChangeList.Remove(dependentObject);
+				if (dependentObject != null)
+					mDependencyChangeSet.Remove(dependentObject);
             }
 #endif
         }
@@ -644,10 +656,10 @@ namespace IDE
         {
             using (mMonitor.Enter())
             {
-                if (mDependencyChangeList.Count == 0)
+                if (mDependencyChangeList.IsEmpty)
                     return null;
-                Object dep = mDependencyChangeList[0];
-                mDependencyChangeList.RemoveAt(0);
+                Object dep = mDependencyChangeList.PopFront();
+                mDependencyChangeSet.Remove(dep);
                 return dep;
             }
         }
@@ -656,7 +668,7 @@ namespace IDE
 		{
 			using (mMonitor.Enter())
 			{
-				mDependencyChangeList.Add(obj);
+				mDependencyChangeSet.Add(obj);
 			}
 		}
     }

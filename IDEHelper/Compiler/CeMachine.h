@@ -530,6 +530,7 @@ enum CeEvalFlags
 	CeEvalFlags_Cascade = 1,
 	CeEvalFlags_PersistantError = 2,
 	CeEvalFlags_DeferIfNotOnlyError = 4,
+	CeEvalFlags_NoRebuild = 8
 };
 
 enum CeOperandKind
@@ -766,7 +767,8 @@ public:
 	enum Kind
 	{
 		Kind_None,
-		Kind_File
+		Kind_File,
+		Kind_Directory
 	};
 
 public:
@@ -866,7 +868,8 @@ public:
 	BfError* Fail(const StringImpl& error);
 	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
 
-	void AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value);
+	bool AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value);
+	void AddFileRebuild(const StringImpl& filePath);
 	uint8* CeMalloc(int size);
 	bool CeFree(addr_ce addr);
 	addr_ce CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elemsAddr);

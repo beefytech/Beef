@@ -336,6 +336,8 @@ public:
 	int mHSPreserveIdx;
 	BfModule* mLastAutocompleteModule;		
 	CompileState mCompileState;
+	HashSet<String> mRebuildFileSet;
+	HashSet<String> mRebuildChangedFileSet; // Files we had actual changes from
 
 	Array<BfVDataModule*> mVDataModules;	
 			

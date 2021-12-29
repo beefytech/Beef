@@ -13032,6 +13032,14 @@ namespace IDE
 			}
 			else if (changeType == .Failed)
 			{
+				if (mBfResolveCompiler?.HasRebuildFileWatches() == true)
+				{
+					mBfResolveCompiler.AddChangedDirectory("*");
+					mBfResolveCompiler.QueueDeferredResolveAll();
+				}
+				if (mBfBuildCompiler?.HasRebuildFileWatches() == true)
+					mBfBuildCompiler.AddChangedDirectory("*");
+
 				if (mProjectPanel != null)
 				{
 					if (let projectFolder = projectItem as ProjectFolder)
@@ -13115,13 +13123,29 @@ namespace IDE
 
 			while (true)
 			{
-				var dep = mFileWatcher.PopChangedDependency();
-				if (dep == null)
-					break;
-				var projectSourceDep = dep as ProjectSource;
-				if (projectSourceDep != null)
+				using (mFileWatcher.mMonitor.Enter())
 				{
-					// We process these projectSources directly from the filename below
+					var dep = mFileWatcher.PopChangedDependency();
+					if (dep == null)
+						break;
+					var projectSourceDep = dep as ProjectSource;
+					if (projectSourceDep != null)
+					{
+						// We process these projectSources directly from the filename below
+					}
+					if (var path = dep as String)
+					{
+						StringView usePath = path;
+						if (usePath.EndsWith('*'))
+							usePath.RemoveFromEnd(1);
+						if (mBfResolveCompiler != null)
+						{
+							mBfResolveCompiler.AddChangedDirectory(usePath);
+							mBfResolveCompiler.QueueDeferredResolveAll();
+						}
+						if (mBfBuildCompiler != null)
+							mBfBuildCompiler.AddChangedDirectory(usePath);
+					}
 				}
 			}
 

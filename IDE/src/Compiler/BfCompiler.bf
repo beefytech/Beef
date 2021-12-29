@@ -55,6 +55,12 @@ namespace IDE.Compiler
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BfCompiler_GetAutocompleteInfo(void* bfCompiler);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetRebuildFileSet(void* bfCompiler);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfCompiler_FileChanged(void* bfCompiler, char8* str);
+
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BfCompiler_GetSymbolReferences(void* bfCompiler, void* bfPassInstance, void* bfResolvePassData);        
 
@@ -200,10 +206,17 @@ namespace IDE.Compiler
 			public int32 mHotIdx;
         }
 
+		class RebuildFileChangedCommand : Command
+		{
+			public String mDir = new .() ~ delete _;
+		}
+
+
         public void* mNativeBfCompiler;
         public bool mIsResolveOnly;
         public BfSystem mBfSystem;
 		bool mWantsRemoveOldData;
+		public Dictionary<String, String> mRebuildWatchingFiles = new .() ~ delete _;
 
         public this(void* nativeBfCompiler)
         {
@@ -214,6 +227,13 @@ namespace IDE.Compiler
 		{
 		    BfCompiler_Delete(mNativeBfCompiler);
 		    mNativeBfCompiler = null;
+
+			for (var kv in mRebuildWatchingFiles)
+			{
+				gApp.mFileWatcher.RemoveWatch(kv.key, kv.value);
+				delete kv.key;
+				delete kv.value;
+			}
 		}
 
         public bool Compile(BfPassInstance passInstance, String outputDirectory)
@@ -248,6 +268,12 @@ namespace IDE.Compiler
             char8* result = BfCompiler_GetAutocompleteInfo(mNativeBfCompiler);
 			outAutocompleteInfo.Append(StringView(result));
         }
+
+		public void GetRebuildFileSet(String outDirInfo)
+		{
+		    char8* result = BfCompiler_GetRebuildFileSet(mNativeBfCompiler);
+			outDirInfo.Append(StringView(result));
+		}
 
         public void GetSymbolReferences(BfPassInstance passInstance, BfResolvePassData resolvePassData, String outSymbolReferences)
         {
@@ -531,6 +557,7 @@ namespace IDE.Compiler
                 {
                     var compileCommand = (CompileCommand)command;
                     Compile(passInstance, compileCommand.mOutputDirectory);
+					UpdateRebuildFileWatches();
                     mBfSystem.RemoveOldParsers();
                     mBfSystem.RemoveOldData();
                 }
@@ -547,7 +574,8 @@ namespace IDE.Compiler
                     // If we get canceled then try again after waiting a couple updates
                     if (!ClassifySource(passInstance, null, resolvePassData, null))
                         QueueDeferredResolveAll();
-					
+					UpdateRebuildFileWatches();
+
                     delete resolvePassData;
 					wantsRemoveOldData = true;
 					passKind = .Classify;
@@ -570,6 +598,11 @@ namespace IDE.Compiler
                 {
                     mWantsActiveViewRefresh = true;
                 }
+
+				if (var dirChangedCommand = command as RebuildFileChangedCommand)
+				{
+					BfCompiler_FileChanged(mNativeBfCompiler, dirChangedCommand.mDir);
+				}
             }
 
             mBfSystem.Unlock();
@@ -841,6 +874,55 @@ namespace IDE.Compiler
 		public bool GetLastHadComptimeRebuilds()
 		{
 			return BfCompiler_GetLastHadComptimeRebuilds(mNativeBfCompiler);
+		}
+
+		void UpdateRebuildFileWatches()
+		{
+			HashSet<StringView> curWatches = scope .();
+
+			var rebuildDirStr = GetRebuildFileSet(.. scope .());
+			for (var dir in rebuildDirStr.Split('\n', .RemoveEmptyEntries))
+			{
+				curWatches.Add(dir);
+				if (mRebuildWatchingFiles.TryAddAlt(dir, var keyPtr, var valuePtr))
+				{
+					*keyPtr = new String(dir);
+					String watchFile = *valuePtr = new .();
+					watchFile.Append(dir);
+					if ((watchFile.EndsWith(Path.DirectorySeparatorChar)) || (watchFile.EndsWith(Path.AltDirectorySeparatorChar)))
+						watchFile.Append("*");
+					gApp.mFileWatcher.WatchFile(watchFile, watchFile);
+				}
+			}
+
+			List<String> oldKeys = scope .();
+			for (var kv in mRebuildWatchingFiles)
+			{
+				if (!curWatches.Contains(kv.key))
+				{
+					gApp.mFileWatcher.RemoveWatch(kv.key, kv.value);
+					oldKeys.Add(kv.key);
+				}
+			}
+
+			for (var key in oldKeys)
+			{
+				var kv = mRebuildWatchingFiles.GetAndRemove(key).Value;
+				delete kv.key;
+				delete kv.value;
+			}
+		}
+
+		public bool HasRebuildFileWatches()
+		{
+			return !mRebuildWatchingFiles.IsEmpty;
+		}
+
+		public void AddChangedDirectory(StringView str)
+		{
+			var dirChangedCommand = new RebuildFileChangedCommand();
+			dirChangedCommand.mDir.Set(str);
+			QueueCommand(dirChangedCommand);
 		}
     }
 }

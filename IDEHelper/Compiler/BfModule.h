@@ -79,6 +79,7 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_WasMethodRef = 0x800000,
 	BfEvalExprFlags_DeclType = 0x1000000,
 	BfEvalExprFlags_AllowBase = 0x2000000,
+	BfEvalExprFlags_NoCeRebuildFlags = 0x4000000,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };

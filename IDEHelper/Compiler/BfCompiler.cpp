@@ -6565,6 +6565,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		}
 	}
 
+	mRebuildFileSet.Clear();
+
 	// Inc revision for next run through Compile
 	mRevision++;
 	mHasComptimeRebuilds = false;
@@ -8149,7 +8151,7 @@ String BfCompiler::GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeIn
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mContext->mUnreifiedModule->mCurTypeInstance, typeInst);
 
 	BfExprEvaluator exprEvaluator(mContext->mUnreifiedModule);
-	exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_Comptime;	
+	exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(BfEvalExprFlags_Comptime | BfEvalExprFlags_NoCeRebuildFlags);
 
 	SizedArray<BfIRValue, 1> irArgs;
 	if (args != NULL)
@@ -8189,7 +8191,7 @@ String BfCompiler::GetGeneratorTypeDefList()
 	BfProject* curProject = NULL;
 	Dictionary<BfProject*, int> projectIds;
 	
-	BfResolvePassData resolvePassData;
+	BfResolvePassData resolvePassData;	
 	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);	
 	BfPassInstance passInstance(mSystem);
 	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
@@ -8226,7 +8228,7 @@ String BfCompiler::GetGeneratorTypeDefList()
 
 String BfCompiler::GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args)
 {
-	BfResolvePassData resolvePassData;
+	BfResolvePassData resolvePassData;	
 	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
 	BfPassInstance passInstance(mSystem);
 	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
@@ -9442,6 +9444,22 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetAutocompleteInfo(BfCompiler* bfC
 {
 	String& autoCompleteResultString = *gTLStrReturn.Get();
 	return autoCompleteResultString.c_str();
+}
+
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetRebuildFileSet(BfCompiler* bfCompiler)
+{
+	String& autoCompleteResultString = *gTLStrReturn.Get();
+	for (auto& val : bfCompiler->mRebuildFileSet)
+	{
+		autoCompleteResultString += val;
+		autoCompleteResultString += "\n";
+	}
+	return autoCompleteResultString.c_str();
+}
+
+BF_EXPORT void BF_CALLTYPE BfCompiler_FileChanged(BfCompiler* bfCompiler, const char* dirPath)
+{
+	bfCompiler->mRebuildChangedFileSet.Add(dirPath);
 }
 
 BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetSymbolReferences(BfCompiler* bfCompiler, BfPassInstance* bfPassInstance, BfResolvePassData* resolvePassData)

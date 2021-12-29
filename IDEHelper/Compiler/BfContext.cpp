@@ -1061,6 +1061,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	delete typeInst->mTypeInfoEx;
 	typeInst->mTypeInfoEx = NULL;
 	
+	if (typeInst->mCeTypeInfo != NULL)
+		typeInst->mCeTypeInfo->mRebuildMap.Clear();
+
 	if (typeInst->mTypeDef->mEmitParent != NULL)
 	{
 		auto emitTypeDef = typeInst->mTypeDef;
@@ -1895,9 +1898,11 @@ void BfContext::UpdateRevisedTypes()
 
 	Dictionary<String, uint64> lastWriteTimeMap;
 
+	bool rebuildAllFilesChanged = mCompiler->mRebuildChangedFileSet.Contains("*");
+
 	// Do primary 'rebuild' scan
 	for (auto type : mResolvedTypes)
-	{		
+	{
 		auto typeInst = type->ToTypeInstance();
 		if (type == NULL)
 		{
@@ -1958,6 +1963,14 @@ void BfContext::UpdateRevisedTypes()
 					}
 					if (*valuePtr != kv.mValue.mInt)
 						changed = true;
+					mCompiler->mRebuildFileSet.Add(kv.mKey.mString);
+				}				
+
+				if ((kv.mKey.mKind == CeRebuildKey::Kind_File) || (kv.mKey.mKind == CeRebuildKey::Kind_Directory))
+				{
+					if ((rebuildAllFilesChanged) || (mCompiler->mRebuildChangedFileSet.Contains(kv.mKey.mString)))
+						changed = true;
+					mCompiler->mRebuildFileSet.Add(kv.mKey.mString);
 				}
 			}
 
@@ -1984,19 +1997,14 @@ void BfContext::UpdateRevisedTypes()
 			continue;
 		}
 
-// 		if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mParser != NULL) && (!typeInst->IsSpecializedType()))
-// 		{
-// 			if (typeDef->HasSource(mCompiler->mResolvePassData->mParser))
-// 			{
-// 				HandleChangedTypeDef(typeDef);				
-// 			}
-// 		}
-
 		if (typeDef->mDefState != BfTypeDef::DefState_New)
 		{
 			defStateChangedQueue.Add(typeInst);									
 		}						
 	}
+
+	// We consumed this above
+	mCompiler->mRebuildChangedFileSet.Clear();
 
 	for (auto typeInst : defStateChangedQueue)
 	{

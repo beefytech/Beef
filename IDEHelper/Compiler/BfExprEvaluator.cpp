@@ -5541,7 +5541,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			}
 			else
 			{
-				CeEvalFlags evalFlags = CeEvalFlags_None;				
+				CeEvalFlags evalFlags = CeEvalFlags_None;
+				if ((mBfEvalExprFlags & BfEvalExprFlags_NoCeRebuildFlags) != 0)
+					evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_NoRebuild);
 				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
 				if (constRet)
 				{
