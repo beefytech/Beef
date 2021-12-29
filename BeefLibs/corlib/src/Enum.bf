@@ -9,7 +9,8 @@ namespace System
 		{
 			for (var field in type.GetFields())
 			{
-				if (field.[Friend]mFieldData.[Friend]mData == iVal)
+				if (field.[Friend]mFieldData.mFlags.HasFlag(.EnumCase) &&
+					field.[Friend]mFieldData.[Friend]mData == iVal)
 				{
 					strBuffer.Append(field.Name);
 					return;
@@ -21,11 +22,10 @@ namespace System
 
 		public static Result<T> Parse<T>(StringView str, bool ignoreCase = false) where T : enum
 		{
-			var typeInst = (TypeInstance)typeof(T);
-			for (var field in typeInst.GetFields())
+			for (var (name, data) in GetEnumerator<T>())
 			{
-				if (str.Equals(field.[Friend]mFieldData.mName, ignoreCase))
-					return .Ok(*((T*)(&field.[Friend]mFieldData.mData)));
+				if (str.Equals(name, ignoreCase))
+					return .Ok(data);
 			}
 
 			return .Err;
@@ -34,10 +34,9 @@ namespace System
 		public static bool IsDefined<T>(T value)
 			where T : enum
 		{
-			var typeInst = (TypeInstance)typeof(T);
-			for (var field in typeInst.GetFields())
+			for (var data in GetValues<T>())
 			{
-				if (field.[Friend]mFieldData.[Friend]mData == (.)value)
+				if (data == (.)value)
 					return true;
 			}
 
