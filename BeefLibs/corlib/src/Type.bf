@@ -693,8 +693,8 @@ namespace System.Reflection
         public struct FieldData
         {
             public String mName;
-            public int mData;
-            public TypeId mFieldTypeId;
+			public TypeId mFieldTypeId;
+            public int64 mData;
             public FieldFlags mFlags;
             public int32 mCustomAttributesIdx;
         }
