@@ -12,6 +12,13 @@ namespace System
 			Major = major;
 			Minor = minor;
 		}
+		
+		public this(uint32 major, uint32 minor, uint32 build)
+		{
+			Major = major;
+			Minor = minor;
+			Build = build;
+		}
 
 		public this(uint32 major, uint32 minor, uint32 build, uint32 revision)
 		{
@@ -71,6 +78,37 @@ namespace System
 			return (Major > major) || ((Major == major) && (Minor > minor)) ||
 				((Major == major) && (Minor == minor) && (Build > build)) ||
 				((Major == major) && (Minor == minor) && (Build == build) && (Revision >= revision));
+		}
+		
+		public static Result<Version> Parse(StringView version)
+		{
+			var components = version.Split('.');
+
+			mixin ParseComponent(var component)
+			{
+				uint32 parsedComponent;
+				if (!(uint32.Parse(component) case .Ok(out parsedComponent)))
+					return .Err;
+				parsedComponent
+			}
+
+			let major = ParseComponent!(components.GetNext());
+			let minor = ParseComponent!(components.GetNext());
+
+			if (!components.HasMore)
+				return Version(major, minor);
+
+			let build = ParseComponent!(components.GetNext());
+
+			if (!components.HasMore)
+				return Version(major, minor, build);
+
+			let revision = ParseComponent!(components.GetNext());
+
+			if (!components.HasMore)
+				return Version(major, minor, build, revision);
+
+			return .Err;
 		}
 	}
 }
