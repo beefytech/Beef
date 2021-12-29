@@ -10,7 +10,7 @@ namespace System
 			for (var field in type.GetFields())
 			{
 				if (field.[Friend]mFieldData.mFlags.HasFlag(.EnumCase) &&
-					field.[Friend]mFieldData.[Friend]mData == iVal)
+					*(int64*)&field.[Friend]mFieldData.[Friend]mData == iVal)
 				{
 					strBuffer.Append(field.Name);
 					return;
@@ -132,7 +132,7 @@ namespace System
 			{
 				get
 				{
-					return ((.)base.Current.[Friend]mFieldData.[Friend]mName, (.)base.Current.[Friend]mFieldData.[Friend]mData);
+					return ((.)base.Current.[Friend]mFieldData.[Friend]mName, (.)*(int64*)&base.Current.[Friend]mFieldData.[Friend]mData);
 				}
 			}
 
@@ -151,7 +151,7 @@ namespace System
 			{
 				get
 				{
-					return (.)base.Current.[Friend]mFieldData.[Friend]mData;
+					return (.)*(int64*)&base.Current.[Friend]mFieldData.[Friend]mData;
 				}
 			}
 

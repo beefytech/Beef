@@ -694,7 +694,10 @@ namespace System.Reflection
         {
             public String mName;
 			public TypeId mFieldTypeId;
-            public int64 mData;
+            public int mData;
+#if BF_32_BIT
+			public int mDataHi;
+#endif
             public FieldFlags mFlags;
             public int32 mCustomAttributesIdx;
         }
