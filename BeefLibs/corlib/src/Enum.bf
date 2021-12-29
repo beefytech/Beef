@@ -16,8 +16,7 @@ namespace System
 					return;
 				}
 			}
-
-			((int32)iVal).ToString(strBuffer);
+			iVal.ToString(strBuffer);
 		}
 
 		public static Result<T> Parse<T>(StringView str, bool ignoreCase = false) where T : enum

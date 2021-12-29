@@ -48,7 +48,7 @@ namespace System.Reflection
 	            if (!typeMatched)
 	                return .Err(.InvalidTargetType); // "Invalid target type");
 	        }
-			dataAddr = (void*)((int)dataAddr + mFieldData.mData);
+			dataAddr = (void*)((int)dataAddr + (.)mFieldData.mData);
 
 	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
@@ -110,7 +110,7 @@ namespace System.Reflection
 		        if (!typeMatched)
 		            return .Err(.InvalidTargetType);
 		    }
-			dataAddr =  (void*)((int)dataAddr + mFieldData.mData);
+			dataAddr =  (void*)((int)dataAddr + (.)mFieldData.mData);
 
 		    Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
@@ -143,7 +143,7 @@ namespace System.Reflection
 					return .Err(.InvalidTargetType); // Invalid target type
 				dataAddr = target.Get<void*>();
 			}
-			dataAddr = (void*)((int)dataAddr + mFieldData.mData);
+			dataAddr = (void*)((int)dataAddr + (.)mFieldData.mData);
 
 		    Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
@@ -197,7 +197,7 @@ namespace System.Reflection
 				dataAddr = target.Get<void*>();
 			}
 
-			dataAddr =  (void*)((int)dataAddr + mFieldData.mData);
+			dataAddr =  (void*)((int)dataAddr + (.)mFieldData.mData);
 
 		    Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
