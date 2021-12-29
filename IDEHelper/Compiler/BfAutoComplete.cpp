@@ -8,6 +8,7 @@
 
 #define FTS_FUZZY_MATCH_IMPLEMENTATION
 #include "../third_party/FtsFuzzyMatch.h"
+#include "BeefySysLib/util/UTF8.h"
 
 #pragma warning(disable:4996)
 
@@ -29,32 +30,6 @@ AutoCompleteBase::~AutoCompleteBase()
 	Clear();
 }
 
-inline void UpdateEntryMatchIndices(uint8* matches, const AutoCompleteEntry& entry)
-{
-	if (matches[0] != UINT8_MAX)
-	{
-		// Count entries in matches
-		// Note: entry.mMatchesLength should be the amount of unicode-codepoints in the filter
-		for (uint8 i = 0;; i++)
-		{
-			uint8 matchIndex = matches[i];
-
-			if ((matchIndex == 0 && i != 0) || i == UINT8_MAX)
-			{
-				entry.mMatchesLength = i;
-				break;
-			}
-		}
-
-		entry.mMatches = matches;
-	}
-	else
-	{
-		entry.mMatches = nullptr;
-		entry.mMatchesLength = 0;
-	}
-}
-
 AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter)
 {
 	uint8 matches[256];
@@ -62,7 +37,8 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, co
 	if (!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
 
-	UpdateEntryMatchIndices(matches, entry);
+	entry.mMatchesLength = u8_strlen((char*)filter.c_str());
+	entry.mMatches = (entry.mMatchesLength > 0) ? matches : nullptr;
 
 	auto result = AddEntry(entry);
 	
@@ -80,7 +56,8 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, co
 	if (!DoesFilterMatch(entry.mDisplay, filter, entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
 
-	UpdateEntryMatchIndices(matches, entry);
+	entry.mMatchesLength = u8_strlen((char*)filter);
+	entry.mMatches = (entry.mMatchesLength > 0) ? matches : nullptr;
 
 	auto result = AddEntry(entry);
 
@@ -108,8 +85,11 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
 		insertedEntry->mDisplay = (char*)mAlloc.AllocBytes(size);
 		memcpy((char*)insertedEntry->mDisplay, display, size);
 
-		insertedEntry->mMatches = (uint8*)mAlloc.AllocBytes(insertedEntry->mMatchesLength);
-		memcpy((char*)insertedEntry->mMatches, entry.mMatches, insertedEntry->mMatchesLength);
+		if (entry.mMatchesLength > 0)
+		{	
+			insertedEntry->mMatches = (uint8*)mAlloc.AllocBytes(insertedEntry->mMatchesLength);
+			memcpy((char*)insertedEntry->mMatches, entry.mMatches, insertedEntry->mMatchesLength);
+		}
 	}
 
 	return insertedEntry;
@@ -127,8 +107,6 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, in
 	
 	if (!mIsAutoComplete)
 		return false;
-
-	matches[0] = UINT8_MAX;
 
 	if (filter[0] == '\0')
 		return true;
