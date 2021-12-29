@@ -5283,6 +5283,11 @@ bool BfCompiler::IsAutocomplete()
 	return (mResolvePassData != NULL) && (mResolvePassData->mAutoComplete != NULL);
 }
 
+bool BfCompiler::IsDataResolvePass()
+{
+	return (mResolvePassData != NULL) && (mResolvePassData->mResolveType == BfResolveType_GetResultString);
+}
+
 BfAutoComplete* BfCompiler::GetAutoComplete()
 {
 	if (mResolvePassData != NULL)

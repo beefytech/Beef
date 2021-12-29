@@ -483,6 +483,7 @@ public:
 	void ClearBuildCache();
 	int GetDynCastVDataCount();
 	bool IsAutocomplete();
+	bool IsDataResolvePass();
 	BfAutoComplete* GetAutoComplete();
 	bool IsHotCompile();
 	bool IsSkippingExtraResolveChecks();

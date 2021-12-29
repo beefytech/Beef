@@ -21427,7 +21427,8 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	// Since we handle errors & warnings in the capture phase, we don't need to process any local methods for resolve-only (unless we're doing a mDbgVerifyCodeGen)
 	if ((!localMethod->mDeclOnly) && (!methodInstance->IsOrInUnspecializedVariation()) &&
 		(methodDef->mMethodType != BfMethodType_Mixin) &&
-		((!mWantsIRIgnoreWrites) || (!localMethod->mDidBodyErrorPass)))
+		((!mWantsIRIgnoreWrites) || (!localMethod->mDidBodyErrorPass)) &&
+		(!mCompiler->IsDataResolvePass()))
 	{
 		BP_ZONE("BfDeferredLocalMethod:create");
 
