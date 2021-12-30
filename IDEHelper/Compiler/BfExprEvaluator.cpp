@@ -5853,7 +5853,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	bool hadAttrs = false;	
 	int paramIdx = 0;
-	bool doingThis = !methodDef->mIsStatic;
+	bool doingThis = methodInstance->HasThis();
 	int argIdx = 0;	
 
 	if (methodDef->mHasExplicitThis)
