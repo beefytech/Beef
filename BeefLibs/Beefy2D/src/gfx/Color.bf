@@ -15,7 +15,7 @@ namespace Beefy.gfx
 
 		public static implicit operator uint32(Color color);
 		public static implicit operator Color(uint32 color);
-		public static implicit operator Color(int color) => (.)color;
+		public static implicit operator Color(int color) => (uint32)color;
 
 		public this(int32 r, int32 g, int32 b)
 		{
