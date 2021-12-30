@@ -5333,6 +5333,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			typeDataSource = ResolveTypeDef(mCompiler->mReflectRefType)->ToTypeInstance();
 		else if (type->IsSizedArray())
 			typeDataSource = ResolveTypeDef(mCompiler->mReflectSizedArrayType)->ToTypeInstance();
+		else if (type->IsConstExprValue())
+			typeDataSource = ResolveTypeDef(mCompiler->mReflectConstExprType)->ToTypeInstance();
 		else
 			typeDataSource = mContext->mBfTypeType;
 				
@@ -5430,6 +5432,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		typeFlags |= BfTypeFlags_Nullable;	
 	if (type->IsSizedArray())
 		typeFlags |= BfTypeFlags_SizedArray;
+	if (type->IsConstExprValue())
+		typeFlags |= BfTypeFlags_ConstExpr;
 	if (type->IsSplattable())
 		typeFlags |= BfTypeFlags_Splattable;
 	if (type->IsUnion())
@@ -5542,6 +5546,23 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto sizedArrayTypeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectSizedArrayType, BfIRPopulateType_Full), sizedArrayTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectSizedArrayType), true,
 					BfIRLinkageType_External, sizedArrayTypeData, typeDataName);
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
+				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
+			}
+			else if (type->IsConstExprValue())
+			{
+				auto constExprType = (BfConstExprValueType*)type;
+				SizedArray<BfIRValue, 3> constExprTypeDataParms =
+				{
+					typeData,
+					GetConstValue(constExprType->mType->mTypeId, typeIdType),
+					GetConstValue(constExprType->mValue.mInt64, longType)
+				};
+
+				auto reflectConstExprType = ResolveTypeDef(mCompiler->mReflectConstExprType)->ToTypeInstance();
+				auto ConstExprTypeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectConstExprType, BfIRPopulateType_Full), constExprTypeDataParms);
+				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectConstExprType), true,
+					BfIRLinkageType_External, ConstExprTypeData, typeDataName);
 				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 			}

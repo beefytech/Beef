@@ -180,11 +180,12 @@ enum BfTypeFlags
 	BfTypeFlags_SizedArray		= 0x1000,
 	BfTypeFlags_Splattable		= 0x2000,
 	BfTypeFlags_Union			= 0x4000,
+	BfTypeFlags_ConstExpr		= 0x8000,
 	//
-	BfTypeFlags_WantsMarking    = 0x8000,
-	BfTypeFlags_Delegate        = 0x10000,
-	BfTypeFlags_Function		= 0x20000,
-	BfTypeFlags_HasDestructor   = 0x40000,
+	BfTypeFlags_WantsMarking    = 0x10000,
+	BfTypeFlags_Delegate        = 0x20000,
+	BfTypeFlags_Function		= 0x40000,
+	BfTypeFlags_HasDestructor   = 0x80000,
 };
 
 enum BfMethodFlags

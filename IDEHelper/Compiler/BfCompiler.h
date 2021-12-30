@@ -402,6 +402,7 @@ public:
 	BfTypeDef* mReflectPointerType;
 	BfTypeDef* mReflectRefType;
 	BfTypeDef* mReflectSizedArrayType;
+	BfTypeDef* mReflectConstExprType;
 	BfTypeDef* mReflectSpecializedGenericType;
 	BfTypeDef* mReflectTypeInstanceTypeDef;
 	BfTypeDef* mReflectUnspecializedGenericType;		

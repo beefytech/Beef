@@ -208,6 +208,14 @@ namespace System
 			}
 		}
 
+		public bool IsConstExpr
+		{
+			get
+			{
+				return (mTypeFlags & TypeFlags.ConstExpr) != 0;
+			}
+		}
+
 		public bool IsObject
 		{
 		    get
@@ -473,6 +481,15 @@ namespace System
         }
 
 		static extern Type Comptime_GetTypeById(int32 typeId);
+		static extern Type Comptime_GetTypeByName(StringView name);
+		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
+		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeId, void* dataPtr);
+		static extern int32 Comptime_GetMethodCount(int32 typeId);
+		static extern int64 Comptime_GetMethod(int32 typeId, int32 methodIdx);
+		static extern String Comptime_Method_ToString(int64 methodHandle);
+		static extern String Comptime_Method_GetName(int64 methodHandle);
+		static extern ComptimeMethodInfo.Info Comptime_Method_GetInfo(int64 methodHandle);
+		static extern ComptimeMethodInfo.ParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
 
         protected static Type GetType(TypeId typeId)
         {
@@ -486,6 +503,19 @@ namespace System
 			if (Compiler.IsComptime)
 				return Comptime_GetTypeById(typeId);
 		    return sTypes[typeId];
+		}
+
+		public static Result<Type> GetTypeByName(StringView typeName)
+		{
+			if (Compiler.IsComptime)
+			{
+				var type = Comptime_GetTypeByName(typeName);
+				if (type == null)
+					return .Err;
+				return type;
+			}
+
+			return .Err;
 		}
 
 		void GetBasicName(String strBuffer)
@@ -558,8 +588,28 @@ namespace System
 		    return FieldInfo.Enumerator(null, bindingFlags);
 		}
 
+		public bool HasCustomAttribute<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+			{
+				return Comptime_Type_GetCustomAttribute((int32)TypeId, (.)typeof(T).TypeId, null);
+			}
+
+			if (var typeInstance = this as TypeInstance)
+				return typeInstance.[Friend]HasCustomAttribute<T>(typeInstance.[Friend]mCustomAttributesIdx);
+			return false;
+		}
+
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
+			if (Compiler.IsComptime)
+			{
+				T val = ?;
+				if (Comptime_Type_GetCustomAttribute((int32)TypeId, (.)typeof(T).TypeId, &val))
+					return val;
+				return .Err;
+			}
+
 			if (var typeInstance = this as TypeInstance)
 				return typeInstance.[Friend]GetCustomAttribute<T>(typeInstance.[Friend]mCustomAttributesIdx);
 			return .Err;
@@ -578,6 +628,9 @@ namespace System
 			{
 				while (true)
 				{
+					if (Compiler.IsComptime)
+						Runtime.FatalError("Comptime type enumeration not supported");
+
 					if (mCurId >= sTypeCount)
 						return .Err;
 					let type = sTypes[mCurId++];
@@ -639,13 +692,7 @@ namespace System
 
 namespace System.Reflection
 {
-    public struct TypeId : int32
-    {
-        public Type ToType()
-        {
-            return Type.[Friend]sTypes[(int32)this];
-        }        
-    }
+    public struct TypeId : int32 {}
 
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class TypeInstance : Type
@@ -655,7 +702,10 @@ namespace System.Reflection
         {
             public String mName;
 			public TypeId mFieldTypeId;
-            public int64 mData;
+            public int mData;
+#if BF_32_BIT
+			public int mDataHi;
+#endif
             public FieldFlags mFlags;
             public int32 mCustomAttributesIdx;
         }
@@ -932,9 +982,29 @@ namespace System.Reflection
 		    return FieldInfo.Enumerator(this, bindingFlags);
 		}
 
+		bool HasCustomAttribute<T>(int customAttributeIdx) where T : Attribute
+		{
+			if (customAttributeIdx == -1)
+			    return false;
+
+			void* data = mCustomAttrDataPtr[customAttributeIdx];
+			return AttributeInfo.HasCustomAttribute(data, typeof(T));
+		}
+
 		Result<T> GetCustomAttribute<T>(int customAttributeIdx) where T : Attribute
 		{
-			return .Err;
+			if (customAttributeIdx == -1)
+			    return .Err;
+
+			void* data = mCustomAttrDataPtr[customAttributeIdx];
+
+			T attrInst = ?;
+			switch (AttributeInfo.GetCustomAttribute(data, typeof(T), &attrInst))
+			{
+			case .Ok: return .Ok(attrInst);
+			default:
+				return .Err;
+			}
 		}
     }
 
@@ -1025,6 +1095,43 @@ namespace System.Reflection
 		}
 	}
 
+	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
+	class ConstExprType : Type
+	{
+	    TypeId mValueType;
+		int64 mValue;
+
+		public Type ValueType
+		{
+			get
+			{
+				return Type.GetType(mValueType);
+			}
+		}
+
+		public ref int64 ValueData
+		{
+			get
+			{
+				return ref mValue;
+			}
+		}
+
+		public override void GetFullName(String strBuffer)
+		{
+			strBuffer.Append("const ");
+			switch (GetType(mValueType))
+			{
+			case typeof(float):
+				(*(float*)&mValue).ToString(strBuffer);
+			case typeof(double):
+				(*(double*)&mValue).ToString(strBuffer);
+			default:
+				mValue.ToString(strBuffer);
+			}
+		}
+	}
+
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class UnspecializedGenericType : TypeInstance
     {
@@ -1035,6 +1142,17 @@ namespace System.Reflection
         }
 
         uint8 mGenericParamCount;
+
+		public Result<Type> GetSpecializedType(params Span<Type> typeArgs)
+		{
+			if (Compiler.IsComptime)
+			{
+				 var specializedType = Type.[Friend]Comptime_GetSpecializedType(this, typeArgs);
+				if (specializedType != null)
+					return specializedType;
+			}
+			return .Err;
+		}
     }
 
     // Only for resolved types
@@ -1064,7 +1182,7 @@ namespace System.Reflection
 
 		public Type GetGenericArg(int argIdx)
 		{
-			return mResolvedTypeRefs[argIdx].ToType();
+			return Type.GetType(mResolvedTypeRefs[argIdx]);
 		}
 
 		public override void GetFullName(String strBuffer)
@@ -1154,11 +1272,12 @@ namespace System.Reflection
 		SizedArray				= 0x1000,
 		Splattable				= 0x2000,
 		Union					= 0x4000,
+		ConstExpr				= 0x8000,
 		//
-		WantsMark				= 0x8000,
-		Delegate				= 0x10000,
-		Function				= 0x20000,
-		HasDestructor			= 0x40000,
+		WantsMark				= 0x10000,
+		Delegate				= 0x20000,
+		Function				= 0x40000,
+		HasDestructor			= 0x80000,
     }
 
     public enum FieldFlags : uint16
@@ -1180,7 +1299,8 @@ namespace System.Reflection
         Const                   = 0x0040,     // Value is compile time constant.
         SpecialName             = 0x0080,     // field is special.  Name describes how.
         EnumPayload				= 0x0100,
-		EnumDiscriminator		= 0x0200
+		EnumDiscriminator		= 0x0200,
+		EnumCase				= 0x0400
     }
 
 	public enum MethodFlags : uint16

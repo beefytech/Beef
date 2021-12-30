@@ -208,6 +208,14 @@ namespace System
 			}
 		}
 
+		public bool IsConstExpr
+		{
+			get
+			{
+				return (mTypeFlags & TypeFlags.ConstExpr) != 0;
+			}
+		}
+
 		public bool IsObject
 		{
 		    get
@@ -1087,6 +1095,43 @@ namespace System.Reflection
 		}
 	}
 
+	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
+	class ConstExprType : Type
+	{
+	    TypeId mValueType;
+		int64 mValue;
+
+		public Type ValueType
+		{
+			get
+			{
+				return Type.GetType(mValueType);
+			}
+		}
+
+		public ref int64 ValueData
+		{
+			get
+			{
+				return ref mValue;
+			}
+		}
+
+		public override void GetFullName(String strBuffer)
+		{
+			strBuffer.Append("const ");
+			switch (GetType(mValueType))
+			{
+			case typeof(float):
+				(*(float*)&mValue).ToString(strBuffer);
+			case typeof(double):
+				(*(double*)&mValue).ToString(strBuffer);
+			default:
+				mValue.ToString(strBuffer);
+			}
+		}
+	}
+
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class UnspecializedGenericType : TypeInstance
     {
@@ -1227,11 +1272,12 @@ namespace System.Reflection
 		SizedArray				= 0x1000,
 		Splattable				= 0x2000,
 		Union					= 0x4000,
+		ConstExpr				= 0x8000,
 		//
-		WantsMark				= 0x8000,
-		Delegate				= 0x10000,
-		Function				= 0x20000,
-		HasDestructor			= 0x40000,
+		WantsMark				= 0x10000,
+		Delegate				= 0x20000,
+		Function				= 0x40000,
+		HasDestructor			= 0x80000,
     }
 
     public enum FieldFlags : uint16
