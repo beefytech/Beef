@@ -488,8 +488,8 @@ namespace System
 		static extern int64 Comptime_GetMethod(int32 typeId, int32 methodIdx);
 		static extern String Comptime_Method_ToString(int64 methodHandle);
 		static extern String Comptime_Method_GetName(int64 methodHandle);
-		static extern ComptimeMethodInfo.Info Comptime_Method_GetInfo(int64 methodHandle);
-		static extern ComptimeMethodInfo.ParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
+		/*static extern ComptimeMethodInfo.Info Comptime_Method_GetInfo(int64 methodHandle);
+		static extern ComptimeMethodInfo.ParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);*/
 
         protected static Type GetType(TypeId typeId)
         {
@@ -984,11 +984,12 @@ namespace System.Reflection
 
 		bool HasCustomAttribute<T>(int customAttributeIdx) where T : Attribute
 		{
-			if (customAttributeIdx == -1)
+			/*if (customAttributeIdx == -1)
 			    return false;
 
 			void* data = mCustomAttrDataPtr[customAttributeIdx];
-			return AttributeInfo.HasCustomAttribute(data, typeof(T));
+			return AttributeInfo.HasCustomAttribute(data, typeof(T));*/
+			return false;
 		}
 
 		Result<T> GetCustomAttribute<T>(int customAttributeIdx) where T : Attribute
@@ -996,7 +997,7 @@ namespace System.Reflection
 			if (customAttributeIdx == -1)
 			    return .Err;
 
-			void* data = mCustomAttrDataPtr[customAttributeIdx];
+			/*void* data = mCustomAttrDataPtr[customAttributeIdx];
 
 			T attrInst = ?;
 			switch (AttributeInfo.GetCustomAttribute(data, typeof(T), &attrInst))
@@ -1004,7 +1005,8 @@ namespace System.Reflection
 			case .Ok: return .Ok(attrInst);
 			default:
 				return .Err;
-			}
+			}*/
+			return .Err;
 		}
     }
 
