@@ -22568,17 +22568,20 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 	case BfBinaryOp_Add:
 	case BfBinaryOp_OverflowAdd:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateAdd(convLeftValue, convRightValue), resultType);		
-		mModule->CheckRangeError(resultType, opToken);
+		if (binaryOp != BfBinaryOp_OverflowAdd)
+			mModule->CheckRangeError(resultType, opToken);
 		break;
 	case BfBinaryOp_Subtract:
 	case BfBinaryOp_OverflowSubtract:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateSub(convLeftValue, convRightValue), resultType);
-		mModule->CheckRangeError(resultType, opToken);
+		if (binaryOp != BfBinaryOp_OverflowSubtract)
+			mModule->CheckRangeError(resultType, opToken);
 		break;
 	case BfBinaryOp_Multiply:
 	case BfBinaryOp_OverflowMultiply:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateMul(convLeftValue, convRightValue), resultType);
-		mModule->CheckRangeError(resultType, opToken);
+		if (binaryOp != BfBinaryOp_OverflowMultiply)
+			mModule->CheckRangeError(resultType, opToken);
 		break;
 	case BfBinaryOp_Divide:				
 		{
