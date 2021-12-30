@@ -116,6 +116,22 @@ namespace Tests
 			}
 		}
 
+		[Inline]
+		public static void ForEach<TList, TValue, TDlg>(this TList list, TDlg dlg)
+			where TList : concrete, IEnumerable<TValue>
+			where TDlg : delegate void(TValue)
+		{
+			for (let item in list)
+				dlg(item);
+		}
+
+		public class CTest
+		{
+			public int Test;
+		}
+		public static List<CTest> mList = new .() ~ delete _;
+		private static Event<EventHandler> mEvent;
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -144,6 +160,15 @@ namespace Tests
 
 			TestA ta = scope .();
 			ta.Vec = .(33, 44);
+
+			mList.Add(scope .());
+			mEvent.Add(new (sender, e) =>
+			{
+			    mList.ForEach((b) => { b.Test = 1; });
+			});
+			mEvent(null, .Empty);
+			mEvent.Dispose();
+			Test.Assert(mList.Back.Test == 1);
 		}
 
 		struct MethodRefHolder<T> where T : delegate int(int num)

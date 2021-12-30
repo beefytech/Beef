@@ -18055,6 +18055,8 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 // 	if (mCurMethodState->mPrevMethodState != NULL) // Re-entry
 // 		return;
 
+	auto startMethodState = mCurMethodState;
+
 	auto _ClearState = [&]()
 	{
 		mCurMethodState->mLocalMethods.Clear();
@@ -18065,116 +18067,132 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 		mCurMethodState->mLocalVarSet.Clear();
 	};
 	
-	// Don't process local methods if we had a build error - this isn't just an optimization, it keeps us from showing the same error twice since
-	//  we show errors in the capture phase.  If we somehow pass the capture phase without error then this method WILL show any errors here, 
-	//  however (compiler bug), so this is the safest way
-	if (!mCurMethodState->mDeferredLocalMethods.IsEmpty())
+	while (true)
 	{
-		for (int deferredLocalMethodIdx = 0; deferredLocalMethodIdx < (int)mCurMethodState->mDeferredLocalMethods.size(); deferredLocalMethodIdx++)
+		bool didWork = false;
+		// Don't process local methods if we had a build error - this isn't just an optimization, it keeps us from showing the same error twice since
+		//  we show errors in the capture phase.  If we somehow pass the capture phase without error then this method WILL show any errors here, 
+		//  however (compiler bug), so this is the safest way
+		if (!mCurMethodState->mDeferredLocalMethods.IsEmpty())
 		{
-			auto deferredLocalMethod = mCurMethodState->mDeferredLocalMethods[deferredLocalMethodIdx];
-
-			BfLogSysM("Processing deferred local method %p\n", deferredLocalMethod);
-
-			if (!mHadBuildError)
+			for (int deferredLocalMethodIdx = 0; deferredLocalMethodIdx < (int)mCurMethodState->mDeferredLocalMethods.size(); deferredLocalMethodIdx++)
 			{
-				// Process as a closure - that allows us to look back and see the const locals and stuff
+				auto deferredLocalMethod = mCurMethodState->mDeferredLocalMethods[deferredLocalMethodIdx];
+
+				BfLogSysM("Processing deferred local method %p\n", deferredLocalMethod);
+
+				if (!mHadBuildError)
+				{
+					// Process as a closure - that allows us to look back and see the const locals and stuff
+					BfClosureState closureState;
+					mCurMethodState->mClosureState = &closureState;
+					closureState.mConstLocals = deferredLocalMethod->mConstLocals;
+					closureState.mReturnType = deferredLocalMethod->mMethodInstance->mReturnType;
+					closureState.mActiveDeferredLocalMethod = deferredLocalMethod;
+					closureState.mLocalMethod = deferredLocalMethod->mLocalMethod;
+					if (deferredLocalMethod->mMethodInstance->mMethodInfoEx != NULL)
+						closureState.mClosureInstanceInfo = deferredLocalMethod->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo;
+					mCurMethodState->mMixinState = deferredLocalMethod->mLocalMethod->mDeclMixinState;
+
+					_ClearState();
+
+					for (auto& constLocal : deferredLocalMethod->mConstLocals)
+					{
+						auto localVar = new BfLocalVariable();
+						*localVar = constLocal;
+						DoAddLocalVariable(localVar);
+					}
+
+					mCurMethodState->mLocalMethods = deferredLocalMethod->mLocalMethods;
+
+					bool doProcess = !mCompiler->mCanceling;
+					if (doProcess)
+					{
+						BP_ZONE_F("ProcessMethod local %s", deferredLocalMethod->mMethodInstance->mMethodDef->mName.c_str());
+						ProcessMethod(deferredLocalMethod->mMethodInstance);
+					}
+				}
+				delete deferredLocalMethod;
+
+				mContext->CheckLockYield();
+
+				didWork = true;
+			}
+			mCurMethodState->mDeferredLocalMethods.Clear();
+		}
+
+		for (auto& kv : mCurMethodState->mLocalMethodCache)
+		{
+			BF_ASSERT((kv.mValue->mMethodDef == NULL) || (kv.mKey == kv.mValue->mMethodDef->mName));
+		}
+
+		if ((!mCurMethodState->mDeferredLambdaInstances.IsEmpty()) && (!mHadBuildError))
+		{
+			for (int deferredLambdaIdx = 0; deferredLambdaIdx < (int)mCurMethodState->mDeferredLambdaInstances.size(); deferredLambdaIdx++)
+			{
+				auto lambdaInstance = mCurMethodState->mDeferredLambdaInstances[deferredLambdaIdx];
+				BfLogSysM("Processing deferred lambdaInstance %p\n", lambdaInstance);
+
 				BfClosureState closureState;
 				mCurMethodState->mClosureState = &closureState;
-				closureState.mConstLocals = deferredLocalMethod->mConstLocals;
-				closureState.mReturnType = deferredLocalMethod->mMethodInstance->mReturnType;
-				closureState.mActiveDeferredLocalMethod = deferredLocalMethod;
-				closureState.mLocalMethod = deferredLocalMethod->mLocalMethod;
-				if (deferredLocalMethod->mMethodInstance->mMethodInfoEx != NULL)
-					closureState.mClosureInstanceInfo = deferredLocalMethod->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo;
-				mCurMethodState->mMixinState = deferredLocalMethod->mLocalMethod->mDeclMixinState;
+				//closureState.mConstLocals = deferredLocalMethod->mConstLocals;
+				closureState.mReturnType = lambdaInstance->mMethodInstance->mReturnType;
+				if (lambdaInstance->mClosureTypeInstance != NULL)
+					closureState.mClosureType = lambdaInstance->mClosureTypeInstance;
+				else
+					closureState.mClosureType = lambdaInstance->mDelegateTypeInstance;
+				closureState.mClosureInstanceInfo = lambdaInstance->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo;
+				closureState.mDeclaringMethodIsMutating = lambdaInstance->mDeclaringMethodIsMutating;
+				mCurMethodState->mMixinState = lambdaInstance->mDeclMixinState;
 
 				_ClearState();
-
-				for (auto& constLocal : deferredLocalMethod->mConstLocals)
+				for (auto& constLocal : lambdaInstance->mConstLocals)
 				{
-					auto localVar = new BfLocalVariable();
-					*localVar = constLocal;
-					DoAddLocalVariable(localVar);
+					//if (constLocal.mIsThis)
+					{
+						// Valueless 'this'
+						closureState.mConstLocals.Add(constLocal);
+					}
+					/*else
+					{
+						auto localVar = new BfLocalVariable();
+						*localVar = constLocal;
+						DoAddLocalVariable(localVar);
+					}*/
 				}
 
-				mCurMethodState->mLocalMethods = deferredLocalMethod->mLocalMethods;
+				BfMethodInstanceGroup methodInstanceGroup;
+				methodInstanceGroup.mOwner = mCurTypeInstance;
+				methodInstanceGroup.mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
 
 				bool doProcess = !mCompiler->mCanceling;
 				if (doProcess)
 				{
-					BP_ZONE_F("ProcessMethod local %s", deferredLocalMethod->mMethodInstance->mMethodDef->mName.c_str());
-					ProcessMethod(deferredLocalMethod->mMethodInstance);
+					BP_ZONE_F("ProcessMethod lambdaInstance %s", lambdaInstance->mMethodInstance->mMethodDef->mName.c_str());
+					lambdaInstance->mMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;
+					ProcessMethod(lambdaInstance->mMethodInstance);
+					lambdaInstance->mMethodInstance->mMethodInstanceGroup = NULL;
+
+					if (lambdaInstance->mDtorMethodInstance != NULL)
+					{
+						lambdaInstance->mDtorMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;
+
+						auto startMethodState2 = mCurMethodState;
+
+						ProcessMethod(lambdaInstance->mDtorMethodInstance);
+						lambdaInstance->mDtorMethodInstance->mMethodInstanceGroup = NULL;
+					}
 				}
+
+				didWork = true;
 			}
-			delete deferredLocalMethod;
 
 			mContext->CheckLockYield();
-		}
-	}
-
-	for (auto& kv : mCurMethodState->mLocalMethodCache)
-	{
-		BF_ASSERT((kv.mValue->mMethodDef == NULL) || (kv.mKey == kv.mValue->mMethodDef->mName));
-	}
-
-	if ((!mCurMethodState->mDeferredLambdaInstances.IsEmpty()) && (!mHadBuildError))
-	{
-		for (int deferredLambdaIdx = 0; deferredLambdaIdx < (int)mCurMethodState->mDeferredLambdaInstances.size(); deferredLambdaIdx++)
-		{			
-			auto lambdaInstance = mCurMethodState->mDeferredLambdaInstances[deferredLambdaIdx];
-			BfLogSysM("Processing deferred lambdaInstance %p\n", lambdaInstance);
-
-			BfClosureState closureState;
-			mCurMethodState->mClosureState = &closureState;
-			//closureState.mConstLocals = deferredLocalMethod->mConstLocals;
-			closureState.mReturnType = lambdaInstance->mMethodInstance->mReturnType;
-			if (lambdaInstance->mClosureTypeInstance != NULL)
-				closureState.mClosureType = lambdaInstance->mClosureTypeInstance;
-			else
-				closureState.mClosureType = lambdaInstance->mDelegateTypeInstance;
-			closureState.mClosureInstanceInfo = lambdaInstance->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo;
-			closureState.mDeclaringMethodIsMutating = lambdaInstance->mDeclaringMethodIsMutating;
-			mCurMethodState->mMixinState = lambdaInstance->mDeclMixinState;
-
-			_ClearState();
-			for (auto& constLocal : lambdaInstance->mConstLocals)
-			{
-				//if (constLocal.mIsThis)
-				{
-					// Valueless 'this'
-					closureState.mConstLocals.Add(constLocal);
-				}
-				/*else
-				{
-					auto localVar = new BfLocalVariable();
-					*localVar = constLocal;
-					DoAddLocalVariable(localVar);
-				}*/
-			}
-
-			BfMethodInstanceGroup methodInstanceGroup;
-			methodInstanceGroup.mOwner = mCurTypeInstance;
-			methodInstanceGroup.mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
-
-			bool doProcess = !mCompiler->mCanceling;
-			if (doProcess)
-			{
-				BP_ZONE_F("ProcessMethod lambdaInstance %s", lambdaInstance->mMethodInstance->mMethodDef->mName.c_str());
-				lambdaInstance->mMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;
-				ProcessMethod(lambdaInstance->mMethodInstance);
-				lambdaInstance->mMethodInstance->mMethodInstanceGroup = NULL;
-
-				if (lambdaInstance->mDtorMethodInstance != NULL)
-				{
-					lambdaInstance->mDtorMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;
-					ProcessMethod(lambdaInstance->mDtorMethodInstance);
-					lambdaInstance->mDtorMethodInstance->mMethodInstanceGroup = NULL;
-				}
-			}
+			mCurMethodState->mDeferredLambdaInstances.Clear();			
 		}
 
-		mContext->CheckLockYield();
+		if (!didWork)
+			break;
 	}
 }
 
