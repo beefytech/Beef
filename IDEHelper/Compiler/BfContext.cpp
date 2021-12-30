@@ -381,7 +381,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 		
 		for (int workIdx = 0; workIdx < (int)mPopulateTypeWorkList.size(); workIdx++)
 		{
-			//BP_ZONE("PWL_PopulateType");			
+			//BP_ZONE("PWL_PopulateType");
 			if (IsCancellingAndYield())
 				break; 
 
@@ -426,8 +426,33 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			useModule->PopulateType(type, BfPopulateType_Full);			
 			mCompiler->mStats.mQueuedTypesProcessed++;
 			mCompiler->UpdateCompletion();
-			didWork = true;						
-		}				
+			didWork = true;
+		}
+
+		for (int workIdx = 0; workIdx < (int)mTypeRefVerifyWorkList.size(); workIdx++)
+		{
+			if (IsCancellingAndYield())
+				break;
+
+			auto workItemRef = mTypeRefVerifyWorkList[workIdx];
+			if (workItemRef == NULL)
+			{
+				workIdx = mTypeRefVerifyWorkList.RemoveAt(workIdx);
+				continue;
+			}	
+
+			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(workItemRef->mFromModule->mCurTypeInstance, workItemRef->mCurTypeInstance);
+
+			auto refTypeInst = workItemRef->mType->ToTypeInstance();
+			if (refTypeInst->mCustomAttributes == NULL)
+				workItemRef->mFromModule->PopulateType(refTypeInst, BfPopulateType_AllowStaticMethods);
+
+			if (refTypeInst != NULL)
+				workItemRef->mFromModule->CheckErrorAttributes(refTypeInst, NULL, refTypeInst->mCustomAttributes, workItemRef->mRefNode);
+
+			workIdx = mTypeRefVerifyWorkList.RemoveAt(workIdx);
+			didWork = true;
+		}
 
 		//while (mMethodSpecializationWorkList.size() != 0)
 
@@ -2743,7 +2768,7 @@ void DoRemoveInvalidWorkItems(BfContext* bfContext, WorkQueue<T>& workList, bool
 		if (workItem == NULL)
 			continue;
 		
-		auto typeInst = workItem->mType->ToTypeInstance();
+		BfTypeInstance* typeInst = workItem->mType->ToTypeInstance();
 
 		if ((workItem->mType->IsDeleting()) ||
 			(workItem->mType->mRebuildFlags & BfTypeRebuildFlag_Deleted) ||			
@@ -2805,6 +2830,7 @@ void BfContext::RemoveInvalidWorkItems()
 	DoRemoveInvalidWorkItems<BfTypeProcessRequest>(this, mPopulateTypeWorkList, false);	
 	DoRemoveInvalidWorkItems<BfMethodSpecializationRequest>(this, mMethodSpecializationWorkList, false/*true*/);
 
+	DoRemoveInvalidWorkItems<BfTypeRefVerifyRequest>(this, mTypeRefVerifyWorkList, false);
 	
 #ifdef _DEBUG
 	for (auto& workItem : mMethodWorkList)

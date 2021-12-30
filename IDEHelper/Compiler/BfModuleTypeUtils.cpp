@@ -8669,8 +8669,20 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 
 	if (typeInstance != NULL)
 	{
-		if ((typeInstance->mCustomAttributes != NULL) && (!typeRef->IsTemporary()))
-			CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);
+		if ((!typeRef->IsTemporary()) && ((resolveFlags & BfResolveTypeRefFlag_FromIndirectSource) == 0))
+		{
+			if (typeInstance->mCustomAttributes != NULL)
+				CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);
+			else if ((typeInstance->mTypeDef->mTypeDeclaration != NULL) && (typeInstance->mTypeDef->mTypeDeclaration->mAttributes != NULL))
+			{
+				auto typeRefVerifyRequest = mContext->mTypeRefVerifyWorkList.Alloc();
+				typeRefVerifyRequest->mCurTypeInstance = mCurTypeInstance;
+				typeRefVerifyRequest->mRefNode = typeRef;
+				typeRefVerifyRequest->mType = typeInstance;
+				typeRefVerifyRequest->mFromModule = this;
+				typeRefVerifyRequest->mFromModuleRevision = mRevision;
+			}
+		}
 
 		if (typeInstance->IsTuple())
 		{

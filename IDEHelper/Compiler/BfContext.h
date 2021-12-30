@@ -106,6 +106,13 @@ public:
 	}
 };
 
+class BfTypeRefVerifyRequest : public BfWorkListEntry
+{
+public:
+	BfTypeInstance* mCurTypeInstance;
+	BfAstNode* mRefNode;	
+};
+
 struct BfStringPoolEntry
 {
 	String mString;
@@ -384,6 +391,7 @@ public:
 	WorkQueue<BfInlineMethodRequest> mInlineMethodWorkList;	
 	WorkQueue<BfTypeProcessRequest> mPopulateTypeWorkList;
 	WorkQueue<BfMethodSpecializationRequest> mMethodSpecializationWorkList;
+	WorkQueue<BfTypeRefVerifyRequest> mTypeRefVerifyWorkList;
 	PtrWorkQueue<BfModule*> mFinishedSlotAwaitModuleWorkList;
 	PtrWorkQueue<BfModule*> mFinishedModuleWorkList;
 
