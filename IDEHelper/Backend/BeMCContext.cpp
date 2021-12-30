@@ -9060,7 +9060,15 @@ bool BeMCContext::DoLegalization()
 				if (isMov_R64_IMM64)
 					doStdCheck = false;
 				bool is3FormMul = false;
-				if ((isIntMul) && (inst->mResult))
+				bool badOps = false;
+
+				// Two immediates are never allowed. This can happen in cases like '(a % 1) * 2'
+				if ((arg0.IsImmediate()) && (arg1.IsImmediate()))
+				{
+					badOps = true;
+					doStdCheck = true;
+				}
+				else if ((isIntMul) && (inst->mResult))
 				{
 					is3FormMul = true;
 					if (inst->mArg1.IsImmediateInt())
@@ -9083,15 +9091,13 @@ bool BeMCContext::DoLegalization()
 					}
 				}
 
-
 				// Int 3-form mul does not follow these rules
 				if (doStdCheck)
 				{
 					bool isIncOrDec = false;
 					isIncOrDec = (((inst->mKind == BeMCInstKind_Add) || (inst->mKind == BeMCInstKind_Sub)) &&
 						(arg1.IsImmediateInt()) && (arg1.mImmediate == 1));
-
-					bool badOps = false;
+					
 					if ((!isIncOrDec) && (!isIntMul) && (!isIntDiv))
 					{
 						if ((arg0.MayBeMemory()) && (arg1.MayBeMemory()))

@@ -377,6 +377,8 @@ namespace Tests
 			}
 		}
 
+		public struct Vector2 : this(float x, float y);
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -492,6 +494,11 @@ namespace Tests
 
 			let oai2 = OuterOp2<float>.InnerOp<int>.Op(2.0f, 200);
 			Test.Assert(oai2 == 202.0f);*/
+
+			const int c0 = 1;
+			const int32 c1 = 1;
+			int i0 = 0;
+			var tVal = Vector2((i0 % c0) * (c1 + c1), 1);
 		}
 
 		struct IntStruct
