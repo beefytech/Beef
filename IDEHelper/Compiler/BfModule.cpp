@@ -2847,7 +2847,7 @@ bool BfModule::IsSkippingExtraResolveChecks()
 	return mCompiler->IsSkippingExtraResolveChecks();
 }
 
-bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing)
+bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing, bool isWarning)
 {
 	bool isWhileSpecializingMethod = false;
 	if ((mIsSpecialModule) && (mModuleName == "vdata"))
@@ -2867,7 +2867,10 @@ bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool
 		auto _CheckMethodInstance = [&](BfMethodInstance* methodInstance)
 		{
 			// Propogate the fail all the way to the main method (assuming we're in a local method or lambda)
-			methodInstance->mHasFailed = true;
+			if (isWarning)
+				methodInstance->mHasWarning = true;
+			else
+				methodInstance->mHasFailed = true;
 
 			bool isSpecializedMethod = ((methodInstance != NULL) && (!methodInstance->mIsUnspecialized) && (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mMethodGenericArguments.size() != 0));
 			if (isSpecializedMethod)
@@ -2881,8 +2884,16 @@ bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool
 				}
 				else
 				{
-					if (unspecializedMethod->mHasFailed)
-						return false; // At least SOME error has already been reported
+					if (isWarning)
+					{
+						if (unspecializedMethod->mHasWarning)
+							return false; // At least SOME error has already been reported
+					}
+					else
+					{
+						if (unspecializedMethod->mHasFailed)
+							return false; // At least SOME error has already been reported
+					}
 				}
 			}
 
@@ -3000,7 +3011,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	
  	String errorString = error;	
 	bool isWhileSpecializing = false;	
-	if (!AddErrorContext(errorString, refNode, isWhileSpecializing))
+	if (!AddErrorContext(errorString, refNode, isWhileSpecializing, false))
 		return NULL;
 	
 	BfError* bfError = NULL;
@@ -3145,7 +3156,7 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 
 	String warningString = warning;
 	bool isWhileSpecializing = false;
-	if (!AddErrorContext(warningString, refNode, isWhileSpecializing))
+	if (!AddErrorContext(warningString, refNode, isWhileSpecializing, true))
 		return NULL;
 	bool deferWarning = isWhileSpecializing;
 

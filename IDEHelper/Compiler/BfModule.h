@@ -1528,7 +1528,7 @@ public:
 	void SetFail();
 	void VerifyOnDemandMethods();
 	bool IsSkippingExtraResolveChecks();
-	bool AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing);
+	bool AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing, bool isWarning);
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false, bool deferError = false);
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	

@@ -839,6 +839,7 @@ public:
 	bool mHasBeenDeclared:1;
 	bool mHasBeenProcessed:1;
 	bool mHasFailed:1;
+	bool mHasWarning:1;
 	bool mFailedConstraints:1;
 	bool mMangleWithIdx:1;
 	bool mHadGenericDelegateParams:1;
@@ -880,6 +881,7 @@ public:
 		mHasBeenDeclared = false;
 		mHasBeenProcessed = false;
 		mHasFailed = false;
+		mHasWarning = false;
 		mFailedConstraints = false;
 		mMangleWithIdx = false;
 		mHadGenericDelegateParams = false;
