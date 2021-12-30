@@ -17797,9 +17797,11 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 
 	SetAndRestoreValue<bool> prevInCondBlock(mModule->mCurMethodState->mCurScope->mInnerIsConditional, true);
 
+	bool wantExpectingCast = (mExpectingType != NULL) && ((mBfEvalExprFlags & BfEvalExprFlags_NoCast) == 0);
+
 	mModule->AddBasicBlock(trueBB);	
 	auto trueValue = mModule->CreateValueFromExpression(condExpr->mTrueExpression, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_CreateConditionalScope));
-	if ((mExpectingType != NULL) && (trueValue) && (trueValue.mType != mExpectingType))
+	if ((wantExpectingCast) && (trueValue) && (trueValue.mType != mExpectingType))
 	{
 		// In some cases like typed primitives - we CAN individually cast each value which it's a constant still, but not after the merging
 		// IE: Color c = isOver ? 0xFF000000 : 0xFFFFFFFF;
@@ -17815,7 +17817,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 	mModule->AddBasicBlock(falseBB);
 	auto falseValue = mModule->CreateValueFromExpression(condExpr->mFalseExpression, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_CreateConditionalScope));
 	auto falseBlockPos = mModule->mBfIRBuilder->GetInsertBlock();
- 	if ((mExpectingType != NULL) && (falseValue) && (falseValue.mType != mExpectingType))
+ 	if ((wantExpectingCast) && (falseValue) && (falseValue.mType != mExpectingType))
  	{
  		auto checkFalseValue = mModule->Cast(condExpr->mFalseExpression, falseValue, mExpectingType, BfCastFlags_SilentFail);
  		if (checkFalseValue)
