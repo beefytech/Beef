@@ -1126,6 +1126,8 @@ namespace System.Reflection
 				(*(float*)&mValue).ToString(strBuffer);
 			case typeof(double):
 				(*(double*)&mValue).ToString(strBuffer);
+			case typeof(uint64), typeof(uint):
+				(*(uint64*)&mValue).ToString(strBuffer);
 			default:
 				mValue.ToString(strBuffer);
 			}
