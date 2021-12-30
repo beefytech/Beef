@@ -9939,6 +9939,13 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
+		if (leftType->IsGenericParam())
+		{
+			auto genericParam = GetGenericParamInstance((BfGenericParamType*)leftType);
+			if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+				return ResolveTypeResult(typeRef, GetPrimitiveType(BfTypeCode_Var), populateType, resolveFlags);
+		}
+
 		auto resolvedType = ResolveInnerType(leftType, qualifiedTypeRef->mRight, populateType, false, numGenericArgs);
 		if ((resolvedType != NULL) && (mCurTypeInstance != NULL))
 			AddDependency(leftType, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
