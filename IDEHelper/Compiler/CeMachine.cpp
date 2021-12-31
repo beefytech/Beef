@@ -3027,6 +3027,15 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 
 //////////////////////////////////////////////////////////////////////////
 
+void CeContext::FixProjectRelativePath(StringImpl& path)
+{
+	BfProject* activeProject = NULL;
+	auto activeTypeDef = mCurModule->GetActiveTypeDef();
+	if (activeTypeDef != NULL)
+		activeProject = activeTypeDef->mProject;
+	if (activeProject != NULL)
+		path = GetAbsPath(path, activeProject->mDirectory);
+}
 
 bool CeContext::AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value)
 {
@@ -5152,6 +5161,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				FixProjectRelativePath(path);
 				BfpDirectory_Create(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Rename)
@@ -5166,6 +5176,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CE_CHECKADDR_STR(srcPath, srcAddr);
 				String destPath;
 				CE_CHECKADDR_STR(destPath, destAddr);
+				FixProjectRelativePath(srcPath);
+				FixProjectRelativePath(destPath);
 				BfpDirectory_Rename(srcPath.c_str(), destPath.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Delete)
@@ -5177,6 +5189,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				FixProjectRelativePath(path);
 				BfpDirectory_Delete(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_GetCurrent)
@@ -5203,6 +5216,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				FixProjectRelativePath(path);
 				BfpDirectory_SetCurrent(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Exists)
@@ -5212,6 +5226,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				FixProjectRelativePath(path);
 				result = BfpDirectory_Exists(path.c_str());
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_GetSysDirectory)
@@ -5252,15 +5267,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
-				CE_CHECKADDR(outResultAddr, 4);
-				
-				BfProject* activeProject = NULL;
-				auto activeTypeDef = mCurModule->GetActiveTypeDef();
-				if (activeTypeDef != NULL)
-					activeProject = activeTypeDef->mProject;
-				if (activeProject != NULL)				
-					path = GetAbsPath(path, activeProject->mDirectory);
-
+				CE_CHECKADDR(outResultAddr, 4);				
+				FixProjectRelativePath(path);
 				auto bfpFile = BfpFile_Create(path.c_str(), (BfpFileCreateKind)createKind, (BfpFileCreateFlags)createFlags, (BfpFileAttributes)createFileAttrs, (BfpFileResult*)(memStart + outResultAddr));
 				if (bfpFile != NULL)
 				{
@@ -5359,6 +5367,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 8);
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				FixProjectRelativePath(path);
 				AddFileRebuild(path);
 				result = BfpFile_GetTime_LastWrite(path.c_str());
 			}
@@ -5372,7 +5381,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
-				AddFileRebuild(path);
+				FixProjectRelativePath(path);
 				result = BfpFile_GetAttributes(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_SetAttributes)
@@ -5385,6 +5394,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				FixProjectRelativePath(path);
 				BfpFile_SetAttributes(path.c_str(), attribs, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Copy)
@@ -5400,6 +5410,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CE_CHECKADDR_STR(srcPath, srcAddr);
 				String destPath;
 				CE_CHECKADDR_STR(destPath, destAddr);
+				FixProjectRelativePath(srcPath);
+				FixProjectRelativePath(destPath);
 				BfpFile_Copy(srcPath.c_str(), destPath.c_str(), fileCopyKind, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Rename)
@@ -5414,6 +5426,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CE_CHECKADDR_STR(srcPath, srcAddr);
 				String destPath;
 				CE_CHECKADDR_STR(destPath, destAddr);
+				FixProjectRelativePath(srcPath);
+				FixProjectRelativePath(destPath);
 				BfpFile_Rename(srcPath.c_str(), destPath.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Delete)
@@ -5425,6 +5439,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				FixProjectRelativePath(path);
 				BfpFile_Delete(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Exists)
@@ -5434,6 +5449,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
+				FixProjectRelativePath(path);				
 				AddFileRebuild(path);
 				result = BfpFile_Exists(path.c_str());
 			}
@@ -5483,7 +5499,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				char* namePtr = (char*)(memStart + nameAddr);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
-
+				
+				FixProjectRelativePath(srcPath);
 				BfpFile_GetFullPath(srcPath.c_str(), namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetActualPath)
@@ -5503,6 +5520,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
 
+				FixProjectRelativePath(srcPath);
 				BfpFile_GetActualPath(srcPath.c_str(), namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_Create)
@@ -5531,12 +5549,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				
 				if ((targetPath.Contains('/')) || (targetPath.Contains('\\')))
 				{
-					BfProject* activeProject = NULL;
-					auto activeTypeDef = mCurModule->GetActiveTypeDef();
-					if (activeTypeDef != NULL)
-						activeProject = activeTypeDef->mProject;
-					if (activeProject != NULL)
-						targetPath = GetAbsPath(targetPath, activeProject->mDirectory);
+					FixProjectRelativePath(targetPath);					
 				}
 
 				auto bfpSpawn = BfpSpawn_Create(targetPath.c_str(), 
@@ -5671,14 +5684,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CE_CHECKADDR_STR(path, nameAddr);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
-				
-				BfProject* activeProject = NULL;
-				auto activeTypeDef = mCurModule->GetActiveTypeDef();
-				if (activeTypeDef != NULL)
-					activeProject = activeTypeDef->mProject;
-				if (activeProject != NULL)
-					path = GetAbsPath(path, activeProject->mDirectory);
 
+				FixProjectRelativePath(path);
 				auto bfpFindFileData = BfpFindFileData_FindFirstFile(path.c_str(), (BfpFindFileFlags)flags, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 				if (bfpFindFileData != NULL)
 				{
