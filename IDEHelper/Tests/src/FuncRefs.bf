@@ -169,6 +169,13 @@ namespace Tests
 			mEvent(null, .Empty);
 			mEvent.Dispose();
 			Test.Assert(mList.Back.Test == 1);
+
+			int i = 0;
+			mList.ForEach((l) => l.mList.ForEach((l) =>
+			{
+				i++;
+			}));
+			Test.Assert(i == 1);
 		}
 
 		struct MethodRefHolder<T> where T : delegate int(int num)
