@@ -693,7 +693,11 @@ namespace IDE.ui
 						{
 							mPendingUIFocus = false;
 							if (!mUIEntries.IsEmpty)
-								mUIEntries[0].mWidget.SetFocus();
+							{
+								var widget = mUIEntries[0].mWidget;
+								if (widget.mWidgetWindow != null)
+									widget.SetFocus();
+							}
 						}
 
 						DeleteAndNullify!(mUIData);

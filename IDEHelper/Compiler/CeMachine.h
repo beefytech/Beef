@@ -969,7 +969,7 @@ public:
 public:
 	void CompileStarted();
 	void CompileDone();
-	void QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
+	CeFunction* QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
 	void QueueMethod(BfModuleMethodInstance moduleMethodInstance);
 	void QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName);	
 

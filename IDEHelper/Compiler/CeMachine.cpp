@@ -6454,7 +6454,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 					if (moduleMethodInstance)
 					{
-						mCeMachine->QueueMethod(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc);
+						auto ceFunction = mCeMachine->QueueMethod(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc);
+						callEntry.mFunctionInfo = ceFunction->mCeFunctionInfo;
 					}
 				}
 
@@ -8207,7 +8208,7 @@ BfMethodInstance* CeMachine::GetMethodInstance(int64 methodHandle)
 	return methodInstance;
 }
 
-void CeMachine::QueueMethod(BfMethodInstance* methodInstance, BfIRValue func)
+CeFunction* CeMachine::QueueMethod(BfMethodInstance* methodInstance, BfIRValue func)
 {	
 	if (mPreparingFunction != NULL)
 	{
@@ -8216,7 +8217,7 @@ void CeMachine::QueueMethod(BfMethodInstance* methodInstance, BfIRValue func)
 	}
 
 	bool added = false;
-	auto ceFunction = GetFunction(methodInstance, func, added);
+	return GetFunction(methodInstance, func, added);
 }
 
 void CeMachine::QueueMethod(BfModuleMethodInstance moduleMethodInstance)
