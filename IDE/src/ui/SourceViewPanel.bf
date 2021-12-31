@@ -548,11 +548,6 @@ namespace IDE.ui
 
 		public ~this()
 		{
-			if (mProjectSource?.mEditData?.HasTextChanged() == true)
-			{
-				mProjectSource.ClearEditData();
-			}
-
 			if (mInPostRemoveUpdatePanels)
 			{
 				//Debug.WriteLine("Removing sourceViewPanel from mPostRemoveUpdatePanel {0} in ~this ", this);
