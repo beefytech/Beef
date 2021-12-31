@@ -265,7 +265,19 @@ namespace Tests
 		const String cTest0 = Compiler.ReadText("Test0.txt");
 		const String cTest1 = new String('A', 12);
 		const uint8[?] cTest0Binary = Compiler.ReadBinary("Test0.txt");
-		
+
+		class ClassB<T> where T : const int
+		{
+			public typealias TA = comptype(GetVal(10, T));
+			public const int cTimesTen = 10 * T;
+			
+			[Comptime]
+			static Type GetVal(int a, int b)
+			{
+				return typeof(float);
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -311,6 +323,10 @@ namespace Tests
 			Test.Assert(cTest1 == "AAAAAAAAAAAA");
 			Test.Assert((Object)cTest1 == (Object)"AAAAAAAAAAAA");
 			Test.Assert((cTest0Binary[0] == (.)'T') && ((cTest0Binary.Count == 6) || (cTest0Binary.Count == 7)));
+
+			ClassB<const 3>.TA f = default;
+			Test.Assert(typeof(decltype(f)) == typeof(float));
+			Test.Assert(ClassB<const 3>.cTimesTen == 30);
 		}
 	}
 }

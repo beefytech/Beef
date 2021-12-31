@@ -4074,7 +4074,10 @@ BfIRValue BfIRBuilder::CreateNumericCast(BfIRValue val, bool valIsSigned, BfType
 	FixTypeCode(typeCode);
 	if (val.IsConst())
 	{
-		auto constVal = GetConstantById(val.mId);	
+		auto constVal = GetConstantById(val.mId);
+		if (constVal->mConstType == BfConstType_Undef)
+			return GetUndefConstValue(GetPrimitiveType(typeCode));
+
 		if (constVal->mTypeCode < BfTypeCode_Length)
 		{
 			// ? -> Int

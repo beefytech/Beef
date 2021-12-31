@@ -2608,6 +2608,9 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
 
 	if (typeAlias->mBaseType == NULL)
 		typeAlias->mBaseType = ResolveTypeDef(mCompiler->mValueTypeTypeDef)->ToTypeInstance();
+	
+	if ((typeAlias->mGenericTypeInfo != NULL) && (!typeAlias->mGenericTypeInfo->mFinishedGenericParams))
+		FinishGenericParams(typeAlias);
 
 	typeAlias->mDefineState = BfTypeDefineState_ResolvingBaseType;
 	BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
@@ -2670,7 +2673,9 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
 		typeAlias->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
 
 	if (typeAlias->mGenericTypeInfo != NULL)
-		DoPopulateType_SetGenericDependencies(typeAlias);	
+	{		
+		DoPopulateType_SetGenericDependencies(typeAlias);
+	}
 }
 
 void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred, HashContext* dataMemberHashCtx, BfType* unionInnerType)

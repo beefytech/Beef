@@ -5541,25 +5541,41 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			}
 			else
 			{
-				CeEvalFlags evalFlags = CeEvalFlags_None;
-				if ((mBfEvalExprFlags & BfEvalExprFlags_NoCeRebuildFlags) != 0)
-					evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_NoRebuild);
-				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
-				if (constRet)
+				bool hasUndef = false;
+				for (auto arg : irArgs)
 				{
-					auto constant = mModule->mBfIRBuilder->GetConstant(constRet.mValue);					
-					BF_ASSERT(!constRet.mType->IsVar());
-					return constRet;
+					auto constant = mModule->mBfIRBuilder->GetConstant(arg);
+					if (constant == NULL)
+						continue;
+					if (constant->mConstType == BfConstType_Undef)
+					{
+						hasUndef = true;
+						break;
+					}
 				}
 
-				if (mModule->mCompiler->mFastFinish)
+				if (!hasUndef)
 				{
-					if ((mModule->mCurMethodInstance == NULL) || (!mModule->mCurMethodInstance->mIsAutocompleteMethod))
+					CeEvalFlags evalFlags = CeEvalFlags_None;
+					if ((mBfEvalExprFlags & BfEvalExprFlags_NoCeRebuildFlags) != 0)
+						evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_NoRebuild);
+					auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
+					if (constRet)
 					{
-						// We didn't properly resolve this so queue for a rebuild later
-						mModule->DeferRebuildType(mModule->mCurTypeInstance);
-					}					
-				}
+						auto constant = mModule->mBfIRBuilder->GetConstant(constRet.mValue);
+						BF_ASSERT(!constRet.mType->IsVar());
+						return constRet;
+					}
+
+					if (mModule->mCompiler->mFastFinish)
+					{
+						if ((mModule->mCurMethodInstance == NULL) || (!mModule->mCurMethodInstance->mIsAutocompleteMethod))
+						{
+							// We didn't properly resolve this so queue for a rebuild later
+							mModule->DeferRebuildType(mModule->mCurTypeInstance);
+						}
+					}
+				}				
 				doConstReturn = true;
 			}			
 		}
@@ -12506,7 +12522,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	{
 		if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mCapturing))
 		{
-			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);			
+			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
 			VisitLambdaBodies(lambdaBindExpr->mBody, lambdaBindExpr->mDtor);	
 		}
 
