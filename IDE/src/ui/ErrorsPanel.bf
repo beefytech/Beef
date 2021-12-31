@@ -355,7 +355,7 @@ namespace IDE.ui
 			}
 
 			let compiler = gApp.mBfResolveCompiler;
-			if ((mNeedsResolveAll) && (!compiler.IsPerformingBackgroundOperation()))
+			if ((mNeedsResolveAll) && (compiler != null) && (!compiler.IsPerformingBackgroundOperation()))
 			{
 				if (compiler.mResolveAllWait == 0)
 					compiler.QueueDeferredResolveAll();
