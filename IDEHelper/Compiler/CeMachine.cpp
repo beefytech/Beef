@@ -4597,6 +4597,56 @@ static void CeSetAddrVal(void* ptr, int64 val, int32 ptrSize)
 		*(int64*)(ptr) = (int64)val;
 }
 
+class CeAsyncOperation
+{
+public:
+	CeInternalData* mInternalData;
+	int mRefCount;
+	void* mData;
+	int mDataSize;
+	int mReadSize;
+	BfpFileResult mResult;
+
+public:
+	CeAsyncOperation()
+	{
+		mInternalData = NULL;
+		mRefCount = 1;
+		mData = NULL;
+		mDataSize = 0;
+		mReadSize = 0;
+		mResult = BfpFileResult_Ok;
+	}
+
+	~CeAsyncOperation()
+	{
+		mInternalData->Release();
+		delete mData;
+	}
+
+	void AddRef()
+	{
+		BfpSystem_InterlockedExchangeAdd32((uint32*)&mRefCount, 1);
+	}
+
+	void Release()
+	{
+		if (BfpSystem_InterlockedExchangeAdd32((uint32*)&mRefCount, (uint32)-1) == 1)
+			delete this;
+	}
+
+	void Run()
+	{
+		mReadSize = BfpFile_Read(mInternalData->mFile, mData, mDataSize, -1, &mResult);
+		Release();
+	}
+
+	static void RunProc(void* ptr)
+	{
+		((CeAsyncOperation*)ptr)->Run();
+	}
+};
+
 bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType)
 {
 	auto ceModule = mCeMachine->mCeModule;
@@ -4996,10 +5046,10 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if (*fastFinishPtr)
 						break;
 
-					if (sleepMS > 200)
+					if (sleepMS > 20)
 					{
-						BfpThread_Sleep(200);
-						sleepMS -= 200;
+						BfpThread_Sleep(20);
+						sleepMS -= 20;
 						continue;
 					}
 					BfpThread_Sleep(sleepMS);
@@ -5310,9 +5360,76 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CE_CHECKADDR(bufferPtr, bufferSize);
 				CE_CHECKADDR(outResultAddr, 4);
 
+				BfpFileResult fileResult = BfpFileResult_UnknownError;
+
 				CeInternalData* internalData = NULL;
 				CE_GET_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
-				int64 result = BfpFile_Read(internalData->mFile, memStart + bufferPtr, bufferSize, timeoutMS, (BfpFileResult*)(memStart + outResultAddr));
+
+				int timeoutLeft = timeoutMS;
+				int64 result = 0;
+				CeAsyncOperation* asyncOperation = NULL;
+				BfpThread* asyncThread = NULL;
+				while (true)
+				{
+					if (*cancelingPtr)
+						break;					
+
+					int useTimeout = timeoutLeft;
+					if (useTimeout < 0)
+					{
+						useTimeout = 20;
+					}
+					else if (useTimeout > 20)
+					{
+						useTimeout = 20;
+						timeoutLeft -= useTimeout;
+					}
+					else
+						timeoutLeft = 0;
+
+					if (asyncOperation != NULL)
+					{
+						if (BfpThread_WaitFor(asyncThread, useTimeout))
+						{
+							if (asyncOperation->mReadSize > 0)
+								memcpy(memStart + bufferPtr, asyncOperation->mData, asyncOperation->mReadSize);
+							result = asyncOperation->mReadSize;
+							fileResult = asyncOperation->mResult;
+							break;
+						}
+						continue;
+					}
+
+					result = BfpFile_Read(internalData->mFile, memStart + bufferPtr, bufferSize, useTimeout, &fileResult);
+					if (fileResult == BfpFileResult_Timeout)
+					{
+						if (timeoutLeft > 0)
+							continue;
+					}
+
+					if (fileResult != BfpFileResult_InvalidParameter)
+						break;
+
+					BF_ASSERT(asyncOperation == NULL);
+
+					asyncOperation = new CeAsyncOperation();
+					asyncOperation->mInternalData = internalData;
+					asyncOperation->mInternalData->AddRef();
+					asyncOperation->mData = new uint8[bufferSize];
+					asyncOperation->mDataSize = bufferSize;
+
+					asyncOperation->AddRef();
+					asyncThread = BfpThread_Create(CeAsyncOperation::RunProc, asyncOperation);
+				}				
+
+				if (asyncOperation != NULL)
+					asyncOperation->Release();
+				if (asyncThread != NULL)
+					BfpThread_Release(asyncThread);
+
+				if (outResultAddr != 0)
+					*(BfpFileResult*)(memStart + outResultAddr) = fileResult;
+
 				CeSetAddrVal(resultPtr, result, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Release)
@@ -5321,7 +5438,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				CeInternalData* internalData = NULL;
 				CE_REMOVE_INTERNAL(internalData, (int)fileId, CeInternalData::Kind_File);
-				delete internalData;
+				internalData->Release();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Seek)
 			{
@@ -8168,8 +8285,8 @@ void CeMachine::ReleaseContext(CeContext* ceContext)
 	mCurEmitContext = ceContext->mCurEmitContext;	
 	ceContext->mCurEmitContext = NULL;	
 	mContextList.Add(ceContext);
-	for (auto kv : ceContext->mInternalDataMap)	
-		delete kv.mValue;
+	for (auto kv : ceContext->mInternalDataMap)
+		kv.mValue->Release();	
 	ceContext->mInternalDataMap.Clear();
 }
 

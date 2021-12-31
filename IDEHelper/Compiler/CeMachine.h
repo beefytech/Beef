@@ -278,6 +278,7 @@ public:
 public:
 	Kind mKind;
 	bool mReleased;
+	int mRefCount;
 
 	union
 	{
@@ -290,6 +291,18 @@ public:
 	{
 		mKind = Kind_None;
 		mReleased = false;
+		mRefCount = 1;
+	}
+
+	void AddRef()
+	{
+		BfpSystem_InterlockedExchangeAdd32((uint32*)&mRefCount, 1);
+	}
+
+	void Release()
+	{
+		if (BfpSystem_InterlockedExchangeAdd32((uint32*)&mRefCount, (uint32)-1) == 1)
+			delete this;
 	}
 
 	~CeInternalData();
