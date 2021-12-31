@@ -12505,7 +12505,10 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	else if ((lambdaBindExpr->mNewToken == NULL) || (isFunctionBind))
 	{
 		if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mCapturing))
+		{
+			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);			
 			VisitLambdaBodies(lambdaBindExpr->mBody, lambdaBindExpr->mDtor);	
+		}
 
 		if ((lambdaBindExpr->mNewToken != NULL) && (isFunctionBind))
 			mModule->Fail("Binds to functions should do not require allocations.", lambdaBindExpr->mNewToken);
