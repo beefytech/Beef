@@ -20835,7 +20835,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(opToken, leftExpression, rightExpression, leftValue, wantType, NULL)))
 		return;
 		
-	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+	BfType* rightWantType = wantType;
+	if ((mExpectingType != NULL) && (wantType != NULL) && (mExpectingType->IsIntegral()) && (wantType->IsIntegral()) && (mExpectingType->mSize > wantType->mSize) &&
+		((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_Multiply)))
+		rightWantType = mExpectingType;
+	rightValue = mModule->CreateValueFromExpression(rightExpression, rightWantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+	if ((rightWantType != wantType) && (rightValue.mType == rightWantType))
+		wantType = rightWantType;
 	if ((!leftValue) || (!rightValue))
 		return;
 
@@ -21268,46 +21274,63 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	if (!forceLeftType)
 	{
 		bool handled = false;
-		// If one of these is a constant that can be converted into a smaller type, then do that
-		if (rightValue.mValue.IsConst())
-		{
-			if (mModule->CanCast(rightValue, leftValue.mType, BfCastFlags_NoBox))			
-			{
-				resultType = leftValue.mType;			
-				handled = true;
-			}
-		}
 
-		// If left is an IntUnknown, allow the right to inform the type
-		if (leftValue.mType->IsIntUnknown())
+		if (leftValue.mType == rightValue.mType)
+		{
+			// All good
+			handled = true;
+		}
+		else if ((mExpectingType != NULL) &&
+			(mModule->CanCast(leftValue, mExpectingType, BfCastFlags_NoBox)) &&
+			(mModule->CanCast(rightValue, mExpectingType, BfCastFlags_NoBox)) &&
+			(!leftValue.mType->IsVar()) && (!rightValue.mType->IsVar()))
+		{
+			resultType = mExpectingType;
+			handled = true;
+		}
+		else
 		{			
-			if (leftValue.mValue.IsConst())
+			// If one of these is a constant that can be converted into a smaller type, then do that
+			if (rightValue.mValue.IsConst())
 			{
-				if (mModule->CanCast(leftValue, rightValue.mType))
+				if (mModule->CanCast(rightValue, leftValue.mType, BfCastFlags_NoBox))
 				{
-					resultType = rightValue.mType;
+					resultType = leftValue.mType;
 					handled = true;
 				}
 			}
-		}
 
-		if ((leftValue.mType->IsPointer()) &&
-			(rightValue.mType->IsPointer()))
-		{
-			BfPointerType* leftPointerType = (BfPointerType*)leftValue.mType;
-			BfPointerType* rightPointerType = (BfPointerType*)rightValue.mType;
-
-			// If one is a pointer to a sized array then use the other type
-			if (leftPointerType->mElementType->IsSizedArray())
+			// If left is an IntUnknown, allow the right to inform the type
+			if (leftValue.mType->IsIntUnknown())
 			{
-				resultType = rightPointerType;
-				handled = true;
+				if (leftValue.mValue.IsConst())
+				{
+					if (mModule->CanCast(leftValue, rightValue.mType))
+					{
+						resultType = rightValue.mType;
+						handled = true;
+					}
+				}
 			}
-			else if (rightPointerType->mElementType->IsSizedArray())
+
+			if ((leftValue.mType->IsPointer()) &&
+				(rightValue.mType->IsPointer()))
 			{
-				resultType = leftPointerType;
-				handled = true;
-			}			
+				BfPointerType* leftPointerType = (BfPointerType*)leftValue.mType;
+				BfPointerType* rightPointerType = (BfPointerType*)rightValue.mType;
+
+				// If one is a pointer to a sized array then use the other type
+				if (leftPointerType->mElementType->IsSizedArray())
+				{
+					resultType = rightPointerType;
+					handled = true;
+				}
+				else if (rightPointerType->mElementType->IsSizedArray())
+				{
+					resultType = leftPointerType;
+					handled = true;
+				}
+			}
 		}
 
 		if (!handled)
