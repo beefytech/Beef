@@ -62,12 +62,20 @@ namespace System.IO
 			return numBytesRead;
 		}
 
-		public virtual Result<int> TryRead(Span<uint8> data, int timeoutMS)
+		public virtual Result<int, FileError> TryRead(Span<uint8> data, int timeoutMS)
 		{
 			Platform.BfpFileResult result = .Ok;
 			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
 			if ((result != .Ok) && (result != .PartialData))
-				return .Err;
+			{
+				switch (result)
+				{
+				case .Timeout:
+					return .Err(.ReadError(.Timeout));
+				default:
+					return .Err(.ReadError(.Unknown));
+				}
+			}
 			return numBytesRead;
 		}
 
@@ -463,10 +471,10 @@ namespace System.IO
 			mUnderlyingLength = Platform.BfpFile_GetFileSize(mBfpFile);
 		}
 
-		protected Result<void> SeekUnderlying(int64 offset, Platform.BfpFileSeekKind seekKind = .Absolute)
+		protected Result<void, FileError> SeekUnderlying(int64 offset, Platform.BfpFileSeekKind seekKind = .Absolute)
 		{
 			int64 newPos = Platform.BfpFile_Seek(mBfpFile, offset, seekKind);
-			Result<void> result = ((seekKind == .Absolute) && (newPos != offset)) ? .Err : .Ok;
+			Result<void, FileError> result = ((seekKind == .Absolute) && (newPos != offset)) ? .Err(.SeekError) : .Ok;
 			if (result case .Ok)
 				mBfpFilePos = newPos;
 			return result;
@@ -498,7 +506,7 @@ namespace System.IO
 			return numBytesRead;
 		}
 
-		public Result<int> TryRead(Span<uint8> data, int timeoutMS)
+		public Result<int, FileError> TryRead(Span<uint8> data, int timeoutMS)
 		{
 			if (mBfpFilePos != mPos)
 				Try!(SeekUnderlying(mPos));
@@ -506,7 +514,15 @@ namespace System.IO
 			Platform.BfpFileResult result = .Ok;
 			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
 			if ((result != .Ok) && (result != .PartialData))
-				return .Err;
+			{
+				switch (result)
+				{
+				case .Timeout:
+					return .Err(.ReadError(.Timeout));
+				default:
+					return .Err(.ReadError(.Unknown));
+				}
+			}
 			return numBytesRead;
 		}
 

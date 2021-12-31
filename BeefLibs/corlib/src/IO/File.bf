@@ -6,21 +6,24 @@ namespace System.IO
 {
 	public enum FileOpenError
 	{
+		Unknown,
 		NotFound,
 		NotFile,
-		Unknown,
 		SharingViolation
 	}
 
 	public enum FileReadError
 	{
-		Unknown
+		Unknown,
+		Timeout
 	}
 
 	public enum FileError
 	{
-		case FileOpenError(FileOpenError);
-		case FileReadError(FileReadError);
+		case Unknown;
+		case OpenError(FileOpenError);
+		case ReadError(FileReadError);
+		case SeekError;
 	}
 
 	static class File
@@ -30,7 +33,7 @@ namespace System.IO
 			FileStream fs = scope FileStream();
 			var result = fs.Open(path, .Open, .Read);
 			if (result case .Err(let err))
-				return .Err(.FileOpenError(err));
+				return .Err(.OpenError(err));
 
 			while (true)
 			{
@@ -61,9 +64,9 @@ namespace System.IO
 		{
 			StreamReader sr = scope StreamReader();
 			if (sr.Open(path) case .Err(let err))
-				return .Err(.FileOpenError(err));
+				return .Err(.OpenError(err));
             if (sr.ReadToEnd(outText) case .Err)
-				return .Err(.FileReadError(.Unknown));
+				return .Err(.ReadError(.Unknown));
 
 			if (!preserveLineEnding)
 			{

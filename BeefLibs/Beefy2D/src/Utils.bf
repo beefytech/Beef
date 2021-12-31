@@ -173,7 +173,7 @@ namespace Beefy
 							retry = true;
 					}
 					if (!retry)
-                    	return .Err(.FileOpenError(fileOpenErr));
+                    	return .Err(.OpenError(fileOpenErr));
 				}
 				else
 					break;
@@ -182,7 +182,7 @@ namespace Beefy
 
 			int fileLen = (.)sr.Length;
 			if (sr.TryRead(.((.)outBuffer.PrepareBuffer(fileLen), fileLen)) case .Err(let readErr))
-				return .Err(.FileReadError(readErr));
+				return .Err(.ReadError(readErr));
 
 			if (onPreFilter != null)
 				onPreFilter();

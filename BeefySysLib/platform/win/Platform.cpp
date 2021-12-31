@@ -1613,7 +1613,7 @@ public:
 					startupInfo.hStdInput = INVALID_HANDLE_VALUE;					
 
 				if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)				
-					CreatePipe(mStandardOutputReadPipeHandle, startupInfo.hStdOutput, false);				
+					CreatePipe(mStandardOutputReadPipeHandle, startupInfo.hStdOutput, false);
 				else				
 					startupInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);				
 
@@ -2899,7 +2899,13 @@ static void WINAPI OverlappedReadComplete(DWORD dwErrorCode, DWORD dwNumberOfByt
 BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr size, int timeoutMS, BfpFileResult* outResult)
 {
 	if (timeoutMS != -1)
-	{		
+	{	
+		if (file->mAsyncData == NULL)
+		{
+			OUTRESULT(BfpFileResult_InvalidParameter);
+			return 0;
+		}
+
 		while (true)
 		{
 			OverlappedReadResult overlapped;
@@ -2908,13 +2914,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 
 			//TODO: this doesn't set file stream location.  It only works for streams like pipes, sockets, etc
 			if (::ReadFileEx(file->mHandle, buffer, (uint32)size, &overlapped, OverlappedReadComplete))
-			{
-				if (file->mAsyncData == NULL)
-				{
-					OUTRESULT(BfpFileResult_InvalidParameter);
-					return 0;
-				}
-
+			{				
 				if (!file->mAsyncData->WaitAndResetEvent(timeoutMS))
 				{
 					::CancelIoEx(file->mHandle, &overlapped);
@@ -2981,7 +2981,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 		if (bytesRead != size)
 			OUTRESULT(BfpFileResult_PartialData);				
 		else
-			OUTRESULT(BfpFileResult_Ok);		
+			OUTRESULT(BfpFileResult_Ok);
 		return bytesRead;
 	}
 
@@ -2989,6 +2989,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 	switch (lastError)
 	{
 	case ERROR_BROKEN_PIPE: // Just an EOF
+		OUTRESULT(BfpFileResult_Ok);
 		break;
 	default:
 		OUTRESULT(BfpFileResult_UnknownError);

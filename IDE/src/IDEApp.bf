@@ -13204,7 +13204,7 @@ namespace IDE
 						editData.BuildHash(editData.mQueuedContent);
 					}) case .Err(let err))
 				{
-					if (err case .FileOpenError(.SharingViolation))
+					if (err case .OpenError(.SharingViolation))
 					{
 						// Put back on the list and try later
 						mFileWatcher.AddChangedFile(changedFile);

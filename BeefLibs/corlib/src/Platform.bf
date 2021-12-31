@@ -248,7 +248,8 @@ namespace System
 			AccessError				= (int)Result.AccessError,
 			PartialData				= (int)Result.PartialData,
 			InsufficientBuffer		= (int)Result.InsufficientBuffer,
-			NotEmpty				= (int)Result.NotEmpty
+			Timeout					= (int)Result.Timeout,
+			NotEmpty				= (int)Result.NotEmpty,
 		};
 
 		[CallingConvention(.Stdcall), CLink]
