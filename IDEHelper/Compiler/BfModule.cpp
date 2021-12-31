@@ -5305,11 +5305,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		return BfIRValue();
 	}
 	
-	if (mContext->mBfTypeType == NULL)
-	{
-
-	}
-
 	BfIRValue typeTypeData;
 	int typeFlags = 0;	
 	if (needsTypeData)

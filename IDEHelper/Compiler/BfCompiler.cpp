@@ -1357,11 +1357,6 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		if ((typeInst != NULL) && (!typeInst->IsReified()) && (!typeInst->IsUnspecializedType()))
 			continue;
 
-		if (type->mTypeId == 0x0000045F)
-		{
-			NOP;
-		}
-
 		bool needsTypeData = (needsTypeList) || ((type->IsObject()) && (needsObjectTypeData));
 		bool needsVData = (type->IsObject()) && (typeInst->HasBeenInstantiated());
 

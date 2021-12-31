@@ -4587,8 +4587,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						}
 						
 						SizedArray<BfIRValue, 3> values;
-						values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(curCheckType->mBaseType)));
-						values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(curCheckType->GetUnionInnerType())));
+						values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(curCheckType->mBaseType)));						
+						values.Add(mModule->GetDefaultValue(curCheckType->GetUnionInnerType()));
 						values.Add(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx));
 						return BfTypedValue(mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(curCheckType), values), curCheckType);						
 					}
