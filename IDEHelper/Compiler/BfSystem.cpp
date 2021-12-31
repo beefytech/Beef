@@ -10,6 +10,7 @@
 #include "BfResolvePass.h"
 #include "MemReporter.h"
 #include "BfIRCodeGen.h"
+#include "BfIRBuilder.h"
 
 #include "BeefySysLib/util/AllocDebug.h"
 
@@ -2298,6 +2299,20 @@ bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, uint64 value)
 	}
 
 	return false;
+}
+
+bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, const BfVariant& variant)
+{
+	if ((BfIRConstHolder::IsIntable(typeCode)) && (BfIRConstHolder::IsIntable(variant.mTypeCode)))
+	{
+		if (BfIRConstHolder::IsSigned(variant.mTypeCode))
+			return DoesLiteralFit(typeCode, variant.mInt64);
+		else
+			return DoesLiteralFit(typeCode, variant.mUInt64);
+	}
+	if ((BfIRConstHolder::IsFloat(typeCode)) && (BfIRConstHolder::IsFloat(variant.mTypeCode)))
+		return true;
+	return typeCode == variant.mTypeCode;
 }
 
 BfParser* BfSystem::CreateParser(BfProject* bfProject)

@@ -499,6 +499,10 @@ namespace Tests
 			const int32 c1 = 1;
 			int i0 = 0;
 			var tVal = Vector2((i0 % c0) * (c1 + c1), 1);
+
+			int8 a = 123;
+			int32 b = a + 100;
+			Test.Assert(b == 223);
 		}
 
 		struct IntStruct

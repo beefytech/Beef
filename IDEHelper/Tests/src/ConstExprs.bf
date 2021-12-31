@@ -19,14 +19,14 @@ namespace Tests
 			}
 		}
 
-		class ClassB<T, TSize> where TSize : const int
+		class ClassB<T, TSize> where TSize : const int8
 		{
 			ClassA<T, TSize> mVal = new ClassA<T, const TSize>() ~ delete _;
 			var mVal2 = new ClassA<T, const TSize + 100>() ~ delete _;
-
+			
 			public int GetVal()
 			{
-				return mVal.GetVal();
+				return mVal.GetVal(); 
 			}
 
 			public int GetVal2()
@@ -54,6 +54,10 @@ namespace Tests
 			ClassB<float, const 123> cb = scope .();
 			Test.Assert(cb.GetVal() == 123);
 			Test.Assert(cb.GetVal2() == 223);
+
+			ClassB<float, const -45> cb2 = scope .();
+			Test.Assert(cb2.GetVal() == -45);
+			Test.Assert(cb2.GetVal2() == 55);
 
 			ClassC<const EnumA.A> cc = scope .();
 			Test.Assert(cc.Test() == 1);

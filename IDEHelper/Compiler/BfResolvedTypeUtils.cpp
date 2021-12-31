@@ -2770,13 +2770,26 @@ BfResolvedTypeSet::~BfResolvedTypeSet()
 
 BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& outType)
 {
+	outType = NULL; 
+
 	BfConstResolver constResolver(ctx->mModule);
 	BfVariant variant = { BfTypeCode_None };	
 	constResolver.mAllowGenericConstValue = true;
-	auto result = constResolver.Resolve(expr);
-	outType = result.mType;
-	if (result)	
-	{		
+	constResolver.mBfEvalExprFlags = BfEvalExprFlags_NoCast;
+	constResolver.mExpectingType = ctx->mModule->GetPrimitiveType(BfTypeCode_Int64);
+	auto result = constResolver.Resolve(expr);	
+	if (result)
+	{
+		// Limit the types of constants to prevent duplicate values with different types - we don't want to hash a typeref with an int32
+		//  when the constraint requirement is int64 (but we don't know that at hash time)
+		if ((result.mType->IsInteger()) && ((result.mType->mSize < 8) || (result.mType->GetTypeCode() == BfTypeCode_IntPtr)))
+			result = ctx->mModule->Cast(expr, result, ctx->mModule->GetPrimitiveType(BfTypeCode_Int64));
+		else if ((result.mType->IsFloat()) && (result.mType->mSize < 8))
+			result = ctx->mModule->Cast(expr, result, ctx->mModule->GetPrimitiveType(BfTypeCode_Double));
+		else if ((result.mType->IsChar()) && (result.mType->mSize < 4))
+			result = ctx->mModule->Cast(expr, result, ctx->mModule->GetPrimitiveType(BfTypeCode_Char32));
+		outType = result.mType;
+
 		if (result.mKind == BfTypedValueKind_GenericConstValue)
 		{							
 			return variant;
@@ -2784,18 +2797,6 @@ BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression*
 		else
 		{
 			variant = ctx->mModule->TypedValueToVariant(expr, result, true);
-
-			// Limit the types of constants to prevent duplicate values with different types - we don't want to hash a typeref with an int32
-			//  when the constraint requirement is int64 (but we don't know that at hash time)
-			if (BfIRConstHolder::IsChar(variant.mTypeCode))
-				variant.mTypeCode = BfTypeCode_Char32;
-			else if (BfIRConstHolder::IsInt(variant.mTypeCode))
-				variant.mTypeCode = BfTypeCode_Int64;
-			else if (variant.mTypeCode == BfTypeCode_Float)
-			{
-				variant.mTypeCode = BfTypeCode_Double;
-				variant.mDouble = variant.mSingle;
-			}
 		}
 	}
 	return variant;

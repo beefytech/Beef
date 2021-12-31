@@ -7986,7 +7986,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 						{
 							if (BfIRConstHolder::IsInt(primType->mTypeDef->mTypeCode))
 							{
-								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue.mUInt64))
+								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue))
 								{
 									if ((!ignoreErrors) && (PreFail()))
 										*errorOut = Fail(StrFormat("Const generic argument '%s', declared with const '%lld', does not fit into const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
@@ -17051,7 +17051,10 @@ void BfModule::EmitCtorBody(bool& skipBody)
 							mCompiler->mResolvePassData->mSourceClassifier->SetElementType(fieldDef->mInitializer, BfSourceElementType_Normal);
 							mCompiler->mResolvePassData->mSourceClassifier->VisitChild(fieldDef->mInitializer);
 
-							auto wantType = ResolveTypeRef(fieldDef->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowInferredSizedArray);
+							BfType* wantType = NULL;
+							if ((!BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef)) &&
+								(!BfNodeIsA<BfLetTypeReference>(fieldDef->mTypeRef)))
+								wantType = ResolveTypeRef(fieldDef->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowInferredSizedArray);
 							if ((wantType != NULL) &&
 								((wantType->IsVar()) || (wantType->IsLet()) || (wantType->IsRef())))
 								wantType = NULL;

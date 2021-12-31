@@ -568,6 +568,7 @@ public:
 	virtual bool IsValueTypeOrValueTypePtr() { return false; }	
 	virtual bool IsWrappableType() { return false; }
 	virtual bool IsPrimitiveType() { return false; }	
+	virtual BfTypeCode GetTypeCode() { return BfTypeCode_None; }
 	virtual bool IsBoolean() { return false; }
 	virtual bool IsInteger() { return false; }
 	virtual bool IsIntegral() { return false; }
@@ -620,6 +621,7 @@ public:
 	
 public:
 	virtual bool IsPrimitiveType() override { return true; }
+	virtual BfTypeCode GetTypeCode() override { return mTypeDef->mTypeCode; }
 	virtual bool IsWrappableType() override { return (mTypeDef->mTypeCode >= BfTypeCode_Boolean) && (mTypeDef->mTypeCode <= BfTypeCode_Double); }
 	virtual BfPrimitiveType* ToPrimitiveType() override { return this; }
 	//virtual bool IsValueType() override { return mTypeDef->mTypeCode != BfTypeCode_None; }
@@ -1969,7 +1971,7 @@ public:
 	virtual BfPrimitiveType* ToPrimitiveType() override { return GetUnderlyingType()->ToPrimitiveType();  }
 	virtual bool HasWrappedRepresentation() override { return IsTypedPrimitive(); }
 	
-	int GetEndingInstanceAlignment() { if (mInstSize % mInstAlign == 0) return mInstAlign; return mInstSize % mInstAlign; }
+	int GetEndingInstanceAlignment() { if (mInstSize % mInstAlign == 0) return mInstAlign; return mInstSize % mInstAlign; }	
 	virtual bool HasTypeFailed() override { return mTypeFailed; } 
 	virtual bool IsReified() override { return mIsReified; }
 	virtual bool NeedsExplicitAlignment() override { return !IsSizeAligned() || mIsPacked; }	
@@ -1979,6 +1981,7 @@ public:
 	virtual bool IsSplattable() override { BF_ASSERT((mInstSize >= 0) || (!IsComposite())); return mIsSplattable; }
 	virtual int GetSplatCount() override;
 	virtual bool IsTypeInstance() override { return true; }
+	virtual BfTypeCode GetTypeCode() override { return mTypeDef->mTypeCode; }
 	virtual bool IsInterface() override { return mTypeDef->mTypeCode == BfTypeCode_Interface; }
 	virtual bool IsValueType() override { return (mTypeDef->mTypeCode == BfTypeCode_Struct) || (mTypeDef->mTypeCode == BfTypeCode_Enum); }
 	virtual bool IsOpaque() override { return mTypeDef->mIsOpaque; }
