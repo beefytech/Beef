@@ -1151,6 +1151,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	std::multimap<String, BfTypeInstance*> sortedStaticMarkMap;
 	std::multimap<String, BfTypeInstance*> sortedStaticTLSMap;
 	HashSet<BfModule*> usedModuleSet;
+	HashSet<BfType*> reflectTypeSet;
+	HashSet<BfType*> reflectFieldTypeSet;
 
 	vdataHashCtx.MixinStr(project->mStartupObject);
 	vdataHashCtx.Mixin(project->mTargetType);
@@ -1182,8 +1184,23 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		{			
 			auto module = typeInst->mModule;
 			if (module == NULL)
-				continue;			
+				continue;
 			
+			if (type->IsEnum())
+			{
+				for (auto& fieldInst : typeInst->mFieldInstances)
+				{
+					auto fieldDef = fieldInst.GetFieldDef();
+					if (fieldDef == NULL)
+						continue;
+					if (!fieldDef->IsEnumCaseEntry())
+						continue;
+
+					if (fieldInst.mResolvedType->IsTuple())
+						reflectFieldTypeSet.Add(fieldInst.mResolvedType);
+				}
+			}
+
 			if (type->IsInterface())
 				vdataHashCtx.Mixin(typeInst->mSlotNum);
 			vdataHashCtx.Mixin(typeInst->mAlwaysIncludeFlags);
@@ -1320,14 +1337,13 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	bool needsStringLiteralList = (mOptions.mAllowHotSwapping) || (bfModule->IsMethodImplementedAndReified(stringType, "Intern")) || (bfModule->IsMethodImplementedAndReified(stringViewType, "Intern"));
 
 	Dictionary<int, int> usedStringIdMap;
-
-	HashSet<BfType*> reflectTypeSet;
+	
 	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectTypeInstanceTypeDef));
 	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectSpecializedGenericType));
 	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectUnspecializedGenericType));
 	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectArrayType));
 	
-	SmallVector<BfIRValue, 256> typeDataVector;
+	SmallVector<BfIRValue, 256> typeDataVector;	
 	for (auto type : vdataTypeList)	
 	{
 		if (type->IsTypeAlias())
@@ -1341,6 +1357,11 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		if ((typeInst != NULL) && (!typeInst->IsReified()) && (!typeInst->IsUnspecializedType()))
 			continue;
 
+		if (type->mTypeId == 0x0000045F)
+		{
+			NOP;
+		}
+
 		bool needsTypeData = (needsTypeList) || ((type->IsObject()) && (needsObjectTypeData));
 		bool needsVData = (type->IsObject()) && (typeInst->HasBeenInstantiated());
 
@@ -1350,19 +1371,24 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		{
 			needsTypeData = true;
 			if (type->IsEnum())
-				forceReflectFields = true;
+				forceReflectFields = true;							
 		}
 		
 		BfIRValue typeVariable;
 		
 		if ((needsTypeData) || (needsVData))
 		{
-			if (reflectTypeSet.Contains(type))
+			if (reflectFieldTypeSet.Contains(type))
+			{
+				needsTypeData = true;
+				forceReflectFields = true;
+			}
+			else if (reflectTypeSet.Contains(type))
 			{
 				needsTypeData = true;
 				needsVData = true;
 			}
-
+			
 			typeVariable = bfModule->CreateTypeData(type, usedStringIdMap, forceReflectFields, needsTypeData, needsTypeNames, needsVData);
 		}
 		type->mDirty = false;
