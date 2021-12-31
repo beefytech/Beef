@@ -13605,14 +13605,31 @@ StringT<128> BfModule::TypeToString(BfType* resolvedType, BfTypeNameFlags typeNa
 void BfModule::VariantToString(StringImpl& str, const BfVariant& variant)
 {
 	switch (variant.mTypeCode)
-	{
-	case BfTypeCode_Char8:
+	{	
+	case BfTypeCode_Boolean:
+		if (variant.mUInt64 == 0)
+			str += "false";
+		else if (variant.mUInt64 == 1)
+			str += "true";
+		else
+			str += StrFormat("%lld", variant.mInt64);
+		break;
 	case BfTypeCode_Int8:
 	case BfTypeCode_UInt8:
 	case BfTypeCode_Int16:
 	case BfTypeCode_UInt16:
 	case BfTypeCode_Int32:
 		str += StrFormat("%d", variant.mInt32);
+		break;
+	case BfTypeCode_Char8:
+	case BfTypeCode_Char16:
+	case BfTypeCode_Char32:
+		if ((variant.mUInt32 >= 32) && (variant.mUInt32 <= 0x7E))		
+			str += StrFormat("'%c'", (char)variant.mUInt32);
+		else if (variant.mUInt32 <= 0xFF)
+			str += StrFormat("'\\x%2X'", variant.mUInt32);
+		else
+			str += StrFormat("'\\u{%X}'", variant.mUInt32);
 		break;
 	case BfTypeCode_UInt32:
 		str += StrFormat("%lu", variant.mUInt32);

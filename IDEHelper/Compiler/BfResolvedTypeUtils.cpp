@@ -2787,7 +2787,9 @@ BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression*
 
 			// Limit the types of constants to prevent duplicate values with different types - we don't want to hash a typeref with an int32
 			//  when the constraint requirement is int64 (but we don't know that at hash time)
-			if (BfIRConstHolder::IsInt(variant.mTypeCode))
+			if (BfIRConstHolder::IsChar(variant.mTypeCode))
+				variant.mTypeCode = BfTypeCode_Char32;
+			else if (BfIRConstHolder::IsInt(variant.mTypeCode))
 				variant.mTypeCode = BfTypeCode_Int64;
 			else if (variant.mTypeCode == BfTypeCode_Float)
 			{

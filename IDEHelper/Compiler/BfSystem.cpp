@@ -2232,8 +2232,10 @@ bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, int64 value)
 
 	switch (typeCode)
 	{
+	case BfTypeCode_Boolean:
+		return (value >= 0) && (value < 1);
 	case BfTypeCode_Int8:
-		return (value >= -0x80) && (value < 0x80);			
+		return (value >= -0x80) && (value < 0x80);
 	case BfTypeCode_Int16:
 		return (value >= -0x8000) && (value < 0x8000);
 	case BfTypeCode_Int32:
@@ -2242,10 +2244,13 @@ bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, int64 value)
 		return true;
 
 	case BfTypeCode_UInt8:
+	case BfTypeCode_Char8:
 		return (value >= 0) && (value < 0x100);		
 	case BfTypeCode_UInt16:
+	case BfTypeCode_Char16:
 		return (value >= 0) && (value < 0x10000);
 	case BfTypeCode_UInt32:
+	case BfTypeCode_Char32:
 		return (value >= 0) && (value < 0x100000000LL);
 	case BfTypeCode_UInt64:
 		return (value >= 0);
@@ -2267,6 +2272,8 @@ bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, uint64 value)
 
 	switch (typeCode)
 	{
+	case BfTypeCode_Boolean:
+		return (value < 1);
 	case BfTypeCode_Int8:
 		return (value < 0x80);
 	case BfTypeCode_Int16:
@@ -2277,10 +2284,13 @@ bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, uint64 value)
 		return true;
 
 	case BfTypeCode_UInt8:
+	case BfTypeCode_Char8:
 		return (value < 0x100);
 	case BfTypeCode_UInt16:
+	case BfTypeCode_Char16:
 		return (value < 0x10000);
 	case BfTypeCode_UInt32:
+	case BfTypeCode_Char32:
 		return (value < 0x100000000LL);
 	case BfTypeCode_UInt64:
 		return true;

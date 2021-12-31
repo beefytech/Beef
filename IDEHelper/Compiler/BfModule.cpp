@@ -7586,6 +7586,8 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 
 				switch (typeCode)
 				{
+				case BfTypeCode_StringId:
+				case BfTypeCode_Boolean:
 				case BfTypeCode_Int8:
 				case BfTypeCode_UInt8:
 				case BfTypeCode_Int16:
@@ -11970,6 +11972,7 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 
 			switch (constant->mTypeCode)
 			{
+			case BfTypeCode_Boolean:
 			case BfTypeCode_Int8:
 			case BfTypeCode_UInt8:
 			case BfTypeCode_Int16:

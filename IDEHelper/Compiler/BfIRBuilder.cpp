@@ -359,6 +359,11 @@ bool BfIRConstHolder::IsInt(BfTypeCode typeCode)
 	return (typeCode >= BfTypeCode_Int8) && (typeCode <= BfTypeCode_Char32);
 }
 
+bool BfIRConstHolder::IsChar(BfTypeCode typeCode)
+{
+	return (typeCode >= BfTypeCode_Char8) && (typeCode <= BfTypeCode_Char32);
+}
+
 bool BfIRConstHolder::IsIntable(BfTypeCode typeCode)
 {
 	return (typeCode >= BfTypeCode_Boolean) && (typeCode <= BfTypeCode_Char32);
