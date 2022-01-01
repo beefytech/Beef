@@ -108,14 +108,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 	}
 
 	for (auto genericParam : genericExEntry->mGenericParams)
-	{
-		if (!genericParam->mExternType->IsGenericParam())
-			AddDependency(genericParam->mExternType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-		for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
-			AddDependency(constraintTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-		if (genericParam->mTypeConstraint != NULL)
-			AddDependency(genericParam->mTypeConstraint, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-	}
+		AddDependency(genericParam, mCurTypeInstance);	
 
 	return genericExEntry;
 }
@@ -301,15 +294,8 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 	for (auto typeRef : deferredResolveTypes)
 		auto constraintType = ResolveTypeRef(typeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_None);
 
-	for (auto genericParam : genericTypeInst->mGenericTypeInfo->mGenericParams)
-	{
-		if (!genericParam->mExternType->IsGenericParam())
-			AddDependency(genericParam->mExternType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-		for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
-			AddDependency(constraintTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-		if (genericParam->mTypeConstraint != NULL)
-			AddDependency(genericParam->mTypeConstraint, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-	}
+	for (auto genericParam : genericTypeInst->mGenericTypeInfo->mGenericParams)	
+		AddDependency(genericParam, mCurTypeInstance);			
 
 	return true;
 }

@@ -3581,6 +3581,23 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 	}
 }
 
+void BfModule::AddDependency(BfGenericParamInstance* genericParam, BfTypeInstance* usingType)
+{
+	if (!genericParam->mExternType->IsGenericParam())
+		AddDependency(genericParam->mExternType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
+	for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
+		AddDependency(constraintTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
+	for (auto& operatorConstraint : genericParam->mOperatorConstraints)
+	{
+		if (operatorConstraint.mLeftType != NULL)
+			AddDependency(operatorConstraint.mLeftType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
+		if (operatorConstraint.mRightType != NULL)
+			AddDependency(operatorConstraint.mRightType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
+	}
+	if (genericParam->mTypeConstraint != NULL)
+		AddDependency(genericParam->mTypeConstraint, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
+}
+
 void BfModule::AddCallDependency(BfMethodInstance* methodInstance, bool devirtualized)
 {
 	if ((mCurMethodState != NULL) && (mCurMethodState->mHotDataReferenceBuilder != NULL))
@@ -22152,14 +22169,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			auto constraintType = ResolveTypeRef(typeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_None);
 
 		for (auto genericParam : methodInstance->mMethodInfoEx->mGenericParams)
-		{
-			if (!genericParam->mExternType->IsGenericParam())
-				AddDependency(genericParam->mExternType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-			for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
-				AddDependency(constraintTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-			if (genericParam->mTypeConstraint != NULL)
-				AddDependency(genericParam->mTypeConstraint, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
-		}
+			AddDependency(genericParam, mCurTypeInstance);
 	}
 
 	if ((methodInstance->mIsAutocompleteMethod) && (methodDeclaration != NULL) && (!methodInstance->IsSpecializedGenericMethod()) && (methodDef->mIdx >= 0))

@@ -1730,6 +1730,7 @@ public:
 	bool CheckDefineMemberProtection(BfProtection protection, BfType* memberType);	
 	void CheckMemberNames(BfTypeInstance* typeInst);	
 	void AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyFlags flags);
+	void AddDependency(BfGenericParamInstance* genericParam, BfTypeInstance* usingType);
 	void AddCallDependency(BfMethodInstance* methodInstance, bool devirtualized = false);
 	void AddFieldDependency(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfType* fieldType);		
 	void TypeFailed(BfTypeInstance* typeInstance);
