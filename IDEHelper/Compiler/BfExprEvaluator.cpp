@@ -20850,6 +20850,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	}
 
 	BfType* wantType = leftValue.mType;
+	BfType* origWantType = wantType;
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 		wantType = NULL; // Don't presume
 	wantType = mModule->FixIntUnknown(wantType);
@@ -20858,7 +20859,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		return;
 		
 	BfType* rightWantType = wantType;
-	if ((mExpectingType != NULL) && (wantType != NULL) && (mExpectingType->IsIntegral()) && (wantType->IsIntegral()) && (mExpectingType->mSize > wantType->mSize) &&
+	if (origWantType->IsIntUnknown())
+		rightWantType = NULL;
+	else if ((mExpectingType != NULL) && (wantType != NULL) && (mExpectingType->IsIntegral()) && (wantType->IsIntegral()) && (mExpectingType->mSize > wantType->mSize) &&
 		((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_Multiply)))
 		rightWantType = mExpectingType;
 	rightValue = mModule->CreateValueFromExpression(rightExpression, rightWantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
