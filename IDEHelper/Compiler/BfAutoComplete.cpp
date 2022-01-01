@@ -37,7 +37,7 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, co
 	if (!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
 
-	entry.mMatchesLength = u8_strlen((char*)filter.c_str());
+	entry.mMatchesLength = mDoFuzzyAutoComplete ? u8_strlen((char*)filter.c_str()) : 0;
 	entry.mMatches = (entry.mMatchesLength > 0) ? matches : nullptr;
 
 	auto result = AddEntry(entry);
@@ -56,7 +56,7 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, co
 	if (!DoesFilterMatch(entry.mDisplay, filter, entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
 
-	entry.mMatchesLength = u8_strlen((char*)filter);
+	entry.mMatchesLength = mDoFuzzyAutoComplete ? u8_strlen((char*)filter) : 0;
 	entry.mMatches = (entry.mMatchesLength > 0) ? matches : nullptr;
 
 	auto result = AddEntry(entry);
