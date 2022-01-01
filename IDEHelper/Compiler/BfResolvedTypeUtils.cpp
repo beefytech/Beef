@@ -4088,6 +4088,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		if (rhsDelegateType == NULL)
 			return false;
 		
+		bool wantGeneric = false;
+		
 		BfDelegateInfo* lhsDelegateInfo = lhs->GetDelegateInfo();		
 				
 		auto lhsTypeInstance = lhs->ToTypeInstance();
@@ -4098,6 +4100,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 		if ((lhs->IsDelegate()) != rhsIsDelegate)
 			return false;
+
+		auto _CheckType = [&](BfType* type)
+		{
+			if (type->IsTypeGenericParam())
+				wantGeneric = true;
+		};
 		
 		BfCallingConvention rhsCallingConvention = BfCallingConvention_Unspecified;
 		if (ctx->mRootTypeRef == rhsDelegateType)
@@ -4105,9 +4113,10 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		else
 			ctx->mModule->GetDelegateTypeRefAttributes(rhsDelegateType, rhsCallingConvention);
 		if (lhsDelegateInfo->mCallingConvention != rhsCallingConvention)
-			return false;
+			return false;		
 		if (!Equals(lhsDelegateInfo->mReturnType, rhsDelegateType->mReturnType, ctx))
 			return false;
+		_CheckType(lhsDelegateInfo->mReturnType);
 
 		bool isMutating = true;
 
@@ -4155,12 +4164,23 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			auto paramTypeRef = rhsDelegateType->mParams[paramIdx]->mTypeRef;			
 			if (!Equals(lhsDelegateInfo->mParams[paramIdx], paramTypeRef, ctx))
 				return false;
+			_CheckType(lhsDelegateInfo->mParams[paramIdx]);
 			StringView rhsParamName;
 			if (rhsDelegateType->mParams[paramIdx]->mNameNode != NULL)
 				rhsParamName = rhsDelegateType->mParams[paramIdx]->mNameNode->ToStringView();
 			if (invokeMethodDef->mParams[paramIdx]->mName != rhsParamName)
 				return false;
 		}
+
+		if ((ctx->mModule->mCurTypeInstance == NULL) || (!ctx->mModule->mCurTypeInstance->IsGenericTypeInstance()))
+			wantGeneric = false;
+
+		//TODO:
+		wantGeneric = false;
+
+ 		if (wantGeneric != lhsTypeInstance->IsGenericTypeInstance())
+ 			return false;
+
 		return true;
 	}
 	else if (lhs->IsTypeInstance())

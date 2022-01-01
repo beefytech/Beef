@@ -7674,8 +7674,16 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		}
 		if ((genericParam->mGenericParamKind == BfGenericParamKind_Method) && (methodGenericArguments != NULL))
 		{
-			if (genericParam->mGenericParamIdx < (int)methodGenericArguments->size())			
-				return FixIntUnknown((*methodGenericArguments)[genericParam->mGenericParamIdx]);
+			if (genericParam->mGenericParamIdx < (int)methodGenericArguments->size())
+			{
+				auto resolvedType = FixIntUnknown((*methodGenericArguments)[genericParam->mGenericParamIdx]);
+				if ((resolvedType != NULL) && (resolvedType->IsGenericParam()))
+				{
+					auto genericParamType = (BfGenericParamType*)resolvedType;
+					//BF_ASSERT(genericParamType->mGenericParamKind != BfGenericParamKind_Method);
+				}
+				return resolvedType;
+			}
 			BF_ASSERT(allowFail);
 		}		
 		return unspecializedType;
@@ -7785,7 +7793,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			if (newGenericArg->IsVar())
 				return newGenericArg;
 
-			if (newGenericArg->IsGenericParam())
+			if (newGenericArg->IsTypeGenericParam())
 				wantGeneric = true;
 			if (newGenericArg->IsUnspecializedType())
 				isUnspecialized = true;
@@ -7803,6 +7811,9 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		
 		if (unspecializedGenericTupleType == NULL)
 			wantGeneric = false;
+
+		//TODO:
+		wantGeneric = false;
 
 		auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef);
 
@@ -7909,7 +7920,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		bool isUnspecialized = false;
 		auto _CheckType = [&](BfType* type)
 		{
-			if (type->IsGenericParam())
+			if (type->IsTypeGenericParam())
 				wantGeneric = true;
 			if (type->IsUnspecializedType())
 				isUnspecialized = true;
@@ -7942,6 +7953,9 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 
 		if (unspecializedGenericDelegateType == NULL)
 			wantGeneric = false;
+
+		//TODO:
+		wantGeneric = false;
 
 		BfTypeInstance* delegateType = NULL;		
 		auto baseDelegateType = ResolveTypeDef(mCompiler->mDelegateTypeDef)->ToTypeInstance();				
@@ -10605,7 +10619,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			else
 				fieldName = StrFormat("%d", fieldIdx);
 
-			if (type->IsGenericParam())
+			if (type->IsTypeGenericParam())
 				wantGeneric = true;
 			if (type->IsUnspecializedType())
 				isUnspecialized = true;
@@ -10620,6 +10634,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		if ((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsGenericTypeInstance()))
 			wantGeneric = false;
+
+		//TODO:
+		wantGeneric = false;
 
 		auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef, BfPopulateType_Identity);
 		BfTypeInstance* tupleType = NULL;
@@ -10776,8 +10793,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		bool isUnspecialized = false;
 		auto _CheckType = [&](BfType* type)
 		{
-			if (type->IsGenericParam())						
-				wantGeneric = true;					
+			if (type->IsTypeGenericParam())
+				wantGeneric = true;
 			if (type->IsUnspecializedType())			
 				isUnspecialized = true;			
 		};
@@ -10856,6 +10873,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		if ((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsGenericTypeInstance()))
 			wantGeneric = false;
+
+		//TODO:
+		wantGeneric = false;
 
 		BfTypeInstance* baseDelegateType = NULL;
 		if (mCompiler->mDelegateTypeDef != NULL)

@@ -587,6 +587,8 @@ public:
 	virtual bool IsIn() { return false; }
 	virtual bool IsOut() { return false; }
 	virtual bool IsGenericParam() { return false; }
+	virtual bool IsTypeGenericParam() { return false; }
+	virtual bool IsMethodGenericParam() { return false; }
 	virtual bool IsClosure() { return false; }	
 	virtual bool IsMethodRef() { return false; }
 	virtual bool IsTuple() { return false; }
@@ -1073,6 +1075,8 @@ public:
 	
 public:
 	bool IsGenericParam() override { return true; }
+	bool IsTypeGenericParam() override { return mGenericParamKind == BfGenericParamKind_Type; }
+	bool IsMethodGenericParam() override { return mGenericParamKind == BfGenericParamKind_Type; }
 	virtual bool IsUnspecializedType() override { return true; }
 	virtual bool IsReified() override { return false; }
 };
