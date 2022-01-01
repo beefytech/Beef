@@ -637,7 +637,7 @@ namespace MiniZ
 		static uint32 deflateBound(ZipStream* pStream, uint32 source_len)
 		{
 		  // This is really over conservative. (And lame, but it's actually pretty tricky to compute a true upper bound given the way tdefl's blocking works.)
-			return Math.Max(128 + (source_len * 110) / 100, 128 + source_len + ((source_len / (31 * 1024)) + 1) * 5);
+			return (.)Math.Max(128 + (source_len * 110) / 100, 128 + source_len + ((source_len / (31 * 1024)) + 1) * 5);
 		}
 
 		public static ReturnStatus Compress(uint8* pDest, ref int pDest_len, uint8* pSource, int source_len, CompressionLevel level)
