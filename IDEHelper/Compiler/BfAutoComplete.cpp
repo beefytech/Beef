@@ -1252,6 +1252,17 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 	}
 }
 
+BfProject* BfAutoComplete::GetActiveProject()
+{
+	BfProject* bfProject = NULL;
+	auto activeTypeDef = mModule->GetActiveTypeDef();
+	if (activeTypeDef != NULL)
+		bfProject = activeTypeDef->mProject;
+	else
+		bfProject = mCompiler->mResolvePassData->mParser->mProject;
+	return bfProject;
+}
+
 void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
 {	
 	String filter;
@@ -1262,11 +1273,7 @@ void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
 		mInsertEndIdx = identifierNode->GetSrcEnd();
 	}
 
-	BfProject* bfProject = NULL;
-	if (mModule->mCurTypeInstance != NULL)
-		bfProject = mModule->mCurTypeInstance->mTypeDef->mProject;
-	else
-		bfProject = mCompiler->mResolvePassData->mParser->mProject;	
+	BfProject* bfProject = GetActiveProject();	
 	
 	auto _AddProjectNamespaces = [&](BfProject* project)
 	{
@@ -1923,12 +1930,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 			BfAtomComposite targetComposite;
 			bool isValid = mSystem->ParseAtomComposite(targetStr, targetComposite);
 
-			BfProject* bfProject = NULL;
-			if (mModule->mCurTypeInstance != NULL)
-				bfProject = mModule->mCurTypeInstance->mTypeDef->mProject;
-			else
-				bfProject = mCompiler->mResolvePassData->mParser->mProject;
-
+			BfProject* bfProject = GetActiveProject();
 			auto _CheckProject = [&](BfProject* project)
 			{				
 				if ((isValid) && (project->mNamespaces.ContainsKey(targetComposite)))
@@ -1946,14 +1948,12 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 
 					if (!isUsingDirective)
 					{											
-						BfTypeDef* curTypeDef = NULL;
-						if (mModule->mCurTypeInstance != NULL)
-							curTypeDef = mModule->mCurTypeInstance->mTypeDef;							
+						BfProject* activeProject = GetActiveProject();
 						for (auto typeDef : mSystem->mTypeDefs)
 						{
 							if ((typeDef->mNamespace == targetComposite) && (typeDef->mOuterType == NULL) &&
 								(!typeDef->mIsPartial) &&
-								((curTypeDef == NULL) || (curTypeDef->mProject->ContainsReference(typeDef->mProject))))
+								((activeProject == NULL) || (activeProject->ContainsReference(typeDef->mProject))))
 							{
 								AddTypeDef(typeDef, filter, onlyAttribute);
 							}

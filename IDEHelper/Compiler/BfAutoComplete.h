@@ -207,6 +207,7 @@ public:
 	int mDefTypeGenericParamIdx;
 
 public:	
+	BfProject* GetActiveProject();
 	bool CheckProtection(BfProtection protection, BfTypeDef* typeDef, bool allowProtected, bool allowPrivate);
 	String GetFilter(BfAstNode* node);
 	const char* GetTypeName(BfType* type);
