@@ -1126,6 +1126,17 @@ namespace System.Reflection
 				(*(float*)&mValue).ToString(strBuffer);
 			case typeof(double):
 				(*(double*)&mValue).ToString(strBuffer);
+			case typeof (bool):
+				strBuffer.Append((*(bool*)&mValue) ? "true" : "false");
+			case typeof(char8), typeof(char16), typeof(char32):
+				strBuffer.Append('\'');
+				var str = (*(char32*)&mValue).ToString(.. scope .());
+				let len = str.Length;
+				String.QuoteString(&str[0], len, str);
+				strBuffer.Append(str[(len + 1)...^2]);
+				strBuffer.Append('\'');
+			case typeof(uint64), typeof(uint):
+				(*(uint64*)&mValue).ToString(strBuffer);
 			default:
 				mValue.ToString(strBuffer);
 			}
