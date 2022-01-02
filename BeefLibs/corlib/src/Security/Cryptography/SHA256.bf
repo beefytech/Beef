@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace System.Security.Cryptography
 {
 	struct SHA256Hash
@@ -44,7 +46,7 @@ namespace System.Security.Cryptography
 		}
 	}
 
-	struct SHA256
+	class SHA256
 	{
 		int mDataLen;
 		int mBitLength;
@@ -226,6 +228,27 @@ namespace System.Security.Cryptography
 		{
 			let sha256 = scope SHA256();
 			sha256.Update(data);
+			return sha256.Finish();
+		}
+		
+		public static Result<SHA256Hash> Hash(Stream stream)
+		{
+			let sha256 = scope SHA256();
+
+			loop: while (true)
+			{
+				uint8[4096] buffer;
+				switch (stream.TryRead(.(&buffer, 4096)))
+				{
+				case .Ok(let bytes):
+					if (bytes == 0)
+						break loop;
+					sha256.Update(.(&buffer, bytes));
+				case .Err(let err):
+					return .Err(err);
+				}
+			}
+
 			return sha256.Finish();
 		}
 	}
