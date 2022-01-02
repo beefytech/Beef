@@ -134,7 +134,7 @@ namespace System.Security.Cryptography
 			mData = .(?);
 		}
 
-		void Transform() mut
+		void Transform()
 		{
 			uint32 a, b, c, d, e, f, g, h, i, j, t1, t2;
 			uint32[64] m = ?;
@@ -177,7 +177,7 @@ namespace System.Security.Cryptography
 			mState[7] += h;
 		}
 
-		public void Update(Span<uint8> data) mut
+		public void Update(Span<uint8> data)
 		{
 			for (int i = 0; i < data.Length; ++i)
 			{
@@ -192,7 +192,7 @@ namespace System.Security.Cryptography
 			}
 		}
 
-		public SHA256Hash Finish() mut
+		public SHA256Hash Finish()
 		{
 			int i = mDataLen;
 			
