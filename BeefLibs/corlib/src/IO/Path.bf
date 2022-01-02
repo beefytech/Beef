@@ -34,6 +34,38 @@ namespace System.IO
 #else
 		public const char8 VolumeSeparatorChar = '/';
 #endif //BF_PLATFORM_WINDOWS
+	
+#if BF_PLATFORM_WINDOWS
+			public static readonly char8[?] InvalidFileNameChars =
+			.(
+				'\"', '<', '>', '|', '\0',
+				(.)1, (.)2, (.)3, (.)4, (.)5, (.)6, (.)7, (.)8, (.)9, (.)10,
+				(.)11, (.)12, (.)13, (.)14, (.)15, (.)16, (.)17, (.)18, (.)19, (.)20,
+				(.)21, (.)22, (.)23, (.)24, (.)25, (.)26, (.)27, (.)28, (.)29, (.)30,
+				(.)31, ':', '*', '?', '\\', '/'
+			);
+#else
+			public static readonly char8[?] InvalidFileNameChars =
+			.(
+				'\0', '/'
+			);
+#endif //BF_PLATFORM_WINDOWS
+
+#if BF_PLATFORM_WINDOWS
+			public static readonly char8[?] InvalidPathChars =
+			.(
+				'|', '\0',
+				(.)1, (.)2, (.)3, (.)4, (.)5, (.)6, (.)7, (.)8, (.)9, (.)10,
+				(.)11, (.)12, (.)13, (.)14, (.)15, (.)16, (.)17, (.)18, (.)19, (.)20,
+				(.)21, (.)22, (.)23, (.)24, (.)25, (.)26, (.)27, (.)28, (.)29, (.)30,
+				(.)31
+			);
+#else
+			public static readonly char8[?] InvalidPathChars =
+			.(
+				'\0'
+			);
+#endif //BF_PLATFORM_WINDOWS
 
 		// Make this public sometime.
 		// The max total path is 260, and the max individual component length is 255. 

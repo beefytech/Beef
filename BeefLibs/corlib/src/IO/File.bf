@@ -107,7 +107,7 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public static Result<void> WriteAllLines(StringView path, IEnumerator<StringView> enumerator)
+		public static Result<void> WriteAllLines(StringView path, IEnumerator<StringView> enumerator, bool doAppend = false)
 		{
 			String strBuf = scope String();
 			for (var str in enumerator)
@@ -115,10 +115,10 @@ namespace System.IO
 				strBuf.Append(str);
 				strBuf.Append(Environment.NewLine);
 			}
-			return WriteAllText(path, strBuf);
+			return WriteAllText(path, strBuf, doAppend);
 		}
 
-		public static Result<void> WriteAllLines(StringView path, IEnumerator<String> enumerator)
+		public static Result<void> WriteAllLines(StringView path, IEnumerator<String> enumerator, bool doAppend = false)
 		{
 			String strBuf = scope String();
 			for (var str in enumerator)
@@ -126,7 +126,7 @@ namespace System.IO
 				strBuf.Append(str);
 				strBuf.Append(Environment.NewLine);
 			}
-			return WriteAllText(path, strBuf);
+			return WriteAllText(path, strBuf, doAppend);
 		}
 
 		/*public static Result<IEnumerator<Result<String>>> ReadLines(String fileName)

@@ -76,6 +76,11 @@ namespace System.IO
 
 			return .Ok;
 		}
+		
+		public Result<void> WriteLine()
+		{
+			return Write("\n");
+		}
 
 		public Result<void> WriteLine(StringView str)
 		{
