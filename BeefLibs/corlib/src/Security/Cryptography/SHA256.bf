@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace System.Security.Cryptography
 {
 	struct SHA256Hash
@@ -42,9 +44,29 @@ namespace System.Security.Cryptography
 				return true;
 			}
 		}
+		
+		public override void ToString(String strBuffer)
+		{
+			for (let val in mHash)
+			{
+				val.ToString(strBuffer, "X2", null);
+			}
+		}
+
+		public void Encode(String outStr)
+		{
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[0], outStr);
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[1], outStr);
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[2], outStr);
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[3], outStr);
+		}
 	}
 
-	struct SHA256
+	class SHA256
 	{
 		int mDataLen;
 		int mBitLength;
@@ -112,7 +134,7 @@ namespace System.Security.Cryptography
 			mData = .(?);
 		}
 
-		void Transform() mut
+		void Transform()
 		{
 			uint32 a, b, c, d, e, f, g, h, i, j, t1, t2;
 			uint32[64] m = ?;
@@ -155,7 +177,7 @@ namespace System.Security.Cryptography
 			mState[7] += h;
 		}
 
-		public void Update(Span<uint8> data) mut
+		public void Update(Span<uint8> data)
 		{
 			for (int i = 0; i < data.Length; ++i)
 			{
@@ -170,7 +192,7 @@ namespace System.Security.Cryptography
 			}
 		}
 
-		public SHA256Hash Finish() mut
+		public SHA256Hash Finish()
 		{
 			int i = mDataLen;
 			
@@ -226,6 +248,27 @@ namespace System.Security.Cryptography
 		{
 			let sha256 = scope SHA256();
 			sha256.Update(data);
+			return sha256.Finish();
+		}
+		
+		public static Result<SHA256Hash> Hash(Stream stream)
+		{
+			let sha256 = scope SHA256();
+
+			loop: while (true)
+			{
+				uint8[4096] buffer;
+				switch (stream.TryRead(.(&buffer, 4096)))
+				{
+				case .Ok(let bytes):
+					if (bytes == 0)
+						break loop;
+					sha256.Update(.(&buffer, bytes));
+				case .Err(let err):
+					return .Err(err);
+				}
+			}
+
 			return sha256.Finish();
 		}
 	}

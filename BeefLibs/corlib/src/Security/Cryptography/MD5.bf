@@ -1,3 +1,5 @@
+using system.IO;
+
 namespace System.Security.Cryptography
 {
 	struct HashEncode
@@ -341,6 +343,27 @@ namespace System.Security.Cryptography
 		{
 			let md5 = scope MD5();
 			md5.Update(data);
+			return md5.Finish();
+		}
+		
+		public static Result<MD5Hash> Hash(Stream stream)
+		{
+			let md5 = scope MD5();
+
+			loop: while (true)
+			{
+				uint8[4096] buffer;
+				switch (stream.TryRead(.(&buffer, 4096)))
+				{
+				case .Ok(let bytes):
+					if (bytes == 0)
+						break loop;
+					md5.Update(.(&buffer, bytes));
+				case .Err(let err):
+					return .Err(err);
+				}
+			}
+
 			return md5.Finish();
 		}
 	}
