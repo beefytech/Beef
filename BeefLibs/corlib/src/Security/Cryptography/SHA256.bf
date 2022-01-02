@@ -44,6 +44,26 @@ namespace System.Security.Cryptography
 				return true;
 			}
 		}
+		
+		public override void ToString(String strBuffer)
+		{
+			for (let val in mHash)
+			{
+				val.ToString(strBuffer, "X2", null);
+			}
+		}
+
+		public void Encode(String outStr)
+		{
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[0], outStr);
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[1], outStr);
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[2], outStr);
+#unwarn
+			HashEncode.HashEncode64(((uint64*)&mHash)[3], outStr);
+		}
 	}
 
 	class SHA256
