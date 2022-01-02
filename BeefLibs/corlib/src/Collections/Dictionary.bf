@@ -48,7 +48,13 @@ namespace System.Collections
 			//if (capacity < 0) ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.capacity);
 			if (capacity > 0) Initialize(capacity);
 			//TODO: this.comparer = comparer ?? EqualityComparer<TKey>.Default;
-        }
+        	}
+	
+		public this(IEnumerator<KeyValuePair> enumerator)
+		{
+			for (var kv in enumerator)
+				this[kv.key] = kv.value;
+		}
 
 		public ~this()
 		{
