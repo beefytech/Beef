@@ -257,6 +257,7 @@ public:
         EVENT_FINALIZE_LIST,
 		EVENT_LEAK,
 		EVENT_DELETE,
+		EVENT_FOUND,
 		EVENT_FREE,
 		EVENT_WB_MOVE,        
         EVENT_WEAK_REF,
@@ -278,7 +279,7 @@ public:
 	};
 
 	Beefy::CritSect mCritSect;
-	static const int BUFFSIZE = 1024*1024;
+	static const int BUFFSIZE = 4*1024*1024;
 	static const int BUFFSIZE_MASK = BUFFSIZE-1;
 	Entry mBuffer[BUFFSIZE];
 	volatile int mHead;
@@ -379,9 +380,9 @@ public:
 				break;
 			case EVENT_GC_UNFREEZE:
 				fprintf(fp, "GCUnfreeze MarkId:%d Tick:%d\n", ent.mParam1, ent.mParam2);
-				break;			
+				break;
 			case EVENT_MARK:				
-				fprintf(fp, "GCMark Obj:%p Flags:%X Parent:%p\n", ent.mParam1, ent.mParam2, ent.mParam3);
+				fprintf(fp, "GCMark Obj:%p Flags:0x%X Parent:%p\n", ent.mParam1, ent.mParam2, ent.mParam3);
 				break;
 			case EVENT_WB_MARK:				
 				fprintf(fp, "WriteBarrierMark Obj:%p Type:%s Thread:%p\n", ent.mParam1, GetNameStr((bf::System::Type*)ent.mParam2), ent.mParam3);
@@ -398,7 +399,10 @@ public:
 			case EVENT_LEAK:
 				fprintf(fp, "Leak Detected:%p Type:%s\n", ent.mParam1, GetNameStr((bf::System::Type*)ent.mParam2));
 				break;
-			case EVENT_FREE:				
+			case EVENT_FOUND:
+				fprintf(fp, "Found Obj:%p Flags:0x%X\n", ent.mParam1, ent.mParam2);
+				break;
+			case EVENT_FREE:
 				fprintf(fp, "Free Obj:%p\n", ent.mParam1);
 				break;
 			case EVENT_DELETE:
@@ -417,7 +421,7 @@ public:
 				fprintf(fp, "ConservativeScan:%p to %p\n", ent.mParam1, ent.mParam2);
 				break;
 			case EVENT_GC_DONE:
-				fprintf(fp, "GCDone\n");
+				fprintf(fp, "GCDone MarkCount:%d HadOverflow:%d\n", ent.mParam1, ent.mParam2);
 				break;
 			default:
                 BF_FATAL("Unknown event");
@@ -607,7 +611,7 @@ BFGC::BFGC()
 	mSkipMark = false;	
 	mGracelessShutdown = false;
 	mMainThreadTLSPtr = NULL;	
-	mHadPendingGCDataOverflow = false;
+	mHadPendingGCDataOverflow = false;	
 	mCurPendingGCSize = 0;
 	mMaxPendingGCSize = 0;	
 	
@@ -979,6 +983,8 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 			if (objectFlags == 0)
 				mCurSweepFoundPermanentCount++;
             
+			BFLOG2(GCLog::EVENT_FOUND, (intptr)obj, obj->mObjectFlags);
+
 			int markId = objectFlags & BF_OBJECTFLAG_MARK_ID_MASK;
 			if ((mCollectFailed) && (markId != mCurMarkId))
 			{
@@ -1468,10 +1474,10 @@ bool BFGC::ScanThreads()
 			}
 		}
 
-		intptr regVals[64];
+		intptr regVals[128];
 		intptr stackPtr = 0;		
 		BfpThreadResult threadResult;
-		int regValCount = 64;
+		int regValCount = 128;
 		///
 		{
 			BP_ZONE("BfpThread_GetIntRegisters");
@@ -1485,14 +1491,17 @@ bool BFGC::ScanThreads()
 
 		BF_ASSERT(threadResult == BfpThreadResult_Ok);
 		
-		void** threadLoadAddressMap = (void**)((_TEB*)thread->mTEB)->ThreadLocalStorage;
-		for (auto& tlsMember : mTLSMembers)
+		if (thread->mTEB != NULL)
 		{
-			void* threadLoadAddress = threadLoadAddressMap[tlsMember.mTLSIndex];			
+			void** threadLoadAddressMap = (void**)((_TEB*)thread->mTEB)->ThreadLocalStorage;
+			for (auto& tlsMember : mTLSMembers)
+			{
+				void* threadLoadAddress = threadLoadAddressMap[tlsMember.mTLSIndex];
 
-			typedef void(*MarkFunc)(void*);
-			MarkFunc markFunc = *(MarkFunc*)&tlsMember.mMarkFunc;
-			markFunc((uint8*)threadLoadAddress + tlsMember.mTLSOffset);
+				typedef void(*MarkFunc)(void*);
+				MarkFunc markFunc = *(MarkFunc*)&tlsMember.mMarkFunc;
+				markFunc((uint8*)threadLoadAddress + tlsMember.mTLSOffset);
+			}
 		}
 		
 		mQueueMarkObjects = true;
@@ -2383,11 +2392,13 @@ void BFGC::ResumeThreads()
 void BFGC::PerformCollection()
 {
 	BP_ZONE("TriggerCollection");
-		
+	
+	int prevMarkId = mCurMarkId;
+
 	DWORD startTick = BFTickCount();
 	CollectReport collectReport;
 	collectReport.mCollectIdx = mCollectIdx;
-	collectReport.mStartTick = startTick;
+	collectReport.mStartTick = startTick;	
 
 #ifndef BF_MINGW
 	//_CrtCheckMemory();
@@ -2446,8 +2457,7 @@ void BFGC::PerformCollection()
 	//BFGCLogWrite();
 
 	mFinalizeList.Clear();
-	if (!mHadPendingGCDataOverflow)
-		Sweep();
+	Sweep();
 
 #ifdef BF_GC_DEBUGSWEEP
 	ResumeThreads();
@@ -2458,8 +2468,8 @@ void BFGC::PerformCollection()
 	ReleasePendingObjects();
 	ProcessSweepInfo();
 
-	BFLOG2(GCLog::EVENT_GC_DONE, sCurMarkId, BfpSystem_TickCount());
-
+	BFLOG2(GCLog::EVENT_GC_DONE, mCurGCMarkCount, mHadPendingGCDataOverflow ? 1 : 0);
+	
 	collectReport.mTotalMS = BFTickCount() - startTick;
 
 // 	while (mCollectReports.size() > 4)
@@ -2470,7 +2480,7 @@ void BFGC::PerformCollection()
 
 	mCollectReports.Add(collectReport);
 	mCollectIdx++;
-#endif
+#endif	
 }
 
 void BFGC::Collect(bool async)
@@ -2686,9 +2696,9 @@ void BFGC::MarkFromGCThread(bf::System::Object* obj)
 	}	
 	else
 	{
-		mHadPendingGCDataOverflow = true;
 		// No more room left -- we can't queue...
-		//MarkMembers(obj);
+		mHadPendingGCDataOverflow = true;
+		mCollectFailed = true;
 	}
 #endif
 }
