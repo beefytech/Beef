@@ -6966,7 +6966,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 		auto block = BfNodeDynCast<BfBlock>(nextNode);
 		auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 
-		bool isExprBodyProp = (tokenNode != NULL) && (tokenNode->mToken == BfToken_FatArrow);
+		bool isExprBodyProp = (tokenNode != NULL) && ((tokenNode->mToken == BfToken_FatArrow) || (tokenNode->mToken == BfToken_Mut));
 		// Property.
 		//  If we don't have a token afterwards then still treat it as a property for autocomplete purposes
 		if ((typeRef != NULL) &&
@@ -7050,20 +7050,32 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 
 				auto propertyBodyExpr = mAlloc->Alloc<BfPropertyBodyExpression>();
 				ReplaceNode(tokenNode, propertyBodyExpr);
-				MEMBER_SET(propertyBodyExpr, mFatTokenArrow, tokenNode);
 
-				auto method = mAlloc->Alloc<BfPropertyMethodDeclaration>();
-				method->mPropertyDeclaration = propertyDeclaration;
-				method->mNameNode = propertyDeclaration->mNameNode;
+				BfTokenNode* mutSpecifier = NULL;
 
-				auto expr = CreateExpressionAfter(tokenNode);
-				if (expr != NULL)
+				if (tokenNode->mToken == BfToken_Mut)
 				{
-					MEMBER_SET(method, mBody, expr);
-					propertyDeclaration->SetSrcEnd(expr->GetSrcEnd());
+					MEMBER_SET(propertyBodyExpr, mMutSpecifier, tokenNode);
+					tokenNode = ExpectTokenAfter(tokenNode, BfToken_FatArrow);					
 				}
 
-				methods.Add(method);
+				if (tokenNode != NULL)
+				{
+					MEMBER_SET(propertyBodyExpr, mFatTokenArrow, tokenNode);
+
+					auto method = mAlloc->Alloc<BfPropertyMethodDeclaration>();
+					method->mPropertyDeclaration = propertyDeclaration;
+					method->mNameNode = propertyDeclaration->mNameNode;
+
+					auto expr = CreateExpressionAfter(tokenNode);
+					if (expr != NULL)
+					{
+						MEMBER_SET(method, mBody, expr);
+						propertyDeclaration->SetSrcEnd(expr->GetSrcEnd());
+					}
+
+					methods.Add(method);
+				}
 
 				MEMBER_SET(propertyDeclaration, mDefinitionBlock, propertyBodyExpr);
 			}

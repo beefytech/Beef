@@ -22952,7 +22952,18 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
  	if (methodDeclaration != NULL)
  		mutSpecifier = methodDeclaration->mMutSpecifier;
  	else if (methodDef->GetPropertyMethodDeclaration() != NULL)
- 		mutSpecifier = methodDef->GetPropertyMethodDeclaration()->mMutSpecifier;	
+ 	{
+		mutSpecifier = methodDef->GetPropertyMethodDeclaration()->mMutSpecifier;
+		if (mutSpecifier == NULL)
+		{
+			auto propertyDeclaration = methodDef->GetPropertyDeclaration();
+			if (propertyDeclaration != NULL)
+			{
+				if (auto propExprBody = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
+					mutSpecifier = propExprBody->mMutSpecifier;
+			}
+		}
+	}
 
 	if ((mutSpecifier != NULL) && (!mCurTypeInstance->IsBoxed()) && (!methodInstance->mIsForeignMethodDef))
 	{

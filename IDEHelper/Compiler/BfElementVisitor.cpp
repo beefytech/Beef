@@ -1061,6 +1061,7 @@ void BfElementVisitor::Visit(BfPropertyBodyExpression* propertyBodyExpression)
 {
 	Visit(propertyBodyExpression->ToBase());
 
+	VisitChild(propertyBodyExpression->mMutSpecifier);
 	VisitChild(propertyBodyExpression->mFatTokenArrow);	
 }
 

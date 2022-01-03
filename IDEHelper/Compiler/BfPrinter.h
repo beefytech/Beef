@@ -215,6 +215,7 @@ public:
 	virtual void Visit(BfMethodDeclaration* methodDeclaration) override;
 	virtual void Visit(BfOperatorDeclaration* opreratorDeclaration) override;
 	virtual void Visit(BfPropertyMethodDeclaration* propertyDeclaration) override;
+	virtual void Visit(BfPropertyBodyExpression* propertyBodyExpression) override;
 	virtual void Visit(BfPropertyDeclaration* propertyDeclaration) override;
 	virtual void Visit(BfIndexerDeclaration* indexerDeclaration) override;
 	virtual void Visit(BfFieldDeclaration* fieldDeclaration) override;

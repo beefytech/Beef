@@ -2584,6 +2584,13 @@ void BfPrinter::Visit(BfPropertyMethodDeclaration* propertyMethodDeclaration)
 	QueueVisitChild(propertyMethodDeclaration->mEndSemicolon);
 }
 
+void BfPrinter::Visit(BfPropertyBodyExpression* propertyBodyExpression)
+{
+	VisitChild(propertyBodyExpression->mMutSpecifier);
+	ExpectSpace();
+	VisitChild(propertyBodyExpression->mFatTokenArrow);
+}
+
 void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 {
 	auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propertyDeclaration);

@@ -3111,6 +3111,7 @@ class BfPropertyBodyExpression : public BfAstNode
 {
 public:
 	BF_AST_TYPE(BfPropertyBodyExpression, BfAstNode);
+	BfTokenNode* mMutSpecifier;
 	BfTokenNode* mFatTokenArrow;		
 };  BF_AST_DECL(BfPropertyBodyExpression, BfAstNode);
 
