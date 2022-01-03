@@ -7284,6 +7284,13 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopu
 					}
 					if (nestedTypeDef != NULL)
 						break;
+
+					if ((outerTypeInstance->IsEnum()) && (findName == "UnderlyingType"))
+					{
+						auto underlyingType = outerTypeInstance->GetUnderlyingType();
+						if (underlyingType != NULL)
+							return underlyingType;
+					}
 				}
 			}
 		}
@@ -9949,6 +9956,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			auto genericParam = GetGenericParamInstance((BfGenericParamType*)leftType);
 			if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
 				return ResolveTypeResult(typeRef, GetPrimitiveType(BfTypeCode_Var), populateType, resolveFlags);
+			if ((genericParam->IsEnum()) && (qualifiedTypeRef->mRight != NULL))
+			{
+				StringView findNameRight = qualifiedTypeRef->mRight->ToStringView();
+				if (findNameRight == "UnderlyingType")
+					return ResolveTypeResult(typeRef, GetPrimitiveType(BfTypeCode_Var), populateType, resolveFlags);
+			}
 		}
 
 		auto resolvedType = ResolveInnerType(leftType, qualifiedTypeRef->mRight, populateType, false, numGenericArgs);

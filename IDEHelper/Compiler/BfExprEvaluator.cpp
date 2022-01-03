@@ -9757,7 +9757,16 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 				prevDef = mPropDef;
 				prevTarget = mPropTarget;
 			}
-		}		
+		}
+
+		if ((mPropDef == NULL) && (genericParamInst->IsEnum()))
+		{
+			if ((fieldName == "Underlying") || (fieldName == "UnderlyingRef"))
+			{
+				mResult = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
+				return;
+			}
+		}
 	}
 
 	if (mPropDef != NULL)
@@ -10467,6 +10476,25 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		_Int32Result((typeInstance != NULL) ? typeInstance->mInstAlign : type->mSize);
 	else if (memberName == "InstanceStride")
 		_Int32Result((typeInstance != NULL) ? typeInstance->GetInstStride() : type->GetStride());
+	else if (memberName == "UnderlyingType")
+	{		
+		auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef);
+		if (type->IsGenericParam())
+		{
+			auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)type);
+			if (genericParamInstance->IsEnum())
+				mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(typeType)), typeType);
+		}
+		else if (type->IsEnum())
+		{
+			auto underlyingType = type->GetUnderlyingType();
+			if (underlyingType != NULL)
+			{
+				mModule->AddDependency(underlyingType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+				mResult = BfTypedValue(mModule->CreateTypeDataRef(underlyingType), typeType);
+			}
+		}
+	}
 	else if ((memberName == "MinValue") || (memberName == "MaxValue"))
 	{
 		bool isMin = memberName == "MinValue";

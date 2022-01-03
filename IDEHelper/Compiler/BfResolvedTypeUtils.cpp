@@ -64,6 +64,22 @@ bool BfTypedValue::CanModify() const
 
 //////////////////////////////////////////////////////////////////////////
 
+bool BfGenericParamInstance::IsEnum()
+{
+	if ((mGenericParamFlags & BfGenericParamFlag_Enum) != 0)
+		return true;
+	if (mTypeConstraint != NULL)
+	{
+		auto module = mTypeConstraint->GetModule();
+		if ((module != NULL) && (mTypeConstraint->IsInstanceOf(module->mCompiler->mEnumTypeDef)))
+			return true;
+	}
+	return true;
+	return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::DependencyFlags flags)
 {	
 	BF_ASSERT(dependentType != NULL);

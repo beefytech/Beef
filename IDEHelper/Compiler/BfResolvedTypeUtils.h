@@ -1162,6 +1162,7 @@ public:
 	virtual BfGenericParamDef* GetGenericParamDef() = 0;
 	virtual BfExternalConstraintDef* GetExternConstraintDef() = 0;
 	virtual String GetName() = 0;	
+	bool IsEnum();
 };
 
 class BfGenericTypeParamInstance : public BfGenericParamInstance

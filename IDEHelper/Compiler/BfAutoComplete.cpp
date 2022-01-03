@@ -676,6 +676,9 @@ const char* BfAutoComplete::GetTypeName(BfType* type)
 
 void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate)
 {	
+	if (typeInst->IsEnum())
+		AddEntry(AutoCompleteEntry("valuetype", "UnderlyingType"), filter);
+
 	for (auto innerType : typeInst->mTypeDef->mNestedTypes)
 	{
 		if (CheckProtection(innerType->mProtection, innerType, allowProtected, allowPrivate))
@@ -847,7 +850,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 
 	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()))
 	{
-		AddEntry(AutoCompleteEntry("valuetype", "_"), filter);
+		AddEntry(AutoCompleteEntry("value", "_"), filter);
 	}
 
 #define CHECK_STATIC(staticVal) ((staticVal && addStatic) || (!staticVal && addNonStatic))
@@ -1847,6 +1850,17 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 						checkType = genericParamInstance->mTypeConstraint;
 					else
 						checkType = mModule->mContext->mBfObjectType;
+
+					if ((genericParamInstance->IsEnum()))
+					{
+						if (isStatic)
+							AddEntry(AutoCompleteEntry("valuetype", "UnderlyingType"), filter);
+						else
+						{
+							AddEntry(AutoCompleteEntry("value", "Underlying"), filter);
+							AddEntry(AutoCompleteEntry("value", "UnderlyingRef"), filter);
+						}
+					}
 				};
 				_HandleGenericParamInstance(genericParamInstance);
 
