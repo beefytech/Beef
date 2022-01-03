@@ -150,7 +150,7 @@ static void BfpRecordManager(BfpManager* manager)
 	gManagerTail = manager;
 }
 
-typedef NTSTATUS(NTAPI *NtQuerySystemInformation_t)(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG);
+typedef NTSTATUS(NTAPI* NtQuerySystemInformation_t)(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG);
 static NtQuerySystemInformation_t gNtQuerySystemInformation = NULL;
 static HMODULE gNTDll = NULL;
 
@@ -216,23 +216,23 @@ WindowsSharedInfo* GetSharedInfo()
 	if (sharedFileMapping == NULL)
 	{
 		sharedFileMapping = ::CreateFileMappingA(
-                 INVALID_HANDLE_VALUE,
-                 NULL,
-                 PAGE_READWRITE,
-                 0,
-                 sizeof(WindowsSharedInfo),
-				 sharedName.c_str());
+			INVALID_HANDLE_VALUE,
+			NULL,
+			PAGE_READWRITE,
+			0,
+			sizeof(WindowsSharedInfo),
+			sharedName.c_str());
 		created = true;
-	}	
+	}
 
 	BF_ASSERT(sharedFileMapping != NULL);
 
-	gGlobalPlatformInfo = (WindowsSharedInfo*) MapViewOfFile(sharedFileMapping,
-                        FILE_MAP_READ | FILE_MAP_WRITE, 
-                        0,                 
-                        0,                    
-                        sizeof(WindowsSharedInfo));   
-	
+	gGlobalPlatformInfo = (WindowsSharedInfo*)MapViewOfFile(sharedFileMapping,
+		FILE_MAP_READ | FILE_MAP_WRITE,
+		0,
+		0,
+		sizeof(WindowsSharedInfo));
+
 	if (created)
 	{
 		memset(gGlobalPlatformInfo, 0, sizeof(WindowsSharedInfo));
@@ -287,20 +287,20 @@ uint64 Beefy::BFGetTickCountMicroFast()
 #else
 		int processorCount = (int) ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
 #endif
-		
-		::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);		
-		::SetThreadAffinityMask(::GetCurrentThread(), (int64)1<<(windowsSharedInfo->mThreadAcc % processorCount));
-		
+
+		::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+		::SetThreadAffinityMask(::GetCurrentThread(), (int64)1 << (windowsSharedInfo->mThreadAcc % processorCount));
+
 		uint64 deltaMicro = 0;
 
 		uint64 startMicroA = __rdtsc();
 		uint32 outStartMS = timeGetTime();
-		
+
 		int timingSet[30];
 
 		uint32 prevQPFMicro = 0;
 
-		LARGE_INTEGER frequency = {0, 1};
+		LARGE_INTEGER frequency = { 0, 1 };
 		QueryPerformanceFrequency(&frequency);
 		uint64 startMicro = __rdtsc();
 
@@ -312,26 +312,26 @@ uint64 Beefy::BFGetTickCountMicroFast()
 				LARGE_INTEGER timeNow;
 				QueryPerformanceCounter(&timeNow);
 
-				qPFMicro = (uint32) ((timeNow.QuadPart * 100000000) / frequency.QuadPart);
+				qPFMicro = (uint32)((timeNow.QuadPart * 100000000) / frequency.QuadPart);
 			} while (qPFMicro - prevQPFMicro < 100000);
 			prevQPFMicro = qPFMicro;
 
 			int64 curMicro = __rdtsc();
-			int aDivisor = (int) (curMicro - startMicro);
+			int aDivisor = (int)(curMicro - startMicro);
 			startMicro = curMicro;
 			timingSet[i] = aDivisor;
 		}
 
-		qsort(timingSet, BF_ARRAY_COUNT(timingSet), sizeof(timingSet[0]), IntCompare);		
-		gTimerDivisor = timingSet[BF_ARRAY_COUNT(timingSet)/3];
+		qsort(timingSet, BF_ARRAY_COUNT(timingSet), sizeof(timingSet[0]), IntCompare);
+		gTimerDivisor = timingSet[BF_ARRAY_COUNT(timingSet) / 3];
 
 		//gTimerDivisor = *gTimingSet.rbegin();
 		OutputDebugStrF("BFGetTickCountMicro divisor: %d\n", gTimerDivisor);
-		
+
 		::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_NORMAL);
 
 		uint32 outEndMS = timeGetTime();
-		uint64 endMicroA = __rdtsc();		
+		uint64 endMicroA = __rdtsc();
 
 		// It's possible we can run this test in multiple threads at once, we could wrap a CritSect around it but 
 		//  at least this fence will avoid the case where we have a zero gTimerDivisor
@@ -339,7 +339,7 @@ uint64 Beefy::BFGetTickCountMicroFast()
 		gTimerInitialized = true;
 	}
 
-	uint64 clock = __rdtsc();	
+	uint64 clock = __rdtsc();
 	return (clock * 1000) / gTimerDivisor;
 }
 
@@ -350,7 +350,7 @@ uint64 Beefy::BFGetTickCountMicro()
 	UINT64 curTime;
 	LARGE_INTEGER value;
 
-	if (!freq.QuadPart) 
+	if (!freq.QuadPart)
 	{
 		if (!QueryPerformanceFrequency(&freq))
 		{
@@ -363,12 +363,12 @@ uint64 Beefy::BFGetTickCountMicro()
 	}
 	QueryPerformanceCounter(&value);
 	curTime = value.QuadPart;
-	
-	return (int64) ((curTime - startTime) * (double)1000000 / freq.QuadPart);
+
+	return (int64)((curTime - startTime) * (double)1000000 / freq.QuadPart);
 }
 
 static uint64 WinConvertFILETIME(const FILETIME& ft)
-{	
+{
 	LONGLONG ll = (int64)ft.dwHighDateTime << 32;
 	ll = ll + ft.dwLowDateTime - 116444736000000000;
 	return (uint64)(ll / 10000000);
@@ -378,8 +378,8 @@ int64 Beefy::GetFileTimeWrite(const StringImpl& path)
 {
 	WIN32_FILE_ATTRIBUTE_DATA data;
 	if (GetFileAttributesExA(path.c_str(), GetFileExInfoStandard, &data))
-		return (int64)WinConvertFILETIME(data.ftLastWriteTime);	
-	else	
+		return (int64)WinConvertFILETIME(data.ftLastWriteTime);
+	else
 		return 0;
 }
 
@@ -408,18 +408,18 @@ bool Beefy::DirectoryExists(const StringImpl& path, String* outActualName)
 }
 
 void Beefy::BFFatalError(const StringImpl& message, const StringImpl& file, int line)
-{	
+{
 #ifndef BF_NO_BFAPP
-   	if (gBFApp != NULL)
+	if (gBFApp != NULL)
 		gBFApp->mSysDialogCnt++;
 #endif
-	
-	String failMsg = StrFormat("%s in %s:%d", message.c_str(), file.c_str(), line);		
+
+	String failMsg = StrFormat("%s in %s:%d", message.c_str(), file.c_str(), line);
 	BfpSystem_FatalError(failMsg.c_str(), "FATAL ERROR");
 
 #ifndef BF_NO_BFAPP
 	if (gBFApp != NULL)
-		gBFApp->mSysDialogCnt--;	
+		gBFApp->mSysDialogCnt--;
 #endif
 }
 
@@ -456,10 +456,10 @@ static bool GetFileInfo(const char* path, BfpTimeStamp* lastWriteTime, uint32* f
 	//  FindFirstFile will not (though it is slower)
 	WIN32_FIND_DATAW findData = { 0 };
 	HANDLE findHandleFrom = ::FindFirstFileW(UTF8Decode(path).c_str(), &findData);
-		
+
 	if (!IsHandleValid(findHandleFrom))
 		return false;
-	
+
 	if (lastWriteTime != NULL)
 		*lastWriteTime = *(BfpTimeStamp*)&findData.ftLastWriteTime;
 	if (fileAttributes != NULL)
@@ -523,10 +523,10 @@ enum BfpOverlappedKind
 
 struct BfpOverlapped
 {
-	BfpOverlappedKind mKind;	
+	BfpOverlappedKind mKind;
 	volatile HANDLE mHandle;
 	OVERLAPPED mOverlapped;
-	
+
 	virtual ~BfpOverlapped()
 	{
 	}
@@ -616,8 +616,8 @@ struct BfpFileWatcher : public BfpOverlapped
 	String mPath;
 	BfpDirectoryChangeFunc mDirectoryChangeFunc;
 	BfpFileWatcherFlags mFlags;
-	void* mUserData;	
-	char mBuffer[0x10000];		
+	void* mUserData;
+	char mBuffer[0x10000];
 
 	void Monitor()
 	{
@@ -657,7 +657,7 @@ struct BfpFileWatcher : public BfpOverlapped
 				return;
 			}
 			else
-			{				
+			{
 				mDirectoryChangeFunc(this, mUserData, BfpFileChangeKind_Failed, mPath.c_str(), NULL, NULL);
 				return;
 			}
@@ -733,7 +733,7 @@ public:
 			if (!IsHandleValid(mIOCompletionPort))
 				return;
 		}
-		
+
 		for (int i = 0; i < (int)mWorkerThreads.size(); i++)
 			::PostQueuedCompletionStatus(mIOCompletionPort, 0, (ULONG_PTR)1, NULL);
 
@@ -742,9 +742,9 @@ public:
 			::WaitForSingleObject(mWorkerThreads[i], INFINITE);
 			::CloseHandle(mWorkerThreads[i]);
 		}
-			
+
 		::CloseHandle(mIOCompletionPort);
-		mIOCompletionPort = 0;		
+		mIOCompletionPort = 0;
 
 		OutputDebugStrF("IOCP.Shutdown Done\n");
 	}
@@ -788,13 +788,13 @@ public:
 	void Kill(BfpFileWatcher* fileWatcher)
 	{
 		//OutputDebugStrF("IOCP.Kill %@\n", fileWatcher);
-				
+
 		BF_ASSERT(fileWatcher->mHandle == NULL);
 		delete fileWatcher;
 	}
 
 	void Remove(BfpOverlapped* bfpOverlapped)
-	{		
+	{
 		/*if (mShuttingDown)
 		{
 			Kill(fileWatcher);
@@ -809,7 +809,7 @@ public:
 		auto handle = bfpOverlapped->mHandle;
 		bfpOverlapped->mHandle = NULL;
 		BF_FULL_MEMORY_FENCE();
-		::CloseHandle(handle);		
+		::CloseHandle(handle);
 		::PostQueuedCompletionStatus(mIOCompletionPort, 0, (ULONG_PTR)bfpOverlapped | 1, NULL);
 	}
 
@@ -828,10 +828,10 @@ public:
 					break;
 				continue;
 			}
-			
+
 			int32 keyFlags = (int32)completionKey & 3;
 			BfpOverlapped* bfpOverlapped = (BfpOverlapped*)(completionKey & ~3);
-			
+
 			if (keyFlags == 0) // Normal
 			{
 				// Check to see if we have released this
@@ -847,14 +847,14 @@ public:
 					{
 						auto fileWatcher = (BfpFileWatcher*)bfpOverlapped;
 						if (fileWatcher->mHandle != NULL)
-							fileWatcher->Restart();							
+							fileWatcher->Restart();
 						else
 							Kill(fileWatcher);
 					}
 					continue;
 				}
-				
-				bfpOverlapped->Completed(error, numBytes, overlapped);				
+
+				bfpOverlapped->Completed(error, numBytes, overlapped);
 			}
 			else if (keyFlags == 1)
 			{
@@ -876,23 +876,23 @@ public:
 
 	static IOCPManager* Get()
 	{
- 		AutoCrit autoCrit(gBfpCritSect);
- 		if (gIOCPManager == NULL)
- 		{
- 			gIOCPManager = new IOCPManager();
- 			BfpRecordManager(gIOCPManager);
- 		}
- 		return gIOCPManager;		
+		AutoCrit autoCrit(gBfpCritSect);
+		if (gIOCPManager == NULL)
+		{
+			gIOCPManager = new IOCPManager();
+			BfpRecordManager(gIOCPManager);
+		}
+		return gIOCPManager;
 	}
 };
 
 
 static void __cdecl HandlePureVirtualFunctionCall()
-{	
+{
 	BfpSystem_FatalError("Pure virtual function call", NULL);
 }
 
-static void __cdecl HandleInvalidParameter(const wchar_t *, const wchar_t *, const wchar_t *, unsigned int, uintptr_t)
+static void __cdecl HandleInvalidParameter(const wchar_t*, const wchar_t*, const wchar_t*, unsigned int, uintptr_t)
 {
 	BfpSystem_FatalError("Invalid parameter", NULL);
 }
@@ -909,7 +909,7 @@ static int64 gStartQPF = -1;
 static void InitCPUFreq()
 {
 	if (gStartCPUTick == -1)
-	{		
+	{
 		gStartCPUTick = __rdtsc();
 		LARGE_INTEGER largeVal = { 0 };
 		QueryPerformanceCounter(&largeVal);
@@ -918,7 +918,7 @@ static void InitCPUFreq()
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags)
-{	
+{
 	InitCPUFreq();
 
 	::_set_error_mode(_OUT_TO_STDERR);
@@ -929,7 +929,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 
 	::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	::SetErrorMode(SEM_FAILCRITICALERRORS);
-	
+
 	if (version != BFP_VERSION)
 	{
 		BfpSystem_FatalError(StrFormat("Bfp build version '%d' does not match requested version '%d'", BFP_VERSION, version).c_str(), "BFP FATAL ERROR");
@@ -949,10 +949,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 		// Then we install our abort handler.
 		signal(SIGABRT, &AbortHandler);
 
-		CrashCatcher::Get()->Init();		
+		CrashCatcher::Get()->Init();
 		if ((flags & BfpSystemInitFlag_SilentCrash) != 0)
 			CrashCatcher::Get()->SetCrashReportKind(BfpCrashReportKind_None);
-	}	
+	}
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
@@ -1078,7 +1078,7 @@ BFP_EXPORT uint64 BFP_CALLTYPE BfpSystem_InterlockedCompareExchange64(uint64* pt
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_FatalError(const char* error, const char* title)
-{	
+{
 	if (title != NULL)
 		CrashCatcher::Get()->Crash(String(title) + "\n" + String(error));
 	else
@@ -1090,7 +1090,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetCommandLine(char* outStr, int* inOutSt
 	WCHAR* ptr = ::GetCommandLineW();
 
 	UTF16String wString(ptr);
-	String env = UTF8Encode(wString);	
+	String env = UTF8Encode(wString);
 
 	TryStringOut(env, outStr, inOutStrSize, (BfpResult*)outResult);
 }
@@ -1115,7 +1115,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* 
 			break;
 		endPtr++;
 	}
-	
+
 	UTF16String wString(ptr, (int)(endPtr - ptr + 2));
 	String env = UTF8Encode(wString);
 	::FreeEnvironmentStringsW(ptr);
@@ -1126,7 +1126,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* 
 BFP_EXPORT int BFP_CALLTYPE BfpSystem_GetNumLogicalCPUs(BfpSystemResult* outResult)
 {
 	SYSTEM_INFO sysInfo;
-	GetSystemInfo(&sysInfo);	
+	GetSystemInfo(&sysInfo);
 	OUTRESULT(BfpSystemResult_Ok);
 	return sysInfo.dwNumberOfProcessors;
 }
@@ -1137,11 +1137,11 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpSystem_GetCPUTick()
 }
 
 BFP_EXPORT int64 BFP_CALLTYPE BfpSystem_GetCPUTickFreq()
-{	
+{
 	LARGE_INTEGER largeVal = { 0 };
 	QueryPerformanceFrequency(&largeVal);
 	int64 qpfFreq = largeVal.QuadPart;
-	
+
 	if (gStartCPUTick == -1)
 	{
 		InitCPUFreq();
@@ -1194,22 +1194,22 @@ BFP_EXPORT BfpFileWatcher* BFP_CALLTYPE BfpFileWatcher_WatchDirectory(const char
 		OUTRESULT(BfpFileResult_UnknownError);
 		return NULL;
 	}
-		
+
 	BfpFileWatcher* fileWatcher = new BfpFileWatcher();
-	fileWatcher->mKind = BfpOverlappedKind_FileWatcher;	
+	fileWatcher->mKind = BfpOverlappedKind_FileWatcher;
 	fileWatcher->mPath = path;
 	fileWatcher->mDirectoryChangeFunc = callback;
-	fileWatcher->mHandle = directoryHandle;	
+	fileWatcher->mHandle = directoryHandle;
 	fileWatcher->mFlags = flags;
 	fileWatcher->mUserData = userData;
 	IOCPManager::Get()->Add(fileWatcher);
 	fileWatcher->Monitor();
-	
+
 	return fileWatcher;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFileWatcher_Release(BfpFileWatcher* fileWatcher)
-{	
+{
 	IOCPManager::Get()->Remove(fileWatcher);
 	//::CloseHandle(fileWatcher->mFileHandle);
 	//fileWatcher->mFileHandle = NULL;	
@@ -1227,7 +1227,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpProcess_GetCurrentId()
 struct BfpProcess
 {
 	int mProcessId;
-	SYSTEM_PROCESS_INFORMATION* mInfo;	
+	SYSTEM_PROCESS_INFORMATION* mInfo;
 	String mImageName;
 };
 
@@ -1266,7 +1266,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_Enumerate(const char* machineName, BfpPr
 		if (status != STATUS_INFO_LENGTH_MISMATCH)
 		{
 			auto processInfo = (SYSTEM_PROCESS_INFORMATION*)data;
-			
+
 			auto curProcessInfo = processInfo;
 			int count = 0;
 			while (true)
@@ -1279,17 +1279,17 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_Enumerate(const char* machineName, BfpPr
 					break;
 				curProcessInfo = (SYSTEM_PROCESS_INFORMATION*)((intptr)curProcessInfo + curProcessInfo->NextEntryOffset);
 			}
-			
+
 			if (count > *inOutProcessesSize)
 			{
 				*inOutProcessesSize = count;
-				OUTRESULT(BfpProcessResult_InsufficientBuffer);				
+				OUTRESULT(BfpProcessResult_InsufficientBuffer);
 				delete data;
 				return;
 			}
-			
+
 			curProcessInfo = processInfo;
-			count = 0;			
+			count = 0;
 			while (true)
 			{
 				if (curProcessInfo == NULL)
@@ -1304,12 +1304,12 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_Enumerate(const char* machineName, BfpPr
 					memcpy(process->mInfo, curProcessInfo, dataSize);
 
 					UTF16String utf16;
-					utf16.Set(curProcessInfo->ImageName.Buffer, curProcessInfo->ImageName.Length/2);
+					utf16.Set(curProcessInfo->ImageName.Buffer, curProcessInfo->ImageName.Length / 2);
 					process->mImageName = UTF8Encode(utf16);
 
 					outProcesses[count++] = process;
 				}
-				
+
 				if (curProcessInfo->NextEntryOffset == 0)
 					break;
 				curProcessInfo = (SYSTEM_PROCESS_INFORMATION*)((intptr)curProcessInfo + curProcessInfo->NextEntryOffset);
@@ -1323,7 +1323,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_Enumerate(const char* machineName, BfpPr
 
 		allocSize = wantSize + 4096;
 		delete data;
-	}	
+	}
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpProcess_Release(BfpProcess* process)
@@ -1342,7 +1342,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_Release(BfpProcess* process)
 struct MainWindowCache
 {
 	Dictionary<uint32, HWND> mMap;
-	uint32 mLastUpdate;	
+	uint32 mLastUpdate;
 
 	MainWindowCache()
 	{
@@ -1357,7 +1357,7 @@ static BOOL CALLBACK EnumWndProc(HWND hWnd, LPARAM param)
 	//EnumWndData* enumWndData = (EnumWndData*)param;
 
 	DWORD processId = 0;
-	
+
 	::GetWindowThreadProcessId(hWnd, &processId);
 
 	if (gMainWindowCache.mMap.ContainsKey(processId))
@@ -1368,11 +1368,11 @@ static BOOL CALLBACK EnumWndProc(HWND hWnd, LPARAM param)
 	}
 
 	if ((::IsWindowVisible(hWnd)) && (::GetWindow(hWnd, GW_OWNER) == NULL))
-	{	
+	{
 		//if (processId == 6720)
 			//OutputDebugStrF("Set\n");
 
-		gMainWindowCache.mMap[processId] = hWnd;		
+		gMainWindowCache.mMap[processId] = hWnd;
 	}
 
 	return TRUE;
@@ -1401,17 +1401,17 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetMainWindowTitle(BfpProcess* process, 
 	enumWndData.mProcessId = process->mProcessId;*/
 
 	String title;
-	
+
 	if (mainWindow != NULL)
 	{
 		int wantSize = 128;
-		
+
 		while (true)
 		{
 			WCHAR* str = new WCHAR[wantSize];
 
 			int size = ::GetWindowTextW(mainWindow, str, wantSize) + 1;
-			
+
 			if (size <= 0)
 			{
 				delete str;
@@ -1434,7 +1434,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetMainWindowTitle(BfpProcess* process, 
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetProcessName(BfpProcess* process, char* outName, int* inOutNameSize, BfpProcessResult* outResult)
-{			
+{
 	if (process->mImageName.IsEmpty())
 	{
 		HANDLE hProc = ::OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, process->mProcessId);
@@ -1445,11 +1445,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetProcessName(BfpProcess* process, char
 		}
 		WCHAR wName[MAX_PATH];
 		::GetModuleFileNameExW(hProc, NULL, wName, MAX_PATH);
-		::CloseHandle(hProc);		
+		::CloseHandle(hProc);
 		String name = UTF8Encode(wName);
 		process->mImageName = name;
 	}
-	
+
 	TryStringOut(process->mImageName, outName, inOutNameSize, (BfpResult*)outResult);
 }
 
@@ -1548,13 +1548,13 @@ public:
 
 		if (hTmp != INVALID_HANDLE_VALUE)
 			::CloseHandle(hTmp);
-		
+
 		return true;
 	}
 
 	bool StartWithCreateProcess(const char* targetPath, const char* args, const char* workingDir, const char* env, BfpSpawnFlags flags, BfpSpawnResult* outResult)
 	{
-		String fileName = targetPath;		
+		String fileName = targetPath;
 
 		String commandLine;
 
@@ -1586,7 +1586,7 @@ public:
 				commandLine.Append(fileName);
 			}
 		}
-		
+
 		if ((args != NULL) && (args[0] != '0'))
 		{
 			if (!commandLine.IsEmpty())
@@ -1596,10 +1596,10 @@ public:
 
 		STARTUPINFOW startupInfo = { 0 };
 		PROCESS_INFORMATION processInfo = { 0 };
-		
+
 		bool retVal;
 		int32 errorCode = 0;
-		
+
 		//
 		{
 			// set up the streams
@@ -1610,17 +1610,17 @@ public:
 				else if (::GetConsoleWindow() != NULL)
 					startupInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 				else
-					startupInfo.hStdInput = INVALID_HANDLE_VALUE;					
+					startupInfo.hStdInput = INVALID_HANDLE_VALUE;
 
-				if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)				
+				if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
 					CreatePipe(mStandardOutputReadPipeHandle, startupInfo.hStdOutput, false);
-				else				
-					startupInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);				
+				else
+					startupInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 
-				if ((flags & BfpSpawnFlag_RedirectStdError) != 0)				
-					CreatePipe(mStandardErrorReadPipeHandle, startupInfo.hStdError, false);				
-				else				
-					startupInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);				
+				if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
+					CreatePipe(mStandardErrorReadPipeHandle, startupInfo.hStdError, false);
+				else
+					startupInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
 				startupInfo.dwFlags = STARTF_USESTDHANDLES;
 			}
@@ -1628,7 +1628,7 @@ public:
 			// set up the creation flags paramater
 			int32 creationFlags = 0;
 
-			if ((flags & BfpSpawnFlag_NoWindow) != 0) 
+			if ((flags & BfpSpawnFlag_NoWindow) != 0)
 				creationFlags |= CREATE_NO_WINDOW;
 			// set up the environment block parameter			
 
@@ -1651,12 +1651,12 @@ public:
 
 			UTF16String envW;
 			void* envVoidPtr = NULL;
-			
+
 			if ((env != NULL) && (env[0] != 0))
 			{
 				bool useUnicodeEnv = false;
 				if (useUnicodeEnv)
-				{				
+				{
 					const char* envPtr = env;
 					while (true)
 					{
@@ -1676,9 +1676,9 @@ public:
 					envVoidPtr = (void*)env;
 				}
 			}
-			
+
 			retVal = ::CreateProcessW(
-				targetStrPtr,       
+				targetStrPtr,
 				(WCHAR*)UTF8Decode(commandLine).c_str(), // pointer to the command line string
 				NULL,               // pointer to process security attributes, we don't need to inherit the handle
 				NULL,               // pointer to thread security attributes
@@ -1692,7 +1692,7 @@ public:
 
 			if (!retVal)
 				errorCode = ::GetLastError();
-			
+
 			if (processInfo.hThread != INVALID_HANDLE_VALUE)
 				::CloseHandle(processInfo.hThread);
 
@@ -1702,7 +1702,7 @@ public:
 				::CloseHandle(startupInfo.hStdOutput);
 			if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
 				::CloseHandle(startupInfo.hStdError);
-			
+
 			if (!retVal)
 			{
 				if (IsHandleValid(mStandardInputWritePipeHandle))
@@ -1720,21 +1720,21 @@ public:
 					::CloseHandle(mStandardErrorReadPipeHandle);
 					mStandardErrorReadPipeHandle = 0;
 				}
-				
+
 				OUTRESULT(BfpSpawnResult_UnknownError);
 				if (errorCode == ERROR_BAD_EXE_FORMAT || errorCode == ERROR_EXE_MACHINE_TYPE_MISMATCH)
 				{
 					return false;
 				}
 				return false;
-			}			
+			}
 		}
 
-		bool ret = false;		
+		bool ret = false;
 		if (IsHandleValid(processInfo.hProcess))
 		{
 			mHProcess = processInfo.hProcess;
-			mProcessId = processInfo.dwProcessId;			
+			mProcessId = processInfo.dwProcessId;
 			ret = true;
 		}
 
@@ -1764,7 +1764,7 @@ public:
 			shellExecuteInfo.nShow = SW_HIDE;
 		else
 			shellExecuteInfo.nShow = SW_SHOWNORMAL;
-		
+
 		UTF16String fileW;
 		UTF16String verbW;
 		UTF16String argsW;
@@ -1785,7 +1785,7 @@ public:
 			fileW = UTF8Decode(target);
 			shellExecuteInfo.lpFile = fileW.c_str();
 		}
-		
+
 		if ((args != NULL) && (args[0] != 0))
 		{
 			argsW = UTF8Decode(args);
@@ -1797,10 +1797,10 @@ public:
 			dirW = UTF8Decode(workingDir);
 			shellExecuteInfo.lpDirectory = dirW.c_str();
 		}
-		
+
 		shellExecuteInfo.fMask |= SEE_MASK_FLAG_DDEWAIT;
 
-		
+
 
 		BOOL success = ::ShellExecuteExW(&shellExecuteInfo);
 		if (!success)
@@ -1868,9 +1868,9 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* targetPath, const 
 	BfpSpawn* spawn = new BfpSpawn();
 	bool success = false;
 	if ((flags & BfpSpawnFlag_UseShellExecute) != 0)
-		success = spawn->StartWithShellExecute(targetPath, args, workingDir, env, flags, outResult);	
+		success = spawn->StartWithShellExecute(targetPath, args, workingDir, env, flags, outResult);
 	else
-		success = spawn->StartWithCreateProcess(targetPath, args, workingDir, env, flags, outResult);		
+		success = spawn->StartWithCreateProcess(targetPath, args, workingDir, env, flags, outResult);
 	if (!success)
 	{
 		delete spawn;
@@ -1904,7 +1904,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Release(BfpSpawn* spawn)
 BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Kill(BfpSpawn* spawn, int exitCode, BfpKillFlags killFlags, BfpSpawnResult* outResult)
 {
 	//::EnumWindows((WNDENUMPROC)TerminateAppEnum, (LPARAM)spawn->mProcessId);
-		
+
 	if ((killFlags & BfpKillFlag_KillChildren) != 0)
 	{
 		ImportNTDll();
@@ -1967,7 +1967,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Kill(BfpSpawn* spawn, int exitCode, BfpKil
 			for (auto pid : killSet)
 			{
 				if (!killedSet.Add(pid))
-					continue;				
+					continue;
 
 				HANDLE procHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, (DWORD)pid);
 				if (procHandle != NULL)
@@ -1981,28 +1981,28 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Kill(BfpSpawn* spawn, int exitCode, BfpKil
 			}
 		}
 	}
-	
+
 	if (!::TerminateProcess(spawn->mHProcess, (UINT)exitCode))
 	{
 		int lastError = ::GetLastError();
 		OUTRESULT(BfpSpawnResult_UnknownError);
 		return;
-	}	
+	}
 
-//  	BOOL hadConsole = ::FreeConsole();
-//  	::AttachConsole(spawn->mProcessId);
-//  	::SetConsoleCtrlHandler(NULL, true);
-//  	::GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-//  	//::Sleep(2000);
-//  	::FreeConsole();	
-// 	::SetConsoleCtrlHandler(NULL, false);
+	//  	BOOL hadConsole = ::FreeConsole();
+	//  	::AttachConsole(spawn->mProcessId);
+	//  	::SetConsoleCtrlHandler(NULL, true);
+	//  	::GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
+	//  	//::Sleep(2000);
+	//  	::FreeConsole();	
+	// 	::SetConsoleCtrlHandler(NULL, false);
 
-// 	if (!::TerminateProcess(spawn->mHProcess, (UINT)exitCode))
-// 	{
-// 		int lastError = ::GetLastError();
-// 		OUTRESULT(BfpSpawnResult_UnknownError);
-// 		return;
-// 	}
+	// 	if (!::TerminateProcess(spawn->mHProcess, (UINT)exitCode))
+	// 	{
+	// 		int lastError = ::GetLastError();
+	// 		OUTRESULT(BfpSpawnResult_UnknownError);
+	// 		return;
+	// 	}
 	OUTRESULT(BfpSpawnResult_Ok);
 }
 
@@ -2025,19 +2025,19 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_GetStdHandles(BfpSpawn* spawn, BfpFile** o
 	if (outStdIn != NULL)
 	{
 		*outStdIn = new BfpFile(spawn->mStandardInputWritePipeHandle);
-		spawn->mStandardInputWritePipeHandle = 0;		
+		spawn->mStandardInputWritePipeHandle = 0;
 	}
 
 	if (outStdOut != NULL)
 	{
 		*outStdOut = new BfpFile(spawn->mStandardOutputReadPipeHandle);
-		spawn->mStandardOutputReadPipeHandle = 0;		
+		spawn->mStandardOutputReadPipeHandle = 0;
 	}
 
 	if (outStdErr != NULL)
 	{
 		*outStdErr = new BfpFile(spawn->mStandardErrorReadPipeHandle);
-		spawn->mStandardErrorReadPipeHandle = 0;		
+		spawn->mStandardErrorReadPipeHandle = 0;
 	}
 }
 
@@ -2101,13 +2101,13 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_SetName(BfpThread* thread, const char* na
 	if (hThread == NULL)
 		hThread = ::GetCurrentThread();
 
- 	if (gSetThreadDescription != NULL)
- 	{		
- 		gSetThreadDescription(hThread, UTF8Decode(name).c_str());
- 
- 		OUTRESULT(BfpThreadResult_Ok);
- 		return;
- 	}
+	if (gSetThreadDescription != NULL)
+	{
+		gSetThreadDescription(hThread, UTF8Decode(name).c_str());
+
+		OUTRESULT(BfpThreadResult_Ok);
+		return;
+	}
 
 	SetThreadName(::GetThreadId(hThread), name);
 
@@ -2135,11 +2135,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetName(BfpThread* thread, char* outName,
 		return;
 	}
 
-	OUTRESULT(BfpThreadResult_UnknownError);	
+	OUTRESULT(BfpThreadResult_UnknownError);
 }
 
 BFP_EXPORT BfpThread* BFP_CALLTYPE BfpThread_GetCurrent()
-{	
+{
 	return (BfpThread*)::OpenThread(THREAD_ALL_ACCESS, TRUE, ::GetCurrentThreadId());
 }
 
@@ -2161,8 +2161,8 @@ BFP_EXPORT BfpThreadPriority BFP_CALLTYPE BfpThread_GetPriority(BfpThread* threa
 BFP_EXPORT void BFP_CALLTYPE BfpThread_SetPriority(BfpThread* thread, BfpThreadPriority threadPriority, BfpThreadResult* outResult)
 {
 	// Coincidentally, our priority values map to (THREAD_PRIORITY_LOWEST, THREAD_PRIORITY_BELOW_NORMAL, THREAD_PRIORITY_NORMAL, THREAD_PRIORITY_ABOVE_NORMAL, THREAD_PRIORITY_HIGHEST)
-	if (::SetThreadPriority((HANDLE)thread, (int)threadPriority))	
-		OUTRESULT(BfpThreadResult_Ok);	
+	if (::SetThreadPriority((HANDLE)thread, (int)threadPriority))
+		OUTRESULT(BfpThreadResult_Ok);
 	else
 		OUTRESULT(BfpThreadResult_UnknownError);
 }
@@ -2174,7 +2174,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Suspend(BfpThread* thread, BfpThreadResul
 	{
 		int error = GetLastError();
 		BF_DBG_FATAL("Failed BfpThread_Suspend");
-		OUTRESULT(BfpThreadResult_UnknownError);		
+		OUTRESULT(BfpThreadResult_UnknownError);
 		return;
 	}
 	OUTRESULT(BfpThreadResult_Ok);
@@ -2193,32 +2193,165 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Resume(BfpThread* thread, BfpThreadResult
 	OUTRESULT(BfpThreadResult_Ok);
 }
 
+
+// Windows 7 SP1 is the first version of Windows to support the AVX API.
+
+// The value for CONTEXT_XSTATE has changed between Windows 7 and
+// Windows 7 SP1 and greater.
+// While the value will be correct for future SDK headers, we need to set 
+// this value manually when building with a Windows 7 SDK for running on 
+// Windows 7 SPI OS bits.
+
+#undef CONTEXT_XSTATE
+
+#if defined(_M_X64)
+#define CONTEXT_XSTATE                      (0x00100040)
+#else
+#define CONTEXT_XSTATE                      (0x00010040)
+#endif
+
+// Since the AVX API is not declared in the Windows 7 SDK headers and 
+// since we don't have the proper libs to work with, we will declare 
+// the API as function pointers and get them with GetProcAddress calls 
+// from kernel32.dll.  We also need to set some #defines.
+
+#define XSTATE_AVX                          (XSTATE_GSSE)
+#define XSTATE_MASK_AVX                     (XSTATE_MASK_GSSE)
+
+typedef DWORD64(WINAPI* PGETENABLEDXSTATEFEATURES)();
+static PGETENABLEDXSTATEFEATURES pfnGetEnabledXStateFeatures = NULL;
+
+typedef BOOL(WINAPI* PINITIALIZECONTEXT)(PVOID Buffer, DWORD ContextFlags, PCONTEXT* Context, PDWORD ContextLength);
+static PINITIALIZECONTEXT pfnInitializeContext = NULL;
+
+typedef BOOL(WINAPI* PGETXSTATEFEATURESMASK)(PCONTEXT Context, PDWORD64 FeatureMask);
+static PGETXSTATEFEATURESMASK pfnGetXStateFeaturesMask = NULL;
+
+typedef PVOID(WINAPI* LOCATEXSTATEFEATURE)(PCONTEXT Context, DWORD FeatureId, PDWORD Length);
+static LOCATEXSTATEFEATURE pfnLocateXStateFeature = NULL;
+
+typedef BOOL(WINAPI* SETXSTATEFEATURESMASK)(PCONTEXT Context, DWORD64 FeatureMask);
+static SETXSTATEFEATURESMASK pfnSetXStateFeaturesMask = NULL;
+
+static uint8 ContextBuffer[4096];
+static CONTEXT* CaptureRegistersEx(HANDLE hThread, intptr*& curPtr)
+{
+	PCONTEXT Context;
+	DWORD ContextSize;
+	DWORD64 FeatureMask;
+	DWORD FeatureLength;	
+	BOOL Success;
+	PM128A Xmm;
+	PM128A Ymm;
+	
+	if (pfnGetEnabledXStateFeatures == (PGETENABLEDXSTATEFEATURES)-1)	
+		return NULL;
+	
+	if (pfnGetEnabledXStateFeatures == NULL)
+	{
+		HMODULE hm = GetModuleHandleA("kernel32.dll");
+		if (hm == NULL)
+		{
+			pfnGetEnabledXStateFeatures = (PGETENABLEDXSTATEFEATURES)-1;			
+			return NULL;
+		}
+
+		pfnGetEnabledXStateFeatures = (PGETENABLEDXSTATEFEATURES)GetProcAddress(hm, "GetEnabledXStateFeatures");
+		pfnInitializeContext = (PINITIALIZECONTEXT)GetProcAddress(hm, "InitializeContext");
+		pfnGetXStateFeaturesMask = (PGETXSTATEFEATURESMASK)GetProcAddress(hm, "GetXStateFeaturesMask");
+		pfnLocateXStateFeature = (LOCATEXSTATEFEATURE)GetProcAddress(hm, "LocateXStateFeature");
+		pfnSetXStateFeaturesMask = (SETXSTATEFEATURESMASK)GetProcAddress(hm, "SetXStateFeaturesMask");
+
+		if (pfnGetEnabledXStateFeatures == NULL
+			|| pfnInitializeContext == NULL
+			|| pfnGetXStateFeaturesMask == NULL
+			|| pfnLocateXStateFeature == NULL
+			|| pfnSetXStateFeaturesMask == NULL)
+		{
+			pfnGetEnabledXStateFeatures = (PGETENABLEDXSTATEFEATURES)-1;			
+			return NULL;
+		}
+	}
+
+	FeatureMask = pfnGetEnabledXStateFeatures();
+	if ((FeatureMask & XSTATE_MASK_AVX) == 0)	
+		return NULL;	
+
+	ContextSize = 0;
+	Success = pfnInitializeContext(NULL,
+		CONTEXT_ALL | CONTEXT_XSTATE | CONTEXT_EXCEPTION_REQUEST,
+		NULL,
+		&ContextSize);
+
+	if (ContextSize > sizeof(ContextBuffer))
+		return NULL;
+
+	Success = pfnInitializeContext(ContextBuffer,
+		CONTEXT_ALL | CONTEXT_XSTATE | CONTEXT_EXCEPTION_REQUEST,
+		&Context,
+		&ContextSize);
+
+	if (Success == FALSE)	
+		return NULL;	
+
+	Success = pfnSetXStateFeaturesMask(Context, XSTATE_MASK_AVX);
+	if (Success == FALSE)	
+		return Context;	
+
+	Success = GetThreadContext(hThread, Context);	
+	if (Success == FALSE)	
+		return Context;	
+
+	Success = pfnGetXStateFeaturesMask(Context, &FeatureMask);
+	if (Success == FALSE)
+		return Context;	
+
+	if ((FeatureMask & XSTATE_MASK_AVX) == 0)	
+		return Context;	
+
+	Xmm = (PM128A)pfnLocateXStateFeature(Context, XSTATE_LEGACY_SSE, &FeatureLength);
+	Ymm = (PM128A)pfnLocateXStateFeature(Context, XSTATE_AVX, NULL);
+	memcpy(curPtr, Ymm, FeatureLength);
+	curPtr += FeatureLength / sizeof(intptr);
+	return Context;
+}
+
 BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr* outStackPtr, intptr* outIntRegs, int* inOutIntRegCount, BfpThreadResult* outResult)
 {
 	CONTEXT ctx;
-	memset(&ctx, 0, sizeof(CONTEXT));
-	ctx.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL;
-	BOOL success = ::GetThreadContext((HANDLE)thread, &ctx);
-	if (!success)
+	intptr* curPtr = outIntRegs;
+	CONTEXT* ctxPtr = NULL;
+
+	if (*inOutIntRegCount > 48)
+		ctxPtr = CaptureRegistersEx((HANDLE)thread, curPtr);
+
+	if (ctxPtr == NULL)
 	{
-		int error = GetLastError();
-		OUTRESULT(BfpThreadResult_UnknownError);
-		return;
+		memset(&ctx, 0, sizeof(CONTEXT));
+		ctx.ContextFlags = CONTEXT_ALL;
+		BOOL success = ::GetThreadContext((HANDLE)thread, (CONTEXT*)&ctx);
+		if (!success)
+		{
+			int error = GetLastError();
+			OUTRESULT(BfpThreadResult_UnknownError);
+			return;
+		}
+		ctxPtr = &ctx;
+
+		DWORD lastError = GetLastError();
+		BF_ASSERT(success);
 	}
-	
-	DWORD lastError = GetLastError();
-	BF_ASSERT(success);
 
 #ifdef BF32
-	*outStackPtr = (intptr)ctx.Esp;
-	if (*inOutIntRegCount < 7)
+	* outStackPtr = (intptr)ctxPtr->Esp;
+	if (*inOutIntRegCount < (int)(curPtr - outIntRegs) + 7)
 	{
 		OUTRESULT(BfpThreadResult_InsufficientBuffer);
 		return;
 	}
 #else
-	*outStackPtr = (intptr)ctx.Rsp;
-	if (*inOutIntRegCount < 15)
+	* outStackPtr = (intptr)ctxPtr->Rsp;
+	if (*inOutIntRegCount < (int)(curPtr - outIntRegs) + 48)
 	{
 		OUTRESULT(BfpThreadResult_InsufficientBuffer);
 		return;
@@ -2229,40 +2362,40 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr
 
 	if (outIntRegs == NULL)
 		return;
-	
-	intptr* curPtr = outIntRegs;
-	
+
 #ifdef BF32	
-	*(curPtr++) = (intptr)ctx.Eax;
-	*(curPtr++) = (intptr)ctx.Ebx;
-	*(curPtr++) = (intptr)ctx.Ecx;
-	*(curPtr++) = (intptr)ctx.Edx;
-	*(curPtr++) = (intptr)ctx.Esi;
-	*(curPtr++) = (intptr)ctx.Edi;
-	*(curPtr++) = (intptr)ctx.Ebp;
+	* (curPtr++) = (intptr)ctxPtr->Eax;
+	*(curPtr++) = (intptr)ctxPtr->Ebx;
+	*(curPtr++) = (intptr)ctxPtr->Ecx;
+	*(curPtr++) = (intptr)ctxPtr->Edx;
+	*(curPtr++) = (intptr)ctxPtr->Esi;
+	*(curPtr++) = (intptr)ctxPtr->Edi;
+	*(curPtr++) = (intptr)ctxPtr->Ebp;
 #else			
-	*(curPtr++) = (intptr)ctx.SegFs; // Testing
-	*(curPtr++) = (intptr)ctx.Rax;
-	*(curPtr++) = (intptr)ctx.Rbx;
-	*(curPtr++) = (intptr)ctx.Rcx;
-	*(curPtr++) = (intptr)ctx.Rdx;
-	*(curPtr++) = (intptr)ctx.Rsi;
-	*(curPtr++) = (intptr)ctx.Rdi;
-	*(curPtr++) = (intptr)ctx.Rbp;
-	*(curPtr++) = (intptr)ctx.R8;
-	*(curPtr++) = (intptr)ctx.R9;
-	*(curPtr++) = (intptr)ctx.R10;
-	*(curPtr++) = (intptr)ctx.R11;
-	*(curPtr++) = (intptr)ctx.R12;
-	*(curPtr++) = (intptr)ctx.R13;
-	*(curPtr++) = (intptr)ctx.R14;
-	*(curPtr++) = (intptr)ctx.R15;	
+	* (curPtr++) = (intptr)ctxPtr->SegFs; // Testing
+	*(curPtr++) = (intptr)ctxPtr->Rax;
+	*(curPtr++) = (intptr)ctxPtr->Rbx;
+	*(curPtr++) = (intptr)ctxPtr->Rcx;
+	*(curPtr++) = (intptr)ctxPtr->Rdx;
+	*(curPtr++) = (intptr)ctxPtr->Rsi;
+	*(curPtr++) = (intptr)ctxPtr->Rdi;
+	*(curPtr++) = (intptr)ctxPtr->Rbp;
+	*(curPtr++) = (intptr)ctxPtr->R8;
+	*(curPtr++) = (intptr)ctxPtr->R9;
+	*(curPtr++) = (intptr)ctxPtr->R10;
+	*(curPtr++) = (intptr)ctxPtr->R11;
+	*(curPtr++) = (intptr)ctxPtr->R12;
+	*(curPtr++) = (intptr)ctxPtr->R13;
+	*(curPtr++) = (intptr)ctxPtr->R14;
+	*(curPtr++) = (intptr)ctxPtr->R15;
+	memcpy(curPtr, &ctxPtr->Xmm0, 16 * 16);
+	curPtr += (16 * 16) / sizeof(intptr);	
 #endif
-	
-	*inOutIntRegCount = (int)(curPtr - outIntRegs);	
+
+	* inOutIntRegCount = (int)(curPtr - outIntRegs);
 }
 
-struct BfpCritSect																																																														
+struct BfpCritSect
 {
 	CRITICAL_SECTION mCritSect;
 };
@@ -2312,7 +2445,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_GetStackInfo(BfpThreadInfo* threadInf
 	}
 
 	if ((threadInfo->mStackBase == 0) || ((flags & BfpThreadInfoFlags_NoCache) != 0))
-	{		
+	{
 		MEMORY_BASIC_INFORMATION stackInfo = { 0 };
 		// We subtract one page for our request. VirtualQuery rounds UP to the next page.
 		// Unfortunately, the stack grows down. If we're on the first page (last page in the
@@ -2336,10 +2469,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_GetStackInfo(BfpThreadInfo* threadInf
 ///
 
 BFP_EXPORT BfpCritSect* BFP_CALLTYPE BfpCritSect_Create()
-{	
+{
 	BfpCritSect* critSect = new BfpCritSect();
 	::InitializeCriticalSection(&critSect->mCritSect);
-	
+
 	return critSect;
 }
 
@@ -2370,7 +2503,7 @@ BFP_EXPORT bool BFP_CALLTYPE BfpCritSect_TryEnter(BfpCritSect* critSect, int wai
 	uint32 start = BFTickCount();
 	while ((int)(BFTickCount() - start) < waitMS)
 	{
-		if (::TryEnterCriticalSection(&critSect->mCritSect))					
+		if (::TryEnterCriticalSection(&critSect->mCritSect))
 			return true;
 		BfpThread_Yield();
 	}
@@ -2481,7 +2614,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDynLib_GetFilePath(BfpDynLib* lib, char* outPath
 	WCHAR cPath[4096];
 	::GetModuleFileNameW((HMODULE)lib, cPath, 4096);
 	path = UTF8Encode(cPath);
-	
+
 	TryStringOut(path, outPath, inOutPathSize, (BfpResult*)outResult);
 }
 
@@ -2508,7 +2641,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Create(const char* path, BfpFileResult
 		default:
 			OUTRESULT(BfpFileResult_UnknownError);
 			break;
-		}		
+		}
 	}
 	else
 	{
@@ -2525,7 +2658,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Rename(const char* oldName, const char
 		int err = ::GetLastError();
 		switch (err)
 		{
-		case ERROR_ALREADY_EXISTS:			
+		case ERROR_ALREADY_EXISTS:
 			OUTRESULT(BfpFileResult_AlreadyExists);
 			break;
 		case ERROR_FILE_NOT_FOUND:
@@ -2562,7 +2695,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Delete(const char* path, BfpFileResult
 		}
 	}
 	else
-	{		
+	{
 		OUTRESULT(BfpFileResult_Ok);
 	}
 }
@@ -2573,17 +2706,17 @@ BFP_EXPORT bool BFP_CALLTYPE BfpDirectory_Exists(const char* path)
 
 	UTF16String wpath = UTF8Decode(path);
 	if (wpath.length() > 0)
-	{ 
+	{
 		uint16& endC = wpath[wpath.length() - 1];
 		if ((endC == '\\') || (endC == '/'))
 		{
-			wpath.pop_back();			
+			wpath.pop_back();
 		}
 	}
 	HANDLE handleVal = FindFirstFileW(wpath.c_str(), &findData);
 	if (handleVal == INVALID_HANDLE_VALUE)
 		return false;
-	FindClose(handleVal);	
+	FindClose(handleVal);
 	return (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
@@ -2622,9 +2755,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sy
 	case BfpSysDirectoryKind_Desktop_Common:
 		_GetKnownFolder(FOLDERID_PublicDesktop);
 		return;
-	case BfpSysDirectoryKind_AppData_Local:		
+	case BfpSysDirectoryKind_AppData_Local:
 		_GetKnownFolder(FOLDERID_LocalAppData);
-		return;		
+		return;
 	case BfpSysDirectoryKind_AppData_LocalLow:
 		_GetKnownFolder(FOLDERID_LocalAppDataLow);
 		return;
@@ -2636,7 +2769,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sy
 		return;
 	case BfpSysDirectoryKind_Programs_Common:
 		_GetKnownFolder(FOLDERID_CommonPrograms);
-		return;	
+		return;
 	case BfpSysDirectoryKind_Documents:
 		_GetKnownFolder(FOLDERID_Documents);
 		return;
@@ -2680,7 +2813,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 				isOverlapped = true;
 			}
 			else if ((createFlags & BfpFileCreateFlag_NonBlocking) != 0)
-				pipeMode |= PIPE_NOWAIT;			
+				pipeMode |= PIPE_NOWAIT;
 
 			HANDLE handle = ::CreateNamedPipeW(wPath.c_str(), openMode, pipeMode, PIPE_UNLIMITED_INSTANCES, 8192, 8192, 0, NULL);
 			if (handle == INVALID_HANDLE_VALUE)
@@ -2711,7 +2844,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 
 			return bfpFile;
 		}
-	}	
+	}
 
 	DWORD desiredAccess = 0;
 	if ((createFlags & BfpFileCreateFlag_Append) != 0)
@@ -2730,7 +2863,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 	if ((createFlags & BfpFileCreateFlag_ShareWrite) != 0)
 		shareMode |= FILE_SHARE_WRITE;
 	if ((createFlags & BfpFileCreateFlag_ShareDelete) != 0)
-		shareMode |= FILE_SHARE_DELETE;	
+		shareMode |= FILE_SHARE_DELETE;
 
 	DWORD creationDisposition = 0;
 	if (createKind == BfpFileCreateKind_CreateAlways)
@@ -2762,7 +2895,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 	}
 
 	attributes = FileAttributes_WinToBFP(createdFileAttrs);
-	
+
 	if ((createFlags & BfpFileCreateFlag_WriteThrough) != 0)
 		desiredAccess |= FILE_FLAG_WRITE_THROUGH;
 	if ((createFlags & BfpFileCreateFlag_DeleteOnClose) != 0)
@@ -2802,7 +2935,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 
 BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetStd(BfpFileStdKind kind, BfpFileResult* outResult)
 {
-	HANDLE h = INVALID_HANDLE_VALUE;	
+	HANDLE h = INVALID_HANDLE_VALUE;
 	switch (kind)
 	{
 	case BfpFileStdKind_StdOut:
@@ -2819,13 +2952,13 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetStd(BfpFileStdKind kind, BfpFileResu
 	{
 		OUTRESULT(BfpFileResult_NotFound);
 		return NULL;
-	}	
+	}
 
 	BfpFile* bfpFile = new BfpFile();
 	bfpFile->mHandle = h;
 	bfpFile->mIsStd = true;
-	
-	return bfpFile;	
+
+	return bfpFile;
 }
 
 BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetSystemHandle(BfpFile* file)
@@ -2834,7 +2967,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetSystemHandle(BfpFile* file)
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Release(BfpFile* file)
-{			
+{
 	if ((file->mHandle != INVALID_HANDLE_VALUE) && (!file->mIsStd))
 		::CloseHandle(file->mHandle);
 
@@ -2850,11 +2983,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Close(BfpFile* file, BfpFileResult* outResu
 		OUTRESULT(BfpFileResult_Ok);
 	}
 	else
-		OUTRESULT(BfpFileResult_UnknownError);	
+		OUTRESULT(BfpFileResult_UnknownError);
 }
 
 BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Write(BfpFile* file, const void* buffer, intptr size, int timeoutMS, BfpFileResult* outResult)
-{	
+{
 	DWORD bytesWritten = 0;
 	if (::WriteFile(file->mHandle, buffer, (uint32)size, &bytesWritten, NULL))
 	{
@@ -2899,7 +3032,7 @@ static void WINAPI OverlappedReadComplete(DWORD dwErrorCode, DWORD dwNumberOfByt
 BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr size, int timeoutMS, BfpFileResult* outResult)
 {
 	if (timeoutMS != -1)
-	{	
+	{
 		if (file->mAsyncData == NULL)
 		{
 			OUTRESULT(BfpFileResult_InvalidParameter);
@@ -2914,7 +3047,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 
 			//TODO: this doesn't set file stream location.  It only works for streams like pipes, sockets, etc
 			if (::ReadFileEx(file->mHandle, buffer, (uint32)size, &overlapped, OverlappedReadComplete))
-			{				
+			{
 				if (!file->mAsyncData->WaitAndResetEvent(timeoutMS))
 				{
 					::CancelIoEx(file->mHandle, &overlapped);
@@ -2928,13 +3061,13 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 
 				if (overlapped.mErrorCode == 0)
 				{
-					
+
 				}
 				else if (overlapped.mErrorCode == ERROR_OPERATION_ABORTED)
 				{
 					OUTRESULT(BfpFileResult_Timeout);
 					return 0;
-				}				
+				}
 			}
 			else
 			{
@@ -2949,16 +3082,16 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 						{
 							if (!file->mAsyncData->WaitAndResetEvent(timeoutMS))
 							{
-								::CancelIoEx(file->mHandle, &overlapped);								
+								::CancelIoEx(file->mHandle, &overlapped);
 								// Clear event set by CancelIoEx
 								file->mAsyncData->WaitAndResetEvent(0);
-								
+
 								OUTRESULT(BfpFileResult_Timeout);
-								return 0;								
+								return 0;
 							}
 						}
 					}
-					
+
 					// Now we have a connection, so retry the read...
 					continue;
 				}
@@ -2977,9 +3110,9 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 	DWORD bytesRead = 0;
 	if (::ReadFile(file->mHandle, buffer, (uint32)size, &bytesRead, NULL))
 	{
-		
+
 		if (bytesRead != size)
-			OUTRESULT(BfpFileResult_PartialData);				
+			OUTRESULT(BfpFileResult_PartialData);
 		else
 			OUTRESULT(BfpFileResult_Ok);
 		return bytesRead;
@@ -2994,7 +3127,7 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 	default:
 		OUTRESULT(BfpFileResult_UnknownError);
 		break;
-	}	
+	}
 
 	return bytesRead;
 }
@@ -3051,7 +3184,7 @@ BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path)
 }
 
 BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFile_GetAttributes(const char* path, BfpFileResult* outResult)
-{	
+{
 	uint32 fileAttributes;
 	GetFileInfo(path, NULL, &fileAttributes);
 	return FileAttributes_WinToBFP(fileAttributes);
@@ -3070,7 +3203,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_SetAttributes(const char* path, BfpFileAttr
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldName, const char* newName, BfpFileCopyKind copyKind, BfpFileResult* outResult)
 {
 	if (copyKind == BfpFileCopyKind_IfNewer)
-	{		
+	{
 		BfpTimeStamp fromTime = 0;
 		GetFileInfo(oldName, &fromTime, NULL);
 		BfpTimeStamp toTime = 0;
@@ -3106,7 +3239,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldName, const char* newNa
 	}
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpFile_Rename(const char* oldName, const char* newName, BfpFileResult* outResult) 
+BFP_EXPORT void BFP_CALLTYPE BfpFile_Rename(const char* oldName, const char* newName, BfpFileResult* outResult)
 {
 	UTF16String wOldPath = UTF8Decode(oldName);
 	UTF16String wNewPath = UTF8Decode(newName);
@@ -3175,11 +3308,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetTempFileName(char* outName, int* inOutNa
 	WCHAR wPath[4096];
 	wPath[0] = 0;
 	::GetTempPathW(4096, wPath);
-	
+
 	WCHAR wFileName[4096];
 	wFileName[0] = 0;
 	GetTempFileNameW(wPath, L"tmp", 0, wFileName);
-	
+
 	String str = UTF8Encode(wFileName);
 	TryStringOut(str, outName, inOutNameSize, (BfpResult*)outResult);
 }
@@ -3189,7 +3322,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetFullPath(const char* inPath, char* outPa
 	WCHAR wPath[4096];
 	wPath[0] = 0;
 	GetFullPathNameW(UTF8Decode(inPath).c_str(), 4096, wPath, NULL);
-	
+
 	String str = UTF8Encode(wPath);
 	TryStringOut(str, outPath, inOutPathSize, (BfpResult*)outResult);
 }
@@ -3198,35 +3331,35 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 {
 	String inPath = inPathC;
 	String outPath;
-	
+
 	// Check for '/../' backtracking - handle those first
 	{
 		int i = 0;
-		int32 lastComponentStart = -1;		
+		int32 lastComponentStart = -1;
 		String subName;
-		
+
 		while (i < inPath.mLength)
 		{
 			// skip until path separator
 			while ((i < inPath.mLength) && (inPath[i] != DIR_SEP_CHAR) && (inPath[i] != DIR_SEP_CHAR_ALT))
 				++i;
-			
+
 			if (lastComponentStart != -1)
 			{
 				if ((i - lastComponentStart == 2) && (inPath[lastComponentStart] == '.') && (inPath[lastComponentStart + 1] == '.'))
 				{
 					// Backtrack
-					while ((lastComponentStart > 0) && 
+					while ((lastComponentStart > 0) &&
 						((inPath[lastComponentStart - 1] == DIR_SEP_CHAR) || (inPath[lastComponentStart - 1] == DIR_SEP_CHAR_ALT)))
 						lastComponentStart--;
 					while ((lastComponentStart > 0) && (inPath[lastComponentStart - 1] != DIR_SEP_CHAR) && (inPath[lastComponentStart - 1] != DIR_SEP_CHAR_ALT))
 						lastComponentStart--;
 					inPath.Remove(lastComponentStart, i - lastComponentStart + 1);
 					i = lastComponentStart;
-					continue;					
+					continue;
 				}
 				else if ((i - lastComponentStart == 1) && (inPath[lastComponentStart] == '.'))
-				{					
+				{
 					inPath.Remove(lastComponentStart, i - lastComponentStart + 1);
 					i = lastComponentStart;
 					continue;
@@ -3238,12 +3371,12 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 			while ((i < inPath.mLength) && ((inPath[i] == DIR_SEP_CHAR) || (inPath[i] == DIR_SEP_CHAR_ALT)))
 				++i;
 
-			lastComponentStart = i;			
+			lastComponentStart = i;
 		}
 	}
 
 	int32 i = 0;
-	
+
 	// for network paths (\\server\share\RestOfPath), getting the display
 	// name mangles it into unusable form (e.g. "\\server\share" turns
 	// into "share on server (server)"). So detect this case and just skip
@@ -3306,7 +3439,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 		for (int j = 0; j < (int)subName.length(); j++)
 			if (subName[j] == DIR_SEP_CHAR_ALT)
 				subName[j] = DIR_SEP_CHAR;
-		info.szDisplayName[0] = 0;		
+		info.szDisplayName[0] = 0;
 		int32 size = (int32)sizeof(SHFILEINFOW);
 
 		WIN32_FIND_DATAW findData;
@@ -3315,7 +3448,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 		{
 			outPath.Append(UTF8Encode(findData.cFileName));
 			FindClose(handleVal);
-		}		
+		}
 		else
 		{
 			// most likely file does not exist.
@@ -3327,11 +3460,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 		// Ignore multiple slashes in a row
 		while ((i < length) && ((inPath[i] == DIR_SEP_CHAR) || (inPath[i] == DIR_SEP_CHAR_ALT)))
 			++i;
-		
+
 		lastComponentStart = i;
-		addSeparator = true;		
+		addSeparator = true;
 	}
-	
+
 	TryStringOut(outPath, outPathC, inOutPathSize, (BfpResult*)outResult);
 }
 
@@ -3352,7 +3485,7 @@ static bool BfpFindFileData_CheckFilter(BfpFindFileData* findData)
 	bool isDir = (findData->mFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 	if (isDir)
 	{
-		if ((findData->mFlags & BfpFindFileFlag_Directories) != 0)			
+		if ((findData->mFlags & BfpFindFileFlag_Directories) != 0)
 		{
 			if ((wcscmp(findData->mFindData.cFileName, L".") == 0) || (wcscmp(findData->mFindData.cFileName, L"..") == 0))
 			{
@@ -3365,7 +3498,7 @@ static bool BfpFindFileData_CheckFilter(BfpFindFileData* findData)
 	{
 		if ((findData->mFlags & BfpFindFileFlag_Files) != 0)
 			return true;
-	}	
+	}
 	return false;
 }
 
@@ -3375,7 +3508,7 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
 
 	BfpFindFileData* findData = new BfpFindFileData();
 	findData->mFlags = flags;
-	
+
 	FINDEX_SEARCH_OPS searchOps;
 	if ((flags & BfpFindFileFlag_Files) == 0)
 		searchOps = FindExSearchLimitToDirectories;
@@ -3398,7 +3531,7 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
 		delete findData;
 		return NULL;
 	}
-	
+
 	if (!BfpFindFileData_CheckFilter(findData))
 	{
 		if (!BfpFindFileData_FindNextFile(findData))
@@ -3464,20 +3597,20 @@ BFP_EXPORT void BFP_CALLTYPE BfpFindFileData_Release(BfpFindFileData* findData)
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetCurrent(char* outPath, int* inOutPathSize, BfpFileResult* outResult)
-{	
+{
 	wchar_t* wCwdStr = _wgetcwd(NULL, 0);
 	String str = UTF8Encode(wCwdStr);
 	free(wCwdStr);
-	TryStringOut(str, outPath, inOutPathSize, (BfpResult*)outResult);	
+	TryStringOut(str, outPath, inOutPathSize, (BfpResult*)outResult);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpDirectory_SetCurrent(const char* path, BfpFileResult* outResult)
 {
 	UTF16String wPath = UTF8Decode(path);
 	if (_wchdir(wPath.c_str()) == -1)
-		OUTRESULT(BfpFileResult_UnknownError);	
-	else	
-		OUTRESULT(BfpFileResult_Ok);	
+		OUTRESULT(BfpFileResult_UnknownError);
+	else
+		OUTRESULT(BfpFileResult_Ok);
 }
 
 BFP_EXPORT int BFP_CALLTYPE BfpStack_CaptureBackTrace(int framesToSkip, intptr* outFrames, int wantFrameCount)
