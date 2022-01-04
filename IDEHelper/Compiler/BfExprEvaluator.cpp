@@ -19524,7 +19524,7 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		{
 			if (mModule->PreFail())
 			{
-				if ((thisValue.mType->IsPointer()) && (thisValue.mType->GetUnderlyingType()->IsObjectOrInterface()))
+				if ((thisValue) && (thisValue.mType->IsPointer()) && (thisValue.mType->GetUnderlyingType()->IsObjectOrInterface()))
 					mModule->Fail(StrFormat("Members cannot be referenced on type '%s' because the type is a pointer to a reference type (ie: a double-reference).", 
 						mModule->TypeToString(thisValue.mType).c_str()), nameRefNode);
 				else if (thisValue)
