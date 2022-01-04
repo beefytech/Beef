@@ -6455,6 +6455,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if (moduleMethodInstance)
 					{
 						auto ceFunction = mCeMachine->QueueMethod(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc);
+						ceFunction->mCeFunctionInfo->mRefCount++;
+						mCeMachine->DerefMethodInfo(callEntry.mFunctionInfo);
 						callEntry.mFunctionInfo = ceFunction->mCeFunctionInfo;
 					}
 				}
@@ -8209,7 +8211,7 @@ BfMethodInstance* CeMachine::GetMethodInstance(int64 methodHandle)
 }
 
 CeFunction* CeMachine::QueueMethod(BfMethodInstance* methodInstance, BfIRValue func)
-{	
+{
 	if (mPreparingFunction != NULL)
 	{
 		auto curOwner = mPreparingFunction->mMethodInstance->GetOwner();
