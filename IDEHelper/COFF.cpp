@@ -6385,7 +6385,12 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 			{
 				inlineDepth++;
 			}
-			break;		
+			break;	
+		case S_FILESTATIC:
+			{
+				FILESTATICSYM& fileStaticSym = *(FILESTATICSYM*)dataStart;
+			}
+			break;
 		default:
 			if (!mFailed)
 				Fail(StrFormat("Unknown symbol type '0x%X' in EvaluateLocation", symType));
