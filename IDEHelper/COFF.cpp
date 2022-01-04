@@ -6387,7 +6387,9 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 			}
 			break;		
 		default:
-			BF_FATAL("Not handled");
+			if (!mFailed)
+				Fail(StrFormat("Unknown symbol type '0x%X' in EvaluateLocation", symType));
+			return 0;
 		}
 
 		if (rangeInfo != NULL)
