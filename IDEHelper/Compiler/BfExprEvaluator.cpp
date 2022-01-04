@@ -4294,7 +4294,11 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		{
 			startCheckType = target.mType->ToTypeInstance();
 			if ((startCheckType == NULL) && (target.mType->IsPointer()))
-				startCheckType = ((BfPointerType*) target.mType)->mElementType->ToTypeInstance();
+			{
+				startCheckType = ((BfPointerType*)target.mType)->mElementType->ToTypeInstance();
+				if ((startCheckType != NULL) && (!startCheckType->IsValueType()))
+					return BfTypedValue();
+			}
 		}
 		//BF_ASSERT(startCheckType != NULL);
 	}	
@@ -8966,7 +8970,15 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		else if (target.mType != NULL)
 		{
 			if (mModule->PreFail())
-				mModule->Fail(StrFormat("Method '%s' does not exist in type '%s'", methodName.c_str(), mModule->TypeToString(target.mType).c_str()), targetSrc);
+			{
+			 	if ((origTarget.mType->IsPointer()) && (origTarget.mType->GetUnderlyingType()->IsObjectOrInterface()))
+			 	{
+			 		mModule->Fail(StrFormat("Methods cannot be called on type '%s' because the type is a pointer to a reference type (ie: a double-reference).", 
+			 			mModule->TypeToString(origTarget.mType).c_str()), targetSrc);
+			 	}
+				else
+					mModule->Fail(StrFormat("Method '%s' does not exist in type '%s'", methodName.c_str(), mModule->TypeToString(target.mType).c_str()), targetSrc);
+			}
 		}
 		else
 		{
@@ -9585,7 +9597,7 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 	{
 		FixitAddMember(typeInst, mExpectingType, nameNode->mRight->ToString(), false);	
 	}
-	mModule->Fail("Unable to find member", nameNode->mRight);		
+	mModule->Fail(StrFormat("Unable to find member '%s' in '%s'", fieldName.c_str(), mModule->TypeToString(lookupType).c_str()), nameNode->mRight);		
 }
 
 void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode* nameLeft, BfIdentifierNode* nameRight, bool ignoreInitialError, bool* hadError)
@@ -9790,7 +9802,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	{
 		FixitAddMember(typeInst, mExpectingType, nameRight->ToString(), false);
 	}
-	mModule->Fail("Unable to find member", nameRight);
+	mModule->Fail(StrFormat("Unable to find member '%s' in '%s'", fieldName.c_str(), mModule->TypeToString(lookupType).c_str()), nameRight);
 }
 
 void BfExprEvaluator::LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, bool ignoreIdentifierNotFoundError)
@@ -9876,7 +9888,7 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, 
 	if ((mResult) || (mPropDef != NULL))
 		return;
 
-	mModule->Fail("Unable to find member", nameNode->mRight);
+	mModule->Fail(StrFormat("Unable to find member '%s' in '%s'", fieldName.c_str(), mModule->TypeToString(mResult.mType).c_str()), nameNode->mRight);
 }
 
 void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifierNode* nameLeft, BfIdentifierNode* nameRight, bool ignoreIdentifierNotFoundError)
@@ -9995,9 +10007,8 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 		return;
 
 	mModule->CheckTypeRefFixit(nameLeft);
-	mModule->Fail("Unable to find member", nameRight);
+	mModule->Fail(StrFormat("Unable to find member '%s' in '%s'", fieldName.c_str(), mModule->TypeToString(mResult.mType).c_str()), nameRight);
 }
-
 
 void BfExprEvaluator::Visit(BfQualifiedNameNode* nameNode)
 {
@@ -14913,14 +14924,6 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 		return target;
 	}
 
-	if ((target.mType->IsPointer()) && (target.mType->GetUnderlyingType()->IsObjectOrInterface()))
-	{
-		mModule->Fail(StrFormat("Methods cannot be called on type '%s' because the type is a pointer to a reference type (ie: a double-reference).", 
-			mModule->TypeToString(target.mType).c_str()), targetSrc);
-		target.mType = mModule->mContext->mBfObjectType;
-		return target;
-	}
-
 	if (target.mType->IsWrappableType())
 	{
 		auto primStructType = mModule->GetWrappedStructType(target.mType);
@@ -19520,7 +19523,15 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		if (mResult.mType == NULL)
 		{
 			if (mModule->PreFail())
-				mModule->Fail("Unable to find member", nameRefNode);
+			{
+				if ((thisValue.mType->IsPointer()) && (thisValue.mType->GetUnderlyingType()->IsObjectOrInterface()))
+					mModule->Fail(StrFormat("Members cannot be referenced on type '%s' because the type is a pointer to a reference type (ie: a double-reference).", 
+						mModule->TypeToString(thisValue.mType).c_str()), nameRefNode);
+				else if (thisValue)
+					mModule->Fail(StrFormat("Unable to find member '%s' in '%s'", findName.c_str(), mModule->TypeToString(thisValue.mType).c_str()), nameRefNode);
+				else
+					mModule->Fail("Unable to find member", nameRefNode);
+			}
 		}
 	}
 

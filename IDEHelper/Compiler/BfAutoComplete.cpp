@@ -1878,7 +1878,11 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 			}
 
 			if (checkType->IsPointer())
-				checkType = checkType->GetUnderlyingType();
+			{
+				auto underlyingType = checkType->GetUnderlyingType();
+				if ((underlyingType != NULL) && (underlyingType->IsValueType()))
+					checkType = underlyingType;
+			}
 			auto typeInst = checkType->ToTypeInstance();
 			if ((typeInst == NULL) && 
 				((checkType->IsPrimitiveType()) || (checkType->IsSizedArray())))
