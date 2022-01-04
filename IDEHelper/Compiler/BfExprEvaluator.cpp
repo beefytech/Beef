@@ -14619,7 +14619,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 				if (hasRealtimeLeakCheck)
 				{
 					// Dbg_ObjectAlloc clears internally so we don't need to call CtorClear for those
-					if ((!isStackAlloc) && (!allocTarget.mCustomAllocator) && (allocTarget.mScopedInvocationTarget == NULL))
+					if ((!isStackAlloc) && (!isAppendAlloc) && (!allocTarget.mCustomAllocator) && (allocTarget.mScopedInvocationTarget == NULL))
 						wantsCtorClear = false;
 				}
 				
