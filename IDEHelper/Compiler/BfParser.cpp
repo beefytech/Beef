@@ -1724,13 +1724,13 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 			}
 			break;
 		case '$':
-			setInterpolate = true;
+						
 			c = mSrc[mSrcIdx];
 			if ((c == '\"') || (c == '@'))
 			{
 				setInterpolate = true;
 			}
-			else
+			else if (!mCompatMode)
 				Fail("Expected to precede string");
 			break;
 		case '"':
