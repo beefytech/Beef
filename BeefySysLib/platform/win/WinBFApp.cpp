@@ -278,7 +278,8 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mAlphaMaskHeight = 0;
 	mNeedsStateReset = false;	
 	mAwaitKeyReleases = false;
-	mAwaitKeyEventTick = 0;
+	mAwaitKeyReleasesEventTick = 0;
+	mAwaitKeyReleasesCheckIdx = 0;
 	mFocusLostTick = ::GetTickCount();
 
 	if (windowFlags & BFWINDOW_DEST_ALPHA)
@@ -374,6 +375,20 @@ void WinBFWindow::LostFocus(BFWindow* newFocus)
 	}	
 }
 
+void WinBFWindow::GotFocus()
+{
+	DWORD tickNow = ::GetTickCount();
+
+	//OutputDebugStrF("GotFocus since lost %d\n", tickNow - mFocusLostTick);
+
+	if (tickNow - mFocusLostTick >= 1000)
+	{
+		mAwaitKeyReleases = true;
+		mAwaitKeyReleasesCheckIdx = 0;
+		mAwaitKeyReleasesEventTick = ::GetTickCount();
+	}			
+}
+
 void WinBFWindow::SetForeground()
 {
 	bool hadFocus = mHasFocus;
@@ -388,11 +403,7 @@ void WinBFWindow::SetForeground()
 
 	::SetFocus(mHWnd);
 	::SetForegroundWindow(mHWnd);
-	if ((!hadFocus) && (::GetTickCount() - prevFocusLostTick >= 1000))
-	{
-		mAwaitKeyReleases = true;
-		mAwaitKeyEventTick = ::GetTickCount();
-	}
+	
 
 	//OutputDebugStrF("SetForeground %p %d %d %d\n", mHWnd, hadFocus, ::GetTickCount() - prevFocusLostTick, mAwaitKeyReleases);
 }
@@ -420,16 +431,20 @@ void WinBFWindow::RehupMouseOver(bool isMouseOver)
 
 bool WinBFWindow::CheckKeyReleases(bool isKeyDown)
 {
+	if (!mHasFocus)
+		GotFocus();
+
 	if (!mAwaitKeyReleases)
 		return true;
 
 	// Time expired with no key presses
-	if ((mAwaitKeyEventTick != 0) && (::GetTickCount() - mAwaitKeyEventTick > 120))
+	if ((mAwaitKeyReleasesEventTick != 0) && (mAwaitKeyReleasesCheckIdx == 0) && (::GetTickCount() - mAwaitKeyReleasesEventTick > 150))
 	{
+		//OutputDebugStrF("CheckKeyReleases no initial key press\n");
 		mAwaitKeyReleases = false;
 		return true;
 	}
-	mAwaitKeyEventTick = 0;
+	mAwaitKeyReleasesCheckIdx++;
 
 	bool hasKeyDown = false;
 	uint8 keysDown[256] = { 0 };
@@ -437,8 +452,24 @@ bool WinBFWindow::CheckKeyReleases(bool isKeyDown)
 	for (int i = 0; i < 256; i++)
 		if (keysDown[i] & 0x80)
 			hasKeyDown = true;
+
+	if ((hasKeyDown) && (::GetTickCount() - mAwaitKeyReleasesEventTick >= 600))
+	{
+		String dbgStr = "CheckKeyReleases timeout. Keys down:";
+		for (int i = 0; i < 256; i++)
+			if (keysDown[i] & 0x80)
+				dbgStr += StrFormat(" %2X", i);
+		dbgStr += "\n";
+		OutputDebugStr(dbgStr);
+		hasKeyDown = false;
+	}
+
 	if (!hasKeyDown)
+	{
 		mAwaitKeyReleases = false;
+		mAwaitKeyReleasesCheckIdx = 0;
+		mAwaitKeyReleasesEventTick = 0;
+	}
 	return !mAwaitKeyReleases;
 }
 
@@ -877,6 +908,8 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			break;
 		case WM_SETFOCUS:
 			//OutputDebugStrF("WM_SETFOCUS %p\n", hWnd);
+			if (!mHasFocus)
+				GotFocus();
 			mHasFocus = true;
 			mSoftHasFocus = true;
 			mGotFocusFunc(this);
@@ -1045,10 +1078,11 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				}
 				else if ((isFocused) && (!mHasFocus) && (checkNonFake == this))
 				{
+					//OutputDebugStrF("Timer detected got focus %p\r\n", hWnd);
+					GotFocus();
 					mHasFocus = true;
 					mSoftHasFocus = true;
 					mGotFocusFunc(this);
-					//OutputDebugStrF("Timer detected got focus %p\r\n", hWnd);
 				}
 
 				mSoftHasFocus = mHasFocus;
@@ -1204,7 +1238,7 @@ WinBFApp::WinBFApp()
 	mDataDir = mInstallDir;
 	mInMsgProc = false;
 	mDSoundManager = NULL;
-	mDInputManager = NULL;
+	mDInputManager = NULL;	
 }
 
 WinBFApp::~WinBFApp()

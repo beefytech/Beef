@@ -51,9 +51,10 @@ public:
 	bool					mHasFocus;
 	bool					mSoftHasFocus; // Mostly tracks mHasFocus except for when we get an explicit 'LostFocus' callback	
 	bool					mAwaitKeyReleases;
-	DWORD					mAwaitKeyEventTick;
+	int						mAwaitKeyReleasesCheckIdx;
+	DWORD					mAwaitKeyReleasesEventTick;
 	DWORD					mFocusLostTick;
-	bool					mNeedsStateReset;		
+	bool					mNeedsStateReset;
 	bool					mKeyLayoutHasAltGr;
 
 public:
@@ -61,6 +62,7 @@ public:
 	static LRESULT CALLBACK WindowProcStub(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 	void					RehupMouseOver(bool isMouseOver);
 	bool					CheckKeyReleases(bool isKeyDown);
+	void					GotFocus();
 
 public:
 	WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags);
