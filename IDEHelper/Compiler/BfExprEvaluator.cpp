@@ -6607,12 +6607,19 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	AddCallDependencies(methodInstance);
 	
+	bool wasCapturingMatchInfo = false;
 	auto autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)
 	{
 		// Set to false to make sure we don't capture method match info from 'params' array creation
+		wasCapturingMatchInfo = autoComplete->mIsCapturingMethodMatchInfo;
 		autoComplete->mIsCapturingMethodMatchInfo = false;
 	}
+	defer(
+		{
+			if (autoComplete != NULL)
+				autoComplete->mIsCapturingMethodMatchInfo = wasCapturingMatchInfo;
+		});
 
 	BfScopeData* boxScopeData = mDeferScopeAlloc;
 	if ((boxScopeData == NULL) && (mModule->mCurMethodState != NULL))
