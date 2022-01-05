@@ -9884,11 +9884,12 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, 
 		return;
 	}
 
-	mResult = LookupField(nameNode->mRight, mResult, fieldName);
+	auto leftResult = mResult;
+	mResult = LookupField(nameNode->mRight, leftResult, fieldName);
 	if ((mResult) || (mPropDef != NULL))
 		return;
 
-	mModule->Fail(StrFormat("Unable to find member '%s' in '%s'", fieldName.c_str(), mModule->TypeToString(mResult.mType).c_str()), nameNode->mRight);
+	mModule->Fail(StrFormat("Unable to find member '%s' in '%s'", fieldName.c_str(), mModule->TypeToString(leftResult.mType).c_str()), nameNode->mRight);
 }
 
 void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifierNode* nameLeft, BfIdentifierNode* nameRight, bool ignoreIdentifierNotFoundError)
