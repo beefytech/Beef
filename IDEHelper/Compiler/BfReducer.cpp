@@ -6504,7 +6504,10 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 		}
 		else
 		{
-			Fail("Expected 'set' or 'get'", identifierNode);
+			auto refNode = child;
+			if (refNode == NULL)
+				refNode = block->mCloseBrace;
+			Fail("Expected 'get' or 'set'", refNode);
 		}
 
 		BfAstNode* bodyAfterNode = accessorIdentifier;
@@ -6582,7 +6585,6 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 						AddErrorNode(child);
 						mVisitorPos.MoveNext();
 					}
-					continue;
 				}				
 			}
 		}
