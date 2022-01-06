@@ -8185,6 +8185,14 @@ CeTypeInfo* CeMachine::GetTypeInfo(BfType* type)
 	ceTypeInfo->mRevision = typeInstance->mRevision;
 	for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
 	{
+		if (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
+		{
+			auto methodDef = typeInstance->mTypeDef->mMethods[methodGroup.mMethodIdx];
+			auto flags = ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None;			
+			flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_MethodInstanceOnly);
+			mCeModule->GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags);
+		}
+
 		if (methodGroup.mDefault != NULL)
 		{
 			mMethodInstanceSet.Add(methodGroup.mDefault);
