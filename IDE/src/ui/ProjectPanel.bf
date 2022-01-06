@@ -116,6 +116,16 @@ namespace IDE.ui
             ProjectListViewItem anItem = new ProjectListViewItem();
             return anItem;
         }
+
+		protected override void SetScaleData()
+		{
+			mIconX = GS!(20);
+			mOpenButtonX = GS!(4);
+			mLabelX = GS!(44);
+			mChildIndent = GS!(16);
+			mHiliteOffset = GS!(-2);
+		}
+
     }
 
     public class ProjectPanel : Panel
@@ -168,12 +178,6 @@ namespace IDE.ui
 		void SetScaleData()
 		{
 			mListView.mColumns[0].mMinWidth = GS!(40);
-
-			mListView.mIconX = GS!(20);
-			mListView.mOpenButtonX = GS!(4);
-			mListView.mLabelX = GS!(44);
-			mListView.mChildIndent = GS!(16);
-			mListView.mHiliteOffset = GS!(-2);
 		}
 
 		public override void RehupScale(float oldScale, float newScale)
