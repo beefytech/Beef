@@ -449,18 +449,18 @@ bool WinBFWindow::CheckKeyReleases(bool isKeyDown)
 	bool hasKeyDown = false;
 	uint8 keysDown[256] = { 0 };
 	::GetKeyboardState((PBYTE)&keysDown);	
-	for (int i = 0; i < 256; i++)
+	for (int i = 1; i < 256; i++)
 		if (keysDown[i] & 0x80)
 			hasKeyDown = true;
 
 	if ((hasKeyDown) && (::GetTickCount() - mAwaitKeyReleasesEventTick >= 600))
 	{
-		String dbgStr = "CheckKeyReleases timeout. Keys down:";
-		for (int i = 0; i < 256; i++)
-			if (keysDown[i] & 0x80)
-				dbgStr += StrFormat(" %2X", i);
-		dbgStr += "\n";
-		OutputDebugStr(dbgStr);
+// 		String dbgStr = "CheckKeyReleases timeout. Keys down:";
+// 		for (int i = 1; i < 256; i++)
+// 			if (keysDown[i] & 0x80)
+// 				dbgStr += StrFormat(" %2X", i);
+// 		dbgStr += "\n";
+// 		OutputDebugStr(dbgStr);
 		hasKeyDown = false;
 	}
 
