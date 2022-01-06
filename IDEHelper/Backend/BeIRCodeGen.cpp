@@ -1331,7 +1331,13 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(bool, valIsSigned);
 
 			BfTypeCode typeCode = (BfTypeCode)mStream->Read();
-			BfTypeCode valTypeCode = GetTypeCode(val->GetType(), valIsSigned);
+			auto valType = val->GetType();
+			if ((!valType->IsIntable()) && (!valType->IsFloat()))
+			{
+				Fail("Invalid NumericCast target");
+			}
+
+			BfTypeCode valTypeCode = GetTypeCode(valType, valIsSigned);
 
 			if (auto srcCastConstant = BeValueDynCast<BeCastConstant>(val))
 			{												
