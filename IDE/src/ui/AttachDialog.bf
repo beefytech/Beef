@@ -130,9 +130,16 @@ namespace IDE.ui
 			mFullProcessList.Clear();
 			Process.GetProcesses(mFullProcessList);
 
-			int index = mFullProcessList.FindIndex(scope (p) => p.Id == Process.CurrentId);
-			delete mFullProcessList[index];
-			mFullProcessList.RemoveAt(index);
+			// Remove ourselves from the list
+			for (var process in mFullProcessList)
+			{
+				if (process.Id == Process.CurrentId)
+				{
+					delete process;
+					@process.Remove();
+					break;
+				}
+			}
 		}
 
 		void FilterProcesses(bool fullRefresh)
