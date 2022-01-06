@@ -383,7 +383,9 @@ public:
 	Array<BfSavedTypeData*> mSavedTypeData;
 
 	BfTypeInstance* mBfTypeType;
-	BfTypeInstance* mBfObjectType;	
+	BfTypeInstance* mBfObjectType;
+	bool mCanSkipObjectCtor;
+	bool mCanSkipValueTypeCtor;
 	BfPointerType* mBfClassVDataPtrType;
 
 	PtrWorkQueue<BfModule*> mReifyModuleWorkList;

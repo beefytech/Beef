@@ -41,7 +41,9 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mSystem = compiler->mSystem;	
 	mBfTypeType = NULL;	
 	mBfClassVDataPtrType = NULL;	
-	mBfObjectType = NULL;				
+	mBfObjectType = NULL;
+	mCanSkipObjectCtor = true;
+	mCanSkipValueTypeCtor = true;
 	mMappedObjectRevision = 0;
 	mDeleting = false;
 	mLockModules = false;
@@ -1881,6 +1883,54 @@ void BfContext::UpdateRevisedTypes()
 	BP_ZONE("BfContext::UpdateRevisedTypes");
 	BfLogSysM("BfContext::UpdateRevisedTypes\n");
 
+	auto _CheckCanSkipCtor = [&](BfTypeDef* typeDef)
+	{
+		if (typeDef == NULL)
+			return true;
+		typeDef = typeDef->GetLatest();
+
+		for (auto fieldDef : typeDef->mFields)
+		{
+			if (fieldDef->mIsStatic)
+				continue;
+			if (fieldDef->mInitializer != NULL)
+				return false;
+		}
+
+		for (auto methodDef : typeDef->mMethods)
+		{
+			if (methodDef->mMethodType == BfMethodType_Init)
+				return false;
+		}
+
+		return true;
+	};
+
+	auto _CheckCanSkipCtorByName = [&](const StringImpl& name)
+	{
+		BfAtomComposite qualifiedFindName;
+		if (!mSystem->ParseAtomComposite(name, qualifiedFindName))
+			return true;
+		auto itr = mSystem->mTypeDefs.TryGet(qualifiedFindName);
+		while (itr)
+		{
+			BfTypeDef* typeDef = *itr;
+			if ((typeDef->mDefState != BfTypeDef::DefState_Deleted) &&
+				(!typeDef->mIsCombinedPartial))				
+			{
+				if (typeDef->mFullNameEx == qualifiedFindName)
+					if (!_CheckCanSkipCtor(typeDef))
+						return false;
+			}
+			itr.MoveToNextHashMatch();
+		}
+
+		return true;
+	};
+		
+	bool wantsCanSkipObjectCtor = _CheckCanSkipCtorByName("System.Object");
+	bool wantsCanSkipValueTypeCtor = _CheckCanSkipCtorByName("System.ValueType");
+
 	int wantPtrSize;
 	if ((mCompiler->mOptions.mMachineType == BfMachineType_x86) |
 		(mCompiler->mOptions.mMachineType == BfMachineType_ARM) ||
@@ -1888,10 +1938,13 @@ void BfContext::UpdateRevisedTypes()
 		wantPtrSize = 4;
 	else
 		wantPtrSize = 8;
-	if (wantPtrSize != mSystem->mPtrSize)
+
+	if ((wantPtrSize != mSystem->mPtrSize) || (wantsCanSkipObjectCtor != mCanSkipObjectCtor) || (wantsCanSkipValueTypeCtor != mCanSkipValueTypeCtor))
 	{
-		BfLogSysM("Changing pointer size to: %d\n", wantPtrSize);
+		BfLogSysM("Full rebuild. Pointer: %d CanSkipObjectCtor:%d CanSkipValueTypeCtor:%d\n", wantPtrSize, wantsCanSkipObjectCtor, wantsCanSkipValueTypeCtor);
 		mSystem->mPtrSize = wantPtrSize;
+		mCanSkipObjectCtor = wantsCanSkipObjectCtor;
+		mCanSkipValueTypeCtor = wantsCanSkipValueTypeCtor;
 		auto intPtrType = mScratchModule->GetPrimitiveType(BfTypeCode_IntPtr);
 		auto uintPtrType = mScratchModule->GetPrimitiveType(BfTypeCode_UIntPtr);
 		if (intPtrType != NULL)

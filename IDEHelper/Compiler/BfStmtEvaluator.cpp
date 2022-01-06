@@ -6580,7 +6580,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		}
 		else
 		{
-			auto lengthValAddr = mBfIRBuilder->CreateInBoundsGEP(arrayBaseValue, 0, 1);
+			auto lengthValAddr = mBfIRBuilder->CreateInBoundsGEP(arrayBaseValue, 0, GetFieldDataIdx(arrayType->mBaseType, 0, "mLength"));
 			lengthVal = mBfIRBuilder->CreateLoad(lengthValAddr);		
 		}
 		lengthVal = mBfIRBuilder->CreateNumericCast(lengthVal, true, BfTypeCode_IntPtr);

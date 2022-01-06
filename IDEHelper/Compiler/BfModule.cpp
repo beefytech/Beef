@@ -1562,6 +1562,34 @@ BfIRValue BfModule::CreateStringCharPtr(const StringImpl& str, int stringId, boo
 	return mBfIRBuilder->CreateInBoundsGEP(gv, 0, 0);
 }
 
+void BfModule::FixConstValueParams(BfTypeInstance* typeInst, SizedArrayImpl<BfIRValue>& valueParams)
+{
+	if (!typeInst->mTypeDef->mIsCombinedPartial)
+		return;
+
+	int prevDataIdx = -1;
+	int usedDataIdx = 0;
+	if (typeInst->mBaseType != NULL)
+		usedDataIdx++;
+
+	int startingParamsSize = (int)valueParams.mSize;
+	for (int fieldIdx = 0; fieldIdx < (int)typeInst->mFieldInstances.size(); fieldIdx++)
+	{
+		auto fieldInstance = &typeInst->mFieldInstances[fieldIdx];
+		if (fieldInstance->mDataIdx < 0)
+			continue;
+
+		BF_ASSERT(fieldInstance->mDataIdx > prevDataIdx);
+		prevDataIdx = fieldInstance->mDataIdx;
+
+		usedDataIdx++;
+		if (usedDataIdx <= valueParams.mSize)
+			continue;
+				
+		valueParams.Add(GetDefaultValue(fieldInstance->mResolvedType));
+	}
+}
+
 BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId, bool define)
 {
 	auto stringTypeInst = ResolveTypeDef(mCompiler->mStringTypeDef, define ? BfPopulateType_Data : BfPopulateType_Declaration)->ToTypeInstance();
@@ -1580,12 +1608,14 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 		
 		SizedArray<BfIRValue, 8> typeValueParams;
 		GetConstClassValueParam(classVDataGlobal, typeValueParams);		
+		FixConstValueParams(stringTypeInst->mBaseType, typeValueParams);
 		auto objData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(stringTypeInst->mBaseType, BfIRPopulateType_Full), typeValueParams);
 
 		auto lenByteCount = stringTypeInst->mFieldInstances[0].mResolvedType->mSize;
 
 		typeValueParams.clear();
 		typeValueParams.push_back(objData);
+
 		if (lenByteCount == 4)
 		{
 			typeValueParams.push_back(GetConstValue32((int)str.length())); // mLength
@@ -1597,17 +1627,8 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 			typeValueParams.push_back(GetConstValue64(0x4000000000000000LL + str.length() + 1)); // mAllocSizeAndFlags		
 		}
 		typeValueParams.push_back(stringCharsVal); // mPtr
+		FixConstValueParams(stringTypeInst, typeValueParams);
 		
-		for (int fieldIdx = 0; fieldIdx < (int)stringTypeInst->mFieldInstances.size(); fieldIdx++)
-		{
-			auto fieldInstance = &stringTypeInst->mFieldInstances[fieldIdx];
-			if (fieldInstance->mDataIdx < 4)
-				continue;
-			while (fieldInstance->mDataIdx >= typeValueParams.size())
-				typeValueParams.Add(BfIRValue());
-			typeValueParams[fieldInstance->mDataIdx] = GetDefaultValue(fieldInstance->mResolvedType);
-		}
-
 		stringValData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(stringTypeInst, BfIRPopulateType_Full), typeValueParams);
 	}
 		
@@ -5384,9 +5405,10 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	auto voidPtrPtrIRType = mBfIRBuilder->GetPointerTo(voidPtrIRType);
 	auto voidPtrNull = GetDefaultValue(voidPtrType);
 
-	SizedArray<BfIRValue, 4> typeValueParams;
+	SizedArray<BfIRValue, 4> typeValueParams;	
 	GetConstClassValueParam(typeTypeData, typeValueParams);
 	
+	FixConstValueParams(mContext->mBfObjectType, typeValueParams);
 	BfIRValue objectData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(mContext->mBfObjectType, BfIRPopulateType_Full), typeValueParams);
 
 	StringT<128> typeDataName;
@@ -5514,6 +5536,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		GetConstValue(type->mAlign, byteType), // mAlign
 		GetConstValue(stackCount, byteType), // mAllocStackCountOverride
 	};
+	FixConstValueParams(mContext->mBfTypeType, typeDataParams);
 	auto typeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(mContext->mBfTypeType, BfIRPopulateType_Full), typeDataParams);
 		
 	if (typeInstance == NULL)
@@ -5532,6 +5555,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				};
 
 				auto reflectPointerType = ResolveTypeDef(mCompiler->mReflectPointerType)->ToTypeInstance();
+				FixConstValueParams(reflectPointerType, pointerTypeDataParms);
 				auto pointerTypeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectPointerType, BfIRPopulateType_Full), pointerTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectPointerType), true,
 					BfIRLinkageType_External, pointerTypeData, typeDataName);				
@@ -5549,6 +5573,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				};
 
 				auto reflectRefType = ResolveTypeDef(mCompiler->mReflectRefType)->ToTypeInstance();
+				FixConstValueParams(reflectRefType, refTypeDataParms);
 				auto refTypeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectRefType, BfIRPopulateType_Full), refTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectRefType), true,
 					BfIRLinkageType_External, refTypeData, typeDataName);
@@ -5566,6 +5591,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				};
 
 				auto reflectSizedArrayType = ResolveTypeDef(mCompiler->mReflectSizedArrayType)->ToTypeInstance();
+				FixConstValueParams(reflectSizedArrayType, sizedArrayTypeDataParms);
 				auto sizedArrayTypeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectSizedArrayType, BfIRPopulateType_Full), sizedArrayTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectSizedArrayType), true,
 					BfIRLinkageType_External, sizedArrayTypeData, typeDataName);
@@ -5583,6 +5609,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				};
 
 				auto reflectConstExprType = ResolveTypeDef(mCompiler->mReflectConstExprType)->ToTypeInstance();
+				FixConstValueParams(reflectConstExprType, constExprTypeDataParms);
 				auto ConstExprTypeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectConstExprType, BfIRPopulateType_Full), constExprTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectConstExprType), true,
 					BfIRLinkageType_External, ConstExprTypeData, typeDataName);
@@ -6221,7 +6248,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	reflectKind = GetReflectKind(reflectKind, typeInstance);
 	
 	// Fields
-	BfType* reflectFieldDataType = ResolveTypeDef(mCompiler->mReflectFieldDataDef);
+	BfType* reflectFieldDataType = ResolveTypeDef(mCompiler->mReflectFieldDataDef);	
 	BfIRValue emptyValueType = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType->ToTypeInstance()->mBaseType), SizedArray<BfIRValue, 1>());
 
 	auto _HandleCustomAttrs = [&](BfCustomAttributes* customAttributes)
@@ -6450,6 +6477,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					GetConstValue(-1, intType), // mCustomAttributesIdx
 				};
 			}
+			FixConstValueParams(reflectFieldDataType->ToTypeInstance(), payloadFieldVals);
 			auto payloadFieldData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType->ToTypeInstance(), BfIRPopulateType_Full), payloadFieldVals);
 			fieldTypes.push_back(payloadFieldData);
 		}
@@ -7129,6 +7157,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		};
 
 	BfIRType typeInstanceDataType = mBfIRBuilder->MapTypeInst(typeInstanceType->ToTypeInstance(), BfIRPopulateType_Full);
+	FixConstValueParams(typeInstanceType->ToTypeInstance(), typeDataVals);
 	auto typeInstanceData = mBfIRBuilder->CreateConstAgg_Value(typeInstanceDataType, typeDataVals);
 		
 	if (!needsTypeData)
@@ -14188,6 +14217,19 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 	return BfTypedValue(globalValue, type, !fieldDef->mIsConst);
 }
 
+int BfModule::GetFieldDataIdx(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName)
+{
+	if (typeInst->IsDataIncomplete())
+		PopulateType(typeInst);
+	if (fieldIdx >= typeInst->mFieldInstances.mSize)
+	{
+		Fail(StrFormat("Invalid field data in type '%s'", TypeToString(typeInst).c_str()));
+		return 0;
+	}
+	auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];	
+	return fieldInstance.mDataIdx;
+}
+
 BfTypedValue BfModule::GetThis()
 {	
 	auto useMethodState = mCurMethodState;
@@ -17158,8 +17200,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	{
 		auto baseType = mCurTypeInstance->mBaseType;
 		if ((!mCurTypeInstance->IsTypedPrimitive()) &&
-			(baseType->mTypeDef != mCompiler->mValueTypeTypeDef) &&
-			(baseType->mTypeDef != mCompiler->mBfObjectTypeDef))
+			((baseType->mTypeDef != mCompiler->mValueTypeTypeDef) || (!mContext->mCanSkipValueTypeCtor)) &&
+			((baseType->mTypeDef != mCompiler->mBfObjectTypeDef) || (!mContext->mCanSkipObjectCtor)))
 		{
 			// Try to find a ctor without any params first
 			BfMethodDef* matchedMethod = NULL;

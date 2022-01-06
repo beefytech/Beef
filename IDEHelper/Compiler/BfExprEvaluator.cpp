@@ -6815,7 +6815,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							return BfTypedValue();
 						}
 
-						auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayBits, 0, 1);
+						auto& fieldInstance = arrayType->mBaseType->mFieldInstances[0];
+						auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayBits, 0, fieldInstance.mDataIdx);
 						if (arrayLengthBitCount == 64)
 							mModule->mBfIRBuilder->CreateAlignedStore(mModule->GetConstValue64(numElements), addr, 8);
 						else
@@ -13459,6 +13460,10 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 		mModule->Fail("Invalid delegate type", lambdaBindExpr);
 		return;
 	}
+	mModule->PopulateType(baseDelegateType);
+
+	auto& funcPtrField = baseDelegateType->mFieldInstances[0];
+	auto& targetField = baseDelegateType->mFieldInstances[1];
 	auto baseDelegate = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapType(baseDelegateType));
 
 	// >> delegate.mTarget = bindResult.mTarget
@@ -13468,7 +13473,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 		valPtr = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapType(nullPtrType));		
 	else
 		valPtr = mModule->GetDefaultValue(nullPtrType);
-	auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(baseDelegate, 0, 2);
+	auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(baseDelegate, 0, targetField.mDataIdx);
 	mModule->mBfIRBuilder->CreateStore(valPtr, fieldPtr);
 
 	// >> delegate.mFuncPtr = bindResult.mFunc
@@ -13476,7 +13481,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 	{
 		auto nullPtrType = mModule->GetPrimitiveType(BfTypeCode_NullPtr);		
 		auto valPtr = mModule->mBfIRBuilder->CreateBitCast(lambdaInstance->mClosureFunc, mModule->mBfIRBuilder->MapType(nullPtrType));
-		auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(baseDelegate, 0, 1);
+		auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(baseDelegate, 0, funcPtrField.mDataIdx);
 		mModule->mBfIRBuilder->CreateStore(valPtr, fieldPtr);
 	}
 	

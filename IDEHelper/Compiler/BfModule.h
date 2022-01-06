@@ -1552,6 +1552,7 @@ public:
 	BfIRValue GetDefaultValue(BfType* type);	
 	BfTypedValue GetFakeTypedValue(BfType* type);
 	BfTypedValue GetDefaultTypedValue(BfType* type, bool allowRef = false, BfDefaultValueKind defaultValueKind = BfDefaultValueKind_Const);			
+	void FixConstValueParams(BfTypeInstance* typeInst, SizedArrayImpl<BfIRValue>& valueParams);
 	BfIRValue CreateStringObjectValue(const StringImpl& str, int stringId, bool define);
 	BfIRValue CreateStringCharPtr(const StringImpl& str, int stringId, bool define);
 	int GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHolder = NULL);
@@ -1668,6 +1669,7 @@ public:
 	void HadSlotCountDependency();
 	BfTypedValue GetCompilerFieldValue(const StringImpl& str);
 	BfTypedValue ReferenceStaticField(BfFieldInstance* fieldInstance);
+	int GetFieldDataIdx(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName = NULL);
 	BfTypedValue GetThis();
 	BfLocalVariable* GetThisVariable();
 	bool IsInGeneric();
