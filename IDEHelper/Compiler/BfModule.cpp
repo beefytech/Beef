@@ -14480,6 +14480,12 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 
 void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 {
+	while (localVar->mName.StartsWith('@'))
+	{
+		localVar->mNamePrefixCount++;
+		localVar->mName.Remove(0);
+	}
+
 	localVar->mLocalVarIdx = (int)mCurMethodState->mLocals.size();
 	mCurMethodState->mLocals.push_back(localVar);
 
