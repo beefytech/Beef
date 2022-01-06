@@ -5312,6 +5312,13 @@ bool BfCompiler::IsDataResolvePass()
 	return (mResolvePassData != NULL) && (mResolvePassData->mResolveType == BfResolveType_GetResultString);
 }
 
+bool BfCompiler::WantsClassifyNode(BfAstNode* node)
+{
+	return ((mResolvePassData != NULL) &&
+		(node->IsFromParser(mResolvePassData->mParser)) &&
+		(mResolvePassData->mSourceClassifier != NULL));
+}
+
 BfAutoComplete* BfCompiler::GetAutoComplete()
 {
 	if (mResolvePassData != NULL)

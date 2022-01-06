@@ -8560,9 +8560,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 		if (enumResult)
 		{
-			if ((mModule->mCompiler->mResolvePassData != NULL) && 								
-				(targetSrc->IsFromParser(mModule->mCompiler->mResolvePassData->mParser)) &&
-				(mModule->mCompiler->mResolvePassData->mSourceClassifier != NULL))
+			if (mModule->mCompiler->WantsClassifyNode(targetSrc))
 			{
 				mModule->mCompiler->mResolvePassData->mSourceClassifier->SetElementType(targetSrc, BfSourceElementType_Normal);
 			}

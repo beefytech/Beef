@@ -485,6 +485,7 @@ public:
 	int GetDynCastVDataCount();
 	bool IsAutocomplete();
 	bool IsDataResolvePass();
+	bool WantsClassifyNode(BfAstNode* node);
 	BfAutoComplete* GetAutoComplete();
 	bool IsHotCompile();
 	bool IsSkippingExtraResolveChecks();

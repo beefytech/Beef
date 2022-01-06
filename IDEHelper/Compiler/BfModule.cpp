@@ -2810,7 +2810,7 @@ void BfModule::SetElementType(BfAstNode* astNode, BfSourceElementType elementTyp
 {
 	if ((mCompiler->mResolvePassData != NULL) &&
 		(mCompiler->mResolvePassData->mSourceClassifier != NULL) &&
-		(astNode->IsFromParser( mCompiler->mResolvePassData->mParser)))
+		(astNode->IsFromParser(mCompiler->mResolvePassData->mParser)))
 	{
 		mCompiler->mResolvePassData->mSourceClassifier->SetElementType(astNode, elementType);
 	}
@@ -16280,7 +16280,7 @@ void BfModule::EmitDtorBody()
 
 				while (fieldDtor != NULL)
 				{
-					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
+					if (mCompiler->WantsClassifyNode(fieldDtor))
 					{
 						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(fieldDtor, BfSourceElementType_Normal);
 						mCompiler->mResolvePassData->mSourceClassifier->VisitChild(fieldDtor);
