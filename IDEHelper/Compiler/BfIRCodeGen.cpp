@@ -181,6 +181,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"or"},
 	{"pow"},
 	{"powi"},
+	{"returnaddress"},
 	{"round"},
 	{"sar"},
 	{"shl"},
@@ -2684,6 +2685,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ (llvm::Intrinsic::ID)-2, -1}, // or
 				{ llvm::Intrinsic::pow, 0, -1},
 				{ llvm::Intrinsic::powi, 0, -1},
+				{ llvm::Intrinsic::returnaddress, -1},
 				{ llvm::Intrinsic::round, 0, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // sar
 				{ (llvm::Intrinsic::ID)-2, -1}, // shl

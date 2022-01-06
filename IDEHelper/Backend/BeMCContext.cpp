@@ -17697,6 +17697,14 @@ void BeMCContext::Generate(BeFunction* function)
 								useAltArgs = true;
 							}
 							break;
+						case BfIRIntrinsic_ReturnAddress:
+							{
+								result = AllocVirtualReg(intrin->mReturnType);
+								CreateDefineVReg(result);
+ 								auto vregInfo = GetVRegInfo(result);
+								vregInfo->mFrameOffset = 0;
+							}
+							break;
 						case BfIRIntrinsic_VAArg:
 							{
 								auto mcListPtr = GetOperand(castedInst->mArgs[0].mValue);

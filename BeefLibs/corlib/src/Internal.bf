@@ -92,6 +92,8 @@ namespace System
 		public static extern void* StdMalloc(int size);
 		[LinkName("free")]
 		public static extern void StdFree(void* ptr);
+		[Intrinsic("returnaddress")]
+		public static extern void* GetReturnAddress(int32 level = 0);
 		[CallingConvention(.Cdecl)]
 		public static extern void* VirtualAlloc(int size, bool canExecute, bool canWrite);
 		[CallingConvention(.Cdecl)]

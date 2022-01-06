@@ -451,6 +451,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_Or,
 	BfIRIntrinsic_Pow,
 	BfIRIntrinsic_PowI,
+	BfIRIntrinsic_ReturnAddress,
 	BfIRIntrinsic_Round,
 	BfIRIntrinsic_SAR,
 	BfIRIntrinsic_SHL,
