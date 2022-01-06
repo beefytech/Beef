@@ -1069,7 +1069,8 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 			ParseAttributes(propertyDeclaration->mAttributes, methodDef);
 			if (propExprBody->mMutSpecifier != NULL)
 				methodDef->mIsMutating = true;
-			HashNode(*mSignatureHashCtx, propExprBody->mMutSpecifier);
+			if (mSignatureHashCtx != NULL)
+				HashNode(*mSignatureHashCtx, propExprBody->mMutSpecifier);
 		}
 		else if ((methodDeclaration != NULL) && (methodDeclaration->mNameNode != NULL))
 			methodName = methodDeclaration->mNameNode->ToString();
