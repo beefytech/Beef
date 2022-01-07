@@ -2751,7 +2751,15 @@ namespace IDE.ui
 				return;
 			}
 
+			bool isExplicitInsert = (keyChar == '\0') || (keyChar == '\t') || (keyChar == '\n');
+
             String insertText = entry.mEntryInsert ?? entry.mEntryDisplay;
+			if ((!isExplicitInsert) && (insertText.Contains('\t')))
+			{
+				// Don't insert multi-line blocks unless we have an explicit insert request (click, tab, or enter)
+				return;
+			}
+
             if ((keyChar == '=') && (insertText.EndsWith("=")))
 				insertText.RemoveToEnd(insertText.Length - 1);
                 //insertText = insertText.Substring(0, insertText.Length - 1);
