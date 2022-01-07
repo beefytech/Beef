@@ -50,6 +50,7 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mAllowLockYield = true;
 
 	mCurTypeState = NULL;
+	mCurNamespaceNodes = NULL;
 	mCurConstraintState = NULL;
 	mResolvingVarField = false;
 	mAssertOnPopulateType = false;

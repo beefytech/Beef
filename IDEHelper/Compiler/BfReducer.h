@@ -149,7 +149,8 @@ public:
 	bool mSkipCurrentNodeAssert;	
 	BfVisitorPos mVisitorPos;
 	int mDocumentCheckIdx;
-	SizedArray<BfAstNode*, 4> mExteriorNodes;	
+	SizedArray<BfNamespaceDeclaration*, 4> mCurNamespaceStack;
+	SizedArray<BfExteriorNode, 4> mExteriorNodes;
 
 	int mAssertCurrentNodeIdx;
 

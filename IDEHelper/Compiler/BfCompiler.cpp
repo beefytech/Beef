@@ -3808,16 +3808,20 @@ void BfCompiler::VisitSourceExteriorNodes()
 			return;
 
 		bool failed = false;
-		for (auto node : parser->mParserData->mExteriorNodes)
-		{			
-			if (auto usingDirective = BfNodeDynCast<BfUsingDirective>(node))
+		for (auto& node : parser->mParserData->mExteriorNodes)
+		{	
+			SetAndRestoreValue<BfSizedArray<BfNamespaceDeclaration*>*> prevCurNamespaceNodes(mContext->mCurNamespaceNodes, &node.mNamespaceNodes);
+
+			auto exteriorAstNode = node.mNode;
+
+			if (auto usingDirective = BfNodeDynCast<BfUsingDirective>(exteriorAstNode))
 			{
 				srcNodes.Clear();
 				namespaceParts.Clear();
 				bool success = _AddName(usingDirective->mNamespace, true);				
 				_CheckNamespace(parser, true, failed);
 			}
-			else if (auto usingDirective = BfNodeDynCast<BfUsingModDirective>(node))
+			else if (auto usingDirective = BfNodeDynCast<BfUsingModDirective>(exteriorAstNode))
 			{
 				if (usingDirective->mTypeRef != NULL)
 				{

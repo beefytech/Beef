@@ -1528,6 +1528,12 @@ T* BfNodeDynCastExact(BfAstNode* node)
 	return canCast ? (T*)node : NULL;
 }
 
+struct BfExteriorNode
+{
+	BfSizedArray<BfNamespaceDeclaration*> mNamespaceNodes;
+	BfAstNode* mNode;
+};
+
 BfIdentifierNode* BfIdentifierCast(BfAstNode* node);
 BfAstNode* BfNodeToNonTemporary(BfAstNode* node);
 

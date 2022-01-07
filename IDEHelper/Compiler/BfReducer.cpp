@@ -8252,7 +8252,10 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 				if (tokenNode != NULL)
 					MEMBER_SET(usingDirective, mTrailingSemicolon, tokenNode);
 
-				mExteriorNodes.Add(usingDirective);
+				BfExteriorNode exteriorNode;
+				exteriorNode.mNode = usingDirective;
+				BfSizedArrayInitIndirect(exteriorNode.mNamespaceNodes, mCurNamespaceStack, mAlloc);
+				mExteriorNodes.Add(exteriorNode);
 				return usingDirective;
 			}
 		}
@@ -8292,7 +8295,9 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			}
 		}
 
-		mExteriorNodes.Add(usingDirective);
+		BfExteriorNode exteriorNode;
+		exteriorNode.mNode = usingDirective;
+		mExteriorNodes.Add(exteriorNode);
 		return usingDirective;
 	}
 	break;
@@ -8316,7 +8321,9 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		MoveNode(blockNode, namespaceDeclaration);
 		namespaceDeclaration->mBlock = blockNode;
 
+		mCurNamespaceStack.Add(namespaceDeclaration);
 		HandleTopLevel(namespaceDeclaration->mBlock);
+		mCurNamespaceStack.pop_back();
 		return namespaceDeclaration;
 	}
 	break;

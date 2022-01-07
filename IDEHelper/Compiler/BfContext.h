@@ -352,8 +352,9 @@ class BfContext
 public:
 	CritSect mCritSect;	
 	bool mDeleting;
-
+	
 	BfTypeState* mCurTypeState;
+	BfSizedArray<BfNamespaceDeclaration*>* mCurNamespaceNodes;
 	BfConstraintState* mCurConstraintState;
 	bool mResolvingVarField;
 	int mMappedObjectRevision;

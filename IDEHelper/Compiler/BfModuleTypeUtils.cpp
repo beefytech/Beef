@@ -8967,9 +8967,31 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 		if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mParser != NULL))
 			project = mCompiler->mResolvePassData->mParser->mProject;
 
-		BP_ZONE("System.FindTypeDef_2");		
+		BP_ZONE("System.FindTypeDef_2");				
+		Array<BfAtomComposite> namespaceSearch;
+		if (mContext->mCurNamespaceNodes != NULL)
+		{
+			String checkNamespace;
+ 			for (auto namespaceNode : *mContext->mCurNamespaceNodes)
+ 			{
+				if (namespaceNode->mNameNode != NULL)
+				{
+					if (!checkNamespace.IsEmpty())
+						checkNamespace += ".";
+					namespaceNode->mNameNode->ToString(checkNamespace);
+				}				
+ 			}
+
+			if (!checkNamespace.IsEmpty())
+			{
+				BfAtomComposite atomComposite;
+				if (mSystem->ParseAtomComposite(checkNamespace, atomComposite))
+					namespaceSearch.Add(atomComposite);
+			}
+		}
+
 		BfTypeDef* ambiguousTypeDef = NULL;
-		BfTypeDef *result = mSystem->FindTypeDef(findName, numGenericArgs, project, Array<BfAtomComposite>(), &ambiguousTypeDef);
+		BfTypeDef *result = mSystem->FindTypeDef(findName, numGenericArgs, project, namespaceSearch, &ambiguousTypeDef);
 		if ((ambiguousTypeDef != NULL) && (error != NULL))
 		{
 			error->mErrorKind = BfTypeLookupError::BfErrorKind_Ambiguous;

@@ -31,7 +31,7 @@ public:
 	BfRootNode* mRootNode;
 	BfRootNode* mErrorRootNode;
 	
-	BfSizedArray<BfAstNode*> mExteriorNodes;
+	BfSizedArray<BfExteriorNode> mExteriorNodes;
 	int mExteriorNodesCheckIdx; // 0 = unchecked, -1 = failed, >0 means success and equals the BfSystem.mTypesIdx
 
 	BfSourceData()
