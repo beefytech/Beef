@@ -13427,7 +13427,11 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 	BfTokenNode* newToken = NULL;
 	BfAllocTarget allocTarget = ResolveAllocTarget(lambdaBindExpr->mNewToken, newToken);
 
-	if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mBlindCapturing))
+	if (mModule->mCurMethodInstance == NULL)
+		mModule->Fail("Invalid use of lambda bind expression", lambdaBindExpr);
+
+	if (((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mBlindCapturing)) ||
+		(mModule->mCurMethodInstance == NULL))
 	{
 		// We're just capturing.  We just need to visit the bodies here.  This helps infinite recursion with local methods containing lambdas calling each other
 		if (lambdaBindExpr->mBody != NULL)
