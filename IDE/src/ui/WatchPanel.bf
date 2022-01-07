@@ -2756,6 +2756,12 @@ namespace IDE.ui
 				if (watchEntry.mReferenceId != null)
 					AddDisplayTypeMenu("Watch Display", menu, listViewItem.mWatchEntry.mResultType, watchEntry.mReferenceId, true);
 
+				anItem = menu.AddItem("Add Watch");
+				anItem.mOnMenuItemSelected.Add(new (menu) =>
+					{
+						IDEApp.sApp.AddWatch(watchEntry.mEvalStr);
+					});
+
 				if (!watchEntry.IsConstant)
 				{
 					anItem = menu.AddItem("Break When Value Changes");
