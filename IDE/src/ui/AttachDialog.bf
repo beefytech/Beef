@@ -129,6 +129,17 @@ namespace IDE.ui
 			ClearAndDeleteItems(mFullProcessList);			
 			mFullProcessList.Clear();
 			Process.GetProcesses(mFullProcessList);
+
+			// Remove ourselves from the list
+			for (var process in mFullProcessList)
+			{
+				if (process.Id == Process.CurrentId)
+				{
+					delete process;
+					@process.Remove();
+					break;
+				}
+			}
 		}
 
 		void FilterProcesses(bool fullRefresh)
