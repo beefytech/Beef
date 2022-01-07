@@ -7280,9 +7280,9 @@ namespace IDE
 				else
 					mDeferredOpenFileName.AppendF("|{}", filePath);
 			}
-			else if (prevDeferredOpen != .None && prevDeferredOpen != .File && mDeferredOpen == .File)
+			else if (prevDeferredOpen != .None && prevDeferredOpen != mDeferredOpen)
 			{
-				// Do nothing
+				mDeferredOpen = prevDeferredOpen;
 			}
 			else
 			{
