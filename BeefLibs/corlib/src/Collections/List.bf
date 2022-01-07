@@ -283,18 +283,32 @@ namespace System.Collections
 
 		public ref T Front
 		{
+			[Checked]
 			get
 			{
-				Debug.Assert(mSize != 0);
+				Runtime.Assert(mSize != 0);
+				return ref mItems[0];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
 				return ref mItems[0];
 			}
 		}
 		
 		public ref T Back
 		{
+			[Checked]
 			get
 			{
-				Debug.Assert(mSize != 0);
+				Runtime.Assert(mSize != 0);
+				return ref mItems[mSize - 1];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
 				return ref mItems[mSize - 1];
 			}
 		}
@@ -723,13 +737,29 @@ namespace System.Collections
 			return result;
 		}
 
+		[Checked]
 		public T PopBack()
 		{
-			T backVal = mItems[mSize - 1];
-			mSize--;
+			Runtime.Assert(mSize != 0);
+			return mItems[--mSize];
+		}
+
+		[Unchecked]
+		public T PopBack()
+		{
+			return mItems[--mSize];
+		}
+
+		[Checked]
+		public T PopFront()
+		{
+			Runtime.Assert(mSize != 0);
+			T backVal = mItems[0];
+			RemoveAt(0);
 			return backVal;
 		}
 
+		[Unchecked]
 		public T PopFront()
 		{
 			T backVal = mItems[0];
