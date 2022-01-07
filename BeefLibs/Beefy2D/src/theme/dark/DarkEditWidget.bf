@@ -484,13 +484,14 @@ namespace Beefy.theme.dark
                         {
 							if (mHiliteCurrentLine && selStartIdx == selEndIdx)
 							{
-								float totalLineWidth = mEditWidget.mWidth - mTextInsets.mLeft - mTextInsets.mRight - 1;
-								if (mEditWidget.mVertScrollbar != null)
-									totalLineWidth -= mEditWidget.mVertScrollbar.Width;
-
 								float thickness = 2 * (lineSpacing / 18);
+								// This isn't quite the right value, but I'm not sure how to get this
+								// to properly lighlight the whole line without getting cut off - this works well for now.
+								float totalLineWidth = mEditWidget.mScrollContentContainer.mWidth - thickness / 2;
+
+								float x = (int)mEditWidget.mHorzPos.v; // If we don't round to int we get jitter while scrolling.
 								using (g.PushColor(DarkTheme.COLOR_CURRENT_LINE_HILITE))
-									g.OutlineRect(0, curY, totalLineWidth, lineSpacing + thickness, thickness);
+									g.OutlineRect(x, curY, totalLineWidth, lineSpacing + thickness, thickness);
 							}
 
                             float brightness = (float)Math.Cos(Math.Max(0.0f, mCursorBlinkTicks - 20) / 9.0f);                            
