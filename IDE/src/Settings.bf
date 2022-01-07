@@ -325,7 +325,7 @@ namespace IDE
 			public Color mBuildWarning = 0xFFFFFF80;
 			public Color mVisibleWhiteSpace = 0xFF9090C0;
 			public Color mCurrentLineHilite = 0xFF4C4C54;
-			public Color mCurrentLineNumberHilite = 0x20FFFFFF;
+			public Color mCurrentLineNumberHilite = 0x18FFFFFF;
 
 			public void Deserialize(StructuredData sd)
 			{
