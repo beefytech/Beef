@@ -193,11 +193,16 @@ public:
 	struct XmmDReg
 	{
 		double d[2];
-	};
+	};	
 
-	struct XmmIReg
+	struct XmmI32Reg
 	{
 		int32 i[4];
+	};
+
+	struct XmmI64Reg
+	{
+		int64 i[2];
 	};
 
 	union
@@ -210,7 +215,8 @@ public:
 	{
 		XmmReg mXmmRegsArray[kNumXmmRegs];
 		XmmDReg mXmmDRegsArray[kNumXmmRegs];
-		XmmIReg mXmmIRegsARray[kNumXmmRegs];
+		XmmI32Reg mXmmI32RegsARray[kNumXmmRegs];
+		XmmI64Reg mXmmI64RegsARray[kNumXmmRegs];
 	};
 
 	X86CPURegisters()

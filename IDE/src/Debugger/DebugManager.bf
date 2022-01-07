@@ -58,9 +58,9 @@ namespace IDE.Debugger
 		{
 			Default,
 			UInt8,
-			Short,
-			Int,
-			Long,
+			Int16,
+			Int32,
+			Int64,
 			Float,
 			Double,
 			COUNT

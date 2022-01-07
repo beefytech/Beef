@@ -99,10 +99,10 @@ enum DwFloatDisplayType : int8
 enum DwMmDisplayType : int8
 {
 	DwMmDisplayType_Default,
-	DwMmDisplayType_Byte,
-	DwMmDisplayType_Short,
-	DwMmDisplayType_Int,
-	DwMmDisplayType_Long,
+	DwMmDisplayType_UInt8,
+	DwMmDisplayType_Int16,
+	DwMmDisplayType_Int32,
+	DwMmDisplayType_Int64,
 	DwMmDisplayType_Float,
 	DwMmDisplayType_Double
 };

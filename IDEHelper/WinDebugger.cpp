@@ -6842,10 +6842,9 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						if ((regForm == RegForm_Double) || (regForm == RegForm_Double2))
 							mmDwMmDisplayType = DwMmDisplayType_Double;
 						else if (regForm == RegForm_Int4)
-							mmDwMmDisplayType = DwMmDisplayType_Int;
+							mmDwMmDisplayType = DwMmDisplayType_Int32;
 					}
-
-					//TODO: Add support for int types
+					
 					if (mmDwMmDisplayType == DwMmDisplayType_Double)
 					{
 						xmmType = "__m128d";
@@ -6861,35 +6860,43 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						}
 						headerStr = StrFormat("(%f, %f)", xmmRegVals[0], xmmRegVals[1]);
 					}
-					else if (mmDwMmDisplayType == DwMmDisplayType_Byte)
+					else if (mmDwMmDisplayType == DwMmDisplayType_UInt8)
 					{
 						int xmmRegVals[4];
-						xmmCount = 4;
+						xmmCount = 16;
 						CPURegisters* regs = optEvaluator->GetRegisters();
-						for (int xmmMinor = 0; xmmMinor < xmmCount; ++xmmMinor)
+						for (int xmmMinor = 0; xmmMinor < BF_ARRAY_COUNT(xmmRegVals); ++xmmMinor)
 						{
 							DbgTypedValue xmmReg = GetRegister(StrFormat("xmm%d_%d", xmmMajor, xmmMinor), language, regs, &wdStackFrame->mRegForms);
 							BF_ASSERT(xmmReg.mType->mTypeCode == DbgType_i32);
 							BF_ASSERT(xmmReg.mRegNum == CPUReg_XMMREG_FIRST + (xmmMajor * 4) + xmmMinor);
-							xmmRegVals[xmmMinor] = xmmReg.mInt8;
+							xmmRegVals[xmmMinor] = xmmReg.mInt32;
 						}
-						headerStr = StrFormat("(%d, %d, %d, %d)", xmmRegVals[0], xmmRegVals[1], xmmRegVals[2], xmmRegVals[3]);
+						headerStr = StrFormat("(%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
+							xmmRegVals[0] & 0xFF, (xmmRegVals[0] >> 8) & 0xFF, (xmmRegVals[0] >> 16) & 0xFF, (xmmRegVals[0] >> 24) & 0xFF,
+							xmmRegVals[1] & 0xFF, (xmmRegVals[1] >> 8) & 0xFF, (xmmRegVals[1] >> 16) & 0xFF, (xmmRegVals[1] >> 24) & 0xFF,
+							xmmRegVals[2] & 0xFF, (xmmRegVals[2] >> 8) & 0xFF, (xmmRegVals[2] >> 16) & 0xFF, (xmmRegVals[2] >> 24) & 0xFF,
+							xmmRegVals[3] & 0xFF, (xmmRegVals[3] >> 8) & 0xFF, (xmmRegVals[3] >> 16) & 0xFF, (xmmRegVals[3] >> 24) & 0xFF);
 					}
-					else if (mmDwMmDisplayType == DwMmDisplayType_Short)
+					else if (mmDwMmDisplayType == DwMmDisplayType_Int16)
 					{
 						int xmmRegVals[4];
-						xmmCount = 4;
+						xmmCount = 8;
 						CPURegisters* regs = optEvaluator->GetRegisters();
-						for (int xmmMinor = 0; xmmMinor < xmmCount; ++xmmMinor)
+						for (int xmmMinor = 0; xmmMinor < BF_ARRAY_COUNT(xmmRegVals); ++xmmMinor)
 						{
 							DbgTypedValue xmmReg = GetRegister(StrFormat("xmm%d_%d", xmmMajor, xmmMinor), language, regs, &wdStackFrame->mRegForms);
 							BF_ASSERT(xmmReg.mType->mTypeCode == DbgType_i32);
 							BF_ASSERT(xmmReg.mRegNum == CPUReg_XMMREG_FIRST + (xmmMajor * 4) + xmmMinor);
-							xmmRegVals[xmmMinor] = xmmReg.mInt16;
+							xmmRegVals[xmmMinor] = xmmReg.mInt32;
 						}
-						headerStr = StrFormat("(%d, %d, %d, %d)", xmmRegVals[0], xmmRegVals[1], xmmRegVals[2], xmmRegVals[3]);
+						headerStr = StrFormat("(%d, %d, %d, %d, %d, %d, %d, %d)", 
+							xmmRegVals[0] & 0xFFFF, (xmmRegVals[0] >> 16) & 0xFFFF,
+							xmmRegVals[1] & 0xFFFF, (xmmRegVals[1] >> 16) & 0xFFFF,
+							xmmRegVals[2] & 0xFFFF, (xmmRegVals[2] >> 16) & 0xFFFF,
+							xmmRegVals[3] & 0xFFFF, (xmmRegVals[3] >> 16) & 0xFFFF);
 					}
-					else if (mmDwMmDisplayType == DwMmDisplayType_Int)
+					else if (mmDwMmDisplayType == DwMmDisplayType_Int32)
 					{
 						int xmmRegVals[4];
 						xmmCount = 4;
@@ -6903,7 +6910,21 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						}
 						headerStr = StrFormat("(%d, %d, %d, %d)", xmmRegVals[0], xmmRegVals[1], xmmRegVals[2], xmmRegVals[3]);
 					}					
-					else // Float
+					else if (mmDwMmDisplayType == DwMmDisplayType_Int64)
+					{
+						int64 xmmRegVals[2];
+						xmmCount = 2;
+						CPURegisters* regs = optEvaluator->GetRegisters();
+						for (int xmmMinor = 0; xmmMinor < xmmCount; ++xmmMinor)
+						{
+							DbgTypedValue xmmReg = GetRegister(StrFormat("xmm%d_%d", xmmMajor, xmmMinor), language, regs, &wdStackFrame->mRegForms);
+							BF_ASSERT(xmmReg.mType->mTypeCode == DbgType_i64);
+							BF_ASSERT(xmmReg.mRegNum == CPUReg_XMMREG_FIRST + (xmmMajor * 4) + xmmMinor);
+							xmmRegVals[xmmMinor] = xmmReg.mInt64;
+						}
+						headerStr = StrFormat("(%lld, %lld)", xmmRegVals[0], xmmRegVals[1]);
+					}
+					else // float
 					{
 						float xmmRegVals[4];
 						xmmCount = 4;
@@ -6916,7 +6937,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 							xmmRegVals[xmmMinor] = xmmReg.mSingle;
 						}
 						headerStr = StrFormat("(%f, %f, %f, %f)", xmmRegVals[0], xmmRegVals[1], xmmRegVals[2], xmmRegVals[3]);
-					}
+					}					
 				}
 				else
 				{
@@ -6925,7 +6946,14 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 				result = headerStr + "\n" + xmmType;
 				for (int i = 0; i < xmmCount; i++)
-					result += WrapWithModifiers(StrFormat("\n[%d]\t$xmm%d_%d", i, xmmMajor, i, language), origValueType, language);
+				{
+					if (xmmCount == 16)
+						result += WrapWithModifiers(StrFormat("\n[%d]\t(uint8)($xmm%d_%d >> %d)", i, xmmMajor, i / 4, (i % 4)*8), origValueType, language);
+					else if (xmmCount == 8)
+						result += WrapWithModifiers(StrFormat("\n[%d]\t(int16)($xmm%d_%d >> %d)", i, xmmMajor, i / 2, (i % 2)*8), origValueType, language);
+					else
+						result += WrapWithModifiers(StrFormat("\n[%d]\t$xmm%d_%d", i, xmmMajor, i), origValueType, language);
+				}
 
 				return result;
 			}
@@ -8936,7 +8964,7 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 			if ((regForm == RegForm_Double) || (regForm == RegForm_Double2))
 				mmDisplayType = DwMmDisplayType_Double;
 			else if (regForm == RegForm_Int4)
-				mmDisplayType = DwMmDisplayType_Int;
+				mmDisplayType = DwMmDisplayType_Int32;
 		}
 
 		//TODO: Add int types
@@ -8948,12 +8976,19 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 			typedVal.mRegNum = regNum;
 			return typedVal;
 		}
-
-		if ((mmDisplayType == DwMmDisplayType_Byte) || (mmDisplayType == DwMmDisplayType_Short) || (mmDisplayType == DwMmDisplayType_Int))
+		else if ((mmDisplayType == DwMmDisplayType_UInt8) || (mmDisplayType == DwMmDisplayType_Int16) || (mmDisplayType == DwMmDisplayType_Int32))		
 		{
 			DbgTypedValue typedVal;
 			typedVal.mType = dbgModule->GetPrimitiveType(DbgType_i32, language);
-			typedVal.mInt32 = registers->mXmmIRegsARray[xmmMajor].i[xmmMinor];
+			typedVal.mInt32 = registers->mXmmI32RegsARray[xmmMajor].i[xmmMinor];
+			typedVal.mRegNum = regNum;
+			return typedVal;
+		}
+		else if (mmDisplayType == DwMmDisplayType_Int64)
+		{
+			DbgTypedValue typedVal;
+			typedVal.mType = dbgModule->GetPrimitiveType(DbgType_i64, language);
+			typedVal.mInt64 = registers->mXmmI64RegsARray[xmmMajor].i[xmmMinor];
 			typedVal.mRegNum = regNum;
 			return typedVal;
 		}
