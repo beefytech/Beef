@@ -162,7 +162,10 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	if (windowFlags & BFWINDOW_MAXIMIZE)
 		aWindowFlags |= WS_MAXIMIZEBOX;
 	if ((windowFlags & BFWINDOW_TOPMOST) && (parent == NULL))
-		windowFlagsEx |= WS_EX_TOPMOST;	
+		windowFlagsEx |= WS_EX_TOPMOST;
+	if ((windowFlags & BFWINDOW_ACCEPTFILES))
+		windowFlagsEx |= WS_EX_ACCEPTFILES;
+
 	if (windowFlags & BFWINDOW_CLIENT_SIZED)
 	{
 		RECT rect = {0, 0, width, height};
@@ -1122,6 +1125,18 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 		case WM_INPUTLANGCHANGE:
 			mKeyLayoutHasAltGr = (KeyboardLayoutHasAltGr((HKL)lParam) == TRUE);
+			break;
+
+		case WM_DROPFILES:
+			{
+				HDROP hDropInfo = (HDROP)wParam;
+				char sItem[MAX_PATH];
+	
+				for(int i = 0; DragQueryFileA(hDropInfo, i, (LPSTR)sItem, sizeof(sItem)); i++)
+				    mDragDropFileFunc(this, sItem);
+
+				DragFinish(hDropInfo);
+			}
 			break;
 		}
 		

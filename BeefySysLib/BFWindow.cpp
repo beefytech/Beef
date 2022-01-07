@@ -153,7 +153,8 @@ BFWindow::BFWindow()
 	mMouseUpFunc = NULL;
 	mMouseWheelFunc = NULL;
 	mMouseLeaveFunc = NULL;
-	mMenuItemSelectedFunc = NULL;	
+	mMenuItemSelectedFunc = NULL;
+	mDragDropFileFunc = NULL;
 	mHitTestFunc = NULL;
 	mFlags = 0;
 

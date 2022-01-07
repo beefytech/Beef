@@ -48,6 +48,7 @@ namespace Beefy
 			ShowMinimized = 0x0200'0000,
 			ShowMaximized = 0x0400'0000,
 			AllowFullscreen = 0x0800'0000,
+			AcceptFiles = 0x1000'0000
         };
 
 		[AllowDuplicates]
@@ -127,7 +128,8 @@ namespace Beefy
         delegate void NativeMouseUpDelegate(void* window, int32 x, int32 y, int32 btn);
         delegate void NativeMouseWheelDelegate(void* window, int32 x, int32 y, float deltaX, float deltaY);
         delegate void NativeMouseLeaveDelegate(void* window);
-        delegate void NativeMenuItemSelectedDelegate(void* window, void* menu);        
+        delegate void NativeMenuItemSelectedDelegate(void* window, void* menu);
+		delegate void NativeDragDropFileDelegate(void* window, char8* filePath);
 
         public void* mNativeWindow;
 		public bool mNativeWindowClosed;
@@ -178,6 +180,7 @@ namespace Beefy
         static NativeMouseWheelDelegate sNativeMouseWheelDelegate ~ delete _;
         static NativeMouseLeaveDelegate sNativeMouseLeaveDelegate ~ delete _;
         static NativeMenuItemSelectedDelegate sNativeMenuItemSelectedDelegate ~ delete _;
+        static NativeDragDropFileDelegate sNativeDragDropFileDelegate ~ delete _;
 
         [CallingConvention(.Stdcall), CLink]
         static extern void* BFApp_CreateWindow(void* parent, char8* title, int32 x, int32 y, int32 width, int32 height, int32 windowFlags);
@@ -190,7 +193,7 @@ namespace Beefy
             void* gotFocusDelegate, void* lostFocusDelegate,
 			void* keyCharDelegate, void* keyDownDelegate, void* keyUpDelegate, void* hitTestDelegate,
             void* mouseMoveDelegate, void* mouseProxyMoveDelegate, void* mouseDownDelegate, void* mouseUpDelegate, void* mouseWheelDelegate, void* mouseLeaveDelegate,
-            void* menuItemSelectedDelegate);
+            void* menuItemSelectedDelegate, void* dragDropFileDelegate);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BFWindow_SetTitle(void* window, char8* title);
@@ -299,6 +302,7 @@ namespace Beefy
 		static void Static_NativeMouseWheelDelegate(void* window, int32 mouseX, int32 mouseY, float deltaX, float deltaY) { GetBFWindow(window).MouseWheel(mouseX, mouseY, deltaX, deltaY); }
 		static void Static_NativeMouseLeaveDelegate(void* window) { GetBFWindow(window).MouseLeave(); }
 		static void Static_NativeMenuItemSelectedDelegate(void* window, void* item) { GetBFWindow(window).NativeMenuItemSelected(item); }
+		static void Static_NativeDragDropFileDelegate(void* window, char8* filePath) { GetBFWindow(window).DragDropFile(StringView(filePath)); }
 		#endif
 
 		public this()
@@ -351,12 +355,13 @@ namespace Beefy
 				sNativeMouseWheelDelegate = new => Static_NativeMouseWheelDelegate;
 				sNativeMouseLeaveDelegate = new => Static_NativeMouseLeaveDelegate;
 				sNativeMenuItemSelectedDelegate = new => Static_NativeMenuItemSelectedDelegate;
+				sNativeDragDropFileDelegate = new => Static_NativeDragDropFileDelegate;
             }
 
             BFWindow_SetCallbacks(mNativeWindow, sNativeMovedDelegate.GetFuncPtr(), sNativeCloseQueryDelegate.GetFuncPtr(), sNativeClosedDelegate.GetFuncPtr(), sNativeGotFocusDelegate.GetFuncPtr(), sNativeLostFocusDelegate.GetFuncPtr(),
                 sNativeKeyCharDelegate.GetFuncPtr(), sNativeKeyDownDelegate.GetFuncPtr(), sNativeKeyUpDelegate.GetFuncPtr(), sNativeHitTestDelegate.GetFuncPtr(),
                 sNativeMouseMoveDelegate.GetFuncPtr(), sNativeMouseProxyMoveDelegate.GetFuncPtr(), sNativeMouseDownDelegate.GetFuncPtr(), sNativeMouseUpDelegate.GetFuncPtr(), sNativeMouseWheelDelegate.GetFuncPtr(), sNativeMouseLeaveDelegate.GetFuncPtr(),
-                sNativeMenuItemSelectedDelegate.GetFuncPtr());            
+                sNativeMenuItemSelectedDelegate.GetFuncPtr(), sNativeDragDropFileDelegate.GetFuncPtr());            
             BFApp.sApp.mWindows.Add(this);
 
             mDefaultDrawLayer = new DrawLayer(this);
@@ -574,6 +579,10 @@ namespace Beefy
             SysMenu aSysMenu = mSysMenuMap[(int)menu];
             MenuItemSelected(aSysMenu);                      
         }
+
+		public virtual void DragDropFile(StringView filePath)
+		{
+		}
 
         public virtual SysBitmap LoadSysBitmap(String path)
         {

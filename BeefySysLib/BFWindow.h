@@ -23,6 +23,7 @@ typedef void (*BFWindow_MouseUp)(BFWindow* window, int x, int y, int btn);
 typedef void (*BFWindow_MouseWheel)(BFWindow* window, int x, int y, float deltaX, float deltaY);
 typedef void (*BFWindow_MouseLeave)(BFWindow* window);
 typedef void (*BFWindow_MenuItemSelectedFunc)(BFWindow* window, BFMenu* menu);
+typedef void (*BFWindow_DragDropFileFunc)(BFWindow* window, const char* filePath);
 
 enum
 {
@@ -53,7 +54,8 @@ enum
 	BFWINDOW_FAKEFOCUS		= 0x1000000,
 	BFWINDOW_SHOWMINIMIZED  = 0x2000000,
 	BFWINDOW_SHOWMAXIMIZED  = 0x4000000,
-	BFWINDOW_ALLOW_FULLSCREEN = 0x8000000
+	BFWINDOW_ALLOW_FULLSCREEN = 0x8000000,
+	BFWINDOW_ACCEPTFILES = 0x10000000
 	
 };
  
@@ -103,7 +105,7 @@ public:
 	uint32					mMouseDownTicks[MOUSEBUTTON_MAX];
 
 	BFMenu*					mMenu;
-	RenderWindow*			mRenderWindow;		
+	RenderWindow*			mRenderWindow;
 	bool					mNonExclusiveMouseCapture;
 	BFWindow_MovedFunc		mMovedFunc;
 	BFWindow_CloseQueryFunc mCloseQueryFunc;
@@ -120,7 +122,8 @@ public:
 	BFWindow_MouseUp		mMouseUpFunc;
 	BFWindow_MouseWheel		mMouseWheelFunc;
 	BFWindow_MouseLeave		mMouseLeaveFunc;
-	BFWindow_MenuItemSelectedFunc mMenuItemSelectedFunc;	
+	BFWindow_MenuItemSelectedFunc mMenuItemSelectedFunc;
+	BFWindow_DragDropFileFunc mDragDropFileFunc;
 	
 public:
 	BFWindow();
