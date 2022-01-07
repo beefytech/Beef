@@ -486,8 +486,8 @@ namespace Beefy.theme.dark
 							{
 								float thickness = 2 * (lineSpacing / 18);
 								// This isn't quite the right value, but I'm not sure how to get this
-								// to properly lighlight the whole line without getting cut off - this works well for now.
-								float totalLineWidth = mEditWidget.mScrollContentContainer.mWidth - thickness / 2;
+								// to properly highlight the whole line without getting cut off - this works well for now.
+								float totalLineWidth = mEditWidget.mScrollContentContainer.mWidth - thickness;
 
 								float x = (int)mEditWidget.mHorzPos.v; // If we don't round to int we get jitter while scrolling.
 								using (g.PushColor(DarkTheme.COLOR_CURRENT_LINE_HILITE))
