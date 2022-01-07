@@ -6097,6 +6097,7 @@ namespace IDE
 			//mEditWidget.mVertScrollbar.mScrollIncrement = editWidgetContent.mFont.GetLineSpacing();
             editWidgetContent.mHiliteColor = 0xFF384858;
             editWidgetContent.mUnfocusedHiliteColor = 0x80384858;
+			editWidgetContent.mHiliteCurrentLine = mSettings.mEditorSettings.mHiliteCurrentLine;
 
             return editWidget;
         }
