@@ -101,6 +101,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Fuzzy Autocomplete", "mFuzzyAutoComplete");
 			AddPropertiesItem(category, "Show Locator Animation", "mShowLocatorAnim");
 			AddPropertiesItem(category, "Hilite Symbol at Cursor", "mHiliteCursorReferences");
+			AddPropertiesItem(category, "Hilite Current Line", "mHiliteCurrentLine");
 
 			(?, propEntry) = AddPropertiesItem(category, "Spell Check", "mSpellCheckEnabled");
 			var resetButton = new DarkButton();
@@ -128,7 +129,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Format on Save", "mFormatOnSave");
 			AddPropertiesItem(category, "Sync with Workspace Panel", "mSyncWithWorkspacePanel");
 			AddPropertiesItem(category, "Wrap Comments at Column", "mWrapCommentsAt");
-			
+
 			category.Open(true, true);
 		}
 
