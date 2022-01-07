@@ -5153,6 +5153,28 @@ namespace IDE
 				sewc.ScopeNext();
 		}
 
+		void ScrollDown()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+			{
+				var scrollbar = sewc.mEditWidget.mVertScrollbar;
+				if (scrollbar != null)
+					scrollbar.Scroll(+1 * scrollbar.GetScrollIncrement());
+			}
+		}
+
+		void ScrollUp()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+			{
+				var scrollbar = sewc.mEditWidget.mVertScrollbar;
+				if (scrollbar != null)
+					scrollbar.Scroll(-1 * scrollbar.GetScrollIncrement());
+			}
+		}
+
 		void ExitTest()
 		{
 			sExitTest = true;
