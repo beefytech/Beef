@@ -18,7 +18,7 @@ namespace IDE.util
 				return;
 			}
 
-			if (!mDefinesSet.ContainsAlt(str))
+			if (!mDefinesSet.Contains(scope .(str)))
 			{
 				var strCopy = new String(str);
 				mDefines.Add(strCopy);

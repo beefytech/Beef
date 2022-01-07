@@ -22,6 +22,7 @@ namespace Beefy.theme.dark
 		public bool mWantsCheckScrollPosition;
 		public uint32 mViewWhiteSpaceColor;
 		public bool mScrollToStartOnLostFocus;
+		public bool mHiliteCurrentLine;
 
 		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;
 
@@ -480,9 +481,21 @@ namespace Beefy.theme.dark
                         }                        
 
                         if (aX != -1)
-                        {                            
+                        {
+							if (mHiliteCurrentLine && selStartIdx == selEndIdx)
+							{
+								float thickness = 2 * (lineSpacing / 18);
+								// This isn't quite the right value, but I'm not sure how to get this
+								// to properly highlight the whole line without getting cut off - this works well for now.
+								float totalLineWidth = mEditWidget.mScrollContentContainer.mWidth - thickness;
+
+								float x = (int)mEditWidget.mHorzPos.v; // If we don't round to int we get jitter while scrolling.
+								using (g.PushColor(DarkTheme.COLOR_CURRENT_LINE_HILITE))
+									g.OutlineRect(x, curY, totalLineWidth, lineSpacing + thickness, thickness);
+							}
+
                             float brightness = (float)Math.Cos(Math.Max(0.0f, mCursorBlinkTicks - 20) / 9.0f);                            
-                            brightness = Math.Max(0, Math.Min(1.0f, brightness * 2.0f + 1.6f));
+                            brightness = Math.Clamp(brightness * 2.0f + 1.6f, 0, 1);
                             if (mEditWidget.mVertPos.IsMoving)
                                 brightness = 0; // When we animate a pgup or pgdn, it's weird seeing the cursor scrolling around
 
@@ -503,7 +516,7 @@ namespace Beefy.theme.dark
                             }
                             else
                             {
-                                using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness))))
+								using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness))))
                                     g.FillRect(aX, curY, Math.Max(1.0f, GS!(1)), lineSpacing);
                             }
                             drewCursor = true;

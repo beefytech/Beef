@@ -324,6 +324,7 @@ namespace IDE
 			public Color mBuildError = 0xFFFF8080;
 			public Color mBuildWarning = 0xFFFFFF80;
 			public Color mVisibleWhiteSpace = 0xFF9090C0;
+			public Color mCurrentLineHilite = 0xFF4C4C54;
 
 			public void Deserialize(StructuredData sd)
 			{
@@ -348,6 +349,7 @@ namespace IDE
 				GetColor("WorkspaceFailedText", ref mWorkspaceFailedText);
 				GetColor("WorkspaceManualIncludeText", ref mWorkspaceManualIncludeText);
 				GetColor("WorkspaceIgnoredText", ref mWorkspaceIgnoredText);
+				GetColor("CurrentLineHilite", ref mCurrentLineHilite);
 
 				GetColor("Code", ref mCode);
 				GetColor("Keyword", ref mKeyword);
@@ -411,6 +413,7 @@ namespace IDE
 				DarkTheme.COLOR_SELECTED_OUTLINE = mSelectedOutline;
 				DarkTheme.COLOR_MENU_FOCUSED = mMenuFocused;
 				DarkTheme.COLOR_MENU_SELECTED = mMenuSelected;
+				DarkTheme.COLOR_CURRENT_LINE_HILITE = mCurrentLineHilite;
 			}
 		}
 
@@ -616,6 +619,7 @@ namespace IDE
 			public bool mFuzzyAutoComplete = false;
 			public bool mShowLocatorAnim = true;
 			public bool mHiliteCursorReferences = true;
+			public bool mHiliteCurrentLine = true;
 			public bool mLockEditing;
 			public LockWhileDebuggingKind mLockEditingWhenDebugging = .WhenNotHotSwappable;// Only applicable for
 			// non-Beef sources
@@ -644,6 +648,7 @@ namespace IDE
 				sd.Add("FuzzyAutoComplete", mFuzzyAutoComplete);
 				sd.Add("ShowLocatorAnim", mShowLocatorAnim);
 				sd.Add("HiliteCursorReferences", mHiliteCursorReferences);
+				sd.Add("HiliteCurrentLine", mHiliteCurrentLine);
 				sd.Add("LockEditing", mLockEditing);
 				sd.Add("LockEditingWhenDebugging", mLockEditingWhenDebugging);
 				sd.Add("PerforceAutoCheckout", mPerforceAutoCheckout);
@@ -675,6 +680,7 @@ namespace IDE
 				sd.Get("FuzzyAutoComplete", ref mFuzzyAutoComplete);
 				sd.Get("ShowLocatorAnim", ref mShowLocatorAnim);
 				sd.Get("HiliteCursorReferences", ref mHiliteCursorReferences);
+				sd.Get("HiliteCurrentLine", ref mHiliteCurrentLine);
 				sd.Get("LockEditing", ref mLockEditing);
 				sd.Get("LockEditingWhenDebugging", ref mLockEditingWhenDebugging);
 				sd.Get("PerforceAutoCheckout", ref mPerforceAutoCheckout);
@@ -1188,6 +1194,10 @@ namespace IDE
 					widgetWindow.mRootWidget.RehupSize();
 				}
 			}
+
+			for (let value in gApp.mFileEditData.Values)
+				if (value.mEditWidget != null)
+					((SourceEditWidgetContent)value.mEditWidget.Content).mHiliteCurrentLine = gApp.mSettings.mEditorSettings.mHiliteCurrentLine;
 
 			if (!mWakaTimeKey.IsEmpty)
 			{
