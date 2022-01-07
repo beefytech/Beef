@@ -70,7 +70,7 @@ namespace System.Diagnostics
 
 		public static void WriteLine(StringView line)
 		{
-			String lineStr = scope String(Math.Min(line.Length, 4096));
+			String lineStr = scope String(Math.Min(line.Length + 1, 4096));
 			lineStr.Append(line);
 			lineStr.Append('\n');
 			Write(lineStr.Ptr, lineStr.Length);
