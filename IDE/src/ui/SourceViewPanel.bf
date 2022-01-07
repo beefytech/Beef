@@ -4089,8 +4089,11 @@ namespace IDE.ui
             {
                 using (g.PushTranslate(0, mEditWidget.mY + mEditWidget.Content.Y + GS!(2)))
                 {
-                    float lineSpacing = darkEditWidgetContent.mFont.GetLineSpacing();
 					float editX = GetEditX();
+					float lineSpacing = darkEditWidgetContent.mFont.GetLineSpacing();
+					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
+					using (g.PushColor(gApp.mSettings.mUISettings.mColors.mCurrentLineNumberHilite))
+						g.FillRect(0, GS!(2) + cursorLineNumber * lineSpacing, editX - GS!(2), lineSpacing);
 
 					int lineStart = (int)((-mEditWidget.Content.Y) / lineSpacing) - 1;
 					int lineEnd = Math.Min(darkEditWidgetContent.GetLineCount(), lineStart + (int)(mHeight / lineSpacing) + 3);

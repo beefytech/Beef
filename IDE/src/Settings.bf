@@ -325,6 +325,7 @@ namespace IDE
 			public Color mBuildWarning = 0xFFFFFF80;
 			public Color mVisibleWhiteSpace = 0xFF9090C0;
 			public Color mCurrentLineHilite = 0xFF4C4C54;
+			public Color mCurrentLineNumberHilite = 0x20FFFFFF;
 
 			public void Deserialize(StructuredData sd)
 			{
@@ -383,6 +384,8 @@ namespace IDE
 				GetColor("BuildError", ref mBuildError);
 				GetColor("BuildWarning", ref mBuildWarning);
 				GetColor("VisibleWhiteSpace", ref mVisibleWhiteSpace);
+				GetColor("CurrentLineHilite", ref mCurrentLineHilite);
+				GetColor("CurrentLineNumberHilite", ref mCurrentLineNumberHilite);
 			}
 
 			public void Apply()
@@ -619,7 +622,7 @@ namespace IDE
 			public bool mFuzzyAutoComplete = false;
 			public bool mShowLocatorAnim = true;
 			public bool mHiliteCursorReferences = true;
-			public bool mHiliteCurrentLine = true;
+			public bool mHiliteCurrentLine = false;
 			public bool mLockEditing;
 			public LockWhileDebuggingKind mLockEditingWhenDebugging = .WhenNotHotSwappable;// Only applicable for
 			// non-Beef sources
