@@ -20,6 +20,9 @@ namespace Beefy2D.utils
 		static extern int32 HTTP_GetResult(void* netRequest, int32 waitMS);
 
 		[CallingConvention(.Stdcall), CLink]
+		static extern void HTTP_GetLastError(void* netRequest, out char8* error, out int32 errorLength);
+
+		[CallingConvention(.Stdcall), CLink]
 		static extern void HTTP_Delete(void* netRequest);
 
 		public ~this()
@@ -36,6 +39,12 @@ namespace Beefy2D.utils
 		public HTTPResult GetResult()
 		{
 			return (HTTPResult)HTTP_GetResult(mNativeNetRequest, 0);
+		}
+
+		public void GetLastError(String outError)
+		{
+			HTTP_GetLastError(mNativeNetRequest, let error, let errorLength);
+			outError.Append(StringView(error, errorLength));
 		}
 	}
 }
