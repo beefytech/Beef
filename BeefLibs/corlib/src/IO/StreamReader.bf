@@ -190,7 +190,7 @@ namespace System.IO
 			{
 				if (Try!(ReadBuffer()) == 0) return .Err;
 			}
-			return mCharBuffer[mCharPos + 1];
+			return mCharBuffer[mCharPos];
 		}
 
 		public Task<String> ReadLineAsync()
