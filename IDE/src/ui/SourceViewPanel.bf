@@ -3121,13 +3121,19 @@ namespace IDE.ui
 
 		void FileOpenFailed()
 		{
+			bool fileFromNetwork = mOldVerLoadCmd?.StartsWith("http", .OrdinalIgnoreCase) == true;
+
 			mLoadFailed = true;
 			//mLastFileTextVersion = mEditWidget.Content.mData.mCurTextVersionId;
 			mPanelHeader = new PanelHeader();
 			String fileName = scope String();
 			Path.GetFileName(mFilePath, fileName);
 			String headerStr = scope String();
-			headerStr.AppendF("Source file '{0}' is unavailable. Requested path is '{1}'", fileName, mFilePath);
+			headerStr.AppendF("Source file '{0}' is unavailable. ", fileName);
+			if (fileFromNetwork)
+				headerStr.Append("Failed to retrieve from network.");
+			else
+				headerStr.AppendF("Requested path is '{0}'", mFilePath);
 			mPanelHeader.Label = headerStr;
 			if (!sPreviousVersionWarningShown)
 			{
@@ -3162,19 +3168,30 @@ namespace IDE.ui
 					});
 			}
 
-			var button = mPanelHeader.AddButton("Retry");
-			button.mOnMouseClick.Add(new (evt) =>
-			    {
-					Reload();
-			    });
+			if (fileFromNetwork)
+			{
+				var button = mPanelHeader.AddButton("Retry");
+				button.mOnMouseClick.Add(new (evt) =>
+					{
+						LoadOldVer();
+					});
+			}
+			else
+			{
+				var button = mPanelHeader.AddButton("Retry");
+				button.mOnMouseClick.Add(new (evt) =>
+				    {
+						Reload();
+				    });
+	
+				button = mPanelHeader.AddButton("Auto Find");
+				button.mOnMouseClick.Add(new (evt) =>
+				    {
+						AutoFind();
+				    });
+			}
 
-			button = mPanelHeader.AddButton("Auto Find");
-			button.mOnMouseClick.Add(new (evt) =>
-			    {
-					AutoFind();
-			    });
-
-			button = mPanelHeader.AddButton("Browse...");
+			var button = mPanelHeader.AddButton("Browse...");
 			button.mOnMouseClick.Add(new (evt) =>
 			    {
 					BrowseForFile();
@@ -5719,7 +5736,18 @@ namespace IDE.ui
 				if (result != .NotDone)
 				{
 					if (result == .Failed)
-						gApp.OutputErrorLine("Failed to retrieve source from {}", mOldVerLoadCmd);
+					{
+						String errorMsg = scope .();
+						errorMsg.AppendF("Failed to retrieve source from {}", mOldVerLoadCmd);
+
+						String errorReason = scope .();
+						mOldVerHTTPRequest.GetLastError(errorReason);
+
+						if (!errorReason.IsEmpty)
+							errorMsg.AppendF(" ({})", errorReason);
+
+						gApp.OutputErrorLine(errorMsg);
+					}
 
 					CheckAdjustFile();
 					RetryLoad();

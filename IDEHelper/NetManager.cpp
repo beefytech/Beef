@@ -165,7 +165,23 @@ void NetRequest::DoTransfer()
 		curl_easy_getinfo(mCURL, CURLINFO_RESPONSE_CODE, &response_code);
 		mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Result for '%s': %d\n", mURL.c_str(), response_code));
 
-		if ((response_code == 0) || (response_code == 200) || (response_code == 404))
+		if (response_code == 0)
+		{
+			mError.Clear();
+
+			int msgs_left = 0;
+			CURLMsg* msg = curl_multi_info_read(mCURLMulti, &msgs_left);
+
+			if (msg != NULL && msg->msg == CURLMSG_DONE)
+			{
+				CURLcode return_code = msg->data.result;
+				mError.Append(curl_easy_strerror(return_code));
+			}
+
+			break;
+		}
+
+		if ((response_code == 200) || (response_code == 404))
 			break;
 
 		Cleanup();
@@ -410,6 +426,7 @@ NetRequest::~NetRequest()
 	if (mResult != NULL)
 	{
 		mResult->mFailed = mFailed;
+		mResult->mError = mError;
 		mResult->mCurRequest = NULL;
 		if (mResult->mDoneEvent != NULL)
 		{

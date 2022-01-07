@@ -36,12 +36,12 @@ public:
 #else
 #endif
 	volatile bool mCancelling;
-	bool mFailed;		
+	bool mFailed;
 	String mError;
 	uint32 mLastUpdateTick;
 	bool mShowTracking;
-	NetResult* mResult;	
-	NetResult* mCancelOnSuccess;	
+	NetResult* mResult;
+	NetResult* mCancelOnSuccess;
 
 	NetRequest()
 	{
@@ -74,8 +74,9 @@ public:
 	String mURL;
 	String mOutPath;
 	bool mFailed;
-	NetRequest* mCurRequest;	
-	bool mRemoved;	
+	String mError;
+	NetRequest* mCurRequest;
+	bool mRemoved;
 	SyncEvent* mDoneEvent;
 
 	NetResult()

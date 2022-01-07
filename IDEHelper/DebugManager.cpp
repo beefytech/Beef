@@ -1617,6 +1617,12 @@ BF_EXPORT int HTTP_GetResult(NetResult* netResult, int waitMS)
 	}
 }
 
+BF_EXPORT void HTTP_GetLastError(NetResult* netResult, const char** error, int* errorLength)
+{
+	*error = netResult->mError.GetPtr();
+	*errorLength = netResult->mError.GetLength();
+}
+
 BF_EXPORT void HTTP_Delete(NetResult* netResult)
 {
 	if (!netResult->mDoneEvent->WaitFor(0))
