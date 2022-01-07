@@ -1387,17 +1387,7 @@ void BFGC::AdjustStackPtr(intptr& addr, int& size)
 bool BFGC::ScanThreads()
 {
 	BP_ZONE("BFGC::ScanThreads");
-
-	if (mStackScanIdx == 0)
-	{
-		// 'Prime' register capture
-		intptr regVals[128];
-		intptr stackPtr = 0;
-		BfpThreadResult threadResult;
-		int regValCount = 128;
-		BfpThread_GetIntRegisters(BfpThread_GetCurrent(), &stackPtr, regVals, &regValCount, &threadResult);
-	}
-
+	
 	mUsingThreadUnlocked = true;
 
 	BF_FULL_MEMORY_FENCE();
@@ -2403,6 +2393,16 @@ void BFGC::PerformCollection()
 {
 	BP_ZONE("TriggerCollection");
 	
+	if (mCollectIdx == 0)
+	{
+		// 'Prime' register capture
+		intptr regVals[128];
+		intptr stackPtr = 0;
+		BfpThreadResult threadResult;
+		int regValCount = 128;
+		BfpThread_GetIntRegisters(BfpThread_GetCurrent(), &stackPtr, regVals, &regValCount, &threadResult);
+	}
+
 	int prevMarkId = mCurMarkId;
 
 	DWORD startTick = BFTickCount();
