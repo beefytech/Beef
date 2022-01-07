@@ -17718,13 +17718,13 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 				{
 					if (mModule->mCurMethodState->mMixinState != NULL)
 						error = _Fail(StrFormat("Cannot %s mixin parameter '%s'", modifyType,
-							localVar->mName.c_str(), mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+							localVar->mName.c_str()), refNode);
 					else if ((localVar->mResolvedType->IsGenericParam()) && (onlyNeedsMut))
-						error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'mut' or 'ref' specifier to parameter or copying to a local variable.", modifyType,
-							localVar->mName.c_str(), mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+						error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'mut' or 'ref' specifier to parameter or declaring 'var %s;' to create a mutable copy.", modifyType,
+							localVar->mName.c_str(), localVar->mName.c_str()), refNode);
 					else
-						error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'ref' specifier to parameter or copying to a local variable.", modifyType,
-							localVar->mName.c_str(), mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+						error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'ref' specifier to parameter or declaring 'var %s;' to create a mutable copy.", modifyType,
+							localVar->mName.c_str(), localVar->mName.c_str()), refNode);
 					return false;
 				}
 			}

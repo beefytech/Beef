@@ -14734,11 +14734,16 @@ void BfModule::CheckVariableDef(BfLocalVariable* variableDef)
 			if (checkLocal->mIsImplicitParam)
 				return; // Ignore 'redefinition'
 			if (checkLocal->IsParam())
-				error = Fail(StrFormat("A parameter named '%s' has already been declared.", variableDef->mName.c_str()), variableDef->mNameNode);
+			{
+				if (variableDef->IsParam())
+					error = Fail(StrFormat("A parameter named '%s' has already been declared", variableDef->mName.c_str()), variableDef->mNameNode);
+				else
+					error = Fail(StrFormat("The name '%s' is already used by a parameter. Consider declaring 'var %s;' if you wish to make a mutable copy of that parameter.", variableDef->mName.c_str(), variableDef->mName.c_str()), variableDef->mNameNode);
+			}
 			else if (checkLocal->mLocalVarIdx < mCurMethodState->mCurScope->mLocalVarStart)
-				error = Fail(StrFormat("A variable named '%s' has already been declared in this parent's scope.", variableDef->mName.c_str()), variableDef->mNameNode);
+				error = Fail(StrFormat("A variable named '%s' has already been declared in this parent's scope", variableDef->mName.c_str()), variableDef->mNameNode);
 			else
-				error = Fail(StrFormat("A variable named '%s' has already been declared in this scope.", variableDef->mName.c_str()), variableDef->mNameNode);
+				error = Fail(StrFormat("A variable named '%s' has already been declared in this scope", variableDef->mName.c_str()), variableDef->mNameNode);
 			if ((checkLocal->mNameNode != NULL) && (error != NULL))
 				mCompiler->mPassInstance->MoreInfo("Previous declaration", checkLocal->mNameNode);
 			return;
@@ -14753,7 +14758,7 @@ BfScopeData* BfModule::FindScope(BfAstNode* scopeName, BfMixinState* fromMixinSt
 	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(scopeName))
 	{
 		if (tokenNode->GetToken() == BfToken_Colon)
-		{	
+		{
 			if ((!allowAcrossDeferredBlock) && (mCurMethodState->mInDeferredBlock))
 			{
 				Fail("Cannot access method scope across deferred block boundary", scopeName);
