@@ -1187,7 +1187,11 @@ namespace IDE.ui
                 //if (mCurParser != null)
                 {
 					if (gApp.mWorkspace.mProjectLoadState != .Loaded)
+					{
+						resolveParams.mCancelled = true;
+						resolveParams.mWaitEvent.Set(true);
 						return true;
+					}
 
 					if (!isHi)
 						Debug.Assert(!mIsPerformingBackgroundClassify);
