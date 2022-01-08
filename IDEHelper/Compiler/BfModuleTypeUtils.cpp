@@ -6093,9 +6093,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 								SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, ifaceMethodInst);
 								methodString = MethodToString(ifaceMethodInst);
 							}
-
-							OutputDebugStrF("Failed in %s %p\n", mModuleName.c_str(), this);
-
+							
 							BfTypeDeclaration* typeDecl = declTypeDef->mTypeDeclaration;
 							BfError* error = Fail(StrFormat("'%s' does not implement interface member '%s'", TypeToString(typeInstance).c_str(), methodString.c_str()), typeDecl->mNameNode, true);
 							if ((matchedMethod != NULL) && (error != NULL))
