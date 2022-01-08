@@ -1414,7 +1414,7 @@ namespace IDE.ui
 			        {
 			            bfCompiler.QueueProjectSourceRemoved(projectSource);
 			        }
-					gApp.mBfResolveCompiler.QueueDeferredResolveAll();
+					gApp.mBfResolveCompiler?.QueueDeferredResolveAll();
 			    }
 #if IDE_C_SUPPORT
 			    else if (IDEApp.IsClangSourceFile(fullPath))

@@ -747,7 +747,16 @@ namespace IDE.ui
 				{
 					isWorking = true;
 					var bfCompiler = gApp.mBfResolveCompiler;
-					if (!bfCompiler.IsPerformingBackgroundOperation())
+					if (bfCompiler == null)
+					{
+						if (mOutputPanel == null)
+						{
+							ShowError("Cannot generate files in safe mode");
+							RehupMinSize();
+						}
+						mPendingGenList = false;
+					}
+					else if (!bfCompiler.IsPerformingBackgroundOperation())
 					{
 						bfCompiler.CheckThreadDone();
 
@@ -768,7 +777,7 @@ namespace IDE.ui
 				}
 			}
 
-			gApp.mBfResolveCompiler.CheckThreadDone();
+			gApp.mBfResolveCompiler?.CheckThreadDone();
 
 			if ((mThreadState == .Executing) || (isWorking))
 			{
