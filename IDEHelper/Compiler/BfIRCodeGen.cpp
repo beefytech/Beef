@@ -203,17 +203,29 @@ template <typename T>
 class CmdParamVec : public llvm::SmallVector<T, 8>
 {};
 
-static int GetLLVMCallingConv(BfIRCallingConv callingConv)
+static int GetLLVMCallingConv(BfIRCallingConv callingConv, BfTargetTriple& targetTriple)
 {
 	int llvmCallingConv = llvm::CallingConv::C;
-	if (callingConv == BfIRCallingConv_ThisCall)
-		llvmCallingConv = llvm::CallingConv::X86_ThisCall;
-	else if (callingConv == BfIRCallingConv_StdCall)
-		llvmCallingConv = llvm::CallingConv::X86_StdCall;
-	else if (callingConv == BfIRCallingConv_FastCall)
-		llvmCallingConv = llvm::CallingConv::X86_FastCall;
-	else if (callingConv == BfIRCallingConv_CDecl)
-		llvmCallingConv = llvm::CallingConv::C;
+
+	if (targetTriple.GetMachineType() == BfMachineType_AArch64)
+	{
+		if (callingConv == BfIRCallingConv_CDecl)
+			llvmCallingConv = llvm::CallingConv::C;
+		else
+			llvmCallingConv = llvm::CallingConv::PreserveMost;
+	}
+	else
+	{
+		if (callingConv == BfIRCallingConv_ThisCall)
+			llvmCallingConv = llvm::CallingConv::X86_ThisCall;
+		else if (callingConv == BfIRCallingConv_StdCall)
+			llvmCallingConv = llvm::CallingConv::X86_StdCall;
+		else if (callingConv == BfIRCallingConv_FastCall)
+			llvmCallingConv = llvm::CallingConv::X86_FastCall;
+		else if (callingConv == BfIRCallingConv_CDecl)
+			llvmCallingConv = llvm::CallingConv::C;
+	}
+
 	return llvmCallingConv;
 }
 
@@ -3601,14 +3613,14 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, callInst);
 			BfIRCallingConv callingConv = (BfIRCallingConv)mStream->Read();
 			BF_ASSERT(llvm::isa<llvm::CallInst>(callInst));
-			((llvm::CallInst*)callInst)->setCallingConv(GetLLVMCallingConv(callingConv));
+			((llvm::CallInst*)callInst)->setCallingConv(GetLLVMCallingConv(callingConv, mTargetTriple));
 		}
 		break;
 	case BfIRCmd_SetFuncCallingConv:
 		{
 			CMD_PARAM(llvm::Function*, func);
 			BfIRCallingConv callingConv = (BfIRCallingConv)mStream->Read();			
-			((llvm::Function*)func)->setCallingConv(GetLLVMCallingConv(callingConv));
+			((llvm::Function*)func)->setCallingConv(GetLLVMCallingConv(callingConv, mTargetTriple));
 		}
 		break;
 	case BfIRCmd_SetTailCall:
