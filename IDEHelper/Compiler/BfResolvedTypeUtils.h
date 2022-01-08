@@ -659,6 +659,8 @@ public:
 	virtual bool IsDot() override { return mTypeDef->mTypeCode == BfTypeCode_Dot; }
 	virtual bool IsVar() override { return mTypeDef->mTypeCode == BfTypeCode_Var; }	
 	virtual bool IsLet() override { return mTypeDef->mTypeCode == BfTypeCode_Let; }
+	virtual bool IsUnspecializedType() override { return mTypeDef->mTypeCode == BfTypeCode_Self; }
+	virtual bool IsUnspecializedTypeVariation() override { return mTypeDef->mTypeCode == BfTypeCode_Self; }
 };
 
 class BfTypeInstance;

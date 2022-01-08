@@ -5918,8 +5918,14 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 					continue;
 
 				auto iReturnType = ifaceMethodInst->mReturnType;
-				if (iReturnType->IsSelf())
-					iReturnType = typeInstance;
+				if (iReturnType->IsUnspecializedTypeVariation())
+				{
+					BfType* resolvedType = ResolveGenericType(iReturnType, NULL, NULL);
+					if (resolvedType != NULL)
+						iReturnType = resolvedType;
+					else
+						iReturnType = typeInstance;
+				}
 
 				if (ifaceMethodInst->mMethodDef->mIsOverride)
 					continue; // Don't consider overrides here
@@ -7683,6 +7689,9 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		}		
 		return unspecializedType;
 	}
+
+	if ((unspecializedType->IsSelf()) && (mCurTypeInstance != NULL))
+		return mCurTypeInstance;
 
 	if (!unspecializedType->IsUnspecializedType())
 	{

@@ -315,6 +315,19 @@ namespace Tests
 			return val.Val;
 		}
 
+		interface IParsable
+		{
+			static Result<Self> Parse(StringView sv, Self defaultVal);
+		}
+
+		class ClassH : IParsable
+		{
+			public static Result<Self> Parse(StringView sv, ClassH defaultVal)
+			{
+				return .Err;
+			}
+		}
+
 		[Test]
 		public static void TestDefaults()
 		{
