@@ -146,22 +146,22 @@ static int GetBytesPerPixel(DXGI_FORMAT fmt, int& blockSize)
 	case DXGI_FORMAT_BC7_TYPELESS: blockSize = 4; return 16;
 	case DXGI_FORMAT_BC7_UNORM: blockSize = 4; return 16;
 	case DXGI_FORMAT_BC7_UNORM_SRGB: blockSize = 4; return 16;
-	case DXGI_FORMAT_AYUV: return 1;
-	case DXGI_FORMAT_Y410: return 1;
-	case DXGI_FORMAT_Y416: return 1;
-	case DXGI_FORMAT_NV12: return 1;
-	case DXGI_FORMAT_P010: return 1;
-	case DXGI_FORMAT_P016: return 1;
-	case DXGI_FORMAT_420_OPAQUE: return 1;
-	case DXGI_FORMAT_YUY2: return 1;
-	case DXGI_FORMAT_Y210: return 1;
-	case DXGI_FORMAT_Y216: return 1;
-	case DXGI_FORMAT_NV11: return 1;
-	case DXGI_FORMAT_AI44: return 1;
-	case DXGI_FORMAT_IA44: return 1;
-	case DXGI_FORMAT_P8: return 1;
-	case DXGI_FORMAT_A8P8: return 1;
-	case DXGI_FORMAT_B4G4R4A4_UNORM: return 1;
+// 	case DXGI_FORMAT_AYUV: return 1;
+// 	case DXGI_FORMAT_Y410: return 1;
+// 	case DXGI_FORMAT_Y416: return 1;
+// 	case DXGI_FORMAT_NV12: return 1;
+// 	case DXGI_FORMAT_P010: return 1;
+// 	case DXGI_FORMAT_P016: return 1;
+// 	case DXGI_FORMAT_420_OPAQUE: return 1;
+// 	case DXGI_FORMAT_YUY2: return 1;
+// 	case DXGI_FORMAT_Y210: return 1;
+// 	case DXGI_FORMAT_Y216: return 1;
+// 	case DXGI_FORMAT_NV11: return 1;
+// 	case DXGI_FORMAT_AI44: return 1;
+// 	case DXGI_FORMAT_IA44: return 1;
+// 	case DXGI_FORMAT_P8: return 1;
+// 	case DXGI_FORMAT_A8P8: return 1;
+// 	case DXGI_FORMAT_B4G4R4A4_UNORM: return 1;
 	default: return 1;
 	}
 }
