@@ -812,6 +812,8 @@ namespace IDE
 				Add("Save File", "Ctrl+S");
 				Add("Scope Prev", "Alt+Up");
 				Add("Scope Next", "Alt+Down");
+				Add("Scroll Down", "Ctrl+Down");
+				Add("Scroll Up", "Ctrl+Up");
 				Add("Set Next Statement", "Ctrl+Shift+F10");
 				Add("Show Auto Watches", "Ctrl+Alt+A");
 				Add("Show Autocomplete Panel", "Ctrl+Alt+E");
