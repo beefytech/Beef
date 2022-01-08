@@ -8357,7 +8357,7 @@ public:
 		}
 	}
 
-	void AddParams(BfMethodDef* methodDef)
+	void AddParams(BfMethodDef* methodDef, StringImpl& result)
 	{
 		int visParamIdx = 0;
 		for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
@@ -8366,15 +8366,15 @@ public:
 			if ((paramDef->mParamKind == BfParamKind_AppendIdx) || (paramDef->mParamKind == BfParamKind_ImplicitCapture))
 				continue;
 			if (visParamIdx > 0)
-				mResult += ", ";
+				result += ", ";
 
 			StringT<64> refName;
 			paramDef->mTypeRef->ToString(refName);
 			Sanitize(refName);
-			mResult += refName;
+			result += refName;
 
-			mResult += " ";
-			mResult += paramDef->mName;
+			result += " ";
+			result += paramDef->mName;
 			visParamIdx++;
 		}
 	}
@@ -8412,7 +8412,7 @@ public:
 			{
 				if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 				{
-					AddParams(methodDef);
+					AddParams(methodDef, mResult);
 					break;
 				}
 			}
@@ -8429,30 +8429,37 @@ public:
 		mResult += "\n";
 	}
 
-	void AddMethodDef(BfMethodDef* methodDef)
+	void GetMethodDefString(BfMethodDef* methodDef, StringImpl& result)
 	{
 		if (methodDef->mMethodType == BfMethodType_Ctor)
 		{
 			if (methodDef->mIsStatic)
-				mResult += "static ";
-			mResult += "this";
+				result += "static ";
+			result += "this";
 		}
 		else if (methodDef->mMethodType == BfMethodType_Dtor)
 		{
 			if (methodDef->mIsStatic)
-				mResult += "static ";
-			mResult += "~this";
+				result += "static ";
+			result += "~this";
 		}
 		else
-			mResult += methodDef->mName;
+			result += methodDef->mName;
 		if (methodDef->mMethodType == BfMethodType_Mixin)
-			mResult += "!";
-		mResult += "(";
-		AddParams(methodDef);
-		mResult += ")";
+			result += "!";
+		result += "(";
+		AddParams(methodDef, result);
+		result += ")";
+	}
+
+	void AddMethodDef(BfMethodDef* methodDef, StringImpl* methodDefString = NULL)
+	{
+		if (methodDefString != NULL)
+			mResult += *methodDefString;
+		else
+			GetMethodDefString(methodDef, mResult);
 		mResult += "\t";
 		AddLocation(methodDef->GetRefNode());
-
 		mResult += "\n";
 	}
 
@@ -8479,10 +8486,10 @@ public:
 		return mFoundCount == mSearch.mSize;
 	}
 
-	uint32 CheckMatch(const StringView& str)
+	uint32 CheckMatch(const StringView& str, int startIdx = 0)
 	{
 		uint32 matchFlags = 0;
-		for (int i = 0; i < mSearch.mSize; i++)
+		for (int i = startIdx; i < mSearch.mSize; i++)
 		{
 			auto& search = mSearch[i];
 			if (((mFoundFlags & (1 << i)) == 0) && (str.IndexOf(search.mStr, true) != -1))
@@ -8555,6 +8562,9 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 	String result;
 	TypeDefMatchHelper matchHelper(result);
 
+	int openParenIdx = -1;
+	bool parenHasDot = false;
+
 	//
 	{
 		int searchIdx = 0;
@@ -8587,6 +8597,14 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 			if (searchEntry.mStr.IsEmpty())
 				searchEntry.mStr = str;
 
+			if (str.Contains('('))
+			{
+				if (str.Contains('.'))
+					parenHasDot = true;
+				if (openParenIdx == -1)
+					openParenIdx = matchHelper.mSearch.mSize;
+			}
+			
 			if (!searchEntry.mStr.IsEmpty())
 				matchHelper.mSearch.Add(searchEntry);
 			if (str.Contains('.'))
@@ -8643,6 +8661,8 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 
 		int matchIdx = -1;
 		
+		String tempStr;
+
 		if (!fullyMatchesName)
 		{
 			for (auto fieldDef : typeDef->mFields)
@@ -8674,7 +8694,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 					matchHelper.AddPropertyDef(typeDef, propDef);
 				}
 			}
-
+			
 			for (auto methodDef : typeDef->mMethods)
 			{
 				if ((methodDef->mMethodType != BfMethodType_Normal) &&
@@ -8687,15 +8707,40 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 					continue;
 				
 				matchHelper.ClearResults();
-				if (matchHelper.CheckMemberMatch(typeDef, methodDef->mName))
+				bool matches = matchHelper.CheckMemberMatch(typeDef, methodDef->mName);
+				bool hasTypeString = false;
+				bool hasMethodString = false;
+
+				if ((!matches) && (openParenIdx != -1))
+				{
+					hasMethodString = true;
+					tempStr.Clear();
+					if (parenHasDot)
+					{
+						hasTypeString = true;
+						if (BfTypeUtils::TypeToString(tempStr, typeDef, (BfTypeNameFlags)(BfTypeNameFlag_HideGlobalName | BfTypeNameFlag_InternalName)))
+							tempStr += ".";
+					}
+					matchHelper.GetMethodDefString(methodDef, tempStr);
+					matchHelper.CheckMatch(tempStr, openParenIdx);
+					matches = matchHelper.IsFullMatch();
+				}
+
+				if (matches)
 				{
 					if (methodDef->mIsOverride)
 						result += "o";
 					else
 						result += "M";
-					if (BfTypeUtils::TypeToString(result, typeDef, (BfTypeNameFlags)(BfTypeNameFlag_HideGlobalName | BfTypeNameFlag_InternalName)))
-						result += ".";
-					matchHelper.AddMethodDef(methodDef);
+					if (!hasTypeString)
+					{
+						if (BfTypeUtils::TypeToString(result, typeDef, (BfTypeNameFlags)(BfTypeNameFlag_HideGlobalName | BfTypeNameFlag_InternalName)))
+							result += ".";
+					}
+					if (hasMethodString)
+						matchHelper.AddMethodDef(methodDef, &tempStr);
+					else
+						matchHelper.AddMethodDef(methodDef);
 				}
 			}
 			
