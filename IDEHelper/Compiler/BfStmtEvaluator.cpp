@@ -60,6 +60,10 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 
 	// We don't need to do a "clear handlers" if we're just adding another dyn to an existing dyn list
 	bool isDyn = mCurMethodState->mCurScope->IsDyn(scopeData);	
+
+	if (mCurMethodState->mPendingNullConditional != NULL)
+		isDyn = true;
+
 	if (!isDyn)
 	{
 		mCurMethodState->mCurScope->ClearHandlers(scopeData);
@@ -6851,6 +6855,8 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 		expressionEvaluator.mDeferCallRef = exprStmt->mExpression;
 		expressionEvaluator.mDeferScopeAlloc = scope;
 		expressionEvaluator.VisitChild(exprStmt->mExpression);		
+		if (mCurMethodState->mPendingNullConditional != NULL)
+			FlushNullConditional(expressionEvaluator.mResult, true);
 	}
 	else if (auto deleteStmt = BfNodeDynCast<BfDeleteStatement>(deferStmt->mTargetNode))
 	{
