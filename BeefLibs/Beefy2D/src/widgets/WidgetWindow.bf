@@ -17,6 +17,7 @@ namespace Beefy.widgets
     public delegate void MouseWheelHandler(MouseEvent mouseEvent);    
     public delegate void KeyDownHandler(KeyDownEvent keyboardEvent);
 	//public delegate void CloseTemporaryHandler(WidgetWindow window);
+	public delegate void DragDropFileHandler(StringView filePath);
     
     public class WidgetWindow : BFWindow
     {
@@ -31,6 +32,7 @@ namespace Beefy.widgets
         public Event<MenuItemSelectedHandler> mOnMenuItemSelected ~ _.Dispose();
         public Event<KeyDownHandler> mOnWindowKeyDown ~ _.Dispose();
     	public Event<delegate HitTestResult(int32, int32)> mOnHitTest ~ _.Dispose();
+		public Event<DragDropFileHandler> mOnDragDropFile ~ _.Dispose();
 
         public static Event<MouseLeftWindowHandler> sOnMouseLeftWindow ~ _.Dispose();
         public static Event<WindowLostFocusHandler> sOnWindowLostFocus ~ _.Dispose();
@@ -811,6 +813,12 @@ namespace Beefy.widgets
             sOnMenuItemSelected(sysMenu);
             base.MenuItemSelected(sysMenu);            
         }
+
+		public override void DragDropFile(StringView filePath)
+		{
+			mOnDragDropFile(filePath);
+			base.DragDropFile(filePath);
+		}
 		
 		public void TransferMouse(WidgetWindow newMouseWindow)
 		{

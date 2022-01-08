@@ -846,6 +846,17 @@ namespace IDE
         public void DoOpenFile()
         {
 #if !CLI
+			if (mDeferredOpenFileName != null)
+			{
+				for (let filePath in mDeferredOpenFileName.Split('|'))
+				{
+					AddRecentFile(.OpenedFile, filePath);
+					ShowSourceFile(scope String()..Reference(filePath));
+				}
+				DeleteAndNullify!(mDeferredOpenFileName);
+				return;
+			}
+
 			String fullDir = scope .();
 			let sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
@@ -7093,6 +7104,11 @@ namespace IDE
 
 		public override void UnhandledCommandLine(String key, String value)
 		{
+			if (File.Exists(key))
+			{
+				DragDropFile(key);
+				return;
+			}
 			Fail(StackStringFormat!("Unhandled command line param: {0}", key));
 		}
 
@@ -7238,19 +7254,41 @@ namespace IDE
 					else
 						mWorkspace.mDir = fullDir;
 				case "-file":
-					String.NewOrSet!(mDeferredOpenFileName, value);
-					if (mDeferredOpenFileName.EndsWith(".bfdbg", .OrdinalIgnoreCase))
-						mDeferredOpen = .DebugSession;
-					else if (mDeferredOpenFileName.EndsWith(".dmp", .OrdinalIgnoreCase))
-						mDeferredOpen = .CrashDump;
-					else
-						mDeferredOpen = .File;
+					DragDropFile(value);
 				default:
 					return false;
 				}
 				return true;
 			}
         }
+
+		public void DragDropFile(StringView filePath)
+		{
+			let prevDeferredOpen = mDeferredOpen;
+
+			if (filePath.EndsWith(".bfdbg", .OrdinalIgnoreCase))
+				mDeferredOpen = .DebugSession;
+			else if (filePath.EndsWith(".dmp", .OrdinalIgnoreCase))
+				mDeferredOpen = .CrashDump;
+			else
+				mDeferredOpen = .File;
+
+			if (prevDeferredOpen == .File && mDeferredOpen == .File)
+			{
+				if (String.IsNullOrEmpty(mDeferredOpenFileName))
+					String.NewOrSet!(mDeferredOpenFileName, filePath);
+				else
+					mDeferredOpenFileName.AppendF("|{}", filePath);
+			}
+			else if (prevDeferredOpen != .None && prevDeferredOpen != mDeferredOpen)
+			{
+				mDeferredOpen = prevDeferredOpen;
+			}
+			else
+			{
+				String.NewOrSet!(mDeferredOpenFileName, filePath);
+			}
+		}
 
         class Board : Widget
         {
@@ -11498,7 +11536,7 @@ namespace IDE
 			//
 			{
 				BFWindow.Flags flags = .Border | .ThickFrame | .Resizable | .SysMenu |
-	                .Caption | .Minimize | .Maximize | .QuitOnClose | .Menu | .PopupPosition;
+	                .Caption | .Minimize | .Maximize | .QuitOnClose | .Menu | .PopupPosition | .AcceptFiles;
 				if (mRunningTestScript)
 					flags |= .NoActivate;
 
@@ -11528,6 +11566,7 @@ namespace IDE
 			mMainWindow.mOnMouseUp.Add(new => MouseUp);
             mMainWindow.mOnWindowKeyDown.Add(new => SysKeyDown);
             mMainWindow.mOnWindowCloseQuery.Add(new => AllowClose);
+			mMainWindow.mOnDragDropFile.Add(new => DragDropFile);
             CreateMenu();
             UpdateRecentDisplayedFilesMenuItems();
             if (mRecentlyDisplayedFiles.Count > 0)
