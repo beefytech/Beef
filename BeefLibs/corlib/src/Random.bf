@@ -116,10 +116,6 @@ namespace System
 			if (++locINextp >= 56) locINextp = 1;
 
 			retVal = SeedArray[locINext] - SeedArray[locINextp];
-
-			if (retVal == MBIG) retVal--;
-			if (retVal < 0) retVal += MBIG;
-
 			SeedArray[locINext] = retVal;
 
 			inext = locINext;
