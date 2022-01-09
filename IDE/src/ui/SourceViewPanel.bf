@@ -3851,10 +3851,10 @@ namespace IDE.ui
 			if (activePanel != this)
 				activePanel.ToggleBreakpointAtBeginScopes(setKind, flags, threadId);
 
-		    if (mOldVersionPanel != null)
-		    {                
-		        return;
-		    }
+			if (mOldVersionPanel != null)
+			{
+				return;
+			}
 
 			var l=0;
 			var lc=mEditWidget.Content.GetLineCount();
