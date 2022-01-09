@@ -3856,28 +3856,28 @@ namespace IDE.ui
 				return;
 			}
 
-			var l=0;
-			var lc=mEditWidget.Content.GetLineCount();
-			while(l<lc)
+			var l = 0;
+			var lc = mEditWidget.Content.GetLineCount();
+			while(l < lc)
 			{
 				l++;
-				var s=scope String();
-				mEditWidget.Content.ExtractLine(l,s);
+				var s = scope String();
+				mEditWidget.Content.ExtractLine(l, s);
 				s.TrimStart();
-				var sp=scope String();
-				mEditWidget.Content.ExtractLine(l-1,sp);
+				var sp = scope String();
+				mEditWidget.Content.ExtractLine(l - 1, sp);
 				sp.TrimEnd();
 				if (s.Length > 0 && s.StartsWith('{') && sp.EndsWith(')'))
 				{ 
-					String sna=scope String();
+					String sna = scope String();
 					//Because debugger does not want breakpoints on {'s, skip comment and empty lines before placing BP
-					while(l<lc)
+					while(l < lc)
 					{
 						var sn = scope String();
 						l++;
-						mEditWidget.Content.ExtractLine(l,sn);
+						mEditWidget.Content.ExtractLine(l, sn);
 						sn.Trim();
-						if (!(sn.Length==0 || sn.StartsWith('/')))
+						if (!(sn.Length == 0 || sn.StartsWith('/')))
 						{
 							sna.Append(sn);
 							break;
