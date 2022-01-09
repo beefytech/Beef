@@ -2662,6 +2662,11 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 		targetType = ResolveTypeRef(qualifiedNameNode->mLeft, NULL);
 		nameNode = qualifiedNameNode->mRight;
 	}
+	else if (auto identiferNode = BfNodeDynCast<BfIdentifierNode>(invocationExpr->mTarget))
+	{
+		targetType = mCurTypeInstance;
+		nameNode = identiferNode;
+	}
 	else
 		return BfTypedValue();
 
