@@ -424,6 +424,19 @@ void COFF::InitCvTypes()
 	mCvSystemTypes[T_VOID]->mSize = 0;
 	mCvSystemTypes[T_VOID]->mAlign = 0;
 	mCvSystemTypes[T_PVOID] = ptrType;
+
+#ifdef BF_DBG_32
+	BP_ALLOC_T(DbgType);
+	ptrType = mAlloc.Alloc<DbgType>();
+	ptrType->mCompileUnit = mMasterCompileUnit;
+	ptrType->mTypeCode = DbgType_Ptr;
+	ptrType->mSize = 8;
+	ptrType->mAlign = 8;
+	ptrType->mTypeParam = dbgType;
+	dbgType->mPtrType = ptrType;
+	mCvSystemTypes[(int)T_VOID | 0x0600] = ptrType;
+#endif	
+
 #ifdef BF_DBG_32
 	CREATE_PRIMITIVE(T_HRESULT, DbgType_u32, "HRESULT", addr_target);
 #else
