@@ -104,7 +104,7 @@ bool BeLibFile::ReadLib()
 		else
 		{
 			String fileName;
-			if (header.mName[0] == '/')
+			if ((header.mName[0] == '/') && (header.mName[1] != '<') && (libStrTable != NULL))
 			{
 				int tabIdx = atoi(&header.mName[1]);
 				for (int checkIdx = tabIdx; true; checkIdx++)
