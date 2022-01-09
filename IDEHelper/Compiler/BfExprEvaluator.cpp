@@ -21251,7 +21251,7 @@ bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken,
 	if (constResult == 0)
 	{
 		mModule->Warn(0, "The result of this operation is always 'false'", opToken);
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 		return true;
 	}
 	else  if (constResult == 1)
