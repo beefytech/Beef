@@ -808,11 +808,18 @@ void BFGC::ConservativeScan(void* startAddr, int length)
 	void* ptr = (void*)((intptr)startAddr & ~((sizeof(intptr)-1)));
 	void* endAddr = (uint8*)startAddr + length;
 
-	while (ptr < endAddr)
+	__try
 	{
-		void* addr = *(void**)ptr;
-		MarkFromGCThread((bf::System::Object*)addr);
-		ptr = (uint8*)ptr + sizeof(intptr);
+		while (ptr < endAddr)
+		{
+			void* addr = *(void**)ptr;
+			MarkFromGCThread((bf::System::Object*)addr);
+			ptr = (uint8*)ptr + sizeof(intptr);
+		}
+	}
+	__finally
+	{
+
 	}
 }
 
