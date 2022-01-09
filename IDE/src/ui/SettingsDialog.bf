@@ -438,6 +438,7 @@ namespace IDE.ui
 				}
 
 				gApp.mSettings.Apply();
+				gApp.mSettings.Save();
 			}
 
 		    return true;
