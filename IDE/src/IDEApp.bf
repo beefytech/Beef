@@ -4505,6 +4505,16 @@ namespace IDE
 			}
 		}
 
+		void ToggleBeginScopeBreakpoints(WidgetWindow window, Breakpoint.SetKind setKind, Breakpoint.SetFlags setFlags, bool bindToThread = false)
+		{
+			var documentPanel = GetActiveDocumentPanel();
+
+			if (var sourceViewPanel = documentPanel as SourceViewPanel)
+			{
+			    sourceViewPanel.ToggleBreakpointAtBeginScopes(setKind, setFlags, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
+			}
+		}
+
 		[IDECommand]
 		void ToggleComment()
 		{

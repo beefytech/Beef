@@ -3845,6 +3845,38 @@ namespace IDE.ui
 			return ToggleBreakpointAt(lineIdx, lineCharIdx, setKind, flags, threadId);
 		}
 
+		public void ToggleBreakpointAtBeginScopes(Breakpoint.SetKind setKind = .Toggle, Breakpoint.SetFlags flags = .None, int threadId = -1)
+		{
+			var activePanel = GetActivePanel();
+			if (activePanel != this)
+				activePanel.ToggleBreakpointAtBeginScopes(setKind, flags, threadId);
+
+		    if (mOldVersionPanel != null)
+		    {                
+		        return;
+		    }
+
+			var l=0;
+			var lc=mEditWidget.Content.GetLineCount();
+			while(l<lc)
+			{
+				l++;
+				var s=scope String();
+				mEditWidget.Content.ExtractLine(l,s);
+				s.TrimStart();
+				var sp=scope String();
+				mEditWidget.Content.ExtractLine(l-1,sp);
+				sp.TrimEnd();
+
+				if (s.Length > 0 && s.StartsWith('{') && sp.EndsWith(')'))
+				{ 
+					ToggleBreakpointAt(l, 0, setKind, flags, threadId);
+				}
+
+			}
+			return;
+		}
+
 		public Breakpoint ToggleBreakpointAt(int lineIdx, int lineCharIdx, Breakpoint.SetKind setKind = .Toggle, Breakpoint.SetFlags flags = .None, int threadId = -1)
 		{
 			var lineIdx;
