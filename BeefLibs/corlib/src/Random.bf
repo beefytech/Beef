@@ -103,7 +103,7 @@ namespace System
 		{
           //Including this division at the end gives us significantly improved
           //random number distribution.
-			return (InternalSample() * (1.0 / MBIG));
+			return ((InternalSample() & Int32.MaxValue) * (1.0 / Int32.MaxValue));
 		}
 
 		private int32 InternalSample()
@@ -136,7 +136,7 @@ namespace System
       ==============================================================================*/
 		public virtual int32 NextI32()
 		{
-			return InternalSample() & 0x7FFFFFFF;
+			return InternalSample() & Int32.MaxValue;
 		}
 
 		public virtual int32 NextS32()
@@ -144,14 +144,19 @@ namespace System
 			return InternalSample();
 		}
 
+		public virtual uint32 NextU32()
+		{
+			return (.)InternalSample();
+		}
+
 		public virtual int64 NextI64()
 		{
-			return (((int64)InternalSample() << 32) | InternalSample()) & 0x7FFFFFFF'FFFFFFFFL;
+			return (int64)(((uint64)InternalSample() << 32) | (uint64)InternalSample()) & 0x7FFFFFFF'FFFFFFFFL;
 		}
 
 		public virtual int64 NextS64()
 		{
-			return (((int64)InternalSample() << 32) | InternalSample());
+			return (int64)(((uint64)InternalSample() << 32) | (uint64)InternalSample());
 		}
 
 		private double GetSampleForLargeRange()
@@ -257,9 +262,8 @@ namespace System
 
 		public virtual double NextDoubleSigned()
 		{
-			return (InternalSample() * (2.0 / MBIG)) - 1.0;
+			return (InternalSample() * (1.0 / MBIG));
 		}
-
     
       /*==================================NextBytes===================================
       **Action:  Fills the byte array with random bytes [0..0x7f].  The entire array is filled.
@@ -270,7 +274,6 @@ namespace System
 		public virtual void NextBytes(uint8[] buffer)
 		{
 			if (buffer == null) Runtime.FatalError();
-			Contract.EndContractBlock();
 			for (int32 i = 0; i < buffer.Count; i++)
 			{
 				buffer[i] = (uint8)(InternalSample() % ((int32)UInt8.MaxValue + 1));
