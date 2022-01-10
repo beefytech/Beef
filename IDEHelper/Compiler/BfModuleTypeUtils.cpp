@@ -6112,31 +6112,31 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 											staticNodeRef = methodDecl->mStaticSpecifier;
 
 									if (matchedMethod->mMethodDef->mIsStatic)
-										mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it's static",
+										mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because it's static",
 											methodString.c_str()), staticNodeRef);
 									else
-										mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it's not static",
+										mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because it's not static",
 											methodString.c_str()), staticNodeRef);
 								}
 								else if (hadPubFailure)
 								{
-									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it's not public",
+									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because it's not public",
 										methodString.c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
 								}
 								else if (ifaceMethodInst->mReturnType->IsConcreteInterfaceType())
 								{
-									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it does not have a concrete return type that implements '%s'",
+									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because it does not have a concrete return type that implements '%s'",
 										methodString.c_str(), TypeToString(ifaceMethodInst->mReturnType).c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
 								}					
 								else if (hadMutFailure)
 								{
-									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it's market as 'mut' but interface method does not allow it",
+									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because it's market as 'mut' but interface method does not allow it",
 										methodString.c_str()), matchedMethod->mMethodDef->GetMutNode());
 									mCompiler->mPassInstance->MoreInfo(StrFormat("Declare the interface method as 'mut' to allow matching 'mut' implementations"), ifaceMethodInst->mMethodDef->mMethodDeclaration);
 								}
 								else
 								{
-									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it does not have the return type '%s'",
+									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because it does not have the return type '%s'",
 										methodString.c_str(), TypeToString(ifaceMethodInst->mReturnType).c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
 									if ((ifaceMethodInst->mVirtualTableIdx != -1) && (ifaceMethodInst->mReturnType->IsInterface()))
 										mCompiler->mPassInstance->MoreInfo("Declare the interface method as 'concrete' to allow matching concrete return values", ifaceMethodInst->mMethodDef->GetMethodDeclaration()->mVirtualSpecifier);
@@ -8665,7 +8665,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	populateModule->PopulateType(resolvedTypeRef, populateType);
 	
 	if ((typeInstance != NULL) && (typeInstance->mTypeDef != NULL) && (typeInstance->mTypeDef->mProtection == BfProtection_Internal) && 
-		(typeInstance->mTypeDef->mOuterType == NULL) &&	(!typeRef->IsTemporary()))
+		(typeInstance != mCurTypeInstance) && (typeInstance->mTypeDef->mOuterType == NULL) &&	(!typeRef->IsTemporary()))
 	{
 		if (!CheckProtection(typeInstance->mTypeDef->mProtection, typeInstance->mTypeDef, false, false))
 			Fail(StrFormat("'%s' is inaccessible due to its protection level", TypeToString(typeInstance).c_str()), typeRef); // CS0122
