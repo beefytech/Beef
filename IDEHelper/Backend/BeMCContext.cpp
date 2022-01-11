@@ -14336,7 +14336,7 @@ void BeMCContext::DoCodeEmission()
 				break;
 			case BeMCInstKind_Add:
 				{
-					if ((inst->mResult) && (inst->mResult != inst->mArg0))
+					if ((inst->mResult) && (inst->mResult != inst->mArg0) && (!inst->mDisableShortForm))
 					{
 						BF_ASSERT(!inst->mDisableShortForm);
 						BF_ASSERT(inst->mResult.IsNativeReg());
@@ -14358,7 +14358,7 @@ void BeMCContext::DoCodeEmission()
 							NotImpl();
 						}
 					}
-					else if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == 1))
+					else if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == 1) && (!inst->mDisableShortForm))
 					{
 						// Emit as INC <arg0>
 						auto typeCode = GetType(inst->mArg0)->mTypeCode;
@@ -14378,7 +14378,7 @@ void BeMCContext::DoCodeEmission()
 							NotImpl();
 						}
 					}
-					else if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == -1))
+					else if (((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == -1)) && (!inst->mDisableShortForm))
 					{
 						// Emit as DEC <arg0>
 						auto typeCode = GetType(inst->mArg0)->mTypeCode;
@@ -14420,7 +14420,7 @@ void BeMCContext::DoCodeEmission()
 				break;
 			case BeMCInstKind_Sub:
 				{
-					if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == 1))
+					if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == 1) && (!inst->mDisableShortForm))
 					{
 						// Emit as DEC <arg0>
 						auto typeCode = GetType(inst->mArg0)->mTypeCode;
