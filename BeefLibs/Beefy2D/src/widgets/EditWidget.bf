@@ -1569,6 +1569,7 @@ namespace Beefy.widgets
 
         public virtual void DeleteChar()
         {
+			mJustInsertedCharPair = false;
             if (HasSelection())
             {
                 DeleteSelection();
