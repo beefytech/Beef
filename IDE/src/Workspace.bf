@@ -110,10 +110,12 @@ namespace IDE
 			case Microsoft;
 			case LLVM;
 
-			public static ToolsetType GetDefaultFor(PlatformType platformType)
+			public static ToolsetType GetDefaultFor(PlatformType platformType, bool isRelease)
 			{
+				if (isRelease)
+					return .LLVM;
 				if (platformType == .Windows)
-					return Microsoft;
+					return .Microsoft;
 				return .GNU;
 			}
 		}
@@ -676,14 +678,14 @@ namespace IDE
 									data.RemoveIfEmpty();
 								}
 
-								data.ConditionalAdd("Toolset", options.mToolsetType, ToolsetType.GetDefaultFor(platformType));
+								data.ConditionalAdd("Toolset", options.mToolsetType, ToolsetType.GetDefaultFor(platformType, isRelease));
 								data.ConditionalAdd("BuildKind", options.mBuildKind, isTest ? .Test : .Normal);
                                 data.ConditionalAdd("BfSIMDSetting", options.mBfSIMDSetting, .SSE2);
 								if (platformType == .Windows)
                                 	data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
 								else
 									data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : .O0);
-								data.ConditionalAdd("LTOType", options.mLTOType, .None);
+								data.ConditionalAdd("LTOType", options.mLTOType, isRelease ? .Thin : .None);
 								data.ConditionalAdd("AllocType", options.mAllocType, isRelease ? .CRT : .Debug);
 								data.ConditionalAdd("AllocMalloc", options.mAllocMalloc, "");
 								data.ConditionalAdd("AllocFree", options.mAllocFree, "");
@@ -874,12 +876,14 @@ namespace IDE
 			options.mBfSIMDSetting = .SSE2;
 			if (platformType == .Windows)
 			{
+				options.mLTOType = isRelease ? .Thin : .None;
 				options.mBfOptimizationLevel = isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0;
-				options.mToolsetType = .Microsoft;
+				options.mToolsetType = isRelease ? .LLVM : .Microsoft;
 			}
 			else if ((platformType == .macOS) == (platformType == .Linux))
 			{
-				options.mToolsetType = .GNU;
+				options.mLTOType = isRelease ? .Thin : .None;
+				options.mToolsetType = isRelease ? .LLVM : .GNU;
 			}
 
 			options.mAllocType = isRelease ? .CRT : .Debug;
@@ -977,7 +981,7 @@ namespace IDE
 				        options.mPreprocessorMacros.Add(str);
 					}
 
-					options.mToolsetType = data.GetEnum<ToolsetType>("Toolset", ToolsetType.GetDefaultFor(platformType));
+					options.mToolsetType = data.GetEnum<ToolsetType>("Toolset", ToolsetType.GetDefaultFor(platformType, isRelease));
 					options.mBuildKind = data.GetEnum<BuildKind>("BuildKind", isTest ? .Test : .Normal);
 					options.mBfSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("BfSIMDSetting", .SSE2);
 					if (platformType == .Windows)
@@ -985,7 +989,7 @@ namespace IDE
 					else
 						options.mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel", isRelease ? .O2 : .O0);
 
-					options.mLTOType = data.GetEnum<BuildOptions.LTOType>("LTOType", .None);
+					options.mLTOType = data.GetEnum<BuildOptions.LTOType>("LTOType", isRelease ? .Thin : .None);
 					options.mAllocType = data.GetEnum<AllocType>("AllocType", isRelease ? .CRT : .Debug);
 					data.GetString("AllocMalloc", options.mAllocMalloc);
 					data.GetString("AllocFree", options.mAllocFree);
