@@ -80,7 +80,7 @@ namespace System
 			{
 				for (int32 i = 1; i < 56; i++)
 				{
-					SeedArray[i] -= SeedArray[1 + (i + 30) % 55];
+					SeedArray[i] &-= SeedArray[1 + (i + 30) % 55];
 					if (SeedArray[i] < 0) SeedArray[i] += MBIG;
 				}
 			}

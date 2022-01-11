@@ -142,7 +142,7 @@ namespace System.Security.Cryptography
 			for (i = 0, j = 0; i < 16; ++i, j += 4)
 				m[i] = ((uint32)mData[j] << 24) | ((uint32)mData[j + 1] << 16) | ((uint32)mData[j + 2] << 8) | ((uint32)mData[j + 3]);
 			for ( ; i < 64; ++i)
-				m[i] = SIG1!(m[i - 2]) + m[i - 7] + SIG0!(m[i - 15]) + m[i - 16];
+				m[i] = SIG1!(m[i - 2]) &+ m[i - 7] &+ SIG0!(m[i - 15]) &+ m[i - 16];
 
 			a = mState[0];
 			b = mState[1];
@@ -155,26 +155,26 @@ namespace System.Security.Cryptography
 
 			for (i = 0; i < 64; ++i)
 			{
-				t1 = h + EP1!(e) + CH!(e,f,g) + k[i] + m[i];
-				t2 = EP0!(a) + MAJ!(a,b,c);
+				t1 = h &+ EP1!(e) &+ CH!(e,f,g) &+ k[i] &+ m[i];
+				t2 = EP0!(a) &+ MAJ!(a,b,c);
 				h = g;
 				g = f;
 				f = e;
-				e = d + t1;
+				e = d &+ t1;
 				d = c;
 				c = b;
 				b = a;
-				a = t1 + t2;
+				a = t1 &+ t2;
 			}
 
-			mState[0] += a;
-			mState[1] += b;
-			mState[2] += c;
-			mState[3] += d;
-			mState[4] += e;
-			mState[5] += f;
-			mState[6] += g;
-			mState[7] += h;
+			mState[0] &+= a;
+			mState[1] &+= b;
+			mState[2] &+= c;
+			mState[3] &+= d;
+			mState[4] &+= e;
+			mState[5] &+= f;
+			mState[6] &+= g;
+			mState[7] &+= h;
 		}
 
 		public void Update(Span<uint8> data)

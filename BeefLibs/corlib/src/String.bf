@@ -397,14 +397,14 @@ namespace System
 			let intSize = sizeof(int);
 			while (charsLeft >= intSize)
 			{
-				hash = (hash ^ *((int*)curPtr)) + (hash * 16777619);
+				hash = (hash ^ *((int*)curPtr)) &+ (hash &* 16777619);
 				charsLeft -= intSize;
 				curPtr += intSize;
 			}
 
 			while (charsLeft > 1)
 			{
-				hash = ((hash ^ (int)*curPtr) << 5) - hash;
+				hash = ((hash ^ (int)*curPtr) << 5) &- hash;
 				charsLeft--;
 				curPtr++;
 			}
@@ -1774,8 +1774,8 @@ namespace System
                 //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 
                 // uppercase both chars - notice that we need just one compare per char
-				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
-				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
+				if ((uint32)(charA &- 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
+				if ((uint32)(charB &- 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
                 //Return the (case-insensitive) difference between them.
 				if (charA != charB)
@@ -1807,8 +1807,8 @@ namespace System
                 //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 
                 // uppercase both chars - notice that we need just one compare per char
-				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
-				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
+				if ((uint32)(charA &- 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
+				if ((uint32)(charB &- 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
                 //Return the (case-insensitive) difference between them.
 				if (charA != charB)
@@ -1835,8 +1835,8 @@ namespace System
 
 			    //Contract.Assert((char8A | char8B) <= 0x7F, "strings have to be ASCII");
 			    // uppercase both chars - notice that we need just one compare per char
-				if ((uint32)(charA - 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
-				if ((uint32)(charB - 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
+				if ((uint32)(charA &- 'a') <= (uint32)('z' - 'a')) charA -= 0x20;
+				if ((uint32)(charB &- 'a') <= (uint32)('z' - 'a')) charB -= 0x20;
 
 			    //Return the (case-insensitive) difference between them.
 				if (charA != charB)

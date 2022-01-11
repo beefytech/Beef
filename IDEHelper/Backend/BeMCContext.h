@@ -564,6 +564,7 @@ class BeMCInst
 {
 public:
 	BeMCInstKind mKind;
+	bool mDisableShortForm;
 
 	BeMCOperand mResult;
 	BeMCOperand mArg0;

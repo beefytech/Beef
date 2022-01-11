@@ -91,7 +91,7 @@ namespace System
 			}
 			while ((valLeft < 0) || (minNumeralsLeft > 0))
 			{
-				strChars[char8Idx] = (char8)('0' - (valLeft % 10));
+				strChars[char8Idx] = (char8)('0' &- (valLeft % 10));
 				valLeft /= 10;
 				char8Idx--;
 				minNumeralsLeft--;

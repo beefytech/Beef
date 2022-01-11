@@ -1559,17 +1559,35 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 			}
 			else if (mSrc[mSrcIdx] == '+')
 			{
-				mToken = BfToken_AndPlus;
+				if (mSrc[mSrcIdx + 1] == '=')
+				{
+					mToken = BfToken_AndPlusEquals;
+					++mSrcIdx;
+				}
+				else
+					mToken = BfToken_AndPlus;
 				mTokenEnd = ++mSrcIdx;
 			}
 			else if (mSrc[mSrcIdx] == '-')
 			{
-				mToken = BfToken_AndMinus;
+				if (mSrc[mSrcIdx + 1] == '=')
+				{
+					mToken = BfToken_AndMinusEquals;
+					++mSrcIdx;
+				}
+				else
+					mToken = BfToken_AndMinus;
 				mTokenEnd = ++mSrcIdx;
 			}
 			else if (mSrc[mSrcIdx] == '*')
 			{
-				mToken = BfToken_AndStar;
+				if (mSrc[mSrcIdx + 1] == '=')
+				{
+					mToken = BfToken_AndStarEquals;
+					++mSrcIdx;
+				}
+				else
+					mToken = BfToken_AndStar;
 				mTokenEnd = ++mSrcIdx;
 			}
 			else

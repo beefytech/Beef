@@ -9226,7 +9226,7 @@ bool BeMCContext::DoLegalization()
 						else
 						{
 							bool addCanBeLEA =
-								((inst->mKind == BeMCInstKind_Sub) || (inst->mKind == BeMCInstKind_Add)) &&
+								((inst->mKind == BeMCInstKind_Sub) || (inst->mKind == BeMCInstKind_Add)) && (!inst->mDisableShortForm) &&
 								(arg0Type->mSize >= 2) && // Int8s don't have an LEA
 								(GetFixedOperand(inst->mResult).IsNativeReg()) && (arg0.IsNativeReg()) && (arg1.IsImmediateInt());
 
@@ -10209,7 +10209,7 @@ bool BeMCContext::DoLegalization()
 						handled = true;
 					}
 					
-					if (handled)
+					if (!handled)
 					{
 						if (inst->mResult)
 						{
@@ -14338,6 +14338,7 @@ void BeMCContext::DoCodeEmission()
 				{
 					if ((inst->mResult) && (inst->mResult != inst->mArg0))
 					{
+						BF_ASSERT(!inst->mDisableShortForm);
 						BF_ASSERT(inst->mResult.IsNativeReg());
 						BF_ASSERT(inst->mArg0.IsNativeReg());
 						BF_ASSERT(inst->mArg1.IsImmediate());
@@ -14538,9 +14539,9 @@ void BeMCContext::DoCodeEmission()
 					if (result)
 					{
 						BF_ASSERT(inst->mArg1.IsImmediate());
-						if ((inst->mArg0.IsNativeReg()) &&
+						if ((inst->mArg0.IsNativeReg()) && (!inst->mDisableShortForm) &&
 							((inst->mArg1.mImmediate == 2) || (inst->mArg1.mImmediate == 4) || (inst->mArg1.mImmediate == 8)))
-						{
+						{							
 							// LEA form
 							auto resultType = GetType(inst->mArg0);
 							if (resultType->mTypeCode != BeTypeCode_Int8)
@@ -16030,6 +16031,7 @@ BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand&
 
 	if (overflowCheckKind != BeMCOverflowCheckKind_None)
 	{
+		mcInst->mDisableShortForm = true;
 		AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromImmediate(1), BeMCOperand::FromCmpKind((overflowCheckKind == BeMCOverflowCheckKind_B) ? BeCmpKind_NB : BeCmpKind_NO));
 		AllocInst(BeMCInstKind_DbgBreak);
 	}

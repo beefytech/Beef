@@ -129,27 +129,27 @@ namespace System.Security.Cryptography
 			// The MD5 transformation for all four rounds.
 			mixin STEP_F(var a, var b, var c, var d, var x, var t, var s)
 			{
-				a += F!(b, c, d) + x + t;
+				a &+= F!(b, c, d) &+ x &+ t;
 				a = ((a << s) | ((a & 0xffffffff) >> (32 - s)));
-				a += b;
+				a &+= b;
 			}
 			mixin STEP_G(var a, var b, var c, var d, var x, var t, var s)
 			{
-				a += G!(b, c, d) + x + t;
+				a &+= G!(b, c, d) &+ x &+ t;
 				a = ((a << s) | ((a & 0xffffffff) >> (32 - s)));
-				a += b;
+				a &+= b;
 			}
 			mixin STEP_H(var a, var b, var c, var d, var x, var t, var s)
 			{
-				a += H!(b, c, d) + x + t;
+				a &+= H!(b, c, d) &+ x &+ t;
 				a = ((a << s) | ((a & 0xffffffff) >> (32 - s)));
-				a += b;
+				a &+= b;
 			}
 			mixin STEP_I(var a, var b, var c, var d, var x, var t, var s)
 			{
-				a += I!(b, c, d) + x + t;
+				a &+= I!(b, c, d) &+ x &+ t;
 				a = ((a << s) | ((a & 0xffffffff) >> (32 - s)));
-				a += b;
+				a &+= b;
 			}
 
 			// SET reads 4 input bytes in little-endian byte order and stores them
@@ -249,10 +249,10 @@ namespace System.Security.Cryptography
 				STEP_I!(c, d, a, b, GET!(2), 0x2ad7d2bb, 15);
 				STEP_I!(b, c, d, a, GET!(9), 0xeb86d391, 21);
 				
-				a += saved_a;
-				b += saved_b;
-				c += saved_c;
-				d += saved_d;
+				a &+= saved_a;
+				b &+= saved_b;
+				c &+= saved_c;
+				d &+= saved_d;
 				
 				ptr += 64;
 			}

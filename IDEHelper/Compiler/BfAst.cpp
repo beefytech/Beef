@@ -1513,6 +1513,12 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "&+";
 	case BfToken_AndStar:
 		return "&*";
+	case BfToken_AndMinusEquals:
+		return "&-=";
+	case BfToken_AndPlusEquals:
+		return "&+=";
+	case BfToken_AndStarEquals:
+		return "&*=";
 	case BfToken_OrEquals:
 		return "|=";
 	case BfToken_XorEquals:
@@ -1620,6 +1626,12 @@ BfBinaryOp Beefy::BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp)
 		return BfBinaryOp_Multiply;
 	case BfAssignmentOp_Divide:
 		return BfBinaryOp_Divide;
+	case BfAssignmentOp_OverflowAdd:
+		return BfBinaryOp_OverflowAdd;
+	case BfAssignmentOp_OverflowSubtract:
+		return BfBinaryOp_OverflowSubtract;
+	case BfAssignmentOp_OverflowMultiply:
+		return BfBinaryOp_OverflowMultiply;
 	case BfAssignmentOp_Modulus:
 		return BfBinaryOp_Modulus;
 	case BfAssignmentOp_ShiftLeft:
@@ -1898,7 +1910,13 @@ BfAssignmentOp Beefy::BfTokenToAssignmentOp(BfToken token)
 	case BfToken_MinusEquals:
 		return BfAssignmentOp_Subtract;
 	case BfToken_MultiplyEquals:
-		return BfAssignmentOp_Multiply;
+		return BfAssignmentOp_Multiply;	
+	case BfToken_AndPlusEquals:
+		return BfAssignmentOp_OverflowAdd;
+	case BfToken_AndMinusEquals:
+		return BfAssignmentOp_OverflowSubtract;
+	case BfToken_AndStarEquals:
+		return BfAssignmentOp_OverflowMultiply;
 	case BfToken_DivideEquals:
 		return BfAssignmentOp_Divide;
 	case BfToken_ModulusEquals:

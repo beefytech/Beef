@@ -22667,6 +22667,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 
 	auto _GetOverflowKind = [&](bool wantOverflow)
 	{
+		if (resultType->IsFloat())
+			return BfOverflowCheckKind_None;
 		if (!wantOverflow)
 			return BfOverflowCheckKind_None;
 		if (mModule->GetDefaultCheckedKind() != BfCheckedKind_Checked)
