@@ -2,6 +2,7 @@
 #include "BeefySysLib/util/Array.h"
 #include "BeefySysLib/img/PSDReader.h"
 #include "BeefySysLib/img/PNGData.h"
+#include <direct.h>
 
 USING_NS_BF;
 
@@ -134,62 +135,82 @@ int main()
 					fileName = "UI_4.psd";
 
 				if (!FileExists(fileName))
-					continue;
+				{
+					if (!isThemeDir)
+						continue;
+
+					fileName.RemoveFromEnd(3);
+					fileName += "png";
+					if (!FileExists(fileName))
+						continue;
+				}
 			}			
-
-			if (!reader.Init(fileName))
-			{
-				if (size == 0)
-				{
-					printf("Failed to open %s - incorrect working directory?", fileName.c_str());
-					return 1;
-				}
-
-				imageData = NULL;
-				continue;
-			}
-
-			if ((size == 0) && (pass == 0))
-			{
-				baseWidth = reader.mWidth;
-				baseHeight = reader.mHeight;
-			}
-
-			std::vector<int> layerIndices;
-			for (int layerIdx = 0; layerIdx < (int)reader.mPSDLayerInfoVector.size(); layerIdx++)
-			{
-				auto layer = reader.mPSDLayerInfoVector[layerIdx];
-				if (layer->mVisible)
-					layerIndices.insert(layerIndices.begin(), layerIdx);
-			}
 			
-			imageData = reader.ReadImageData();
-			if (imageData == NULL)
+			if (fileName.EndsWith(".png"))
 			{
-				ImageData* rawImageData = reader.MergeLayers(NULL, layerIndices, NULL);;
-				if ((rawImageData->mX == 0) && (rawImageData->mY == 0) &&
-					(rawImageData->mWidth == reader.mWidth) &&
-					(rawImageData->mHeight == reader.mHeight))
+				PNGData* pngData = new PNGData();
+				if (pngData->LoadFromFile(fileName))
 				{
-					imageData = rawImageData;
-				}
-				else
-				{
-					imageData = new ImageData();
-					imageData->CreateNew(reader.mWidth, reader.mHeight);
-					imageData->CopyFrom(rawImageData, 0, 0);
-					delete rawImageData;
+					imageData = pngData;
 				}
 			}
-// 			else
-// 			{
-// 				PNGData pngData;
-// 				pngData.mWidth = imageData->mWidth;
-// 				pngData.mHeight = imageData->mHeight;
-// 				pngData.mBits = imageData->mBits;
-// 				pngData.WriteToFile("c:\\temp\\test.png");
-// 				pngData.mBits = NULL;
-// 			}
+			else
+			{
+				if (!reader.Init(fileName))
+				{
+					if (size == 0)
+					{
+						printf("Failed to open %s - incorrect working directory?", fileName.c_str());
+						return 1;
+					}
+
+					imageData = NULL;
+					continue;
+				}
+
+				if ((size == 0) && (pass == 0))
+				{
+					baseWidth = reader.mWidth;
+					baseHeight = reader.mHeight;
+				}
+
+				std::vector<int> layerIndices;
+				for (int layerIdx = 0; layerIdx < (int)reader.mPSDLayerInfoVector.size(); layerIdx++)
+				{
+					auto layer = reader.mPSDLayerInfoVector[layerIdx];
+					if (layer->mVisible)
+						layerIndices.insert(layerIndices.begin(), layerIdx);
+				}
+
+				imageData = reader.ReadImageData();
+
+				if (imageData == NULL)
+				{
+					ImageData* rawImageData = reader.MergeLayers(NULL, layerIndices, NULL);;
+					if ((rawImageData->mX == 0) && (rawImageData->mY == 0) &&
+						(rawImageData->mWidth == reader.mWidth) &&
+						(rawImageData->mHeight == reader.mHeight))
+					{
+						imageData = rawImageData;
+					}
+					else
+					{
+						imageData = new ImageData();
+						imageData->CreateNew(reader.mWidth, reader.mHeight);
+						imageData->CopyFrom(rawImageData, 0, 0);
+						delete rawImageData;
+					}
+				}
+				// 			else
+				// 			{
+				// 				PNGData pngData;
+				// 				pngData.mWidth = imageData->mWidth;
+				// 				pngData.mHeight = imageData->mHeight;
+				// 				pngData.mBits = imageData->mBits;
+				// 				pngData.WriteToFile("c:\\temp\\test.png");
+				// 				pngData.mBits = NULL;
+				// 			}
+			}			
 		}
 	}
 
@@ -265,6 +286,9 @@ int main()
 		return false;
 	};
 
+	if (isThemeDir)
+		_mkdir("cache");
+
 	for (int size = 0; size < 3; size++)
 	{
 		int scale = 1 << size;
@@ -284,11 +308,11 @@ int main()
 		if (isThemeDir)			
 		{
 			if (size == 0)
-				fileName = "UI.png";
+				fileName = "cache/UI.png";
 			else if (size == 1)
-				fileName = "UI_2.png";
+				fileName = "cache/UI_2.png";
 			else
-				fileName = "UI_4.png";
+				fileName = "cache/UI_4.png";
 		}
 		else
 		{

@@ -491,20 +491,24 @@ namespace IDE
 						for (int scale < 3)
 						{
 							String srcImgPath = scope .(absPath);
+							String srcImgPath2 = scope .(absPath);
 							String destImgPath = scope .(absPath);
 							switch (scale)
 							{
 							case 0:
 								srcImgPath.Append("UI.psd");
-								destImgPath.Append("UI.png");
+								srcImgPath2.Append("UI.png");
+								destImgPath.Append("cache/UI.png");
 							case 1:
 								srcImgPath.Append("UI_2.psd");
-								destImgPath.Append("UI_2.png");
+								srcImgPath2.Append("UI_2.png");
+								destImgPath.Append("cache/UI_2.png");
 							case 2:
 								srcImgPath.Append("UI_4.psd");
-								destImgPath.Append("UI_2.png");
+								srcImgPath2.Append("UI_2.png");
+								destImgPath.Append("cache/UI_2.png");
 							}
-							maxSrcImgTime = Math.Max(maxSrcImgTime, File.GetLastWriteTime(srcImgPath).GetValueOrDefault());
+							maxSrcImgTime = Math.Max(maxSrcImgTime, Math.Max(File.GetLastWriteTime(srcImgPath).GetValueOrDefault(), File.GetLastWriteTime(srcImgPath2).GetValueOrDefault()));
 							let destImageTime = File.GetLastWriteTime(destImgPath).GetValueOrDefault();
 							if (scale == 0)
 								minDestImgTime = destImageTime;
@@ -543,9 +547,9 @@ namespace IDE
 						String imgPath = scope .(absPath);
 						switch (scale)
 						{
-						case 0: imgPath.Append("UI.png");
-						case 1: imgPath.Append("UI_2.png");
-						case 2: imgPath.Append("UI_4.png");
+						case 0: imgPath.Append("cache/UI.png");
+						case 1: imgPath.Append("cache/UI_2.png");
+						case 2: imgPath.Append("cache/UI_4.png");
 						}
 
 						if (File.Exists(imgPath))
