@@ -4866,11 +4866,18 @@ void WinDebugger::CheckNonDebuggerBreak()
 	}
 
 	intptr_target objAddr;
-	if (mDebugTarget->IsObjectAccessBreak(pcAddress, &registers, &objAddr))
+	auto dbgBreakKind = mDebugTarget->GetDbgBreakKind(pcAddress, &registers, &objAddr);
+	if (dbgBreakKind == DbgBreakKind_ObjectAccess)
 	{
 		String errorStr = "error Attempted to access deleted object";
 		String objectAddr = EncodeDataPtr((addr_target)objAddr, true);
 		errorStr += StrFormat("\x1LEAK\t(System.Object)%s\n   (%s)%s\n", objectAddr.c_str(), "System.Object", objectAddr.c_str());
+		mDebugManager->mOutMessages.push_back(errorStr);
+		return;
+	}
+	else if (dbgBreakKind == DbgBreakKind_ArithmeticOverflow)
+	{
+		String errorStr = "error Arithmetic overflow detected";
 		mDebugManager->mOutMessages.push_back(errorStr);
 		return;
 	}

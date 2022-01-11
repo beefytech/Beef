@@ -575,26 +575,39 @@ String X86CPU::InstructionToString(X86Instr* inst, uint32 addr)
 	return result;
 }
 
-bool X86CPU::IsObjectAccessBreak(uint32 address, DbgModuleMemoryCache* memoryCache, int32* regs, int32* outObjectPtr)
+DbgBreakKind X86CPU::GetDbgBreakKind(uint32 address, DbgModuleMemoryCache* memoryCache, int32* regs, int32* outObjectPtr)
 {
 	// We've looking for a CMP BYTE PTR [<reg>], -0x80
 	//  if <reg> is R12 then encoding takes an extra 2 bytes
-	X86Instr inst;	
+	X86Instr inst;
 	for (int checkLen = 5; checkLen >= 3; checkLen--)
-	{		
+	{
 		int offset = -3 - checkLen;
 
 		if (!Decode(address + offset, memoryCache, &inst))
-			continue;	
+			continue;
 
 		if (inst.GetLength() != checkLen)
 			continue;
 
-		const MCInstrDesc &instDesc = mInstrInfo->get(inst.mMCInst.getOpcode());		
+		const MCInstrDesc& instDesc = mInstrInfo->get(inst.mMCInst.getOpcode());
 		if (!instDesc.isCompare())
 			continue;
 
 		auto immediateType = (instDesc.TSFlags & llvm::X86II::ImmMask);
+		if ((immediateType == llvm::X86II::Imm8) && (inst.mMCInst.getNumOperands() == 2))
+		{
+			// We're checking for a TEST [<reg>], 1
+			if (inst.mMCInst.getOpcode() != llvm::X86::TEST8ri)
+				continue;
+			auto immOp = inst.mMCInst.getOperand(1);
+			if (!immOp.isImm())
+				continue;
+			if (immOp.getImm() != 1)
+				continue;
+			return DbgBreakKind_ArithmeticOverflow;
+		}
+
 		if ((immediateType == 0) || (inst.mMCInst.getNumOperands() < 6))
 			continue;
 
@@ -617,10 +630,35 @@ bool X86CPU::IsObjectAccessBreak(uint32 address, DbgModuleMemoryCache* memoryCac
 
 		*outObjectPtr = (uint64)regs[regNum];
 
-		return true;
+		return DbgBreakKind_ObjectAccess;
 	}
 
-	return false;
+	// check jno/jnb
+	for (int offset = 3; offset <= 3; offset++)
+	{
+		if (!Decode(address - offset, memoryCache, &inst))
+			continue;
+
+		if (inst.GetLength() != 2)
+			continue;
+
+		const MCInstrDesc& instDesc = mInstrInfo->get(inst.mMCInst.getOpcode());
+		if (!instDesc.isBranch())
+			continue;
+
+		auto immediateType = (instDesc.TSFlags & llvm::X86II::ImmMask);
+		if ((immediateType == llvm::X86II::Imm8PCRel) && (inst.mMCInst.getNumOperands() == 2))
+		{
+			auto immOp = inst.mMCInst.getOperand(1);
+			if (!immOp.isImm())
+				continue;
+			if ((immOp.getImm() != 1) && (immOp.getImm() != 3))
+				continue;
+			return DbgBreakKind_ArithmeticOverflow;
+		}
+	}
+
+	return DbgBreakKind_None;
 }
 
 int X86CPU::GetOpcodesForMnemonic(const StringImpl& mnemonic, Array<int>& outOpcodes)

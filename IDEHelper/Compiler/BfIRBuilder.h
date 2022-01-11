@@ -174,7 +174,7 @@ enum BfIRCmd : uint8
 
 	BfIRCmd_SetName,
 	BfIRCmd_CreateUndefValue,
-	BfIRCmd_NumericCast,	
+	BfIRCmd_NumericCast,
 	BfIRCmd_CmpEQ,
 	BfIRCmd_CmpNE,
 	BfIRCmd_CmpSLT,
@@ -247,6 +247,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_AddBlock,	
 	BfIRCmd_DropBlocks,
 	BfIRCmd_MergeBlockDown,	
+	BfIRCmd_GetInsertBlock,
 	BfIRCmd_SetInsertPoint,
 	BfIRCmd_SetInsertPointAtStart,
 	BfIRCmd_EraseFromParent,
@@ -964,6 +965,14 @@ struct BfIRState
 	Array<BfFilePosition> mSavedDebugLocs;
 };
 
+enum BfOverflowCheckKind : int8
+{
+	BfOverflowCheckKind_None = 0,
+	BfOverflowCheckKind_Signed = 1,
+	BfOverflowCheckKind_Unsigned = 2,
+	BfOverflowCheckKind_Flag_UseAsm = 4
+};
+
 class BfIRBuilder : public BfIRConstHolder
 {
 public:	
@@ -1182,9 +1191,9 @@ public:
 	BfIRValue CreateCmpLTE(BfIRValue lhs, BfIRValue rhs, bool isSigned);
 	BfIRValue CreateCmpGT(BfIRValue lhs, BfIRValue rhs, bool isSigned);
 	BfIRValue CreateCmpGTE(BfIRValue lhs, BfIRValue rhs, bool isSigned);
-	BfIRValue CreateAdd(BfIRValue lhs, BfIRValue rhs);
-	BfIRValue CreateSub(BfIRValue lhs, BfIRValue rhs);
-	BfIRValue CreateMul(BfIRValue lhs, BfIRValue rhs);
+	BfIRValue CreateAdd(BfIRValue lhs, BfIRValue rhs, BfOverflowCheckKind overflowCheckKind = BfOverflowCheckKind_None);
+	BfIRValue CreateSub(BfIRValue lhs, BfIRValue rhs, BfOverflowCheckKind overflowCheckKind = BfOverflowCheckKind_None);
+	BfIRValue CreateMul(BfIRValue lhs, BfIRValue rhs, BfOverflowCheckKind overflowCheckKind = BfOverflowCheckKind_None);
 	BfIRValue CreateDiv(BfIRValue lhs, BfIRValue rhs, bool isSigned);
 	BfIRValue CreateRem(BfIRValue lhs, BfIRValue rhs, bool isSigned);
 	BfIRValue CreateAnd(BfIRValue lhs, BfIRValue rhs);

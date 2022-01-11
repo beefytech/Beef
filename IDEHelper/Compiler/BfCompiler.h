@@ -117,7 +117,8 @@ public:
 		bool mAllowHotSwapping;
 		bool mObjectHasDebugFlags;		
 		bool mEnableRealtimeLeakCheck;
-		bool mEmitObjectAccessCheck; // Only valid with mObjectHasDebugFlags		
+		bool mEmitObjectAccessCheck; // Only valid with mObjectHasDebugFlags
+		bool mArithmeticChecks;
 		bool mEnableCustodian;
 		bool mEnableSideStack;
 		bool mHasVDataExtender; 
@@ -162,6 +163,7 @@ public:
 			mEmitDynamicCastCheck = true;
 			mAllowHotSwapping = false;
 			mEmitObjectAccessCheck = false;
+			mArithmeticChecks = false;
 			mObjectHasDebugFlags = false;			
 			mEnableRealtimeLeakCheck = false;
 			mWriteIR = false;

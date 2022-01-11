@@ -4248,7 +4248,7 @@ BfIRValue BfIRBuilder::CreateCmpGTE(BfIRValue lhs, BfIRValue rhs, bool isSigned)
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::CreateAdd(BfIRValue lhs, BfIRValue rhs)
+BfIRValue BfIRBuilder::CreateAdd(BfIRValue lhs, BfIRValue rhs, BfOverflowCheckKind overflowCheckKind)
 {
 	mOpFailed = false;
 	if ((lhs.IsConst()) && (rhs.IsConst()))
@@ -4260,12 +4260,19 @@ BfIRValue BfIRBuilder::CreateAdd(BfIRValue lhs, BfIRValue rhs)
 		}
 	}
 	 
-	auto retVal = WriteCmd(BfIRCmd_Add, lhs, rhs);
+	auto retVal = WriteCmd(BfIRCmd_Add, lhs, rhs, overflowCheckKind);
 	NEW_CMD_INSERTED_IRVALUE;
+
+	if ((overflowCheckKind != BfOverflowCheckKind_None) && (!mIgnoreWrites))
+	{
+		mInsertBlock = mActualInsertBlock = WriteCmd(BfIRCmd_GetInsertBlock);
+		NEW_CMD_INSERTED_IRVALUE;
+	}
+
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::CreateSub(BfIRValue lhs, BfIRValue rhs)
+BfIRValue BfIRBuilder::CreateSub(BfIRValue lhs, BfIRValue rhs, BfOverflowCheckKind overflowCheckKind)
 {
 	mOpFailed = false;
 	if ((lhs.IsConst()) && (rhs.IsConst()))
@@ -4273,12 +4280,19 @@ BfIRValue BfIRBuilder::CreateSub(BfIRValue lhs, BfIRValue rhs)
 		BINOPFUNC_APPLY(lhs, rhs, CheckedSub);
 	}
 
-	auto retVal = WriteCmd(BfIRCmd_Sub, lhs, rhs);
+	auto retVal = WriteCmd(BfIRCmd_Sub, lhs, rhs, overflowCheckKind);
 	NEW_CMD_INSERTED;
+
+	if ((overflowCheckKind != BfOverflowCheckKind_None) && (!mIgnoreWrites))
+	{
+		mInsertBlock = mActualInsertBlock = WriteCmd(BfIRCmd_GetInsertBlock);
+		NEW_CMD_INSERTED_IRVALUE;
+	}
+
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::CreateMul(BfIRValue lhs, BfIRValue rhs)
+BfIRValue BfIRBuilder::CreateMul(BfIRValue lhs, BfIRValue rhs, BfOverflowCheckKind overflowCheckKind)
 {
 	mOpFailed = false;
 	if ((lhs.IsConst()) && (rhs.IsConst()))
@@ -4286,8 +4300,15 @@ BfIRValue BfIRBuilder::CreateMul(BfIRValue lhs, BfIRValue rhs)
 		BINOPFUNC_APPLY(lhs, rhs, CheckedMul);
 	}
 
-	auto retVal = WriteCmd(BfIRCmd_Mul, lhs, rhs);
+	auto retVal = WriteCmd(BfIRCmd_Mul, lhs, rhs, overflowCheckKind);
 	NEW_CMD_INSERTED_IRVALUE;
+
+	if ((overflowCheckKind != BfOverflowCheckKind_None) && (!mIgnoreWrites))
+	{
+		mInsertBlock = mActualInsertBlock = WriteCmd(BfIRCmd_GetInsertBlock);
+		NEW_CMD_INSERTED_IRVALUE;
+	}
+
 	return retVal;
 }
 
@@ -5394,7 +5415,7 @@ void BfIRBuilder::CreateStatementStart()
 }
 
 void BfIRBuilder::CreateObjectAccessCheck(BfIRValue value, bool useAsm)
-{	
+{
 	auto retBlock = WriteCmd(BfIRCmd_ObjectAccessCheck, value, useAsm);	
 	NEW_CMD_INSERTED_IRBLOCK;
 	if (!mIgnoreWrites)

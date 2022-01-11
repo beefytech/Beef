@@ -2449,18 +2449,18 @@ bool DebugTarget::DecodeInstruction(addr_target address, CPUInst* inst)
 	
 }
 
-bool DebugTarget::IsObjectAccessBreak(addr_target address, CPURegisters* registers, intptr_target* objAddr)
+DbgBreakKind DebugTarget::GetDbgBreakKind(addr_target address, CPURegisters* registers, intptr_target* objAddr)
 {
 	for (auto dwarf : mDbgModules)
 	{
 		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize) && (dwarf->mOrigImageData != NULL))
 		{			
-			bool result = mDebugger->mCPU->IsObjectAccessBreak(address, dwarf->mOrigImageData, registers->mIntRegsArray, objAddr);			
+			auto result = mDebugger->mCPU->GetDbgBreakKind(address, dwarf->mOrigImageData, registers->mIntRegsArray, objAddr);
 			return result;			
 		}
 	}
 
-	return false;
+	return DbgBreakKind_None;
 
 }
 

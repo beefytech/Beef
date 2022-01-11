@@ -6123,6 +6123,10 @@ uint8 BeMCContext::GetJumpOpCode(BeCmpKind cmpKind, bool isLong)
 			return 0x8D;
 		case BeCmpKind_UGE: // JAE
 			return 0x83;
+		case BeCmpKind_NB: // JNB
+			return 0x83;
+		case BeCmpKind_NO: // JNO
+			return 0x81;
 		}
 	}
 	else
@@ -6151,6 +6155,10 @@ uint8 BeMCContext::GetJumpOpCode(BeCmpKind cmpKind, bool isLong)
 			return 0x7D;
 		case BeCmpKind_UGE: // JAE
 			return 0x73;
+		case BeCmpKind_NB: // JNB
+			return 0x73;
+		case BeCmpKind_NO: // JNO
+			return 0x71;
 		}
 	}
 
@@ -10116,8 +10124,10 @@ bool BeMCContext::DoLegalization()
 				break;
 			case BeMCInstKind_Mul:
 			case BeMCInstKind_IMul:
-				{					
-					if (arg0Type->mSize == 1)
+				{
+					bool handled = false;
+
+					if ((arg0Type->mSize == 1) && (arg0Type->IsIntable()))
 					{
 						if ((!arg0.IsNativeReg()) || (arg0.mReg != X64Reg_AL) || (inst->mResult))
 						{
@@ -10152,8 +10162,54 @@ bool BeMCContext::DoLegalization()
 						}
 
 						BF_ASSERT(!inst->mResult);
+						handled = true;
 					}
-					else
+					else if ((inst->mKind == BeMCInstKind_Mul) && (arg0Type->IsIntable()))
+					{
+						auto wantReg0 = ResizeRegister(X64Reg_RAX, arg0Type->mSize);
+
+						if ((!arg0.IsNativeReg()) || (arg0.mReg != wantReg0) || (inst->mResult))
+						{
+							auto srcVRegInfo = GetVRegInfo(inst->mArg0);
+							// unsigned multiplies can only be done on AX/EAX/RAX
+							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
+							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
+
+							auto vregInfo0 = GetVRegInfo(inst->mArg0);
+							if (vregInfo0 != NULL)
+							{
+								vregInfo0->mDisableRAX = true;
+								vregInfo0->mDisableRDX = true;
+							}
+
+							auto vregInfo1 = GetVRegInfo(inst->mArg1);
+							if (vregInfo1 != NULL)
+							{
+								vregInfo1->mDisableRAX = true;
+								vregInfo1->mDisableRDX = true;
+							}
+							
+							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(wantReg0), inst->mArg0, instIdx++);
+							AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(wantReg0), instIdx++ + 1);
+							inst->mArg0 = BeMCOperand::FromReg(wantReg0);
+							inst->mResult = BeMCOperand();
+							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
+							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
+
+							isFinalRun = false;							
+							break;
+						}
+
+						if (inst->mArg1.IsImmediateInt())
+						{
+							ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
+						}
+
+						BF_ASSERT(!inst->mResult);
+						handled = true;
+					}
+					
+					if (handled)
 					{
 						if (inst->mResult)
 						{
@@ -14404,6 +14460,51 @@ void BeMCContext::DoCodeEmission()
 				}
 				break;
 			case BeMCInstKind_Mul:
+				{
+					if (arg0Type->IsIntable())
+					{
+						bool isValid = true;
+						auto typeCode = GetType(inst->mArg1)->mTypeCode;
+						switch (typeCode)
+						{
+						case BeTypeCode_Int8:
+							isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_AL);
+							break;
+						case BeTypeCode_Int16:
+							isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_AX);
+							break;
+						case BeTypeCode_Int32:
+							isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_EAX);
+							break;
+						case BeTypeCode_Int64:
+							isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_RAX);
+							break;
+						default:
+							isValid = false;
+						}
+						if (!isValid)
+							SoftFail("Invalid mul arguments");
+
+						switch (typeCode)
+						{
+						case BeTypeCode_Int8:
+							EmitREX(BeMCOperand(), inst->mArg1, false);
+							Emit(0xF6);
+							EmitModRM(4, inst->mArg1);
+							break;
+						case BeTypeCode_Int16: Emit(0x66); // Fallthrough
+						case BeTypeCode_Int32:
+						case BeTypeCode_Int64:
+							EmitREX(BeMCOperand(), inst->mArg1, typeCode == BeTypeCode_Int64);
+							Emit(0xF7); EmitModRM(4, inst->mArg1);
+							break;
+						default:
+							NotImpl();
+						}
+						break;
+					}
+				}
+				//Fallthrough
 			case BeMCInstKind_IMul:
 				{	
 					if (instForm == BeMCInstForm_XMM128_RM128)
@@ -14932,17 +15033,25 @@ void BeMCContext::DoCodeEmission()
 				break;
 			case BeMCInstKind_CondBr:
 				{
-					BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_Label);
-					BeMCJump jump;
-					jump.mCodeOffset = funcCodePos;
-					jump.mLabelIdx = inst->mArg0.mLabelIdx;
-					// Speculative make it a short jump
-					jump.mJumpKind = 0;
-					jump.mCmpKind = inst->mArg1.mCmpKind;
-					deferredJumps.push_back(jump);
+					if (inst->mArg0.mKind == BeMCOperandKind_Immediate_i64)
+					{
+						mOut.Write(GetJumpOpCode(inst->mArg1.mCmpKind, false));
+						mOut.Write((uint8)inst->mArg0.mImmediate);
+					}
+					else
+					{
+						BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_Label);
+						BeMCJump jump;
+						jump.mCodeOffset = funcCodePos;
+						jump.mLabelIdx = inst->mArg0.mLabelIdx;
+						// Speculative make it a short jump
+						jump.mJumpKind = 0;
+						jump.mCmpKind = inst->mArg1.mCmpKind;
+						deferredJumps.push_back(jump);
 
-					mOut.Write(GetJumpOpCode(jump.mCmpKind, false));
-					mOut.Write((uint8)0);
+						mOut.Write(GetJumpOpCode(jump.mCmpKind, false));
+						mOut.Write((uint8)0);
+					}
 				}
 				break;
 			case BeMCInstKind_Br:
@@ -15857,7 +15966,7 @@ void BeMCContext::Print(bool showVRegFlags, bool showVRegDetails)
 	OutputDebugStr(ToString(showVRegFlags, showVRegDetails));
 }
 
-BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand& lhs, const BeMCOperand& rhs, BeMCBinIdentityKind identityKind)
+BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand& lhs, const BeMCOperand& rhs, BeMCBinIdentityKind identityKind, BeMCOverflowCheckKind overflowCheckKind)
 {
 	if ((lhs.IsImmediate()) && (lhs.mKind == rhs.mKind))
 	{
@@ -15918,6 +16027,13 @@ BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand&
 
 	auto mcInst = AllocInst(instKind, lhs, rhs);
 	mcInst->mResult = result;
+
+	if (overflowCheckKind != BeMCOverflowCheckKind_None)
+	{
+		AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromImmediate(1), BeMCOperand::FromCmpKind((overflowCheckKind == BeMCOverflowCheckKind_B) ? BeCmpKind_NB : BeCmpKind_NO));
+		AllocInst(BeMCInstKind_DbgBreak);
+	}
+
 	return result;
 }
 
@@ -16399,9 +16515,18 @@ void BeMCContext::Generate(BeFunction* function)
 
 					switch (castedInst->mOpKind)
 					{
-					case BeBinaryOpKind_Add: result = AllocBinaryOp(BeMCInstKind_Add, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
-					case BeBinaryOpKind_Subtract: result = AllocBinaryOp(BeMCInstKind_Sub, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsZero); break;
-					case BeBinaryOpKind_Multiply: result = AllocBinaryOp(BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsOne); break;
+					case BeBinaryOpKind_Add: result = AllocBinaryOp(BeMCInstKind_Add, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero, 
+						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O : 
+						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_B : BeMCOverflowCheckKind_None); 
+						break;
+					case BeBinaryOpKind_Subtract: result = AllocBinaryOp(BeMCInstKind_Sub, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsZero,
+						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O :
+						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_B : BeMCOverflowCheckKind_None);
+						break;
+					case BeBinaryOpKind_Multiply: result = AllocBinaryOp(((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCInstKind_Mul : BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsOne,
+						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O :
+						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_O : BeMCOverflowCheckKind_None);
+						break;
 					case BeBinaryOpKind_SDivide: result = AllocBinaryOp(BeMCInstKind_IDiv, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne); break;
 					case BeBinaryOpKind_UDivide: result = AllocBinaryOp(BeMCInstKind_Div, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne); break;
 					case BeBinaryOpKind_SModulus: result = AllocBinaryOp(BeMCInstKind_IRem, mcLHS, mcRHS, type->IsFloat() ? BeMCBinIdentityKind_None : BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;

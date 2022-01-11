@@ -119,6 +119,7 @@ public:
 	void Read(int64& i);
 	void Read(Val128& i);
 	void Read(bool& val);
+	void Read(int8& val);
 	void Read(BeIRTypeEntry*& type);
 	void Read(BeType*& beType);
 	void Read(BeFunctionType*& beType);

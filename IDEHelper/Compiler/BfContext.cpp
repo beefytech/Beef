@@ -2200,6 +2200,7 @@ void BfContext::UpdateRevisedTypes()
 		workspaceConfigHashCtx.Mixin(options->mObjectHasDebugFlags);
 		workspaceConfigHashCtx.Mixin(options->mEnableRealtimeLeakCheck);
 		workspaceConfigHashCtx.Mixin(options->mEmitObjectAccessCheck);
+		workspaceConfigHashCtx.Mixin(options->mArithmeticChecks);
 		workspaceConfigHashCtx.Mixin(options->mEnableCustodian);
 		workspaceConfigHashCtx.Mixin(options->mEnableSideStack);
 		workspaceConfigHashCtx.Mixin(options->mHasVDataExtender);

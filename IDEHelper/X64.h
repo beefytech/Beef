@@ -508,7 +508,7 @@ public:
 	String InstructionToString(X64Instr* inst, uint64 addr);
 
 	void GetNextPC(uint64 baseAddress, const uint8* dataBase, int dataLength, const uint8* dataPtr, uint32* regs, uint64 nextPCs[2]);
-	bool IsObjectAccessBreak(uint64 address, DbgModuleMemoryCache* memoryCache, int64* regs, int64* outObjectPtr);
+	DbgBreakKind GetDbgBreakKind(uint64 address, DbgModuleMemoryCache* memoryCache, int64* regs, int64* outObjectPtr);
 
 	int GetOpcodesForMnemonic(const StringImpl& mnemonic, Array<int>& outOpcodes);
 	void GetClobbersForMnemonic(const StringImpl& mnemonic, int argCount, Array<int>& outImplicitClobberRegNums, int& outClobberArgCount, bool& outMayClobberMem);

@@ -796,6 +796,8 @@ namespace IDE.ui
                 scope String[] ( "No", "Yes" ));
             AddPropertiesItem(category, "Object Access Check", "mEmitObjectAccessCheck",
                 scope String[] ( "No", "Yes" ));
+			AddPropertiesItem(category, "Arithmetic Check", "mArithmeticCheck",
+				scope String[] ( "No", "Yes" ));
             AddPropertiesItem(category, "Realtime Leak Check", "mEnableRealtimeLeakCheck",
                 scope String[] ( "No", "Yes" ));
 			AddPropertiesItem(category, "Enable Hot Compilation", "mAllowHotSwapping",

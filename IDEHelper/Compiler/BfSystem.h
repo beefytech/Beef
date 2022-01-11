@@ -160,6 +160,7 @@ enum BfCompilerOptionFlags
 	BfCompilerOptionFlag_DebugAlloc         = 0x8000,
 	BfCompilerOptionFlag_OmitDebugHelpers   = 0x10000,
 	BfCompilerOptionFlag_NoFramePointerElim = 0x20000,
+	BfCompilerOptionFlag_ArithmeticChecks = 0x40000,
 };
 
 enum BfTypeFlags
@@ -1441,19 +1442,20 @@ enum BfOptionFlags
 	BfOptionFlags_InitLocalVariables		= 2,
 	BfOptionFlags_EmitDynamicCastCheck		= 4,
 	BfOptionFlags_EmitObjectAccessCheck		= 8,
+	BfOptionFlags_ArithmeticCheck			= 0x10,
 
-	BfOptionFlags_ReflectAlwaysIncludeType	= 0x10,
-	BfOptionFlags_ReflectAlwaysIncludeAll	= 0x20,
-	BfOptionFlags_ReflectAssumeInstantiated	= 0x40,
-	BfOptionFlags_ReflectBoxing				= 0x80,
-	BfOptionFlags_ReflectStaticFields		= 0x100,
-	BfOptionFlags_ReflectNonStaticFields	= 0x200,
-	BfOptionFlags_ReflectStaticMethods		= 0x400,
-	BfOptionFlags_ReflectNonStaticMethods	= 0x800,
-	BfOptionFlags_ReflectConstructors		= 0x1000,
+	BfOptionFlags_ReflectAlwaysIncludeType	= 0x20,
+	BfOptionFlags_ReflectAlwaysIncludeAll	= 0x40,
+	BfOptionFlags_ReflectAssumeInstantiated	= 0x80,
+	BfOptionFlags_ReflectBoxing				= 0x100,
+	BfOptionFlags_ReflectStaticFields		= 0x200,
+	BfOptionFlags_ReflectNonStaticFields	= 0x400,
+	BfOptionFlags_ReflectStaticMethods		= 0x800,
+	BfOptionFlags_ReflectNonStaticMethods	= 0x1000,
+	BfOptionFlags_ReflectConstructors		= 0x2000,
 
 	BfOptionFlags_Reflect_MethodMask		= BfOptionFlags_ReflectStaticMethods | BfOptionFlags_ReflectNonStaticMethods | BfOptionFlags_ReflectConstructors,
-	BfOptionFlags_Mask = 0xFFF
+	BfOptionFlags_Mask = 0x3FFF
 
 };
 

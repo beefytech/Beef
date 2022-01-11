@@ -19769,7 +19769,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 
 	bool wantsChecks = checkedKind == BfCheckedKind_Checked;
 	if (checkedKind == BfCheckedKind_NotSet)
-		wantsChecks = mModule->GetDefaultCheckedKind() == BfCheckedKind_Checked;	
+		wantsChecks = mModule->GetDefaultCheckedKind() == BfCheckedKind_Checked;
 
 	//target.mType = mModule->ResolveGenericType(target.mType);
 	if (target.mType->IsVar())
@@ -22665,23 +22665,43 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 		return;
 	}
 
+	auto _GetOverflowKind = [&](bool wantOverflow)
+	{
+		if (!wantOverflow)
+			return BfOverflowCheckKind_None;
+		if (mModule->GetDefaultCheckedKind() != BfCheckedKind_Checked)
+			return BfOverflowCheckKind_None;
+
+		bool arithmeticChecks = mModule->mCompiler->mOptions.mArithmeticChecks;
+		auto typeOptions = mModule->GetTypeOptions();
+		if (typeOptions != NULL)
+			arithmeticChecks = typeOptions->Apply(arithmeticChecks, BfOptionFlags_ArithmeticCheck);
+		if (!arithmeticChecks)
+			return BfOverflowCheckKind_None;
+
+		BfOverflowCheckKind overflowCheckKind = (resultType->IsSigned()) ? BfOverflowCheckKind_Signed : BfOverflowCheckKind_Unsigned;
+		if (!mModule->IsOptimized())
+			overflowCheckKind = (BfOverflowCheckKind)(overflowCheckKind | BfOverflowCheckKind_Flag_UseAsm);
+		return overflowCheckKind;
+	};
+
 	switch (binaryOp)
 	{
 	case BfBinaryOp_Add:
 	case BfBinaryOp_OverflowAdd:
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateAdd(convLeftValue, convRightValue), resultType);		
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateAdd(convLeftValue, convRightValue, _GetOverflowKind(binaryOp == BfBinaryOp_Add)), resultType);
 		if (binaryOp != BfBinaryOp_OverflowAdd)
 			mModule->CheckRangeError(resultType, opToken);
 		break;
 	case BfBinaryOp_Subtract:
 	case BfBinaryOp_OverflowSubtract:
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateSub(convLeftValue, convRightValue), resultType);
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateSub(convLeftValue, convRightValue, _GetOverflowKind(binaryOp == BfBinaryOp_Subtract)), resultType);
 		if (binaryOp != BfBinaryOp_OverflowSubtract)
 			mModule->CheckRangeError(resultType, opToken);
 		break;
 	case BfBinaryOp_Multiply:
 	case BfBinaryOp_OverflowMultiply:
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateMul(convLeftValue, convRightValue), resultType);
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateMul(convLeftValue, convRightValue, _GetOverflowKind(binaryOp == BfBinaryOp_Multiply)), resultType);
 		if (binaryOp != BfBinaryOp_OverflowMultiply)
 			mModule->CheckRangeError(resultType, opToken);
 		break;

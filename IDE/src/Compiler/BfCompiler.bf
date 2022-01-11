@@ -38,6 +38,7 @@ namespace IDE.Compiler
 			DebugAlloc = 0x8000,
 			OmitDebugHelpers = 0x10000,
 			NoFramePointerElim = 0x20000,
+			ArithmeticChecks = 0x40000
 		}
 
         [CallingConvention(.Stdcall), CLink]
@@ -663,6 +664,7 @@ namespace IDE.Compiler
 			SetOpt(options.mEmitDynamicCastCheck, .EmitDynamicCastCheck);
 			SetOpt(enableObjectDebugFlags, .EnableObjectDebugFlags);
 			SetOpt(emitObjectAccessCheck, .EmitObjectAccessCheck);
+			SetOpt(options.mArithmeticCheck, .ArithmeticChecks);
 
 			if (options.LeakCheckingEnabled)
 				SetOpt(options.mEnableRealtimeLeakCheck, .EnableRealtimeLeakCheck);

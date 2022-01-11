@@ -102,6 +102,8 @@ namespace IDE
 		[Reflect]
 		public bool? mEmitObjectAccessCheck; // Only valid with mObjectHasDebugFlags
 		[Reflect]
+		public bool? mArithmeticCheck;
+		[Reflect]
 		public int32? mAllocStackTraceDepth;
 		[Reflect]
 		public BuildOptions.AlwaysIncludeKind mReflectAlwaysInclude;
@@ -135,6 +137,7 @@ namespace IDE
 			newVal.mInitLocalVariables = mInitLocalVariables;
 			newVal.mEmitDynamicCastCheck = mEmitDynamicCastCheck;
 			newVal.mEmitObjectAccessCheck = mEmitObjectAccessCheck;
+			newVal.mArithmeticCheck = mArithmeticCheck;
 			newVal.mAllocStackTraceDepth = mAllocStackTraceDepth;
 			newVal.mReflectAlwaysInclude = mReflectAlwaysInclude;
 			newVal.mReflectBoxing = mReflectBoxing;
@@ -164,6 +167,8 @@ namespace IDE
 				mEmitDynamicCastCheck = data.GetBool("EmitDynamicCastCheck");
 			if (data.Contains("EmitObjectAccessCheck"))
 				mEmitObjectAccessCheck = data.GetBool("EmitObjectAccessCheck");
+			if (data.Contains("ArithmeticCheck"))
+				mArithmeticCheck = data.GetBool("ArithmeticCheck");
 			if (data.Contains("AllocStackTraceDepth"))
 				mAllocStackTraceDepth = data.GetInt("AllocStackTraceDepth");
 
@@ -194,6 +199,7 @@ namespace IDE
 			data.ConditionalAdd("InitLocalVariables", mInitLocalVariables);
 			data.ConditionalAdd("EmitDynamicCastCheck", mEmitDynamicCastCheck);
 			data.ConditionalAdd("EmitObjectAccessCheck", mEmitObjectAccessCheck);
+			data.ConditionalAdd("ArithmeticCheck", mArithmeticCheck);
 			data.ConditionalAdd("AllocStackTraceDepth", mAllocStackTraceDepth);
 			data.ConditionalAdd("ReflectAlwaysInclude", mReflectAlwaysInclude);
 			data.ConditionalAdd("ReflectBoxing", mReflectBoxing);

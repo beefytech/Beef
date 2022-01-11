@@ -1293,6 +1293,13 @@ struct BeRMParamsInfo
 	}
 };
 
+enum BeMCOverflowCheckKind
+{
+	BeMCOverflowCheckKind_None,
+	BeMCOverflowCheckKind_B,
+	BeMCOverflowCheckKind_O
+};
+
 // This class only processes one function per instantiation
 class BeMCContext
 {
@@ -1367,7 +1374,7 @@ public:
 	BeMCInst* AllocInst(BeMCInstKind instKind, const BeMCOperand& arg0, const BeMCOperand& arg1, int insertIdx = -1);
 	void MergeInstFlags(BeMCInst* prevInst, BeMCInst* inst, BeMCInst* nextInst);
 	void RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerged = true, bool removeFromList = true);
-	BeMCOperand AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand & lhs, const BeMCOperand & rhs, BeMCBinIdentityKind identityKind);
+	BeMCOperand AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand & lhs, const BeMCOperand & rhs, BeMCBinIdentityKind identityKind, BeMCOverflowCheckKind overflowCheckKind = BeMCOverflowCheckKind_None);
 	BeMCOperand GetCallArgVReg(int argIdx, BeTypeCode typeCode);
 	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, bool isVarArg = false);
 	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeValue*>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, bool isVarArg = false);

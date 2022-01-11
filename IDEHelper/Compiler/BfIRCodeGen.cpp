@@ -340,7 +340,8 @@ BfIRCodeGen::BfIRCodeGen()
 	mLLVMTargetMachine = NULL;
 
 	mNopInlineAsm = NULL;
-	mAsmObjectCheckAsm = NULL;
+	mObjectCheckAsm = NULL;
+	mOverflowCheckAsm = NULL;
 	mHasDebugLoc = false;
 	mAttrSet = NULL;
 	mIRBuilder = NULL;
@@ -728,6 +729,11 @@ void BfIRCodeGen::Read(Val128& i)
 void BfIRCodeGen::Read(bool& val)
 {
 	val = mStream->Read() != 0;
+}
+
+void BfIRCodeGen::Read(int8& val)
+{
+	val = mStream->Read();
 }
 
 void BfIRCodeGen::Read(BfIRTypeEntry*& type)
@@ -1447,6 +1453,72 @@ llvm::Value* BfIRCodeGen::FixGEP(llvm::Value* fromValue, llvm::Value* result)
 	return result;
 }
 
+llvm::Value* BfIRCodeGen::DoCheckedIntrinsic(llvm::Intrinsic::ID intrin, llvm::Value* lhs, llvm::Value* rhs, bool useAsm)
+{	
+	if ((mTargetTriple.GetMachineType() != BfMachineType_x86) && (mTargetTriple.GetMachineType() != BfMachineType_x64))
+		useAsm = false;
+
+	CmdParamVec<llvm::Type*> useParams;
+	useParams.push_back(lhs->getType());
+	auto func = llvm::Intrinsic::getDeclaration(mLLVMModule, intrin, useParams);
+
+	CmdParamVec<llvm::Value*> args;
+	args.push_back(lhs);
+	args.push_back(rhs);
+	llvm::FunctionType* funcType = NULL;
+	if (auto ptrType = llvm::dyn_cast<llvm::PointerType>(func->getType()))
+		funcType = llvm::dyn_cast<llvm::FunctionType>(ptrType->getElementType());
+	auto aggResult = mIRBuilder->CreateCall(funcType, func, args);
+	auto valResult = mIRBuilder->CreateExtractValue(aggResult, 0);
+	auto failResult = mIRBuilder->CreateExtractValue(aggResult, 1);
+
+	if (!useAsm)
+	{
+		mLockedBlocks.Add(mIRBuilder->GetInsertBlock());
+
+		auto failBB = llvm::BasicBlock::Create(*mLLVMContext, "access.fail");
+		auto passBB = llvm::BasicBlock::Create(*mLLVMContext, "access.pass");
+
+		mIRBuilder->CreateCondBr(failResult, failBB, passBB);
+
+		mActiveFunction->getBasicBlockList().push_back(failBB);
+		mIRBuilder->SetInsertPoint(failBB);
+
+		auto trapDecl = llvm::Intrinsic::getDeclaration(mLLVMModule, llvm::Intrinsic::trap);
+		auto callInst = mIRBuilder->CreateCall(trapDecl);
+		callInst->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::NoReturn);
+		mIRBuilder->CreateBr(passBB);
+
+		mActiveFunction->getBasicBlockList().push_back(passBB);
+		mIRBuilder->SetInsertPoint(passBB);
+	}
+	else
+	{
+		if (mOverflowCheckAsm == NULL)
+		{
+			std::vector<llvm::Type*> paramTypes;
+			paramTypes.push_back(llvm::Type::getInt8Ty(*mLLVMContext));
+			auto funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*mLLVMContext), paramTypes, false);
+
+			String asmStr =
+				"testb $$1, $0\n"
+				"jz 1f\n"
+				"int $$3\n"
+				"1:";
+
+			mOverflowCheckAsm = llvm::InlineAsm::get(funcType,
+				asmStr.c_str(), "r,~{dirflag},~{fpsr},~{flags}", true,
+				false, llvm::InlineAsm::AD_ATT);
+		}
+
+		llvm::SmallVector<llvm::Value*, 1> llvmArgs;
+		llvmArgs.push_back(mIRBuilder->CreateIntCast(failResult, llvm::Type::getInt8Ty(*mLLVMContext), false));
+		llvm::CallInst* callInst = mIRBuilder->CreateCall(mOverflowCheckAsm, llvmArgs);
+		callInst->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::NoUnwind);
+	}
+	return valResult;
+}
+
 void BfIRCodeGen::CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value* size, int alignment, bool isVolatile)
 {
 	auto sizeConst = llvm::dyn_cast<llvm::ConstantInt>(size);
@@ -2040,22 +2112,31 @@ void BfIRCodeGen::HandleNextCmd()
 				SetResult(curId, mIRBuilder->CreateICmpUGE(lhs, rhs));
 		}
 		break;
+	
 	case BfIRCmd_Add:
 		{
 			CMD_PARAM(llvm::Value*, lhs);
 			CMD_PARAM(llvm::Value*, rhs);
+			CMD_PARAM(int8, overflowCheckKind);
 			if (lhs->getType()->isFloatingPointTy())
 				SetResult(curId, mIRBuilder->CreateFAdd(lhs, rhs));
+			else if ((overflowCheckKind & (BfOverflowCheckKind_Signed | BfOverflowCheckKind_Unsigned)) != 0)
+				SetResult(curId, DoCheckedIntrinsic(((overflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? llvm::Intrinsic::sadd_with_overflow : llvm::Intrinsic::uadd_with_overflow,
+					lhs, rhs, (overflowCheckKind & BfOverflowCheckKind_Flag_UseAsm) != 0));
 			else
-				SetResult(curId, mIRBuilder->CreateAdd(lhs, rhs));
+				SetResult(curId, mIRBuilder->CreateAdd(lhs, rhs));			
 		}
 		break;
 	case BfIRCmd_Sub:
 		{
 			CMD_PARAM(llvm::Value*, lhs);
 			CMD_PARAM(llvm::Value*, rhs);
+			CMD_PARAM(int8, overflowCheckKind);
 			if (lhs->getType()->isFloatingPointTy())
 				SetResult(curId, mIRBuilder->CreateFSub(lhs, rhs));
+			else if ((overflowCheckKind & (BfOverflowCheckKind_Signed | BfOverflowCheckKind_Unsigned)) != 0)
+				SetResult(curId, DoCheckedIntrinsic(((overflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? llvm::Intrinsic::ssub_with_overflow : llvm::Intrinsic::usub_with_overflow,
+					lhs, rhs, (overflowCheckKind & BfOverflowCheckKind_Flag_UseAsm) != 0));
 			else
 				SetResult(curId, mIRBuilder->CreateSub(lhs, rhs));
 		}
@@ -2064,8 +2145,12 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(llvm::Value*, lhs);
 			CMD_PARAM(llvm::Value*, rhs);
+			CMD_PARAM(int8, overflowCheckKind);
 			if (lhs->getType()->isFloatingPointTy())
 				SetResult(curId, mIRBuilder->CreateFMul(lhs, rhs));
+			else if ((overflowCheckKind & (BfOverflowCheckKind_Signed | BfOverflowCheckKind_Unsigned)) != 0)
+				SetResult(curId, DoCheckedIntrinsic(((overflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? llvm::Intrinsic::smul_with_overflow : llvm::Intrinsic::umul_with_overflow,
+					lhs, rhs, (overflowCheckKind & BfOverflowCheckKind_Flag_UseAsm) != 0));
 			else
 				SetResult(curId, mIRBuilder->CreateMul(lhs, rhs));
 		}
@@ -2528,7 +2613,12 @@ void BfIRCodeGen::HandleNextCmd()
 			intoInstList.splice(intoInstList.begin(), fromInstList, fromInstList.begin(), fromInstList.end());
 			fromBlock->eraseFromParent();
 		}
-		break;	
+		break;
+	case BfIRCmd_GetInsertBlock:
+		{
+			SetResult(curId, mIRBuilder->GetInsertBlock());
+		}
+		break;
 	case BfIRCmd_SetInsertPoint:
 		{			
 			CMD_PARAM(llvm::BasicBlock*, block);
@@ -2542,7 +2632,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::BasicBlock*, block);
 			mIRBuilder->SetInsertPoint(block, block->begin());
 		}
-		break;
+		break;		
 	case BfIRCmd_EraseFromParent:
 		{
 			CMD_PARAM(llvm::BasicBlock*, block);
@@ -3906,7 +3996,7 @@ void BfIRCodeGen::HandleNextCmd()
 			else
 			{
 				llvm::Type* voidPtrType = llvm::Type::getInt8PtrTy(*mLLVMContext);
-				if (mAsmObjectCheckAsm == NULL)
+				if (mObjectCheckAsm == NULL)
 				{
 					std::vector<llvm::Type*> paramTypes;
 					paramTypes.push_back(voidPtrType);
@@ -3918,7 +4008,7 @@ void BfIRCodeGen::HandleNextCmd()
 						"int $$3\n"
 						"1:";
 
-					mAsmObjectCheckAsm = llvm::InlineAsm::get(funcType,
+					mObjectCheckAsm = llvm::InlineAsm::get(funcType,
 						asmStr.c_str(), "r,~{dirflag},~{fpsr},~{flags}", true,
 						false, llvm::InlineAsm::AD_ATT);
 				}
@@ -3926,7 +4016,7 @@ void BfIRCodeGen::HandleNextCmd()
 				llvm::SmallVector<llvm::Value*, 1> llvmArgs;
 				llvmArgs.push_back(mIRBuilder->CreateBitCast(val, voidPtrType));
 
-				llvm::CallInst* callInst = irBuilder->CreateCall(mAsmObjectCheckAsm, llvmArgs);
+				llvm::CallInst* callInst = irBuilder->CreateCall(mObjectCheckAsm, llvmArgs);
 				callInst->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::NoUnwind);
 
 				SetResult(curId, mIRBuilder->GetInsertBlock());

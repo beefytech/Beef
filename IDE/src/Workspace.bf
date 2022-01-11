@@ -240,6 +240,8 @@ namespace IDE
 			[Reflect]
             public bool mEmitObjectAccessCheck; // Only valid with mObjectHasDebugFlags
 			[Reflect]
+			public bool mArithmeticCheck;
+			[Reflect]
             public bool mEnableRealtimeLeakCheck;
 			[Reflect]
             public bool mEnableSideStack;
@@ -297,6 +299,7 @@ namespace IDE
 				mEmitDynamicCastCheck = prev.mEmitDynamicCastCheck;
 				mEnableObjectDebugFlags = prev.mEnableObjectDebugFlags;
 				mEmitObjectAccessCheck = prev.mEmitObjectAccessCheck;
+				mArithmeticCheck = prev.mArithmeticCheck;
 				mEnableRealtimeLeakCheck = prev.mEnableRealtimeLeakCheck;
 				mEnableSideStack = prev.mEnableSideStack;
 				mAllowHotSwapping = prev.mAllowHotSwapping;
@@ -694,6 +697,7 @@ namespace IDE
                                 data.ConditionalAdd("EmitDynamicCastCheck", options.mEmitDynamicCastCheck, !isRelease);
                                 data.ConditionalAdd("EnableObjectDebugFlags", options.mEnableObjectDebugFlags, !isRelease);
                                 data.ConditionalAdd("EmitObjectAccessCheck", options.mEmitObjectAccessCheck, !isRelease);
+								data.ConditionalAdd("ArithmeticCheck", options.mArithmeticCheck, false);
                                 data.ConditionalAdd("EnableRealtimeLeakCheck", options.mEnableRealtimeLeakCheck, (platformType == .Windows) && !isRelease);
                                 data.ConditionalAdd("EnableSideStack", options.mEnableSideStack, (platformType == .Windows) && isParanoid);
 								data.ConditionalAdd("AllowHotSwapping", options.mAllowHotSwapping, (platformType == .Windows) && !isRelease);
@@ -888,6 +892,7 @@ namespace IDE
 			options.mEmitDynamicCastCheck = !isRelease;
 			options.mEnableObjectDebugFlags = !isRelease;
 			options.mEmitObjectAccessCheck = !isRelease;
+			options.mArithmeticCheck = false;
 
 			if (platformType == .Windows)
 			{
@@ -994,6 +999,7 @@ namespace IDE
                     options.mEmitDynamicCastCheck = data.GetBool("EmitDynamicCastCheck", !isRelease);
                     options.mEnableObjectDebugFlags = data.GetBool("EnableObjectDebugFlags", !isRelease);
                     options.mEmitObjectAccessCheck = data.GetBool("EmitObjectAccessCheck", !isRelease);
+					options.mArithmeticCheck = data.GetBool("ArithmeticCheck", false);
                     options.mEnableRealtimeLeakCheck = data.GetBool("EnableRealtimeLeakCheck", (platformType == .Windows) && !isRelease);
                     options.mEnableSideStack = data.GetBool("EnableSideStack", (platformType == .Windows) && isParanoid);
 					options.mAllowHotSwapping = data.GetBool("AllowHotSwapping", (platformType == .Windows) && !isRelease);

@@ -820,6 +820,7 @@ public:
 	BE_VALUE_TYPE(BeBinaryOpInst, BeInst);
 
 	BeBinaryOpKind mOpKind;
+	BfOverflowCheckKind mOverflowCheckKind;
 	BeValue* mLHS;
 	BeValue* mRHS;
 
@@ -829,6 +830,7 @@ public:
 	{
 		hashCtx.Mixin(TypeId);
 		hashCtx.Mixin(mOpKind);
+		hashCtx.Mixin(mOverflowCheckKind);
 		mLHS->HashReference(hashCtx);
 		mRHS->HashReference(hashCtx);
 	}
@@ -847,7 +849,9 @@ enum BeCmpKind
 	BeCmpKind_SGT,
 	BeCmpKind_UGT,
 	BeCmpKind_SGE,
-	BeCmpKind_UGE
+	BeCmpKind_UGE,
+	BeCmpKind_NB,
+	BeCmpKind_NO,
 };
 
 class BeCmpInst : public BeInst
@@ -2338,7 +2342,7 @@ public:
 	BeNumericCastInst* CreateNumericCast(BeValue* value, BeType* toType, bool valSigned, bool toSigned);	
 	BeBitCastInst* CreateBitCast(BeValue* value, BeType* toType);;
 	BeCmpInst* CreateCmp(BeCmpKind cmpKind, BeValue* lhs, BeValue* rhs);	
-	BeBinaryOpInst* CreateBinaryOp(BeBinaryOpKind opKind, BeValue* lhs, BeValue* rhs);
+	BeBinaryOpInst* CreateBinaryOp(BeBinaryOpKind opKind, BeValue* lhs, BeValue* rhs, BfOverflowCheckKind overflowCheckKind = BfOverflowCheckKind_None);
 
 	BeAllocaInst* CreateAlloca(BeType* type);
 	BeLoadInst* CreateLoad(BeValue* value, bool isVolatile);

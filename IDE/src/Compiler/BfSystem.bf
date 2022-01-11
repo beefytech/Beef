@@ -15,18 +15,19 @@ namespace IDE.Compiler
 			InitLocalVariables			= 2,
 			EmitDynamicCastCheck		= 4,
 			EmitObjectAccessCheck		= 8,
+			ArithmeticCheck				= 0x10,
 
-			ReflectAlwaysIncludeType	= 0x10,
-			ReflectAlwaysIncludeAll		= 0x20,
-			ReflectAssumeInstantiated	= 0x40,
-			ReflectBoxing				= 0x80,
-			ReflectStaticFields			= 0x100,
-			ReflectNonStaticFields		= 0x200,
-			ReflectStaticMethods		= 0x400,
-			ReflectNonStaticMethods		= 0x800,
-			ReflectConstructors			= 0x1000,
+			ReflectAlwaysIncludeType	= 0x20,
+			ReflectAlwaysIncludeAll		= 0x40,
+			ReflectAssumeInstantiated	= 0x80,
+			ReflectBoxing				= 0x100,
+			ReflectStaticFields			= 0x200,
+			ReflectNonStaticFields		= 0x400,
+			ReflectStaticMethods		= 0x800,
+			ReflectNonStaticMethods		= 0x1000,
+			ReflectConstructors			= 0x2000,
 
-			All							= 0x1FFF
+			All							= 0x3FFF
 		};
 
 		[CallingConvention(.Stdcall), CLink]
@@ -408,6 +409,8 @@ namespace IDE.Compiler
 			SetFlag(typeOption.mReflectStaticMethods, .ReflectStaticMethods);
 			SetFlag(typeOption.mReflectNonStaticMethods, .ReflectNonStaticMethods);
 			SetFlag(typeOption.mReflectConstructors, .ReflectConstructors);
+			SetFlag(typeOption.mEmitObjectAccessCheck, .EmitObjectAccessCheck);
+			SetFlag(typeOption.mArithmeticCheck, .ArithmeticCheck);
 
 			AddTypeOptions(typeOption.mFilter, typeOption.mBfSIMDSetting, typeOption.mBfOptimizationLevel, typeOption.mEmitDebugInfo, andFlags, orFlags, typeOption.mAllocStackTraceDepth, typeOption.mReflectMethodFilter);
 		}

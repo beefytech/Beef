@@ -20,7 +20,7 @@ namespace llvm
 	class AttributeList;
 	class Module;
 	class LLVMContext;
-	class TargetMachine;
+	class TargetMachine;	
 };
 
 NS_BF_BEGIN
@@ -100,7 +100,8 @@ public:
 	llvm::TargetMachine* mLLVMTargetMachine;
 	Array<llvm::DebugLoc> mSavedDebugLocs;
 	llvm::InlineAsm* mNopInlineAsm;
-	llvm::InlineAsm* mAsmObjectCheckAsm;	
+	llvm::InlineAsm* mObjectCheckAsm;
+	llvm::InlineAsm* mOverflowCheckAsm;
 	llvm::DebugLoc mDebugLoc;
 	BfCodeGenOptions mCodeGenOptions;
 	bool mHasDebugLoc;	
@@ -140,6 +141,7 @@ public:
 	llvm::Type* GetSizeAlignedType(BfIRTypeEntry* typeEntry);
 	llvm::Value* GetAlignedPtr(llvm::Value* val);
 	llvm::Value* FixGEP(llvm::Value* fromValue, llvm::Value* result);
+	llvm::Value* DoCheckedIntrinsic(llvm::Intrinsic::ID intrin, llvm::Value* lhs, llvm::Value* rhs, bool useAsm);
 
 public:
 	BfIRCodeGen();
@@ -158,6 +160,7 @@ public:
 	void Read(int64& i);
 	void Read(Val128& i);
 	void Read(bool& val);
+	void Read(int8& val);
 	void Read(BfIRTypeEntry*& type);
 	void Read(llvm::Type*& llvmType, BfIRTypeEntry** outTypeEntry = NULL);
 	void Read(llvm::FunctionType*& llvmType);

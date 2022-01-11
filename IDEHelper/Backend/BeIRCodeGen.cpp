@@ -590,6 +590,11 @@ void BeIRCodeGen::Read(bool& val)
 	BE_MEM_END("bool");
 }
 
+void BeIRCodeGen::Read(int8& val)
+{
+	val = mStream->Read();
+}
+
 void BeIRCodeGen::Read(BeIRTypeEntry*& type)
 {
 	BE_MEM_START;
@@ -1432,21 +1437,24 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, lhs);
 			CMD_PARAM(BeValue*, rhs);			
-			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_Add, lhs, rhs));
+			CMD_PARAM(int8, overflowCheckKind);
+			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_Add, lhs, rhs, (BfOverflowCheckKind)overflowCheckKind));
 		}
 		break;
 	case BfIRCmd_Sub:
 		{
 			CMD_PARAM(BeValue*, lhs);
 			CMD_PARAM(BeValue*, rhs);
-			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_Subtract, lhs, rhs));
+			CMD_PARAM(int8, overflowCheckKind);
+			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_Subtract, lhs, rhs, (BfOverflowCheckKind)overflowCheckKind));
 		}
 		break;
 	case BfIRCmd_Mul:
 		{
 			CMD_PARAM(BeValue*, lhs);
 			CMD_PARAM(BeValue*, rhs);
-			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_Multiply, lhs, rhs));
+			CMD_PARAM(int8, overflowCheckKind);
+			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_Multiply, lhs, rhs, (BfOverflowCheckKind)overflowCheckKind));
 		}
 		break;
 	case BfIRCmd_SDiv:
@@ -2100,6 +2108,11 @@ void BeIRCodeGen::HandleNextCmd()
 			mBeModule->RemoveBlock(mActiveFunction, fromBlock);
 		}
 		break;	
+	case BfIRCmd_GetInsertBlock:
+		{
+			SetResult(curId, mBeModule->mActiveBlock);
+		}
+		break;
 	case BfIRCmd_SetInsertPoint:
 		{			
 			CMD_PARAM(BeBlock*, block);

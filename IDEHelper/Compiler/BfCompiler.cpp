@@ -9729,7 +9729,8 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 // 		}
 		BF_ASSERT(!options->mEnableRealtimeLeakCheck);		
 #endif
-		options->mEmitObjectAccessCheck = (optionFlags & BfCompilerOptionFlag_EmitDebugInfo) != 0;
+		options->mEmitObjectAccessCheck = (optionFlags & BfCompilerOptionFlag_EmitObjectAccessCheck) != 0;
+		options->mArithmeticChecks = (optionFlags & BfCompilerOptionFlag_ArithmeticChecks) != 0;
 		options->mAllocStackCount = allocStackCount;
 		
 		if (hotProject != NULL)
@@ -9770,6 +9771,7 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 		options->mObjectHasDebugFlags = false;
 		options->mEnableRealtimeLeakCheck = false;
 		options->mEmitObjectAccessCheck = false;		
+		options->mArithmeticChecks = false;
 		options->mEmitDynamicCastCheck = false;
 		options->mRuntimeChecks = (optionFlags & BfCompilerOptionFlag_RuntimeChecks) != 0;
 	}	

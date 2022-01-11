@@ -1683,6 +1683,8 @@ void BeDumpContext::ToString(StringImpl& str, BeCmpKind cmpKind)
 	case BeCmpKind_UGT: str += "ugt"; return;
 	case BeCmpKind_SGE: str += "sge"; return;
 	case BeCmpKind_UGE: str += "uge"; return;
+	case BeCmpKind_NB: str += "nb"; return;
+	case BeCmpKind_NO: str += "no"; return;
 	default:
 		str += "???";
 	}		
@@ -3292,7 +3294,7 @@ BeCmpInst* BeModule::CreateCmp(BeCmpKind cmpKind, BeValue* lhs, BeValue* rhs)
 	return inst;
 }
 
-BeBinaryOpInst* BeModule::CreateBinaryOp(BeBinaryOpKind opKind, BeValue* lhs, BeValue* rhs)
+BeBinaryOpInst* BeModule::CreateBinaryOp(BeBinaryOpKind opKind, BeValue* lhs, BeValue* rhs, BfOverflowCheckKind overflowCheckKind)
 {
 #ifdef _DEBUG
 	auto leftType = lhs->GetType();
@@ -3303,6 +3305,7 @@ BeBinaryOpInst* BeModule::CreateBinaryOp(BeBinaryOpKind opKind, BeValue* lhs, Be
 	inst->mOpKind = opKind;
 	inst->mLHS = lhs;
 	inst->mRHS = rhs;
+	inst->mOverflowCheckKind = overflowCheckKind;
 	AddInst(inst);
 	return inst;
 }

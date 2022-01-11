@@ -143,6 +143,10 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Object Access Check", typeName,
 				scope String[] ( "No", "Yes" ));
 
+			typeName.Clear(); typeName.Append(optionsName, "mArithmeticCheck");
+			AddPropertiesItem(category, "Arithmetic Check", typeName,
+				scope String[] ( "No", "Yes" ));
+
 			typeName.Clear(); typeName.Append(optionsName, "mAllocStackTraceDepth");
 			AddPropertiesItem(category, "Alloc Stack Trace Depth", typeName);
 

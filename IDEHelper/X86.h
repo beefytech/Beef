@@ -344,7 +344,7 @@ public:
 	String InstructionToString(X86Instr* inst, uint32 addr);
 
 	void GetNextPC(uint32 baseAddress, const uint8* dataBase, int dataLength, const uint8* dataPtr, uint32* regs, uint32 nextPCs[2]);
-	bool IsObjectAccessBreak(uint32 address, DbgModuleMemoryCache* memoryCache, int32* regs, int32* outObjectPtr);
+	DbgBreakKind GetDbgBreakKind(uint32 address, DbgModuleMemoryCache* memoryCache, int32* regs, int32* outObjectPtr);
 
 	int GetOpcodesForMnemonic(const StringImpl& mnemonic, Array<int>& outOpcodes);
 	void GetClobbersForMnemonic(const StringImpl& mnemonic, int argCount, Array<int>& outImplicitClobberRegNums, int& outClobberArgCount, bool& outMayClobberMem);

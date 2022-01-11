@@ -61,4 +61,11 @@ enum DbgAddrType : uint8
 	DbgAddrType_Alias
 };
 
+enum DbgBreakKind
+{
+	DbgBreakKind_None,
+	DbgBreakKind_ObjectAccess,
+	DbgBreakKind_ArithmeticOverflow
+};
+
 NS_BF_END
