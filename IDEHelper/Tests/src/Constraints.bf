@@ -76,6 +76,40 @@ namespace Tests
  			ClassA<T>.DoAdd(val, val);
 		}
 
+		struct StringViewEnumerator<TS, C> : IEnumerator<StringView>
+			where C : const int 
+			where TS : StringView[C]
+		{
+			private TS mStrings;
+			private int mIdx;
+
+			public this(TS strings)
+			{
+				mStrings = strings;
+				mIdx = -1;
+			}
+			
+			public StringView Current
+			{
+				get
+				{
+					return mStrings[mIdx];
+				}
+			}
+
+			public bool MoveNext() mut
+			{
+				return ++mIdx != mStrings.Count;
+			}
+
+			public Result<StringView> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{

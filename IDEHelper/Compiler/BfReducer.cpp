@@ -697,6 +697,12 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 				}
 				else if (checkToken == BfToken_RBracket)
 				{
+					if (bracketDepth == 0)
+					{
+						// Not even an array
+						return false;
+					}
+
 					endBracket = checkIdx;
 				}
 				else if ((checkToken == BfToken_Star) || (checkToken == BfToken_Question))

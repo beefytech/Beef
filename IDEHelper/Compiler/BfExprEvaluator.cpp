@@ -4228,7 +4228,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 {
 	if ((target.mType != NULL && (target.mType->IsGenericParam())))
 	{
-		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)target.mType);
+		auto genericParamType = (BfGenericParamType*)target.mType;
+		auto genericParamInst = mModule->GetGenericParamInstance(genericParamType);
 
 		if (target.mValue)
 		{
@@ -4242,10 +4243,20 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			}
 		}
 
-		if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
+		bool isUnspecializedSection = false;
+		if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
+			isUnspecializedSection = (mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized);
+		else
+			isUnspecializedSection = (mModule->mCurTypeInstance != NULL) && (mModule->mCurTypeInstance->IsUnspecializedType());
+
+		if (isUnspecializedSection)
 		{
 			if (genericParamInst->mTypeConstraint != NULL)
+			{
 				target.mType = genericParamInst->mTypeConstraint;
+				if (target.mType->IsWrappableType())
+					target.mType = mModule->GetWrappedStructType(target.mType);
+			}
 			else
 				target.mType = mModule->mContext->mBfObjectType;
 
@@ -19600,6 +19611,13 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 	if (!target.HasType())
 		return;
 	
+	if (target.mType->IsGenericParam())
+	{
+		auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)target.mType);
+		if (genericParamInstance->mTypeConstraint != NULL)
+			target.mType = genericParamInstance->mTypeConstraint;
+	}
+
 	BfCheckedKind checkedKind = BfCheckedKind_NotSet;
 
 	bool isInlined = false;
