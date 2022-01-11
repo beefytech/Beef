@@ -187,7 +187,7 @@ namespace IDE.ui
 		{
 			case NeedToRecalculate;
 			case UnmatchedParens;
-			case Valid(float x1, float y1, float x2, float y2);
+			case Valid(int cachedCursorTextPos, float x1, float y1, float x2, float y2);
 		}
 
         public delegate void(char32, AutoCompleteOptions) mOnGenerateAutocomplete ~ delete _;
@@ -4716,6 +4716,17 @@ namespace IDE.ui
 			// Highlight matching parenthesis under cursor
 			if (mEditWidget.mHasFocus && !HasSelection())
 			{
+				if (mMatchingParensPositionCache case .Valid(var cachedCursorTextPos, ?, ?, ?, ?))
+				{
+					//HACK:
+					// We can't just rely on setting .NeedToRecalculate in PhysCursorMoved because it looks like sometimes the
+					// cursor moves without that being called. For example when you open a text buffer that was already opened
+					// before, the cursor will initially be at the old position where you left it before being moved to (0,0)
+					// but this move to 0,0 won't be detected.
+					if (cachedCursorTextPos != CursorTextPos)
+						mMatchingParensPositionCache = .NeedToRecalculate;
+				}
+
 				if (mMatchingParensPositionCache case .NeedToRecalculate)
 				{
 					mMatchingParensPositionCache = .UnmatchedParens;
@@ -4797,12 +4808,12 @@ namespace IDE.ui
 							GetLineColumnAtIdx(matchingParenIndex, var line2, var column2);
 							GetTextCoordAtLineAndColumn(line1, column1, var x1, var y1);
 							GetTextCoordAtLineAndColumn(line2, column2, var x2, var y2);
-							mMatchingParensPositionCache = .Valid(x1, y1, x2, y2);
+							mMatchingParensPositionCache = .Valid(CursorTextPos, x1, y1, x2, y2);
 						}
 					}
 				}
 
-				if (mMatchingParensPositionCache case .Valid(let x1, let y1, let x2, let y2))
+				if (mMatchingParensPositionCache case .Valid(?, let x1, let y1, let x2, let y2))
 				{
 					let width = mFont.GetWidth(' ');
 					let height = mFont.GetHeight() + GS!(2);
