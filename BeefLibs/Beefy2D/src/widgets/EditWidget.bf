@@ -2953,7 +2953,7 @@ namespace Beefy.widgets
                     return;
             }
 
-            if ((allowToScreenStart) && (lineChar <= contentIdx))
+            if ((allowToScreenStart) && (lineChar == contentIdx))
                 MoveCursorTo(lineIdx, 0);
             else
                 MoveCursorTo(lineIdx, contentIdx);
