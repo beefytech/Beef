@@ -6584,7 +6584,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		if (!hotSwapErrors.IsEmpty())
 			mPassInstance->Fail(StrFormat("Hot compilation cannot be used when LTO is enabled in '%s'. Consider setting 'Workspace/Beef/Debug/Enable Hot Compilation' to 'No'.", hotSwapErrors.c_str()));
 		if (!toolsetErrors.IsEmpty())
-			mPassInstance->Fail(StrFormat("The Workspace Toolset must be set to 'LLVM' in order to use LTO in '%s'. Consider changing 'Workspace/General/Toolset' to 'LLVM'.", toolsetErrors.c_str()));
+			mPassInstance->Fail(StrFormat("The Workspace Toolset must be set to 'LLVM' in order to use LTO in '%s'. Consider changing 'Workspace/Targeted/Build/Toolset' to 'LLVM'.", toolsetErrors.c_str()));
 	}
 
 	//
