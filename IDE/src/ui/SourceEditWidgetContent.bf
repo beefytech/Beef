@@ -185,7 +185,6 @@ namespace IDE.ui
 
 		enum HiliteMatchingParensPositionCache
 		{
-			//TODO: Better naming?
 			case NeedToRecalculate;
 			case UnmatchedParens;
 			case Valid(float x1, float y1, float x2, float y2);
