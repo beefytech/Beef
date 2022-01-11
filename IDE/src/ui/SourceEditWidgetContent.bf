@@ -183,6 +183,14 @@ namespace IDE.ui
 			OnlyShowInvoke = 4
 		}
 
+		enum HiliteMatchingParensPositionCache
+		{
+			//TODO: Better naming?
+			case NeedToRecalculate;
+			case UnmatchedParens;
+			case Valid(float x1, float y1, float x2, float y2);
+		}
+
         public delegate void(char32, AutoCompleteOptions) mOnGenerateAutocomplete ~ delete _;
         public Action mOnFinishAsyncAutocomplete ~ delete _;
         public Action mOnCancelAsyncAutocomplete ~ delete _;
@@ -228,6 +236,7 @@ namespace IDE.ui
 		bool mHasCustomColors;
 		FastCursorState mFastCursorState ~ delete _;
 		public HashSet<int32> mCurParenPairIdSet = new .() ~ delete _;
+		HiliteMatchingParensPositionCache mMatchingParensPositionCache = .NeedToRecalculate;
 		
 		public List<PersistentTextPosition> PersistentTextPositions
 		{
@@ -3047,6 +3056,7 @@ namespace IDE.ui
         {
             base.ContentChanged();
             mCursorStillTicks = 0;
+			mMatchingParensPositionCache = .NeedToRecalculate;
 			if (mSourceViewPanel != null)
 			{
 				if (mSourceViewPanel.mProjectSource != null)
@@ -4557,6 +4567,7 @@ namespace IDE.ui
 
             base.PhysCursorMoved(moveKind);
             mCursorStillTicks = 0;
+			mMatchingParensPositionCache = .NeedToRecalculate;
 
 			if ((mSourceViewPanel != null) && (mSourceViewPanel.mHoverWatch != null))
 				mSourceViewPanel.mHoverWatch.Close();
@@ -4702,6 +4713,107 @@ namespace IDE.ui
         public override void Draw(Graphics g)
         {
             base.Draw(g);
+
+			// Highlight matching parenthesis under cursor
+			if (mEditWidget.mHasFocus && !HasSelection())
+			{
+				if (mMatchingParensPositionCache case .NeedToRecalculate)
+				{
+					mMatchingParensPositionCache = .UnmatchedParens;
+
+					bool IsParenthesisAt(int textIndex)
+					{
+						switch (SafeGetChar(textIndex))
+						{
+							// Ignore parentheses in comments.
+						case '(',')', '[',']', '{','}': return (SourceElementType)mData.mText[textIndex].mDisplayTypeId != .Comment;
+						default: return false;
+						}
+					}
+
+					bool IsOpenParenthesis(char8 c)
+					{
+						switch (c)
+						{
+						case '(', '{', '[': return true;
+						default: return false;
+						}
+					}
+
+					Result<char8> GetMatchingParenthesis(char8 paren)
+					{
+						switch (paren)
+						{
+						case '(': return ')';
+						case '{': return '}';
+						case '[': return ']';
+
+						case ')': return '(';
+						case '}': return '{';
+						case ']': return '[';
+
+						default: return .Err;
+						}
+					}
+
+					int parenIndex = -1;
+					// If there is a parenthesis to the right of the cursor, match that one.
+					// Otherwise, if there is one to the left of the cursor, match that.
+					// This is what Visual Studio and VS Code do.
+					// Notepad++ tries to match to the left of the cursor first, but I think the other way makes more sense.
+					if (IsParenthesisAt(CursorTextPos))
+						parenIndex = CursorTextPos;
+					else if (IsParenthesisAt(CursorTextPos - 1))
+						parenIndex = CursorTextPos - 1;
+
+					if (parenIndex != -1)
+					{
+						char8 paren = mData.mText[parenIndex].mChar;
+						char8 matchingParen = GetMatchingParenthesis(paren);
+						int dir = IsOpenParenthesis(paren) ? +1 : -1;
+
+						int matchingParenIndex = -1;
+						int stackCount = 1;
+						for (int i = parenIndex + dir; i >= 0 && i < mData.mTextLength; i += dir)
+						{
+							if ((SourceElementType)mData.mText[i].mDisplayTypeId != .Comment)
+							{
+								char8 char = mData.mText[i].mChar;
+								if (char == paren)
+									++stackCount;
+								else if (char == matchingParen)
+									--stackCount;
+
+								if (stackCount == 0)
+								{
+									matchingParenIndex = i;
+									break;
+								}
+							}
+						}
+
+						if (matchingParenIndex != -1)
+						{
+							GetLineColumnAtIdx(parenIndex, var line1, var column1);
+							GetLineColumnAtIdx(matchingParenIndex, var line2, var column2);
+							GetTextCoordAtLineAndColumn(line1, column1, var x1, var y1);
+							GetTextCoordAtLineAndColumn(line2, column2, var x2, var y2);
+							mMatchingParensPositionCache = .Valid(x1, y1, x2, y2);
+						}
+					}
+				}
+
+				if (mMatchingParensPositionCache case .Valid(let x1, let y1, let x2, let y2))
+				{
+					let width = mFont.GetWidth(' ');
+					let height = mFont.GetHeight() + GS!(2);
+					using (g.PushColor(DarkTheme.COLOR_MATCHING_PARENS_HILITE))
+					{
+						g.FillRect(x1, y1, width, height);
+						g.FillRect(x2, y2, width, height);
+					}
+				}
+			}
 
             using (g.PushTranslate(mTextInsets.mLeft, mTextInsets.mTop))
             {
