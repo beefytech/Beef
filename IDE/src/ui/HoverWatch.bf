@@ -1307,6 +1307,8 @@ namespace IDE.ui
 				listView.mColumns[0].mWidth = useWidth - GS!(2);
 			}
 
+			height += GS!(2);
+
             listView.Resize(popupX, popupY, useWidth, height);
             ResizeWindow();
         }
