@@ -663,7 +663,7 @@ namespace IDE.ui
 						//for (int i = 0; i < data.mTextLength - mSearchOptions.mSearchString.Length; i++)
 						int i = 0;
 
-						while (i < data.mTextLength - mSearchOptions.mSearchString.Length)
+						while (i <= data.mTextLength - mSearchOptions.mSearchString.Length)
 						{
 							if ((isNewStart) || (!mSearchOptions.mMatchWholeWord))
 							{
@@ -710,7 +710,7 @@ namespace IDE.ui
 
 									editWidgetContent.PhysDeleteSelection(false);
 									editWidgetContent.PhysInsertAtCursor(mSearchOptions.mReplaceString, false);
-									i += mSearchOptions.mSearchString.Length - 1;
+									i += mSearchOptions.mReplaceString.Length - 1;
 									replaceCount++;
 									replaceInFileCount++;
 								}
