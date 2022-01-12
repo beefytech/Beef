@@ -10135,13 +10135,9 @@ bool BeMCContext::DoLegalization()
 							// Int8 multiplies can only be done on AL
 							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
 
-							auto vregInfo0 = GetVRegInfo(inst->mArg0);
-							if (vregInfo0 != NULL)
-								vregInfo0->mDisableRAX = true;
-							auto vregInfo1 = GetVRegInfo(inst->mArg1);
-							if (vregInfo1 != NULL)
-								vregInfo1->mDisableRAX = true;
-
+							DisableRegister(inst->mArg0, X64Reg_RAX);
+							DisableRegister(inst->mArg1, X64Reg_RAX);							
+							
 							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AH), inst->mArg1, instIdx++);
 							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg0, instIdx++);
 							AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(X64Reg_AL), instIdx++ + 1);
@@ -10174,21 +10170,10 @@ bool BeMCContext::DoLegalization()
 							// unsigned multiplies can only be done on AX/EAX/RAX
 							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
 							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
-
-							auto vregInfo0 = GetVRegInfo(inst->mArg0);
-							if (vregInfo0 != NULL)
-							{
-								vregInfo0->mDisableRAX = true;
-								vregInfo0->mDisableRDX = true;
-							}
-
-							auto vregInfo1 = GetVRegInfo(inst->mArg1);
-							if (vregInfo1 != NULL)
-							{
-								vregInfo1->mDisableRAX = true;
-								vregInfo1->mDisableRDX = true;
-							}
-							
+							DisableRegister(inst->mArg0, X64Reg_RAX);
+							DisableRegister(inst->mArg0, X64Reg_RDX);
+							DisableRegister(inst->mArg1, X64Reg_RAX);
+							DisableRegister(inst->mArg1, X64Reg_RDX);
 							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(wantReg0), inst->mArg0, instIdx++);
 							AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(wantReg0), instIdx++ + 1);
 							inst->mArg0 = BeMCOperand::FromReg(wantReg0);
@@ -10207,6 +10192,22 @@ bool BeMCContext::DoLegalization()
 
 						BF_ASSERT(!inst->mResult);
 						handled = true;
+					}
+
+					if (inst->mArg0.IsNativeReg())
+					{	
+						auto vregInfo1 = GetVRegInfo(inst->mArg1);
+						if (vregInfo1 != NULL)
+						{
+							auto arg1 = GetFixedOperand(inst->mArg1);
+							if ((arg1.IsNativeReg()) && (inst->mArg0.mReg == arg1.mReg) &&
+								((ResizeRegister(arg1.mReg, 8) == X64Reg_RAX) || (ResizeRegister(arg1.mReg, 8) == X64Reg_RDX)))
+							{								
+								DisableRegister(inst->mArg1, X64Reg_RAX);
+								DisableRegister(inst->mArg1, X64Reg_RDX);
+								isFinalRun = false;
+							}
+						}
 					}
 					
 					if (!handled)
@@ -14656,7 +14657,7 @@ void BeMCContext::DoCodeEmission()
 						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AL));
 						// XOR ah, ah
 						Emit(0x30); Emit(0xE4);
-						// IDIV rm
+						// DIV rm
 						EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
 						Emit(0xF6); EmitModRM(0x6, inst->mArg1);
 						break;
@@ -14664,7 +14665,7 @@ void BeMCContext::DoCodeEmission()
 						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AX));
 						// XOR dx, dx
 						Emit(0x66); Emit(0x31); Emit(0xD2);						
-						// IDIV rm
+						// DIV rm
 						Emit(0x66);
 						EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
 						Emit(0xF7); EmitModRM(0x6, inst->mArg1);
@@ -14673,7 +14674,7 @@ void BeMCContext::DoCodeEmission()
 						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_EAX));
 						// XOR edx, edx
 						Emit(0x31); Emit(0xD2);
-						// IDIV rm
+						// DIV rm
 						EmitREX(BeMCOperand::FromReg(X64Reg_EAX), inst->mArg1, false);
 						Emit(0xF7); EmitModRM(0x6, inst->mArg1);
 						break;
@@ -14681,8 +14682,7 @@ void BeMCContext::DoCodeEmission()
 						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX));
 						// XOR rdx, rdx
 						Emit(0x48); Emit(0x31); Emit(0xD2);
-						EmitREX(BeMCOperand::FromReg(X64Reg_RAX), inst->mArg1, true);
-						// IDIV rm
+						// DIV rm
 						EmitREX(BeMCOperand::FromReg(X64Reg_RAX), inst->mArg1, true);
 						Emit(0xF7); EmitModRM(0x6, inst->mArg1);
 						break;
@@ -16056,7 +16056,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?InitThread@Foo@BeefTest@bf@@CA?AU?$Result@X@System@3@H@Z");
+	//mDebugging = (function->mName == "?InitDecHexDigits@NumberFormatter@System@bf@@AEAAX_K@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
