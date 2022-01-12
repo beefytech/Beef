@@ -1310,8 +1310,6 @@ namespace IDE
 
 			for (let checkProject in gApp.mWorkspace.mProjects)
 			{
-				if (checkProject.mGeneralOptions.mTargetType == .BeefLib)
-					continue;
 				if (checkProject.HasDependency(depProject.mProjectName))
 				{
 					List<String> targetPaths = scope .();
@@ -1320,6 +1318,9 @@ namespace IDE
 					let workspaceOptions = gApp.GetCurWorkspaceOptions();
 					let options = gApp.GetCurProjectOptions(checkProject);
 					gApp.[Friend]GetTargetPaths(checkProject, gApp.mPlatformName, workspaceOptions, options, targetPaths);
+
+					if ((checkProject.mGeneralOptions.mTargetType == .BeefLib) && (options.mBuildOptions.mBuildKind != .DynamicLib))
+						continue;
 
 					if (!targetPaths.IsEmpty)
 					{
