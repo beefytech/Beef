@@ -115,7 +115,7 @@ namespace System
 			if (++locINext >= 56) locINext = 1;
 			if (++locINextp >= 56) locINextp = 1;
 
-			retVal = SeedArray[locINext] - SeedArray[locINextp];
+			retVal = SeedArray[locINext] &- SeedArray[locINextp];
 			SeedArray[locINext] = retVal;
 
 			inext = locINext;
