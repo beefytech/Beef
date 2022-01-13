@@ -642,7 +642,7 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 			BfLogSysM("Using mSavedTypeData for %p %s\n", resolvedTypeRef, typeName.c_str());
 			if (typeInst != NULL)
 			{
-				if (mCompiler->IsHotCompile())
+				if (IsHotCompile())
 				{
 					BfLogSysM("Using mSavedTypeData HotTypeData %p for %p\n", savedTypeData->mHotTypeData, resolvedTypeRef);
 					typeInst->mHotTypeData = savedTypeData->mHotTypeData;
@@ -2186,7 +2186,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 					typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
 				}
 
-				if (ceEmitContext->HasEmissions())
+				if ((ceEmitContext->HasEmissions()) && (!mCompiler->mFastFinish))
 				{
 					String ctxStr = "comptime ApplyToType of ";
 					ctxStr += TypeToString(attrType);
@@ -2426,7 +2426,9 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 }
 
 void BfModule::DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers, bool underlyingTypeDeferred)
-{	
+{
+	BfLogSysM("BfModule::DoCEEmit %p\n", typeInstance);
+
 	CeEmitContext ceEmitContext;
 	ceEmitContext.mType = typeInstance;
 	ExecuteCEOnCompile(&ceEmitContext, typeInstance, BfCEOnCompileKind_TypeInit, underlyingTypeDeferred);
@@ -6085,6 +6087,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 								if (!typeInstance->GetUnderlyingType()->IsIncomplete())
 									AssertErrorState();
 							}
+						}
+						else if ((typeInstance->mRebuildFlags & BfTypeRebuildFlag_ConstEvalCancelled) != 0)
+						{
+							// It's possible const eval was supposed to generate this method. We're rebuilding the type anyway.
 						}
 						else
 						{			

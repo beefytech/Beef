@@ -4056,6 +4056,8 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	SetAndRestoreValue<BfModule*> prevModule(mCurModule, module);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
 	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);	
+	
+	SetAndRestoreValue<int> prevCurExecuteId(mCurModule->mCompiler->mCurCEExecuteId, mCeMachine->mExecuteId);	
 
 	// Reentrancy may occur as methods need defining
 	//SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(module->mCurMethodState, NULL);
@@ -5936,12 +5938,15 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 	{
 		if (*fastFinishPtr)
 		{
-			if (*cancelingPtr)
+			if ((mCurModule != NULL) && (mCurModule->mCurTypeInstance != NULL))
 			{
-				if ((mCurModule != NULL) && (mCurModule->mCurTypeInstance != NULL))
-					mCurModule->DeferRebuildType(mCurModule->mCurTypeInstance);
-				else
-					_Fail("Comptime evaluation canceled");
+				mCurModule->mCurTypeInstance->mRebuildFlags = (BfTypeRebuildFlags)(mCurModule->mCurTypeInstance->mRebuildFlags | BfTypeRebuildFlag_ConstEvalCancelled);
+				mCurModule->DeferRebuildType(mCurModule->mCurTypeInstance);
+			}
+			if (*cancelingPtr)
+			{					
+				if ((mCurModule == NULL) || (mCurModule->mCurTypeInstance == NULL))
+					_Fail("Comptime evaluation canceled");					
 			}
 			return false;
 		}

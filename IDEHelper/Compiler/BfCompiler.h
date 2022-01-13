@@ -315,6 +315,7 @@ public:
 	FILE* mCompileLogFP;
 
 	CeMachine* mCEMachine;
+	int mCurCEExecuteId;
 	BfSystem* mSystem;	
 	bool mIsResolveOnly;
 	BfResolvePassData* mResolvePassData;

@@ -999,6 +999,11 @@ bool BfModule::WantsFinishModule()
 	return (mIncompleteMethodCount == 0) && (mOnDemandMethodCount == 0) && (!mHasGenericMethods) && (!mIsScratchModule) && (mExtensionCount == 0) && (mParentModule == NULL);
 }
 
+bool BfModule::IsHotCompile()
+{
+	return mCompiler->IsHotCompile() && !mIsComptimeModule;
+}
+
 void BfModule::FinishInit()
 {
 	BF_ASSERT(mAwaitingInitFinish);
@@ -3535,8 +3540,15 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 
 		if ((usingModule != NULL) && (!usingModule->mIsSpecialModule) &&
 			(usedModule != NULL) && (!usedModule->mIsSpecialModule))
-		{			
-			usingModule->mModuleRefs.Add(usedModule);
+		{
+			if ((flags & ~(BfDependencyMap::DependencyFlag_OuterType)) == 0)
+			{
+				// Not a 'use' dependency
+			}
+			else
+			{
+				usingModule->mModuleRefs.Add(usedModule);
+			}
 		}
 	}
 		
@@ -5324,7 +5336,7 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 
 BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStringIdMap, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData)
 {
-	if ((mCompiler->IsHotCompile()) && (!type->mDirty))
+	if ((IsHotCompile()) && (!type->mDirty))
 		return BfIRValue();	
 
 	BfIRValue* irValuePtr = NULL;
@@ -22013,7 +22025,7 @@ void BfModule::CheckHotMethod(BfMethodInstance* methodInstance, const StringImpl
 #ifdef BF_DBG_HOTMETHOD_NAME
 		hotMethod->mMangledName = mangledName;
 #endif
-		if ((methodInstance->mMethodInstanceGroup->IsImplemented()) && (!mCompiler->IsHotCompile()))
+		if ((methodInstance->mMethodInstanceGroup->IsImplemented()) && (!IsHotCompile()))
 			hotMethod->mFlags = (BfHotDepDataFlags)(hotMethod->mFlags | BfHotDepDataFlag_IsOriginalBuild);
 
 		methodInstance->mHotMethod = hotMethod;		
@@ -23509,7 +23521,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 	}
 	else if (methodDef->mIsVirtual)
 	{
-		if (mCompiler->IsHotCompile())
+		if (IsHotCompile())
 			mContext->EnsureHotMangledVirtualMethodName(methodInstance);
 
 		BfTypeInstance* checkBase = typeInstance;

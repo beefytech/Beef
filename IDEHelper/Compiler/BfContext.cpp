@@ -2070,16 +2070,20 @@ void BfContext::UpdateRevisedTypes()
 			}
 		}
 
-		if (typeDef->mDefState == BfTypeDef::DefState_Defined)
+		auto checkTypeDef = typeDef;
+		if (typeDef->mEmitParent != NULL)
+			checkTypeDef = typeDef->mEmitParent;
+
+		if (checkTypeDef->mDefState == BfTypeDef::DefState_Defined)
 		{
 			BF_ASSERT(typeDef->mNextRevision == NULL);
 			continue;
 		}
 
-		if (typeDef->mDefState != BfTypeDef::DefState_New)
+		if (checkTypeDef->mDefState != BfTypeDef::DefState_New)
 		{
 			defStateChangedQueue.Add(typeInst);									
-		}						
+		}
 	}
 
 	// We consumed this above

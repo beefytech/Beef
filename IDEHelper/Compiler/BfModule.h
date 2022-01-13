@@ -1971,6 +1971,7 @@ public:
 
 	void Init(bool isFullRebuild = true);		
 	bool WantsFinishModule();
+	bool IsHotCompile();
 	void FinishInit();
 	void CalcGeneratesCode();
 	void ReifyModule();

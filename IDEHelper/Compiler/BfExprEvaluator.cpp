@@ -11195,9 +11195,9 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		return;
 	}
 
-	if (autoComplete != NULL)	
+	if (autoComplete != NULL)
 	{
-		mResult = mModule->GetDefaultTypedValue(targetType);
+		mResult = mModule->GetDefaultTypedValue(targetType, false, BfDefaultValueKind_Addr);
 		_CheckResult();
 		return;
 	}

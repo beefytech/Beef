@@ -473,6 +473,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	//if (isResolveOnly)
 	//mCEMachine = NULL;
 	mCEMachine = new CeMachine(this);
+	mCurCEExecuteId = -1;
 }
 
 BfCompiler::~BfCompiler()
@@ -885,7 +886,9 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 		testMethods.Add(testMethod);
 
 		if (!bfModule->mProject->mUsedModules.Contains(typeInstance->mModule))
+		{
 			bfModule->mProject->mUsedModules.Add(typeInstance->mModule);
+		}
 
 		vdataHashCtx.Mixin(methodInstance->GetOwner()->mTypeId);
 		vdataHashCtx.Mixin(methodInstance->mMethodDef->mIdx);
@@ -9198,13 +9201,7 @@ BF_EXPORT int BF_CALLTYPE BfCompiler_GetCompileRevision(BfCompiler* bfCompiler)
 
 BF_EXPORT int BF_CALLTYPE BfCompiler_GetCurConstEvalExecuteId(BfCompiler* bfCompiler)
 {
-	if (bfCompiler->mCEMachine == NULL)
-		return -1;
-	if (bfCompiler->mCEMachine->mCurContext == NULL)
-		return -1;
-	if (bfCompiler->mCEMachine->mCurContext->mCurMethodInstance == NULL)
-		return -1;
-	return bfCompiler->mCEMachine->mExecuteId;
+	return bfCompiler->mCurCEExecuteId;
 }
 
 BF_EXPORT float BF_CALLTYPE BfCompiler_GetLastHadComptimeRebuilds(BfCompiler* bfCompiler)
