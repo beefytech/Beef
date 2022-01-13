@@ -56,6 +56,7 @@ namespace IDE
 		WaitEvent mProcessingEvent ~ delete _;
 		String mWorkspaceDir = new String() ~ delete _;
 		bool mWantWorkspaceCleanup;
+		public bool mDisabled;
 
 		public ~this()
 		{
@@ -177,7 +178,7 @@ namespace IDE
 
 		public void CheckWorkspace()
 		{
-			if (gApp.mSettings.mEditorSettings.mEnableFileRecovery != .Yes)
+			if ((gApp.mSettings.mEditorSettings.mEnableFileRecovery != .Yes) && (!mDisabled))
 				return;
 
 			mWantWorkspaceCleanup = true;
