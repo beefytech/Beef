@@ -1966,6 +1966,7 @@ namespace IDE.ui
 				}
 				
 				StringView matches = default;
+				StringView documentation = default;
 				int matchesPos = entryDisplay.IndexOf('\x02');
 				matchIndices.Clear();
 				if (matchesPos != -1)
@@ -1985,16 +1986,24 @@ namespace IDE.ui
 						// TODO(FUZZY): we could save start and length instead of single chars
 						matchIndices.Add((uint8)result.Value);
 					}
-				}
 
-				StringView documentation = default;
-				int docPos = matches.IndexOf('\x03');
-				if (docPos != -1)
+					int docPos = matches.IndexOf('\x03');
+					if (docPos != -1)
+					{
+						documentation = StringView(matches, docPos + 1);
+						matches = StringView(matches, 0, docPos);
+					}
+				}
+				else
 				{
-					documentation = StringView(matches, docPos + 1);
-					matches = StringView(matches, 0, docPos);
+					int docPos = entryDisplay.IndexOf('\x03');
+					if (docPos != -1)
+					{
+						documentation = StringView(entryDisplay, docPos + 1);
+						entryDisplay = StringView(entryDisplay, 0, docPos);
+					}
 				}
-
+				
 				StringView entryInsert = default;
 				tabPos = entryDisplay.IndexOf('\t');
 				if (tabPos != -1)
@@ -2131,6 +2140,7 @@ namespace IDE.ui
 				}
 
 				StringView matches = default;
+				StringView documentation = default;
 				int matchesPos = entryDisplay.IndexOf('\x02');
 				matchIndices.Clear();
 				if (matchesPos != -1)
@@ -2150,15 +2160,24 @@ namespace IDE.ui
 						// TODO(FUZZY): we could save start and length instead of single chars
 						matchIndices.Add((uint8)result.Value);
 					}
-				}
 
-				StringView documentation = default;
-				int docPos = matches.IndexOf('\x03');
-				if (docPos != -1)
-				{
-					documentation = StringView(matches, docPos + 1);
-					matches = StringView(matches, 0, docPos);
+					int docPos = matches.IndexOf('\x03');
+					if (docPos != -1)
+					{
+						documentation = StringView(matches, docPos + 1);
+						matches = StringView(matches, 0, docPos);
+					}
 				}
+				else
+				{
+					int docPos = entryDisplay.IndexOf('\x03');
+					if (docPos != -1)
+					{
+						documentation = StringView(entryDisplay, docPos + 1);
+						entryDisplay = StringView(entryDisplay, 0, docPos);
+					}
+				}
+				
 
 				StringView entryInsert = default;
 				tabPos = entryDisplay.IndexOf('\t');
