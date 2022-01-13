@@ -352,6 +352,7 @@ BfIRCodeGen::BfIRCodeGen()
 	mLLVMContext = new llvm::LLVMContext();
 	mLLVMModule = NULL;
 	mIsCodeView = false;
+	mHadDLLExport = false;
 	mConstValIdx = 0;
 	mCmdCount = 0;
 	
@@ -3794,6 +3795,7 @@ void BfIRCodeGen::HandleNextCmd()
 			else if (attribute == BFIRAttribute_DllExport)
 			{
 				func->setDLLStorageClass(llvm::GlobalValue::DLLExportStorageClass);
+				mHadDLLExport = true;
 			}
 			else if (attribute == BFIRAttribute_NoFramePointerElim)
 			{
@@ -5314,6 +5316,9 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 		{
 			enableLTO = false;
 		}
+
+		if (mHadDLLExport) // LTO bug in LLVM-link?
+			enableLTO = false;
 	}
 		
 	std::error_code EC;

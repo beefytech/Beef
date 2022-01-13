@@ -106,6 +106,7 @@ public:
 	BfCodeGenOptions mCodeGenOptions;
 	bool mHasDebugLoc;	
 	bool mIsCodeView;
+	bool mHadDLLExport;
 	int mConstValIdx;
 
 	int mCmdCount;
