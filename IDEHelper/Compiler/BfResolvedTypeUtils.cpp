@@ -3524,7 +3524,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			{
 				BfTypedValue result;
 				//
-				{					
+				{
 					BfMethodState methodState;
 					SetAndRestoreValue<BfMethodState*> prevMethodState(ctx->mModule->mCurMethodState, &methodState, false);
 					if (ctx->mModule->mCurMethodState == NULL)					
@@ -3542,8 +3542,12 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 
 					if (exprModTypeRef->mToken->mToken == BfToken_Comptype)
 					{
-						exprFlags = (BfEvalExprFlags)(exprFlags | BfEvalExprFlags_Comptime);
-						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, ctx->mModule->ResolveTypeDef(ctx->mModule->mCompiler->mTypeTypeDef), exprFlags);
+						auto typeType = ctx->mModule->ResolveTypeDef(ctx->mModule->mCompiler->mTypeTypeDef);
+						exprFlags = (BfEvalExprFlags)(exprFlags | BfEvalExprFlags_Comptime | BfEvalExprFlags_NoCast);
+						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, typeType, exprFlags);
+						if ((result.mType != NULL) && (!result.mType->IsInteger()) && (result.mType != typeType) && 
+							(!result.mType->IsInstanceOf(ctx->mModule->mCompiler->mReflectTypeIdTypeDef)))
+							result = ctx->mModule->Cast(exprModTypeRef->mTarget, result, typeType);
 					}
 					else
 					{
@@ -3565,6 +3569,24 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						{							
 							ctx->mHadVar = true;
 							cachedResolvedType = ctx->mModule->GetPrimitiveType(BfTypeCode_Var);
+						}
+						else if (BfIRConstHolder::IsInt(constant->mTypeCode))
+						{
+							int typeId = constant->mInt32;
+							BfType* type = NULL;
+							if ((typeId >= 0) && (typeId < ctx->mModule->mContext->mTypes.mSize))
+								type = ctx->mModule->mContext->mTypes[typeId];
+
+							if (type != NULL)
+							{
+								cachedResolvedType = type;
+							}
+							else
+							{
+								ctx->mModule->Fail(StrFormat("Invalid type id '%d'", typeId), exprModTypeRef->mTarget);
+								ctx->mHadVar = true;
+								cachedResolvedType = ctx->mModule->GetPrimitiveType(BfTypeCode_Var);
+							}
 						}
 					}
 					
