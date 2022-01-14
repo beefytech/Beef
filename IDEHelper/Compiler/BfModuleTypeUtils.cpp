@@ -3493,17 +3493,21 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	if (resolvedTypeRef->IsBoxed())
 	{
+		BfBoxedType* boxedType = (BfBoxedType*)resolvedTypeRef;
+
 		if ((baseType != NULL) && (baseType->IsStruct()))
 		{
-			BfBoxedType* boxedType = (BfBoxedType*)resolvedTypeRef;
 			BfType* modifiedBaseType = baseType;
 			if (boxedType->IsBoxedStructPtr())
 				modifiedBaseType = CreatePointerType(modifiedBaseType);
 			boxedType->mBoxedBaseType = CreateBoxedType(modifiedBaseType);
 
 			PopulateType(boxedType->mBoxedBaseType);
+			// Use derivedFrom for both the boxed base type and the unboxed type
 			AddDependency(boxedType->mBoxedBaseType, typeInstance, BfDependencyMap::DependencyFlag_DerivedFrom);
 		}
+
+		AddDependency(boxedType->mElementType, typeInstance, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
 		
 		baseType = mContext->mBfObjectType;
 	}	
