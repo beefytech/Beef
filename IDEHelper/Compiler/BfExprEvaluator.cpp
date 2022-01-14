@@ -16785,7 +16785,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		if (innerInvocationResult.mType->IsTypeInstance())
 		{
 			auto invocationTypeInst = innerInvocationResult.mType->ToTypeInstance();
-			if (invocationTypeInst->mTypeDef->mIsDelegate)
+			if ((invocationTypeInst->mTypeDef->mIsDelegate) || (invocationTypeInst->mTypeDef->mIsFunction))
 			{
 				thisValue = innerInvocationResult;				
 			}
