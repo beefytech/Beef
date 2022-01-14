@@ -686,7 +686,16 @@ namespace System
 	    Struct,
 	    Enum,
 		TypeAlias,
-		Extension
+		Extension,
+		FloatX2,
+		FloatX3,
+		FloatX4,
+		DoubleX2,
+		DoubleX3,
+		DoubleX4,
+		Int64X2,
+		Int64X3,
+		Int64X4,
 	}
 }
 

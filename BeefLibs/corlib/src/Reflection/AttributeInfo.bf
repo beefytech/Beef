@@ -92,7 +92,7 @@ namespace System.Reflection
 						.Double:
 						let attrData = Decode!<int64>(data);
 						args[argIdx] = scope:AttrBlock box attrData;
-					case (TypeCode)51: //BfConstType_TypeOf
+					case (TypeCode)typeof(TypeCode).MaxValue + 8: //BfConstType_TypeOf
 						let argTypeId = Decode!<int32>(data);
 						args[argIdx] = Type.[Friend]GetType((.)argTypeId);
 					case (TypeCode)255:
