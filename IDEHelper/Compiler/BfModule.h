@@ -1761,9 +1761,10 @@ public:
 	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers, bool underlyingTypeDeferred);
 	void DoCEEmit(BfMethodInstance* methodInstance);
 	void DoPopulateType_TypeAlias(BfTypeInstance* typeAlias);
+	void DoPopulateType_InitSearches(BfTypeInstance* typeInstance);
 	void DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance);	
 	void DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred, HashContext* dataMemberHashCtx, BfType* unionInnerType);
-	void DoPopulateType_CeCheckEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred);
+	void DoPopulateType_CeCheckEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred);	
 	void DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
 	static BfModule* GetModuleFor(BfType* type);
 	void DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance);
