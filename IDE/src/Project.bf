@@ -879,6 +879,7 @@ namespace IDE
 			case Test;
 			case StaticLib;
 			case DynamicLib;
+			case Intermediate;
 			case NotSupported;
 		}
 

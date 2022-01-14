@@ -842,7 +842,8 @@ bool BfMethodInstance::WantsStructsAttribByVal(BfType* paramType)
 	if ((owner->mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) &&
 		(owner->mModule->mCompiler->mOptions.mMachineType == BfMachineType_x64))
 		return false;
-
+	if (owner->mModule->mCompiler->mOptions.mMachineType == BfMachineType_AArch64)
+		return false;
 	auto typeInst = paramType->ToTypeInstance();
 	return (typeInst != NULL) && (typeInst->mIsCRepr);
 }
@@ -1202,7 +1203,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
-	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2, forceStatic)))
+	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2, forceStatic)) && (loweredReturnTypeCode != BfTypeCode_None))
 	{
 		auto irReturnType = module->GetIRLoweredType(loweredReturnTypeCode, loweredReturnTypeCode2);
 		returnType = irReturnType;
@@ -1842,8 +1843,8 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 	{
 		// Odd Windows rule: composite returns for non-static methods are always sret
 		if (typeUsage == BfTypeUsage_Return_NonStatic)
-			return false;		
-	}
+			return false;
+	}	
 	else
 	{
 		// Non-Win64 systems allow lowered splitting of composites over multiple params
@@ -1860,12 +1861,15 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 		}
 	}
 
+	int maxInstSize = 16;
+	if (mModule->mCompiler->mOptions.mMachineType == BfMachineType_AArch64)
+		maxInstSize = 32;
+
 	if (deepCheck)
 	{
-
-		if ((mInstSize >= 4) && (mInstSize <= 16))
+		if ((mInstSize >= 4) && (mInstSize <= maxInstSize))
 		{
-			BfTypeCode types[4] = { BfTypeCode_None };
+			BfTypeCode types[8] = { BfTypeCode_None };			
 
 			std::function<void(BfType*, int)> _CheckType = [&](BfType* type, int offset)
 			{
@@ -1883,12 +1887,14 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 						}
 					}
 					else
-						types[offset / 4] = BfTypeCode_Object;
+					{
+						types[offset / 4] = BfTypeCode_Object;						
+					}
 				}
 				else if (type->IsPrimitiveType())
 				{
 					auto primType = (BfPrimitiveType*)type;
-					types[offset / 4] = primType->mTypeDef->mTypeCode;
+					types[offset / 4] = primType->mTypeDef->mTypeCode;					
 				}
 				else if (type->IsSizedArray())
 				{
@@ -1902,7 +1908,87 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 
 			bool handled = false;
 
-			if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows)
+			if (mModule->mCompiler->mOptions.mMachineType == BfMachineType_AArch64)
+			{
+				// For returns, we want to avoid sret but not actually lower
+				bool writeOutCode = (typeUsage != BfTypeUsage_Return_NonStatic) && (typeUsage != BfTypeUsage_Return_Static);
+
+				if ((types[0] == BfTypeCode_Float) &&
+					(types[1] == BfTypeCode_Float) &&
+					(types[2] == BfTypeCode_None))
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_FloatX2;
+					return true;
+				}
+
+				if ((types[0] == BfTypeCode_Float) &&
+					(types[1] == BfTypeCode_Float) &&
+					(types[2] == BfTypeCode_Float) &&
+					(types[3] == BfTypeCode_None))
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_FloatX3;
+					return true;
+				}
+
+				if ((types[0] == BfTypeCode_Float) &&
+					(types[1] == BfTypeCode_Float) &&
+					(types[2] == BfTypeCode_Float) &&
+					(types[3] == BfTypeCode_Float) &&
+					(types[4] == BfTypeCode_None))
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_FloatX4;
+					return true;
+				}
+
+				if ((types[0] == BfTypeCode_Double) &&
+					(types[2] == BfTypeCode_Double) &&
+					(types[4] == BfTypeCode_None))
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_DoubleX2;
+					return true;
+				}
+
+				if ((types[0] == BfTypeCode_Double) &&
+					(types[2] == BfTypeCode_Double) &&
+					(types[4] == BfTypeCode_Double) &&
+					(types[6] == BfTypeCode_None))
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_DoubleX3;
+					return true;
+				}
+
+				if ((types[0] == BfTypeCode_Double) &&
+					(types[2] == BfTypeCode_Double) &&
+					(types[4] == BfTypeCode_Double) &&
+					(types[6] == BfTypeCode_Double))
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_DoubleX4;
+					return true;
+				}
+
+				if (mInstSize <= 8)
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_Int64;
+					return true;
+				}
+
+				if (mInstSize <= 16)
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_Int64X2;
+					return true;
+				}
+
+				return false;
+			}
+			else if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows)
 			{
 				bool hasFloat = false;
 				for (int type = 0; type < 4; type++)

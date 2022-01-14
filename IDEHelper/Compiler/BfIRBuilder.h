@@ -109,7 +109,15 @@ enum BfTypeCode : uint8
 	BfTypeCode_Enum,
 	BfTypeCode_TypeAlias,
 	BfTypeCode_Extension,
-
+	BfTypeCode_FloatX2,
+	BfTypeCode_FloatX3,
+	BfTypeCode_FloatX4,
+	BfTypeCode_DoubleX2,
+	BfTypeCode_DoubleX3,
+	BfTypeCode_DoubleX4,
+	BfTypeCode_Int64X2,
+	BfTypeCode_Int64X3,
+	BfTypeCode_Int64X4,
 	BfTypeCode_Length
 };
 

@@ -350,6 +350,15 @@ int BfIRConstHolder::GetSize(BfTypeCode typeCode)
 	case BfTypeCode_Enum: return 0;
 	case BfTypeCode_TypeAlias: return 0;
 	case BfTypeCode_Extension: return 0;
+	case BfTypeCode_FloatX2: return 4*2;
+	case BfTypeCode_FloatX3: return 4*3;
+	case BfTypeCode_FloatX4: return 4*4;
+	case BfTypeCode_DoubleX2: return 8*2;
+	case BfTypeCode_DoubleX3: return 8*3;
+	case BfTypeCode_DoubleX4: return 8*4;
+	case BfTypeCode_Int64X2: return 8*2;
+	case BfTypeCode_Int64X3: return 8*3;
+	case BfTypeCode_Int64X4: return 8*4;
 	default: return 0;
 	}
 }

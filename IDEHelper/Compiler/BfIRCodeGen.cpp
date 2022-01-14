@@ -601,6 +601,24 @@ llvm::Type* BfIRCodeGen::GetLLVMType(BfTypeCode typeCode, bool& isSigned)
 		return llvm::Type::getDoubleTy(*mLLVMContext);
 	case BfTypeCode_Float2:
 		return llvm::FixedVectorType::get(llvm::Type::getFloatTy(*mLLVMContext), 2);
+	case BfTypeCode_FloatX2:
+		return llvm::ArrayType::get(llvm::Type::getFloatTy(*mLLVMContext), 2);
+	case BfTypeCode_FloatX3:
+		return llvm::ArrayType::get(llvm::Type::getFloatTy(*mLLVMContext), 3);
+	case BfTypeCode_FloatX4:
+		return llvm::ArrayType::get(llvm::Type::getFloatTy(*mLLVMContext), 4);
+	case BfTypeCode_DoubleX2:
+		return llvm::ArrayType::get(llvm::Type::getDoubleTy(*mLLVMContext), 2);
+	case BfTypeCode_DoubleX3:
+		return llvm::ArrayType::get(llvm::Type::getDoubleTy(*mLLVMContext), 3);
+	case BfTypeCode_DoubleX4:
+		return llvm::ArrayType::get(llvm::Type::getDoubleTy(*mLLVMContext), 4);
+	case BfTypeCode_Int64X2:
+		return llvm::ArrayType::get(llvm::Type::getInt64Ty(*mLLVMContext), 2);
+	case BfTypeCode_Int64X3:
+		return llvm::ArrayType::get(llvm::Type::getInt64Ty(*mLLVMContext), 3);
+	case BfTypeCode_Int64X4:
+		return llvm::ArrayType::get(llvm::Type::getInt64Ty(*mLLVMContext), 4);
 	default: break;
 	}
 	return NULL;

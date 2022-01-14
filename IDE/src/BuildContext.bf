@@ -317,11 +317,12 @@ namespace IDE
 
 		bool QueueProjectGNULink(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
+			if (options.mBuildOptions.mBuildKind == .Intermediate)
+				return true;
+
 			bool isDebug = gApp.mConfigName.IndexOf("Debug", true) != -1;
 
 			bool isMinGW = false;
-
-			
 
 #if BF_PLATFORM_WINDOWS
 			bool isWSL = mPlatformType == .Linux;
