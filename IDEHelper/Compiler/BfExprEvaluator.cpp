@@ -1736,6 +1736,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 		bool hadInferFailure = false;
 		int inferParamOffset = paramOfs - argIdx;
+		int paramsParamIdx = -1;
 
 		enum ResultKind
 		{
@@ -1747,6 +1748,9 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		auto _CheckArg = [&](int argIdx)
 		{
 			paramIdx = argIdx + inferParamOffset;
+			if ((paramsParamIdx != -1) && (paramIdx > paramsParamIdx))
+				paramIdx = paramsParamIdx;
+
 			auto wantType = methodInstance->GetParamType(paramIdx);
 
 			auto checkType = wantType;
@@ -1814,6 +1818,13 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 					if (type->IsVar())
 						mHasVarArguments = true;
 
+					if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params)
+					{
+						paramsParamIdx = paramIdx;
+						if ((wantType->IsArray()) || (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
+							wantType = wantType->GetUnderlyingType();
+					}
+
 					genericInferContext.mCheckedTypeSet.Clear();
 					if (!genericInferContext.InferGenericArgument(methodInstance, type, wantType, argTypedValue.mValue))
 						return ResultKind_Failed;
@@ -1825,7 +1836,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		for (; argIdx < (int)mArguments.size(); argIdx++)
 		{
 			paramIdx = argIdx + inferParamOffset;
-			if (paramIdx >= paramCount)
+			if ((paramIdx >= paramCount) && (paramsParamIdx == -1))
 				break; // Possible for delegate 'params' type methods
 
 			auto resultKind = _CheckArg(argIdx);
@@ -1963,6 +1974,9 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			auto paramsArrayType = methodInstance->GetParamType(paramIdx);
 			paramsArrayType = mModule->ResolveGenericType(paramsArrayType, NULL, genericArgumentsSubstitute);
 			
+			if (paramsArrayType == NULL)
+				goto NoMatch;
+
 			if ((mArguments[argIdx].mArgFlags & BfArgFlag_ParamsExpr) != 0)
 			{				
 				// Direct-pass params
