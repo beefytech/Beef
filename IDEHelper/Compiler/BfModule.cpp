@@ -17192,9 +17192,12 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				auto localVal = exprEvaluator.LoadLocal(localVar);
 				localVal = LoadOrAggregateValue(localVal);
 				
-				auto thisVal = GetThis();
-				auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(thisVal.mValue, 0, fieldInstance.mDataIdx);
-				mBfIRBuilder->CreateAlignedStore(localVal.mValue, fieldPtr, localVar->mResolvedType->mAlign);
+				if (!localVal.mType->IsVar())					
+				{
+					auto thisVal = GetThis();
+					auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(thisVal.mValue, 0, fieldInstance.mDataIdx);
+					mBfIRBuilder->CreateAlignedStore(localVal.mValue, fieldPtr, localVar->mResolvedType->mAlign);
+				}
 				MarkFieldInitialized(&fieldInstance);
 			}
 		}
@@ -22049,6 +22052,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized || mCurTypeInstance->mResolvingVarField);
 	SetAndRestoreValue<bool> prevIsCapturingMethodMatchInfo;	
 	SetAndRestoreValue<bool> prevAllowLockYield(mContext->mAllowLockYield, false);
+	BfTypeState typeState(mCurTypeInstance);
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 	
 	if (mCompiler->IsAutocomplete())	
 		prevIsCapturingMethodMatchInfo.Init(mCompiler->mResolvePassData->mAutoComplete->mIsCapturingMethodMatchInfo, false);
