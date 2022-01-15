@@ -19,7 +19,7 @@ namespace System
 
 	}
 
-	interface IFloating
+	interface IFloating : INumeric
 	{
 	}
 
