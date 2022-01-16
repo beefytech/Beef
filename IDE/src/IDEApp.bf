@@ -7192,13 +7192,13 @@ namespace IDE
 					}
 #endif
 					fallthrough;
+				case "-forceSafe":
+					mSafeMode = true;
+					mNoResolve = true;
 #if !CLI
 				case "-noRecover":
 					mFileRecovery?.mDisabled = true;
 #endif
-				case "-forceSafe":
-					mSafeMode = true;
-					mNoResolve = true;
 				case "-deterministic":
 					mDeterministic = true;
 				default:
