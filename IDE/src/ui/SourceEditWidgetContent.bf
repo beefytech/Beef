@@ -3667,6 +3667,7 @@ namespace IDE.ui
             if ((keyChar.IsLower) || (keyChar == ' ') || (keyChar == ':'))
             {
                 int cursorTextIdx = CursorTextPos;
+				
                 int line;
                 int lineChar;
                 GetLineCharAtIdx(cursorTextIdx, out line, out lineChar);
@@ -3678,10 +3679,21 @@ namespace IDE.ui
 
                 if ((keyChar == ' ') || (keyChar == ':'))
                 {
+					BfSourceElementType elementType = .Normal;
+					GetLinePosition(line, var lineStart, var lineEnd);
+					for (int idx in lineStart..<lineEnd)
+					{
+						if (!mData.mText[idx].mChar.IsWhiteSpace)
+						{
+							elementType = (.)mData.mText[idx].mDisplayTypeId;
+							break;
+						}
+					}
+
 					bool isLabel = false;
 					if (keyChar == ':')
 					{
-						isLabel = trimmedLineText != "scope:";
+						isLabel = (trimmedLineText != "scope:") && (elementType != .Literal);
 						for (var c in trimmedLineText.RawChars)
 						{
 							if (c.IsWhiteSpace)
