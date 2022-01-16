@@ -676,8 +676,7 @@ BfMethodFlags BfMethodInstance::GetMethodFlags()
 }
 
 void BfMethodInstance::UndoDeclaration(bool keepIRFunction)
-{	
-	
+{
 	if (mMethodInfoEx != NULL)
 	{
 		for (auto genericParam : mMethodInfoEx->mGenericParams)
@@ -699,6 +698,8 @@ void BfMethodInstance::UndoDeclaration(bool keepIRFunction)
 		BF_ASSERT(mMethodProcessRequest->mMethodInstance == this);
 		mMethodProcessRequest->mMethodInstance = NULL;
 	}
+	mHasStartedDeclaration = false;
+	mHasBeenDeclared = false;
 	mHasBeenProcessed = false;
 	mIsUnspecialized = false;
 	mIsUnspecializedVariation = false;
