@@ -6790,7 +6790,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			{
 				// Resolve `Self` types
 				if (wantType->IsUnspecializedTypeVariation())
+				{
+					SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(mModule->mCurTypeInstance, methodInstance->GetOwner());
 					wantType = mModule->ResolveGenericType(wantType, NULL, NULL);
+				}
 			}
 
 			if (IsVar(wantType))
