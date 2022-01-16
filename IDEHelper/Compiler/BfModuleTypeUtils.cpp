@@ -4179,6 +4179,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 		
+		bool tryCE = true;
  		if (typeInstance->mDefineState == BfTypeDefineState_CETypeInit)
  		{
  			if (populateType <= BfPopulateType_AllowStaticMethods)
