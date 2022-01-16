@@ -4945,12 +4945,12 @@ bool BfTypeUtils::TypeEquals(BfType* typeA, BfType* typeB, BfTypeInstance* selfT
 	if (typeA->IsUnspecializedTypeVariation())
 	{
 		SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(selfType->mModule->mCurTypeInstance, selfType);
-		return selfType->mModule->ResolveGenericType(typeA, NULL, NULL);
+		typeA = selfType->mModule->ResolveGenericType(typeA, NULL, NULL);
 	}
 	if (typeB->IsUnspecializedTypeVariation())
 	{
 		SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(selfType->mModule->mCurTypeInstance, selfType);
-		return selfType->mModule->ResolveGenericType(typeB, NULL, NULL);
+		typeB = selfType->mModule->ResolveGenericType(typeB, NULL, NULL);
 	}
 	return typeA == typeB;
 }
