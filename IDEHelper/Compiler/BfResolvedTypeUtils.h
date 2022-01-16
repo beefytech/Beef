@@ -843,6 +843,7 @@ public:
 	bool mIsUnspecialized:1;
 	bool mIsUnspecializedVariation:1;
 	bool mIsReified:1;
+	bool mHasStartedDeclaration:1;
 	bool mHasBeenDeclared:1;
 	bool mHasBeenProcessed:1;
 	bool mHasFailed:1;
@@ -885,6 +886,7 @@ public:
 		mIsUnspecialized = false;		
 		mIsUnspecializedVariation = false;
 		mIsReified = true;
+		mHasStartedDeclaration = false;
 		mHasBeenDeclared = false;
 		mHasBeenProcessed = false;
 		mHasFailed = false;
@@ -2640,7 +2642,7 @@ public:
 	static String TypeToString(BfAstNode* typeRef);
 	static String TypeToString(BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None);
 	static bool TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None);
-	static bool TypeEquals(BfType* typeA, BfType* typeB, BfType* selfType);
+	static bool TypeEquals(BfType* typeA, BfType* typeB, BfTypeInstance* selfType);
 
 	template <typename T>
 	static void GetProjectList(BfType* checkType, T* projectList, int immutableLength)

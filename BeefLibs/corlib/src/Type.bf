@@ -381,7 +381,15 @@ namespace System
 		{
 		    get
 		    {
-		        return (mTypeFlags & (TypeFlags.SpecializedGeneric | TypeFlags.UnspecializedGeneric)) != 0;
+		        return (mTypeFlags & (.SpecializedGeneric | .UnspecializedGeneric)) != 0;
+		    }
+		}
+
+		public bool IsGenericParam
+		{
+		    get
+		    {
+		        return (mTypeFlags & .GenericParam) != 0;
 		    }
 		}
 
@@ -640,6 +648,8 @@ namespace System
 			}
 		}	
     }
+
+
 
     enum TypeCode : uint8
 	{   
@@ -1298,6 +1308,7 @@ namespace System.Reflection
 		Delegate				= 0x20000,
 		Function				= 0x40000,
 		HasDestructor			= 0x80000,
+		GenericParam			= 0x100000,
     }
 
     public enum FieldFlags : uint16

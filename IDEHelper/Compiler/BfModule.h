@@ -1888,6 +1888,7 @@ public:
 	void GetMethodCustomAttributes(BfMethodInstance* methodInstance);
 	void SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& mangledName, bool isTemporaryFunc, bool* outIsIntrinsic);
 	void CheckHotMethod(BfMethodInstance* methodInstance, const StringImpl& mangledName);
+	void StartMethodDeclaration(BfMethodInstance* methodInstance, BfMethodState* prevMethodState);
 	void DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool isTemporaryFunc, bool addToWorkList = true);
 	void AddMethodToWorkList(BfMethodInstance* methodInstance);
 	bool IsInterestedInMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef);
@@ -1916,7 +1917,7 @@ public:
 	void AddHotDataReferences(BfHotDataReferenceBuilder* builder);
 	void ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfType* thisType, bool wantsDIData, SizedArrayImpl<BfIRMDNode>* diParams);
 	void ProcessMethod_ProcessDeferredLocals(int startIdx = 0);
-	void ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup = false);
+	void ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup = false, bool forceIRWrites = false);
 	void CreateDynamicCastMethod();
 	void CreateValueTypeEqualsMethod(bool strictEquals);
 	BfIRFunction GetIntrinsic(BfMethodInstance* methodInstance, bool reportFailure = false);

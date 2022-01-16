@@ -912,6 +912,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			return result;
 		}
 		break;
+	case BeUndefConstant::TypeId:
 	case BeConstant::TypeId:
 		{
 			uint64 u64Val = 0;
@@ -1181,7 +1182,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 // 			if (callInst->mInlineResult != NULL)
 // 				return GetOperand(callInst->mInlineResult);
 		}
-		break;	
+		break;
 	}
 
 	CeOperand* operandPtr = NULL;
@@ -1279,7 +1280,7 @@ void CeBuilder::HandleParams()
 	}
 }
 
-void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance* dupMethodInstance)
+void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance* dupMethodInstance, bool forceIRWrites)
 {
 	SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(mCeMachine->mCeModule->mCurMethodState, NULL);
 	BfAutoComplete* prevAutoComplete = NULL;
@@ -1299,7 +1300,7 @@ void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance
 	mCeMachine->mCeModule->mHadBuildError = false;
 	auto irState = irBuilder->GetState();
 	auto beState = irCodeGen->GetState();
-	mCeMachine->mCeModule->ProcessMethod(dupMethodInstance, true);
+	mCeMachine->mCeModule->ProcessMethod(dupMethodInstance, true, forceIRWrites);
 	irCodeGen->SetState(beState);
 	irBuilder->SetState(irState);
 	
@@ -1322,27 +1323,27 @@ void CeBuilder::Build()
 		BfMethodInstance dupMethodInstance;
 		dupMethodInstance.CopyFrom(methodInstance);
 		auto methodDef = methodInstance->mMethodDef;
-
+		
 		bool isGenericVariation = (methodInstance->mIsUnspecializedVariation) || (methodInstance->GetOwner()->IsUnspecializedTypeVariation());				
 		int dependentGenericStartIdx = 0;
 		if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) ||
-			((methodInstance->GetOwner()->IsGenericTypeInstance()) && (!isGenericVariation) && (!methodInstance->mMethodDef->mIsLocalMethod))))
+			((methodInstance->GetOwner()->IsGenericTypeInstance()) && (!isGenericVariation) && (!methodInstance->mMethodDef->mIsLocalMethod) && (!methodInstance->mIsUnspecialized))))
 		{
 			auto unspecializedMethodInstance = mCeMachine->mCeModule->GetUnspecializedMethodInstance(methodInstance, !methodInstance->mMethodDef->mIsLocalMethod);
 			if (!unspecializedMethodInstance->mHasBeenProcessed)
 			{
 				BfMethodInstance dupUnspecMethodInstance;
 				dupUnspecMethodInstance.CopyFrom(unspecializedMethodInstance);
-				ProcessMethod(unspecializedMethodInstance, &dupUnspecMethodInstance);
+				ProcessMethod(unspecializedMethodInstance, &dupUnspecMethodInstance, false);
 				dupMethodInstance.GetMethodInfoEx()->mGenericTypeBindings = dupUnspecMethodInstance.mMethodInfoEx->mGenericTypeBindings;
 			}
 		}
-
+		
 		// Clear this so we can properly get QueueStaticField calls
 		mCeMachine->mCeModule->mStaticFieldRefs.Clear();
 
 		int startFunctionCount = (int)beModule->mFunctions.size();
-		ProcessMethod(methodInstance, &dupMethodInstance);			
+		ProcessMethod(methodInstance, &dupMethodInstance, true);			
 		if (mCeFunction->mInitializeState == CeFunction::InitializeState_Initialized)
 			return;
 

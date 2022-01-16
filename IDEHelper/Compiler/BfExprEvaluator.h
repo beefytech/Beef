@@ -402,6 +402,7 @@ public:
 	BfExprEvaluator(BfModule* module);
 	~BfExprEvaluator();
 
+	bool IsVar(BfType* type);
 	void GetLiteral(BfAstNode* refNode, const BfVariant& variant);
 	void FinishExpressionResult();	
 	virtual bool CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode);

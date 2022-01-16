@@ -2898,6 +2898,9 @@ bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool
 			else
 				methodInstance->mHasFailed = true;
 
+			if (!methodInstance->mHasStartedDeclaration)
+				StartMethodDeclaration(methodInstance, NULL);
+
 			bool isSpecializedMethod = ((methodInstance != NULL) && (!methodInstance->mIsUnspecialized) && (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mMethodGenericArguments.size() != 0));
 			if (isSpecializedMethod)
 			{
@@ -5393,6 +5396,9 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			typeDataSource = ResolveTypeDef(mCompiler->mReflectConstExprType)->ToTypeInstance();
 		else
 			typeDataSource = mContext->mBfTypeType;
+
+		if (type->IsGenericParam())
+			typeFlags |= BfTypeFlags_GenericParam;
 				
 		if ((!mTypeDataRefs.ContainsKey(typeDataSource)) && (typeDataSource != type))
 		{
@@ -11396,10 +11402,12 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 				customAttributes->mAttributes.push_back(customAttribute);
 				continue;
 			}
-			
+
+			SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(mContext->mUnreifiedModule->mCurTypeInstance, mCurTypeInstance);
+			SetAndRestoreValue<BfMethodInstance*> prevCurMethodInst(mContext->mUnreifiedModule->mCurMethodInstance, mCurMethodInstance);
 			if (mContext->mCurTypeState != NULL)
 			{
-				SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurAttributeTypeRef, attributesDirective->mAttributeTypeRef);
+				SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurAttributeTypeRef, attributesDirective->mAttributeTypeRef);				
 				mContext->mUnreifiedModule->ResolveTypeResult(attributesDirective->mAttributeTypeRef, attrType, BfPopulateType_BaseType, (BfResolveTypeRefFlags)0);
 			}
 			else
@@ -13820,11 +13828,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	{
 		methodInstance->mMangleWithIdx = true;
 	}
-
-	BfModule* declareModule = GetOrCreateMethodModule(methodInstance);
-	if ((doingRedeclare) && (methodInstance->mDeclModule != mContext->mUnreifiedModule))
-		declareModule = methodInstance->mDeclModule;
-		
+			
 	BF_ASSERT(typeInst == methodInstance->GetOwner());
 
 	auto methodDeclaration = methodDef->GetMethodDeclaration();
@@ -13881,6 +13885,15 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		if (methodInstance->mRequestedByAutocomplete)
 			addToWorkList = false;
 	}
+
+	BfModule* declareModule;
+	//
+	{
+		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
+		declareModule = GetOrCreateMethodModule(methodInstance);
+	}
+	if ((doingRedeclare) && (methodInstance->mDeclModule != mContext->mUnreifiedModule))
+		declareModule = methodInstance->mDeclModule;
 
 	BF_ASSERT(declareModule != NULL);
 	methodInstance->mDeclModule = declareModule;
@@ -18685,7 +18698,7 @@ void BfModule::EmitGCFindTLSMembers()
 		CallChainedMethods(mCurMethodInstance, false);
 }
 
-void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
+void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup, bool forceIRWrites)
 {
 	BP_ZONE_F("BfModule::ProcessMethod %s", BP_DYN_STR(methodInstance->mMethodDef->mName.c_str()));
 
@@ -18714,7 +18727,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		}
 	}
 
-	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || methodInstance->mIsUnspecialized);
+	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, (mWantsIRIgnoreWrites || methodInstance->mIsUnspecialized) && (!forceIRWrites));
 	
 	if ((HasCompiledOutput()) && (!mBfIRBuilder->mIgnoreWrites))
 	{
@@ -20680,7 +20693,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	mBfIRBuilder->MergeBlockDown(mCurMethodState->mIRInitBlock, mCurMethodState->mIREntryBlock);
 	mBfIRBuilder->MergeBlockDown(mCurMethodState->mIRHeadBlock, mCurMethodState->mIREntryBlock);
 
-	if ((mCurMethodInstance->mIsUnspecialized) /*|| (typeDef->mIsFunction)*/ || (mCurTypeInstance->IsUnspecializedType()))
+	if (((mCurMethodInstance->mIsUnspecialized) /*|| (typeDef->mIsFunction)*/ || (mCurTypeInstance->IsUnspecializedType())) && 
+		(!mIsComptimeModule))
 	{
 		// Don't keep instructions for unspecialized types
 		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction); 		
@@ -20712,7 +20726,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	// We don't want to hold on to pointers to LLVMFunctions of unspecialized types.
 	//  This allows us to delete the mScratchModule LLVM module without rebuilding all
 	//  unspecialized types
-	if ((mCurTypeInstance->IsUnspecializedType()) || (mCurTypeInstance->IsInterface()))
+	if (((mCurTypeInstance->IsUnspecializedType()) && (!mIsComptimeModule)) ||
+		(mCurTypeInstance->IsInterface()))
 	{
 		BfLogSysM("ProcessMethod Clearing IRFunction: %p\n", methodInstance);
 		methodInstance->mIRFunction = BfIRFunction();
@@ -21904,7 +21919,8 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 	if (!methodInstance->mIRFunction)
 	{
 		BfIRFunction func;
-		bool wantsLLVMFunc = ((!typeInstance->IsUnspecializedType()) && (!methodDef->IsEmptyPartial())) && (funcType);
+		bool wantsLLVMFunc = ((!typeInstance->IsUnspecializedType() || (mIsComptimeModule)) && 
+			(!methodDef->IsEmptyPartial())) && (funcType);
 
 		/*if (mCurTypeInstance->mTypeDef->mName->ToString() == "ClassA")
 		{
@@ -22042,6 +22058,79 @@ static void StackOverflow()
 		StackOverflow();
 }
 
+void BfModule::StartMethodDeclaration(BfMethodInstance* methodInstance, BfMethodState* prevMethodState)
+{
+	methodInstance->mHasStartedDeclaration = true;
+	auto methodDef = methodInstance->mMethodDef;
+	auto typeInstance = methodInstance->GetOwner();
+
+	bool hasNonGenericParams = false;
+	bool hasGenericParams = false;
+
+	int dependentGenericStartIdx = 0;
+
+	if (methodDef->mIsLocalMethod)
+	{
+		// If we're a local generic method inside an outer generic method, we can still be considered unspecialized
+		//  if our outer method's generic args are specialized but ours are unspecialized. This is because locals get
+		//  instantiated uniquely for each specialized or unspecialized pass through the outer method, but the local
+		//  method still 'inherits' the outer's generic arguments -- but we still need to make an unspecialized pass
+		//  over the local method each time
+		auto rootMethodInstance = prevMethodState->GetRootMethodState()->mMethodInstance;
+		dependentGenericStartIdx = 0;
+		if (rootMethodInstance != NULL)
+		{
+			if (rootMethodInstance->mMethodInfoEx != NULL)
+				dependentGenericStartIdx = (int)rootMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+
+			methodInstance->mIsUnspecialized = rootMethodInstance->mIsUnspecialized;
+			methodInstance->mIsUnspecializedVariation = rootMethodInstance->mIsUnspecializedVariation;
+		}
+	}
+
+	for (int genericArgIdx = dependentGenericStartIdx; genericArgIdx < (int)methodInstance->GetNumGenericArguments(); genericArgIdx++)
+	{
+		auto genericArgType = methodInstance->mMethodInfoEx->mMethodGenericArguments[genericArgIdx];
+		if (genericArgType->IsGenericParam())
+		{
+			hasGenericParams = true;
+			auto genericParam = (BfGenericParamType*)genericArgType;
+			methodInstance->mIsUnspecialized = true;
+			if ((genericParam->mGenericParamKind != BfGenericParamKind_Method) || (genericParam->mGenericParamIdx != genericArgIdx))
+				methodInstance->mIsUnspecializedVariation = true;
+		}
+		else
+		{
+			hasNonGenericParams = true;
+			if (genericArgType->IsUnspecializedType())
+			{
+				methodInstance->mIsUnspecialized = true;
+				methodInstance->mIsUnspecializedVariation = true;
+			}
+		}
+	}
+
+	if ((hasGenericParams) && (hasNonGenericParams))
+	{
+		methodInstance->mIsUnspecializedVariation = true;
+	}
+
+	if (typeInstance->IsUnspecializedType())
+	{
+		// A specialized method within an unspecialized type is considered an unspecialized variation -- in the sense that we don't
+		//  actually want to do method processing on it
+		if ((!methodInstance->mIsUnspecialized) && (methodInstance->GetNumGenericArguments() != 0))
+			methodInstance->mIsUnspecializedVariation = true;
+		methodInstance->mIsUnspecialized = true;
+	}
+	
+	if (methodInstance->mIsUnspecializedVariation)
+		BF_ASSERT(methodInstance->mIsUnspecialized);
+
+	if (methodDef->mMethodType == BfMethodType_Mixin)
+		methodInstance->mIsUnspecialized = true;
+}
+
 // methodDeclaration is NULL for default constructors
 void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool isTemporaryFunc, bool addToWorkList)
 {
@@ -22064,7 +22153,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	BfMethodState methodState;
 	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
 	methodState.mTempKind = BfMethodState::TempKind_Static;
-
+	
 	defer({ mCurMethodInstance->mHasBeenDeclared = true; });
 
 	// If we are doing this then we may end up creating methods when var types are unknown still, failing on splat/zero-sized info
@@ -22101,92 +22190,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	if ((methodInstance->IsSpecializedByAutoCompleteMethod()) || (mCurTypeInstance->IsFunction()))
 		addToWorkList = false;
-
-	bool hasNonGenericParams = false;
-	bool hasGenericParams = false;
-
-	int dependentGenericStartIdx = 0;
-	if (methodDef->mIsLocalMethod)
-	{
-		// If we're a local generic method inside an outer generic method, we can still be considered unspecialized
-		//  if our outer method's generic args are specialized but ours are unspecialized. This is because locals get
-		//  instantiated uniquely for each specialized or unspecialized pass through the outer method, but the local
-		//  method still 'inherits' the outer's generic arguments -- but we still need to make an unspecialized pass
-		//  over the local method each time
-		auto rootMethodInstance = prevMethodState.mPrevVal->GetRootMethodState()->mMethodInstance;
-		dependentGenericStartIdx = 0;
-		if (rootMethodInstance != NULL)
-		{
-			if (rootMethodInstance->mMethodInfoEx != NULL)
-				dependentGenericStartIdx = (int)rootMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
-
-			methodInstance->mIsUnspecialized = rootMethodInstance->mIsUnspecialized;
-			methodInstance->mIsUnspecializedVariation = rootMethodInstance->mIsUnspecializedVariation;
-		}
-	}
-
-	for (int genericArgIdx = dependentGenericStartIdx; genericArgIdx < (int) methodInstance->GetNumGenericArguments(); genericArgIdx++)
-	{
-		auto genericArgType = methodInstance->mMethodInfoEx->mMethodGenericArguments[genericArgIdx];
-		if (genericArgType->IsGenericParam())
-		{
-			hasGenericParams = true;
-			auto genericParam = (BfGenericParamType*)genericArgType;
-			methodInstance->mIsUnspecialized = true;			
-			if ((genericParam->mGenericParamKind != BfGenericParamKind_Method) || (genericParam->mGenericParamIdx != genericArgIdx))
-				methodInstance->mIsUnspecializedVariation = true;
-		}
-		else
-		{
-			hasNonGenericParams = true;
-			if (genericArgType->IsUnspecializedType())
-			{
-				methodInstance->mIsUnspecialized = true;
-				methodInstance->mIsUnspecializedVariation = true;
-			}
-		}		 
-	}
-
-	if ((hasGenericParams) && (hasNonGenericParams))
-	{		
-		methodInstance->mIsUnspecializedVariation = true;
-	}
-
-	if (typeInstance->IsUnspecializedType())
-	{
-		// A specialized method within an unspecialized type is considered an unspecialized variation -- in the sense that we don't
-		//  actually want to do method processing on it
-		if ((!methodInstance->mIsUnspecialized) && (methodInstance->GetNumGenericArguments() != 0))
-			methodInstance->mIsUnspecializedVariation = true;
-		methodInstance->mIsUnspecialized = true;
-	}
-	
-	//methodInstance->mIsUnspecializedVariation |= typeInstance->IsUnspecializedTypeVariation();
-
-	for (auto genericParamDef : methodDef->mGenericParams)
-	{
-		if (mCompiler->IsAutocomplete())
-		{
-			auto autoComplete = mCompiler->mResolvePassData->mAutoComplete;
-			//autoComplete->CheckTypeRef()
-		}
-	}
-
-	if (methodInstance->mIsUnspecializedVariation)
-	{
 		
-	}
-
-	if (methodInstance->mIsUnspecializedVariation)
-		BF_ASSERT(methodInstance->mIsUnspecialized);
-
-	if (methodDef->mMethodType == BfMethodType_Mixin)
-		methodInstance->mIsUnspecialized = true;	
-
-	if (methodInstance->mIsUnspecialized)
-	{		
-		//BF_ASSERT(methodInstance->mDeclModule == methodInstance->GetOwner()->mModule);
-	}
+	if (!methodInstance->mHasStartedDeclaration)
+		StartMethodDeclaration(methodInstance, prevMethodState.mPrevVal);
 
 	BfAutoComplete* bfAutocomplete = NULL;
 	if (mCompiler->mResolvePassData != NULL)
@@ -23164,7 +23170,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	// Don't compare specialized generic methods against normal methods
 	if ((((mCurMethodInstance->mIsUnspecialized) || (mCurMethodInstance->mMethodDef->mGenericParams.size() == 0))) &&
-		(!methodDef->mIsLocalMethod))
+		(!methodDef->mIsLocalMethod) && (!mCurTypeInstance->IsUnspecializedTypeVariation()))
 	{
 		if ((!methodInstance->mIsForeignMethodDef) && (methodDef->mMethodType != BfMethodType_Init))
 		{

@@ -1094,13 +1094,25 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 
 	if (typeInst->mTypeDef->mEmitParent != NULL)
 	{
-		auto emitTypeDef = typeInst->mTypeDef;
+		auto emitTypeDef = typeInst->mTypeDef;		
 		typeInst->mTypeDef = emitTypeDef->mEmitParent;		
 		BfLogSysM("Type %p queueing delete of typeDef %p, resetting typeDef to %p\n", typeInst, emitTypeDef, typeInst->mTypeDef);
-		emitTypeDef->mDefState = BfTypeDef::DefState_Deleted;
-		AutoCrit autoCrit(mSystem->mDataLock);
-		BF_ASSERT(!mSystem->mTypeDefDeleteQueue.Contains(emitTypeDef));
-		mSystem->mTypeDefDeleteQueue.push_back(emitTypeDef);
+		if (emitTypeDef->mDefState != BfTypeDef::DefState_Deleted)
+		{
+			emitTypeDef->mDefState = BfTypeDef::DefState_Deleted;
+			AutoCrit autoCrit(mSystem->mDataLock);
+			BF_ASSERT(!mSystem->mTypeDefDeleteQueue.Contains(emitTypeDef));
+			mSystem->mTypeDefDeleteQueue.push_back(emitTypeDef);
+
+			for (auto& dep : typeInst->mDependencyMap)
+			{
+				if (auto typeInst = dep.mKey->ToTypeInstance())
+				{
+					if (typeInst->mTypeDef == emitTypeDef)
+						RebuildType(typeInst);
+				}
+			}
+		}		
 	}
 
 	//typeInst->mTypeDef->ClearEmitted();

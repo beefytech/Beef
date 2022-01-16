@@ -8167,8 +8167,8 @@ void DbgExprEvaluator::Visit(BfTypeAttrExpression* typeAttrExpr)
 	case BfToken_StrideOf:
 		mResult.mInt64 = dbgType->GetStride();
 		break;
-	case BfToken_TypeOf:		
-		//TODO:
+	default:
+		Fail("Invalid attribute expression", typeAttrExpr);
 		break;
 	}
 }

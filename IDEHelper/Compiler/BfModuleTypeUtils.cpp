@@ -4178,13 +4178,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 			}
 		}
-
-		bool tryCE = true;
-
-		if (typeInstance->IsUnspecializedType())
-			tryCE = false;
-
- 		if ((typeInstance->mDefineState == BfTypeDefineState_CETypeInit) && (tryCE))
+		
+ 		if (typeInstance->mDefineState == BfTypeDefineState_CETypeInit)
  		{
  			if (populateType <= BfPopulateType_AllowStaticMethods)
  				return;
@@ -12296,6 +12291,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				}
 				else if (constant->mConstType == BfConstType_Undef)
 				{
+					if (mIsComptimeModule)
+						return mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(toType));
+
 					BF_ASSERT(mBfIRBuilder->mIgnoreWrites);
 
 					auto undefConst = (BfConstantUndef*)constant;

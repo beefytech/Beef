@@ -730,7 +730,7 @@ public:
 	void EmitBinaryOp(CeOp iOp, CeOp fOp, const CeOperand& lhs, const CeOperand& rhs, CeOperand& result);
 	void EmitUnaryOp(CeOp iOp, CeOp fOp, const CeOperand& val, CeOperand& result);
 	void EmitSizedOp(CeOp op, const CeOperand& operand, CeOperand* result, bool allowNonStdSize);
-	void ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance* dupMethodInstance);
+	void ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance* dupMethodInstance, bool forceIRWrites);
 	void Build();
 };
 

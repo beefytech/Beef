@@ -1,4 +1,7 @@
+#pragma warning disable 168
 using System;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace Tests
 {
@@ -317,14 +320,72 @@ namespace Tests
 
 		interface IParsable
 		{
+			public enum Error
+			{
+				case Unknown;
+				case Syntax(int pos);
+				case InvalidValue;
+				case UnexpectedEnd;
+			}
+
+			static Self GetDefault(Self[] arr);
 			static Result<Self> Parse(StringView sv, Self defaultVal);
+			static Result<Self, Error> ParseEx(StringView str)
+			{
+				Self[] arr = null;
+				Self defVal = GetDefault(arr);
+				switch (Parse(str, default(Self)))
+				{
+				case .Ok(let val): return .Ok(val);
+				case .Err: return .Err(.Unknown);
+				}
+			}
 		}
 
 		class ClassH : IParsable
 		{
+			static Self IParsable.GetDefault(ClassH[] arr)
+			{
+				return default;
+			}
+
 			public static Result<Self> Parse(StringView sv, ClassH defaultVal)
 			{
 				return .Err;
+			}
+		}
+
+
+		[AttributeUsage(.Method)]
+		struct MethodTestAttribute : Attribute, IComptimeMethodApply
+		{
+			public static String gLog = new .() ~ delete _;
+
+			[Comptime] 
+			public void ApplyToMethod(ComptimeMethodInfo method)
+			{
+				Compiler.EmitMethodEntry(method, "int b = 2;");
+			}
+		}
+
+		struct Test4<T>
+		{
+			[Comptime, OnCompile(.TypeInit)]
+			public static void Generator()
+			{
+				T val = default;
+				Compiler.EmitTypeBody(typeof(Self), "int test = 0;");
+			}
+
+			[MethodTest]
+			public void Zank<T2>()
+			{
+				int c = b;
+			}
+
+			public void Test() mut
+			{
+				test = 1;
 			}
 		}
 
@@ -367,6 +428,8 @@ namespace Tests
 			TestIFaceD(cg);
 			Test.Assert(cg.mA == 999);
 			Test.Assert(TestIFaceD2(cg) == 999);
+
+			ClassH ch = scope .();
 		}
 	}
 }
