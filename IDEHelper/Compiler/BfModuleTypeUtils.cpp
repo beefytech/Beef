@@ -12609,8 +12609,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 				if (operatorDef->mOperatorDeclaration->mIsConvOperator)
 				{
-					if ((!explicitCast) && (operatorDef->mOperatorDeclaration->mExplicitToken != NULL) &&
-						(operatorDef->mOperatorDeclaration->mExplicitToken->GetToken() == BfToken_Explicit))
+					if ((!explicitCast) && (operatorDef->IsExplicit()))
 						continue;
 
 					if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))

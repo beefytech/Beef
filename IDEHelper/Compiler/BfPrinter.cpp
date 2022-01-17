@@ -2505,7 +2505,8 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 		ExpectSpace();
 		QueueVisitChild(operatorDecl->mExplicitToken);
 		ExpectSpace();
-		QueueVisitChild(operatorDecl->mOperatorToken);		
+		QueueVisitChild(operatorDecl->mOperatorToken);
+		ExpectSpace();
 		QueueVisitChild(operatorDecl->mOpTypeToken);
 		ExpectSpace();
 		QueueVisitChild(methodDeclaration->mReturnType);		

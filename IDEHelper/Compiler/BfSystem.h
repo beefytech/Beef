@@ -888,12 +888,21 @@ public:
 class BfOperatorDef : public BfMethodDef
 {
 public:
-	BfOperatorDeclaration* mOperatorDeclaration;
+	BfOperatorDeclaration* mOperatorDeclaration;	
 
 public:
 	BfOperatorDef()
 	{
 		mOperatorDeclaration = NULL;
+	}
+
+	bool IsExplicit()
+	{
+		if (mOperatorDeclaration->mExplicitToken != NULL)
+			return mOperatorDeclaration->mExplicitToken->mToken == BfToken_Explicit;
+		if (mOperatorDeclaration->mOperatorToken != NULL)
+			return mOperatorDeclaration->mOperatorToken->mToken == BfToken_Explicit;
+		return false;
 	}
 };
 

@@ -5169,6 +5169,12 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 			}
 			else if (token == BfToken_LChevron)
 			{
+				if (auto elementGeneric = BfNodeDynCastExact<BfGenericInstanceTypeRef>(typeRef))
+				{
+					// Already a generic
+					return typeRef;
+				}
+
 				auto genericInstance = mAlloc->Alloc<BfGenericInstanceTypeRef>();
 				BfDeferredSizedArray<BfTypeReference*> genericArguments(genericInstance->mGenericArguments, mAlloc);
 				BfDeferredAstSizedArray<BfAstNode*> commas(genericInstance->mCommas, mAlloc);
@@ -6846,38 +6852,47 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			auto nextNode = mVisitorPos.GetNext();
 			if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
 			{
-				operatorDecl->mBinOp = BfTokenToBinaryOp(nextToken->GetToken());
-				if (operatorDecl->mBinOp != BfBinaryOp_None)
+				if ((nextToken->mToken == BfToken_Implicit) || (nextToken->mToken == BfToken_Explicit))
 				{
+					operatorDecl->mIsConvOperator = true;
 					MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
 					mVisitorPos.MoveNext();
 				}
 				else
 				{
-					operatorDecl->mUnaryOp = BfTokenToUnaryOp(nextToken->GetToken());
-					if (operatorDecl->mUnaryOp != BfUnaryOp_None)
+					operatorDecl->mBinOp = BfTokenToBinaryOp(nextToken->GetToken());
+					if (operatorDecl->mBinOp != BfBinaryOp_None)
 					{
 						MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
 						mVisitorPos.MoveNext();
 					}
 					else
 					{
-						operatorDecl->mAssignOp = BfTokenToAssignmentOp(nextToken->GetToken());
-						if (operatorDecl->mAssignOp == BfAssignmentOp_Assign)
+						operatorDecl->mUnaryOp = BfTokenToUnaryOp(nextToken->GetToken());
+						if (operatorDecl->mUnaryOp != BfUnaryOp_None)
 						{
-							Fail("The assignment operator '=' cannot be overridden", nextToken);
+							MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
+							mVisitorPos.MoveNext();
 						}
+						else
+						{
+							operatorDecl->mAssignOp = BfTokenToAssignmentOp(nextToken->GetToken());
+							if (operatorDecl->mAssignOp == BfAssignmentOp_Assign)
+							{
+								Fail("The assignment operator '=' cannot be overridden", nextToken);
+							}
 
-						if (operatorDecl->mAssignOp != BfAssignmentOp_None)
-						{
-							MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
-							mVisitorPos.MoveNext();
-						}
-						else if (nextToken->GetToken() != BfToken_LParen)
-						{
-							Fail("Invalid operator type", nextToken);
-							MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
-							mVisitorPos.MoveNext();
+							if (operatorDecl->mAssignOp != BfAssignmentOp_None)
+							{
+								MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
+								mVisitorPos.MoveNext();
+							}
+							else if (nextToken->GetToken() != BfToken_LParen)
+							{
+								Fail("Invalid operator type", nextToken);
+								MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
+								mVisitorPos.MoveNext();
+							}
 						}
 					}
 				}
