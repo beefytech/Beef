@@ -390,7 +390,7 @@ namespace System
 
 	}
 
-	[AttributeUsage(.Class | .Struct)]
+	[AttributeUsage(.Class | .Struct | .Enum)]
 	public struct CReprAttribute : Attribute
 	{
 
