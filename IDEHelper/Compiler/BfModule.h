@@ -80,6 +80,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_DeclType = 0x1000000,
 	BfEvalExprFlags_AllowBase = 0x2000000,
 	BfEvalExprFlags_NoCeRebuildFlags = 0x4000000,
+	BfEvalExprFlags_FromConversionOp = 0x8000000,
+	BfEvalExprFlags_FromConversionOp_Explicit = 0x10000000,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };
@@ -1836,6 +1838,7 @@ public:
 	void MarkScopeLeft(BfScopeData* scopeData);
 	BfGenericParamType* GetGenericParamType(BfGenericParamKind paramKind, int paramIdx);
 	BfType* ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, bool allowFail = false);
+	BfType* ResolveSelfType(BfType* type, BfTypeInstance* selfType);
 	bool IsUnboundGeneric(BfType* type);
 	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type);	

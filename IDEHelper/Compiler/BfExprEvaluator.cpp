@@ -168,6 +168,7 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	mExplicitInterfaceCheck = NULL;
 	mSelfType = NULL;
 	mMethodType = BfMethodType_Normal;
+	mCheckReturnType = NULL;
 	mHadExplicitGenericArguments = false;
 	mHasVarArguments = false;
 	mInterfaceMethodInstance = NULL;
@@ -178,6 +179,7 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	mSkipImplicitParams = false;
 	mAllowImplicitThis = false;
 	mAllowImplicitRef = false;
+	mAllowImplicitWrap = false;
 	mHadVarConflictingReturnType = false;
 	mAutoFlushAmbiguityErrors = true;
 	mMethodCheckCount = 0;	
@@ -2036,8 +2038,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				goto NoMatch;
 			wantType = resolvedType;
 		}
-		if (wantType->IsSelf())
-			wantType = typeInstance;
+		wantType = mModule->ResolveSelfType(wantType, typeInstance);
 
 		if ((argIdx >= 0) && ((mArguments[argIdx].mArgFlags & BfArgFlag_ParamsExpr) != 0))
 		{
@@ -2075,8 +2076,15 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				if ((wantType->IsRef()) && (!argTypedValue.mType->IsRef()) &&
 					((mAllowImplicitRef) || (wantType->IsIn())))
 					wantType = wantType->GetUnderlyingType();
-				if (!mModule->CanCast(argTypedValue, wantType))
-					goto NoMatch;
+				if (!mModule->CanCast(argTypedValue, wantType, ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None))
+				{
+					if ((mAllowImplicitWrap) && (argTypedValue.mType->IsWrappableType()) && (mModule->GetWrappedStructType(argTypedValue.mType) == wantType))
+					{
+						// Is wrapped type
+					}
+					else
+						goto NoMatch;
+				}
 			}
 		}
 		
@@ -2113,6 +2121,26 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	if (argIdx < (int)mArguments.size())
 	{		
 		if (!methodInstance->IsVarArgs())
+			goto NoMatch;
+	}
+
+	if (mCheckReturnType != NULL)
+	{
+		auto wantType = mCheckReturnType;
+		if ((genericArgumentsSubstitute != NULL) && (wantType->IsUnspecializedType()))
+		{
+			wantType = typeUnspecMethodInstance->GetParamType(paramIdx);
+			auto resolvedType = mModule->ResolveGenericType(wantType, typeGenericArguments, genericArgumentsSubstitute, false);
+			if (resolvedType == NULL)
+				goto NoMatch;
+			wantType = resolvedType;
+		}
+		wantType = mModule->ResolveSelfType(wantType, typeInstance);
+
+		BfCastFlags castFlags = ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None;
+		if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
+			castFlags = (BfCastFlags)(castFlags | BfCastFlags_Explicit);
+		if (!mModule->CanCast(mModule->GetFakeTypedValue(methodInstance->mReturnType), wantType, castFlags))
 			goto NoMatch;
 	}
 
@@ -2272,7 +2300,8 @@ NoMatch:
 			auto resolveThisParam = mModule->ResolveGenericType(thisParam, NULL, &mCheckMethodGenericArguments);
 			if (resolveThisParam == NULL)
 				return false;
-			if (!mModule->CanCast(mTarget, resolveThisParam, BfCastFlags_Explicit))
+			if (!mModule->CanCast(mTarget, resolveThisParam, 
+				((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_NoConversionOperator) : BfCastFlags_Explicit))
 				return false;
 		}
 
@@ -6127,11 +6156,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	return result;
 }
 
+
+
 BfTypedValue BfExprEvaluator::CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target)
-{
-	auto& moduleMethodInstance = methodMatcher->mBestMethodInstance;
-	if (!moduleMethodInstance)
-		moduleMethodInstance = GetSelectedMethod(methodMatcher->mTargetSrc, methodMatcher->mBestMethodTypeInstance, methodMatcher->mBestMethodDef, *methodMatcher);
+{	
+	auto& moduleMethodInstance = GetSelectedMethod(*methodMatcher);	
 	if (moduleMethodInstance.mMethodInstance == NULL)
 		return BfTypedValue();
 	if ((target) && (target.mType != moduleMethodInstance.mMethodInstance->GetOwner()))
@@ -9462,6 +9491,19 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				BfModuleMethodInstance moduleMethodInstance = mModule->GetMethodByName(typeInst, "ReturnValueDiscarded", 0, true);
 				if (moduleMethodInstance)
 				{
+					bool wasCapturingMethodMatchInfo = false;
+					if (autoComplete != NULL)
+					{
+						wasCapturingMethodMatchInfo = autoComplete->mIsCapturingMethodMatchInfo;
+						autoComplete->mIsCapturingMethodMatchInfo = false;
+					}
+
+					defer
+					(
+						if (autoComplete != NULL)
+							autoComplete->mIsCapturingMethodMatchInfo = wasCapturingMethodMatchInfo;
+					);
+
 					auto wasGetDefinition = (autoComplete != NULL) && (autoComplete->mIsGetDefinition);
 					if (wasGetDefinition)
 						autoComplete->mIsGetDefinition = false;
@@ -15350,6 +15392,13 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 	return moduleMethodInstance;
 }
 
+BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfMethodMatcher& methodMatcher)
+{	
+	if (!methodMatcher.mBestMethodInstance)
+		methodMatcher.mBestMethodInstance = GetSelectedMethod(methodMatcher.mTargetSrc, methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher);
+	return methodMatcher.mBestMethodInstance;
+}
+
 void BfExprEvaluator::CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* typeInstance, const StringImpl& methodName, BfMethodMatcher& methodMatcher, BfMethodType methodType)
 {
 	auto _GetNodeId = [&]()
@@ -20172,6 +20221,8 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 			}
 		}
 	}
+
+	methodMatcher.FlushAmbiguityError();
 
 	if (methodMatcher.mBestMethodDef == NULL)
 	{

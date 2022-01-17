@@ -434,9 +434,29 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 			return false;		
 	}
 	
-	for (auto& innerIFace : checkInner->mInterfaceConstraints)
-	{		
-		if (!checkOuter->mInterfaceConstraints.Contains(innerIFace))
+	for (auto innerIFace : checkInner->mInterfaceConstraints)
+	{	
+		if (checkOuter->mInterfaceConstraints.IsEmpty())
+			return false;
+
+		if (checkOuter->mInterfaceConstraintSet == NULL)
+		{
+			std::function<void(BfTypeInstance*)> _AddInterface = [&](BfTypeInstance* ifaceType)
+			{
+				if (!checkOuter->mInterfaceConstraintSet->Add(ifaceType))
+					return;
+				if (ifaceType->mDefineState < BfTypeDefineState_HasInterfaces)
+					PopulateType(ifaceType);
+				for (auto& ifaceEntry : ifaceType->mInterfaces)
+					_AddInterface(ifaceEntry.mInterfaceType);
+			};
+			
+			checkOuter->mInterfaceConstraintSet = new HashSet<BfTypeInstance*>();
+			for (auto outerIFace : checkOuter->mInterfaceConstraints)			
+				_AddInterface(outerIFace);											
+		}
+
+		if (!checkOuter->mInterfaceConstraintSet->Contains(innerIFace))
 			return false;
 	}
 
@@ -2589,13 +2609,7 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeAlias);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
 	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
-
-	if (typeAlias->mDefineState < BfTypeDefineState_Declaring)
-	{
-		typeAlias->mDefineState = BfTypeDefineState_Declaring;
-		DoPopulateType_InitSearches(typeAlias);
-	}
-
+	
 	BF_ASSERT(mCurMethodInstance == NULL);
 	auto typeDef = typeAlias->mTypeDef;
 	auto typeAliasDecl = (BfTypeAliasDeclaration*)typeDef->mTypeDeclaration;
@@ -2606,12 +2620,20 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
 	
 	if ((typeAlias->mGenericTypeInfo != NULL) && (!typeAlias->mGenericTypeInfo->mFinishedGenericParams))
 		FinishGenericParams(typeAlias);
-
-	typeAlias->mDefineState = BfTypeDefineState_ResolvingBaseType;
+	
 	BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
 	typeState.mPopulateType = BfPopulateType_Data;
 	typeState.mCurBaseTypeRef = typeAliasDecl->mAliasToType;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
+	if (typeAlias->mDefineState < BfTypeDefineState_Declaring)
+	{
+		typeAlias->mDefineState = BfTypeDefineState_Declaring;
+		DoPopulateType_InitSearches(typeAlias);
+	}
+
+	typeAlias->mDefineState = BfTypeDefineState_ResolvingBaseType;
+
 	if (!CheckCircularDataError())
 	{
 		if (typeAliasDecl->mAliasToType != NULL)
@@ -2825,6 +2847,9 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 				typeCode = BfTypeCode_UInt32;
 			else
 				typeCode = BfTypeCode_Int64;
+
+			if (typeInstance->mIsCRepr)
+				typeCode = BfTypeCode_Int32;
 
 			if (typeCode != BfTypeCode_Int64)
 			{
@@ -3861,7 +3886,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		typeInstance->mIsUnion = true;
 	typeInstance->mIsPacked = isPacked;
 	typeInstance->mIsCRepr = isCRepr;
-
+	
 	if (typeInstance->mTypeOptionsIdx >= 0)
 	{
 		auto typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
@@ -8169,6 +8194,14 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	}
 
 	return unspecializedType;
+}
+
+BfType* BfModule::ResolveSelfType(BfType* type, BfTypeInstance* selfType)
+{
+	if (!type->IsUnspecializedTypeVariation())
+		return type;
+	SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(mCurTypeInstance, selfType);
+	return ResolveGenericType(type, NULL, NULL);
 }
 
 BfType* BfModule::ResolveType(BfType* lookupType, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
@@ -12540,381 +12573,170 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	}
 
 	// Check user-defined operators
-	if ((castFlags & BfCastFlags_NoConversionOperator) == 0)
-	{		
-		auto fromType = typedVal.mType;
-		auto fromTypeInstance = typedVal.mType->ToTypeInstance();
-		auto toTypeInstance = toType->ToTypeInstance();
+	if (((castFlags & BfCastFlags_NoConversionOperator) == 0) && (toType != mContext->mBfObjectType))
+	{
+		BfType* walkFromType = typedVal.mType;
+		if (walkFromType->IsWrappableType())
+			walkFromType = GetWrappedStructType(walkFromType);
+		BfType* walkToType = toType;
+		if (walkToType->IsWrappableType())
+			walkToType = GetWrappedStructType(walkToType);
 
-		auto liftedFromType = ((fromTypeInstance != NULL) && fromTypeInstance->IsNullable()) ? fromTypeInstance->GetUnderlyingType() : NULL;
-		auto liftedToType = ((toTypeInstance != NULL) && toTypeInstance->IsNullable()) ? toTypeInstance->GetUnderlyingType() : NULL;
-
-		int bestFromDist = INT_MAX;
-		BfType* bestFromType = NULL;
-		int bestNegFromDist = INT_MAX;
-		BfType* bestNegFromType = NULL;
-
-		int bestToDist = INT_MAX;
-		BfType* bestToType = NULL;
-		int bestNegToDist = INT_MAX;
-		BfType* bestNegToType = NULL;
-		bool isAmbiguousCast = false;
-
-		BfIRValue conversionResult;
-		BfMethodInstance* opMethodInstance = NULL;
-		BfType* opMethodSrcType = NULL;
-		BfOperatorInfo* constraintOperatorInfo = NULL;
+		SizedArray<BfResolvedArg, 1> args;
+		BfResolvedArg resolvedArg;
+		resolvedArg.mTypedValue = typedVal;
+		args.push_back(resolvedArg);
+		BfMethodMatcher methodMatcher(srcNode, this, "", args, NULL);
+		methodMatcher.mCheckReturnType = toType;
+		methodMatcher.mBfEvalExprFlags = (BfEvalExprFlags)(BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_FromConversionOp);
+		if ((castFlags & BfCastFlags_Explicit) != 0)
+			methodMatcher.mBfEvalExprFlags = (BfEvalExprFlags)(methodMatcher.mBfEvalExprFlags | BfEvalExprFlags_FromConversionOp_Explicit);
+		methodMatcher.mAllowImplicitRef = true;
+		methodMatcher.mAllowImplicitWrap = true;
+		BfBaseClassWalker baseClassWalker(walkFromType, walkToType, this);
 		
-		// Normal, lifted, execute
-		for (int pass = 0; pass < 3; pass++)
+		bool isConstraintCheck = false;// ((opFlags& BfUnaryOpFlag_IsConstraintCheck) != 0);
+
+		BfType* operatorConstraintReturnType = NULL;
+		BfType* bestSelfType = NULL;
+		while (true)
 		{
-			auto checkToType = toType;
-			auto checkFromType = fromType;
-
-			if (pass == 1)
+			auto entry = baseClassWalker.Next();
+			auto checkType = entry.mTypeInstance;
+			if (checkType == NULL)
+				break;
+			for (auto operatorDef : checkType->mTypeDef->mOperators)
 			{
-				if ((bestFromType != NULL) && (bestToType != NULL))
-					continue;
-
-				if (liftedFromType != NULL)
-					checkFromType = liftedFromType;
-				if (liftedToType != NULL)
-					checkToType = liftedToType;
-			}
-			else if (pass == 2)
-			{
-				if ((bestFromType == NULL) || (bestToType == NULL))
-					break;
-			}
-
-			BfType* searchFromType = checkFromType;
-			if (searchFromType->IsSizedArray())
-				searchFromType = GetWrappedStructType(checkFromType);
-
-			bool isConstraintCheck = ((castFlags & BfCastFlags_IsConstraintCheck) != 0);
-			BfBaseClassWalker baseClassWalker(searchFromType, toType, this);
-			
-			while (true)
-			{
-				auto entry = baseClassWalker.Next();
-				auto checkInstance = entry.mTypeInstance;
-				if (checkInstance == NULL)
-					break;
-
-				for (auto operatorDef : checkInstance->mTypeDef->mOperators)
+				if (operatorDef->mOperatorDeclaration->mIsConvOperator)
 				{
-					if (operatorDef->mOperatorDeclaration->mIsConvOperator)
+					if ((!explicitCast) && (operatorDef->mOperatorDeclaration->mExplicitToken != NULL) &&
+						(operatorDef->mOperatorDeclaration->mExplicitToken->GetToken() == BfToken_Explicit))
+						continue;
+
+					if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
+						continue;
+
+					int prevArgSize = (int)args.mSize;
+					if (!operatorDef->mIsStatic)
 					{
-						if ((!explicitCast) && (operatorDef->mOperatorDeclaration->mExplicitToken != NULL) &&
-							(operatorDef->mOperatorDeclaration->mExplicitToken->GetToken() == BfToken_Explicit))
-							continue;
-
-						BfType* methodFromType = NULL;
-						BfType* methodToType = NULL;						
-
-						if (isConstraintCheck)
-						{
-							auto operatorInfo = GetOperatorInfo(checkInstance, operatorDef);
-							methodFromType = operatorInfo->mLHSType;
-							methodToType = operatorInfo->mReturnType;
-							if ((methodFromType == NULL) || (methodToType == NULL))
-								continue;
-						}
-						else
-						{
-							auto methodInst = GetRawMethodInstanceAtIdx(checkInstance, operatorDef->mIdx);
-							if (methodInst == NULL)
-								continue;
-							if (methodInst->GetParamCount() != 1)
-							{
-								AssertErrorState();
-								continue;
-							}
-
-							methodFromType = methodInst->GetParamType(0);
-							methodToType = methodInst->mReturnType;
-						}
-
-						if (methodFromType->IsRef())
-							methodFromType = methodFromType->GetUnderlyingType();
-
-						if (methodFromType->IsSelf())
-							methodFromType = entry.mSrcType;
-						if (methodToType->IsSelf())
-							methodToType = entry.mSrcType;
-
-						// Selection pass
-						if (pass < 2)
-						{
-							auto methodCheckFromType = methodFromType;							
-							auto methodCheckToType = methodToType;
-							if (pass == 1)
-							{
-								// Only check inner type on lifted types when we aren't checking conversions within lifted class
-								//  This avoid some infinite conversions
-								if ((methodCheckFromType->IsNullable()) && (!checkInstance->IsNullable()))
-									methodCheckFromType = methodCheckFromType->GetUnderlyingType();
-								if ((methodCheckToType->IsNullable()) && (!checkInstance->IsNullable()))
-									methodCheckToType = methodCheckToType->GetUnderlyingType();
-							}
-
-							int fromDist = GetTypeDistance(methodCheckFromType, checkFromType);
-							if ((fromDist == INT_MAX) && (searchFromType != checkFromType))
-							{
-								fromDist = GetTypeDistance(methodCheckFromType, searchFromType);
-							}
-
-							if (fromDist < 0)
-							{
-								// Allow us to cast a constant int to a smaller type if it satisfies the cast operator
-								if ((typedVal.mValue.IsConst()) && (CanCast(typedVal, methodCheckFromType, BfCastFlags_NoConversionOperator)))
-								{
-									fromDist = 0;
-								}
-							}
-
-							int toDist = GetTypeDistance(methodCheckToType, checkToType);
-
-							if ((fromDist == INT_MAX) || (toDist == INT_MAX))
-								continue;
-
-							if (((fromDist >= 0) && (toDist >= 0)) || (explicitCast))
-							{
-								if ((fromDist >= 0) && (fromDist < bestFromDist))
-								{
-									bestFromDist = fromDist;
-									bestFromType = methodFromType;
-								}
-
-								if ((toDist >= 0) && (toDist < bestToDist))
-								{
-									bestToDist = toDist;
-									bestToType = methodToType;
-								}
-							}
-
-							if (explicitCast)
-							{
-								fromDist = abs(fromDist);
-								toDist = abs(toDist);
-
-								if ((fromDist >= 0) && (fromDist < bestNegFromDist))
-								{
-									bestNegFromDist = fromDist;
-									bestNegFromType = methodFromType;
-								}
-
-								if ((toDist >= 0) && (toDist < bestNegToDist))
-								{
-									bestNegToDist = toDist;
-									bestNegToType = methodToType;
-								}
-							}
-						}
-						else if (pass == 2) // Execution Pass
-						{
-							if ((methodFromType == bestFromType) && (methodToType == bestToType))
-							{
-								if (isConstraintCheck)
-								{
-									auto operatorInfo = GetOperatorInfo(checkInstance, operatorDef);
-									constraintOperatorInfo = operatorInfo;
-								}
-								else
-								{
-									// Get in native module so our module doesn't get a reference to it - we may not end up calling it at all!								
-									BfMethodInstance* methodInstance = GetRawMethodInstanceAtIdx(checkInstance, operatorDef->mIdx);
-
-									if (opMethodInstance != NULL)
-									{
-										int prevGenericCount = GetGenericParamAndReturnCount(opMethodInstance);
-										int newGenericCount = GetGenericParamAndReturnCount(methodInstance);
-										if (newGenericCount > prevGenericCount)
-										{
-											// Prefer generic match
-											opMethodInstance = methodInstance;
-											opMethodSrcType = entry.mSrcType;
-										}
-										else if (newGenericCount < prevGenericCount)
-										{
-											// Previous was a generic match
-											continue;
-										}
-										else
-										{
-											isAmbiguousCast = true;
-											break;
-										}
-									}
-									else
-									{
-										opMethodInstance = methodInstance;
-										opMethodSrcType = entry.mSrcType;
-									}
-								}
-							}
-						}
+						// Try without arg
+						args.mSize = 0;
 					}
-				}
-
-				if (isAmbiguousCast)
-					break;
-
-				if ((opMethodInstance != NULL) || (constraintOperatorInfo != NULL))
-				{
-					if (mayBeBox)
-					{
-						if (!ignoreErrors)
-						{
-							if (Fail("Ambiguous cast, may be conversion operator or may be boxing request", srcNode) != NULL)
-								mCompiler->mPassInstance->MoreInfo("See conversion operator", opMethodInstance->mMethodDef->GetRefNode());
-						}
-						else if (!silentFail)
-							SetFail();
-					}
-
-					BfType* returnType;
-					if (isConstraintCheck)
-					{
-						returnType = constraintOperatorInfo->mReturnType;
-					}
-					else
-					{
-						returnType = opMethodInstance->mReturnType;
-						BfMethodInstance* methodInstance = GetRawMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef);
-						auto methodDeclaration = methodInstance->mMethodDef->GetMethodDeclaration();
-						if (methodDeclaration->mBody == NULL)
-						{
-							// Handle the typedPrim<->underlying part implicitly
-							if (fromType->IsTypedPrimitive())
-							{
-								auto convTypedValue = BfTypedValue(typedVal.mValue, fromType->GetUnderlyingType());
-								return CastToValue(srcNode, convTypedValue, toType, (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
-							}
-							else if (toType->IsTypedPrimitive())
-							{
-								auto castedVal = CastToValue(srcNode, typedVal, toType->GetUnderlyingType(), (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
-								return castedVal;
-							}
-						}
-					}
-
-					// Actually perform conversion
-					BfExprEvaluator exprEvaluator(this);
-					BfTypedValue castedFromValue;
-					if ((typedVal.mType->IsSizedArray()) && (bestFromType->IsInstanceOf(mCompiler->mSizedArrayTypeDef)))
-					{
-						castedFromValue = MakeAddressable(typedVal);
-						if (!bestFromType->IsValuelessType())
-							castedFromValue.mValue = mBfIRBuilder->CreateBitCast(castedFromValue.mValue, mBfIRBuilder->MapTypeInstPtr(bestFromType->ToTypeInstance()));
-						castedFromValue.mType = bestFromType;
-					}											
-					else
-						castedFromValue = Cast(srcNode, typedVal, bestFromType, castFlags);
-					if (!castedFromValue)
-						return BfIRValue();
 										
-					BfTypedValue operatorOut;
-					if (ignoreWrites)
-					{
-						if (opMethodInstance != NULL)
-							exprEvaluator.PerformCallChecks(opMethodInstance, srcNode);
+					if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
+						methodMatcher.mSelfType = entry.mSrcType;					
 
-						if (returnType == toType)
-							return mBfIRBuilder->GetFakeVal();						
-						operatorOut = GetDefaultTypedValue(returnType, false, BfDefaultValueKind_Addr);
+					args.mSize = prevArgSize;
+				}
+			}
+		}
+
+		methodMatcher.FlushAmbiguityError();
+
+		if (methodMatcher.mBestMethodDef == NULL)
+		{
+			// Check method generic constraints
+			if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))
+			{
+				for (int genericParamIdx = 0; genericParamIdx < mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+				{
+					auto genericParam = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+					for (auto& opConstraint : genericParam->mOperatorConstraints)
+					{
+						if ((opConstraint.mCastToken == BfToken_Implicit) ||
+							((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
+						{
+							// If we can convert OUR fromVal to the constraint's fromVal then we may match
+							if (CanCast(typedVal, opConstraint.mRightType, BfCastFlags_NoConversionOperator))
+							{
+								// .. and we can convert the constraint's toType to OUR toType then we're good
+								auto opToVal = genericParam->mExternType;
+								if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType, BfCastFlags_NoConversionOperator))
+									return mBfIRBuilder->GetFakeVal();
+							}
+						}
+					}
+				}
+			}
+
+			// Check type generic constraints
+			if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsGenericTypeInstance()) && (mCurTypeInstance->IsUnspecializedType()))
+			{
+				SizedArray<BfGenericParamInstance*, 4> genericParams;
+				GetActiveTypeGenericParamInstances(genericParams);
+				for (auto genericParam : genericParams)
+				{
+					for (auto& opConstraint : genericParam->mOperatorConstraints)
+					{
+						if ((opConstraint.mCastToken == BfToken_Implicit) ||
+							((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
+						{
+							// If we can convert OUR fromVal to the constraint's fromVal then we may match
+							if (CanCast(typedVal, opConstraint.mRightType, BfCastFlags_NoConversionOperator))
+							{
+								// .. and we can convert the constraint's toType to OUR toType then we're good
+								auto opToVal = genericParam->mExternType;
+								if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType, BfCastFlags_NoConversionOperator))
+									return mBfIRBuilder->GetFakeVal();
+							}
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			BfTypedValue result;
+			BfExprEvaluator exprEvaluator(this);
+			exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_FromConversionOp;			
+
+			auto moduleMethodInstance = exprEvaluator.GetSelectedMethod(methodMatcher);
+			if (moduleMethodInstance.mMethodInstance != NULL)
+			{
+				auto paramType = moduleMethodInstance.mMethodInstance->GetParamType(0);
+				auto wantType = paramType;
+				if (wantType->IsRef())
+					wantType = wantType->GetUnderlyingType();
+				auto typedVal = methodMatcher.mArguments[0].mTypedValue;
+				if (wantType != typedVal.mType)
+				{
+					if ((typedVal.mType->IsWrappableType()) && (wantType == GetWrappedStructType(typedVal.mType)))
+					{
+						typedVal = MakeAddressable(typedVal);
+						methodMatcher.mArguments[0].mTypedValue = BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(wantType->ToTypeInstance())),
+							paramType, paramType->IsRef() ? BfTypedValueKind_Value : BfTypedValueKind_Addr);
 					}
 					else
 					{
-						BfModuleMethodInstance moduleMethodInstance = GetMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef, BfTypeVector());
-						exprEvaluator.PerformCallChecks(moduleMethodInstance.mMethodInstance, srcNode);
-
-						if (moduleMethodInstance.mMethodInstance->GetParamType(0)->IsRef())						
-							castedFromValue = ToRef(castedFromValue);						
-
-						SizedArray<BfIRValue, 1> args;
-						exprEvaluator.PushArg(castedFromValue, args);
-						operatorOut = exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, IsSkippingExtraResolveChecks() ? BfIRValue() : moduleMethodInstance.mFunc, false, args);
-						if ((operatorOut.mType != NULL) && (operatorOut.mType->IsSelf()))
+						methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, typedVal, wantType, BfCastFlags_Explicit);
+						if (paramType->IsRef())
 						{
-							BF_ASSERT(IsInGeneric());
-							operatorOut = GetDefaultTypedValue(opMethodSrcType);
-						}
-					}
-
-					return CastToValue(srcNode, operatorOut, toType, castFlags, resultFlags);					
-				}				
-			}
-
-			if (bestFromType == NULL)
-				bestFromType = bestNegFromType;
-			if (bestToType == NULL)
-				bestToType = bestNegToType;
-		}
-
-		isAmbiguousCast |= ((bestFromType != NULL) && (bestToType != NULL));
-		if (isAmbiguousCast)
-		{
-			if (!ignoreErrors)
-			{
-				const char* errStr = "Ambiguous conversion operators for casting from '%s' to '%s'";
-				Fail(StrFormat(errStr, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
-			}
-			else if (!silentFail)
-				SetFail();
-			return BfIRValue();
-		}
-
-		// Check method generic constraints
-		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))
-		{
-			for (int genericParamIdx = 0; genericParamIdx < mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
-			{
-				auto genericParam = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
-				for (auto& opConstraint : genericParam->mOperatorConstraints)
-				{
-					if ((opConstraint.mCastToken == BfToken_Implicit) ||
-						((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
-					{
-						// If we can convert OUR fromVal to the constraint's fromVal then we may match
-						if (CanCast(typedVal, opConstraint.mRightType, BfCastFlags_NoConversionOperator))
-						{
-							// .. and we can convert the constraint's toType to OUR toType then we're good
-							auto opToVal = genericParam->mExternType;
-							if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType, BfCastFlags_NoConversionOperator))
-								return mBfIRBuilder->GetFakeVal();
+							typedVal = MakeAddressable(typedVal);
+							typedVal.mKind = BfTypedValueKind_Addr;
 						}
 					}
 				}
 			}
-		}
 
-		// Check type generic constraints
-		if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsGenericTypeInstance()) && (mCurTypeInstance->IsUnspecializedType()))
-		{
-			SizedArray<BfGenericParamInstance*, 4> genericParams;
-			GetActiveTypeGenericParamInstances(genericParams);
-			for (auto genericParam : genericParams)
+			result = exprEvaluator.CreateCall(&methodMatcher, BfTypedValue());
+			if (resultFlags != NULL)
 			{
-				for (auto& opConstraint : genericParam->mOperatorConstraints)
-				{
-					if ((opConstraint.mCastToken == BfToken_Implicit) ||
-						((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
-					{
-						// If we can convert OUR fromVal to the constraint's fromVal then we may match
-						if (CanCast(typedVal, opConstraint.mRightType, BfCastFlags_NoConversionOperator))
-						{
-							// .. and we can convert the constraint's toType to OUR toType then we're good
-							auto opToVal = genericParam->mExternType;
-							if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType, BfCastFlags_NoConversionOperator))
-								return mBfIRBuilder->GetFakeVal();
-						}
-					}
-				}
+				if (result.IsAddr())
+					*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsAddr);
+				if (result.mKind == BfTypedValueKind_TempAddr)
+					*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsTemp);
 			}
+			else if (result.IsAddr())
+				result = LoadValue(result);
+
+			if (result.mType != toType)
+				return CastToValue(srcNode, result, toType, BfCastFlags_Explicit, resultFlags);
+
+			if (result)
+				return result.mValue;
 		}
 	}
-
+	
 	// Default typed primitive 'underlying casts' happen after checking cast operators
 	if (explicitCast)
 	{

@@ -1341,7 +1341,7 @@ namespace System
 
 		public Result<void> AppendF(StringView format, params Object[] args)
 		{
-			return AppendF(null, format, params args);
+			return AppendF((IFormatProvider)null, format, params args);
 		}
 
 		public int IndexOf(StringView subStr, bool ignoreCase = false)

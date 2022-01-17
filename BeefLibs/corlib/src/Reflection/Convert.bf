@@ -18,16 +18,16 @@ namespace System.Reflection
 			var (objType, dataPtr) = GetTypeAndPointer(obj);
 			switch (objType.[Friend]mTypeCode)
 			{
-			case .Int8: return (.)*(int8*)dataPtr;
-			case .Int16: return (.)*(int16*)dataPtr;
-			case .Int32: return (.)*(int32*)dataPtr;
-			case .Int64: return (.)*(int64*)dataPtr;
-			case .UInt8, .Char8: return (.)*(uint8*)dataPtr;
-			case .UInt16, .Char16: return (.)*(uint16*)dataPtr;
-			case .UInt32, .Char32: return (.)*(uint32*)dataPtr;
-			case .UInt64: return (.)*(uint64*)dataPtr;
-			case .Int: return (.)*(int*)dataPtr;
-			case .UInt: return (.)*(uint*)dataPtr;
+			case .Int8: return *(int8*)dataPtr;
+			case .Int16: return *(int16*)dataPtr;
+			case .Int32: return *(int32*)dataPtr;
+			case .Int64: return *(int64*)dataPtr;
+			case .UInt8, .Char8: return (int64)*(uint8*)dataPtr;
+			case .UInt16, .Char16: return *(uint16*)dataPtr;
+			case .UInt32, .Char32: return *(uint32*)dataPtr;
+			case .UInt64: return (int64)*(uint64*)dataPtr;
+			case .Int: return (int64)*(int*)dataPtr;
+			case .UInt: return (int64)*(uint*)dataPtr;
 			default: return .Err;
 			}
 		}
@@ -38,16 +38,16 @@ namespace System.Reflection
 			var dataPtr = variant.DataPtr;
 			switch (variant.VariantType.[Friend]mTypeCode)
 			{
-			case .Int8: return (.)*(int8*)dataPtr;
-			case .Int16: return (.)*(int16*)dataPtr;
-			case .Int32: return (.)*(int32*)dataPtr;
-			case .Int64: return (.)*(int64*)dataPtr;
-			case .UInt8, .Char8: return (.)*(uint8*)dataPtr;
-			case .UInt16, .Char16: return (.)*(uint16*)dataPtr;
-			case .UInt32, .Char32: return (.)*(uint32*)dataPtr;
-			case .UInt64: return (.)*(uint64*)dataPtr;
-			case .Int: return (.)*(int*)dataPtr;
-			case .UInt: return (.)*(uint*)dataPtr;
+			case .Int8: return *(int8*)dataPtr;
+			case .Int16: return *(int16*)dataPtr;
+			case .Int32: return *(int32*)dataPtr;
+			case .Int64: return *(int64*)dataPtr;
+			case .UInt8, .Char8: return *(uint8*)dataPtr;
+			case .UInt16, .Char16: return *(uint16*)dataPtr;
+			case .UInt32, .Char32: return *(uint32*)dataPtr;
+			case .UInt64: return (int64)*(uint64*)dataPtr;
+			case .Int: return (int64)*(int*)dataPtr;
+			case .UInt: return (int64)*(uint*)dataPtr;
 			default: return .Err;
 			}
 		}

@@ -1141,6 +1141,7 @@ public:
 	BfGenericParamFlags mGenericParamFlags;
 	BfType* mExternType;
 	Array<BfTypeInstance*> mInterfaceConstraints;
+	HashSet<BfTypeInstance*>* mInterfaceConstraintSet;
 	Array<BfGenericOperatorConstraintInstance> mOperatorConstraints;
 	Array<BfTypeReference*> mComptypeConstraint;
 	BfType* mTypeConstraint;
@@ -1151,6 +1152,7 @@ public:
 		mExternType = NULL;
 		mGenericParamFlags = BfGenericParamFlag_None;
 		mTypeConstraint = NULL;
+		mInterfaceConstraintSet = NULL;
 		mRefCount = 1;
 	}
 
@@ -1162,6 +1164,7 @@ public:
 
 	virtual ~BfGenericParamInstance()
 	{
+		delete mInterfaceConstraintSet;
 	}
 	virtual BfConstraintDef* GetConstraintDef() = 0;
 	virtual BfGenericParamDef* GetGenericParamDef() = 0;

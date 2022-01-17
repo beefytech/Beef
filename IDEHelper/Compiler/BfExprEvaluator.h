@@ -190,6 +190,7 @@ public:
 	String mMethodName;	
 	BfMethodInstance* mInterfaceMethodInstance;
 	SizedArrayImpl<BfResolvedArg>& mArguments;
+	BfType* mCheckReturnType;
 	BfMethodType mMethodType;
 	BfCheckedKind mCheckedKind;
 	bool mHadExplicitGenericArguments;	
@@ -198,6 +199,7 @@ public:
 	bool mBypassVirtual;
 	bool mAllowImplicitThis;
 	bool mAllowImplicitRef;
+	bool mAllowImplicitWrap;
 	bool mAllowStatic;
 	bool mAllowNonStatic;	
 	bool mSkipImplicitParams;	
@@ -405,7 +407,7 @@ public:
 	bool IsVar(BfType* type);
 	void GetLiteral(BfAstNode* refNode, const BfVariant& variant);
 	void FinishExpressionResult();	
-	virtual bool CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode);
+	virtual bool CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode);	
 	BfAutoComplete* GetAutoComplete();	
 	bool IsComptime();
 	bool IsComptimeEntry();
@@ -462,6 +464,7 @@ public:
 		BfResolvedArgs& argValue, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);
 	BfTypedValue MakeCallableTarget(BfAstNode* targetSrc, BfTypedValue target);		
 	BfModuleMethodInstance GetSelectedMethod(BfAstNode* targetSrc, BfTypeInstance* curTypeInst, BfMethodDef* methodDef, BfMethodMatcher& methodMatcher, BfType** overrideReturnType = NULL);
+	BfModuleMethodInstance GetSelectedMethod(BfMethodMatcher& methodMatcher);
 	bool CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail);
 	bool HasVariableDeclaration(BfAstNode* checkNode);
 	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArgs, BfTypedValue* outCascadeValue = NULL);	

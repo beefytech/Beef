@@ -154,7 +154,7 @@ namespace System
 		//
 		public this(int year, int month, int day)
 		{
-			this.dateData = (uint64)DateToTicks(year, month, day);
+			this.dateData = (.)DateToTicks(year, month, day).Value;
 		}
 
 		public this(int year, int month, int day, int hour, int minute, int second)
