@@ -4744,16 +4744,21 @@ namespace IDE.ui
 				{
 					mHilitePairedCharState = .UnmatchedParens;
 
-					bool HasPairingCharAt(int textIndex)
+					int GetPairingDir(int textIndex)
 					{
 						switch (SafeGetChar(textIndex))
 						{
 							// Ignore parentheses in comments.
-						case '(',')', '[',']', '{','}':
+						case '(', '[', '{':
 							var typeId = (SourceElementType)mData.mText[textIndex].mDisplayTypeId;
-							return (typeId != .Comment) && (typeId != .Literal);
-						default: return false;
+							if ((typeId != .Comment) && (typeId != .Literal))
+								return 1;
+						case ')', ']', '}':
+							var typeId = (SourceElementType)mData.mText[textIndex].mDisplayTypeId;
+							if ((typeId != .Comment) && (typeId != .Literal))
+								return -1;
 						}
+						return 0;
 					}
 
 					bool IsOpenChar(char8 c)
@@ -4782,9 +4787,9 @@ namespace IDE.ui
 					}
 
 					int parenIndex = -1;
-					if (HasPairingCharAt(CursorTextPos - 1))
+					if (GetPairingDir(CursorTextPos - 1) == -1)
 						parenIndex = CursorTextPos - 1;
-					else if (HasPairingCharAt(CursorTextPos))
+					else if (GetPairingDir(CursorTextPos) == 1)
 						parenIndex = CursorTextPos;
 
 					if (parenIndex != -1)
