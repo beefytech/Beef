@@ -12759,7 +12759,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 					else
 					{
-						methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, typedVal, wantType, (BfCastFlags)(castFlags | BfCastFlags_Explicit));
+						methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, typedVal, wantType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator));
 						if (paramType->IsRef())
 						{
 							typedVal = MakeAddressable(typedVal);
@@ -12781,7 +12781,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				result = LoadValue(result);
 
 			if (result.mType != toType)
-				return CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit), resultFlags);
+				return CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
 
 			if (result)
 				return result.mValue;
