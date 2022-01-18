@@ -1231,8 +1231,8 @@ public:
 	virtual DbgSubprogram* FindSubprogram(DbgType* dbgType, const char* methodName);
 	const char* GetStringTable(DataStream* stream, int stringTablePos);
 
-	void Fail(const StringImpl& error);
-	void HardFail(const StringImpl& error);
+	virtual void Fail(const StringImpl& error);
+	virtual void HardFail(const StringImpl& error);
 	void FindTemplateStr(const char*& name, int& templateNameIdx);
 	void TempRemoveTemplateStr(const char*& name, int& templateNameIdx);
 	void ReplaceTemplateStr(const char*& name, int& templateNameIdx);

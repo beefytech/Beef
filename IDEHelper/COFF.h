@@ -293,6 +293,9 @@ public:
 	int mProcSymCount;		
 
 public:		
+	virtual void Fail(const StringImpl& error) override;
+	virtual void HardFail(const StringImpl& error) override;
+
 	virtual void ParseGlobalsData() override;
 	virtual void ParseSymbolData() override;
 	virtual void ParseTypeData(CvStreamReader& reader, int dataOffset);

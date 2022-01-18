@@ -5801,6 +5801,16 @@ void COFF::ParseSymbolStream(CvSymStreamType symStreamType)
 	}	
 }
 
+void COFF::Fail(const StringImpl& error)
+{	
+	DbgModule::Fail(StrFormat("%s in %s", error.c_str(), mPDBPath.c_str()));
+}
+
+void COFF::HardFail(const StringImpl& error)
+{
+	DbgModule::HardFail(StrFormat("%s in %s", error.c_str(), mPDBPath.c_str()));
+}
+
 void COFF::ParseGlobalsData()
 {
 	if (!mPDBLoaded)
