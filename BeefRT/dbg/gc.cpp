@@ -817,7 +817,7 @@ void BFGC::ConservativeScan(void* startAddr, int length)
 			ptr = (uint8*)ptr + sizeof(intptr);
 		}
 	}
-	__except (EXCEPTION_CONTINUE_EXECUTION)
+	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 
 	}
