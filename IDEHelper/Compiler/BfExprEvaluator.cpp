@@ -6163,7 +6163,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 BfTypedValue BfExprEvaluator::CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target)
 {	
-	auto& moduleMethodInstance = GetSelectedMethod(*methodMatcher);	
+	auto moduleMethodInstance = GetSelectedMethod(*methodMatcher);	
 	if (moduleMethodInstance.mMethodInstance == NULL)
 		return BfTypedValue();
 	if ((target) && (target.mType != moduleMethodInstance.mMethodInstance->GetOwner()))
