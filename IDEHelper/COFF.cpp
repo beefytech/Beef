@@ -764,7 +764,7 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 	}
 	else
 	{
-		BF_FATAL("Unhandled func type");
+		Fail(StrFormat("Unhandled func type at tagId %d ipi %d", tagIdx, ipi));		
 	}
 
 
@@ -1169,7 +1169,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 					}
 					break;
 				default:
-					BF_FATAL("Unhandled");					
+					HardFail(StrFormat("Unhandled leaf id 0x%X", leafType));
 				}
 
 				PTR_ALIGN(data, sectionStart, 4);

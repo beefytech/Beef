@@ -2312,6 +2312,27 @@ void DbgModule::Fail(const StringImpl& error)
 	mFailed = true;
 }
 
+void DbgModule::HardFail(const StringImpl& error)
+{
+	if (mFailMsgPtr != NULL)
+	{
+		if (mFailMsgPtr->IsEmpty())
+			*mFailMsgPtr = error;
+	}
+
+	String errorStr;
+	if (!mFilePath.IsEmpty())
+	{
+		errorStr += "Error in ";
+		errorStr += mFilePath;
+		errorStr += ": ";
+	}
+	errorStr += error;
+	errorStr += "\n";
+
+	BF_FATAL(errorStr.c_str());
+}
+
 char* DbgModule::DbgDupString(const char* str, const char* allocName)
 {
 	int strLen = (int)strlen(str);
