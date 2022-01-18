@@ -183,11 +183,11 @@ namespace IDE.ui
 			OnlyShowInvoke = 4
 		}
 
-		enum HiliteMatchingParensPositionCache
+		enum HilitePairedCharState
 		{
 			case NeedToRecalculate;
 			case UnmatchedParens;
-			case Valid(int cachedCursorTextPos, float x1, float y1, float x2, float y2);
+			case Valid(int64 stateHash, float x1, float y1, float x2, float y2, float charWidth);
 		}
 
         public delegate void(char32, AutoCompleteOptions) mOnGenerateAutocomplete ~ delete _;
@@ -235,7 +235,7 @@ namespace IDE.ui
 		bool mHasCustomColors;
 		FastCursorState mFastCursorState ~ delete _;
 		public HashSet<int32> mCurParenPairIdSet = new .() ~ delete _;
-		HiliteMatchingParensPositionCache mMatchingParensPositionCache = .NeedToRecalculate;
+		HilitePairedCharState mHilitePairedCharState = .NeedToRecalculate;
 		
 		public List<PersistentTextPosition> PersistentTextPositions
 		{
@@ -3055,7 +3055,7 @@ namespace IDE.ui
         {
             base.ContentChanged();
             mCursorStillTicks = 0;
-			mMatchingParensPositionCache = .NeedToRecalculate;
+			mHilitePairedCharState = .NeedToRecalculate;
 			if (mSourceViewPanel != null)
 			{
 				if (mSourceViewPanel.mProjectSource != null)
@@ -4578,7 +4578,7 @@ namespace IDE.ui
 
             base.PhysCursorMoved(moveKind);
             mCursorStillTicks = 0;
-			mMatchingParensPositionCache = .NeedToRecalculate;
+			mHilitePairedCharState = .NeedToRecalculate;
 
 			if ((mSourceViewPanel != null) && (mSourceViewPanel.mHoverWatch != null))
 				mSourceViewPanel.mHoverWatch.Close();
@@ -4725,35 +4725,38 @@ namespace IDE.ui
         {
             base.Draw(g);
 
-			// Highlight matching parenthesis under cursor
+			// Highlight matching paired characters under cursor
 			if (mEditWidget.mHasFocus && !HasSelection())
 			{
-				if (mMatchingParensPositionCache case .Valid(var cachedCursorTextPos, ?, ?, ?, ?))
+				int64 stateHash = (.)(CursorTextPos ^ ((int64)mData.mCurTextVersionId << 31));
+				if (mHilitePairedCharState case .Valid(var cachedStateHash, ?, ?, ?, ?, ?))
 				{
 					//HACK:
 					// We can't just rely on setting .NeedToRecalculate in PhysCursorMoved because it looks like sometimes the
 					// cursor moves without that being called. For example when you open a text buffer that was already opened
 					// before, the cursor will initially be at the old position where you left it before being moved to (0,0)
 					// but this move to 0,0 won't be detected.
-					if (cachedCursorTextPos != CursorTextPos)
-						mMatchingParensPositionCache = .NeedToRecalculate;
+					if (cachedStateHash != cachedStateHash)
+						mHilitePairedCharState = .NeedToRecalculate;
 				}
 
-				if (mMatchingParensPositionCache case .NeedToRecalculate)
+				if (mHilitePairedCharState case .NeedToRecalculate)
 				{
-					mMatchingParensPositionCache = .UnmatchedParens;
+					mHilitePairedCharState = .UnmatchedParens;
 
-					bool IsParenthesisAt(int textIndex)
+					bool HasPairingCharAt(int textIndex)
 					{
 						switch (SafeGetChar(textIndex))
 						{
 							// Ignore parentheses in comments.
-						case '(',')', '[',']', '{','}': return (SourceElementType)mData.mText[textIndex].mDisplayTypeId != .Comment;
+						case '(',')', '[',']', '{','}':
+							var typeId = (SourceElementType)mData.mText[textIndex].mDisplayTypeId;
+							return (typeId != .Comment) && (typeId != .Literal);
 						default: return false;
 						}
 					}
 
-					bool IsOpenParenthesis(char8 c)
+					bool IsOpenChar(char8 c)
 					{
 						switch (c)
 						{
@@ -4762,7 +4765,7 @@ namespace IDE.ui
 						}
 					}
 
-					Result<char8> GetMatchingParenthesis(char8 paren)
+					Result<char8> GetOppositeChar(char8 paren)
 					{
 						switch (paren)
 						{
@@ -4779,26 +4782,24 @@ namespace IDE.ui
 					}
 
 					int parenIndex = -1;
-					// If there is a parenthesis to the right of the cursor, match that one.
-					// Otherwise, if there is one to the left of the cursor, match that.
-					// This is what Visual Studio and VS Code do.
-					// Notepad++ tries to match to the left of the cursor first, but I think the other way makes more sense.
-					if (IsParenthesisAt(CursorTextPos))
-						parenIndex = CursorTextPos;
-					else if (IsParenthesisAt(CursorTextPos - 1))
+					if (HasPairingCharAt(CursorTextPos - 1))
 						parenIndex = CursorTextPos - 1;
+					else if (HasPairingCharAt(CursorTextPos))
+						parenIndex = CursorTextPos;
 
 					if (parenIndex != -1)
 					{
 						char8 paren = mData.mText[parenIndex].mChar;
-						char8 matchingParen = GetMatchingParenthesis(paren);
-						int dir = IsOpenParenthesis(paren) ? +1 : -1;
+						let charWidth = mFont.GetWidth(paren);
+						char8 matchingParen = GetOppositeChar(paren);
+						int dir = IsOpenChar(paren) ? +1 : -1;
 
 						int matchingParenIndex = -1;
 						int stackCount = 1;
 						for (int i = parenIndex + dir; i >= 0 && i < mData.mTextLength; i += dir)
 						{
-							if ((SourceElementType)mData.mText[i].mDisplayTypeId != .Comment)
+							var typeId = (SourceElementType)mData.mText[i].mDisplayTypeId;
+							if ((typeId != .Comment) && (typeId != .Literal))
 							{
 								char8 char = mData.mText[i].mChar;
 								if (char == paren)
@@ -4820,19 +4821,18 @@ namespace IDE.ui
 							GetLineColumnAtIdx(matchingParenIndex, var line2, var column2);
 							GetTextCoordAtLineAndColumn(line1, column1, var x1, var y1);
 							GetTextCoordAtLineAndColumn(line2, column2, var x2, var y2);
-							mMatchingParensPositionCache = .Valid(CursorTextPos, x1, y1, x2, y2);
+							mHilitePairedCharState = .Valid(stateHash, x1, y1, x2, y2, charWidth);
 						}
 					}
 				}
 
-				if (mMatchingParensPositionCache case .Valid(?, let x1, let y1, let x2, let y2))
+				if (mHilitePairedCharState case .Valid(?, let x1, let y1, let x2, let y2, let charWidth))
 				{
-					let width = mFont.GetWidth(' ');
 					let height = mFont.GetHeight() + GS!(2);
 					using (g.PushColor(DarkTheme.COLOR_MATCHING_PARENS_HILITE))
 					{
-						g.FillRect(x1, y1, width, height);
-						g.FillRect(x2, y2, width, height);
+						g.FillRect(x1, y1, charWidth, height);
+						g.FillRect(x2, y2, charWidth, height);
 					}
 				}
 			}
