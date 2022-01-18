@@ -137,7 +137,9 @@ namespace IDE.ui
 		bool mImportInstalledDeferred;
         public Dictionary<ListViewItem, ProjectItem> mListViewToProjectMap = new .() ~ delete _;
         public Dictionary<ProjectItem, ProjectListViewItem> mProjectToListViewMap = new .() ~ delete _;
-
+		public Dictionary<ListViewItem, WorkspaceFolder> mListViewToWorkspaceFolderMap = new .() ~ delete _;
+		public Dictionary<ProjectItem, WorkspaceFolder> mProjectToWorkspaceFolderMap = new .() ~ delete _;
+		ListViewItem mWorkspaceListViewItem;
         public DarkListViewItem mSelectedParentItem;
 		public MenuWidget mMenuWidget;
 
@@ -234,7 +236,22 @@ namespace IDE.ui
 			int invalidCount = 0;
             if (source.mListView == target.mListView)
             {
-				if (mListViewToProjectMap.GetValue(target) case .Ok(var targetProjectItem))
+				if (mListViewToWorkspaceFolderMap.ContainsKey(target) || target == mWorkspaceListViewItem)
+				{
+					mListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
+						{
+							if (mListViewToProjectMap.GetValue(selectedItem) case .Ok(var sourceProjectItem))
+							{
+								if (sourceProjectItem.mParentFolder == null)
+									validCount++;
+							}
+							else if (mListViewToWorkspaceFolderMap.GetValue(selectedItem) case .Ok(let sourceFolderItem))
+							{
+								validCount++;
+							}
+						});
+				}
+				else if (mListViewToProjectMap.GetValue(target) case .Ok(var targetProjectItem))
 				{
 					mListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
 						{
@@ -267,7 +284,88 @@ namespace IDE.ui
 
 				if (source.mListView == target.mListView)
 				{
-					if (mListViewToProjectMap.GetValue(target) case .Ok(var targetProjectItem))
+					ListViewItem folderListView;
+					WorkspaceFolder targetFolder;
+					if (mListViewToWorkspaceFolderMap.GetValue(target) case .Ok(out targetFolder))
+					    folderListView = targetFolder.mListView;
+					else if (target == mWorkspaceListViewItem)
+					    folderListView = mListView.GetRoot();
+					else
+					    folderListView = null;
+
+					if (folderListView != null)
+					{
+					    List<ListViewItem> selectedItems = scope .();
+					    mListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
+					        {
+					            selectedItems.Add(selectedItem);
+					        });
+
+
+					    Loop: for (let item in selectedItems)
+					    {
+					        let parent = item.mParentItem;
+
+					        IsValid: do
+					        {
+					            if ((mListViewToWorkspaceFolderMap.GetValue(item) case .Ok(let folder)) && (item != folderListView))
+					            {
+									// Check if target folder is not child of moved directory
+									bool IsMoveValid()
+									{
+										ListViewItem parent = folderListView;
+										repeat
+										{
+											parent = parent.mParentItem;
+											if (parent == item)
+												return false;
+										}
+										while(parent != null);
+
+										return true;
+									}
+									if ((target.mDepth <= item.mDepth) || (IsMoveValid()))
+									{
+										folder.mParent = targetFolder;
+										break IsValid;
+									}	
+					            }
+					            else if ((mListViewToProjectMap.GetValue(item) case .Ok(let projectItem)) && (projectItem.mParentFolder == null))
+					            {
+									if (targetFolder != null)
+									{
+										if (mProjectToWorkspaceFolderMap.TryAdd(projectItem, var keyPtr, var valPtr))
+										{
+											(*valPtr) = targetFolder;
+										}
+										else
+										{
+											(*valPtr).mProjects.Remove(projectItem.mProject);
+											(*valPtr) = targetFolder;
+										}
+										targetFolder.mProjects.Add(projectItem.mProject);
+									}	
+					                break IsValid;
+					            }
+
+					            continue Loop;
+					        }
+
+					        parent.RemoveChildItem(item, false);
+							folderListView.MakeParent();
+					        folderListView.AddChild(item);
+					        parent.TryUnmakeParent();
+					    }
+
+					    if (selectedItems.Count > 0)
+					    {
+					        target.mOpenButton?.Open(true, false);
+					        QueueSortItem((ProjectListViewItem)folderListView);
+					        gApp.mWorkspace.SetChanged();
+					    }
+					    
+					}
+					else if (mListViewToProjectMap.GetValue(target) case .Ok(var targetProjectItem))
 					{
 						if (targetProjectItem == null)
 						    return;
@@ -445,6 +543,8 @@ namespace IDE.ui
 			{
 				mListViewToProjectMap.Clear();
 				mProjectToListViewMap.Clear();
+				mListViewToWorkspaceFolderMap.Clear();
+				mProjectToWorkspaceFolderMap.Clear();
 				return;
 			}	
 
@@ -456,13 +556,66 @@ namespace IDE.ui
 	            workspaceItem.mLabelOffset = GS!(-16);
 	            workspaceItem.mRefObject = IDEApp.sApp.mWorkspace;
 	            SetupItem(workspaceItem, true);
+				mWorkspaceListViewItem = workspaceItem;
 			}
 
             mListViewToProjectMap.Clear();
             mProjectToListViewMap.Clear();
+			mListViewToWorkspaceFolderMap.Clear();
+			mProjectToWorkspaceFolderMap.Clear();
 
             for (var project in IDEApp.sApp.mWorkspace.mProjects)
                 InitProject(project);
+
+			let root = mListView.GetRoot();
+
+			HashSet<String> folderMap = scope .();
+			for (var workspaceFolder in IDEApp.sApp.mWorkspace.mWorkspaceFolders)
+			{
+				void AddFolder(WorkspaceFolder folder)
+				{
+					if (folder.mListView == null && folderMap.Add(folder.mName))
+					{
+						ProjectListViewItem parentListViewItem;
+						if (folder.mParent == null)
+							parentListViewItem = (ProjectListViewItem)mListView.GetRoot();
+						else
+						{
+							if (folder.mParent.mListView == null)
+								AddFolder(folder.mParent);
+
+							parentListViewItem = folder.mParent.mListView;
+							if (parentListViewItem == null)
+								return;
+						}
+
+						ProjectListViewItem listViewItem;
+						listViewItem = (ProjectListViewItem)parentListViewItem.CreateChildItem();
+
+						folder.mListView = listViewItem;
+						listViewItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ProjectFolder);
+						listViewItem.Label = folder.mName;
+						listViewItem.mRefObject = folder;
+						SetupItem(listViewItem, true);
+						mListViewToWorkspaceFolderMap.Add(listViewItem, folder);
+					}
+				}
+				AddFolder(workspaceFolder);
+				if (workspaceFolder.mProjects == null)
+					continue;
+
+				for (let project in workspaceFolder.mProjects)
+				{
+					if (mProjectToListViewMap.TryGetValue(project.mRootFolder, let viewItem))
+					{
+						root.RemoveChildItem(viewItem, false);
+						workspaceFolder.mListView.MakeParent();
+						workspaceFolder.mListView.AddChild(viewItem);
+						mProjectToWorkspaceFolderMap[project.mRootFolder] = workspaceFolder;
+					}
+				}
+				QueueSortItem(workspaceFolder.mListView);
+			}	
 
 			RehupProjects();
         }
@@ -979,15 +1132,26 @@ namespace IDE.ui
 
         int CompareListViewItem(ListViewItem left, ListViewItem right)
         {
-            ProjectItem leftProjectItem;
-            mListViewToProjectMap.TryGetValue(left, out leftProjectItem);
-            ProjectItem rightProjectItem;
-            mListViewToProjectMap.TryGetValue(right, out rightProjectItem);
+            WorkspaceFolder leftFolder;
+			mListViewToWorkspaceFolderMap.TryGetValue(left, out leftFolder);
+			WorkspaceFolder rightFolder;
+			mListViewToWorkspaceFolderMap.TryGetValue(right, out rightFolder);
+			if ((leftFolder != null) && (rightFolder != null))
+			    return String.Compare(leftFolder.mName, rightFolder.mName, true);
 
-            if (leftProjectItem == null)
-                return -1;
-            if (rightProjectItem == null)
-                return 1;
+			ProjectItem leftProjectItem;
+			mListViewToProjectMap.TryGetValue(left, out leftProjectItem);
+			ProjectItem rightProjectItem;
+			mListViewToProjectMap.TryGetValue(right, out rightProjectItem);
+
+			if (leftProjectItem == null && leftFolder == null)
+			    return -1;
+			else if (rightFolder != null)
+			    return 1;
+			if (rightProjectItem == null && rightFolder == null)
+			    return 1;
+			else if (leftFolder != null)
+			    return -1;
 
 			if ((leftProjectItem.mParentFolder == null) && (rightProjectItem.mParentFolder == null))
 			{
@@ -1562,6 +1726,83 @@ namespace IDE.ui
 			//delete projectItem;
         }
 
+		void RemoveSelectedWorkspaceFolder()
+		{
+			uint32 selectedCount = 0;
+			WorkspaceFolder selectedFolder = null;
+			mListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) => {
+			    if (mListViewToWorkspaceFolderMap.GetValue(selectedItem) case .Ok(let folder))
+			    {
+			        selectedCount++;
+					selectedFolder = folder;
+			    }
+			});
+
+			if (selectedCount == 0)
+				return;
+
+			String title;
+			String text;
+			if (selectedCount > 1)
+			{
+				title = "Delete Folders";
+				text = "Delete selected folders from workspace?";
+			}
+			else
+			{
+				title = "Delete Folder";
+				text = scope:: $"Delete '{selectedFolder.mName}' from workspace?";
+			}
+
+		    Dialog aDialog = ThemeFactory.mDefault.CreateDialog(title, text);                 
+
+		    aDialog.mDefaultButton = aDialog.AddButton("Yes", new (evt) =>
+		        {
+		            aDialog.Close();
+		            let root = mListView.GetRoot();
+		            List<ListViewItem> itemsToMove = scope .();
+		            List<WorkspaceFolder> foldersToDelete = scope .();
+		            root.WithSelectedItems(scope [&] (selectedItem) => {
+		                if (mListViewToWorkspaceFolderMap.GetValue(selectedItem) case .Ok(let folder))
+		                {
+		                    foldersToDelete.Add(folder);
+		                    selectedItem.WithItems(scope [&] (item) => {
+		                        if (mListViewToProjectMap.GetValue(item) case .Ok(let project))
+		                        {
+		                            if (project.mParentFolder == null)
+		                                itemsToMove.Add(item);
+		                        }
+		                    });
+		                }
+		            });
+		            
+		            for (let projectListViewItem in itemsToMove)
+		            {
+		                projectListViewItem.mParentItem.RemoveChildItem(projectListViewItem, false);
+		                root.AddChildAtIndex(1, projectListViewItem);
+						if (mListViewToProjectMap.TryGetValue(projectListViewItem, let projectItem))
+							mProjectToWorkspaceFolderMap.Remove(projectItem);
+		            }
+		            for (let folder in foldersToDelete)
+		            {
+		                let folderItem = folder.mListView;
+		                mListViewToWorkspaceFolderMap.Remove(folderItem);
+		                folderItem.mParentItem.RemoveChildItem(folderItem);
+		                gApp.mWorkspace.mWorkspaceFolders.Remove(folder);
+		                delete folder;
+		            }
+
+					if ((itemsToMove.Count > 0) || (foldersToDelete.Count > 0))
+					{
+						QueueSortItem((ProjectListViewItem)root);
+						gApp.mWorkspace.SetChanged();
+					}	
+						
+		        });
+		    aDialog.mEscButton = aDialog.AddButton("No");
+		    aDialog.PopupWindow(gApp.GetActiveWindow());
+		}
+
         void RemoveSelectedItems(bool deleteFiles)
         {
             List<ListViewItem> selectedItems = scope List<ListViewItem>();
@@ -1643,6 +1884,7 @@ namespace IDE.ui
 		    int32 fileCount = 0;
 		    int32 folderCount = 0;
 		    bool hadProjectItemsSelected = false;
+			int32 workspaceFolderCount = 0;
 
 		    HashSet<Project> projectsReferenced = scope HashSet<Project>();
 
@@ -1669,6 +1911,10 @@ namespace IDE.ui
 		                    fileCount++;
 		                }
 		            }
+					else if (mListViewToWorkspaceFolderMap.ContainsKey(selectedItem))
+					{
+						workspaceFolderCount++;
+					}
 		        }, true);
 		    
 		    if (selectedProjectItem != null)
@@ -1746,7 +1992,11 @@ namespace IDE.ui
 		            aDialog.mEscButton = aDialog.AddButton("Cancel");
 		            aDialog.PopupWindow(gApp.GetActiveWindow());
 		        }                    
-		    }                
+		    }
+            else if (workspaceFolderCount > 0)
+			{
+				RemoveSelectedWorkspaceFolder();
+			}
 		}
 
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
@@ -1875,7 +2125,35 @@ namespace IDE.ui
 
             ListViewItem listViewItem = mListView.mEditingItem;
             int32 column = listViewItem.mColumnIdx;
-            
+
+			if (mListViewToWorkspaceFolderMap.GetValue(listViewItem.GetMainItem()) case .Ok(let folder))
+			{
+				if ((!mListView.mCancelingEdit) && (listViewItem.mLabel != newValue))
+				{
+					if (WorkspaceFolder.IsNameValid(newValue))
+					{
+						if (IsWorkspaceFolderNameUnique(newValue, listViewItem.GetMainItem()))
+						{
+							listViewItem.Label = newValue;
+							folder.mName.Set(newValue);
+							QueueSortItem((ProjectListViewItem)listViewItem.mParentItem);
+							gApp.mWorkspace.SetChanged();
+						}
+						else
+						{
+							IDEApp.sApp.Fail(scope $"Workspace already contains folder named '{newValue}'");
+							IDEApp.Beep(IDEApp.MessageBeepType.Error);
+						}
+					}	
+					else
+					{
+						IDEApp.sApp.Fail(scope $"Folder name contains invalid characters!");
+						IDEApp.Beep(IDEApp.MessageBeepType.Error);
+					}
+				}
+				return;
+			}
+
             ProjectItem projectItem = mListViewToProjectMap[listViewItem.GetMainItem()];
             if (projectItem == null)
                 return;
@@ -2080,6 +2358,53 @@ namespace IDE.ui
             }
         }
 
+		bool IsWorkspaceFolderNameUnique(String name, ListViewItem currentItem = null)
+		{
+			for (let (k,v) in mListViewToWorkspaceFolderMap)
+			{
+			    if (v.mListView != currentItem && String.Compare(v.mName, name, true) == 0)
+			    {
+			        return false;
+			    }
+			}
+
+			return true;
+		}
+
+		public void AddWorkspaceFolder(ProjectListViewItem parentListViewItem)
+		{
+		    ProjectListViewItem listViewItem;
+		    listViewItem = (ProjectListViewItem)parentListViewItem.CreateChildItem();
+		    parentListViewItem.mOpenButton?.Open(true, false);
+
+			String name = new .(16);
+			int32 checkIdx = 1;
+			repeat
+			{
+				name..Clear().AppendF($"New Folder {checkIdx}");
+				checkIdx++;
+			}
+			while(!IsWorkspaceFolderNameUnique(name));
+
+		    let folder = new WorkspaceFolder();
+		    folder.mName = name;
+		    folder.mListView = listViewItem;
+		    gApp.mWorkspace.mWorkspaceFolders.Add(folder);
+		    
+		    listViewItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ProjectFolder);
+		    listViewItem.Label = folder.mName;
+		    listViewItem.mRefObject = folder;
+		    SetupItem(listViewItem, true);
+		    mListViewToWorkspaceFolderMap.Add(listViewItem, folder);
+			SortItem(parentListViewItem);
+		    mListView.UpdateAll();
+		    mListView.GetRoot().SelectItemExclusively(listViewItem);
+		    EditListViewItem(listViewItem);
+		    gApp.mWorkspace.SetChanged();
+		}
+
+
+
 		public Project ImportProject(String filePath, VerSpec verSpec = .None)
 		{
 			if (!File.Exists(filePath))
@@ -2268,7 +2593,18 @@ namespace IDE.ui
             {
 				Menu anItem;
 
-				if (gApp.mWorkspace.IsInitialized)
+				if (mListViewToWorkspaceFolderMap.TryGetValue(focusedItem, let folder))
+				{
+					anItem = menu.AddItem("Remove");
+					anItem.mOnMenuItemSelected.Add(new (item) => { RemoveSelectedWorkspaceFolder(); });
+					anItem = menu.AddItem("Rename");
+					anItem.mOnMenuItemSelected.Add(new (item) => { EditListViewItem(focusedItem); });
+					menu.AddItem();
+					anItem = menu.AddItem("Add Workspace Folder");
+					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder(folder.mListView); });
+					handled = true;
+				}
+				else if (gApp.mWorkspace.IsInitialized)
 				{
 					AddOpenContainingFolder();
 					menu.AddItem();
@@ -2282,6 +2618,9 @@ namespace IDE.ui
 					anItem = menu.AddItem("Add From Installed...");
 					anItem.mOnMenuItemSelected.Add(new (item) => { mImportInstalledDeferred = true; });
 
+					menu.AddItem();
+					anItem = menu.AddItem("Add Workspace Folder");
+					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder((ProjectListViewItem)mListView.GetRoot()); });
 					menu.AddItem();
 	                anItem = menu.AddItem("Properties...");
 	                anItem.mOnMenuItemSelected.Add(new (item) => { ShowWorkspaceProperties(); });
