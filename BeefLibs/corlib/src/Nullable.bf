@@ -84,6 +84,15 @@ namespace System
 			return result;
         }
 
+		[Inline]
+		public static Nullable<T> operator implicit <TOther>(TOther value) where T : operator implicit TOther
+		{
+			Nullable<T> result;
+			result.mHasValue = true;
+			result.mValue = value;
+			return result;
+		}
+
         [Inline]
         public static explicit operator T(Nullable<T> value)
         {

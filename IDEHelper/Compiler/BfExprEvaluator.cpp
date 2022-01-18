@@ -2076,7 +2076,11 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				if ((wantType->IsRef()) && (!argTypedValue.mType->IsRef()) &&
 					((mAllowImplicitRef) || (wantType->IsIn())))
 					wantType = wantType->GetUnderlyingType();
-				if (!mModule->CanCast(argTypedValue, wantType, ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None))
+
+				BfCastFlags castFlags = ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None;
+				if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
+					castFlags = (BfCastFlags)(castFlags | BfCastFlags_Explicit);
+				if (!mModule->CanCast(argTypedValue, wantType, castFlags))
 				{
 					if ((mAllowImplicitWrap) && (argTypedValue.mType->IsWrappableType()) && (mModule->GetWrappedStructType(argTypedValue.mType) == wantType))
 					{
@@ -2128,8 +2132,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	{
 		auto wantType = mCheckReturnType;
 		if ((genericArgumentsSubstitute != NULL) && (wantType->IsUnspecializedType()))
-		{
-			wantType = typeUnspecMethodInstance->GetParamType(paramIdx);
+		{			
 			auto resolvedType = mModule->ResolveGenericType(wantType, typeGenericArguments, genericArgumentsSubstitute, false);
 			if (resolvedType == NULL)
 				goto NoMatch;

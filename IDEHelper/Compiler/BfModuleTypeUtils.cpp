@@ -12644,6 +12644,20 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 		methodMatcher.FlushAmbiguityError();
 
+		if (methodMatcher.mBestMethodDef != NULL)
+		{
+			if (mayBeBox)
+			{
+				if (!ignoreErrors)
+				{
+					if (Fail("Ambiguous cast, may be conversion operator or may be boxing request", srcNode) != NULL)
+						mCompiler->mPassInstance->MoreInfo("See conversion operator", methodMatcher.mBestMethodDef->GetRefNode());
+				}
+				else if (!silentFail)
+					SetFail();
+			}
+		}
+
 		if (methodMatcher.mBestMethodDef == NULL)
 		{
 			// Check method generic constraints
@@ -12694,7 +12708,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 				}
 			}
-		}		
+		}
 		else if (isConstraintCheck)
 		{
 			auto result = BfTypedValue(mBfIRBuilder->GetFakeVal(), operatorConstraintReturnType);
@@ -12708,6 +12722,24 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			BfTypedValue result;
 			BfExprEvaluator exprEvaluator(this);
 			exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_FromConversionOp;			
+
+			auto methodDeclaration = BfNodeDynCast<BfMethodDeclaration>(methodMatcher.mBestMethodDef->mMethodDeclaration);
+			if ((methodDeclaration != NULL) && (methodDeclaration->mBody == NULL))
+			{
+				auto fromType = typedVal.mType;
+
+				// Handle the typedPrim<->underlying part implicitly
+				if (fromType->IsTypedPrimitive())
+				{
+					auto convTypedValue = BfTypedValue(typedVal.mValue, fromType->GetUnderlyingType());
+					return CastToValue(srcNode, convTypedValue, toType, (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
+				}
+				else if (toType->IsTypedPrimitive())
+				{
+					auto castedVal = CastToValue(srcNode, typedVal, toType->GetUnderlyingType(), (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
+					return castedVal;
+				}
+			}
 
 			auto moduleMethodInstance = exprEvaluator.GetSelectedMethod(methodMatcher);
 			if (moduleMethodInstance.mMethodInstance != NULL)
@@ -12727,7 +12759,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 					else
 					{
-						methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, typedVal, wantType, BfCastFlags_Explicit);
+						methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, typedVal, wantType, (BfCastFlags)(castFlags | BfCastFlags_Explicit));
 						if (paramType->IsRef())
 						{
 							typedVal = MakeAddressable(typedVal);
@@ -12749,7 +12781,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				result = LoadValue(result);
 
 			if (result.mType != toType)
-				return CastToValue(srcNode, result, toType, BfCastFlags_Explicit, resultFlags);
+				return CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit), resultFlags);
 
 			if (result)
 				return result.mValue;
