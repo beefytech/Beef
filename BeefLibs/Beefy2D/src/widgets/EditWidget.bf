@@ -2662,6 +2662,12 @@ namespace Beefy.widgets
 			GetLineAndColumnAtCoord(x, y, out line2, out column);
 		}
 
+		public void GetLineColumnAtIdx(int idx, out int line, out int column)
+		{
+			GetLineCharAtIdx(idx, out line, var lineChar);
+			GetColumnAtLineChar(line, lineChar, out column);
+		}
+
 		public virtual void GetLineCharAtIdx(int idx, out int line, out int theChar)
 		{
 			int lineA;
