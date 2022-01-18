@@ -1636,6 +1636,9 @@ namespace IDE.ui
 				listItem.mParentItem.RemoveChildItem(listItem);
 				Project project = projectItem.mProject;
 
+				if (mProjectToWorkspaceFolderMap.GetAndRemove(projectItem) case .Ok((?, let workspaceFolder)))
+					workspaceFolder.mProjects.Remove(project);
+
 				gApp.WithTabs(scope (tab) =>
 					{
 					    var sourceViewPanel = tab.mContent as SourceViewPanel;
