@@ -2811,7 +2811,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				bool continueCascade = false;
 				if (auto memberExpr = BfNodeDynCast<BfMemberReferenceExpression>(exprLeft))
 				{
-					if (memberExpr->mDotToken->GetToken() == BfToken_DotDot)
+					if ((memberExpr->mDotToken != NULL) && (memberExpr->mDotToken->GetToken() == BfToken_DotDot))
 						continueCascade = true;
 				}
 
