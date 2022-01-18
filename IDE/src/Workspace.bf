@@ -12,6 +12,40 @@ using System.IO;
 
 namespace IDE
 {
+	public class WorkspaceFolder
+	{
+		public String mName ~ delete _;
+		public IDE.ui.ProjectListViewItem mListView;
+		public List<Project> mProjects = new List<Project>() ~ delete _;
+		public Self mParent;
+
+		public void GetFullPath(String buffer)
+		{
+			if (mParent != null)
+			{
+				mParent.GetFullPath(buffer);
+				buffer.Append('/');
+			}	
+			buffer.Append(mName);
+		}
+
+		public static bool IsNameValid(String name)
+		{
+			if ((name == ".") || (name == ".."))
+				return false;
+
+			for (let c in name.DecodedChars)
+			{
+				switch (c)
+				{
+				case '/', '\\',  '<',  '>', '"', '\'', ':', '&', '*', '#', '|', '?':
+					return false;
+				}	
+			}
+			return true;
+		}
+	}
+
 	[Reflect(.StaticFields | .NonStaticFields | .ApplyToInnerTypes)]
     public class Workspace
     {
@@ -410,6 +444,7 @@ namespace IDE
         public String mName ~ delete _;
         public String mDir ~ delete _;
 		public CompositeFile mCompositeFile ~ delete _;
+		public List<WorkspaceFolder> mWorkspaceFolders = new List<WorkspaceFolder>() ~ DeleteContainerAndItems!(_);
         public List<Project> mProjects = new List<Project>() ~ DeleteContainerAndItems!(_);
 		public List<ProjectSpec> mProjectSpecs = new .() ~ DeleteContainerAndItems!(_);
 		public Dictionary<String, Project> mProjectNameMap = new .() ~ DeleteDictionaryAndKeys!(_);
@@ -631,6 +666,29 @@ namespace IDE
 							data.Add(project.mProjectName);
 					}
 				}
+			}
+
+			if (!mWorkspaceFolders.IsEmpty)
+			{
+			    using (data.CreateObject("WorkspaceFolders", true))
+			    {
+					String fullPathBuffer = scope .();
+			        for (let folder in mWorkspaceFolders)
+			        {
+						fullPathBuffer.Clear();
+			            folder.GetFullPath(fullPathBuffer);
+			            using (data.CreateArray(fullPathBuffer, true))
+			            {
+							if (folder.mProjects != null)
+							{
+								for (let project in folder.mProjects)
+								{
+								    data.Add(project.mProjectName);
+								}
+							}
+			            }
+			        }
+			    }
 			}
 
 			HashSet<String> seenPlatforms = scope .();
@@ -1087,6 +1145,45 @@ namespace IDE
 				let project = FindProject(projName);
 				if (project != null)
 					project.mLocked = false;
+			}
+
+			if (data.Contains("WorkspaceFolders"))
+			{
+				String projName = scope .(64);
+				using (data.Open("WorkspaceFolders"))
+				{
+					for (var filterName in data.Enumerate())
+					{
+						WorkspaceFolder folder;
+						WorkspaceFolder parentFolder = null;
+						for (let part in filterName.Split('/'))
+						{
+							let index = mWorkspaceFolders.FindIndex(scope (folder) => part.CompareTo(folder.mName, true) == 0);
+							if (index == -1)
+							{
+								folder = new WorkspaceFolder();
+								folder.mName = new .(part);
+								folder.mParent = parentFolder;
+								mWorkspaceFolders.Add(folder);
+							}
+							else
+							{
+								folder = mWorkspaceFolders[index];
+							}
+							parentFolder = folder;
+						}
+						for (var value in data.Enumerate())
+						{
+							projName.Clear();
+							data.GetCurString(projName);
+							if (projName.Length > 0)
+							{
+								if (let project = FindProject(projName))
+									folder.mProjects.Add(project);
+							}
+						}
+					}
+				}
 			}
 		}
 
