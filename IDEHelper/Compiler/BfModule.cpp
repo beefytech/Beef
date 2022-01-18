@@ -10600,18 +10600,23 @@ BfType* BfModule::CheckOperator(BfTypeInstance* typeInstance, BfOperatorDef* ope
 		return NULL;
 	if (operatorInfo->mReturnType == NULL)
 		return NULL;
+
+	auto castFlags = BfCastFlags_IsConstraintCheck;
+	if (operatorDef->mOperatorDeclaration->mIsConvOperator)
+		castFlags = (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator);
+
 	if (lhs)
 	{
 		if (operatorInfo->mLHSType == NULL)
-			return NULL;		
-		if (!CanCast(lhs, operatorInfo->mLHSType, BfCastFlags_IsConstraintCheck))
+			return NULL;
+		if (!CanCast(lhs, operatorInfo->mLHSType, castFlags))
 			return NULL;
 	}
 	if (rhs)
 	{
 		if (operatorInfo->mRHSType == NULL)
 			return NULL;		
-		if (!CanCast(rhs, operatorInfo->mRHSType, BfCastFlags_IsConstraintCheck))
+		if (!CanCast(rhs, operatorInfo->mRHSType, castFlags))
 			return NULL;
 	}
 	return operatorInfo->mReturnType;

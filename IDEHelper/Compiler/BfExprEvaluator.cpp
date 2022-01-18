@@ -21479,17 +21479,19 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	{
 		bool handled = false;
 
+		BfType* expectingType = mExpectingType;		
+
 		if (leftValue.mType == rightValue.mType)
 		{
 			// All good
 			handled = true;
 		}
-		else if ((mExpectingType != NULL) &&
-			(mModule->CanCast(leftValue, mExpectingType, BfCastFlags_NoBox)) &&
-			(mModule->CanCast(rightValue, mExpectingType, BfCastFlags_NoBox)) &&
+		else if ((expectingType != NULL) &&
+			(mModule->CanCast(leftValue, expectingType, BfCastFlags_NoBox)) &&
+			(mModule->CanCast(rightValue, expectingType, BfCastFlags_NoBox)) &&
 			(!leftValue.mType->IsVar()) && (!rightValue.mType->IsVar()))
 		{
-			resultType = mExpectingType;
+			resultType = expectingType;
 			handled = true;
 		}
 		else

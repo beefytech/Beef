@@ -12521,7 +12521,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 		if (explicitCast)
 		{
-			if (((fromPrimType->IsIntegral()) || (fromPrimType->IsFloat()) || (fromPrimType->IsBoolean())) &&
+			if (((fromPrimType->IsIntegral()) || (fromPrimType->IsFloat())) &&
 				((toType->IsIntegral()) || (toType->IsFloat())))
 				allowCast = true;
 		}
@@ -12595,7 +12595,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		methodMatcher.mAllowImplicitWrap = true;
 		BfBaseClassWalker baseClassWalker(walkFromType, walkToType, this);
 		
-		bool isConstraintCheck = false;// ((opFlags& BfUnaryOpFlag_IsConstraintCheck) != 0);
+		bool isConstraintCheck = ((castFlags & BfCastFlags_IsConstraintCheck) != 0);		
 
 		BfType* operatorConstraintReturnType = NULL;
 		BfType* bestSelfType = NULL;
@@ -12622,8 +12622,20 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						args.mSize = 0;
 					}
 										
-					if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
-						methodMatcher.mSelfType = entry.mSrcType;					
+					if (isConstraintCheck)
+					{
+						auto returnType = CheckOperator(checkType, operatorDef, typedVal, BfTypedValue());
+						if (returnType != NULL)
+						{
+							operatorConstraintReturnType = returnType;
+							methodMatcher.mBestMethodDef = operatorDef;
+						}
+					}
+					else
+					{
+						if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
+							methodMatcher.mSelfType = entry.mSrcType;
+					}
 
 					args.mSize = prevArgSize;
 				}
@@ -12682,6 +12694,14 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 				}
 			}
+		}		
+		else if (isConstraintCheck)
+		{
+			auto result = BfTypedValue(mBfIRBuilder->GetFakeVal(), operatorConstraintReturnType);
+			if (result.mType != toType)
+				return CastToValue(srcNode, result, toType, BfCastFlags_Explicit, resultFlags);
+			if (result)
+				return result.mValue;
 		}
 		else
 		{
