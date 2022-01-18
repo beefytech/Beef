@@ -957,8 +957,10 @@ namespace Beefy.widgets
 					}
 					triedMove = true;
                 case KeyCode.Down:
-                    if (selectedItem.IsOpen)
+                    if ((selectedItem.IsOpen) && (!selectedItem.mChildItems.IsEmpty))
+					{
                         newSelection = selectedItem.mChildItems[0];
+					}
                     else
                     {
                         while (selectedItem != mRoot)

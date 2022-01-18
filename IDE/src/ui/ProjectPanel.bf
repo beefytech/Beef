@@ -2353,12 +2353,7 @@ namespace IDE.ui
         {
             ListViewItem selectedListViewItem = mListView.GetRoot().FindFocusedItem();           
             if (selectedListViewItem != null)
-            {
-                ProjectItem projectItem;
-                mListViewToProjectMap.TryGetValue(selectedListViewItem, out projectItem);
-				if (projectItem != null)
-                	RenameItem(projectItem);
-            }
+				EditListViewItem(selectedListViewItem);
         }
 
 		bool IsWorkspaceFolderNameUnique(String name, ListViewItem currentItem = null)
@@ -2381,10 +2376,12 @@ namespace IDE.ui
 		    parentListViewItem.mOpenButton?.Open(true, false);
 
 			String name = new .(16);
-			int32 checkIdx = 1;
+			int32 checkIdx = 0;
 			repeat
 			{
-				name..Clear().AppendF($"New Folder {checkIdx}");
+				name..Clear().AppendF($"New folder");
+				if (checkIdx > 0)
+					name.AppendF("{}", checkIdx + 1);
 				checkIdx++;
 			}
 			while(!IsWorkspaceFolderNameUnique(name));
@@ -2405,7 +2402,6 @@ namespace IDE.ui
 		    EditListViewItem(listViewItem);
 		    gApp.mWorkspace.SetChanged();
 		}
-
 
 
 		public Project ImportProject(String filePath, VerSpec verSpec = .None)
@@ -2603,7 +2599,7 @@ namespace IDE.ui
 					anItem = menu.AddItem("Rename");
 					anItem.mOnMenuItemSelected.Add(new (item) => { EditListViewItem(focusedItem); });
 					menu.AddItem();
-					anItem = menu.AddItem("Add Workspace Folder");
+					anItem = menu.AddItem("New Folder");
 					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder(folder.mListView); });
 					handled = true;
 				}
@@ -2621,8 +2617,7 @@ namespace IDE.ui
 					anItem = menu.AddItem("Add From Installed...");
 					anItem.mOnMenuItemSelected.Add(new (item) => { mImportInstalledDeferred = true; });
 
-					menu.AddItem();
-					anItem = menu.AddItem("Add Workspace Folder");
+					anItem = menu.AddItem("New Folder");
 					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder((ProjectListViewItem)mListView.GetRoot()); });
 					menu.AddItem();
 	                anItem = menu.AddItem("Properties...");
