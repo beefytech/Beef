@@ -620,7 +620,7 @@ namespace Tests
 				StructJ sji8e = (.)i8e;
 
 				Test.Assert(i32i == 23);
-				Test.Assert(i32e == 32);
+				Test.Assert(i32e == 34);
 				Test.Assert(i16i == 23);
 				Test.Assert(i16e == 23);
 				Test.Assert(i8i == 12);
