@@ -1209,7 +1209,7 @@ void BfModule::TryInitVar(BfAstNode* checkNode, BfLocalVariable* localVar, BfTyp
 
 	if (CanCast(initValue, varType))
 	{
-		if ((!varType->IsPointer()) && (!varType->IsObjectOrInterface()))
+		if ((!varType->IsPointer()) && (!varType->IsObjectOrInterface()) && (!varType->IsVar()))
 		{
 			if (!IsInSpecializedSection())
 			{
@@ -1260,7 +1260,11 @@ void BfModule::TryInitVar(BfAstNode* checkNode, BfLocalVariable* localVar, BfTyp
 					mBfIRBuilder->CreateAlignedStore(initValue.mValue, localVar->mAddr, initValue.mType->mAlign);
 			}
 
-			if ((varType->IsPointer()) || (varType->IsObjectOrInterface()))
+			if (varType->IsVar())
+			{
+				checkResult = GetDefaultTypedValue(boolType, false, BfDefaultValueKind_Undef);
+			}
+			else if ((varType->IsPointer()) || (varType->IsObjectOrInterface()))
 			{
 				checkResult = BfTypedValue(mBfIRBuilder->CreateIsNotNull(initValue.mValue), boolType);
 			}
@@ -1841,8 +1845,12 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		{
 			exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateIsNotNull(initValue.mValue), boolType);
 		}		
-		else
+		else if (resolvedType->IsVar())
 		{
+			exprEvaluator->mResult = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_Boolean), false, BfDefaultValueKind_Undef);
+		}
+		else
+		{			
 			// Always true
 			if ((!IsInSpecializedSection()) && (!resolvedType->IsGenericParam()))
 				Warn(BfWarning_CS0472_ValueTypeNullCompare, StrFormat("Variable declaration is always 'true' since a value of type '%s' can never be null", 

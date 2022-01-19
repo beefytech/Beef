@@ -10962,6 +10962,12 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 	mModule->AddDependency(targetType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
 
 	auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
+	if (targetValue.mType->IsVar())
+	{
+		mResult = mModule->GetDefaultTypedValue(boolType, false, BfDefaultValueKind_Undef);
+		return;
+	}
+	
 	if (targetValue.mType->IsValueTypeOrValueTypePtr())
 	{
 		auto typeInstance = targetValue.mType->ToTypeInstance();
@@ -11113,6 +11119,12 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		targetType = typeConstraint;		
 	}
 
+	if (targetType->IsVar())
+	{
+		mResult = mModule->GetDefaultTypedValue(targetType);
+		return;
+	}
+
 	if ((!targetType->IsObjectOrInterface()) && (!targetType->IsNullable()))
 	{
 		mModule->Fail(StrFormat("The as operator must be used with a reference type or nullable type ('%s' is a non-nullable value type)",
@@ -11157,6 +11169,12 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		}		
 		_CheckResult();
 		return;		
+	}
+
+	if (targetValue.mType->IsVar())
+	{
+		mResult = mModule->GetDefaultTypedValue(targetType, false, BfDefaultValueKind_Undef);
+		return;
 	}
 
 	if (targetValue.mType->IsValueTypeOrValueTypePtr())
@@ -15254,7 +15272,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 		
 		if (genericArg->IsVar())
 		{
-			BF_ASSERT(methodMatcher.mHasVarArguments);
+			//BF_ASSERT(methodMatcher.mHasVarArguments);
 			hasVarGenerics = true;
 		}
 
@@ -19373,14 +19391,14 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 			return thisValue;
 	}
 
-	if (thisValue.mType->IsNullable())
+	if ((thisValue.mType->IsNullable()) || (thisValue.mType->IsVar()))
 	{
 		// Success
 	}
 	else if ((thisValue.mType->IsPointer()) || (thisValue.mType->IsObjectOrInterface()))
 	{
 		// Also good
-	}
+	}	
 	else
 	{		
 		mModule->Warn(0, StrFormat("Null conditional reference is unnecessary since value type '%s' can never be null", mModule->TypeToString(thisValue.mType).c_str()), dotToken);		
@@ -22345,8 +22363,17 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 		auto underlyingType = resultType->GetUnderlyingType();
 		
-		BfIRValue convResultValue = mModule->CastToValue(resultTypeSrc, *resultTypedValue, underlyingType, BfCastFlags_Explicit);
-		BfIRValue convOtherValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, underlyingType, BfCastFlags_Explicit);
+		BfIRValue convResultValue;
+		if (resultTypedValue->mType == resultType)
+			convResultValue = mModule->LoadValue(*resultTypedValue).mValue;
+		else
+			convResultValue = mModule->CastToValue(resultTypeSrc, *resultTypedValue, underlyingType, BfCastFlags_Explicit);
+
+		BfIRValue convOtherValue;
+		if (otherTypedValue->mType == resultType)
+			convOtherValue = mModule->LoadValue(*otherTypedValue).mValue;
+		else
+			convOtherValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, underlyingType, BfCastFlags_Explicit);
 
 		if ((!underlyingType->IsValuelessType()) && ((!convResultValue) || (!convOtherValue)))
 			return;		

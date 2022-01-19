@@ -2800,6 +2800,8 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 		if (typeInstance->mTypeInfoEx == NULL)
 			typeInstance->mTypeInfoEx = new BfTypeInfoEx();
 
+		bool isAllInt64 = true;
+
 		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 		{
 			auto fieldInstance = &fieldInstanceRef;
@@ -2810,7 +2812,8 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 					continue;
 
 				auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-				BF_ASSERT((constant->mTypeCode == BfTypeCode_Int64) || (!underlyingTypeDeferred));
+				if (constant->mTypeCode != BfTypeCode_Int64)
+					isAllInt64 = false;
 
 				if (isFirst)
 				{
@@ -2851,7 +2854,7 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 			if (typeInstance->mIsCRepr)
 				typeCode = BfTypeCode_Int32;
 
-			if (typeCode != BfTypeCode_Int64)
+			if ((typeCode != BfTypeCode_Int64) || (!isAllInt64))
 			{
 				for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 				{
@@ -2861,6 +2864,8 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 					if (!fieldInstance->GetFieldDef()->IsEnumCaseEntry())
 						continue;
 					auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+					if (constant->mTypeCode == typeCode)
+						continue;
 					BfIRValue newConstant = typeInstance->mConstHolder->CreateConst(typeCode, constant->mUInt64);
 					fieldInstance->mConstIdx = newConstant.mId;
 				}
@@ -4848,6 +4853,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				member->mRefCount++;
 		}
 	}
+
+	if (_CheckTypeDone())
+		return;
 
 	if (typeInstance->mDefineState < BfTypeDefineState_Defined)
 	{
@@ -10551,9 +10559,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			auto genericArg = ResolveTypeRef(genericArgRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGenericTypeParamConstValue | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
 			if ((genericArg == NULL) || (genericArg->IsVar()))
-			{
+			{				
 				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+				return ResolveTypeResult(typeRef, genericArg->IsVar() ? genericArg : NULL, populateType, resolveFlags);
 			}
 			genericArgs.Add(genericArg);
 		}		
@@ -12713,7 +12721,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		{
 			auto result = BfTypedValue(mBfIRBuilder->GetFakeVal(), operatorConstraintReturnType);
 			if (result.mType != toType)
-				return CastToValue(srcNode, result, toType, BfCastFlags_Explicit, resultFlags);
+				return CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
 			if (result)
 				return result.mValue;
 		}
@@ -12741,50 +12749,74 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				}
 			}
 
+			bool doCall = true;
+
 			auto moduleMethodInstance = exprEvaluator.GetSelectedMethod(methodMatcher);
 			if (moduleMethodInstance.mMethodInstance != NULL)
 			{
-				auto paramType = moduleMethodInstance.mMethodInstance->GetParamType(0);
-				auto wantType = paramType;
-				if (wantType->IsRef())
-					wantType = wantType->GetUnderlyingType();
-				auto typedVal = methodMatcher.mArguments[0].mTypedValue;
-				if (wantType != typedVal.mType)
+				auto returnType = moduleMethodInstance.mMethodInstance->mReturnType;
+				if (typedVal.mType->IsTypedPrimitive())
 				{
-					if ((typedVal.mType->IsWrappableType()) && (wantType == GetWrappedStructType(typedVal.mType)))
+					auto underlyingType = typedVal.mType->GetUnderlyingType();
+					if ((returnType != underlyingType) && (CanCast(GetFakeTypedValue(underlyingType), toType, (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator))))
 					{
-						typedVal = MakeAddressable(typedVal);
-						methodMatcher.mArguments[0].mTypedValue = BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(wantType->ToTypeInstance())),
-							paramType, paramType->IsRef() ? BfTypedValueKind_Value : BfTypedValueKind_Addr);
+						if ((CanCast(GetFakeTypedValue(underlyingType), returnType)) &&
+							(!CanCast(GetFakeTypedValue(returnType), underlyingType)))
+						{
+							doCall = true;
+						}
+						else
+							doCall = false;
 					}
-					else
+				}
+
+				if (doCall)
+				{
+					auto paramType = moduleMethodInstance.mMethodInstance->GetParamType(0);
+					auto wantType = paramType;
+					if (wantType->IsRef())
+						wantType = wantType->GetUnderlyingType();
+					auto typedVal = methodMatcher.mArguments[0].mTypedValue;
+					if (wantType != typedVal.mType)
 					{
-						methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, typedVal, wantType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator));
-						if (paramType->IsRef())
+						if ((typedVal.mType->IsWrappableType()) && (wantType == GetWrappedStructType(typedVal.mType)))
 						{
 							typedVal = MakeAddressable(typedVal);
-							typedVal.mKind = BfTypedValueKind_Addr;
+							methodMatcher.mArguments[0].mTypedValue = BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(wantType->ToTypeInstance())),
+								paramType, paramType->IsRef() ? BfTypedValueKind_Value : BfTypedValueKind_Addr);
+						}
+						else
+						{
+							methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, typedVal, wantType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator));
+							if (paramType->IsRef())
+							{
+								typedVal = MakeAddressable(typedVal);
+								typedVal.mKind = BfTypedValueKind_Addr;
+							}
 						}
 					}
 				}
 			}
 
-			result = exprEvaluator.CreateCall(&methodMatcher, BfTypedValue());
-			if (resultFlags != NULL)
+			if (doCall)
 			{
-				if (result.IsAddr())
-					*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsAddr);
-				if (result.mKind == BfTypedValueKind_TempAddr)
-					*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsTemp);
+				result = exprEvaluator.CreateCall(&methodMatcher, BfTypedValue());
+				if (resultFlags != NULL)
+				{
+					if (result.IsAddr())
+						*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsAddr);
+					if (result.mKind == BfTypedValueKind_TempAddr)
+						*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsTemp);
+				}
+				else if (result.IsAddr())
+					result = LoadValue(result);
+
+				if (result.mType != toType)
+					return CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
+
+				if (result)
+					return result.mValue;
 			}
-			else if (result.IsAddr())
-				result = LoadValue(result);
-
-			if (result.mType != toType)
-				return CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
-
-			if (result)
-				return result.mValue;
 		}
 	}
 	
