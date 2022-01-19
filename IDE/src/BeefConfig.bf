@@ -114,7 +114,7 @@ namespace IDE
 			configFile.mFilePath = new String(path);
 
 			configFile.mConfigDir = new String();
-			Path.GetDirectoryPath(configFile.mFilePath, configFile.mConfigDir);
+			Path.GetDirectoryPath(configFile.mFilePath, configFile.mConfigDir).IgnoreError();
 
 			for (let projName in data.Enumerate("Registry"))
 			{
@@ -191,7 +191,7 @@ namespace IDE
 					watcher.OnDeleted.Add(new (fileName) => LibsChanged());
 					watcher.OnRenamed.Add(new (newName, oldName) => LibsChanged());
 					watcher.OnError.Add(new () => LibsChanged());
-					watcher.StartRaisingEvents();
+					watcher.StartRaisingEvents().IgnoreError();
 					mWatchers.Add(watcher);
 #endif
 				}
