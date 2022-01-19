@@ -267,6 +267,74 @@ namespace Tests
 			}
 		}
 
+		
+		enum MyEnum
+		{
+			Case1,
+			Case2,
+			Case3
+		}
+
+		enum MyOtherEnum
+		{
+			case One;
+			case Two;
+			case Three;
+
+			public static explicit operator MyEnum(Self self)
+			{
+				return .Case1;
+			}
+		}
+
+		struct StructI : int32
+		{
+			public static int8 operator implicit(Self self)
+			{
+				return 12;
+			}
+
+			public static int16 operator implicit(Self self)
+			{
+				return 23;
+			}
+		}
+
+		struct StructJ
+		{
+			public int mVal;
+
+			public static int8 operator implicit(Self self)
+			{
+				return 12;
+			}
+
+			public static int16 operator implicit(Self self)
+			{
+				return 23;
+			}
+
+			public static int32 operator explicit(Self self)
+			{
+				return 34;
+			}
+
+			public static Self operator explicit(int8 val)
+			{
+				return .(){mVal = 45};
+			}
+
+			public static Self operator implicit(int16 val)
+			{
+				return .(){mVal = 56};
+			}
+
+			public static Self operator implicit(int32 val)
+			{
+				return .(){mVal = 67};
+			}
+		}
+
 		/*struct OuterOp<T>
 		{
 			public struct InnerOp<T2>
@@ -503,6 +571,70 @@ namespace Tests
 			int8 a = 123;
 			int32 b = a + 100;
 			Test.Assert(b == 223);
+
+			MyOtherEnum myEnum = .One;
+			MyEnum me = (MyEnum)myEnum;
+			Test.Assert(me == .Case1);
+
+			//
+			{
+				StructI si = (.)123;
+
+				int32 i32i = si;
+				int32 i32e = (int32)si;
+				int16 i16i = si;
+				int16 i16e = (int16)si;
+				int8 i8i = si;
+				int8 i8e = (int8)si;
+				float fi = si;
+				float fe = (float)si;
+
+				Test.Assert(i32i == 23);
+				Test.Assert(i32e == 123);
+				Test.Assert(i16i == 23);
+				Test.Assert(i16e == 23);
+				Test.Assert(i8i == 12);
+				Test.Assert(i8e == 12);
+				Test.Assert(fi == 23);
+				Test.Assert(fe == 123);
+			}
+
+			///
+			{
+				StructJ sj = default;
+
+				int32 i32i = sj;
+				int32 i32e = (int32)sj;
+				int16 i16i = sj;
+				int16 i16e = (int16)sj;
+				int8 i8i = sj;
+				int8 i8e = (int8)sj;
+				float fi = sj;
+				float fe = (float)sj;
+
+				StructJ sji32i = i32i;
+				StructJ sji32e = (.)i32e;
+				StructJ sji16i = i16i;
+				StructJ sji16e = (.)i16e;
+				StructJ sji8i = i8i;
+				StructJ sji8e = (.)i8e;
+
+				Test.Assert(i32i == 23);
+				Test.Assert(i32e == 32);
+				Test.Assert(i16i == 23);
+				Test.Assert(i16e == 23);
+				Test.Assert(i8i == 12);
+				Test.Assert(i8e == 12);
+				Test.Assert(fi == 23);
+				Test.Assert(fe == 34);
+
+				Test.Assert(sji32i.mVal == 67);
+				Test.Assert(sji32e.mVal == 67);
+				Test.Assert(sji16i.mVal == 56);
+				Test.Assert(sji16e.mVal == 56);
+				Test.Assert(sji8i.mVal == 56);
+				Test.Assert(sji8e.mVal == 45);
+			}
 		}
 
 		struct IntStruct

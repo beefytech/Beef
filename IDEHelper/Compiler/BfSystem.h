@@ -900,8 +900,8 @@ public:
 	{
 		if (mOperatorDeclaration->mExplicitToken != NULL)
 			return mOperatorDeclaration->mExplicitToken->mToken == BfToken_Explicit;
-		if (mOperatorDeclaration->mOperatorToken != NULL)
-			return mOperatorDeclaration->mOperatorToken->mToken == BfToken_Explicit;
+		if (mOperatorDeclaration->mOpTypeToken != NULL)
+			return mOperatorDeclaration->mOpTypeToken->mToken == BfToken_Explicit;
 		return false;
 	}
 };

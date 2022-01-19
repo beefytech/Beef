@@ -773,6 +773,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		anyIsExtension = true;
 	}
 
+	BfCastFlags implicitCastFlags = ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None;
+
 	int newMethodParamCount = newMethodInstance->GetParamCount();
 	int prevMethodParamCount = prevMethodInstance->GetParamCount();
 
@@ -794,6 +796,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 
 		bool someArgWasBetter = false;
 		bool someArgWasWorse = false;
+		
 		for (argIdx = anyIsExtension ? -1 : 0; argIdx < (int)mArguments.size(); argIdx++)
 		{
 			BfTypedValue arg;
@@ -856,8 +859,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			{				
 				prevParamWasConstExpr = true;
 				prevParamType = ((BfConstExprValueType*)prevParamType)->mType;
-			}
-			
+			}									
+
 			bool paramsEquivalent = paramType == prevParamType;
 
 			if ((prevParamType == NULL) || (paramType == NULL))
@@ -871,6 +874,14 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				SET_BETTER_OR_WORSE((!isUnspecializedParam) && (!paramType->IsVar()), 
 					(!isPrevUnspecializedParam) && (!prevParamType->IsVar()));
 				
+				if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
+				{
+					// Pick the one that can implicitly cast
+					SET_BETTER_OR_WORSE(
+						mModule->CanCast(arg, paramType, implicitCastFlags), 
+						mModule->CanCast(arg, prevParamType, implicitCastFlags));
+				}
+
 				// Why did we have this !isUnspecializedParam check? We need the 'canCast' logic still
 				if ((!isBetter) && (!isWorse) /*&& (!isUnspecializedParam) && (!isPrevUnspecializedParam)*/)
 				{
@@ -887,8 +898,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 							isWorse = true;
 						else
 						{
-							bool canCastFromCurToPrev = mModule->CanCast(mModule->GetFakeTypedValue(paramType), prevParamType);
-							bool canCastFromPrevToCur = mModule->CanCast(mModule->GetFakeTypedValue(prevParamType), paramType);
+							bool canCastFromCurToPrev = mModule->CanCast(mModule->GetFakeTypedValue(paramType), prevParamType, implicitCastFlags);
+							bool canCastFromPrevToCur = mModule->CanCast(mModule->GetFakeTypedValue(prevParamType), paramType, implicitCastFlags);
 
 							if ((canCastFromCurToPrev) && (canCastFromPrevToCur))
 								paramsEquivalent = true;
@@ -980,6 +991,37 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 
 		if ((isBetter) || (isWorse))
 		{			
+			RETURN_RESULTS;
+		}
+	}
+	
+	// Choose by return type for conversion operators
+	if (((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) && (!isBetter) && (!isWorse))
+	{
+		auto returnType = newMethodInstance->mReturnType;
+		auto prevReturnType = prevMethodInstance->mReturnType;		
+
+		if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
+		{
+			// Pick the one that can implicitly cast
+			SET_BETTER_OR_WORSE(
+				mModule->CanCast(mModule->GetFakeTypedValue(returnType), mCheckReturnType, implicitCastFlags),
+				mModule->CanCast(mModule->GetFakeTypedValue(prevReturnType), mCheckReturnType, implicitCastFlags));
+		}
+
+		if ((!isBetter) && (!isWorse))
+		{
+			bool canCastFromCurToPrev = mModule->CanCast(mModule->GetFakeTypedValue(returnType), prevReturnType, implicitCastFlags);
+			bool canCastFromPrevToCur = mModule->CanCast(mModule->GetFakeTypedValue(prevReturnType), returnType, implicitCastFlags);
+
+			if ((canCastFromCurToPrev) && (!canCastFromPrevToCur))
+				isWorse = true;
+			else if ((canCastFromPrevToCur) && (!canCastFromCurToPrev))
+				isBetter = true;
+		}
+
+		if ((isBetter) || (isWorse))
+		{
 			RETURN_RESULTS;
 		}
 	}

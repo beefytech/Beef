@@ -12649,9 +12649,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				}
 			}
 		}
-
-		methodMatcher.FlushAmbiguityError();
-
+		
 		if (methodMatcher.mBestMethodDef != NULL)
 		{
 			if (mayBeBox)
@@ -12755,13 +12753,47 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			if (moduleMethodInstance.mMethodInstance != NULL)
 			{
 				auto returnType = moduleMethodInstance.mMethodInstance->mReturnType;
-				if (typedVal.mType->IsTypedPrimitive())
-				{
+				auto paramType = moduleMethodInstance.mMethodInstance->GetParamType(0);
+
+				BfCastFlags implicitCastFlags = (BfCastFlags)(castFlags & ~BfCastFlags_Explicit | BfCastFlags_NoConversionOperator);
+
+				// Check typedPrimitive->underlying cast
+				if ((explicitCast) && (typedVal.mType->IsTypedPrimitive()))
+				{					
 					auto underlyingType = typedVal.mType->GetUnderlyingType();
 					if ((returnType != underlyingType) && (CanCast(GetFakeTypedValue(underlyingType), toType, (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator))))
 					{
-						if ((CanCast(GetFakeTypedValue(underlyingType), returnType)) &&
+						float underlyingCanCast = CanCast(GetFakeTypedValue(underlyingType), toType, implicitCastFlags);
+						float returnCanCast = CanCast(GetFakeTypedValue(returnType), toType, implicitCastFlags);
+
+						if ((underlyingCanCast) &&
+							(!returnCanCast))
+						{							
+							doCall = false;
+						}
+						else if ((returnCanCast) &&
+							(!underlyingCanCast))
+						{
+							doCall = true;
+						}
+						else if ((CanCast(GetFakeTypedValue(underlyingType), returnType, implicitCastFlags)) &&
 							(!CanCast(GetFakeTypedValue(returnType), underlyingType)))
+						{
+							doCall = true;
+						}
+						else
+							doCall = false;
+					}
+				}
+
+				// Check underlying->typedPrimitive cast
+				if ((explicitCast) && (toType->IsTypedPrimitive()))
+				{
+					auto underlyingType = toType->GetUnderlyingType();
+					if ((paramType != underlyingType) && (CanCast(typedVal, underlyingType, (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator))))
+					{
+						if ((CanCast(GetFakeTypedValue(underlyingType), paramType, implicitCastFlags)) &&
+							(!CanCast(GetFakeTypedValue(paramType), underlyingType, implicitCastFlags)))
 						{
 							doCall = true;
 						}
@@ -12772,7 +12804,8 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 				if (doCall)
 				{
-					auto paramType = moduleMethodInstance.mMethodInstance->GetParamType(0);
+					methodMatcher.FlushAmbiguityError();
+
 					auto wantType = paramType;
 					if (wantType->IsRef())
 						wantType = wantType->GetUnderlyingType();
