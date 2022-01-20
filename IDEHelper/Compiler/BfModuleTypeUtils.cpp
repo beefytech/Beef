@@ -344,7 +344,13 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 
 	int startGenericParamIdx = 0;
 	if (typeDef->mOuterType != NULL)
+	{
 		startGenericParamIdx = typeDef->mOuterType->mGenericParamDefs.mSize + typeDef->mOuterType->mExternalConstraints.mSize;
+		auto outerType = GetOuterType(genericTypeInst);
+		PopulateType(outerType, BfPopulateType_Declaration);
+		if ((outerType->mGenericTypeInfo != NULL) && (outerType->mGenericTypeInfo->mHadValidateErrors))					
+			genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
+	}
 
 	for (int paramIdx = startGenericParamIdx; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mGenericParams.size(); paramIdx++)
 	{
