@@ -326,7 +326,7 @@ namespace IDE
 			public Color mVisibleWhiteSpace = 0xFF9090C0;
 			public Color mCurrentLineHilite = 0xFF4C4C54;
 			public Color mCurrentLineNumberHilite = 0x18FFFFFF;
-			public Color mMatchingParensHilite = 0x28FFFFFF;
+			public Color mCharPairHilite = 0x1DFFFFFF;
 
 			public void Deserialize(StructuredData sd)
 			{
@@ -387,7 +387,7 @@ namespace IDE
 				GetColor("VisibleWhiteSpace", ref mVisibleWhiteSpace);
 				GetColor("CurrentLineHilite", ref mCurrentLineHilite);
 				GetColor("CurrentLineNumberHilite", ref mCurrentLineNumberHilite);
-				GetColor("MatchingParensHilite", ref mMatchingParensHilite);
+				GetColor("CharPairHilite", ref mCharPairHilite);
 			}
 
 			public void Apply()
@@ -419,7 +419,7 @@ namespace IDE
 				DarkTheme.COLOR_MENU_FOCUSED = mMenuFocused;
 				DarkTheme.COLOR_MENU_SELECTED = mMenuSelected;
 				DarkTheme.COLOR_CURRENT_LINE_HILITE = mCurrentLineHilite;
-				DarkTheme.COLOR_MATCHING_PARENS_HILITE = mMatchingParensHilite;
+				DarkTheme.COLOR_CHAR_PAIR_HILITE = mCharPairHilite;
 			}
 		}
 

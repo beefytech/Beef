@@ -4834,7 +4834,7 @@ namespace IDE.ui
 				if (mHilitePairedCharState case .Valid(?, let x1, let y1, let x2, let y2, let charWidth))
 				{
 					let height = mFont.GetHeight() + GS!(2);
-					using (g.PushColor(DarkTheme.COLOR_MATCHING_PARENS_HILITE))
+					using (g.PushColor(DarkTheme.COLOR_CHAR_PAIR_HILITE))
 					{
 						g.FillRect(x1, y1, charWidth, height);
 						g.FillRect(x2, y2, charWidth, height);

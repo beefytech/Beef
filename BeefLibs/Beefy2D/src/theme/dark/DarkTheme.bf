@@ -192,7 +192,7 @@ namespace Beefy.theme.dark
         public static uint32 COLOR_MENU_FOCUSED           = 0xFFE5A910;
         public static uint32 COLOR_MENU_SELECTED          = 0xFFCB9B80;
 		public static uint32 COLOR_CURRENT_LINE_HILITE    = 0xFF4C4C54;
-		public static uint32 COLOR_MATCHING_PARENS_HILITE = 0x28FFFFFF;
+		public static uint32 COLOR_CHAR_PAIR_HILITE       = 0x1DFFFFFF;
 
 		public static float sScale = 1.0f;
 		public static int32 sSrcImgScale = 1;
