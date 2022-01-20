@@ -283,7 +283,7 @@ namespace Tests
 
 			public static explicit operator MyEnum(Self self)
 			{
-				return .Case1;
+				return .Case2;
 			}
 		}
 
@@ -572,9 +572,9 @@ namespace Tests
 			int32 b = a + 100;
 			Test.Assert(b == 223);
 
-			MyOtherEnum myEnum = .One;
-			MyEnum me = (MyEnum)myEnum;
-			Test.Assert(me == .Case1);
+			MyOtherEnum moe = .One;
+			MyEnum me = (MyEnum)moe;
+			Test.Assert(me == .Case2);
 
 			//
 			{
