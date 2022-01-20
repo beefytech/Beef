@@ -339,9 +339,14 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 		if (genericArg != NULL)
 			genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, genericArg->mGenericTypeInfo->mMaxGenericDepth + 1);
 	}
-
+		
 	auto typeDef = genericTypeInst->mTypeDef;		
-	for (int paramIdx = 0; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mGenericParams.size(); paramIdx++)
+
+	int startGenericParamIdx = 0;
+	if (typeDef->mOuterType != NULL)
+		startGenericParamIdx = typeDef->mOuterType->mGenericParamDefs.mSize + typeDef->mOuterType->mExternalConstraints.mSize;
+
+	for (int paramIdx = startGenericParamIdx; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mGenericParams.size(); paramIdx++)
 	{
 		auto genericParamInstance = genericTypeInst->mGenericTypeInfo->mGenericParams[paramIdx];
 		
@@ -3196,7 +3201,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			auto baseType = ResolveTypeRef(baseTypeRef, BfPopulateType_Declaration);
 			if (baseType != NULL)
 			{
-				if (baseType->IsPrimitiveType())
+				if (baseType->IsVar())
+				{
+					// Ignore
+				}
+				else if (baseType->IsPrimitiveType())
 				{
 					underlyingType = baseType;
 				}
@@ -3435,6 +3444,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				if (!canDeriveFrom)
 				{
 					Fail("Cannot derive from this type", checkTypeRef);
+					continue;
+				}
+
+				if (checkType->IsVar())
+				{
+					// This can't explicitly be specified, but can occur from comptime
 					continue;
 				}
 
@@ -5769,7 +5784,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 					{
 						if (matchedMethod == NULL)
 						{
-							AssertErrorState();
+							// Assert on base type?
+							//AssertErrorState();
 						}
 						else
 						{
@@ -9403,6 +9419,14 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 					genericParamResult = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[genericParamIdx];
 					genericTypeConstraint = genericTypeInst->mGenericTypeInfo->mGenericParams[genericParamIdx]->mTypeConstraint;
 
+					if (contextTypeInstance != genericCheckTypeInstance)
+					{
+						// Don't allow an 'unspecialized variation' generic param
+						auto checkResult = contextTypeInstance->mGenericTypeInfo->mTypeGenericArguments[genericParamIdx];
+						if (!checkResult->IsGenericParam())
+							genericParamResult = checkResult;
+					}
+
 					HandleTypeGenericParamRef(identifierNode, genericTypeInst->mTypeDef, genericParamIdx);
 				}
 			}
@@ -9410,18 +9434,30 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 
 		if ((contextMethodInstance != NULL) && (genericParamResult == NULL))
 		{
-			for (int genericParamIdx = (int)contextMethodInstance->mMethodDef->mGenericParams.size() - 1; genericParamIdx >= 0; genericParamIdx--)
+			auto checkMethodInstance = contextMethodInstance;
+			if (checkMethodInstance->mIsUnspecializedVariation)
+				checkMethodInstance = GetUnspecializedMethodInstance(checkMethodInstance);
+
+			for (int genericParamIdx = (int)checkMethodInstance->mMethodDef->mGenericParams.size() - 1; genericParamIdx >= 0; genericParamIdx--)
 			{
-				auto checkGenericParamDef = contextMethodInstance->mMethodDef->mGenericParams[genericParamIdx];
+				auto checkGenericParamDef = checkMethodInstance->mMethodDef->mGenericParams[genericParamIdx];
 				String genericName = checkGenericParamDef->mName;
 				if (genericName == findName)
 				{
 					genericParamDef = checkGenericParamDef;
 					origGenericParamDef = checkGenericParamDef;
-					genericParamResult = contextMethodInstance->mMethodInfoEx->mMethodGenericArguments[genericParamIdx];
-					genericTypeConstraint = contextMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx]->mTypeConstraint;
+					genericParamResult = checkMethodInstance->mMethodInfoEx->mMethodGenericArguments[genericParamIdx];
+					genericTypeConstraint = checkMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx]->mTypeConstraint;
 
-					HandleMethodGenericParamRef(identifierNode, contextMethodInstance->GetOwner()->mTypeDef, contextMethodInstance->mMethodDef, genericParamIdx);
+					if (contextMethodInstance != checkMethodInstance)
+					{
+						// Don't allow an 'unspecialized variation' generic param
+						auto checkResult = contextMethodInstance->mMethodInfoEx->mMethodGenericArguments[genericParamIdx];
+						if (!checkResult->IsGenericParam())
+							genericParamResult = checkResult;
+					}
+
+					HandleMethodGenericParamRef(identifierNode, contextMethodInstance->GetOwner()->mTypeDef, checkMethodInstance->mMethodDef, genericParamIdx);
 				}
 			}
 		}
@@ -10804,10 +10840,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		auto typeDef = mCompiler->mNullableTypeDef;
 
 		auto elementType = ResolveTypeRef(elementTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);
-		if (elementType == NULL)
+		if ((elementType == NULL) || (elementType->IsVar()))
 		{
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+			return ResolveTypeResult(typeRef, elementType, populateType, resolveFlags);
 		}
 
 		BfTypeInstance* genericTypeInst = new BfTypeInstance();
@@ -10837,15 +10873,16 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	else if (auto pointerTypeRef = BfNodeDynCast<BfPointerTypeRef>(typeRef))
 	{
 		BfPointerType* pointerType = new BfPointerType();
-		pointerType->mElementType = ResolveTypeRef(pointerTypeRef->mElementType, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);
-		pointerType->mContext = mContext;
-		if (pointerType->mElementType == NULL)
+		auto elementType = ResolveTypeRef(pointerTypeRef->mElementType, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);		
+		if ((elementType == NULL) || (elementType->IsVar()))
 		{
 			delete pointerType;
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+			return ResolveTypeResult(typeRef, elementType, populateType, resolveFlags);
 		}
 
+		pointerType->mElementType = elementType;
+		pointerType->mContext = mContext;
 		resolvedEntry->mValue = pointerType;
 
 		//int hashVal = mContext->mResolvedTypes.Hash(typeRef, &lookupCtx);
@@ -10866,14 +10903,15 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			refType->mRefKind = BfRefType::RefKind_Out;
 		else if (refTypeRef->mRefToken->GetToken() == BfToken_Mut)
 			refType->mRefKind = BfRefType::RefKind_Mut;
-		refType->mElementType = ResolveTypeRef(refTypeRef->mElementType, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);
-		if (refType->mElementType == NULL)
+		auto elementType = ResolveTypeRef(refTypeRef->mElementType, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);		
+		if ((elementType == NULL) || (elementType->IsVar()))
 		{
 			delete refType;
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+			return ResolveTypeResult(typeRef, elementType, populateType, resolveFlags);
 		}
 
+		refType->mElementType = elementType;
 		resolvedEntry->mValue = refType;
 		BF_ASSERT(BfResolvedTypeSet::Hash(refType, &lookupCtx) == resolvedEntry->mHash);
 		populateModule->InitType(refType, populateType);

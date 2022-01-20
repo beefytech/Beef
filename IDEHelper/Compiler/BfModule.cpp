@@ -3619,7 +3619,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 
 void BfModule::AddDependency(BfGenericParamInstance* genericParam, BfTypeInstance* usingType)
 {
-	if (!genericParam->mExternType->IsGenericParam())
+	if ((genericParam->mExternType != NULL) && (!genericParam->mExternType->IsGenericParam()))
 		AddDependency(genericParam->mExternType, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 	for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
 		AddDependency(constraintTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
@@ -18718,7 +18718,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 	if (!methodInstance->mIsReified)
 		BF_ASSERT(!mIsReified);
 	
-	BF_ASSERT(!methodInstance->GetOwner()->IsUnspecializedTypeVariation());
+	BF_ASSERT((!methodInstance->GetOwner()->IsUnspecializedTypeVariation()) || (mIsComptimeModule));
 
 	if (methodInstance->mMethodInfoEx != NULL)
 	{
@@ -19060,7 +19060,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		methodState.mGenericTypeBindings = &methodInstance->GetMethodInfoEx()->mGenericTypeBindings;
 	}
 	else if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) || 
-		((mCurTypeInstance->IsGenericTypeInstance()) && (!isGenericVariation) && (!methodInstance->mMethodDef->mIsLocalMethod) && (!methodInstance->mMethodDef->mDeclaringType->IsEmitted()))))
+		((mCurTypeInstance->IsGenericTypeInstance()) && (!isGenericVariation || mIsComptimeModule) && (!methodInstance->mMethodDef->mIsLocalMethod) && (!methodInstance->mMethodDef->mDeclaringType->IsEmitted()))))
 	{
 		unspecializedMethodInstance = GetUnspecializedMethodInstance(methodInstance, !methodInstance->mMethodDef->mIsLocalMethod);
 

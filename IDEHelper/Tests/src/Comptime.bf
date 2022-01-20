@@ -145,6 +145,7 @@ namespace Tests
 				if (cFieldCount == 0)
 					return default(decltype(cMembers));
 
+#unwarn
 				decltype(cMembers) fields = ?;
 
 				int i = 0;
@@ -278,6 +279,132 @@ namespace Tests
 			}
 		}
 
+		struct Yes;
+		struct No;
+
+		struct IsDictionary<T>
+		{
+			public typealias Result = comptype(_isDict(typeof(T)));
+
+			[Comptime]
+			private static Type _isDict(Type type)
+			{
+				if (let refType = type as SpecializedGenericType && refType.UnspecializedType == typeof(Dictionary<,>))
+					return typeof(Yes);
+				return typeof(No);
+			}
+		}
+
+		struct GetArg<T, C>
+			where C : const int
+		{
+			public typealias Result = comptype(_getArg(typeof(T), C));
+
+			[Comptime]
+			private static Type _getArg(Type type, int argIdx)
+			{
+				if (let refType = type as SpecializedGenericType)
+					return refType.GetGenericArg(argIdx);
+				return typeof(void);
+			}
+		}
+
+		public class DictWrapper<T> where T : var
+		{
+			private T mValue = new .() ~ delete _;
+		}
+
+		extension DictWrapper<T>
+			where T : var
+			where IsDictionary<T>.Result : Yes
+		{
+			typealias TKey = GetArg<T, const 0>.Result;
+			typealias TValue = GetArg<T, const 1>.Result;
+			typealias KeyValuePair = (TKey key, TValue value);
+			typealias KeyRefValuePair = (TKey key, TValue* valueRef);
+
+			public ValueEnumerator GetValueEnumerator()
+			{
+				return ValueEnumerator(this);
+			}
+
+			public struct ValueEnumerator : IRefEnumerator<TValue*>, IEnumerator<TValue>, IResettable
+			{
+				private SelfOuter mParent;
+				private int_cosize mIndex;
+				private TValue mCurrent;
+
+				const int_cosize cDictEntry = 1;
+				const int_cosize cKeyValuePair = 2;
+
+				public this(SelfOuter parent)
+				{
+					mParent = parent;
+					mIndex = 0;
+					mCurrent = default;
+				}
+
+				public bool MoveNext() mut
+				{
+			        // Use unsigned comparison since we set index to dictionary.count+1 when the enumeration ends.
+			        // dictionary.count+1 could be negative if dictionary.count is Int32.MaxValue
+					while ((uint)mIndex < (uint)mParent.[Friend]mValue.[Friend]mCount)
+					{
+						if (mParent.[Friend]mValue.[Friend]mEntries[mIndex].mHashCode >= 0)
+						{
+							mCurrent = mParent.[Friend]mValue.[Friend]mEntries[mIndex].mValue;
+							mIndex++;
+							return true;
+						}
+						mIndex++;
+					}
+
+					mIndex = mParent.[Friend]mValue.[Friend]mCount + 1;
+					mCurrent = default;
+					return false;
+				}
+
+				public TValue Current
+				{
+#unwarn
+					get { return mCurrent; }
+				}
+
+				public ref TValue CurrentRef
+				{
+					get mut { return ref mCurrent; } 
+				}
+
+				public ref TKey Key
+				{
+					get
+					{
+						return ref mParent.[Friend]mValue.[Friend]mEntries[mIndex].mKey;
+					}
+				}
+
+				public void Reset() mut
+				{
+					mIndex = 0;
+					mCurrent = default;
+				}
+
+				public Result<TValue> GetNext() mut
+				{
+					if (!MoveNext())
+						return .Err;
+					return Current;
+				}
+
+				public Result<TValue*> GetNextRef() mut
+				{
+					if (!MoveNext())
+						return .Err;
+					return &CurrentRef;
+				}
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -327,6 +454,20 @@ namespace Tests
 			ClassB<const 3>.TA f = default;
 			Test.Assert(typeof(decltype(f)) == typeof(float));
 			Test.Assert(ClassB<const 3>.cTimesTen == 30);
+
+			DictWrapper<Dictionary<int, float>> dictWrap = scope .();
+			dictWrap.[Friend]mValue.Add(1, 2.3f);
+			dictWrap.[Friend]mValue.Add(2, 3.4f);
+			int idx = 0;
+			for (var value in dictWrap.GetValueEnumerator())
+			{
+				if (idx == 0)
+					Test.Assert(value == 2.3f);
+				else
+					Test.Assert(value == 3.4f);
+				++idx;
+			} 
+			Test.Assert(idx == 2);
 		}
 	}
 }

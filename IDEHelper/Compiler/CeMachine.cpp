@@ -3461,7 +3461,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		if (type->IsSizedArray())
 		{
 			auto sizedArrayType = (BfSizedArrayType*)type;
-			for (int i = 0; i < sizedArrayType->mSize; i++)
+			for (int i = 0; i < sizedArrayType->mElementCount; i++)
 			{
 				auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[i]);
 				if (fieldConstant == NULL)
@@ -3556,6 +3556,12 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	{		
 		BF_ASSERT(type->IsComposite());
 		memset(mMemory.mVals + addr, 0, type->mSize);		
+		return true;
+	}
+
+	if (constant->mConstType == BfConstType_Undef)
+	{
+		memset(mMemory.mVals + addr, 0, type->mSize);
 		return true;
 	}
 
@@ -4130,8 +4136,8 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 				{
 					args[argIdx] = module->CreateTypeDataRef(module->GetPrimitiveType(BfTypeCode_None));
 				}
-				else
-					isConst = false;
+// 				else
+// 					isConst = false;
 			}
 		}
 

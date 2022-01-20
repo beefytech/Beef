@@ -5632,10 +5632,6 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			{
 				mModule->Fail("Const evaluation not allowed with cascade operator", targetSrc);
 			}			
-			else if (methodInstance->mIsUnspecialized)
-			{
-				doConstReturn = true;
-			}
 			else if (((methodInstance->mComptimeFlags & BfComptimeFlag_OnlyFromComptime) != 0) && (!mModule->mIsComptimeModule))
 			{
 				// This either generated an error already or this is just the non-const type check pass for a comptime-only method
@@ -5656,41 +5652,25 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			}
 			else
 			{
-				bool hasUndef = false;
-				for (auto arg : irArgs)
+				CeEvalFlags evalFlags = CeEvalFlags_None;
+				if ((mBfEvalExprFlags & BfEvalExprFlags_NoCeRebuildFlags) != 0)
+					evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_NoRebuild);
+				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
+				if (constRet)
 				{
-					auto constant = mModule->mBfIRBuilder->GetConstant(arg);
-					if (constant == NULL)
-						continue;
-					if (constant->mConstType == BfConstType_Undef)
-					{
-						hasUndef = true;
-						break;
-					}
+					auto constant = mModule->mBfIRBuilder->GetConstant(constRet.mValue);
+					BF_ASSERT(!constRet.mType->IsVar());
+					return constRet;
 				}
 
-				if (!hasUndef)
+				if (mModule->mCompiler->mFastFinish)
 				{
-					CeEvalFlags evalFlags = CeEvalFlags_None;
-					if ((mBfEvalExprFlags & BfEvalExprFlags_NoCeRebuildFlags) != 0)
-						evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_NoRebuild);
-					auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
-					if (constRet)
+					if ((mModule->mCurMethodInstance == NULL) || (!mModule->mCurMethodInstance->mIsAutocompleteMethod))
 					{
-						auto constant = mModule->mBfIRBuilder->GetConstant(constRet.mValue);
-						BF_ASSERT(!constRet.mType->IsVar());
-						return constRet;
+						// We didn't properly resolve this so queue for a rebuild later
+						mModule->DeferRebuildType(mModule->mCurTypeInstance);
 					}
-
-					if (mModule->mCompiler->mFastFinish)
-					{
-						if ((mModule->mCurMethodInstance == NULL) || (!mModule->mCurMethodInstance->mIsAutocompleteMethod))
-						{
-							// We didn't properly resolve this so queue for a rebuild later
-							mModule->DeferRebuildType(mModule->mCurTypeInstance);
-						}
-					}
-				}				
+				}
 				doConstReturn = true;
 			}			
 		}
@@ -10518,6 +10498,10 @@ void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)
 	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeOfExpr->mTypeRef))
 	{
 		type = mModule->ResolveTypeRefAllowUnboundGenerics(typeOfExpr->mTypeRef, BfPopulateType_Identity);
+	}
+	else if ((typeOfExpr->mTypeRef != NULL) && (typeOfExpr->mTypeRef->IsA<BfVarTypeReference>()))
+	{
+		type = mModule->GetPrimitiveType(BfTypeCode_Var);
 	}
 	else
 	{
@@ -19602,19 +19586,19 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 			return;
 		}
 
+		if (mExpectingType->IsVar())
+		{
+			mResult = mModule->GetDefaultTypedValue(mExpectingType);
+			return;
+		}
+
 		if (expectingTypeInst == NULL)		
 		{
 			if (mModule->PreFail())
 				mModule->Fail(StrFormat("Unqualified dot syntax cannot be used with type '%s'", mModule->TypeToString(mExpectingType).c_str()), nameRefNode);
 			return;
 		}
-
-		if (mExpectingType->IsVar())
-		{
-			mResult = mModule->GetDefaultTypedValue(mExpectingType);
-			return;
-		}		
-
+		
 		BfTypedValue expectingVal(expectingTypeInst);
 		mResult = LookupField(memberRefExpr->mMemberName, expectingVal, findName);
 		if ((mResult) || (mPropDef != NULL))
