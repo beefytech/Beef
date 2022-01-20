@@ -94,6 +94,8 @@ static BOOL KeyboardLayoutHasAltGr(HKL layout)
 
 WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
+	//OutputDebugStrF("Wnd %p Create\n", this);
+
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	
 	mMinWidth = 128;
@@ -309,10 +311,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 WinBFWindow::~WinBFWindow()
 {	
-	for (auto child : mChildren)
-	{
-		NOP;
-	}
+	//OutputDebugStrF("Wnd %p Destroyed\n", this);
 
 	if (mHWnd != NULL)
 		Destroy();
@@ -575,12 +574,14 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			for (int i = 0; i < MOUSEBUTTON_MAX; i++)
 			{
-				if (mIsMouseDown[i])				
+				if (mIsMouseDown[i])
 				{
 					mMouseUpFunc(this, mousePoint.x, mousePoint.y, i);
 					mIsMouseDown[i] = false;
+
+					//OutputDebugStrF("Wnd %p mNeedsStateReset MouseUp %d\n", this, i);
 				}
-			}				
+			}
 
 			//OutputDebugStrF("Rehup ReleaseCapture()\n");
 			ReleaseCapture();
@@ -664,9 +665,24 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					BF_ASSERT(btn < MOUSEBUTTON_MAX);
 					if (btn >= MOUSEBUTTON_MAX)
 						return;
+
+					//OutputDebugStrF("Wnd %p BtnDown %d\n", this, btn);
+
 					DWORD tickNow = BFTickCount();
 
-					SetCapture(hWnd);
+					if (::SetCapture(hWnd) != hWnd)
+					{
+						// Not captured, no buttons were down
+						for (int i = 0; i < MOUSEBUTTON_MAX; i++)
+						{
+							if (mIsMouseDown[i])
+							{
+								mMouseUpFunc(this, x, y, i);
+								mIsMouseDown[i] = false;
+								//OutputDebugStrF("Wnd %p BtnDown MouseUp %d\n", this, i);
+							}
+						}
+					}
 					mIsMouseDown[btn] = true;
 					BFCoord mouseCoords = { x, y };
 					if ((mouseCoords.mX != mMouseDownCoords[btn].mX) || (mouseCoords.mY != mMouseDownCoords[btn].mY) || 
@@ -683,6 +699,9 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					BF_ASSERT(btn < MOUSEBUTTON_MAX);
 					if (btn >= MOUSEBUTTON_MAX)
 						return;
+
+					//OutputDebugStrF("Wnd %p BtnUp %d\n", this, btn);
+
 					releaseCapture = true;
 					mIsMouseDown[btn] = false;
 					mMouseUpFunc(this, x, y, btn);
@@ -832,6 +851,8 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				if (releaseCapture)
 				{
+					//OutputDebugStrF("Wnd %p Release Capture\n", this);
+
 					//OutputDebugStrF("ReleaseCapture\n");
 					ReleaseCapture();
 
@@ -1645,7 +1666,7 @@ void WinBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 
 void WinBFWindow::CaptureMouse()
 {
-	//OutputDebugStrF("CaptureMouse() Capture HWnd: %X\n", mHWnd);
+	//OutputDebugStrF("Wnd %p CaptureMouse", this);
 	::SetCapture(mHWnd);
 	
 	for (auto window : gBFApp->mWindowList)
