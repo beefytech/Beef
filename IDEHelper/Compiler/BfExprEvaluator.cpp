@@ -4351,11 +4351,11 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 		if (isUnspecializedSection)
 		{
+			auto origTarget = target;
+
 			if (genericParamInst->mTypeConstraint != NULL)
 			{
-				target.mType = genericParamInst->mTypeConstraint;
-				if (target.mType->IsWrappableType())
-					target.mType = mModule->GetWrappedStructType(target.mType);
+				target.mType = genericParamInst->mTypeConstraint;				
 			}
 			else
 				target.mType = mModule->mContext->mBfObjectType;
@@ -4364,6 +4364,28 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			{
 				target.mType = mModule->GetPrimitiveType(BfTypeCode_Var);
 			}
+
+			if (origTarget.mType->IsTypeGenericParam())
+			{
+				// Check for extern constraint in method generic params
+				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+				{
+					for (auto genericParam : mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams)
+					{
+						if (genericParam->mExternType == origTarget.mType)
+						{
+							if (genericParam->mTypeConstraint != NULL)
+							{
+								target.mType = genericParam->mTypeConstraint;
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			if (target.mType->IsWrappableType())
+				target.mType = mModule->GetWrappedStructType(target.mType);
 		}
 		else
 		{
