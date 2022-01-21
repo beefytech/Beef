@@ -19195,7 +19195,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 					refNode = operatorDef->mOperatorDeclaration->mCommas[0];
 				Fail("Conversion operators must declare one parameter", refNode);
 			}
-			else
+			else if ((methodInstance->mIsUnspecialized) && (!methodInstance->mIsUnspecializedVariation))
 			{
 				auto checkParam0 = mCurMethodInstance->GetParamType(0);
 				if ((checkParam0->IsRef()) && (!checkParam0->IsOut()))

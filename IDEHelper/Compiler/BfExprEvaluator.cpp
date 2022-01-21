@@ -1941,13 +1941,13 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			}
 		}
 
-// 		while (true)
-// 		{
-// 
-// 		}
-
-		//
-
+		if ((mCheckReturnType != NULL) && (methodInstance->mReturnType->IsUnspecializedType()))
+		{
+			genericInferContext.mCheckedTypeSet.Clear();
+			if (!genericInferContext.InferGenericArgument(methodInstance, mCheckReturnType, methodInstance->mReturnType, BfIRValue()))
+				return ResultKind_Failed;
+		}
+		
 		bool failed = false;
 		bool inferredAllGenericArguments = false;
 		for (int pass = 0; true; pass++)
@@ -2172,20 +2172,20 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 	if (mCheckReturnType != NULL)
 	{
-		auto wantType = mCheckReturnType;
-		if ((genericArgumentsSubstitute != NULL) && (wantType->IsUnspecializedType()))
+		auto returnType = methodInstance->mReturnType;
+		if ((genericArgumentsSubstitute != NULL) && (returnType->IsUnspecializedType()))
 		{			
-			auto resolvedType = mModule->ResolveGenericType(wantType, typeGenericArguments, genericArgumentsSubstitute, false);
+			auto resolvedType = mModule->ResolveGenericType(returnType, typeGenericArguments, genericArgumentsSubstitute, false);
 			if (resolvedType == NULL)
 				goto NoMatch;
-			wantType = resolvedType;
+			returnType = resolvedType;
 		}
-		wantType = mModule->ResolveSelfType(wantType, typeInstance);
+		returnType = mModule->ResolveSelfType(returnType, typeInstance);
 
 		BfCastFlags castFlags = ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None;
 		if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
 			castFlags = (BfCastFlags)(castFlags | BfCastFlags_Explicit);
-		if (!mModule->CanCast(mModule->GetFakeTypedValue(methodInstance->mReturnType), wantType, castFlags))
+		if (!mModule->CanCast(mModule->GetFakeTypedValue(returnType), mCheckReturnType, castFlags))
 			goto NoMatch;
 	}
 
@@ -2206,7 +2206,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				goto NoMatch;
 			
 			if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, NULL, genericParams[checkGenericIdx], genericArgumentsSubstitute, NULL))			
-				goto NoMatch;			
+				goto NoMatch;
 		}
 	}
 

@@ -336,6 +336,15 @@ namespace Tests
 			}
 		}
 
+		struct StructK : uint64
+		{
+			public static T operator implicit<T>(Self self)
+			    where T : operator explicit uint64
+			{
+			    return (.)(uint64)self;
+			}
+		}
+
 		/*struct OuterOp<T>
 		{
 			public struct InnerOp<T2>
@@ -644,6 +653,10 @@ namespace Tests
 				Test.Assert(sji8i.mVal == 56);
 				Test.Assert(sji8e.mVal == 45);
 			}
+
+			StructK sk = (.)123;
+			uint64 sku32 = sk;
+			Test.Assert(sku32 == 123);
 		}
 
 		struct IntStruct

@@ -12805,7 +12805,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if ((explicitCast) && (typedVal.mType->IsTypedPrimitive()))
 				{					
 					auto underlyingType = typedVal.mType->GetUnderlyingType();
-					if ((returnType != underlyingType) && (CanCast(GetFakeTypedValue(underlyingType), toType, (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator))))
+					if ((returnType == underlyingType) && (explicitCast))
+					{
+						doCall = false;
+					}
+					else if ((CanCast(GetFakeTypedValue(underlyingType), toType, (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator))))
 					{
 						float underlyingCanCast = CanCast(GetFakeTypedValue(underlyingType), toType, implicitCastFlags);
 						float returnCanCast = CanCast(GetFakeTypedValue(returnType), toType, implicitCastFlags);
@@ -12834,8 +12838,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if ((explicitCast) && (toType->IsTypedPrimitive()))
 				{
 					auto underlyingType = toType->GetUnderlyingType();
-					if ((paramType != underlyingType) && 
-						(CanCast(typedVal, underlyingType, (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator))))
+					if ((paramType == underlyingType) && (explicitCast))
+					{
+						doCall = false;
+					}
+					else if (CanCast(typedVal, underlyingType, (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator)))
 					{
 						float underlyingCanCast = CanCast(typedVal, underlyingType, implicitCastFlags);
 						float paramCanCast = CanCast(typedVal, paramType, implicitCastFlags);
