@@ -2044,7 +2044,10 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], paramsElementType, genericArgumentsSubstitute);
 					if (!argTypedValue.HasType())
 						goto NoMatch;
-					if (!mModule->CanCast(argTypedValue, paramsElementType))
+					BfCastFlags castFlags = ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None;
+					if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
+						castFlags = (BfCastFlags)(castFlags | BfCastFlags_Explicit);
+					if (!mModule->CanCast(argTypedValue, paramsElementType, castFlags))
 						goto NoMatch;
 					argIdx++;
 					argMatchCount++;
