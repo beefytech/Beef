@@ -96,6 +96,14 @@ namespace Tests
 			return val3;
 		}
 
+		public static float AddFloats<C>(params float[C] vals) where C : const int
+		{
+			float total = 0;
+			for (var val in vals)
+				total += val;
+			return total;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -117,6 +125,8 @@ namespace Tests
 			Test.Assert(self.Method3b(sa) == sa);
 			Test.Assert(self.Method4b(sa, sa2) == sa2);
 			Test.Assert(self.Method5b(sa, sa2, sa3) == sa3);
+
+			Test.Assert(AddFloats(1.0f, 2, 3) == 6.0f);
 		}
 	}
 }

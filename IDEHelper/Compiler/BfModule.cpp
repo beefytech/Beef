@@ -22672,6 +22672,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				// Array is the 'normal' params type				
 				isValid = true;
 			}
+			else if (resolvedParamType->IsSizedArray())
+			{
+				isValid = true;
+			}
 			else if ((resolvedParamType->IsDelegate()) || (resolvedParamType->IsFunction()))
 			{
 				hadDelegateParams = true;
@@ -22700,7 +22704,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				if (genericParamInstance->mTypeConstraint != NULL)
 				{
 					auto typeInstConstraint = genericParamInstance->mTypeConstraint->ToTypeInstance();
-					if (genericParamInstance->mTypeConstraint->IsArray())
+					if ((genericParamInstance->mTypeConstraint->IsArray()) || (genericParamInstance->mTypeConstraint->IsSizedArray()))
 					{
 						BfMethodParam methodParam;						
 						methodParam.mResolvedType = resolvedParamType;

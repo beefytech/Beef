@@ -1081,7 +1081,7 @@ public:
 public:
 	bool IsGenericParam() override { return true; }
 	bool IsTypeGenericParam() override { return mGenericParamKind == BfGenericParamKind_Type; }
-	bool IsMethodGenericParam() override { return mGenericParamKind == BfGenericParamKind_Type; }
+	bool IsMethodGenericParam() override { return mGenericParamKind == BfGenericParamKind_Method; }
 	virtual bool IsUnspecializedType() override { return true; }
 	virtual bool IsReified() override { return false; }
 };

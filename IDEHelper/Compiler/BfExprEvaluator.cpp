@@ -1865,7 +1865,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 					if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params)
 					{
 						paramsParamIdx = paramIdx;
-						if ((wantType->IsArray()) || (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
+						if ((wantType->IsArray()) || (wantType->IsSizedArray()) || (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
 							wantType = wantType->GetUnderlyingType();
 					}
 
@@ -1886,6 +1886,26 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			auto resultKind = _CheckArg(argIdx);
 			if (resultKind == ResultKind_Failed)
 				goto NoMatch;
+		}
+
+		if ((checkMethod->mParams.mSize > 0) && (methodInstance->GetParamKind(checkMethod->mParams.mSize - 1) == BfParamKind_Params))
+		{
+			// Handle `params int[C]` generic sized array params case
+			auto paramsType = methodInstance->GetParamType(checkMethod->mParams.mSize - 1);
+			if (paramsType->IsUnknownSizedArrayType())
+			{
+				auto unknownSizedArray = (BfUnknownSizedArrayType*)paramsType;
+				if (unknownSizedArray->mElementCountSource->IsMethodGenericParam())
+				{
+					auto genericParam = (BfGenericParamType*)unknownSizedArray->mElementCountSource;
+					if ((*genericArgumentsSubstitute)[genericParam->mGenericParamIdx] == NULL)
+					{
+						int paramsCount = (int)mArguments.mSize - inferParamOffset;
+						(*genericArgumentsSubstitute)[genericParam->mGenericParamIdx] = mModule->CreateConstExprValueType(
+							BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, paramsCount), mModule->GetPrimitiveType(BfTypeCode_IntPtr)));
+					}
+				}
+			}
 		}
 
 		if (!deferredArgs.IsEmpty())
@@ -6915,6 +6935,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 							PushArg(expandedParamsArray, irArgs);
 						}
+						continue;
 					}
 					else if (wantType->IsArray())
 					{
@@ -6947,10 +6968,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							mModule->mBfIRBuilder->CreateAlignedStore(mModule->GetConstValue32(numElements), addr, 4);
 
 						PushArg(expandedParamsArray, irArgs);
+						continue;
 					}
 					else if (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
 					{
-						auto genericTypeInst = wantType->ToGenericTypeInstance();						
+						auto genericTypeInst = wantType->ToGenericTypeInstance();
 						expandedParamsElementType = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0];
 
 						expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);
@@ -6959,9 +6981,26 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						mModule->mBfIRBuilder->CreateStore(mModule->GetConstValue(numElements), mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 2));
 
 						PushArg(expandedParamsArray, irArgs);
+						continue;
 					}
+					else if (wantType->IsSizedArray())
+					{						
+						BfSizedArrayType* sizedArrayType = (BfSizedArrayType*)wantType;
+						expandedParamsElementType = wantType->GetUnderlyingType();
 
-					continue;
+						if (numElements != sizedArrayType->mElementCount)
+						{
+							BfAstNode* refNode = targetSrc;
+							if (argExprIdx < (int)argValues.size())				
+								refNode = argValues[argExprIdx].mExpression;
+							mModule->Fail(StrFormat("Incorrect number of arguments to match params type '%s'", mModule->TypeToString(wantType).c_str()), refNode);
+						}
+
+						expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);
+						expandedParamAlloca = mModule->mBfIRBuilder->CreateBitCast(expandedParamsArray.mValue, mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(expandedParamsElementType)));
+						PushArg(expandedParamsArray, irArgs);
+						continue;
+					}
 				}
 			}
 		}
@@ -20828,7 +20867,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 					auto genericTypeInst = mResult.mType->ToGenericTypeInstance();
 					if ((genericTypeInst != NULL) && (genericTypeInst->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
 						isValid = true;
-					else if (mResult.mType->IsArray())
+					else if ((mResult.mType->IsArray()) || (mResult.mType->IsSizedArray()))
 						isValid = true;
 					if (!isValid)
 					{
