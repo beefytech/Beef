@@ -12812,7 +12812,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 						if ((underlyingCanCast) &&
 							(!returnCanCast))
-						{							
+						{
 							doCall = false;
 						}
 						else if ((returnCanCast) &&
@@ -12820,11 +12820,13 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						{
 							// Can do
 						}
- 						else if ((!CanCast(GetFakeTypedValue(underlyingType), returnType, implicitCastFlags)) &&
- 							(CanCast(GetFakeTypedValue(returnType), underlyingType, implicitCastFlags)))
- 						{
- 							doCall = false;
- 						}						
+						else if ((CanCast(GetFakeTypedValue(underlyingType), returnType, implicitCastFlags)) &&
+							(!CanCast(GetFakeTypedValue(returnType), underlyingType, implicitCastFlags)))
+						{
+							// Can do
+						}
+						else
+							doCall = false;
 					}
 				}
 
@@ -12844,15 +12846,17 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							doCall = false;
 						}
 						else if ((paramCanCast) &&
-							(!underlyingType))
+							(!underlyingCanCast))
 						{
-							doCall = true;
+							// Can do
 						}
-						else if ((!CanCast(GetFakeTypedValue(underlyingType), paramType, implicitCastFlags)) &&
-							(CanCast(GetFakeTypedValue(paramType), underlyingType, implicitCastFlags)))
+						else if ((CanCast(GetFakeTypedValue(underlyingType), paramType, implicitCastFlags)) &&
+							(!CanCast(GetFakeTypedValue(paramType), underlyingType, implicitCastFlags)))
 						{
+							// Can do
+						}
+						else
 							doCall = false;
-						}			
 					}
 				}
 

@@ -267,9 +267,9 @@ namespace Tests
 			}
 		}
 
-		
 		enum MyEnum
 		{
+			Case0,
 			Case1,
 			Case2,
 			Case3
@@ -277,13 +277,14 @@ namespace Tests
 
 		enum MyOtherEnum
 		{
+			case Zero;
 			case One;
 			case Two;
 			case Three;
 
 			public static explicit operator MyEnum(Self self)
 			{
-				return .Case2;
+				return .Case1;
 			}
 		}
 
@@ -572,9 +573,17 @@ namespace Tests
 			int32 b = a + 100;
 			Test.Assert(b == 223);
 
-			MyOtherEnum moe = .One;
+			MyOtherEnum moe = .Zero;
 			MyEnum me = (MyEnum)moe;
-			Test.Assert(me == .Case2);
+			Test.Assert(me == .Case1);
+			Test.Assert(moe == 0);
+			moe = .Two;
+
+			int32 i = (int32)moe;
+			Test.Assert(i == 2);
+
+			uint32 u = (uint32)moe;
+			Test.Assert(u == 2);
 
 			//
 			{
