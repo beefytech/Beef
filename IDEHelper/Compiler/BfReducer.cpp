@@ -3157,6 +3157,38 @@ BfStatement* BfReducer::CreateForStatement(BfAstNode* node)
 			auto stmt = CreateStatementAfter(forStatement);
 			if (stmt == NULL)
 				return forStatement;
+
+			if (!initializers.IsEmpty())
+			{
+				// Try to convert 'int i = 0, j = 0` into two variable declarations instead of a var decl and an assignment
+				if (auto prevExprStmt = BfNodeDynCast<BfExpressionStatement>(initializers.back()))
+				{					
+					if (auto prevVarDecl = BfNodeDynCast<BfVariableDeclaration>(prevExprStmt->mExpression))
+					{
+						if (auto exprStmt = BfNodeDynCast<BfExpressionStatement>(stmt))
+						{
+							if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(exprStmt->mExpression))
+							{
+								if (assignExpr->mOp != BfAssignmentOp_Assign)
+									continue;
+
+								if (auto identifierNode = BfNodeDynCast<BfIdentifierNode>(assignExpr->mLeft))
+								{
+									auto varDecl = mAlloc->Alloc<BfVariableDeclaration>();
+									ReplaceNode(assignExpr, varDecl);
+									varDecl->mTypeRef = prevVarDecl->mTypeRef;
+									varDecl->mNameNode = identifierNode;
+									varDecl->mEqualsNode = assignExpr->mOpToken;
+									varDecl->mInitializer = assignExpr->mRight;
+									varDecl->mModSpecifier = prevVarDecl->mModSpecifier;
+									exprStmt->mExpression = varDecl;
+								}
+							}
+						}
+					}
+				}
+			}
+
 			initializers.push_back(stmt);
 			MoveNode(stmt, forStatement);
 		}
