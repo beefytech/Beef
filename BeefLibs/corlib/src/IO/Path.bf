@@ -467,7 +467,7 @@ namespace System.IO
 			}
 
 			if ((relPath.Length > 1) &&
-				(relPath[0] == '/') || (relPath[0] == '\\'))
+				((relPath[0] == '/') || (relPath[0] == '\\')))
 			{
 				outAbsPath.Append(relPath);
 				return;
