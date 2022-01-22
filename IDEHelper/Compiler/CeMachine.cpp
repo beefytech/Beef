@@ -2684,6 +2684,8 @@ void CeBuilder::Build()
 						{
 							auto& arg = castedInst->mArgs[argIdx];
 							auto ceArg = GetOperand(arg.mValue);
+							if (!ceArg)
+								continue;
 							if (argIdx == 0)
 								thisOperand = ceArg;
 							EmitSizedOp(CeOp_Push_8, ceArg, NULL, true);
