@@ -20091,7 +20091,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 			auto indexConst = mModule->mBfIRBuilder->GetConstant(indexArgument.mValue);
 			if (indexConst->mUInt64 >= (uint64)sizedArrayType->mElementCount)
 			{
-				if (!mModule->IsInSpecializedSection())
+				if ((!mModule->IsInSpecializedSection()) && (checkedKind != BfCheckedKind_Unchecked))
 				{
 					mModule->Fail(StrFormat("Index '%d' is out of bounds for type '%s'", indexConst->mInt32, mModule->TypeToString(target.mType).c_str()), indexerExpr->mArguments[0]);
 					mResult = _GetDefaultResult();
