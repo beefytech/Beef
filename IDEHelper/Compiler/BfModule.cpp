@@ -17706,8 +17706,9 @@ void BfModule::EmitIteratorBlock(bool& skipBody)
 
 void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance markFromGCThreadMethodInstance)
 {
-	auto fieldTypeInst = markVal.mType->ToTypeInstance();
-	if (fieldTypeInst == NULL)
+	auto fieldType = markVal.mType;
+	auto fieldTypeInst = fieldType->ToTypeInstance();
+	if (fieldType == NULL)
 		return;
 
 	if (!markVal.mType->IsComposite())
@@ -17722,9 +17723,58 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 		SizedArray<BfIRValue, 1> args;
 		args.push_back(val);
 		exprEvaluator.CreateCall(NULL, markFromGCThreadMethodInstance.mMethodInstance, markFromGCThreadMethodInstance.mFunc, false, args);
-	}
-	else if ((fieldTypeInst->IsComposite()) && (!fieldTypeInst->IsTypedPrimitive()))
+	}	
+	else if (fieldType->IsSizedArray())
 	{
+		BfSizedArrayType* sizedArrayType = (BfSizedArrayType*)fieldType;
+		if (sizedArrayType->mElementType->WantsGCMarking())
+		{
+			BfTypedValue arrayValue = markVal;			
+			auto _SizedIndex = [&](BfIRValue target, BfIRValue index)
+			{
+				if (sizedArrayType->mElementType->IsSizeAligned())
+				{
+					auto ptrType = CreatePointerType(sizedArrayType->mElementType);
+					auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
+					auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
+					return BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+				}
+				else
+				{
+
+					auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
+					return BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+				}
+			};
+			
+			auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
+			auto itr = CreateAlloca(intPtrType);
+			mBfIRBuilder->CreateStore(GetDefaultValue(intPtrType), itr);
+
+			auto loopBB = mBfIRBuilder->CreateBlock("loop", true);
+			auto bodyBB = mBfIRBuilder->CreateBlock("body", true);
+			auto doneBB = mBfIRBuilder->CreateBlock("done", true);
+			mBfIRBuilder->CreateBr(loopBB);
+
+			mBfIRBuilder->SetInsertPoint(loopBB);
+			auto loadedItr = mBfIRBuilder->CreateLoad(itr);
+			auto cmpRes = mBfIRBuilder->CreateCmpGTE(loadedItr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)sizedArrayType->mElementCount), true);
+			mBfIRBuilder->CreateCondBr(cmpRes, doneBB, bodyBB);
+
+			mBfIRBuilder->SetInsertPoint(bodyBB);
+
+			BfTypedValue value = _SizedIndex(arrayValue.mValue, loadedItr);
+			EmitGCMarkValue(value, markFromGCThreadMethodInstance);
+
+			auto incValue = mBfIRBuilder->CreateAdd(loadedItr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1));
+			mBfIRBuilder->CreateStore(incValue, itr);
+			mBfIRBuilder->CreateBr(loopBB);
+
+			mBfIRBuilder->SetInsertPoint(doneBB);			
+		}
+	}
+	else if ((fieldType->IsComposite()) && (!fieldType->IsTypedPrimitive()) && (fieldTypeInst != NULL))
+	{		
 		auto markMemberMethodInstance = GetMethodByName(fieldTypeInst, BF_METHODNAME_MARKMEMBERS, 0, true);
 		if (markMemberMethodInstance)
 		{
@@ -18381,7 +18431,7 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 			};
 			
 			if (sizedArrayType->mElementCount > 6)
-			{				
+			{
 				auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
 				auto itr = CreateAlloca(intPtrType);
 				mBfIRBuilder->CreateStore(GetDefaultValue(intPtrType), itr);
@@ -18611,39 +18661,36 @@ void BfModule::EmitGCMarkMembers()
 						if (!fieldInst.mFieldIncluded)
 							continue;
 
-						auto fieldTypeInst = fieldInst.mResolvedType->ToTypeInstance();
-						if (fieldTypeInst != NULL)
+						auto fieldType = fieldInst.mResolvedType;						
+						auto fieldDef = fieldInst.GetFieldDef();
+						BfTypedValue markVal;
+
+						if (fieldDef->mIsConst)
+							continue;
+
+						if ((!fieldType->IsObjectOrInterface()) && (!fieldType->IsComposite()))
+							continue;
+
+						mBfIRBuilder->PopulateType(fieldType);
+
+						if (fieldType->IsValuelessType())
+							continue;
+
+						if ((fieldDef->mIsStatic) && (!fieldDef->mIsConst))
 						{
-							auto fieldDef = fieldInst.GetFieldDef();
-							BfTypedValue markVal;
-
-							if (fieldDef->mIsConst)
+							StringT<128> staticVarName;
+							BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), &fieldInst);
+							if (staticVarName.StartsWith('#'))
 								continue;
-
-							if ((!fieldTypeInst->IsObjectOrInterface()) && (!fieldTypeInst->IsComposite()))
-								continue;
-
-							mBfIRBuilder->PopulateType(fieldTypeInst);
-
-							if (fieldTypeInst->IsValuelessType())
-								continue;
-
-							if ((fieldDef->mIsStatic) && (!fieldDef->mIsConst))
-							{
-								StringT<128> staticVarName;
-								BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), &fieldInst);
-								if (staticVarName.StartsWith('#'))
-									continue;
-								markVal = ReferenceStaticField(&fieldInst);
-							}
-							else if (!fieldDef->mIsStatic)
-							{
-								markVal = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInst.mDataIdx/*, fieldDef->mName*/), fieldInst.mResolvedType, true);
-							}
-
-							if (markVal)
-								EmitGCMarkValue(markVal, markFromGCThreadMethodInstance);
+							markVal = ReferenceStaticField(&fieldInst);
 						}
+						else if (!fieldDef->mIsStatic)
+						{
+							markVal = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInst.mDataIdx/*, fieldDef->mName*/), fieldInst.mResolvedType, true);
+						}
+
+						if (markVal)
+							EmitGCMarkValue(markVal, markFromGCThreadMethodInstance);
 					}
 				}
 			}
