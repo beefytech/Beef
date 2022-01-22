@@ -105,6 +105,13 @@ namespace Tests
 
 		}
 
+		typealias BigNum<N> = BigNum<N,const 0>;
+		public struct BigNum<ArgN, ExponentCells> where ArgN : const int where ExponentCells : const int64
+		{
+		    static int CalculateN() => Math.Max(1,(int)ArgN);
+		    public const int N = CalculateN();
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -117,6 +124,8 @@ namespace Tests
 			Test.Assert(iList.SequenceEquals(iSpan));
 			iList.Add(4);
 			Test.Assert(!iList.SequenceEquals(iSpan));
+
+			Test.Assert(BigNum<const 3>.N == 3);
 		}
 	}
 }

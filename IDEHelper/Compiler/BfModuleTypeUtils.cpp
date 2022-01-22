@@ -9389,11 +9389,11 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 		if (contextTypeInstance->IsBoxed())
 			genericCheckTypeInstance = contextTypeInstance->GetUnderlyingType()->ToTypeInstance();
 
-		bool doFakeVal = false;
+		bool doUndefVal = false;
 		if (genericCheckTypeInstance->IsUnspecializedTypeVariation())
 		{
 			genericCheckTypeInstance = GetUnspecializedTypeInstance(genericCheckTypeInstance);
-			doFakeVal = true;
+			doUndefVal = true;
 		}
 		
 		BfGenericParamDef* genericParamDef = NULL;
@@ -9497,9 +9497,9 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 			}
 			else if (genericParamResult->IsGenericParam())
 			{
-				if ((doFakeVal) && (genericTypeConstraint != NULL))
+				if ((doUndefVal) && (genericTypeConstraint != NULL))
 				{
-					return BfTypedValue(mBfIRBuilder->GetFakeVal(), genericTypeConstraint);
+					return GetDefaultTypedValue(genericTypeConstraint, false, BfDefaultValueKind_Undef);
 				}
 
 				if (((genericParamDef->mGenericParamFlags | origGenericParamDef->mGenericParamFlags) & BfGenericParamFlag_Const) != 0)
@@ -10649,21 +10649,20 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		
 		genericTypeInst->mTypeDef = typeDef;
 
-		if ((commonOuterType != NULL) && (outerTypeInstance->IsGenericTypeInstance()))
-		{			
-			auto parentTypeInstance = outerTypeInstance;
-			if (parentTypeInstance->IsTypeAlias())
-				parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
+		auto parentTypeInstance = outerTypeInstance;
+		if ((parentTypeInstance != NULL) && (parentTypeInstance->IsTypeAlias()))
+			parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
+		if ((parentTypeInstance != NULL) && (parentTypeInstance->IsGenericTypeInstance()))
+		{						
 			genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, parentTypeInstance->mGenericTypeInfo->mMaxGenericDepth);
 			for (int i = 0; i < startDefGenericParamIdx; i++)
 			{
 				genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(parentTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());
 				genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
 				auto typeGenericArg = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[i];
-				genericTypeInst->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
-				
-			}			
-		}		
+				genericTypeInst->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();				
+			}
+		}
 
 		int wantedGenericParams = genericParamCount - startDefGenericParamIdx;
 		int genericArgDiffCount = (int)genericArguments.size() - wantedGenericParams;
