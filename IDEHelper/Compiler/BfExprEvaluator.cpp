@@ -3616,11 +3616,11 @@ static bool IsCharType(BfTypeCode typeCode)
 	}
 }
 
-bool BfExprEvaluator::IsVar(BfType* type)
+bool BfExprEvaluator::IsVar(BfType* type, bool forceIgnoreWrites)
 {
 	if (type->IsVar())
 		return true;
-	if ((type->IsGenericParam()) && (!mModule->mBfIRBuilder->mIgnoreWrites))
+	if ((type->IsGenericParam()) && (!forceIgnoreWrites) && (!mModule->mBfIRBuilder->mIgnoreWrites))
 	{
 		BF_ASSERT(mModule->mIsComptimeModule);
 		return true;
@@ -4429,7 +4429,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		}
 	}
 
-	if ((target.mType != NULL) && (IsVar(target.mType)))
+	if ((target.mType != NULL) && (IsVar(target.mType, (flags & BfLookupFieldFlag_BindOnly) != 0)))
 		return BfTypedValue(mModule->GetDefaultValue(target.mType), target.mType, true);
 
 	BfTypeInstance* startCheckType = mModule->mCurTypeInstance;
