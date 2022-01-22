@@ -10649,18 +10649,21 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		
 		genericTypeInst->mTypeDef = typeDef;
 
-		auto parentTypeInstance = outerTypeInstance;
-		if ((parentTypeInstance != NULL) && (parentTypeInstance->IsTypeAlias()))
-			parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
-		if ((parentTypeInstance != NULL) && (parentTypeInstance->IsGenericTypeInstance()))
-		{						
-			genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, parentTypeInstance->mGenericTypeInfo->mMaxGenericDepth);
-			for (int i = 0; i < startDefGenericParamIdx; i++)
+		if (commonOuterType != NULL)
+		{
+			auto parentTypeInstance = outerTypeInstance;
+			if ((parentTypeInstance != NULL) && (parentTypeInstance->IsTypeAlias()))
+				parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
+			if ((parentTypeInstance != NULL) && (parentTypeInstance->IsGenericTypeInstance()))
 			{
-				genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(parentTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());
-				genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
-				auto typeGenericArg = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[i];
-				genericTypeInst->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();				
+				genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, parentTypeInstance->mGenericTypeInfo->mMaxGenericDepth);
+				for (int i = 0; i < startDefGenericParamIdx; i++)
+				{
+					genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(parentTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());
+					genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
+					auto typeGenericArg = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[i];
+					genericTypeInst->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
+				}
 			}
 		}
 
@@ -13912,7 +13915,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			return;
 		}
 		str += "method reference ";
-		str += MethodToString(methodInstance);
+		str += MethodToString(methodInstance, BfMethodNameFlag_NoAst);
 		return;
 	}
 	else if (resolvedType->IsTypeInstance())

@@ -62,7 +62,8 @@ enum BfMethodNameFlags : uint8
 	BfMethodNameFlag_OmitTypeName = 2,
 	BfMethodNameFlag_IncludeReturnType = 4,
 	BfMethodNameFlag_OmitParams = 8,
-	BfMethodNameFlag_IncludeMut = 0x10
+	BfMethodNameFlag_IncludeMut = 0x10,
+	BfMethodNameFlag_NoAst = 0x20
 };
 
 enum BfGetMethodInstanceFlags : uint16

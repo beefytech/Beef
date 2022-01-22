@@ -1658,7 +1658,7 @@ public:
 	BfTypedValue PrepareConst(BfTypedValue& typedValue);
 	void AggregateSplatIntoAddr(BfTypedValue typedValue, BfIRValue addrVal);
 	BfTypedValue AggregateSplat(BfTypedValue typedValue, BfIRValue* valueArrPtr = NULL);	
-	BfTypedValue MakeAddressable(BfTypedValue typedValue, bool forceMutable = false);
+	BfTypedValue MakeAddressable(BfTypedValue typedValue, bool forceMutable = false, bool forceAddressable = false);
 	BfTypedValue RemoveReadOnly(BfTypedValue typedValue);
 	BfTypedValue CopyValue(const BfTypedValue& typedValue);
 	BfIRValue ExtractSplatValue(BfTypedValue typedValue, int componentIdx, BfType* wantType = NULL, bool* isAddr = NULL);

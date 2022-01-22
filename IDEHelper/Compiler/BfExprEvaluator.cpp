@@ -6592,7 +6592,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
  	if (!mModule->mCompiler->mIsResolveOnly)
 		sCallIdx++;
 	int callIdx = sCallIdx;
-	if (callIdx == 0x000020F9)
+	if (callIdx == 0x000015CB)
 	{
 		NOP;
 	}
@@ -7356,15 +7356,28 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 			if ((wantType->IsRef()) && (!argValue.mType->IsRef()) &&
 				(((callFlags & BfCreateCallFlags_AllowImplicitRef) != 0) || (wantType->IsIn())))
-				argValue = mModule->ToRef(argValue, (BfRefType*)wantType);
-
-			if (mModule->mCurMethodState != NULL)
 			{
-				SetAndRestoreValue<BfScopeData*> prevScopeData(mModule->mCurMethodState->mOverrideScope, boxScopeData);
-				argValue = mModule->Cast(refNode, argValue, wantType);
+				auto underlyingType = wantType->GetUnderlyingType();
+				if (mModule->mCurMethodState != NULL)
+				{
+					SetAndRestoreValue<BfScopeData*> prevScopeData(mModule->mCurMethodState->mOverrideScope, boxScopeData);
+					argValue = mModule->Cast(refNode, argValue, underlyingType);
+				}
+				else
+					argValue = mModule->Cast(refNode, argValue, underlyingType);
+				if (argValue)
+					argValue = mModule->ToRef(argValue, (BfRefType*)wantType);
 			}
 			else
-				argValue = mModule->Cast(refNode, argValue, wantType);
+			{
+				if (mModule->mCurMethodState != NULL)
+				{
+					SetAndRestoreValue<BfScopeData*> prevScopeData(mModule->mCurMethodState->mOverrideScope, boxScopeData);
+					argValue = mModule->Cast(refNode, argValue, wantType);
+				}
+				else
+					argValue = mModule->Cast(refNode, argValue, wantType);
+			}
 
 			if (!argValue)
 			{

@@ -104,6 +104,23 @@ namespace Tests
 			return total;
 		}
 
+		struct Valueless
+		{
+		}
+
+		public static void InCallPtr(in char8* val)
+		{
+		}
+
+		public static void InCallObj(in Object val)
+		{
+		
+		}
+
+		public static void InCallValueless(in Valueless val)
+		{
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -127,6 +144,11 @@ namespace Tests
 			Test.Assert(self.Method5b(sa, sa2, sa3) == sa3);
 
 			Test.Assert(AddFloats(1.0f, 2, 3) == 6.0f);
+
+			InCallPtr("ABC");
+			InCallObj("Hey");
+			Valueless valueless;
+			InCallValueless(valueless);
 		}
 	}
 }

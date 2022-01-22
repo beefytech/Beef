@@ -10917,7 +10917,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 			methodName += methodInst->GetParamName(paramIdx);
 
 			auto paramInitializer = methodInst->GetParamInitializer(paramIdx);
-			if (paramInitializer != NULL)
+			if ((paramInitializer != NULL) && ((methodNameFlags & BfMethodNameFlag_NoAst) == 0))
 			{
 				methodName += " = ";
 				methodName += paramInitializer->ToString();
@@ -12120,7 +12120,8 @@ BfTypedValue BfModule::ToRef(BfTypedValue typedValue, BfRefType* refType)
 	if (refType->mRefKind == BfRefType::RefKind_Mut)
 		refType = CreateRefType(typedValue.mType);
 
-	typedValue = MakeAddressable(typedValue);	
+	if (!typedValue.mType->IsValuelessType())
+		typedValue = MakeAddressable(typedValue, false, true);
 	return BfTypedValue(typedValue.mValue, refType);
 }
 
@@ -12377,12 +12378,13 @@ void BfModule::AggregateSplatIntoAddr(BfTypedValue typedValue, BfIRValue addrVal
 	checkTypeLambda(typedValue.mType, addrVal);	
 }
 
-BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal, bool forceMutable)
+BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal, bool forceMutable, bool forceAddressable)
 {
 	bool wasReadOnly = typedVal.IsReadOnly();
 
- 	if ((typedVal.mType->IsValueType()) &&
- 		(!typedVal.mType->IsValuelessType()))
+ 	if ((forceAddressable) ||
+		((typedVal.mType->IsValueType()) &&
+ 		(!typedVal.mType->IsValuelessType())))
 	{
 		wasReadOnly = true; // Any non-addr is implicitly read-only
 	
