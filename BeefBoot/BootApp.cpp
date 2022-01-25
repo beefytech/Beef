@@ -26,7 +26,7 @@ BF_IMPORT void BF_CALLTYPE Debugger_FullReportMemory();
 
 BF_IMPORT void BF_CALLTYPE BfCompiler_Delete(void* bfCompiler);
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(void* bfCompiler, void* hotProject, int hotIdx,
-	const char* targetTriple, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
+	const char* targetTriple, const char* targetCPU, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
 	Beefy::BfCompilerOptionFlags optionFlags, const char* mallocLinkName, const char* freeLinkName);
 BF_IMPORT void BF_CALLTYPE BfCompiler_ClearBuildCache(void* bfCompiler);
 BF_IMPORT bool BF_CALLTYPE BfCompiler_Compile(void* bfCompiler, void* bfPassInstance, const char* outputPath);
@@ -844,7 +844,7 @@ bool BootApp::Compile()
 	if (maxWorkerThreads <= 1)
 		maxWorkerThreads = 6;
 
-    BfCompiler_SetOptions(mCompiler, NULL, 0, mTargetTriple.c_str(), mToolset, BfSIMDSetting_SSE2, 1, maxWorkerThreads, optionFlags, "malloc", "free");
+    BfCompiler_SetOptions(mCompiler, NULL, 0, mTargetTriple.c_str(), "", mToolset, BfSIMDSetting_SSE2, 1, maxWorkerThreads, optionFlags, "malloc", "free");
 	    
 	if (mIsCERun)
 	{
