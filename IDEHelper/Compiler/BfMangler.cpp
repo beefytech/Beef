@@ -916,9 +916,11 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	if (methodDef->mHasComptime)
 		name += "`COMPTIME";
 
-	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) &&
-		(!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern) &&
-		((!methodInst->mMethodDef->mIsOverride) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mMethodType == BfMethodType_Dtor)))
+	if (((methodInst->GetOwner()->mTypeDef->IsGlobalsContainer()) && 
+		 ((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_Dtor) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))) ||
+		((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) && 
+		 (!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern) && 
+		 ((!methodInst->mMethodDef->mIsOverride) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mMethodType == BfMethodType_Dtor))))
 	{
 		auto declType = methodInst->mMethodDef->mDeclaringType;
 		BF_ASSERT(methodInst->GetOwner()->mTypeDef->mIsCombinedPartial);
@@ -2073,10 +2075,12 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 		else
 			AddStr(mangleContext, name, methodDef->mName);		
 	}
-	
-	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) && 
-		(!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern) && 
-		((!methodInst->mMethodDef->mIsOverride) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mMethodType == BfMethodType_Dtor)))
+
+	if (((methodInst->GetOwner()->mTypeDef->IsGlobalsContainer()) && 
+		 ((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_Dtor) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))) ||
+		((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) && 
+		 (!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern) && 
+		 ((!methodInst->mMethodDef->mIsOverride) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mMethodType == BfMethodType_Dtor))))
 	{
 		auto declType = methodInst->mMethodDef->mDeclaringType;
 		BF_ASSERT(methodInst->GetOwner()->mTypeDef->mIsCombinedPartial);

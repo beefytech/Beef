@@ -3139,7 +3139,7 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 
 	_HasMethods allHasMethods[2][2] = { 0 };
 	auto primaryDef = nextRevision->mPartials[0];
-
+	
 	//Dictionary<BfProject*, int> projectCount;
 
 	bool hasCtorNoBody = false;
@@ -3151,6 +3151,8 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 	for (auto partialTypeDef : nextRevision->mPartials)
 	{	
 		bool isExtension = partialTypeDef->mTypeDeclaration != nextRevision->mTypeDeclaration;
+		if (!isExtension)
+			primaryDef = partialTypeDef;
 
 		bool hasInitializers = false;
 		for (auto methodDef : partialTypeDef->mMethods)
@@ -3218,37 +3220,40 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 // 		methodDef->mIsMutating = true;
 // 	}
 
-	// Static ctor
-	if ((allHasMethods[0][1].mCtor == 0) && (allHasMethods[1][1].mCtor > 1))
+	if (!primaryDef->IsGlobalsContainer())
 	{
-		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Ctor, BfProtection_Public, true, "");
-		methodDef->mDeclaringType = primaryDef;
-	}
+		// Static ctor
+		if ((allHasMethods[0][1].mCtor == 0) && (allHasMethods[1][1].mCtor > 1))
+		{
+			auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Ctor, BfProtection_Public, true, "");
+			methodDef->mDeclaringType = primaryDef;
+		}
 
-	if ((allHasMethods[0][0].mDtor == 0) && (allHasMethods[1][0].mDtor > 1))
-	{		
-		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Dtor, BfProtection_Public, false, "");
-		methodDef->mDeclaringType = primaryDef;
-	}
+		if ((allHasMethods[0][0].mDtor == 0) && (allHasMethods[1][0].mDtor > 1))
+		{
+			auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Dtor, BfProtection_Public, false, "");
+			methodDef->mDeclaringType = primaryDef;
+		}
 
-	if ((allHasMethods[0][1].mDtor == 0) && (allHasMethods[1][1].mDtor > 1))
-	{
-		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Dtor, BfProtection_Public, true, "");
-		methodDef->mDeclaringType = primaryDef;
-	}
+		if ((allHasMethods[0][1].mDtor == 0) && (allHasMethods[1][1].mDtor > 1))
+		{
+			auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Dtor, BfProtection_Public, true, "");
+			methodDef->mDeclaringType = primaryDef;
+		}
 
-	if ((allHasMethods[0][0].mMark == 0) && (allHasMethods[1][0].mMark > 1))
-	{
-		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Normal, BfProtection_Public, false, BF_METHODNAME_MARKMEMBERS);			
-		methodDef->mDeclaringType = primaryDef;
-		methodDef->mIsVirtual = true;
-		methodDef->mIsOverride = true;
-	}
+		if ((allHasMethods[0][0].mMark == 0) && (allHasMethods[1][0].mMark > 1))
+		{
+			auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Normal, BfProtection_Public, false, BF_METHODNAME_MARKMEMBERS);
+			methodDef->mDeclaringType = primaryDef;
+			methodDef->mIsVirtual = true;
+			methodDef->mIsOverride = true;
+		}
 
-	if ((allHasMethods[0][1].mMark == 0) && (allHasMethods[1][1].mMark > 1))
-	{
-		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Normal, BfProtection_Public, true, BF_METHODNAME_MARKMEMBERS_STATIC);			
-		methodDef->mDeclaringType = primaryDef;			
+		if ((allHasMethods[0][1].mMark == 0) && (allHasMethods[1][1].mMark > 1))
+		{
+			auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Normal, BfProtection_Public, true, BF_METHODNAME_MARKMEMBERS_STATIC);
+			methodDef->mDeclaringType = primaryDef;
+		}
 	}
 
 	// If this fails, it's probably because there were no actual composite pieces to put into it
