@@ -37,6 +37,8 @@ DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEva
 	{				
 		for (auto genericArg : *methodGenericArguments)
 		{
+			if (genericArg == NULL)
+				return;
 			auto genericArgType = mExprEvaluator->ResolveTypeRef(genericArg);
 			if (genericArgType == NULL)
 				return;
