@@ -1962,7 +1962,7 @@ BfIRValue BfModule::CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime,
 	return allocaInst;
 }
 
-void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scopeData, bool condAlloca, bool mayEscape, BfIRBlock valBlock)
+BfDeferredCallEntry* BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scopeData, bool condAlloca, bool mayEscape, BfIRBlock valBlock)
 {
 	//This was removed because we want the alloc to be added to the __deferred list if it's actually a "stack"
 	// 'stack' in a head scopeData is really the same as 'scopeData', so use the simpler scopeData handling	
@@ -1970,7 +1970,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 		isScopeAlloc = true;*/
 
 	if (scopeData == NULL)
-		return;
+		return NULL;
 	
 	auto checkBaseType = val.mType->ToTypeInstance();
 	if ((checkBaseType != NULL) && (checkBaseType->IsObject()) && (!arraySize))
@@ -2028,7 +2028,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 
 			checkBaseType = checkBaseType->mBaseType;
 		}
-		return;
+		return NULL;
 	}	
 	
 	//TODO: In the future we could be smarter about statically determining that our value hasn't escaped and eliding this		
@@ -2061,7 +2061,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 					llvmArgs.push_back(GetConstValue32(val.mType->mAlign));
 					if (arraySize)
 						llvmArgs.push_back(arraySize);
-					AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
+					return AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
 				}
 			}			
 			else
@@ -2085,7 +2085,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 						llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
 						//mBfIRBuilder->ClearDebugLocation_Last();
 						llvmArgs.push_back(clearSize);
-						AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
+						return AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
 					}
 				}
 				else
@@ -2114,12 +2114,14 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 						SizedArray<BfIRValue, 1> llvmArgs;
 						llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
 						//mBfIRBuilder->ClearDebugLocation_Last();
-						AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
+						return AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
 					}
 				}
 			}
 		}
 	}
+
+	return NULL;
 }
 
 bool BfModule::TryLocalVariableInit(BfLocalVariable* localVar)
@@ -9080,21 +9082,37 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 
 						if (wantsDeinit)
 						{
+							BfIRBlock prevBlock;
+
 							if (!isConstSize)
 							{
 								clearBlock = mBfIRBuilder->CreateBlock("clear");
 								contBlock = mBfIRBuilder->CreateBlock("clearCont");
-								mBfIRBuilder->CreateCondBr(mBfIRBuilder->CreateCmpNE(arraySize, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0)), clearBlock, contBlock);
+
+								prevBlock = mBfIRBuilder->GetInsertBlock();								
 
 								mBfIRBuilder->AddBlock(clearBlock);
 								mBfIRBuilder->SetInsertPoint(clearBlock);
 							}
 
-							AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
+							auto deferredCall = AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
 
 							if (!isConstSize)
 							{
 								mBfIRBuilder->CreateBr(contBlock);
+
+								mBfIRBuilder->SetInsertPoint(prevBlock);
+								if (deferredCall != NULL)
+								{
+									// Zero out size args
+									for (int i = 1; i < deferredCall->mModuleMethodInstance.mMethodInstance->GetParamCount(); i++)
+									{
+										auto scopedArg = deferredCall->mScopeArgs[i];
+										if (!scopedArg.IsConst())
+											mBfIRBuilder->CreateStore(GetDefaultValue(deferredCall->mModuleMethodInstance.mMethodInstance->GetParamType(i)), deferredCall->mScopeArgs[i]);
+									}
+								}
+								mBfIRBuilder->CreateCondBr(mBfIRBuilder->CreateCmpNE(arraySize, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0)), clearBlock, contBlock);
 
 								mBfIRBuilder->AddBlock(contBlock);
 								mBfIRBuilder->SetInsertPoint(contBlock);
