@@ -697,6 +697,8 @@ namespace IDE.Compiler
 			}
 
 			//Debug.WriteLine("HandleOptions SetOptions:{0:X}", (int)optionFlags);
+			if (!options.mTargetTriple.IsWhiteSpace)
+				targetTriple.Set(options.mTargetTriple);
 
 			SetOptions(hotBfProject, hotIdx,
 			    targetTriple, options.mTargetCPU, (int32)options.mToolsetType, (int32)options.mBfSIMDSetting, (int32)options.mAllocStackTraceDepth,
