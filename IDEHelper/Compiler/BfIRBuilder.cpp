@@ -2020,9 +2020,9 @@ void BfIRBuilder::WriteIR(const StringImpl& fileName)
 	NEW_CMD_INSERTED;
 }
 
-void BfIRBuilder::Module_SetTargetTriple(const StringImpl& targetTriple)
+void BfIRBuilder::Module_SetTargetTriple(const StringImpl& targetTriple, const StringImpl& targetCPU)
 {	
-	WriteCmd(BfIRCmd_Module_SetTargetTriple, targetTriple);
+	WriteCmd(BfIRCmd_Module_SetTargetTriple, targetTriple, targetCPU);
 	NEW_CMD_INSERTED;
 }
 

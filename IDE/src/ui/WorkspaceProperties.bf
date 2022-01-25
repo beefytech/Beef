@@ -775,6 +775,7 @@ namespace IDE.ui
 					return false;
 				});
 			allocPropEntry.mOnUpdate();
+			AddPropertiesItem(category, "Target CPU", "mTargetCPU");
             AddPropertiesItem(category, "SIMD Instructions", "mBfSIMDSetting");
             AddPropertiesItem(category, "Optimization Level", "mBfOptimizationLevel",
                 scope String[] ( "O0", "O1", "O2", "O3", "Og", "Og+"));

@@ -9651,7 +9651,7 @@ static BfPlatformType GetPlatform(StringView str)
 }
 
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProject* hotProject, int hotIdx,
-	const char* targetTriple, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
+	const char* targetTriple, const char* targetCPU, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
 	BfCompilerOptionFlags optionFlags, char* mallocLinkName, char* freeLinkName)
 {
 	BfLogSys(bfCompiler->mSystem, "BfCompiler_SetOptions\n");
@@ -9664,6 +9664,7 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 	options->mHotProject = hotProject;
 	options->mHotCompileIdx = hotIdx;
 	options->mTargetTriple = targetTriple;
+	options->mTargetCPU = targetCPU;
 
 	if (options->mTargetTriple.StartsWith("x86_64-"))
 		options->mMachineType = BfMachineType_x64;

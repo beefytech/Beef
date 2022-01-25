@@ -240,6 +240,8 @@ namespace IDE
 			[Reflect]
 			public IntermediateType mIntermediateType;
 			[Reflect]
+			public String mTargetCPU = new String() ~ delete _;
+			[Reflect]
 			public BuildOptions.SIMDSetting mBfSIMDSetting = .SSE2;
 			[Reflect]
 			public BuildOptions.BfOptimizationLevel mBfOptimizationLevel;
@@ -317,6 +319,7 @@ namespace IDE
 
 				mIncrementalBuild = prev.mIncrementalBuild;
 				mIntermediateType = prev.mIntermediateType;
+				mTargetCPU.Set(prev.mTargetCPU);
 				mBfSIMDSetting = prev.mBfSIMDSetting;
 				mBfOptimizationLevel = prev.mBfOptimizationLevel;
 				mCSIMDSetting = prev.mCSIMDSetting;
@@ -738,6 +741,7 @@ namespace IDE
 
 								data.ConditionalAdd("Toolset", options.mToolsetType, ToolsetType.GetDefaultFor(platformType, isRelease));
 								data.ConditionalAdd("BuildKind", options.mBuildKind, isTest ? .Test : .Normal);
+								data.ConditionalAdd("TargetCPU", options.mTargetCPU);
                                 data.ConditionalAdd("BfSIMDSetting", options.mBfSIMDSetting, .SSE2);
 								if (platformType == .Windows)
                                 	data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
@@ -1041,6 +1045,7 @@ namespace IDE
 
 					options.mToolsetType = data.GetEnum<ToolsetType>("Toolset", ToolsetType.GetDefaultFor(platformType, isRelease));
 					options.mBuildKind = data.GetEnum<BuildKind>("BuildKind", isTest ? .Test : .Normal);
+					data.GetString("TargetCPU", options.mTargetCPU);
 					options.mBfSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("BfSIMDSetting", .SSE2);
 					if (platformType == .Windows)
                     	options.mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel", isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);

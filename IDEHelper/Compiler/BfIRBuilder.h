@@ -1167,7 +1167,7 @@ public:
 	void RemoveIRCodeGen();
 	void WriteIR(const StringImpl& fileName);
 	
-	void Module_SetTargetTriple(const StringImpl& targetTriple);	
+	void Module_SetTargetTriple(const StringImpl& targetTriple, const StringImpl& targetCPU);
 	void Module_AddModuleFlag(const StringImpl& flag, int val);
 
 	BfIRType GetPrimitiveType(BfTypeCode typeCode);	

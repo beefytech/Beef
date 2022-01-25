@@ -1769,6 +1769,9 @@ BeModule::BeModule(const StringImpl& moduleName, BeContext* context)
 
 void BeModule::Hash(BeHashContext& hashCtx)
 {	
+	hashCtx.MixinStr(mTargetTriple);
+	hashCtx.MixinStr(mTargetCPU);
+
 	hashCtx.Mixin(mConfigConsts64.size());
 	for (auto configConst : mConfigConsts64)
 		configConst->HashContent(hashCtx);

@@ -1645,7 +1645,7 @@ void BfIRCodeGen::InitTarget()
 	llvm::Triple theTriple = llvm::Triple(mLLVMModule->getTargetTriple());
 	llvm::CodeGenOpt::Level optLvl = llvm::CodeGenOpt::None;	
 
-	String cpuName = "";
+	String cpuName = mTargetCPU;
 	String arch = "";
 
 	// Get the target specific parser.
@@ -1761,7 +1761,10 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_Module_SetTargetTriple:
 		{
 			CMD_PARAM(String, targetTriple);
+			CMD_PARAM(String, targetCPU);
+
 			mTargetTriple.Set(targetTriple);
+			mTargetCPU = targetCPU;
             if (targetTriple.IsEmpty())
                 mLLVMModule->setTargetTriple(llvm::sys::getDefaultTargetTriple());
             else

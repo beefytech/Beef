@@ -127,7 +127,7 @@ namespace IDE.Compiler
 
         [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_SetOptions(void* bfCompiler,
-            void* hotProject, int32 hotIdx, char8* targetTriple, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
+            void* hotProject, int32 hotIdx, char8* targetTriple, char8* targetCPU, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
             OptionFlags optionsFlags, char8* mallocName, char8* freeName);
 
 		[CallingConvention(.Stdcall), CLink]
@@ -302,12 +302,12 @@ namespace IDE.Compiler
         }
 
         public void SetOptions(BfProject hotProject, int32 hotIdx,
-            String targetTriple, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
+            String targetTriple, String targetCPU, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
 			OptionFlags optionFlags, String mallocFuncName, String freeFuncName)
         {
             BfCompiler_SetOptions(mNativeBfCompiler,
                 (hotProject != null) ? hotProject.mNativeBfProject : null, hotIdx,
-                targetTriple, toolsetType, simdSetting, allocStackCount, maxWorkerThreads, optionFlags, mallocFuncName, freeFuncName);
+                targetTriple, targetCPU, toolsetType, simdSetting, allocStackCount, maxWorkerThreads, optionFlags, mallocFuncName, freeFuncName);
         }
 
 		public void ForceRebuild()
@@ -699,8 +699,8 @@ namespace IDE.Compiler
 			//Debug.WriteLine("HandleOptions SetOptions:{0:X}", (int)optionFlags);
 
 			SetOptions(hotBfProject, hotIdx,
-			    targetTriple, (int32)options.mToolsetType, (int32)options.mBfSIMDSetting, (int32)options.mAllocStackTraceDepth, (int32)gApp.mSettings.mCompilerSettings.mWorkerThreads,
-				optionFlags, mallocLinkName, freeLinkName);
+			    targetTriple, options.mTargetCPU, (int32)options.mToolsetType, (int32)options.mBfSIMDSetting, (int32)options.mAllocStackTraceDepth,
+				(int32)gApp.mSettings.mCompilerSettings.mWorkerThreads, optionFlags, mallocLinkName, freeLinkName);
 
 			if (!mIsResolveOnly)
 			{

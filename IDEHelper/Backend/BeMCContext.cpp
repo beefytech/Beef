@@ -16040,12 +16040,15 @@ BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand&
 }
 
 void BeMCContext::Generate(BeFunction* function)
-{
+{	
 	BP_ZONE_F("BeMCContext::Generate %s", function->mName.c_str());
 
 	mBeFunction = function;
 	mDbgFunction = mBeFunction->mDbgFunction;
 	mModule = function->mModule;
+
+	if (!mModule->mTargetCPU.IsEmpty())
+		mModule->mBeIRCodeGen->Fail(StrFormat("Cannot set Target CPU '%s' for +Og optimization. Considering compiling under a different optimization setting.", mModule->mTargetCPU.c_str()));
 
 	//mDbgPreferredRegs[15] = X64Reg_RCX;
 	//mDbgPreferredRegs[7] = X64Reg_RCX;

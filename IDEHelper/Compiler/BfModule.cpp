@@ -1012,7 +1012,7 @@ void BfModule::FinishInit()
 
 	mBfIRBuilder->Start(mModuleName, mCompiler->mSystem->mPtrSize, IsOptimized());
 
-	mBfIRBuilder->Module_SetTargetTriple(mCompiler->mOptions.mTargetTriple);
+	mBfIRBuilder->Module_SetTargetTriple(mCompiler->mOptions.mTargetTriple, mCompiler->mOptions.mTargetCPU);
 
 	mBfIRBuilder->SetBackend(IsTargetingBeefBackend());	
 

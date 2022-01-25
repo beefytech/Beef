@@ -89,6 +89,7 @@ public:
 	
 	BumpAllocator mAlloc;
 	BfTargetTriple mTargetTriple;
+	String mTargetCPU;
     String mModuleName;
 	llvm::LLVMContext* mLLVMContext;
 	llvm::Module* mLLVMModule;

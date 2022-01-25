@@ -1117,7 +1117,9 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_Module_SetTargetTriple:
 		{
 			CMD_PARAM(String, targetTriple);
-			mBeModule->mTargetTriple = targetTriple;			
+			CMD_PARAM(String, targetCPU);
+			mBeModule->mTargetTriple = targetTriple;
+			mBeModule->mTargetCPU = targetCPU;
 		}
 		break;
 	case BfIRCmd_Module_AddModuleFlag:

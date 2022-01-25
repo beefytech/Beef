@@ -96,6 +96,7 @@ public:
 		int32 mForceRebuildIdx;
 		BfCompileOnDemandKind mCompileOnDemandKind;		
 		String mTargetTriple;
+		String mTargetCPU;
 		BfPlatformType mPlatformType;
 		BfMachineType mMachineType;
 		int mCLongSize;

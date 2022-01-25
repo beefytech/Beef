@@ -2271,6 +2271,7 @@ public:
 	BeContext* mContext;
 	String mModuleName;
 	String mTargetTriple;
+	String mTargetCPU;
 	BeBlock* mActiveBlock;
 	int mInsertPos;
 	BeDbgLoc* mCurDbgLoc;
