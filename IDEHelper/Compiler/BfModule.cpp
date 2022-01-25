@@ -9108,7 +9108,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 									for (int i = 1; i < deferredCall->mModuleMethodInstance.mMethodInstance->GetParamCount(); i++)
 									{
 										auto scopedArg = deferredCall->mScopeArgs[i];
-										if (!scopedArg.IsConst())
+										if (scopedArg != deferredCall->mOrigScopeArgs[i])
 											mBfIRBuilder->CreateStore(GetDefaultValue(deferredCall->mModuleMethodInstance.mMethodInstance->GetParamType(i)), deferredCall->mScopeArgs[i]);
 									}
 								}

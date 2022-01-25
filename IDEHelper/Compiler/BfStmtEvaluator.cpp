@@ -64,6 +64,8 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 	if (mCurMethodState->mPendingNullConditional != NULL)
 		isDyn = true;
 
+	deferredCallEntry->mOrigScopeArgs = deferredCallEntry->mScopeArgs;
+
 	if (!isDyn)
 	{
 		mCurMethodState->mCurScope->ClearHandlers(scopeData);

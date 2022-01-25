@@ -282,7 +282,8 @@ public:
 	BfTypedValue mTarget;
 	BfModuleMethodInstance mModuleMethodInstance;
 	BfIRValue mDeferredAlloca;
-	SizedArray<BfIRValue, 1> mScopeArgs;
+	SizedArray<BfIRValue, 2> mOrigScopeArgs;
+	SizedArray<BfIRValue, 2> mScopeArgs;
 	Array<BfDeferredCapture> mCaptures;	
 	BfBlock* mDeferredBlock;
 	BfAstNode* mEmitRefNode;
