@@ -16217,8 +16217,14 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 						mModule->mBfIRBuilder->DbgInsertDeclare(aliasValue, diVariable);
 					else
 					{
+						if (newLocalVar->mResolvedType->IsBoolean())
+						{
+							// Fix case of remote condbr referencing
+							newLocalVar->mAddr = mModule->CreateAlloca(newLocalVar->mResolvedType);
+							mModule->mBfIRBuilder->CreateStore(newLocalVar->mValue, newLocalVar->mAddr);
+						}
+
 						mModule->mBfIRBuilder->DbgInsertValueIntrinsic(aliasValue, diVariable);
-						//mModule->mBfIRBuilder->DbgInsertValueIntrinsic(newLocalVar->mValue, diVariable);
 					}
 				}
 			}
