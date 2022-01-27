@@ -3154,6 +3154,21 @@ void BfContext::Cleanup()
 	}
 	mTypeGraveyard.Clear();
 
+	if (!mDeletingModules.IsEmpty())
+	{
+		// Clear our invalid modules in mUsedModules list
+		for (auto project : mSystem->mProjects)
+		{
+			for (auto itr = project->mUsedModules.begin(); itr != project->mUsedModules.end(); )
+			{
+				if ((*itr)->mIsDeleting)
+					itr = project->mUsedModules.Remove(itr);
+				else
+					++itr;
+			}
+		}
+	}
+
 	for (auto module : mDeletingModules)
 	{
 		int idx = (int)mFinishedModuleWorkList.IndexOf(module);
