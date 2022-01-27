@@ -17747,24 +17747,7 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 		BfSizedArrayType* sizedArrayType = (BfSizedArrayType*)fieldType;
 		if (sizedArrayType->mElementType->WantsGCMarking())
 		{
-			BfTypedValue arrayValue = markVal;			
-			auto _SizedIndex = [&](BfIRValue target, BfIRValue index)
-			{
-				if (sizedArrayType->mElementType->IsSizeAligned())
-				{
-					auto ptrType = CreatePointerType(sizedArrayType->mElementType);
-					auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
-					auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
-					return BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
-				}
-				else
-				{
-
-					auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
-					return BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
-				}
-			};
-			
+			BfTypedValue arrayValue = markVal;						
 			auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
 			auto itr = CreateAlloca(intPtrType);
 			mBfIRBuilder->CreateStore(GetDefaultValue(intPtrType), itr);
@@ -17781,7 +17764,11 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 
 			mBfIRBuilder->SetInsertPoint(bodyBB);
 
-			BfTypedValue value = _SizedIndex(arrayValue.mValue, loadedItr);
+			auto ptrType = CreatePointerType(sizedArrayType->mElementType);
+			auto ptrValue = mBfIRBuilder->CreateBitCast(arrayValue.mValue, mBfIRBuilder->MapType(ptrType));
+			auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, loadedItr);
+			auto value = BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+
 			EmitGCMarkValue(value, markFromGCThreadMethodInstance);
 
 			auto incValue = mBfIRBuilder->CreateAdd(loadedItr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1));
@@ -18431,23 +18418,6 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 				arrayValue = BfTypedValue(mBfIRBuilder->CreateBitCast(srcValue, mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapType(checkType))), checkType, BfTypedValueKind_Addr);
 			}
 
-			auto _SizedIndex = [&](BfIRValue target, BfIRValue index)
-			{
-				if (sizedArrayType->mElementType->IsSizeAligned())
-				{
-					auto ptrType = CreatePointerType(sizedArrayType->mElementType);
-					auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
-					auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
-					return BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
-				}
-				else
-				{
-
-					auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
-					return BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
-				}
-			};
-			
 			if (sizedArrayType->mElementCount > 6)
 			{
 				auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
@@ -18465,8 +18435,12 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 				mBfIRBuilder->CreateCondBr(cmpRes, doneBB, bodyBB);
 
 				mBfIRBuilder->SetInsertPoint(bodyBB);
+								
+				auto ptrType = CreatePointerType(sizedArrayType->mElementType);
+				auto ptrValue = mBfIRBuilder->CreateBitCast(arrayValue.mValue, mBfIRBuilder->MapType(ptrType));
+				auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, loadedItr);
+				auto value = BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
 
-				BfTypedValue value = _SizedIndex(arrayValue.mValue, loadedItr);
 				EmitGCMarkValue(value, markFromGCThreadMethodInstance);
 				
 				auto incValue = mBfIRBuilder->CreateAdd(loadedItr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1));
@@ -18479,8 +18453,11 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 			{
 				for (int dataIdx = 0; dataIdx < sizedArrayType->mElementCount; dataIdx++)
 				{
-					BfTypedValue value = _SizedIndex(arrayValue.mValue, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, dataIdx));
-
+					auto ptrType = CreatePointerType(sizedArrayType->mElementType);
+					auto ptrValue = mBfIRBuilder->CreateBitCast(arrayValue.mValue, mBfIRBuilder->MapType(ptrType));
+					auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, dataIdx));
+					auto value = BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+					
 					HashSet<int> objectOffsets;					
 					EmitGCMarkValue(value, markFromGCThreadMethodInstance);
 				}
