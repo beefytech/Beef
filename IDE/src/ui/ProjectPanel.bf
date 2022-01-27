@@ -86,13 +86,12 @@ namespace IDE.ui
 					hasChanged = project.mHasChanged;
 					if (project.mDeferState != .None)
 					{
-						//g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(-3), 0);
 						g.DrawString(scope String()..Append('.', 1 + (mUpdateCnt / 20) % 3), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(3), 0);
 						changeX += GS!(12);
 					}
 					else if (project.mLocked)
 					{
-						g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(-3), 0);
+						g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), g.mFont.GetWidth(mLabel) + GS!(42), 0);
 						changeX += GS!(12);
 					}
 				}
