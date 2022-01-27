@@ -5636,100 +5636,112 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			if ((pass == 1) != (methodDef->mIsOverride))
 				continue;
 
+			bool doGetMethodInstance = true;
+
 			auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
 
 			if ((methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude) &&
 				(methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Decl_AwaitingDecl))
 			{
 				BfLogSysM("Skipping GetMethodInstance on MethodDef: %p OnDemandKind: %d\n", methodDef, methodInstanceGroup->mOnDemandKind);
-				continue;
+				doGetMethodInstance = false;
 			}
 
 			if (methodDef->mMethodType == BfMethodType_Init)
-				continue;
+				doGetMethodInstance = false;
 
-			int prevWorklistSize = (int)mContext->mMethodWorkList.size();
+			BfMethodInstance* methodInstance = NULL;
 
-			auto flags = ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None;
-
-			if (methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude)
-				flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_MethodInstanceOnly);
-
-			auto moduleMethodInstance = GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags);
-
-			auto methodInstance = moduleMethodInstance.mMethodInstance;
-			if (methodInstance == NULL)
+			if (doGetMethodInstance)
 			{
-				BF_ASSERT(typeInstance->IsGenericTypeInstance() && (typeInstance->mTypeDef->mIsCombinedPartial));
-				continue;
-			}
+				int prevWorklistSize = (int)mContext->mMethodWorkList.size();
 
-			if ((!mCompiler->mIsResolveOnly) &&
-				((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) || (!typeInstance->IsReified())))
-			{
-				bool forceMethodImpl = false;
+				auto flags = ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None;
 
-				BfCustomAttributes* customAttributes = methodInstance->GetCustomAttributes();
-				if ((customAttributes != NULL) && (typeInstance->IsReified()))
+				if (methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude)
+					flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_MethodInstanceOnly);
+
+				auto moduleMethodInstance = GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags);
+
+				methodInstance = moduleMethodInstance.mMethodInstance;
+				if (methodInstance == NULL)
 				{
-					for (auto& attr : customAttributes->mAttributes)
+					BF_ASSERT(typeInstance->IsGenericTypeInstance() && (typeInstance->mTypeDef->mIsCombinedPartial));
+					continue;
+				}
+
+				if ((!mCompiler->mIsResolveOnly) &&
+					((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) || (!typeInstance->IsReified())))
+				{
+					bool forceMethodImpl = false;
+
+					BfCustomAttributes* customAttributes = methodInstance->GetCustomAttributes();
+					if ((customAttributes != NULL) && (typeInstance->IsReified()))
 					{
-						auto attrTypeInst = attr.mType->ToTypeInstance();
-						auto attrCustomAttributes = attrTypeInst->mCustomAttributes;
-						if (attrCustomAttributes == NULL)
-							continue;
-
-						for (auto& attrAttr : attrCustomAttributes->mAttributes)
+						for (auto& attr : customAttributes->mAttributes)
 						{
-							if (attrAttr.mType->ToTypeInstance()->IsInstanceOf(mCompiler->mAttributeUsageAttributeTypeDef))
+							auto attrTypeInst = attr.mType->ToTypeInstance();
+							auto attrCustomAttributes = attrTypeInst->mCustomAttributes;
+							if (attrCustomAttributes == NULL)
+								continue;
+
+							for (auto& attrAttr : attrCustomAttributes->mAttributes)
 							{
-								// Check for Flags arg
-								if (attrAttr.mCtorArgs.size() < 2)
-									continue;
-								auto constant = attrTypeInst->mConstHolder->GetConstant(attrAttr.mCtorArgs[1]);
-								if (constant == NULL)
-									continue;
-								if (constant->mTypeCode == BfTypeCode_Boolean)
-									continue;
-								if ((constant->mInt8 & BfCustomAttributeFlags_AlwaysIncludeTarget) != 0)
-									forceMethodImpl = true;
-
-								if (attrTypeInst->mAttributeData == NULL)
-									PopulateType(attrTypeInst);
-								BF_ASSERT(attrTypeInst->mAttributeData != NULL);
-								if (attrTypeInst->mAttributeData != NULL)
+								if (attrAttr.mType->ToTypeInstance()->IsInstanceOf(mCompiler->mAttributeUsageAttributeTypeDef))
 								{
-									if ((attrTypeInst->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_IncludeAllMethods) != 0)
+									// Check for Flags arg
+									if (attrAttr.mCtorArgs.size() < 2)
+										continue;
+									auto constant = attrTypeInst->mConstHolder->GetConstant(attrAttr.mCtorArgs[1]);
+									if (constant == NULL)
+										continue;
+									if (constant->mTypeCode == BfTypeCode_Boolean)
+										continue;
+									if ((constant->mInt8 & BfCustomAttributeFlags_AlwaysIncludeTarget) != 0)
 										forceMethodImpl = true;
 
-									// "AssumeInstantiated" also forces default ctor
-									if (((attrTypeInst->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_AssumeInstantiated) != 0) &&
-										(methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mParams.IsEmpty()))
-										forceMethodImpl = true;
+									if (attrTypeInst->mAttributeData == NULL)
+										PopulateType(attrTypeInst);
+									BF_ASSERT(attrTypeInst->mAttributeData != NULL);
+									if (attrTypeInst->mAttributeData != NULL)
+									{
+										if ((attrTypeInst->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_IncludeAllMethods) != 0)
+											forceMethodImpl = true;
+
+										// "AssumeInstantiated" also forces default ctor
+										if (((attrTypeInst->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_AssumeInstantiated) != 0) &&
+											(methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mParams.IsEmpty()))
+											forceMethodImpl = true;
+									}
 								}
 							}
 						}
 					}
-				}
 
-				if (methodInstance->mMethodDef->mDeclaringType->mProject->mTargetType == BfTargetType_BeefTest)
-				{
-					if ((customAttributes != NULL) && (customAttributes->Contains(mCompiler->mTestAttributeTypeDef)))
+					if (methodInstance->mMethodDef->mDeclaringType->mProject->mTargetType == BfTargetType_BeefTest)
 					{
-						forceMethodImpl = true;
+						if ((customAttributes != NULL) && (customAttributes->Contains(mCompiler->mTestAttributeTypeDef)))
+						{
+							forceMethodImpl = true;
+						}
+					}
+
+					if (forceMethodImpl)
+					{
+						if (!typeInstance->IsReified())
+							mContext->mScratchModule->PopulateType(typeInstance, BfPopulateType_Data);
+						// Reify method
+						mContext->mScratchModule->GetMethodInstance(typeInstance, methodDef, BfTypeVector());
+						BF_ASSERT(methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Decl_AwaitingReference);
 					}
 				}
-
-				if (forceMethodImpl)
-				{
-					if (!typeInstance->IsReified())
-						mContext->mScratchModule->PopulateType(typeInstance, BfPopulateType_Data);
-					// Reify method
-					mContext->mScratchModule->GetMethodInstance(typeInstance, methodDef, BfTypeVector());
-					BF_ASSERT(methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Decl_AwaitingReference);
-				}
 			}
-
+			else
+			{
+				methodInstance = methodInstanceGroup->mDefault;
+				if (methodInstance == NULL)
+					continue;
+			}
 
 			bool methodUsedVirtually = false;
 			if (typeInstance->IsInterface())
