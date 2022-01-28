@@ -1140,7 +1140,7 @@ namespace IDE
             Dialog aDialog;
             if (changedList.Count == 1)
             {
-                aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("{0} has been modified. Save before closing?", changedList[0]), DarkTheme.sDarkTheme.mIconWarning);
+                aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", changedList[0]), DarkTheme.sDarkTheme.mIconWarning);
             }
             else
             {
@@ -1209,6 +1209,8 @@ namespace IDE
 					{
 						var fileName = scope String();
 						Path.GetFileName(sourceViewPanel.mFilePath, fileName);
+						if (fileName.IsWhiteSpace)
+							fileName.Set("untitled");
 						if (!changedList.Contains(fileName))
 			            	changedList.Add(new String(fileName));
 					}
@@ -1481,7 +1483,10 @@ namespace IDE
 		{
 #if !CLI
 			String fullDir = scope .();
-			Path.GetDirectoryPath(sourceViewPanel.mFilePath, fullDir);
+			if (sourceViewPanel.mFilePath != null)
+				Path.GetDirectoryPath(sourceViewPanel.mFilePath, fullDir);
+			else if (!mWorkspace.mDir.IsWhiteSpace)
+				fullDir.Set(mWorkspace.mDir);
 
 			SaveFileDialog dialog = scope .();
 			dialog.SetFilter("All files (*.*)|*.*");
