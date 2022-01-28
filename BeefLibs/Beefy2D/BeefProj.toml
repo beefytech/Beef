@@ -23,7 +23,7 @@ OtherLinkFlags = ""
 PreprocessorMacros = ["RELEASE", "BF32"]
 
 [Configs.Release.Win64]
-OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/dist/BeefySysLib64.lib"
+OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/BeefySysLib64.lib\""
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64.pdb\")"]
 
 [Configs.Release.Linux64]
