@@ -1481,7 +1481,7 @@ namespace IDE
 		{
 #if !CLI
 			String fullDir = scope .();
-			Path.GetDirectoryPath(sourceViewPanel.mFilePath, fullDir);
+			Path.GetDirectoryPath(sourceViewPanel.mFilePath ?? mWorkspace.mStartupProject.mProjectPath, fullDir);
 
 			SaveFileDialog dialog = scope .();
 			dialog.SetFilter("All files (*.*)|*.*");
