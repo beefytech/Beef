@@ -1648,8 +1648,23 @@ namespace IDE
                             var options = platformKeyValue.value;
                             using (data.CreateObject(platformKeyValue.key))
                             {
+								BuildKind defaultBuildKind = .Normal;
+								BuildOptions.RelocType defaultRelocType = .NotSet;
+								let platformType = Workspace.PlatformType.GetFromName(platformKeyValue.key);
+								switch (platformType)
+								{
+								case .Linux,
+									 .Windows,
+									 .macOS:
+									defaultBuildKind = isTest ? .Test : .Normal;
+								default:
+									defaultBuildKind = .StaticLib;
+								}
+								if (platformType == .Android)
+									defaultRelocType = .PIC;
+
 								// Build
-								data.ConditionalAdd("BuildKind", options.mBuildOptions.mBuildKind, isTest ? .Test : .Normal);
+								data.ConditionalAdd("BuildKind", options.mBuildOptions.mBuildKind, defaultBuildKind);
 							    data.ConditionalAdd("TargetDirectory", options.mBuildOptions.mTargetDirectory, "$(BuildDir)");
 							    data.ConditionalAdd("TargetName", options.mBuildOptions.mTargetName, "$(ProjectName)");
 							    data.ConditionalAdd("OtherLinkFlags", options.mBuildOptions.mOtherLinkFlags, "$(LinkFlags)");
@@ -1708,7 +1723,7 @@ namespace IDE
 							                data.Add(macro);
 							        }
 								}
-								data.ConditionalAdd("RelocType", options.mBeefOptions.mRelocType, .NotSet);
+								data.ConditionalAdd("RelocType", options.mBeefOptions.mRelocType, defaultRelocType);
 								data.ConditionalAdd("PICLevel", options.mBeefOptions.mPICLevel, .NotSet);
 							    data.ConditionalAdd("OptimizationLevel", options.mBeefOptions.mOptimizationLevel);
 								data.ConditionalAdd("LTOType", options.mBeefOptions.mLTOType);
@@ -1986,9 +2001,24 @@ namespace IDE
                 {
                     Options options = new Options();
 					config.mPlatforms[new String(platformName)] = options;
-                 
+
+					BuildKind defaultBuildKind = .Normal;
+					BuildOptions.RelocType defaultRelocType = .NotSet;
+					let platformType = Workspace.PlatformType.GetFromName(platformName);
+					switch (platformType)
+					{
+					case .Linux,
+						 .Windows,
+						 .macOS:
+						defaultBuildKind = isTest ? .Test : .Normal;
+					default:
+						defaultBuildKind = .StaticLib;
+					}
+					if (platformType == .Android)
+						defaultRelocType = .PIC;
+
 					// Build
-					options.mBuildOptions.mBuildKind = data.GetEnum<BuildKind>("BuildKind", isTest ? .Test : .Normal);
+					options.mBuildOptions.mBuildKind = data.GetEnum<BuildKind>("BuildKind", defaultBuildKind);
 					if ((isBeefDynLib) && (options.mBuildOptions.mBuildKind == .Normal))
 						options.mBuildOptions.mBuildKind = .DynamicLib;
 				    data.GetString("TargetDirectory", options.mBuildOptions.mTargetDirectory, "$(BuildDir)");
@@ -2034,7 +2064,7 @@ namespace IDE
 							options.mBeefOptions.mPreprocessorMacros.Add(new String("TEST"));
 					}
 
-					options.mBeefOptions.mRelocType = data.GetEnum<BuildOptions.RelocType>("RelocType");
+					options.mBeefOptions.mRelocType = data.GetEnum<BuildOptions.RelocType>("RelocType", defaultRelocType);
 					options.mBeefOptions.mPICLevel = data.GetEnum<BuildOptions.PICLevel>("PICLevel");
 					if (data.Contains("OptimizationLevel"))
 			        	options.mBeefOptions.mOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("OptimizationLevel");

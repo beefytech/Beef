@@ -41,6 +41,13 @@ namespace IDE.Compiler
 			ArithmeticChecks = 0x40000
 		}
 
+		public enum UsedOutputFlags : int32
+		{
+			None = 0,
+			FlushQueuedHotFiles = 1,
+			SkipImports = 2,
+		}
+
         [CallingConvention(.Stdcall), CLink]
         static extern bool BfCompiler_Compile(void* bfCompiler, void* bfPassInstance, char8* outputDirectory);
 
@@ -102,7 +109,7 @@ namespace IDE.Compiler
 		static extern void BfCompiler_WriteBuildCache(void* bfCompiler, char8* cacheDir);
 
 		[CallingConvention(.Stdcall), CLink]
-		static extern char8* BfCompiler_GetUsedOutputFileNames(void* bfCompiler, void* bfProject, bool flushQueuedHotFiles, out bool hadOutputChanges);
+		static extern char8* BfCompiler_GetUsedOutputFileNames(void* bfCompiler, void* bfProject, UsedOutputFlags flags, out bool hadOutputChanges);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetGeneratorTypeDefList(void* bfCompiler);
@@ -287,9 +294,9 @@ namespace IDE.Compiler
             BfCompiler_UpdateRenameSymbols(mNativeBfCompiler, passInstance.mNativeBfPassInstance, resolvePassData.mNativeResolvePassData);
         }*/
 
-        public void GetOutputFileNames(BfProject project, bool flushQueuedHotFiles, out bool hadOutputChanges, List<String> outFileNames)
+        public void GetOutputFileNames(BfProject project, UsedOutputFlags flags, out bool hadOutputChanges, List<String> outFileNames)
         {
-            char8* result = BfCompiler_GetUsedOutputFileNames(mNativeBfCompiler, project.mNativeBfProject, flushQueuedHotFiles, out hadOutputChanges);
+            char8* result = BfCompiler_GetUsedOutputFileNames(mNativeBfCompiler, project.mNativeBfProject, flags, out hadOutputChanges);
             if (result == null)
                 return;
 			String fileNamesStr = scope String();

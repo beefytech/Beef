@@ -7827,7 +7827,8 @@ namespace IDE
 
         public void GetBeefPreprocessorMacros(DefinesSet macroList)
         {
-			let platform = Workspace.PlatformType.GetFromName(mPlatformName);
+			var workspaceOptions = GetCurWorkspaceOptions();
+			let platform = Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple);
 			if (platform != .Unknown)
 			{
 				String def = scope .();
@@ -7837,7 +7838,6 @@ namespace IDE
 				macroList.Add(def);
 			}
 
-            var workspaceOptions = GetCurWorkspaceOptions();            
             if (workspaceOptions.mRuntimeChecks)
                 macroList.Add("BF_RUNTIME_CHECKS");
             if (workspaceOptions.mEnableObjectDebugFlags)
@@ -8961,7 +8961,7 @@ namespace IDE
 
             bfProject.SetDisabled(false);
 
-			let platform = Workspace.PlatformType.GetFromName(mPlatformName);
+			let platform = Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple);
 
             var preprocessorMacros = scope DefinesSet();
 			void AddMacros(List<String> macros)
@@ -8982,7 +8982,13 @@ namespace IDE
             if (options.mBeefOptions.mOptimizationLevel != null)
                 optimizationLevel = options.mBeefOptions.mOptimizationLevel.Value;
 
-			if ((optimizationLevel == .OgPlus) && (mPlatformName != "Win64") && (bfCompiler == mBfBuildCompiler))
+			bool isWin64 = true;
+			if (!workspaceOptions.mTargetTriple.IsWhiteSpace)
+				isWin64 = workspaceOptions.mTargetTriple.StartsWith("x86_64-pc-windows");
+			else
+				isWin64 = mPlatformName == "Win64";
+				
+			if ((optimizationLevel == .OgPlus) && (!isWin64) && (bfCompiler == mBfBuildCompiler))
 			{
 				OutputLineSmart("WARNING: Project '{0}' has Og+ specified, which is only supported for Win64 targets.", project.mProjectName);
 				optimizationLevel = .O0;
@@ -9575,7 +9581,7 @@ namespace IDE
 									if (!DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString))
 										return false;
 
-									let platformType = Workspace.PlatformType.GetFromName(platformName);
+									let platformType = Workspace.PlatformType.GetFromName(platformName, workspaceOptions.mTargetTriple);
 
 									switch (platformType)
 									{
@@ -9626,7 +9632,7 @@ namespace IDE
 									(isBeefDynLib) ||
 									(options.mBuildOptions.mBuildKind == .Test))
 								{
-									let platformType = Workspace.PlatformType.GetFromName(platformName);
+									let platformType = Workspace.PlatformType.GetFromName(platformName, workspaceOptions.mTargetTriple);
 									String rtName = scope String();
 									String dbgName = scope String();
 									BuildContext.GetRtLibNames(platformType, workspaceOptions, options, false, rtName, dbgName);
@@ -10066,7 +10072,7 @@ namespace IDE
 		    var bfProject = mBfBuildSystem.mProjectMap[project];
 		    bool bfHadOutputChanges;
 		    List<String> bfFileNames = scope List<String>();
-			bfCompiler.GetOutputFileNames(bfProject, false, out bfHadOutputChanges, bfFileNames);
+			bfCompiler.GetOutputFileNames(bfProject, .None, out bfHadOutputChanges, bfFileNames);
 			defer ClearAndDeleteItems(bfFileNames);
 		    if (bfHadOutputChanges)
 		        project.mNeedsTargetRebuild = true;
@@ -10663,9 +10669,9 @@ namespace IDE
 		{
 			get
 			{
-				if (Workspace.PlatformType.GetFromName(mPlatformName) != .Windows)
-					return false;
 				var workspaceOptions = GetCurWorkspaceOptions();
+				if (Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple) != .Windows)
+					return false;
 				if (workspaceOptions.mToolsetType != .LLVM)
 					return true;
 
@@ -10725,7 +10731,9 @@ namespace IDE
 				return false;
 			}
 
-			let platform = Workspace.PlatformType.GetFromName(mPlatformName);
+			var workspaceOptions = GetCurWorkspaceOptions();
+
+			var platform = Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple);
 			let hostPlatform = Workspace.PlatformType.GetHostPlatform();
 			if (platform == .Unknown)
 			{
@@ -10853,7 +10861,6 @@ namespace IDE
 				return false;
 			}
 
-			var workspaceOptions = GetCurWorkspaceOptions();
 			if ((compileKind == .RunAfter) || (compileKind == .DebugAfter))
 			{
 				if (workspaceOptions.mBuildKind == .Test)

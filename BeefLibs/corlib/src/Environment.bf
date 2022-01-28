@@ -9,7 +9,7 @@ namespace System
 #if BF_PLATFORM_WINDOWS
 		public static readonly String NewLine = "\r\n";
 #else
-		public static readonly String NewLine = new String("\n");
+		public static readonly String NewLine = "\n";
 #endif // BF_PLATFORM_WINDOWS
 
 		public static OperatingSystem OSVersion = new OperatingSystem() ~ delete _;

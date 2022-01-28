@@ -16049,7 +16049,7 @@ void BeMCContext::Generate(BeFunction* function)
 
 	if (!mModule->mTargetCPU.IsEmpty())
 		mModule->mBeIRCodeGen->Fail(StrFormat("Cannot set Target CPU to '%s' for +Og optimization. Considering compiling under a different optimization setting.", mModule->mTargetCPU.c_str()));
-	if (mModule->mTargetTriple != "x86_64-pc-windows-msvc")
+	if ((!mModule->mTargetTriple.IsEmpty()) && (!mModule->mTargetTriple.StartsWith("x86_64-pc-windows")))
 	{
 		mModule->mBeIRCodeGen->Fail(StrFormat("Cannot set Target Triple to '%s' for +Og optimization. Considering compiling under a different optimization setting.", mModule->mTargetTriple.c_str()));
 		return;

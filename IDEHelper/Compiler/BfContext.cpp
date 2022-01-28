@@ -2197,6 +2197,7 @@ void BfContext::UpdateRevisedTypes()
 		HashContext workspaceConfigHashCtx;												
 
 		workspaceConfigHashCtx.MixinStr(options->mTargetTriple);
+		workspaceConfigHashCtx.MixinStr(options->mTargetCPU);
 		workspaceConfigHashCtx.Mixin(options->mForceRebuildIdx);
 
 		workspaceConfigHashCtx.Mixin(options->mMachineType);

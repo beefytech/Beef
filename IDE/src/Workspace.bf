@@ -68,8 +68,11 @@ namespace IDE
 			case Android;
 			case Wasm;
 
-			public static PlatformType GetFromName(StringView name)
+			public static PlatformType GetFromName(StringView name, StringView targetTriple = default)
 			{
+				if (!targetTriple.IsWhiteSpace)
+					return TargetTriple.GetPlatformType(targetTriple);
+
 				switch (name)
 				{
 				case "Win32", "Win64": return .Windows;

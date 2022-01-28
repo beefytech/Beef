@@ -5,6 +5,7 @@ using System.IO;
 using System.Diagnostics;
 using Beefy;
 using IDE.util;
+using IDE.Util;
 
 namespace IDE
 {
@@ -59,7 +60,7 @@ namespace IDE
 		{
 			Workspace.Options workspaceOptions = gApp.GetCurWorkspaceOptions();
 			mToolset = workspaceOptions.mToolsetType;
-			mPlatformType = Workspace.PlatformType.GetFromName(gApp.mPlatformName);
+			mPlatformType = Workspace.PlatformType.GetFromName(gApp.mPlatformName, workspaceOptions.mTargetTriple);
 			mPtrSize = Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName);
 		}
 
@@ -1206,15 +1207,19 @@ namespace IDE
 			{
 				if (project.mCurBfOutputFileNames == null)
 				{
+					BfCompiler.UsedOutputFlags usedOutputFlags = .FlushQueuedHotFiles;
+					if (options.mBuildOptions.mBuildKind == .StaticLib)
+						usedOutputFlags = .SkipImports;
+
 					project.mCurBfOutputFileNames = new .();
-					bfCompiler.GetOutputFileNames(bfProject, true, out bfHadOutputChanges, project.mCurBfOutputFileNames);
+					bfCompiler.GetOutputFileNames(bfProject, usedOutputFlags, out bfHadOutputChanges, project.mCurBfOutputFileNames);
 				}
 				for (var fileName in project.mCurBfOutputFileNames)
 					bfFileNames.Add(fileName);
 			}
 			else
 			{
-				bfCompiler.GetOutputFileNames(bfProject, true, out bfHadOutputChanges, bfFileNames);
+				bfCompiler.GetOutputFileNames(bfProject, .FlushQueuedHotFiles, out bfHadOutputChanges, bfFileNames);
 				defer:: ClearAndDeleteItems(bfFileNames);
 			}
 		    if (bfHadOutputChanges)

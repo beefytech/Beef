@@ -9388,7 +9388,14 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 	return outString.c_str();
 }
 
-BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* bfCompiler, BfProject* bfProject, bool flushQueuedHotFiles, bool* hadOutputChanges)
+enum BfUsedOutputFlags
+{
+	BfUsedOutputFlags_None = 0,
+	BfUsedOutputFlags_FlushQueuedHotFiles = 1,
+	BfUsedOutputFlags_SkipImports = 2,
+};
+
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* bfCompiler, BfProject* bfProject, BfUsedOutputFlags flags, bool* hadOutputChanges)
 {	
 	BP_ZONE("BfCompiler_GetUsedOutputFileNames");
 
@@ -9435,14 +9442,17 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 	{
 		BF_ASSERT(!mainModule->mIsDeleting);
 
-		for (auto fileNameIdx : mainModule->mImportFileNames)
+		if ((flags & BfUsedOutputFlags_SkipImports) == 0)
 		{
-			auto fileName = bfCompiler->mContext->mStringObjectIdMap[fileNameIdx].mString;
-			if (!usedFileNames.TryAdd(fileName, NULL))
-				continue;
-			if (!outString.empty())
-				outString += "\n";
-			outString += fileName;
+			for (auto fileNameIdx : mainModule->mImportFileNames)
+			{
+				auto fileName = bfCompiler->mContext->mStringObjectIdMap[fileNameIdx].mString;
+				if (!usedFileNames.TryAdd(fileName, NULL))
+					continue;
+				if (!outString.empty())
+					outString += "\n";
+				outString += fileName;
+			}
 		}
 
 		for (auto&& moduleFileName : mainModule->mOutFileNames)
@@ -9493,7 +9503,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 				continue;
 			outPaths.Add(fileEntry.mFileName);
 
-			if (flushQueuedHotFiles)
+			if ((flags & BfUsedOutputFlags_FlushQueuedHotFiles) != 0)
 			{
 				bfCompiler->mHotState->mQueuedOutFiles.RemoveAtFast(i);
 				i--;
