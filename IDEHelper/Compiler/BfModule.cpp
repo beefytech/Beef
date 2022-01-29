@@ -18914,7 +18914,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		}
 	}
 	if ((mCompiler->mResolvePassData != NULL) && (methodDeclaration != NULL) && (nameNode != NULL) &&
-		(mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Method) && (methodDef->mIdx >= 0))
+		(mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Method) && 
+		(methodDef->mIdx >= 0) && (!methodInstance->mIsForeignMethodDef))
 	{
 		if (methodInstance->GetExplicitInterface() == NULL)		
 			mCompiler->mResolvePassData->HandleMethodReference(nameNode, typeDef, methodDef);
