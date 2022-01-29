@@ -11917,6 +11917,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					return mBfIRBuilder->GetFakeVal();
 			}
 
+			if ((genericParamInst->mTypeConstraint == toType) && (toType->IsUnspecializedType()))
+				return mBfIRBuilder->GetFakeVal();
+
 			auto castedVal = CastToValue(srcNode, typedVal, genericParamInst->mTypeConstraint, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
 			if (castedVal)
 				return castedVal;
