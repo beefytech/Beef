@@ -1034,6 +1034,7 @@ public:
 	bool mNoBind;
 	bool mInConditionalBlock; // IE: RHS of ((A) && (B)), indicates an allocation in 'B' won't be dominated by a dtor, for example		
 	bool mAllowUinitReads;
+	bool mDisableReturns;
 	bool mCancelledDeferredCall;	
 	bool mNoObjectAccessChecks;
 	bool mHadIgnoredError;
@@ -1060,7 +1061,7 @@ public:
 		mHadReturn = false;
 		mLeftBlockUncond = false;				
 		mLeftBlockCond = false;
-		mHadContinue = false;		
+		mHadContinue = false;
 		mMayNeedThisAccessCheck = false;
 		mTempKind = TempKind_None;		
 		mInHeadScope = true;
@@ -1071,8 +1072,9 @@ public:
 		mNoBind = false;		
 		mIgnoreObjectAccessCheck = false;
 		mDisableChecks = false;
-		mInConditionalBlock = false;		
+		mInConditionalBlock = false;
 		mAllowUinitReads = false;
+		mDisableReturns = false;
 		mCancelledDeferredCall = false;
 		mNoObjectAccessChecks = false;
 		mInDeferredBlock = false;		

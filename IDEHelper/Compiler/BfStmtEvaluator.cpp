@@ -3143,7 +3143,7 @@ void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEval
 	if ((flags & BfEmbeddedStatementFlags_Unscoped) != 0)
 	{
 		SetAndRestoreValue<BfExprEvaluator*> prevExprEvaluator(mCurMethodState->mCurScope->mExprEvaluator, exprEvaluator);
-
+		SetAndRestoreValue<bool> prevAllowReturn(mCurMethodState->mDisableReturns, true);
 		VisitCodeBlock(block);
 	}
 	else if (mCurMethodState != NULL)
@@ -4983,9 +4983,14 @@ static int gRetIdx = 0;
 
 void BfModule::Visit(BfReturnStatement* returnStmt)
 {	
-	if (mCurMethodInstance == NULL)
+	if ((mCurMethodInstance == NULL) || (mCurMethodState->mDisableReturns))
 	{
 		Fail("Unexpected return", returnStmt);
+		if (returnStmt->mExpression != NULL)
+		{
+			BfExprEvaluator exprEvaluator(this);
+			CreateValueFromExpression(exprEvaluator, returnStmt->mExpression);
+		}
 		return;
 	}
 	
