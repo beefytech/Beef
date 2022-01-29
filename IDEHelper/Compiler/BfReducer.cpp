@@ -3828,7 +3828,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 
 					if (deleteStmt->mAllocExpr == NULL)
 					{
-						auto allocExpr = CreateExpressionAfter(deleteStmt);
+						auto allocExpr = CreateExpressionAfter(deleteStmt, (CreateExprFlags)(CreateExprFlags_NoCast | CreateExprFlags_ExitOnParenExpr));
 						if (allocExpr != NULL)
 						{
 							MEMBER_SET(deleteStmt, mAllocExpr, allocExpr);
