@@ -1529,10 +1529,9 @@ namespace System
 			CaseConv(false);
 		}
 
-		//[CLink]
-		//static extern int utf8proc_map(char8* str, int strlen, out char8* outStr, int options);
-
+		[CallingConvention(.Cdecl)]
 		static extern int UTF8GetAllocSize(char8* str, int strlen, int32 options);
+		[CallingConvention(.Cdecl)]
 		static extern int UTF8Map(char8* str, int strlen, char8* outStr, int outSize, int32 options);
 
 		public Result<void> Normalize(UnicodeNormalizationOptions unicodeNormalizationOptions = .NFC)
