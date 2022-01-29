@@ -11362,7 +11362,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		{
 			if (captureInfo == NULL)
 			{
-				Fail("Capture specifiers can only be used in lambda allocations", attributesDirective);
+				Fail("Capture specifiers can only be used in lambda allocations", tokenNode);
 				continue;
 			}
 

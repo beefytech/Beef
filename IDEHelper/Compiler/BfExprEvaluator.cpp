@@ -3760,7 +3760,8 @@ void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolation
 		auto stringType = mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef)->ToTypeInstance();
 
 		BfTokenNode* newToken = NULL;
-		BfAllocTarget allocTarget = ResolveAllocTarget(stringInterpolationExpression->mAllocNode, newToken);
+		BfAllocTarget allocTarget;
+		ResolveAllocTarget(allocTarget, stringInterpolationExpression->mAllocNode, newToken);
 		
 		CreateObject(NULL, stringInterpolationExpression->mAllocNode, stringType);
 		BfTypedValue newString = mResult;
@@ -11911,7 +11912,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 	}
 	
 	BfTokenNode* newToken = NULL;
-	BfAllocTarget allocTarget = ResolveAllocTarget(delegateBindExpr->mNewToken, newToken);
+	BfAllocTarget allocTarget;
+	ResolveAllocTarget(allocTarget, delegateBindExpr->mNewToken, newToken);
 
 	SizedArray<BfTypedValueExpression, 4> typedValueExprs;
 	SizedArray<BfExpression*, 4> args;
@@ -12987,7 +12989,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	auto varMethodState = methodState.mPrevMethodState;
 	bool hasExplicitCaptureNames = false;	
 
-	for (auto& captureEntry : allocTarget.mCaptureInfo.mCaptures)
+	for (auto& captureEntry : allocTarget.mCaptureInfo->mCaptures)
 	{
 		if (captureEntry.mNameNode == NULL)
 		{
@@ -13029,7 +13031,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		auto varMethodState = methodState.mPrevMethodState;
 		while (varMethodState != NULL)
 		{
-			for (auto& captureEntry : allocTarget.mCaptureInfo.mCaptures)
+			for (auto& captureEntry : allocTarget.mCaptureInfo->mCaptures)
 			{
 				if (captureEntry.mNameNode != NULL)
 				{
@@ -13134,10 +13136,10 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 	auto _GetCaptureType = [&](const StringImpl& str)
 	{
-		if (allocTarget.mCaptureInfo.mCaptures.IsEmpty())
+		if (allocTarget.mCaptureInfo->mCaptures.IsEmpty())
 			return BfCaptureType_Copy;
 
-		for (auto& captureEntry : allocTarget.mCaptureInfo.mCaptures)
+		for (auto& captureEntry : allocTarget.mCaptureInfo->mCaptures)
 		{
 			if ((captureEntry.mNameNode == NULL) || (captureEntry.mNameNode->Equals(str)))
 			{
@@ -13274,7 +13276,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		}
 	}
 
-	for (auto& captureEntry : allocTarget.mCaptureInfo.mCaptures)
+	for (auto& captureEntry : allocTarget.mCaptureInfo->mCaptures)
 	{
 		if ((!captureEntry.mUsed) && (captureEntry.mNameNode != NULL))
 			mModule->Warn(0, "Capture specifier not used", captureEntry.mNameNode);
@@ -13658,7 +13660,10 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 {
 	BfTokenNode* newToken = NULL;
-	BfAllocTarget allocTarget = ResolveAllocTarget(lambdaBindExpr->mNewToken, newToken);
+	BfCaptureInfo captureInfo;
+	BfAllocTarget allocTarget;
+	allocTarget.mCaptureInfo = &captureInfo;
+	ResolveAllocTarget(allocTarget, lambdaBindExpr->mNewToken, newToken);
 
 	if (mModule->mCurMethodInstance == NULL)
 		mModule->Fail("Invalid use of lambda bind expression", lambdaBindExpr);
@@ -13957,7 +13962,8 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	attributeState.mTarget = BfAttributeTargets_Alloc;
 	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, &attributeState);	
 	BfTokenNode* newToken = NULL;
-	BfAllocTarget allocTarget = ResolveAllocTarget(allocNode, newToken, &attributeState.mCustomAttributes);
+	BfAllocTarget allocTarget;
+	ResolveAllocTarget(allocTarget, allocNode, newToken, &attributeState.mCustomAttributes);
 	
 	bool isScopeAlloc = newToken->GetToken() == BfToken_Scope;
 	bool isAppendAlloc = newToken->GetToken() == BfToken_Append;
@@ -14982,7 +14988,8 @@ void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
 	}*/
 
 	BfTokenNode* newToken = NULL;
-	BfAllocTarget allocTarget = ResolveAllocTarget(boxExpr->mAllocNode, newToken);
+	BfAllocTarget allocTarget;
+	ResolveAllocTarget(allocTarget, boxExpr->mAllocNode, newToken);
 
 	if ((boxExpr->mAllocNode != NULL) && (boxExpr->mAllocNode->mToken == BfToken_Scope))
 	{
@@ -15048,12 +15055,11 @@ void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
 	}
 }
 
-BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenNode*& newToken, BfCustomAttributes** outCustomAttributes)
+void BfExprEvaluator::ResolveAllocTarget(BfAllocTarget& allocTarget, BfAstNode* allocNode, BfTokenNode*& newToken, BfCustomAttributes** outCustomAttributes)
 {
 	auto autoComplete = GetAutoComplete();
 	BfAttributeDirective* attributeDirective = NULL;
-
-	BfAllocTarget allocTarget;
+	
 	allocTarget.mRefNode = allocNode;
 	newToken = BfNodeDynCast<BfTokenNode>(allocNode);
 	if (newToken == NULL)
@@ -15099,7 +15105,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 
 	if (attributeDirective != NULL)
 	{
-		auto customAttrs = mModule->GetCustomAttributes(attributeDirective, BfAttributeTargets_Alloc, BfGetCustomAttributesFlags_AllowNonConstArgs, &allocTarget.mCaptureInfo);
+		auto customAttrs = mModule->GetCustomAttributes(attributeDirective, BfAttributeTargets_Alloc, BfGetCustomAttributesFlags_AllowNonConstArgs, allocTarget.mCaptureInfo);
 		if (customAttrs != NULL)
 		{
 			for (auto& attrib : customAttrs->mAttributes)
@@ -15131,9 +15137,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 			else
 				delete customAttrs;
 		}
-	}
-
-	return allocTarget;
+	}	
 }
 
 BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedValue target)

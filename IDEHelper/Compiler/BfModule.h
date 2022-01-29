@@ -600,7 +600,7 @@ public:
 	BfTypedValue mCustomAllocator;
 	BfScopedInvocationTarget* mScopedInvocationTarget;
 	int mAlignOverride;
-	BfCaptureInfo mCaptureInfo;
+	BfCaptureInfo* mCaptureInfo;
 	bool mIsFriend;
 
 public:
@@ -612,6 +612,7 @@ public:
 		mScopedInvocationTarget = NULL;
 		mAlignOverride = -1;
 		mIsFriend = false;
+		mCaptureInfo = NULL;
 	}
 
 	BfAllocTarget(BfScopeData* scopeData)
