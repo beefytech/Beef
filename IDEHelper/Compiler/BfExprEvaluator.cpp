@@ -16445,19 +16445,11 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 	if (mixinState->mHasDeferredUsage)
 	{
-// 		if (target)
-// 		{
-// 			if (target.mType->IsValuelessType())
-// 				mixinState->mTarget = target;
-// 			else
-// 			{
-// 				target = mModule->LoadValue(target);
-// 				auto savedTarget = BfTypedValue(mModule->CreateAlloca(target.mType, false), target.mType, true);
-// 				mModule->mBfIRBuilder->CreateStore(target.mValue, savedTarget.mValue);
-// 				mixinState->mTarget = savedTarget;
-// 			}				
-// 		}
 		mixinState->mTarget = BfTypedValue();
+		// Put deferred mixin states at the front
+		BF_ASSERT(rootMethodState->mMixinStates.back() == mixinState);
+		rootMethodState->mMixinStates.pop_back();
+		rootMethodState->mMixinStates.Insert(0, mixinState);
 	}
 	else
 	{
