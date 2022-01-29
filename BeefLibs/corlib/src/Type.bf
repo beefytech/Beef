@@ -756,7 +756,8 @@ namespace System.Reflection
 		{
 			None = 0,
 			Splat = 1,
-			Implicit = 2
+			Implicit = 2,
+			AppendIdx = 4
 		}
 
 		[CRepr, AlwaysInclude]

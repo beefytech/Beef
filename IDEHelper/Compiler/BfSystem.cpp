@@ -550,7 +550,14 @@ bool BfMethodDef::IsEmptyPartial()
 
 bool BfMethodDef::IsDefaultCtor()
 {
-	return ((mMethodType == BfMethodType_Ctor) || (mMethodType == BfMethodType_CtorNoBody)) && (mParams.IsEmpty());
+	if ((mMethodType == BfMethodType_Ctor) || (mMethodType == BfMethodType_CtorNoBody))
+	{
+		return ((mParams.IsEmpty()) ||
+			((mParams.mSize == 1) && (mParams[0]->mParamKind == BfParamKind_AppendIdx)));
+	}
+	else if (mMethodType == BfMethodType_CtorCalcAppend)
+		return mParams.IsEmpty();
+	return false;
 }
 
 bool BfMethodDef::IsCtorOrInit()

@@ -6830,14 +6830,14 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			includeMethod = true;
 		if ((methodDef->mIsStatic) && ((methodReflectKind & BfReflectKind_StaticMethods) != 0))
 			includeMethod = true;
-
-		if (methodDef->mMethodType == BfMethodType_Ctor)
+		
+		if ((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_CtorCalcAppend))
 		{
 			if ((methodReflectKind & BfReflectKind_Constructors) != 0)
 				includeMethod = true;
-			if ((methodDef->mParams.IsEmpty()) && ((methodReflectKind & BfReflectKind_DefaultConstructor) != 0))
+			if ((methodDef->IsDefaultCtor()) && ((methodReflectKind & BfReflectKind_DefaultConstructor) != 0))
 				includeMethod = true;
-		}
+		}		
 
 		if ((!includeMethod) && (typeOptions != NULL))
 			includeMethod = ApplyTypeOptionMethodFilters(includeMethod, methodDef, typeOptions);
@@ -6906,6 +6906,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			ParamFlag_None = 0,
 			ParamFlag_Splat = 1,
 			ParamFlag_Implicit = 2,
+			ParamFlag_AppendIdx = 4
 		};
 
 		SizedArray<BfIRValue, 8> paramVals;
@@ -6917,6 +6918,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			ParamFlags paramFlags = ParamFlag_None;
 			if (defaultMethod->GetParamIsSplat(paramIdx))
 				paramFlags = (ParamFlags)(paramFlags | ParamFlag_Splat);
+			if (defaultMethod->GetParamKind(paramIdx) == BfParamKind_AppendIdx)
+				paramFlags = (ParamFlags)(paramFlags | ParamFlag_Implicit | ParamFlag_AppendIdx);
 
 			BfIRValue paramNameConst = GetStringObjectValue(paramName, !mIsComptimeModule);
 
@@ -10109,6 +10112,12 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 		if ((!typedVal.mType->IsPointer()) || (toTypeInstance == mContext->mBfObjectType))
 			fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
+		else
+		{
+			auto checkStructTypeInstance = GetWrappedStructType(typedVal.mType);
+			if (checkStructTypeInstance == toType->GetUnderlyingType())
+				fromStructTypeInstance = checkStructTypeInstance;
+		}
 
 		if (isStructPtr)
 		{

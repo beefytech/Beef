@@ -5536,9 +5536,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			}
 			if (typeInstance->IncludeAllMethods())
 				implRequired = true;
+
 			// "AssumeInstantiated" also forces default ctor
 			if (((typeInstance->mAlwaysIncludeFlags & BfAlwaysIncludeFlag_AssumeInstantiated) != 0) &&
-				(methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mParams.IsEmpty()))
+				(methodDef->IsDefaultCtor()))
 				implRequired = true;
 
 			if ((typeOptionsIncludeAll) && (ApplyTypeOptionMethodFilters(true, methodDef, typeOptions)))

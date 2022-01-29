@@ -121,32 +121,55 @@ namespace System.Reflection
 				return .Err;
 
 			MethodInfo methodInfo = default;
+			MethodInfo calcAppendMethodInfo = default;
 			if (!IsBoxed)
 			{
 				for (int methodId < mMethodDataCount)
 				{
 					let methodData = &mMethodDataPtr[methodId];
 					if ((!methodData.mFlags.HasFlag(.Constructor)) || (methodData.mFlags.HasFlag(.Static)))
+					{
+						if (((Object)methodData.mName == "this$calcAppend") && (methodData.mParamCount == 0))
+							calcAppendMethodInfo = .(this, methodData);
 						continue;
-					if (methodData.mParamCount != 0)
-						continue;
-					
-					methodInfo = .(this, methodData);
-					break;
+					}
+					if (methodData.mParamCount == 0)
+					{
+						methodInfo = .(this, methodData);
+						break;
+					}
+					else if ((methodData.mParamCount == 1) && (methodData.mParamData[0].mParamFlags.HasFlag(.AppendIdx)))
+						methodInfo = .(this, methodData);
 				}
 
 				if (!methodInfo.IsInitialized)
+					return .Err;
+				if ((methodInfo.[Friend]mMethodData.mParamCount != 0) && (!calcAppendMethodInfo.IsInitialized))
 					return .Err;
 			}
 			Object obj;
 
 			let objType = typeof(Object) as TypeInstance;
 
+			int allocSize = mInstSize;
+			bool hasAppendAlloc = (methodInfo.IsInitialized) && (methodInfo.[Friend]mMethodData.mParamCount != 0);
+
+			if (hasAppendAlloc)
+			{
+				switch (calcAppendMethodInfo.Invoke(null))
+				{
+				case .Err:
+					return .Err;
+				case .Ok(let val):
+					allocSize += val.Get<int>();
+				}
+			}
+
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			int32 stackCount = Compiler.Options.AllocStackCount;
 			if (mAllocStackCountOverride != 0)
 				stackCount = mAllocStackCountOverride;
-			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, mInstSize, mInstAlign, stackCount);
+			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, allocSize, mInstAlign, stackCount);
 #else
 			void* mem = new [Align(16)] uint8[mInstSize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);
@@ -155,7 +178,13 @@ namespace System.Reflection
 			Internal.MemSet((uint8*)Internal.UnsafeCastToPtr(obj) + objType.mInstSize, 0, mInstSize - objType.mInstSize);
 			if (methodInfo.IsInitialized)
 			{
-				if (methodInfo.Invoke(obj) case .Err)
+				Object[] args = null;
+				if (hasAppendAlloc)
+					args = scope:: .(scope:: box ((int)Internal.UnsafeCastToPtr(obj) + mInstSize));
+				else
+					args = scope:: Object[0];
+					
+				if (methodInfo.Invoke(obj, params args) case .Err)
 				{
 					delete obj;
 					return .Err;
