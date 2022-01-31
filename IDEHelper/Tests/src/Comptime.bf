@@ -405,6 +405,25 @@ namespace Tests
 			}
 		}
 
+		public struct GetTupleField<TTuple, C> where C : const int
+		{
+			public typealias Type = comptype(GetTupleFieldType(typeof(TTuple), C));
+
+			[Comptime]
+			private static Type GetTupleFieldType(Type type, int index)
+			{
+				if (type.IsGenericParam)
+				{
+					Compiler.Assert(type.IsGenericParam);
+					String tName = type.GetFullName(.. scope .());
+					Compiler.Assert(tName == "TTuple");
+					return typeof(var);
+				}
+				Compiler.Assert(type.IsTuple);
+				return type.GetField(index).Get().FieldType;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -468,6 +487,12 @@ namespace Tests
 				++idx;
 			} 
 			Test.Assert(idx == 2);
+
+			var tuple = ((int16)1, 2.3f);
+			GetTupleField<decltype(tuple), const 0>.Type tupType0;
+			GetTupleField<decltype(tuple), const 1>.Type tupType1;
+			Test.Assert(typeof(decltype(tupType0)) == typeof(int16));
+			Test.Assert(typeof(decltype(tupType1)) == typeof(float));
 		}
 	}
 }

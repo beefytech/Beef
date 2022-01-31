@@ -482,6 +482,7 @@ namespace System
 
 		static extern Type Comptime_GetTypeById(int32 typeId);
 		static extern Type Comptime_GetTypeByName(StringView name);
+		static extern String Comptime_Type_ToString(int32 typeId);
 		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
 		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeId, void* dataPtr);
 		static extern int32 Comptime_GetMethodCount(int32 typeId);
@@ -546,6 +547,12 @@ namespace System
 			case .Double: strBuffer.Append("double");
 			default: ((int32)mTypeCode).ToString(strBuffer);
 			}
+		}
+
+		void ComptimeToString(String strBuffer)
+		{
+			if (Compiler.IsComptime)
+				strBuffer.Append(Comptime_Type_ToString((.)mTypeId));
 		}
 
         public virtual void GetFullName(String strBuffer)
@@ -1260,6 +1267,23 @@ namespace System.Reflection
 			return obj;
 		}
     }
+
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
+	class GenericParamType : Type
+	{
+		public override void GetName(String strBuffer)
+		{
+			if (Compiler.IsComptime)
+				this.[Friend]ComptimeToString(strBuffer);
+			else
+				strBuffer.Append("$GenericParam");
+		}
+
+		public override void GetFullName(String strBuffer)
+		{
+			GetName(strBuffer);
+		}
+	}
 
     public enum TypeFlags : uint32
     {

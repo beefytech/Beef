@@ -2913,6 +2913,9 @@ CeContext::CeContext()
 	mCurFrame = NULL;
 	mCurModule = NULL;
 	mCurMethodInstance = NULL;
+	mCallerMethodInstance = NULL;
+	mCallerTypeInstance = NULL;
+	mCallerActiveTypeDef = NULL;
 	mCurExpectingType = NULL;
 	mCurEmitContext = NULL;
 }
@@ -2983,18 +2986,20 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 			err += " ";
 		}
 				
-		auto contextMethodInstance = mCurModule->mCurMethodInstance;
+		auto contextMethodInstance = mCallerMethodInstance;
+		auto contextTypeInstance = mCallerTypeInstance;
 		if (stackIdx > 1)
 		{
 			auto func = mCallStack[stackIdx - 1].mFunction;
 			contextMethodInstance = func->mCeFunctionInfo->mMethodInstance;			
+			contextTypeInstance = contextMethodInstance->GetOwner();
 		}
 
 		err += StrFormat("in comptime ");
 		
 		//
 		{
-			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, (contextMethodInstance != NULL) ? contextMethodInstance->GetOwner() : NULL);
+			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, contextTypeInstance);
 			SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, contextMethodInstance);
 
 			if (ceFunction->mMethodInstance != NULL)
@@ -3033,7 +3038,7 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 void CeContext::FixProjectRelativePath(StringImpl& path)
 {
 	BfProject* activeProject = NULL;
-	auto activeTypeDef = mCurModule->GetActiveTypeDef();
+	auto activeTypeDef = mCallerActiveTypeDef;
 	if (activeTypeDef != NULL)
 		activeProject = activeTypeDef->mProject;
 	if (activeProject != NULL)
@@ -3145,7 +3150,7 @@ addr_ce CeContext::GetReflectType(int typeId)
 		return *addrPtr;
 
 	auto ceModule = mCeMachine->mCeModule;
-	SetAndRestoreValue<bool> ignoreWrites(ceModule->mBfIRBuilder->mIgnoreWrites, false);
+	SetAndRestoreValue<bool> ignoreWrites(ceModule->mBfIRBuilder->mIgnoreWrites, false);	
 
 	if (ceModule->mContext->mBfTypeType == NULL)
 		ceModule->mContext->ReflectInit();
@@ -4064,8 +4069,14 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	SetAndRestoreValue<BfAstNode*> prevTargetSrc(mCurTargetSrc, targetSrc);
 	SetAndRestoreValue<BfModule*> prevModule(mCurModule, module);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
+	SetAndRestoreValue<BfMethodInstance*> prevCallerMethodInstance(mCallerMethodInstance, module->mCurMethodInstance);
+	SetAndRestoreValue<BfTypeInstance*> prevCallerTypeInstance(mCallerTypeInstance, module->mCurTypeInstance);
+	SetAndRestoreValue<BfTypeDef*> prevCallerActiveTypeDef(mCallerActiveTypeDef, module->GetActiveTypeDef());
 	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);	
 	
+	SetAndRestoreValue<BfMethodInstance*> moduleCurMethodInstance(module->mCurMethodInstance, methodInstance);
+	SetAndRestoreValue<BfTypeInstance*> moduleCurTypeInstance(module->mCurTypeInstance, methodInstance->GetOwner());
+
 	SetAndRestoreValue<int> prevCurExecuteId(mCurModule->mCompiler->mCurCEExecuteId, mCeMachine->mExecuteId);	
 
 	// Reentrancy may occur as methods need defining
@@ -4853,6 +4864,23 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectSpecializedType(typeAddr, typeSpan);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_ToString)
+			{				
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+				
+				BfType* type = GetBfType(typeId);
+				bool success = false;
+				if (type == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
+				}
+				
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);				
+				CeSetAddrVal(stackPtr + 0, GetString(mCeMachine->mCeModule->TypeToString(type)), ptrSize);
+				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_GetCustomAttribute)
 			{
@@ -7785,6 +7813,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_GetSpecializedType")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetReflectSpecializedType;
+				}
+				else if (methodDef->mName == "Comptime_Type_ToString")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Type_ToString;
 				}
 				else if (methodDef->mName == "Comptime_Type_GetCustomAttribute")
 				{

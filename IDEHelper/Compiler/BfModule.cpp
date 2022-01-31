@@ -5396,11 +5396,13 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			typeDataSource = ResolveTypeDef(mCompiler->mReflectSizedArrayType)->ToTypeInstance();
 		else if (type->IsConstExprValue())
 			typeDataSource = ResolveTypeDef(mCompiler->mReflectConstExprType)->ToTypeInstance();
-		else
-			typeDataSource = mContext->mBfTypeType;
-
-		if (type->IsGenericParam())
+		else if (type->IsGenericParam())
+		{
 			typeFlags |= BfTypeFlags_GenericParam;
+			typeDataSource = ResolveTypeDef(mCompiler->mReflectGenericParamType)->ToTypeInstance();
+		}
+		else
+			typeDataSource = mContext->mBfTypeType;		
 				
 		if ((!mTypeDataRefs.ContainsKey(typeDataSource)) && (typeDataSource != type))
 		{
@@ -5633,6 +5635,22 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto ConstExprTypeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectConstExprType, BfIRPopulateType_Full), constExprTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectConstExprType), true,
 					BfIRLinkageType_External, ConstExprTypeData, typeDataName);
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
+				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
+			}
+			else if (type->IsGenericParam())
+			{
+				auto genericParamType = (BfGenericParamType*)type;
+				SizedArray<BfIRValue, 3> genericParamTypeDataParms =
+				{
+					typeData
+				};
+
+				auto reflectGenericParamType = ResolveTypeDef(mCompiler->mReflectGenericParamType)->ToTypeInstance();
+				FixConstValueParams(reflectGenericParamType, genericParamTypeDataParms);
+				auto genericParamTypeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectGenericParamType, BfIRPopulateType_Full), genericParamTypeDataParms);
+				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectGenericParamType), true,
+					BfIRLinkageType_External, genericParamTypeData, typeDataName);
 				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 			}

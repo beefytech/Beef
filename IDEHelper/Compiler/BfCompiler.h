@@ -398,6 +398,7 @@ public:
 	BfTypeDef* mPointerTypeDef;
 	BfTypeDef* mReflectTypeIdTypeDef;
 	BfTypeDef* mReflectArrayType;
+	BfTypeDef* mReflectGenericParamType;
 	BfTypeDef* mReflectFieldDataDef;
 	BfTypeDef* mReflectFieldSplatDataDef;
 	BfTypeDef* mReflectMethodDataDef;

@@ -10593,15 +10593,8 @@ void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)
 		return;
 	}
 
-	if ((type->IsGenericParam()) && (!mModule->mIsComptimeModule))
-	{
-		mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(typeType)), typeType);
-	}
-	else
-	{
-		mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
-		mResult = BfTypedValue(mModule->CreateTypeDataRef(type), typeType);
-	}
+	mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+	mResult = BfTypedValue(mModule->CreateTypeDataRef(type), typeType);
 }
 
 bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifierNode* propName)

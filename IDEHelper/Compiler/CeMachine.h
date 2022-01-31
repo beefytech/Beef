@@ -324,6 +324,7 @@ enum CeFunctionKind
 	CeFunctionKind_GetReflectTypeById,
 	CeFunctionKind_GetReflectTypeByName,
 	CeFunctionKind_GetReflectSpecializedType,
+	CeFunctionKind_Type_ToString,
 	CeFunctionKind_Type_GetCustomAttribute,
 	CeFunctionKind_GetMethodCount,
 	CeFunctionKind_GetMethod,
@@ -701,7 +702,7 @@ public:
 		mCurDbgLoc = NULL;
 		mFrameSize = 0;
 	}
-	
+		
 	void Fail(const StringImpl& error);
 
 	CeOperand FrameAlloc(BeType* type);
@@ -867,6 +868,9 @@ public:
 	Dictionary<int, CeInternalData*> mInternalDataMap;
 	int mCurHandleId;
 
+	BfMethodInstance* mCallerMethodInstance;
+	BfTypeInstance* mCallerTypeInstance;
+	BfTypeDef* mCallerActiveTypeDef;
 	BfMethodInstance* mCurMethodInstance;
 	BfType* mCurExpectingType;
 	BfAstNode* mCurTargetSrc;
@@ -877,7 +881,7 @@ public:
 public:
 	CeContext();
 	~CeContext();
-
+	
 	BfError* Fail(const StringImpl& error);
 	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
 

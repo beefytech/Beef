@@ -439,6 +439,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mPointerTypeDef = NULL;
 	mReflectTypeIdTypeDef = NULL;
 	mReflectArrayType = NULL;
+	mReflectGenericParamType = NULL;
 	mReflectFieldDataDef = NULL;
 	mReflectFieldSplatDataDef = NULL;
 	mReflectMethodDataDef = NULL;
@@ -1345,6 +1346,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectSpecializedGenericType));
 	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectUnspecializedGenericType));
 	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectArrayType));
+	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectGenericParamType));
 	
 	SmallVector<BfIRValue, 256> typeDataVector;	
 	for (auto type : vdataTypeList)	
@@ -6835,6 +6837,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mPointerTypeDef = _GetRequiredType("System.Pointer", 0);
 	mReflectTypeIdTypeDef = _GetRequiredType("System.Reflection.TypeId");
 	mReflectArrayType = _GetRequiredType("System.Reflection.ArrayType");
+	mReflectGenericParamType = _GetRequiredType("System.Reflection.GenericParamType");
 	mReflectFieldDataDef = _GetRequiredType("System.Reflection.TypeInstance.FieldData");
 	mReflectFieldSplatDataDef = _GetRequiredType("System.Reflection.TypeInstance.FieldSplatData");
 	mReflectMethodDataDef = _GetRequiredType("System.Reflection.TypeInstance.MethodData");
