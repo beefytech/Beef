@@ -3661,7 +3661,7 @@ namespace IDE.ui
 					needsFreshAutoComplete = true;
 				}
 
-                if ((needsFreshAutoComplete) && (!didAutoComplete))
+                if ((needsFreshAutoComplete) && (!didAutoComplete) && (mOnGenerateAutocomplete != null))
                 {
 					if (IsCursorVisible(false))
 						mOnGenerateAutocomplete(keyChar, isHighPri ? .HighPriority : default);
