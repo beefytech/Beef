@@ -22337,7 +22337,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				nameNode = ctorDeclaration->mThisToken;
 		}
 
-		if (autoComplete->IsAutocompleteNode(nameNode))
+		if ((autoComplete->IsAutocompleteNode(nameNode)) && (autoComplete->mResolveType != BfResolveType_Autocomplete))
 		{
 			autoComplete->mInsertStartIdx = nameNode->GetSrcStart();
 			autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();

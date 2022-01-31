@@ -2627,6 +2627,13 @@ void BfAutoComplete::CheckMethod(BfMethodDeclaration* methodDeclaration, bool is
 			{
 				mInsertStartIdx = methodDeclaration->GetSrcStart();
 				mInsertEndIdx = methodDeclaration->GetSrcEnd();
+				if (methodDeclaration->mBody != NULL)
+				{
+					if (methodDeclaration->mBody->mTriviaStart != -1)
+						mInsertEndIdx = methodDeclaration->mBody->mTriviaStart;
+					else
+						mInsertEndIdx = methodDeclaration->mBody->GetSrcStart();
+				}
 			}
 
 			String filter;
