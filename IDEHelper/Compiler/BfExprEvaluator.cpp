@@ -1000,7 +1000,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	{
 		auto returnType = newMethodInstance->mReturnType;
 		auto prevReturnType = prevMethodInstance->mReturnType;		
-
+		
 		if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
 		{
 			// Pick the one that can implicitly cast
@@ -2205,7 +2205,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		}
 		returnType = mModule->ResolveSelfType(returnType, typeInstance);
 
-		BfCastFlags castFlags = ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None;
+		BfCastFlags castFlags = ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? (BfCastFlags)(BfCastFlags_NoConversionOperator | BfCastFlags_NoInterfaceImpl) : BfCastFlags_None;
 		if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
 			castFlags = (BfCastFlags)(castFlags | BfCastFlags_Explicit);
 		if (!mModule->CanCast(mModule->GetFakeTypedValue(returnType), mCheckReturnType, castFlags))

@@ -95,13 +95,14 @@ enum BfCastFlags
 	BfCastFlags_SilentFail = 8,
 	BfCastFlags_NoBox = 0x10,
 	BfCastFlags_NoBoxDtor = 0x20,
-	BfCastFlags_NoConversionOperator = 0x40,
-	BfCastFlags_FromCompiler = 0x80, // Not user specified
-	BfCastFlags_Force = 0x100,
-	BfCastFlags_PreferAddr = 0x200,
-	BfCastFlags_WarnOnBox = 0x400,
-	BfCastFlags_IsCastCheck = 0x800,
-	BfCastFlags_IsConstraintCheck = 0x1000
+	BfCastFlags_NoInterfaceImpl = 0x40,
+	BfCastFlags_NoConversionOperator = 0x80,
+	BfCastFlags_FromCompiler = 0x100, // Not user specified
+	BfCastFlags_Force = 0x200,
+	BfCastFlags_PreferAddr = 0x400,
+	BfCastFlags_WarnOnBox = 0x800,
+	BfCastFlags_IsCastCheck = 0x1000,
+	BfCastFlags_IsConstraintCheck = 0x2000,	
 };
 
 enum BfCastResultFlags

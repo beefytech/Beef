@@ -11985,9 +11985,13 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		// ObjectInst|IFace -> object|IFace
 		if ((typedVal.mType->IsObject() || (typedVal.mType->IsInterface())) && ((toType->IsObject() || (toType->IsInterface()))))
 		{
-			bool allowCast = false;			
+			bool allowCast = false;
 
-			if (TypeIsSubTypeOf(fromTypeInstance, toTypeInstance))
+			if (((castFlags & BfCastFlags_NoInterfaceImpl) != 0) && (toTypeInstance->IsInterface()))
+			{
+				// Don't allow
+			}
+			else if (TypeIsSubTypeOf(fromTypeInstance, toTypeInstance))
 				allowCast = true;
 			else if ((explicitCast) &&
 				((toType->IsInterface()) || (TypeIsSubTypeOf(toTypeInstance, fromTypeInstance))))
@@ -12887,27 +12891,28 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 				if (doCall)
 				{
-					methodMatcher.FlushAmbiguityError();
+					if (!silentFail)
+						methodMatcher.FlushAmbiguityError();
 
 					auto wantType = paramType;
 					if (wantType->IsRef())
 						wantType = wantType->GetUnderlyingType();
-					auto typedVal = methodMatcher.mArguments[0].mTypedValue;
-					if (wantType != typedVal.mType)
+					auto convTypedVal = methodMatcher.mArguments[0].mTypedValue;
+					if (wantType != convTypedVal.mType)
 					{
-						if ((typedVal.mType->IsWrappableType()) && (wantType == GetWrappedStructType(typedVal.mType)))
+						if ((convTypedVal.mType->IsWrappableType()) && (wantType == GetWrappedStructType(convTypedVal.mType)))
 						{
-							typedVal = MakeAddressable(typedVal);
-							methodMatcher.mArguments[0].mTypedValue = BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(wantType->ToTypeInstance())),
+							convTypedVal = MakeAddressable(convTypedVal);
+							methodMatcher.mArguments[0].mTypedValue = BfTypedValue(mBfIRBuilder->CreateBitCast(convTypedVal.mValue, mBfIRBuilder->MapTypeInstPtr(wantType->ToTypeInstance())),
 								paramType, paramType->IsRef() ? BfTypedValueKind_Value : BfTypedValueKind_Addr);
 						}
 						else
 						{
-							methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, typedVal, wantType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator));
+							methodMatcher.mArguments[0].mTypedValue = Cast(srcNode, convTypedVal, wantType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator));
 							if (paramType->IsRef())
 							{
-								typedVal = MakeAddressable(typedVal);
-								typedVal.mKind = BfTypedValueKind_Addr;
+								convTypedVal = MakeAddressable(convTypedVal);
+								convTypedVal.mKind = BfTypedValueKind_Addr;
 							}
 						}
 					}
