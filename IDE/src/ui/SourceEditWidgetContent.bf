@@ -3786,7 +3786,7 @@ namespace IDE.ui
 
 		public void ShowAutoComplete(bool isUserRequested)
 		{
-			if (gApp.mSettings.mEditorSettings.mAutoCompleteShowKind != .None)
+			if ((gApp.mSettings.mEditorSettings.mAutoCompleteShowKind != .None) && (mOnGenerateAutocomplete != null))
 			{
 				if (IsCursorVisible(false))
 					mOnGenerateAutocomplete('\0', isUserRequested ? .UserRequested : .None);
