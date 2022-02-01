@@ -3381,6 +3381,57 @@ bool CeContext::CheckMemory(addr_ce addr, int32 size)
 	return true;
 }
 
+bool CeContext::GetStringFromAddr(addr_ce strInstAddr, StringImpl& str)
+{
+	if (!CheckMemory(strInstAddr, 0))
+		return false;
+
+	BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeMachine->mCeModule->ResolveTypeDef(mCeMachine->mCompiler->mStringTypeDef, BfPopulateType_Data);
+
+	auto lenByteCount = stringTypeInst->mFieldInstances[0].mResolvedType->mSize;
+	auto lenOffset = stringTypeInst->mFieldInstances[0].mDataOffset;
+	auto allocSizeOffset = stringTypeInst->mFieldInstances[1].mDataOffset;
+	auto ptrOffset = stringTypeInst->mFieldInstances[2].mDataOffset;
+
+	uint8* strInst = (uint8*)(strInstAddr + mMemory.mVals);
+	int32 lenVal = *(int32*)(strInst + lenOffset);
+
+	char* charPtr = NULL;
+
+	if (lenByteCount == 4)
+	{
+		int32 allocSizeVal = *(int32*)(strInst + allocSizeOffset);
+		if ((allocSizeVal & 0x40000000) != 0)
+		{
+			int32 ptrVal = *(int32*)(strInst + ptrOffset);
+			charPtr = (char*)(ptrVal + mMemory.mVals);
+		}
+		else
+		{
+			charPtr = (char*)(strInst + ptrOffset);
+		}
+	}
+	else
+	{
+		int64 allocSizeVal = *(int64*)(strInst + allocSizeOffset);
+		if ((allocSizeVal & 0x4000000000000000LL) != 0)
+		{
+			int32 ptrVal = *(int32*)(strInst + ptrOffset);
+			charPtr = (char*)(ptrVal + mMemory.mVals);
+		}
+		else
+		{
+			charPtr = (char*)(strInst + ptrOffset);
+		}
+	}
+
+	int32 ptrVal = *(int32*)(strInst + ptrOffset);
+	
+	if (charPtr != NULL)
+		str.Insert(str.length(), charPtr, lenVal);
+	return true;
+}
+
 bool CeContext::GetStringFromStringView(addr_ce addr, StringImpl& str)
 {
 	int ptrSize = mCeMachine->mCeModule->mSystem->mPtrSize;
@@ -4748,52 +4799,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			else if (checkFunction->mFunctionKind == CeFunctionKind_FatalError)
 			{
 				int32 strInstAddr = *(int32*)((uint8*)stackPtr + 0);
-				CE_CHECKADDR(strInstAddr, 0);
-
-				BfTypeInstance* stringTypeInst = (BfTypeInstance*)ceModule->ResolveTypeDef(mCeMachine->mCompiler->mStringTypeDef, BfPopulateType_Data);
-
-				auto lenByteCount = stringTypeInst->mFieldInstances[0].mResolvedType->mSize;
-				auto lenOffset = stringTypeInst->mFieldInstances[0].mDataOffset;
-				auto allocSizeOffset = stringTypeInst->mFieldInstances[1].mDataOffset;
-				auto ptrOffset = stringTypeInst->mFieldInstances[2].mDataOffset;
-
-				uint8* strInst = (uint8*)(strInstAddr + memStart);
-				int32 lenVal = *(int32*)(strInst + lenOffset);
-
-				char* charPtr = NULL;
-
-				if (lenByteCount == 4)
-				{
-					int32 allocSizeVal = *(int32*)(strInst + allocSizeOffset);
-					if ((allocSizeVal & 0x40000000) != 0)
-					{
-						int32 ptrVal = *(int32*)(strInst + ptrOffset);
-						charPtr = (char*)(ptrVal + memStart);
-					}
-					else
-					{
-						charPtr = (char*)(strInst + ptrOffset);
-					}
-				}
-				else
-				{
-					int64 allocSizeVal = *(int64*)(strInst + allocSizeOffset);
-					if ((allocSizeVal & 0x4000000000000000LL) != 0)
-					{
-						int32 ptrVal = *(int32*)(strInst + ptrOffset);
-						charPtr = (char*)(ptrVal + memStart);
-					}
-					else
-					{
-						charPtr = (char*)(strInst + ptrOffset);
-					}
-				}
-
-				int32 ptrVal = *(int32*)(strInst + ptrOffset);
 
 				String error = "Fatal Error: ";
-				if (charPtr != NULL)
-					error.Insert(error.length(), charPtr, lenVal);
+				GetStringFromAddr(strInstAddr, error);
 				_Fail(error);
 
 				return false;
@@ -4878,7 +4886,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 				
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
-				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);				
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
 				CeSetAddrVal(stackPtr + 0, GetString(mCeMachine->mCeModule->TypeToString(type)), ptrSize);
 				_FixVariables();
 			}
@@ -5065,13 +5073,16 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMixin)
-			{				
-				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr);				
+			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMixin)			
+			{
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurModule->mCurMethodInstance, mCallerMethodInstance);
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurModule->mCurTypeInstance, mCallerTypeInstance);
+
+				int32 strInstAddr = *(int32*)((uint8*)stackPtr + 0);				
 				String emitStr;
-				if (!GetStringFromStringView(strViewPtr, emitStr))
+				if (!GetStringFromAddr(strInstAddr, emitStr))
 				{
-					_Fail("Invalid StringView");
+					_Fail("Invalid String");
 					return false;
 				}
 

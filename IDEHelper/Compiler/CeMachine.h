@@ -901,6 +901,7 @@ public:
 	BfType* GetBfType(int typeId);
 	void PrepareConstStructEntry(CeConstStructData& constStructData);
 	bool CheckMemory(addr_ce addr, int32 size);
+	bool GetStringFromAddr(addr_ce strInstAddr, StringImpl& str);
 	bool GetStringFromStringView(addr_ce addr, StringImpl& str);
 	bool GetCustomAttribute(BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr);	
 

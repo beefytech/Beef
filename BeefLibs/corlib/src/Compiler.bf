@@ -267,7 +267,7 @@ namespace System
 		static extern void Comptime_EmitAddInterface(int32 typeId, int32 ifaceTypeId);
 		static extern void Comptime_EmitMethodEntry(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMethodExit(int64 methodHandle, StringView text);
-		static extern void Comptime_EmitMixin(StringView text);
+		static extern void Comptime_EmitMixin(String text);
 
 		[Comptime(OnlyFromComptime=true)]
 		public static MethodBuilder CreateMethod(Type owner, StringView methodName, Type returnType, MethodFlags methodFlags)
@@ -301,8 +301,15 @@ namespace System
 			Comptime_EmitMethodExit(methodHandle.mNativeMethodInstance, text);
 		}
 
+		[Comptime(ConstEval=true)]
+		public static void Mixin(String text)
+		{
+			if (Compiler.IsComptime)
+				Comptime_EmitMixin(text);
+		}
+
 		[Comptime]
-		public static void Mixin(StringView text)
+		public static void MixinRoot(String text)
 		{
 			if (Compiler.IsComptime)
 				Comptime_EmitMixin(text);
