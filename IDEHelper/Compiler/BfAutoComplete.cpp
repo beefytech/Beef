@@ -3268,7 +3268,7 @@ void BfAutoComplete::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType,
 	if (typeInst == mModule->mContext->mBfObjectType)
 		return;
 
-	auto parser = typeInst->mTypeDef->mSource->ToParser();
+	auto parser = typeInst->mTypeDef->GetDefinition()->mSource->ToParser();
 	if (parser == NULL)
 		return;
 
@@ -3323,7 +3323,7 @@ void BfAutoComplete::FixitAddCase(BfTypeInstance* typeInst, const StringImpl& ca
 	if (typeInst == mModule->mContext->mBfObjectType)
 		return;
 
-	auto parser = typeInst->mTypeDef->mSource->ToParser();
+	auto parser = typeInst->mTypeDef->GetDefinition()->mSource->ToParser();
 	if (parser == NULL)
 		return;
 
@@ -3562,7 +3562,7 @@ void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& 
 
 	if ((typeInst->mTypeDef->mSource != NULL) && (typeInst != mModule->mContext->mBfObjectType))
 	{
-		auto parser = typeInst->mTypeDef->mSource->ToParser();
+		auto parser = typeInst->mTypeDef->GetDefinition()->mSource->ToParser();
 		if (parser != NULL)
 		{
 			String fullName = typeInst->mTypeDef->mFullName.ToString();
@@ -3643,7 +3643,7 @@ void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfAstNode* ty
 void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 {
 	auto baseType = typeInstance->mBaseType;
-	auto parser = typeInstance->mTypeDef->mSource->ToParser();
+	auto parser = typeInstance->mTypeDef->GetDefinition()->mSource->ToParser();
 	if (parser != NULL)
 	{
 		for (auto methodDef : baseType->mTypeDef->mMethods)

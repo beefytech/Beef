@@ -1762,7 +1762,7 @@ namespace IDE.ui
 
             bool isFastClassify = false;
             BfParser parser;
-            if (!isBackground)
+            if ((!isBackground) && (projectSource != null))
             {
                 bfSystem.PerfZoneStart("CreateParser");
                 parser = bfSystem.CreateParser(projectSource, false);
