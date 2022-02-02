@@ -410,6 +410,7 @@ public:
 	virtual bool CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode);	
 	BfAutoComplete* GetAutoComplete();	
 	bool IsComptime();
+	bool IsConstEval();
 	bool IsComptimeEntry();
 	int GetStructRetIdx(BfMethodInstance* methodInstance, bool forceStatic = false);
 	BfTypedValue SetupNullConditional(BfTypedValue target, BfTokenNode* dotToken);

@@ -3066,6 +3066,11 @@ bool BfExprEvaluator::IsComptime()
 	return (mModule->mIsComptimeModule) || ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0);
 }
 
+bool BfExprEvaluator::IsConstEval()
+{
+	return ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0);
+}
+
 bool BfExprEvaluator::IsComptimeEntry()
 {
 	if (mModule->mIsComptimeModule)
@@ -3741,7 +3746,7 @@ void BfExprEvaluator::Visit(BfLiteralExpression* literalExpr)
 
 void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
 {
-	if (IsComptimeEntry())
+	if (IsConstEval())
 	{
 		mModule->Fail("Const evaluation of string interpolation not allowed", stringInterpolationExpression);
 	}
@@ -4267,6 +4272,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfIdentifierNode* identifierNode,
 void BfExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 {
 	auto autoComplete = GetAutoComplete();
+	
 	if (autoComplete != NULL)
 		autoComplete->CheckIdentifier(identifierNode, true);
 	
@@ -4276,7 +4282,11 @@ void BfExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 		mModule->CheckTypeRefFixit(identifierNode);
 		if ((autoComplete != NULL) && (autoComplete->CheckFixit(identifierNode)))
 		{
-			if (mModule->mCurMethodInstance != NULL)
+			if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mCapturing))
+			{
+				// During this phase we don't have lambda and local method params available so they would result in erroneous fixits				
+			}
+			else if (mModule->mCurMethodInstance != NULL)
 			{
 				BfType* fieldType = mExpectingType;
 				if (fieldType == NULL)
@@ -5751,6 +5761,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					}
 				}
 				
+				if (methodInstance->mReturnType->IsValuelessType())
+					return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), returnType);
 				return mModule->GetDefaultTypedValue(returnType, true, BfDefaultValueKind_Undef);
 			}
 
@@ -6920,7 +6932,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					if (methodDef->mMethodType == BfMethodType_Extension)
 						numElements++;
 
-					if (IsComptimeEntry())
+					if (IsConstEval())
 					{
 						if ((wantType->IsArray()) || (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
 						{
@@ -7410,7 +7422,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				else
 				{
 					// We need to make a temp and get the addr of that
-					if ((!wantsSplat) && (!argValue.IsValuelessType()) && (!argValue.IsAddr()) && (!IsComptimeEntry()))
+					if ((!wantsSplat) && (!argValue.IsValuelessType()) && (!argValue.IsAddr()) && (!IsConstEval()))
 					{
 						argValue = mModule->MakeAddressable(argValue);
 					}
@@ -7430,7 +7442,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		{
 			if (argValue)
 			{
-				if (IsComptimeEntry())
+				if (IsConstEval())
 				{
 					auto constant = mModule->mBfIRBuilder->GetConstant(expandedParamsArray.mValue);
 					BF_ASSERT(constant->mConstType == BfConstType_Agg);
@@ -8008,7 +8020,7 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 			BfIRValue enumValue;
 			BfTypedValue result;
 
-			bool wantConst = IsComptimeEntry();
+			bool wantConst = IsConstEval();
 
 			if (wantConst)
 			{
@@ -15158,7 +15170,7 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 
 	if ((target.mType->IsStruct()) && (!target.IsAddr()))
 	{
-		if (IsComptimeEntry())
+		if (IsConstEval())
 			return target;
 		target = mModule->MakeAddressable(target);
 	}

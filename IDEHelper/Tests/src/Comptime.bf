@@ -424,6 +424,15 @@ namespace Tests
 			}
 		}
 
+		[Comptime]
+		static int GetMixinVal()
+		{
+			int a = 23;
+			Compiler.Mixin("a += 100;");
+			Compiler.MixinRoot(scope String("b += 200;"));
+			return a;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -493,6 +502,10 @@ namespace Tests
 			GetTupleField<decltype(tuple), const 1>.Type tupType1;
 			Test.Assert(typeof(decltype(tupType0)) == typeof(int16));
 			Test.Assert(typeof(decltype(tupType1)) == typeof(float));
+
+			int b = 34;
+			Test.Assert(GetMixinVal() == 123);
+			Test.Assert(b == 234);
 		}
 	}
 }
