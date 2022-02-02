@@ -12659,6 +12659,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		SizedArray<BfResolvedArg, 1> args;
 		BfResolvedArg resolvedArg;
 		resolvedArg.mTypedValue = typedVal;
+		if (resolvedArg.mTypedValue.IsParams())
+		{
+			resolvedArg.mTypedValue = LoadOrAggregateValue(resolvedArg.mTypedValue);
+			resolvedArg.mTypedValue.mKind = BfTypedValueKind_Value;
+		}
 		args.push_back(resolvedArg);
 		BfMethodMatcher methodMatcher(srcNode, this, "", args, NULL);
 		methodMatcher.mCheckReturnType = toType;
@@ -12891,7 +12896,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 				if (doCall)
 				{
-					if (!silentFail)
+					//if (!silentFail)
 						methodMatcher.FlushAmbiguityError();
 
 					auto wantType = paramType;
@@ -12921,22 +12926,30 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 			if (doCall)
 			{
-				result = exprEvaluator.CreateCall(&methodMatcher, BfTypedValue());
-				if (resultFlags != NULL)
+				if ((castFlags & BfCastFlags_IsCastCheck) != 0)
 				{
-					if (result.IsAddr())
-						*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsAddr);
-					if (result.mKind == BfTypedValueKind_TempAddr)
-						*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsTemp);
+					// We've already verified that we can cast from the return type to toType in MethodMatcher.CheckMethod
+					return mBfIRBuilder->GetFakeVal();
 				}
-				else if (result.IsAddr())
-					result = LoadValue(result);
-
+				
+				result = exprEvaluator.CreateCall(&methodMatcher, BfTypedValue());
 				if (result.mType != toType)
 					return CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
 
 				if (result)
+				{
+					if (resultFlags != NULL)
+					{
+						if (result.IsAddr())
+							*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsAddr);
+						if (result.mKind == BfTypedValueKind_TempAddr)
+							*resultFlags = (BfCastResultFlags)(*resultFlags | BfCastResultFlags_IsTemp);
+					}
+					else if (result.IsAddr())
+						result = LoadValue(result);
+
 					return result.mValue;
+				}
 			}
 		}
 	}

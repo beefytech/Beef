@@ -121,6 +121,19 @@ namespace Tests
 		{
 		}
 
+		public static int ParamsA(int a, params Span<int> ints)
+		{
+			int result = a;
+			for (var i in ints)
+				result += i;
+			return result;
+		}
+
+		public static int ParamsB(int a, params int[] ints)
+		{
+			return ParamsA(a, params ints);
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -149,6 +162,9 @@ namespace Tests
 			InCallObj("Hey");
 			Valueless valueless;
 			InCallValueless(valueless);
+
+			Test.Assert(ParamsA(100, 20, 3) == 123);
+			Test.Assert(ParamsB(100, 20, 3) == 123);
 		}
 	}
 }
