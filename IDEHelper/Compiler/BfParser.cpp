@@ -239,7 +239,16 @@ int BfParserData::GetCharIdAtIndex(int findIndex)
 }
 
 void BfParserData::GetLineCharAtIdx(int idx, int& line, int& lineChar)
-{
+{	
+	if (mJumpTableSize <= 0)
+	{
+		line = 0;
+		lineChar = 0;
+		return;
+	}
+
+	if (idx >= mSrcLength)
+		idx = mSrcLength - 1;
 	auto* jumpEntry = mJumpTable + (idx / PARSER_JUMPTABLE_DIVIDE);
 	if (jumpEntry->mCharIdx > idx)
 		jumpEntry--;
