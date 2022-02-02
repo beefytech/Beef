@@ -2116,7 +2116,7 @@ void BfAutoComplete::CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier
 		}
 	}
 
- 	if (mayBeIdentifier)
+ 	if ((mayBeIdentifier) && (mResolveType != BfResolveType_GoToDefinition))
 	{
 		if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
 		{
