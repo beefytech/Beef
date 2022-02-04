@@ -994,6 +994,9 @@ namespace System.Reflection
 		        if (fieldData.[Friend]mName == fieldName)
 		            return FieldInfo(this, fieldData);
 		    }
+			var baseType = BaseType;
+			if (baseType != null)
+				return baseType.GetField(fieldName);
 		    return .Err;
 		}
 
