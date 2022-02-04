@@ -6368,7 +6368,7 @@ void BfExprEvaluator::SplatArgs(BfTypedValue value, SizedArrayImpl<BfIRValue>& i
 	checkTypeLambda(value);
 }
 
-void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& irArgs, bool disableSplat, bool disableLowering, bool isIntrinsic)
+void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& irArgs, bool disableSplat, bool disableLowering, bool isIntrinsic, bool createCompositeCopy)
 {
 	MakeBaseConcrete(argVal);
 	
@@ -6441,7 +6441,15 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 
 					return;
 				}
-			}			
+			}
+
+			if ((createCompositeCopy) && (!argVal.IsTempAddr()))
+			{
+				// Non-Beef calling conventions require copies of composites
+				auto copyAddr = mModule->CreateAlloca(argVal.mType);
+				mModule->mBfIRBuilder->CreateStore(mModule->LoadValue(argVal).mValue, copyAddr);
+				argVal = BfTypedValue(copyAddr, argVal.mType, BfTypedValueKind_TempAddr);
+			}
 		}
 		else
 			argVal = mModule->LoadValue(argVal);
@@ -7488,13 +7496,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			}
 
 			if (argValue)
-			{
+			{	
 				if (isThis)
 					PushThis(targetSrc, argValue, methodInstance, irArgs);
 				else if (wantsSplat)				
-					SplatArgs(argValue, irArgs);				
+					SplatArgs(argValue, irArgs);
 				else
-					PushArg(argValue, irArgs, true, false, methodInstance->mIsIntrinsic);
+					PushArg(argValue, irArgs, true, false, methodInstance->mIsIntrinsic, methodInstance->mCallingConvention != BfCallingConvention_Unspecified);
 			}
 			paramIdx++;
 		}

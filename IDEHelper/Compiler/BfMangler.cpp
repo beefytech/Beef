@@ -314,6 +314,12 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 		typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);		
 		if (methodDef->mIsMutating)
 			name += "_mut_";
+		if (delegateInfo->mCallingConvention == BfCallingConvention_Cdecl)
+			name += "_cdecl_";
+		else if (delegateInfo->mCallingConvention == BfCallingConvention_Stdcall)
+			name += "_stdcall_";
+		else if (delegateInfo->mCallingConvention == BfCallingConvention_Fastcall)
+			name += "_fastcall_";
 		for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
 		{
 			name += "_";
@@ -1227,7 +1233,7 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 			BF_ASSERT(newNameSub.mTypeInst->mTypeDef->mMethods[0]->mName == "Invoke");
 			
 			auto delegateInfo = newNameSub.mTypeInst->GetDelegateInfo();
-			
+						
 			auto methodDef = newNameSub.mTypeInst->mTypeDef->mMethods[0];
 			if (newNameSub.mTypeInst->IsDelegate())
 				name += "?$delegate";
@@ -1235,6 +1241,13 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 				name += "?$function";
 			if (methodDef->mIsMutating)
 				name += "_mut_";
+			if (delegateInfo->mCallingConvention == BfCallingConvention_Cdecl)
+				name += "_cdecl_";
+			else if (delegateInfo->mCallingConvention == BfCallingConvention_Stdcall)
+				name += "_stdcall_";
+			else if (delegateInfo->mCallingConvention == BfCallingConvention_Fastcall)
+				name += "_fastcall_";
+
 			SizedArray<BfType*, 8> typeVec;
 			typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);
 			
