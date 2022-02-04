@@ -36,6 +36,11 @@ namespace Tests
 			}
 		}
 
+		struct StructC
+		{
+			public int32[8] mData;
+		}
+
 		static int Method0(StructA val)
 		{
 			return val.mA;
@@ -134,6 +139,21 @@ namespace Tests
 			return ParamsA(a, params ints);
 		}
 
+		static void ModifyC(StructC sc)
+		{
+#unwarn
+			var scPtr = &sc;
+			scPtr.mData[0] += 100;
+		}
+
+		[CallingConvention(.Cdecl)]
+		static void ModifyC2(StructC sc)
+		{
+#unwarn
+			var scPtr = &sc;
+			scPtr.mData[0] += 100;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -165,6 +185,19 @@ namespace Tests
 
 			Test.Assert(ParamsA(100, 20, 3) == 123);
 			Test.Assert(ParamsB(100, 20, 3) == 123);
+
+			StructC sc = .();
+			sc.mData[0] = 123;
+			ModifyC(sc);
+			Test.Assert(sc.mData[0] == 223);
+			ModifyC2(sc);
+			Test.Assert(sc.mData[0] == 223);
+			function void (StructC) scFunc = => ModifyC;
+			scFunc(sc);
+			Test.Assert(sc.mData[0] == 323);
+			function [CallingConvention(.Cdecl)] void (StructC) scFunc2 = => ModifyC2;
+			scFunc2(sc);
+			Test.Assert(sc.mData[0] == 323);
 		}
 	}
 }
