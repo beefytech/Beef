@@ -12338,6 +12338,13 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					return typedVal.mValue;
 			}
 
+			if (toConstExprValueType->mValue.mTypeCode == BfTypeCode_StringId)
+			{
+				int stringIdx = GetStringPoolIdx(typedVal.mValue, mBfIRBuilder);				
+				if ((stringIdx != -1) && (stringIdx == toConstExprValueType->mValue.mInt32))
+					return typedVal.mValue;
+			}
+
 			if (!ignoreErrors)
 			{
 				String valStr;
@@ -13784,6 +13791,15 @@ void BfModule::VariantToString(StringImpl& str, const BfVariant& variant)
 			str += cstr;
 			if (strchr(cstr, '.') == NULL)
 				str += ".0";
+		}
+		break;
+	case BfTypeCode_StringId:
+		{
+			int stringId = variant.mInt32;
+			auto stringPoolEntry = mContext->mStringObjectIdMap[stringId];
+			str += '"';
+			str += SlashString(stringPoolEntry.mString, false, false, true);
+			str += '"';
 		}
 		break;
 	case BfTypeCode_Let:

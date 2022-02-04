@@ -1617,8 +1617,8 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 				// 			isConst = false;
 				// 			initHandled = true;
 				// 			localDef->mValue = initValue.mValue;
-
-				isConst = false;
+				if (GetStringPoolIdx(initValue.mValue, mBfIRBuilder) == -1)
+					isConst = false;
 			}
 		}
 	};

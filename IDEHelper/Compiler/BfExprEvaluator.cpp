@@ -3723,6 +3723,9 @@ void BfExprEvaluator::GetLiteral(BfAstNode* refNode, const BfVariant& variant)
 	case BfTypeCode_Double:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(variant.mTypeCode, variant.mDouble), mModule->GetPrimitiveType(variant.mTypeCode));
 		break;
+	case BfTypeCode_StringId:
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(variant.mTypeCode, variant.mUInt64), mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+		break;
 	default:
 		mModule->Fail("Invalid literal", refNode);
 		break;

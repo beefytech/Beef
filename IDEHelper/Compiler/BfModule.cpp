@@ -1639,14 +1639,13 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 		
 	mBfIRBuilder->PopulateType(stringTypeInst);
 	auto stringValLiteral = mBfIRBuilder->CreateGlobalVariable(
-		mBfIRBuilder->MapTypeInst(stringTypeInst),
+		mBfIRBuilder->MapTypeInst(stringTypeInst, BfIRPopulateType_Full),
 		true,
 		BfIRLinkageType_External,
 		define ? stringValData : BfIRValue(),
 		stringObjName);
 
-	auto stringVal = mBfIRBuilder->CreateBitCast(stringValLiteral, mBfIRBuilder->MapType(stringTypeInst, BfIRPopulateType_Full));		
-	return stringVal;
+	return stringValLiteral;
 }
 
 int BfModule::GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHolder)
@@ -7666,6 +7665,9 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				if (constraintType->IsPrimitiveType())
 					typeCode = ((BfPrimitiveType*)constraintType)->mTypeDef->mTypeCode;
 
+				if (constraintType->IsInstanceOf(mCompiler->mStringTypeDef))
+					isValidTypeCode = true;
+
 				switch (typeCode)
 				{
 				case BfTypeCode_StringId:
@@ -12070,6 +12072,8 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 		primType = (BfPrimitiveType*)value.mType;
 	else if (value.mType->IsTypedPrimitive())
 		primType = value.mType->GetUnderlyingType();
+	else if (value.mType->IsInstanceOf(mCompiler->mStringTypeDef))
+		primType = value.mType;
 
 	if (primType)
 	{
@@ -12081,6 +12085,17 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 				variant.mUInt64 = 0;
 				variant.mTypeCode = BfTypeCode_Let;
 				return variant;
+			}
+
+			if (constant->mConstType == BfConstType_GlobalVar)
+			{
+				int stringIdx = GetStringPoolIdx(value.mValue, mBfIRBuilder);
+				if (stringIdx != -1)
+				{
+					variant.mTypeCode = BfTypeCode_StringId;
+					variant.mInt64 = stringIdx;
+					return variant;
+				}
 			}
 
 			switch (constant->mTypeCode)
@@ -12102,6 +12117,7 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 			case BfTypeCode_Char8:
 			case BfTypeCode_Char16:
 			case BfTypeCode_Char32:
+			case BfTypeCode_StringId:
 				variant.mTypeCode = constant->mTypeCode;
 				variant.mInt64 = constant->mInt64;
 				break;

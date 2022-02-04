@@ -433,6 +433,24 @@ namespace Tests
 			return a;
 		}
 
+		static Type GetMathRetType<T, T2>()
+		{
+		    return typeof(T);
+		}
+
+		static String GetMathString<T, T2>(String expr)
+		{
+			if ((typeof(T) == typeof(float)) && (typeof(T2) == typeof(int)))
+				return scope $"return a{expr}(T)b;";
+			else
+				return "return default;";
+		}
+
+		static comptype(GetMathRetType<T, T2>()) ComputeMath<T, T2, TExpr>(T a, T2 b, TExpr expr) where TExpr : const String
+		{
+			Compiler.Mixin(GetMathString<T, T2>(expr));
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -506,6 +524,11 @@ namespace Tests
 			int b = 34;
 			Test.Assert(GetMixinVal() == 123);
 			Test.Assert(b == 234);
+
+			float math = ComputeMath(2.3f, 2, "*");
+			Test.Assert(math == 4.6f);
+			float math2 = ComputeMath<float, int, const "+">(2.3f, 1, "+");
+			Test.Assert(math2 == 3.3f);
 		}
 	}
 }
