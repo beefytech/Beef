@@ -71,7 +71,8 @@ namespace IDE
 			No,
 			IncludeType,
 			AssumeInstantiated,
-			IncludeAll
+			IncludeAll,
+			IncludeFiltered
 		}
 	}
 

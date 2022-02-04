@@ -300,7 +300,7 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 	return true;
 }
 
-bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstance* genericTypeInst, bool ignoreErrors)
+bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* genericTypeInst, bool ignoreErrors)
 {
 	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsTypeAlias()) && (mCurTypeInstance->IsGenericTypeInstance()))
 	{
@@ -1729,14 +1729,12 @@ BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
 					mergedTypeOptions.mOptimizationLevel = typeOptions.mOptimizationLevel;
 				if (typeOptions.mEmitDebugInfo != -1)
 					mergedTypeOptions.mEmitDebugInfo = typeOptions.mEmitDebugInfo;
-				
-				if (typeOptions.mReflectMethodFilters.IsEmpty())
-
+								
 				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags | typeOptions.mOrFlags);
 				mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags | typeOptions.mOrFlags);
 
 				mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags & typeOptions.mAndFlags);
-				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags & typeOptions.mAndFlags);
+				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags & typeOptions.mAndFlags);				
 				
 				if (mergedTypeOptions.HasReflectMethodFilters())
 				{
@@ -3835,7 +3833,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	if (!typeInstance->IsBoxed())
 	{
-		if ((typeInstance->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->mTypeDeclaration->mAttributes != NULL))
+		if ((typeInstance->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->HasCustomAttributes()))
 		{
 			BfAttributeTargets attrTarget;
 			if ((typeDef->mIsDelegate) || (typeDef->mIsFunction))
@@ -5411,8 +5409,12 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	}
 
 	bool typeOptionsIncludeAll = false;	
-	if (typeOptions != NULL)	
-		typeOptionsIncludeAll = typeOptions->Apply(typeOptionsIncludeAll, BfOptionFlags_ReflectAlwaysIncludeAll);			
+	bool typeOptionsIncludeFiltered = false;
+	if (typeOptions != NULL)
+	{
+		typeOptionsIncludeAll = typeOptions->Apply(typeOptionsIncludeAll, BfOptionFlags_ReflectAlwaysIncludeAll);
+		typeOptionsIncludeFiltered = typeOptions->Apply(typeOptionsIncludeAll, BfOptionFlags_ReflectAlwaysIncludeFiltered);
+	}
 
 	// Generate all methods. Pass 1
 	for (auto methodDef : typeDef->mMethods)
@@ -5543,6 +5545,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				implRequired = true;
 
 			if ((typeOptionsIncludeAll) && (ApplyTypeOptionMethodFilters(true, methodDef, typeOptions)))
+
+			if ((typeOptionsIncludeAll || typeOptionsIncludeFiltered) && (ApplyTypeOptionMethodFilters(typeOptionsIncludeAll, methodDef, typeOptions)))
 				implRequired = true;
 
 // 			if ((typeOptions != NULL) && (CheckTypeOptionMethodFilters(typeOptions, methodDef)))
@@ -7416,7 +7420,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopu
 		{
 			for (auto genericArgTypeRef : genericTypeRef->mGenericArguments)
 			{
-				auto genericArgType = ResolveTypeRef(genericArgTypeRef, BfPopulateType_IdentityNoRemapAlias);
+				auto genericArgType = ResolveTypeRef(genericArgTypeRef, NULL, BfPopulateType_IdentityNoRemapAlias);
 				if (genericArgType == NULL)
 					return NULL;
 				genericArgs.push_back(genericArgType);
@@ -8426,7 +8430,7 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 	return GetGenericTypeParamInstance(type->mGenericParamIdx);
 }
 
-bool BfModule::ResolveTypeResult_Validate(BfTypeReference* typeRef, BfType* resolvedTypeRef)
+bool BfModule::ResolveTypeResult_Validate(BfAstNode* typeRef, BfType* resolvedTypeRef)
 {
 	if ((typeRef == NULL) || (resolvedTypeRef == NULL))
 		return true;
@@ -9311,7 +9315,7 @@ void BfModule::TypeRefNotFound(BfTypeReference* typeRef, const char* appendName)
 	CheckTypeRefFixit(typeRef, appendName);
 }
 
-bool BfModule::ValidateTypeWildcard(BfTypeReference* typeRef, bool isAttributeRef)
+bool BfModule::ValidateTypeWildcard(BfAstNode* typeRef, bool isAttributeRef)
 {
 	if (typeRef == NULL)
 		return false;
@@ -10042,7 +10046,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 						{
 							for (auto genericParamTypeRef : genericTypeRef->mGenericArguments)
 							{
-								auto genericParam = ResolveTypeRef(genericParamTypeRef, BfPopulateType_Declaration);
+								auto genericParam = ResolveTypeRef(genericParamTypeRef, NULL, BfPopulateType_Declaration);
 								if (genericParam == NULL)
 									return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 								genericArgs.push_back(genericParam);
@@ -10560,9 +10564,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		int wantNumGenericParams = genericTypeInstRef->GetGenericArgCount();
 		BfTypeDef* ambiguousTypeDef = NULL;
 
-		Array<BfTypeReference*> genericArguments;
+		Array<BfAstNode*> genericArguments;
 		std::function<void(BfTypeReference*)> _GetTypeRefs = [&](BfTypeReference* typeRef)
 		{
+			//TODO:GENERICS
 			if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(typeRef))
 			{
 				_GetTypeRefs(elementedTypeRef->mElementType);
@@ -10612,7 +10617,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		for (auto genericArgRef : genericArguments)
 		{
-			auto genericArg = ResolveTypeRef(genericArgRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGenericTypeParamConstValue | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
+			auto genericArg = ResolveTypeRef(genericArgRef, NULL, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGenericTypeParamConstValue | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
 			if ((genericArg == NULL) || (genericArg->IsVar()))
 			{				
 				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
@@ -11368,6 +11373,9 @@ BfTypeInstance* BfModule::GetUnspecializedTypeInstance(BfTypeInstance* typeInst)
 
 BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeReference*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
+	if (auto typeRef = BfNodeDynCast<BfTypeReference>(astNode))
+		return ResolveTypeRef(typeRef, populateType, resolveFlags);
+
 	if ((genericArgs == NULL) || (genericArgs->size() == 0))
 	{
 		if (auto identifier = BfNodeDynCast<BfIdentifierNode>(astNode))
@@ -11429,7 +11437,7 @@ BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeRe
 		typeRef->mParent = genericInstanceTypeRef;
 #endif
 
-		BfDeferredAstSizedArray<BfTypeReference*> arguments(genericInstanceTypeRef->mGenericArguments, &alloc);
+		BfDeferredAstSizedArray<BfAstNode*> arguments(genericInstanceTypeRef->mGenericArguments, &alloc);
 
 		for (auto genericArg : *genericArgs)
 		{	

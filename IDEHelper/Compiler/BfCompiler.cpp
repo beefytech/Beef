@@ -4365,7 +4365,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 	if (tempTypeDef->mTypeDeclaration->mAttributes != NULL)
 	{
-		auto customAttrs = module->GetCustomAttributes(tempTypeDef);		
+		auto customAttrs = module->GetCustomAttributes(tempTypeDef);
 		delete customAttrs;
 	}
 	

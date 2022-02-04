@@ -1810,7 +1810,7 @@ class BfGenericTypeInfo
 public:
 	typedef Array<BfGenericTypeParamInstance*> GenericParamsVector;
 
-	Array<BfTypeReference*> mTypeGenericArgumentRefs;
+	Array<BfAstNode*> mTypeGenericArgumentRefs;
 	BfTypeVector mTypeGenericArguments;
 	GenericParamsVector mGenericParams;
 	BfGenericExtensionInfo* mGenericExtensionInfo;
@@ -2571,8 +2571,10 @@ public:
 	static int DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
 	static int DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags, int& hashSeed);
 	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
+	static int Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
 	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);	
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
+	static bool Equals(BfType* lhs, BfAstNode* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
 
 public:

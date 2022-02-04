@@ -1136,6 +1136,7 @@ public:
 		return mTypeCode == BfTypeCode_Extension;
 	}
 	bool HasSource(BfSource* source);
+	bool HasCustomAttributes();
 };
 
 struct BfTypeDefMapFuncs : public MultiHashSetFuncs
@@ -1463,6 +1464,7 @@ enum BfOptionFlags
 	BfOptionFlags_ReflectStaticMethods		= 0x800,
 	BfOptionFlags_ReflectNonStaticMethods	= 0x1000,
 	BfOptionFlags_ReflectConstructors		= 0x2000,
+	BfOptionFlags_ReflectAlwaysIncludeFiltered = 0x4000,
 
 	BfOptionFlags_Reflect_MethodMask		= BfOptionFlags_ReflectStaticMethods | BfOptionFlags_ReflectNonStaticMethods | BfOptionFlags_ReflectConstructors,
 	BfOptionFlags_Mask = 0x3FFF

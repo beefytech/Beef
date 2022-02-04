@@ -2534,7 +2534,7 @@ public:
 	BF_AST_TYPE(BfGenericInstanceTypeRef, BfElementedTypeRef);
 
 	BfTokenNode* mOpenChevron;
-	BfSizedArray<BfTypeReference*> mGenericArguments;	
+	BfSizedArray<BfAstNode*> mGenericArguments;	
 	BfSizedArray<ASTREF(BfAstNode*)> mCommas;
 	BfTokenNode* mCloseChevron;
 	int GetGenericArgCount()

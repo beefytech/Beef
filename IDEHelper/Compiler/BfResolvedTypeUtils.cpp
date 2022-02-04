@@ -3255,7 +3255,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			BfTypeVector genericArgs;
 			for (auto genericArgTypeRef : genericInstTypeRef->mGenericArguments)
 			{
-				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, BfPopulateType_Identity, ctx->mResolveFlags);
+				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, NULL, BfPopulateType_Identity, ctx->mResolveFlags);
 				if (argType != NULL)
 					genericArgs.Add(argType);
 				else
@@ -3745,6 +3745,16 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 	if (hashSeed == 0)
 		return hashVal;
 	return HASH_MIX(hashVal, hashSeed);
+}
+
+int BfResolvedTypeSet::Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFlags flags, int hashSeed)
+{
+	if (auto typeRef = BfNodeDynCast<BfTypeReference>(typeRefNode))
+		return Hash(typeRef, ctx, flags, hashSeed);
+
+	BF_FATAL("Not supported");
+
+	return 0;
 }
 
 // These types can be from different contexts ("foreign" types) so we can't just compare ptrs
@@ -4573,6 +4583,16 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 	{
 		BF_FATAL("Not handled");
 	}	
+
+	return false;
+}
+
+bool BfResolvedTypeSet::Equals(BfType* lhs, BfAstNode* rhs, LookupContext* ctx)
+{
+	if (auto rhsTypeRef = BfNodeDynCast<BfTypeReference>(rhs))
+		return Equals(lhs, rhsTypeRef, ctx);
+
+	BF_FATAL("Illegal");
 
 	return false;
 }

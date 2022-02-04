@@ -11851,6 +11851,8 @@ BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attribut
 
 BfCustomAttributes* BfModule::GetCustomAttributes(BfTypeDef* typeDef)
 {
+	BF_ASSERT(mCompiler->IsAutocomplete());
+
 	BfAttributeTargets attrTarget;
 	if (typeDef->mIsDelegate)
 		attrTarget = BfAttributeTargets_Delegate;

@@ -5208,7 +5208,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 				}
 
 				auto genericInstance = mAlloc->Alloc<BfGenericInstanceTypeRef>();
-				BfDeferredSizedArray<BfTypeReference*> genericArguments(genericInstance->mGenericArguments, mAlloc);
+				BfDeferredSizedArray<BfAstNode*> genericArguments(genericInstance->mGenericArguments, mAlloc);
 				BfDeferredAstSizedArray<BfAstNode*> commas(genericInstance->mCommas, mAlloc);
 				ReplaceNode(typeRef, genericInstance);
 				genericInstance->mOpenChevron = tokenNode;

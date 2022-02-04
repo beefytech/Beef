@@ -26,8 +26,9 @@ namespace IDE.Compiler
 			ReflectStaticMethods		= 0x800,
 			ReflectNonStaticMethods		= 0x1000,
 			ReflectConstructors			= 0x2000,
+			ReflectAlwaysIncludeFiltered= 0x4000,
 
-			All							= 0x3FFF
+			All							= 0x7FFF
 		};
 
 		[CallingConvention(.Stdcall), CLink]
@@ -401,6 +402,8 @@ namespace IDE.Compiler
 				orFlags |= .ReflectAssumeInstantiated;
 			case .IncludeAll:
 				orFlags |= .ReflectAlwaysIncludeType | .ReflectAlwaysIncludeAll | .ReflectAssumeInstantiated;
+			case .IncludeFiltered:
+				orFlags |= .ReflectAlwaysIncludeType | .ReflectAlwaysIncludeFiltered | .ReflectAssumeInstantiated;
 			}
 
 			SetFlag(typeOption.mReflectBoxing, .ReflectBoxing);

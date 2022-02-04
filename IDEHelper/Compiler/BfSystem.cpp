@@ -974,6 +974,16 @@ bool BfTypeDef::HasSource(BfSource* source)
 	return false;
 }
 
+bool BfTypeDef::HasCustomAttributes()
+{
+	if ((mTypeDeclaration != NULL) && (mTypeDeclaration->mAttributes != NULL))
+		return true;
+	for (auto& partial : mPartials)
+		if ((partial->mTypeDeclaration != NULL) && (partial->mTypeDeclaration->mAttributes != NULL))
+			return true;
+	return false;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BfProject::BfProject()

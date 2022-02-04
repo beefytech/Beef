@@ -2075,7 +2075,8 @@ void BfAutoComplete::CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier
 	{
 		CheckTypeRef(genericTypeRef->mElementType, mayBeIdentifier, isInExpression, onlyAttribute);
 		for (auto genericArg : genericTypeRef->mGenericArguments)
-			CheckTypeRef(genericArg, false, isInExpression, false);
+			CheckNode(genericArg);
+			//CheckTypeRef(genericArg, false, isInExpression, false);
 		return;
 	}
 
