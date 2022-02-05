@@ -137,7 +137,7 @@ BfBaseClassWalker::Entry BfBaseClassWalker::Next()
 
 //////////////////////////////////////////////////////////////////////////
 
-BfMethodMatcher::BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments) :
+BfMethodMatcher::BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, const BfMethodGenericArguments& methodGenericArguments) :
 	mArguments(arguments)
 {
 	mTargetSrc = targetSrc;
@@ -146,7 +146,7 @@ BfMethodMatcher::BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const S
 	Init(/*arguments, */methodGenericArguments);
 }
 
-BfMethodMatcher::BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* interfaceMethodInstance, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments) :
+BfMethodMatcher::BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* interfaceMethodInstance, SizedArrayImpl<BfResolvedArg>& arguments, const BfMethodGenericArguments& methodGenericArguments) :
 	mArguments(arguments)
 {
 	mTargetSrc = targetSrc;
@@ -156,7 +156,7 @@ BfMethodMatcher::BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMetho
 	mMethodName = mInterfaceMethodInstance->mMethodDef->mName;
 }
 
-void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments)
+void BfMethodMatcher::Init(const BfMethodGenericArguments& methodGenericArguments)
 {
 	//mArguments = arguments;	
 	mActiveTypeDef = NULL;
@@ -170,6 +170,8 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	mMethodType = BfMethodType_Normal;
 	mCheckReturnType = NULL;
 	mHadExplicitGenericArguments = false;
+	mHadOpenGenericArguments = methodGenericArguments.mIsOpen;
+	mHadPartialGenericArguments = methodGenericArguments.mIsPartial;
 	mHasVarArguments = false;
 	mInterfaceMethodInstance = NULL;
 	mFakeConcreteTarget = false;
@@ -202,16 +204,25 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 		}
 	}
 
-	if (methodGenericArguments != NULL)
+	if (methodGenericArguments.mArguments != NULL)
 	{
-		for (BfAstNode* genericArg : *methodGenericArguments)
+		for (BfAstNode* genericArg : *(methodGenericArguments.mArguments))
 		{
-			auto genericArgType = mModule->ResolveTypeRef(genericArg, NULL, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowImplicitConstExpr);
-			if ((genericArgType != NULL) && (genericArgType->IsGenericParam()))
+			BfType* genericArgType = NULL;
+			if (BfNodeIsA<BfUninitializedExpression>(genericArg))
 			{
-				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)genericArgType);
-				if ((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
-					mHasVarArguments = true;
+				// Allow a null here
+				BF_ASSERT(mHadPartialGenericArguments);
+			}
+			else
+			{
+				genericArgType = mModule->ResolveTypeRef(genericArg, NULL, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowImplicitConstExpr);
+				if ((genericArgType != NULL) && (genericArgType->IsGenericParam()))
+				{
+					auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)genericArgType);
+					if ((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+						mHasVarArguments = true;
+				}
 			}
 			mExplicitMethodGenericArguments.push_back(genericArgType);
 		}
@@ -1705,7 +1716,8 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	int argIdx = 0;
 	int argMatchCount = 0;
 	
-	bool needInferGenericParams = (checkMethod->mGenericParams.size() != 0) && (!mHadExplicitGenericArguments);
+	bool needInferGenericParams = (checkMethod->mGenericParams.size() != 0) &&
+		((!mHadExplicitGenericArguments) || (mHadPartialGenericArguments));
 	int paramIdx = 0;
 	BfType* paramsElementType = NULL;
 	if (checkMethod->mHasAppend)
@@ -1713,8 +1725,20 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 	int uniqueGenericStartIdx = mModule->GetLocalInferrableGenericArgCount(checkMethod);
 
-	if ((mHadExplicitGenericArguments) && (checkMethod->mGenericParams.size() != mExplicitMethodGenericArguments.size() + uniqueGenericStartIdx))
-		goto NoMatch;
+	if (mHadExplicitGenericArguments)
+	{
+		int genericArgDelta = (int)(checkMethod->mGenericParams.size() - (mExplicitMethodGenericArguments.size() + uniqueGenericStartIdx));
+		if (mHadOpenGenericArguments)
+		{
+			if (genericArgDelta <= 0)
+				goto NoMatch;
+		}
+		else
+		{
+			if (genericArgDelta != 0)
+				goto NoMatch;
+		}
+	}
 	
 	for (auto& checkGenericArgRef : mCheckMethodGenericArguments)
 		checkGenericArgRef = NULL;
@@ -1740,7 +1764,14 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		else
 		{
 			genericArgumentsSubstitute = &mExplicitMethodGenericArguments;
-		}		
+		}
+
+		if ((mHadPartialGenericArguments) && (needInferGenericParams))
+		{
+			genericArgumentsSubstitute = &mCheckMethodGenericArguments;
+			for (int i = 0; i < (int)mExplicitMethodGenericArguments.mSize; i++)
+				mCheckMethodGenericArguments[i] = mExplicitMethodGenericArguments[i];
+		}
 	}
 	else if (needInferGenericParams)
 		genericArgumentsSubstitute = &mCheckMethodGenericArguments;
@@ -3780,7 +3811,7 @@ void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolation
 		BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
 		BfResolvedArgs argValues(&sizedArgExprs);
 		ResolveArgValues(argValues, BfResolveArgsFlag_InsideStringInterpolationAlloc);
-		MatchMethod(stringInterpolationExpression, NULL, newString, false, false, "AppendF", argValues, NULL);
+		MatchMethod(stringInterpolationExpression, NULL, newString, false, false, "AppendF", argValues, BfMethodGenericArguments());
 		mResult = newString;
 
 		return;
@@ -7666,7 +7697,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	static int sCtorCount = 0;
 	sCtorCount++;			
 	
-	BfMethodMatcher methodMatcher(targetSrc, mModule, "", argValues.mResolvedArgs, NULL);
+	BfMethodMatcher methodMatcher(targetSrc, mModule, "", argValues.mResolvedArgs, BfMethodGenericArguments());
 	methodMatcher.mBfEvalExprFlags = mBfEvalExprFlags;
 		
 	BfTypeVector typeGenericArguments;
@@ -8251,9 +8282,11 @@ bool BfExprEvaluator::CheckGenericCtor(BfGenericParamType* genericParamType, BfR
 }
 
 BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName, 
-	BfResolvedArgs& argValues, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, BfCheckedKind checkedKind)
+	BfResolvedArgs& argValues, const BfMethodGenericArguments& methodGenericArgs, BfCheckedKind checkedKind)
 {
 	BP_ZONE("MatchMethod");
+
+	auto methodGenericArguments = methodGenericArgs.mArguments;
 
 	if (bypassVirtual)
 	{
@@ -8534,7 +8567,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	BfTypeInstance* curTypeInst = targetTypeInst;
 
-	BfMethodMatcher methodMatcher(targetSrc, mModule, methodName, argValues.mResolvedArgs, methodGenericArguments);
+	BfMethodMatcher methodMatcher(targetSrc, mModule, methodName, argValues.mResolvedArgs, methodGenericArgs);
 	methodMatcher.mOrigTarget = origTarget;
 	methodMatcher.mTarget = target;
 	methodMatcher.mCheckedKind = checkedKind;
@@ -9053,7 +9086,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				{
 					mFunctionBindResult->mOrigTarget = BfTypedValue();
 				}
-				return MatchMethod(targetSrc, NULL, fieldVal, false, false, "Invoke", argValues, methodGenericArguments, checkedKind);
+				return MatchMethod(targetSrc, NULL, fieldVal, false, false, "Invoke", argValues, methodGenericArgs, checkedKind);
 			}
 			if (IsVar(fieldVal.mType))
 			{				
@@ -9634,7 +9667,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 						autoComplete->mIsGetDefinition = false;
 					result = mModule->MakeAddressable(result);
 					BfResolvedArgs resolvedArgs;
-					MatchMethod(targetSrc, NULL, result, false, false, "ReturnValueDiscarded", resolvedArgs, NULL);
+					MatchMethod(targetSrc, NULL, result, false, false, "ReturnValueDiscarded", resolvedArgs, BfMethodGenericArguments());
 					if (wasGetDefinition)
 						autoComplete->mIsGetDefinition = true;
 				}
@@ -10534,7 +10567,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 				BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
 				BfResolvedArgs argValues(&sizedArgExprs);
 				exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
-				exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, NULL);
+				exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, BfMethodGenericArguments());
 
 				if (addFunctionBindResult.mMethodInstance != NULL)
 					CreateCall(initExpr, addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, addFunctionBindResult.mIRArgs);
@@ -11598,16 +11631,16 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 		args[i] = typedValueExpr;
 	}
 
-	BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments = NULL;
+	BfMethodGenericArguments methodGenericArgs;
 	if (delegateBindExpr->mGenericArgs != NULL)
-		methodGenericArguments = &delegateBindExpr->mGenericArgs->mGenericArgs;
+		methodGenericArgs.mArguments = &delegateBindExpr->mGenericArgs->mGenericArgs;
 	
 	BfFunctionBindResult bindResult;
 	bindResult.mSkipMutCheck = true; // Allow operating on copies
 	bindResult.mBindType = expectingType;
 	mFunctionBindResult = &bindResult;
 	SetAndRestoreValue<bool> ignoreError(mModule->mIgnoreErrors, true);
-	DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArguments);
+	DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArgs);
 	mFunctionBindResult = NULL;
 	if (bindResult.mMethodInstance == NULL)
 		return false;	
@@ -12002,9 +12035,9 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		args[i] = typedValueExpr;
 	}
 
-	BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments = NULL;
+	BfMethodGenericArguments methodGenericArgs;
 	if (delegateBindExpr->mGenericArgs != NULL)
-		methodGenericArguments = &delegateBindExpr->mGenericArgs->mGenericArgs;
+		methodGenericArgs.mArguments = &delegateBindExpr->mGenericArgs->mGenericArgs;
 
 	if (delegateBindExpr->mTarget == NULL)
 	{
@@ -12034,7 +12067,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 	{
 		SetAndRestoreValue<BfType*> prevExpectingType(mExpectingType, methodInstance->mReturnType);
 		mFunctionBindResult = &bindResult;
-		DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArguments);
+		DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArgs);
 		mFunctionBindResult = NULL;
 	}	
 	
@@ -15289,7 +15322,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			}
 			mModule->Fail(StrFormat("Too many generic arguments, expected %d fewer", genericArgCountDiff), errorNode);
 		}
-		else if (genericArgCountDiff < 0)
+		else if ((genericArgCountDiff < 0) && (!methodMatcher.mHadOpenGenericArguments))
 		{	
 			BfAstNode* errorNode = targetSrc;
 			if ((invocationExpr != NULL) && (invocationExpr->mGenericArgs != NULL) && (invocationExpr->mGenericArgs->mCloseChevron != NULL))
@@ -15646,7 +15679,7 @@ void BfExprEvaluator::CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* ty
 	}	
 }
 
-void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, bool allowImplicitThis, const StringImpl& name, const BfSizedArray<BfExpression*>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArgs)
+void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, bool allowImplicitThis, const StringImpl& name, const BfSizedArray<BfExpression*>& arguments, const BfMethodGenericArguments& methodGenericArgs)
 {
 	if (mModule->mCurMethodState == NULL)
 		return;
@@ -16512,8 +16545,10 @@ void BfExprEvaluator::SetMethodElementType(BfAstNode* target)
 		mModule->SetElementType(target, BfSourceElementType_Method);
 }
 
-void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, BfTypedValue* outCascadeValue)
+void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, const BfMethodGenericArguments& methodGenericArgs, BfTypedValue* outCascadeValue)
 {
+	auto methodGenericArguments = methodGenericArgs.mArguments;
+
 	// Just a check
 	mModule->mBfIRBuilder->GetInsertBlock();
 
@@ -17066,7 +17101,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	if ((targetFunctionName != "") && (targetFunctionName[targetFunctionName.length() - 1] == '!'))
 	{						
 		targetFunctionName = targetFunctionName.Substring(0, targetFunctionName.length() - 1);
-		InjectMixin(methodNodeSrc, thisValue, allowImplicitThis, targetFunctionName, args, methodGenericArguments);
+		InjectMixin(methodNodeSrc, thisValue, allowImplicitThis, targetFunctionName, args, methodGenericArgs);
 
 		return;
 	}		
@@ -17161,7 +17196,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	if (isCascade)
 		mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_InCascade);
 	ResolveArgValues(argValues, resolveArgsFlags);
-	mResult = MatchMethod(methodNodeSrc, methodBoundExpr, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, argValues, methodGenericArguments, checkedKind);		
+	mResult = MatchMethod(methodNodeSrc, methodBoundExpr, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, argValues, methodGenericArgs, checkedKind);		
 	argValues.HandleFixits(mModule);
 
 	if (mModule->mAttributeState == &attributeState)
@@ -17253,15 +17288,25 @@ void BfExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
 		autoComplete->CheckInvocation(invocationExpr, invocationExpr->mOpenParen, invocationExpr->mCloseParen, invocationExpr->mCommas);	
 
 	mModule->UpdateExprSrcPos(invocationExpr);
-	BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments = NULL;
+	BfMethodGenericArguments methodGenericArgs;
 	if (invocationExpr->mGenericArgs != NULL)
-		methodGenericArguments = &invocationExpr->mGenericArgs->mGenericArgs;
+	{
+		methodGenericArgs.mArguments = &invocationExpr->mGenericArgs->mGenericArgs;
+		if ((!invocationExpr->mGenericArgs->mCommas.IsEmpty()) && (invocationExpr->mGenericArgs->mCommas.back()->mToken == BfToken_DotDotDot))
+		{
+			methodGenericArgs.mIsOpen = true;
+			methodGenericArgs.mIsPartial = true;
+		}
+		for (int i = 0; i < (int)methodGenericArgs.mArguments->mSize; i++)
+			if (BfNodeIsA<BfUninitializedExpression>((*methodGenericArgs.mArguments)[i]))
+				methodGenericArgs.mIsPartial = true;
+	}
 	SizedArray<BfExpression*, 8> copiedArgs;
 	for (BfExpression* arg : invocationExpr->mArguments)
 		copiedArgs.push_back(arg);			
 
 	BfTypedValue cascadeValue;
-	DoInvocation(invocationExpr->mTarget, invocationExpr, copiedArgs, methodGenericArguments, &cascadeValue);
+	DoInvocation(invocationExpr->mTarget, invocationExpr, copiedArgs, methodGenericArgs, &cascadeValue);
 
 	if (autoComplete != NULL)
 	{
@@ -19916,7 +19961,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 			if (!val.mTypedValue)
 				val.mTypedValue = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
 
-		BfMethodMatcher methodMatcher(indexerExpr->mTarget, mModule, "[]", mIndexerValues, NULL);
+		BfMethodMatcher methodMatcher(indexerExpr->mTarget, mModule, "[]", mIndexerValues, BfMethodGenericArguments());
 		methodMatcher.mCheckedKind = checkedKind;
 		//methodMatcher.CheckType(target.mType->ToTypeInstance(), target, false);
 		
@@ -20306,7 +20351,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 	BfResolvedArg resolvedArg;
 	resolvedArg.mTypedValue = inValue;
 	args.push_back(resolvedArg);
-	BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
+	BfMethodMatcher methodMatcher(opToken, mModule, "", args, BfMethodGenericArguments());
 	methodMatcher.mBfEvalExprFlags = BfEvalExprFlags_NoAutoComplete;
 	methodMatcher.mAllowImplicitRef = true;
 	BfBaseClassWalker baseClassWalker(inValue.mType, NULL, mModule);
@@ -21947,7 +21992,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				auto checkLeftType = leftValue.mType;				
 				auto checkRightType = rightValue.mType;
 
-				BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
+				BfMethodMatcher methodMatcher(opToken, mModule, "", args, BfMethodGenericArguments());
 				methodMatcher.mAllowImplicitRef = true;
 				methodMatcher.mBfEvalExprFlags = BfEvalExprFlags_NoAutoComplete;
 				BfBaseClassWalker baseClassWalker(checkLeftType, checkRightType, mModule);

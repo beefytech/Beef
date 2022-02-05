@@ -157,6 +157,20 @@ public:
 	void InferGenericArguments(BfMethodInstance* methodInstance);
 };
 
+struct BfMethodGenericArguments
+{
+	BfSizedArray<BfAstNode*>* mArguments;	
+	bool mIsPartial;
+	bool mIsOpen; // Ends with ...
+
+	BfMethodGenericArguments()
+	{
+		mArguments = NULL;		
+		mIsPartial = false;
+		mIsOpen = false;
+	}
+};
+
 class BfMethodMatcher
 {
 public:
@@ -180,7 +194,7 @@ public:
 		BackupMatchKind_EarlyMismatch,		
 		BackupMatchKind_PartialLastArgMatch
 	};
-
+	
 public:
 	BfAstNode* mTargetSrc;
 	BfTypedValue mTarget;
@@ -194,6 +208,8 @@ public:
 	BfMethodType mMethodType;
 	BfCheckedKind mCheckedKind;
 	bool mHadExplicitGenericArguments;	
+	bool mHadOpenGenericArguments;
+	bool mHadPartialGenericArguments;
 	bool mHasVarArguments;	
 	bool mHadVarConflictingReturnType;
 	bool mBypassVirtual;
@@ -236,9 +252,9 @@ public:
 	int GetMostSpecificType(BfType* lhs, BfType* rhs); // 0, 1, or -1
 
 public:
-	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments);
-	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* interfaceMethodInstance, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments = NULL);
-	void Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments);
+	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, const BfMethodGenericArguments& methodGenericArguments);
+	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* interfaceMethodInstance, SizedArrayImpl<BfResolvedArg>& arguments, const BfMethodGenericArguments& methodGenericArguments);
+	void Init(const BfMethodGenericArguments& methodGenericArguments);
 	bool IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* declaringType);
 	bool CheckType(BfTypeInstance* typeInstance, BfTypedValue target, bool isFailurePass, bool forceOuterCheck = false);
 	void CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, bool isFailurePass);
@@ -462,16 +478,16 @@ public:
 		BfResolvedArgs& argValues, bool callCtorBodyOnly, bool allowAppendAlloc, BfTypedValue* appendIndexValue = NULL);
 	BfTypedValue CheckEnumCreation(BfAstNode* targetSrc, BfTypeInstance* enumType, const StringImpl& caseName, BfResolvedArgs& argValues);
 	BfTypedValue MatchMethod(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& name, 
-		BfResolvedArgs& argValue, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);
+		BfResolvedArgs& argValue, const BfMethodGenericArguments& methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);
 	BfTypedValue MakeCallableTarget(BfAstNode* targetSrc, BfTypedValue target);		
 	BfModuleMethodInstance GetSelectedMethod(BfAstNode* targetSrc, BfTypeInstance* curTypeInst, BfMethodDef* methodDef, BfMethodMatcher& methodMatcher, BfType** overrideReturnType = NULL);
 	BfModuleMethodInstance GetSelectedMethod(BfMethodMatcher& methodMatcher);
 	bool CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail);
 	bool HasVariableDeclaration(BfAstNode* checkNode);
-	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArgs, BfTypedValue* outCascadeValue = NULL);	
+	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, const BfMethodGenericArguments& methodGenericArgs, BfTypedValue* outCascadeValue = NULL);	
 	int GetMixinVariable();	
 	void CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* typeInstance, const StringImpl& methodName, BfMethodMatcher& methodMatcher, BfMethodType methodType);
-	void InjectMixin(BfAstNode* targetSrc, BfTypedValue target, bool allowImplicitThis, const StringImpl& name, const BfSizedArray<BfExpression*>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArgs);
+	void InjectMixin(BfAstNode* targetSrc, BfTypedValue target, bool allowImplicitThis, const StringImpl& name, const BfSizedArray<BfExpression*>& arguments, const BfMethodGenericArguments& methodGenericArgs);
 	void SetMethodElementType(BfAstNode* target);
 	BfTypedValue DoImplicitArgCapture(BfAstNode* refNode, BfIdentifierNode* identifierNode, int shadowIdx);
 	BfTypedValue DoImplicitArgCapture(BfAstNode* refNode, BfMethodInstance* methodInstance, int paramIdx, bool& failed, BfImplicitParamKind paramKind = BfImplicitParamKind_General, const BfTypedValue& methodRefTarget = BfTypedValue());

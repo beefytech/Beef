@@ -4079,7 +4079,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 							BfResolvedArgs argValues(&sizedArgExprs);
 							exprEvaluator.ResolveArgValues(argValues);
 							exprEvaluator.mNoBind = true;
-							exprEvaluator.MatchMethod(deleteStmt->mAllocExpr, NULL, customAllocator, false, true, "FreeObject", argValues, NULL);
+							exprEvaluator.MatchMethod(deleteStmt->mAllocExpr, NULL, customAllocator, false, true, "FreeObject", argValues, BfMethodGenericArguments());
 							customAllocator = BfTypedValue();
 						}
 					}
@@ -4137,7 +4137,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		BfResolvedArgs argValues(&sizedArgExprs);
 		exprEvaluator.ResolveArgValues(argValues);
 		exprEvaluator.mNoBind = true;
-		exprEvaluator.MatchMethod(deleteStmt->mAllocExpr, NULL, customAllocator, false, false, "Free", argValues, NULL);
+		exprEvaluator.MatchMethod(deleteStmt->mAllocExpr, NULL, customAllocator, false, false, "Free", argValues, BfMethodGenericArguments());
 	}
 	
 	mBfIRBuilder->CreateBr(endBB);
@@ -5444,7 +5444,7 @@ void BfModule::Visit(BfUsingStatement* usingStmt)
 
 			exprEvaluator.mFunctionBindResult = &functionBindResult;			
 			SizedArray<BfResolvedArg, 0> resolvedArgs;
-			BfMethodMatcher methodMatcher(usingStmt->mVariableDeclaration, this, dispMethod.mMethodInstance, resolvedArgs);
+			BfMethodMatcher methodMatcher(usingStmt->mVariableDeclaration, this, dispMethod.mMethodInstance, resolvedArgs, BfMethodGenericArguments());
 			methodMatcher.CheckType(iDisposableType, embeddedValue, false);
 			methodMatcher.TryDevirtualizeCall(embeddedValue);
 			auto retVal = exprEvaluator.CreateCall(&methodMatcher, embeddedValue);
@@ -6528,7 +6528,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true); 
 			BfResolvedArgs resolvedArgs;
 			exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete);
-			exprEvaluator.MatchMethod(forEachStmt->mCollectionExpression, NULL, itr, false, false, "Dispose", resolvedArgs, NULL);
+			exprEvaluator.MatchMethod(forEachStmt->mCollectionExpression, NULL, itr, false, false, "Dispose", resolvedArgs, BfMethodGenericArguments());
 			if (functionBindResult.mMethodInstance != NULL)
 			{
 				BfModuleMethodInstance moduleMethodInstance;
@@ -6624,7 +6624,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			BfExprEvaluator exprEvaluator(this);			
 			auto itrTypeInstance = itr.mType->ToTypeInstance();
 			SizedArray<BfResolvedArg, 0> resolvedArgs;			
-			BfMethodMatcher methodMatcher(forEachStmt->mCollectionExpression, this, getNextMethodInst.mMethodInstance, resolvedArgs);
+			BfMethodMatcher methodMatcher(forEachStmt->mCollectionExpression, this, getNextMethodInst.mMethodInstance, resolvedArgs, BfMethodGenericArguments());
 			if (isRefExpression)
 				methodMatcher.CheckType(refItrInterface, itr, false);
 			else
@@ -6704,7 +6704,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		if (typeOptions != NULL)
 			boundsCheck = typeOptions->Apply(boundsCheck, BfOptionFlags_RuntimeChecks);
 		
-		BfMethodMatcher methodMatcher(forEachStmt->mVariableName, this, "get__", argValues.mResolvedArgs, NULL);
+		BfMethodMatcher methodMatcher(forEachStmt->mVariableName, this, "get__", argValues.mResolvedArgs, BfMethodGenericArguments());
 		methodMatcher.mMethodType = BfMethodType_PropertyGetter;
 		methodMatcher.CheckType(target.mType->ToTypeInstance(), target, false);
 		if (methodMatcher.mBestMethodDef == NULL)
@@ -6957,7 +6957,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 				exprEvaluator.ResolveArgValues(argValues);
 				exprEvaluator.mNoBind = true;
 				exprEvaluator.mFunctionBindResult = &functionBindResult;
-				exprEvaluator.MatchMethod(deleteStmt->mAllocExpr, NULL, customAllocator, false, false, "FreeObject", argValues, NULL);
+				exprEvaluator.MatchMethod(deleteStmt->mAllocExpr, NULL, customAllocator, false, false, "FreeObject", argValues, BfMethodGenericArguments());
 			}
 			else
 			{
@@ -6973,7 +6973,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 				exprEvaluator.ResolveArgValues(argValues);
 				exprEvaluator.mNoBind = true;
 				exprEvaluator.mFunctionBindResult = &functionBindResult;
-				exprEvaluator.MatchMethod(deleteStmt->mAllocExpr, NULL, customAllocator, false, false, "Free", argValues, NULL);
+				exprEvaluator.MatchMethod(deleteStmt->mAllocExpr, NULL, customAllocator, false, false, "Free", argValues, BfMethodGenericArguments());
 			}
 
 			if (functionBindResult.mMethodInstance != NULL)

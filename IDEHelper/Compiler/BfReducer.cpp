@@ -742,7 +742,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 						if (auto prevToken = BfNodeDynCast<BfTokenNode>(prevNode))
 						{
 							// If this is just a 'loose' comma then it can't be part of a nullable
-							if ((prevToken->GetToken() == BfToken_Comma) ||
+							if (((prevToken->GetToken() == BfToken_Comma) && (chevronDepth == 0)) ||
 								(prevToken->GetToken() == BfToken_LParen))
 							{
 								return false;
@@ -936,6 +936,11 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 			{
 				if (checkNode->IsExact<BfLiteralExpression>())
 					mayBeExprPart = true;
+				else if (auto tokenNode = BfNodeDynCast<BfTokenNode>(checkNode))
+				{
+					if (tokenNode->mToken == BfToken_Question)
+						mayBeExprPart = true;
+				}
 			}
 
 			if (!mayBeExprPart)
@@ -2726,7 +2731,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				if (auto outToken = BfNodeDynCast<BfTokenNode>(outNode))
 				{
 					int endNodeIdx = -1;
-					if ((outToken->GetToken() == BfToken_LParen) && (IsTypeReference(exprLeft, BfToken_LParen, &endNodeIdx)))
+					if (((outToken->mToken == BfToken_LParen) && (IsTypeReference(exprLeft, BfToken_LParen, &endNodeIdx))) ||
+						(outToken->mToken == BfToken_DotDotDot))
 					{
 						exprLeft = CreateInvocationExpression(exprLeft);
 						if (exprLeft == NULL)
@@ -7352,7 +7358,7 @@ BfInvocationExpression* BfReducer::CreateInvocationExpression(BfAstNode* target,
 
 	if (tokenNode->GetToken() == BfToken_LChevron)
 	{
-		auto genericParamsDecl = CreateGenericArguments(tokenNode);
+		auto genericParamsDecl = CreateGenericArguments(tokenNode, true);
 		MEMBER_SET_CHECKED(invocationExpr, mGenericArgs, genericParamsDecl);
 		tokenNode = ExpectTokenAfter(invocationExpr, BfToken_LParen);
 	}
@@ -9726,7 +9732,7 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 	return true;
 }
 
-BfGenericArgumentsNode* BfReducer::CreateGenericArguments(BfTokenNode* tokenNode)
+BfGenericArgumentsNode* BfReducer::CreateGenericArguments(BfTokenNode* tokenNode, bool allowPartial)
 {
 	auto genericArgs = mAlloc->Alloc<BfGenericArgumentsNode>();
 	BfDeferredAstSizedArray<BfAstNode*> genericArgsArray(genericArgs->mGenericArgs, mAlloc);
@@ -9740,6 +9746,11 @@ BfGenericArgumentsNode* BfReducer::CreateGenericArguments(BfTokenNode* tokenNode
 		auto nextNode = mVisitorPos.GetNext();
 		if (BfNodeIsA<BfLiteralExpression>(nextNode))
 			doAsExpr = true;
+		else if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+		{
+			if (tokenNode->mToken == BfToken_Question)
+				doAsExpr = true;
+		}
 
 		BfAstNode* genericArg = NULL;
 		if (doAsExpr)
@@ -9781,6 +9792,15 @@ BfGenericArgumentsNode* BfReducer::CreateGenericArguments(BfTokenNode* tokenNode
 		BfToken token = tokenNode->GetToken();
 		if (token == BfToken_RDblChevron)
 			tokenNode = BreakDoubleChevron(tokenNode);
+
+		if ((token == BfToken_DotDotDot) && (allowPartial))
+		{
+			commas.push_back(tokenNode);
+			mVisitorPos.MoveNext();
+			nextNode = mVisitorPos.GetNext();
+			tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
+			token = tokenNode->GetToken();
+		}
 
 		if (token == BfToken_RChevron)
 		{

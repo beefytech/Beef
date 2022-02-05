@@ -8733,7 +8733,7 @@ BfIRValue BfModule::AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTar
 		if (allocTarget.mScopedInvocationTarget != NULL)
 		{			
 			SizedArray<BfTypeReference*, 2> genericArgs;
-			exprEvaluator.DoInvocation(allocTarget.mScopedInvocationTarget, NULL, argExprs, NULL);
+			exprEvaluator.DoInvocation(allocTarget.mScopedInvocationTarget, NULL, argExprs, BfMethodGenericArguments());
 			allocResult = LoadValue(exprEvaluator.mResult);
 		}
 		else if (allocTarget.mCustomAllocator)
@@ -8779,7 +8779,7 @@ BfIRValue BfModule::AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTar
 					BfResolvedArgs argValues(&sizedArgExprs);
 					exprEvaluator.ResolveArgValues(argValues);
 					SetAndRestoreValue<bool> prevNoBind(mCurMethodState->mNoBind, true);
-					allocResult = exprEvaluator.MatchMethod(refNode, NULL, allocTarget.mCustomAllocator, false, false, allocMethodName, argValues, NULL);
+					allocResult = exprEvaluator.MatchMethod(refNode, NULL, allocTarget.mCustomAllocator, false, false, allocMethodName, argValues, BfMethodGenericArguments());
 				}
 			}			
 		}
@@ -8854,7 +8854,7 @@ BfIRValue BfModule::GetMarkFuncPtr(BfType* type)
 		BfResolvedArg resolvedArg;
 		resolvedArg.mTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), type, type->IsComposite());
 		resolvedArgs.Add(resolvedArg);
-		BfMethodMatcher methodMatcher(NULL, this, "Mark", resolvedArgs, NULL);
+		BfMethodMatcher methodMatcher(NULL, this, "Mark", resolvedArgs, BfMethodGenericArguments());
 		methodMatcher.CheckType(gcType, BfTypedValue(), false);
 
 		BfModuleMethodInstance moduleMethodInst = exprEvaluator.GetSelectedMethod(NULL, methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher);
@@ -9457,7 +9457,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				BfResolvedArgs argValues(&sizedArgExprs);
 				exprEvaluator.ResolveArgValues(argValues);
 				exprEvaluator.mNoBind = true;
-				BfTypedValue allocResult = exprEvaluator.MatchMethod(allocTarget.mRefNode, NULL, allocTarget.mCustomAllocator, false, false, "AllocObject", argValues, NULL);
+				BfTypedValue allocResult = exprEvaluator.MatchMethod(allocTarget.mRefNode, NULL, allocTarget.mCustomAllocator, false, false, "AllocObject", argValues, BfMethodGenericArguments());
 				if (allocResult)
 				{					
 					if ((allocResult.mType->IsVoidPtr()) || (allocResult.mType == mContext->mBfObjectType))
@@ -11734,7 +11734,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 				autoComplete->CheckInvocation(attributesDirective, attributesDirective->mCtorOpenParen, attributesDirective->mCtorCloseParen, attributesDirective->mCommas);
 		}			
 					
-		BfMethodMatcher methodMatcher(attributesDirective, this, "", argValues, NULL);
+		BfMethodMatcher methodMatcher(attributesDirective, this, "", argValues, BfMethodGenericArguments());
 		attrTypeDef = attrTypeInst->mTypeDef;
 
 		bool success = true;
@@ -17688,7 +17688,7 @@ void BfModule::EmitTupleToStringBody()
 		{
 			BfExprEvaluator exprEvaluator(this);			
 			SizedArray<BfResolvedArg, 0> resolvedArgs;
-			BfMethodMatcher methodMatcher(NULL, this, printModuleMethodInstance.mMethodInstance, resolvedArgs);
+			BfMethodMatcher methodMatcher(NULL, this, printModuleMethodInstance.mMethodInstance, resolvedArgs, BfMethodGenericArguments());
 			methodMatcher.mBestMethodDef = printModuleMethodInstance.mMethodInstance->mMethodDef;
 			methodMatcher.mBestMethodTypeInstance = iPrintableType;
 			methodMatcher.TryDevirtualizeCall(fieldValue);
@@ -17720,7 +17720,7 @@ void BfModule::EmitTupleToStringBody()
 
 		BfExprEvaluator exprEvaluator(this);		
 		SizedArray<BfResolvedArg, 0> resolvedArgs;		
-		BfMethodMatcher methodMatcher(NULL, this, toStringModuleMethodInstance.mMethodInstance, resolvedArgs);
+		BfMethodMatcher methodMatcher(NULL, this, toStringModuleMethodInstance.mMethodInstance, resolvedArgs, BfMethodGenericArguments());
 		methodMatcher.mBestMethodDef = toStringModuleMethodInstance.mMethodInstance->mMethodDef;
 		methodMatcher.mBestMethodTypeInstance = mContext->mBfObjectType;		
 		methodMatcher.TryDevirtualizeCall(fieldValue);

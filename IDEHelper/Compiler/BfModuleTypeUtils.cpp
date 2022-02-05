@@ -12739,7 +12739,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			resolvedArg.mTypedValue.mKind = BfTypedValueKind_Value;
 		}
 		args.push_back(resolvedArg);
-		BfMethodMatcher methodMatcher(srcNode, this, "", args, NULL);
+		BfMethodMatcher methodMatcher(srcNode, this, "", args, BfMethodGenericArguments());
 		methodMatcher.mCheckReturnType = toType;
 		methodMatcher.mBfEvalExprFlags = (BfEvalExprFlags)(BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_FromConversionOp);
 		if ((castFlags & BfCastFlags_Explicit) != 0)

@@ -326,6 +326,11 @@ namespace Tests
 			TestGen(a);
 		}
 
+		public static TOut Conv<TOut, TIn>(TIn val) where TOut : operator explicit TIn
+		{
+			return (TOut)val;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -396,6 +401,9 @@ namespace Tests
 					true
 				} == false);
 			MethodG<ClassG, ClassF>();
+
+			Test.Assert(Conv<int...>(12.34f) == 12);
+			Test.Assert(Conv<int,?>(12.34f) == 12);
 		}
 	}
 
