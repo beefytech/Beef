@@ -37,6 +37,7 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_AllowGlobalContainer = 0x4000,
 	BfResolveTypeRefFlag_AllowInferredSizedArray = 0x8000,
 	BfResolveTypeRefFlag_AllowGlobalsSelf = 0x10000,
+	BfResolveTypeRefFlag_AllowImplicitConstExpr = 0x20000
 };
 
 enum BfTypeNameFlags : uint16
@@ -52,7 +53,8 @@ enum BfTypeNameFlags : uint16
 	BfTypeNameFlag_AddGlobalContainerName = 0x80,
 	BfTypeNameFlag_InternalName = 0x100, // Use special delimiters to remove ambiguities (ie: '+' for inner types)	
 	BfTypeNameFlag_HideGlobalName = 0x200,
-	BfTypeNameFlag_ExtendedInfo = 0x400
+	BfTypeNameFlag_ExtendedInfo = 0x400,
+	BfTypeNameFlag_ShortConst = 0x800
 };
 
 enum BfMethodNameFlags : uint8
@@ -1982,7 +1984,7 @@ public:
 	virtual BfModule* GetModule() override { return mModule; }
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
-	virtual BfPrimitiveType* ToPrimitiveType() override { return GetUnderlyingType()->ToPrimitiveType();  }
+	virtual BfPrimitiveType* ToPrimitiveType() override { return IsBoxed() ? GetUnderlyingType()->ToPrimitiveType() : NULL; }
 	virtual bool HasWrappedRepresentation() override { return IsTypedPrimitive(); }
 	
 	int GetEndingInstanceAlignment() { if (mInstSize % mInstAlign == 0) return mInstAlign; return mInstSize % mInstAlign; }	
@@ -2525,6 +2527,12 @@ public:
 		BfHashFlag_AllowDotDotDot = 4,
 	};
 	
+	struct BfExprResult
+	{
+		BfVariant mValue;
+		BfType* mResultType;
+	};
+
 	class LookupContext
 	{	
 	public:
@@ -2533,7 +2541,7 @@ public:
 		BfTypeDef* mRootTypeDef;		
 		BfTypeInstance* mRootOuterTypeInstance;
 		BfType* mRootResolvedType;
-		Dictionary<BfTypeReference*, BfType*> mResolvedTypeMap;
+		Dictionary<BfAstNode*, BfType*> mResolvedTypeMap;
 		BfResolveTypeRefFlags mResolveFlags;		
 		BfCallingConvention mCallingConvention;
 		bool mHadVar;
@@ -2572,7 +2580,8 @@ public:
 	static int DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags, int& hashSeed);
 	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
 	static int Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
-	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);	
+	
+	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfAstNode* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);

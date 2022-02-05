@@ -451,6 +451,15 @@ namespace Tests
 			Compiler.Mixin(GetMathString<T, T2>(expr));
 		}
 
+		class GenClass<TDesc> where TDesc : const String
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void Init()
+			{
+				Compiler.EmitTypeBody(typeof(Self), TDesc);
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -527,8 +536,14 @@ namespace Tests
 
 			float math = ComputeMath(2.3f, 2, "*");
 			Test.Assert(math == 4.6f);
-			float math2 = ComputeMath<float, int, const "+">(2.3f, 1, "+");
+			float math2 = ComputeMath<float, int, "+">(2.3f, 1, "+");
 			Test.Assert(math2 == 3.3f);
+
+			GenClass<
+				"""
+				public int mA = 123;
+				"""> genClass = scope .();
+			Test.Assert(genClass.mA == 123);
 		}
 	}
 }

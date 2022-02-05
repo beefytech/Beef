@@ -409,6 +409,12 @@ namespace Tests
 			return total;
 		}
 
+		static int CheckString<T>(T str) where T : const String
+		{
+			const bool eq = str == "Abc";
+			return T.Length;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -441,6 +447,11 @@ namespace Tests
 
 			Test.Assert(l2.Front[0] == "2");
 			Test.Assert(l2.Front[1] == "4");
+
+			int len = CheckString("Abc");
+			Test.Assert(len == 3);
+			len = CheckString<"Abcd">("Abcd");
+			Test.Assert(len == 4);
 		}
 	}
 }

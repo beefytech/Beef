@@ -928,12 +928,22 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 		{
 			// Allow
 			identifierExpected = false;
-		}
+		}		
 		else
 		{
-			if (outEndNode != NULL)
-				*outEndNode = checkIdx;
-			return false;
+			bool mayBeExprPart = false;
+			if (chevronDepth > 0)
+			{
+				if (checkNode->IsExact<BfLiteralExpression>())
+					mayBeExprPart = true;
+			}
+
+			if (!mayBeExprPart)
+			{
+				if (outEndNode != NULL)
+					*outEndNode = checkIdx;
+				return false;
+			}
 		}
 		lastToken = checkTokenNode;
 		checkIdx++;
@@ -5224,10 +5234,15 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					auto nextNode = mVisitorPos.GetNext();
 					auto genericIdentifier = BfNodeDynCast<BfIdentifierNode>(nextNode);
 					bool doAddType = genericIdentifier != NULL;
-					if (mCompatMode)
+					bool addAsExpr = false;
+
+					//if (mCompatMode)
 					{
 						if (BfNodeDynCast<BfLiteralExpression>(nextNode) != NULL)
+						{
 							doAddType = true;
+							addAsExpr = true;
+						}
 					}
 					if (genericIdentifier == NULL)
 					{
@@ -5255,7 +5270,14 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					}
 					if ((doAddType) && (!isUnboundName))
 					{
-						auto genericArgumentTypeRef = CreateTypeRefAfter(genericInstance);
+						BfAstNode* genericArgumentTypeRef = NULL;
+
+						if (addAsExpr)
+						{
+							genericArgumentTypeRef = CreateExpressionAfter(genericInstance, CreateExprFlags_BreakOnRChevron);
+						}
+						else
+							genericArgumentTypeRef = CreateTypeRefAfter(genericInstance);
 						if (genericArgumentTypeRef == NULL)
 							return NULL;
 						MoveNode(genericArgumentTypeRef, genericInstance);
@@ -9707,14 +9729,23 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 BfGenericArgumentsNode* BfReducer::CreateGenericArguments(BfTokenNode* tokenNode)
 {
 	auto genericArgs = mAlloc->Alloc<BfGenericArgumentsNode>();
-	BfDeferredAstSizedArray<BfTypeReference*> genericArgsArray(genericArgs->mGenericArgs, mAlloc);
+	BfDeferredAstSizedArray<BfAstNode*> genericArgsArray(genericArgs->mGenericArgs, mAlloc);
 	BfDeferredAstSizedArray<BfAstNode*> commas(genericArgs->mCommas, mAlloc);
 	ReplaceNode(tokenNode, genericArgs);
 	genericArgs->mOpenChevron = tokenNode;
 
 	while (true)
 	{
-		auto genericArg = CreateTypeRefAfter(genericArgs);
+		bool doAsExpr = false;
+		auto nextNode = mVisitorPos.GetNext();
+		if (BfNodeIsA<BfLiteralExpression>(nextNode))
+			doAsExpr = true;
+
+		BfAstNode* genericArg = NULL;
+		if (doAsExpr)
+			genericArg = CreateExpressionAfter(genericArgs, CreateExprFlags_BreakOnRChevron);
+		else
+			genericArg = CreateTypeRefAfter(genericArgs);
 		if (genericArg == NULL)
 		{
 			genericArgsArray.push_back(NULL); // Leave empty for purposes of generic argument count
@@ -9739,7 +9770,7 @@ BfGenericArgumentsNode* BfReducer::CreateGenericArguments(BfTokenNode* tokenNode
 		MoveNode(genericArg, genericArgs);
 		genericArgsArray.push_back(genericArg);
 
-		auto nextNode = mVisitorPos.GetNext();
+		nextNode = mVisitorPos.GetNext();
 		tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 		if (tokenNode == NULL)
 		{

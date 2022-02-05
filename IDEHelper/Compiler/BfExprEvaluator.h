@@ -236,9 +236,9 @@ public:
 	int GetMostSpecificType(BfType* lhs, BfType* rhs); // 0, 1, or -1
 
 public:
-	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments);
-	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* interfaceMethodInstance, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments = NULL);
-	void Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments);
+	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments);
+	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* interfaceMethodInstance, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments = NULL);
+	void Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments);
 	bool IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* declaringType);
 	bool CheckType(BfTypeInstance* typeInstance, BfTypedValue target, bool isFailurePass, bool forceOuterCheck = false);
 	void CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, bool isFailurePass);
@@ -462,16 +462,16 @@ public:
 		BfResolvedArgs& argValues, bool callCtorBodyOnly, bool allowAppendAlloc, BfTypedValue* appendIndexValue = NULL);
 	BfTypedValue CheckEnumCreation(BfAstNode* targetSrc, BfTypeInstance* enumType, const StringImpl& caseName, BfResolvedArgs& argValues);
 	BfTypedValue MatchMethod(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& name, 
-		BfResolvedArgs& argValue, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);
+		BfResolvedArgs& argValue, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);
 	BfTypedValue MakeCallableTarget(BfAstNode* targetSrc, BfTypedValue target);		
 	BfModuleMethodInstance GetSelectedMethod(BfAstNode* targetSrc, BfTypeInstance* curTypeInst, BfMethodDef* methodDef, BfMethodMatcher& methodMatcher, BfType** overrideReturnType = NULL);
 	BfModuleMethodInstance GetSelectedMethod(BfMethodMatcher& methodMatcher);
 	bool CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail);
 	bool HasVariableDeclaration(BfAstNode* checkNode);
-	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArgs, BfTypedValue* outCascadeValue = NULL);	
+	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArgs, BfTypedValue* outCascadeValue = NULL);	
 	int GetMixinVariable();	
 	void CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* typeInstance, const StringImpl& methodName, BfMethodMatcher& methodMatcher, BfMethodType methodType);
-	void InjectMixin(BfAstNode* targetSrc, BfTypedValue target, bool allowImplicitThis, const StringImpl& name, const BfSizedArray<BfExpression*>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArgs);
+	void InjectMixin(BfAstNode* targetSrc, BfTypedValue target, bool allowImplicitThis, const StringImpl& name, const BfSizedArray<BfExpression*>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArgs);
 	void SetMethodElementType(BfAstNode* target);
 	BfTypedValue DoImplicitArgCapture(BfAstNode* refNode, BfIdentifierNode* identifierNode, int shadowIdx);
 	BfTypedValue DoImplicitArgCapture(BfAstNode* refNode, BfMethodInstance* methodInstance, int paramIdx, bool& failed, BfImplicitParamKind paramKind = BfImplicitParamKind_General, const BfTypedValue& methodRefTarget = BfTypedValue());

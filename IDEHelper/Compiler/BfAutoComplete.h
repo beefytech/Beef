@@ -256,7 +256,7 @@ public:
 	void CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier, bool isInExpression = false, bool onlyAttribute = false);
 	void CheckAttributeTypeRef(BfTypeReference* typeRef);
 	void CheckInvocation(BfAstNode* invocationNode, BfTokenNode* openParen, BfTokenNode* closeParen, const BfSizedArray<BfTokenNode*>& commas);	
-	void CheckNode(BfAstNode* node);	
+	void CheckNode(BfAstNode* node, bool mayBeIdentifier, bool isInExpression = false);
 	void CheckMethod(BfMethodDeclaration* methodDeclaration, bool isLocalMethod);
 	void CheckProperty(BfPropertyDeclaration* propertyDeclaration);	
 	void CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedTypeRef);

@@ -19,7 +19,7 @@ using namespace llvm;
 
 //////////////////////////////////////////////////////////////////////////
 
-DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEvaluator, const StringImpl& methodName, SizedArrayImpl<DbgTypedValue>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments) :
+DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEvaluator, const StringImpl& methodName, SizedArrayImpl<DbgTypedValue>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments) :
 	mArguments(arguments)
 {	
 	mTargetSrc = targetSrc;
@@ -7369,7 +7369,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 }
 
 DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName, 
-	const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments)
+	const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments)
 {
 	SetAndRestoreValue<String*> prevReferenceId(mReferenceId, NULL);
 
@@ -7904,7 +7904,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	return CreateCall(targetSrc, callTarget, methodDef, bypassVirtual, arguments, argValues);		
 }
 
-void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments)
+void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments)
 {
 	bool allowImplicitThis = false;
 	BfAstNode* methodNodeSrc = target;
@@ -8107,7 +8107,7 @@ void DbgExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
 	/*if (mAutoComplete != NULL)
 		mAutoComplete->CheckInvocation(invocationExpr, invocationExpr->mOpenParen, invocationExpr->mCloseParen, invocationExpr->mCommas);*/
 	
-	BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments = NULL;
+	BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments = NULL;
 	if (invocationExpr->mGenericArgs != NULL)
 		methodGenericArguments = &invocationExpr->mGenericArgs->mGenericArgs;
 	DoInvocation(invocationExpr->mTarget, invocationExpr->mArguments, methodGenericArguments);

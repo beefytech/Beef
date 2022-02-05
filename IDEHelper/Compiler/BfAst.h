@@ -671,7 +671,7 @@ public:
 
 	bool IsStatic() const
 	{
-		return !mValue;
+		return (!mValue) && (mKind != BfTypedValueKind_GenericConstValue);
 	}
 
 	bool IsAddr() const
@@ -2948,7 +2948,7 @@ public:
 	BF_AST_TYPE(BfGenericArgumentsNode, BfAstNode);
 
 	ASTREF(BfTokenNode*) mOpenChevron;
-	BfSizedArray<ASTREF(BfTypeReference*)> mGenericArgs;
+	BfSizedArray<ASTREF(BfAstNode*)> mGenericArgs;
 	BfSizedArray<ASTREF(BfAstNode*)> mCommas;
 	ASTREF(BfTokenNode*) mCloseChevron;
 };	BF_AST_DECL(BfGenericArgumentsNode, BfAstNode);

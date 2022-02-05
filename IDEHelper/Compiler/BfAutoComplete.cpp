@@ -2075,8 +2075,7 @@ void BfAutoComplete::CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier
 	{
 		CheckTypeRef(genericTypeRef->mElementType, mayBeIdentifier, isInExpression, onlyAttribute);
 		for (auto genericArg : genericTypeRef->mGenericArguments)
-			CheckNode(genericArg);
-			//CheckTypeRef(genericArg, false, isInExpression, false);
+			CheckNode(genericArg, false, isInExpression);
 		return;
 	}
 
@@ -2259,7 +2258,7 @@ void BfAutoComplete::CheckInvocation(BfAstNode* invocationNode, BfTokenNode* ope
 	}
 }
 
-void BfAutoComplete::CheckNode(BfAstNode* node)
+void BfAutoComplete::CheckNode(BfAstNode* node, bool mayBeIdentifier, bool isInExpression)
 {
 	if (!IsAutocompleteNode(node))
 		return;
@@ -2267,7 +2266,7 @@ void BfAutoComplete::CheckNode(BfAstNode* node)
 	if (auto identifer = BfNodeDynCast<BfIdentifierNode>(node))
 		CheckIdentifier(identifer);
 	if (auto typeRef = BfNodeDynCast<BfTypeReference>(node))
-		CheckTypeRef(typeRef, true);
+		CheckTypeRef(typeRef, mayBeIdentifier, isInExpression);
 	if (auto memberRef = BfNodeDynCast<BfMemberReferenceExpression>(node))
 	{
 		if (memberRef->mTarget != NULL)

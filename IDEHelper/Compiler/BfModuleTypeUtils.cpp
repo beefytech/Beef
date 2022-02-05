@@ -6560,6 +6560,29 @@ BfConstExprValueType* BfModule::CreateConstExprValueType(const BfTypedValue& typ
 	return resolvedConstExprValueType;
 }
 
+BfConstExprValueType* BfModule::CreateConstExprValueType(const BfVariant& variant, BfType* type, bool allowCreate)
+{	
+	BfPopulateType populateType = allowCreate ? BfPopulateType_Data : BfPopulateType_Identity;
+	BfResolveTypeRefFlags resolveFlags = allowCreate ? BfResolveTypeRefFlag_None : BfResolveTypeRefFlag_NoCreate;
+
+	if (variant.mTypeCode == BfTypeCode_None)
+		return NULL;
+
+	auto constExprValueType = mContext->mConstExprValueTypePool.Get();
+	constExprValueType->mContext = mContext;
+	constExprValueType->mType = type;
+	constExprValueType->mValue = variant;
+
+	auto resolvedConstExprValueType = (BfConstExprValueType*)ResolveType(constExprValueType, populateType, resolveFlags);
+	if (resolvedConstExprValueType != constExprValueType)
+		mContext->mConstExprValueTypePool.GiveBack(constExprValueType);
+
+	if (resolvedConstExprValueType != NULL)
+		BF_ASSERT(resolvedConstExprValueType->mValue.mInt64 == constExprValueType->mValue.mInt64);
+
+	return resolvedConstExprValueType;
+}
+
 BfTypeInstance* BfModule::GetWrappedStructType(BfType* type, bool allowSpecialized)
 {
 	if (type->IsPointer())
@@ -10617,11 +10640,14 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		for (auto genericArgRef : genericArguments)
 		{
-			auto genericArg = ResolveTypeRef(genericArgRef, NULL, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGenericTypeParamConstValue | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
+			BfType* genericArg = NULL;			
+			lookupCtx.mResolvedTypeMap.TryGetValue(genericArgRef, &genericArg);
+			if (genericArg == NULL)
+				genericArg = ResolveTypeRef(genericArgRef, NULL, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGenericTypeParamConstValue | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
 			if ((genericArg == NULL) || (genericArg->IsVar()))
 			{				
 				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-				return ResolveTypeResult(typeRef, genericArg->IsVar() ? genericArg : NULL, populateType, resolveFlags);
+				return ResolveTypeResult(typeRef, ((genericArg != NULL) && (genericArg->IsVar())) ? genericArg : NULL, populateType, resolveFlags);
 			}
 			genericArgs.Add(genericArg);
 		}		
@@ -11371,15 +11397,12 @@ BfTypeInstance* BfModule::GetUnspecializedTypeInstance(BfTypeInstance* typeInst)
 	return result->ToTypeInstance();
 }
 
-BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeReference*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
+BfType* BfModule::ResolveTypeRef_Type(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
-	if (auto typeRef = BfNodeDynCast<BfTypeReference>(astNode))
-		return ResolveTypeRef(typeRef, populateType, resolveFlags);
-
 	if ((genericArgs == NULL) || (genericArgs->size() == 0))
 	{
 		if (auto identifier = BfNodeDynCast<BfIdentifierNode>(astNode))
-		{			
+		{
 			BfNamedTypeReference typeRef;
 			typeRef.mNameNode = identifier;
 			typeRef.mSrcEnd = 0;
@@ -11388,12 +11411,12 @@ BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeRe
 			return type;
 		}
 	}
-	
+
 	BfAstAllocator alloc;
 	alloc.mSourceData = astNode->GetSourceData();
 
-	std::function<BfTypeReference*(BfAstNode*)> _ConvType = [&] (BfAstNode* astNode) -> BfTypeReference*
-	{	
+	std::function<BfTypeReference* (BfAstNode*)> _ConvType = [&](BfAstNode* astNode) -> BfTypeReference*
+	{
 		if (auto typeRef = BfNodeDynCast<BfTypeReference>(astNode))
 			return typeRef;
 
@@ -11401,9 +11424,9 @@ BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeRe
 		if (auto identifier = BfNodeDynCast<BfIdentifierNode>(astNode))
 		{
 			auto* typeRef = alloc.Alloc<BfNamedTypeReference>();
-			typeRef->mNameNode = identifier;			
+			typeRef->mNameNode = identifier;
 			result = typeRef;
-		}		
+		}
 		else if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(astNode))
 		{
 			auto qualifiedTypeRef = alloc.Alloc<BfQualifiedTypeReference>();
@@ -11440,7 +11463,7 @@ BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeRe
 		BfDeferredAstSizedArray<BfAstNode*> arguments(genericInstanceTypeRef->mGenericArguments, &alloc);
 
 		for (auto genericArg : *genericArgs)
-		{	
+		{
 			if (genericArg != NULL)
 			{
 				arguments.push_back(genericArg);
@@ -11452,6 +11475,36 @@ BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeRe
 	}
 
 	return ResolveTypeRef(typeRef, populateType, resolveFlags);
+}
+
+BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
+{
+	if (auto typeRef = BfNodeDynCast<BfTypeReference>(astNode))
+		return ResolveTypeRef(typeRef, populateType, resolveFlags);
+
+	if ((resolveFlags & BfResolveTypeRefFlag_AllowImplicitConstExpr) != 0)
+	{
+		if (auto expr = BfNodeDynCast<BfExpression>(astNode))
+		{
+			auto checkType = ResolveTypeRef_Type(astNode, genericArgs, populateType, (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_IgnoreLookupError));
+			if (checkType != NULL)
+				return checkType;
+
+			BfResolvedTypeSet::LookupContext lookupCtx;
+			lookupCtx.mModule = this;
+			BfResolvedTypeSet::Entry* typeEntry = NULL;
+			
+			BfType* resultType = NULL;
+			auto result = mContext->mResolvedTypes.EvaluateToVariant(&lookupCtx, expr, resultType);
+			if (resultType != NULL)
+			{
+				auto constExprValue = CreateConstExprValueType(result, resultType);
+				return constExprValue;
+			}
+		}
+	}
+	
+	return ResolveTypeRef_Type(astNode, genericArgs, populateType, resolveFlags);
 }
 
 // This flow should mirror CastToValue
@@ -14148,7 +14201,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 
 						if (i > prevGenericParamCount)
 							str += ", ";
-						DoTypeToString(str, typeGenericArg, (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType | BfTypeNameFlag_ExtendedInfo)), genericMethodNameOverrides);
+						DoTypeToString(str, typeGenericArg, (BfTypeNameFlags)((typeNameFlags | BfTypeNameFlag_ShortConst) & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType | BfTypeNameFlag_ExtendedInfo)), genericMethodNameOverrides);
 					}
 					str += '>';
 				}
@@ -14339,11 +14392,14 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	}
 	else if (resolvedType->IsConstExprValue())
 	{
-		auto constExprValueType = (BfConstExprValueType*)resolvedType;
-		str += "const ";
-		 		
-		DoTypeToString(str, constExprValueType->mType, typeNameFlags, genericMethodNameOverrides);
-		str += " ";
+ 		auto constExprValueType = (BfConstExprValueType*)resolvedType;
+		if ((typeNameFlags & BfTypeNameFlag_ShortConst) == 0)
+		{
+			str += "const ";
+
+			DoTypeToString(str, constExprValueType->mType, typeNameFlags, genericMethodNameOverrides);
+			str += " ";
+		}
 
 		VariantToString(str, constExprValueType->mValue);
 		

@@ -3752,12 +3752,17 @@ int BfResolvedTypeSet::Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFl
 	if (auto typeRef = BfNodeDynCast<BfTypeReference>(typeRefNode))
 		return Hash(typeRef, ctx, flags, hashSeed);
 
-	BF_FATAL("Not supported");
+	auto result = ctx->mModule->ResolveTypeRef(typeRefNode, NULL, BfPopulateType_Identity, (BfResolveTypeRefFlags)(ctx->mResolveFlags | BfResolveTypeRefFlag_AllowImplicitConstExpr));
+	if (result == NULL)
+	{
+		ctx->mFailed = true;
+		return 0;
+	}
 
-	return 0;
+	ctx->mResolvedTypeMap[typeRefNode] = result;
+	return Hash(result, ctx, false, hashSeed);	
 }
 
-// These types can be from different contexts ("foreign" types) so we can't just compare ptrs
 bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 {
 	if (lhs->IsBoxed())
@@ -3768,7 +3773,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfBoxedType* rhsBoxedType = (BfBoxedType*)rhs;
 		if (lhsBoxedType->mBoxedFlags != rhsBoxedType->mBoxedFlags)
 			return false;
-		return Equals(lhsBoxedType->mElementType, rhsBoxedType->mElementType, ctx);
+		return lhsBoxedType->mElementType == rhsBoxedType->mElementType;
 	}
 	else if (lhs->IsArray())
 	{
@@ -3778,7 +3783,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfArrayType* rhsArrayType = (BfArrayType*) rhs;
 		if (lhsArrayType->mDimensions != rhsArrayType->mDimensions)
 			return false;
-		return Equals(lhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0], rhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0], ctx);
+		return lhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0] == rhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0];
 	}	
 	else if (lhs->IsTypeInstance())
 	{
@@ -3880,7 +3885,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 				return false;
 			for (int i = 0; i < (int)lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); i++)
 			{
-				if (!Equals(lhsGenericType->mGenericTypeInfo->mTypeGenericArguments[i], rhsGenericType->mGenericTypeInfo->mTypeGenericArguments[i], ctx))
+				if (lhsGenericType->mGenericTypeInfo->mTypeGenericArguments[i] != rhsGenericType->mGenericTypeInfo->mTypeGenericArguments[i])
 					return false;
 			}
 		}
@@ -3901,7 +3906,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			return false;
 		BfPointerType* lhsPtrType = (BfPointerType*)lhs;
 		BfPointerType* rhsPtrType = (BfPointerType*)rhs;
-		return Equals(lhsPtrType->mElementType, rhsPtrType->mElementType, ctx);
+		return lhsPtrType->mElementType == rhsPtrType->mElementType;
 	}	
 	else if (lhs->IsGenericParam())
 	{
@@ -4177,7 +4182,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				ctx->mFailed = true;
 				return false;
 			}
-			return Equals(lhs, rhsResolvedType, ctx);
+			return lhs == rhsResolvedType;			
 		}
 	}
 	
@@ -4571,7 +4576,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		if (constExprTypeRef->mConstExpr != NULL)
 		{
 			BfType* resultType = NULL;
-			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);			
+			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);
 			if (resultType != lhsConstExprType->mType)
 				return false;
 		}
@@ -4592,7 +4597,11 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfAstNode* rhs, LookupContext* ctx)
 	if (auto rhsTypeRef = BfNodeDynCast<BfTypeReference>(rhs))
 		return Equals(lhs, rhsTypeRef, ctx);
 
-	BF_FATAL("Illegal");
+	BfType* rhsResultType;
+	if (ctx->mResolvedTypeMap.TryGetValue(rhs, &rhsResultType))
+		return lhs == rhsResultType;
+
+	BF_FATAL("Invalid value in BfResolvedTypeSet::Equals");
 
 	return false;
 }

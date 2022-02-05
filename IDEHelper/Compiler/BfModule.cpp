@@ -8091,7 +8091,10 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 							if (BfIRConstHolder::IsInt(primType->mTypeDef->mTypeCode))
 							{
 								char valStr[64];
-								ExactMinimalDoubleToStr(constExprValueType->mValue.mDouble, valStr);
+								if (constExprValueType->mValue.mTypeCode == BfTypeCode_Double)
+									ExactMinimalDoubleToStr(constExprValueType->mValue.mDouble, valStr);
+								else
+									ExactMinimalFloatToStr(constExprValueType->mValue.mSingle, valStr);
 								if ((!ignoreErrors) && (PreFail()))
 									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with floating point const '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
 										valStr, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
@@ -8099,6 +8102,13 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 							}
 						}
 					}
+				}
+				else if (genericParamInst->mTypeConstraint != constExprValueType->mType)
+				{
+					if ((!ignoreErrors) && (PreFail()))
+						*errorOut = Fail(StrFormat("Const generic argument '%s', declared as '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
+							_TypeToString(constExprValueType).c_str(), _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					return false;
 				}
 			}
 		}
@@ -8521,13 +8531,15 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 			auto genericTypeConstraint = genericParamDef->mTypeConstraint;
 			if (genericTypeConstraint != NULL)
 			{
-				auto primType = genericTypeConstraint->ToPrimitiveType();
-				if (primType != NULL)
+				auto underlyingConstraint = genericTypeConstraint;
+				if ((underlyingConstraint != NULL) && (underlyingConstraint->IsBoxed()))
+					underlyingConstraint = underlyingConstraint->GetUnderlyingType();				
+				if (underlyingConstraint != NULL)
 				{
 					BfTypedValue result;
 					result.mKind = BfTypedValueKind_Value;
 					result.mType = genericTypeConstraint;
-					result.mValue = mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(primType));
+					result.mValue = mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(underlyingConstraint));
 					typedVal = result;
 					handled = true;
 				}				
@@ -9844,6 +9856,9 @@ void BfModule::EmitObjectAccessCheck(BfTypedValue typedVal)
 
 	if (typedVal.mValue.IsConst())
 	{
+		int stringIdx = GetStringPoolIdx(typedVal.mValue, mBfIRBuilder);
+		if (stringIdx != -1)
+			return;
 		auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
 		if (constant->mTypeCode == BfTypeCode_NullPtr)
 			return;
@@ -10893,11 +10908,11 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 		{
 			if (i > 0)
 				methodName += ", ";
-			BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None;
+			BfTypeNameFlags typeNameFlags = BfTypeNameFlag_ShortConst;
 			//Why did we have this methodInst->mIsUnspecializedVariation check?  Sometimes we do need to show errors calling methods that refer back to our types
 			//if (!methodInst->mIsUnspecializedVariation && allowResolveGenericParamNames)
 			if (allowResolveGenericParamNames)
-				typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
+				typeNameFlags = (BfTypeNameFlags)(typeNameFlags | BfTypeNameFlag_ResolveGenericParamNames);
 			BfType* type = methodInst->mMethodInfoEx->mMethodGenericArguments[i];
 			if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
 			{
@@ -11529,7 +11544,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			{
 				inPropSet = true;
 				if (autoComplete != NULL)
-					autoComplete->CheckNode(assignExpr->mLeft);
+					autoComplete->CheckNode(assignExpr->mLeft, true);
 				
 				String findName = assignExpr->mLeft->ToString();
 				BfPropertyDef* bestProp = NULL;
