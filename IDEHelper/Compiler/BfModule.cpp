@@ -3240,6 +3240,9 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 
 void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc)
 {
+	if (customAttributes == NULL)
+		return;
+
 	auto _AddDeclarationMoreInfo = [&]()
 	{
 		if (methodInstance != NULL)

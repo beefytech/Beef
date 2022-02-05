@@ -11479,6 +11479,12 @@ BfType* BfModule::ResolveTypeRef_Type(BfAstNode* astNode, const BfSizedArray<BfA
 
 BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
+	if (astNode == NULL)
+	{
+		AssertErrorState();
+		return NULL;
+	}
+
 	if (auto typeRef = BfNodeDynCast<BfTypeReference>(astNode))
 		return ResolveTypeRef(typeRef, populateType, resolveFlags);
 
