@@ -1737,12 +1737,12 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		if (isConst)
 		{
 			Fail("Const locals must be initialized", varDecl->mModSpecifier);
-			initValue = GetDefaultTypedValue(resolvedType);
+			initValue = GetDefaultTypedValue(resolvedType, true);
 		}
 		else if (isReadOnly)
 		{
 			Fail("Readonly locals must be initialized", varDecl->mModSpecifier);
-			initValue = GetDefaultTypedValue(resolvedType);
+			initValue = GetDefaultTypedValue(resolvedType, true);
 		}
 		else if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(varDecl->mTypeRef))
 		{
