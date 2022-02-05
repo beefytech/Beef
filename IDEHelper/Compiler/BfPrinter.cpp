@@ -2474,7 +2474,13 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 	if (methodDeclaration->mStaticSpecifier != NULL)
 	{		
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mStaticSpecifier);		
+		QueueVisitChild(methodDeclaration->mStaticSpecifier);
+	}
+
+	if (methodDeclaration->mReadOnlySpecifier != NULL)
+	{
+		ExpectSpace();
+		QueueVisitChild(methodDeclaration->mReadOnlySpecifier);
 	}
 
 	if (methodDeclaration->mMixinSpecifier != NULL)
