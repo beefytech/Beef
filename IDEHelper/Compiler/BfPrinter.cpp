@@ -1120,14 +1120,14 @@ void BfPrinter::Visit(BfGenericParamsDeclaration* genericParams)
 	Visit(genericParams->ToBase());
 
 	VisitChild(genericParams->mOpenChevron);
-	for (int i = 0; i < (int) genericParams->mGenericParams.size(); i++)
+	for (int i = 0; i < (int)genericParams->mGenericParams.size(); i++)
 	{
 		if (i > 0)
 		{
 			VisitChildNoRef(genericParams->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
-		VisitChild(genericParams->mGenericParams[i]);		
+		VisitChild(genericParams->mGenericParams[i]);
 	}
 	VisitChild(genericParams->mCloseChevron);
 }
@@ -1187,6 +1187,8 @@ void BfPrinter::Visit(BfGenericArgumentsNode* genericArgumentsNode)
 		}
 		VisitChild(genericArgumentsNode->mGenericArgs[i]);		
 	}
+	for (int i = (int)genericArgumentsNode->mGenericArgs.size() - 1; i < (int)genericArgumentsNode->mCommas.size(); i++)
+		VisitChildNoRef(genericArgumentsNode->mCommas.GetSafe(i));
 	VisitChild(genericArgumentsNode->mCloseChevron);
 }
 
