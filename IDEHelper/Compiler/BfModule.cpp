@@ -11258,7 +11258,8 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 	if (constant->mConstType == Beefy::BfConstType_TypeOf)
 	{
 		auto constTypeOf = (BfTypeOf_Const*)constant;
-		AddDependency(constTypeOf->mType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+		if (mCurTypeInstance != NULL)
+			AddDependency(constTypeOf->mType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
 		return CreateTypeDataRef(constTypeOf->mType);
 	}
 
