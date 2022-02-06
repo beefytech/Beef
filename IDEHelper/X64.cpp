@@ -835,9 +835,14 @@ X64CPU::X64CPU() :
 		return;
 
 	mInstrInfo = TheX86_64Target.createMCInstrInfo();
+	
+	mMCContext = new MCContext(Triple(triple), mAsmInfo, mRegisterInfo, mSubtargetInfo);
 
-	mMCObjectFileInfo = new MCObjectFileInfo();
-	mMCContext = new MCContext(mAsmInfo, mRegisterInfo, mMCObjectFileInfo);
+	mMCObjectFileInfo = TheX86_64Target.createMCObjectFileInfo(*mMCContext, false);
+	if (!mMCObjectFileInfo)
+		return;
+
+	mMCContext->setObjectFileInfo(mMCObjectFileInfo);
 
 	MCDisassembler *disAsm = TheX86_64Target.createMCDisassembler(*mSubtargetInfo, *mMCContext);
 	mDisAsm = disAsm;

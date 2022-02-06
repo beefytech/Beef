@@ -443,8 +443,13 @@ X86CPU::X86CPU() :
 
 	mInstrInfo = TheX86_32Target.createMCInstrInfo();
 
-	mMCObjectFileInfo = new MCObjectFileInfo();
-	mMCContext = new MCContext(mAsmInfo, mRegisterInfo, mMCObjectFileInfo);
+	mMCContext = new MCContext(Triple(triple), mAsmInfo, mRegisterInfo, mSubtargetInfo);
+
+	mMCObjectFileInfo = TheX86_32Target.createMCObjectFileInfo(*mMCContext, false);
+	if (!mMCObjectFileInfo)
+		return;
+
+	mMCContext->setObjectFileInfo(mMCObjectFileInfo);
 
 	MCDisassembler *disAsm = TheX86_32Target.createMCDisassembler(*mSubtargetInfo, *mMCContext);
 	mDisAsm = disAsm;	
