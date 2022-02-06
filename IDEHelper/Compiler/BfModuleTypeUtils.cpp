@@ -2932,7 +2932,7 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 
 		fieldInstance->mDataOffset = unionInnerType->mSize;
 		fieldInstance->mDataIdx = 2; // 0 = base, 1 = payload, 2 = discriminator
-		if (!typeInstance->mIsPacked)
+		if (typeInstance->mPacking == 0)
 		{
 			if ((fieldInstance->mDataOffset % discriminatorType->mAlign) != 0)
 			{
@@ -3890,25 +3890,25 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	typeInstance->mInstAlign = std::max(0, typeInstance->mInstAlign);	
 
 	ProcessCustomAttributeData();
-	bool isPacked = false;
+	int packing = 0;
 	bool isUnion = false;
 	bool isCRepr = false;
 	bool isOrdered = false;
 	int alignOverride = 0;
 	BfType* underlyingArrayType = NULL;
 	int underlyingArraySize = -1;
-	ProcessTypeInstCustomAttributes(isPacked, isUnion, isCRepr, isOrdered, alignOverride, underlyingArrayType, underlyingArraySize);
+	ProcessTypeInstCustomAttributes(packing, isUnion, isCRepr, isOrdered, alignOverride, underlyingArrayType, underlyingArraySize);
 	if (underlyingArraySize > 0)
 	{
 		typeInstance->mHasUnderlyingArray = true;
 		curFieldDataIdx = 0;		
 	}
-	if (isPacked) // Packed infers ordered
+	if (packing > 0) // Packed infers ordered
 		isOrdered = true;
 	typeInstance->mIsUnion = isUnion;
 	if ((typeInstance->IsEnum()) && (typeInstance->IsStruct()))
 		typeInstance->mIsUnion = true;
-	typeInstance->mIsPacked = isPacked;
+	typeInstance->mPacking = (uint8)packing;
 	typeInstance->mIsCRepr = isCRepr;
 	
 	if (typeInstance->mTypeOptionsIdx >= 0)
@@ -4434,7 +4434,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				dataMemberHashCtx.Mixin(ver->mDataHash);
 			}
 		}
-		dataMemberHashCtx.Mixin(typeInstance->mIsPacked);
+		dataMemberHashCtx.Mixin(typeInstance->mPacking);
 		dataMemberHashCtx.Mixin(typeInstance->mIsCRepr);
 		dataMemberHashCtx.Mixin(typeInstance->mIsUnion);
 
@@ -4588,12 +4588,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						{
 							BF_ASSERT(resolvedFieldType->mSize >= 0);														
 
-							if ((alignSize > 1) && (!isPacked))
+							if (alignSize > 1)
 								dataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
 							fieldInstance->mDataOffset = dataPos;
-
-							if (!isPacked)
-								typeInstance->mInstAlign = std::max(typeInstance->mInstAlign, alignSize);
+							
+							typeInstance->mInstAlign = std::max(typeInstance->mInstAlign, alignSize);
 							dataPos += dataSize;
 
 							if (dataPos > maxDataPos)
@@ -4678,7 +4677,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			Array<Deque<BfFieldInstance*>> alignBuckets;
 			for (auto fieldInst : dataFieldVec)
 			{
-				int alignBits = GetHighestBitSet(fieldInst->mResolvedType->mAlign);
+				int alignBits = GetHighestBitSet(fieldInst->GetAlign(packing));
 				while (alignBits >= alignBuckets.size())
 					alignBuckets.Add({});
 				alignBuckets[alignBits].Add(fieldInst);
@@ -4711,7 +4710,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					auto fieldInst = alignBuckets[alignBits][0];
 					alignBuckets[alignBits].RemoveAt(0);
 					dataFieldVec.push_back(fieldInst);
-					curSize = BF_ALIGN(curSize, fieldInst->mResolvedType->mAlign);
+					curSize = BF_ALIGN(curSize, fieldInst->GetAlign(packing));
 					curSize += fieldInst->mResolvedType->mSize;
 					foundEntry = true;
 
@@ -4732,7 +4731,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						 	auto fieldInst = alignBuckets[alignBits][0];
 						 	alignBuckets[alignBits].RemoveAt(0);
 						 	dataFieldVec.push_back(fieldInst);
-						 	curSize = BF_ALIGN(curSize, fieldInst->mResolvedType->mAlign);
+						 	curSize = BF_ALIGN(curSize, fieldInst->GetAlign(packing));
 						 	curSize += fieldInst->mResolvedType->mSize;
 							break;
 						}
@@ -4752,25 +4751,23 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			BF_ASSERT(resolvedFieldType->mSize >= 0);
 			int dataSize = resolvedFieldType->mSize;
-			int alignSize = resolvedFieldType->mAlign;
+			int alignSize = fieldInstance->GetAlign(packing);
 			fieldInstance->mDataSize = dataSize;
 
 			//bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
 
-			int nextDataPos = dataPos;
-			if (!isPacked)
-				nextDataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
+			int nextDataPos = dataPos;			
+			nextDataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
 			int padding = nextDataPos - dataPos;
 			if ((alignSize > 1) && (needsExplicitAlignment) && (padding > 0))
 			{
-				curFieldDataIdx++;							
+				curFieldDataIdx++;
 			}
 			dataPos = nextDataPos;
 			fieldInstance->mDataOffset = dataPos;
 			fieldInstance->mDataIdx = curFieldDataIdx++;
-
-			if (!isPacked)
-				typeInstance->mInstAlign = std::max(typeInstance->mInstAlign, alignSize);
+			
+			typeInstance->mInstAlign = std::max(typeInstance->mInstAlign, alignSize);
 			dataPos += dataSize;
 		}
 
@@ -4786,8 +4783,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		if (alignOverride > 0)
 			typeInstance->mInstAlign = alignOverride;
-		else if (isPacked)
-			typeInstance->mInstAlign = 1;
 		else
 			typeInstance->mInstAlign = std::max(1, typeInstance->mInstAlign);
 		int alignSize = typeInstance->mInstAlign;
@@ -10965,7 +10960,16 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		refType->mElementType = elementType;
 		resolvedEntry->mValue = refType;
-		BF_ASSERT(BfResolvedTypeSet::Hash(refType, &lookupCtx) == resolvedEntry->mHash);
+		
+#ifdef _DEBUG
+		if (BfResolvedTypeSet::Hash(refType, &lookupCtx) != resolvedEntry->mHash)
+		{
+			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
+			int typeHash = BfResolvedTypeSet::Hash(refType, &lookupCtx);
+			BF_ASSERT(refHash == typeHash);
+		}
+		BF_ASSERT(BfResolvedTypeSet::Equals(refType, typeRef, &lookupCtx));
+#endif
 		populateModule->InitType(refType, populateType);
 		return ResolveTypeResult(typeRef, refType, populateType, resolveFlags);
 	}

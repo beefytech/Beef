@@ -191,6 +191,29 @@ namespace Tests
 			Test.Assert(sn.mA == 123);
 		}
 
+		[Align(16)]
+		struct StructP
+		{
+			int32 mA;
+			[Align(8)]
+			int8 mB;
+		}
+
+		[Align(16), Ordered]
+		struct StructQ
+		{
+			int32 mA;
+			[Align(8)]
+			int8 mB;
+		}
+
+		[Packed(2), Ordered]
+		struct StructR
+		{
+			int8 mA;
+			int32 mB;
+		}
+
 		[Test]
 		static void TestLayouts()
 		{
@@ -225,6 +248,18 @@ namespace Tests
 			Test.Assert(sizeof(StructJ) == 5);
 			Test.Assert(alignof(StructJ) == 1);
 			Test.Assert(strideof(StructJ) == 5);
+
+			Test.Assert(sizeof(StructP) == 8);
+			Test.Assert(alignof(StructP) == 16);
+			Test.Assert(strideof(StructP) == 16);
+
+			Test.Assert(sizeof(StructQ) == 9);
+			Test.Assert(alignof(StructQ) == 16);
+			Test.Assert(strideof(StructQ) == 16);
+
+			Test.Assert(sizeof(StructR) == 6);
+			Test.Assert(alignof(StructR) == 2);
+			Test.Assert(strideof(StructR) == 6);
 		}
 
 		public int Test<T>(T val)

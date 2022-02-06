@@ -495,6 +495,39 @@ void BfFieldInstance::GetDataRange(int& dataIdx, int& dataCount)
 	dataCount = maxMergedDataIdx - minMergedDataIdx;
 }
 
+int BfFieldInstance::GetAlign(int packing)
+{
+	int align = mResolvedType->mAlign;
+	if (packing > 0)
+		align = BF_MIN(align, packing);
+	if (mCustomAttributes != NULL)
+	{
+		auto module = mOwner->mModule;
+		for (auto& attrib : mCustomAttributes->mAttributes)
+		{			
+			if (attrib.mType->IsInstanceOf(module->mCompiler->mAlignAttributeTypeDef))
+			{
+				align = 16; // System conservative default
+
+				if (!attrib.mCtorArgs.IsEmpty())
+				{
+					BfIRConstHolder* constHolder = module->mCurTypeInstance->mConstHolder;
+					auto constant = constHolder->GetConstant(attrib.mCtorArgs[0]);
+					if (constant != NULL)
+					{
+						int alignOverride = (int)BF_MAX(1, constant->mInt64);
+						if ((alignOverride & (alignOverride - 1)) == 0)
+							align = alignOverride;
+						else
+							module->Fail("Alignment must be a power of 2", attrib.GetRefNode());
+					}
+				}
+			}			
+		}
+	}
+	return align;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 int64 BfDeferredMethodCallData::GenerateMethodId(BfModule* module, int64 methodId)

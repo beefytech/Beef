@@ -1070,7 +1070,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mLookupResults.Clear();
 	typeInst->mIsUnion = false;
 	typeInst->mIsCRepr = false;
-	typeInst->mIsPacked = false;
+	typeInst->mPacking = 0;
 	typeInst->mIsSplattable = false;
 	typeInst->mHasUnderlyingArray = false;
 

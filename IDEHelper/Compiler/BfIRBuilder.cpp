@@ -2966,7 +2966,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	
 	llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;
 
-	bool isPacked = false;
+	int packing = 0;
 	bool isUnion = false;
 	bool isCRepr = false;
 	BfType* underlyingArrayType = NULL;
@@ -2980,7 +2980,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	else
 	{
 		isCRepr = typeInstance->mIsCRepr;
-		isPacked = typeInstance->mIsPacked;
+		packing = typeInstance->mPacking;
 		isUnion = typeInstance->mIsUnion;
 		typeInstance->GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingArrayIsVector);
 // 		if (underlyingArrayType != NULL)
@@ -3493,7 +3493,7 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 
 	llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;
 
-	bool isPacked = false;
+	int packing = 0;
 	bool isUnion = false;
 	bool isCRepr = false;
 
@@ -3514,7 +3514,7 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 	else
 	{
 		isCRepr = typeInstance->mIsCRepr;
-		isPacked = typeInstance->mIsPacked;
+		packing = typeInstance->mPacking;
 		isUnion = typeInstance->mIsUnion;
 	}
 

@@ -366,10 +366,18 @@ namespace System
 	[AttributeUsage(.Class | .Struct)]
 	public struct PackedAttribute : Attribute
 	{
+		public this()
+		{
 
+		}
+
+		public this(int align)
+		{
+
+		}
 	}
 
-	[AttributeUsage(.Class | .Struct | .Alloc)]
+	[AttributeUsage(.Class | .Struct | .Alloc | .Field)]
 	public struct AlignAttribute : Attribute
 	{
 		public this(int align)

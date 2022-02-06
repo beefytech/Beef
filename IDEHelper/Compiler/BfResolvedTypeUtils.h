@@ -1413,6 +1413,7 @@ public:
 	BfType* GetResolvedType();
 	void SetResolvedType(BfType* type);
 	void GetDataRange(int& dataIdx, int& dataCount);
+	int GetAlign(int packing);
 };
 
 enum BfMethodRefKind
@@ -1903,7 +1904,7 @@ public:
 	bool mIsTypedPrimitive;
 	bool mIsCRepr;	
 	bool mIsUnion;	
-	bool mIsPacked;
+	uint8 mPacking;
 	bool mIsSplattable;
 	bool mHasUnderlyingArray;
 	bool mTypeIncomplete;
@@ -1934,7 +1935,7 @@ public:
 		mIsReified = true;
 		mIsSplattable = false;
 		mHasUnderlyingArray = false;
-		mIsPacked = false;
+		mPacking = 0;
 		mBaseType = NULL;
 		mCustomAttributes = NULL;
 		mAttributeData = NULL;
@@ -1990,7 +1991,7 @@ public:
 	int GetEndingInstanceAlignment() { if (mInstSize % mInstAlign == 0) return mInstAlign; return mInstSize % mInstAlign; }	
 	virtual bool HasTypeFailed() override { return mTypeFailed; } 
 	virtual bool IsReified() override { return mIsReified; }
-	virtual bool NeedsExplicitAlignment() override { return !IsSizeAligned() || mIsPacked; }	
+	virtual bool NeedsExplicitAlignment() override { return !IsSizeAligned() || (mPacking != 0); }	
 	virtual bool IsDataIncomplete() override { return ((mTypeIncomplete) || (mBaseTypeMayBeIncomplete)) && (!mNeedsMethodProcessing); }	
 	virtual bool IsFinishingType() override { return mIsFinishingType; }
 	virtual bool IsIncomplete() override { return (mTypeIncomplete) || (mBaseTypeMayBeIncomplete); }

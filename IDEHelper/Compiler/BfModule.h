@@ -1587,7 +1587,7 @@ public:
 	BfCustomAttributes* GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags = BfGetCustomAttributesFlags_None, BfCaptureInfo* captureInfo = NULL);
 	BfCustomAttributes* GetCustomAttributes(BfTypeDef* typeDef);
 	void FinishAttributeState(BfAttributeState* attributeState);
-	void ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered, int& alignOverride, BfType*& underlyingArrayType, int& underlyingArraySize);
+	void ProcessTypeInstCustomAttributes(int& packing, bool& isUnion, bool& isCRepr, bool& isOrdered, int& alignOverride, BfType*& underlyingArrayType, int& underlyingArraySize);
 	void ProcessCustomAttributeData();	
 	bool TryGetConstString(BfIRConstHolder* constHolder, BfIRValue irValue, StringImpl& str);
 	BfVariant TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& value, bool allowUndef = false);

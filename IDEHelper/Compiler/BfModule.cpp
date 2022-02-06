@@ -6706,7 +6706,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					{
 						// Add discriminator
 						auto dscrType = checkTypeInstance->GetDiscriminatorType();
-						if (!checkTypeInstance->mIsPacked)
+						if (checkTypeInstance->mPacking > 0)
 							dataEnd = BF_ALIGN(dataEnd, dscrType->mAlign);
 						_CheckSplat(dscrType, dataEnd);
 					}
@@ -11896,7 +11896,7 @@ void BfModule::FinishAttributeState(BfAttributeState* attributeState)
 		Warn(0, "Unused attributes", attributeState->mSrc);
 }
 
-void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered, int& alignOverride, BfType*& underlyingArrayType, int& underlyingArraySize)
+void BfModule::ProcessTypeInstCustomAttributes(int& packing, bool& isUnion, bool& isCRepr, bool& isOrdered, int& alignOverride, BfType*& underlyingArrayType, int& underlyingArraySize)
 {
 	if (mCurTypeInstance->mTypeDef->mIsAlwaysInclude)
 		mCurTypeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(mCurTypeInstance->mAlwaysIncludeFlags | BfAlwaysIncludeFlag_Type);
@@ -11907,7 +11907,17 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 			String typeName = TypeToString(customAttribute.mType);
 			if (typeName == "System.PackedAttribute")
 			{
-				isPacked = true;
+				packing = 1;
+				if (customAttribute.mCtorArgs.size() >= 1)
+				{
+					auto alignConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
+
+					int checkPacking = alignConstant->mInt32;
+					if (((checkPacking & (checkPacking - 1)) == 0) && (packing > 0) && (packing < 256))
+						packing = checkPacking;
+					else
+						Fail("Packing must be a power of 2", customAttribute.GetRefNode());
+				}
 			}
 			else if (typeName == "System.UnionAttribute")
 			{
@@ -11948,7 +11958,12 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 				if (customAttribute.mCtorArgs.size() >= 1)
 				{
 					auto alignConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
-					alignOverride = alignConstant->mInt32;
+
+					int checkAlign = alignConstant->mInt32;
+					if ((checkAlign & (checkAlign - 1)) == 0)
+						alignOverride = checkAlign;
+					else
+						Fail("Alignment must be a power of 2", customAttribute.GetRefNode());
 				}
 			}
 			else if (typeName == "System.UnderlyingArrayAttribute")
