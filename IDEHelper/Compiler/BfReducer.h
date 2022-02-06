@@ -217,11 +217,12 @@ public:
 	BfAstNode* CreateStatement(BfAstNode* node, CreateStmtFlags createStmtFlags = CreateStmtFlags_None);
 	BfAstNode* CreateStatementAfter(BfAstNode* node, CreateStmtFlags createStmtFlags = CreateStmtFlags_None);
 	bool IsExtendedTypeName(BfIdentifierNode* identifierNode);
-	bool IsTypeReference(BfAstNode* checkNode, BfToken successToken, int* outEndNode = NULL, bool* couldBeExpr = NULL, bool* isGenericType = NULL, bool* isTuple = NULL);
+	bool IsTypeReference(BfAstNode* checkNode, BfToken successToken, int endNode, int* retryNode, int* outEndNode, bool* couldBeExpr, bool* isGenericType, bool* isTuple);
+	bool IsTypeReference(BfAstNode* checkNode, BfToken successToken, int endNode = -1, int* outEndNode = NULL, bool* couldBeExpr = NULL, bool* isGenericType = NULL, bool* isTuple = NULL);
 	bool IsLocalMethod(BfAstNode* nameNode);
 	int QualifiedBacktrack(BfAstNode* endNode, int checkIdx, bool* outHadChevrons = NULL); // Backtracks to dot token
 	BfTypeReference* DoCreateNamedTypeRef(BfIdentifierNode* identifierNode);
-	BfTypeReference* DoCreateTypeRef(BfAstNode* identifierNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None);
+	BfTypeReference* DoCreateTypeRef(BfAstNode* identifierNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None, int endNode = -1);
 	BfTypeReference* CreateTypeRef(BfAstNode* identifierNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None);
 	BfTypeReference* CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None);
 	BfTypeReference* CreateRefTypeRef(BfTypeReference* elementType, BfTokenNode* refToken);	

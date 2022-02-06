@@ -661,7 +661,10 @@ void BfSourceClassifier::Handle(BfTypeDeclaration* typeDeclaration)
 
 			BfTypeReference* typeRef = genericConstraint->mTypeRef;
 			if (typeRef != NULL)
-				SetElementType(typeRef, BfSourceElementType_GenericParam);
+			{
+				if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
+					SetElementType(namedTypeRef, BfSourceElementType_GenericParam);
+			}
 		}
 	}
 

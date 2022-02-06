@@ -443,6 +443,16 @@ namespace Tests
 			output
 		}
 
+		class Foo<T>
+		{
+		    public static T value;
+
+			public class Inner<T2> where Foo<T> : Object
+			{
+				public static T value2;
+			}
+		}
+
 		[Test]
 		public static void TestSizedArrays()
 		{
@@ -460,6 +470,12 @@ namespace Tests
 			Test.Assert(len == 3);
 			len = CheckString<"Abcd">("Abcd");
 			Test.Assert(len == 4);
+
+			int val = 123;
+			bool b = Foo<int>.value < val;
+			b = Foo<int>.value > val;
+			b = Foo<int>.Inner<float>.value2 < 1.2f;
+			b = Foo<int>.Inner<float>.value2 > 2.3f;
 		}
 	}
 }
