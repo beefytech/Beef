@@ -263,6 +263,7 @@ list(APPEND LLVM_LIBS
   ${LLVM_LIB}/libLLVMWebAssemblyCodeGen.a
   ${LLVM_LIB}/libLLVMWebAssemblyAsmParser.a
   ${LLVM_LIB}/libLLVMWebAssemblyDisassembler.a
+  ${LLVM_LIB}/libLLVMWebAssemblyUtils.a
 
   ${LLVM_LIB}/libLLVMSupport.a
   ${LLVM_LIB}/libLLVMDemangle.a)
