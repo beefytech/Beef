@@ -12697,12 +12697,18 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		else if ((toType->IsInstanceOf(mCompiler->mStringViewTypeDef)))
 		{
 			int stringId = GetStringPoolIdx(typedVal.mValue, mBfIRBuilder);
-			if (stringId >= 0)
+			bool isNull = false;
+
+			auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
+			if (constant->mTypeCode == BfTypeCode_NullPtr)
+				isNull = true;
+
+			if ((stringId >= 0) || (isNull))
 			{
 				int strLen = 0;
 				String str;
 				BfStringPoolEntry* entry = NULL;
-				if (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry))
+				if ((isNull) || (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry)))
 				{
 					auto svTypeInst = toType->ToTypeInstance();
 
@@ -12710,17 +12716,26 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					PopulateType(svTypeInst->mBaseType);
 					mBfIRBuilder->PopulateType(svTypeInst);
 					
-					auto stringCharPtr = GetStringCharPtr(stringId);					
 					SizedArray<BfIRValue, 2> spanFieldVals;
 					spanFieldVals.Add(mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(svTypeInst->mBaseType->mBaseType)));
-					spanFieldVals.Add(stringCharPtr);
-					spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, entry->mString.mLength));					
+
+					if (isNull)
+					{
+						spanFieldVals.Add(mBfIRBuilder->CreateConstNull());
+						spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
+					}
+					else
+					{
+						auto stringCharPtr = GetStringCharPtr(stringId);
+						spanFieldVals.Add(stringCharPtr);
+						spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, entry->mString.mLength));
+					}
 
 					SizedArray<BfIRValue, 2> svFieldVals;
 					svFieldVals.Add(mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(svTypeInst->mBaseType), spanFieldVals));
 					return mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(svTypeInst), svFieldVals);
 				}				
-			}
+			}			
 		}
 	}
 
