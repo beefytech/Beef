@@ -10650,11 +10650,25 @@ bool BeMCContext::DoLegalization()
 								CheckForce(vregInfo);
 							}
 
-							BeMCOperand castedVReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, false);
-							CreateDefineVReg(castedVReg, instIdx++);
-							auto castedVRegInfo = GetVRegInfo(castedVReg);
-							castedVRegInfo->mIsExpr = true;
-							castedVRegInfo->mRelTo = inst->mArg0;
+							BeMCOperand castedVReg;
+							if (inst->mArg0.mKind == BeMCOperandKind_VRegLoad)
+							{
+								// Maintain the load-ness (don't wrap a load)
+								castedVReg = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64)), 2, false);
+								CreateDefineVReg(castedVReg, instIdx++);
+								auto castedVRegInfo = GetVRegInfo(castedVReg);
+								castedVRegInfo->mIsExpr = true;
+								castedVRegInfo->mRelTo = BeMCOperand::FromVReg(inst->mArg0.mVRegIdx);
+								castedVReg.mKind = BeMCOperandKind_VRegLoad;
+							}
+							else
+							{
+								castedVReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, false);
+								CreateDefineVReg(castedVReg, instIdx++);
+								auto castedVRegInfo = GetVRegInfo(castedVReg);
+								castedVRegInfo->mIsExpr = true;
+								castedVRegInfo->mRelTo = inst->mArg0;
+							}
 
 							BeMCOperand scratchReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, true);
 							CreateDefineVReg(scratchReg, instIdx++);
