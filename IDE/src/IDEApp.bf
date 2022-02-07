@@ -8004,7 +8004,7 @@ namespace IDE
 			}
 		}*/
 
-		const int cArgFileThreshold = 0x7800;
+		const int cArgFileThreshold = 0x2000 - 1;
 
         public ExecutionQueueCmd QueueRun(String fileName, String args, String workingDir, ArgsFileKind argsFileKind = .None)
         {            
@@ -8012,7 +8012,7 @@ namespace IDE
             executionQueueCmd.mFileName = new String(fileName);
             executionQueueCmd.mArgs = new String(args);
             executionQueueCmd.mWorkingDir = new String(workingDir);
-			if (args.Length > cArgFileThreshold)
+			if (fileName.Length + args.Length + 1 > cArgFileThreshold)
 			{
 				// Only use UTF16 if we absolutely need to
 				if ((argsFileKind == .UTF16WithBom) && (!args.HasMultibyteChars()))

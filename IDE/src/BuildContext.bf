@@ -630,7 +630,7 @@ namespace IDE
 					compilerExePath.Append(@"/upstream/emscripten/emcc.bat");
 					//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
 					linkLine.Append(" ", gApp.mInstallDir);
-					linkLine.Append("..\\..\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1");
+					linkLine.Append("..\\..\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1");
 
 					String workingDir = scope String();
 					if (!llvmDir.IsEmpty)
@@ -641,6 +641,8 @@ namespace IDE
 					{
 						workingDir.Append(gApp.mInstallDir);
 					}
+
+					linkLine.Replace('\\', '/');
 
 					//linkLine.Append(" --no-entry --export-all");
 
