@@ -145,7 +145,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>BF_DBG_32;WIN32;_DEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_11_0_0\llvm\include;..\extern\llvm_win64_11_0_0\include;..\extern\llvm-project_11_0_0\llvm\lib\Target;..\extern\llvm_win64_11_0_0\lib\Target\X86;..\extern\llvm-project_11_0_0\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_13_0_1\llvm\include;..\extern\llvm_win64_13_0_1\include;..\extern\llvm-project_13_0_1\llvm\lib\Target;..\extern\llvm_win64_13_0_1\lib\Target\X86;..\extern\llvm-project_13_0_1\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <AdditionalOptions>-D_SCL_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -183,7 +183,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>BF_DBG_32;WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_11_0_0\llvm\include;..\extern\llvm_win64_11_0_0\include;..\extern\llvm-project_11_0_0\llvm\lib\Target;..\extern\llvm_win64_11_0_0\lib\Target\X86;..\extern\llvm-project_11_0_0\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_13_0_1\llvm\include;..\extern\llvm_win64_13_0_1\include;..\extern\llvm-project_13_0_1\llvm\lib\Target;..\extern\llvm_win64_13_0_1\lib\Target\X86;..\extern\llvm-project_13_0_1\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
