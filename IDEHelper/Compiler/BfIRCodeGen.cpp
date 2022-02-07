@@ -486,6 +486,12 @@ void BfIRCodeGen::FixValues(llvm::StructType* structType, llvm::SmallVector<llvm
 	}
 }
 
+void BfIRCodeGen::FixIndexer(llvm::Value*& val)
+{
+	if ((int)val->getType()->getScalarSizeInBits() > mPtrSize * 8)
+		val = mIRBuilder->CreateIntCast(val, llvm::Type::getInt32Ty(*mLLVMContext), false);
+}
+
 BfTypeCode BfIRCodeGen::GetTypeCode(llvm::Type* type, bool isSigned)
 {
 	if (type->isIntegerTy())
@@ -2340,7 +2346,7 @@ void BfIRCodeGen::HandleNextCmd()
 				SetResult(curId, mIRBuilder->CreateBitCast(gepResult, val->getType()));
 				break;
 			}
-
+			FixIndexer(idx0);
 			SetResult(curId, mIRBuilder->CreateInBoundsGEP(val, idx0));
 		}
 		break;
@@ -2349,6 +2355,8 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(llvm::Value*, idx0);
 			CMD_PARAM(llvm::Value*, idx1);
+			FixIndexer(idx0);
+			FixIndexer(idx1);
 			llvm::Value* indices[2] = { idx0, idx1 };			
 			SetResult(curId, FixGEP(val, mIRBuilder->CreateInBoundsGEP(val, llvm::makeArrayRef(indices))));
 		}

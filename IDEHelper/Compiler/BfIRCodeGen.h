@@ -125,6 +125,7 @@ public:
 public:		
 	void InitTarget();
 	void FixValues(llvm::StructType* structType, llvm::SmallVector<llvm::Value*, 8>& values);
+	void FixIndexer(llvm::Value*& val);
 	BfTypeCode GetTypeCode(llvm::Type* type, bool isSigned);
 	llvm::Type* GetLLVMType(BfTypeCode typeCode, bool& isSigned);
 	BfIRTypeEntry& GetTypeEntry(int typeId);
