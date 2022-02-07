@@ -12989,7 +12989,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 				if (doCall)
 				{
-					//if (!silentFail)
+					if (!silentFail)
 						methodMatcher.FlushAmbiguityError();
 
 					auto wantType = paramType;
