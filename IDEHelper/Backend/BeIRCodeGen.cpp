@@ -2669,7 +2669,8 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, line);
 			CMD_PARAM(int, column);
 			CMD_PARAM(BeMDNode*, diScope);
-			CMD_PARAM(BeMDNode*, diInlinedAt);			
+			CMD_PARAM(BeMDNode*, diInlinedAt);
+			BF_ASSERT(diScope != NULL);
 			mBeModule->SetCurrentDebugLocation(line - 1, column - 1, diScope, (BeDbgLoc*)diInlinedAt);
 		}
 		break;

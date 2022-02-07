@@ -5396,6 +5396,7 @@ void BfIRBuilder::UpdateDebugLocation(BfIRValue inst)
 
 void BfIRBuilder::SetCurrentDebugLocation(int line, int column, BfIRMDNode diScope, BfIRMDNode diInlinedAt)
 {
+	BF_ASSERT(diScope);
 	if (mDbgVerifyCodeGen && gDebugDbgLoc)
 	{
 		OutputDebugStrF("SetCurrentDebugLocation %d %d:%d\n", diScope.mId, line, column);
