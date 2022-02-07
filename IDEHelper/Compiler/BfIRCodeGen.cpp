@@ -1678,7 +1678,9 @@ void BfIRCodeGen::InitTarget()
 	else if (mCodeGenOptions.mOptLevel == BfOptLevel_O3)
 		optLvl = llvm::CodeGenOpt::Aggressive;
 
-	if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE)
+	if (theTriple.isWasm())
+		featuresStr = "+atomics,+bulk-memory,+mutable-globals,+sign-ext";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE)
 		featuresStr = "+sse";
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE2)
 		featuresStr = "+sse2";
@@ -1691,7 +1693,7 @@ void BfIRCodeGen::InitTarget()
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX)
 		featuresStr = "+avx";
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX2)
-		featuresStr = "+avx2";
+		featuresStr = "+avx2";	
 
 	llvm::Optional<llvm::Reloc::Model> relocModel;
 	llvm::CodeModel::Model cmModel = llvm::CodeModel::Small;
