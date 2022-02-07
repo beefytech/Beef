@@ -148,7 +148,8 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 			mBfIRBuilder->SetInsertPointAtStart(mCurMethodState->mIRInitBlock);
 
 			auto scopeHead = &mCurMethodState->mHeadScope;
-			mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, 0, scopeHead->mDIScope, BfIRMDNode());
+			if (scopeHead->mDIScope)
+				mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, 0, scopeHead->mDIScope, BfIRMDNode());
 
 			if (WantsLifetimes())
 				mBfIRBuilder->CreateLifetimeStart(listEntry->mDynCallTail);
@@ -164,7 +165,8 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 
 				mBfIRBuilder->SetInsertPoint(mCurMethodState->mIRInitBlock);
 
-				mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, 0, scopeHead->mDIScope, BfIRMDNode());
+				if (scopeHead->mDIScope)
+					mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, 0, scopeHead->mDIScope, BfIRMDNode());
 				mBfIRBuilder->CreateStatementStart();
 
 				//TODO: Make this work for LLVM - we need a proper debug location

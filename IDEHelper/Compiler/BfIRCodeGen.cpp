@@ -3781,9 +3781,9 @@ void BfIRCodeGen::HandleNextCmd()
 			auto attr = LLVMMapAttribute(attribute);
 			if (attr == llvm::Attribute::StructRet)
 			{
-				// FIXME: StructRet changed from EnumAttr to TypeAttr
-				//llvm::Attribute sret = llvm::Attribute::getWithStructRetType(*mLLVMContext, srt);
-				//((llvm::CallInst*)callInst)->addAttribute(argIdx, sret);
+				auto funcType = ((llvm::CallInst*)callInst)->getFunctionType();
+				llvm::Attribute sret = llvm::Attribute::getWithStructRetType(*mLLVMContext, funcType->getFunctionParamType(argIdx - 1)->getPointerElementType());
+				((llvm::CallInst*)callInst)->addAttribute(argIdx, sret);
 			}
 			else
 			{
@@ -3806,13 +3806,11 @@ void BfIRCodeGen::HandleNextCmd()
 				}
 				else if (attribute == BfIRAttribute_ByVal)
 				{
-					// FIXME: Adding integer/type attribute without an argument.
-					/*llvm::AttrBuilder B;
-					B.addAttribute(llvm::Attribute::ByVal);
-					B.addAlignmentAttr(arg);
-					auto attrList = ((llvm::CallInst*)callInst)->getAttributes();
-					attrList = attrList.addAttributes(*mLLVMContext, argIdx, B);
-					((llvm::CallInst*)callInst)->setAttributes(attrList);*/
+					auto funcType = ((llvm::CallInst*)callInst)->getFunctionType();
+					llvm::Attribute byValAttr = llvm::Attribute::getWithByValType(*mLLVMContext, funcType->getFunctionParamType(argIdx - 1)->getPointerElementType());
+					llvm::Attribute alignAttr = llvm::Attribute::getWithAlignment(*mLLVMContext, llvm::Align(arg));
+					((llvm::CallInst*)callInst)->addAttribute(argIdx, byValAttr);
+					((llvm::CallInst*)callInst)->addAttribute(argIdx, alignAttr);
 				}
 			}
 		}
@@ -3869,9 +3867,9 @@ void BfIRCodeGen::HandleNextCmd()
 				auto attr = LLVMMapAttribute(attribute);
 				if (attr == llvm::Attribute::StructRet)
 				{
-					// FIXME: StructRet changed from EnumAttr to TypeAttr
-					//llvm::Attribute sret = llvm::Attribute::getWithStructRetType(*mLLVMContext, srt);
-					//func->addAttribute(argIdx, sret);
+					auto funcType = func->getFunctionType();
+					llvm::Attribute sret = llvm::Attribute::getWithStructRetType(*mLLVMContext, funcType->getFunctionParamType(argIdx - 1)->getPointerElementType());
+					func->addAttribute(argIdx, sret);
 				}
 				else if (attr != llvm::Attribute::None)
 					func->addAttribute(argIdx, attr);
@@ -3890,13 +3888,11 @@ void BfIRCodeGen::HandleNextCmd()
 			}
 			else if (attribute == BfIRAttribute_ByVal)
 			{
-				// FIXME: Adding integer/type attribute without an argument.
-				/*llvm::AttrBuilder B;
-				B.addAttribute(llvm::Attribute::ByVal);
-				B.addAlignmentAttr(arg);
-				auto attrList = ((llvm::Function*)func)->getAttributes();
-				attrList = attrList.addAttributes(*mLLVMContext, argIdx, B);
-				((llvm::Function*)func)->setAttributes(attrList);*/			
+				auto funcType = func->getFunctionType();
+				llvm::Attribute byValAttr = llvm::Attribute::getWithByValType(*mLLVMContext, funcType->getFunctionParamType(argIdx - 1)->getPointerElementType());				
+				llvm::Attribute alignAttr = llvm::Attribute::getWithAlignment(*mLLVMContext, llvm::Align(arg));
+				func->addAttribute(argIdx, byValAttr);
+				func->addAttribute(argIdx, alignAttr);
 			}
 		}
 		break;
