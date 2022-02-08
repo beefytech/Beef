@@ -1058,6 +1058,22 @@ namespace IDE
 			}
 		}
 
+		public class WasmOptions
+		{
+			[Reflect]
+			public bool mEnableThreads = true;
+
+			public void Deserialize(StructuredData data)
+			{
+				mEnableThreads = data.GetBool("EnableThreads", true);
+			}
+
+			public void Serialize(StructuredData data)
+			{
+				data.ConditionalAdd("EnableThreads", mEnableThreads, true);
+			}
+		}
+
         public class GeneralOptions
         {
 			[Reflect]
@@ -1338,6 +1354,7 @@ namespace IDE
 		// Platform-dependent options
 		public WindowsOptions mWindowsOptions = new WindowsOptions() ~ delete _;
 		public LinuxOptions mLinuxOptions = new LinuxOptions() ~ delete _;
+		public WasmOptions mWasmOptions = new WasmOptions() ~ delete _;
 
         public List<Dependency> mDependencies = new List<Dependency>() ~ DeleteContainerAndItems!(_);
 		public bool mLastDidBuild;
@@ -1625,6 +1642,12 @@ namespace IDE
 					data.RemoveIfEmpty();
 				}
 
+				using (data.CreateObject("Wasm"))
+				{
+				    mWasmOptions.Serialize(data);
+					data.RemoveIfEmpty();
+				}
+
 				data.RemoveIfEmpty();
 			}
 
@@ -1655,7 +1678,8 @@ namespace IDE
 								{
 								case .Linux,
 									 .Windows,
-									 .macOS:
+									 .macOS,
+									 .Wasm:
 									defaultBuildKind = isTest ? .Test : .Normal;
 								default:
 									defaultBuildKind = .StaticLib;
@@ -1942,6 +1966,8 @@ namespace IDE
 					mWindowsOptions.Deserialize(data);
 				using (data.Open("Linux"))
 					mLinuxOptions.Deserialize(data);
+				using (data.Open("Wasm"))
+					mWasmOptions.Deserialize(data);
 			}
 
 			if (!data.Contains("Dependencies"))
@@ -2009,7 +2035,8 @@ namespace IDE
 					{
 					case .Linux,
 						 .Windows,
-						 .macOS:
+						 .macOS,
+						 .Wasm:
 						defaultBuildKind = isTest ? .Test : .Normal;
 					default:
 						defaultBuildKind = .StaticLib;
@@ -2410,7 +2437,8 @@ namespace IDE
 			{
 			case .Linux,
 				 .Windows,
-				 .macOS:
+				 .macOS,
+				 .Wasm:
 				options.mBuildOptions.mBuildKind = isTest ? .Test : .Normal;
 			default:
 				options.mBuildOptions.mBuildKind = .StaticLib;

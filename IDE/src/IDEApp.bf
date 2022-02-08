@@ -9662,10 +9662,10 @@ namespace IDE
 									case .Linux:
 										newString.AppendF("./{} -lpthread -ldl -Wl,-rpath -Wl,$ORIGIN", rtName);
 									case .Wasm:
-										/*newString.Append(mInstallDir);
+										newString.Append(mInstallDir);
 										newString.Append("Beef", IDEApp.sRTVersionStr, "RT");
 										newString.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
-										newString.Append("_wasm.lib");*/
+										newString.Append("_wasm.a");
 									default:
 									}	
 

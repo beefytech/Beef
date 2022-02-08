@@ -17,6 +17,7 @@ namespace IDE.ui
 			Compiler,
 		    Debugger,
 		    VisualStudio,
+			Wasm,
 
 		    COUNT
 		}
@@ -60,6 +61,7 @@ namespace IDE.ui
 			AddCategoryItem(root, "Compiler");
 		    AddCategoryItem(root, "Debugger");
 			AddCategoryItem(root, "Visual Studio");
+			AddCategoryItem(root, "Wasm");
 
 			if (!gApp.mSettings.mVSSettings.IsConfigured())
 				gApp.mSettings.mVSSettings.SetDefaults();
@@ -142,6 +144,18 @@ namespace IDE.ui
 			category.mIsBold = true;
 			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Worker Threads", "mWorkerThreads");
+			category.Open(true, true);
+		}
+
+		void PopulateWasmOptions()
+		{
+			mCurPropertiesTarget = gApp.mSettings;
+
+			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
+			var (category, propEntry) = AddPropertiesItem(root, "General");
+			category.mIsBold = true;
+			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+			AddPropertiesItem(category, "Emscripten Path", "mEmscriptenPath", null, .BrowseForFolder);
 			category.Open(true, true);
 		}
 
@@ -376,6 +390,8 @@ namespace IDE.ui
 					PopulateDebuggerOptions();
 				case .VisualStudio:
 					PopulateVSOptions();
+				case .Wasm:
+					PopulateWasmOptions();
 				default:
 					/*mCurPropertiesTarget = gApp.mSettings.mEditorSettings;
 					PopulateEditorOptions();*/

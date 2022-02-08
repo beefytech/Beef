@@ -507,6 +507,7 @@ namespace IDE.ui
 					{
 					case .Windows: mCurPropertiesTargets[0] = mProject.mWindowsOptions;
 					case .Linux: mCurPropertiesTargets[0] = mProject.mLinuxOptions;
+					case .Wasm: mCurPropertiesTargets[0] = mProject.mWasmOptions;
 					default:
 					}
 				}
@@ -594,6 +595,7 @@ namespace IDE.ui
 						{
 						case .Windows: PopulateWindowsOptions();
 						case .Linux: PopulateLinuxOptions();
+						case .Wasm: PopulateWasmOptions();
 						default:
 						}
 					}
@@ -657,6 +659,17 @@ namespace IDE.ui
 		    category.mIsBold = true;
 		    category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
 			AddPropertiesItem(category, "Options", "mOptions");
+		    //parent.MakeParent();
+		    category.Open(true, true);
+		}
+
+		void PopulateWasmOptions()
+		{
+		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
+		    var (category, ?) = AddPropertiesItem(root, "General");
+		    category.mIsBold = true;
+		    category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
+			AddPropertiesItem(category, "Enable Threads", "mEnableThreads");
 		    //parent.MakeParent();
 		    category.Open(true, true);
 		}

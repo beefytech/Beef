@@ -235,6 +235,8 @@ namespace IDE
 			}
 			arCmds.AppendF("SAVE\n");
 
+			UpdateCacheStr(project, "", workspaceOptions, options, null, null);
+
 		    if (project.mNeedsTargetRebuild)
 		    {
 		        if (File.Delete(targetPath) case .Err)
@@ -468,6 +470,8 @@ namespace IDE
 			        }
 				}
 
+				UpdateCacheStr(project, linkLine, workspaceOptions, options, depPaths, libPaths);
+
 			    if (project.mNeedsTargetRebuild)
 			    {
 			        if (File.Delete(targetPath) case .Err)
@@ -596,6 +600,8 @@ namespace IDE
 					IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
 					linkLine.Append(" ");
 				}
+
+				UpdateCacheStr(project, linkLine, workspaceOptions, options, depPaths, libPaths);
 				
 			    if (project.mNeedsTargetRebuild)
 			    {
@@ -621,32 +627,40 @@ namespace IDE
 #else
 					String llvmDir = "";					
 #endif
-					if (!gApp.mSettings.mEmscriptenPath.IsEmpty)
+					if (gApp.mSettings.mEmscriptenPath.IsEmpty)
+					{
+						gApp.OutputErrorLine("Emscripten path not configured. Check Wasm configuration in File\\Preferences\\Settings.");
+						return false;
+					}
+					else
 					{
 						compilerExePath.Append(gApp.mSettings.mEmscriptenPath);
 						if ((!compilerExePath.EndsWith('\\')) && (!compilerExePath.EndsWith('/')))
 							compilerExePath.Append("/");
 					}
+
+					if (!File.Exists(scope $"{gApp.mInstallDir}/Beef{IDEApp.sRTVersionStr}RT32_wasm.a"))
+					{
+						gApp.OutputErrorLine("Wasm runtime libraries not found. Build with bin/build_wasm.bat.");
+						return false;
+					}
+
 					compilerExePath.Append(@"/upstream/emscripten/emcc.bat");
 					//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
-					linkLine.Append(" ", gApp.mInstallDir);
-					linkLine.Append("..\\..\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s WASM=1");
+					linkLine.Append("-s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s WASM=1");
 
-					String workingDir = scope String();
-					if (!llvmDir.IsEmpty)
-					{
-						workingDir.Append(llvmDir, "bin");
-					}
-					else
-					{
-						workingDir.Append(gApp.mInstallDir);
-					}
+					if (project.mWasmOptions.mEnableThreads)
+						linkLine.Append(" -s USE_PTHREADS=1");
+
+					if (workspaceOptions.mEmitDebugInfo != .No)
+						linkLine.Append(" -g");
+
+					if (workspaceOptions.mRuntimeChecks)
+						linkLine.Append(" -s ASSERTIONS=1");
 
 					linkLine.Replace('\\', '/');
 
-					//linkLine.Append(" --no-entry --export-all");
-
-			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, workingDir, .UTF8);
+			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, project.mProjectDir, .UTF8);
 			        runCmd.mOnlyIfNotFailed = true;
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
 			        tagetCompletedCmd.mOnlyIfNotFailed = true;
@@ -845,6 +859,67 @@ namespace IDE
 			}
 		}
 
+		void UpdateCacheStr(Project project, StringView linkLine, Workspace.Options workspaceOptions, Project.Options options, List<String> depPaths, List<String> libPaths)
+		{
+			String cacheStr = scope String();
+
+			void AddBuildFileDependency(StringView filePath, bool resolveString = false)
+			{
+				var filePath;
+
+				if ((resolveString) && (filePath.Contains('$')))
+				{
+					String resolvedFilePath = scope:: String();
+					gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, filePath, "link flags", resolvedFilePath);
+					filePath = resolvedFilePath;
+				}
+
+				int64 fileTime = 0;
+				if (!filePath.IsEmpty)
+					fileTime = File.GetLastWriteTime(filePath).GetValueOrDefault().ToFileTime();
+				cacheStr.AppendF("{}\t{}\n", filePath, fileTime);
+			}
+
+			cacheStr.AppendF("Args\t{}\n", linkLine);
+			cacheStr.AppendF("Toolset\t{}\n", workspaceOptions.mToolsetType);
+			AddBuildFileDependency(project.mWindowsOptions.mIconFile);
+			AddBuildFileDependency(project.mWindowsOptions.mManifestFile);
+
+			switch (mPlatformType)
+			{
+			case .Windows:
+				cacheStr.AppendF("Description\t{}\n", project.mWindowsOptions.mDescription);
+				cacheStr.AppendF("Comments\t{}\n", project.mWindowsOptions.mComments);
+				cacheStr.AppendF("Company\t{}\n", project.mWindowsOptions.mCompany);
+				cacheStr.AppendF("Product\t{}\n", project.mWindowsOptions.mProduct);
+				cacheStr.AppendF("Copyright\t{}\n", project.mWindowsOptions.mCopyright);
+				cacheStr.AppendF("FileVersion\t{}\n", project.mWindowsOptions.mFileVersion);
+				cacheStr.AppendF("ProductVersion\t{}\n", project.mWindowsOptions.mProductVersion);
+			case .Linux:
+				cacheStr.AppendF("Options\t{}\n", project.mLinuxOptions.mOptions);
+			case .Wasm:
+				cacheStr.AppendF("EnableThreads\t{}\n", project.mWasmOptions.mEnableThreads);
+			default:
+			}
+			if (depPaths != null)
+				for (var linkDep in depPaths)
+					AddBuildFileDependency(linkDep, true);
+			if (libPaths != null)
+				for (var linkDep in libPaths)
+					AddBuildFileDependency(linkDep, true);
+
+			String projectBuildDir = scope String();
+			gApp.GetProjectBuildDir(project, projectBuildDir);
+			String prevCacheStr = scope .();
+			gApp.mBfBuildCompiler.GetBuildValue(projectBuildDir, "Link", prevCacheStr);
+			if (prevCacheStr != cacheStr)
+			{
+				project.mNeedsTargetRebuild = true;
+				gApp.mBfBuildCompiler.SetBuildValue(projectBuildDir, "Link", cacheStr);
+				gApp.mBfBuildCompiler.WriteBuildCache(projectBuildDir);
+			}
+		}
+
 		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
 			bool is64Bit = mPtrSize == 8;
@@ -1006,54 +1081,13 @@ namespace IDE
 
 				let winOptions = project.mWindowsOptions;
 
-				String cacheStr = scope String();
-
-				void AddBuildFileDependency(StringView filePath, bool resolveString = false)
-				{
-					var filePath;
-
-					if ((resolveString) && (filePath.Contains('$')))
-					{
-						String resolvedFilePath = scope:: String();
-						gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, filePath, "link flags", resolvedFilePath);
-						filePath = resolvedFilePath;
-					}
-
-					int64 fileTime = 0;
-					if (!filePath.IsEmpty)
-						fileTime = File.GetLastWriteTime(filePath).GetValueOrDefault().ToFileTime();
-					cacheStr.AppendF("{}\t{}\n", filePath, fileTime);
-				}
-
-				cacheStr.AppendF("Args\t{}\n", linkLine);
-				cacheStr.AppendF("Toolset\t{}\n", workspaceOptions.mToolsetType);
-				AddBuildFileDependency(project.mWindowsOptions.mIconFile);
-				AddBuildFileDependency(project.mWindowsOptions.mManifestFile);
-				cacheStr.AppendF("Description\t{}\n", project.mWindowsOptions.mDescription);
-				cacheStr.AppendF("Comments\t{}\n", project.mWindowsOptions.mComments);
-				cacheStr.AppendF("Company\t{}\n", project.mWindowsOptions.mCompany);
-				cacheStr.AppendF("Product\t{}\n", project.mWindowsOptions.mProduct);
-				cacheStr.AppendF("Copyright\t{}\n", project.mWindowsOptions.mCopyright);
-				cacheStr.AppendF("FileVersion\t{}\n", project.mWindowsOptions.mFileVersion);
-				cacheStr.AppendF("ProductVersion\t{}\n", project.mWindowsOptions.mProductVersion);
-				for (var linkDep in depPaths)
-					AddBuildFileDependency(linkDep, true);
-				for (var linkDep in libPaths)
-					AddBuildFileDependency(linkDep, true);
-
-				String projectBuildDir = scope String();
-				gApp.GetProjectBuildDir(project, projectBuildDir);
-				String prevCacheStr = scope .();
-				gApp.mBfBuildCompiler.GetBuildValue(projectBuildDir, "Link", prevCacheStr);
-				if (prevCacheStr != cacheStr)
-				{
-					project.mNeedsTargetRebuild = true;
-					gApp.mBfBuildCompiler.SetBuildValue(projectBuildDir, "Link", cacheStr);
-					gApp.mBfBuildCompiler.WriteBuildCache(projectBuildDir);
-				}
+				UpdateCacheStr(project, linkLine, workspaceOptions, options, depPaths, libPaths);
 
 				if (project.mNeedsTargetRebuild)
 				{
+					String projectBuildDir = scope String();
+					gApp.GetProjectBuildDir(project, projectBuildDir);
+
 					if ((!String.IsNullOrWhiteSpace(project.mWindowsOptions.mIconFile)) ||
 						(!String.IsNullOrWhiteSpace(project.mWindowsOptions.mManifestFile)) ||
 		                (winOptions.HasVersionInfo()))
