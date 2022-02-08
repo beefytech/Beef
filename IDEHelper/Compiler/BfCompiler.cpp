@@ -578,7 +578,7 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
 	if (checkType->IsPointer())
 		return IsTypeUsed(((BfPointerType*)checkType)->mElementType, curProject);
 	if (checkType->IsRef())
-		return IsTypeUsed(((BfPointerType*)checkType)->mElementType, curProject);
+		return IsTypeUsed(((BfRefType*)checkType)->mElementType, curProject);
 
 	return true;
 }

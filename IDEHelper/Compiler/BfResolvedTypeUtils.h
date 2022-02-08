@@ -524,6 +524,7 @@ public:
 	virtual BfTypeInstance* ToGenericTypeInstance() { return NULL; }
 	virtual BfPrimitiveType* ToPrimitiveType() { return NULL; }	
 	virtual bool IsDependendType() { return false; }
+	virtual int GetGenericDepth() { return 0; }
 	virtual bool IsTypeInstance() { return false; }
 	virtual bool IsGenericTypeInstance() { return false; }
 	virtual bool IsUnspecializedType() { return false; }
@@ -614,6 +615,20 @@ public:
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProjectSet* visibleProjectSet) { return true; }
 
 	virtual void ReportMemory(MemReporter* memReporter);
+};
+
+class BfElementedType : public BfType
+{
+public:
+	int mGenericDepth;
+
+public:
+	BfElementedType()
+	{
+		mGenericDepth = 0;
+	}
+
+	virtual int GetGenericDepth() override { return mGenericDepth; }	
 };
 
 // This is explicitly used for generics
@@ -2029,6 +2044,7 @@ public:
 	virtual bool GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCode = NULL, BfTypeCode* outTypeCode2 = NULL) override;
 
 	BfGenericTypeInfo* GetGenericTypeInfo() { return mGenericTypeInfo; }
+	virtual int GetGenericDepth() { return (mGenericTypeInfo != NULL) ? mGenericTypeInfo->mMaxGenericDepth : 0; }	
  
 	virtual BfTypeInstance* ToGenericTypeInstance() override { return (mGenericTypeInfo != NULL) ? this : NULL; }
  	virtual bool IsGenericTypeInstance() override { return mGenericTypeInfo != NULL; }
@@ -2205,12 +2221,14 @@ public:
 	BfDelegateInfo mDelegateInfo;
 	bool mIsUnspecializedType;
 	bool mIsUnspecializedTypeVariation;
+	int mGenericDepth;
 
 public:
 	BfDelegateType()
 	{
 		mIsUnspecializedType = false;
 		mIsUnspecializedTypeVariation = false;
+		mGenericDepth = 0;
 	}
 	~BfDelegateType();
 	
@@ -2228,16 +2246,18 @@ public:
 	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedTypeVariation; }
 
 	virtual BfDelegateInfo* GetDelegateInfo() override { return &mDelegateInfo; }
+	virtual int GetGenericDepth() override { return mGenericDepth; }
 };
 
 class BfTupleType : public BfTypeInstance
 {
-public:		
+public:
 	bool mCreatedTypeDef;
 	String mNameAdd;	
 	BfSource* mSource;
 	bool mIsUnspecializedType;
 	bool mIsUnspecializedTypeVariation;
+	int mGenericDepth;
 	
 public:
 	BfTupleType();
@@ -2252,6 +2272,8 @@ public:
 
 	virtual bool IsUnspecializedType() override { return mIsUnspecializedType; }
 	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedTypeVariation; }
+
+	virtual int GetGenericDepth() override { return mGenericDepth; }
 };
 
 class BfConcreteInterfaceType : public BfType
@@ -2266,7 +2288,7 @@ public:
 	virtual bool IsUnspecializedTypeVariation() override { return mInterface->IsUnspecializedTypeVariation(); }
 };
 
-class BfPointerType : public BfType
+class BfPointerType : public BfElementedType
 {
 public:
 	BfType* mElementType;
@@ -2395,9 +2417,18 @@ class BfSizedArrayType : public BfDependedType
 public:
 	BfType* mElementType;
 	intptr mElementCount;
+	int mGenericDepth;
 	bool mWantsGCMarking;
 
 public:
+	BfSizedArrayType()
+	{
+		mElementType = NULL;
+		mElementCount = 0;
+		mGenericDepth = 0;
+		mWantsGCMarking = false;
+	}
+
 	virtual bool NeedsExplicitAlignment() override { return mElementType->NeedsExplicitAlignment(); }
 
 	virtual bool IsSizedArray() override { return true; }
@@ -2417,6 +2448,8 @@ public:
 	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedTypeVariation(); }
 	virtual bool CanBeValuelessType() override { return true; }
 	virtual bool WantsGCMarking() override { BF_ASSERT(mDefineState >= BfTypeDefineState_Defined); return mWantsGCMarking; }
+
+	virtual int GetGenericDepth() override { return mGenericDepth; }
 	// Leave the default "zero sized" definition
 	//virtual bool IsValuelessType()  override { return mElementType->IsValuelessType(); }
 };
@@ -2727,7 +2760,7 @@ public:
 		else if (checkType->IsPointer())
 			GetProjectList(((BfPointerType*)checkType)->mElementType, projectList, immutableLength);
 		else if (checkType->IsRef())
-			GetProjectList(((BfPointerType*)checkType)->mElementType, projectList, immutableLength);
+			GetProjectList(((BfRefType*)checkType)->mElementType, projectList, immutableLength);
 		else if (checkType->IsSizedArray())
 			GetProjectList(((BfSizedArrayType*)checkType)->mElementType, projectList, immutableLength);
 		else if (checkType->IsMethodRef())

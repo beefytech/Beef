@@ -2706,6 +2706,7 @@ BfTupleType::BfTupleType()
 	mTypeDef = NULL;	
 	mIsUnspecializedType = false;
 	mIsUnspecializedTypeVariation = false;
+	mGenericDepth = 0;
 }
 
 BfTupleType::~BfTupleType()
@@ -2973,8 +2974,8 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 		int hashVal = HASH_DELEGATE;
 		
 		auto delegateInfo = type->GetDelegateInfo();
-
-		hashVal = ((hashVal ^ (Hash(delegateInfo->mReturnType, ctx, BfHashFlag_None, hashSeed))) << 5) - hashVal;
+		
+		hashVal = HASH_MIX(hashVal, Hash(delegateInfo->mReturnType, ctx, BfHashFlag_None, hashSeed + 1));
 
 		auto methodDef = typeInst->mTypeDef->mMethods[0];
 		BF_ASSERT(methodDef->mName == "Invoke");
@@ -2987,15 +2988,15 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 
 		for (int paramIdx = 0; paramIdx < delegateInfo->mParams.size(); paramIdx++)
 		{			
-			// Parse attributes?			
-			hashVal = ((hashVal ^ (Hash(delegateInfo->mParams[paramIdx], ctx, BfHashFlag_None, hashSeed))) << 5) - hashVal;
+			// Parse attributes?
+			hashVal = HASH_MIX(hashVal, Hash(delegateInfo->mParams[paramIdx], ctx, BfHashFlag_None, hashSeed + 1));
 			String paramName = methodDef->mParams[paramIdx]->mName;
 			int nameHash = (int)Hash64(paramName.c_str(), (int)paramName.length());
-			hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
+			hashVal = HASH_MIX(hashVal, nameHash);
 		}
 		
-		if (delegateInfo->mHasVarArgs)			
-			hashVal = ((hashVal ^ HASH_DOTDOTDOT) << 5) - hashVal;							
+		if (delegateInfo->mHasVarArgs)
+			hashVal = HASH_MIX(hashVal, HASH_DOTDOTDOT);
 
 		return hashVal;
 	}	
@@ -3022,8 +3023,9 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 			{
 				BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
 				
-				auto fieldType = fieldInstance->mResolvedType;
-				hashVal = ((hashVal ^ (Hash(fieldType, ctx, BfHashFlag_None, hashSeed))) << 5) - hashVal;
+				auto fieldType = fieldInstance->mResolvedType;				
+				hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, BfHashFlag_None, hashSeed + 1));
+
 				BfFieldDef* fieldDef = NULL;
                 if (tupleType->mTypeDef != NULL)
                     fieldDef = fieldInstance->GetFieldDef();
@@ -3036,9 +3038,9 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 				}
 				else
 				{					
-					nameHash = (int)Hash64(fieldDef->mName.c_str(), (int)fieldDef->mName.length());					
+					nameHash = (int)Hash64(fieldDef->mName.c_str(), (int)fieldDef->mName.length());
 				}
-				hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
+				hashVal = HASH_MIX(hashVal, nameHash);
 			}
 		}
 		else if (type->IsGenericTypeInstance())
@@ -3354,8 +3356,8 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 
 		for (int fieldIdx = 0; fieldIdx < (int)tupleTypeRef->mFieldTypes.size(); fieldIdx++)
 		{
-			BfTypeReference* fieldType = tupleTypeRef->mFieldTypes[fieldIdx];
-			hashVal = ((hashVal ^ (Hash(fieldType, ctx, BfHashFlag_None, hashSeed))) << 5) - hashVal;
+			BfTypeReference* fieldType = tupleTypeRef->mFieldTypes[fieldIdx];			
+			hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, BfHashFlag_None, hashSeed + 1));
 
 			int nameHash = 0;		
 			BfIdentifierNode* fieldName = NULL;
@@ -3372,7 +3374,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				sprintf(nameStr, "%d", fieldIdx);
 				nameHash = (int)Hash64(nameStr, strlen(nameStr));
 			}
-			hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
+			hashVal = HASH_MIX(hashVal, nameHash);
 		}
 
 		return hashVal;
@@ -3594,7 +3596,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 	{
 		int hashVal = HASH_DELEGATE;
 		if (delegateTypeRef->mReturnType != NULL)
-			hashVal = ((hashVal ^ (Hash(delegateTypeRef->mReturnType, ctx, BfHashFlag_AllowRef, hashSeed))) << 5) - hashVal;
+			hashVal = HASH_MIX(hashVal, Hash(delegateTypeRef->mReturnType, ctx, BfHashFlag_AllowRef, hashSeed + 1));
 		else
 			ctx->mFailed = true;
 		
@@ -3620,16 +3622,16 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(fieldType))
 				{
 					if (dotTypeRef->mDotToken->mToken == BfToken_DotDotDot)
-					{
-						hashVal = ((hashVal ^ HASH_DOTDOTDOT) << 5) - hashVal;
+					{						
+						hashVal = HASH_MIX(hashVal, HASH_DOTDOTDOT);
 						continue;
 					}
 				}
 			}
 			
 			if (fieldType != NULL)
-				hashVal = ((hashVal ^ (Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed))) << 5) - hashVal;
-			hashVal = ((hashVal ^ (HashNode(param->mNameNode))) << 5) - hashVal;
+				hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed + 1));
+			hashVal = HASH_MIX(hashVal, HashNode(param->mNameNode));
 			isFirstParam = true;
 		}
 

@@ -15196,19 +15196,11 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 	{
 		auto underlying = target.mType->GetUnderlyingType();
 		bool underlyingIsStruct = underlying->IsStruct();
-// 		if (underlying->IsGenericParam())
-// 		{
-// 			auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)underlying);
-// 			if (((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsValueType())) ||
-// 				((genericParam->mGenericParamFlags & (BfGenericParamFlag_Struct)) != 0))
-// 				underlyingIsStruct = true;
-// 		}
 
 		if (underlyingIsStruct)
 		{
-			auto pointerType = (BfPointerType*)target.mType;
 			target = mModule->LoadValue(target);
-			target.mType = pointerType->mElementType;
+			target.mType = underlying;
 			target.mKind = BfTypedValueKind_Addr;
 		}
 	}

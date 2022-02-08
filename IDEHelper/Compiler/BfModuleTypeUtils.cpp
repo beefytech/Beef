@@ -7930,7 +7930,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 
 		auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef);
 
-		BfTypeInstance* tupleType = NULL;
+		BfTupleType* tupleType = NULL;
 		if (wantGeneric)
 		{
  			Array<BfType*> genericArgs;
@@ -7950,6 +7950,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 
 			auto actualTupleType = mContext->mTupleTypePool.Get();
 			delete actualTupleType->mGenericTypeInfo;
+			actualTupleType->mGenericDepth = 0;
 			actualTupleType->mGenericTypeInfo = new BfGenericTypeInfo();
 			actualTupleType->mGenericTypeInfo->mIsUnspecialized = false;
 			actualTupleType->mGenericTypeInfo->mIsUnspecializedVariation = false;
@@ -7991,7 +7992,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			for (int fieldIdx = 0; fieldIdx < (int)fieldTypes.size(); fieldIdx++)
 			{
 				String fieldName = fieldNames[fieldIdx];				
-				BfFieldDef* fieldDef = actualTupleType->AddField(fieldName);
+				BfFieldDef* fieldDef = actualTupleType->AddField(fieldName);				
 			}
 
 			tupleType = actualTupleType;
@@ -8005,6 +8006,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			fieldInstance->mFieldIdx = fieldIdx;
 			fieldInstance->SetResolvedType(fieldTypes[fieldIdx]);
 			fieldInstance->mOwner = tupleType;
+			tupleType->mGenericDepth = BF_MAX(tupleType->mGenericDepth, fieldInstance->mResolvedType->GetGenericDepth() + 1);
 		}
 
 		bool failed = false;
@@ -10556,6 +10558,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			arrayType->mElementType = elementType;
 			arrayType->mElementCount = elementCount;
 			arrayType->mWantsGCMarking = false; // Fill in in InitType
+			arrayType->mGenericDepth = elementType->GetGenericDepth() + 1;
 			resolvedEntry->mValue = arrayType;
 
 			BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHash);
@@ -10723,12 +10726,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		for (auto genericArgRef : genericArguments)
 		{
 			auto genericArg = genericArgs[genericParamIdx + startDefGenericParamIdx];
-
-			if (auto genericGenericArg = genericArg->ToGenericTypeInstance())
-			{
-				genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, genericGenericArg->mGenericTypeInfo->mMaxGenericDepth + 1);
-			}
-
+			
+			genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, genericArg->GetGenericDepth() + 1);			
 			genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(genericArg);
 			genericTypeInst->mGenericTypeInfo->mTypeGenericArgumentRefs.push_back(genericArgRef);
 
@@ -10814,7 +10813,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		wantGeneric = false;
 
 		auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef, BfPopulateType_Identity);
-		BfTypeInstance* tupleType = NULL;
+		BfTupleType* tupleType = NULL;
 		if (wantGeneric)
 		{
 			BfTupleType* actualTupleType = new BfTupleType();
@@ -10873,6 +10872,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			fieldInstance->SetResolvedType(types[fieldIdx]);
 			BF_ASSERT(!types[fieldIdx]->IsVar());
 			fieldInstance->mOwner = tupleType;
+			tupleType->mGenericDepth = BF_MAX(tupleType->mGenericDepth, fieldInstance->mResolvedType->GetGenericDepth() + 1);
 		}
 				
 		resolvedEntry->mValue = tupleType;
@@ -10928,6 +10928,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			return ResolveTypeResult(typeRef, elementType, populateType, resolveFlags);
 		}
 
+		pointerType->mGenericDepth = elementType->GetGenericDepth() + 1;
 		pointerType->mElementType = elementType;
 		pointerType->mContext = mContext;
 		resolvedEntry->mValue = pointerType;
@@ -11070,7 +11071,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			failed = true;
 
 		BfDelegateInfo* delegateInfo = NULL;
-		BfTypeInstance* delegateType = NULL;
+		BfDelegateType* delegateType = NULL;
 		if (wantGeneric)
 		{
 			BfDelegateType* genericTypeInst = new BfDelegateType();
@@ -11164,6 +11165,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		delegateInfo->mHasExplicitThis = functionThisType != NULL;
 		delegateInfo->mHasVarArgs = hasVarArgs;
 		
+		delegateType->mGenericDepth = BF_MAX(delegateType->mGenericDepth, returnType->GetGenericDepth() + 1);
+
 		auto hashVal = mContext->mResolvedTypes.Hash(typeRef, &lookupCtx);
 		
 		//int paramSrcOfs = (functionThisType != NULL) ? 1 : 0;
@@ -11195,6 +11198,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			methodDef->mParams.push_back(paramDef);
 
 			delegateInfo->mParams.Add(paramType);			
+
+			delegateType->mGenericDepth = BF_MAX(delegateType->mGenericDepth, paramType->GetGenericDepth() + 1);
 		}
 
 		if (delegateInfo->mHasVarArgs)
