@@ -716,6 +716,8 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 				}
 				else if ((checkToken == BfToken_Star) || (checkToken == BfToken_Question))
 				{
+					bool keepParsing = false;
+
 					if (checkToken == BfToken_Star)
 					{
 						auto prevNode = mVisitorPos.Get(checkIdx - 1);
@@ -738,6 +740,12 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 						{
 							auto nextNode = mVisitorPos.Get(checkIdx + 1);
 							auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode);
+							if ((nextToken != NULL) && (nextToken->GetToken() == BfToken_LBracket))
+							{
+								keepParsing = true;
+								break;
+							}
+
 							if ((nextToken == NULL) || (nextToken->GetToken() != BfToken_Star))
 								break;
 							checkTokenNode = nextToken;
@@ -759,8 +767,12 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 						}
 					}
 
-					// Star or Question always end a TypeRef
-					if ((chevronDepth == 0) && (parenDepth == 0) && (bracketDepth == 0))
+					// Star or Question normally end a TypeRef
+					if (keepParsing)
+					{
+						// Keep going
+					}
+					else if ((chevronDepth == 0) && (parenDepth == 0) && (bracketDepth == 0))
 					{
 						if (hadTupleComma)
 							return false;
