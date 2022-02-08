@@ -39,3 +39,4 @@ if [ ! -d ../IDE/dist/llvm/bin ]; then
 fi
 cp llvm_linux_rel_13_0_1/bin/llvm-ar ../IDE/dist/llvm/bin
 
+echo done > llvm_linux_13_0_1/_Done.txt

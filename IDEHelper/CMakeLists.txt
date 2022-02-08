@@ -49,8 +49,8 @@ if (${APPLE})
     ../BeefySysLib/    
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_11_0_0/llvm/include  
-    ../extern/llvm-project_11_0_0/llvm/lib/Target
+    ../extern/llvm-project_13_0_1/llvm/include  
+    ../extern/llvm-project_13_0_1/llvm/lib/Target
 
     ../BeefySysLib/platform/osx
   )
@@ -61,8 +61,8 @@ else()
     ../BeefySysLib/    
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_11_0_0/llvm/include  
-    ../extern/llvm-project_11_0_0/llvm/lib/Target
+    ../extern/llvm-project_13_0_1/llvm/include  
+    ../extern/llvm-project_13_0_1/llvm/lib/Target
 
     ../BeefySysLib/platform/linux    
   )
@@ -77,24 +77,24 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     -D_DEBUG
   )
   include_directories(
-    ../extern/llvm_linux_11_0_0/include
-    ../extern/llvm_linux_11_0_0/lib/Target/X86
-    ../extern/llvm_linux_11_0_0/lib/Target/AArch64
+    ../extern/llvm_linux_13_0_1/include
+    ../extern/llvm_linux_13_0_1/lib/Target/X86
+    ../extern/llvm_linux_13_0_1/lib/Target/AArch64
   )
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
   set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_11_0_0/lib")
+  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/lib")
 else()
   include_directories(
-    ../extern/llvm_linux_rel_11_0_0/include
-    ../extern/llvm_linux_rel_11_0_0/lib/Target/X86
-    ../extern/llvm_linux_rel_11_0_0/lib/Target/AArch64
+    ../extern/llvm_linux_rel_13_0_1/include
+    ../extern/llvm_linux_rel_13_0_1/lib/Target/X86
+    ../extern/llvm_linux_rel_13_0_1/lib/Target/AArch64
   )
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
   set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_11_0_0/lib")
+  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_13_0_1/lib")
 endif()
 
 ################### Dependencies ##################
@@ -192,15 +192,16 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 execute_process(
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_11_0_0/bin/llvm-config --system-libs --link-static
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/bin/llvm-config --system-libs --link-static
   OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
-  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_STRIP_TRAILING_WHITESPACE  
 )
 
 set(TARGET_LIBS_OS "${LLVM_SYSTEM_LIBS}")
 
 if (HAVE_BACKTRACE_HEADERS)
   string(APPEND TARGET_LIBS_OS " -lbacktrace")
+  string(STRIP ${TARGET_LIBS_OS} TARGET_LIBS_OS)
 endif()
 
 list(APPEND LLVM_LIBS
@@ -217,7 +218,7 @@ list(APPEND LLVM_LIBS
   ${LLVM_LIB}/libLLVMInstCombine.a
   ${LLVM_LIB}/libLLVMSelectionDAG.a
   ${LLVM_LIB}/libLLVMProfileData.a
-  ${LLVM_LIB}/libLLVMTransformUtils.a
+    
   ${LLVM_LIB}/libLLVMAnalysis.a    
   ${LLVM_LIB}/libLLVMAsmPrinter.a
   ${LLVM_LIB}/libLLVMBitWriter.a
@@ -226,8 +227,9 @@ list(APPEND LLVM_LIBS
   ${LLVM_LIB}/libLLVMInstrumentation.a
   ${LLVM_LIB}/libLLVMDebugInfoDWARF.a
   ${LLVM_LIB}/libLLVMDebugInfoPDB.a
-  ${LLVM_LIB}/libLLVMDebugInfoCodeView.a
+  ${LLVM_LIB}/libLLVMDebugInfoCodeView.a  
   ${LLVM_LIB}/libLLVMGlobalISel.a
+  ${LLVM_LIB}/libLLVMTransformUtils.a
   ${LLVM_LIB}/libLLVMBinaryFormat.a    
   ${LLVM_LIB}/libLLVMIRReader.a
   ${LLVM_LIB}/libLLVMLinker.a    
