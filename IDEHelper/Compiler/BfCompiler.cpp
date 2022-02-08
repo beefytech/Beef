@@ -1794,7 +1794,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			auto res = bfModule->mBfIRBuilder->CreateCall(mainFunc, args);
 			args.clear();
 			bfModule->mBfIRBuilder->CreateCall(shutdownFunc, args);
-			if (mainHasArgs)
+			if (mainHasRet)
 				bfModule->mBfIRBuilder->CreateRet(res);
 			else
 				bfModule->mBfIRBuilder->CreateRetVoid();
@@ -1815,7 +1815,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			}
 		}
 
-		if ((mOptions.mPlatformType != BfPlatformType_Windows) && 
+		if ((mOptions.mPlatformType != BfPlatformType_Windows) && (mainHasArgs) &&
 			((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefTest)))
         {
             SmallVector<BfIRType, 2> paramTypes;
@@ -1827,11 +1827,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bfModule->SetupIRMethod(NULL, setCmdLineFunc, false);
 
             SmallVector<BfIRValue, 2> args;
-			if (mainHasArgs)
-			{
-				args.push_back(bfModule->mBfIRBuilder->GetArgument(0));
-				args.push_back(bfModule->mBfIRBuilder->GetArgument(1));
-			}
+			args.push_back(bfModule->mBfIRBuilder->GetArgument(0));
+			args.push_back(bfModule->mBfIRBuilder->GetArgument(1));			
             bfModule->mBfIRBuilder->CreateCall(setCmdLineFunc, args);
         }
 		

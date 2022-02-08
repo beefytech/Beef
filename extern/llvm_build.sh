@@ -1,34 +1,34 @@
 #!/bin/bash
 set -e
 
-if [ ! -d llvm-project_11_0_0 ]; then
-	if [ -f llvm-11.0.0.src.tar.xz ]; then # if user downloaded llvm-11.0.0.src.tar.xz then use it instead
-		tar -xf llvm-11.0.0.src.tar.xz
-		mkdir llvm-project_11_0_0
-		mv llvm-11.0.0.src llvm-project_11_0_0/llvm
-	else # shallow git clone llvm repo if llvm-11.0.0.src.tar.xz does not exists
-		git clone --depth 1 --branch llvmorg-11.0.0 https://github.com/llvm/llvm-project.git llvm-project_11_0_0
+if [ ! -d llvm-project_13_0_1 ]; then
+	if [ -f llvm-13.0.1.src.tar.xz ]; then # if user downloaded llvm-13.0.1.src.tar.xz then use it instead
+		tar -xf llvm-13.0.1.src.tar.xz
+		mkdir llvm-project_13_0_1
+		mv llvm-13.0.1.src llvm-project_13_0_1/llvm
+	else # shallow git clone llvm repo if llvm-13.0.1.src.tar.xz does not exists
+		git clone --depth 1 --branch llvmorg-13.0.1 https://github.com/llvm/llvm-project.git llvm-project_13_0_1
 	fi
-fi #end if llvm-project_11_0_0 exists
+fi #end if llvm-project_13_0_1 exists
 
-if [ ! -d llvm_linux_11_0_0 ]; then
-	mkdir llvm_linux_11_0_0
+if [ ! -d llvm_linux_13_0_1 ]; then
+	mkdir llvm_linux_13_0_1
 fi
 
-if [ ! -d llvm_linux_11_0_0/bin ]; then
-	cd llvm_linux_11_0_0
-	cmake ../llvm-project_11_0_0/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Debug"
+if [ ! -d llvm_linux_13_0_1/bin ]; then
+	cd llvm_linux_13_0_1
+	cmake ../llvm-project_13_0_1/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Debug"
 	cmake --build . -t $(cat ../llvm_targets.txt)
 	cd ..
 fi
 
-if [ ! -d llvm_linux_rel_11_0_0 ]; then
-	mkdir llvm_linux_rel_11_0_0
+if [ ! -d llvm_linux_rel_13_0_1 ]; then
+	mkdir llvm_linux_rel_13_0_1
 fi
 
-if [ ! -d llvm_linux_rel_11_0_0/bin ]; then
-	cd llvm_linux_rel_11_0_0
-	cmake ../llvm-project_11_0_0/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Release"
+if [ ! -d llvm_linux_rel_13_0_1/bin ]; then
+	cd llvm_linux_rel_13_0_1
+	cmake ../llvm-project_13_0_1/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Release"
 	cmake --build . -t $(cat ../llvm_targets.txt)
 	cd ..
 fi
@@ -37,5 +37,6 @@ if [ ! -d ../IDE/dist/llvm/bin ]; then
 	mkdir ../IDE/dist/llvm
 	mkdir ../IDE/dist/llvm/bin
 fi
-cp llvm_linux_rel_11_0_0/bin/llvm-ar ../IDE/dist/llvm/bin
+cp llvm_linux_rel_13_0_1/bin/llvm-ar ../IDE/dist/llvm/bin
 
+echo done > llvm_linux_13_0_1/_Done.txt

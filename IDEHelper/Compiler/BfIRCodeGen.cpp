@@ -486,6 +486,12 @@ void BfIRCodeGen::FixValues(llvm::StructType* structType, llvm::SmallVector<llvm
 	}
 }
 
+void BfIRCodeGen::FixIndexer(llvm::Value*& val)
+{
+	if ((int)val->getType()->getScalarSizeInBits() > mPtrSize * 8)
+		val = mIRBuilder->CreateIntCast(val, llvm::Type::getInt32Ty(*mLLVMContext), false);
+}
+
 BfTypeCode BfIRCodeGen::GetTypeCode(llvm::Type* type, bool isSigned)
 {
 	if (type->isIntegerTy())
@@ -674,7 +680,9 @@ void BfIRCodeGen::SetResult(int id, llvm::MDNode* md)
 
 void BfIRCodeGen::ProcessBfIRData(const BfSizedArray<uint8>& buffer)
 {
-	struct InlineAsmErrorHook
+    // Diagnostic handlers were unified in LLVM change 5de2d189e6ad, so starting
+    // with LLVM 13 this function is gone.
+	/*struct InlineAsmErrorHook
 	{		
 		static void StaticHandler(const llvm::SMDiagnostic& diag, void *context, unsigned locCookie)
 		{
@@ -688,7 +696,7 @@ void BfIRCodeGen::ProcessBfIRData(const BfSizedArray<uint8>& buffer)
 			}
 		}		
 	};	
-	mLLVMContext->setInlineAsmDiagnosticHandler(InlineAsmErrorHook::StaticHandler, this);
+	mLLVMContext->setInlineAsmDiagnosticHandler(InlineAsmErrorHook::StaticHandler, this);*/
 
 	BF_ASSERT(mStream == NULL);
 	mStream = new ChunkedDataBuffer();
@@ -924,7 +932,7 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 				llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), idx0),
 				llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), idx1)};
 
-			llvmValue = FixGEP(target, llvm::ConstantExpr::getInBoundsGetElementPtr(NULL, target, gepArgs));
+			llvmValue = FixGEP(target, llvm::ConstantExpr::getInBoundsGetElementPtr(target->getType()->getPointerElementType(), target, gepArgs));
 			return;
 		}
 		else if (constType == BfConstType_ExtractValue)
@@ -1273,7 +1281,7 @@ llvm::Value* BfIRCodeGen::TryToVector(llvm::Value* value, llvm::Type* elemType)
 			return mIRBuilder->CreateAlignedLoad(ptrVal0, llvm::MaybeAlign(1));
 		}
 
-		if (auto vecType = llvm::dyn_cast<llvm::VectorType>(ptrElemType))
+		if (auto vecType = llvm::dyn_cast<llvm::FixedVectorType>(ptrElemType))
 		{
 			if (vecType->getElementType() == elemType)
 				return mIRBuilder->CreateAlignedLoad(value, llvm::MaybeAlign(1));
@@ -1567,7 +1575,7 @@ void BfIRCodeGen::CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value*
 						headVal = mIRBuilder->CreateBitCast(addr, intTy->getPointerTo());
 					llvm::Value* ptrVal = headVal;
 					if (curOffset != 0)
-						ptrVal = mIRBuilder->CreateConstInBoundsGEP1_32(NULL, headVal, curOffset / 8);
+						ptrVal = mIRBuilder->CreateConstInBoundsGEP1_32(intTy, headVal, curOffset / 8);
 					mIRBuilder->CreateStore(constVal, ptrVal, isVolatile);
 
 					curOffset += 8;
@@ -1586,7 +1594,7 @@ void BfIRCodeGen::CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value*
 						headVal = mIRBuilder->CreateBitCast(addr, intTy->getPointerTo());
 					llvm::Value* ptrVal = headVal;
 					if (curOffset != 0)
-						ptrVal = mIRBuilder->CreateConstInBoundsGEP1_32(NULL, headVal, curOffset / 4);
+						ptrVal = mIRBuilder->CreateConstInBoundsGEP1_32(intTy, headVal, curOffset / 4);
 					mIRBuilder->CreateStore(constVal, ptrVal, isVolatile);
 
 					curOffset += 4;
@@ -1605,7 +1613,7 @@ void BfIRCodeGen::CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value*
 						headVal = mIRBuilder->CreateBitCast(addr, intTy->getPointerTo());
 					llvm::Value* ptrVal = headVal;
 					if (curOffset != 0)
-						ptrVal = mIRBuilder->CreateConstInBoundsGEP1_32(NULL, headVal, curOffset / 2);
+						ptrVal = mIRBuilder->CreateConstInBoundsGEP1_32(intTy, headVal, curOffset / 2);
 					mIRBuilder->CreateStore(constVal, ptrVal, isVolatile);
 
 					curOffset += 2;
@@ -1624,7 +1632,7 @@ void BfIRCodeGen::CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value*
 						headVal = mIRBuilder->CreateBitCast(addr, intTy->getPointerTo());
 					llvm::Value* ptrVal = headVal;
 					if (curOffset != 0)
-						ptrVal = mIRBuilder->CreateConstInBoundsGEP1_32(NULL, headVal, curOffset / 1);
+						ptrVal = mIRBuilder->CreateConstInBoundsGEP1_32(intTy, headVal, curOffset / 1);
 					mIRBuilder->CreateStore(constVal, ptrVal, isVolatile);
 
 					curOffset += 1;
@@ -1670,7 +1678,9 @@ void BfIRCodeGen::InitTarget()
 	else if (mCodeGenOptions.mOptLevel == BfOptLevel_O3)
 		optLvl = llvm::CodeGenOpt::Aggressive;
 
-	if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE)
+	if (theTriple.isWasm())
+		featuresStr = "+atomics,+bulk-memory,+mutable-globals,+sign-ext";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE)
 		featuresStr = "+sse";
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE2)
 		featuresStr = "+sse2";
@@ -1683,7 +1693,7 @@ void BfIRCodeGen::InitTarget()
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX)
 		featuresStr = "+avx";
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX2)
-		featuresStr = "+avx2";
+		featuresStr = "+avx2";	
 
 	llvm::Optional<llvm::Reloc::Model> relocModel;
 	llvm::CodeModel::Model cmModel = llvm::CodeModel::Small;
@@ -1787,7 +1797,7 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(String, fileName);
 			std::error_code ec;
-			llvm::raw_fd_ostream outStream(fileName.c_str(), ec, llvm::sys::fs::OpenFlags::F_Text);
+			llvm::raw_fd_ostream outStream(fileName.c_str(), ec, llvm::sys::fs::OpenFlags::OF_Text);
 			if (ec)
 			{
 				Fail("Failed writing IR '" + fileName + "': " + ec.message());
@@ -2311,12 +2321,12 @@ void BfIRCodeGen::HandleNextCmd()
 
 			if (auto alignedPtr = GetAlignedPtr(val))
 			{
-				auto gepResult = mIRBuilder->CreateConstInBoundsGEP1_32(NULL, alignedPtr, idx0);
+				auto gepResult = mIRBuilder->CreateConstInBoundsGEP1_32(alignedPtr->getType()->getPointerElementType(), alignedPtr, idx0);
 				SetResult(curId, mIRBuilder->CreateBitCast(gepResult, val->getType()));
 				break;
 			}
 
-			SetResult(curId, mIRBuilder->CreateConstInBoundsGEP1_32(NULL, val, idx0));
+			SetResult(curId, mIRBuilder->CreateConstInBoundsGEP1_32(val->getType()->getPointerElementType(), val, idx0));
 		}
 		break;
 	case BfIRCmd_InboundsGEP2_32:
@@ -2324,7 +2334,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(int, idx0);
 			CMD_PARAM(int, idx1);
-			SetResult(curId, FixGEP(val, mIRBuilder->CreateConstInBoundsGEP2_32(NULL, val, idx0, idx1)));
+			SetResult(curId, FixGEP(val, mIRBuilder->CreateConstInBoundsGEP2_32(val->getType()->getPointerElementType(), val, idx0, idx1)));
 		}
 		break;
 	case BfIRCmd_InBoundsGEP1:
@@ -2338,7 +2348,7 @@ void BfIRCodeGen::HandleNextCmd()
 				SetResult(curId, mIRBuilder->CreateBitCast(gepResult, val->getType()));
 				break;
 			}
-
+			FixIndexer(idx0);
 			SetResult(curId, mIRBuilder->CreateInBoundsGEP(val, idx0));
 		}
 		break;
@@ -2347,6 +2357,8 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(llvm::Value*, idx0);
 			CMD_PARAM(llvm::Value*, idx1);
+			FixIndexer(idx0);
+			FixIndexer(idx1);
 			llvm::Value* indices[2] = { idx0, idx1 };			
 			SetResult(curId, FixGEP(val, mIRBuilder->CreateInBoundsGEP(val, llvm::makeArrayRef(indices))));
 		}
@@ -3112,7 +3124,7 @@ void BfIRCodeGen::HandleNextCmd()
 
 								if (result != NULL)
 								{
-									if (auto vecType = llvm::dyn_cast<llvm::VectorType>(result->getType()))
+									if (auto vecType = llvm::dyn_cast<llvm::FixedVectorType>(result->getType()))
 									{
 										if (auto intType = llvm::dyn_cast<llvm::IntegerType>(vecType->getElementType()))
 										{
@@ -3180,7 +3192,7 @@ void BfIRCodeGen::HandleNextCmd()
 
 								if (result != NULL)
 								{
-									if (auto vecType = llvm::dyn_cast<llvm::VectorType>(result->getType()))
+									if (auto vecType = llvm::dyn_cast<llvm::FixedVectorType>(result->getType()))
 									{
 										if (auto intType = llvm::dyn_cast<llvm::IntegerType>(vecType->getElementType()))
 										{
@@ -3336,7 +3348,7 @@ void BfIRCodeGen::HandleNextCmd()
 							}
 						}
 
-						auto inst = mIRBuilder->CreateAtomicCmpXchg(args[0], args[1], args[2], successOrdering, failOrdering);
+						auto inst = mIRBuilder->CreateAtomicCmpXchg(args[0], args[1], args[2], llvm::MaybeAlign(), successOrdering, failOrdering);
 						if (intrinsicData->mIntrinsic == BfIRIntrinsic_AtomicCmpStore_Weak)
 							inst->setWeak(true);
 						if ((memoryKind & BfIRAtomicOrdering_Volatile) != 0)
@@ -3547,7 +3559,7 @@ void BfIRCodeGen::HandleNextCmd()
 							break;
 						}
 												
-						auto atomicRMW = mIRBuilder->CreateAtomicRMW(op, args[0], args[1], ordering);
+						auto atomicRMW = mIRBuilder->CreateAtomicRMW(op, args[0], args[1], llvm::MaybeAlign(), ordering);
 						if ((memoryKind & BfIRAtomicOrdering_Volatile) != 0)
 							atomicRMW->setVolatile(true);
 						llvm::Value* result = atomicRMW;
@@ -3776,7 +3788,17 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, argIdx);
 			BfIRAttribute attribute = (BfIRAttribute)mStream->Read();
 			BF_ASSERT(llvm::isa<llvm::CallInst>(callInst));
-			((llvm::CallInst*)callInst)->addAttribute(argIdx, LLVMMapAttribute(attribute));
+			auto attr = LLVMMapAttribute(attribute);
+			if (attr == llvm::Attribute::StructRet)
+			{
+				auto funcType = ((llvm::CallInst*)callInst)->getFunctionType();
+				llvm::Attribute sret = llvm::Attribute::getWithStructRetType(*mLLVMContext, funcType->getFunctionParamType(argIdx - 1)->getPointerElementType());
+				((llvm::CallInst*)callInst)->addAttribute(argIdx, sret);
+			}
+			else
+			{
+				((llvm::CallInst*)callInst)->addAttribute(argIdx, attr);
+			}
 		}
 		break;
 	case BfIRCmd_Call_AddAttribute1:
@@ -3794,12 +3816,11 @@ void BfIRCodeGen::HandleNextCmd()
 				}
 				else if (attribute == BfIRAttribute_ByVal)
 				{
-					llvm::AttrBuilder B;
-					B.addAttribute(llvm::Attribute::ByVal);
-					B.addAlignmentAttr(arg);
-					auto attrList = ((llvm::CallInst*)callInst)->getAttributes();
-					attrList = attrList.addAttributes(*mLLVMContext, argIdx, B);
-					((llvm::CallInst*)callInst)->setAttributes(attrList);
+					auto funcType = ((llvm::CallInst*)callInst)->getFunctionType();
+					llvm::Attribute byValAttr = llvm::Attribute::getWithByValType(*mLLVMContext, funcType->getFunctionParamType(argIdx - 1)->getPointerElementType());
+					llvm::Attribute alignAttr = llvm::Attribute::getWithAlignment(*mLLVMContext, llvm::Align(arg));
+					((llvm::CallInst*)callInst)->addAttribute(argIdx, byValAttr);
+					((llvm::CallInst*)callInst)->addAttribute(argIdx, alignAttr);
 				}
 			}
 		}
@@ -3854,7 +3875,13 @@ void BfIRCodeGen::HandleNextCmd()
 			else
 			{
 				auto attr = LLVMMapAttribute(attribute);
-				if (attr != llvm::Attribute::None)
+				if (attr == llvm::Attribute::StructRet)
+				{
+					auto funcType = func->getFunctionType();
+					llvm::Attribute sret = llvm::Attribute::getWithStructRetType(*mLLVMContext, funcType->getFunctionParamType(argIdx - 1)->getPointerElementType());
+					func->addAttribute(argIdx, sret);
+				}
+				else if (attr != llvm::Attribute::None)
 					func->addAttribute(argIdx, attr);
 			}
 		}
@@ -3871,12 +3898,11 @@ void BfIRCodeGen::HandleNextCmd()
 			}
 			else if (attribute == BfIRAttribute_ByVal)
 			{
-				llvm::AttrBuilder B;
-				B.addAttribute(llvm::Attribute::ByVal);
-				B.addAlignmentAttr(arg);
-				auto attrList = ((llvm::Function*)func)->getAttributes();
-				attrList = attrList.addAttributes(*mLLVMContext, argIdx, B);
-				((llvm::Function*)func)->setAttributes(attrList);				
+				auto funcType = func->getFunctionType();
+				llvm::Attribute byValAttr = llvm::Attribute::getWithByValType(*mLLVMContext, funcType->getFunctionParamType(argIdx - 1)->getPointerElementType());				
+				llvm::Attribute alignAttr = llvm::Attribute::getWithAlignment(*mLLVMContext, llvm::Align(arg));
+				func->addAttribute(argIdx, byValAttr);
+				func->addAttribute(argIdx, alignAttr);
 			}
 		}
 		break;
@@ -3966,7 +3992,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, column);
 			CMD_PARAM(llvm::MDNode*, diScope);
 			CMD_PARAM(llvm::MDNode*, diInlinedAt);
-			mDebugLoc = llvm::DebugLoc::get(line, column, diScope, diInlinedAt);			
+			mDebugLoc = llvm::DILocation::get(*mLLVMContext, line, column, diScope, diInlinedAt);
 		}
 		break;
 	case BfIRCmd_Nop:
@@ -5179,7 +5205,7 @@ static void PopulateModulePassManager(llvm::legacy::PassManagerBase &MPM, const 
 	// convert to more optimized IR using more aggressive simplify CFG options.
 	// The extra sinking transform can create larger basic blocks, so do this
 	// before SLP vectorization.
-	MPM.add(llvm::createCFGSimplificationPass(1, true, true, false, true));
+	MPM.add(llvm::createCFGSimplificationPass({ 1, true, true, false, false, true }));
 
 	if (options.mRunSLPAfterLoopVectorization && options.mSLPVectorize) {
 		MPM.add(llvm::createSLPVectorizerPass()); // Vectorize parallel scalar chains.
@@ -5343,7 +5369,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 	}
 		
 	std::error_code EC;
-	llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_None;
+	llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::OF_None;
 
 	llvm::raw_fd_ostream out(outFileName.c_str(), EC, OpenFlags);
 
@@ -5368,7 +5394,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 	if ((enableLTO) || (mCodeGenOptions.mWriteBitcode))
 	{
 		std::error_code ec;
-		outStream = new llvm::raw_fd_ostream(outFileName.c_str(), ec, llvm::sys::fs::F_None);
+		outStream = new llvm::raw_fd_ostream(outFileName.c_str(), ec, llvm::sys::fs::OF_None);
 		if (outStream->has_error())
 		{
 			return false;
@@ -5438,7 +5464,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 bool BfIRCodeGen::WriteIR(const StringImpl& outFileName, StringImpl& error)
 {
 	std::error_code ec;	
-	llvm::raw_fd_ostream outStream(outFileName.c_str(), ec, llvm::sys::fs::OpenFlags::F_Text);
+	llvm::raw_fd_ostream outStream(outFileName.c_str(), ec, llvm::sys::fs::OpenFlags::OF_Text);
 	if (ec)
 	{
 	 	error = ec.message();

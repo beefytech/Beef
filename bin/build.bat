@@ -14,7 +14,7 @@ PUSHD %~dp0..\
 mkdir stats
 :STATS_HAS
 
-@IF EXIST extern\llvm-project_11_0_0 GOTO LLVM_HAS
+@IF EXIST extern\llvm_win64_13_0_1\_Done.txt GOTO LLVM_HAS
 call extern\llvm_build.bat
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 :LLVM_HAS

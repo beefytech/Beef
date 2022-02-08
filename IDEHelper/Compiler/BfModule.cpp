@@ -2614,9 +2614,13 @@ void BfModule::UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags, int debugLo
 		if (mCurMethodState->mCrossingMixin)
 			inlineAt = BfIRMDNode();
 
-		if ((!useDIScope) && (mIsComptimeModule))
+		if ((!useDIScope) && (mIsComptimeModule))		
 			useDIScope = wantDIFile;
-		mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, column, useDIScope, inlineAt);
+
+		if (!useDIScope)
+			mBfIRBuilder->ClearDebugLocation();
+		else
+			mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, column, useDIScope, inlineAt);
 		if ((flags & BfSrcPosFlag_Expression) == 0)
 			mBfIRBuilder->CreateStatementStart();
 	}
@@ -2639,15 +2643,19 @@ void BfModule::SetIllegalSrcPos(BfSrcPosFlags flags)
 {
 	if ((mBfIRBuilder->DbgHasInfo()) && (mCurMethodState != NULL))
 	{
-		if ((mCurMethodState->mCurScope->mDIInlinedAt) && (mCompiler->mOptions.IsCodeView()))
+		auto curScope = mCurMethodState->mCurScope->mDIScope;		
+		if (curScope)
 		{
-			// Currently, CodeView does not record column positions so we can't use an illegal column position as an "invalid" marker
-			mBfIRBuilder->SetCurrentDebugLocation(0, 0, mCurMethodState->mCurScope->mDIScope, mCurMethodState->mCurScope->mDIInlinedAt);
-		}
-		else
-		{
-			// Set to whatever it previously was but at column zero, which we will know to be illegal		
-			mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, 0, mCurMethodState->mCurScope->mDIScope, mCurMethodState->mCurScope->mDIInlinedAt);
+			if ((mCurMethodState->mCurScope->mDIInlinedAt) && (mCompiler->mOptions.IsCodeView()))
+			{
+				// Currently, CodeView does not record column positions so we can't use an illegal column position as an "invalid" marker
+				mBfIRBuilder->SetCurrentDebugLocation(0, 0, curScope, mCurMethodState->mCurScope->mDIInlinedAt);
+			}
+			else
+			{
+				// Set to whatever it previously was but at column zero, which we will know to be illegal		
+				mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, 0, curScope, mCurMethodState->mCurScope->mDIInlinedAt);
+			}
 		}
 
 		if ((flags & BfSrcPosFlag_Expression) == 0)
