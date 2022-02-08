@@ -17,6 +17,12 @@ namespace Tests
 			{
 				Test.FatalError();
 			}
+
+			String inStr = "Abc";
+			bool b =
+			{
+				inStr.Length > 1 || 2 == 3
+			};
 		}
 	}
 }

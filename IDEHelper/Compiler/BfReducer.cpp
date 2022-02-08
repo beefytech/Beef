@@ -4258,6 +4258,11 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 			}
 			else if (afterTypeRefNode == NULL)
 				isLocalVariable = false;
+			else if (auto tokenNode = BfNodeDynCast<BfTokenNode>(afterTypeRefNode))
+			{
+				if (tokenNode->mToken != BfToken_LParen)
+					isLocalVariable = false; // May be tuple
+			}
 		}
 	}
 
