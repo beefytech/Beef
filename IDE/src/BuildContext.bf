@@ -600,6 +600,13 @@ namespace IDE
 					IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
 					linkLine.Append(" ");
 				}
+				
+				if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
+				{
+					var linkFlags = scope String();
+					gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+					linkLine.Append(linkFlags, " ");
+				}
 
 				UpdateCacheStr(project, linkLine, workspaceOptions, options, depPaths, libPaths);
 				
@@ -609,13 +616,6 @@ namespace IDE
 					{
 					    gApp.OutputLine("Failed to delete {0}", targetPath);
 					    return false;
-					}
-
-					if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
-					{
-						var linkFlags = scope String();
-						gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
-						linkLine.Append(linkFlags, " ");
 					}
 
 
