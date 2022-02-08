@@ -178,7 +178,7 @@ namespace IDE
 
 		public void CheckWorkspace()
 		{
-			if ((gApp.mSettings.mEditorSettings.mEnableFileRecovery != .Yes) && (!mDisabled))
+			if ((gApp.mSettings.mEditorSettings.mEnableFileRecovery != .Yes) || (mDisabled))
 				return;
 
 			mWantWorkspaceCleanup = true;
