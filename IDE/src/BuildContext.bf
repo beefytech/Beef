@@ -656,7 +656,9 @@ namespace IDE
 						linkLine.Append(" -g");
 
 					if (workspaceOptions.mRuntimeChecks)
-						linkLine.Append(" -s ASSERTIONS=1");
+						linkLine.Append(" -s SAFE_HEAP=1");
+					else
+						linkLine.Append(" -s ASSERTIONS=0");
 
 					linkLine.Replace('\\', '/');
 
