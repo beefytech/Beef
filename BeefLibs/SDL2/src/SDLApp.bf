@@ -87,6 +87,9 @@ namespace SDL2
 		public bool* mKeyboardState;
 		public bool mHasAudio;
 
+		private Stopwatch mStopwatch = new .() ~ delete _;
+		private int mCurPhysTickCount = 0;
+
 		public this()
 		{
 			gApp = this;
@@ -105,8 +108,8 @@ namespace SDL2
 			String exePath = scope .();
 			Environment.GetExecutableFilePath(exePath);
 			String exeDir = scope .();
-			Path.GetDirectoryPath(exePath, exeDir);
-			Directory.SetCurrentDirectory(exeDir);
+			if (Path.GetDirectoryPath(exePath, exeDir) case .Ok)
+				Directory.SetCurrentDirectory(exeDir);
 
 			SDL.Init(.Video | .Events | .Audio);
 			SDL.EventState(.JoyAxisMotion, .Disable);
@@ -205,73 +208,90 @@ namespace SDL2
 			SDL.RenderPresent(mRenderer);
 		}
 
+#if BF_PLATFORM_WASM
+		private function void em_callback_func();
+
+		[CLink, CallingConvention(.Stdcall)]
+		private static extern void emscripten_set_main_loop(em_callback_func func, int32 fps, int32 simulateInfinteLoop);
+
+		private static void EmscriptenMainLoop()
+		{
+			gApp.RunOneFrame();
+		}
+#endif
+
 		public void Run()
 		{
-			Stopwatch sw = scope .();
-			sw.Start();
-			int curPhysTickCount = 0;
+			mStopwatch.Start();
 
+#if BF_PLATFORM_WASM
+			emscripten_set_main_loop(=> EmscriptenMainLoop, -1, 1);
+#else
 			while (true)
+				RunOneFrame();
+#endif
+		}
+
+		public void RunOneFrame()
+		{
+			int32 waitTime = 1;
+			SDL.Event event;
+
+			while (SDL.PollEvent(out event) != 0)
 			{
-				int32 waitTime = 1;
-				SDL.Event event;
-
-				while (SDL.PollEvent(out event) != 0)
+				switch (event.type)
 				{
-					switch (event.type)
-					{
-					case .Quit:
-						return;
-					case .KeyDown:
-						KeyDown(event.key);
-					case .KeyUp:
-						KeyUp(event.key);
-					case .MouseButtonDown:
-						MouseDown(event.button);
-					case .MouseButtonUp:
-						MouseUp(event.button);
-					default:
-					}
-
-					HandleEvent(event);
-					
-					waitTime = 0;
+				case .Quit:
+					return;
+				case .KeyDown:
+					KeyDown(event.key);
+				case .KeyUp:
+					KeyUp(event.key);
+				case .MouseButtonDown:
+					MouseDown(event.button);
+				case .MouseButtonUp:
+					MouseUp(event.button);
+				default:
 				}
 
-				// Fixed 60 Hz update
-				double msPerTick = 1000 / 60.0;
-				int newPhysTickCount = (int)(sw.ElapsedMilliseconds / msPerTick);
+				HandleEvent(event);
+				
+				waitTime = 0;
+			}
 
-				int addTicks = newPhysTickCount - curPhysTickCount;
-				if (curPhysTickCount == 0)
+			// Fixed 60 Hz update
+			double msPerTick = 1000 / 60.0;
+			int newPhysTickCount = (int)(mStopwatch.ElapsedMilliseconds / msPerTick);
+
+			int addTicks = newPhysTickCount - mCurPhysTickCount;
+			if (mCurPhysTickCount == 0)
+			{
+				// Initial render
+				Render();                
+				// Show initially hidden window, mitigates white flash on slow startups
+				SDL.ShowWindow(mWindow); 
+			}
+			else
+			{
+				mKeyboardState = SDL.GetKeyboardState(null);
+
+				addTicks = Math.Min(addTicks, 20); // Limit catchup
+				if (addTicks > 0)
 				{
-					// Initial render
-					Render();                
-					// Show initially hidden window, mitigates white flash on slow startups
-					SDL.ShowWindow(mWindow); 
+					for (int i < addTicks)
+					{
+						mUpdateCnt++;
+						Update();
+					}
+					Render();
 				}
 				else
 				{
-					mKeyboardState = SDL.GetKeyboardState(null);
-
-					addTicks = Math.Min(addTicks, 20); // Limit catchup
-					if (addTicks > 0)
-					{
-						for (int i < addTicks)
-						{
-							mUpdateCnt++;
-							Update();
-						}
-						Render();
-					}
-					else
-					{
-						Thread.Sleep(1);
-					}
+					Thread.Sleep(1);
 				}
-
-				curPhysTickCount = newPhysTickCount;
 			}
+
+			mCurPhysTickCount = newPhysTickCount;
 		}
 
 	}
