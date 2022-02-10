@@ -232,7 +232,7 @@ namespace SDL2
 #endif
 		}
 
-		public void RunOneFrame()
+		private void RunOneFrame()
 		{
 			int32 waitTime = 1;
 			SDL.Event event;
