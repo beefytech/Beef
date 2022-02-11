@@ -7,7 +7,7 @@ namespace System
 	[StaticInitPriority(100)]
 	class Runtime
 	{
-		const int32 cVersion = 8;
+		const int32 cVersion = 9;
 
 		[CRepr, AlwaysInclude]
 		struct BfDebugMessageData
