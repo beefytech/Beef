@@ -175,12 +175,13 @@ public:
 	BfLocalVarAssignKind mAssignedKind;
 	bool mHadExitBeforeAssign;
 	bool mIsReadOnly;
+	bool mIsStatic;
 	bool mIsSplat;
 	bool mIsLowered;
 	bool mAllowAddr;
 	bool mIsShadow;
 	bool mUsedImplicitly; // Passed implicitly to a local method, capture by ref if we can	
-	bool mNotCaptured;
+	bool mNotCaptured;	
 	BfLocalVariable* mShadowedLocal;
 
 public:
@@ -204,6 +205,7 @@ public:
 		mWrittenToId = -1;
 		mReadFromId = -1;
 		mIsReadOnly = false;
+		mIsStatic = false;
 		mIsSplat = false;
 		mIsLowered = false;
 		mAllowAddr = false;
@@ -1678,7 +1680,8 @@ public:
 	BfTypedValue GetCompilerFieldValue(const StringImpl& str);
 	BfTypedValue ReferenceStaticField(BfFieldInstance* fieldInstance);
 	int GetFieldDataIdx(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName = NULL);
-	BfTypedValue GetThis();
+	BfTypedValue GetThis(bool markUsing = true);
+	void MarkUsingThis();
 	BfLocalVariable* GetThisVariable();
 	bool IsInGeneric();
 	bool InDefinitionSection();

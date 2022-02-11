@@ -1335,6 +1335,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	bool isConst = (varDecl->mModSpecifier != NULL) && (varDecl->mModSpecifier->GetToken() == BfToken_Const);
 	bool isReadOnly = (varDecl->mModSpecifier != NULL) && (varDecl->mModSpecifier->GetToken() == BfToken_ReadOnly);
+	bool isStatic = (varDecl->mModSpecifier != NULL) && (varDecl->mModSpecifier->GetToken() == BfToken_Static);
 
 	BfLocalVariable* localDef = new BfLocalVariable();
 	if (varDecl->mNameNode != NULL)
@@ -1346,6 +1347,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	{
 		localDef->mName = "val";
 	}
+	localDef->mIsStatic = isStatic;
 
 	bool handledExprBoolResult = false;
 	bool handledVarInit = false;
@@ -1626,7 +1628,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	};
 	
 	localDef->mResolvedType = resolvedType;
-	localDef->mIsReadOnly = isReadOnly;
+	localDef->mIsReadOnly = isReadOnly;	
 	
 	if (!initHandled)
 	{
@@ -1679,7 +1681,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 		if ((!initValue) && (!initHandled))
 		{
-			if (isConst)
+			if ((isConst) || (isStatic))
 			{
 				BfConstResolver constResolver(this);
 				initValue = constResolver.Resolve(varDecl->mInitializer, resolvedType, BfConstResolveFlag_ActualizeValues);
@@ -1763,6 +1765,11 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	_CheckConst();
 
+	if (isStatic)
+	{
+		NOP;
+	}
+
 	if ((initValue.mKind == BfTypedValueKind_TempAddr) && (!initHandled))
 	{
 		BF_ASSERT(initValue.IsAddr());
@@ -1781,7 +1788,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(localDef->mAddr);
 	}
 
-	if ((!localDef->mAddr) && (!isConst) && ((!localDef->mIsReadOnly) || (localNeedsAddr)))
+	if ((!localDef->mAddr) && (!isConst) && (!isStatic) && ((!localDef->mIsReadOnly) || (localNeedsAddr)))
 	{
 		if ((exprEvaluator != NULL) && (exprEvaluator->mResultIsTempComposite))
 		{
@@ -1792,6 +1799,27 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		}
 		else
 			localDef->mAddr = AllocLocalVariable(resolvedType, localDef->mName);
+	}
+
+	if (isStatic)
+	{
+		String name = mModuleName + "_" + mCurMethodInstance->mMethodDef->mName + "_" + localDef->mName;
+
+		HashContext closureHashCtx;
+		closureHashCtx.Mixin(varDecl->mSrcStart);
+		uint64 closureHash = closureHashCtx.Finish64();
+		name += "$";
+		name += BfTypeUtils::HashEncode64(closureHash);
+
+		initValue = LoadValue(initValue);
+		if ((initValue) && (!initValue.mValue.IsConst()))
+		{
+			Fail("Static local variables can only be initialized with a const value", varDecl->mInitializer);
+			initValue = BfTypedValue();
+		}
+
+		localDef->mAddr = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(localDef->mResolvedType), false, BfIRLinkageType_Internal, initValue.mValue, name);;
+		initHandled = true;
 	}
 
 	bool wantsStore = false;

@@ -14371,7 +14371,23 @@ int BfModule::GetFieldDataIdx(BfTypeInstance* typeInst, int fieldIdx, const char
 	return fieldInstance.mDataIdx;
 }
 
-BfTypedValue BfModule::GetThis()
+void BfModule::MarkUsingThis()
+{
+	auto useMethodState = mCurMethodState;
+	while ((useMethodState != NULL) && (useMethodState->mClosureState != NULL) && (useMethodState->mClosureState->mCapturing))		
+	{
+		useMethodState = useMethodState->mPrevMethodState;
+	}
+	
+	if ((useMethodState != NULL) && (!useMethodState->mLocals.IsEmpty()))
+	{
+		auto localVar = useMethodState->mLocals[0];
+		if (localVar->mIsThis)
+			localVar->mReadFromId = useMethodState->GetRootMethodState()->mCurAccessId++;
+	}
+}
+
+BfTypedValue BfModule::GetThis(bool markUsing)
 {	
 	auto useMethodState = mCurMethodState;
 	while ((useMethodState != NULL) && (useMethodState->mClosureState != NULL) && (useMethodState->mClosureState->mCapturing))		
@@ -14465,7 +14481,8 @@ BfTypedValue BfModule::GetThis()
 		thisValue = thisLocal->mAddr;
 	else
 		thisValue = mBfIRBuilder->CreateLoad(thisLocal->mAddr);
-	useMethodState->mLocals[0]->mReadFromId = useMethodState->GetRootMethodState()->mCurAccessId++;
+	if (markUsing)
+		useMethodState->mLocals[0]->mReadFromId = useMethodState->GetRootMethodState()->mCurAccessId++;
 
 	if (useMethodState->mClosureState != NULL)
 	{
@@ -21461,6 +21478,8 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	if ((methodDef->mMethodType == BfMethodType_Mixin) && (!methodGenericArguments.IsEmpty()))
 		wantsVisitBody = false;
 	if (methodInstance->IsOrInUnspecializedVariation())
+		wantsVisitBody = false;
+	if ((methodDeclaration != NULL) && (methodDeclaration->mStaticSpecifier != NULL))
 		wantsVisitBody = false;
 
 	if (wantsVisitBody)

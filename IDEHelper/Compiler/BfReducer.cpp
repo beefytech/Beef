@@ -4068,9 +4068,12 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 				continuingVariable = BfNodeDynCast<BfVariableDeclaration>(exprStmt->mExpression);
 			}
 		}
-		else if ((token == BfToken_Const) || (token == BfToken_ReadOnly))
+		else if ((token == BfToken_Const) || (token == BfToken_ReadOnly) || (token == BfToken_Static))
 		{
-			auto stmt = CreateStatementAfter(tokenNode, (CreateStmtFlags)(CreateStmtFlags_FindTrailingSemicolon | CreateStmtFlags_ForceVariableDecl));
+			auto flags = (CreateStmtFlags)(CreateStmtFlags_FindTrailingSemicolon | CreateStmtFlags_ForceVariableDecl);
+			if (token == BfToken_Static)
+				flags = (CreateStmtFlags)(flags | CreateStmtFlags_AllowLocalFunction);				
+			auto stmt = CreateStatementAfter(tokenNode, flags);
 			if (auto exprStmt = BfNodeDynCast<BfExpressionStatement>(stmt))
 			{
 				if (auto variableDecl = BfNodeDynCast<BfVariableDeclaration>(exprStmt->mExpression))
@@ -4080,9 +4083,19 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 						Fail(StrFormat("'%s' already specified", BfTokenToString(variableDecl->mModSpecifier->GetToken())), variableDecl->mModSpecifier);
 					}
 					MEMBER_SET(variableDecl, mModSpecifier, tokenNode);
-					exprStmt->SetSrcStart(variableDecl->mSrcStart);
+					exprStmt->SetSrcStart(tokenNode->mSrcStart);
 					return stmt;
 				}
+			}
+			if (auto localMethod = BfNodeDynCast<BfLocalMethodDeclaration>(stmt))
+			{
+				if (localMethod->mMethodDeclaration->mStaticSpecifier != NULL)
+				{
+					Fail(StrFormat("'%s' already specified", BfTokenToString(localMethod->mMethodDeclaration->mStaticSpecifier->GetToken())), localMethod->mMethodDeclaration->mStaticSpecifier);
+				}
+				MEMBER_SET(localMethod->mMethodDeclaration, mStaticSpecifier, tokenNode);
+				localMethod->SetSrcStart(tokenNode->mSrcStart);
+				return localMethod;
 			}
 
 			Fail(StrFormat("Unexpected '%s' specifier", BfTokenToString(tokenNode->GetToken())), tokenNode);

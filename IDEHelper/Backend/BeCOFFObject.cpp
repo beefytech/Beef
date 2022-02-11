@@ -2062,6 +2062,17 @@ void BeCOFFObject::Generate(BeModule* module)
 				sect.mRelocs.push_back(reloc);
 				sect.mData.Write((int64)0);
 			}
+			else if (auto constVal = BeValueDynCast<BeConstant>(globalVar->mInitializer))
+			{
+				MarkSectionUsed(mDataSect);
+				sym->mSectionNum = mDataSect.mSectionIdx + 1;
+				mDataSect.mData.Align(globalVar->mAlign);
+				mDataSect.mAlign = BF_MAX(mDataSect.mAlign, globalVar->mAlign);
+
+				AlignConst(mDataSect, constVal);
+				sym->mValue = mDataSect.mData.GetSize();
+				WriteConst(mDataSect, constVal);
+			}
 			else
 			{
 				MarkSectionUsed(mBSSSect);

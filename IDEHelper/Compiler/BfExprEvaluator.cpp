@@ -4161,7 +4161,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		}
 	}
 
-	BfTypedValue thisValue = mModule->GetThis();
+	BfTypedValue thisValue = mModule->GetThis(false);
 
 	bool forcedIFaceLookup = false;
 	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsForeignMethodDef))
@@ -4173,7 +4173,10 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	if (thisValue)
 	{
 		if (findName == "this")
+		{
+			mModule->MarkUsingThis();
 			return thisValue;
+		}
 		if (findName == "base")
 		{
 			auto baseValue = thisValue;
@@ -4183,7 +4186,8 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			if (mModule->GetActiveTypeDef()->mTypeCode != BfTypeCode_Extension)
 			{
 				MakeBaseConcrete(baseValue);
-			}			
+			}
+			mModule->MarkUsingThis();
 			return baseValue;			
 		}
 
@@ -4214,7 +4218,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		{
 			mResultLocalVar = NULL;
 			mResultLocalVarRefNode = NULL;
-		}
+		}		
 	}	
 
 	if (mPropDef != NULL)
@@ -4654,6 +4658,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					return BfTypedValue();
 				}
 
+				if ((!field->mIsStatic) && ((flags & BfLookupFieldFlag_IsImplicitThis) != 0))
+					mModule->MarkUsingThis();
+
 				mResultFieldInstance = fieldInstance;
 
 				// Are we accessing a 'var' field that has not yet been resolved?
@@ -5043,6 +5050,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 					mModule->SetElementType(targetSrc, BfSourceElementType_Method);
 					
+					if ((!prop->mIsStatic) && ((flags & BfLookupFieldFlag_IsImplicitThis) != 0))
+						mModule->MarkUsingThis();
+
 					mPropSrc = targetSrc;
 					mPropDef = prop;
 					mPropCheckedKind = checkedKind;
