@@ -181,8 +181,8 @@ namespace Beefy
 			}
 
 			int fileLen = (.)sr.Length;
-			if (sr.TryRead(.((.)outBuffer.PrepareBuffer(fileLen), fileLen)) case .Err(let readErr))
-				return .Err(.ReadError(readErr));
+			if (sr.TryRead(.((.)outBuffer.PrepareBuffer(fileLen), fileLen)) case .Err)
+				return .Err(.ReadError(.Unknown));
 
 			if (onPreFilter != null)
 				onPreFilter();

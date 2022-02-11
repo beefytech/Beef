@@ -44,8 +44,8 @@ namespace System.IO
 					if (bytes == 0)
 						return .Ok;
 					outData.AddRange(.(&buffer, bytes));
-				case .Err(let err):
-					return .Err(err);
+				case .Err:
+					return .Err(.Unknown);
 				}
 			}
 		}

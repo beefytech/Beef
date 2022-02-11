@@ -6477,19 +6477,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		}		
 	}
 		
-	SizedArray<BfIRValue, 16> fieldTypes;
-
-	enum FieldFlags
-	{
-		FieldFlags_Protected = 3,
-		FieldFlags_Public = 6,
-		FieldFlags_Static = 0x10,
-		FieldFlags_Const = 0x40,
-		FieldFlags_SpecialName = 0x80,
-		FieldFlags_EnumPayload = 0x100,
-		FieldFlags_EnumDiscriminator = 0x200,
-		FieldFlags_EnumCase = 0x400
-	};
+	SizedArray<BfIRValue, 16> fieldTypes;	
 
 	bool is32Bit = mCompiler->mSystem->mPtrSize == 4;
 
@@ -6509,7 +6497,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					GetConstValue(payloadType->mTypeId, typeIdType), // mFieldTypeId
 					GetConstValue(0, intPtrType), // mData
 					GetConstValue(0, intPtrType), // mDataHi
-					GetConstValue(FieldFlags_SpecialName | FieldFlags_EnumPayload, shortType), // mFlags
+					GetConstValue(BfFieldFlags_SpecialName | BfFieldFlags_EnumPayload, shortType), // mFlags
 					GetConstValue(-1, intType), // mCustomAttributesIdx
 				};
 			}
@@ -6521,7 +6509,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					payloadNameConst, // mName
 					GetConstValue(payloadType->mTypeId, typeIdType), // mFieldTypeId
 					GetConstValue(0, intPtrType), // mData					
-					GetConstValue(FieldFlags_SpecialName | FieldFlags_EnumPayload, shortType), // mFlags
+					GetConstValue(BfFieldFlags_SpecialName | BfFieldFlags_EnumPayload, shortType), // mFlags
 					GetConstValue(-1, intType), // mCustomAttributesIdx
 				};
 			}
@@ -6542,7 +6530,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				GetConstValue(dscrType->mTypeId, typeIdType), // mFieldTypeId
 				GetConstValue(BF_ALIGN(payloadType->mSize, dscrType->mAlign), intPtrType), // mData
 				GetConstValue(0, intPtrType), // mDataHi
-				GetConstValue(FieldFlags_SpecialName | FieldFlags_EnumDiscriminator, shortType), // mFlags
+				GetConstValue(BfFieldFlags_SpecialName | BfFieldFlags_EnumDiscriminator, shortType), // mFlags
 				GetConstValue(-1, intType), // mCustomAttributesIdx
 			};
 		}
@@ -6554,7 +6542,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				dscrNameConst, // mName	
 				GetConstValue(dscrType->mTypeId, typeIdType), // mFieldTypeId
 				GetConstValue(BF_ALIGN(payloadType->mSize, dscrType->mAlign), intPtrType), // mData
-				GetConstValue(FieldFlags_SpecialName | FieldFlags_EnumDiscriminator, shortType), // mFlags
+				GetConstValue(BfFieldFlags_SpecialName | BfFieldFlags_EnumDiscriminator, shortType), // mFlags
 				GetConstValue(-1, intType), // mCustomAttributesIdx
 			};
 		}
@@ -6581,18 +6569,18 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		else
 			typeId = fieldType->mTypeId;		
 
-		FieldFlags fieldFlags = (FieldFlags)0;
+		BfFieldFlags fieldFlags = (BfFieldFlags)0;
 
 		if (fieldDef->mProtection == BfProtection_Protected)
-			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Protected);
+			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Protected);
 		if (fieldDef->mProtection == BfProtection_Public)
-			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Public);
+			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Public);
 		if (fieldDef->mIsStatic)
-			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Static);
+			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Static);
 		if (fieldDef->mIsConst)
-			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Const);
+			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Const);
 		if (fieldDef->IsEnumCaseEntry())
-			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_EnumCase);
+			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_EnumCase);
 
 		int customAttrIdx = _HandleCustomAttrs(fieldInstance->mCustomAttributes);
 		BfIRValue constValue;
@@ -11319,7 +11307,7 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 			{
 				newVals.Add(ConstantToCurrent(constHolder->GetConstant(val), constHolder, elementType));
 			}
-		}
+		}		
 		else
 		{
 			auto wantTypeInst = wantType->ToTypeInstance();
@@ -11329,19 +11317,32 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 				newVals.Add(baseVal);
 			}
 
-			for (auto& fieldInstance : wantTypeInst->mFieldInstances)
+			if (wantType->IsUnion())
 			{
-				if (fieldInstance.mDataIdx < 0)
-					continue;				
-				auto val = constArray->mValues[fieldInstance.mDataIdx];
-				BfIRValue memberVal = ConstantToCurrent(constHolder->GetConstant(val), constHolder, fieldInstance.mResolvedType);
-				if (fieldInstance.mDataIdx == newVals.mSize)
-					newVals.Add(memberVal);
-				else
+				auto innerType = wantType->ToTypeInstance()->GetUnionInnerType();
+				if (!innerType->IsValuelessType())
 				{
-					while (fieldInstance.mDataIdx >= newVals.mSize)
-						newVals.Add(BfIRValue());
-					newVals[fieldInstance.mDataIdx] = memberVal;
+					auto val = ConstantToCurrent(constHolder->GetConstant(constArray->mValues[1]), constHolder, innerType);
+					newVals.Add(val);
+				}
+			}
+
+			if ((!wantType->IsUnion()) || (wantType->IsPayloadEnum()))
+			{
+				for (auto& fieldInstance : wantTypeInst->mFieldInstances)
+				{
+					if (fieldInstance.mDataIdx < 0)
+						continue;
+					auto val = constArray->mValues[fieldInstance.mDataIdx];
+					BfIRValue memberVal = ConstantToCurrent(constHolder->GetConstant(val), constHolder, fieldInstance.mResolvedType);
+					if (fieldInstance.mDataIdx == newVals.mSize)
+						newVals.Add(memberVal);
+					else
+					{
+						while (fieldInstance.mDataIdx >= newVals.mSize)
+							newVals.Add(BfIRValue());
+						newVals[fieldInstance.mDataIdx] = memberVal;
+					}
 				}
 			}
 
@@ -11539,7 +11540,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		BfConstResolver constResolver(this);
 		if (allowNonConstArgs)
 			constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowNonConst);
-				
+
 		bool inPropSet = false;
 		SizedArray<BfResolvedArg, 2> argValues;
 		for (BfExpression* arg : attributesDirective->mArguments)
@@ -11743,6 +11744,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		}			
 					
 		BfMethodMatcher methodMatcher(attributesDirective, this, "", argValues, BfMethodGenericArguments());
+		methodMatcher.mBfEvalExprFlags = constResolver.mBfEvalExprFlags;
 		attrTypeDef = attrTypeInst->mTypeDef;
 
 		bool success = true;
@@ -12969,6 +12971,7 @@ bool BfModule::IsCompatibleInterfaceMethod(BfMethodInstance* iMethodInst, BfMeth
 	if (iMethodInst->GetParamCount() != methodInstance->GetParamCount())
 		return false;	
 
+	auto selfType = methodInstance->GetOwner();
 	for (int paramIdx = 0; paramIdx < (int)iMethodInst->GetParamCount(); paramIdx++)
 	{
 		if (iMethodInst->GetParamKind(paramIdx) != methodInstance->GetParamKind(paramIdx))
@@ -12977,12 +12980,10 @@ bool BfModule::IsCompatibleInterfaceMethod(BfMethodInstance* iMethodInst, BfMeth
 		BfType* iParamType = iMethodInst->GetParamType(paramIdx);
 		BfType* methodParamType = methodInstance->GetParamType(paramIdx);
 
-		if (iParamType->IsSelf())
-		{
-			if (methodParamType != methodInstance->GetOwner())
-				return false;
-		}
-		else if (!iParamType->IsGenericParam())
+		iParamType = ResolveSelfType(iParamType, selfType);
+		methodParamType = ResolveSelfType(methodParamType, selfType);
+
+		if (!iParamType->IsGenericParam())
 		{
 			if (methodParamType != iParamType)
 				return false;
@@ -13730,6 +13731,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					// We haven't processed it yet
 					_SetReified();
 					CheckHotMethod(methodInstance, "");
+
+					if (methodInstance->mMethodProcessRequest == NULL)
+						AddMethodToWorkList(methodInstance);
 				}
 			}
 		}
@@ -24120,28 +24124,27 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 			if (iMethodInst->mMethodDef->mName == methodInstance->mMethodDef->mName)
 				hadNameMatch = iMethodInst;
 
-			bool doesMethodSignatureMatch = CompareMethodSignatures(iMethodInst, methodInstance);
-				
+			bool doesMethodSignatureMatch = CompareMethodSignatures(iMethodInst, methodInstance);			
 			if ((!doesMethodSignatureMatch) && (iMethodInst->GetNumGenericParams() == 0) && (interfaceMethodEntry->mMethodRef.IsNull()))
 			{
 				doesMethodSignatureMatch = IsCompatibleInterfaceMethod(iMethodInst, methodInstance);
 			}
 
- 			if ((doesMethodSignatureMatch) && (methodInstance->GetOwner()->IsValueType()))
- 			{
- 				if ((!iMethodInst->mMethodDef->mIsMutating) && (methodInstance->mMethodDef->mIsMutating))
- 				{
- 					if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mExplicitInterface == ifaceInst))
- 					{						
- 						auto error = mCompiler->mPassInstance->Fail(StrFormat("Implementation method '%s' cannot specify 'mut' because the interface method does not allow it",
- 							MethodToString(methodInstance).c_str()), methodInstance->mMethodDef->GetMutNode());
- 						if (error != NULL)
- 							mCompiler->mPassInstance->MoreInfo(StrFormat("Declare the interface method as 'mut' to allow matching 'mut' implementations"), iMethodInst->mMethodDef->mMethodDeclaration);
- 						showedError = true;						
- 					}
- 				}
- 			}
-						
+			if ((doesMethodSignatureMatch) && (methodInstance->GetOwner()->IsValueType()))
+			{
+				if ((!iMethodInst->mMethodDef->mIsMutating) && (methodInstance->mMethodDef->mIsMutating))
+				{
+					if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mExplicitInterface == ifaceInst))
+					{
+						auto error = mCompiler->mPassInstance->Fail(StrFormat("Implementation method '%s' cannot specify 'mut' because the interface method does not allow it",
+							MethodToString(methodInstance).c_str()), methodInstance->mMethodDef->GetMutNode());
+						if (error != NULL)
+							mCompiler->mPassInstance->MoreInfo(StrFormat("Declare the interface method as 'mut' to allow matching 'mut' implementations"), iMethodInst->mMethodDef->mMethodDeclaration);
+						showedError = true;
+					}
+				}
+			}
+			 									
 			if (doesMethodSignatureMatch)
 			{										
 				usedMethod = true;
@@ -24455,7 +24458,7 @@ void BfModule::DbgFinish()
 	BfIRValue linkMarker;
 	
 	if (mBfIRBuilder->DbgHasInfo())
-	{		
+	{
 		bool needForceLinking = false;
 		for (auto& ownedType : mOwnedTypeInstances)
 		{

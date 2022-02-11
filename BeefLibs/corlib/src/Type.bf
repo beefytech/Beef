@@ -159,6 +159,7 @@ namespace System
 					 .Int16,
 					 .Int32,
 					 .Int64,
+					 .Int,
 					 .Float,
 					 .Double:
 					return true;
@@ -483,6 +484,15 @@ namespace System
 			}
 		}
 
+		public virtual int32 BitSize
+		{
+			[Error("This property can only be accessed directly from a typeof() expression")]
+			get
+			{
+				return 0;
+			}
+		}
+
         public int32 GetTypeId()
         {
             return (int32)mTypeId;
@@ -497,6 +507,7 @@ namespace System
 		static extern int64 Comptime_GetMethod(int32 typeId, int32 methodIdx);
 		static extern String Comptime_Method_ToString(int64 methodHandle);
 		static extern String Comptime_Method_GetName(int64 methodHandle);
+		static extern String Comptime_Field_GetName(int64 fieldHandle);
 		static extern ComptimeMethodInfo.Info Comptime_Method_GetInfo(int64 methodHandle);
 		static extern ComptimeMethodInfo.ParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
 

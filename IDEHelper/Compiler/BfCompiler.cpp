@@ -430,6 +430,11 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mIHashableTypeDef = NULL;
 	mIComptimeTypeApply = NULL;
 	mIComptimeMethodApply = NULL;
+	mComptimeFieldInfoTypeDef = NULL;
+	mIOnTypeInitTypeDef = NULL;
+	mIOnTypeDoneTypeDef = NULL;
+	mIOnFieldInitTypeDef = NULL;
+	mIOnMethodInitTypeDef = NULL;
 	mLinkNameAttributeTypeDef = NULL;
 	mCallingConventionAttributeTypeDef = NULL;
 	mMethodRefTypeDef = NULL;
@@ -5007,6 +5012,9 @@ void BfCompiler::GetSymbolReferences()
 
 				if ((fieldDef->mIsConst) && (fieldDef->mInitializer != NULL))
 				{
+					BfMethodState methodState;
+					methodState.mTempKind = BfMethodState::TempKind_Static;
+					SetAndRestoreValue<BfMethodState*> prevMethodState(module->mCurMethodState, &methodState);					
 					BfConstResolver constResolver(module); 
 					constResolver.Resolve(fieldDef->mInitializer);
 				}
@@ -6825,6 +6833,12 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mIHashableTypeDef = _GetRequiredType("System.IHashable");
 	mIComptimeTypeApply = _GetRequiredType("System.IComptimeTypeApply");
 	mIComptimeMethodApply = _GetRequiredType("System.IComptimeMethodApply");
+	mComptimeFieldInfoTypeDef = _GetRequiredType("System.Reflection.ComptimeFieldInfo");
+	mIOnTypeInitTypeDef = _GetRequiredType("System.IOnTypeInit");
+	mIOnTypeDoneTypeDef = _GetRequiredType("System.IOnTypeDone");
+	mIOnFieldInitTypeDef = _GetRequiredType("System.IOnFieldInit");
+	mIOnMethodInitTypeDef = _GetRequiredType("System.IOnMethodInit");
+
 	mLinkNameAttributeTypeDef = _GetRequiredType("System.LinkNameAttribute");
 	mCallingConventionAttributeTypeDef = _GetRequiredType("System.CallingConventionAttribute");
 	mMethodRefTypeDef = _GetRequiredType("System.MethodReference", 1);

@@ -150,4 +150,31 @@ namespace System.Reflection
 			}
 		}
 	}
+
+	[Ordered]
+	struct ComptimeFieldInfo
+	{
+		int64 mNativeFieldInstance;
+		TypeId mOwner;
+		TypeId mTypeId;
+		int32 mFieldIdx;
+		FieldFlags mFlags;
+
+		public StringView Name
+		{
+			get
+			{
+				if (Compiler.IsComptime)
+					return Type.[Friend]Comptime_Field_GetName(mNativeFieldInstance);
+				return "?";
+			}
+		}
+
+		public Type Owner => Type.[Friend]GetType_((.)mOwner);
+		public Type FieldType => Type.[Friend]GetType_((.)mTypeId);
+		public int FieldIdx => mFieldIdx;
+		public bool IsConst => mFlags.HasFlag(.Const);
+		public bool IsStatic => mFlags.HasFlag(.Static);
+		public bool IsInstanceField => !mFlags.HasFlag(.Static) && !mFlags.HasFlag(.Const);
+	}
 }

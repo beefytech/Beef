@@ -3376,7 +3376,7 @@ void CeContext::PrepareConstStructEntry(CeConstStructData& constEntry)
 
 bool CeContext::CheckMemory(addr_ce addr, int32 size)
 {
-	if (((addr)-0x10000) + (size) > (mMemory.mSize - 0x10000))
+	if ((addr < 0x10000) || (addr + size > mMemory.mSize))		
 		return false;
 	return true;
 }
@@ -3441,10 +3441,12 @@ bool CeContext::GetStringFromStringView(addr_ce addr, StringImpl& str)
 	addr_ce charsPtr = *(addr_ce*)(mMemory.mVals + addr);
 	int32 len = *(int32*)(mMemory.mVals + addr + ptrSize);
 
-	if (!CheckMemory(charsPtr, len))
-		return false;
-
-	str.Append((const char*)(mMemory.mVals + charsPtr), len);
+	if (len > 0)
+	{
+		if (!CheckMemory(charsPtr, len))
+			return false;
+		str.Append((const char*)(mMemory.mVals + charsPtr), len);
+	}
 
 	return true;
 }
@@ -3595,6 +3597,19 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 					return false;
 			}
 
+			if (typeInst->IsPayloadEnum())
+			{
+				auto innerType = typeInst->GetUnionInnerType();
+				if (!innerType->IsValuelessType())
+				{
+					auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[1]);
+					if (fieldConstant == NULL)
+						return false;
+					if (!WriteConstant(module, addr, fieldConstant, innerType))
+						return false;
+				}
+			}
+
 			for (auto& fieldInstance : typeInst->mFieldInstances)
 			{
 				if (fieldInstance.mDataOffset < 0)
@@ -3611,9 +3626,15 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	}
 
 	if (constant->mConstType == BfConstType_AggZero)
-	{		
+	{
 		BF_ASSERT(type->IsComposite());
-		memset(mMemory.mVals + addr, 0, type->mSize);		
+		memset(mMemory.mVals + addr, 0, type->mSize);
+		return true;
+	}
+
+	if (constant->mConstType == BfConstType_ArrayZero8)
+	{		
+		memset(mMemory.mVals + addr, 0, constant->mInt32);
 		return true;
 	}
 
@@ -3720,6 +3741,29 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		else
 			CE_GETC(int64) = typeAddr;
 		return true;
+	}
+
+	if (constant->mConstType == BfConstType_ExtractValue)
+	{
+		Array<BfConstantExtractValue*> extractStack;
+		auto checkConstant = constant;		
+		while (true)
+		{
+			if (checkConstant == NULL)
+				break;
+
+			if (checkConstant->mConstType == BfConstType_ExtractValue)
+			{
+				auto gepConst = (BfConstantExtractValue*)constant;
+				BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+				checkConstant = module->mBfIRBuilder->GetConstant(targetConst);
+				extractStack.Add(gepConst);
+				continue;
+			}
+
+			if (checkConstant->mConstType == BfConstType_AggCE)
+				return WriteConstant(module, addr, checkConstant, type, isParams);
+		}				
 	}
 
 	return false;
@@ -3926,8 +3970,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 		if (typeInst->IsInstanceOf(ceModule->mCompiler->mTypeTypeDef))
 		{
-			addr_ce addr = *(addr_ce*)(instData);
-			int typeId = GetTypeIdFromType(addr);
+			int typeId = GetTypeIdFromType(instData - mMemory.mVals);
 			if (typeId <= 0)
 			{
 				Fail("Unable to locate return type type");
@@ -3950,13 +3993,20 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 				return BfIRValue();
 			fieldVals.Add(result);
 		}				
-
-		if (typeInst->mIsUnion)
+		
+		if (typeInst->IsUnion())
 		{
-			auto unionInnerType = typeInst->GetUnionInnerType();
-			fieldVals.Add(CreateConstant(module, ptr, unionInnerType, outType));						
+			auto innerType = typeInst->GetUnionInnerType();
+			if (!innerType->IsValuelessType())
+			{
+				auto result = CreateConstant(module, instData, innerType);
+				if (!result)
+					return BfIRValue();
+				fieldVals.Add(result);
+			}
 		}
-		else
+
+		if ((!typeInst->IsUnion()) || (typeInst->IsPayloadEnum()))
 		{
 			for (int fieldIdx = 0; fieldIdx < typeInst->mFieldInstances.size(); fieldIdx++)
 			{
@@ -3997,7 +4047,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 				fieldVal = irBuilder->CreateConstArrayZero(0);
 		}
 
-		auto instResult = irBuilder->CreateConstAgg(irBuilder->MapTypeInst(typeInst, BfIRPopulateType_Full), fieldVals);
+		auto instResult = irBuilder->CreateConstAgg(irBuilder->MapTypeInst(typeInst, BfIRPopulateType_Identity), fieldVals);
 		return instResult;
 	}
 
@@ -4156,14 +4206,30 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	int thisArgIdx = -1;
 	int appendAllocIdx = -1;
 	bool hasAggData = false;
-	if (methodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)
+	if (!methodInstance->mMethodDef->mIsStatic)
 	{	
 		if (!methodInstance->GetOwner()->IsValuelessType())
 		{
 			thisArgIdx = 0;
-			auto constant = module->mBfIRBuilder->GetConstant(args[0]);
-			if ((constant != NULL) && (constant->mConstType == BfConstType_AggCE))
-				hasAggData = true;
+			auto checkConstant = module->mBfIRBuilder->GetConstant(args[0]);
+			while (checkConstant != NULL)
+			{
+				if ((checkConstant != NULL) && (checkConstant->mConstType == BfConstType_AggCE))
+				{
+					hasAggData = true;
+					break;
+				}
+
+				if (checkConstant->mConstType == BfConstType_ExtractValue)
+				{					
+					auto gepConst = (BfConstantExtractValue*)checkConstant;
+					BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+					checkConstant = module->mBfIRBuilder->GetConstant(targetConst);
+					continue;
+				}
+
+				break;
+			}
 		}
 
 		if ((methodInstance->GetParamCount() >= 1) && (methodInstance->GetParamKind(0) == BfParamKind_AppendIdx))
@@ -4181,14 +4247,12 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 			paramType = methodInstance->GetParamType(paramIdx);
 			if (paramType->IsTypedPrimitive())
 				paramType = paramType->GetUnderlyingType();
-			if (!paramType->IsValuelessType())
+			if ((!paramType->IsValuelessType()) && (!paramType->IsVar()))
 				break;
 		}
-		if (paramType->IsComposite())
-		{			
-			paramCompositeSize += paramType->mSize;
-		}
-
+		
+		BfType* compositeType = paramType->IsComposite() ? paramType : NULL;		
+		
 		auto arg = args[argIdx];
 		bool isConst = arg.IsConst();
 		if (isConst)
@@ -4203,6 +4267,17 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 // 				else
 // 					isConst = false;
 			}
+			else if (((constant->mConstType == BfConstType_AggZero) || (constant->mConstType == BfConstType_Agg)) &&
+				((paramType->IsPointer()) || (paramType->IsRef())))
+				compositeType = paramType->GetUnderlyingType();
+		}
+
+		if (compositeType != NULL)
+		{
+			if ((paramType->IsPointer()) || (paramType->IsRef()))
+				paramCompositeSize += paramType->GetUnderlyingType()->mSize;
+			else
+				paramCompositeSize += paramType->mSize;
 		}
 
 		if (!isConst)
@@ -4252,6 +4327,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	BfTypeInstance* thisType = methodInstance->GetOwner();
 	addr_ce allocThisInstAddr = 0;
 	addr_ce allocThisAddr = 0;
+	addr_ce thisAddr = 0;
 	int allocThisSize = -1;
 
 	if ((thisArgIdx != -1) && (!hasAggData))
@@ -4294,6 +4370,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 		allocThisInstAddr = allocThisPtr - memStart;
 		allocThisAddr = allocThisInstAddr;
+		thisAddr = allocThisAddr;
 	}
 
 	addr_ce allocAppendIdxAddr = 0;
@@ -4327,7 +4404,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 			paramType = methodInstance->GetParamType(paramIdx);
 			if (paramType->IsTypedPrimitive())
 				paramType = paramType->GetUnderlyingType();
-			if (!paramType->IsValuelessType())
+			if ((!paramType->IsValuelessType()) && (!paramType->IsVar()))
 				break;
 		}
 
@@ -4357,10 +4434,14 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 		}
 
 		auto constant = module->mBfIRBuilder->GetConstant(arg);
-		if (paramType->IsComposite())
+		BfType* compositeType = paramType->IsComposite() ? paramType : NULL;		
+		if (((constant->mConstType == BfConstType_AggZero) || (constant->mConstType == BfConstType_Agg)) &&
+			((paramType->IsPointer()) || (paramType->IsRef())))
+			compositeType = paramType->GetUnderlyingType();
+		if (compositeType != NULL)
 		{			
-			useCompositeAddr -= paramType->mSize;
-			if (!WriteConstant(module, useCompositeAddr, constant, paramType, isParams))
+			useCompositeAddr -= compositeType->mSize;
+			if (!WriteConstant(module, useCompositeAddr, constant, compositeType, isParams))
 			{
 				Fail(StrFormat("Failed to process argument for param '%s'", methodInstance->GetParamName(paramIdx).c_str()));
 				return BfTypedValue();
@@ -4369,17 +4450,47 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 			stackPtr -= ceModule->mSystem->mPtrSize;
 			int64 addr64 = useCompositeAddr;
+			if (argIdx == thisArgIdx)
+				thisAddr = addr64;
 			memcpy(stackPtr, &addr64, ceModule->mSystem->mPtrSize);
-		}
+		}				
 		else
-		{
+		{			
 			stackPtr -= paramType->mSize;
-			if (!WriteConstant(module, stackPtr - memStart, constant, paramType, isParams))
+			auto useCompositeAddr = stackPtr - memStart;
+			if (!WriteConstant(module, useCompositeAddr, constant, paramType, isParams))
 			{
 				Fail(StrFormat("Failed to process argument for param '%s'", methodInstance->GetParamName(paramIdx).c_str()));
 				return BfTypedValue();
 			}
 			_FixVariables();
+
+			if (argIdx == thisArgIdx)
+			{
+				auto checkConstant = constant;
+				while (checkConstant != NULL)
+				{
+					if ((checkConstant != NULL) && (checkConstant->mConstType == BfConstType_AggCE))
+					{
+						auto constAggData = (BfConstantAggCE*)checkConstant;
+						if (paramType->IsPointer())
+							thisAddr = constAggData->mCEAddr;
+						else
+							thisAddr = useCompositeAddr;
+						break;
+					}
+
+					if (checkConstant->mConstType == BfConstType_ExtractValue)
+					{
+						auto gepConst = (BfConstantExtractValue*)checkConstant;
+						BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+						checkConstant = module->mBfIRBuilder->GetConstant(targetConst);
+						continue;
+					}
+
+					break;
+				}
+			}
 		}
 	}
 
@@ -4399,14 +4510,16 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 	addr_ce retInstAddr = retAddr;
 
-	if (returnType->IsInstanceOf(mCeMachine->mCompiler->mTypeTypeDef))
-	{
-		// Allow
-	}
-	else if ((returnType->IsObject()) || (returnType->IsPointer()))
+	if ((returnType->IsObject()) || (returnType->IsPointer()))
 	{
 		// Or pointer?
 		retInstAddr = *(addr_ce*)(memStart + retAddr);
+	}
+
+	if ((flags & CeEvalFlags_ForceReturnThis) != 0)
+	{
+		returnType = thisType;
+		retInstAddr = thisAddr;
 	}
 
 	BfTypedValue returnValue;
@@ -4452,7 +4565,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 		}
 		else if (returnType->IsComposite())
 		{
-			returnValue = BfTypedValue(module->mBfIRBuilder->CreateConstArrayZero(module->mBfIRBuilder->MapType(returnType)), returnType);
+			returnValue = BfTypedValue(module->mBfIRBuilder->CreateConstAggZero(module->mBfIRBuilder->MapType(returnType, BfIRPopulateType_Identity)), returnType);
 		}
 		else if (returnType->IsValuelessType())
 		{
@@ -4462,6 +4575,8 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 	mCallStack.Clear();
 
+	moduleCurMethodInstance.Restore();
+	moduleCurTypeInstance.Restore();
 	module->AddDependency(methodInstance->GetOwner(), module->mCurTypeInstance, BfDependencyMap::DependencyFlag_ConstEval);
 
 	return returnValue;
@@ -5013,6 +5128,20 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
 				*(int16*)(stackPtr + 4) = 0; // Flags
 				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);								
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetName)
+			{				
+				int64 fieldHandle = *(int64*)((uint8*)stackPtr + ptrSize);
+				
+				auto fieldInstance = mCeMachine->GetFieldInstance(fieldHandle);
+				if (fieldInstance == NULL)
+				{
+					_Fail("Invalid field instance");
+					return false;
+				}
+				
+				CeSetAddrVal(stackPtr + 0, GetString(fieldInstance->GetFieldDef()->mName), ptrSize);
+				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitTypeBody)
 			{
@@ -7506,6 +7635,12 @@ void CeMachine::DerefMethodInfo(CeFunctionInfo* ceFunctionInfo)
 	delete ceFunctionInfo;
 }
 
+void CeMachine::RemoveFunc(CeFunction* ceFunction)
+{
+	mFunctionIdMap.Remove(ceFunction->mId);
+	ceFunction->mId = -1;	
+}
+
 void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 {
 	BfLogSys(methodInstance->GetOwner()->mModule->mSystem, "CeMachine::RemoveMethod %p\n", methodInstance);
@@ -7527,13 +7662,9 @@ void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 			}
 			if (ceFunction->mId != -1)
 			{
-				mFunctionIdMap.Remove(ceFunction->mId);
-				ceFunction->mId = -1;
+				RemoveFunc(ceFunction);
 				for (auto innerFunction : ceFunction->mInnerFunctions)
-				{
-					mFunctionIdMap.Remove(innerFunction->mId);
-					innerFunction->mId = -1;
-				}
+					RemoveFunc(innerFunction);
 			}
 
 			delete ceFunction;
@@ -7555,6 +7686,7 @@ void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 
 		mFunctions.Remove(itr);
 	}
+	methodInstance->mInCEMachine = false;
 }
 
 CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext)
@@ -7864,6 +7996,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Method_GetParamInfo")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetParamInfo;
+				}
+				else if (methodDef->mName == "Comptime_Field_GetName")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Field_GetName;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mCompilerTypeDef))
@@ -8208,7 +8344,7 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 		ceFunction->mCeMachine = this;
 		ceFunction->mIsVarReturn = methodInstance->mReturnType->IsVar();
 		ceFunction->mCeFunctionInfo = ceFunctionInfo;
-		ceFunction->mMethodInstance = methodInstance;		
+		ceFunction->mMethodInstance = methodInstance;
 		ceFunctionInfo->mMethodInstance = methodInstance;
 		ceFunctionInfo->mCeFunction = ceFunction;		
 		MapFunctionId(ceFunction);
@@ -8281,6 +8417,14 @@ BfMethodInstance* CeMachine::GetMethodInstance(int64 methodHandle)
 	if (!mMethodInstanceSet.Contains(methodInstance))
 		return NULL;
 	return methodInstance;
+}
+
+BfFieldInstance* CeMachine::GetFieldInstance(int64 fieldHandle)
+{
+	BfFieldInstance* fieldInstance = (BfFieldInstance*)(intptr)fieldHandle;
+	if (!mFieldInstanceSet.Contains(fieldInstance))
+		return NULL;
+	return fieldInstance;
 }
 
 CeFunction* CeMachine::QueueMethod(BfMethodInstance* methodInstance, BfIRValue func)
@@ -8369,7 +8513,7 @@ void CeMachine::ReleaseContext(CeContext* ceContext)
 BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
 {	
 	auto ceContext = AllocContext();
-	auto result = ceContext->Call(targetSrc, module, methodInstance, args, flags, expectingType);
+	auto result = ceContext->Call(targetSrc, module, methodInstance, args, flags, expectingType);	
 	ReleaseContext(ceContext);	
 	return result;
 }

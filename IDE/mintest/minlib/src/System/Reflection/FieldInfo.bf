@@ -327,4 +327,18 @@ namespace System.Reflection
 			}
 	    }
 	}
+
+	struct ComptimeMethodInfo
+	{
+		public int64 mNativeMethodInstance;
+	}
+
+	struct ComptimeFieldInfo
+	{
+		int64 mNativeFieldInstance;
+		TypeId mOwner;
+		TypeId mTypeId;
+		int32 mFieldIdx;
+		FieldFlags mFlags;
+	}
 }

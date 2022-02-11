@@ -332,6 +332,7 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetName,
 	CeFunctionKind_Method_GetInfo,
 	CeFunctionKind_Method_GetParamInfo,
+	CeFunctionKind_Field_GetName,
 	
 	CeFunctionKind_EmitTypeBody,
 	CeFunctionKind_EmitAddInterface,
@@ -516,7 +517,7 @@ public:
 	String mGenError;
 	int mFrameSize;	
 	int mMaxReturnSize;
-	int mId;
+	int mId;	
 
 public:
 	CeFunction()
@@ -544,7 +545,8 @@ enum CeEvalFlags
 	CeEvalFlags_Cascade = 1,
 	CeEvalFlags_PersistantError = 2,
 	CeEvalFlags_DeferIfNotOnlyError = 4,
-	CeEvalFlags_NoRebuild = 8
+	CeEvalFlags_NoRebuild = 8,
+	CeEvalFlags_ForceReturnThis = 0x10
 };
 
 enum CeOperandKind
@@ -689,8 +691,8 @@ public:
 	Dictionary<BeConstant*, int> mConstDataMap;
 	Dictionary<BeFunction*, int> mInnerFunctionMap;
 	Dictionary<BeGlobalVariable*, int> mStaticFieldMap;
-	Dictionary<String, BfFieldInstance*> mStaticFieldInstanceMap;
-	
+	Dictionary<String, BfFieldInstance*> mStaticFieldInstanceMap;		
+
 public:
 	CeBuilder()
 	{
@@ -927,7 +929,9 @@ public:
 	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit			
 	Dictionary<BfType*, CeTypeInfo> mTypeInfoMap;
 	HashSet<BfMethodInstance*> mMethodInstanceSet;
-	
+	HashSet<BfFieldInstance*> mFieldInstanceSet;
+	Array<BeFunction*> mFunctionList;
+		
 	Array<CeContext*> mContextList;
 
 	BfCompiler* mCompiler;
@@ -937,7 +941,7 @@ public:
 	int mRevisionExecuteTime;	
 	int mCurFunctionId;	
 	int mExecuteId;
-	CeAppendAllocInfo* mAppendAllocInfo;
+	CeAppendAllocInfo* mAppendAllocInfo;	
 	
 	CeContext* mCurContext;
 	CeEmitContext* mCurEmitContext;
@@ -957,6 +961,7 @@ public:
 	BeModule* GetBeModule();
 
 	void DerefMethodInfo(CeFunctionInfo* ceFunctionInfo);
+	void RemoveFunc(CeFunction* ceFunction);
 	void RemoveMethod(BfMethodInstance* methodInstance);					
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);			
 	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext);	
@@ -970,6 +975,7 @@ public:
 	CeFunction* GetPreparedFunction(BfMethodInstance* methodInstance);
 	CeTypeInfo* GetTypeInfo(BfType* type);
 	BfMethodInstance* GetMethodInstance(int64 methodHandle);
+	BfFieldInstance* GetFieldInstance(int64 fieldHandle);
 
 public:
 	void CompileStarted();

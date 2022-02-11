@@ -1,3 +1,4 @@
+using System.Reflection;
 namespace System
 {
     public struct Attribute
@@ -493,6 +494,26 @@ namespace System
 		public this(String message)
 		{
 		}
+	}
+
+	interface IOnTypeInit
+	{
+		void OnTypeInit(Type type, Self* prev) mut;
+	}
+
+	interface IOnTypeDone
+	{
+		void OnTypeDone(Type type, Self* prev) mut;
+	}
+
+	interface IOnFieldInit
+	{
+		void OnFieldInit(ComptimeFieldInfo type, Self* prev) mut;
+	}
+
+	interface IOnMethodInit
+	{
+		void OnMethodInit(ComptimeMethodInfo type, Self* prev) mut;
 	}
 
 	interface IComptimeTypeApply

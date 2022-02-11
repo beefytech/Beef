@@ -1684,6 +1684,24 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 
  	BfLogSysM("Deleting Type: %p %s\n", type, mScratchModule->TypeToString(type).c_str());
 	
+	if (typeInst != NULL)
+	{
+		for (auto& methodInstGroup : typeInst->mMethodInstanceGroups)
+		{
+			if ((methodInstGroup.mDefault != NULL) && (methodInstGroup.mDefault->mInCEMachine))
+				mCompiler->mCEMachine->RemoveMethod(methodInstGroup.mDefault);
+			if (methodInstGroup.mMethodSpecializationMap != NULL)
+			{
+				for (auto& methodSpecializationItr : *methodInstGroup.mMethodSpecializationMap)
+				{
+					auto methodInstance = methodSpecializationItr.mValue;
+					if (methodInstance->mInCEMachine)
+						mCompiler->mCEMachine->RemoveMethod(methodInstance);
+				}
+			}
+		}
+	}
+
 	// All dependencies cause rebuilds when we delete types	
 	if (dType != NULL)
 	{
@@ -1775,7 +1793,7 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 
  		for (auto dependentType : rebuildTypeQueue)
  			RebuildType(dependentType);
-	}
+	}	
 }
 
 void BfContext::UpdateAfterDeletingTypes()

@@ -102,7 +102,8 @@ enum BfCastFlags
 	BfCastFlags_PreferAddr = 0x400,
 	BfCastFlags_WarnOnBox = 0x800,
 	BfCastFlags_IsCastCheck = 0x1000,
-	BfCastFlags_IsConstraintCheck = 0x2000,	
+	BfCastFlags_IsConstraintCheck = 0x2000,
+	BfCastFlags_WantsConst = 0x4000
 };
 
 enum BfCastResultFlags
@@ -1762,7 +1763,7 @@ public:
 	void FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext);
 	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, const StringImpl& src);
 	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode);
-	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes, bool underlyingTypeDeferred);
+	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfCustomAttributes* customAttributes, Dictionary<BfTypeInstance*, BfIRValue>& foundAttributes, bool underlyingTypeDeferred);
 	void CEMixin(BfAstNode* refNode, const StringImpl& src);
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind, bool underlyingTypeDeferred);
 	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers, bool underlyingTypeDeferred);

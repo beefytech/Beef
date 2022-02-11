@@ -1471,6 +1471,18 @@ enum BfOptionFlags
 
 };
 
+enum BfFieldFlags
+{
+	BfFieldFlags_Protected = 3,
+	BfFieldFlags_Public = 6,
+	BfFieldFlags_Static = 0x10,
+	BfFieldFlags_Const = 0x40,
+	BfFieldFlags_SpecialName = 0x80,
+	BfFieldFlags_EnumPayload = 0x100,
+	BfFieldFlags_EnumDiscriminator = 0x200,
+	BfFieldFlags_EnumCase = 0x400
+};
+
 enum BfReflectKind
 {
 	BfReflectKind_None = 0,

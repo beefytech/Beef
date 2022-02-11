@@ -2981,7 +2981,7 @@ BfTypedValue BfModule::HandleCaseBind(BfTypedValue enumVal, const BfTypedValue& 
 				if (type->IsEnum())
 				{
 					auto enumType = (BfTypeInstance*)type;
-					for (auto fieldInstance : enumType->mFieldInstances)
+					for (auto& fieldInstance : enumType->mFieldInstances)
 					{
 						auto fieldDef = fieldInstance.GetFieldDef();
 						if ((fieldDef != NULL) && (fieldDef->IsEnumCaseEntry()) && (fieldDef->mName == findName))

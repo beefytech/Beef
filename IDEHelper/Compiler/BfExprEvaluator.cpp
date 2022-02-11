@@ -2296,25 +2296,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		if (mModule->mCurMethodInstance != NULL)
 			allowSpecializeFail = mModule->mCurMethodInstance->mIsUnspecialized;
 
-// 		if (mModule->mModuleName == "BeefTest_TestProgram")
-// 		{
-// 			OutputDebugStrF("?Prv: %s\n      %s\n?New: %s\n      %s\n\n", 				
-// 				mModule->MethodToString(prevMethodInstance, BfMethodNameFlag_None, &mBestMethodGenericArguments).c_str(),
-// 				mModule->MethodToString(prevMethodInstance, BfMethodNameFlag_None).c_str(),
-// 				mModule->MethodToString(methodInstance, BfMethodNameFlag_None, genericArgumentsSubstitute).c_str(),
-// 				mModule->MethodToString(methodInstance, BfMethodNameFlag_None).c_str());
-// 		}
-
 		CompareMethods(prevMethodInstance, &mBestMethodGenericArguments, methodInstance, genericArgumentsSubstitute, &isBetter, &isWorse, allowSpecializeFail);		
-
-// 		if (mModule->mModuleName == "BeefTest_TestProgram")
-// 		{
-// 			OutputDebugStrF("%sPrv: %s\n      %s\n%sNew: %s\n      %s\n\n", 				
-// 				isWorse ? "*" : " ", mModule->MethodToString(prevMethodInstance, BfMethodNameFlag_None, &mBestMethodGenericArguments).c_str(),
-// 				mModule->MethodToString(prevMethodInstance, BfMethodNameFlag_None).c_str(),
-// 				isBetter ? "*" : " ", mModule->MethodToString(methodInstance, BfMethodNameFlag_None, genericArgumentsSubstitute).c_str(),
-// 				mModule->MethodToString(methodInstance, BfMethodNameFlag_None).c_str());
-// 		}
 
 		// If we had both a 'better' and 'worse', that's ambiguous because the methods are each better in different ways (not allowed)
 		//  And if neither better nor worse then they are equally good, which is not allowed either
@@ -7421,7 +7403,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					argValue = mModule->Cast(refNode, argValue, underlyingType);
 				}
 				else
-					argValue = mModule->Cast(refNode, argValue, underlyingType);
+					argValue = mModule->Cast(refNode, argValue, underlyingType, ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) ? BfCastFlags_WantsConst : BfCastFlags_None);
 				if (argValue)
 					argValue = mModule->ToRef(argValue, (BfRefType*)wantType);
 			}
@@ -7430,10 +7412,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				if (mModule->mCurMethodState != NULL)
 				{
 					SetAndRestoreValue<BfScopeData*> prevScopeData(mModule->mCurMethodState->mOverrideScope, boxScopeData);
-					argValue = mModule->Cast(refNode, argValue, wantType);
+					argValue = mModule->Cast(refNode, argValue, wantType, ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) ? BfCastFlags_WantsConst : BfCastFlags_None);
 				}
 				else
-					argValue = mModule->Cast(refNode, argValue, wantType);
+					argValue = mModule->Cast(refNode, argValue, wantType, ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) ? BfCastFlags_WantsConst : BfCastFlags_None);
 			}
 
 			if (!argValue)
@@ -8145,10 +8127,8 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 						constFailed = true;
 					continue;
 				}
-				if (argValue.IsValuelessType())
-				{					
+				if (resolvedFieldType->IsValuelessType())
 					continue;
-				}
 
 				// Used receiving value?
 				if (argValue.mValue == receivingValue.mValue)
@@ -8167,7 +8147,7 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 				{
 					// argValue can have a value even if tuplePtr does not have a value. This can happen if we are assigning to a (void) tuple,
 					//  but we have a value that needs to be attempted to be casted to void					
-					argValue = mModule->Cast(argValues.mResolvedArgs[tupleFieldIdx].mExpression, argValue, resolvedFieldType);
+					argValue = mModule->Cast(argValues.mResolvedArgs[tupleFieldIdx].mExpression, argValue, resolvedFieldType, wantConst ? BfCastFlags_WantsConst : BfCastFlags_None);
 					if (wantConst)
 					{
 						if (!argValue.mValue.IsConst())
@@ -10777,9 +10757,55 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 			}
 		}
 	}
+	else if (memberName == "BitSize")
+	{
+		auto int32Type = mModule->GetPrimitiveType(BfTypeCode_Int32);
+
+		BfType* checkType = type;
+		if (checkType->IsTypedPrimitive())
+			checkType = checkType->GetUnderlyingType();
+
+		if (checkType->IsGenericParam())
+		{			
+			mResult = mModule->GetDefaultTypedValue(int32Type, false, Beefy::BfDefaultValueKind_Undef);
+			return true;			
+		}
+		
+		if ((typeInstance != NULL) && (typeInstance->IsEnum()))
+		{
+			if (typeInstance->mTypeInfoEx != NULL)
+			{
+				int64 minValue = typeInstance->mTypeInfoEx->mMinValue;
+				if (minValue < 0)
+					minValue = ~minValue;
+				int64 maxValue = typeInstance->mTypeInfoEx->mMaxValue;
+				if (maxValue < 0)
+					maxValue = ~maxValue;
+				uint64 value = (uint64)minValue | (uint64)maxValue;
+
+				int bitCount = 1;
+				if (typeInstance->mTypeInfoEx->mMinValue < 0)
+					bitCount++;
+
+				while (value >>= 1)
+					bitCount++;
+
+				mModule->AddDependency(typeInstance, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
+				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, bitCount), int32Type);
+				return true;
+			}
+		}
+
+		int bitSize = checkType->mSize * 8;
+		if (checkType->GetTypeCode() == BfTypeCode_Boolean)
+			bitSize = 1;
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, bitSize), int32Type);
+		return true;
+	}
 	else if ((memberName == "MinValue") || (memberName == "MaxValue"))
 	{
 		bool isMin = memberName == "MinValue";
+		bool isBitSize = memberName == "BitSize";
 		
 		BfType* checkType = type;
 		if (checkType->IsTypedPrimitive())
@@ -10833,6 +10859,7 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 			{
 				if (typeInstance->mTypeInfoEx != NULL)
 				{
+					mModule->AddDependency(typeInstance, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)typeInstance->mTypeInfoEx->mMinValue : (uint64)typeInstance->mTypeInfoEx->mMaxValue), typeInstance);
 					return true;
 				}
@@ -20693,7 +20720,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			else if (!CheckModifyResult(mResult, unaryOpExpr, "take address of", false, true))
 			{
 				if (!mResult.IsAddr())
-					mResult = mModule->MakeAddressable(mResult);
+					mResult = mModule->MakeAddressable(mResult, false, true);
 				mResult = BfTypedValue(mResult.mValue, ptrType, false);
 			}
 			else
@@ -21409,7 +21436,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 
 		mResult = BfTypedValue(alloca, allocType, true);
-		MatchConstructor(opToken, NULL, mResult, allocType, argValues, true, false);
+		auto result = MatchConstructor(opToken, NULL, mResult, allocType, argValues, true, false);
+		if ((result) && (!result.mType->IsVoid()))
+			mResult = result;
 
 		return;
 	}

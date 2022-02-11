@@ -1383,9 +1383,11 @@ public:
 public:
 	BfFieldDef* GetFieldDef();	
 
-	BfFieldInstance(const BfFieldInstance& copyFrom)
+	BfFieldInstance(BfFieldInstance&& copyFrom)
 	{
-		BF_ASSERT(copyFrom.mCustomAttributes == NULL);		
+		mCustomAttributes = copyFrom.mCustomAttributes;
+		copyFrom.mCustomAttributes = NULL;
+
 		mOwner = copyFrom.mOwner;		
 		mResolvedType = copyFrom.mResolvedType;
 		
@@ -1402,6 +1404,28 @@ public:
 		mIsInferredType = copyFrom.mIsInferredType;		
 		mHadConstEval = copyFrom.mHadConstEval;
 		mLastRevisionReferenced = copyFrom.mLastRevisionReferenced;		
+	}
+
+	BfFieldInstance(const BfFieldInstance& copyFrom)
+	{
+		BF_ASSERT(copyFrom.mCustomAttributes == NULL);
+
+		mOwner = copyFrom.mOwner;
+		mResolvedType = copyFrom.mResolvedType;
+
+		mCustomAttributes = copyFrom.mCustomAttributes;
+		mConstIdx = copyFrom.mConstIdx;
+		mFieldIdx = copyFrom.mFieldIdx;
+		mDataIdx = copyFrom.mDataIdx;
+		mMergedDataIdx = copyFrom.mMergedDataIdx;
+		mDataOffset = copyFrom.mDataOffset;
+		mDataSize = copyFrom.mDataSize;
+		mFieldIncluded = copyFrom.mFieldIncluded;
+		mIsEnumPayloadCase = copyFrom.mIsEnumPayloadCase;
+		mIsThreadLocal = copyFrom.mIsThreadLocal;
+		mIsInferredType = copyFrom.mIsInferredType;
+		mHadConstEval = copyFrom.mHadConstEval;
+		mLastRevisionReferenced = copyFrom.mLastRevisionReferenced;
 	}
 
 	BfFieldInstance()

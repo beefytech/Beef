@@ -1001,12 +1001,22 @@ bool BfIRConstHolder::WriteConstant(BfIRValue val, void* ptr, BfType* type)
 					return false;
 			}
 
-			for (auto& fieldInstance : typeInst->mFieldInstances)
+			if (typeInst->IsUnion())
 			{
-				if (fieldInstance.mDataOffset < 0)
-					continue;				
-				if (!WriteConstant(aggConstant->mValues[fieldInstance.mDataIdx], (uint8*)ptr + fieldInstance.mDataOffset, fieldInstance.mResolvedType))
+				auto innerType = typeInst->GetUnionInnerType();
+				if (!WriteConstant(aggConstant->mValues[1], (uint8*)ptr, innerType))
 					return false;
+			}
+
+			if ((!typeInst->IsUnion()) || (typeInst->IsPayloadEnum()))
+			{
+				for (auto& fieldInstance : typeInst->mFieldInstances)
+				{
+					if (fieldInstance.mDataOffset < 0)
+						continue;
+					if (!WriteConstant(aggConstant->mValues[fieldInstance.mDataIdx], (uint8*)ptr + fieldInstance.mDataOffset, fieldInstance.mResolvedType))
+						return false;
+				}
 			}
 		}
 		return true;
@@ -1110,14 +1120,26 @@ BfIRValue BfIRConstHolder::ReadConstant(void* ptr, BfType* type)
 			irValues.Add(val);
 		}
 
-		for (auto& fieldInstance : typeInst->mFieldInstances)
+		if (typeInst->IsUnion())
 		{
-			if (fieldInstance.mDataOffset < 0)
-				continue;
-			auto val = ReadConstant((uint8*)ptr + fieldInstance.mDataOffset, fieldInstance.mResolvedType);
+			auto innerType = typeInst->GetUnionInnerType();
+			auto val = ReadConstant(ptr, innerType);
 			if (!val)
 				return BfIRValue();
 			irValues.Add(val);
+		}
+
+		if ((!typeInst->IsUnion()) || (typeInst->IsPayloadEnum()))
+		{
+			for (auto& fieldInstance : typeInst->mFieldInstances)
+			{
+				if (fieldInstance.mDataOffset < 0)
+					continue;
+				auto val = ReadConstant((uint8*)ptr + fieldInstance.mDataOffset, fieldInstance.mResolvedType);
+				if (!val)
+					return BfIRValue();
+				irValues.Add(val);
+			}
 		}
 		BfIRType irType;
 		irType.mKind = BfIRTypeData::TypeKind_TypeId;
@@ -1656,6 +1678,15 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 		{
 			return ToString(constant->mIRType) + " zeroinitializer";
 		}
+		else if (constant->mConstType == BfConstType_AggCE)
+		{
+			auto constAgg = (BfConstantAggCE*)constant;
+			return ToString(constAgg->mType) + StrFormat(" aggCe@%p", constAgg->mCEAddr);
+		}
+		else if (constant->mConstType == BfConstType_ArrayZero8)
+		{
+			return StrFormat("zero8[%d]", constant->mInt32);
+		}
 		else if (constant->mConstType == BfConstType_TypeOf)
 		{
 			auto typeofConst = (BfTypeOf_Const*)constant;
@@ -1666,6 +1697,7 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			auto typeofConst = (BfTypeOf_WithData_Const*)constant;
 			return "typeof_withData " + mModule->TypeToString(typeofConst->mType);
 		}
+
 		else
 		{
 			BF_FATAL("Unhandled");
@@ -1783,7 +1815,15 @@ String BfIRBuilder::ToString(BfIRType irType)
 	}
 	else if (irType.mKind == BfIRTypeData::TypeKind_TypeId)
 	{
-		return StrFormat("Type Id %d (%s)", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
+		return StrFormat("Type#%d:%s", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
+	}
+	else if (irType.mKind == BfIRTypeData::TypeKind_TypeInstId)
+	{
+		return StrFormat("TypeInst#%d:%s", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
+	}
+	else if (irType.mKind == BfIRTypeData::TypeKind_TypeInstPtrId)
+	{
+		return StrFormat("TypeInstPtr#%d:%s", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
 	}
 	else
 	{
@@ -3940,7 +3980,7 @@ BfIRType BfIRBuilder::MapTypeInst(BfTypeInstance* typeInst, BfIRPopulateType pop
 		PopulateType(typeInst, populateType);
 	}
 
-	if (!mIgnoreWrites)
+	if ((!mIgnoreWrites) && (populateType != BfIRPopulateType_Identity))
 		BF_ASSERT(mTypeMap.ContainsKey(typeInst));
 	BfIRType retType;
 	retType.mKind = BfIRType::TypeKind_TypeInstId;

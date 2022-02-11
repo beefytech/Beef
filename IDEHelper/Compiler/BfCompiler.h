@@ -390,6 +390,11 @@ public:
 	BfTypeDef* mIHashableTypeDef;
 	BfTypeDef* mIComptimeTypeApply;
 	BfTypeDef* mIComptimeMethodApply;
+	BfTypeDef* mComptimeFieldInfoTypeDef;
+	BfTypeDef* mIOnTypeInitTypeDef;
+	BfTypeDef* mIOnTypeDoneTypeDef;
+	BfTypeDef* mIOnFieldInitTypeDef;
+	BfTypeDef* mIOnMethodInitTypeDef;
 	
 	BfTypeDef* mMethodRefTypeDef;
 	BfTypeDef* mNullableTypeDef;
