@@ -284,7 +284,7 @@ namespace IDE.ui
 				if (source.mListView == target.mListView)
 				{
 					ListViewItem folderListView;
-					WorkspaceFolder targetFolder;
+					WorkspaceFolder targetFolder = null;
 					if (mListViewToWorkspaceFolderMap.GetValue(target) case .Ok(out targetFolder))
 					    folderListView = targetFolder.mListView;
 					else if (target == mWorkspaceListViewItem)
