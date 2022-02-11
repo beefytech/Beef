@@ -4752,11 +4752,6 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						isConst = false;
 				}
 
-				if (resolvedFieldType->IsValuelessType())
-				{
-					return BfTypedValue(BfIRValue::sValueless, resolvedFieldType, true);
-				}
-
 				if (isConst)
 				{
 					if (fieldInstance->mIsEnumPayloadCase)
@@ -4838,6 +4833,11 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 							mModule->Fail(StrFormat("Cannot reference non-static field '%s' from a static method", field->mName.c_str()), targetSrc);
 					}
 					return mModule->GetDefaultTypedValue(resolvedFieldType, false, BfDefaultValueKind_Addr);
+				}
+
+				if (resolvedFieldType->IsValuelessType())
+				{
+					return BfTypedValue(BfIRValue::sValueless, resolvedFieldType, true);
 				}
 
 				if ((mResultLocalVar != NULL) && (fieldInstance->mMergedDataIdx != -1))
