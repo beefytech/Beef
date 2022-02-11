@@ -655,8 +655,8 @@ namespace IDE
 					if (workspaceOptions.mEmitDebugInfo != .No)
 						linkLine.Append(" -g");
 
-					if (workspaceOptions.mRuntimeChecks)
-						linkLine.Append(" -s ASSERTIONS=1");
+					if (!workspaceOptions.mRuntimeChecks)
+						linkLine.Append(" -s ASSERTIONS=0");
 
 					linkLine.Replace('\\', '/');
 
