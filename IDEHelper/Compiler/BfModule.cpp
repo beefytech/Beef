@@ -21485,8 +21485,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 		wantsVisitBody = false;
 	if (methodInstance->IsOrInUnspecializedVariation())
 		wantsVisitBody = false;
-	if ((methodDeclaration != NULL) && (methodDeclaration->mStaticSpecifier != NULL))
-		wantsVisitBody = false;
+	bool allowCapture = (methodDeclaration == NULL) || (methodDeclaration->mStaticSpecifier == NULL);
 
 	if (wantsVisitBody)
 	{	
@@ -21562,7 +21561,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	
 	std::multiset<BfClosureCapturedEntry> capturedEntries;
 	
-	//
+	//	
 	{
 		auto varMethodState = declMethodState;
 
@@ -21582,6 +21581,12 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 				auto localVar = varMethodState->mLocals[localIdx];
 				if ((localVar->mReadFromId >= closureState.mCaptureStartAccessId) || (localVar->mWrittenToId >= closureState.mCaptureStartAccessId))
 				{
+					if (!allowCapture)
+					{
+						if ((!localVar->mIsStatic) && (!localVar->mConstValue))
+							continue;
+					}
+
 					if (localVar->mIsThis)
 					{
 						// We can only set mutating if our owning type is mutating
@@ -21602,7 +21607,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 						continue;
 					}
 
-		 			if ((localVar->mConstValue) || (localVar->mResolvedType->IsValuelessType()))
+		 			if ((localVar->mConstValue) || (localVar->mIsStatic) || (localVar->mResolvedType->IsValuelessType()))
 		 			{
 		 				closureState.mConstLocals.push_back(*localVar);
 		 				continue;
