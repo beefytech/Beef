@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Collections;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS || BF_DEBUG_ALLOC
 #define BF_DBG_RUNTIME
 #endif
@@ -8,7 +9,7 @@ namespace System
 	[StaticInitPriority(101)]
 	static class Runtime
 	{
-		const int32 cVersion = 8;
+		const int32 cVersion = 9;
 
 		[CRepr, AlwaysInclude]
 		struct BfDebugMessageData
@@ -125,6 +126,7 @@ namespace System
 			function void (char8* str) mDebugMessageData_SetupProfilerCmd;
 			function void () mDebugMessageData_Fatal;
 			function void () mDebugMessageData_Clear;
+			function int32 (char8* kind, char8* arg1, char8* arg2, int arg3) mCheckErrorHandler;
 
 			static void* Alloc(int size)
 			{
@@ -228,6 +230,22 @@ namespace System
 				BfDebugMessageData.gBfDebugMessageData.Clear();
 			}
 		
+			static int32 CheckErrorHandler(char8* kind, char8* arg1, char8* arg2, int arg3)
+			{
+				Error error = null;
+				switch (StringView(kind))
+				{
+				case "FatalError":
+					error = scope:: FatalError() { mError = new .(arg1) };
+				case "LoadSharedLibrary":
+					error = scope:: LoadSharedLibraryError() { mPath = new .(arg1) };
+				case "GetSharedProcAddress":
+					error = scope:: GetSharedProcAddressError() { mPath = new .(arg1), mProcName = new .(arg2) };	
+				}
+				if (error == null)
+					return 0;
+				return (int32)Runtime.CheckErrorHandlers(error);
+			}
 
 			public void Init() mut
 			{
@@ -247,7 +265,8 @@ namespace System
 				mDebugMessageData_SetupError = => DebugMessageData_SetupError;
 				mDebugMessageData_SetupProfilerCmd = => DebugMessageData_SetupProfilerCmd;
 				mDebugMessageData_Fatal = => DebugMessageData_Fatal;
-				mDebugMessageData_Clear = => DebugMessageData_Clear;			
+				mDebugMessageData_Clear = => DebugMessageData_Clear;
+				mCheckErrorHandler = => CheckErrorHandler;
 			}
 		};
 
@@ -276,7 +295,68 @@ namespace System
 			NoThreadExitWait = 0x10
 		}
 
+		public enum ErrorHandlerResult
+		{
+			ContinueFailure,
+			Ignore,
+		}
+
+		public class Error
+		{
+
+		}
+
+		public class FatalError : Error
+		{
+			public String mError ~ delete _;
+		}
+
+		public class LoadSharedLibraryError : Error
+		{
+			public String mPath ~ delete _;
+		}
+
+		public class GetSharedProcAddressError : Error
+		{
+			public String mPath ~ delete _;
+			public String mProcName ~ delete _;
+		}
+
+		public class AssertError : Error
+		{
+			public enum Kind
+			{
+				Debug,
+				Runtime,
+				Test
+			}
+
+			public Kind mKind;
+			public String mError ~ delete _;
+			public String mFilePath ~ delete _;
+			public int mLineNum;
+
+			public this(Kind kind, String error, String filePath, int lineNum)
+			{
+				mKind = kind;
+				mError = new .(error);
+				mFilePath = new .(filePath);
+				mLineNum = lineNum;
+			}
+		}
+
+		public enum ErrorStage
+		{
+			PreFail,
+			Fail
+		}
+
+		public delegate ErrorHandlerResult ErrorHandler(ErrorStage stage, Error error);
+
 		static RtFlags sExtraFlags;
+		static AllocWrapper<Monitor> sMonitor ~ _.Dispose();
+		static List<ErrorHandler> sErrorHandlers ~ DeleteContainerAndItems!(_);
+		static bool sInsideErrorHandler;
 
 		public static this()
 		{
@@ -317,9 +397,64 @@ namespace System
 		{
 			if (!condition)
 			{
+				if (Runtime.CheckErrorHandlers(scope Runtime.AssertError(.Runtime, error, filePath, line)) == .Ignore)
+					return;
 				String failStr = scope .()..AppendF("Assert failed: {} at line {} in {}", error, line, filePath);
 				Internal.FatalError(failStr, 1);
 			}
+		}
+
+		public static void AddErrorHandler(ErrorHandler handler)
+		{
+			using (sMonitor.Val.Enter())
+			{
+				if (sErrorHandlers == null)
+					sErrorHandlers = new .();
+				sErrorHandlers.Add(handler);
+			}
+		}
+
+		public static Result<void> RemoveErrorHandler(ErrorHandler handler)
+		{
+			using (sMonitor.Val.Enter())
+			{
+				if (sErrorHandlers.Remove(handler))
+					return .Ok;
+			}
+			return .Err;
+		}
+
+		public static ErrorHandlerResult CheckErrorHandlers(Error error)
+		{
+			using (sMonitor.Val.Enter())
+			{
+				if (sInsideErrorHandler)
+					return .ContinueFailure;
+
+				sInsideErrorHandler = true;
+				defer { sInsideErrorHandler = false; }
+
+				for (int pass = 0; pass < 2; pass++)
+				{
+					int idx = (sErrorHandlers?.Count).GetValueOrDefault() - 1;
+					while (idx >= 0)
+					{
+						if (idx < sErrorHandlers.Count)
+						{
+							var handler = sErrorHandlers[idx];
+							var result = handler((pass == 0) ? .PreFail : .Fail, error);
+							if (result == .Ignore)
+							{
+								if (pass == 1)
+									Internal.FatalError("Can only ignore error on prefail");
+								return .Ignore;
+							}
+						}
+						idx--;
+					}
+				}
+			}
+			return .ContinueFailure;
 		}
 	}
 }

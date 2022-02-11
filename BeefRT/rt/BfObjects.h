@@ -3,7 +3,7 @@
 #include "BeefySysLib/Common.h"
 #include "BeefySysLib/util/String.h"
 
-#define BFRT_VERSION 8
+#define BFRT_VERSION 9
 
 #ifdef BFRT_DYNAMIC
 #define BFRT_EXPORT __declspec(dllexport)
@@ -106,7 +106,8 @@ namespace bf
 				void(*DebugMessageData_SetupError)(const char* str, int32 stackWindbackCount);
 				void(*DebugMessageData_SetupProfilerCmd)(const char* str);				
 				void(*DebugMessageData_Fatal)();
-				void(*DebugMessageData_Clear)();				
+				void(*DebugMessageData_Clear)();
+				int(*CheckErrorHandler)(const char* kind, const char* arg1, const char* arg2, intptr arg3);
 			};
 
 		public:

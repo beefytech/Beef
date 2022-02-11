@@ -9,6 +9,8 @@ namespace System.Diagnostics
 		{
 			if (!condition)
 			{
+				if (Runtime.CheckErrorHandlers(scope Runtime.AssertError(.Debug, error, filePath, line)) == .Ignore)
+					return;
 				String failStr = scope .()..AppendF("Assert failed: {} at line {} in {}", error, line, filePath);
 				Internal.FatalError(failStr, 1);
 			}

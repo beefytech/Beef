@@ -19107,7 +19107,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		{
 			BfIRValue dllImportGlobalVar = CreateDllImportGlobalVar(methodInstance, true);
 			methodInstance->mIRFunction = mBfIRBuilder->GetFakeVal();
-			BF_ASSERT(dllImportGlobalVar);
+			BF_ASSERT(dllImportGlobalVar || methodInstance->mHasFailed);
 			mFuncReferences[mCurMethodInstance] = dllImportGlobalVar;
 		}
 			

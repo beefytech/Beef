@@ -214,6 +214,9 @@ static void TestReadCmd(Beefy::String& str);
 
 static void Internal_FatalError(const char* error)
 {
+	if (gBfRtCallbacks.CheckErrorHandler != NULL)
+		gBfRtCallbacks.CheckErrorHandler("FatalError", error, NULL, 0);
+
 	if ((gClientPipe != NULL) && (!gTestBreakOnFailure))
 	{
 		Beefy::String str = ":TestFatal\t";
@@ -532,6 +535,12 @@ void* Internal::LoadSharedLibrary(char* libName)
     void* libHandle = BfpDynLib_Load(libName);
 	if (libHandle == NULL)
 	{
+		if (gBfRtCallbacks.CheckErrorHandler != NULL)
+		{
+			if (gBfRtCallbacks.CheckErrorHandler("LoadSharedLibrary", libName, NULL, 0) == 1)
+				return NULL;
+		}
+
 		Beefy::String errorStr = StrFormat("Failed to load shared library: %s", libName);
 		SETUP_ERROR(errorStr.c_str(), 1);
 		BF_DEBUG_BREAK();
@@ -557,6 +566,12 @@ void* Internal::GetSharedProcAddress(void* libHandle, char* procName)
         char libFileName[4096];
         int libFileNameLen = 4096;
         BfpDynLib_GetFilePath((BfpDynLib*)libHandle, libFileName, &libFileNameLen, NULL);
+
+		if (gBfRtCallbacks.CheckErrorHandler != NULL)
+		{
+			if (gBfRtCallbacks.CheckErrorHandler("GetSharedProcAddress", libFileName, procName, 0) == 1)
+				return NULL;
+		}
 
 		Beefy::String errorStr = StrFormat("Failed to load shared procedure '%s' from '%s'", procName, libFileName);
 		SETUP_ERROR(errorStr.c_str(), 1);
