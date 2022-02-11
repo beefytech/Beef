@@ -22,29 +22,29 @@ namespace Tests
 			[Bitfield<uint8>(.Public, .BitsRev(8), "F")]
 			[Bitfield<uint8>(.Public, .ValueRangeRev(0..<256), "G")]
 			[Bitfield<uint8>(.Public, .BitsAt(8, 0), "H")]
-			public int32 mVal2;
+			public static int32 sVal2;
 		}
 
 		[Test]
 		static void TestBasics()
 		{
-			Test.Assert(sizeof(StructA) == 8);
+			Test.Assert(sizeof(StructA) == 4);
 			StructA sa = .();
 			sa.A = 0x12;
 			sa.B = 7;
 			sa.C = .C;
 			sa.D = 9;
-			sa.E = 0x22;
-			sa.F = 0x33;
-			sa.G = 0x44;
-			sa.H = 0x55;
+			StructA.E = 0x22;
+			StructA.F = 0x33;
+			StructA.G = 0x44;
+			StructA.H = 0x55;
 			Test.Assert(sa.A == 0x12);
 			Test.Assert(sa.B == 7);
 			Test.Assert(sa.C == .C);
 			Test.Assert(sa.D == 9);
 
 			Test.Assert(sa.mVal == 0x0025FF12);
-			Test.Assert(sa.mVal2 == 0x22334455);
+			Test.Assert(StructA.sVal2 == 0x22334455);
 		}
 	}
 }

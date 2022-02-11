@@ -147,6 +147,9 @@ namespace System
 				str.Append("public ");
 			else if (mProtection == .Protected)
 				str.Append("protected ");
+			if (fieldInfo.IsStatic)
+				str.Append("static ");
+			bool wantsMut = fieldInfo.Owner.IsStruct && !fieldInfo.IsStatic;
 
 			void TypeStr(String str, Type t)
 			{
@@ -205,14 +208,14 @@ namespace System
 					{
 						if (pass == 0)
 						{
-							str.AppendF($"\t[Inline]\n\tset{(fieldInfo.Owner.IsStruct ? " mut" : "")}\n\t{{\n");
+							str.AppendF($"\t[Inline]\n\tset{(wantsMut ? " mut" : "")}\n\t{{\n");
 						}
 						else
 							break;
 					}
 					else
 					{
-						str.AppendF($"\t[Inline, {((pass == 0) ? "Checked" : "Unchecked")}]\n\tset{(fieldInfo.Owner.IsStruct ? " mut" : "")}\n\t{{\n");
+						str.AppendF($"\t[Inline, {((pass == 0) ? "Checked" : "Unchecked")}]\n\tset{(wantsMut ? " mut" : "")}\n\t{{\n");
 						if ((pass == 0) && (rangeCheckMin) && (rangeCheckMax))
 							str.AppendF($"\t\tRuntime.Assert((value >= {minVal}) && (value <= {maxVal}));\n");
 						else if ((pass == 0) && (rangeCheckMin))
