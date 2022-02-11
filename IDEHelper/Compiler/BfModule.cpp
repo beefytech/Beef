@@ -3777,6 +3777,12 @@ BfInternalAccessSet* BfModule::GetInternalAccessSet()
 
 bool BfModule::CheckInternalProtection(BfTypeDef* usingTypeDef)
 {
+	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsSpecializedType()))
+		return true;
+	if ((mCurMethodInstance != NULL) && 
+		((mCurMethodInstance->mIsUnspecializedVariation) || (mCurMethodInstance->IsSpecializedGenericMethod())))
+		return true;
+
 	auto internalAccessSet = GetInternalAccessSet();
 	if (internalAccessSet == NULL)
 		return false;
@@ -22289,8 +22295,13 @@ void BfModule::StartMethodDeclaration(BfMethodInstance* methodInstance, BfMethod
 	if (methodInstance->mIsUnspecializedVariation)
 		BF_ASSERT(methodInstance->mIsUnspecialized);
 
+	//TODO: Why did we do this?
 	if (methodDef->mMethodType == BfMethodType_Mixin)
+	{
+		if (methodInstance->IsSpecializedGenericMethod())
+			methodInstance->mIsUnspecializedVariation = true;
 		methodInstance->mIsUnspecialized = true;
+	}
 }
 
 // methodDeclaration is NULL for default constructors

@@ -6570,7 +6570,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		BF_ASSERT(mIsModuleMutable || mReifyQueued);
 	}
 
-	BF_ASSERT(mBfIRBuilder != NULL);
+	BF_ASSERT((mBfIRBuilder != NULL) || (!methodInstance->mIsReified));
 
 	BfLogSysM("Adding to mMethodWorkList Module: %p IncompleteMethodCount: %d Type %p MethodInstance: %p Name:%s TypeRevision: %d ModuleRevision: %d ReqId:%d\n", this, mIncompleteMethodCount, typeInstance, methodInstance, methodInstance->mMethodDef->mName.c_str(), methodProcessRequest->mRevision, methodProcessRequest->mFromModuleRevision, methodProcessRequest->mReqId);
 
