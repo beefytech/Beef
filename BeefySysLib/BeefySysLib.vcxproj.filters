@@ -1105,6 +1105,9 @@
     <ClInclude Include="util\Compress.h">
       <Filter>src\util</Filter>
     </ClInclude>
+    <ClInclude Include="util\BitSet.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">

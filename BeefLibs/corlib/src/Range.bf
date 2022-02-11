@@ -24,6 +24,16 @@ namespace System
 				offset.ToString(strBuffer);
 			}
 		}
+
+		[Inline]
+		public int Get(int size)
+		{
+			switch (this)
+			{
+			case .FromFront(let offset): return offset;
+			case .FromEnd(let offset): return size - offset;
+			}
+		}
 	}
 
 	struct Range : RangeExpression, IEnumerable<int>
@@ -309,6 +319,14 @@ namespace System
 			else
 				strBuffer.Append("..<");
 			mEnd.ToString(strBuffer);
+		}
+
+		public int GetLength(int size)
+		{
+			int length = mEnd.Get(size) - mStart.Get(size);
+			if (mIsClosed)
+				length++;
+			return length;
 		}
 	}
 

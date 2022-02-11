@@ -216,12 +216,7 @@ namespace System.Collections
 			[Checked]
 			get
 			{
-				int idx;
-				switch (index)
-				{
-				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mSize - offset;
-				}
+				int idx = index.Get(mSize);
 				Runtime.Assert((uint)idx < (uint)mSize);
 				return ref mItems[idx];
 			}
@@ -229,24 +224,13 @@ namespace System.Collections
 			[Unchecked, Inline]
 			get
 			{
-				int idx;
-				switch (index)
-				{
-				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mSize - offset;
-				}
-				return ref mItems[idx];
+				return ref mItems[index.Get(mSize)];
 			}
 
 			[Checked]
 			set
 			{
-				int idx;
-				switch (index)
-				{
-				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mSize - offset;
-				}
+				int idx = index.Get(mSize);
 				Runtime.Assert((uint)idx < (uint)mSize);
 				mItems[idx] = value;
 #if VERSION_LIST
@@ -257,13 +241,7 @@ namespace System.Collections
 			[Unchecked, Inline]
 			set
 			{
-				int idx;
-				switch (index)
-				{
-				case .FromFront(let offset): idx = offset;
-				case .FromEnd(let offset): idx = mSize - offset;
-				}
-				mItems[idx] = value;
+				mItems[index.Get(mSize)] = value;
 #if VERSION_LIST
 				mVersion++;
 #endif
