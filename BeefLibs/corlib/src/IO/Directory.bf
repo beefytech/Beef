@@ -193,7 +193,8 @@ namespace System.IO
 		public void GetFilePath(String outPath)
 		{
 			Path.GetDirectoryPath(mSearchStr, outPath);
-			outPath.Append(Path.DirectorySeparatorChar);
+			if (!outPath.IsEmpty)
+				outPath.Append(Path.DirectorySeparatorChar);
 			GetFileName(outPath);
 		}
 
