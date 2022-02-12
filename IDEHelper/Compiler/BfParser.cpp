@@ -3355,6 +3355,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 	int startParseBlockIdx = gParseBlockIdx;
 
 	bool isAsmBlock = false;
+	bool isTernary = false;
 
 	SizedArray<BfAstNode*, 32> childArr;	
 
@@ -3453,7 +3454,34 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 
 			if ((isInterpolate) && (parenDepth == 0))
 			{
-				if ((mToken == BfToken_Colon) || (mToken == BfToken_Comma))
+				if (mToken == BfToken_Question)
+					isTernary = true;
+
+				bool endNow = false;
+				if (mToken == BfToken_Colon)
+				{	
+					endNow = true;
+					if (!childArr.IsEmpty())
+					{
+						if (auto prevToken = BfNodeDynCast<BfTokenNode>(childArr.back()))
+						{
+							if ((prevToken->mToken == BfToken_Scope) || (prevToken->mToken == BfToken_New) || (prevToken->mToken == BfToken_Bang) ||
+								(prevToken->mToken == BfToken_Colon))
+								endNow = false;
+						}
+					}
+
+					if ((endNow) && (isTernary))
+					{
+						isTernary = false;
+						endNow = false;
+					}
+				}
+
+				if (mToken == BfToken_Comma)
+					endNow = true;
+					
+				if (endNow)
 				{
 					mSrcIdx = mTokenStart;
 					break;
@@ -3461,7 +3489,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 			}
 
 			astNode->Add(childNode);			
-			childArr.push_back(childNode);
+			childArr.Add(childNode);
 
 			if ((mSyntaxToken == BfSyntaxToken_Token) && (mToken == BfToken_RBrace))
 				break;

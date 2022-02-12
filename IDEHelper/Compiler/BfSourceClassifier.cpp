@@ -406,6 +406,7 @@ void BfSourceClassifier::Visit(BfStringInterpolationExpression* stringInterpolat
 	VisitChild(stringInterpolationExpression->mAllocNode);	
 	for (auto& expr : stringInterpolationExpression->mExpressions)
 	{
+		SetElementType(expr, BfSourceElementType_Normal);
 		VisitChild(expr);
 	}
 }
