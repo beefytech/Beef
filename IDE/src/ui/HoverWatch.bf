@@ -1543,10 +1543,10 @@ namespace IDE.ui
 
         public bool Show(TextPanel textPanel, float x, float y, String displayString, String evalString)
         {
-			if ((mIsShown) && (evalString.StartsWith(':')))
+			if ((mIsShown) && (mListView != null) && (evalString.StartsWith(':')))
 			{
 				var listItem = mListView.GetRoot().GetChildAtIndex(0) as HoverListViewItem;
-				bool isLiteral = listItem.Label == listItem.GetSubItem(1).Label;
+				bool isLiteral = (listItem.Label == listItem.GetSubItem(1).Label) || (listItem.Label == "");
 
 				StringView useStr = evalString.Substring(1);
 				int crPos = useStr.IndexOf('\n');
