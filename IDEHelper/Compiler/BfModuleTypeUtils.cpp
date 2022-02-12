@@ -2607,7 +2607,7 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 			GetConstValue((int64)methodInstance, GetPrimitiveType(BfTypeCode_Int64)), // mNativeMethodInstance
 
 		};
-		FixConstValueParams(methodInfoType->ToTypeInstance(), methodData);
+		FixConstValueParams(methodInfoType->ToTypeInstance(), methodData, true);
 		auto fieldDataAgg = mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(methodInfoType, BfIRPopulateType_Identity), methodData);
 		args.Add(fieldDataAgg);
 
