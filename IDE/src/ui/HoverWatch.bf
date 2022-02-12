@@ -1545,7 +1545,24 @@ namespace IDE.ui
         {
 			if ((mIsShown) && (evalString.StartsWith(':')))
 			{
-				mDisplayString.Set(evalString.Substring(1));
+				var listItem = mListView.GetRoot().GetChildAtIndex(0) as HoverListViewItem;
+				bool isLiteral = listItem.Label == listItem.GetSubItem(1).Label;
+
+				StringView useStr = evalString.Substring(1);
+				int crPos = useStr.IndexOf('\n');
+				if (crPos != -1)
+					useStr.RemoveToEnd(crPos);
+				crPos = useStr.IndexOf('\r');
+				if (crPos != -1)
+					useStr.RemoveFromStart(crPos + 1);
+				if (isLiteral)
+					mDisplayString.Set(useStr);
+				else
+				{
+					mDisplayString.Append('\n');
+					mDisplayString.Append(useStr);
+				}
+				
 				Rehup();
 				return true;
 			}

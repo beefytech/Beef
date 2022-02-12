@@ -5052,7 +5052,9 @@ namespace IDE.ui
 					if ((mHoverResolveTask == null) &&
 						((debugExpr == null) || (!debugExpr.StartsWith(':'))))
 					{
-						if ((!handlingHoverResolveTask) && (ResolveCompiler != null) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning) && (gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic))
+
+						if (((!gApp.mDebugger.mIsRunning) || (!mHoverWatch.mIsShown)) && // Don't show extended information for debug watches
+							(!handlingHoverResolveTask) && (ResolveCompiler != null) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning) && (gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic))
 						{
 							ResolveParams resolveParams = new .();
 							resolveParams.mOverrideCursorPos = (int32)textIdx;
