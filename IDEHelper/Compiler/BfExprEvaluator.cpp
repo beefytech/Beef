@@ -2282,6 +2282,22 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			}
 		}
 
+		if (externType->IsGenericParam())
+		{
+			auto genericParamType = (BfGenericParamType*)externType;
+			if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
+			{
+				auto genericArg = (*genericArgumentsSubstitute)[genericParamType->mGenericParamIdx];
+				if (genericArg == NULL)
+				{
+					if (allowEmptyGenericSet.Contains(genericParamType->mGenericParamIdx))
+						continue;
+					goto NoMatch;
+				}
+				externType = genericArg;
+			}
+		}
+
  		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), externType, NULL, genericParam, externGenericArgumentsSubstitute, NULL))
  			goto NoMatch;
 	}

@@ -8451,6 +8451,9 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 
 	if (genericParamIdx >= (int)genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.size())
 	{
+		if (genericParamIdx >= genericTypeInst->mGenericTypeInfo->mGenericParams.mSize)
+			FatalError("Invalid GetGenericTypeParamInstance");
+
 		// Extern constraints should always be directly used - they don't get extended
 		return genericTypeInst->mGenericTypeInfo->mGenericParams[genericParamIdx];
 	}
@@ -8473,7 +8476,7 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 			{
 				if ((mCompiler->mResolvePassData == NULL) || (mCompiler->mResolvePassData->mAutoComplete == NULL))
 				{
-					BFMODULE_FATAL(this, "Invalid GetGenericParamInstance with extension");
+					FatalError("Invalid GetGenericParamInstance with extension");
 				}
 			}
 		}
@@ -8562,7 +8565,12 @@ BfGenericParamInstance* BfModule::GetMergedGenericParamData(BfGenericParamType* 
 BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* type)
 {
 	if (type->mGenericParamKind == BfGenericParamKind_Method)
-	{		
+	{
+		if ((mCurMethodInstance->mMethodInfoEx == NULL) || (type->mGenericParamIdx >= mCurMethodInstance->mMethodInfoEx->mGenericParams.mSize))
+		{
+			FatalError("Invalid GetGenericParamInstance method generic param");
+			return NULL;
+		}
 		return mCurMethodInstance->mMethodInfoEx->mGenericParams[type->mGenericParamIdx];
 	}
 
