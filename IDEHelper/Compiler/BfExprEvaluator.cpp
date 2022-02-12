@@ -2862,6 +2862,8 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 					auto underlyingType = checkType->GetUnderlyingType();
 					if ((underlyingType != NULL) && (underlyingType->IsWrappableType()))
 						checkTypeInst = mModule->GetWrappedStructType(underlyingType);
+					if (checkTypeInst == checkType)
+						break;
 				}
 			}
 			
