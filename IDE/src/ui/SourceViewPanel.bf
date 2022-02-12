@@ -5043,6 +5043,12 @@ namespace IDE.ui
 							didShow = mHoverWatch.Show(this, x, y, origDebugExpr ?? debugExpr, debugExpr);
 					}
 
+					if ((handlingHoverResolveTask) && (mHoverWatch.mIsShown))
+					{
+						// Keep existing content
+						didShow = true;
+					}
+
 					if ((mHoverResolveTask == null) &&
 						((debugExpr == null) || (!debugExpr.StartsWith(':'))))
 					{
@@ -5174,7 +5180,7 @@ namespace IDE.ui
 							if (debugExpr != null)
 	                        	mHoverWatch.mEvalString.Set(debugExpr); // Set to old debugStr for comparison
 	                    }
-	                    else
+						else
 	                        triedShow = false;
 	                }
 	            }
