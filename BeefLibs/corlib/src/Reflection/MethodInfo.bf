@@ -860,6 +860,8 @@ namespace System.Reflection
 
 						bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (info.mMethodFlags.HasFlag(.Static)));
 						matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!info.mMethodFlags.HasFlag(.Static)));
+						matches |= (mBindingFlags.HasFlag(BindingFlags.Public) && (info.mMethodFlags.HasFlag(.Public)));
+						matches |= (mBindingFlags.HasFlag(BindingFlags.NonPublic) && (!info.mMethodFlags.HasFlag(.Public)));
 						if (matches)
 							break;
 					}
@@ -882,6 +884,8 @@ namespace System.Reflection
 						var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
 						bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (methodData.mFlags.HasFlag(.Static)));
 						matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!methodData.mFlags.HasFlag(.Static)));
+						matches |= (mBindingFlags.HasFlag(BindingFlags.Public) && (methodData.mFlags.HasFlag(.Public)));
+						matches |= (mBindingFlags.HasFlag(BindingFlags.NonPublic) && (!methodData.mFlags.HasFlag(.Public)));
 						if (matches)
 							break;
 					}
