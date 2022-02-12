@@ -15732,6 +15732,21 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	if (scopedInvocationTarget != NULL)
 		targetNameNode = scopedInvocationTarget->mTarget;
 
+	while (true)
+	{
+		if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(targetNameNode))
+		{
+			targetNameNode = qualifiedNameNode->mRight;
+			continue;
+		}
+		if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(targetNameNode))
+		{
+			targetNameNode = memberRefExpr->mMemberName;
+			continue;
+		}
+		break;
+	}
+
 	BfTypeInstance* mixinClass = NULL;
 	if (target.mType != NULL)
 		mixinClass = target.mType->ToTypeInstance();
