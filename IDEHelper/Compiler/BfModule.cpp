@@ -5416,9 +5416,17 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 		if (fieldInstance->mConstIdx != -1)
 		{
 			auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-			constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, constant->mUInt64);
+			uint64 val = constant->mUInt64;
+
+			if (constant->mTypeCode == BfTypeCode_Float)
+			{
+				float f = (float)*(double*)&val;
+				val = *(uint32*)&f;
+			}
+
+			constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, val);
 			if (is32Bit)
-				constValue2 = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, constant->mUInt64 >> 32);
+				constValue2 = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, val >> 32);
 		}
 	}
 	else if (fieldInstance->GetFieldDef()->mIsStatic)
