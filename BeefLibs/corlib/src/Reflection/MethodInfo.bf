@@ -9,49 +9,101 @@ namespace System.Reflection
 	[CRepr, AlwaysInclude]
 	public struct MethodInfo
 	{
+		[Union]
+		struct Data
+		{
+			public TypeInstance.MethodData* mMethodData;
+			public int64 mComptimeMethodInstance;
+		}
+
 		TypeInstance mTypeInstance;
-		TypeInstance.MethodData* mMethodData;
+		Data mData;
 
 		public this(TypeInstance typeInstance, TypeInstance.MethodData* methodData)
 		{
 		    mTypeInstance = typeInstance;
-		    mMethodData = methodData;
+		    mData.mMethodData = methodData;
+		}
+
+		public this(TypeInstance typeInstance, int64 comptimeMethodInstance)
+		{
+			mTypeInstance = typeInstance;
+			mData.mMethodData = null;
+			mData.mComptimeMethodInstance = comptimeMethodInstance;
 		}
 
 		public TypeInstance DeclaringType => mTypeInstance;
-		public bool IsInitialized => mMethodData != null;
-		public StringView Name => mMethodData.[Friend]mName;
-		public int ParamCount => mMethodData.[Friend]mParamCount;
-		public bool IsConstructor => mMethodData.mName === "__BfCtor" || mMethodData.mName === "__BfStaticCtor";
-		public bool IsDestructor => mMethodData.mName === "__BfStaticDtor" || mMethodData.mName === "__BfStaticDtor";
-		public Type ReturnType => Type.[Friend]GetType(mMethodData.mReturnType);
+
+		public bool IsInitialized => Compiler.IsComptime ?
+			(mData.mComptimeMethodInstance != 0) :
+			(mData.mMethodData != null);
+
+		public StringView Name => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetName(mData.mComptimeMethodInstance) :
+			mData.mMethodData.[Friend]mName;
+
+		public int ParamCount => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mParamCount :
+			mData.mMethodData.[Friend]mParamCount;
+
+		public bool IsConstructor => Compiler.IsComptime ?
+			(Name == "__BfCtor" || Name == "__BfStaticCtor") :
+			(mData.mMethodData.mName === "__BfCtor" || mData.mMethodData.mName === "__BfStaticCtor");
+
+		public bool IsDestructor => Compiler.IsComptime ?
+			(Name == "__BfDtor" || Name == "__BfStaticDtor") :
+			(mData.mMethodData.mName === "__BfDtor" || mData.mMethodData.mName === "__BfStaticDtor");
+
+		public Type ReturnType => Compiler.IsComptime ?
+			Type.[Friend]GetType((.)Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mReturnTypeId) :
+			Type.[Friend]GetType(mData.mMethodData.mReturnType);
 		
 		public Type GetParamType(int paramIdx)
 		{
-			Debug.Assert((uint)paramIdx < (uint)mMethodData.mParamCount);
-			return Type.[Friend]GetType(mMethodData.mParamData[paramIdx].mType);
+			if (Compiler.IsComptime)
+			{
+				return Type.[Friend]GetType((.)Type.[Friend]Comptime_Method_GetParamInfo(mData.mComptimeMethodInstance, (.)paramIdx).mParamTypeId);
+			}
+			else
+			{
+				Debug.Assert((uint)paramIdx < (uint)mData.mMethodData.mParamCount);
+				return Type.[Friend]GetType(mData.mMethodData.mParamData[paramIdx].mType);
+			}
 		}
 
 		public StringView GetParamName(int paramIdx)
 		{
-			Debug.Assert((uint)paramIdx < (uint)mMethodData.mParamCount);
-			return mMethodData.mParamData[paramIdx].mName;
+			if (Compiler.IsComptime)
+			{
+				return Type.[Friend]Comptime_Method_GetParamInfo(mData.mComptimeMethodInstance, (.)paramIdx).mName;
+			}
+			else
+			{
+				Debug.Assert((uint)paramIdx < (uint)mData.mMethodData.mParamCount);
+				return mData.mMethodData.mParamData[paramIdx].mName;
+			}
 		}
 
 		public Result<T> GetParamCustomAttribute<T>(int paramIdx) where T : Attribute
 		{
-			Debug.Assert((uint)paramIdx < (uint)mMethodData.mParamCount);
-			return mTypeInstance.[Friend]GetCustomAttribute<T>(mMethodData.mParamData[paramIdx].mCustomAttributesIdx);
+			if (Compiler.IsComptime)
+				return .Err;
+			Debug.Assert((uint)paramIdx < (uint)mData.mMethodData.mParamCount);
+			return mTypeInstance.[Friend]GetCustomAttribute<T>(mData.mMethodData.mParamData[paramIdx].mCustomAttributesIdx);
 		}
 
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
-			return mTypeInstance.[Friend]GetCustomAttribute<T>(mMethodData.mCustomAttributesIdx);
+			if (Compiler.IsComptime)
+				return .Err;
+			return mTypeInstance.[Friend]GetCustomAttribute<T>(mData.mMethodData.mCustomAttributesIdx);
 		}
 
 		public Result<T> GetReturnCustomAttribute<T>() where T : Attribute
 		{
-			return mTypeInstance.[Friend]GetCustomAttribute<T>(mMethodData.mReturnCustomAttributesIdx);
+			if (Compiler.IsComptime)
+				return .Err;
+			return mTypeInstance.[Friend]GetCustomAttribute<T>(mData.mMethodData.mReturnCustomAttributesIdx);
 		}
 
 		public enum CallError
@@ -67,13 +119,15 @@ namespace System.Reflection
 
 		public Result<Variant, CallError> Invoke(Variant target, params Span<Variant> args)
 		{
-			var retType = Type.[Friend]GetType(mMethodData.mReturnType);
+			if (Compiler.IsComptime)
+				return .Err(.InvalidTarget);
+			var retType = Type.[Friend]GetType(mData.mMethodData.mReturnType);
 
 			FFIABI abi = .Default;
 #if BF_PLATFORM_WINDOWS && BF_32_BIT
-			if (mMethodData.mFlags.HasFlag(.ThisCall))
+			if (mData.mMethodData.mFlags.HasFlag(.ThisCall))
 				abi = .ThisCall;
-			else if (!mMethodData.mFlags.HasFlag(.Static))
+			else if (!mData.mMethodData.mFlags.HasFlag(.Static))
 				abi = .StdCall;
 #endif
 
@@ -265,7 +319,7 @@ namespace System.Reflection
 
 			void* funcPtr = null;
 			int ifaceOffset = -1;
-			if (mMethodData.mFlags.HasFlag(.Static))
+			if (mData.mMethodData.mFlags.HasFlag(.Static))
 			{
 				if (target.HasValue)
 					return .Err(.TargetNotExpected);
@@ -310,7 +364,7 @@ namespace System.Reflection
 						if (interfaceData == null)
 							return .Err(.InvalidTarget);
 
-						int ifaceMethodIdx = interfaceData.mStartInterfaceTableIdx + mMethodData.mMethodIdx;
+						int ifaceMethodIdx = interfaceData.mStartInterfaceTableIdx + mData.mMethodData.mMethodIdx;
 						if (ifaceMethodIdx >= thisType.[Friend]mInterfaceMethodCount)
 							return .Err(.InvalidTarget);
 						funcPtr = *(thisType.[Friend]mInterfaceMethodTable + ifaceMethodIdx);
@@ -319,7 +373,7 @@ namespace System.Reflection
 					ifaceOffset = mTypeInstance.[Friend]mMemberDataOffset;
 				}
 
-				bool splatThis = thisType.IsSplattable && !mMethodData.mFlags.HasFlag(.Mutating);
+				bool splatThis = thisType.IsSplattable && !mData.mMethodData.mFlags.HasFlag(.Mutating);
 #if BF_PLATFORM_WINDOWS && BF_32_BIT
 				if ((mTypeInstance.IsInterface) && (splatThis))
 					abi = .MS_CDecl;
@@ -327,7 +381,7 @@ namespace System.Reflection
 				AddArg!::(-1, ref target, &target.[Friend]mData, thisType, splatThis);
 			}
 
-			if (args.Length != mMethodData.mParamCount)
+			if (args.Length != mData.mMethodData.mParamCount)
 				return .Err(.ParamCountMismatch);
 
 			var variantData = Variant.Alloc(retType, var retVal);
@@ -348,7 +402,7 @@ namespace System.Reflection
 
 			for (var arg in ref args)
 			{
-				let paramData = ref mMethodData.mParamData[@arg.Index];
+				let paramData = ref mData.mMethodData.mParamData[@arg.Index];
 				let argType = Type.[Friend]GetType(paramData.mType);
 				AddArg!::(@arg.Index, ref arg, &arg.[Friend]mData, argType, paramData.mParamFlags.HasFlag(.Splat));
 			}
@@ -367,8 +421,8 @@ namespace System.Reflection
 
 			if (funcPtr == null)
 			{
-				funcPtr = mMethodData.mFuncPtr;
-				if (mMethodData.mFlags.HasFlag(.Virtual))
+				funcPtr = mData.mMethodData.mFuncPtr;
+				if (mData.mMethodData.mFlags.HasFlag(.Virtual))
 				{
 					Object objTarget = target.Get<Object>();
 	
@@ -380,16 +434,16 @@ namespace System.Reflection
 					if (ifaceOffset >= 0)
 					{
 						void* ifaceVirtualTable = *(void**)((uint8*)classVData + ifaceOffset);
-						funcPtr = (void*)*(int*)((uint8*)ifaceVirtualTable + mMethodData.mVirtualIdx);
+						funcPtr = (void*)*(int*)((uint8*)ifaceVirtualTable + mData.mMethodData.mVirtualIdx);
 					}
-					else if (mMethodData.mVirtualIdx >= 0x100000)
+					else if (mData.mMethodData.mVirtualIdx >= 0x100000)
 					{
-						void* extAddr = (void*)*((int*)classVData + ((mMethodData.mVirtualIdx>>20) - 1));
-						funcPtr = (void*)*((int*)extAddr + (mMethodData.mVirtualIdx & 0xFFFFF));
+						void* extAddr = (void*)*((int*)classVData + ((mData.mMethodData.mVirtualIdx>>20) - 1));
+						funcPtr = (void*)*((int*)extAddr + (mData.mMethodData.mVirtualIdx & 0xFFFFF));
 					}
 					else
 					{
-						funcPtr = (void*)*(int*)((uint8*)classVData + mMethodData.mVirtualIdx);
+						funcPtr = (void*)*(int*)((uint8*)classVData + mData.mMethodData.mVirtualIdx);
 					}
 				}
 			}
@@ -407,13 +461,15 @@ namespace System.Reflection
 
 		public Result<Variant, CallError> Invoke(Object target, params Object[] args)
 		{
-			var retType = Type.[Friend]GetType(mMethodData.mReturnType);
+			if (Compiler.IsComptime)
+				return .Err(.InvalidTarget);
+			var retType = Type.[Friend]GetType(mData.mMethodData.mReturnType);
 
 			FFIABI abi = .Default;
 #if BF_PLATFORM_WINDOWS && BF_32_BIT
-			if (mMethodData.mFlags.HasFlag(.ThisCall))
+			if (mData.mMethodData.mFlags.HasFlag(.ThisCall))
 				abi = .ThisCall;
-			else if (!mMethodData.mFlags.HasFlag(.Static))
+			else if (!mData.mMethodData.mFlags.HasFlag(.Static))
 				abi = .StdCall;
 #endif
 
@@ -619,10 +675,10 @@ namespace System.Reflection
 				}
 			}
 
-			void* funcPtr = mMethodData.mFuncPtr;
+			void* funcPtr = mData.mMethodData.mFuncPtr;
 			int virtualOffset = 0;
 			int ifaceOffset = -1;
-			if (mMethodData.mFlags.HasFlag(.Static))
+			if (mData.mMethodData.mFlags.HasFlag(.Static))
 			{
 				if (target != null)
 					return .Err(.TargetNotExpected);
@@ -662,11 +718,11 @@ namespace System.Reflection
 					virtualOffset = interfaceData.mStartVirtualIdx * sizeof(int);*/
 				}
 
-				bool splatThis = thisType.IsSplattable && !mMethodData.mFlags.HasFlag(.Mutating);
+				bool splatThis = thisType.IsSplattable && !mData.mMethodData.mFlags.HasFlag(.Mutating);
 				AddArg!::(-1, target, &target, thisType, splatThis);
 			}
 
-			if (args.Count != mMethodData.mParamCount)
+			if (args.Count != mData.mMethodData.mParamCount)
 				return .Err(.ParamCountMismatch);
 
 			var variantData = Variant.Alloc(retType, var retVal);
@@ -687,7 +743,7 @@ namespace System.Reflection
 
 			for (var arg in ref args)
 			{
-				let paramData = ref mMethodData.mParamData[@arg];
+				let paramData = ref mData.mMethodData.mParamData[@arg];
 				let argType = Type.[Friend]GetType(paramData.mType);
 				AddArg!::(@arg, arg, &arg, argType, paramData.mParamFlags.HasFlag(.Splat));
 			}
@@ -704,7 +760,7 @@ namespace System.Reflection
 					return .Err(.FFIError);
 			}
 
-			if (mMethodData.mFlags.HasFlag(.Virtual))
+			if (mData.mMethodData.mFlags.HasFlag(.Virtual))
 			{
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 				void* classVData = (void*)(target.[Friend]mClassVData & ~0xFF);
@@ -714,16 +770,16 @@ namespace System.Reflection
 				if (ifaceOffset >= 0)
 				{
 					void* ifaceVirtualTable = *(void**)((uint8*)classVData + ifaceOffset);
-					funcPtr = (void*)*(int*)((uint8*)ifaceVirtualTable + mMethodData.mVirtualIdx + virtualOffset);
+					funcPtr = (void*)*(int*)((uint8*)ifaceVirtualTable + mData.mMethodData.mVirtualIdx + virtualOffset);
 				}
-				else if (mMethodData.mVirtualIdx >= 0x100000)
+				else if (mData.mMethodData.mVirtualIdx >= 0x100000)
 				{
-					void* extAddr = (void*)*((int*)classVData + ((mMethodData.mVirtualIdx>>20) - 1));
-					funcPtr = (void*)*((int*)extAddr + (mMethodData.mVirtualIdx & 0xFFFFF) + virtualOffset);
+					void* extAddr = (void*)*((int*)classVData + ((mData.mMethodData.mVirtualIdx>>20) - 1));
+					funcPtr = (void*)*((int*)extAddr + (mData.mMethodData.mVirtualIdx & 0xFFFFF) + virtualOffset);
 				}
 				else
 				{
-					funcPtr = (void*)*(int*)((uint8*)classVData + mMethodData.mVirtualIdx + virtualOffset);
+					funcPtr = (void*)*(int*)((uint8*)classVData + mData.mMethodData.mVirtualIdx + virtualOffset);
 				}
 			}
 
@@ -740,16 +796,23 @@ namespace System.Reflection
 
 		public override void ToString(String strBuffer)
 		{
-			let retType = Type.[Friend]GetType(mMethodData.mReturnType);
+			if (Compiler.IsComptime)
+			{
+				String str = Type.[Friend]Comptime_Method_ToString(mData.mComptimeMethodInstance);
+				strBuffer.Append(str);
+				return;
+			}
+
+			let retType = Type.[Friend]GetType(mData.mMethodData.mReturnType);
 			retType.ToString(strBuffer);
 			strBuffer.Append(' ');
-			strBuffer.Append(mMethodData.mName);
+			strBuffer.Append(mData.mMethodData.mName);
 			strBuffer.Append('(');
-			for (int paramIdx < mMethodData.mParamCount)
+			for (int paramIdx < mData.mMethodData.mParamCount)
 			{
 				if (paramIdx > 0)
 					strBuffer.Append(", ");
-				let paramData = mMethodData.mParamData[paramIdx];
+				let paramData = mData.mMethodData.mParamData[paramIdx];
 				let paramType = Type.[Friend]GetType(paramData.mType);
 				paramType.ToString(strBuffer);
 				strBuffer.Append(' ');
@@ -785,24 +848,43 @@ namespace System.Reflection
 				if (mTypeInstance == null)
 					return false;
 
-				for (;;)
+				if (Compiler.IsComptime)
 				{
-					mIdx++;
-					if (mIdx == mTypeInstance.[Friend]mMethodDataCount)
+					for (;;)
 					{
-						if (mBindingFlags.HasFlag(.DeclaredOnly))
+						mIdx++;
+						int64 nativeMethodHandle = Type.[Friend]Comptime_GetMethod((int32)mTypeInstance.TypeId, mIdx);
+						if (nativeMethodHandle == 0)
 							return false;
-						if (mTypeInstance.[Friend]mBaseType == 0)
-							return false;
-						mTypeInstance = Type.[Friend]GetType(mTypeInstance.[Friend]mBaseType) as TypeInstance;
-						mIdx = -1;
-						continue;
-					}	
-					var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
-					bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (methodData.mFlags.HasFlag(.Static)));
-					matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!methodData.mFlags.HasFlag(.Static)));
-					if (matches)
-						break;
+						let info = Type.[Friend]Comptime_Method_GetInfo(nativeMethodHandle);
+
+						bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (info.mMethodFlags.HasFlag(.Static)));
+						matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!info.mMethodFlags.HasFlag(.Static)));
+						if (matches)
+							break;
+					}
+				}
+				else
+				{
+					for (;;)
+					{
+						mIdx++;
+						if (mIdx == mTypeInstance.[Friend]mMethodDataCount)
+						{
+							if (mBindingFlags.HasFlag(.DeclaredOnly))
+								return false;
+							if (mTypeInstance.[Friend]mBaseType == 0)
+								return false;
+							mTypeInstance = Type.[Friend]GetType(mTypeInstance.[Friend]mBaseType) as TypeInstance;
+							mIdx = -1;
+							continue;
+						}	
+						var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
+						bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (methodData.mFlags.HasFlag(.Static)));
+						matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!methodData.mFlags.HasFlag(.Static)));
+						if (matches)
+							break;
+					}
 				}
 		        return true;
 		    }
@@ -811,8 +893,16 @@ namespace System.Reflection
 		    {
 		        get
 		        {
-					var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
-		            return MethodInfo(mTypeInstance, methodData);
+					if (Compiler.IsComptime)
+					{
+						int64 nativeMethodHandle = Type.[Friend]Comptime_GetMethod((int32)mTypeInstance.TypeId, mIdx);
+						return MethodInfo(mTypeInstance, nativeMethodHandle);
+					}
+					else
+					{
+						var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
+			            return MethodInfo(mTypeInstance, methodData);
+					}
 		        }
 		    }
 
@@ -824,4 +914,7 @@ namespace System.Reflection
 			}
 		}
 	}
+
+	[Obsolete("Use MethodInfo", false)]
+	typealias ComptimeMethodInfo = MethodInfo;
 }

@@ -498,6 +498,32 @@ namespace System
             return (int32)mTypeId;
         }
 
+		[CRepr, Packed]
+		public struct ComptimeMethodData
+		{
+			public int32 mReturnTypeId;
+			public int32 mParamCount;
+			public MethodFlags mMethodFlags;
+			public int32 mMethodIdx;
+		}
+
+		[CRepr, Packed]
+		public struct ComptimeParamInfo
+		{
+			public int32 mParamTypeId;
+			public TypeInstance.ParamFlags mParamFlags;
+			public String mName;
+		}
+
+		[CRepr, Packed]
+		public struct ComptimeFieldInfo
+		{
+			public TypeId mTypeId;
+			public int32 mFieldIdx;
+			public FieldFlags mFlags;
+			public int64 mData;
+		}
+
 		static extern Type Comptime_GetTypeById(int32 typeId);
 		static extern Type Comptime_GetTypeByName(StringView name);
 		static extern String Comptime_Type_ToString(int32 typeId);
@@ -507,9 +533,11 @@ namespace System
 		static extern int64 Comptime_GetMethod(int32 typeId, int32 methodIdx);
 		static extern String Comptime_Method_ToString(int64 methodHandle);
 		static extern String Comptime_Method_GetName(int64 methodHandle);
+		static extern ComptimeMethodData Comptime_Method_GetInfo(int64 methodHandle);
+		static extern ComptimeParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
+		static extern int64 Comptime_GetField(int32 typeId, int32 fieldIdx);
 		static extern String Comptime_Field_GetName(int64 fieldHandle);
-		static extern ComptimeMethodInfo.Info Comptime_Method_GetInfo(int64 methodHandle);
-		static extern ComptimeMethodInfo.ParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
+		static extern ComptimeFieldInfo Comptime_Field_GetInfo(int64 fieldHandle);
 
         protected static Type GetType(TypeId typeId)
         {
@@ -666,8 +694,6 @@ namespace System
 			}
 		}	
     }
-
-
 
     enum TypeCode : uint8
 	{   

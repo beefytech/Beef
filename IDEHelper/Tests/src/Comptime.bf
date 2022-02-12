@@ -43,7 +43,7 @@ namespace Tests
 			public static String gLog = new .() ~ delete _;
 
 			[Comptime] 
-			public void ApplyToMethod(ComptimeMethodInfo method)
+			public void ApplyToMethod(MethodInfo method)
 			{
 				String emit = scope $"LogAttribute.gLog.AppendF($\"Called {method}";
 				for (var fieldIdx < method.ParamCount)

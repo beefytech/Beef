@@ -16,32 +16,32 @@ namespace System
 		    return MethodInfo.Enumerator(null, bindingFlags);
 		}
 
-		[Comptime]
+		/*[Comptime]
 		public virtual ComptimeMethodInfo.Enumerator GetMethods(BindingFlags bindingFlags = cDefaultLookup)
 		{
 		    return ComptimeMethodInfo.Enumerator(null, bindingFlags);
-		}
+		}*/
 
 		public virtual Result<MethodInfo, MethodError> GetMethod(StringView methodName, BindingFlags bindingFlags = cDefaultLookup)
 		{
 			MethodInfo matched = default;
 			for (let methodInfo in GetMethods(bindingFlags))
 			{
-				if (methodInfo.[Friend]mMethodData.[Friend]mName == methodName)
+				if (methodInfo.[Friend]mData.mMethodData.[Friend]mName == methodName)
 				{
-					if (matched.[Friend]mMethodData != null)
+					if (matched.[Friend]mData.mMethodData != null)
 						return .Err(.MultipleResults);
 					else
 					    matched = methodInfo;
 				}
 			}
 
-			if (matched.[Friend]mMethodData == null)
+			if (matched.[Friend]mData.mMethodData == null)
 				return .Err(.NoResults);
 			return .Ok(matched);
 		}
 
-		[Comptime]
+		/*[Comptime]
 		public virtual Result<ComptimeMethodInfo, MethodError> GetMethod(StringView methodName, BindingFlags bindingFlags = cDefaultLookup)
 		{
 			ComptimeMethodInfo matched = default;
@@ -59,7 +59,7 @@ namespace System
 			if (matched.mNativeMethodInstance == 0)
 				return .Err(.NoResults);
 			return .Ok(matched);
-		}
+		}*/
 
 		public virtual Result<MethodInfo, MethodError> GetMethod(int methodIdx)
 		{
@@ -67,13 +67,13 @@ namespace System
 		}
 
 		[Comptime]
-		public virtual Result<ComptimeMethodInfo, MethodError> GetMethod(int methodIdx)
+		public virtual Result<MethodInfo, MethodError> GetMethod(int methodIdx)
 		{
 			int64 nativeMethod = Comptime_GetMethod((.)TypeId, (.)methodIdx);
 			if (nativeMethod == 0)
 				return .Err(.NoResults);
 
-			return ComptimeMethodInfo(nativeMethod);
+			return MethodInfo(this as TypeInstance, nativeMethod);
 		}
 
 		public virtual Result<Object> CreateObject()
@@ -102,11 +102,11 @@ namespace System.Reflection
 		    return MethodInfo.Enumerator(this, bindingFlags);
 		}
 
-		[Comptime]
+		/*[Comptime]
 		public override ComptimeMethodInfo.Enumerator GetMethods(BindingFlags bindingFlags = cDefaultLookup)
 		{
 		    return ComptimeMethodInfo.Enumerator(this, bindingFlags);
-		}
+		}*/
 
 		public override Result<MethodInfo, MethodError> GetMethod(int methodIdx)
 		{
@@ -144,7 +144,7 @@ namespace System.Reflection
 
 				if (!methodInfo.IsInitialized)
 					return .Err;
-				if ((methodInfo.[Friend]mMethodData.mParamCount != 0) && (!calcAppendMethodInfo.IsInitialized))
+				if ((methodInfo.[Friend]mData.mMethodData.mParamCount != 0) && (!calcAppendMethodInfo.IsInitialized))
 					return .Err;
 			}
 			Object obj;
@@ -152,7 +152,7 @@ namespace System.Reflection
 			let objType = typeof(Object) as TypeInstance;
 
 			int allocSize = mInstSize;
-			bool hasAppendAlloc = (methodInfo.IsInitialized) && (methodInfo.[Friend]mMethodData.mParamCount != 0);
+			bool hasAppendAlloc = (methodInfo.IsInitialized) && (methodInfo.[Friend]mData.mMethodData.mParamCount != 0);
 
 			if (hasAppendAlloc)
 			{

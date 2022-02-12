@@ -3517,6 +3517,18 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 	if (constant->mConstType == BfConstType_Agg)
 	{
+		if (type->IsPointer())
+		{
+			auto elementType = type->GetUnderlyingType();
+			auto toPtr = CeMalloc(elementType->mSize);
+			addr_ce toAddr = (addr_ce)(toPtr - mMemory.mVals);
+			if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+				CE_GETC(int32) = (int32)toAddr;
+			else
+				CE_GETC(int64) = (int64)toAddr;
+			return WriteConstant(module, toAddr, constant, elementType, isParams);
+		}
+
 		auto aggConstant = (BfConstantAgg*)constant;
 		if (type->IsSizedArray())
 		{
@@ -3671,6 +3683,14 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		return WriteConstant(module, addr, constTarget, type);
 	}
 
+	if (constant->mConstType == BfConstType_PtrToInt)
+	{
+		auto ptrToIntConst = (BfConstantPtrToInt*)constant;		
+
+		auto constTarget = module->mBfIRBuilder->GetConstantById(ptrToIntConst->mTarget);
+		return WriteConstant(module, addr, constTarget, type);
+	}
+
 	if (constant->mConstType == BfConstType_BitCastNull)
 	{
 		BF_ASSERT(type->IsPointer() || type->IsObjectOrInterface());
@@ -3764,7 +3784,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 			if (checkConstant->mConstType == BfConstType_AggCE)
 				return WriteConstant(module, addr, checkConstant, type, isParams);
 		}				
-	}
+	}	
 
 	return false;
 }
@@ -5048,11 +5068,10 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 				if ((methodIdx < 0) || (methodIdx >= typeInfo->mMethodInstances.mSize))
 				{
-					_Fail("Method out of bounds");
-					return false;
+					*(int64*)(stackPtr + 0) = 0;
 				}
-
-				*(int64*)(stackPtr + 0) = (int64)(intptr)typeInfo->mMethodInstances[methodIdx];
+				else
+					*(int64*)(stackPtr + 0) = (int64)(intptr)typeInfo->mMethodInstances[methodIdx];
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_ToString)
 			{				
@@ -5087,8 +5106,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				// int32 mReturnType
 				// int32 mParamCount
 				// int16 mFlags
+				// int32 mMethodIdx
 
-				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+4+2);
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+4+2+4);
 				
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
@@ -5099,7 +5119,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				
 				*(int32*)(stackPtr + 0) = methodInstance->mReturnType->mTypeId;
 				*(int32*)(stackPtr + 4) = methodInstance->GetParamCount();
-				*(int16*)(stackPtr + 4+4) = methodInstance->GetMethodFlags();								
+				*(int16*)(stackPtr + 4+4) = methodInstance->GetMethodFlags();
+				*(int32*)(stackPtr + 4+4+2) = methodInstance->mMethodDef->mIdx;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetParamInfo)			
 			{	
@@ -5128,20 +5149,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
 				*(int16*)(stackPtr + 4) = 0; // Flags
 				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);								
-			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetName)
-			{				
-				int64 fieldHandle = *(int64*)((uint8*)stackPtr + ptrSize);
-				
-				auto fieldInstance = mCeMachine->GetFieldInstance(fieldHandle);
-				if (fieldInstance == NULL)
-				{
-					_Fail("Invalid field instance");
-					return false;
-				}
-				
-				CeSetAddrVal(stackPtr + 0, GetString(fieldInstance->GetFieldDef()->mName), ptrSize);
-				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitTypeBody)
 			{
@@ -7996,10 +8003,6 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Method_GetParamInfo")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetParamInfo;
-				}
-				else if (methodDef->mName == "Comptime_Field_GetName")
-				{
-					ceFunction->mFunctionKind = CeFunctionKind_Field_GetName;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mCompilerTypeDef))

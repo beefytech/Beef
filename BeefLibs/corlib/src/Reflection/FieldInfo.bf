@@ -27,6 +27,9 @@ namespace System.Reflection
 		public bool IsStatic => mFieldData.mFlags.HasFlag(.Static);
 		public bool IsInstanceField => !mFieldData.mFlags.HasFlag(.Static) && !mFieldData.mFlags.HasFlag(.Const);
 		public StringView Name => mFieldData.mName;
+		public int32 FieldIdx => Compiler.IsComptime ?
+			mFieldData.mCustomAttributesIdx :
+			-1;
 
 	    public Result<void, Error> SetValue(Object obj, Object value)
 	    {    

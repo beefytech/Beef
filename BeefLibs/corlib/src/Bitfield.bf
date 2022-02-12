@@ -50,7 +50,7 @@ namespace System
 		}
 
 		[Comptime]
-		public void OnFieldInit(ComptimeFieldInfo fieldInfo, Self* prev) mut
+		public void OnFieldInit(FieldInfo fieldInfo, Self* prev) mut
 		{
 			if (mBFieldType == null)
 				mBFieldType = fieldInfo.FieldType;
@@ -149,7 +149,7 @@ namespace System
 				str.Append("protected ");
 			if (fieldInfo.IsStatic)
 				str.Append("static ");
-			bool wantsMut = fieldInfo.Owner.IsStruct && !fieldInfo.IsStatic;
+			bool wantsMut = fieldInfo.DeclaringType.IsStruct && !fieldInfo.IsStatic;
 
 			void TypeStr(String str, Type t)
 			{
@@ -235,7 +235,7 @@ namespace System
 
 			str.Append("}\n");
 
-			Compiler.EmitTypeBody(fieldInfo.Owner, str);
+			Compiler.EmitTypeBody(fieldInfo.DeclaringType, str);
 
 			if (!isRev)
 				mBitPos += bitCount;

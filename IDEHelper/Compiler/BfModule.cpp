@@ -1567,24 +1567,37 @@ BfIRValue BfModule::CreateStringCharPtr(const StringImpl& str, int stringId, boo
 	return mBfIRBuilder->CreateInBoundsGEP(gv, 0, 0);
 }
 
-void BfModule::FixConstValueParams(BfTypeInstance* typeInst, SizedArrayImpl<BfIRValue>& valueParams)
+void BfModule::FixConstValueParams(BfTypeInstance* typeInst, SizedArrayImpl<BfIRValue>& valueParams, bool fillInPadding)
 {
-	if (!typeInst->mTypeDef->mIsCombinedPartial)
+	if ((!typeInst->mTypeDef->mIsCombinedPartial) && (!fillInPadding))
 		return;
 
 	int prevDataIdx = -1;
 	int usedDataIdx = 0;
-	if (typeInst->mBaseType != NULL)
-		usedDataIdx++;
+	int valueParamIdx = 0;
 
+	if (typeInst->mBaseType != NULL)
+	{
+		usedDataIdx++;
+		valueParamIdx++;
+		prevDataIdx++;
+	}
+		
 	int startingParamsSize = (int)valueParams.mSize;
 	for (int fieldIdx = 0; fieldIdx < (int)typeInst->mFieldInstances.size(); fieldIdx++)
 	{
 		auto fieldInstance = &typeInst->mFieldInstances[fieldIdx];
 		if (fieldInstance->mDataIdx < 0)
 			continue;
-
+		
 		BF_ASSERT(fieldInstance->mDataIdx > prevDataIdx);
+		if (fillInPadding)
+		{
+			for (int i = prevDataIdx + 1; i < fieldInstance->mDataIdx; i++)			
+				valueParams.Insert(valueParamIdx++, mBfIRBuilder->CreateConstArrayZero(0));
+		}
+
+		valueParamIdx++;
 		prevDataIdx = fieldInstance->mDataIdx;
 
 		usedDataIdx++;
@@ -5355,6 +5368,123 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 	}	
 }
 
+BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAttrIdx)
+{
+	bool isComptime = mBfIRBuilder->mIgnoreWrites;
+	BfFieldDef* fieldDef = fieldInstance->GetFieldDef();
+
+	auto typeInstance = fieldInstance->mOwner;
+	
+	BfType* intType = GetPrimitiveType(BfTypeCode_Int32);
+	BfType* intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
+	BfType* shortType = GetPrimitiveType(BfTypeCode_Int16);
+	BfType* typeIdType = intType;
+
+	BfTypeInstance* reflectFieldDataType = ResolveTypeDef(mCompiler->mReflectFieldDataDef)->ToTypeInstance();
+	BfIRValue emptyValueType = mBfIRBuilder->mIgnoreWrites ? 
+		mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapTypeInst(reflectFieldDataType->mBaseType), SizedArray<BfIRValue, 1>()) :
+		mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType->mBaseType), SizedArray<BfIRValue, 1>());
+	BfIRValue fieldNameConst = GetStringObjectValue(fieldDef->mName, !mIsComptimeModule);
+	bool is32Bit = mCompiler->mSystem->mPtrSize == 4;
+
+	int typeId = 0;
+	auto fieldType = fieldInstance->GetResolvedType();
+	if (fieldType->IsGenericParam())
+	{
+		//TODO: 
+	}
+	else
+		typeId = fieldType->mTypeId;
+
+	BfFieldFlags fieldFlags = (BfFieldFlags)0;
+
+	if (fieldDef->mProtection == BfProtection_Protected)
+		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Protected);
+	if (fieldDef->mProtection == BfProtection_Public)
+		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Public);
+	if (fieldDef->mIsStatic)
+		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Static);
+	if (fieldDef->mIsConst)
+		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Const);
+	if (fieldDef->IsEnumCaseEntry())
+		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_EnumCase);
+	
+	BfIRValue constValue;
+	BfIRValue constValue2;
+	if (fieldInstance->GetFieldDef()->mIsConst)
+	{
+		if (fieldInstance->mConstIdx != -1)
+		{
+			auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+			constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, constant->mUInt64);
+			if (is32Bit)
+				constValue2 = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, constant->mUInt64 >> 32);
+		}
+	}
+	else if (fieldInstance->GetFieldDef()->mIsStatic)
+	{
+		BfTypedValue refVal;
+		if (!mIsComptimeModule) // This can create circular reference issues for a `Self` static
+			refVal = ReferenceStaticField(fieldInstance);
+		if (refVal.mValue.IsConst())
+		{
+			auto constant = mBfIRBuilder->GetConstant(refVal.mValue);
+			if (constant->mConstType == BfConstType_GlobalVar)
+			{
+				auto globalVar = (BfGlobalVar*)constant;
+				if (globalVar->mName[0] == '#')
+					refVal = BfTypedValue();
+			}
+		}
+
+		if ((refVal.IsAddr()) && (!isComptime))
+			constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
+	}
+
+	if (!constValue)
+		constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, fieldInstance->mDataOffset);
+
+	BfIRValue result;
+	if (is32Bit)
+	{
+		if (!constValue2)
+			constValue2 = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0);
+
+		SizedArray<BfIRValue, 8> fieldVals =
+		{
+			emptyValueType,
+			fieldNameConst, // mName			
+			GetConstValue(typeId, typeIdType), // mFieldTypeId			
+			constValue, // mData
+			constValue2, // mDataHi
+			GetConstValue(fieldFlags, shortType), // mFlags
+			GetConstValue(customAttrIdx, intType), // mCustomAttributesIdx
+		};		
+		FixConstValueParams(reflectFieldDataType, fieldVals, isComptime);
+		result = isComptime ?
+			mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapTypeInst(reflectFieldDataType, BfIRPopulateType_Full), fieldVals) :
+			mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType, BfIRPopulateType_Full), fieldVals);		
+	}
+	else
+	{
+		SizedArray<BfIRValue, 8> fieldVals =
+		{
+			emptyValueType,
+			fieldNameConst, // mName			
+			GetConstValue(typeId, typeIdType), // mFieldTypeId			
+			constValue, // mData
+			GetConstValue(fieldFlags, shortType), // mFlags
+			GetConstValue(customAttrIdx, intType), // mCustomAttributesIdx
+		};		
+		FixConstValueParams(reflectFieldDataType, fieldVals, isComptime);
+		result = isComptime ?
+			mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapTypeInst(reflectFieldDataType, BfIRPopulateType_Full), fieldVals) :
+			mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType, BfIRPopulateType_Full), fieldVals);
+	}
+
+	return result;
+}
+
 BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStringIdMap, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData)
 {
 	if ((IsHotCompile()) && (!type->mDirty))
@@ -6562,102 +6692,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			break;
 
 		BfFieldInstance* fieldInstance = &typeInstance->mFieldInstances[fieldIdx];
-		BfFieldDef* fieldDef = fieldInstance->GetFieldDef();
-
-		BfIRValue fieldNameConst = GetStringObjectValue(fieldDef->mName, !mIsComptimeModule);		
-
-		int typeId = 0;
-		auto fieldType = fieldInstance->GetResolvedType();
-		if (fieldType->IsGenericParam())
-		{
-			//TODO: 
-		}
-		else
-			typeId = fieldType->mTypeId;		
-
-		BfFieldFlags fieldFlags = (BfFieldFlags)0;
-
-		if (fieldDef->mProtection == BfProtection_Protected)
-			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Protected);
-		if (fieldDef->mProtection == BfProtection_Public)
-			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Public);
-		if (fieldDef->mIsStatic)
-			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Static);
-		if (fieldDef->mIsConst)
-			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Const);
-		if (fieldDef->IsEnumCaseEntry())
-			fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_EnumCase);
-
-		int customAttrIdx = _HandleCustomAttrs(fieldInstance->mCustomAttributes);
-		BfIRValue constValue;
-		BfIRValue constValue2;
-		if (fieldInstance->GetFieldDef()->mIsConst)
-		{			
-			if (fieldInstance->mConstIdx != -1)
-			{
-				auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-				constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, constant->mUInt64);
-				if (is32Bit)
-					constValue2 = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, constant->mUInt64 >> 32);
-			}
-		}
-		else if (fieldInstance->GetFieldDef()->mIsStatic)
-		{			
-			BfTypedValue refVal;
-			if (!mIsComptimeModule) // This can create circular reference issues for a `Self` static
-				refVal = ReferenceStaticField(fieldInstance);
-			if (refVal.mValue.IsConst())
-			{
-				auto constant = mBfIRBuilder->GetConstant(refVal.mValue);
-				if (constant->mConstType == BfConstType_GlobalVar)
-				{
-					auto globalVar = (BfGlobalVar*)constant;
-					if (globalVar->mName[0] == '#')
-						refVal = BfTypedValue();
-				}
-			}
-
-			if (refVal.IsAddr())
-			{
-				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
-			}
-		}
-		
-		if (!constValue)
-			constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, fieldInstance->mDataOffset);
-		
-		if (is32Bit)
-		{
-			if (!constValue2)
-				constValue2 = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0);
-
-			SizedArray<BfIRValue, 8> fieldVals =
-			{
-				emptyValueType,
-				fieldNameConst, // mName			
-				GetConstValue(typeId, typeIdType), // mFieldTypeId			
-				constValue, // mData
-				constValue2, // mDataHi
-				GetConstValue(fieldFlags, shortType), // mFlags
-				GetConstValue(customAttrIdx, intType), // mCustomAttributesIdx
-			};
-			auto fieldData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType->ToTypeInstance(), BfIRPopulateType_Full), fieldVals);
-			fieldTypes.push_back(fieldData);
-		}
-		else
-		{
-			SizedArray<BfIRValue, 8> fieldVals =
-			{
-				emptyValueType,
-				fieldNameConst, // mName			
-				GetConstValue(typeId, typeIdType), // mFieldTypeId			
-				constValue, // mData
-				GetConstValue(fieldFlags, shortType), // mFlags
-				GetConstValue(customAttrIdx, intType), // mCustomAttributesIdx
-			};
-			auto fieldData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType->ToTypeInstance(), BfIRPopulateType_Full), fieldVals);
-			fieldTypes.push_back(fieldData);
-		}			
+		fieldTypes.push_back(CreateFieldData(fieldInstance, _HandleCustomAttrs(fieldInstance->mCustomAttributes)));
 	}	
 
 	auto reflectFieldDataIRType = mBfIRBuilder->MapType(reflectFieldDataType);
@@ -20844,7 +20879,13 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				if (bodyBlock->mCloseBrace != NULL)
 				{
 					BfAstNode* target = bodyBlock->mCloseBrace;
-					Fail("Method must return value", target);
+					if (!mCompiler->mHasRequiredTypes)
+					{
+						AddFailType(mCurTypeInstance);
+						mHadBuildError = true;
+					}
+					else
+						Fail("Method must return value", target);
 				}
 				else
 				{

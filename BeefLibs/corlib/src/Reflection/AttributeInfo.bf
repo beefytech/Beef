@@ -60,7 +60,7 @@ namespace System.Reflection
 			    TypeInstance attrTypeInst = attrType as TypeInstance;
 				MethodInfo methodInfo = .(attrTypeInst, attrTypeInst.[Friend]mMethodDataPtr + methodIdx);
 
-			    Object[] args = scope Object[methodInfo.[Friend]mMethodData.mParamCount];
+			    Object[] args = scope Object[methodInfo.[Friend]mData.mMethodData.mParamCount];
 
 				int argIdx = 0;
 			    while (data < endPtr)

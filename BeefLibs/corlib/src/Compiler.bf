@@ -290,15 +290,15 @@ namespace System
 		}
 
 		[Comptime(OnlyFromComptime=true)]
-		public static void EmitMethodEntry(ComptimeMethodInfo methodHandle, StringView text)
+		public static void EmitMethodEntry(MethodInfo methodHandle, StringView text)
 		{
-			Comptime_EmitMethodEntry(methodHandle.mNativeMethodInstance, text);
+			Comptime_EmitMethodEntry(methodHandle.[Friend]mData.mComptimeMethodInstance, text);
 		}
 
 		[Comptime(OnlyFromComptime=true)]
-		public static void EmitMethodExit(ComptimeMethodInfo methodHandle, StringView text)
+		public static void EmitMethodExit(MethodInfo methodHandle, StringView text)
 		{
-			Comptime_EmitMethodExit(methodHandle.mNativeMethodInstance, text);
+			Comptime_EmitMethodExit(methodHandle.[Friend]mData.mComptimeMethodInstance, text);
 		}
 
 		[Comptime(ConstEval=true)]

@@ -328,17 +328,17 @@ namespace System.Reflection
 	    }
 	}
 
-	struct ComptimeMethodInfo
+	[CRepr, AlwaysInclude]
+	public struct MethodInfo
 	{
-		public int64 mNativeMethodInstance;
-	}
+		[Union]
+		struct Data
+		{
+			public TypeInstance.MethodData* mMethodData;
+			public int64 mComptimeMethodInstance;
+		}
 
-	struct ComptimeFieldInfo
-	{
-		int64 mNativeFieldInstance;
-		TypeId mOwner;
-		TypeId mTypeId;
-		int32 mFieldIdx;
-		FieldFlags mFlags;
+		TypeInstance mTypeInstance;
+		Data mData;
 	}
 }

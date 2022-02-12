@@ -362,7 +362,7 @@ namespace Tests
 			public static String gLog = new .() ~ delete _;
 
 			[Comptime] 
-			public void ApplyToMethod(ComptimeMethodInfo method)
+			public void ApplyToMethod(MethodInfo method)
 			{
 				Compiler.EmitMethodEntry(method, "int b = 2;");
 			}

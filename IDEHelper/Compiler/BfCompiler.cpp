@@ -429,8 +429,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mIPrintableTypeDef = NULL;
 	mIHashableTypeDef = NULL;
 	mIComptimeTypeApply = NULL;
-	mIComptimeMethodApply = NULL;
-	mComptimeFieldInfoTypeDef = NULL;
+	mIComptimeMethodApply = NULL;	
 	mIOnTypeInitTypeDef = NULL;
 	mIOnTypeDoneTypeDef = NULL;
 	mIOnFieldInitTypeDef = NULL;
@@ -457,6 +456,8 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mReflectSpecializedGenericType = NULL;
 	mReflectTypeInstanceTypeDef = NULL;
 	mReflectUnspecializedGenericType = NULL;
+	mReflectFieldInfoTypeDef = NULL;
+	mReflectMethodInfoTypeDef = NULL;
 	mSizedArrayTypeDef = NULL;
 	mStaticInitAfterAttributeTypeDef = NULL;	
 	mStaticInitPriorityAttributeTypeDef = NULL;
@@ -6832,8 +6833,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mIPrintableTypeDef = _GetRequiredType("System.IPrintable");
 	mIHashableTypeDef = _GetRequiredType("System.IHashable");
 	mIComptimeTypeApply = _GetRequiredType("System.IComptimeTypeApply");
-	mIComptimeMethodApply = _GetRequiredType("System.IComptimeMethodApply");
-	mComptimeFieldInfoTypeDef = _GetRequiredType("System.Reflection.ComptimeFieldInfo");
+	mIComptimeMethodApply = _GetRequiredType("System.IComptimeMethodApply");	
 	mIOnTypeInitTypeDef = _GetRequiredType("System.IOnTypeInit");
 	mIOnTypeDoneTypeDef = _GetRequiredType("System.IOnTypeDone");
 	mIOnFieldInitTypeDef = _GetRequiredType("System.IOnFieldInit");
@@ -6861,6 +6861,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mReflectSpecializedGenericType = _GetRequiredType("System.Reflection.SpecializedGenericType");
 	mReflectTypeInstanceTypeDef = _GetRequiredType("System.Reflection.TypeInstance");
 	mReflectUnspecializedGenericType = _GetRequiredType("System.Reflection.UnspecializedGenericType");
+	mReflectFieldInfoTypeDef = _GetRequiredType("System.Reflection.FieldInfo");
+	mReflectMethodInfoTypeDef = _GetRequiredType("System.Reflection.MethodInfo");
 	mSizedArrayTypeDef = _GetRequiredType("System.SizedArray", 2);	
 	mStaticInitAfterAttributeTypeDef = _GetRequiredType("System.StaticInitAfterAttribute");
 	mStaticInitPriorityAttributeTypeDef = _GetRequiredType("System.StaticInitPriorityAttribute");

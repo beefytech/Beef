@@ -2197,30 +2197,16 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			args.Add(attrVal);
 		if (isFieldApply)
 		{
-			auto fieldDef = fieldInstance->GetFieldDef();
-			BfFieldFlags fieldFlags = (BfFieldFlags)0;
-
-			if (fieldDef->mProtection == BfProtection_Protected)
-				fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Protected);
-			if (fieldDef->mProtection == BfProtection_Public)
-				fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Public);
-			if (fieldDef->mIsStatic)
-				fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Static);
-			if (fieldDef->mIsConst)
-				fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Const);
-
-			auto fieldInfoType = ResolveTypeDef(mCompiler->mComptimeFieldInfoTypeDef);
+			auto fieldInfoType = ResolveTypeDef(mCompiler->mReflectFieldInfoTypeDef);
 			if (fieldInfoType != NULL)
 			{
+				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 				SizedArray<BfIRValue, 9> fieldData =
 				{			
-					mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(fieldInfoType, BfIRPopulateType_Identity)),
-					GetConstValue((uint64)(intptr)fieldInstance, GetPrimitiveType(BfTypeCode_Int64)), // mNativeFieldInstance
-					GetConstValue(typeInstance->mTypeId, GetPrimitiveType(BfTypeCode_Int32)), // mOwner
-					GetConstValue((fieldInstance->mResolvedType != NULL) ? fieldInstance->mResolvedType->mTypeId : 0, GetPrimitiveType(BfTypeCode_Int32)), // mTypeId
-					GetConstValue(fieldDef->mIdx, GetPrimitiveType(BfTypeCode_Int32)), // mFieldIdx
-					GetConstValue((int)fieldFlags, GetPrimitiveType(BfTypeCode_Int16)), // mFieldFlags
-				};				
+					mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(fieldInfoType->ToTypeInstance()->mBaseType, BfIRPopulateType_Identity)),
+					mBfIRBuilder->CreateTypeOf(mCurTypeInstance), // mTypeInstance
+					CreateFieldData(fieldInstance, fieldInstance->GetFieldDef()->mIdx)
+				};
 				FixConstValueParams(fieldInfoType->ToTypeInstance(), fieldData);
 				auto fieldDataAgg = mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(fieldInfoType, BfIRPopulateType_Identity), fieldData);
 				args.Add(fieldDataAgg);
@@ -2612,7 +2598,19 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 		SizedArray<BfIRValue, 1> args;
 		if (!attrType->IsValuelessType())
 			args.Add(attrVal);
-		args.Add(mBfIRBuilder->CreateConst(BfTypeCode_UInt64, (uint64)(intptr)methodInstance));
+				
+		auto methodInfoType = ResolveTypeDef(mCompiler->mReflectMethodInfoTypeDef);
+		SizedArray<BfIRValue, 9> methodData =
+		{
+			mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(methodInfoType->ToTypeInstance()->mBaseType, BfIRPopulateType_Identity)),
+			mBfIRBuilder->CreateTypeOf(mCurTypeInstance), // mTypeInstance
+			GetConstValue((int64)methodInstance, GetPrimitiveType(BfTypeCode_Int64)), // mNativeMethodInstance
+
+		};
+		FixConstValueParams(methodInfoType->ToTypeInstance(), methodData);
+		auto fieldDataAgg = mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(methodInfoType, BfIRPopulateType_Identity), methodData);
+		args.Add(fieldDataAgg);
+
 		if (applyMethodInstance->GetParamCount() > 1)
 		{
 			if (irValue)
@@ -2628,16 +2626,8 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 		}
 
 		mCompiler->mCEMachine->mMethodInstanceSet.Add(methodInstance);
-
-		//TESTING
-// 			mCompiler->mCEMachine->ReleaseContext(ceContext);			
-// 			ceContext = mCompiler->mCEMachine->AllocContext();
-// 			ceContext->mMemory.mSize = ceContext->mMemory.mAllocSize;
-			
-
 		auto activeTypeDef = typeInstance->mTypeDef;			
-		
-		//auto result = ceContext->Call(customAttribute.mRef, this, applyMethodInstance, args, CeEvalFlags_None, NULL);
+				
 		BfTypedValue result;
 		///
 		{

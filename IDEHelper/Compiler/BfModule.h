@@ -1562,7 +1562,7 @@ public:
 	BfIRValue GetDefaultValue(BfType* type);	
 	BfTypedValue GetFakeTypedValue(BfType* type);
 	BfTypedValue GetDefaultTypedValue(BfType* type, bool allowRef = false, BfDefaultValueKind defaultValueKind = BfDefaultValueKind_Const);			
-	void FixConstValueParams(BfTypeInstance* typeInst, SizedArrayImpl<BfIRValue>& valueParams);
+	void FixConstValueParams(BfTypeInstance* typeInst, SizedArrayImpl<BfIRValue>& valueParams, bool fillInPadding = false);
 	BfIRValue CreateStringObjectValue(const StringImpl& str, int stringId, bool define);
 	BfIRValue CreateStringCharPtr(const StringImpl& str, int stringId, bool define);
 	int GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHolder = NULL);
@@ -1978,6 +1978,7 @@ public:
 	BfIRValue CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTypeInstance* implTypeInst, int startVirtIdx);
 	BfIRValue CreateTypeDataRef(BfType* type);
 	void EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType, BfIRValue arg, SizedArrayImpl<uint8>& data, Dictionary<int, int>& usedStringIdMap);
+	BfIRValue CreateFieldData(BfFieldInstance* fieldInstance, int customAttrIdx);
 	BfIRValue CreateTypeData(BfType* type, Dictionary<int, int>& usedStringIdMap, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData);
 	BfIRValue FixClassVData(BfIRValue value);
 

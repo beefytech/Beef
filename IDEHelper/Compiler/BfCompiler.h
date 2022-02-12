@@ -389,8 +389,7 @@ public:
 	BfTypeDef* mIPrintableTypeDef;
 	BfTypeDef* mIHashableTypeDef;
 	BfTypeDef* mIComptimeTypeApply;
-	BfTypeDef* mIComptimeMethodApply;
-	BfTypeDef* mComptimeFieldInfoTypeDef;
+	BfTypeDef* mIComptimeMethodApply;	
 	BfTypeDef* mIOnTypeInitTypeDef;
 	BfTypeDef* mIOnTypeDoneTypeDef;
 	BfTypeDef* mIOnFieldInitTypeDef;
@@ -416,6 +415,8 @@ public:
 	BfTypeDef* mReflectSpecializedGenericType;
 	BfTypeDef* mReflectTypeInstanceTypeDef;
 	BfTypeDef* mReflectUnspecializedGenericType;		
+	BfTypeDef* mReflectFieldInfoTypeDef;
+	BfTypeDef* mReflectMethodInfoTypeDef;
 	
 	BfTypeDef* mSizedArrayTypeDef;
 	BfTypeDef* mAttributeTypeDef;

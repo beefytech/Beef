@@ -508,12 +508,12 @@ namespace System
 
 	interface IOnFieldInit
 	{
-		void OnFieldInit(ComptimeFieldInfo type, Self* prev) mut;
+		void OnFieldInit(FieldInfo type, Self* prev) mut;
 	}
 
 	interface IOnMethodInit
 	{
-		void OnMethodInit(ComptimeMethodInfo type, Self* prev) mut;
+		void OnMethodInit(MethodInfo type, Self* prev) mut;
 	}
 
 	interface IComptimeTypeApply

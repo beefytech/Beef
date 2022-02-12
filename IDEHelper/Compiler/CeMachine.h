@@ -332,7 +332,6 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetName,
 	CeFunctionKind_Method_GetInfo,
 	CeFunctionKind_Method_GetParamInfo,
-	CeFunctionKind_Field_GetName,
 	
 	CeFunctionKind_EmitTypeBody,
 	CeFunctionKind_EmitAddInterface,
