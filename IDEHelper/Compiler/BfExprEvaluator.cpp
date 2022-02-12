@@ -9038,7 +9038,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	}
 
 	// Look in globals. Always check for extension methods.
-	if ((methodDef == NULL) || (wantsExtensionCheck))
+	if ((((methodDef == NULL) && (!target.HasType())) ||
+		 (wantsExtensionCheck)))
 	{
 		if (mModule->mContext->mCurTypeState != NULL)
 		{
