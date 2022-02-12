@@ -16,64 +16,73 @@ namespace System
 		    return MethodInfo.Enumerator(null, bindingFlags);
 		}
 
-		/*[Comptime]
-		public virtual ComptimeMethodInfo.Enumerator GetMethods(BindingFlags bindingFlags = cDefaultLookup)
-		{
-		    return ComptimeMethodInfo.Enumerator(null, bindingFlags);
-		}*/
-
 		public virtual Result<MethodInfo, MethodError> GetMethod(StringView methodName, BindingFlags bindingFlags = cDefaultLookup)
 		{
-			MethodInfo matched = default;
-			for (let methodInfo in GetMethods(bindingFlags))
+			if (Compiler.IsComptime)
 			{
-				if (methodInfo.[Friend]mData.mMethodData.[Friend]mName == methodName)
+				MethodInfo matched = default;
+				for (let methodInfo in GetMethods(bindingFlags))
 				{
-					if (matched.[Friend]mData.mMethodData != null)
-						return .Err(.MultipleResults);
+					if (Compiler.IsComptime)
+					{
+						if (methodInfo.Name == methodName)
+						{
+							if (matched.[Friend]mData.mMethodData != null)
+								return .Err(.MultipleResults);
+							else
+							    matched = methodInfo;
+						}
+					}
 					else
-					    matched = methodInfo;
+					{
+						if (methodInfo.[Friend]mData.mMethodData.[Friend]mName == methodName)
+						{
+							if (matched.[Friend]mData.mMethodData != null)
+								return .Err(.MultipleResults);
+							else
+							    matched = methodInfo;
+						}
+					}
 				}
+	
+				if (matched.[Friend]mData.mComptimeMethodInstance == 0)
+					return .Err(.NoResults);
+				
+				return .Ok(matched);
 			}
+			else
+			{
+				MethodInfo matched = default;
+				for (let methodInfo in GetMethods(bindingFlags))
+				{
+					if (methodInfo.[Friend]mData.mMethodData.[Friend]mName == methodName)
+					{
+						if (matched.[Friend]mData.mMethodData != null)
+							return .Err(.MultipleResults);
+						else
+						    matched = methodInfo;
+					}
+				}
 
-			if (matched.[Friend]mData.mMethodData == null)
-				return .Err(.NoResults);
-			return .Ok(matched);
+				if (matched.[Friend]mData.mMethodData == null)
+					return .Err(.NoResults);
+
+				
+				return .Ok(matched);
+			}
 		}
-
-		/*[Comptime]
-		public virtual Result<ComptimeMethodInfo, MethodError> GetMethod(StringView methodName, BindingFlags bindingFlags = cDefaultLookup)
-		{
-			ComptimeMethodInfo matched = default;
-			for (let methodInfo in ComptimeMethodInfo.Enumerator(this as TypeInstance, bindingFlags))
-			{
-				if (methodInfo.Name == methodName)
-				{
-					if (matched.mNativeMethodInstance != 0)
-						return .Err(.MultipleResults);
-					else
-					    matched = methodInfo;
-				}
-			}
-
-			if (matched.mNativeMethodInstance == 0)
-				return .Err(.NoResults);
-			return .Ok(matched);
-		}*/
 
 		public virtual Result<MethodInfo, MethodError> GetMethod(int methodIdx)
 		{
+			if (Compiler.IsComptime)
+			{
+				int64 nativeMethod = Comptime_GetMethod((.)TypeId, (.)methodIdx);
+				if (nativeMethod == 0)
+					return .Err(.NoResults);
+
+				return MethodInfo(this as TypeInstance, nativeMethod);
+			}
 			return .Err(.NoResults);
-		}
-
-		[Comptime]
-		public virtual Result<MethodInfo, MethodError> GetMethod(int methodIdx)
-		{
-			int64 nativeMethod = Comptime_GetMethod((.)TypeId, (.)methodIdx);
-			if (nativeMethod == 0)
-				return .Err(.NoResults);
-
-			return MethodInfo(this as TypeInstance, nativeMethod);
 		}
 
 		public virtual Result<Object> CreateObject()
