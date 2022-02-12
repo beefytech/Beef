@@ -331,6 +331,16 @@ namespace Tests
 			return (TOut)val;
 		}
 
+		static void MethodH<T, T2>(T val) where T2 : List<T>
+		{
+
+		}
+
+		static void MethodI<T, T2>(T val) where comptype(typeof(T2)) : List<T>
+		{
+
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -404,6 +414,7 @@ namespace Tests
 
 			Test.Assert(Conv<int...>(12.34f) == 12);
 			Test.Assert(Conv<int,?>(12.34f) == 12);
+			//MethodH(scope List<int>());
 		}
 	}
 

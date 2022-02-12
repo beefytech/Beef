@@ -99,9 +99,15 @@ namespace IDETest
 			TestGen(a); //FAIL Unable to determine generic argument 'TItem'
 		}
 
+		static void Method7<T>() where T : var where comptype(typeof(T)) : class
+		{
+
+		}
+
 		public static void TestGenBug()
 		{
 			TestPreGen<List<int>>();
+			Method7<int>(); //FAIL The type 'int' must be a reference type in order to use it as parameter 'comptype(typeof(T))' for 'IDETest.Generics.Method7<int>()'
 		}
 	}
 }

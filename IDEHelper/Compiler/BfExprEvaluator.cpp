@@ -2287,14 +2287,17 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			auto genericParamType = (BfGenericParamType*)externType;
 			if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
 			{
-				auto genericArg = (*genericArgumentsSubstitute)[genericParamType->mGenericParamIdx];
-				if (genericArg == NULL)
+				if (genericArgumentsSubstitute != NULL)					
 				{
-					if (allowEmptyGenericSet.Contains(genericParamType->mGenericParamIdx))
-						continue;
-					goto NoMatch;
+					auto genericArg = (*genericArgumentsSubstitute)[genericParamType->mGenericParamIdx];
+					if (genericArg == NULL)
+					{
+						if (allowEmptyGenericSet.Contains(genericParamType->mGenericParamIdx))
+							continue;
+						goto NoMatch;
+					}
+					externType = genericArg;
 				}
-				externType = genericArg;
 			}
 		}
 
