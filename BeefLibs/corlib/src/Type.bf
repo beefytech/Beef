@@ -535,7 +535,6 @@ namespace System
 		static extern String Comptime_Method_GetName(int64 methodHandle);
 		static extern ComptimeMethodData Comptime_Method_GetInfo(int64 methodHandle);
 		static extern ComptimeParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
-		static extern int64 Comptime_GetField(int32 typeId, int32 fieldIdx);
 		static extern String Comptime_Field_GetName(int64 fieldHandle);
 		static extern ComptimeFieldInfo Comptime_Field_GetInfo(int64 fieldHandle);
 
