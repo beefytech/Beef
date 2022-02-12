@@ -15139,6 +15139,7 @@ void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
 	{
 		bool doFail = false;
 		bool doWarn = false;
+		BfType* boxedType = NULL;
 
 		if (exprValue.mType->IsGenericParam())
 		{
@@ -15152,6 +15153,8 @@ void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
 
 			if ((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsObjectOrInterface()))
 				doWarn = true;
+
+			boxedType = mModule->mContext->mBfObjectType;
 		}
 		else
 		{
@@ -15172,7 +15175,8 @@ void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
 			return;
 		}
 		
-		BfType* boxedType = mModule->CreateBoxedType(exprValue.mType);
+		if (boxedType == NULL)
+			boxedType = mModule->CreateBoxedType(exprValue.mType);
 		if (boxedType == NULL)
 			boxedType = mModule->mContext->mBfObjectType;
 		mResult = mModule->BoxValue(boxExpr->mExpression, exprValue, boxedType, allocTarget);
