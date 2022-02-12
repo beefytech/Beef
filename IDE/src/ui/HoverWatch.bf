@@ -261,7 +261,7 @@ namespace IDE.ui
 		float mOrigScreenY;
 		float mTaskbarXOffset;
 		float mTaskbarYOffset;
-        bool mIsShown;
+        public bool mIsShown;
 		bool mCreatedWindow;
 		bool mClosed;
 		bool mOwnsListView = true;
@@ -752,7 +752,7 @@ namespace IDE.ui
 						showString.RemoveToEnd(crPos);
 					}
 				}
-
+				showString.Replace('\r', '\n');
                 useListViewItem.Label = showString;
                 isStringLiteral = true;
             }
@@ -1543,6 +1543,13 @@ namespace IDE.ui
 
         public bool Show(TextPanel textPanel, float x, float y, String displayString, String evalString)
         {
+			if ((mIsShown) && (evalString.StartsWith(':')))
+			{
+				mDisplayString.Set(evalString.Substring(1));
+				Rehup();
+				return true;
+			}
+
             if (mIsShown)
                 Clear();
 

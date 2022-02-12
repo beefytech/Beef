@@ -7391,6 +7391,48 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			failed = true;			
 		}
 
+		if ((arg != NULL) && (autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(arg)))
+		{
+			if (!autoComplete->mResultString.Contains('\r'))
+			{
+				String str;
+				str += methodInstance->GetParamName(paramIdx);
+				str += " @ ";
+				bool isCtor = methodInstance->mMethodDef->mMethodType == BfMethodType_Ctor;
+				if (isCtor)
+					str += methodInstance->GetOwner()->mTypeDef->mName->ToString();
+				else
+					str += methodInstance->mMethodDef->mName;
+				str += "(";
+				for (int i = isCtor ? 1 : 0; i < methodInstance->GetParamCount(); i++)
+				{
+					if (i > (isCtor ? 1 : 0))
+						str += ",";
+					if (i == paramIdx)
+					{
+						if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params)
+							str += "params ";
+						str += mModule->TypeToString(methodInstance->GetParamType(paramIdx));
+					}
+				}
+				str += ")";
+
+				if (!autoComplete->mResultString.StartsWith(":"))
+					autoComplete->mResultString.Clear();
+
+				int crPos = (int)autoComplete->mResultString.IndexOf('\n');
+				if (crPos == -1)
+					crPos = autoComplete->mResultString.mLength;
+				int insertPos = BF_MAX(1, crPos);
+
+				if (autoComplete->mResultString.IsEmpty())
+					autoComplete->mResultString += ":";
+				if (insertPos > 1)
+					str.Insert(0, '\r');
+				autoComplete->mResultString.Insert(insertPos, str);
+			}
+		}
+
 		if (argValue)
 		{	
 			if ((isThis) && (argValue.mType->IsRef()))

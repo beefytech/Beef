@@ -4763,8 +4763,6 @@ namespace IDE.ui
 
 		public void UpdateMouseover(bool mouseoverFired, bool mouseInbounds, int line, int lineChar, bool isManual = false)
 		{
-
-			
 #unwarn
 		    CompilerBase compiler = ResolveCompiler;
 
@@ -4989,7 +4987,9 @@ namespace IDE.ui
 					if (mHoverResolveTask != null)
 					{
 						if (mHoverResolveTask.mCursorPos != textIdx)
+						{
 							DeleteAndNullify!(mHoverResolveTask);
+						}
 					}
 
 					if ((!String.IsNullOrEmpty(mHoverResolveTask?.mResult)))
@@ -5031,10 +5031,20 @@ namespace IDE.ui
 					}
 				}
 
-	            if ((!didShow) &&
-					((debugExpr == null) || (isOverMessage) || (!mHoverWatch.Show(this, x, y, origDebugExpr ?? debugExpr, debugExpr))))
+	            /*if ((!didShow) &&
+					((debugExpr == null) || (isOverMessage) || (!mHoverWatch.Show(this, x, y, origDebugExpr ?? debugExpr, debugExpr))))*/
+				if (!didShow)
 	            {
-					if (mHoverResolveTask == null)
+					if ((debugExpr != null) && (!isOverMessage))
+					{
+						if ((mHoverWatch.mIsShown) && (!debugExpr.StartsWith(':')))
+							didShow = true;
+						else
+							didShow = mHoverWatch.Show(this, x, y, origDebugExpr ?? debugExpr, debugExpr);
+					}
+
+					if ((mHoverResolveTask == null) &&
+						((debugExpr == null) || (!debugExpr.StartsWith(':'))))
 					{
 						if ((!handlingHoverResolveTask) && (ResolveCompiler != null) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning) && (gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic))
 						{
@@ -5100,7 +5110,7 @@ namespace IDE.ui
 	                }
 #endif
 
-	                if ((parser != null) && (mIsBeefSource))
+	                if ((parser != null) && (mIsBeefSource) && (!didShow))
 					ErrorScope:
 	                {
 						//TODO: Needed this?
@@ -5226,7 +5236,7 @@ namespace IDE.ui
 			if ((DarkTooltipManager.sTooltip != null) && (DarkTooltipManager.sTooltip.mRelWidget == this))
 				DarkTooltipManager.CloseTooltip();
 
-			if (!CheckAllowHoverWatch())
+			if ((!CheckAllowHoverWatch()) && (mHoverResolveTask?.mResult == null))
 			{
 				return;
 			}
