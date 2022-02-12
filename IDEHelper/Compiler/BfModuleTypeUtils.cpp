@@ -13328,8 +13328,6 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 	if (typedVal.mType == toType)
 		return typedVal;
 
-	PopulateType(toType, ((castFlags & BfCastFlags_NoConversionOperator) != 0) ? BfPopulateType_Data : BfPopulateType_DataAndMethods);
-
 	if ((toType->IsSizedArray()) && (typedVal.mType->IsSizedArray()))
 	{
 		// Retain our type if we're casting from a known-sized array to an unknown-sized arrays
@@ -13341,6 +13339,7 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 
 	if ((castFlags & BfCastFlags_Force) != 0)
 	{
+		PopulateType(toType, BfPopulateType_Data);
 		if (toType->IsValuelessType())
 			return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
 
@@ -13365,7 +13364,6 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 	// This tuple cast may create a new type if the toType contains 'var' entries
 	if ((typedVal.mType->IsTuple()) && (toType->IsTuple()))
 	{
-		//auto loadedVal = LoadValue(typedVal);
 		PopulateType(toType);
 
 		auto fromTupleType = (BfTypeInstance*)typedVal.mType;

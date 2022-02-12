@@ -43,6 +43,17 @@ namespace Tests
 			case EE(EnumE ee);
 		}
 
+		enum EnumG
+		{
+			case A = (.)'A';
+			case B = (.)'B';
+
+			public void Set(int val) mut
+			{
+				this = (.)val;
+			}
+		}
+
 		[Test]
 		static void TestBasic()
 		{
@@ -122,7 +133,10 @@ namespace Tests
 			}
 
 			ee = .B(10);
-			
+
+			EnumG eg = .A;
+			eg.Set(66);
+			Test.Assert(eg == .B);
 		}
 	}
 }
