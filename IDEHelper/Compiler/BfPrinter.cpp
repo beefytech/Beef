@@ -1111,7 +1111,9 @@ void BfPrinter::Visit(BfAttributeDirective* attributeDirective)
 	}
 	VisitChild(attributeDirective->mCtorCloseParen);
 	VisitChild(attributeDirective->mAttrCloseToken);
-	
+	if ((attributeDirective->mNextAttribute != NULL) && (attributeDirective->mNextAttribute->mAttrOpenToken != NULL) &&
+		(attributeDirective->mNextAttribute->mAttrOpenToken->mToken == BfToken_LBracket))
+		ExpectNewLine();
 	VisitChild(attributeDirective->mNextAttribute);
 }
 
