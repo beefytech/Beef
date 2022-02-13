@@ -4850,6 +4850,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 						auto fieldDef = field.GetFieldDef();
 						if (fieldDef == NULL)
 							continue;
+						if (!fieldDef->IsEnumCaseEntry())
+							continue;
 						if (field.mDataIdx < 0)
 							lastTagId = -field.mDataIdx - 1;
 					}
@@ -4860,7 +4862,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 					for (auto& field : enumType->mFieldInstances)
 					{
 						auto fieldDef = field.GetFieldDef();
-						if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mTypeRef == NULL))
+						if ((fieldDef != NULL) && (fieldDef->IsEnumCaseEntry()))
 						{
 							if (field.mConstIdx != -1)
 							{
