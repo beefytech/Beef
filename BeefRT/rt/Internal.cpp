@@ -690,6 +690,8 @@ void Internal::Test_Error(char* error)
 		str += "\n";
 		TestString(str);
 	}
+	else
+		Internal_FatalError(error);
 }
 
 void Internal::Test_Write(char* strPtr)
