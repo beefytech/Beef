@@ -892,6 +892,24 @@ BfIRValue BfIRConstHolder::CreateConstBitCast(BfIRValue val, BfIRType type)
 	return castedVal;
 }
 
+BfIRValue BfIRConstHolder::CreateConstBox(BfIRValue val, BfIRType type)
+{
+	auto constVal = GetConstant(val);
+
+	auto box = mTempAlloc.Alloc<BfConstantBox>();	
+	box->mConstType = BfConstType_Box;
+	BF_ASSERT(val.mId != -1);
+	box->mTarget = val.mId;
+	box->mToType = type;
+
+	BfIRValue castedVal(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(box));
+#ifdef CHECK_CONSTHOLDER
+	castedVal.mHolder = this;
+#endif
+	BF_ASSERT((void*)GetConstant(castedVal) == (void*)box);
+	return castedVal;
+}
+
 BfIRValue BfIRConstHolder::CreateTypeOf(BfType* type)
 {
 	BfTypeOf_Const* typeOf = mTempAlloc.Alloc<BfTypeOf_Const>();
@@ -1633,7 +1651,13 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 		{
 			auto bitcast = (BfConstantBitCast*)constant;
 			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
-			return ToString(targetConst) + " BitCast to " + ToString(bitcast->mToType);			
+			return ToString(targetConst) + " BitCast to " + ToString(bitcast->mToType);
+		}
+		else if (constant->mConstType == BfConstType_Box)
+		{
+			auto box = (BfConstantBox*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, box->mTarget);
+			return ToString(targetConst) + " box to " + ToString(box->mToType);
 		}
 		else if (constant->mConstType == BfConstType_GEP32_2)
 		{
@@ -1824,6 +1848,11 @@ String BfIRBuilder::ToString(BfIRType irType)
 	else if (irType.mKind == BfIRTypeData::TypeKind_TypeInstPtrId)
 	{
 		return StrFormat("TypeInstPtr#%d:%s", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
+	}
+	else if (irType.mKind == BfIRTypeData::TypeKind_SizedArray)
+	{
+		auto sizedArrayType = (BfConstantSizedArrayType*)GetConstantById(irType.mId);
+		return StrFormat("%s[%d]", ToString(sizedArrayType->mType).c_str(), (int)sizedArrayType->mLength);
 	}
 	else
 	{

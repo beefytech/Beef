@@ -240,13 +240,6 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLoca
 	{
 		return;
 	}
-	//BF_ASSERT(localVarMethodState == this);
-
-//  	if (assignKind == BfLocalVarAssignKind_None)
-//  		assignKind = ((localVarMethodState->mLeftBlockCond) && ((mDeferredLocalAssignData != NULL) || isFromDeferredAssignData))  ? BfLocalVarAssignKind_Conditional : BfLocalVarAssignKind_Unconditional;
-// 	
-// 	//assignKind = BfLocalVarAssignKind_Unconditional;
-
 	
 	if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
 	{
@@ -10108,8 +10101,9 @@ void BfModule::EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool al
 BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType, const BfAllocTarget& allocTarget, BfCastFlags castFlags)
 {
 	bool callDtor = (castFlags & BfCastFlags_NoBoxDtor) == 0;
-
-	if (mBfIRBuilder->mIgnoreWrites)
+	bool wantConst = ((castFlags & BfCastFlags_WantsConst) != 0) && (typedVal.mValue.IsConst());
+	
+	if ((mBfIRBuilder->mIgnoreWrites) && (!wantConst))
 	{
 		if (toType == mContext->mBfObjectType)
 			return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
@@ -10241,12 +10235,15 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	
 	if ((toType == NULL) || (toType == mContext->mBfObjectType) || (isBoxedType) || (alreadyCheckedCast) ||  (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
 	{
-		if (mBfIRBuilder->mIgnoreWrites)
+		if ((mBfIRBuilder->mIgnoreWrites) && (!wantConst))
 			return BfTypedValue(mBfIRBuilder->GetFakeVal(), (toType != NULL) ? toType : CreateBoxedType(typedVal.mType));
 
-		auto boxedType = CreateBoxedType(typedVal.mType);
-
+		auto boxedType = CreateBoxedType(typedVal.mType);				
 		mBfIRBuilder->PopulateType(boxedType);
+
+		if (wantConst)
+			return BfTypedValue(mBfIRBuilder->CreateConstBox(typedVal.mValue, mBfIRBuilder->MapType(boxedType)), boxedType);
+
 		AddDependency(boxedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
 		auto allocaInst = AllocFromType(boxedType, allocTarget, BfIRValue(), BfIRValue(), 0, callDtor ? BfAllocFlags_None : BfAllocFlags_NoDtorCall);
 		

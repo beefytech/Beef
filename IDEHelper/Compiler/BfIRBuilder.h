@@ -138,7 +138,8 @@ enum BfConstType
 	BfConstType_ArrayZero,
 	BfConstType_ArrayZero8,
 	BfConstType_Undef,
-	BfConstType_SizedArrayType
+	BfConstType_SizedArrayType,
+	BfConstType_Box
 };
 
 enum BfIRValueFlags : uint8
@@ -856,6 +857,13 @@ struct BfConstantBitCast
 	BfIRType mToType;
 };
 
+struct BfConstantBox
+{
+	BfConstType mConstType;
+	int mTarget;
+	BfIRType mToType;
+};
+
 struct BfConstantPtrToInt
 {
 	BfConstType mConstType;
@@ -946,6 +954,7 @@ public:
 	BfIRValue CreateConstArrayZero(BfIRType type, int count);
 	BfIRValue CreateConstArrayZero(int count);
 	BfIRValue CreateConstBitCast(BfIRValue val, BfIRType type);
+	BfIRValue CreateConstBox(BfIRValue val, BfIRType type);
 	BfIRValue CreateTypeOf(BfType* type);
 	BfIRValue CreateTypeOf(BfType* type, BfIRValue typeData);
 	BfIRValue GetUndefConstValue(BfIRType type);	

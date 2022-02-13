@@ -3785,11 +3785,6 @@ void BfExprEvaluator::Visit(BfLiteralExpression* literalExpr)
 
 void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
 {
-	if (IsConstEval())
-	{
-		mModule->Fail("Const evaluation of string interpolation not allowed", stringInterpolationExpression);
-	}
-
 	if ((mBfEvalExprFlags & BfEvalExprFlags_StringInterpolateFormat) != 0)
 	{
 		BfVariant variant;
@@ -3798,6 +3793,37 @@ void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolation
 		GetLiteral(stringInterpolationExpression, variant);
 		return;
 	}
+
+	//
+	{
+		SetAndRestoreValue<BfEvalExprFlags> prevEvalExprFlag(mBfEvalExprFlags);
+		if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mConstEvalAttributeTypeDef)))
+		{
+			mModule->mAttributeState->mUsed = true;
+			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);			
+		}
+
+		if (IsConstEval())
+		{
+			auto stringType = mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef);
+			if (stringType != NULL)
+			{
+				SizedArray<BfExpression*, 2> argExprs;
+				argExprs.Add(stringInterpolationExpression);
+				BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
+				BfResolvedArgs argValues(&sizedArgExprs);
+				ResolveArgValues(argValues, BfResolveArgsFlag_InsideStringInterpolationAlloc);
+				auto result = MatchMethod(stringInterpolationExpression, NULL, BfTypedValue(stringType), false, false, "ConstF", argValues, BfMethodGenericArguments());
+				if (result.mType == stringType)
+				{
+					mResult = result;
+					return;
+				}
+			}
+
+			mModule->Fail("Const evaluation of string interpolation not allowed", stringInterpolationExpression);
+		}
+	}	
 
 	if (stringInterpolationExpression->mAllocNode != NULL)
 	{
@@ -7945,10 +7971,10 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 					if ((mDeferScopeAlloc != NULL) && (wantType == mModule->mContext->mBfObjectType))
 					{
 						BfAllocTarget allocTarget(mDeferScopeAlloc);
-						argValue = mModule->BoxValue(expr, argValue, wantType, allocTarget);
+						argValue = mModule->BoxValue(expr, argValue, wantType, allocTarget, ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) ? BfCastFlags_WantsConst : BfCastFlags_None);
 					}
 					else
-						argValue = mModule->Cast(expr, argValue, wantType);
+						argValue = mModule->Cast(expr, argValue, wantType, ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) ? BfCastFlags_WantsConst : BfCastFlags_None);
 				}
 			}
 		}

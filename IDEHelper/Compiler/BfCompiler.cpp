@@ -377,6 +377,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 		
 	mBfObjectTypeDef = NULL;
 	mChar32TypeDef = NULL;
+	mFloatTypeDef = NULL;
 	mDoubleTypeDef = NULL;
 	mMathTypeDef = NULL;
 	mArray1TypeDef = NULL;
@@ -6772,12 +6773,11 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	_GetRequiredType("System.UInt8");
 	_GetRequiredType("System.UInt16");
 	_GetRequiredType("System.UInt32");
-	_GetRequiredType("System.UInt64");
-	_GetRequiredType("System.Float");
-	_GetRequiredType("System.Double");
+	_GetRequiredType("System.UInt64");	
 	_GetRequiredType("System.Char8");
 	_GetRequiredType("System.Char16");
 	mChar32TypeDef = _GetRequiredType("System.Char32");
+	mFloatTypeDef = _GetRequiredType("System.Float");
 	mDoubleTypeDef = _GetRequiredType("System.Double");
 	mMathTypeDef = _GetRequiredType("System.Math");
 

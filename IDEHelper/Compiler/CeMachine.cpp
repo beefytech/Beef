@@ -3340,6 +3340,13 @@ BfType* CeContext::GetBfType(int typeId)
 	return NULL;
 }
 
+BfType* CeContext::GetBfType(BfIRType irType)
+{
+	if (irType.mKind == BfIRTypeData::TypeKind_TypeId)
+		return GetBfType(irType.mId);
+	return NULL;
+}
+
 void CeContext::PrepareConstStructEntry(CeConstStructData& constEntry)
 {
 	if (constEntry.mHash.IsZero())
@@ -3478,7 +3485,9 @@ bool CeContext::GetCustomAttribute(BfCustomAttributes* customAttributes, int att
 #define CE_GETC(T) *(T*)(mMemory.mVals + addr)
 
 bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type, bool isParams)
-{	
+{
+	int ptrSize = mCeMachine->mCeModule->mSystem->mPtrSize;
+
 	switch (constant->mTypeCode)
 	{
 	case BfTypeCode_Int8:
@@ -3502,7 +3511,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		CE_GETC(int64) = constant->mInt64;
 		return true;
 	case BfTypeCode_NullPtr:
-		if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+		if (ptrSize == 4)
 			CE_GETC(int32) = 0;
 		else
 			CE_GETC(int64) = 0;
@@ -3522,7 +3531,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 			auto elementType = type->GetUnderlyingType();
 			auto toPtr = CeMalloc(elementType->mSize);
 			addr_ce toAddr = (addr_ce)(toPtr - mMemory.mVals);
-			if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+			if (ptrSize == 4)
 				CE_GETC(int32) = (int32)toAddr;
 			else
 				CE_GETC(int64) = (int64)toAddr;
@@ -3560,7 +3569,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 					return false;
 			}
 			
-			if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+			if (ptrSize == 4)
 				CE_GETC(int32) = arrayAddr;
 			else
 				CE_GETC(int64) = arrayAddr;
@@ -3581,7 +3590,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 					return false;
 			}
 
-			if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+			if (ptrSize == 4)
 			{
 				CE_GETC(int32) = elemsAddr;
 				addr += 4;
@@ -3662,7 +3671,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 		if (type->IsPointer())
 		{						
-			if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+			if (ptrSize == 4)
 				CE_GETC(int32) = constAggData->mCEAddr;
 			else
 				CE_GETC(int64) = constAggData->mCEAddr;
@@ -3678,9 +3687,36 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	if (constant->mConstType == BfConstType_BitCast)
 	{
 		auto constBitCast = (BfConstantBitCast*)constant;
-
 		auto constTarget = module->mBfIRBuilder->GetConstantById(constBitCast->mTarget);
 		return WriteConstant(module, addr, constTarget, type);
+	}
+
+	if (constant->mConstType == BfConstType_Box)
+	{
+		auto constBox = (BfConstantBox*)constant;		
+		auto boxedType = GetBfType(constBox->mToType);
+		if (boxedType == NULL)
+			return false;
+		auto boxedTypeInst = boxedType->ToTypeInstance();
+		if (boxedTypeInst == NULL)
+			return false;
+		module->PopulateType(boxedTypeInst);
+		if (boxedTypeInst->mFieldInstances.IsEmpty())
+			return false;
+		auto& fieldInstance = boxedTypeInst->mFieldInstances.back();
+
+		auto boxedMem = CeMalloc(boxedTypeInst->mInstSize);
+		memset(boxedMem, 0, ptrSize*2);		
+		*(int32*)boxedMem = boxedTypeInst->mTypeId;
+
+		auto constTarget = module->mBfIRBuilder->GetConstantById(constBox->mTarget);
+		WriteConstant(module, boxedMem - mMemory.mVals + fieldInstance.mDataOffset, constTarget, fieldInstance.mResolvedType);
+
+		if (ptrSize == 4)
+			CE_GETC(int32) = (int32)(boxedMem - mMemory.mVals);
+		else
+			CE_GETC(int64) = (int64)(boxedMem - mMemory.mVals);
+		return true;
 	}
 
 	if (constant->mConstType == BfConstType_PtrToInt)
@@ -3711,7 +3747,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 				int stringId = atoi(globalVar->mName + 11);
 				addr_ce strAddr = GetString(stringId) + stringTypeInst->mInstSize;
-				if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+				if (ptrSize == 4)
 					CE_GETC(int32) = strAddr;
 				else
 					CE_GETC(int64) = strAddr;
@@ -3727,7 +3763,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		{
 			int stringId = atoi(globalVar->mName  + 10);
 			addr_ce strAddr = GetString(stringId);			
-			if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+			if (ptrSize == 4)
 				CE_GETC(int32) = strAddr;
 			else
 				CE_GETC(int64) = strAddr;
@@ -3745,7 +3781,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 			strAddr += stringTypeInst->mInstSize;
 		}
 
-		if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+		if (ptrSize == 4)
 			CE_GETC(int32) = strAddr;
 		else
 			CE_GETC(int64) = strAddr;
@@ -3756,7 +3792,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	{
 		auto constTypeOf = (BfTypeOf_Const*)constant;
 		addr_ce typeAddr = GetReflectType(constTypeOf->mType->mTypeId);
-		if (mCeMachine->mCeModule->mSystem->mPtrSize == 4)
+		if (ptrSize == 4)
 			CE_GETC(int32) = typeAddr;
 		else
 			CE_GETC(int64) = typeAddr;
@@ -5392,7 +5428,19 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 4 + 8);
 
 				char str[256];
-				int count = DoubleToString(val, str);				
+				int count = DoubleToString(val, str);
+				CE_CHECKADDR(strAddr, count + 1);
+				memcpy(memStart + strAddr, str, count + 1);
+				result = count;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Float_ToString)
+			{
+				int32& result = *(int32*)((uint8*)stackPtr + 0);
+				float val = *(float*)((uint8*)stackPtr + 4);
+				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 4 + 4);
+
+				char str[256];
+				int count = FloatToString(val, str);
 				CE_CHECKADDR(strAddr, count + 1);
 				memcpy(memStart + strAddr, str, count + 1);
 				result = count;
@@ -8174,7 +8222,14 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "ftoa")
 					ceFunction->mFunctionKind = CeFunctionKind_Double_Ftoa;
 				if (methodDef->mName == "ToString")
-					ceFunction->mFunctionKind = CeFunctionKind_Double_ToString;				
+					ceFunction->mFunctionKind = CeFunctionKind_Double_ToString;
+			}
+			else if (owner->IsInstanceOf(mCeModule->mCompiler->mFloatTypeDef))
+			{
+				if (methodDef->mName == "ftoa")
+					ceFunction->mFunctionKind = CeFunctionKind_Double_Ftoa;
+				if (methodDef->mName == "ToString")
+					ceFunction->mFunctionKind = CeFunctionKind_Float_ToString;
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mMathTypeDef))
 			{

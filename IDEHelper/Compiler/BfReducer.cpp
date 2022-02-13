@@ -5680,6 +5680,7 @@ BfStatement* BfReducer::CreateAttributedStatement(BfTokenNode* tokenNode)
  		if ((checkNode->IsA<BfObjectCreateExpression>()) ||
  			(checkNode->IsA<BfInvocationExpression>()) ||
  			(checkNode->IsA<BfVariableDeclaration>()) ||
+			(checkNode->IsA<BfStringInterpolationExpression>()) ||
  			(checkNode->IsA<BfBlock>()))
 		{
 			BfAttributedStatement* attribStmt = mAlloc->Alloc<BfAttributedStatement>();
@@ -5723,6 +5724,7 @@ BfExpression* BfReducer::CreateAttributedExpression(BfTokenNode* tokenNode, bool
 			if ((expr->IsA<BfObjectCreateExpression>()) ||
 				(expr->IsA<BfInvocationExpression>()) ||
 				(expr->IsA<BfVariableDeclaration>()) ||
+				(expr->IsA<BfStringInterpolationExpression>()) ||
 				(expr->IsA<BfBlock>()))
 			{
 				BfAttributedExpression* attribExpr = mAlloc->Alloc<BfAttributedExpression>();

@@ -398,6 +398,7 @@ enum CeFunctionKind
 	CeFunctionKind_Double_Strtod,
 	CeFunctionKind_Double_Ftoa,
 	CeFunctionKind_Double_ToString,
+	CeFunctionKind_Float_ToString,
 
 	CeFunctionKind_Math_Abs,
 	CeFunctionKind_Math_Acos,
@@ -900,6 +901,7 @@ public:
 	addr_ce GetString(const StringImpl& str);
 	addr_ce GetConstantData(BeConstant* constant);
 	BfType* GetBfType(int typeId);
+	BfType* GetBfType(BfIRType irType);
 	void PrepareConstStructEntry(CeConstStructData& constStructData);
 	bool CheckMemory(addr_ce addr, int32 size);
 	bool GetStringFromAddr(addr_ce strInstAddr, StringImpl& str);

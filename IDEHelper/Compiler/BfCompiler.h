@@ -347,6 +347,7 @@ public:
 			
 	BfTypeDef* mBfObjectTypeDef;
 	BfTypeDef* mChar32TypeDef;
+	BfTypeDef* mFloatTypeDef;
 	BfTypeDef* mDoubleTypeDef;
 	BfTypeDef* mMathTypeDef;
 

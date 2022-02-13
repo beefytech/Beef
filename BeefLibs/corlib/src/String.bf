@@ -1165,7 +1165,7 @@ namespace System
 		* @param provider The format provider
 		* @returns This method can fail if the format string is invalid.
 		*/
-		public Result<void> AppendF(IFormatProvider provider, StringView format, params Object[] args)
+		public Result<void> AppendF(IFormatProvider provider, StringView format, params Span<Object> args)
 		{
 			if (format.Ptr == null)
 			{
@@ -1240,7 +1240,7 @@ namespace System
 					}
 			        while (ch >= '0' && ch <= '9' && index < 1000000);
 				}
-				if (index >= args.Count) return FormatError();
+				if (index >= args.Length) return FormatError();
 				while (pos < len && (ch = format[pos]) == ' ') pos++;
 				bool leftJustify = false;
 				int width = 0;
@@ -1340,7 +1340,7 @@ namespace System
 			return .Ok;
 		}
 
-		public Result<void> AppendF(StringView format, params Object[] args)
+		public Result<void> AppendF(StringView format, params Span<Object> args)
 		{
 			return AppendF((IFormatProvider)null, format, params args);
 		}
@@ -2473,6 +2473,12 @@ namespace System
 				buf[encodedLen] = 0;
 				return .((.)buf, encodedLen + 1);
 			}
+		}
+
+		[Comptime(ConstEval=true)]
+		public static String ConstF(String format, params Span<Object> args)
+		{
+			return new String()..AppendF(format, params args);
 		}
 
 		public static bool Equals(char8* str1, char8* str2)
