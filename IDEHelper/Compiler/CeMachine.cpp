@@ -4195,8 +4195,9 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	SetAndRestoreValue<BfTypeDef*> prevCallerActiveTypeDef(mCallerActiveTypeDef, module->GetActiveTypeDef());
 	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);	
 	
+	SetAndRestoreValue<bool> prevCtxResolvingVar(module->mContext->mResolvingVarField, false);
 	SetAndRestoreValue<BfMethodInstance*> moduleCurMethodInstance(module->mCurMethodInstance, methodInstance);
-	SetAndRestoreValue<BfTypeInstance*> moduleCurTypeInstance(module->mCurTypeInstance, methodInstance->GetOwner());
+	SetAndRestoreValue<BfTypeInstance*> moduleCurTypeInstance(module->mCurTypeInstance, methodInstance->GetOwner());	
 
 	SetAndRestoreValue<int> prevCurExecuteId(mCurModule->mCompiler->mCurCEExecuteId, mCeMachine->mExecuteId);	
 
@@ -4561,7 +4562,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 		else if ((retInstAddr != 0) || (allocThisInstAddr != 0))
 		{
 			auto* retPtr = memStart + retInstAddr;
-			if (allocThisInstAddr != 0)
+			if ((allocThisInstAddr != 0) && (methodInstance->mMethodDef->mMethodType == BfMethodType_Ctor))
 			{
 				retPtr = memStart + allocThisAddr;
 				returnType = thisType;

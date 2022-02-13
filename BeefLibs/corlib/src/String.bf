@@ -7,6 +7,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
+using System.Interop;
 using System;
 
 namespace System
@@ -2448,6 +2449,16 @@ namespace System
 
 			UTF16.Encode(this, buf, encodedLen);
 			buf
+		}
+
+		[Comptime(ConstEval=true)]
+		public Span<c_wchar> ToConstNativeW()
+		{
+			int encodedLen = UTF16.GetEncodedLen(this);
+			var buf = new char16[encodedLen + 1]* ( ? );
+			UTF16.Encode(this, buf, encodedLen);
+			buf[encodedLen] = 0;
+			return .(buf, encodedLen + 1);
 		}
 
 		public static bool Equals(char8* str1, char8* str2)

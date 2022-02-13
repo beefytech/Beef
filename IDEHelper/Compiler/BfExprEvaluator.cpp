@@ -2636,6 +2636,8 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 
 				if (isResolvingVarField)				
 				{
+					BF_ASSERT(mModule->mBfIRBuilder->mIgnoreWrites);
+
 					// Don't even consider - we can't do method calls on ourselves when we are resolving var fields, because
 					// we are not allowed to generate methods when our field types are unknown. We may fix this in the future,
 					// but currently it breaks out expected order of operations. One issue is that our call signatures change
