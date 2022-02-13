@@ -2262,47 +2262,65 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 					{
 						for (auto& fieldInstance : checkTypeInstance->mFieldInstances)
 						{
-							if (fieldInstance.mMergedDataIdx != -1)
-							{								
-								int checkMask = 1 << fieldInstance.mMergedDataIdx;
-								if ((localVar->mUnassignedFieldFlags & checkMask) != 0)
-								{
-									auto fieldDef = fieldInstance.GetFieldDef();
-									if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
-									{
-										String propName;
-										if (propertyDeclaration->mNameNode != NULL)
-											propertyDeclaration->mNameNode->ToString(propName);
+							if (fieldInstance.mMergedDataIdx == -1)
+								continue;
 
-										if (checkTypeInstance == mCurTypeInstance)
-										{
-											Fail(StrFormat("Auto-implemented property '%s' must be fully assigned before control is returned to the caller",
-												propName.c_str()), localNameNode, deferFullAnalysis); // 0171
-										}
-										else
-										{
-											Fail(StrFormat("Auto-implemented property '%s.%s' must be fully assigned before control is returned to the caller",
-												TypeToString(checkTypeInstance).c_str(),
-												propName.c_str()), localNameNode, deferFullAnalysis); // 0171
-										}
+							int checkMask = 1 << fieldInstance.mMergedDataIdx;
+							if ((localVar->mUnassignedFieldFlags & checkMask) != 0)
+							{
+								auto fieldDef = fieldInstance.GetFieldDef();
+
+								if (mCurMethodInstance->mMethodDef->mDeclaringType->mIsPartial)
+								{
+									if (mCurMethodInstance->mMethodDef->mDeclaringType != fieldInstance.GetFieldDef()->mDeclaringType)
+									{
+										// This extension is only responsible for its own fields
+										foundFields = true;
+										continue;
+									}
+
+									if ((fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mInitializer != NULL))
+									{
+										// This initializer was handled in CtorNoBody
+										foundFields = true;
+										continue;
+									}																		
+								}
+								
+								if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
+								{
+									String propName;
+									if (propertyDeclaration->mNameNode != NULL)
+										propertyDeclaration->mNameNode->ToString(propName);
+
+									if (checkTypeInstance == mCurTypeInstance)
+									{
+										Fail(StrFormat("Auto-implemented property '%s' must be fully assigned before control is returned to the caller",
+											propName.c_str()), localNameNode, deferFullAnalysis); // 0171
 									}
 									else
 									{
-										if (checkTypeInstance == mCurTypeInstance)
-										{
-											Fail(StrFormat("Field '%s' must be fully assigned before control is returned to the caller",
-												fieldDef->mName.c_str()), localNameNode, deferFullAnalysis); // 0171
-										}
-										else
-										{
-											Fail(StrFormat("Field '%s.%s' must be fully assigned before control is returned to the caller",
-												TypeToString(checkTypeInstance).c_str(),
-												fieldDef->mName.c_str()), localNameNode, deferFullAnalysis); // 0171
-										}
+										Fail(StrFormat("Auto-implemented property '%s.%s' must be fully assigned before control is returned to the caller",
+											TypeToString(checkTypeInstance).c_str(),
+											propName.c_str()), localNameNode, deferFullAnalysis); // 0171
 									}
+								}
+								else
+								{
+									if (checkTypeInstance == mCurTypeInstance)
+									{
+										Fail(StrFormat("Field '%s' must be fully assigned before control is returned to the caller",
+											fieldDef->mName.c_str()), localNameNode, deferFullAnalysis); // 0171
+									}
+									else
+									{
+										Fail(StrFormat("Field '%s.%s' must be fully assigned before control is returned to the caller",
+											TypeToString(checkTypeInstance).c_str(),
+											fieldDef->mName.c_str()), localNameNode, deferFullAnalysis); // 0171
+									}
+								}
 
-									foundFields = true;
-								}									
+								foundFields = true;
 							}
 						}
 						checkTypeInstance = checkTypeInstance->mBaseType;
@@ -10087,8 +10105,10 @@ void BfModule::EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool al
 	}
 }
 
-BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType, const BfAllocTarget& allocTarget, bool callDtor)
+BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType, const BfAllocTarget& allocTarget, BfCastFlags castFlags)
 {
+	bool callDtor = (castFlags & BfCastFlags_NoBoxDtor) == 0;
+
 	if (mBfIRBuilder->mIgnoreWrites)
 	{
 		if (toType == mContext->mBfObjectType)
@@ -10160,7 +10180,7 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			loadedVal = mBfIRBuilder->CreateLoad(nullableValueAddr);
 		}
 		
-		auto boxedVal = BoxValue(srcNode, BfTypedValue(loadedVal, fromStructTypeInstance->GetUnderlyingType()), resultType, allocTarget, callDtor);
+		auto boxedVal = BoxValue(srcNode, BfTypedValue(loadedVal, fromStructTypeInstance->GetUnderlyingType()), resultType, allocTarget, callDtor ? BfCastFlags_None : BfCastFlags_NoBoxDtor);
 		RestoreScopeState();
 		if (!boxedVal)
 			return BfTypedValue();		
@@ -17067,7 +17087,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	}
 
 	// Zero out memory for default ctor
-	if ((methodDeclaration == NULL) && (mCurTypeInstance->IsStruct()))
+	if ((methodDeclaration == NULL) && (mCurTypeInstance->IsStruct()) && (methodInstance->mChainType != BfMethodChainType_ChainMember))
 	{
 		if (mCurTypeInstance->IsTypedPrimitive())
 		{
@@ -17075,7 +17095,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			mBfIRBuilder->CreateStore(GetDefaultValue(mCurTypeInstance), thisRef);
 		}
 		else if (mCurTypeInstance->mInstSize > 0)
-		{			
+		{
 			BfIRValue fillValue = GetConstValue8(0);
 			BfIRValue sizeValue = GetConstValue(mCurTypeInstance->mInstSize);
 			auto thisRef = mCurMethodState->mLocals[0]->mValue;

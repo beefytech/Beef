@@ -237,6 +237,28 @@ namespace Tests
 			return val.GetIt().GetExVal();
 		}
 
+		struct StructA
+		{
+		    public int mVal;
+		    public int mVal2 = 111;
+
+		    public this(int val, int val2)
+		    {
+		        mVal = val;
+		        mVal2 = val2;
+		    }
+		}
+
+		extension StructA
+		{
+			public int mVal3 = 222;
+
+		    public this(int val)
+		    {
+		        mVal = val;
+		    }
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -272,6 +294,11 @@ namespace Tests
 			obj = new ClassG();
 			delete obj;
 			Test.Assert(ClassF.sVal == 6543);
+
+			StructA ms = .(1);
+			Test.Assert((ms.mVal == 1) && (ms.mVal2 == 111) && (ms.mVal3 == 222));
+			ms = .(1, 2);
+			Test.Assert((ms.mVal == 1) && (ms.mVal2 == 2) && (ms.mVal3 == 222));
 		}
 
 		[Test]

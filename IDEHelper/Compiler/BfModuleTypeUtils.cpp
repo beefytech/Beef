@@ -11906,7 +11906,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 	// Null -> ObjectInst|IFace|ptr
 	if ((typedVal.mType->IsNull()) &&
-		((toType->IsObjectOrInterface()) || (toType->IsPointer() || (toType->IsFunction()))))
+		((toType->IsObjectOrInterface()) || (toType->IsPointer() || (toType->IsFunction()) || (toType->IsAllocType()))))
 	{
 		return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
 	}
@@ -13274,7 +13274,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 
 		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, ignoreWrites);
-		auto value = BoxValue(srcNode, typedVal, toType, scopeData, (castFlags & BfCastFlags_NoBoxDtor) == 0);
+		auto value = BoxValue(srcNode, typedVal, toType, scopeData, castFlags);
 		if (value)
 			return value.mValue;
 	}
