@@ -1,4 +1,5 @@
 using System;
+using System.Interop;
 
 namespace Tests
 {
@@ -19,6 +20,14 @@ namespace Tests
 			var str2 = scope String();
 			FormatString(str2, $"\a{200+300}B{200+300:X}");
 			Test.Assert(str2 == "\a500B1F4");
+
+			static c_wchar[?] cWStr = "Test".ToConstNativeW();
+			c_wchar* wStr = &cWStr;
+			Test.Assert(wStr[0] == 'T');
+			Test.Assert(wStr[1] == 'e');
+			Test.Assert(wStr[2] == 's');
+			Test.Assert(wStr[3] == 't');
+			Test.Assert(wStr[4] == '\0');
 		}
 	}
 }

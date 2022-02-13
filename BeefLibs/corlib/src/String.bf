@@ -2436,29 +2436,43 @@ namespace System
 		public mixin ToScopedNativeWChar()
 		{
 			int encodedLen = UTF16.GetEncodedLen(this);
-			char16* buf;
+			c_wchar* buf;
 			if (encodedLen < 128)
 			{
-				buf = scope:mixin char16[encodedLen]* ( ? );
+				buf = scope:mixin c_wchar[encodedLen]* ( ? );
 			}
 			else
 			{
-				buf = new char16[encodedLen]* ( ? );
+				buf = new c_wchar[encodedLen]* ( ? );
 				defer:mixin delete buf;
 			}
 
-			UTF16.Encode(this, buf, encodedLen);
+			if (sizeof(c_wchar) == 2)
+				UTF16.Encode(this, (.)buf, encodedLen);
+			else
+				UTF32.Encode(this, (.)buf, encodedLen);
 			buf
 		}
 
 		[Comptime(ConstEval=true)]
 		public Span<c_wchar> ToConstNativeW()
 		{
-			int encodedLen = UTF16.GetEncodedLen(this);
-			var buf = new char16[encodedLen + 1]* ( ? );
-			UTF16.Encode(this, buf, encodedLen);
-			buf[encodedLen] = 0;
-			return .(buf, encodedLen + 1);
+			if (sizeof(c_wchar) == 2)
+			{
+				int encodedLen = UTF16.GetEncodedLen(this);
+				var buf = new char16[encodedLen + 1]* ( ? );
+				UTF16.Encode(this, buf, encodedLen);
+				buf[encodedLen] = 0;
+				return .((.)buf, encodedLen + 1);
+			}
+			else
+			{
+				int encodedLen = UTF32.GetEncodedLen(this);
+				var buf = new char32[encodedLen + 1]* ( ? );
+				UTF32.Encode(this, buf, encodedLen);
+				buf[encodedLen] = 0;
+				return .((.)buf, encodedLen + 1);
+			}
 		}
 
 		public static bool Equals(char8* str1, char8* str2)
