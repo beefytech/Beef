@@ -2395,12 +2395,21 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 				BfExprEvaluator exprEvaluator(this);
 				exprEvaluator.mExpectingType = tupleFieldInstance->GetResolvedType();
 				exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_AllowOutExpr;
-				exprEvaluator.Evaluate(expr);
+				if (mCurMethodState->mDeferredLocalAssignData != NULL)
+				{
+					SetAndRestoreValue<bool> prevIsIfCondition(mCurMethodState->mDeferredLocalAssignData->mIsIfCondition, true);
+					SetAndRestoreValue<bool> prevIfMayBeSkipped(mCurMethodState->mDeferredLocalAssignData->mIfMayBeSkipped, true);
+					exprEvaluator.Evaluate(expr);
+				}
+				else
+				{
+					exprEvaluator.Evaluate(expr);
+				}
 				if (isMatchedBlockEnd)
 					matchedBlockEnd = mBfIRBuilder->GetInsertBlock();
 				if (isFalseBlockEnd)
 					falseBlockEnd = mBfIRBuilder->GetInsertBlock();
-				auto argValue = exprEvaluator.mResult;			
+				auto argValue = exprEvaluator.mResult;
 				if (!argValue)
 					continue;
 
@@ -2417,7 +2426,16 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 
 					DeferredAssign deferredAssign = { expr, argValue, tupleElement, tupleFieldIdx };
 					deferredAssigns.push_back(deferredAssign);
-					exprEvaluator.MarkResultAssigned();
+					if (mCurMethodState->mDeferredLocalAssignData != NULL)
+					{
+						SetAndRestoreValue<bool> prevIsIfCondition(mCurMethodState->mDeferredLocalAssignData->mIsIfCondition, true);
+						SetAndRestoreValue<bool> prevIfMayBeSkipped(mCurMethodState->mDeferredLocalAssignData->mIfMayBeSkipped, true);
+						exprEvaluator.MarkResultAssigned();
+					}
+					else
+					{
+						exprEvaluator.MarkResultAssigned();
+					}
 					continue;
 				}
 
