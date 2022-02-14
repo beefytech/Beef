@@ -8246,6 +8246,20 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 
 				if (argValue)
 				{
+					if ((argValue.mType->IsRef()) && (argValue.mType->GetUnderlyingType() == resolvedFieldType))
+					{
+						if (auto unaryOperator = BfNodeDynCast<BfUnaryOperatorExpression>(argValues.mResolvedArgs[tupleFieldIdx].mExpression))
+						{
+							mModule->Fail(StrFormat("Invalid use of '%s'. Enum payloads can only be retrieved through 'case' expressions.", BfGetOpName(unaryOperator->mOp)), unaryOperator->mOpToken);
+							argValue = mModule->GetDefaultTypedValue(resolvedFieldType);
+						}
+						else if (auto varDecl = BfNodeDynCast<BfVariableDeclaration>(argValues.mResolvedArgs[tupleFieldIdx].mExpression))
+						{
+							mModule->Fail("Invalid variable declaration. Enum payloads can only be retrieved through 'case' expressions.", varDecl);
+							argValue = mModule->GetDefaultTypedValue(resolvedFieldType);
+						}
+					}
+
 					// argValue can have a value even if tuplePtr does not have a value. This can happen if we are assigning to a (void) tuple,
 					//  but we have a value that needs to be attempted to be casted to void					
 					argValue = mModule->Cast(argValues.mResolvedArgs[tupleFieldIdx].mExpression, argValue, resolvedFieldType, wantConst ? BfCastFlags_WantsConst : BfCastFlags_None);

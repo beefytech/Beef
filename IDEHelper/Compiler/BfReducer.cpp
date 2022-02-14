@@ -2571,7 +2571,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				}
 				if (caseExpr->mCaseExpression == NULL)
 				{
-					auto expr = CreateExpressionAfter(caseExpr, (CreateExprFlags)(CreateExprFlags_NoAssignment | CreateExprFlags_PermissiveVariableDecl));
+					auto expr = CreateExpressionAfter(caseExpr, (CreateExprFlags)(CreateExprFlags_NoAssignment | CreateExprFlags_PermissiveVariableDecl | CreateExprFlags_EarlyExit));
 					if (expr == NULL)
 						continue;
 					MEMBER_SET(caseExpr, mCaseExpression, expr);

@@ -1124,15 +1124,16 @@ bool BfPassInstance::WantsRangeRecorded(BfSourceData* bfSource, int srcIdx, int 
 	if (bfSource == NULL)
 		return true;
 
-	if (!mErrors.IsEmpty())
-	{
-		// If the last error had a range that was a subset of this one, then just keep the first error
-		//  This helps reduce cascading errors to their root cause
-		auto lastError = mErrors.back();
-		if ((lastError->mSource == bfSource) && (isWarning == lastError->mIsWarning) && (isDeferred == lastError->mIsDeferred) &&
-			(lastError->mSrcStart >= srcIdx) && (lastError->mSrcEnd <= srcIdx + srcLen))
-			return false;
-	}
+	//TODO: Was this useful, or does 'var' resolution do this better?
+// 	if (!mErrors.IsEmpty())
+// 	{
+// 		// If the last error had a range that was a subset of this one, then just keep the first error
+// 		//  This helps reduce cascading errors to their root cause
+// 		auto lastError = mErrors.back();
+// 		if ((lastError->mSource == bfSource) && (isWarning == lastError->mIsWarning) && (isDeferred == lastError->mIsDeferred) &&
+// 			(lastError->mSrcStart >= srcIdx) && (lastError->mSrcEnd <= srcIdx + srcLen))
+// 			return false;
+// 	}
 
 	// Don't record errors that have already occurred at this location
 	BfErrorBase checkError;
