@@ -384,21 +384,16 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 	};
 
 	if (auto typeRef = BfNodeDynCast<BfTypeReference>(node))
-	{
-		auto type = mModule->ResolveTypeRef(typeRef);
-		if (type != NULL)
-		{
-			*isStatic = true;
-			return _FixType(BfTypedValue(type));
-		}
-
+	{		
 		if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
 		{
 			BfExprEvaluator exprEvaluator(mModule);
 			auto identifierResult = exprEvaluator.LookupIdentifier(namedTypeRef->mNameNode);
 			if (identifierResult)
 				return identifierResult;
-			return _FixType(exprEvaluator.GetResult()); // We need 'GetResult' to read property values
+			identifierResult = exprEvaluator.GetResult();// We need 'GetResult' to read property values
+			if (identifierResult.HasType())
+				return _FixType(identifierResult);
 		}
 		else if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
 		{
@@ -423,10 +418,20 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 					auto fieldResult = exprEvaluator.LookupField(qualifiedTypeRef->mRight, leftValue, rightNamedTypeRef->mNameNode->ToString());
 					if (!fieldResult) // Was property?
 						fieldResult = exprEvaluator.GetResult();
-					*isStatic = false;						
-					return _FixType(fieldResult);
+					if (fieldResult.HasType())
+					{
+						*isStatic = false;
+						return _FixType(fieldResult);
+					}
 				}
 			}
+		}
+
+		auto type = mModule->ResolveTypeRef(typeRef);
+		if (type != NULL)
+		{
+			*isStatic = true;
+			return _FixType(BfTypedValue(type));
 		}
 	}	
 	if (auto identifier = BfNodeDynCast<BfIdentifierNode>(node))
