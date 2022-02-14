@@ -3618,12 +3618,50 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 					return false;
 			}
 
+			BfType* innerType = NULL;
+			BfType* payloadType = NULL;
+			if (typeInst->IsUnion())
+				innerType = typeInst->GetUnionInnerType();
+
 			if (typeInst->IsPayloadEnum())
 			{
-				auto innerType = typeInst->GetUnionInnerType();
+				auto& dscrFieldInstance = typeInst->mFieldInstances.back();
+
+				auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[dscrFieldInstance.mDataIdx]);
+				if (fieldConstant == NULL)
+					return false;
+				if (!WriteConstant(module, addr + dscrFieldInstance.mDataOffset, fieldConstant, dscrFieldInstance.mResolvedType))
+					return false;
+
+				for (auto& fieldInstance : typeInst->mFieldInstances)
+				{
+					auto fieldDef = fieldInstance.GetFieldDef();
+					if (!fieldInstance.mIsEnumPayloadCase)
+						continue;
+					int tagIdx = -fieldInstance.mDataIdx - 1;					
+					if (fieldConstant->mInt32 == tagIdx)
+						payloadType = fieldInstance.mResolvedType;
+				}
+			}
+
+			if (typeInst->IsUnion())
+			{
 				if (!innerType->IsValuelessType())
 				{
-					auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[1]);
+					BfIRValue dataVal = aggConstant->mValues[1];
+					if ((payloadType != NULL) && (innerType != NULL))
+					{
+						Array<uint8> memArr;
+						memArr.Resize(innerType->mSize);
+						if (!module->mBfIRBuilder->WriteConstant(dataVal, memArr.mVals, innerType))
+							return false;
+						dataVal = module->mBfIRBuilder->ReadConstant(memArr.mVals, payloadType);
+						if (!dataVal)
+							return false;
+						innerType = payloadType;
+					}
+					
+					auto fieldConstant = module->mBfIRBuilder->GetConstant(dataVal);
 					if (fieldConstant == NULL)
 						return false;
 					if (!WriteConstant(module, addr, fieldConstant, innerType))
@@ -3631,16 +3669,19 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 				}
 			}
 
-			for (auto& fieldInstance : typeInst->mFieldInstances)
+			if (!typeInst->IsUnion())
 			{
-				if (fieldInstance.mDataOffset < 0)
-					continue;
+				for (auto& fieldInstance : typeInst->mFieldInstances)
+				{
+					if (fieldInstance.mDataOffset < 0)
+						continue;
 
-				auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[fieldInstance.mDataIdx]);
-				if (fieldConstant == NULL)
-					return false;
-				if (!WriteConstant(module, addr + fieldInstance.mDataOffset, fieldConstant, fieldInstance.mResolvedType))
-					return false;
+					auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[fieldInstance.mDataIdx]);
+					if (fieldConstant == NULL)
+						return false;
+					if (!WriteConstant(module, addr + fieldInstance.mDataOffset, fieldConstant, fieldInstance.mResolvedType))
+						return false;
+				}
 			}
 		}
 		return true;

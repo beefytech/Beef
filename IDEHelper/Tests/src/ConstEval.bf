@@ -6,6 +6,18 @@ namespace Tests
 {
 	class ConstEval
 	{
+		public enum EnumA
+		{
+			case A;
+			case B(float a, float b);
+			case C(String str);
+
+			public struct Inner
+			{
+				public const EnumA cVal = EnumA.C("InnerTest");
+			}
+		}
+
 		struct StructA
 		{
 			public int32 mA;
@@ -145,6 +157,11 @@ namespace Tests
 		    return test!();
 		}
 
+		static String EnumAToStr(EnumA ea)
+		{
+			return ea.ToString(.. new .());
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -183,6 +200,15 @@ namespace Tests
 
 			Test.Assert(MethodC() == 1753);
 			Test.Assert(StrLenMixin("ABCD") == 4);
+
+			String s1 = [ConstEval]EnumAToStr(.C("Test1"));
+			Test.Assert(s1 === "C(\"Test1\")");
+			const String s2 = EnumAToStr(.C("Test2"));
+			Test.Assert(s2 === "C(\"Test2\")");
+			const String s3 = EnumAToStr(.B(1, 2));
+			Test.Assert(s3 === "B(1, 2)");
+			const let s4 = EnumAToStr(EnumA.Inner.cVal);
+			Test.Assert(s4 === "C(\"InnerTest\")");
 		}
 	}
 }

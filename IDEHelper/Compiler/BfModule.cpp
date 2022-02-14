@@ -3029,7 +3029,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	}
 
  	if (!mReportErrors)
-	{		
+	{
 		mCompiler->mPassInstance->SilentFail();
 		return NULL;
 	}
@@ -23842,6 +23842,8 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						continue;
 				
 					int checkMethodIdx = lookupMethodInstance->mVirtualTableIdx;
+					if (checkMethodIdx >= baseVirtualMethodTable.mSize)
+						FatalError("SlotVirtualMethod OOB in baseVirtualMethodTable[checkMethodIdx]");
 					auto& baseMethodRef = baseVirtualMethodTable[checkMethodIdx];
 					if (baseMethodRef.mDeclaringMethod.mMethodNum == -1)
 					{

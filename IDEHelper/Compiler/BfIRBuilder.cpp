@@ -971,6 +971,7 @@ bool BfIRConstHolder::WriteConstant(BfIRValue val, void* ptr, BfType* type)
 	case BfTypeCode_Int32:
 	case BfTypeCode_UInt32:
 	case BfTypeCode_Char32:
+	case BfTypeCode_StringId:
 		*(int32*)ptr = constant->mInt32;
 		return true;
 	case BfTypeCode_Int64:
@@ -1003,7 +1004,7 @@ bool BfIRConstHolder::WriteConstant(BfIRValue val, void* ptr, BfType* type)
 					return false;
 			}
 
-			return false;
+			return true;
 		}
 		else
 		{
@@ -1055,6 +1056,24 @@ bool BfIRConstHolder::WriteConstant(BfIRValue val, void* ptr, BfType* type)
 		return WriteConstant(BfIRValue(BfIRValueFlags_Const, constBitCast->mTarget), ptr, type);
 	}
 
+	if (constant->mConstType == BfConstType_GlobalVar)
+	{
+		auto constGV = (BfGlobalVar*)constant;
+		const char* strDataPrefix = "__bfStrData";
+		if (strncmp(constGV->mName, strDataPrefix, strlen(strDataPrefix)) == 0)
+		{
+			*(int32*)ptr = atoi(constGV->mName + strlen(strDataPrefix));
+			return true;
+		}
+
+		const char* strObjPrefix = "__bfStrObj";
+		if (strncmp(constGV->mName, strObjPrefix, strlen(strObjPrefix)) == 0)
+		{
+			*(int32*)ptr = atoi(constGV->mName + strlen(strObjPrefix));
+			return true;			
+		}
+	}
+
 	return false;
 }
 
@@ -1077,6 +1096,7 @@ BfIRValue BfIRConstHolder::ReadConstant(void* ptr, BfType* type)
 		case BfTypeCode_Int32:
 		case BfTypeCode_UInt32:
 		case BfTypeCode_Char32:
+		case BfTypeCode_StringId:
 			return CreateConst(primType->mTypeDef->mTypeCode, *(int32*)ptr);
 		case BfTypeCode_Int64:
 		case BfTypeCode_UInt64:
@@ -1097,7 +1117,7 @@ BfIRValue BfIRConstHolder::ReadConstant(void* ptr, BfType* type)
 			return BfIRValue();
 		}
 	}
-
+	
 	if (type->IsTypedPrimitive())
 	{
 		return ReadConstant(ptr, type->GetUnderlyingType());
@@ -1163,6 +1183,11 @@ BfIRValue BfIRConstHolder::ReadConstant(void* ptr, BfType* type)
 		irType.mKind = BfIRTypeData::TypeKind_TypeId;
 		irType.mId = type->mTypeId;
 		return CreateConstAgg(irType, irValues);		
+	}
+
+	if (type->IsInstanceOf(mModule->mCompiler->mStringTypeDef))
+	{
+		return CreateConst(BfTypeCode_StringId, *(int32*)ptr);
 	}
 	
 	return BfIRValue();

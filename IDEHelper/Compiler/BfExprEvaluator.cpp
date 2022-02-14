@@ -17351,7 +17351,20 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	if (isCascade)
 		mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_InCascade);
 	ResolveArgValues(argValues, resolveArgsFlags);
-	mResult = MatchMethod(methodNodeSrc, methodBoundExpr, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, argValues, methodGenericArgs, checkedKind);		
+	
+	//
+	{
+		// We also apply this right before the actual call, but we need to set the comptime flag earlier
+		SetAndRestoreValue<BfEvalExprFlags> prevEvalExprFlag(mBfEvalExprFlags);
+
+		if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mConstEvalAttributeTypeDef)))
+		{
+			mModule->mAttributeState->mUsed = true;
+			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
+		}
+		mResult = MatchMethod(methodNodeSrc, methodBoundExpr, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, argValues, methodGenericArgs, checkedKind);
+	}
+	
 	argValues.HandleFixits(mModule);
 
 	if (mModule->mAttributeState == &attributeState)
