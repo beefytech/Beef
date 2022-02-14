@@ -130,7 +130,7 @@ namespace System
 					stream = new NullStream();
 				}
 #endif
-				StreamWriter newStreamWriter = new StreamWriter(stream, InputEncoding, 4096, true);
+				StreamWriter newStreamWriter = new StreamWriter(stream, OutputEncoding ?? Encoding.ASCII, 4096, true);
 				newStreamWriter.AutoFlush = true;
 
 				let prevValue = Interlocked.CompareExchange(ref outStreamWriter, null, newStreamWriter);
@@ -157,7 +157,7 @@ namespace System
 					stream = new NullStream();
 				}
 
-				StreamReader newStreamReader = new StreamReader(stream, InputEncoding, false, 4096, true);
+				StreamReader newStreamReader = new StreamReader(stream, InputEncoding ?? Encoding.ASCII, false, 4096, true);
 
 				let prevValue = Interlocked.CompareExchange(ref outStreamReader, null, newStreamReader);
 				if (prevValue != null)
