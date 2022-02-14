@@ -21238,6 +21238,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		if (!leftValue)
 		{
 			mModule->CreateValueFromExpression(rightExpression);
+			mResult = mModule->GetDefaultTypedValue(boolType, false, BfDefaultValueKind_Undef);
 			return;
 		}
 
