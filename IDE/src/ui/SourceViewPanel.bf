@@ -5116,9 +5116,8 @@ namespace IDE.ui
 	                        mClangHoverErrorData = null;
 	                    }
 	                }
-#endif
 
-	                if ((parser != null) && (mIsBeefSource) && (!didShow))
+	                if ((parser != null) && (mIsBeefSource) && (!didShow) && (!mHoverWatch.mIsShown))
 					ErrorScope:
 	                {
 						//TODO: Needed this?
