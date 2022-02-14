@@ -25,6 +25,8 @@ namespace System
 			{
 				if (str.Equals(name, ignoreCase))
 					return .Ok(data);
+				if (int64.Parse(str) case .Ok(let val) && val == (.)data)
+					return .Ok(data);
 			}
 
 			return .Err;
