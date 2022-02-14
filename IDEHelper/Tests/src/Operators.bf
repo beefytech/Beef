@@ -2,6 +2,22 @@
 
 using System;
 
+namespace System
+{
+	public extension Event<T>
+	{
+		public implicit void operator+=(T action) mut
+		{
+			Add(action);
+		}
+
+		public implicit void operator-=(T action) mut
+		{
+			Remove(action, true);
+		}
+	}
+}
+
 namespace Tests
 {
 	class Operators
@@ -457,6 +473,26 @@ namespace Tests
 
 		public struct Vector2 : this(float x, float y);
 
+		public static Event<Action> sEvent ~ _.Dispose(); // Workaround for the lack of auto-destructor in properties
+
+		public static ref Event<Action> EventProp { get => ref sEvent; set => sEvent = value; };
+
+		static int sA = 123;
+		public static ref int RefVal => ref sA;
+
+		public static int Val
+		{
+			get
+			{
+				return sA;
+			}
+
+			set
+			{
+				sA = value;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -657,6 +693,22 @@ namespace Tests
 			StructK sk = (.)123;
 			uint64 sku32 = sk;
 			Test.Assert(sku32 == 123);
+
+			int val2 = 10;
+
+			void Set()
+			{
+				val2 += 200;
+			}
+
+			EventProp += new => Set;
+			EventProp();
+			Test.Assert(val2 == 210);
+
+			RefVal += 99;
+			Test.Assert(sA == 222);
+			Val += 1000;
+			Test.Assert(sA == 1222);
 		}
 
 		struct IntStruct

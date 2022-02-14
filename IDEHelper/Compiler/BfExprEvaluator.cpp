@@ -18607,6 +18607,69 @@ void BfExprEvaluator::DoTupleAssignment(BfAssignmentExpression* assignExpr)
 	mResult = rightValue;
 }
 
+BfTypedValue BfExprEvaluator::PerformAssignment_CheckOp(BfAssignmentExpression* assignExpr, bool deferBinop, BfTypedValue& leftValue, BfTypedValue& rightValue, bool& evaluatedRight)
+{	
+	BfResolvedArgs argValues;
+	auto checkTypeInst = leftValue.mType->ToTypeInstance();
+	while (checkTypeInst != NULL)
+	{
+		for (auto operatorDef : checkTypeInst->mTypeDef->mOperators)
+		{
+			if (operatorDef->mOperatorDeclaration->mAssignOp != assignExpr->mOp)
+				continue;
+
+			auto methodInst = mModule->GetRawMethodInstanceAtIdx(checkTypeInst, operatorDef->mIdx);
+			if (methodInst->GetParamCount() != 1)
+				continue;
+
+			auto paramType = methodInst->GetParamType(0);
+			if (deferBinop)
+			{
+				if (argValues.mArguments == NULL)
+				{
+					SizedArray<BfExpression*, 2> argExprs;
+					argExprs.push_back(assignExpr->mRight);
+					BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
+					argValues.Init(&sizedArgExprs);
+					ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
+				}
+
+				evaluatedRight = true;
+				rightValue = ResolveArgValue(argValues.mResolvedArgs[0], paramType);
+				if (!rightValue)
+					continue;
+			}
+			else
+			{
+				if (!mModule->CanCast(rightValue, paramType))
+					continue;
+			}
+
+			mModule->SetElementType(assignExpr->mOpToken, BfSourceElementType_Method);
+			auto autoComplete = GetAutoComplete();
+			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(assignExpr->mOpToken)))
+			{
+				if (operatorDef->mOperatorDeclaration != NULL)
+					autoComplete->SetDefinitionLocation(operatorDef->mOperatorDeclaration->mOpTypeToken);
+			}
+
+			auto moduleMethodInstance = mModule->GetMethodInstance(checkTypeInst, operatorDef, BfTypeVector());
+
+			BfExprEvaluator exprEvaluator(mModule);
+			SizedArray<BfIRValue, 1> args;
+			exprEvaluator.PushThis(assignExpr->mLeft, leftValue, moduleMethodInstance.mMethodInstance, args);
+			exprEvaluator.PushArg(rightValue, args);
+			exprEvaluator.CreateCall(assignExpr, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, args);
+			return leftValue;			
+		}
+
+		
+		checkTypeInst = mModule->GetBaseType(checkTypeInst);
+	}
+
+	return BfTypedValue();
+}
+
 void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool evaluatedLeft, BfTypedValue rightValue, BfTypedValue* outCascadeValue)
 {	
 	auto binaryOp = BfAssignOpToBinaryOp(assignExpr->mOp);	
@@ -18718,16 +18781,39 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				autoComplete->mResultString += mPropDef->mName;
 			}
 
+			bool handled = false;
+
 			BfTypedValue convVal;
 			if (binaryOp != BfBinaryOp_None)
 			{
-				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, BfBinOpFlag_ForceLeftType);
-				if (!mResult)
+ 				BfTypedValue leftValue = mModule->CreateValueFromExpression(assignExpr->mLeft, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowIntUnknown));
+ 				if (!leftValue)
+ 					return;
+
+				bool evaluatedRight = false;
+				auto opResult = PerformAssignment_CheckOp(assignExpr, true, leftValue, rightValue, evaluatedRight);
+				if (opResult)
+				{
+					mResult = opResult;
 					return;
-				convVal = mResult;
-				mResult = BfTypedValue();
-				if (!convVal)
-					return;
+				}
+				else
+				{
+					if (evaluatedRight)
+					{
+						if (!rightValue)
+							return;
+						PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, BfBinOpFlag_ForceLeftType, leftValue, rightValue);
+					}
+					else
+						PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, BfBinOpFlag_ForceLeftType, leftValue);
+					if (!mResult)
+						return;
+					convVal = mResult;
+					mResult = BfTypedValue();
+					if (!convVal)
+						return;
+				}
 			}			
 			else
 			{
@@ -18755,37 +18841,40 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				}
 			}					
 
-			if (mPropSrc != NULL)
-				mModule->UpdateExprSrcPos(mPropSrc);
-
-			BfResolvedArg valueArg;
-			valueArg.mTypedValue = convVal;
-			mIndexerValues.Insert(0, valueArg);
-			
-			if (!setMethod->mIsStatic)
+			if (!handled)
 			{
-				auto owner = methodInstance.mMethodInstance->GetOwner();
-				if ((mPropTarget.mType != owner) || 
-					((mPropTarget.mValue.IsFake()) && (!mOrigPropTarget.mValue.IsFake())))
+				if (mPropSrc != NULL)
+					mModule->UpdateExprSrcPos(mPropSrc);
+
+				BfResolvedArg valueArg;
+				valueArg.mTypedValue = convVal;
+				mIndexerValues.Insert(0, valueArg);
+
+				if (!setMethod->mIsStatic)
 				{
-					if ((mPropDefBypassVirtual) || (!mPropTarget.mType->IsInterface()))
+					auto owner = methodInstance.mMethodInstance->GetOwner();
+					if ((mPropTarget.mType != owner) ||
+						((mPropTarget.mValue.IsFake()) && (!mOrigPropTarget.mValue.IsFake())))
 					{
-						mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, owner);
-						if (!mPropTarget)
+						if ((mPropDefBypassVirtual) || (!mPropTarget.mType->IsInterface()))
 						{
-							mModule->Fail("Internal property error", mPropSrc);
-							return;
+							mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, owner);
+							if (!mPropTarget)
+							{
+								mModule->Fail("Internal property error", mPropSrc);
+								return;
+							}
 						}
 					}
 				}
-			}
 
-			auto callFlags = mPropDefBypassVirtual ? BfCreateCallFlags_BypassVirtual : BfCreateCallFlags_None;
-			mResult = CreateCall(mPropSrc, mPropTarget, mOrigPropTarget, setMethod, methodInstance, callFlags, mIndexerValues, NULL);
-			mPropDef = NULL;
-			mResult = convVal;
-			mIndexerValues.Clear();
-			return;
+				auto callFlags = mPropDefBypassVirtual ? BfCreateCallFlags_BypassVirtual : BfCreateCallFlags_None;
+				mResult = CreateCall(mPropSrc, mPropTarget, mOrigPropTarget, setMethod, methodInstance, callFlags, mIndexerValues, NULL);
+				mPropDef = NULL;
+				mResult = convVal;
+				mIndexerValues.Clear();
+				return;
+			}
 		}
 	}
 
@@ -18842,65 +18931,14 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 
 		if ((rightValue) || (deferBinop))
 		{
-			auto checkTypeInst = leftValue.mType->ToTypeInstance();
-			while (checkTypeInst != NULL)
+			bool evaluatedRight = false;
+			auto opResult = PerformAssignment_CheckOp(assignExpr, deferBinop, leftValue, rightValue, evaluatedRight);
+			if (opResult)
 			{
-				for (auto operatorDef : checkTypeInst->mTypeDef->mOperators)
-				{
-					if (operatorDef->mOperatorDeclaration->mAssignOp != assignExpr->mOp)
-						continue;
-
-					auto methodInst = mModule->GetRawMethodInstanceAtIdx(checkTypeInst, operatorDef->mIdx);
-					if (methodInst->GetParamCount() != 1)
-						continue;
-
-					auto paramType = methodInst->GetParamType(0);
-					if (deferBinop)
-					{
-						if (argValues.mArguments == NULL)
-						{
-							SizedArray<BfExpression*, 2> argExprs;
-							argExprs.push_back(assignExpr->mRight);
-							BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
-							argValues.Init(&sizedArgExprs);
-							ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
-						}
-
-						rightValue = ResolveArgValue(argValues.mResolvedArgs[0], paramType);
-						if (!rightValue)
-							continue;
-					}
-					else
-					{
-						if (!mModule->CanCast(rightValue, paramType))
-							continue;
-					}
-
-					mModule->SetElementType(assignExpr->mOpToken, BfSourceElementType_Method);					
-					if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(assignExpr->mOpToken)))
-					{						
-						if (operatorDef->mOperatorDeclaration != NULL)
-							autoComplete->SetDefinitionLocation(operatorDef->mOperatorDeclaration->mOpTypeToken);
-					}
-
-					auto moduleMethodInstance = mModule->GetMethodInstance(checkTypeInst, operatorDef, BfTypeVector());
-
-					BfExprEvaluator exprEvaluator(mModule);
-					SizedArray<BfIRValue, 1> args;
-					exprEvaluator.PushThis(assignExpr->mLeft, leftValue, moduleMethodInstance.mMethodInstance, args);
-					exprEvaluator.PushArg(rightValue, args);
-					exprEvaluator.CreateCall(assignExpr, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, args);
-					convVal = leftValue;
-					handled = true;
-					break;
-				}
-
-				if (handled)
-					break;
-				checkTypeInst = mModule->GetBaseType(checkTypeInst);
+				handled = true;
+				convVal = opResult;
 			}
-
-			if (!handled)
+			else
 			{
 				auto flags = BfBinOpFlag_ForceLeftType;
 				if (deferBinop)				

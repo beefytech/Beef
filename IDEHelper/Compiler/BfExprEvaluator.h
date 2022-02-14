@@ -501,7 +501,8 @@ public:
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic);	
 	void PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags);
 	BfTypedValue PerformUnaryOperation_TryOperator(const BfTypedValue& inValue, BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags);
-	void PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags);
+	void PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags);	
+	BfTypedValue PerformAssignment_CheckOp(BfAssignmentExpression* assignExpr, bool deferBinop, BfTypedValue& leftValue, BfTypedValue& rightValue, bool& evaluatedRight);
 	void PerformAssignment(BfAssignmentExpression* assignExpr, bool evaluatedLeft, BfTypedValue rightValue, BfTypedValue* outCascadeValue = NULL);	
 	void PopulateDeferrredTupleAssignData(BfTupleExpression* tupleExr, DeferredTupleAssignData& deferredTupleAssignData);
 	void AssignDeferrredTupleAssignData(BfAssignmentExpression* assignExpr, DeferredTupleAssignData& deferredTupleAssignData, BfTypedValue rightValue);
