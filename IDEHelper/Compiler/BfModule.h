@@ -1845,7 +1845,7 @@ public:
 	void ClearLifetimeEnds();
 	bool HasDeferredScopeCalls(BfScopeData* scope);	
 	void EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scope, BfIRBlock doneBlock = BfIRBlock());	
-	void MarkScopeLeft(BfScopeData* scopeData);
+	void MarkScopeLeft(BfScopeData* scopeData, bool isNoReturn = false);
 	BfGenericParamType* GetGenericParamType(BfGenericParamKind paramKind, int paramIdx);
 	BfType* ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, bool allowFail = false);
 	BfType* ResolveSelfType(BfType* type, BfTypeInstance* selfType);

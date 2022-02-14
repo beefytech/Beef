@@ -15519,9 +15519,9 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 	}*/
 }
 
-void BfModule::MarkScopeLeft(BfScopeData* scopeData)
-{
-	if (mCurMethodState->mDeferredLocalAssignData != NULL)
+void BfModule::MarkScopeLeft(BfScopeData* scopeData, bool isNoReturn)
+{	
+	if ((mCurMethodState->mDeferredLocalAssignData != NULL) && (!isNoReturn))
 	{
 		auto deferredLocalAssignData = mCurMethodState->mDeferredLocalAssignData;
 
@@ -15550,7 +15550,8 @@ void BfModule::MarkScopeLeft(BfScopeData* scopeData)
 			}
 			if (!hadAssignment)
 			{
-				localDef->mHadExitBeforeAssign = true;
+				if (!isNoReturn)
+					localDef->mHadExitBeforeAssign = true;
 				mCurMethodState->LocalDefined(localDef);
 			}
 		}

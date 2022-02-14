@@ -5605,6 +5605,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	{
 		mModule->mCurMethodState->SetHadReturn(true);
 		mModule->mCurMethodState->mLeftBlockUncond = true;
+		mModule->MarkScopeLeft(&mModule->mCurMethodState->mHeadScope, true);
 	}
 
 	if (mModule->mCurTypeInstance != NULL)
