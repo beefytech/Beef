@@ -551,6 +551,7 @@ namespace System.Linq
 					return true;
 			}
 
+			val = default;
 			return false;
 		}
 
@@ -591,6 +592,7 @@ namespace System.Linq
 		internal static bool InternalLast<TEnum, TSource>(TEnum items, out TSource val)
 			where TEnum : concrete, IEnumerator<TSource>
 		{
+			val = ?;
 			var found = false;
 			using (var iterator = Iterator.Wrap(items))
 			{
@@ -602,6 +604,8 @@ namespace System.Linq
 					val = temp;
 			}
 
+			if (!found)
+				val = default;
 			return found;
 		}
 
@@ -657,6 +661,7 @@ namespace System.Linq
 				}
 			}
 
+			val = default;
 			return false;
 		}
 
