@@ -1156,11 +1156,65 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	if (project->mTargetType == BfTargetType_BeefTest)
 		GetTestMethods(bfModule, testMethods, vdataHashCtx);
 
-	Array<BfType*> vdataTypeList;
-	std::multimap<String, BfTypeInstance*> sortedStaticInitMap;
-	std::multimap<String, BfTypeInstance*> sortedStaticDtorMap;
-	std::multimap<String, BfTypeInstance*> sortedStaticMarkMap;
-	std::multimap<String, BfTypeInstance*> sortedStaticTLSMap;
+	Array<String*> typeNameList;
+	defer(
+	{
+		for (auto str : typeNameList)
+			delete str;
+	});
+
+	struct _SortedTypeEntry
+	{		
+		BfTypeInstance* mTypeInstance;
+		String* mTypeName;
+		int mPriority;
+
+		_SortedTypeEntry()
+		{
+			mPriority = 0;
+			mTypeInstance = NULL;
+			mTypeName = NULL;
+		}
+
+		_SortedTypeEntry(BfModule* module, BfTypeInstance* typeInstance, Array<String*>& nameList, String*& namePtr)
+		{
+			if (namePtr == NULL)			
+			{
+				namePtr = new String(module->TypeToString(typeInstance));
+				nameList.Add(namePtr);
+			}
+			mTypeName = namePtr;
+			mTypeInstance = typeInstance;
+			mPriority = 0;
+		}
+
+		static void Sort(Array<_SortedTypeEntry>& list)
+		{
+			list.Sort(
+				[](const _SortedTypeEntry& lhs, const _SortedTypeEntry& rhs)
+				{
+					if (lhs.mPriority != rhs.mPriority)
+						return lhs.mPriority > rhs.mPriority;
+					return *lhs.mTypeName < *rhs.mTypeName;
+				});
+		}
+
+		static void SortRev(Array<_SortedTypeEntry>& list)
+		{
+			list.Sort(
+				[](const _SortedTypeEntry& lhs, const _SortedTypeEntry& rhs)
+				{
+					if (lhs.mPriority != rhs.mPriority)
+						return lhs.mPriority < rhs.mPriority;
+					return *lhs.mTypeName > *rhs.mTypeName;
+				});
+		}
+	};
+	Array<_SortedTypeEntry> preStaticInitList;	
+	Array<_SortedTypeEntry> staticMarkList;
+	Array<_SortedTypeEntry> staticTLSList;
+
+	Array<BfType*> vdataTypeList;	
 	HashSet<BfModule*> usedModuleSet;
 	HashSet<BfType*> reflectTypeSet;
 	HashSet<BfType*> reflectFieldTypeSet;
@@ -1265,15 +1319,13 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 // 					continue;
 // 			}
 
-			if (typeInst->mHasStaticInitMethod)		
-				sortedStaticInitMap.insert(std::make_pair(bfModule->TypeToString(type), typeInst));
-			else if (typeInst->mHasStaticDtorMethod) // Only store types not already in the static init map
-				sortedStaticDtorMap.insert(std::make_pair(bfModule->TypeToString(type), typeInst));
-
+			String* typeName = NULL;
+			if ((typeInst->mHasStaticInitMethod) || (typeInst->mHasStaticDtorMethod))
+				preStaticInitList.Add(_SortedTypeEntry(bfModule, typeInst, typeNameList, typeName));			
 			if ((typeInst->mHasStaticMarkMethod) && (mOptions.mEnableRealtimeLeakCheck))
-				sortedStaticMarkMap.insert(std::make_pair(bfModule->TypeToString(type), typeInst));
+				staticMarkList.Add(_SortedTypeEntry(bfModule, typeInst, typeNameList, typeName));
 			if ((typeInst->mHasTLSFindMethod) && (mOptions.mEnableRealtimeLeakCheck))
-				sortedStaticTLSMap.insert(std::make_pair(bfModule->TypeToString(type), typeInst));
+				staticTLSList.Add(_SortedTypeEntry(bfModule, typeInst, typeNameList, typeName));
 		}
 	}
 
@@ -1541,15 +1593,9 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	BfIRType voidType = bfModule->mBfIRBuilder->MapType(bfModule->GetPrimitiveType(BfTypeCode_None));
 	BfIRType int32Type = bfModule->mBfIRBuilder->MapType(bfModule->GetPrimitiveType(BfTypeCode_Int32));
 
-	struct _StaticInitEntry
-	{
-		int mPriority;
-		BfTypeInstance* mTypeInstance;
-	};
-	Array<_StaticInitEntry> staticInitList;
-
+	Array<_SortedTypeEntry> staticInitList;
 	// Populate staticInitList
-	{
+	{		
 		Dictionary<int, BfTypeInstance*> pendingIDToInstanceMap;
 		HashSet<BfTypeInstance*> handledTypes;
 		BfType* staticInitPriorityAttributeType = vdataContext->mUnreifiedModule->ResolveTypeDef(mStaticInitPriorityAttributeTypeDef);
@@ -1558,10 +1604,10 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		for (int pass = 0; true; pass++)
 		{
 			bool hadAdd = false;
-			for (auto& mapEntry : sortedStaticInitMap)
+			for (auto& mapEntry : preStaticInitList)
 			{
-				auto typeInst = mapEntry.second;
-				if ((typeInst != NULL) && (!typeInst->IsUnspecializedType()) && (typeInst->mHasStaticInitMethod))
+				auto typeInst = mapEntry.mTypeInstance;
+				if ((typeInst != NULL) && (!typeInst->IsUnspecializedType()))
 				{
 					if (pass == 0)
 					{
@@ -1587,9 +1633,10 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 						}
 
 						if (!hadInitAfterAttribute)
-						{
-							staticInitList.push_back({ priority, typeInst });
-							mapEntry.second = NULL;
+						{							
+							mapEntry.mPriority = priority;
+							staticInitList.Add(mapEntry);
+							mapEntry.mTypeInstance = NULL;
 						}
 						else
 						{
@@ -1628,7 +1675,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 							if (doAdd)
 							{
-								staticInitList.push_back({ 0, typeInst });
+								staticInitList.Add(mapEntry);
 								pendingIDToInstanceMap.Remove(typeInst->mTypeId);
 								hadAdd = true;
 							}
@@ -1639,11 +1686,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 			if (pass == 0)
 			{
-				std::sort(staticInitList.begin(), staticInitList.end(),
-					[](const _StaticInitEntry& lhs, const _StaticInitEntry& rhs)
-				{
-					return lhs.mPriority > rhs.mPriority;
-				});
+				_SortedTypeEntry::Sort(staticInitList);				
 			}
 
 			if ((pass > 0) && (!hadAdd) && (pendingIDToInstanceMap.size() > 0)) // Circular ref?
@@ -1653,25 +1696,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 				break;
 		}
 	}
-
-	// We want to call DTORS in reverse order from CTORS
-	Array<BfTypeInstance*> dtorList;
-
-	for (intptr idx = staticInitList.size() - 1; idx >= 0; idx--)
-	{
-		auto typeInst = staticInitList[idx].mTypeInstance;
-		if (typeInst->mHasStaticDtorMethod)
-		{
-			dtorList.push_back(typeInst);
-		}
-	}
-
-	for (auto itr = sortedStaticDtorMap.rbegin(); itr != sortedStaticDtorMap.rend(); itr++)
-	{
-		auto typeInst = itr->second;
-		dtorList.push_back(typeInst);
-	}
-
+		
 	///	Generate "BfCallAllStaticDtors"
 	BfIRFunction dtorFunc;
 	{
@@ -1683,9 +1708,12 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		bfModule->mBfIRBuilder->SetActiveFunction(dtorFunc);
 		auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
 		bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
-
-		for (auto typeInst : dtorList)
+		
+		for (int i = staticInitList.mSize - 1; i >= 0; i--)
 		{
+			auto typeInst = staticInitList[i].mTypeInstance;
+			if (!typeInst->mHasStaticDtorMethod)
+				continue;
 			for (auto& methodGroup : typeInst->mMethodInstanceGroups)
 			{
 				auto methodInstance = methodGroup.mDefault;
@@ -1871,10 +1899,12 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 		for (auto& staticInitEntry : staticInitList)
 		{
-			if (staticInitEntry.mPriority < 100)
-				_CheckSharedLibLoad();
-
 			auto typeInst = staticInitEntry.mTypeInstance;
+			if (!typeInst->mHasStaticInitMethod)
+				continue;
+
+			if (staticInitEntry.mPriority < 100)
+				_CheckSharedLibLoad();			
 			for (auto& methodGroup : typeInst->mMethodInstanceGroups)
 			{				
 				auto methodInstance = methodGroup.mDefault;
@@ -2161,9 +2191,11 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		{
 			auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
 			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
-			for (auto& mapEntry : sortedStaticMarkMap)
+
+			_SortedTypeEntry::Sort(staticMarkList);
+			for (auto& mapEntry : staticMarkList)
 			{
-				auto typeInst = mapEntry.second;
+				auto typeInst = mapEntry.mTypeInstance;
 				if (typeInst->IsUnspecializedType())
 					continue;
 				
@@ -2203,9 +2235,10 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		{
 			auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
 			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
-			for (auto& mapEntry : sortedStaticTLSMap)
+			_SortedTypeEntry::Sort(staticTLSList);
+			for (auto& mapEntry : staticTLSList)
 			{
-				auto typeInst = mapEntry.second;
+				auto typeInst = mapEntry.mTypeInstance;
 				if (typeInst->IsUnspecializedType())
 					continue;
 
