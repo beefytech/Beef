@@ -696,6 +696,7 @@ public:
 	BfClosureInstanceInfo* mClosureInstanceInfo;
 	BfMethodDef* mClosureMethodDef;
 	BfType* mReturnType;
+	BfTypeInstance* mDelegateType;
 	BfTypeInstance* mClosureType;
 	BfDeferredLocalMethod* mActiveDeferredLocalMethod;
 	Array<BfLocalVariable> mConstLocals; // Locals not inserted into the captured 'this'
@@ -719,6 +720,7 @@ public:
 		mReturnTypeInferState = BfReturnTypeInferState_None;
 		mActiveDeferredLocalMethod = NULL;		
 		mReturnType = NULL;
+		mDelegateType = NULL;
 		mClosureType = NULL;		
 	}
 };

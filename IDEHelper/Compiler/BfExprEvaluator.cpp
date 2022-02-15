@@ -4326,8 +4326,11 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	{
 		if (mModule->mCurMethodState->mClosureState->mCapturing)
 		{
-			mModule->mCurMethodState->mClosureState->mCapturedDelegateSelf = true;			
-			return mModule->GetDefaultTypedValue(mModule->ResolveTypeDef(mModule->mCompiler->mDelegateTypeDef));
+			if (mModule->mCurMethodState->mClosureState->mDelegateType != NULL)
+			{
+				mModule->mCurMethodState->mClosureState->mCapturedDelegateSelf = true;
+				return mModule->GetDefaultTypedValue(mModule->mCurMethodState->mClosureState->mDelegateType);
+			}
 		}
 		else
 		{
@@ -13112,6 +13115,8 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	else
 		closureState.mReturnType = mModule->mContext->mBfObjectType;
 	closureState.mCapturing = true;
+	if (delegateTypeInstance->IsDelegate())
+		closureState.mDelegateType = delegateTypeInstance;
 	closureState.mDeclaringMethodIsMutating = mModule->mCurMethodInstance->mMethodDef->mIsMutating;
 	methodState.mClosureState = &closureState;
 	closureState.mClosureType = outerClosure;
