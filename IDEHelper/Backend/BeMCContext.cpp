@@ -16090,7 +16090,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
+	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;

@@ -20410,7 +20410,20 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		auto thisVal = GetThis();
 		int prevSize = 0;
 		if (mContext->mBfObjectType != NULL)
+		{
 			prevSize = mContext->mBfObjectType->mInstSize;
+			PopulateType(mContext->mBfObjectType);
+
+			// If we have object extensions, clear out starting at the extension
+			for (auto& fieldInstance : mContext->mBfObjectType->mFieldInstances)
+			{
+				if (fieldInstance.GetFieldDef()->mDeclaringType->IsExtension())
+				{
+					prevSize = fieldInstance.mDataOffset;
+					break;
+				}
+			}
+		}
 		int curSize = mCurTypeInstance->mInstSize;
 		if (curSize > prevSize)
 		{
