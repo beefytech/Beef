@@ -180,15 +180,18 @@ namespace System
 			double result = 0;
 			double decimalMultiplier = 0;
 
-			if (val.Equals(info.NegativeInfinitySymbol, true))
+			var val;
+			val.RemoveFromStart(offset);
+
+			if (@val.Equals(info.NegativeInfinitySymbol, true))
 				return NegativeInfinity;
-			else if (val.Substring(offset).Equals(info.PositiveInfinitySymbol, true))
+			else if (val.Equals(info.PositiveInfinitySymbol, true))
 				return PositiveInfinity;
-			else if (val.Substring(offset).Equals(info.NaNSymbol, true))
+			else if (val.Equals(info.NaNSymbol, true))
 				return NaN;
 
 			//TODO: Use Number.ParseNumber
-			for (int32 i = offset; i < val.Length - offset; i++)
+			for (int32 i = 0; i < val.Length; i++)
 			{
 				char8 c = val.Ptr[i];
 
