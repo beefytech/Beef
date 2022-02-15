@@ -418,7 +418,7 @@ namespace System
 		{
 			using (sMonitor.Val.Enter())
 			{
-				if (sErrorHandlers.Remove(handler))
+				if (sErrorHandlers.RemoveStrict(handler))
 					return .Ok;
 			}
 			return .Err;

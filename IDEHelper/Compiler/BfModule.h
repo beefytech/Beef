@@ -1937,6 +1937,7 @@ public:
 	void ProcessMethod_ProcessDeferredLocals(int startIdx = 0);
 	void ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup = false, bool forceIRWrites = false);
 	void CreateDynamicCastMethod();
+	void CreateDelegateEqualsMethod();
 	void CreateValueTypeEqualsMethod(bool strictEquals);
 	BfIRFunction GetIntrinsic(BfMethodInstance* methodInstance, bool reportFailure = false);
 	BfIRFunction GetBuiltInFunc(BfBuiltInFuncType funcType);

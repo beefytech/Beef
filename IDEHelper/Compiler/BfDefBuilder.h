@@ -38,7 +38,7 @@ public:
 	static BfMethodDef* AddMethod(BfTypeDef* typeDef, BfMethodType methodType, BfProtection protection, bool isStatic, const StringImpl& name, bool addedAfterEmit = false);
 	static BfMethodDef* AddDtor(BfTypeDef* typeDef);
 	static void AddDynamicCastMethods(BfTypeDef* typeDef);
-	void AddParam(BfMethodDef* methodDef, BfTypeReference* typeRef, const StringImpl& paramName);
+	static void AddParam(BfMethodDef* methodDef, BfTypeReference* typeRef, const StringImpl& paramName);
 	BfTypeDef* ComparePrevTypeDef(BfTypeDef* prevTypeDef, BfTypeDef* checkTypeDef);
 	void FinishTypeDef(bool wantsToString);
 	void ParseAttributes(BfAttributeDirective* attributes, BfMethodDef* methodDef);

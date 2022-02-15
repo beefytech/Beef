@@ -3294,7 +3294,7 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 
 	BfIRConstHolder* constHolder = typeInstance->mConstHolder;
 	auto customAttribute = customAttributes->Get(mCompiler->mObsoleteAttributeTypeDef);
-	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
+	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()) && (targetSrc != NULL))
 	{
 		String err;
 		if (methodInstance != NULL)
@@ -3349,7 +3349,7 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 	}
 
 	customAttribute = customAttributes->Get(mCompiler->mWarnAttributeTypeDef);
-	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
+	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()) && (targetSrc != NULL))
 	{
 		String err;
 		if (methodInstance != NULL)
@@ -4714,6 +4714,87 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 
 	mBfIRBuilder->CreateCall(mCurMethodInstance->mIRFunction, args);
 	mBfIRBuilder->CreateRetVoid();
+}
+
+void BfModule::CreateDelegateEqualsMethod()
+{
+	if (mBfIRBuilder->mIgnoreWrites)
+		return;
+
+	auto refNode = mCurTypeInstance->mTypeDef->GetRefNode();
+	if (refNode == NULL)
+		refNode = mCompiler->mValueTypeTypeDef->GetRefNode();
+	UpdateSrcPos(refNode);
+	SetIllegalSrcPos();
+
+	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
+	auto resultVal = CreateAlloca(boolType);
+	mBfIRBuilder->CreateStore(GetConstValue(0, boolType), resultVal);
+
+	auto exitBB = mBfIRBuilder->CreateBlock("exit");
+
+	auto delegateType = ResolveTypeDef(mCompiler->mDelegateTypeDef)->ToTypeInstance();
+	mBfIRBuilder->PopulateType(delegateType);
+
+	BfExprEvaluator exprEvaluator(this);
+	BfTypedValue leftTypedVal = exprEvaluator.LoadLocal(mCurMethodState->mLocals[0]);
+	BfTypedValue lhsDelegate = BfTypedValue(mBfIRBuilder->CreateBitCast(leftTypedVal.mValue, mBfIRBuilder->MapType(delegateType)), delegateType);
+
+	BfTypedValue rhsDelegate = exprEvaluator.LoadLocal(mCurMethodState->mLocals[1]);
+	rhsDelegate = LoadValue(rhsDelegate);
+	BfTypedValue rightTypedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(rhsDelegate.mValue, mBfIRBuilder->MapType(mCurTypeInstance)), mCurTypeInstance);
+	
+	auto& targetFieldInstance = delegateType->mFieldInstances[0];
+
+	BfTypedValue leftValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(lhsDelegate.mValue, 0, targetFieldInstance.mDataIdx), targetFieldInstance.mResolvedType, true);
+	BfTypedValue rightValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(rhsDelegate.mValue, 0, targetFieldInstance.mDataIdx), targetFieldInstance.mResolvedType, true);
+	leftValue = LoadValue(leftValue);
+	rightValue = LoadValue(rightValue);
+	EmitEquals(leftValue, rightValue, exitBB, false);
+
+	bool hadComparison = false;
+	for (auto& fieldRef : mCurTypeInstance->mFieldInstances)
+	{
+		BfFieldInstance* fieldInstance = &fieldRef;
+		if (fieldInstance->mDataOffset == -1)
+			continue;
+
+		auto fieldType = fieldInstance->mResolvedType;
+		if (fieldType->IsValuelessType())
+			continue;			
+		if (fieldType->IsVar())
+			continue;
+		if (fieldType->IsMethodRef())
+			continue;
+		
+		if (fieldType->IsRef())
+			fieldType = CreatePointerType(fieldType->GetUnderlyingType());
+		
+		BfTypedValue leftValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(leftTypedVal.mValue, 0, fieldInstance->mDataIdx), fieldType, true);
+		BfTypedValue rightValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(rightTypedVal.mValue, 0, fieldInstance->mDataIdx), fieldType, true);
+
+		if (!fieldInstance->mResolvedType->IsComposite())
+		{
+			leftValue = LoadValue(leftValue);
+			rightValue = LoadValue(rightValue);
+		}
+
+		EmitEquals(leftValue, rightValue, exitBB, false);
+	}
+
+	mBfIRBuilder->CreateStore(GetConstValue(1, boolType), resultVal);
+	mBfIRBuilder->CreateBr(exitBB);
+	
+	mBfIRBuilder->AddBlock(exitBB);
+	mBfIRBuilder->SetInsertPoint(exitBB);
+	
+	auto loadedResult = mBfIRBuilder->CreateLoad(resultVal);
+
+	ClearLifetimeEnds();
+
+	mBfIRBuilder->CreateRet(loadedResult);
+
+	mCurMethodState->mHadReturn = true;	
 }
 
 void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
@@ -20509,6 +20590,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		else if ((methodDef->mName == BF_METHODNAME_EQUALS) && (typeDef->GetDefinition() == mCompiler->mValueTypeTypeDef))
 		{
 			CreateValueTypeEqualsMethod(false);
+			skipBody = true;
+			skipEndChecks = true;
+		}
+		else if ((methodDef->mName == BF_METHODNAME_EQUALS) && (mCurTypeInstance->IsDelegate()))
+		{
+			CreateDelegateEqualsMethod();
 			skipBody = true;
 			skipEndChecks = true;
 		}

@@ -182,6 +182,29 @@ namespace Tests
 
 			delegate Vector3f() vecDlg = scope => GetVector3f;
 			Test.Assert(vecDlg().mX == 101);
+
+			int allocCount = 0;
+
+			Action act = null;
+			for (int i = 0; i < 10; i++)
+			{
+				int j = i / 3;
+			    Action newAct = scope:: () =>
+			    {
+			        Console.WriteLine($"act {j}");
+			    };
+
+			    if (act == null || act != newAct)
+			    {
+			        act = newAct;
+			        allocCount++;
+			    }
+				else
+				{
+					Test.Assert(act.GetHashCode() == newAct.GetHashCode());
+				}
+			}
+			Test.Assert(allocCount == 4);
 		}
 
 		public static void Modify(ref int a, ref Splattable b)

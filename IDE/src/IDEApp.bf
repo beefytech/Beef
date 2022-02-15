@@ -11881,7 +11881,7 @@ namespace IDE
 		{
 			defer
 			{
-				if (mPendingDebugExprHandler != pendingHandler)
+				if (mPendingDebugExprHandler !== pendingHandler)
 					delete pendingHandler;
 			}
 

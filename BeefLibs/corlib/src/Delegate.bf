@@ -1,17 +1,24 @@
 namespace System
 {
-	class Delegate
+	class Delegate : IHashable
 	{
 	    void* mFuncPtr;
 	    void* mTarget;
 
 		public static bool Equals(Delegate a, Delegate b)
 		{
-			if ((Object)a == (Object)b)
+			if (a === null)
+				return b === null;
+			return a.Equals(b);
+		}
+
+		public virtual bool Equals(Delegate val)
+		{
+			if (this === val)
 				return true;
-			if ((Object)a == null || (Object)b == null)
+			if (val == null)
 				return false;
-			return (a.mFuncPtr == b.mFuncPtr) && (a.mTarget == b.mTarget);
+			return (mFuncPtr == val.mFuncPtr) && (mTarget == val.mTarget);
 		}
 
 		public Result<void*> GetFuncPtr()
@@ -36,6 +43,19 @@ namespace System
 		{
 			// Note- this is safe even if mTarget is not an object, because the GC does object address validation
 			GC.Mark(Internal.UnsafeCastToObject(mTarget));
+		}
+
+		public int GetHashCode()
+		{
+			return (int)mFuncPtr;
+		}
+
+		[Commutable]
+		public static bool operator==(Delegate a, Delegate b)
+		{
+			if (a === null)
+				return b === null;
+			return a.Equals(b);
 		}
 	}
 

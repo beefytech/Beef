@@ -20,6 +20,7 @@
 #include "BfVarDeclChecker.h"
 #include "BfFixits.h"
 #include "CeMachine.h"
+#include "BfDefBuilder.h"
 
 #pragma warning(pop)
 #pragma warning(disable:4996)
@@ -13551,26 +13552,24 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 	BfTypeInstance* useTypeInstance = delegateTypeInstance;
 	BfClosureType* closureTypeInst = NULL;
-	if ((capturedEntries.size() != 0) || (lambdaBindExpr->mDtor != NULL) || (copyOuterCaptures))
+
+	// If we are allowing hot swapping we may add a capture later. We also need an equal method that ignores 'target' even when we're capturing ourself
+	if ((capturedEntries.size() != 0) || (lambdaBindExpr->mDtor != NULL) || (copyOuterCaptures) || (mModule->mCompiler->mOptions.mAllowHotSwapping) || (closureState.mCapturedDelegateSelf))
 	{
 		hashCtx.MixinStr(curProject->mName);
 
 		if (copyOuterCaptures)
 		{
-// 			String typeName = mModule->DoTypeToString(outerClosure, BfTypeNameFlag_DisambiguateDups);
-// 			hashCtx.MixinStr(typeName);
 			hashCtx.Mixin(outerClosure->mTypeId);
 		}
 
 		for (auto& capturedEntry : capturedEntries)
 		{
-// 			String typeName = mModule->DoTypeToString(capturedEntry.mType, BfTypeNameFlag_DisambiguateDups);
-// 			hashCtx.MixinStr(typeName);
 			hashCtx.Mixin(capturedEntry.mType->mTypeId);
 			hashCtx.MixinStr(capturedEntry.mName);
 			hashCtx.Mixin(capturedEntry.mExplicitlyByReference);
 		}
-
+		
 		if (lambdaBindExpr->mDtor != NULL)
 		{
 			// Has DTOR thunk
@@ -13589,6 +13588,16 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			// This is a new closure type
 			closureTypeInst->Init(curProject);
 			closureTypeInst->mTypeDef->mProject = curProject;
+
+			auto delegateDirectTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeDefReference>();
+			delegateDirectTypeRef->Init(mModule->mCompiler->mDelegateTypeDef);
+			closureTypeInst->mDirectAllocNodes.push_back(delegateDirectTypeRef);
+
+			BfMethodDef* methodDef = BfDefBuilder::AddMethod(closureTypeInst->mTypeDef, BfMethodType_Normal, BfProtection_Public, false, "Equals");
+			methodDef->mReturnTypeRef = mModule->mSystem->mDirectBoolTypeRef;
+			BfDefBuilder::AddParam(methodDef, delegateDirectTypeRef, "val");
+			methodDef->mIsVirtual = true;
+			methodDef->mIsOverride = true;
 
 			if (copyOuterCaptures)
 			{
@@ -13627,9 +13636,8 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	mModule->mBfIRBuilder->PopulateType(useTypeInstance);
 	mModule->PopulateType(useTypeInstance);
 
-	// If we are allowing hot swapping, we need to always mangle the name to non-static because if we add a capture
-	//  later then we need to have the mangled names match
-	methodDef->mIsStatic = (closureTypeInst == NULL) && (!mModule->mCompiler->mOptions.mAllowHotSwapping) && (!closureState.mCapturedDelegateSelf);
+	
+	methodDef->mIsStatic = closureTypeInst == NULL;
 	
 	SizedArray<BfIRType, 8> origParamTypes;
 	BfIRType origReturnType;
