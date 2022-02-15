@@ -18891,7 +18891,19 @@ void BfModule::EmitGCMarkMembers()
 					if (moduleMethodInst)
 					{
 						auto methodBaseType = moduleMethodInst.mMethodInstance->GetOwner();
-						if (methodBaseType != mContext->mBfObjectType)
+						bool wantsBaseMarking = true;
+						if (methodBaseType == mContext->mBfObjectType)
+						{
+							PopulateType(methodBaseType);
+							for (auto& fieldInstance : mContext->mBfObjectType->mFieldInstances)
+							{
+								if ((fieldInstance.GetFieldDef()->mDeclaringType->IsExtension()) &&
+									(fieldInstance.mResolvedType->WantsGCMarking()))
+									wantsBaseMarking = true;
+							}
+						}
+
+						if (wantsBaseMarking)
 						{
 							auto thisValue = GetThis();
 							auto baseValue = Cast(NULL, thisValue, methodBaseType, BfCastFlags_Explicit);
