@@ -19286,8 +19286,6 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 							elementValue = mModule->GetDefaultTypedValue(checkArrayType->mElementType);
 
 						// For now, we can't properly create const-valued non-size-aligned composites
-// 						if (checkArrayType->mElementType->NeedsExplicitAlignment())
-// 							isAllConst = false;
 						if (!elementValue.mValue.IsConst())
 							isAllConst = false;
 						if (elementValue.IsAddr())

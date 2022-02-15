@@ -4859,8 +4859,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 
-		//bool needsExplicitAlignment = !isCRepr || ((typeInstance->mBaseType != NULL) && (!typeInstance->mBaseType->mIsCRepr));
-
 		bool needsExplicitAlignment = true;
 
 		for (int fieldIdx = 0; fieldIdx < (int)dataFieldVec.size(); fieldIdx++)		
@@ -4872,8 +4870,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			int dataSize = resolvedFieldType->mSize;
 			int alignSize = fieldInstance->GetAlign(packing);
 			fieldInstance->mDataSize = dataSize;
-
-			//bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
 
 			int nextDataPos = dataPos;			
 			nextDataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);

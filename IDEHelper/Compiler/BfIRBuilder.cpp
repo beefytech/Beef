@@ -3690,14 +3690,6 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 
 		BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
 
-		//bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
-		bool needsExplicitAlignment = true;
-		if (!needsExplicitAlignment)
-		{
-			int alignSize = resolvedFieldType->mAlign;
-			dataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
-		}
-
 		if (fieldInstance->mDataOffset > dataPos)
 		{
 			int fillSize = fieldInstance->mDataOffset - dataPos;
@@ -3710,18 +3702,18 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 
 		BF_ASSERT((int)irFieldTypes.size() == fieldInstance->mDataIdx);
 		irFieldTypes.push_back(resolvedFieldIRType);
+	}	
 
-		if ((isCRepr) && (needsExplicitAlignment) && (fieldIdx == (int)orderedFields.size() - 1))
+	if (isCRepr)
+	{
+		// Add explicit padding at end to enforce the "aligned size"
+		int endPad = typeInstance->mInstSize - dataPos;
+		if (endPad > 0)
 		{
-			// Add explicit padding at end to enforce the "aligned size"
-			int endPad = typeInstance->mInstSize - dataPos;
-			if (endPad > 0)
-			{
-				auto byteType = mModule->GetPrimitiveType(BfTypeCode_Int8);
-				auto arrType = GetSizedArrayType(MapType(byteType), endPad);
-				irFieldTypes.push_back(arrType);
-				dataPos += endPad;
-			}
+			auto byteType = mModule->GetPrimitiveType(BfTypeCode_Int8);
+			auto arrType = GetSizedArrayType(MapType(byteType), endPad);
+			irFieldTypes.push_back(arrType);
+			dataPos += endPad;
 		}
 	}
 

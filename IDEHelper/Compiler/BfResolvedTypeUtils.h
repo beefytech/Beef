@@ -507,8 +507,7 @@ public:
 	virtual BfModule* GetModule();
 	
 	int GetStride() { return BF_ALIGN(mSize, mAlign); }	
-	bool IsSizeAligned() { return (mSize == 0) || (mSize % mAlign == 0); }
-	virtual bool NeedsExplicitAlignment() { return !IsSizeAligned(); }
+	bool IsSizeAligned() { return (mSize == 0) || (mSize % mAlign == 0); }	
 	virtual bool IsInstanceOf(BfTypeDef* typeDef) { return false; }
 
 	virtual bool HasBeenReferenced() { return mDefineState != BfTypeDefineState_Undefined; }
@@ -2029,8 +2028,7 @@ public:
 	
 	int GetEndingInstanceAlignment() { if (mInstSize % mInstAlign == 0) return mInstAlign; return mInstSize % mInstAlign; }	
 	virtual bool HasTypeFailed() override { return mTypeFailed; } 
-	virtual bool IsReified() override { return mIsReified; }
-	virtual bool NeedsExplicitAlignment() override { return !IsSizeAligned() || (mPacking != 0); }	
+	virtual bool IsReified() override { return mIsReified; }	
 	virtual bool IsDataIncomplete() override { return ((mTypeIncomplete) || (mBaseTypeMayBeIncomplete)) && (!mNeedsMethodProcessing); }	
 	virtual bool IsFinishingType() override { return mIsFinishingType; }
 	virtual bool IsIncomplete() override { return (mTypeIncomplete) || (mBaseTypeMayBeIncomplete); }
@@ -2451,9 +2449,7 @@ public:
 		mElementCount = 0;
 		mGenericDepth = 0;
 		mWantsGCMarking = false;
-	}
-
-	virtual bool NeedsExplicitAlignment() override { return mElementType->NeedsExplicitAlignment(); }
+	}	
 
 	virtual bool IsSizedArray() override { return true; }
 	virtual bool IsUndefSizedArray() override { return mElementCount == -1; }
@@ -2485,8 +2481,6 @@ public:
 	BfType* mElementCountSource;
 
 public:
-	virtual bool NeedsExplicitAlignment() override { return mElementType->NeedsExplicitAlignment(); }
-
 	virtual bool IsUnknownSizedArrayType() override { return true; }
 
 	virtual bool IsWrappableType() override { return true; }

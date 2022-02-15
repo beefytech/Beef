@@ -2621,8 +2621,8 @@ BfClosureType::~BfClosureType()
 }
 
 void BfClosureType::Init(BfProject* bfProject)
-{	
-	auto srcTypeDef = mSrcDelegate->mTypeDef;		
+{
+	auto srcTypeDef = mSrcDelegate->mTypeDef;
 	auto system = mSrcDelegate->mModule->mSystem;
 
 	mTypeDef = new BfTypeDef();
