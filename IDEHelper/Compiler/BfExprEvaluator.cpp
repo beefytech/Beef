@@ -4331,8 +4331,12 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		}
 		else
 		{
-			auto thisLocal = mModule->mCurMethodState->mLocals[0];
-			return BfTypedValue(mModule->mBfIRBuilder->CreateLoad(thisLocal->mAddr), thisLocal->mResolvedType);
+			if (!mModule->mCurMethodState->mLocals.IsEmpty())
+			{
+				auto thisLocal = mModule->mCurMethodState->mLocals[0];
+				if (thisLocal->mIsThis)
+					return BfTypedValue(mModule->mBfIRBuilder->CreateLoad(thisLocal->mAddr), thisLocal->mResolvedType);
+			}
 		}		
 	}
 
