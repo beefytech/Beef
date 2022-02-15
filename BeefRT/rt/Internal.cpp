@@ -959,6 +959,21 @@ static int ToString(float d, char* outStr)
 			}
 		}
 	}
+	if ((len == 3) && (outStr[0] == 'i'))
+	{
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	if ((len == 4) && (outStr[0] == '-') && (outStr[1] == 'i'))
+	{
+		strcpy(outStr, "-Infinity");
+		return 9;
+	}
+	if ((len == 9) && (outStr[0] == '-') && (outStr[1] == 'n')) //-nan(xxx)
+	{
+		strcpy(outStr, "NaN");
+		return 3;
+	}
 	return len;
 }
 
@@ -992,6 +1007,21 @@ static int ToString(double d, char* outStr)
 				checkC--;
 			}
 		}
+	}
+	if ((len == 3) && (outStr[0] == 'i'))
+	{
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	if ((len == 4) && (outStr[0] == '-') && (outStr[1] == 'i'))
+	{
+		strcpy(outStr, "-Infinity");
+		return 9;
+	}
+	if ((len == 9) && (outStr[0] == '-') && (outStr[1] == 'n')) //-nan(xxx)
+	{
+		strcpy(outStr, "NaN");
+		return 3;
 	}
 	return len;
 }

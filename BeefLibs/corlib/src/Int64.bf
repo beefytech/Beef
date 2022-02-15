@@ -151,6 +151,10 @@ namespace System
 				{
 					// Ignore
 				}
+				else if ((c == '+') && (i == 0))
+				{
+					// Ignore
+				}
 				else
 					return .Err(.InvalidChar(result));
 			}

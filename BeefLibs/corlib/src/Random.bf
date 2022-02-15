@@ -159,6 +159,11 @@ namespace System
 			return (int64)(((uint64)InternalSample() << 32) | (uint64)InternalSample());
 		}
 
+		public virtual uint64 NextU64()
+		{
+			return (((uint64)InternalSample() << 32) | (uint64)InternalSample());
+		}
+
 		private double GetSampleForLargeRange()
 		{
           // The distribution of double value returned by Sample 
