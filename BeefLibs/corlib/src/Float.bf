@@ -166,12 +166,29 @@ namespace System
 
 		public static Result<float> Parse(StringView val)
 		{
-			bool isNeg = false;
-		    double result = 0;
+			return Parse(val, NumberFormatInfo.CurrentInfo);
+		}
+
+		public static Result<float> Parse(StringView val, NumberFormatInfo info)
+		{
+			if (val.IsEmpty)
+				return .Err;
+
+			bool isNeg = val[0] == '-';
+			bool isPos = val[0] == '+';
+			int32 offset = isNeg || isPos ? 1 : 0;
+			double result = 0;
 			double decimalMultiplier = 0;
-			
+
+			if (val.Equals(info.NegativeInfinitySymbol, true))
+				return NegativeInfinity;
+			else if (val.Substring(offset).Equals(info.PositiveInfinitySymbol, true))
+				return PositiveInfinity;
+			else if (val.Substring(offset).Equals(info.NaNSymbol, true))
+				return NaN;
+
 			//TODO: Use Number.ParseNumber
-			for (int32 i = 0; i < val.Length; i++)
+			for (int32 i = offset; i < val.Length - offset; i++)
 			{
 				char8 c = val.Ptr[i];
 
@@ -186,7 +203,7 @@ namespace System
 					break;
 				}
 
-				if (c == '.')
+				if (c == info.NumberDecimalSeparator[0])
 				{
 					if (decimalMultiplier != 0)
 						return .Err;
@@ -204,12 +221,6 @@ namespace System
 					else
 						return .Err;
 
-					continue;
-				}
-
-				if ((i == 0) && (c == '-'))
-				{
-					isNeg = true;
 					continue;
 				}
 
