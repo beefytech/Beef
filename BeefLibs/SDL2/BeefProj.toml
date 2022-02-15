@@ -12,3 +12,9 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
 [Configs.Release.Win64]
 LibPaths = ["$(ProjectDir)/dist/SDL2.lib", "$(ProjectDir)/dist/SDL2_ttf.lib", "$(ProjectDir)/dist/SDL2_image.lib", "$(ProjectDir)/dist/SDL2_mixer.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
+
+[Configs.Debug.Linux64]
+OtherLinkFlags = "$(LinkFlags) -lSDL2 -lSDL2_ttf -lSDL2_image -lSDL2_mixer"
+
+[Configs.Release.Linux64]
+OtherLinkFlags = "$(LinkFlags) -lSDL2 -lSDL2_ttf -lSDL2_image -lSDL2_mixer"
