@@ -689,7 +689,8 @@ public:
 	int mCaptureStartAccessId;
 	// When we need to look into another local method to determine captures, but we don't want to process local variable declarations or cause infinite recursion
 	bool mBlindCapturing;
-	bool mDeclaringMethodIsMutating;	
+	bool mDeclaringMethodIsMutating;
+	bool mCapturedDelegateSelf;
 	BfReturnTypeInferState mReturnTypeInferState;
 	BfLocalMethod* mLocalMethod;
 	BfClosureInstanceInfo* mClosureInstanceInfo;
@@ -714,6 +715,7 @@ public:
 		mCaptureStartAccessId = -1;
 		mBlindCapturing = false;
 		mDeclaringMethodIsMutating = false;
+		mCapturedDelegateSelf = false;
 		mReturnTypeInferState = BfReturnTypeInferState_None;
 		mActiveDeferredLocalMethod = NULL;		
 		mReturnType = NULL;

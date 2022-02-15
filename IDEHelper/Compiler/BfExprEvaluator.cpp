@@ -4322,6 +4322,20 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		mModule->FixValueActualization(result);
 	}
 
+	if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) && (findName == "@this"))
+	{
+		if (mModule->mCurMethodState->mClosureState->mCapturing)
+		{
+			mModule->mCurMethodState->mClosureState->mCapturedDelegateSelf = true;			
+			return mModule->GetDefaultTypedValue(mModule->ResolveTypeDef(mModule->mCompiler->mDelegateTypeDef));
+		}
+		else
+		{
+			auto thisLocal = mModule->mCurMethodState->mLocals[0];
+			return BfTypedValue(mModule->mBfIRBuilder->CreateLoad(thisLocal->mAddr), thisLocal->mResolvedType);
+		}		
+	}
+
 	return result;
 }
 
@@ -13606,7 +13620,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 	// If we are allowing hot swapping, we need to always mangle the name to non-static because if we add a capture
 	//  later then we need to have the mangled names match
-	methodDef->mIsStatic = (closureTypeInst == NULL) && (!mModule->mCompiler->mOptions.mAllowHotSwapping);
+	methodDef->mIsStatic = (closureTypeInst == NULL) && (!mModule->mCompiler->mOptions.mAllowHotSwapping) && (!closureState.mCapturedDelegateSelf);
 	
 	SizedArray<BfIRType, 8> origParamTypes;
 	BfIRType origReturnType;
