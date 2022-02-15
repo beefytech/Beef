@@ -13729,10 +13729,22 @@ void BeMCContext::DoCodeEmission()
 					}*/
 					else if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsZero()))
 					{
-						// Emit as XOR <arg0>, <arg0>
-						EmitREX(inst->mArg0, inst->mArg0, GetType(inst->mArg0)->mSize == 8);
-						mOut.Write((uint8)0x33); // r, r/m64
-						EmitModRM(inst->mArg0, inst->mArg0);
+						auto type = GetType(inst->mArg0);
+
+						if (type->mSize == 1)
+						{
+							// Emit as XOR <arg0>, <arg0>
+							EmitREX(inst->mArg0, inst->mArg0, false);
+							mOut.Write((uint8)0x30); // r, r/m64
+							EmitModRM(inst->mArg0, inst->mArg0);
+						}
+						else
+						{
+							// Emit as XOR <arg0>, <arg0>
+							EmitREX(inst->mArg0, inst->mArg0, type->mSize == 8);
+							mOut.Write((uint8)0x33); // r, r/m64
+							EmitModRM(inst->mArg0, inst->mArg0);
+						}
 					}
 					else
 					{
@@ -16078,7 +16090,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?InitDecHexDigits@NumberFormatter@System@bf@@AEAAX_K@Z");
+	mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
