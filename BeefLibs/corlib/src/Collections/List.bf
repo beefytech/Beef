@@ -448,6 +448,24 @@ namespace System.Collections
 			}
 		}
 
+		public bool ContainsStrict(T item)
+		{
+			if (item == null)
+			{
+			    for (int i = 0; i < mSize; i++)
+			        if (mItems[i] === null)
+			    		return true;
+			    return false;
+			}
+			else
+			{
+				for (int i = 0; i < mSize; i++)
+					if (mItems[i] === item)
+						return true;
+			    return false;
+			}
+		}
+
 		public bool ContainsAlt<TAlt>(TAlt item) where TAlt : IHashable where bool : operator T == TAlt
 		{
 			return IndexOfAlt(item) != -1;
