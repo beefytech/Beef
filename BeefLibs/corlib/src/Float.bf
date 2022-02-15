@@ -176,12 +176,12 @@ namespace System
 
 			bool isNeg = val[0] == '-';
 			bool isPos = val[0] == '+';
-			int32 offset = isNeg || isPos ? 1 : 0;
 			double result = 0;
 			double decimalMultiplier = 0;
 
 			var val;
-			val.RemoveFromStart(offset);
+			if (isNeg || isPos)
+				val.RemoveFromStart(1);
 
 			if (@val.Equals(info.NegativeInfinitySymbol, true))
 				return NegativeInfinity;
