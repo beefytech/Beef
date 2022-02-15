@@ -497,7 +497,34 @@ public:
 				else if (auto arrayTypeRef = BfNodeDynCast<BfArrayTypeRef>(objCreateExpr->mTypeRef))
 				{
 					isArrayAlloc = true;
-					origResolvedTypeRef = mModule->ResolveTypeRef(arrayTypeRef->mElementType);
+					
+					bool handled = false;
+
+					if (auto dotTypeRef = BfNodeDynCast<BfDotTypeReference>(arrayTypeRef->mElementType))
+					{
+						if (variableDecl->mTypeRef != NULL)
+						{
+							auto variableType = mModule->ResolveTypeRef(variableDecl->mTypeRef);
+							if (variableType != NULL)
+							{
+								if (variableType->IsArray())
+									origResolvedTypeRef = variableType->GetUnderlyingType();
+							}
+							handled = true;
+						}
+					}
+					
+					if (!handled)
+					{
+						origResolvedTypeRef = mModule->ResolveTypeRef(arrayTypeRef->mElementType);
+					}
+
+					if (origResolvedTypeRef == NULL)
+					{
+						mModule->AssertErrorState();
+						return;
+					}
+
 					int dimensions = 1;
 
 					if (arrayTypeRef->mParams.size() != 0)
@@ -543,7 +570,7 @@ public:
 							}
 							dimLengthVals.push_back(dimLength.mValue);
 						}
-					}
+					}					
 
 					if (!isRawArrayAlloc)
 						arrayType = mModule->CreateArrayType(origResolvedTypeRef, dimensions);
