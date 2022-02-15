@@ -24,6 +24,7 @@ jbuild*/
 IDE/Tests/NewProject*/*
 *.csproj.user
 builds/*
+wasm/*
 BeefPerf.txt
 IDE/Tests/Rando
 install/
