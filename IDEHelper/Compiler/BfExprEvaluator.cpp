@@ -8128,6 +8128,7 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 {
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
+	mModule->PopulateType(enumType);
 	mModule->mBfIRBuilder->PopulateType(enumType);
 
 	auto resolvePassData = mModule->mCompiler->mResolvePassData;
