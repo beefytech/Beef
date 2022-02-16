@@ -35,6 +35,7 @@ public:
 	virtual void SetRelaunchCmd(const StringImpl& relaunchCmd);
 
 	static CrashCatcher* Get();
+	static int Shutdown();
 };
 
 NS_BF_END

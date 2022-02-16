@@ -917,6 +917,8 @@ static void InitCPUFreq()
 	}
 }
 
+static void(*sOldSIGABRTHandler)(int signal) = nullptr;
+
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags)
 {
 	InitCPUFreq();
@@ -947,7 +949,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 		// default, but explicitly setting it seems like a good idea.
 		_set_abort_behavior(_CALL_REPORTFAULT, _CALL_REPORTFAULT);
 		// Then we install our abort handler.
-		signal(SIGABRT, &AbortHandler);
+		sOldSIGABRTHandler = signal(SIGABRT, &AbortHandler);
+		if (sOldSIGABRTHandler == SIG_ERR)
+			sOldSIGABRTHandler = nullptr;
 
 		CrashCatcher::Get()->Init();
 		if ((flags & BfpSystemInitFlag_SilentCrash) != 0)
@@ -987,6 +991,13 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Shutdown()
 		auto next = gManagerTail->mNext;
 		delete gManagerTail;
 		gManagerTail = next;
+	}
+
+	if (CrashCatcher::Shutdown())
+	{
+		_set_purecall_handler(nullptr);
+		_set_invalid_parameter_handler(nullptr);
+		signal(SIGABRT, sOldSIGABRTHandler);
 	}
 }
 
