@@ -8913,7 +8913,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			Fail(StrFormat("'%s' is inaccessible due to its protection level", TypeToString(typeInstance).c_str()), typeRef); // CS0122
 	}
 
-	if ((populateType > BfPopulateType_Identity) && (!ResolveTypeResult_Validate(typeRef, resolvedTypeRef)))
+	if ((populateType > BfPopulateType_IdentityNoRemapAlias) && (!ResolveTypeResult_Validate(typeRef, resolvedTypeRef)))
 		return NULL;
 	
 	if (populateType != BfPopulateType_IdentityNoRemapAlias)
