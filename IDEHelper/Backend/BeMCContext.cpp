@@ -10054,9 +10054,11 @@ bool BeMCContext::DoLegalization()
 								BeMCOperand mcRemaindier;
 								if (arg0Type->mSize == 1)
 								{
-									mcRemaindier = BeMCOperand::FromReg(ResizeRegister(X64Reg_AH, arg0Type));
+									mcRemaindier = BeMCOperand::FromReg(ResizeRegister(X64Reg_AL, arg0Type));
 									preserveRAXInst->mArg1 = inst->mArg0; // RAX preserve elision exception
-									DisableRegister(inst->mArg0, X64Reg_SIL); // Disable Hi8									
+									DisableRegister(inst->mArg0, X64Reg_SIL); // Disable Hi8
+									AllocInst(BeMCInstKind_Shr, BeMCOperand::FromReg(X64Reg_AX), BeMCOperand::FromImmediate(8), instIdx++ + 1);
+									AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
 								}
 								else
 								{
@@ -10071,8 +10073,8 @@ bool BeMCContext::DoLegalization()
 										if (preserveRDX)
 											DisableRegister(inst->mArg0, X64Reg_RDX);
 									}
-								}
-								AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
+									AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
+								}								
 							}
 							else
 							{
@@ -10138,7 +10140,8 @@ bool BeMCContext::DoLegalization()
 							DisableRegister(inst->mArg0, X64Reg_RAX);
 							DisableRegister(inst->mArg1, X64Reg_RAX);							
 							
-							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AH), inst->mArg1, instIdx++);
+							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg1, instIdx++);
+							AllocInst(BeMCInstKind_Shl, BeMCOperand::FromReg(X64Reg_AX), BeMCOperand::FromImmediate(8), instIdx++);
 							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg0, instIdx++);
 							AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(X64Reg_AL), instIdx++ + 1);
 							inst->mArg0 = BeMCOperand::FromReg(X64Reg_AL);
