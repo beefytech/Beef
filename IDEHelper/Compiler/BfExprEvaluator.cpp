@@ -2177,6 +2177,13 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				BfCastFlags castFlags = ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp) != 0) ? BfCastFlags_NoConversionOperator : BfCastFlags_None;
 				if ((mBfEvalExprFlags & BfEvalExprFlags_FromConversionOp_Explicit) != 0)
 					castFlags = (BfCastFlags)(castFlags | BfCastFlags_Explicit);
+
+				if ((mCheckReturnType != NULL) && (wantType->IsVar()))
+				{
+					// If we allowed this then it would allow too many matches (and allow conversion from any type during CastToValue)
+					goto NoMatch;
+				}
+
 				if (!mModule->CanCast(argTypedValue, wantType, castFlags))
 				{
 					if ((mAllowImplicitWrap) && (argTypedValue.mType->IsWrappableType()) && (mModule->GetWrappedStructType(argTypedValue.mType) == wantType))
@@ -2228,6 +2235,11 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	if (mCheckReturnType != NULL)
 	{
 		auto returnType = methodInstance->mReturnType;
+		if (returnType->IsVar())
+		{
+			// If we allowed this then it would allow too many matches (and allow conversion to any type during CastToValue)
+			goto NoMatch;
+		}
 		if ((genericArgumentsSubstitute != NULL) && (returnType->IsUnspecializedType()))
 		{			
 			auto resolvedType = mModule->ResolveGenericType(returnType, typeGenericArguments, genericArgumentsSubstitute, false);
