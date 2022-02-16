@@ -18755,16 +18755,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 	ResolveGenericType();
 	auto ptr = mResult;
 	mResult = BfTypedValue();
-	if (mPropDef == NULL)
-	{
-		if (!CheckModifyResult(ptr, assignExpr->mOpToken, "assign to", false, false, true))
-		{
-			if (assignExpr->mRight != NULL)
-				mModule->CreateValueFromExpression(assignExpr->mRight, ptr.mType, BfEvalExprFlags_NoCast);
-			return;
-		}
-	}	
-		
+			
 	if (mPropDef != NULL)
 	{
 		bool hasLeftVal = false;
@@ -18956,8 +18947,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				rightValue = mModule->CreateValueFromExpression(assignExpr->mRight, expectedType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
 			}
 		}
-
-		bool handled = false;
+		
 		BfResolvedArgs argValues;
 
 		if ((rightValue) || (deferBinop))
@@ -18966,8 +18956,8 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			auto opResult = PerformAssignment_CheckOp(assignExpr, deferBinop, leftValue, rightValue, evaluatedRight);
 			if (opResult)
 			{
-				handled = true;
-				convVal = opResult;
+				mResult = opResult;
+				return;
 			}
 			else
 			{
@@ -18982,15 +18972,12 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 					return;
 				}
 
-				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, flags, leftValue, rightValue);
+				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, flags, leftValue, rightValue);				
 			}
 		}
-		
-		if (!handled)
-		{
-			convVal = mResult;
-			mResult = BfTypedValue();			
-		}
+				
+		convVal = mResult;
+		mResult = BfTypedValue();
 
 		if (!convVal)
 			return;
@@ -19039,6 +19026,12 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			}
 		}		
 	}	
+	
+	if (!CheckModifyResult(ptr, assignExpr->mOpToken, "assign to", false, false, true))
+	{
+		mResult = convVal;
+		return;
+	}
 
 	BF_ASSERT(convVal);
 	if ((convVal) && (convVal.mType->IsNull()) && (ptr.mType->IsNullable()))
