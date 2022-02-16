@@ -5649,6 +5649,7 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 
 	mCurMethodState->mInHeadScope = false;
 	BfScopeData scopeData;
+	scopeData.mScopeKind = BfScopeKind_StatementTarget_Conditional;
 	scopeData.mIsLoop = true;
 	if (whileStmt->mLabelNode != NULL)
 		scopeData.mLabelNode = whileStmt->mLabelNode->mLabel;
