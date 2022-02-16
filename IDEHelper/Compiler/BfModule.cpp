@@ -18894,6 +18894,7 @@ void BfModule::EmitGCMarkMembers()
 						bool wantsBaseMarking = true;
 						if (methodBaseType == mContext->mBfObjectType)
 						{
+							wantsBaseMarking = false;
 							PopulateType(methodBaseType);
 							for (auto& fieldInstance : mContext->mBfObjectType->mFieldInstances)
 							{
