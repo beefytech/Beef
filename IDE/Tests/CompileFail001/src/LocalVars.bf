@@ -324,5 +324,23 @@ namespace IDETest
 
 			}
 		}
+
+		public void Local7()
+		{
+			int a = 1;
+			int b;
+			int c;
+			int d;
+
+			if ((a == 1) && ({b = 2; if (a == 1) {c = 1;} a == 1}))
+			{
+				int a2 = a;
+				int b2 = b;
+				int c2 = c; //FAIL
+			}
+			int a3 = a;
+			int b3 = b; //FAIL
+			int c3 = c; //FAIL
+		}
 	}
 }

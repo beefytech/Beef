@@ -21360,13 +21360,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				auto rhsBB = mModule->mBfIRBuilder->CreateBlock("land.rhs");
 				auto endBB = mModule->mBfIRBuilder->CreateBlock("land.end");
 
-				// This makes any 'scope' allocs be dyn since we aren't sure if this will be short-circuited
-				SetAndRestoreValue<bool> prevIsConditional(mModule->mCurMethodState->mCurScope->mIsConditional, true);
-
 				mModule->mBfIRBuilder->CreateCondBr(leftValue.mValue, rhsBB, endBB);
 
 				mModule->AddBasicBlock(rhsBB);
-				rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
+				rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_CreateConditionalScope));
 				mModule->mBfIRBuilder->CreateBr(endBB);
 
 				auto endRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
@@ -21472,6 +21469,22 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 	{
 		leftValue = mModule->LoadValue(leftValue);
 
+		if (leftValue.mValue.IsConst())
+		{
+			auto constant = mModule->mBfIRBuilder->GetConstant(leftValue.mValue);
+			if (constant->IsNull())
+			{
+				mResult = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
+				return true;
+			}
+
+			// Already have a value, we don't need the right side
+			SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+			mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_CreateConditionalScope));
+			mResult = leftValue;
+			return true;
+		}
+
 		auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();		
 		auto rhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.rhs");
 		auto endBB = mModule->mBfIRBuilder->CreateBlock("nullc.end");
@@ -21488,10 +21501,12 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 		
 		mModule->AddBasicBlock(rhsBB);
 		BfTypedValue rightValue;
+		
+		
 		if (assignTo != NULL)
-			rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags)));
+			rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_CreateConditionalScope));
 		else
-			rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+			rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_CreateConditionalScope));
 
 		if (!rightValue)
 		{

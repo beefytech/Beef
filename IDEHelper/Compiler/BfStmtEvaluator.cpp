@@ -3667,7 +3667,7 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 	UpdateSrcPos(ifStmt);
 
 	BfScopeData newScope;
-	newScope.mOuterIsConditional = true;	
+	newScope.mOuterIsConditional = true;
 	newScope.mScopeKind = BfScopeKind_StatementTarget;
 	if (ifStmt->mLabelNode != NULL)
 		newScope.mLabelNode = ifStmt->mLabelNode->mLabel;

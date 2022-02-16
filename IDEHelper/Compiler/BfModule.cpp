@@ -8621,8 +8621,19 @@ BfTypedValue BfModule::FlushNullConditional(BfTypedValue result, bool ignoreNull
 	return result;
 }
 
-BF_NOINLINE void BfModule::EvaluateWithNewScope(BfExprEvaluator& exprEvaluator, BfExpression* expr, BfEvalExprFlags flags)
+BF_NOINLINE void BfModule::EvaluateWithNewConditionalScope(BfExprEvaluator& exprEvaluator, BfExpression* expr, BfEvalExprFlags flags)
 {
+	BfDeferredLocalAssignData deferredLocalAssignData(mCurMethodState->mCurScope);
+	SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData);
+	if (mCurMethodState != NULL)
+	{
+		deferredLocalAssignData.mIsIfCondition = true;
+		deferredLocalAssignData.mIfMayBeSkipped = true;
+		deferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData, false);
+		deferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
+		mCurMethodState->mDeferredLocalAssignData = &deferredLocalAssignData;
+	}
+	
 	BfScopeData newScope;
 	newScope.mOuterIsConditional = true;
 	newScope.mAllowTargeting = false;
@@ -8630,9 +8641,11 @@ BF_NOINLINE void BfModule::EvaluateWithNewScope(BfExprEvaluator& exprEvaluator, 
 	{
 		mCurMethodState->AddScope(&newScope);
 		NewScopeState(true, false);
-	}
+	}	
+
 	exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | flags);
 	exprEvaluator.Evaluate(expr, (flags & BfEvalExprFlags_PropogateNullConditional) != 0, (flags & BfEvalExprFlags_IgnoreNullConditional) != 0, (flags & BfEvalExprFlags_AllowSplat) != 0);
+
 	if (mCurMethodState != NULL)
 		RestoreScopeState();
 }
@@ -8669,7 +8682,15 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 
 	if ((flags & BfEvalExprFlags_CreateConditionalScope) != 0)
 	{
-		EvaluateWithNewScope(exprEvaluator, expr, flags);
+		if ((mCurMethodState == NULL) || (mCurMethodState->mCurScope->mScopeKind != BfScopeKind_StatementTarget_Conditional))
+		{
+			EvaluateWithNewConditionalScope(exprEvaluator, expr, flags);
+		}
+		else
+		{
+			SetAndRestoreValue<bool> prevIsConditional(mCurMethodState->mCurScope->mIsConditional, true);
+			exprEvaluator.Evaluate(expr, (flags & BfEvalExprFlags_PropogateNullConditional) != 0, (flags & BfEvalExprFlags_IgnoreNullConditional) != 0, true);
+		}
 	}
 	else
 		exprEvaluator.Evaluate(expr, (flags & BfEvalExprFlags_PropogateNullConditional) != 0, (flags & BfEvalExprFlags_IgnoreNullConditional) != 0, true);
