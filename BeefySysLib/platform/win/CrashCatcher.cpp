@@ -1178,6 +1178,7 @@ struct CrashCatchMemory
 public:
 	CrashCatcher* mBpManager;
 	int mABIVersion;
+	int mCounter;
 };
 
 #define CRASHCATCH_ABI_VERSION 1
@@ -1202,8 +1203,18 @@ CrashCatcher* CrashCatcher::Get()
 			CrashCatchMemory* sharedMem = (CrashCatchMemory*)MapViewOfFile(fileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(CrashCatchMemory));
 			if (sharedMem != NULL)
 			{
-				if (sharedMem->mABIVersion == CRASHCATCH_ABI_VERSION)				
-					sCrashCatcher = sharedMem->mBpManager;				
+				if (sharedMem->mABIVersion == 0 && sharedMem->mBpManager == NULL && sharedMem->mCounter == 0)
+				{
+					sCrashCatcher = new CrashCatcher();					
+					sharedMem->mBpManager = sCrashCatcher;
+					sharedMem->mABIVersion = CRASHCATCH_ABI_VERSION;
+					sharedMem->mCounter = 1;
+				}
+				else if (sharedMem->mABIVersion == CRASHCATCH_ABI_VERSION)
+				{
+					sharedMem->mCounter++;
+					sCrashCatcher = sharedMem->mBpManager;
+				}
 				::UnmapViewOfFile(sharedMem);
 			}			
 			::CloseHandle(fileMapping);
@@ -1219,6 +1230,7 @@ CrashCatcher* CrashCatcher::Get()
 					sCrashCatcher = new CrashCatcher();					
 					sharedMem->mBpManager = sCrashCatcher;
 					sharedMem->mABIVersion = CRASHCATCH_ABI_VERSION;
+					sharedMem->mCounter = 1;
 					::UnmapViewOfFile(sharedMem);
 					::ReleaseMutex(mutex);
 				}
@@ -1234,4 +1246,50 @@ CrashCatcher* CrashCatcher::Get()
 	if (sCrashCatcher == NULL)
 		sCrashCatcher = new	CrashCatcher();
 	return sCrashCatcher;
+}
+
+int CrashCatcher::Shutdown()
+{
+	if (sCrashCatcher == NULL)
+		return 0;
+
+	char mutexName[128];
+	sprintf(mutexName, "BfCrashCatch_mutex_%d", GetCurrentProcessId());
+	char memName[128];
+	sprintf(memName, "BfCrashCatch_mem_%d", GetCurrentProcessId());
+
+	auto mutex = ::CreateMutexA(NULL, TRUE, mutexName);
+	if (mutex != NULL)
+	{
+		HANDLE fileMapping = ::OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, memName);
+		if (fileMapping != NULL)
+		{
+			CrashCatchMemory* sharedMem = (CrashCatchMemory*)MapViewOfFile(fileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(CrashCatchMemory));
+			if (sharedMem != NULL)
+			{
+				if (sharedMem->mABIVersion == CRASHCATCH_ABI_VERSION && sharedMem->mBpManager != NULL && sharedMem->mCounter > 0)
+				{
+					sharedMem->mCounter--;
+
+					if (sharedMem->mCounter <= 0)
+					{
+						delete sharedMem->mBpManager;
+						sharedMem->mBpManager = NULL;
+						sharedMem->mCounter = 0;
+						sharedMem->mABIVersion = 0;
+					}
+				}
+
+				::UnmapViewOfFile(sharedMem);
+			}
+
+			::CloseHandle(fileMapping);
+		}
+
+		::CloseHandle(mutex);
+	}
+
+	sCrashCatcher = NULL;
+
+	return 1;
 }
