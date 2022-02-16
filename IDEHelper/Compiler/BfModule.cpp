@@ -1258,7 +1258,7 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 	mHadBuildError = false;
 	mHadBuildWarning = false;	
 	mExtensionCount = 0;
-	mRevision = mCompiler->mRevision;	
+	mRevision = mCompiler->mRevision;
 	mRebuildIdx++;
 	ClearModuleData(!force);	
 

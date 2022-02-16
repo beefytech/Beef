@@ -1,0 +1,15 @@
+# This tests that comptime changes to generic passed extension constraints rebuilds dependencies
+
+ShowFile("src/Program.bf")
+GotoText("//End")
+ToggleBreakpoint()
+RunWithCompiling()
+AssertEvalEquals("val", "1")
+StopRunning()
+
+ShowFile("src/Gen.bf")
+ToggleCommentAt("Void")
+ToggleCommentAt("String")
+RunWithCompiling()
+AssertEvalEquals("val", "2")
+StopRunning()

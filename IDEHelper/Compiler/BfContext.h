@@ -351,7 +351,7 @@ class BfContext
 {
 public:
 	CritSect mCritSect;	
-	bool mDeleting;
+	bool mDeleting;	
 	
 	BfTypeState* mCurTypeState;
 	BfSizedArray<BfNamespaceDeclaration*>* mCurNamespaceNodes;
@@ -397,6 +397,7 @@ public:
 	WorkQueue<BfTypeRefVerifyRequest> mTypeRefVerifyWorkList;
 	PtrWorkQueue<BfModule*> mFinishedSlotAwaitModuleWorkList;
 	PtrWorkQueue<BfModule*> mFinishedModuleWorkList;
+	bool mHasReifiedQueuedRebuildTypes;
 
 	Array<BfGenericParamType*> mGenericParamTypes[3];
 	
@@ -475,6 +476,7 @@ public:
 	void ValidateDependencies();
 	void RebuildType(BfType* type, bool deleteOnDemandTypes = true, bool rebuildModule = true, bool placeSpecializiedInPurgatory = true);
 	void RebuildDependentTypes(BfDependedType* dType);	
+	void RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason);
 	void TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange);
 	void TypeMethodSignaturesChanged(BfTypeInstance* typeInst);
 	void TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst);

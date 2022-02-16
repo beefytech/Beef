@@ -1,0 +1,15 @@
+# This tests that comptime alias changes rebuild dependent types
+
+ShowFile("src/Program.bf")
+GotoText("//End")
+ToggleBreakpoint()
+RunWithCompiling()
+AssertEvalEquals("val", "1")
+StopRunning()
+
+ShowFile("src/Gen.bf")
+ToggleCommentAt("ClassA")
+ToggleCommentAt("ClassB")
+RunWithCompiling()
+AssertEvalEquals("val", "2")
+StopRunning()

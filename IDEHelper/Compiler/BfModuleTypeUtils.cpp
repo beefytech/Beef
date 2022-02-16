@@ -184,6 +184,21 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 
 	if (!typeDef->mPartials.empty())
 	{
+		BitSet prevConstraintsPassedSet;
+
+		if (!genericTypeInst->IsUnspecializedType())
+		{
+			if (genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo != NULL)
+			{
+				auto genericExtensionInfo = genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo;
+				prevConstraintsPassedSet = genericExtensionInfo->mConstraintsPassedSet;
+				genericExtensionInfo->mConstraintsPassedSet.Clear();
+			}
+		}
+
+		int extensionCount = 0;
+
+		BfLogSysM("BfModule::FinishGenericParams %p\n", resolvedTypeRef);
 		for (auto partialTypeDef : typeDef->mPartials)
 		{
 			if (!partialTypeDef->IsExtension())
@@ -222,6 +237,13 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 				auto genericExEntry = BuildGenericExtensionInfo(genericTypeInst, partialTypeDef);
 				if (genericExEntry == NULL)
 					continue;
+
+				auto genericExtensionInfo = genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo;
+				if (extensionCount == 0)
+					genericExtensionInfo->mConstraintsPassedSet.Resize(typeDef->mPartials.mSize);
+
+				extensionCount++;
+				
 				if (!genericTypeInst->IsUnspecializedType())
 				{
 					SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
@@ -249,7 +271,18 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 						}
 					}
 				}
-			}
+
+				if (genericExEntry->mConstraintsPassed)
+					genericExtensionInfo->mConstraintsPassedSet.Set(partialTypeDef->mPartialIdx);
+
+				BfLogSysM("BfModule::FinishGenericParams %p partialTypeDef:%p passed:%d\n", resolvedTypeRef, partialTypeDef, genericExEntry->mConstraintsPassed);
+			}			
+		}
+
+		auto genericExtensionInfo = genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo;
+		if ((extensionCount > 0) && (!prevConstraintsPassedSet.IsEmpty()) && (genericExtensionInfo->mConstraintsPassedSet != prevConstraintsPassedSet))
+		{
+			mContext->RebuildDependentTypes_MidCompile(genericTypeInst, "mConstraintsPassedSet changed");		
 		}
 	}
 	else
@@ -1224,7 +1257,8 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	if (resolvedTypeRef->IsTypeAlias())	
 	{
 		// Always populate these all the way
-		populateType = BfPopulateType_Data;
+		if (populateType != BfPopulateType_IdentityNoRemapAlias)
+			populateType = BfPopulateType_Data;
  	}
 
 	if (resolvedTypeRef->IsSizedArray())
@@ -2730,7 +2764,7 @@ void BfModule::DoPopulateType_SetGenericDependencies(BfTypeInstance* genericType
 	}
 }
 
-void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
+void BfModule::DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias)
 {
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeAlias);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
@@ -2766,6 +2800,8 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
 			aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);
 	}
 
+	BfLogSysM("DoPopulateType_TypeAlias %p %s = %p %s\n", typeAlias, TypeToString(typeAlias).c_str(), aliasToType, (aliasToType != NULL) ? TypeToString(aliasToType).c_str() : NULL);
+
 	if (aliasToType != NULL)
 	{
 		if (aliasToType->IsConstExprValue())
@@ -2776,16 +2812,19 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeInstance* typeAlias)
 	}
 
 	if (aliasToType != NULL)
-	{
+	{		
 		AddDependency(aliasToType, typeAlias, BfDependencyMap::DependencyFlag_DerivedFrom);
 	}
 	else
 		mContext->mFailTypes.Add(typeAlias);
 
 	if (typeAlias->mTypeFailed)
-		aliasToType = NULL;
+		aliasToType = NULL;	
 
-	((BfTypeAliasType*)typeAlias)->mAliasToType = aliasToType;
+ 	if ((typeAlias->mAliasToType != NULL) && (typeAlias->mAliasToType != aliasToType) && (!typeAlias->mDependencyMap.IsEmpty()))
+ 		mContext->RebuildDependentTypes_MidCompile(typeAlias, "type alias remapped");
+
+	typeAlias->mAliasToType = aliasToType;
 
 	if (aliasToType != NULL)
 	{
@@ -3188,9 +3227,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if (resolvedTypeRef->IsTypeAlias())
 	{
 		prevTypeState.Restore();
-		DoPopulateType_TypeAlias(typeInstance);
+		DoPopulateType_TypeAlias((BfTypeAliasType*)typeInstance);
 
 		typeInstance->mTypeIncomplete = false;
+		resolvedTypeRef->mRebuildFlags = BfTypeRebuildFlag_None;
 		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
 		return;
 	}
@@ -4453,19 +4493,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					if (!typeInstance->mCeTypeInfo->mNext->mFailed)
 					{
 						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
-						{
-							int prevDeletedTypes = mCompiler->mStats.mTypesDeleted;
-							if (mCompiler->mIsResolveOnly)
-								mCompiler->mNeedsFullRefresh = true;
-							BfLogSysM("Type %p hash changed, rebuilding dependent types\n", typeInstance);
-							mContext->RebuildDependentTypes(typeInstance);
-							
-							if (mCompiler->mStats.mTypesDeleted != prevDeletedTypes)
-							{
-								BfLogSysM("Type %p hash changed, rebuilding dependent types - updating after deleting types\n", typeInstance);
-								mContext->UpdateAfterDeletingTypes();
-							}
-						}						
+							mContext->RebuildDependentTypes_MidCompile(typeInstance, "comptime hash changed");												
 						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
 						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
 						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;
@@ -8922,9 +8950,11 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		{
 			if (mCurTypeInstance != NULL)
 				AddDependency(resolvedTypeRef, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
+			if (resolvedTypeRef->mDefineState == BfTypeDefineState_Undefined)
+				PopulateType(resolvedTypeRef);
 			if ((typeInstance->mCustomAttributes != NULL) && (!typeRef->IsTemporary()))
-				CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);
-			resolvedTypeRef = resolvedTypeRef->GetUnderlyingType();
+				CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);			
+			resolvedTypeRef = resolvedTypeRef->GetUnderlyingType();			
 			if (resolvedTypeRef != NULL)
 				typeInstance = resolvedTypeRef->ToTypeInstance();
 			else
@@ -11088,7 +11118,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 #ifdef _DEBUG
 		if (BfResolvedTypeSet::Hash(refType, &lookupCtx) != resolvedEntry->mHash)
 		{
-			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
+			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx, BfResolvedTypeSet::BfHashFlag_AllowRef);
 			int typeHash = BfResolvedTypeSet::Hash(refType, &lookupCtx);
 			BF_ASSERT(refHash == typeHash);
 		}

@@ -1746,7 +1746,11 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			auto typeofConst = (BfTypeOf_WithData_Const*)constant;
 			return "typeof_withData " + mModule->TypeToString(typeofConst->mType);
 		}
-
+		else if (constant->mConstType == BfConstType_Undef)
+		{
+			auto constUndef = (BfConstantUndef*)constant;
+			return "undef " + ToString(constUndef->mType);
+		}
 		else
 		{
 			BF_FATAL("Unhandled");

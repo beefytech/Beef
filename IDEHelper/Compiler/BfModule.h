@@ -1775,7 +1775,7 @@ public:
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind, bool underlyingTypeDeferred);
 	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers, bool underlyingTypeDeferred);
 	void DoCEEmit(BfMethodInstance* methodInstance);
-	void DoPopulateType_TypeAlias(BfTypeInstance* typeAlias);
+	void DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias);
 	void DoPopulateType_InitSearches(BfTypeInstance* typeInstance);
 	void DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance);	
 	void DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred, HashContext* dataMemberHashCtx, BfType* unionInnerType);

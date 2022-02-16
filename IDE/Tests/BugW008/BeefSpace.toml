@@ -1,0 +1,6 @@
+FileVersion = 1
+Projects = {Bug = {Path = "."}}
+
+[Workspace]
+StartupProject = "Bug"
+

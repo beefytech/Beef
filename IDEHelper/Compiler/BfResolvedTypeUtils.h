@@ -7,6 +7,7 @@
 #include "BfSource.h"
 #include "BfIRBuilder.h"
 #include "BeefySysLib/util/MultiHashSet.h"
+#include "BeefySysLib/util/BitSet.h"
 
 NS_BF_BEGIN
 
@@ -428,7 +429,8 @@ enum BfTypeRebuildFlags
 	BfTypeRebuildFlag_ResolvingBase = 0x8000,
 	BfTypeRebuildFlag_InFailTypes = 0x10000,
 	BfTypeRebuildFlag_RebuildQueued = 0x20000,
-	BfTypeRebuildFlag_ConstEvalCancelled = 0x40000
+	BfTypeRebuildFlag_ConstEvalCancelled = 0x40000,
+	BfTypeRebuildFlag_ChangedMidCompile = 0x80000,
 };
 
 class BfTypeDIReplaceCallback;
@@ -489,7 +491,7 @@ public:
 	
 	BfContext* mContext;
 	int mTypeId;
-	int mRevision;	
+	int mRevision;
 	
 	// For Objects, align and size is ref-sized (object*).  	
 	//  Use mInstSize/mInstAlign for actual data size/align
@@ -1842,6 +1844,12 @@ class BfGenericExtensionInfo
 {
 public:
 	Dictionary<BfTypeDef*, BfGenericExtensionEntry> mExtensionMap;
+	BitSet mConstraintsPassedSet;
+
+	void Clear()
+	{
+		mExtensionMap.Clear();		
+	}
 };
 
 // Note on nested generic types- mGenericParams is the accumulation of all generic params from outer to inner, so

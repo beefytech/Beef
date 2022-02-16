@@ -77,7 +77,8 @@ BfContext::BfContext(BfCompiler* compiler) :
 
 	mValueTypeDeinitSentinel = (BfMethodInstance*)1;
 
-	mCurStringObjectPoolId = 0;		
+	mCurStringObjectPoolId = 0;
+	mHasReifiedQueuedRebuildTypes = false;
 }
 
 void BfReportMemory();
@@ -945,6 +946,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 			return;	
 	}	
 	
+	if (typeInst->mIsReified)
+		mHasReifiedQueuedRebuildTypes = true;
+
 	typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags & ~BfTypeRebuildFlag_AddedToWorkList);
 
 	bool addToWorkList = true;
@@ -1131,8 +1135,8 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		genericTypeInstance->mGenericTypeInfo->mGenericParams.Clear();
 		genericTypeInstance->mGenericTypeInfo->mValidatedGenericConstraints = false;
 		genericTypeInstance->mGenericTypeInfo->mHadValidateErrors = false;
-		delete genericTypeInstance->mGenericTypeInfo->mGenericExtensionInfo;
-		genericTypeInstance->mGenericTypeInfo->mGenericExtensionInfo = NULL;
+		if (genericTypeInstance->mGenericTypeInfo->mGenericExtensionInfo != NULL)
+			genericTypeInstance->mGenericTypeInfo->mGenericExtensionInfo->Clear();
 		genericTypeInstance->mGenericTypeInfo->mProjectsReferenced.Clear();
 	}	
 
@@ -1180,6 +1184,22 @@ void BfContext::RebuildDependentTypes(BfDependedType* dType)
 	auto typeInst = dType->ToTypeInstance();
 	if (typeInst != NULL)
 		TypeMethodSignaturesChanged(typeInst);
+}
+
+void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason)
+{
+	dType->mRebuildFlags = (BfTypeRebuildFlags)(dType->mRebuildFlags | BfTypeRebuildFlag_ChangedMidCompile);
+	int prevDeletedTypes = mCompiler->mStats.mTypesDeleted;
+	if (mCompiler->mIsResolveOnly)
+		mCompiler->mNeedsFullRefresh = true;
+	BfLogSysM("Rebuilding dependent types MidCompile Type:%p Reason:%s\n", dType, reason.c_str());
+	RebuildDependentTypes(dType);
+
+	if (mCompiler->mStats.mTypesDeleted != prevDeletedTypes)
+	{		
+		BfLogSysM("Rebuilding dependent types MidCompile Type:%p Reason:%s - updating after deleting types\n", dType, reason.c_str());
+		UpdateAfterDeletingTypes();
+	}
 }
 
 // Dependencies cascade as such:
@@ -1254,13 +1274,19 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 			}
 
 			if (dependentType->mRevision != mCompiler->mRevision)
-			{
+			{				
 				// We need to include DependencyFlag_ParamOrReturnValue because it could be a struct that changes its splatting ability
 							//  We can't ONLY check against structs, though, because a type could change from a class to a struct
 				if (dependencyFlags &
 					(BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_ParamOrReturnValue |
 						BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_MethodGenericArg |
 						BfDependencyMap::DependencyFlag_Allocates))
+				{
+					RebuildType(dependentType);
+				}
+				else if (((dependencyFlags & BfDependencyMap::DependencyFlag_NameReference) != 0) && 
+					((dType->mRebuildFlags & BfTypeRebuildFlag_ChangedMidCompile) != 0) &&
+					(dType->IsTypeAlias()))
 				{
 					RebuildType(dependentType);
 				}
@@ -1276,7 +1302,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 		}
 	}
 	
-	if (dType->mRevision != mCompiler->mRevision)	
+	if (dType->mRevision != mCompiler->mRevision)
 		RebuildType(dType);	
 }
 

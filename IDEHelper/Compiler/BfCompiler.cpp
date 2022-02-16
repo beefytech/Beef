@@ -7012,47 +7012,58 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mStats.mTypesQueued += (int)mContext->mPopulateTypeWorkList.size();
 	mStats.mMethodsQueued += (int)mContext->mMethodWorkList.size();
 
-	//
-	{		
-		if (mBfObjectTypeDef != NULL)
-			mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef, BfPopulateType_Full);
-		
-		mContext->RemapObject();
-				
-		mSystem->CheckLockYield();
-		
-		mWantsDeferMethodDecls = mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude;
-		
-		CompileReified();
-		mWantsDeferMethodDecls = false;	
-	}
-		
-	BpLeave();
-	BpEnter("Compile_End");
-		
+	while (true)
 	{
-		BP_ZONE("ProcessingLiveness");
-
-		for (auto type : mContext->mResolvedTypes)
-		{			
-			auto depType = type->ToDependedType();
-			if (depType != NULL)
-				depType->mRebuildFlags = (BfTypeRebuildFlags)(depType->mRebuildFlags | BfTypeRebuildFlag_AwaitingReference);
-		}
-			
-		bool didWork = false;
-		UpdateDependencyMap(mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_ResolveUnused, didWork);
-
-		if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
+		//
 		{
-			// If UpdateDependencyMap caused methods to be reified, then we need to run PopulateReified again-
-			//  because those methods may be virtual and we need to reify overrides (for example).
-			// We use the DoWorkLoop result to determine if there were actually any changes from UpdateDependencyMap
-			if (didWork)
+			if (mBfObjectTypeDef != NULL)
+				mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef, BfPopulateType_Full);
+
+			mContext->RemapObject();
+
+			mSystem->CheckLockYield();
+
+			mWantsDeferMethodDecls = mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude;
+
+			CompileReified();
+			mWantsDeferMethodDecls = false;
+		}
+
+		BpLeave();
+		BpEnter("Compile_End");
+
+		mContext->mHasReifiedQueuedRebuildTypes = false;
+
+		//
+		{
+			BP_ZONE("ProcessingLiveness");
+
+			for (auto type : mContext->mResolvedTypes)
 			{
-				PopulateReified();
+				auto depType = type->ToDependedType();
+				if (depType != NULL)
+					depType->mRebuildFlags = (BfTypeRebuildFlags)(depType->mRebuildFlags | BfTypeRebuildFlag_AwaitingReference);
 			}
-		}						
+
+			bool didWork = false;
+			UpdateDependencyMap(mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_ResolveUnused, didWork);
+
+			if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
+			{
+				// If UpdateDependencyMap caused methods to be reified, then we need to run PopulateReified again-
+				//  because those methods may be virtual and we need to reify overrides (for example).
+				// We use the DoWorkLoop result to determine if there were actually any changes from UpdateDependencyMap
+				if (didWork)
+				{
+					PopulateReified();
+				}
+			}
+		}
+
+		if (!mContext->mHasReifiedQueuedRebuildTypes)
+			break;
+
+		BfLogSysM("DoCompile looping over CompileReified due to mHasReifiedQueuedRebuildTypes\n");
 	}
 		
 	ProcessPurgatory(true);

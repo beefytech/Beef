@@ -14,7 +14,7 @@ namespace Tests
 
 			public struct Inner
 			{
-				public const EnumA cVal = EnumA.C("InnerTest");
+				public const EnumA cVal = .C("InnerTest");
 			}
 		}
 

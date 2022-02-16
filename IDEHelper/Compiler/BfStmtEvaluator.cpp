@@ -6122,7 +6122,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	}
 	
 	if (varType == NULL)
-		varType = mContext->mBfObjectType;
+		varType = GetPrimitiveType(BfTypeCode_Var);
 	bool isArray = target.mType->IsArray();
 	bool isSizedArray = target.mType->IsSizedArray();
 	bool isVarEnumerator = target.mType->IsVar();
@@ -6437,7 +6437,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		}
 	}
 	if (nextEmbeddedType == NULL)
-		nextEmbeddedType = mContext->mBfObjectType;
+		nextEmbeddedType = GetPrimitiveType(BfTypeCode_Var);
 
 	BfLocalVariable* itrLocalDef = NULL;
 
