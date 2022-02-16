@@ -641,7 +641,7 @@ namespace IDE
 
 					if (!File.Exists(scope $"{gApp.mInstallDir}/Beef{IDEApp.sRTVersionStr}RT32_wasm.a"))
 					{
-						gApp.OutputErrorLine("Wasm runtime libraries not found. Build with bin/build_wasm.bat.");
+						gApp.OutputErrorLine("Wasm runtime libraries not found. Build with 'wasm/build_wasm.bat'.");
 						return false;
 					}
 
