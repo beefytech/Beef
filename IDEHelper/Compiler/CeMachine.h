@@ -326,6 +326,8 @@ enum CeFunctionKind
 	CeFunctionKind_GetReflectSpecializedType,
 	CeFunctionKind_Type_ToString,
 	CeFunctionKind_Type_GetCustomAttribute,
+	CeFunctionKind_Field_GetCustomAttribute,
+	CeFunctionKind_Method_GetCustomAttribute,
 	CeFunctionKind_GetMethodCount,
 	CeFunctionKind_GetMethod,
 	CeFunctionKind_Method_ToString,
@@ -906,11 +908,11 @@ public:
 	bool CheckMemory(addr_ce addr, int32 size);
 	bool GetStringFromAddr(addr_ce strInstAddr, StringImpl& str);
 	bool GetStringFromStringView(addr_ce addr, StringImpl& str);
-	bool GetCustomAttribute(BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr);	
+	bool GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolder, BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr);
 
 	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type, bool isParams = false);	
 	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);	
-	BfIRValue CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute);
+	BfIRValue CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute, addr_ce ceAttrAddr = 0);
 
 	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType);
 	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);

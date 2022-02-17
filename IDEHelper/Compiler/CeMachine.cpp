@@ -3458,7 +3458,7 @@ bool CeContext::GetStringFromStringView(addr_ce addr, StringImpl& str)
 	return true;
 }
 
-bool CeContext::GetCustomAttribute(BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr)
+bool CeContext::GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolder, BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr)
 {
 	if (customAttributes == NULL)
 		return false;
@@ -3470,16 +3470,25 @@ bool CeContext::GetCustomAttribute(BfCustomAttributes* customAttributes, int att
 	auto customAttr = customAttributes->Get(attributeType);
 	if (customAttr == NULL)
 		return false;
-
-	if (resultAddr != 0)
+	
+	auto ceContext = mCeMachine->AllocContext();
+	BfIRValue foreignValue = ceContext->CreateAttribute(mCurTargetSrc, module, constHolder, customAttr);	
+	auto foreignConstant = module->mBfIRBuilder->GetConstant(foreignValue);
+	if (foreignConstant->mConstType == BfConstType_AggCE)
 	{
-		
-	}
+		auto constAggData = (BfConstantAggCE*)foreignConstant;
+		auto value = ceContext->CreateConstant(module, ceContext->mMemory.mVals + constAggData->mCEAddr, customAttr->mType);
+		if (!value)
+			Fail("Failed to encoded attribute");
+		auto attrConstant = module->mBfIRBuilder->GetConstant(value);
+		if (!WriteConstant(module, resultAddr, attrConstant, customAttr->mType))
+			Fail("Failed to decode attribute");
+	}	
+
+	mCeMachine->ReleaseContext(ceContext);
 
 	return true;
 }
-
-
 
 //#define CE_GETC(T) *((T*)(addr += sizeof(T)) - 1)
 #define CE_GETC(T) *(T*)(mMemory.mVals + addr)
@@ -4172,12 +4181,13 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 	return BfIRValue();
 }
 
-BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute)
+BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute, addr_ce ceAttrAddr)
 {
 	SetAndRestoreValue<bool> prevIgnoreWrites(module->mBfIRBuilder->mIgnoreWrites, true);
 
 	module->mContext->mUnreifiedModule->PopulateType(customAttribute->mType);
-	auto ceAttrAddr = CeMalloc(customAttribute->mType->mSize) - mMemory.mVals;	
+	if (ceAttrAddr == 0)
+		ceAttrAddr = CeMalloc(customAttribute->mType->mSize) - mMemory.mVals;	
 	BfIRValue ceAttrVal = module->mBfIRBuilder->CreateConstAggCE(module->mBfIRBuilder->MapType(customAttribute->mType, BfIRPopulateType_Identity), ceAttrAddr);
 	BfTypedValue ceAttrTypedValue(ceAttrVal, customAttribute->mType);
 
@@ -5115,9 +5125,50 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				{
 					auto typeInst = type->ToTypeInstance();
 					if (typeInst != NULL)
-						success = GetCustomAttribute(typeInst->mCustomAttributes, attributeTypeId, resultPtr);
+						success = GetCustomAttribute(mCurModule, typeInst->mConstHolder, typeInst->mCustomAttributes, attributeTypeId, resultPtr);
 				}
 
+				*(addr_ce*)(stackPtr + 0) = success;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetCustomAttribute)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + 1);
+				int32 fieldIdx = *(int32*)((uint8*)stackPtr + 1 + 4);
+				int32 attributeTypeId = *(int32*)((uint8*)stackPtr + 1 + 4 + 4);
+				addr_ce resultPtr = *(addr_ce*)((uint8*)stackPtr + 1 + 4 + 4 + 4);
+
+				BfType* type = GetBfType(typeId);
+				bool success = false;
+				if (type != NULL)
+				{
+					auto typeInst = type->ToTypeInstance();
+					if (typeInst != NULL)
+					{
+						if (typeInst->mDefineState < BfTypeDefineState_CETypeInit)
+							mCurModule->PopulateType(typeInst);
+						if (fieldIdx < typeInst->mFieldInstances.mSize)
+						{
+							auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
+							success = GetCustomAttribute(mCurModule, typeInst->mConstHolder, fieldInstance.mCustomAttributes, attributeTypeId, resultPtr);
+						}
+					}
+				}
+
+				*(addr_ce*)(stackPtr + 0) = success;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetCustomAttribute)
+			{
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + 1);				
+				int32 attributeTypeId = *(int32*)((uint8*)stackPtr + 1 + 8);
+				addr_ce resultPtr = *(addr_ce*)((uint8*)stackPtr + 1 + 8 + 4);				
+
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}				
+				bool success = GetCustomAttribute(mCurModule, methodInstance->GetOwner()->mConstHolder, methodInstance->GetCustomAttributes(), attributeTypeId, resultPtr);				
 				*(addr_ce*)(stackPtr + 0) = success;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethodCount)
@@ -8069,6 +8120,14 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Type_GetCustomAttribute")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Type_GetCustomAttribute;
+				}
+				else if (methodDef->mName == "Comptime_Field_GetCustomAttribute")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Field_GetCustomAttribute;
+				}
+				else if (methodDef->mName == "Comptime_Method_GetCustomAttribute")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_GetCustomAttribute;
 				}
 				else if (methodDef->mName == "Comptime_GetMethod")
 				{

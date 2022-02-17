@@ -229,6 +229,13 @@ namespace System.Reflection
 
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
+			if (Compiler.IsComptime)
+			{
+				T val = ?;
+				if (Type.[Friend]Comptime_Field_GetCustomAttribute((int32)mTypeInstance.TypeId, mFieldData.mCustomAttributesIdx, (.)typeof(T).TypeId, &val))
+					return val;
+				return .Err;
+			}
 			return mTypeInstance.[Friend]GetCustomAttribute<T>(mFieldData.mCustomAttributesIdx);
 		}
 

@@ -2222,7 +2222,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCEMachine->mCurEmitContext, ceEmitContext);
 		auto ceContext = mCompiler->mCEMachine->AllocContext();
 			
-		BfIRValue attrVal = ceContext->CreateAttribute(customAttribute.mRef, this, typeInstance->mConstHolder, &customAttribute);
+		BfIRValue attrVal =ceContext->CreateAttribute(customAttribute.mRef, this, typeInstance->mConstHolder, &customAttribute);
 		for (int baseIdx = 0; baseIdx < checkDepth; baseIdx++)
 			attrVal = mBfIRBuilder->CreateExtractValue(attrVal, 0);
 

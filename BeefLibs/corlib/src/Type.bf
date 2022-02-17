@@ -529,6 +529,8 @@ namespace System
 		static extern String Comptime_Type_ToString(int32 typeId);
 		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
 		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeId, void* dataPtr);
+		static extern bool Comptime_Field_GetCustomAttribute(int32 typeId, int32 fieldIdx, int32 attributeId, void* dataPtr);
+		static extern bool Comptime_Method_GetCustomAttribute(int64 methodHandle, int32 attributeId, void* dataPtr);
 		static extern int32 Comptime_GetMethodCount(int32 typeId);
 		static extern int64 Comptime_GetMethod(int32 typeId, int32 methodIdx);
 		static extern String Comptime_Method_ToString(int64 methodHandle);

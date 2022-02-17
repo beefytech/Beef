@@ -1422,6 +1422,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 				auto eqVal = mBfIRBuilder->CreateCmpEQ(dscVal, GetConstValue(tagId, dscType));
 				exprEvaluator->mResult = BfTypedValue(eqVal, boolType);
 				
+				PopulateType(outType);
 				if (!outType->IsValuelessType())
 				{
 					auto outPtrType = CreatePointerType(outType);

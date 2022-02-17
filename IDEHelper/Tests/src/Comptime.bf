@@ -8,6 +8,21 @@ namespace Tests
 	class Comptime
 	{
 		[AttributeUsage(.All)]
+		struct AddFieldAttribute : Attribute
+		{
+			public Type mType;
+			public String mName;
+			public int mVal;
+
+			public this(Type type, String name, int val)
+			{
+				mType = type;
+				mName = name;
+				mVal = val;
+			}
+		}
+
+		[AttributeUsage(.All)]
 		struct IFaceAAttribute : Attribute, IComptimeTypeApply
 		{
 			String mMemberName;
@@ -33,6 +48,7 @@ namespace Tests
 				Compiler.EmitTypeBody(type, scope $"""
 					public int32 m{mMemberName} = {mInitVal};
 					public int32 GetVal{mMemberName}() => mC;
+
 					""");
 			}
 		}
@@ -65,6 +81,7 @@ namespace Tests
 			}
 		}
 
+		[AddField(typeof(float), "D", 4)]
 		[IFaceA("C", InitVal=345)]
 		class ClassA
 		{
@@ -76,7 +93,10 @@ namespace Tests
 				Compiler.EmitTypeBody(typeof(Self), """
 					public int32 mB = 234;
 					public int32 GetValB() => mB;
+
 					""");
+				if (var addFieldAttr = typeof(Self).GetCustomAttribute<AddFieldAttribute>())
+					Compiler.EmitTypeBody(typeof(Self), scope $"public {addFieldAttr.mType} {addFieldAttr.mName} = {addFieldAttr.mVal};");
 			}
 		}
 
@@ -469,6 +489,7 @@ namespace Tests
 			Test.Assert(ca.GetValB() == 234);
 			Test.Assert(ca.mC == 345);
 			Test.Assert(ca.GetValC() == 345);
+			Test.Assert(ca.D == 4);
 
 			StructA sa = .();
 			Test.Assert(sa.mA == 123);
