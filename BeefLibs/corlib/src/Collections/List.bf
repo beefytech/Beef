@@ -812,6 +812,19 @@ namespace System.Collections
 			return .Err;
 		}
 
+		public Result<T> GetAndRemoveStrict(T item)
+		{
+			int index = IndexOfStrict(item);
+			if (index >= 0)
+			{
+				T val = mItems[index];
+				RemoveAt(index);
+				return val;
+			}
+
+			return .Err;
+		}
+
 		public Result<T> GetAndRemoveAlt<TAlt>(TAlt item) where TAlt : IHashable where bool : operator T == TAlt
 		{
 			int index = IndexOfAlt(item);
