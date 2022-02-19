@@ -1297,6 +1297,15 @@ void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance
 	dupMethodInstance->mIsReified = true;
 	dupMethodInstance->mInCEMachine = false; // Only have the original one
 	
+	// We can't use methodInstance->mMethodInstanceGroup because we may add foreign method instances which 
+	//  would reallocate the methodInstanceGroup
+	BfMethodInstanceGroup methodInstanceGroup;
+	methodInstanceGroup.mOwner = methodInstance->mMethodInstanceGroup->mOwner;
+	methodInstanceGroup.mDefault = methodInstance->mMethodInstanceGroup->mDefault;
+	methodInstanceGroup.mMethodIdx = methodInstance->mMethodInstanceGroup->mMethodIdx;
+	methodInstanceGroup.mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
+	dupMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;
+
 	mCeMachine->mCeModule->mHadBuildError = false;
 	auto irState = irBuilder->GetState();
 	auto beState = irCodeGen->GetState();
@@ -1306,6 +1315,9 @@ void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance
 	
 	if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
 		mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = prevAutoComplete;
+
+	methodInstanceGroup.mDefault = NULL;
+	dupMethodInstance->mMethodInstanceGroup = methodInstance->mMethodInstanceGroup;
 }
 
 void CeBuilder::Build()
@@ -2928,6 +2940,8 @@ CeContext::~CeContext()
 
 BfError* CeContext::Fail(const StringImpl& error)
 {
+	if (mCurModule == NULL)
+		return NULL;
 	if (mCurEmitContext != NULL)
 		mCurEmitContext->mFailed = true;
 	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurTargetSrc, (mCurEvalFlags & CeEvalFlags_PersistantError) != 0);
@@ -5126,6 +5140,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					auto typeInst = type->ToTypeInstance();
 					if (typeInst != NULL)
 						success = GetCustomAttribute(mCurModule, typeInst->mConstHolder, typeInst->mCustomAttributes, attributeTypeId, resultPtr);
+					_FixVariables();
 				}
 
 				*(addr_ce*)(stackPtr + 0) = success;
@@ -5146,10 +5161,16 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					{
 						if (typeInst->mDefineState < BfTypeDefineState_CETypeInit)
 							mCurModule->PopulateType(typeInst);
-						if (fieldIdx < typeInst->mFieldInstances.mSize)
+						if ((fieldIdx >= 0) && (fieldIdx < typeInst->mFieldInstances.mSize))
 						{
 							auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
 							success = GetCustomAttribute(mCurModule, typeInst->mConstHolder, fieldInstance.mCustomAttributes, attributeTypeId, resultPtr);
+							_FixVariables();
+						}
+						else if (fieldIdx != -1)
+						{
+							_Fail("Invalid field");
+							return false;
 						}
 					}
 				}
@@ -5169,6 +5190,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}				
 				bool success = GetCustomAttribute(mCurModule, methodInstance->GetOwner()->mConstHolder, methodInstance->GetCustomAttributes(), attributeTypeId, resultPtr);				
+				_FixVariables();
 				*(addr_ce*)(stackPtr + 0) = success;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethodCount)

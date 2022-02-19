@@ -5489,9 +5489,9 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 
 BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAttrIdx)
 {
-	bool isComptime = mBfIRBuilder->mIgnoreWrites;
+	bool isComptimeArg = mBfIRBuilder->mIgnoreWrites;
 	BfFieldDef* fieldDef = fieldInstance->GetFieldDef();
-
+	
 	auto typeInstance = fieldInstance->mOwner;
 	
 	BfType* intType = GetPrimitiveType(BfTypeCode_Int32);
@@ -5564,7 +5564,7 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 			}
 		}
 
-		if ((refVal.IsAddr()) && (!isComptime))
+		if ((refVal.IsAddr()) && (!isComptimeArg))
 			constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
 	}
 
@@ -5585,10 +5585,10 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 			constValue, // mData
 			constValue2, // mDataHi
 			GetConstValue(fieldFlags, shortType), // mFlags
-			GetConstValue(customAttrIdx, intType), // mCustomAttributesIdx
+			GetConstValue((isComptimeArg || mIsComptimeModule) ? fieldInstance->mFieldIdx : customAttrIdx, intType), // mCustomAttributesIdx
 		};		
-		FixConstValueParams(reflectFieldDataType, fieldVals, isComptime);
-		result = isComptime ?
+		FixConstValueParams(reflectFieldDataType, fieldVals, isComptimeArg);
+		result = isComptimeArg ?
 			mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapTypeInst(reflectFieldDataType, BfIRPopulateType_Full), fieldVals) :
 			mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType, BfIRPopulateType_Full), fieldVals);		
 	}
@@ -5601,10 +5601,10 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 			GetConstValue(typeId, typeIdType), // mFieldTypeId			
 			constValue, // mData
 			GetConstValue(fieldFlags, shortType), // mFlags
-			GetConstValue(customAttrIdx, intType), // mCustomAttributesIdx
+			GetConstValue((isComptimeArg || mIsComptimeModule) ? fieldInstance->mFieldIdx : customAttrIdx, intType), // mCustomAttributesIdx
 		};		
-		FixConstValueParams(reflectFieldDataType, fieldVals, isComptime);
-		result = isComptime ?
+		FixConstValueParams(reflectFieldDataType, fieldVals, isComptimeArg);
+		result = isComptimeArg ?
 			mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapTypeInst(reflectFieldDataType, BfIRPopulateType_Full), fieldVals) :
 			mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(reflectFieldDataType, BfIRPopulateType_Full), fieldVals);
 	}
@@ -13732,19 +13732,33 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				break;
 			}
 		}
+
 		if (methodInstGroup == NULL)
 		{
-			// Allocate a new entry
-			typeInst->mMethodInstanceGroups.Resize(typeInst->mMethodInstanceGroups.size() + 1);
-			methodInstGroup = &typeInst->mMethodInstanceGroups.back();
-			methodInstGroup->mMethodIdx = (int)typeInst->mMethodInstanceGroups.size() - 1;
-			methodInstGroup->mOwner = typeInst;
-// 			if (methodInstGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
-// 				methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
-			if (mCompiler->mOptions.mCompileOnDemandKind == BfCompileOnDemandKind_AlwaysInclude)
-				methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
+			if (lookupMethodGenericArguments.size() != 0)
+			{
+				BF_ASSERT((flags & BfGetMethodInstanceFlag_ForeignMethodDef) != 0);
+				auto defaultMethodInstance = GetMethodInstance(typeInst, methodDef, BfTypeVector(),
+					(BfGetMethodInstanceFlags)((flags & (BfGetMethodInstanceFlag_ForeignMethodDef)) | BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_MethodInstanceOnly), foreignType);
+				methodInstGroup = defaultMethodInstance.mMethodInstance->mMethodInstanceGroup;
+			}
 			else
-				methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
+			{
+				// Allocate a new entry
+				typeInst->mMethodInstanceGroups.Resize(typeInst->mMethodInstanceGroups.size() + 1);
+				methodInstGroup = &typeInst->mMethodInstanceGroups.back();
+				methodInstGroup->mMethodIdx = (int)typeInst->mMethodInstanceGroups.size() - 1;
+				methodInstGroup->mOwner = typeInst;
+				// 			if (methodInstGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
+				// 				methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
+				if (mCompiler->mOptions.mCompileOnDemandKind == BfCompileOnDemandKind_AlwaysInclude)
+					methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
+				else
+				{
+					methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
+					mOnDemandMethodCount++;
+				}
+			}
 		}
 	}
 	else
@@ -13878,6 +13892,13 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 	else
 	{
+		if (methodInstGroup->mDefault == NULL)
+		{			
+			auto defaultMethodInstance = GetMethodInstance(typeInst, methodDef, BfTypeVector(), 
+				(BfGetMethodInstanceFlags)((flags & (BfGetMethodInstanceFlag_ForeignMethodDef)) | BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_MethodInstanceOnly), foreignType);
+			methodInstGroup = defaultMethodInstance.mMethodInstance->mMethodInstanceGroup;
+		}
+
 		BF_ASSERT(lookupMethodGenericArguments.size() != 0);
 		if (methodInstGroup->mMethodSpecializationMap == NULL)
 			methodInstGroup->mMethodSpecializationMap = new BfMethodInstanceGroup::MapType();

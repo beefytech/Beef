@@ -2239,7 +2239,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				{			
 					mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(fieldInfoType->ToTypeInstance()->mBaseType, BfIRPopulateType_Identity)),
 					mBfIRBuilder->CreateTypeOf(mCurTypeInstance), // mTypeInstance
-					CreateFieldData(fieldInstance, fieldInstance->GetFieldDef()->mIdx)
+					CreateFieldData(fieldInstance, -1)
 				};
 				FixConstValueParams(fieldInfoType->ToTypeInstance(), fieldData);
 				auto fieldDataAgg = mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(fieldInfoType, BfIRPopulateType_Identity), fieldData);
@@ -12882,7 +12882,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 					if (isNull)
 					{
-						spanFieldVals.Add(mBfIRBuilder->CreateConstNull());
+						spanFieldVals.Add(mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(CreatePointerType(GetPrimitiveType(BfTypeCode_Char8)))));
 						spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
 					}
 					else
