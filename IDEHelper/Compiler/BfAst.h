@@ -41,6 +41,7 @@ class BfSource;
 class BfAstNode;
 class BfTokenNode;
 class BfTokenPairNode;
+class BfUsingSpecifierNode;
 class BfTypeReference;
 class BfTypeDef;
 class BfMethodDef;
@@ -457,6 +458,7 @@ public:
 	virtual void Visit(BfEmptyStatement* emptyStmt);	
 	virtual void Visit(BfTokenNode* tokenNode);	
 	virtual void Visit(BfTokenPairNode* tokenPairNode);		
+	virtual void Visit(BfUsingSpecifierNode* usingSpecifier);
 	virtual void Visit(BfLiteralExpression* literalExpr);
 	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression);
 	virtual void Visit(BfIdentifierNode* identifierNode);
@@ -3076,6 +3078,15 @@ public:
 	BfFieldDtorDeclaration* mNextFieldDtor;
 };	BF_AST_DECL(BfFieldDtorDeclaration, BfAstNode);
 
+class BfUsingSpecifierNode : public BfAstNode
+{
+public:
+	BF_AST_TYPE(BfUsingSpecifierNode, BfAstNode);
+
+	BfAstNode* mProtection;
+	BfTokenNode* mUsingToken;
+};  BF_AST_DECL(BfUsingSpecifierNode, BfAstNode);
+
 class BfFieldDeclaration : public BfMemberDeclaration
 {
 public:
@@ -3083,7 +3094,7 @@ public:
 	
 	BfCommentNode* mDocumentation;
 	BfTokenNode* mPrecedingComma;
-	BfTokenNode* mConstSpecifier;	
+	BfAstNode* mConstSpecifier; // Could be 'const' or 'using'	
 	BfTokenNode* mVolatileSpecifier;
 	BfTokenNode* mNewSpecifier;
 	BfTokenNode* mExternSpecifier;

@@ -6287,6 +6287,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 	case BfToken_Explicit:
 	case BfToken_ReadOnly:
 	case BfToken_Inline:
+	case BfToken_Using:
 	case BfToken_Volatile:
 		break;
 	default:
@@ -6335,7 +6336,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 		auto fieldDecl = BfNodeDynCast<BfFieldDeclaration>(memberDecl);
 		if (fieldDecl != NULL)
 		{
-			if ((fieldDecl->mStaticSpecifier != NULL) && (fieldDecl->mConstSpecifier != NULL))
+			if ((fieldDecl->mStaticSpecifier != NULL) && (fieldDecl->mConstSpecifier != NULL) && (fieldDecl->mConstSpecifier->mToken == BfToken_Const))
 				Fail("Cannot use 'static' and 'const' together", fieldDecl);
 		}
 
@@ -6347,6 +6348,15 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 		(token == BfToken_Private) ||
 		(token == BfToken_Internal))
 	{
+		if (auto fieldDecl = BfNodeDynCast<BfFieldDeclaration>(memberDecl))
+		{
+			if (auto usingSpecifier = BfNodeDynCastExact<BfUsingSpecifierNode>(fieldDecl->mConstSpecifier))
+			{
+				SetProtection(memberDecl, usingSpecifier->mProtection, tokenNode);
+				return memberDecl;
+			}
+		}
+
 		SetProtection(memberDecl, memberDecl->mProtectionSpecifier, tokenNode);		
 		return memberDecl;
 	}
@@ -6463,9 +6473,35 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 
 		if (token == BfToken_Const)
 		{
+			if ((fieldDecl->mConstSpecifier != NULL) && (fieldDecl->mConstSpecifier->mToken == BfToken_Using))
+			{
+				Fail("Const cannot be used with 'using' specified", tokenNode);
+			}
+			else if (fieldDecl->mConstSpecifier != NULL)
+			{
+				Fail("Const already specified", tokenNode);
+			}
 			MEMBER_SET(fieldDecl, mConstSpecifier, tokenNode);
 			handled = true;
 		}
+
+// 		if (token == BfToken_Using)
+// 		{
+// 			if ((fieldDecl->mConstSpecifier != NULL) && (fieldDecl->mConstSpecifier->mToken == BfToken_Const))
+// 			{
+// 				Fail("Const cannot be used with 'using' specified", tokenNode);
+// 			}
+// 			else if (fieldDecl->mConstSpecifier != NULL)
+// 			{
+// 				Fail("Using already specified", tokenNode);
+// 			}
+// 
+// 			auto usingSpecifier = mAlloc->Alloc<BfUsingSpecifierNode>();
+// 			ReplaceNode(tokenNode, usingSpecifier);
+// 			MEMBER_SET(usingSpecifier, mUsingToken, tokenNode);				
+// 			MEMBER_SET(fieldDecl, mConstSpecifier, usingSpecifier);
+// 			handled = true;
+// 		}
 
 		if (token == BfToken_ReadOnly)
 		{
@@ -6504,13 +6540,13 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 			handled = true;
 		}
 
-		if ((fieldDecl->mStaticSpecifier != NULL) && (fieldDecl->mConstSpecifier != NULL))
+		if ((fieldDecl->mStaticSpecifier != NULL) && (fieldDecl->mConstSpecifier != NULL) && (fieldDecl->mConstSpecifier->mToken == BfToken_Const))
 			Fail("Cannot use 'static' and 'const' together", fieldDecl);
 
-		if ((fieldDecl->mReadOnlySpecifier != NULL) && (fieldDecl->mConstSpecifier != NULL))
+		if ((fieldDecl->mReadOnlySpecifier != NULL) && (fieldDecl->mConstSpecifier != NULL) && (fieldDecl->mConstSpecifier->mToken == BfToken_Const))
 			Fail("Cannot use 'readonly' and 'const' together", fieldDecl);
 
-		if ((fieldDecl->mVolatileSpecifier != NULL) && (fieldDecl->mConstSpecifier != NULL))
+		if ((fieldDecl->mVolatileSpecifier != NULL) && (fieldDecl->mConstSpecifier != NULL) && (fieldDecl->mConstSpecifier->mToken == BfToken_Const))
 			Fail("Cannot use 'volatile' and 'const' together", fieldDecl);
 
 		if (handled)

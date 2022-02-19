@@ -36,6 +36,7 @@ public:
 	virtual void Visit(BfEmptyStatement* emptyStmt);
 	virtual void Visit(BfTokenNode* tokenNode);
 	virtual void Visit(BfTokenPairNode* tokenPairNode);
+	virtual void Visit(BfUsingSpecifierNode* usingSpecifier);
 	virtual void Visit(BfLiteralExpression* literalExpr);
 	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression);
 	virtual void Visit(BfIdentifierNode* identifierNode);

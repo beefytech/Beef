@@ -4464,6 +4464,526 @@ void BfExprEvaluator::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType
 	mModule->mCompiler->mResolvePassData->mAutoComplete->FixitAddMember(typeInst, fieldType, fieldName, isStatic, mModule->mCurTypeInstance);
 }
 
+BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInlined)
+{	
+	if ((flags & BfLookupFieldFlag_IsAnonymous) == 0)
+		mModule->SetElementType(targetSrc, BfSourceElementType_Method);
+
+	if ((!prop->mIsStatic) && ((flags & BfLookupFieldFlag_IsImplicitThis) != 0))
+		mModule->MarkUsingThis();
+
+	mPropSrc = targetSrc;
+	mPropDef = prop;
+	mPropCheckedKind = checkedKind;
+	if (isInlined)
+		mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
+
+	if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL))
+	{
+		if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef))
+		{
+			mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_Friend);
+			mModule->mAttributeState->mUsed = true;
+		}
+		if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef))
+		{
+			mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_DisableObjectAccessChecks);
+			mModule->mAttributeState->mUsed = true;
+		}
+	}
+
+	if (mPropDef->mIsStatic)
+	{
+		if ((target) && ((flags & BfLookupFieldFlag_IsImplicitThis) == 0) && (!typeInstance->mTypeDef->IsGlobalsContainer()))
+		{
+			//CS0176: Member 'Program.sVal' cannot be accessed with an instance reference; qualify it with a type name instead
+			mModule->Fail(StrFormat("Property '%s.%s' cannot be accessed with an instance reference; qualify it with a type name instead",
+				mModule->TypeToString(typeInstance).c_str(), mPropDef->mName.c_str()), targetSrc);
+		}
+	}
+	
+	bool isBaseLookup = typeInstance != target.mType;	
+	if ((isBaseLookup) && (target.mType->IsWrappableType()))
+		isBaseLookup = false;
+
+	if (prop->mIsStatic)
+		mPropTarget = BfTypedValue(typeInstance);
+	else if (isBaseLookup)
+	{
+		if (target.mValue.IsFake())
+		{
+			mPropTarget = BfTypedValue(target.mValue, typeInstance, target.mKind);
+		}
+		else
+		{
+			mPropTarget = mModule->Cast(targetSrc, target, typeInstance);
+			BF_ASSERT(mPropTarget);
+		}
+	}
+	else
+		mPropTarget = target;
+
+	if (mPropTarget.mType->IsStructPtr())
+	{
+		mPropTarget = mModule->LoadValue(mPropTarget);
+		mPropTarget = BfTypedValue(mPropTarget.mValue, mPropTarget.mType->GetUnderlyingType(), mPropTarget.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+	}
+
+	mOrigPropTarget = mPropTarget;
+
+	if ((flags & BfLookupFieldFlag_IsAnonymous) == 0)
+	{
+		auto autoComplete = GetAutoComplete();
+		auto resolvePassData = mModule->mCompiler->mResolvePassData;
+		if (((autoComplete != NULL) && (autoComplete->mIsGetDefinition)) ||
+			((resolvePassData != NULL) && (resolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Property)))
+		{
+			BfPropertyDef* basePropDef = mPropDef;
+			BfTypeInstance* baseTypeInst = typeInstance;
+			mModule->GetBasePropertyDef(basePropDef, baseTypeInst);
+			resolvePassData->HandlePropertyReference(targetSrc, baseTypeInst->mTypeDef, basePropDef);
+			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(targetSrc)))
+			{
+				if (autoComplete->mIsGetDefinition)
+				{
+					//NOTE: passing 'force=true' in here causes https://github.com/beefytech/Beef/issues/1064
+					autoComplete->SetDefinitionLocation(basePropDef->GetRefNode());
+				}
+				autoComplete->mDefProp = basePropDef;
+				autoComplete->mDefType = baseTypeInst->mTypeDef;
+			}
+		}
+
+		if ((autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)))
+		{
+			BfPropertyDef* basePropDef = mPropDef;
+			BfTypeInstance* baseTypeInst = typeInstance;
+			mModule->GetBasePropertyDef(basePropDef, baseTypeInst);
+
+			autoComplete->mResultString = ":";
+			autoComplete->mResultString += mModule->TypeToString(baseTypeInst);
+			autoComplete->mResultString += ".";
+			autoComplete->mResultString += basePropDef->mName;
+		}
+	}
+
+	// Check for direct auto-property access
+	if ((target.mType == mModule->mCurTypeInstance) && ((flags & BfLookupFieldFlag_BindOnly) == 0))
+	{
+		if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mPropDef->mFieldDeclaration))
+		{
+			if ((typeInstance->mTypeDef->HasAutoProperty(propertyDeclaration)) && (propertyDeclaration->mVirtualSpecifier == NULL))
+			{
+				BfMethodDef* getter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, BfCheckedKind_NotSet, mPropTarget);
+				BfMethodDef* setter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget);
+
+				bool optAllowed = true;
+				if ((getter != NULL) && (getter->mBody != NULL))
+					optAllowed = false;
+				if ((setter != NULL) && (setter->mBody != NULL))
+					optAllowed = false;
+
+				if (optAllowed)
+				{
+					auto autoFieldName = typeInstance->mTypeDef->GetAutoPropertyName(propertyDeclaration);
+					auto result = LookupField(targetSrc, target, autoFieldName, (BfLookupFieldFlags)(BfLookupFieldFlag_IgnoreProtection | BfLookupFieldFlag_IsImplicitThis));
+					if (result)
+					{
+						bool needsCopy = true;
+
+						if (setter == NULL)
+						{
+							if (((mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)) &&
+								(target.mType == mModule->mCurTypeInstance))
+							{
+								// Allow writing inside ctor
+							}
+							else
+							{
+								result.MakeReadOnly();
+								needsCopy = false;
+							}
+						}
+
+						if (result.mKind == BfTypedValueKind_Addr)
+							result.mKind = BfTypedValueKind_CopyOnMutateAddr;
+
+						mPropDef = NULL;
+						mPropSrc = NULL;
+						mOrigPropTarget = NULL;
+						return result;
+					}
+				}
+			}
+		}
+	}
+
+	SetAndRestoreValue<BfTypedValue> prevResult(mResult, target);
+	CheckResultForReading(mResult);
+	return BfTypedValue();
+}
+
+BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfFieldDef* fieldDef, BfLookupFieldFlags flags)
+{
+	if (fieldDef->mIsProperty)
+	{
+		BfPropertyDef* propDef = (BfPropertyDef*)fieldDef;
+		return LoadProperty(targetSrc, target, typeInstance, propDef, flags, BfCheckedKind_NotSet, false);
+	}
+
+	bool isFailurePass = (flags & BfLookupFieldFlag_IsFailurePass) != 0;
+
+	auto fieldInstance = &typeInstance->mFieldInstances[fieldDef->mIdx];
+
+	bool isResolvingFields = typeInstance->mResolvingConstField || typeInstance->mResolvingVarField;
+
+	if (fieldDef->mIsVolatile)
+		mIsVolatileReference = true;
+
+	if (isFailurePass)
+	{
+		mModule->Fail(StrFormat("'%s.%s' is inaccessible due to its protection level", mModule->TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()), targetSrc);
+	}
+
+	auto resolvePassData = mModule->mCompiler->mResolvePassData;
+	if ((resolvePassData != NULL) && (resolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Field))
+	{
+		resolvePassData->HandleFieldReference(targetSrc, typeInstance->mTypeDef, fieldDef);
+	}
+
+	if ((!typeInstance->mTypeFailed) && (!isResolvingFields) && (typeInstance->IsIncomplete()))
+	{
+		if ((fieldInstance->mResolvedType == NULL) ||
+			(!fieldDef->mIsStatic))
+			mModule->PopulateType(typeInstance, BfPopulateType_Data);
+	}
+
+	if (fieldInstance->mResolvedType == NULL)
+	{
+		BF_ASSERT((typeInstance->mTypeFailed) || (isResolvingFields));
+		return BfTypedValue();
+	}
+
+	if (fieldInstance->mFieldIdx == -1)
+	{
+		mModule->AssertErrorState();
+		return BfTypedValue();
+	}
+
+	if ((!fieldDef->mIsStatic) && ((flags & BfLookupFieldFlag_IsImplicitThis) != 0))
+		mModule->MarkUsingThis();
+
+	mResultFieldInstance = fieldInstance;
+
+	// Are we accessing a 'var' field that has not yet been resolved?
+	if (IsVar(fieldInstance->mResolvedType))
+	{
+		// This can happen if we have one var field referencing another var field
+		fieldInstance->mResolvedType = mModule->ResolveVarFieldType(typeInstance, fieldInstance, fieldDef);
+		if (fieldInstance->mResolvedType == NULL)
+			return BfTypedValue();
+	}
+
+	auto resolvedFieldType = fieldInstance->mResolvedType;
+	if (fieldInstance->mIsEnumPayloadCase)
+	{
+		resolvedFieldType = typeInstance;
+	}
+
+	mModule->PopulateType(resolvedFieldType, BfPopulateType_Data);
+	mModule->AddDependency(typeInstance, mModule->mCurTypeInstance, fieldDef->mIsConst ? BfDependencyMap::DependencyFlag_ConstValue : BfDependencyMap::DependencyFlag_ReadFields);
+	if (fieldInstance->mHadConstEval)
+	{
+		mModule->AddDependency(typeInstance, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ConstEvalConstField);
+		if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mCurFieldDef != NULL))
+		{
+			// If we're initializing another const field then also set it as having const eval
+			auto resolvingFieldInstance = &mModule->mContext->mCurTypeState->mType->ToTypeInstance()->mFieldInstances[mModule->mContext->mCurTypeState->mCurFieldDef->mIdx];
+			if (resolvingFieldInstance->GetFieldDef()->mIsConst)
+				resolvingFieldInstance->mHadConstEval = true;
+		}
+	}
+
+	if ((flags & BfLookupFieldFlag_IsAnonymous) == 0)
+	{
+		auto autoComplete = GetAutoComplete();
+		if (autoComplete != NULL)
+		{
+			autoComplete->CheckFieldRef(BfNodeDynCast<BfIdentifierNode>(targetSrc), fieldInstance);
+			if ((autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)))
+			{
+				autoComplete->mResultString = ":";
+				autoComplete->mResultString += mModule->TypeToString(fieldInstance->mResolvedType);
+				autoComplete->mResultString += " ";
+				autoComplete->mResultString += mModule->TypeToString(typeInstance);
+				autoComplete->mResultString += ".";
+				autoComplete->mResultString += fieldDef->mName;
+
+				if (fieldInstance->mConstIdx != -1)
+				{
+					String constStr = autoComplete->ConstantToString(typeInstance->mConstHolder, BfIRValue(BfIRValueFlags_Const, fieldInstance->mConstIdx));
+					if (!constStr.IsEmpty())
+					{
+						autoComplete->mResultString += " = ";
+						if (constStr.StartsWith(':'))
+							autoComplete->mResultString.Append(StringView(constStr, 1, constStr.mLength - 1));
+						else
+							autoComplete->mResultString += constStr;
+					}
+				}
+
+				auto fieldDecl = fieldInstance->GetFieldDef()->mFieldDeclaration;
+				if ((fieldDecl != NULL) && (fieldDecl->mDocumentation != NULL))
+				{
+					String docString;
+					fieldDecl->mDocumentation->GetDocString(docString);
+					autoComplete->mResultString += "\x03";
+					autoComplete->mResultString += docString;
+				}
+			}
+		}
+	}
+
+	if (fieldDef->mIsStatic)
+	{
+		if ((target) && ((flags & BfLookupFieldFlag_IsImplicitThis) == 0) && (!typeInstance->mTypeDef->IsGlobalsContainer()))
+		{
+			//CS0176: Member 'Program.sVal' cannot be accessed with an instance reference; qualify it with a type name instead
+			mModule->Fail(StrFormat("Member '%s.%s' cannot be accessed with an instance reference; qualify it with a type name instead",
+				mModule->TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()), targetSrc);
+		}
+
+		// Target must be an implicit 'this', or an error (accessing a static with a non-static target).  
+		//  Not actually needed in either case since this is a static lookup.
+		mResultLocalVar = NULL;
+	}
+
+	bool isConst = false;
+	if (fieldDef->mIsConst)
+	{
+		isConst = true;
+		auto fieldDef = fieldInstance->GetFieldDef();
+		if ((resolvedFieldType->IsPointer()) && (fieldDef->mIsExtern))
+			isConst = false;
+	}
+
+	if (isConst)
+	{
+		if (fieldInstance->mIsEnumPayloadCase)
+		{
+			auto dscrType = typeInstance->GetDiscriminatorType();
+
+			mModule->mBfIRBuilder->PopulateType(typeInstance);
+			int tagIdx = -fieldInstance->mDataIdx - 1;
+			if ((mBfEvalExprFlags & BfEvalExprFlags_AllowEnumId) != 0)
+			{
+				return BfTypedValue(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx), fieldInstance->mOwner);
+			}
+			mModule->PopulateType(fieldInstance->mOwner, BfPopulateType_Data);
+
+			if (auto fieldTypeInstance = fieldInstance->mResolvedType->ToTypeInstance())
+			{
+				bool hasFields = false;
+				for (auto& fieldInstance : fieldTypeInstance->mFieldInstances)
+				{
+					if (!fieldInstance.mResolvedType->IsVoid())
+						hasFields = true;
+				}
+				if (hasFields)
+					mModule->FailAfter("Enum payload arguments expected", targetSrc);
+			}
+
+			SizedArray<BfIRValue, 3> values;
+			values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(typeInstance->mBaseType)));
+			values.Add(mModule->GetDefaultValue(typeInstance->GetUnionInnerType()));
+			values.Add(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx));
+			return BfTypedValue(mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(typeInstance), values), typeInstance);
+		}
+
+		if (fieldInstance->mConstIdx == -1)
+		{
+			if ((mBfEvalExprFlags & BfEvalExprFlags_DeclType) != 0)
+			{
+				// We don't need a real value
+				return BfTypedValue(mModule->GetDefaultValue(resolvedFieldType), resolvedFieldType);
+			}
+
+			typeInstance->mModule->ResolveConstField(typeInstance, fieldInstance, fieldDef);
+			if (fieldInstance->mConstIdx == -1)
+				return BfTypedValue(mModule->GetDefaultValue(resolvedFieldType), resolvedFieldType);
+		}
+
+		BF_ASSERT(fieldInstance->mConstIdx != -1);
+
+		auto foreignConst = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+		auto retVal = mModule->ConstantToCurrent(foreignConst, typeInstance->mConstHolder, resolvedFieldType);
+		return BfTypedValue(retVal, resolvedFieldType);
+	}
+	else if (fieldDef->mIsStatic)
+	{
+		mModule->CheckStaticAccess(typeInstance);
+		auto retVal = mModule->ReferenceStaticField(fieldInstance);
+		bool isStaticCtor = (mModule->mCurMethodInstance != NULL) &&
+			(mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) &&
+			(mModule->mCurMethodInstance->mMethodDef->mIsStatic);
+		if ((fieldDef->mIsReadOnly) && (!isStaticCtor))
+		{
+			if (retVal.IsAddr())
+				retVal.mKind = BfTypedValueKind_ReadOnlyAddr;
+		}
+		else
+			mIsHeapReference = true;
+		return retVal;
+	}
+	else if (!target)
+	{
+		if (mModule->PreFail())
+		{
+			if ((flags & BfLookupFieldFlag_CheckingOuter) != 0)
+				mModule->Fail(StrFormat("An instance reference is required to reference non-static outer field '%s.%s'", mModule->TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()),
+					targetSrc);
+			else if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend))
+				mModule->Fail(StrFormat("Cannot reference field '%s' before append allocations", fieldDef->mName.c_str()), targetSrc);
+			else
+				mModule->Fail(StrFormat("Cannot reference non-static field '%s' from a static method", fieldDef->mName.c_str()), targetSrc);
+		}
+		return mModule->GetDefaultTypedValue(resolvedFieldType, false, BfDefaultValueKind_Addr);
+	}
+
+	if (resolvedFieldType->IsValuelessType())
+	{
+		return BfTypedValue(BfIRValue::sValueless, resolvedFieldType, true);
+	}
+
+	if ((mResultLocalVar != NULL) && (fieldInstance->mMergedDataIdx != -1))
+	{
+		if (mResultLocalVarFieldCount != 1)
+		{
+			fieldInstance->GetDataRange(mResultLocalVarField, mResultLocalVarFieldCount);
+			mResultLocalVarRefNode = targetSrc;
+		}
+	}
+
+	if ((typeInstance->IsIncomplete()) && (!typeInstance->mNeedsMethodProcessing))
+	{
+		BF_ASSERT(typeInstance->mTypeFailed || (mModule->mCurMethodState == NULL) || (mModule->mCurMethodState->mTempKind != BfMethodState::TempKind_None) || (mModule->mCompiler->IsAutocomplete()));
+		return mModule->GetDefaultTypedValue(resolvedFieldType);
+	}
+
+	bool isTemporary = target.IsTempAddr();
+	bool wantsLoadValue = false;
+	bool wantsReadOnly = false;
+	if ((fieldDef->mIsReadOnly) && (mModule->mCurMethodInstance != NULL) && ((!mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) || (!target.IsThis())))
+		wantsReadOnly = true;
+
+	bool isComposite = target.mType->IsComposite();
+	if ((isComposite) && (!target.mType->IsTypedPrimitive()) && (!target.IsAddr()))
+		isTemporary = true;
+	if ((isComposite) && (!target.IsAddr()))
+		wantsLoadValue = true;
+
+	if ((target.mType->IsWrappableType()) && (!target.mType->IsPointer()))
+	{
+		BfTypeInstance* primStructType = mModule->GetWrappedStructType(target.mType);
+		BfIRValue allocaInst = mModule->CreateAlloca(primStructType, true, "tmpStruct");
+		BfIRValue elementAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(allocaInst, 0, 1);
+		mModule->mBfIRBuilder->CreateStore(target.mValue, elementAddr);
+		target = BfTypedValue(allocaInst, primStructType, true);
+	}
+
+	if (target.IsCopyOnMutate())
+		target = mModule->CopyValue(target);
+
+	BfTypedValue targetValue;
+	if ((target.mType != typeInstance) && (!target.IsSplat()))
+	{
+		if ((!isComposite) || (target.IsAddr()))
+			targetValue = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapTypeInstPtr(typeInstance)), typeInstance);
+		else
+		{
+			BfIRValue curVal = target.mValue;
+			auto baseCheckType = target.mType->ToTypeInstance();
+			while (baseCheckType != typeInstance)
+			{
+				curVal = mModule->mBfIRBuilder->CreateExtractValue(curVal, 0);
+				baseCheckType = baseCheckType->mBaseType;
+			}
+			targetValue = BfTypedValue(curVal, typeInstance);
+		}
+	}
+	else
+		targetValue = target;
+
+	bool doAccessCheck = true;
+
+	if ((flags & BfLookupFieldFlag_BindOnly) != 0)
+		doAccessCheck = false;
+	if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
+		doAccessCheck = false;
+
+	if (target.IsThis())
+	{
+		if (!mModule->mCurMethodState->mMayNeedThisAccessCheck)
+			doAccessCheck = false;
+	}
+	if (doAccessCheck)
+		mModule->EmitObjectAccessCheck(target);
+
+	if (fieldInstance->mDataIdx < 0)
+	{
+		BF_ASSERT(typeInstance->mTypeFailed);
+		return mModule->GetDefaultTypedValue(resolvedFieldType);
+	}
+
+	BfTypedValue retVal;
+	if (target.IsSplat())
+	{
+		retVal = mModule->ExtractValue(targetValue, fieldInstance, fieldInstance->mDataIdx);
+	}
+	else if ((target.mType->IsStruct()) && (!target.IsAddr()))
+	{
+		mModule->mBfIRBuilder->PopulateType(targetValue.mType);
+		retVal = BfTypedValue(mModule->mBfIRBuilder->CreateExtractValue(targetValue.mValue, fieldInstance->mDataIdx/*, fieldDef->mName*/),
+			resolvedFieldType);
+	}
+	else
+	{
+		mModule->mBfIRBuilder->PopulateType(typeInstance);
+
+		if ((targetValue.IsAddr()) && (!typeInstance->IsValueType()))
+			targetValue = mModule->LoadValue(targetValue);
+
+		retVal = BfTypedValue(mModule->mBfIRBuilder->CreateInBoundsGEP(targetValue.mValue, 0, fieldInstance->mDataIdx/*, fieldDef->mName*/),
+			resolvedFieldType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+	}
+
+	if (!retVal.IsSplat())
+	{
+		if (typeInstance->mIsUnion)
+		{
+			BfIRType llvmPtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(resolvedFieldType));
+			retVal.mValue = mModule->mBfIRBuilder->CreateBitCast(retVal.mValue, llvmPtrType);
+		}
+	}
+
+	if (wantsLoadValue)
+		retVal = mModule->LoadValue(retVal, NULL, mIsVolatileReference);
+	else
+	{
+		if ((wantsReadOnly) && (retVal.IsAddr()) && (!retVal.IsReadOnly()))
+			retVal.mKind = BfTypedValueKind_ReadOnlyAddr;
+		mIsHeapReference = true;
+	}
+
+	if (isTemporary)
+	{
+		if (retVal.IsAddr())
+			retVal.mKind = BfTypedValueKind_TempAddr;
+	}
+
+	return retVal;
+}
+
 BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags)
 {
 	if ((target.mType != NULL && (target.mType->IsGenericParam())))
@@ -4618,6 +5138,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 	{
 		auto curCheckType = startCheckType;
 		bool isFailurePass = pass == 1;
+
+		if (isFailurePass)
+			flags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_IsFailurePass);
 		
 		bool isBaseLookup = false;
 		while (curCheckType != NULL)
@@ -4668,7 +5191,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				bool isResolvingFields = curCheckType->mResolvingConstField || curCheckType->mResolvingVarField;
 				
 				if (curCheckType->mFieldInstances.IsEmpty())
-				{					
+				{
 					mModule->PopulateType(curCheckType, BfPopulateType_Data);
 				}
 
@@ -4702,361 +5225,13 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			}
 
 			if (matchedField != NULL)
-			{
-				auto field = matchedField;
-				auto fieldInstance = &curCheckType->mFieldInstances[field->mIdx];
-				
-				bool isResolvingFields = curCheckType->mResolvingConstField || curCheckType->mResolvingVarField;
-								
-				if (field->mIsVolatile)
-					mIsVolatileReference = true;
-
-				if (isFailurePass)
-				{					
-					mModule->Fail(StrFormat("'%s.%s' is inaccessible due to its protection level", mModule->TypeToString(curCheckType).c_str(), field->mName.c_str()), targetSrc);					
-				}					
-
-				auto resolvePassData = mModule->mCompiler->mResolvePassData;
-				if ((resolvePassData != NULL) && (resolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Field))
-				{
-					resolvePassData->HandleFieldReference(targetSrc, curCheckType->mTypeDef, field);
-				}								
-
-				if ((!curCheckType->mTypeFailed) && (!isResolvingFields) && (curCheckType->IsIncomplete()))
-				{
-					if ((fieldInstance->mResolvedType == NULL) ||
-						(!field->mIsStatic))
-						mModule->PopulateType(curCheckType, BfPopulateType_Data);
-				}
-
-				if (fieldInstance->mResolvedType == NULL)
-				{					
-					BF_ASSERT((curCheckType->mTypeFailed) || (isResolvingFields));
-					return BfTypedValue();
-				}
-
-				if (fieldInstance->mFieldIdx == -1)
-				{
-					mModule->AssertErrorState();
-					return BfTypedValue();
-				}
-
-				if ((!field->mIsStatic) && ((flags & BfLookupFieldFlag_IsImplicitThis) != 0))
-					mModule->MarkUsingThis();
-
-				mResultFieldInstance = fieldInstance;
-
-				// Are we accessing a 'var' field that has not yet been resolved?
-				if (IsVar(fieldInstance->mResolvedType))
-				{
-					// This can happen if we have one var field referencing another var field
-					fieldInstance->mResolvedType = mModule->ResolveVarFieldType(curCheckType, fieldInstance, field);
-					if (fieldInstance->mResolvedType == NULL)
-						return BfTypedValue();
-				}
-					
-				auto resolvedFieldType = fieldInstance->mResolvedType;
-				if (fieldInstance->mIsEnumPayloadCase)
-				{
-					resolvedFieldType = curCheckType;						
-				}
-					
-				mModule->PopulateType(resolvedFieldType, BfPopulateType_Data);					
-				mModule->AddDependency(curCheckType, mModule->mCurTypeInstance, field->mIsConst ? BfDependencyMap::DependencyFlag_ConstValue : BfDependencyMap::DependencyFlag_ReadFields);
-				if (fieldInstance->mHadConstEval)
-				{
-					mModule->AddDependency(curCheckType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ConstEvalConstField);
-					if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mCurFieldDef != NULL))
-					{
-						// If we're initializing another const field then also set it as having const eval
-						auto resolvingFieldInstance = &mModule->mContext->mCurTypeState->mType->ToTypeInstance()->mFieldInstances[mModule->mContext->mCurTypeState->mCurFieldDef->mIdx];
-						if (resolvingFieldInstance->GetFieldDef()->mIsConst)
-							resolvingFieldInstance->mHadConstEval = true;
-					}
-				}
-
-				auto autoComplete = GetAutoComplete();
-				if (autoComplete != NULL)
-				{
-					autoComplete->CheckFieldRef(BfNodeDynCast<BfIdentifierNode>(targetSrc), fieldInstance);
-					if ((autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)))
-					{						
-						autoComplete->mResultString = ":";
-						autoComplete->mResultString += mModule->TypeToString(fieldInstance->mResolvedType);
-						autoComplete->mResultString += " ";
-						autoComplete->mResultString += mModule->TypeToString(curCheckType);
-						autoComplete->mResultString += ".";
-						autoComplete->mResultString += field->mName;
-
-						if (fieldInstance->mConstIdx != -1)
-						{
-							String constStr = autoComplete->ConstantToString(curCheckType->mConstHolder, BfIRValue(BfIRValueFlags_Const, fieldInstance->mConstIdx));
-							if (!constStr.IsEmpty())
-							{
-								autoComplete->mResultString += " = ";
-								if (constStr.StartsWith(':'))
-									autoComplete->mResultString.Append(StringView(constStr, 1, constStr.mLength - 1));
-								else
-									autoComplete->mResultString += constStr;
-							}
-						}
-
-						auto fieldDecl = fieldInstance->GetFieldDef()->mFieldDeclaration;
-						if ((fieldDecl != NULL) && (fieldDecl->mDocumentation != NULL))						
-						{
-							String docString;
-							fieldDecl->mDocumentation->GetDocString(docString);
-							autoComplete->mResultString += "\x03";
-							autoComplete->mResultString += docString;
-						}
-					}
-				}
-
-				if (field->mIsStatic)
-				{
-					if ((target) && ((flags & BfLookupFieldFlag_IsImplicitThis) == 0) && (!curCheckType->mTypeDef->IsGlobalsContainer()))
-					{
-						//CS0176: Member 'Program.sVal' cannot be accessed with an instance reference; qualify it with a type name instead
-						mModule->Fail(StrFormat("Member '%s.%s' cannot be accessed with an instance reference; qualify it with a type name instead", 
-							mModule->TypeToString(curCheckType).c_str(), field->mName.c_str()), targetSrc);
-					}
-
-					// Target must be an implicit 'this', or an error (accessing a static with a non-static target).  
-					//  Not actually needed in either case since this is a static lookup.
-					mResultLocalVar = NULL;					
-				}
-
-				bool isConst = false;
-				if (field->mIsConst)
-				{
-					isConst = true;
-					auto fieldDef = fieldInstance->GetFieldDef();
-					if ((resolvedFieldType->IsPointer()) && (fieldDef->mIsExtern))
-						isConst = false;
-				}
-
-				if (isConst)
-				{
-					if (fieldInstance->mIsEnumPayloadCase)
-					{
-						auto dscrType = curCheckType->GetDiscriminatorType();
-
-						mModule->mBfIRBuilder->PopulateType(curCheckType);
-						int tagIdx = -fieldInstance->mDataIdx - 1;
-						if ((mBfEvalExprFlags & BfEvalExprFlags_AllowEnumId) != 0)
-						{
-							return BfTypedValue(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx), fieldInstance->mOwner);
-						}
-						mModule->PopulateType(fieldInstance->mOwner, BfPopulateType_Data);
-
-						if (auto fieldTypeInstance = fieldInstance->mResolvedType->ToTypeInstance())
-						{
-							bool hasFields = false;
-							for (auto& fieldInstance : fieldTypeInstance->mFieldInstances)
-							{
-								if (!fieldInstance.mResolvedType->IsVoid())
-									hasFields = true;
-							}
-							if (hasFields)
-								mModule->FailAfter("Enum payload arguments expected", targetSrc);
-						}
+				return LoadField(targetSrc, target, curCheckType, matchedField, flags);
 						
-						SizedArray<BfIRValue, 3> values;
-						values.Add(mModule->mBfIRBuilder->CreateConstAggZero(mModule->mBfIRBuilder->MapType(curCheckType->mBaseType)));						
-						values.Add(mModule->GetDefaultValue(curCheckType->GetUnionInnerType()));
-						values.Add(mModule->mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagIdx));
-						return BfTypedValue(mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(curCheckType), values), curCheckType);						
-					}
-
-					if (fieldInstance->mConstIdx == -1)
-					{	
-						if ((mBfEvalExprFlags & BfEvalExprFlags_DeclType) != 0)
-						{
-							// We don't need a real value
-							return BfTypedValue(mModule->GetDefaultValue(resolvedFieldType), resolvedFieldType);
-						}
-
-						curCheckType->mModule->ResolveConstField(curCheckType, fieldInstance, field);
-						if (fieldInstance->mConstIdx == -1)
-							return BfTypedValue(mModule->GetDefaultValue(resolvedFieldType), resolvedFieldType);
-					}
-
-					BF_ASSERT(fieldInstance->mConstIdx != -1);						
-						
-					auto foreignConst = curCheckType->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-					auto retVal = mModule->ConstantToCurrent(foreignConst, curCheckType->mConstHolder, resolvedFieldType);						
-					return BfTypedValue(retVal, resolvedFieldType);
-				}
-				else if (field->mIsStatic)
-				{
-					mModule->CheckStaticAccess(curCheckType);
-					auto retVal = mModule->ReferenceStaticField(fieldInstance);						
-					bool isStaticCtor = (mModule->mCurMethodInstance != NULL) && 
-						(mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) &&
-						(mModule->mCurMethodInstance->mMethodDef->mIsStatic);
-					if ((field->mIsReadOnly) && (!isStaticCtor))
-					{
-						if (retVal.IsAddr())
-							retVal.mKind = BfTypedValueKind_ReadOnlyAddr;
-					}						
-					else
-						mIsHeapReference = true;
-					return retVal;
-				}
-				else if (!target)
-				{		
-					if (mModule->PreFail())
-					{
-						if ((flags & BfLookupFieldFlag_CheckingOuter) != 0)
-							mModule->Fail(StrFormat("An instance reference is required to reference non-static outer field '%s.%s'", mModule->TypeToString(curCheckType).c_str(), field->mName.c_str()),
-								targetSrc);
-						else if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend))
-							mModule->Fail(StrFormat("Cannot reference field '%s' before append allocations", field->mName.c_str()), targetSrc);
-						else
-							mModule->Fail(StrFormat("Cannot reference non-static field '%s' from a static method", field->mName.c_str()), targetSrc);
-					}
-					return mModule->GetDefaultTypedValue(resolvedFieldType, false, BfDefaultValueKind_Addr);
-				}
-
-				if (resolvedFieldType->IsValuelessType())
-				{
-					return BfTypedValue(BfIRValue::sValueless, resolvedFieldType, true);
-				}
-
-				if ((mResultLocalVar != NULL) && (fieldInstance->mMergedDataIdx != -1))
-				{
-					if (mResultLocalVarFieldCount != 1)
-					{
-						fieldInstance->GetDataRange(mResultLocalVarField, mResultLocalVarFieldCount);
-						mResultLocalVarRefNode = targetSrc;
-					}
-				}
-
-				if ((curCheckType->IsIncomplete()) && (!curCheckType->mNeedsMethodProcessing))
-				{
-					BF_ASSERT(curCheckType->mTypeFailed || (mModule->mCurMethodState == NULL) || (mModule->mCurMethodState->mTempKind != BfMethodState::TempKind_None) || (mModule->mCompiler->IsAutocomplete()));
-					return mModule->GetDefaultTypedValue(resolvedFieldType);
-				}
-
-				bool isTemporary = target.IsTempAddr();
-				bool wantsLoadValue = false;
-				bool wantsReadOnly = false;
-				if ((field->mIsReadOnly) && (mModule->mCurMethodInstance != NULL) && ((!mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) || (!target.IsThis())))
-					wantsReadOnly = true;
-										
-				bool isComposite = target.mType->IsComposite();
-				if ((isComposite) && (!target.mType->IsTypedPrimitive()) && (!target.IsAddr()))
-					isTemporary = true;	
-				if ((isComposite) && (!target.IsAddr()))
-					wantsLoadValue = true;
-
-				if ((target.mType->IsWrappableType()) && (!target.mType->IsPointer()))
-				{
-					BfTypeInstance* primStructType = mModule->GetWrappedStructType(target.mType);						
-					BfIRValue allocaInst = mModule->CreateAlloca(primStructType, true, "tmpStruct");
-					BfIRValue elementAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(allocaInst, 0, 1);
-					mModule->mBfIRBuilder->CreateStore(target.mValue, elementAddr);
-					target = BfTypedValue(allocaInst, primStructType, true);
-				}
-
-				if (target.IsCopyOnMutate())
-					target = mModule->CopyValue(target);
-
-				BfTypedValue targetValue;
-				if ((isBaseLookup) && (!target.IsSplat()))
-				{
-					if ((!isComposite) || (target.IsAddr()))
-						targetValue = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapTypeInstPtr(curCheckType)), curCheckType);
-					else
-					{
-						BfIRValue curVal = target.mValue;
-						auto baseCheckType = target.mType->ToTypeInstance();
-						while (baseCheckType != curCheckType)
-						{
-							curVal = mModule->mBfIRBuilder->CreateExtractValue(curVal, 0);
-							baseCheckType = baseCheckType->mBaseType;
-						}
-						targetValue = BfTypedValue(curVal, curCheckType);
-					}
-				}
-				else
-					targetValue = target;
-
-				bool doAccessCheck = true;
-
-				if ((flags & BfLookupFieldFlag_BindOnly) != 0)
-					doAccessCheck = false;
-				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
-					doAccessCheck = false;
-
-				if (target.IsThis())
-				{
-					if (!mModule->mCurMethodState->mMayNeedThisAccessCheck)
-						doAccessCheck = false;
-				}
-				if (doAccessCheck)
-					mModule->EmitObjectAccessCheck(target);										
-
-				if (fieldInstance->mDataIdx < 0)
-				{
-					BF_ASSERT(curCheckType->mTypeFailed);
-					return mModule->GetDefaultTypedValue(resolvedFieldType);
-				}
-									
-				BfTypedValue retVal;
-				if (target.IsSplat())
-				{	
-					retVal = mModule->ExtractValue(targetValue, fieldInstance, fieldInstance->mDataIdx);
-				}
-				else if ((target.mType->IsStruct()) && (!target.IsAddr()))
-				{
-					mModule->mBfIRBuilder->PopulateType(targetValue.mType);
-					retVal = BfTypedValue(mModule->mBfIRBuilder->CreateExtractValue(targetValue.mValue, fieldInstance->mDataIdx/*, field->mName*/),
-						resolvedFieldType);
-				}
-				else
-				{
-					mModule->mBfIRBuilder->PopulateType(curCheckType);
-
-					if ((targetValue.IsAddr()) && (!curCheckType->IsValueType()))
-						targetValue = mModule->LoadValue(targetValue);
-
-					retVal = BfTypedValue(mModule->mBfIRBuilder->CreateInBoundsGEP(targetValue.mValue, 0, fieldInstance->mDataIdx/*, field->mName*/),
-						resolvedFieldType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
-				}
-
-				if (!retVal.IsSplat())
-				{
-					if (curCheckType->mIsUnion)
-					{
-						BfIRType llvmPtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(resolvedFieldType));
-						retVal.mValue = mModule->mBfIRBuilder->CreateBitCast(retVal.mValue, llvmPtrType);
-					}
-				}
-
-				if (wantsLoadValue)
-					retVal = mModule->LoadValue(retVal, NULL, mIsVolatileReference);
-				else 
-				{
-					if ((wantsReadOnly) && (retVal.IsAddr())&& (!retVal.IsReadOnly()))
-						retVal.mKind = BfTypedValueKind_ReadOnlyAddr;
-					mIsHeapReference = true;
-				}
-
-				if (isTemporary)
-				{
-					if (retVal.IsAddr())
-						retVal.mKind = BfTypedValueKind_TempAddr;
-				}				
-
-				return retVal;				
-			}
-			
 			BfPropertyDef* nextProp = NULL;			
 			if (curCheckType->mTypeDef->mPropertySet.TryGetWith(fieldName, &entry))
 				nextProp = (BfPropertyDef*)entry->mMemberDef;
 			
-			if (nextProp != NULL)				
+			if (nextProp != NULL)
 			{
 				BfCheckedKind checkedKind = BfCheckedKind_NotSet;
 
@@ -5093,7 +5268,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					
 					if (!prop->mMethods.IsEmpty())
 					{
-						BfMethodDef* checkMethod = prop->mMethods[0];;
+						BfMethodDef* checkMethod = prop->mMethods[0];
 						// Properties with explicit interfaces or marked as overrides can only be called indirectly
 						if ((checkMethod->mExplicitInterface != NULL) || (checkMethod->mIsOverride))							
 							continue;
@@ -5127,157 +5302,190 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				}
 
 				if (matchedProp != NULL)
+					return LoadProperty(targetSrc, target, curCheckType, matchedProp, flags, checkedKind, isInlined);
+			}
+
+			if ((curCheckType->mTypeDef->mHasUsingFields) && ((flags & BfLookupFieldFlag_BindOnly) == 0))
+			{
+				auto usingFieldData = curCheckType->mTypeDef->mUsingFieldData;
+				
+				BfUsingFieldData::Entry* usingEntry = NULL;
+				if (usingFieldData->mEntries.TryAdd(findName, NULL, &usingEntry))
 				{
-					auto prop = matchedProp;
-					gPropIdx++;
+					HashSet<BfTypeInstance*> checkedTypeSet;
+					BfUsingFieldData::FieldRef firstFoundField;
 
-					mModule->SetElementType(targetSrc, BfSourceElementType_Method);
-					
-					if ((!prop->mIsStatic) && ((flags & BfLookupFieldFlag_IsImplicitThis) != 0))
-						mModule->MarkUsingThis();
-
-					mPropSrc = targetSrc;
-					mPropDef = prop;
-					mPropCheckedKind = checkedKind;
-					if (isInlined)
-						mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
-
-					if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL))
+					std::function<bool(BfTypeInstance*)> _CheckTypeDef = [&](BfTypeInstance* usingType)
 					{
-						if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef))
-						{
-							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_Friend);
-							mModule->mAttributeState->mUsed = true;
-						}
-						if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef))
-						{
-							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_DisableObjectAccessChecks);
-							mModule->mAttributeState->mUsed = true;
-						}
-					}
+						if (!checkedTypeSet.Add(usingType))
+							return false;
 
-					if (mPropDef->mIsStatic)
-					{
-						if ((target) && ((flags & BfLookupFieldFlag_IsImplicitThis) == 0) && (!curCheckType->mTypeDef->IsGlobalsContainer()))
-						{
-							//CS0176: Member 'Program.sVal' cannot be accessed with an instance reference; qualify it with a type name instead
-							mModule->Fail(StrFormat("Property '%s.%s' cannot be accessed with an instance reference; qualify it with a type name instead",
-								mModule->TypeToString(curCheckType).c_str(), mPropDef->mName.c_str()), targetSrc);
-						}
-					}
-					
-					if (prop->mIsStatic)
-						mPropTarget = BfTypedValue(curCheckType);
-					else if (isBaseLookup)
-					{
-						if (target.mValue.IsFake())
-						{
-							mPropTarget = BfTypedValue(target.mValue, curCheckType, target.mKind);
-						}
-						else
-						{
-							mPropTarget = mModule->Cast(targetSrc, target, curCheckType);
-							BF_ASSERT(mPropTarget);
-						}
-					}
-					else
-						mPropTarget = target;
+						BfFieldDef* matchedField = NULL;
+						BfTypeInstance* matchedTypeInst = NULL;
 
-					if (mPropTarget.mType->IsStructPtr())
-					{
-						mPropTarget = mModule->LoadValue(mPropTarget);
-						mPropTarget = BfTypedValue(mPropTarget.mValue, mPropTarget.mType->GetUnderlyingType(), mPropTarget.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
-					}
-
-					mOrigPropTarget = mPropTarget;
-
-					auto autoComplete = GetAutoComplete();
-					auto resolvePassData = mModule->mCompiler->mResolvePassData;
-					if (((autoComplete != NULL) && (autoComplete->mIsGetDefinition)) ||
-						((resolvePassData != NULL) && (resolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Property)))
-					{
-						BfPropertyDef* basePropDef = mPropDef;
-						BfTypeInstance* baseTypeInst = curCheckType;
-						mModule->GetBasePropertyDef(basePropDef, baseTypeInst);
-						resolvePassData->HandlePropertyReference(targetSrc, baseTypeInst->mTypeDef, basePropDef);
-						if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(targetSrc)))
+						if (curCheckType != usingType)
 						{
-							if (autoComplete->mIsGetDefinition)
+							auto curUsingType = usingType;
+							while (curUsingType != NULL)
 							{
-								//NOTE: passing 'force=true' in here causes https://github.com/beefytech/Beef/issues/1064
-								autoComplete->SetDefinitionLocation(basePropDef->GetRefNode());
-							}
-							autoComplete->mDefProp = basePropDef;
-							autoComplete->mDefType = baseTypeInst->mTypeDef;
-						}
-					}
+								curUsingType->mTypeDef->PopulateMemberSets();
 
-					if ((autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)))
-					{	
-						BfPropertyDef* basePropDef = mPropDef;
-						BfTypeInstance* baseTypeInst = curCheckType;
-						mModule->GetBasePropertyDef(basePropDef, baseTypeInst);
-						
-						autoComplete->mResultString = ":";
-						autoComplete->mResultString += mModule->TypeToString(baseTypeInst);
-						autoComplete->mResultString += ".";
-						autoComplete->mResultString += basePropDef->mName;
-					}
+								BfFieldDef* nextField = NULL;
+								BfMemberSetEntry* entry;
+								if (curUsingType->mTypeDef->mFieldSet.TryGetWith(findName, &entry))
+									nextField = (BfFieldDef*)entry->mMemberDef;
 
-					// Check for direct auto-property access
-					if ((startCheckType == mModule->mCurTypeInstance) && ((flags & BfLookupFieldFlag_BindOnly) == 0))
-					{
-						if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mPropDef->mFieldDeclaration))
-						{
-							if ((curCheckType->mTypeDef->HasAutoProperty(propertyDeclaration)) && (propertyDeclaration->mVirtualSpecifier == NULL))
-							{								
-								BfMethodDef* getter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, BfCheckedKind_NotSet, mPropTarget);
-								BfMethodDef* setter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget);
-
-								bool optAllowed = true;
-								if ((getter != NULL) && (getter->mBody != NULL))
-									optAllowed = false;
-								if ((setter != NULL) && (setter->mBody != NULL))
-									optAllowed = false;
-
-								if (optAllowed)
+								while (nextField != NULL)
 								{
-									auto autoFieldName = curCheckType->mTypeDef->GetAutoPropertyName(propertyDeclaration);
-									auto result = LookupField(targetSrc, target, autoFieldName, (BfLookupFieldFlags)(BfLookupFieldFlag_IgnoreProtection | BfLookupFieldFlag_IsImplicitThis));
-									if (result)
-									{
-										bool needsCopy = true;
+									auto field = nextField;
+									nextField = nextField->mNextWithSameName;
 
-										if (setter == NULL)
+									if (!mModule->CheckProtection(protectionCheckFlags, curUsingType, field->mDeclaringType->mProject, field->mProtection, usingType))
+										continue;
+
+									matchedTypeInst = curUsingType;
+									matchedField = field;
+									break;
+								}
+
+								if (matchedField == NULL)								
+								{
+									BfPropertyDef* nextProp = NULL;
+									if (curUsingType->mTypeDef->mPropertySet.TryGetWith(findName, &entry))
+										nextProp = (BfPropertyDef*)entry->mMemberDef;
+									while (nextProp != NULL)
+									{
+										auto propDef = nextProp;
+										nextProp = nextProp->mNextWithSameName;
+
+										if (!mModule->CheckProtection(protectionCheckFlags, curUsingType, propDef->mDeclaringType->mProject, propDef->mProtection, usingType))
+											continue;
+
+										matchedTypeInst = curUsingType;
+										matchedField = propDef;
+										break;
+									}
+								}
+
+								if (matchedField != NULL)
+								{
+									if (firstFoundField.mTypeInstance == NULL)
+									{
+										firstFoundField = BfUsingFieldData::FieldRef(curUsingType, matchedField);
+									}
+									else
+									{
+										usingEntry->mConflicts.Add(firstFoundField);
+										usingEntry->mConflicts.Add(BfUsingFieldData::FieldRef(curUsingType, matchedField));
+									}
+									break;
+								}
+
+								curUsingType = curUsingType->mBaseType;
+							}							
+						}
+
+						auto curUsingType = usingType;
+						while (curUsingType != NULL)
+						{
+							if (curUsingType->mTypeDef->mUsingFieldData != NULL)
+							{								
+								for (auto fieldDef : curUsingType->mTypeDef->mUsingFieldData->mUsingFields)
+								{
+									if (!mModule->CheckProtection(protectionCheckFlags, curUsingType, fieldDef->mDeclaringType->mProject, fieldDef->mUsingProtection, usingType))
+										continue;
+
+									if (fieldDef->mIsProperty)
+									{
+										auto propDef = (BfPropertyDef*)fieldDef;
+										for (auto methodDef : propDef->mMethods)
 										{
-											if (((mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)) &&
-												(startCheckType == mModule->mCurTypeInstance))
+											if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 											{
-												// Allow writing inside ctor
-											}
-											else
-											{
-												result.MakeReadOnly();
-												needsCopy = false;
+												auto methodInstance = mModule->GetRawMethodInstance(curUsingType, methodDef);
+												if (methodInstance == NULL)
+													continue;
+												BfType* returnType = methodInstance->mReturnType;
+												if ((returnType->IsRef()) || (returnType->IsPointer()))
+													returnType = returnType->GetUnderlyingType();
+												auto fieldTypeInst = returnType->ToTypeInstance();
+												if ((fieldTypeInst != NULL) && (_CheckTypeDef(fieldTypeInst)))
+													usingEntry->mLookup.Insert(0, BfUsingFieldData::FieldRef(curUsingType, fieldDef));
 											}
 										}
-
-										if (result.mKind == BfTypedValueKind_Addr)
-											result.mKind = BfTypedValueKind_CopyOnMutateAddr;
-
-										mPropDef = NULL;
-										mPropSrc = NULL;
-										mOrigPropTarget = NULL;
-										return result;
+									}
+									else
+									{
+										if (curUsingType->mFieldInstances.IsEmpty())
+											mModule->PopulateType(curCheckType, BfPopulateType_Data);
+										BF_ASSERT(fieldDef->mIdx < (int)curUsingType->mFieldInstances.size());
+										auto fieldInstance = &curUsingType->mFieldInstances[fieldDef->mIdx];
+										if (!fieldInstance->mFieldIncluded)
+											continue;
+										auto fieldType = fieldInstance->mResolvedType;
+										if (fieldType->IsPointer())
+											fieldType = fieldType->GetUnderlyingType();
+										auto fieldTypeInst = fieldType->ToTypeInstance();
+										if ((fieldTypeInst != NULL) && (_CheckTypeDef(fieldTypeInst)))
+											usingEntry->mLookup.Insert(0, BfUsingFieldData::FieldRef(curUsingType, fieldDef));
 									}
 								}
 							}
+							curUsingType = curUsingType->mBaseType;
+						}
+						
+						if ((matchedField != NULL) && (usingEntry->mLookup.IsEmpty()))
+						{
+							usingEntry->mLookup.Add(BfUsingFieldData::FieldRef(matchedTypeInst, matchedField));
+							return true;
+						}
+
+						return false;
+					};
+					_CheckTypeDef(curCheckType);
+				}
+
+				if ((!usingEntry->mConflicts.IsEmpty()) && (mModule->PreFail()))
+				{
+					BfError* error = mModule->Fail("Ambiguous 'using' field reference", targetSrc);
+					if (error != NULL)
+					{
+						for (auto& conflict : usingEntry->mConflicts)
+						{
+							mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s.%s' is a candidate", mModule->TypeToString(conflict.mTypeInstance).c_str(), conflict.mFieldDef->mName.c_str()), conflict.mFieldDef->GetRefNode());
 						}
 					}
+				}
 
-					SetAndRestoreValue<BfTypedValue> prevResult(mResult, target);
-					CheckResultForReading(mResult);
-					return BfTypedValue();
+				if (!usingEntry->mLookup.IsEmpty())
+				{
+					auto initialFieldDef = usingEntry->mLookup[0].mFieldDef;
+					if ((initialFieldDef->mIsStatic == target.IsStatic()) &&
+						(mModule->CheckProtection(protectionCheckFlags, curCheckType, initialFieldDef->mDeclaringType->mProject, initialFieldDef->mUsingProtection, startCheckType)))
+					{
+						BfTypeInstance* curTypeInst = curCheckType;
+						BfTypedValue curResult = target;
+						for (int i = 0; i < usingEntry->mLookup.mSize; i++)
+						{
+							auto& fieldRef = usingEntry->mLookup[i];
+							if (mPropDef != NULL)
+							{
+								SetAndRestoreValue<BfTypedValue> prevResult(mResult, BfTypedValue());
+								mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_Friend);
+								curResult = GetResult();
+								if (!curResult)
+									return curResult;
+							}
+
+							auto useFlags = flags;
+							if (i < usingEntry->mLookup.mSize - 1)
+								useFlags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_IsAnonymous);							
+							curResult = LoadField(targetSrc, curResult, fieldRef.mTypeInstance, fieldRef.mFieldDef, useFlags);
+							if ((!curResult) && (mPropDef == NULL))
+								return curResult;
+						}
+						return curResult;
+					}
 				}
 			}
 

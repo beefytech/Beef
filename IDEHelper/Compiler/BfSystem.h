@@ -564,9 +564,11 @@ class BfFieldDef : public BfMemberDef
 public:
 	int mIdx;	
 	bool mIsConst; // Note: Consts are also all considered Static		
+	BfProtection mUsingProtection;
 	bool mIsInline;
 	bool mIsVolatile;
 	bool mIsExtern;	
+	bool mIsProperty;
 	BfTypeReference* mTypeRef;	
 	BfExpression* mInitializer;
 	BfFieldDeclaration* mFieldDeclaration;
@@ -579,9 +581,11 @@ public:
 	{
 		mIdx = 0;
 		mIsConst = false;		
+		mUsingProtection = BfProtection_Hidden;
 		mIsInline = false;
 		mIsExtern = false;
 		mIsVolatile = false;
+		mIsProperty = false;
 		mTypeRef = NULL;
 		mInitializer = NULL;
 		mFieldDeclaration = NULL;
@@ -965,6 +969,38 @@ public:
 	}
 };
 
+class BfUsingFieldData
+{
+public:
+	struct FieldRef
+	{
+		BfTypeInstance* mTypeInstance;
+		BfFieldDef* mFieldDef;
+
+		FieldRef()
+		{
+			mTypeInstance = NULL;
+			mFieldDef = NULL;
+		}
+
+		FieldRef(BfTypeInstance* typeInst, BfFieldDef* fieldDef)
+		{
+			mTypeInstance = typeInst;
+			mFieldDef = fieldDef;
+		}
+	};
+
+	struct Entry
+	{
+		Array<FieldRef> mConflicts;
+		SizedArray<FieldRef, 1> mLookup;
+	};	
+
+public:
+	Array<BfFieldDef*> mUsingFields;
+	Dictionary<String, Entry> mEntries;
+};
+
 // For partial classes, the first entry in the map will contain the combined data 
 class BfTypeDef
 {
@@ -1007,13 +1043,14 @@ public:
 	Array<BfAtomComposite> mNamespaceSearch;
 	Array<BfTypeReference*> mStaticSearch;
 	Array<BfTypeReference*> mInternalAccessSet;
-	Array<BfFieldDef*> mFields;	
+	Array<BfFieldDef*> mFields;
+	BfUsingFieldData* mUsingFieldData; // Created during mFieldSet
 	Array<BfPropertyDef*> mProperties;
 	Array<BfMethodDef*> mMethods;
 	BfTypeDefMemberSet mMethodSet;
 	BfTypeDefMemberSet mFieldSet;
 	BfTypeDefMemberSet mPropertySet;
-	Array<BfOperatorDef*> mOperators;	
+	Array<BfOperatorDef*> mOperators;
 	Array<BfGenericParamDef*> mGenericParamDefs;	
 	Array<BfExternalConstraintDef> mExternalConstraints;
 	Array<BfTypeReference*> mBaseTypes;	
@@ -1042,6 +1079,7 @@ public:
 	bool mHasCtorNoBody;
 	bool mHasExtensionMethods;
 	bool mHasOverrideMethods;	
+	bool mHasUsingFields;
 	bool mIsOpaque;
 	bool mIsNextRevision;
 	bool mInDeleteQueue;	
@@ -1082,6 +1120,7 @@ public:
 		mHasCtorNoBody = false;
 		mHasExtensionMethods = false;
 		mHasOverrideMethods = false;
+		mHasUsingFields = false;
 		mIsOpaque = false;
 		mPartialUsed = false;
 		mIsNextRevision = false;
@@ -1092,8 +1131,9 @@ public:
 		mEmitParent = NULL;
 		mOuterType = NULL;
 		mTypeDeclaration = NULL;		
-		mNextRevision = NULL;		
+		mNextRevision = NULL;
 		mProtection = BfProtection_Public;
+		mUsingFieldData = NULL;
 	}
 
 	BfSource* GetLastSource();

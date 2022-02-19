@@ -4657,7 +4657,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			{
 				auto resolvedFieldType = fieldInstance->GetResolvedType();				
 				if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
-				{					
+				{
+					if ((fieldDef->mUsingProtection != BfProtection_Hidden) && (!resolvedFieldType->IsStruct()) && (!resolvedFieldType->IsObject()))
+						Warn(0, StrFormat("Field type '%s' is not applicable for 'using'", TypeToString(resolvedFieldType).c_str()), fieldDef->mFieldDeclaration->mConstSpecifier);
+
 					if (fieldInstance->mIsEnumPayloadCase)
 					{						
  						PopulateType(resolvedFieldType, BfPopulateType_Data);
@@ -4911,7 +4914,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			fieldInstance->mDataIdx = curFieldDataIdx++;
 			
 			typeInstance->mInstAlign = std::max(typeInstance->mInstAlign, alignSize);
-			dataPos += dataSize;
+			dataPos += dataSize;			
 		}
 
 		if (unionInnerType != NULL)

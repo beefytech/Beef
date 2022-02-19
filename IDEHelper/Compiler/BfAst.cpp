@@ -161,6 +161,11 @@ void BfStructuralVisitor::Visit(BfTokenPairNode* tokenPairNode)
 	Visit(tokenPairNode->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfUsingSpecifierNode* usingSpecifier)
+{
+	Visit(usingSpecifier->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfLiteralExpression* literalExpr)
 {
 	Visit(literalExpr->ToBase());

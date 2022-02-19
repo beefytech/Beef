@@ -730,7 +730,7 @@ void BfTypeDef::PopulateMemberSets()
 		{
 			methodDef->mNextWithSameName = (BfMethodDef*)entry->mMemberDef;
 			entry->mMemberDef = methodDef;
-		}		
+		}
 	}
 
 	while (mFieldSet.mSourceSize < mFields.mSize)
@@ -743,6 +743,13 @@ void BfTypeDef::PopulateMemberSets()
 		{
  			fieldDef->mNextWithSameName = (BfFieldDef*)entry->mMemberDef;
  			entry->mMemberDef = fieldDef;
+		}
+		
+		if (fieldDef->mUsingProtection != BfProtection_Hidden)
+		{
+			if (mUsingFieldData == NULL)
+				mUsingFieldData = new BfUsingFieldData();
+			mUsingFieldData->mUsingFields.Add(fieldDef);
 		}
 	}
 
@@ -757,6 +764,13 @@ void BfTypeDef::PopulateMemberSets()
  			propDef->mNextWithSameName = (BfPropertyDef*)entry->mMemberDef;
  			entry->mMemberDef = propDef;
 		}
+
+		if (propDef->mUsingProtection != BfProtection_Hidden)
+		{
+			if (mUsingFieldData == NULL)
+				mUsingFieldData = new BfUsingFieldData();
+			mUsingFieldData->mUsingFields.Add(propDef);
+		}
 	}
 }
 
@@ -769,6 +783,8 @@ void BfTypeDef::ClearMemberSets()
 	for (auto entry : mFieldSet)
 		((BfFieldDef*)entry.mMemberDef)->mNextWithSameName = NULL;
 	mFieldSet.Clear();
+	delete mUsingFieldData;
+	mUsingFieldData = NULL;
 
 	for (auto entry : mPropertySet)
 		((BfPropertyDef*)entry.mMemberDef)->mNextWithSameName = NULL;
@@ -787,6 +803,7 @@ BfTypeDef::~BfTypeDef()
 		mSource->mRefCount--;
 		BF_ASSERT(mSource->mRefCount >= 0);
 	}
+	delete mUsingFieldData;
 }
 
 BfSource* BfTypeDef::GetLastSource()
@@ -2899,6 +2916,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mHasCtorNoBody = nextTypeDef->mHasCtorNoBody;
 	typeDef->mHasOverrideMethods = nextTypeDef->mHasOverrideMethods;
 	typeDef->mHasExtensionMethods = nextTypeDef->mHasExtensionMethods;
+	typeDef->mHasUsingFields = nextTypeDef->mHasUsingFields;
 	typeDef->mIsOpaque = nextTypeDef->mIsOpaque;
 	
 	typeDef->mDupDetectedRevision = nextTypeDef->mDupDetectedRevision;	
@@ -2950,6 +2968,8 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mPartials = nextTypeDef->mPartials;	
 	typeDef->mMethodSet.Clear();
 	typeDef->mFieldSet.Clear();
+	delete typeDef->mUsingFieldData;
+	typeDef->mUsingFieldData = NULL;
 	typeDef->mPropertySet.Clear();
 
 	delete nextTypeDef;
@@ -3003,6 +3023,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mHasAppendCtor = partialTypeDef->mHasAppendCtor;		
 		typeDef->mHasCtorNoBody = partialTypeDef->mHasCtorNoBody;
 		typeDef->mHasExtensionMethods = partialTypeDef->mHasExtensionMethods;
+		typeDef->mHasUsingFields = partialTypeDef->mHasUsingFields;
 		typeDef->mHasOverrideMethods = partialTypeDef->mHasOverrideMethods;
 		typeDef->mIsAlwaysInclude = partialTypeDef->mIsAlwaysInclude;
 		typeDef->mHasCEOnCompile = partialTypeDef->mHasCEOnCompile;
@@ -3042,6 +3063,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 	typeDef->mHasAppendCtor |= partialTypeDef->mHasAppendCtor;	
 	typeDef->mHasCEOnCompile |= partialTypeDef->mHasCEOnCompile;
 	typeDef->mHasExtensionMethods |= partialTypeDef->mHasExtensionMethods;
+	typeDef->mHasUsingFields |= partialTypeDef->mHasUsingFields;
 	typeDef->mHasOverrideMethods |= partialTypeDef->mHasOverrideMethods;
 	typeDef->mProtection = BF_MIN(typeDef->mProtection, partialTypeDef->mProtection);	
 
@@ -3062,6 +3084,8 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mFields.push_back(newField);
 	}
 	typeDef->mFieldSet.Clear();
+	delete typeDef->mUsingFieldData;
+	typeDef->mUsingFieldData = NULL;
 		
 	bool hadNoDeclMethod = false;
 	int startMethodIdx = (int)typeDef->mMethods.size();
@@ -3413,6 +3437,7 @@ void BfSystem::CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* fromTypeDef)
 	typeDef->mHasCtorNoBody = fromTypeDef->mHasCtorNoBody;
 	typeDef->mHasOverrideMethods = fromTypeDef->mHasOverrideMethods;
 	typeDef->mHasExtensionMethods = fromTypeDef->mHasExtensionMethods;
+	typeDef->mHasUsingFields = fromTypeDef->mHasUsingFields;
 	typeDef->mIsOpaque = fromTypeDef->mIsOpaque;
 
 	typeDef->mDupDetectedRevision = fromTypeDef->mDupDetectedRevision;

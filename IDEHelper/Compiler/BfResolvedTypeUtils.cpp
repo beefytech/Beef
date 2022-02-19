@@ -3145,7 +3145,7 @@ void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupCon
 	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
 	{
 		for (auto genericArg : genericTypeRef->mGenericArguments)
-			hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, BfHashFlag_AllowGenericParamConstValue, hashSeed + 1));			
+			hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, BfHashFlag_AllowGenericParamConstValue, hashSeed + 1));
 	}
 }
 

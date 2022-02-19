@@ -203,6 +203,14 @@ void BfElementVisitor::Visit(BfTokenPairNode* tokenPairNode)
 	VisitChild(tokenPairNode->mRight);
 }
 
+void BfElementVisitor::Visit(BfUsingSpecifierNode* usingSpecifier)
+{
+	Visit(usingSpecifier->ToBase());
+
+	VisitChild(usingSpecifier->mProtection);
+	VisitChild(usingSpecifier->mUsingToken);
+}
+
 void BfElementVisitor::Visit(BfLiteralExpression* literalExpr)
 {
 	Visit(literalExpr->ToBase());

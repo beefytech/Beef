@@ -362,7 +362,9 @@ enum BfLookupFieldFlags
 	BfLookupFieldFlag_BaseLookup = 2,
 	BfLookupFieldFlag_CheckingOuter = 4,
 	BfLookupFieldFlag_IgnoreProtection = 8,
-	BfLookupFieldFlag_BindOnly = 0x10
+	BfLookupFieldFlag_BindOnly = 0x10,
+	BfLookupFieldFlag_IsFailurePass = 0x20,
+	BfLookupFieldFlag_IsAnonymous = 0x40
 };
 
 enum BfUnaryOpFlags
@@ -449,6 +451,8 @@ public:
 	bool CheckIsBase(BfAstNode* checkNode);
 	bool CheckModifyResult(BfTypedValue typeValue, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut = false, bool emitWarning = false, bool skipCopyOnMutate = false);
 	bool CheckGenericCtor(BfGenericParamType* genericParamType, BfResolvedArgs& argValues, BfAstNode* targetSrc);
+	BfTypedValue LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInline);
+	BfTypedValue LoadField(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfFieldDef* fieldDef, BfLookupFieldFlags flags);
 	BfTypedValue LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags = BfLookupFieldFlag_None);	
 	void CheckObjectCreateTypeRef(BfType* expectingType, BfAstNode* afterNode);
 	void LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ignoreInitialError = false, bool* hadError = NULL);

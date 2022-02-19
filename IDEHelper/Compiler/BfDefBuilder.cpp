@@ -907,7 +907,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 		wantsBody = false;		
 	}	
 
-	if (propertyDeclaration->mConstSpecifier != NULL)
+	if ((propertyDeclaration->mConstSpecifier != NULL) && (propertyDeclaration->mConstSpecifier->mToken == BfToken_Const))
 	{
 		Fail("Const properties are not allowed", propertyDeclaration->mConstSpecifier);
 	}
@@ -920,6 +920,14 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 	propertyDef->mProtection = GetProtection(propertyDeclaration->mProtectionSpecifier);	
 	propertyDef->mIdx = (int)mCurTypeDef->mProperties.size() - 1;
 	propertyDef->mIsConst = false;
+	propertyDef->mIsProperty = true;
+	if (auto usingSpecifier = BfNodeDynCast<BfUsingSpecifierNode>(propertyDeclaration->mConstSpecifier))
+	{
+		if (usingSpecifier->mProtection != NULL)
+			propertyDef->mUsingProtection = GetProtection(usingSpecifier->mProtection);
+		else
+			propertyDef->mUsingProtection = propertyDef->mProtection;
+	}
 	propertyDef->mIsStatic = propertyDeclaration->mStaticSpecifier != NULL;
 	propertyDef->mIsReadOnly = propertyDeclaration->mReadOnlySpecifier != NULL;
 	if (propertyDeclaration->mNameNode != NULL)
@@ -1149,13 +1157,25 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 	fieldDef->mIsReadOnly = fieldDeclaration->mReadOnlySpecifier != NULL;	
 	fieldDef->mIsInline = (fieldDeclaration->mReadOnlySpecifier != NULL) && (fieldDeclaration->mReadOnlySpecifier->GetToken() == BfToken_Inline);
 	fieldDef->mIsExtern = (fieldDeclaration->mExternSpecifier != NULL);
-	fieldDef->mIsConst = (fieldDeclaration->mConstSpecifier != NULL) || (isEnumEntryDecl);
+	auto constSpecifierToken = BfNodeDynCast<BfTokenNode>(fieldDeclaration->mConstSpecifier);
+	fieldDef->mIsConst = ((constSpecifierToken != NULL) && (constSpecifierToken->mToken == BfToken_Const)) || (isEnumEntryDecl);	
+	if (auto usingSpecifier = BfNodeDynCast<BfUsingSpecifierNode>(fieldDeclaration->mConstSpecifier))
+	{
+		if (usingSpecifier->mProtection != NULL)
+			fieldDef->mUsingProtection = GetProtection(usingSpecifier->mProtection);
+		else
+			fieldDef->mUsingProtection = fieldDef->mProtection;
+	}	
+
 	fieldDef->mIsStatic = (fieldDeclaration->mStaticSpecifier != NULL) || fieldDef->mIsConst;
 	fieldDef->mIsVolatile = (fieldDeclaration->mVolatileSpecifier != NULL);
 	fieldDef->mTypeRef = fieldDeclaration->mTypeRef;
 	if (auto varType = BfNodeDynCast<BfLetTypeReference>(fieldDef->mTypeRef))		
 		fieldDef->mIsReadOnly = true;
 	
+	if (fieldDef->mUsingProtection != BfProtection_Hidden)
+		mCurTypeDef->mHasUsingFields = true;
+
 	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (fieldDef->mTypeRef != NULL) && (!fieldDef->mIsStatic))
 	{
 		// This check is a bit of a hack to determine the difference between a "MemberType mMember" and a proper case entry of "mMember(TupleType)"

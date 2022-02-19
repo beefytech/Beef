@@ -992,7 +992,7 @@ public:
 
 	SizedArray(SizedArray&& val)
 	{
-		if (val.mVals == val.mInternalBuffer)
+		if (val.mVals == (T*)&val.mFirstVal)
 		{
 			this->mVals = (T*)&this->mFirstVal;
 			this->mSize = 0;
