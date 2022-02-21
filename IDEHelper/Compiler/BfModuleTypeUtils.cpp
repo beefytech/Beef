@@ -14565,15 +14565,30 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	}
 	else if (resolvedType->IsSizedArray())
 	{
-		auto arrayType = (BfSizedArrayType*)resolvedType;
-		if (arrayType->mElementCount == -1)
+		SizedArray<intptr, 4> sizes;
+
+		auto checkType = resolvedType;
+		while (true)
 		{
-			DoTypeToString(str, arrayType->mElementType, typeNameFlags, genericMethodNameOverrides);
-			str += "[?]";
-			return;
+			if (checkType->IsSizedArray())
+			{
+				auto arrayType = (BfSizedArrayType*)checkType;
+				sizes.Add(arrayType->mElementCount);
+				checkType = arrayType->mElementType;
+				continue;
+			}
+			
+			DoTypeToString(str, checkType, typeNameFlags, genericMethodNameOverrides);
+			break;
 		}
-		DoTypeToString(str, arrayType->mElementType, typeNameFlags, genericMethodNameOverrides);
-		str += StrFormat("[%d]", arrayType->mElementCount);
+												
+		for (int i = 0; i < (int)sizes.mSize; i++)
+		{
+			if (sizes[i] == -1)
+				str += "[?]";
+			else
+				str += StrFormat("[%d]", sizes[i]);
+		}
 		return;
 	}
 	else if (resolvedType->IsConstExprValue())

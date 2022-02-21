@@ -1156,10 +1156,29 @@ namespace System.Reflection
 
 		public override void GetFullName(String strBuffer)
 		{
-			UnderlyingType.GetFullName(strBuffer);
-			strBuffer.Append("[");
-			mElementCount.ToString(strBuffer);
-			strBuffer.Append("]");
+			List<int> sizes = scope .(4);
+
+			Type checkType = this;
+			while (true)
+			{
+				if (var arrayType = checkType as SizedArrayType)
+				{
+					sizes.Add(arrayType.mElementCount);
+					checkType = arrayType.UnderlyingType;
+					continue;
+				}
+				
+				checkType.GetFullName(strBuffer);
+				break;
+			}
+													
+			for (var size in sizes)
+			{
+				if (size == -1)
+					strBuffer.Append("[?]");
+				else
+					strBuffer.AppendF($"[{size}]");
+			}
 		}
 	}
 
