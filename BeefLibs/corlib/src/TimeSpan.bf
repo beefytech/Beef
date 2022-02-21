@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 
 namespace System
@@ -51,15 +52,10 @@ namespace System
 		    this = TimeToTicks(hours, minutes, seconds).Get();
 		}
 
-        /*public this(int hours, int minutes, int seconds) {
-            _ticks = TimeToTicks(hours, minutes, seconds);
-        }*/
-
-        //TODO: This fails too
-        /*public this(int days, int hours, int minutes, int seconds)
+        public this(int32 days, int32 hours, int32 minutes, int32 seconds)
             : this(days,hours,minutes,seconds,0)
         {
-        }*/
+        }
 
         public this(int32 days, int32 hours, int32 minutes, int32 seconds, int32 milliseconds)
         {
@@ -141,6 +137,42 @@ namespace System
 		    if (totalSeconds > MaxSeconds || totalSeconds < MinSeconds)
 		        return .Err;
 		    return totalSeconds * TicksPerSecond;
+		}
+
+		private static Result<TimeSpan> Interval(double value, int32 scale)
+		{
+		    if (value.IsNaN)
+				return .Err;
+		    double tmp = value * scale;
+		    double millis = tmp + (value >= 0 ? 0.5 : -0.5);
+		    if ((millis > Int64.MaxValue / TicksPerMillisecond) || (millis < Int64.MinValue / TicksPerMillisecond))
+				return .Err;
+		    return TimeSpan((int64)millis * TicksPerMillisecond);
+		}
+
+		public static Result<TimeSpan> FromDays(double value)
+		{
+		    return Interval(value, MillisPerDay);
+		}
+
+		public static Result<TimeSpan> FromHours(double value)
+		{
+		    return Interval(value, MillisPerHour);
+		}
+
+		public static Result<TimeSpan> FromMilliseconds(double value)
+		{
+		    return Interval(value, 1);
+		}
+
+		public static Result<TimeSpan> FromMinutes(double value)
+		{
+		    return Interval(value, MillisPerMinute);
+		}
+ 
+		public static Result<TimeSpan> FromSeconds(double value)
+		{
+		    return Interval(value, MillisPerSecond);
 		}
 
 		public Result<TimeSpan> Negate()
