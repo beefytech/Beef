@@ -299,7 +299,7 @@ namespace System.Collections
 		
 		public void CopyTo(Span<KeyValuePair> kvPair)
 		{
-			Debug.Assert(kvPair.Length >= mCount);
+			Debug.Assert(kvPair.Length >= Count);
 			int idx = 0;
 			for (var kv in this)
 			{
