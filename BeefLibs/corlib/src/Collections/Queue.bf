@@ -413,11 +413,20 @@ namespace System.Collections
 	
 		/// Returns the object at the head of the queue. The object remains in the
 		/// queue. If the queue is empty, this method returns an error
-		public Result<T> Peek()
+		public Result<T> TryPeek()
 		{
 			if (mSize == 0)
 				return .Err;
 			return .Ok(mItems[mHead]);
+		}
+
+		/// Returns the object at the head of the queue. The object remains in the
+		/// queue. If the queue is empty, this method fails
+		public T Peek()
+		{
+			if (mSize == 0)
+				Runtime.FatalError("Queue empty");
+			return mItems[mHead];
 		}
 	
 		/// Returns true if the queue contains at least one object equal to 'item'.
