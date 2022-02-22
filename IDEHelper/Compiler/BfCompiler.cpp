@@ -3578,13 +3578,16 @@ void BfCompiler::UpdateRevisedTypes()
 
 				if (failedToFindRootType)
 				{
-					for (auto partialTypeDecl : compositeTypeDef->GetLatest()->mPartials)
+					for (auto partialTypeDef : compositeTypeDef->GetLatest()->mPartials)
 					{
-						// Couldn't find a root type def, treat ourselves as an explicit partial
-						auto error = mPassInstance->Fail(StrFormat("Unable to find root type definition for extension '%s'", partialTypeDecl->GetLatest()->mFullName.ToString().c_str()),
-							partialTypeDecl->GetLatest()->mTypeDeclaration->mNameNode);
-						if (error != NULL)
-							error->mIsPersistent = true;
+						if (partialTypeDef->IsExtension())
+						{
+							// Couldn't find a root type def, treat ourselves as an explicit partial
+							auto error = mPassInstance->Fail(StrFormat("Unable to find root type definition for extension '%s'", BfTypeUtils::TypeToString(partialTypeDef->GetLatest()).c_str()),
+								partialTypeDef->GetLatest()->mTypeDeclaration->mNameNode);
+							if (error != NULL)
+								error->mIsPersistent = true;
+						}
 					}
 				}
 			}			

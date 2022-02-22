@@ -2597,6 +2597,11 @@ bool BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, 
 				// Still allow SOME match even if we put in the wrong number of generic args
 				curPri -= 4;
 			}
+			if ((typeDef->mPartials.mSize > 0) && (typeDef->mPartials[0]->IsExtension()))
+			{
+				// Is a failed extension
+				curPri -= 8;
+			}
 
 			if ((curPri > ctx->mBestPri) || (ctx->mBestTypeDef == NULL))
 			{
@@ -3059,8 +3064,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 	typeDef->mHasCEOnCompile |= partialTypeDef->mHasCEOnCompile;
 	typeDef->mHasExtensionMethods |= partialTypeDef->mHasExtensionMethods;
 	typeDef->mHasUsingFields |= partialTypeDef->mHasUsingFields;
-	typeDef->mHasOverrideMethods |= partialTypeDef->mHasOverrideMethods;
-	typeDef->mProtection = BF_MIN(typeDef->mProtection, partialTypeDef->mProtection);	
+	typeDef->mHasOverrideMethods |= partialTypeDef->mHasOverrideMethods;	
 
 	for (auto innerType : partialTypeDef->mNestedTypes)
 	{
