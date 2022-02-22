@@ -63,6 +63,12 @@ namespace System.Collections
 			}
 		}
 
+		public this(IEnumerator<T> enumerator)
+		{
+			for (var item in enumerator)
+				Add(item);
+		}
+
 		public ~this()
 		{
 			if (IsDynAlloc)
@@ -99,6 +105,110 @@ namespace System.Collections
 			}
 		}*/
 
+		public ref T this[int index]
+		{
+			[Checked]
+			get
+			{
+				Runtime.Assert((uint)index < (uint)mSize);
+				return ref mItems[(mHead + index) % AllocSize];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				return ref mItems[(mHead + index) % AllocSize];
+			}
+
+			[Checked]
+			set
+			{
+				Runtime.Assert((uint)index < (uint)mSize);
+				mItems[(mHead + index) % AllocSize] = value;
+#if VERSION_LIST
+				mVersion++;
+#endif
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				mItems[(mHead + index) % AllocSize] = value;
+#if VERSION_LIST
+				mVersion++;
+#endif
+			}
+		}
+
+		public ref T this[Index index]
+		{
+			[Checked]
+			get
+			{
+				int idx = index.Get(mSize);
+				Runtime.Assert((uint)idx < (uint)mSize);
+				return ref mItems[(mHead + idx) % AllocSize];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				return ref mItems[(mHead + index.Get(mSize)) % AllocSize];
+			}
+
+			[Checked]
+			set
+			{
+				int idx = index.Get(mSize);
+				Runtime.Assert((uint)idx < (uint)mSize);
+				mItems[(mHead + idx) % AllocSize] = value;
+#if VERSION_LIST
+				mVersion++;
+#endif
+			}
+
+			[Unchecked, Inline]
+			set
+			{
+				mItems[(mHead + index.Get(mSize)) % AllocSize] = value;
+#if VERSION_LIST
+				mVersion++;
+#endif
+			}
+		}
+
+		public ref T Front
+		{
+			[Checked]
+			get
+			{
+				Runtime.Assert(mSize != 0);
+				return ref mItems[mHead % AllocSize];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				return ref mItems[mHead % AllocSize];
+			}
+		}
+
+		public ref T Back
+		{
+			[Checked]
+			get
+			{
+				Runtime.Assert(mSize != 0);
+				return ref mItems[(mHead + mSize - 1) % AllocSize];
+			}
+
+			[Unchecked, Inline]
+			get
+			{
+				return ref mItems[(mHead + mSize - 1) % AllocSize];
+			}
+		}
+
 		public int AllocSize
 		{
 			[Inline]
@@ -120,6 +230,14 @@ namespace System.Collections
 		public int Count
 		{
 			get { return mSize; }
+		}
+
+		public bool IsEmpty
+		{
+			get
+			{
+				return mSize == 0;
+			}
 		}
 
 		protected virtual T* Alloc(int size)
@@ -145,30 +263,33 @@ namespace System.Collections
 
 		/// CopyTo copies a collection into an Array, starting at a particular
 		/// index into the array.
-		public void CopyTo(T[] array, int arrayIndex)
+		public void CopyTo(Span<T> span)
 		{
-			Debug.Assert((uint)arrayIndex <= (uint)array.Count);
-			int arrayLen = array.Count;
+			int arrayLen = span.Length;
 			Debug.Assert(arrayLen >= mSize);
 			
-			int numToCopy = (arrayLen - arrayIndex < mSize) ? (arrayLen - arrayIndex) : mSize;
+			int numToCopy = Math.Min(arrayLen, mSize);
 			if (numToCopy == 0) return;
 
 			int firstPart = (AllocSize - mHead < numToCopy) ? AllocSize - mHead : numToCopy;
-			//Array.Copy(mArray, mHead, array, arrayIndex, firstPart);
-			Internal.MemCpy(&array.[Friend]GetRef(arrayIndex), mItems + mHead, firstPart * strideof(T), alignof(T));
+			Internal.MemCpy(span.Ptr, mItems + mHead, firstPart * strideof(T), alignof(T));
 
 			numToCopy -= firstPart;
 			if (numToCopy > 0)
 			{
-				//Array.Copy(mArray, 0, array, arrayIndex + AllocSize - mHead, numToCopy);
-				Internal.MemCpy(&array.[Friend]GetRef(arrayIndex + AllocSize - mHead), mItems, numToCopy * strideof(T), alignof(T));
+				Internal.MemCpy(span.Ptr + AllocSize - mHead, mItems, numToCopy * strideof(T), alignof(T));
 			}
 		}
 
-		
 		/// Adds item to the tail of the queue.
+		[Obsolete("Replaced with Add", false)]
 		public void Enqueue(T item)
+		{
+			Add(item);
+		}
+
+		/// Adds item to the tail of the queue.
+		public void Add(T item)
 		{
 			if (mSize == AllocSize)
 			{
@@ -187,21 +308,65 @@ namespace System.Collections
 			mVersion++;
 #endif
 		}
+
+		/// Adds item to the head of the queue.
+		public void AddFront(T item)
+		{
+			if (mSize == AllocSize)
+			{
+				int newcapacity = (int)((int64)AllocSize * (int64)cGrowFactor / 100);
+				if (newcapacity < AllocSize + cMinimumGrow)
+				{
+					newcapacity = AllocSize + cMinimumGrow;
+				}
+				SetCapacity(newcapacity);
+			}
+
+			int allocSize = AllocSize;
+			mHead = (.)((mHead + allocSize - 1) % allocSize);
+			mItems[mHead] = item;
+			mSize++;
+#if VERSION_QUEUE
+			mVersion++;
+#endif
+		}
 	
-		/// GetEnumerator returns an IEnumerator over this Queue.  This
-		/// Enumerator will support removing.
+		/// GetEnumerator returns an enumerator over this Queue which supports removing
 		public Enumerator GetEnumerator()
 		{
 			return Enumerator(this);
 		}
 
 		/// Removes the object at the head of the queue and returns it. If the queue
-		/// is empty, this method simply returns null.
+		/// is empty, this method returns an error
+		[Obsolete("Replaced with PopFront", false)]
 		public T Dequeue()
 		{
+			return PopFront();
+		}
+
+		/// Removes the object at the head of the queue and returns it. If the queue
+		/// is empty, this method returns an error
+		public Result<T> TryPopFront()
+		{
 			if (mSize == 0)
-				//ThrowHelper.ThrowInvalidOperationException(ExceptionResource.InvalidOperation_EmptyQueue);
-				Runtime.FatalError();
+				return .Err;
+
+			T removed = mItems[mHead];
+			mHead = (mHead + 1) % (int_cosize)AllocSize;
+			mSize--;
+#if VERSION_QUEUE
+			mVersion++;
+#endif
+			return .Ok(removed);
+		}
+
+		/// Removes the object at the head of the queue and returns it. If the queue
+		/// is empty, this method fails
+		public T PopFront()
+		{
+			if (mSize == 0)
+				Runtime.FatalError("Queue empty");
 
 			T removed = mItems[mHead];
 			mHead = (mHead + 1) % (int_cosize)AllocSize;
@@ -211,46 +376,102 @@ namespace System.Collections
 #endif
 			return removed;
 		}
-	
-		/// Returns the object at the head of the queue. The object remains in the
-		/// queue. If the queue is empty, this method throws an 
-		/// InvalidOperationException.
-		public T Peek()
+
+		/// Removes the object at the tail of the queue and returns it. If the queue
+		/// is empty, this method returns an error
+		public Result<T> TryPopBack()
 		{
-			Debug.Assert(mSize != 0);
-			return mItems[mHead];
+			if (mSize == 0)
+				return .Err;
+
+			int_cosize allocSize = (.)AllocSize;
+			mTail = (mTail + allocSize - 1) % allocSize;
+			T removed = mItems[mTail];
+			mSize--;
+#if VERSION_QUEUE
+			mVersion++;
+#endif
+			return .Ok(removed);
+		}
+
+		/// Removes the object at the tail of the queue and returns it. If the queue
+		/// is empty, this method fails
+		public T PopBack()
+		{
+			if (mSize == 0)
+				Runtime.FatalError("Queue empty");
+
+			int_cosize allocSize = (.)AllocSize;
+			mTail = (mTail + allocSize - 1) % allocSize;
+			T removed = mItems[mTail];
+			mSize--;
+#if VERSION_QUEUE
+			mVersion++;
+#endif
+			return removed;
 		}
 	
-		/// Returns true if the queue contains at least one object equal to item.
-		/// Equality is determined using item.Equals().
+		/// Returns the object at the head of the queue. The object remains in the
+		/// queue. If the queue is empty, this method returns an error
+		public Result<T> Peek()
+		{
+			if (mSize == 0)
+				return .Err;
+			return .Ok(mItems[mHead]);
+		}
+	
+		/// Returns true if the queue contains at least one object equal to 'item'.
 		public bool Contains(T item)
 		{
 			int index = mHead;
 			int count = mSize;
 			while (count-- > 0)
 			{
-				if (((Object)item) == null)
-				{
-					if (((Object)mItems[index]) == null)
-						return true;
-				}
-				else if (mItems[index] != null && mItems[index] == item)
-				{
+				if (mItems[index] == item)
 					return true;
-				}
 				index = (index + 1) % AllocSize;
 			}
 			return false;
 		}
 
-		T GetElement(int i)
+		/// Returns true if the queue contains at least one object equal to 'item'.
+		public bool ContainsStrict(T item)
 		{
-			return mItems[(mHead + i) % AllocSize];
+			int index = mHead;
+			int count = mSize;
+			while (count-- > 0)
+			{
+				if (mItems[index] === item)
+					return true;
+				index = (index + 1) % AllocSize;
+			}
+			return false;
 		}
 
-		ref T GetElementRef(int i)
+		T GetElement(int index)
 		{
-			return ref mItems[(mHead + i) % AllocSize];
+			Debug.Assert((uint)index < (uint)mSize);
+			return mItems[(mHead + index) % AllocSize];
+		}
+
+		ref T GetElementRef(int index)
+		{
+			Debug.Assert((uint)index < (uint)mSize);
+			return ref mItems[(mHead + index) % AllocSize];
+		}
+
+		public void RemoveAt(int index)
+		{
+			Debug.Assert((uint)index < (uint)mSize);
+			int absIndex = (mHead + index) % AllocSize;
+			if (absIndex < mSize - 1)
+			{
+				Internal.MemMove(mItems + absIndex, mItems + absIndex + 1, (mSize - absIndex - 1) * strideof(T), alignof(T));
+			}
+			mSize--;
+#if VERSION_LIST
+			mVersion++;
+#endif
 		}
 
 		// PRIVATE Grows or shrinks the buffer to hold capacity objects. Capacity
@@ -353,7 +574,7 @@ namespace System.Collections
 		public struct Enumerator : IRefEnumerator<T*>, IEnumerator<T>
 		{
 			private Queue<T> mQueue;
-			private int32 mIndex;   // -1 = not started, -2 = ended/disposed
+			private int_cosize mIndex;   // -1 = not started, -2 = ended/disposed
 #if VERSION_QUEUE
 			private int32 mVersion;
 #endif
@@ -432,6 +653,15 @@ namespace System.Collections
 					}
 					return ref *mCurrentElement;
 				}
+			}
+
+			public void Remove() mut
+			{
+				mQueue.RemoveAt(mIndex);
+#if VERSION_QUEUE
+				mVersion = mList.mVersion;
+#endif
+				mIndex--;
 			}
 
 			public void Reset() mut

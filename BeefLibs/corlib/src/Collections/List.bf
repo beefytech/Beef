@@ -362,6 +362,12 @@ namespace System.Collections
 #endif
 		}
 
+		/// Adds an item to the front of the list.
+		public void AddFront(T item)
+		{
+			Insert(0, item);
+		}
+
 		/// Adds an item to the back of the list.
 		public void AddRange(Span<T> addSpan)
 		{
@@ -383,6 +389,12 @@ namespace System.Collections
 		public void AddRange(IEnumerator<T> items)
 		{
 			for (let item in items)
+				Add(item);
+		}
+
+		public void AddRange<TEnumable>(TEnumable items) where TEnumable : IEnumerable<T>
+		{
+			for (let item in items.GetEnumerator())
 				Add(item);
 		}
 

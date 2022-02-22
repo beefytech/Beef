@@ -159,10 +159,10 @@ namespace System.Diagnostics
 				{
 					if (sb.Length != 0)
 					{
-						messageQueue.Enqueue(new String(sb));
+						messageQueue.Add(new String(sb));
 						sb.Clear();
 					}
-					messageQueue.Enqueue(null);
+					messageQueue.Add(null);
 				}
 
 				// UserCallback could throw, we should still set the eofEvent
@@ -223,7 +223,7 @@ namespace System.Diagnostics
 
 					using (mMonitor.Enter())
 					{
-						messageQueue.Enqueue(s);
+						messageQueue.Add(s);
 					}
 				}
 				currentIndex++;
@@ -269,7 +269,7 @@ namespace System.Diagnostics
 					{
 						if (messageQueue.Count > 0)
 						{
-							String s = messageQueue.Dequeue();
+							String s = messageQueue.PopFront();
 							// skip if the read is the read is cancelled
 							// this might happen inside UserCallBack
 							// However, continue to drain the queue
