@@ -2781,11 +2781,6 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 {
 	BfLogSys(this, "InjectNewRevision from %p (decl:%p) into %p (decl:%p)\n", typeDef->mNextRevision, typeDef->mNextRevision->mTypeDeclaration, typeDef, typeDef->mTypeDeclaration);
 
-	if (typeDef->mName->ToString() == "Zonk")
-	{
-		NOP;
-	}
-
 	bool setDeclaringType = !typeDef->mIsCombinedPartial;
 
 	auto nextTypeDef = typeDef->mNextRevision;

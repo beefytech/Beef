@@ -3144,8 +3144,42 @@ void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupCon
 
 	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
 	{
-		for (auto genericArg : genericTypeRef->mGenericArguments)
-			hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, BfHashFlag_AllowGenericParamConstValue, hashSeed + 1));
+		for (int genericIdx = 0; genericIdx < BF_MAX(genericTypeRef->mGenericArguments.mSize, genericTypeRef->mCommas.mSize + 1); genericIdx++)
+		{
+			BfAstNode* genericArgTypeRef = NULL;
+			if (genericIdx < genericTypeRef->mGenericArguments.mSize)			
+				genericArgTypeRef = genericTypeRef->mGenericArguments[genericIdx];			
+
+			if ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0)
+			{
+				if (BfNodeIsExact<BfWildcardTypeReference>(genericArgTypeRef))
+					genericArgTypeRef = NULL;
+			}
+
+			int argHashVal = 0;
+			if (genericArgTypeRef != NULL)
+			{
+				argHashVal = Hash(genericArgTypeRef, ctx, BfHashFlag_AllowGenericParamConstValue, hashSeed + 1);
+				if ((ctx->mResolveFlags & BfResolveTypeRefFlag_ForceUnboundGeneric) != 0)
+					genericArgTypeRef = NULL;
+			}
+
+			if (genericArgTypeRef == NULL)
+			{
+				if ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0)
+				{					
+					argHashVal = (((int)BfGenericParamKind_Type + 0xB00) << 8) ^ (genericIdx + 1);
+					argHashVal = HASH_MIX(argHashVal, hashSeed + 1);					
+				}
+				else
+				{
+					ctx->mFailed = true;
+					return;
+				}
+			}
+			
+			hashVal = HASH_MIX(hashVal, argHashVal);
+		}
 	}
 }
 
@@ -3767,6 +3801,11 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		ctx->mFailed = true;
 		return 0;
 	}
+	else if (auto wildcardTypeRef = BfNodeDynCastExact<BfWildcardTypeReference>(typeRef))
+	{
+		ctx->mFailed = true;
+		return 0;
+	}
 	else
 	{
 		BF_FATAL("Not handled");
@@ -4033,13 +4072,45 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 
 	if (auto genericTypeRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(rhs))
 	{
-		if (genericTypeRef->mGenericArguments.size() > lhsTypeGenericArguments->size() + genericParamOffset)
+		int rhsGenericArgCount = BF_MAX(genericTypeRef->mGenericArguments.mSize, genericTypeRef->mCommas.mSize + 1);
+
+		if (genericTypeRef->mGenericArguments.size() > rhsGenericArgCount + genericParamOffset)
 			return false;
 
-		for (auto genericArg : genericTypeRef->mGenericArguments)
+		for (int genericIdx = 0; genericIdx < BF_MAX(genericTypeRef->mGenericArguments.mSize, genericTypeRef->mCommas.mSize + 1); genericIdx++)
 		{
-			if (!Equals((*lhsTypeGenericArguments)[genericParamOffset++], genericArg, ctx))
-				return false;
+			BfType* lhsArgType = (*lhsTypeGenericArguments)[genericParamOffset++];
+
+			BfAstNode* genericArgTypeRef = NULL;
+			if (genericIdx < genericTypeRef->mGenericArguments.mSize)
+				genericArgTypeRef = genericTypeRef->mGenericArguments[genericIdx];
+
+			if ((ctx->mResolveFlags & BfResolveTypeRefFlag_ForceUnboundGeneric) != 0)
+			{
+				genericArgTypeRef = NULL;
+			}
+			else if ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0)
+			{
+				if (BfNodeIsExact<BfWildcardTypeReference>(genericArgTypeRef))
+					genericArgTypeRef = NULL;
+			}
+
+			if (genericArgTypeRef == NULL)
+			{
+				if (lhsArgType->IsGenericParam())
+				{
+					auto lhsGenericArgType = (BfGenericParamType*)lhsArgType;
+					if ((lhsGenericArgType->mGenericParamKind != BfGenericParamKind_Type) || (lhsGenericArgType->mGenericParamIdx != genericIdx))
+						return false;
+				}
+				else
+					return false;
+			}
+			else
+			{
+				if (!Equals(lhsArgType, genericArgTypeRef, ctx))
+					return false;
+			}			
 		}
 	}
 

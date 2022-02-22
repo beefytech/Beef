@@ -22,6 +22,7 @@ enum BfResolveType
 	BfResolveType_GetTypeDefList,
 	BfResolveType_GetTypeDefInto,
 	BfResolveType_GetResultString,
+	BfResolveType_VerifyTypeName
 };
 
 class BfLocalVariable;

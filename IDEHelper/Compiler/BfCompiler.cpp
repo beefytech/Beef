@@ -9211,6 +9211,7 @@ BF_EXPORT bool BF_CALLTYPE BfCompiler_VerifyTypeName(BfCompiler* bfCompiler, cha
 		resolvePassData.mResolveType = BfResolveType_Autocomplete;
 		parser.mParserFlags = (BfParserFlag)(parser.mParserFlags | ParserFlag_Autocomplete);		
 		resolvePassData.mAutoComplete = new BfAutoComplete();		
+		resolvePassData.mAutoComplete->mResolveType = BfResolveType_VerifyTypeName;
 		resolvePassData.mAutoComplete->mSystem = bfCompiler->mSystem;
 		resolvePassData.mAutoComplete->mCompiler = bfCompiler;
 		resolvePassData.mAutoComplete->mModule = bfCompiler->mContext->mScratchModule;

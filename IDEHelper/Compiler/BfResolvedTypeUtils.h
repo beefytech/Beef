@@ -38,7 +38,9 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_AllowGlobalContainer = 0x4000,
 	BfResolveTypeRefFlag_AllowInferredSizedArray = 0x8000,
 	BfResolveTypeRefFlag_AllowGlobalsSelf = 0x10000,
-	BfResolveTypeRefFlag_AllowImplicitConstExpr = 0x20000
+	BfResolveTypeRefFlag_AllowImplicitConstExpr = 0x20000,
+	BfResolveTypeRefFlag_AllowUnboundGeneric = 0x40000,
+	BfResolveTypeRefFlag_ForceUnboundGeneric = 0x80000
 };
 
 enum BfTypeNameFlags : uint16

@@ -1877,6 +1877,7 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 		auto _CheckType = [&](BfType* type)
 		{			
 			StringImpl typeName = TypeToString(type);
+
 			for (int optionIdx = 0; optionIdx < (int)mContext->mSystem->mTypeOptions.size(); optionIdx++)
 			{
 				auto& typeOptions = mContext->mSystem->mTypeOptions[optionIdx];
@@ -5684,9 +5685,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			if (((typeInstance->mAlwaysIncludeFlags & BfAlwaysIncludeFlag_AssumeInstantiated) != 0) &&
 				(methodDef->IsDefaultCtor()))
 				implRequired = true;
-
-			if ((typeOptionsIncludeAll) && (ApplyTypeOptionMethodFilters(true, methodDef, typeOptions)))
-
+			
 			if ((typeOptionsIncludeAll || typeOptionsIncludeFiltered) && (ApplyTypeOptionMethodFilters(typeOptionsIncludeAll, methodDef, typeOptions)))
 				implRequired = true;
 
@@ -9511,49 +9510,93 @@ bool BfModule::ValidateTypeWildcard(BfAstNode* typeRef, bool isAttributeRef)
 	{
 		if (qualifiedTypeRef->mLeft == NULL)
 			return false;
-
-		StringT<128> leftNameStr;
-
-		BfType* leftType = NULL;
-		BfAtomComposite leftComposite;
-
-		qualifiedTypeRef->mLeft->ToString(leftNameStr);
-		if (!mSystem->ParseAtomComposite(leftNameStr, leftComposite))
-			return false;
-
+		
 		if (auto wildcardTypeRef = BfNodeDynCast<BfWildcardTypeReference>(qualifiedTypeRef->mRight))
 		{
+			StringT<128> leftNameStr;
+
+			BfType* leftType = NULL;
+			BfAtomComposite leftComposite;
+
+			qualifiedTypeRef->mLeft->ToString(leftNameStr);
+			if (!mSystem->ParseAtomComposite(leftNameStr, leftComposite))
+				return false;
+
 			if (mSystem->ContainsNamespace(leftComposite, NULL))
 				return true;
 
 			return ValidateTypeWildcard(qualifiedTypeRef->mLeft, false);
-		}		
+		}
+	}	
+
+	if (!BfNodeIsA<BfGenericInstanceTypeRef>(typeRef))
+	{
+		if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(typeRef))
+		{
+			return ValidateTypeWildcard(elementedTypeRef->mElementType, false);
+		}
 	}
 
-	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
+	BfAstNode* origTypeRef = typeRef;
+
+	String name;
+	String nameEx;
+	int genericCount = 0;
+	std::function<bool(BfAstNode*, bool)> _ToString = [&](BfAstNode* typeRef, bool isLast)
 	{
-		StringT<128> nameStr;
-		genericTypeRef->mElementType->ToString(nameStr);
-
-		auto typeDef = mSystem->FindTypeDef(nameStr, (int)genericTypeRef->mGenericArguments.size(), NULL);
-		if (typeDef == NULL)		
-			return false;		
-
-		if (typeDef->mGenericParamDefs.size() != genericTypeRef->GetGenericArgCount())
-			return false;
-
-		for (auto genericArgTypeRef : genericTypeRef->mGenericArguments)
+		if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
 		{
-			if ((genericTypeRef != NULL) && (!ValidateTypeWildcard(genericArgTypeRef, false)))
-				return false;
+			_ToString(qualifiedTypeRef->mLeft, false);
+			name.Append(".");
+			nameEx.Append(".");
+			_ToString(qualifiedTypeRef->mRight, typeRef == origTypeRef);
+			return true;
+		}
+
+		if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
+		{
+			_ToString(genericTypeRef->mElementType, false);
+			genericCount += genericTypeRef->mCommas.mSize + 1;			
+			for (auto genericArg : genericTypeRef->mGenericArguments)
+				if (!ValidateTypeWildcard(genericArg, false))
+					return false;			
+		}
+		else
+		{
+			typeRef->ToString(name);
+			typeRef->ToString(nameEx);
+		}
+
+		if (genericCount > 0)
+		{
+			if (!isLast)
+				name += StrFormat("`%d", genericCount);
+			nameEx += StrFormat("`%d", genericCount);
 		}
 
 		return true;
-	}
+	};
 
-	if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(typeRef))
+	if (!_ToString(typeRef, true))
+		return false;
+
+	BfAtomComposite composite;
+	if (!mSystem->ParseAtomComposite(name, composite))
+		return false;
+
+	BfAtomComposite compositeEx;	
+	if (!mSystem->ParseAtomComposite(nameEx, compositeEx))
+		return false;
+	
+	auto itr = mSystem->mTypeDefs.TryGet(composite);
+	while (itr != mSystem->mTypeDefs.end())
 	{
-		return ValidateTypeWildcard(elementedTypeRef->mElementType, false);
+		auto typeDef = *itr;
+		if (typeDef->mFullName != composite)
+			break;
+		if (typeDef->mFullNameEx == compositeEx)
+			return true;
+		++itr;
 	}
 
 	return false;
@@ -10482,8 +10525,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
-	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | 
-		BfResolveTypeRefFlag_DisallowComptime | BfResolveTypeRefFlag_AllowInferredSizedArray | BfResolveTypeRefFlag_Attribute));
+	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags &
+		(BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime |
+		BfResolveTypeRefFlag_AllowInferredSizedArray | BfResolveTypeRefFlag_Attribute | BfResolveTypeRefFlag_AllowUnboundGeneric |
+			BfResolveTypeRefFlag_ForceUnboundGeneric));
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
@@ -10909,6 +10954,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
 			int typeHash = BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx);
 			BF_ASSERT(refHash == typeHash);
+			BF_ASSERT(refHash == resolvedEntry->mHash);
 		}
 		if (!BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx))
 		{

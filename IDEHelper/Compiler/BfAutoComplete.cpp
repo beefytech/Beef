@@ -427,7 +427,10 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 			}
 		}
 
-		auto type = mModule->ResolveTypeRef(typeRef);
+		BfResolveTypeRefFlags resolveTypeRefFlags = BfResolveTypeRefFlag_AllowUnboundGeneric;
+		if (mResolveType == BfResolveType_VerifyTypeName)
+			resolveTypeRefFlags = (BfResolveTypeRefFlags)(resolveTypeRefFlags | BfResolveTypeRefFlag_ForceUnboundGeneric);
+		BfType* type = mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, resolveTypeRefFlags);
 		if (type != NULL)
 		{
 			*isStatic = true;

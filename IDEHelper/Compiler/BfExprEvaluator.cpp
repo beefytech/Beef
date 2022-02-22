@@ -10969,17 +10969,13 @@ void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)
 	}
 
 	BfType* type;
-	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeOfExpr->mTypeRef))
-	{
-		type = mModule->ResolveTypeRefAllowUnboundGenerics(typeOfExpr->mTypeRef, BfPopulateType_Identity);
-	}
-	else if ((typeOfExpr->mTypeRef != NULL) && (typeOfExpr->mTypeRef->IsA<BfVarTypeReference>()))
+	if ((typeOfExpr->mTypeRef != NULL) && (typeOfExpr->mTypeRef->IsA<BfVarTypeReference>()))
 	{
 		type = mModule->GetPrimitiveType(BfTypeCode_Var);
 	}
 	else
 	{
-		type = ResolveTypeRef(typeOfExpr->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGlobalsSelf);
+		type = ResolveTypeRef(typeOfExpr->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGlobalsSelf | BfResolveTypeRefFlag_AllowUnboundGeneric));
 	}
 	
 	if (type == NULL)
