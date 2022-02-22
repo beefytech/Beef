@@ -17597,7 +17597,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			bool hadCtorWithAllDefaults = false;
 
 			bool isHiddenGenerated = (methodDeclaration == NULL) && (methodDef->mProtection == BfProtection_Hidden);
-
+			
 			for (int pass = 0; pass < 2; pass++)
 			{
 				baseType->mTypeDef->PopulateMemberSets();
@@ -17605,7 +17605,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				BfMethodDef* checkMethodDef = NULL;
 				baseType->mTypeDef->mMethodSet.TryGetWith(String("__BfCtor"), &entry);
 				if (entry != NULL)
-					checkMethodDef = (BfMethodDef*)entry->mMemberDef;				
+					checkMethodDef = (BfMethodDef*)entry->mMemberDef;
 				
 				while (checkMethodDef != NULL)
 				{
@@ -17617,19 +17617,25 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						if ((checkMethodDef->mMethodDeclaration == NULL) && (pass == 1) && (!hadCtorWithAllDefaults))
 							allowMethod = true;
 					}
-						
+										
 					if ((checkMethodDef->mMethodType == BfMethodType_Ctor) && (!checkMethodDef->mIsStatic) && (allowMethod))
 					{
 						if (checkMethodDef->mParams.size() == 0)
-						{							
-							matchedMethod = checkMethodDef;							
+						{					
+							if (matchedMethod != NULL)
+							{
+								// Has multiple matched methods - can happen from extensions
+								matchedMethod = NULL;
+								break;
+							}
+							matchedMethod = checkMethodDef;
 						}
 						else if (isHiddenGenerated)
 						{
-							if ((checkMethodDef->mParams[0]->mParamDeclaration != NULL) && (checkMethodDef->mParams[0]->mParamDeclaration->mInitializer != NULL))							
-								hadCtorWithAllDefaults = true;							
+							if ((checkMethodDef->mParams[0]->mParamDeclaration != NULL) && (checkMethodDef->mParams[0]->mParamDeclaration->mInitializer != NULL))
+								hadCtorWithAllDefaults = true;
 						}
-					}			
+					}
 
 					checkMethodDef = checkMethodDef->mNextWithSameName;
 				}
