@@ -487,6 +487,9 @@ namespace Tests
 			b = Foo<int>.value > val;
 			b = Foo<int>.Inner<float>.value2 < 1.2f;
 			b = Foo<int>.Inner<float>.value2 > 2.3f;
+
+			var t = typeof(Array2<>);
+			t = typeof(Dictionary<,>.Enumerator);
 		}
 	}
 }

@@ -2607,7 +2607,8 @@ public:
 		BfResolveTypeRefFlags mResolveFlags;		
 		BfCallingConvention mCallingConvention;
 		bool mHadVar;
-		bool mFailed;		
+		bool mFailed;
+		bool mIsUnboundGeneric;
 
 	public:
 		LookupContext()
@@ -2619,6 +2620,7 @@ public:
 			mRootResolvedType = NULL;
 			mFailed = false;
 			mHadVar = false;
+			mIsUnboundGeneric = false;
 			mResolveFlags = BfResolveTypeRefFlag_None;
 			mCallingConvention = BfCallingConvention_Unspecified;
 		}

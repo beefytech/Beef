@@ -3146,11 +3146,13 @@ void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupCon
 	{
 		for (int genericIdx = 0; genericIdx < BF_MAX(genericTypeRef->mGenericArguments.mSize, genericTypeRef->mCommas.mSize + 1); genericIdx++)
 		{
+			bool allowUnboundGeneric = ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0) && (typeRef == ctx->mRootTypeRef);
+
 			BfAstNode* genericArgTypeRef = NULL;
 			if (genericIdx < genericTypeRef->mGenericArguments.mSize)			
 				genericArgTypeRef = genericTypeRef->mGenericArguments[genericIdx];			
 
-			if ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0)
+			if (allowUnboundGeneric)
 			{
 				if (BfNodeIsExact<BfWildcardTypeReference>(genericArgTypeRef))
 					genericArgTypeRef = NULL;
@@ -3160,14 +3162,15 @@ void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupCon
 			if (genericArgTypeRef != NULL)
 			{
 				argHashVal = Hash(genericArgTypeRef, ctx, BfHashFlag_AllowGenericParamConstValue, hashSeed + 1);
-				if ((ctx->mResolveFlags & BfResolveTypeRefFlag_ForceUnboundGeneric) != 0)
+				if ((allowUnboundGeneric) && ((ctx->mResolveFlags & BfResolveTypeRefFlag_ForceUnboundGeneric) != 0))
 					genericArgTypeRef = NULL;
 			}
 
 			if (genericArgTypeRef == NULL)
 			{
-				if ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0)
-				{					
+				if (allowUnboundGeneric)
+				{
+					ctx->mIsUnboundGeneric = true;
 					argHashVal = (((int)BfGenericParamKind_Type + 0xB00) << 8) ^ (genericIdx + 1);
 					argHashVal = HASH_MIX(argHashVal, hashSeed + 1);					
 				}

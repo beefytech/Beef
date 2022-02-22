@@ -10552,6 +10552,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		return ResolveTypeResult(typeRef, resolvedEntry->mValue, populateType, resolveFlags);
 	}
 
+	if ((lookupCtx.mIsUnboundGeneric) && (lookupCtx.mRootTypeDef != NULL))
+	{
+		mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+		return ResolveTypeResult(typeRef, ResolveTypeDef(lookupCtx.mRootTypeDef), populateType, resolveFlags);		
+	}
+
 	if ((resolveFlags & BfResolveTypeRefFlag_NoCreate) != 0)
 	{
 		mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
@@ -10785,7 +10791,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	{
 		int wantNumGenericParams = genericTypeInstRef->GetGenericArgCount();
 		BfTypeDef* ambiguousTypeDef = NULL;
-
+		
 		Array<BfAstNode*> genericArguments;
 		std::function<void(BfTypeReference*)> _GetTypeRefs = [&](BfTypeReference* typeRef)
 		{
