@@ -1127,7 +1127,6 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	if (typeInst->IsGenericTypeInstance())
 	{
 		auto genericTypeInstance = (BfTypeInstance*)typeInst;
-		genericTypeInstance->mGenericTypeInfo->mTypeGenericArgumentRefs.Clear();
 		for (auto genericParam : genericTypeInstance->mGenericTypeInfo->mGenericParams)
 			genericParam->Release();
 		genericTypeInstance->mGenericTypeInfo->mInitializedGenericParams = false;

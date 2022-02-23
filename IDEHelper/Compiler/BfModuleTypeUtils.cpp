@@ -7901,7 +7901,7 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 	if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
 	{		
 		BfAutoParentNodeEntry autoParentNodeEntry(this, genericTypeRef);
-		auto type = ResolveTypeRef(qualifiedTypeRef, BfPopulateType_TypeDef, BfResolveTypeRefFlag_None, numGenericParams);
+		auto type = ResolveTypeRef(qualifiedTypeRef, BfPopulateType_TypeDef, resolveFlags, numGenericParams);
 		if (type == NULL)
 			return NULL;
 		if (outType != NULL)
@@ -8946,7 +8946,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	if ((populateType > BfPopulateType_IdentityNoRemapAlias) && (!ResolveTypeResult_Validate(typeRef, resolvedTypeRef)))
 		return NULL;
 	
-	if (populateType != BfPopulateType_IdentityNoRemapAlias)
+	if ((populateType != BfPopulateType_TypeDef) && (populateType != BfPopulateType_IdentityNoRemapAlias))
 	{
 		while ((resolvedTypeRef != NULL) && (resolvedTypeRef->IsTypeAlias()))
 		{
@@ -10789,50 +10789,75 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 	else if (auto genericTypeInstRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
 	{
-		int wantNumGenericParams = genericTypeInstRef->GetGenericArgCount();
-		BfTypeDef* ambiguousTypeDef = NULL;
-		
+		BfTypeReference* outerTypeRef = NULL;		
+
 		Array<BfAstNode*> genericArguments;
-		std::function<void(BfTypeReference*)> _GetTypeRefs = [&](BfTypeReference* typeRef)
+
+		BfTypeReference* checkTypeRef = genericTypeInstRef;
+		int checkIdx = 0;
+
+		while (checkTypeRef != NULL)
 		{
-			//TODO:GENERICS
-			if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(typeRef))
+			checkIdx++;
+			if (checkIdx >= 3)
 			{
-				_GetTypeRefs(elementedTypeRef->mElementType);
-			}
-			else if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
-			{
-				_GetTypeRefs(qualifiedTypeRef->mLeft);
+				outerTypeRef = checkTypeRef;
+				break;
 			}
 
-			if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
-			{
+			if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(checkTypeRef))
+			{				
 				for (auto genericArg : genericTypeRef->mGenericArguments)
 					genericArguments.push_back(genericArg);
+				checkTypeRef = genericTypeRef->mElementType;
+				continue;
 			}
-		};
-		_GetTypeRefs(genericTypeInstRef);
 
+			if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(checkTypeRef))
+			{
+				checkTypeRef = elementedTypeRef->mElementType;
+				continue;
+			}
+
+			if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
+			{
+				checkTypeRef = qualifiedTypeRef->mLeft;
+				continue;
+			}
+			break;
+		}
+		
 		BfTypeVector genericArgs;
 
 		BfType* type = NULL;
 		BfTypeDef* typeDef = ResolveGenericInstanceDef(genericTypeInstRef, &type, resolveFlags);
-		if(ambiguousTypeDef != NULL)
-			ShowAmbiguousTypeError(typeRef, typeDef, ambiguousTypeDef);
 		if (typeDef == NULL)
 		{
-			Fail("Unable to resolve type", typeRef);			
+			Fail("Unable to resolve type", typeRef);
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 		
-		BfTypeInstance* outerTypeInstance = mCurTypeInstance;
-		
-		auto outerType = typeDef->mOuterType;
+		BfTypeInstance* outerTypeInstance = NULL;
 		BfTypeDef* commonOuterType = NULL;
-
 		int startDefGenericParamIdx = 0;
-		commonOuterType = BfResolvedTypeSet::FindRootCommonOuterType(outerType, &lookupCtx, outerTypeInstance);
+
+		if (outerTypeRef != NULL)
+		{						
+			BfType* outerType = lookupCtx.GetCachedResolvedType(outerTypeRef);
+			if (outerType != NULL)
+			{
+				outerTypeInstance = outerType->ToTypeInstance();
+				commonOuterType = outerTypeInstance->mTypeDef;
+			}
+		}
+		else
+		{						
+			outerTypeInstance = mCurTypeInstance;
+			auto outerType = typeDef->mOuterType;						
+			commonOuterType = BfResolvedTypeSet::FindRootCommonOuterType(outerType, &lookupCtx, outerTypeInstance);
+		}
+
 		if ((commonOuterType) && (outerTypeInstance->IsGenericTypeInstance()))
 		{
 			startDefGenericParamIdx = (int)commonOuterType->mGenericParamDefs.size();
@@ -10936,7 +10961,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			
 			genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, genericArg->GetGenericDepth() + 1);			
 			genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(genericArg);
-			genericTypeInst->mGenericTypeInfo->mTypeGenericArgumentRefs.push_back(genericArgRef);
 
 			genericParamIdx++;
 		}

@@ -1861,7 +1861,6 @@ class BfGenericTypeInfo
 public:
 	typedef Array<BfGenericTypeParamInstance*> GenericParamsVector;
 
-	Array<BfAstNode*> mTypeGenericArgumentRefs;
 	BfTypeVector mTypeGenericArguments;
 	GenericParamsVector mGenericParams;
 	BfGenericExtensionInfo* mGenericExtensionInfo;
@@ -2635,7 +2634,7 @@ public:
 public:
 	static BfTypeDef* FindRootCommonOuterType(BfTypeDef* outerType, LookupContext* ctx, BfTypeInstance*& outCheckTypeInstance);
 	static BfVariant EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& outType);
-	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset);
+	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset, bool skipElement = false);
 	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* typeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
 	static void HashGenericArguments(BfTypeReference* typeRef, LookupContext* ctx, int& hash, int hashSeed);
 	static int DoHash(BfType* type, LookupContext* ctx, bool allowRef, int hashSeed);

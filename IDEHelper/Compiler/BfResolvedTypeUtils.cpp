@@ -2492,7 +2492,6 @@ bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeT
 void BfGenericTypeInfo::ReportMemory(MemReporter* memReporter)
 {	
 	memReporter->Add(sizeof(BfGenericTypeInfo));
-	memReporter->AddVec(mTypeGenericArgumentRefs, false);
 	memReporter->AddVec(mTypeGenericArguments, false);
 	memReporter->AddVec(mGenericParams, false);
 	memReporter->AddVec(mProjectsReferenced, false);
@@ -3133,20 +3132,11 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef, int
 
 void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupContext* ctx, int& hashVal, int hashSeed)
 {
-	if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(typeRef))
-	{
-		HashGenericArguments(elementedTypeRef->mElementType, ctx, hashVal, hashSeed);
-	}
-	else if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
-	{
-		HashGenericArguments(qualifiedTypeRef->mLeft, ctx, hashVal, hashSeed);
-	}
-
 	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
 	{
 		for (int genericIdx = 0; genericIdx < BF_MAX(genericTypeRef->mGenericArguments.mSize, genericTypeRef->mCommas.mSize + 1); genericIdx++)
 		{
-			bool allowUnboundGeneric = ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0) && (typeRef == ctx->mRootTypeRef);
+			bool allowUnboundGeneric = ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0) && (hashSeed == 0);
 
 			BfAstNode* genericArgTypeRef = NULL;
 			if (genericIdx < genericTypeRef->mGenericArguments.mSize)			
@@ -3351,35 +3341,80 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				}
 			}
 		}
+		
+		bool fullyQualified = false;
+		int hashVal = elementTypeDef->mHash;
+		
+		BfTypeInstance* outerType = NULL;
 
-		int hashVal;
-		/*if (type != NULL)
+		if (genericInstTypeRef->ToString() == "ClassA<T>.AliasA6<float>")
 		{
-			hashVal = Hash(type, ctx);
+			NOP;
 		}
-		else */
-		{
-			
 
-			hashVal = elementTypeDef->mHash;
+		int checkIdx = 0;
+		auto checkTypeRef = genericInstTypeRef->mElementType;
+		while (checkTypeRef != NULL)
+		{
+			checkIdx++;
+			if (checkIdx >= 2)
+			{
+				fullyQualified = true;
+				if ((elementTypeDef->mOuterType != NULL) && (!elementTypeDef->mOuterType->mGenericParamDefs.IsEmpty()))
+				{
+					auto resolvedType = ctx->mModule->ResolveTypeRef(checkTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(ctx->mResolveFlags | BfResolveTypeRefFlag_IgnoreLookupError));
+					if (resolvedType == NULL)
+					{
+						ctx->mFailed = true;
+						return hashVal;
+					}
+					ctx->SetCachedResolvedType(checkTypeRef, resolvedType);
+					outerType = resolvedType->ToTypeInstance();
+				}
+				break;
+			}
+
+			if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(checkTypeRef))
+			{
+				checkTypeRef = elementedTypeRef->mElementType;
+				continue;
+			}
+
+			if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
+			{
+				checkTypeRef = qualifiedTypeRef->mLeft;
+				continue;
+			}			
+			break;
 		}
 		
-		// Do we need to add generic arguments from an in-context outer class?
-		if ((elementTypeDef->mOuterType != NULL) && (ctx->mModule->mCurTypeInstance != NULL))
-		{
-			BfTypeInstance* checkTypeInstance = ctx->mModule->mCurTypeInstance;
-			BfTypeDef* commonOuterType;
-			if (typeRef == ctx->mRootTypeRef)
-				commonOuterType = FindRootCommonOuterType(elementTypeDef->mOuterType, ctx, checkTypeInstance);
-			else
-				commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, elementTypeDef->mOuterType);
-			
-			if ((commonOuterType != NULL) && (checkTypeInstance->IsGenericTypeInstance()))
+		if (fullyQualified)
+		{			
+			if (outerType != NULL)
 			{
-				auto parentTypeInstance = checkTypeInstance;
-				int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
-				for (int i = 0; i < numParentGenericParams; i++)
-					hashVal = HASH_MIX(hashVal, Hash(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i], ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));					
+				for (auto genericArg : outerType->mGenericTypeInfo->mTypeGenericArguments)
+					hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+			}
+		}
+		else
+		{
+			// Do we need to add generic arguments from an in-context outer class?
+			if ((elementTypeDef->mOuterType != NULL) && (ctx->mModule->mCurTypeInstance != NULL))
+			{
+				BfTypeInstance* checkTypeInstance = ctx->mModule->mCurTypeInstance;
+				BfTypeDef* commonOuterType;
+				if (typeRef == ctx->mRootTypeRef)
+					commonOuterType = FindRootCommonOuterType(elementTypeDef->mOuterType, ctx, checkTypeInstance);
+				else
+					commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, elementTypeDef->mOuterType);
+
+				if ((commonOuterType != NULL) && (checkTypeInstance->IsGenericTypeInstance()))
+				{
+					auto parentTypeInstance = checkTypeInstance;
+					int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
+					for (int i = 0; i < numParentGenericParams; i++)
+						hashVal = HASH_MIX(hashVal, Hash(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i], ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+				}
 			}
 		}
 
@@ -4056,21 +4091,24 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 	return 0;
 }
 
-bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset)
+bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset, bool skipElement)
 {
 	//BP_ZONE("BfResolvedTypeSet::GenericTypeEquals");
 
-	if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(rhs))
+	if (!skipElement)
 	{
-		if (!GenericTypeEquals(lhsGenericType, lhsTypeGenericArguments, elementedTypeRef->mElementType, ctx, genericParamOffset))
-			return false;
-		//_GetTypeRefs(elementedTypeRef->mElementType);
-	}
-	else if (auto qualifiedTypeRef = BfNodeDynCastExact<BfQualifiedTypeReference>(rhs))
-	{
-		//_GetTypeRefs(qualifiedTypeRef->mLeft);
-		if (!GenericTypeEquals(lhsGenericType, lhsTypeGenericArguments, qualifiedTypeRef->mLeft, ctx, genericParamOffset))
-			return false;
+		if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(rhs))
+		{
+			if (!GenericTypeEquals(lhsGenericType, lhsTypeGenericArguments, elementedTypeRef->mElementType, ctx, genericParamOffset))
+				return false;
+			//_GetTypeRefs(elementedTypeRef->mElementType);
+		}
+		else if (auto qualifiedTypeRef = BfNodeDynCastExact<BfQualifiedTypeReference>(rhs))
+		{
+			//_GetTypeRefs(qualifiedTypeRef->mLeft);
+			if (!GenericTypeEquals(lhsGenericType, lhsTypeGenericArguments, qualifiedTypeRef->mLeft, ctx, genericParamOffset))
+				return false;
+		}
 	}
 
 	if (auto genericTypeRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(rhs))
@@ -4122,65 +4160,122 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 
 bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx)
 {
-	BfTypeInstance* rootOuterTypeInstance = ctx->mModule->mCurTypeInstance;
-	if ((rhsTypeDef == ctx->mRootTypeDef) && (ctx->mRootOuterTypeInstance != NULL))
-		rootOuterTypeInstance = ctx->mRootOuterTypeInstance;
+	int genericParamOffset = 0;
+	bool isFullyQualified = false;
+	BfTypeInstance* outerType = NULL;	
 
-	auto rhsGenericTypeInstRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(rhs);
-	if (rhsGenericTypeInstRef == NULL)
+	if (auto genericInstTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(rhs))
 	{
-		if (auto rhsNullableTypeRef = BfNodeDynCastExact<BfNullableTypeRef>(rhs))
+		int checkIdx = 0;
+		auto checkTypeRef = genericInstTypeRef->mElementType;
+		while (checkTypeRef != NULL)
 		{
-			if (rhsNullableTypeRef != NULL)
+			checkIdx++;
+			if (checkIdx >= 2)
 			{
-				if (lhsGenericType->mTypeDef != ctx->mModule->mContext->mCompiler->mNullableTypeDef)
-					return false;
+				isFullyQualified = true;
 
-				auto rhsElemType = ctx->mModule->ResolveTypeRef(rhsNullableTypeRef->mElementType, BfPopulateType_Identity, ctx->mResolveFlags);
-				return lhsGenericType->mGenericTypeInfo->mTypeGenericArguments[0] == rhsElemType;
+				BfType* checkType = ctx->GetCachedResolvedType(checkTypeRef);
+				if (checkType != NULL)
+					outerType = checkType->ToTypeInstance();
+
+				if (outerType != NULL)
+				{
+					BfTypeInstance* lhsCheckType = lhsGenericType;
+					while (lhsCheckType->mTypeDef->mNestDepth > outerType->mTypeDef->mNestDepth)
+					{
+						lhsCheckType = ctx->mModule->GetOuterType(lhsCheckType);
+					}
+					if (lhsCheckType != outerType)
+						return false;					
+
+					if (outerType->mGenericTypeInfo != NULL)
+						genericParamOffset = (int)outerType->mGenericTypeInfo->mTypeGenericArguments.mSize;
+				}
+
+				break;
 			}
-		}
 
-		if ((rhsTypeDef != NULL) && (rootOuterTypeInstance != NULL))
-		{
-			// See if we're referring to an non-generic inner type where the outer type is generic
-			if (lhsGenericType->mTypeDef->GetDefinition() != rhsTypeDef->GetDefinition())
-				return false;
-
-			BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(rootOuterTypeInstance->mTypeDef, rhsTypeDef->mOuterType);
-			if (commonOuterType != NULL)
+			if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(checkTypeRef))
 			{
-				BfTypeInstance* checkTypeInstance = rootOuterTypeInstance;
-				if (checkTypeInstance->IsBoxed())
-					checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
-				BF_ASSERT(checkTypeInstance->IsGenericTypeInstance());
-				int numParentGenericParams = (int) commonOuterType->mGenericParamDefs.size();
-				auto curTypeInstance = (BfTypeInstance*)checkTypeInstance;
-				if (lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size() != numParentGenericParams)
-					return false;
-				for (int i = 0; i < (int) numParentGenericParams; i++)
-					if ((*lhsTypeGenericArguments)[i] != curTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i])
-						return false;
-				return true;
+				checkTypeRef = elementedTypeRef->mElementType;
+				continue;
 			}
-		}
 
-		if (auto rhsQualifiedTypeRef = BfNodeDynCastExact<BfQualifiedTypeReference>(rhs))
-		{			
-			auto rhsRightType = ctx->mModule->ResolveTypeRef(rhs, BfPopulateType_Identity, ctx->mResolveFlags);
-			return rhsRightType == lhsGenericType;
+			if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
+			{
+				checkTypeRef = qualifiedTypeRef->mLeft;
+				continue;
+			}
+			break;
 		}
-		
-		return false;
 	}
+
+	BfTypeInstance* rootOuterTypeInstance = NULL;
+	auto rhsGenericTypeInstRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(rhs);
+
+	if (!isFullyQualified)
+	{
+		rootOuterTypeInstance = ctx->mModule->mCurTypeInstance;
+		if ((rhsTypeDef == ctx->mRootTypeDef) && (ctx->mRootOuterTypeInstance != NULL))
+			rootOuterTypeInstance = ctx->mRootOuterTypeInstance;
+		
+		if (rhsGenericTypeInstRef == NULL)
+		{
+			if (auto rhsNullableTypeRef = BfNodeDynCastExact<BfNullableTypeRef>(rhs))
+			{
+				if (rhsNullableTypeRef != NULL)
+				{
+					if (lhsGenericType->mTypeDef != ctx->mModule->mContext->mCompiler->mNullableTypeDef)
+						return false;
+
+					auto rhsElemType = ctx->mModule->ResolveTypeRef(rhsNullableTypeRef->mElementType, BfPopulateType_Identity, ctx->mResolveFlags);
+					return lhsGenericType->mGenericTypeInfo->mTypeGenericArguments[0] == rhsElemType;
+				}
+			}
+
+			if ((rhsTypeDef != NULL) && (rootOuterTypeInstance != NULL))
+			{
+				// See if we're referring to an non-generic inner type where the outer type is generic
+				if (lhsGenericType->mTypeDef->GetDefinition() != rhsTypeDef->GetDefinition())
+					return false;
+
+				BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(rootOuterTypeInstance->mTypeDef, rhsTypeDef->mOuterType);
+				if (commonOuterType != NULL)
+				{
+					BfTypeInstance* checkTypeInstance = rootOuterTypeInstance;
+					if (checkTypeInstance->IsBoxed())
+						checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
+					BF_ASSERT(checkTypeInstance->IsGenericTypeInstance());
+					int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
+					auto curTypeInstance = (BfTypeInstance*)checkTypeInstance;
+					if (lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size() != numParentGenericParams)
+						return false;
+					for (int i = 0; i < (int)numParentGenericParams; i++)
+						if ((*lhsTypeGenericArguments)[i] != curTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i])
+							return false;
+					return true;
+				}
+			}
+
+			if (auto rhsQualifiedTypeRef = BfNodeDynCastExact<BfQualifiedTypeReference>(rhs))
+			{
+				auto rhsRightType = ctx->mModule->ResolveTypeRef(rhs, BfPopulateType_Identity, ctx->mResolveFlags);
+				return rhsRightType == lhsGenericType;
+			}
+
+			return false;
+		}
+	}
+
+	if (rhsGenericTypeInstRef == NULL)
+		return true;
 
 	BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(rhsGenericTypeInstRef, NULL, ctx->mResolveFlags);
 	if (elementTypeDef == NULL)
 		return false;
 	if (elementTypeDef->GetDefinition() != lhsGenericType->mTypeDef->GetDefinition())
 		return false;
-
-	int genericParamOffset = 0;
 
 	// Do we need to add generic arguments from an in-context outer class?
 	if ((elementTypeDef->mOuterType != NULL) && (rootOuterTypeInstance != NULL) && (rootOuterTypeInstance->IsGenericTypeInstance()))
@@ -4199,7 +4294,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 		}
 	}
 
-	if (!GenericTypeEquals(lhsGenericType, lhsTypeGenericArguments, rhs, ctx, genericParamOffset))
+	if (!GenericTypeEquals(lhsGenericType, lhsTypeGenericArguments, rhs, ctx, genericParamOffset, isFullyQualified))
 		return false;
 
 	return genericParamOffset == (int)lhsTypeGenericArguments->size();

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections;
+using System.Reflection;
 
 namespace LibA
 {
@@ -341,6 +342,72 @@ namespace Tests
 
 		}
 
+		class ClassH<T, T2>
+		{
+			public class Inner<T3>
+			{
+
+			}
+		}
+
+		class OuterB<T>
+		{
+			public class Inner<T2>
+			{
+				public class MoreInner<T3>
+				{
+					public static Inner<int8> sVal;
+					public static Inner<int8>.MoreInner<int16> sVal2;
+				}
+			}
+
+			public static Inner<T>.MoreInner<T> sVal;
+		}
+
+		class OuterA<T, T2>
+		{
+			public typealias AliasA = OuterB<uint8>;
+			public typealias AliasB<T3> = OuterB<T3>;
+
+			public class Inner<T3>
+			{
+				public class MoreInner<T4>
+				{
+					public static Inner<int8> sVal;
+					public static Inner<int8>.MoreInner<int16> sVal2;
+				}
+
+				public class MoreInnerB
+				{
+
+				}
+			}
+
+			public class InnerB
+			{
+
+			}
+
+			public static OuterA<int,float>.Inner<int16> sVal;
+			public static Inner<int16> sVal2;
+			public static AliasA.Inner<int16> sVal3;
+			public static OuterA<T, T2>.InnerB sVal4;
+			public static Inner<int16>.MoreInnerB sVal5;
+		}
+
+		class OuterC
+		{
+			static void Do()
+			{
+				OuterA<int8, int16>.AliasA.Inner<int32> val1 = scope OuterB<uint8>.Inner<int32>();
+				OuterA<int8, int16>.AliasB<uint8>.Inner<int32> val1b = scope OuterB<uint8>.Inner<int32>();
+				OuterA<int8, int16>.AliasA.Inner<int32>.MoreInner<uint32> val2 = scope OuterB<uint8>.Inner<int32>.MoreInner<uint32>();
+				OuterB<int8>.Inner<int8>.MoreInner<int8> val3 = OuterB<int8>.sVal;
+				System.Collections.Dictionary<int, float> dict;
+				OuterA<int8, int16>.Inner<int16>.MoreInnerB val4 = OuterA<int8, int16>.sVal5;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -415,6 +482,11 @@ namespace Tests
 			Test.Assert(Conv<int...>(12.34f) == 12);
 			Test.Assert(Conv<int,?>(12.34f) == 12);
 			//MethodH(scope List<int>());
+
+			var specializedType = typeof(Dictionary<int, float>.Enumerator) as SpecializedGenericType;
+			Test.Assert(specializedType.UnspecializedType == typeof(Dictionary<,>.Enumerator));
+			var t = typeof(Array2<>);
+			t = typeof(ClassH<,>.Inner<>);
 		}
 	}
 
@@ -487,9 +559,6 @@ namespace Tests
 			b = Foo<int>.value > val;
 			b = Foo<int>.Inner<float>.value2 < 1.2f;
 			b = Foo<int>.Inner<float>.value2 > 2.3f;
-
-			var t = typeof(Array2<>);
-			t = typeof(Dictionary<,>.Enumerator);
 		}
 	}
 }
