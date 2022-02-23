@@ -4345,7 +4345,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			{
 				// Already handled
 			}
-			else if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL))
+			else if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL) && (!typeInstance->mTypeFailed))
 			{
 				if (auto propDecl = BfNodeDynCast<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
 				{
@@ -4353,15 +4353,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 				else
 				{
-					BfTypeState typeState;
-					typeState.mPrevState = mContext->mCurTypeState;
-					typeState.mCurFieldDef = fieldDef;
-					typeState.mCurTypeDef = fieldDef->mDeclaringType;
-					typeState.mType = typeInstance;
-					SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-
+					SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
+					
 					fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
-
 					for (auto customAttr : fieldInstance->mCustomAttributes->mAttributes)
 					{
 						if (TypeToString(customAttr.mType) == "System.ThreadStaticAttribute")
@@ -4554,18 +4548,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			if (propDef->mFieldDeclaration != NULL)
 			{
-				BfTypeState typeState;
-				typeState.mPrevState = mContext->mCurTypeState;
-				typeState.mCurTypeDef = propDef->mDeclaringType;
-				typeState.mCurFieldDef = propDef;
-				typeState.mType = typeInstance;
-				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, propDef);
 
 				BfAttributeTargets target = BfAttributeTargets_Property;
 				if (propDef->IsExpressionBodied())
 					target = (BfAttributeTargets)(target | BfAttributeTargets_Method);
 
-				if (propDef->mFieldDeclaration->mAttributes != NULL)
+				if ((propDef->mFieldDeclaration->mAttributes != NULL) && (!typeInstance->mTypeFailed))
 				{
 					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, target);
 					delete customAttrs;
