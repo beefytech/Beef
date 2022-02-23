@@ -10917,6 +10917,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			auto parentTypeInstance = outerTypeInstance;
 			if ((parentTypeInstance != NULL) && (parentTypeInstance->IsTypeAlias()))
 				parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
+			if (parentTypeInstance->mDefineState < BfTypeDefineState_Declared)
+				PopulateType(parentTypeInstance, BfPopulateType_Declaration);
 			if ((parentTypeInstance != NULL) && (parentTypeInstance->IsGenericTypeInstance()))
 			{
 				genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, parentTypeInstance->mGenericTypeInfo->mMaxGenericDepth);

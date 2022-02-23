@@ -1,3 +1,4 @@
+using System;
 namespace IDETest
 {
 	class Declarations
@@ -54,6 +55,26 @@ namespace IDETest
 				int b = mSA.mB; //FAIL
 				mSA.mB = 234;
 			}
+		}
+
+		[AttributeUsage(.All)]
+		struct AttribAAttribute : Attribute
+		{
+			AttribAAttribute mVal; //FAIL
+		}
+
+		[AttributeUsage(.All)]
+		struct AttribBAttribute : Attribute
+		{
+			[AttribB] //FAIL
+			int mVal; //FAIL
+		}
+
+		[AttributeUsage(.All)]
+		struct AttribCAttribute : Attribute
+		{
+			[AttribC] //FAIL
+			int Val => 123; //FAIL
 		}
 	}
 }
