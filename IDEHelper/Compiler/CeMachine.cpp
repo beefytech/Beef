@@ -5305,7 +5305,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr);
 				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + sizeof(int32));
-				if ((mCurEmitContext == NULL) || (mCurEmitContext->mType->mTypeId != typeId))
+				if ((mCurEmitContext == NULL) || (mCurEmitContext->mType == NULL) || (mCurEmitContext->mType->mTypeId != typeId))
 				{
 					_Fail("Code cannot be emitted for this type in this context");
 					return false;
