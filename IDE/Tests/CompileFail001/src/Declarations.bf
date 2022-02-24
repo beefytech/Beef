@@ -74,7 +74,13 @@ namespace IDETest
 		struct AttribCAttribute : Attribute
 		{
 			[AttribC] //FAIL
-			int Val => 123; //FAIL
+			int Val //FAIL
+			{
+				get
+				{
+					return 123;
+				}
+			};
 		}
 	}
 }
