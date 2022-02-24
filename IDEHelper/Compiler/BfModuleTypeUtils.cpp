@@ -2424,6 +2424,45 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			if (fieldInstance.mCustomAttributes != NULL)
 				HandleCEAttributes(ceEmitContext, typeInstance, &fieldInstance, fieldInstance.mCustomAttributes, prevAttrInstances, underlyingTypeDeferred);
 		}
+
+		for (auto methodDef : typeInstance->mTypeDef->mMethods)
+		{
+			auto methodDeclaration = methodDef->GetMethodDeclaration();
+			auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration();
+			BfAttributeTargets attrTarget = ((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_CtorCalcAppend)) ? BfAttributeTargets_Constructor : BfAttributeTargets_Method;
+			BfAttributeDirective* attributeDirective = NULL;
+			if (methodDeclaration != NULL)
+				attributeDirective = methodDeclaration->mAttributes;
+			else if (propertyMethodDeclaration != NULL)
+			{
+				attributeDirective = propertyMethodDeclaration->mAttributes;
+				if (auto exprBody = BfNodeDynCast<BfPropertyBodyExpression>(propertyMethodDeclaration->mPropertyDeclaration->mDefinitionBlock))
+				{
+					attributeDirective = propertyMethodDeclaration->mPropertyDeclaration->mAttributes;
+					attrTarget = (BfAttributeTargets)(BfAttributeTargets_Property | BfAttributeTargets_Method);
+				}
+			}
+			if (attributeDirective == NULL)
+				continue;
+
+			// Corlib will never need to process
+			if (methodDef->mDeclaringType->mProject == mContext->mBfObjectType->mTypeDef->mProject)
+				continue;
+
+			if (!typeInstance->IsTypeMemberIncluded(methodDef->mDeclaringType, mCurTypeInstance->mTypeDef, this))
+				continue;
+			
+			auto& methodInstanceGroup = typeInstance->mMethodInstanceGroups[methodDef->mIdx];
+			if (methodInstanceGroup.mDefaultCustomAttributes == NULL)
+			{
+				BfTypeState typeState;
+				typeState.mPrevState = mContext->mCurTypeState;
+				typeState.mForceActiveTypeDef = methodDef->mDeclaringType;
+				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+				methodInstanceGroup.mDefaultCustomAttributes = GetCustomAttributes(attributeDirective, attrTarget);
+			}
+			HandleCEAttributes(ceEmitContext, typeInstance, NULL, methodInstanceGroup.mDefaultCustomAttributes, prevAttrInstances, underlyingTypeDeferred);
+		}
 	}	
 
 	int methodCount = (int)typeInstance->mTypeDef->mMethods.size();

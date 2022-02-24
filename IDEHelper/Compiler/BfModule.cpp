@@ -22146,9 +22146,17 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 	{
 		if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes == NULL)
 			methodInstance->mMethodInfoEx->mMethodCustomAttributes = new BfMethodCustomAttributes();
-		methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(attributeDirective, attrTarget);		
-	}
 
+		if ((methodInstance == methodInstance->mMethodInstanceGroup->mDefault) && (methodInstance->mMethodInstanceGroup->mDefaultCustomAttributes != NULL))
+		{
+			// Take over prevoiusly-generated custom attributes
+			methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = methodInstance->mMethodInstanceGroup->mDefaultCustomAttributes;
+			methodInstance->mMethodInstanceGroup->mDefaultCustomAttributes = NULL;
+		}
+		else		
+			methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(attributeDirective, attrTarget);		
+	}
+	
 	if ((propertyMethodDeclaration != NULL) && (propertyMethodDeclaration->mPropertyDeclaration->mAttributes != NULL) && ((attrTarget & BfAttributeTargets_Property) == 0))
 	{
 		if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes != NULL)

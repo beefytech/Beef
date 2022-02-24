@@ -1569,6 +1569,29 @@ BfMethodRefType::~BfMethodRefType()
 		BF_ASSERT(mMethodRef == NULL);
 }
 
+BfMethodInstanceGroup::BfMethodInstanceGroup(BfMethodInstanceGroup&& prev) noexcept
+{
+	mOwner = prev.mOwner;
+	mDefault = prev.mDefault;
+	mMethodSpecializationMap = prev.mMethodSpecializationMap;
+	mMethodIdx = prev.mMethodIdx;
+	mRefCount = prev.mRefCount;
+	mOnDemandKind = prev.mOnDemandKind;
+	if (mDefault != NULL)
+		mDefault->mMethodInstanceGroup = this;
+	if (mMethodSpecializationMap != NULL)
+	{
+		for (auto& pair : *mMethodSpecializationMap)
+			pair.mValue->mMethodInstanceGroup = this;
+	}
+	mDefaultCustomAttributes = prev.mDefaultCustomAttributes;
+	prev.mDefaultCustomAttributes = NULL;
+
+	prev.mRefCount = 0;
+	prev.mDefault = NULL;
+	prev.mMethodSpecializationMap = NULL;
+}
+
 BfMethodInstanceGroup::~BfMethodInstanceGroup()
 {
 	if (mRefCount != 0)
@@ -1582,6 +1605,7 @@ BfMethodInstanceGroup::~BfMethodInstanceGroup()
 			delete kv.mValue;
 		delete mMethodSpecializationMap;
 	}
+	delete mDefaultCustomAttributes;
 }
 
 //////////////////////////////////////////////////////////////////////////

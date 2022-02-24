@@ -1314,6 +1314,7 @@ public:
 	BfMethodInstance* mDefault;	
 	typedef Dictionary<BfTypeVector, BfMethodInstance*> MapType;
 	MapType* mMethodSpecializationMap;	
+	BfCustomAttributes* mDefaultCustomAttributes;
 	int mMethodIdx;
 	int mRefCount; // External references from BfMethodRefType
 	BfMethodOnDemandKind mOnDemandKind;
@@ -1326,35 +1327,16 @@ public:
 		mOwner = NULL;
 		mDefault = NULL;
 		mMethodSpecializationMap = NULL;
+		mDefaultCustomAttributes = NULL;
 		mMethodIdx = -1;
 		mOnDemandKind = BfMethodOnDemandKind_NotSet;
 		mRefCount = 0;
 		mExplicitlyReflected = false;
 		mHasEmittedReference = false;
 	}
-
-	~BfMethodInstanceGroup();	
-
-	BfMethodInstanceGroup(BfMethodInstanceGroup&& prev) noexcept
-	{
-		mOwner = prev.mOwner;
-		mDefault = prev.mDefault;
-		mMethodSpecializationMap = prev.mMethodSpecializationMap;
-		mMethodIdx = prev.mMethodIdx;
-		mRefCount = prev.mRefCount;
-		mOnDemandKind = prev.mOnDemandKind;
-		if (mDefault != NULL)
-			mDefault->mMethodInstanceGroup = this;
-		if (mMethodSpecializationMap != NULL)
-		{
-			for (auto& pair : *mMethodSpecializationMap)
-				pair.mValue->mMethodInstanceGroup = this;
-		}
-
-		prev.mRefCount = 0;
-		prev.mDefault = NULL;
-		prev.mMethodSpecializationMap = NULL;
-	}
+	
+	BfMethodInstanceGroup(BfMethodInstanceGroup&& prev) noexcept;
+	~BfMethodInstanceGroup();		
 
 	bool IsImplemented()
 	{
