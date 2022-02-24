@@ -2452,6 +2452,9 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			if (!typeInstance->IsTypeMemberIncluded(methodDef->mDeclaringType, mCurTypeInstance->mTypeDef, this))
 				continue;
 			
+			if (methodDef->mIdx >= typeInstance->mMethodInstanceGroups.mSize)
+				continue;
+
 			auto& methodInstanceGroup = typeInstance->mMethodInstanceGroups[methodDef->mIdx];
 			if (methodInstanceGroup.mDefaultCustomAttributes == NULL)
 			{
