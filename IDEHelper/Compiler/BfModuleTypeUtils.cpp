@@ -5326,6 +5326,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 {	
+	if (typeInstance->IsDeleting())
+	{
+		BF_ASSERT(typeInstance->IsOnDemand());
+		return;
+	}
+
 	if (typeInstance->IsSpecializedByAutoCompleteMethod())
 		return;
 		
@@ -6694,6 +6700,7 @@ BfUnknownSizedArrayType* BfModule::CreateUnknownSizedArrayType(BfType* resolvedT
 BfPointerType* BfModule::CreatePointerType(BfType* resolvedType)
 {
 	BF_ASSERT(!resolvedType->IsVar());
+	BF_ASSERT_REL(!resolvedType->IsDeleting());
 
 	auto pointerType = mContext->mPointerTypePool.Get();
 	pointerType->mContext = mContext;
