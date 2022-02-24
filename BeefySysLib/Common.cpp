@@ -1009,7 +1009,7 @@ int32 Beefy::Rand()
 int32 Beefy::GetHighestBitSet(int32 n)
 {
 	int i = 0;
-	for (; n; n >>= 1, i++)
+	for (; n; n = (int)((uint32)n >> 1), i++)
 		; /* empty */
 	return i;
 }
