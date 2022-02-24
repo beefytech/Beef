@@ -1816,8 +1816,11 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
  			methodInstance->mHasMethodRefType = false;
  		}
 
- 		for (auto dependentType : rebuildTypeQueue)
- 			RebuildType(dependentType);
+		for (auto dependentType : rebuildTypeQueue)
+		{
+			if (dependentType->mRevision != mCompiler->mRevision)
+				RebuildType(dependentType);
+		}
 	}	
 }
 
