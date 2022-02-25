@@ -555,15 +555,13 @@ namespace System
 			return ToUniversalTime().ToFileTimeUtc();
 		}
 
-		public int64 ToFileTimeUtc()
+		public Result<int64> ToFileTimeUtc()
 		{
 			// Treats the input as universal if it is not specified
 			int64 ticks = ((InternalKind & LocalMask) != 0UL) ? ToUniversalTime().InternalTicks : this.InternalTicks;
 			ticks -= FileTimeOffset;
 			if (ticks < 0)
-			{
-				Runtime.FatalError();
-			}
+				return .Err;
 			return ticks;
 		}
 
