@@ -2449,8 +2449,13 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			if (methodDef->mDeclaringType->mProject == mContext->mBfObjectType->mTypeDef->mProject)
 				continue;
 
-			if (!typeInstance->IsTypeMemberIncluded(methodDef->mDeclaringType, mCurTypeInstance->mTypeDef, this))
-				continue;
+			if (methodDef->mDeclaringType != mCurTypeInstance->mTypeDef)
+			{
+				if (typeInstance->IsUnspecializedTypeVariation())
+					continue;
+				if (!typeInstance->IsTypeMemberIncluded(methodDef->mDeclaringType, mCurTypeInstance->mTypeDef, this))
+					continue;
+			}
 			
 			if (methodDef->mIdx >= typeInstance->mMethodInstanceGroups.mSize)
 				continue;
