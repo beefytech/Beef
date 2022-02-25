@@ -303,10 +303,53 @@ namespace System.IO
 
 		public static Result<void> GetExtension(StringView inPath, String outExt)
 		{
-			int i;
-			if ((i = inPath.LastIndexOf('.')) != -1)
-				outExt.Append(inPath, i);
-			return .Ok;
+			if (inPath.IsEmpty)
+				return .Err;
+
+			CheckInvalidPathChars(inPath);
+
+			for (int i = inPath.Length; --i >= 0;)
+			{
+				char8 ch = inPath[i];
+				if (ch == '.')
+				{
+					if (i != inPath.Length - 1)
+					{
+						outExt.Append(inPath.Substring(i, inPath.Length - i));
+						return .Ok;
+					}
+					else
+						break;
+				}
+				if (ch == DirectorySeparatorChar || ch == AltDirectorySeparatorChar || ch == VolumeSeparatorChar)
+					break;
+			}
+			
+			return .Err;
+		}
+
+		public static bool HasExtension(StringView path)
+		{
+			if (path.IsEmpty)
+				return false;
+
+			CheckInvalidPathChars(path);
+
+			for (int i = path.Length; --i >= 0;)
+			{
+				char8 ch = path[i];
+				if (ch == '.')
+				{
+					if (i != path.Length - 1)
+						return true;
+					else
+						return false;
+				}
+				if (ch == DirectorySeparatorChar || ch == AltDirectorySeparatorChar || ch == VolumeSeparatorChar)
+					break;
+			}
+
+			return false;
 		}
 
 		public static Result<void> GetTempPath(String outPath)
