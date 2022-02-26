@@ -670,6 +670,26 @@ namespace System
 			return .Err;
 		}
 
+		public AttributeInfo.CustomAttributeEnumerator GetCustomAttributes()
+		{
+			if (Compiler.IsComptime)
+				Runtime.NotImplemented();
+
+			if (var typeInstance = this as TypeInstance)
+				return typeInstance.[Friend]GetCustomAttributes(typeInstance.[Friend]mCustomAttributesIdx);
+			Runtime.NotImplemented();
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator<T> GetCustomAttributes<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+				Runtime.NotImplemented();
+
+			if (var typeInstance = this as TypeInstance)
+				return typeInstance.[Friend]GetCustomAttributes<T>(typeInstance.[Friend]mCustomAttributesIdx);
+			Runtime.NotImplemented();
+		}
+
 		public override void ToString(String strBuffer)
 		{
 			GetFullName(strBuffer);
@@ -1073,6 +1093,24 @@ namespace System.Reflection
 			default:
 				return .Err;
 			}
+		}
+
+		AttributeInfo.CustomAttributeEnumerator GetCustomAttributes(int customAttributeIdx)
+		{
+			if (customAttributeIdx == -1)
+			    return .(null);
+
+			void* data = mCustomAttrDataPtr[customAttributeIdx];
+			return .(data);
+		}
+
+		AttributeInfo.CustomAttributeEnumerator<T> GetCustomAttributes<T>(int customAttributeIdx) where T : Attribute
+		{
+			if (customAttributeIdx == -1)
+			    return .(null);
+
+			void* data = mCustomAttrDataPtr[customAttributeIdx];
+			return .(data);
 		}
     }
 

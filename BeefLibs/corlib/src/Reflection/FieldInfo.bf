@@ -239,6 +239,20 @@ namespace System.Reflection
 			return mTypeInstance.[Friend]GetCustomAttribute<T>(mFieldData.mCustomAttributesIdx);
 		}
 
+		public AttributeInfo.CustomAttributeEnumerator GetCustomAttributes()
+		{
+			if (Compiler.IsComptime)
+				Runtime.NotImplemented();
+			return mTypeInstance.[Friend]GetCustomAttributes(mFieldData.mCustomAttributesIdx);
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator<T> GetCustomAttributes<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+				Runtime.NotImplemented();
+			return mTypeInstance.[Friend]GetCustomAttributes<T>(mFieldData.mCustomAttributesIdx);
+		}
+
 	    void* GetDataPtrAndType(Object value, out Type type)
 	    {
 	        type = value.[Friend]RawGetType();
