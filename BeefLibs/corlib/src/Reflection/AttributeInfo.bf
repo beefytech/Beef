@@ -114,12 +114,12 @@ namespace System.Reflection
 			return .Err;
 		}
 
-		public struct CustomAttributeEnumerator : IEnumerator<Object>, IDisposable
+		public struct CustomAttributeEnumerator : IEnumerator<Variant>, IDisposable
 		{
 			void* data;
 			int32 attrIdx;
 			uint8 count;
-			Object targetAttr;
+			Variant targetAttr;
 
 			public this(void* inAttrData)
 			{
@@ -127,10 +127,10 @@ namespace System.Reflection
 				data++;
 				attrIdx = 0;
 				count = data != null ? AttributeInfo.Decode!<uint8>(data) : 0;
-				targetAttr = null;
+				targetAttr = default;
 			}
 
-			public Object Current
+			public Variant Current
 			{
 				get
 				{
@@ -200,24 +200,22 @@ namespace System.Reflection
 					argIdx++;
 				}
 
-				Type boxedAttrType = attrType.BoxedType;
+				targetAttr.Dispose();
+				void* data = Variant.Alloc(attrType, out targetAttr);
 
-				delete targetAttr;
-				targetAttr = boxedAttrType.CreateObject().Get();
-
-				if (methodInfo.Invoke((uint8*)Internal.UnsafeCastToPtr(targetAttr) + boxedAttrType.[Friend]mMemberDataOffset, params args) case .Ok(var val))
+				if (methodInfo.Invoke(data, params args) case .Ok(var val))
 					val.Dispose();
 
 				attrIdx++;
 				return true;
 			}
 
-			public void Dispose()
+			public void Dispose() mut
 			{
-				delete targetAttr;
+				targetAttr.Dispose();
 			}
 
-			public Result<Object> GetNext() mut
+			public Result<Variant> GetNext() mut
 			{
 				if (!MoveNext())
 					return .Err;
