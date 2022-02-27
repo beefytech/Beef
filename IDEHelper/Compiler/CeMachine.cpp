@@ -3472,16 +3472,12 @@ bool CeContext::GetStringFromStringView(addr_ce addr, StringImpl& str)
 	return true;
 }
 
-bool CeContext::GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolder, BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr)
+bool CeContext::GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolder, BfCustomAttributes* customAttributes, int attributeIdx, addr_ce resultAddr)
 {
 	if (customAttributes == NULL)
 		return false;
 
-	BfType* attributeType = GetBfType(attributeTypeId);
-	if (attributeType == NULL)
-		return false;
-
-	auto customAttr = customAttributes->Get(attributeType);
+	auto customAttr = customAttributes->Get(attributeIdx);
 	if (customAttr == NULL)
 		return false;
 	
@@ -3502,6 +3498,18 @@ bool CeContext::GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolde
 	mCeMachine->ReleaseContext(ceContext);
 
 	return true;
+}
+
+BfType* CeContext::GetCustomAttributeType(BfCustomAttributes* customAttributes, int attributeIdx)
+{
+	if (customAttributes == NULL)
+		return NULL;
+
+	auto customAttr = customAttributes->Get(attributeIdx);
+	if (customAttr == NULL)
+		return NULL;
+	
+	return customAttr->mType;
 }
 
 //#define CE_GETC(T) *((T*)(addr += sizeof(T)) - 1)
@@ -5130,7 +5138,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_GetCustomAttribute)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + 1);
-				int32 attributeTypeId = *(int32*)((uint8*)stackPtr + 1 + 4);
+				int32 attributeIdx = *(int32*)((uint8*)stackPtr + 1 + 4);
 				addr_ce resultPtr = *(addr_ce*)((uint8*)stackPtr + 1 + 4 + 4);
 
 				BfType* type = GetBfType(typeId);
@@ -5139,7 +5147,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				{
 					auto typeInst = type->ToTypeInstance();
 					if (typeInst != NULL)
-						success = GetCustomAttribute(mCurModule, typeInst->mConstHolder, typeInst->mCustomAttributes, attributeTypeId, resultPtr);
+						success = GetCustomAttribute(mCurModule, typeInst->mConstHolder, typeInst->mCustomAttributes, attributeIdx, resultPtr);
 					_FixVariables();
 				}
 
@@ -5149,7 +5157,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + 1);
 				int32 fieldIdx = *(int32*)((uint8*)stackPtr + 1 + 4);
-				int32 attributeTypeId = *(int32*)((uint8*)stackPtr + 1 + 4 + 4);
+				int32 attributeIdx = *(int32*)((uint8*)stackPtr + 1 + 4 + 4);
 				addr_ce resultPtr = *(addr_ce*)((uint8*)stackPtr + 1 + 4 + 4 + 4);
 
 				BfType* type = GetBfType(typeId);
@@ -5164,7 +5172,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						if ((fieldIdx >= 0) && (fieldIdx < typeInst->mFieldInstances.mSize))
 						{
 							auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
-							success = GetCustomAttribute(mCurModule, typeInst->mConstHolder, fieldInstance.mCustomAttributes, attributeTypeId, resultPtr);
+							success = GetCustomAttribute(mCurModule, typeInst->mConstHolder, fieldInstance.mCustomAttributes, attributeIdx, resultPtr);
 							_FixVariables();
 						}
 						else if (fieldIdx != -1)
@@ -5180,7 +5188,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetCustomAttribute)
 			{
 				int64 methodHandle = *(int64*)((uint8*)stackPtr + 1);				
-				int32 attributeTypeId = *(int32*)((uint8*)stackPtr + 1 + 8);
+				int32 attributeIdx = *(int32*)((uint8*)stackPtr + 1 + 8);
 				addr_ce resultPtr = *(addr_ce*)((uint8*)stackPtr + 1 + 8 + 4);				
 
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
@@ -5189,9 +5197,81 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("Invalid method instance");
 					return false;
 				}				
-				bool success = GetCustomAttribute(mCurModule, methodInstance->GetOwner()->mConstHolder, methodInstance->GetCustomAttributes(), attributeTypeId, resultPtr);				
+				bool success = GetCustomAttribute(mCurModule, methodInstance->GetOwner()->mConstHolder, methodInstance->GetCustomAttributes(), attributeIdx, resultPtr);				
 				_FixVariables();
 				*(addr_ce*)(stackPtr + 0) = success;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_GetCustomAttributeType)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+				int32 attributeIdx = *(int32*)((uint8*)stackPtr + ptrSize + 4);
+
+				BfType* type = GetBfType(typeId);
+				addr_ce reflectType = 0;
+				if (type != NULL)
+				{
+					auto typeInst = type->ToTypeInstance();
+					if (typeInst != NULL)
+					{
+						auto attrType = GetCustomAttributeType(typeInst->mCustomAttributes, attributeIdx);
+						if (attrType != NULL)
+							reflectType = GetReflectType(attrType->mTypeId);
+					}
+					_FixVariables();
+				}
+
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetCustomAttributeType)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+				int32 fieldIdx = *(int32*)((uint8*)stackPtr + ptrSize + 4);
+				int32 attributeIdx = *(int32*)((uint8*)stackPtr + ptrSize + 4 + 4);
+
+				BfType* type = GetBfType(typeId);
+				addr_ce reflectType = 0;
+				if (type != NULL)
+				{
+					auto typeInst = type->ToTypeInstance();
+					if (typeInst != NULL)
+					{
+						if (typeInst->mDefineState < BfTypeDefineState_CETypeInit)
+							mCurModule->PopulateType(typeInst);
+						if ((fieldIdx >= 0) && (fieldIdx < typeInst->mFieldInstances.mSize))
+						{
+							auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
+							auto attrType = GetCustomAttributeType(fieldInstance.mCustomAttributes, attributeIdx);
+							if (attrType != NULL)
+								reflectType = GetReflectType(attrType->mTypeId);
+							_FixVariables();
+						}
+						else if (fieldIdx != -1)
+						{
+							_Fail("Invalid field");
+							return false;
+						}
+					}
+				}
+
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetCustomAttributeType)
+			{
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);				
+				int32 attributeIdx = *(int32*)((uint8*)stackPtr + ptrSize + 8);			
+
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}				
+				auto attrType = GetCustomAttributeType(methodInstance->GetCustomAttributes(), attributeIdx);
+				if (attrType != NULL)
+					CeSetAddrVal(stackPtr + 0, GetReflectType(attrType->mTypeId), ptrSize);
+				else
+					CeSetAddrVal(stackPtr + 0, 0, ptrSize);
+				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethodCount)
 			{
@@ -8150,6 +8230,18 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Method_GetCustomAttribute")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetCustomAttribute;
+				}
+				else if (methodDef->mName == "Comptime_Type_GetCustomAttributeType")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Type_GetCustomAttributeType;
+				}
+				else if (methodDef->mName == "Comptime_Field_GetCustomAttributeType")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Field_GetCustomAttributeType;
+				}
+				else if (methodDef->mName == "Comptime_Method_GetCustomAttributeType")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_GetCustomAttributeType;
 				}
 				else if (methodDef->mName == "Comptime_GetMethod")
 				{

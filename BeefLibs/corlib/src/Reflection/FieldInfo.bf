@@ -231,9 +231,19 @@ namespace System.Reflection
 		{
 			if (Compiler.IsComptime)
 			{
-				T val = ?;
-				if (Type.[Friend]Comptime_Field_GetCustomAttribute((int32)mTypeInstance.TypeId, mFieldData.mCustomAttributesIdx, (.)typeof(T).TypeId, &val))
-					return val;
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Field_GetCustomAttributeType((int32)mTypeInstance.TypeId, mFieldData.mCustomAttributesIdx, ++attrIdx);
+					if (attrType == typeof(T))
+					{
+						T val = ?;
+						if (Type.[Friend]Comptime_Field_GetCustomAttribute((int32)mTypeInstance.TypeId, mFieldData.mCustomAttributesIdx, attrIdx, &val))
+							return val;
+					}
+				}
+				while (attrType != null);
 				return .Err;
 			}
 			return mTypeInstance.[Friend]GetCustomAttribute<T>(mFieldData.mCustomAttributesIdx);
@@ -241,16 +251,24 @@ namespace System.Reflection
 
 		public AttributeInfo.CustomAttributeEnumerator GetCustomAttributes()
 		{
-			if (Compiler.IsComptime)
-				Runtime.NotImplemented();
 			return mTypeInstance.[Friend]GetCustomAttributes(mFieldData.mCustomAttributesIdx);
+		}
+
+		[Comptime]
+		public AttributeInfo.ComptimeFieldCustomAttributeEnumerator GetCustomAttributes()
+		{
+			return .((int32)mTypeInstance.TypeId, mFieldData.mCustomAttributesIdx);
 		}
 
 		public AttributeInfo.CustomAttributeEnumerator<T> GetCustomAttributes<T>() where T : Attribute
 		{
-			if (Compiler.IsComptime)
-				Runtime.NotImplemented();
 			return mTypeInstance.[Friend]GetCustomAttributes<T>(mFieldData.mCustomAttributesIdx);
+		}
+
+		[Comptime]
+		public AttributeInfo.ComptimeFieldCustomAttributeEnumerator<T> GetCustomAttributes<T>() where T : Attribute
+		{
+			return .((int32)mTypeInstance.TypeId, mFieldData.mCustomAttributesIdx);
 		}
 
 	    void* GetDataPtrAndType(Object value, out Type type)

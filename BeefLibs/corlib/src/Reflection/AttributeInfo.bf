@@ -116,40 +116,40 @@ namespace System.Reflection
 
 		public struct CustomAttributeEnumerator : IEnumerator<Variant>, IDisposable
 		{
-			void* data;
-			int32 attrIdx;
-			uint8 count;
-			Variant targetAttr;
+			void* mData;
+			int32 mAttrIdx;
+			uint8 mCount;
+			Variant mTargetAttr;
 
 			public this(void* inAttrData)
 			{
-				data = inAttrData;
-				data++;
-				attrIdx = 0;
-				count = data != null ? AttributeInfo.Decode!<uint8>(data) : 0;
-				targetAttr = default;
+				mData = inAttrData;
+				mData++;
+				mAttrIdx = 0;
+				mCount = mData != null ? AttributeInfo.Decode!<uint8>(mData) : 0;
+				mTargetAttr = default;
 			}
 
 			public Variant Current
 			{
 				get
 				{
-					return targetAttr;
+					return mTargetAttr;
 				}
 			}
 
 			public bool MoveNext() mut
 			{
-				if (attrIdx >= count || data == null)
+				if (mAttrIdx >= mCount || mData == null)
 					return false;
 
-				void* startPtr = data;
-				var len = AttributeInfo.Decode!<uint16>(data);
+				void* startPtr = mData;
+				var len = AttributeInfo.Decode!<uint16>(mData);
 				void* endPtr = (uint8*)startPtr + len;
 
-				var typeId = AttributeInfo.Decode!<TypeId>(data);
+				var typeId = AttributeInfo.Decode!<TypeId>(mData);
 
-				var methodIdx = AttributeInfo.Decode!<uint16>(data);
+				var methodIdx = AttributeInfo.Decode!<uint16>(mData);
 
 				Type attrType = Type.[Friend]GetType(typeId);
 				TypeInstance attrTypeInst = attrType as TypeInstance;
@@ -158,40 +158,40 @@ namespace System.Reflection
 				Object[] args = scope Object[methodInfo.[Friend]mData.mMethodData.mParamCount];
 
 				int argIdx = 0;
-				while (data < endPtr)
+				while (mData < endPtr)
 				{
-				    var attrDataType = AttributeInfo.Decode!<TypeCode>(data);
+				    var attrDataType = AttributeInfo.Decode!<TypeCode>(mData);
 					switch (attrDataType)
 					{
 					case .Int8,
 						 .UInt8,
 						 .Char8,
 						 .Boolean:
-						let attrData = AttributeInfo.Decode!<int8>(data);
+						let attrData = AttributeInfo.Decode!<int8>(mData);
 						args[argIdx] = scope:: box attrData;
 					case .Int16,
 						.UInt16,
 						.Char16:
-						let attrData = AttributeInfo.Decode!<int16>(data);
+						let attrData = AttributeInfo.Decode!<int16>(mData);
 						args[argIdx] = scope:: box attrData;
 					case .Int32,
 						 .UInt32,
 						 .Char32:
-						let attrData = AttributeInfo.Decode!<int32>(data);
+						let attrData = AttributeInfo.Decode!<int32>(mData);
 						args[argIdx] = scope:: box attrData;
 					case .Float:
-						let attrData = AttributeInfo.Decode!<float>(data);
+						let attrData = AttributeInfo.Decode!<float>(mData);
 						args[argIdx] = scope:: box attrData;
 					case .Int64,
 						.UInt64,
 						.Double:
-						let attrData = AttributeInfo.Decode!<int64>(data);
+						let attrData = AttributeInfo.Decode!<int64>(mData);
 						args[argIdx] = scope:: box attrData;
 					case (TypeCode)typeof(TypeCode).MaxValue + 8: //BfConstType_TypeOf
-						let argTypeId = AttributeInfo.Decode!<int32>(data);
+						let argTypeId = AttributeInfo.Decode!<int32>(mData);
 						args[argIdx] = Type.[Friend]GetType((.)argTypeId);
 					case (TypeCode)255:
-						let stringId = AttributeInfo.Decode!<int32>(data);
+						let stringId = AttributeInfo.Decode!<int32>(mData);
 						String str = String.[Friend]sIdStringLiterals[stringId];
 						args[argIdx] = str;
 					default:
@@ -200,19 +200,165 @@ namespace System.Reflection
 					argIdx++;
 				}
 
-				targetAttr.Dispose();
-				void* data = Variant.Alloc(attrType, out targetAttr);
+				mTargetAttr.Dispose();
+				void* data = Variant.Alloc(attrType, out mTargetAttr);
 
 				if (methodInfo.Invoke(data, params args) case .Ok(var val))
 					val.Dispose();
 
-				attrIdx++;
+				mAttrIdx++;
 				return true;
 			}
 
 			public void Dispose() mut
 			{
-				targetAttr.Dispose();
+				mTargetAttr.Dispose();
+			}
+
+			public Result<Variant> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct ComptimeTypeCustomAttributeEnumerator : IEnumerator<Variant>, IDisposable
+		{
+			int32 mTypeId;
+			int32 mAttrIdx;
+			Variant mTargetAttr;
+
+			public this(int32 typeId)
+			{
+				mTypeId = typeId;
+				mAttrIdx = -1;
+				mTargetAttr = default;
+			}
+
+			public Variant Current
+			{
+				get
+				{
+					return mTargetAttr;
+				}
+			}
+
+			public bool MoveNext() mut
+			{
+				let attrType = Type.[Friend]Comptime_Type_GetCustomAttributeType(mTypeId, ++mAttrIdx);
+				if (attrType != null)
+				{
+					mTargetAttr.Dispose();
+					void* data = Variant.Alloc(attrType, out mTargetAttr);
+
+					if (Type.[Friend]Comptime_Type_GetCustomAttribute(mTypeId, mAttrIdx, data))
+						return true;
+				}
+				return false;
+			}
+
+			public void Dispose() mut
+			{
+				mTargetAttr.Dispose();
+			}
+
+			public Result<Variant> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct ComptimeFieldCustomAttributeEnumerator : IEnumerator<Variant>, IDisposable
+		{
+			int32 mTypeId;
+			int32 mFieldIdx;
+			int32 mAttrIdx;
+			Variant mTargetAttr;
+
+			public this(int32 typeId, int32 fieldIdx)
+			{
+				mTypeId = typeId;
+				mFieldIdx = fieldIdx;
+				mAttrIdx = -1;
+				mTargetAttr = default;
+			}
+
+			public Variant Current
+			{
+				get
+				{
+					return mTargetAttr;
+				}
+			}
+
+			public bool MoveNext() mut
+			{
+				let attrType = Type.[Friend]Comptime_Field_GetCustomAttributeType(mTypeId, mFieldIdx, ++mAttrIdx);
+				if (attrType != null)
+				{
+					mTargetAttr.Dispose();
+					void* data = Variant.Alloc(attrType, out mTargetAttr);
+
+					if (Type.[Friend]Comptime_Field_GetCustomAttribute(mTypeId, mFieldIdx, mAttrIdx, data))
+						return true;
+				}
+				return false;
+			}
+
+			public void Dispose() mut
+			{
+				mTargetAttr.Dispose();
+			}
+
+			public Result<Variant> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct ComptimeMethodCustomAttributeEnumerator : IEnumerator<Variant>, IDisposable
+		{
+			int64 mMethodHandle;
+			int32 mAttrIdx;
+			Variant mTargetAttr;
+
+			public this(int64 methodHandle)
+			{
+				mMethodHandle = methodHandle;
+				mAttrIdx = -1;
+				mTargetAttr = default;
+			}
+
+			public Variant Current
+			{
+				get
+				{
+					return mTargetAttr;
+				}
+			}
+
+			public bool MoveNext() mut
+			{
+				let attrType = Type.[Friend]Comptime_Method_GetCustomAttributeType(mMethodHandle, ++mAttrIdx);
+				if (attrType != null)
+				{
+					mTargetAttr.Dispose();
+					void* data = Variant.Alloc(attrType, out mTargetAttr);
+
+					if (Type.[Friend]Comptime_Method_GetCustomAttribute(mMethodHandle, mAttrIdx, data))
+						return true;
+				}
+				return false;
+			}
+
+			public void Dispose() mut
+			{
+				mTargetAttr.Dispose();
 			}
 
 			public Result<Variant> GetNext() mut
@@ -225,31 +371,31 @@ namespace System.Reflection
 
 		public struct CustomAttributeEnumerator<T> : IEnumerator<T>
 		{
-			void* data;
-			int32 attrIdx;
-			uint8 count;
-			T targetAttr;
+			void* mData;
+			int32 mAttrIdx;
+			uint8 mCount;
+			T mTargetAttr;
 
 			public this(void* inAttrData)
 			{
-				data = inAttrData;
-				data++;
-				attrIdx = 0;
-				count = data != null ? AttributeInfo.Decode!<uint8>(data) : 0;
-				targetAttr = ?;
+				mData = inAttrData;
+				mData++;
+				mAttrIdx = 0;
+				mCount = mData != null ? AttributeInfo.Decode!<uint8>(mData) : 0;
+				mTargetAttr = ?;
 			}
 
 			public T Current
 			{
 				get
 				{
-					return targetAttr;
+					return mTargetAttr;
 				}
 			}
 
 			public bool MoveNext() mut
 			{
-				if (attrIdx >= count || data == null)
+				if (mAttrIdx >= mCount || mData == null)
 					return false;
 
 				void* endPtr = null;
@@ -257,24 +403,24 @@ namespace System.Reflection
 
 				while (true)
 				{
-					void* startPtr = data;
-					var len = AttributeInfo.Decode!<uint16>(data);
+					void* startPtr = mData;
+					var len = AttributeInfo.Decode!<uint16>(mData);
 					endPtr = (uint8*)startPtr + len;
 
-					typeId = AttributeInfo.Decode!<TypeId>(data);
+					typeId = AttributeInfo.Decode!<TypeId>(mData);
 					if (typeId != typeof(T).TypeId)
 					{
-						attrIdx++;
-						if (attrIdx >= count)
+						mAttrIdx++;
+						if (mAttrIdx >= mCount)
 							return false;
-					    data = endPtr;
+					    mData = endPtr;
 					    continue;
 					}
 
 					break;
 				}
 
-				var methodIdx = AttributeInfo.Decode!<uint16>(data);
+				var methodIdx = AttributeInfo.Decode!<uint16>(mData);
 
 				Type attrType = Type.[Friend]GetType(typeId);
 				TypeInstance attrTypeInst = attrType as TypeInstance;
@@ -283,40 +429,40 @@ namespace System.Reflection
 				Object[] args = scope Object[methodInfo.[Friend]mData.mMethodData.mParamCount];
 
 				int argIdx = 0;
-				while (data < endPtr)
+				while (mData < endPtr)
 				{
-				    var attrDataType = AttributeInfo.Decode!<TypeCode>(data);
+				    var attrDataType = AttributeInfo.Decode!<TypeCode>(mData);
 					switch (attrDataType)
 					{
 					case .Int8,
 						 .UInt8,
 						 .Char8,
 						 .Boolean:
-						let attrData = AttributeInfo.Decode!<int8>(data);
+						let attrData = AttributeInfo.Decode!<int8>(mData);
 						args[argIdx] = scope:: box attrData;
 					case .Int16,
 						.UInt16,
 						.Char16:
-						let attrData = AttributeInfo.Decode!<int16>(data);
+						let attrData = AttributeInfo.Decode!<int16>(mData);
 						args[argIdx] = scope:: box attrData;
 					case .Int32,
 						 .UInt32,
 						 .Char32:
-						let attrData = AttributeInfo.Decode!<int32>(data);
+						let attrData = AttributeInfo.Decode!<int32>(mData);
 						args[argIdx] = scope:: box attrData;
 					case .Float:
-						let attrData = AttributeInfo.Decode!<float>(data);
+						let attrData = AttributeInfo.Decode!<float>(mData);
 						args[argIdx] = scope:: box attrData;
 					case .Int64,
 						.UInt64,
 						.Double:
-						let attrData = AttributeInfo.Decode!<int64>(data);
+						let attrData = AttributeInfo.Decode!<int64>(mData);
 						args[argIdx] = scope:: box attrData;
 					case (TypeCode)typeof(TypeCode).MaxValue + 8: //BfConstType_TypeOf
-						let argTypeId = AttributeInfo.Decode!<int32>(data);
+						let argTypeId = AttributeInfo.Decode!<int32>(mData);
 						args[argIdx] = Type.[Friend]GetType((.)argTypeId);
 					case (TypeCode)255:
-						let stringId = AttributeInfo.Decode!<int32>(data);
+						let stringId = AttributeInfo.Decode!<int32>(mData);
 						String str = String.[Friend]sIdStringLiterals[stringId];
 						args[argIdx] = str;
 					default:
@@ -325,11 +471,157 @@ namespace System.Reflection
 					argIdx++;
 				}
 
-				if (methodInfo.Invoke(&targetAttr, params args) case .Ok(var val))
+				if (methodInfo.Invoke(&mTargetAttr, params args) case .Ok(var val))
 					val.Dispose();
 
-				attrIdx++;
+				mAttrIdx++;
 				return true;
+			}
+
+			public void Dispose()
+			{
+			}
+
+			public Result<T> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct ComptimeTypeCustomAttributeEnumerator<T> : IEnumerator<T>
+		{
+			int32 mTypeId;
+			int32 mAttrIdx;
+			T mTargetAttr;
+
+			public this(int32 typeId)
+			{
+				mTypeId = typeId;
+				mAttrIdx = -1;
+				mTargetAttr = ?;
+			}
+
+			public T Current
+			{
+				get
+				{
+					return mTargetAttr;
+				}
+			}
+
+			public bool MoveNext() mut
+			{
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Type_GetCustomAttributeType(mTypeId, ++mAttrIdx);
+					if (attrType == typeof(T))
+					{
+						if (Type.[Friend]Comptime_Type_GetCustomAttribute(mTypeId, mAttrIdx, &mTargetAttr))
+							return true;
+					}
+				} while (attrType != null);
+				return false;
+			}
+
+			public void Dispose()
+			{
+			}
+
+			public Result<T> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct ComptimeFieldCustomAttributeEnumerator<T> : IEnumerator<T>
+		{
+			int32 mTypeId;
+			int32 mFieldIdx;
+			int32 mAttrIdx;
+			T mTargetAttr;
+
+			public this(int32 typeId, int32 fieldIdx)
+			{
+				mTypeId = typeId;
+				mFieldIdx = fieldIdx;
+				mAttrIdx = -1;
+				mTargetAttr = ?;
+			}
+
+			public T Current
+			{
+				get
+				{
+					return mTargetAttr;
+				}
+			}
+
+			public bool MoveNext() mut
+			{
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Field_GetCustomAttributeType(mTypeId, mFieldIdx, ++mAttrIdx);
+					if (attrType == typeof(T))
+					{
+						if (Type.[Friend]Comptime_Field_GetCustomAttribute(mTypeId, mFieldIdx, mAttrIdx, &mTargetAttr))
+							return true;
+					}
+				} while (attrType != null);
+				return false;
+			}
+
+			public void Dispose()
+			{
+			}
+
+			public Result<T> GetNext() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return Current;
+			}
+		}
+
+		public struct ComptimeMethodCustomAttributeEnumerator<T> : IEnumerator<T>
+		{
+			int64 mMethodHandle;
+			int32 mAttrIdx;
+			T mTargetAttr;
+
+			public this(int64 methodHandle)
+			{
+				mMethodHandle = methodHandle;
+				mAttrIdx = -1;
+				mTargetAttr = ?;
+			}
+
+			public T Current
+			{
+				get
+				{
+					return mTargetAttr;
+				}
+			}
+
+			public bool MoveNext() mut
+			{
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Method_GetCustomAttributeType(mMethodHandle, ++mAttrIdx);
+					if (attrType == typeof(T))
+					{
+						if (Type.[Friend]Comptime_Method_GetCustomAttribute(mMethodHandle, mAttrIdx, &mTargetAttr))
+							return true;
+					}
+				} while (attrType != null);
+				return false;
 			}
 
 			public void Dispose()
