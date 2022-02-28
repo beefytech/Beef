@@ -571,16 +571,16 @@ namespace Beefy.widgets
             get
             {                
                 if (mCursorTextPos == -1)
-                {                    
+                {
                     float x;
                     float y;
                     GetTextCoordAtLineAndColumn(mVirtualCursorPos.Value.mLine, mVirtualCursorPos.Value.mColumn, out x, out y);
 
-                    int line;
                     int lineChar;
                     float overflowX;
-                    GetLineCharAtCoord(x, y, out line, out lineChar, out overflowX);
-                    mCursorTextPos = (int32)GetTextIdx(line, lineChar);   
+                    GetLineCharAtCoord(mVirtualCursorPos.Value.mLine, x, out lineChar, out overflowX);
+
+                    mCursorTextPos = (int32)GetTextIdx(mVirtualCursorPos.Value.mLine, lineChar);   
                 }
 
                 return mCursorTextPos;
@@ -606,14 +606,9 @@ namespace Beefy.widgets
                 int lineChar;
                 GetLineCharAtIdx(mCursorTextPos, out line, out lineChar);
                 
-                float x;
-                float y;
-                GetTextCoordAtLineChar(line, lineChar, out x, out y);
-
-				int coordLine;
 				int coordLineColumn;
-                GetLineAndColumnAtCoord(x, y, out coordLine, out coordLineColumn);
-				lineAndColumn.mLine = (int32)coordLine;
+                GetLineAndColumnAtLineChar(line, lineChar, out coordLineColumn);
+				lineAndColumn.mLine = (int32)line;
 				lineAndColumn.mColumn = (int32)coordLineColumn;
                 return lineAndColumn;
             }
@@ -626,6 +621,20 @@ namespace Beefy.widgets
                 Debug.Assert(mVirtualCursorPos.Value.mColumn >= 0);
             }
         }
+
+		public int32 CursorLine
+		{
+			get
+			{
+				if (mVirtualCursorPos.HasValue)
+				    return mVirtualCursorPos.Value.mLine;
+				
+				int line;
+				int lineChar;
+				GetLineCharAtIdx(mCursorTextPos, out line, out lineChar);
+				return (.)line;
+			}
+		}
 
 		public bool WantsUndo
 		{
@@ -644,7 +653,8 @@ namespace Beefy.widgets
 			mData.Ref(this);
 			mContentChanged = true;
         }
-		
+
+
 		protected virtual Data CreateEditData()
 		{
 			return new Data();
@@ -661,13 +671,13 @@ namespace Beefy.widgets
         {
             if (mVirtualCursorPos.HasValue)
             {
+				int32 line = mVirtualCursorPos.Value.mLine;
                 float x;
                 float y;
-                GetTextCoordAtLineAndColumn(mVirtualCursorPos.Value.mLine, mVirtualCursorPos.Value.mColumn, out x, out y);
+                GetTextCoordAtLineAndColumn(line, mVirtualCursorPos.Value.mColumn, out x, out y);
 
-                int line;
                 int lineChar;                
-                bool success = GetLineCharAtCoord(x, y, out line, out lineChar, out overflowX);
+                bool success = GetLineCharAtCoord(line, x, out lineChar, out overflowX);
 
                 textPos = GetTextIdx(line, lineChar);
                 return success;
@@ -851,7 +861,7 @@ namespace Beefy.widgets
         public override void MouseLeave()
         {            
             base.MouseLeave();
-            BFApp.sApp.SetCursor(Cursor.Pointer);            
+            BFApp.sApp.SetCursor(Cursor.Pointer);
         }
 
         public virtual void ClearText()
@@ -1344,6 +1354,11 @@ namespace Beefy.widgets
 			TextChanged();
         }
 
+		public virtual void LineStartsChanged()
+		{
+
+		}
+
 		public virtual void TextAppended(String str)
 		{
 			if ((mWordWrap) || (mData.mLineStarts == null))
@@ -1366,6 +1381,7 @@ namespace Beefy.widgets
 				}
 			}
 			mData.mLineStarts.Add(mData.mTextLength);
+			LineStartsChanged();
 
 			mContentChanged = true;
 
@@ -1385,69 +1401,70 @@ namespace Beefy.widgets
         {
             // Generate line starts and text flags if we need to
             
-            if (mData.mLineStarts == null)
-            {
-				scope AutoBeefPerf("EWC.GetTextData");
+            if (mData.mLineStarts != null)
+				return;
+            
+			scope AutoBeefPerf("EWC.GetTextData");
 
-				CharData* char8DataPtr = mData.mText.CArray();
-				uint8* textFlagsPtr = null;
-				if (mData.mTextFlags != null)
-					textFlagsPtr = mData.mTextFlags.CArray();
+			CharData* char8DataPtr = mData.mText.CArray();
+			uint8* textFlagsPtr = null;
+			if (mData.mTextFlags != null)
+				textFlagsPtr = mData.mTextFlags.CArray();
 
-                int32 lineIdx = 0;
-				if (textFlagsPtr != null)
+            int32 lineIdx = 0;
+			if (textFlagsPtr != null)
+			{
+				for (int32 i < mData.mTextLength)
 				{
-					for (int32 i < mData.mTextLength)
-					{
-					    if ((char8DataPtr[i].mChar == '\n') || ((textFlagsPtr != null) && ((textFlagsPtr[i] & ((int32)TextFlags.Wrap)) != 0)))
-					        lineIdx++;                    
-					}
+				    if ((char8DataPtr[i].mChar == '\n') || ((textFlagsPtr != null) && ((textFlagsPtr[i] & ((int32)TextFlags.Wrap)) != 0)))
+				        lineIdx++;                    
 				}
-                else
+			}
+            else
+			{
+				for (int32 i < mData.mTextLength)
 				{
-					for (int32 i < mData.mTextLength)
-					{
-					    if (char8DataPtr[i].mChar == '\n')
-					        lineIdx++;                    
-					}
+				    if (char8DataPtr[i].mChar == '\n')
+				        lineIdx++;                    
 				}
+			}
 
-                mData.mLineStarts = new List<int32>();
-                mData.mLineStarts.GrowUnitialized(lineIdx + 2);
-				int32* lineStartsPtr = mData.mLineStarts.Ptr;
-				lineStartsPtr[0] = 0;
-                
-                lineIdx = 0;
-				if (textFlagsPtr != null)
+            mData.mLineStarts = new List<int32>();
+            mData.mLineStarts.GrowUnitialized(lineIdx + 2);
+			int32* lineStartsPtr = mData.mLineStarts.Ptr;
+			lineStartsPtr[0] = 0;
+            
+            lineIdx = 0;
+			if (textFlagsPtr != null)
+			{
+                for (int32 i < mData.mTextLength)
+                {
+                    if ((textFlagsPtr != null) && ((textFlagsPtr[i] & ((int32)TextFlags.Wrap)) != 0))
+                    {                        
+                        lineIdx++;
+                        lineStartsPtr[lineIdx] = i;                        
+                    }
+                    else if ((char8)char8DataPtr[i].mChar == '\n')
+                    {                        
+                        lineIdx++;
+                        lineStartsPtr[lineIdx] = i + 1;
+                    }
+                }
+			}
+			else
+			{
+				for (int32 i < mData.mTextLength)
 				{
-	                for (int32 i < mData.mTextLength)
-	                {
-	                    if ((textFlagsPtr != null) && ((textFlagsPtr[i] & ((int32)TextFlags.Wrap)) != 0))
-	                    {                        
-	                        lineIdx++;
-	                        lineStartsPtr[lineIdx] = i;                        
-	                    }
-	                    else if ((char8)char8DataPtr[i].mChar == '\n')
-	                    {                        
-	                        lineIdx++;
-	                        lineStartsPtr[lineIdx] = i + 1;
-	                    }
-	                }
+				    if ((char8)char8DataPtr[i].mChar == '\n')
+				    {                        
+				        lineIdx++;
+				        lineStartsPtr[lineIdx] = i + 1;
+				    }
 				}
-				else
-				{
-					for (int32 i < mData.mTextLength)
-					{
-					    if ((char8)char8DataPtr[i].mChar == '\n')
-					    {                        
-					        lineIdx++;
-					        lineStartsPtr[lineIdx] = i + 1;
-					    }
-					}
-				}
-                
-                mData.mLineStarts[lineIdx + 1] = mData.mTextLength;
-            }
+			}
+            
+            mData.mLineStarts[lineIdx + 1] = mData.mTextLength;
+			LineStartsChanged();
         }
 
         public virtual void Backspace()
@@ -1519,7 +1536,7 @@ namespace Beefy.widgets
             ContentChanged();
             if (offset != 0)
             {
-                MoveCursorToIdx(textPos, false, .FromTyping);
+                MoveCursorToIdx(textPos, false, .FromTyping_Deleting);
                 EnsureCursorVisible();
             }
         }
@@ -1648,7 +1665,7 @@ namespace Beefy.widgets
             }
             else
             {
-				int32 char8Count = 1;
+				int32 charCount = 1;
 				int checkIdx = textPos + 1;
 				while (true)
 				{
@@ -1660,12 +1677,12 @@ namespace Beefy.widgets
 						if (!checkChar.IsCombiningMark)
 							break;
 					}
-					char8Count++;
+					charCount++;
 					checkIdx++;
 				}
 
-                mData.mUndoManager.Add(new DeleteCharAction(this, 0, char8Count));
-                PhysDeleteChars(0, char8Count);
+                mData.mUndoManager.Add(new DeleteCharAction(this, 0, charCount));
+                PhysDeleteChars(0, charCount);
             }                        
         }
 
@@ -1934,7 +1951,7 @@ namespace Beefy.widgets
             return .Other;
         }
 
-        public void GetTextCoordAtCursor(out float x, out float y)
+        public virtual void GetTextCoordAtCursor(out float x, out float y)
         {
             if (mVirtualCursorPos.HasValue)
             {
@@ -1963,8 +1980,9 @@ namespace Beefy.widgets
             float y;
             GetTextCoordAtLineAndColumn(mVirtualCursorPos.Value.mLine, mVirtualCursorPos.Value.mColumn, out x, out y);
 
-            float overflowX;
-            return GetLineCharAtCoord(x, y, out line, out lineChar, out overflowX);
+
+			float overflowX;
+            return GetLineCharAtCoord(line, x, out lineChar, out overflowX);
         }
 
         public virtual bool PrepareForCursorMove(int dir = 0)
@@ -2064,6 +2082,7 @@ namespace Beefy.widgets
 				if (var insertTextAction = mData.mUndoManager.GetLastUndoAction() as InsertTextAction)
 					insertTextAction.mVirtualCursorPos = origPosition;
 				CursorLineAndColumn = lineStartPosition;
+				
 				CursorToLineStart(false);
 
 				// Adjust to requested column
@@ -2110,15 +2129,15 @@ namespace Beefy.widgets
 			while (true)
 			{
 			    if (lineChar > 0)
-			        MoveCursorTo(lineIdx, lineChar - 1);
+			        MoveCursorTo(lineIdx, lineChar - 1, false, 0, .SelectLeft);
 			    else if (lineIdx > 0)
 			    {
 			        int cursorIdx = mCursorTextPos;
 					String lineText = scope String();
 					GetLineText(lineIdx - 1, lineText);
-			        MoveCursorTo(lineIdx - 1, (int32)lineText.Length);
+			        MoveCursorTo(lineIdx - 1, (int32)lineText.Length, false, 0, .SelectLeft);
 			        if ((!mAllowVirtualCursor) && (cursorIdx == mCursorTextPos))
-			            MoveCursorTo(lineIdx - 1, (int32)lineText.Length - 1);
+			            MoveCursorTo(lineIdx - 1, (int32)lineText.Length - 1, false, 0, .SelectLeft);
 			        break;
 			    }
 
@@ -2180,9 +2199,9 @@ namespace Beefy.widgets
 			    }
 
 			    if (isWithinLine)
-			        MoveCursorTo(lineIdx, lineChar + 1, false, 1);
+			        MoveCursorTo(lineIdx, lineChar + 1, false, 1, .SelectRight);
 			    else if (lineIdx < GetLineCount() - 1)
-			        MoveCursorTo(lineIdx + 1, 0);
+			        MoveCursorTo(lineIdx + 1, 0, false, 0, .SelectRight);
 
 			    if (!mWidgetWindow.IsKeyDown(KeyCode.Control))
 			        break;
@@ -2274,7 +2293,7 @@ namespace Beefy.widgets
 					mEditWidget.Submit();
             case KeyCode.Left:
                 {
-                    if (!PrepareForCursorMove(-1))                        
+                    if (!PrepareForCursorMove(-1))
                     {
                         PrepareForCursorMove(-1);
 
@@ -2349,7 +2368,7 @@ namespace Beefy.widgets
 	                            var lineAndColumn = CursorLineAndColumn;
 	                            CursorLineAndColumn = LineAndColumn(lineAndColumn.mLine, lineAndColumn.mColumn + 1);
 	                            EnsureCursorVisible(true, false, false);
-	                            CursorMoved();
+	                            PhysCursorMoved(.SelectRight);
 
 								ClampCursor();
 								if (lineAndColumn != CursorLineAndColumn)
@@ -2393,22 +2412,40 @@ namespace Beefy.widgets
                     wasMoveKey = true;
                     if ((lineIdx + aDir >= 0) && (lineIdx + aDir < GetLineCount()))
                     {
+						float wantedX = mCursorWantX;
+						float wantY = 0;
+
 						if (mAllowVirtualCursor)
 						{
 							float cursorX;
 							float cursorY;
 							GetTextCoordAtCursor(out cursorX, out cursorY);
+
+							GetLineAndColumnAtCoord(cursorX, cursorY, var virtLine, ?);
+
+							/*GetTextCoordAtLineAndColumn(lineIdx, 0, ?, var lineY);
+							Debug.WriteLine($"Line:{lineIdx} LineY:{lineY} Cursor:{cursorX},{cursorY}");*/
+
+							if (aDir < 0)
+							{
+								wantY = cursorY - 0.1f;
+							}
+							else
+							{
+								wantY = cursorY + GetLineHeight(virtLine) + 0.1f;
+							}
 							//mCursorWantX = cursorX;
 						}
+						else
+						{
+	                        lineIdx += aDir;
 
-                        lineIdx += aDir;
-
-                        float wantedX = mCursorWantX;
-
-                        float aX;
-                        float aY;
-                        GetTextCoordAtLineChar(lineIdx, 0, out aX, out aY);
-                        MoveCursorToCoord(mCursorWantX, aY);
+	                        float aX;
+	                        float aY;
+	                        GetTextCoordAtLineChar(lineIdx, 0, out aX, out aY);
+							wantY = aY;
+						}
+						MoveCursorToCoord(mCursorWantX, wantY);
 
 						ClampCursor();
 
@@ -2645,6 +2682,12 @@ namespace Beefy.widgets
             return false;
         }
 
+		public virtual bool GetLineCharAtCoord(int line, float x, out int theChar, out float overflowX)
+		{
+			GetTextCoordAtLineAndColumn(line, 0, ?, var y);
+		    return GetLineCharAtCoord(x, y, ?, out theChar, out overflowX);
+		}
+
         public virtual bool GetLineAndColumnAtCoord(float x, float y, out int line, out int column)
         {
             line = -1;
@@ -2725,7 +2768,7 @@ namespace Beefy.widgets
 					return;
 				}    
 			    if (c < 0)
-			        lo = i + 1;                    
+			        lo = i + 1;
 			    else
 			        hi = i - 1;
 			}
@@ -2818,11 +2861,11 @@ namespace Beefy.widgets
                 ExtractString(lineStart, lineEnd - lineStart, outStr); // Full line
         }
 
-        public int GetTextIdx(int line, int char8Idx)
+        public int GetTextIdx(int line, int charIdx)
         {
             GetTextData();
             int useLine = Math.Min(line, mData.mLineStarts.Count - 1);
-            return mData.mLineStarts[useLine] + char8Idx;
+            return mData.mLineStarts[useLine] + charIdx;
         }
 
         public int GetCharIdIdx(int32 findCharId)
@@ -2839,7 +2882,7 @@ namespace Beefy.widgets
 
             int curLine = 0;
             int curColumn = 0;
-            int char8Idx = 0;
+            int charIdx = 0;
 			mData.mTextIdData.Prepare();
             while (true)
             {
@@ -2863,7 +2906,7 @@ namespace Beefy.widgets
                 if ((curLine == line) && (curColumn == column))
                     return char8Id;
 
-                char8 c = (char8)mData.mText[char8Idx++].mChar;
+                char8 c = (char8)mData.mText[charIdx++].mChar;
                 if (c == '\n')
                 {
                     if (curLine == line)
@@ -2878,7 +2921,7 @@ namespace Beefy.widgets
             }            
         }
 
-        public virtual void GetTextCoordAtLineChar(int line, int char8Idx, out float x, out float y)
+        public virtual void GetTextCoordAtLineChar(int line, int charIdx, out float x, out float y)
         {
             x = 0;
             y = 0;
@@ -2892,8 +2935,13 @@ namespace Beefy.widgets
 
 		public enum CursorMoveKind
 		{
-			FromTyping,
-			Unknown
+			case FromTyping;
+			case FromTyping_Deleting;
+			case Unknown;
+			case SelectRight;
+			case SelectLeft;
+
+			public bool IsFromTyping => (this == FromTyping) || (this == FromTyping_Deleting);
 		}
 
 		// We used to have a split between PhysCursorMoved and CursorMoved.  CursorMoved has a "ResetWantX" and was non-virtual... uh-
@@ -2936,7 +2984,7 @@ namespace Beefy.widgets
         {
             int lineIdx;
             int lineChar;
-            GetCursorLineChar(out lineIdx, out lineChar);
+			GetCursorLineChar(out lineIdx, out lineChar);
 
             String lineText = scope String();
             GetLineText(lineIdx, lineText);
@@ -3379,14 +3427,22 @@ namespace Beefy.widgets
             Debug.Assert(mSelection.Value.mEndPos <= mData.mTextLength);
         }
 
-        //public void MoveCursorTo
+		public virtual void GetLineAndColumnAtLineChar(int line, int lineChar, out int lineColumn)
+		{
+			float x;
+			float y;
+			GetTextCoordAtLineChar(line, lineChar, out x, out y);
 
-        public void MoveCursorTo(int line, int char8Idx, bool centerCursor = false, int movingDir = 0, CursorMoveKind cursorMoveKind = .Unknown)
+			int coordLine;
+			GetLineAndColumnAtCoord(x, y, out coordLine, out lineColumn);
+		}
+
+        public virtual void MoveCursorTo(int line, int charIdx, bool centerCursor = false, int movingDir = 0, CursorMoveKind cursorMoveKind = .Unknown)
         {
-			int useCharIdx = char8Idx;
+			int useCharIdx = charIdx;
 
             mShowCursorAtLineEnd = false;
-            CursorTextPos = GetTextIdx(line, char8Idx);
+            CursorTextPos = GetTextIdx(line, charIdx);
 
 			// Skip over UTF8 parts AND unicode combining marks (ie: when we have a letter with an accent mark following it)
 			while (true)
@@ -3433,13 +3489,13 @@ namespace Beefy.widgets
 
         public void MoveCursorToIdx(int index, bool centerCursor = false, CursorMoveKind cursorMoveKind = .Unknown)
         {
-            int aLine;
-            int aCharIdx;
-            GetLineCharAtIdx(index, out aLine, out aCharIdx);
-            MoveCursorTo(aLine, aCharIdx, centerCursor, 0, cursorMoveKind);
+            int line;
+            int charIdx;
+            GetLineCharAtIdx(index, out line, out charIdx);
+            MoveCursorTo(line, charIdx, centerCursor, 0, cursorMoveKind);
         }
         
-        public void MoveCursorToCoord(float x, float y)
+        public virtual void MoveCursorToCoord(float x, float y)
         {
 			bool failed = false;
 

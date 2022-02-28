@@ -2584,6 +2584,30 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void UndoFill()
+		{
+			var documentPanel = gApp.GetLastActiveDocumentPanel();
+			if (var sourceViewPanel = documentPanel as SourceViewPanel)
+			{
+				int count = 0;
+				for (int i < 400)
+				{
+					for (char8 c = 'A'; c <= 'Z'; c++)
+					{
+						String str = scope .(32);
+						if (count++ % 131 == 0)
+							str.Append("\n//");
+						str.Append(c);
+
+						sourceViewPanel.mEditWidget.mEditWidgetContent.mData.mUndoManager.[Friend]mSkipNextMerge = true;
+						sourceViewPanel.mEditWidget.mEditWidgetContent.InsertAtCursor(str);
+					}
+				}
+
+			}
+		}
+
+		[IDECommand]
 		public void SetVal(String valName, String value)
 		{
 			bool added = mScriptManager.mContext.mVars.TryAdd(valName, var keyPtr, var valuePtr);

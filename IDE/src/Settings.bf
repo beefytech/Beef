@@ -774,6 +774,12 @@ namespace IDE
 				Add("Build Workspace", "F7");
 				Add("Cancel Build", "Ctrl+Break");
 				Add("Close Document", "Ctrl+W");
+				Add("Collapse All", "Ctrl+M, Ctrl+A");
+				Add("Collapse To Definition", "Ctrl+M, Ctrl+O");
+				Add("Collapse Redo", "Ctrl+M, Ctrl+Y");
+				Add("Collapse Toggle", "Ctrl+M, Ctrl+M");
+				Add("Collapse Toggle All", "Ctrl+M, Ctrl+L");
+				Add("Collapse Undo", "Ctrl+M, Ctrl+Z");
 				Add("Compile File", "Ctrl+F7");
 				Add("Comment Block", "Ctrl+K, Ctrl+C");
 				Add("Comment Lines", "Ctrl+K, Ctrl+/");

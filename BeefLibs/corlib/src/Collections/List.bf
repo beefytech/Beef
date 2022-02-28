@@ -536,6 +536,15 @@ namespace System.Collections
 			EnsureCapacity(size, true);
 		}
 
+		public void Resize(int size)
+		{
+			EnsureCapacity(size, true);
+			int addSize = size - mSize;
+			if (addSize > 0)
+				Internal.MemSet(Ptr + mSize, 0, addSize * alignof(T));
+			mSize = (.)size;
+		}
+
 		public Enumerator GetEnumerator()
 		{
 			return Enumerator(this);
@@ -714,6 +723,13 @@ namespace System.Collections
 		{
 			var sorter = Sorter<T, void>(mItems, null, mSize, comp);
 			sorter.[Friend]Sort(0, mSize);
+		}
+
+		public void Sort(Comparison<T> comp, int index, int count)
+		{
+			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
+			var sorter = Sorter<T, void>(mItems, null, mSize, comp);
+			sorter.[Friend]Sort(index, count);
 		}
 
 		public int RemoveAll(Predicate<T> match)

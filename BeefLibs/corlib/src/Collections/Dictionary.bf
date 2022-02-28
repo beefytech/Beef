@@ -822,6 +822,20 @@ namespace System.Collections
 			return false;
 		}
 
+		public bool TryGetRef(TKey key, out TKey* matchKey, out TValue* value)
+		{
+			int_cosize i = (int_cosize)FindEntry(key);
+			if (i >= 0)
+			{
+				matchKey = &mEntries[i].mKey;
+				value = &mEntries[i].mValue;
+				return true;
+			}
+			matchKey = null;
+			value = null;
+			return false;
+		}
+
 		public bool TryGetAlt<TAltKey>(TAltKey key, out TKey matchKey, out TValue value) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			int_cosize i = (int_cosize)FindEntryAlt(key);
@@ -833,6 +847,20 @@ namespace System.Collections
 			}
 			matchKey = default(TKey);
 			value = default(TValue);
+			return false;
+		}
+
+		public bool TryGetRefAlt<TAltKey>(TAltKey key, out TKey* matchKey, out TValue* value) where TAltKey : IHashable where bool : operator TKey == TAltKey
+		{
+			int_cosize i = (int_cosize)FindEntryAlt(key);
+			if (i >= 0)
+			{
+				matchKey = &mEntries[i].mKey;
+				value = &mEntries[i].mValue;
+				return true;
+			}
+			matchKey = null;
+			value = null;
 			return false;
 		}
 
@@ -848,7 +876,7 @@ namespace System.Collections
 
 		public struct Enumerator : IEnumerator<KeyValuePair>, IRefEnumerator<KeyRefValuePair>
 		{
-			private Dictionary<TKey, TValue>  mDictionary;
+			private Dictionary<TKey, TValue> mDictionary;
 #if VERSION_DICTIONARY
 			private int_cosize mVersion;
 #endif
@@ -1024,7 +1052,7 @@ namespace System.Collections
 			private int_cosize mVersion;
 #endif
 			private int_cosize mIndex;
-			private TValue mCurrent;
+			private TValue* mCurrent;
 
 			const int_cosize cDictEntry = 1;
 			const int_cosize cKeyValuePair = 2;
@@ -1051,7 +1079,7 @@ namespace System.Collections
 				{
 					if (mDictionary.mEntries[mIndex].mHashCode >= 0)
 					{
-						mCurrent = mDictionary.mEntries[mIndex].mValue;
+						mCurrent = &mDictionary.mEntries[mIndex].mValue;
 						mIndex++;
 						return true;
 					}
@@ -1065,12 +1093,12 @@ namespace System.Collections
 
 			public TValue Current
 			{
-				get { return mCurrent; }
+				get { return *mCurrent; }
 			}
 
 			public ref TValue CurrentRef
 			{
-				get mut { return ref mCurrent; } 
+				get mut { return ref *mCurrent; } 
 			}
 
 			public ref TKey Key
@@ -1128,7 +1156,7 @@ namespace System.Collections
 			}
 		}
 
-		public struct KeyEnumerator : IEnumerator<TKey>, IResettable
+		public struct KeyEnumerator : IEnumerator<TKey>, IRefEnumerator<TKey*>, IResettable
 		{
 			private Dictionary<TKey, TValue> mDictionary;
 #if VERSION_DICTIONARY
@@ -1187,6 +1215,11 @@ namespace System.Collections
 				get { return *mCurrent; }
 			}
 
+			public ref TKey CurrentRef
+			{
+				get { return ref *mCurrent; }
+			}
+
 			public ref TValue Value
 			{
 				get
@@ -1223,6 +1256,13 @@ namespace System.Collections
 				if (!MoveNext())
 					return .Err;
 				return Current;
+			}
+
+			public Result<TKey*> GetNextRef() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return &CurrentRef;
 			}
 		}
 	}

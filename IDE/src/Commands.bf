@@ -214,6 +214,12 @@ namespace IDE
 			Add("Close Document", new () => { gApp.[Friend]TryCloseCurrentDocument(); });
 			Add("Close Panel", new () => { gApp.[Friend]TryCloseCurrentPanel(); });
 			Add("Close Workspace", new => gApp.[Friend]Cmd_CloseWorkspaceAndSetupNew);
+			Add("Collapse All", new => gApp.[Friend]CollapseAll);
+			Add("Collapse To Definition", new => gApp.[Friend]CollapseToDefinition);
+			Add("Collapse Redo", new => gApp.[Friend]CollapseRedo);
+			Add("Collapse Toggle", new => gApp.[Friend]CollapseToggle);
+			Add("Collapse Toggle All", new => gApp.[Friend]CollapseToggleAll);
+			Add("Collapse Undo", new => gApp.[Friend]CollapseUndo);
 			Add("Comment Block", new => gApp.[Friend]CommentBlock, .Editor);
 			Add("Comment Lines", new => gApp.[Friend]CommentLines, .Editor);
 			Add("Comment Toggle", new => gApp.[Friend]CommentToggle, .Editor);

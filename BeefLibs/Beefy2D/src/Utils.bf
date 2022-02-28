@@ -346,6 +346,7 @@ namespace Beefy
             return list;
         }*/
 
+		[DisableChecks]
 		public static int64 DecodeInt64(ref uint8* ptr)
 		{
 			int64 value = 0;
@@ -364,6 +365,7 @@ namespace Beefy
 			return value;
 		}
 
+		[DisableChecks]
         public static int32 DecodeInt(uint8[] buf, ref int idx)
         {
             int32 value = 0;
@@ -383,6 +385,7 @@ namespace Beefy
             return value;
         }
 
+		[DisableChecks]
         public static void EncodeInt(uint8[] buf, ref int idx, int value)
         {
 			int curValue = value;

@@ -2438,6 +2438,42 @@ namespace IDE
 			//CloseWorkspace();
 			//FinishShowingNewWorkspace();
 		}
+
+		[IDECommand]
+		void CollapseAll()
+		{
+			GetActiveSourceEditWidgetContent()?.CollapseAll();
+		}
+
+		[IDECommand]
+		void CollapseToDefinition()
+		{
+			GetActiveSourceEditWidgetContent()?.CollapseToDefinition();
+		}
+
+		[IDECommand]
+		void CollapseRedo()
+		{
+
+		}
+
+		[IDECommand]
+		void CollapseToggle()
+		{
+			GetActiveSourceEditWidgetContent()?.CollapseToggle();
+		}
+
+		[IDECommand]
+		void CollapseToggleAll()
+		{
+			GetActiveSourceEditWidgetContent()?.CollapseToggleAll();
+		}
+
+		[IDECommand]
+		void CollapseUndo()
+		{
+
+		}
 		
 		[IDECommand]
 		void DeleteAllRight()
@@ -2483,6 +2519,73 @@ namespace IDE
 			var sewc = GetActiveSourceEditWidgetContent();
 			if (sewc != null)
 				sewc.ToggleComment(false);
+		}
+
+		[IDECommand]
+		void ComplexIdSpan()
+		{
+			if (var sourceViewPanel = GetLastActiveDocumentPanel() as SourceViewPanel)
+			{
+				var sewc = sourceViewPanel.mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
+				uint8[] newData = new uint8[sewc.mData.mTextLength*4];
+
+				var idData = ref sewc.mData.mTextIdData;
+				/*idData.Prepare();
+
+				int encodeIdx = 0;
+				int decodeIdx = 0;
+				int charId = 1;
+				int charIdx = 0;
+				while (true)
+				{
+				    int32 cmd = Utils.DecodeInt(idData.mData, ref decodeIdx);
+				    if (cmd > 0)
+				    {
+						charId = cmd;
+						Utils.EncodeInt(newData, ref encodeIdx, charId);
+					}
+				    else
+				    {
+				        int32 spanSize = -cmd;
+				        
+				        charId += spanSize;
+				        charIdx += spanSize;
+
+				        if (cmd == 0)
+				        {
+							Utils.EncodeInt(newData, ref encodeIdx, 0);
+							break;
+						}
+
+						while (spanSize > 65)
+						{
+							Utils.EncodeInt(newData, ref encodeIdx, -64);
+							spanSize -= 64;
+						}
+						Utils.EncodeInt(newData, ref encodeIdx, -spanSize);
+				    }
+				}*/
+
+				int encodeIdx = 0;
+				int sizeLeft = sewc.mData.mTextLength;
+				while (sizeLeft > 0)
+				{
+					int writeLength = Math.Min(sizeLeft, 64);
+					Utils.EncodeInt(newData, ref encodeIdx, sewc.mData.mNextCharId);
+					Utils.EncodeInt(newData, ref encodeIdx, -writeLength);
+					sewc.mData.mNextCharId += (.)writeLength;
+					sewc.mData.mNextCharId++;
+					sizeLeft -= writeLength;
+				}
+				Utils.EncodeInt(newData, ref encodeIdx, 0);
+
+				IdSpan newSpan = .(newData, (.)encodeIdx);
+
+				//Runtime.Assert(newSpan.Equals(idData));
+
+				idData.Dispose();
+				idData = newSpan;
+			}
 		}
 
 		public Result<void, StructuredData.Error> StructuredLoad(StructuredData data, StringView filePath)

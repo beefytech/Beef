@@ -181,6 +181,8 @@ namespace Beefy.theme.dark
 			PanelHeader,
 
 			ExtMethod,
+			CollapseClosed,
+			CollapseOpened,
 
             COUNT
         };

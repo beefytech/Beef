@@ -6,8 +6,129 @@ using System.Threading.Tasks;
 
 namespace Beefy.utils
 {
-    public struct IdSpan
+    public struct IdSpan : IFormattable
     {
+		public class LookupContext
+		{
+			public enum SortKind
+			{
+				None,
+				Id,
+				Index
+			}
+
+			public struct Entry
+			{
+				public int32 mIdStart;
+				public int32 mIndexStart;
+				public int32 mLength;
+			}
+
+			public List<Entry> mEntries = new .() ~ delete _;
+			public SortKind mSortKind;
+
+			public this(IdSpan idSpan)
+			{
+				int encodeIdx = 0;
+				int charId = 1;
+				int charIdx = 0;
+				while (true)
+				{
+				    int cmd = Utils.DecodeInt(idSpan.mData, ref encodeIdx);
+				    if (cmd > 0)
+				        charId = cmd;
+				    else
+				    {
+				        int spanSize = -cmd;
+
+						Entry entry;
+						entry.mIdStart = (.)charId;
+						entry.mIndexStart = (.)charIdx;
+						entry.mLength = (.)spanSize;
+						mEntries.Add(entry);
+
+				        charId += spanSize;
+				        charIdx += spanSize;
+
+				        if (cmd == 0)
+				            break;
+				    }
+				}
+			}
+
+			public int GetIndexFromId(int32 findCharId)
+			{
+				if (mSortKind != .Id)
+				{
+					mEntries.Sort(scope (lhs, rhs) => lhs.mIdStart <=> rhs.mIdStart);
+					mSortKind = .Id;
+				}
+
+				int lo = 0;
+				int hi = mEntries.Count - 1;
+
+				while (lo <= hi)
+				{
+				    int i = (lo + hi) / 2;
+					var midVal = ref mEntries[i];
+					if ((findCharId >= midVal.mIdStart) && (findCharId < midVal.mIdStart + midVal.mLength))
+						return midVal.mIndexStart + (findCharId - midVal.mIdStart);
+
+				    if (findCharId > midVal.mIdStart)
+				        lo = i + 1;
+				    else
+				        hi = i - 1;
+				}
+
+				return -1;
+			}
+
+			public int32 GetIdAtIndex(int32 findCharId)
+			{
+				if (mSortKind != .Index)
+				{
+					mEntries.Sort(scope (lhs, rhs) => lhs.mIndexStart <=> rhs.mIndexStart);
+					mSortKind = .Index;
+				}
+
+				int lo = 0;
+				int hi = mEntries.Count - 1;
+
+				while (lo <= hi)
+				{
+				    int i = (lo + hi) / 2;
+					var midVal = ref mEntries[i];
+					if ((findCharId >= midVal.mIndexStart) && (findCharId < midVal.mIndexStart + midVal.mLength))
+						return midVal.mIdStart + (findCharId - midVal.mIndexStart);
+
+				    if (findCharId > midVal.mIndexStart)
+				        lo = i + 1;
+				    else
+				        hi = i - 1;
+				}
+
+				return -1;
+			}
+
+			public override void ToString(String strBuffer)
+			{
+				if (mSortKind != .Index)
+				{
+					mEntries.Sort(scope (lhs, rhs) => lhs.mIndexStart <=> rhs.mIndexStart);
+					mSortKind = .Index;
+				}
+
+				strBuffer.AppendF("IdSpan.LookupCtx(");
+				for (var entry in mEntries)
+				{
+					if (@entry.Index > 0)
+						strBuffer.Append(' ');
+					strBuffer.AppendF($"{entry.mIndexStart}:{entry.mLength}={entry.mIdStart}");
+				}	
+				strBuffer.AppendF(")");
+			}
+		}
+
 		enum Change
 		{
 			case Insert(int32 index, int32 id, int16 length);
@@ -671,7 +792,6 @@ namespace Beefy.utils
 
         public IdSpan Duplicate()
         {
-			Debug.Assert(!HasChangeList);
             IdSpan idSpan = IdSpan();
             if (mData != null)
             {
@@ -679,6 +799,12 @@ namespace Beefy.utils
 				mData.CopyTo(idSpan.mData, 0, 0, mLength);
                 idSpan.mLength = mLength;
             }
+			if (mChangeList != null)
+			{
+				idSpan.mChangeList = new .();
+				for (var change in mChangeList)
+					idSpan.mChangeList.Add(change);
+			}
             return idSpan;
         }
 
@@ -866,6 +992,11 @@ namespace Beefy.utils
             return idSpan;
         }
 
+		public override void ToString(String strBuffer)
+		{
+			ToString(strBuffer, "", null);
+		}
+
 		public void Dump() mut
 		{
 			Prepare();
@@ -894,6 +1025,50 @@ namespace Beefy.utils
 					Debug.WriteLine(" Len: {0}", spanSize);
 		        }
 		    }
+		}
+
+		public void ToString(String outString, String format, IFormatProvider formatProvider)
+		{
+			if (HasChangeList)
+			{
+				IdSpan span = Duplicate();
+				span.ToString(outString, format, formatProvider);
+				return;
+			}
+
+			outString.AppendF($"Span(Length:{mLength} ChangeList:{(mChangeList?.Count).GetValueOrDefault()})");
+
+			if (format == "D")
+			{
+				outString.Append("{");
+				int encodeIdx = 0;
+				int charId = 1;
+				int charIdx = 0;
+				while (true)
+				{
+				    int32 cmd = Utils.DecodeInt(mData, ref encodeIdx);
+				    if (cmd > 0)
+				    {
+						charId = cmd;
+						outString.AppendF($" #{charId}");
+					}
+				    else
+				    {
+				        int32 spanSize = -cmd;
+				        
+				        charId += spanSize;
+				        charIdx += spanSize;
+
+				        if (cmd == 0)
+						{
+							outString.Append("}");
+				            return;
+						}
+
+						outString.AppendF($":{spanSize}");
+				    }
+				}
+			}
 		}
     }
 }

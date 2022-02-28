@@ -12,6 +12,7 @@ using Beefy.theme.dark;
 using Beefy.utils;
 using IDE.Debugger;
 using IDE.Compiler;
+using Beefy.geom;
 
 namespace IDE.ui
 {    
@@ -132,10 +133,98 @@ namespace IDE.ui
 
     public class SourceEditWidgetContent : DarkEditWidgetContent
     {
-		public class Data : EditWidgetContent.Data
+		public class CollapseSummary : DarkEditWidgetContent.Embed
+		{
+			public SourceEditWidgetContent mEditWidgetContent;
+			public int32 mCollapseIndex;
+			public String mHideString ~ delete _;
+
+			public override float GetWidth(bool hideLine)
+			{
+				if (hideLine)
+					return DarkTheme.sDarkTheme.mSmallBoldFont.GetWidth(mHideString) + GS!(24);
+
+				return GS!(24);
+			}
+
+			public override void Draw(Graphics g, Rect rect, bool hideLine)
+			{
+				if (rect.mHeight >= DarkTheme.sDarkTheme.mSmallBoldFont.GetLineSpacing())
+					g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
+
+				if (mEditWidgetContent.mSelection != null)
+				{
+					var collapseEntry = mEditWidgetContent.mOrderedCollapseEntries[mCollapseIndex];
+					if ((mEditWidgetContent.mSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.mSelection.Value.MaxPos >= collapseEntry.mStartIdx))
+					{
+						using (g.PushColor(mEditWidgetContent.GetSelectionColor(0)))
+							g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+					}
+				}
+
+				using (g.PushColor(0x80FFFFFF))
+				{
+					g.OutlineRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+				}
+
+				using (g.PushColor(0x20FFFFFF))
+				{
+					g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+				}
+
+				var summaryString = "...";
+				if ((mHideString != null) && (hideLine))
+					summaryString = scope:: $"{mHideString} ...";
+				g.DrawString(summaryString, rect.mX, rect.mY + (int)((rect.mHeight - g.mFont.GetLineSpacing()) * 0.4f), .Centered, rect.mWidth);
+			}
+		}
+
+		public struct CollapseData
+		{
+			public enum Kind : char8
+			{
+				Zero = 0,
+				Comment = 'C',
+				Method = 'M',
+				Namespace = 'N',
+				Property = 'P',
+				Region = 'R',
+				Type = 'T',
+				Unknown = '?'
+			}
+
+			public Kind mKind;
+			public int32 mAnchorIdx;
+			public int32 mStartIdx;
+			public int32 mEndIdx;
+
+			public int32 mAnchorId;
+			public int32 mStartId;
+			public int32 mEndId;
+
+			public int32 mAnchorLine = -1;
+			public int32 mStartLine = -1;
+			public int32 mEndLine = -1;
+		}
+
+		public struct CollapseEntry : CollapseData
+		{
+			public float mOpenPct = 1.0f;
+			public bool mIsOpen = true;
+			public int32 mPrevAnchorLine = -1;
+
+			public int32 mParseRevision;
+			public int32 mTextRevision;
+			public bool mDeleted;
+		}
+
+		public class Data : DarkEditWidgetContent.Data
 		{
 			public List<PersistentTextPosition> mPersistentTextPositions = new List<PersistentTextPosition>() ~ DeleteContainerAndItems!(_);
 			public QuickFind mCurQuickFind; // Only allow one QuickFind on this buffer at a time
+			public int32 mCollapseParseRevision;
+			public int32 mCollapseTextVersionId;
+			public List<CollapseData> mCollapseData = new .() ~ delete _;
 		}
 
 		struct QueuedTextEntry
@@ -236,7 +325,12 @@ namespace IDE.ui
 		FastCursorState mFastCursorState ~ delete _;
 		public HashSet<int32> mCurParenPairIdSet = new .() ~ delete _;
 		HilitePairedCharState mHilitePairedCharState = .NeedToRecalculate;
-		
+		public Dictionary<int32, CollapseEntry> mCollapseMap = new .() ~ delete _;
+		public List<CollapseEntry*> mOrderedCollapseEntries = new .() ~ delete _;
+		public int32 mCollapseParseRevision;
+		public int32 mCollapseTextVersionId;
+		public bool mCollapseNeedsUpdate;
+
 		public List<PersistentTextPosition> PersistentTextPositions
 		{
 			get
@@ -250,6 +344,17 @@ namespace IDE.ui
 			get
 			{
 				return (Data)mData;
+			}
+		}
+
+		public Data	PreparedData
+		{
+			get
+			{
+				GetTextData();
+				var data = (Data)mData;
+				data.mTextIdData.Prepare();
+				return data;
 			}
 		}
 
@@ -1502,6 +1607,9 @@ namespace IDE.ui
 
         public override void InsertAtCursor(String theString, InsertFlags insertFlags = .None)
         {
+			if (!theString.IsWhiteSpace)
+				CheckCollapseOpen(CursorLineAndColumn.mLine);
+
 			var insertFlags;
 
 			if ((HasSelection()) && (gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.mKind == .Rename))
@@ -1545,6 +1653,9 @@ namespace IDE.ui
             //CursorLineAndColumn = LineAndColumn(line, GetLineEndColumn(line, false, false));            
             //CursorMoved();
 
+			if (IsLineCollapsed(line))
+				return;
+
 			float x;
 			float y;
 			float wantWidth = 0;
@@ -1553,6 +1664,21 @@ namespace IDE.ui
 			if (wantWidth != 0)
 				x = wantWidth + mTextInsets.mLeft;
 			MoveCursorToCoord(x, y);
+
+			int endLine = CursorLineAndColumn.mLine;
+			while (true)
+			{
+				if (!IsLineCollapsed(endLine + 1))
+					break;
+				endLine++;
+			}
+
+			if (endLine != CursorLineAndColumn.mLine)
+			{
+				GetLinePosition(endLine, var endLineStart, var endLineEnd);
+				GetLineAndColumnAtLineChar(endLine, endLineEnd - endLineStart, var endColumn);
+				CursorLineAndColumn = .(endLine, endColumn);
+			}
 
             return;
         }
@@ -3001,9 +3127,25 @@ namespace IDE.ui
 		public void MoveLine(VertDir dir)
 		{
 			int lineNum = CursorLineAndColumn.mLine;
-			GetLinePosition(lineNum, var lineStart, var lineEnd);
+			int endLineNum = lineNum;
+
+			GetLinePosition(lineNum, var lineStart, ?);
+			
+			// Copy collapsed lines below as well
+			while (endLineNum < mLineCoords.Count - 1)
+			{
+				if (GetLineHeight(endLineNum + 1) > 0.1f)
+					break;
+				endLineNum++;
+			}
+			GetLinePosition(endLineNum, ?, var lineEnd);
+
 			mSelection = .(lineStart, Math.Min(lineEnd + 1, mData.mTextLength));
-			MoveSelection(lineNum + (int)dir, false);
+
+			if (dir == .Down)
+				MoveSelection(endLineNum + (int)dir, false);
+			else
+				MoveSelection(lineNum + (int)dir, false);
 		}
 
 		public void MoveStatement(VertDir dir)
@@ -4393,6 +4535,26 @@ namespace IDE.ui
             }
         }
 
+		public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
+		{
+			int line = GetLineAt(y);
+			if (mEmbeds.GetValue(line) case .Ok(let embed))
+			{
+				Rect embedRect = GetEmbedRect(line, embed);
+				if (embedRect.Contains(x, y))
+				{
+					if ((btn == 0) && (btnCount == 2))
+					{
+						if (var collapseSummary = embed as SourceEditWidgetContent.CollapseSummary)
+							SetCollapseOpen(collapseSummary.mCollapseIndex, true);
+					}
+					return;
+				}
+			}
+
+			base.MouseDown(x, y, btn, btnCount);
+		}
+
         public override void Undo()
         {
 			var symbolReferenceHelper = IDEApp.sApp.mSymbolReferenceHelper;
@@ -4485,10 +4647,60 @@ namespace IDE.ui
                 IDEApp.sApp.mSymbolReferenceHelper.SourceUpdateText(this, index);
         }
 
+		public override void Backspace()
+		{
+			CheckCollapseOpen(CursorLineAndColumn.mLine);
+			base.Backspace();
+		}
+
         public override void RemoveText(int index, int length)
         {
             if (IDEApp.sApp.mSymbolReferenceHelper != null)
                 IDEApp.sApp.mSymbolReferenceHelper.SourcePreRemoveText(this, index, length);
+
+			if (CursorTextPos == index)
+			{
+				CheckCollapseOpen(CursorLine);
+			}
+
+			//TODO: Needed?
+			/*var data = Data;
+
+			int linesRemoved = 0;
+			for (int i in index..<index+length)
+			{
+				if (data.mText[i].mChar == '\n')
+					linesRemoved++;
+			}
+
+			if (linesRemoved > 0) // Optimization to only handle block moves, otherwise we wait for RefreshCollapseRegions
+			{
+				for (var collapseEntry in mOrderedCollapseEntries)
+				{
+					bool failed = false;
+
+					void Update(ref int32 collapseIdx, ref int32 line)
+					{
+						if (index > collapseIdx)
+							return;
+						if (index + length > collapseIdx)
+						{
+							failed = true;
+							return;
+						}
+						collapseIdx -= (.)length;
+						line -= (.)linesRemoved;
+					}
+
+					int32 prevAnchorLine = collapseEntry.mAnchorLine;
+
+					Update(ref collapseEntry.mAnchorIdx, ref collapseEntry.mAnchorLine);
+					Update(ref collapseEntry.mStartIdx, ref collapseEntry.mStartLine);
+					Update(ref collapseEntry.mEndIdx, ref collapseEntry.mEndLine);
+
+					RefreshCollapseRegion(collapseEntry, prevAnchorLine, failed);
+				}
+			}*/
 
             for (var persistentTextPosition in PersistentTextPositions)
             {                
@@ -4548,11 +4760,99 @@ namespace IDE.ui
 			mVirtualCursorPos.ValueRef.mColumn = (.)Math.Min(mVirtualCursorPos.Value.mColumn, Math.Max(virtualEnd, lineEnd));
 		}
 
-        public override void PhysCursorMoved(CursorMoveKind moveKind)
-        {			
-			//Debug.WriteLine("Cursor moved {0} {1} {2}", CursorLineAndColumn.mLine, CursorLineAndColumn.mColumn, moveKind);
+		bool CheckCollapseOpen(int checkLine, CursorMoveKind cursorMoveKind = .Unknown)
+		{
+			if (cursorMoveKind == .FromTyping_Deleting)
+				return true;
 
-			if (moveKind != .FromTyping)
+			if (IsLineCollapsed(checkLine))
+			{
+				if ((cursorMoveKind == .SelectLeft) || (cursorMoveKind == .SelectRight))
+				{
+					if (!IsLineCollapsed(CursorLineAndColumn.mLine))
+					{
+						int anchorLine = FindUncollapsedLine(checkLine);
+						CursorLineAndColumn = .(anchorLine, 0);
+						CursorToLineEnd();
+						return false;
+					}
+				}
+				else
+				{
+					for (var collapseRegion in mOrderedCollapseEntries)
+					{
+						if ((checkLine >= collapseRegion.mStartLine) && (checkLine <= collapseRegion.mEndLine) && (!collapseRegion.mIsOpen))
+						{
+							SetCollapseOpen(@collapseRegion.Index, true, true);
+						}
+					}
+					RehupLineCoords();
+				}
+			}
+			return true;
+		}
+
+		public override bool PrepareForCursorMove(int dir = 0)
+		{
+			bool hadSelection = HasSelection();
+
+			if ((dir > 0) && (HasSelection()))
+			{
+				GetLineCharAtIdx(mSelection.Value.MaxPos - 1, var maxLine, ?);
+				if (IsLineCollapsed(maxLine))
+				{
+					if (hadSelection)
+					{
+						mSelection = null;
+						CursorToLineEnd();
+						return true;
+					}
+				}
+			}
+
+			if (dir < 0)
+			{
+				int line = CursorLineAndColumn.mLine;
+				if (IsLineCollapsed(line))
+				{
+					int anchorLine = FindUncollapsedLine(line);
+					CursorLineAndColumn = .(anchorLine, 0);
+					base.CursorToLineEnd();
+					return true;
+				}
+			}
+
+			return base.PrepareForCursorMove(dir);
+		}
+
+		public override void MoveCursorTo(int line, int charIdx, bool centerCursor, int movingDir, CursorMoveKind cursorMoveKind)
+		{
+			if (!CheckCollapseOpen(line, cursorMoveKind))
+				return;
+			base.MoveCursorTo(line, charIdx, centerCursor, movingDir, cursorMoveKind);
+
+			/*if (mSourceViewPanel?.mQuickFind.mIsShowingMatches == true)
+			{
+				mSourceViewPanel.mQuickFind.ClearFlags(false, true);
+				mSourceViewPanel.mQuickFind.mCurFindIdx = (.)CursorTextPos;
+			}*/
+		}
+
+        public override void PhysCursorMoved(CursorMoveKind moveKind)
+        {
+			if (mVirtualCursorPos != null)
+			{
+				CheckCollapseOpen(mVirtualCursorPos.Value.mLine, moveKind);
+			}
+			else
+			{
+				GetLineCharAtIdx(mCursorTextPos, var checkLine, ?);
+				CheckCollapseOpen(checkLine, moveKind);
+			}
+
+			//Debug.WriteLine("Cursor moved Idx:{0} Line:{1} Col:{2} MoveKind:{3}", CursorTextPos, CursorLineAndColumn.mLine, CursorLineAndColumn.mColumn, moveKind);
+			
+			if (!moveKind.IsFromTyping)
 			{
 				int cursorIdx = CursorTextPos;
 				mData.mTextIdData.Prepare();
@@ -4582,6 +4882,7 @@ namespace IDE.ui
 
 			if ((mSourceViewPanel != null) && (mSourceViewPanel.mHoverWatch != null))
 				mSourceViewPanel.mHoverWatch.Close();
+
         }
 
         public override void Update()
@@ -4721,12 +5022,213 @@ namespace IDE.ui
 			}
 		}
 
+		public void RehupLineCoords(int animIdx = -1, Span<int32> animLines = default)
+		{
+			Debug.Assert(Thread.CurrentThread == gApp.mMainThread);
+
+			var data = mData as Data;
+
+			if (mLineCoords == null)
+				mLineCoords = new .();
+			if (mLineCoordJumpTable == null)
+				mLineCoordJumpTable = new .();
+
+			mLineCoords.Clear();
+			mLineCoords.GrowUnitialized(data.mLineStarts.Count);
+			mLineCoordJumpTable.Clear();
+
+			float fontHeight = mFont.GetLineSpacing();
+			int prevJumpIdx = -1;
+			float jumpCoordSpacing = GetJumpCoordSpacing();
+
+			SourceEditWidgetContent.CollapseEntry* animEntry = null;
+			if (animIdx != -1)
+				animEntry = mOrderedCollapseEntries[animIdx];
+
+			double curY = 0;
+
+			List<int32> collapseStack = scope .(16);
+			int32 curIdx = 0;
+			int32 closeDepth = 0;
+			int32 curAnimLineIdx = 0;
+			bool inAnim = false;
+			for (int line < data.mLineStarts.Count)
+			{
+				while (curIdx < mOrderedCollapseEntries.Count)
+				{
+					var entry = mOrderedCollapseEntries[curIdx];
+					if (entry.mDeleted)
+					{
+						curIdx++;
+						continue;
+					}
+
+					if (entry.mAnchorLine > line)
+						break;
+					collapseStack.Add(curIdx);
+					curIdx++;
+				}
+
+				bool deferClose = false;
+
+				if (!collapseStack.IsEmpty)
+				{
+					int32 activeIdx = collapseStack.Back;
+					var entry = mOrderedCollapseEntries[activeIdx];
+					if (line == entry.mStartLine)
+					{
+						if (activeIdx == animIdx)
+							inAnim = true;
+						if ((!entry.mIsOpen) && (activeIdx != animIdx))
+						{
+							if ((closeDepth == 0) && (entry.mAnchorLine == entry.mStartLine))
+								deferClose = true;
+							else
+								closeDepth++;
+						}
+					}
+				}
+
+				float lineHeight = fontHeight;
+				if (closeDepth > 0)
+				{
+					lineHeight = 0;
+				}
+				else if ((animEntry != null) && (inAnim) && (line != animEntry.mAnchorLine))
+				{
+					if (inAnim)
+						lineHeight *= 0.50f + animEntry.mOpenPct*0.50f;
+
+					if ((curAnimLineIdx < animLines.Length) && (animLines[curAnimLineIdx] == line))
+						curAnimLineIdx++;
+
+					float pow = Math.Min(animLines.Length / 200.0f, 5.0f);
+					float linePct = Math.Pow(animEntry.mOpenPct, pow);
+
+					int maxAnimLineIdx = (.)Math.Round(Math.Min(animLines.Length, 1000) * linePct);
+					if (curAnimLineIdx > maxAnimLineIdx)
+						lineHeight = 0;
+				}
+
+				mLineCoords[line] = (float)curY;
+
+				int jumpIdx = (.)(curY / jumpCoordSpacing);
+				while (prevJumpIdx < jumpIdx)
+				{
+					mLineCoordJumpTable.Add(((int32)line, (int32)line + 1));
+					prevJumpIdx++;
+				}
+				mLineCoordJumpTable[jumpIdx].max = (.)line + 1;
+				curY += lineHeight;
+
+				if (deferClose)
+					closeDepth++;
+
+				while (!collapseStack.IsEmpty)
+				{
+					int32 activeIdx = collapseStack.Back;
+					var entry = mOrderedCollapseEntries[activeIdx];
+					if (line < entry.mEndLine)
+						break;
+					if (activeIdx == animIdx)
+						inAnim = false;
+					if ((!entry.mIsOpen) && (closeDepth > 0))
+						closeDepth--;
+					collapseStack.PopBack();
+				}
+			}
+
+			float height = mLineCoords.Back + mTextInsets.mTop + mTextInsets.mBottom;
+			if ((height + mMaximalScrollAddedHeight != mHeight) && (mHeight > 0) && (mMaximalScrollAddedHeight > 0))
+			{
+				mMaximalScrollAddedHeight = 0;
+				mHeight = height;
+				UpdateMaximalScroll();
+				mEditWidget.UpdateScrollbars();
+			}
+
+			mHilitePairedCharState = .NeedToRecalculate;
+		}
+
+		public override void GetTextData()
+		{
+			var data = Data;
+
+			if (data.mCollapseParseRevision != mCollapseParseRevision)
+			{
+				mCollapseParseRevision = data.mCollapseParseRevision;
+				mCollapseTextVersionId = data.mCollapseTextVersionId;
+
+				for (var collapseData in ref data.mCollapseData)
+				{
+					if (mCollapseMap.TryAdd(collapseData.mAnchorId, ?, var entry))
+						*entry = .();
+					Internal.MemCpy(entry, &collapseData, sizeof(CollapseData));
+					entry.mPrevAnchorLine = entry.mAnchorLine;
+					entry.mParseRevision = mCollapseParseRevision;
+					entry.mDeleted = false;
+				}
+
+				for (var entry in ref mCollapseMap.Values)
+				{
+					if (entry.mParseRevision != data.mCollapseParseRevision)
+					{
+						if (mEmbeds.GetAndRemove(entry.mAnchorLine) case .Ok(let val))
+							delete val.value;
+						@entry.Remove();
+					}
+				}
+
+				mOrderedCollapseEntries.Clear();
+				for (var entry in ref mCollapseMap.Values)
+				{
+					mOrderedCollapseEntries.Add(&entry);
+				}
+
+				mOrderedCollapseEntries.Sort(scope (lhs, rhs) => lhs.mAnchorIdx <=> rhs.mAnchorIdx);
+
+				for (var entry in mOrderedCollapseEntries)
+				{
+					if (entry.mKind == .Region)
+						entry.mStartLine++;
+
+					if ((entry.mPrevAnchorLine != -1) && (entry.mPrevAnchorLine != entry.mAnchorLine))
+					{
+						if (mEmbeds.GetAndRemove(entry.mPrevAnchorLine) case .Ok(let val))
+						{
+							if (!mEmbeds.TryAdd(entry.mAnchorLine, var keyPtr, var valuePtr))
+							{
+								if (var collapseSummary = val.value as SourceEditWidgetContent.CollapseSummary)
+									collapseSummary.mCollapseIndex = (.)@entry.Index;
+								*valuePtr = val.value;
+							}
+							else
+								delete val.value;
+						}	
+					}
+				}
+
+				//Debug.WriteLine($"ParseCollapseRegions Count:{mOrderedCollapseEntries.Count} Time:{sw.ElapsedMilliseconds}ms");
+			}
+
+			base.GetTextData();
+		}
+
+		public override void CheckLineCoords()
+		{
+			if (mLineCoordTextVersionId == mData.mCurTextVersionId)
+				return;
+
+			RehupLineCoords();
+			mLineCoordTextVersionId = mData.mCurTextVersionId;
+		}
+
         public override void Draw(Graphics g)
         {
             base.Draw(g);
-
+			
 			// Highlight matching paired characters under cursor
-			if (mEditWidget.mHasFocus && !HasSelection())
+			if ((mEditWidget.mHasFocus) && (!HasSelection()) && (!IsLineCollapsed(CursorLineAndColumn.mLine)))
 			{
 				int64 stateHash = (.)(CursorTextPos ^ ((int64)mData.mCurTextVersionId << 31));
 				if (mHilitePairedCharState case .Valid(var cachedStateHash, ?, ?, ?, ?, ?))
@@ -4826,7 +5328,8 @@ namespace IDE.ui
 							GetLineColumnAtIdx(matchingParenIndex, var line2, var column2);
 							GetTextCoordAtLineAndColumn(line1, column1, var x1, var y1);
 							GetTextCoordAtLineAndColumn(line2, column2, var x2, var y2);
-							mHilitePairedCharState = .Valid(stateHash, x1, y1, x2, y2, charWidth);
+							if (GetLineHeight(line2) > 0.1f)
+								mHilitePairedCharState = .Valid(stateHash, x1, y1, x2, y2, charWidth);
 						}
 					}
 				}
@@ -4880,5 +5383,486 @@ namespace IDE.ui
 				}
 			}
         }
+
+		public void CollapseToggle()
+		{
+			CollapseEntry* foundEntry = null;
+			int foundIdx = -1;
+
+			GetTextData();
+			int line = CursorLineAndColumn.mLine;
+			for (var entry in mOrderedCollapseEntries)
+			{
+				if ((line >= entry.mAnchorLine) && (line <= entry.mEndLine))
+				{
+					foundIdx = @entry.Index;
+					foundEntry = entry;
+				}
+			}
+
+			if (foundEntry != null)
+				SetCollapseOpen(foundIdx, !foundEntry.mIsOpen);
+		}
+
+		public void CollapseAll()
+		{
+			GetTextData();
+			for (var entry in mOrderedCollapseEntries)
+			{
+				if (entry.mDeleted)
+					continue;
+				SetCollapseOpen(@entry.Index, false);
+			}
+		}
+
+		public void CollapseToggleAll()
+		{
+			bool hasClosed = false;
+
+			GetTextData();
+			for (var entry in mOrderedCollapseEntries)
+			{
+				if (entry.mDeleted)
+					continue;
+				if (!entry.mIsOpen)
+					hasClosed = true;
+			}
+
+			for (var entry in mOrderedCollapseEntries)
+			{
+				if (entry.mDeleted)
+					continue;
+				SetCollapseOpen(@entry.Index, hasClosed);
+			}
+		}
+
+		public void CollapseToDefinition()
+		{
+			GetTextData();
+			List<bool> hadDefs = scope .();
+			hadDefs.Resize(mOrderedCollapseEntries.Count);
+			List<int32> collapseStack = scope .();
+			int stackTypeCount = 0;
+
+			for (var entry in mOrderedCollapseEntries)
+			{
+				if (entry.mDeleted)
+					continue;
+
+				SourceEditWidgetContent.CollapseEntry* activeEntry = null;
+
+				while (!collapseStack.IsEmpty)
+				{
+					activeEntry = mOrderedCollapseEntries[collapseStack.Back];
+					if (entry.mAnchorLine < activeEntry.mEndLine)
+						break;
+					if (activeEntry.mKind == .Type)
+						stackTypeCount--;
+					collapseStack.PopBack();
+					activeEntry = null;
+				}
+
+				if (activeEntry != null)
+				{
+					if (activeEntry.mKind == .Type)
+					{
+						if ((entry.mKind != .Type) && (entry.mKind != .Region))
+						{
+							SetCollapseOpen(@entry.Index, false);
+						}
+					}
+				}
+
+				collapseStack.Add((.)@entry.Index);
+
+				if (entry.mKind == .Type)
+				{
+					stackTypeCount++;
+
+					for (var entryId in collapseStack)
+					{
+						var checkEntry = mOrderedCollapseEntries[entryId];
+						if (!checkEntry.mIsOpen)
+							SetCollapseOpen(entryId, true);
+					}
+				}
+
+				if (stackTypeCount == 0)
+					SetCollapseOpen(@entry.Index, false);
+			}
+		}
+
+		
+		public void SetCollapseOpen(int collapseIdx, bool wantOpen, bool immediate = false)
+		{
+			var entry = mOrderedCollapseEntries[collapseIdx];
+
+			entry.mIsOpen = wantOpen;
+			if (immediate)
+				entry.mOpenPct = entry.mIsOpen ? 1.0f : 0.0f;
+			else
+				mCollapseNeedsUpdate = true;
+
+			var cursorLineAndColumn = CursorLineAndColumn;
+
+			if (wantOpen)
+			{
+				if (mEmbeds.GetValue(entry.mAnchorLine) case .Ok(let embed))
+				{
+					if ((embed.mKind == .HideLine) || (embed.mKind == .LineEnd))
+					{
+						delete embed;
+						mEmbeds.Remove(entry.mAnchorLine);
+					}
+				}
+			}
+			else if (immediate)
+			{
+				FinishCollapseClose(collapseIdx, entry);
+			}
+
+			if ((!wantOpen) && (mSelection != null) && (mSelection.Value.MinPos >= entry.mStartIdx) && (mSelection.Value.MinPos <= entry.mEndIdx))
+			{
+				if (mSelection.Value.MaxPos > entry.mEndIdx + 1)
+					mSelection = .(entry.mEndIdx + 1, mSelection.Value.MaxPos);
+				else
+					mSelection = null;
+			}
+
+			if ((!wantOpen) && (cursorLineAndColumn.mLine >= entry.mStartLine) && (cursorLineAndColumn.mLine <= entry.mEndLine))
+			{
+				if (CursorTextPos < entry.mEndIdx)
+				{
+					CursorLineAndColumn = .(entry.mAnchorLine, 0);
+					CursorToLineStart(false);
+				}
+			}
+		}
+
+		public void RefreshCollapseRegion(SourceEditWidgetContent.CollapseEntry* entry, int32 prevAnchorLine, bool failed)
+		{
+			if (failed)
+			{
+				if (mEmbeds.GetAndRemove(prevAnchorLine) case .Ok(let val))
+					delete val.value;
+				entry.mDeleted = true;
+			}
+
+			if (prevAnchorLine != entry.mAnchorLine)
+			{
+				if (mEmbeds.GetAndRemove(prevAnchorLine) case .Ok(let val))
+				{
+					if (mEmbeds.TryAdd(entry.mAnchorLine, var keyPtr, var valuePtr))
+						*valuePtr = val.value;
+					else
+						delete val.value;
+				}
+			}
+		}
+
+		public void RefreshCollapseRegions()
+		{
+			GetTextData();
+
+			var data = Data;
+			if (mCollapseTextVersionId == data.mCurTextVersionId)
+				return;
+			mCollapseTextVersionId = data.mCurTextVersionId;
+			data.mTextIdData.Prepare();
+
+			Stopwatch sw = scope .();
+			sw.Start();
+
+			bool failed = false;
+			bool needsRefresh = true;
+
+			IdSpan.LookupContext lookupCtx = scope .(data.mTextIdData);
+
+			void Update(int32 id, ref int32 idx, ref int32 line)
+			{
+				idx = (.)lookupCtx.GetIndexFromId(id);
+
+				if (idx == -1)
+				{
+					//Debug.WriteLine($"Failed! {lookupCtx}");
+
+					failed = true;
+					return;
+				}
+				GetLineCharAtIdx(idx, var tempLine, var lineChar);
+				line = (.)tempLine;
+			}
+
+			for (var entry in mOrderedCollapseEntries)
+			{
+				if (entry.mDeleted)
+				{
+					if (mEmbeds.GetAndRemove(entry.mAnchorIdx) case .Ok(let val))
+						delete val.value;
+					continue;
+				}
+
+				int32 prevAnchorLine = entry.mAnchorLine;
+
+				failed = false;
+				Update(entry.mAnchorId, ref entry.mAnchorIdx, ref entry.mAnchorLine);
+				Update(entry.mStartId, ref entry.mStartIdx, ref entry.mStartLine);
+				Update(entry.mEndId, ref entry.mEndIdx, ref entry.mEndLine);
+
+				if (entry.mKind == .Region)
+					entry.mStartLine++;
+
+				if (failed)
+					needsRefresh = true;
+
+				RefreshCollapseRegion(entry, prevAnchorLine, failed);
+			}
+
+			//Debug.WriteLine($"RefreshCollapseRegions Count:{mOrderedCollapseEntries.Count} Time:{sw.ElapsedMilliseconds}ms");
+			sw.Stop();
+
+			if (needsRefresh)
+				RehupLineCoords();
+		}
+
+		public void ParseCollapseRegions(String collapseText, int32 textVersion, ref IdSpan idSpan)
+		{
+			IdSpan.LookupContext lookupCtx = scope .(idSpan);
+
+			var data = PreparedData;
+
+			data.mCollapseData.Clear();
+
+			for (var line in collapseText.Split('\n', .RemoveEmptyEntries))
+			{
+				SourceEditWidgetContent.CollapseEntry.Kind kind = (.)line[0];
+				line.RemoveFromStart(1);
+
+				var itr = line.Split(',');
+
+				CollapseData collapseData;
+
+				collapseData.mAnchorIdx = int32.Parse(itr.GetNext().Value);
+				collapseData.mAnchorId = lookupCtx.GetIdAtIndex(collapseData.mAnchorIdx);
+				collapseData.mKind = kind;
+				collapseData.mStartIdx = int32.Parse(itr.GetNext().Value);
+				collapseData.mEndIdx = int32.Parse(itr.GetNext().Value);
+
+				GetLineCharAtIdx(collapseData.mAnchorIdx, var line, var lineChar);
+				collapseData.mAnchorLine = (.)line;
+
+				collapseData.mStartId = lookupCtx.GetIdAtIndex(collapseData.mStartIdx);
+				GetLineCharAtIdx(collapseData.mStartIdx, out line, out lineChar);
+				collapseData.mStartLine = (.)line;
+
+				collapseData.mEndId = lookupCtx.GetIdAtIndex(collapseData.mEndIdx);
+				GetLineCharAtIdx(collapseData.mEndIdx, out line, out lineChar);
+				collapseData.mEndLine = (.)line;
+
+				if ((collapseData.mAnchorId == -1) || (collapseData.mStartId == -1) || (collapseData.mEndId == -1))
+				{
+					Debug.FatalError();
+					continue; 
+				}
+
+				data.mCollapseData.Add(collapseData);
+			}
+
+			data.mCollapseParseRevision++;
+			data.mCollapseTextVersionId = textVersion;
+		}
+
+		public void FinishCollapseClose(int collapseIdx, SourceEditWidgetContent.CollapseEntry* entry)
+		{
+			if (entry.mAnchorLine == entry.mStartLine)
+			{
+				if (mEmbeds.TryAdd(entry.mAnchorLine, var keyPtr, var valuePtr))
+				{
+					SourceEditWidgetContent.CollapseSummary collapseSummary = new .();
+					collapseSummary.mEditWidgetContent = this;
+					collapseSummary.mCollapseIndex = (.)collapseIdx;
+					collapseSummary.mKind = .HideLine;
+					*valuePtr = collapseSummary;
+
+					var content = ExtractString(entry.mStartIdx, Math.Min(entry.mEndId - entry.mStartIdx + 1, 8192), .. scope .());
+					content.Trim();
+
+					collapseSummary.mHideString = new .();
+
+					if (content.StartsWith("/*"))
+						collapseSummary.mHideString.Append("/* ");
+					else if (content.StartsWith("//"))
+						collapseSummary.mHideString.Append("// ");
+
+					bool hadChar = false;
+					for (int i < content.Length)
+					{
+						char8 c = content[i];
+						if (c.IsWhiteSpace)
+						{
+							if (hadChar)
+								break;
+						}
+						else
+						{
+							if ((c != '/') && (c != '*'))
+								hadChar = true;
+						}
+
+						if (hadChar)
+							collapseSummary.mHideString.Append(c);
+
+						if (collapseSummary.mHideString.Length > 32)
+							break;
+					}
+				}
+			}
+			else
+			{
+				if (mEmbeds.TryAdd(entry.mAnchorLine, var keyPtr, var valuePtr))
+				{
+					SourceEditWidgetContent.CollapseSummary collapseSummary = new .();
+					collapseSummary.mEditWidgetContent = this;
+					collapseSummary.mCollapseIndex = (.)collapseIdx;
+					collapseSummary.mKind = .LineEnd;
+					*valuePtr = collapseSummary;
+				}
+			}
+		}
+
+		public void UpdateCollapse()
+		{
+			MarkDirty();
+
+			var data = Data;
+
+			bool hasMultiAnim = false;
+			int animIdx = -1;
+			List<int32> animLines = scope .(1024);
+
+			for (var entry in mOrderedCollapseEntries)
+			{
+				if ((entry.mIsOpen) && (entry.mOpenPct < 1.0f))
+				{
+					if (animIdx != -1)
+						hasMultiAnim = true;
+					animIdx = @entry.Index;
+				}
+
+				if ((!entry.mIsOpen) && (entry.mOpenPct > 0))
+				{
+					if (animIdx != -1)
+						hasMultiAnim = true;
+					animIdx = @entry.Index;
+				}
+			}
+
+			if (hasMultiAnim)
+			{
+				for (var entry in mOrderedCollapseEntries)
+				{
+					if (entry.mIsOpen)
+						entry.mOpenPct = 1.0f;
+					else
+					{
+						if (entry.mOpenPct > 0)
+						{
+							entry.mOpenPct = 0.0f;
+							FinishCollapseClose(@entry.Index, entry);
+						}
+					}
+				}
+
+				animIdx = -1;
+			}
+
+			if (animIdx == -1)
+			{
+				RehupLineCoords();
+				mCollapseNeedsUpdate = false;
+				return;
+			}
+
+			List<int32> collapseStack = scope .(16);
+			int32 curIdx = 0;
+			bool inAnim = false;
+			int32 insideCloseDepth = 0;
+			for (int line < data.mLineStarts.Count)
+			{
+				bool deferClose = false;
+
+				while (curIdx < mOrderedCollapseEntries.Count)
+				{
+					var entry = mOrderedCollapseEntries[curIdx];
+					if (entry.mAnchorLine > line)
+						break;
+					if (!entry.mDeleted)
+					{
+						if ((inAnim) && (!entry.mIsOpen))
+						{
+							if ((insideCloseDepth == 0) && (entry.mAnchorLine == entry.mStartLine))
+								deferClose = true;
+							else
+								insideCloseDepth++;
+						}
+						collapseStack.Add(curIdx);
+					}
+					curIdx++;
+				}
+
+				if ((inAnim) && (insideCloseDepth == 0))
+					animLines.Add((.)line);
+
+				if (deferClose)
+					insideCloseDepth++;
+
+				while (!collapseStack.IsEmpty)
+				{
+					int32 activeIdx = collapseStack.Back;
+					var entry = mOrderedCollapseEntries[activeIdx];
+					if (line == entry.mStartLine)
+					{
+						if ((inAnim) && (!entry.mIsOpen))
+							insideCloseDepth++;
+						if (activeIdx == animIdx)
+						{
+							if (entry.mStartLine != entry.mAnchorLine)
+								animLines.Add((.)line);
+							inAnim = true;
+						}
+					}
+					if (line < entry.mEndLine)
+						break;
+					if ((!entry.mIsOpen) && (insideCloseDepth > 0))
+						insideCloseDepth--;
+					if (activeIdx == animIdx)
+						inAnim = false;
+					collapseStack.PopBack();
+				}
+			}
+
+			float animSpeed = Math.Clamp(0.2f - Math.Pow(animLines.Count / 4000.0f, 0.6f), 0.065f, 0.15f);
+
+			//animSpeed *= 0.01f;
+
+			//Debug.WriteLine($"Lines: {animLines.Count} AnimSpeed: {animSpeed}");
+
+			var entry = mOrderedCollapseEntries[animIdx];
+			if ((entry.mIsOpen) && (entry.mOpenPct < 1.0f))
+			{
+				entry.mOpenPct = Math.Min(entry.mOpenPct + animSpeed, 1.0f);
+			}
+
+			if ((!entry.mIsOpen) && (entry.mOpenPct > 0))
+			{
+				entry.mOpenPct = Math.Max(entry.mOpenPct - animSpeed, 0.0f);
+
+				if (entry.mOpenPct == 0.0f)
+					FinishCollapseClose(animIdx, entry);
+			}
+
+			RehupLineCoords(animIdx, animLines);
+		}
+
     }
 }

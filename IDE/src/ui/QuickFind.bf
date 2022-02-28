@@ -85,7 +85,7 @@ namespace IDE.ui
         public bool mIsReplace;
         public int32 mLastTextVersion;
         bool mFoundMatches;        
-        bool mIsShowingMatches = false;
+        public bool mIsShowingMatches = false;
         static String sLastSearchString = new String() ~ delete _;
 
 		public bool mOwnsSelection;

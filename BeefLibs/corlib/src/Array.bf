@@ -55,7 +55,7 @@ namespace System
 				int c = midVal <=> value;
                 if (c == 0) return i;
                 if (c < 0)
-                    lo = i + 1;                    
+                    lo = i + 1;
                 else
                     hi = i - 1;
 			}

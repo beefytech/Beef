@@ -9151,6 +9151,272 @@ BF_EXPORT bool BF_CALLTYPE BfCompiler_ClassifySource(BfCompiler* bfCompiler, BfP
 	return !canceled;
 }
 
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCompiler, BfParser* bfParser)
+{
+	String& outString = *gTLStrReturn.Get();
+	outString.Clear();
+	
+	class CollapseVisitor : public BfElementVisitor
+	{
+	public:
+		BfParser* mParser;
+		String& mOutString;
+		HashSet<int> mStartsFound;
+		char mSeriesKind;
+		int mStartSeriesIdx;
+		int mEndSeriesIdx;
+
+	public:
+		CollapseVisitor(BfParser* parser, String& string) : mOutString(string)
+		{
+			mParser = parser;
+
+			mSeriesKind = 0;
+			mStartSeriesIdx = -1;
+			mEndSeriesIdx = -1;
+		}
+
+		void UpdateSeries(BfAstNode* node, char kind)
+		{
+			if (mStartSeriesIdx != -1)
+			{
+				if ((node->mTriviaStart != mEndSeriesIdx + 1) || (kind != mSeriesKind))
+				{
+					// Flush					
+					ConditionalAdd(mStartSeriesIdx, mStartSeriesIdx, mEndSeriesIdx, mSeriesKind);
+					mStartSeriesIdx = node->mSrcStart;
+				}
+			}
+			else
+				mStartSeriesIdx = node->mSrcStart;
+
+			mSeriesKind = kind;
+			mEndSeriesIdx = node->mSrcEnd - 1;
+		}
+
+		void FlushSeries()
+		{
+			if (mStartSeriesIdx != -1)
+				ConditionalAdd(mStartSeriesIdx, mStartSeriesIdx, mEndSeriesIdx, mSeriesKind);
+			mStartSeriesIdx = -1;
+		}
+
+		void ConditionalAdd(int anchor, int start, int end, char kind = '?')
+		{
+			bool isMultiline = false;
+			for (int i = start; i < end; i++)
+			{
+				if (mParser->mSrc[i] == '\n')
+				{
+					isMultiline = true;
+					break;
+				}
+			}
+			if (!isMultiline)
+				return;
+			char str[1024];
+			sprintf(str, "%c%d,%d,%d\n", kind, anchor, start, end);
+			mOutString.Append(str);
+		}
+
+		void Add(BfAstNode* anchor, BfAstNode* start, BfAstNode* end, char kind = '?')
+		{
+			if ((anchor == NULL) || (start == NULL) || (end == NULL))
+				return;
+			if (!mStartsFound.Add(start->mSrcStart))
+				return;
+			char str[1024];
+			sprintf(str, "%c%d,%d,%d\n", kind, anchor->mSrcStart, start->mSrcStart, end->mSrcStart);
+			mOutString.Append(str);
+		}
+
+		void Add(BfAstNode* anchor, BfAstNode* body, char kind = '?')
+		{
+			if (auto block = BfNodeDynCast<BfBlock>(body))
+			{
+				Add(anchor, block->mOpenBrace, block->mCloseBrace, kind);
+			}
+		}
+
+		virtual void Visit(BfMethodDeclaration* methodDeclaration) override
+		{			
+			BfAstNode* anchorNode = methodDeclaration->mNameNode;
+			if (auto ctorDeclaration = BfNodeDynCast<BfConstructorDeclaration>(methodDeclaration))
+				anchorNode = ctorDeclaration->mThisToken;
+			if (auto dtorDeclaration = BfNodeDynCast<BfDestructorDeclaration>(methodDeclaration))
+				anchorNode = dtorDeclaration->mThisToken;
+			if (auto propertyDeclaration = BfNodeDynCast<BfOperatorDeclaration>(methodDeclaration))
+				anchorNode = propertyDeclaration->mOperatorToken;
+			Add(anchorNode, methodDeclaration->mBody, 'M');
+
+			BfElementVisitor::Visit(methodDeclaration);
+		}
+
+		virtual void Visit(BfNamespaceDeclaration* namespaceDeclaration) override
+		{			
+			Add(namespaceDeclaration->mNamespaceNode, namespaceDeclaration->mBlock, 'N');
+
+			BfElementVisitor::Visit(namespaceDeclaration);
+		}
+
+		virtual void Visit(BfUsingDirective* usingDirective) override
+		{
+			UpdateSeries(usingDirective, 'U');
+
+			BfElementVisitor::Visit(usingDirective);
+		}
+
+		virtual void Visit(BfTypeDeclaration* typeDeclaration) override
+		{
+			BfAstNode* anchor = typeDeclaration->mNameNode;
+			if (anchor == NULL)
+				anchor = typeDeclaration->mStaticSpecifier;
+			Add(anchor, typeDeclaration->mDefineNode, 'T');
+
+			BfElementVisitor::Visit(typeDeclaration);
+		}
+
+		virtual void Visit(BfPropertyDeclaration* properyDeclaration) override
+		{			
+			Add(properyDeclaration->mNameNode, properyDeclaration->mDefinitionBlock, 'P');
+
+			BfElementVisitor::Visit(properyDeclaration);
+		}
+
+		virtual void Visit(BfIndexerDeclaration* indexerDeclaration) override
+		{
+			Add(indexerDeclaration->mThisToken, indexerDeclaration->mDefinitionBlock, 'P');
+
+			BfElementVisitor::Visit(indexerDeclaration);
+		}
+
+		virtual void Visit(BfPropertyMethodDeclaration* methodDeclaration) override
+		{			
+			Add(methodDeclaration->mNameNode, methodDeclaration->mBody);
+
+			BfElementVisitor::Visit(methodDeclaration);
+		}
+
+		virtual void Visit(BfIfStatement* ifStatement) override
+		{			
+			Add(ifStatement->mIfToken, ifStatement->mTrueStatement);
+			Add(ifStatement->mElseToken, ifStatement->mFalseStatement);
+
+			BfElementVisitor::Visit(ifStatement);
+		}
+
+		virtual void Visit(BfRepeatStatement* repeatStatement) override
+		{
+			Add(repeatStatement->mRepeatToken, repeatStatement->mEmbeddedStatement);
+
+			BfElementVisitor::Visit(repeatStatement);
+		}
+
+		virtual void Visit(BfDoStatement* doStatement) override
+		{
+			Add(doStatement->mDoToken, doStatement->mEmbeddedStatement);
+
+			BfElementVisitor::Visit(doStatement);
+		}
+
+		virtual void Visit(BfForStatement* forStatement) override
+		{
+			Add(forStatement->mForToken, forStatement->mEmbeddedStatement);
+
+			BfElementVisitor::Visit(forStatement);
+		}
+
+		virtual void Visit(BfForEachStatement* forStatement) override
+		{
+			Add(forStatement->mForToken, forStatement->mEmbeddedStatement);
+
+			BfElementVisitor::Visit(forStatement);
+		}
+
+		virtual void Visit(BfUsingStatement* usingStatement) override
+		{
+			Add(usingStatement->mUsingToken, usingStatement->mEmbeddedStatement);
+
+			BfElementVisitor::Visit(usingStatement);
+		}
+
+		virtual void Visit(BfSwitchStatement* switchStatement) override
+		{			
+			Add(switchStatement->mSwitchToken, switchStatement->mOpenBrace, switchStatement->mCloseBrace);
+
+			BfElementVisitor::Visit(switchStatement);
+		}
+
+		virtual void Visit(BfLambdaBindExpression* lambdaExpression) override
+		{
+			Add(lambdaExpression->mFatArrowToken, lambdaExpression->mBody);
+
+			BfElementVisitor::Visit(lambdaExpression);
+		}
+
+		virtual void Visit(BfBlock* block) override
+		{			
+			Add(block->mOpenBrace, block->mOpenBrace, block->mCloseBrace);
+
+			BfElementVisitor::Visit(block);
+		}
+	};
+
+	CollapseVisitor collapseVisitor(bfParser, outString);
+	collapseVisitor.VisitChild(bfParser->mRootNode);
+
+	BfAstNode* regionStart = NULL;
+	BfPreprocessorNode* prevPreprocessorNode = NULL;
+	int ignoredSectionStart = -1;
+	
+	for (auto element : bfParser->mSidechannelRootNode->mChildArr)
+	{
+		if (auto preprocessorNode = BfNodeDynCast<BfPreprocessorNode>(element))
+		{
+			if ((ignoredSectionStart != -1) && (prevPreprocessorNode != NULL) && (prevPreprocessorNode->mCommand != NULL))
+			{
+				collapseVisitor.ConditionalAdd(prevPreprocessorNode->mCommand->mSrcStart, ignoredSectionStart, preprocessorNode->mSrcEnd - 1);
+				ignoredSectionStart = -1;
+			}
+
+			StringView sv = preprocessorNode->mCommand->ToStringView();
+			if (sv == "region")
+				regionStart = preprocessorNode->mCommand;
+			else if (sv == "endregion")
+			{
+				collapseVisitor.Add(regionStart, regionStart, preprocessorNode->mCommand, 'R');
+				regionStart = NULL;
+			}
+
+			prevPreprocessorNode = preprocessorNode;
+		}
+
+		if (auto preprocessorNode = BfNodeDynCast<BfPreprocesorIgnoredSectionNode>(element))
+		{
+			if (ignoredSectionStart == -1)
+			{
+				for (int i = preprocessorNode->mSrcStart; i < preprocessorNode->mSrcEnd - 1; i++)
+				{
+					if (bfParser->mSrc[i] == '\n')
+					{
+						ignoredSectionStart = i + 1;
+						break;
+					}
+				}				
+			}
+		}
+
+		char kind = 0;
+		if (auto commentNode = BfNodeDynCast<BfCommentNode>(element))
+			collapseVisitor.UpdateSeries(commentNode, 'C');
+	}
+
+	collapseVisitor.FlushSeries();
+
+	
+	return outString.c_str();
+}
+
 BF_EXPORT bool BF_CALLTYPE BfCompiler_VerifyTypeName(BfCompiler* bfCompiler, char* name, int cursorPos)
 {
 	String typeName = name;

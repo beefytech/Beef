@@ -165,7 +165,7 @@ namespace IDE.ui
 
 		public ~this()
 		{
-			NOP!();
+			
 		}
 	}
 
@@ -300,6 +300,35 @@ namespace IDE.ui
 		public int32 mDebuggerContinueIdx;
 	}
 
+	class CollapseRegionView
+	{
+		public const uint32 cStartFlag = 0x8000'0000;
+		public const uint32 cMidFlag = 0x4000'0000;
+		public const uint32 cEndFlag = 0x2000'0000;
+		public const uint32 cIdMask = 0x0FFF'FFFF;
+
+		public List<uint32> mCollapseIndices = new .() ~ delete _;
+		public int32 mLineStart;
+		public int32 mCollapseRevision;
+		public int32 mTextVersionId;
+
+		public uint32 GetCollapseValue(int param)
+		{
+			if (param < mLineStart)
+				return 0;
+			if (param - mLineStart < mCollapseIndices.Count)
+				return mCollapseIndices[param - mLineStart];
+			return 0;
+		}
+	}
+
+	class QueuedCollapseData
+	{
+		public String mData = new .() ~ delete _;
+		public int32 mTextVersion;
+		public IdSpan mCharIdSpan ~ _.Dispose();
+	}
+
     public class SourceViewPanel : TextPanel
     {
         enum SourceDisplayId
@@ -349,10 +378,13 @@ namespace IDE.ui
         int32 mTicksSinceTextChanged;
         int32 mErrorLookupTextIdx = -1;
 		LinePointerDrawData mLinePointerDrawData;
+		Point? mMousePos;
 	#if IDE_C_SUPPORT
         public String mClangHoverErrorData ~ delete mClangHoverErrorData;
 #endif
-        
+		CollapseRegionView mCollapseRegionView = new .() ~ delete _;
+		QueuedCollapseData mQueuedCollapseData ~ delete _;
+
         public EditWidgetContent.CharData[] mProcessSpellCheckCharData ~ delete _;
         public IdSpan mProcessSpellCheckCharIdSpan ~ _.Dispose();
         //public int mBackgroundCursorIdx;
@@ -1785,18 +1817,18 @@ namespace IDE.ui
                 parser = bfSystem.CreateEmptyParser((BfProject)null);
             }
 
-			EditWidgetContent.CharData[] char8Data = null;
-			int char8Len = 0;
+			EditWidgetContent.CharData[] charData = null;
+			int charLen = 0;
 			if ((resolveParams != null) && (resolveParams.mCharData != null))
 			{
-				char8Data = resolveParams.mCharData;
-				char8Len = resolveParams.mCharData.Count;
+				charData = resolveParams.mCharData;
+				charLen = resolveParams.mCharData.Count;
 			}
-			if (char8Data == null)
+			if (charData == null)
 			{
 				Debug.Assert(!isBackground);
-				char8Data = mEditWidget.Content.mData.mText;
-				char8Len = mEditWidget.Content.mData.mTextLength;
+				charData = mEditWidget.Content.mData.mText;
+				charLen = mEditWidget.Content.mData.mTextLength;
 			}
 
             /*var char8Data = (!isBackground) ? mEditWidget.Content.mData.mText : mProcessResolveCharData;
@@ -1818,12 +1850,12 @@ namespace IDE.ui
 
             if (!isBackground)
                 bfSystem.PerfZoneStart("DoClassify.CreateChars");
-            char8[] chars = new char8[char8Len];
+            char8[] chars = new char8[charLen];
 			defer delete chars;
-            for (int32 i = 0; i < char8Len; i++)
+            for (int32 i = 0; i < charLen; i++)
             {
-                char8Data[i].mDisplayPassId = (int32)SourceDisplayId.Cleared;
-                chars[i] = (char8)char8Data[i].mChar;
+                charData[i].mDisplayPassId = (int32)SourceDisplayId.Cleared;
+                chars[i] = (char8)charData[i].mChar;
             }
                 
             String text = scope String();
@@ -1933,7 +1965,7 @@ namespace IDE.ui
 
 			if ((!isFastClassify) && (bfCompiler != null))
             {
-                if (!bfCompiler.ClassifySource(passInstance, parser, resolvePassData, char8Data))
+                if (!bfCompiler.ClassifySource(passInstance, parser, resolvePassData, charData))
                 {
 					//DeleteAndNullify!(mProcessResolveCharData);
 					//mProcessResolveCharIdSpan.Dispose();
@@ -1945,10 +1977,23 @@ namespace IDE.ui
 					}
                     bfCompiler.QueueDeferredResolveAll();
                 }
+
+				if ((resolveType == ResolveType.Classify) || (resolveType == ResolveType.ClassifyFullRefresh))
+				{
+					var collapseData = bfCompiler.GetCollapseRegions(parser, .. scope .());
+					using (mMonitor.Enter())
+					{
+						DeleteAndNullify!(mQueuedCollapseData);
+						mQueuedCollapseData = new .();
+						mQueuedCollapseData.mData.Set(collapseData);
+						mQueuedCollapseData.mTextVersion = resolveParams.mTextVersion;
+						mQueuedCollapseData.mCharIdSpan = resolveParams.mCharIdSpan.Duplicate();
+					}
+				}
             }
             else
             {
-                parser.ClassifySource(char8Data, !mIsBeefSource);
+                parser.ClassifySource(charData, !mIsBeefSource);
             }
 
             if (!isBackground)
@@ -3637,6 +3682,18 @@ namespace IDE.ui
 
 			AddWidget(mSplitTopPanel);			
 
+			var ewc = (SourceEditWidgetContent)mEditWidget.mEditWidgetContent;
+			var topEWC = (SourceEditWidgetContent)mSplitTopPanel.mEditWidget.mEditWidgetContent;
+
+			for (var entry in ewc.mOrderedCollapseEntries)
+			{
+				if (!entry.mIsOpen)
+				{
+					topEWC.SetCollapseOpen(@entry.Index, false, true);
+				}
+			}
+			topEWC.RehupLineCoords();
+
 			ResizeComponents();
 
 			// Match scroll positions			
@@ -4106,8 +4163,9 @@ namespace IDE.ui
 			if (mLoadFailed)
 				return;
 
-            DarkEditWidgetContent darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
-
+            var ewc = (SourceEditWidgetContent)mEditWidget.Content;
+			ewc.GetTextData();
+			
             g.SetFont(IDEApp.sApp.mTinyCodeFont);
 
             using (g.PushClip(0, mEditWidget.mY, mWidth, mEditWidget.mHeight - GS!(20)))
@@ -4115,13 +4173,93 @@ namespace IDE.ui
                 using (g.PushTranslate(0, mEditWidget.mY + mEditWidget.Content.Y + GS!(2)))
                 {
 					float editX = GetEditX();
-					float lineSpacing = darkEditWidgetContent.mFont.GetLineSpacing();
-					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
-					using (g.PushColor(gApp.mSettings.mUISettings.mColors.mCurrentLineNumberHilite))
-						g.FillRect(0, GS!(2) + cursorLineNumber * lineSpacing, editX - GS!(2), lineSpacing);
+					float leftAdjust = GS!(12);
 
-					int lineStart = (int)((-mEditWidget.Content.Y) / lineSpacing) - 1;
-					int lineEnd = Math.Min(darkEditWidgetContent.GetLineCount(), lineStart + (int)(mHeight / lineSpacing) + 3);
+					float lineSpacing = ewc.mFont.GetLineSpacing();
+					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
+					bool hiliteCurrentLine = true;
+
+					var jumpEntry = ewc.mLineCoordJumpTable[Math.Clamp((int)(-mEditWidget.Content.Y / ewc.GetJumpCoordSpacing()), 0, ewc.mLineCoordJumpTable.Count - 1)];
+					int lineStart = jumpEntry.min;
+					jumpEntry = ewc.mLineCoordJumpTable[Math.Clamp((int)((-mEditWidget.Content.Y + mHeight) / ewc.GetJumpCoordSpacing()), 0, ewc.mLineCoordJumpTable.Count - 1)];
+					int lineEnd = jumpEntry.max - 1;
+
+					int drawLineCount = lineEnd - lineStart + 1;
+
+					ewc.RefreshCollapseRegions();
+					if ((mCollapseRegionView.mLineStart != lineStart) || (mCollapseRegionView.mCollapseIndices.Count != drawLineCount) ||
+						(mCollapseRegionView.mCollapseRevision != ewc.mCollapseParseRevision) || (mCollapseRegionView.mTextVersionId != ewc.mCollapseTextVersionId))
+					{
+						mCollapseRegionView.mLineStart = (.)lineStart;
+						mCollapseRegionView.mCollapseIndices.Clear();
+						Internal.MemSet(mCollapseRegionView.mCollapseIndices.GrowUnitialized(drawLineCount), 0, drawLineCount * sizeof(int32));
+						mCollapseRegionView.mCollapseRevision = ewc.mCollapseParseRevision;
+						mCollapseRegionView.mTextVersionId = ewc.mCollapseTextVersionId;
+
+						List<int32> collapseStack = scope .(16);
+						int32 curIdx = 0;
+						for (int line in lineStart...lineEnd)
+						{
+							uint32 indexVal = 0;
+
+							while (curIdx < ewc.mOrderedCollapseEntries.Count)
+							{
+								var entry = ewc.mOrderedCollapseEntries[curIdx];
+								if (entry.mAnchorLine > line)
+									break;
+								if (!entry.mDeleted)
+								{
+									indexVal = (uint32)curIdx | CollapseRegionView.cStartFlag;
+									collapseStack.Add(curIdx);
+								}
+								curIdx++;
+							}
+
+							while (!collapseStack.IsEmpty)
+							{
+								var entry = ewc.mOrderedCollapseEntries[collapseStack.Back];
+								if (line < entry.mEndLine)
+									break;
+								if (indexVal == 0)
+									indexVal = (uint32)collapseStack.Back | CollapseRegionView.cEndFlag;
+								collapseStack.PopBack();
+							}
+
+							if ((indexVal == 0) && (!collapseStack.IsEmpty))
+								indexVal = (uint32)collapseStack.Back | CollapseRegionView.cMidFlag;
+							mCollapseRegionView.mCollapseIndices[line - lineStart] = indexVal;
+							
+						}
+					}
+
+					if ((mMousePos != null) && (mMousePos.Value.x >= mEditWidget.mX - GS!(13)) && (mMousePos.Value.x < mEditWidget.mX - GS!(0)))
+					{
+						int lineClick = GetLineAt(0, mMousePos.Value.y);
+						uint32 collapseVal = mCollapseRegionView.GetCollapseValue(lineClick);
+						if (collapseVal != 0)
+						{
+							var entry = ewc.mOrderedCollapseEntries[collapseVal & CollapseRegionView.cIdMask];
+							float startY = ewc.mLineCoords[entry.mAnchorLine];
+							float endY = ewc.mLineCoords[entry.mEndLine + 1];
+
+							using (g.PushColor(gApp.mSettings.mUISettings.mColors.mCurrentLineNumberHilite))
+								g.FillRect(0, GS!(2) + startY, editX - GS!(10), endY - startY);
+
+							hiliteCurrentLine = false;
+						}
+					}
+
+					if (hiliteCurrentLine)
+					{
+						using (g.PushColor(gApp.mSettings.mUISettings.mColors.mCurrentLineNumberHilite))
+						{
+							int hiliteLineNum = cursorLineNumber;
+							while (ewc.IsLineCollapsed(hiliteLineNum))
+								hiliteLineNum--;
+							g.FillRect(0, GS!(2) + ewc.mLineCoords[hiliteLineNum], editX - GS!(10), lineSpacing);
+						}
+					}
+
 					if (lineEnd <= lineStart)
 					{
 						return;
@@ -4144,8 +4282,8 @@ namespace IDE.ui
 							int breakpointCount = (.)(curLineFlags & .BreakpointCountMask);
 							curLineFlags++;
 
-							float iconX = Math.Max(GS!(-2), mEditWidget.mX - GS!(24)) + breakpointCount*-GS!(2);
-							float iconY = 0 + drawLineNum * lineSpacing + (lineSpacing - DarkTheme.sUnitSize + GS!(5)) / 2;
+							float iconX = Math.Max(GS!(-2), mEditWidget.mX - GS!(24) - leftAdjust) + breakpointCount*-GS!(2);
+							float iconY = 0 + ewc.mLineCoords[drawLineNum] + (lineSpacing - DarkTheme.sUnitSize + GS!(5)) / 2;
 
 							// Just leave last digit visible
 							/*using (g.PushColor(0xFF595959))
@@ -4166,8 +4304,8 @@ namespace IDE.ui
 								if ((drawLineNum < lineStart) || (drawLineNum >= lineEnd))
 									continue;
 								//hadLineIcon[drawLineNum - lineStart] = true;
-                                g.Draw(DarkTheme.sDarkTheme.GetImage(.IconBookmark), Math.Max(GS!(-5), mEditWidget.mX - GS!(30)),
-                                        0 + bookmark.mLineNum * lineSpacing);
+                                g.Draw(DarkTheme.sDarkTheme.GetImage(.IconBookmark), Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - leftAdjust),
+									0 + bookmark.mLineNum * lineSpacing);
 
 								var curLineFlags = ref lineFlags[drawLineNum - lineStart];
 								curLineFlags |= .Boomkmark;
@@ -4199,6 +4337,10 @@ namespace IDE.ui
 						{
 						    for (int lineIdx = lineStart; lineIdx < lineEnd; lineIdx++)
 						    {
+								float drawHeight = ewc.mLineCoords[lineIdx + 1] - ewc.mLineCoords[lineIdx];
+								if (drawHeight < lineSpacing * 0.25f)
+									continue;
+
 								lineStr.Clear();
 
 								int maxLineChars = Int32.MaxValue;
@@ -4216,10 +4358,46 @@ namespace IDE.ui
 								case 2: lineStr.AppendF("{0}", (lineIdx + 1) % 100);
 								default: lineStr.AppendF("{0}", lineIdx + 1);
 								}
-						        g.DrawString(lineStr, 0, GS!(2) + lineIdx * lineSpacing, FontAlign.Right, editX - GS!(2));
+						        g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx], FontAlign.Right, editX - GS!(14));
 						    }
 						}
 					}
+						
+				    for (int lineIdx = lineStart; lineIdx < lineEnd; lineIdx++)
+				    {
+						int collapseLookup = lineIdx - mCollapseRegionView.mLineStart;
+						if ((collapseLookup >= 0) && (collapseLookup < mCollapseRegionView.mCollapseIndices.Count))
+						{
+							float drawHeight = ewc.mLineCoords[lineIdx + 1] - ewc.mLineCoords[lineIdx];
+							if (drawHeight < lineSpacing * 0.25f)
+								continue;
+
+							float boxAdjustTop = Math.Floor((lineSpacing - DarkTheme.sUnitSize)/2);
+							float boxAdjustBot = Math.Ceiling((lineSpacing - DarkTheme.sUnitSize)/2);
+
+							uint32 collapseIdx = mCollapseRegionView.mCollapseIndices[lineIdx - mCollapseRegionView.mLineStart];
+							if ((collapseIdx & CollapseRegionView.cStartFlag) != 0)
+							{
+								var entry = ewc.mOrderedCollapseEntries[collapseIdx & CollapseRegionView.cIdMask];
+								g.Draw(DarkTheme.sDarkTheme.GetImage(entry.mIsOpen ? .CollapseOpened : .CollapseClosed), editX - GS!(16), ewc.mLineCoords[lineIdx] + boxAdjustTop + GS!(2));
+							}
+							else if ((collapseIdx & CollapseRegionView.cEndFlag) != 0)
+							{
+								using (g.PushColor(0xFFA5A5A5))
+								{
+									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] - (int)GS!(0.5f), (int)GS!(1.5f), lineSpacing);
+									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] + lineSpacing - (int)GS!(1.5f), GS!(5), (int)GS!(1.5f));
+								}
+							}
+							else if (collapseIdx != 0)
+							{
+								using (g.PushColor(0xFFA5A5A5))
+								{
+									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] - boxAdjustBot - GS!(5), (int)GS!(1.5f), lineSpacing + boxAdjustBot + boxAdjustTop + (int)GS!(12f));
+								}
+							}
+						}
+				    }
 
                     if (IDEApp.sApp.mExecutionPaused)
                     {
@@ -5255,6 +5433,11 @@ namespace IDE.ui
 		    Point mousePos;
 		    bool mouseoverFired = DarkTooltipManager.CheckMouseover(editWidgetContent, 10, out mousePos);
 
+			if (mouseoverFired)
+			{
+				
+			}
+
 #unwarn
 		    CompilerBase compiler = ResolveCompiler;
 
@@ -5571,25 +5754,28 @@ namespace IDE.ui
 					if (checkIdx >= mDeferredResolveResults.Count)
 						break;
 					resolveResult = mDeferredResolveResults[checkIdx];
-					if ((autocompleteOnly) && (resolveResult.mResolveType != .Autocomplete))
-					{
-						checkIdx++;
-						continue;
-					}
-
-					if (!resolveResult.mWaitEvent.WaitFor(0))
-					{
-						if (waitTime != 0)
-							ResolveCompiler.RequestFastFinish();
-					}
-
-					if (!resolveResult.mWaitEvent.WaitFor(waitTime))
-					{
-						checkIdx++;
-						continue;
-					}
-					mDeferredResolveResults.RemoveAt(checkIdx);
 				}
+
+				if ((autocompleteOnly) && (resolveResult.mResolveType != .Autocomplete))
+				{
+					checkIdx++;
+					continue;
+				}
+
+				if (!resolveResult.mWaitEvent.WaitFor(0))
+				{
+					if (waitTime != 0)
+						ResolveCompiler.RequestFastFinish();
+				}
+
+				if (!resolveResult.mWaitEvent.WaitFor(waitTime))
+				{
+					checkIdx++;
+					continue;
+				}
+
+				using (mMonitor.Enter())
+					mDeferredResolveResults.RemoveAt(checkIdx);
 
 				//Debug.WriteLine($"HandleResolveResult {resolveResult}");
 
@@ -6127,8 +6313,6 @@ namespace IDE.ui
 				DeleteAndNullify!(mQueuedAutoComplete);
 			}
 
-			ProcessDeferredResolveResults(0);
-
 			if (mLockFlashPct != 0)
 			{
 				mLockFlashPct += 0.02f;
@@ -6139,6 +6323,20 @@ namespace IDE.ui
 
 			if ((mEmitRevision >= 0) && ((mUpdateCnt % 30) == 0))
 				CheckEmitRevision();
+
+			var ewc = (SourceEditWidgetContent)mEditWidget.Content;
+			using (mMonitor.Enter())
+			{
+				if (mQueuedCollapseData != null)
+					ewc.ParseCollapseRegions(mQueuedCollapseData.mData, mQueuedCollapseData.mTextVersion, ref mQueuedCollapseData.mCharIdSpan);
+				DeleteAndNullify!(mQueuedCollapseData);
+			}
+
+			if (ewc.mCollapseNeedsUpdate)
+				ewc.UpdateCollapse();
+
+			// Process after mQueuedCollapseData so mCharIdSpan is still valid
+			ProcessDeferredResolveResults(0);
         }
 
         void InjectErrors(BfPassInstance processingPassInstance, EditWidgetContent.CharData[] processResolveCharData, IdSpan processCharIdSpan, bool keepPersistentErrors)
@@ -6267,7 +6465,7 @@ namespace IDE.ui
 
             var font = IDEApp.sApp.mTinyCodeFont;
 
-            float lineWidth = Math.Max(font.GetWidth(ToStackString!(mEditWidget.Content.GetLineCount())) + GS!(8), GS!(32));
+            float lineWidth = Math.Max(font.GetWidth(ToStackString!(mEditWidget.Content.GetLineCount())) + GS!(24), GS!(32));
             return Math.Max(GS!(24), lineWidth);
         }
 
@@ -6285,7 +6483,7 @@ namespace IDE.ui
 			}
 
 			// Always leave enough to read the first 3 lines
-			if (mHeight < GS!(88))
+			if ((mHeight < GS!(88)) && (mSplitBottomPanel == null))
 				mHeight = GS!(88);
 
 			float splitterHeight = GS!(3);
@@ -6367,6 +6565,30 @@ namespace IDE.ui
 		{
 			base.MouseDown(x, y, btn, btnCount);
 
+			var ewc = (SourceEditWidgetContent)mEditWidget.Content;
+
+			if ((btn == 0) && (x >= mEditWidget.mX - GS!(13)) && (x < mEditWidget.mX - GS!(0)))
+			{
+				int lineClick = GetLineAt(0, y);
+				if (lineClick >= mCollapseRegionView.mLineStart)
+				{
+					int relLine = lineClick - mCollapseRegionView.mLineStart;
+					if (relLine < mCollapseRegionView.mCollapseIndices.Count)
+					{
+						uint32 collapseVal = mCollapseRegionView.mCollapseIndices[relLine];
+						if ((((collapseVal & CollapseRegionView.cStartFlag) != 0) && (btnCount == 1)) ||
+							(btnCount > 1))
+						{
+							int collapseIndex = collapseVal & CollapseRegionView.cIdMask;
+
+							var entry = ewc.mOrderedCollapseEntries[collapseIndex];
+							ewc.SetCollapseOpen(collapseIndex, !entry.mIsOpen);
+						}
+						return;
+					}
+				}
+			}
+
 			if (mSplitBottomPanel != null)
 			{
 				return;
@@ -6438,12 +6660,15 @@ namespace IDE.ui
 			if (x > mEditWidget.mX - GS!(4))
 				return -1;
 
-			DarkEditWidgetContent darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
-			float lineSpacing = darkEditWidgetContent.mFont.GetLineSpacing();
+			var ewc = (SourceEditWidgetContent)mEditWidget.Content;
+
 			float relY = y - mEditWidget.mY - mEditWidget.Content.Y - GS!(3);
 			if (relY < 0)
 				return -1;
-			return (int)(relY / lineSpacing);
+			int resultIdx = ewc.mLineCoords.BinarySearch(relY);
+			if (resultIdx < 0)
+				return ~resultIdx - 1;
+			return resultIdx;
 		}
 
 		public bool SelectBreakpointsAtLine(int selectLine)
@@ -6481,7 +6706,7 @@ namespace IDE.ui
 
 			if (btn == 0)
 			{
-				if ((x >= GS!(3)) && (x < mEditWidget.mX - GS!(8)))
+				if ((x >= GS!(3)) && (x < mEditWidget.mX - GS!(14)))
 				{
 					int lineClick = GetLineAt(x, y);
 					if (lineClick >= 0)
@@ -6501,6 +6726,18 @@ namespace IDE.ui
 					var menuWidget = gApp.mBreakpointPanel.ShowRightClickMenu(this, x, y, true);
 				}
 			}
+		}
+
+		public override void MouseLeave()
+		{
+			base.MouseLeave();
+			mMousePos = null;
+		}
+
+		public override void MouseMove(float x, float y)
+		{
+			base.MouseMove(x, y);
+			mMousePos = .(x, y);
 		}
 
         public override void DrawAll(Graphics g)
@@ -6623,5 +6860,6 @@ namespace IDE.ui
 				}
 			}
 		}
+
     }
 }

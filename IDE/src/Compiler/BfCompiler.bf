@@ -60,6 +60,9 @@ namespace IDE.Compiler
         [CallingConvention(.Stdcall), CLink]
         static extern bool BfCompiler_ClassifySource(void* bfCompiler, void* bfPassInstance, void* bfParser, void* bfResolvePassData, void* char8Data);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetCollapseRegions(void* bfCompiler, void* bfParser);
+
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BfCompiler_GetAutocompleteInfo(void* bfCompiler);
 
@@ -265,6 +268,11 @@ namespace IDE.Compiler
             EditWidgetContent.CharData* char8DataPtr = (char8Data != null) ? char8Data.CArray() : null;
             return BfCompiler_ClassifySource(mNativeBfCompiler, bfPassInstance.mNativeBfPassInstance, (parser != null) ? parser.mNativeBfParser : null, nativeResolvePassData, char8DataPtr);                
         }
+
+		public void GetCollapseRegions(BfParser parser, String outData)
+		{
+			outData.Append(BfCompiler_GetCollapseRegions(mNativeBfCompiler, (parser != null) ? parser.mNativeBfParser : null));
+		}
 
 		public bool VerifyTypeName(String typeName, int cursorPos)
 		{

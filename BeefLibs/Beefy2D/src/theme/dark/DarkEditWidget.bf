@@ -5,11 +5,49 @@ using System.Text;
 using Beefy.widgets;
 using Beefy.gfx;
 using Beefy.utils;
+using Beefy.geom;
 
 namespace Beefy.theme.dark
 {
     public class DarkEditWidgetContent : EditWidgetContent
     {
+		public class Embed
+		{
+			public enum Kind
+			{
+				LineStart,
+				HideLine,
+				LineEnd,
+			}
+
+			public Kind mKind;
+
+			public ~this()
+			{
+
+			}
+
+			public virtual void Draw(Graphics g, Rect rect, bool hideLine)
+			{
+
+			}
+
+			public virtual void MouseDown(float x, float y, int btn, int btnCount)
+			{
+
+			}
+
+			public virtual float GetWidth(bool hideLine)
+			{
+				return GS!(24);
+			}
+		}
+
+		public class Data : EditWidgetContent.Data
+		{
+			
+		}
+
         public Font mFont;                
         public uint32[] mTextColors = sDefaultColors;
         public uint32 mHiliteColor = 0xFF2f5c88;
@@ -23,6 +61,7 @@ namespace Beefy.theme.dark
 		public uint32 mViewWhiteSpaceColor;
 		public bool mScrollToStartOnLostFocus;
 		public bool mHiliteCurrentLine;
+		public Dictionary<int, Embed> mEmbeds = new .() ~ DeleteDictionaryAndValues!(_);
 
 		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;
 
@@ -38,6 +77,48 @@ namespace Beefy.theme.dark
             mHorzJumpSize = GS!(40);
             mFont = DarkTheme.sDarkTheme?.mSmallFont;
         }
+
+		protected override EditWidgetContent.Data CreateEditData()
+		{
+			return new Data();
+		}
+
+		public virtual void CheckLineCoords()
+		{
+			if (mLineCoordTextVersionId == mData.mCurTextVersionId)
+				return;
+
+			mLineCoordTextVersionId = mData.mCurTextVersionId;
+
+			if (mLineCoords == null)
+				mLineCoords = new .();
+			if (mLineCoordJumpTable == null)
+				mLineCoordJumpTable = new .();
+
+			mLineCoords.Clear();
+			mLineCoords.GrowUnitialized(mData.mLineStarts.Count);
+			mLineCoordJumpTable.Clear();
+
+			float fontHeight = mFont.GetLineSpacing();
+			int prevJumpIdx = -1;
+			float jumpCoordSpacing = GetJumpCoordSpacing();
+
+			double curY = 0;
+			for (int line < mData.mLineStarts.Count)
+			{
+				float lineHeight = fontHeight;
+				mLineCoords[line] = (float)curY;
+
+				int jumpIdx = (.)(curY / jumpCoordSpacing);
+				while (prevJumpIdx < jumpIdx)
+				{
+					mLineCoordJumpTable.Add(((int32)line, (int32)line + 1));
+					prevJumpIdx++;
+				}
+				mLineCoordJumpTable[jumpIdx].max = (.)line + 1;
+				curY += lineHeight;
+			}
+		}
 
         public override void GetTextData()
         {
@@ -97,7 +178,55 @@ namespace Beefy.theme.dark
             }
 
             base.GetTextData();
+
+			CheckLineCoords();
         }
+
+		public int32 mLineCoordTextVersionId = -1;
+		public List<float> mLineCoords ~ delete _;
+		public List<(int32 min, int32 max)> mLineCoordJumpTable ~ delete _;
+
+		public bool IsLineCollapsed(int line)
+		{
+			if (mLineCoords == null)
+				return false;
+			if ((line >= 0) && (line < mLineCoords.Count - 1))
+				return (mLineCoords[line + 1] - mLineCoords[line]) < 0.1f;
+			return false;
+		}
+
+		public float GetLineHeight(int line, float defaultVal)
+		{
+			if ((line >= 0) && (line < mLineCoords.Count - 1))
+				return mLineCoords[line + 1] - mLineCoords[line];
+			return defaultVal;
+		}
+
+		public float GetLineY(int line, float defaultVal)
+		{
+			if ((line >= 0) && (line < mLineCoords.Count))
+				return mLineCoords[line];
+			return defaultVal;
+		}
+
+		public int FindUncollapsedLine(int line)
+		{
+			var line;
+			while ((line > 0) && (IsLineCollapsed(line)))
+				line--;
+			return line;
+		}
+
+		public bool IsInCollapseGroup(int anchorLine, int checkLine)
+		{
+			if (checkLine < anchorLine)
+				return false;
+			if (checkLine == anchorLine)
+				return true;
+			if (checkLine == anchorLine + 1)
+				return IsLineCollapsed(checkLine);
+			return mLineCoords[anchorLine + 1] == mLineCoords[checkLine + 1];
+		}
 
 		protected override void AdjustCursorsAfterExternalEdit(int index, int ofs)
  		{
@@ -322,6 +451,8 @@ namespace Beefy.theme.dark
 			Utils.RoundScale(ref mTabSize, newScale / oldScale);
 			SetFont(mFont, mCharWidth != -1, mAllowVirtualCursor);
 			mContentChanged = true; // Defer calling of RecalcSize
+			GetTextData();
+			LineStartsChanged();
 		}
 
         public virtual float DrawText(Graphics g, String str, float x, float y, uint16 typeIdAndFlags)
@@ -335,15 +466,52 @@ namespace Beefy.theme.dark
 		    return mEditWidget.mHasFocus ? mHiliteColor : mUnfocusedHiliteColor;
 		}
 
+		protected Rect GetEmbedRect(int lineIdx, DarkEditWidgetContent.Embed embed)
+		{
+			GetLinePosition(lineIdx, var lineStart, var lineEnd);
+
+			bool hideLine = false;
+			if ((embed.mKind == .HideLine) &&
+				((!mEditWidget.mHasFocus) || (!IsInCollapseGroup(lineIdx, CursorLine))))
+			   hideLine = true;
+
+			int wsEnd = lineEnd;
+			if ((hideLine) || (embed.mKind == .LineStart))
+			{
+				for (int i in lineStart..<lineEnd)
+				{
+					var checkEnd = ref mData.mText[i];
+					if (!checkEnd.mChar.IsWhiteSpace)
+					{
+						wsEnd = i;
+						break;
+					}	
+				}
+			}
+
+			String str = scope .(256);
+			ExtractString(lineStart, wsEnd - lineStart, str);
+
+			float selStartX = GetTabbedWidth(str, 0);
+
+			if ((embed.mKind == .LineEnd) ||
+				((embed.mKind == .HideLine) && (!hideLine)))
+				selStartX += GS!(4);
+
+			Rect rect = .(selStartX, mLineCoords[lineIdx] - GS!(2), embed.GetWidth(hideLine), mFont.GetLineSpacing() + GS!(4));
+			if (rect.mY < 0)
+				rect.mY = 0;
+			return rect;
+		}
+
         public override void Draw(Graphics g)
         {            
             base.Draw(g);
-            
+
+			
 #unwarn
             int lineCount = GetLineCount();
-            float lineSpacing = GetLineHeight(0);
-
-            g.SetFont(mFont);
+            float lineSpacing = mFont.GetLineSpacing();
 
 			float offsetY = mTextInsets.mTop;
 			if (mHeight < lineSpacing)
@@ -376,7 +544,50 @@ namespace Beefy.theme.dark
             float lastOverflowX;
             GetLineCharAtCoord(0, -mY + mEditWidget.mScrollContentContainer.mHeight, out lastLine, out lastCharIdx, out lastOverflowX);
 
-            bool drewCursor = false;
+			bool drewCursor = false;
+
+			void DrawCursor(float x, float y)
+			{
+				if (mHiliteCurrentLine && selStartIdx == selEndIdx)
+				{
+					float thickness = 2 * (lineSpacing / 18);
+					// This isn't quite the right value, but I'm not sure how to get this
+					// to properly highlight the whole line without getting cut off - this works well for now.
+					float totalLineWidth = mEditWidget.mScrollContentContainer.mWidth - thickness;
+
+					float hiliteX = (int)mEditWidget.mHorzPos.v; // If we don't round to int we get jitter while scrolling.
+					using (g.PushColor(DarkTheme.COLOR_CURRENT_LINE_HILITE))
+						g.OutlineRect(hiliteX, y, totalLineWidth, lineSpacing + thickness, thickness);
+				}
+
+			    float brightness = (float)Math.Cos(Math.Max(0.0f, mCursorBlinkTicks - 20) / 9.0f);                            
+			    brightness = Math.Clamp(brightness * 2.0f + 1.6f, 0, 1);
+			    if (mEditWidget.mVertPos.IsMoving)
+			        brightness = 0; // When we animate a pgup or pgdn, it's weird seeing the cursor scrolling around
+
+				Color cursorColor = mTextColors[0];
+
+			    if (mOverTypeMode)
+			    {
+			        if (mCharWidth <= 2)
+			        {
+			            using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness * 0.75f))))
+			                g.FillRect(x, y, GS!(2), lineSpacing);
+			        }
+			        else
+			        {
+			            using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness * 0.30f))))
+			                g.FillRect(x, y, mCharWidth, lineSpacing);
+			        }
+			    }
+			    else
+			    {
+					using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness))))
+			            g.FillRect(x, y, Math.Max(1.0f, GS!(1)), lineSpacing);
+			    }
+			    drewCursor = true;
+			}
+
 			String sectionText = scope String(256);
             for (int lineIdx = firstLine; lineIdx <= lastLine; lineIdx++)
             {
@@ -387,7 +598,26 @@ namespace Beefy.theme.dark
 
                 int lineDrawStart = lineStart;
                 float curX = 0;
-                float curY = lineIdx * lineSpacing;
+                float curY = mLineCoords[lineIdx];
+				float height = mLineCoords[lineIdx + 1] - curY;
+				if (height <= 1.0f)
+					continue;
+
+				DarkEditWidgetContent.Embed embed = null;
+				if (mEmbeds.GetValue(lineIdx) case .Ok(out embed))
+				{
+					if ((embed.mKind == .HideLine) &&
+						((!IsInCollapseGroup(lineIdx, CursorLine)) || (!mEditWidget.mHasFocus)))
+					{
+						var embedRect = GetEmbedRect(lineIdx, embed);
+						embed.Draw(g, embedRect, true);
+						g.SetFont(mFont);
+						continue;
+					}
+				}
+
+				g.SetFont(mFont);
+
                 while (true)
                 {
                     int lineDrawEnd = lineDrawStart;
@@ -481,46 +711,7 @@ namespace Beefy.theme.dark
                         }                        
 
                         if (aX != -1)
-                        {
-							if (mHiliteCurrentLine && selStartIdx == selEndIdx)
-							{
-								float thickness = 2 * (lineSpacing / 18);
-								// This isn't quite the right value, but I'm not sure how to get this
-								// to properly highlight the whole line without getting cut off - this works well for now.
-								float totalLineWidth = mEditWidget.mScrollContentContainer.mWidth - thickness;
-
-								float x = (int)mEditWidget.mHorzPos.v; // If we don't round to int we get jitter while scrolling.
-								using (g.PushColor(DarkTheme.COLOR_CURRENT_LINE_HILITE))
-									g.OutlineRect(x, curY, totalLineWidth, lineSpacing + thickness, thickness);
-							}
-
-                            float brightness = (float)Math.Cos(Math.Max(0.0f, mCursorBlinkTicks - 20) / 9.0f);                            
-                            brightness = Math.Clamp(brightness * 2.0f + 1.6f, 0, 1);
-                            if (mEditWidget.mVertPos.IsMoving)
-                                brightness = 0; // When we animate a pgup or pgdn, it's weird seeing the cursor scrolling around
-
-							Color cursorColor = mTextColors[0];
-
-                            if (mOverTypeMode)
-                            {
-                                if (mCharWidth <= 2)
-                                {
-                                    using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness * 0.75f))))
-                                        g.FillRect(aX, curY, GS!(2), lineSpacing);
-                                }
-                                else
-                                {
-                                    using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness * 0.30f))))
-                                        g.FillRect(aX, curY, mCharWidth, lineSpacing);
-                                }
-                            }
-                            else
-                            {
-								using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness))))
-                                    g.FillRect(aX, curY, Math.Max(1.0f, GS!(1)), lineSpacing);
-                            }
-                            drewCursor = true;
-                        }
+							DrawCursor(aX, curY);
                     }
 
                     lineDrawStart = lineDrawEnd;
@@ -528,7 +719,18 @@ namespace Beefy.theme.dark
 
                     if (lineDrawStart >= lineEnd)
                         break;
-                }   
+                }
+
+				if (embed != null)
+				{
+					var embedRect = GetEmbedRect(lineIdx, embed);
+					embed.Draw(g, embedRect, false);
+					g.SetFont(mFont);
+
+					if ((!drewCursor) && (IsLineCollapsed(CursorLineAndColumn.mLine)) &&
+						(GetLineY(CursorLineAndColumn.mLine, -1) == GetLineY(lineIdx + 1, -1)))
+						DrawCursor(embedRect.Right + GS!(2), curY);
+				}
             }
 
             g.PopMatrix();
@@ -561,6 +763,8 @@ namespace Beefy.theme.dark
 
         public override void GetTextCoordAtLineChar(int line, int lineChar, out float x, out float y)
         {
+			GetTextData();
+			
             String lineText = scope String(256);
             GetLineText(line, lineText);
             if (lineChar > lineText.Length)
@@ -571,74 +775,95 @@ namespace Beefy.theme.dark
 				subText.Append(lineText, 0, lineChar);
                 x = GetTabbedWidth(subText, 0, true) + mTextInsets.mLeft;
 			}
-            y = mTextInsets.mTop + line * mFont.GetLineSpacing();                        
+            y = mTextInsets.mTop + mLineCoords[line];
         }
 
         public override void GetTextCoordAtLineAndColumn(int line, int column, out float x, out float y)
         {
+			GetTextData();
             Debug.Assert((mCharWidth != -1) || (column == 0));
             String lineText = scope String(256);
             GetLineText(line, lineText);
             x = mTextInsets.mLeft + column * mCharWidth;
-            y = mTextInsets.mTop + line * mFont.GetLineSpacing();                        
+            y = mTextInsets.mTop + mLineCoords[line];
         }
 
-        public override bool GetLineCharAtCoord(float x, float y, out int line, out int char8Idx, out float overflowX)
+		protected int GetLineAt(float y)
+		{
+			if (y < 0)
+				return 0;
+
+			GetTextData();
+
+			int lineCount = GetLineCount();
+			var checkY = y - mTextInsets.mTop + 0.001f;
+			var jumpEntry = mLineCoordJumpTable[Math.Clamp((int)(y / GetJumpCoordSpacing()), 0, mLineCoordJumpTable.Count - 1)];
+
+			int line = jumpEntry.min - 1;
+			for (int checkLine in jumpEntry.min ..< jumpEntry.max)
+			{
+				if (checkY >= mLineCoords[checkLine])
+					line = checkLine;
+			}
+
+			if (line < 0)
+			    line = 0;
+			if (line >= lineCount)
+			    line = lineCount - 1;
+			return line;
+		}
+
+        public override bool GetLineCharAtCoord(float x, float y, out int line, out int lineChar, out float overflowX)
         {
-            line = (int) ((y - mTextInsets.mTop) / mFont.GetLineSpacing() + 0.001f);
-            int lineCount = GetLineCount();
+			line = GetLineAt(y);
+			return GetLineCharAtCoord(line, x, out lineChar, out overflowX);
+        }
 
-            if (line < 0)
-                line = 0;
-            if (line >= lineCount)
-                line = lineCount - 1;
+        public override bool GetLineAndColumnAtCoord(float x, float y, out int line, out int column)
+        {
+            line = GetLineAt(y);
+            column = Math.Max(0, (int32)((x - mTextInsets.mLeft + 1) / mCharWidth + 0.6f));
+            return mCharWidth != -1;
+        }
 
-            String lineText = scope String(256);
-            GetLineText(line, lineText);
-            int32 char8Count = GetTabbedCharCountToLength(lineText, x - mTextInsets.mLeft);
-            char8Idx = char8Count;
+		public override bool GetLineCharAtCoord(int line, float x, out int lineChar, out float overflowX)
+		{
+			String lineText = scope String(256);
+			GetLineText(line, lineText);
+			int32 char8Count = GetTabbedCharCountToLength(lineText, x - mTextInsets.mLeft);
+			lineChar = char8Count;
 
-            if (char8Count < lineText.Length)
-            {
+			if (char8Count < lineText.Length)
+			{
 				String subString = new:ScopedAlloc! String(char8Count);
 				subString.Append(lineText, 0, char8Count);
-                float subWidth = GetTabbedWidth(subString, 0);
+			    float subWidth = GetTabbedWidth(subString, 0);
 
 				var utf8enumerator = lineText.DecodedChars(char8Count);
 				if (utf8enumerator.MoveNext())
 				{
 					char32 c = utf8enumerator.Current;
-	                float checkCharWidth = 0;
-	                if (c == '\t')
-	                    checkCharWidth = mTabSize * 0.5f;
-	                else
+			        float checkCharWidth = 0;
+			        if (c == '\t')
+			            checkCharWidth = mTabSize * 0.5f;
+			        else
 					{
 						checkCharWidth = mFont.GetWidth(c) * 0.5f;
 					}
 
-	                if (x >= subWidth + mTextInsets.mLeft + checkCharWidth)
-	                    char8Idx = (int32)utf8enumerator.NextIndex;
+			        if (x >= subWidth + mTextInsets.mLeft + checkCharWidth)
+			            lineChar = (int32)utf8enumerator.NextIndex;
 				}
-            }
-            else
-            {
-                overflowX = (x - mTextInsets.mLeft) - (GetTabbedWidth(lineText, 0) + 0.001f);
-                return overflowX <= 0;                
-            }
+			}
+			else
+			{
+			    overflowX = (x - mTextInsets.mLeft) - (GetTabbedWidth(lineText, 0) + 0.001f);
+			    return overflowX <= 0;                
+			}
 
-            overflowX = 0;
-            return true;
-        }
-
-        public override bool GetLineAndColumnAtCoord(float x, float y, out int line, out int column)
-        {
-            line = (int32)((y - mTextInsets.mTop) / mFont.GetLineSpacing() + 0.001f);
-            if (line >= GetLineCount())
-                line = GetLineCount() - 1;
-            line = Math.Max(0, line);
-            column = Math.Max(0, (int32)((x - mTextInsets.mLeft + 1) / mCharWidth + 0.6f));
-            return mCharWidth != -1;
-        }
+			overflowX = 0;
+			return true;
+		}
 
         void RecalcSize(int32 startLineNum, int32 endLineNum, bool forceAccurate = false)
         {
@@ -668,6 +893,53 @@ namespace Beefy.theme.dark
 			mRecalcSizeLineNum = -1;
 			RecalcSize(true);
 			base.CursorToLineEnd();
+		}
+
+		public override void GetTextCoordAtCursor(out float x, out float y)
+		{
+			int32 line = CursorLine;
+			if (IsLineCollapsed(line))
+			{
+				line = (.)FindUncollapsedLine(line);
+				GetTextCoordAtLineAndColumn(line, CursorLineAndColumn.mColumn, out x, out y);
+				return;
+			}
+
+			base.GetTextCoordAtCursor(out x, out y);
+		}
+
+		public override void MoveCursorToCoord(float x, float y)
+		{
+			base.MoveCursorToCoord(x, y);
+
+			if ((!mEmbeds.IsEmpty) && (mEmbeds.GetValue(CursorLineAndColumn.mLine) case .Ok(let embed)))
+			{
+				var embedRect = GetEmbedRect(CursorLineAndColumn.mLine, embed);
+				if (x > embedRect.Right)
+				{
+					int endLine = CursorLineAndColumn.mLine;
+					while (true)
+					{
+						if (!IsLineCollapsed(endLine + 1))
+							break;
+						endLine++;
+					}
+
+					if (endLine != CursorLineAndColumn.mLine)
+					{
+						GetLinePosition(endLine, var endLineStart, var endLineEnd);
+						GetLineAndColumnAtLineChar(endLine, endLineEnd - endLineStart, var column);
+						CursorLineAndColumn = .(endLine, column);
+					}
+				}
+			}
+		}
+
+		public override void CursorToLineStart(bool allowToScreenStart)
+		{
+			while (IsLineCollapsed(CursorLineAndColumn.mLine))
+				CursorLineAndColumn = .(CursorLineAndColumn.mLine - 1, 1);
+			base.CursorToLineStart(allowToScreenStart);
 		}
 
 		public void RecalcSize(bool forceAccurate = false)
@@ -707,7 +979,9 @@ namespace Beefy.theme.dark
 			    Debug.Assert(!mWidth.IsNaN);
 			}
 
-			mHeight = GetLineCount() * mFont.GetLineSpacing() + mTextInsets.mTop + mTextInsets.mBottom;
+			GetTextData();
+			mHeight = mLineCoords.Back + mTextInsets.mTop + mTextInsets.mBottom;
+			Debug.Assert(mHeight > 0);
 			UpdateMaximalScroll();
 			base.RecalcSize();
 		}
@@ -721,6 +995,21 @@ namespace Beefy.theme.dark
 		{
 			base.ContentChanged();
 			mRecalcSizeLineNum = -1;
+
+			mLineCoordTextVersionId = -1;
+			DeleteAndNullify!(mLineCoords);
+			DeleteAndNullify!(mLineCoordJumpTable);
+		}
+
+		public float GetJumpCoordSpacing()
+		{
+			return mFont.GetLineSpacing() * 4;
+		}
+
+		public override void LineStartsChanged()
+		{
+			base.LineStartsChanged();
+			mLineCoordTextVersionId = -1;
 		}
 
 		public override void TextAppended(String str)
@@ -734,7 +1023,7 @@ namespace Beefy.theme.dark
 			base.TextAppended(str);
 		}
 
-        void UpdateMaximalScroll()
+        protected void UpdateMaximalScroll()
         {            
             if (mAllowMaximalScroll)
             {
@@ -743,6 +1032,8 @@ namespace Beefy.theme.dark
                 mHeight -= mMaximalScrollAddedHeight;
                 mMaximalScrollAddedHeight = mEditWidget.mScrollContentContainer.mHeight - mFont.GetLineSpacing();
                 mHeight += mMaximalScrollAddedHeight;
+
+				Debug.Assert(mHeight >= 0);
 
 				if (mHeight != prevHeight)
 					mEditWidget.UpdateScrollbars();
@@ -757,7 +1048,9 @@ namespace Beefy.theme.dark
 
         public override float GetLineHeight(int line)
         {
-            return mFont.GetLineSpacing();
+			if (mLineCoords == null)
+				GetTextData();
+			return mLineCoords[line + 1] - mLineCoords[line];
         }
 
         public override float GetPageScrollTextHeight()
@@ -843,6 +1136,27 @@ namespace Beefy.theme.dark
 
 			CheckRecordScrollTop();
         }
+
+		public override void MouseMove(float x, float y)
+		{
+			base.MouseMove(x, y);
+
+			int line = GetLineAt(y);
+			
+			bool isOverEmbed = false;
+
+			if (mEmbeds.GetValue(line) case .Ok(let embed))
+			{
+				Rect embedRect = GetEmbedRect(line, embed);
+				if (embedRect.Contains(x, y))
+					isOverEmbed = true;
+			}
+
+			if (isOverEmbed)
+				BFApp.sApp.SetCursor(Cursor.Pointer);
+			else
+				BFApp.sApp.SetCursor(Cursor.Text);
+		}
     }
 
     public class DarkEditWidget : EditWidget
