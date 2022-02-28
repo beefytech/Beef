@@ -301,10 +301,10 @@ namespace System.IO
 				outFileName.Append(inPath, lastSlash + 1);
 		}
 
-		public static Result<void> GetExtension(StringView inPath, String outExt)
+		public static bool GetExtension(StringView inPath, String outExt)
 		{
 			if (inPath.IsEmpty)
-				return .Err;
+				return false;
 
 			CheckInvalidPathChars(inPath);
 
@@ -316,7 +316,7 @@ namespace System.IO
 					if (i != inPath.Length - 1)
 					{
 						outExt.Append(inPath.Substring(i, inPath.Length - i));
-						return .Ok;
+						return true;
 					}
 					else
 						break;
@@ -325,7 +325,7 @@ namespace System.IO
 					break;
 			}
 			
-			return .Err;
+			return false;
 		}
 
 		public static bool HasExtension(StringView path)
