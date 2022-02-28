@@ -1427,15 +1427,8 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 	if (hotTypeData == NULL)
 		return;
 	
-	if (typeInstance->IsIncomplete())
-	{
-		if (mCompiler->mHotState->mCommittedHotCompileIdx > 0)
-		{
-			// Should already be populated
-			BF_ASSERT(hotTypeData->mVTableOrigLength != -1);
-		}
+	if (typeInstance->IsIncomplete())	
 		return;
-	}
 
 	if (hotTypeData->mVTableOrigLength == -1)
 	{		
