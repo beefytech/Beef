@@ -328,6 +328,9 @@ enum CeFunctionKind
 	CeFunctionKind_Type_GetCustomAttribute,
 	CeFunctionKind_Field_GetCustomAttribute,
 	CeFunctionKind_Method_GetCustomAttribute,
+	CeFunctionKind_Type_GetCustomAttributeType,
+	CeFunctionKind_Field_GetCustomAttributeType,
+	CeFunctionKind_Method_GetCustomAttributeType,
 	CeFunctionKind_GetMethodCount,
 	CeFunctionKind_GetMethod,
 	CeFunctionKind_Method_ToString,
@@ -908,7 +911,8 @@ public:
 	bool CheckMemory(addr_ce addr, int32 size);
 	bool GetStringFromAddr(addr_ce strInstAddr, StringImpl& str);
 	bool GetStringFromStringView(addr_ce addr, StringImpl& str);
-	bool GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolder, BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr);
+	bool GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolder, BfCustomAttributes* customAttributes, int attributeIdx, addr_ce resultAddr);
+	BfType* GetCustomAttributeType(BfCustomAttributes* customAttributes, int attributeIdx);
 
 	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type, bool isParams = false);	
 	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);	

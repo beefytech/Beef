@@ -2904,6 +2904,13 @@ BfCustomAttribute* BfCustomAttributes::Get(BfType* type)
 	return NULL;
 }
 
+BfCustomAttribute* BfCustomAttributes::Get(int idx)
+{
+	if (idx >= mAttributes.size())
+		return NULL;
+	return &mAttributes[idx];
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BfResolvedTypeSet::~BfResolvedTypeSet()

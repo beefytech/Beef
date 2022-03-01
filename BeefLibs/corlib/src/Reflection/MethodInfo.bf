@@ -92,16 +92,64 @@ namespace System.Reflection
 			return mTypeInstance.[Friend]GetCustomAttribute<T>(mData.mMethodData.mParamData[paramIdx].mCustomAttributesIdx);
 		}
 
+		public AttributeInfo.CustomAttributeEnumerator GetParamCustomAttributes(int paramIdx)
+		{
+			if (Compiler.IsComptime)
+				Runtime.NotImplemented();
+			Debug.Assert((uint)paramIdx < (uint)mData.mMethodData.mParamCount);
+			return mTypeInstance.[Friend]GetCustomAttributes(mData.mMethodData.mParamData[paramIdx].mCustomAttributesIdx);
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator<T> GetParamCustomAttributes<T>(int paramIdx) where T : Attribute
+		{
+			if (Compiler.IsComptime)
+				Runtime.NotImplemented();
+			Debug.Assert((uint)paramIdx < (uint)mData.mMethodData.mParamCount);
+			return mTypeInstance.[Friend]GetCustomAttributes<T>(mData.mMethodData.mParamData[paramIdx].mCustomAttributesIdx);
+		}
+
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
 			if (Compiler.IsComptime)
 			{
-				T val = ?;
-				if (Type.[Friend]Comptime_Method_GetCustomAttribute(mData.mComptimeMethodInstance, (.)typeof(T).TypeId, &val))
-					return val;
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Method_GetCustomAttributeType(mData.mComptimeMethodInstance, ++attrIdx);
+					if (attrType == typeof(T))
+					{
+						T val = ?;
+						if (Type.[Friend]Comptime_Method_GetCustomAttribute(mData.mComptimeMethodInstance, attrIdx, &val))
+							return val;
+					}
+				}
+				while (attrType != null);
 				return .Err;
 			}
 			return mTypeInstance.[Friend]GetCustomAttribute<T>(mData.mMethodData.mCustomAttributesIdx);
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator GetCustomAttributes()
+		{
+			return mTypeInstance.[Friend]GetCustomAttributes(mData.mMethodData.mCustomAttributesIdx);
+		}
+
+		[Comptime]
+		public AttributeInfo.ComptimeMethodCustomAttributeEnumerator GetCustomAttributes()
+		{
+			return .(mData.mComptimeMethodInstance);
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator<T> GetCustomAttributes<T>() where T : Attribute
+		{
+			return mTypeInstance.[Friend]GetCustomAttributes<T>(mData.mMethodData.mCustomAttributesIdx);
+		}
+
+		[Comptime]
+		public AttributeInfo.ComptimeMethodCustomAttributeEnumerator<T> GetCustomAttributes<T>() where T : Attribute
+		{
+			return .(mData.mComptimeMethodInstance);
 		}
 
 		public Result<T> GetReturnCustomAttribute<T>() where T : Attribute
@@ -109,6 +157,20 @@ namespace System.Reflection
 			if (Compiler.IsComptime)
 				return .Err;
 			return mTypeInstance.[Friend]GetCustomAttribute<T>(mData.mMethodData.mReturnCustomAttributesIdx);
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator GetReturnCustomAttributes()
+		{
+			if (Compiler.IsComptime)
+				Runtime.NotImplemented();
+			return mTypeInstance.[Friend]GetCustomAttributes(mData.mMethodData.mReturnCustomAttributesIdx);
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator<T> GetReturnCustomAttributes<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+				Runtime.NotImplemented();
+			return mTypeInstance.[Friend]GetCustomAttributes<T>(mData.mMethodData.mReturnCustomAttributesIdx);
 		}
 
 		public enum CallError

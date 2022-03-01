@@ -528,9 +528,12 @@ namespace System
 		static extern Type Comptime_GetTypeByName(StringView name);
 		static extern String Comptime_Type_ToString(int32 typeId);
 		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
-		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeId, void* dataPtr);
-		static extern bool Comptime_Field_GetCustomAttribute(int32 typeId, int32 fieldIdx, int32 attributeId, void* dataPtr);
-		static extern bool Comptime_Method_GetCustomAttribute(int64 methodHandle, int32 attributeId, void* dataPtr);
+		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeIdx, void* dataPtr);
+		static extern bool Comptime_Field_GetCustomAttribute(int32 typeId, int32 fieldIdx, int32 attributeIdx, void* dataPtr);
+		static extern bool Comptime_Method_GetCustomAttribute(int64 methodHandle, int32 attributeIdx, void* dataPtr);
+		static extern Type Comptime_Type_GetCustomAttributeType(int32 typeId, int32 attributeIdx);
+		static extern Type Comptime_Field_GetCustomAttributeType(int32 typeId, int32 fieldIdx, int32 attributeIdx);
+		static extern Type Comptime_Method_GetCustomAttributeType(int64 methodHandle, int32 attributeIdx);
 		static extern int32 Comptime_GetMethodCount(int32 typeId);
 		static extern int64 Comptime_GetMethod(int32 typeId, int32 methodIdx);
 		static extern String Comptime_Method_ToString(int64 methodHandle);
@@ -647,7 +650,16 @@ namespace System
 		{
 			if (Compiler.IsComptime)
 			{
-				return Comptime_Type_GetCustomAttribute((int32)TypeId, (.)typeof(T).TypeId, null);
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Type_GetCustomAttributeType((int32)TypeId, ++attrIdx);
+					if (attrType == typeof(T))
+						return true;
+				}
+				while (attrType != null);
+				return false;
 			}
 
 			if (var typeInstance = this as TypeInstance)
@@ -659,15 +671,51 @@ namespace System
 		{
 			if (Compiler.IsComptime)
 			{
-				T val = ?;
-				if (Comptime_Type_GetCustomAttribute((int32)TypeId, (.)typeof(T).TypeId, &val))
-					return val;
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Type_GetCustomAttributeType((int32)TypeId, ++attrIdx);
+					if (attrType == typeof(T))
+					{
+						T val = ?;
+						if (Type.[Friend]Comptime_Type_GetCustomAttribute((int32)TypeId, attrIdx, &val))
+							return val;
+					}
+				}
+				while (attrType != null);
 				return .Err;
 			}
 
 			if (var typeInstance = this as TypeInstance)
 				return typeInstance.[Friend]GetCustomAttribute<T>(typeInstance.[Friend]mCustomAttributesIdx);
 			return .Err;
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator GetCustomAttributes()
+		{
+			if (var typeInstance = this as TypeInstance)
+				return typeInstance.[Friend]GetCustomAttributes(typeInstance.[Friend]mCustomAttributesIdx);
+			Runtime.NotImplemented();
+		}
+
+		[Comptime]
+		public AttributeInfo.ComptimeTypeCustomAttributeEnumerator GetCustomAttributes()
+		{
+			return .((int32)TypeId);
+		}
+
+		public AttributeInfo.CustomAttributeEnumerator<T> GetCustomAttributes<T>() where T : Attribute
+		{
+			if (var typeInstance = this as TypeInstance)
+				return typeInstance.[Friend]GetCustomAttributes<T>(typeInstance.[Friend]mCustomAttributesIdx);
+			Runtime.NotImplemented();
+		}
+
+		[Comptime]
+		public AttributeInfo.ComptimeTypeCustomAttributeEnumerator<T> GetCustomAttributes<T>() where T : Attribute
+		{
+			return .((int32)TypeId);
 		}
 
 		public override void ToString(String strBuffer)
@@ -1073,6 +1121,24 @@ namespace System.Reflection
 			default:
 				return .Err;
 			}
+		}
+
+		AttributeInfo.CustomAttributeEnumerator GetCustomAttributes(int customAttributeIdx)
+		{
+			if (customAttributeIdx == -1)
+			    return .(null);
+
+			void* data = mCustomAttrDataPtr[customAttributeIdx];
+			return .(data);
+		}
+
+		AttributeInfo.CustomAttributeEnumerator<T> GetCustomAttributes<T>(int customAttributeIdx) where T : Attribute
+		{
+			if (customAttributeIdx == -1)
+			    return .(null);
+
+			void* data = mCustomAttrDataPtr[customAttributeIdx];
+			return .(data);
 		}
     }
 

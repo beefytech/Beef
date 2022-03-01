@@ -2550,6 +2550,7 @@ public:
 	bool Contains(BfTypeDef* typeDef);
 	BfCustomAttribute* Get(BfTypeDef* typeDef);
 	BfCustomAttribute* Get(BfType* type);
+	BfCustomAttribute* Get(int idx);
 
 	void ReportMemory(MemReporter* memReporter);
 };
