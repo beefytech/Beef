@@ -273,4 +273,19 @@ static
 		}
 		data
 	}
+
+	public static mixin ScopedAllocZero(int size, int align)
+	{
+		void* data;
+		if (size <= 128)
+		{
+			data = scope:mixin [Align(align)] uint8[size]*;
+		}
+		else
+		{
+			data = new [Align(align)] uint8[size]*;
+			defer:mixin delete data;
+		}
+		data
+	}
 }

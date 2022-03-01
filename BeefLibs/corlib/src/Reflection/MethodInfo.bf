@@ -595,13 +595,51 @@ namespace System.Reflection
 				bool unbox = false;
 				bool unboxToPtr = false;
 
-				let argType = arg.[Friend]RawGetType();
-				void* dataPtr = (uint8*)Internal.UnsafeCastToPtr(arg) + argType.[Friend]mMemberDataOffset;
+				void* nullPtr = null;
+
+				Type argType = null;
+				void* dataPtr = null;
+
 				bool isValid = true;
-
 				bool added = false;
+				bool handled = false;
 
-				if (var refParamType = paramType as RefType)
+				if (arg == null)
+				{
+					isValid = false;
+
+					if ((paramType.IsPointer) || (paramType.IsObject) || (paramType.IsInterface))
+					{
+						argType = paramType;
+						dataPtr = &nullPtr;
+						isValid = true;
+					}
+					else if (var genericType = paramType as SpecializedGenericType)
+					{
+						if (genericType.UnspecializedType == typeof(Nullable<>))
+						{
+							argType = paramType;
+							dataPtr = ScopedAllocZero!(paramType.Size, 16);
+							isValid = true;
+							handled = true;
+						}
+					}
+				}
+				else
+				{
+					argType = arg.[Friend]RawGetType();
+					dataPtr = (uint8*)Internal.UnsafeCastToPtr(arg) + argType.[Friend]mMemberDataOffset;
+				}
+
+				if (!isValid)
+				{
+					// Not valid
+				}
+				else if (handled)
+				{
+					
+				}
+				else if (var refParamType = paramType as RefType)
 				{
 					if (argType.IsBoxedStructPtr || argType.IsBoxedPrimitivePtr)
 					{
@@ -633,7 +671,7 @@ namespace System.Reflection
 				}
 				else if (paramType.IsValueType)
 				{
-					bool handled = true;
+					handled = true;
 
 					if (!argType.IsBoxed)
 						return .Err(.InvalidArgument((.)argIdx));
@@ -646,6 +684,10 @@ namespace System.Reflection
 					{
 						dataPtr = *(void**)dataPtr;
 						handled = true;
+					}
+					else
+					{
+						isValid = underlyingType == paramType;
 					}
 					
 					if (!handled)
