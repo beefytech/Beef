@@ -20,8 +20,17 @@ namespace IDE.ui
 		public static String sUnlockedProjects = "Unlocked Projects";
         public static String sEntireSolution = "Entire Solution";
 		public static String[] sLocationStrings = new .(sCurrentDocument, sCurrentProject, sUnlockedProjects, sEntireSolution) ~ delete _;
-        
-        List<String> mPendingLines = new List<String>() ~ DeleteContainerAndItems!(_);
+
+		class QueuedEntry
+		{
+			public String mFileName ~ delete _;
+			public int32 mLine;
+			public int32 mColumn;
+			public String mText ~ delete _;
+		}
+
+        Queue<String> mPendingLines = new .() ~ DeleteContainerAndItems!(_);
+		Queue<QueuedEntry> mQueuedEntries = new .() ~ DeleteContainerAndItems!(_);
 
 		int32 mCurLineNum;
 		HashSet<String> mFoundPathSet ~ DeleteContainerAndItems!(_);
@@ -278,7 +287,8 @@ namespace IDE.ui
                 mSearchThread.Join();
 				DeleteAndNullify!(mSearchThread);
 				DeleteAndNullify!(mSearchOptions);
-				ClearAndDeleteItems(mPendingLines);
+				mPendingLines.ClearAndDeleteItems();
+				mQueuedEntries.ClearAndDeleteItems();
 				DeleteContainerAndItems!(mSearchPaths);
 				mSearchPaths = null;
 				DeleteContainerAndItems!(mFoundPathSet);
@@ -586,7 +596,15 @@ namespace IDE.ui
 
 		public void QueueLine(String fileName, int32 line, int32 column, String text)
 		{
-			QueueLine(gApp.GetEditData(fileName, true, false), line, column, text);
+			using (mMonitor.Enter())
+			{
+				QueuedEntry entry = new .();
+				entry.mFileName = new .(fileName);
+				entry.mLine = line;
+				entry.mColumn = column;
+				entry.mText = new .(text);
+				mQueuedEntries.Add(entry);
+			}
 		}
         
         public override void Update()
@@ -620,6 +638,13 @@ namespace IDE.ui
 
             using (mMonitor.Enter())
             {
+				while (!mQueuedEntries.IsEmpty)
+				{
+					var entry = mQueuedEntries.PopFront();
+					QueueLine(gApp.GetEditData(entry.mFileName, true, false), entry.mLine, entry.mColumn, entry.mText);
+					delete entry;
+				}
+
                 if (mPendingLines.Count > 0)
                 {
                     String sb = scope String();
