@@ -1077,7 +1077,7 @@ namespace System.Collections
 			{
 				get
 				{
-					return ref mDictionary.mEntries[mIndex].mKey;
+					return ref mDictionary.mEntries[mIndex - 1].mKey;
 				}
 			}
 
