@@ -20710,7 +20710,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			}
 			else if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 			{
-				if ((methodInstance->mReturnType->IsRef()) && (!methodDef->mIsMutating))
+				if ((methodInstance->mReturnType->IsRef()) && (!methodDef->mIsMutating) && (mCurTypeInstance->IsValueType()))
 					Fail("Auto-implemented ref property getters must declare 'mut'", methodInstance->mMethodDef->GetRefNode());
 
 				if (methodInstance->mReturnType->IsValuelessType())
