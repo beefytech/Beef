@@ -2940,6 +2940,7 @@ namespace Beefy.widgets
 			case Unknown;
 			case SelectRight;
 			case SelectLeft;
+			case QuickFind;
 
 			public bool IsFromTyping => (this == FromTyping) || (this == FromTyping_Deleting);
 		}

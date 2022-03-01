@@ -1068,6 +1068,16 @@ namespace System.Collections
 		}
 	}
 
+	extension List<T> where T : delete
+	{
+		public void ClearAndDeleteItems()
+		{
+			for (var item in this)
+				delete item;
+			Clear();
+		}
+	}
+
 	extension List<T> where T : String
 	{
 		public bool Contains(T item, StringComparison comparison)

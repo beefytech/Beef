@@ -1698,7 +1698,7 @@ namespace IDE.ui
 			{
 				if ((mHoverResolveTask != null) && (mHoverResolveTask.mCursorPos == resolveParams.mOverrideCursorPos))
 				{
-					mHoverResolveTask.mResult = new String(autocompleteInfo);
+					mHoverResolveTask.mResult = new String(autocompleteInfo ?? "");
 				}
 
 				resolveParams.mResultString = new String(autocompleteInfo);

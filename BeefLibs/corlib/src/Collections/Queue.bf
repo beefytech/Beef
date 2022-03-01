@@ -697,4 +697,14 @@ namespace System.Collections
 			}
 		}
 	}
+
+	extension Queue<T> where T : delete
+	{
+		public void ClearAndDeleteItems()
+		{
+			for (var item in this)
+				delete item;
+			Clear();
+		}
+	}
 }

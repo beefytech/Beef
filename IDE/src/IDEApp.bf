@@ -5241,6 +5241,12 @@ namespace IDE
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if ((sourceViewPanel != null) && (sourceViewPanel.HasFocus()))
 			{
+				if ((sourceViewPanel?.mQuickFind?.mIsShowingMatches == true) && (sourceViewPanel.mQuickFind.mFindEditWidget.mHasFocus))
+				{
+					sourceViewPanel.SetFocus();
+					return;
+				}
+
 				var sourceEditWidgetContent = (SourceEditWidgetContent)sourceViewPanel.mEditWidget.mEditWidgetContent;
 				if (sourceEditWidgetContent.IsAtCurrentHistory())
 				{

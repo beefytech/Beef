@@ -716,7 +716,7 @@ namespace IDE.ui
 
 			if ((flags & (uint8)SourceElementFlags.Find_CurrentSelection) != 0)
 			{
-			    using (g.PushColor(0x80FFE0B0))
+			    using (g.PushColor(0x504C575C))
 			        g.FillRect(x, y, width, mFont.GetLineSpacing());
 
 			    DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)(SourceElementFlags.Find_CurrentSelection | .Find_Matches)));
@@ -4840,6 +4840,11 @@ namespace IDE.ui
 
         public override void PhysCursorMoved(CursorMoveKind moveKind)
         {
+			if (moveKind != .QuickFind)
+			{
+				mSourceViewPanel?.mQuickFind?.SetFindIdx(CursorTextPos, !moveKind.IsFromTyping);
+			}
+
 			if (mVirtualCursorPos != null)
 			{
 				CheckCollapseOpen(mVirtualCursorPos.Value.mLine, moveKind);
