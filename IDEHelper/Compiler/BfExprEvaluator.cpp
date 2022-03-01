@@ -16604,10 +16604,13 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 		if ((wantsDIData) && (!mModule->mBfIRBuilder->mIgnoreWrites))
 		{
+			bool handled = false;
+
 			mModule->UpdateSrcPos(methodDeclaration->mNameNode);
 			if (hasConstValue)
 			{
 				// Already handled
+				handled = true;
 			}
 			else if (newLocalVar->mIsSplat)
 			{
@@ -16625,6 +16628,33 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 						if (newLocalVar->mValue != localVar->mAddr)
 							continue;
 
+						bool isDupName = false;
+						for (auto param : methodDef->mParams)
+						{
+							if (param->mName == localVar->mName)
+							{
+								isDupName = true;
+								break;
+							}
+						}
+
+						if (isDupName)
+						{
+							auto splatAgg = mModule->AggregateSplat(BfTypedValue(newLocalVar->mValue, newLocalVar->mResolvedType, BfTypedValueKind_SplatHead));
+
+							// Don't allow alias if one of our args has the same name
+							newLocalVar->mIsSplat = false;
+							newLocalVar->mValue = BfIRValue();
+
+							if (splatAgg.IsAddr())
+								newLocalVar->mAddr = splatAgg.mValue;
+							else
+								newLocalVar->mValue = splatAgg.mValue;
+
+							found = true;
+							break;
+						}
+
 						String name = "$";
 						name += newLocalVar->mName;
 						name += "$alias$";
@@ -16641,12 +16671,18 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
  							name, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
  						mModule->mBfIRBuilder->DbgInsertValueIntrinsic(mModule->mBfIRBuilder->CreateConstNull(), diVariable);
 
+						handled = true;
 						found = true;
 						break;
 					}
 
 					checkMethodState = checkMethodState->mPrevMethodState;
 				}
+			}
+			
+			if (handled)
+			{
+				//
 			}
 			else if (mModule->IsTargetingBeefBackend())
 			{
