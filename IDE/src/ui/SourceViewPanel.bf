@@ -4232,7 +4232,7 @@ namespace IDE.ui
 						}
 					}
 
-					if ((mMousePos != null) && (mMousePos.Value.x >= mEditWidget.mX - GS!(13)) && (mMousePos.Value.x < mEditWidget.mX - GS!(0)))
+					if ((mMousePos != null) && (mMousePos.Value.x >= mEditWidget.mX - GS!(13)) && (mMousePos.Value.x < mEditWidget.mX - GS!(0)) &&  (mMousePos.Value.y < mHeight - GS!(20)))
 					{
 						int lineClick = GetLineAt(0, mMousePos.Value.y);
 						uint32 collapseVal = mCollapseRegionView.GetCollapseValue(lineClick);
@@ -6567,7 +6567,7 @@ namespace IDE.ui
 
 			var ewc = (SourceEditWidgetContent)mEditWidget.Content;
 
-			if ((btn == 0) && (x >= mEditWidget.mX - GS!(13)) && (x < mEditWidget.mX - GS!(0)))
+			if ((btn == 0) && (x >= mEditWidget.mX - GS!(13)) && (x < mEditWidget.mX - GS!(0)) && (y < mHeight - GS!(20)))
 			{
 				int lineClick = GetLineAt(0, y);
 				if (lineClick >= mCollapseRegionView.mLineStart)
