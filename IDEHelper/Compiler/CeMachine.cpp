@@ -7637,6 +7637,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			break;
 		case CeOp_Neg_F32:
 			CEOP_UNARY(-, float);
+			break;
 		case CeOp_Neg_F64:
 			CEOP_UNARY(-, double);
 			break;
