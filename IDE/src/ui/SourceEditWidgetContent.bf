@@ -216,6 +216,21 @@ namespace IDE.ui
 			public int32 mParseRevision;
 			public int32 mTextRevision;
 			public bool mDeleted;
+
+			public void FixAfterUpdate() mut
+			{
+				if (mKind == .Region)
+					mStartLine++;
+
+				if (mAnchorLine == mEndLine)
+				{
+					mDeleted = true;
+				}
+				else if (mAnchorLine == mStartLine)
+				{
+					mStartLine++;
+				}
+			}
 		}
 
 		public class Data : DarkEditWidgetContent.Data
@@ -5194,8 +5209,14 @@ namespace IDE.ui
 
 				for (var entry in mOrderedCollapseEntries)
 				{
-					if (entry.mKind == .Region)
-						entry.mStartLine++;
+					entry.FixAfterUpdate();
+
+					if (entry.mDeleted)
+					{
+						if (mEmbeds.GetAndRemove(entry.mAnchorIdx) case .Ok(let val))
+							delete val.value;
+						continue;
+					}
 
 					if ((entry.mPrevAnchorLine != -1) && (entry.mPrevAnchorLine != entry.mAnchorLine))
 					{
@@ -5600,22 +5621,24 @@ namespace IDE.ui
 
 			for (var entry in mOrderedCollapseEntries)
 			{
+				int32 prevAnchorLine = entry.mAnchorLine;
+
+				if (!entry.mDeleted)
+				{
+					failed = false;
+					Update(entry.mAnchorId, ref entry.mAnchorIdx, ref entry.mAnchorLine);
+					Update(entry.mStartId, ref entry.mStartIdx, ref entry.mStartLine);
+					Update(entry.mEndId, ref entry.mEndIdx, ref entry.mEndLine);
+
+					entry.FixAfterUpdate();
+				}
+
 				if (entry.mDeleted)
 				{
 					if (mEmbeds.GetAndRemove(entry.mAnchorIdx) case .Ok(let val))
 						delete val.value;
 					continue;
 				}
-
-				int32 prevAnchorLine = entry.mAnchorLine;
-
-				failed = false;
-				Update(entry.mAnchorId, ref entry.mAnchorIdx, ref entry.mAnchorLine);
-				Update(entry.mStartId, ref entry.mStartIdx, ref entry.mStartLine);
-				Update(entry.mEndId, ref entry.mEndIdx, ref entry.mEndLine);
-
-				if (entry.mKind == .Region)
-					entry.mStartLine++;
 
 				if (failed)
 					needsRefresh = true;
