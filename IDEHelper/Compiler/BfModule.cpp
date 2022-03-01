@@ -22261,6 +22261,8 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 		{
 			if ((methodDef->mIsOverride) && (mCurTypeInstance->mTypeDef->mIsCombinedPartial))
 			{
+				bool takeover = false;
+
 				mCurTypeInstance->mTypeDef->PopulateMemberSets();
 				BfMethodDef* nextMethod = NULL;
 				BfMemberSetEntry* entry = NULL;
@@ -22273,6 +22275,28 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 
 					if (checkMethod == methodDef)
 						continue;
+					if (checkMethod->mIsOverride)
+					{
+						auto checkMethodInstance = mCurTypeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
+						if (checkMethodInstance == NULL)
+							continue;
+						if (checkMethodInstance->mIRFunction == prevFunc)
+						{
+							BfAstNode* refNode = methodDef->GetRefNode();
+							if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
+								refNode = propertyMethodDeclaration->mPropertyDeclaration->mVirtualSpecifier;
+							else if (auto methodDeclaration = methodDef->GetMethodDeclaration())
+								refNode = methodDeclaration->mVirtualSpecifier;
+
+							auto error = Fail(StrFormat("Conflicting extension override method '%s'", MethodToString(mCurMethodInstance).c_str()), refNode);
+							if (error != NULL)
+								mCompiler->mPassInstance->MoreInfo("See previous override", checkMethod->GetRefNode());
+
+							takeover = false;
+							break;
+						}
+					}
+
 					if (!checkMethod->mIsExtern)
 						continue;
 					auto checkMethodInstance = mCurTypeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
@@ -22281,8 +22305,11 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 					if (!CompareMethodSignatures(checkMethodInstance, mCurMethodInstance))
 						continue;
 					// Take over function
-					mCurMethodInstance->mIRFunction = prevFunc;
+					takeover = true;
 				}
+
+				if (takeover)
+					mCurMethodInstance->mIRFunction = prevFunc;
 				
 				if (!mCurMethodInstance->mIRFunction)
 				{
