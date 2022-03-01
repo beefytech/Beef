@@ -22280,7 +22280,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 						auto checkMethodInstance = mCurTypeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
 						if (checkMethodInstance == NULL)
 							continue;
-						if (checkMethodInstance->mIRFunction == prevFunc)
+						if ((checkMethodInstance->mIRFunction == prevFunc) && (checkMethodInstance->mMethodDef->mMethodDeclaration != NULL))
 						{
 							BfAstNode* refNode = methodDef->GetRefNode();
 							if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
