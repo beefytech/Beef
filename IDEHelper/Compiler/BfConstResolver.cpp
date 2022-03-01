@@ -202,8 +202,8 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		if (isConst)
 		{
 			auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
-			if ((constant->mConstType == BfConstType_GlobalVar) && ((mBfEvalExprFlags & BfConstResolveFlag_AllowGlobalVariable) != 0))
-				isConst = false;			
+			if ((constant->mConstType == BfConstType_GlobalVar) && ((flags & BfConstResolveFlag_AllowGlobalVariable) == 0))
+				isConst = false;
 		}
 		
 		if ((!isConst) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowNonConst) == 0))
