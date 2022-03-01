@@ -189,7 +189,11 @@ namespace IDE
 			}
 			else if (!isExe)
 				return true;
-			
+
+			String projectBuildDir = scope String();
+			gApp.GetProjectBuildDir(project, projectBuildDir);
+			File.WriteAll(scope $"{projectBuildDir}/ObjectArgs.txt", .((.)objectsArg.Ptr, objectsArg.Length)).IgnoreError();
+
 		    String arCmds = scope String(""); //-O2 -Rpass=inline 
 															 //(doClangCPP ? "-lc++abi " : "") +
 
@@ -274,6 +278,7 @@ namespace IDE
 				cmdLine.AppendF("-M");
 
 		        var runCmd = gApp.QueueRun(arPath, cmdLine, workingDir, .UTF8);
+				runCmd.mReference = new String(project.mProjectName);
 		        runCmd.mOnlyIfNotFailed = true;
 				runCmd.mStdInData = new .(arCmds);
 		        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
@@ -543,6 +548,7 @@ namespace IDE
 					}
 
 			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, workingDir, .UTF8);
+					runCmd.mReference = new .(project.mProjectName);
 			        runCmd.mOnlyIfNotFailed = true;
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
 			        tagetCompletedCmd.mOnlyIfNotFailed = true;
@@ -661,6 +667,7 @@ namespace IDE
 					linkLine.Replace('\\', '/');
 
 			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, project.mProjectDir, .UTF8);
+					runCmd.mReference = new .(project.mProjectName);
 			        runCmd.mOnlyIfNotFailed = true;
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
 			        tagetCompletedCmd.mOnlyIfNotFailed = true;
@@ -1195,6 +1202,7 @@ namespace IDE
 					}
 
 			        var runCmd = gApp.QueueRun(linkerPath, linkLine, gApp.mInstallDir, .UTF16WithBom);
+					runCmd.mReference = new .(project.mProjectName);
 					runCmd.mEnvVars = new .() { (new String("VSLANG"), new String("1033")) };
 			        runCmd.mOnlyIfNotFailed = true;
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);

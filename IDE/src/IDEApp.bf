@@ -453,6 +453,7 @@ namespace IDE
 
         public class ExecutionQueueCmd : ExecutionCmd
         {
+			public String mReference ~ delete _;
             public String mFileName ~ delete _;
             public String mArgs  ~ delete _;
             public String mWorkingDir  ~ delete _;
@@ -8212,7 +8213,7 @@ namespace IDE
 			NoWait = 8,
 		}
 
-        public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None)
+        public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None, String reference = null)
         {
 			//Debug.Assert(executionInstance == null);
 
@@ -8310,7 +8311,11 @@ namespace IDE
 
 				if (!startInfo.[Friend]mFileName.IsEmpty)
                 {
-                	OutputLine("Executing: {0} {1}", startInfo.[Friend]mFileName, showArgs);                	
+					if (reference != null)
+                		OutputLine($"Executing ({reference}): {startInfo.[Friend]mFileName} {showArgs}");
+					else
+						OutputLine($"Executing: {startInfo.[Friend]mFileName} {showArgs}");
+
                 	if ((mVerbosity >= .Diagnostic) && (useArgsFile != .None))
                 		OutputLine("Arg file contents: {0}", args);
                 }
@@ -8667,7 +8672,8 @@ namespace IDE
 							ReplaceVariables(kv.value);
 					}
 
-                    var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile, executionQueueCmd.mEnvVars, executionQueueCmd.mStdInData, executionQueueCmd.mRunFlags);
+                    var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile,
+						executionQueueCmd.mEnvVars, executionQueueCmd.mStdInData, executionQueueCmd.mRunFlags, executionQueueCmd.mReference);
 					if (executionInstance != null)
 					{
 	                    executionInstance.mParallelGroup = executionQueueCmd.mParallelGroup;
