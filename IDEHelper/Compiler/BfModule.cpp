@@ -20710,6 +20710,9 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			}
 			else if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 			{
+				if ((methodInstance->mReturnType->IsRef()) && (!methodDef->mIsMutating))
+					Fail("Auto-implemented ref property getters must declare 'mut'", methodInstance->mMethodDef->GetRefNode());
+
 				if (methodInstance->mReturnType->IsValuelessType())
 				{
 					mBfIRBuilder->CreateRetVoid();
@@ -20736,8 +20739,14 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 							lookupValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(GetThis().mValue, 0, fieldInstance->mDataIdx), fieldInstance->mResolvedType, true);
 						else
 							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mDataIdx);
-						if (!methodInstance->mReturnType->IsRef())
+						if (methodInstance->mReturnType->IsRef())
+						{
+							if ((!lookupValue.IsAddr()) && (!lookupValue.mType->IsValuelessType()))
+								lookupValue = MakeAddressable(lookupValue);
+						}
+						else
 							lookupValue = LoadOrAggregateValue(lookupValue);
+
 						CreateReturn(lookupValue.mValue);
 						EmitLifetimeEnds(&mCurMethodState->mHeadScope);
 					}

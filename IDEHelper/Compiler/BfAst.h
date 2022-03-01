@@ -569,6 +569,7 @@ enum BfTypedValueKind
 {
 	BfTypedValueKind_Addr,
 	BfTypedValueKind_CopyOnMutateAddr,
+	BfTypedValueKind_CopyOnMutateAddr_Derived,
 	BfTypedValueKind_ReadOnlyAddr,
 	BfTypedValueKind_TempAddr,
 	BfTypedValueKind_RestrictedTempAddr,
@@ -688,7 +689,7 @@ public:
 
 	bool IsCopyOnMutate() const
 	{
-		return (mKind == BfTypedValueKind_CopyOnMutateAddr);
+		return (mKind == BfTypedValueKind_CopyOnMutateAddr) || (mKind == BfTypedValueKind_CopyOnMutateAddr_Derived);
 	}
 
 	bool IsReadOnly() const

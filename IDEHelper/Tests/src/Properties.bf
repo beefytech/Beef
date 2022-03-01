@@ -23,13 +23,20 @@ namespace Tests
 		struct StructB
 		{
 			public StructA B { get; set mut; }
+			public ref StructA B2 { get mut; set mut; }
 
 			int mZ = 9;
 
 			public this()
 			{
 				B = .();
+#unwarn
 				B.mA += 1000;
+
+				StructA sa = .();
+				sa.mA += 2000;
+				B2 = sa;
+				B2.mA += 3000;
 			}
 		}
 
@@ -71,8 +78,6 @@ namespace Tests
 				B = .();
 			}
 		}
-
-		
 
 		class ClassB
 		{
@@ -118,10 +123,12 @@ namespace Tests
 		{
 			StructB sb = .();
 			StructA sa = sb.B;
+			StructA sa2 = sb.B2;
 			Test.Assert(sa.mA == 111);
 			sb.B = .(222);
 			sa = sb.B;
 			Test.Assert(sa.mA == 222);
+			Test.Assert(sa2.mA == 5111);
 
 			StructC sc = default;
 			Test.Assert(sc.C == 123);

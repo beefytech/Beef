@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 namespace IDETest
 {
@@ -49,7 +51,7 @@ namespace IDETest
 			{
 				parent = test;
 				mInnerInt = parent.mA;
-
+				
 				mSA.mA = 123;
 				int a = mSA.mA;
 				int b = mSA.mB; //FAIL

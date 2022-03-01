@@ -4591,22 +4591,29 @@ BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue ta
 					{
 						bool needsCopy = true;
 
-						if (setter == NULL)
+						if (BfNodeIsA<BfRefTypeRef>(prop->mTypeRef))
 						{
-							if (((mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)) &&
-								(target.mType == mModule->mCurTypeInstance))
-							{
-								// Allow writing inside ctor
-							}
-							else
-							{
-								result.MakeReadOnly();
-								needsCopy = false;
-							}
+							// Allow full ref
 						}
+						else
+						{
+							if (setter == NULL)
+							{
+								if (((mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)) &&
+									(target.mType == mModule->mCurTypeInstance))
+								{
+									// Allow writing inside ctor
+								}
+								else
+								{
+									result.MakeReadOnly();
+									needsCopy = false;
+								}
+							}
 
-						if (result.mKind == BfTypedValueKind_Addr)
-							result.mKind = BfTypedValueKind_CopyOnMutateAddr;
+							if (result.mKind == BfTypedValueKind_Addr)
+								result.mKind = BfTypedValueKind_CopyOnMutateAddr;
+						}
 
 						mPropDef = NULL;
 						mPropSrc = NULL;
@@ -4890,10 +4897,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 		mModule->mBfIRBuilder->CreateStore(target.mValue, elementAddr);
 		target = BfTypedValue(allocaInst, primStructType, true);
 	}
-
-	if (target.IsCopyOnMutate())
-		target = mModule->CopyValue(target);
-
+	
 	BfTypedValue targetValue;
 	if ((target.mType != typeInstance) && (!target.IsSplat()))
 	{
@@ -4972,6 +4976,9 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	{
 		if ((wantsReadOnly) && (retVal.IsAddr()) && (!retVal.IsReadOnly()))
 			retVal.mKind = BfTypedValueKind_ReadOnlyAddr;
+		else if ((target.IsCopyOnMutate()) && (retVal.IsAddr()))
+			retVal.mKind = BfTypedValueKind_CopyOnMutateAddr_Derived;
+
 		mIsHeapReference = true;
 	}
 
@@ -6803,6 +6810,9 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 			
 		if (((argVal.mType->IsComposite()) || (argVal.mType->IsTypedPrimitive())))
 		{
+			if (argVal.IsCopyOnMutate())
+				argVal = mModule->CopyValue(argVal);
+
 			if ((argVal.IsReadOnly()) || (!argVal.IsAddr()))
 			{
 				if (!skipMutCheck)
@@ -18297,11 +18307,8 @@ bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
 	return true;
 }
 
-bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut, bool emitWarning, bool skipCopyOnMutate)
-{	
-	if ((!skipCopyOnMutate) && (typedVal.IsCopyOnMutate()))
-		typedVal = mModule->CopyValue(typedVal);
-
+bool BfExprEvaluator::CheckModifyResult(BfTypedValue& typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut, bool emitWarning, bool skipCopyOnMutate)
+{
 	BfLocalVariable* localVar = NULL;
 	bool isCapturedLocal = false;
 	if (mResultLocalVar != NULL)
@@ -18336,6 +18343,9 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 	}
 
 	bool canModify = typedVal.CanModify();
+	if (((typedVal.mKind == BfTypedValueKind_TempAddr) || (typedVal.mKind == BfTypedValueKind_CopyOnMutateAddr_Derived)) &&
+		(strcmp(modifyType, "assign to") == 0))
+		mModule->Warn(0, "Assigning to temporary copy of a value. Consider using 'ref' in value source declaration.", refNode);
 
 	auto _Fail = [&](const StringImpl& error, BfAstNode* refNode)
 	{
@@ -18497,6 +18507,9 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 		return false;
 	}
 	
+	if ((!skipCopyOnMutate) && (typedVal.IsCopyOnMutate()))
+		typedVal = mModule->CopyValue(typedVal);
+
 	return mModule->CheckModifyValue(typedVal, refNode, modifyType);
 }
 
@@ -19250,6 +19263,11 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 		return;
 	}
 
+	if (ptr.mKind == BfTypedValueKind_CopyOnMutateAddr)
+		ptr.mKind = BfTypedValueKind_Addr;
+	else if (ptr.IsCopyOnMutate())
+		ptr = mModule->CopyValue(ptr);
+	
 	BF_ASSERT(convVal);
 	if ((convVal) && (convVal.mType->IsNull()) && (ptr.mType->IsNullable()))
 	{

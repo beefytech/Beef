@@ -449,7 +449,7 @@ public:
 	void MarkResultAssigned();
 	void MakeResultAsValue();	
 	bool CheckIsBase(BfAstNode* checkNode);
-	bool CheckModifyResult(BfTypedValue typeValue, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut = false, bool emitWarning = false, bool skipCopyOnMutate = false);
+	bool CheckModifyResult(BfTypedValue& typeValue, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut = false, bool emitWarning = false, bool skipCopyOnMutate = false);
 	bool CheckGenericCtor(BfGenericParamType* genericParamType, BfResolvedArgs& argValues, BfAstNode* targetSrc);
 	BfTypedValue LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInline);
 	BfTypedValue LoadField(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfFieldDef* fieldDef, BfLookupFieldFlags flags);

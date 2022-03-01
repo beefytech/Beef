@@ -2428,51 +2428,62 @@ namespace IDE
 				ewc.GetLineText(lineIdx, lineText);
 
 				ewc.GetLinePosition(lineIdx, var lineStart, var lineEnd);
-				bool hasError = false;
-				for (int i = lineStart; i < lineEnd; i++)
+				
+				void FindError(bool warning)
 				{
-					var flags = (SourceElementFlags)ewc.mData.mText[i].mDisplayFlags;
-					if (flags.HasFlag(.Error))
-						hasError = true;
-				}
-
-				int failIdx = lineText.IndexOf("//FAIL");
-				bool expectedError = failIdx != -1;
-				if (hasError == expectedError)
-				{
-					if (expectedError)
+					bool hasError = false;
+					for (int i = lineStart; i < lineEnd; i++)
 					{
-						String wantsError = scope String(lineText, failIdx + "//FAIL".Length);
-						wantsError.Trim();
-						if (!wantsError.IsEmpty)
+						var flags = (SourceElementFlags)ewc.mData.mText[i].mDisplayFlags;
+						if (flags.HasFlag(warning ? .Warning : .Error))
+							hasError = true;
+					}
+
+					String kind = warning ? "warning" : "error";
+					int failIdx = lineText.IndexOf(warning ? "//WARN" : "//FAIL");
+					bool expectedError = failIdx != -1;
+					if (hasError == expectedError)
+					{
+						if (expectedError)
 						{
-							bool foundErrorText = false;
-							if (var error = FindError(lineIdx))
+							String wantsError = scope String(lineText, failIdx + "//FAIL".Length);
+							wantsError.Trim();
+							if (!wantsError.IsEmpty)
 							{
-								if (error.mError.Contains(wantsError))
-									foundErrorText = true;
-								if (error.mMoreInfo != null)
+								bool foundErrorText = false;
+								if (var error = FindError(lineIdx))
 								{
-									for (var moreInfo in error.mMoreInfo)
-										if (moreInfo.mError.Contains(wantsError))
+									if (error.mIsWarning == warning)
+									{
+										if (error.mError.Contains(wantsError))
 											foundErrorText = true;
+										if (error.mMoreInfo != null)
+										{
+											for (var moreInfo in error.mMoreInfo)
+												if (moreInfo.mError.Contains(wantsError))
+													foundErrorText = true;
+										}
+									}
 								}
-							}
-							if (!foundErrorText)
-							{
-								mScriptManager.Fail("Error at line {0} in {1} did not contain error text '{2}'\n\t", lineIdx + 1, textPanel.mFilePath, wantsError);
+								if (!foundErrorText)
+								{
+									mScriptManager.Fail($"Line {lineIdx + 1} {kind} in {textPanel.mFilePath} did not contain {kind} text '{wantsError}'\n\t");
+								}
 							}
 						}
 					}
-				}
-				else
-				{
-					if (hasError)
-						mScriptManager.Fail("Unexpected error at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
 					else
-						mScriptManager.Fail("Expected error but didn't encounter one at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
-					return;
+					{
+						if (hasError)
+							mScriptManager.Fail($"Unexpected {kind} at line {lineIdx + 1} in {textPanel.mFilePath}\n\t");
+						else
+							mScriptManager.Fail($"Expected {kind} but didn't encounter one at line {lineIdx + 1} in {textPanel.mFilePath}\n\t");
+						return;
+					}
 				}
+
+				FindError(false);
+				FindError(true);
 			}
 		}
 
