@@ -93,7 +93,7 @@ namespace System
 			}
 
 			let major = ParseComponent!(components.GetNext());
-			let minor = ParseComponent!(components.GetNext());
+			let minor = ParseComponent!(Try!(components.GetNext()));
 
 			if (!components.HasMore)
 				return Version(major, minor);
