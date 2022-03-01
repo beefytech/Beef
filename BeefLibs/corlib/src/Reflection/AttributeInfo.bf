@@ -108,6 +108,8 @@ namespace System.Reflection
 				
 				if (methodInfo.Invoke(targetAttr, params args) case .Ok(var val))
 					val.Dispose();
+				else
+					return .Err;
 			    return .Ok;
 			}
 

@@ -138,6 +138,9 @@ namespace System.Reflection
 					int64 intVal = ToInt64(obj);
 					switch (type.[Friend]mTypeCode)
 					{
+					case .Boolean:
+						bool val = intVal != 0;
+						return Variant.Create(type, &val);
 					case .Float:
 						float val = (.)intVal;
 						return Variant.Create(type, &val);

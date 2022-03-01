@@ -671,24 +671,28 @@ namespace System.Reflection
 				}
 				else if (paramType.IsValueType)
 				{
-					handled = true;
-
 					if (!argType.IsBoxed)
 						return .Err(.InvalidArgument((.)argIdx));
 
 					Type underlyingType = argType.UnderlyingType;
+					if (underlyingType == paramType)
+						handled = true;
+
 					if ((paramType.IsPrimitive) && (underlyingType.IsTypedPrimitive)) // Boxed primitive?
 						underlyingType = underlyingType.UnderlyingType;
 
-					if (argType.IsBoxedStructPtr || argType.IsBoxedPrimitivePtr)
+					if ((paramType.IsTypedPrimitive) && (underlyingType.IsTypedPrimitive) &&
+						(paramType.UnderlyingType == underlyingType.UnderlyingType))
 					{
-						dataPtr = *(void**)dataPtr;
 						handled = true;
 					}
-					else
+					else if (argType.IsBoxedStructPtr || argType.IsBoxedPrimitivePtr)
 					{
-						isValid = underlyingType == paramType;
+						dataPtr = *(void**)dataPtr;
 					}
+
+					if (underlyingType == paramType)
+						handled = true;
 					
 					if (!handled)
 					{
