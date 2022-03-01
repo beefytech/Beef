@@ -221,7 +221,10 @@ namespace System
 		public static void Write(Object obj)
 		{
 			String str = scope String(256);
-			obj.ToString(str);
+			if (obj == null)
+				str.Append("null");
+			else
+				obj.ToString(str);
 			Write(str);
 		}
 
@@ -245,7 +248,10 @@ namespace System
 		public static void WriteLine(Object obj)
 		{
 			String str = scope String(256);
-			obj.ToString(str);
+			if (obj == null)
+				str.Append("null");
+			else
+				obj.ToString(str);
 			WriteLine(str);
 		}
 		
