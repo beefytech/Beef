@@ -619,7 +619,7 @@ namespace System.Reflection
 						if (genericType.UnspecializedType == typeof(Nullable<>))
 						{
 							argType = paramType;
-							dataPtr = ScopedAllocZero!(paramType.Size, 16);
+							dataPtr = ScopedAllocZero!::(paramType.Size, 16);
 							isValid = true;
 							handled = true;
 						}
