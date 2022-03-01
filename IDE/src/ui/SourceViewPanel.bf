@@ -4452,7 +4452,7 @@ namespace IDE.ui
 							{
 								mLinePointerDrawData.mUpdateCnt = gApp.mUpdateCnt;
 								mLinePointerDrawData.mDebuggerContinueIdx = gApp.mDebuggerContinueIdx;
-								g.Draw(img, mEditWidget.mX - GS!(20),
+								g.Draw(img, mEditWidget.mX - GS!(20) - leftAdjust,
 									0 + lineNum * lineSpacing);
 							}
                         }
@@ -4865,8 +4865,10 @@ namespace IDE.ui
 			if (!mouseoverFired)
 				return false;
 
+			float leftAdjust = GS!(12);
+
 			float editX = GetEditX();
-			if ((mousePos.x < editX - 24) || (mousePos.x > editX - 5))
+			if ((mousePos.x < editX - GS!(24) - leftAdjust) || (mousePos.x > editX - GS!(5) - leftAdjust))
 				return false;
 
 			int mouseLine = GetLineAt(mousePos.x, mousePos.y);
