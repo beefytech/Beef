@@ -1701,7 +1701,7 @@ namespace IDE.ui
 					mHoverResolveTask.mResult = new String(autocompleteInfo ?? "");
 				}
 
-				resolveParams.mResultString = new String(autocompleteInfo);
+				resolveParams.mResultString = new String(autocompleteInfo ?? "");
 			}
 			else if (resolveType == ResolveType.GetCurrentLocation)
 			{
