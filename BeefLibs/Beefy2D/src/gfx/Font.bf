@@ -152,10 +152,23 @@ namespace Beefy.gfx
 			{
 				sFontNameMap = new .();
 
-				Windows.HKey hkey;
-				if (Windows.RegOpenKeyExA(Windows.HKEY_LOCAL_MACHINE, @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts", 0,
-					Windows.KEY_QUERY_VALUE | Windows.KEY_WOW64_32KEY | Windows.KEY_ENUMERATE_SUB_KEYS, out hkey) == Windows.S_OK)
+				for (int pass < 2)
 				{
+					Windows.HKey hkey;
+
+					if (pass == 0)
+					{
+						if (Windows.RegOpenKeyExA(Windows.HKEY_LOCAL_MACHINE, @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts", 0,
+							Windows.KEY_QUERY_VALUE | Windows.KEY_WOW64_32KEY | Windows.KEY_ENUMERATE_SUB_KEYS, out hkey) != Windows.S_OK)
+							continue;
+					}
+					else
+					{
+						if (Windows.RegOpenKeyExA(Windows.HKEY_CURRENT_USER, @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts", 0,
+							Windows.KEY_QUERY_VALUE | Windows.KEY_WOW64_32KEY | Windows.KEY_ENUMERATE_SUB_KEYS, out hkey) != Windows.S_OK)
+							continue;
+					}
+
 					defer Windows.RegCloseKey(hkey);
 
 					for (int32 i = 0; true; i++)
