@@ -203,7 +203,15 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		{
 			auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
 			if ((constant->mConstType == BfConstType_GlobalVar) && ((flags & BfConstResolveFlag_AllowGlobalVariable) == 0))
-				isConst = false;
+			{
+				int stringId = mModule->GetStringPoolIdx(mResult.mValue, mModule->mBfIRBuilder);
+				if (stringId != -1)
+				{
+					mResult.mValue = mModule->mBfIRBuilder->CreateConst(BfTypeCode_StringId, stringId);
+				}
+				else
+					isConst = false;
+			}
 		}
 		
 		if ((!isConst) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowNonConst) == 0))
