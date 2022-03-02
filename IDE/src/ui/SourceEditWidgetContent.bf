@@ -152,7 +152,7 @@ namespace IDE.ui
 				if (rect.mHeight >= DarkTheme.sDarkTheme.mSmallBoldFont.GetLineSpacing())
 					g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
 
-				if (mEditWidgetContent.mSelection != null)
+				if ((mEditWidgetContent.mSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
 				{
 					var collapseEntry = mEditWidgetContent.mOrderedCollapseEntries[mCollapseIndex];
 					if ((mEditWidgetContent.mSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.mSelection.Value.MaxPos >= collapseEntry.mStartIdx))
@@ -228,7 +228,8 @@ namespace IDE.ui
 				}
 				else if (mAnchorLine == mStartLine)
 				{
-					mStartLine++;
+					if (mAnchorId != mStartId)
+						mStartLine++;
 				}
 			}
 		}

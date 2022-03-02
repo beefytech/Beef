@@ -9183,7 +9183,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				if ((node->mTriviaStart != mEndSeriesIdx + 1) || (kind != mSeriesKind))
 				{
 					// Flush					
-					ConditionalAdd(mStartSeriesIdx, mStartSeriesIdx, mEndSeriesIdx, mSeriesKind);
+					Add(mStartSeriesIdx, mStartSeriesIdx, mEndSeriesIdx, mSeriesKind);
 					mStartSeriesIdx = node->mSrcStart;
 				}
 			}
@@ -9197,11 +9197,11 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 		void FlushSeries()
 		{
 			if (mStartSeriesIdx != -1)
-				ConditionalAdd(mStartSeriesIdx, mStartSeriesIdx, mEndSeriesIdx, mSeriesKind);
+				Add(mStartSeriesIdx, mStartSeriesIdx, mEndSeriesIdx, mSeriesKind);
 			mStartSeriesIdx = -1;
 		}
 
-		void ConditionalAdd(int anchor, int start, int end, char kind = '?')
+		void Add(int anchor, int start, int end, char kind = '?')
 		{
 			bool isMultiline = false;
 			for (int i = start; i < end; i++)
@@ -9225,9 +9225,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				return;
 			if (!mStartsFound.Add(start->mSrcStart))
 				return;
-			char str[1024];
-			sprintf(str, "%c%d,%d,%d\n", kind, anchor->mSrcStart, start->mSrcStart, end->mSrcStart);
-			mOutString.Append(str);
+			Add(anchor->mSrcStart, start->mSrcStart, end->mSrcStart, kind);			
 		}
 
 		void Add(BfAstNode* anchor, BfAstNode* body, char kind = '?')
@@ -9367,6 +9365,13 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 
 			BfElementVisitor::Visit(block);
 		}
+
+		virtual void Visit(BfInitializerExpression* initExpr) override
+		{
+			Add(initExpr->mOpenBrace, initExpr->mOpenBrace, initExpr->mCloseBrace);
+
+			BfElementVisitor::Visit(initExpr);
+		}
 	};
 
 	CollapseVisitor collapseVisitor(bfParser, outString);
@@ -9382,7 +9387,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 		{
 			if ((ignoredSectionStart != -1) && (prevPreprocessorNode != NULL) && (prevPreprocessorNode->mCommand != NULL))
 			{
-				collapseVisitor.ConditionalAdd(prevPreprocessorNode->mCommand->mSrcStart, ignoredSectionStart, preprocessorNode->mSrcEnd - 1);
+				collapseVisitor.Add(prevPreprocessorNode->mCommand->mSrcStart, ignoredSectionStart, preprocessorNode->mSrcEnd - 1);
 				ignoredSectionStart = -1;
 			}
 
