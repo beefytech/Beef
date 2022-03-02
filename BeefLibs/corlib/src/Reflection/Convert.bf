@@ -131,6 +131,11 @@ namespace System.Reflection
 
 			var (objType, dataPtr) = GetTypeAndPointer(obj);
 
+			if (objType == type)
+			{
+				return Variant.Create(type, dataPtr);
+			}
+
 			if (objType.IsPrimitive)
 			{
 				if (objType.IsInteger)
@@ -165,6 +170,25 @@ namespace System.Reflection
 					}
 				}
 			}
+
+			if (var unspecializedType = type as SpecializedGenericType)
+			{
+				if (unspecializedType.UnspecializedType == typeof(Nullable<>))
+				{
+					switch (ConvertTo(obj, unspecializedType.GetGenericArg(0)))
+					{
+					case .Ok(var ref val):
+						Variant.Alloc(type, var nullableVariant);
+						Internal.MemCpy(nullableVariant.DataPtr, val.DataPtr, val.VariantType.Size);
+						*((bool*)nullableVariant.DataPtr + val.VariantType.Size) = true;
+						return nullableVariant;
+					case .Err:
+						return .Err;
+					}
+				}
+			}
+
+			
 
 			return .Err;
 		}
