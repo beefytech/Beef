@@ -9201,8 +9201,21 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 			mStartSeriesIdx = -1;
 		}
 
+		int GetLineStartAfter(int startIdx)
+		{
+			for (int i = startIdx; i < mParser->mSrcLength - 1; i++)
+			{
+				if (mParser->mSrc[i] == '\n')				
+					return i + 1;				
+			}
+			return -1;
+		}
+
 		void Add(int anchor, int start, int end, char kind = '?')
 		{
+			if ((anchor == -1) || (start == -1) || (end == -1))
+				return;
+
 			bool isMultiline = false;
 			for (int i = start; i < end; i++)
 			{
@@ -9396,7 +9409,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				regionStart = preprocessorNode->mCommand;
 			else if (sv == "endregion")
 			{
-				collapseVisitor.Add(regionStart, regionStart, preprocessorNode->mCommand, 'R');
+				if (regionStart != NULL)
+					collapseVisitor.Add(regionStart->mSrcStart, collapseVisitor.GetLineStartAfter(regionStart->mSrcStart), preprocessorNode->mCommand->mSrcStart, 'R');
 				regionStart = NULL;
 			}
 

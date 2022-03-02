@@ -219,9 +219,6 @@ namespace IDE.ui
 
 			public void FixAfterUpdate() mut
 			{
-				if (mKind == .Region)
-					mStartLine++;
-
 				if (mAnchorLine == mEndLine)
 				{
 					mDeleted = true;
@@ -5073,6 +5070,8 @@ namespace IDE.ui
 			int32 closeDepth = 0;
 			int32 curAnimLineIdx = 0;
 			bool inAnim = false;
+			int checkOpenIdx = 0;
+
 			for (int line < data.mLineStarts.Count)
 			{
 				while (curIdx < mOrderedCollapseEntries.Count)
@@ -5086,27 +5085,30 @@ namespace IDE.ui
 
 					if (entry.mAnchorLine > line)
 						break;
+
+					checkOpenIdx = Math.Min(checkOpenIdx, collapseStack.Count);
 					collapseStack.Add(curIdx);
 					curIdx++;
 				}
 
 				bool deferClose = false;
 
-				if (!collapseStack.IsEmpty)
+				while (checkOpenIdx < collapseStack.Count)
 				{
-					int32 activeIdx = collapseStack.Back;
-					var entry = mOrderedCollapseEntries[activeIdx];
-					if (line == entry.mStartLine)
+					int32 checkIdx = collapseStack[checkOpenIdx];
+					var entry = mOrderedCollapseEntries[checkIdx];
+					if (line != entry.mStartLine)
+						break;
+					
+					checkOpenIdx++;
+					if (checkIdx == animIdx)
+						inAnim = true;
+					if ((!entry.mIsOpen) && (checkIdx != animIdx))
 					{
-						if (activeIdx == animIdx)
-							inAnim = true;
-						if ((!entry.mIsOpen) && (activeIdx != animIdx))
-						{
-							if ((closeDepth == 0) && (entry.mAnchorLine == entry.mStartLine))
-								deferClose = true;
-							else
-								closeDepth++;
-						}
+						if ((closeDepth == 0) && (entry.mAnchorLine == entry.mStartLine))
+							deferClose = true;
+						else
+							closeDepth++;
 					}
 				}
 

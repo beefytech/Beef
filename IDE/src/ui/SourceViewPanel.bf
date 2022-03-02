@@ -4380,6 +4380,18 @@ namespace IDE.ui
 							{
 								var entry = ewc.mOrderedCollapseEntries[collapseIdx & CollapseRegionView.cIdMask];
 								g.Draw(DarkTheme.sDarkTheme.GetImage(entry.mIsOpen ? .CollapseOpened : .CollapseClosed), editX - GS!(16), ewc.mLineCoords[lineIdx] + boxAdjustTop + GS!(2));
+
+								int nextCollapseIdx = (collapseIdx & CollapseRegionView.cIdMask) + 1;
+								if ((entry.mIsOpen) && (nextCollapseIdx < ewc.mOrderedCollapseEntries.Count))
+								{
+									// Draw line between two collapse boxes in a row
+									var nextEntry = ewc.mOrderedCollapseEntries[nextCollapseIdx];
+									if (nextEntry.mAnchorLine == lineIdx + 1)
+									{
+										using (g.PushColor(0xFFA5A5A5))
+											g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] + boxAdjustTop + (int)GS!(15.5f), (int)GS!(1.5f), (lineSpacing - GS!(10)) + GS!(2));
+									}
+								}
 							}
 							else if ((collapseIdx & CollapseRegionView.cEndFlag) != 0)
 							{
