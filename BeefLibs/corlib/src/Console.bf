@@ -81,6 +81,8 @@ namespace System
 			return terminate ? false : true;
 		}
 
+		//SetConsoleOutputCP set to CP_UTF8
+
 		[CLink, CallingConvention(.Stdcall)]
 		static extern Windows.IntBool SetConsoleTextAttribute(Windows.Handle hConsoleOutput, uint16 wAttributes);
 
@@ -89,6 +91,9 @@ namespace System
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern Windows.Handle GetStdHandle(uint32 nStdHandle);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern Windows.IntBool SetConsoleOutputCP(uint32 wCodePageID);
 
 		[CallingConvention(.Stdcall)]
 		function Windows.IntBool ConsoleCtrlHandler(int32 ctrlType);
@@ -111,6 +116,7 @@ namespace System
 				sOriginalForegroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes & 0xF);
 				sOriginalBackgroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes >> 4);
 			}
+			SetConsoleOutputCP(/*CP_UTF8*/65001);
 		}
 #endif
 
