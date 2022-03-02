@@ -9211,6 +9211,16 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 			return -1;
 		}
 
+		int GetLineEndBefore(int startIdx)
+		{
+			for (int i = startIdx; i >= 1; i--)
+			{
+				if (mParser->mSrc[i] == '\n')
+					return i;
+			}
+			return -1;
+		}
+
 		void Add(int anchor, int start, int end, char kind = '?')
 		{
 			if ((anchor == -1) || (start == -1) || (end == -1))
@@ -9390,6 +9400,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 	CollapseVisitor collapseVisitor(bfParser, outString);
 	collapseVisitor.VisitChild(bfParser->mRootNode);
 
+	BfAstNode* condStart = NULL;
 	BfAstNode* regionStart = NULL;
 	BfPreprocessorNode* prevPreprocessorNode = NULL;
 	int ignoredSectionStart = -1;
@@ -9412,6 +9423,22 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				if (regionStart != NULL)
 					collapseVisitor.Add(regionStart->mSrcStart, collapseVisitor.GetLineStartAfter(regionStart->mSrcStart), preprocessorNode->mCommand->mSrcStart, 'R');
 				regionStart = NULL;
+			}			
+			else if (sv == "if")
+			{
+				condStart = preprocessorNode->mCommand;
+			}
+			else if (sv == "endif")
+			{
+				if (condStart != NULL)
+					collapseVisitor.Add(condStart->mSrcStart, collapseVisitor.GetLineStartAfter(condStart->mSrcStart), preprocessorNode->mCommand->mSrcStart, 'R');
+				condStart = NULL;
+			}
+			else if ((sv == "else") || (sv == "elif"))
+			{
+				if (condStart != NULL)
+					collapseVisitor.Add(condStart->mSrcStart, collapseVisitor.GetLineStartAfter(condStart->mSrcStart), collapseVisitor.GetLineEndBefore(preprocessorNode->mSrcStart), 'R');
+				condStart = preprocessorNode->mCommand;
 			}
 
 			prevPreprocessorNode = preprocessorNode;
