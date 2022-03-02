@@ -2520,7 +2520,7 @@ namespace IDE.ui
 			var parts = String.StackSplit!(data, '|');
 			String fixitKind = parts[0];
 			String fixitFileName = parts[1];
-			SourceViewPanel sourceViewPanel = IDEApp.sApp.ShowSourceFile(fixitFileName);
+			var (sourceViewPanel, tabButton) = IDEApp.sApp.ShowSourceFile(fixitFileName);
 			bool focusChange = !fixitKind.StartsWith(".");
 
 			var historyEntry = targetSourceEditWidgetContent.RecordHistoryLocation();

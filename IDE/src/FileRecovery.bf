@@ -237,7 +237,7 @@ namespace IDE
 				if (recoveryFileHash != indexRecoveryHash)
 					continue;
 
-				var sourceViewPanel = gApp.ShowSourceFile(scope String(savedFilePath));
+				var (sourceViewPanel, tabButton) = gApp.ShowSourceFile(scope String(savedFilePath));
 				if (sourceViewPanel == null)
 					continue;
 

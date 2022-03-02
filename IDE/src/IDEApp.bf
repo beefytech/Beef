@@ -1088,7 +1088,7 @@ namespace IDE
 				int32 charIdx = int32.Parse(loc).GetValueOrDefault();
 				if (charIdx < 0)
 					return;
-				var sourceViewPanel = ShowSourceFile(cmds[1], null, SourceShowType.Temp);
+				var (sourceViewPanel, tabButton) = ShowSourceFile(cmds[1], null, SourceShowType.Temp);
 				if (sourceViewPanel == null)
 				    return;
 				var editWidgetContent = sourceViewPanel.mEditWidget.mEditWidgetContent;
@@ -3084,7 +3084,7 @@ namespace IDE
             if (data.GetBool("DefaultDocumentsTabbedView"))
                 mActiveDocumentsTabbedView = tabbedView;
 
-			SourceViewTab activeTab = null;
+			SourceViewTabButton activeTab = null;
             for (data.Enumerate("Tabs"))
             {
                 Panel panel = Panel.Create(data);
@@ -3094,7 +3094,7 @@ namespace IDE
 
 				bool isActive = data.GetBool("Active");
 				
-                var newTabButton = new SourceViewTab();
+                var newTabButton = new SourceViewTabButton();
                 newTabButton.Label = "";
                 data.GetString("TabLabel", newTabButton.mLabel);
 				newTabButton.mOwnsContent = panel.mAutoDelete;
@@ -6036,7 +6036,7 @@ namespace IDE
             disassemblyPanel = new DisassemblyPanel();
 			//diassemblyPanel.Show(filePath);
 
-            var newTabButton = new SourceViewTab();
+            var newTabButton = new SourceViewTabButton();
             newTabButton.Label = DisassemblyPanel.sPanelName;
             newTabButton.mWantWidth = newTabButton.GetWantWidth();
             newTabButton.mHeight = tabbedView.mTabHeight; 
@@ -6059,8 +6059,10 @@ namespace IDE
 				return 0;
 		}
 
-        public class SourceViewTab : DarkTabbedView.DarkTabButton
+        public class SourceViewTabButton : DarkTabbedView.DarkTabButton
         {
+			public bool mIsTemp;
+
             public float GetWantWidth()
             {
                 return DarkTheme.sDarkTheme.mSmallFont.GetWidth(mLabel) + DarkTheme.GetScaled(40);
@@ -6130,6 +6132,12 @@ namespace IDE
 						using (g.PushColor(0x80FFFFFF))
 							g.Draw(DarkTheme.sDarkTheme.GetImage(.RedDot), GS!(8), GS!(0));
 					}
+				}
+
+				if (mIsTemp)
+				{
+					using (g.PushColor(0x80404070))
+						g.FillRect(0, 0, mWidth, mHeight);
 				}
             }
 
@@ -6449,7 +6457,7 @@ namespace IDE
 			return projectSource.mEditData;
         }		
 
-        public SourceViewPanel ShowSourceFile(String filePath, ProjectSource projectSource = null, SourceShowType showType = SourceShowType.ShowExisting, bool setFocus = true)
+        public (SourceViewPanel panel, TabbedView.TabButton tabButton) ShowSourceFile(String filePath, ProjectSource projectSource = null, SourceShowType showType = SourceShowType.ShowExisting, bool setFocus = true)
         {
 			//TODO: PUT BACK!
 			//return null;
@@ -6480,9 +6488,9 @@ namespace IDE
 			}
             
             if ((useFilePath != null) && (!IDEUtils.FixFilePath(useFilePath)))
-				return null;
+				return (null, null);
             if ((useFilePath == null) & (showType != .New))
-                return null;
+                return (null, null);
 
             SourceViewPanel sourceViewPanel = null;
 			DarkTabbedView.DarkTabButton sourceViewPanelTab = null;
@@ -6558,7 +6566,7 @@ namespace IDE
 			}
 
             if (sourceViewPanel != null)
-                return sourceViewPanel;
+                return (sourceViewPanel, sourceViewPanelTab);
 
 			//ShowSourceFile(filePath, projectSource, showTemp, setFocus);
 
@@ -6577,10 +6585,10 @@ namespace IDE
             {
                 sourceViewPanel.Close();
 				delete sourceViewPanel;
-                return null;
+                return (null, null);
             }
 
-            var newTabButton = new SourceViewTab();
+            var newTabButton = new SourceViewTabButton();
             newTabButton.Label = "";
 			if (useFilePath != null)
             	Path.GetFileName(useFilePath, newTabButton.mLabel);
@@ -6613,7 +6621,7 @@ namespace IDE
             if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
                 sourceViewPanel.FocusEdit();  
 
-            return sourceViewPanel;            
+            return (sourceViewPanel, newTabButton);
         }
 
 		int GetRecentFilesIdx(String filePath)
@@ -7012,14 +7020,14 @@ namespace IDE
                 var projectSource = (ProjectSource)projectItem;
 				var fullPath = scope String();
 				projectSource.GetFullImportPath(fullPath);
-                return ShowSourceFile(fullPath, projectSource, showTemp ? SourceShowType.Temp : SourceShowType.ShowExistingInActivePanel, setFocus);
+                return ShowSourceFile(fullPath, projectSource, showTemp ? SourceShowType.Temp : SourceShowType.ShowExistingInActivePanel, setFocus).panel;
             }
             return null;
         }
 
         public SourceViewPanel ShowSourceFileLocation(String filePath, int showHotIdx, int refHotIdx, int line, int column, LocatorType hilitePosition, bool showTemp = false)
         {
-            var sourceViewPanel = ShowSourceFile(filePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting);
+            var sourceViewPanel = ShowSourceFile(filePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting).panel;
             if (sourceViewPanel == null)
                 return null;
             sourceViewPanel.ShowHotFileIdx(showHotIdx);
@@ -7029,7 +7037,7 @@ namespace IDE
 
         public SourceViewPanel ShowSourceFileLocation(String filePath, int32 cursorIdx, LocatorType hilitePosition)
         {
-            var sourceViewPanel = ShowSourceFile(filePath);
+            var sourceViewPanel = ShowSourceFile(filePath).panel;
             sourceViewPanel.ShowFileLocation(cursorIdx, hilitePosition);
             return sourceViewPanel;
         }
@@ -7175,15 +7183,20 @@ namespace IDE
 					ShowCallstack();
 				}
 
-                var sourceViewPanel = ShowSourceFile(filePath, null, SourceShowType.ShowExisting, setFocus);
+                var (sourceViewPanel, tabButton) = ShowSourceFile(filePath, null, SourceShowType.ShowExisting, setFocus);
                 if (sourceViewPanel != null)
                 {
 					sourceViewPanel.mIsSourceCode = true; // It's always source code, even if there is no extension (ie: stl types like "vector")
 
-					if ((aliasFilePath != null) && (sourceViewPanel.mAliasFilePath == null))
-						String.NewOrSet!(sourceViewPanel.mAliasFilePath, aliasFilePath);
+					if ((aliasFilePath != null) && (var svTabButton = tabButton as SourceViewTabButton))
+					{
+						svTabButton.mIsTemp = true;
+					}
 
-					
+					if ((aliasFilePath != null) && (sourceViewPanel.mAliasFilePath == null))
+					{
+						String.NewOrSet!(sourceViewPanel.mAliasFilePath, aliasFilePath);
+					}
 
 					if (sourceViewPanel.mLoadFailed)
 					{
@@ -10713,6 +10726,43 @@ namespace IDE
 				mDebugger.Detach();
 				mDebugger.mIsRunning = false;
 				mExecutionPaused = false;
+
+				bool hasTempFiles = false;
+				WithTabs(scope [&] (tabButton) =>
+					{
+						if (var svTabButton = tabButton as SourceViewTabButton)
+						{
+							if (svTabButton.mIsTemp)
+								hasTempFiles = true;
+						}
+					});
+
+				if (hasTempFiles)
+				{
+					var dialog = ThemeFactory.mDefault.CreateDialog("Close Temp Files", 
+						"Do you want to close temporary files referenced in the dump file?");
+					dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
+						{
+							List<SourceViewTabButton> closeTabs = scope .();
+							WithTabs(scope [&] (tabButton) =>
+								{
+									if (var svTabButton = tabButton as SourceViewTabButton)
+									{
+										if (svTabButton.mIsTemp)
+											closeTabs.Add(svTabButton);
+									}
+								});
+							for (var tab in closeTabs)
+							{
+								CloseDocument(tab.mContent);
+							}	
+						});
+					dialog.AddButton("No", new (evt) =>
+						{
+							
+						});
+					dialog.PopupWindow(GetActiveWindow());
+				}
 			}
 
 			if (mDebugger.mIsRunning)
@@ -13091,7 +13141,7 @@ namespace IDE
 			        {
 			            if (Path.Equals(sourceViewPanel.mFilePath, oldPath))
 			            {
-							var sourceViewTab = (IDEApp.SourceViewTab)tab;
+							var sourceViewTab = (IDEApp.SourceViewTabButton)tab;
 
 			                //TODO: We might have to resize the label here?
 			                //sourceViewPanel.mFilePath.Set(newPath);
