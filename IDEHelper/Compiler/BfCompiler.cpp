@@ -9312,6 +9312,13 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 			BfElementVisitor::Visit(repeatStatement);
 		}
 
+		virtual void Visit(BfWhileStatement* whileStatement) override
+		{
+			Add(whileStatement->mWhileToken, whileStatement->mEmbeddedStatement);
+
+			BfElementVisitor::Visit(whileStatement);
+		}
+
 		virtual void Visit(BfDoStatement* doStatement) override
 		{
 			Add(doStatement->mDoToken, doStatement->mEmbeddedStatement);
