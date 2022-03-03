@@ -4278,6 +4278,8 @@ namespace IDE.ui
 							
 							if ((drawLineNum < lineStart) || (drawLineNum >= lineEnd))
 								continue;
+							if (ewc.IsLineCollapsed(drawLineNum))
+								continue;
 							var curLineFlags = ref lineFlags[drawLineNum - lineStart];
 							int breakpointCount = (.)(curLineFlags & .BreakpointCountMask);
 							curLineFlags++;
@@ -4302,6 +4304,8 @@ namespace IDE.ui
 							{
 								int32 drawLineNum = bookmark.mLineNum;
 								if ((drawLineNum < lineStart) || (drawLineNum >= lineEnd))
+									continue;
+								if (ewc.IsLineCollapsed(drawLineNum))
 									continue;
 								//hadLineIcon[drawLineNum - lineStart] = true;
                                 g.Draw(DarkTheme.sDarkTheme.GetImage(.IconBookmark), Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - leftAdjust),

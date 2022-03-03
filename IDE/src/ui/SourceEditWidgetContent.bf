@@ -152,24 +152,25 @@ namespace IDE.ui
 				if (rect.mHeight >= DarkTheme.sDarkTheme.mSmallBoldFont.GetLineSpacing())
 					g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
 
+				using (g.PushColor(0xFF404040))
+				{
+					g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+				}
+
 				if ((mEditWidgetContent.mSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
 				{
 					var collapseEntry = mEditWidgetContent.mOrderedCollapseEntries[mCollapseIndex];
-					if ((mEditWidgetContent.mSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.mSelection.Value.MaxPos >= collapseEntry.mStartIdx))
+					int32 startIdx = mEditWidgetContent.mData.mLineStarts[collapseEntry.mStartLine];
+					if ((mEditWidgetContent.mSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.mSelection.Value.MaxPos >= startIdx))
 					{
 						using (g.PushColor(mEditWidgetContent.GetSelectionColor(0)))
 							g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 					}
 				}
 
-				using (g.PushColor(0x80FFFFFF))
+				using (g.PushColor(0xFF909090))
 				{
 					g.OutlineRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
-				}
-
-				using (g.PushColor(0x20FFFFFF))
-				{
-					g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 				}
 
 				var summaryString = "...";
@@ -190,16 +191,15 @@ namespace IDE.ui
 				Property = 'P',
 				Region = 'R',
 				Type = 'T',
+				UsingNamespaces = 'U',
 				Unknown = '?'
 			}
 
 			public Kind mKind;
 			public int32 mAnchorIdx;
-			public int32 mStartIdx;
 			public int32 mEndIdx;
 
 			public int32 mAnchorId;
-			public int32 mStartId;
 			public int32 mEndId;
 
 			public int32 mAnchorLine = -1;
@@ -216,19 +216,6 @@ namespace IDE.ui
 			public int32 mParseRevision;
 			public int32 mTextRevision;
 			public bool mDeleted;
-
-			public void FixAfterUpdate() mut
-			{
-				if (mAnchorLine == mEndLine)
-				{
-					mDeleted = true;
-				}
-				else if (mAnchorLine == mStartLine)
-				{
-					if (mAnchorId != mStartId)
-						mStartLine++;
-				}
-			}
 		}
 
 		public class Data : DarkEditWidgetContent.Data
@@ -4809,7 +4796,7 @@ namespace IDE.ui
 		{
 			bool hadSelection = HasSelection();
 
-			if ((dir > 0) && (HasSelection()))
+			if ((dir > 0) && (HasSelection()) && (mSelection.Value.Length > 1) && (!mWidgetWindow.IsKeyDown(.Shift)))
 			{
 				GetLineCharAtIdx(mSelection.Value.MaxPos - 1, var maxLine, ?);
 				if (IsLineCollapsed(maxLine))
@@ -4831,6 +4818,8 @@ namespace IDE.ui
 					int anchorLine = FindUncollapsedLine(line);
 					CursorLineAndColumn = .(anchorLine, 0);
 					base.CursorToLineEnd();
+					if ((mWidgetWindow.IsKeyDown(.Shift)) && (HasSelection()))
+						mSelection.ValueRef.mEndPos = (.)CursorTextPos;
 					return true;
 				}
 			}
@@ -5173,6 +5162,29 @@ namespace IDE.ui
 			mHilitePairedCharState = .NeedToRecalculate;
 		}
 
+		void FixCollapseAfterUpdate(int idx, CollapseEntry* entry)
+		{
+			if (idx > 0)
+			{
+				var prevEntry = mOrderedCollapseEntries[idx - 1];
+				if (entry.mAnchorLine == prevEntry.mEndLine)
+				{
+					entry.mAnchorLine = prevEntry.mEndLine + 1;
+					entry.mStartLine = entry.mAnchorLine;
+				}
+			}
+
+			if (entry.mAnchorLine >= entry.mEndLine)
+			{
+				entry.mDeleted = true;
+			}
+			else if (entry.mAnchorLine == entry.mStartLine)
+			{
+				if ((entry.mKind != .Comment) && (entry.mKind != .UsingNamespaces))
+					entry.mStartLine++;
+			}
+		}
+
 		public override void GetTextData()
 		{
 			var data = Data;
@@ -5212,7 +5224,7 @@ namespace IDE.ui
 
 				for (var entry in mOrderedCollapseEntries)
 				{
-					entry.FixAfterUpdate();
+					FixCollapseAfterUpdate(@entry.Index, entry);
 
 					if (entry.mDeleted)
 					{
@@ -5491,6 +5503,9 @@ namespace IDE.ui
 					activeEntry = null;
 				}
 
+				if (entry.mKind == .Region)
+					continue;
+
 				if (activeEntry != null)
 				{
 					if (activeEntry.mKind == .Type)
@@ -5550,7 +5565,8 @@ namespace IDE.ui
 				FinishCollapseClose(collapseIdx, entry);
 			}
 
-			if ((!wantOpen) && (mSelection != null) && (mSelection.Value.MinPos >= entry.mStartIdx) && (mSelection.Value.MinPos <= entry.mEndIdx))
+			int32 startIdx = mData.mLineStarts[entry.mStartLine];
+			if ((!wantOpen) && (mSelection != null) && (mSelection.Value.MinPos >= startIdx) && (mSelection.Value.MinPos <= entry.mEndIdx))
 			{
 				if (mSelection.Value.MaxPos > entry.mEndIdx + 1)
 					mSelection = .(entry.mEndIdx + 1, mSelection.Value.MaxPos);
@@ -5630,10 +5646,10 @@ namespace IDE.ui
 				{
 					failed = false;
 					Update(entry.mAnchorId, ref entry.mAnchorIdx, ref entry.mAnchorLine);
-					Update(entry.mStartId, ref entry.mStartIdx, ref entry.mStartLine);
 					Update(entry.mEndId, ref entry.mEndIdx, ref entry.mEndLine);
+					entry.mStartLine = entry.mAnchorLine;
 
-					entry.FixAfterUpdate();
+					FixCollapseAfterUpdate(@entry.Index, entry);
 				}
 
 				if (entry.mDeleted)
@@ -5676,21 +5692,18 @@ namespace IDE.ui
 				collapseData.mAnchorIdx = int32.Parse(itr.GetNext().Value);
 				collapseData.mAnchorId = lookupCtx.GetIdAtIndex(collapseData.mAnchorIdx);
 				collapseData.mKind = kind;
-				collapseData.mStartIdx = int32.Parse(itr.GetNext().Value);
 				collapseData.mEndIdx = int32.Parse(itr.GetNext().Value);
 
 				GetLineCharAtIdx(collapseData.mAnchorIdx, var line, var lineChar);
 				collapseData.mAnchorLine = (.)line;
 
-				collapseData.mStartId = lookupCtx.GetIdAtIndex(collapseData.mStartIdx);
-				GetLineCharAtIdx(collapseData.mStartIdx, out line, out lineChar);
-				collapseData.mStartLine = (.)line;
+				collapseData.mStartLine = collapseData.mAnchorLine;
 
 				collapseData.mEndId = lookupCtx.GetIdAtIndex(collapseData.mEndIdx);
 				GetLineCharAtIdx(collapseData.mEndIdx, out line, out lineChar);
 				collapseData.mEndLine = (.)line;
 
-				if ((collapseData.mAnchorId == -1) || (collapseData.mStartId == -1) || (collapseData.mEndId == -1))
+				if ((collapseData.mAnchorId == -1) || (collapseData.mEndId == -1))
 				{
 					Debug.FatalError();
 					continue; 
@@ -5715,7 +5728,8 @@ namespace IDE.ui
 					collapseSummary.mKind = .HideLine;
 					*valuePtr = collapseSummary;
 
-					var content = ExtractString(entry.mStartIdx, Math.Min(entry.mEndId - entry.mStartIdx + 1, 8192), .. scope .());
+					int startIdx = mData.mLineStarts[entry.mStartLine];
+					var content = ExtractString(startIdx, Math.Min(entry.mEndIdx - startIdx + 1, 8192), .. scope .());
 					content.Trim();
 
 					collapseSummary.mHideString = new .();
