@@ -5931,7 +5931,7 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 		fieldDeclaration->mVolatileSpecifier = prevFieldDeclaration->mVolatileSpecifier;
 		fieldDeclaration->mNewSpecifier = prevFieldDeclaration->mNewSpecifier;
 		fieldDeclaration->mExternSpecifier = prevFieldDeclaration->mExternSpecifier;
-		tokenNode = ExpectTokenAfter(fieldDeclaration, BfToken_Semicolon, BfToken_AssignEquals, BfToken_Comma);
+		tokenNode = ExpectTokenAfter(fieldDeclaration, BfToken_Semicolon, BfToken_AssignEquals, BfToken_Comma, BfToken_Tilde);
 		if (tokenNode == NULL)
 			return fieldDeclaration;
 		mVisitorPos.mReadPos--; // Go back to token
