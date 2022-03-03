@@ -39,6 +39,9 @@ namespace Beefy.utils
 				        charId = cmd;
 				    else
 				    {
+						if (cmd == 0)
+							break;
+
 				        int spanSize = -cmd;
 
 						Entry entry;
@@ -49,9 +52,6 @@ namespace Beefy.utils
 
 				        charId += spanSize;
 				        charIdx += spanSize;
-
-				        if (cmd == 0)
-				            break;
 				    }
 				}
 			}
