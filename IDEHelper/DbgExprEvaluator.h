@@ -401,6 +401,7 @@ public:
 	virtual void Visit(BfQualifiedNameNode* nameNode) override;
 	virtual void Visit(BfThisExpression* thisExpr) override;
 	virtual void Visit(BfIdentifierNode* node) override;
+	virtual void Visit(BfAttributedIdentifierNode* node) override;
 	virtual void Visit(BfMixinExpression* mixinExpr) override;
 	virtual void Visit(BfAstNode* node) override;
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;

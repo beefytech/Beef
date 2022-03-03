@@ -4947,6 +4947,11 @@ void DbgExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 	Fail("Identifier not found", identifierNode);
 }
 
+void DbgExprEvaluator::Visit(BfAttributedIdentifierNode* node)
+{
+	VisitChild(node->mIdentifier);
+}
+
 void DbgExprEvaluator::Visit(BfMixinExpression* mixinExpr)
 {
 	mResult = LookupIdentifier(mixinExpr, false, NULL);
