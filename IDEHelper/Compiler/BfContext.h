@@ -477,6 +477,7 @@ public:
 	void RebuildType(BfType* type, bool deleteOnDemandTypes = true, bool rebuildModule = true, bool placeSpecializiedInPurgatory = true);
 	void RebuildDependentTypes(BfDependedType* dType);	
 	void RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason);
+	bool CanRebuild(BfType* type);
 	void TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange);
 	void TypeMethodSignaturesChanged(BfTypeInstance* typeInst);
 	void TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst);

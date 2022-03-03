@@ -1201,6 +1201,18 @@ void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const St
 	}
 }
 
+bool BfContext::CanRebuild(BfType* type)
+{
+	if (type->mRevision == mCompiler->mRevision)
+		return false;
+	if ((type->mDefineState == BfTypeDefineState_Declaring) ||
+		(type->mDefineState == BfTypeDefineState_ResolvingBaseType) ||
+		(type->mDefineState == BfTypeDefineState_CETypeInit) ||
+		(type->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotting))
+		return false;
+	return true;
+}
+
 // Dependencies cascade as such:
 //  DerivedFrom / StructMemberData: these change the layout of memory for the dependent classes,
 //   so not only do the dependent classes need to be rebuild, but any other classes relying on those derived classes
@@ -1272,7 +1284,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 					TypeMethodSignaturesChanged(dependentTypeInstance);
 			}
 
-			if (dependentType->mRevision != mCompiler->mRevision)
+			if (CanRebuild(dependentType))			
 			{				
 				// We need to include DependencyFlag_ParamOrReturnValue because it could be a struct that changes its splatting ability
 							//  We can't ONLY check against structs, though, because a type could change from a class to a struct
@@ -1293,7 +1305,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 		}
 		else
 		{
-			if (dependentType->mRevision != mCompiler->mRevision)
+			if (CanRebuild(dependentType))
 			{
 				// Not a type instance, probably something like a sized array
 				RebuildType(dependentType);
@@ -1301,7 +1313,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 		}
 	}
 	
-	if (dType->mRevision != mCompiler->mRevision)
+	if (CanRebuild(dType))
 		RebuildType(dType);	
 }
 
@@ -1811,7 +1823,7 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 
 		for (auto dependentType : rebuildTypeQueue)
 		{
-			if (dependentType->mRevision != mCompiler->mRevision)
+			if (CanRebuild(dependentType))
 				RebuildType(dependentType);
 		}
 	}	
