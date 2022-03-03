@@ -179,6 +179,7 @@ namespace IDE.ui
         int32 mHotIdx;
         int32 mDefLineStart;
         int32 mDefLineEnd;
+		float mLeftSize = GS!(30);
 		bool mIsRawDiassembly;
         public String mSourceFileName ~ delete _;
 		public String mAliasFilePath ~ delete _;
@@ -537,6 +538,8 @@ namespace IDE.ui
 
 			String sourceLineText = scope .(1024);
 
+			int32 maxLine = 0;
+
 			for (var lineStrView in codeData.Split('\n'))
 		    {
 				checkIdx++;
@@ -691,6 +694,8 @@ namespace IDE.ui
 		                    lineIdx++;
 
 							mLineDatas.Add(lineData);
+
+							maxLine = Math.Max(maxLine, sourceLineNum + 1);
 						}
 
 						// Just about the only case we allow an empty line is when it occurs after a non-empty source line
@@ -775,6 +780,13 @@ namespace IDE.ui
 		                jumpEntry.mOverlapsAtMax.Add(checkJumpEntry.mDepth);
 		        }
 		    }
+
+			float leftSize = IDEApp.sApp.mTinyCodeFont.GetWidth(scope $"{maxLine}") +  GS!(12);
+			if (leftSize != mLeftSize)
+			{
+				mLeftSize = leftSize;
+				ResizeComponents();
+			}
 
 		    mEditWidget.Content.ClampCursor();
 		    mEditWidget.Content.ContentChanged();
@@ -874,7 +886,7 @@ namespace IDE.ui
                         {
                             var lineData = mLineDatas[lineIdx];
                             if (lineData.mSourceFile != null)
-                                g.DrawString(StackStringFormat!("{0}", lineData.mSourceLineNum + 1), GS!(8), GS!(2) + lineIdx * lineSpacing, FontAlign.Right, GS!(18));
+                                g.DrawString(StackStringFormat!("{0}", lineData.mSourceLineNum + 1), GS!(8), GS!(2) + lineIdx * lineSpacing, FontAlign.Right, mEditWidget.mX - GS!(14));
                         }
                     }
 
@@ -1139,13 +1151,13 @@ namespace IDE.ui
         {
             base.ResizeComponents();
             if (mPanelHeader != null)
-                mPanelHeader.Resize(GS!(30), 0, Math.Max(mWidth - GS!(30), 0), GS!(32));
+                mPanelHeader.Resize(mLeftSize, 0, Math.Max(mWidth - mLeftSize, 0), GS!(32));
 
 			var font = DarkTheme.sDarkTheme.mSmallFont;
 			if (mStayInDisassemblyCheckbox != null)
 				mStayInDisassemblyCheckbox.Resize(font.GetWidth(mPanelHeader.mLabel) + GS!(30), GS!(6), mStayInDisassemblyCheckbox.CalcWidth(), GS!(20));
 
-            mEditWidget.Resize(GS!(30), GS!(32), Math.Max(mWidth - GS!(30), 0), Math.Max(mHeight - GS!(32), 0));
+            mEditWidget.Resize(mLeftSize, GS!(32), Math.Max(mWidth - mLeftSize, 0), Math.Max(mHeight - GS!(32), 0));
         }
 
         public override void Resize(float x, float y, float width, float height)
