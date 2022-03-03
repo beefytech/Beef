@@ -248,6 +248,9 @@ int main()
 
 	auto _HasUniqueThemeImage = [&](int col, int row, int size)
 	{
+		if (!_HasImage(col, row, 1, size))
+			return false;
+
 		int scale = 1 << size;
 		auto srcImage0 = imageDatas[0][size];
 		if (srcImage0 == NULL)

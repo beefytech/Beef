@@ -469,6 +469,9 @@ namespace IDE
 						mColors.Deserialize(sd);
 				}
 
+				String imgCreatePath = scope String(gApp.mInstallDir, "images/ImgCreate.exe");
+				let imgCreateExeTime = File.GetLastWriteTime(imgCreatePath).GetValueOrDefault();
+
 				for (let theme in mTheme)
 				{
 					String relPath = scope .()..Append(gApp.mInstallDir, "themes/");
@@ -523,12 +526,12 @@ namespace IDE
 							needsRebuild = true;
 						if (origImageTime > minDestImgTime)
 							needsRebuild = true;
+						if (imgCreateExeTime > minDestImgTime)
+							needsRebuild = true;
 					}
 
 					if (needsRebuild)
 					{
-						String imgCreatePath = scope String(absPath, "../../images/ImgCreate.exe");
-
 						ProcessStartInfo procInfo = scope ProcessStartInfo();
 						procInfo.UseShellExecute = false;
 						procInfo.RedirectStandardError = true;
