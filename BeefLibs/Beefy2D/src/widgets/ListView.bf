@@ -168,9 +168,12 @@ namespace Beefy.widgets
             {
 				if ((!skipClosed) || (mParentItem == null) || (IsOpen))
 				{
-	                for (ListViewItem child in mChildItems)
+					for (int i < mChildItems.Count)
 	                {
-	                    child.WithSelectedItems(func, skipSelectedChildrenOnSelectedItems, skipClosed);                    
+						var child = mChildItems[i];
+	                    child.WithSelectedItems(func, skipSelectedChildrenOnSelectedItems, skipClosed);
+						if ((i < mChildItems.Count) && (mChildItems[i] != child))
+							i--;
 	                }
 				}
             }

@@ -320,6 +320,13 @@ namespace IDE.ui
 								}
 							}
 						}
+
+						if (gApp.mWorkspace.mExtraPlatforms.GetAndRemove(entry.mOrigName) case .Ok(let val))
+							delete val;
+						if (!entry.mDelete)
+							gApp.mWorkspace.mExtraPlatforms.Add(new .(entry.mNewName));
+
+						gApp.mWorkspace.MarkPlatformNamesDirty();
 					}
 					
 					for (var window in gApp.mWindows)

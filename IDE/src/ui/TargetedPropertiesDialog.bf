@@ -182,6 +182,9 @@ namespace IDE.ui
 					++itemCount;
 				});
 
+			if (itemCount == 0)
+				return;
+
 			String queryStr = scope String()..AppendF("Are you sure you want delete '{0}'", names);
 			let dialog = ThemeFactory.mDefault.CreateDialog("Delete?", queryStr, DarkTheme.sDarkTheme.mIconWarning);
 			dialog.AddYesNoButtons(new (dlg) => { DoDelete(); }, null, -1, 1);
@@ -392,10 +395,30 @@ namespace IDE.ui
 				{
 					List<String> allConfigs = scope List<String>();
 					GetConfigList(allConfigs);
+					allConfigs.Remove(configName);
 					allConfigs.Sort(scope (lhs, rhs) => lhs <=> rhs);
 					mConfigNames.Add(new String(allConfigs[0]));
 				}
 				currentChanged = true;
+			}
+
+			for (var configData in mConfigDatas)
+			{
+				if (configData.mTarget.mConfig == configName)
+				{
+					delete configData;
+					@configData.Remove();
+
+					for (var target in mTargetedConfigDatas)
+					{
+						if (target.value == configData)
+						{
+							delete target.key.mConfig;
+							delete target.key.mPlatform;
+							@target.Remove();
+						}
+					}
+				}
 			}
 
 			if (currentChanged)
@@ -411,10 +434,17 @@ namespace IDE.ui
 				SelectConfig(mConfigNames);
 			}
 			MarkDirty();
+
+			if (gApp.mConfigName == from)
+				gApp.mMainFrame.mStatusBar.SelectConfig(to);
+			if (mActiveConfigName == from)
+				mActiveConfigName.Set(to);
 		}
 
 		protected void PlatformDeleted(String platformName)
 		{
+			gApp.mWorkspace.MarkPlatformNamesDirty();
+
 			bool currentChanged = false;
 			int idx = mPlatformNames.IndexOf(platformName);
 			if (idx != -1)
@@ -426,6 +456,7 @@ namespace IDE.ui
 				{
 					List<String> allPlatforms = scope List<String>();
 					GetPlatformList(allPlatforms);
+					allPlatforms.Remove(platformName);
 					allPlatforms.Sort(scope (lhs, rhs) => lhs <=> rhs);
 					mPlatformNames.Add(new String(allPlatforms[0]));
 				}
@@ -434,11 +465,42 @@ namespace IDE.ui
 
 			if (currentChanged)
 				SelectPlatform(mPlatformNames);
-			gApp.mWorkspace.MarkPlatformNamesDirty();
+
+			for (var configData in mConfigDatas)
+			{
+				if (configData.mTarget.mPlatform == platformName)
+				{
+					delete configData;
+					@configData.Remove();
+
+					for (var target in mTargetedConfigDatas)
+					{
+						if (target.value == configData)
+						{
+							delete target.key.mConfig;
+							delete target.key.mPlatform;
+							@target.Remove();
+						}
+					}
+				}
+			}
+
+			if (gApp.mPlatformName == platformName)
+				gApp.mMainFrame.mStatusBar.SelectPlatform(mPlatformNames[0]);
+			if (mActivePlatformName == platformName)
+				mActivePlatformName.Set(mPlatformNames[0]);
 		}
 
 		protected void PlatformRenamed(String from, String to)
 		{
+			for (var configData in mConfigDatas)
+			{
+				if (configData.mTarget.mPlatform == from)
+				{
+					configData.mTarget.mPlatform.Set(to);
+				}
+			}
+
 			int idx = mPlatformNames.IndexOf(from);
 			if (idx != -1)
 			{
@@ -447,6 +509,11 @@ namespace IDE.ui
 			}
 			MarkDirty();
 			gApp.mWorkspace.MarkPlatformNamesDirty();
+
+			if (gApp.mPlatformName == from)
+				gApp.mMainFrame.mStatusBar.SelectPlatform(to);
+			if (mActivePlatformName == from)
+				mActivePlatformName.Set(to);
 		}
 
 		public virtual void EditConfigs()
@@ -711,7 +778,7 @@ namespace IDE.ui
 			}
 		}
 
-		protected void SelectPlatform(List<String> platformNames)
+		protected void SelectPlatform(List<String> platformNames, int32 category = -1)
 		{
 			if (platformNames != mPlatformNames)
 			{
@@ -724,7 +791,7 @@ namespace IDE.ui
 			else
 			{
 				mConfigComboBox.Label = "<Multiple>";
-				ShowPropPage(mPropPage.mCategoryType);
+				ShowPropPage((category != -1) ? category : mPropPage.mCategoryType);
 			}
 		}
 
@@ -737,13 +804,14 @@ namespace IDE.ui
             ShowPropPage(mPropPage.mCategoryType);
         }
 
-        protected void SelectPlatform(String platformName)
+        protected void SelectPlatform(String platformName, int32 category = -1)
         {
 			var newPlatformName = new String(platformName);
 			ClearAndDeleteItems(mPlatformNames);
             mPlatformNames.Add(newPlatformName);
             mPlatformComboBox.Label = newPlatformName;
-            ShowPropPage(mPropPage.mCategoryType);
+
+            ShowPropPage((category != -1) ? category : mPropPage.mCategoryType);
         }
 
         public override void ResizeComponents()
