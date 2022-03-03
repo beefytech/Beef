@@ -5564,6 +5564,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		}
 	}
 
+	if (TypeIsSubTypeOf(typeInstance, mCompiler->mAttributeTypeDef))
+		wantsOnDemandMethods = false;
+
 	//bool allDeclsRequired = (mIsReified) && (mCompiler->mOptions.mEmitDebugInfo) && ();
 	bool allDeclsRequired = false;
 	//if ((mIsReified) && (mCompiler->mOptions.mEmitDebugInfo) && (!mCompiler->mWantsDeferMethodDecls))
@@ -13969,6 +13972,71 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 				BfTypeInstance* wrappedType = GetWrappedStructType(underlyingType);
 				if ((wrappedType != NULL) && (wrappedType != srcType))
 					return TypeIsSubTypeOf(wrappedType, wantType, checkAccessibility);
+			}
+		}
+
+		return false;
+	}
+
+	auto srcBaseType = srcType->mBaseType;
+	return TypeIsSubTypeOf(srcBaseType, wantType);
+}
+
+bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeDef* wantType)
+{
+	if ((srcType == NULL) || (wantType == NULL))
+		return false;
+	if (srcType->IsInstanceOf(wantType))
+		return true;
+
+	if (srcType->mDefineState < BfTypeDefineState_HasInterfaces)
+	{
+		if (srcType->mDefineState == BfTypeDefineState_ResolvingBaseType)
+		{
+			auto typeState = mContext->mCurTypeState;
+			while (typeState != NULL)
+			{
+				if ((typeState->mType == srcType) && (typeState->mCurBaseType != NULL))
+				{
+					return TypeIsSubTypeOf(typeState->mCurBaseType, wantType);
+				}
+				typeState = typeState->mPrevState;
+			}
+		}
+
+		// Type is incomplete.  We don't do the IsIncomplete check here because of re-entry
+		//  While handling 'var' resolution, we don't want to force a PopulateType reentry 
+		//  but we do have enough information for TypeIsSubTypeOf
+		PopulateType(srcType, BfPopulateType_Interfaces);
+	}
+
+	if (wantType->mTypeCode == BfTypeCode_Interface)
+	{
+		BfTypeDef* checkActiveTypeDef = NULL;
+
+		auto checkType = srcType;
+		while (checkType != NULL)
+		{
+			for (auto ifaceInst : checkType->mInterfaces)
+			{
+				if (ifaceInst.mInterfaceType->IsInstanceOf(wantType))
+					return true;
+			}
+			checkType = checkType->GetImplBaseType();
+			if ((checkType != NULL) && (checkType->mDefineState < BfTypeDefineState_HasInterfaces))
+			{
+				PopulateType(checkType, BfPopulateType_Interfaces);
+			}
+		}
+
+		if (srcType->IsTypedPrimitive())
+		{
+			BfType* underlyingType = srcType->GetUnderlyingType();
+			if (underlyingType->IsWrappableType())
+			{
+				BfTypeInstance* wrappedType = GetWrappedStructType(underlyingType);
+				if ((wrappedType != NULL) && (wrappedType != srcType))
+					return TypeIsSubTypeOf(wrappedType, wantType);
 			}
 		}
 

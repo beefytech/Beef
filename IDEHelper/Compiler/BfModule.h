@@ -1890,6 +1890,7 @@ public:
 	bool TypeHasParentOrEquals(BfTypeDef* checkChildTypeDef, BfTypeDef* checkParentTypeDef);
 	BfTypeDef* FindCommonOuterType(BfTypeDef* type, BfTypeDef* type2);	
 	bool TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType, bool checkAccessibility = true);
+	bool TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeDef* wantType);
 	int GetTypeDistance(BfType* fromType, BfType* toType);
 	bool IsTypeMoreSpecific(BfType* leftType, BfType* rightType);	
 	bool GetBasePropertyDef(BfPropertyDef*& propDef, BfTypeInstance*& typeInst);
