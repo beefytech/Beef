@@ -9212,12 +9212,21 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				}
 
 				int anchor = mStartSeriesIdx;
+
 				if (!ownsLine)
 				{
-					int nextLine = GetLineStartAfter(anchor);
-					if (nextLine != -1)
-						anchor = nextLine;
+					int checkLine = GetLineStartAfter(anchor);
+					if (checkLine != -1)
+					{
+						anchor = checkLine;
+						for (; anchor < mEndSeriesIdx; anchor++)
+						{
+							if (!::isspace((uint8)mParser->mSrc[anchor]))
+								break;
+						}
+					}
 				}
+
 				Add(anchor, mEndSeriesIdx, mSeriesKind);
 			}
 			mStartSeriesIdx = -1;
@@ -9227,8 +9236,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 		{
 			for (int i = startIdx; i < mParser->mSrcLength - 1; i++)
 			{
-				if (mParser->mSrc[i] == '\n')				
-					return i + 1;				
+				if (mParser->mSrc[i] == '\n')
+					return i + 1;
 			}
 			return -1;
 		}
