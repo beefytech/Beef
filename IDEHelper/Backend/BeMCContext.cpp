@@ -2279,9 +2279,34 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 
 		return mcOperand;
 	}
-	case BeGEPConstant::TypeId:
+	case BeGEP1Constant::TypeId:
 	{
-		auto gepConstant = (BeGEPConstant*)value;
+		auto gepConstant = (BeGEP1Constant*)value;
+
+		auto mcVal = GetOperand(gepConstant->mTarget);
+
+		BePointerType* ptrType = (BePointerType*)GetType(mcVal);
+		BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
+
+		auto result = mcVal;
+
+		// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.				
+		int byteOffset = 0;
+		BeType* elementType = ptrType->mElementType;
+		byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
+				
+		result = AllocRelativeVirtualReg(ptrType, result, GetImmediate(byteOffset), 1);
+		// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use			
+		auto vregInfo = GetVRegInfo(result);
+		vregInfo->mDefOnFirstUse = true;
+		result.mKind = BeMCOperandKind_VReg;
+
+		return result;
+	}
+	break;
+	case BeGEP2Constant::TypeId:
+	{
+		auto gepConstant = (BeGEP2Constant*)value;
 
 		auto mcVal = GetOperand(gepConstant->mTarget);
 
@@ -2887,8 +2912,12 @@ static bool NeedsDecompose(BeConstant* constant)
 		if (auto targetConstant = BeValueDynCast<BeConstant>(castConst->mValue))
 			return NeedsDecompose(targetConstant);
 	}
-	else if (auto castConst = BeValueDynCast<BeGEPConstant>(constant))
+	else if (auto castConst = BeValueDynCast<BeGEP1Constant>(constant))
 	{		
+		return NeedsDecompose(castConst->mTarget);
+	}
+	else if (auto castConst = BeValueDynCast<BeGEP2Constant>(constant))
+	{
 		return NeedsDecompose(castConst->mTarget);
 	}
 
@@ -8681,7 +8710,7 @@ void BeMCContext::DoActualization()
 							else
 							{
 								inst->mArg0.mKind = BeMCOperandKind_VRegAddr;
-								vregInfo->mDbgVariable->mType = mModule->mDbgModule->CreateReferenceType(vregInfo->mDbgVariable->mType);
+								vregInfo->mDbgVariable->mType = mModule->mDbgModule->CreateReferenceType(BeValueDynCast<BeDbgType>(vregInfo->mDbgVariable->mType));
 							}
 						}
 						vregInfo->mWantsExprActualize = false;

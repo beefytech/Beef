@@ -11,6 +11,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "BeefySysLib/util/BeefPerf.h"
 #include "NetManager.h"
+#include "Compiler/CeDebugger.h"
 
 #ifdef BF_PLATFORM_WINDOWS
 #include "DbgMiniDump.h"
@@ -79,7 +80,7 @@ DebugManager::DebugManager()
 	mStepOverExternalFiles = false;
 
 	mDebugger32 = NULL;
-	mDebugger64 = NULL;
+	mDebugger64 = NULL;	
 	mNetManager = new NetManager();
 	mNetManager->mDebugManager = this;
 
@@ -97,14 +98,20 @@ DebugManager::DebugManager()
 
 DebugManager::~DebugManager()
 {
+	if ((gDebugger != NULL) && (gDebugger->IsOnDemandDebugger()))
+	{
+		delete gDebugger;
+		gDebugger = NULL;
+	}
+
 	delete mNetManager;
 	delete mDebugger64;
-	delete mDebugger32;	
+	delete mDebugger32;		
 	/*for (auto stepFilter : mStepFilters)
 	{
 
 	}*/
-	delete mDebugVisualizers;
+	delete mDebugVisualizers;	
 }
 
 void DebugManager::OutputMessage(const StringImpl& msg)
@@ -779,6 +786,12 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 	return true;
 }
 
+BF_EXPORT bool BF_CALLTYPE Debugger_ComptimeAttach(void* bfCompiler)
+{	
+	gDebugger = new CeDebugger(gDebugManager, (BfCompiler*)bfCompiler);
+	return true;
+}
+
 BF_EXPORT void BF_CALLTYPE Debugger_SetSymSrvOptions(const char* symCacheDir, const char* symSrvStr, int flags)
 {
 	Array<String> symServers;
@@ -1021,7 +1034,7 @@ BF_EXPORT uintptr BF_CALLTYPE Breakpoint_GetAddress(Breakpoint* wdBreakpoint, Br
 {
 	if (outLinkedSibling != NULL)
 		*outLinkedSibling = wdBreakpoint->mLinkedSibling;
-	return wdBreakpoint->GetAddr();
+	return gDebugger->GetBreakpointAddr(wdBreakpoint);
 }
 
 BF_EXPORT bool BF_CALLTYPE Breakpoint_IsMemoryBreakpointBound(Breakpoint* wdBreakpoint)

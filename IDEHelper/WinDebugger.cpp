@@ -5825,7 +5825,7 @@ bool WinDebugger::EvalCondition(DebugVisualizerEntry* debugVis, DbgCompileUnit* 
 		return false;
 	}
 
-	return evalResult.mBool;		
+	return evalResult.mBool;
 }
 
 String WinDebugger::GetArrayItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData)
@@ -8156,7 +8156,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				displayString += "{ " + firstRet + " }";
 			else
 				displayString += bigRet;			
-		}		
+		}
 		
 		DbgType* memberListType = actualType;				
 		bool memberListForceCast = false;
@@ -8231,7 +8231,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					return "";
 			}
 
-			retVal += "\n" + displayType->ToString(DbgLanguage_Unknown, true);						
+			retVal += "\n" + displayType->ToString(DbgLanguage_Unknown, true);
 			memberListType = innerType;
 		}
 		
@@ -11026,6 +11026,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		FrameFlags_HasPendingDebugInfo = 2,
 		FrameFlags_CanGetOldSource = 4,
 		FrameFlags_WasHotReplaced = 8,
+		FrameFlags_HadError = 0x10
 	};
 
 	AutoCrit autoCrit(mDebugManager->mCritSect);

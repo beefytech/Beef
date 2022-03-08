@@ -12086,7 +12086,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		if ((typedVal.mType->IsPointer()) && (toType->IsIntPtr()))
 		{				
 			if ((!typedVal.mType->GetUnderlyingType()->IsVoid()) && ((castFlags & BfCastFlags_FromCompiler) == 0))
-			{				
+			{
 				if (!ignoreErrors)
 					Fail(StrFormat("Unable to cast directly from '%s' to '%s', consider casting to void* first", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
 				else if (!silentFail)

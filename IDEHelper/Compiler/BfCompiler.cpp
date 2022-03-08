@@ -7658,6 +7658,12 @@ void BfCompiler::Cancel()
 	mCanceling = true;
 	mFastFinish = true;
 	mHadCancel = true;
+	if (mCEMachine != NULL)
+	{
+		AutoCrit autoCrit(mCEMachine->mCritSect);		
+		mCEMachine->mSpecialCheck = true;
+		mFastFinish = true;
+	}
 	BfLogSysM("BfCompiler::Cancel\n");
 	BpEvent("BfCompiler::Cancel", "");
 }
@@ -7665,6 +7671,8 @@ void BfCompiler::Cancel()
 void BfCompiler::RequestFastFinish()
 {
 	mFastFinish = true;
+	if (mCEMachine != NULL)
+		mCEMachine->mSpecialCheck = true;
 	BfLogSysM("BfCompiler::RequestFastFinish\n");
 	BpEvent("BfCompiler::RequestFastFinish", "");
 }

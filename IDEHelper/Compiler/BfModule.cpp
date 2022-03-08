@@ -25,6 +25,7 @@
 #include "BfDefBuilder.h"
 #include "BfDeferEvalChecker.h"
 #include "CeMachine.h"
+#include "CeDebugger.h"
 #include <fcntl.h>
 #include <time.h>
 
@@ -1045,7 +1046,7 @@ void BfModule::FinishInit()
 	mHasFullDebugInfo = moduleOptions.mEmitDebugInfo == 1;
 
 	if (mIsComptimeModule)
-		mHasFullDebugInfo = false;
+		mHasFullDebugInfo = true;
 	
 	if (((!mCompiler->mIsResolveOnly) && (!mIsScratchModule) && (moduleOptions.mEmitDebugInfo != 0) && (mIsReified)) ||
 		(mIsComptimeModule))
@@ -1729,6 +1730,15 @@ String* BfModule::GetStringPoolString(BfIRValue constantStr, BfIRConstHolder * c
 		auto& entry = mContext->mStringObjectIdMap[strId];		
 		return &entry.mString;
 	}	
+	return NULL;
+}
+
+CeDbgState* BfModule::GetCeDbgState()
+{
+	if (!mIsComptimeModule)
+		return NULL;
+	if ((mCompiler->mCEMachine != NULL) && (mCompiler->mCEMachine->mDebugger != NULL))
+		return mCompiler->mCEMachine->mDebugger->mCurDbgState;
 	return NULL;
 }
 
@@ -3066,8 +3076,10 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 	//BF_ASSERT(refNode != NULL);
 
-	if (mIsComptimeModule)
+	if ((mIsComptimeModule) && (!mCompiler->mCEMachine->mDbgPaused))
 	{
+		mHadBuildError = true;
+
 		if ((mCompiler->mCEMachine->mCurContext != NULL) && (mCompiler->mCEMachine->mCurContext->mCurTargetSrc != NULL))
 		{
 			BfError* bfError = mCompiler->mPassInstance->Fail("Comptime method generation had errors", mCompiler->mCEMachine->mCurContext->mCurTargetSrc);
@@ -3075,8 +3087,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 				mCompiler->mPassInstance->MoreInfo(error, refNode);
 			return bfError;
 		}
-
-		mHadBuildError = true;
+		
 		return NULL;
 	}
 
@@ -4139,7 +4150,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		}
 	}
 	else if (mBfIRBuilder != NULL)
-	{			
+	{		
 		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 
 		SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites, true);
@@ -12452,6 +12463,39 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 					return GetDefaultTypedValue(typedValue.mType);
 				}
 			}
+
+			if ((mIsComptimeModule) && (mCompiler->mCEMachine->mDebugger != NULL) && (mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+			{
+				auto ceDebugger = mCompiler->mCEMachine->mDebugger;
+				auto ceContext = ceDebugger->mCurDbgState->mCeContext;
+				auto activeFrame = ceDebugger->mCurDbgState->mActiveFrame;
+
+				auto ceTypedValue = ceDebugger->GetAddr(constantValue);
+				if (ceTypedValue)
+				{
+					if ((typedValue.mType->IsObjectOrInterface()) || (typedValue.mType->IsPointer()))
+					{
+						void* data = ceContext->GetMemoryPtr(ceTypedValue.mAddr, sizeof(addr_ce));
+						if (data == NULL)
+						{
+							Fail("Invalid address", refNode);
+							return GetDefaultTypedValue(typedValue.mType);
+						}
+
+						addr_ce dataAddr = *(addr_ce*)data;
+						return BfTypedValue(mBfIRBuilder->CreateIntToPtr(
+							mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)dataAddr), mBfIRBuilder->MapType(typedValue.mType)), typedValue.mType);
+					}
+
+					auto constVal = ceContext->CreateConstant(this, ceContext->mMemory.mVals + ceTypedValue.mAddr, typedValue.mType);
+					if (!constVal)
+					{
+						Fail("Failed to create const", refNode);
+						return GetDefaultTypedValue(typedValue.mType);
+					}
+					return BfTypedValue(constVal, typedValue.mType);
+				}
+			}
 		}
 	}
 
@@ -14605,6 +14649,11 @@ void BfModule::MarkUsingThis()
 
 BfTypedValue BfModule::GetThis(bool markUsing)
 {	
+	if ((mIsComptimeModule) && (mCompiler->mCEMachine->mDebugger != NULL) && (mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+	{
+		return mCompiler->mCEMachine->mDebugger->mCurDbgState->mExplicitThis;
+	}
+
 	auto useMethodState = mCurMethodState;
 	while ((useMethodState != NULL) && (useMethodState->mClosureState != NULL) && (useMethodState->mClosureState->mCapturing))		
 	{
@@ -14628,7 +14677,7 @@ BfTypedValue BfModule::GetThis(bool markUsing)
 		}
 	}
 	else
-	{
+	{		
 		//TODO: Do we allow useMethodState to be NULL anymore?
 		return BfTypedValue();
 	}
@@ -16616,6 +16665,7 @@ void BfModule::EmitDtorBody()
 				}
 				else
 				{
+					PopulateType(fieldInst->mResolvedType);
 					if (fieldInst->mResolvedType->IsValuelessType())
 					{
 						value = mBfIRBuilder->GetFakeVal();

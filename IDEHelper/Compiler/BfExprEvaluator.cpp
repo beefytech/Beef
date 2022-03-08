@@ -21,6 +21,8 @@
 #include "BfFixits.h"
 #include "CeMachine.h"
 #include "BfDefBuilder.h"
+#include "CeMachine.h"
+#include "CeDebugger.h"
 
 #pragma warning(pop)
 #pragma warning(disable:4996)
@@ -4018,6 +4020,35 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 
 BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringImpl& findName, bool ignoreInitialError, bool* hadError)
 {
+	if ((mModule->mCompiler->mCEMachine != NULL) && (mModule->mCompiler->mCEMachine->mDebugger != NULL) && (mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+	{
+		auto ceDebugger = mModule->mCompiler->mCEMachine->mDebugger;		
+		auto ceContext = ceDebugger->mCurDbgState->mCeContext;
+		auto activeFrame = ceDebugger->mCurDbgState->mActiveFrame;
+		if (activeFrame->mFunction->mDbgInfo != NULL)
+		{
+			int instIdx = activeFrame->GetInstIdx();
+			for (auto& dbgVar : activeFrame->mFunction->mDbgInfo->mVariables)
+			{
+				if (dbgVar.mName == findName)
+				{
+					if (dbgVar.mValue.mKind == CeOperandKind_AllocaAddr)
+					{
+						return BfTypedValue(mModule->mBfIRBuilder->CreateConstAggCE(mModule->mBfIRBuilder->MapType(dbgVar.mType), activeFrame->mFrameAddr + dbgVar.mValue.mFrameOfs), dbgVar.mType, true);
+					}
+				}
+			}
+		}
+
+		if (findName == "FR")
+		{
+			auto ptrType = mModule->CreatePointerType(mModule->GetPrimitiveType(BfTypeCode_UInt8));
+			auto intVal = mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, activeFrame->mFrameAddr);
+			auto ptrVal = mModule->mBfIRBuilder->CreateIntToPtr(intVal, mModule->mBfIRBuilder->MapType(ptrType));
+			return BfTypedValue(ptrVal, ptrType);
+		}
+	}
+
 	auto identifierNode = BfNodeDynCast<BfIdentifierNode>(refNode);
 	if (mModule->mCurMethodState != NULL)
 	{
@@ -4649,7 +4680,8 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 
 	if (isFailurePass)
 	{
-		mModule->Fail(StrFormat("'%s.%s' is inaccessible due to its protection level", mModule->TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()), targetSrc);
+		if (mModule->GetCeDbgState() == NULL)
+			mModule->Fail(StrFormat("'%s.%s' is inaccessible due to its protection level", mModule->TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()), targetSrc);
 	}
 
 	auto resolvePassData = mModule->mCompiler->mResolvePassData;
@@ -6039,23 +6071,46 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 				CeEvalFlags evalFlags = CeEvalFlags_None;
 				if ((mBfEvalExprFlags & BfEvalExprFlags_NoCeRebuildFlags) != 0)
 					evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_NoRebuild);
-				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
-				if (constRet)
+				
+				if ((mModule->mIsComptimeModule) && (mModule->mCompiler->mCEMachine->mDebugger != NULL) && (mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
 				{
-					auto constant = mModule->mBfIRBuilder->GetConstant(constRet.mValue);
-					BF_ASSERT(!constRet.mType->IsVar());
-					return constRet;
-				}
+					auto ceDbgState = mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState;
+					if ((ceDbgState->mDbgExpressionFlags & DwEvalExpressionFlag_AllowCalls) != 0)
+					{	
+						ceDbgState->mHadSideEffects = true;
 
-				if (mModule->mCompiler->mFastFinish)
-				{
-					if ((mModule->mCurMethodInstance == NULL) || (!mModule->mCurMethodInstance->mIsAutocompleteMethod))
-					{
-						// We didn't properly resolve this so queue for a rebuild later
-						mModule->DeferRebuildType(mModule->mCurTypeInstance);
+						SetAndRestoreValue<CeDebugger*> prevDebugger(mModule->mCompiler->mCEMachine->mDebugger, NULL);
+
+						evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_DbgCall);
+						auto result = ceDbgState->mCeContext->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
+						if (result)
+							return result;
 					}
+					else
+					{
+						ceDbgState->mBlockedSideEffects = true;						
+					}
+				}				
+				else
+				{					
+					auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
+					if (constRet)
+					{
+						auto constant = mModule->mBfIRBuilder->GetConstant(constRet.mValue);
+						BF_ASSERT(!constRet.mType->IsVar());
+						return constRet;
+					}
+
+					if (mModule->mCompiler->mFastFinish)
+					{
+						if ((mModule->mCurMethodInstance == NULL) || (!mModule->mCurMethodInstance->mIsAutocompleteMethod))
+						{
+							// We didn't properly resolve this so queue for a rebuild later
+							mModule->DeferRebuildType(mModule->mCurTypeInstance);
+						}
+					}
+					doConstReturn = true;
 				}
-				doConstReturn = true;
 			}			
 		}
 		else if (mModule->mIsComptimeModule)
@@ -17499,6 +17554,51 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			}
 			return;
 		}
+
+		if (auto ceDbgState = mModule->GetCeDbgState())
+		{
+			if (targetFunctionName.StartsWith("__"))
+			{
+				auto ceDebugger = mModule->mCompiler->mCEMachine->mDebugger;
+
+				auto _ResolveArg = [&](int argIdx, BfType* type = NULL)
+				{
+					if (argIdx >= args.mSize)
+						return BfTypedValue();
+					return mModule->CreateValueFromExpression(args[argIdx], type);
+				};
+
+				if (targetFunctionName == "__getHighBits")
+				{
+					auto typedVal = _ResolveArg(0);
+					if ((typedVal) && (typedVal.mType->IsPrimitiveType()))
+					{
+						auto primType = (BfPrimitiveType*)typedVal.mType;
+
+						int64 val = ceDebugger->ValueToInt(typedVal);
+						int64 bitCount = ceDebugger->ValueToInt(_ResolveArg(1));
+						int64 resultVal = val >> (typedVal.mType->mSize * 8 - bitCount);
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, (uint64)resultVal), typedVal.mType);
+						return;
+					}
+				}
+				else if (targetFunctionName == "__clearHighBits")
+				{
+					auto typedVal = _ResolveArg(0);
+					if ((typedVal) && (typedVal.mType->IsPrimitiveType()))
+					{
+						auto primType = (BfPrimitiveType*)typedVal.mType;
+
+						int64 val = ceDebugger->ValueToInt(typedVal);
+						int64 bitCount = ceDebugger->ValueToInt(_ResolveArg(1));						
+						int64 andBits = (0x8000000000000000LL) >> ((typedVal.mType->mSize - 8) * 8 + bitCount - 1);
+						int64 resultVal = val & ~andBits;
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, (uint64)resultVal), typedVal.mType);
+						return;
+					}
+				}
+			}
+		}
 	}
 	else if (auto expr = BfNodeDynCast<BfExpression>(target))
 	{		
@@ -18968,7 +19068,7 @@ BfTypedValue BfExprEvaluator::PerformAssignment_CheckOp(BfAssignmentExpression* 
 }
 
 void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool evaluatedLeft, BfTypedValue rightValue, BfTypedValue* outCascadeValue)
-{	
+{
 	auto binaryOp = BfAssignOpToBinaryOp(assignExpr->mOp);	
 
 	BfExpression* targetNode = assignExpr->mLeft;
@@ -19375,10 +19475,54 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				}
 				else if (!alreadyWritten)
 				{
-					//ptr = mModule->LoadValue(ptr);
-					BF_ASSERT(ptr.IsAddr());
-					convVal = mModule->LoadValue(convVal);
-					auto storeInst = mModule->mBfIRBuilder->CreateAlignedStore(convVal.mValue, ptr.mValue, ptr.mType->mAlign, mIsVolatileReference);
+					if ((mModule->mIsComptimeModule) && (mModule->mCompiler->mCEMachine->mDebugger != NULL) && (mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+					{
+						auto ceDbgState = mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState;
+						bool success = false;
+
+						if ((convVal.mValue.IsConst()) && (ptr.mValue.IsConst()))
+						{
+							auto constant = mModule->mBfIRBuilder->GetConstant(ptr.mValue);
+							auto valConstant = mModule->mBfIRBuilder->GetConstant(convVal.mValue);
+
+							auto ceTypedVal = mModule->mCompiler->mCEMachine->mDebugger->GetAddr(constant);
+							if (!ceTypedVal)
+							{
+								mModule->Fail("Invalid assignment address", assignExpr);
+								return;
+							}
+
+							auto ceContext = mModule->mCompiler->mCEMachine->mCurContext;							
+							if (ceContext->CheckMemory(ceTypedVal.mAddr, convVal.mType->mSize))
+							{
+								if ((ceDbgState->mDbgExpressionFlags & DwEvalExpressionFlag_AllowSideEffects) != 0)
+								{
+									ceDbgState->mHadSideEffects = true;
+									if (ceContext->WriteConstant(mModule, ceTypedVal.mAddr, valConstant, convVal.mType))
+										success = true;
+								}
+								else
+								{
+									ceDbgState->mBlockedSideEffects = true;
+									success = true;
+								}
+							}
+						}
+						
+						if (!success)
+						{
+							mModule->Fail("Assignment failed", assignExpr);
+							return;
+						}
+					}
+
+					if (!alreadyWritten)
+					{
+						//ptr = mModule->LoadValue(ptr);
+						BF_ASSERT(ptr.IsAddr());
+						convVal = mModule->LoadValue(convVal);
+						auto storeInst = mModule->mBfIRBuilder->CreateAlignedStore(convVal.mValue, ptr.mValue, ptr.mType->mAlign, mIsVolatileReference);
+					}
 				}
 			}
 		}
@@ -21570,7 +21714,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		leftValue.mType = leftValue.mType->GetUnderlyingType();
 	
 	if ((binaryOp == BfBinaryOp_ConditionalAnd) || (binaryOp == BfBinaryOp_ConditionalOr))
-	{
+	{		
  		if (mModule->mCurMethodState->mDeferredLocalAssignData != NULL)
  			mModule->mCurMethodState->mDeferredLocalAssignData->BreakExtendChain();
 		if (mModule->mCurMethodState->mCurScope->mScopeKind == BfScopeKind_StatementTarget)

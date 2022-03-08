@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using Beefy.utils;
 using IDE.util;
+using IDE.Compiler;
 
 namespace IDE.Debugger
 {
@@ -80,7 +81,8 @@ namespace IDE.Debugger
 			Optimized = 1,
 			HasPendingDebugInfo = 2,
 			CanLoadOldVersion = 4,
-			WasHotReplaced = 8
+			WasHotReplaced = 8,
+			HadError = 0x10
 		}
 
 		//[Flags]
@@ -141,6 +143,9 @@ namespace IDE.Debugger
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_OpenFile(char8* launchPath, char8* targetPath, char8* args, char8* workingDir, void* envBlockPtr, int32 envBlockLen, bool hotSwapEnabled);
+
+		[CallingConvention(.Stdcall),CLink]
+		static extern bool Debugger_ComptimeAttach(void* bfCompiler);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_Attach(int32 processId, AttachFlags attachFlags);
@@ -371,6 +376,7 @@ namespace IDE.Debugger
 		public bool mIsRunning;
 		public bool mIsRunningCompiled;
 		public bool mIsRunningWithHotSwap;
+		public bool mIsComptimeDebug;
 		//public RunState mLastUpdatedRunState;
 		public bool mCallStackDirty;
 		public int32 mActiveCallStackIdx;
@@ -427,9 +433,19 @@ namespace IDE.Debugger
 			DeleteAndNullify!(mRunningPath);
 			mRunningPath = new String(launchPath);
 
+			mIsComptimeDebug = false;
 			mIsRunningCompiled = isCompiled;
 			mIsRunningWithHotSwap = hotSwapEnabled;
 			return Debugger_OpenFile(launchPath, targetPath, args, workingDir, envBlock.Ptr, (int32)envBlock.Length, hotSwapEnabled);
+		}
+
+		public bool ComptimeAttach(BfCompiler compiler)
+		{
+			mIsComptimeDebug = true;
+			mIsRunningCompiled = false;
+			mIsRunningWithHotSwap = false;
+			mIsRunning = true;
+			return Debugger_ComptimeAttach(compiler.mNativeBfCompiler);
 		}
 
 		public void SetSymSrvOptions(String symCacheDir, String symSrvStr, SymSrvFlags symSrvFlags)
@@ -439,7 +455,9 @@ namespace IDE.Debugger
 
 		public bool OpenMiniDump(String file)
 		{
+			mIsComptimeDebug = false;
 			mIsRunningCompiled = false;
+			mIsRunningWithHotSwap = false;
 			return Debugger_OpenMiniDump(file);
 		}
 
@@ -482,6 +500,9 @@ namespace IDE.Debugger
 				if (breakpoint.mThreadId != -1)
 					breakpoint.mThreadId = 0;
 			}
+
+			mIsComptimeDebug = false;
+			mIsRunning = false;
 		}
 
 		public RunState GetRunState()
@@ -1083,6 +1104,9 @@ namespace IDE.Debugger
 
 		public bool Attach(Process process, AttachFlags attachFlags)
 		{
+			mIsRunningCompiled = false;
+			mIsComptimeDebug = false;
+			mIsRunningWithHotSwap = false;
 			return Debugger_Attach(process.Id, attachFlags);
 		}
 

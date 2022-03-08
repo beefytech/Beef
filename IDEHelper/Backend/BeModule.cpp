@@ -497,7 +497,13 @@ void BeStructConstant::GetData(BeConstData& data)
 		val->GetData(data);
 }
 
-BeType* BeGEPConstant::GetType()
+BeType* BeGEP1Constant::GetType()
+{
+	BePointerType* ptrType = (BePointerType*)mTarget->GetType();
+	return ptrType;
+}
+
+BeType* BeGEP2Constant::GetType()
 {	
 	BePointerType* ptrType = (BePointerType*)mTarget->GetType();
 	BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
@@ -1040,6 +1046,12 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			return;
 		}
 
+		if (auto dbgType = BeValueDynCast<BeDbgTypeId>(mdNode))
+		{			
+			str += StrFormat("DbgTypeId: %d", dbgType->mTypeId);
+			return;
+		}
+
 		if (auto dbgVar = BeValueDynCast<BeDbgVariable>(mdNode))
 		{
 			ToString(str, dbgVar->mType);
@@ -1281,9 +1293,17 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		return;
 	}
 
-	if (auto constantGEP = BeValueDynCast<BeGEPConstant>(value))
+	if (auto constantGEP = BeValueDynCast<BeGEP1Constant>(value))
+	{
+		str += "ConstGEP1 ";
+		ToString(str, constantGEP->mTarget);
+		str += StrFormat(" %d %d", constantGEP->mIdx0);
+		return;
+	}
+
+	if (auto constantGEP = BeValueDynCast<BeGEP2Constant>(value))
 	{	
-		str += "ConstGep ";
+		str += "ConstGEP2 ";
 		ToString(str, constantGEP->mTarget);
 		str += StrFormat(" %d %d", constantGEP->mIdx0, constantGEP->mIdx1);
 		return;
@@ -1373,7 +1393,16 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		return;
 	}
 
-	if (auto constant = BeValueDynCast<BeGEPConstant>(value))
+	if (auto constant = BeValueDynCast<BeGEP1Constant>(value))
+	{
+		ToString(str, constant->GetType());
+		str += " gep (";
+		ToString(str, constant->mTarget);
+		str += StrFormat(", %d)", constant->mIdx0);
+		return;
+	}
+
+	if (auto constant = BeValueDynCast<BeGEP2Constant>(value))
 	{		
 		ToString(str, constant->GetType());
 		str += " gep (";
@@ -1762,6 +1791,7 @@ BeModule::BeModule(const StringImpl& moduleName, BeContext* context)
 	mLastDbgLoc = NULL;
 	mActiveFunction = NULL;
 	mDbgModule = NULL;
+	mCeMachine = NULL;
 	mPrevDbgLocInline = NULL;
 	mCurDbgLocIdx = 0;
 	mCurLexBlockId = 0;	

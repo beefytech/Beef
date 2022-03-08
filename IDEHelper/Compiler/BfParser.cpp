@@ -720,7 +720,7 @@ BfBlock* BfParser::ParseInlineBlock(int spaceIdx, int endIdx)
 
 	while (true)
 	{
-		NextToken(endIdx + 1);
+		NextToken(endIdx + 1, false, true);
 		if (mSyntaxToken == BfSyntaxToken_HIT_END_IDX)
 		{
 			mSrcIdx = usedEndIdx;
@@ -1384,7 +1384,7 @@ double BfParser::ParseLiteralDouble()
 	return strtod(buf, NULL);
 }
 
-void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
+void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePreprocessor)
 {
 	auto prevToken = mToken;
 
@@ -2337,7 +2337,13 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 			}
 			break;
 		case '#':
-			HandlePreprocessor();
+			if (disablePreprocessor)
+			{
+				TokenFail("Unexpected character");
+				continue;
+			}
+			else
+				HandlePreprocessor();
 			if (mSyntaxToken == BfSyntaxToken_EOF)
 				return;
 			break;

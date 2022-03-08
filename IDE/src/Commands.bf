@@ -225,6 +225,7 @@ namespace IDE
 			Add("Comment Toggle", new => gApp.[Friend]CommentToggle, .Editor);
 			Add("Compile File", new => gApp.Cmd_CompileFile);
 			Add("Debug All Tests", new () => { gApp.[Friend]RunTests(true, true); });
+			Add("Debug Comptime", new => gApp.DebugComptime);
 			Add("Debug Normal Tests", new () => { gApp.[Friend]RunTests(false, true); });
 			Add("Delete All Right", new => gApp.[Friend]DeleteAllRight);
 			Add("Duplicate Line", new () => { gApp.[Friend]DuplicateLine(); });

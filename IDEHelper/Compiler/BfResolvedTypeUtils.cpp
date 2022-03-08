@@ -3503,6 +3503,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			BF_ASSERT(sizeExpr != NULL);
 			if (sizeExpr != NULL)
 			{
+				BfMethodState methodState;
+				SetAndRestoreValue<BfMethodState*> prevMethodState(ctx->mModule->mCurMethodState, &methodState);
+				methodState.mTempKind = BfMethodState::TempKind_Static;
+
 				BfConstResolver constResolver(ctx->mModule);
 				BfType* intType = ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 				constResolver.mAllowGenericConstValue = true;

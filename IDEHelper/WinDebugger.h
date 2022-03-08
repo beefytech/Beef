@@ -272,55 +272,6 @@ public:
 	}
 };
 
-enum DbgTypeKindFlags
-{
-	DbgTypeKindFlag_None = 0,
-	DbgTypeKindFlag_Int = 1
-};
-
-struct DwFormatInfo
-{
-	int mCallStackIdx;
-	bool mHidePointers;
-	bool mIgnoreDerivedClassInfo;
-	bool mNoVisualizers;
-	bool mNoMembers;
-	bool mRawString;	
-	bool mNoEdit;
-	DbgTypeKindFlags mTypeKindFlags;
-	intptr mArrayLength;
-	intptr mOverrideCount;
-	intptr mMaxCount;
-	DwDisplayType mDisplayType;
-	DbgTypedValue mExplicitThis;
-	int mTotalSummaryLength;	
-	String mReferenceId;
-	String mSubjectExpr;
-	String mExpectedType;
-	String mNamespaceSearch;	
-	int mExpandItemDepth;
-	DbgLanguage mLanguage;
-
-	DwFormatInfo()
-	{
-		mCallStackIdx = -1;
-		mHidePointers = false;
-		mIgnoreDerivedClassInfo = false;
-		mRawString = false;		
-		mNoVisualizers = false;
-		mNoMembers = false;		
-		mNoEdit = false;
-		mTypeKindFlags = DbgTypeKindFlag_None;
-		mArrayLength = -1;
-		mOverrideCount = -1;
-		mMaxCount = -1;
-		mTotalSummaryLength = 0;
-		mDisplayType = DwDisplayType_NotSpecified;		
-		mExpandItemDepth = 0;
-		mLanguage = DbgLanguage_Unknown;
-	}
-};
-
 class DbgPendingExpr
 {
 public:	
@@ -410,6 +361,8 @@ public:
 			::CloseHandle(mFileMapping);
 	}
 };
+
+struct DwFormatInfo;
 
 class WinDebugger : public Debugger
 {
@@ -542,7 +495,7 @@ public:
 	bool SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize);
 	DbgSubprogram* TryFollowHotJump(DbgSubprogram* subprogram, addr_target addr);	
 
-	bool ParseFormatInfo(DbgModule* dbgModule, const StringImpl& formatInfoStr, DwFormatInfo* formatInfo, BfPassInstance* bfPassInstance, int* assignExprOffset, String* assignExpr = NULL, String* errorString = NULL,  DbgTypedValue contextTypedValue = DbgTypedValue());
+	bool ParseFormatInfo(DbgModule* dbgModule, const StringImpl& formatInfoStr, DwFormatInfo* formatInfo, BfPassInstance* bfPassInstance, int* assignExprOffset, String* assignExpr = NULL, String* errorString = NULL, DbgTypedValue contextTypedValue = DbgTypedValue());
 	String MaybeQuoteFormatInfoParam(const StringImpl& str);
 	void DbgVisFailed(DebugVisualizerEntry* debugVis, const StringImpl& evalString, const StringImpl& errors);
 	DbgTypedValue EvaluateInContext(DbgCompileUnit* dbgCompileUnit, const DbgTypedValue& contextTypedValue, const StringImpl& subExpr, DwFormatInfo* formatInfo = NULL, String* outReferenceId = NULL, String* outErrors = NULL);

@@ -862,7 +862,8 @@ namespace IDE
 			let sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
 			{
-				Path.GetDirectoryPath(sourceViewPanel.mFilePath, fullDir);
+				if (sourceViewPanel.mFilePath != null)
+					Path.GetDirectoryPath(sourceViewPanel.mFilePath, fullDir);
 			}
 			else if ((gApp.mDebugger.mRunningPath != null) && (!mWorkspace.IsInitialized))
 			{
@@ -4342,7 +4343,10 @@ namespace IDE
 			    if (mExecutionQueue.Count == 0)
 			    {
 			        mOutputPanel.Clear();
-			        OutputLine("Compiling...");
+					if (mDebugger?.mIsComptimeDebug == true)
+			        	OutputLine("Compiling with comptime debugging...");
+					else
+						OutputLine("Compiling...");
 			        Compile(.Normal, null);
 			    }
 			}
@@ -4445,6 +4449,24 @@ namespace IDE
 			    mTargetStartWithStep = false;
 			    CompileAndRun(true);
 			}
+		}
+
+		[IDECommand]
+		public void DebugComptime()
+		{
+			if (mDebugger.mIsRunning)
+				return;
+
+			if (IsCompiling)
+				return;
+
+			CheckDebugVisualizers();
+			mTargetDidInitBreak = true;
+			mTargetStartWithStep = false;
+			mDebugger.ComptimeAttach(mBfBuildCompiler);
+			mDebugger.RehupBreakpoints(true);
+			mBfBuildCompiler.ForceRebuild();
+			Compile();
 		}
 
 		[IDECommand]
@@ -5622,6 +5644,7 @@ namespace IDE
 
             subMenu = root.AddMenuItem("&Build");
 			AddMenuItem(subMenu, "&Build Workspace", "Build Workspace", new => UpdateMenuItem_HasWorkspace);
+			AddMenuItem(subMenu, "&Debug Comptime", "Debug Comptime", new => UpdateMenuItem_HasWorkspace);
             AddMenuItem(subMenu, "&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
             AddMenuItem(subMenu, "Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });
@@ -7211,7 +7234,7 @@ namespace IDE
 						// No 'wrong hash' warnings
 					}
 					else if (((hash != .None) && (sourceViewPanel.mEditData != null) && (!sourceViewPanel.mEditData.CheckHash(hash))) ||
-						(sourceViewPanel.mHasChangedSinceLastCompile))
+						(sourceViewPanel.mHasChangedSinceLastCompile) && (mDebugger?.mIsComptimeDebug != true))
 					{
 						sourceViewPanel.ShowWrongHash();
 					}
@@ -7695,6 +7718,11 @@ namespace IDE
 
         void SysKeyDown(KeyDownEvent evt)
         {
+			if (evt.mKeyCode != .Alt)
+			{
+				NOP!();
+			}
+
 			if (evt.mHandled)
 				return;
 
@@ -8723,6 +8751,9 @@ namespace IDE
 					if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
                     	OutputLine("Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 
+					if (mDebugger?.mIsComptimeDebug == true)
+						DebuggerComptimeStop();
+
 					CompileDone(!buildCompletedCmd.mFailed);
 
 					if (mTestManager != null)
@@ -9426,6 +9457,9 @@ namespace IDE
 				doCompile = true;
 
 			bool needsComptime = bfCompiler.GetLastHadComptimeRebuilds();
+
+			if (mDebugger?.mIsComptimeDebug == true)
+				needsComptime = true;
 
 			if ((!workspaceOptions.mIncrementalBuild) && (!lastCompileHadMessages))
 			{
@@ -10376,6 +10410,9 @@ namespace IDE
 			{
 				Beep(MessageBeepType.Error);
 			}
+
+			if (mDebugger?.mIsComptimeDebug == true)
+				DebuggerComptimeStop();
         }
 
 		void DbgCopyChangedFiles(DateTime cmpTime, StringView srcDir, StringView destDir)
@@ -10767,6 +10804,9 @@ namespace IDE
 
 			if (mDebugger.mIsRunning)
 			{
+				if (mDebugger.mIsComptimeDebug)
+					CancelBuild();
+
 				mDebugger.StopDebugging();
 			}
 		}
@@ -12102,6 +12142,12 @@ namespace IDE
 			}
 
 			return .Normal;
+		}
+
+		void DebuggerComptimeStop()
+		{
+			mDebugger.DisposeNativeBreakpoints();
+			mDebugger.Detach();
 		}
 
         void DebuggerPaused()
@@ -14027,6 +14073,7 @@ namespace IDE
         [Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
         public static extern bool MessageBeep(MessageBeepType type);
 #endif
+		
     }
 
 	static

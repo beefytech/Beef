@@ -24,6 +24,8 @@ class BeSwitchInst;
 class BeGlobalVariable;
 class CeMachine;
 class CeFunction;
+class CeDebugger;
+class CeBreakpoint;
 
 #define CEOP_SIZED(OPNAME) \
 	CeOp_##OPNAME##_8, \
@@ -69,6 +71,7 @@ enum CeErrorKind
 enum CeOp : int16
 {
 	CeOp_InvalidOp,
+	CeOp_DbgBreak,
 	CeOp_Ret,
 	CeOp_SetRetType,
 	CeOp_Jmp,
@@ -204,10 +207,55 @@ enum CeOp : int16
 	CeOp_COUNT
 };
 
+enum CeOperandKind
+{
+	CeOperandKind_None,
+	CeOperandKind_FrameOfs,
+	CeOperandKind_AllocaAddr,
+	CeOperandKind_Block,
+	CeOperandKind_Immediate,
+	CeOperandKind_ConstStructTableIdx,
+	CeOperandKind_CallTableIdx
+};
+
+class CeOperand
+{
+public:
+	CeOperandKind mKind;
+	union
+	{
+		int mFrameOfs;
+		int mBlockIdx;
+		int mImmediate;
+		int mCallTableIdx;
+		int mStructTableIdx;
+		BeConstant* mConstant;
+	};
+	BeType* mType;
+
+public:
+	CeOperand()
+	{
+		mKind = CeOperandKind_None;
+		mFrameOfs = 0;
+		mType = NULL;
+	}
+
+	operator bool() const
+	{
+		return mKind != CeOperandKind_None;
+	}
+
+	bool IsImmediate()
+	{
+		return mKind == CeOperandKind_Immediate;
+	}
+};
+
 struct CeEmitEntry
 {
 	int mCodePos;
-	int mFile;
+	int mScope;
 	int mLine;
 	int mColumn;
 };
@@ -490,6 +538,40 @@ public:
 	}
 };
 
+class CeDbgVariable
+{
+public:
+	String mName;
+	CeOperand mValue;
+	BfType* mType;
+};
+
+class CeDbgFunctionInfo
+{
+public:
+	Array<CeDbgVariable> mVariables;
+};
+
+class CeBreakpointBind
+{
+public:
+	CeOp mPrevOpCode;
+	CeBreakpoint* mBreakpoint;
+};
+
+struct CeDbgScope
+{
+public:
+	String mFilePath;
+	int mInlinedAt;
+
+public:
+	CeDbgScope()
+	{
+		mInlinedAt = -1;
+	}
+};
+
 class CeFunction
 {
 public:
@@ -511,7 +593,7 @@ public:
 	bool mFailed;
 	bool mIsVarReturn;
 	Array<uint8> mCode;	
-	Array<String> mFiles;
+	Array<CeDbgScope> mDbgScopes;
 	Array<CeEmitEntry> mEmitTable;
 	Array<CeCallEntry> mCallTable;
 	Array<CeStringEntry> mStringTable;
@@ -519,10 +601,13 @@ public:
 	Array<CeStaticFieldEntry> mStaticFieldTable;
 	Array<BfType*> mTypeTable;
 	Array<CeFunction*> mInnerFunctions;
+	Dictionary<int, CeBreakpointBind> mBreakpoints;
 	String mGenError;
 	int mFrameSize;	
 	int mMaxReturnSize;
-	int mId;	
+	int mId;
+	int mBreakpointVersion;
+	CeDbgFunctionInfo* mDbgInfo;
 
 public:
 	CeFunction()
@@ -537,11 +622,15 @@ public:
 		mIsVarReturn = false;
 		mFrameSize = 0;
 		mMaxReturnSize = 0;
+		mBreakpointVersion = 0;
 		mId = -1;
+		mDbgInfo = NULL;
 	}	
 
 	~CeFunction();
 	void Print();
+	void UnbindBreakpoints();
+	CeEmitEntry* FindEmitEntry(int loc, int* entryIdx = NULL);
 };
 
 enum CeEvalFlags
@@ -551,52 +640,8 @@ enum CeEvalFlags
 	CeEvalFlags_PersistantError = 2,
 	CeEvalFlags_DeferIfNotOnlyError = 4,
 	CeEvalFlags_NoRebuild = 8,
-	CeEvalFlags_ForceReturnThis = 0x10
-};
-
-enum CeOperandKind
-{
-	CeOperandKind_None,
-	CeOperandKind_FrameOfs,
-	CeOperandKind_AllocaAddr,
-	CeOperandKind_Block,
-	CeOperandKind_Immediate,
-	CeOperandKind_ConstStructTableIdx,	
-	CeOperandKind_CallTableIdx
-};
-
-class CeOperand
-{
-public:
-	CeOperandKind mKind;
-	union
-	{
-		int mFrameOfs;
-		int mBlockIdx;
-		int mImmediate;
-		int mCallTableIdx;
-		int mStructTableIdx;
-		BeConstant* mConstant;
-	};
-	BeType* mType;
-
-public:
-	CeOperand()
-	{
-		mKind = CeOperandKind_None;
-		mFrameOfs = 0;
-		mType = NULL;
-	}
-
-	operator bool() const
-	{
-		return mKind != CeOperandKind_None;
-	}
-
-	bool IsImmediate()
-	{
-		return mKind == CeOperandKind_Immediate;
-	}
+	CeEvalFlags_ForceReturnThis = 0x10,
+	CeEvalFlags_DbgCall = 0x20
 };
 
 #define BF_CE_DEFAULT_STACK_SIZE 4*1024*1024
@@ -609,7 +654,21 @@ public:
 enum CeOperandInfoKind
 {
 	CEOI_None,
+	CEOI_None8 = CEOI_None,
+	CEOI_None16 = CEOI_None,
+	CEOI_None32 = CEOI_None,
+	CEOI_None64 = CEOI_None,
+	CEOI_NoneF32 = CEOI_None,
+	CEOI_NoneF64 = CEOI_None,
+
 	CEOI_FrameRef,
+	CEOI_FrameRef8,
+	CEOI_FrameRef16,
+	CEOI_FrameRef32,
+	CEOI_FrameRef64,
+	CEOI_FrameRefF32,
+	CEOI_FrameRefF64,
+
 	CEOI_IMM8,
 	CEOI_IMM16,
 	CEOI_IMM32,
@@ -631,18 +690,24 @@ enum CeSizeClass
 
 class CeDumpContext
 {
-
-
 public:	
+	Dictionary<int, CeDbgVariable*> mVarMap;
 	CeFunction* mCeFunction;
 	String mStr;
 	uint8* mStart;
 	uint8* mPtr;
 	uint8* mEnd;
+	int mJmp;
 
 public:
+	CeDumpContext()
+	{
+		mJmp = -1;
+	}
+
 	void DumpOperandInfo(CeOperandInfoKind operandInfoKind);
 
+	void Next();
 	void Dump();	
 };
 
@@ -759,6 +824,11 @@ public:
 		mFrameAddr = 0;
 		mInstPtr = NULL;
 		mReturnType = NULL;
+	}
+
+	int GetInstIdx()
+	{
+		return (int)(mInstPtr - &mFunction->mCode[0] - 2);
 	}
 };
 
@@ -909,6 +979,7 @@ public:
 	BfType* GetBfType(BfIRType irType);
 	void PrepareConstStructEntry(CeConstStructData& constStructData);
 	bool CheckMemory(addr_ce addr, int32 size);
+	uint8* GetMemoryPtr(addr_ce addr, int32 size);
 	bool GetStringFromAddr(addr_ce strInstAddr, StringImpl& str);
 	bool GetStringFromStringView(addr_ce addr, StringImpl& str);
 	bool GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolder, BfCustomAttributes* customAttributes, int attributeIdx, addr_ce resultAddr);
@@ -928,12 +999,40 @@ struct CeTypeInfo
 	int mRevision;
 };
 
+class CeStepState
+{
+public:
+	enum Kind
+	{
+		Kind_None,
+		Kind_StepOver,
+		Kind_StepOver_Asm,
+		Kind_StepInfo,
+		Kind_StepInfo_Asm,
+		Kind_StepOut,
+		Kind_StepOut_Asm,
+		Kind_Jmp
+	};
+
+	Kind mKind;	
+	int mNextInstIdx;
+	int mStartDepth;
+
+public:
+	CeStepState()
+	{
+		mKind = Kind_None;		
+		mNextInstIdx = -1;
+		mStartDepth = 0;
+	}
+};
+
 class CeMachine
 {
 public:
 	Dictionary<BfMethodInstance*, CeFunctionInfo*> mFunctions;
 	Dictionary<String, CeFunctionInfo*> mNamedFunctionMap;
-	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit			
+	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit and debugging
 	Dictionary<BfType*, CeTypeInfo> mTypeInfoMap;
 	HashSet<BfMethodInstance*> mMethodInstanceSet;
 	HashSet<BfFieldInstance*> mFieldInstanceSet;
@@ -959,6 +1058,14 @@ public:
 	BfReducer* mTempReducer;
 	BfPassInstance* mTempPassInstance;
 
+	CritSect mCritSect;
+	SyncEvent mDebugEvent;
+	CeStepState mStepState;
+	CeDebugger* mDebugger;
+	bool mDbgPaused;	
+	bool mSpecialCheck;
+	bool mDbgWantBreak;
+
 public:
 	CeMachine(BfCompiler* compiler);
 	~CeMachine();		
@@ -967,6 +1074,7 @@ public:
 	BeContext* GetBeContext();
 	BeModule* GetBeModule();
 
+	int GetInstSize(CeFunction* ceFunction, int instIdx);
 	void DerefMethodInfo(CeFunctionInfo* ceFunctionInfo);
 	void RemoveFunc(CeFunction* ceFunction);
 	void RemoveMethod(BfMethodInstance* methodInstance);					

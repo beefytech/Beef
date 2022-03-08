@@ -126,6 +126,7 @@ enum BfConstType
 	BfConstType_GlobalVar = BfTypeCode_Length,	
 	BfConstType_BitCast,
 	BfConstType_BitCastNull,
+	BfConstType_GEP32_1,
 	BfConstType_GEP32_2,
 	BfConstType_ExtractValue,
 	BfConstType_PtrToInt,
@@ -878,6 +879,13 @@ struct BfConstantIntToPtr
 	BfIRType mToType;
 };
 
+struct BfConstantGEP32_1
+{
+	BfConstType mConstType;
+	int mTarget;
+	int mIdx0;	
+};
+
 struct BfConstantGEP32_2
 {
 	BfConstType mConstType;
@@ -1223,6 +1231,7 @@ public:
 	BfIRValue CreateBitCast(BfIRValue val, BfIRType type);
 	BfIRValue CreatePtrToInt(BfIRValue val, BfTypeCode typeCode);
 	BfIRValue CreateIntToPtr(BfIRValue val, BfIRType type);
+	BfIRValue CreateIntToPtr(uint64 val, BfIRType type);
 	BfIRValue CreateInBoundsGEP(BfIRValue val, int idx0);
 	BfIRValue CreateInBoundsGEP(BfIRValue val, int idx0, int idx1);
 	BfIRValue CreateInBoundsGEP(BfIRValue val, BfIRValue idx0);

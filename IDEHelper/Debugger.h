@@ -62,6 +62,13 @@ public:
 	virtual bool IsMemoryBreakpointBound() = 0;
 };
 
+
+enum DbgTypeKindFlags
+{
+	DbgTypeKindFlag_None = 0,
+	DbgTypeKindFlag_Int = 1
+};
+
 enum DwDisplayType : int8
 {
 	DwDisplayType_NotSpecified,
@@ -282,6 +289,7 @@ public:
 	virtual void SetBreakpointLogging(Breakpoint* wdBreakpoint, const StringImpl& logging, bool breakAfterLogging) = 0;
 	virtual Breakpoint* FindBreakpointAt(intptr address) = 0;
 	virtual Breakpoint* GetActiveBreakpoint() = 0;
+	virtual uintptr GetBreakpointAddr(Breakpoint* breakpoint) { return breakpoint->GetAddr(); }
 	virtual void BreakAll() = 0;
 	virtual bool TryRunContinue() = 0;
 	virtual void StepInto(bool inAssembly) = 0;
@@ -343,7 +351,7 @@ public:
 	virtual Profiler* StartProfiling() = 0;
 	virtual Profiler* PopProfiler() = 0; // Profiler requested by target program
 	virtual void ReportMemory(MemReporter* memReporter) = 0;
-	virtual bool IsOnDemandDebugger() = 0;		
+	virtual bool IsOnDemandDebugger() = 0;			
 };
 
 class Profiler

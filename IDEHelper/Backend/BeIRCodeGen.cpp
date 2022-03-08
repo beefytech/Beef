@@ -5,6 +5,9 @@
 
 #include "BeefySysLib/util/AllocDebug.h"
 #include "BeefySysLib/util/Hash.h"
+#include "BeModule.h"
+#include "BeContext.h"
+#include "..\Compiler\CeMachine.h"
 
 #ifdef _DEBUG
 #define BE_EXTRA_CHECKS
@@ -228,7 +231,7 @@ BeIRCodeGen::BeIRCodeGen()
 	mBeContext = NULL;
 	mBeModule = NULL;
 	mHasDebugLoc = false;
-	mDebugging = false;
+	mDebugging = false;	
 	mCmdCount = 0;
 }
 
@@ -736,6 +739,20 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			BE_MEM_END("ParamType_Const_BitCast");
 			return;
 		}
+		else if (constType == BfConstType_GEP32_1)
+		{
+			CMD_PARAM(BeConstant*, target);
+			CMD_PARAM(int, idx0);			
+
+			BF_ASSERT(target->GetType()->IsPointer());
+			auto gepConstant = mBeModule->mAlloc.Alloc<BeGEP1Constant>();
+			gepConstant->mTarget = target;
+			gepConstant->mIdx0 = idx0;			
+
+			beValue = gepConstant;
+			BE_MEM_END("ParamType_Const_GEP32_1");
+			return;
+		}
 		else if (constType == BfConstType_GEP32_2)
 		{
 			CMD_PARAM(BeConstant*, target);
@@ -743,7 +760,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			CMD_PARAM(int, idx1);
 			
 			BF_ASSERT(target->GetType()->IsPointer());
-			auto gepConstant = mBeModule->mAlloc.Alloc<BeGEPConstant>();
+			auto gepConstant = mBeModule->mAlloc.Alloc<BeGEP2Constant>();
 			gepConstant->mTarget = target;
 			gepConstant->mIdx0 = idx0;
 			gepConstant->mIdx1 = idx1;
@@ -2852,7 +2869,15 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_DbgGetType:
 		{
 			CMD_PARAM(int, typeId);
-			SetResult(curId, GetTypeEntry(typeId).mDIType);
+
+			if (mBeModule->mCeMachine != NULL)
+			{
+				auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgTypeId>();
+				dbgType->mTypeId = typeId;
+				SetResult(curId, dbgType);
+			}
+			else
+				SetResult(curId, GetTypeEntry(typeId).mDIType);
 		}
 		break;
 	case BfIRCmd_DbgGetTypeInst:
@@ -2974,7 +2999,21 @@ void BeIRCodeGen::HandleNextCmd()
 		{			
 			CMD_PARAM(BeMDNode*, elementTypeNode);
 			
-			BeDbgType* elementType = (BeDbgType*)elementTypeNode;
+			BeDbgType* elementType = BeValueDynCast<BeDbgType>(elementTypeNode);
+			if (elementType == NULL)
+			{
+				if (auto dbgTypeId = BeValueDynCast<BeDbgTypeId>(elementTypeNode))
+				{
+					auto bfElementType = mBeModule->mCeMachine->mCeModule->mContext->mTypes[dbgTypeId->mTypeId];
+					auto bfPtrType = mBeModule->mCeMachine->mCeModule->CreatePointerType(bfElementType);
+
+					auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgTypeId>();
+					dbgType->mTypeId = bfPtrType->mTypeId;
+					SetResult(curId, dbgType);
+					break;
+				}				
+			}
+
 			BeDbgType* useType = elementType->FindDerivedType(BeDbgPointerType::TypeId);
 			if (useType == NULL)
 			{
@@ -2992,7 +3031,23 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_DbgCreateReferenceType:
 		{
 			CMD_PARAM(BeMDNode*, elementTypeNode);
-			auto useType = mBeModule->mDbgModule->CreateReferenceType((BeDbgType*)elementTypeNode);
+			
+			BeDbgType* elementType = BeValueDynCast<BeDbgType>(elementTypeNode);
+			if (elementType == NULL)
+			{
+				if (auto dbgTypeId = BeValueDynCast<BeDbgTypeId>(elementTypeNode))
+				{
+					auto bfElementType = mBeModule->mCeMachine->mCeModule->mContext->mTypes[dbgTypeId->mTypeId];
+					auto bfPtrType = mBeModule->mCeMachine->mCeModule->CreateRefType(bfElementType);
+
+					auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgTypeId>();
+					dbgType->mTypeId = bfPtrType->mTypeId;
+					SetResult(curId, dbgType);
+					break;
+				}
+			}
+			
+			auto useType = mBeModule->mDbgModule->CreateReferenceType(elementType);
 			SetResult(curId, useType);
 		}
 		break;
@@ -3000,7 +3055,15 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeMDNode*, elementTypeNode);
 
-			BeDbgType* elementType = (BeDbgType*)elementTypeNode;
+			BeDbgType* elementType = BeValueDynCast<BeDbgType>(elementTypeNode);			
+			if (elementType == NULL)
+			{
+				auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgConstType>();
+				dbgType->mElement = elementTypeNode;
+				SetResult(curId, dbgType);
+				break;
+			}
+
 			BeDbgType* useType = elementType->FindDerivedType(BeDbgConstType::TypeId);
 			if (useType == NULL)
 			{
@@ -3363,7 +3426,7 @@ void BeIRCodeGen::HandleNextCmd()
 
 			auto dbgVar = mBeModule->mOwnedValues.Alloc<BeDbgVariable>();
 			dbgVar->mName = name;
-			dbgVar->mType = (BeDbgType*)type;
+			dbgVar->mType = type;
 			dbgVar->mParamNum = argNo - 1;
 
 			int argIdx = argNo - 1;
@@ -3411,7 +3474,7 @@ void BeIRCodeGen::HandleNextCmd()
 
 			auto dbgVar = mBeModule->mOwnedValues.Alloc<BeDbgVariable>();
 			dbgVar->mName = name;
-			dbgVar->mType = (BeDbgType*)type;
+			dbgVar->mType = type;
 			dbgVar->mScope = scope;
 			dbgVar->mInitType = (BfIRInitType)initType;
 			mActiveFunction->mDbgFunction->mVariables.push_back(dbgVar);
@@ -3490,7 +3553,7 @@ void BeIRCodeGen::HandleNextCmd()
 			dbgGlobalVariable->mLinkageName = linkageName;
 			dbgGlobalVariable->mFile = (BeDbgFile*)file;
 			dbgGlobalVariable->mLineNum = lineNum;
-			dbgGlobalVariable->mType = (BeDbgType*)type;
+			dbgGlobalVariable->mType = type;
 			dbgGlobalVariable->mIsLocalToUnit = isLocalToUnit;
 			dbgGlobalVariable->mValue = val;
 			dbgGlobalVariable->mDecl = decl;

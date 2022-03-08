@@ -1684,6 +1684,12 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			BfIRValue targetConst(BfIRValueFlags_Const, box->mTarget);
 			return ToString(targetConst) + " box to " + ToString(box->mToType);
 		}
+		else if (constant->mConstType == BfConstType_GEP32_1)
+		{
+			auto gepConst = (BfConstantGEP32_1*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+			return ToString(targetConst) + StrFormat(" Gep32 %d", gepConst->mIdx0);
+		}
 		else if (constant->mConstType == BfConstType_GEP32_2)
 		{
 			auto gepConst = (BfConstantGEP32_2*)constant;
@@ -4616,8 +4622,30 @@ BfIRValue BfIRBuilder::CreateIntToPtr(BfIRValue val, BfIRType type)
 	return retVal;
 }
 
+BfIRValue BfIRBuilder::CreateIntToPtr(uint64 val, BfIRType type)
+{
+	return CreateIntToPtr(CreateConst(BfTypeCode_IntPtr, val), type);
+}
+
 BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, int idx0)
 {
+	if (val.IsConst())
+	{
+		auto constGEP = mTempAlloc.Alloc<BfConstantGEP32_1>();
+		constGEP->mConstType = BfConstType_GEP32_1;
+		constGEP->mTarget = val.mId;
+		constGEP->mIdx0 = idx0;		
+
+		BfIRValue retVal;
+		retVal.mFlags = BfIRValueFlags_Const;
+		retVal.mId = mTempAlloc.GetChunkedId(constGEP);
+
+#ifdef CHECK_CONSTHOLDER
+		retVal.mHolder = this;
+#endif
+		return retVal;
+	}
+
 	BfIRValue retVal = WriteCmd(BfIRCmd_InboundsGEP1_32, val, idx0);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;
@@ -4650,6 +4678,39 @@ BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, int idx0, int idx1)
 
 BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, BfIRValue idx0)
 {
+	auto constant = GetConstant(val);
+	if (constant != NULL)
+	{
+		if (constant->mConstType == BfConstType_IntToPtr)
+		{
+			auto fromPtrToInt = (BfConstantIntToPtr*)constant;
+			auto fromTarget = GetConstantById(fromPtrToInt->mTarget);
+			if (IsInt(fromTarget->mTypeCode))
+			{
+				if (fromPtrToInt->mToType.mKind == BfIRTypeData::TypeKind_TypeId)
+				{
+					auto type = mModule->mContext->mTypes[fromPtrToInt->mToType.mId];
+					if (type->IsPointer())
+					{
+						auto elementType = type->GetUnderlyingType();
+						auto addConstant = GetConstant(idx0);
+						if ((addConstant != NULL) && (IsInt(addConstant->mTypeCode)))
+						{
+							return CreateIntToPtr(CreateConst(fromTarget->mTypeCode, (uint64)(fromTarget->mInt64 + addConstant->mInt64 * elementType->GetStride())),
+								fromPtrToInt->mToType);
+						}
+					}
+				}
+			}
+		}
+
+		if (auto idxConstant = GetConstant(idx0))
+		{
+			if (IsInt(idxConstant->mTypeCode))
+				return CreateInBoundsGEP(val, idxConstant->mInt32);
+		}
+	}
+
 	BfIRValue retVal = WriteCmd(BfIRCmd_InBoundsGEP1, val, idx0);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;

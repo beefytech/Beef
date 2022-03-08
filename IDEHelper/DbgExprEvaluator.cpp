@@ -7676,7 +7676,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 			if (bitCount <= 0)
 				return argValues[0];
 			
-			int64 andBits = (0x8000000000000000LL) >> ((argValues[0].mType->GetByteCount() - 8) * 8 + bitCount - 1);			
+			int64 andBits = (0x8000000000000000LL) >> ((argValues[0].mType->GetByteCount() - 8) * 8 + bitCount - 1);
 			DbgTypedValue result;
 			result.mType = argValues[0].mType;
 			result.mInt64 = val & ~andBits;

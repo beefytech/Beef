@@ -475,9 +475,9 @@ void BeCOFFObject::DbgMakeFuncType(BeDbgFunction* dbgFunc)
 		if (hasThis)
 		{
 			if ((dbgFunc->mVariables.size() > 0) && (dbgFunc->mVariables[0] == NULL))
-				outT.Write(DbgGetTypeId(dbgFunc->GetParamType(1))); // 0 is sret, 1 = this
+				outT.Write(DbgGetTypeId(BeValueDynCast<BeDbgType>(dbgFunc->GetParamType(1)))); // 0 is sret, 1 = this
 			else
-				outT.Write(DbgGetTypeId(dbgFunc->GetParamType(0))); // 0 = this
+				outT.Write(DbgGetTypeId(BeValueDynCast<BeDbgType>(dbgFunc->GetParamType(0)))); // 0 = this
 		}
 		else
 			outT.Write((int32)T_VOID);
@@ -941,7 +941,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 	{	
 		CV_modifier_t attr = { 0 };		
 		attr.MOD_const = 1;
-		int32 elementId = DbgGetTypeId(constType->mElement);
+		int32 elementId = DbgGetTypeId(BeValueDynCast<BeDbgType>(constType->mElement));
 
 		DbgTStartTag();
 		outT.Write((int16)LF_MODIFIER);		
@@ -985,10 +985,10 @@ void BeCOFFObject::DbgGenerateTypeInfo()
 	auto& outT = mDebugTSect.mData;
 	outT.Write((int)CV_SIGNATURE_C13);
 
-	for (auto dbgType : mBeModule->mDbgModule->mTypes)
+	for (auto mdNode : mBeModule->mDbgModule->mTypes)
 	{		
 		bool defineType = true;
-		if (auto dbgStructType = BeValueDynCast<BeDbgStructType>(dbgType))
+		if (auto dbgStructType = BeValueDynCast<BeDbgStructType>(mdNode))
 		{
 			if (!dbgStructType->mIsFullyDefined)
 				defineType = false;			
@@ -996,7 +996,8 @@ void BeCOFFObject::DbgGenerateTypeInfo()
 
 		if (defineType)
 		{
-			DbgGetTypeId(dbgType, true);
+			if (auto dbgType = BeValueDynCast<BeDbgType>(mdNode))
+				DbgGetTypeId(dbgType, true);
 		}
 	}
 
@@ -1032,6 +1033,8 @@ void BeCOFFObject::DbgStartVarDefRange(BeDbgFunction* dbgFunc, BeDbgVariable* db
 	
 	auto funcSym = GetSymbol(dbgFunc->mValue);
 
+	auto varType = BeValueDynCast<BeDbgType>(dbgVar->mType);
+
 	auto& outS = mDebugSSect.mData;	
 	if (varLoc.mKind == BeDbgVariableLoc::Kind_SymbolAddr)
 	{
@@ -1042,14 +1045,14 @@ void BeCOFFObject::DbgStartVarDefRange(BeDbgFunction* dbgFunc, BeDbgVariable* db
 		if (varLoc.mOfs == 0)
 		{
 			outS.Write((int16)S_DEFRANGE_REGISTER);
-			outS.Write((int16)GetCVRegNum(varLoc.mReg, dbgVar->mType->mSize * 8));
+			outS.Write((int16)GetCVRegNum(varLoc.mReg, varType->mSize * 8));
 			CV_RANGEATTR rangeAttr = { 0 };
 			outS.Write(*(int16*)&rangeAttr); // offset to register
 		}
 		else
 		{
 			outS.Write((int16)S_DEFRANGE_REGISTER_REL);
-			outS.Write((int16)GetCVRegNum(varLoc.mReg, dbgVar->mType->mSize * 8));
+			outS.Write((int16)GetCVRegNum(varLoc.mReg, varType->mSize * 8));
 			outS.Write((int16)0);
 			outS.Write((int32)varLoc.mOfs);
 // 			CV_RANGEATTR rangeAttr = { 0 };
@@ -1135,6 +1138,8 @@ void BeCOFFObject::DbgSEndTag()
 
 void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgVar)
 {	
+	auto varType = BeValueDynCast<BeDbgType>(dbgVar->mType);
+
 	// CodeView only allows 16-bit lengths, so we need to split ranges for very long spans
 	if (dbgVar->mDeclEnd - dbgVar->mDeclStart > 0xFFFF)
 	{		
@@ -1215,7 +1220,7 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 
 	DbgSStartTag();
 	outS.Write((int16)S_LOCAL);
-	outS.Write(DbgGetTypeId(dbgVar->mType));
+	outS.Write(DbgGetTypeId(varType));
 	CV_LVARFLAGS flags = { 0 };
 
 	if (dbgVar->mParamNum != -1)
@@ -1732,7 +1737,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 			else
 				outS.Write(dbgGlobalVar->mIsLocalToUnit ? (int16)S_LDATA32 : (int16)S_GDATA32);
 			
-			outS.Write(DbgGetTypeId(dbgGlobalVar->mType));
+			outS.Write(DbgGetTypeId(BeValueDynCast<BeDbgType>(dbgGlobalVar->mType)));
 
 			BF_ASSERT(dbgGlobalVar->mValue != NULL);			
 
@@ -1896,7 +1901,7 @@ void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
 	{
 		WriteConst(sect, constCast->mTarget);
 	}
-	else if (auto constGep = BeValueDynCast<BeGEPConstant>(constVal))
+	else if (auto constGep = BeValueDynCast<BeGEP2Constant>(constVal))
 	{
 		if (auto globalVar = BeValueDynCast<BeGlobalVariable>(constGep->mTarget))
 		{

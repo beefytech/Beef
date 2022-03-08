@@ -65,7 +65,7 @@ class DebugManager
 {
 public:
 	Debugger* mDebugger32;
-	Debugger* mDebugger64;
+	Debugger* mDebugger64;	
 
 	CritSect mCritSect;
 	Dictionary<String, StepFilter> mStepFilters;

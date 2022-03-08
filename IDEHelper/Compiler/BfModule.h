@@ -33,6 +33,7 @@ class BfType;
 class BfResolvedType;
 class BfExprEvaluator;
 class CeEmitContext;
+class CeDbgState;
 
 enum BfPopulateType
 {	
@@ -1543,6 +1544,7 @@ public:
 	void VerifyOnDemandMethods();
 	bool IsSkippingExtraResolveChecks();
 	bool AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing, bool isWarning);
+	CeDbgState* GetCeDbgState();
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false, bool deferError = false);
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	

@@ -214,6 +214,9 @@
     <ClCompile Include="Compiler\CeMachine.cpp">
       <Filter>Compiler</Filter>
     </ClCompile>
+    <ClCompile Include="Compiler\CeDebugger.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Compiler\BfAst.h">
@@ -404,6 +407,9 @@
     </ClInclude>
     <ClInclude Include="third_party\FtsFuzzyMatch.h">
       <Filter>third_party</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\CeDebugger.h">
+      <Filter>Compiler</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

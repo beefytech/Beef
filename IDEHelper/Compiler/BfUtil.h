@@ -269,6 +269,7 @@ void* DecodeLocalDataPtr(const char*& strRef);
 String EncodeDataPtr(void* addr, bool doPrefix);
 String EncodeDataPtr(uint32 addr, bool doPrefix);
 String EncodeDataPtr(uint64 addr, bool doPrefix);
+String EncodeDataPtr(int addr, bool doPrefix);
 void* ZeroedAlloc(int size);
 /*template <typename T>
 T* ZeroedAlloc()

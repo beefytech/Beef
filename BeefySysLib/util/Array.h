@@ -1080,6 +1080,26 @@ public:
 			return NULL;
 		return &this->mVals[this->mSize - addSize];
 	}
+
+	template <typename TAlt>
+	int BinarySearchAlt(const TAlt& val, const std::function<int(const T& lhs, const TAlt& rhs)>& func)
+	{
+		int lo = 0;
+		int hi = this->mSize - 1;
+
+		while (lo <= hi)
+		{
+			int i = (lo + hi) / 2;
+			const T& midVal = this->mVals[i];
+			int c = func(midVal, val);
+			if (c == 0) return i;
+			if (c < 0)
+				lo = i + 1;
+			else
+				hi = i - 1;
+		}
+		return ~lo;
+	}
 };
 
 template <typename T, typename TAlloc = AllocatorCLib<T> >

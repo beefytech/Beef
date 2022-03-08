@@ -82,7 +82,7 @@ public:
 	BeContext* mBeContext;
 	BeModule* mBeModule;	
 	Array<BeDbgLoc*> mSavedDebugLocs;	
-	bool mHasDebugLoc;	
+	bool mHasDebugLoc;		
 
 	int mCmdCount;
 	Dictionary<int, BeIRCodeGenEntry> mResults;

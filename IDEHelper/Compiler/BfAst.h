@@ -750,6 +750,11 @@ public:
 		return (mKind == BfTypedValueKind_UntypedValue);
 	}
 
+	bool IsNoValueType() const
+	{
+		return (mKind == BfTypedValueKind_NoValue);
+	}
+
 	bool IsParams()
 	{
 		return (mKind == BfTypedValueKind_ParamsSplat) || (mKind == BfTypedValueKind_Params);

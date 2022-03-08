@@ -27,6 +27,14 @@ String Beefy::EncodeDataPtr(uint32 addr, bool doPrefix)
 		return StrFormat("%08X", addr);
 }
 
+String Beefy::EncodeDataPtr(int addr, bool doPrefix)
+{
+	if (doPrefix)
+		return StrFormat("0x%08X", addr);
+	else
+		return StrFormat("%08X", addr);
+}
+
 String Beefy::EncodeDataPtr(uint64 addr, bool doPrefix)
 {
 	if (doPrefix)

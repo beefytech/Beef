@@ -321,6 +321,11 @@ namespace IDE.ui
 
 			float statusLabelPos = (int)GS!(-1.3f);
 
+			if ((gApp.mDebugger?.mIsComptimeDebug == true) && (gApp.mDebugger.IsPaused()))
+			{
+			   completionPct = null;
+			}
+
 			//completionPct = 0.4f;
             if (completionPct.HasValue)
             {                
@@ -331,6 +336,10 @@ namespace IDE.ui
                 using (g.PushColor(0xFF00FF00))
                     g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth * completionPct.Value, completionRect.mHeight);
             }
+			else if ((gApp.mDebugger?.mIsComptimeDebug == true) && (gApp.mDebugger.IsPaused()))
+			{
+				g.DrawString("Debugging Comptime", GS!(200), statusLabelPos, FontAlign.Centered, GS!(120));
+			}
             else if ((gApp.mDebugger.mIsRunning) && (gApp.HaveSourcesChanged()))
             {
                 Rect completionRect = Rect(GS!(200), GS!(1), GS!(120), GS!(17));

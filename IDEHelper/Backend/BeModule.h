@@ -55,6 +55,7 @@ class BePhiInst;
 class BeSwitchInst;
 class BeRetInst;
 class BeCallInst;
+class CeMachine;
 
 class BeDbgVariable;
 class BeDbgDeclareInst;
@@ -357,10 +358,26 @@ public:
 	}
 };
 
-class BeGEPConstant : public BeConstant
+class BeGEP1Constant : public BeConstant
 {
 public:
-	BE_VALUE_TYPE(BeGEPConstant, BeConstant);	
+	BE_VALUE_TYPE(BeGEP1Constant, BeConstant);
+	int mIdx0;	
+
+	virtual BeType* GetType();
+
+	virtual void HashContent(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		mTarget->HashReference(hashCtx);
+		hashCtx.Mixin(mIdx0);		
+	}
+};
+
+class BeGEP2Constant : public BeConstant
+{
+public:
+	BE_VALUE_TYPE(BeGEP2Constant, BeConstant);	
 	int mIdx0;
 	int mIdx1;
 
@@ -1646,6 +1663,26 @@ public:
 	}
 };
 
+class BeDbgTypeId : public BeMDNode
+{
+public:
+	BE_VALUE_TYPE(BeDbgTypeId, BeMDNode);
+
+public:
+	int mTypeId;
+	
+	BeDbgTypeId()
+	{
+		mTypeId = -1;
+	}
+	
+	virtual void HashContent(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		hashCtx.Mixin(mTypeId);		
+	}
+};
+
 class BeDbgType : public BeMDNode
 {
 public:
@@ -1743,7 +1780,7 @@ public:
 	BE_VALUE_TYPE(BeDbgConstType, BeDbgType);
 
 public:
-	BeDbgType* mElement;
+	BeMDNode* mElement;
 
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
@@ -1920,7 +1957,7 @@ public:
 
 public:
 	String mName;
-	BeDbgType* mType;	
+	BeMDNode* mType;	
 	BeValue* mValue;
 	int mParamNum;
 	BfIRInitType mInitType;
@@ -2044,7 +2081,7 @@ public:
 		mCvArgListId = -1;
 	}
 
-	BeDbgType* GetParamType(int paramIdx)
+	BeMDNode* GetParamType(int paramIdx)
 	{
 		/*if (!mParams.empty())
 			return mParams[paramIdx]->mType;*/
@@ -2209,7 +2246,7 @@ public:
 	String mLinkageName;
 	BeDbgFile* mFile;
 	int mLineNum;
-	BeDbgType* mType;
+	BeMDNode* mType;
 	bool mIsLocalToUnit;
 	BeConstant* mValue;
 	BeMDNode* mDecl;
@@ -2246,7 +2283,7 @@ public:
 	OwnedVector<BeDbgNamespace> mNamespaces;
 	OwnedVector<BeDbgGlobalVariable> mGlobalVariables;
 
-	OwnedVector<BeDbgType> mTypes;
+	OwnedVector<BeMDNode> mTypes;
 	Array<BeDbgFunction*> mFuncs; // Does not include methods in structs
 
 	virtual void HashContent(BeHashContext& hashCtx) override;	
@@ -2284,6 +2321,7 @@ public:
 	int mCurLexBlockId;	
 
 	BeDbgModule* mDbgModule;
+	CeMachine* mCeMachine;
 
 public:	
 	void AddInst(BeInst* inst);	

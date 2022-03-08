@@ -539,6 +539,7 @@ namespace IDE.ui
 			String sourceLineText = scope .(1024);
 
 			int32 maxLine = 0;
+			int addrOffset = 0;
 
 			for (var lineStrView in codeData.Split('\n'))
 		    {
@@ -557,6 +558,9 @@ namespace IDE.ui
 
 		        switch (line[0])
 		        {
+				case 'A':
+					addrOffset = (int)int64.Parse(StringView(line, 2), System.Globalization.NumberStyles.HexNumber);
+					continue;
 				case 'O':
 					isOptimized = true;
 					addLineData = false;
@@ -612,7 +616,7 @@ namespace IDE.ui
 	                    //int ptrSize = 8;
 	                    var addrString = scope String(disasmLine, 0, parenPos);
 	                    addrString.Replace("'", "");
-	                    lineData.mAddr = (int)int64.Parse(addrString, System.Globalization.NumberStyles.HexNumber);
+	                    lineData.mAddr = (int)int64.Parse(addrString, System.Globalization.NumberStyles.HexNumber) + addrOffset;
 	                    lineData.mAddrEnd = lineData.mAddr + 1;
 
 	                    if (prevDisasmLineData != -1)
@@ -709,7 +713,7 @@ namespace IDE.ui
 	                    addLineData = false;
 	                    JumpEntry jumpEntry = new JumpEntry();
 	                    int64 addrFrom = (int64)mLineDatas[mLineDatas.Count - 1].mAddr;
-	                    int64 addrTo = int64.Parse(scope String(line, 2), System.Globalization.NumberStyles.HexNumber);
+	                    int64 addrTo = int64.Parse(scope String(line, 2), System.Globalization.NumberStyles.HexNumber) + addrOffset;
 	                    jumpEntry.mAddrMin = (int)Math.Min(addrFrom, addrTo);
 	                    jumpEntry.mAddrMax = (int)Math.Max(addrFrom, addrTo);
 	                    jumpEntry.mIsReverse = jumpEntry.mAddrMin == (int)addrTo;
@@ -1193,6 +1197,7 @@ namespace IDE.ui
 
                 int leftIdx = -1;
                 int rightIdx = -1;
+				int commaIdx = -1;
                 String debugExpr = null;
 
                 if ((cursorPos < content.mData.mTextLength) && (!((char8)content.mData.mText[cursorPos].mChar).IsWhiteSpace))
@@ -1208,59 +1213,94 @@ namespace IDE.ui
                         content.ExtractString(lineStart, lineEnd - lineStart, lineStr);
                         int strIdx = 0;
 
-                        int colonPos = -1;
-                        int instrStartIdx = -1;
-                        int instrEndIdx = -1;
-                        int firstParamIdx = -1;
-                        int commaIdx = -1;                        
+						bool isComptime = false;
+						for (int i in 0..<lineStr.Length-1)
+						{
+							if ((lineStr[i] == '[') && (lineStr[i+1] == 'F'))
+								isComptime = true;
+						}
 
-                        for (; strIdx < lineStr.Length; strIdx++)
-                        {
-                            char8 c = lineStr[strIdx];
-                            if (colonPos == -1)
-                            {
-                                if (c == ':')
-                                    colonPos = strIdx;
-                            }
-                            else if (instrStartIdx == -1)
-                            {
-                                if (c.IsLower)
-                                    instrStartIdx = strIdx;
-                            }
-                            else if (instrEndIdx == -1)
-                            {
-                                if (c.IsWhiteSpace)
-                                    instrEndIdx = strIdx;
-                            }
-                            else if (firstParamIdx == -1)
-                            {
-                                if (!c.IsWhiteSpace)
-                                    firstParamIdx = strIdx;
-                            }
-                            else if (commaIdx == -1)
-                            {
-                                if (c == ',')
-                                    commaIdx = strIdx;
-                            }
-                        }
+						if (isComptime)
+						{
+							int cursorStrIdx = cursorPos - lineStart;
+							if ((cursorStrIdx >= 0) && (cursorStrIdx < lineStr.Length))
+							{
+								leftIdx = cursorStrIdx;
+								rightIdx = cursorStrIdx;
 
-                        int cursorStrIdx = cursorPos - lineStart;
-                        if (cursorStrIdx > commaIdx)
-                        {
-                            if (commaIdx != -1)
-                                leftIdx = lineStart + commaIdx + 1;
-                            else
-                                leftIdx = lineStart + firstParamIdx;
-                            rightIdx = lineEnd - 1;
-                        }
-                        else if (cursorStrIdx >= firstParamIdx)
-                        {
-                            leftIdx = lineStart + firstParamIdx;
-                            if (commaIdx != -1)
-                                rightIdx = lineStart + commaIdx - 1;
-                            else
-                                rightIdx = lineEnd - 1;
-                        }
+								while (leftIdx > 0)
+								{
+									if (lineStr[leftIdx - 1].IsWhiteSpace)
+										break;
+									leftIdx--;
+								}
+
+								while (rightIdx < lineStr.Length - 1)
+								{
+									if (lineStr[rightIdx + 1].IsWhiteSpace)
+										break;
+									rightIdx++;
+								}
+
+								leftIdx += lineStart;
+								rightIdx += lineStart;
+							}
+						}
+						else
+						{
+	                        int colonPos = -1;
+	                        int instrStartIdx = -1;
+	                        int instrEndIdx = -1;
+	                        int firstParamIdx = -1;
+
+	                        for (; strIdx < lineStr.Length; strIdx++)
+	                        {
+	                            char8 c = lineStr[strIdx];
+	                            if (colonPos == -1)
+	                            {
+	                                if (c == ':')
+	                                    colonPos = strIdx;
+	                            }
+	                            else if (instrStartIdx == -1)
+	                            {
+	                                if (c.IsLower)
+	                                    instrStartIdx = strIdx;
+	                            }
+	                            else if (instrEndIdx == -1)
+	                            {
+	                                if (c.IsWhiteSpace)
+	                                    instrEndIdx = strIdx;
+	                            }
+	                            else if (firstParamIdx == -1)
+	                            {
+	                                if (!c.IsWhiteSpace)
+	                                    firstParamIdx = strIdx;
+	                            }
+	                            else if (commaIdx == -1)
+	                            {
+	                                if (c == ',')
+	                                    commaIdx = strIdx;
+	                            }
+	                        }
+
+	                        int cursorStrIdx = cursorPos - lineStart;
+	                        if (cursorStrIdx > commaIdx)
+	                        {
+	                            if (commaIdx != -1)
+	                                leftIdx = lineStart + commaIdx + 1;
+	                            else
+	                                leftIdx = lineStart + firstParamIdx;
+	                            rightIdx = lineEnd - 1;
+	                        }
+	                        else if (cursorStrIdx >= firstParamIdx)
+	                        {
+	                            leftIdx = lineStart + firstParamIdx;
+	                            if (commaIdx != -1)
+	                                rightIdx = lineStart + commaIdx - 1;
+	                            else
+	                                rightIdx = lineEnd - 1;
+	                        }
+						}
 
                         if (leftIdx != -1)
                         {
@@ -1273,6 +1313,11 @@ namespace IDE.ui
                             int32 semiPos = (int32)debugExpr.IndexOf(';');
                             if (semiPos != -1)
                                 debugExpr.RemoveToEnd(semiPos);
+							debugExpr.Trim();
+
+							int atPos = debugExpr.IndexOf('@');
+							if (atPos != -1)
+								debugExpr.RemoveToEnd(atPos);
 
                             debugExpr.Replace('[', '(');
                             debugExpr.Replace(']', ')');
@@ -1281,6 +1326,13 @@ namespace IDE.ui
                             debugExpr.Replace("dword ptr", "(int32*)");
                             debugExpr.Replace("word ptr", "(int16*)");
                             debugExpr.Replace("byte ptr", "(int8*)");
+
+							if ((debugExpr.Contains('(')) && (debugExpr[0].IsLetter))
+							{
+							   int parenPos = debugExpr.IndexOf('(');
+								debugExpr.Insert(parenPos, "*)");
+								debugExpr.Insert(0, "*(");
+							}
 
                             if (line < mLineDatas.Count - 1)
                             {

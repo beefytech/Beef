@@ -184,6 +184,49 @@ public:
 	}
 };
 
+struct DwFormatInfo
+{
+	int mCallStackIdx;
+	bool mHidePointers;
+	bool mIgnoreDerivedClassInfo;
+	bool mNoVisualizers;
+	bool mNoMembers;
+	bool mRawString;
+	bool mNoEdit;
+	DbgTypeKindFlags mTypeKindFlags;
+	intptr mArrayLength;
+	intptr mOverrideCount;
+	intptr mMaxCount;
+	DwDisplayType mDisplayType;
+	DbgTypedValue mExplicitThis;
+	int mTotalSummaryLength;
+	String mReferenceId;
+	String mSubjectExpr;
+	String mExpectedType;
+	String mNamespaceSearch;
+	int mExpandItemDepth;
+	DbgLanguage mLanguage;
+
+	DwFormatInfo()
+	{
+		mCallStackIdx = -1;
+		mHidePointers = false;
+		mIgnoreDerivedClassInfo = false;
+		mRawString = false;
+		mNoVisualizers = false;
+		mNoMembers = false;
+		mNoEdit = false;
+		mTypeKindFlags = DbgTypeKindFlag_None;
+		mArrayLength = -1;
+		mOverrideCount = -1;
+		mMaxCount = -1;
+		mTotalSummaryLength = 0;
+		mDisplayType = DwDisplayType_NotSpecified;
+		mExpandItemDepth = 0;
+		mLanguage = DbgLanguage_Unknown;
+	}
+};
+
 struct DbgMethodArgument
 {
 	DbgTypedValue mTypedValue;
