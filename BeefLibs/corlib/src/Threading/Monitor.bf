@@ -18,12 +18,14 @@ namespace System.Threading
 
         public this()
         {
-            mCritSect = Platform.BfpCritSect_Create();
+			if (!Compiler.IsComptime)
+            	mCritSect = Platform.BfpCritSect_Create();
         }
 
         public ~this()
         {
-            Platform.BfpCritSect_Release(mCritSect);
+			if (!Compiler.IsComptime)
+            	Platform.BfpCritSect_Release(mCritSect);
         }
 
 		/// Acquires the monitor lock. Will block if another thread holds the lock.
@@ -34,7 +36,8 @@ namespace System.Threading
         {
             MonitorLockInstance monitorLockInstance;
             monitorLockInstance.mMonitor = this;
-            Platform.BfpCritSect_Enter(mCritSect);
+			if (!Compiler.IsComptime)
+            	Platform.BfpCritSect_Enter(mCritSect);
             return monitorLockInstance;
         }
         
@@ -44,21 +47,28 @@ namespace System.Threading
 		/// multiple Enters which have not all be Exited.
         public void Exit()
         {
-            Platform.BfpCritSect_Leave(mCritSect);
+			if (!Compiler.IsComptime)
+            	Platform.BfpCritSect_Leave(mCritSect);
         }
     
         /// Attempt to enter the monitor without waiting.
 		/// @return true if the monitor was entered
         public bool TryEnter()
         {
-            return Platform.BfpCritSect_TryEnter(mCritSect, 0);
+			if (!Compiler.IsComptime)
+            	return Platform.BfpCritSect_TryEnter(mCritSect, 0);
+			else
+				return true;
         }
         
 		/// Blocks up to a timeout, or if millisecondsTimeout is -1, will wait forever.
 		/// @return true if the monitor was entered
         public bool TryEnter(int millisecondsTimeout)
         {
-            return Platform.BfpCritSect_TryEnter(mCritSect, (int32)millisecondsTimeout);
+			if (!Compiler.IsComptime)
+            	return Platform.BfpCritSect_TryEnter(mCritSect, (int32)millisecondsTimeout);
+			else
+				return true;
         }
         
         private static int32 MillisecondsTimeoutFromTimeSpan(TimeSpan timeout)
