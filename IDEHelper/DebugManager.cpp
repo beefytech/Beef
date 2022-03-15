@@ -667,7 +667,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 	::AllowSetForegroundWindow(ASFW_ANY);
 #endif
 
-	//BeefyDbg64::TestPDB("c:\\temp\\dedkeni.pdb", (BeefyDbg64::WinDebugger*)gDebugManager->mDebugger64);
+	//BeefyDbg64::TestPDB("C:/Beef/IDE/dist/IDEHelper64_d.pdb", (BeefyDbg64::WinDebugger*)gDebugManager->mDebugger64);
 }
 
 BF_EXPORT void BF_CALLTYPE Debugger_SetCallbacks(void* callback)

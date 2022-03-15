@@ -796,7 +796,7 @@ namespace IDE.ui
 
 			//if (!vals[0].IsEmpty)
             	String.NewOrSet!(valueSubItem.mLabel, vals[0]);
-			if (vals[0] == "!sideeffects")
+			if ((vals[0] == "!sideeffects") || (vals[0] == "!incomplete"))
 			{
 				if (useListViewItem.mWatchRefreshButton == null)
 				{

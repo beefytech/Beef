@@ -315,7 +315,7 @@ public:
 	BfPassInstance* mPassInstance;	
 	FILE* mCompileLogFP;
 
-	CeMachine* mCEMachine;
+	CeMachine* mCeMachine;
 	int mCurCEExecuteId;
 	BfSystem* mSystem;	
 	bool mIsResolveOnly;
@@ -507,6 +507,8 @@ public:
 	void AddDepsToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeInstance*>& rebuildTypeInstList);
 	void CompileReified();
 	void PopulateReified();
+	bool IsCePaused();
+	bool EnsureCeUnpaused(BfType* refType);
 
 	void HotCommit();	
 	void HotResolve_Start(HotResolveFlags flags);

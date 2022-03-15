@@ -5644,7 +5644,7 @@ namespace IDE
 
             subMenu = root.AddMenuItem("&Build");
 			AddMenuItem(subMenu, "&Build Workspace", "Build Workspace", new => UpdateMenuItem_HasWorkspace);
-			AddMenuItem(subMenu, "&Debug Comptime", "Debug Comptime", new => UpdateMenuItem_HasWorkspace);
+			AddMenuItem(subMenu, "&Debug Comptime", "Debug Comptime", new => UpdateMenuItem_DebugStopped_HasWorkspace);
             AddMenuItem(subMenu, "&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
             AddMenuItem(subMenu, "Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });

@@ -2883,7 +2883,9 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_DbgGetTypeInst:
 		{
 			CMD_PARAM(int, typeId);
-			SetResult(curId, GetTypeEntry(typeId).mInstDIType);
+			auto result = GetTypeEntry(typeId).mInstDIType;
+			//BF_ASSERT(result);
+			SetResult(curId, result);
 		}
 		break;
 	case BfIRCmd_DbgTrackDITypes:

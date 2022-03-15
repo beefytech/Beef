@@ -1273,6 +1273,13 @@ public:
 	{
 		return !(*this == other);
 	}
+
+	BfModuleOptions()
+	{
+		mSIMDSetting = BfSIMDSetting_None;
+		mEmitDebugInfo = false;
+		mOptLevel = BfOptLevel_NotSet;
+	}
 };
 
 struct BfGenericParamSource
@@ -1543,7 +1550,7 @@ public:
 	void SetFail();
 	void VerifyOnDemandMethods();
 	bool IsSkippingExtraResolveChecks();
-	bool AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing, bool isWarning);
+	bool AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing, bool isWarning);	
 	CeDbgState* GetCeDbgState();
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false, bool deferError = false);
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);

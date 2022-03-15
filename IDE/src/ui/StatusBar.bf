@@ -246,6 +246,7 @@ namespace IDE.ui
         public override void Draw(Graphics g)        
         {
             bool atError = gApp.mDebugger.GetRunState() == DebugManager.RunState.Exception;
+			var debugState = gApp.mDebugger.GetRunState();
 
             uint32 bkgColor = 0xFF404040;
             if (atError)
@@ -321,13 +322,13 @@ namespace IDE.ui
 
 			float statusLabelPos = (int)GS!(-1.3f);
 
-			if ((gApp.mDebugger?.mIsComptimeDebug == true) && (gApp.mDebugger.IsPaused()))
-			{
-			   completionPct = null;
-			}
-
 			//completionPct = 0.4f;
-            if (completionPct.HasValue)
+			if ((gApp.mDebugger?.mIsComptimeDebug == true) &&
+				((gApp.mDebugger.IsPaused()) || (debugState == .DebugEval)))
+			{
+				g.DrawString("Debugging Comptime", GS!(200), statusLabelPos, FontAlign.Centered, GS!(120));
+			}
+            else if (completionPct.HasValue)
             {                
                 Rect completionRect = Rect(GS!(200), GS!(2), GS!(120), GS!(15));
                 using (g.PushColor(0xFF000000))
@@ -336,10 +337,6 @@ namespace IDE.ui
                 using (g.PushColor(0xFF00FF00))
                     g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth * completionPct.Value, completionRect.mHeight);
             }
-			else if ((gApp.mDebugger?.mIsComptimeDebug == true) && (gApp.mDebugger.IsPaused()))
-			{
-				g.DrawString("Debugging Comptime", GS!(200), statusLabelPos, FontAlign.Centered, GS!(120));
-			}
             else if ((gApp.mDebugger.mIsRunning) && (gApp.HaveSourcesChanged()))
             {
                 Rect completionRect = Rect(GS!(200), GS!(1), GS!(120), GS!(17));

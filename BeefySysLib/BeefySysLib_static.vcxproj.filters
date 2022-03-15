@@ -572,6 +572,9 @@
     <ClCompile Include="util\Heap.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
+    <ClCompile Include="util\Compress.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -875,6 +878,9 @@
       <Filter>src\util</Filter>
     </ClInclude>
     <ClInclude Include="util\Heap.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Compress.h">
       <Filter>src\util</Filter>
     </ClInclude>
   </ItemGroup>

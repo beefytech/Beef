@@ -5,6 +5,8 @@
 #include "BfResolvePass.h"
 #include "BfFixits.h"
 #include "BfResolvedTypeUtils.h"
+#include "CeMachine.h"
+#include "CeDebugger.h"
 
 #define FTS_FUZZY_MATCH_IMPLEMENTATION
 #include "../third_party/FtsFuzzyMatch.h"
@@ -274,7 +276,7 @@ int BfAutoComplete::GetCursorIdx(BfAstNode* node)
 	if (node == NULL)
 		return -1;
 
-	if ((!mCompiler->mIsResolveOnly) || (!node->IsFromParser(mCompiler->mResolvePassData->mParser)))
+	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
 		return -1;
 
 	auto bfParser = node->GetSourceData()->ToParser();
@@ -288,8 +290,8 @@ bool BfAutoComplete::IsAutocompleteNode(BfAstNode* node, int lengthAdd, int star
 {
 	if (node == NULL)
 		return false;
-
-	if ((!mCompiler->mIsResolveOnly) || (!node->IsFromParser(mCompiler->mResolvePassData->mParser)))
+	
+	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
 		return false;
 
 	auto bfParser = node->GetSourceData()->ToParser();
@@ -311,7 +313,7 @@ bool BfAutoComplete::IsAutocompleteNode(BfAstNode* startNode, BfAstNode* endNode
 	if ((startNode == NULL) || (endNode == NULL))
 		return false;
 
-	if ((!mCompiler->mIsResolveOnly) || (!startNode->IsFromParser(mCompiler->mResolvePassData->mParser)))
+	if (!startNode->IsFromParser(mCompiler->mResolvePassData->mParser))
 		return false;
 
 	auto bfParser = startNode->GetSourceData()->ToParser();
@@ -333,7 +335,7 @@ bool BfAutoComplete::IsAutocompleteLineNode(BfAstNode* node)
 	if (node == NULL)
 		return false;
 
-	if ((!mCompiler->mIsResolveOnly) || (!node->IsFromParser(mCompiler->mResolvePassData->mParser)))
+	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
 		return false;
 
 	auto bfParser = node->GetSourceData()->ToParser();
@@ -1555,6 +1557,22 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		}
 	}
 	
+	if (auto ceDbgState = mModule->GetCeDbgState())
+	{
+		auto ceDebugger = mModule->mCompiler->mCeMachine->mDebugger;
+		auto ceContext = ceDebugger->mCurDbgState->mCeContext;
+		auto activeFrame = ceDebugger->mCurDbgState->mActiveFrame;
+		if (activeFrame->mFunction->mDbgInfo != NULL)
+		{
+			int instIdx = activeFrame->GetInstIdx();
+			for (auto& dbgVar : activeFrame->mFunction->mDbgInfo->mVariables)
+			{
+				if ((instIdx >= dbgVar.mStartCodePos) && (instIdx < dbgVar.mEndCodePos))
+					AddEntry(AutoCompleteEntry(GetTypeName(dbgVar.mType), dbgVar.mName), filter);
+			}
+		}		
+	}
+
 	//////////////////////////////////////////////////////////////////////////
 
 	BfMethodInstance* curMethodInstance = mModule->mCurMethodInstance;

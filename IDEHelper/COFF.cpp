@@ -7172,7 +7172,7 @@ void TestPDB(const StringImpl& fileName, WinDebugger* debugger)
 	COFF coff(debugTarget);		
 	coff.mDebugger = debugger;
 	uint8 wantGuid[16];
-	coff.LoadPDB(fileName, wantGuid, -1);
+	coff.TryLoadPDB(fileName, wantGuid, -1);
 	coff.ParseTypeData();
 	coff.CvParseIPI();
 	coff.ParseGlobalsData();

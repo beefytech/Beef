@@ -515,7 +515,7 @@ public:
 	int SetProtection(intptr address, int size, int prot);
 	void EnableMemCache();
 	void DisableMemCache();
-	template<typename T> T ReadMemory(intptr addr, bool local = false, bool* failed = NULL);	
+	template<typename T> T ReadMemory(intptr addr, bool local = false, bool* failed = NULL);
 	bool WriteInstructions(intptr address, void* src, uint64 length);
 	template<typename T> bool WriteMemory(intptr addr, T val);
 	virtual DbgMemoryFlags GetMemoryFlags(intptr address) override;

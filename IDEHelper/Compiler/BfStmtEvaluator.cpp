@@ -464,7 +464,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 		listEntry->mDynList.PushFront(deferredCallEntry);
 	}
 
-	if ((mBfIRBuilder->DbgHasInfo()) && (mCompiler->mOptions.mEmitDebugInfo) && (mCurMethodState->mCurScope->mDIScope))
+	if ((mBfIRBuilder->DbgHasInfo()) && (mHasFullDebugInfo) && (mCompiler->mOptions.mEmitDebugInfo) && (mCurMethodState->mCurScope->mDIScope))
 	{
 		auto int64Type = GetPrimitiveType(BfTypeCode_Int64);
 		auto moduleMethodInstance = deferredCallEntry->mModuleMethodInstance;
@@ -511,7 +511,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 					diFieldTypes.push_back(memberType);
 				}
 			}
-
+			
 			int diFlags = 0;
 			mBfIRBuilder->DbgMakePermanent(diForwardDecl, BfIRMDNode(), diFieldTypes);
 			deferDIType = mBfIRBuilder->DbgCreatePointerType(diForwardDecl);

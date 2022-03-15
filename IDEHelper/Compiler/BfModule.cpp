@@ -1737,8 +1737,8 @@ CeDbgState* BfModule::GetCeDbgState()
 {
 	if (!mIsComptimeModule)
 		return NULL;
-	if ((mCompiler->mCEMachine != NULL) && (mCompiler->mCEMachine->mDebugger != NULL))
-		return mCompiler->mCEMachine->mDebugger->mCurDbgState;
+	if ((mCompiler->mCeMachine != NULL) && (mCompiler->mCeMachine->mDebugger != NULL))
+		return mCompiler->mCeMachine->mDebugger->mCurDbgState;
 	return NULL;
 }
 
@@ -2235,17 +2235,6 @@ bool BfModule::TryLocalVariableInit(BfLocalVariable* localVar)
 
 void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 {
-	//if (localVar->mAddr == NULL)
-
-	/*if ((localVar->mValue) && (!localVar->mAddr) && (IsTargetingBeefBackend()))
-	{
-		if ((!localVar->mValue.IsConst()) && (!localVar->mValue.IsArg()) && (!localVar->mValue.IsFake()))
-		{
-			if (mCurMethodInstance->mMethodDef->mName == "FuncA")
-				mBfIRBuilder->CreateLifetimeEnd(localVar->mValue);
-		}
-	}*/
-
 	BfAstNode* localNameNode = localVar->mNameNode;
 	if (localVar->mIsThis)
 	{
@@ -3076,19 +3065,26 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 	//BF_ASSERT(refNode != NULL);
 
-	if ((mIsComptimeModule) && (!mCompiler->mCEMachine->mDbgPaused))
+	if (mIsComptimeModule)
 	{
-		mHadBuildError = true;
-
-		if ((mCompiler->mCEMachine->mCurContext != NULL) && (mCompiler->mCEMachine->mCurContext->mCurTargetSrc != NULL))
+		if (auto ceDbgState = GetCeDbgState())
 		{
-			BfError* bfError = mCompiler->mPassInstance->Fail("Comptime method generation had errors", mCompiler->mCEMachine->mCurContext->mCurTargetSrc);
-			if (bfError != NULL)
-				mCompiler->mPassInstance->MoreInfo(error, refNode);
-			return bfError;
+			// Follow normal fail path
 		}
-		
-		return NULL;
+		else
+		{
+			mHadBuildError = true;
+
+			if ((mCompiler->mCeMachine->mCurContext != NULL) && (mCompiler->mCeMachine->mCurContext->mCurTargetSrc != NULL))
+			{
+				BfError* bfError = mCompiler->mPassInstance->Fail("Comptime method generation had errors", mCompiler->mCeMachine->mCurContext->mCurTargetSrc);
+				if (bfError != NULL)
+					mCompiler->mPassInstance->MoreInfo(error, refNode);
+				return bfError;
+			}
+
+			return NULL;
+		}
 	}
 
  	if (mCurMethodInstance != NULL)
@@ -4439,8 +4435,8 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 		else if (fieldDef->mIsConst)
 		{
 			int ceExecuteId = -1;
-			if (mCompiler->mCEMachine != NULL)
-				ceExecuteId = mCompiler->mCEMachine->mExecuteId;
+			if (mCompiler->mCeMachine != NULL)
+				ceExecuteId = mCompiler->mCeMachine->mExecuteId;
 			
 			BfTypeState typeState;			
 			typeState.mType = mCurTypeInstance;
@@ -4463,9 +4459,9 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 				}
 				UpdateSrcPos(initializer);
 				auto result = constResolver.Resolve(initializer, fieldType, resolveFlags);
-				if ((mCompiler->mCEMachine != NULL) && (fieldInstance != NULL))
+				if ((mCompiler->mCeMachine != NULL) && (fieldInstance != NULL))
 				{
-					if (mCompiler->mCEMachine->mExecuteId != ceExecuteId)
+					if (mCompiler->mCeMachine->mExecuteId != ceExecuteId)
 						fieldInstance->mHadConstEval = true;
 				}
 				return result;
@@ -5502,7 +5498,7 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 {
 	bool isComptimeArg = mBfIRBuilder->mIgnoreWrites;
 	BfFieldDef* fieldDef = fieldInstance->GetFieldDef();
-	
+
 	auto typeInstance = fieldInstance->mOwner;
 	
 	BfType* intType = GetPrimitiveType(BfTypeCode_Int32);
@@ -10000,6 +9996,8 @@ bool BfModule::IsOptimized()
 {	
 	if (mProject == NULL)
 		return false;
+	if (mIsComptimeModule)
+		return false;
 	int optLevel = GetModuleOptions().mOptLevel;
 	return (optLevel >= BfOptLevel_O1) && (optLevel <= BfOptLevel_O3);
 }
@@ -10012,11 +10010,15 @@ bool BfModule::IsTargetingBeefBackend()
 }
 
 bool BfModule::WantsLifetimes()
-{	
-	if (mProject == NULL)
-		return false;
+{
 	if (mBfIRBuilder->mIgnoreWrites)
 		return false;
+
+	if ((mIsComptimeModule) && (mBfIRBuilder->HasDebugLocation()))
+		return true;
+	else if (mProject == NULL)
+		return false;
+
 	return GetModuleOptions().mOptLevel == BfOptLevel_OgPlus;
 }
 
@@ -10086,10 +10088,14 @@ void BfModule::EmitObjectAccessCheck(BfTypedValue typedVal)
 
 void BfModule::EmitEnsureInstructionAt()
 {
-	if (mProject == NULL)
+	if (mBfIRBuilder->mIgnoreWrites)
 		return;
 
-	if ((mBfIRBuilder->mIgnoreWrites) || (!mHasFullDebugInfo) || (IsOptimized()) || (mCompiler->mOptions.mOmitDebugHelpers))
+	if (mIsComptimeModule)
+	{
+		// Always add
+	}
+	else if ((mProject == NULL) || (!mHasFullDebugInfo) || (IsOptimized()) || (mCompiler->mOptions.mOmitDebugHelpers))
 		return;
 
 	mBfIRBuilder->CreateEnsureInstructionAt();
@@ -10476,6 +10482,15 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 		BF_ASSERT(typeInstance->mTypeDef->mMethods[methodIdx]->mName == assertName);
 	}
 	
+	if (methodIdx >= typeInstance->mMethodInstanceGroups.mSize)
+	{
+		if (mCompiler->EnsureCeUnpaused(typeInstance))
+		{
+			BF_FATAL("OOB in GetRawMethodInstanceAtIdx");
+		}
+		return NULL;
+	}
+
 	auto& methodGroup = typeInstance->mMethodInstanceGroups[methodIdx];
 	if (methodGroup.mDefault == NULL)
 	{
@@ -12464,27 +12479,31 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 				}
 			}
 
-			if ((mIsComptimeModule) && (mCompiler->mCEMachine->mDebugger != NULL) && (mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+			if ((mIsComptimeModule) && (mCompiler->mCeMachine->mDebugger != NULL) && (mCompiler->mCeMachine->mDebugger->mCurDbgState != NULL))
 			{
-				auto ceDebugger = mCompiler->mCEMachine->mDebugger;
+				auto ceDebugger = mCompiler->mCeMachine->mDebugger;
 				auto ceContext = ceDebugger->mCurDbgState->mCeContext;
 				auto activeFrame = ceDebugger->mCurDbgState->mActiveFrame;
 
 				auto ceTypedValue = ceDebugger->GetAddr(constantValue);
 				if (ceTypedValue)
 				{
-					if ((typedValue.mType->IsObjectOrInterface()) || (typedValue.mType->IsPointer()))
+					if ((typedValue.mType->IsObjectOrInterface()) || (typedValue.mType->IsPointer()) || (typedValue.mType->IsRef()))
 					{
-						void* data = ceContext->GetMemoryPtr(ceTypedValue.mAddr, sizeof(addr_ce));
+						void* data = ceContext->GetMemoryPtr((addr_ce)ceTypedValue.mAddr, sizeof(addr_ce));
 						if (data == NULL)
 						{
 							Fail("Invalid address", refNode);
 							return GetDefaultTypedValue(typedValue.mType);
 						}
 
-						addr_ce dataAddr = *(addr_ce*)data;
+						uint64 dataAddr;
+						if (mSystem->mPtrSize == 4)
+							dataAddr = *(uint32*)data;
+						else
+							dataAddr = *(uint64*)data;
 						return BfTypedValue(mBfIRBuilder->CreateIntToPtr(
-							mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)dataAddr), mBfIRBuilder->MapType(typedValue.mType)), typedValue.mType);
+							mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, dataAddr), mBfIRBuilder->MapType(typedValue.mType)), typedValue.mType);
 					}
 
 					auto constVal = ceContext->CreateConstant(this, ceContext->mMemory.mVals + ceTypedValue.mAddr, typedValue.mType);
@@ -13474,7 +13493,7 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 }
 
 BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags, BfTypeInstance* foreignType)
-{
+{	
 	if (methodDef->mMethodType == BfMethodType_Init)
 		return BfModuleMethodInstance();
 
@@ -13534,7 +13553,16 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				PopulateType(typeInst, BfPopulateType_AllowStaticMethods);
 		}
 		else
-			PopulateType(typeInst, BfPopulateType_Full);		
+			PopulateType(typeInst, BfPopulateType_Full);
+
+		if (typeInst->mDefineState < BfTypeDefineState_Defined)
+		{
+			if (!mCompiler->EnsureCeUnpaused(typeInst))
+			{
+				BfLogSysM("GetMethodInstance (DefineState < BfTypeDefineState_Defined)) bailing due to IsCePaused\n");
+				return BfModuleMethodInstance();
+			}
+		}
 	}
 	
 	bool tryModuleMethodLookup = false;
@@ -14134,6 +14162,12 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		
 	if (methodInstance == NULL)
 	{
+		if (!mCompiler->EnsureCeUnpaused(typeInst))
+		{
+			BfLogSysM("GetMethodInstance (methodInstance == NULL) bailing due to IsCePaused\n");
+			return BfModuleMethodInstance();
+		}
+
 		if (lookupMethodGenericArguments.size() == 0)
 		{
 			BF_ASSERT(methodInstGroup->mDefault == NULL);
@@ -14586,7 +14620,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 
 		if (mIsComptimeModule)
 		{			
-			mCompiler->mCEMachine->QueueStaticField(fieldInstance, staticVarName);
+			mCompiler->mCeMachine->QueueStaticField(fieldInstance, staticVarName);
 		}
 
 		PopulateType(typeType);
@@ -14649,9 +14683,24 @@ void BfModule::MarkUsingThis()
 
 BfTypedValue BfModule::GetThis(bool markUsing)
 {	
-	if ((mIsComptimeModule) && (mCompiler->mCEMachine->mDebugger != NULL) && (mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+	if ((mIsComptimeModule) && (mCompiler->mCeMachine->mDebugger != NULL) && (mCompiler->mCeMachine->mDebugger->mCurDbgState != NULL))
 	{
-		return mCompiler->mCEMachine->mDebugger->mCurDbgState->mExplicitThis;
+		if (mCompiler->mCeMachine->mDebugger->mCurDbgState->mExplicitThis)
+			return mCompiler->mCeMachine->mDebugger->mCurDbgState->mExplicitThis;
+
+		auto ceDebugger = mCompiler->mCeMachine->mDebugger;
+		auto activeFrame = ceDebugger->mCurDbgState->mActiveFrame;
+		if ((activeFrame != NULL) && (activeFrame->mFunction->mDbgInfo != NULL))
+		{
+			for (auto& dbgVar : activeFrame->mFunction->mDbgInfo->mVariables)
+			{
+				if (dbgVar.mName == "this")
+					return BfTypedValue(mBfIRBuilder->CreateConstAggCE(mBfIRBuilder->MapType(dbgVar.mType), activeFrame->mFrameAddr + dbgVar.mValue.mFrameOfs), dbgVar.mType, 
+						dbgVar.mIsConst ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+			}
+		}
+
+		return BfTypedValue();
 	}
 
 	auto useMethodState = mCurMethodState;
@@ -15028,7 +15077,7 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 					}
 					else
 					{
-						if ((IsTargetingBeefBackend()) && (doAliasValue))
+						if ((IsTargetingBeefBackend()) && (doAliasValue) && (!mIsComptimeModule))
 						{
 							diValue = mBfIRBuilder->CreateAliasValue(diValue);
 							mCurMethodState->mCurScope->mDeferredLifetimeEnds.Add(diValue);
@@ -15936,6 +15985,8 @@ BfType* BfModule::GetDelegateReturnType(BfType* delegateType)
 	auto typeInst = delegateType->ToTypeInstance();
 	PopulateType(typeInst, BfPopulateType_DataAndMethods);
 	BfMethodInstance* invokeMethodInstance = GetRawMethodInstanceAtIdx(typeInst->ToTypeInstance(), 0, "Invoke");
+	if (invokeMethodInstance == NULL)
+		return GetPrimitiveType(BfTypeCode_Var);
 	return invokeMethodInstance->mReturnType;
 }
 
@@ -16578,7 +16629,7 @@ void BfModule::EmitDtorBody()
 		
 		auto dtorFunc = GetMethodByName(mContext->mBfObjectType, "~this");
 		if (mIsComptimeModule)
-			mCompiler->mCEMachine->QueueMethod(dtorFunc.mMethodInstance, dtorFunc.mFunc);
+			mCompiler->mCeMachine->QueueMethod(dtorFunc.mMethodInstance, dtorFunc.mFunc);
 		auto basePtr = mBfIRBuilder->CreateBitCast(thisVal.mValue, mBfIRBuilder->MapTypeInstPtr(mContext->mBfObjectType));
 		SizedArray<BfIRValue, 1> vals = { basePtr };
 		result = mBfIRBuilder->CreateCall(dtorFunc.mFunc, vals);
@@ -16762,7 +16813,7 @@ void BfModule::EmitDtorBody()
 							SizedArray<BfIRValue, 1> vals = { basePtr };
 							auto callInst = mBfIRBuilder->CreateCall(dtorMethodInstance.mFunc, vals);
 							if (mIsComptimeModule)
-								mCompiler->mCEMachine->QueueMethod(dtorMethodInstance.mMethodInstance, dtorMethodInstance.mFunc);
+								mCompiler->mCeMachine->QueueMethod(dtorMethodInstance.mMethodInstance, dtorMethodInstance.mFunc);
 							mBfIRBuilder->SetCallCallingConv(callInst, GetIRCallingConvention(dtorMethodInstance.mMethodInstance));
 						}
 					}
@@ -17354,7 +17405,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				exprEvaluator.PushThis(NULL, GetThis(), moduleMethodInstance.mMethodInstance, irArgs);
 				exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
 				if (mIsComptimeModule)
-					mCompiler->mCEMachine->QueueMethod(moduleMethodInstance);
+					mCompiler->mCeMachine->QueueMethod(moduleMethodInstance);
 
 				calledCtorNoBody = true;
 			}
@@ -17416,7 +17467,11 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						mCurMethodState->mCurScope->mDIInlinedAt = mBfIRBuilder->DbgGetCurrentLocation();
 						BF_ASSERT(mCurMethodState->mCurScope->mDIInlinedAt);
 						// mCurMethodState->mCurScope->mDIInlinedAt may still be null ifwe don't have an explicit ctor
-						mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance), "this$initFields", "", mCurFilePosition.mFileInstance->mDIFile,
+						
+						String linkageName;
+						if ((mIsComptimeModule) && (mCompiler->mCeMachine->mCurBuilder != NULL))
+							linkageName = StrFormat("%d", mCompiler->mCeMachine->mCurBuilder->DbgCreateMethodRef(mCurMethodInstance, "$initFields"));
+						mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance), "this$initFields", linkageName, mCurFilePosition.mFileInstance->mDIFile,
 							mCurFilePosition.mCurLine + 1, diFuncType, false, true, mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
 
 						UpdateSrcPos(node);
@@ -17709,7 +17764,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				if (callingConv != BfIRCallingConv_CDecl)
 					mBfIRBuilder->SetCallCallingConv(callInst, callingConv);				
 				if (mIsComptimeModule)
-					mCompiler->mCEMachine->QueueMethod(ctorBodyMethodInstance);
+					mCompiler->mCeMachine->QueueMethod(ctorBodyMethodInstance);
 			}
 
 			if (matchedMethod == NULL)
@@ -19667,7 +19722,9 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 	bool wantsDIData = (mBfIRBuilder->DbgHasInfo()) && (!methodDef->IsEmptyPartial()) && (!mBfIRBuilder->mIgnoreWrites) && (mHasFullDebugInfo);
 	if (methodDef->mMethodType == BfMethodType_Mixin)
 		wantsDIData = false;
-	
+	if (mCurTypeInstance->IsUnspecializedType())
+		wantsDIData = false;
+
 	if ((mCurTypeInstance->IsBoxed()) && (methodDef->mMethodType != BfMethodType_Ctor))
 		wantsDIData = false;
 
@@ -22661,6 +22718,8 @@ void BfModule::StartMethodDeclaration(BfMethodInstance* methodInstance, BfMethod
 // methodDeclaration is NULL for default constructors
 void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool isTemporaryFunc, bool addToWorkList)
 {
+	BF_ASSERT((mCompiler->mCeMachine == NULL) || (!mCompiler->mCeMachine->mDbgPaused));
+
 	BP_ZONE("BfModule::DoMethodDeclaration");	
 
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here

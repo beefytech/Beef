@@ -1719,14 +1719,14 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 		for (auto& methodInstGroup : typeInst->mMethodInstanceGroups)
 		{
 			if ((methodInstGroup.mDefault != NULL) && (methodInstGroup.mDefault->mInCEMachine))
-				mCompiler->mCEMachine->RemoveMethod(methodInstGroup.mDefault);
+				mCompiler->mCeMachine->RemoveMethod(methodInstGroup.mDefault);
 			if (methodInstGroup.mMethodSpecializationMap != NULL)
 			{
 				for (auto& methodSpecializationItr : *methodInstGroup.mMethodSpecializationMap)
 				{
 					auto methodInstance = methodSpecializationItr.mValue;
 					if (methodInstance->mInCEMachine)
-						mCompiler->mCEMachine->RemoveMethod(methodInstance);
+						mCompiler->mCeMachine->RemoveMethod(methodInstance);
 				}
 			}
 		}

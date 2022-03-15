@@ -406,6 +406,9 @@ namespace System
 
 		public static void AddErrorHandler(ErrorHandler handler)
 		{
+			if (Compiler.IsComptime)
+				return;
+
 			using (sMonitor.Val.Enter())
 			{
 				if (sErrorHandlers == null)
@@ -416,6 +419,9 @@ namespace System
 
 		public static Result<void> RemoveErrorHandler(ErrorHandler handler)
 		{
+			if (Compiler.IsComptime)
+				return .Ok;
+
 			using (sMonitor.Val.Enter())
 			{
 				if (sErrorHandlers.RemoveStrict(handler))
@@ -426,6 +432,9 @@ namespace System
 
 		public static ErrorHandlerResult CheckErrorHandlers(Error error)
 		{
+			if (Compiler.IsComptime)
+				return .ContinueFailure;
+
 			using (sMonitor.Val.Enter())
 			{
 				if (sInsideErrorHandler)

@@ -17,6 +17,15 @@ class CeFunction;
 class BfReducer;
 class CeDebugger;
 class DebugVisualizerEntry;
+class CeEvaluationContext;
+
+class CeBreakpointCondition
+{
+public:
+	CeEvaluationContext* mDbgEvaluationContext;
+	String mExpr;
+	~CeBreakpointCondition();
+};
 
 class CeBreakpoint : public Breakpoint
 {
@@ -24,6 +33,7 @@ public:
 	uintptr mCurBindAddr;
 	bool mHasBound;
 	int mIdx;
+	CeBreakpointCondition* mCondition;
 
 public:
 	CeBreakpoint()
@@ -31,8 +41,10 @@ public:
 		mCurBindAddr = 1;
 		mHasBound = false;
 		mIdx = -1;
+		mCondition = NULL;
 	}
 
+	~CeBreakpoint();
 	virtual uintptr GetAddr() { return mCurBindAddr; }
 	virtual bool IsMemoryBreakpointBound() { return false; }
 };
@@ -98,7 +110,7 @@ public:
 	void Init(CeDebugger* winDebugger, const StringImpl& expr, CeFormatInfo* formatInfo = NULL, BfTypedValue contextValue = BfTypedValue());
 	bool HasExpression();
 	~CeEvaluationContext();
-	BfTypedValue EvaluateInContext(BfTypedValue contextTypedValue);
+	BfTypedValue EvaluateInContext(BfTypedValue contextTypedValue, CeDbgState* dbgState = NULL);	
 	String GetErrorStr();
 	bool HadError();
 };
@@ -110,17 +122,21 @@ public:
 	CeContext* mCeContext;
 	BfTypedValue mExplicitThis;
 	DwEvalExpressionFlags mDbgExpressionFlags;
+	CeFormatInfo* mFormatInfo;
 	bool mHadSideEffects;
 	bool mBlockedSideEffects;
+	bool mReferencedIncompleteTypes;
 
 public:
 	CeDbgState()
 	{
 		mActiveFrame = NULL;
 		mCeContext = NULL;
+		mFormatInfo = NULL;
 		mDbgExpressionFlags = DwEvalExpressionFlag_None;
 		mHadSideEffects = false;
 		mBlockedSideEffects = false;
+		mReferencedIncompleteTypes = false;
 	}
 };
 
@@ -128,6 +144,7 @@ class CePendingExpr
 {
 public:
 	int mThreadId;
+	BfPassInstance* mPassInstance;
 	BfParser* mParser;
 	BfType* mExplitType;
 	CeFormatInfo mFormatInfo;
@@ -138,10 +155,19 @@ public:
 	int mCallStackIdx;
 	String mResult;	
 	int mIdleTicks;
-	String mException;
+	String mException;	
+	bool mDone;
 
 	CePendingExpr();
 	~CePendingExpr();
+};
+
+class CeDbgStackInfo
+{
+public:
+	int mFrameIdx;
+	int mScopeIdx;
+	int mInlinedFrom;
 };
 
 class CeFileInfo
@@ -182,7 +208,7 @@ public:
 
 struct CeTypedValue
 {
-	addr_ce mAddr;
+	int64 mAddr;
 	BfIRType mType;
 
 	CeTypedValue()
@@ -191,7 +217,7 @@ struct CeTypedValue
 		mType = BfIRType();
 	}
 
-	CeTypedValue(addr_ce addr, BfIRType type)
+	CeTypedValue(int64 addr, BfIRType type)
 	{
 		mAddr = addr;
 		mType = type;
@@ -203,6 +229,13 @@ struct CeTypedValue
 	}
 };
 
+enum CeTypeModKind
+{
+	CeTypeModKind_Normal,
+	CeTypeModKind_Const,
+	CeTypeModKind_ReadOnly
+};
+
 class CeDebugger : public Debugger
 {
 public:
@@ -212,8 +245,9 @@ public:
 	CePendingExpr* mDebugPendingExpr;
 	CeDbgState* mCurDbgState;	
 	Array<CeBreakpoint*> mBreakpoints;
-	Dictionary<String, CeFileInfo*> mFileInfo;
+	Dictionary<String, CeFileInfo*> mFileInfo;	
 	Dictionary<int, CeDbgTypeInfo> mDbgTypeInfoMap;
+	Array<CeDbgStackInfo> mDbgCallStack;
 
 	CeEvaluationContext* mCurEvaluationContext;
 	CeBreakpoint* mActiveBreakpoint;
@@ -221,11 +255,23 @@ public:
 	bool mBreakpointCacheDirty;	
 	bool mBreakpointFramesDirty;
 	int mCurDisasmFuncId;
+	int mPendingActiveFrameOffset;
 
 public:
+	template<typename T> T ReadMemory(intptr addr, bool* failed = NULL)
+	{
+		T val;
+		memset(&val, 0, sizeof(T));
+		bool success = ReadMemory(addr, (int)sizeof(T), &val);
+		if (failed != NULL)
+			*failed = !success;
+		return val;
+	}
+
+	bool CheckConditionalBreakpoint(CeBreakpoint* breakpoint);
 	bool SetupStep(int frameIdx = 0);
-	CeFrame* GetFrame(int callStackIdx);
-	String EvaluateContinue(CePendingExpr* pendingExpr, BfPassInstance& bfPassInstance);
+	CeFrame* GetFrame(int callStackIdx);	
+	String DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread);
 	String Evaluate(const StringImpl& expr, CeFormatInfo formatInfo, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags);
 	DwDisplayInfo* GetDisplayInfo(const StringImpl& referenceId);
 	String GetMemberList(BfType* type, addr_ce addr, addr_ce addrInst, bool isStatic);
@@ -239,12 +285,13 @@ public:
 	String GetDictionaryItems(DebugVisualizerEntry* debugVis, BfTypedValue dictValue, int bucketIdx, int nodeIdx, int& count, String* outContinuationData);
 	String GetTreeItems(DebugVisualizerEntry* debugVis, Array<addr_ce>& parentList, BfType*& valueType, BfTypedValue& curNode, int count, String* outContinuationData);
 	bool EvalCondition(DebugVisualizerEntry* debugVis, BfTypedValue typedVal, CeFormatInfo& formatInfo, const StringImpl& condition, const Array<String>& dbgVisWildcardCaptures, String& errorStr);
-	CeTypedValue GetAddr(BfConstant* constant);
+	CeTypedValue GetAddr(BfConstant* constant, BfType* type = NULL);
 	CeTypedValue GetAddr(const BfTypedValue typeVal);
 	String ReadString(BfTypeCode charType, intptr addr, intptr maxLength, CeFormatInfo& formatInfo);
 	void ProcessEvalString(BfTypedValue useTypedValue, String& evalStr, String& displayString, CeFormatInfo& formatInfo, DebugVisualizerEntry* debugVis, bool limitLength);
-	String TypedValueToString(const BfTypedValue& typedValue, const StringImpl& expr, CeFormatInfo& formatFlags, bool fullPrecision = false);
+	String TypedValueToString(const BfTypedValue& typedValue, const StringImpl& expr, CeFormatInfo& formatFlags, bool fullPrecision = false, CeTypeModKind typeModKind = CeTypeModKind_Normal);
 	void HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry* debugVis, BfTypedValue typedValue, addr_ce addr, addr_ce addrInst, Array<String>& dbgVisWildcardCaptures, CeFormatInfo& formatInfo);
+	String GetAutocompleteOutput(BfAutoComplete& autoComplete);
 	void ClearBreakpointCache();
 	void UpdateBreakpointCache();
 	void UpdateBreakpointFrames();
@@ -253,8 +300,11 @@ public:
 	void Continue();
 	CeDbgTypeInfo* GetDbgTypeInfo(int typeId);
 	CeDbgTypeInfo* GetDbgTypeInfo(BfIRType irType);
+	int64 ValueToInt(addr_ce addr, BfType* type);
 	int64 ValueToInt(const BfTypedValue& typedVal);
 	BfType* FindType(const StringImpl& name);
+	String TypeToString(const BfTypedValue& typedValue);
+	String TypeToString(BfType* type, CeTypeModKind typeModKind);
 
 public:
 	CeDebugger(DebugManager* debugManager, BfCompiler* bfCompiler);

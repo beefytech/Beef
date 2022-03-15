@@ -2207,11 +2207,6 @@ bool BeCOFFObject::Generate(BeModule* module, const StringImpl& fileName)
 
 void BeCOFFObject::Finish()
 {
-	if (mBeModule->mModuleName.Contains("vdata"))
-	{
-		NOP;
-	}
-
 	BP_ZONE("BeCOFFObject::Finish");
 	//AutoPerf perf("BeCOFFObject::Finish", mPerfManager);
 

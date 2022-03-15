@@ -617,8 +617,8 @@ void BfMethodInstance::Dispose(bool isDeleting)
 	if (mInCEMachine)
 	{
 		auto module = GetOwner()->mModule;
-		if (module->mCompiler->mCEMachine != NULL)
-			module->mCompiler->mCEMachine->RemoveMethod(this);
+		if (module->mCompiler->mCeMachine != NULL)
+			module->mCompiler->mCeMachine->RemoveMethod(this);
 	}	
 
 	if (mMethodProcessRequest != NULL)

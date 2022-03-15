@@ -30,6 +30,7 @@
 #include "../LLVMUtils.h"
 #include "BfNamespaceVisitor.h"
 #include "CeMachine.h"
+#include "CeDebugger.h"
 
 #pragma warning(pop)
 
@@ -479,15 +480,15 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mLastAutocompleteModule = NULL;
 
 	//if (isResolveOnly)
-	//mCEMachine = NULL;
-	mCEMachine = new CeMachine(this);
+	//mCeMachine = NULL;
+	mCeMachine = new CeMachine(this);
 	mCurCEExecuteId = -1;
 }
 
 BfCompiler::~BfCompiler()
 {		
-	delete mCEMachine;
-	mCEMachine = NULL;
+	delete mCeMachine;
+	mCeMachine = NULL;
 	delete mContext;
 	delete mHotData;
 	delete mHotState;	
@@ -5749,6 +5750,20 @@ void BfCompiler::PopulateReified()
 	}
 }
 
+bool BfCompiler::IsCePaused()
+{
+	return (mCeMachine != NULL) && (mCeMachine->mDbgPaused);
+}
+
+bool BfCompiler::EnsureCeUnpaused(BfType* refType)
+{
+	if ((mCeMachine == NULL) || (!mCeMachine->mDbgPaused))
+		return true;
+	mCeMachine->mDebugger->mCurDbgState->mReferencedIncompleteTypes = true;
+	//mPassInstance->Fail(StrFormat("Use of incomplete type '%s'", mCeMachine->mCeModule->TypeToString(refType).c_str()));
+	return false;
+}
+
 void BfCompiler::HotCommit()
 {
 	if (mHotState == NULL)
@@ -6668,8 +6683,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	else
 		mContext->mUnreifiedModule->mIsReified = false;
 
-	if (mCEMachine != NULL)
-		mCEMachine->CompileStarted();
+	if (mCeMachine != NULL)
+		mCeMachine->CompileStarted();
 
 	if (mOptions.mAllowHotSwapping)
 	{
@@ -7476,7 +7491,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}
 	mCodeGen.ProcessErrors(mPassInstance, mCanceling);
 
-	mCEMachine->CompileDone();
+	mCeMachine->CompileDone();
 
 	// This has to happen after codegen because we may delete modules that are referenced in codegen	
 	mContext->Cleanup();	
@@ -7541,9 +7556,9 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		numModulesWritten, (numModulesWritten != 1) ? "s" : "",
 		numObjFilesWritten, (numObjFilesWritten != 1) ? "s" : ""));
 
-	if ((mCEMachine != NULL) && (!mIsResolveOnly) && (mCEMachine->mRevisionExecuteTime > 0))
+	if ((mCeMachine != NULL) && (!mIsResolveOnly) && (mCeMachine->mRevisionExecuteTime > 0))
 	{
-		mPassInstance->OutputLine(StrFormat(":med Comptime execution time: %0.2fs", mCEMachine->mRevisionExecuteTime / 1000.0f));
+		mPassInstance->OutputLine(StrFormat(":med Comptime execution time: %0.2fs", mCeMachine->mRevisionExecuteTime / 1000.0f));
 	}
 	
 	BpLeave();	
@@ -7658,10 +7673,10 @@ void BfCompiler::Cancel()
 	mCanceling = true;
 	mFastFinish = true;
 	mHadCancel = true;
-	if (mCEMachine != NULL)
+	if (mCeMachine != NULL)
 	{
-		AutoCrit autoCrit(mCEMachine->mCritSect);		
-		mCEMachine->mSpecialCheck = true;
+		AutoCrit autoCrit(mCeMachine->mCritSect);		
+		mCeMachine->mSpecialCheck = true;
 		mFastFinish = true;
 	}
 	BfLogSysM("BfCompiler::Cancel\n");
@@ -7671,8 +7686,8 @@ void BfCompiler::Cancel()
 void BfCompiler::RequestFastFinish()
 {
 	mFastFinish = true;
-	if (mCEMachine != NULL)
-		mCEMachine->mSpecialCheck = true;
+	if (mCeMachine != NULL)
+		mCeMachine->mSpecialCheck = true;
 	BfLogSysM("BfCompiler::RequestFastFinish\n");
 	BpEvent("BfCompiler::RequestFastFinish", "");
 }

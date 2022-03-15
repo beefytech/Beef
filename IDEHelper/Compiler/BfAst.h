@@ -752,7 +752,7 @@ public:
 
 	bool IsNoValueType() const
 	{
-		return (mKind == BfTypedValueKind_NoValue);
+		return (mKind == BfTypedValueKind_NoValue) && (mType != NULL);
 	}
 
 	bool IsParams()

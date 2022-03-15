@@ -14,6 +14,7 @@
 #include "BeefySysLib/util/BeefPerf.h"
 #include "BfParser.h"
 #include "BfMangler.h"
+#include "BfDemangler.h"
 #include "BfResolvePass.h"
 #include "BfUtil.h"
 #include "BfDeferEvalChecker.h"
@@ -1647,8 +1648,9 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	
 	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);
 	if (methodInstance == NULL)
-	{		
-		BFMODULE_FATAL(mModule, "Failed to get raw method in BfMethodMatcher::CheckMethod");
+	{
+		if (!mModule->mCompiler->IsCePaused())
+			BFMODULE_FATAL(mModule, "Failed to get raw method in BfMethodMatcher::CheckMethod");
 		return false;
 	}
 	BfMethodInstance* typeUnspecMethodInstance = mModule->GetUnspecializedMethodInstance(methodInstance, true);	
@@ -4020,9 +4022,9 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 
 BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringImpl& findName, bool ignoreInitialError, bool* hadError)
 {
-	if ((mModule->mCompiler->mCEMachine != NULL) && (mModule->mCompiler->mCEMachine->mDebugger != NULL) && (mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+	if ((mModule->mCompiler->mCeMachine != NULL) && (mModule->mCompiler->mCeMachine->mDebugger != NULL) && (mModule->mCompiler->mCeMachine->mDebugger->mCurDbgState != NULL))
 	{
-		auto ceDebugger = mModule->mCompiler->mCEMachine->mDebugger;		
+		auto ceDebugger = mModule->mCompiler->mCeMachine->mDebugger;		
 		auto ceContext = ceDebugger->mCurDbgState->mCeContext;
 		auto activeFrame = ceDebugger->mCurDbgState->mActiveFrame;
 		if (activeFrame->mFunction->mDbgInfo != NULL)
@@ -4032,9 +4034,13 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			{
 				if (dbgVar.mName == findName)
 				{
-					if (dbgVar.mValue.mKind == CeOperandKind_AllocaAddr)
+					if ((dbgVar.mValue.mKind == CeOperandKind_AllocaAddr) || (dbgVar.mValue.mKind == CeOperandKind_FrameOfs))
 					{
-						return BfTypedValue(mModule->mBfIRBuilder->CreateConstAggCE(mModule->mBfIRBuilder->MapType(dbgVar.mType), activeFrame->mFrameAddr + dbgVar.mValue.mFrameOfs), dbgVar.mType, true);
+						if ((instIdx >= dbgVar.mStartCodePos) && (instIdx < dbgVar.mEndCodePos))
+						{
+							return BfTypedValue(mModule->mBfIRBuilder->CreateConstAggCE(mModule->mBfIRBuilder->MapType(dbgVar.mType), activeFrame->mFrameAddr + dbgVar.mValue.mFrameOfs),
+								dbgVar.mType, dbgVar.mIsConst ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+						}
 					}
 				}
 			}
@@ -4699,7 +4705,10 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 
 	if (fieldInstance->mResolvedType == NULL)
 	{
-		BF_ASSERT((typeInstance->mTypeFailed) || (isResolvingFields));
+		if (mModule->mCompiler->EnsureCeUnpaused(typeInstance))
+		{
+			BF_ASSERT((typeInstance->mTypeFailed) || (isResolvingFields));
+		}
 		return BfTypedValue();
 	}
 
@@ -5232,6 +5241,15 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				if (curCheckType->mFieldInstances.IsEmpty())
 				{
 					mModule->PopulateType(curCheckType, BfPopulateType_Data);
+				}
+
+				if (field->mIdx >= (int)curCheckType->mFieldInstances.size())
+				{
+					if (mModule->mCompiler->EnsureCeUnpaused(curCheckType))
+					{
+						BF_DBG_FATAL("OOB in DoLookupField");
+					}
+					return mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
 				}
 
 				BF_ASSERT(field->mIdx < (int)curCheckType->mFieldInstances.size());
@@ -6034,7 +6052,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	bool forceBind = false;
 
-	if (mModule->mCompiler->mCEMachine != NULL)
+	if (mModule->mCompiler->mCeMachine != NULL)
 	{
 		bool doConstReturn = false;
 
@@ -6072,14 +6090,14 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 				if ((mBfEvalExprFlags & BfEvalExprFlags_NoCeRebuildFlags) != 0)
 					evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_NoRebuild);
 				
-				if ((mModule->mIsComptimeModule) && (mModule->mCompiler->mCEMachine->mDebugger != NULL) && (mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+				if ((mModule->mIsComptimeModule) && (mModule->mCompiler->mCeMachine->mDebugger != NULL) && (mModule->mCompiler->mCeMachine->mDebugger->mCurDbgState != NULL))
 				{
-					auto ceDbgState = mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState;
+					auto ceDbgState = mModule->mCompiler->mCeMachine->mDebugger->mCurDbgState;
 					if ((ceDbgState->mDbgExpressionFlags & DwEvalExpressionFlag_AllowCalls) != 0)
 					{	
 						ceDbgState->mHadSideEffects = true;
 
-						SetAndRestoreValue<CeDebugger*> prevDebugger(mModule->mCompiler->mCEMachine->mDebugger, NULL);
+						//SetAndRestoreValue<CeDebugger*> prevDebugger(mModule->mCompiler->mCeMachine->mDebugger, NULL);
 
 						evalFlags = (CeEvalFlags)(evalFlags | CeEvalFlags_DbgCall);
 						auto result = ceDbgState->mCeContext->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
@@ -6093,7 +6111,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 				}				
 				else
 				{					
-					auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
+					auto constRet = mModule->mCompiler->mCeMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
 					if (constRet)
 					{
 						auto constant = mModule->mBfIRBuilder->GetConstant(constRet.mValue);
@@ -6121,7 +6139,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			}
 			else
 			{
-				mModule->mCompiler->mCEMachine->QueueMethod(methodInstance, func);
+				mModule->mCompiler->mCeMachine->QueueMethod(methodInstance, func);
 			}
  		}
 
@@ -12678,7 +12696,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					}
 
 					auto bindFuncVal = bindResult.mFunc;
-					if (mModule->mCompiler->mOptions.mAllowHotSwapping)
+					if ((mModule->mCompiler->mOptions.mAllowHotSwapping) && (!mModule->mIsComptimeModule))
 						bindFuncVal = mModule->mBfIRBuilder->RemapBindFunction(bindFuncVal);
 					auto callResult = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
 					auto destCallingConv = mModule->GetIRCallingConvention(bindMethodInstance);
@@ -13022,7 +13040,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		}
 
 		auto bindFuncVal = bindResult.mFunc;
-		if (mModule->mCompiler->mOptions.mAllowHotSwapping)
+		if ((mModule->mCompiler->mOptions.mAllowHotSwapping) && (!mModule->mIsComptimeModule))
 			bindFuncVal = mModule->mBfIRBuilder->RemapBindFunction(bindFuncVal);
 		auto callInst = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
 		if (GetStructRetIdx(bindMethodInstance) != -1)
@@ -13083,8 +13101,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 			return;
 		}
 
-		if ((mModule->mCompiler->mOptions.mAllowHotSwapping) && (!bindResult.mMethodInstance->mMethodDef->mIsVirtual))
-		{				
+		if ((mModule->mCompiler->mOptions.mAllowHotSwapping) && (!bindResult.mMethodInstance->mMethodDef->mIsVirtual) && (!mModule->mIsComptimeModule))
+		{
 			funcValue = mModule->mBfIRBuilder->RemapBindFunction(funcValue);
 		}
 	}
@@ -15349,9 +15367,9 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		{
 			allocValue = mModule->AllocFromType(resolvedTypeRef, allocTarget, appendSizeValue, BfIRValue(), 0, BfAllocFlags_None, allocAlign);
 		}
-		if (((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) && (mModule->mCompiler->mCEMachine != NULL))
+		if (((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) && (mModule->mCompiler->mCeMachine != NULL))
 		{
-			mModule->mCompiler->mCEMachine->SetAppendAllocInfo(mModule, allocValue, appendSizeValue);
+			mModule->mCompiler->mCeMachine->SetAppendAllocInfo(mModule, allocValue, appendSizeValue);
 		}
 		mResult = BfTypedValue(allocValue, resultType);
 	}
@@ -15480,9 +15498,9 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		}
 	}
 
-	if (((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) && (mModule->mCompiler->mCEMachine != NULL))
+	if (((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) && (mModule->mCompiler->mCeMachine != NULL))
 	{
-		mModule->mCompiler->mCEMachine->ClearAppendAllocInfo();
+		mModule->mCompiler->mCeMachine->ClearAppendAllocInfo();
 	}
 }
 
@@ -16584,13 +16602,13 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	// We can't flush scope state because we extend params in as arbitrary values
 	mModule->NewScopeState(true, false);
 
-	bool wantsDIData = (mModule->mBfIRBuilder->DbgHasInfo()) && (mModule->mHasFullDebugInfo);
+	bool wantsDIData = (mModule->mBfIRBuilder->DbgHasInfo()) && (mModule->mHasFullDebugInfo);			
 	DISubprogram* diFunction = NULL;
 		
 	int startLocalIdx = (int)mModule->mCurMethodState->mLocals.size();
 	int endLocalIdx = startLocalIdx;
 
-	if (wantsDIData)
+	if ((wantsDIData) || (mModule->mIsComptimeModule))
 	{		
 		BfIRMDNode diFuncType = mModule->mBfIRBuilder->DbgCreateSubroutineType(methodInstance);
 
@@ -16609,7 +16627,10 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			String methodName = methodDef->mName;
 			methodName += "!";						
 			BfMangler::Mangle(methodName, mModule->mCompiler->GetMangleKind(), methodInstance);
-			curMethodState->mCurScope->mDIScope = mModule->mBfIRBuilder->DbgCreateFunction(diParentType, methodName, "", mModule->mCurFilePosition.mFileInstance->mDIFile,
+			String linkageName;
+			if ((mModule->mIsComptimeModule) && (mModule->mCompiler->mCeMachine->mCurBuilder != NULL))
+				linkageName = StrFormat("%d", mModule->mCompiler->mCeMachine->mCurBuilder->DbgCreateMethodRef(methodInstance, ""));
+			curMethodState->mCurScope->mDIScope = mModule->mBfIRBuilder->DbgCreateFunction(diParentType, methodName, linkageName, mModule->mCurFilePosition.mFileInstance->mDIFile,
 				defLine + 1, diFuncType, false, true, mModule->mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
 			scopeData.mAltDIFile = mModule->mCurFilePosition.mFileInstance->mDIFile;
 		}
@@ -16739,7 +16760,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			{
 				//
 			}
-			else if (mModule->IsTargetingBeefBackend())
+			else if ((mModule->IsTargetingBeefBackend()) && (!mModule->mIsComptimeModule))
 			{
 				mModule->UpdateSrcPos(methodDeclaration->mNameNode);
 				mModule->SetIllegalSrcPos();
@@ -16767,7 +16788,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 					else if (newLocalVar->mConstValue)
 						value = newLocalVar->mConstValue;
 
-					auto aliasValue = mModule->mBfIRBuilder->CreateAliasValue(value);					
+					auto aliasValue = mModule->mBfIRBuilder->CreateAliasValue(value);
 					if (mModule->WantsLifetimes())
 						scopeData.mDeferredLifetimeEnds.Add(aliasValue);					
 
@@ -17559,11 +17580,11 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		{
 			if (targetFunctionName.StartsWith("__"))
 			{
-				auto ceDebugger = mModule->mCompiler->mCEMachine->mDebugger;
+				auto ceDebugger = mModule->mCompiler->mCeMachine->mDebugger;
 
 				auto _ResolveArg = [&](int argIdx, BfType* type = NULL)
 				{
-					if (argIdx >= args.mSize)
+					if ((argIdx < 0) || (argIdx >= args.mSize))
 						return BfTypedValue();
 					return mModule->CreateValueFromExpression(args[argIdx], type);
 				};
@@ -17596,6 +17617,141 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, (uint64)resultVal), typedVal.mType);
 						return;
 					}
+				}
+				else if ((targetFunctionName == "__cast") || (targetFunctionName == "__bitcast"))
+				{
+					BfType* type = NULL;
+					String typeName;
+					for (int argIdx = 0; argIdx < args.mSize - 1; argIdx++)
+					{
+						auto arg = _ResolveArg(argIdx);
+						if (!arg)
+							continue;
+						if (arg.mType->IsInstanceOf(mModule->mCompiler->mStringTypeDef))
+						{
+							auto strPtr = mModule->GetStringPoolString(arg.mValue, mModule->mBfIRBuilder);
+							if (strPtr != NULL)
+							{
+								if ((type != NULL) && (*strPtr == "*"))
+								{
+									type = mModule->CreatePointerType(type);
+								}
+								else
+									typeName += *strPtr;
+							}
+						}
+
+						if (arg.mType->IsInteger())
+						{
+							int64 intVal = ceDebugger->ValueToInt(arg);
+							if (typeName.IsEmpty())
+							{
+								auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef)->ToTypeInstance();
+								auto fieldDef = typeType->mTypeDef->GetFieldByName("mTypeId");
+								if (fieldDef != NULL)
+								{									
+									int typeId = ceDebugger->ReadMemory<int>((intptr)intVal + typeType->mFieldInstances[fieldDef->mIdx].mDataOffset);
+									type = mModule->mContext->FindTypeById(typeId);
+								}
+							}
+							else
+								typeName += StrFormat("%lld", intVal);							
+						}
+					}
+
+					auto fromTypedVal = _ResolveArg(args.mSize - 1);
+
+					if (!typeName.IsEmpty())
+						type = ceDebugger->FindType(typeName);
+
+					if (type != NULL)
+					{
+						if (targetFunctionName == "__bitcast")
+						{
+							if ((type->IsObjectOrInterface()) || (type->IsPointer()))
+							{
+								auto ceAddrVal = ceDebugger->GetAddr(fromTypedVal);
+								mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIntToPtr(ceAddrVal.mAddr, mModule->mBfIRBuilder->MapType(type)), type);
+							}
+							else
+							{
+								Array<uint8> memArr;
+								memArr.Resize(BF_MAX(type->mSize, fromTypedVal.mType->mSize));
+								mModule->mBfIRBuilder->WriteConstant(fromTypedVal.mValue, memArr.mVals, fromTypedVal.mType);
+								auto newVal = mModule->mBfIRBuilder->ReadConstant(memArr.mVals, type);
+								mResult = BfTypedValue(newVal, type);
+							}
+						}
+						else
+							mResult = mModule->Cast(target, fromTypedVal, type, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail));
+					}
+
+					return;
+				}
+				else if (targetFunctionName == "__stringView")
+				{
+					auto ptrVal = _ResolveArg(0);
+					auto sizeVal = _ResolveArg(1);
+
+					if (ceDbgState->mFormatInfo != NULL)
+						ceDbgState->mFormatInfo->mOverrideCount = (int)ceDebugger->ValueToInt(sizeVal);
+
+					mResult = ptrVal;
+					return;
+				}
+				else if ((targetFunctionName == "__funcName") || (targetFunctionName == "__funcTarget"))
+				{
+					auto addrVal = _ResolveArg(0);
+					auto ceAddrVal = ceDebugger->GetAddr(addrVal);
+					
+					CeFunction* ceFunction = NULL;
+					int functionId = 0;
+					if (mModule->mSystem->mPtrSize == 4)
+					{
+						functionId = (int)addrVal;
+					}
+					else
+					{
+						CeFunction* checkCeFunction = (CeFunction*)ceAddrVal.mAddr;
+						functionId = checkCeFunction->SafeGetId();
+					}
+																					
+					if (mModule->mCompiler->mCeMachine->mFunctionIdMap.TryGetValue(functionId, &ceFunction))
+					{
+						BfMethodInstance* methodInstance = ceFunction->mMethodInstance;
+						if (methodInstance != NULL)													
+						{
+							if (targetFunctionName == "__funcTarget")
+							{
+								BfType* targetType = methodInstance->GetOwner();
+								if (targetType->IsValueType())
+									targetType = mModule->CreatePointerType(targetType);
+
+								auto targetVal = _ResolveArg(1);
+								auto ceTargetVal = ceDebugger->GetAddr(targetVal);
+								mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIntToPtr(ceTargetVal.mAddr, mModule->mBfIRBuilder->MapType(targetType)), targetType);
+								return;
+							}
+							else
+							{
+								mResult = BfTypedValue(mModule->GetStringObjectValue(mModule->MethodToString(methodInstance)),
+									mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+								return;
+							}
+						}
+						else if ((ceFunction->mCeInnerFunctionInfo != NULL) && (targetFunctionName == "__funcName"))
+						{
+							mResult = BfTypedValue(mModule->GetStringObjectValue(BfDemangler::Demangle(ceFunction->mCeInnerFunctionInfo->mName, DbgLanguage_Beef)),
+								mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+							return;
+						}
+					}
+					
+					if (targetFunctionName == "__funcTarget")
+						mResult = _ResolveArg(1);
+					else
+						mResult = addrVal;					
+					return;
 				}
 			}
 		}
@@ -19475,9 +19631,9 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				}
 				else if (!alreadyWritten)
 				{
-					if ((mModule->mIsComptimeModule) && (mModule->mCompiler->mCEMachine->mDebugger != NULL) && (mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState != NULL))
+					if ((mModule->mIsComptimeModule) && (mModule->mCompiler->mCeMachine->mDebugger != NULL) && (mModule->mCompiler->mCeMachine->mDebugger->mCurDbgState != NULL))
 					{
-						auto ceDbgState = mModule->mCompiler->mCEMachine->mDebugger->mCurDbgState;
+						auto ceDbgState = mModule->mCompiler->mCeMachine->mDebugger->mCurDbgState;
 						bool success = false;
 
 						if ((convVal.mValue.IsConst()) && (ptr.mValue.IsConst()))
@@ -19485,20 +19641,20 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 							auto constant = mModule->mBfIRBuilder->GetConstant(ptr.mValue);
 							auto valConstant = mModule->mBfIRBuilder->GetConstant(convVal.mValue);
 
-							auto ceTypedVal = mModule->mCompiler->mCEMachine->mDebugger->GetAddr(constant);
+							auto ceTypedVal = mModule->mCompiler->mCeMachine->mDebugger->GetAddr(constant);
 							if (!ceTypedVal)
 							{
 								mModule->Fail("Invalid assignment address", assignExpr);
 								return;
 							}
 
-							auto ceContext = mModule->mCompiler->mCEMachine->mCurContext;							
-							if (ceContext->CheckMemory(ceTypedVal.mAddr, convVal.mType->mSize))
+							auto ceContext = mModule->mCompiler->mCeMachine->mCurContext;							
+							if (ceContext->CheckMemory((addr_ce)ceTypedVal.mAddr, convVal.mType->mSize))
 							{
 								if ((ceDbgState->mDbgExpressionFlags & DwEvalExpressionFlag_AllowSideEffects) != 0)
 								{
 									ceDbgState->mHadSideEffects = true;
-									if (ceContext->WriteConstant(mModule, ceTypedVal.mAddr, valConstant, convVal.mType))
+									if (ceContext->WriteConstant(mModule, (addr_ce)ceTypedVal.mAddr, valConstant, convVal.mType))
 										success = true;
 								}
 								else
@@ -20846,7 +21002,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 					}*/
 
 					if (mModule->mIsComptimeModule)
-						mModule->mCompiler->mCEMachine->QueueMethod(oobFunc.mMethodInstance, oobFunc.mFunc);
+						mModule->mCompiler->mCeMachine->QueueMethod(oobFunc.mMethodInstance, oobFunc.mFunc);
 
 					SizedArray<BfIRValue, 1> args;
 					args.push_back(mModule->GetConstValue(0));

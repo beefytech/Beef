@@ -7403,7 +7403,14 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 				}
 				else if ((arg.mType->mTypeCode == DbgType_i32) || (arg.mType->mTypeCode == DbgType_i64))
 				{
-					typeName += BfTypeUtils::HashEncode64(arg.mInt64);
+					if (typeName.IsEmpty())
+					{
+						// Fake this int as a type pointer
+						arg.mSrcAddress = arg.mUInt64;
+						BeefTypeToString(arg, typeName);
+					}
+					else
+						typeName += BfTypeUtils::HashEncode64(arg.mInt64);
 				}
 				else
 				{

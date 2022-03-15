@@ -4,6 +4,7 @@
 #include "BfModule.h"
 #include "BeefySysLib/util/Heap.h"
 #include "BeefySysLib/util/AllocDebug.h"
+#include "BfMangler.h"
 
 NS_BF_BEGIN
 
@@ -71,6 +72,7 @@ enum CeErrorKind
 enum CeOp : int16
 {
 	CeOp_InvalidOp,
+	CeOp_Nop,
 	CeOp_DbgBreak,
 	CeOp_Ret,
 	CeOp_SetRetType,
@@ -255,6 +257,49 @@ public:
 struct CeEmitEntry
 {
 	int mCodePos;
+	int mScope;
+	int mLine;
+	int mColumn;
+};
+
+struct CeDbgMethodRef
+{
+	BfMethodRef mMethodRef;
+	String mNameMod;
+
+	String ToString();
+
+	bool operator==(const CeDbgMethodRef& second) const
+	{
+		return (mMethodRef == second.mMethodRef) && (mNameMod == second.mNameMod);
+	}
+};
+
+struct CeDbgScope
+{
+public:
+	enum MethodValFlag
+	{
+		MethodValFlag_MethodRef = 0x40000000,
+		MethodValFlag_IdxMask = 0x3FFFFFFF
+	};
+
+public:
+	String mFilePath;
+	BfMethodRef mMethodRef;
+	int mInlinedAt;
+	int mMethodVal; // call table idx or methodRef idx, depending on MethodValFlag_MethodRef
+
+public:
+	CeDbgScope()
+	{
+		mInlinedAt = -1;
+		mMethodVal = -1;
+	}
+};
+
+struct CeDbgInlineEntry
+{	
 	int mScope;
 	int mLine;
 	int mColumn;
@@ -540,10 +585,14 @@ public:
 
 class CeDbgVariable
 {
-public:
+public:	
 	String mName;
 	CeOperand mValue;
 	BfType* mType;
+	int mScope;
+	bool mIsConst;
+	int mStartCodePos;
+	int mEndCodePos;
 };
 
 class CeDbgFunctionInfo
@@ -557,19 +606,6 @@ class CeBreakpointBind
 public:
 	CeOp mPrevOpCode;
 	CeBreakpoint* mBreakpoint;
-};
-
-struct CeDbgScope
-{
-public:
-	String mFilePath;
-	int mInlinedAt;
-
-public:
-	CeDbgScope()
-	{
-		mInlinedAt = -1;
-	}
 };
 
 class CeFunction
@@ -594,8 +630,10 @@ public:
 	bool mIsVarReturn;
 	Array<uint8> mCode;	
 	Array<CeDbgScope> mDbgScopes;
-	Array<CeEmitEntry> mEmitTable;
-	Array<CeCallEntry> mCallTable;
+	Array<CeDbgInlineEntry> mDbgInlineTable;
+	Array<CeDbgMethodRef> mDbgMethodRefTable;
+	Array<CeEmitEntry> mEmitTable;	
+	Array<CeCallEntry> mCallTable;	
 	Array<CeStringEntry> mStringTable;
 	Array<CeConstStructData> mConstStructTable;
 	Array<CeStaticFieldEntry> mStaticFieldTable;
@@ -631,6 +669,7 @@ public:
 	void Print();
 	void UnbindBreakpoints();
 	CeEmitEntry* FindEmitEntry(int loc, int* entryIdx = NULL);
+	int SafeGetId();
 };
 
 enum CeEvalFlags
@@ -738,6 +777,29 @@ public:
 	int mBlockIdx;
 };
 
+struct CeDbgInlineLookup
+{
+	BeDbgFile* mDbgFile;
+	int mInlineAtIdx;
+
+	CeDbgInlineLookup(BeDbgFile* dbgFile, int inlineAtIdx)
+	{
+		mDbgFile = dbgFile;
+		mInlineAtIdx = inlineAtIdx;
+	}
+
+	CeDbgInlineLookup()
+	{
+		mDbgFile = NULL;
+		mInlineAtIdx = -1;
+	}
+	
+	bool operator==(const CeDbgInlineLookup& second) const
+	{
+		return (mDbgFile == second.mDbgFile) && (mDbgFile == second.mDbgFile);
+	}
+};
+
 class CeBuilder
 {
 public:	
@@ -755,14 +817,17 @@ public:
 	Array<CeJumpEntry> mJumpTable;
 	Dictionary<BeValue*, CeOperand> mValueToOperand;
 	int mFrameSize;
-	Dictionary<BeDbgFile*, int> mDbgFileMap;
+	Dictionary<BeDbgLoc*, int> mDbgInlineMap;
+	Dictionary<CeDbgInlineLookup, int> mDbgScopeMap;
+	Dictionary<CeDbgMethodRef, int> mDbgMethodRefMap;
 	Dictionary<BeFunction*, int> mFunctionMap;
 	Dictionary<int, int> mStringMap;
 	Dictionary<BeConstant*, int> mConstDataMap;
 	Dictionary<BeFunction*, int> mInnerFunctionMap;
 	Dictionary<BeGlobalVariable*, int> mStaticFieldMap;
-	Dictionary<String, BfFieldInstance*> mStaticFieldInstanceMap;		
-
+	Dictionary<String, BfFieldInstance*> mStaticFieldInstanceMap;
+	Dictionary<BeValue*, int> mDbgVariableMap;
+	
 public:
 	CeBuilder()
 	{
@@ -782,6 +847,9 @@ public:
 	CeErrorKind EmitConst(Array<uint8>& arr, BeConstant* constant);
 	CeOperand GetOperand(BeValue* value, bool allowAlloca = false, bool allowImmediate = false);
 	CeSizeClass GetSizeClass(int size);
+	int DbgCreateMethodRef(BfMethodInstance* methodInstance, const StringImpl& nameMod);
+
+	int GetCallTableIdx(BeFunction* beFunction, CeOperand* outOperand);
 	int GetCodePos();
 
 	void HandleParams();
@@ -1011,7 +1079,8 @@ public:
 		Kind_StepInfo_Asm,
 		Kind_StepOut,
 		Kind_StepOut_Asm,
-		Kind_Jmp
+		Kind_Jmp,
+		Kind_Evaluate
 	};
 
 	Kind mKind;	
@@ -1035,8 +1104,7 @@ public:
 	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit and debugging
 	Dictionary<BfType*, CeTypeInfo> mTypeInfoMap;
 	HashSet<BfMethodInstance*> mMethodInstanceSet;
-	HashSet<BfFieldInstance*> mFieldInstanceSet;
-	Array<BeFunction*> mFunctionList;
+	HashSet<BfFieldInstance*> mFieldInstanceSet;	
 		
 	Array<CeContext*> mContextList;
 
@@ -1090,7 +1158,7 @@ public:
 	CeFunction* GetPreparedFunction(BfMethodInstance* methodInstance);
 	CeTypeInfo* GetTypeInfo(BfType* type);
 	BfMethodInstance* GetMethodInstance(int64 methodHandle);
-	BfFieldInstance* GetFieldInstance(int64 fieldHandle);
+	BfFieldInstance* GetFieldInstance(int64 fieldHandle);	
 
 public:
 	void CompileStarted();
@@ -1119,4 +1187,22 @@ namespace std
 			return BeefHash<Beefy::String>()(key.mString) ^ (size_t)key.mKind;
 		}
 	};	
+
+	template <>
+	struct hash<Beefy::CeDbgInlineLookup>
+	{
+		size_t operator()(const Beefy::CeDbgInlineLookup& key) const
+		{
+			return (intptr)key.mDbgFile ^ (intptr)key.mInlineAtIdx;
+		}
+	};
+
+	template <>
+	struct hash<Beefy::CeDbgMethodRef>
+	{
+		size_t operator()(const Beefy::CeDbgMethodRef& key) const
+		{
+			return BeefHash<Beefy::BfMethodRef>()(key.mMethodRef) ^ BeefHash<Beefy::String>()(key.mNameMod);
+		}
+	};
 }

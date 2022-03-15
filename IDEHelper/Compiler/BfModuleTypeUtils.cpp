@@ -2220,8 +2220,8 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		if (methodInstance == NULL)
 			continue;
 
-		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCEMachine->mCurEmitContext, ceEmitContext);
-		auto ceContext = mCompiler->mCEMachine->AllocContext();
+		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCeMachine->mCurEmitContext, ceEmitContext);
+		auto ceContext = mCompiler->mCeMachine->AllocContext();
 			
 		BfIRValue attrVal =ceContext->CreateAttribute(customAttribute.mRef, this, typeInstance->mConstHolder, &customAttribute);
 		for (int baseIdx = 0; baseIdx < checkDepth; baseIdx++)
@@ -2266,7 +2266,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 
 		DoPopulateType_CeCheckEnum(typeInstance, underlyingTypeDeferred);			
 		if (fieldInstance != NULL)
-			mCompiler->mCEMachine->mFieldInstanceSet.Add(fieldInstance);
+			mCompiler->mCeMachine->mFieldInstanceSet.Add(fieldInstance);
 		BfTypedValue result;
 		///
 		{
@@ -2274,7 +2274,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			result = ceContext->Call(customAttribute.mRef, this, methodInstance, args, CeEvalFlags_ForceReturnThis, NULL);
 		}
 		if (fieldInstance != NULL)
-			mCompiler->mCEMachine->mFieldInstanceSet.Remove(fieldInstance);
+			mCompiler->mCeMachine->mFieldInstanceSet.Remove(fieldInstance);
 		if (result.mType == methodInstance->GetOwner())
 			prevAttrInstances[methodInstance->GetOwner()] = result.mValue;
 
@@ -2334,7 +2334,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			}
 		}
 
-		mCompiler->mCEMachine->ReleaseContext(ceContext);					
+		mCompiler->mCeMachine->ReleaseContext(ceContext);					
 	}
 }
 
@@ -2391,7 +2391,10 @@ void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 		auto diParentType = mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance);
 		if (!mBfIRBuilder->mIgnoreWrites)
 		{
-			String methodName = "Comptime_Mixin";						
+			String methodName = "Comptime_Mixin";				
+			String linkageName;
+			if (mIsComptimeModule)
+				linkageName = StrFormat("Comptime_Mixin:%llX", mCurMethodInstance);
 			mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(diParentType, methodName, "", mCurFilePosition.mFileInstance->mDIFile,
 				defLine + 1, diFuncType, false, true, mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
 			mCurMethodState->mCurScope->mAltDIFile = mCurFilePosition.mFileInstance->mDIFile;
@@ -2502,7 +2505,7 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		}
 		
 		if (!wantsAttributes)
-			return;
+			continue;
 
 		auto customAttributes = GetCustomAttributes(methodDeclaration->mAttributes, BfAttributeTargets_Method);
 		defer({ delete customAttributes; });
@@ -2533,15 +2536,15 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			continue;
 		}
 
-		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCEMachine->mCurEmitContext);		
+		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCeMachine->mCurEmitContext);		
 		if (onCompileKind == BfCEOnCompileKind_TypeInit)
 		{
-			mCompiler->mCEMachine->mCurEmitContext = ceEmitContext;
+			mCompiler->mCeMachine->mCurEmitContext = ceEmitContext;
 		}
 
 		DoPopulateType_CeCheckEnum(typeInstance, underlyingTypeDeferred);
 		auto methodInstance = GetRawMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
-		auto result = mCompiler->mCEMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
+		auto result = mCompiler->mCeMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
 		
 		if ((onCompileKind == BfCEOnCompileKind_TypeDone) && (typeInstance->mDefineState > BfTypeDefineState_CETypeInit))
 		{
@@ -2670,8 +2673,8 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 		if (applyMethodInstance == NULL)
 			continue;					
 
-		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCEMachine->mCurEmitContext, &ceEmitContext);
-		auto ceContext = mCompiler->mCEMachine->AllocContext();
+		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCeMachine->mCurEmitContext, &ceEmitContext);
+		auto ceContext = mCompiler->mCeMachine->AllocContext();
 
 		BfIRValue attrVal = ceContext->CreateAttribute(customAttribute.mRef, this, typeInstance->mConstHolder, &customAttribute);
 		for (int baseIdx = 0; baseIdx < checkDepth; baseIdx++)
@@ -2707,7 +2710,7 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 				continue;
 		}
 
-		mCompiler->mCEMachine->mMethodInstanceSet.Add(methodInstance);
+		mCompiler->mCeMachine->mMethodInstanceSet.Add(methodInstance);
 		auto activeTypeDef = typeInstance->mTypeDef;			
 				
 		BfTypedValue result;
@@ -2783,7 +2786,7 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 			}
 		}
 
-		mCompiler->mCEMachine->ReleaseContext(ceContext);	
+		mCompiler->mCeMachine->ReleaseContext(ceContext);	
 	}
 }
 
@@ -3184,6 +3187,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if (populateType == BfPopulateType_Identity)
 		return;
 
+	if ((populateType <= BfPopulateType_Data) && (resolvedTypeRef->mDefineState >= BfTypeDefineState_Defined))
+		return;
+	
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
 	auto typeDef = typeInstance->mTypeDef;	
 
@@ -3214,7 +3220,21 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	if (typeInstance->mResolvingConstField)
 		return;
+		
+	// Partial population break out point
+	if ((populateType >= BfPopulateType_Identity) && (populateType <= BfPopulateType_IdentityNoRemapAlias))
+		return;
 
+	if ((populateType <= BfPopulateType_AllowStaticMethods) && (typeInstance->mDefineState >= BfTypeDefineState_HasInterfaces))
+		return;
+
+	if (!mCompiler->EnsureCeUnpaused(resolvedTypeRef))
+	{
+		// We need to avoid comptime reentry when the ceDebugger is paused
+		BfLogSysM("DoPopulateType %p bailing due to IsCePaused\n", resolvedTypeRef);
+		return;
+	}
+	
 	auto _CheckTypeDone = [&]()
 	{
 		if (typeInstance->mNeedsMethodProcessing)
@@ -3230,13 +3250,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	};
 
 	if (_CheckTypeDone())
-		return;	
-
-	// Partial population break out point
-	if ((populateType >= BfPopulateType_Identity) && (populateType <= BfPopulateType_IdentityNoRemapAlias))
-		return;
-
-	if ((populateType <= BfPopulateType_AllowStaticMethods) && (typeInstance->mDefineState >= BfTypeDefineState_HasInterfaces))
 		return;
 
 	if (!resolvedTypeRef->IsValueType())
@@ -4482,17 +4495,17 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if ((foundTypeCount >= 2) || (typeInstance->mTypeDef->IsEmitted()))
 			{
 				String error = "OnCompile const evaluation creates a data dependency during TypeInit";
-				if (mCompiler->mCEMachine->mCurBuilder != NULL)
+				if (mCompiler->mCeMachine->mCurBuilder != NULL)
 				{
-					error += StrFormat(" during const-eval generation of '%s'", MethodToString(mCompiler->mCEMachine->mCurBuilder->mCeFunction->mMethodInstance).c_str());
+					error += StrFormat(" during const-eval generation of '%s'", MethodToString(mCompiler->mCeMachine->mCurBuilder->mCeFunction->mMethodInstance).c_str());
 				}
 
 				auto refNode = typeDef->GetRefNode();
 				Fail(error, refNode);
-				if ((mCompiler->mCEMachine->mCurContext != NULL) && (mCompiler->mCEMachine->mCurContext->mCurFrame != NULL))
-					mCompiler->mCEMachine->mCurContext->Fail(*mCompiler->mCEMachine->mCurContext->mCurFrame, error);
-				else if (mCompiler->mCEMachine->mCurContext != NULL)
-					mCompiler->mCEMachine->mCurContext->Fail(error);
+				if ((mCompiler->mCeMachine->mCurContext != NULL) && (mCompiler->mCeMachine->mCurContext->mCurFrame != NULL))
+					mCompiler->mCeMachine->mCurContext->Fail(*mCompiler->mCeMachine->mCurContext->mCurFrame, error);
+				else if (mCompiler->mCeMachine->mCurContext != NULL)
+					mCompiler->mCeMachine->mCurContext->Fail(error);
 				tryCE = false;
 			}
  		}
@@ -11900,7 +11913,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 			}
 			bindFuncVal = methodRefMethod.mFunc;
 		}
-		if (mCompiler->mOptions.mAllowHotSwapping)
+		if ((mCompiler->mOptions.mAllowHotSwapping) && (!mIsComptimeModule))
 			bindFuncVal = mBfIRBuilder->RemapBindFunction(bindFuncVal);
 		return mBfIRBuilder->CreatePtrToInt(bindFuncVal, BfTypeCode_IntPtr);
 	}
