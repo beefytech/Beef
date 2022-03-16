@@ -15,10 +15,10 @@ ValuePointer = "/*(mMethodId < 0) ? &this :*/ __cast(\"_BF_DeferredData_\", mMet
 
 [[Type]]
 Name = "System.Event<*>"
-DisplayString = "{{ data={(System.Object)(mData & ~3)} }}"
+DisplayString = "{{ data={__cast(\"System.Object\", mData & ~3)} }}"
 [[Type.Expand.Item]]
 Name = "[target]"
-Value = "(System.Object)(mData)"
+Value = "__cast(\"System.Object\", mData)"
 Condition = "(mData & 1) == 0"
 [[Type.Expand.Item]]
 Name = "[target]"
@@ -97,41 +97,42 @@ DisplayString = "{mMessage,s8}"
 Name = "System.Variant"
 [[Type.DisplayString]]
 Condition = "mStructType == 0"
-String = "{{ UnownedObj: {(System.Object)mData} }}"
+String = "{{ UnownedObj: {__bitcast(\"System.Object\", mData)} }}"
 [[Type.DisplayString]]
 Condition = "mStructType == 1"
-String = "{{ OwnedObj: {(System.Object)mData} }}"
+String = "{{ OwnedObj: {__bitcast(\"System.Object\", mData)} }}"
 [[Type.DisplayString]]
 Condition = "mStructType == 2"
-String = "{{ Null: {__cast((System.Type)mData, null)} }}"
+String = "{{ Null: {__cast(mData, null)} }}"
 [[Type.DisplayString]]
 Condition = "mStructType & 3 == 0"
-String = "{{ InlineValue: {__bitcast((System.Type)(mStructType & ~3), mData)} }}"
+String = "{{ InlineValue: {__bitcast(mStructType & ~3, mData)} }}"
 [[Type.DisplayString]]
 Condition = "mStructType & 3 == 1"
-String = "{{ AllocValue: {*__cast((System.Type)(mStructType & ~3), \"*\", mData)} }}"
+String = "{{ AllocValue: {*__cast(mStructType & ~3, \"*\", mData)} }}"
 [[Type.DisplayString]]
-String = "{{ RefValue: {*__cast((System.Type)(mStructType & ~3), \"*\", mData)} }}"
+String = "{{ RefValue: {*__cast(mStructType & ~3, \"*\", mData)} }}"
 [[Type.Expand.Item]]
 Condition = "mStructType == 0"
 Name = "[UnownedObj]"
-Value = "(System.Object)mData"
+Value = "__bitcast(\"System.Object\", mData)"
 [[Type.Expand.Item]]
 Condition = "mStructType == 1"
 Name = "[OwnedObj]"
-Value = "(System.Object)mData"
+Value = "__bitcast(\"System.Object\", mData)"
 [[Type.Expand.Item]]
 Condition = "mStructType == 3"
 Name = "[Null]"
-Value = "__cast((System.Type)mData, null)"
+Value = "__cast(mData, null)"
 [[Type.Expand.Item]]
 Condition = "(mStructType != 0) && (mStructType & 3 == 0)"
 Name = "[InlineValue]"
-Value = "__bitcast((System.Type)(mStructType & ~3), mData)"
+Value = "__bitcast(mStructType & ~3, mData)"
+#Value = "__bitcast(mStructType & ~3, mData)"
 [[Type.Expand.Item]]
 Condition = "(mStructType != 0) && (mStructType & 3 != 0)"
 Name = "[AllocValue]"
-Value = "*__cast((System.Type)(mStructType & ~3), \"*\", mData)"
+Value = "*__cast(mStructType & ~3, \"*\", mData)"
 
 [[Type]]
 Name = "*?"
