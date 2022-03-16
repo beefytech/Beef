@@ -25,6 +25,9 @@ namespace System.Reflection
 	    public Type FieldType => Type.[Friend]GetType(mFieldData.mFieldTypeId);
 		public bool IsConst => mFieldData.mFlags.HasFlag(.Const);
 		public bool IsStatic => mFieldData.mFlags.HasFlag(.Static);
+		public bool IsPublic => (mFieldData.mFlags & .FieldAccessMask) == .Public;
+		public bool IsProtected => (mFieldData.mFlags & .FieldAccessMask) == .Protected;
+		public bool IsPrivate => (mFieldData.mFlags & .FieldAccessMask) == 0;
 		public bool IsInstanceField => !mFieldData.mFlags.HasFlag(.Static) && !mFieldData.mFlags.HasFlag(.Const);
 		public StringView Name => mFieldData.mName;
 		public int32 FieldIdx => Compiler.IsComptime ?

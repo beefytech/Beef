@@ -38,6 +38,16 @@ namespace System.Reflection
 			(mData.mComptimeMethodInstance != 0) :
 			(mData.mMethodData != null);
 
+		public bool IsPublic => Compiler.IsComptime ?
+			(Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags & .MethodAccessMask) == .Public :
+			(mData.mMethodData.[Friend]mFlags & .MethodAccessMask) == .Public;
+		public bool IsProtected => Compiler.IsComptime ?
+			(Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags & .MethodAccessMask) == .Protected :
+			(mData.mMethodData.[Friend]mFlags & .MethodAccessMask) == .Protected;
+		public bool IsPrivate => Compiler.IsComptime ?
+			(Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags & .MethodAccessMask) == 0 :
+			(mData.mMethodData.[Friend]mFlags & .MethodAccessMask) == 0;
+
 		public StringView Name => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetName(mData.mComptimeMethodInstance) :
 			mData.mMethodData.[Friend]mName;
