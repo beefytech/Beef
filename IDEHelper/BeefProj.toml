@@ -357,6 +357,22 @@ Path = "Compiler/CeMachine.cpp"
 Type = "Source"
 Path = "Compiler/CeMachine.h"
 
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/CeDebugger.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/CeDebugger.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/CeExprEvaluator.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/CeExprEvaluator.h"
+
 [[ProjectFolder.Items]]
 Type = "Folder"
 Path = "Debugger"
