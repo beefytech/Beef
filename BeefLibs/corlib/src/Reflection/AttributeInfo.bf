@@ -157,7 +157,7 @@ namespace System.Reflection
 				TypeInstance attrTypeInst = attrType as TypeInstance;
 				MethodInfo methodInfo = .(attrTypeInst, attrTypeInst.[Friend]mMethodDataPtr + methodIdx);
 
-				Object[] args = scope Object[methodInfo.[Friend]mData.mMethodData.mParamCount];
+				Variant[] args = scope Variant[methodInfo.[Friend]mData.mMethodData.mParamCount];
 
 				int argIdx = 0;
 				while (mData < endPtr)
@@ -170,32 +170,32 @@ namespace System.Reflection
 						 .Char8,
 						 .Boolean:
 						let attrData = AttributeInfo.Decode!<int8>(mData);
-						args[argIdx] = scope:: box attrData;
+						args[argIdx] = Variant.Create(attrData);
 					case .Int16,
 						.UInt16,
 						.Char16:
 						let attrData = AttributeInfo.Decode!<int16>(mData);
-						args[argIdx] = scope:: box attrData;
+						args[argIdx] = Variant.Create(attrData);
 					case .Int32,
 						 .UInt32,
 						 .Char32:
 						let attrData = AttributeInfo.Decode!<int32>(mData);
-						args[argIdx] = scope:: box attrData;
+						args[argIdx] = Variant.Create(attrData);
 					case .Float:
 						let attrData = AttributeInfo.Decode!<float>(mData);
-						args[argIdx] = scope:: box attrData;
+						args[argIdx] = Variant.Create(attrData);
 					case .Int64,
 						.UInt64,
 						.Double:
 						let attrData = AttributeInfo.Decode!<int64>(mData);
-						args[argIdx] = scope:: box attrData;
+						args[argIdx] = Variant.Create(attrData);
 					case (TypeCode)typeof(TypeCode).MaxValue + 8: //BfConstType_TypeOf
 						let argTypeId = AttributeInfo.Decode!<int32>(mData);
-						args[argIdx] = Type.[Friend]GetType((.)argTypeId);
+						args[argIdx] = Variant.Create(Type.[Friend]GetType((.)argTypeId));
 					case (TypeCode)255:
 						let stringId = AttributeInfo.Decode!<int32>(mData);
 						String str = String.[Friend]sIdStringLiterals[stringId];
-						args[argIdx] = str;
+						args[argIdx] = Variant.Create(str);
 					default:
 						Runtime.FatalError("Not handled");
 					}
@@ -203,10 +203,13 @@ namespace System.Reflection
 				}
 
 				mTargetAttr.Dispose();
-				void* data = Variant.Alloc(attrType, out mTargetAttr);
+				Variant.AllocOwned(attrType, out mTargetAttr);
 
-				if (methodInfo.Invoke(data, params args) case .Ok(var val))
+				if (methodInfo.Invoke(mTargetAttr, params args) case .Ok(var val))
 					val.Dispose();
+				
+				for (var variant in ref args)
+					variant.Dispose();
 
 				mAttrIdx++;
 				return true;

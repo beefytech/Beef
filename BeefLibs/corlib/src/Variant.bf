@@ -265,6 +265,23 @@ namespace System
 			}
 		}
 
+		public static void* AllocOwned(Type type, out Variant variant)
+		{
+			variant = .();
+
+			if (type.IsObject)
+			{
+				return &variant.mData;
+			}
+			else
+			{
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(type) | 1;
+				void* data = new uint8[type.[Friend]mSize]*;
+				variant.mData = (int)data;
+				return data;
+			}
+		}
+
 		public T Get<T>() where T : class
 		{
 			Debug.Assert(IsObject);
