@@ -74,6 +74,22 @@ namespace IDE.ui
 							if ((filePath.Contains('\\')) || (filePath.Contains('/')))
 								break;
 						}
+						else
+						{
+							// filePath:(line,col)
+							int commaPos = lineStr.IndexOf(',');
+							if (commaPos != -1)
+							{
+								if ((Int32.Parse(lineStr.Substring(0, commaPos)) case .Ok(out errLine)) &&
+									(Int32.Parse(lineStr.Substring(commaPos + 1)) case .Ok(out errLineChar)))
+								{
+									filePath = scope:: String(selectionText, 0, startIdx - 1);
+									filePath.Trim();
+									if ((filePath.Contains('\\')) || (filePath.Contains('/')))
+										break;
+								}
+							}
+						}
 					}
 					else
 					{
