@@ -3149,8 +3149,8 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 	if ((mBfEvalExprFlags & BfEvalExprFlags_DeclType) != 0)
 		return bindType;
 
-	BF_ASSERT(!mModule->mCurMethodInstance->mIsUnspecializedVariation);
-
+	BF_ASSERT((!mModule->mCurMethodInstance->mIsUnspecializedVariation) || (mModule->mIsComptimeModule));
+	
 	auto parser = node->GetSourceData()->ToParserData();
 	if (parser == NULL)
 		return bindType;
@@ -3158,7 +3158,7 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 
 	auto genericTypeBindings = mModule->mCurMethodState->GetRootMethodState()->mGenericTypeBindings;
 
-	if (mModule->mCurMethodInstance->mIsUnspecialized)
+	if ((mModule->mCurMethodInstance->mIsUnspecialized) && (!mModule->mCurMethodInstance->mIsUnspecializedVariation))
 	{
 		if (!bindType->IsGenericParam())
 			return bindType;
