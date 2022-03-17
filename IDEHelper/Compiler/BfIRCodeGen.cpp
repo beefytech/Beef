@@ -923,6 +923,16 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 				llvmValue = llvm::ConstantExpr::getBitCast(target, toType);
 			return;
 		}
+		else if (constType == BfConstType_GEP32_1)
+		{
+			CMD_PARAM(llvm::Constant*, target);
+			CMD_PARAM(int, idx0);			
+			llvm::Value* gepArgs[] = { 
+				llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), idx0)};
+
+			llvmValue = FixGEP(target, llvm::ConstantExpr::getInBoundsGetElementPtr(target->getType()->getPointerElementType(), target, gepArgs));
+			return;
+		}
 		else if (constType == BfConstType_GEP32_2)
 		{
 			CMD_PARAM(llvm::Constant*, target);

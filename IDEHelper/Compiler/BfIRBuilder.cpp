@@ -2367,6 +2367,14 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				Write(bitcast->mToType);
 			}
 			break;
+		case (int)BfConstType_GEP32_1:
+			{
+				auto gepConst = (BfConstantGEP32_1*)constant;
+				BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+				Write(targetConst);
+				Write(gepConst->mIdx0);
+			}
+			break;
 		case (int)BfConstType_GEP32_2:
 			{
 				auto gepConst = (BfConstantGEP32_2*)constant;
