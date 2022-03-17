@@ -421,8 +421,10 @@ CeEmitEntry* CeFunction::FindEmitEntry(int instIdx, int* entryIdx)
 	return emitEntry;
 }
 
+// This is for "safe" retrieval from within CeDebugger
 int CeFunction::SafeGetId()
 {
+#ifdef BF_PLATFORM_WINDOWS
 	__try
 	{
 		return mId;
@@ -432,6 +434,9 @@ int CeFunction::SafeGetId()
 
 	}
 	return 0;
+#else
+	return mId;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3301,7 +3306,7 @@ CeContext::CeContext()
 	mExecuteId = -1;
 	mStackSize = -1;
 
-	mCurTargetSrc = NULL;	
+	mCurCallSource = NULL;	
 	mHeap = new	ContiguousHeap();
 	mCurFrame = NULL;
 	mCurModule = NULL;
@@ -3310,7 +3315,7 @@ CeContext::CeContext()
 	mCallerTypeInstance = NULL;
 	mCallerActiveTypeDef = NULL;
 	mCurExpectingType = NULL;
-	mCurEmitContext = NULL;
+	mCurEmitContext = NULL;	
 }
 
 CeContext::~CeContext()
@@ -3325,7 +3330,7 @@ BfError* CeContext::Fail(const StringImpl& error)
 		return NULL;
 	if (mCurEmitContext != NULL)
 		mCurEmitContext->mFailed = true;
-	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurTargetSrc, (mCurEvalFlags & CeEvalFlags_PersistantError) != 0);
+	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurCallSource->mRefNode, (mCurEvalFlags & CeEvalFlags_PersistantError) != 0);
 	if (bfError == NULL)
 		return NULL;
 
@@ -3340,7 +3345,7 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 {
 	if (mCurEmitContext != NULL)
 		mCurEmitContext->mFailed = true;
-	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurTargetSrc, 
+	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurCallSource->mRefNode,
 		(mCurEvalFlags & CeEvalFlags_PersistantError) != 0,
 		((mCurEvalFlags & CeEvalFlags_DeferIfNotOnlyError) != 0) && !mCurModule->mHadBuildError);
 	if (bfError == NULL)
@@ -3911,7 +3916,7 @@ bool CeContext::GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolde
 		return false;
 	
 	auto ceContext = mCeMachine->AllocContext();
-	BfIRValue foreignValue = ceContext->CreateAttribute(mCurTargetSrc, module, constHolder, customAttr);	
+	BfIRValue foreignValue = ceContext->CreateAttribute(mCurCallSource->mRefNode, module, constHolder, customAttr);	
 	auto foreignConstant = module->mBfIRBuilder->GetConstant(foreignValue);
 	if (foreignConstant->mConstType == BfConstType_AggCE)
 	{
@@ -4679,7 +4684,7 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 		paramIdx++;
 	}
 
-	BfTypedValue retValue = Call(targetSrc, module, ctorMethodInstance, ctorArgs, CeEvalFlags_None, NULL);
+	BfTypedValue retValue = Call(CeCallSource(targetSrc), module, ctorMethodInstance, ctorArgs, CeEvalFlags_None, NULL);
 	if (!retValue)
 		return ceAttrVal;
 
@@ -4728,7 +4733,7 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 }
 
 
-BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
+BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
 {
 	// DISABLED
 	//return BfTypedValue();
@@ -4738,7 +4743,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	SetAndRestoreValue<CeContext*> curPrevContext(mPrevContext, mCeMachine->mCurContext);
  	SetAndRestoreValue<CeContext*> prevContext(mCeMachine->mCurContext, this);
 	SetAndRestoreValue<CeEvalFlags> prevEvalFlags(mCurEvalFlags, flags);
-	SetAndRestoreValue<BfAstNode*> prevTargetSrc(mCurTargetSrc, targetSrc);
+	SetAndRestoreValue<CeCallSource*> prevCallSource(mCurCallSource, &callSource);
 	SetAndRestoreValue<BfModule*> prevModule(mCurModule, module);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
 	SetAndRestoreValue<BfMethodInstance*> prevCallerMethodInstance(mCallerMethodInstance, module->mCurMethodInstance);
@@ -5378,7 +5383,7 @@ class CeAsyncOperation
 public:
 	CeInternalData* mInternalData;
 	int mRefCount;
-	void* mData;
+	uint8* mData;
 	int mDataSize;
 	int mReadSize;
 	BfpFileResult mResult;
@@ -6029,7 +6034,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 
-				mCurModule->CEMixin(mCurTargetSrc, emitStr);
+				mCurModule->CEMixin(mCurCallSource->mRefNode, emitStr);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Sleep)
 			{
@@ -6162,7 +6167,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				char* strPtr = (char*)(memStart + strAddr);
 				char** endPtr = NULL;
-				if (endAddr != NULL)
+				if (endAddr != 0)
 					endPtr = (char**)(memStart + endAddr);
 				result = strtod(strPtr, endPtr);
 				if (endAddr != 0)
@@ -6728,11 +6733,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					}
 				};
 				
-				if (outStdInAddr != NULL)
+				if (outStdInAddr != 0)
 					_SetHandle(outStdInAddr, outStdIn);
-				if (outStdOutAddr != NULL)
+				if (outStdOutAddr != 0)
 					_SetHandle(outStdOutAddr, outStdOut);
-				if (outStdErrAddr != NULL)
+				if (outStdErrAddr != 0)
 					_SetHandle(outStdErrAddr, outStdErr);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSpawn_Kill)
@@ -8455,6 +8460,7 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mRevision = 0;
 	mMethodBindRevision = 0;
 	mCurContext = NULL;
+	mCurCallSource = NULL;
 	mExecuteId = -1;
 
 	mCurFunctionId = 0;
@@ -9560,10 +9566,10 @@ void CeMachine::ReleaseContext(CeContext* ceContext)
 	ceContext->mInternalDataMap.Clear();
 }
 
-BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
+BfTypedValue CeMachine::Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
 {	
 	auto ceContext = AllocContext();
-	auto result = ceContext->Call(targetSrc, module, methodInstance, args, flags, expectingType);	
+	auto result = ceContext->Call(callSource, module, methodInstance, args, flags, expectingType);
 	ReleaseContext(ceContext);	
 	return result;
 }

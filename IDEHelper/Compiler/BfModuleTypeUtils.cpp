@@ -2271,7 +2271,24 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		///
 		{
 			SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
-			result = ceContext->Call(customAttribute.mRef, this, methodInstance, args, CeEvalFlags_ForceReturnThis, NULL);
+
+			CeCallSource callSource;
+			callSource.mRefNode = customAttribute.mRef;
+			if (isFieldApply)
+			{
+				callSource.mKind = CeCallSource::Kind_FieldInit;
+				callSource.mFieldInstance = fieldInstance;
+			}
+			else if (ceEmitContext != NULL)
+			{
+				callSource.mKind = CeCallSource::Kind_TypeInit;
+			}
+			else
+			{
+				callSource.mKind = CeCallSource::Kind_TypeDone;
+			}
+
+			result = ceContext->Call(callSource, this, methodInstance, args, CeEvalFlags_ForceReturnThis, NULL);
 		}
 		if (fieldInstance != NULL)
 			mCompiler->mCeMachine->mFieldInstanceSet.Remove(fieldInstance);
@@ -2717,7 +2734,11 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 		///
 		{
 			SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
-			result = ceContext->Call(customAttribute.mRef, this, applyMethodInstance, args, CeEvalFlags_ForceReturnThis, NULL);
+
+			CeCallSource callSource;
+			callSource.mRefNode = customAttribute.mRef;
+			callSource.mKind = CeCallSource::Kind_MethodInit;
+			result = ceContext->Call(callSource, this, applyMethodInstance, args, CeEvalFlags_ForceReturnThis, NULL);
 		}		
 		if (result.mType == methodInstance->GetOwner())
 			prevAttrInstances[methodInstance->GetOwner()] = result.mValue;

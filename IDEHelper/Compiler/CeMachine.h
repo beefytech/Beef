@@ -991,6 +991,39 @@ public:
 	}
 };
 
+class CeCallSource
+{
+public:
+	enum Kind
+	{
+		Kind_Unknown,
+		Kind_TypeInit,
+		Kind_TypeDone,
+		Kind_FieldInit,
+		Kind_MethodInit
+	};
+
+public:
+	Kind mKind;
+	BfAstNode* mRefNode;
+	BfFieldInstance* mFieldInstance;
+
+public:
+	CeCallSource(BfAstNode* refNode)
+	{
+		mKind = Kind_Unknown;
+		mRefNode = refNode;
+		mFieldInstance = NULL;
+	}
+
+	CeCallSource()
+	{
+		mKind = Kind_Unknown;
+		mRefNode = NULL;
+		mFieldInstance = NULL;
+	}
+};
+
 class CeContext
 {
 public:
@@ -1018,7 +1051,7 @@ public:
 	BfTypeDef* mCallerActiveTypeDef;
 	BfMethodInstance* mCurMethodInstance;
 	BfType* mCurExpectingType;
-	BfAstNode* mCurTargetSrc;
+	CeCallSource* mCurCallSource;
 	BfModule* mCurModule;
 	CeFrame* mCurFrame;
 	CeEmitContext* mCurEmitContext;	
@@ -1058,7 +1091,7 @@ public:
 	BfIRValue CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute, addr_ce ceAttrAddr = 0);
 
 	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType);
-	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
+	BfTypedValue Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
 };
 
 struct CeTypeInfo
@@ -1119,6 +1152,7 @@ public:
 	
 	CeContext* mCurContext;
 	CeEmitContext* mCurEmitContext;
+	CeCallSource* mCurCallSource;
 	CeBuilder* mCurBuilder;
 	CeFunction* mPreparingFunction;		
 
@@ -1172,7 +1206,7 @@ public:
 
 	CeContext* AllocContext();
 	void ReleaseContext(CeContext* context);
-	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
+	BfTypedValue Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
 };
 
 NS_BF_END

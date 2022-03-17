@@ -3075,9 +3075,11 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 		{
 			mHadBuildError = true;
 
-			if ((mCompiler->mCeMachine->mCurContext != NULL) && (mCompiler->mCeMachine->mCurContext->mCurTargetSrc != NULL))
+			if ((mCompiler->mCeMachine->mCurContext != NULL) && (mCompiler->mCeMachine->mCurContext->mCurCallSource != NULL) &&
+				(mCompiler->mCeMachine->mCurContext->mCurCallSource->mRefNode != NULL))
 			{
-				BfError* bfError = mCompiler->mPassInstance->Fail("Comptime method generation had errors", mCompiler->mCeMachine->mCurContext->mCurTargetSrc);
+				BfError* bfError = mCompiler->mPassInstance->Fail("Comptime method generation had errors", 
+					mCompiler->mCeMachine->mCurContext->mCurCallSource->mRefNode);
 				if (bfError != NULL)
 					mCompiler->mPassInstance->MoreInfo(error, refNode);
 				return bfError;

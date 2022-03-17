@@ -327,8 +327,9 @@ namespace IDE
 			// Check to see if this is just a Mixin name, don't mistake for the bang that separates module name 
 			bool awaitingBang = label.Contains('!') && !label.EndsWith("!"); 
 			bool awaitingParamName = false;
-			int chevronCount = 0;
-			int parenCount = 0;
+			int chevronDepth = 0;
+			int parenDepth = 0;
+			bool hadParen = false;
 
 			int lastTopStart = -1;
 			int lastTopEnd = -1;
@@ -345,6 +346,7 @@ namespace IDE
 				return (c.IsLetter) || (c == '_');
 			}
 
+			CharLoop:
 			for (int32 i = 0; i < label.Length; i++)
 			{
 				char8 c = label[i];
@@ -447,10 +449,26 @@ namespace IDE
 							color = SourceEditWidgetContent.sTextColors[(int)SourceElementType.Method];
 						}*/
 
-						if (chevronCount == 0)
+						if (chevronDepth == 0)
 						{
 							lastTopStart = prevStart;
 							lastTopEnd = i;
+						}
+
+						if ((prevStart == 0) && (c == ' '))
+						{
+							for (int32 checkI = i + 1; checkI < label.Length; checkI++)
+							{
+								char8 checkC = label[checkI];
+								if (checkC == ':')
+								{
+									prevStart = -1;
+									i = checkI;
+									continue CharLoop;
+								}
+								if ((!checkC.IsLetter) && (!checkC.IsWhiteSpace))
+									break;
+							}
 						}
 
 						prevTypeColor = prevStart;
@@ -469,8 +487,8 @@ namespace IDE
 					if (c == ',')
 						awaitingParamName = false;
 
-					if ((c == ')') && (parenCount > 0))
-						parenCount--;
+					if ((c == ')') && (parenDepth > 0))
+						parenDepth--;
 
 					if ((c != '+') && (c != '.'))
 					{
@@ -488,9 +506,10 @@ namespace IDE
 					{
 						// Handled
 					}
-					else if ((c == '(') && ((i == 0) || (chevronCount > 0)))
+					else if ((c == '(') && ((i == 0) || (chevronDepth > 0)))
 					{
-						parenCount++;
+						hadParen = true;
+						parenDepth++;
 					}
 					else if ((c == '(') || (c == '+'))
 					{
@@ -522,7 +541,7 @@ namespace IDE
 						}
 					}
 
-					if ((foundOpenParen) && (!awaitingParamName) && (chevronCount == 0))
+					if ((foundOpenParen) && (!awaitingParamName) && (chevronDepth == 0))
 					{
 						if (c == ' ')
 						{							
@@ -554,14 +573,18 @@ namespace IDE
 				}
 
 				if (c == '<')
-					chevronCount++;
+					chevronDepth++;
 				else if (c == '>')
-					chevronCount--;
+					chevronDepth--;
 			}
 
-			if ((prevStart != -1) && (codeKind == .Type))
+			if ((prevStart != -1) &&
+				((codeKind == .Type) || (!hadParen)))
 			{
 				InsertColorChange(label, prevStart, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Type]);
+
+				if (codeKind == .Callstack)
+					label.Append('\x02');
 			}
 		}
     }

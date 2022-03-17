@@ -4022,6 +4022,25 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 
 BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringImpl& findName, bool ignoreInitialError, bool* hadError)
 {
+	int varSkipCount = 0;
+	StringT<128> wantName;
+	wantName.Reference(findName);
+	if (findName.StartsWith('@'))
+	{
+		wantName = findName;
+		while (wantName.StartsWith("@"))
+		{
+			if (wantName != "@return")
+				varSkipCount++;
+			wantName.Remove(0);
+		}
+	}
+
+	if (wantName.IsEmpty())
+	{
+		mModule->Fail("Shadowed variable name expected after '@'", refNode);
+	}
+
 	if ((mModule->mCompiler->mCeMachine != NULL) && (mModule->mCompiler->mCeMachine->mDebugger != NULL) && (mModule->mCompiler->mCeMachine->mDebugger->mCurDbgState != NULL))
 	{
 		auto ceDebugger = mModule->mCompiler->mCeMachine->mDebugger;		
@@ -4029,12 +4048,19 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		auto activeFrame = ceDebugger->mCurDbgState->mActiveFrame;
 		if (activeFrame->mFunction->mDbgInfo != NULL)
 		{
-			int instIdx = activeFrame->GetInstIdx();
-			for (auto& dbgVar : activeFrame->mFunction->mDbgInfo->mVariables)
+			int varSkipCountLeft = varSkipCount;
+			int instIdx = activeFrame->GetInstIdx();			
+
+			for (int i = activeFrame->mFunction->mDbgInfo->mVariables.mSize - 1; i >= 0; i--)
 			{
-				if (dbgVar.mName == findName)
+				auto& dbgVar = activeFrame->mFunction->mDbgInfo->mVariables[i];
+				if (dbgVar.mName == wantName)
 				{
-					if ((dbgVar.mValue.mKind == CeOperandKind_AllocaAddr) || (dbgVar.mValue.mKind == CeOperandKind_FrameOfs))
+					if (varSkipCountLeft > 0)
+					{
+						varSkipCountLeft--;
+					}
+					else if ((dbgVar.mValue.mKind == CeOperandKind_AllocaAddr) || (dbgVar.mValue.mKind == CeOperandKind_FrameOfs))
 					{
 						if ((instIdx >= dbgVar.mStartCodePos) && (instIdx < dbgVar.mEndCodePos))
 						{
@@ -4071,26 +4097,9 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			if ((checkMethodState->mClosureState != NULL) && (checkMethodState->mClosureState->mClosureType != NULL) && (!checkMethodState->mClosureState->mCapturing))
 			{
 				closureTypeInst = mModule->mCurMethodState->mClosureState->mClosureType;
-			}
+			}			
 
-			int varSkipCount = 0;
-			StringT<128> wantName;
-			wantName.Reference(findName);
-			if (findName.StartsWith('@'))
-			{
-				wantName = findName;
-				while (wantName.StartsWith("@"))
-				{
-					if (wantName != "@return")
-						varSkipCount++;
-					wantName.Remove(0);
-				}
-			}
-
-			if (wantName.IsEmpty())
-			{
-				mModule->Fail("Shadowed variable name expected after '@'", refNode);
-			}
+			int varSkipCountLeft = varSkipCount;
 
 			BfLocalVarEntry* entry;
 			if (checkMethodState->mLocalVarSet.TryGetWith<StringImpl&>(wantName, &entry))
@@ -4098,12 +4107,12 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				auto varDecl = entry->mLocalVar;
 
 				if (varDecl != NULL)
-					varSkipCount -= varDecl->mNamePrefixCount;
+					varSkipCountLeft -= varDecl->mNamePrefixCount;
 					
-				while ((varSkipCount > 0) && (varDecl != NULL))
+				while ((varSkipCountLeft > 0) && (varDecl != NULL))
 				{
 					varDecl = varDecl->mShadowedLocal;
-					varSkipCount--;
+					varSkipCountLeft--;
 				}
 
 				if ((varDecl != NULL) && (varDecl->mNotCaptured))
@@ -4111,7 +4120,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 					mModule->Fail("Local variable is not captured", refNode);
 				}
 
-				if ((varSkipCount == 0) && (varDecl != NULL))
+				if ((varSkipCountLeft == 0) && (varDecl != NULL))
 				{
 					if ((closureTypeInst != NULL) && (wantName == "this"))
 						break;
@@ -4153,20 +4162,18 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 
 			// Check for the captured locals.  It's important we do it here so we get local-first precedence still
 			if (closureTypeInst != NULL)
-			{	
-				int varSkipCount = 0;
-				StringT<128> wantName;
-				wantName.Reference(findName);
+			{					
+				int varSkipCountLeft = varSkipCount;
 
 				closureTypeInst->mTypeDef->PopulateMemberSets();
 				BfMemberSetEntry* memberSetEntry = NULL;
 				if (closureTypeInst->mTypeDef->mFieldSet.TryGetWith((StringImpl&)wantName, &memberSetEntry))
 				{					
 					auto fieldDef = (BfFieldDef*)memberSetEntry->mMemberDef;
-					while ((varSkipCount > 0) && (fieldDef != NULL))
+					while ((varSkipCountLeft > 0) && (fieldDef != NULL))
 					{
 						fieldDef = fieldDef->mNextWithSameName;
-						varSkipCount--;
+						varSkipCountLeft--;
 					}
 
 					auto& field = closureTypeInst->mFieldInstances[fieldDef->mIdx];

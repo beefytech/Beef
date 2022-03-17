@@ -836,7 +836,7 @@ void CeDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, i
 }
 
 CeFrame* CeDebugger::GetFrame(int callStackIdx)
-{	
+{		
 	auto ceContext = mCeMachine->mCurContext;
 	if (ceContext == NULL)
 		return NULL;
@@ -846,6 +846,9 @@ CeFrame* CeDebugger::GetFrame(int callStackIdx)
 
 	if (callStackIdx < mDbgCallStack.mSize)
 	{
+		int frameIdx = mDbgCallStack[callStackIdx].mFrameIdx;
+		if (frameIdx < 0)
+			return NULL;
 		auto ceFrame = &ceContext->mCallStack[mDbgCallStack[callStackIdx].mFrameIdx];
 		return ceFrame;
 	}
@@ -895,12 +898,12 @@ String CeDebugger::DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread)
 	auto ceFrame = GetFrame(pendingExpr->mCallStackIdx);
 	if (ceFrame == NULL)
 	{
-		return "!failed";
+		return "!No comptime stack frame selected";
 	}
 
 	if (pendingExpr->mExprNode == NULL)
 	{
-		return "!failed";
+		return "!No expression";
 	}
 
 	auto module = mCeMachine->mCeModule;
@@ -2493,7 +2496,8 @@ CeTypedValue CeDebugger::GetAddr(BfConstant* constant, BfType* type)
 
 		auto dbgTypeInfo = GetDbgTypeInfo(typedVal.mType);
 
-		if ((dbgTypeInfo != NULL) && (dbgTypeInfo->mType->IsPointer()))
+		if ((dbgTypeInfo != NULL) && 
+			((dbgTypeInfo->mType->IsPointer()) || ((dbgTypeInfo->mType->IsRef()))))
 			dbgTypeInfo = GetDbgTypeInfo(dbgTypeInfo->mType->GetUnderlyingType()->mTypeId);
 
 		if (dbgTypeInfo == NULL)
@@ -4191,28 +4195,76 @@ String CeDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 
 	String result;
 
-	auto ceFrame = GetFrame(callStackIdx);
-
+	auto ceFrame = GetFrame(callStackIdx);	
+	if (ceFrame == NULL)
+		return result;
+	
 	int scopeIdx = -1;
 	auto ceEntry = ceFrame->mFunction->FindEmitEntry(ceFrame->GetInstIdx());
 	if (ceEntry != NULL)
 		scopeIdx = ceEntry->mScope;
-
-	if (ceFrame != NULL)
+	
+	int instIdx = ceFrame->GetInstIdx();
+	if (ceFrame->mFunction->mDbgInfo != NULL)
 	{
-		int instIdx = ceFrame->GetInstIdx();
-		if (ceFrame->mFunction->mDbgInfo != NULL)
+		auto ceFunction = ceFrame->mFunction;
+
+		struct CeDbgInfo
 		{
-			for (auto& dbgVar : ceFrame->mFunction->mDbgInfo->mVariables)
-			{				
-				if ((dbgVar.mScope == scopeIdx) && (instIdx >= dbgVar.mStartCodePos) && (instIdx < dbgVar.mEndCodePos))
+			int mShadowCount;
+			int mPrevShadowIdx;
+			bool mIncluded;
+
+			CeDbgInfo()
+			{
+				mShadowCount = 0;
+				mPrevShadowIdx = -1;
+				mIncluded = true;
+			}
+		};
+
+		Array<CeDbgInfo> dbgInfo;
+		Dictionary<String, int> nameIndices;
+
+		dbgInfo.Resize(ceFunction->mDbgInfo->mVariables.mSize);
+		for (int i = 0; i < ceFunction->mDbgInfo->mVariables.mSize; i++)
+		{
+			auto& dbgVar = ceFunction->mDbgInfo->mVariables[i];
+
+			if ((dbgVar.mScope == scopeIdx) && (instIdx >= dbgVar.mStartCodePos) && (instIdx < dbgVar.mEndCodePos))
+			{
+				int* idxPtr = NULL;
+				if (!nameIndices.TryAdd(dbgVar.mName, NULL, &idxPtr))
 				{
-					result += dbgVar.mName;
-					result += "\n";
+					int checkIdx = *idxPtr;
+					dbgInfo[i].mPrevShadowIdx = checkIdx;
+
+					while (checkIdx != -1)
+					{
+						dbgInfo[checkIdx].mShadowCount++;
+						checkIdx = dbgInfo[checkIdx].mPrevShadowIdx;
+					}
 				}
+				*idxPtr = i;
+			}
+			else
+			{
+				dbgInfo[i].mIncluded = false;
+			}			
+		}
+		
+		for (int i = 0; i < ceFunction->mDbgInfo->mVariables.mSize; i++)
+		{
+			auto& dbgVar = ceFunction->mDbgInfo->mVariables[i];
+			if (dbgInfo[i].mIncluded)
+			{
+				for (int shadowIdx = 0; shadowIdx < dbgInfo[i].mShadowCount; shadowIdx++)
+					result += "@";
+				result += dbgVar.mName;
+				result += "\n";
 			}
 		}
-	}
+	}	
 
 	return result;
 }
@@ -4312,6 +4364,12 @@ void CeDebugger::UpdateCallStack(bool slowEarlyOut)
 			prevInlineIdx = ceScope->mInlinedAt;
 		}
 	}
+
+	CeDbgStackInfo ceDbgStackInfo;
+	ceDbgStackInfo.mFrameIdx = -1;
+	ceDbgStackInfo.mScopeIdx = -1;
+	ceDbgStackInfo.mInlinedFrom = -1;
+	mDbgCallStack.Add(ceDbgStackInfo);
 }
 
 int CeDebugger::GetCallStackCount()
@@ -4435,12 +4493,51 @@ String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* ou
 
 	auto& dbgCallstackInfo = mDbgCallStack[stackFrameIdx];
 	
+	if (dbgCallstackInfo.mFrameIdx == -1)
+	{
+		if (ceContext->mCurCallSource != NULL)
+		{			
+			int line = -1;
+			int lineChar = -1;
+			auto parserData = ceContext->mCurCallSource->mRefNode->GetParserData();
+			if (parserData != NULL)
+			{
+				parserData->GetLineCharAtIdx(ceContext->mCurCallSource->mRefNode->GetSrcStart(), line, lineChar);
+				*outLine = line;
+				*outColumn = lineChar;
+				*outFile = parserData->mFileName;
+			}			
+		}
+
+		// Entry marker
+		String result = "const eval";
+		if (ceContext->mCurCallSource->mKind == CeCallSource::Kind_FieldInit)
+		{
+			return String("field init of : ") + ceContext->mCurModule->TypeToString(ceContext->mCurCallSource->mFieldInstance->mOwner) + "." +
+				ceContext->mCurCallSource->mFieldInstance->GetFieldDef()->mName;
+		}
+		else if (ceContext->mCurCallSource->mKind == CeCallSource::Kind_MethodInit)
+		{
+			return ("method init of : ") + ceContext->mCurModule->MethodToString(ceContext->mCallerMethodInstance);
+		}
+		else if (ceContext->mCurCallSource->mKind == CeCallSource::Kind_TypeInit)
+			result = "type init";
+		else if (ceContext->mCurCallSource->mKind == CeCallSource::Kind_TypeDone)
+			result = "type done";
+
+		if (ceContext->mCallerMethodInstance != NULL)
+			result += String(" in : ") + ceContext->mCurModule->MethodToString(ceContext->mCallerMethodInstance);
+		else if (ceContext->mCallerTypeInstance != NULL)
+			result += String(" in : ") + ceContext->mCurModule->TypeToString(ceContext->mCallerTypeInstance);
+		return result;
+	}
+
 	auto ceFrame = &ceContext->mCallStack[dbgCallstackInfo.mFrameIdx];
 	auto ceFunction = ceFrame->mFunction;
 
 	if (ceFunction->mFailed)
 		*outFlags |= FrameFlags_HadError;
-
+	
 	int instIdx = (int)(ceFrame->mInstPtr - &ceFunction->mCode[0] - 2);
 
 	BF_ASSERT(ceFunction->mId != -1);
@@ -4448,16 +4545,17 @@ String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* ou
 
 	CeEmitEntry* emitEntry = ceFunction->FindEmitEntry(instIdx);
 		
+	*outStackSize = ceContext->mStackSize - ceFrame->mStackAddr;
 	if (stackFrameIdx < mDbgCallStack.mSize - 1)
 	{
 		auto& nextStackInfo = mDbgCallStack[stackFrameIdx + 1];
-		auto prevFrame = &ceContext->mCallStack[nextStackInfo.mFrameIdx];
-		*outStackSize = prevFrame->mStackAddr - ceFrame->mStackAddr;
+		if (nextStackInfo.mFrameIdx >= 0)
+		{
+			auto prevFrame = &ceContext->mCallStack[nextStackInfo.mFrameIdx];
+			*outStackSize = prevFrame->mStackAddr - ceFrame->mStackAddr;
+		}
 	}
-	else
-	{
-		*outStackSize = ceContext->mStackSize - ceFrame->mStackAddr;
-	}
+	
 
 	CeDbgScope* ceScope = NULL;
 	if (dbgCallstackInfo.mScopeIdx != -1)
