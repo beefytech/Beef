@@ -2078,7 +2078,8 @@ void BfContext::UpdateRevisedTypes()
 			continue;
 		}
 		
-		typeInst->mRebuildFlags = BfTypeRebuildFlag_None;
+		// Clear flags we don't want to propagate
+		typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags & BfTypeRebuildFlag_UnderlyingTypeDeferred);
 		
 		if (typeDef->mIsPartial)
 		{
