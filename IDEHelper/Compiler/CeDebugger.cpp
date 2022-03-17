@@ -1526,7 +1526,7 @@ static String IntTypeToString(T val, const StringImpl& name, DwDisplayInfo* disp
 		}
 		else
 			format = StrFormat("0o%%0%do\n%s", sizeof(val) * 2, name.c_str());
-		return StrFormat(format.c_str(), (std::make_unsigned<T>::type)(val));
+		return StrFormat(format.c_str(), (typename std::make_unsigned<T>::type)(val));
 	}
 
 	if (intDisplayType == DwIntDisplayType_HexadecimalUpper)
@@ -1538,7 +1538,7 @@ static String IntTypeToString(T val, const StringImpl& name, DwDisplayInfo* disp
 		}
 		else
 			format = StrFormat("0x%%0%dX\n%s", sizeof(val) * 2, name.c_str());
-		return StrFormat(format.c_str(), (std::make_unsigned<T>::type)(val));
+		return StrFormat(format.c_str(), (typename std::make_unsigned<T>::type)(val));
 	}
 
 	//TODO: Implement HexadecimalLower
@@ -1551,7 +1551,7 @@ static String IntTypeToString(T val, const StringImpl& name, DwDisplayInfo* disp
 		}
 		else
 			format = StrFormat("0x%%0%dX\n%s", sizeof(val) * 2, name.c_str());
-		return StrFormat(format.c_str(), (std::make_unsigned<T>::type)(val));
+		return StrFormat(format.c_str(), (typename std::make_unsigned<T>::type)(val));
 	}
 
 	if (std::is_unsigned<T>::value)
