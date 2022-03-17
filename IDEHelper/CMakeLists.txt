@@ -179,7 +179,8 @@ file(GLOB SRC_FILES
     Compiler/BfVarDeclChecker.cpp
     Compiler/BfTargetTriple.cpp
     Compiler/CeMachine.cpp
-    Compiler/MemReporter.cpp    
+    Compiler/CeDebugger.cpp
+    Compiler/MemReporter.cpp
     
     Backend/BeContext.cpp
     Backend/BeIRCodeGen.cpp
