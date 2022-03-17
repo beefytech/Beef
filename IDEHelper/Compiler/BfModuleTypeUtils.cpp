@@ -3352,7 +3352,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			bool hadType = false;
 
 			BfAstNode* deferredErrorNode = NULL;
-			char* deferredError = NULL;
+			const char* deferredError = NULL;
 
 			for (auto baseTypeRef : typeDef->mBaseTypes)
 			{
