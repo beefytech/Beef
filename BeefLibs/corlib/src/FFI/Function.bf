@@ -1,6 +1,6 @@
 namespace System.FFI
 {
-	[CRepr]
+	[CRepr, StaticInitPriority(100)]
 	struct FFIType
 	{
 		public enum TypeKind : uint16
