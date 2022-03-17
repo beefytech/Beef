@@ -2614,6 +2614,8 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mConstSpecifier);
 	ExpectSpace();
+	QueueVisitChild(propertyDeclaration->mReadOnlySpecifier);
+	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mVolatileSpecifier);
 	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mVirtualSpecifier);
