@@ -3504,8 +3504,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			if (sizeExpr != NULL)
 			{
 				BfMethodState methodState;
-				SetAndRestoreValue<BfMethodState*> prevMethodState(ctx->mModule->mCurMethodState, &methodState);
 				methodState.mTempKind = BfMethodState::TempKind_Static;
+				SetAndRestoreValue<BfMethodState*> prevMethodState;
+				if (ctx->mModule->mCurMethodState == NULL)
+					prevMethodState.Init(ctx->mModule->mCurMethodState, &methodState);
 
 				BfConstResolver constResolver(ctx->mModule);
 				BfType* intType = ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr);
