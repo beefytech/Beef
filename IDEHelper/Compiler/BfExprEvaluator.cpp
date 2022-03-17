@@ -4167,15 +4167,9 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 
 				closureTypeInst->mTypeDef->PopulateMemberSets();
 				BfMemberSetEntry* memberSetEntry = NULL;
-				if (closureTypeInst->mTypeDef->mFieldSet.TryGetWith((StringImpl&)wantName, &memberSetEntry))
+				if (closureTypeInst->mTypeDef->mFieldSet.TryGetWith((StringImpl&)findName, &memberSetEntry))
 				{					
-					auto fieldDef = (BfFieldDef*)memberSetEntry->mMemberDef;
-					while ((varSkipCountLeft > 0) && (fieldDef != NULL))
-					{
-						fieldDef = fieldDef->mNextWithSameName;
-						varSkipCountLeft--;
-					}
-
+					auto fieldDef = (BfFieldDef*)memberSetEntry->mMemberDef;					
 					auto& field = closureTypeInst->mFieldInstances[fieldDef->mIdx];
 					if (!field.mResolvedType->IsValuelessType())
 					{
