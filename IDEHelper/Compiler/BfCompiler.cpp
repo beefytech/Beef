@@ -5639,7 +5639,7 @@ void BfCompiler::PopulateReified()
 				}
 
 				// Only check virtual stuff if we have been instantiated
-				if (typeInst->HasBeenInstantiated())
+				if ((typeInst->HasBeenInstantiated()) && (!mCanceling))
 				{
 					// If we have any virtual methods overrides that are unreified but the declaring virtual method is reified then we also need to reify
 					for (auto&& vEntry : typeInst->mVirtualMethodTable)
