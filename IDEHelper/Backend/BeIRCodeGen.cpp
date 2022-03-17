@@ -7,7 +7,7 @@
 #include "BeefySysLib/util/Hash.h"
 #include "BeModule.h"
 #include "BeContext.h"
-#include "..\Compiler\CeMachine.h"
+#include "../Compiler/CeMachine.h"
 
 #ifdef _DEBUG
 #define BE_EXTRA_CHECKS
