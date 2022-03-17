@@ -1723,7 +1723,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 		int endNodeIdx = -1;
 		if ((IsTypeReference(exprLeft, BfToken_LBracket, -1, &endNodeIdx, NULL)))
 		{
-			if (IsTypeReference(exprLeft, BfToken_LBrace, NULL, NULL))
+			if (IsTypeReference(exprLeft, BfToken_LBrace, -1, NULL, NULL))
 			{
 				BfSizedArrayCreateExpression* arrayCreateExpr = mAlloc->Alloc<BfSizedArrayCreateExpression>();
 				auto typeRef = CreateTypeRef(exprLeft);
@@ -1752,7 +1752,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 					}
 				}
 			}
-			else if (IsTypeReference(exprLeft, BfToken_LParen, NULL, NULL))
+			else if (IsTypeReference(exprLeft, BfToken_LParen, -1, NULL, NULL))
 			{
 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.Get(endNodeIdx - 1)))
 				{
