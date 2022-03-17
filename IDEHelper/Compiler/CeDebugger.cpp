@@ -3313,69 +3313,115 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 	
 	if (typedValue.mType->IsEnum())
 	{
+		if (formatInfo.mRawString)
+			return "";
+
 		String retVal;
-		int64 bitsLeft = ValueToInt(typedValue);
-		int valueCount = 0;
+		if (typedValue.mType->IsTypedPrimitive())		
+		{
+			int64 bitsLeft = ValueToInt(typedValue);
+			int valueCount = 0;
 
-		String editVal;
-		
-		auto typeInst = typedValue.mType->ToTypeInstance();
-		auto dbgTypeInfo = GetDbgTypeInfo(typedValue.mType->mTypeId);
+			String editVal;
 
-		while ((dbgTypeInfo != NULL) && ((bitsLeft != 0) || (valueCount == 0)))
-		{			
-			CeDbgTypeInfo::ConstIntEntry* bestMatch = NULL;
+			auto typeInst = typedValue.mType->ToTypeInstance();
+			auto dbgTypeInfo = GetDbgTypeInfo(typedValue.mType->mTypeId);
 
-			for (auto& constIntEntry : dbgTypeInfo->mConstIntEntries)
+			while ((dbgTypeInfo != NULL) && ((bitsLeft != 0) || (valueCount == 0)))
 			{
-				if (constIntEntry.mVal == bitsLeft)
-				{
-					bestMatch = &constIntEntry;
-					break;
-				}
-			}
+				CeDbgTypeInfo::ConstIntEntry* bestMatch = NULL;
 
-			if (bestMatch == NULL)
-			{
 				for (auto& constIntEntry : dbgTypeInfo->mConstIntEntries)
 				{
-					if ((constIntEntry.mVal != 0) &&
-						((constIntEntry.mVal & bitsLeft) == constIntEntry.mVal))
+					if (constIntEntry.mVal == bitsLeft)
 					{
 						bestMatch = &constIntEntry;
 						break;
 					}
 				}
+
+				if (bestMatch == NULL)
+				{
+					for (auto& constIntEntry : dbgTypeInfo->mConstIntEntries)
+					{
+						if ((constIntEntry.mVal != 0) &&
+							((constIntEntry.mVal & bitsLeft) == constIntEntry.mVal))
+						{
+							bestMatch = &constIntEntry;
+							break;
+						}
+					}
+				}
+
+				if (bestMatch == NULL)
+					break;
+
+				if (valueCount > 0)
+				{
+					retVal += " | ";
+				}
+
+				auto bestFieldInstance = &typeInst->mFieldInstances[bestMatch->mFieldIdx];
+
+				retVal += ".";
+				retVal += bestFieldInstance->GetFieldDef()->mName;
+
+				valueCount++;
+				bitsLeft &= ~bestMatch->mVal;
 			}
 
-			if (bestMatch == NULL)
-				break;
-
-			if (valueCount > 0)
+			if ((valueCount == 0) || (bitsLeft != 0))
 			{
-				retVal += " | ";				
+				if (valueCount > 0)
+					retVal += " | ";
+				retVal += StrFormat("%lld", bitsLeft);
 			}
-			
-			auto bestFieldInstance = &typeInst->mFieldInstances[bestMatch->mFieldIdx];
 
-			retVal += ".";
-			retVal += bestFieldInstance->GetFieldDef()->mName;
+			retVal += "\n" + TypeToString(origTypedValue.mType, typeModKind);
+			retVal += "\n:canEdit";
 
-			valueCount++;
-			bitsLeft &= ~bestMatch->mVal;
+			return retVal;
 		}
-
-		if ((valueCount == 0) || (bitsLeft != 0))
+		else if (typedValue.mType->mDefineState >= BfTypeDefineState_Defined)
 		{
-			if (valueCount > 0)
-				retVal += " | ";
-			retVal += StrFormat("%lld", bitsLeft);			
+			auto typeInst = typedValue.mType->ToTypeInstance();
+			BfType* dscrType = typeInst->GetDiscriminatorType();
+			BfType* payloadType = typeInst->GetUnionInnerType();
+
+			int dscrOffset = BF_ALIGN(payloadType->mSize, dscrType->mAlign);
+
+			int dscrVal = 0;
+			memcpy(&dscrVal, data + dscrOffset, dscrType->mSize);
+
+			for (auto& fieldInstance : typeInst->mFieldInstances)
+			{
+				auto fieldDef = fieldInstance.GetFieldDef();
+				if (!fieldInstance.mIsEnumPayloadCase)
+					continue;
+				
+				int tagId = -fieldInstance.mDataIdx - 1;
+				if (dscrVal == tagId)
+				{
+					auto evalResult = BfTypedValue(module->mBfIRBuilder->CreateConstAggCE(
+						module->mBfIRBuilder->MapType(fieldInstance.mResolvedType), (addr_ce)dataAddr), fieldInstance.mResolvedType, true);
+										
+					String innerResult = TypedValueToString(evalResult, "", formatInfo, NULL);
+					int crPos = (int)innerResult.IndexOf('\n');
+					if (crPos != -1)
+						innerResult.RemoveToEnd(crPos);
+
+					retVal += ".";
+					retVal += fieldDef->mName;					
+					retVal += innerResult;					
+
+					retVal += "\n" + TypeToString(origTypedValue.mType, typeModKind);
+					retVal += "\n:canEdit";
+					
+					retVal += "\n" + GetMemberList(fieldInstance.mResolvedType, addr, dataAddr, false);
+					return retVal;
+				}
+			}
 		}
-
-		retVal += "\n" + TypeToString(origTypedValue.mType, typeModKind);
-		retVal += "\n:canEdit";
-
-		return retVal;
 	}
 
 	if (typedValue.mType->IsTypedPrimitive())
@@ -3737,6 +3783,23 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		}
 		else if ((!isNull) && (!isBadSrc))
 		{
+			if (memberListType->IsInstanceOf(mCompiler->mTypeTypeDef))
+			{
+				auto typeInst = memberListType->ToTypeInstance();
+				auto typeIdField = typeInst->mTypeDef->GetFieldByName("mTypeId");
+				if (typeIdField != NULL)
+				{
+					auto& fieldInstance = typeInst->mFieldInstances[typeIdField->mIdx];
+					int typeId = 0;
+					memcpy(&typeId, data + fieldInstance.mDataOffset, fieldInstance.mResolvedType->mSize);
+					auto typeType = mCompiler->mContext->FindTypeById(typeId);
+					if (typeType != NULL)
+					{
+						retVal += "\n[Type]\t" + module->TypeToString(typeType);
+					}
+				}
+			}
+
 			retVal += "\n" + GetMemberList(memberListType, addr, dataAddr, false);
 		}
 
