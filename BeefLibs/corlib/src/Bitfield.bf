@@ -135,9 +135,6 @@ namespace System
 			if (mBitPos == -1)
 				mBitPos = isRev ? underlyingBitCount - bitCount : 0;
 
-			if (Compiler.IsBuilding)
-				Debug.WriteLine($"OnFieldInit Name:{mName} BitPos:{mBitPos} BitCount:{bitCount} BuType:{buType}");
-
 			int bitSize = fieldInfo.FieldType.Size * 8;
 			if ((mBitPos < 0) || (mBitPos + bitCount > bitSize))
 				Runtime.FatalError("Bitfield exceeds bounds of underlying value");
@@ -269,8 +266,6 @@ namespace System
 
 		public this(ProtectionKind protection, String name, AccessFlags accessFlags = .Read | .Write) : base(protection, FixSpec(.Auto), name, accessFlags)
 		{
-			/*if (Compiler.IsBuilding)
-				Debug.WriteLine($"typeof.BitSize:{typeof(TField).BitSize} mBitCount:{mBitCount}"); //*/
 			mBFieldType = typeof(TField);
 		}
 
