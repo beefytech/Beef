@@ -3544,7 +3544,29 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		if (formatInfo.mRawString)
 			return "";
 
-		if ((!isNull) && (!formatInfo.mNoVisualizers) && (!hadCustomDisplayString))
+		String reflectedTypeName;
+		if (displayType->IsInstanceOf(mCompiler->mTypeTypeDef))
+		{
+			auto typeInst = displayType->ToTypeInstance();
+			auto typeIdField = typeInst->mTypeDef->GetFieldByName("mTypeId");
+			if (typeIdField != NULL)
+			{
+				auto& fieldInstance = typeInst->mFieldInstances[typeIdField->mIdx];
+				int typeId = 0;
+				memcpy(&typeId, data + fieldInstance.mDataOffset, fieldInstance.mResolvedType->mSize);
+				auto typeType = mCompiler->mContext->FindTypeById(typeId);
+				if (typeType != NULL)
+					reflectedTypeName = module->TypeToString(typeType);
+			}
+		}
+
+		if (!reflectedTypeName.IsEmpty())
+		{
+			displayString += "{ ";
+			displayString += reflectedTypeName;
+			displayString += " }";
+		}
+		else if ((!isNull) && (!formatInfo.mNoVisualizers) && (!hadCustomDisplayString))
 		{
 			// Create our own custom display			
 			
@@ -3783,23 +3805,6 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		}
 		else if ((!isNull) && (!isBadSrc))
 		{
-			if (memberListType->IsInstanceOf(mCompiler->mTypeTypeDef))
-			{
-				auto typeInst = memberListType->ToTypeInstance();
-				auto typeIdField = typeInst->mTypeDef->GetFieldByName("mTypeId");
-				if (typeIdField != NULL)
-				{
-					auto& fieldInstance = typeInst->mFieldInstances[typeIdField->mIdx];
-					int typeId = 0;
-					memcpy(&typeId, data + fieldInstance.mDataOffset, fieldInstance.mResolvedType->mSize);
-					auto typeType = mCompiler->mContext->FindTypeById(typeId);
-					if (typeType != NULL)
-					{
-						retVal += "\n[Type]\t" + module->TypeToString(typeType);
-					}
-				}
-			}
-
 			retVal += "\n" + GetMemberList(memberListType, addr, dataAddr, false);
 		}
 
