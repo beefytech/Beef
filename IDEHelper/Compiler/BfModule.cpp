@@ -2266,7 +2266,8 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 				deferFullAnalysis = true;
 
 			//bool deferFullAnalysis = true;
-			bool deferUsageWarning = deferFullAnalysis && mCompiler->IsAutocomplete();
+			bool deferUsageWarning = deferFullAnalysis && (mCompiler->IsAutocomplete()) && 
+				(mCompiler->mResolvePassData->mAutoComplete->mResolveType != BfResolveType_GetFixits);
 
 			if (((localVar->mAssignedKind != BfLocalVarAssignKind_Unconditional) || (localVar->mHadExitBeforeAssign)) && 
 				(!localVar->mIsImplicitParam))
