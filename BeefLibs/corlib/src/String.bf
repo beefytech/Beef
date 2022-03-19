@@ -527,7 +527,7 @@ namespace System
 		public static Result<void> Unescape(char8* ptr, int length, String outString)
 		{
 			var ptr;
-			char8* endPtr = ptr + length - 1;
+			char8* endPtr = ptr + length;
 
 			while (ptr < endPtr)
 			{
@@ -551,7 +551,24 @@ namespace System
 					case 'r': outString.Append("\r");
 					case 't': outString.Append("\t");
 					case 'v': outString.Append("\v");
+					case 'x':
+						uint8 num = 0;
+						for (let i < 2)
+						{
+						if (ptr == endPtr)
+							return .Err;
+						let hexC = *(ptr++);
 
+						if ((hexC >= '0') && (hexC <= '9'))
+							num = num*0x10 + (uint8)(hexC - '0');
+						else if ((hexC >= 'A') && (hexC <= 'F'))
+							num = num*0x10 + (uint8)(c - 'A') + 10;
+						else if ((hexC >= 'a') && (hexC <= 'f'))
+							num = num*0x10 + (uint8)(hexC - 'a') + 10;
+						else return .Err;
+						}
+
+						outString.Append((char8)num);
 					default:
 						return .Err;
 					}
