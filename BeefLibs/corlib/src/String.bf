@@ -446,37 +446,14 @@ namespace System
 		{
 			strBuffer.Append(this);
 		}
+		
+		[Obsolete("Replaced with Quote", false)]
+		public static void QuoteString(char8* ptr, int length, String outString) => Quote(ptr, length, outString);
 
 		public static void Quote(char8* ptr, int length, String outString)
 		{
 			outString.Append('"');
-			for (int i < length)
-			{
-				char8 c = ptr[i];
-				switch (c)
-				{
-				case '\'': outString.Append(@"\'");
-                case '\"': outString.Append("\\\"");
-                case '\\': outString.Append(@"\\");
-                case '\0': outString.Append(@"\0");
-                case '\a': outString.Append(@"\a");
-                case '\b': outString.Append(@"\b");
-                case '\f': outString.Append(@"\f");
-                case '\n': outString.Append(@"\n");
-                case '\r': outString.Append(@"\r");
-                case '\t': outString.Append(@"\t");
-                case '\v': outString.Append(@"\v");
-                default: 
-                	if (c < (char8)32)
-                	{
-                		outString.Append(@"\x");
-                		outString.Append(sHexUpperChars[((int)c>>4) & 0xF]);
-                		outString.Append(sHexUpperChars[(int)c & 0xF]);
-                		break;
-                	}
-                	outString.Append(c);
-				}
-			}
+			Escape(ptr, length, outString);
 			outString.Append('"');
 		}
 
@@ -485,11 +462,44 @@ namespace System
 			Quote(Ptr, Length, outString);
 		}
 
-		[Obsolete("Replaced with Quote", false)]
-		public void QuoteString(String outString)
+		public static void Escape(char8* ptr, int length, String outString)
 		{
-			Quote(Ptr, Length, outString);
+			for (int i < length)
+			{
+				char8 c = ptr[i];
+				switch (c)
+				{
+				case '\'': outString.Append(@"\'");
+			    case '\"': outString.Append("\\\"");
+			    case '\\': outString.Append(@"\\");
+			    case '\0': outString.Append(@"\0");
+			    case '\a': outString.Append(@"\a");
+			    case '\b': outString.Append(@"\b");
+			    case '\f': outString.Append(@"\f");
+			    case '\n': outString.Append(@"\n");
+			    case '\r': outString.Append(@"\r");
+			    case '\t': outString.Append(@"\t");
+			    case '\v': outString.Append(@"\v");
+			    default: 
+			    	if (c < (char8)32)
+			    	{
+			    		outString.Append(@"\x");
+			    		outString.Append(sHexUpperChars[((int)c>>4) & 0xF]);
+			    		outString.Append(sHexUpperChars[(int)c & 0xF]);
+			    		break;
+			    	}
+			    	outString.Append(c);
+				}
+			}
 		}
+
+		public void Escape(String outString)
+		{
+			Escape(Ptr, Length, outString);
+		}
+
+		[Obsolete("Replaced with Unquote", false)]
+		public static Result<void> UnquoteString(char8* ptr, int length, String outString) => Unquote(ptr, length, outString);
 
 		public static Result<void> Unquote(char8* ptr, int length, String outString)
 		{
@@ -504,11 +514,9 @@ namespace System
 			}
 
 			if ((*ptr != '\"') && (ptr[length - 1] != '\"'))
-			{
 				return .Err;
-			}
 
-			return Unescape(ptr, length, outString);
+			return Unescape(ptr + 1, length - 2, outString);
 		}
 
 		public Result<void> Unquote(String outString)
@@ -516,20 +524,10 @@ namespace System
 			return Unquote(Ptr, Length, outString);
 		}
 
-		[Obsolete("Replaced with Unquote", false)]
-		public Result<void> UnQuoteString(String outString)
-		{
-			return Unquote(outString);
-		}
-
 		public static Result<void> Unescape(char8* ptr, int length, String outString)
 		{
-			if (length < 2)
-				return .Err;
-
 			var ptr;
-			ptr++;
-			char8* endPtr = ptr + length - 2;
+			char8* endPtr = ptr + length - 1;
 
 			while (ptr < endPtr)
 			{
@@ -553,6 +551,7 @@ namespace System
 					case 'r': outString.Append("\r");
 					case 't': outString.Append("\t");
 					case 'v': outString.Append("\v");
+
 					default:
 						return .Err;
 					}
@@ -565,10 +564,10 @@ namespace System
 			return .Ok;
 		}
 
-	public Result<void> Unescape(String outString)
-	{
-		return Unescape(Ptr, Length, outString);
-	}
+		public Result<void> Unescape(String outString)
+		{
+			return Unescape(Ptr, Length, outString);
+		}
 
 		static String sHexUpperChars = "0123456789ABCDEF";
 		public void ToString(String outString, String format, IFormatProvider formatProvider)

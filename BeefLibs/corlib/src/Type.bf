@@ -1283,10 +1283,8 @@ namespace System.Reflection
 				strBuffer.Append((*(bool*)&mValue) ? "true" : "false");
 			case typeof(char8), typeof(char16), typeof(char32):
 				strBuffer.Append('\'');
-				var str = (*(char32*)&mValue).ToString(.. scope .());
-				let len = str.Length;
-				String.Quote(&str[0], len, str);
-				strBuffer.Append(str[(len + 1)...^2]);
+				let str = (*(char32*)&mValue).ToString(.. scope .(4));
+				str.Escape(strBuffer);
 				strBuffer.Append('\'');
 			case typeof(uint64), typeof(uint):
 				(*(uint64*)&mValue).ToString(strBuffer);
