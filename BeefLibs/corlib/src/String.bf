@@ -545,6 +545,11 @@ namespace System
 			return UnQuoteString(Ptr, Length, outString);
 		}
 
+		public Result<void> UnEscapeString(String outString)
+		{
+			return UnEscapeString(Ptr, Length, outString);
+		}
+
 		static String sHexUpperChars = "0123456789ABCDEF";
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
