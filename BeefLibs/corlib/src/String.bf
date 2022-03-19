@@ -502,6 +502,19 @@ namespace System
 				return .Err;
 			}
 
+			return UnEscapeString(ptr, length, outString);
+		}
+
+		public Result<void> UnQuoteString(String outString)
+		{
+			return UnQuoteString(Ptr, Length, outString);
+		}
+
+		public static Result<void> UnEscapeString(char8* ptr, int length, String outString)
+		{
+			if (length < 2)
+				return .Err;
+
 			var ptr;
 			ptr++;
 			char8* endPtr = ptr + length - 2;
@@ -540,15 +553,10 @@ namespace System
 			return .Ok;
 		}
 
-		public Result<void> UnQuoteString(String outString)
-		{
-			return UnQuoteString(Ptr, Length, outString);
-		}
-
-		public Result<void> UnEscapeString(String outString)
-		{
-			return UnEscapeString(Ptr, Length, outString);
-		}
+	public Result<void> UnEscapeString(String outString)
+	{
+		return UnEscapeString(Ptr, Length, outString);
+	}
 
 		static String sHexUpperChars = "0123456789ABCDEF";
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
