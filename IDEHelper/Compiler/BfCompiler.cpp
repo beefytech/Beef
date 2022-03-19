@@ -7134,7 +7134,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 				}
 
 				String entryClassName = project->mStartupObject;
-				typeDef = mSystem->FindTypeDef(entryClassName, 0, project);
+				typeDef = mSystem->FindTypeDef(entryClassName, 0, project, {}, NULL, BfFindTypeDefFlag_AllowGlobal);
 				if (typeDef != NULL)
 				{
 					auto startupType = mContext->mScratchModule->ResolveTypeDef(typeDef);
