@@ -9644,7 +9644,7 @@ namespace IDE
 								if (args.Count == 1)
 								{
 									newString = scope:ReplaceBlock .();
-									args[0].QuoteString(newString);
+									args[0].Quote(newString);
 								}
 								else
 									cmdErr = "Invalid number of arguments";
