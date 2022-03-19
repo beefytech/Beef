@@ -288,6 +288,8 @@ namespace IDE.ui
 			Clear();
 		}
 
+		public bool HasDisplay => mListView != null;
+
         public override void Draw(Graphics g)
         {
             base.Draw(g);
