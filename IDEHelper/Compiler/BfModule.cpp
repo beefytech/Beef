@@ -1501,8 +1501,6 @@ BfIRValue BfModule::GetDefaultValue(BfType* type)
 		auto primType = (BfPrimitiveType*)type;
 		return mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, 0.0);	
 	}
-	if (type->IsVoid())
-		return mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(type));	
 	return mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(type));
 }
 
