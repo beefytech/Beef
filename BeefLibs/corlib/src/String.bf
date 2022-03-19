@@ -499,7 +499,7 @@ namespace System
 		}
 
 		[Obsolete("Replaced with Unquote", false)]
-		public static Result<void> UnquoteString(char8* ptr, int length, String outString) => Unquote(ptr, length, outString);
+		public static Result<void> UnQuoteString(char8* ptr, int length, String outString) => Unquote(ptr, length, outString);
 
 		public static Result<void> Unquote(char8* ptr, int length, String outString)
 		{
