@@ -160,6 +160,19 @@ public:
 	TypeMap::iterator erase(TypeMap::iterator& itr);	
 };
 
+class BfDepContext
+{
+public:
+	HashSet<BfType*> mDeepSeenAliases;
+	int mAliasDepth;
+
+public:
+	BfDepContext()
+	{
+		mAliasDepth = 0;
+	}
+};
+
 enum BfHotDepDataKind : int8
 {
 	BfHotDepDataKind_Unknown,

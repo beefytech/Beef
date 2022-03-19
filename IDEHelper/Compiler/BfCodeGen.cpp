@@ -411,11 +411,6 @@ void BfCodeGenThread::RunLoop()
 #endif
 
 #endif
-			if (request->mOutFileName.Contains("RuntimeThreadInit"))
-			{
-				NOP;
-			}
-
 			if ((hasCacheMatch) || (!errorMsg.IsEmpty()))
 			{
 				//

@@ -3497,7 +3497,7 @@ bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memb
 	return true;
 }
 
-void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyFlags flags)
+void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyFlags flags, BfDepContext* depContext)
 {
 	if (usedType == userType)
 		return;	
@@ -3650,12 +3650,23 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 
 	if (usedType->IsTypeAlias())
 	{
-		usedType = SafeResolveAliasType((BfTypeAliasType*)usedType);
-		if (usedType == NULL)
-			return;
-	}
+		auto underlyingType = usedType->GetUnderlyingType();
+		if (underlyingType != NULL)
+		{
+			BfDepContext newDepContext;
+			if (depContext == NULL)
+				depContext = &newDepContext;
 
-	if (!usedType->IsGenericTypeInstance())
+			if (++depContext->mAliasDepth > 8)
+			{
+				if (!depContext->mDeepSeenAliases.Add(underlyingType))
+					return; // Circular!
+			}
+
+			AddDependency(underlyingType, userType, depFlag);
+		}		
+	}
+	else if (!usedType->IsGenericTypeInstance())
 	{
 		auto underlyingType = usedType->GetUnderlyingType();
 		if (underlyingType != NULL)
