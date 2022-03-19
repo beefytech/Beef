@@ -1285,7 +1285,7 @@ namespace System.Reflection
 				strBuffer.Append('\'');
 				var str = (*(char32*)&mValue).ToString(.. scope .());
 				let len = str.Length;
-				String.QuoteString(&str[0], len, str);
+				String.Quote(&str[0], len, str);
 				strBuffer.Append(str[(len + 1)...^2]);
 				strBuffer.Append('\'');
 			case typeof(uint64), typeof(uint):

@@ -447,7 +447,7 @@ namespace System
 			strBuffer.Append(this);
 		}
 
-		public static void QuoteString(char8* ptr, int length, String outString)
+		public static void Quote(char8* ptr, int length, String outString)
 		{
 			outString.Append('"');
 			for (int i < length)
@@ -480,12 +480,18 @@ namespace System
 			outString.Append('"');
 		}
 
-		public void QuoteString(String outString)
+		public void Quote(String outString)
 		{
-			QuoteString(Ptr, Length, outString);
+			Quote(Ptr, Length, outString);
 		}
 
-		public static Result<void> UnQuoteString(char8* ptr, int length, String outString)
+		[Obsolete("Replaced with Quote", false)]
+		public void QuoteString(String outString)
+		{
+			Quote(Ptr, Length, outString);
+		}
+
+		public static Result<void> Unquote(char8* ptr, int length, String outString)
 		{
 			if (length < 2)
 				return .Err;
@@ -502,15 +508,21 @@ namespace System
 				return .Err;
 			}
 
-			return UnEscapeString(ptr, length, outString);
+			return Unescape(ptr, length, outString);
 		}
 
+		public Result<void> Unquote(String outString)
+		{
+			return Unquote(Ptr, Length, outString);
+		}
+
+		[Obsolete("Replaced with Unquote", false)]
 		public Result<void> UnQuoteString(String outString)
 		{
-			return UnQuoteString(Ptr, Length, outString);
+			return Unquote(outString);
 		}
 
-		public static Result<void> UnEscapeString(char8* ptr, int length, String outString)
+		public static Result<void> Unescape(char8* ptr, int length, String outString)
 		{
 			if (length < 2)
 				return .Err;
@@ -553,9 +565,9 @@ namespace System
 			return .Ok;
 		}
 
-	public Result<void> UnEscapeString(String outString)
+	public Result<void> Unescape(String outString)
 	{
-		return UnEscapeString(Ptr, Length, outString);
+		return Unescape(Ptr, Length, outString);
 	}
 
 		static String sHexUpperChars = "0123456789ABCDEF";
@@ -563,7 +575,7 @@ namespace System
 		{
 			if (format == "Q")
 			{
-				QuoteString(Ptr, mLength, outString);
+				Quote(Ptr, mLength, outString);
 				return;
 			}
 			outString.Append(this);
@@ -571,7 +583,7 @@ namespace System
 
 		void IPrintable.Print(String outString)
 		{
-			String.QuoteString(Ptr, mLength, outString);
+			String.Quote(Ptr, mLength, outString);
 		}
 
 		[AlwaysInclude]
@@ -3229,7 +3241,7 @@ namespace System
 		{
 			if (format == "Q")
 			{
-				String.QuoteString(mPtr, mLength, outString);
+				String.Quote(mPtr, mLength, outString);
 				return;
 			}
 			outString.Append(mPtr, mLength);
@@ -3237,7 +3249,7 @@ namespace System
 
 		void IPrintable.Print(String outString)
 		{
-			String.QuoteString(mPtr, mLength, outString);
+			String.Quote(mPtr, mLength, outString);
 		}
 
 		[Commutable]
@@ -3628,12 +3640,12 @@ namespace System
 
 		public void QuoteString(String outString)
 		{
-			String.QuoteString(Ptr, Length, outString);
+			String.Quote(Ptr, Length, outString);
 		}
 
 		public Result<void> UnQuoteString(String outString)
 		{
-			return String.UnQuoteString(Ptr, Length, outString);
+			return String.Unquote(Ptr, Length, outString);
 		}
 
 		[NoDiscard]

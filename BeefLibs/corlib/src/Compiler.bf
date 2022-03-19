@@ -130,7 +130,7 @@ namespace System
 				Flags flags = .None;
 				val.Generate(fileName, outText, ref flags);
 				val.mCmdInfo.Append("fileName\t");
-				fileName.QuoteString(val.mCmdInfo);
+				fileName.Quote(val.mCmdInfo);
 				val.mCmdInfo.Append("\n");
 				val.mCmdInfo.Append("data\n");
 
