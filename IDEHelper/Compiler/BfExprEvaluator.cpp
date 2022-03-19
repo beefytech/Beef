@@ -4892,7 +4892,10 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 				mModule->Fail(StrFormat("An instance reference is required to reference non-static outer field '%s.%s'", mModule->TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()),
 					targetSrc);
 			else if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend))
-				mModule->Fail(StrFormat("Cannot reference field '%s' before append allocations", fieldDef->mName.c_str()), targetSrc);
+			{
+				if ((mBfEvalExprFlags & BfEvalExprFlags_DeclType) == 0)
+					mModule->Fail(StrFormat("Cannot reference field '%s' before append allocations", fieldDef->mName.c_str()), targetSrc);
+			}
 			else
 				mModule->Fail(StrFormat("Cannot reference non-static field '%s' from a static method", fieldDef->mName.c_str()), targetSrc);
 		}
