@@ -2864,7 +2864,7 @@ void BfIRCodeGen::HandleNextCmd()
 			bool isFakeIntrinsic = (int)intrinsics[intrinId].mID == -2;			
 			if (isFakeIntrinsic)
 			{
-				auto intrinsicData = mAlloc.Alloc<BfIRIntrinsicData>();
+				auto intrinsicData = mIntrinsicData.Alloc();
 				intrinsicData->mName = intrinName;
 				intrinsicData->mIntrinsic = (BfIRIntrinsic)intrinId;
 				intrinsicData->mReturnType = returnType;
@@ -2884,7 +2884,7 @@ void BfIRCodeGen::HandleNextCmd()
 
 				if (platName.IsEmpty())
 				{
-					auto intrinsicData = mAlloc.Alloc<BfIRIntrinsicData>();
+					auto intrinsicData = mIntrinsicData.Alloc();
 					intrinsicData->mName = platIntrinName;
 					intrinsicData->mIntrinsic = BfIRIntrinsic__PLATFORM;
 					intrinsicData->mReturnType = returnType;

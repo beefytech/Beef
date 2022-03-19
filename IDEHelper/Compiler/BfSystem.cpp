@@ -2108,7 +2108,7 @@ void BfSystem::ProcessAtomGraveyard()
 		{
 			deletedAtoms.Add(atom);
 			auto itr = mAtomMap.Remove(atom->mString);
-			delete atom->mString.mPtr;
+			free((void*)atom->mString.mPtr);
 			delete atom;
 		}
 	}

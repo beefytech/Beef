@@ -49,7 +49,7 @@ public:
 	{
 		BF_ASSERT(mExteriorNodes.mSize >= 0);
 		BF_ASSERT(mExteriorNodes.mSize < 0x00FFFFFF);
-		delete mSrc;
+		delete [] mSrc;
 	}
 
 	virtual BfParserData* ToParserData()

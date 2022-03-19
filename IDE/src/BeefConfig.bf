@@ -25,6 +25,7 @@ namespace IDE
 			public List<RegistryEntry> mEntries = new List<RegistryEntry>() ~ DeleteContainerAndItems!(_);
 			public Monitor mMonitor = new .() ~ delete _;
 			public WaitEvent mEvent = new .() ~ delete _;
+			public Thread mThread ~ delete _;
 			
 			public ~this()
 			{
@@ -75,8 +76,9 @@ namespace IDE
 
 			public void StartResolve()
 			{
-				var thread = new Thread(new => Resolve);
-				thread.Start(true);
+				delete mThread;
+				mThread = new Thread(new => Resolve);
+				mThread.Start(false);
 			}
 		}
 

@@ -429,7 +429,7 @@ public:
 			}
 		}
 
-		delete mEntries;
+		delete [] mEntries;
 	}
 
 	Dictionary& operator=(const Dictionary& rhs)

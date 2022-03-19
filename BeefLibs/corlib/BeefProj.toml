@@ -38,3 +38,6 @@ BfOptimizationLevel = "O2"
 RuntimeChecks = false
 EmitDynamicCastCheck = false
 EmitObjectAccessCheck = false
+
+[Configs.Debug.Linux64]
+PreprocessorMacros = ["DEBUG", "VALGRIND"]

@@ -34,8 +34,7 @@ USING_NS_BF;
 using namespace llvm;
 
 BfContext::BfContext(BfCompiler* compiler) :
-	mTypeDefTypeRefPool(true),
-	mNamedTypeRefPool(true)
+	mTypeDefTypeRefPool(true, true)
 {
 	mCompiler = compiler;
 	mSystem = compiler->mSystem;	

@@ -43,7 +43,7 @@ public:
 
 	~BitSet()
 	{
-		delete this->mBits;
+		delete [] this->mBits;
 	}
 
 	void Resize(int numBits)

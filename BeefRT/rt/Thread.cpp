@@ -120,16 +120,21 @@ static void BF_CALLTYPE CStartProc(void* threadParam)
 #endif
 
 	auto internalThread = thread->GetInternalThread();
+	
+	// Hold lock until we get ThreadStarted callback
+	internalThread->mCritSect.Lock();
+
+	internalThread->mStartedEvent.Set(true);
 	internalThread->mThreadHandle = BfpThread_GetCurrent();
 	internalThread->mStackStart = (intptr)&thread;
 	internalThread->ThreadStarted();
-	
+
 	bool isAutoDelete = gBfRtCallbacks.Thread_IsAutoDelete(thread);	
 	gBfRtCallbacks.Thread_ThreadProc(thread);
 	bool isLastThread = BfpSystem_InterlockedExchangeAdd32((uint32*)&gLiveThreadCount, -1) == 1;
 
     //printf("Stopping thread\n");
-	
+    
 	bool wantsDelete = false;
 	//
 	{	
@@ -143,8 +148,7 @@ static void BF_CALLTYPE CStartProc(void* threadParam)
 		if (internalThread->mThread == NULL)
 		{
 			// If the thread was already deleted then we need to delete ourselves now			
-			wantsDelete = true;
-			internalThread = NULL;
+			wantsDelete = true;			
 		}
 	}
 
@@ -194,6 +198,9 @@ void Thread::StartInternal()
 	BfpSystem_InterlockedExchangeAdd32((uint32*)&gLiveThreadCount, 1);
 
 	BfInternalThread* internalThread = SetupInternalThread();
+	
+	Beefy::AutoCrit autoCrit(internalThread->mCritSect);
+	internalThread->mStarted = true;
 	internalThread->mThread = this;
 #ifdef _WIN32
 	internalThread->mThreadHandle = BfpThread_Create(CStartProc, (void*)this, GetMaxStackSize(), (BfpThreadCreateFlags)(BfpThreadCreateFlag_StackSizeReserve | BfpThreadCreateFlag_Suspended), &internalThread->mThreadId);
@@ -203,6 +210,12 @@ void Thread::StartInternal()
 	internalThread->mThreadHandle = BfpThread_Create(CStartProc, (void*)this, GetMaxStackSize(), (BfpThreadCreateFlags)(BfpThreadCreateFlag_StackSizeReserve), &internalThread->mThreadId);
 	SetInternalThread(internalThread);	
 #endif
+}
+
+void Thread::ThreadStarted()
+{
+	auto internalThread = GetInternalThread();
+	internalThread->mCritSect.Unlock();
 }
 
 int Thread::GetThreadId()
@@ -221,11 +234,22 @@ void Thread::InternalFinalize()
 	auto internalThread = GetInternalThread();
 	if (internalThread == NULL)
 		return;
-
+	
 	bool wantsJoin = false;
+
+	bool started = false;
 	//
 	{
 		Beefy::AutoCrit autoCrit(internalThread->mCritSect);
+		started = internalThread->mStarted;
+	}
+
+	if (started)
+		internalThread->mStartedEvent.WaitFor();
+
+	//
+	{
+		Beefy::AutoCrit autoCrit(internalThread->mCritSect);		
 		if ((!internalThread->mDone) && (internalThread->mJoinOnDelete))
 		{
 			if (this != BfGetCurrentThread())
@@ -255,6 +279,9 @@ void Thread::InternalFinalize()
 		SetInternalThread(NULL);
 	}
 
+	if (internalThread->mIsManualInit)
+		wantsDelete = true;
+
 	if (wantsDelete)
 		delete internalThread;	
 }
@@ -283,53 +310,3 @@ void Thread::MemoryBarrier()
 {
 	BF_FULL_MEMORY_FENCE();
 }
-
-//////////////////////////////////////////////////////////////////////////
-
-// BfInternalThread::BfInternalThread()
-// {
-// #ifdef BF_GC_SUPPORTED
-// 	mBFIThreadData = NULL;
-// #endif
-// 	
-// 	mThread = NULL;		
-// 	mThreadHandle = 0;	
-// 	mStarted = false;
-// 	mRunning = false;
-// 	mDone = false;	
-// 	mIsSuspended = false;	
-// }
-// 
-// BfInternalThread::~BfInternalThread()
-// {
-// 	if (mThreadHandle != 0)
-// 	{
-//         BfpThread_Release(mThreadHandle);
-// 	}	
-// }
-// 
-// void BfInternalThread::ManualThreadInit(bf::System::Threading::Thread* thread)
-// {
-// 	bf::System::Threading::Thread* newThread = thread;
-// 
-// 	mStarted = true;
-// 	mThread = newThread;
-// 	newThread->SetInternalThread(this);
-// 	mThreadId = BfpThread_GetCurrentId();
-// 	mThreadHandle = BfpThread_GetCurrent();	
-// 	mStackStart = ((intptr)&newThread + 0xFFF) & ~(intptr)0xFFF;
-// 	ThreadStarted();
-// }
-
-// void BfInternalThread::ThreadStarted()
-// {	
-// 	BF_ASSERT((gBfRtFlags & BfRtFlags_ObjectHasDebugFlags) == 0);
-//     int threadPriority = BfpThread_GetPriority(mThreadHandle, NULL);
-// 	mRunning = true;
-// }
-// 
-// void BfInternalThread::ThreadStopped()
-// {
-// 	BF_ASSERT((gBfRtFlags & BfRtFlags_ObjectHasDebugFlags) == 0);
-// 	mRunning = false;
-// }

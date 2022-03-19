@@ -966,14 +966,14 @@ void BfModule::RemoveModuleData()
 }
 
 void BfModule::Init(bool isFullRebuild)
-{	
+{
 	mContext->mFinishedModuleWorkList.Remove(this);
 
 	if ((mCompiler->mIsResolveOnly) && (this != mContext->mUnreifiedModule))
 		BF_ASSERT(mIsReified);
 
 	if (!mIsScratchModule)
-	{		
+	{
 		mCompiler->mStats.mModulesStarted++;
 		if (mIsReified)
 			mCompiler->mStats.mReifiedModuleCount++;
@@ -981,7 +981,7 @@ void BfModule::Init(bool isFullRebuild)
 	}
 
 	mIsHotModule = (mProject != NULL) && (mCompiler->mOptions.mHotProject != NULL) && (mCompiler->mOptions.mHotProject->ContainsReference(mProject));
-	
+
 	mFuncReferences.Clear();
 	mClassVDataRefs.Clear();
 	mClassVDataExtRefs.Clear();
@@ -990,22 +990,25 @@ void BfModule::Init(bool isFullRebuild)
 	CleanupFileInstances();
 	mStaticFieldRefs.Clear();
 	//mInterfaceSlotRefs.Clear();
-	
+
 	// If we are just doing an extension then the ownede types aren't rebuilt.
 	//  If we set mRevision then QueueMethodSpecializations wouldn't actually queue up required specializations
 	//  and we'd end up with link errors if the original module uniquely referred to any generic methods
 	if (isFullRebuild)
-		mRevision = mCompiler->mRevision;	
+		mRevision = mCompiler->mRevision;
 
 	BF_ASSERT(mCurTypeInstance == NULL);
-		
+
 	mIsModuleMutable = true;
 	BF_ASSERT((mBfIRBuilder == NULL) || (mCompiler->mIsResolveOnly));
+	if (!mIsComptimeModule)
+	{
 #ifdef _DEBUG
-	EnsureIRBuilder(mCompiler->mLastAutocompleteModule == this);	
+		EnsureIRBuilder(mCompiler->mLastAutocompleteModule == this);
 #else
-	EnsureIRBuilder(false);
+		EnsureIRBuilder(false);
 #endif
+	}
 
 	mCurMethodState = NULL;
 	mAwaitingInitFinish = true;
@@ -1151,7 +1154,7 @@ void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
 	if (mIsScratchModule)
 	{
 		mBfIRBuilder->mIgnoreWrites = true;
-		BF_ASSERT(!dbgVerifyCodeGen);
+		BF_ASSERT(!dbgVerifyCodeGen);		
 	}
 #ifdef _DEBUG
 	if (mCompiler->mIsResolveOnly)
@@ -6561,6 +6564,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			{
 				reflectKind = (BfReflectKind)(reflectKind | GetUserReflectKind(attr.mType));
 			}
+			delete customAttrs;
 		}
 		return reflectKind;
 	};
@@ -12225,6 +12229,9 @@ void BfModule::ProcessTypeInstCustomAttributes(int& packing, bool& isUnion, bool
 // Checking to see if we're an attribute or not
 void BfModule::ProcessCustomAttributeData()
 {
+	if (mCurTypeInstance->mAttributeData != NULL)
+		return;
+
 	bool isAttribute = false;
 	auto checkTypeInst = mCurTypeInstance->mBaseType;
 	while (checkTypeInst != NULL)

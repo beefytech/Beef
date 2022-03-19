@@ -1574,9 +1574,13 @@ BfMethodInstanceGroup::BfMethodInstanceGroup(BfMethodInstanceGroup&& prev) noexc
 	mOwner = prev.mOwner;
 	mDefault = prev.mDefault;
 	mMethodSpecializationMap = prev.mMethodSpecializationMap;
+	mDefaultCustomAttributes = prev.mDefaultCustomAttributes;
 	mMethodIdx = prev.mMethodIdx;
 	mRefCount = prev.mRefCount;
 	mOnDemandKind = prev.mOnDemandKind;
+	mExplicitlyReflected = prev.mExplicitlyReflected;
+	mHasEmittedReference = prev.mHasEmittedReference;
+
 	if (mDefault != NULL)
 		mDefault->mMethodInstanceGroup = this;
 	if (mMethodSpecializationMap != NULL)
@@ -1584,9 +1588,8 @@ BfMethodInstanceGroup::BfMethodInstanceGroup(BfMethodInstanceGroup&& prev) noexc
 		for (auto& pair : *mMethodSpecializationMap)
 			pair.mValue->mMethodInstanceGroup = this;
 	}
-	mDefaultCustomAttributes = prev.mDefaultCustomAttributes;
+	
 	prev.mDefaultCustomAttributes = NULL;
-
 	prev.mRefCount = 0;
 	prev.mDefault = NULL;
 	prev.mMethodSpecializationMap = NULL;
@@ -2716,8 +2719,15 @@ void BfClosureType::Finish()
 BfDelegateType::~BfDelegateType()
 {	
 	mMethodInstanceGroups.Clear();
-	delete mTypeDef;	
+	delete mTypeDef;
 	mTypeDef = NULL;
+}
+
+void BfDelegateType::Dispose()
+{
+	delete mTypeDef;
+	mTypeDef = NULL;
+	BfTypeInstance::Dispose();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2766,6 +2776,17 @@ void BfTupleType::Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance)
 	mCreatedTypeDef = true;	
 }
 
+void BfTupleType::Dispose()
+{
+	if (mCreatedTypeDef)
+	{
+		delete mTypeDef;
+		mTypeDef = NULL;
+		mCreatedTypeDef = false;
+	}
+	BfTypeInstance::Dispose();
+}
+
 BfFieldDef* BfTupleType::AddField(const StringImpl& name)
 {
 	return BfDefBuilder::AddField(mTypeDef, NULL, name);
@@ -2790,8 +2811,8 @@ void BfTupleType::Finish()
 
 BfBoxedType::~BfBoxedType()
 {
-	if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
-		mTypeDef = NULL;
+	//if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
+	mTypeDef = NULL;
 }
 
 BfType* BfBoxedType::GetModifiedElementType()
@@ -2940,7 +2961,7 @@ BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression*
 	outType = NULL; 
 
 	BfConstResolver constResolver(ctx->mModule);
-	BfVariant variant = { BfTypeCode_None };	
+	BfVariant variant;
 	constResolver.mAllowGenericConstValue = true;
 	constResolver.mBfEvalExprFlags = BfEvalExprFlags_NoCast;
 	constResolver.mExpectingType = ctx->mModule->GetPrimitiveType(BfTypeCode_Int64);

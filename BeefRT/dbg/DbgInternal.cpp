@@ -547,8 +547,11 @@ void Internal::Dbg_ObjectPreCustomDelete(bf::System::Object* object)
 {
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 
-	const char* errorPtr = NULL;
+	if ((object->mObjectFlags & BfObjectFlag_AppendAlloc) != 0)
+		return;
 
+	const char* errorPtr = NULL;
+	
 	if ((object->mObjectFlags & BfObjectFlag_StackAlloc) != 0)
 		errorPtr = "Attempting to delete stack-allocated object";
 	if ((object->mObjectFlags & BfObjectFlag_Deleted) != 0)
@@ -564,8 +567,7 @@ void Internal::Dbg_ObjectPreCustomDelete(bf::System::Object* object)
 		errorStr += StrFormat("   (%s)0x%@\n", typeName.c_str(), object);
 		SETUP_ERROR(errorStr.c_str(), 2);
 		BF_DEBUG_BREAK();
-		BFRTCALLBACKS.DebugMessageData_Fatal();
-		return;
+		BFRTCALLBACKS.DebugMessageData_Fatal();		
 	}
 }
 

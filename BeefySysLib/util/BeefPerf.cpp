@@ -870,7 +870,7 @@ void* BpManager::AllocBytes(int size)
 
 void BpManager::FreeBytes(void* ptr)
 {
-	delete (uint8*)ptr;
+	delete [] (uint8*)ptr;
 }
 
 void BpManager::FinishWorkThread()

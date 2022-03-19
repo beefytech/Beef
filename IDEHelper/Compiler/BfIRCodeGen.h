@@ -121,6 +121,7 @@ public:
 	Dictionary<llvm::Type*, llvm::Type*> mAlignedTypeToNormalType;
 	Dictionary<llvm::Type*, int> mTypeToTypeIdMap;
 	HashSet<llvm::BasicBlock*> mLockedBlocks;
+	OwnedArray<BfIRIntrinsicData> mIntrinsicData;
 
 public:		
 	void InitTarget();

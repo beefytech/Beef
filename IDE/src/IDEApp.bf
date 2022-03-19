@@ -11554,11 +11554,13 @@ namespace IDE
 
 		public void CreateSpellChecker()
 		{
+#if !CLI
 			mSpellChecker = new SpellChecker();
 			if (mSpellChecker.Init(scope String(mInstallDir, "en_US")) case .Err)
 			{
 				DeleteAndNullify!(mSpellChecker);
 			}
+#endif
 		}
 
 		public FileVersionInfo GetVersionInfo(out DateTime exeTime)

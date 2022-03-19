@@ -68,8 +68,9 @@ public:
 	};
 
 	BfSizedArray()
-	{
+	{		
 		mSize = 0;
+		mVals = NULL;
 	}
 
 	BfSizedArray(const llvm::SmallVectorImpl<T>& refVec)

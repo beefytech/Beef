@@ -55,6 +55,7 @@ namespace bf
 				BFRT_EXPORT static Thread* GetCurrentThreadNative();
 				BFRT_EXPORT unsigned long GetProcessDefaultStackSize();								
 				BFRT_EXPORT void StartInternal();				
+				BFRT_EXPORT void ThreadStarted();
 				BFRT_EXPORT void SetStackStart(void* ptr);
 				BFRT_EXPORT void InternalFinalize();				
 				BFRT_EXPORT bool IsBackgroundNative();
@@ -107,9 +108,11 @@ public:
 	bool mDone;
 	bool mStarted;
 	bool mJoinOnDelete;
+	bool mIsManualInit;
 	BfpThread* mThreadHandle;
 	intptr mThreadId;	
 	Beefy::CritSect mCritSect;
+	Beefy::SyncEvent mStartedEvent;
 
 	BfInternalThread()
 	{
@@ -120,6 +123,7 @@ public:
 		mDone = false;
 		mIsSuspended = false;
 		mJoinOnDelete = true;
+		mIsManualInit = false;
 		mStackStart = 0;
 		mThreadId = 0;
 	}
@@ -136,7 +140,9 @@ public:
 	{
 		bf::System::Threading::Thread* newThread = thread;
 
+		mIsManualInit = true;
 		mStarted = true;
+		mStartedEvent.Set(true);
 		mThread = newThread;
 		newThread->SetInternalThread(this);
 		mThreadId = BfpThread_GetCurrentId();

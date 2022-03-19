@@ -104,6 +104,13 @@ struct BfVariant
 			return mSingle;
 		return (double)mInt64;
 	}
+
+	BfVariant()
+	{
+		mTypeCode = BfTypeCode_None;
+		mWarnType = 0;
+		mUInt64 = 0;
+	}
 };
 
 enum BfToken : uint8

@@ -146,11 +146,13 @@ public:
 	Array<T*> mVals;
 	T* mNext;
 	bool mOwnsAll;
+	bool mZeroAlloc;
 
 public:
-	BfAllocPool(bool ownsAll = false)
+	BfAllocPool(bool ownsAll = false, bool zeroAlloc = false)
 	{
 		mOwnsAll = ownsAll;
+		mZeroAlloc = zeroAlloc;
 		mNext = NULL;
 	}
 
@@ -160,8 +162,13 @@ public:
 			delete mNext;
 		for (auto val : mVals)
 		{
-			val->~T();
-			free(val);
+			if (mZeroAlloc)
+			{
+				val->~T();
+				free(val);
+			}
+			else
+				delete val;
 		}
 	}
 
@@ -176,10 +183,15 @@ public:
 				mVals.pop_back();
 				return val;
 			}
-			//val = new T();
-			void* addr = malloc(sizeof(T));
-			memset(addr, 0, sizeof(T));
-			val = new(addr) T();
+			
+			if (mZeroAlloc)
+			{
+				void* addr = malloc(sizeof(T));
+				memset(addr, 0, sizeof(T));
+				val = new(addr) T();
+			}
+			else 			
+				val = new T();
 			if (mOwnsAll)
 				mVals.push_back(val);
 			return val;

@@ -4110,7 +4110,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 				else
 				{
-					typeInstance->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, attrTarget);
+					
+					typeInstance->mCustomAttributes = new BfCustomAttributes();
+					GetCustomAttributes(typeInstance->mCustomAttributes, typeDef->mTypeDeclaration->mAttributes, attrTarget);
 				}
 			}
 		}
@@ -4127,7 +4129,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	prevSkipTypeProtectionChecks.Restore();
 	typeInstance->mInstSize = std::max(0, typeInstance->mInstSize);
 	typeInstance->mInstAlign = std::max(0, typeInstance->mInstAlign);	
-
+	
 	ProcessCustomAttributeData();
 	int packing = 0;
 	bool isUnion = false;
@@ -8355,7 +8357,6 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		BfDelegateInfo* delegateInfo = delegateType->GetDelegateInfo();
 		delegateInfo->mParams.Clear();
 		
-
 		BfTypeDef* typeDef = new BfTypeDef();
 
 		typeDef->mProject = baseDelegateType->mTypeDef->mProject;
@@ -9852,6 +9853,7 @@ void BfModule::GetDelegateTypeRefAttributes(BfDelegateTypeRef* delegateTypeRef, 
 					callingConvention = (BfCallingConvention)constant->mInt32;
 			}
 		}
+		delete customAttributes;
 	}	
 }
 

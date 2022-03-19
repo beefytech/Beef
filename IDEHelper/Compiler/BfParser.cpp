@@ -3642,7 +3642,7 @@ void BfParser::HadSrcRealloc()
 		memset(jumpTable, 0, jumpTableSize * sizeof(BfLineStartEntry));
 		memcpy(jumpTable, mJumpTable, mJumpTableSize * sizeof(BfLineStartEntry));
 
-		delete mJumpTable;
+		delete [] mJumpTable;
 
 		mJumpTable = jumpTable;
 		mJumpTableSize = jumpTableSize;

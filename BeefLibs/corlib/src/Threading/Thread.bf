@@ -73,14 +73,22 @@ namespace System.Threading
 
                 int32 stackStart = 0;
                 thread.SetStackStart((void*)&stackStart);
-                if (thread.mDelegate is ThreadStart)
+
+				var dlg = thread.mDelegate;
+				var threadStartArg = thread.mThreadStartArg;
+				thread.mDelegate = null;
+
+				thread.ThreadStarted();
+
+                if (dlg is ThreadStart)
                 {
-                    ((ThreadStart)thread.mDelegate)();
+                    ((ThreadStart)dlg)();
                 }
                 else 
                 {
-                    ((ParameterizedThreadStart)thread.mDelegate)(thread.mThreadStartArg);
+                    ((ParameterizedThreadStart)dlg)(threadStartArg);
                 }
+				delete dlg;
             }
 
             public static this()
@@ -173,6 +181,7 @@ namespace System.Threading
         extern void ManualThreadInit();
         extern void StartInternal();
         extern void SetStackStart(void* ptr);
+		extern void ThreadStarted();
 
         public void Start(bool autoDelete = true)
         {
@@ -335,10 +344,9 @@ namespace System.Threading
             mMaxStackSize = maxStackSize;
         }
 
-        
         public ~this()
         {
-            // Make sure we're not deleting manually it mAutoDelete is set
+            // Make sure we're not deleting manually if mAutoDelete is set
             Debug.Assert((!mAutoDelete) || (CurrentThread == this));
             // Delegate to the unmanaged portion.
             InternalFinalize();

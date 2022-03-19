@@ -424,8 +424,6 @@ public:
 	BfAllocPool<BfArrayType> mArrayTypeInstancePool;
 	BfAllocPool<BfGenericParamType> mGenericParamTypePool;
 	BfAllocPool<BfDirectTypeDefReference> mTypeDefTypeRefPool;
-	BfAllocPool<BfDirectStrTypeReference> mNamedTypeRefPool;
-	BfAllocPool<BfGenericInstanceTypeRef> mGenericTypeRefPool;	
 	BfAllocPool<BfConcreteInterfaceType> mConcreteInterfaceTypePool;
 	BfAllocPool<BfConstExprValueType> mConstExprValueTypePool;
 	BfAllocPool<BfDelegateType> mDelegateTypePool;	

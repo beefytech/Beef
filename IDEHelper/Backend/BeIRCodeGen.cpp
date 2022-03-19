@@ -2854,16 +2854,16 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, typeId);
 			CMD_PARAM(BeMDNode*, type);
 			auto& typeEntry = GetTypeEntry(typeId);
-			typeEntry.mDIType = (BeDbgType*)type;
+			typeEntry.mDIType = BeValueDynCast<BeDbgType>(type);
 			if (typeEntry.mInstDIType == NULL)
-				typeEntry.mInstDIType = (BeDbgType*)type;
+				typeEntry.mInstDIType = BeValueDynCast<BeDbgType>(type);
 		}
 		break;
 	case BfIRCmd_DbgSetInstType:
 		{
 			CMD_PARAM(int, typeId);
 			CMD_PARAM(BeMDNode*, type);
-			GetTypeEntry(typeId).mInstDIType = (BeDbgType*)type;
+			GetTypeEntry(typeId).mInstDIType = BeValueDynCast<BeDbgType>(type);
 		}
 		break;
 	case BfIRCmd_DbgGetType:
@@ -2955,7 +2955,7 @@ void BeIRCodeGen::HandleNextCmd()
 			dbgType->mName = name;
 			dbgType->mSize = (int)(sizeInBits / 8);
 			dbgType->mAlign = (int)(alignInBits / 8);			
-			dbgType->mDerivedFrom = (BeDbgType*)derivedFrom;
+			dbgType->mDerivedFrom = BeValueDynCast<BeDbgType>(derivedFrom);
 			dbgType->mDefFile = (BeDbgFile*)file;
 			dbgType->mDefLine = lineNum - 1;
 			dbgType->mIsFullyDefined = true;			
@@ -2981,7 +2981,7 @@ void BeIRCodeGen::HandleNextCmd()
 			dbgType->mSize = (int)(sizeInBits / 8);
 			dbgType->mAlign = (int)(alignInBits / 8);
 			dbgType->mIsFullyDefined = true;
-			dbgType->mElementType = (BeDbgType*)underlyingType;
+			dbgType->mElementType = BeValueDynCast<BeDbgType>(underlyingType);
 			for (auto member : members)
 			{
 				if (auto enumMember = BeValueDynCast<BeDbgEnumMember>(member))
@@ -3101,7 +3101,7 @@ void BeIRCodeGen::HandleNextCmd()
 			auto dbgArray = mBeModule->mDbgModule->mTypes.Alloc<BeDbgArrayType>();
 			dbgArray->mSize = (int)(sizeInBits / 8);
 			dbgArray->mAlign = (int)(alignInBits / 8);
-			dbgArray->mElement = (BeDbgType*)elementType;
+			dbgArray->mElement = BeValueDynCast<BeDbgType>(elementType);
 			dbgArray->mNumElements = numElements;
 
 			SetResult(curId, dbgArray);
@@ -3212,9 +3212,11 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int64, sizeInBits);
 			CMD_PARAM(int64, alignInBits);
 
-			auto dbgType = (BeDbgType*)mdType;
-			dbgType->mSize = (int)(sizeInBits / 8);
-			dbgType->mAlign = (int)(alignInBits / 8);
+			if (auto dbgType = BeValueDynCast<BeDbgType>(mdType))
+			{				
+				dbgType->mSize = (int)(sizeInBits / 8);
+				dbgType->mAlign = (int)(alignInBits / 8);
+			}			
 		}
 		break;
 	case BfIRCmd_DbgReplaceAllUses:
@@ -3244,7 +3246,7 @@ void BeIRCodeGen::HandleNextCmd()
 			}			
 			else if (auto dbgType = BeValueDynCast<BeDbgEnumType>(diNode))
 			{
-				dbgType->mElementType = (BeDbgType*)diBaseType;
+				dbgType->mElementType = BeValueDynCast<BeDbgType>(diBaseType);
 				dbgType->SetMembers(members);
 			}
 			else
@@ -3279,7 +3281,7 @@ void BeIRCodeGen::HandleNextCmd()
 
 			auto dbgMember = mBeModule->mOwnedValues.Alloc<BeDbgStructMember>();
 			dbgMember->mName = name;
-			dbgMember->mType = (BeDbgType*)type;
+			dbgMember->mType = BeValueDynCast<BeDbgType>(type);
 			dbgMember->mOffset = (int)(offsetInBits / 8);
 			dbgMember->mFlags = flags;
 
@@ -3300,7 +3302,7 @@ void BeIRCodeGen::HandleNextCmd()
 
 			auto dbgMember = mBeModule->mOwnedValues.Alloc<BeDbgStructMember>();
 			dbgMember->mName = name;
-			dbgMember->mType = (BeDbgType*)type;
+			dbgMember->mType = BeValueDynCast<BeDbgType>(type);
 			dbgMember->mOffset = -1;
 			dbgMember->mStaticValue = val;
 			dbgMember->mFlags = flags;
@@ -3317,7 +3319,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, flags);
 
 			auto dbgInheritance = mBeModule->mAlloc.Alloc<BeDbgInheritance>();
-			dbgInheritance->mBaseType = (BeDbgType*)baseType;
+			dbgInheritance->mBaseType = BeValueDynCast<BeDbgType>(baseType);
 
 			SetResult(curId, dbgInheritance);
 		}
@@ -3358,7 +3360,7 @@ void BeIRCodeGen::HandleNextCmd()
 			for (auto arg : genericArgs)					
 			{
 				BF_ASSERT(arg != NULL);
-				dbgFunc->mGenericArgs.Add((BeDbgType*)arg);
+				dbgFunc->mGenericArgs.Add(BeValueDynCast<BeDbgType>(arg));
 			}
 			for (auto genericConstValue : genericConstValueArgs)
 				dbgFunc->mGenericConstValueArgs.Add(genericConstValue);
@@ -3457,9 +3459,9 @@ void BeIRCodeGen::HandleNextCmd()
 			auto dbgFuncType = mBeModule->mOwnedValues.Alloc<BeDbgFunctionType>();
 			if (!elements.empty())
 			{
-				dbgFuncType->mReturnType = (BeDbgType*)elements[0];
+				dbgFuncType->mReturnType = BeValueDynCast<BeDbgType>(elements[0]);
 				for (int i = 1; i < (int)elements.size(); i++)
-					dbgFuncType->mParams.push_back((BeDbgType*)elements[i]);
+					dbgFuncType->mParams.push_back(BeValueDynCast<BeDbgType>(elements[i]));
 			}
 
 			SetResult(curId, dbgFuncType);

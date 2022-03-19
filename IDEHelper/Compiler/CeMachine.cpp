@@ -5087,6 +5087,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 		retAddr = stackPtr - memStart;
 	}
 
+	delete mCeMachine->mAppendAllocInfo;
 	mCeMachine->mAppendAllocInfo = NULL;
 
 	BfType* returnType = NULL;
@@ -6705,7 +6706,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					CE_CHECKADDR(outStdInAddr, ptrSize);
 				if (outStdOutAddr != 0)
 					CE_CHECKADDR(outStdOutAddr, ptrSize);
-				if (outStdErrAddr != NULL)
+				if (outStdErrAddr != 0)
 					CE_CHECKADDR(outStdErrAddr, ptrSize);
 
 				BfpFile* outStdIn = NULL;
@@ -8526,6 +8527,8 @@ CeMachine::~CeMachine()
 
 void CeMachine::Init()
 {
+	BF_ASSERT(mCeModule == NULL);
+
 	mCeModule = new BfModule(mCompiler->mContext, "__constEval");
 	mCeModule->mIsSpecialModule = true;
 	//mCeModule->mIsScratchModule = true;
@@ -8537,6 +8540,7 @@ void CeMachine::Init()
 		mCeModule->mIsReified = false;
 	mCeModule->Init();
 
+	BF_ASSERT(mCeModule->mBfIRBuilder == NULL);
 	mCeModule->mBfIRBuilder = new BfIRBuilder(mCeModule);
 	mCeModule->mBfIRBuilder->mDbgVerifyCodeGen = true;
 	mCeModule->FinishInit();

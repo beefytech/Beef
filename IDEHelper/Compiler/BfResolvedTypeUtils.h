@@ -2007,7 +2007,7 @@ public:
 	
 	~BfTypeInstance();	
 	
-	void Dispose();
+	virtual void Dispose();
 	void ReleaseData();	
 
 	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { if (typeDef == NULL) return false; return typeDef->GetDefinition() == mTypeDef->GetDefinition(); }
@@ -2245,6 +2245,7 @@ public:
 	}
 	~BfDelegateType();
 	
+	virtual void Dispose() override;
 	virtual bool IsOnDemand() override { return true; }
 	
 	virtual bool IsDelegate() override { return mTypeDef->mIsDelegate; }
@@ -2277,6 +2278,7 @@ public:
 	~BfTupleType();
 
 	void Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance);
+	virtual void Dispose() override;
 	BfFieldDef* AddField(const StringImpl& name);
 	void Finish();
 

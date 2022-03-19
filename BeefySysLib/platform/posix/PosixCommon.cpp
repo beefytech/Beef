@@ -1219,6 +1219,10 @@ struct BfpThread
     {
     }
 
+    ~BfpThread()
+    {     
+    }
+
     void Release()
     {
         int refCount = __sync_fetch_and_sub(&mRefCount, 1) - 1;
@@ -1240,11 +1244,13 @@ static __thread BfpThreadInfo gCurrentThreadInfo;
 void* ThreadFunc(void* threadParam)
 {
     BfpThread* thread = (BfpThread*)threadParam;
+    
     gCurrentThread = thread;
     thread->mStartProc(thread->mThreadParam);
 #ifndef BFP_HAS_PTHREAD_TIMEDJOIN_NP
     BfpEvent_Set(thread->mDoneEvent, true);
-#endif      
+#endif    
+    
     thread->Release();
     return NULL;
 }
@@ -1300,6 +1306,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Release(BfpThread* thread)
         pthread_detach(thread->mPThread);
         thread->mPThreadReleased = true;
     }
+    
     thread->Release();
 }
 
@@ -1485,6 +1492,7 @@ BFP_EXPORT BfpCritSect* BFP_CALLTYPE BfpCritSect_Create()
 BFP_EXPORT void BFP_CALLTYPE BfpCritSect_Release(BfpCritSect* critSect)
 {
     pthread_mutex_destroy(&critSect->mPMutex);
+    delete critSect;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpCritSect_Enter(BfpCritSect* critSect)
@@ -1564,6 +1572,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpEvent_Release(BfpEvent* event)
 {
     pthread_cond_destroy(&event->mCondVariable);
     pthread_mutex_destroy(&event->mMutex);
+    delete event;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpEvent_Set(BfpEvent* event, bool requireManualReset)
@@ -2266,7 +2275,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetFullPath(const char* inPath, char* outPa
     else
     {
         char* cwdPtr = getcwd(NULL, 0);
-        Beefy::String cwdPath = cwdPtr;
+    Beefy::String cwdPath = cwdPtr;
         free(cwdPtr);
         str = GetAbsPath(inPath, cwdPath);
     }
@@ -2324,6 +2333,7 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
     if (!BfpFindFileData_FindNextFile(findData))
     {            
         OUTRESULT(BfpFileResult_NoResults);
+        closedir(findData->mDirStruct);
         delete findData;
         return NULL;
     }    
@@ -2448,6 +2458,7 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpFindFileData_GetFileSize(BfpFindFileData* findD
 
 BFP_EXPORT void BFP_CALLTYPE BfpFindFileData_Release(BfpFindFileData* findData)
 {
+    closedir(findData->mDirStruct);
     delete findData;
 }
 

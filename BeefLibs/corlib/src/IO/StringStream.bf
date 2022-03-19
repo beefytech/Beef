@@ -54,7 +54,7 @@ namespace System.IO
 			case .Copy:
 				mString.Set(str);
 			case .Reference:
-				mString = new String();
+				mStringKind = .Reference;
 				mString.Reference(str.Ptr, str.Length);
 			}
 		}

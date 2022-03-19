@@ -41,12 +41,7 @@ BfSource::~BfSource()
 	delete mSourceData;
 
 	if (mSrcAllocSize >= 0)
-		delete mSrc;	
-
-	for (auto typeDef : mTypeDefs)
-	{
-		NOP;
-	}
+		delete [] mSrc;
 }
 
 bool BfSource::WantsStats()
@@ -84,7 +79,7 @@ int BfSource::AllocChars(int charCount)
 		if (mSrc != NULL)
 		{
 			memcpy(newSrc, mSrc, mSrcLength);
-			delete mSrc;
+			delete [] mSrc;
 		}
 		mSrc = newSrc;
 		mSrcAllocSize = newAllocSize;

@@ -370,8 +370,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mHadCancel = false;
 	mCompileState = CompileState_None;
 
-	//mMaxInterfaceSlots = 4;	
-	mContext = new BfContext(this);	
+	//mMaxInterfaceSlots = 4;		
 	mHotData = NULL;
 	mHotState = NULL;	
 	mHotResolveData = NULL;
@@ -479,8 +478,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 
 	mLastAutocompleteModule = NULL;
 
-	//if (isResolveOnly)
-	//mCeMachine = NULL;
+	mContext = new BfContext(this);	
 	mCeMachine = new CeMachine(this);
 	mCurCEExecuteId = -1;
 }
