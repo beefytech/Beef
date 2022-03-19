@@ -7415,8 +7415,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						expandedParamAlloca = mModule->CreateAlloca(genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0], true, NULL, mModule->GetConstValue(numElements));
 						mModule->mBfIRBuilder->CreateStore(expandedParamAlloca, mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 1));
 						mModule->mBfIRBuilder->CreateStore(mModule->GetConstValue(numElements), mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 2));
-
-						PushArg(expandedParamsArray, irArgs);
+						
+						PushArg(expandedParamsArray, irArgs, !wantsSplat);
 						continue;
 					}
 					else if (wantType->IsSizedArray())
@@ -7434,7 +7434,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 						expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);
 						expandedParamAlloca = mModule->mBfIRBuilder->CreateBitCast(expandedParamsArray.mValue, mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(expandedParamsElementType)));
-						PushArg(expandedParamsArray, irArgs);
+						PushArg(expandedParamsArray, irArgs, !wantsSplat);
 						continue;
 					}
 				}
