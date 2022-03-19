@@ -2900,22 +2900,6 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias)
 
 	if (aliasToType != NULL)
 	{
-		typeAlias->mSize = aliasToType->mSize;
-		typeAlias->mAlign = aliasToType->mAlign;
-
-		if (auto aliasToTypeInst = aliasToType->ToTypeInstance())
-		{
-			typeAlias->mInstSize = aliasToTypeInst->mInstSize;
-			typeAlias->mInstAlign = aliasToTypeInst->mInstAlign;
-		}
-		else
-		{
-			typeAlias->mInstSize = aliasToType->mSize;
-			typeAlias->mInstAlign = aliasToType->mAlign;
-		}
-	}
-	else
-	{
 		typeAlias->mSize = 0;
 		typeAlias->mAlign = 1;
 		typeAlias->mInstSize = 0;
@@ -8741,6 +8725,28 @@ bool BfModule::ResolveTypeResult_Validate(BfAstNode* typeRef, BfType* resolvedTy
 	return true;
 }
 
+BfType* BfModule::SafeResolveAliasType(BfTypeAliasType* aliasType)
+{
+	int aliasDepth = 0;
+	HashSet<BfType*> seenAliases;
+	
+	BfType* type = aliasType;
+	while (type->IsTypeAlias())
+	{
+		aliasDepth++;
+		if (aliasDepth > 8)
+		{
+			if (!seenAliases.Add(type))
+				return NULL;
+		}
+
+		type = type->GetUnderlyingType();
+		if (type == NULL)
+			return NULL;		
+	}
+	return type;
+}
+
 BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTypeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
 	if ((mCompiler->mIsResolveOnly) && (!IsInSpecializedSection()))
@@ -8808,26 +8814,24 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			
 			BfSourceElementType elemType = BfSourceElementType_Type;
 			{
-				auto typeRef = resolvedTypeRef;
-				while (typeRef->IsTypeAlias())
+				auto type = resolvedTypeRef;
+
+				if (type->IsTypeAlias())
 				{
-					typeRef = typeRef->GetUnderlyingType();
-					if (typeRef == NULL)
-					{
-						typeRef = resolvedTypeRef;
-						break;
-					}
+					type = SafeResolveAliasType((BfTypeAliasType*)type);
+					if (type == NULL)
+						type = resolvedTypeRef;
 				}
 
-				if (typeRef->IsInterface())
+				if (type->IsInterface())
 					elemType = BfSourceElementType_Interface;
-				else if (typeRef->IsObject())
+				else if (type->IsObject())
 					elemType = BfSourceElementType_RefType;
-				else if (typeRef->IsGenericParam())
+				else if (type->IsGenericParam())
 					elemType = BfSourceElementType_GenericParam;
-				else if (typeRef->IsPrimitiveType())
+				else if (type->IsPrimitiveType())
 					elemType = BfSourceElementType_PrimitiveType;
-				else if (typeRef->IsStruct() || (typeRef->IsTypedPrimitive() && !typeRef->IsEnum()))
+				else if (type->IsStruct() || (type->IsTypedPrimitive() && !type->IsEnum()))
 					elemType = BfSourceElementType_Struct;
 			}
 
@@ -9029,8 +9033,22 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	
 	if ((populateType != BfPopulateType_TypeDef) && (populateType != BfPopulateType_IdentityNoRemapAlias))
 	{
+		int aliasDepth = 0;
+		HashSet<BfType*> seenAliases;
+
 		while ((resolvedTypeRef != NULL) && (resolvedTypeRef->IsTypeAlias()))
 		{
+			aliasDepth++;
+			if (aliasDepth > 8)
+			{
+				if (!seenAliases.Add(resolvedTypeRef))
+				{
+					if ((typeRef != NULL) && (!typeRef->IsTemporary()))
+						Fail(StrFormat("Type alias '%s' has a recursive definition", TypeToString(resolvedTypeRef).c_str()), typeRef);
+					break;
+				}
+			}
+
 			if (mCurTypeInstance != NULL)
 				AddDependency(resolvedTypeRef, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
 			if (resolvedTypeRef->mDefineState == BfTypeDefineState_Undefined)
@@ -9041,7 +9059,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			if (resolvedTypeRef != NULL)
 				typeInstance = resolvedTypeRef->ToTypeInstance();
 			else
-				typeInstance = NULL;
+				typeInstance = NULL;			
 		}
 	}
 

@@ -3650,6 +3650,13 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 		}
 	}
 
+	if (usedType->IsTypeAlias())
+	{
+		usedType = SafeResolveAliasType((BfTypeAliasType*)usedType);
+		if (usedType == NULL)
+			return;
+	}
+
 	if (!usedType->IsGenericTypeInstance())
 	{
 		auto underlyingType = usedType->GetUnderlyingType();
