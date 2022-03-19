@@ -614,7 +614,8 @@ String BfMethodDef::ToString()
 			methodText += ", ";
 		if (paramDef->mParamKind == BfParamKind_Params)
 			methodText += "params ";
-		paramDef->mTypeRef->ToString(methodText);
+		if (paramDef->mTypeRef != NULL)
+			paramDef->mTypeRef->ToString(methodText);
 		methodText += " ";
 		methodText += paramDef->mName;
 		if ((paramDef->mParamDeclaration != NULL) && (paramDef->mParamDeclaration->mInitializer != NULL))
@@ -3618,7 +3619,7 @@ int BfSystem::GetGenericParamIdx(const Array<BfGenericParamDef*>& genericParams,
 
 int BfSystem::GetGenericParamIdx(const Array<BfGenericParamDef*>& genericParams, BfTypeReference* typeRef)
 {
-	if (!typeRef->IsA<BfNamedTypeReference>())
+	if ((typeRef == NULL) || (!typeRef->IsA<BfNamedTypeReference>()))
 		return -1;
 	return GetGenericParamIdx(genericParams, typeRef->ToString());
 }

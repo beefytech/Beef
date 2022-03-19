@@ -23120,12 +23120,12 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 		if (closureCaptureEntry != NULL)
 			resolvedParamType = closureCaptureEntry->mType;
-		else if (paramDef->mTypeRef->IsA<BfLetTypeReference>())
+		else if ((paramDef->mTypeRef != NULL) && (paramDef->mTypeRef->IsA<BfLetTypeReference>()))
 		{
 			Fail("Cannot declare 'let' parameters", paramDef->mTypeRef);
 			resolvedParamType = mContext->mBfObjectType;
 		}
-		else if (paramDef->mTypeRef->IsA<BfVarTypeReference>())
+		else if ((paramDef->mTypeRef != NULL) && (paramDef->mTypeRef->IsA<BfVarTypeReference>()))
 		{
 			if (methodDef->mMethodType != BfMethodType_Mixin)			
 			{
