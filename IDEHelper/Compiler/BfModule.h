@@ -435,6 +435,7 @@ public:
 	bool mIsDeferredBlock;
 	bool mAllowVariableDeclarations;
 	bool mInInitBlock;
+	bool mSupressNextUnreachable;
 	BfMixinState* mMixinState;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
@@ -470,6 +471,7 @@ public:
 		mHadOuterDynStack = false;		
 		mHadScopeValueRetain = false;
 		mIsDeferredBlock = false;
+		mSupressNextUnreachable = false;
 		mAllowTargeting = true;		
 		mAllowVariableDeclarations = true;
 		mInInitBlock = false;
@@ -1038,7 +1040,7 @@ public:
 	bool mMayNeedThisAccessCheck;
 	bool mLeftBlockUncond; // Definitely left block. mHadReturn also sets mLeftBlock
 	bool mLeftBlockCond; // May have left block.
-	bool mInPostReturn; // Unreachable code	
+	bool mInPostReturn; // Unreachable code		
 	bool mCrossingMixin; // ie: emitting dtors in response to a return in a mixin
 	bool mNoBind;
 	bool mInConditionalBlock; // IE: RHS of ((A) && (B)), indicates an allocation in 'B' won't be dominated by a dtor, for example		
@@ -1691,6 +1693,7 @@ public:
 	BfIRValue GetInterfaceSlotNum(BfTypeInstance* ifaceType);
 	void HadSlotCountDependency();
 	BfTypedValue GetCompilerFieldValue(const StringImpl& str);
+	BfTypedValue GetCompilerFieldValue(const BfTypedValue typedVal);
 	BfTypedValue ReferenceStaticField(BfFieldInstance* fieldInstance);
 	int GetFieldDataIdx(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName = NULL);
 	BfTypedValue GetThis(bool markUsing = true);

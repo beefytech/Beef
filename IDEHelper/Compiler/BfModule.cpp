@@ -12483,7 +12483,20 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 				{					
 					BfTypedValue result = GetCompilerFieldValue(globalVar->mName);
 					if (result)
+					{
+						// We want to avoid 'unreachable code' issues from values that
+						//  are technically constant but change depending on compilation context
+						if (mCurMethodState != NULL)
+						{
+							auto checkScope = mCurMethodState->mCurScope;
+							while (checkScope != NULL)
+							{
+								checkScope->mSupressNextUnreachable = true;
+								checkScope = checkScope->mPrevScope;
+							}
+						}
 						return result;
+					}
 					return GetDefaultTypedValue(typedValue.mType);
 				}
 			}
@@ -14576,6 +14589,32 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	}
 	return BfTypedValue();
 }
+
+BfTypedValue BfModule::GetCompilerFieldValue(BfTypedValue typedValue)
+{
+	if (!typedValue.IsAddr())
+		return BfTypedValue();
+
+	if (typedValue.mValue.IsConst())
+	{
+		auto constantValue = mBfIRBuilder->GetConstant(typedValue.mValue);
+		if (constantValue != NULL)
+		{
+			if (constantValue->mConstType == BfConstType_GlobalVar)
+			{
+				auto globalVar = (BfGlobalVar*)constantValue;
+				if (globalVar->mName[0] == '#')
+				{
+					BfTypedValue result = GetCompilerFieldValue(globalVar->mName);
+					return result;
+				}
+			}
+		}
+	}
+
+	return BfTypedValue();
+}
+
 
 BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 {		

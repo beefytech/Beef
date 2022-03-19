@@ -113,6 +113,11 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	VisitChildNoRef(expr);
 	
 	mResult = GetResult();
+	
+	auto compilerVal = mModule->GetCompilerFieldValue(mResult);
+	if (compilerVal)
+		mResult = compilerVal;
+
 	if ((mResult) && (wantType != NULL))
 	{
 		auto typeInst = mResult.mType->ToTypeInstance();

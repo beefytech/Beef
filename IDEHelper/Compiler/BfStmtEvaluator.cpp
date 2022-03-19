@@ -3453,7 +3453,8 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 			
 			if ((!hadUnreachableCode) && (!mCurMethodState->mInPostReturn))
 			{
-				Warn(BfWarning_CS0162_UnreachableCode, "Unreachable code", child);
+				if ((mCurMethodState->mCurScope == NULL) || (!mCurMethodState->mCurScope->mSupressNextUnreachable))
+					Warn(BfWarning_CS0162_UnreachableCode, "Unreachable code", child);
 
 				hadUnreachableCode = true;
 				prevInsertBlock = mBfIRBuilder->GetInsertBlock();
@@ -3462,6 +3463,8 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 				mBfIRBuilder->mIgnoreWrites = true;
 			}			
 		}
+		if ((mCurMethodState != NULL) && (mCurMethodState->mCurScope != NULL))
+			mCurMethodState->mCurScope->mSupressNextUnreachable = false;
 
 		if (itr.IsLast())
 		{
