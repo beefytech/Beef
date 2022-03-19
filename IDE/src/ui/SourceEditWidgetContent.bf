@@ -4572,21 +4572,28 @@ namespace IDE.ui
             base.Redo();
         }        
 
-		public bool IsSymbolChar(char8 c)
+		public bool IsWordBreakChar(char8 c)
 		{
-		    return (c.IsLetterOrDigit) || (c == '_');
+		    if (c < '0')
+				return true;
+			switch (c)
+			{
+			case '<', '>', '@', '^', '`', '{', '|', '}', '~':
+				return true;
+			}
+			return false;
 		}
 
 		public override void GetInsertFlags(int index, ref uint8 typeId, ref uint8 flags)
 		{
-			if ((index > 0) && (IsSymbolChar((char8)mData.mText[index - 1].mChar)))
+			if ((index > 0) && (!IsWordBreakChar((char8)mData.mText[index - 1].mChar)))
 			{
 			    typeId = mData.mText[index - 1].mDisplayTypeId; // Copy attr from prev attr
 			    flags = (uint8)(mData.mText[index - 1].mDisplayFlags & mExtendDisplayFlags) | mInsertDisplayFlags;
 			}
 			else if (index < mData.mTextLength - 1)
 			{
-				if (IsSymbolChar((char8)mData.mText[index].mChar))
+				if (!IsWordBreakChar((char8)mData.mText[index].mChar))
 				{
 				    typeId = mData.mText[index].mDisplayTypeId; // Copy attr from prev attr
 				    flags = (uint8)(mData.mText[index].mDisplayFlags & mExtendDisplayFlags) | mInsertDisplayFlags;

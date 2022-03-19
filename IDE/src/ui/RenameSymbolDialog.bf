@@ -896,6 +896,7 @@ namespace IDE.ui
         {
 			if (mClosed)
 				return;
+
 			mClosed = true;
 
 			mSourceViewPanel.CancelResolve(.GetSymbolInfo);
@@ -1018,6 +1019,16 @@ namespace IDE.ui
                 return;
             }
 
+			uint8 curTypeNum = 0;
+			uint8 curFlags = sourceEditWidgetContent.mInsertDisplayFlags;
+			sourceEditWidgetContent.GetInsertFlags(index, ref curTypeNum, ref curFlags);
+			if ((curFlags & (uint8)(SourceElementFlags.SymbolReference)) == 0)
+			{
+				// The last char was non-extending
+				Close();
+				return;
+			}
+
             // Close if insert is outside match area
             if ((index > 0) && (index < sourceEditWidgetContent.mData.mTextLength) &&
                 ((sourceEditWidgetContent.mData.mText[index - 1].mDisplayFlags & (uint8)(SourceElementFlags.SymbolReference)) == 0) &&
@@ -1064,7 +1075,7 @@ namespace IDE.ui
 
             if (mIgnoreTextChanges)
                 return;
-            
+
             int left = index;
             while (left > 0)
             {
@@ -1077,7 +1088,9 @@ namespace IDE.ui
             while (right < sourceEditWidgetContent.mData.mTextLength)
             {
                 if ((sourceEditWidgetContent.mData.mText[right].mDisplayFlags & (uint8)(SourceElementFlags.SymbolReference)) == 0)
+				{
                     break;
+				}
                 right++;
             }
 

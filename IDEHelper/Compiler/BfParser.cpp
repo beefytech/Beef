@@ -3264,6 +3264,11 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					case UTF8PROC_CATEGORY_LM:
 					case UTF8PROC_CATEGORY_LO:
 					case UTF8PROC_CATEGORY_NL:
+					case UTF8PROC_CATEGORY_SM:
+					case UTF8PROC_CATEGORY_SC:
+					case UTF8PROC_CATEGORY_SK:
+					case UTF8PROC_CATEGORY_SO:
+
 						allowChar = true;
 					default: break;
 					}
@@ -3305,6 +3310,10 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 							case UTF8PROC_CATEGORY_LM:
 							case UTF8PROC_CATEGORY_LO:
 							case UTF8PROC_CATEGORY_NL:
+							case UTF8PROC_CATEGORY_SM:
+							case UTF8PROC_CATEGORY_SC:
+							case UTF8PROC_CATEGORY_SK:
+							case UTF8PROC_CATEGORY_SO:
 
 							case UTF8PROC_CATEGORY_MN:
 							case UTF8PROC_CATEGORY_MC:
