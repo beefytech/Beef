@@ -8293,6 +8293,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 				bool hadIllegal = false;
 				bool inAssignment = false;
 				int bracketDepth = 0;
+				int parenDepth = 0;
 
 				int checkIdx = 0;
 				while (true)
@@ -8324,7 +8325,15 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 						{
 							bracketDepth--;
 						}
-						else if (bracketDepth != 0)
+						else if (tokenNode->mToken == BfToken_LParen)
+						{
+							parenDepth++;
+						}
+						else if (tokenNode->mToken == BfToken_RParen)
+						{
+							parenDepth--;
+						}
+						else if ((bracketDepth > 0) || (parenDepth > 0))
 						{
 							// Allow
 						}
@@ -8341,8 +8350,8 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 								break;
 							}
 						}
-					}
-					else if (bracketDepth != 0)
+					}					
+					else if ((bracketDepth > 0) || (parenDepth > 0))
 					{
 						// Allow
 					}
