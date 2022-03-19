@@ -2354,9 +2354,13 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 {
 	//Visit((BfAstNode*)ctorDeclaration);
 
-	QueueVisitChild(ctorDeclaration->mAttributes);
 	ExpectNewLine();
-	ExpectSpace();
+	if (ctorDeclaration->mAttributes != NULL)
+	{
+		QueueVisitChild(ctorDeclaration->mAttributes);
+		ExpectNewLine();
+	}
+
 	QueueVisitChild(ctorDeclaration->mProtectionSpecifier);	
 	ExpectSpace();
 	QueueVisitChild(ctorDeclaration->mNewSpecifier);
@@ -2950,6 +2954,11 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 				SetAndRestoreValue<BfAstNode*> prevBlockMember(mCurBlockMember, member);
 				if (auto fieldDecl = BfNodeDynCast<BfFieldDeclaration>(member))
 					ExpectNewLine();
+				else if (auto tokenNode = BfNodeDynCast<BfTokenNode>(member))
+				{
+					mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
+					mNextStateModify.mExpectingSpace = false;
+				}
 				VisitChild(member);
 			}
 			ExpectUnindent();
