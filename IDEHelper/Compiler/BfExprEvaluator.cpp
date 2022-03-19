@@ -2170,7 +2170,15 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 					}
 				}
 
-				goto NoMatch;
+				bool matches = false;
+				if (wantType->IsOut())
+				{
+					if (auto memberRefExpr = BfNodeDynCast<BfUninitializedExpression>(mArguments[argIdx].mExpression))
+						matches = true;
+				}
+
+				if (!matches)
+					goto NoMatch;
 			}
 			else
 			{
