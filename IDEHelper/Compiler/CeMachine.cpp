@@ -8487,6 +8487,8 @@ CeMachine::CeMachine(BfCompiler* compiler)
 
 CeMachine::~CeMachine()
 {
+	BF_ASSERT(mDebugger == NULL);
+
 	for (auto context : mContextList)
 		delete context;
 

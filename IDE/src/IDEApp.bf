@@ -4282,8 +4282,14 @@ namespace IDE
             return disassemblyPanel;
         }
 
+
 		[IDECommand]
 		void Compile()
+		{
+			Compile(.Normal);
+		}
+
+		void Compile(CompileKind compileKind)
 		{
 			CompilerLog("IDEApp.Compile");
 			for (let project in gApp.mWorkspace.mProjects)
@@ -4343,11 +4349,11 @@ namespace IDE
 			    if (mExecutionQueue.Count == 0)
 			    {
 			        mOutputPanel.Clear();
-					if (mDebugger?.mIsComptimeDebug == true)
+					if (compileKind == .DebugComptime)
 			        	OutputLine("Compiling with comptime debugging...");
 					else
 						OutputLine("Compiling...");
-			        Compile(.Normal, null);
+			        Compile(compileKind, null);
 			    }
 			}
 			else
@@ -4355,7 +4361,7 @@ namespace IDE
 			    mOutputPanel.Clear();
 			    OutputLine("Hot Compiling...");
 			    Project runningProject = mWorkspace.mStartupProject;
-			    Compile(.Normal, runningProject);
+			    Compile(compileKind, runningProject);
 			}
 		}
 
@@ -4461,12 +4467,7 @@ namespace IDE
 				return;
 
 			CheckDebugVisualizers();
-			mTargetDidInitBreak = true;
-			mTargetStartWithStep = false;
-			mDebugger.ComptimeAttach(mBfBuildCompiler);
-			mDebugger.RehupBreakpoints(true);
-			mBfBuildCompiler.ForceRebuild();
-			Compile();
+			Compile(.DebugComptime);
 		}
 
 		[IDECommand]
@@ -10730,7 +10731,7 @@ namespace IDE
 
             mOutputPanel.Clear();            
             OutputLine("Compiling...");
-            if (!Compile(debug ? .DebugAfter : .RunAfter))
+            if (!Compile(debug ? .DebugAfter : .RunAfter, null))
 				return false;
 			return true;
         }
@@ -10905,7 +10906,7 @@ namespace IDE
 			}
 		}
 
-        protected bool Compile(CompileKind compileKind = .Normal, Project hotProject = null)
+        protected bool Compile(CompileKind compileKind, Project hotProject)
         {
 			Debug.Assert(mBuildContext == null);
 
@@ -11145,6 +11146,15 @@ namespace IDE
 				}
 			}
 
+			if (compileKind == .DebugComptime)
+			{
+				mTargetDidInitBreak = true;
+				mTargetStartWithStep = false;
+				mDebugger.ComptimeAttach(mBfBuildCompiler);
+				mDebugger.RehupBreakpoints(true);
+				mBfBuildCompiler.ForceRebuild();
+			}
+
 			bool lastCompileHadMessages = mLastCompileHadMessages;
 			mLastCompileFailed = false;
 			mLastCompileSucceeded = false;
@@ -11164,7 +11174,7 @@ namespace IDE
             if ((mDebugger != null) && (mDebugger.mIsRunning) && (hotProject == null))
 			{
 				Debug.Assert(!mDebugger.mIsRunningCompiled);
-				Debug.Assert(compileKind == .Normal);
+				Debug.Assert((compileKind == .Normal) || (compileKind == .DebugComptime));
 			}
 
             mHaveSourcesChangedExternallySinceLastCompile = false;

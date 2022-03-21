@@ -14,6 +14,7 @@ namespace IDE
 		case Normal;
 		case RunAfter;
 		case DebugAfter;
+		case DebugComptime;
 		case Test;
 
 		public bool WantsRunAfter
