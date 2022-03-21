@@ -13248,6 +13248,9 @@ bool BfModule::StrictCompareMethodSignatures(BfMethodInstance* methodA, BfMethod
 
 bool BfModule::IsCompatibleInterfaceMethod(BfMethodInstance* iMethodInst, BfMethodInstance* methodInstance)
 {
+	if ((iMethodInst->GetNumGenericParams() != 0) || (methodInstance->GetNumGenericParams() != 0))
+		return false;
+
 	if (iMethodInst->mMethodDef->mName != methodInstance->mMethodDef->mName)
 		return false;
 
@@ -24635,7 +24638,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				hadNameMatch = iMethodInst;
 
 			bool doesMethodSignatureMatch = CompareMethodSignatures(iMethodInst, methodInstance);			
-			if ((!doesMethodSignatureMatch) && (iMethodInst->GetNumGenericParams() == 0) && (interfaceMethodEntry->mMethodRef.IsNull()))
+			if ((!doesMethodSignatureMatch) && (interfaceMethodEntry->mMethodRef.IsNull()))
 			{
 				doesMethodSignatureMatch = IsCompatibleInterfaceMethod(iMethodInst, methodInstance);
 			}
