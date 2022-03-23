@@ -2,6 +2,7 @@ namespace System
 {
 	namespace Interop
 	{
+		typealias c_bool = bool;
 		typealias c_short = int16;
 		typealias c_ushort = uint16;
 		typealias c_int = int32;
