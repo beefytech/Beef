@@ -372,17 +372,17 @@ void __cdecl operator delete(void* val, int a, const char* name, int line)
 	free(val);
 }
 
-extern "C" void* __cdecl _set_purecall_handler(void*  _Handler)
+extern "C" __declspec(dllexport) void* __cdecl _set_purecall_handler(void*  _Handler)
 {
 	return 0;
 }
 
-extern "C" void* __cdecl _set_invalid_parameter_handler(void*  _Handler)
+extern "C" __declspec(dllexport) void* __cdecl _set_invalid_parameter_handler(void*  _Handler)
 {
 	return 0;
 }
 
-extern "C" unsigned int __cdecl _set_abort_behavior(unsigned int _Flags, unsigned int _Mask)
+extern "C" __declspec(dllexport) unsigned int __cdecl _set_abort_behavior(unsigned int _Flags, unsigned int _Mask)
 {
 	return 0;
 }
@@ -420,7 +420,7 @@ typedef int (PROC_vfprintf_l)(
  	return ::GetProcAddress(gCrtLib, name);
  }
 
-extern "C" int __cdecl __stdio_common_vsprintf(
+extern "C" __declspec(dllexport) int __cdecl __stdio_common_vsprintf(
 	unsigned __int64 const options,
 	char*            const buffer,
 	size_t           const buffer_count,
@@ -433,7 +433,7 @@ extern "C" int __cdecl __stdio_common_vsprintf(
 	return p_vsnprintf_s_l(buffer, buffer_count, -1, format, locale, arglist);
 }
 
-extern "C" int __cdecl __stdio_common_vfprintf(
+extern "C" __declspec(dllexport) int __cdecl __stdio_common_vfprintf(
 	unsigned __int64 const options,
 	FILE*            const stream,
 	char const*      const format,
@@ -445,7 +445,7 @@ extern "C" int __cdecl __stdio_common_vfprintf(
 	return p_vfprintf_l(stream, format, locale, arglist);	
 }
 
-extern "C" FILE* __cdecl __acrt_iob_func(unsigned const id)
+extern "C" __declspec(dllexport) FILE* __cdecl __acrt_iob_func(unsigned const id)
 {
 	return gStdFiles[id];
 }
@@ -455,7 +455,7 @@ extern "C" __declspec(noreturn) void __cdecl __std_terminate()
 	terminate();
 }
 
-extern "C" float roundf(float val)
+extern "C" __declspec(dllexport) float roundf(float val)
 {	
 	if (!_finitef(val))
 	{
@@ -477,7 +477,7 @@ extern "C" float roundf(float val)
 	}
 }
 
-extern "C" double round(double val)
+extern "C" __declspec(dllexport) double round(double val)
 {
 	if (!_finite(val))
 	{
@@ -499,12 +499,12 @@ extern "C" double round(double val)
 	}
 }
 
-extern "C" char* strdup(const char* str)
+extern "C" __declspec(dllexport) char* strdup(const char* str)
 {
 	return _strdup(str);
 }
 
-extern "C" void __CxxFrameHandler4()
+extern "C" __declspec(dllexport) void __CxxFrameHandler4()
 {
 }
 
