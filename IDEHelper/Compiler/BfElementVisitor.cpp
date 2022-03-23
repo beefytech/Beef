@@ -83,15 +83,23 @@ void BfElementVisitor::Visit(BfGenericConstraintsDeclaration* genericConstraints
 {
 	Visit(genericConstraints->ToBase());
 
-	for (auto genericConstraint : genericConstraints->mGenericConstraints)
+	for (auto genericConstraintNode : genericConstraints->mGenericConstraints)
 	{		
-		VisitChild(genericConstraint->mWhereToken);
-		VisitChild(genericConstraint->mTypeRef);
-		VisitChild(genericConstraint->mColonToken);
-		for (auto val : genericConstraint->mConstraintTypes)
-			VisitChild(val);
-		for (auto val : genericConstraint->mCommas)
-			VisitChild(val);		
+		if (auto genericConstraint = BfNodeDynCast<BfGenericConstraint>(genericConstraintNode))
+		{
+			VisitChild(genericConstraint->mWhereToken);
+			VisitChild(genericConstraint->mTypeRef);
+			VisitChild(genericConstraint->mColonToken);
+			for (auto val : genericConstraint->mConstraintTypes)
+				VisitChild(val);
+			for (auto val : genericConstraint->mCommas)
+				VisitChild(val);
+		}
+		else if (auto genericConstraintExpr = BfNodeDynCast<BfGenericConstraintExpression>(genericConstraintNode))
+		{
+			VisitChild(genericConstraintExpr->mWhereToken);
+			VisitChild(genericConstraintExpr->mExpression);
+		}
 	}		
 }
 

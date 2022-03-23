@@ -9945,11 +9945,61 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 {
 	auto constraintsDeclaration = mAlloc->Alloc<BfGenericConstraintsDeclaration>();
 
-	BfDeferredAstSizedArray<BfGenericConstraint*> genericConstraintsArr(constraintsDeclaration->mGenericConstraints, mAlloc);
+	BfDeferredAstSizedArray<BfAstNode*> genericConstraintsArr(constraintsDeclaration->mGenericConstraints, mAlloc);
 
 	bool isDone = false;
 	for (int constraintIdx = 0; !isDone; constraintIdx++)
 	{
+// 		if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+// 		{
+// 			if (nextToken->mToken == BfToken_LParen)
+// 			{
+// 				BfGenericConstraintExpression* genericConstraint = mAlloc->Alloc<BfGenericConstraintExpression>();
+// 				ReplaceNode(tokenNode, genericConstraint);
+// 				genericConstraint->mWhereToken = tokenNode;
+// 				constraintsDeclaration->mHasExpressions = true;
+// 
+// 				genericConstraintsArr.push_back(genericConstraint);
+// 
+// 				auto expr = CreateExpressionAfter(genericConstraint, CreateExprFlags_EarlyExit);
+// 				if (expr == NULL)
+// 					break;
+// 				
+// 				MEMBER_SET(genericConstraint, mExpression, expr);				
+// 
+// 				BfTokenNode* nextWhereToken = NULL;
+// 				if (auto checkToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+// 				{
+// 					if (checkToken->mToken != BfToken_Where)
+// 						nextWhereToken = checkToken;
+// 				}
+// 				
+// 				auto nextNode = mVisitorPos.GetNext();
+// 				if (BfNodeDynCast<BfBlock>(nextNode))				
+// 					break;				
+// 
+// 				bool handled = false;
+// 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+// 				{
+// 					if (tokenNode->mToken == BfToken_FatArrow)					
+// 						break;					
+// 				}
+// 
+// 				tokenNode = ExpectTokenAfter(genericConstraint, BfToken_LBrace, BfToken_Where, BfToken_Semicolon);
+// 				if (tokenNode == NULL)				
+// 					break;
+// 				
+// 				BfToken token = tokenNode->GetToken();
+// 				if (token != BfToken_Where)				
+// 				{				
+// 					mVisitorPos.mReadPos--;
+// 					break;
+// 				}
+// 
+// 				continue;
+// 			}
+// 		}
+
 		BfGenericConstraint* genericConstraint = mAlloc->Alloc<BfGenericConstraint>();
 		BfDeferredAstSizedArray<BfAstNode*> constraintTypes(genericConstraint->mConstraintTypes, mAlloc);
 		BfDeferredAstSizedArray<BfTokenNode*> commas(genericConstraint->mCommas, mAlloc);
@@ -9957,7 +10007,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 		ReplaceNode(tokenNode, genericConstraint);
 		genericConstraint->mWhereToken = tokenNode;
 
-		genericConstraintsArr.push_back(genericConstraint);
+		genericConstraintsArr.push_back(genericConstraint);		
 
 		auto genericParamName = CreateTypeRefAfter(genericConstraint);
 		if (genericParamName != NULL)
@@ -9975,7 +10025,6 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 		else
 			isDone = true;
 
-
 		for (int typeIdx = 0; !isDone; typeIdx++)
 		{
 			if (typeIdx > 0)
@@ -9987,13 +10036,14 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 					break;
 				}
 
+				bool handled = false;
 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
 				{
 					if (tokenNode->mToken == BfToken_FatArrow)
 					{
 						isDone = true;
 						break;
-					}
+					}					
 				}
 
 				tokenNode = ExpectTokenAfter(genericConstraint, BfToken_Comma, BfToken_LBrace, BfToken_Where, BfToken_Semicolon);

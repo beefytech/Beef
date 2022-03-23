@@ -3000,11 +3000,21 @@ public:
 	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;	
 };	BF_AST_DECL(BfGenericConstraint, BfAstNode);
 
+class BfGenericConstraintExpression : public BfAstNode
+{
+public:
+	BF_AST_TYPE(BfGenericConstraintExpression, BfAstNode);
+
+	BfTokenNode* mWhereToken;
+	BfExpression* mExpression;
+};  BF_AST_DECL(BfGenericConstraintExpression, BfAstNode);
+
 class BfGenericConstraintsDeclaration : public BfAstNode
 {
 public:
 	BF_AST_TYPE(BfGenericConstraintsDeclaration, BfAstNode);
-	BfSizedArray<BfGenericConstraint*> mGenericConstraints;
+	BfSizedArray<BfAstNode*> mGenericConstraints;
+	bool mHasExpressions;
 };	BF_AST_DECL(BfGenericConstraintsDeclaration, BfAstNode);
 
 class BfMethodDeclaration : public BfMemberDeclaration
