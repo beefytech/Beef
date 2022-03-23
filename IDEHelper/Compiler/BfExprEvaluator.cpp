@@ -1647,12 +1647,8 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	mMethodCheckCount++;
 	
 	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);
-	if (methodInstance == NULL)
-	{
-		if (!mModule->mCompiler->IsCePaused())
-			BFMODULE_FATAL(mModule, "Failed to get raw method in BfMethodMatcher::CheckMethod");
+	if (methodInstance == NULL)	
 		return false;
-	}
 	BfMethodInstance* typeUnspecMethodInstance = mModule->GetUnspecializedMethodInstance(methodInstance, true);	
 	BfTypeVector* typeGenericArguments = NULL;
 	if (typeInstance->mGenericTypeInfo != NULL)
@@ -2329,6 +2325,24 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
  		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), externType, NULL, genericParam, externGenericArgumentsSubstitute, NULL))
  			goto NoMatch;
 	}
+
+// 	if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(checkMethod->mMethodDeclaration))
+// 	{
+// 		if ((methodDecl->mGenericConstraintsDeclaration != NULL) && (methodDecl->mGenericConstraintsDeclaration->mHasExpressions))
+// 		{
+// 			for (auto genericConstraint : methodDecl->mGenericConstraintsDeclaration->mGenericConstraints)
+// 			{
+// 				if (auto genericConstraintExpr = BfNodeDynCast<BfGenericConstraintExpression>(genericConstraint))
+// 				{
+// 					if (genericConstraintExpr->mExpression == NULL)
+// 						continue;
+// 					BfConstResolver constResolver(mModule);					
+// 					constResolver.mExpectingType = mModule->GetPrimitiveType(BfTypeCode_Boolean);					
+// 					constResolver.Resolve(genericConstraintExpr->mExpression, constResolver.mExpectingType);
+// 				}
+// 			}
+// 		}
+// 	}
 
 	// Method is applicable, check to see which method is better
 	if (mBestMethodDef != NULL)
