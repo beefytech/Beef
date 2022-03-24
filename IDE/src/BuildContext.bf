@@ -589,9 +589,11 @@ namespace IDE
 
 			if (isExe || isDynLib)
 			{
+				var actualTargetPath = Path.GetActualPathName(targetPath, .. scope .());
+
 			    String linkLine = scope String();
 			    linkLine.Append("-o ");
-			    IDEUtils.AppendWithOptionalQuotes(linkLine, targetPath);
+			    IDEUtils.AppendWithOptionalQuotes(linkLine, actualTargetPath);
 			    linkLine.Append(" ");
 
 			    linkLine.Append(objectsArg);
@@ -667,7 +669,8 @@ namespace IDE
 
 					linkLine.Replace('\\', '/');
 
-			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, project.mProjectDir, .UTF8);
+					var targetDir = Path.GetDirectoryPath(actualTargetPath, .. scope .());
+			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, targetDir, .UTF8);
 					runCmd.mReference = new .(project.mProjectName);
 			        runCmd.mOnlyIfNotFailed = true;
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);

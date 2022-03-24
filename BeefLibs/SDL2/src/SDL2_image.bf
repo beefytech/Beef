@@ -79,7 +79,7 @@ namespace SDL2
 		);
 
 		[LinkName("IMG_LoadTexture")]
-		private static extern SDL.Texture* LoadTexture(
+		public static extern SDL.Texture* LoadTexture(
 			SDL.Renderer* renderer,
 			char8* file
 		);

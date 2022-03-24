@@ -1061,16 +1061,16 @@ namespace IDE
 		public class WasmOptions
 		{
 			[Reflect]
-			public bool mEnableThreads = true;
+			public bool mEnableThreads = false;
 
 			public void Deserialize(StructuredData data)
 			{
-				mEnableThreads = data.GetBool("EnableThreads", true);
+				mEnableThreads = data.GetBool("EnableThreads", false);
 			}
 
 			public void Serialize(StructuredData data)
 			{
-				data.ConditionalAdd("EnableThreads", mEnableThreads, true);
+				data.ConditionalAdd("EnableThreads", mEnableThreads, false);
 			}
 		}
 
