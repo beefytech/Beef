@@ -3827,6 +3827,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
+	if ((typeInstance->IsInterface()) && (baseTypeInst != NULL))
+	{
+		Fail("Interfaces cannot declare base types", baseTypeRef, true);
+		baseTypeInst = NULL;
+	}
+
 	if ((baseTypeInst != NULL) && (typeInstance->mBaseType == NULL))
 	{
 		if (typeInstance->mTypeFailed)
@@ -3848,14 +3854,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if ((resolvedTypeRef->IsObject()) && (!baseTypeInst->IsObject()))
 		{
 			Fail("Class can only derive from another class", baseTypeRef, true);
-			//typeInstance->mTypeFailed = true;
 			baseTypeInst = defaultBaseTypeInst;
 			typeInstance->mBaseType = baseTypeInst;
 		}
 		else if ((resolvedTypeRef->IsStruct()) && (!baseTypeInst->IsValueType()))
 		{
 			Fail("Struct can only derive from another struct", baseTypeRef, true);
-			//typeInstance->mTypeFailed = true;
 			baseTypeInst = defaultBaseTypeInst;
 			typeInstance->mBaseType = baseTypeInst;
 		}
