@@ -189,7 +189,7 @@ namespace System.Reflection
 						.Double:
 						let attrData = AttributeInfo.Decode!<int64>(mData);
 						args[argIdx] = Variant.Create(attrData);
-					case (TypeCode)typeof(TypeCode).MaxValue + 8: //BfConstType_TypeOf
+					case (TypeCode)typeof(TypeCode).MaxValue + 9: //BfConstType_TypeOf
 						let argTypeId = AttributeInfo.Decode!<int32>(mData);
 						args[argIdx] = Variant.Create(Type.[Friend]GetType((.)argTypeId));
 					case (TypeCode)255:
@@ -463,7 +463,7 @@ namespace System.Reflection
 						.Double:
 						let attrData = AttributeInfo.Decode!<int64>(mData);
 						args[argIdx] = scope:: box attrData;
-					case (TypeCode)typeof(TypeCode).MaxValue + 8: //BfConstType_TypeOf
+					case (TypeCode)typeof(TypeCode).MaxValue + 9: //BfConstType_TypeOf
 						let argTypeId = AttributeInfo.Decode!<int32>(mData);
 						args[argIdx] = Type.[Friend]GetType((.)argTypeId);
 					case (TypeCode)255:
