@@ -28,6 +28,8 @@ namespace Beefy.widgets
 
             public float mWantWidth;
 			public WidgetWindow mMouseDownWindow;
+
+			public bool mMouseDownIsExpanding = false;
             
 			public String Label
 			{
@@ -59,6 +61,18 @@ namespace Beefy.widgets
 				}
 			}
 
+			public void MakeVisibleAndRehup() {
+				bool wasMaximized = mTabbedView.mParentDockingFrame.HasMaximized();
+				mTabbedView.mParentDockingFrame.RestoreMaximizedWidgetsCovering(mTabbedView);
+
+				if (wasMaximized)
+					mTabbedView.MaximizeAndRehup();
+				else if (mTabbedView.IsHidden)
+					mTabbedView.ShowIfHiddenAndRehup();
+				else if (mTabbedView.IsCollapsed)
+					mTabbedView.ShowIfCollapsedAndRehup();
+			}
+
 			public override void RehupScale(float oldScale, float newScale)
 			{
 				float valScale = newScale / oldScale;
@@ -71,21 +85,41 @@ namespace Beefy.widgets
 
             public virtual void Activate(bool setFocus = true)
             {
+				bool needsRehup = false;
+				if (mMouseDown && mTabbedView.IsCollapsed)
+				{
+					needsRehup = true;
+					mMouseDownIsExpanding = true; // hack; otherwise we generate a tear-off event for this tab
+					mTabbedView.ShowIfCollapsed();
+				}
                 TabButton button = mTabbedView.GetActiveTab();
                 if (button != this)
                 {
                     if (button != null)
                         button.Deactivate();
-                    mIsActive = true;                    
+                    mIsActive = true;
                     mTabbedView.mNeedResizeTabs = true;
-
+					mTabbedView.RemoveFromRecentContent(mContent);
                     mTabbedView.AddWidget(mContent);
                     if ((setFocus) && (mWidgetWindow != null))
                         mContent.SetFocus();
-                    ResizeContent();
+					if (needsRehup)
+					{
+						mTabbedView.GetRootDockingFrame().Rehup();
+						mTabbedView.GetRootDockingFrame().ResizeContent();
+					}
+					else
+						ResizeContent();
                 }
                 else if ((setFocus) && (mWidgetWindow != null))
+				{
+					if (needsRehup)
+					{
+						mTabbedView.GetRootDockingFrame().Rehup();
+						mTabbedView.GetRootDockingFrame().ResizeContent();
+					}
                     mContent.SetFocus();
+				}
             }
 
             public virtual void ResizeContent()
@@ -114,8 +148,9 @@ namespace Beefy.widgets
 
 				bool wasMouseDown = mMouseDown;
                 base.MouseDown(x, y, btn, btnCount);
+				mMouseDownIsExpanding = false;
                 Activate();
-				if ((mMouseDown) && (!wasMouseDown))
+				if (!mMouseDownIsExpanding && (mMouseDown) && (!wasMouseDown))
 				{
 					//Debug.WriteLine("MouseDown {0} {1}", this, mWidgetWindow);
 					mMouseDownWindow = mWidgetWindow;
@@ -125,6 +160,9 @@ namespace Beefy.widgets
 
             public override void MouseMove(float x, float y)
             {
+				if (mMouseDownIsExpanding)
+					return;
+
                 base.MouseMove(x, y);
 
                 mLastMouseX = x;
@@ -183,7 +221,7 @@ namespace Beefy.widgets
             {
 				bool wasMouseDown = mMouseDown;                
                 base.MouseUp(x, y, btn);       
-				if ((wasMouseDown) && (!mMouseDown))
+				if (!mMouseDownIsExpanding && (wasMouseDown) && (!mMouseDown))
 				{
      				mMouseDownWindow.mOnMouseLeftWindow.Remove(scope => MouseLeftWindow, true);
 					mMouseDownWindow = null;
@@ -349,6 +387,11 @@ namespace Beefy.widgets
 
 			public Event<OpenNewWindowDelegate> mOpenNewWindowDelegate ~ _.Dispose();
 			public Event<delegate void(TabbedView)> mTabbedViewClosed ~ _.Dispose();
+			public Event<delegate void(RecentContent)> mRecentContentSelected ~ _.Dispose();
+
+			~this()
+			{
+			}
 
 			public SharedData Ref()
 			{
@@ -373,18 +416,333 @@ namespace Beefy.widgets
 
         public List<TabButton> mTabs = new List<TabButton>() ~ delete _;
 
+		public struct RecentContent {
+			public Widget content;
+			public String label;
+			public void Dispose() mut
+			{
+				DeleteAndNullify!(label);
+			}
+		}
+
+		public enum VisibilityType {
+			Unspecified,
+			Show,
+			Hide,
+			Collapse,
+			Maximize
+		}
+
+		public struct VisibilityAction {
+			public VisibilityType action = .Unspecified;
+			public StringView? label;
+		}
+
+		public List<RecentContent> mRecentContents = new List<RecentContent>() ~ delete _;
+
+		public List<VisibilityAction> mVisibilityActions = new List<VisibilityAction>()
+			{
+			VisibilityAction() { action = .Show, label = null}, // live
+			VisibilityAction() { action = .Unspecified, label = null}, // working
+			} ~ delete _;
+
+		public bool CanShow()
+		{
+			DockedWidget widget = this;
+			if (widget.IsMaximized)
+				return false;
+			var frame = mParentDockingFrame;
+			while (frame != null)
+			{
+				if (frame.HasHidden(widget))
+					return true;
+				else
+				{
+					widget = frame;
+					frame = frame.mParentDockingFrame;
+				}
+			}
+			return false;
+		}
+
+		public bool CanHide()
+		{
+			int count = 0;
+			let root = mParentDockingFrame.GetRootDockingFrame();
+			root.WithAllDockedWidgets(scope [&count] (widget) =>
+				{
+					if (let view = widget as TabbedView)
+						if (!view.IsHidden)
+							++count;
+				});
+			return count > 1;
+		}
+
+		public bool CanCollapse()
+		{
+			int hidden = 0;
+			int collapsed = 0;
+			int shown = 0;
+			mParentDockingFrame.WithAllDockedWidgets(scope [&] (widget) =>
+				{
+					if (widget.IsHidden)
+						++hidden;
+					else if (widget.IsCollapsed)
+						++collapsed;
+					else if (widget.IsShown)
+						++shown;
+				});
+			return shown > 1;
+		}
+
+		public bool CanMaximize()
+		{
+			if (CanHide() && IsMaximized || !IsMaximized)
+				return true;
+			return false;
+		}
+
+		public void SaveVisibility(int saveKind)
+		{
+			Debug.Assert(saveKind > 0 && saveKind < mVisibilityActions.Count, "invalid VisibilityAction 'saved'");
+			let live = mVisibilityActions[0];
+			var saved = ref mVisibilityActions[saveKind];
+
+			saved.action = live.action;
+		}
+
+		public void UpdateVisibility(int updatedKind, int savedKind)
+		{
+			Debug.Assert(updatedKind > 0 && updatedKind < mVisibilityActions.Count, "invalid VisibilityAction 'updated'");
+			Debug.Assert(savedKind > 0 && savedKind < mVisibilityActions.Count, "invalid VisibilityAction 'saved'");
+
+			let live = mVisibilityActions[0];
+			var updated = ref mVisibilityActions[updatedKind];
+			let saved = mVisibilityActions[savedKind];
+
+			let combinedAction = updated.action == .Unspecified ? saved.action : updated.action;
+
+			if (live.action != combinedAction)
+				updated.action = live.action;
+		}
+
+		public bool RestoreVisibility(int sourceKind)
+		{
+			Debug.Assert(sourceKind > 0 && sourceKind < mVisibilityActions.Count, "invalid VisibilityAction 'source'");
+			var live = ref mVisibilityActions[0];
+			let source = mVisibilityActions[sourceKind];
+
+			if (source.action != .Unspecified)
+				if (live.action != source.action)
+				{
+					live.action = source.action;
+					return true;
+				}
+			return false;
+		}
+
+		public override void ShowIfHidden(DockingFrame exceptFrame = null)
+		{
+			if (IsHidden)
+				IsShown = true;
+		}
+
+		public override void ShowIfCollapsed(DockingFrame exceptFrame = null)
+		{
+			if (IsCollapsed)
+				IsShown = true;
+		}
+
+		public override void ShowIfMaximized(DockingFrame exceptFrame = null)
+		{
+			if (IsMaximized)
+				IsShown = true;
+		}
+
+		public void ShowIfHiddenAndRehup()
+		{
+			if (IsHidden)
+				ShowIfHidden();
+			else
+				mParentDockingFrame.ShowIfHidden();
+			GetRootDockingFrame().Rehup();
+			GetRootDockingFrame().ResizeContent();
+		}
+
+		public void ShowIfCollapsedAndRehup()
+		{
+			if (IsCollapsed)
+				ShowIfCollapsed();
+			GetRootDockingFrame().Rehup();
+			GetRootDockingFrame().ResizeContent();
+		}
+
+		public void ShowIfMaximizedAndRehup()
+		{
+			// Find the next level of non-maximized docking frame
+
+			if (IsMaximized)
+			{
+				DockingFrame parent = mParentDockingFrame;
+				while (parent.mParentDockingFrame != null)
+					if (!parent.mParentDockingFrame.IsMaximized)
+						break;
+					else
+						parent = parent.mParentDockingFrame;
+				if (parent.IsMaximized)
+					parent.ShowIfMaximized();
+				else
+					ShowIfMaximized();
+			}
+			GetRootDockingFrame().Rehup();
+			GetRootDockingFrame().ResizeContent();
+		}
+
+		public void HideAndRehup() {
+			IsHidden = true;
+			GetRootDockingFrame().Rehup();
+			GetRootDockingFrame().ResizeContent();
+		}
+
+		public void CollapseAndRehup() {
+			IsCollapsed = true;
+			GetRootDockingFrame().Rehup();
+			GetRootDockingFrame().ResizeContent();
+		}
+
+		public void MaximizeAndRehup() {
+			if (IsMaximized)
+			{
+				DockedWidget lastParent = null;
+				DockedWidget parent = this;
+				while (parent != null)
+				{
+					lastParent = parent;
+					parent = parent.mParentDockingFrame;
+					if (parent == null)
+						break;
+					if (parent.IsMaximized)
+						continue;
+					if (parent.HasAllHidden(lastParent))
+						continue;
+					else {
+						lastParent.IsMaximized = true;
+						parent = null;
+					}
+
+				}
+				if (parent != null)
+					parent.IsMaximized = true;
+			}
+			else
+			{
+				IsMaximized = true;
+			}
+			GetRootDockingFrame().Rehup();
+			GetRootDockingFrame().ResizeContent();
+		}
+
+		public override bool IsShown
+		{
+			get { return mVisibilityActions.Front.action == .Show; }
+			set { if (value) mVisibilityActions.Front.action = .Show; }
+		}
+
+		public override bool IsHidden
+		{
+			get
+			{
+				if (mVisibilityActions.Front.action == .Hide)
+					return true;
+				if (mParentDockingFrame.HasMaximized(this))
+					return true;
+				return false;
+			}
+			set { if (value) mVisibilityActions.Front.action = .Hide; }
+		}
+
+		public override bool IsCollapsed
+		{
+			get { return mVisibilityActions.Front.action == .Collapse; }
+			set { if (value) mVisibilityActions.Front.action = .Collapse; }
+		}
+
+		public override bool IsMaximized {
+			get { return mVisibilityActions.Front.action == .Maximize; }
+			set { if (value) mVisibilityActions.Front.action = .Maximize; }
+		}
+
+		public override bool HasHidden(DockedWidget exceptWidget = null)
+		{
+			return IsHidden;
+		}
+
+		public override bool HasAllHidden(DockedWidget exceptWidget = null)
+		{
+			return IsHidden;
+		}
+
+		public override bool HasMaximized(DockedWidget exceptWidget = null)
+		{
+			return IsMaximized;
+		}
+
+		public bool HasRecentContent(Widget content = null)
+		{
+			if (mRecentContents.Count > 0) {
+				if (content == null)
+					return true;
+				for (let item in mRecentContents) {
+					if (item.content == content)
+						return true;
+				}
+			}
+			return false;
+		}
+
+		public void RemoveFromRecentContent(Widget content)
+		{
+			int index = 0;
+			for (var item in mRecentContents) {
+				if (item.content == content) {
+					mRecentContents.RemoveAt(index);
+					item.Dispose();
+					return;
+				}
+				++index;
+			}
+		}
+
+		public override float CollapsedHeight
+		{
+			get
+			{
+				return mTabHeight;
+			}
+		}
+
+		public virtual List<StringView> VisibilityActionLabels
+		{
+			get { return null; }
+		}
+
 		public this(SharedData sharedData)
 		{
 			if (sharedData != null)
 				mSharedData = sharedData.Ref();
 			else
 				mSharedData = new SharedData();
+			if (VisibilityActionLabels != null)
+				for (let label in VisibilityActionLabels)
+					mVisibilityActions.Add(VisibilityAction() { action = .Unspecified, label = label});
 		}
 
 		public ~this()
 		{
 			for (var tab in mTabs)
 				Widget.RemoveAndDelete(tab);
+			for (var item in mRecentContents)
+				item.Dispose();
 		}
 
 		public virtual TabbedView CreateTabbedView(TabbedView.SharedData sharedData)
@@ -511,9 +869,15 @@ namespace Beefy.widgets
             mNeedResizeTabs = true;            
         }
 
-        public virtual void RemoveTab(TabButton tabButton, bool deleteTab = true)
+        public virtual void RemoveTab(TabButton tabButton, bool deleteTab = true, bool recentTab = false)
         {
             bool hadFocus = mWidgetWindow.mFocusWidget != null;
+
+			if (recentTab) {
+				let label = new String()..Append(tabButton.mLabel);
+				mRecentContents.Add(RecentContent() {content = tabButton.mContent, label = label});
+			}
+
             if (tabButton.mIsActive)
                 tabButton.Deactivate();
             RemoveWidget(tabButton);
@@ -571,7 +935,13 @@ namespace Beefy.widgets
                     RemoveTab(tab, false);
                     tabbedView.AddTab(tab, tabbedView.GetInsertPositionFromCursor());
                     tab.Activate();
-                }                
+                }
+				while (mRecentContents.Count > 0)
+				{
+					let pair = mRecentContents[0];
+					mRecentContents.RemoveAt(0);
+					tabbedView.mRecentContents.Add(pair);
+				}
                 mParentDockingFrame.RemoveDockedWidget(this);
 
 				Closed();

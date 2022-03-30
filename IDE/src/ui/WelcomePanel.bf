@@ -52,14 +52,6 @@ namespace IDE.ui
 		SampleButton mSampleBtn0;
 		SampleButton mSampleBtn1;
 
-		public override bool WantsSerialization
-		{
-			get
-			{
-				return false;
-			}
-		}
-
 		public float YOfs
 		{
 			get

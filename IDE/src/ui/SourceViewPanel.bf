@@ -569,6 +569,11 @@ namespace IDE.ui
 			}
 		}
 
+		public override String SerializationType
+		{
+			get { return "SourceViewPanel"; }
+		}
+
         public this()
         {                        
             DebugManager debugManager = IDEApp.sApp.mDebugger;

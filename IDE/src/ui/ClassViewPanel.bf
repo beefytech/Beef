@@ -353,6 +353,11 @@ namespace IDE.ui
 		public List<PendingEntry> mHiddenEntries = new .() ~ DeleteContainerAndItems!(_);
 		public FindClassDialog mFindClassDialog;
 
+		public override String SerializationType
+		{
+			get { return "ClassViewPanel"; }
+		}
+
 		public this(FindClassDialog findClassDialog = null)
 		{
 			mFindClassDialog = findClassDialog;

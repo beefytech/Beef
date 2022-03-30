@@ -88,8 +88,21 @@ namespace IDE
 		PendingWithDataChanges
 	}
 
+	enum VisibilityAction {
+		Live,
+		Saved,
+		OnLoad,
+		OnDebug
+	}
+
 	public class IDETabbedView : DarkTabbedView
 	{
+		static List<StringView> sVisibilityActionLabels = new .()
+			{ "On Load", "On Debug" } ~ delete _;
+		public override List<StringView> VisibilityActionLabels
+		{
+			get { return sVisibilityActionLabels; }
+		}
 		public this(SharedData sharedData) : base(sharedData)
 		{
 			if (sharedData == null)
@@ -100,6 +113,11 @@ namespace IDE
 						if (tabbedView == gApp.mActiveDocumentsTabbedView)
 							gApp.mActiveDocumentsTabbedView = null;
 				    });
+				mSharedData.mRecentContentSelected.Add(new (item) =>
+					{
+						if (let panel = item.content as Panel)
+							gApp.ShowClosedPanel(panel, item.label);
+					});
 			}
 		}
 
@@ -770,7 +788,7 @@ namespace IDE
 			}
 		}
 
-		void WithStandardPanels(delegate void(Panel panel) dlg)
+		public void WithStandardPanels(delegate void(Panel panel) dlg)
 		{
 			dlg(mProjectPanel);
 			dlg(mClassViewPanel);
@@ -1722,6 +1740,27 @@ namespace IDE
                     }
                 }
             }
+
+			using (data.CreateArray("VisibilityActions"))
+			{
+				for (let visibility in tabbedView.mVisibilityActions)
+				{
+					using (data.CreateObject())
+						data.Add("Kind", (int32)visibility.action);
+				}
+			}
+
+			using (data.CreateArray("RecentContents"))
+			{
+				for (var recent in tabbedView.mRecentContents)
+					if (let panel = recent.content as Panel)
+						if (panel.ShouldSaveInRecentContent)
+							using (data.CreateObject())
+							{
+								data.Add("Type", panel.SerializationType);
+								data.Add("Label", recent.label);
+							}
+			}
         }
 
         void SerializeDockingFrame(StructuredData data, DockingFrame dockingFrame, bool serializeDocs)
@@ -1751,6 +1790,12 @@ namespace IDE
                         if (dockedWidget is DarkTabbedView)
                         {
                             var tabbedView = (DarkTabbedView)dockedWidget;
+/*
+							data.ConditionalAdd("VisibilityOnSave", tabbedView.VisibilityOnSave, tabbedView.VisibilityUnspecified);
+							data.ConditionalAdd("VisibilityOnOpen", tabbedView.VisibilityOnOpen, tabbedView.VisibilityUnspecified);
+							data.ConditionalAdd("VisibilityOnBuild", tabbedView.VisibilityOnBuild, tabbedView.VisibilityUnspecified);
+							data.ConditionalAdd("VisibilityOnDebug", tabbedView.VisibilityOnDebug, tabbedView.VisibilityUnspecified);
+*/
                             SerializeTabbedView(data, tabbedView, serializeDocs);
                         }
                     }
@@ -3112,6 +3157,24 @@ namespace IDE
 					activeTab = newTabButton;
             }
 
+			var index = 0;
+			for (data.Enumerate("VisibilityActions"))
+			{
+				if (index < tabbedView.mVisibilityActions.Count)
+					tabbedView.mVisibilityActions[index].action = (.)data.GetInt("Kind");
+				++index;
+			}
+
+			for (data.Enumerate("RecentContents"))
+			{
+				Panel panel = Panel.Lookup(data);
+				if (panel == null)
+				    continue;
+				String label = new String();
+				data.GetString("Label", label, "unknown");
+				tabbedView.mRecentContents.Add(TabbedView.RecentContent() { content = panel, label = label });
+			}
+
 			if (activeTab != null)
 				activeTab.Activate(false);
         }
@@ -3147,6 +3210,7 @@ namespace IDE
 
                         dockedWidget.mParentDockingFrame = dockingFrame;
                         dockedWidget.mIsFillWidget = data.GetBool("IsFillWidget");
+
 						dockedWidget.mAutoClose = !data.GetBool("Permanent");
 						if (dockedWidget.mIsFillWidget)
 							dockedWidget.mHasFillWidget = true;
@@ -3329,6 +3393,7 @@ namespace IDE
 
 			if (!LoadWorkspaceUserData(data))
 				return false;
+
 			return true;
         }
 
@@ -4786,13 +4851,19 @@ namespace IDE
 				TabbedView tabbedView = null;
 				if (var newPanel = tabContent as Panel)
 				{
-					WithTabs(scope [&] (tabButton) =>
-	                    {
-							if (newPanel.HasAffinity(tabButton.mContent))
+					// Look for a recently closed panel with this content
+					WithDocumentTabbedViews(scope [&] (view) =>
+						{
+							if (view.HasRecentContent(tabContent))
+								tabbedView = view;
+						});
+					// otherwise look for a tabbedView with similar panels
+					if (tabbedView == null)
+						WithTabs(scope [&] (tabButton) =>
 							{
-								tabbedView = tabButton.mTabbedView;
-							}
-	                    });
+								if (newPanel.HasAffinity(tabButton.mContent))
+									tabbedView = tabButton.mTabbedView;
+		                    });
 				}
 
 				if (tabbedView == null)
@@ -4810,6 +4881,7 @@ namespace IDE
             }
             if (tabButton != null)
 			{
+				tabButton.MakeVisibleAndRehup();
 				tabButton.RehupScale(1.0f, 1.0f);
                 tabButton.Activate(setFocus);
 			}
@@ -4821,6 +4893,11 @@ namespace IDE
 			var sourceViewPanel = GetActiveSourceViewPanel(includeLastActive);
 			if (sourceViewPanel != null)
 			    sourceViewPanel.RecordHistoryLocation();
+		}
+
+		public void ShowClosedPanel(Panel panel, String label, bool setFocus = true)
+		{
+			ShowPanel(panel, label, setFocus);
 		}
 
 		void ShowPanel(Panel panel, String label, bool setFocus = true)
@@ -6544,8 +6621,10 @@ namespace IDE
 								if (sourceViewPanel != null)
 								{
 									// Already found one that matches our active tabbed view?
-									if (sourceViewPanelTab.mTabbedView == mActiveDocumentsTabbedView)
+									if (sourceViewPanelTab.mTabbedView == mActiveDocumentsTabbedView) {
+										sourceViewPanelTab.MakeVisibleAndRehup();
 										return;
+									}
 								}
 
 								sourceViewPanel = checkSourceViewPanel;
@@ -6563,6 +6642,8 @@ namespace IDE
 
 				if (sourceViewPanelTab != null)
 				{
+					sourceViewPanelTab.MakeVisibleAndRehup();
+
 					//matchedTabButton = tabButton;
 					if ((sourceViewPanelTab.mIsRightTab) && (showType != SourceShowType.Temp))
 					{
@@ -6641,6 +6722,7 @@ namespace IDE
             else
                 tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
             newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(sourceViewPanel));
+			newTabButton.MakeVisibleAndRehup();
             newTabButton.Activate(setFocus);
             if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
                 sourceViewPanel.FocusEdit();  
@@ -6857,6 +6939,8 @@ namespace IDE
 
         public void CloseDocument(Widget documentPanel)
         {
+			bool saveInRecentContent = false;
+			bool deleteTab = true;
             bool hasFocus = false;
             var sourceViewPanel = documentPanel as SourceViewPanel;
 
@@ -6893,6 +6977,8 @@ namespace IDE
 				if (sourceViewPanel.mFilePath != null)
 					recentFileIdx = GetRecentFilesIdx(sourceViewPanel.mFilePath);
             }
+			else
+				saveInRecentContent = true;
 
 			/*if (tabButton.mIsRightTab)
 				tabbedView.SetRightTab(null);
@@ -6933,22 +7019,27 @@ namespace IDE
 				nextTab = tabbedView.GetActiveTab();
 			}
 
-			tabbedView.RemoveTab(tabButton);
+			tabbedView.RemoveTab(tabButton, deleteTab, saveInRecentContent);
 			if (nextTab != null)
 			{
 				nextTab.Activate(hasFocus);
 			}
 			else if (tabbedView.mAutoClose)
 			{
-				tabbedView.mParentDockingFrame.RemoveDockedWidget(tabbedView);
-				gApp.DeferDelete(tabbedView);
-
-				var documentTabbedView = FindDocumentTabbedView();
-				if (documentTabbedView != null)
+				if (tabbedView.HasRecentContent())
+					tabbedView.HideAndRehup();
+				else
 				{
-					Debug.Assert(documentTabbedView != tabbedView);
-					// If there is some OTHER document window them show that and remove this empty one
-					documentTabbedView.GetActiveTab().Activate();
+					tabbedView.mParentDockingFrame.RemoveDockedWidget(tabbedView);
+					gApp.DeferDelete(tabbedView);
+
+					var documentTabbedView = FindDocumentTabbedView();
+					if (documentTabbedView != null)
+					{
+						Debug.Assert(documentTabbedView != tabbedView);
+						// If there is some OTHER document window them show that and remove this empty one
+						documentTabbedView.GetActiveTab().Activate();
+					}
 				}
 			}
 
@@ -8695,6 +8786,8 @@ namespace IDE
 						var startDebugCmd = (StartDebugCmd)next;
 	                    if (StartupProject(true, startDebugCmd.mWasCompiled))
 	                    {
+							SaveVisibility(.Saved);
+							RestoreVisibility(.OnDebug);
 	                        OutputLine("Debugger started");
 	                    }
 	                    else
@@ -11826,7 +11919,8 @@ namespace IDE
             UpdateRecentDisplayedFilesMenuItems();
             if (mRecentlyDisplayedFiles.Count > 0)
                 ShowRecentFile(0);
-			
+
+			RestoreVisibility(.OnLoad);
             mProjectPanel.RebuildUI();
 
 			if (mProcessAttachId != 0)
@@ -11959,6 +12053,41 @@ namespace IDE
 				mBeefConfig.QueuePaths(mWorkspace.mDir);
 			mBeefConfig.QueuePaths(mInstallDir);
 			mBeefConfig.Load().IgnoreError();
+		}
+
+		void SaveVisibility(VisibilityAction action)
+		{
+			WithDocumentTabbedViews(scope (view) =>
+				{
+					view.SaveVisibility((.)action);
+				});
+		}
+
+		void UpdateVisibility(VisibilityAction action, VisibilityAction saved)
+		{
+			WithDocumentTabbedViews(scope (view) =>
+				{
+					view.UpdateVisibility((.)action,(.)saved);
+				});
+		}
+
+		void RestoreVisibility(VisibilityAction action)
+		{
+			List<DockingFrame> updates = scope .();
+			WithDocumentTabbedViews(scope (view) =>
+				{
+					if (view.RestoreVisibility((.)action))
+					{
+						let frame = view.GetRootDockingFrame();
+						if (!updates.Contains(frame))
+							updates.Add(frame);
+					}
+				});
+			for (let update in updates)
+			{
+				update.Rehup();
+				update.ResizeContent();
+			}
 		}
 
 		void RehupScale()
@@ -12883,7 +13012,8 @@ namespace IDE
                 if (wantDebuggerDetach)
                 {
 					OutputLine("Detached debugger");
-
+					UpdateVisibility(.OnDebug, .Saved);
+					RestoreVisibility(.Saved);
 					UpdateTitle();
                     var disassemblyPanel = TryGetDisassemblyPanel(false);
                     if (disassemblyPanel != null)

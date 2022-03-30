@@ -1588,7 +1588,12 @@ namespace IDE.ui
 		bool mDeselectOnFocusLost = true;
         
         public WatchListViewItem mEditingItem;
-        public ExpressionEditWidget mEditWidget;        
+        public ExpressionEditWidget mEditWidget;
+
+		public override String SerializationType
+		{
+			get { return mIsAuto ? "AutoWatchPanel" : "WatchPanel"; }
+		}
 
         public this(bool isAuto)
         {

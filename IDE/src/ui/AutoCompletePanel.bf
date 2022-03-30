@@ -1,6 +1,7 @@
 using Beefy.utils;
 using Beefy.theme.dark;
 using Beefy.widgets;
+using System;
 
 namespace IDE.ui
 {
@@ -85,6 +86,11 @@ namespace IDE.ui
 		public DarkDockingFrame mDockingFrame;
 		public DataArea mDataArea;
 		public CommentArea mCommentArea;
+
+		public override String SerializationType
+		{
+			get { return "AutoCompletePanel"; }
+		}
 
 		public this()
 		{

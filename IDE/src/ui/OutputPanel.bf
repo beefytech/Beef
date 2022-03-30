@@ -87,6 +87,11 @@ namespace IDE.ui
 		public float mLastInlineMinY;
 		public float mLastInlineMaxY;
 
+		public override String SerializationType
+		{
+			get { return "OutputPanel"; }
+		}
+
         public override SourceEditWidget EditWidget
         {
             get

@@ -159,6 +159,11 @@ namespace IDE.ui
 
         public static String sPanelName = "Disassembly";
 
+		public override String SerializationType
+		{
+			get { return "DisassemblyPanel"; }
+		}
+
         public DisassemblyEdit mEditWidget;
         PanelHeader mPanelHeader;
         //string[] mSourceLines;
