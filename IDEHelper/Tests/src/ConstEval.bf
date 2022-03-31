@@ -32,6 +32,12 @@ namespace Tests
 			}
 		}
 
+		struct ZeroStruct
+		{
+			public this() { }
+			public const ZeroStruct ConstValue = ZeroStruct();
+		}
+
 		const String cStrA = "Abc";
 		const String cStrB = GetStringA(cStrA, 12, 23);
 

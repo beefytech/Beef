@@ -5149,14 +5149,14 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 				Fail("Failed to encode return argument");
 			}
 		}
-		else if (returnType->IsComposite())
+		else if ((methodInstance->mMethodDef->mMethodType == BfMethodType_Ctor) && (thisType != NULL) && (thisType->IsValuelessType()))
+		{
+			returnValue = BfTypedValue(module->mBfIRBuilder->CreateConstAggZero(module->mBfIRBuilder->MapType(returnType, BfIRPopulateType_Identity)), thisType);
+		}
+		else if ((returnType->IsComposite()) || (returnType->IsValuelessType()))
 		{
 			returnValue = BfTypedValue(module->mBfIRBuilder->CreateConstAggZero(module->mBfIRBuilder->MapType(returnType, BfIRPopulateType_Identity)), returnType);
-		}
-		else if (returnType->IsValuelessType())
-		{
-			returnValue = BfTypedValue(module->mBfIRBuilder->GetFakeVal(), returnType);			
-		}
+		}		
 	}
 
 	mCallStack.Clear();
