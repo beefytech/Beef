@@ -1811,16 +1811,16 @@ BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define, boo
 	}
 
 	BfIRValue* irValuePtr = NULL;
-	if (!mStringObjectPool.TryAdd(strId, NULL, &irValuePtr))
-		return *irValuePtr;	
+	if (mStringObjectPool.TryGetValue(strId, &irValuePtr))
+		return *irValuePtr;
 
 	// If this wasn't in neither dictionary yet, add to mStringPoolRefs
 	if (!mStringCharPtrPool.ContainsKey(strId))
 		mStringPoolRefs.Add(strId);
 
 	BfIRValue strObject = CreateStringObjectValue(str, strId, define);
-	
-	*irValuePtr = strObject;
+	mStringObjectPool[strId] = strObject;
+		
 	mStringPoolRefs.Add(strId);
 	
 	return strObject;
@@ -5161,7 +5161,7 @@ BfIRValue BfModule::CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* ou
 	if (mBfIRBuilder->mIgnoreWrites)
 		return mBfIRBuilder->GetFakeVal();
 
-	PopulateType(typeInstance, BfPopulateType_DataAndMethods);
+	PopulateType(typeInstance, mIsComptimeModule ? BfPopulateType_Data : BfPopulateType_DataAndMethods);
 
 	BfType* classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);
 
@@ -5706,7 +5706,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		else
 			typeDataSource = mContext->mBfTypeType;		
 				
-		if ((!mTypeDataRefs.ContainsKey(typeDataSource)) && (typeDataSource != type))
+		if ((!mTypeDataRefs.ContainsKey(typeDataSource)) && (typeDataSource != type) && (!mIsComptimeModule))
 		{
 			CreateTypeData(typeDataSource, usedStringIdMap, false, true, needsTypeNames, true);
 		}				
