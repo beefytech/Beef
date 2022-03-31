@@ -7,7 +7,7 @@ StartupObject = "BeefBuild.Program"
 
 [Platform.Windows]
 Description = "BeefBuild"
-FileVersion = "0.43.2"
+FileVersion = "0.43.3"
 
 [Configs.Debug.Win32]
 TargetName = ""
