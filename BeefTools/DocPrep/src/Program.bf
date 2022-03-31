@@ -42,7 +42,7 @@ namespace DocPrep
 		static extern char8* BfParser_Prep*/
 
 		[CallingConvention(.Stdcall), CLink]
-		static extern void* BfSystem_CreateProject(void* bfSystem, char8* projectName);
+		static extern void* BfSystem_CreateProject(void* bfSystem, char8* projectName, char8* projectDir);
 
 		String mSrcDirPath;
 		String mDestDirPath;
@@ -53,7 +53,7 @@ namespace DocPrep
 		this()
 		{
 			mSystem = BfSystem_Create();
-			mProject = BfSystem_CreateProject(mSystem, "main");
+			mProject = BfSystem_CreateProject(mSystem, "main", "");
 		}
 
 		void GenFile(String relFilePath)
