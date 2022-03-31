@@ -751,10 +751,20 @@ namespace Beefy.widgets
 
         public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
         {
-			bool hadSelection = HasSelection();
-
             base.MouseDown(x, y, btn, btnCount);
             mEditWidget.SetFocus();
+
+			if (HasSelection())
+			{
+				GetLineCharAtCoord(x, y, var line, var lineChar, ?);
+				int textPos = GetTextIdx(line, lineChar);
+				if ((textPos > mSelection.Value.MinPos) && (textPos < mSelection.Value.MaxPos))
+				{
+					// Leave selection
+					mDragSelectionKind = .ClickedInside;
+					return;
+				}
+			}
 
             if ((mSelection == null) && (mWidgetWindow.IsKeyDown(KeyCode.Shift)))
                 StartSelection();
@@ -809,16 +819,7 @@ namespace Beefy.widgets
             }
             else if (!mWidgetWindow.IsKeyDown(KeyCode.Shift))
             {
-				if ((mSelection != null) && (CursorTextPos > mSelection.Value.MinPos) && (CursorTextPos < mSelection.Value.MaxPos))
-				{
-					if (hadSelection)
-					{
-						// Leave selection
-						mDragSelectionKind = .ClickedInside;
-					}
-				}
-				else
-					StartSelection();
+				StartSelection();
 			}
             else
                 SelectToCursor();
@@ -832,7 +833,10 @@ namespace Beefy.widgets
 		    {
 		        mDragSelectionUnion = null;
 				if ((mDragSelectionKind == .ClickedInside) && (btn == 0))
+				{
 					mSelection = null;
+					MoveCursorToCoord(x, y);
+				}
 				mDragSelectionKind = .None;
 		    }
 		}
@@ -843,12 +847,15 @@ namespace Beefy.widgets
 
             if ((mMouseDown) && (mMouseFlags == .Left))
             {
+				if (mDragSelectionKind == .ClickedInside)
+					mDragSelectionKind = .DraggingInside;
+				if (mDragSelectionKind == .DraggingInside)
+					return;
+
                 MoveCursorToCoord(x, y);
 				ClampCursor();
 				if (mDragSelectionKind == .Dragging)
                 	SelectToCursor();
-				else if (mDragSelectionKind == .ClickedInside)
-					mDragSelectionKind = .DraggingInside;
             }
         }
 
