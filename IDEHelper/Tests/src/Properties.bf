@@ -10,6 +10,8 @@ namespace Tests
 		{
 			public int mA = 111;
 
+			public static int sAutoProp { get; set; }
+
 			public this()
 			{
 			}
@@ -17,6 +19,17 @@ namespace Tests
 			public this(int a)
 			{
 				mA = a;
+			}
+
+			public static void IncAutoProp()
+			{
+				Test.Assert(sAutoProp == 0);
+				int v = ++sAutoProp;
+				Test.Assert(v == 1);
+				Test.Assert(sAutoProp == 1);
+				int v2 = sAutoProp++;
+				Test.Assert(v == 1);
+				Test.Assert(sAutoProp == 2);
 			}
 		}
 
@@ -157,6 +170,13 @@ namespace Tests
 			MethodC(ce);
 			Test.Assert(ce.Val == 999);
 			Test.Assert(MethodD(ce) == 999);
+
+			StructA.IncAutoProp();
+			int ap = ++StructA.sAutoProp;
+			Test.Assert(ap == 3);
+			int ap2 = StructA.sAutoProp++;
+			Test.Assert(ap2 == 3);
+			Test.Assert(StructA.sAutoProp == 4);
 		}
 	}
 }

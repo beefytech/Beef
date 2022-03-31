@@ -21396,6 +21396,22 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 		}
 	}
 
+	switch (unaryOp)
+	{
+	case BfUnaryOp_PostIncrement:
+	case BfUnaryOp_Increment:
+	case BfUnaryOp_PostDecrement:
+	case BfUnaryOp_Decrement:
+		{
+			if (mResult.mKind == BfTypedValueKind_CopyOnMutateAddr)
+			{
+				// Support this ops on direct auto-property access without a copy
+				mResult.mKind = BfTypedValueKind_Addr;
+			}
+		}
+		break;
+	}
+
 	bool numericFail = false;
 	switch (unaryOp)
 	{
@@ -21579,7 +21595,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 		break;
 	case BfUnaryOp_PostIncrement:			
 	case BfUnaryOp_Increment:		
-		{
+		{			
 			CheckResultForReading(mResult);
 			auto ptr = mResult;
 			//if ((propDef == NULL) && (!mModule->CheckModifyValue(ptr, opToken)))			
