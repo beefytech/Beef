@@ -19454,6 +19454,8 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 		auto refType = (BfRefType*)toType;
 		toType = refType->mElementType;
 	}
+	if (toType->IsIntUnknown())
+		toType = mModule->FixIntUnknown(toType);
 	
 	if ((autoComplete != NULL) && (assignExpr->mOpToken != NULL) && (toType != NULL))
 		autoComplete->CheckEmptyStart(assignExpr->mOpToken, toType);
