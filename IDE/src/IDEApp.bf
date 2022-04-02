@@ -13200,13 +13200,15 @@ namespace IDE
 			            if (Path.Equals(sourceViewPanel.mFilePath, oldPath))
 			            {
 							var sourceViewTab = (IDEApp.SourceViewTabButton)tab;
-
-			                //TODO: We might have to resize the label here?
-			                //sourceViewPanel.mFilePath.Set(newPath);
+			                
 							sourceViewPanel.PathChanged(newPath);
 			                tab.Label = newFileName;
-							tab.mWantWidth = sourceViewTab.GetWantWidth();
-							//tab.mTabbedView.Resize();
+							float newWidth = sourceViewTab.GetWantWidth();
+							if (newWidth != tab.mWantWidth)
+							{
+								tab.mWantWidth = newWidth;
+								tab.mTabbedView.mNeedResizeTabs = true;
+							}
 			            }
 			        }
 			    });
