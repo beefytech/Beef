@@ -3657,10 +3657,12 @@ void BfIRCodeGen::HandleNextCmd()
 								SetResult(curId, mIRBuilder->CreateAlignedLoad(castedRes, llvm::MaybeAlign(1)));
 							}
 						}
-						else
+						else if ((arg0Type->isVectorTy()) && (intrinsicData->mReturnType->isVectorTy()))
 						{
-							FatalError("Expected address");
+							SetResult(curId, mIRBuilder->CreateBitCast(args[0], intrinsicData->mReturnType));
 						}
+						else
+							FatalError("Invalid cast intrinsic values");
 					}
 					break;
 				case BfIRIntrinsic_VAArg:
