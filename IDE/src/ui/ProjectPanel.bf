@@ -1925,6 +1925,9 @@ namespace IDE.ui
 		        {
 		            if (!hadProjectItemsSelected)
 		            {
+						if (gApp.IsCompiling)
+							return;
+
 		                Dialog aDialog;
 
 		                if (projectCount == 1)
@@ -2327,6 +2330,9 @@ namespace IDE.ui
 
         void EditListViewItem(ListViewItem listViewItem)
         {
+			if (gApp.IsCompiling)
+				return;
+
 			mListView.EditListViewItem(listViewItem);
 
 			if (mListView.mEditWidget != null)
@@ -2405,6 +2411,9 @@ namespace IDE.ui
 
 		public Project ImportProject(String filePath, VerSpec verSpec = .None)
 		{
+			if (gApp.IsCompiling)
+				return null;
+
 			if (!File.Exists(filePath))
 			{
 				gApp.Fail(StackStringFormat!("Project file not found: {0}", filePath));
@@ -2608,13 +2617,19 @@ namespace IDE.ui
 					menu.AddItem();
 
 	                anItem = menu.AddItem("Add New Project...");
-	                anItem.mOnMenuItemSelected.Add(new (item) => { AddNewProject(); });                
+	                anItem.mOnMenuItemSelected.Add(new (item) => { AddNewProject(); });
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
 
 	                anItem = menu.AddItem("Add Existing Project...");
 	                anItem.mOnMenuItemSelected.Add(new (item) => { mImportProjectDeferred = true; });
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
 
 					anItem = menu.AddItem("Add From Installed...");
 					anItem.mOnMenuItemSelected.Add(new (item) => { mImportInstalledDeferred = true; });
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
 
 					anItem = menu.AddItem("New Folder");
 					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder((ProjectListViewItem)mListView.GetRoot()); });
@@ -2687,12 +2702,16 @@ namespace IDE.ui
 					}
 
 					item = menu.AddItem("Remove...");
+					if (gApp.IsCompiling)
+						item.SetDisabled(true);
 					item.mOnMenuItemSelected.Add(new (item) =>
 						{
 							RemoveSelectedItems();
 						});
 
 					item = menu.AddItem("Rename");
+					if (gApp.IsCompiling)
+						item.SetDisabled(true);
 					item.mOnMenuItemSelected.Add(new (item) =>
 						{
 							var projectItem = GetSelectedProjectItem();
