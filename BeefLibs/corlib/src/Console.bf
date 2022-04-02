@@ -212,12 +212,12 @@ namespace System
 
 		public static Result<void> ReadToEnd(String outText) => In.ReadToEnd(outText);
 
-		public static void Write(String line)
+		public static void Write(StringView line)
 		{
 			Out.Write(line).IgnoreError();
 		}
 
-		public static void Write(String fmt, params Object[] args)
+		public static void Write(StringView fmt, params Object[] args)
 		{
 			String str = scope String(256);
 			str.AppendF(fmt, params args);
@@ -239,7 +239,7 @@ namespace System
 			Out.Write("\n").IgnoreError();
 		}
 
-		public static void WriteLine(String line)
+		public static void WriteLine(StringView line)
 		{
 			Out.WriteLine(line).IgnoreError();
 		}
