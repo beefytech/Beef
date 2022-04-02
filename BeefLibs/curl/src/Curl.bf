@@ -860,6 +860,8 @@ namespace CURL
 			HTTP2Stream,            /* 92 - stream error in HTTP/2 framing layer */
 		}
 
+		public struct SList;
+
 		[CLink, CallingConvention(.Stdcall)]
 		static extern void* curl_easy_init();
 
@@ -880,6 +882,12 @@ namespace CURL
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern void* curl_easy_reset(void* curl);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern SList* curl_slist_append(SList* list, char8* val);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern void curl_slist_free_all(SList* list);
 
 		void* mCURL;
 
@@ -941,6 +949,12 @@ namespace CURL
 			return WrapResult((ReturnCode)curl_easy_setopt(mCURL, (int)option, (int)funcPtr));
 		}
 
+		public Result<void, ReturnCode> SetOpt(Option option, SList* list)
+		{
+			Debug.Assert(((int)option / 10000 == 1));
+			return WrapResult((ReturnCode)curl_easy_setopt(mCURL, (int)option, (int)(void*)list));
+		}
+
 		public Result<void> GetInfo(CurlInfo info, String val)
 		{
 			char8* ptr = null;
@@ -959,6 +973,16 @@ namespace CURL
 		public void Reset()
 		{
 			curl_easy_reset(mCURL);
+		}
+
+		public SList* Add(SList* list, StringView val)
+		{
+			return curl_slist_append(list, val.ToScopeCStr!());
+		}
+
+		public void Free(SList* list)
+		{
+			curl_slist_free_all(list);
 		}
 	}
 }

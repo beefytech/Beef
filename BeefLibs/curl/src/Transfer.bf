@@ -9,6 +9,7 @@ namespace CURL
 	class Transfer
 	{
 		CURL.Easy mCurl;
+		CURL.Easy.SList* mHeaderList;
 		bool mOwns;
 		bool mCancelling = false;
 		List<uint8> mData = new List<uint8>() ~ delete _;
@@ -77,6 +78,9 @@ namespace CURL
 
 			if (mOwns)
 				delete mCurl;
+
+			if (mHeaderList != null)
+				mCurl.Free(mHeaderList);
 		}
 
 		int GetCurBytesPerSecond()
@@ -146,6 +150,11 @@ namespace CURL
 			mCurl.SetOpt(.HTTPGet, true);
 		}
 
+		public void AddHeader(StringView header)
+		{
+			mHeaderList = mCurl.Add(mHeaderList, header);
+		}
+
 		public void InitPost(String url, String param)
 		{
 			Init(url);
@@ -154,6 +163,9 @@ namespace CURL
 
 		public Result<Span<uint8>> Perform()
 		{
+			if (mHeaderList != null)
+				mCurl.SetOpt(.HTTPHeader, mHeaderList);
+
 			mStatsTimer.Start();
 			var result = mCurl.Perform();
 			mStatsTimer.Stop();
