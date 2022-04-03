@@ -748,7 +748,7 @@ namespace System
 			{
 				return .Err;
 			}
-			return DateTime((uint64)(ticks + valueTicks) | InternalKind);
+			return DateTime((uint64)(ticks - valueTicks) | InternalKind);
 		}
 
 		public static DateTime operator -(DateTime d, TimeSpan t)
@@ -756,7 +756,7 @@ namespace System
 			int64 ticks = d.InternalTicks;
 			int64 valueTicks = (int64)t;
 			Runtime.Assert((ticks - MinTicks >= valueTicks && ticks - MaxTicks <= valueTicks));
-			return DateTime((uint64)(ticks + valueTicks) | d.InternalKind);
+			return DateTime((uint64)(ticks - valueTicks) | d.InternalKind);
 		}
 
 		public static TimeSpan operator -(DateTime lhs, DateTime rhs)
