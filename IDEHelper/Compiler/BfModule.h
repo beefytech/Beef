@@ -34,7 +34,7 @@ class BfResolvedType;
 class BfExprEvaluator;
 class CeEmitContext;
 class CeDbgState;
-enum BfCeTypeEmitSourceKind;
+enum BfCeTypeEmitSourceKind : int8;
 
 enum BfPopulateType
 {	

@@ -972,7 +972,7 @@ public:
 	}
 };
 
-enum BfCeTypeEmitSourceKind
+enum BfCeTypeEmitSourceKind : int8
 {
 	BfCeTypeEmitSourceKind_Unknown,
 	BfCeTypeEmitSourceKind_Type,
