@@ -16,13 +16,18 @@ namespace System
 		typealias c_uchar = uint8;
 
 #if BF_PLATFORM_WINDOWS
+		typealias c_wchar = char16;
+#else
+		typealias c_wchar = char32;
+#endif
+
+#if BF_PLATFORM_WINDOWS || BF_32_BIT
 		typealias c_long = int32;
 		typealias c_ulong = uint32;
-		typealias c_wchar = char16;
 #else
 		typealias c_long = int64;
 		typealias c_ulong = uint64;
-		typealias c_wchar = char32;
+		
 #endif
 	}
 }
