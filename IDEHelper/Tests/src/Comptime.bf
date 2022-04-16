@@ -434,12 +434,12 @@ namespace Tests
 			{
 				if (type.IsGenericParam)
 				{
-					Compiler.Assert(type.IsGenericParam);
+					Runtime.Assert(type.IsGenericParam);
 					String tName = type.GetFullName(.. scope .());
-					Compiler.Assert(tName == "TTuple");
+					Runtime.Assert(tName == "TTuple");
 					return typeof(var);
 				}
-				Compiler.Assert(type.IsTuple);
+				Runtime.Assert(type.IsTuple);
 				return type.GetField(index).Get().FieldType;
 			}
 		}
