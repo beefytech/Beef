@@ -27,7 +27,7 @@ namespace System
 #if BF_PLATFORM_WINDOWS
 		void* mVAList;
 #else
-		int[3] mVAList; // Conservative size for va_list
+		int[5] mVAList; // Conservative size for va_list
 #endif
 
 		[Intrinsic("va_start")]
@@ -64,6 +64,11 @@ namespace System
 #else
 			return &mVAList;
 #endif
+		}
+
+		public void* ToVAListPtr() mut
+		{
+			return &mVAList;
 		}
 	}
 
