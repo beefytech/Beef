@@ -732,6 +732,7 @@ namespace IDE.ui
 		public int32 mCollapseParseRevision;
 		public int32 mCollapseTextVersionId;
 		public bool mCollapseNeedsUpdate;
+		public bool mCollapseNoCheckOpen;
 
 		public List<PersistentTextPosition> PersistentTextPositions
 		{
@@ -5183,6 +5184,9 @@ namespace IDE.ui
 		bool CheckCollapseOpen(int checkLine, CursorMoveKind cursorMoveKind = .Unknown)
 		{
 			if (cursorMoveKind == .FromTyping_Deleting)
+				return true;
+
+			if (mCollapseNoCheckOpen)
 				return true;
 
 			if (IsLineCollapsed(checkLine))

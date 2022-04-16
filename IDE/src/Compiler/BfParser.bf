@@ -240,16 +240,16 @@ namespace IDE.Compiler
             return BfParser_Reduce(mNativeBfParser, passInstance.mNativeBfPassInstance);
         }
 
-        public void Reformat(int formatStart, int formatEnd, out int32[] char8Mapping, String str)
+        public void Reformat(int formatStart, int formatEnd, out int32[] charMapping, String str)
         {                                    
-            int32* char8MappingPtr;
+            int32* charMappingPtr;
             var maxCol = gApp.mSettings.mEditorSettings.mWrapCommentsAt;
-            var stringPtr = BfParser_Format(mNativeBfParser, (int32)formatStart, (int32)formatEnd, out char8MappingPtr, maxCol);
+            var stringPtr = BfParser_Format(mNativeBfParser, (int32)formatStart, (int32)formatEnd, out charMappingPtr, maxCol);
             str.Append(stringPtr);
 
-            char8Mapping = new int32[str.Length];
-            for (int32 i = 0; i < char8Mapping.Count; i++)
-                char8Mapping[i] = char8MappingPtr[i];
+            charMapping = new int32[str.Length];
+            for (int32 i = 0; i < charMapping.Count; i++)
+                charMapping[i] = charMappingPtr[i];
         }
 
         public bool GetDebugExpressionAt(int cursorIdx, String outExpr)
@@ -312,14 +312,17 @@ namespace IDE.Compiler
         {
             var editWidgetContent = (SourceEditWidgetContent)editWidget.Content;
 
+			editWidgetContent.mCollapseNoCheckOpen = true;
+			defer { editWidgetContent.mCollapseNoCheckOpen = false; }
+
 			let oldText = scope String();
 			editWidget.GetText(oldText);
 			/*File.WriteAllText(@"c:\temp\orig.txt", origText);*/
 
-            int32[] char8Mapping;
+            int32[] charMapping;
             String newText = scope String();
-            Reformat(formatStart, formatEnd, out char8Mapping, newText);
-			defer delete char8Mapping;
+            Reformat(formatStart, formatEnd, out charMapping, newText);
+			defer delete charMapping;
 
 			//File.WriteAllText(@"c:\temp\new.txt", newText);
 
@@ -333,9 +336,9 @@ namespace IDE.Compiler
 
             int32 insertStartIdx = -1;
             int32 expectedOldIdx = 0;
-            for (int32 i = 0; i < char8Mapping.Count; i++)
+            for (int32 i = 0; i < charMapping.Count; i++)
             {
-                int32 oldIdx = (int32)char8Mapping[i];
+                int32 oldIdx = (int32)charMapping[i];
 
                 if ((oldIdx != -1) && (insertStartIdx != -1))
                 {
@@ -391,6 +394,7 @@ namespace IDE.Compiler
                     deleteCharAction.mMoveCursor = false;
                     editWidgetContent.mData.mUndoManager.Add(deleteCharAction);
                     editWidgetContent.PhysDeleteChars(0, charsToDelete);
+
                     expectedOldIdx = oldIdx + 1;
                     deleteCount++;
                     deleteChars += charsToDelete;                    
