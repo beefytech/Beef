@@ -10426,8 +10426,12 @@ bool BeMCContext::DoLegalization()
 								// Sometimes the matching use is in another block
 								FindTarget(checkInst->mArg0, checkBlock, checkInstIdx);
 							}
-							else if ((checkInst->mKind != BeMCInstKind_Def) && (checkInst->mKind != BeMCInstKind_DbgDecl) &&
-								(checkInst->mKind != BeMCInstKind_ValueScopeSoftEnd) && (checkInst->mKind != BeMCInstKind_ValueScopeHardEnd))
+							else if (
+								(checkInst->mKind != BeMCInstKind_Def) &&
+								(checkInst->mKind != BeMCInstKind_DbgDecl) &&
+								(checkInst->mKind != BeMCInstKind_ValueScopeSoftEnd) &&
+								(checkInst->mKind != BeMCInstKind_ValueScopeHardEnd) &&
+								(checkInst->mKind != BeMCInstKind_LifetimeEnd))
 							{
 								SoftFail("Malformed");
 							}
@@ -16122,7 +16126,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
+	//mDebugging = (function->mName == "?Test@TestProgram@BeefTest@bf@@AEAA_NXZ");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
