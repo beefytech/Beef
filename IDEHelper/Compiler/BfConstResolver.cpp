@@ -49,7 +49,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 			if (mModule->mContext->mCurTypeState != NULL)
 			{
 				if (mModule->mContext->mCurTypeState->mCurFieldDef != NULL)
-					initializer = mModule->mContext->mCurTypeState->mCurFieldDef->mInitializer;
+					initializer = mModule->mContext->mCurTypeState->mCurFieldDef->GetInitializer();
 				if (mModule->mContext->mCurTypeState->mCurVarInitializer != NULL)
 					initializer = mModule->mContext->mCurTypeState->mCurVarInitializer;
 				if (mModule->mContext->mCurTypeState->mArrayInitializerSize != -1)

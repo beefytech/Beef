@@ -1964,7 +1964,7 @@ void BfContext::UpdateRevisedTypes()
 		{
 			if (fieldDef->mIsStatic)
 				continue;
-			if (fieldDef->mInitializer != NULL)
+			if (fieldDef->GetInitializer() != NULL)
 				return false;
 		}
 

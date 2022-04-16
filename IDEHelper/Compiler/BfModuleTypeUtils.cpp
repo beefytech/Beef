@@ -821,8 +821,9 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 			memberRef.mProtection = prop->mProtection;
 			memberRef.mName = prop->mName;
 			memberRef.mKindName = "property";
-			if (prop->mFieldDeclaration != NULL)
-				memberRef.mNameNode = prop->mFieldDeclaration->mNameNode;
+			auto fieldDecl = prop->GetFieldDeclaration();
+			if (fieldDecl != NULL)
+				memberRef.mNameNode = fieldDecl->mNameNode;
 			memberRef.mDeclaringType = prop->mDeclaringType;
 			auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(prop->mFieldDeclaration);
 			if (propertyDeclaration != NULL)
@@ -843,11 +844,16 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 			memberRef.mName = field->mName;
 			memberRef.mKindName = "field";
 			memberRef.mDeclaringType = field->mDeclaringType;
-			if (field->mFieldDeclaration != NULL)
+			if (auto fieldDecl = field->GetFieldDeclaration())
 			{
-				memberRef.mNameNode = field->mFieldDeclaration->mNameNode;
-				memberRef.mIsOverride = field->mFieldDeclaration->mNewSpecifier != NULL;
+				memberRef.mNameNode = fieldDecl->mNameNode;
+				memberRef.mIsOverride = fieldDecl->mNewSpecifier != NULL;
 			}
+			else if (auto paramDecl = field->GetParamDeclaration())
+			{
+				memberRef.mNameNode = paramDecl->mNameNode;
+			}
+
 			memberList.push_back(memberRef);
 		}
 
@@ -1045,7 +1051,7 @@ bool BfModule::CheckCircularDataError()
 		else if ((checkTypeState->mCurFieldDef != NULL) && (checkTypeState->mCurFieldDef->mFieldDeclaration != NULL))
 		{
 			Fail(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str(), checkTypeState->mCurFieldDef->mName.c_str()),
-				checkTypeState->mCurFieldDef->mFieldDeclaration->mTypeRef, true);
+				checkTypeState->mCurFieldDef->mTypeRef, true);
 		}
 		else if (checkTypeState->mCurFieldDef != NULL)
 		{
@@ -4387,7 +4393,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				SetAndRestoreValue<BfTypeState::ResolveKind> prevResolveKind(mContext->mCurTypeState->mResolveKind, BfTypeState::ResolveKind_FieldType);
 				
 				BfType* resolvedFieldType = NULL;
-				
+								
+				auto initializer = field->GetInitializer();
+
 				if (field->IsEnumCaseEntry())
 				{
 					if (typeInstance->IsEnum())
@@ -4432,7 +4440,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				else
 				{	
 					BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_NoResolveGenericParam;
-					if (field->mInitializer != NULL)
+					if (initializer != NULL)
 						resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowInferredSizedArray);
 					resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, resolveFlags);
 					if (resolvedFieldType == NULL)
@@ -4449,7 +4457,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					{
 						if (arrayTypeRef->IsInferredSize())
 						{
-							if (field->mInitializer != NULL)
+							if (initializer != NULL)
 							{
 								DeferredResolveEntry resolveEntry;
 								resolveEntry.mFieldDef = field;
@@ -4523,7 +4531,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			{
 				// Already handled
 			}
-			else if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL) && (!typeInstance->mTypeFailed))
+			else if ((fieldDef != NULL) && (fieldDef->GetFieldDeclaration() != NULL) && (fieldDef->GetFieldDeclaration()->mAttributes != NULL) && (!typeInstance->mTypeFailed))
 			{
 				if (auto propDecl = BfNodeDynCast<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
 				{
@@ -4533,14 +4541,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
 					
-					fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
+					fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->GetFieldDeclaration()->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
 					for (auto customAttr : fieldInstance->mCustomAttributes->mAttributes)
 					{
 						if (TypeToString(customAttr.mType) == "System.ThreadStaticAttribute")
 						{
 							if ((!fieldDef->mIsStatic) || (fieldDef->mIsConst))
 							{
-								Fail("ThreadStatic attribute can only be used on static fields", fieldDef->mFieldDeclaration->mAttributes);
+								Fail("ThreadStatic attribute can only be used on static fields", fieldDef->GetFieldDeclaration()->mAttributes);
 							}
 						}
 					}
@@ -4750,9 +4758,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				if (propDef->IsExpressionBodied())
 					target = (BfAttributeTargets)(target | BfAttributeTargets_Method);
 
-				if ((propDef->mFieldDeclaration->mAttributes != NULL) && (!typeInstance->mTypeFailed))
+				if ((propDef->GetFieldDeclaration()->mAttributes != NULL) && (!typeInstance->mTypeFailed))
 				{
-					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, target);
+					auto customAttrs = GetCustomAttributes(propDef->GetFieldDeclaration()->mAttributes, target);
 					delete customAttrs;
 				}
 
@@ -4845,7 +4853,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
 				{
 					if ((fieldDef->mUsingProtection != BfProtection_Hidden) && (!resolvedFieldType->IsStruct()) && (!resolvedFieldType->IsObject()))
-						Warn(0, StrFormat("Field type '%s' is not applicable for 'using'", TypeToString(resolvedFieldType).c_str()), fieldDef->mFieldDeclaration->mConstSpecifier);
+						Warn(0, StrFormat("Field type '%s' is not applicable for 'using'", TypeToString(resolvedFieldType).c_str()), fieldDef->GetFieldDeclaration()->mConstSpecifier);
 
 					if (fieldInstance->mIsEnumPayloadCase)
 					{						
@@ -4871,12 +4879,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 						if (fieldDef->mIsExtern)
 						{
-							Fail("Cannot declare instance member as 'extern'", fieldDef->mFieldDeclaration->mExternSpecifier, true);
+							Fail("Cannot declare instance member as 'extern'", fieldDef->GetFieldDeclaration()->mExternSpecifier, true);
 						}
 
 						BfAstNode* nameRefNode = NULL;
-						if (fieldDef->mFieldDeclaration != NULL)
-							nameRefNode = fieldDef->mFieldDeclaration->mNameNode;
+						if (auto fieldDecl = fieldDef->GetFieldDeclaration())
+							nameRefNode = fieldDecl->mNameNode;
+						else if (auto paramDecl = fieldDef->GetParamDeclaration())
+							nameRefNode = paramDecl->mNameNode;
 						if (nameRefNode == NULL)
 							nameRefNode = fieldDef->mTypeRef;
 

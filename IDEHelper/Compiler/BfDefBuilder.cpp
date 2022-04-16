@@ -706,6 +706,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		for (auto paramDef : methodDef->mParams)
 		{
 			auto fieldDef = new BfFieldDef();
+			fieldDef->mFieldDeclaration = paramDef->mParamDeclaration;
 			fieldDef->mName = paramDef->mName;
 			while (fieldDef->mName.StartsWith("@"))
 			{
@@ -940,8 +941,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 	{		
 		propertyDef->mName = "[]";
 	}
-	propertyDef->mTypeRef = propertyDeclaration->mTypeRef;
-	propertyDef->mInitializer = NULL;
+	propertyDef->mTypeRef = propertyDeclaration->mTypeRef;	
 	propertyDef->mFieldDeclaration = propertyDeclaration;
 	BF_ASSERT(mCurDeclaringTypeDef != NULL);
 	propertyDef->mDeclaringType = mCurDeclaringTypeDef;	
@@ -979,7 +979,6 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 			fieldDef->mTypeRef = refTypeRef->mElementType;
 		fieldDef->mName = mCurTypeDef->GetAutoPropertyName(propertyDeclaration);		
 		fieldDef->mIdx = (int)mCurTypeDef->mFields.size();
-		fieldDef->mInitializer = propertyDeclaration->mInitializer;
 		mCurTypeDef->mFields.push_back(fieldDef);
 
 		mCurTypeDef->mSignatureHash = HashString(fieldDef->mName, mCurTypeDef->mSignatureHash + fieldDef->mNamePrefixCount);
@@ -1190,7 +1189,6 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 	}
 
 	fieldDef->mIdx = (int)mCurTypeDef->mFields.size() - 1;	
-	fieldDef->mInitializer = fieldDeclaration->mInitializer;
 
 	//mCurTypeDef->mSignatureHash = HashNode(fieldDeclaration, mCurTypeDef->mSignatureHash);
 	if (mSignatureHashCtx != NULL)
@@ -2168,18 +2166,18 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 				hasStaticField = true;
 				if (field->mFieldDeclaration != NULL)
 				{
-					if (field->mFieldDeclaration->mInitializer != NULL)
+					if (field->GetFieldDeclaration()->mInitializer != NULL)
 					{						
 						needsStaticInit = true;
 					}
-					if (field->mFieldDeclaration->mFieldDtor != NULL)
+					if (field->GetFieldDeclaration()->mFieldDtor != NULL)
 						needsStaticDtor = true;
 				}
 			}
 
 			if (field->mFieldDeclaration != NULL)
 			{
-				auto attributes = field->mFieldDeclaration->mAttributes;
+				auto attributes = field->GetFieldDeclaration()->mAttributes;
 				while (attributes != NULL)
 				{
 					if (attributes->mAttributeTypeRef != NULL)
@@ -2197,10 +2195,13 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		else 
 		{
 			hasNonStaticField = true;
-			if (field->mInitializer != NULL)
+			if (field->GetInitializer() != NULL)
 				needsDefaultCtor = true;
-			if ((field->mFieldDeclaration != NULL) && (field->mFieldDeclaration->mFieldDtor != NULL))
-				needsDtor = true;
+			if (auto fieldDecl = field->GetFieldDeclaration())
+			{
+				if (fieldDecl->mFieldDtor != NULL)
+					needsDtor = true;
+			}
 		}
 	}
 	

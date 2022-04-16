@@ -4804,7 +4804,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 					}
 				}
 
-				auto fieldDecl = fieldInstance->GetFieldDef()->mFieldDeclaration;
+				auto fieldDecl = fieldInstance->GetFieldDef()->GetFieldDeclaration();
 				if ((fieldDecl != NULL) && (fieldDecl->mDocumentation != NULL))
 				{
 					String docString;

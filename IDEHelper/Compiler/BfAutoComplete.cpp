@@ -758,7 +758,8 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 	AutoCompleteEntry entry(GetTypeName(fieldInstance->mResolvedType), fieldDef->mName, fieldDef->mNamePrefixCount - wantPrefixCount);
 	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
-		auto documentation = (fieldDef->mFieldDeclaration != NULL) ? fieldDef->mFieldDeclaration->mDocumentation : NULL;
+		auto fieldDecl = fieldDef->GetFieldDeclaration();
+		auto documentation = (fieldDecl != NULL) ? fieldDecl->mDocumentation : NULL;
 		if (CheckDocumentation(entryAdded, documentation))
 		{
 			mModule->PopulateType(typeInst);
@@ -786,8 +787,8 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 		{
 			mDefType = typeInst->mTypeDef;
 			mDefField = fieldDef;
-			if (fieldDef->mFieldDeclaration != NULL)
-				SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
+			if (auto nameNode = fieldDef->GetNameNode())
+				SetDefinitionLocation(nameNode);
 		}
 	}
 }
@@ -802,8 +803,9 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 		wantPrefixCount++;
 	}	
 	BfCommentNode* documentation = NULL;
-	if (propDef->mFieldDeclaration != NULL)
-		documentation = propDef->mFieldDeclaration->mDocumentation;
+	auto fieldDecl = propDef->GetFieldDeclaration();
+	if (fieldDecl != NULL)
+		documentation = fieldDecl->mDocumentation;
 	AutoCompleteEntry entry("property", propDef->mName, propDef->mNamePrefixCount - wantPrefixCount);
 	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
@@ -861,8 +863,8 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 			}
 			entryAdded->mDocumentation = mAlloc.AllocString(str);
 		}
-		if ((mIsGetDefinition) && (propDef->mFieldDeclaration != NULL))
-			SetDefinitionLocation(propDef->mFieldDeclaration->mNameNode);
+		if ((mIsGetDefinition) && (fieldDecl != NULL))
+			SetDefinitionLocation(fieldDecl->mNameNode);
 	}
 }
 
@@ -1168,7 +1170,7 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 			AutoCompleteEntry entry(hasPayload ? "payloadEnum" : "value", fieldDef->mName);
 			if (auto entryAdded = AddEntry(entry, filter))
 			{
-				if (CheckDocumentation(entryAdded, fieldDef->mFieldDeclaration->mDocumentation))
+				if (CheckDocumentation(entryAdded, fieldDef->GetFieldDeclaration()->mDocumentation))
 				{
 				}
 
@@ -1177,7 +1179,7 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 					mDefType = typeInst->mTypeDef;
 					mDefField = fieldDef;
 					if (fieldDef->mFieldDeclaration != NULL)
-						SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
+						SetDefinitionLocation(fieldDef->GetFieldDeclaration()->mNameNode);
 				}
 			}
 		}
@@ -1296,7 +1298,9 @@ BfProject* BfAutoComplete::GetActiveProject()
 bool BfAutoComplete::WantsEntries()
 {
 	return (mResolveType == BfResolveType_Autocomplete) || 
-		(mResolveType == BfResolveType_Autocomplete_HighPri);
+		(mResolveType == BfResolveType_Autocomplete_HighPri) ||
+		(mResolveType == BfResolveType_GetSymbolInfo) ||
+		(mResolveType == BfResolveType_GoToDefinition);
 }
 
 void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
@@ -1521,12 +1525,12 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		{
 			if (auto entryAdded = AddEntry(AutoCompleteEntry("property", prop->mName + "="), filter))
 			{	
-				if (CheckDocumentation(entryAdded, prop->mFieldDeclaration->mDocumentation))
+				if (CheckDocumentation(entryAdded, prop->GetFieldDeclaration()->mDocumentation))
 				{
 
 				}
 				if (mIsGetDefinition)
-					SetDefinitionLocation(prop->mFieldDeclaration->mNameNode);
+					SetDefinitionLocation(prop->GetFieldDeclaration()->mNameNode);
 			}
 		}
 
@@ -1534,12 +1538,12 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		{			
 			if (auto entryAdded = AddEntry(AutoCompleteEntry("field", field->mName + "="), filter))
 			{	
-				if (CheckDocumentation(entryAdded, field->mFieldDeclaration->mDocumentation))
+				if (CheckDocumentation(entryAdded, field->GetFieldDeclaration()->mDocumentation))
 				{
 
 				}
 				if (mIsGetDefinition)
-					SetDefinitionLocation(field->mFieldDeclaration->mNameNode);
+					SetDefinitionLocation(field->GetFieldDeclaration()->mNameNode);
 			}
 		}
 	}

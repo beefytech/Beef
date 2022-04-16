@@ -2300,7 +2300,7 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 										continue;
 									}
 
-									if ((fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mInitializer != NULL))
+									if (fieldDef->GetInitializer() != NULL)
 									{
 										// This initializer was handled in CtorNoBody
 										foundFields = true;
@@ -4051,7 +4051,7 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfFieldDef* fieldDef, bool forceResolve)
 {
 	bool autoCompleteOnly = mCompiler->IsAutocomplete();
-	
+		
 	BfType* fieldType = NULL;
 	if (fieldInstance != NULL)
 	{
@@ -4074,7 +4074,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 			if (isLet || isVar)
 				fieldType = GetPrimitiveType(BfTypeCode_Var);
 			else
-				fieldType = ResolveTypeRef(fieldDef->mTypeRef,BfPopulateType_Identity, BfResolveTypeRefFlag_AllowInferredSizedArray);
+				fieldType = ResolveTypeRef(fieldDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowInferredSizedArray);
 			if (fieldType == NULL)
 				fieldType = mContext->mBfObjectType;
 		}
@@ -4116,16 +4116,16 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		if (!fieldDef->mTypeRef->IsA<BfPointerTypeRef>())
 		{
 			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
-			Fail("Extern consts must be pointer types", fieldDef->mFieldDeclaration->mTypeRef);
+			Fail("Extern consts must be pointer types", fieldDef->mTypeRef);
 		}
 
-		if (fieldDef->mInitializer != NULL)
+		if (fieldDef->GetInitializer() != NULL)
 		{
 			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
-			Fail("Extern consts cannot have initializers", fieldDef->mFieldDeclaration->mNameNode);
+			Fail("Extern consts cannot have initializers", fieldDef->GetNameNode());
 		}
 	}
-	else if (fieldDef->mInitializer == NULL)
+	else if (fieldDef->GetInitializer() == NULL)
 	{
 		if (fieldDef->IsEnumCaseEntry())
 		{
@@ -4163,7 +4163,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		}
 		else
 		{
-			Fail("Const requires initializer", fieldDef->mFieldDeclaration->mNameNode);			
+			Fail("Const requires initializer", fieldDef->GetNameNode());
 		}
 	}
 	else if (mBfIRBuilder != NULL)
@@ -4181,7 +4181,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 
 		if ((fieldType->IsVar()) || (fieldType->IsUndefSizedArray()))
 		{
-			auto initValue = GetFieldInitializerValue(fieldInstance, fieldDef->mInitializer, fieldDef, fieldType);
+			auto initValue = GetFieldInitializerValue(fieldInstance, fieldDef->GetInitializer(), fieldDef, fieldType);
 			if (!initValue)
 			{
 				AssertErrorState();
@@ -4203,7 +4203,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		}
 		else
 		{
-			auto uncastedInitValue = GetFieldInitializerValue(fieldInstance, fieldDef->mInitializer, fieldDef, fieldType);
+			auto uncastedInitValue = GetFieldInitializerValue(fieldInstance, fieldDef->GetInitializer(), fieldDef, fieldType);
 			constValue = uncastedInitValue.mValue;
 		}
 
@@ -4243,7 +4243,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 
 BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfFieldDef* field)
 {	
-	bool isDeclType = (field->mFieldDeclaration != NULL) && BfNodeDynCastExact<BfExprModTypeRef>(field->mFieldDeclaration->mTypeRef) != NULL;
+	bool isDeclType = (field->mFieldDeclaration != NULL) && BfNodeDynCastExact<BfExprModTypeRef>(field->mTypeRef) != NULL;
 
 	auto fieldType = fieldInstance->GetResolvedType();
 	if ((field->mIsConst) && (!isDeclType))
@@ -4297,7 +4297,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	SetAndRestoreValue<bool> prevResolvingVar(typeInstance->mResolvingVarField, true);	
 	SetAndRestoreValue<bool> prevCtxResolvingVar(mContext->mResolvingVarField, true);	
 	
-	if ((field->mInitializer == NULL) && (!isDeclType))
+	if ((field->GetInitializer() == NULL) && (!isDeclType))
 	{
 		if ((field->mTypeRef->IsA<BfVarTypeReference>()) || (field->mTypeRef->IsA<BfLetTypeReference>()))
 			Fail("Implicitly-typed fields must be initialized", field->GetRefNode());		
@@ -4428,7 +4428,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 	{
 		if (fieldDef == NULL)
 			return BfTypedValue();
-		initializer = fieldDef->mInitializer;
+		initializer = fieldDef->GetInitializer();
 	}
 
 	BfTypedValue staticVarRef;
@@ -15194,10 +15194,18 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 		BF_ASSERT(rootMethodState->mCurLocalVarId >= 0);
 		localVarDef->mLocalVarId = rootMethodState->mCurLocalVarId++;
 	}
-	if ((localVarDef->mNameNode != NULL) && (mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) && (!mIsComptimeModule))
-		mCompiler->mResolvePassData->mAutoComplete->CheckLocalDef(localVarDef->mNameNode, localVarDef);
 
-	if ((localVarDef->mNameNode != NULL) && (mCurMethodInstance != NULL))
+	bool checkLocal = true;
+	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor))
+	{
+		if (auto autoCtorDecl = BfNodeDynCast<BfAutoConstructorDeclaration>(mCurMethodInstance->mMethodDef->mMethodDeclaration))
+			checkLocal = false;
+	}	
+
+	if ((localVarDef->mNameNode != NULL) && (mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) && (!mIsComptimeModule) && (checkLocal))
+		mCompiler->mResolvePassData->mAutoComplete->CheckLocalDef(localVarDef->mNameNode, localVarDef);	
+
+	if (((localVarDef->mNameNode != NULL) && (mCurMethodInstance != NULL)) && (checkLocal))
 	{		
 		bool isClosureProcessing = (mCurMethodState->mClosureState != NULL) && (!mCurMethodState->mClosureState->mCapturing);		
 		if ((!isClosureProcessing) && (mCompiler->mResolvePassData != NULL) && (localVarDef->mNameNode != NULL) && (rootMethodState->mMethodInstance != NULL) && (!mIsComptimeModule))
@@ -16616,13 +16624,13 @@ void BfModule::CreateStaticCtor()
 	{
 		for (auto fieldDef : typeDef->mFields)
 		{
-			if ((!fieldDef->mIsConst) && (fieldDef->mIsStatic) && (fieldDef->mInitializer != NULL))
+			if ((!fieldDef->mIsConst) && (fieldDef->mIsStatic) && (fieldDef->GetInitializer() != NULL))
 			{
 				// For extensions, only handle these fields in the appropriate extension
 				if ((fieldDef->mDeclaringType->mTypeDeclaration != methodDef->mDeclaringType->mTypeDeclaration))
 					continue;
 								
-				UpdateSrcPos(fieldDef->mInitializer);				
+				UpdateSrcPos(fieldDef->GetInitializer());				
 				
 				auto fieldInst = &mCurTypeInstance->mFieldInstances[fieldDef->mIdx];					
 				if (!fieldInst->mFieldIncluded)
@@ -16651,19 +16659,19 @@ void BfModule::CreateStaticCtor()
 				{
 					if ((fieldDef->mIsStatic) && (!fieldDef->mIsConst))
 					{
-						if (fieldDef->mInitializer != NULL)
+						if (fieldDef->GetInitializer() != NULL)
 						{
-							if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(fieldDef->mInitializer))
+							if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(fieldDef->GetInitializer()))
 							{
-								sourceClassifier->SetElementType(fieldDef->mInitializer, BfSourceElementType_Normal);
-								sourceClassifier->VisitChild(fieldDef->mInitializer);
+								sourceClassifier->SetElementType(fieldDef->GetInitializer(), BfSourceElementType_Normal);
+								sourceClassifier->VisitChildNoRef(fieldDef->GetInitializer());
 							}
 							BfType* wantType = NULL;
 							if ((!BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef)) && (!BfNodeIsA<BfLetTypeReference>(fieldDef->mTypeRef)))
 							{
 								wantType = ResolveTypeRef(fieldDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowInferredSizedArray);
 							}							
-							CreateValueFromExpression(fieldDef->mInitializer, wantType, BfEvalExprFlags_FieldInitializer);
+							CreateValueFromExpression(fieldDef->GetInitializer(), wantType, BfEvalExprFlags_FieldInitializer);
 						}						
 					}
 				}
@@ -16745,7 +16753,9 @@ void BfModule::EmitDtorBody()
 		{
 			auto fieldInst = &mCurTypeInstance->mFieldInstances[fieldIdx];
 			auto fieldDef = fieldInst->GetFieldDef();
-			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mFieldDtor != NULL))
+			auto fieldDecl = fieldDef->GetFieldDeclaration();
+
+			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDecl != NULL) && (fieldDecl->mFieldDtor != NULL))
 			{
 				if (fieldDef->mDeclaringType != mCurMethodInstance->mMethodDef->mDeclaringType)
 				{
@@ -16755,12 +16765,12 @@ void BfModule::EmitDtorBody()
 
 				if ((!methodDef->mIsStatic) && (mCurTypeInstance->IsValueType()))
 				{
-					Fail("Structs cannot have field destructors", fieldDef->mFieldDeclaration->mFieldDtor->mTildeToken, true);
+					Fail("Structs cannot have field destructors", fieldDecl->mFieldDtor->mTildeToken, true);
 				}
 
 				SetAndRestoreValue<BfFilePosition> prevFilePos(mCurFilePosition);
 
-				auto fieldDtor = fieldDef->mFieldDeclaration->mFieldDtor;
+				auto fieldDtor = fieldDecl->mFieldDtor;
 
 				if ((fieldDef->mIsStatic) != (methodDef->mIsStatic))
 					continue;
@@ -16915,8 +16925,10 @@ void BfModule::EmitDtorBody()
 			{
 				for (auto fieldDef : tempTypeDef->mFields)
 				{
+					auto fieldDecl = fieldDef->GetFieldDeclaration();
+
 					if ((fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDef->mFieldDeclaration != NULL) && 
-						(fieldDef->mFieldDeclaration->mFieldDtor != NULL) && (mCompiler->mResolvePassData->mIsClassifying))
+						(fieldDecl->mFieldDtor != NULL) && (mCompiler->mResolvePassData->mIsClassifying))
 					{
 						BfType* fieldType = NULL;
 
@@ -16930,7 +16942,7 @@ void BfModule::EmitDtorBody()
 						if (fieldType == NULL)
 							fieldType = GetPrimitiveType(BfTypeCode_Var);
 						
-						auto fieldDtor = fieldDef->mFieldDeclaration->mFieldDtor;
+						auto fieldDtor = fieldDecl->mFieldDtor;
 
 						BfScopeData scopeData;
 						mCurMethodState->AddScope(&scopeData);						
@@ -17595,8 +17607,9 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						continue;
 					if (fieldInst->mDataIdx < 0)
 						continue;
+					auto initializer = fieldDef->GetInitializer();
 
-					if (fieldDef->mInitializer == NULL)
+					if (initializer == NULL)
 					{
 						continue;
 
@@ -17612,9 +17625,9 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						continue;
 					}
 
-					if (fieldDef->mInitializer != NULL)
+					if (initializer != NULL)
 					{
-						_CheckInitBlock(fieldDef->mInitializer);
+						_CheckInitBlock(initializer);
 					}
 
 					BfIRValue fieldAddr;
@@ -17668,12 +17681,14 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				{
 					for (auto fieldDef : tempTypeDef->mFields)
 					{
-						if ((!fieldDef->mIsStatic) && (fieldDef->mInitializer != NULL) && (mCompiler->mResolvePassData->mIsClassifying))
+						auto initializer = fieldDef->GetInitializer();						
+
+						if ((!fieldDef->mIsStatic) && (initializer != NULL) && (mCompiler->mResolvePassData->mIsClassifying))
 						{
-							if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(fieldDef->mInitializer))
+							if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(initializer))
 							{
-								sourceClassifier->SetElementType(fieldDef->mInitializer, BfSourceElementType_Normal);
-								sourceClassifier->VisitChild(fieldDef->mInitializer);
+								sourceClassifier->SetElementType(initializer, BfSourceElementType_Normal);
+								sourceClassifier->VisitChild(initializer);
 							}
 
 							BfType* wantType = NULL;
@@ -17683,7 +17698,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 							if ((wantType != NULL) &&
 								((wantType->IsVar()) || (wantType->IsLet()) || (wantType->IsRef())))
 								wantType = NULL;
-							CreateValueFromExpression(fieldDef->mInitializer, wantType, BfEvalExprFlags_FieldInitializer);
+							CreateValueFromExpression(initializer, wantType, BfEvalExprFlags_FieldInitializer);
 						}
 					}
 
@@ -17708,10 +17723,10 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			// Mark fields from full type with initializers as initialized, to give proper initialization errors within ctor
 			for (auto fieldDef : typeDef->mFields)
 			{
-				if ((!fieldDef->mIsConst) && (!fieldDef->mIsStatic) && (fieldDef->mInitializer != NULL))
+				if ((!fieldDef->mIsConst) && (!fieldDef->mIsStatic) && (fieldDef->GetInitializer() != NULL))
 				{
 					auto fieldInst = &mCurTypeInstance->mFieldInstances[fieldDef->mIdx];
-					if (fieldDef->mInitializer != NULL)
+					if (fieldDef->GetInitializer() != NULL)
 						MarkFieldInitialized(fieldInst);
 				}
 			}
@@ -18022,8 +18037,9 @@ void BfModule::EmitEnumToStringBody()
 			continue;
 
 		// Only allow compact 'ValA, ValB' enum declaration fields through
-		auto fieldDecl = fieldInstance.GetFieldDef()->mFieldDeclaration;
-		if ((fieldDecl == NULL) || (fieldDecl->mTypeRef != NULL))
+		auto fieldDef = fieldInstance.GetFieldDef();
+		auto fieldDecl = fieldDef->mFieldDeclaration;
+		if ((fieldDecl == NULL) || (fieldDef->mTypeRef != NULL))
 			continue;
 
 		auto constant = mCurTypeInstance->mConstHolder->GetConstantById(fieldInstance.mConstIdx);

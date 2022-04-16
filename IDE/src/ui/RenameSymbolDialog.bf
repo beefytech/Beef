@@ -493,7 +493,7 @@ namespace IDE.ui
 			for (var parserDataStr in mModifiedParsers.Split('\n'))
 			{
 			    if (parserDataStr == "")
-			        return;
+			        break;
 			    var parserData = parserDataStr.Split('\t');
 			    //var projectSource = IDEApp.sApp.FindProjectSourceItem(parserData[0]);
 				var filePath = parserData.GetNext().Get();
@@ -547,6 +547,13 @@ namespace IDE.ui
 			    }
 
 			    mUpdatingProjectSources.Add(replaceSymbolData);
+			}
+
+			if ((mKind == .Rename) && (mUpdatingProjectSources.IsEmpty))
+			{
+				gApp.Fail("Cannot rename element");
+				Close();
+				return;
 			}
 
 			if (mKind == Kind.FindAllReferences)

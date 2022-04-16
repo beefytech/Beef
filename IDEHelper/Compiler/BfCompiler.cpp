@@ -4508,15 +4508,14 @@ void BfCompiler::ProcessAutocompleteTempType()
 	for (auto fieldDef : tempTypeDef->mFields)
 	{
 		BP_ZONE("ProcessAutocompleteTempType.CheckField");		
-
-		auto fieldDecl = fieldDef->mFieldDeclaration;
-		if (BfNodeIsA<BfPropertyDeclaration>(fieldDecl))
+		
+		if (BfNodeIsA<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
 			continue; // Don't process auto-generated property fields
 
 		if (fieldDef->mTypeRef != NULL)
 		{
 			BfResolveTypeRefFlags flags = BfResolveTypeRefFlag_None;
-			if ((fieldDecl != NULL) && (fieldDecl->mInitializer != NULL))
+			if (fieldDef->GetInitializer() != NULL)
 				flags = (BfResolveTypeRefFlags)(flags | BfResolveTypeRefFlag_AllowInferredSizedArray);
 			if ((!BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef)) &&
 				(!BfNodeIsA<BfLetTypeReference>(fieldDef->mTypeRef)))
@@ -4544,8 +4543,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 			autoComplete->CheckVarResolution(fieldDef->mTypeRef, fieldInstance->mResolvedType);
 		}
 
+		auto nameNode = fieldDef->GetNameNode();
 		if (((autoComplete->mIsGetDefinition)  || (autoComplete->mResolveType == BfResolveType_GetResultString)) &&
-			(fieldDef->mFieldDeclaration != NULL) && (autoComplete->IsAutocompleteNode(fieldDef->mFieldDeclaration->mNameNode)))
+			(fieldDef->mFieldDeclaration != NULL) && (autoComplete->IsAutocompleteNode(nameNode)))
 		{
 			for (int i = 0; i < (int)actualTypeDef->mFields.size(); i++)
 			{
@@ -4557,9 +4557,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 						autoComplete->mDefType = actualTypeDef;
 						autoComplete->mDefField = actualFieldDef;
 
-						autoComplete->SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
-						autoComplete->mInsertStartIdx = fieldDef->mFieldDeclaration->mNameNode->GetSrcStart();
-						autoComplete->mInsertEndIdx = fieldDef->mFieldDeclaration->mNameNode->GetSrcEnd();
+						autoComplete->SetDefinitionLocation(nameNode);
+						autoComplete->mInsertStartIdx = nameNode->GetSrcStart();
+						autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();
 					}
 					else if (autoComplete->mResolveType == BfResolveType_GetResultString)
 					{
@@ -4577,9 +4577,10 @@ void BfCompiler::ProcessAutocompleteTempType()
 			}			
 		}
 
-		if ((fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL))
+		BfFieldDeclaration* fieldDecl = fieldDef->GetFieldDeclaration();
+		if ((fieldDecl != NULL) && (fieldDecl->mAttributes != NULL))
 		{
-			auto customAttrs = module->GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
+			auto customAttrs = module->GetCustomAttributes(fieldDecl->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
 			delete customAttrs;
 		}
 
@@ -4588,15 +4589,12 @@ void BfCompiler::ProcessAutocompleteTempType()
 			module->ResolveConstField(typeInst, NULL, fieldDef);			
 		}
 		
-		if (fieldDef->mInitializer == NULL)
+		if (fieldDef->GetInitializer() == NULL)
 		{
 			if (BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef))
-			{
-				if (fieldDef->mInitializer == NULL)
-				{
-					if ((fieldDef->mTypeRef->IsA<BfVarTypeReference>()) || (fieldDef->mTypeRef->IsA<BfLetTypeReference>()))
-						mPassInstance->Fail("Implicitly-typed fields must be initialized", fieldDef->GetRefNode());
-				}
+			{				
+				if ((fieldDef->mTypeRef->IsA<BfVarTypeReference>()) || (fieldDef->mTypeRef->IsA<BfLetTypeReference>()))
+					mPassInstance->Fail("Implicitly-typed fields must be initialized", fieldDef->GetRefNode());				
 			}
 		}
 	}
@@ -4613,17 +4611,19 @@ void BfCompiler::ProcessAutocompleteTempType()
 	}
 	
  	for (auto propDef : tempTypeDef->mProperties)
-	{		
-		if ((propDef->mFieldDeclaration != NULL) && (propDef->mFieldDeclaration->mAttributes != NULL))
+	{	
+		auto fieldDecl = propDef->GetFieldDeclaration();
+
+		if ((fieldDecl != NULL) && (fieldDecl->mAttributes != NULL))
 		{
 			BfAttributeTargets target = BfAttributeTargets_Property;
 			if (propDef->IsExpressionBodied())
 				target = (BfAttributeTargets)(target | BfAttributeTargets_Method);
-			auto customAttrs = module->GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, target);
+			auto customAttrs = module->GetCustomAttributes(fieldDecl->mAttributes, target);
 			delete customAttrs;
 		}
 		
-		auto propDeclaration = BfNodeDynCast<BfPropertyDeclaration>(propDef->mFieldDeclaration);
+		auto propDeclaration = BfNodeDynCast<BfPropertyDeclaration>(fieldDecl);
 		if (propDeclaration != NULL)
 			autoComplete->CheckProperty(propDeclaration);
 		module->ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowRef);
@@ -4636,7 +4636,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 			}
 		}
 
-		if ((autoComplete->mIsGetDefinition) && (propDef->mFieldDeclaration != NULL) && (autoComplete->IsAutocompleteNode(propDef->mFieldDeclaration->mNameNode)))
+		if ((autoComplete->mIsGetDefinition) && (fieldDecl != NULL) && (autoComplete->IsAutocompleteNode(fieldDecl->mNameNode)))
 		{
 			auto checkType = typeInst;
 			while (checkType != NULL)
@@ -5119,8 +5119,8 @@ void BfCompiler::GetSymbolReferences()
 				BfTypeInstance* checkTypeInst = rebuildTypeInst;
 				typeState.mCurTypeDef = propDef->mDeclaringType;
 				module->GetBasePropertyDef(checkPropDef, checkTypeInst);
-				if (propDef->mFieldDeclaration != NULL)
-					mResolvePassData->HandlePropertyReference(propDef->mFieldDeclaration->mNameNode, checkTypeInst->mTypeDef, checkPropDef);
+				if (auto fieldDecl = propDef->GetFieldDeclaration())
+					mResolvePassData->HandlePropertyReference(fieldDecl->mNameNode, checkTypeInst->mTypeDef, checkPropDef);
 			}
 		}
 
@@ -5128,10 +5128,10 @@ void BfCompiler::GetSymbolReferences()
 		{			
 			for (auto fieldDef : typeDef->mFields)
 			{
-				if (fieldDef->mFieldDeclaration != NULL)
+				if (auto nameNode = fieldDef->GetNameNode())
 				{
 					typeState.mCurTypeDef = fieldDef->mDeclaringType;
-					mResolvePassData->HandleFieldReference(fieldDef->mFieldDeclaration->mNameNode, typeDef, fieldDef);
+					mResolvePassData->HandleFieldReference(nameNode, typeDef, fieldDef);
 				}
 			}
 		}
@@ -5145,17 +5145,20 @@ void BfCompiler::GetSymbolReferences()
 				if (fieldDef->mTypeRef != NULL)
 					CheckSymbolReferenceTypeRef(module, fieldDef->mTypeRef);
 
-				if ((fieldDef->mIsConst) && (fieldDef->mInitializer != NULL))
+				if ((fieldDef->mIsConst) && (fieldDef->GetInitializer() != NULL))
 				{
 					BfMethodState methodState;
 					methodState.mTempKind = BfMethodState::TempKind_Static;
 					SetAndRestoreValue<BfMethodState*> prevMethodState(module->mCurMethodState, &methodState);					
 					BfConstResolver constResolver(module); 
-					constResolver.Resolve(fieldDef->mInitializer);
+					constResolver.Resolve(fieldDef->GetInitializer());
 				}
 
-				if ((fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL))
-					_CheckAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mDeclaringType);
+				if (auto fieldDecl = fieldDef->GetFieldDeclaration())
+				{
+					if (fieldDecl->mAttributes != NULL)
+						_CheckAttributes(fieldDecl->mAttributes, fieldDef->mDeclaringType);
+				}
 			}
 		}
 

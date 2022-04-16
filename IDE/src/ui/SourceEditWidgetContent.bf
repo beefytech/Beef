@@ -4474,7 +4474,16 @@ namespace IDE.ui
 
 				if (wantCursorPos != -1)
 				{
-					mSelection = null;
+					if (mWidgetWindow.IsKeyDown(.Shift))
+					{
+						if (mSelection == null)
+							mSelection = .(CursorTextPos, wantCursorPos);
+						else
+							mSelection.ValueRef.mEndPos = (.)wantCursorPos;
+					}
+					else
+						mSelection = null;
+
 					CursorTextPos = wantCursorPos;
 					return;
 				}

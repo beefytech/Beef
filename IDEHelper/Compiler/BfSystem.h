@@ -564,14 +564,13 @@ class BfFieldDef : public BfMemberDef
 public:
 	int mIdx;	
 	bool mIsConst; // Note: Consts are also all considered Static		
+	BfTypeReference* mTypeRef;
 	BfProtection mUsingProtection;
 	bool mIsInline;
 	bool mIsVolatile;
 	bool mIsExtern;	
-	bool mIsProperty;
-	BfTypeReference* mTypeRef;	
-	BfExpression* mInitializer;
-	BfFieldDeclaration* mFieldDeclaration;
+	bool mIsProperty;	
+	BfAstNode* mFieldDeclaration;
 	// It may seem that fields and properties don't need a 'mNextWithSameName', but with extensions it's possible
 	//  to have two libraries which each add a field to a type with the same name	
 	BfFieldDef* mNextWithSameName;
@@ -581,13 +580,12 @@ public:
 	{
 		mIdx = 0;
 		mIsConst = false;		
+		mTypeRef = NULL;
 		mUsingProtection = BfProtection_Hidden;
 		mIsInline = false;
 		mIsExtern = false;
 		mIsVolatile = false;
 		mIsProperty = false;
-		mTypeRef = NULL;
-		mInitializer = NULL;
 		mFieldDeclaration = NULL;
 		mNextWithSameName = NULL;
 	}
@@ -611,9 +609,48 @@ public:
 	{
 		if (mFieldDeclaration == NULL)
 			return NULL;
-		if (mFieldDeclaration->mNameNode != NULL)
-			return mFieldDeclaration->mNameNode;
+
+		if (auto fieldDeclaration = BfNodeDynCast<BfFieldDeclaration>(mFieldDeclaration))
+		{
+			if (fieldDeclaration->mNameNode != NULL)
+				return fieldDeclaration->mNameNode;
+		}
+
+		if (auto paramDeclaration = BfNodeDynCast<BfParameterDeclaration>(mFieldDeclaration))
+		{
+			if (paramDeclaration->mNameNode != NULL)
+				return paramDeclaration->mNameNode;
+		}
+
 		return mFieldDeclaration;
+	}
+
+	BfFieldDeclaration* GetFieldDeclaration()
+	{
+		return BfNodeDynCast<BfFieldDeclaration>(mFieldDeclaration);
+	}
+
+	BfParameterDeclaration* GetParamDeclaration()
+	{
+		return BfNodeDynCast<BfParameterDeclaration>(mFieldDeclaration);
+	}
+
+	BfExpression* GetInitializer()
+	{
+		if (auto fieldDecl = GetFieldDeclaration())
+			return fieldDecl->mInitializer;
+		if (auto paramDecl = GetParamDeclaration())
+			return paramDecl->mInitializer;
+		return NULL;
+	}
+	
+	BfAstNode* GetNameNode()
+	{
+		if (auto fieldDecl = GetFieldDeclaration())
+			return fieldDecl->mNameNode;
+		if (auto paramDecl = GetParamDeclaration())
+			return paramDecl->mNameNode;
+		return NULL;
 	}
 };
 
