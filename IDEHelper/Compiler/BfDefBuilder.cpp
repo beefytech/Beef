@@ -153,8 +153,12 @@ void BfDefBuilder::Visit(BfIdentifierNode* identifier)
 //  already been handled, so we need to ignore that space while determining if we're "inside" this method or not during
 //  autocompletion
 bool BfDefBuilder::WantsNode(BfAstNode* wholeNode, BfAstNode* startNode, int addLen)
-{	
-	if ((mResolvePassData == NULL) || (mResolvePassData->mParser->mCursorIdx == -1))
+{		
+	if ((mResolvePassData == NULL) || (!mResolvePassData->mHasCursorIdx))
+		return true;
+
+	auto parser = wholeNode->GetParser();
+	if (parser->mCursorIdx == -1)
 		return true;
 
 	// We need to get all nodes when we get fixits because the cursor could be either before or after fields with
@@ -163,9 +167,9 @@ bool BfDefBuilder::WantsNode(BfAstNode* wholeNode, BfAstNode* startNode, int add
 		//return true;
 
 	addLen++;
-	if ((mResolvePassData->mParser->mCursorIdx >= wholeNode->GetSrcStart()) && (mResolvePassData->mParser->mCursorIdx < wholeNode->GetSrcEnd() + addLen))
+	if ((parser->mCursorIdx >= wholeNode->GetSrcStart()) && (parser->mCursorIdx < wholeNode->GetSrcEnd() + addLen))
 	{
-		if ((startNode == NULL) || (mResolvePassData->mParser->mCursorIdx >= startNode->GetSrcStart()))
+		if ((startNode == NULL) || (parser->mCursorIdx >= startNode->GetSrcStart()))
 			return true;
 	}
 	return false; 
@@ -1417,13 +1421,20 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	{
 		isAutoCompleteTempType = (mResolvePassData->mAutoComplete != NULL);
 
-		int cursorIdx = mResolvePassData->mParser->mCursorIdx;		
-		if (typeDeclaration->Contains(cursorIdx, 1, 0))
+		if (mResolvePassData->mHasCursorIdx)
 		{
-			// Within bounds
+			auto parser = typeDeclaration->GetParser();
+			if (parser != NULL)
+			{
+				int cursorIdx = parser->mCursorIdx;
+				if (typeDeclaration->Contains(cursorIdx, 1, 0))
+				{
+					// Within bounds
+				}
+				else if (cursorIdx != -1)
+					return;
+			}
 		}
-		else if (cursorIdx != -1)
-			return;
 	}
 
 	int curLine = 0;

@@ -345,6 +345,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 
 	gParserCount++;	
 
+	mEmbedKind = BfSourceEmbedKind_None;
 	mUsingCache = false;
 	mParserData = NULL;
 	mAwaitingDelete = false;
@@ -354,7 +355,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mJumpTable = NULL;
 	mProject = bfProject;
 	mPassInstance = NULL;
-	mPassInstance = NULL;
+	mSourceClassifier = NULL;
 	mPrevRevision = NULL;
 	mNextRevision = NULL;
 	mOrigSrcLength = 0;
@@ -375,7 +376,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mCompatMode = false;
 	mQuickCompatMode = false;
 	mLiteral.mWarnType = 0;
-	mDataId = -1;
+	mDataId = -1;	
 
 	mTriviaStart = 0;
 	mParsingFailed = false;
@@ -3820,6 +3821,11 @@ BF_EXPORT void BF_CALLTYPE BfParser_SetIsClassifying(BfParser* bfParser)
 	bfParser->mParserFlags = (BfParserFlag)(bfParser->mParserFlags | ParserFlag_Classifying);
 }
 
+BF_EXPORT void BF_CALLTYPE BfParser_SetEmbedKind(BfParser* bfParser, BfSourceEmbedKind embedKind)
+{
+	bfParser->mEmbedKind = embedKind;
+}
+
 BF_EXPORT void BF_CALLTYPE BfParser_SetAutocomplete(BfParser* bfParser, int cursorIdx)
 {
 	BF_ASSERT(bfParser->mParserData->mRefCount == -1);
@@ -3972,7 +3978,8 @@ BF_EXPORT BfResolvePassData* BF_CALLTYPE BfParser_CreateResolvePassData(BfParser
 {
 	auto bfResolvePassData = new BfResolvePassData();
 	bfResolvePassData->mResolveType = resolveType;
-	bfResolvePassData->mParser = bfParser;
+	if (bfParser != NULL)
+		bfResolvePassData->mParsers.Add(bfParser);
 	if ((bfParser != NULL) && ((bfParser->mParserFlags & ParserFlag_Autocomplete) != 0))
 		bfResolvePassData->mAutoComplete = new BfAutoComplete(resolveType, doFuzzyAutoComplete);
 	return bfResolvePassData;
@@ -3980,6 +3987,9 @@ BF_EXPORT BfResolvePassData* BF_CALLTYPE BfParser_CreateResolvePassData(BfParser
 
 BF_EXPORT bool BF_CALLTYPE BfParser_BuildDefs(BfParser* bfParser, BfPassInstance* bfPassInstance, BfResolvePassData* resolvePassData, bool fullRefresh)
 {	
+	if (bfParser->mCursorIdx != -1)
+		resolvePassData->mHasCursorIdx = true;
+
 	BP_ZONE("BfParser_BuildDefs");
 	int startFailIdx = bfPassInstance->mFailedIdx;
 	BfDefBuilder defBuilder(bfParser->mSystem);
@@ -4005,6 +4015,51 @@ BF_EXPORT void BF_CALLTYPE BfParser_ClassifySource(BfParser* bfParser, BfSourceC
 	bfSourceClassifier.Visit(bfParser->mErrorRootNode);
 	bfSourceClassifier.mIsSideChannel = true;
 	bfSourceClassifier.Visit(bfParser->mSidechannelRootNode);	
+}
+
+BF_EXPORT void BF_CALLTYPE BfParser_CreateClassifier(BfParser* bfParser, BfPassInstance* bfPassInstance, BfResolvePassData* resolvePassData, BfSourceClassifier::CharData* charData)
+{
+	resolvePassData->mIsClassifying = true;
+	bfParser->mSourceClassifier = new BfSourceClassifier(bfParser, charData);	
+	bfParser->mSourceClassifier->mClassifierPassId = bfPassInstance->mClassifierPassId;
+
+	if ((resolvePassData->mParsers.IsEmpty()) || (bfParser != resolvePassData->mParsers[0]))
+		resolvePassData->mParsers.Add(bfParser);
+
+	bool doClassifyPass = (charData != NULL) && (resolvePassData->mResolveType <= BfResolveType_Autocomplete_HighPri);
+	bfParser->mSourceClassifier->mEnabled = doClassifyPass;
+
+	bfParser->mSourceClassifier->mSkipMethodInternals = true;
+	bfParser->mSourceClassifier->mSkipTypeDeclarations = true;
+	if (charData != NULL)
+	{		
+		if ((doClassifyPass) && (bfParser->mRootNode != NULL))
+			bfParser->mSourceClassifier->Visit(bfParser->mRootNode);
+	}
+	bfParser->mSourceClassifier->mSkipTypeDeclarations = false;
+	bfParser->mSourceClassifier->mSkipMethodInternals = false;
+}
+
+BF_EXPORT void BF_CALLTYPE BfParser_FinishClassifier(BfParser* bfParser, BfResolvePassData* resolvePassData)
+{
+	if (bfParser->mSourceClassifier == NULL)
+		return;
+
+	bool doClassifyPass = (bfParser->mSourceClassifier->mCharData != NULL) && (resolvePassData->mResolveType <= BfResolveType_Autocomplete_HighPri);
+
+	if (doClassifyPass)
+	{
+		bfParser->mSourceClassifier->mIsSideChannel = false;
+		if (bfParser->mErrorRootNode != NULL)
+			bfParser->mSourceClassifier->Visit(bfParser->mErrorRootNode);
+
+		bfParser->mSourceClassifier->mIsSideChannel = true;
+		if (bfParser->mSidechannelRootNode != NULL)
+			bfParser->mSourceClassifier->Visit(bfParser->mSidechannelRootNode);
+	}
+
+	delete bfParser->mSourceClassifier;
+	bfParser->mSourceClassifier = NULL;
 }
 
 BF_EXPORT void BF_CALLTYPE BfParser_GenerateAutoCompletionFrom(BfParser* bfParser, int srcPosition)

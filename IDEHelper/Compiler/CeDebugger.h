@@ -402,6 +402,7 @@ public:
 	virtual Profiler* PopProfiler() override; // Profiler requested by target program
 	virtual void ReportMemory(MemReporter* memReporter) override;
 	virtual bool IsOnDemandDebugger() override;
+	virtual bool GetEmitSource(const StringImpl& filePath, String& outText) override;
 };
 
 NS_BF_END

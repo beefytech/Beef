@@ -657,10 +657,11 @@ public:
 	void AddProfiler(DbgProfiler* profiler);
 	void RemoveProfiler(DbgProfiler* profiler);
 
-	virtual void ReportMemory(MemReporter* memReporter) override;	
+	virtual void ReportMemory(MemReporter* memReporter) override;
 
 	virtual bool IsOnDemandDebugger() override { return false; }
 	virtual bool IsMiniDumpDebugger() { return false; }
+	virtual bool GetEmitSource(const StringImpl& filePath, String& outText);
 };
 
 template<typename T> bool WinDebugger::WriteMemory(intptr addr, T val)

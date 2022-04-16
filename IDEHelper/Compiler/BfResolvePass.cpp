@@ -18,9 +18,24 @@ BfResolvePassData::BfResolvePassData()
 	mSymbolTypeGenericParamIdx = -1;
 
 	mAutoComplete = NULL;
-	mSourceClassifier = NULL;
 	mResolveType = BfResolveType_None;
-	mParser = NULL;
+	mIsClassifying = false;
+	mHasCursorIdx = false;
+}
+
+BfResolvePassData::~BfResolvePassData()
+{
+	for (auto& emitEntryKV : mEmitEmbedEntries)
+	{
+		auto parser = emitEntryKV.mValue.mParser;
+		if (parser != NULL)
+		{
+			delete parser->mSourceClassifier;			
+			parser->mSourceClassifier = NULL;
+			parser->mParserFlags = ParserFlag_None;
+			parser->mCursorCheckIdx = -1;
+		}
+	}
 }
 
 void BfResolvePassData::RecordReplaceNode(BfParserData* parser, int srcStart, int srcLen)
@@ -178,4 +193,21 @@ void BfResolvePassData::HandleNamespaceReference(BfAstNode* node, const BfAtomCo
 		if (baseNode != NULL)
 			RecordReplaceNode(baseNode);
 	}
+}
+
+BfSourceClassifier* BfResolvePassData::GetSourceClassifier(BfAstNode* astNode)
+{
+	if (!mIsClassifying)
+		return NULL;
+	auto parser = astNode->GetParser();
+	if (parser == NULL)
+		return NULL;
+	return parser->mSourceClassifier;
+}
+
+BfSourceClassifier* BfResolvePassData::GetSourceClassifier(BfParser* parser)
+{
+	if (!mIsClassifying)
+		return NULL;
+	return parser->mSourceClassifier;
 }

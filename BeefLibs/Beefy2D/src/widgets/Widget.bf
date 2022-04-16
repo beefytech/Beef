@@ -834,4 +834,27 @@ namespace Beefy.widgets
 			return true;
 		}
     }
+
+	class SafeWidgetRef
+	{
+		Widget mWidget;
+
+		public this(Widget widget)
+		{
+			mWidget = widget;
+			mWidget.mOnDeleted.Add(new => OnDelete);
+		}
+
+		public ~this()
+		{
+			mWidget?.mOnDeleted.Remove(scope => OnDelete, true);
+		}
+
+		public Widget Value => mWidget;
+
+		void OnDelete(Widget widget)
+		{
+			mWidget = null;
+		}
+	}
 }

@@ -1205,10 +1205,21 @@ namespace IDE
 						linkLine.Append(" /ignore:4099");
 					}
 
+					int targetDotPos = targetPath.LastIndexOf('.');
+					if (targetDotPos != -1)
+					{
+						var writeEmitCmd = new IDEApp.WriteEmitCmd();
+						writeEmitCmd.mPath = new .(targetPath, 0, targetDotPos);
+						writeEmitCmd.mPath.Append("__emit.zip");
+						writeEmitCmd.mProjectName = new .(project.mProjectName);
+						gApp.mExecutionQueue.Add(writeEmitCmd);
+					}
+
 			        var runCmd = gApp.QueueRun(linkerPath, linkLine, gApp.mInstallDir, .UTF16WithBom);
 					runCmd.mReference = new .(project.mProjectName);
 					runCmd.mEnvVars = new .() { (new String("VSLANG"), new String("1033")) };
 			        runCmd.mOnlyIfNotFailed = true;
+
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
 			        tagetCompletedCmd.mOnlyIfNotFailed = true;
 			        gApp.mExecutionQueue.Add(tagetCompletedCmd);

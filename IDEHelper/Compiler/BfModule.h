@@ -34,6 +34,7 @@ class BfResolvedType;
 class BfExprEvaluator;
 class CeEmitContext;
 class CeDbgState;
+enum BfCeTypeEmitSourceKind;
 
 enum BfPopulateType
 {	
@@ -1780,8 +1781,8 @@ public:
 	BfModuleOptions GetModuleOptions();
 	BfCheckedKind GetDefaultCheckedKind();
 	void FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext);
-	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, const StringImpl& src);
-	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode);
+	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* declaringType, const StringImpl& src, BfAstNode* refNode, BfCeTypeEmitSourceKind emitSourceKind);
+	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* declaringType, const StringImpl& ctxString, BfAstNode* refNode, BfCeTypeEmitSourceKind emitSourceKind);
 	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfCustomAttributes* customAttributes, Dictionary<BfTypeInstance*, BfIRValue>& foundAttributes, bool underlyingTypeDeferred);
 	void CEMixin(BfAstNode* refNode, const StringImpl& src);
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind, bool underlyingTypeDeferred);

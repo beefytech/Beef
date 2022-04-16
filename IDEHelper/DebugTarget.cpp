@@ -162,14 +162,14 @@ DbgModule* DebugTarget::Init(const StringImpl& launchPath, const StringImpl& tar
 	}
 	CheckTargetBinary(dwarf);
 
-	mDbgModules.push_back(dwarf);	
+	AddDbgModule(dwarf);
 	return dwarf;
 }
 
 void DebugTarget::CreateEmptyTarget()
 {
 	auto emptyTarget = new DbgModule(this);
-	mDbgModules.push_back(emptyTarget);
+	AddDbgModule(emptyTarget);
 	mTargetBinary = emptyTarget;
 	mLaunchBinary = emptyTarget;
 }
@@ -198,7 +198,7 @@ DbgModule* DebugTarget::HotLoad(const StringImpl& fileName, int hotIdx)
 		delete dwarf;		
 		return NULL;
 	}	
-	mDbgModules.push_back(dwarf);
+	AddDbgModule(dwarf);
 	return dwarf;
 }
 
@@ -217,7 +217,7 @@ DbgModule* DebugTarget::SetupDyn(const StringImpl& filePath, DataStream* stream,
 		delete dwarf;
 		return NULL;
 	}
-	mDbgModules.push_back(dwarf);
+	AddDbgModule(dwarf);
 
 	dwarf->mDisplayName = GetFileName(filePath);
 	dwarf->mOrigImageData = new DbgModuleMemoryCache(dwarf->mImageBase, dwarf->mImageSize);
@@ -905,6 +905,12 @@ void DebugTarget::GetCompilerSettings()
 	}
 }
 
+void DebugTarget::AddDbgModule(DbgModule* dbgModule)
+{
+	static int id = 0;	
+	dbgModule->mId = ++id;
+	mDbgModules.Add(dbgModule);
+}
 
 #if 1
 bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPURegisters* registers, addr_target* outReturnAddressLoc, bool& alreadyRolledBackPC)

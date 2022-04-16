@@ -125,14 +125,14 @@ namespace Beefy.theme.dark
                 float trackSize = sizeLeft - mThumb.mWidth;
                 float trackPct = (x - btnMargin) / trackSize;
                 double contentPos = (mContentSize - mPageSize) * trackPct;
-                return contentPos;
+                return contentPos + mContentStart;
             }
             else
             {
                 float trackSize = sizeLeft - mThumb.mHeight;
                 float trackPct = (y - btnMargin) / trackSize;
                 double contentPos = (mContentSize - mPageSize) * trackPct;
-                return contentPos;
+                return contentPos + mContentStart;
             }
         }
 

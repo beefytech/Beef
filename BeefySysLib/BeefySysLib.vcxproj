@@ -1624,6 +1624,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">TurnOffAllWarnings</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">TurnOffAllWarnings</WarningLevel>
     </ClCompile>
+    <ClCompile Include="third_party\miniz\miniz.c" />
     <ClCompile Include="third_party\png\png.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level1</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Level1</WarningLevel>
@@ -1950,6 +1951,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClCompile Include="util\UTF8.cpp" />
     <ClCompile Include="util\Vector.cpp" />
     <ClCompile Include="util\WorkThread.cpp" />
+    <ClCompile Include="util\ZipFile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BFApp.h" />
@@ -2133,6 +2135,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="third_party\jpeg\transupp.h" />
     <ClInclude Include="third_party\libffi\i686-pc-cygwin\include\ffi.h" />
     <ClInclude Include="third_party\libffi\i686-pc-cygwin\include\ffitarget.h" />
+    <ClInclude Include="third_party\miniz\miniz.h" />
     <ClInclude Include="third_party\png\png.h" />
     <ClInclude Include="third_party\png\pngasmrd.h" />
     <ClInclude Include="third_party\png\pngconf.h" />
@@ -2190,6 +2193,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="util\UTF8.h" />
     <ClInclude Include="util\Vector.h" />
     <ClInclude Include="util\WorkThread.h" />
+    <ClInclude Include="util\ZipFile.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win64.asm">

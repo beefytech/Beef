@@ -2190,6 +2190,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mStartTypeIdx = 0;
 	mEndTypeIdx = 0;
 	mHotIdx = 0;
+	mId = 0;
 	mStartSubprogramIdx = 0;
 	mEndSubprogramIdx = 0;	
 	mCodeAddress = NULL;
@@ -7138,6 +7139,9 @@ int64 DbgModule::GetImageSize()
 DbgFileExistKind DbgModule::CheckSourceFileExist(const StringImpl& path)
 {
 	DbgFileExistKind existsKind = DbgFileExistKind_NotFound;
+
+	if (path.StartsWith("$Emit"))
+		return DbgFileExistKind_Found;
 
 	if (FileExists(path))
 		existsKind = DbgFileExistKind_Found;

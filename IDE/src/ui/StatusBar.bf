@@ -408,6 +408,8 @@ namespace IDE.ui
 			{
 				DrawStatusBox("Loading Projects");
 			}
+			else if (gApp.mDeferredShowSource != null)
+				DrawStatusBox("Queued Showing Source");
 			else
 				mStatusBoxUpdateCnt = -1;
 

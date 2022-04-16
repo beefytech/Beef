@@ -21,6 +21,7 @@ namespace Beefy.theme.dark
 			}
 
 			public Kind mKind;
+			public int32 mLine = -1;
 
 			public ~this()
 			{
@@ -61,7 +62,8 @@ namespace Beefy.theme.dark
 		public uint32 mViewWhiteSpaceColor;
 		public bool mScrollToStartOnLostFocus;
 		public bool mHiliteCurrentLine;
-		public Dictionary<int, Embed> mEmbeds = new .() ~ DeleteDictionaryAndValues!(_);
+		public Dictionary<int32, Embed> mEmbeds = new .() ~ DeleteDictionaryAndValues!(_);
+		public Range? mLineRange;
 
 		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;
 
@@ -498,7 +500,7 @@ namespace Beefy.theme.dark
 				((embed.mKind == .HideLine) && (!hideLine)))
 				selStartX += GS!(4);
 
-			Rect rect = .(selStartX, mLineCoords[lineIdx] - GS!(2), embed.GetWidth(hideLine), mFont.GetLineSpacing() + GS!(4));
+			Rect rect = .(selStartX, mLineCoords[lineIdx] - GS!(1), embed.GetWidth(hideLine), mFont.GetLineSpacing() + GS!(3));
 			if (rect.mY < 0)
 				rect.mY = 0;
 			return rect;
@@ -508,7 +510,6 @@ namespace Beefy.theme.dark
         {            
             base.Draw(g);
 
-			
 #unwarn
             int lineCount = GetLineCount();
             float lineSpacing = mFont.GetLineSpacing();
@@ -588,6 +589,12 @@ namespace Beefy.theme.dark
 			    drewCursor = true;
 			}
 
+			if (mLineRange != null)
+			{
+				firstLine = Math.Max(firstLine, mLineRange.Value.Start);
+				lastLine = Math.Min(lastLine, mLineRange.Value.End - 1);
+			}
+
 			String sectionText = scope String(256);
             for (int lineIdx = firstLine; lineIdx <= lastLine; lineIdx++)
             {
@@ -604,7 +611,7 @@ namespace Beefy.theme.dark
 					continue;
 
 				DarkEditWidgetContent.Embed embed = null;
-				if (mEmbeds.GetValue(lineIdx) case .Ok(out embed))
+				if (mEmbeds.GetValue((.)lineIdx) case .Ok(out embed))
 				{
 					if ((embed.mKind == .HideLine) &&
 						((!IsInCollapseGroup(lineIdx, CursorLine)) || (!mEditWidget.mHasFocus)))
@@ -811,6 +818,20 @@ namespace Beefy.theme.dark
 			if (line >= lineCount)
 			    line = lineCount - 1;
 			return line;
+		}
+
+		public override void PhysCursorMoved(CursorMoveKind moveKind)
+		{
+			base.PhysCursorMoved(moveKind);
+
+			if (mLineRange != null)
+			{
+				var lineAndColumn = CursorLineAndColumn;
+				if (lineAndColumn.mLine < mLineRange.Value.Start)
+					CursorLineAndColumn = .(mLineRange.Value.Start, lineAndColumn.mColumn);
+				else if (lineAndColumn.mLine >= mLineRange.Value.End)
+					CursorLineAndColumn = .(mLineRange.Value.End - 1, lineAndColumn.mColumn);
+			}
 		}
 
         public override bool GetLineCharAtCoord(float x, float y, out int line, out int lineChar, out float overflowX)
@@ -1145,7 +1166,7 @@ namespace Beefy.theme.dark
 			
 			bool isOverEmbed = false;
 
-			if (mEmbeds.GetValue(line) case .Ok(let embed))
+			if (mEmbeds.GetValue((.)line) case .Ok(let embed))
 			{
 				Rect embedRect = GetEmbedRect(line, embed);
 				if (embedRect.Contains(x, y))
@@ -1222,6 +1243,21 @@ namespace Beefy.theme.dark
             if (mVertScrollbar != null)
                 mVertScrollbar.mScrollIncrement = scrollIncrement;
         }
+
+		public override void UpdateScrollbarData()
+		{
+			base.UpdateScrollbarData();
+
+			var ewc = mEditWidgetContent as DarkEditWidgetContent;
+			if (ewc.mLineRange != null)
+			{
+				ewc.GetTextData();
+				mVertScrollbar.mContentStart = ewc.mLineCoords[Math.Min(ewc.mLineRange.Value.Start, ewc.mLineCoords.Count - 1)];
+				mVertScrollbar.mContentSize = ewc.mLineCoords[Math.Min(ewc.mLineRange.Value.End, ewc.mLineCoords.Count - 1)] - mVertScrollbar.mContentStart;
+				ScrollPositionChanged();
+				mVertScrollbar.UpdateData();
+			}
+		}
 
         public override void Draw(Graphics g)
         {

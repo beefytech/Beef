@@ -156,6 +156,7 @@ public:
 	BfFieldDef* mCurFieldDef;	
 	BfTypeDef* mCurTypeDef;
 	BfTypeDef* mForceActiveTypeDef;	
+	BfProject* mActiveProject;
 	ResolveKind mResolveKind;
 	BfAstNode* mCurVarInitializer;
 	int mArrayInitializerSize;
@@ -174,6 +175,7 @@ public:
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
 		mForceActiveTypeDef = NULL;
+		mActiveProject = NULL;
 		mCurVarInitializer = NULL;
 		mArrayInitializerSize = -1;
 		mResolveKind = ResolveKind_None;

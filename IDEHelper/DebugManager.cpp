@@ -1609,6 +1609,19 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetHotResolveData(uint8* outTypeData,
 	return outString.c_str();
 }
 
+BF_EXPORT const char* BF_CALLTYPE Debugger_GetEmitSource(char* inFilePath)
+{
+	AutoCrit autoCrit(gDebugManager->mCritSect);
+
+	String& outString = *gTLStrReturn.Get();
+	outString.Clear();
+
+	if (!gDebugger->GetEmitSource(inFilePath, outString))
+		return NULL;
+
+	return outString.c_str();
+}
+
 BF_EXPORT NetResult* HTTP_GetFile(char* url, char* destPath)
 {
 	AutoCrit autoCrit(gDebugManager->mNetManager->mThreadPool.mCritSect);

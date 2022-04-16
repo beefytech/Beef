@@ -208,6 +208,7 @@ public:
 
 public:	
 	BfProject* GetActiveProject();
+	bool WantsEntries();
 	bool CheckProtection(BfProtection protection, BfTypeDef* typeDef, bool allowProtected, bool allowPrivate);
 	String GetFilter(BfAstNode* node);
 	const char* GetTypeName(BfType* type);

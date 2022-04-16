@@ -972,11 +972,42 @@ public:
 	}
 };
 
+enum BfCeTypeEmitSourceKind
+{
+	BfCeTypeEmitSourceKind_Unknown,
+	BfCeTypeEmitSourceKind_Type,
+	BfCeTypeEmitSourceKind_Method
+};
+
+class BfCeTypeEmitSource
+{
+public:
+	BfCeTypeEmitSourceKind mKind;
+	int mSrcStart;
+	int mSrcEnd;
+
+public:
+	BfCeTypeEmitSource()
+	{
+		mKind = BfCeTypeEmitSourceKind_Unknown;
+		mSrcStart = -1;
+		mSrcEnd = -1;
+	}
+};
+
+class BfCeTypeEmitEntry
+{
+public:
+	String mEmitData;
+};
+
 class BfCeTypeInfo
 {
 public:
 	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
 	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
+	Dictionary<int64, BfCeTypeEmitSource> mEmitSourceMap; // key is (extension<<32)|charId
+
 	Array<int> mPendingInterfaces;
 	Dictionary<CeRebuildKey, CeRebuildValue> mRebuildMap;
 	Val128 mHash;

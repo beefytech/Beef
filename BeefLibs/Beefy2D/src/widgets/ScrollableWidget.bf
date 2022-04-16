@@ -121,7 +121,11 @@ namespace Beefy.widgets
 
         public bool VertScrollTo(double vertPos, bool immediate = false)
         {
-            double aVertPos = Math.Max(0, Math.Min(vertPos, mScrollContent.mHeight - mScrollContentContainer.mHeight));
+			float contentHeight = mScrollContent.mHeight;
+			if (mVertScrollbar != null)
+				contentHeight = (float)mVertScrollbar.mContentSize;
+
+            double aVertPos = Math.Max(0, Math.Min(vertPos, contentHeight - mScrollContentContainer.mHeight));
             if (aVertPos == mVertPos.mDest)
                 return false;
 
@@ -200,6 +204,7 @@ namespace Beefy.widgets
                 mHorzScrollbar.UpdateData();
 				MarkDirty();
             }
+
             if ((mVertScrollbar != null) && (mVertScrollbar.mContentPos != mVertPos.v))
             {
                 mVertScrollbar.mContentPos = mVertPos.v;
@@ -208,7 +213,9 @@ namespace Beefy.widgets
             }
             if (mScrollContent != null)
             {
-                mScrollContent.Resize((int32)(-mHorzPos.v), (int32)(-mVertPos.v),
+                mScrollContent.Resize(
+					(int32)(-mHorzPos.v - (mHorzScrollbar?.mContentStart).GetValueOrDefault()),
+					(int32)(-mVertPos.v - (mVertScrollbar?.mContentStart).GetValueOrDefault()),
                     mScrollContent.mWidth, mScrollContent.mHeight);
             }
 
@@ -253,6 +260,7 @@ namespace Beefy.widgets
         public override void MouseWheel(float x, float y, float deltaX, float deltaY)
         {
             base.MouseWheel(x, y, deltaX, deltaY);
+
 			if (deltaY != 0)
 			{
 	            if (mVertScrollbar != null)

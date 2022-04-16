@@ -4260,7 +4260,8 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			
 			if ((resolvingFieldDef != NULL) && 
 				(mModule->mCompiler->mResolvePassData != NULL) && 
-				(mModule->mCompiler->mResolvePassData->mParser == resolvingFieldDef->mFieldDeclaration->GetParser()) &&
+				(!mModule->mCompiler->mResolvePassData->mParsers.IsEmpty()) &&
+				(mModule->mCompiler->mResolvePassData->mParsers[0] == resolvingFieldDef->mFieldDeclaration->GetParser()) &&
 				(GetAutoComplete() != NULL))
 			{
 				return mModule->GetDefaultTypedValue(mModule->mCurTypeInstance);
@@ -8805,7 +8806,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	auto autoComplete = GetAutoComplete();
 	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo))
 	{
-		if ((!targetSrc->IsFromParser(mModule->mCompiler->mResolvePassData->mParser)) ||
+		if ((!targetSrc->IsFromParser(mModule->mCompiler->mResolvePassData->mParsers[0])) ||
 			((autoComplete->mMethodMatchInfo->mInvocationSrcIdx != -1) && (autoComplete->mMethodMatchInfo->mInvocationSrcIdx != targetSrc->GetSrcStart())))
 		{
 			autoComplete->mIsCapturingMethodMatchInfo = false;
@@ -9247,10 +9248,13 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 
 		if (enumResult)
-		{
-			if (mModule->mCompiler->WantsClassifyNode(targetSrc))
+		{			
+			if (mModule->mCompiler->mResolvePassData != NULL)
 			{
-				mModule->mCompiler->mResolvePassData->mSourceClassifier->SetElementType(targetSrc, BfSourceElementType_Normal);
+				if (auto sourceClassifier = mModule->mCompiler->mResolvePassData->GetSourceClassifier(targetSrc))
+				{
+					sourceClassifier->SetElementType(targetSrc, BfSourceElementType_Normal);
+				}
 			}
 			return enumResult;
 		}
@@ -14444,7 +14448,7 @@ void BfExprEvaluator::CheckObjectCreateTypeRef(BfType* expectingType, BfAstNode*
 {
 	auto autoComplete = GetAutoComplete();	
 	if ((autoComplete != NULL) && (afterNode != NULL) && (autoComplete->mIsAutoComplete) &&
-		(afterNode->IsFromParser(mModule->mCompiler->mResolvePassData->mParser)) &&
+		(afterNode->IsFromParser(mModule->mCompiler->mResolvePassData->mParsers[0])) &&
 		(afterNode->GetParser()->mCursorIdx == afterNode->GetSrcEnd() + 1))
 	{
 		BfType* expectingType = mExpectingType;

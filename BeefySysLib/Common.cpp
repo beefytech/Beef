@@ -1152,6 +1152,9 @@ String Beefy::FixPath(const StringImpl& pathIn)
 
 String Beefy::FixPathAndCase(const StringImpl& pathIn)
 {
+	if ((!pathIn.IsEmpty()) && (pathIn[0] == '$'))
+		return pathIn;
+
 	String path = FixPath(pathIn);
 #ifdef _WIN32
 	for (int i = 0; i < (int)path.length(); ++i)
@@ -1180,8 +1183,7 @@ String Beefy::RemoveTrailingSlash(const StringImpl& str)
 
 bool Beefy::FileNameEquals(const StringImpl& filePathA, const StringImpl& filePathB)
 {
-#ifdef _WIN32
-	//return _stricmp(filePathA.c_str(), filePathB.c_str()) == 0;
+#ifdef _WIN32	
 	if (filePathA.length() != filePathB.length())
 		return false;
 	

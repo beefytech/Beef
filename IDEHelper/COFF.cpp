@@ -5,14 +5,18 @@
 #include "DebugTarget.h"
 #include "DebugManager.h"
 #include "DWARFInfo.h"
-#include "BeefySysLib/Util/PerfTimer.h"
-#include "BeefySysLib/Util/Dictionary.h"
-#include "BeefySysLib/Util/BeefPerf.h"
+#include "BeefySysLib/util/PerfTimer.h"
+#include "BeefySysLib/util/Dictionary.h"
+#include "BeefySysLib/util/BeefPerf.h"
+#include "BeefySysLib/util/BeefPerf.h"
+#include "BeefySysLib/util/ZipFile.h"
+#include "BeefySysLib/util/Hash.h"
 #include "BeefySysLib/platform/PlatformHelper.h"
 #include "WinDebugger.h"
 #include "MiniDumpDebugger.h"
 #include "Linker/BlHash.h"
 #include "Backend/BeLibManger.h"
+#include "Compiler/BfUtil.h"
 #include <shlobj.h>
 
 #include "BeefySysLib/util/AllocDebug.h"
@@ -262,6 +266,7 @@ COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mPrevScanName = NULL;
 	mProcSymCount = 0;	
 	mCvSrcSrvStream = -1;
+	mCvEmitStream = -1;
 	mIsFastLink = false;
 	mHotThunkCurAddr = 0;
 	mHotThunkDataLeft = 0;
@@ -270,6 +275,7 @@ COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mDbgSymRequest = NULL;	
 	mWantsAutoLoadDebugInfo = false;		
 	mPDBLoaded = false;
+	mEmitSourceFile = NULL;
 }
 
 COFF::~COFF()
@@ -3605,8 +3611,17 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 					GET_INTO(uint, fileTableOfs);
 					
 					const char* fileName = mStringTable.mStrTable + fileTableOfs;
+
+					if ((fileName[0] == '\\') && (fileName[1] == '$'))
+						fileName++;
+
 					DbgSrcFile* srcFile = NULL;
-					if ((fileName[0] == '/') || (fileName[0] == '\\') ||
+
+					if (fileName[0] == '$')
+					{
+						srcFile = AddSrcFile(compileUnit, fileName);
+					}					
+					else if ((fileName[0] == '/') || (fileName[0] == '\\') ||
 						((fileName[0] != 0) && (fileName[1] == ':')))					
 					{
 						srcFile = AddSrcFile(compileUnit, fileName);
@@ -4642,6 +4657,8 @@ void COFF::ScanCompileUnit(int compileUnitId)
 				else
 				{
 					const char* fileName = mStringTable.mStrTable + fileTableOfs;
+					if ((fileName[0] == '\\') && (fileName[1] == '$'))
+						fileName++;
 					srcFile = AddSrcFile(NULL, fileName);
 					mSrcFileDeferredRefs.Add(srcFile);
 					*srcFilePtr = srcFile;
@@ -4967,6 +4984,8 @@ bool COFF::CvParseHeader(uint8 wantGuid[16], int32 wantAge)
 			mStringTable.mStream = streamNum;
 		if (strcmp(tableName, "srcsrv") == 0)
 			mCvSrcSrvStream = streamNum;
+		if (strcmp(tableName, "emit") == 0)
+			mCvEmitStream = streamNum;
 
 		/*if (tableIdx == nameTableIdx)
 		{
@@ -6095,6 +6114,9 @@ void COFF::ClosePDB()
 		delete kv.mValue;
 	mHotLibMap.Clear();	
 	mHotLibSymMap.Clear();
+
+	delete mEmitSourceFile;
+	mEmitSourceFile = NULL;
 }
 
 bool COFF::LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
@@ -6669,6 +6691,60 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 	return "";
 }
 
+bool COFF::GetEmitSource(const StringImpl& filePath, String& outText)
+{
+	if (!filePath.StartsWith("$Emit"))
+		return false;
+	
+	if (mEmitSourceFile == NULL)
+	{
+		mEmitSourceFile = new ZipFile();
+
+		String zipPath = mPDBPath;
+		int dotPos = zipPath.LastIndexOf('.');
+		zipPath.RemoveToEnd(dotPos);
+		zipPath.Append("__emit.zip");
+		if (!mEmitSourceFile->Open(zipPath))
+		{
+			if (mCvEmitStream == -1)
+				return "";
+			
+			int outSize;
+			uint8* data = CvReadStream(mCvEmitStream, &outSize);
+						
+			FileStream fileStream;
+			fileStream.Open(zipPath, "wb");
+			fileStream.Write(data, outSize);
+			fileStream.Close();
+
+			delete data;
+
+			mEmitSourceFile->Open(zipPath);
+		}
+	}
+
+	if (mEmitSourceFile->IsOpen())
+	{
+		String usePath = filePath;
+		if (usePath.StartsWith("$Emit"))
+		{
+			int dollarPos = usePath.IndexOf('$', 1);
+			usePath.Remove(0, dollarPos + 1);
+		}		
+		usePath = EncodeFileName(usePath);
+		usePath.Append(".bf");
+
+		Array<uint8> data;
+		if (mEmitSourceFile->Get(usePath, data))
+		{
+			outText.Insert(outText.mLength, (char*)data.mVals, data.mSize);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool COFF::HasPendingDebugInfo()
 {
 	if (mDbgSymRequest == NULL)
@@ -7016,7 +7092,7 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 		delete dbgModule;
 		return 0;
 	}	
-	mDebugger->mDebugTarget->mDbgModules.push_back(dbgModule);
+	mDebugger->mDebugTarget->AddDbgModule(dbgModule);
 
 	auto symbolEntry = mSymbolNameMap.Find(name.c_str());
 	if (symbolEntry != NULL)

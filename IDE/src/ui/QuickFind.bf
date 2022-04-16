@@ -277,8 +277,6 @@ namespace IDE.ui
 
         public void FindAll(bool doSelect = true)
         {
-			Debug.WriteLine($"FindAll({doSelect})");
-
             mIsShowingMatches = true;
             mFoundMatches = false;
 
@@ -305,8 +303,6 @@ namespace IDE.ui
             }
             mCurFindIdx = curFindIdx;
             mCurFindCount = 0;
-
-			Debug.WriteLine($"FindAll CurFindIdx{mCurFindIdx} CurFindStart:{mCurFindStart}");
         }
 
         public void ShowCurrentSelection()

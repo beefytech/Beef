@@ -76,7 +76,7 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 
 				auto miscEntry = &mMiniDump->GetData<char>(module.MiscRecord.Rva);				
 				
-				mDebugTarget->mDbgModules.Add(dbgModule);
+				mDebugTarget->AddDbgModule(dbgModule);
 
 				//TESTING
 				/*{

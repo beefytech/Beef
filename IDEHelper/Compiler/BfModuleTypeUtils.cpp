@@ -2023,7 +2023,7 @@ void BfModule::SetTypeOptions(BfTypeInstance* typeInstance)
 	typeInstance->mTypeOptionsIdx = GenerateTypeOptions(typeInstance->mCustomAttributes, typeInstance, true);
 }
 
-BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, const StringImpl& src)
+BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* declaringType, const StringImpl& src, BfAstNode* refNode, BfCeTypeEmitSourceKind emitSourceKind)
 {
 	BfCEParseContext ceParseContext;
 	ceParseContext.mFailIdx = mCompiler->mPassInstance->mFailedIdx;
@@ -2034,6 +2034,21 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, const Strin
 	
 	BfParser* emitParser = NULL;
 
+	int64 emitSourceMapKey = ((int64)declaringType->mPartialIdx << 32) | refNode->mSrcStart;
+
+	if (typeInstance->mCeTypeInfo == NULL)
+		typeInstance->mCeTypeInfo = new BfCeTypeInfo();
+	auto ceTypeInfo = typeInstance->mCeTypeInfo;
+	if (ceTypeInfo->mNext != NULL)
+		ceTypeInfo = ceTypeInfo->mNext;	
+	BfCeTypeEmitSource* ceEmitSource = NULL;
+	ceTypeInfo->mEmitSourceMap.TryAdd(emitSourceMapKey, NULL, &ceEmitSource);
+	ceEmitSource->mKind = emitSourceKind;
+	
+	int emitSrcStart = 0;
+
+	BfEmitEmbedEntry* emitEmbedEntry = NULL;
+	
 	if (typeInstance->mTypeDef->mEmitParent == NULL)
 	{
 		BF_ASSERT(typeInstance->mTypeDef->mNextRevision == NULL);
@@ -2048,20 +2063,37 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, const Strin
 		createdParser = true;		
 		emitParser = new BfParser(mSystem, typeInstance->mTypeDef->mProject);
 		emitParser->mIsEmitted = true;
-		emitParser->mFileName = typeInstance->mTypeDef->mName->ToString();
-
+		
 		BfLogSys(mSystem, "Emit typeDef for type %p created %p parser %p typeDecl %p\n", typeInstance, emitTypeDef, emitParser, emitTypeDef->mTypeDeclaration);
 
-		if (mCompiler->mIsResolveOnly)
-			emitParser->mFileName += "$EmitR$";
-		else
-			emitParser->mFileName += "$Emit$";
+		String typeName;		
+		typeName += typeInstance->mTypeDef->mProject->mName;
+		typeName += ":";
 
-		emitParser->mFileName += StrFormat("%d", typeInstance->mTypeId);
-		emitParser->mFileName += StrFormat(".bf|%d", typeInstance->mRevision);
+		typeName += TypeToString(typeInstance, BfTypeNameFlags_None);
+		if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mEmitEmbedEntries.IsEmpty()))
+			mCompiler->mResolvePassData->mEmitEmbedEntries.TryGetValue(typeName, &emitEmbedEntry);
+ 		
+		emitParser->mFileName = "$Emit$";
+		emitParser->mFileName += typeName;
+
 		emitTypeDef->mSource = emitParser;
 		emitParser->mRefCount++;
 		emitParser->SetSource(src.c_str(), src.mLength);
+
+		if (emitEmbedEntry != NULL)
+		{
+			emitEmbedEntry->mRevision = typeInstance->mRevision;
+			emitEmbedEntry->mParser = emitParser;
+			emitEmbedEntry->mParser->mSourceClassifier = new BfSourceClassifier(emitEmbedEntry->mParser, NULL);			
+			mCompiler->mPassInstance->mFilterErrorsTo.Add(emitEmbedEntry->mParser->mParserData);
+
+			if (emitEmbedEntry->mCursorIdx != -1)
+			{
+				emitParser->SetCursorIdx(emitEmbedEntry->mCursorIdx);
+				emitParser->mParserFlags = (BfParserFlag)(emitParser->mParserFlags | ParserFlag_Autocomplete | ParserFlag_Classifying);
+			}
+		}
 
 		// If we emit only from method attributes then we will already have method instances created
 		auto _FixMethod = [&](BfMethodInstance* methodInstance)
@@ -2082,18 +2114,56 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, const Strin
 		};
 	}
 	else
-	{		
+	{
 		emitParser = typeInstance->mTypeDef->mSource->ToParser();
 
-		int idx = emitParser->AllocChars(src.mLength + 1);
-		memcpy((uint8*)emitParser->mSrc + idx, src.c_str(), src.mLength + 1);
+		if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mEmitEmbedEntries.IsEmpty()))
+		{			
+			int dollarPos = (int)emitParser->mFileName.LastIndexOf('$');
+			if (dollarPos != -1)
+				mCompiler->mResolvePassData->mEmitEmbedEntries.TryGetValue(emitParser->mFileName.Substring(dollarPos + 1), &emitEmbedEntry);
+		}
+
+		int idx = emitParser->AllocChars(2 + src.mLength + 1);
+		emitSrcStart = idx + 2;
+
+		memcpy((uint8*)emitParser->mSrc + idx, "\n\n", 2);
+		memcpy((uint8*)emitParser->mSrc + idx + 2, src.c_str(), src.mLength + 1);
 		emitParser->mSrcIdx = idx;
-		emitParser->mSrcLength = idx + src.mLength;
+		emitParser->mSrcLength = idx + src.mLength + 2;
 		emitParser->mParserData->mSrcLength = emitParser->mSrcLength;
+		emitParser->mOrigSrcLength = emitParser->mSrcLength;
+	}
+
+	if (ceEmitSource->mSrcStart == -1)
+	{
+		ceEmitSource->mSrcStart = emitSrcStart;
+		ceEmitSource->mSrcEnd = emitParser->mSrcLength;
+	}
+	else
+	{
+		ceEmitSource->mSrcStart = BF_MIN(ceEmitSource->mSrcStart, emitSrcStart);
+		ceEmitSource->mSrcEnd = BF_MAX(ceEmitSource->mSrcEnd, emitParser->mSrcLength);
 	}
 
 	emitParser->Parse(mCompiler->mPassInstance);
 	emitParser->FinishSideNodes();
+
+	if (emitEmbedEntry != NULL)
+	{
+		int prevStart = emitEmbedEntry->mCharData.mSize;
+		emitEmbedEntry->mCharData.GrowUninitialized(emitParser->mSrcLength - emitEmbedEntry->mCharData.mSize);
+		auto charDataPtr = emitEmbedEntry->mCharData.mVals;
+		for (int i = prevStart; i < emitParser->mSrcLength; i++)
+		{
+			charDataPtr[i].mChar = emitParser->mSrc[i];
+			charDataPtr[i].mDisplayPassId = 0;
+			charDataPtr[i].mDisplayTypeId = 0;
+			charDataPtr[i].mDisplayFlags = 0;
+		}
+
+		emitEmbedEntry->mParser->mSourceClassifier->mCharData = emitEmbedEntry->mCharData.mVals;		
+	}
 
 	if (createdParser)
 	{
@@ -2117,7 +2187,7 @@ void BfModule::FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInst
 	}
 }
 
-void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, const StringImpl& ctxString, BfAstNode* refNode)
+void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* declaringType, const StringImpl& ctxString, BfAstNode* refNode, BfCeTypeEmitSourceKind emitSourceKind)
 {
 	for (int ifaceTypeId : ceEmitContext->mInterfaces)
 		typeInstance->mCeTypeInfo->mPendingInterfaces.Add(ifaceTypeId);
@@ -2127,16 +2197,16 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 		
 	String src;
 		
-	if (typeInstance->mTypeDef->mEmitParent != NULL)
-		src += "\n\n";
+// 	if (typeInstance->mTypeDef->mEmitParent != NULL)
+// 		src += "\n\n";
 
-	src += "// Code emission in ";
-	src += ctxString;
-	src += "\n\n";
+// 	src += "// Code emission in ";
+// 	src += ctxString;
+// 	src += "\n\n";
 	src += ceEmitContext->mEmitData;	
 	ceEmitContext->mEmitData.Clear();
 
-	BfCEParseContext ceParseContext = CEEmitParse(typeInstance, src);	
+	BfCEParseContext ceParseContext = CEEmitParse(typeInstance, declaringType, src, refNode, emitSourceKind);	
 	auto emitParser = typeInstance->mTypeDef->mSource->ToParser();
 				
 	auto typeDeclaration = emitParser->mAlloc->Alloc<BfTypeDeclaration>();
@@ -2166,6 +2236,13 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 	defBuilder.FinishTypeDef(typeInstance->mTypeDef->mTypeCode == BfTypeCode_Enum);
 
 	FinishCEParseContext(refNode, typeInstance, &ceParseContext);
+
+	if (emitParser->mSourceClassifier != NULL)
+	{
+		emitParser->mSourceClassifier->VisitChild(emitParser->mRootNode);
+		emitParser->mSourceClassifier->VisitChild(emitParser->mSidechannelRootNode);
+		emitParser->mSourceClassifier->VisitChild(emitParser->mErrorRootNode);
+	}
 
 	if (typeInstance->mTypeDef->mEmitParent != NULL)
 	{
@@ -2347,7 +2424,8 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				ctxStr += TypeToString(typeInstance);
 				ctxStr += " ";
 				ctxStr += customAttribute.mRef->LocationToString();
-				UpdateCEEmit(ceEmitContext, typeInstance, ctxStr, customAttribute.mRef);
+
+				UpdateCEEmit(ceEmitContext, typeInstance, customAttribute.mDeclaringType, ctxStr, customAttribute.mRef, BfCeTypeEmitSourceKind_Type);
 			}
 		}
 
@@ -2361,11 +2439,11 @@ void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 	//auto emitParser = activeTypeDef->mEmitParser;
 			
 	String src;
-	if (mCurTypeInstance->mTypeDef->mEmitParent != NULL)
-		src += "\n\n";
-	src += "// Code emission in ";	
-	src += MethodToString(mCurMethodInstance);	
-	src += "\n";
+// 	if (mCurTypeInstance->mTypeDef->mEmitParent != NULL)
+// 		src += "\n\n";
+// 	src += "// Code emission in ";	
+// 	src += MethodToString(mCurMethodInstance);	
+// 	src += "\n";
 	src += code;
 
 	BfReducer bfReducer;	
@@ -2380,7 +2458,7 @@ void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 	bool wantsDIData = (mBfIRBuilder->DbgHasInfo()) && (mHasFullDebugInfo);
 	mBfIRBuilder->SaveDebugLocation();
 
-	BfCEParseContext ceParseContext = CEEmitParse(mCurTypeInstance, src);
+	BfCEParseContext ceParseContext = CEEmitParse(mCurTypeInstance, activeTypeDef, src, refNode, BfCeTypeEmitSourceKind_Method);
 	auto emitParser = mCurTypeInstance->mTypeDef->mSource->ToParser();
 	bfReducer.mSource = emitParser;
 	bfReducer.mAlloc = emitParser->mAlloc;
@@ -2503,6 +2581,11 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		if (methodDeclaration->mAttributes == NULL)
 			continue;
 
+		BfTypeState typeState;
+		typeState.mPrevState = mContext->mCurTypeState;
+		typeState.mForceActiveTypeDef = methodDef->mDeclaringType;
+		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
 		bool wantsAttributes = false;		
 		BfAttributeDirective* checkAttributes = methodDeclaration->mAttributes;
 		while (checkAttributes != NULL)
@@ -2607,7 +2690,7 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				ctxStr += MethodToString(methodInstance);
 				ctxStr += " ";
 				ctxStr += methodInstance->mMethodDef->GetRefNode()->LocationToString();
-				UpdateCEEmit(ceEmitContext, typeInstance, ctxStr, methodInstance->mMethodDef->GetRefNode());
+				UpdateCEEmit(ceEmitContext, typeInstance, methodDef->mDeclaringType, ctxStr, methodInstance->mMethodDef->GetRefNode(), BfCeTypeEmitSourceKind_Type);
 			}
 		}
 
@@ -2751,13 +2834,13 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 		if ((!ceEmitContext.mEmitData.IsEmpty()) || (!ceEmitContext.mExitEmitData.IsEmpty()))
 		{
 			String src;				
-			src += "// Code emission in comptime ApplyToMethod of ";
-			src += TypeToString(attrType);
-			src += " to ";
-			src += MethodToString(methodInstance);
-			src += " ";
-			src += customAttribute.mRef->LocationToString();
-			src += "\n";
+// 			src += "// Code emission in comptime ApplyToMethod of ";
+// 			src += TypeToString(attrType);
+// 			src += " to ";
+// 			src += MethodToString(methodInstance);
+// 			src += " ";
+// 			src += customAttribute.mRef->LocationToString();
+// 			src += "\n";
 				
 			//auto emitTypeDef = typeInstance->mCeTypeInfo->mNext->mTypeDef;
 			//auto emitParser = emitTypeDef->mSource->ToParser();
@@ -2771,16 +2854,29 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 			bfReducer.mCurTypeDecl = activeTypeDef->mTypeDeclaration;
 			bfReducer.mCurMethodDecl = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration);
 
+			BfAstNode* bodyNode = NULL;			
+			if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration))
+				bodyNode = methodDecl->mBody;
+
 			if (!ceEmitContext.mEmitData.IsEmpty())
 			{
-				SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, customAttribute.mRef);
-
+				SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, customAttribute.mRef);				
 				String entrySrc = src;
-				if (mCurTypeInstance->mTypeDef->mEmitParent != NULL)
-					entrySrc += "\n\n";
+// 				if (mCurTypeInstance->mTypeDef->mEmitParent != NULL)
+// 					entrySrc += "\n\n";
 				entrySrc += src;
 				entrySrc += ceEmitContext.mEmitData;
-				BfCEParseContext ceParseContext = CEEmitParse(typeInstance, entrySrc);
+
+				BfAstNode* refNode = customAttribute.mRef;
+				if (bodyNode != NULL)
+				{
+					refNode = bodyNode;
+					if (auto blockNode = BfNodeDynCast<BfBlock>(bodyNode))
+						if (blockNode->mOpenBrace != NULL)
+							refNode = blockNode->mOpenBrace;
+				}
+
+				BfCEParseContext ceParseContext = CEEmitParse(typeInstance, methodInstance->mMethodDef->mDeclaringType, entrySrc, refNode, BfCeTypeEmitSourceKind_Type);
 				auto emitParser = mCurTypeInstance->mTypeDef->mSource->ToParser();
 				bfReducer.mSource = emitParser;
 				bfReducer.mAlloc = emitParser->mAlloc;
@@ -2796,7 +2892,18 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 					exitSrc += "\n\n";
 				exitSrc += src;
 				exitSrc += ceEmitContext.mExitEmitData;
-				BfCEParseContext ceParseContext = CEEmitParse(typeInstance, exitSrc);
+
+				BfAstNode* refNode = customAttribute.mRef;
+				if (bodyNode != NULL)
+				{
+					refNode = bodyNode;
+					if (auto blockNode = BfNodeDynCast<BfBlock>(bodyNode))
+						if (blockNode->mCloseBrace != NULL)
+							refNode = blockNode->mCloseBrace;
+				}
+
+				BfCEParseContext ceParseContext = CEEmitParse(typeInstance, methodInstance->mMethodDef->mDeclaringType, exitSrc, refNode, BfCeTypeEmitSourceKind_Type);
+
 				auto emitParser = mCurTypeInstance->mTypeDef->mSource->ToParser();
 				bfReducer.mSource = emitParser;
 				bfReducer.mAlloc = emitParser->mAlloc;
@@ -4540,7 +4647,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				if (typeInstance->mCeTypeInfo->mNext != NULL)
 				{
 					auto ceInfo = typeInstance->mCeTypeInfo->mNext;
+
 					HashContext hashCtx;
+					hashCtx.Mixin(ceInfo->mEmitSourceMap.mCount);
+					for (auto& kv : ceInfo->mEmitSourceMap)
+					{
+						hashCtx.Mixin(kv.mKey);
+						hashCtx.Mixin(kv.mValue);
+					}
 					hashCtx.Mixin(ceInfo->mOnCompileMap.mCount);
 					for (auto& kv : ceInfo->mOnCompileMap)
 					{
@@ -4559,14 +4673,25 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					if (!typeInstance->mCeTypeInfo->mNext->mFailed)
 					{
 						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
-							mContext->RebuildDependentTypes_MidCompile(typeInstance, "comptime hash changed");												
+							mContext->RebuildDependentTypes_MidCompile(typeInstance, "comptime hash changed");
+						typeInstance->mCeTypeInfo->mEmitSourceMap = typeInstance->mCeTypeInfo->mNext->mEmitSourceMap;
 						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
 						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
-						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;
+						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;						
 					}
 					
 					delete typeInstance->mCeTypeInfo->mNext;
 					typeInstance->mCeTypeInfo->mNext = NULL;
+				}
+				else
+				{
+					// Removed emissions
+					if (!typeInstance->mCeTypeInfo->mHash.IsZero())
+						mContext->RebuildDependentTypes_MidCompile(typeInstance, "comptime hash changed");
+					typeInstance->mCeTypeInfo->mEmitSourceMap.Clear();
+					typeInstance->mCeTypeInfo->mOnCompileMap.Clear();
+					typeInstance->mCeTypeInfo->mTypeIFaceMap.Clear();
+					typeInstance->mCeTypeInfo->mHash = Val128();
 				}
 			}
 
@@ -5312,16 +5437,19 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if ((typeDeclaration != NULL) && (typeDeclaration->mNameNode != NULL))
 		{
 			auto typeRefSource = typeDeclaration->mNameNode->GetParserData();
-			if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mSourceClassifier != NULL) && (typeRefSource != NULL) && (typeRefSource == mCompiler->mResolvePassData->mParser->mSourceData))
+			if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mIsClassifying) && (typeRefSource != NULL))
 			{
-				BfSourceElementType elemType = BfSourceElementType_Type;
-				if (typeInstance->IsInterface())
-					elemType = BfSourceElementType_Interface;
-				else if (typeInstance->IsObject())
-					elemType = BfSourceElementType_RefType;
-				else if (typeInstance->IsStruct() || (typeInstance->IsTypedPrimitive() && !typeInstance->IsEnum()))
-					elemType = BfSourceElementType_Struct;
-				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(typeDeclaration->mNameNode, elemType);
+				if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(typeDeclaration->mNameNode))
+				{
+					BfSourceElementType elemType = BfSourceElementType_Type;
+					if (typeInstance->IsInterface())
+						elemType = BfSourceElementType_Interface;
+					else if (typeInstance->IsObject())
+						elemType = BfSourceElementType_RefType;
+					else if (typeInstance->IsStruct() || (typeInstance->IsTypedPrimitive() && !typeInstance->IsEnum()))
+						elemType = BfSourceElementType_Struct;
+					sourceClassifier->SetElementType(typeDeclaration->mNameNode, elemType);
+				}
 			}
 		}
 	};
@@ -8775,11 +8903,17 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		else
 			typeRefSource = typeRef->GetSourceData();
 
-		bool wantsFileNamespaceInfo = (((mCompiler->mResolvePassData->mSourceClassifier != NULL) || (isGetDefinition) || (mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Namespace)) &&
-			(typeRefSource != NULL) && (mCompiler->mResolvePassData->mParser != NULL) &&
-			(typeRefSource == mCompiler->mResolvePassData->mParser->mSourceData));
+		BfSourceClassifier* sourceClassifier = NULL;
+		if ((mCompiler->mResolvePassData->mIsClassifying) && (typeRefSource != NULL))
+		{
+			auto parser = typeRefSource->ToParser();
+			if (parser != NULL)
+				sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(parser);
+		}
 
-		bool wantsAllNamespaceInfo = (mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Namespace) && (mCompiler->mResolvePassData->mParser == NULL);
+		bool wantsFileNamespaceInfo = ((sourceClassifier != NULL) || (isGetDefinition) || (mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Namespace));
+
+		bool wantsAllNamespaceInfo = (mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Namespace) && (mCompiler->mResolvePassData->mParsers.IsEmpty());
 
 		if (wantsFileNamespaceInfo || wantsAllNamespaceInfo)
 		{
@@ -8841,14 +8975,14 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 
 			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
 			{
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (elemType != BfSourceElementType_Type))
-					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, elemType);
+				if ((sourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (elemType != BfSourceElementType_Type))
+					sourceClassifier->SetElementType(qualifiedTypeRef->mRight, elemType);
 
 				StringView leftString = qualifiedTypeRef->mLeft->ToStringView();
 				BfSizedAtomComposite leftComposite;
 				bool isValid = mSystem->ParseAtomComposite(leftString, leftComposite);
-				if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
-					mCompiler->mResolvePassData->mSourceClassifier->SetHighestElementType(qualifiedTypeRef->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
+				if (sourceClassifier != NULL)
+					sourceClassifier->SetHighestElementType(qualifiedTypeRef->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
 				if (resolvedTypeInstance == NULL)
 				{
 					if ((isValid) && (mCompiler->mSystem->ContainsNamespace(leftComposite, mCurTypeInstance->mTypeDef->mProject)))
@@ -8874,16 +9008,16 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				auto checkNameNode = namedTypeRef->mNameNode;
 				bool setType = false;
 
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (elemType != BfSourceElementType_Type))
+				if ((sourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (elemType != BfSourceElementType_Type))
 				{					
 					if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNameNode))
 					{
-						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, elemType);
+						sourceClassifier->SetElementType(qualifiedNameNode->mRight, elemType);
 					}
 					else
 					{
 						setType = true;
-						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, elemType);
+						sourceClassifier->SetElementType(checkNameNode, elemType);
 					}
 				}
 
@@ -8892,8 +9026,8 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 					StringView leftString =  qualifiedNameNode->mLeft->ToStringView();
 					BfSizedAtomComposite leftComposite;
 					bool isValid = mSystem->ParseAtomComposite(leftString, leftComposite);
-					if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
-						mCompiler->mResolvePassData->mSourceClassifier->SetHighestElementType(qualifiedNameNode->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
+					if (sourceClassifier != NULL)
+						sourceClassifier->SetHighestElementType(qualifiedNameNode->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
 					if (resolvedTypeInstance == NULL)
 					{
 						if ((isValid) && (mCompiler->mSystem->ContainsNamespace(leftComposite, mCurTypeInstance->mTypeDef->mProject)))
@@ -8913,9 +9047,9 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 					}
 					checkNameNode = qualifiedNameNode->mLeft;
 				}
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && 
+				if ((sourceClassifier != NULL) &&
 					((!setType) || (checkNameNode != namedTypeRef->mNameNode)))
-					mCompiler->mResolvePassData->mSourceClassifier->SetHighestElementType(checkNameNode, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
+					sourceClassifier->SetHighestElementType(checkNameNode, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
 			}
 		}
 
@@ -8964,6 +9098,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 								else
 									break;
 							}
+
 							if ((baseNode != NULL) && (autoComplete->IsAutocompleteNode(baseNode)))
 							{
 								// We didn't have this mDefType check before - why? We always want to catch the FIRST definition, 
@@ -9348,8 +9483,10 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	if ((typeInstance == NULL) && (useTypeDef == NULL))
 	{		
 		BfProject* project = NULL;
-		if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mParser != NULL))
-			project = mCompiler->mResolvePassData->mParser->mProject;
+		if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mActiveProject != NULL))
+			project = mContext->mCurTypeState->mActiveProject;
+		else if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mParsers.IsEmpty()))
+			project = mCompiler->mResolvePassData->mParsers[0]->mProject;
 
 		BP_ZONE("System.FindTypeDef_2");				
 		Array<BfAtomComposite> namespaceSearch;
@@ -9535,7 +9672,7 @@ void BfModule::CheckTypeRefFixit(BfAstNode* typeRef, const char* appendName)
 		std::set<String> fixitNamespaces;
 
 		//TODO: Do proper value for numGenericArgs		
-		mSystem->FindFixitNamespaces(typeName, -1, mCompiler->mResolvePassData->mParser->mProject, fixitNamespaces);
+		mSystem->FindFixitNamespaces(typeName, -1, mCompiler->mResolvePassData->mParsers[0]->mProject, fixitNamespaces);
 
 		int insertLoc = 0;
 
@@ -9810,8 +9947,11 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 		if (genericParamResult != NULL)
 		{			
 			auto typeRefSource = identifierNode->GetSourceData();
-			if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mSourceClassifier != NULL) && (typeRefSource != NULL) && (typeRefSource == mCompiler->mResolvePassData->mParser->mSourceData))
-				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(identifierNode, BfSourceElementType_GenericParam);
+			if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mIsClassifying) && (typeRefSource != NULL))
+			{
+				if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(identifierNode))
+					sourceClassifier->SetElementType(identifierNode, BfSourceElementType_GenericParam);
+			}
 
 			if (genericParamResult->IsConstExprValue())
 			{

@@ -283,6 +283,8 @@ String EncodeDataPtr(uint32 addr, bool doPrefix);
 String EncodeDataPtr(uint64 addr, bool doPrefix);
 String EncodeDataPtr(int addr, bool doPrefix);
 void* ZeroedAlloc(int size);
+String EncodeFileName(const StringImpl& fromStr); // Make short, only legal chars, with a hash at end
+
 /*template <typename T>
 T* ZeroedAlloc()
 {

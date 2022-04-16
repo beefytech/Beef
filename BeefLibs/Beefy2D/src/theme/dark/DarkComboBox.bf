@@ -59,7 +59,7 @@ namespace Beefy.theme.dark
         public uint32 mBkgColor;
         public DarkEditWidget mEditWidget;
 		bool mAllowReverseDropdown; // Allow popdown to "popup" if there isn't enough space
-		public Widget mPrevFocusWidget;
+		public SafeWidgetRef mPrevFocusWidget ~ delete _;
 		public bool mFocusDropdown = true;
 		
 		virtual public StringView Label 
@@ -170,11 +170,15 @@ namespace Beefy.theme.dark
 
         public virtual void MenuClosed()
         {
-			if (mPrevFocusWidget != null)
-			{
-				mPrevFocusWidget.SetFocus();
-			}
+			mPrevFocusWidget?.Value?.SetFocus();
         }
+
+		protected override void RemovedFromWindow()
+		{
+			base.RemovedFromWindow();
+
+			mCurMenuWidget?.mMenu.mOnMenuClosed.Dispose();
+		}
 
         void HandleClose(Menu menu, Menu selectedItem)
         {
@@ -186,7 +190,8 @@ namespace Beefy.theme.dark
 
         public virtual MenuWidget ShowDropdown()
         {
-			mPrevFocusWidget = mWidgetWindow.mFocusWidget;
+			if ((mPrevFocusWidget == null) && (mWidgetWindow.mFocusWidget != null))
+				mPrevFocusWidget = new .(mWidgetWindow.mFocusWidget);
 
             float popupXOfs = GS!(5);
             float popupYOfs = GS!(-2);
@@ -302,6 +307,16 @@ namespace Beefy.theme.dark
 			return true;
 		}	
 
+		public void SelectFromLabel()
+		{
+			var label = Label;
+			for (let itemWidget in mCurMenuWidget.mItemWidgets)
+			{
+				if (itemWidget.mMenuItem.mLabel == label)
+					mCurMenuWidget.SetSelection(@itemWidget.Index);
+			}
+		}
+
 		void EditKeyDownHandler(KeyDownEvent evt)
 		{
 			if (!WantsKeyHandling())
@@ -318,13 +333,7 @@ namespace Beefy.theme.dark
 			if ((evt.mKeyCode == .Down) && (mCurMenuWidget == null))
 			{
 				ShowDropdown();
-
-				var label = Label;
-				for (let itemWidget in mCurMenuWidget.mItemWidgets)
-				{
-					if (itemWidget.mMenuItem.mLabel == label)
-						mCurMenuWidget.SetSelection(@itemWidget.Index);
-				}
+				SelectFromLabel();
 			}
 
 			if ((evt.mKeyCode == .Escape) && (mCurMenuWidget != null) && (mEditWidget != null))

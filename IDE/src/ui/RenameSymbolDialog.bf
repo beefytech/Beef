@@ -135,7 +135,7 @@ namespace IDE.ui
             mVertPos = sourceViewPanel.mEditWidget.mVertPos.mDest;
 
 			mAwaitingGetSymbolInfo = true;
-			CheckGetSymbolInfo(kind == .ShowFileReferences);
+			CheckGetSymbolInfo((kind == .ShowFileReferences) || (kind == .GoToDefinition));
         }
 
 
@@ -153,6 +153,9 @@ namespace IDE.ui
 			if (!mAwaitingGetSymbolInfo)
 				return true;
 
+			if (gApp.mBfResolveCompiler.IsPerformingBackgroundOperationHi())
+				return false;
+
 			if (!force)
 			{
 				if (!gApp.mBfResolveCompiler.HasResolvedAll())
@@ -160,7 +163,7 @@ namespace IDE.ui
 			}
 
 			mAwaitingGetSymbolInfo = false;
-			mSourceViewPanel.Classify(.GetSymbolInfo);
+			mSourceViewPanel.Classify((mKind == .GoToDefinition) ? .GoToDefinition : .GetSymbolInfo);
 			mInitialized = true;
 			mGettingSymbolInfo = true;
 			return true;
@@ -231,9 +234,21 @@ namespace IDE.ui
 					mResolveParams.mNamespace = new String(lineDataItr.GetNext().Get());
 					foundSymbol = true;
 				case "defLoc":
+					StringView filePath = lineDataItr.GetNext().Get();
+					int32 line = int32.Parse(lineDataItr.GetNext().Value);
+					int32 lineChar = int32.Parse(lineDataItr.GetNext().Value);
+
+					if (mKind == .GoToDefinition)
+					{
+					    mSourceViewPanel.RecordHistoryLocation();
+					    var sourceViewPanel = gApp.ShowSourceFileLocation(scope .(filePath), -1, -1, line, lineChar, LocatorType.Smart, true);
+					    sourceViewPanel.RecordHistoryLocation(true);
+						Close();
+						return;
+					}
+
 					if (mKind == .Rename)
 					{
-						StringView filePath = lineDataItr.GetNext().Get();
 						let editData = gApp.GetEditData(scope String(filePath), false, false);
 						if (editData != null)
 						{
@@ -259,6 +274,12 @@ namespace IDE.ui
 					}
 				}
             }
+
+			if (mKind == .GoToDefinition)
+			{
+				gApp.Fail("Unable to locate definition");
+				Close();
+			}
 
             if ((!foundSymbol) || (foundStr == null))
             {
@@ -829,13 +850,22 @@ namespace IDE.ui
         {
             base.Update();
 
+			if ((mUpdatingProjectSources == null) && (mUpdateCnt > 30) && (gApp.mUpdateCnt % 4 == 0))
+				MarkDirty();
+
+			if (mAwaitingGetSymbolInfo)
+			{
+				if (!CheckGetSymbolInfo(false))
+					return;
+			}
+
 			if (mKind == .GoToDefinition)
 			{
-				if (gApp.mBfResolveCompiler.HasResolvedAll())
+				/*if (gApp.mBfResolveCompiler.HasResolvedAll())
 				{
 					Close();
 					gApp.GoToDefinition(true);
-				}
+				}*/
 
 				if (mSourceViewPanel.EditWidget.Content.CursorTextPos != mCursorPos)
 				{
@@ -843,12 +873,6 @@ namespace IDE.ui
 				}
 
 				return;
-			}
-
-			if (mAwaitingGetSymbolInfo)
-			{
-				if (!CheckGetSymbolInfo(false))
-					return;
 			}
 
 			if (mStartingWork)
@@ -899,7 +923,7 @@ namespace IDE.ui
 
 			mClosed = true;
 
-			mSourceViewPanel.CancelResolve(.GetSymbolInfo);
+			mSourceViewPanel.CancelResolve((mKind == .GoToDefinition) ? .GoToDefinition : .GetSymbolInfo);
 			if (mBackgroundKind != .None)
 			{
 				gApp.mBfResolveCompiler.CancelBackground();
@@ -920,6 +944,12 @@ namespace IDE.ui
         {
             if (mKind == Kind.ShowFileReferences)
                 return;
+
+			if ((mKind == .GoToDefinition) && (mUpdateCnt < 40))
+			{
+				// Reduce "flashing" for very fast finds
+				return;
+			}
 
 			int symCount = 0;
 			int readOnlyRefCount = 0;
@@ -993,7 +1023,7 @@ namespace IDE.ui
                 }
             }
 
-            if ((mUpdatingProjectSources == null) && (mUpdateCnt > 30))            
+            if ((mUpdatingProjectSources == null) && (mUpdateCnt > 30))
                 IDEUtils.DrawWait(g, mWidth / 2, mHeight / 2 + 4, mUpdateCnt);
         }
 

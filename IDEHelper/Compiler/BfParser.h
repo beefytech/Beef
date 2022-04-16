@@ -14,6 +14,7 @@ NS_BF_BEGIN
 
 class BfPassInstance;
 class BfProject;
+class BfSourceClassifier;
 
 enum BfSyntaxToken
 {
@@ -136,11 +137,18 @@ public:
 	void ReportMemory(MemReporter* memReporter);
 };
 
-enum BfDefineState
+enum BfDefineState : int8
 {
 	BfDefineState_FromProject,
 	BfDefineState_ManualSet,
 	BfDefineState_ManualUnset
+};
+
+enum BfSourceEmbedKind : int8
+{
+	BfSourceEmbedKind_None,
+	BfSourceEmbedKind_Type,
+	BfSourceEmbedKind_Method
 };
 
 class BfParser : public BfSource
@@ -150,7 +158,9 @@ public:
 	bool mUsingCache;
 
 	BfPassInstance* mPassInstance;
+	BfSourceClassifier* mSourceClassifier;
 	String mFileName;	
+	BfSourceEmbedKind mEmbedKind;
 	bool mAwaitingDelete;	
 	
 	bool mCompatMode; // Does C++ compatible parsing

@@ -17,6 +17,48 @@ namespace IDE
 		public const char8 cNativeSlash = Path.DirectorySeparatorChar;
 		public const char8 cOtherSlash = Path.AltDirectorySeparatorChar;        
 
+		public static bool GenericEquals(StringView lhs, StringView rhs)
+		{
+			void SkipGeneric(StringView str, ref int i)
+			{
+				int depth = 0;
+				while (i < str.Length)
+				{
+					char8 c = str[i++];
+					if (c == '<')
+						depth++;
+					if (c == '>')
+					{
+						if (--depth == 0)
+							return;
+					}
+				}
+			}
+
+			int li = 0;
+			int ri = 0;
+
+			while ((li < lhs.Length) && (ri < rhs.Length))
+			{
+				char8 lc = lhs[li];
+				char8 rc = rhs[ri];
+				if (lc != rc)
+					return false;
+
+				if (lc == '<')
+				{
+					SkipGeneric(lhs, ref li);
+					SkipGeneric(rhs, ref ri);
+					continue;
+				}
+
+				li++;
+				ri++;
+			}
+
+			return (li == lhs.Length) && (ri == rhs.Length);
+		}
+
 		public static void AppendWithOptionalQuotes(String targetStr, StringView srcFileName)
 		{
 			bool hasSpace = srcFileName.Contains(' ');

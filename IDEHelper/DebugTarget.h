@@ -37,10 +37,8 @@ public:
 	int mLastHotHeapCleanIdx;
 	String mTargetPath;
 	DbgModule* mLaunchBinary;
-	DbgModule* mTargetBinary;
-	//DbgModule* m
-	Array<DbgModule*> mDbgModules;
-	//DbgModule* mLastDWARF;
+	DbgModule* mTargetBinary;	
+	Array<DbgModule*> mDbgModules;	
 	HashSet<DbgSrcFile*> mPendingSrcFileRehup; // Waiting to remove old/invalid line info
 	
 	BumpAllocator mAlloc;	
@@ -57,12 +55,11 @@ public:
 	Array<DwCommonFrameDescriptor*> mCommonFrameDescriptors;
 	std::map<addr_target, DwFrameDescriptor> mDwFrameDescriptorMap;
 	std::map<addr_target, COFFFrameDescriptorEntry> mCOFFFrameDescriptorMap;
-	
-	//Array<DbgSrcFile*> mSrcFiles;	
+		
 	Dictionary<String, DbgSrcFile*> mSrcFiles;
 	Dictionary<String, String> mLocalToOrigSrcMap;
 
-protected:
+protected:	
 	bool RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPURegisters* registers, addr_target* outReturnAddressLoc, bool& alreadyRolledBackPC);
 	bool RollBackStackFrame_ExceptionDirectory(CPURegisters* registers, addr_target* outReturnAddressLoc, bool& alreadyRolledBackPC);
 	bool RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, addr_target* outReturnAddressLoc);
@@ -76,6 +73,7 @@ public:
 	DebugTarget(WinDebugger* debugger);
 	~DebugTarget();
 	
+	void AddDbgModule(DbgModule* dbgModule);
 	DbgModule* Init(const StringImpl& launchPath, const StringImpl& targetPath, intptr imageBase = 0);
 	void SetupTargetBinary();
 	void CheckTargetBinary(DbgModule* module);

@@ -1,4 +1,5 @@
 #include "BfUtil.h"
+#include "BeefySysLib/util/Hash.h"
 
 USING_NS_BF;
 
@@ -50,6 +51,26 @@ void* Beefy::ZeroedAlloc(int size)
 	BF_ASSERT(((intptr)data & 7) == 0);
 	memset(data, 0, size);
 	return data;
+}
+
+String Beefy::EncodeFileName(const StringImpl& fromStr)
+{
+	String path;
+	if (fromStr.mLength > 80)
+		path.Insert(0, fromStr.mPtr, 80);
+	else
+		path += fromStr;
+	
+	path.Replace("$", "\\");
+	for (auto& c : path)
+	{
+		if ((!::isalnum((uint8)c)) && (c != '_'))
+			c = '-';
+	}
+
+	path += "_";
+	path += HashEncode128(Hash128(fromStr.c_str(), (int)fromStr.length()));
+	return path;
 }
 
 uint64 stouln(const char* str, int len)

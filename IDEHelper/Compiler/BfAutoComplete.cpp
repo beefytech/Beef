@@ -276,10 +276,15 @@ int BfAutoComplete::GetCursorIdx(BfAstNode* node)
 	if (node == NULL)
 		return -1;
 
-	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
+// 	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
+// 		return -1;
+
+	if (node->IsTemporary())
+		return false;
+	auto bfParser = node->GetSourceData()->ToParser();
+	if (bfParser == NULL)
 		return -1;
 
-	auto bfParser = node->GetSourceData()->ToParser();
 	if ((bfParser->mParserFlags & ParserFlag_Autocomplete) == 0)
 		return -1;
 
@@ -291,10 +296,14 @@ bool BfAutoComplete::IsAutocompleteNode(BfAstNode* node, int lengthAdd, int star
 	if (node == NULL)
 		return false;
 	
-	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
-		return false;
+// 	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
+// 		return false;
 
+	if (node->IsTemporary())
+		return false;
 	auto bfParser = node->GetSourceData()->ToParser();
+	if (bfParser == NULL)
+		return false;
 	if ((bfParser->mParserFlags & ParserFlag_Autocomplete) == 0)
 		return false;
 			
@@ -313,10 +322,14 @@ bool BfAutoComplete::IsAutocompleteNode(BfAstNode* startNode, BfAstNode* endNode
 	if ((startNode == NULL) || (endNode == NULL))
 		return false;
 
-	if (!startNode->IsFromParser(mCompiler->mResolvePassData->mParser))
-		return false;
+// 	if (!startNode->IsFromParser(mCompiler->mResolvePassData->mParser))
+// 		return false;
 
+	if (startNode->IsTemporary())
+		return false;
 	auto bfParser = startNode->GetSourceData()->ToParser();
+	if (bfParser == NULL)
+		return false;
 	if ((bfParser->mParserFlags & ParserFlag_Autocomplete) == 0)
 		return false;
 
@@ -335,10 +348,14 @@ bool BfAutoComplete::IsAutocompleteLineNode(BfAstNode* node)
 	if (node == NULL)
 		return false;
 
-	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
-		return false;
+// 	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
+// 		return false;
 
+	if (node->IsTemporary())
+		return false;
 	auto bfParser = node->GetSourceData()->ToParser();
+	if (bfParser == NULL)
+		return false;
 	if ((bfParser->mParserFlags & ParserFlag_Autocomplete) == 0)
 		return false;
 
@@ -414,7 +431,7 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 				{
 					// This keeps the classifier from colorizing properties - this causes 'flashing' when we go back over this with a resolve pass
 					//  that wouldn't catch this
-					SetAndRestoreValue<BfSourceClassifier*> prevClassifier(mModule->mCompiler->mResolvePassData->mSourceClassifier, NULL);
+					SetAndRestoreValue<bool> prevClassifier(mModule->mCompiler->mResolvePassData->mIsClassifying, false);
 
 					BfExprEvaluator exprEvaluator(mModule);
 					auto fieldResult = exprEvaluator.LookupField(qualifiedTypeRef->mRight, leftValue, rightNamedTypeRef->mNameNode->ToString());
@@ -1271,9 +1288,15 @@ BfProject* BfAutoComplete::GetActiveProject()
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 	if (activeTypeDef != NULL)
 		bfProject = activeTypeDef->mProject;
-	else
-		bfProject = mCompiler->mResolvePassData->mParser->mProject;
+	else if (!mCompiler->mResolvePassData->mParsers.IsEmpty())
+		bfProject = mCompiler->mResolvePassData->mParsers[0]->mProject;
 	return bfProject;
+}
+
+bool BfAutoComplete::WantsEntries()
+{
+	return (mResolveType == BfResolveType_Autocomplete) || 
+		(mResolveType == BfResolveType_Autocomplete_HighPri);
 }
 
 void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
@@ -1419,8 +1442,8 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 	else
 	{
 		BfProject* curProject = NULL;
-		if (mModule->mCompiler->mResolvePassData->mParser != NULL)
-			curProject = mModule->mCompiler->mResolvePassData->mParser->mProject;
+		if (!mModule->mCompiler->mResolvePassData->mParsers.IsEmpty())
+			curProject = mModule->mCompiler->mResolvePassData->mParsers[0]->mProject;
 
 		String prevName;
 		for (auto typeDef : mModule->mSystem->mTypeDefs)
@@ -1468,14 +1491,6 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 			}
 		}
 	}
-
-	//bool isUsingDirective = false;
-	//bool isUsingDirective = (identifierNode != NULL) && (identifierNode->mParent != NULL) && (identifierNode->mParent->IsA<BfUsingDirective>());
-	if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
-	{
-		//TODO: Color around dots
-		//mCompiler->mResolvePassData->mSourceClassifier->SetElementType(identifierNode, BfSourceElementType_Namespace);
-	}
 	
 	if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(identifierNode))
 	{
@@ -1483,10 +1498,6 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		return;
 	}
 
-	//bool isInExpression = true;
-// 	if (identifierNode != NULL)
-// 		isInExpression = IsInExpression(identifierNode);
-	
 	AddTopLevelNamespaces(identifierNode);
 	if (isUsingDirective)
 		return; // Only do namespaces
@@ -1759,6 +1770,9 @@ String BfAutoComplete::GetFilter(BfAstNode* node)
 
 bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken, BfAstNode* memberName, bool onlyShowTypes, BfType* expectingType, bool isUsingDirective, bool onlyAttribute)
 {
+	if (!WantsEntries())
+		return false;
+
 	BfAttributedIdentifierNode* attrIdentifier = NULL;
 	bool isAutocompletingName = false;
 	if ((attrIdentifier = BfNodeDynCast<BfAttributedIdentifierNode>(memberName)))

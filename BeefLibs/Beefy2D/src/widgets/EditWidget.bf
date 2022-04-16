@@ -2868,11 +2868,11 @@ namespace Beefy.widgets
                 ExtractString(lineStart, lineEnd - lineStart, outStr); // Full line
         }
 
-        public int GetTextIdx(int line, int charIdx)
+        public int GetTextIdx(int line, int lineChar)
         {
             GetTextData();
             int useLine = Math.Min(line, mData.mLineStarts.Count - 1);
-            return mData.mLineStarts[useLine] + charIdx;
+            return mData.mLineStarts[useLine] + lineChar;
         }
 
         public int GetCharIdIdx(int32 findCharId)
@@ -3139,13 +3139,15 @@ namespace Beefy.widgets
 
             float lineHeight = GetLineHeight(line);
 
+			double yOfs = (mEditWidget.mVertScrollbar?.mContentStart).GetValueOrDefault();
+
             if (mIsMultiline)
             {
-                if (aY < mEditWidget.mVertPos.mDest + mTextInsets.mTop)
+                if (aY < mEditWidget.mVertPos.mDest + mTextInsets.mTop + yOfs)
                 {
                     if (scrollView)
                     {
-                        float scrollPos = aY - mTextInsets.mTop;
+                        double scrollPos = aY - mTextInsets.mTop - yOfs;
                         if (centerView)
                         {                            
                             scrollPos -= mEditWidget.mScrollContentContainer.mHeight * 0.50f;
@@ -3158,7 +3160,7 @@ namespace Beefy.widgets
                         int aLine;
                         int aCharIdx;
                         float overflowX;
-                        GetLineCharAtCoord(aX, (float)mEditWidget.mVertPos.mDest + mTextInsets.mTop, out aLine, out aCharIdx, out overflowX);
+                        GetLineCharAtCoord(aX, (float)(mEditWidget.mVertPos.mDest + mTextInsets.mTop + yOfs), out aLine, out aCharIdx, out overflowX);
 
                         float newX;
                         float newY;
@@ -3169,11 +3171,11 @@ namespace Beefy.widgets
                         MoveCursorTo(aLine, aCharIdx);
                     }
                 }
-                else if (aY + lineHeight + mShowLineBottomPadding > mEditWidget.mVertPos.mDest + mEditWidget.mScrollContentContainer.mHeight)
+                else if (aY + lineHeight + mShowLineBottomPadding > mEditWidget.mVertPos.mDest + mEditWidget.mScrollContentContainer.mHeight + yOfs)
                 {
                     if (scrollView)
                     {
-                        float scrollPos = aY + lineHeight + mShowLineBottomPadding - mEditWidget.mScrollContentContainer.mHeight;
+                        double scrollPos = aY + lineHeight + mShowLineBottomPadding - mEditWidget.mScrollContentContainer.mHeight - yOfs;
                         if (centerView)
                         {
                             // Show slightly more content on bottom
@@ -3183,7 +3185,7 @@ namespace Beefy.widgets
                         mEditWidget.VertScrollTo(scrollPos);
                     }
                     else
-                        MoveCursorToCoord(aX, (float)mEditWidget.mVertPos.mDest + mEditWidget.mScrollContentContainer.mHeight - lineHeight);
+                        MoveCursorToCoord(aX, (float)(mEditWidget.mVertPos.mDest + mEditWidget.mScrollContentContainer.mHeight - lineHeight + yOfs));
                 }
             }
 

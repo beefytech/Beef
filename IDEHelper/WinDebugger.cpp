@@ -1531,6 +1531,24 @@ void WinDebugger::ReportMemory(MemReporter* memReporter)
 		mDebugTarget->ReportMemory(memReporter);
 }
 
+bool WinDebugger::GetEmitSource(const StringImpl& filePath, String& outText)
+{
+	if (!filePath.StartsWith("$Emit"))
+		return false;
+
+	int dollarPos = filePath.IndexOf('$', 1);
+	String numStr = filePath.Substring(5, dollarPos - 5);
+	int id = atoi(numStr.c_str());
+
+	for (auto dbgModule : mDebugTarget->mDbgModules)
+	{
+		if (dbgModule->mId == id)
+			return dbgModule->GetEmitSource(filePath, outText);
+	}
+
+	return false;
+}
+
 void WinDebugger::ModuleChanged(DbgModule* dbgModule)
 {
 	mDebugManager->mOutMessages.push_back(String("dbgInfoLoaded ") + dbgModule->mFilePath);	
@@ -11092,6 +11110,21 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 			*outFlags |= FrameFlags_WasHotReplaced;
 	};
 
+	auto _FixFilePath = [&](DbgModule* dbgModule)
+	{
+		if (outFile == NULL)
+			return;
+
+		if (outFile->StartsWith("$Emit"))
+		{
+			int dollarPos = outFile->IndexOf('$', 1);
+			if (dollarPos == -1)
+				return;
+
+			outFile->Insert(dollarPos, StrFormat("%d", dbgModule->mId));
+		}
+	};
+
 	if (wdStackFrame->mInInlineMethod)
 	{		
 		WdStackFrame* nextStackFrame = mCallStack[actualStackFrameIdx - 1];
@@ -11122,6 +11155,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 			*outLanguage = callingSubProgram->mCompileUnit->mLanguage;
 			auto srcFile = callingSrcFile;
 			*outFile = srcFile->GetLocalPath();
+
 			_CheckHashSrcFile(*outFile, subProgram->mCompileUnit->mDbgModule, srcFile);
 			if (*outLine == callingLineData->mLine)
 				*outColumn = callingLineData->mColumn;
@@ -11131,7 +11165,8 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		DbgModule* dbgModule = wdStackFrame->mSubProgram->mCompileUnit->mDbgModule;
 		DbgModule* linkedModule = dbgModule->GetLinkedModule();
 		if (!linkedModule->mDisplayName.empty())
-			name = linkedModule->mDisplayName + "!" + name;
+			name = linkedModule->mDisplayName + "!" + name;		
+		_FixFilePath(dbgModule);
 		return name;
 	}
 	
@@ -11211,10 +11246,12 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 				*outDefLineEnd = dwEndLineData->mLine;
 			}
 
+			_FixFilePath(dbgModule);
 			return demangledName;
 		}
 		else
 		{
+			_FixFilePath(dbgModule);
 			return demangledName + StrFormat("+0x%X", pcAddress - dwSubprogram->mBlock.mLowPC);
 		}
 	}
@@ -11222,7 +11259,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 	{
 		String symbolName;
 		addr_target offset;
-		DbgModule* dbgModule;
+		DbgModule* dbgModule = NULL;
 		if (mDebugTarget->FindSymbolAt(pcAddress, &symbolName, &offset, &dbgModule))
 		{			
 			if (dbgModule->HasPendingDebugInfo())
@@ -11242,6 +11279,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 			String demangledName = BfDemangler::Demangle(symbolName, DbgLanguage_Unknown);
 			if (!linkedModule->mDisplayName.empty())
 				demangledName = linkedModule->mDisplayName + "!" + demangledName;
+			_FixFilePath(dbgModule);
 			return demangledName + StrFormat("+0x%X", offset);			
 		}		
 	}
@@ -11257,6 +11295,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 	String outName = EncodeDataPtr(pcAddress, true);	
 	if ((linkedModule != NULL) && (!linkedModule->mDisplayName.empty()))
 		outName = linkedModule->mDisplayName + "!" + outName;
+	_FixFilePath(dbgModule);
 	return outName;
 }
 

@@ -100,6 +100,7 @@ namespace Beefy.widgets
             Vert
         }
 
+		public double mContentStart;
         public double mContentSize;
         public double mPageSize;
         public double mContentPos;        
@@ -120,6 +121,7 @@ namespace Beefy.widgets
         public float mScrollIncrement;
         public bool mAlignItems;
 		public bool mDoAutoClamp = true;
+		public bool mAllowMouseWheel = true;
 
         public Event<ScrollEventHandler> mOnScrollEvent ~ _.Dispose();
 
@@ -147,6 +149,9 @@ namespace Beefy.widgets
 
         public virtual void ScrollTo(double pos)
         {
+			var pos;
+			pos -= mContentStart;
+
 			MarkDirty();
             double oldPos = mContentPos;
 
@@ -161,8 +166,8 @@ namespace Beefy.widgets
             if ((mOnScrollEvent.HasListeners) && (oldPos != mContentPos))
             {
                 ScrollEvent scrollEvent = scope ScrollEvent();
-                scrollEvent.mOldPos = oldPos;
-                scrollEvent.mNewPos = mContentPos;
+                scrollEvent.mOldPos = oldPos + mContentStart;
+                scrollEvent.mNewPos = mContentPos + mContentStart;
                 mOnScrollEvent(scrollEvent);
             }
         }
@@ -176,7 +181,7 @@ namespace Beefy.widgets
 
         public virtual void Scroll(double amt)
         {
-            ScrollTo(mContentPos + amt);            
+            ScrollTo(mContentPos + amt + mContentStart);
         }
 
         public virtual double GetContentPosAt(float x, float y)
@@ -226,6 +231,12 @@ namespace Beefy.widgets
 
         public override void MouseWheel(float x, float y, float deltaX, float deltaY)
         {
+			if (!mAllowMouseWheel)
+			{
+				base.MouseWheel(x, y, deltaX, deltaY);
+				return;
+			}
+
 			float delta = (mOrientation == .Horz) ? deltaX : deltaY;
             Scroll(GetScrollIncrement() * -delta);
         }

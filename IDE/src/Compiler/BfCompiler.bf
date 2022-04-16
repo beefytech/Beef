@@ -58,10 +58,10 @@ namespace IDE.Compiler
 		static extern bool BfCompiler_VerifyTypeName(void* bfCompiler, char8* typeName, int32 cursorPos);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern bool BfCompiler_ClassifySource(void* bfCompiler, void* bfPassInstance, void* bfParser, void* bfResolvePassData, void* char8Data);
+        static extern bool BfCompiler_ClassifySource(void* bfCompiler, void* bfPassInstance, void* bfResolvePassData);
 
 		[CallingConvention(.Stdcall), CLink]
-		static extern char8* BfCompiler_GetCollapseRegions(void* bfCompiler, void* bfParser);
+		static extern char8* BfCompiler_GetCollapseRegions(void* bfCompiler, void* bfParser, void* bfResolvePassData, char8* explicitEmitTypeNames);
 
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BfCompiler_GetAutocompleteInfo(void* bfCompiler);
@@ -135,6 +135,12 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetTypeInfo(void* bfCompiler, char8* typeName);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetGenericTypeInstances(void* bfCompiler, char8* typeName);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern int32 BfCompiler_GetTypeId(void* bfCompiler, char8* typeName);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_SetOptions(void* bfCompiler,
             void* hotProject, int32 hotIdx, char8* targetTriple, char8* targetCPU, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
@@ -149,6 +155,12 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 BfCompiler_GetEmitSourceVersion(void* bfCompiler, char8* fileName);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetEmitLocation(void* bfCompiler, char8* typeName, int32 line, out int32 embedLine, out int32 embedLineChar);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfCompiler_WriteEmitData(void* bfCompiler, char8* filePath, void* bfProject);
+		
 		public enum HotTypeFlags
 		{
 			None		= 0,
@@ -260,18 +272,17 @@ namespace IDE.Compiler
 			BfCompiler_ClearResults(mNativeBfCompiler);
 		}
 
-        public bool ClassifySource(BfPassInstance bfPassInstance, BfParser parser, BfResolvePassData resolvePassData, EditWidgetContent.CharData[] char8Data)
+        public bool ClassifySource(BfPassInstance bfPassInstance, BfResolvePassData resolvePassData)
         {
             void* nativeResolvePassData = null;
             if (resolvePassData != null)
                 nativeResolvePassData = resolvePassData.mNativeResolvePassData;
-            EditWidgetContent.CharData* char8DataPtr = (char8Data != null) ? char8Data.CArray() : null;
-            return BfCompiler_ClassifySource(mNativeBfCompiler, bfPassInstance.mNativeBfPassInstance, (parser != null) ? parser.mNativeBfParser : null, nativeResolvePassData, char8DataPtr);                
+            return BfCompiler_ClassifySource(mNativeBfCompiler, bfPassInstance.mNativeBfPassInstance, nativeResolvePassData);
         }
 
-		public void GetCollapseRegions(BfParser parser, String outData)
+		public void GetCollapseRegions(BfParser parser, BfResolvePassData resolvePassData, String explicitEmitTypeNames, String outData)
 		{
-			outData.Append(BfCompiler_GetCollapseRegions(mNativeBfCompiler, (parser != null) ? parser.mNativeBfParser : null));
+			outData.Append(BfCompiler_GetCollapseRegions(mNativeBfCompiler, (parser != null) ? parser.mNativeBfParser : null, resolvePassData.mNativeResolvePassData, explicitEmitTypeNames));
 		}
 
 		public bool VerifyTypeName(String typeName, int cursorPos)
@@ -342,6 +353,15 @@ namespace IDE.Compiler
 		public int32 GetEmitVersion(StringView fileName)
 		{
 			return BfCompiler_GetEmitSourceVersion(mNativeBfCompiler, fileName.ToScopeCStr!());
+		}
+
+		public void GetEmitLocation(StringView typeName, int line, String outFilePath, out int embedLine, out int embedLineChar)
+		{
+			int32 embedLine32;
+			int32 embedLineChar32;
+			outFilePath.Append(BfCompiler_GetEmitLocation(mNativeBfCompiler, typeName.ToScopeCStr!(), (.)line, out embedLine32, out embedLineChar32));
+			embedLine = embedLine32;
+			embedLineChar = embedLineChar32;
 		}
 
         public void QueueSetPassInstance(BfPassInstance passInstance)
@@ -588,7 +608,7 @@ namespace IDE.Compiler
 
                     var resolvePassData = BfResolvePassData.Create(ResolveType.Classify);
                     // If we get canceled then try again after waiting a couple updates
-                    if (!ClassifySource(passInstance, null, resolvePassData, null))
+                    if (!ClassifySource(passInstance, resolvePassData))
                         QueueDeferredResolveAll();
 					UpdateRebuildFileWatches();
 
@@ -808,9 +828,19 @@ namespace IDE.Compiler
 			outStr.Append(BfCompiler_GetTypeDefInfo(mNativeBfCompiler, typeDefName));
 		}
 
+		public void GetGenericTypeInstances(String typeName, String outStr)
+		{
+			outStr.Append(BfCompiler_GetGenericTypeInstances(mNativeBfCompiler, typeName));
+		}
+
 		public void GetTypeInfo(String typeDefName, String outStr)
 		{
 			outStr.Append(BfCompiler_GetTypeInfo(mNativeBfCompiler, typeDefName));
+		}
+
+		public int GetTypeId(String typeName)
+		{
+			return BfCompiler_GetTypeId(mNativeBfCompiler, typeName);
 		}
 
 		public void ClearBuildCache()
@@ -942,6 +972,11 @@ namespace IDE.Compiler
 			var dirChangedCommand = new RebuildFileChangedCommand();
 			dirChangedCommand.mDir.Set(str);
 			QueueCommand(dirChangedCommand);
+		}
+
+		public void WriteEmitData(String filePath, BfProject bfProject)
+		{
+			BfCompiler_WriteEmitData(mNativeBfCompiler, filePath, bfProject.mNativeBfProject);
 		}
     }
 }

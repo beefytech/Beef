@@ -30,9 +30,19 @@ void Beefy::DoBfLog(int fileIdx, const char* fmt ...)
 
 	static BfpFile* fp[10] = { NULL };
 	static bool openedLog[10] = { false };
+	static int64 logSize[10] = { 0 };
+	static int logCount[10] = { 0 };
+
+	if (logSize[fileIdx] >= 1 * 1024 * 1024 * 1024)
+	{
+		BfpFile_Release(fp[fileIdx]);
+		openedLog[fileIdx] = false;
+	}
+
 	if (!openedLog[fileIdx])
 	{
 		openedLog[fileIdx] = true;
+		logSize[fileIdx] = 0;
 
 		char exeName[512];
 		int len = 512;
@@ -42,10 +52,16 @@ void Beefy::DoBfLog(int fileIdx, const char* fmt ...)
 		int dotPos = (int)dbgName.IndexOf('.');
 		if (dotPos != -1)
 			dbgName.RemoveToEnd(dotPos);
-		dbgName += StrFormat("_%d.txt", fileIdx);
+		dbgName += StrFormat("_%d", fileIdx);
+
+		if (logCount[fileIdx] > 0)
+			dbgName += 'B';
+
+		dbgName += ".txt";
 		
 		fp[fileIdx] = BfpFile_Create(dbgName.c_str(), BfpFileCreateKind_CreateAlways, (BfpFileCreateFlags)(BfpFileCreateFlag_Write | BfpFileCreateFlag_NoBuffering | BfpFileCreateFlag_ShareRead), BfpFileAttribute_Normal, NULL);
 		onNewLine[fileIdx] = true;
+		logCount[fileIdx]++;
 	}
 	if (fp[fileIdx] == NULL)
 		return;	
@@ -74,6 +90,8 @@ void Beefy::DoBfLog(int fileIdx, const char* fmt ...)
 	{		
 		if (strOfs + numChars > 0)
 		{
+			logSize[fileIdx] += strOfs + numChars;
+
 			BfpFile_Write(fp[fileIdx], lineStr, strOfs + numChars, -1, NULL);
 			if (lineStr[strOfs + numChars - 1] == '\n')
 				onNewLine[fileIdx] = true;
@@ -98,6 +116,7 @@ void Beefy::DoBfLog(int fileIdx, const char* fmt ...)
 	else
 		onNewLine[fileIdx] = false;
 	
+	logSize[fileIdx] += aResult.length();
 	BfpFile_Write(fp[fileIdx], aResult.c_str(), aResult.length(), -1, NULL);	
 }
 
@@ -1137,8 +1156,9 @@ bool BfPassInstance::PopOutString(String* outString)
 
 bool BfPassInstance::WantsRangeRecorded(BfSourceData* bfSource, int srcIdx, int srcLen, bool isWarning, bool isDeferred)
 {
-	if ((mFilterErrorsTo != NULL) && (bfSource != mFilterErrorsTo->mSourceData))
+	if ((!mFilterErrorsTo.IsEmpty()) && (!mFilterErrorsTo.Contains(bfSource)))
 		return false;
+
 	if (bfSource == NULL)
 		return true;
 
@@ -3962,6 +3982,28 @@ BF_EXPORT void BF_CALLTYPE BfResolvePassData_SetSymbolReferencePropertyIdx(BfRes
 BF_EXPORT void BfResolvePassData_SetDocumentationRequest(BfResolvePassData* resolvePassData, char* entryName)
 {
 	resolvePassData->mAutoComplete->mDocumentationEntryName = entryName;
+}
+
+BF_EXPORT void BfResolvePassData_AddEmitEmbed(BfResolvePassData* resolvePassData, char* typeName, int32 cursorIdx)
+{
+	BfEmitEmbedEntry emitEmbedEntry;
+	emitEmbedEntry.mCursorIdx = cursorIdx;
+	resolvePassData->mEmitEmbedEntries[typeName] = emitEmbedEntry;
+}
+
+BF_EXPORT void* BfResolvePassData_GetEmitEmbedData(BfResolvePassData* resolvePassData, char* typeName, int* charCount, int* revision)
+{
+	*charCount = -1;
+	*revision = 0;
+
+	BfEmitEmbedEntry* emitEmbedEntry = NULL;
+	if (!resolvePassData->mEmitEmbedEntries.TryGetValue(typeName, &emitEmbedEntry))
+		return NULL;
+	if (emitEmbedEntry->mParser == NULL)
+		return NULL;
+	*revision = emitEmbedEntry->mRevision;
+	*charCount = emitEmbedEntry->mParser->mSrcLength;
+	return emitEmbedEntry->mParser->mSourceClassifier->mCharData;
 }
 
 BF_EXPORT BfParser* BF_CALLTYPE BfSystem_CreateParser(BfSystem* bfSystem, BfProject* bfProject)

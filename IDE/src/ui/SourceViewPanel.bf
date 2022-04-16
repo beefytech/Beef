@@ -92,6 +92,30 @@ namespace IDE.ui
             base.MouseDown(x, y, btn, btnCount);
         }
 
+		public override void MouseWheel(float x, float y, float deltaX, float deltaY)
+		{
+			var sewc = mEditWidgetContent as SourceEditWidgetContent;
+			if ((sewc.mSourceViewPanel != null) && (sewc.mSourceViewPanel.mEmbedParent != null))
+			{
+				if (mHasFocus)
+				{
+					if ((mVertScrollbar != null) && (mVertScrollbar.mAllowMouseWheel))
+					{
+						mVertScrollbar.MouseWheel(x, y, 0, deltaY);
+						return;
+					}
+				}
+
+				var target = sewc.mSourceViewPanel.mEmbedParent.mEditWidget.mEditWidgetContent;
+				SelfToOtherTranslate(target, x, y, var transX, var transY);
+				target.MouseWheel(transX, transY, deltaX, deltaY);
+				return;
+			}
+
+
+			base.MouseWheel(x, y, deltaX, deltaY);
+		}
+
         public override void GotFocus()
         {
 			//Debug.WriteLine("SourceViewPanel.GotFocus {0}", this);
@@ -111,6 +135,16 @@ namespace IDE.ui
 				mPanel.mLastFocusTick = IDEApp.sApp.mUpdateCnt;
                 mPanel.EditGotFocus();
 			}
+
+			var sewc = mEditWidgetContent as SourceEditWidgetContent;
+			if ((sewc.mSourceViewPanel != null) && (sewc.mSourceViewPanel.mEmbedParent != null))
+			{
+				mVertScrollbar.mAllowMouseWheel = true;
+				mHorzScrollbar.mAllowMouseWheel = true;
+			}
+
+			DeleteAndNullify!(gApp.mDeferredShowSource);
+
             base.GotFocus();
         }
 
@@ -118,6 +152,14 @@ namespace IDE.ui
         {
             if (mPanel != null)
                 mPanel.EditLostFocus();
+
+			var sewc = mEditWidgetContent as SourceEditWidgetContent;
+			if ((sewc.mSourceViewPanel != null) && (sewc.mSourceViewPanel.mEmbedParent != null))
+			{
+				mVertScrollbar.mAllowMouseWheel = false;
+				mHorzScrollbar.mAllowMouseWheel = false;
+			}
+
             base.LostFocus();
         }
 
@@ -329,6 +371,15 @@ namespace IDE.ui
 		public IdSpan mCharIdSpan ~ _.Dispose();
 	}
 
+	class QueuedEmitShowData
+	{
+		public int32 mPrevCollapseParseRevision;
+		public int32 mTypeId = -1;
+		public String mTypeName ~ delete _;
+		public int32 mLine;
+		public int32 mColumn;
+	}
+
     public class SourceViewPanel : TextPanel
     {
         enum SourceDisplayId
@@ -352,6 +403,8 @@ namespace IDE.ui
         public bool mTrackedTextElementViewListDirty;
         public String mFilePath ~ delete _;
 		public int32 mEmitRevision = -1;
+		public SourceEmbedKind mEmbedKind;
+		public SourceViewPanel mEmbedParent;
 		public bool mIsBinary;
 		public String mAliasFilePath ~ delete _;
 #if IDE_C_SUPPORT
@@ -384,6 +437,8 @@ namespace IDE.ui
 #endif
 		CollapseRegionView mCollapseRegionView = new .() ~ delete _;
 		QueuedCollapseData mQueuedCollapseData ~ delete _;
+		QueuedEmitShowData mQueuedEmitShowData ~ delete _;
+		List<String> mExplicitEmitTypes = new .() ~ DeleteContainerAndItems!(_);
 
         public EditWidgetContent.CharData[] mProcessSpellCheckCharData ~ delete _;
         public IdSpan mProcessSpellCheckCharIdSpan ~ _.Dispose();
@@ -569,13 +624,17 @@ namespace IDE.ui
 			}
 		}
 
-        public this()
-        {                        
+        public this(SourceEmbedKind embedKind = .None)
+        {
+			mEmbedKind = embedKind;
             DebugManager debugManager = IDEApp.sApp.mDebugger;
             debugManager.mBreakpointsChangedDelegate.Add(new => BreakpointsChanged);
 
-            mNavigationBar = new NavigationBar(this);            
-            AddWidget(mNavigationBar); 
+			if (mEmbedKind == .None)
+			{
+	            mNavigationBar = new NavigationBar(this);            
+	            AddWidget(mNavigationBar); 
+			}
         }
 
 		public ~this()
@@ -812,7 +871,7 @@ namespace IDE.ui
                 {
                     var clangCompiler = ClangResolveCompiler;
                     clangCompiler.QueueFileRemoved(mFilePath);
-                    if (mClangSource != null)                    
+                    if (mClangSource != null)
                         mClangSource = null;                    
                     mDidClangSource = false;
                 }
@@ -989,6 +1048,17 @@ namespace IDE.ui
             if ((IDEApp.sApp.mSymbolReferenceHelper != null) && (IDEApp.sApp.mSymbolReferenceHelper.HasStarted) && (IDEApp.sApp.mSymbolReferenceHelper.mKind == SymbolReferenceHelper.Kind.Rename))
                 return false;
 
+			if (mEmbedKind != .None)
+			{
+				if ((mEmbedParent != null) &&
+					((resolveType == .GoToDefinition) || (resolveType == .GetCurrentLocation)))
+				{
+					mEmbedParent.Classify(resolveType, resolveParams);
+				}
+
+				return true;
+			}
+
 			//Debug.WriteLine("Classify({0})", resolveType);
 
             if (!mIsSourceCode)
@@ -1107,7 +1177,8 @@ namespace IDE.ui
             bool doBackground = (useResolveType == ResolveType.Classify) || (useResolveType == ResolveType.ClassifyFullRefresh);
 			if (mAsyncAutocomplete)
 			{
-				if ((useResolveType == .Autocomplete) || (useResolveType == .GetCurrentLocation) || (useResolveType == .GetSymbolInfo) || (useResolveType == .GetResultString))
+				if ((useResolveType == .Autocomplete) || (useResolveType == .GetCurrentLocation) || (useResolveType == .GetSymbolInfo) ||
+					(useResolveType == .GetResultString) || (useResolveType == .GoToDefinition))
 					doBackground = true;
 			}
 
@@ -1166,6 +1237,64 @@ namespace IDE.ui
 #endif
             }
 
+			let ewc = (SourceEditWidgetContent)mEditWidget.mEditWidgetContent;
+
+			void FindEmbeds(ResolveParams resolveParams)
+			{
+				HashSet<FileEditData> foundEditData = scope .();
+				Dictionary<String, String> remappedTypeNames = scope .();
+
+				for (var embed in ewc.mEmbeds.Values)
+				{
+					if (var emitEmbed = embed as SourceEditWidgetContent.EmitEmbed)
+					{
+						if (emitEmbed.mView != null)
+						{
+							var embedSourceViewPanel = emitEmbed.mView.mSourceViewPanel;
+							bool embedHasFocus = embedSourceViewPanel.mEditWidget.mHasFocus;
+
+							if (!embedHasFocus)
+							{
+								if ((useResolveType != .Classify) && (useResolveType != .ClassifyFullRefresh))
+									continue;
+							}
+
+							if (foundEditData.Add(embedSourceViewPanel.mEditData))
+							{
+								ResolveParams.Embed embedSource = new .();
+
+								String useTypeName = emitEmbed.mTypeName;
+								if (!mExplicitEmitTypes.IsEmpty)
+								{
+									if (remappedTypeNames.TryAdd(useTypeName, var keyPtr, var valuePtr))
+									{
+										*valuePtr = useTypeName;
+										for (var explicitTypeName in mExplicitEmitTypes)
+										{
+											if (IDEUtils.GenericEquals(useTypeName, explicitTypeName))
+											{
+												*valuePtr = explicitTypeName;
+												break;
+											}
+										}
+									}
+									useTypeName = *valuePtr;
+								}
+
+								embedSource.mTypeName = new .(useTypeName);
+								if (embedHasFocus)
+									embedSource.mCursorIdx = (.)embedSourceViewPanel.mEditWidget.mEditWidgetContent.CursorTextPos;
+								else
+									embedSource.mCursorIdx = -1;
+								resolveParams.mEmitEmbeds.Add(embedSource);
+
+								//embedSource.mParser = bfSystem.FindParser(embedSourceViewPanel.mProjectSource);
+							}
+						}
+					}
+				}
+			}
+
             if (doBackground)
             {
 				ProcessDeferredResolveResults(0);
@@ -1176,6 +1305,8 @@ namespace IDE.ui
 					resolveParams = new ResolveParams();
 				}
 
+				FindEmbeds(resolveParams);
+
 				resolveParams.mResolveType = resolveType;
 				resolveParams.mWaitEvent = new WaitEvent();
 				resolveParams.mInDeferredList = true;
@@ -1184,7 +1315,6 @@ namespace IDE.ui
 				var autoComplete = GetAutoComplete();
 				if ((autoComplete != null) && (autoComplete.mIsDocumentationPass))
 				{
-					let ewc = (SourceEditWidgetContent)mEditWidget.mEditWidgetContent;
 					Debug.Assert(ewc.mAutoComplete != null);
 					let selectedEntry = ewc.mAutoComplete.mAutoCompleteListWidget.mEntryList[ewc.mAutoComplete.mAutoCompleteListWidget.mSelectIdx];
 					resolveParams.mDocumentationName = new String(selectedEntry.mEntryDisplay);
@@ -1205,15 +1335,20 @@ namespace IDE.ui
                     bfSystem.PerfZoneStart("DoBackground");
 				//ProcessResolveData();
 
+				bool hasFocus = mEditWidget.mHasFocus;
+
 				//Debug.Assert(mProcessResolveCharData == null);
                 DuplicateEditState(out resolveParams.mCharData, out resolveParams.mCharIdSpan);
 				//Debug.WriteLine("Edit State: {0}", mProcessResolveCharData);
 
-                if ((useResolveType == .Autocomplete) || (useResolveType == .GetSymbolInfo) || (mIsClang))
+				if (hasFocus)
 				{
-					resolveParams.mOverrideCursorPos = (.)mEditWidget.Content.CursorTextPos;
-					/*if (useResolveType == .Autocomplete)
-						resolveParams.mOverrideCursorPos--;*/
+	                if ((useResolveType == .Autocomplete) || (useResolveType == .GetSymbolInfo) || (mIsClang))
+					{
+						resolveParams.mOverrideCursorPos = (.)mEditWidget.Content.CursorTextPos;
+						/*if (useResolveType == .Autocomplete)
+							resolveParams.mOverrideCursorPos--;*/
+					}
 				}
                     
                 //Debug.Assert(mCurParser == null);
@@ -1272,6 +1407,12 @@ namespace IDE.ui
             }
             else if ((mIsBeefSource) && (hasValidProjectSource))
             {
+				var resolveParams;
+				if (resolveParams == null)
+					resolveParams = scope:: ResolveParams();
+
+				FindEmbeds(resolveParams);
+
 				/*if (useResolveType == ResolveType.Autocomplete)
 				{
 					Profiler.StartSampling();
@@ -1356,7 +1497,10 @@ namespace IDE.ui
             parser.SetIsClassifying();
             parser.Parse(passInstance, !mIsBeefSource);
             if (mIsBeefSource)
+			{
+				parser.SetEmbedKind(mEmbedKind);
                 parser.Reduce(passInstance);
+			}
             parser.ClassifySource(char8Data, !mIsBeefSource);
 			mWantsParserCleanup = true;
         }
@@ -1674,11 +1818,13 @@ namespace IDE.ui
 			if (resolveType == ResolveType.GetSymbolInfo)
 			{
 				if (!resolveParams.mCancelled)
-			    	gApp.mSymbolReferenceHelper.SetSymbolInfo(autocompleteInfo);
+			    	gApp.mSymbolReferenceHelper?.SetSymbolInfo(autocompleteInfo);
 			}
 			else if (resolveType == ResolveType.GoToDefinition)
 			{
-			    var autocompleteLines = String.StackSplit!(autocompleteInfo, '\n');
+				if (!resolveParams.mCancelled)
+					gApp.mSymbolReferenceHelper?.SetSymbolInfo(autocompleteInfo);
+			    /*var autocompleteLines = String.StackSplit!(autocompleteInfo, '\n');
 			    for (var autocompleteLine in autocompleteLines)
 			    {
 			        var lineData = String.StackSplit!(autocompleteLine, '\t');
@@ -1688,7 +1834,7 @@ namespace IDE.ui
 			            resolveParams.mOutLineChar = int32.Parse(lineData[3]);
 			            resolveParams.mOutFileName = new String(lineData[1]);
 			        }
-			    }
+			    }*/
 			}
 			else if (resolveType == ResolveType.GetNavigationData)
 			{
@@ -1765,7 +1911,7 @@ namespace IDE.ui
             var bfCompiler = BfResolveCompiler;
             //var compiler = ResolveCompiler;
             
-            bool isBackground = (resolveType == ResolveType.Classify) || (resolveType == ResolveType.ClassifyFullRefresh) || (resolveType == .GetResultString);
+            bool isBackground = (resolveType == .Classify) || (resolveType == .ClassifyFullRefresh) || (resolveType == .GetResultString) || (resolveType == .GoToDefinition);
             bool fullRefresh = resolveType == ResolveType.ClassifyFullRefresh;
 
 			if (!isBackground)
@@ -1790,32 +1936,51 @@ namespace IDE.ui
             if (isInterrupt)
                 bfSystem.NotifyWillRequestLock(1);
 
+            bool isFastClassify = false;
+			BfParser parser;
+
 			ProjectSource projectSource = FilteredProjectSource;
 
-            bool isFastClassify = false;
-            BfParser parser;
+			int cursorPos = mEditWidget.mEditWidgetContent.CursorTextPos;
+
+			if ((resolveParams != null) && (resolveParams.mOverrideCursorPos != -1))
+				cursorPos = resolveParams.mOverrideCursorPos;
+
+			bool emitHasCursor = false;
+			if (resolveParams != null)
+			{
+				for (var embed in resolveParams.mEmitEmbeds)
+				{
+					if (embed.mCursorIdx != -1)
+					{
+						emitHasCursor = true;
+						cursorPos = -1;
+					}
+				}
+			}
+
             if ((!isBackground) && (projectSource != null))
-            {
-                bfSystem.PerfZoneStart("CreateParser");
-                parser = bfSystem.CreateParser(projectSource, false);
-                bfSystem.PerfZoneEnd();
-            }
-            else if ((resolveParams != null) && (resolveParams.mParser != null))
-            {
-                parser = bfSystem.CreateNewParserRevision(resolveParams.mParser);
-            }
-            else if (projectSource != null)
+			{
+			    bfSystem.PerfZoneStart("CreateParser");
+			    parser = bfSystem.CreateParser(projectSource, false);
+			    bfSystem.PerfZoneEnd();
+			}
+			else if ((resolveParams != null) && (resolveParams.mParser != null))
+			{
+			    parser = bfSystem.CreateNewParserRevision(resolveParams.mParser);
+			}
+			else if (projectSource != null)
 			{
 				bfSystem.PerfZoneStart("CreateParser");
 				parser = bfSystem.CreateParser(projectSource, false);
 				bfSystem.PerfZoneEnd();
 			}
 			else
-            {
-                // This only happens when we're editing source that isn't in our project
-                isFastClassify = true;
-                parser = bfSystem.CreateEmptyParser((BfProject)null);
-            }
+			{
+			    // This only happens when we're editing source that isn't in our project
+			    isFastClassify = true;
+			    parser = bfSystem.CreateEmptyParser((BfProject)null);
+			}
 
 			EditWidgetContent.CharData[] charData = null;
 			int charLen = 0;
@@ -1834,23 +1999,13 @@ namespace IDE.ui
             /*var char8Data = (!isBackground) ? mEditWidget.Content.mData.mText : mProcessResolveCharData;
             int char8Len = Math.Min(char8Data.Count, mEditWidget.Content.mData.mTextLength);*/
 
-            String passInstanceName = scope String("DoClassify ");
-            resolveType.ToString(passInstanceName);
-            if (projectSource != null)
-                passInstanceName.Append(":", projectSource.mName);
-            var passInstance = bfSystem.CreatePassInstance(passInstanceName);
-            passInstance.SetClassifierPassId(!isBackground ? (uint8)SourceDisplayId.AutoComplete : (uint8)SourceDisplayId.FullClassify);
-            if (isBackground)
-            {
-                //Debug.Assert(mProcessingPassInstance == null);
-                //mProcessingPassInstance = passInstance;
-				Debug.Assert(resolveParams.mPassInstance == null);
-				resolveParams.mPassInstance = passInstance;
-            }
-
             if (!isBackground)
                 bfSystem.PerfZoneStart("DoClassify.CreateChars");
-            char8[] chars = new char8[charLen];
+
+			
+			//text.Append(chars, 0, chars.Count);
+
+            char8* chars = new char8[charLen]* (?);
 			defer delete chars;
             for (int32 i = 0; i < charLen; i++)
             {
@@ -1858,64 +2013,82 @@ namespace IDE.ui
                 chars[i] = (char8)charData[i].mChar;
             }
                 
-            String text = scope String();
-            text.Append(chars, 0, chars.Count);
             if (!isBackground)
             {
                 bfSystem.PerfZoneEnd();
                 bfSystem.PerfZoneStart("SetSource");
             }
 			parser.SetIsClassifying();
-            parser.SetSource(text, mFilePath);
+            parser.SetSource(.(chars, charLen), mFilePath);
             if (!isBackground)
             {
                 bfSystem.PerfZoneEnd();
                 bfSystem.PerfZoneStart("DoClassify.DoWork");
             }
 
-			int cursorPos = mEditWidget.mEditWidgetContent.CursorTextPos;
+			//int cursorPos = mEditWidget.mEditWidgetContent.CursorTextPos;
 			/*if (resolveType == ResolveType.Autocomplete)
 				cursorPos--;*/
-			if (resolveParams != null)
+			/*if (resolveParams != null)
 			{
 				 if (resolveParams.mOverrideCursorPos != -1)
 					cursorPos = resolveParams.mOverrideCursorPos;
-			}
+			}*/
 
             if ((resolveType == ResolveType.GetNavigationData) || (resolveType == ResolveType.GetFixits))
                 parser.SetAutocomplete(-1);
             else
 			{
 				bool setAutocomplete = ((!isBackground) && (resolveType != ResolveType.RenameSymbol));
-				if ((resolveType == .Autocomplete) || (resolveType == .GetCurrentLocation) || (resolveType == .GetSymbolInfo) || (resolveType == .GetResultString))
+				if ((resolveType == .Autocomplete) || (resolveType == .GetCurrentLocation) || (resolveType == .GetSymbolInfo) ||
+					(resolveType == .GoToDefinition) || (resolveType == .GetResultString))
 					setAutocomplete = true;
 				if (setAutocomplete)
-                	parser.SetAutocomplete(Math.Max(0, cursorPos));
+				{
+					if (emitHasCursor)
+						parser.SetAutocomplete(-2);
+					else
+                		parser.SetAutocomplete(Math.Max(emitHasCursor ? -1 : 0, cursorPos));
+				}
 			}
             /*else (!isFullClassify) -- do we ever need to do this?
                 parser.SetCursorIdx(mEditWidget.mEditWidgetContent.CursorTextPos);*/
 
+			String passInstanceName = scope String("DoClassify ");
+			resolveType.ToString(passInstanceName);
+			if (projectSource != null)
+			    passInstanceName.Append(":", projectSource.mName);
+			var passInstance = bfSystem.CreatePassInstance(passInstanceName);
+			passInstance.SetClassifierPassId(!isBackground ? (uint8)SourceDisplayId.AutoComplete : (uint8)SourceDisplayId.FullClassify);
+			if (isBackground)
+			{
+			    //Debug.Assert(mProcessingPassInstance == null);
+			    //mProcessingPassInstance = passInstance;
+				Debug.Assert(resolveParams.mPassInstance == null);
+				resolveParams.mPassInstance = passInstance;
+			}
+
 			bool doFuzzyAutoComplete = resolveParams?.mDoFuzzyAutoComplete ?? false;
 
-            var resolvePassData = parser.CreateResolvePassData(resolveType, doFuzzyAutoComplete);
-            if (resolveParams != null)
-            {
-                if (resolveParams.mLocalId != -1)
-                    resolvePassData.SetLocalId(resolveParams.mLocalId);
-                if (resolveParams.mTypeDef != null)
-                    resolvePassData.SetSymbolReferenceTypeDef(resolveParams.mTypeDef);
-                if (resolveParams.mFieldIdx != -1)
-                    resolvePassData.SetSymbolReferenceFieldIdx(resolveParams.mFieldIdx);
-                if (resolveParams.mMethodIdx != -1)
-                    resolvePassData.SetSymbolReferenceMethodIdx(resolveParams.mMethodIdx);
-                if (resolveParams.mPropertyIdx != -1)
-                    resolvePassData.SetSymbolReferencePropertyIdx(resolveParams.mPropertyIdx);
-            }
-			
+			var resolvePassData = parser.CreateResolvePassData(resolveType, doFuzzyAutoComplete);
+			if (resolveParams != null)
+			{
+			    if (resolveParams.mLocalId != -1)
+			        resolvePassData.SetLocalId(resolveParams.mLocalId);
+			    if (resolveParams.mTypeDef != null)
+			        resolvePassData.SetSymbolReferenceTypeDef(resolveParams.mTypeDef);
+			    if (resolveParams.mFieldIdx != -1)
+			        resolvePassData.SetSymbolReferenceFieldIdx(resolveParams.mFieldIdx);
+			    if (resolveParams.mMethodIdx != -1)
+			        resolvePassData.SetSymbolReferenceMethodIdx(resolveParams.mMethodIdx);
+			    if (resolveParams.mPropertyIdx != -1)
+			        resolvePassData.SetSymbolReferencePropertyIdx(resolveParams.mPropertyIdx);
+			}
+
 			if ((resolveParams != null) && (resolveParams.mDocumentationName != null))
 				resolvePassData.SetDocumentationRequest(resolveParams.mDocumentationName);
-            parser.Parse(passInstance, !mIsBeefSource);
-            parser.Reduce(passInstance);
+			parser.Parse(passInstance, !mIsBeefSource);
+			parser.Reduce(passInstance);
 
 			if ((mIsBeefSource) &&
 				((resolveType == .Classify) || (resolveType == .ClassifyFullRefresh)))
@@ -1924,24 +2097,24 @@ namespace IDE.ui
 				if (!isFastClassify)
 					gApp.mErrorsPanel.ProcessPassInstance(passInstance, .Parse);
 			}
-            
-            if (isInterrupt)
-            {
-                bfSystem.PerfZoneEnd();
-                bfSystem.PerfZoneStart("Lock");
+
+			if (isInterrupt)
+			{
+			    bfSystem.PerfZoneEnd();
+			    bfSystem.PerfZoneStart("Lock");
 				var sw = scope Stopwatch(true);
 				sw.Start();
-                bfSystem.Lock(1);
-                bfSystem.PerfZoneEnd();
-            }
-            else
-            {
-                bfSystem.Lock(0);
-            }
+			    bfSystem.Lock(1);
+			    bfSystem.PerfZoneEnd();
+			}
+			else
+			{
+			    bfSystem.Lock(0);
+			}
 
-            if (!isFastClassify)            
-                parser.BuildDefs(passInstance, resolvePassData, fullRefresh);
-           
+			if (!isFastClassify)            
+			    parser.BuildDefs(passInstance, resolvePassData, fullRefresh);
+
 			// For Fixits we do want to parse the whole file but we need the cursorIdx bound still to
 			//  locate the correct fixit info
 			if (resolveType == ResolveType.GetFixits)
@@ -1956,6 +2129,8 @@ namespace IDE.ui
                 //Debug.WriteLine("Classify Continuing."); 
             }
 
+			//Debug.WriteLine($"Classify {resolveType}");
+
             /*if (resolveType == ResolveType.RenameLocalSymbol)
             {
                 // We do want cursor info for replacing the symbol, we just didn't want it for reducing 
@@ -1965,7 +2140,58 @@ namespace IDE.ui
 
 			if ((!isFastClassify) && (bfCompiler != null))
             {
-                if (!bfCompiler.ClassifySource(passInstance, parser, resolvePassData, charData))
+				parser.CreateClassifier(passInstance, resolvePassData, charData);
+
+				if (resolveType == .ClassifyFullRefresh)
+				{
+					NOP!();
+				}
+
+				if (resolveParams != null)
+				{
+					for (var emitEmbedData in resolveParams.mEmitEmbeds)
+					{
+						resolvePassData.AddEmitEmbed(emitEmbedData.mTypeName, emitEmbedData.mCursorIdx);
+					}
+				}
+
+                if (bfCompiler.ClassifySource(passInstance, resolvePassData))
+				{
+					if ((resolveType == ResolveType.Classify) || (resolveType == ResolveType.ClassifyFullRefresh))
+					{
+						String explicitEmitTypeNames = scope .();
+						for (var explicitType in mExplicitEmitTypes)
+						{
+							explicitEmitTypeNames.Append(explicitType);
+							explicitEmitTypeNames.Append("\n");
+						}
+
+						var collapseData = bfCompiler.GetCollapseRegions(parser, resolvePassData, explicitEmitTypeNames, .. scope .());
+						using (mMonitor.Enter())
+						{
+							DeleteAndNullify!(mQueuedCollapseData);
+							mQueuedCollapseData = new .();
+							mQueuedCollapseData.mData.Set(collapseData);
+							mQueuedCollapseData.mTextVersion = resolveParams.mTextVersion;
+							mQueuedCollapseData.mCharIdSpan = resolveParams.mCharIdSpan.Duplicate();
+						}
+					}
+
+					if (resolveParams != null)
+					{
+						for (var emitEmbedData in resolveParams.mEmitEmbeds)
+						{
+							var data = resolvePassData.GetEmitEmbedData(emitEmbedData.mTypeName, var srcLength, var revision);
+							if (srcLength > 0)
+							{
+								emitEmbedData.mCharData = new EditWidgetContent.CharData[srcLength+1] (?);
+								emitEmbedData.mCharData[srcLength] = default;
+								Internal.MemCpy(emitEmbedData.mCharData.Ptr, data, srcLength * strideof(EditWidgetContent.CharData));
+							}
+						}
+					}
+				}
+				else
                 {
 					//DeleteAndNullify!(mProcessResolveCharData);
 					//mProcessResolveCharIdSpan.Dispose();
@@ -1978,18 +2204,7 @@ namespace IDE.ui
                     bfCompiler.QueueDeferredResolveAll();
                 }
 
-				if ((resolveType == ResolveType.Classify) || (resolveType == ResolveType.ClassifyFullRefresh))
-				{
-					var collapseData = bfCompiler.GetCollapseRegions(parser, .. scope .());
-					using (mMonitor.Enter())
-					{
-						DeleteAndNullify!(mQueuedCollapseData);
-						mQueuedCollapseData = new .();
-						mQueuedCollapseData.mData.Set(collapseData);
-						mQueuedCollapseData.mTextVersion = resolveParams.mTextVersion;
-						mQueuedCollapseData.mCharIdSpan = resolveParams.mCharIdSpan.Duplicate();
-					}
-				}
+				parser.FinishClassifier(resolvePassData);
             }
             else
             {
@@ -2017,7 +2232,7 @@ namespace IDE.ui
                 //bool isAutocomplete = (resolveType == ResolveType.Autocomplete) || (resolveType == ResolveType.Autocomplete_HighPri);
                 //if (isAutocomplete)
                 if ((!isFastClassify) && (!isBackground) && (resolveType == ResolveType.Autocomplete))
-                    InjectErrors(passInstance, mEditWidget.mEditWidgetContent.mData.mText, mEditWidget.mEditWidgetContent.mData.mTextIdData.GetPrepared(), true);
+                    InjectErrors(passInstance, mEditWidget.mEditWidgetContent.mData.mText, mEditWidget.mEditWidgetContent.mData.mTextIdData.GetPrepared(), true, false);
                 //IDEApp.sApp.ShowPassOutput(passInstance);
                 
                 delete passInstance;
@@ -2339,6 +2554,20 @@ namespace IDE.ui
 
 		public void CloseEdit()
 		{
+			var sewc = mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
+			for (var embed in sewc.mEmbeds.Values)
+			{
+				if (var emitEmbed = embed as SourceEditWidgetContent.EmitEmbed)
+				{
+					if (emitEmbed.mView != null)
+					{
+						emitEmbed.mView.RemoveSelf();
+						DeleteAndNullify!(emitEmbed.mView);
+						sewc.mCollapseNeedsUpdate = true;
+					}
+				}
+			}
+
 			mEditWidget.mPanel = null;
 
 			var editWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
@@ -2538,7 +2767,7 @@ namespace IDE.ui
 
         public override void EditGotFocus()
         {
-			if (mFilePath != null)
+			if ((mFilePath != null) && (mEmbedKind == .None))
 				gApp.AddToRecentDisplayedFilesList(mFilePath);
 			if (mLoadFailed)
 				return;
@@ -2577,12 +2806,15 @@ namespace IDE.ui
 				editData.mEditWidget = mEditWidget;
 			}
 
-			gApp.mLastActiveSourceViewPanel = this;
-			gApp.mLastActivePanel = this;
-
-			if ((gApp.mSettings.mEditorSettings.mSyncWithWorkspacePanel) && (mProjectSource != null))
+			if (mEmbedKind == .None)
 			{
-				SyncWithWorkspacePanel();
+				gApp.mLastActiveSourceViewPanel = this;
+				gApp.mLastActivePanel = this;
+
+				if ((gApp.mSettings.mEditorSettings.mSyncWithWorkspacePanel) && (mProjectSource != null))
+				{
+					SyncWithWorkspacePanel();
+				}
 			}
         }
 
@@ -2845,6 +3077,13 @@ namespace IDE.ui
 
         List<TrackedTextElementView> GetTrackedElementList()
         {
+			if ((mEmbedKind != .None) && (mEditWidget.mEditWidgetContent.mData.mTextLength == 0))
+			{
+				if (mTrackedTextElementViewList == null)
+					mTrackedTextElementViewList = new .();
+				return mTrackedTextElementViewList;
+			}
+
             if (mTrackedTextElementViewListDirty)
             {
                 ClearTrackedElements();
@@ -3447,6 +3686,9 @@ namespace IDE.ui
 
 		void InitSplitter()
 		{
+			if (mEmbedKind != .None)
+				return;
+
 			mSplitter = new PanelSplitter(mSplitTopPanel, this);
 			mSplitter.mSplitAction = new => SplitView;
 			mSplitter.mUnsplitAction = new => UnsplitView;
@@ -3536,7 +3778,9 @@ namespace IDE.ui
 				editWidgetContent.Reload(mFilePath);
 			}
 			editWidgetContent.mIgnoreSetHistory = false;
-			QueueFullRefresh(false);
+
+			if (mEmitRevision == -1) // This causes a rehup loop if there's an emission error if we don't do this check
+				QueueFullRefresh(false);
 #if IDE_C_SUPPORT
 			mClangSourceChanged = false;
 #endif
@@ -3661,6 +3905,12 @@ namespace IDE.ui
 
 			if (mSplitTopPanel != null)
 				return;
+
+			if ((mProjectSource == null) && (mFilePath == null))
+			{
+				//TODO: We don't allow splitting of new files
+				return;
+			}
 			
 			// User requested from menu
 			if (mSplitter.mSplitPct <= 0)
@@ -3968,7 +4218,11 @@ namespace IDE.ui
 				if (gApp.mDebugger.mIsRunning)
                 	foundPosition = RemapActiveToCompiledLine(curCompileIdx, ref lineIdx, ref lineCharIdx);
 				bool createNow = foundPosition || !mIsBeefSource; // Only be strict about Beef source
-                newBreakpoint = debugManager.CreateBreakpoint_Create(mAliasFilePath ?? mFilePath, lineIdx, lineCharIdx, -1);
+
+				String filePath = mAliasFilePath ?? mFilePath;
+				if (filePath == null)
+					return null;
+                newBreakpoint = debugManager.CreateBreakpoint_Create(filePath, lineIdx, lineCharIdx, -1);
 				newBreakpoint.mThreadId = threadId;
 				debugManager.CreateBreakpoint_Finish(newBreakpoint, createNow);
                 int newDrawLineNum = GetDrawLineNum(newBreakpoint);
@@ -4177,12 +4431,19 @@ namespace IDE.ui
 
 					float lineSpacing = ewc.mFont.GetLineSpacing();
 					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
-					bool hiliteCurrentLine = true;
+					bool hiliteCurrentLine = mEditWidget.mHasFocus;
 
 					var jumpEntry = ewc.mLineCoordJumpTable[Math.Clamp((int)(-mEditWidget.Content.Y / ewc.GetJumpCoordSpacing()), 0, ewc.mLineCoordJumpTable.Count - 1)];
 					int lineStart = jumpEntry.min;
 					jumpEntry = ewc.mLineCoordJumpTable[Math.Clamp((int)((-mEditWidget.Content.Y + mHeight) / ewc.GetJumpCoordSpacing()), 0, ewc.mLineCoordJumpTable.Count - 1)];
 					int lineEnd = jumpEntry.max - 1;
+
+					if (ewc.mLineRange != null)
+					{
+						lineStart = Math.Max(lineStart, ewc.mLineRange.Value.Start);
+						lineEnd = Math.Min(lineEnd, ewc.mLineRange.Value.End);
+						lineStart = Math.Min(lineStart, lineEnd);
+					}
 
 					int drawLineCount = lineEnd - lineStart + 1;
 
@@ -4334,7 +4595,7 @@ namespace IDE.ui
                         }*/
                     }
 
-					if (gApp.mSettings.mEditorSettings.mShowLineNumbers)
+					if ((gApp.mSettings.mEditorSettings.mShowLineNumbers) && (mEmbedKind == .None))
 					{
 						String lineStr = scope String(16);
 						using (g.PushColor(0x80FFFFFF))
@@ -4435,6 +4696,7 @@ namespace IDE.ui
                         if (FileNameMatches(fileName))
                         {                            
                             RemapCompiledToActiveLine(hotIdx, ref lineNum, ref column);
+							
                             Image img;
                             if (IDEApp.sApp.mDebugger.mActiveCallStackIdx == 0)
 							{
@@ -4464,19 +4726,22 @@ namespace IDE.ui
 								doDraw = true;
 							}
 
+							if ((lineNum < lineStart) || (lineNum >= lineEnd))
+								doDraw = false;
+
 							if (doDraw)
 							{
 								mLinePointerDrawData.mUpdateCnt = gApp.mUpdateCnt;
 								mLinePointerDrawData.mDebuggerContinueIdx = gApp.mDebuggerContinueIdx;
 								g.Draw(img, mEditWidget.mX - GS!(20) - leftAdjust,
-									0 + lineNum * lineSpacing);
+									0 + ewc.GetLineY(lineNum, 0));
 							}
                         }
                     }
                 }
             }
 
-			bool drawLock = mSplitBottomPanel == null;
+			bool drawLock = (mSplitBottomPanel == null) && (mEmbedKind == .None);
 			if (drawLock)
 			{
 				IDEUtils.DrawLock(g, mEditWidget.mX - GS!(20), mHeight - GS!(20), IsReadOnly, mLockFlashPct);
@@ -4819,7 +5084,7 @@ namespace IDE.ui
 
             mRenameSymbolDialog = symbolReferenceHelper;
             gApp.mSymbolReferenceHelper = symbolReferenceHelper;
-			BfResolveCompiler.mThreadWorkerHi.WaitForBackground(); // We need to finish up anything on the hi thread worker so we can queue this
+			//BfResolveCompiler.mThreadWorkerHi.WaitForBackground(); // We need to finish up anything on the hi thread worker so we can queue this
             symbolReferenceHelper.Init(this, symbolReferenceKind);
             if (!symbolReferenceHelper.mFailed)
             {
@@ -4828,7 +5093,7 @@ namespace IDE.ui
             }
             else
             {
-                mRenameSymbolDialog.Close();
+                mRenameSymbolDialog?.Close();
             }
 
 			if ((symbolReferenceKind == .Rename) && (let autoComplete = GetAutoComplete()))
@@ -5824,12 +6089,14 @@ namespace IDE.ui
 				bool wantsData = (!resolveResult.mCancelled) && (resolveResult.mResolveType != .GetCurrentLocation) && (resolveResult.mResolveType != .GetSymbolInfo);
 				if (wantsData)
 				{
+					bool filterErrors = !resolveResult.mEmitEmbeds.IsEmpty;
+
 					if ((resolveResult.mCharData != null) && (resolveResult.mPassInstance != null))
 					{
 						bool isAutocomplete = (resolveResult.mResolveType == .Autocomplete) || (resolveResult.mResolveType == .Autocomplete_HighPri);
 
 						MarkDirty();
-					    InjectErrors(resolveResult.mPassInstance, resolveResult.mCharData, resolveResult.mCharIdSpan, isAutocomplete);
+					    InjectErrors(resolveResult.mPassInstance, resolveResult.mCharData, resolveResult.mCharIdSpan, isAutocomplete, filterErrors);
 					    canDoBackground = false;
 					}
 
@@ -5838,6 +6105,107 @@ namespace IDE.ui
 						MarkDirty();
 					    UpdateCharData(ref resolveResult.mCharData, ref resolveResult.mCharIdSpan, (uint8)SourceElementFlags.CompilerFlags_Mask, false);
 					    canDoBackground = false;
+					}
+
+					if ((!resolveResult.mEmitEmbeds.IsEmpty) && (resolveResult.mResolveType.IsClassify))
+					{
+						let ewc = (SourceEditWidgetContent)mEditWidget.mEditWidgetContent;
+
+						Dictionary<String, SourceEditWidgetContent.EmitEmbed.View> emitViewDict = scope .();
+						Dictionary<String, String> remappedTypeNames = scope .();
+
+						for (var embed in ewc.mEmbeds.Values)
+						{
+							if (var emitEmbed = embed as SourceEditWidgetContent.EmitEmbed)
+							{
+								String useTypeName = emitEmbed.mTypeName;
+								if (!mExplicitEmitTypes.IsEmpty)
+								{
+									if (remappedTypeNames.TryAdd(useTypeName, var keyPtr, var valuePtr))
+									{
+										*valuePtr = useTypeName;
+										for (var explicitTypeName in mExplicitEmitTypes)
+										{
+											if (IDEUtils.GenericEquals(useTypeName, explicitTypeName))
+											{
+												*valuePtr = explicitTypeName;
+												break;
+											}
+										}
+									}
+									emitEmbed.mTypeName.Set(*valuePtr);
+								}
+
+								if (emitEmbed.mView != null)
+									emitViewDict[emitEmbed.mTypeName] = emitEmbed.mView;
+							}
+						}
+
+						for (var embed in resolveResult.mEmitEmbeds)
+						{
+							if (embed.mCharData == null)
+								continue;
+
+							if (emitViewDict.GetValue(embed.mTypeName) case .Ok(var emitEmbedView))
+							{
+								var emitEmbed = emitEmbedView.mEmitEmbed;
+
+								if (emitEmbedView.mEmitEmbed.mTypeName != emitEmbedView.mTypeName)
+								{
+									int focusIdx = -1;
+									if (emitEmbedView.mSourceViewPanel.mEditWidget.mHasFocus)
+										focusIdx = 0;
+									else if (emitEmbedView.mGenericTypeCombo?.mEditWidget.mHasFocus == true)
+										focusIdx = 1;
+									else if (emitEmbedView.mGenericMethodCombo?.mEditWidget.mHasFocus == true)
+										focusIdx = 2;
+
+									emitEmbedView.RemoveSelf();
+									DeleteAndNullify!(emitEmbed.mView);
+
+									emitEmbedView = new .(emitEmbed);
+									emitEmbed.mView = emitEmbedView;
+									mEditWidget.mEditWidgetContent.AddWidget(emitEmbed.mView);
+
+									var sewc = mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
+									sewc.RehupLineCoords();
+
+									if (focusIdx == 0)
+										emitEmbedView.mSourceViewPanel.mEditWidget.SetFocus();
+									else if (focusIdx == 1)
+										emitEmbedView.mGenericTypeCombo?.mEditWidget.SetFocus();
+									else if (focusIdx == 2)
+										emitEmbedView.mGenericMethodCombo?.mEditWidget.SetFocus();
+								}
+
+								var sourceViewPanel = emitEmbedView.mSourceViewPanel;
+
+								var embedEWC = sourceViewPanel.mEditWidget.mEditWidgetContent;
+
+								var prevCursorLineAndColumn = embedEWC.CursorLineAndColumn;
+
+								var editData = sourceViewPanel.mEditWidget.mEditWidgetContent.mData;
+								if (editData.mTextLength == 0)
+									DeleteAndNullify!(sourceViewPanel.mTrackedTextElementViewList);
+
+								delete editData.mText;
+								editData.mText = embed.mCharData;
+								editData.mTextLength = (.)embed.mCharData.Count - 1;
+								embed.mCharData = null;
+								editData.mTextIdData.Dispose();
+								editData.mTextIdData = IdSpan();
+								editData.mNextCharId = 0;
+								editData.mTextIdData.Insert(0, editData.mTextLength, ref editData.mNextCharId);
+
+								sourceViewPanel.mEditWidget.mEditWidgetContent.ContentChanged();
+
+								if (prevCursorLineAndColumn.mLine >= embedEWC.GetLineCount())
+									embedEWC.CursorLineAndColumn = .(embedEWC.GetLineCount() - 1, prevCursorLineAndColumn.mColumn);
+								
+								sourceViewPanel.mEmitRevision = embed.mRevision;
+								sourceViewPanel.InjectErrors(resolveResult.mPassInstance, editData.mText, editData.mTextIdData, false, true);
+							}
+						}
 					}
 
 					if (resolveResult.mPassInstance != null)
@@ -5849,6 +6217,7 @@ namespace IDE.ui
 						}
 					}
 				}
+
 				/*if (checkIt)
 					Debug.Assert(data.mDisplayTypeId == 8);*/
 
@@ -6270,14 +6639,15 @@ namespace IDE.ui
 			if (BFApp.sApp.mIsUpdateBatchStart)
             	sourceEditWidgetContent.mCursorStillTicks++;
 
-            if ((gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic) && (HasFocus(true)) && (mProjectSource != null) /*&& (IDEApp.sApp.mSymbolReferenceHelper == null)*/)
+            if ((gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic) && (HasFocus(true)) &&
+				((mProjectSource != null) || (mEmbedKind != .None)) /*&& (IDEApp.sApp.mSymbolReferenceHelper == null)*/)
             {
                 if ((mEditWidget.mHasFocus) && (mIsBeefSource) && (sourceEditWidgetContent.mCursorStillTicks == 10) && (!sourceEditWidgetContent.mCursorImplicitlyMoved) && (!sourceEditWidgetContent.mVirtualCursorPos.HasValue))
                 {
 					var symbolReferenceHelper = IDEApp.sApp.mSymbolReferenceHelper;
                     if (symbolReferenceHelper == null)
                     {
-						if ((compiler != null) && (!compiler.mThreadWorkerHi.mThreadRunning))
+						if ((compiler != null) && (!compiler.mThreadWorkerHi.mThreadRunning) && (mProjectSource != null))
 						{
                         	ShowSymbolReferenceHelper(SymbolReferenceHelper.Kind.ShowFileReferences);
 						}
@@ -6350,6 +6720,8 @@ namespace IDE.ui
 				DeleteAndNullify!(mQueuedCollapseData);
 			}
 
+			UpdateQueuedEmitShowData();
+
 			if (ewc.mCollapseNeedsUpdate)
 				ewc.UpdateCollapse();
 
@@ -6357,7 +6729,72 @@ namespace IDE.ui
 			ProcessDeferredResolveResults(0);
         }
 
-        void InjectErrors(BfPassInstance processingPassInstance, EditWidgetContent.CharData[] processResolveCharData, IdSpan processCharIdSpan, bool keepPersistentErrors)
+		public void UpdateQueuedEmitShowData()
+		{
+			var compiler = ResolveCompiler;
+			var bfSystem = BfResolveSystem;
+			var ewc = (SourceEditWidgetContent)mEditWidget.Content;
+
+			if (mQueuedEmitShowData == null)
+				return;
+		
+			if (mQueuedEmitShowData.mTypeId == -1)
+			{
+				if (!compiler.IsPerformingBackgroundOperation())
+				{
+					var bfCompiler = compiler as BfCompiler;
+					if (bfCompiler != null)
+					{
+						bfSystem.Lock(0);
+						defer bfSystem.Unlock();
+
+						mQueuedEmitShowData.mTypeId = (.)bfCompiler.GetTypeId(mQueuedEmitShowData.mTypeName);
+					}
+				}
+			}
+
+			if (mQueuedEmitShowData.mTypeId != -1)
+			{
+				Find: do
+				{
+					for (var embed in ewc.mEmbeds.Values)
+					{
+					 	if (var emitEmbed = embed as SourceEditWidgetContent.EmitEmbed)
+						{
+							if ((emitEmbed.mTypeName == mQueuedEmitShowData.mTypeName) && (mQueuedEmitShowData.mLine >= emitEmbed.mStartLine) &&
+								(mQueuedEmitShowData.mLine < emitEmbed.mEndLine))
+							{
+								if (emitEmbed.mView == null)
+								{
+									emitEmbed.mIsOpen = true;
+									ewc.mCollapseNeedsUpdate = true;
+								}
+								else
+								{
+									var embedEditWidget = emitEmbed.mView.mSourceViewPanel.mEditWidget;
+									var embedEWC = embedEditWidget.mEditWidgetContent;
+									if (embedEWC.mData.mTextLength > 0)
+									{
+										int idx = embedEWC.GetTextIdx(mQueuedEmitShowData.mLine, mQueuedEmitShowData.mColumn);
+										emitEmbed.mView.mSourceViewPanel.FocusEdit();
+										emitEmbed.mView.mSourceViewPanel.ShowFileLocation(idx, .Always);
+										DeleteAndNullify!(mQueuedEmitShowData);
+									}
+								}
+
+								break Find;
+							}
+						}
+					}
+
+					// Couldn't find it even after a refresh
+					if (ewc.mCollapseParseRevision > mQueuedEmitShowData.mPrevCollapseParseRevision)
+						DeleteAndNullify!(mQueuedEmitShowData);
+				}
+			}
+		}
+
+        void InjectErrors(BfPassInstance processingPassInstance, EditWidgetContent.CharData[] processResolveCharData, IdSpan processCharIdSpan, bool keepPersistentErrors, bool filterErrors)
         {
             if (keepPersistentErrors)
             {                
@@ -6389,6 +6826,18 @@ namespace IDE.ui
             {
                 BfPassInstance.BfError bfError = new BfPassInstance.BfError();
                 processingPassInstance.GetErrorData(errorIdx, bfError);
+
+				if (filterErrors)
+				{
+					bool matches = Path.Equals(bfError.mFilePath, mFilePath);
+
+					if (!matches)
+					{
+						delete bfError;
+						continue;
+					}
+				}
+
 				if (!bfError.mIsDeferred)
 					hadNonDeferredErrors = true;
 
@@ -6478,7 +6927,7 @@ namespace IDE.ui
 
         float GetEditX()
         {
-			if (!gApp.mSettings.mEditorSettings.mShowLineNumbers)
+			if (!gApp.mSettings.mEditorSettings.mShowLineNumbers && (mEmbedKind == .None))
 				return GS!(24);
 
             var font = IDEApp.sApp.mTinyCodeFont;
@@ -6492,8 +6941,11 @@ namespace IDE.ui
 			float topY = 0;
 			if (mSplitBottomPanel == null)
 			{
-            	mNavigationBar.Resize(GS!(2), 0, Math.Max(mWidth - GS!(2), 0), GS!(22));
-				topY = GS!(24);
+				if (mNavigationBar != null)
+				{
+	            	mNavigationBar.Resize(GS!(2), 0, Math.Max(mWidth - GS!(2), 0), GS!(22));
+					topY = GS!(24);
+				}
 			}
 			else
 			{
@@ -6526,10 +6978,10 @@ namespace IDE.ui
 			}
 			else if (mSplitTopPanel == null)
 			{
-				mSplitter.Resize(mWidth - GS!(20), GS!(22 - 1), GS!(20), splitterHeight + GS!(2));
+				mSplitter?.Resize(mWidth - GS!(20), GS!(22 - 1), GS!(20), splitterHeight + GS!(2));
 			}						
 
-			mSplitter.SetVisible(mPanelHeader == null);
+			mSplitter?.SetVisible(mPanelHeader == null);
 
             float editX = GetEditX();
             if (mPanelHeader != null)
@@ -6591,7 +7043,7 @@ namespace IDE.ui
 				if (lineClick >= mCollapseRegionView.mLineStart)
 				{
 					int relLine = lineClick - mCollapseRegionView.mLineStart;
-					if (relLine < mCollapseRegionView.mCollapseIndices.Count)
+					if ((relLine < mCollapseRegionView.mCollapseIndices.Count) && (!ewc.mOrderedCollapseEntries.IsEmpty))
 					{
 						uint32 collapseVal = mCollapseRegionView.mCollapseIndices[relLine];
 						if ((((collapseVal & CollapseRegionView.cStartFlag) != 0) && (btnCount == 1)) ||
@@ -6615,7 +7067,7 @@ namespace IDE.ui
 			float lockX = mEditWidget.mX - GS!(20);
 			float lockY = mHeight - GS!(20);
 
-			if (Rect(lockX, lockY, GS!(20), GS!(20)).Contains(x, y))
+			if ((mEmbedKind == .None) && (Rect(lockX, lockY, GS!(20), GS!(20)).Contains(x, y)))
 			{
 				Menu menu = new Menu();
 				var menuItem = menu.AddItem("Lock Editing");
@@ -6861,15 +7313,14 @@ namespace IDE.ui
 		{
 			if (mEmitRevision != -1)
 			{
-				BfCompiler compiler = null;
-				if (mFilePath.Contains("$EmitR$"))
-					compiler = gApp.mBfResolveCompiler;
-				else if (mFilePath.Contains("$Emit$"))
-					compiler = gApp.mBfBuildCompiler;
+				var compiler = gApp.mBfResolveCompiler;
 
-				if (compiler != null)
+				if ((compiler != null) && (!compiler.IsPerformingBackgroundOperation()))
 				{
+					compiler.mBfSystem.Lock(0);
 					int32 version = compiler.GetEmitVersion(mFilePath);
+					compiler.mBfSystem.Unlock();
+
 					if ((version >= 0) && (version != mEmitRevision))
 					{
 						mEmitRevision = version;
@@ -6879,5 +7330,38 @@ namespace IDE.ui
 			}
 		}
 
+		public SourceViewPanel GetFocusedEmbeddedView()
+		{
+			if (mEditWidget.mHasFocus)
+				return this;
+
+			var editWidget = mWidgetWindow.mFocusWidget as SourceEditWidget;
+			if (editWidget != null)
+			{
+				var sewc = editWidget.mEditWidgetContent as SourceEditWidgetContent;
+				if (sewc.mSourceViewPanel?.mEmbedParent == this)
+					return sewc.mSourceViewPanel;
+			}
+
+			return this;
+		}
+
+		public bool AddExplicitEmitType(StringView typeName)
+		{
+			for (var checkTypeName in mExplicitEmitTypes)
+			{
+				if (IDEUtils.GenericEquals(checkTypeName, typeName))
+				{
+					if (checkTypeName == typeName)
+						return false;
+
+					checkTypeName.Set(typeName);
+					return true;
+				}
+			}
+
+			mExplicitEmitTypes.Add(new .(typeName));
+			return true;
+		}
     }
 }

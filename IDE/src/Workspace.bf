@@ -584,6 +584,13 @@ namespace IDE
 		{
 			if (inRelPath.IsEmpty)
 				return;
+
+			if (inRelPath.StartsWith('$'))
+			{
+				outAbsPath.Append(inRelPath);
+				return;
+			}
+
 			Path.GetAbsolutePath(inRelPath, mDir, outAbsPath);
 		}
 

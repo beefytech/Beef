@@ -938,7 +938,7 @@ String CeDebugger::DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread)
 	autoComplete.mSystem = module->mSystem;
 	
 	BfResolvePassData resolvePass;
-	resolvePass.mParser = pendingExpr->mParser;
+	resolvePass.mParsers.Add(pendingExpr->mParser);
 	resolvePass.mAutoComplete = &autoComplete;
 
 	SetAndRestoreValue<BfResolvePassData*> prevResolvePass;
@@ -4924,4 +4924,9 @@ void CeDebugger::ReportMemory(MemReporter* memReporter)
 bool CeDebugger::IsOnDemandDebugger()
 {
 	return true;
+}
+
+bool CeDebugger::GetEmitSource(const StringImpl& filePath, String& outText)
+{
+	return false;
 }

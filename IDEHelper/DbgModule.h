@@ -1146,6 +1146,7 @@ public:
 	bool mMayBeOld; // If we had to load debug info from the SymCache or a SymServer then it may be old	
 	bool mDeleting;
 	bool mFailed;
+	int mId;
 	int mHotIdx;
 	String mFilePath;
 	String mDisplayName;
@@ -1226,6 +1227,7 @@ public:
 	virtual void ProcessDebugInfo();
 	virtual bool CanGetOldSource() { return false; }
 	virtual String GetOldSourceCommand(const StringImpl& path) { return ""; }
+	virtual bool GetEmitSource(const StringImpl& filePath, String& outText) { return false; }
 	virtual bool DbgIsStrMutable(const char* str) { return true; } // Always assume its a copy
 	virtual addr_target LocateSymbol(const StringImpl& name) { return 0; }
 	virtual DbgSubprogram* FindSubprogram(DbgType* dbgType, const char* methodName);

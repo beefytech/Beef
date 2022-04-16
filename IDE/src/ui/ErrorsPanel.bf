@@ -75,13 +75,14 @@ namespace IDE.ui
 			mErrorLV.AddColumn(40, "Line");
 			mErrorLV.mOnItemMouseDown.Add(new (item, x, y, btnNum, btnCount) =>
 				{
+					ListViewItemMouseDown(item, x, y, btnNum, btnCount);
+
 					if ((btnNum == 0) && (btnCount == 2))
 					{
 						let mainItem = (ErrorsListViewItem)item.GetSubItem(0);
 						mainItem.Goto();
 					}
 
-					ListViewItemMouseDown(item, x, y, btnNum, btnCount);
 					//mErrorLV.GetRoot().SelectItemExclusively()
 				});
 			//let newItem = mErrorLV.GetRoot().CreateChildItem();

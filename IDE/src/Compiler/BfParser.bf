@@ -29,28 +29,49 @@ namespace IDE.Compiler
 
     public enum ResolveType
     {
-        None,
-        Classify,
-        ClassifyFullRefresh,
-        Autocomplete,
-        Autocomplete_HighPri,
-        GoToDefinition,
-        GetSymbolInfo,        
-        RenameSymbol,
-        ShowFileSymbolReferences,
-        GetNavigationData,
-		GetCurrentLocation,
-		GetFixits,
-		GetTypeDefList,
-		GetTypeDefInto,
-		GetResultString
+        case None,
+	        Classify,
+	        ClassifyFullRefresh,
+	        Autocomplete,
+	        Autocomplete_HighPri,
+	        GoToDefinition,
+	        GetSymbolInfo,        
+	        RenameSymbol,
+	        ShowFileSymbolReferences,
+	        GetNavigationData,
+			GetCurrentLocation,
+			GetFixits,
+			GetTypeDefList,
+			GetTypeDefInto,
+			GetResultString;
+
+		public bool IsClassify => (this == .Classify) || (this == .ClassifyFullRefresh);
     }
+
+	public enum SourceEmbedKind
+	{
+		None,
+		Type,
+		Method
+	}
 
     public class ResolveParams
     {
+		public class Embed
+		{
+			public String mTypeName ~ delete _;
+			public int32 mRevision = -1;
+			public int32 mCursorIdx = -1;
+			public EditWidgetContent.CharData[] mCharData ~ delete _;
+		}
+
 		public ResolveType mResolveType;
 		public int32 mOverrideCursorPos = -1;
 		public bool mInDeferredList;
+
+		public EditWidgetContent.CharData[] mCharData ~ delete _;
+		public IdSpan mCharIdSpan ~ _.Dispose();
+		public BfParser mParser;
 
         public int32 mLocalId = -1;
         public String mReplaceStr ~ delete _;
@@ -71,9 +92,7 @@ namespace IDE.Compiler
 		public WaitEvent mWaitEvent ~ delete _;
 
 		public BfPassInstance mPassInstance ~ delete _;
-		public EditWidgetContent.CharData[] mCharData ~ delete _;
-		public IdSpan mCharIdSpan ~ _.Dispose();
-		public BfParser mParser;
+		public List<Embed> mEmitEmbeds = new .() ~ DeleteContainerAndItems!(_);
 		public String mDocumentationName ~ delete _;
 		public bool mCancelled;
 		public int32 mTextVersion = -1;
@@ -108,13 +127,16 @@ namespace IDE.Compiler
         static extern void BfParser_SetNextRevision(void* bfParser, void* nextParser);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern bool BfParser_SetCursorIdx(void* bfParser, int32 cursorIdx);
+        static extern void BfParser_SetCursorIdx(void* bfParser, int32 cursorIdx);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern bool BfParser_SetAutocomplete(void* bfParser, int32 cursorIdx);
+        static extern void BfParser_SetAutocomplete(void* bfParser, int32 cursorIdx);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfParser_SetEmbedKind(void* bfParser, SourceEmbedKind embedKind);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern bool BfParser_SetIsClassifying(void* bfParser);
+        static extern void BfParser_SetIsClassifying(void* bfParser);
 
         [CallingConvention(.Stdcall), CLink]
         static extern bool BfParser_Parse(void* bfParser, void* bfPassInstance, bool compatMode);
@@ -139,6 +161,12 @@ namespace IDE.Compiler
 
         [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_ClassifySource(void* bfParser, void* elementTypeArray, bool preserveFlags);
+
+		[CallingConvention(.Stdcall), CLink]
+        static extern void BfParser_CreateClassifier(void* bfParser, void* passInstance, void* resolvePassData, void* elementTypeArray);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfParser_FinishClassifier(void* bfParser, void* resolvePassData);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_GenerateAutoCompletionFrom(void* bfParser, int32 srcPosition);
@@ -168,11 +196,11 @@ namespace IDE.Compiler
 			mNativeBfParser = null;
 		}
 
-        public void SetSource(String data, String fileName)
+        public void SetSource(StringView data, String fileName)
         {
             Debug.Assert(!mIsUsed);
             mIsUsed = true;
-            BfParser_SetSource(mNativeBfParser, data, (int32)data.Length, fileName);
+            BfParser_SetSource(mNativeBfParser, data.Ptr, (int32)data.Length, fileName);
         }
 
         public void SetCharIdData(ref IdSpan char8IdData)
@@ -191,6 +219,11 @@ namespace IDE.Compiler
         {
             BfParser_SetAutocomplete(mNativeBfParser, (int32)cursorIdx);
         }
+
+		public void SetEmbedKind(SourceEmbedKind embedKind)
+		{
+			BfParser_SetEmbedKind(mNativeBfParser, embedKind);
+		}
 
         public void SetIsClassifying()
         {
@@ -246,6 +279,17 @@ namespace IDE.Compiler
             EditWidgetContent.CharData* char8DataPtr = char8Data.CArray();
             BfParser_ClassifySource(mNativeBfParser, char8DataPtr, preserveFlags);
         }
+
+		public void CreateClassifier(BfPassInstance passInstance, BfResolvePassData bfResolvePassData, EditWidgetContent.CharData[] charDataArr)
+		{
+			EditWidgetContent.CharData* charDataPtr = charDataArr.CArray();
+			BfParser_CreateClassifier(mNativeBfParser, passInstance.mNativeBfPassInstance, bfResolvePassData.mNativeResolvePassData, charDataPtr);
+		}
+
+		public void FinishClassifier(BfResolvePassData bfResolvePassData)
+		{
+			BfParser_FinishClassifier(mNativeBfParser, bfResolvePassData.mNativeResolvePassData);
+		}
 
         public void SetNextRevision(BfParser nextRevision)
         {

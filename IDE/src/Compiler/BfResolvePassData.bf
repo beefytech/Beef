@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
+using Beefy.widgets;
 
 namespace IDE.Compiler
 {
@@ -36,6 +37,12 @@ namespace IDE.Compiler
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfResolvePassData_SetDocumentationRequest(void* bfResolvePassData, char8* entryName);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfResolvePassData_AddEmitEmbed(void* bfResolvePassData, char8* typeName, int32 cursorIdx);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void* BfResolvePassData_GetEmitEmbedData(void* bfResolvePassData, char8* typeName, out int32 srcLength, out int32 revision);
 
         //
 
@@ -100,5 +107,15 @@ namespace IDE.Compiler
             resolvePassData.mNativeResolvePassData = BfParser.[Friend]BfParser_CreateResolvePassData(null, (int32)resolveType, doFuzzyAutoComplete);
             return resolvePassData;
         }
+
+		public void AddEmitEmbed(char8* typeName, int32 cursorIdx)
+		{
+			BfResolvePassData_AddEmitEmbed(mNativeResolvePassData, typeName, cursorIdx);
+		}
+
+		public EditWidgetContent.CharData* GetEmitEmbedData(char8* typeName, out int32 srcLength, out int32 revision)
+		{
+			return (.)BfResolvePassData_GetEmitEmbedData(mNativeResolvePassData, typeName, out srcLength, out revision);
+		}
     }
 }

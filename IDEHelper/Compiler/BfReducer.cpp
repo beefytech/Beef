@@ -6781,7 +6781,8 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 // 	if (depth == 0)
 // 		prevTypeMemberNodeStart.Set();
 
-	AssertCurrentNode(node);
+	if (mCurTypeDecl != NULL)
+		AssertCurrentNode(node);
 
 	BfTokenNode* refToken = NULL;
 
@@ -8239,6 +8240,58 @@ BfAstNode* BfReducer::HandleTopLevel(BfBlock* node)
 	bool hadPrevFail = false;
 
 	bool isDone = !mVisitorPos.MoveNext();
+	
+	auto parser = mSource->ToParser();
+
+	if ((parser != NULL) && (parser->mEmbedKind == BfSourceEmbedKind_Type))
+	{		
+		while (!isDone)
+		{
+			auto node = mVisitorPos.GetCurrent();
+			if (node == prevNode)
+			{				
+				// If we're stuck on an error and can't process any more nodes
+				break;
+			}
+			prevNode = node;
+			BfAstNode* typeMember = BfNodeDynCast<BfMemberDeclaration>(node);
+			if (typeMember == NULL)
+			{
+				SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node);
+				typeMember = ReadTypeMember(node);
+			}
+
+			//methodDeclaration->mDocumentation = FindDocumentation(methodDeclaration);
+
+			isDone = !mVisitorPos.MoveNext();
+			if (typeMember != NULL)
+			{
+				mVisitorPos.Write(typeMember);
+			}
+		}
+	}
+
+	if ((parser != NULL) && (parser->mEmbedKind == BfSourceEmbedKind_Method))
+	{
+		bool allowEndingExpression = false;
+		BfAstNode* nextNode = NULL;
+		while (!isDone)
+		{
+			BfAstNode* node = mVisitorPos.GetCurrent();
+
+			CreateStmtFlags flags = (CreateStmtFlags)(CreateStmtFlags_FindTrailingSemicolon | CreateStmtFlags_AllowLocalFunction);
+			if (allowEndingExpression)
+				flags = (CreateStmtFlags)(flags | CreateStmtFlags_AllowUnterminatedExpression);
+
+			auto statement = CreateStatement(node, flags);
+			if ((statement == NULL) && (mSource != NULL))
+				statement = mSource->CreateErrorNode(node);
+
+			isDone = !mVisitorPos.MoveNext();
+			if (statement != NULL)
+				mVisitorPos.Write(statement);
+		}
+	}
 
 	while (!isDone)
 	{
@@ -10246,7 +10299,7 @@ void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDi
 		MEMBER_SET(typeDecl, mAttributes, attributes);
 	}
 
-	if (!IsNodeRelevant(deferredHeadNode, typeDecl))
+	if ((!IsNodeRelevant(deferredHeadNode, typeDecl)) && (!typeDecl->IsTemporary()))
 	{
 		typeDecl->mIgnoreDeclaration = true;
 		return;

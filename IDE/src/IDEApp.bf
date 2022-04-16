@@ -380,6 +380,12 @@ namespace IDE
             public bool mOnlyIfNotFailed;
         }
 
+		public class WriteEmitCmd : ExecutionCmd
+		{
+			public String mProjectName ~ delete _;
+			public String mPath ~ delete _;
+		}
+
         public class BuildCompletedCmd : ExecutionCmd
         {
             public Stopwatch mStopwatch ~ delete _;
@@ -523,6 +529,18 @@ namespace IDE
         public int32 mHotIndex = 0;
         private int32 mStepCount;
         private int32 mNoDebugMessagesTick;
+
+		public class DeferredShowSource
+		{
+			public String mFilePath ~ delete _;
+			public int32 mShowHotIdx;
+			public int32 mRefHotIdx;
+			public int32 mLine;
+			public int32 mColumn;
+			public LocatorType mHilitePosition;
+			public bool mShowTemp;
+		}
+		public DeferredShowSource mDeferredShowSource ~ delete _;
 
         public bool IsCompiling
         {
@@ -1335,7 +1353,7 @@ namespace IDE
             return false;
         }
 
-        public SourceViewPanel GetActiveSourceViewPanel(bool includeLastActive = false)
+        public SourceViewPanel GetActiveSourceViewPanel(bool includeLastActive = false, bool includeEmbeds = false)
         {
 			if (mRunningTestScript)
 				return mLastActiveSourceViewPanel;
@@ -1343,10 +1361,12 @@ namespace IDE
             var activePanel = GetActiveDocumentPanel();
             var sourceViewPanel = activePanel as SourceViewPanel;
 			if (sourceViewPanel != null)
-				return sourceViewPanel.GetActivePanel();
+				sourceViewPanel = sourceViewPanel.GetActivePanel();
 			if ((mLastActiveSourceViewPanel != null) && (includeLastActive))
-				return mLastActiveSourceViewPanel.GetActivePanel();
-			return null;
+				sourceViewPanel = mLastActiveSourceViewPanel.GetActivePanel();
+			if ((sourceViewPanel != null) && (includeEmbeds))
+				sourceViewPanel = sourceViewPanel.GetFocusedEmbeddedView();
+			return sourceViewPanel;
         }
 
         public TextPanel GetActiveTextPanel()
@@ -1461,21 +1481,20 @@ namespace IDE
 				}
 			}
 
-			BfCompiler compiler = null;
-
-			if (fileName.Contains("$EmitR$"))
-				compiler = mBfResolveCompiler;
-			else if (fileName.Contains("$Emit$"))
-				compiler = mBfBuildCompiler;
-
-			if (compiler != null)
+			if (fileName.StartsWith("$Emit$"))
 			{
-				if (compiler.GetEmitSource(fileName, outBuffer))
-				{
-					if (onPreFilter != null)
-						onPreFilter();
+				BfCompiler compiler = mBfResolveCompiler;
+				if (!compiler.IsPerformingBackgroundOperation())
+					compiler.GetEmitSource(fileName, outBuffer);
+				
+				if (onPreFilter != null)
+					onPreFilter();
+				return .Ok;
+			}
+			else if (fileName.StartsWith("$Emit"))
+			{
+				if (mDebugger.GetEmitSource(fileName, outBuffer))
 					return .Ok;
-				}
 			}
 
 			return Utils.LoadTextFile(fileName, outBuffer, autoRetry, onPreFilter);
@@ -4152,7 +4171,7 @@ namespace IDE
 
         public void GoToDefinition(bool force)
         {
-            var sourceViewPanel = GetActiveSourceViewPanel();
+            var sourceViewPanel = GetActiveSourceViewPanel(false, true);
             if (sourceViewPanel != null)
             {
 				if (!force)
@@ -4188,7 +4207,7 @@ namespace IDE
                 }
                 else
 #endif
-                {                    
+                /*{                    
                     ResolveParams resolveParams = scope ResolveParams();
                     sourceViewPanel.Classify(ResolveType.GoToDefinition, resolveParams);
                     if (resolveParams.mOutFileName != null)
@@ -4204,7 +4223,7 @@ namespace IDE
 				{
 	                Fail("Unable to locate definition");
 				}
-				else
+				else*/
 				{
 					sourceViewPanel.ShowSymbolReferenceHelper(.GoToDefinition);
 				}
@@ -4629,6 +4648,7 @@ namespace IDE
 
 			if (var sourceViewPanel = documentPanel as SourceViewPanel)
 			{
+				sourceViewPanel = sourceViewPanel.GetFocusedEmbeddedView();
 			    sourceViewPanel.ToggleBreakpointAtCursor(setKind, setFlags, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
 			}
 			else if (var disassemblyPanel = documentPanel as DisassemblyPanel)
@@ -6483,9 +6503,10 @@ namespace IDE
 
         public (SourceViewPanel panel, TabbedView.TabButton tabButton) ShowSourceFile(String filePath, ProjectSource projectSource = null, SourceShowType showType = SourceShowType.ShowExisting, bool setFocus = true)
         {
+			DeleteAndNullify!(mDeferredShowSource);
+
 			//TODO: PUT BACK!
 			//return null;
-
 #unwarn
 			String useFilePath = filePath;
 			var useProjectSource = projectSource;
@@ -6604,6 +6625,8 @@ namespace IDE
             else
                 success = sourceViewPanel.Show(useFilePath, !mInitialized);
 			sourceViewPanel.mEmitRevision = emitRevision;
+			if (emitRevision != -1)
+				sourceViewPanel.mEditWidget.mEditWidgetContent.mIsReadOnly = true;
 
             if (!success)
             {
@@ -7051,9 +7074,76 @@ namespace IDE
 
         public SourceViewPanel ShowSourceFileLocation(String filePath, int showHotIdx, int refHotIdx, int line, int column, LocatorType hilitePosition, bool showTemp = false)
         {
-            var sourceViewPanel = ShowSourceFile(filePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting).panel;
+			if (filePath.StartsWith("$Emit$"))
+			{
+				var compiler = mBfResolveCompiler;
+				if (compiler.IsPerformingBackgroundOperation())
+				{
+					DeleteAndNullify!(mDeferredShowSource);
+					mDeferredShowSource = new DeferredShowSource()
+						{
+							mFilePath = new .(filePath),
+							mShowHotIdx = (.)showHotIdx,
+							mRefHotIdx = (.)refHotIdx,
+							mLine = (.)line,
+							mColumn = (.)column,
+							mHilitePosition = hilitePosition,
+							mShowTemp = showTemp
+						};
+					return null;
+				}
+
+				var itr = filePath.Split('$');
+				itr.GetNext();
+				itr.GetNext();
+				var typeName = itr.GetNext().Value;
+
+				//var compiler = (kindStr == "Emit") ? mBfBuildCompiler : mBfResolveCompiler;
+				
+				compiler.mBfSystem.Lock(0);
+				var embedFilePath = compiler.GetEmitLocation(typeName, line, .. scope .(), var embedLine, var embedLineChar);
+				compiler.mBfSystem.Unlock();
+
+				if (!embedFilePath.IsEmpty)
+				{
+					var sourceViewPanel = ShowSourceFile(scope .(embedFilePath), null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting).panel;
+					if (sourceViewPanel == null)
+					    return null;
+
+					var sewc = sourceViewPanel.mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
+					var data = sewc.mData as SourceEditWidgetContent.Data;
+
+					QueuedEmitShowData emitShowData = new .();
+					emitShowData.mPrevCollapseParseRevision = data.mCollapseParseRevision;
+					emitShowData.mTypeName = new .(typeName);
+					emitShowData.mLine = (.)line;
+					emitShowData.mColumn = (.)column;
+					DeleteAndNullify!(sourceViewPanel.[Friend]mQueuedEmitShowData);
+					sourceViewPanel.[Friend]mQueuedEmitShowData = emitShowData;
+
+					//sourceViewPanel.ShowHotFileIdx(showHotIdx);
+					sourceViewPanel.ShowFileLocation(refHotIdx, embedLine, embedLineChar, .None);
+					//sourceViewPanel.QueueFullRefresh(false);
+					//sourceViewPanel.mBackgroundDelay = 1; // Don't immediately perform the full classify
+
+					if (typeName.Contains('<'))
+					{
+						if (sourceViewPanel.AddExplicitEmitType(typeName))
+							sourceViewPanel.QueueFullRefresh(false);
+					}
+
+					if (!sourceViewPanel.[Friend]mWantsFullRefresh)
+						sourceViewPanel.UpdateQueuedEmitShowData();
+
+					return sourceViewPanel;
+				}
+			}
+
+            var (sourceViewPanel, tabButton) = ShowSourceFile(filePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting);
             if (sourceViewPanel == null)
                 return null;
+			if (((filePath.StartsWith("$")) && (var svTabButton = tabButton as SourceViewTabButton)))
+				svTabButton.mIsTemp = true;
             sourceViewPanel.ShowHotFileIdx(showHotIdx);
             sourceViewPanel.ShowFileLocation(refHotIdx, Math.Max(0, line), Math.Max(0, column), hilitePosition);
             return sourceViewPanel;
@@ -7155,6 +7245,10 @@ namespace IDE
 						checkForOldFileInfo = true;
 				}
 			}
+			else if (filePath.StartsWith("$Emit"))
+			{
+				// Check this later
+			}
 			else
 			{
 				if (!File.Exists(filePath))
@@ -7205,6 +7299,12 @@ namespace IDE
 				{
 					mShowedFirstDocument = true;
 					ShowCallstack();
+				}
+
+				if (filePath.StartsWith("$"))
+				{
+					ShowSourceFileLocation(filePath, hotIdx, hotIdx, line, column, .Smart);
+					return;
 				}
 
                 var (sourceViewPanel, tabButton) = ShowSourceFile(filePath, null, SourceShowType.ShowExisting, setFocus);
@@ -7957,6 +8057,8 @@ namespace IDE
 
         public static bool IsBeefFile(String fileName)
         {
+			if (fileName.StartsWith('$'))
+				return true;
             return fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".bf", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -7971,6 +8073,8 @@ namespace IDE
 
 		public static bool IsSourceCode(String fileName)
 		{
+			if (fileName.StartsWith('$'))
+				return true;
 			return fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".bf", StringComparison.OrdinalIgnoreCase) ||
 				fileName.EndsWith(".h", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase) ||
 				fileName.EndsWith(".c", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".cc", StringComparison.OrdinalIgnoreCase) ||
@@ -8774,6 +8878,30 @@ namespace IDE
 				{
 					// Already handled
 					(void)scriptCmd;
+				}
+				else if (var writeEmitCmd = next as WriteEmitCmd)
+				{
+					String projectName = new String(writeEmitCmd.mProjectName);
+					String filePath = new String(writeEmitCmd.mPath);
+
+					mBfBuildCompiler.DoBackground(new () =>
+						{
+							if (var project = mWorkspace.FindProject(projectName))
+							{
+								var bfProject = mBfBuildSystem.GetBfProject(project);
+								if (bfProject != null)
+								{
+									mBfBuildSystem.Lock(0);
+									mBfBuildCompiler.WriteEmitData(filePath, bfProject);
+									mBfBuildSystem.Unlock();
+								}
+							}
+						}
+						~
+						{
+							delete projectName;
+							delete filePath;
+						});
 				}
                 else
                 {
@@ -10758,49 +10886,49 @@ namespace IDE
 				return;
 			}
 
+			bool hasTempFiles = false;
+			WithTabs(scope [&] (tabButton) =>
+				{
+					if (var svTabButton = tabButton as SourceViewTabButton)
+					{
+						if (svTabButton.mIsTemp)
+							hasTempFiles = true;
+					}
+				});
+
+			if (hasTempFiles)
+			{
+				var dialog = ThemeFactory.mDefault.CreateDialog("Close Temp Files", 
+					"Do you want to close temporary files opened from the debugger?");
+				dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
+					{
+						List<SourceViewTabButton> closeTabs = scope .();
+						WithTabs(scope [&] (tabButton) =>
+							{
+								if (var svTabButton = tabButton as SourceViewTabButton)
+								{
+									if (svTabButton.mIsTemp)
+										closeTabs.Add(svTabButton);
+								}
+							});
+						for (var tab in closeTabs)
+						{
+							CloseDocument(tab.mContent);
+						}	
+					});
+				dialog.AddButton("No", new (evt) =>
+					{
+						
+					});
+				dialog.PopupWindow(GetActiveWindow());
+			}
+
 			if (mCrashDumpPath != null)
 			{
 				DeleteAndNullify!(mCrashDumpPath);
 				mDebugger.Detach();
 				mDebugger.mIsRunning = false;
 				mExecutionPaused = false;
-
-				bool hasTempFiles = false;
-				WithTabs(scope [&] (tabButton) =>
-					{
-						if (var svTabButton = tabButton as SourceViewTabButton)
-						{
-							if (svTabButton.mIsTemp)
-								hasTempFiles = true;
-						}
-					});
-
-				if (hasTempFiles)
-				{
-					var dialog = ThemeFactory.mDefault.CreateDialog("Close Temp Files", 
-						"Do you want to close temporary files referenced in the dump file?");
-					dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
-						{
-							List<SourceViewTabButton> closeTabs = scope .();
-							WithTabs(scope [&] (tabButton) =>
-								{
-									if (var svTabButton = tabButton as SourceViewTabButton)
-									{
-										if (svTabButton.mIsTemp)
-											closeTabs.Add(svTabButton);
-									}
-								});
-							for (var tab in closeTabs)
-							{
-								CloseDocument(tab.mContent);
-							}	
-						});
-					dialog.AddButton("No", new (evt) =>
-						{
-							
-						});
-					dialog.PopupWindow(GetActiveWindow());
-				}
 			}
 
 			if (mDebugger.mIsRunning)
@@ -11349,6 +11477,7 @@ namespace IDE
 			CheckDebugVisualizers();
 
 			mDebugger.mIsRunning = true;
+			mDebugger.mDebugIdx++;
 			WithSourceViewPanels(scope (sourceView) =>
 				{
 					sourceView.RehupAlias();
@@ -11407,6 +11536,7 @@ namespace IDE
 
 			CheckDebugVisualizers();
 			mDebugger.mIsRunning = true;
+			mDebugger.mDebugIdx++;
 			mDebugger.RehupBreakpoints(true);
 			mDebugger.Run();
 			mIsAttachPendingSourceShow = true;
@@ -11866,6 +11996,7 @@ namespace IDE
 				if (mDebugger.OpenMiniDump(mCrashDumpPath))
 				{
 					mDebugger.mIsRunning = true;
+					mDebugger.mDebugIdx++;
 					mExecutionPaused = false; // Make this false so we can detect a Pause immediately
 					mIsAttachPendingSourceShow = true;
 				}
@@ -14014,6 +14145,15 @@ namespace IDE
 
 			if (IDEApp.sApp.mSpellChecker != null)
 				IDEApp.sApp.mSpellChecker.CheckThreadDone();
+
+			if ((mDeferredShowSource != null) && (mBfResolveCompiler?.IsPerformingBackgroundOperation() == false))
+			{
+				var deferredShowSource = mDeferredShowSource;
+				mDeferredShowSource = null;
+				defer delete deferredShowSource;
+				ShowSourceFileLocation(deferredShowSource.mFilePath, deferredShowSource.mShowHotIdx, deferredShowSource.mRefHotIdx,
+					deferredShowSource.mLine, deferredShowSource.mColumn, deferredShowSource.mHilitePosition, deferredShowSource.mShowTemp);
+			}
 
 			///
 			//TODO: REMOVE

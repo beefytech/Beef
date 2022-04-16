@@ -627,6 +627,7 @@ namespace IDE
 					gApp.mDebugger.RehupBreakpoints(true);
 					gApp.mDebugger.Run();
 					gApp.mDebugger.mIsRunning = true;
+					gApp.mDebugger.mDebugIdx++;
 				}
 
 				mTestInstance.mThread.Start(false);

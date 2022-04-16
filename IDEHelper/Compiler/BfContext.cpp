@@ -355,8 +355,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 	while (!mCompiler->mCanceling)
 	{		
 		BfParser* resolveParser = NULL;
-		if (mCompiler->mResolvePassData != NULL)
-			resolveParser = mCompiler->mResolvePassData->mParser;
+		if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mParsers.IsEmpty()))
+			resolveParser = mCompiler->mResolvePassData->mParsers[0];
 
 		bool didWork = false;				
 		
@@ -549,8 +549,16 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 				BF_ASSERT(!module->mAwaitingFinish);
 				if ((resolveParser != NULL) && (methodInstance->mMethodDef->mDeclaringType != NULL) && (methodInstance->mMethodDef->mDeclaringType->GetDefinition()->mSource != resolveParser))
-				{					
-					continue;
+				{
+					bool allow = false;
+					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mHasCursorIdx))
+					{
+						auto parser = methodInstance->mMethodDef->mDeclaringType->GetLastSource()->ToParser();
+						if ((parser != NULL) && (parser->mCursorIdx >= 0))
+							allow = true;
+					}
+					if (!allow)
+						continue;
 				}
 				
 				hasBeenProcessed = methodInstance->mHasBeenProcessed;
@@ -722,7 +730,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				BP_ZONE("PWL_CheckIncompleteGenerics");				
 
 				for (auto type : mResolvedTypes)
-				{					
+				{
 					if ((type->IsIncomplete()) && (type->HasBeenReferenced()))
 					{
 						// The only reason a type instance wouldn't have already been in the work list is
@@ -759,12 +767,13 @@ void BfContext::HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTemp
 {
 	BF_ASSERT(typeDef->mEmitParent == NULL);
 
-	if ((mCompiler->mResolvePassData == NULL) || (!typeDef->HasSource(mCompiler->mResolvePassData->mParser)))
+	if ((mCompiler->mResolvePassData == NULL) || (mCompiler->mResolvePassData->mParsers.IsEmpty()) ||
+		(!typeDef->HasSource(mCompiler->mResolvePassData->mParsers[0])))
 		return;
 
 	if (typeDef->mDefState != BfTypeDef::DefState_Defined)
 	{		
-		if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
+		if (mCompiler->mResolvePassData->mIsClassifying)		
 		{							
 			auto _CheckSource = [&](BfTypeDef* checkTypeDef)
 			{
@@ -774,12 +783,11 @@ void BfContext::HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTemp
 				if (typeDecl == NULL)
 					return;
 
-				if (typeDecl->GetSourceData() == mCompiler->mResolvePassData->mParser->mSourceData)
+				if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(typeDecl))
 				{
-					SetAndRestoreValue<bool> prevSkipTypeDeclaration(mCompiler->mResolvePassData->mSourceClassifier->mSkipTypeDeclarations, true);
-					auto classifier = mCompiler->mResolvePassData->mSourceClassifier;
-					classifier->mSkipMethodInternals = isAutoCompleteTempType;
-					classifier->Handle(typeDecl);
+					SetAndRestoreValue<bool> prevSkipTypeDeclaration(sourceClassifier->mSkipTypeDeclarations, true);					
+					sourceClassifier->mSkipMethodInternals = isAutoCompleteTempType;
+					sourceClassifier->Handle(typeDecl);
 				}
 			};
 

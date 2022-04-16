@@ -27,6 +27,7 @@
 #include "BfAutoComplete.h"
 #include "BfResolvePass.h"
 #include "BeefySysLib/util/BeefPerf.h"
+#include "BeefySysLib/util/ZipFile.h"
 #include "../LLVMUtils.h"
 #include "BfNamespaceVisitor.h"
 #include "CeMachine.h"
@@ -2276,7 +2277,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 	bool madeFullPass = true;
 	if (mCanceling)
 		madeFullPass = false;
-	if ((mResolvePassData != NULL) && (mResolvePassData->mParser != NULL))
+	if ((mResolvePassData != NULL) && (!mResolvePassData->mParsers.IsEmpty()))
 		madeFullPass = false;
 	
 	SetAndRestoreValue<bool> prevAssertOnPopulateType(mContext->mAssertOnPopulateType, deleteUnusued && madeFullPass);
@@ -3736,19 +3737,19 @@ void BfCompiler::VisitAutocompleteExteriorIdentifiers()
 
 		if (mResolvePassData->mAutoComplete != NULL)
 			mResolvePassData->mAutoComplete->CheckIdentifier(checkIdentifier, false, isUsingDirective);
-
-		if ((checkIdentifier->IsFromParser(mResolvePassData->mParser)) && (mResolvePassData->mSourceClassifier != NULL))
+		
+		if (auto sourceClassifier = mResolvePassData->GetSourceClassifier(checkIdentifier))
 		{
 			if (isUsingDirective)
 			{
 				while (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkIdentifier))
 				{
-					mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, BfSourceElementType_Namespace);
+					sourceClassifier->SetElementType(qualifiedNameNode->mRight, BfSourceElementType_Namespace);
 					checkIdentifier = qualifiedNameNode->mLeft;
 				}
 
 				if (checkIdentifier != NULL)
-					mResolvePassData->mSourceClassifier->SetElementType(checkIdentifier, BfSourceElementType_Namespace);
+					sourceClassifier->SetElementType(checkIdentifier, BfSourceElementType_Namespace);
 			}
 		}
 	}
@@ -3903,9 +3904,10 @@ void BfCompiler::VisitSourceExteriorNodes()
 			parser->mParserData->mExteriorNodesCheckIdx = mSystem->mTypeMapVersion;
 	};
 
-	if ((mResolvePassData != NULL) && (mResolvePassData->mParser != NULL))
+	if (mResolvePassData != NULL)
 	{
-		_CheckParser(mResolvePassData->mParser);
+		for (auto parser : mResolvePassData->mParsers)
+			_CheckParser(parser);
 	}
 	else		
 	{
@@ -3936,18 +3938,21 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 	if (autoComplete->mResolveType == BfResolveType_GetNavigationData)
 	{
-		for (auto node : mResolvePassData->mParser->mSidechannelRootNode->mChildArr)
+		for (auto parser : mResolvePassData->mParsers)
 		{
-			if (auto preprocNode = BfNodeDynCast<BfPreprocessorNode>(node))
+			for (auto node : parser->mSidechannelRootNode->mChildArr)
 			{
-				if (preprocNode->mCommand->Equals("region"))
+				if (auto preprocNode = BfNodeDynCast<BfPreprocessorNode>(node))
 				{
-					if (!autoCompleteResultString.empty())
-						autoCompleteResultString += "\n";
-					autoCompleteResultString += "#";
-					preprocNode->mArgument->ToString(autoCompleteResultString);
-					mContext->mScratchModule->UpdateSrcPos(preprocNode, (BfSrcPosFlags)(BfSrcPosFlag_NoSetDebugLoc | BfSrcPosFlag_Force));
-					autoCompleteResultString += StrFormat("\tregion\t%d\t%d", module->mCurFilePosition.mCurLine, module->mCurFilePosition.mCurColumn);
+					if (preprocNode->mCommand->Equals("region"))
+					{
+						if (!autoCompleteResultString.empty())
+							autoCompleteResultString += "\n";
+						autoCompleteResultString += "#";
+						preprocNode->mArgument->ToString(autoCompleteResultString);
+						mContext->mScratchModule->UpdateSrcPos(preprocNode, (BfSrcPosFlags)(BfSrcPosFlag_NoSetDebugLoc | BfSrcPosFlag_Force));
+						autoCompleteResultString += StrFormat("\tregion\t%d\t%d", module->mCurFilePosition.mCurLine, module->mCurFilePosition.mCurColumn);
+					}
 				}
 			}
 		}
@@ -4041,7 +4046,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 	if (autoComplete->mResolveType == BfResolveType_GetCurrentLocation)
 	{
 		for (auto tempTypeDef : mResolvePassData->mAutoCompleteTempTypes)
-		{						
+		{
 			String typeName = tempTypeDef->mNamespace.ToString();
 			if (!typeName.empty())
 				typeName += ".";
@@ -4049,16 +4054,21 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 			autoCompleteResultString = typeName;
 
-			int cursorPos = mResolvePassData->mParser->mCursorIdx;
-
 			for (auto methodDef : tempTypeDef->mMethods)
 			{	
 				BfAstNode* defNode = methodDef->mMethodDeclaration;
 				if (auto propertyDeclaration = methodDef->GetPropertyDeclaration())
 					defNode = propertyDeclaration;
 
+				if (defNode == NULL)
+					continue;
+
+				auto parser = defNode->GetParser();
+				if ((parser == NULL) || (parser->mCursorIdx == -1))
+					continue;
+
 				if ((defNode != NULL) && 
-					(defNode->Contains(cursorPos)))
+					(defNode->Contains(parser->mCursorIdx)))
 				{
 					String methodText = methodDef->ToString();
 					if (typeName != "@")
@@ -4068,6 +4078,53 @@ void BfCompiler::ProcessAutocompleteTempType()
 					break;
 				}
 			}			
+		}
+
+		if (mResolvePassData->mAutoCompleteTempTypes.IsEmpty())
+		{
+			for (auto& kv : mResolvePassData->mEmitEmbedEntries)
+			{
+				if (kv.mValue.mCursorIdx < 0)
+					continue;
+
+				String typeName = kv.mKey;
+				auto type = GetType(typeName);
+				if (type == NULL)
+					continue;
+				auto typeInst = type->ToTypeInstance();
+				if (typeInst == NULL)
+					continue;
+
+				if (mResolvePassData->mParsers.IsEmpty())
+					break;
+				
+				autoCompleteResultString = mContext->mScratchModule->TypeToString(typeInst);
+
+				for (auto methodDef : typeInst->mTypeDef->mMethods)
+				{					
+					BfAstNode* defNode = methodDef->mMethodDeclaration;
+					if (auto propertyDeclaration = methodDef->GetPropertyDeclaration())
+						defNode = propertyDeclaration;
+
+					if (defNode == NULL)
+						continue;					
+
+					if ((defNode != NULL) &&
+						(defNode->Contains(kv.mValue.mCursorIdx)))
+					{
+						auto defParser = defNode->GetParser();
+						if (defParser == NULL)
+							continue;
+
+						if (!defParser->mIsEmitted)
+							continue;
+						
+						autoCompleteResultString += ".";
+						autoCompleteResultString += methodDef->ToString();						
+						break;
+					}
+				}
+			}
 		}
 
 		module->CleanupFileInstances();
@@ -4094,59 +4151,58 @@ void BfCompiler::ProcessAutocompleteTempType()
 		BfAstNode* conflictStart = NULL;
 		BfAstNode* conflictSplit = NULL;		
 
-		auto src = mResolvePassData->mParser->mSrc;
-
-		for (int checkIdx = 0; checkIdx < (int)mResolvePassData->mParser->mSidechannelRootNode->mChildArr.mSize; checkIdx++)
+		for (auto parser : mResolvePassData->mParsers)
 		{
-			auto sideNode = mResolvePassData->mParser->mSidechannelRootNode->mChildArr.mVals[checkIdx];
-			if (autoComplete->CheckFixit(sideNode))
+			auto src = parser->mSrc;
+
+			for (int checkIdx = 0; checkIdx < (int)parser->mSidechannelRootNode->mChildArr.mSize; checkIdx++)
 			{
-				if (src[sideNode->mSrcStart] == '<')
+				auto sideNode = parser->mSidechannelRootNode->mChildArr.mVals[checkIdx];
+				if (autoComplete->CheckFixit(sideNode))
 				{
-					conflictStart = sideNode;
-					conflictSplit = NULL;
-				}				
-			}
-			else
-			{
-				if (src[sideNode->mSrcStart] == '<')
-				{
-					conflictStart = NULL;
-					conflictSplit = NULL;
-				}
-				else if (src[sideNode->mSrcStart] == '=')
-				{
-					if (conflictStart != NULL)
-						conflictSplit = sideNode;
-				}
-				else if (src[sideNode->mSrcStart] == '>')
-				{
-					if (conflictSplit != NULL)
+					if (src[sideNode->mSrcStart] == '<')
 					{
-						autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept First\tdelete|%s-%d|\x01""delete|%s-%d|",
-							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictSplit->mSrcStart).c_str(), sideNode->mSrcEnd - conflictSplit->mSrcStart + 1,
-							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictStart->mSrcStart).c_str(), conflictStart->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
-
-						autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept Second\tdelete|%s-%d|\x01""delete|%s-%d|",
-							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, sideNode->mSrcStart).c_str(), sideNode->mSrcEnd - sideNode->mSrcStart + 1,
-							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictStart->mSrcStart).c_str(), conflictSplit->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
-
-						autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept Both\tdelete|%s-%d|\x01""delete|%s-%d|\x01""delete|%s-%d|",
-							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, sideNode->mSrcStart).c_str(), sideNode->mSrcEnd - sideNode->mSrcStart + 1,
-							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictSplit->mSrcStart).c_str(), conflictSplit->mSrcEnd - conflictSplit->mSrcStart + 1,
-							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictStart->mSrcStart).c_str(), conflictStart->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
-
+						conflictStart = sideNode;
+						conflictSplit = NULL;
+					}
+				}
+				else
+				{
+					if (src[sideNode->mSrcStart] == '<')
+					{
 						conflictStart = NULL;
 						conflictSplit = NULL;
+					}
+					else if (src[sideNode->mSrcStart] == '=')
+					{
+						if (conflictStart != NULL)
+							conflictSplit = sideNode;
+					}
+					else if (src[sideNode->mSrcStart] == '>')
+					{
+						if (conflictSplit != NULL)
+						{
+							autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept First\tdelete|%s-%d|\x01""delete|%s-%d|",
+								autoComplete->FixitGetLocation(parser->mParserData, conflictSplit->mSrcStart).c_str(), sideNode->mSrcEnd - conflictSplit->mSrcStart + 1,
+								autoComplete->FixitGetLocation(parser->mParserData, conflictStart->mSrcStart).c_str(), conflictStart->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
+
+							autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept Second\tdelete|%s-%d|\x01""delete|%s-%d|",
+								autoComplete->FixitGetLocation(parser->mParserData, sideNode->mSrcStart).c_str(), sideNode->mSrcEnd - sideNode->mSrcStart + 1,
+								autoComplete->FixitGetLocation(parser->mParserData, conflictStart->mSrcStart).c_str(), conflictSplit->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
+
+							autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept Both\tdelete|%s-%d|\x01""delete|%s-%d|\x01""delete|%s-%d|",
+								autoComplete->FixitGetLocation(parser->mParserData, sideNode->mSrcStart).c_str(), sideNode->mSrcEnd - sideNode->mSrcStart + 1,
+								autoComplete->FixitGetLocation(parser->mParserData, conflictSplit->mSrcStart).c_str(), conflictSplit->mSrcEnd - conflictSplit->mSrcStart + 1,
+								autoComplete->FixitGetLocation(parser->mParserData, conflictStart->mSrcStart).c_str(), conflictStart->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
+
+							conflictStart = NULL;
+							conflictSplit = NULL;
+						}
 					}
 				}
 			}
 		}
 
-		for (auto sideNode : mResolvePassData->mParser->mSidechannelRootNode->mChildArr)
-		{
-			
-		}
 	}
 
 	if (autoComplete->mResolveType == BfResolveType_GetSymbolInfo)
@@ -4154,7 +4210,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 		BfNamespaceVisitor namespaceVisitor;
 		namespaceVisitor.mResolvePassData = mResolvePassData;
 		namespaceVisitor.mSystem = mSystem;
-		namespaceVisitor.Visit(mResolvePassData->mParser->mRootNode);
+		for (auto parser : mResolvePassData->mParsers)
+			namespaceVisitor.Visit(parser->mRootNode);
 	}
 	
 	auto _FindAcutalTypeDef = [&](BfTypeDef* tempTypeDef)
@@ -4204,6 +4261,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 			mContext->HandleChangedTypeDef(checkTempType, true);
 		}
 
+		auto sourceClassifier = mResolvePassData->GetSourceClassifier(checkTempType->mTypeDeclaration->mNameNode);
+		if (sourceClassifier == NULL)
+			continue;
 		BfSourceElementType elemType = BfSourceElementType_Type;
 		if (checkTempType->mTypeCode == BfTypeCode_Interface)
 			elemType = BfSourceElementType_Interface;
@@ -4211,11 +4271,32 @@ void BfCompiler::ProcessAutocompleteTempType()
 			elemType = BfSourceElementType_RefType;
 		else if (checkTempType->mTypeCode == BfTypeCode_Struct)
 			elemType = BfSourceElementType_Struct;
-		mResolvePassData->mSourceClassifier->SetElementType(checkTempType->mTypeDeclaration->mNameNode, elemType);
+		sourceClassifier->SetElementType(checkTempType->mTypeDeclaration->mNameNode, elemType);
 	}
 
 	if (tempTypeDef == NULL)
 	{
+		if ((autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GoToDefinition))
+		{
+			for (auto& kv : mResolvePassData->mEmitEmbedEntries)
+			{
+				String typeName = kv.mKey;
+				auto type = GetType(typeName);
+				if (type == NULL)
+					continue;
+				auto typeInst = type->ToTypeInstance();
+				if (typeInst == NULL)
+					continue;
+
+				mContext->RebuildType(typeInst);
+				if (!typeInst->mModule->mIsModuleMutable)
+					typeInst->mModule->StartNewRevision(BfModule::RebuildKind_All, true);
+				mContext->mScratchModule->PopulateType(typeInst, Beefy::BfPopulateType_Full_Force);
+			}
+
+			DoWorkLoop();
+		}
+
 		GenerateAutocompleteInfo();
 		BfLogSysM("ProcessAutocompleteTempType - no tempTypeDef\n");
 		return;
@@ -4319,10 +4400,11 @@ void BfCompiler::ProcessAutocompleteTempType()
 		return;
 	}
 	
+	auto sourceClassifier = mResolvePassData->GetSourceClassifier(tempTypeDef->mTypeDeclaration);
 	if (tempTypeDef->mTypeCode == BfTypeCode_Extension)
-		mResolvePassData->mSourceClassifier->SetElementType(tempTypeDef->mTypeDeclaration->mNameNode, actualTypeDef->mTypeCode);
+		sourceClassifier->SetElementType(tempTypeDef->mTypeDeclaration->mNameNode, actualTypeDef->mTypeCode);
 	if (tempTypeDef->mTypeDeclaration->mAttributes != NULL)
-		mResolvePassData->mSourceClassifier->VisitChild(tempTypeDef->mTypeDeclaration->mAttributes);
+		sourceClassifier->VisitChild(tempTypeDef->mTypeDeclaration->mAttributes);
 
 	BfTypeInstance* typeInst;
 	{
@@ -4750,10 +4832,16 @@ BfType* BfCompiler::CheckSymbolReferenceTypeRef(BfModule* module, BfTypeReferenc
 
 void BfCompiler::AddToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeInstance*>& rebuildTypeInstList)
 {
-	if (mResolvePassData->mParser != NULL)
+	if (!mResolvePassData->mParsers.IsEmpty())
 	{
-		// Only find references within the current file
-		if (!typeInst->mTypeDef->GetDefinition()->HasSource(mResolvePassData->mParser))
+		bool found = false;
+		for (auto parser : mResolvePassData->mParsers)
+		{
+			// Only find references within the current file
+			if (typeInst->mTypeDef->GetDefinition()->HasSource(parser))
+				found = true;
+		}
+		if (!found)
 			return;
 	}
 
@@ -4922,7 +5010,17 @@ void BfCompiler::GetSymbolReferences()
 				for (auto checkTypeDef : typeDef->mPartials)
 				{
 					auto nameNode = checkTypeDef->mTypeDeclaration->mNameNode;
-					if ((mResolvePassData->mParser == NULL) || (nameNode->IsFromParser(mResolvePassData->mParser)))
+
+					for (auto parser : mResolvePassData->mParsers)
+					{
+						if (nameNode->IsFromParser(parser))
+						{							
+							mResolvePassData->HandleTypeReference(nameNode, typeDef);
+							break;
+						}
+					}
+
+					if (mResolvePassData->mParsers.IsEmpty())
 						mResolvePassData->HandleTypeReference(nameNode, typeDef);
 
 					if (checkTypeDef->IsExtension())
@@ -5365,9 +5463,7 @@ bool BfCompiler::IsDataResolvePass()
 
 bool BfCompiler::WantsClassifyNode(BfAstNode* node)
 {
-	return ((mResolvePassData != NULL) &&
-		(node->IsFromParser(mResolvePassData->mParser)) &&
-		(mResolvePassData->mSourceClassifier != NULL));
+	return (mResolvePassData != NULL) && (mResolvePassData->GetSourceClassifier(node) != NULL);		
 }
 
 BfAutoComplete* BfCompiler::GetAutoComplete()
@@ -6673,7 +6769,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mHasComptimeRebuilds = false;
 	int revision = mRevision;
 	BfLogSysM("Compile Start. Revision: %d. HasParser:%d AutoComplete:%d\n", revision, 
-		(mResolvePassData != NULL) && (mResolvePassData->mParser != NULL), 
+		(mResolvePassData != NULL) && (!mResolvePassData->mParsers.IsEmpty()), 
 		(mResolvePassData != NULL) && (mResolvePassData->mAutoComplete != NULL));
 
 	if (mOptions.mCompileOnDemandKind == BfCompileOnDemandKind_AlwaysInclude)
@@ -6785,7 +6881,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	BfTypeDef* typeDef;						
 
 	BfLogSysM("UpdateRevisedTypes Revision %d. ResolvePass:%d CursorIdx:%d\n", mRevision, mIsResolveOnly, 
-		((mResolvePassData == NULL) || (mResolvePassData->mParser == NULL)) ? - 1 : mResolvePassData->mParser->mCursorIdx);	
+		((mResolvePassData == NULL) || (mResolvePassData->mParsers.IsEmpty())) ? - 1 : mResolvePassData->mParsers[0]->mCursorIdx);
 	
 	mCompileState = CompileState_Normal;
 	UpdateRevisedTypes();	
@@ -7455,7 +7551,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		}
 		else
 		{
-			bool isTargeted = (mResolvePassData != NULL) && (mResolvePassData->mParser != NULL);
+			bool isTargeted = (mResolvePassData != NULL) && (!mResolvePassData->mParsers.IsEmpty());
 			if (!isTargeted)
 			{				
 				for (auto bfModule : mContext->mModules)
@@ -7477,7 +7573,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	//CompileLog("%d object files written: %s\n", numModulesWritten, moduleListStr.c_str());
 	
 	//printf("Compile done, waiting for finish\n");
-
+	
 	while (true)
 	{		
 		if (mCanceling)
@@ -7543,7 +7639,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		libManager->mErrors.Clear();
 	}
 #endif		
-
+	
 	int numObjFilesWritten = 0;
 	for (auto& fileEntry : mCodeGen.mCodeGenFiles)
 	{
@@ -7588,7 +7684,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	String compileInfo;
 	if (mIsResolveOnly)
-		compileInfo += StrFormat("ResolveOnly ResolveType:%d Parser:%d\n", mResolvePassData->mResolveType, mResolvePassData->mParser != NULL);
+		compileInfo += StrFormat("ResolveOnly ResolveType:%d Parser:%d\n", mResolvePassData->mResolveType, !mResolvePassData->mParsers.IsEmpty());
 	compileInfo += StrFormat("TotalTypes:%d\nTypesPopulated:%d\nMethodsDeclared:%d\nMethodsProcessed:%d\nCanceled? %d\n", mStats.mTotalTypes, mStats.mTypesPopulated, mStats.mMethodDeclarations, mStats.mMethodsProcessed, mCanceling);
 	compileInfo += StrFormat("TypesPopulated:%d\n", mStats.mTypesPopulated);
 	compileInfo += StrFormat("MethodDecls:%d\nMethodsProcessed:%d\nModulesStarted:%d\nModulesFinished:%d\n", mStats.mMethodDeclarations, mStats.mMethodsProcessed, mStats.mModulesFinished);
@@ -7854,8 +7950,11 @@ void BfCompiler::GenerateAutocompleteInfo()
 
 			if (autoComplete->mInsertEndIdx > 0)
 			{
-				if (mResolvePassData->mParser->mSrc[autoComplete->mInsertEndIdx - 1] == '!')
-					autoComplete->mInsertEndIdx--;
+				if (!mResolvePassData->mParsers.IsEmpty())
+				{
+					if (mResolvePassData->mParsers[0]->mSrc[autoComplete->mInsertEndIdx - 1] == '!')
+						autoComplete->mInsertEndIdx--;
+				}
 			}
 		}
 
@@ -9065,17 +9164,75 @@ String BfCompiler::GetTypeDefInfo(const StringImpl& inTypeName)
 	return result;
 }
 
+int BfCompiler::GetTypeId(const StringImpl& typeName)
+{	
+	auto type = GetType(typeName);
+	if (type != NULL)
+		return type->mTypeId;
+	return -1;
+}
+
+BfType* BfCompiler::GetType(const StringImpl& fullTypeName)
+{
+	AutoCrit autoCrit(mSystem->mSystemLock);
+
+	BfPassInstance passInstance(mSystem);
+
+	BfProject* activeProject = NULL;
+	
+	String typeName = fullTypeName;
+	int colonPos = (int)typeName.IndexOf(':');
+	if (colonPos != -1)
+	{
+		activeProject = mSystem->GetProject(typeName.Substring(0, colonPos));
+		typeName.Remove(0, colonPos + 1);
+	}
+
+	BfTypeState typeState;
+	typeState.mPrevState = mContext->mCurTypeState;
+	typeState.mActiveProject = activeProject;
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
+	BfParser parser(mSystem);
+	parser.SetSource(typeName.c_str(), (int)typeName.length());
+	parser.Parse(&passInstance);
+
+	BfReducer reducer;
+	reducer.mAlloc = parser.mAlloc;
+	reducer.mPassInstance = &passInstance;
+
+	if (parser.mRootNode->mChildArr.mSize == 0)
+		return NULL;
+
+	auto firstNode = parser.mRootNode->mChildArr[0];
+	auto endIdx = parser.mRootNode->mSrcEnd;
+	reducer.mVisitorPos = BfReducer::BfVisitorPos(parser.mRootNode);
+
+	reducer.mVisitorPos.MoveNext();
+	auto typeRef = reducer.CreateTypeRef(firstNode);
+	if (typeRef == NULL)
+		return NULL;
+
+	BfResolvePassData resolvePass;
+	SetAndRestoreValue<bool> prevIgnoreError(mContext->mScratchModule->mIgnoreErrors, true);
+	SetAndRestoreValue<bool> prevIgnoreWarnings(mContext->mScratchModule->mIgnoreWarnings, true);
+	SetAndRestoreValue<BfResolvePassData*> prevResolvePass(mResolvePassData, &resolvePass);
+
+	auto type = mContext->mScratchModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_AllowUnboundGeneric));
+	if (type != NULL)
+		return type;
+
+	return NULL;
+}
+
 int BfCompiler::GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer)
 {	
 	int lastDollarPos = (int)fileName.LastIndexOf('$');
 	if (lastDollarPos == -1)
 		return -1;	
-	int dotPos = (int)fileName.LastIndexOf('.');
-	if (dotPos == -1)
-		return -1;
 	
-	String typeIdStr = fileName.Substring(lastDollarPos + 1, dotPos - lastDollarPos - 1);	
-	int typeId = (int)atoi(typeIdStr.c_str());
+	String typeName = fileName.Substring(lastDollarPos + 1);	
+	int typeId = GetTypeId(typeName);
 	if ((typeId <= 0) || (typeId >= mContext->mTypes.mSize))
 		return -1;
 
@@ -9095,6 +9252,96 @@ int BfCompiler::GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer)
 	if (outBuffer != NULL)
 		outBuffer->Append(emitParser->mSrc, emitParser->mSrcLength);
 	return typeInst->mRevision;
+}
+
+String BfCompiler::GetEmitLocation(const StringImpl& typeName, int emitLine, int& outEmbedLine, int& outEmbedLineChar)
+{
+	outEmbedLine = 0;
+
+	int typeId = GetTypeId(typeName);
+	if (typeId <= 0)
+		return "";
+
+	auto bfType = mContext->FindTypeById(typeId);
+	if (bfType == NULL)
+		return "";
+
+	auto typeInst = bfType->ToTypeInstance();
+	if (typeInst == NULL)
+		return "";
+
+	if (typeInst->mCeTypeInfo == NULL)
+		return "";
+
+	for (auto& kv : typeInst->mCeTypeInfo->mEmitSourceMap)
+	{
+		int partialIdx = (int)(kv.mKey >> 32);
+		int charIdx = (int)(kv.mKey & 0xFFFFFFFF);
+
+		auto typeDef = typeInst->mTypeDef;
+		if (partialIdx > 0)
+			typeDef = typeDef->mPartials[partialIdx];
+
+		auto origParser = typeDef->GetDefinition()->GetLastSource()->ToParser();
+		if (origParser == NULL)
+			continue;
+
+		auto emitParser = typeInst->mTypeDef->GetLastSource()->ToParser();
+		if (emitParser == NULL)
+			continue;
+
+		int startLine = 0;
+		int startLineChar = 0;
+		emitParser->GetLineCharAtIdx(kv.mValue.mSrcStart, startLine, startLineChar);
+
+		int endLine = 0;
+		int endLineChar = 0;
+		emitParser->GetLineCharAtIdx(kv.mValue.mSrcEnd - 1, endLine, endLineChar);
+
+		if ((emitLine >= startLine) && (emitLine <= endLine))
+		{			
+			origParser->GetLineCharAtIdx(charIdx, outEmbedLine, outEmbedLineChar);
+			return origParser->mFileName;
+		}
+	}
+
+	return "";
+}
+
+bool BfCompiler::WriteEmitData(const StringImpl& filePath, BfProject* project)
+{
+	ZipFile zipFile;
+
+	for (auto type : mContext->mResolvedTypes)
+	{
+		auto typeInst = type->ToTypeInstance();
+		if (typeInst == NULL)
+			continue;
+		if (typeInst->mTypeDef->mEmitParent == NULL)
+			continue;
+		if (!project->ContainsReference(typeInst->mTypeDef->mProject))
+			continue;
+
+		auto bfParser = typeInst->mTypeDef->GetLastSource()->ToParser();
+		String name = bfParser->mFileName;
+		if (name.StartsWith("$Emit$"))
+			name.Remove(0, 6);
+		String path = EncodeFileName(name);
+		path.Append(".bf");
+
+		if (!zipFile.IsOpen())
+		{
+			if (!zipFile.Create(filePath))
+				return false;
+		}
+
+		zipFile.Add(path, Span<uint8>((uint8*)bfParser->mSrc, bfParser->mSrcLength));
+	}
+
+	if (zipFile.IsOpen())
+		return zipFile.Close();
+
+	return true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -9122,57 +9369,33 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_ClearResults(BfCompiler* bfCompiler)
 	bfCompiler->ClearResults();
 }
 
-BF_EXPORT bool BF_CALLTYPE BfCompiler_ClassifySource(BfCompiler* bfCompiler, BfPassInstance* bfPassInstance, BfParser* bfParser, BfResolvePassData* resolvePassData, BfSourceClassifier::CharData* charData)
+BF_EXPORT bool BF_CALLTYPE BfCompiler_ClassifySource(BfCompiler* bfCompiler, BfPassInstance* bfPassInstance, BfResolvePassData* resolvePassData)
 {
 	BP_ZONE("BfCompiler_ClassifySource");	
-	BfSourceClassifier bfSourceClassifier(bfParser, charData);
-	bfSourceClassifier.mClassifierPassId = bfPassInstance->mClassifierPassId;
 	
 	String& autoCompleteResultString = *gTLStrReturn.Get();
 	autoCompleteResultString.clear();
-
-	bool doClassifyPass = (charData != NULL) && (resolvePassData->mResolveType <= BfResolveType_Autocomplete_HighPri); 
-	bfSourceClassifier.mEnabled = doClassifyPass;
-
-	// Full classifier pass?
 	
-	bfSourceClassifier.mSkipMethodInternals = true;	
-	bfSourceClassifier.mSkipTypeDeclarations = true;	
-	if (charData != NULL)
-	{
-		resolvePassData->mSourceClassifier = &bfSourceClassifier;
-		if (doClassifyPass)
-			bfSourceClassifier.Visit(bfParser->mRootNode);
-	}
-	bfSourceClassifier.mSkipTypeDeclarations = false;
-	bfSourceClassifier.mSkipMethodInternals = false;		
-
-	bfPassInstance->mFilterErrorsTo = bfParser;
+	bfPassInstance->mCompiler = bfCompiler;
+	for (auto parser : resolvePassData->mParsers)
+		bfPassInstance->mFilterErrorsTo.Add(parser->mSourceData);	
 	bfPassInstance->mTrimMessagesToCursor = true;
+
 	SetAndRestoreValue<BfResolvePassData*> prevCompilerResolvePassData(bfCompiler->mResolvePassData, resolvePassData);
 	SetAndRestoreValue<BfPassInstance*> prevPassInstance(bfCompiler->mPassInstance, bfPassInstance);
 	bool canceled = false;
-	if (resolvePassData->mAutoComplete != NULL)
-	{		
+	
+	if ((resolvePassData->mAutoComplete != NULL) && (!resolvePassData->mParsers.IsEmpty()))
+	{
 		bfCompiler->ProcessAutocompleteTempType();
 	}
 	else
-		canceled = !bfCompiler->Compile("");	
-	resolvePassData->mSourceClassifier = NULL;
+		canceled = !bfCompiler->Compile("");
 		
-	if ((charData != NULL) && (doClassifyPass))
-	{
-		bfSourceClassifier.mIsSideChannel = false;
-		bfSourceClassifier.Visit(bfParser->mErrorRootNode);
-
-		bfSourceClassifier.mIsSideChannel = true;
-		bfSourceClassifier.Visit(bfParser->mSidechannelRootNode);				
-	}
-
 	return !canceled;
 }
 
-BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCompiler, BfParser* bfParser)
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCompiler, BfParser* bfParser, BfResolvePassData* resolvePassData, char* explicitEmitTypeNames)
 {
 	String& outString = *gTLStrReturn.Get();
 	outString.Clear();
@@ -9515,6 +9738,112 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 
 	collapseVisitor.FlushSeries();
 
+	Array<BfTypeInstance*> explicitEmitTypes;
+	String checkStr = explicitEmitTypeNames;
+	for (auto& typeName : checkStr.Split('\n'))
+	{
+		if (typeName.IsEmpty())
+			continue;
+		auto bfType = bfCompiler->GetType(typeName);
+		if ((bfType != NULL) && (bfType->IsTypeInstance()))
+			explicitEmitTypes.Add(bfType->ToTypeInstance());
+	}
+
+	// Embed emit info
+	BfPassInstance bfPassInstance(bfCompiler->mSystem);
+
+	SetAndRestoreValue<BfResolvePassData*> prevCompilerResolvePassData(bfCompiler->mResolvePassData, resolvePassData);
+	SetAndRestoreValue<BfPassInstance*> prevPassInstance(bfCompiler->mPassInstance, &bfPassInstance);
+
+	Dictionary<int, int> foundTypeIds;
+
+	for (auto typeDef : bfParser->mTypeDefs)
+	{
+		auto useTypeDef = typeDef;
+		if (useTypeDef->mIsPartial)
+		{
+			useTypeDef = bfCompiler->mSystem->GetCombinedPartial(useTypeDef);
+			if (useTypeDef == NULL)
+				continue;
+		}
+
+		auto type = bfCompiler->mContext->mScratchModule->ResolveTypeDef(useTypeDef);
+		if (type == NULL)
+			continue;
+		if (auto typeInst = type->ToTypeInstance())
+		{
+			auto origTypeInst = typeInst;
+
+			if (typeInst->mCeTypeInfo == NULL)
+				continue;
+			
+			for (auto checkIdx = explicitEmitTypes.mSize - 1; checkIdx >= 0; checkIdx--)
+			{
+				auto checkType = explicitEmitTypes[checkIdx];
+				if (checkType->mTypeDef->GetDefinition()->GetLatest() == typeInst->mTypeDef->GetDefinition()->GetLatest())
+				{
+					typeInst = checkType;
+					bfCompiler->mContext->mScratchModule->PopulateType(typeInst);
+					break;
+				}
+			}
+
+			for (auto& kv : typeInst->mCeTypeInfo->mEmitSourceMap)
+			{
+				int partialIdx = (int)(kv.mKey >> 32);
+				int charIdx = (int)(kv.mKey & 0xFFFFFFFF);
+
+				auto typeDef = typeInst->mTypeDef;
+				if (partialIdx > 0)
+					typeDef = typeDef->mPartials[partialIdx];
+
+				auto parser = typeDef->GetDefinition()->GetLastSource()->ToParser();
+				if (parser == NULL)
+					continue;
+
+				if (!FileNameEquals(parser->mFileName, bfParser->mFileName))
+					continue;
+				
+				auto emitParser = typeInst->mTypeDef->GetLastSource()->ToParser();
+				if (emitParser == NULL)
+					continue;
+
+				int startLine = 0;
+				int startLineChar = 0;
+				emitParser->GetLineCharAtIdx(kv.mValue.mSrcStart, startLine, startLineChar);
+
+				int srcEnd = kv.mValue.mSrcEnd - 1;
+				while (srcEnd >= kv.mValue.mSrcStart)
+				{
+					char c = emitParser->mSrc[srcEnd];
+					if (!::isspace((uint8)c))
+						break;
+					srcEnd--;
+				}
+
+				int endLine = 0;
+				int endLineChar = 0;
+				emitParser->GetLineCharAtIdx(srcEnd, endLine, endLineChar);
+				
+				int dollarPos = (int)emitParser->mFileName.LastIndexOf('$');
+				if (dollarPos == -1)
+					continue;
+
+				int* keyPtr = NULL;
+				int* valuePtr = NULL;
+				if (foundTypeIds.TryAdd(typeInst->mTypeId, &keyPtr, &valuePtr))
+				{
+					*valuePtr = foundTypeIds.mCount - 1;
+					outString += "+";
+					outString += emitParser->mFileName.Substring(dollarPos + 1);
+					outString += "\n";
+				}
+
+				outString += (kv.mValue.mKind == BfCeTypeEmitSourceKind_Method) ? 'm' : 't';
+				outString += StrFormat("%d,%d,%d,%d,%d,%d\n", *valuePtr, typeInst->mRevision, partialIdx, charIdx, startLine, endLine + 1);
+			}
+		}
+	}
 	
 	return outString.c_str();
 }
@@ -9587,7 +9916,7 @@ BF_EXPORT bool BF_CALLTYPE BfCompiler_VerifyTypeName(BfCompiler* bfCompiler, cha
 		resolvePassData.mAutoComplete->mCompiler = bfCompiler;
 		resolvePassData.mAutoComplete->mModule = bfCompiler->mContext->mScratchModule;
 	}
-	resolvePassData.mParser = &parser;
+	resolvePassData.mParsers.Add(&parser);
 			
 	SetAndRestoreValue<BfResolvePassData*> prevCompilerResolvePassData(bfCompiler->mResolvePassData, &resolvePassData);
 	SetAndRestoreValue<BfPassInstance*> prevPassInstance(bfCompiler->mPassInstance, &passInstance);
@@ -9733,6 +10062,11 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeDefInfo(BfCompiler* bfCompil
 	return outString.c_str();
 }
 
+BF_EXPORT int BF_CALLTYPE BfCompiler_GetTypeId(BfCompiler* bfCompiler, const char* name)
+{
+	return bfCompiler->GetTypeId(name);	
+}
+
 BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler, const char* name)
 {
 	String& outString = *gTLStrReturn.Get();
@@ -9814,6 +10148,40 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 				if (genericTypeInst->mGenericTypeInfo->mHadValidateErrors)
 					outString += " ValidateErrors";
 			}
+		}
+	}
+
+	return outString.c_str();
+}
+
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetGenericTypeInstances(BfCompiler* bfCompiler, const char* typeName)
+{
+	String& outString = *gTLStrReturn.Get();
+	outString = "";
+
+	auto lookupType = bfCompiler->GetType(typeName);
+	if (lookupType == NULL)
+		return "";
+
+	auto lookupTypeInst = lookupType->ToTypeInstance();
+	if (lookupTypeInst == NULL)
+		return "";
+
+	for (auto type : bfCompiler->mContext->mResolvedTypes)
+	{
+		auto typeInst = type->ToTypeInstance();
+		if (typeInst == NULL)
+			continue;
+
+		if (typeInst->IsUnspecializedTypeVariation())
+			continue;
+
+		if (typeInst->mTypeDef->GetDefinition()->GetLatest() == lookupTypeInst->mTypeDef->GetDefinition()->GetLatest())
+		{
+			outString += typeInst->mTypeDef->mProject->mName;
+			outString += ":";
+			outString += bfCompiler->mContext->mScratchModule->TypeToString(typeInst, BfTypeNameFlags_None);
+			outString += "\n";
 		}
 	}
 
@@ -10235,4 +10603,17 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetEmitSource(BfCompiler* bfCompile
 BF_EXPORT int32 BF_CALLTYPE BfCompiler_GetEmitSourceVersion(BfCompiler* bfCompiler, char* fileName)
 {
 	return bfCompiler->GetEmitSource(fileName, NULL);
+}
+
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetEmitLocation(BfCompiler* bfCompiler, char* typeName, int line, int& outEmbedLine, int& outEmbedLineChar)
+{
+	String& outString = *gTLStrReturn.Get();
+	outString.clear();
+	outString = bfCompiler->GetEmitLocation(typeName, line, outEmbedLine, outEmbedLineChar);
+	return outString.c_str();
+}
+
+BF_EXPORT bool BF_CALLTYPE BfCompiler_WriteEmitData(BfCompiler* bfCompiler, char* filePath, BfProject* project)
+{
+	return bfCompiler->WriteEmitData(filePath, project);
 }

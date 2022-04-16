@@ -13,6 +13,7 @@ namespace Beefy
 	class DataStream;
 	class MemStream;
 	class SafeMemStream;
+	class ZipFile;
 }
 
 struct CV_LVAR_ADDR_RANGE;
@@ -214,6 +215,7 @@ public:
 	};
 
 public:	
+	ZipFile* mEmitSourceFile;
 	uint8 mWantPDBGuid[16];
 	int mWantAge;
 
@@ -262,6 +264,7 @@ public:
 	int mCvPublicSymbolInfoStream;
 	int mCvSymbolRecordStream;	
 	int mCvSrcSrvStream;
+	int mCvEmitStream;
 	int mCvNewFPOStream;
 	Array<CvModuleInfo*> mCvModuleInfo;	
 	Dictionary<int, DbgSrcFile*> mCVSrcFileRefCache;
@@ -320,6 +323,7 @@ public:
 	virtual intptr EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags = DbgEvalLocFlag_None) override;
 	virtual bool CanGetOldSource() override;
 	virtual String GetOldSourceCommand(const StringImpl& path) override;	
+	virtual bool GetEmitSource(const StringImpl& filePath, String& outText) override;
 	virtual bool HasPendingDebugInfo() override;
 	virtual void PreCacheImage() override;
 	virtual void PreCacheDebugInfo() override;

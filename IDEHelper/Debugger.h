@@ -351,7 +351,8 @@ public:
 	virtual Profiler* StartProfiling() = 0;
 	virtual Profiler* PopProfiler() = 0; // Profiler requested by target program
 	virtual void ReportMemory(MemReporter* memReporter) = 0;
-	virtual bool IsOnDemandDebugger() = 0;			
+	virtual bool IsOnDemandDebugger() = 0;
+	virtual bool GetEmitSource(const StringImpl& filePath, String& outText) = 0;
 };
 
 class Profiler

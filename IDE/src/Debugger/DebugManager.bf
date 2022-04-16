@@ -372,6 +372,9 @@ namespace IDE.Debugger
 		[CallingConvention(.Stdcall),CLink]
 		static extern int Debugger_GetDbgAllocHeapSize();
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* Debugger_GetEmitSource(char8* fileName);
+
 		public String mRunningPath ~ delete _;
 		public bool mIsRunning;
 		public bool mIsRunningCompiled;
@@ -382,12 +385,21 @@ namespace IDE.Debugger
 		public int32 mActiveCallStackIdx;
 		public Event<Action> mBreakpointsChangedDelegate ~ _.Dispose();
 		public Breakpoint mRunToCursorBreakpoint;
+		public int32 mDebugIdx;
 
-		bool IsRunning
+		public bool IsRunning
 		{
 			get
 			{
 				return mIsRunning;
+			}
+		}
+
+		public bool IsRunningUncompiled
+		{
+			get
+			{
+				return mIsRunning && !mIsRunningCompiled;
 			}
 		}
 
@@ -975,7 +987,14 @@ namespace IDE.Debugger
 			stackSize = stackSizeOut;
 
 			if (outFile != null)
+			{
 				outFile.Append(fileStrPtr);
+				if ((outFile.StartsWith("$Emit")) && (mIsRunningCompiled))
+				{
+					int dollarPos = outFile.IndexOf('$', 1);
+					outFile.Remove(5, dollarPos - 5);
+				}
+			}
 			if (outStackFrameInfo != null)
 				outStackFrameInfo.Append(locationStr);
 		}
@@ -1223,6 +1242,15 @@ namespace IDE.Debugger
 		public int GetDbgAllocHeapSize()
 		{
 			return Debugger_GetDbgAllocHeapSize();
+		}
+
+		public bool GetEmitSource(StringView fileName, String outText)
+		{
+			char8* str = Debugger_GetEmitSource(fileName.ToScopeCStr!());
+			if (str == null)
+				return false;
+			outText.Append(str);
+			return true;
 		}
 	}
 }

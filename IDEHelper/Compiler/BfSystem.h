@@ -38,8 +38,8 @@ namespace llvm
 NS_BF_BEGIN
 
 class BfSystem;
-class BfTypeReference;
 class BfCompiler;
+class BfTypeReference;
 class BfProject;
 class BfTypeDef;
 
@@ -157,7 +157,7 @@ enum BfCompilerOptionFlags
 	BfCompilerOptionFlag_EnableSideStack    = 0x1000,
 	BfCompilerOptionFlag_EnableHotSwapping  = 0x2000,
 	BfCompilerOptionFlag_IncrementalBuild   = 0x4000,
-	BfCompilerOptionFlag_DebugAlloc         = 0x8000,
+	BfCompilerOptionFlag_DebugAlloc         = 0x8000, 
 	BfCompilerOptionFlag_OmitDebugHelpers   = 0x10000,
 	BfCompilerOptionFlag_NoFramePointerElim = 0x20000,
 	BfCompilerOptionFlag_ArithmeticChecks = 0x40000,
@@ -1412,6 +1412,7 @@ public:
 	const int sMaxErrors = 1000;
 
 	BfSystem* mSystem;
+	BfCompiler* mCompiler;
 	bool mTrimMessagesToCursor;
 	int mFailedIdx;	
 	int mWarnIdx;
@@ -1426,7 +1427,7 @@ public:
 	bool mLastWasDisplayed;
 	bool mLastWasAdded;
 	uint8 mClassifierPassId;
-	BfParser* mFilterErrorsTo;
+	HashSet<BfSourceData*> mFilterErrorsTo;
 	bool mHadSignatureChanges;
 
 public:
@@ -1436,13 +1437,13 @@ public:
 		mFailedIdx = 0;
 		mWarnIdx = 0;
 		mSystem = bfSystem;
+		mCompiler = NULL;
 		mLastWasDisplayed = false;
 		mLastWasAdded = false;
 		mClassifierPassId = 0;
 		mWarningCount = 0;		
 		mDeferredErrorCount = 0;
-		mIgnoreCount = 0;
-		mFilterErrorsTo = NULL;
+		mIgnoreCount = 0;		
 		mHadSignatureChanges = false;
 	}
 

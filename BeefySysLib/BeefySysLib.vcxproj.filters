@@ -75,6 +75,9 @@
     <Filter Include="src\third_party\stb">
       <UniqueIdentifier>{b85b0989-3047-46e9-93d7-5bc352fb0df7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\third_party\miniz">
+      <UniqueIdentifier>{a159b9ee-1a71-44f5-a412-1e01e20b70c7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="platform\win\DXRenderDevice.cpp">
@@ -722,6 +725,12 @@
     <ClCompile Include="util\Compress.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
+    <ClCompile Include="third_party\miniz\miniz.c">
+      <Filter>src\third_party\miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="util\ZipFile.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -1106,6 +1115,12 @@
       <Filter>src\util</Filter>
     </ClInclude>
     <ClInclude Include="util\BitSet.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\miniz\miniz.h">
+      <Filter>src\third_party\miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="util\ZipFile.h">
       <Filter>src\util</Filter>
     </ClInclude>
   </ItemGroup>

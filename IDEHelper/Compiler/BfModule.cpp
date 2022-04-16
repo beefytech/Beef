@@ -2874,11 +2874,10 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 
 void BfModule::SetElementType(BfAstNode* astNode, BfSourceElementType elementType)
 {
-	if ((mCompiler->mResolvePassData != NULL) &&
-		(mCompiler->mResolvePassData->mSourceClassifier != NULL) &&
-		(astNode->IsFromParser(mCompiler->mResolvePassData->mParser)))
+	if (mCompiler->mResolvePassData != NULL)		
 	{
-		mCompiler->mResolvePassData->mSourceClassifier->SetElementType(astNode, elementType);
+		if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(astNode))
+			sourceClassifier->SetElementType(astNode, elementType);
 	}
 }
 
@@ -4441,10 +4440,13 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 	}
 	else
 	{
-		if ((mCompiler->mIsResolveOnly) && (mCompiler->mResolvePassData->mSourceClassifier != NULL) && (initializer->IsFromParser(mCompiler->mResolvePassData->mParser)))
+		if (mCompiler->mIsResolveOnly)
 		{
-			mCompiler->mResolvePassData->mSourceClassifier->SetElementType(initializer, BfSourceElementType_Normal);
-			mCompiler->mResolvePassData->mSourceClassifier->VisitChildNoRef(initializer);
+			if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(initializer))
+			{
+				sourceClassifier->SetElementType(initializer, BfSourceElementType_Normal);
+				sourceClassifier->VisitChildNoRef(initializer);
+			}
 		}
 
 		if ((mCurTypeInstance->IsPayloadEnum()) && (fieldDef->IsEnumCaseEntry()))
@@ -11631,10 +11633,10 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 	if (!mCompiler->mHasRequiredTypes)
 		return;
 
-	if ((attributesDirective != NULL) && (mCompiler->mResolvePassData != NULL) && 
-		(attributesDirective->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
+	if ((attributesDirective != NULL) && (mCompiler->mResolvePassData != NULL))		
 	{
-		mCompiler->mResolvePassData->mSourceClassifier->VisitChild(attributesDirective);
+		if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(attributesDirective))
+			sourceClassifier->VisitChild(attributesDirective);
 	}
 
 	SetAndRestoreValue<bool> prevIsCapturingMethodMatchInfo;
@@ -11644,6 +11646,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 	BfTypeInstance* baseAttrTypeInst = mContext->mUnreifiedModule->ResolveTypeDef(mCompiler->mAttributeTypeDef)->ToTypeInstance();
 	BfAttributeTargets targetOverride = (BfAttributeTargets)0;
 
+	BfTypeDef* activeTypeDef = GetActiveTypeDef();
 	BfAutoComplete* autoComplete = NULL;
 	if (mCompiler->mResolvePassData != NULL)
 		autoComplete = mCompiler->mResolvePassData->mAutoComplete;
@@ -11674,6 +11677,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 
 		BfCustomAttribute customAttribute;
 		customAttribute.mAwaitingValidation = true;
+		customAttribute.mDeclaringType = activeTypeDef;
 		customAttribute.mRef = attributesDirective;
 
 		if (attributesDirective->mAttrOpenToken != NULL)
@@ -12109,7 +12113,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		}
 
 		if (success)
-		{
+		{			
 			customAttributes->mAttributes.push_back(customAttribute);
 		}
 	}
@@ -13446,10 +13450,10 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 		if (methodDecl != NULL)
 		{
 			auto attributesDirective = methodDecl->mAttributes;
-			if ((attributesDirective != NULL) && (mCompiler->mResolvePassData != NULL) &&
-				(attributesDirective->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
+			if ((attributesDirective != NULL) && (mCompiler->mResolvePassData != NULL))				
 			{
-				mCompiler->mResolvePassData->mSourceClassifier->VisitChild(attributesDirective);
+				if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(attributesDirective))
+					sourceClassifier->VisitChild(attributesDirective);
 			}
 		}
 	}
@@ -16239,7 +16243,7 @@ bool BfModule::IsInterestedInMethod(BfTypeInstance* typeInstance, BfMethodDef* m
 	if (methodDeclaration == NULL)
 		checkNode = methodDef->mBody;
 	
-	if ((mCompiler->mResolvePassData->mParser != NULL) && (typeDef->mTypeDeclaration->IsFromParser(mCompiler->mResolvePassData->mParser)))
+	if ((!mCompiler->mResolvePassData->mParsers.IsEmpty()) && (typeDef->mTypeDeclaration->IsFromParser(mCompiler->mResolvePassData->mParsers[0])))
 	{
 		if (mCompiler->mResolvePassData->mAutoComplete == NULL)
 			return true;		
@@ -16650,10 +16654,10 @@ void BfModule::CreateStaticCtor()
 					{
 						if (fieldDef->mInitializer != NULL)
 						{
-							if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
+							if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(fieldDef->mInitializer))
 							{
-								mCompiler->mResolvePassData->mSourceClassifier->SetElementType(fieldDef->mInitializer, BfSourceElementType_Normal);
-								mCompiler->mResolvePassData->mSourceClassifier->VisitChild(fieldDef->mInitializer);
+								sourceClassifier->SetElementType(fieldDef->mInitializer, BfSourceElementType_Normal);
+								sourceClassifier->VisitChild(fieldDef->mInitializer);
 							}
 							BfType* wantType = NULL;
 							if ((!BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef)) && (!BfNodeIsA<BfLetTypeReference>(fieldDef->mTypeRef)))
@@ -16835,10 +16839,13 @@ void BfModule::EmitDtorBody()
 
 				while (fieldDtor != NULL)
 				{
-					if (mCompiler->WantsClassifyNode(fieldDtor))
+					if (mCompiler->mResolvePassData != NULL)
 					{
-						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(fieldDtor, BfSourceElementType_Normal);
-						mCompiler->mResolvePassData->mSourceClassifier->VisitChild(fieldDtor);
+						if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(fieldDtor))
+						{
+							sourceClassifier->SetElementType(fieldDtor, BfSourceElementType_Normal);
+							sourceClassifier->VisitChild(fieldDtor);
+						}
 					}
 
 					UpdateSrcPos(fieldDtor);										
@@ -16910,7 +16917,7 @@ void BfModule::EmitDtorBody()
 				for (auto fieldDef : tempTypeDef->mFields)
 				{
 					if ((fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDef->mFieldDeclaration != NULL) && 
-						(fieldDef->mFieldDeclaration->mFieldDtor != NULL) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
+						(fieldDef->mFieldDeclaration->mFieldDtor != NULL) && (mCompiler->mResolvePassData->mIsClassifying))
 					{
 						BfType* fieldType = NULL;
 
@@ -16943,8 +16950,11 @@ void BfModule::EmitDtorBody()
 
 						while (fieldDtor != NULL)
 						{
-							mCompiler->mResolvePassData->mSourceClassifier->SetElementType(fieldDtor, BfSourceElementType_Normal);
-							mCompiler->mResolvePassData->mSourceClassifier->VisitChild(fieldDtor);
+							if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(fieldDtor))
+							{
+								sourceClassifier->SetElementType(fieldDtor, BfSourceElementType_Normal);
+								sourceClassifier->VisitChild(fieldDtor);
+							}
 
 							UpdateSrcPos(fieldDtor);							
 							VisitEmbeddedStatement(fieldDtor->mBody);
@@ -17659,10 +17669,13 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				{
 					for (auto fieldDef : tempTypeDef->mFields)
 					{
-						if ((!fieldDef->mIsStatic) && (fieldDef->mInitializer != NULL) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
+						if ((!fieldDef->mIsStatic) && (fieldDef->mInitializer != NULL) && (mCompiler->mResolvePassData->mIsClassifying))
 						{
-							mCompiler->mResolvePassData->mSourceClassifier->SetElementType(fieldDef->mInitializer, BfSourceElementType_Normal);
-							mCompiler->mResolvePassData->mSourceClassifier->VisitChild(fieldDef->mInitializer);
+							if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(fieldDef->mInitializer))
+							{
+								sourceClassifier->SetElementType(fieldDef->mInitializer, BfSourceElementType_Normal);
+								sourceClassifier->VisitChild(fieldDef->mInitializer);
+							}
 
 							BfType* wantType = NULL;
 							if ((!BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef)) &&
@@ -19300,12 +19313,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		BF_ASSERT(!methodInstance->mIRFunction.IsFake() || (methodInstance->GetImportCallKind() != BfImportCallKind_None));
 	}
 
-	SetAndRestoreValue<BfSourceClassifier*> prevSourceClassifier;
+	SetAndRestoreValue<bool> prevIsClassifying;
 	if (((methodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend) || (methodInstance->mIsForeignMethodDef) || (methodInstance->IsSpecializedGenericMethod())) && 
 		(mCompiler->mResolvePassData != NULL))
 	{
 		// Don't classify on the CtorCalcAppend, just on the actual Ctor
-		prevSourceClassifier.Init(mCompiler->mResolvePassData->mSourceClassifier, NULL);
+		prevIsClassifying.Init(mCompiler->mResolvePassData->mIsClassifying, false);
 	}
 
 	if (methodInstance->mHasBeenProcessed)
@@ -19573,10 +19586,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		
 	if ((mCurMethodState == NULL) && (!IsInSpecializedSection())) // Only do initial classify for the 'outer' method state, not any local methods or lambdas
 	{
-		if ((mCompiler->mIsResolveOnly) && (!mIsComptimeModule) && (methodDef->mBody != NULL) && (!mCurTypeInstance->IsBoxed()) &&
-			(methodDef->mBody->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
+		if ((mCompiler->mIsResolveOnly) && (!mIsComptimeModule) && (methodDef->mBody != NULL) && (!mCurTypeInstance->IsBoxed()))
 		{
-			mCompiler->mResolvePassData->mSourceClassifier->VisitChildNoRef(methodDef->mBody);
+			if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(methodDef->mBody))
+				sourceClassifier->VisitChildNoRef(methodDef->mBody);
 		}
 	}		
 
