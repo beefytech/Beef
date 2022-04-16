@@ -6137,7 +6137,18 @@ namespace IDE.ui
 								}
 
 								if (emitEmbed.mView != null)
-									emitViewDict[emitEmbed.mTypeName] = emitEmbed.mView;
+								{
+									if (emitViewDict.TryAdd(emitEmbed.mTypeName, var keyPtr, var valuePtr))
+									{
+										*valuePtr = emitEmbed.mView;
+									}
+									else if (emitEmbed.mView.mTypeName != emitEmbed.mTypeName)
+									{
+										emitEmbed.mView.RemoveSelf();
+										DeleteAndNullify!(emitEmbed.mView);
+										ewc.mCollapseNeedsUpdate = true;
+									}
+								}
 							}
 						}
 
@@ -6146,7 +6157,7 @@ namespace IDE.ui
 							if (embed.mCharData == null)
 								continue;
 
-							if (emitViewDict.GetValue(embed.mTypeName) case .Ok(var emitEmbedView))
+							if (emitViewDict.GetAndRemove(embed.mTypeName) case .Ok((var name, var emitEmbedView)))
 							{
 								var emitEmbed = emitEmbedView.mEmitEmbed;
 
