@@ -199,6 +199,8 @@ BfSourceClassifier* BfResolvePassData::GetSourceClassifier(BfAstNode* astNode)
 {
 	if (!mIsClassifying)
 		return NULL;
+	if (astNode == NULL)
+		return NULL;
 	auto parser = astNode->GetParser();
 	if (parser == NULL)
 		return NULL;
@@ -208,6 +210,8 @@ BfSourceClassifier* BfResolvePassData::GetSourceClassifier(BfAstNode* astNode)
 BfSourceClassifier* BfResolvePassData::GetSourceClassifier(BfParser* parser)
 {
 	if (!mIsClassifying)
+		return NULL;
+	if (parser == NULL)
 		return NULL;
 	return parser->mSourceClassifier;
 }
