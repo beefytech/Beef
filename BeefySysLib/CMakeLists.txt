@@ -273,6 +273,7 @@ file(GLOB SRC_FILES
     third_party/zlib/trees.c
     third_party/zlib/uncompr.c
     third_party/zlib/zutil.c
+    third_party/miniz/miniz.c
     util/AllocDebug.cpp
     util/BeefPerf.cpp
     util/BSpline.cpp
