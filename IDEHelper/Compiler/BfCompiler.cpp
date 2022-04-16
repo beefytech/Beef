@@ -9740,7 +9740,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 
 	Array<BfTypeInstance*> explicitEmitTypes;
 	String checkStr = explicitEmitTypeNames;
-	for (auto& typeName : checkStr.Split('\n'))
+	for (auto typeName : checkStr.Split('\n'))
 	{
 		if (typeName.IsEmpty())
 			continue;
