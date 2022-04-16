@@ -299,6 +299,7 @@ file(GLOB SRC_FILES
     util/UTF8.cpp
     util/WorkThread.cpp
     util/Vector.cpp
+    util/ZipFile.cpp
 )
 
 if (${APPLE})
