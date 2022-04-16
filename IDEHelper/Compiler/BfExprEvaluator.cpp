@@ -11628,6 +11628,14 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 		if (!matches)
 			matches = mModule->TypeIsSubTypeOf(typeInstance, targetType->ToTypeInstance());
 
+		if (!typeInstance->IsGenericParam())
+		{
+			if (matches)
+				mModule->Warn(0, "The result of this operation is always 'true'", checkTypeExpr->mIsToken);
+			else
+				mModule->Warn(0, "The result of this operation is always 'false'", checkTypeExpr->mIsToken);
+		}
+
 		mResult = BfTypedValue(mModule->GetConstValue(matches ? 1 : 0, boolType), boolType);
 		return;
 	}
@@ -11664,10 +11672,10 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 			if ((!wasGenericParamType) && (mModule->mCurMethodState->mMixinState == NULL))
 			{
 				if (srcTypeInstance == targetType)
-					mModule->Warn(BfWarning_BF4203_UnnecessaryDynamicCast, StrFormat("Unnecessary cast, the value is already type '%s'",
+					mModule->Warn(BfWarning_BF4203_UnnecessaryDynamicCast, StrFormat("Unnecessary check, the value is already type '%s'",
 						mModule->TypeToString(srcTypeInstance).c_str()), checkTypeExpr->mIsToken);
 				else
-					mModule->Warn(BfWarning_BF4203_UnnecessaryDynamicCast, StrFormat("Unnecessary cast, '%s' is a subtype of '%s'",
+					mModule->Warn(BfWarning_BF4203_UnnecessaryDynamicCast, StrFormat("Unnecessary check, '%s' is a subtype of '%s'",
 						mModule->TypeToString(srcTypeInstance).c_str(), mModule->TypeToString(targetType).c_str()), checkTypeExpr->mIsToken);
 			}
 			
