@@ -1924,7 +1924,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	BfLocalVariable* localVar = AddLocalVariableDef(localDef, true, false, BfIRValue(), initType);
 	if (wantsStore)
-		mBfIRBuilder->CreateStore(initValue.mValue, localVar->mAddr);
+		mBfIRBuilder->CreateAlignedStore(initValue.mValue, localVar->mAddr, localVar->mResolvedType->mAlign);
 	return localVar;
 }
 
@@ -5962,7 +5962,7 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 
 	CheckVariableDef(localDef);
 
-	mBfIRBuilder->CreateStore(GetDefaultValue(varType), localDef->mAddr);
+	mBfIRBuilder->CreateAlignedStore(GetDefaultValue(varType), localDef->mAddr, varType->mAlign);
 
 	localDef->Init();
 	UpdateExprSrcPos(forEachStmt->mVariableName);
@@ -5992,7 +5992,7 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 
 	// Cond
 	auto valueScopeStart = ValueScopeStart();
-	auto localVal = mBfIRBuilder->CreateLoad(localDef->mAddr);
+	auto localVal = mBfIRBuilder->CreateAlignedLoad(localDef->mAddr, localDef->mResolvedType->mAlign);
 	if (!target)
 	{
 		// Soldier on
@@ -6029,9 +6029,9 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 
 	auto one = GetConstValue(1, localDef->mResolvedType);
 	// We have to reload localVal before the inc, user logic could have changed it
-	localVal = mBfIRBuilder->CreateLoad(localDef->mAddr);
+	localVal = mBfIRBuilder->CreateAlignedLoad(localDef->mAddr, localDef->mResolvedType->mAlign);
 	auto result = mBfIRBuilder->CreateAdd(localVal, one);
-	mBfIRBuilder->CreateStore(result, localDef->mAddr);
+	mBfIRBuilder->CreateAlignedStore(result, localDef->mAddr, localDef->mResolvedType->mAlign);
 	ValueScopeEnd(valueScopeStart);
 
 	mBfIRBuilder->CreateBr(condBB);			
@@ -6508,7 +6508,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					else
 						tuplePtr = mBfIRBuilder->CreateBitCast(varInst, mBfIRBuilder->MapType(tuplePtrType));
 					auto valAddr = mBfIRBuilder->CreateInBoundsGEP(tuplePtr, 0, fieldInstance->mDataIdx);
-					mBfIRBuilder->CreateStore(valAddr, localDef->mAddr);
+					mBfIRBuilder->CreateAlignedStore(valAddr, localDef->mAddr, localDef->mResolvedType->mAlign);
 				}				
 				
 				UpdateSrcPos(forEachStmt);
@@ -6550,7 +6550,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			if (!needsValCopy)
 			{
 				auto valAddr = mBfIRBuilder->CreateBitCast(nextResult.mValue, mBfIRBuilder->MapType(varType));
-				mBfIRBuilder->CreateStore(valAddr, varInst);
+				mBfIRBuilder->CreateAlignedStore(valAddr, varInst, varType->mAlign);
 			}
 
 			UpdateSrcPos(forEachStmt);
@@ -6605,7 +6605,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		autoComplete->CheckVarResolution(forEachStmt->mVariableTypeRef, varType);
 
 	if (isArray || isSizedArray)	
-		mBfIRBuilder->CreateStore(GetConstValue(0), itr.mValue);	
+		mBfIRBuilder->CreateAlignedStore(GetConstValue(0), itr.mValue, itr.mType->mAlign);	
 
 	auto valueScopeStartInner = ValueScopeStart();
 
@@ -6642,7 +6642,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	}
 	else if (isArray) // if (i < array.mLength)
 	{		
-		auto itrVal = mBfIRBuilder->CreateLoad(itr.mValue);
+		auto itrVal = mBfIRBuilder->CreateAlignedLoad(itr.mValue, itr.mType->mAlign);
 		auto arrayType = (BfArrayType*)target.mType;		
 		PopulateType(arrayType);
 		auto arrayBaseValue = mBfIRBuilder->CreateBitCast(target.mValue, mBfIRBuilder->MapType(arrayType->mBaseType, BfIRPopulateType_Full));
@@ -6659,8 +6659,12 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		}
 		else
 		{
-			auto lengthValAddr = mBfIRBuilder->CreateInBoundsGEP(arrayBaseValue, 0, GetFieldDataIdx(arrayType->mBaseType, 0, "mLength"));
-			lengthVal = mBfIRBuilder->CreateLoad(lengthValAddr);		
+			auto fieldInst = GetFieldInstance(arrayType->mBaseType, 0, "mLength");
+			if (fieldInst != NULL)
+			{
+				auto lengthValAddr = mBfIRBuilder->CreateInBoundsGEP(arrayBaseValue, 0, fieldInst->mDataIdx);
+				lengthVal = mBfIRBuilder->CreateAlignedLoad(lengthValAddr, fieldInst->mResolvedType->mAlign);
+			}
 		}
 		lengthVal = mBfIRBuilder->CreateNumericCast(lengthVal, true, BfTypeCode_IntPtr);
 		conditionValue = mBfIRBuilder->CreateCmpLT(itrVal, lengthVal, true);				
@@ -6808,7 +6812,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 				nextVal = Cast(forEachStmt->mCollectionExpression, nextVal, varType, BfCastFlags_Explicit);
 				nextVal = LoadValue(nextVal);
 				if ((nextVal) && (!nextVal.mType->IsValuelessType()))
-					mBfIRBuilder->CreateStore(nextVal.mValue, varInst);
+					mBfIRBuilder->CreateAlignedStore(nextVal.mValue, varInst, nextVal.mType->mAlign);
 			}
 		}
 	}

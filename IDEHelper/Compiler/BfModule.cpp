@@ -762,9 +762,9 @@ public:
 					}
 					else
 					{
-						auto prevVal = mModule->mBfIRBuilder->CreateLoad(accumValuePtr);
+						auto prevVal = mModule->mBfIRBuilder->CreateAlignedLoad(accumValuePtr, intPtrType->mAlign);
 						auto addedVal = mModule->mBfIRBuilder->CreateAdd(sizeValue, prevVal);
-						mModule->mBfIRBuilder->CreateStore(addedVal, accumValuePtr);
+						mModule->mBfIRBuilder->CreateAlignedStore(addedVal, accumValuePtr, intPtrType->mAlign);
 					}
 				}				
 			}
@@ -2049,7 +2049,7 @@ BfDeferredCallEntry* BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySi
 						BF_ASSERT(!isDynAlloc);
 						auto valPtr = CreateAlloca(checkBaseType);
 						mBfIRBuilder->ClearDebugLocation_Last();
-						mBfIRBuilder->CreateStore(useVal, valPtr);
+						mBfIRBuilder->CreateAlignedStore(useVal, valPtr, checkBaseType->mAlign);
 						mBfIRBuilder->ClearDebugLocation_Last();
 						useVal = valPtr;
 					}
@@ -4523,7 +4523,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 		{
 			result = LoadValue(result);
 			if (!result.mType->IsValuelessType())
-				mBfIRBuilder->CreateStore(result.mValue, staticVarRef.mValue);
+				mBfIRBuilder->CreateAlignedStore(result.mValue, staticVarRef.mValue, result.mType->mAlign);
 		}
 	}
 
@@ -8613,9 +8613,9 @@ BfTypedValue BfModule::FlushNullConditional(BfTypedValue result, bool ignoreNull
 			else
 			{
 				BfIRValue ptrValue = mBfIRBuilder->CreateInBoundsGEP(nullableTypedValue.mValue, 0, 1); // mValue
-				mBfIRBuilder->CreateStore(result.mValue, ptrValue);
+				mBfIRBuilder->CreateAlignedStore(result.mValue, ptrValue, result.mType->mAlign);
 				ptrValue = mBfIRBuilder->CreateInBoundsGEP(nullableTypedValue.mValue, 0, 2); // mHasValue
-				mBfIRBuilder->CreateStore(GetConstValue(1, GetPrimitiveType(BfTypeCode_Boolean)), ptrValue);				
+				mBfIRBuilder->CreateAlignedStore(GetConstValue(1, GetPrimitiveType(BfTypeCode_Boolean)), ptrValue, 1);
 			}			
 			result = nullableTypedValue;
 		}
@@ -10444,7 +10444,7 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					AggregateSplatIntoAddr(typedVal, valPtr);
 				}
 				else 
-					mBfIRBuilder->CreateStore(typedVal.mValue, valPtr);
+					mBfIRBuilder->CreateStore(typedVal.mValue, valPtr, typedVal.mType->mAlign);
 			}					
 		}
 
@@ -12446,7 +12446,7 @@ BfTypedValue BfModule::RemoveRef(BfTypedValue typedValue)
 				typedValue = BfTypedValue(typedValue.mValue, elementType, true);
 			}
 			else
-				typedValue = BfTypedValue(mBfIRBuilder->CreateLoad(typedValue.mValue), elementType, true);
+				typedValue = BfTypedValue(mBfIRBuilder->CreateAlignedLoad(typedValue.mValue, elementType->mAlign), elementType, true);
 		}
 		else
 			typedValue = BfTypedValue(typedValue.mValue, elementType, true);
@@ -12881,7 +12881,7 @@ BfIRValue BfModule::ExtractSplatValue(BfTypedValue typedValue, int componentIdx,
 					}
 					else
 					{
-						val = mBfIRBuilder->CreateLoad(val);
+						val = mBfIRBuilder->CreateAlignedLoad(val, wantType->mAlign);
 						break;
 					}
 				}
@@ -13083,7 +13083,7 @@ BfIRValue BfModule::ExtractValue(BfTypedValue typedValue, int dataIdx)
 	if (typedValue.IsAddr())
 	{
 		auto addrVal = mBfIRBuilder->CreateInBoundsGEP(typedValue.mValue, 0, dataIdx);
-		return mBfIRBuilder->CreateLoad(addrVal);
+		return mBfIRBuilder->CreateAlignedLoad(addrVal, typedValue.mType->mAlign);
 	}	
 	return mBfIRBuilder->CreateExtractValue(typedValue.mValue, dataIdx);
 }
@@ -14509,7 +14509,7 @@ BfIRValue BfModule::GetInterfaceSlotNum(BfTypeInstance* ifaceType)
 		mInterfaceSlotRefs[ifaceType] = globalValue;
 	}
 
-	return mBfIRBuilder->CreateLoad(globalValue/*, "slotOfs"*/);
+	return mBfIRBuilder->CreateAlignedLoad(globalValue/*, "slotOfs"*/, 4);
 }
 
 void BfModule::HadSlotCountDependency()
@@ -14724,7 +14724,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 	return BfTypedValue(globalValue, type, !fieldDef->mIsConst);
 }
 
-int BfModule::GetFieldDataIdx(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName)
+BfFieldInstance* BfModule::GetFieldInstance(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName)
 {
 	if (typeInst->IsDataIncomplete())
 		PopulateType(typeInst);
@@ -14733,8 +14733,7 @@ int BfModule::GetFieldDataIdx(BfTypeInstance* typeInst, int fieldIdx, const char
 		Fail(StrFormat("Invalid field data in type '%s'", TypeToString(typeInst).c_str()));
 		return 0;
 	}
-	auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];	
-	return fieldInstance.mDataIdx;
+	return &typeInst->mFieldInstances[fieldIdx];	
 }
 
 void BfModule::MarkUsingThis()
@@ -14866,7 +14865,7 @@ BfTypedValue BfModule::GetThis(bool markUsing)
 	else if ((thisLocal->mIsSplat) || (thisLocal->mIsLowered))
 		thisValue = thisLocal->mAddr;
 	else
-		thisValue = mBfIRBuilder->CreateLoad(thisLocal->mAddr);
+		thisValue = mBfIRBuilder->CreateAlignedLoad(thisLocal->mAddr, thisLocal->mResolvedType->mAlign);
 	if (markUsing)
 		useMethodState->mLocals[0]->mReadFromId = useMethodState->GetRootMethodState()->mCurAccessId++;
 
@@ -15935,9 +15934,9 @@ void BfModule::EmitReturn(const BfTypedValue& val)
 				{
 					BfIRValue retVal = mCurMethodState->mRetVal.mValue;
 					if (!mCurMethodState->mRetVal)
-						retVal = mBfIRBuilder->CreateLoad(mCurMethodState->mRetValAddr);
+						retVal = mBfIRBuilder->CreateAlignedLoad(mCurMethodState->mRetValAddr, mCurMethodInstance->mReturnType->mAlign);
 
-					mBfIRBuilder->CreateStore(val.mValue, retVal);
+					mBfIRBuilder->CreateAlignedStore(val.mValue, retVal, mCurMethodInstance->mReturnType->mAlign);
 				}
 				else if (mIsComptimeModule)
 				{
@@ -16089,7 +16088,7 @@ void BfModule::CreateDelegateInvokeMethod()
 
 	auto multicastDelegate = mBfIRBuilder->CreateBitCast(mCurMethodState->mLocals[0]->mValue, mBfIRBuilder->MapType(multicastDelegateType));
 	auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(multicastDelegate, 0, 2); // Load 'delegate.mTarget'
-	auto fieldVal = mBfIRBuilder->CreateLoad(fieldPtr);	
+	auto fieldVal = mBfIRBuilder->CreateAlignedLoad(fieldPtr, mSystem->mPtrSize);	
 	
 	BfExprEvaluator exprEvaluator(this);
 	
@@ -16151,7 +16150,7 @@ void BfModule::CreateDelegateInvokeMethod()
 		memberFuncArgs[thisIdx] = mBfIRBuilder->CreateBitCast(fieldVal, mBfIRBuilder->MapType(mCurTypeInstance));
 		auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(multicastDelegate, 0, 1); // Load 'delegate.mFuncPtr'
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, memberFuncPtrPtr);
-		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
+		auto funcPtr = mBfIRBuilder->CreateAlignedLoad(funcPtrPtr, mSystem->mPtrSize);
 		nonStaticResult = mBfIRBuilder->CreateCall(funcPtr, memberFuncArgs);
 		if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
 			mBfIRBuilder->Call_AddAttribute(nonStaticResult, mCurMethodInstance->GetStructRetIdx() + 1, BfIRAttribute_StructRet);
@@ -16169,7 +16168,7 @@ void BfModule::CreateDelegateInvokeMethod()
 		mBfIRBuilder->SetInsertPoint(falseBB);
 		auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(multicastDelegate, 0, 1); // Load 'delegate.mFuncPtr'
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, staticFuncPtrPtr);
-		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
+		auto funcPtr = mBfIRBuilder->CreateAlignedLoad(funcPtrPtr, mSystem->mPtrSize);		
 		staticResult = mBfIRBuilder->CreateCall(funcPtr, staticFuncArgs);
 		if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx(true) != -1))
 		{
@@ -17452,7 +17451,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	if ((mCurTypeInstance->IsTypedPrimitive()) && (!mCurTypeInstance->IsValuelessType()))
 	{
 		// Zero out typed primitives in ctor
-		mBfIRBuilder->CreateStore(GetDefaultValue(mCurTypeInstance->GetUnderlyingType()), mBfIRBuilder->GetArgument(0));
+		mBfIRBuilder->CreateAlignedStore(GetDefaultValue(mCurTypeInstance->GetUnderlyingType()), mBfIRBuilder->GetArgument(0), mCurTypeInstance->mAlign);
 	}		
 
 	if ((!mCurTypeInstance->IsBoxed()) && (methodDef->mMethodType == BfMethodType_Ctor) && (!hadThisInitializer))
@@ -17636,7 +17635,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					}
 
 					if ((fieldAddr) && (assignValue))
-						mBfIRBuilder->CreateStore(assignValue.mValue, fieldAddr);
+						mBfIRBuilder->CreateAlignedStore(assignValue.mValue, fieldAddr, fieldInst->mResolvedType->mAlign);
 				}
 			}
 
@@ -20300,7 +20299,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 							auto primType = mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
 							auto primPtrType = mBfIRBuilder->GetPointerTo(primType);
 							auto primPtrVal = mBfIRBuilder->CreateBitCast(paramVar->mAddr, primPtrType);
-							mBfIRBuilder->CreateStore(paramVar->mValue, primPtrVal);							
+							mBfIRBuilder->CreateAlignedStore(paramVar->mValue, primPtrVal, mCurTypeInstance->mAlign);
 							
 							if (loweredTypeCode2 != BfTypeCode_None)
 							{
@@ -20474,7 +20473,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				// We don't allow actually assignment to "this", so we just do a single load
 				//  Keep in mind we don't use the ACTUAL mValue value because that's a register, but
 				//  we need to store it in the stack frame for debugging purposes
-				auto loadedThis = mBfIRBuilder->CreateLoad(paramVar->mAddr/*, "this"*/);
+				auto loadedThis = mBfIRBuilder->CreateAlignedLoad(paramVar->mAddr/*, "this"*/, paramVar->mResolvedType->mAlign);
 				mBfIRBuilder->ClearDebugLocation(loadedThis);				
 				paramVar->mValue = loadedThis;
 			}
@@ -20985,7 +20984,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 						BfExprEvaluator exprEvaluator(this);
 						auto localVal = exprEvaluator.LoadLocal(lastParam);
 						localVal = LoadOrAggregateValue(localVal);
-						mBfIRBuilder->CreateStore(localVal.mValue, lookupAddr);
+						mBfIRBuilder->CreateAlignedStore(localVal.mValue, lookupAddr, localVal.mType->mAlign);
 					}
 					else if (!fieldInstance->mResolvedType->IsValuelessType())
 					{
@@ -21034,7 +21033,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			{
 				auto ptrType = CreatePointerType(mCurMethodInstance->mReturnType);
 				auto allocaInst = AllocLocalVariable(ptrType, "__return.addr", false);				
-				auto storeInst = mBfIRBuilder->CreateStore(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()), allocaInst);
+				auto storeInst = mBfIRBuilder->CreateAlignedStore(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()), allocaInst, mCurMethodInstance->mReturnType->mAlign);
 				mBfIRBuilder->ClearDebugLocation(storeInst);
 				mCurMethodState->mRetValAddr = allocaInst;
 			}
@@ -21047,7 +21046,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 
 		if (methodDef->mMethodType == BfMethodType_CtorCalcAppend)
 		{
-			mBfIRBuilder->CreateStore(GetConstValue(0), mCurMethodState->mRetVal.mValue);
+			mBfIRBuilder->CreateAlignedStore(GetConstValue(0), mCurMethodState->mRetVal.mValue, mCurMethodState->mRetVal.mType->mAlign);
 			BfGetSymbolReferenceKind prevSymbolKind;
 			BfAutoComplete* prevAutoComplete;
 			if (mCompiler->mResolvePassData != NULL)
@@ -21234,7 +21233,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		if ((mCurMethodState->mRetVal) && 
 			((mIsComptimeModule) || (mCurMethodInstance->GetStructRetIdx() == -1)))
 		{			
-			auto loadedVal = mBfIRBuilder->CreateLoad(mCurMethodState->mRetVal.mValue);
+			auto loadedVal = mBfIRBuilder->CreateAlignedLoad(mCurMethodState->mRetVal.mValue, mCurMethodState->mRetVal.mType->mAlign);
 			
 			CreateReturn(loadedVal);			
 			

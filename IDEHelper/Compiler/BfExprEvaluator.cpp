@@ -7428,8 +7428,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 						expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);
 						expandedParamAlloca = mModule->CreateAlloca(genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0], true, NULL, mModule->GetConstValue(numElements));
-						mModule->mBfIRBuilder->CreateStore(expandedParamAlloca, mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 1));
-						mModule->mBfIRBuilder->CreateStore(mModule->GetConstValue(numElements), mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 2));
+						mModule->mBfIRBuilder->CreateAlignedStore(expandedParamAlloca, mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 1), mModule->mSystem->mPtrSize);
+						mModule->mBfIRBuilder->CreateAlignedStore(mModule->GetConstValue(numElements), mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 2), mModule->mSystem->mPtrSize);
 						
 						PushArg(expandedParamsArray, irArgs, !wantsSplat);
 						continue;
@@ -11701,16 +11701,16 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 	auto endBB = mModule->mBfIRBuilder->CreateBlock("is.done");
 	
 	BfIRValue boolResult = mModule->CreateAlloca(boolType);
-	irb->CreateStore(irb->CreateConst(BfTypeCode_Boolean, 0), boolResult);
+	irb->CreateAlignedStore(irb->CreateConst(BfTypeCode_Boolean, 0), boolResult, 1);
 
 	mModule->EmitDynamicCastCheck(targetValue, targetType, matchBB, endBB);
 
 	mModule->AddBasicBlock(matchBB);
-	irb->CreateStore(irb->CreateConst(BfTypeCode_Boolean, 1), boolResult);
+	irb->CreateAlignedStore(irb->CreateConst(BfTypeCode_Boolean, 1), boolResult, 1);
 	irb->CreateBr(endBB);
 	
 	mModule->AddBasicBlock(endBB);	
-	mResult = BfTypedValue(irb->CreateLoad(boolResult), boolType);	
+	mResult = BfTypedValue(irb->CreateAlignedLoad(boolResult, 1), boolType);
 }
 
 void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
@@ -11986,17 +11986,17 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 	auto matchBlock = irb->CreateBlock("as.match");
 
 	BfIRValue targetVal = mModule->CreateAlloca(targetType);
-	irb->CreateStore(irb->CreateConstNull(irb->MapType(targetType)), targetVal);
+	irb->CreateAlignedStore(irb->CreateConstNull(irb->MapType(targetType)), targetVal, targetType->mAlign);
 	
 	mModule->EmitDynamicCastCheck(targetValue, targetType, matchBlock, endBB);
 
 	mModule->AddBasicBlock(matchBlock);
 	BfIRValue castedCallResult = mModule->mBfIRBuilder->CreateBitCast(targetValue.mValue, mModule->mBfIRBuilder->MapType(targetType));
-	irb->CreateStore(castedCallResult, targetVal);
+	irb->CreateAlignedStore(castedCallResult, targetVal, targetValue.mType->mAlign);
 	irb->CreateBr(endBB);
 
 	mModule->AddBasicBlock(endBB);	
-	mResult = BfTypedValue(irb->CreateLoad(targetVal), targetType);
+	mResult = BfTypedValue(irb->CreateAlignedLoad(targetVal, targetType->mAlign), targetType);
 	_CheckResult();
 }
 
@@ -12260,7 +12260,7 @@ BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentif
 								{
 									auto refType = (BfRefType*)field.mResolvedType;
 									auto underlyingType = refType->GetUnderlyingType();
-									result = BfTypedValue(mModule->mBfIRBuilder->CreateLoad(result.mValue), underlyingType, true);
+									result = BfTypedValue(mModule->mBfIRBuilder->CreateAlignedLoad(result.mValue, underlyingType->mAlign), underlyingType, true);
 								}
 								else if (fieldDef->mIsReadOnly)
 									result = mModule->LoadValue(result);
@@ -14275,7 +14275,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 	else
 		valPtr = mModule->GetDefaultValue(nullPtrType);
 	auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(baseDelegate, 0, targetField.mDataIdx);
-	mModule->mBfIRBuilder->CreateStore(valPtr, fieldPtr);
+	mModule->mBfIRBuilder->CreateAlignedStore(valPtr, fieldPtr, targetField.mResolvedType->mAlign);
 
 	// >> delegate.mFuncPtr = bindResult.mFunc
 	if (lambdaInstance->mClosureFunc)
@@ -14283,7 +14283,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 		auto nullPtrType = mModule->GetPrimitiveType(BfTypeCode_NullPtr);		
 		auto valPtr = mModule->mBfIRBuilder->CreateBitCast(lambdaInstance->mClosureFunc, mModule->mBfIRBuilder->MapType(nullPtrType));
 		auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(baseDelegate, 0, funcPtrField.mDataIdx);
-		mModule->mBfIRBuilder->CreateStore(valPtr, fieldPtr);
+		mModule->mBfIRBuilder->CreateAlignedStore(valPtr, fieldPtr, funcPtrField.mResolvedType->mAlign);
 	}
 	
 	mModule->AddDependency(useTypeInstance, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);
@@ -14303,7 +14303,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 
 					auto localVar = mModule->mCurMethodState->mLocals[0];
 					auto capturedValue = mModule->mBfIRBuilder->CreateInBoundsGEP(localVar->mValue, 0, fieldInstance.mDataIdx);
-					capturedValue = mModule->mBfIRBuilder->CreateLoad(capturedValue);
+					capturedValue = mModule->mBfIRBuilder->CreateAlignedLoad(capturedValue, fieldInstance.mResolvedType->mAlign);
 					auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mResult.mValue, 0, fieldInstance.mDataIdx);
 					mModule->mBfIRBuilder->CreateStore(capturedValue, fieldPtr);
 					
@@ -14340,7 +14340,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 				if (!IsVar(capturedTypedVal.mType))
 				{
 					auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mResult.mValue, 0, fieldInstance->mDataIdx);
-					mModule->mBfIRBuilder->CreateStore(capturedValue, fieldPtr);
+					mModule->mBfIRBuilder->CreateAlignedStore(capturedValue, fieldPtr, fieldInstance->mResolvedType->mAlign);
 				}
 			}
 			else
@@ -14359,7 +14359,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 			auto voidPtrType = mModule->CreatePointerType(voidType);
 			auto dtorThunk = mModule->mBfIRBuilder->CreateBitCast(lambdaInstance->mDtorFunc, mModule->mBfIRBuilder->MapType(voidPtrType));
 
-			mModule->mBfIRBuilder->CreateStore(dtorThunk, fieldPtr);
+			mModule->mBfIRBuilder->CreateAlignedStore(dtorThunk, fieldPtr, mModule->mSystem->mPtrSize);
 			fieldIdx++;
 		}
 	}	
@@ -20360,7 +20360,7 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 			else if (typedVal.IsSplat())
 				mModule->AggregateSplatIntoAddr(typedVal, memberVal);
 			else
-				mModule->mBfIRBuilder->CreateStore(typedVal.mValue, memberVal);
+				mModule->mBfIRBuilder->CreateAlignedStore(typedVal.mValue, memberVal, typedVal.mType->mAlign);
 		}
 	}	
 }
@@ -20445,14 +20445,14 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 		{
 			thisValue = mModule->MakeAddressable(thisValue);
 			BfIRValue hasValuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, 1); // mHasValue
-			isNotNull = mModule->mBfIRBuilder->CreateLoad(hasValuePtr);			
+			isNotNull = mModule->mBfIRBuilder->CreateAlignedLoad(hasValuePtr, 1);			
 			thisValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), elementType, true);
 		}
 		else
 		{
 			thisValue = mModule->MakeAddressable(thisValue);
 			BfIRValue hasValuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, 2); // mHasValue
-			isNotNull = mModule->mBfIRBuilder->CreateLoad(hasValuePtr);
+			isNotNull = mModule->mBfIRBuilder->CreateAlignedLoad(hasValuePtr, 1);
 			BfIRValue valuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, 1); // mValue
 			thisValue = BfTypedValue(valuePtr, elementType, true);
 		}		
@@ -21650,7 +21650,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			if ((propDef != NULL) && (!ptr.IsAddr()))
 				writeToProp = BfTypedValue(resultValue, ptr.mType);
 			else
-				mModule->mBfIRBuilder->CreateStore(resultValue, ptr.mValue, mIsVolatileReference);
+				mModule->mBfIRBuilder->CreateAlignedStore(resultValue, ptr.mValue, ptr.mType->mAlign, mIsVolatileReference);
 			if (unaryOp == BfUnaryOp_PostIncrement)
 				mResult = BfTypedValue(origVal, ptr.mType, false);
 			else
@@ -21707,7 +21707,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			if ((propDef != NULL) && (!ptr.IsAddr()))
 				writeToProp = BfTypedValue(resultValue, ptr.mType);
 			else
-				mModule->mBfIRBuilder->CreateStore(resultValue, ptr.mValue, mIsVolatileReference);
+				mModule->mBfIRBuilder->CreateAlignedStore(resultValue, ptr.mValue, ptr.mType->mAlign, mIsVolatileReference);
 			if (unaryOp == BfUnaryOp_PostDecrement)
 				mResult = BfTypedValue(origVal, ptr.mType, false);
 			else
@@ -22706,7 +22706,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					mModule->mBfIRBuilder->PopulateType(resultType);
 					BfTypedValue nullableTypedVale = mModule->MakeAddressable(*resultTypedValue);
 					BfIRValue hasValuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(nullableTypedVale.mValue, 0, 1);
-					BfIRValue hasValueValue = mModule->mBfIRBuilder->CreateLoad(hasValuePtr);
+					BfIRValue hasValueValue = mModule->mBfIRBuilder->CreateAlignedLoad(hasValuePtr, 1);
 					if (isEquality)
 						hasValueValue = mModule->mBfIRBuilder->CreateNot(hasValueValue);
 					mResult = BfTypedValue(hasValueValue, boolType);
@@ -22716,7 +22716,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					mModule->mBfIRBuilder->PopulateType(resultType);
 					BfTypedValue nullableTypedVale = mModule->MakeAddressable(*resultTypedValue);
 					BfIRValue hasValuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(nullableTypedVale.mValue, 0, 2);
-					BfIRValue hasValueValue = mModule->mBfIRBuilder->CreateLoad(hasValuePtr);
+					BfIRValue hasValueValue = mModule->mBfIRBuilder->CreateAlignedLoad(hasValuePtr, 1);
 					if (isEquality)
 						hasValueValue = mModule->mBfIRBuilder->CreateNot(hasValueValue);
 					mResult = BfTypedValue(hasValueValue, boolType);

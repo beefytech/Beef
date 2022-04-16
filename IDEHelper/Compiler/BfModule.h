@@ -1696,7 +1696,7 @@ public:
 	BfTypedValue GetCompilerFieldValue(const StringImpl& str);
 	BfTypedValue GetCompilerFieldValue(const BfTypedValue typedVal);
 	BfTypedValue ReferenceStaticField(BfFieldInstance* fieldInstance);
-	int GetFieldDataIdx(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName = NULL);
+	BfFieldInstance* GetFieldInstance(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName = NULL);
 	BfTypedValue GetThis(bool markUsing = true);
 	void MarkUsingThis();
 	BfLocalVariable* GetThisVariable();
