@@ -254,7 +254,7 @@ namespace System
 		[LinkName("#CompileRev")]
 		public static extern int32 CompileRev;
 
-		[Comptime]
+		[Comptime(ConstEval=true)]
 		public static void Assert(bool cond)
 		{
 			if (!cond)
