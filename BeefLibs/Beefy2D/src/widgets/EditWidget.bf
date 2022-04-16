@@ -3247,7 +3247,9 @@ namespace Beefy.widgets
                         int lineStart;
                         int lineEnd;
                         GetLinePosition(lineIdx, out lineStart, out lineEnd);
-                        //lineStart += endAdjust;
+                        
+						if (lineStart == lineEnd)
+							continue;
 
                         for (int32 i = 0; i < mTabLength; i++)
                         {
@@ -3255,7 +3257,6 @@ namespace Beefy.widgets
                             if (((c == '\t') && (i == 0)) || (c == ' '))
                             {
                                 indentTextAction.mRemoveCharList.Add(((int32)lineStart + i + endAdjust, c));
-                                //RemoveText(lineStart, 1);
                                 endAdjust--;
                             }
                             if (c != ' ')
@@ -3276,7 +3277,6 @@ namespace Beefy.widgets
                         int lineEnd;
                         GetLinePosition(lineIdx, out lineStart, out lineEnd);
                         lineStart += endAdjust;
-                        //InsertText(lineStart, "\t");
                         indentTextAction.mInsertCharList.Add(((int32)lineStart, '\t'));
                         endAdjust++;
                     }
