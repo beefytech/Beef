@@ -66,7 +66,7 @@ namespace System
 #endif
 		}
 
-		public void** ToVAListPtr() mut
+		public void* ToVAListPtr() mut
 		{
 			return &mVAList;
 		}
