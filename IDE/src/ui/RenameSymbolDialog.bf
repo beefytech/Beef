@@ -153,6 +153,9 @@ namespace IDE.ui
 			if (!mAwaitingGetSymbolInfo)
 				return true;
 
+			if (gApp.mBfResolveCompiler == null)
+				return false;
+
 			if (gApp.mBfResolveCompiler.IsPerformingBackgroundOperationHi())
 				return false;
 
@@ -849,6 +852,12 @@ namespace IDE.ui
         public override void Update()
         {
             base.Update();
+
+			if (gApp.mBfResolveCompiler == null)
+			{
+				Close();
+				return;
+			}
 
 			if ((mUpdatingProjectSources == null) && (mUpdateCnt > 30) && (gApp.mUpdateCnt % 4 == 0))
 				MarkDirty();
