@@ -4563,7 +4563,7 @@ BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue ta
 		}
 	}
 	
-	bool isBaseLookup = typeInstance != target.mType;	
+	bool isBaseLookup = (target.mType) && (typeInstance != target.mType);
 	if ((isBaseLookup) && (target.mType->IsWrappableType()))
 		isBaseLookup = false;
 
