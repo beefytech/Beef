@@ -5362,7 +5362,7 @@ void BfModule::Visit(BfContinueStatement* continueStmt)
 			// Our mixin may just require that we're injected into a breakable scope
 		}
 		else
-			Fail("'Continue' not applicable in this block", continueStmt);
+			Fail("'continue' not applicable in this block", continueStmt);
 		return;
 	}
 
@@ -5417,12 +5417,36 @@ void BfModule::Visit(BfContinueStatement* continueStmt)
 void BfModule::Visit(BfFallthroughStatement* fallthroughStmt)
 {
 	UpdateSrcPos(fallthroughStmt);
-	if ((mCurMethodState->mBreakData == NULL) || (!mCurMethodState->mBreakData->mIRFallthroughBlock))
+	BfBreakData* breakData = mCurMethodState->mBreakData;
+	while (breakData != NULL)
 	{
-		Fail("'Fallthrough' not applicable in this block", fallthroughStmt);
+		if (breakData->mIRFallthroughBlock)
+			break;
+		breakData = breakData->mPrevBreakData;
+	}
+
+	if (mCurMethodState->mInDeferredBlock)
+	{
+		auto checkScope = mCurMethodState->mCurScope;
+		while (checkScope != NULL)
+		{
+			if (checkScope == breakData->mScope)
+				break;
+			if (checkScope->mIsDeferredBlock)
+			{
+				Fail("The fallthrough crosses a deferred block boundary", fallthroughStmt);
+				return;
+			}
+			checkScope = checkScope->mPrevScope;
+		}
+	}
+
+	if (breakData == NULL)
+	{
+		Fail("'fallthrough' not applicable in this block", fallthroughStmt);
 		return;
 	}
-	EmitDeferredScopeCalls(true, mCurMethodState->mBreakData->mScope, mCurMethodState->mBreakData->mIRFallthroughBlock);	
+	EmitDeferredScopeCalls(true, breakData->mScope, breakData->mIRFallthroughBlock);
 	mCurMethodState->mLeftBlockUncond = true; // Not really a return, but handled the same way
 	if (mCurMethodState->mDeferredLocalAssignData != NULL)
 		mCurMethodState->mDeferredLocalAssignData->mHadFallthrough = true;
