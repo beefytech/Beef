@@ -286,7 +286,10 @@ COFF::~COFF()
 }
 
 const char* COFF::CvCheckTargetMatch(const char* name, bool& wasBeef)
-{	
+{
+	if (mGlobalsTargetType == NULL)
+		return NULL;
+
 	/*if (mGlobalsTargetType->IsGlobalsContainer())
 	{
 		wasBeef = true;
