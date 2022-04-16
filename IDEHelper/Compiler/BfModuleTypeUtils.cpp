@@ -12873,7 +12873,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			BfConstExprValueType* toConstExprValueType = (BfConstExprValueType*)toType;
 			
 			auto variantVal = TypedValueToVariant(srcNode, typedVal);
-			if ((mBfIRBuilder->IsInt(variantVal.mTypeCode)) && (mBfIRBuilder->IsInt(toConstExprValueType->mValue.mTypeCode)))
+			if ((mBfIRBuilder->IsIntable(variantVal.mTypeCode)) && (mBfIRBuilder->IsIntable(toConstExprValueType->mValue.mTypeCode)))
 			{
 				if (variantVal.mInt64 == toConstExprValueType->mValue.mInt64)
 					return typedVal.mValue;
