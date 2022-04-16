@@ -250,7 +250,7 @@ public:
 	CvStreamReader mCvIPIReader;
 	CvStreamReader mCvSymbolRecordReader;
 
-	String mPDBPath;	
+	StringT<128> mPDBPath;	
 
 	SafeMemStream* mCvDataStream;
 	CvStringTable mStringTable;
