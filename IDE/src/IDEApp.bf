@@ -8089,7 +8089,31 @@ namespace IDE
         public void GetBeefPreprocessorMacros(DefinesSet macroList)
         {
 			var workspaceOptions = GetCurWorkspaceOptions();
-			let platform = Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple);
+			var targetTriple = scope String();
+
+			if (TargetTriple.IsTargetTriple(gApp.mPlatformName))
+				targetTriple.Set(gApp.mPlatformName);
+			else
+				Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, .GNU, targetTriple);
+			if (!workspaceOptions.mTargetTriple.IsEmpty)
+				targetTriple.Set(workspaceOptions.mTargetTriple);
+
+			if (targetTriple.StartsWith("x86_64-"))
+				macroList.Add("BF_MACHINE_X64");
+			else if (targetTriple.StartsWith("i686-"))
+				macroList.Add("BF_MACHINE_X86");
+			else if ((targetTriple.StartsWith("arm64")) || (targetTriple.StartsWith("aarch64")))
+				macroList.Add("BF_MACHINE_AARCH64");
+			else if (targetTriple.StartsWith("armv"))
+				macroList.Add("BF_MACHINE_ARM");
+			else if (targetTriple.StartsWith("wasm32"))
+				macroList.Add("BF_MACHINE_WASM32");
+			else if (targetTriple.StartsWith("wasm64"))
+				macroList.Add("BF_MACHINE_WASM64");
+			else
+				macroList.Add("BF_MACHINE_X64"); // Default
+
+			let platform = Workspace.PlatformType.GetFromName(mPlatformName, targetTriple);
 			if (platform != .Unknown)
 			{
 				String def = scope .();
