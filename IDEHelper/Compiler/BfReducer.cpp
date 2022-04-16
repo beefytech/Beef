@@ -6302,6 +6302,17 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 	nextNode = mVisitorPos.GetNext();
 	if (nextNode != NULL)
 	{
+		if (auto nextTokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+		{
+			if ((nextTokenNode->mToken == BfToken_LBracket) && (depth > 0))
+			{
+				// We can't apply this to a custom attribute
+				AddErrorNode(tokenNode);
+				Fail("Unexpected token", tokenNode);
+				return NULL;
+			}
+		}
+
 		mVisitorPos.MoveNext();
 		typeMember = ReadTypeMember(nextNode, true, depth + 1);
 	}
@@ -6798,6 +6809,12 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			{
 				isTypeRef = true;
 			}
+		}
+
+		if ((token == BfToken_LBracket) && (depth > 0))
+		{
+			Fail("Unexpected custom attribute", node);
+			return NULL;
 		}
 
 		if (isTypeRef)
