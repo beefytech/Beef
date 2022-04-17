@@ -4661,7 +4661,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					for (auto& kv : ceInfo->mEmitSourceMap)
 					{
 						hashCtx.Mixin(kv.mKey);
-						hashCtx.Mixin(kv.mValue);
+						hashCtx.Mixin(kv.mValue.mKind);
+						hashCtx.Mixin(kv.mValue.mSrcStart);
+						hashCtx.Mixin(kv.mValue.mSrcEnd);
 					}
 					hashCtx.Mixin(ceInfo->mOnCompileMap.mCount);
 					for (auto& kv : ceInfo->mOnCompileMap)
