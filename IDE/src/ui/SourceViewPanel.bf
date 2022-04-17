@@ -4813,6 +4813,9 @@ namespace IDE.ui
         {
 			//Debug.WriteLine("UpdateCharData: {0}", char8Data);
 
+			if (mEditWidget == null)
+				return;
+
 			scope AutoBeefPerf("SourceViewPanel.UpdateCharData");
 
 			charIdData.Prepare();
@@ -5431,7 +5434,9 @@ namespace IDE.ui
 
 				bool hasHoverWatchOpen = (mHoverWatch != null) && (mHoverWatch.mListView != null);
 	            if (mHoverWatch == null)
+				{
 	                mHoverWatch = new HoverWatch();
+				}
 
 	            if (debugExpr != null)
 	                triedShow = true;

@@ -6241,6 +6241,30 @@ namespace IDE.ui
 				RefreshCollapseRegion(entry, prevAnchorLine, failed);
 			}
 
+			for (var embedKV in mEmbeds)
+			{
+				if (var emitEmbed = embedKV.value as EmitEmbed)
+				{
+					int32 anchorIdx = -1;
+					int32 anchorLine = -1;
+					Update(emitEmbed.mAnchorId, ref anchorIdx, ref anchorLine);
+
+					if (anchorLine != embedKV.key)
+					{
+						if (mEmbeds.GetAndRemove(embedKV.key) case .Ok(let val))
+						{
+							if ((anchorLine != -1) && (mEmbeds.TryAdd(anchorLine, var keyPtr, var valuePtr)))
+							{
+								val.value.mLine = anchorLine;
+								*valuePtr = val.value;
+							}
+							else
+								delete val.value;
+						}
+					}
+				}
+			}
+
 			//Debug.WriteLine($"RefreshCollapseRegions Count:{mOrderedCollapseEntries.Count} Time:{sw.ElapsedMilliseconds}ms");
 			sw.Stop();
 

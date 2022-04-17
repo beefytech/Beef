@@ -2864,6 +2864,15 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 			if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration))
 				bodyNode = methodDecl->mBody;
 
+			auto _Classify = [&](BfParser* emitParser)
+			{
+				if (emitParser->mSourceClassifier == NULL)
+					return;
+				emitParser->mSourceClassifier->VisitChild(emitParser->mRootNode);
+				emitParser->mSourceClassifier->VisitChild(emitParser->mSidechannelRootNode);
+				emitParser->mSourceClassifier->VisitChild(emitParser->mErrorRootNode);
+			};
+
 			if (!ceEmitContext.mEmitData.IsEmpty())
 			{
 				SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, customAttribute.mRef);				
@@ -2887,6 +2896,7 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 				bfReducer.mSource = emitParser;
 				bfReducer.mAlloc = emitParser->mAlloc;
 				bfReducer.HandleBlock(emitParser->mRootNode, false);
+				_Classify(emitParser);
 				Visit(emitParser->mRootNode);
 				FinishCEParseContext(customAttribute.mRef, typeInstance, &ceParseContext);
 			}
@@ -2914,6 +2924,7 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 				bfReducer.mSource = emitParser;
 				bfReducer.mAlloc = emitParser->mAlloc;
 				bfReducer.HandleBlock(emitParser->mRootNode, false);
+				_Classify(emitParser);
 				auto deferredBlock = AddDeferredBlock(emitParser->mRootNode, &mCurMethodState->mHeadScope);
 				deferredBlock->mEmitRefNode = customAttribute.mRef;
 				FinishCEParseContext(customAttribute.mRef, typeInstance, &ceParseContext);

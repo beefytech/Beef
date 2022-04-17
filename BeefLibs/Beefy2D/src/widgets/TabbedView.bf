@@ -238,9 +238,7 @@ namespace Beefy.widgets
                         mNewDraggingWindow = new WidgetWindow(parentWindow, "",
                             (int32)(mSrcDraggingWindow.mClientX + rootX - mDragHelper.mMouseDownX), (int32)(mSrcDraggingWindow.mClientY + rootY - mDragHelper.mMouseDownY),
                             300, 500,
-                            BFWindowBase.Flags.Border | BFWindowBase.Flags.ThickFrame | BFWindowBase.Flags.Resizable | BFWindowBase.Flags.SysMenu |
-                            BFWindowBase.Flags.Caption | BFWindowBase.Flags.Minimize | BFWindowBase.Flags.ToolWindow | BFWindowBase.Flags.TopMost |
-                            BFWindowBase.Flags.UseParentMenu | BFWindowBase.Flags.Maximize,
+                            .Border | .ThickFrame | .Resizable | .SysMenu | .Caption | .Minimize | .TopMost | .UseParentMenu | .Maximize,
                             subFrame);
                         Dock(subFrame, null, DockingFrame.WidgetAlign.Top);
                         //subFrame.AddDockedWidget(fourthTabbedView, null, DockingFrame.WidgetAlign.Left, false);
