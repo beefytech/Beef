@@ -430,6 +430,7 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetName,
 	CeFunctionKind_Method_GetInfo,
 	CeFunctionKind_Method_GetParamInfo,
+	CeFunctionKind_Method_GetGenericArg,
 	
 	CeFunctionKind_EmitTypeBody,
 	CeFunctionKind_EmitAddInterface,
@@ -1007,7 +1008,6 @@ public:
 	Dictionary<int, BfCeTypeEmitEntry> mOnCompileMap;
 	Dictionary<int, BfCeTypeEmitEntry> mTypeIFaceMap;
 	Dictionary<int64, BfCeTypeEmitSource> mEmitSourceMap; // key is (extension<<32)|charId
-
 	Array<int> mPendingInterfaces;
 	Dictionary<CeRebuildKey, CeRebuildValue> mRebuildMap;
 	Val128 mHash;

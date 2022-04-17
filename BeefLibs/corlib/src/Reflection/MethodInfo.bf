@@ -55,6 +55,9 @@ namespace System.Reflection
 		public int ParamCount => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mParamCount :
 			mData.mMethodData.[Friend]mParamCount;
+		public int GenericArgCount => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mGenericArgCount :
+			0;
 
 		public bool IsConstructor => Compiler.IsComptime ?
 			(Name == "__BfCtor" || Name == "__BfStaticCtor") :
@@ -78,6 +81,18 @@ namespace System.Reflection
 			{
 				Debug.Assert((uint)paramIdx < (uint)mData.mMethodData.mParamCount);
 				return Type.[Friend]GetType(mData.mMethodData.mParamData[paramIdx].mType);
+			}
+		}
+
+		public Type GetGenericArgType(int genericArgIdx)
+		{
+			if (Compiler.IsComptime)
+			{
+				return Type.[Friend]Comptime_Method_GetGenericArg(mData.mComptimeMethodInstance, (.)genericArgIdx);
+			}
+			else
+			{
+				Runtime.FatalError();
 			}
 		}
 

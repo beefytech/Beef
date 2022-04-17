@@ -503,6 +503,7 @@ namespace System
 		{
 			public int32 mReturnTypeId;
 			public int32 mParamCount;
+			public int32 mGenericArgCount;
 			public MethodFlags mMethodFlags;
 			public int32 mMethodIdx;
 		}
@@ -540,6 +541,7 @@ namespace System
 		static extern String Comptime_Method_GetName(int64 methodHandle);
 		static extern ComptimeMethodData Comptime_Method_GetInfo(int64 methodHandle);
 		static extern ComptimeParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
+		static extern Type Comptime_Method_GetGenericArg(int64 methodHandle, int32 genericArgIdx);
 		static extern String Comptime_Field_GetName(int64 fieldHandle);
 		static extern ComptimeFieldInfo Comptime_Field_GetInfo(int64 fieldHandle);
 

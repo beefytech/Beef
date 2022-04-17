@@ -5910,10 +5910,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{	
 				// int32 mReturnType
 				// int32 mParamCount
+				// int32 mGenericArgCount
 				// int16 mFlags
 				// int32 mMethodIdx
 
-				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+4+2+4);
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+4+4+2+4);
 				
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
@@ -5922,12 +5923,17 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 				
+				int genericArgCount = 0;
+				if (methodInstance->mMethodInfoEx != NULL)
+					genericArgCount = methodInstance->mMethodInfoEx->mMethodGenericArguments.mSize;
+
 				*(int32*)(stackPtr + 0) = methodInstance->mReturnType->mTypeId;
 				*(int32*)(stackPtr + 4) = methodInstance->GetParamCount();
-				*(int16*)(stackPtr + 4+4) = methodInstance->GetMethodFlags();
-				*(int32*)(stackPtr + 4+4+2) = methodInstance->mMethodDef->mIdx;
+				*(int32*)(stackPtr + 4+4) = genericArgCount;
+				*(int16*)(stackPtr + 4+4+4) = methodInstance->GetMethodFlags();
+				*(int32*)(stackPtr + 4+4+4+2) = methodInstance->mMethodDef->mIdx;
 			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetParamInfo)			
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetParamInfo)
 			{	
 				// int32 mParamType				
 				// int16 mFlags
@@ -5954,6 +5960,28 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
 				*(int16*)(stackPtr + 4) = 0; // Flags
 				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);								
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetGenericArg)
+			{
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
+				int32 genericArgIdx = *(int32*)((uint8*)stackPtr + ptrSize + 8);
+				
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}
+
+				if ((methodInstance->mMethodInfoEx == NULL) || (genericArgIdx < 0) || (genericArgIdx >= methodInstance->mMethodInfoEx->mMethodGenericArguments.mSize))
+				{
+					_Fail("genericArgIdx is out of range");
+					return false;
+				}
+				
+				auto reflectType = GetReflectType(methodInstance->mMethodInfoEx->mMethodGenericArguments[genericArgIdx]->mTypeId);
+				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitTypeBody)
 			{
@@ -9053,6 +9081,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Method_GetParamInfo")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetParamInfo;
+				}
+				else if (methodDef->mName == "Comptime_Method_GetGenericArg")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_GetGenericArg;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mCompilerTypeDef))
