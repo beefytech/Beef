@@ -257,7 +257,7 @@ void BeInliner::Visit(BeStackSaveInst* stackSaveInst)
 void BeInliner::Visit(BeStackRestoreInst* stackRestoreInst)
 {
 	auto destStackRestoreInst = AllocInst(stackRestoreInst);
-	destStackRestoreInst->mStackVal = Remap(stackRestoreInst);
+	destStackRestoreInst->mStackVal = Remap(stackRestoreInst->mStackVal);
 }
 
 void BeInliner::Visit(BeObjectAccessCheckInst* objectAccessCheckInst)
