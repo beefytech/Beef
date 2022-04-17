@@ -326,6 +326,7 @@ public:
 	BfContext* mContext;
 	BfCodeGen mCodeGen;
 	String mOutputDirectory;
+	int mLastMidCompileRefreshRevision;
 	bool mCanceling;
 	bool mHasRequiredTypes;
 	bool mNeedsFullRefresh;

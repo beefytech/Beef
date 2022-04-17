@@ -482,6 +482,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mContext = new BfContext(this);	
 	mCeMachine = new CeMachine(this);
 	mCurCEExecuteId = -1;
+	mLastMidCompileRefreshRevision = -1;
 }
 
 BfCompiler::~BfCompiler()

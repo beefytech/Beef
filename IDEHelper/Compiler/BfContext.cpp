@@ -1197,7 +1197,18 @@ void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const St
 	dType->mRebuildFlags = (BfTypeRebuildFlags)(dType->mRebuildFlags | BfTypeRebuildFlag_ChangedMidCompile);
 	int prevDeletedTypes = mCompiler->mStats.mTypesDeleted;
 	if (mCompiler->mIsResolveOnly)
-		mCompiler->mNeedsFullRefresh = true;
+	{
+		if (mCompiler->mLastMidCompileRefreshRevision == mCompiler->mRevision - 1)
+		{
+			// Don't repeatedly full refresh in the case of non-deterministic emits
+		}
+		else
+		{
+			mCompiler->mNeedsFullRefresh = true;
+			mCompiler->mLastMidCompileRefreshRevision = mCompiler->mRevision;
+		}
+
+	}
 	BfLogSysM("Rebuilding dependent types MidCompile Type:%p Reason:%s\n", dType, reason.c_str());
 	RebuildDependentTypes(dType);
 
