@@ -12,6 +12,18 @@ class BfResolvePassData;
 class BfDefBuilder : public BfStructuralVisitor
 {
 public:
+	struct NamespaceState
+	{
+		BfAtomComposite mNamespace;
+		int mNamespaceSearchCount;
+
+		NamespaceState()
+		{
+			mNamespaceSearchCount = -1;
+		}
+	};
+
+public:
 	BfSource* mCurSource;
 	BfSystem* mSystem;
 	BfPassInstance* mPassInstance;
@@ -27,6 +39,9 @@ public:
 	Array<BfTypeReference*> mInternalAccessSet;
 	HashContext* mFullHashCtx;
 	HashContext* mSignatureHashCtx;
+	
+	Array<NamespaceState> mFileLevelNamespaceState;
+	int mNamespaceBlockDepth;	
 
 public:
 	void ParseGenericParams(BfGenericParamsDeclaration* genericParamsDecl, BfGenericConstraintsDeclaration* genericConstraints, Array<BfGenericParamDef*>& genericParams, Array<BfExternalConstraintDef>* externConstraintDefs, int outerGenericSize, bool isInGeneric);
@@ -45,6 +60,7 @@ public:
 	void ParseAttributes(BfAttributeDirective* attributes, BfTypeDef* typeDef);
 	BfMethodDef* CreateMethodDef(BfMethodDeclaration* methodDecl, BfMethodDef* outerMethodDef = NULL);
 	BfError* Fail(const StringImpl& errorStr, BfAstNode* refNode);
+	void SetNamespaceState(const NamespaceState& namespaceState);
 
 public:
 	BfDefBuilder(BfSystem* bfSystem);

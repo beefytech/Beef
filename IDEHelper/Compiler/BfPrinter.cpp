@@ -3008,7 +3008,7 @@ void BfPrinter::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 	VisitChild(namespaceDeclaration->mNamespaceNode);
 	ExpectSpace();
 	VisitChild(namespaceDeclaration->mNameNode);	
-	VisitChild(namespaceDeclaration->mBlock);	
+	VisitChild(namespaceDeclaration->mBody);
 }
 
 void BfPrinter::DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState)

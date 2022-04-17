@@ -76,7 +76,7 @@ void BfNamespaceVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 	if (mResolvePassData->mAutoComplete != NULL)
 		mResolvePassData->mAutoComplete->CheckNamespace(namespaceDeclaration->mNameNode, mNamespace);
 	mResolvePassData->HandleNamespaceReference(namespaceDeclaration->mNameNode, mNamespace);
-	VisitChild(namespaceDeclaration->mBlock);	
+	VisitChild(namespaceDeclaration->mBody);	
 	mNamespace = prevNamespace;
 }
 

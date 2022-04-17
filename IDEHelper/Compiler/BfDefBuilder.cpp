@@ -68,6 +68,7 @@ BfDefBuilder::BfDefBuilder(BfSystem* bfSystem)
 
 	mFullHashCtx = NULL;
 	mSignatureHashCtx = NULL;
+	mNamespaceBlockDepth = 0;
 }
 
 BfDefBuilder::~BfDefBuilder()
@@ -2493,11 +2494,43 @@ void BfDefBuilder::Visit(BfUsingModDirective* usingDirective)
 		mStaticSearch.Add(usingDirective->mTypeRef);
 }
 
+void BfDefBuilder::SetNamespaceState(const NamespaceState& namespaceState)
+{
+	while ((int)mNamespaceSearch.size() > namespaceState.mNamespaceSearchCount)
+	{
+		BfAtomComposite& atomComposite = mNamespaceSearch[0];
+		mSystem->ReleaseAtomComposite(atomComposite);
+		mNamespaceSearch.RemoveAt(0);
+	}
+	mNamespace = namespaceState.mNamespace;
+}
+
 void BfDefBuilder::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 {
-	BfAtomComposite prevNamespace = mNamespace;
-	int prevNamespaceSearchCount = (int)mNamespaceSearch.size();
+	auto blockNode = BfNodeDynCast<BfBlock>(namespaceDeclaration->mBody);
+	bool isFileLevel = (blockNode == NULL) && (namespaceDeclaration->mBody != NULL);
 	
+	if (mNamespaceBlockDepth < mFileLevelNamespaceState.mSize)
+	{
+		auto& prevNamespaceState = mFileLevelNamespaceState[mNamespaceBlockDepth];
+		if (prevNamespaceState.mNamespaceSearchCount != -1)
+		{
+			SetNamespaceState(prevNamespaceState);
+			prevNamespaceState.mNamespaceSearchCount = -1;
+		}
+	}
+
+	NamespaceState namespaceState;
+	namespaceState.mNamespace = mNamespace;
+	namespaceState.mNamespaceSearchCount = (int)mNamespaceSearch.size();
+	
+	if (isFileLevel)
+	{
+		while (mNamespaceBlockDepth >= mFileLevelNamespaceState.mSize)
+			mFileLevelNamespaceState.Add(NamespaceState());
+		mFileLevelNamespaceState[mNamespaceBlockDepth] = namespaceState;
+	}
+
 	if (namespaceDeclaration->mNameNode == NULL)
 		return;
 
@@ -2531,14 +2564,15 @@ void BfDefBuilder::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 		mSystem->ReleaseAtom(namespaceAtom);		
 	}
 	
-	VisitChild(namespaceDeclaration->mBlock);
-	while ((int)mNamespaceSearch.size() > prevNamespaceSearchCount)		
+	if (blockNode != NULL)
 	{
-		BfAtomComposite& atomComposite = mNamespaceSearch[0];
-		mSystem->ReleaseAtomComposite(atomComposite);
-		mNamespaceSearch.RemoveAt(0);
+		mNamespaceBlockDepth++;
+		VisitChild(blockNode);
+		mNamespaceBlockDepth--;
 	}
-	mNamespace = prevNamespace;
+
+	if (!isFileLevel)
+		SetNamespaceState(namespaceState);
 }
 
 void BfDefBuilder::Visit(BfBlock* block)

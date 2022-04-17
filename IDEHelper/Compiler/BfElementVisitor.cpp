@@ -1225,7 +1225,7 @@ void BfElementVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 
 	VisitChild(namespaceDeclaration->mNamespaceNode);
 	VisitChild(namespaceDeclaration->mNameNode);
-	VisitChild(namespaceDeclaration->mBlock);
+	VisitChild(namespaceDeclaration->mBody);
 }
 
 void BfElementVisitor::Visit(BfBlock* block)

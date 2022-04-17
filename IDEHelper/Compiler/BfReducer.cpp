@@ -8537,14 +8537,22 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		ReplaceNode(tokenNode, namespaceDeclaration);
 		MoveNode(identifierNode, namespaceDeclaration);
 
-		auto blockNode = ExpectBlockAfter(namespaceDeclaration);
-		if (blockNode == NULL)
+		BfAstNode* bodyNode = NULL;
+		BfBlock* blockNode = NULL;
+
+		if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+			bodyNode = ExpectTokenAfter(namespaceDeclaration, BfToken_Semicolon);
+		else
+			bodyNode = blockNode = ExpectBlockAfter(namespaceDeclaration);
+		
+		if (bodyNode == NULL)
 			return namespaceDeclaration;
-		MoveNode(blockNode, namespaceDeclaration);
-		namespaceDeclaration->mBlock = blockNode;
+		MoveNode(bodyNode, namespaceDeclaration);
+		namespaceDeclaration->mBody = bodyNode;
 
 		mCurNamespaceStack.Add(namespaceDeclaration);
-		HandleTopLevel(namespaceDeclaration->mBlock);
+		if (blockNode != NULL)
+			HandleTopLevel(blockNode);
 		mCurNamespaceStack.pop_back();
 		return namespaceDeclaration;
 	}

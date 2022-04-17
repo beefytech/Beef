@@ -9548,7 +9548,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 
 		virtual void Visit(BfNamespaceDeclaration* namespaceDeclaration) override
 		{			
-			Add(namespaceDeclaration->mNamespaceNode, namespaceDeclaration->mBlock, 'N');
+			Add(namespaceDeclaration->mNamespaceNode, namespaceDeclaration->mBody, 'N');
 
 			BfElementVisitor::Visit(namespaceDeclaration);
 		}

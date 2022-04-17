@@ -2065,7 +2065,7 @@ public:
 
 	BfTokenNode* mNamespaceNode;
 	BfIdentifierNode* mNameNode;
-	BfBlock* mBlock;
+	BfAstNode* mBody;
 };	BF_AST_DECL(BfNamespaceDeclaration, BfAstNode);
 
 class BfBinaryOperatorExpression : public BfExpression
