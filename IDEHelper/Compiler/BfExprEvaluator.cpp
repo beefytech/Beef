@@ -16332,6 +16332,22 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 				break;			
 		}
 	}
+	
+	if (methodMatcher.mBestMethodDef == NULL)
+	{
+		BfStaticSearch* staticSearch = mModule->GetStaticSearch();
+		if (staticSearch != NULL)
+		{
+			for (auto typeInst : staticSearch->mStaticTypes)
+			{
+				if (methodMatcher.CheckType(typeInst, BfTypedValue(), false))
+				{
+					if (methodMatcher.mBestMethodDef != NULL)
+						break;
+				}
+			}
+		}
+	}
 
 	if (methodMatcher.mBestMethodDef == NULL)
 	{
