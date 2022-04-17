@@ -524,9 +524,9 @@ namespace IDE.ui
 				if (rect.mHeight >= DarkTheme.sDarkTheme.mSmallBoldFont.GetLineSpacing())
 					g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
 
-				using (g.PushColor(0x20FFFFFF))
+				using (g.PushColor(0x80707070))
 				{
-					g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+					g.FillRect(rect.mX + 1, rect.mY + 1, rect.mWidth - 2, rect.mHeight - 2);
 				}
 
 				if ((mEditWidgetContent.mSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
