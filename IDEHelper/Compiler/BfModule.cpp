@@ -16753,7 +16753,10 @@ void BfModule::EmitDtorBody()
 		{
 			auto fieldInst = &mCurTypeInstance->mFieldInstances[fieldIdx];
 			auto fieldDef = fieldInst->GetFieldDef();
-			auto fieldDecl = fieldDef->GetFieldDeclaration();
+
+			BfFieldDeclaration* fieldDecl = NULL;
+			if (fieldDef != NULL)
+				fieldDecl = fieldDef->GetFieldDeclaration();
 
 			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDecl != NULL) && (fieldDecl->mFieldDtor != NULL))
 			{
