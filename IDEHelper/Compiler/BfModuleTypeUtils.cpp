@@ -6903,7 +6903,19 @@ BfConstExprValueType* BfModule::CreateConstExprValueType(const BfTypedValue& typ
 	BfResolveTypeRefFlags resolveFlags = allowCreate ? BfResolveTypeRefFlag_None : BfResolveTypeRefFlag_NoCreate;
 
 	auto variant = TypedValueToVariant(NULL, typedValue);
+
 	if (variant.mTypeCode == BfTypeCode_None)
+	{
+		if (auto constant = mBfIRBuilder->GetConstant(typedValue.mValue))
+		{
+			if (constant->mConstType == BfConstType_Undef)
+			{
+				variant.mTypeCode = BfTypeCode_Let;
+			}
+		}
+	}
+
+	if (variant.mTypeCode == BfTypeCode_None)	
 		return NULL;
 
 	auto constExprValueType = mContext->mConstExprValueTypePool.Get();
@@ -12895,7 +12907,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		{
 			BfConstExprValueType* toConstExprValueType = (BfConstExprValueType*)toType;
 			
-			auto variantVal = TypedValueToVariant(srcNode, typedVal);
+			auto variantVal = TypedValueToVariant(srcNode, typedVal, true);
 			if ((mBfIRBuilder->IsIntable(variantVal.mTypeCode)) && (mBfIRBuilder->IsIntable(toConstExprValueType->mValue.mTypeCode)))
 			{
 				if (variantVal.mInt64 == toConstExprValueType->mValue.mInt64)
@@ -12912,6 +12924,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				int stringIdx = GetStringPoolIdx(typedVal.mValue, mBfIRBuilder);				
 				if ((stringIdx != -1) && (stringIdx == toConstExprValueType->mValue.mInt32))
 					return typedVal.mValue;
+			}
+
+			if ((toConstExprValueType->mValue.mTypeCode == BfTypeCode_Let) && (constant->mConstType == BfConstType_Undef))
+			{
+				return typedVal.mValue;
 			}
 
 			if (!ignoreErrors)

@@ -2511,6 +2511,9 @@ public:
 
 	virtual bool IsConstExprValue() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mType; }
+
+	virtual bool IsUnspecializedType() { return mValue.mTypeCode == BfTypeCode_Let; }
+	virtual bool IsUnspecializedTypeVariation() { return mValue.mTypeCode == BfTypeCode_Let; }
 };
 
 /*class BfCustomAttributeArgument

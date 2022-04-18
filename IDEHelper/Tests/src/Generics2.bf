@@ -121,6 +121,18 @@ namespace Tests
 			return total;
 		}
 
+		public static int StrTest<T>(T param2)
+			where T : const String
+		{
+			return StrTest2(param2);
+		}
+
+		public static int StrTest2<T>(T param1)
+			where T : const String
+		{
+			return param1.Length;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -136,6 +148,7 @@ namespace Tests
 
 			Test.Assert(BigNum<const 3>.N == 3);
 			Test.Assert(Test("test", 1, 2, 3) == 10);
+			Test.Assert(StrTest("ABCDE") == 5);
 		}
 	}
 }
