@@ -108,14 +108,14 @@ enum BfCastFlags
 	BfCastFlags_WantsConst = 0x4000
 };
 
-enum BfCastResultFlags
+enum BfCastResultFlags : int8
 {
 	BfCastResultFlags_None = 0,
 	BfCastResultFlags_IsAddr = 1,
 	BfCastResultFlags_IsTemp = 2
 };
 
-enum BfAllocFlags
+enum BfAllocFlags : int8
 {
 	BfAllocFlags_None = 0,
 	BfAllocFlags_RawArray = 1,
@@ -124,7 +124,7 @@ enum BfAllocFlags
 	BfAllocFlags_NoDefaultToMalloc = 8
 };
 
-enum BfProtectionCheckFlags
+enum BfProtectionCheckFlags : int8
 {
 	BfProtectionCheckFlag_None = 0,
 	BfProtectionCheckFlag_CheckedProtected = 1,
@@ -134,7 +134,7 @@ enum BfProtectionCheckFlags
 	BfProtectionCheckFlag_InstanceLookup = 0x10
 };
 
-enum BfEmbeddedStatementFlags
+enum BfEmbeddedStatementFlags : int8
 {
 	BfEmbeddedStatementFlags_None = 0,
 	BfEmbeddedStatementFlags_IsConditional = 1,
@@ -142,7 +142,7 @@ enum BfEmbeddedStatementFlags
 	BfEmbeddedStatementFlags_Unscoped = 4
 };
 
-enum BfLocalVarAssignKind
+enum BfLocalVarAssignKind : int8
 {
 	BfLocalVarAssignKind_None = 0,
 	BfLocalVarAssignKind_Conditional = 1,
@@ -183,7 +183,8 @@ public:
 	bool mAllowAddr;
 	bool mIsShadow;
 	bool mUsedImplicitly; // Passed implicitly to a local method, capture by ref if we can	
-	bool mNotCaptured;	
+	bool mNotCaptured;
+	bool mIsConst;
 	BfLocalVariable* mShadowedLocal;
 
 public:
@@ -212,8 +213,9 @@ public:
 		mIsLowered = false;
 		mAllowAddr = false;
 		mIsShadow = false;
-		mUsedImplicitly = false;		
+		mUsedImplicitly = false;
 		mNotCaptured = false;
+		mIsConst = false;
 		mShadowedLocal = NULL;
 	}
 

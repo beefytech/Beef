@@ -112,6 +112,15 @@ namespace Tests
 		    public const int N = CalculateN();
 		}
 
+		public static int Test<T>(T param1, params Span<int> param2)
+			where T : const String
+		{
+			int total = param1.Length;
+			for (int val in param2)
+				total += val;
+			return total;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -126,6 +135,7 @@ namespace Tests
 			Test.Assert(!iList.SequenceEquals(iSpan));
 
 			Test.Assert(BigNum<const 3>.N == 3);
+			Test.Assert(Test("test", 1, 2, 3) == 10);
 		}
 	}
 }

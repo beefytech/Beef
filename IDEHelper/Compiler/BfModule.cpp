@@ -18646,12 +18646,22 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 							paramVar->mResolvedType = genericParamInst->mTypeConstraint;
 							paramVar->mConstValue = exprEvaluator.mResult.mValue;
 							BF_ASSERT(paramVar->mConstValue.IsConst());
+							paramVar->mIsConst = true;
 						}
 						else
 						{
 							AssertErrorState();
 							paramVar->mResolvedType = genericParamInst->mTypeConstraint;
 							paramVar->mConstValue = GetDefaultValue(genericParamInst->mTypeConstraint);
+							paramVar->mIsConst = true;
+						}
+
+						if (paramVar->mResolvedType->IsObject())
+						{
+							BfTypedValue typedVal(paramVar->mConstValue, paramVar->mResolvedType);
+							FixValueActualization(typedVal);
+							if (typedVal.mValue.IsConst())
+								paramVar->mConstValue = typedVal.mValue;
 						}
 					}
 				}
@@ -18664,6 +18674,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 				//AssertErrorState();
 				paramVar->mResolvedType = GetPrimitiveType(BfTypeCode_IntPtr);
 				paramVar->mConstValue = GetDefaultValue(paramVar->mResolvedType);
+				paramVar->mIsConst = true;
 			}
 		}
 
@@ -20057,6 +20068,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				BF_ASSERT(localIdx < methodState.mLocals.size());
 				paramVar = methodState.mLocals[localIdx];
 				if ((paramVar->mCompositeCount == -1) &&
+					(!paramVar->mIsConst) &&
                     ((!paramVar->mResolvedType->IsValuelessType()) || (paramVar->mResolvedType->IsMethodRef())))
 					break;
 				localIdx++;
@@ -20214,6 +20226,9 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 
 			int curLocalIdx = localIdx++;
 			BfLocalVariable* paramVar = methodState.mLocals[curLocalIdx];
+
+			if (paramVar->mIsConst)
+				continue;
 			if (!paramVar->IsParam())
 				continue;
 			if (paramVar->mCompositeCount != -1)
