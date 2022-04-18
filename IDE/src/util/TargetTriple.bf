@@ -44,6 +44,9 @@ namespace IDE.Util
 				case "android",
 					 "androideabi":
 					return .Android;
+				case "wasm32",
+					 "wasm64":
+					return .Wasm;
 				}
 			}
 
