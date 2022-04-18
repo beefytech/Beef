@@ -24,8 +24,7 @@ enum BfConstResolveFlags
 class BfConstResolver : public BfExprEvaluator
 {
 public:
-	bool mIsInvalidConstExpr;
-	bool mAllowGenericConstValue;
+	bool mIsInvalidConstExpr;	
 
 public:
 	virtual bool CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode) override;

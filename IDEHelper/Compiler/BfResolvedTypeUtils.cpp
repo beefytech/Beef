@@ -2961,9 +2961,9 @@ BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression*
 	outType = NULL; 
 
 	BfConstResolver constResolver(ctx->mModule);
-	BfVariant variant;
-	constResolver.mAllowGenericConstValue = true;
+	BfVariant variant;	
 	constResolver.mBfEvalExprFlags = BfEvalExprFlags_NoCast;
+	constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
 	constResolver.mExpectingType = ctx->mModule->GetPrimitiveType(BfTypeCode_Int64);
 	auto result = constResolver.Resolve(expr);	
 	if (result)
@@ -3532,7 +3532,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 
 				BfConstResolver constResolver(ctx->mModule);
 				BfType* intType = ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-				constResolver.mAllowGenericConstValue = true;
+				constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
 				constResolver.mExpectingType = intType;
 				BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
@@ -4792,7 +4792,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			SetAndRestoreValue<bool> prevIgnoreError(ctx->mModule->mIgnoreErrors, true);
 			BfConstResolver constResolver(ctx->mModule);
 			BfType* intType = ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-			constResolver.mAllowGenericConstValue = true;
+			constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
 			constResolver.mExpectingType = intType;			
 			BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
 			if (typedVal.mKind == BfTypedValueKind_GenericConstValue)

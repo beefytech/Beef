@@ -4401,6 +4401,33 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	if ((!result) && (identifierNode != NULL))
 	{
 		result = mModule->TryLookupGenericConstVaue(identifierNode, mExpectingType);
+		if ((mBfEvalExprFlags & (BfEvalExprFlags_Comptime | BfEvalExprFlags_AllowGenericConstValue)) == BfEvalExprFlags_Comptime)
+		{
+			if (result.mKind == BfTypedValueKind_GenericConstValue)
+			{
+				auto genericParamDef = mModule->GetGenericParamInstance((BfGenericParamType*)result.mType);
+				if ((genericParamDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
+				{
+					auto genericTypeConstraint = genericParamDef->mTypeConstraint;
+					if (genericTypeConstraint != NULL)
+					{
+						auto primType = genericTypeConstraint->ToPrimitiveType();
+						if (primType != NULL)
+						{
+							BfTypedValue result;
+							result.mKind = BfTypedValueKind_Value;
+							result.mType = genericTypeConstraint;
+							result.mValue = mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->GetPrimitiveType(primType->mTypeDef->mTypeCode));
+							return result;
+						}
+					}
+					else
+					{
+						BF_FATAL("Error");
+					}
+				}
+			}
+		}
 		mModule->FixValueActualization(result);
 	}
 

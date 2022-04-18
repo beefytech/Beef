@@ -31,7 +31,6 @@ bool BfConstResolver::CheckAllowValue(const BfTypedValue& typedValue, BfAstNode*
 BfConstResolver::BfConstResolver(BfModule* bfModule) : BfExprEvaluator(bfModule)
 {
 	mIsInvalidConstExpr = false;
-	mAllowGenericConstValue = false;
 }
 
 BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfConstResolveFlags flags)
@@ -174,30 +173,8 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 
 	if (mResult.mKind == BfTypedValueKind_GenericConstValue)
 	{
-		if (mAllowGenericConstValue)
+		if ((mBfEvalExprFlags & BfEvalExprFlags_AllowGenericConstValue) != 0)
 			return mResult;
-		
-		auto genericParamDef = mModule->GetGenericParamInstance((BfGenericParamType*)mResult.mType);
-		if ((genericParamDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
-		{
-			auto genericTypeConstraint = genericParamDef->mTypeConstraint;
-			if (genericTypeConstraint != NULL)
-			{
-				auto primType = genericTypeConstraint->ToPrimitiveType();
-				if (primType != NULL)
-				{
-					BfTypedValue result;
-					result.mKind = BfTypedValueKind_Value;
-					result.mType = genericTypeConstraint;
-					result.mValue = mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->GetPrimitiveType(primType->mTypeDef->mTypeCode));
-					return result;
-				}
-			}
-			else
-			{
-				BF_FATAL("Error");
-			}
-		}
 	}
 
 	if (mResult)

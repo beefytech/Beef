@@ -11020,7 +11020,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				BfConstResolver constResolver(this);
 				BfType* intType = GetPrimitiveType(BfTypeCode_IntPtr);
 				constResolver.mExpectingType = intType;
-				constResolver.mAllowGenericConstValue = true;
+				constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
 				BfTypedValue typedVal;
 				{
 					SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
@@ -13029,8 +13029,20 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 					auto undefConst = (BfConstantUndef*)constant;
 					
-					BF_ASSERT(undefConst->mType.mKind == BfIRTypeData::TypeKind_TypeId);
-					auto bfType = mContext->mTypes[undefConst->mType.mId];
+					BfType* bfType = NULL;
+					if (undefConst->mType.mKind == BfIRTypeData::TypeKind_TypeCode)
+					{
+						bfType = GetPrimitiveType((BfTypeCode)undefConst->mType.mId);
+					}
+					else
+					{
+						BF_ASSERT(undefConst->mType.mKind == BfIRTypeData::TypeKind_TypeId);
+						if (undefConst->mType.mKind == BfIRTypeData::TypeKind_TypeId)
+							bfType = mContext->FindTypeById(undefConst->mType.mId);
+					}
+
+					if (bfType == NULL)
+						return BfIRValue();
 
 					auto fakeVal = GetFakeTypedValue(bfType);
 					auto val = CastToValue(srcNode, fakeVal, toType, castFlags);
