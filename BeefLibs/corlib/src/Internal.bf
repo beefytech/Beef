@@ -65,11 +65,6 @@ namespace System
 			return &mVAList;
 #endif
 		}
-
-		public void* ToVAListPtr() mut
-		{
-			return &mVAList;
-		}
 	}
 
 	[AlwaysInclude]
