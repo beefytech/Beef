@@ -1086,7 +1086,8 @@ void BeIRCodeGen::Read(BeMDNode*& llvmMD)
 	llvmMD = result.mBeMetadata;
 	BE_MEM_END("BeMDNode");
 
-	llvmMD->mRefCount++;
+	if (llvmMD != NULL)
+		llvmMD->mRefCount++;
 }
 
 void BeIRCodeGen::HandleNextCmd()

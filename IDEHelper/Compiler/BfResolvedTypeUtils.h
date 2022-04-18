@@ -2658,7 +2658,15 @@ public:
 
 		int tryCount = 0;		
 		ctx->mFailed = false;
-		int hashVal = Hash(findType, ctx, BfHashFlag_AllowRef);
+
+		BfHashFlags hashFlags = BfHashFlag_AllowRef;
+		if ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowGenericParamConstValue) != 0)
+		{
+			ctx->mResolveFlags = (BfResolveTypeRefFlags)(ctx->mResolveFlags & ~BfResolveTypeRefFlag_AllowGenericParamConstValue);
+			hashFlags = (BfHashFlags)(hashFlags | BfHashFlag_AllowGenericParamConstValue);
+		}
+
+		int hashVal = Hash(findType, ctx, hashFlags);
 		if ((ctx->mFailed) || (ctx->mHadVar))
 		{			
 			return false;

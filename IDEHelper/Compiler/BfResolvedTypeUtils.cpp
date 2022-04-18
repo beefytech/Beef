@@ -3868,6 +3868,13 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 	}
 	else if (auto constExprTypeRef = BfNodeDynCastExact<BfConstExprTypeRef>(typeRef))
 	{
+		if ((flags & BfHashFlag_AllowGenericParamConstValue) == 0)
+		{
+			ctx->mModule->Fail("Invalid use of const expression", constExprTypeRef->mConstToken);
+			ctx->mFailed = true;
+			return 0;
+		}
+
 		BfVariant result;					
 		BfType* resultType = NULL;
 		if (constExprTypeRef->mConstExpr != NULL)

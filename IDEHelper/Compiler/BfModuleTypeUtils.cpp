@@ -10795,7 +10795,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags &
 		(BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime |
 		BfResolveTypeRefFlag_AllowInferredSizedArray | BfResolveTypeRefFlag_Attribute | BfResolveTypeRefFlag_AllowUnboundGeneric |
-			BfResolveTypeRefFlag_ForceUnboundGeneric));
+			BfResolveTypeRefFlag_ForceUnboundGeneric | BfResolveTypeRefFlag_AllowGenericParamConstValue));
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
