@@ -8265,40 +8265,27 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 						(constExprValueType->mValue.mTypeCode != BfTypeCode_Let) &&
 						(primType->mTypeDef->mTypeCode != BfTypeCode_Let))
 					{
+						bool doError = true;
+
 						if (BfIRConstHolder::IsInt(constExprValueType->mValue.mTypeCode))
 						{
 							if (BfIRConstHolder::IsInt(primType->mTypeDef->mTypeCode))
 							{
-								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue))
-								{
-									if ((!ignoreErrors) && (PreFail()))
-										*errorOut = Fail(StrFormat("Const generic argument '%s', declared with const '%lld', does not fit into const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
-											constExprValueType->mValue.mInt64, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
-									return false;
-								}
-							}
-							else
-							{
-								if ((!ignoreErrors) && (PreFail()))
-									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with integer const '%lld', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
-										constExprValueType->mValue.mInt64, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
-								return false;
+								if (mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue))
+									doError = false;
 							}
 						}
-						else
+						else if ((primType->mTypeDef->mTypeCode == BfTypeCode_Float) && ((constExprValueType->mValue.mTypeCode == BfTypeCode_Double)))
 						{
-							if (BfIRConstHolder::IsInt(primType->mTypeDef->mTypeCode))
-							{
-								char valStr[64];
-								if (constExprValueType->mValue.mTypeCode == BfTypeCode_Double)
-									ExactMinimalDoubleToStr(constExprValueType->mValue.mDouble, valStr);
-								else
-									ExactMinimalFloatToStr(constExprValueType->mValue.mSingle, valStr);
-								if ((!ignoreErrors) && (PreFail()))
-									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with floating point const '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
-										valStr, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
-								return false;
-							}
+							doError = false;
+						}
+
+						if (doError)
+						{
+							if ((!ignoreErrors) && (PreFail()))
+								*errorOut = Fail(StrFormat("Const generic argument '%s', declared with '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
+									_TypeToString(constExprValueType).c_str(), _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+							return false;
 						}
 					}
 				}
@@ -18641,10 +18628,14 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 						if (checkType->IsTypedPrimitive())
 							checkType = checkType->GetUnderlyingType();
 
-						if (exprEvaluator.mResult.mType == checkType)
+						auto typedVal = exprEvaluator.mResult;
+						if ((typedVal) && (typedVal.mType != checkType))
+							typedVal = Cast(NULL, typedVal, checkType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail));
+
+						if ((typedVal.mType == checkType) && (typedVal.mValue.IsConst()))
 						{
 							paramVar->mResolvedType = genericParamInst->mTypeConstraint;
-							paramVar->mConstValue = exprEvaluator.mResult.mValue;
+							paramVar->mConstValue = typedVal.mValue;
 							BF_ASSERT(paramVar->mConstValue.IsConst());
 							paramVar->mIsConst = true;
 						}

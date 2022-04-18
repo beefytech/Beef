@@ -133,6 +133,16 @@ namespace Tests
 			return param1.Length;
 		}
 
+		public static void TestEmitMixin<T>(T c, int a, String outStr)
+				where T : const int
+			{
+				delegate void() d = scope () =>
+				{
+					Compiler.Mixin(scope $"outStr.AppendF(\"{{}}{{}}\", {c}, a);");
+				};
+				d();
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -149,6 +159,8 @@ namespace Tests
 			Test.Assert(BigNum<const 3>.N == 3);
 			Test.Assert(Test("test", 1, 2, 3) == 10);
 			Test.Assert(StrTest("ABCDE") == 5);
+
+			Test.Assert(TestEmitMixin(123, 456, .. scope .()) == "123456");
 		}
 	}
 }

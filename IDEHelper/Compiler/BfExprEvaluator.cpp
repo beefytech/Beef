@@ -6036,7 +6036,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mCapturing))
 	{
-		return _GetDefaultReturnValue();
+		if ((methodInstance->mComptimeFlags & BfComptimeFlag_ConstEval) != 0)
+		{
+			// We need to perform call such as Compiler.Mixin and String.ConstF			
+		}
+		else
+			return _GetDefaultReturnValue();
 	}
 
 	BF_ASSERT(!methodInstance->mDisallowCalling);

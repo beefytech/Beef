@@ -3490,7 +3490,8 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 								exprEvaluator->VisitChild(expr);
 								exprEvaluator->FinishExpressionResult();
 
-								if ((exprEvaluator->mResult) && (!exprEvaluator->mResult.mType->IsValuelessType()) && (!exprEvaluator->mResult.IsAddr()) && (!exprEvaluator->mResult.mValue.IsFake()))
+								if ((exprEvaluator->mResult) && (!exprEvaluator->mResult.mType->IsValuelessType()) && (!exprEvaluator->mResult.mValue.IsConst()) &&
+									(!exprEvaluator->mResult.IsAddr()) && (!exprEvaluator->mResult.mValue.IsFake()))
 								{									
 									if ((mCurMethodState->mCurScope != NULL) && (mCurMethodState->mCurScope->mPrevScope != NULL))																		
 									{

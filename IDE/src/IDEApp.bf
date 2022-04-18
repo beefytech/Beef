@@ -1104,28 +1104,25 @@ namespace IDE
 					sourceViewPanel.RecordHistoryLocation();
 
 				StringView loc = cmds[2];
-				int32 charIdx = int32.Parse(loc).GetValueOrDefault();
-				if (charIdx < 0)
-					return;
-				var (sourceViewPanel, tabButton) = ShowSourceFile(cmds[1], null, SourceShowType.Temp);
-				if (sourceViewPanel == null)
-				    return;
-				var editWidgetContent = sourceViewPanel.mEditWidget.mEditWidgetContent;
+
+				int line = -1;
+				int lineChar = -1;
 
 				int colonIdx = loc.IndexOf(':');
 				if (colonIdx != -1)
 				{
-					int line = int.Parse(loc.Substring(0, colonIdx)).GetValueOrDefault();
-					int column = int.Parse(loc.Substring(colonIdx + 1)).GetValueOrDefault();
-					charIdx = (.)editWidgetContent.GetTextIdx(line, column);
+					line = int.Parse(loc.Substring(0, colonIdx)).GetValueOrDefault();
+					lineChar = int.Parse(loc.Substring(colonIdx + 1)).GetValueOrDefault();
 				}
-				if (charIdx < 0)
-					return;
-
-				int line;
-				int lineChar;
-				editWidgetContent.GetLineCharAtIdx(charIdx, out line, out lineChar);
-				sourceViewPanel.ShowFileLocation(charIdx, .Always);
+				else
+				{
+					int32 charIdx = int32.Parse(loc).GetValueOrDefault();
+					var fileEditData = GetEditData(cmds[1]);
+					if (fileEditData == null)
+						break;
+					fileEditData.mEditWidget.mEditWidgetContent.GetLineCharAtIdx(charIdx, out line, out lineChar);
+				}
+				ShowSourceFileLocation(cmds[1], -1, -1, line, lineChar, .Smart, true);
 			case "ShowCodeAddr":
 				var sourceViewPanel = GetActiveSourceViewPanel(true);
 				if (sourceViewPanel != null)

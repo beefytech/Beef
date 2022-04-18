@@ -2048,8 +2048,15 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 	if (ceTypeInfo->mNext != NULL)
 		ceTypeInfo = ceTypeInfo->mNext;	
 	BfCeTypeEmitSource* ceEmitSource = NULL;
-	ceTypeInfo->mEmitSourceMap.TryAdd(emitSourceMapKey, NULL, &ceEmitSource);
-	ceEmitSource->mKind = emitSourceKind;
+	if ((mCurMethodState != NULL) && (mCurMethodState->mClosureState != NULL) && (mCurMethodState->mClosureState->mCapturing))
+	{
+		// Don't create emit sources when we're in a capture phase
+	}
+	else
+	{
+		ceTypeInfo->mEmitSourceMap.TryAdd(emitSourceMapKey, NULL, &ceEmitSource);
+		ceEmitSource->mKind = emitSourceKind;
+	}
 	
 	int emitSrcStart = 0;
 
@@ -2077,6 +2084,7 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 		typeName += ":";
 
 		typeName += TypeToString(typeInstance, BfTypeNameFlags_None);
+		
 		if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mEmitEmbedEntries.IsEmpty()))
 			mCompiler->mResolvePassData->mEmitEmbedEntries.TryGetValue(typeName, &emitEmbedEntry);
  		
@@ -2141,7 +2149,11 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 		emitParser->mOrigSrcLength = emitParser->mSrcLength;
 	}
 
-	if (ceEmitSource->mSrcStart == -1)
+	if (ceEmitSource == NULL)
+	{
+		// Ignored
+	}
+	else if (ceEmitSource->mSrcStart == -1)
 	{
 		ceEmitSource->mSrcStart = emitSrcStart;
 		ceEmitSource->mSrcEnd = emitParser->mSrcLength;
@@ -2441,6 +2453,9 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 
 void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 {
+	if (code.IsEmpty())
+		return;
+
 	auto activeTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
 	//auto emitParser = activeTypeDef->mEmitParser;
 			
@@ -2505,7 +2520,14 @@ void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 	UpdateSrcPos(emitParser->mRootNode);
 
 	SetIllegalSrcPos();
-	
+
+	if (emitParser->mSourceClassifier != NULL)
+	{
+		emitParser->mSourceClassifier->VisitChild(emitParser->mRootNode);
+		emitParser->mSourceClassifier->VisitChild(emitParser->mSidechannelRootNode);
+		emitParser->mSourceClassifier->VisitChild(emitParser->mErrorRootNode);
+	}
+
 	Visit(emitParser->mRootNode);
 
 	mBfIRBuilder->RestoreDebugLocation();

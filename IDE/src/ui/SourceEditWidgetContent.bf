@@ -5754,8 +5754,7 @@ namespace IDE.ui
 					{
 						if (mEmbeds.GetAndRemove(entry.mAnchorLine) case .Ok(let val))
 						{
-							if (val.value is CollapseSummary)
-								delete val.value;
+							delete val.value;
 						}
 						@entry.Remove();
 					}
