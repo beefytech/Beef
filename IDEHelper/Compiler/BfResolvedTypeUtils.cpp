@@ -2033,6 +2033,13 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 					return true;
 				}
 
+				if (mInstSize <= 4)
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_Int32;
+					return true;
+				}
+
 				if (mInstSize <= 8)
 				{
 					if ((outTypeCode != NULL) && (writeOutCode))
