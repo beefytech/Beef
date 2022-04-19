@@ -85,6 +85,7 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_FromConversionOp = 0x8000000,
 	BfEvalExprFlags_FromConversionOp_Explicit = 0x10000000,
 	BfEvalExprFlags_AllowGenericConstValue = 0x20000000,
+	BfEvalExprFlags_IsExpressionBody = 0x40000000,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };

@@ -21179,7 +21179,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 // 					Warn(0, "Using a 'void' return with an expression-bodied method isn't needed. Consider removing '=>' token", methodDeclaration->mFatArrowToken);
 // 				}
 								
-				BfEvalExprFlags exprEvalFlags = BfEvalExprFlags_AllowRefExpr;
+				BfEvalExprFlags exprEvalFlags = (BfEvalExprFlags)(BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_IsExpressionBody);
 				if (expectingType->IsVoid())
 				{
 					exprEvalFlags = (BfEvalExprFlags)(exprEvalFlags | BfEvalExprFlags_NoCast);

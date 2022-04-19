@@ -8149,6 +8149,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	auto func = moduleMethodInstance.mFunc;	
 	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs, NULL, physCallFlags);
 
+	if ((methodInstance->mMethodDef->mIsNoReturn) && ((mBfEvalExprFlags & BfEvalExprFlags_IsExpressionBody) != 0) && 
+		(mExpectingType != NULL) && (callResult.mType != mExpectingType))
+	{
+		callResult = mModule->GetDefaultTypedValue(mExpectingType);
+	}
+
 	// This gets triggered for non-sret (ie: comptime) composite returns so they aren't considered readonly
 	if ((callResult.mKind == BfTypedValueKind_Value) && (!callResult.mValue.IsConst()) && 
 		(!callResult.mType->IsValuelessType()) && (callResult.mType->IsComposite()) && (!methodInstance->GetLoweredReturnType()))
