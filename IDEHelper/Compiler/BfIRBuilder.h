@@ -932,6 +932,7 @@ public:
 public:
 	void FixTypeCode(BfTypeCode& typeCode);
 	int GetSize(BfTypeCode typeCode);
+	static int GetSize(BfTypeCode typeCode, int ptrSize);
 	static bool IsInt(BfTypeCode typeCode);	
 	static bool IsChar(BfTypeCode typeCode);
 	static bool IsIntable(BfTypeCode typeCode);

@@ -20313,19 +20313,32 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				}
 				else
 				{
-					bool handled = false;					
+					bool handled = false;
 					if (paramVar->mIsLowered)
 					{						
 						BfTypeCode loweredTypeCode = BfTypeCode_None;
-						BfTypeCode loweredTypeCode2 = BfTypeCode_None;						
+						BfTypeCode loweredTypeCode2 = BfTypeCode_None;
 						if (paramVar->mResolvedType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
 						{
+							BfIRValue targetAddr = paramVar->mAddr;
+							bool isTempTarget = false;
+
+							int loweredSize = mBfIRBuilder->GetSize(loweredTypeCode) + mBfIRBuilder->GetSize(loweredTypeCode2);
+							if (paramVar->mResolvedType->mSize < loweredSize)
+							{
+								isTempTarget = true;
+								targetAddr = CreateAlloca(GetPrimitiveType(BfTypeCode_Int8), true, NULL, GetConstValue(loweredSize));
+								mBfIRBuilder->SetAllocaAlignment(targetAddr, 
+									BF_MAX(paramVar->mResolvedType->mAlign, 
+										BF_MAX(mBfIRBuilder->GetSize(loweredTypeCode), mBfIRBuilder->GetSize(loweredTypeCode2))));
+							}
+							
 							// We have a lowered type coming in, so we have to cast the .addr before storing
 							auto primType = mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
 							auto primPtrType = mBfIRBuilder->GetPointerTo(primType);
-							auto primPtrVal = mBfIRBuilder->CreateBitCast(paramVar->mAddr, primPtrType);
+							auto primPtrVal = mBfIRBuilder->CreateBitCast(targetAddr, primPtrType);
 							mBfIRBuilder->CreateAlignedStore(paramVar->mValue, primPtrVal, mCurTypeInstance->mAlign);
-							
+
 							if (loweredTypeCode2 != BfTypeCode_None)
 							{
 								auto primType2 = mBfIRBuilder->GetPrimitiveType(loweredTypeCode2);
@@ -20336,12 +20349,19 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 								else
 									primPtrVal2 = mBfIRBuilder->CreateBitCast(mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), primPtrType2);
 								mBfIRBuilder->CreateStore(mBfIRBuilder->GetArgument(argIdx + 1), primPtrVal2);
+							}							
+
+							if (isTempTarget)
+							{
+								auto castedTempPtr = mBfIRBuilder->CreateBitCast(targetAddr, mBfIRBuilder->MapType(CreatePointerType(paramVar->mResolvedType)));
+								auto tempVal = mBfIRBuilder->CreateAlignedLoad(castedTempPtr, paramVar->mResolvedType->mAlign);
+								mBfIRBuilder->CreateAlignedStore(tempVal, paramVar->mAddr, paramVar->mResolvedType->mAlign);
 							}
 
 							// We don't want to allow directly using value
 							paramVar->mValue = BfIRValue();
 							handled = true;
-						}						
+						}
 						else
 						{
 							BF_ASSERT("Expected lowered");

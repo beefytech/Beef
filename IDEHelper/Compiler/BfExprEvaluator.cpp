@@ -6883,12 +6883,27 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 			if ((!IsComptime()) && (!disableLowering) && (!isIntrinsic))
 			{
 				BfTypeCode loweredTypeCode = BfTypeCode_None;
-				BfTypeCode loweredTypeCode2 = BfTypeCode_None;				
+				BfTypeCode loweredTypeCode2 = BfTypeCode_None;
 				if (argVal.mType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
 				{
+					BfIRValue argPtrVal = argVal.mValue;
+
+					int loweredSize = mModule->mBfIRBuilder->GetSize(loweredTypeCode) + mModule->mBfIRBuilder->GetSize(loweredTypeCode2);
+					if (argVal.mType->mSize < loweredSize)
+					{
+						auto allocaVal = mModule->CreateAlloca(mModule->GetPrimitiveType(BfTypeCode_UInt8), true, NULL, mModule->GetConstValue(loweredSize));
+						mModule->mBfIRBuilder->SetAllocaAlignment(allocaVal, 
+							BF_MAX(argVal.mType->mAlign,
+								BF_MAX(mModule->mBfIRBuilder->GetSize(loweredTypeCode), mModule->mBfIRBuilder->GetSize(loweredTypeCode2))));
+						auto castedPtr = mModule->mBfIRBuilder->CreateBitCast(allocaVal, mModule->mBfIRBuilder->MapType(mModule->CreatePointerType(argVal.mType)));
+						auto argIRVal = mModule->mBfIRBuilder->CreateAlignedLoad(argVal.mValue, argVal.mType->mAlign);
+						mModule->mBfIRBuilder->CreateAlignedStore(argIRVal, castedPtr, argVal.mType->mAlign);
+						argPtrVal = castedPtr;
+					}
+					
 					auto primType = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
 					auto ptrType = mModule->mBfIRBuilder->GetPointerTo(primType);
-					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argVal.mValue, ptrType);
+					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argPtrVal, ptrType);
 					auto primVal = mModule->mBfIRBuilder->CreateLoad(primPtrVal);
 					irArgs.push_back(primVal);
 
@@ -6903,9 +6918,8 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 							primPtrVal2 = mModule->mBfIRBuilder->CreateBitCast(mModule->mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), ptrType2);
 						
 						auto primVal2 = mModule->mBfIRBuilder->CreateLoad(primPtrVal2);
-						irArgs.push_back(primVal2);
+						irArgs.Add(primVal2);
 					}
-
 					return;
 				}
 			}
@@ -6920,7 +6934,7 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 		}
 		else
 			argVal = mModule->LoadValue(argVal);
-		irArgs.push_back(argVal.mValue);
+		irArgs.Add(argVal.mValue);
 	}
 }
 

@@ -302,15 +302,15 @@ void BfIRConstHolder::FixTypeCode(BfTypeCode& typeCode)
 	}
 }
 
-int BfIRConstHolder::GetSize(BfTypeCode typeCode)
+int BfIRConstHolder::GetSize(BfTypeCode typeCode, int ptrSize)
 {
 	switch (typeCode)
 	{
 	case BfTypeCode_None: return 0;
-	case BfTypeCode_CharPtr: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_CharPtr: return ptrSize;
 	case BfTypeCode_StringId: return 4;
-	case BfTypeCode_Pointer: return mModule->mSystem->mPtrSize;
-	case BfTypeCode_NullPtr: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_Pointer: return ptrSize;
+	case BfTypeCode_NullPtr: return ptrSize;
 	case BfTypeCode_Self: return 0;
 	case BfTypeCode_Dot: return 0;
 	case BfTypeCode_Var: return 0;
@@ -334,8 +334,8 @@ int BfIRConstHolder::GetSize(BfTypeCode typeCode)
 	case BfTypeCode_UInt64: return 8;
 	case BfTypeCode_Int128: return 16;
 	case BfTypeCode_UInt128: return 16;
-	case BfTypeCode_IntPtr: return mModule->mSystem->mPtrSize;
-	case BfTypeCode_UIntPtr: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_IntPtr: return ptrSize;
+	case BfTypeCode_UIntPtr: return ptrSize;
 	case BfTypeCode_IntUnknown: return 0;
 	case BfTypeCode_UIntUnknown: return 0;
 	case BfTypeCode_Char8: return 1;
@@ -344,23 +344,28 @@ int BfIRConstHolder::GetSize(BfTypeCode typeCode)
 	case BfTypeCode_Float: return 4;
 	case BfTypeCode_Double: return 8;
 	case BfTypeCode_Float2: return 8;
-	case BfTypeCode_Object: return mModule->mSystem->mPtrSize;
-	case BfTypeCode_Interface: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_Object: return ptrSize;
+	case BfTypeCode_Interface: return ptrSize;
 	case BfTypeCode_Struct: return 0;
 	case BfTypeCode_Enum: return 0;
 	case BfTypeCode_TypeAlias: return 0;
 	case BfTypeCode_Extension: return 0;
-	case BfTypeCode_FloatX2: return 4*2;
-	case BfTypeCode_FloatX3: return 4*3;
-	case BfTypeCode_FloatX4: return 4*4;
-	case BfTypeCode_DoubleX2: return 8*2;
-	case BfTypeCode_DoubleX3: return 8*3;
-	case BfTypeCode_DoubleX4: return 8*4;
-	case BfTypeCode_Int64X2: return 8*2;
-	case BfTypeCode_Int64X3: return 8*3;
-	case BfTypeCode_Int64X4: return 8*4;
+	case BfTypeCode_FloatX2: return 4 * 2;
+	case BfTypeCode_FloatX3: return 4 * 3;
+	case BfTypeCode_FloatX4: return 4 * 4;
+	case BfTypeCode_DoubleX2: return 8 * 2;
+	case BfTypeCode_DoubleX3: return 8 * 3;
+	case BfTypeCode_DoubleX4: return 8 * 4;
+	case BfTypeCode_Int64X2: return 8 * 2;
+	case BfTypeCode_Int64X3: return 8 * 3;
+	case BfTypeCode_Int64X4: return 8 * 4;
 	default: return 0;
 	}
+}
+
+int BfIRConstHolder::GetSize(BfTypeCode typeCode)
+{
+	return GetSize(typeCode, mModule->mSystem->mPtrSize);
 }
 
 bool BfIRConstHolder::IsInt(BfTypeCode typeCode)
