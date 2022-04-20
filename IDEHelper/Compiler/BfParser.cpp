@@ -1397,7 +1397,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 
 	bool isLineStart = true;
 	bool isVerbatim = false;
-	bool isInterpolate = false;
+	int interpolateSetting = 0;
 	int stringStart = -1;
 
 	while (true)
@@ -1754,7 +1754,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 		case '$':
 						
 			c = mSrc[mSrcIdx];
-			if ((c == '\"') || (c == '@'))
+			if ((c == '\"') || (c == '@') || (c == '$'))
 			{
 				setInterpolate = true;
 			}
@@ -1966,6 +1966,14 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					case '\'':
 						strLiteral += c;
 						break;
+					case '{':
+					case '}':
+						strLiteral += c;
+						if (interpolateSetting > 0)
+							strLiteral += c;
+						else
+							Fail("Invalid escape sequence");
+						break;
 					case 'x':
 					{
 						int wantHexChars = 2;
@@ -2061,24 +2069,28 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 						Fail("Unrecognized escape sequence");
 						strLiteral += c;
 					}
-				}				
+				}
 				else
 				{
 					strLiteral += c;
 
-					if (isInterpolate)
+					if (interpolateSetting > 0)
 					{
 						if (c == '{')
 						{
-							if (mSrc[mSrcIdx] == '{')
+							int braceCount = 1;
+							while (mSrc[mSrcIdx] == '{')
 							{
-								strLiteral += '{';
+								braceCount++;
 								mSrcIdx++;
 							}
-							else
+
+							int literalBraces = braceCount;
+							if (((interpolateSetting == 1) && (braceCount % 2 == 1)) ||
+								((interpolateSetting > 1) && (braceCount >= interpolateSetting)))
 							{
 								BfUnscopedBlock* newBlock = mAlloc->Alloc<BfUnscopedBlock>();
-								mTokenStart = mSrcIdx - 1;
+								mTokenStart = mSrcIdx - interpolateSetting;
 								mTriviaStart = mTokenStart;
 								mTokenEnd = mTokenStart + 1;
 								mToken = BfToken_LBrace;
@@ -2089,7 +2101,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 								{
 									newBlock->mCloseBrace = (BfTokenNode*)CreateNode();
 									newBlock->SetSrcEnd(mSrcIdx);
-									strLiteral += "}";
+									mSrcIdx--;
 								}
 								else if ((mSyntaxToken == BfSyntaxToken_EOF) || (mSyntaxToken == BfSyntaxToken_StringQuote))
 								{
@@ -2097,17 +2109,40 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 									mPassInstance->FailAfterAt("Expected '}'", mSourceData, newBlock->GetSrcEnd() - 1);
 								}
 								mInAsmBlock = false;
-								interpolateExpressions.Add(newBlock);
+								interpolateExpressions.Add(newBlock);								
+							}
+							
+							if (interpolateSetting == 1)
+							{
+								for (int i = 0; i < braceCount - 1; i++)
+									strLiteral += '{';
+							}
+							else
+							{
+								if (braceCount >= interpolateSetting)
+								{
+									for (int i = 0; i < (braceCount - interpolateSetting) * 2; i++)
+										strLiteral += '{';
+								}
+								else
+								{
+									for (int i = 0; i < braceCount * 2 - 1; i++)
+										strLiteral += '{';
+								}
 							}
 						}
 						else if (c == '}')
 						{
-							if (mSrc[mSrcIdx] == '}')
+							int braceCount = 1;
+							while (mSrc[mSrcIdx] == '}')
 							{
-								strLiteral += '}';
+								braceCount++;
 								mSrcIdx++;
 							}
-							else if (!interpolateExpressions.IsEmpty())
+							
+							bool isClosingBrace = false;
+
+							if (!interpolateExpressions.IsEmpty())
 							{
 								auto block = interpolateExpressions.back();
 								if (block->mCloseBrace == NULL)
@@ -2118,6 +2153,34 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 									mToken = BfToken_RBrace;
 									block->mCloseBrace = (BfTokenNode*)CreateNode();
 									block->SetSrcEnd(mSrcIdx);
+									isClosingBrace = true;
+								}
+								else if (block->mCloseBrace->mSrcStart == mSrcIdx - braceCount)
+								{									
+									block->mCloseBrace->mSrcEnd = mSrcIdx - braceCount + interpolateSetting;
+									isClosingBrace = true;
+								}
+							}
+
+							if (interpolateSetting == 1)
+							{															
+								for (int i = 0; i < braceCount - 1; i++)
+									strLiteral += '}';
+							}
+							else
+							{
+								if (isClosingBrace)
+								{
+									if (braceCount < interpolateSetting)
+										Fail("Mismatched closing brace set");
+
+									for (int i = 0; i < (braceCount - interpolateSetting) * 2; i++)
+										strLiteral += '}';
+								}
+								else
+								{
+									for (int i = 0; i < braceCount * 2 - 1; i++)
+										strLiteral += '}';
 								}
 							}
 						}
@@ -2187,7 +2250,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 				mLiteral.mString = strLiteralPtr;
 			}
 
-			if (isInterpolate)
+			if (interpolateSetting > 0)
 			{
 				if (mLiteral.mTypeCode == BfTypeCode_CharPtr)
 				{
@@ -2196,7 +2259,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					interpolateExpr->mTriviaStart = mTriviaStart;
 					interpolateExpr->mSrcStart = mTokenStart;
 					interpolateExpr->mSrcEnd = mSrcIdx;
-					BfSizedArrayInitIndirect(interpolateExpr->mExpressions, interpolateExpressions, mAlloc);				
+					BfSizedArrayInitIndirect(interpolateExpr->mExpressions, interpolateExpressions, mAlloc);									
 					mGeneratedNode = interpolateExpr;
 					mSyntaxToken = BfSyntaxToken_GeneratedNode;
 					mToken = BfToken_None;
@@ -3354,10 +3417,11 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 			isVerbatim = true;
 			stringStart = mTokenStart;
 		}
-		if ((setInterpolate) && (!isInterpolate))
+		if (setInterpolate)
 		{
-			isInterpolate = true;
-			stringStart = mTokenStart;
+			if (interpolateSetting == 0)
+				stringStart = mTokenStart;
+			interpolateSetting++;			
 		}
 	}
 }
