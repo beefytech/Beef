@@ -145,7 +145,7 @@ namespace System.IO
 			switch (result)
 			{
 			case .Ok(let size):
-				if (size != sizeof(T))
+				if (size > 0 && size != sizeof(T))
 					return .Err;
 				return .Ok(val);
 			case .Err:
