@@ -132,7 +132,7 @@ namespace System
 				int allocSize = UTF16.GetEncodedLen(key);
 				char16* encodedData = scope char16[allocSize]*;
 				int encodedLen = UTF16.Encode(key, encodedData, allocSize);
-				int byteLen = (encodedLen - 1) * 2;
+				int byteLen = encodedLen * 2;
 				Internal.MemCpy(data.GrowUnitialized(byteLen), encodedData, byteLen);
 
 				data.Add((uint8)'='); data.Add((uint8)0);
@@ -141,7 +141,7 @@ namespace System
 				allocSize = UTF16.GetEncodedLen(value);
 				encodedData = scope char16[allocSize]*;
 				encodedLen = UTF16.Encode(value, encodedData, allocSize);
-				byteLen = (encodedLen - 1) * 2;
+				byteLen = encodedLen * 2;
 				Internal.MemCpy(data.GrowUnitialized(byteLen), encodedData, byteLen);
 
 				data.Add(0); data.Add(0); // Single UTF16 char

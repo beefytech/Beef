@@ -106,7 +106,6 @@ namespace System.Text
 			{
 				len++;
 			}
-			len++; // null terminator
 			return len;
 		}
 
@@ -132,10 +131,8 @@ namespace System.Text
 
 			for (var c in str.DecodedChars)
 			{
-
 				EncodeChar((char32)c);
 			}
-			EncodeChar(0);
 
 			int encodedLen = bufLen - bufLeft;
 			if (bufLeft < 0)

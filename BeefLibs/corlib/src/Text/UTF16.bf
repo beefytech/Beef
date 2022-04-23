@@ -170,7 +170,6 @@ namespace System.Text
 				else
 					len += 2;
 			}
-			len++; // null terminator
 			return len;
 		}
 
@@ -223,7 +222,6 @@ namespace System.Text
 					EncodeChar((char16)(valLeft & 0x3FF) + 0xDC00);
 				}
 			}
-			EncodeChar(0);
 
 			int encodedLen = bufLen - bufLeft;
 			if (bufLeft < 0)
