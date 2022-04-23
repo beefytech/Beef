@@ -9508,6 +9508,9 @@ static void PdbTestFile(WinDebugger* debugger, const StringImpl& path)
 	coffFile.ParseTypeData();
 	coffFile.ParseSymbolData();
 	coffFile.ParseGlobalsData();	
+	
+	for (int i = 0; i < coffFile.mTypes.mSize; i++)
+		coffFile.mTypes[i]->PopulateType();
 }
 
 static void PdbTest(WinDebugger* debugger, const StringImpl& path)
@@ -9622,6 +9625,8 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 			{
 				PdbTest(this, "c:\\");
 			}
+			else if (cmd.StartsWith("!pdbtest "))
+				PdbTestFile(this, cmd.Substring(9));
 		}
 	}
 	

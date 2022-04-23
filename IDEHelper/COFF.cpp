@@ -773,7 +773,7 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 	}
 	else
 	{
-		Fail(StrFormat("Unhandled func type at tagId %d ipi %d", tagIdx, ipi));		
+		SoftFail(StrFormat("Unhandled func type at tagId %d ipi %d", tagIdx, ipi));		
 	}
 
 
@@ -996,6 +996,12 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 						CvAutoReleaseTempData releaseTempData(this, listData);
 
 						int16 trLeafType = GET_FROM(listData, int16);
+						if (trLeafType != LF_METHODLIST)
+						{
+							SoftFail("Invalid LF_METHOD member");
+							return;
+						}
+
 						BF_ASSERT(trLeafType == LF_METHODLIST);
 
 						for (int methodIdx = 0; methodIdx < count; methodIdx++)
@@ -1178,7 +1184,8 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 					}
 					break;
 				default:
-					HardFail(StrFormat("Unhandled leaf id 0x%X", leafType));
+					SoftFail(StrFormat("Unhandled leaf id 0x%X", leafType));
+					return;
 				}
 
 				PTR_ALIGN(data, sectionStart, 4);
@@ -5831,6 +5838,11 @@ void COFF::Fail(const StringImpl& error)
 	DbgModule::Fail(StrFormat("%s in %s", error.c_str(), mPDBPath.c_str()));
 }
 
+void COFF::SoftFail(const StringImpl& error)
+{
+	DbgModule::SoftFail(StrFormat("%s in %s", error.c_str(), mPDBPath.c_str()));
+}
+
 void COFF::HardFail(const StringImpl& error)
 {
 	DbgModule::HardFail(StrFormat("%s in %s", error.c_str(), mPDBPath.c_str()));
@@ -6444,7 +6456,7 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 			break;
 		default:
 			if (!mFailed)
-				Fail(StrFormat("Unknown symbol type '0x%X' in EvaluateLocation", symType));
+				SoftFail(StrFormat("Unknown symbol type '0x%X' in EvaluateLocation", symType));
 			return 0;
 		}
 
@@ -7192,7 +7204,7 @@ void COFF::ParseFrameDescriptors(uint8* data, int size, addr_target baseAddr)
 						else
 						{
 							failed = true;
-							Fail(StrFormat("Invalid COFF frame program: %s", curCmd.c_str()));
+							SoftFail(StrFormat("Invalid COFF frame program: %s", curCmd.c_str()));
 						}
 					}
 					if (c == 0)

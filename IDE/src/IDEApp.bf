@@ -12860,7 +12860,7 @@ namespace IDE
 						
 						deferredOutput.Append(param);
                     }
-                    else if (cmd == "error")
+                    else if ((cmd == "error") || (cmd == "errorsoft"))
                     {
 						if ((mRunningTestScript) && (!IsCrashDump) && (!mScriptManager.IsErrorExpected(param, false)))
 							mScriptManager.Fail(param);
@@ -12944,7 +12944,7 @@ namespace IDE
 									}
 
 									OutputLineSmart(scope String("ERROR: ", scope String(errorMsg)));
-									if (gApp.mRunningTestScript)
+									if ((gApp.mRunningTestScript) || (cmd == "errorsoft"))
 									{
 										// The 'OutputLineSmart' would already call 'Fail' when running test scripts
 									}

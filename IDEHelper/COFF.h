@@ -297,6 +297,7 @@ public:
 
 public:		
 	virtual void Fail(const StringImpl& error) override;
+	virtual void SoftFail(const StringImpl& error);
 	virtual void HardFail(const StringImpl& error) override;
 
 	virtual void ParseGlobalsData() override;

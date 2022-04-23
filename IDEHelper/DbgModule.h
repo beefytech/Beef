@@ -1232,8 +1232,9 @@ public:
 	virtual addr_target LocateSymbol(const StringImpl& name) { return 0; }
 	virtual DbgSubprogram* FindSubprogram(DbgType* dbgType, const char* methodName);
 	const char* GetStringTable(DataStream* stream, int stringTablePos);
-
+	
 	virtual void Fail(const StringImpl& error);
+	virtual void SoftFail(const StringImpl& error);
 	virtual void HardFail(const StringImpl& error);
 	void FindTemplateStr(const char*& name, int& templateNameIdx);
 	void TempRemoveTemplateStr(const char*& name, int& templateNameIdx);

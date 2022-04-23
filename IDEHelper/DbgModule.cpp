@@ -2313,6 +2313,28 @@ void DbgModule::Fail(const StringImpl& error)
 	mFailed = true;
 }
 
+void DbgModule::SoftFail(const StringImpl& error)
+{
+	if (mFailMsgPtr != NULL)
+	{
+		if (mFailMsgPtr->IsEmpty())
+			*mFailMsgPtr = error;
+	}
+
+	String errorStr = "errorsoft ";
+	if (!mFilePath.IsEmpty())
+	{
+		errorStr += "Error in ";
+		errorStr += mFilePath;
+		errorStr += ": ";
+	}
+	errorStr += error;
+	errorStr += "\n";
+
+	mDebugger->OutputRawMessage(errorStr);
+	mFailed = true;
+}
+
 void DbgModule::HardFail(const StringImpl& error)
 {
 	if (mFailMsgPtr != NULL)
