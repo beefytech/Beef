@@ -18717,7 +18717,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			auto paramsType = ResolveTypeRef(paramDef->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
 			if (paramsType == NULL)
 			{
-				AssertErrorState();
+				// Had error or 'var'
 			}
 			else if (paramsType->IsGenericParam())
 			{				
@@ -23375,6 +23375,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				isValid = true;
 			}
 			else if (resolvedParamType->IsSizedArray())
+			{
+				isValid = true;
+			}
+			else if (resolvedParamType->IsVar())
 			{
 				isValid = true;
 			}
