@@ -2752,9 +2752,7 @@ void BfModule::GetAccessAllowed(BfTypeInstance* checkType, bool &allowProtected,
 }
 
 bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType)
-{	
-	if (memberProtection == BfProtection_Hidden)
-		return false;
+{		
 	if (memberProtection == BfProtection_Public)
 		return true;
 		
