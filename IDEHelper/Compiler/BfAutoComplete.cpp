@@ -227,9 +227,18 @@ BfAutoComplete::~BfAutoComplete()
 
 void BfAutoComplete::SetModule(BfModule* module)
 {
-	mModule = module;
-	mCompiler = mModule->mCompiler;
-	mSystem = mCompiler->mSystem;
+	if (module != NULL)
+	{
+		mModule = module;
+		mCompiler = mModule->mCompiler;
+		mSystem = mCompiler->mSystem;
+	}
+	else
+	{
+		mModule = NULL;
+		mCompiler = NULL;
+		mSystem = NULL;
+	}
 }
 
 void BfAutoComplete::Clear()
@@ -293,6 +302,8 @@ int BfAutoComplete::GetCursorIdx(BfAstNode* node)
 
 bool BfAutoComplete::IsAutocompleteNode(BfAstNode* node, int lengthAdd, int startAdd)
 {
+	if (mModule == NULL)
+		return false;
 	if (node == NULL)
 		return false;
 	
@@ -1297,6 +1308,9 @@ BfProject* BfAutoComplete::GetActiveProject()
 
 bool BfAutoComplete::WantsEntries()
 {
+	if (mModule == NULL)
+		return false;
+
 	return (mResolveType == BfResolveType_Autocomplete) || 
 		(mResolveType == BfResolveType_Autocomplete_HighPri) ||
 		(mResolveType == BfResolveType_GetSymbolInfo) ||

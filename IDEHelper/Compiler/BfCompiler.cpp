@@ -4279,6 +4279,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 	{
 		if ((autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GoToDefinition))
 		{
+			autoComplete->SetModule(NULL);
 			for (auto& kv : mResolvePassData->mEmitEmbedEntries)
 			{
 				String typeName = kv.mKey;
@@ -4296,6 +4297,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 			}
 
 			DoWorkLoop();
+			autoComplete->SetModule(mContext->mScratchModule);
 		}
 
 		GenerateAutocompleteInfo();

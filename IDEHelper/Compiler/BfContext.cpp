@@ -571,7 +571,16 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				{
 					if (!mCompiler->mIsResolveOnly)
 						BF_ASSERT(!methodInstance->mIsReified || methodInstance->mDeclModule->mIsModuleMutable);
-					ProcessMethod(methodInstance);
+
+					auto autoComplete = mCompiler->GetAutoComplete();
+					if ((autoComplete != NULL) && (autoComplete->mModule == NULL))
+					{
+						autoComplete->mModule = methodInstance->mDeclModule;
+						ProcessMethod(methodInstance);
+						autoComplete->mModule = NULL;
+					}
+					else
+						ProcessMethod(methodInstance);
 				}
 			}
 			
