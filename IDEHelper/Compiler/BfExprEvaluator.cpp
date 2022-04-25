@@ -19095,6 +19095,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 		}
 		else
 		{
+			mModule->mBfIRBuilder->PopulateType(trueValue.mType);
 			phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(trueValue.mType), 2);
 			mModule->mBfIRBuilder->AddPhiIncoming(phi, trueValue.mValue, trueBlockPos);
 			mModule->mBfIRBuilder->AddPhiIncoming(phi, falseValue.mValue, falseBlockPos);
