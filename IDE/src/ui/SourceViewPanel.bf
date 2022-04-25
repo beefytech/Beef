@@ -2182,12 +2182,12 @@ namespace IDE.ui
 						for (var emitEmbedData in resolveParams.mEmitEmbeds)
 						{
 							var data = resolvePassData.GetEmitEmbedData(emitEmbedData.mTypeName, var srcLength, var revision);
-							if (srcLength > 0)
-							{
-								emitEmbedData.mCharData = new EditWidgetContent.CharData[srcLength+1] (?);
-								emitEmbedData.mCharData[srcLength] = default;
-								Internal.MemCpy(emitEmbedData.mCharData.Ptr, data, srcLength * strideof(EditWidgetContent.CharData));
-							}
+							if (srcLength < 0)
+								srcLength = 0;
+
+							emitEmbedData.mCharData = new EditWidgetContent.CharData[srcLength+1] (?);
+							emitEmbedData.mCharData[srcLength] = default;
+							Internal.MemCpy(emitEmbedData.mCharData.Ptr, data, srcLength * strideof(EditWidgetContent.CharData));
 						}
 					}
 				}

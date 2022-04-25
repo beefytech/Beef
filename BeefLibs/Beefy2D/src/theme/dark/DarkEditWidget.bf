@@ -826,11 +826,16 @@ namespace Beefy.theme.dark
 
 			if (mLineRange != null)
 			{
-				var lineAndColumn = CursorLineAndColumn;
-				if (lineAndColumn.mLine < mLineRange.Value.Start)
-					CursorLineAndColumn = .(mLineRange.Value.Start, lineAndColumn.mColumn);
-				else if (lineAndColumn.mLine >= mLineRange.Value.End)
-					CursorLineAndColumn = .(mLineRange.Value.End - 1, lineAndColumn.mColumn);
+				if (mLineRange.Value.Length == 0)
+					CursorLineAndColumn = .(0, 0);
+				else
+				{
+					var lineAndColumn = CursorLineAndColumn;
+					if (lineAndColumn.mLine < mLineRange.Value.Start)
+						CursorLineAndColumn = .(mLineRange.Value.Start, lineAndColumn.mColumn);
+					else if (lineAndColumn.mLine >= mLineRange.Value.End)
+						CursorLineAndColumn = .(mLineRange.Value.End - 1, lineAndColumn.mColumn);
+				}
 			}
 		}
 

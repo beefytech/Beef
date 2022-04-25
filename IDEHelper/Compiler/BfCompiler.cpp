@@ -9759,7 +9759,53 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 	SetAndRestoreValue<BfResolvePassData*> prevCompilerResolvePassData(bfCompiler->mResolvePassData, resolvePassData);
 	SetAndRestoreValue<BfPassInstance*> prevPassInstance(bfCompiler->mPassInstance, &bfPassInstance);
 
+	HashSet<BfTypeDef*> typeHashSet;
+	for (auto typeDef : bfParser->mTypeDefs)
+		typeHashSet.Add(typeDef);
+
 	Dictionary<int, int> foundTypeIds;
+
+	struct _EmitSource
+	{
+		BfParser* mEmitParser;
+		bool mIsPrimary;
+	};
+	Dictionary<BfTypeDef*, Dictionary<int, _EmitSource>> emitLocMap;
+	
+	for (auto type : bfCompiler->mContext->mResolvedTypes)
+	{
+		auto typeInst = type->ToTypeInstance();
+		if (typeInst == NULL)
+			continue;
+
+		if (typeHashSet.Contains(typeInst->mTypeDef->GetLatest()))
+		{
+			if (typeInst->IsSpecializedType())
+			{
+				if (typeInst->mCeTypeInfo == NULL)
+					continue;
+
+				for (auto& kv : typeInst->mCeTypeInfo->mEmitSourceMap)
+				{
+					int partialIdx = (int)(kv.mKey >> 32);
+					int charIdx = (int)(kv.mKey & 0xFFFFFFFF);
+
+					auto typeDef = typeInst->mTypeDef;
+					if (partialIdx > 0)
+						typeDef = typeDef->mPartials[partialIdx];
+				
+					auto emitParser = typeInst->mTypeDef->GetLastSource()->ToParser();
+
+					Dictionary<int, _EmitSource>* map = NULL;
+					emitLocMap.TryAdd(typeDef->GetLatest(), NULL, &map);
+					_EmitSource emitSource;
+					emitSource.mEmitParser = emitParser;
+					emitSource.mIsPrimary = false;
+					(*map)[charIdx] = emitSource;
+				}
+			}
+		}
+	}
 
 	for (auto typeDef : bfParser->mTypeDefs)
 	{
@@ -9771,6 +9817,34 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				continue;
 		}
 
+		auto _GetTypeEmbedId = [&](BfTypeInstance* typeInst, BfParser* emitParser)
+		{			
+			int* keyPtr = NULL;
+			int* valuePtr = NULL;
+			if (foundTypeIds.TryAdd(typeInst->mTypeId, &keyPtr, &valuePtr))
+			{
+				*valuePtr = foundTypeIds.mCount - 1;
+				outString += "+";
+
+				if (emitParser == NULL)
+				{					
+					String typeName;
+					outString += typeInst->mTypeDef->mProject->mName;
+					outString += ":";
+					outString += bfCompiler->mContext->mScratchModule->TypeToString(typeInst, BfTypeNameFlags_None);																
+				}
+				else
+				{
+					int dollarPos = (int)emitParser->mFileName.LastIndexOf('$');
+					if (dollarPos == -1)
+						return -1;
+					outString += emitParser->mFileName.Substring(dollarPos + 1);
+				}
+				outString += "\n";
+			}
+			return *valuePtr;
+		};
+
 		auto type = bfCompiler->mContext->mScratchModule->ResolveTypeDef(useTypeDef);
 		if (type == NULL)
 			continue;
@@ -9778,9 +9852,6 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 		{
 			auto origTypeInst = typeInst;
 
-			if (typeInst->mCeTypeInfo == NULL)
-				continue;
-			
 			for (auto checkIdx = explicitEmitTypes.mSize - 1; checkIdx >= 0; checkIdx--)
 			{
 				auto checkType = explicitEmitTypes[checkIdx];
@@ -9792,59 +9863,95 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				}
 			}
 
-			for (auto& kv : typeInst->mCeTypeInfo->mEmitSourceMap)
+			if (typeInst->mCeTypeInfo != NULL)
 			{
-				int partialIdx = (int)(kv.mKey >> 32);
-				int charIdx = (int)(kv.mKey & 0xFFFFFFFF);
-
-				auto typeDef = typeInst->mTypeDef;
-				if (partialIdx > 0)
-					typeDef = typeDef->mPartials[partialIdx];
-
-				auto parser = typeDef->GetDefinition()->GetLastSource()->ToParser();
-				if (parser == NULL)
-					continue;
-
-				if (!FileNameEquals(parser->mFileName, bfParser->mFileName))
-					continue;
-				
-				auto emitParser = typeInst->mTypeDef->GetLastSource()->ToParser();
-				if (emitParser == NULL)
-					continue;
-
-				int startLine = 0;
-				int startLineChar = 0;
-				emitParser->GetLineCharAtIdx(kv.mValue.mSrcStart, startLine, startLineChar);
-
-				int srcEnd = kv.mValue.mSrcEnd - 1;
-				while (srcEnd >= kv.mValue.mSrcStart)
+				for (auto& kv : typeInst->mCeTypeInfo->mEmitSourceMap)
 				{
-					char c = emitParser->mSrc[srcEnd];
-					if (!::isspace((uint8)c))
-						break;
-					srcEnd--;
+					int partialIdx = (int)(kv.mKey >> 32);
+					int charIdx = (int)(kv.mKey & 0xFFFFFFFF);
+
+					auto typeDef = typeInst->mTypeDef;
+					if (partialIdx > 0)
+						typeDef = typeDef->mPartials[partialIdx];
+
+					auto parser = typeDef->GetDefinition()->GetLastSource()->ToParser();
+					if (parser == NULL)
+						continue;
+
+					if (!FileNameEquals(parser->mFileName, bfParser->mFileName))
+						continue;
+
+					auto bfParser = typeDef->GetLastSource()->ToParser();
+					auto emitParser = typeInst->mTypeDef->GetLastSource()->ToParser();
+					if (emitParser == NULL)
+						continue;
+
+					Dictionary<int, _EmitSource>* map = NULL;
+					if (emitLocMap.TryGetValue(typeDef, &map))
+					{
+						_EmitSource emitSource;
+						emitSource.mEmitParser = emitParser;
+						emitSource.mIsPrimary = true;
+						(*map)[charIdx] = emitSource;
+					}
+
+					int startLine = 0;
+					int startLineChar = 0;
+					emitParser->GetLineCharAtIdx(kv.mValue.mSrcStart, startLine, startLineChar);
+
+					int srcEnd = kv.mValue.mSrcEnd - 1;
+					while (srcEnd >= kv.mValue.mSrcStart)
+					{
+						char c = emitParser->mSrc[srcEnd];
+						if (!::isspace((uint8)c))
+							break;
+						srcEnd--;
+					}
+
+					int embedId = _GetTypeEmbedId(typeInst, emitParser);
+					if (embedId == -1)
+						continue;
+
+					int endLine = 0;
+					int endLineChar = 0;
+					emitParser->GetLineCharAtIdx(srcEnd, endLine, endLineChar);
+					outString += StrFormat("e%d,%d,%d,%d\n", embedId, charIdx, startLine, endLine + 1);
 				}
+			}
 
-				int endLine = 0;
-				int endLineChar = 0;
-				emitParser->GetLineCharAtIdx(srcEnd, endLine, endLineChar);
-				
-				int dollarPos = (int)emitParser->mFileName.LastIndexOf('$');
-				if (dollarPos == -1)
-					continue;
+			if (typeInst->IsGenericTypeInstance())
+			{
+				String emitName;
 
-				int* keyPtr = NULL;
-				int* valuePtr = NULL;
-				if (foundTypeIds.TryAdd(typeInst->mTypeId, &keyPtr, &valuePtr))
+				auto _CheckTypeDef = [&](BfTypeDef* typeDef)
 				{
-					*valuePtr = foundTypeIds.mCount - 1;
-					outString += "+";
-					outString += emitParser->mFileName.Substring(dollarPos + 1);
-					outString += "\n";
-				}
+					auto parser = typeDef->GetDefinition()->GetLastSource()->ToParser();
+					if (parser == NULL)
+						return;
 
-				outString += (kv.mValue.mKind == BfCeTypeEmitSourceKind_Method) ? 'm' : 't';
-				outString += StrFormat("%d,%d,%d,%d,%d,%d\n", *valuePtr, typeInst->mRevision, partialIdx, charIdx, startLine, endLine + 1);
+					if (!FileNameEquals(parser->mFileName, bfParser->mFileName))
+						return;
+
+					Dictionary<int, _EmitSource>* map = NULL;
+					if (emitLocMap.TryGetValue(typeDef, &map))
+					{
+						for (auto kv : *map)
+						{
+							if (kv.mValue.mIsPrimary)
+								continue;
+
+							int embedId = _GetTypeEmbedId(typeInst, NULL);
+							if (embedId == -1)
+								continue;
+
+							outString += StrFormat("e%d,%d,%d,%d\n", embedId, kv.mKey, 0, 0);
+						}
+					}
+				};
+
+				_CheckTypeDef(typeInst->mTypeDef);
+				for (auto partialTypeDef : typeInst->mTypeDef->mPartials)
+					_CheckTypeDef(partialTypeDef);
 			}
 		}
 	}

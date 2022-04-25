@@ -5869,8 +5869,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			auto argValue = exprEvaluator.mResult;			
 			if (argValue)
 			{
-				//resolvedArg.mResolvedType = mModule->ResolveGenericType(argValue.mType);
-
+				mModule->mBfIRBuilder->PopulateType(argValue.mType);
 				resolvedArg.mResolvedType = argValue.mType;
 				if (resolvedArg.mResolvedType->IsRef())
 					argValue.mKind = BfTypedValueKind_Value;

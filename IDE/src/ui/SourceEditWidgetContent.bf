@@ -229,7 +229,6 @@ namespace IDE.ui
 
 					mSourceViewPanel.Show(emitPath, false, null);
 					mSourceViewPanel.mEditWidget.mEditWidgetContent.mIsReadOnly = true;
-					mSourceViewPanel.mEmitRevision = emitEmbed.mRevision;
 					AddWidget(mSourceViewPanel);
 
 					mSourceViewPanel.mEditWidget.mOnGotFocus.Add(new (val1) =>
@@ -381,7 +380,8 @@ namespace IDE.ui
 							mAwaitingLoad = true;
 					}
 
-					if (mSourceViewPanel.mEditWidget.mEditWidgetContent.mData.mTextLength == 0)
+					var ewc = (SourceEditWidgetContent)mSourceViewPanel.mEditWidget.mEditWidgetContent;
+					if ((ewc.mLineRange.GetValueOrDefault().Length != 0) && (mSourceViewPanel.mEditWidget.mEditWidgetContent.mData.mTextLength == 0))
 						mAwaitingLoad = true;
 
 					if ((mAwaitingLoad) && (gApp.mUpdateCnt % 4 == 0))
@@ -499,8 +499,6 @@ namespace IDE.ui
 			public float mOpenPct;
 			public int32 mAnchorId;
 			public int32 mCollapseIndex;
-			public int32 mRevision;
-			public int32 mPartialIdx;
 			public int32 mStartLine;
 			public int32 mEndLine;
 			public View mView;
@@ -563,11 +561,10 @@ namespace IDE.ui
 				case Type = 'T';
 				case UsingNamespaces = 'U';
 				case Unknown = '?';
-				case EmitInType = 't';
-				case EmitInMethod = 'm';
+				case Emit = 'e';
 				case EmitAddType = '+';
 
-				public bool IsEmit => (this == .EmitInType) || (this == .EmitInMethod);
+				public bool IsEmit => (this == .Emit);
 			}
 
 			public Kind mKind;
@@ -597,8 +594,6 @@ namespace IDE.ui
 		{
 			public SourceEditWidgetContent.CollapseEntry.Kind mKind;
 			public int32 mTypeNameIdx;
-			public int32 mRevision;
-			public int32 mPartialIdx;
 			public int32 mAnchorIdx;
 			public int32 mStartLine;
 			public int32 mEndLine;
@@ -5706,9 +5701,7 @@ namespace IDE.ui
 					emitEmbed.mAnchorId = emitData.mAnchorId;
 					emitEmbed.mEmitKind = emitData.mKind;
 					emitEmbed.mTypeName = mCollapseTypeNames[emitData.mTypeNameIdx];
-					emitEmbed.mRevision = emitData.mRevision;
-					emitEmbed.mPartialIdx = emitData.mPartialIdx;
-
+					
 					if (emitEmbed.mView != null)
 					{
 						Range range = .(emitData.mStartLine, emitData.mEndLine);
@@ -6296,8 +6289,6 @@ namespace IDE.ui
 					EmitData emitData;
 					emitData.mKind = kind;
 					emitData.mTypeNameIdx = int32.Parse(itr.GetNext().Value);
-					emitData.mRevision = int32.Parse(itr.GetNext().Value);
-					emitData.mPartialIdx = int32.Parse(itr.GetNext().Value);
 					emitData.mAnchorIdx = int32.Parse(itr.GetNext().Value);
 					emitData.mStartLine = int32.Parse(itr.GetNext().Value);
 					emitData.mEndLine = int32.Parse(itr.GetNext().Value);

@@ -2079,7 +2079,7 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 		
 		BfLogSys(mSystem, "Emit typeDef for type %p created %p parser %p typeDecl %p\n", typeInstance, emitTypeDef, emitParser, emitTypeDef->mTypeDeclaration);
 
-		String typeName;		
+		String typeName;
 		typeName += typeInstance->mTypeDef->mProject->mName;
 		typeName += ":";
 
