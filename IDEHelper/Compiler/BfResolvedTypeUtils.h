@@ -1204,7 +1204,7 @@ public:
 	virtual BfGenericParamDef* GetGenericParamDef() = 0;
 	virtual BfExternalConstraintDef* GetExternConstraintDef() = 0;
 	virtual String GetName() = 0;	
-	virtual BfAstNode* GetRefNode() = NULL;
+	virtual BfAstNode* GetRefNode() = 0;
 	bool IsEnum();
 };
 
