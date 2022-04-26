@@ -110,6 +110,10 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 	for (auto genericParam : genericExEntry->mGenericParams)
 		AddDependency(genericParam, mCurTypeInstance);	
 
+	ValidateGenericParams(BfGenericParamKind_Type,
+		Span<BfGenericParamInstance*>((BfGenericParamInstance**)genericExEntry->mGenericParams.mVals,
+			genericExEntry->mGenericParams.mSize));
+
 	return genericExEntry;
 }
 
@@ -153,7 +157,7 @@ bool BfModule::InitGenericParams(BfType* resolvedTypeRef)
 }
 
 bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
-{	
+{
 	BfTypeState typeState;
 	typeState.mPrevState = mContext->mCurTypeState;
 	typeState.mResolveKind = BfTypeState::ResolveKind_BuildingGenericParams;
@@ -326,11 +330,67 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 
 	for (auto typeRef : deferredResolveTypes)
 		auto constraintType = ResolveTypeRef(typeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_None);
+	
+	ValidateGenericParams(BfGenericParamKind_Type, 
+		Span<BfGenericParamInstance*>((BfGenericParamInstance**)genericTypeInst->mGenericTypeInfo->mGenericParams.mVals, 
+			genericTypeInst->mGenericTypeInfo->mGenericParams.mSize));
 
 	for (auto genericParam : genericTypeInst->mGenericTypeInfo->mGenericParams)	
 		AddDependency(genericParam, mCurTypeInstance);			
 
 	return true;
+}
+
+void BfModule::ValidateGenericParams(BfGenericParamKind genericParamKind, Span<BfGenericParamInstance*> genericParams)
+{		
+	std::function<void(BfType*, Array<BfGenericParamType*>&)> _CheckType = [&](BfType* type, Array<BfGenericParamType*>& foundParams)
+	{
+		if (type == NULL)
+			return;
+		if (!type->IsGenericParam())
+			return;
+		auto genericParamType = (BfGenericParamType*)type;
+		if (genericParamType->mGenericParamKind != genericParamKind)
+			return;
+		
+		auto genericParam = genericParams[genericParamType->mGenericParamIdx];
+		if (genericParam->mTypeConstraint == NULL)
+			return;
+		
+		if (foundParams.Contains(genericParamType))
+		{
+			String error = "Circular constraint dependency between ";
+			for (int i = 0; i < foundParams.mSize; i++)
+			{
+				auto foundParam = foundParams[i];
+				if (i > 0)
+					error += " and ";
+				error += TypeToString(foundParam, BfTypeNameFlag_ResolveGenericParamNames);
+
+				// Remove errored type constraint
+				genericParams[foundParam->mGenericParamIdx]->mTypeConstraint = NULL;
+			}
+
+			if (foundParams.mSize == 1)
+				error += " and itself";
+
+			Fail(error, genericParams[genericParamType->mGenericParamIdx]->GetRefNode());
+			return;
+		}
+
+		foundParams.Add(genericParamType);
+		_CheckType(genericParam->mTypeConstraint, foundParams);
+		foundParams.pop_back();
+	};
+
+	for (auto genericParam : genericParams)
+	{		
+		if (genericParam->mTypeConstraint != NULL)
+		{
+			Array<BfGenericParamType*> foundParams;
+			_CheckType(genericParam->mTypeConstraint, foundParams);
+		}
+	}
 }
 
 bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* genericTypeInst, bool ignoreErrors)

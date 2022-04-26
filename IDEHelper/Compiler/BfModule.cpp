@@ -14316,7 +14316,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	{
 		auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, externConstraintIdx + (int)methodDef->mGenericParams.size());
 		methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);
-	}
+	}	
 	
 	bool addToWorkList = !processNow;
 	if (mCompiler->GetAutoComplete() != NULL)
@@ -22952,6 +22952,13 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		}
 		for (auto typeRef : deferredResolveTypes)
 			auto constraintType = ResolveTypeRef(typeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_None);
+
+		if (methodInstance->mMethodInfoEx != NULL)
+		{
+			ValidateGenericParams(BfGenericParamKind_Method,
+				Span<BfGenericParamInstance*>((BfGenericParamInstance**)methodInstance->mMethodInfoEx->mGenericParams.mVals,
+					methodInstance->mMethodInfoEx->mGenericParams.mSize));
+		}
 
 		for (auto genericParam : methodInstance->mMethodInfoEx->mGenericParams)
 			AddDependency(genericParam, mCurTypeInstance);

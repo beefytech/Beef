@@ -297,7 +297,7 @@ void DbgHotScanner::ScanRoot(addr_target rootPtr, int memKind)
 				continue;
 
 			int expectedStartPage = (rootIdx * PageHeap::PageMap::LEAF_LENGTH) + leafIdx;			
-			Span span;
+			TCFake::Span span;
 			mDebugger->ReadMemory(spanAddr, sizeof(span), &span);
 			ScanSpan(&span, expectedStartPage, memKind);
 		}
@@ -326,7 +326,7 @@ void DbgHotScanner::ScanRoot(addr_target rootPtr, int memKind)
 					continue;
 
 				int expectedStartPage = ((pageIdx1 * PageHeap::PageMap::INTERIOR_LENGTH) + pageIdx2) * PageHeap::PageMap::LEAF_LENGTH + pageIdx3;
-				Span span;
+				TCFake::Span span;
 				mDebugger->ReadMemory(spanAddr, sizeof(span), &span);
 				ScanSpan(&span, expectedStartPage, memKind);
 			}

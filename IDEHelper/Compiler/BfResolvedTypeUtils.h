@@ -1204,6 +1204,7 @@ public:
 	virtual BfGenericParamDef* GetGenericParamDef() = 0;
 	virtual BfExternalConstraintDef* GetExternConstraintDef() = 0;
 	virtual String GetName() = 0;	
+	virtual BfAstNode* GetRefNode() = NULL;
 	bool IsEnum();
 };
 
@@ -1255,6 +1256,13 @@ public:
 			return mTypeDef->mGenericParamDefs[mGenericIdx]->mName;
 		return mTypeDef->mExternalConstraints[mGenericIdx - (int)mTypeDef->mGenericParamDefs.size()].mTypeRef->ToString();
 	}
+
+	virtual BfAstNode* GetRefNode() override
+	{
+		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
+			return mTypeDef->mGenericParamDefs[mGenericIdx]->mNameNodes[0];
+		return mTypeDef->mExternalConstraints[mGenericIdx - (int)mTypeDef->mGenericParamDefs.size()].mTypeRef;
+	}
 };
 
 class BfGenericMethodParamInstance : public BfGenericParamInstance
@@ -1304,6 +1312,13 @@ public:
 		if (mGenericIdx < (int)mMethodDef->mGenericParams.size())
 			return mMethodDef->mGenericParams[mGenericIdx]->mName;
 		return mMethodDef->mExternalConstraints[mGenericIdx - (int)mMethodDef->mGenericParams.size()].mTypeRef->ToString();
+	}
+
+	virtual BfAstNode* GetRefNode() override
+	{
+		if (mGenericIdx < (int)mMethodDef->mGenericParams.size())
+			return mMethodDef->mGenericParams[mGenericIdx]->mNameNodes[0];
+		return mMethodDef->mExternalConstraints[mGenericIdx - (int)mMethodDef->mGenericParams.size()].mTypeRef;
 	}
 };
 

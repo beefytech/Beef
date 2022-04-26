@@ -16,6 +16,7 @@
 #include "BeefySysLib/util/Hash.h"
 #include "BeefySysLib/util/HashSet.h"
 #include "BeefySysLib/util/SizedArray.h"
+#include "BeefySysLib/Span.h"
 #include "BfSourceClassifier.h"
 #include "BfAst.h"
 #include "BfSystem.h"
@@ -1756,6 +1757,7 @@ public:
 	BfType* ResolveGenericMethodTypeRef(BfTypeReference* typeRef, BfMethodInstance* methodInstance, BfGenericParamInstance* genericParamInstance, BfTypeVector* methodGenericArgsOverride);
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
 	bool CheckConstraintState(BfAstNode* refNode);
+	void ValidateGenericParams(BfGenericParamKind genericParamKind, Span<BfGenericParamInstance*> genericParams);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
 	void CheckInjectNewRevision(BfTypeInstance* typeInstance);
 	void InitType(BfType* resolvedTypeRef, BfPopulateType populateType);

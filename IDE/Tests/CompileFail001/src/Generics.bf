@@ -109,5 +109,24 @@ namespace IDETest
 			TestPreGen<List<int>>();
 			Method7<int>(); //FAIL The type 'int' must be a reference type in order to use it as parameter 'comptype(typeof(T))' for 'IDETest.Generics.Method7<int>()'
 		}
+
+		public static void CircDepMethod<T, T2>() where T : T2 where T2 : T //FAIL
+		{
+
+		}
+
+		class CircDep<T> where T : T //FAIL
+		{
+
+		}
 	}
+}
+
+namespace System.Collections
+{
+    extension List<T> //FAIL
+        where T : T
+    {
+
+    }
 }

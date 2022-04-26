@@ -8,7 +8,7 @@ NS_BF_DBG_BEGIN
 
 namespace TCFake
 {
-	struct Span;	
+	struct Span;
 	static const size_t kPageShift = 13;
 	static const size_t kNumClasses = 88;
 
