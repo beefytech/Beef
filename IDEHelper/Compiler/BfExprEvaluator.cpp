@@ -5291,9 +5291,15 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				auto field = nextField;
 				nextField = nextField->mNextWithSameName;
-								
+				auto checkProtection = field->mProtection;
+				if (checkProtection == BfProtection_Hidden)
+				{
+					// Allow acessing hidden fields
+					checkProtection = BfProtection_Private;
+				}
+
 				if (((flags & BfLookupFieldFlag_IgnoreProtection) == 0) &&  (!isFailurePass) &&
-					(!mModule->CheckProtection(protectionCheckFlags, curCheckType, field->mDeclaringType->mProject, field->mProtection, startCheckType)))
+					(!mModule->CheckProtection(protectionCheckFlags, curCheckType, field->mDeclaringType->mProject, checkProtection, startCheckType)))
 				{					
 					continue;					
 				}				
