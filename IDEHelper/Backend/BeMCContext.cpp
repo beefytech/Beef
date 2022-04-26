@@ -16126,7 +16126,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Test@TestProgram@BeefTest@bf@@AEAA_NXZ");
+	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@CAXXZ");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
@@ -16748,6 +16748,8 @@ void BeMCContext::Generate(BeFunction* function)
 					bool doPtrCast = false;
 					if (castedInst->mArraySize != NULL)
 					{
+						mcSize = BeMCOperand::FromImmediate(castedInst->mType->GetStride());
+
 						auto mcArraySize = GetOperand(castedInst->mArraySize);
 						if (mcArraySize.IsImmediate())
 						{

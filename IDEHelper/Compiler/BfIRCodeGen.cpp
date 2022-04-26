@@ -197,6 +197,7 @@ static const BuiltinEntry gIntrinEntries[] =
 };
 
 #define CMD_PARAM(ty, name) ty name; Read(name);
+#define CMD_PARAM_NOTRANS(ty, name) ty name; Read(name, NULL, BfIRSizeAlignKind_NoTransform);
 BF_STATIC_ASSERT(BF_ARRAY_COUNT(gIntrinEntries) == BfIRIntrinsic_COUNT);
 
 template <typename T>
@@ -654,6 +655,14 @@ void BfIRCodeGen::SetResult(int id, llvm::Value* value)
 	mResults.TryAdd(id, entry);
 }
 
+void BfIRCodeGen::SetResultAligned(int id, llvm::Value* value)
+{
+	BfIRCodeGenEntry entry;
+	entry.mKind = BfIRCodeGenEntryKind_LLVMValue_Aligned;
+	entry.mLLVMValue = value;
+	mResults.TryAdd(id, entry);
+}
+
 void BfIRCodeGen::SetResult(int id, llvm::Type* type)
 {	
 	BfIRCodeGenEntry entry;
@@ -828,7 +837,7 @@ void BfIRCodeGen::Read(llvm::FunctionType*& llvmType)
 	llvmType = (llvm::FunctionType*)result.mLLVMType;
 }
 
-void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry, bool wantSizeAligned)
+void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry, BfIRSizeAlignKind sizeAlignKind)
 {
 	BfIRParamType paramType = (BfIRParamType)mStream->Read();
 	if (paramType == BfIRParamType_None)
@@ -976,7 +985,7 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 			BfIRTypeEntry* typeEntry = NULL;
 			llvm::Type* type = NULL;
 			Read(type, &typeEntry);
-			if ((wantSizeAligned) && (typeEntry != NULL))			
+			if ((sizeAlignKind == BfIRSizeAlignKind_Aligned) && (typeEntry != NULL))			
 				llvmValue = llvm::ConstantAggregateZero::get(GetSizeAlignedType(typeEntry));
 			else
 				llvmValue = llvm::ConstantAggregateZero::get(type);
@@ -995,7 +1004,7 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 			llvm::Type* type = NULL;
 			Read(type, &typeEntry);			
 			CmdParamVec<llvm::Constant*> values;
-			Read(values, type->isArrayTy());
+			Read(values, type->isArrayTy() ? BfIRSizeAlignKind_Aligned : BfIRSizeAlignKind_Original);
 
 			if (auto arrayType = llvm::dyn_cast<llvm::ArrayType>(type))
 			{
@@ -1025,7 +1034,7 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 					}
 				}
 
-				if ((wantSizeAligned) && (typeEntry != NULL))
+				if ((sizeAlignKind == BfIRSizeAlignKind_Aligned) && (typeEntry != NULL))
 				{
 					auto alignedType = llvm::dyn_cast<llvm::StructType>(GetSizeAlignedType(typeEntry));
 					if (type != alignedType)
@@ -1153,15 +1162,32 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry,
 			}
 		}
 
+		if (result.mKind == BfIRCodeGenEntryKind_LLVMValue_Aligned)
+		{
+			llvmValue = result.mLLVMValue;
+			if (sizeAlignKind != BfIRSizeAlignKind_Original)
+				return;
+
+			llvm::Type* normalType = NULL;
+			if (auto ptrType = llvm::dyn_cast<llvm::PointerType>(llvmValue->getType()))
+			{
+				if (mAlignedTypeToNormalType.TryGetValue(ptrType->getElementType(), &normalType))
+				{
+					llvmValue = mIRBuilder->CreateBitCast(llvmValue, normalType->getPointerTo());
+					return;
+				}
+			}
+		}
+
 		BF_ASSERT(result.mKind == BfIRCodeGenEntryKind_LLVMValue);
 		llvmValue = result.mLLVMValue;
 	}
 }
 
-void BfIRCodeGen::Read(llvm::Constant*& llvmConstant, bool wantSizeAligned)
+void BfIRCodeGen::Read(llvm::Constant*& llvmConstant, BfIRSizeAlignKind sizeAlignKind)
 {
 	llvm::Value* value;
-	Read(value, NULL, wantSizeAligned);
+	Read(value, NULL, sizeAlignKind);
 	if (value == NULL)
 	{
 		llvmConstant = NULL;
@@ -1999,7 +2025,7 @@ void BfIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_SetName:
 		{
-			CMD_PARAM(llvm::Value*, val);
+			CMD_PARAM_NOTRANS(llvm::Value*, val);
 			CMD_PARAM(String, name);
 			val->setName(name.c_str());
 		}
@@ -2423,12 +2449,21 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(llvm::Type*, type);
 			CMD_PARAM(llvm::Value*, arraySize);
-			SetResult(curId, mIRBuilder->CreateAlloca(type, arraySize));
+
+			auto origType = type;
+			auto typeEntry = GetTypeEntry(type);
+			if (typeEntry != NULL)
+				type = GetSizeAlignedType(typeEntry);
+
+			if (origType != type)
+				SetResultAligned(curId, mIRBuilder->CreateAlloca(type, arraySize));
+			else
+				SetResult(curId, mIRBuilder->CreateAlloca(type, arraySize));
 		}
 		break;
 	case BfIRCmd_SetAllocaAlignment:
 		{
-			CMD_PARAM(llvm::Value*, val);
+			CMD_PARAM_NOTRANS(llvm::Value*, val);			
 			CMD_PARAM(int, alignment);
 			auto inst = llvm::dyn_cast<llvm::AllocaInst>(val);
 			inst->setAlignment(llvm::Align(alignment));
@@ -2436,25 +2471,25 @@ void BfIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_SetAllocaNoChkStkHint:
 		{
-			CMD_PARAM(llvm::Value*, val);
+			CMD_PARAM_NOTRANS(llvm::Value*, val);
 			// LLVM does not support this
 		}
 		break;
 	case BfIRCmd_LifetimeStart:
 		{
-			CMD_PARAM(llvm::Value*, val);
+			CMD_PARAM_NOTRANS(llvm::Value*, val);
 			SetResult(curId, mIRBuilder->CreateLifetimeStart(val));
 		}
 		break;
 	case BfIRCmd_LifetimeEnd:
 		{
-			CMD_PARAM(llvm::Value*, val);
+			CMD_PARAM_NOTRANS(llvm::Value*, val);
 			SetResult(curId, mIRBuilder->CreateLifetimeEnd(val));
 		}
 		break;
 	case BfIRCmd_LifetimeExtend:
 		{
-			CMD_PARAM(llvm::Value*, val);			
+			CMD_PARAM_NOTRANS(llvm::Value*, val);
 		}
 		break;
 	case BfIRCmd_Load:
@@ -3972,7 +4007,7 @@ void BfIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_ClearDebugLocationInst:
 		{
-			CMD_PARAM(llvm::Value*, instValue);
+			CMD_PARAM_NOTRANS(llvm::Value*, instValue);
 			BF_ASSERT(llvm::isa<llvm::Instruction>(instValue));
 			((llvm::Instruction*)instValue)->setDebugLoc(llvm::DebugLoc());
 		}
@@ -3993,7 +4028,7 @@ void BfIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_UpdateDebugLocation:
 		{
-			CMD_PARAM(llvm::Value*, instValue);
+			CMD_PARAM_NOTRANS(llvm::Value*, instValue);
 			BF_ASSERT(llvm::isa<llvm::Instruction>(instValue));
 			((llvm::Instruction*)instValue)->setDebugLoc(mIRBuilder->getCurrentDebugLocation());
 		}
