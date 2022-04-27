@@ -337,6 +337,7 @@ public:
 	bool mLastHadComptimeRebuilds;
 	bool mHasComptimeRebuilds;
 	bool mInInvalidState;
+	bool mDepsMayHaveDeletedTypes;
 	float mCompletionPct;
 	int mHSPreserveIdx;
 	BfModule* mLastAutocompleteModule;		
@@ -474,8 +475,9 @@ public:
 	BfIRFunction CreateLoadSharedLibraries(BfVDataModule* bfModule, Array<BfMethodInstance*>& dllMethods);
 	void GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& testMethods, HashContext& vdataHashCtx);
 	void EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& testMethods, BfIRValue& retValue);
-	void CreateVData(BfVDataModule* bfModule);
+	void CreateVData(BfVDataModule* bfModule);	
 	void UpdateDependencyMap(bool deleteUnusued, bool& didWork);
+	void SanitizeDependencyMap();
 	void ProcessPurgatory(bool reifiedOnly);
 	bool VerifySlotNums();
 	bool QuickGenerateSlotNums();

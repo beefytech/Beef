@@ -3959,7 +3959,13 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, argIdx);
 			CMD_PARAM(String, name);
 
-			auto argItr = ((llvm::Function*)func)->arg_begin();
+			if (argIdx >= func->arg_size())
+			{
+				Fail("BfIRCmd_Func_SetParamName argIdx error");
+				break;
+			}
+
+			auto argItr = func->arg_begin();
 			for (int i = 1; i < argIdx; i++)
 				++argItr;
 			argItr->setName(name.c_str());

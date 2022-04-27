@@ -1690,6 +1690,7 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 	if (type->mRebuildFlags & BfTypeRebuildFlag_Deleted)
 		return;	
 	
+	mCompiler->mDepsMayHaveDeletedTypes = true;
 	mCompiler->mStats.mTypesDeleted++;
 
 	BfDependedType* dType = type->ToDependedType();

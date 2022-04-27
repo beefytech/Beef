@@ -364,6 +364,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mInterfaceSlotCountChanged = false;
 	mLastHadComptimeRebuilds = false;
 	mHasComptimeRebuilds = false;
+	mDepsMayHaveDeletedTypes = false;	
 	
 	mHSPreserveIdx = 0;
 	mCompileLogFP = NULL;
@@ -482,7 +483,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mContext = new BfContext(this);	
 	mCeMachine = new CeMachine(this);
 	mCurCEExecuteId = -1;
-	mLastMidCompileRefreshRevision = -1;
+	mLastMidCompileRefreshRevision = -1;	
 }
 
 BfCompiler::~BfCompiler()
@@ -2529,6 +2530,39 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 	}
 
 	mContext->mQueuedSpecializedMethodRebuildTypes.Clear();
+	mDepsMayHaveDeletedTypes = false;
+}
+
+void BfCompiler::SanitizeDependencyMap()
+{
+	BfLogSysM("SanitizeDependencyMap\n");
+
+	for (auto type : mContext->mResolvedTypes)
+	{
+		if (type == NULL)
+			continue;
+		
+		auto depType = type->ToDependedType();			
+		if (depType == NULL)
+			continue;
+															
+		// Not combined with previous loop because PopulateType could modify typeInst->mDependencyMap
+		for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end();)
+		{
+			auto dependentType = itr->mKey;
+			auto depTypeInst = dependentType->ToTypeInstance();			
+			if (dependentType->IsDeleting())
+			{
+				BfLogSysM("SanitizeDependencyMap removing old dependent %p from %p\n", dependentType, depType);
+				itr = depType->mDependencyMap.erase(itr);				
+			}
+			else
+				++itr;
+		}
+	}	
+
+	mContext->RemoveInvalidWorkItems();
+	mDepsMayHaveDeletedTypes = false;
 }
 
 // When we are unsure of whether an old generic instance will survive, we RebuildType but don't put it in any worklist.
@@ -2538,7 +2572,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 //   3) It stays undefined and we need to build it here
 void BfCompiler::ProcessPurgatory(bool reifiedOnly)
 {
-	BP_ZONE("BfCompiler::ProcessPuragory");	
+	BP_ZONE("BfCompiler::ProcessPurgatory");	
 
 	while (true)
 	{		
@@ -7432,7 +7466,13 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}
 		
 	ProcessPurgatory(false);
+	// ProcessPurgatory MAY cause type rebuilds which we need to handle
+	DoWorkLoop();
 	
+	BfLogSysM("Checking mDepsMayHaveDeletedTypes for SanitizeDependencyMap\n");
+	if (mDepsMayHaveDeletedTypes)
+		SanitizeDependencyMap();	
+
 	// Old Mark used modules	
 
 	if (!mIsResolveOnly)
@@ -7735,7 +7775,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	if (didCancel)
 		mLastHadComptimeRebuilds = mHasComptimeRebuilds || mLastHadComptimeRebuilds;
 	else
-		mLastHadComptimeRebuilds = mHasComptimeRebuilds;
+		mLastHadComptimeRebuilds = mHasComptimeRebuilds;	
 
 	return !didCancel && !mHasQueuedTypeRebuilds;
 }
