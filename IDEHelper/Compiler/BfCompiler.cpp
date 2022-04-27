@@ -9779,32 +9779,29 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 		auto typeInst = type->ToTypeInstance();
 		if (typeInst == NULL)
 			continue;
-
+		
 		if (typeHashSet.Contains(typeInst->mTypeDef->GetLatest()))
 		{
-			if (typeInst->IsSpecializedType())
+			if (typeInst->mCeTypeInfo == NULL)
+				continue;
+
+			for (auto& kv : typeInst->mCeTypeInfo->mEmitSourceMap)
 			{
-				if (typeInst->mCeTypeInfo == NULL)
-					continue;
+				int partialIdx = (int)(kv.mKey >> 32);
+				int charIdx = (int)(kv.mKey & 0xFFFFFFFF);
 
-				for (auto& kv : typeInst->mCeTypeInfo->mEmitSourceMap)
-				{
-					int partialIdx = (int)(kv.mKey >> 32);
-					int charIdx = (int)(kv.mKey & 0xFFFFFFFF);
-
-					auto typeDef = typeInst->mTypeDef;
-					if (partialIdx > 0)
-						typeDef = typeDef->mPartials[partialIdx];
+				auto typeDef = typeInst->mTypeDef;
+				if (partialIdx > 0)
+					typeDef = typeDef->mPartials[partialIdx];
 				
-					auto emitParser = typeInst->mTypeDef->GetLastSource()->ToParser();
+				auto emitParser = typeInst->mTypeDef->GetLastSource()->ToParser();
 
-					Dictionary<int, _EmitSource>* map = NULL;
-					emitLocMap.TryAdd(typeDef->GetLatest(), NULL, &map);
-					_EmitSource emitSource;
-					emitSource.mEmitParser = emitParser;
-					emitSource.mIsPrimary = false;
-					(*map)[charIdx] = emitSource;
-				}
+				Dictionary<int, _EmitSource>* map = NULL;
+				emitLocMap.TryAdd(typeDef->GetLatest(), NULL, &map);
+				_EmitSource emitSource;
+				emitSource.mEmitParser = emitParser;
+				emitSource.mIsPrimary = false;
+				(*map)[charIdx] = emitSource;
 			}
 		}
 	}
@@ -9820,7 +9817,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 		}
 
 		auto _GetTypeEmbedId = [&](BfTypeInstance* typeInst, BfParser* emitParser)
-		{			
+		{
 			int* keyPtr = NULL;
 			int* valuePtr = NULL;
 			if (foundTypeIds.TryAdd(typeInst->mTypeId, &keyPtr, &valuePtr))
@@ -9829,11 +9826,11 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				outString += "+";
 
 				if (emitParser == NULL)
-				{					
+				{
 					String typeName;
 					outString += typeInst->mTypeDef->mProject->mName;
 					outString += ":";
-					outString += bfCompiler->mContext->mScratchModule->TypeToString(typeInst, BfTypeNameFlags_None);																
+					outString += bfCompiler->mContext->mScratchModule->TypeToString(typeInst, BfTypeNameFlags_None);
 				}
 				else
 				{
