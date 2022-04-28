@@ -10309,9 +10309,37 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetGenericTypeInstances(BfCompiler*
 	String& outString = *gTLStrReturn.Get();
 	outString = "";
 
-	auto lookupType = bfCompiler->GetType(typeName);
+	String checkTypeName = typeName;
+	auto lookupType = bfCompiler->GetType(checkTypeName);
 	if (lookupType == NULL)
-		return "";
+	{
+		// Sanitize potentially-generic type name into an unspecialized type name
+		int chevronDepth = 0;
+		int chevronStart = -1;
+		for (int i = 0; i < (int)checkTypeName.mLength; i++)
+		{
+			char c = checkTypeName[i];
+			if (c == '<')
+			{
+				if (chevronDepth == 0)
+					chevronStart = i;
+				chevronDepth++;
+			}
+			else if (c == '>')
+			{
+				chevronDepth--;
+				if (chevronDepth == 0)
+				{
+					checkTypeName.Remove(chevronStart + 1, i - chevronStart - 1);
+					i = chevronStart + 1;
+				}
+			}
+		}
+
+		lookupType = bfCompiler->GetType(checkTypeName);
+		if (lookupType == NULL)
+			return "";
+	}
 
 	auto lookupTypeInst = lookupType->ToTypeInstance();
 	if (lookupTypeInst == NULL)
