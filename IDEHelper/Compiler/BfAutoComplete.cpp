@@ -3796,6 +3796,9 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 
 void BfAutoComplete::SetResultStringType(BfType * type)
 {
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, type->ToTypeInstance());
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
+
 	mResultString = ":";
 	mResultString += mModule->TypeToString(type);
 	if (type->IsObject())
