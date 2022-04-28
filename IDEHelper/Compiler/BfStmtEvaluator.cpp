@@ -6925,11 +6925,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 	if ((scope == mCurMethodState->mCurScope) && (scope->mCloseNode == NULL))
 	{
 		auto parser = deferStmt->GetParser();
-		if ((parser != NULL) && (parser->mFileName.Contains('|')))
-		{
-			// Is emitted
-		}
-		else
+		if ((parser == NULL) || (!parser->mIsEmitted))		
 			Warn(0, "This defer will immediately execute. Consider specifying a wider scope target such as 'defer::'", deferStmt->mDeferToken);
 	}
 
