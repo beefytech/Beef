@@ -389,12 +389,19 @@ public:
 
 	Dictionary(Dictionary&& val)
 	{
-		mAllocSize = val.mAllocSize;
-		mCount = val.mCount;
 		mBuckets = val.mBuckets;
 		mEntries = val.mEntries;
-		mFreeCount = val.mFreeCount;
+		mAllocSize = val.mAllocSize;
+		mCount = val.mCount;
 		mFreeList = val.mFreeList;
+		mFreeCount = val.mFreeCount;
+
+		val.mBuckets = NULL;
+		val.mEntries = NULL;
+		val.mAllocSize = 0;
+		val.mCount = 0;
+		val.mFreeList = 0;
+		val.mFreeCount = 0;
 	}
 
 	~Dictionary()
