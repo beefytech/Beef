@@ -3959,7 +3959,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, argIdx);
 			CMD_PARAM(String, name);
 
-			if (argIdx >= func->arg_size())
+			if (argIdx > func->arg_size())
 			{
 				Fail("BfIRCmd_Func_SetParamName argIdx error");
 				break;

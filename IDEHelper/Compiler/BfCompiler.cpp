@@ -10313,7 +10313,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetGenericTypeInstances(BfCompiler*
 	auto lookupType = bfCompiler->GetType(checkTypeName);
 	if (lookupType == NULL)
 	{
-		// Sanitize potentially-generic type name into an unspecialized type name
+		// Convert potentially-specialized type name into an unspecialized type name
 		int chevronDepth = 0;
 		int chevronStart = -1;
 		for (int i = 0; i < (int)checkTypeName.mLength; i++)
