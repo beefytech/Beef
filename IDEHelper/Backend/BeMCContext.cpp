@@ -9026,6 +9026,11 @@ bool BeMCContext::DoLegalization()
 								newOperand.mVRegIdx = scratchReg.mVRegIdx;
 								IntroduceVRegs(scratchReg, mcBlock, insertPos, insertPos + 1);
 
+								auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
+								// If a scratch vreg needs to preserve a register like the remapped vreg
+								scratchVRegInfo->mDisableRAX |= remappedVRegInfo->mDisableRAX;
+								scratchVRegInfo->mDisableRDX |= remappedVRegInfo->mDisableRDX;
+
 								if ((insertPos == instIdx) || (!scratchForceReg))
 								{
 									// Only allow short-lived forceRegs
@@ -10094,14 +10099,10 @@ bool BeMCContext::DoLegalization()
 									mcRemaindier = BeMCOperand::FromReg(ResizeRegister(X64Reg_RDX, arg0Type));
 									preserveRDXInst->mArg1 = inst->mArg0; // RDX preserve elision exception
 
-									auto vregInfo = GetVRegInfo(inst->mArg0);
-									if (vregInfo != NULL)
-									{
-										// This is to avoid overlap with PreserveRAX
-										DisableRegister(inst->mArg0, X64Reg_RAX);
-										if (preserveRDX)
-											DisableRegister(inst->mArg0, X64Reg_RDX);
-									}
+									// This is to avoid overlap with PreserveRAX
+									DisableRegister(inst->mArg0, X64Reg_RAX);
+									if (preserveRDX)
+										DisableRegister(inst->mArg0, X64Reg_RDX);
 									AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
 								}								
 							}
@@ -10109,6 +10110,11 @@ bool BeMCContext::DoLegalization()
 							{
 								preserveRAXInst->mArg1 = inst->mArg0; // RAX preserve elision exception
 								AllocInst(BeMCInstKind_Mov, inst->mArg0, mcScratch, instIdx++ + 1);
+
+								// This is to avoid overlap with PreserveRAX
+								DisableRegister(inst->mArg0, X64Reg_RAX);
+								if (preserveRDX)
+									DisableRegister(inst->mArg0, X64Reg_RDX);
 							}
 							inst->mArg0 = mcScratch;
 							if (preserveRDX)
