@@ -2651,6 +2651,7 @@ public:
 	static int DoHash(BfType* type, LookupContext* ctx, bool allowRef, int hashSeed);
 	static int Hash(BfType* type, LookupContext* ctx, bool allowRef = false, int hashSeed = 0);
 	static int DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
+	static BfResolveTypeRefFlags GetResolveFlags(BfAstNode* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None);
 	static int DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags, int& hashSeed);
 	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
 	static int Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);

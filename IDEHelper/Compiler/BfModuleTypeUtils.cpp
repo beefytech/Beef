@@ -3075,7 +3075,8 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias)
 	if (!CheckCircularDataError())
 	{
 		if (typeAliasDecl->mAliasToType != NULL)
-			aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);
+			aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias, 
+				(BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGenericParamConstValue | BfResolveTypeRefFlag_AllowImplicitConstExpr));
 	}
 
 	BfLogSysM("DoPopulateType_TypeAlias %p %s = %p %s\n", typeAlias, TypeToString(typeAlias).c_str(), aliasToType, (aliasToType != NULL) ? TypeToString(aliasToType).c_str() : NULL);
