@@ -2130,7 +2130,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		if ((genericArgumentsSubstitute != NULL) && (wantType->IsUnspecializedType()))
 		{
 			wantType = typeUnspecMethodInstance->GetParamType(paramIdx);
-			auto resolvedType = mModule->ResolveGenericType(wantType, typeGenericArguments, genericArgumentsSubstitute, false);
+			auto resolvedType = mModule->ResolveGenericType(wantType, typeGenericArguments, genericArgumentsSubstitute, mModule->mCurTypeInstance, false);
 			if (resolvedType == NULL)
 				goto NoMatch;
 			wantType = resolvedType;
@@ -2250,7 +2250,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		}
 		if ((genericArgumentsSubstitute != NULL) && (returnType->IsUnspecializedType()))
 		{			
-			auto resolvedType = mModule->ResolveGenericType(returnType, typeGenericArguments, genericArgumentsSubstitute, false);
+			auto resolvedType = mModule->ResolveGenericType(returnType, typeGenericArguments, genericArgumentsSubstitute, mModule->mCurTypeInstance, false);
 			if (resolvedType == NULL)
 				goto NoMatch;
 			returnType = resolvedType;
