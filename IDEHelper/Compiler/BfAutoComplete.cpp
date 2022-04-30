@@ -1256,7 +1256,7 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 					continue;
 				genericInferContext.InferGenericArguments(methodInstance);
 
-				thisType = mModule->ResolveGenericType(thisType, NULL, &genericTypeVector, false);
+				thisType = mModule->ResolveGenericType(thisType, NULL, &genericTypeVector, mModule->mCurTypeInstance, false);
 				if (thisType == NULL)
 					continue;
 
