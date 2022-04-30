@@ -19420,7 +19420,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors);
 	SetAndRestoreValue<bool> prevIgnoreWarnings(mIgnoreWarnings, mIsComptimeModule);
 
-	if ((methodInstance->mIsReified) &&
+	if ((!mIsComptimeModule) && (methodInstance->mIsReified) &&
 		((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_CtorNoBody)))
 	{
 		mCurTypeInstance->mHasBeenInstantiated = true;
