@@ -139,4 +139,22 @@ namespace System.Diagnostics
         }
 
     }
+
+	class AutoStopwatchPerf
+	{
+		String mName ~ delete _;
+		Stopwatch mStopwatch = new .() ~ delete _;
+
+		public this(StringView name)
+		{
+			mName = new .(name);
+			mStopwatch.Start();
+		}
+
+		public ~this()
+		{
+			mStopwatch.Stop();
+			Debug.WriteLine($"{mName} {mStopwatch.Elapsed}");
+		}
+	}
 }
