@@ -708,19 +708,19 @@ namespace BeefPerf
 			if (intTimeUS < 1000) // < 1ms
 			{
 				int32 timeNS = (int32)((timeUS - intTimeUS) * 1000);
-				str.AppendF("{0}.{1:02}us", intTimeUS, timeNS / 10);
+				str.AppendF("{0}.{1:00}us", intTimeUS, timeNS / 10);
 			}
 			else if (intTimeUS < 1000*1000) // < 1s
 			{
-				str.AppendF("{0}.{1:02}ms", (int32)(intTimeUS / 1000), (int32)((intTimeUS / 10) % 100));
+				str.AppendF("{0}.{1:00}ms", (int32)(intTimeUS / 1000), (int32)((intTimeUS / 10) % 100));
 			}
 			else if (intTimeUS < 10*1000*1000) // < 10s
 			{
-				str.AppendF("{0}s:{1:03}.{2:01}ms", (int32)(intTimeUS / 1000 / 1000), (int32)((intTimeUS / 1000) % 1000), (int32)((intTimeUS / 100) % 10));
+				str.AppendF("{0}s:{1:000}.{2:00}ms", (int32)(intTimeUS / 1000 / 1000), (int32)((intTimeUS / 1000) % 1000), (int32)((intTimeUS / 100) % 10));
 			}
 			else if (intTimeUS < 60*1000*1000) // < 1m
 			{
-				str.AppendF("{0}s:{1:03}ms", (int32)(intTimeUS / 1000 / 1000), (int32)((intTimeUS / 1000) % 1000));
+				str.AppendF("{0}s:{1:000}ms", (int32)(intTimeUS / 1000 / 1000), (int32)((intTimeUS / 1000) % 1000));
 			}
 			else
 			{
@@ -731,11 +731,11 @@ namespace BeefPerf
 		public static void TimeToStr(double timeUS, String str, bool highPrecision = true)
 		{
 			int64 intTimeUS = (int64)timeUS;
-			str.AppendF("{0}:{1:02}:", (int32)((intTimeUS / 60 / 60 / 1000000)), (int32)((intTimeUS / 60 / 1000000) % 60));
+			str.AppendF("{0}:{1:00}:", (int32)((intTimeUS / 60 / 60 / 1000000)), (int32)((intTimeUS / 60 / 1000000) % 60));
 			if (highPrecision)
-				str.AppendF("{0:02}.{1:06}", (int32)((intTimeUS / 1000000) % 60), (int32)((intTimeUS % 1000000)));
+				str.AppendF("{0:00}.{1:000000}", (int32)((intTimeUS / 1000000) % 60), (int32)((intTimeUS % 1000000)));
 			else
-				str.AppendF("{0:02}.{1:02}", (int32)((intTimeUS / 1000000) % 60), (int32)((intTimeUS / 10000 % 100)));
+				str.AppendF("{0:00}.{1:00}", (int32)((intTimeUS / 1000000) % 60), (int32)((intTimeUS / 10000 % 100)));
 		}
 
 		public Result<int64> ParseTime(String str)

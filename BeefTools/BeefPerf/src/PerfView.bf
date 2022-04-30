@@ -1323,14 +1323,14 @@ namespace BeefPerf
 
 						//0:00:03.123456 {with zeroes trimmed}
 
-						str.AppendF("{0}:{1:02}:", (int32)((timeUS / 60 / 60 / 1000000)), (int32)((timeUS / 60 / 1000000) % 60));
+						str.AppendF("{0}:{1:00}:", (int32)((timeUS / 60 / 60 / 1000000)), (int32)((timeUS / 60 / 1000000) % 60));
 						using (g.PushColor(0x80FFFFFF))
 							g.DrawString(str, xOfs + 4, -2);
 
 						xOfs += g.mFont.GetWidth(str);
 
 						str.Clear();
-						str.AppendF("{0:02}.{1:06}", (int32)((timeUS / 1000000) % 60), (int32)((timeUS % 1000000)));
+						str.AppendF("{0:00}.{1:000000}", (int32)((timeUS / 1000000) % 60), (int32)((timeUS % 1000000)));
 
 						int maxTrim = 0;
 						if (pixelsPerUS < 0.012)
