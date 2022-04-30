@@ -84,8 +84,7 @@ namespace IDE.Compiler
                 sPassInstances.Add(this);
             }
 
-            //Debug.Assert(sPassInstances.Count <= 5);
-            Debug.Assert(sPassInstances.Count <= 4);
+            Debug.Assert(sPassInstances.Count <= 5);
         }
 
         public ~this()
