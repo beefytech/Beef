@@ -5242,15 +5242,9 @@ String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 bool BfTypeUtils::TypeEquals(BfType* typeA, BfType* typeB, BfTypeInstance* selfType)
 {
 	if (typeA->IsUnspecializedTypeVariation())
-	{
-		SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(selfType->mModule->mCurTypeInstance, selfType);
-		typeA = selfType->mModule->ResolveGenericType(typeA, NULL, NULL);
-	}
+		typeA = selfType->mModule->ResolveSelfType(typeA, selfType);	
 	if (typeB->IsUnspecializedTypeVariation())
-	{
-		SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(selfType->mModule->mCurTypeInstance, selfType);
-		typeB = selfType->mModule->ResolveGenericType(typeB, NULL, NULL);
-	}
+		typeB = selfType->mModule->ResolveSelfType(typeB, selfType);	
 	return typeA == typeB;
 }
 

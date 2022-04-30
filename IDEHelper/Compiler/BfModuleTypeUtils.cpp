@@ -6450,7 +6450,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				auto iReturnType = ifaceMethodInst->mReturnType;
 				if (iReturnType->IsUnspecializedTypeVariation())
 				{
-					BfType* resolvedType = ResolveGenericType(iReturnType, NULL, NULL);
+					BfType* resolvedType = ResolveGenericType(iReturnType, NULL, NULL, mCurTypeInstance);
 					if (resolvedType != NULL)
 						iReturnType = resolvedType;
 					else
@@ -8232,7 +8232,7 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 	return NULL;
 }
 
-BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, bool allowFail)
+BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, BfType* selfType, bool allowFail)
 {
 	if (unspecializedType->IsGenericParam())
 	{
@@ -8260,8 +8260,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		return unspecializedType;
 	}
 
-	if ((unspecializedType->IsSelf()) && (mCurTypeInstance != NULL))
-		return mCurTypeInstance;
+	if ((unspecializedType->IsSelf()) && (selfType != NULL))
+		return selfType;
 
 	if (!unspecializedType->IsUnspecializedType())
 	{
@@ -8271,12 +8271,12 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	if (unspecializedType->IsUnknownSizedArrayType())
 	{
 		auto* arrayType = (BfUnknownSizedArrayType*)unspecializedType;
-		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 		if (elementType == NULL)
 			return NULL;		
 		if (elementType->IsVar())
 			return elementType;
-		auto sizeType = ResolveGenericType(arrayType->mElementCountSource, typeGenericArguments, methodGenericArguments, allowFail);
+		auto sizeType = ResolveGenericType(arrayType->mElementCountSource, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 		if (sizeType == NULL)
 			return NULL;
 		if (sizeType->IsConstExprValue())
@@ -8289,7 +8289,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	if (unspecializedType->IsSizedArray())
 	{
 		auto* arrayType = (BfSizedArrayType*)unspecializedType;
-		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		if (elementType->IsVar())
@@ -8301,7 +8301,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	if (unspecializedType->IsRef())
 	{
 		auto refType = (BfRefType*)unspecializedType;
-		auto elementType = ResolveGenericType(refType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(refType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, selfType, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		if (elementType->IsVar())
@@ -8313,7 +8313,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	if (unspecializedType->IsPointer())
 	{
 		auto ptrType = (BfPointerType*)unspecializedType;
-		auto elementType = ResolveGenericType(ptrType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(ptrType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, selfType, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		if (elementType->IsVar())
@@ -8325,7 +8325,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	if (unspecializedType->IsConcreteInterfaceType())
 	{
 		auto concreteType = (BfConcreteInterfaceType*)unspecializedType;
-		auto elementType = ResolveGenericType(concreteType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(concreteType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, selfType, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		auto elementTypeInstance = elementType->ToTypeInstance();
@@ -8337,7 +8337,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	if (unspecializedType->IsArray())
 	{
 		auto arrayType = (BfArrayType*)unspecializedType;
-		auto elementType = ResolveGenericType(arrayType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(arrayType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, selfType, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		if (elementType->IsVar())
@@ -8361,7 +8361,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		{
 			fieldNames.push_back(fieldInstance.GetFieldDef()->mName);
 			auto origGenericArg = fieldInstance.mResolvedType;
-			auto newGenericArg = ResolveGenericType(origGenericArg, typeGenericArguments, methodGenericArguments, allowFail);
+			auto newGenericArg = ResolveGenericType(origGenericArg, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 			if (newGenericArg == NULL)
 				return NULL;
 			if (newGenericArg->IsVar())
@@ -8400,7 +8400,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 				BfType* resolvedArg = unspecializedGenericTupleType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx];
 				if (resolvedArg->IsUnspecializedType())
 				{
-					resolvedArg = ResolveGenericType(resolvedArg, typeGenericArguments, methodGenericArguments, allowFail);
+					resolvedArg = ResolveGenericType(resolvedArg, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 					if (resolvedArg == NULL)
 						return NULL;
 					if (resolvedArg->IsVar())
@@ -8505,7 +8505,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		bool failed = false;
 
 		bool hasTypeGenerics = false;
-		auto returnType = ResolveGenericType(unspecializedDelegateInfo->mReturnType, typeGenericArguments, methodGenericArguments, allowFail);
+		auto returnType = ResolveGenericType(unspecializedDelegateInfo->mReturnType, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 		
 		if (returnType == NULL)
 			return NULL;
@@ -8518,7 +8518,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		Array<BfType*> paramTypes;
 		for (auto param : unspecializedDelegateInfo->mParams)
 		{
-			auto paramType = ResolveGenericType(param, typeGenericArguments, methodGenericArguments, allowFail);
+			auto paramType = ResolveGenericType(param, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 			if (paramType == NULL)
 				return NULL;
 			if (paramType->IsVar())
@@ -8544,7 +8544,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 				BfType* resolvedArg = unspecializedGenericDelegateType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx];
 				if (resolvedArg->IsUnspecializedType())
 				{
-					resolvedArg = ResolveGenericType(resolvedArg, typeGenericArguments, methodGenericArguments, allowFail);
+					resolvedArg = ResolveGenericType(resolvedArg, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 					if (resolvedArg == NULL)
 						return NULL;					
 					if (resolvedArg->IsVar())
@@ -8696,7 +8696,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		{
 			if (genericArg->IsUnspecializedType())
 			{
-				auto resolvedArg = ResolveGenericType(genericArg, typeGenericArguments, methodGenericArguments, allowFail);
+				auto resolvedArg = ResolveGenericType(genericArg, typeGenericArguments, methodGenericArguments, selfType, allowFail);
 				if (resolvedArg == NULL)
 					return NULL;
 				if (resolvedArg->IsVar())
@@ -8723,12 +8723,11 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	return unspecializedType;
 }
 
-BfType* BfModule::ResolveSelfType(BfType* type, BfTypeInstance* selfType)
+BfType* BfModule::ResolveSelfType(BfType* type, BfType* selfType)
 {
 	if (!type->IsUnspecializedTypeVariation())
-		return type;
-	SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(mCurTypeInstance, selfType);
-	return ResolveGenericType(type, NULL, NULL);
+		return type;	
+	return ResolveGenericType(type, NULL, NULL, selfType);
 }
 
 BfType* BfModule::ResolveType(BfType* lookupType, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
@@ -11250,12 +11249,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			((type->IsDelegateFromTypeRef()) || (type->IsFunctionFromTypeRef())))
 		{
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-			return ResolveGenericType(type, &genericArgs, NULL);
+			return ResolveGenericType(type, &genericArgs, NULL, mCurTypeInstance);
 		}
 		else if ((type != NULL) && (type->IsTuple()))
 		{
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-			return ResolveGenericType(type, &genericArgs, NULL);
+			return ResolveGenericType(type, &genericArgs, NULL, mCurTypeInstance);
 		}
 		else if ((typeDef != NULL) && (typeDef->mTypeCode == BfTypeCode_TypeAlias))
 		{

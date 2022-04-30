@@ -1870,8 +1870,8 @@ public:
 	void EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scope, BfIRBlock doneBlock = BfIRBlock());	
 	void MarkScopeLeft(BfScopeData* scopeData, bool isNoReturn = false);
 	BfGenericParamType* GetGenericParamType(BfGenericParamKind paramKind, int paramIdx);
-	BfType* ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, bool allowFail = false);
-	BfType* ResolveSelfType(BfType* type, BfTypeInstance* selfType);
+	BfType* ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, BfType* selfType, bool allowFail = false);
+	BfType* ResolveSelfType(BfType* type, BfType* selfType);
 	bool IsUnboundGeneric(BfType* type);
 	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type);	

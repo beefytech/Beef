@@ -389,6 +389,22 @@ namespace Tests
 			}
 		}
 
+		class Test5
+		{
+			public Result<T> TryGetValue<T>() where T : IParseable
+		    {
+				T val = default;
+				var s = T.Serialize(val);
+				return T.Deserialize(s);
+		    }
+		}
+
+		interface IParseable
+		{
+		    public static Result<Self> Deserialize(StringView value);
+		    public static String Serialize(Self value);
+		}
+
 		[Test]
 		public static void TestDefaults()
 		{

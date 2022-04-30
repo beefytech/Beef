@@ -369,7 +369,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 			{
 				if ((genericParamInst->mTypeConstraint != NULL) && (genericParamInst->mTypeConstraint->IsDelegate()))
 				{
-					argType = mModule->ResolveGenericType(genericParamInst->mTypeConstraint, NULL, mCheckMethodGenericArguments);
+					argType = mModule->ResolveGenericType(genericParamInst->mTypeConstraint, NULL, mCheckMethodGenericArguments, mModule->mCurTypeInstance);
 					if (argType == NULL)
 						return true;
 				}			
@@ -855,7 +855,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			bool paramWasUnspecialized = paramType->IsUnspecializedType();
 			if ((genericArgumentsSubstitute != NULL) && (paramWasUnspecialized))
 			{				
-				paramType = mModule->ResolveGenericType(paramType, NULL, genericArgumentsSubstitute, allowSpecializeFail);
+				paramType = mModule->ResolveGenericType(paramType, NULL, genericArgumentsSubstitute, mModule->mCurTypeInstance, allowSpecializeFail);
 				paramType = mModule->FixIntUnknown(paramType);
 			}
 			if (paramType->IsConstExprValue())
@@ -867,7 +867,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			bool prevParamWasUnspecialized = prevParamType->IsUnspecializedType();
 			if ((prevGenericArgumentsSubstitute != NULL) && (prevParamWasUnspecialized))
 			{
-				prevParamType = mModule->ResolveGenericType(prevParamType, NULL, prevGenericArgumentsSubstitute, allowSpecializeFail);
+				prevParamType = mModule->ResolveGenericType(prevParamType, NULL, prevGenericArgumentsSubstitute, mModule->mCurTypeInstance, allowSpecializeFail);
 				prevParamType = mModule->FixIntUnknown(prevParamType);
 			}
 			if (prevParamType->IsConstExprValue())
@@ -1359,7 +1359,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 						bool success = false;
 
 						(*genericArgumentsSubstitute)[returnMethodGenericArgIdx] = mModule->GetPrimitiveType(BfTypeCode_None);
-						auto tryType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute);
+						auto tryType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute, mModule->mCurTypeInstance);
 						if (tryType != NULL)
 						{
 							auto inferredReturnType = mModule->CreateValueFromExpression(lambdaBindExpr, tryType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_InferReturnType | BfEvalExprFlags_NoAutoComplete));
@@ -1369,7 +1369,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 								
 								if (((flags & BfResolveArgFlag_FromGenericParam) != 0) && (lambdaBindExpr->mNewToken == NULL))
 								{
-									auto resolvedType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute);
+									auto resolvedType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute, mModule->mCurTypeInstance);
 									if (resolvedType != NULL)
 									{										
 										// Resolve for real
@@ -1439,7 +1439,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 					}
 
 					if ((genericArgumentsSubstitute != NULL) && (expectType->IsUnspecializedType()))
-						expectType = mModule->ResolveGenericType(expectType, NULL, genericArgumentsSubstitute, true);
+						expectType = mModule->ResolveGenericType(expectType, NULL, genericArgumentsSubstitute, mModule->mCurTypeInstance, true);
 				}
 				
 				exprEvaluator.mExpectingType = expectType;
@@ -1538,13 +1538,13 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfMethodInstance* methodInstan
 	{
 		auto leftType = checkOpConstraint.mLeftType;
 		if ((leftType != NULL) && (leftType->IsUnspecializedType()))
-			leftType = mModule->ResolveGenericType(leftType, NULL, methodGenericArgs);
+			leftType = mModule->ResolveGenericType(leftType, NULL, methodGenericArgs, mModule->mCurTypeInstance);
 		if (leftType != NULL)
 			leftType = mModule->FixIntUnknown(leftType);
 
 		auto rightType = checkOpConstraint.mRightType;
 		if ((rightType != NULL) && (rightType->IsUnspecializedType()))
-			rightType = mModule->ResolveGenericType(rightType, NULL, methodGenericArgs);
+			rightType = mModule->ResolveGenericType(rightType, NULL, methodGenericArgs, mModule->mCurTypeInstance);
 		if (rightType != NULL)
 			rightType = mModule->FixIntUnknown(rightType);
 
@@ -1857,7 +1857,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			if ((checkType != NULL) && (genericArgumentsSubstitute != NULL) && (checkType->IsUnspecializedType()))
 			{
 				attemptedGenericResolve = true;
-				checkType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute);				
+				checkType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute, mModule->mCurTypeInstance);
 			}
 
 			if (wantType->IsUnspecializedType())
@@ -2068,7 +2068,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				goto NoMatch;
 
 			auto paramsArrayType = methodInstance->GetParamType(paramIdx);
-			paramsArrayType = mModule->ResolveGenericType(paramsArrayType, NULL, genericArgumentsSubstitute);
+			paramsArrayType = mModule->ResolveGenericType(paramsArrayType, NULL, genericArgumentsSubstitute, mModule->mCurTypeInstance);
 			
 			if (paramsArrayType == NULL)
 				goto NoMatch;
@@ -2436,7 +2436,7 @@ NoMatch:
 		if (checkMethod->mMethodType == BfMethodType_Extension)
 		{
 			auto thisParam = methodInstance->GetParamType(0);
-			auto resolveThisParam = mModule->ResolveGenericType(thisParam, NULL, &mCheckMethodGenericArguments);
+			auto resolveThisParam = mModule->ResolveGenericType(thisParam, NULL, &mCheckMethodGenericArguments, mModule->mCurTypeInstance);
 			if (resolveThisParam == NULL)
 				return false;
 			if (!mModule->CanCast(mTarget, resolveThisParam, 
@@ -7400,8 +7400,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				// Resolve `Self` types
 				if (wantType->IsUnspecializedTypeVariation())
 				{
-					SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(mModule->mCurTypeInstance, methodInstance->GetOwner());
-					wantType = mModule->ResolveGenericType(wantType, NULL, NULL);
+					wantType = mModule->ResolveSelfType(wantType, methodInstance->GetOwner());					
 				}
 			}
 
@@ -10119,7 +10118,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	if (result)
 	{
 		if (result.mType->IsRef())
-			result = mModule->RemoveRef(result);		
+			result = mModule->RemoveRef(result);
 	}
 
 	PerformCallChecks(moduleMethodInstance.mMethodInstance, targetSrc);
@@ -10219,8 +10218,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 			if ((selfType != NULL) && (!selfType->IsInterface()))
 			{				
-				SetAndRestoreValue<BfTypeInstance*> prevCurTypeInst(mModule->mCurTypeInstance, selfType->ToTypeInstance());
-				auto resolvedType = mModule->ResolveGenericType(result.mType, NULL, NULL);
+				auto resolvedType = mModule->ResolveSelfType(result.mType, selfType);
 				if ((resolvedType != NULL) && (resolvedType != result.mType))
 					result = mModule->GetDefaultTypedValue(resolvedType);
 			}
@@ -12178,7 +12176,7 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 	{
 		if (!isGenericMatch)
 			return type;		
-		auto fixedType = mModule->ResolveGenericType(type, NULL, methodGenericArgumentsSubstitute);
+		auto fixedType = mModule->ResolveGenericType(type, NULL, methodGenericArgumentsSubstitute, mModule->mCurTypeInstance);
 		if (fixedType != NULL)
 			return fixedType;
 		return (BfType*)mModule->GetPrimitiveType(BfTypeCode_Var);		
@@ -15952,7 +15950,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			if ((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsDelegate()))
 			{
 				// The only other option was to bind to a MethodRef
-				genericArg = mModule->ResolveGenericType(genericParam->mTypeConstraint, NULL, &methodMatcher.mBestMethodGenericArguments);
+				genericArg = mModule->ResolveGenericType(genericParam->mTypeConstraint, NULL, &methodMatcher.mBestMethodGenericArguments, mModule->mCurTypeInstance);
 			}
 			else
 			{
@@ -16137,7 +16135,8 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			typeGenericArgs = &curTypeInst->mGenericTypeInfo->mTypeGenericArguments;
 		}	
 		
-		BfType* specializedReturnType = mModule->ResolveGenericType(typeUnspecMethodInstance->mReturnType, typeGenericArgs, &methodMatcher.mBestMethodGenericArguments);
+		BfType* specializedReturnType = mModule->ResolveGenericType(typeUnspecMethodInstance->mReturnType, typeGenericArgs, &methodMatcher.mBestMethodGenericArguments, 
+			mModule->mCurTypeInstance);
 		if (specializedReturnType != NULL)
 			*overrideReturnType = specializedReturnType;
 	}
@@ -22999,7 +22998,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 									if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
 									{
 										auto rawMethodInstance = mModule->GetRawMethodInstance(checkType, operatorDef);
-										auto returnType = mModule->ResolveGenericType(rawMethodInstance->mReturnType, NULL, &methodMatcher.mBestMethodGenericArguments);
+										auto returnType = mModule->ResolveGenericType(rawMethodInstance->mReturnType, NULL, &methodMatcher.mBestMethodGenericArguments, 
+											mModule->mCurTypeInstance);
 										if (returnType != NULL)
 										{
 											operatorConstraintReturnType = returnType;											
@@ -23048,7 +23048,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 									if (methodMatcher.CheckMethod(NULL, checkType, oppositeOperatorDef, false))
 									{
 										auto rawMethodInstance = mModule->GetRawMethodInstance(checkType, oppositeOperatorDef);
-										auto returnType = mModule->ResolveGenericType(rawMethodInstance->mReturnType, NULL, &methodMatcher.mBestMethodGenericArguments);
+										auto returnType = mModule->ResolveGenericType(rawMethodInstance->mReturnType, NULL, &methodMatcher.mBestMethodGenericArguments, 
+											mModule->mCurTypeInstance);
 										if (returnType != NULL)
 										{
 											operatorConstraintReturnType = returnType;

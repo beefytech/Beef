@@ -8302,7 +8302,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			BfType* convCheckConstraint = genericParamInst->mTypeConstraint;
 			if ((convCheckConstraint->IsUnspecializedType()) && (methodGenericArgs != NULL))
-				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);
+				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs, mCurTypeInstance);
 			if (convCheckConstraint == NULL)
 				return false;
 			if (((checkArgType->IsMethodRef()) || (checkArgType->IsFunction())) && (convCheckConstraint->IsDelegate()))
@@ -8372,7 +8372,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		BfType* convCheckConstraint = checkConstraint;
 		if (convCheckConstraint->IsUnspecializedType())
-			convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);		
+			convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs, mCurTypeInstance);
 		if (convCheckConstraint == NULL)
 			return false;
 
@@ -8415,13 +8415,13 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		auto leftType = checkOpConstraint.mLeftType;
 		if ((leftType != NULL) && (leftType->IsUnspecializedType()))
-			leftType = ResolveGenericType(leftType, NULL, methodGenericArgs);
+			leftType = ResolveGenericType(leftType, NULL, methodGenericArgs, mCurTypeInstance);
 		if (leftType != NULL)
 			leftType = FixIntUnknown(leftType);		
 		
 		auto rightType = checkOpConstraint.mRightType;
 		if ((rightType != NULL) && (rightType->IsUnspecializedType()))
-			rightType = ResolveGenericType(rightType, NULL, methodGenericArgs);
+			rightType = ResolveGenericType(rightType, NULL, methodGenericArgs, mCurTypeInstance);
 		if (rightType != NULL)
 			rightType = FixIntUnknown(rightType);
 
@@ -10989,7 +10989,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 
 	BfType* type = methodInst->mMethodInstanceGroup->mOwner;
 	if ((hasGenericArgs) && (type->IsUnspecializedType()))
-		type = ResolveGenericType(type, typeGenericArgs, methodGenericArgs);
+		type = ResolveGenericType(type, typeGenericArgs, methodGenericArgs, mCurTypeInstance);
 	if ((type == NULL) || (!type->IsUnspecializedTypeVariation()))
 		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 	if (allowResolveGenericParamNames)
@@ -11003,7 +11003,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 		if (allowResolveGenericParamNames)
 			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 		if ((hasGenericArgs) && (type->IsUnspecializedType()))
-			type = ResolveGenericType(type, typeGenericArgs, methodGenericArgs);
+			type = ResolveGenericType(type, typeGenericArgs, methodGenericArgs, mCurTypeInstance);
 		methodName += TypeToString(type, typeNameFlags);
 	};
 
@@ -11174,7 +11174,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 				}
 
 				if (type->IsUnspecializedType())
-					type = ResolveGenericType(type, NULL, methodGenericArgs);
+					type = ResolveGenericType(type, NULL, methodGenericArgs, mCurTypeInstance);
 			}
 
 			if ((methodGenericArgs == NULL) && (mCurMethodInstance == NULL) && (mCurTypeInstance == NULL))
