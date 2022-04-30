@@ -1702,6 +1702,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			{
 				if (parenToken->GetToken() == BfToken_LParen)
 				{
+					mVisitorPos.MoveNext();
 					MoveNode(parenToken, definedNodeExpr);
 					hadParenToken = true;
 				}
