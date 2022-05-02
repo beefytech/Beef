@@ -933,6 +933,9 @@ namespace IDE
 
 		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
+			if (options.mBuildOptions.mBuildKind == .Intermediate)
+				return true;
+
 			bool is64Bit = mPtrSize == 8;
 
 			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
