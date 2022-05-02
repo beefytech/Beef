@@ -203,7 +203,7 @@ namespace IDE.ui
 				public SourceViewPanel mSourceViewPanel;
 				public DarkComboBox mGenericTypeCombo;
 				public DarkComboBox mGenericMethodCombo;
-				public String mGenericTypeFilter;
+				public String mGenericTypeFilter ~ delete _;
 				public float mWantHeight;
 				public float? mMouseDownY;
 				public float? mDownWantHeight;
@@ -268,14 +268,15 @@ namespace IDE.ui
 					if (mIgnoreChange)
 						return;
 
-				    var editWidget = (EditWidget)theEvent.mSender;
-				    var searchText = scope String();
-				    editWidget.GetText(searchText);
-					searchText.Trim();
+					if (mGenericTypeFilter == null)
+						mGenericTypeFilter = new .();
+					else
+						mGenericTypeFilter.Clear();
 
-				    mGenericTypeFilter = searchText;
+				    var editWidget = (EditWidget)theEvent.mSender;
+				    editWidget.GetText(mGenericTypeFilter);
+					mGenericTypeFilter.Trim();
 				    mGenericTypeCombo.ShowDropdown();
-				    mGenericTypeFilter = null;
 				}
 
 				void EditKeyDownHandler(KeyDownEvent evt)
@@ -293,6 +294,7 @@ namespace IDE.ui
 							typeName = explicitTypeName;
 					}
 
+					DeleteAndNullify!(mGenericTypeFilter);
 					mIgnoreChange = true;
 					int colonPos = typeName.IndexOf(':');
 					if (colonPos != -1)
@@ -305,7 +307,7 @@ namespace IDE.ui
 				void PopulateTypeData(Menu menu)
 				{
 					List<StringView> findStrs = null;
-					if (mGenericTypeFilter != null)
+					if ((mGenericTypeFilter != null) && (!mGenericTypeFilter.IsWhiteSpace))
 					 	findStrs = scope:: List<StringView>(mGenericTypeFilter.Split(' '));
 
 					using (mMonitor.Enter())
@@ -561,6 +563,7 @@ namespace IDE.ui
 				case Type = 'T';
 				case UsingNamespaces = 'U';
 				case Unknown = '?';
+				case HasUncertainEmits = '~';
 				case Emit = 'e';
 				case EmitAddType = '+';
 
@@ -597,6 +600,9 @@ namespace IDE.ui
 			public int32 mAnchorIdx;
 			public int32 mStartLine;
 			public int32 mEndLine;
+			public bool mOnlyInResolveAll;
+			public bool mIncludedInClassify;
+			public bool mIncludedInResolveAll;
 
 			public int32 mAnchorId;
 		}
@@ -613,7 +619,18 @@ namespace IDE.ui
 
 			public void Clear()
 			{
+				ClearCollapse();
+				ClearEmit();
+			}
+
+			public void ClearCollapse()
+			{
+
 				mCollapseData.Clear();
+			}
+
+			public void ClearEmit()
+			{
 				mEmitData.Clear();
 				ClearAndDeleteItems(mTypeNames);
 			}
@@ -6264,22 +6281,76 @@ namespace IDE.ui
 				RehupLineCoords();
 		}
 
-		public void ParseCollapseRegions(String collapseText, int32 textVersion, ref IdSpan idSpan)
+		public void ParseCollapseRegions(String collapseText, int32 textVersion, ref IdSpan idSpan, ResolveType resolveType)
 		{
+			/*if (resolveType == .None)
+				return;*/
+
 			IdSpan.LookupContext lookupCtx = scope .(idSpan);
 
 			var data = PreparedData;
 
-			data.Clear();
+			if (resolveType != .None)
+			{
+				data.ClearCollapse();
+			}
+
+			List<int32> typeNameIdxMap = scope .();
+			Dictionary<StringView, int32> typeNameMap = scope .();
+			Dictionary<int32, int32> emitAnchorIds = scope .();
+			
+			bool hasUncertainEmits = false;
+			bool emitInitialized = false;
+
+			void CheckInitEmit()
+			{
+				if (emitInitialized)
+					return;
+				emitInitialized = true;
+				if ((hasUncertainEmits) || (resolveType == .None))
+				{
+					// Leave emits alone
+					for (var typeName in data.mTypeNames)
+						typeNameMap[typeName] = (.)@typeName.Index;
+					for (var emitData in ref data.mEmitData)
+					{
+						emitAnchorIds[emitData.mAnchorId] = (.)@emitData.Index;
+						if (resolveType == .None)
+							emitData.mIncludedInResolveAll = false;
+						else
+							emitData.mIncludedInClassify = false;
+					}
+					return;
+				}
+
+				hasUncertainEmits = false;
+				data.ClearEmit();
+			}
 
 			for (var line in collapseText.Split('\n', .RemoveEmptyEntries))
 			{
 				SourceEditWidgetContent.CollapseEntry.Kind kind = (.)line[0];
 				line.RemoveFromStart(1);
 
+				if (kind == .HasUncertainEmits)
+				{
+					hasUncertainEmits = true;
+					continue;
+				}
+
+				if ((kind == .EmitAddType) || (kind.IsEmit))
+				{
+					CheckInitEmit();
+				}
+
 				if (kind == .EmitAddType)
 				{
-					data.mTypeNames.Add(new String(line));
+					if (typeNameMap.TryAdd(line, var keyPtr, var valuePtr))
+					{
+						data.mTypeNames.Add(new String(line));
+						*valuePtr = (.)data.mTypeNames.Count - 1;
+					}
+					typeNameIdxMap.Add(*valuePtr);
 					continue;
 				}
 
@@ -6288,14 +6359,39 @@ namespace IDE.ui
 				{
 					EmitData emitData;
 					emitData.mKind = kind;
-					emitData.mTypeNameIdx = int32.Parse(itr.GetNext().Value);
+					int typeNameIdx = int32.Parse(itr.GetNext().Value);
+					emitData.mTypeNameIdx = typeNameIdxMap[typeNameIdx];
 					emitData.mAnchorIdx = int32.Parse(itr.GetNext().Value);
 					emitData.mStartLine = int32.Parse(itr.GetNext().Value);
 					emitData.mEndLine = int32.Parse(itr.GetNext().Value);
 					emitData.mAnchorId = lookupCtx.GetIdAtIndex(emitData.mAnchorIdx);
+					emitData.mOnlyInResolveAll = resolveType == .None;
+					emitData.mIncludedInClassify = resolveType != .None;
+					emitData.mIncludedInResolveAll = resolveType == .None;
+
+					if (emitAnchorIds.TryGetValue(emitData.mAnchorId, var idx))
+					{
+						var curEmitData = ref data.mEmitData[idx];
+
+						if (resolveType == .None)
+						{
+							curEmitData.mIncludedInResolveAll = true;
+						}
+						else
+						{
+							emitData.mIncludedInClassify |= curEmitData.mIncludedInClassify;
+							curEmitData = emitData;
+						}
+						
+						continue;
+					}
+
 					data.mEmitData.Add(emitData);
 					continue;
 				}
+
+				if (resolveType == .None)
+					continue;
 
 				CollapseData collapseData;
 
@@ -6320,6 +6416,23 @@ namespace IDE.ui
 				}
 
 				data.mCollapseData.Add(collapseData);
+			}
+
+			CheckInitEmit();
+
+			for (var emitData in ref data.mEmitData)
+			{
+				if (((emitData.mOnlyInResolveAll) && (!emitData.mIncludedInResolveAll)) ||
+					((!emitData.mOnlyInResolveAll) && (!emitData.mIncludedInClassify)))
+				{
+					@emitData.RemoveFast();
+					continue;
+				}
+
+				if ((emitData.mOnlyInResolveAll) && (!emitData.mIncludedInClassify))
+				{
+					gApp.mBfResolveCompiler.mWantsResolveAllCollapseRefresh = true;
+				}
 			}
 
 			data.mCollapseParseRevision++;

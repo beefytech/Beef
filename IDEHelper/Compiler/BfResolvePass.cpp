@@ -21,6 +21,7 @@ BfResolvePassData::BfResolvePassData()
 	mResolveType = BfResolveType_None;
 	mIsClassifying = false;
 	mHasCursorIdx = false;
+	mHadEmits = false;
 }
 
 BfResolvePassData::~BfResolvePassData()

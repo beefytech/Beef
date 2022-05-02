@@ -369,6 +369,7 @@ namespace IDE.ui
 		public String mData = new .() ~ delete _;
 		public int32 mTextVersion;
 		public IdSpan mCharIdSpan ~ _.Dispose();
+		public ResolveType mResolveType;
 	}
 
 	class QueuedEmitShowData
@@ -424,6 +425,7 @@ namespace IDE.ui
 		bool mWantsFastClassify;
         bool mWantsFullClassify; // This triggers a classify
         bool mWantsFullRefresh; // If mWantsFullClassify is set, mWantsFullRefresh makes the whole thing refresh
+		bool mWantsCollapseRefresh;
 		bool mRefireMouseOverAfterRefresh;
         bool mWantsBackgroundAutocomplete;
 		QueuedAutoComplete mQueuedAutoComplete ~ delete _;
@@ -636,7 +638,6 @@ namespace IDE.ui
 	            AddWidget(mNavigationBar); 
 			}
         }
-
 		public ~this()
 		{
 			if (mInPostRemoveUpdatePanels)
@@ -888,6 +889,11 @@ namespace IDE.ui
             //if (mIsClang)
                 //mDidClangSource = false;
         }
+
+		public void QueueCollapseRefresh()
+		{
+			mWantsCollapseRefresh = true;
+		}
 
         public override bool EscapeHandler()
         {
@@ -1174,7 +1180,7 @@ namespace IDE.ui
                 useResolveType = ResolveType.Autocomplete;                
             }            
            
-            bool doBackground = (useResolveType == ResolveType.Classify) || (useResolveType == ResolveType.ClassifyFullRefresh);
+            bool doBackground = (useResolveType == .Classify) || (useResolveType == .ClassifyFullRefresh);
 			if (mAsyncAutocomplete)
 			{
 				if ((useResolveType == .Autocomplete) || (useResolveType == .GetCurrentLocation) || (useResolveType == .GetSymbolInfo) ||
@@ -1438,6 +1444,31 @@ namespace IDE.ui
 			bfSystem.Unlock();
 		}
 
+		public void DoRefreshCollapse(BfParser parser, int32 textVersion, IdSpan charIdSpan)
+		{
+			var bfCompiler = BfResolveCompiler;
+
+			String explicitEmitTypeNames = scope .();
+			for (var explicitType in mExplicitEmitTypes)
+			{
+				explicitEmitTypeNames.Append(explicitType);
+				explicitEmitTypeNames.Append("\n");
+			}
+
+			var resolvePassData = parser.CreateResolvePassData(.None);
+			defer delete resolvePassData;
+
+			var collapseData = bfCompiler.GetCollapseRegions(parser, resolvePassData, explicitEmitTypeNames, .. scope .());
+			using (mMonitor.Enter())
+			{
+				DeleteAndNullify!(mQueuedCollapseData);
+				mQueuedCollapseData = new .();
+				mQueuedCollapseData.mData.Set(collapseData);
+				mQueuedCollapseData.mTextVersion = textVersion;
+				mQueuedCollapseData.mCharIdSpan = charIdSpan;
+			}
+		}
+
         public void DoFullClassify(ResolveParams resolveParams)
         {
             var bfCompiler = BfResolveCompiler;
@@ -1457,7 +1488,7 @@ namespace IDE.ui
 
         public void DoFastClassify()
         {
-            if (!mIsSourceCode)
+            if ((!mIsSourceCode) || (mEmbedKind != .None))
                 return;
 
 			//Debug.WriteLine("DoFastClassify");
@@ -1911,7 +1942,8 @@ namespace IDE.ui
             var bfCompiler = BfResolveCompiler;
             //var compiler = ResolveCompiler;
             
-            bool isBackground = (resolveType == .Classify) || (resolveType == .ClassifyFullRefresh) || (resolveType == .GetResultString) || (resolveType == .GoToDefinition);
+            bool isBackground = (resolveType == .Classify) || (resolveType == .ClassifyFullRefresh) ||
+				(resolveType == .GetResultString) || (resolveType == .GoToDefinition);
             bool fullRefresh = resolveType == ResolveType.ClassifyFullRefresh;
 
 			if (!isBackground)
@@ -2112,7 +2144,7 @@ namespace IDE.ui
 			    bfSystem.Lock(0);
 			}
 
-			if (!isFastClassify)            
+			if (!isFastClassify)
 			    parser.BuildDefs(passInstance, resolvePassData, fullRefresh);
 
 			// For Fixits we do want to parse the whole file but we need the cursorIdx bound still to
@@ -2142,11 +2174,6 @@ namespace IDE.ui
             {
 				parser.CreateClassifier(passInstance, resolvePassData, charData);
 
-				if (resolveType == .ClassifyFullRefresh)
-				{
-					NOP!();
-				}
-
 				if (resolveParams != null)
 				{
 					for (var emitEmbedData in resolveParams.mEmitEmbeds)
@@ -2157,7 +2184,7 @@ namespace IDE.ui
 
                 if (bfCompiler.ClassifySource(passInstance, resolvePassData))
 				{
-					if ((resolveType == ResolveType.Classify) || (resolveType == ResolveType.ClassifyFullRefresh))
+					if ((resolveType == .Classify) || (resolveType == .ClassifyFullRefresh))
 					{
 						String explicitEmitTypeNames = scope .();
 						for (var explicitType in mExplicitEmitTypes)
@@ -2166,14 +2193,23 @@ namespace IDE.ui
 							explicitEmitTypeNames.Append("\n");
 						}
 
-						var collapseData = bfCompiler.GetCollapseRegions(parser, resolvePassData, explicitEmitTypeNames, .. scope .());
-						using (mMonitor.Enter())
+						bool allowCollapseData = resolveType == .ClassifyFullRefresh;
+						if (allowCollapseData)
 						{
-							DeleteAndNullify!(mQueuedCollapseData);
-							mQueuedCollapseData = new .();
-							mQueuedCollapseData.mData.Set(collapseData);
-							mQueuedCollapseData.mTextVersion = resolveParams.mTextVersion;
-							mQueuedCollapseData.mCharIdSpan = resolveParams.mCharIdSpan.Duplicate();
+							var collapseData = bfCompiler.GetCollapseRegions(parser, resolvePassData, explicitEmitTypeNames, .. scope .());
+							using (mMonitor.Enter())
+							{
+								DeleteAndNullify!(mQueuedCollapseData);
+								mQueuedCollapseData = new .();
+								mQueuedCollapseData.mData.Set(collapseData);
+								mQueuedCollapseData.mTextVersion = resolveParams.mTextVersion;
+								mQueuedCollapseData.mCharIdSpan = resolveParams.mCharIdSpan.Duplicate();
+								mQueuedCollapseData.mResolveType = resolveType;
+							}
+						}
+						else
+						{
+							QueueFullRefresh(false);
 						}
 					}
 
@@ -6445,11 +6481,39 @@ namespace IDE.ui
 	                    if (Classify(mWantsFullRefresh ? ResolveType.ClassifyFullRefresh : ResolveType.Classify))
 	                    {
 	                        mWantsFullClassify = false;
-	                        mWantsFullRefresh = false;                        
+	                        mWantsFullRefresh = false;
+							mWantsCollapseRefresh = false;
 	                    }
 						canDoBackground = false;
 					}
                 }
+				else if (mWantsCollapseRefresh)
+				{
+					if (!compiler.IsPerformingBackgroundOperation())
+					{
+						bfSystem?.Log("SourceViewPanel handling mWantsCollapseRefresh");
+						mWantsCollapseRefresh = false;
+						/*Classify(.GetCollapse);*/
+
+						if ((projectSource != null) && (mIsBeefSource))
+						do
+						{
+					        var bfProject = bfSystem.GetBfProject(projectSource.mProject);
+					        if (bfProject.mDisabled)
+								break;
+							
+					        var bfParser = bfSystem.FindParser(projectSource);
+							if (bfParser == null)
+								break;
+
+							var data = mEditWidget.mEditWidgetContent.mData;
+							compiler.DoBackground(new () =>
+								{
+									DoRefreshCollapse(bfParser, data.mCurTextVersionId, data.mTextIdData.Duplicate());
+								});
+						}
+					}
+				}
 				else if (mWantsParserCleanup)
 				{
 					if (!compiler.IsPerformingBackgroundOperation())
@@ -6734,7 +6798,7 @@ namespace IDE.ui
 			using (mMonitor.Enter())
 			{
 				if (mQueuedCollapseData != null)
-					ewc.ParseCollapseRegions(mQueuedCollapseData.mData, mQueuedCollapseData.mTextVersion, ref mQueuedCollapseData.mCharIdSpan);
+					ewc.ParseCollapseRegions(mQueuedCollapseData.mData, mQueuedCollapseData.mTextVersion, ref mQueuedCollapseData.mCharIdSpan, mQueuedCollapseData.mResolveType);
 				DeleteAndNullify!(mQueuedCollapseData);
 			}
 
@@ -6967,7 +7031,7 @@ namespace IDE.ui
 			}
 			else
 			{
-				mNavigationBar.mVisible = false;
+				mNavigationBar?.mVisible = false;
 			}
 
 			// Always leave enough to read the first 3 lines

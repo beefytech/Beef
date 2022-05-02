@@ -4013,6 +4013,11 @@ BF_EXPORT void* BfResolvePassData_GetEmitEmbedData(BfResolvePassData* resolvePas
 	return emitEmbedEntry->mParser->mSourceClassifier->mCharData;
 }
 
+BF_EXPORT bool BfResolvePassData_GetHadEmits(BfResolvePassData* resolvePassData)
+{
+	return resolvePassData->mHadEmits;
+}
+
 BF_EXPORT BfParser* BF_CALLTYPE BfSystem_CreateParser(BfSystem* bfSystem, BfProject* bfProject)
 {	
 	return bfSystem->CreateParser(bfProject);

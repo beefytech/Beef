@@ -221,6 +221,12 @@ namespace IDE.Compiler
 
         class RefreshViewCommand : Command
         {
+			public ViewRefreshKind mRefreshKind;
+
+			public this(ViewRefreshKind refreshKind)
+			{
+				mRefreshKind = refreshKind;
+			}
         }
 
         class SetWorkspaceOptionsCommand : Command
@@ -237,6 +243,7 @@ namespace IDE.Compiler
 
         public void* mNativeBfCompiler;
         public bool mIsResolveOnly;
+		public bool mWantsResolveAllCollapseRefresh;
         public BfSystem mBfSystem;
 		bool mWantsRemoveOldData;
 		public Dictionary<String, String> mRebuildWatchingFiles = new .() ~ delete _;
@@ -392,9 +399,9 @@ namespace IDE.Compiler
             QueueCommand(command);
         }
 
-        public void QueueRefreshViewCommand()
+        public void QueueRefreshViewCommand(ViewRefreshKind viewRefreshKind = .FullRefresh)
         {
-            QueueCommand(new RefreshViewCommand());
+            QueueCommand(new RefreshViewCommand(viewRefreshKind));
         }
 
         public void QueueSetWorkspaceOptions(Project hotProject, int32 hotIdx)
@@ -608,8 +615,31 @@ namespace IDE.Compiler
 
                     var resolvePassData = BfResolvePassData.Create(ResolveType.Classify);
                     // If we get canceled then try again after waiting a couple updates
-                    if (!ClassifySource(passInstance, resolvePassData))
+
+					bool wantsCollapseRefresh = false;
+
+                    if (ClassifySource(passInstance, resolvePassData))
+					{
+						Debug.WriteLine($"ClassifySource success {mWantsResolveAllCollapseRefresh} {resolvePassData.HadEmits}");
+
+						if (mWantsResolveAllCollapseRefresh)
+						{
+							mWantsResolveAllCollapseRefresh = false;
+							wantsCollapseRefresh = true;
+						}
+					}
+					else
+					{
+						Debug.WriteLine($"ClassifySource partial {resolvePassData.HadEmits}");
                         QueueDeferredResolveAll();
+					}
+
+					if (resolvePassData.HadEmits)
+						wantsCollapseRefresh = true;
+
+					if (wantsCollapseRefresh)
+						QueueRefreshViewCommand(.Collapse);
+
 					UpdateRebuildFileWatches();
 
                     delete resolvePassData;
@@ -632,7 +662,8 @@ namespace IDE.Compiler
 
                 if (command is RefreshViewCommand)
                 {
-                    mWantsActiveViewRefresh = true;
+					var refreshViewCommand = (RefreshViewCommand)command;
+                    mWantsActiveViewRefresh = Math.Max(mWantsActiveViewRefresh, refreshViewCommand.mRefreshKind);
                 }
 
 				if (var dirChangedCommand = command as RebuildFileChangedCommand)

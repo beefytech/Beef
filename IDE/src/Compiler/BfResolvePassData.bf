@@ -44,12 +44,16 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* BfResolvePassData_GetEmitEmbedData(void* bfResolvePassData, char8* typeName, out int32 srcLength, out int32 revision);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern bool BfResolvePassData_GetHadEmits(void* bfResolvePassData);
+
         //
 
         //[CallingConvention(.Stdcall), CLink]
         //static extern void* BfParser_CreateResolvePassData(void* bfSystem, int32 resolveType);
 
         public void* mNativeResolvePassData;
+		public bool HadEmits => BfResolvePassData_GetHadEmits(mNativeResolvePassData);
 
         public ~this()
         {

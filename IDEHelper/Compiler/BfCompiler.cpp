@@ -7199,16 +7199,13 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 			bool didWork = false;
 			UpdateDependencyMap(mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_ResolveUnused, didWork);
-
-			if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
+						
+			// If UpdateDependencyMap caused methods to be reified, then we need to run PopulateReified again-
+			//  because those methods may be virtual and we need to reify overrides (for example).
+			// We use the DoWorkLoop result to determine if there were actually any changes from UpdateDependencyMap
+			if (didWork)
 			{
-				// If UpdateDependencyMap caused methods to be reified, then we need to run PopulateReified again-
-				//  because those methods may be virtual and we need to reify overrides (for example).
-				// We use the DoWorkLoop result to determine if there were actually any changes from UpdateDependencyMap
-				if (didWork)
-				{
-					PopulateReified();
-				}
+				PopulateReified();
 			}
 		}
 
@@ -9814,6 +9811,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 	};
 	Dictionary<BfTypeDef*, Dictionary<int, _EmitSource>> emitLocMap;
 	
+	bool mayHaveMissedEmits = false;
+
 	for (auto type : bfCompiler->mContext->mResolvedTypes)
 	{
 		auto typeInst = type->ToTypeInstance();
@@ -9824,6 +9823,12 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 		{
 			if (typeInst->mCeTypeInfo == NULL)
 				continue;
+
+			if ((typeInst->mCeTypeInfo->mMayHaveUniqueEmitLocations) && (!mayHaveMissedEmits))
+			{
+				outString += "~\n";
+				mayHaveMissedEmits = true;
+			}
 
 			for (auto& kv : typeInst->mCeTypeInfo->mEmitSourceMap)
 			{

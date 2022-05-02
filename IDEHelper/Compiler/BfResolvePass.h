@@ -83,6 +83,7 @@ public:
 	int mSymbolTypeGenericParamIdx;
 	bool mIsClassifying;
 	bool mHasCursorIdx;
+	bool mHadEmits;
 	
 	typedef Dictionary<BfParserData*, String> FoundSymbolReferencesParserDataMap;
 	FoundSymbolReferencesParserDataMap mFoundSymbolReferencesParserData;

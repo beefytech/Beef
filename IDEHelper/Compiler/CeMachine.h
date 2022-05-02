@@ -1012,12 +1012,14 @@ public:
 	Dictionary<CeRebuildKey, CeRebuildValue> mRebuildMap;
 	Val128 mHash;
 	bool mFailed;
+	bool mMayHaveUniqueEmitLocations;
 	BfCeTypeInfo* mNext;
 
 public:
 	BfCeTypeInfo()
 	{
 		mFailed = false;
+		mMayHaveUniqueEmitLocations = false;
 		mNext = NULL;
 	}
 };

@@ -1372,12 +1372,17 @@ namespace IDE
             return activePanel as TextPanel;
         }
 
-        public void RefreshVisibleViews(SourceViewPanel excludeSourceViewPanel = null)
+        public void RefreshVisibleViews(SourceViewPanel excludeSourceViewPanel = null, CompilerBase.ViewRefreshKind viewRefreshKind = .FullRefresh)
         {
             WithSourceViewPanels(scope (sourceViewPanel) =>
                 {
-                    if ((sourceViewPanel.mParent != null) && (sourceViewPanel != excludeSourceViewPanel))
-                        sourceViewPanel.QueueFullRefresh(true);
+					if ((sourceViewPanel.mParent != null) && (sourceViewPanel != excludeSourceViewPanel))
+					{
+	                    if (viewRefreshKind ==.Collapse)
+	                        sourceViewPanel.QueueFullRefresh(true);
+						else
+							sourceViewPanel.QueueCollapseRefresh();
+					}
                 });
         }
 
@@ -9459,7 +9464,7 @@ namespace IDE
 				}
 
 				mBfResolveCompiler.QueueDeferredResolveAll();
-				mBfResolveCompiler.QueueRefreshViewCommand();
+				mBfResolveCompiler.QueueRefreshViewCommand(.FullRefresh);
 				return;
 			}
 

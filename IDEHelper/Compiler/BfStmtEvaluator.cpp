@@ -1766,11 +1766,6 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	_CheckConst();
 
-	if (isStatic)
-	{
-		NOP;
-	}
-
 	if ((initValue.mKind == BfTypedValueKind_TempAddr) && (!initHandled))
 	{
 		BF_ASSERT(initValue.IsAddr());

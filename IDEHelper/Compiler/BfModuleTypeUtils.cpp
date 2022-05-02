@@ -2091,6 +2091,9 @@ void BfModule::SetTypeOptions(BfTypeInstance* typeInstance)
 
 BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* declaringType, const StringImpl& src, BfAstNode* refNode, BfCeTypeEmitSourceKind emitSourceKind)
 {
+	if (mCompiler->mResolvePassData != NULL)
+		mCompiler->mResolvePassData->mHadEmits = true; 
+	
 	BfCEParseContext ceParseContext;
 	ceParseContext.mFailIdx = mCompiler->mPassInstance->mFailedIdx;
 	ceParseContext.mWarnIdx = mCompiler->mPassInstance->mWarnIdx;
@@ -2114,10 +2117,20 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 	}
 	else
 	{
-		ceTypeInfo->mEmitSourceMap.TryAdd(emitSourceMapKey, NULL, &ceEmitSource);
+		if (ceTypeInfo->mEmitSourceMap.TryAdd(emitSourceMapKey, NULL, &ceEmitSource))
+		{
+			if (typeInstance->IsSpecializedType())
+			{
+				auto unspecializedType = GetUnspecializedTypeInstance(typeInstance);
+				if ((unspecializedType->mCeTypeInfo == NULL) || (!unspecializedType->mCeTypeInfo->mEmitSourceMap.ContainsKey(emitSourceMapKey)))
+					ceTypeInfo->mMayHaveUniqueEmitLocations = true;
+			}
+		}
 		ceEmitSource->mKind = emitSourceKind;
 	}
 	
+	BfLogSysM("CEEmitParse type %p ceTypeInfo %p\n", typeInstance, ceTypeInfo);
+
 	int emitSrcStart = 0;
 
 	BfEmitEmbedEntry* emitEmbedEntry = NULL;
@@ -4748,6 +4761,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			{
 				if (typeInstance->mCeTypeInfo->mNext != NULL)
 				{
+					BfLogSysM("Type %p injecting next ceTypeInfo %p into ceTypeInfo %p\n", typeInstance, typeInstance->mCeTypeInfo->mNext, typeInstance->mCeTypeInfo);
+
 					auto ceInfo = typeInstance->mCeTypeInfo->mNext;
 
 					HashContext hashCtx;
@@ -5799,7 +5814,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	ambiguityContext.mTypeInstance = typeInstance;
 	ambiguityContext.mModule = this;
 	ambiguityContext.mIsProjectSpecific = false;
-
+	
 	bool wantsOnDemandMethods = false;
 	//TODO: Testing having interface methods be "on demand"...
 	//if (!typeInstance->IsInterface())
@@ -5824,6 +5839,36 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 	if (TypeIsSubTypeOf(typeInstance, mCompiler->mAttributeTypeDef))
 		wantsOnDemandMethods = false;
+
+	if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mEmitEmbedEntries.IsEmpty()) && (typeInstance->IsSpecializedType()))
+	{
+		bool isCurrentEntry = false;
+
+		auto _CheckEntry = [&](BfTypeDef* typeDef)
+		{
+			auto parser = typeDef->mTypeDeclaration->GetParser();
+			if (parser != NULL)
+				if (mCompiler->mResolvePassData->GetSourceClassifier(parser) != NULL)
+					isCurrentEntry = true;			
+		};
+
+		_CheckEntry(typeInstance->mTypeDef);
+		for (auto& partial : typeInstance->mTypeDef->mPartials)
+			_CheckEntry(partial);
+		
+		if (isCurrentEntry)
+		{
+			String typeName;
+			typeName += typeInstance->mTypeDef->mProject->mName;
+			typeName += ":";
+			typeName += TypeToString(typeInstance, BfTypeNameFlags_None);
+
+			if (mCompiler->mResolvePassData->mEmitEmbedEntries.ContainsKey(typeName))
+			{
+				wantsOnDemandMethods = false;
+			}
+		}
+	}
 
 	//bool allDeclsRequired = (mIsReified) && (mCompiler->mOptions.mEmitDebugInfo) && ();
 	bool allDeclsRequired = false;
@@ -10210,9 +10255,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		auto directStrTypeRef = BfNodeDynCastExact<BfDirectStrTypeReference>(typeRef);
 		if (((namedTypeRef != NULL) && (namedTypeRef->mNameNode != NULL)) || (directStrTypeRef != NULL))
 		{
-			StringT<128> findName;
+			StringView findName;
 			if (namedTypeRef != NULL)
-				namedTypeRef->mNameNode->ToString(findName);
+				findName = namedTypeRef->mNameNode->ToStringView();
 			else
 				findName = directStrTypeRef->mTypeName;
 			if (findName == "Self")

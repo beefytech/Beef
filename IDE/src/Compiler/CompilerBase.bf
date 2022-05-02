@@ -13,9 +13,16 @@ namespace IDE.Compiler
 {
     public abstract class CompilerBase : CommandQueueManager
     {
-        public int32 mResolveAllWait;        
+		public enum ViewRefreshKind
+		{
+			None,
+			Collapse,
+			FullRefresh
+		}
+
+        public int32 mResolveAllWait;
         protected List<String> mQueuedOutput = new List<String>() ~ DeleteContainerAndItems!(_);
-        public bool mWantsActiveViewRefresh;
+        public ViewRefreshKind mWantsActiveViewRefresh;
         
         public volatile int32 mThreadYieldCount = 0; // Whether our thread wants to be yielded to, and for how many ticks        
 
@@ -157,10 +164,10 @@ namespace IDE.Compiler
             {                
 				CheckThreadDone();
 
-                if (mWantsActiveViewRefresh)
+                if (mWantsActiveViewRefresh != .None)
                 {
                     IDEApp.sApp.RefreshVisibleViews();
-                    mWantsActiveViewRefresh = false;
+                    mWantsActiveViewRefresh = .None;
                 }
 
                 if (mThreadYieldCount > 0)

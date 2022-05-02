@@ -3286,11 +3286,7 @@ void CeBuilder::Build()
 	}
 	
 	if (mCeFunction->mGenError.IsEmpty())
-		mCeFunction->mFailed = false;
-	else
-	{
-		NOP;
-	}
+		mCeFunction->mFailed = false;	
 
 	mCeFunction->mFrameSize = mFrameSize;	
 }
