@@ -620,8 +620,6 @@ namespace IDE.Compiler
 
                     if (ClassifySource(passInstance, resolvePassData))
 					{
-						Debug.WriteLine($"ClassifySource success {mWantsResolveAllCollapseRefresh} {resolvePassData.HadEmits}");
-
 						if (mWantsResolveAllCollapseRefresh)
 						{
 							mWantsResolveAllCollapseRefresh = false;
@@ -630,7 +628,6 @@ namespace IDE.Compiler
 					}
 					else
 					{
-						Debug.WriteLine($"ClassifySource partial {resolvePassData.HadEmits}");
                         QueueDeferredResolveAll();
 					}
 

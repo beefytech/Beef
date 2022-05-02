@@ -166,7 +166,7 @@ namespace IDE.Compiler
 
                 if (mWantsActiveViewRefresh != .None)
                 {
-                    IDEApp.sApp.RefreshVisibleViews();
+                    IDEApp.sApp.RefreshVisibleViews(null, mWantsActiveViewRefresh);
                     mWantsActiveViewRefresh = .None;
                 }
 

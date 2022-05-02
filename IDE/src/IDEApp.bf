@@ -1379,9 +1379,9 @@ namespace IDE
 					if ((sourceViewPanel.mParent != null) && (sourceViewPanel != excludeSourceViewPanel))
 					{
 	                    if (viewRefreshKind ==.Collapse)
-	                        sourceViewPanel.QueueFullRefresh(true);
-						else
 							sourceViewPanel.QueueCollapseRefresh();
+						else
+							sourceViewPanel.QueueFullRefresh(true);
 					}
                 });
         }
