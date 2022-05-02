@@ -428,6 +428,7 @@ namespace IDE.ui
 		bool mWantsCollapseRefresh;
 		bool mRefireMouseOverAfterRefresh;
         bool mWantsBackgroundAutocomplete;
+		bool mSkipFastClassify;
 		QueuedAutoComplete mQueuedAutoComplete ~ delete _;
         public bool mWantsSpellCheck;
         int32 mTicksSinceTextChanged;
@@ -1488,7 +1489,7 @@ namespace IDE.ui
 
         public void DoFastClassify()
         {
-            if ((!mIsSourceCode) || (mEmbedKind != .None))
+            if ((!mIsSourceCode) || (mSkipFastClassify))
                 return;
 
 			//Debug.WriteLine("DoFastClassify");
@@ -6252,6 +6253,8 @@ namespace IDE.ui
 								editData.mTextIdData.Insert(0, editData.mTextLength, ref editData.mNextCharId);
 
 								sourceViewPanel.mEditWidget.mEditWidgetContent.ContentChanged();
+								// We have a full classify now, FastClassify will just mess it up
+								sourceViewPanel.mSkipFastClassify = true; 
 
 								if (prevCursorLineAndColumn.mLine >= embedEWC.GetLineCount())
 									embedEWC.CursorLineAndColumn = .(embedEWC.GetLineCount() - 1, prevCursorLineAndColumn.mColumn);
