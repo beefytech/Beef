@@ -125,7 +125,7 @@ void BfCodeGenDirectoryData::Write()
 		if (!DirectoryExists(directory))
 		{
 			// Someone else (or the user) cleared this directory
-			DoBfLog(2, "BfCodeGen cleared cache because '%s' was removed\n", directory.c_str());
+			BfLogX(2, "BfCodeGen cleared cache because '%s' was removed\n", directory.c_str());
 			mFileMap.Clear();
 			return;
 		}
@@ -312,7 +312,7 @@ void BfCodeGenThread::RunLoop()
 		Val128 hash;
 		Val128 orderedHash;
 
-		DoBfLog(2, "BfCodeGen handle %s\n", request->mOutFileName.c_str());
+		BfLogX(2, "BfCodeGen handle %s\n", request->mOutFileName.c_str());
 
 		bool isLibWrite = (request->mOptions.mOptLevel == BfOptLevel_OgPlus) && (request->mOptions.mWriteToLib) && (!request->mOptions.mIsHotCompile);
 
@@ -391,7 +391,7 @@ void BfCodeGenThread::RunLoop()
 				hashCtx.Mixin(request->mOptions.mHash);
 				beIRCodeGen->Hash(hashCtx);				
 				auto newOrderedHash = hashCtx.Finish128();
-				DoBfLog(2, "Ordered hash for %s New:%s Old:%s\n", cacheFileName.c_str(), newOrderedHash.ToString().c_str(), orderedHash.ToString().c_str());
+				BfLogX(2, "Ordered hash for %s New:%s Old:%s\n", cacheFileName.c_str(), newOrderedHash.ToString().c_str(), orderedHash.ToString().c_str());
 				hasCacheMatch = newOrderedHash == orderedHash;
 				
 				errorMsg = beIRCodeGen->mErrorMsg;
@@ -442,7 +442,7 @@ void BfCodeGenThread::RunLoop()
 					beIRCodeGen->Process();
 				errorMsg = beIRCodeGen->mErrorMsg;
 
-				DoBfLog(2, "Generating obj %s\n", request->mOutFileName.c_str());
+				BfLogX(2, "Generating obj %s\n", request->mOutFileName.c_str());
 
 				BeCOFFObject coffObject;
 				coffObject.mWriteToLib = request->mOptions.mWriteToLib;				

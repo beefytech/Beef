@@ -1861,6 +1861,13 @@ public:
 #define BfLog(fmt, ...) {} // Nothing
 #endif
 
+#ifdef BF_WANTS_LOG
+#define BfLogX(logIdx, fmt, ...) DoBfLog(logIdx, fmt, ##__VA_ARGS__)
+#else
+#define BfLogX(logIdx, fmt, ...) {} // Nothing
+#endif
+
+
 #ifdef BF_WANTS_LOG_SYS
 #define BfLogSys(sys, fmt, ...) DoBfLog((sys)->mIsResolveOnly ? 1 : 2, fmt, ##__VA_ARGS__)
 #define BfLogSysM(fmt, ...) DoBfLog(mSystem->mIsResolveOnly ? 1 : 2, fmt, ##__VA_ARGS__)

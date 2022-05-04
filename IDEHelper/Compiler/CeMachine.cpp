@@ -9574,7 +9574,7 @@ CeContext* CeMachine::AllocContext()
 	mCurEmitContext = NULL;	
 	mExecuteId++;	
 	ceContext->mStackSize = BF_CE_DEFAULT_STACK_SIZE;
-	ceContext->mMemory.Resize(ceContext->mStackSize);
+	ceContext->mMemory.ResizeRaw(ceContext->mStackSize);
 	ceContext->mExecuteId = mExecuteId;
 	ceContext->mCurHandleId = 0;
 	return ceContext;

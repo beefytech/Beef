@@ -1886,7 +1886,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 {
 	Dictionary<int, BeDbgLoc*> dbgLocs;
 
-	String str;
+	StringT<128*1024> str;
 	
 	SetAndRestoreValue<BeFunction*> prevActiveFunc(mActiveFunction, NULL);
 
@@ -1943,12 +1943,12 @@ String BeModule::ToString(BeFunction* wantFunc)
 			if (gv->mInitializer != NULL)
 			{
 				str += " ";
-				str += dc.ToString(gv->mInitializer);
+				dc.ToString(str, gv->mInitializer);
 			}
 			else
 			{
 				str += " ";
-				str += dc.ToString(gv->mType);
+				dc.ToString(str, gv->mType);
 			}
 			if (gv->mAlign != -1)
 			{
@@ -2005,8 +2005,10 @@ String BeModule::ToString(BeFunction* wantFunc)
 					str += " = {";
 					if (dbgStructType->mSize != -1)
 					{
-						str += StrFormat("\n  Size: %d", dbgStructType->mSize);
-						str += StrFormat("\n  Align: %d", dbgStructType->mAlign);
+						str += "\n  Size: ";
+						str += StrFormat("%d", dbgStructType->mSize);
+						str += "\n  Align : ";
+						str += StrFormat("%d", dbgStructType->mAlign);
 					}
 					if (dbgStructType->mDerivedFrom != NULL)
 					{
@@ -2045,12 +2047,15 @@ String BeModule::ToString(BeFunction* wantFunc)
 					str += " = enum {";
 					if (dbgEnumType->mSize != -1)
 					{
-						str += StrFormat("\n  Size: %d", dbgEnumType->mSize);
-						str += StrFormat("\n  Align: %d", dbgEnumType->mAlign);
+						str += "\n  Size: ";
+						str += StrFormat("%d", dbgEnumType->mSize);
+						str += "\n  Align : ";
+						str += StrFormat("%d", dbgEnumType->mAlign);						
 					}
 					if (dbgEnumType->mElementType != NULL)
 					{
-						str += "\n  Underlying: "; str += dc.ToString(dbgEnumType->mElementType);
+						str += "\n  Underlying: "; 
+						dc.ToString(str, dbgEnumType->mElementType);
 					}
 					if (!dbgEnumType->mMembers.IsEmpty())
 					{
