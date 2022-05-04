@@ -1833,6 +1833,7 @@ public:
 #ifdef _DEBUG
 
 #ifdef BF_PLATFORM_WINDOWS
+#define BF_WANTS_LOG_HI
 #define BF_WANTS_LOG
 #define BF_WANTS_LOG_SYS
 //#define BF_WANTS_LOG2
@@ -1843,7 +1844,9 @@ public:
 #endif
 
 #else
+#define BF_WANTS_LOG_HI
 //#define BF_WANTS_LOG
+//#define BF_WANTS_LOG_SYS
 //#define BF_WANTS_LOG2
 //#define BF_WANTS_LOG_CLANG
 //#define BF_WANTS_LOG_DBGEXPR
@@ -1864,6 +1867,14 @@ public:
 #else
 #define BfLogSys(...) {} // Nothing
 #define BfLogSysM(...) {} // Nothing
+#endif
+
+#ifdef BF_WANTS_LOG_HI
+#define BfLogSysHI(sys, fmt, ...) DoBfLog((sys)->mIsResolveOnly ? 1 : 2, fmt, ##__VA_ARGS__)
+#define BfLogSysMHI(fmt, ...) DoBfLog(mSystem->mIsResolveOnly ? 1 : 2, fmt, ##__VA_ARGS__)
+#else
+#define BfLogSysHI(...) {} // Nothing
+#define BfLogSysMHI(...) {} // Nothing
 #endif
 
 #ifdef BF_WANTS_LOG_CLANG

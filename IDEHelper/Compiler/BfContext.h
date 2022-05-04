@@ -113,6 +113,12 @@ public:
 	BfAstNode* mRefNode;	
 };
 
+class BfMidCompileRequest : public BfWorkListEntry
+{
+public:	
+	String mReason;
+};
+
 struct BfStringPoolEntry
 {
 	String mString;
@@ -397,6 +403,7 @@ public:
 	WorkQueue<BfTypeProcessRequest> mPopulateTypeWorkList;
 	WorkQueue<BfMethodSpecializationRequest> mMethodSpecializationWorkList;
 	WorkQueue<BfTypeRefVerifyRequest> mTypeRefVerifyWorkList;
+	WorkQueue<BfMidCompileRequest> mMidCompileWorkList;
 	PtrWorkQueue<BfModule*> mFinishedSlotAwaitModuleWorkList;
 	PtrWorkQueue<BfModule*> mFinishedModuleWorkList;
 	bool mHasReifiedQueuedRebuildTypes;
@@ -476,6 +483,7 @@ public:
 	void ValidateDependencies();
 	void RebuildType(BfType* type, bool deleteOnDemandTypes = true, bool rebuildModule = true, bool placeSpecializiedInPurgatory = true);
 	void RebuildDependentTypes(BfDependedType* dType);	
+	void QueueMidCompileRebuildDependentTypes(BfDependedType* dType, const String& reason);
 	void RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason);
 	bool CanRebuild(BfType* type);
 	void TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange);

@@ -1225,8 +1225,8 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 		
 		/*if (mCompiler->mIsResolveOnly)
 			BF_ASSERT(mIsResolveOnly);*/
-
 		mBfIRBuilder = new BfIRBuilder(this);
+
 		BfLogSysM("Created mBfIRBuilder %p in %p %s Reified: %d\n", mBfIRBuilder, this, mModuleName.c_str(), mIsReified);
 		SetupIRBuilder(dbgVerifyCodeGen);
 	}
@@ -1509,8 +1509,10 @@ BfTypedValue BfModule::GetFakeTypedValue(BfType* type)
 	// This is a conservative "IsValueless", since it's not an error to use a fakeVal even if we don't need one
 	if (type->mSize == 0)
 		return BfTypedValue(BfIRValue::sValueless, type);
-	else
+	else if (mBfIRBuilder != NULL)
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), type);
+	else
+		return BfTypedValue(BfIRValue(BfIRValueFlags_Value, -1), type);
 }
 
 BfTypedValue BfModule::GetDefaultTypedValue(BfType* type, bool allowRef, BfDefaultValueKind defaultValueKind)
@@ -25318,7 +25320,7 @@ void BfModule::ReportMemory(MemReporter* memReporter)
 // ClearModuleData is called immediately after the module is compiled, so don't clear out any data that needs to
 //  be transient through the next compile
 void BfModule::ClearModuleData(bool clearTransientData)
-{
+{	
 	BfLogSysM("ClearModuleData %p\n", this);
 
 	if (mAddedToCount)

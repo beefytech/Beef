@@ -286,7 +286,7 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 		auto genericExtensionInfo = genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo;
 		if ((extensionCount > 0) && (!prevConstraintsPassedSet.IsEmpty()) && (genericExtensionInfo->mConstraintsPassedSet != prevConstraintsPassedSet))
 		{
-			mContext->RebuildDependentTypes_MidCompile(genericTypeInst, "mConstraintsPassedSet changed");		
+			mContext->QueueMidCompileRebuildDependentTypes(genericTypeInst, "mConstraintsPassedSet changed");
 		}
 	}
 	else
@@ -3114,7 +3114,7 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias)
 		aliasToType = NULL;	
 
  	if ((typeAlias->mAliasToType != NULL) && (typeAlias->mAliasToType != aliasToType) && (!typeAlias->mDependencyMap.IsEmpty()))
- 		mContext->RebuildDependentTypes_MidCompile(typeAlias, "type alias remapped");
+ 		mContext->QueueMidCompileRebuildDependentTypes(typeAlias, "type alias remapped");
 
 	typeAlias->mAliasToType = aliasToType;
 
@@ -4792,7 +4792,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					if (!typeInstance->mCeTypeInfo->mNext->mFailed)
 					{
 						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
-							mContext->RebuildDependentTypes_MidCompile(typeInstance, "comptime hash changed");
+							mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "comptime hash changed");
 						typeInstance->mCeTypeInfo->mEmitSourceMap = typeInstance->mCeTypeInfo->mNext->mEmitSourceMap;
 						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
 						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
@@ -4806,7 +4806,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					// Removed emissions
 					if (!typeInstance->mCeTypeInfo->mHash.IsZero())
-						mContext->RebuildDependentTypes_MidCompile(typeInstance, "comptime hash changed");
+						mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "comptime hash changed");
 					typeInstance->mCeTypeInfo->mEmitSourceMap.Clear();
 					typeInstance->mCeTypeInfo->mOnCompileMap.Clear();
 					typeInstance->mCeTypeInfo->mTypeIFaceMap.Clear();

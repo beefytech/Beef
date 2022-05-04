@@ -382,6 +382,43 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			didWork = true;
 		}
 		
+		// Do this before mPopulateTypeWorkList so we can populate any types that need rebuilding
+		//  in the mPopulateTypeWorkList loop next - this is required for mFinishedModuleWorkList handling
+		for (int workIdx = 0; workIdx < (int)mMidCompileWorkList.size(); workIdx++)
+		{
+			//BP_ZONE("PWL_PopulateType");
+			if (IsCancellingAndYield())
+				break;
+
+			auto workItemRef = mMidCompileWorkList[workIdx];
+			if (workItemRef == NULL)
+			{
+				workIdx = mMidCompileWorkList.RemoveAt(workIdx);
+				continue;
+			}
+
+			BfType* type = workItemRef->mType;
+			String reason = workItemRef->mReason;
+
+			if ((onlyReifiedTypes) && (!type->IsReified()))
+			{
+				continue;
+			}
+
+			auto typeInst = type->ToTypeInstance();
+			if ((typeInst != NULL) && (resolveParser != NULL))
+			{
+				if (!typeInst->mTypeDef->GetLatest()->HasSource(resolveParser))
+				{
+					continue;
+				}
+			}
+
+			workIdx = mMidCompileWorkList.RemoveAt(workIdx);
+			RebuildDependentTypes_MidCompile(type->ToDependedType(), reason);
+			didWork = true;
+		}
+
 		for (int workIdx = 0; workIdx < (int)mPopulateTypeWorkList.size(); workIdx++)
 		{
 			//BP_ZONE("PWL_PopulateType");
@@ -430,7 +467,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			mCompiler->mStats.mQueuedTypesProcessed++;
 			mCompiler->UpdateCompletion();
 			didWork = true;
-		}
+		}		
 
 		for (int workIdx = 0; workIdx < (int)mTypeRefVerifyWorkList.size(); workIdx++)
 		{
@@ -487,6 +524,9 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				
 				auto typeInst = methodSpecializationRequest.mType->ToTypeInstance();
 				
+				if (typeInst->IsDeleting())
+					continue;
+
 				BfMethodDef* methodDef = NULL;
 				if (methodSpecializationRequest.mForeignType != NULL)
 				{
@@ -529,10 +569,12 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 			auto module = workItem->mFromModule;		
 			auto methodInstance = workItem->mMethodInstance;
-
+			
 			bool wantProcessMethod = methodInstance != NULL;
 			if ((workItem->mFromModuleRebuildIdx != -1) && (workItem->mFromModuleRebuildIdx != module->mRebuildIdx))
-				wantProcessMethod = false;						
+				wantProcessMethod = false;
+			else if (workItem->mType->IsDeleting())
+				wantProcessMethod = false;
 
 			if (methodInstance != NULL)
 				BF_ASSERT(methodInstance->mMethodProcessRequest == workItem);
@@ -710,6 +752,11 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			dupMethodInstance.mInCEMachine = false; // Only have the original one
 			BF_ASSERT(module->mIsReified); // We should only bother inlining in reified modules
 
+			bool wantProcessMethod = true;
+			if (owner->IsDeleting())
+				wantProcessMethod = false;
+
+			if (wantProcessMethod)
 			{
 				// These errors SHOULD be duplicates, but if we have no other errors at all then we don't ignoreErrors, which
 				//  may help unveil some kinds of compiler bugs
@@ -1201,8 +1248,27 @@ void BfContext::RebuildDependentTypes(BfDependedType* dType)
 		TypeMethodSignaturesChanged(typeInst);
 }
 
+void BfContext::QueueMidCompileRebuildDependentTypes(BfDependedType* dType, const String& reason)
+{
+	BfLogSysM("QueueMidCompileRebuildDependentTypes Type:%p Reason:%s\n", dType, reason.c_str());
+
+	auto workEntry = mMidCompileWorkList.Alloc();
+	workEntry->mType = dType;
+	workEntry->mReason = reason;
+}
+
 void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason)
 {
+	BF_ASSERT(!dType->IsDeleting());
+	auto module = dType->GetModule();
+	if ((module != NULL) && (!module->mIsSpecialModule))
+	{
+		BF_ASSERT(!module->mIsDeleting);
+		BF_ASSERT(!module->mOwnedTypeInstances.IsEmpty());
+	}
+
+	
+
 	dType->mRebuildFlags = (BfTypeRebuildFlags)(dType->mRebuildFlags | BfTypeRebuildFlag_ChangedMidCompile);
 	int prevDeletedTypes = mCompiler->mStats.mTypesDeleted;
 	if (mCompiler->mIsResolveOnly)
@@ -1249,9 +1315,9 @@ bool BfContext::CanRebuild(BfType* type)
 //   (obviously) doesn't change the data layout of ClassC
 //  Calls: non-cascading dependency, since it's independent of data layout ConstValue: non-cascading data change
 void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange)
-{
+{	
 	BfLogSysM("TypeDataChanged %p\n", dType);
-
+	
 	auto rebuildFlag = isNonStaticDataChange ? BfTypeRebuildFlag_NonStaticChange : BfTypeRebuildFlag_StaticChange;
 	if ((dType->mRebuildFlags & rebuildFlag) != 0) // Already did this change?
 		return;
@@ -1345,7 +1411,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 }
 
 void BfContext::TypeMethodSignaturesChanged(BfTypeInstance* typeInst)
-{	
+{
 	if (typeInst->mRebuildFlags & BfTypeRebuildFlag_MethodSignatureChange) // Already did change?
 		return;
 	typeInst->mRebuildFlags = (BfTypeRebuildFlags) (typeInst->mRebuildFlags | BfTypeRebuildFlag_MethodSignatureChange);
@@ -1715,18 +1781,18 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 				BF_ASSERT(module->mOwnedTypeInstances.size() == 0);
 			}
 			else
-			{
-				auto itr = std::find(module->mOwnedTypeInstances.begin(), module->mOwnedTypeInstances.end(), typeInst);
-				module->mOwnedTypeInstances.erase(itr);
+			{				
+				module->mOwnedTypeInstances.Remove(typeInst);
 
 				if ((module->mOwnedTypeInstances.size() == 0) && (module != mScratchModule))
-				{					
+				{
+					BfLogSysM("Setting module mIsDeleting %p due to mOwnedTypeInstances being empty\n", module);
+
 					// This module is no longer needed
 					module->RemoveModuleData();
 					module->mIsDeleting = true;
-					auto itr = std::find(mModules.begin(), mModules.end(), module);
-					mModules.erase(itr);
-
+					mModules.Remove(module);
+					
 					// This was only needed for 'zombie modules', which we don't need anymore?
 					//  To avoid linking errors.  Used instead of directly removing from mModules.
 					mDeletingModules.push_back(module);
@@ -2980,6 +3046,7 @@ void BfContext::RemoveInvalidWorkItems()
 	//  so we're passing false in here now.  Don't just switch it back and forth - find why 'false' was causing an issue.
 	//  Same with mMethodSpecializationWorkList	
 	DoRemoveInvalidWorkItems<BfTypeProcessRequest>(this, mPopulateTypeWorkList, false);	
+	DoRemoveInvalidWorkItems<BfMidCompileRequest>(this, mMidCompileWorkList, false);
 	DoRemoveInvalidWorkItems<BfMethodSpecializationRequest>(this, mMethodSpecializationWorkList, false/*true*/);
 
 	DoRemoveInvalidWorkItems<BfTypeRefVerifyRequest>(this, mTypeRefVerifyWorkList, false);

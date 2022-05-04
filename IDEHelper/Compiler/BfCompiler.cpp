@@ -2592,7 +2592,11 @@ void BfCompiler::ProcessPurgatory(bool reifiedOnly)
 			{
 				auto module = type->GetModule();
 				if (module != NULL)
+				{					
+					if (!module->mIsModuleMutable)
+						module->StartExtension();					
 					module->PopulateType(type, BfPopulateType_Full);
+				}
 			}
 
 			if (reifiedOnly)
