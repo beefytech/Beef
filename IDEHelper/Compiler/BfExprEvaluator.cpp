@@ -7481,9 +7481,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					}
 					else if (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
 					{
+						mModule->PopulateType(wantType);
+						mModule->mBfIRBuilder->PopulateType(wantType);
 						auto genericTypeInst = wantType->ToGenericTypeInstance();
 						expandedParamsElementType = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0];
-
+						
 						expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);
 						expandedParamAlloca = mModule->CreateAlloca(genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0], true, NULL, mModule->GetConstValue(numElements));
 						mModule->mBfIRBuilder->CreateAlignedStore(expandedParamAlloca, mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 1), mModule->mSystem->mPtrSize);
@@ -7494,6 +7496,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					}
 					else if (wantType->IsSizedArray())
 					{						
+						mModule->PopulateType(wantType);
+						mModule->mBfIRBuilder->PopulateType(wantType);
 						BfSizedArrayType* sizedArrayType = (BfSizedArrayType*)wantType;
 						expandedParamsElementType = wantType->GetUnderlyingType();
 
