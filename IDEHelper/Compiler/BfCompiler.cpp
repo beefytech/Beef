@@ -5595,6 +5595,7 @@ int ArrTest()
 
 void BfCompiler::PopulateReified()
 {
+	BfLogSysM("BfCompiler::PopulateReified\n");
 	BP_ZONE("PopulateReified");
 
 	BfContext* context = mContext;
@@ -5859,6 +5860,50 @@ void BfCompiler::PopulateReified()
 						}
 
 						checkType = checkType->mBaseType;
+					}
+				}
+			}
+		}
+
+		if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
+		{
+			BfLogSysM("BfCompiler::PopulateReified finding Main\n");
+			for (auto project : mSystem->mProjects)
+			{
+				String entryClassName = project->mStartupObject;
+				auto typeDef = mSystem->FindTypeDef(entryClassName, 0, project, {}, NULL, BfFindTypeDefFlag_AllowGlobal);
+				if (typeDef != NULL)
+				{
+					typeDef->mIsAlwaysInclude = true;
+					auto resolvedType = mContext->mScratchModule->ResolveTypeDef(typeDef);
+					if (resolvedType != NULL)
+					{
+						auto resolvedTypeInst = resolvedType->ToTypeInstance();
+						if (resolvedTypeInst != NULL)
+						{
+							auto module = resolvedTypeInst->GetModule();
+							if (!module->mIsReified)
+								module->ReifyModule();
+							mContext->mScratchModule->PopulateType(resolvedType, BfPopulateType_Full);
+
+							BfMemberSetEntry* memberSetEntry;
+							if (resolvedTypeInst->mTypeDef->mMethodSet.TryGetWith(String("Main"), &memberSetEntry))
+							{
+								BfMethodDef* methodDef = (BfMethodDef*)memberSetEntry->mMemberDef;
+								while (methodDef != NULL)
+								{
+									auto moduleMethodInstance = mContext->mScratchModule->GetMethodInstanceAtIdx(resolvedTypeInst, methodDef->mIdx);
+									auto methodInstance = moduleMethodInstance.mMethodInstance;
+									if (methodInstance->GetParamCount() != 0)
+									{
+										mContext->mScratchModule->GetInternalMethod("CreateParamsArray");
+										mContext->mScratchModule->GetInternalMethod("DeleteStringArray");
+									}
+
+									methodDef = methodDef->mNextWithSameName;
+								}
+							}
+						}
 					}
 				}
 			}
@@ -6616,7 +6661,8 @@ void BfCompiler::ClearOldHotData()
 }
 
 void BfCompiler::CompileReified()
-{	
+{
+	BfLogSysM("BfCompiler::CompileReified\n");
 	BP_ZONE("Compile_ResolveTypeDefs");
 
 	Array<BfTypeDef*> deferTypeDefs;
@@ -6695,50 +6741,7 @@ void BfCompiler::CompileReified()
 		if (alwaysInclude)
 			mContext->mScratchModule->PopulateType(typeInst, BfPopulateType_Full);
 	}
-	
-	if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
-	{
-		for (auto project : mSystem->mProjects)
-		{
-			String entryClassName = project->mStartupObject;
-			auto typeDef = mSystem->FindTypeDef(entryClassName, 0, project, {}, NULL, BfFindTypeDefFlag_AllowGlobal);
-			if (typeDef != NULL)
-			{
-				typeDef->mIsAlwaysInclude = true;
-				auto resolvedType = mContext->mScratchModule->ResolveTypeDef(typeDef);
-				if (resolvedType != NULL)
-				{
-					auto resolvedTypeInst = resolvedType->ToTypeInstance();
-					if (resolvedTypeInst != NULL)
-					{
-						auto module = resolvedTypeInst->GetModule();
-						if (!module->mIsReified)
-							module->ReifyModule();
-						mContext->mScratchModule->PopulateType(resolvedType, BfPopulateType_Full);
-
-						BfMemberSetEntry* memberSetEntry;
-						if (resolvedTypeInst->mTypeDef->mMethodSet.TryGetWith(String("Main"), &memberSetEntry))
-						{
-							BfMethodDef* methodDef = (BfMethodDef*)memberSetEntry->mMemberDef;
-							while (methodDef != NULL)
-							{
-								auto moduleMethodInstance = mContext->mScratchModule->GetMethodInstanceAtIdx(resolvedTypeInst, methodDef->mIdx);
-								auto methodInstance = moduleMethodInstance.mMethodInstance;
-								if (methodInstance->GetParamCount() != 0)
-								{
-									mContext->mScratchModule->GetInternalMethod("CreateParamsArray");
-									mContext->mScratchModule->GetInternalMethod("DeleteStringArray");
-								}
-								
-								methodDef = methodDef->mNextWithSameName;
-							}
-						}						
-					}
-				}
-			}
-		}
-	}
-
+		
 	PopulateReified();	
 }
 
