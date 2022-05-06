@@ -948,6 +948,7 @@ public:
 	BfConstant* GetConstant(BfIRValue id);
 	bool TryGetBool(BfIRValue id, bool& boolVal);
 	int IsZero(BfIRValue val);
+	bool IsConstValue(BfIRValue val);
 	int CheckConstEquality(BfIRValue lhs, BfIRValue rhs); // -1 = fail, 0 = false, 1 = true
 	//void WriteConstant(void* data, BeConstant* constVal);
 
@@ -970,7 +971,7 @@ public:
 	BfIRValue CreateGlobalVariableConstant(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);
 
 	bool WriteConstant(BfIRValue val, void* ptr, BfType* type);
-	BfIRValue ReadConstant(void* ptr, BfType* type);
+	BfIRValue ReadConstant(void* ptr, BfType* type);	
 };
 
 enum BfIRPopulateType

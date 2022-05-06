@@ -13510,7 +13510,15 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 								// .. and we can convert the constraint's toType to OUR toType then we're good
 								auto opToVal = genericParam->mExternType;
 								if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType, BfCastFlags_NoConversionOperator))
-									return mBfIRBuilder->GetFakeVal();
+								{
+									if (mBfIRBuilder->IsConstValue(typedVal.mValue))
+									{
+										// Retain constness
+										return mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(toType));
+									}
+									else
+										return mBfIRBuilder->GetFakeVal();
+								}
 							}
 						}
 					}
@@ -13535,7 +13543,15 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 								// .. and we can convert the constraint's toType to OUR toType then we're good
 								auto opToVal = genericParam->mExternType;
 								if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType, BfCastFlags_NoConversionOperator))
-									return mBfIRBuilder->GetFakeVal();
+								{
+									if (mBfIRBuilder->IsConstValue(typedVal.mValue))
+									{
+										// Retain constness
+										return mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(toType));
+									}
+									else
+										return mBfIRBuilder->GetFakeVal();
+								}
 							}
 						}
 					}

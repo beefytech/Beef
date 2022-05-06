@@ -461,6 +461,18 @@ int BfIRConstHolder::IsZero(BfIRValue value)
 	return -1;
 }
 
+bool BfIRConstHolder::IsConstValue(BfIRValue value)
+{
+	auto constant = GetConstant(value);
+	if (constant == NULL)
+		return false;
+
+	if (constant->mConstType == BfConstType_GlobalVar)
+		return false;
+
+	return true;
+}
+
 int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 {
 	auto constLHS = GetConstant(lhs);

@@ -4409,6 +4409,9 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 	if (bfType->IsTypedPrimitive())
 		return CreateConstant(module, ptr, bfType->GetUnderlyingType(), outType);
 
+	if (bfType->IsGenericParam())
+		return irBuilder->GetUndefConstValue(irBuilder->MapType(bfType));
+
 	if (bfType->IsTypeInstance())
 	{
 		auto typeInst = bfType->ToTypeInstance();
