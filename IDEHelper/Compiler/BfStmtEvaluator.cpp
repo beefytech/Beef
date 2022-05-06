@@ -3289,7 +3289,7 @@ void BfModule::VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock
 
 void BfModule::VisitCodeBlock(BfBlock* block)
 {
-	BP_ZONE("BfModule::VisitCodeBlock");
+	//BP_ZONE("BfModule::VisitCodeBlock");
 
 	BfAutoParentNodeEntry autoParentNodeEntry(this, block);
 
@@ -3852,7 +3852,7 @@ void BfModule::Visit(BfIfStatement* ifStmt)
 
 void BfModule::Visit(BfVariableDeclaration* varDecl)
 {
-	BP_ZONE("BfModule::Visit(BfVariableDeclaration)");
+	//BP_ZONE("BfModule::Visit(BfVariableDeclaration)");
 
 	UpdateSrcPos(varDecl);
 

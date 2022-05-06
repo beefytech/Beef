@@ -9637,7 +9637,7 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 
 BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error, BfResolveTypeRefFlags resolveFlags)
 {
-	BP_ZONE("BfModule::FindTypeDef_1");
+	//BP_ZONE("BfModule::FindTypeDef_1");
 
 	BfTypeInstance* typeInstance = (typeInstanceOverride != NULL) ? typeInstanceOverride : mCurTypeInstance;
 	auto useTypeDef = GetActiveTypeDef(typeInstanceOverride, true);
@@ -9650,7 +9650,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 		else if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mParsers.IsEmpty()))
 			project = mCompiler->mResolvePassData->mParsers[0]->mProject;
 
-		BP_ZONE("System.FindTypeDef_2");				
+		//BP_ZONE("System.FindTypeDef_2");
 		Array<BfAtomComposite> namespaceSearch;
 		if (mContext->mCurNamespaceNodes != NULL)
 		{
@@ -9737,7 +9737,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 
 BfTypeDef* BfModule::FindTypeDef(const StringImpl& typeName, int numGenericArgs, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error, BfResolveTypeRefFlags resolveFlags)
 {
-	BP_ZONE("BfModule::FindTypeDef_4");
+	//BP_ZONE("BfModule::FindTypeDef_4");
 
 	BfSizedAtomComposite findName;
 	if (!mSystem->ParseAtomComposite(typeName, findName))
@@ -9751,7 +9751,7 @@ BfTypeDef* BfModule::FindTypeDef(const StringImpl& typeName, int numGenericArgs,
 
 BfTypeDef* BfModule::FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error, int numGenericParams, BfResolveTypeRefFlags resolveFlags)
 {
-	BP_ZONE("BfModule::FindTypeDef_5");
+	//BP_ZONE("BfModule::FindTypeDef_5");
 
 	if (auto typeDefTypeRef = BfNodeDynCast<BfDirectTypeDefReference>(typeRef))
 	{
@@ -10183,7 +10183,7 @@ void BfModule::GetDelegateTypeRefAttributes(BfDelegateTypeRef* delegateTypeRef, 
 
 BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags, int numGenericArgs)
 {
-	BP_ZONE("BfModule::ResolveTypeRef");
+	//BP_ZONE("BfModule::ResolveTypeRef");
 
 	if (typeRef == NULL)
 	{
