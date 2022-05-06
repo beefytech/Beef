@@ -4470,6 +4470,10 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 			constResolver.Resolve(initializer);
 			return GetDefaultTypedValue(fieldType);
 		}
+		else if (mCurTypeInstance->IsUnspecializedTypeVariation())
+		{
+			return GetDefaultTypedValue(fieldType);
+		}
 		else if (fieldDef->mIsConst)
 		{
 			int ceExecuteId = -1;
