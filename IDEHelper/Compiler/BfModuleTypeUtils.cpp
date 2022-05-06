@@ -851,8 +851,8 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 	struct MemberRef
 	{
 		BfMemberDef* mMemberDef;
-		String mName;
-		String mKindName;
+		StringView mName;
+		StringView mKindName;
 		BfTypeInstance* mTypeInst;
 		BfAstNode* mNameNode;
 		BfProtection mProtection;
@@ -920,13 +920,13 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 		checkType = checkType->mBaseType;
 	}
 
-	Dictionary<String, MemberRef> memberMap;
+	Dictionary<StringView, MemberRef> memberMap;
 	memberMap.Reserve(memberList.size());
 
 	for (int i = (int)memberList.size() - 1; i >= 0; i--)
 	{
 		MemberRef& memberRef = memberList[i];
-		if (memberRef.mName.empty())
+		if (memberRef.mName.IsEmpty())
 			continue;
 		if ((memberRef.mTypeInst == typeInst) && (!memberRef.mIsOverride))
 		{
@@ -944,7 +944,7 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 				{
 					if ((prevMemberRef->mProtection != BfProtection_Private) && (memberRef.mNameNode != NULL))
 					{
-						error = Warn(BfWarning_CS0108_MemberHidesInherited, StrFormat("%s hides inherited member '%s'. Use the 'new' keyword if hiding was intentional.", prevMemberRef->mKindName.c_str(), memberRef.mName.c_str()), memberRef.mNameNode, true);
+						error = Warn(BfWarning_CS0108_MemberHidesInherited, StrFormat("%s hides inherited member '%s'. Use the 'new' keyword if hiding was intentional.", String(prevMemberRef->mKindName).c_str(), String(memberRef.mName).c_str()), memberRef.mNameNode, true);
 						showPrevious = true;
 					}
 				}
@@ -995,7 +995,7 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 					}
 
 					if (secondMemberRef->mNameNode != NULL)
-						error = Fail(StrFormat("A %s named '%s' has already been declared.", secondMemberRef->mKindName.c_str(), memberRef.mName.c_str()), secondMemberRef->mNameNode, true);
+						error = Fail(StrFormat("A %s named '%s' has already been declared.", String(secondMemberRef->mKindName).c_str(), String(memberRef.mName).c_str()), secondMemberRef->mNameNode, true);
 					showPrevious = true;
 					typeInst->mHasDeclError = true;
 				}
@@ -3185,7 +3185,7 @@ void BfModule::DoPopulateType_InitSearches(BfTypeInstance* typeInstance)
 					{
 						String checkNamespaceStr;
 						typeRef->ToString(checkNamespaceStr);
-						BfAtomComposite checkNamespace;
+						BfAtomCompositeT<16> checkNamespace;
 						if (mSystem->ParseAtomComposite(checkNamespaceStr, checkNamespace))
 						{
 							if (mSystem->ContainsNamespace(checkNamespace, typeDef->mProject))
@@ -7263,7 +7263,7 @@ BfMethodRefType* BfModule::CreateMethodRefType(BfMethodInstance* methodInstance,
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
 	lookupCtx.mModule = this;
-	BfResolvedTypeSet::Entry* typeEntry = NULL;
+	BfResolvedTypeSet::EntryRef typeEntry;
 	auto inserted = mContext->mResolvedTypes.Insert(methodRefType, &lookupCtx, &typeEntry);
 	if (typeEntry->mValue == NULL)
 	{	
@@ -7992,7 +7992,7 @@ BfTypeDef* BfModule::GetCombinedPartialTypeDef(BfTypeDef* typeDef)
 	BF_ASSERT(!typeDef->mIsExplicitPartial);
 	if (!typeDef->mIsPartial)
 		return typeDef;
-	auto result = mSystem->FindTypeDef(typeDef->mFullName.ToString(), (int)typeDef->mGenericParamDefs.size());
+	auto result = mSystem->FindTypeDef(typeDef->mFullName, (int)typeDef->mGenericParamDefs.size(), NULL, {}, NULL, BfFindTypeDefFlag_None);
 	return result;
 }
 
@@ -8780,10 +8780,10 @@ BfType* BfModule::ResolveType(BfType* lookupType, BfPopulateType populateType, B
 	BfResolvedTypeSet::LookupContext lookupCtx;
 	lookupCtx.mModule = this;	
 	lookupCtx.mResolveFlags = resolveFlags;
-	BfResolvedTypeSet::Entry* resolvedEntry = NULL;
+	BfResolvedTypeSet::EntryRef resolvedEntry;
 	bool inserted = mContext->mResolvedTypes.Insert(lookupType, &lookupCtx, &resolvedEntry);	
 
-	if (resolvedEntry == NULL)
+	if (!resolvedEntry)
 		return NULL;
 
 	if (!inserted)
@@ -9667,7 +9667,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 
 			if (!checkNamespace.IsEmpty())
 			{
-				BfAtomComposite atomComposite;
+				BfAtomCompositeT<16> atomComposite;
 				if (mSystem->ParseAtomComposite(checkNamespace, atomComposite))
 					namespaceSearch.Add(atomComposite);
 			}
@@ -9693,7 +9693,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	}
 
 	BfTypeLookupEntry typeLookupEntry;
-	typeLookupEntry.mName = findName;
+	typeLookupEntry.mName.Reference(findName);
 	typeLookupEntry.mNumGenericParams = numGenericArgs;
 	typeLookupEntry.mUseTypeDef = useTypeDef;
 
@@ -9918,7 +9918,7 @@ bool BfModule::ValidateTypeWildcard(BfAstNode* typeRef, bool isAttributeRef)
 			StringT<128> leftNameStr;
 
 			BfType* leftType = NULL;
-			BfAtomComposite leftComposite;
+			BfAtomCompositeT<16> leftComposite;
 
 			qualifiedTypeRef->mLeft->ToString(leftNameStr);
 			if (!mSystem->ParseAtomComposite(leftNameStr, leftComposite))
@@ -9982,11 +9982,11 @@ bool BfModule::ValidateTypeWildcard(BfAstNode* typeRef, bool isAttributeRef)
 	if (!_ToString(typeRef, true))
 		return false;
 
-	BfAtomComposite composite;
+	BfAtomCompositeT<16> composite;
 	if (!mSystem->ParseAtomComposite(name, composite))
 		return false;
 
-	BfAtomComposite compositeEx;	
+	BfAtomCompositeT<16> compositeEx;
 	if (!mSystem->ParseAtomComposite(nameEx, compositeEx))
 		return false;
 	
@@ -10939,13 +10939,13 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
-	BfResolvedTypeSet::Entry* resolvedEntry = NULL;
+	BfResolvedTypeSet::EntryRef resolvedEntry;
 	if (auto delegateTypeRef = BfNodeDynCastExact<BfDelegateTypeRef>(typeRef))
 		GetDelegateTypeRefAttributes(delegateTypeRef, lookupCtx.mCallingConvention);	
 
 	auto inserted = mContext->mResolvedTypes.Insert(typeRef, &lookupCtx, &resolvedEntry);	
 
-	if (resolvedEntry == NULL)
+	if (!resolvedEntry)
 	{
 		if (lookupCtx.mHadVar)
 			return ResolveTypeResult(typeRef, GetPrimitiveType(BfTypeCode_Var), populateType, resolveFlags);
@@ -10984,7 +10984,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			BfPrimitiveType* primType = new BfPrimitiveType();
 			primType->mTypeDef = typeDef;
 			resolvedEntry->mValue = primType;
-			BF_ASSERT(BfResolvedTypeSet::Hash(primType, &lookupCtx, false) == resolvedEntry->mHash);
+			BF_ASSERT(BfResolvedTypeSet::Hash(primType, &lookupCtx, false) == resolvedEntry->mHashCode);
 			populateModule->InitType(primType, populateType);
 			return ResolveTypeResult(typeRef, primType, populateType, resolveFlags);
 		}
@@ -11045,7 +11045,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				resolvedEntry->mValue = genericTypeInst;
 				populateModule->InitType(genericTypeInst, populateType);
 #ifdef _DEBUG
-				if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHash)
+				if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHashCode)
 				{
 					int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
 					int typeHash = BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx);
@@ -11088,14 +11088,14 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		populateModule->InitType(typeInst, populateType);
 		
-		if (BfResolvedTypeSet::Hash(typeInst, &lookupCtx) != resolvedEntry->mHash)
+		if (BfResolvedTypeSet::Hash(typeInst, &lookupCtx) != resolvedEntry->mHashCode)
 		{
 			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
 			int typeHash = BfResolvedTypeSet::Hash(typeInst, &lookupCtx);
 			BF_ASSERT(refHash == typeHash);
 		}
 		{
-			BF_ASSERT(BfResolvedTypeSet::Hash(typeInst, &lookupCtx) == resolvedEntry->mHash);
+			BF_ASSERT(BfResolvedTypeSet::Hash(typeInst, &lookupCtx) == resolvedEntry->mHashCode);
 		}		
 		return ResolveTypeResult(typeRef, typeInst, populateType, resolveFlags);
 	}	
@@ -11141,7 +11141,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					arrayType->mElementCountSource = typedVal.mType;
 					resolvedEntry->mValue = arrayType;
 
-					BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHash);
+					BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHashCode);
 					populateModule->InitType(arrayType, populateType);
 					return ResolveTypeResult(typeRef, arrayType, populateType, resolveFlags);
 				}
@@ -11175,7 +11175,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			arrayType->mGenericDepth = elementType->GetGenericDepth() + 1;
 			resolvedEntry->mValue = arrayType;
 
-			BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHash);
+			BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHashCode);
 			populateModule->InitType(arrayType, populateType);
 			return ResolveTypeResult(typeRef, arrayType, populateType, resolveFlags);
 		}
@@ -11190,7 +11190,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		CheckUnspecializedGenericType(arrayType, populateType);
 
-		BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHash);
+		BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHashCode);
 		populateModule->InitType(arrayType, populateType);
 		return ResolveTypeResult(typeRef, arrayType, populateType, resolveFlags);
 	}
@@ -11388,22 +11388,22 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		populateModule->InitType(genericTypeInst, populateType);
 
 #ifdef _DEBUG
-		if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHash)
+		if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHashCode)
 		{
 			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
 			int typeHash = BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx);
 			BF_ASSERT(refHash == typeHash);
-			BF_ASSERT(refHash == resolvedEntry->mHash);
+			BF_ASSERT(refHash == resolvedEntry->mHashCode);
 		}
 		if (!BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx))
 		{
 			BF_ASSERT(BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx));
 		}
 
-		BfLogSysM("Generic type %p typeHash: %8X\n", genericTypeInst, resolvedEntry->mHash);
+		BfLogSysM("Generic type %p typeHash: %8X\n", genericTypeInst, resolvedEntry->mHashCode);
 #endif
 
-		BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);		
+		BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHashCode);		
 		return ResolveTypeResult(typeRef, genericTypeInst, populateType, resolveFlags);
 	}
 	else if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))
@@ -11517,7 +11517,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		}
 				
 		resolvedEntry->mValue = tupleType;
-		BF_ASSERT(BfResolvedTypeSet::Hash(tupleType, &lookupCtx) == resolvedEntry->mHash);
+		BF_ASSERT(BfResolvedTypeSet::Hash(tupleType, &lookupCtx) == resolvedEntry->mHashCode);
 		populateModule->InitType(tupleType, populateType);
 
 		return ResolveTypeResult(typeRef, tupleType, populateType, resolveFlags);
@@ -11548,7 +11548,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		resolvedEntry->mValue = genericTypeInst;
 #ifdef _DEBUG
-		if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHash)
+		if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHashCode)
 		{
 			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
 			int typeHash = BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx);
@@ -11575,7 +11575,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		resolvedEntry->mValue = pointerType;
 
 		//int hashVal = mContext->mResolvedTypes.Hash(typeRef, &lookupCtx);
-		BF_ASSERT(BfResolvedTypeSet::Hash(pointerType, &lookupCtx) == resolvedEntry->mHash);
+		BF_ASSERT(BfResolvedTypeSet::Hash(pointerType, &lookupCtx) == resolvedEntry->mHashCode);
 
 		populateModule->InitType(pointerType, populateType);
 		return ResolveTypeResult(typeRef, pointerType, populateType, resolveFlags);
@@ -11604,7 +11604,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		resolvedEntry->mValue = refType;
 		
 #ifdef _DEBUG
-		if (BfResolvedTypeSet::Hash(refType, &lookupCtx) != resolvedEntry->mHash)
+		if (BfResolvedTypeSet::Hash(refType, &lookupCtx) != resolvedEntry->mHashCode)
 		{
 			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx, BfResolvedTypeSet::BfHashFlag_AllowRef);
 			int typeHash = BfResolvedTypeSet::Hash(refType, &lookupCtx);
@@ -11879,7 +11879,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			AddDependency(paramType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 
 #ifdef _DEBUG
-		if (BfResolvedTypeSet::Hash(delegateType, &lookupCtx) != resolvedEntry->mHash)
+		if (BfResolvedTypeSet::Hash(delegateType, &lookupCtx) != resolvedEntry->mHashCode)
 		{
 			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
 			int typeHash = BfResolvedTypeSet::Hash(delegateType, &lookupCtx);			
@@ -11888,7 +11888,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		BF_ASSERT(BfResolvedTypeSet::Equals(delegateType, typeRef, &lookupCtx));
 #endif
 
-		BF_ASSERT(BfResolvedTypeSet::Hash(delegateType, &lookupCtx) == resolvedEntry->mHash);
+		BF_ASSERT(BfResolvedTypeSet::Hash(delegateType, &lookupCtx) == resolvedEntry->mHashCode);
 
 		return ResolveTypeResult(typeRef, delegateType, populateType, resolveFlags);
 	}
@@ -11896,7 +11896,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	{
 		auto genericParamType = GetGenericParamType(genericParamTypeRef->mGenericParamKind, genericParamTypeRef->mGenericParamIdx);
 		resolvedEntry->mValue = genericParamType;
-		BF_ASSERT(BfResolvedTypeSet::Hash(genericParamType, &lookupCtx) == resolvedEntry->mHash);
+		BF_ASSERT(BfResolvedTypeSet::Hash(genericParamType, &lookupCtx) == resolvedEntry->mHashCode);
 		return ResolveTypeResult(typeRef, genericParamType, populateType, resolveFlags);
 	}
 	else if (auto retTypeTypeRef = BfNodeDynCast<BfModifiedTypeRef>(typeRef))
@@ -11908,7 +11908,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		BF_ASSERT(retTypeType->mElementType);
 
 		resolvedEntry->mValue = retTypeType;
-		BF_ASSERT(BfResolvedTypeSet::Hash(retTypeType, &lookupCtx) == resolvedEntry->mHash);
+		BF_ASSERT(BfResolvedTypeSet::Hash(retTypeType, &lookupCtx) == resolvedEntry->mHashCode);
 
 		populateModule->InitType(retTypeType, populateType);
 		return ResolveTypeResult(typeRef, retTypeType, populateType, resolveFlags);
@@ -11952,7 +11952,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		resolvedEntry->mValue = constExprType;
 #ifdef _DEBUG
-		if (BfResolvedTypeSet::Hash(constExprType, &lookupCtx) != resolvedEntry->mHash)
+		if (BfResolvedTypeSet::Hash(constExprType, &lookupCtx) != resolvedEntry->mHashCode)
 		{
 			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
 			int typeHash = BfResolvedTypeSet::Hash(constExprType, &lookupCtx);			

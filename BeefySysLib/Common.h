@@ -199,6 +199,7 @@ void OutputDebugStrF(const char* fmt ...);
 UTF16String ToWString(const StringImpl& theString);
 String ToString(const UTF16String& theString);
 String ToUpper(const StringImpl& theString);
+void MakeUpper(StringImpl& theString);
 UTF16String ToUpper(const UTF16String& theString);
 UTF16String ToLower(const UTF16String& theString);
 String ToLower(const StringImpl& theString);

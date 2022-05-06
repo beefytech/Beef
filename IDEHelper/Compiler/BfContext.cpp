@@ -207,7 +207,8 @@ void BfContext::AssignModule(BfType* type)
 		}
 		else
 		{
-			String moduleName = GenerateModuleName(typeInst);
+			StringT<256> moduleName;
+			GenerateModuleName(typeInst, moduleName);
 			module = new BfModule(this, moduleName);
 			module->mIsReified = typeInst->mIsReified;			
 			module->mProject = project;
@@ -1936,7 +1937,7 @@ void BfContext::UpdateAfterDeletingTypes()
 		auto itr = mResolvedTypes.begin();
 		while (itr != mResolvedTypes.end())
 		{
-			auto type = itr.mCurEntry->mValue;
+			auto type = mResolvedTypes.mEntries[itr.mCurEntry].mValue;
 
 			bool doDelete = false;
 			//BfLogSysM("Removing entry\n");
@@ -2659,7 +2660,7 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 	}
 }
 
-void BfContext::GenerateModuleName_TypeInst(BfTypeInstance* typeInst, String& name)
+void BfContext::GenerateModuleName_TypeInst(BfTypeInstance* typeInst, StringImpl& name)
 {
 	auto resolveModule = typeInst->mIsReified ? mScratchModule : mUnreifiedModule;
 	auto outerType = resolveModule->GetOuterType(typeInst);
@@ -2708,7 +2709,7 @@ void BfContext::GenerateModuleName_TypeInst(BfTypeInstance* typeInst, String& na
 	}
 }
 
-void BfContext::GenerateModuleName_Type(BfType* type, String& name)
+void BfContext::GenerateModuleName_Type(BfType* type, StringImpl& name)
 {
 	if ((!name.empty()) && (name[name.length() - 1] != '_'))
 		name += '_';
@@ -2817,9 +2818,8 @@ void BfContext::GenerateModuleName_Type(BfType* type, String& name)
 	}	
 }
 
-String BfContext::GenerateModuleName(BfTypeInstance* typeInst)
-{	
-	String name;	
+void BfContext::GenerateModuleName(BfTypeInstance* typeInst, StringImpl& name)
+{		
 	GenerateModuleName_Type(typeInst, name);
 
 	int maxChars = 80;
@@ -2834,16 +2834,21 @@ String BfContext::GenerateModuleName(BfTypeInstance* typeInst)
 		if (c == '@')
 			name[i] = '_';
 	}
-
-	String tryName = name;
+	
 	for (int i = 2; true; i++)
 	{
-		if (!mUsedModuleNames.Contains(ToUpper(tryName)))
-			return tryName;
-		tryName = name + StrFormat("_%d", i);
+		StringT<256> upperName = name;
+		MakeUpper(upperName);
+		if (!mUsedModuleNames.Contains(upperName))
+			return;
+		if (i > 2)
+		{
+			int lastUnderscore = (int)name.LastIndexOf('_');
+			if (lastUnderscore != -1)
+				name.RemoveToEnd(lastUnderscore);
+		}
+		name += StrFormat("_%d", i);
 	}
-
-	return name;
 }
 
 bool BfContext::IsSentinelMethod(BfMethodInstance* methodInstance)

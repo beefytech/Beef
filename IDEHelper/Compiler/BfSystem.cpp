@@ -2504,7 +2504,7 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 
 	// This searched globals, but we were already doing that down below at the LAST step.  Right?
 	BfTypeDef* foundTypeDef = NULL;	
-	BfAtomComposite qualifiedFindName;
+	BfAtomCompositeT<16> qualifiedFindName;
 
 	int foundPri = (int)0x80000000;
 	for (int namespaceIdx = 0; namespaceIdx <= (int) namespaceSearch.size(); namespaceIdx++)
@@ -2512,14 +2512,16 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 		int curNamespacePri = 0;
 		if (namespaceIdx < (int)namespaceSearch.size())
 		{ 
-			auto& namespaceDeclaration = namespaceSearch[namespaceIdx];			
+			auto& namespaceDeclaration = namespaceSearch[namespaceIdx];
 			qualifiedFindName.Set(namespaceDeclaration, findName);
 		}
 		else
 		{			
 			qualifiedFindName = findName;
 		}
-				
+	
+		int partialStartEntryIdx = -1;
+
 		auto itr = mTypeDefs.TryGet(qualifiedFindName);		
 		while (itr)
 		{
@@ -2528,10 +2530,39 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 			if ((typeDef->mIsPartial) || 
 				((typeDef->IsGlobalsContainer()) && ((flags & BfFindTypeDefFlag_AllowGlobal) == 0)))
 			{
-				itr.MoveToNextHashMatch();
-				continue;
+				bool handled = false;
+				if (itr.mCurEntry < mTypeDefs.mPartialSkipCache.mSize)
+				{
+					auto& entry = mTypeDefs.mPartialSkipCache[itr.mCurEntry];
+					if (entry.mRevision == mTypeDefs.mRevision)
+					{
+						if (entry.mIndex == -1)
+						{
+							// No non-partial here
+							break;
+						}
+
+						itr.mCurEntry = entry.mIndex;
+						typeDef = *itr;
+						handled = true;
+					}
+				}
+
+				if (!handled)
+				{
+					if (partialStartEntryIdx == -1)
+						partialStartEntryIdx = itr.mCurEntry;
+					itr.MoveToNextHashMatch();
+					continue;
+				}
 			}
 			
+			if ((partialStartEntryIdx != -1) && ((flags & BfFindTypeDefFlag_AllowGlobal) == 0))
+			{
+				mTypeDefs.SetPartialSkipCache(partialStartEntryIdx, itr.mCurEntry);
+				partialStartEntryIdx = -1;
+			}
+
 			if ((typeDef->mFullName == qualifiedFindName) && (CheckTypeDefReference(typeDef, project)))
 			{
 				int curPri = curNamespacePri;				
@@ -2556,6 +2587,9 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 			}
 			itr.MoveToNextHashMatch();
 		}
+
+		if ((partialStartEntryIdx != -1) && ((flags & BfFindTypeDefFlag_AllowGlobal) == 0))
+			mTypeDefs.SetPartialSkipCache(partialStartEntryIdx, -1);
 	}	
 
 	// Didn't match the correct number of generic params, but let the compiler complain
@@ -2647,16 +2681,10 @@ bool BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, 
 
 BfTypeDef* BfSystem::FindTypeDef(const StringImpl& typeName, int numGenericArgs, BfProject* project, const Array<BfAtomComposite>& namespaceSearch, BfTypeDef** ambiguousTypeDef, BfFindTypeDefFlags flags)
 {
-	BfAtomComposite qualifiedFindName;
-	BfAtom* tempData[16];
-	qualifiedFindName.mAllocSize = 16;
-	qualifiedFindName.mParts = tempData;
-	
+	BfAtomCompositeT<16> qualifiedFindName;	
 	BfTypeDef* result = NULL;
 	if (ParseAtomComposite(typeName, qualifiedFindName))
-		result = FindTypeDef(qualifiedFindName, numGenericArgs, project, namespaceSearch, ambiguousTypeDef, flags);
-	if (qualifiedFindName.mParts == tempData)
-		qualifiedFindName.mParts = NULL;
+		result = FindTypeDef(qualifiedFindName, numGenericArgs, project, namespaceSearch, ambiguousTypeDef, flags);	
 	return result;
 }
 

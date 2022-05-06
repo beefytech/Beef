@@ -277,7 +277,7 @@ BfIRBlock::BfIRBlock()
 
 BfIRConstHolder::BfIRConstHolder(BfModule* module)
 {
-	mModule = module;
+	mModule = module;	
 }
 
 BfIRConstHolder::~BfIRConstHolder()
@@ -2573,7 +2573,7 @@ BfIRMDNode BfIRBuilder::CreateNamespaceScope(BfType* type, BfIRMDNode fileDIScop
 
 		if (!typeInstance->IsBoxed())
 		{
-			BfAtomComposite curNamespace;
+			BfAtomCompositeT<16> curNamespace;
 			if (typeInstance->IsArray())
 			{
 				auto arrayType = (BfArrayType*)typeInstance;
@@ -2958,7 +2958,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 					diForwardDecl = DbgCreateReplaceableCompositeType(llvm::dwarf::DW_TAG_structure_type,
 						typeName, curDIScope, fileDIScope, 0, (int64)0 * 8, (int64)0 * 8, flags);
 					auto derivedFrom = DbgGetTypeInst(mModule->mContext->mBfObjectType);
-					llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;					
+					SizedArray<BfIRMDNode, 8> diFieldTypes;					
 					auto inheritanceType = DbgCreateInheritance(diForwardDecl, derivedFrom, 0, llvm::DINode::FlagPublic);
 					diFieldTypes.push_back(inheritanceType);
 					DbgMakePermanent(diForwardDecl, derivedFrom, diFieldTypes);
@@ -3081,7 +3081,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	
 	//BF_ASSERT(WantsDbgDefinition(type));
 	
-	llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;
+	SizedArray<BfIRMDNode, 256> diFieldTypes;
 
 	int packing = 0;
 	bool isUnion = false;
@@ -3448,8 +3448,8 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 			}
 
 			String methodName = methodDef->mName;
-			llvm::SmallVector<BfIRMDNode, 1> genericArgs;
-			llvm::SmallVector<BfIRValue, 1> genericConstValueArgs;
+			SizedArray<BfIRMDNode, 1> genericArgs;
+			SizedArray<BfIRValue, 1> genericConstValueArgs;
 			auto diFunction = DbgCreateMethod(funcScope, methodName, mangledName, fileDIScope,
 				defLine + 1, diFuncType, false, false,
 				(methodInstance->mVirtualTableIdx != -1) ? 1 : 0,
@@ -3602,13 +3602,13 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 	bool isGlobalContainer = typeDef->IsGlobalsContainer();
 
 	auto diForwardDecl = DbgGetTypeInst(typeInstance);
-	llvm::SmallVector<BfIRType, 8> irFieldTypes;
+	SizedArray<BfIRType, 256> irFieldTypes;
 	if ((!typeInstance->IsTypedPrimitive()) && (typeInstance->mBaseType != NULL))
 	{
 		irFieldTypes.push_back(MapTypeInst(typeInstance->mBaseType, BfIRPopulateType_Eventually_Full));
 	}
 
-	llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;
+	SizedArray<BfIRMDNode, 256> diFieldTypes;
 
 	int packing = 0;
 	bool isUnion = false;
@@ -3625,7 +3625,7 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 
 		if (!elementType->IsValuelessType())
 		{
-			irFieldTypes.push_back(MapType(elementType, elementType->IsValueType() ? BfIRPopulateType_Eventually_Full : BfIRPopulateType_Declaration));
+			irFieldTypes.Add(MapType(elementType, elementType->IsValueType() ? BfIRPopulateType_Eventually_Full : BfIRPopulateType_Declaration));
 		}
 	}
 	else
@@ -5293,7 +5293,9 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 
 	BfIRFunction retVal = WriteCmd(BfIRCmd_CreateFunction, funcType, (uint8)linkageType, name);	
 	NEW_CMD_INSERTED_IRVALUE;	
-	mFunctionMap[name] = retVal;
+
+	StringView nameSV = StringView(AllocStr(name), name.mLength);
+	mFunctionMap[nameSV] = retVal;
 
 	//BfLogSys(mModule->mSystem, "BfIRBuilder::CreateFunction: %d %s Module:%p\n", retVal.mId, name.c_str(), mModule);
 
@@ -5926,7 +5928,7 @@ BfIRMDNode BfIRBuilder::DbgCreateSubroutineType(BfMethodInstance* methodInstance
 	auto methodDef = methodInstance->mMethodDef;
 	auto typeInstance = methodInstance->GetOwner();
 
-	llvm::SmallVector<BfIRMDNode, 8> diParams;
+	SizedArray<BfIRMDNode, 32> diParams;
 	diParams.push_back(DbgGetType(methodInstance->mReturnType));
 
 	BfType* thisType = NULL;

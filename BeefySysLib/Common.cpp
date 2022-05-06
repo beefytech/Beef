@@ -66,6 +66,12 @@ String Beefy::ToUpper(const StringImpl& theString)
 	return aString;
 }
 
+void Beefy::MakeUpper(StringImpl& theString)
+{	
+	for (int i = 0; i < (int)theString.length(); ++i)
+		theString[i] = toupper(theString[i]);	
+}
+
 UTF16String Beefy::ToUpper(const UTF16String& theString)
 {
 	UTF16String aString = theString;
@@ -1282,3 +1288,6 @@ void Beefy::BFFatalError(const char* message, const char* file, int line)
 	BFFatalError(String(message), String(file), line);
 }
 
+void MakeUpper(const StringImpl& theString)
+{
+}

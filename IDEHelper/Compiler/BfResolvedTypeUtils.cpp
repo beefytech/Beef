@@ -1026,13 +1026,13 @@ void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name, int& namePre
 			invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx, name, namePrefixCount);
 		return;
 	}
-	name = paramDef->mName;
+	name.Reference(paramDef->mName);
 	namePrefixCount = paramDef->mNamePrefixCount;
 }
 
 String BfMethodInstance::GetParamName(int paramIdx)
 {	
-	String paramName;
+	StringT<256> paramName;
 	int namePrefixCount = 0;
 	GetParamName(paramIdx, paramName, namePrefixCount);
 	return paramName;
@@ -1040,7 +1040,7 @@ String BfMethodInstance::GetParamName(int paramIdx)
 
 String BfMethodInstance::GetParamName(int paramIdx, int& namePrefixCount)
 {
-	String paramName;
+	StringT<256> paramName;
 	GetParamName(paramIdx, paramName, namePrefixCount);
 	return paramName;
 }
@@ -4875,9 +4875,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfAstNode* rhs, LookupContext* ctx)
 	return false;
 }
 
-void BfResolvedTypeSet::RemoveEntry(BfResolvedTypeSet::Entry* entry)
+void BfResolvedTypeSet::RemoveEntry(BfResolvedTypeSet::EntryRef entry)
 {
- 	int hashIdx = (entry->mHash & 0x7FFFFFFF) % mHashSize;
+ 	int hashIdx = (entry->mHashCode & 0x7FFFFFFF) % mHashSize;
 // 	if (entry->mPrev == NULL)
 // 	{
 // 		if (entry->mNext != NULL)
@@ -4896,23 +4896,23 @@ void BfResolvedTypeSet::RemoveEntry(BfResolvedTypeSet::Entry* entry)
 
 	bool found = false;
 
-	Entry** srcCheckEntryPtr = &this->mHashHeads[hashIdx];
-	Entry* checkEntry = *srcCheckEntryPtr;
-	while (checkEntry != NULL)
+	int* srcCheckEntryPtr = &this->mHashHeads[hashIdx];
+	int checkEntryIdx = *srcCheckEntryPtr;
+	while (checkEntryIdx != -1)
 	{
-		if (checkEntry == entry)
+		auto checkEntry = &mEntries[checkEntryIdx];
+		if (checkEntryIdx == entry.mIndex)
 		{
-			this->mCount--;
 			*srcCheckEntryPtr = checkEntry->mNext;
 			found = true;						
 		}
 		srcCheckEntryPtr = &checkEntry->mNext;
-		checkEntry = checkEntry->mNext;
+		checkEntryIdx = checkEntry->mNext;
 	}
 	
 	BF_ASSERT(found);
 	BF_ASSERT(entry->mValue == NULL);
-	Deallocate(entry);		
+	FreeIdx(entry.mIndex);
 }
 
 // BfResolvedTypeSet::Iterator BfResolvedTypeSet::begin()

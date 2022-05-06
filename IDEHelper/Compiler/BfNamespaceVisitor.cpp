@@ -15,7 +15,7 @@ void BfNamespaceVisitor::Visit(BfUsingDirective* usingDirective)
 	}
 	
 	String usingString = usingDirective->mNamespace->ToString();
-	BfAtomComposite usingComposite;
+	BfAtomCompositeT<16> usingComposite;
 	mSystem->ParseAtomComposite(usingString, usingComposite);
 
 	if (mResolvePassData->mAutoComplete != NULL)
@@ -45,14 +45,14 @@ void BfNamespaceVisitor::Visit(BfUsingModDirective* usingDirective)
 	
 	String usingString = useNode->ToString();
 	
-	BfAtomComposite usingComposite;
+	BfAtomCompositeT<16> usingComposite;
 	if (mSystem->ParseAtomComposite(usingString, usingComposite))
 		mResolvePassData->HandleNamespaceReference(useNode, usingComposite);
 }
 
 void BfNamespaceVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 {
-	BfAtomComposite prevNamespace = mNamespace;
+	BfAtomCompositeT<16> prevNamespace = mNamespace;
 	
 	if (namespaceDeclaration->mNameNode == NULL)
 		return;

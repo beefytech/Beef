@@ -448,9 +448,9 @@ public:
 	void DeleteType(BfType* type, bool deferDepRebuilds = false);
 	void UpdateAfterDeletingTypes();
 	void VerifyTypeLookups(BfTypeInstance* typeInst);		
-	void GenerateModuleName_TypeInst(BfTypeInstance* typeInst, String& name);
-	void GenerateModuleName_Type(BfType* type, String& name);
-	String GenerateModuleName(BfTypeInstance* typeInst);
+	void GenerateModuleName_TypeInst(BfTypeInstance* typeInst, StringImpl& name);
+	void GenerateModuleName_Type(BfType* type, StringImpl& name);
+	void GenerateModuleName(BfTypeInstance* typeInst, StringImpl& name);
 	bool IsSentinelMethod(BfMethodInstance* methodInstance);
 	void SaveDeletingType(BfType* type);		
 	BfType* FindType(const StringImpl& typeName);

@@ -919,6 +919,7 @@ public:
 	void Reference(const char* str);
 	void Reference(const char* str, intptr length);
 	void Reference(const StringView& strView);
+	void Reference(const StringImpl& str);
 	static String CreateReference(const StringView& strView);
 	void Reserve(intptr newSize);
 

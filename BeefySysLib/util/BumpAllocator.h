@@ -255,11 +255,11 @@ class BumpAllocator : public BumpAllocatorT<0x2000>
 
 };
 
-template <typename T>
+template <typename T, int ALLOC_SIZE = 0x2000>
 class AllocatorBump
 {
 public:
-	BumpAllocator* mAlloc;
+	BumpAllocatorT<ALLOC_SIZE>* mAlloc;
 
 	AllocatorBump()
 	{
@@ -286,6 +286,27 @@ public:
 	}
 };
 
+template <int ALLOC_SIZE = 0x2000>
+class RawAllocatorBump
+{
+public:
+	BumpAllocatorT<ALLOC_SIZE>* mAlloc;
+
+	RawAllocatorBump()
+	{
+		mAlloc = NULL;
+	}
+		
+	void* rawAllocate(intptr size)
+	{
+		return mAlloc->AllocBytes(size, 16);
+	}
+
+	void rawDeallocate(void* ptr)
+	{
+
+	}
+};
 
 NS_BF_END
 

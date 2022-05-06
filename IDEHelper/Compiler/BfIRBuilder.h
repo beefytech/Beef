@@ -1019,7 +1019,7 @@ public:
 	bool mHasDebugInfo;
 	bool mHasDebugLineInfo;
 	Dictionary<BfMethodRef, BfIRFunctionType> mMethodTypeMap;
-	Dictionary<String, BfIRFunction> mFunctionMap;	
+	Dictionary<StringView, BfIRFunction> mFunctionMap;
 	Dictionary<BfType*, BfIRPopulateType> mTypeMap;
 	Dictionary<int, BfIRValue> mConstMemMap;
 	Array<BfTypeInstance*> mDITemporaryTypes;	

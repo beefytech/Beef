@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Common.h"
+#include "Array.h"
 #include <unordered_map>
 
 #define NEW_DICTIONAY
@@ -9,8 +9,8 @@ NS_BF_BEGIN;
 
 #ifdef NEW_DICTIONAY
 
-template <typename TKey, typename TValue>
-class Dictionary
+template <typename TKey, typename TValue, typename TAlloc = AllocatorCLib<TKey> >
+class Dictionary : public TAlloc
 {
 public:
 	typedef int int_cosize;
@@ -411,7 +411,7 @@ public:
 
 	void AllocData(intptr size, Entry*& outEntries, int_cosize*& outBuckets)
 	{
-		uint8* data = new uint8[size * (sizeof(Entry) + sizeof(int_cosize))];
+		uint8* data = (uint8*)this->rawAllocate(size * (sizeof(Entry) + sizeof(int_cosize)));
 		outEntries = (Entry*)data;
 		outBuckets = (int_cosize*)(data + size * sizeof(Entry));
 	}
@@ -436,7 +436,7 @@ public:
 			}
 		}
 
-		delete [] mEntries;
+		this->rawDeallocate(mEntries);
 	}
 
 	Dictionary& operator=(const Dictionary& rhs)

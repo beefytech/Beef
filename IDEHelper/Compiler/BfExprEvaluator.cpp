@@ -12700,7 +12700,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 	
 	auto _GetInvokeMethodName = [&]()
 	{
-		String methodName = "Invoke$";
+		StringT<512> methodName = "Invoke$";
 		methodName += mModule->mCurMethodInstance->mMethodDef->mName;
 		
 		int prevSepPos = (int)methodName.LastIndexOf('$');
@@ -12734,7 +12734,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		methodName += '$';
 		methodName += BfTypeUtils::HashEncode64(hashVal.mLow);
 
-		String mangledName;
+		StringT<512> mangledName;
 		BfMangler::MangleMethodName(mangledName, mModule->mCompiler->GetMangleKind(), mModule->mCurTypeInstance, methodName);
 		return mangledName;
 	};

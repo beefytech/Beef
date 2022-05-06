@@ -188,6 +188,7 @@ public:
 	bool mUsedImplicitly; // Passed implicitly to a local method, capture by ref if we can	
 	bool mNotCaptured;
 	bool mIsConst;
+	bool mIsBumpAlloc;
 	BfLocalVariable* mShadowedLocal;
 
 public:
@@ -219,6 +220,7 @@ public:
 		mUsedImplicitly = false;
 		mNotCaptured = false;
 		mIsConst = false;
+		mIsBumpAlloc = false;
 		mShadowedLocal = NULL;
 	}
 
@@ -1053,8 +1055,7 @@ public:
 	bool mAllowUinitReads;
 	bool mDisableReturns;
 	bool mCancelledDeferredCall;	
-	bool mNoObjectAccessChecks;
-	bool mHadIgnoredError;
+	bool mNoObjectAccessChecks;		
 	int mCurLocalVarId; // Can also refer to a label
 	int mCurAccessId; // For checking to see if a block reads from or writes to a local
 
@@ -1062,9 +1063,7 @@ public:
 	BfMethodState()
 	{
 		mLocals.mAlloc = &mBumpAlloc;
-		mLocals.Reserve(8);
-		mLocalVarSet.mAlloc = &mBumpAlloc;
-		mLocalVarSet.Reserve(8);
+		mLocalVarSet.mAlloc = &mBumpAlloc;		
 		
 		mMethodInstance = NULL;		
 		mPrevMethodState = NULL;
@@ -1093,7 +1092,7 @@ public:
 		mAllowUinitReads = false;
 		mDisableReturns = false;
 		mCancelledDeferredCall = false;
-		mNoObjectAccessChecks = false;
+		mNoObjectAccessChecks = false;		
 		mInDeferredBlock = false;		
 		mDeferredLocalAssignData = NULL;
 		mCurLocalVarId = 0;

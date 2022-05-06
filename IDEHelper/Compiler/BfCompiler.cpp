@@ -2312,15 +2312,16 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 				{
 					extern BfModule* gLastCreatedModule;
 						
+#ifdef _DEBUG
 					for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end(); ++itr)
 					{
 						auto dependentType = itr->mKey;							
-							
 						if (dependentType->IsIncomplete())
 						{								
 							BF_ASSERT(dependentType->IsDeleting() || dependentType->IsOnDemand() || !dependentType->HasBeenReferenced() || !madeFullPass || dependentType->IsSpecializedByAutoCompleteMethod());
 						}
 					}
+#endif
 					
 					depType->mDependencyMap.mFlagsUnion = BfDependencyMap::DependencyFlag_None;
 
@@ -3196,15 +3197,19 @@ void BfCompiler::UpdateRevisedTypes()
 			break;
 
 		// Partials combiner				
-		auto outerTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];
-		while (outerTypeDefEntry != NULL)
+		auto outerTypeDefEntryIdx = mSystem->mTypeDefs.mHashHeads[bucketIdx];
+		while (outerTypeDefEntryIdx != -1)
 		{
+			// Make sure we can fit a composite without reallocating
+			mSystem->mTypeDefs.EnsureFreeCount(1);
+
+			auto outerTypeDefEntry = &mSystem->mTypeDefs.mEntries[outerTypeDefEntryIdx];
 			auto outerTypeDef = outerTypeDefEntry->mValue;
 
 			if (outerTypeDef->mDefState == BfTypeDef::DefState_Deleted)
 			{
 				hadChanges = true;
-				outerTypeDefEntry = outerTypeDefEntry->mNext;
+				outerTypeDefEntryIdx = mSystem->mTypeDefs.mEntries[outerTypeDefEntryIdx].mNext;
 				continue;
 			}
 
@@ -3228,14 +3233,14 @@ void BfCompiler::UpdateRevisedTypes()
 				// Initialize mPartialUsed flags
 				if (!hadPartials)
 				{
-					auto checkTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];
-					while (checkTypeDefEntry != NULL)
+					auto checkTypeDefEntryIdx = mSystem->mTypeDefs.mHashHeads[bucketIdx];
+					while (checkTypeDefEntryIdx != -1)
 					{	
 						// This clears the mPartialUsed flag for the whole bucket
- 						auto checkTypeDef = checkTypeDefEntry->mValue;
+ 						auto checkTypeDef = mSystem->mTypeDefs.mEntries[checkTypeDefEntryIdx].mValue;
 						if ((checkTypeDef->mIsPartial) || (checkTypeDef->mIsCombinedPartial))
 							checkTypeDef->mPartialUsed = false;
-						checkTypeDefEntry = checkTypeDefEntry->mNext;
+						checkTypeDefEntryIdx = mSystem->mTypeDefs.mEntries[checkTypeDefEntryIdx].mNext;
 					}
 					hadPartials = true;
 				}
@@ -3246,11 +3251,12 @@ void BfCompiler::UpdateRevisedTypes()
 			if ((outerTypeDef->mTypeCode == BfTypeCode_Extension) && (!outerTypeDef->mPartialUsed))
 			{								
 				// Find root type, and we assume the composite type follows this
-				auto checkTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];
-				while (checkTypeDefEntry != NULL)
-				{						
+				auto checkTypeDefEntryIdx = mSystem->mTypeDefs.mHashHeads[bucketIdx];
+				while (checkTypeDefEntryIdx != -1)
+				{	
+					auto checkTypeDefEntry = &mSystem->mTypeDefs.mEntries[checkTypeDefEntryIdx];
 					auto checkTypeDef = checkTypeDefEntry->mValue;
-					if ((checkTypeDefEntry->mHash != outerTypeDefEntry->mHash) ||
+					if ((checkTypeDefEntry->mHashCode != outerTypeDefEntry->mHashCode) ||
 						(checkTypeDef->mIsCombinedPartial) ||
 						(checkTypeDef->mTypeCode == BfTypeCode_Extension) ||
 						(checkTypeDef->mDefState == BfTypeDef::DefState_Deleted) ||
@@ -3259,7 +3265,7 @@ void BfCompiler::UpdateRevisedTypes()
 						(checkTypeDef->mGenericParamDefs.size() != outerTypeDef->mGenericParamDefs.size()) ||
 						(!outerTypeDef->mProject->ContainsReference(checkTypeDef->mProject)))
 					{
-						checkTypeDefEntry = checkTypeDefEntry->mNext;
+						checkTypeDefEntryIdx = checkTypeDefEntry->mNext;
 						continue;
 					}
 
@@ -3274,7 +3280,7 @@ void BfCompiler::UpdateRevisedTypes()
 						compositeProject = rootTypeDef->mProject;
 					}
 					
-					checkTypeDefEntry = checkTypeDefEntry->mNext;
+					checkTypeDefEntryIdx = checkTypeDefEntry->mNext;
 
 					if (compositeTypeDef != NULL)
 					{
@@ -3297,18 +3303,19 @@ void BfCompiler::UpdateRevisedTypes()
 				compositeProject = rootTypeDef->mProject;
 				
 				// Find composite type, there is no explicit position for this
-				auto checkTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];
-				while (checkTypeDefEntry != NULL)
+				auto checkTypeDefEntryIdx = mSystem->mTypeDefs.mHashHeads[bucketIdx];
+				while (checkTypeDefEntryIdx != -1)
 				{						
+					auto checkTypeDefEntry = &mSystem->mTypeDefs.mEntries[checkTypeDefEntryIdx];
 					auto checkTypeDef = checkTypeDefEntry->mValue;
 
-					if ((checkTypeDefEntry->mHash != outerTypeDefEntry->mHash) ||						
+					if ((checkTypeDefEntry->mHashCode != outerTypeDefEntry->mHashCode) ||						
 						(checkTypeDef->mPartialUsed) ||
 						(checkTypeDef->mDefState == BfTypeDef::DefState_Deleted) ||
 						(!checkTypeDef->NameEquals(outerTypeDef)) ||
 						(checkTypeDef->mGenericParamDefs.size() != outerTypeDef->mGenericParamDefs.size()))
 					{
-						checkTypeDefEntry = checkTypeDefEntry->mNext;
+						checkTypeDefEntryIdx = checkTypeDefEntry->mNext;
 						continue;
 					}
 
@@ -3339,13 +3346,13 @@ void BfCompiler::UpdateRevisedTypes()
 							}
  						}
 
-						checkTypeDefEntry = checkTypeDefEntry->mNext;
+						checkTypeDefEntryIdx = checkTypeDefEntry->mNext;
 						continue;
 					}
 
 					if (!rootTypeDef->mProject->ContainsReference(checkTypeDef->mProject))
 					{
-						checkTypeDefEntry = checkTypeDefEntry->mNext;
+						checkTypeDefEntryIdx = checkTypeDefEntry->mNext;
 						continue;
 					}
 
@@ -3362,7 +3369,7 @@ void BfCompiler::UpdateRevisedTypes()
 						if (compositeTypeDef->mDefState != BfTypeDef::DefState_Deleted)
 							compositeTypeDef->mDefState = BfTypeDef::DefState_Defined;
 					}
-					checkTypeDefEntry = checkTypeDefEntry->mNext;
+					checkTypeDefEntryIdx = checkTypeDefEntry->mNext;
 				}
 			}
 
@@ -3375,12 +3382,16 @@ void BfCompiler::UpdateRevisedTypes()
 
 				if (compositeTypeDef == NULL)
 				{
-					if ((rootTypeDef->mIsExplicitPartial) || (rootTypeDefEntry->mNext == NULL) || 
-						(!rootTypeDefEntry->mNext->mValue->mIsCombinedPartial) ||
-						(rootTypeDefEntry->mNext->mValue->mTypeCode != rootTypeDef->mTypeCode) ||
-						(rootTypeDefEntry->mNext->mValue->mIsFunction != rootTypeDef->mIsFunction) ||
-						(rootTypeDefEntry->mNext->mValue->mIsDelegate != rootTypeDef->mIsDelegate) ||
-						(rootTypeDefEntry->mNext->mValue->mGenericParamDefs.size() != rootTypeDef->mGenericParamDefs.size()))
+					BfTypeDefMap::Entry* nextEntry = NULL;
+					if (rootTypeDefEntry->mNext != -1)
+						nextEntry = &mSystem->mTypeDefs.mEntries[rootTypeDefEntry->mNext];
+
+					if ((rootTypeDef->mIsExplicitPartial) || (nextEntry == NULL) ||
+						(!nextEntry->mValue->mIsCombinedPartial) ||
+						(nextEntry->mValue->mTypeCode != rootTypeDef->mTypeCode) ||
+						(nextEntry->mValue->mIsFunction != rootTypeDef->mIsFunction) ||
+						(nextEntry->mValue->mIsDelegate != rootTypeDef->mIsDelegate) ||
+						(nextEntry->mValue->mGenericParamDefs.size() != rootTypeDef->mGenericParamDefs.size()))
 					{
 						compositeTypeDef = new BfTypeDef();
 						compositeTypeDef->mSystem = rootTypeDef->mSystem;
@@ -3418,8 +3429,8 @@ void BfCompiler::UpdateRevisedTypes()
 					}
 					else
 					{
-						BF_ASSERT(rootTypeDefEntry->mNext->mValue->NameEquals(rootTypeDef));
-						compositeTypeDef = rootTypeDefEntry->mNext->mValue;
+						BF_ASSERT(nextEntry->mValue->NameEquals(rootTypeDef));
+						compositeTypeDef = nextEntry->mValue;
 						if (rootTypeDef != NULL)
 						{
 							BF_ASSERT(rootTypeDef->mFullNameEx == compositeTypeDef->mFullNameEx);
@@ -3448,9 +3459,10 @@ void BfCompiler::UpdateRevisedTypes()
 				// Collect the partials
 				BfSizedVector<BfTypeDef*, 8> typeParts;
 				typeParts.push_back(rootTypeDef);
-				auto checkTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];				
-				while (checkTypeDefEntry != NULL)
+				auto checkTypeDefEntryIdx = mSystem->mTypeDefs.mHashHeads[bucketIdx];				
+				while (checkTypeDefEntryIdx != -1)
 				{
+					auto checkTypeDefEntry = &mSystem->mTypeDefs.mEntries[checkTypeDefEntryIdx];
 					auto checkTypeDef = checkTypeDefEntry->mValue;
 
 					bool isValidProject = checkTypeDef->mProject->ContainsReference(compositeProject);
@@ -3464,7 +3476,7 @@ void BfCompiler::UpdateRevisedTypes()
 							(checkTypeDef->mGenericParamDefs.size() != rootTypeDef->mGenericParamDefs.size()) ||
 							(!isValidProject))
 						{
-							checkTypeDefEntry = checkTypeDefEntry->mNext;
+							checkTypeDefEntryIdx = checkTypeDefEntry->mNext;
 							continue;
 						}
 					}
@@ -3498,7 +3510,7 @@ void BfCompiler::UpdateRevisedTypes()
 							partialsHadChanges = true;
 					}
 
-					checkTypeDefEntry = checkTypeDefEntry->mNext;
+					checkTypeDefEntryIdx = checkTypeDefEntry->mNext;
 				}
 				// Set this down here, because the InjectNewRevision will clear this flag
 				rootTypeDef->mIsPartial = true;
@@ -3631,7 +3643,7 @@ void BfCompiler::UpdateRevisedTypes()
 				}
 			}			
 
-			outerTypeDefEntry = outerTypeDefEntry->mNext;
+			outerTypeDefEntryIdx = outerTypeDefEntry->mNext;
 		}
 
 		// Handle unused partials, apply any new revisions, process pending deletes
@@ -3641,11 +3653,16 @@ void BfCompiler::UpdateRevisedTypes()
 			BfTypeDef* checkMasterTypeDef = NULL;
 			BfTypeDef* deletedCombinedPartial = NULL;
 
-			outerTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];
-			while (outerTypeDefEntry != NULL)
+			outerTypeDefEntryIdx = mSystem->mTypeDefs.mHashHeads[bucketIdx];
+			while (outerTypeDefEntryIdx != -1)
 			{
+				auto outerTypeDefEntry = &mSystem->mTypeDefs.mEntries[outerTypeDefEntryIdx];
 				auto outerTypeDef = outerTypeDefEntry->mValue;
-				auto nextTypeDefEntry = outerTypeDefEntry->mNext;
+				auto nextTypeDefEntryIdx = outerTypeDefEntry->mNext;
+
+				BfTypeDefMap::Entry* nextTypeDefEntry = NULL;
+				if (nextTypeDefEntryIdx != -1)
+					nextTypeDefEntry = &mSystem->mTypeDefs.mEntries[nextTypeDefEntryIdx];
 
 				if ((outerTypeDef->mIsPartial) && (!outerTypeDef->mIsExplicitPartial) && (outerTypeDef->mTypeCode != BfTypeCode_Extension) &&
 					(nextTypeDefEntry != NULL) && (!nextTypeDefEntry->mValue->mPartialUsed))
@@ -3695,7 +3712,7 @@ void BfCompiler::UpdateRevisedTypes()
 					}					
 				}
 
-				outerTypeDefEntry = nextTypeDefEntry;				
+				outerTypeDefEntryIdx = nextTypeDefEntryIdx;
 			}
 		}
 	}
@@ -5616,7 +5633,7 @@ void BfCompiler::PopulateReified()
 		BfLogSysM("PopulateReified iteration start\n");
 
 		Array<BfType*> typeList;
-		typeList.Reserve(context->mResolvedTypes.mCount);
+		typeList.Reserve(context->mResolvedTypes.GetCount());
 		for (auto type : context->mResolvedTypes)
 			typeList.Add(type);
 
@@ -6155,7 +6172,7 @@ void BfCompiler::HotResolve_AddActiveMethod(const StringImpl& methodName)
 {
 	BfLogSysM("HotResolve_AddActiveMethod %s\n", methodName.c_str());
 
-	String mangledName;
+	StringT<512> mangledName;
 	int hotCompileIdx = 0;
 	
 	int tabIdx = (int)methodName.IndexOf('\t');
@@ -7730,7 +7747,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}	
 
 	UpdateCompletion();
-	mStats.mTotalTypes = mContext->mResolvedTypes.mCount;
+	mStats.mTotalTypes = mContext->mResolvedTypes.GetCount();
 
 	String compileInfo;
 	if (mIsResolveOnly)

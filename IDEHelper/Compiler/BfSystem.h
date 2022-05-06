@@ -44,7 +44,6 @@ class BfProject;
 class BfTypeDef;
 
 struct BfTypeDefMapFuncs;
-typedef MultiHashSet<BfTypeDef*, BfTypeDefMapFuncs> BfTypeDefMap;
 typedef HashSet<BfProject*> BfProjectSet;
 
 class BfAtom
@@ -105,6 +104,33 @@ public:
 	void Reference(const BfAtomComposite& other);
 	
 	uint32 GetAtomUpdateIdx();
+};
+
+template <const int TBufSize>
+class BfAtomCompositeT : public BfAtomComposite
+{
+public:
+	BfAtom* mInternalBuffer[TBufSize];
+
+public:
+	BfAtomCompositeT()
+	{
+		mAllocSize = (int16)TBufSize;
+		mParts = mInternalBuffer;
+	}
+
+	BfAtomCompositeT(const BfAtomComposite& rhs)
+	{
+		mAllocSize = (int16)TBufSize;
+		mParts = mInternalBuffer;
+		*this = rhs;
+	}
+
+	BfAtomCompositeT& operator=(const BfAtomComposite& rhs)
+	{
+		Set(rhs.mParts, rhs.mSize, NULL, 0);
+		return *this;
+	}
 };
 
 class BfSizedAtomComposite : public BfAtomComposite
@@ -1245,6 +1271,79 @@ struct BfTypeDefMapFuncs : public MultiHashSetFuncs
 	}
 };
 
+class BfTypeDefMap : public MultiHashSet<BfTypeDef*, BfTypeDefMapFuncs>
+{
+public:
+	struct SkipEntry
+	{
+	public:
+		int mIndex;
+		int mRevision;
+
+	public:
+		SkipEntry()
+		{
+			mIndex = -1;
+			mRevision = -1;			
+		}
+
+		SkipEntry(int index, int revision)
+		{
+			mIndex = index;
+			mRevision = revision;
+		}
+	};
+
+	Array<SkipEntry> mPartialSkipCache;
+	int mRevision;
+
+public:
+	BfTypeDefMap()
+	{
+		mRevision = 1;
+	}
+
+	void Add(BfTypeDef* value)
+	{
+		MultiHashSet::Add(value);
+		mRevision++;
+	}
+
+	void AddAfter(BfTypeDef* value, Entry* afterEntry)
+	{
+		MultiHashSet::AddAfter(value, afterEntry);
+		mRevision++;
+	}
+
+	template <typename TKey>
+	bool Remove(const TKey& key)
+	{
+		bool result = MultiHashSet::Remove(key);
+		mRevision++;
+		return result;
+	}
+
+	Iterator Erase(const Iterator& itr)
+	{
+		auto result = MultiHashSet::Erase(itr);
+		mRevision++;
+		return result;
+	}
+
+	void Clear()
+	{
+		MultiHashSet::Clear();
+		mRevision++;
+	}
+
+	void SetPartialSkipCache(int partialIdx, int mapToIdx)
+	{
+		while (partialIdx >= mPartialSkipCache.mSize)
+			mPartialSkipCache.Add(SkipEntry());
+		mPartialSkipCache[partialIdx] = SkipEntry(mapToIdx, mRevision);
+	}
+};
+
 enum BfTargetType
 {
 	BfTargetType_BeefConsoleApplication,
@@ -1663,7 +1762,7 @@ public:
 	int mHighestYieldTime;
 	// The following are protected by mSystemLock - can only be accessed by the compiling thread
 	Dictionary<String, BfTypeDef*> mSystemTypeDefs;	
-	BfTypeDefMap mTypeDefs;	
+	BfTypeDefMap mTypeDefs;		
 	bool mNeedsTypesHandledByCompiler;
 	BumpAllocator mAlloc;	
 	int mAtomCreateIdx;	
@@ -1727,7 +1826,7 @@ public:
 	void ReleaseAtomComposite(const BfAtomComposite& atomComposite);	
 	void SanityCheckAtomComposite(const BfAtomComposite& atomComposite);
 	void TrackName(BfTypeDef* typeDef);
-	void UntrackName(BfTypeDef* typeDef);
+	void UntrackName(BfTypeDef* typeDef);	
 
 	bool ParseAtomComposite(const StringView& name, BfAtomComposite& composite, bool addRefs = false);
 
@@ -1747,7 +1846,8 @@ public:
 	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfProject* project = NULL, const Array<BfAtomComposite>& namespaceSearch = Array<BfAtomComposite>(), BfTypeDef** ambiguousTypeDef = NULL, BfFindTypeDefFlags flags = BfFindTypeDefFlag_None);
 	BfTypeDef* FindTypeDef(const StringImpl& typeName, BfProject* project);
 	BfTypeDef* FindTypeDefEx(const StringImpl& typeName);
-	void FindFixitNamespaces(const StringImpl& typeName, int numGenericArgs, BfProject* project, std::set<String>& fixitNamespaces);	
+	void ClearTypeDefCache();
+	void FindFixitNamespaces(const StringImpl& typeName, int numGenericArgs, BfProject* project, std::set<String>& fixitNamespaces);		
 
 	void RemoveTypeDef(BfTypeDef* typeDef);
 	//BfTypeDefMap::Iterator RemoveTypeDef(BfTypeDefMap::Iterator typeDefItr);

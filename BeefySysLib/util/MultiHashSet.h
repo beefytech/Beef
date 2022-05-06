@@ -37,15 +37,50 @@ public:
 	struct Entry
 	{
 		T mValue;
-		Entry* mNext;
-		int mHash;
+		int mNext;
+		int mHashCode;
+	};
+
+	struct EntryRef
+	{
+	public:
+		MultiHashSet* mSet;
+		int mIndex;
+
+	public:
+		EntryRef()
+		{
+			mSet = NULL;
+			mIndex = -1;
+		}
+
+		EntryRef(MultiHashSet* set, int index)
+		{
+			mSet = set;
+			mIndex = index;
+		}
+
+		Entry* operator*()
+		{
+			return &this->mSet->mEntries[this->mIndex];
+		}
+
+		Entry* operator->()
+		{
+			return &this->mSet->mEntries[this->mIndex];
+		}
+
+		operator bool() const
+		{
+			return this->mIndex != -1;
+		}
 	};
 
 	struct Iterator
 	{
-	public:
+	public:		
 		MultiHashSet* mSet;
-		Entry* mCurEntry;
+		int mCurEntry;
 		int mCurBucket;
 
 	public:
@@ -53,15 +88,15 @@ public:
 		{
 			this->mSet = set;
 			this->mCurBucket = 0;
-			this->mCurEntry = NULL;
+			this->mCurEntry = -1;
 		}
 
 		Iterator& operator++()
 		{
-			if (this->mCurEntry != NULL)
+			if (this->mCurEntry != -1)
 			{
-				this->mCurEntry = this->mCurEntry->mNext;
-				if (this->mCurEntry != NULL)
+				this->mCurEntry = this->mSet->mEntries[this->mCurEntry].mNext;
+				if (this->mCurEntry != -1)
 					return *this;
 				this->mCurBucket++;
 			}
@@ -75,7 +110,7 @@ public:
 			while (this->mCurBucket < mSet->mHashSize)
 			{
 				this->mCurEntry = this->mSet->mHashHeads[mCurBucket];
-				if (this->mCurEntry != NULL)
+				if (this->mCurEntry != -1)
 					return *this;
 				this->mCurBucket++;
 			}
@@ -83,43 +118,135 @@ public:
 			return *this; // At end
 		}
 
+		T operator*()
+		{
+			return this->mSet->mEntries[this->mCurEntry].mValue;
+		}
+
+		T operator->()
+		{
+			return this->mSet->mEntries[this->mCurEntry].mValue;
+		}
+
 		bool operator!=(const Iterator& itr) const
 		{
 			return ((itr.mCurEntry != this->mCurEntry) || (itr.mCurBucket != this->mCurBucket));
 		}
 
-		T operator*()
-		{
-			return this->mCurEntry->mValue;
-		}
-
 		operator bool() const
 		{
-			return this->mCurEntry != NULL;
+			return this->mCurEntry != -1;
 		}
-
+		
 		void MoveToNextHashMatch()
 		{
-			int wantHash = this->mCurEntry->mHash;
+			int wantHash = this->mSet->mEntries[this->mCurEntry].mHashCode;
 			do 
 			{
-				this->mCurEntry = this->mCurEntry->mNext;
+				this->mCurEntry = this->mSet->mEntries[this->mCurEntry].mNext;
 			} 
-			while ((this->mCurEntry != NULL) && (this->mCurEntry->mHash != wantHash));
+			while ((this->mCurEntry != -1) && (this->mSet->mEntries[this->mCurEntry].mHashCode != wantHash));
 		}
 	};
 
-public:
-	Entry** mHashHeads;
+protected:
+
+	int GetPrimeish(int min)
+	{
+		// This is a minimal effort to help address-aligned dataa
+		return (min | 1);
+	}
+
+	int ExpandSize(int oldSize)
+	{
+		int newSize = 2 * oldSize;
+
+		// Allow the hashtables to grow to maximum possible size (~2G elements) before encoutering capacity overflow.
+		// Note that this check works even when mAllocSize overflowed thanks to the (uint) cast
+		/*if ((uint)newSize > MaxPrimeArrayLength && MaxPrimeArrayLength > oldSize)
+		{
+		Contract.Assert( MaxPrimeArrayLength == GetPrime(MaxPrimeArrayLength), "Invalid MaxPrimeArrayLength");
+		return MaxPrimeArrayLength;
+		}*/
+
+		return GetPrimeish(newSize);
+	}
+
+	void ResizeEntries()
+	{
+		ResizeEntries(ExpandSize(mCount));
+	}
+
+	void ResizeEntries(int newSize)
+	{
+		BF_ASSERT(newSize >= mAllocSize);
+		Entry* newEntries = (Entry*)TFuncs::Allocate(sizeof(Entry) * newSize, alignof(Entry));
+		
+		for (int i = 0; i < mCount; i++)
+		{
+			auto& newEntry = newEntries[i];
+			auto& oldEntry = mEntries[i];
+			newEntry.mHashCode = oldEntry.mHashCode;
+			newEntry.mNext = oldEntry.mNext;
+			new (&newEntry.mValue) T(std::move(*(T*)&oldEntry.mValue));
+		}
+		for (int i = mCount; i < newSize; i++)
+		{
+			newEntries[i].mHashCode = -1;
+		}
+		
+		TFuncs::Deallocate(mEntries);
+		
+		mEntries = newEntries;
+		mAllocSize = (int)newSize;
+	}
+
+	void FreeIdx(int entryIdx)
+	{
+		this->mEntries[entryIdx].mNext = this->mFreeList;
+		this->mFreeList = entryIdx;
+		this->mFreeCount++;
+	}
+
+	int AllocEntry()
+	{
+		int index;
+		if (this->mFreeCount > 0)
+		{
+			index = this->mFreeList;
+			this->mFreeList = this->mEntries[index].mNext;
+			this->mFreeCount--;
+		}
+		else
+		{
+			if (this->mCount == this->mAllocSize)
+				ResizeEntries();
+			index = mCount;
+			this->mCount++;
+		}
+		return index;
+	}
+
+public:	
+	int* mHashHeads;
+	int mAllocSize;
+	Entry* mEntries;
+	int mFreeList;
+	int mFreeCount;
+	
 	static const int cDefaultHashSize = 17;
 	int mHashSize;
 	int mCount;
 	
 	MultiHashSet()
-	{
+	{		
 		this->mHashHeads = NULL;
 		this->mHashSize = cDefaultHashSize;
+		this->mEntries = NULL;
+		this->mAllocSize = 0;
 		this->mCount = 0;
+		this->mFreeList = -1;
+		this->mFreeCount = 0;
 	}
 
 	~MultiHashSet()
@@ -127,71 +254,118 @@ public:
 		this->Clear();
 	}
 
+	void EnsureFreeCount(int wantFreeCount)
+	{
+		int freeCount = mFreeCount + (mAllocSize - mCount);
+		if (freeCount >= wantFreeCount)
+			return;
+		ResizeEntries(BF_MAX(ExpandSize(mCount), mAllocSize + wantFreeCount - freeCount));
+	}
+
+	int GetCount() const
+	{
+		return mCount - mFreeCount;
+	}
+
+	int size() const
+	{
+		return mCount - mFreeCount;
+	}
+
+	EntryRef AddRaw(int hash)
+	{
+		if (this->mHashHeads == NULL)
+		{
+			this->mHashHeads = (int*)TFuncs::Allocate(sizeof(int) * mHashSize, alignof(int));
+			memset(this->mHashHeads, -1, sizeof(int) * mHashSize);
+		}
+
+		int index = AllocEntry();		
+		int hashIdx = (hash & 0x7FFFFFFF) % this->mHashSize;
+		int headEntry = this->mHashHeads[hashIdx];
+
+		Entry* newEntry = &mEntries[index];
+		newEntry->mValue = T();
+		newEntry->mNext = headEntry;
+		newEntry->mHashCode = hash;
+
+		mHashHeads[hashIdx] = index;
+
+		return EntryRef(this, index);
+	}
+
 	void Add(T value)
 	{
 		if (this->mHashHeads == NULL)
-			this->mHashHeads = (Entry**)TFuncs::AllocateZero(sizeof(Entry*) * mHashSize, alignof(Entry*));
+		{			
+			this->mHashHeads = (int*)TFuncs::Allocate(sizeof(int) * mHashSize, alignof(int));
+			memset(this->mHashHeads, -1, sizeof(int) * mHashSize);
+		}
 
+		int index = AllocEntry();
 		int hash = TFuncs::GetHash(value);
 		int hashIdx = (hash & 0x7FFFFFFF) % this->mHashSize;
-		Entry* headEntry = this->mHashHeads[hashIdx];
+		int headEntry = this->mHashHeads[hashIdx];
 
-		Entry* newEntry = (Entry*)TFuncs::Allocate(sizeof(Entry), alignof(Entry));
+		Entry* newEntry = &mEntries[index];
 		newEntry->mValue = value;
 		newEntry->mNext = headEntry;
-		newEntry->mHash = hash;
-		mCount++;
+		newEntry->mHashCode = hash;		
 
-		mHashHeads[hashIdx] = newEntry;
+		mHashHeads[hashIdx] = index;		
 	}
 
 	void AddAfter(T value, Entry* afterEntry)
 	{
 		int hash = TFuncs::GetHash(value);
 		int hashIdx = (hash & 0x7FFFFFFF) % this->mHashSize;
-		BF_ASSERT(hash == afterEntry->mHash);
+		BF_ASSERT(hash == afterEntry->mHashCode);
 		
-		Entry* newEntry = (Entry*)TFuncs::Allocate(sizeof(Entry), alignof(Entry));
+		int index = AllocEntry();
+		Entry* newEntry = &mEntries[index];
 		newEntry->mValue = value;
 		newEntry->mNext = afterEntry->mNext;
-		newEntry->mHash = hash;
-		mCount++;
+		newEntry->mHashCode = hash;		
 
-		afterEntry->mNext = newEntry;
+		afterEntry->mNext = index;
 	}
 
 	void Rehash(int newHashSize)
 	{
-		auto newHashHeads = (Entry**)TFuncs::AllocateZero(sizeof(Entry*) * newHashSize, alignof(Entry*));
-
-		SizedArray<Entry*, 32> entryList;
-
-		for (int hashIdx = 0; hashIdx < mHashSize; hashIdx++)
+		auto newHashHeads = (int*)TFuncs::Allocate(sizeof(int) * newHashSize, alignof(int));
+		memset(newHashHeads, -1, sizeof(int) * newHashSize);
+		
+		if (mHashHeads != NULL)
 		{
-			Entry* checkEntry = mHashHeads[hashIdx];
-			if (checkEntry != NULL)
+			SizedArray<int, 1024> entryList;
+			for (int hashIdx = 0; hashIdx < mHashSize; hashIdx++)
 			{
-				// We want to keep elements with equal hashes in their insert order so we need to 
-				// iterate through the linked list in reverse
-				entryList.Clear();
-				
-				while (checkEntry != NULL)
+				int checkEntryIdx = mHashHeads[hashIdx];
+				if (checkEntryIdx != -1)
 				{
-					entryList.Add(checkEntry);
-					checkEntry = checkEntry->mNext;
-				}
-				
-				for (int i = (int)entryList.mSize - 1; i >= 0; i--)
-				{
-					auto checkEntry = entryList[i];					
-					int newHashIdx = (checkEntry->mHash & 0x7FFFFFFF) % newHashSize;
-					checkEntry->mNext = newHashHeads[newHashIdx];
-					newHashHeads[newHashIdx] = checkEntry;
+					// We want to keep elements with equal hashes in their insert order so we need to 
+					// iterate through the linked list in reverse
+					entryList.Clear();
+
+					while (checkEntryIdx != -1)
+					{
+						entryList.Add(checkEntryIdx);
+						checkEntryIdx = mEntries[checkEntryIdx].mNext;
+					}
+
+					for (int i = (int)entryList.mSize - 1; i >= 0; i--)
+					{
+						int checkEntryIdx = entryList[i];
+						auto checkEntry = &mEntries[checkEntryIdx];
+						int newHashIdx = (checkEntry->mHashCode & 0x7FFFFFFF) % newHashSize;
+						checkEntry->mNext = newHashHeads[newHashIdx];
+						newHashHeads[newHashIdx] = checkEntryIdx;
+					}
 				}
 			}
-		}
 
-		TFuncs::Deallocate(mHashHeads);
+			TFuncs::Deallocate(mHashHeads);
+		}
 		mHashHeads = newHashHeads;
 		mHashSize = newHashSize;
 	}
@@ -215,16 +389,17 @@ public:
 
 		int hash = TFuncs::GetHash(key);
 		int hashIdx = (hash & 0x7FFFFFFF) % this->mHashSize;
-		Entry* checkEntry = this->mHashHeads[hashIdx];
-		while (checkEntry != NULL)
+		int checkEntryIdx = this->mHashHeads[hashIdx];
+		while (checkEntryIdx != -1)
 		{
-			if ((checkEntry->mHash == hash) && (TFuncs::Matches(key, checkEntry->mValue)))
+			Entry* checkEntry = &mEntries[checkEntryIdx];
+			if ((checkEntry->mHashCode == hash) && (TFuncs::Matches(key, checkEntry->mValue)))
 			{
 				if (val != NULL)
 					*val = checkEntry->mValue;
 				return true;
 			}
-			checkEntry = checkEntry->mNext;
+			checkEntryIdx = checkEntry->mNext;
 		}
 		return false;
 	}
@@ -239,17 +414,18 @@ public:
 
 		int hash = TFuncs::GetHash(key);
 		int hashIdx = (hash & 0x7FFFFFFF) % this->mHashSize;
-		Entry* checkEntry = this->mHashHeads[hashIdx];
-		while (checkEntry != NULL)
+		int checkEntryIdx = this->mHashHeads[hashIdx];		
+		while (checkEntryIdx != -1)
 		{
-			if ((checkEntry->mHash == hash) && (TFuncs::Matches(key, checkEntry->mValue)))
+			auto checkEntry = &this->mEntries[checkEntryIdx];
+			if ((checkEntry->mHashCode == hash) && (TFuncs::Matches(key, checkEntry->mValue)))
 			{
 				Iterator itr(this);
-				itr.mCurEntry = checkEntry;
+				itr.mCurEntry = checkEntryIdx;
 				itr.mCurBucket = hashIdx;				
 				return itr;
 			}
-			checkEntry = checkEntry->mNext;
+			checkEntryIdx = checkEntry->mNext;			
 		}
 
 		return end();
@@ -266,19 +442,19 @@ public:
 		int hash = TFuncs::GetHash(key);
 		int hashIdx = (hash & 0x7FFFFFFF) % this->mHashSize;
 
-		Entry** srcCheckEntryPtr = &this->mHashHeads[hashIdx];
-		Entry* checkEntry = *srcCheckEntryPtr;
-		while (checkEntry != NULL)
+		int* srcCheckEntryPtr = &this->mHashHeads[hashIdx];
+		int checkEntryIdx = *srcCheckEntryPtr;
+		while (checkEntryIdx != -1)
 		{
-			if ((checkEntry->mHash == hash) && (TFuncs::Matches(key, checkEntry->mValue)))
-			{
-				this->mCount--;
+			auto checkEntry = &mEntries[checkEntryIdx];
+			if ((checkEntry->mHashCode == hash) && (TFuncs::Matches(key, checkEntry->mValue)))
+			{				
 				*srcCheckEntryPtr = checkEntry->mNext;
-				TFuncs::Deallocate(checkEntry);
+				FreeIdx(checkEntryIdx);
 				return true;
 			}
 			srcCheckEntryPtr = &checkEntry->mNext;
-			checkEntry = checkEntry->mNext;
+			checkEntryIdx = checkEntry->mNext;
 		}
 		return false;
 	}
@@ -290,29 +466,30 @@ public:
 
 		bool found = false;
 
-		auto entry = itr.mCurEntry;		
-		int hashIdx = (entry->mHash & 0x7FFFFFFF) % this->mHashSize;
+		auto entryIdx = itr.mCurEntry;		
+		auto entry = &mEntries[entryIdx];
+		int hashIdx = (entry->mHashCode & 0x7FFFFFFF) % this->mHashSize;
 		
-		Entry** srcCheckEntryPtr = &this->mHashHeads[hashIdx];
-		Entry* checkEntry = *srcCheckEntryPtr;
-		while (checkEntry != NULL)
+		int* srcCheckEntryPtr = &this->mHashHeads[hashIdx];
+		int checkEntryIdx = *srcCheckEntryPtr;
+		while (checkEntryIdx != -1)
 		{
-			if (checkEntry == itr.mCurEntry)
+			auto checkEntry = &mEntries[checkEntryIdx];
+			if (checkEntryIdx == itr.mCurEntry)
 			{
-				this->mCount--;
 				*srcCheckEntryPtr = checkEntry->mNext;
 				found = true;
 			}
 			srcCheckEntryPtr = &checkEntry->mNext;
-			checkEntry = checkEntry->mNext;
+			checkEntryIdx = checkEntry->mNext;
 		}
 
 		BF_ASSERT(found);
-		TFuncs::Deallocate(entry);
+		FreeIdx(entryIdx);
 
 		return next;
 	}
-
+	
 	void Clear()
 	{
 		if (!TFuncs::DeallocateAll())
@@ -323,13 +500,15 @@ public:
 			{
 				auto entry = itr.mCurEntry;
 				++itr;
-				TFuncs::Deallocate(entry);
+				FreeIdx(entry);
 			}			
 			TFuncs::Deallocate(this->mHashHeads);
+			TFuncs::Deallocate(this->mEntries);
 		}
 		
 		this->mHashSize = cDefaultHashSize;
 		this->mHashHeads = NULL;
+		this->mEntries = NULL;
 		this->mCount = 0;
 	}
 

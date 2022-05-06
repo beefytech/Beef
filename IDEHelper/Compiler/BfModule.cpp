@@ -213,7 +213,12 @@ BfMethodState::~BfMethodState()
 	}
 	
 	for (auto local : mLocals)
-		delete local;
+	{
+		if (local->mIsBumpAlloc)
+			local->~BfLocalVariable();
+		else
+			delete local;
+	}
 
 	for (auto& kv : mLambdaCache)
 		delete kv.mValue;
@@ -856,7 +861,11 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mContext = context;
 	mModuleName = moduleName;
 	if (!moduleName.empty())
-		mContext->mUsedModuleNames.Add(ToUpper(moduleName));
+	{
+		StringT<256> upperModuleName = moduleName;
+		MakeUpper(upperModuleName);
+		mContext->mUsedModuleNames.Add(upperModuleName);
+	}
 	mAddedToCount = false;
 
 	mParentModule = NULL;
@@ -1912,7 +1921,10 @@ void BfModule::RestoreScoreState_LocalVariables()
 			mCurMethodState->mLocalVarSet.Remove(BfLocalVarEntry(localVar));
 		}
 
-		delete localVar;
+		if (localVar->mIsBumpAlloc)
+			localVar->~BfLocalVariable();
+		else
+			delete localVar;
 	}
 }
 
@@ -4029,7 +4041,7 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 	else			
 	{
 		BfLogSysM("Creating static field Module:%p Type:%p\n", this, fieldType);
-		StringT<128> staticVarName;
+		StringT<4096> staticVarName;
 		BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), fieldInstance);
 		if ((!fieldType->IsValuelessType()) && (!staticVarName.StartsWith("#")))
 		{
@@ -5300,7 +5312,7 @@ BfIRValue BfModule::CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTy
 
 	PopulateType(declTypeInst, BfPopulateType_DataAndMethods);
 	PopulateType(implTypeInst, BfPopulateType_DataAndMethods);
-	StringT<128> classVDataName;
+	StringT<512> classVDataName;
 	BfMangler::MangleStaticFieldName(classVDataName, mCompiler->GetMangleKind(), implTypeInst, "bf_hs_replace_VDataExt");
 	if (declTypeInst != implTypeInst)
 	{
@@ -5385,7 +5397,7 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 	auto typeTypeInst = typeTypeDef->ToTypeInstance();
 	auto typeInstance = type->ToTypeInstance();
 
-	StringT<128> typeDataName;
+	StringT<4096> typeDataName;
 	if (typeInstance != NULL)
 	{
 		BfMangler::MangleStaticFieldName(typeDataName, mCompiler->GetMangleKind(), typeInstance, "sBfTypeData");
@@ -5739,7 +5751,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	FixConstValueParams(mContext->mBfObjectType, typeValueParams);
 	BfIRValue objectData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(mContext->mBfObjectType, BfIRPopulateType_Full), typeValueParams);
 
-	StringT<128> typeDataName;
+	StringT<512> typeDataName;
 	if ((typeInstance != NULL) && (!typeInstance->IsTypeAlias()))
 	{
 		BfMangler::MangleStaticFieldName(typeDataName, mCompiler->GetMangleKind(), typeInstance, "sBfTypeData");
@@ -5981,7 +5993,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		PopulateType(typeInstance, BfPopulateType_DataAndMethods);
 	
 	BfTypeDef* typeDef = typeInstance->mTypeDef;
-	StringT<128> mangledName;
+	StringT<512> mangledName;
 	BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), typeInstance, typeInstance->mModule);
 	
 	if (!mIsComptimeModule)
@@ -6018,7 +6030,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	if (typeInstance->mSlotNum >= 0)
 	{
 		// For interfaces we ONLY emit the slot num				
-		StringT<128> slotVarName;
+		StringT<512> slotVarName;
 		BfMangler::MangleStaticFieldName(slotVarName, mCompiler->GetMangleKind(), typeInstance, "sBfSlotOfs");
 		auto intType = GetPrimitiveType(BfTypeCode_Int32);
 		auto slotNumVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(intType), true, BfIRLinkageType_External,
@@ -6485,7 +6497,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			BfIRValue ifaceMethodExtVar;
 			if ((!ifaceMethodExtData.IsEmpty()) && (!mIsComptimeModule))
 			{
-				StringT<128> classVDataName;
+				StringT<512> classVDataName;
 				BfMangler::MangleStaticFieldName(classVDataName, mCompiler->GetMangleKind(), typeInstance, "bf_hs_replace_IFaceExt");
 				auto arrayType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->GetPrimitiveType(BfTypeCode_NullPtr), (int)ifaceMethodExtData.size());
 				ifaceMethodExtVar = mBfIRBuilder->CreateGlobalVariable(arrayType, true,
@@ -8542,7 +8554,7 @@ BfGenericParamType* BfModule::GetGenericParamType(BfGenericParamKind paramKind, 
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
 	lookupCtx.mModule = this;
-	BfResolvedTypeSet::Entry* typeEntry = NULL;
+	BfResolvedTypeSet::EntryRef typeEntry;
 	auto inserted = mContext->mResolvedTypes.Insert(genericParamType, &lookupCtx, &typeEntry);
 	BF_ASSERT(inserted);
 	typeEntry->mValue = genericParamType;
@@ -10690,7 +10702,7 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	}
 
 	auto methodDef = methodInstance->mMethodDef;
-	StringT<128> methodName;
+	StringT<4096> methodName;
 	BfMangler::Mangle(methodName, mCompiler->GetMangleKind(), methodInstance);
 	if (isInlined != methodInstance->mAlwaysInline)
 	{
@@ -13983,7 +13995,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 						
 						if ((!mBfIRBuilder->mIgnoreWrites) && (methodInstance->mDeclModule != NULL))
 						{
-							StringT<128> mangledName;
+							StringT<512> mangledName;
 							BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), methodInstance);
 							bool isIntrinsic = false;
 							SetupIRFunction(methodInstance, mangledName, false, &isIntrinsic);
@@ -14479,7 +14491,7 @@ BfIRValue BfModule::GetInterfaceSlotNum(BfTypeInstance* ifaceType)
 		// This is necessary to reify the interface type
 		PopulateType(ifaceType);		
 		
-		StringT<128> slotVarName;
+		StringT<512> slotVarName;
 		BfMangler::MangleStaticFieldName(slotVarName, mCompiler->GetMangleKind(), ifaceType, "sBfSlotOfs");
 		BfType* intType = GetPrimitiveType(BfTypeCode_Int32);				
 		BfIRValue value;
@@ -14670,7 +14682,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 	}
 	else
 	{				
-		StringT<128> staticVarName;
+		StringT<512> staticVarName;
 		BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), fieldInstance);
 
 		auto typeType = fieldInstance->GetResolvedType();
@@ -15016,6 +15028,12 @@ void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 	{
 		localVar->mNamePrefixCount++;
 		localVar->mName.Remove(0);
+	}
+
+	if (mCurMethodState->mLocals.mAllocSize == 0)
+	{
+		mCurMethodState->mLocals.Reserve(16);
+		mCurMethodState->mLocalVarSet.Reserve(16);
 	}
 
 	localVar->mLocalVarIdx = (int)mCurMethodState->mLocals.size();
@@ -15712,7 +15730,7 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 				}
 			}
 
-			std::unordered_set<BfDeferredCallEntry*> handledSet;
+			HashSet<BfDeferredCallEntry*> handledSet;
 			BfDeferredCallEntry* deferredCallEntry = checkScope->mDeferredCallEntries.mHead;
 			while (deferredCallEntry != NULL)
 			{
@@ -15732,13 +15750,14 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 
 				if (deferredCallEntry->mDeferredBlock != NULL)
 				{
-					auto itr = handledSet.insert(deferredCallEntry);
-					if (!itr.second)
+					BfDeferredCallEntry** entryPtr = NULL;
+					if (!handledSet.TryAdd(deferredCallEntry, &entryPtr))
 					{
 						// Already handled, can happen if we defer again within the block
 						deferredCallEntry = deferredCallEntry->mNext;
-						continue;
+						continue;					
 					}
+
 					auto prevHead = checkScope->mDeferredCallEntries.mHead;
 					EmitDeferredCall(*deferredCallEntry, true);
 					if (prevHead != checkScope->mDeferredCallEntries.mHead)
@@ -16993,7 +17012,7 @@ BfIRValue BfModule::CreateDllImportGlobalVar(BfMethodInstance* methodInstance, b
 		return BfIRValue();
 	}
 
-	String name = "bf_hs_preserve@";
+	StringT<512> name = "bf_hs_preserve@";
 	BfMangler::Mangle(name, mCompiler->GetMangleKind(), methodInstance);
 	name += "__imp";
 	
@@ -18446,14 +18465,17 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 	if ((!mIsComptimeModule) && (argIdx == methodInstance->GetStructRetIdx()))
 		argIdx++;
 
+	auto rootMethodState = mCurMethodState->GetRootMethodState();
+
 	if (!methodDef->mIsStatic)
 	{
 		BfTypeCode loweredTypeCode = BfTypeCode_None;
 		BfTypeCode loweredTypeCode2 = BfTypeCode_None;
 
-		BfLocalVariable* paramVar = new BfLocalVariable();
+		BfLocalVariable* paramVar = rootMethodState->mBumpAlloc.Alloc<BfLocalVariable>();
+		paramVar->mIsBumpAlloc = true;
 		paramVar->mResolvedType = thisType;
-		paramVar->mName = "this";
+		paramVar->mName.Reference("this");
 		if (!thisType->IsValuelessType())
 			paramVar->mValue = mBfIRBuilder->GetArgument(argIdx);
 		else
@@ -18525,7 +18547,8 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 	{		
 		// We already issues a type error for this param if we had one in declaration processing
 		SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
-		BfLocalVariable* paramVar = new BfLocalVariable();
+		BfLocalVariable* paramVar = rootMethodState->mBumpAlloc.Alloc<BfLocalVariable>();
+		paramVar->mIsBumpAlloc = true;
 
 		BfTypeCode loweredTypeCode = BfTypeCode_None;
 		BfTypeCode loweredTypeCode2 = BfTypeCode_None;
@@ -18542,7 +18565,8 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		PopulateType(resolvedType, BfPopulateType_Declaration);
 		paramVar->mResolvedType = resolvedType;
 		int namePrefixCount = 0;
-		paramVar->mName = methodInstance->GetParamName(paramIdx, namePrefixCount);
+		methodInstance->GetParamName(paramIdx, paramVar->mName, namePrefixCount);
+
 		paramVar->mNamePrefixCount = (uint8)namePrefixCount;
 		paramVar->mNameNode = methodInstance->GetParamNameNode(paramIdx);
 		if (!isParamSkipped)
@@ -18774,7 +18798,12 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 		mCurMethodState->mLocalMethods.Clear();
 
 		for (auto& local : mCurMethodState->mLocals)
-			delete local;
+		{
+			if (local->mIsBumpAlloc)
+				local->~BfLocalVariable();
+			else
+				delete local;
+		}
 		mCurMethodState->mLocals.Clear();
 		mCurMethodState->mLocalVarSet.Clear();
 	};
@@ -19225,7 +19254,7 @@ void BfModule::EmitGCMarkMembers()
 
 						if ((fieldDef->mIsStatic) && (!fieldDef->mIsConst))
 						{
-							StringT<128> staticVarName;
+							StringT<512> staticVarName;
 							BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), &fieldInst);
 							if (staticVarName.StartsWith('#'))
 								continue;
@@ -19582,7 +19611,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		return;				
 	}
 
-	StringT<128> mangledName;
+	StringT<512> mangledName;
 	BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), mCurMethodInstance);
 	if (!methodInstance->mIRFunction)
 	{						
@@ -21509,7 +21538,7 @@ String BfModule::GetLocalMethodName(const StringImpl& baseName, BfAstNode* ancho
 	{
 		for (auto methodGenericArg : rootMethodState->mMethodInstance->mMethodInfoEx->mMethodGenericArguments)
 		{
-			StringT<128> genericTypeName;
+			StringT<512> genericTypeName;
 			BfMangler::Mangle(genericTypeName, mCompiler->GetMangleKind(), methodGenericArg);
 			hashCtx.MixinStr(genericTypeName);
 		}
@@ -23688,7 +23717,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		}		
 	}
 
-	StringT<128> mangledName;
+	StringT<4096> mangledName;
 	BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), mCurMethodInstance);
 
 	for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
@@ -24155,7 +24184,7 @@ void BfModule::UniqueSlotVirtualMethod(BfMethodInstance* methodInstance)
 			if (implBaseType != NULL)
 				vTableStart = implBaseType->mVirtualMethodTableSize;
 
-			StringT<128> mangledName;
+			StringT<512> mangledName;
 			BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), methodInstance);
 			for (int checkIdxOfs = 0; checkIdxOfs < (int)typeInstance->mHotTypeData->mVTableEntries.size(); checkIdxOfs++)
 			{

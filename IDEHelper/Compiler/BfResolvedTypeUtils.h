@@ -2152,7 +2152,6 @@ public:
 	}
 };
 
-
 class BfBoxedType : public BfTypeInstance
 {
 public:
@@ -2664,14 +2663,13 @@ public:
 public:
 	BfResolvedTypeSet()
 	{
-		mHashSize = 9973;
-		mHashHeads = (Entry**)AllocateZero(sizeof(Entry*) * mHashSize, alignof(Entry*));
+		Rehash(9973);
 	}	
 
 	~BfResolvedTypeSet();
 	
 	template <typename T>
-	bool Insert(T* findType, LookupContext* ctx, BfResolvedTypeSet::Entry** entryPtr)
+	bool Insert(T* findType, LookupContext* ctx, BfResolvedTypeSet::EntryRef* entryPtr)
 	{
 		CheckRehash();
 
@@ -2691,17 +2689,19 @@ public:
 			return false;
 		}
 		int bucket = (hashVal & 0x7FFFFFFF) % mHashSize;
-		auto checkEntry = mHashHeads[bucket];
-		while (checkEntry != NULL)
-		{			
+		auto checkEntryIdx = mHashHeads[bucket];
+		while (checkEntryIdx != -1)
+		{
+			auto checkEntry = &mEntries[checkEntryIdx];
+
 			// checkEntry->mType can be NULL if we're in the process of filling it in (and this Insert is from an element type)
 			//  OR if the type resolution failed after node insertion
-			if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHash) && (Equals(checkEntry->mValue, findType, ctx)))
+			if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode) && (Equals(checkEntry->mValue, findType, ctx)))
 			{
-				*entryPtr = checkEntry;
+				*entryPtr = EntryRef(this, checkEntryIdx);
 				return false;
 			}
-			checkEntry = checkEntry->mNext;
+			checkEntryIdx = checkEntry->mNext;
 
 			tryCount++;
 			// If this fires off, this may indicate that our hashes are equivalent but Equals fails
@@ -2715,22 +2715,14 @@ public:
 		if ((ctx->mResolveFlags & BfResolveTypeRefFlag_NoCreate) != 0)
 			return false;
 
-		mCount++;
-		Entry* entry = (Entry*)BfResolvedTypeSetFuncs::Allocate(sizeof(Entry), alignof(Entry));
-		entry->mValue = NULL;
-// 		if (mHashHeads[bucket] != NULL)
-// 			mHashHeads[bucket]->mPrev = entry;
-		entry->mNext = mHashHeads[bucket];
-		entry->mHash = hashVal;
-		mHashHeads[bucket] = entry;
-		*entryPtr = entry;
+		*entryPtr = AddRaw(hashVal);			 		
 		return true;
 	}
 	
 // 	Iterator begin();
 // 	Iterator end();
 // 	Iterator erase(Iterator& itr);
-	void RemoveEntry(Entry* entry);
+	void RemoveEntry(EntryRef entry);
 };
 
 class BfTypeUtils

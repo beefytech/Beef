@@ -283,6 +283,11 @@ void StringImpl::Reference(const StringView& strView)
 	Reference(strView.mPtr, strView.mLength);
 }
 
+void StringImpl::Reference(const StringImpl& str)
+{
+	Reference(str.GetPtr(), str.mLength);
+}
+
 String StringImpl::CreateReference(const StringView& strView)
 {
 	String str;
