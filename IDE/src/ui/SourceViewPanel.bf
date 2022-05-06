@@ -5623,7 +5623,7 @@ namespace IDE.ui
 	                }
 #endif
 
-	                if ((parser != null) && (mIsBeefSource) && (!didShow) && (!mHoverWatch.mIsShown))
+	                if ((parser != null) && (mIsBeefSource) && (!didShow) && (mHoverWatch != null) && (!mHoverWatch.mIsShown))
 					ErrorScope:
 	                {
 						//TODO: Needed this?
@@ -5692,7 +5692,7 @@ namespace IDE.ui
 	                }
 	            }
 				if (!hasHoverWatchOpen)
-	            	mHoverWatch.mOpenMousePos = DarkTooltipManager.sLastRelMousePos;
+	            	mHoverWatch?.mOpenMousePos = DarkTooltipManager.sLastRelMousePos;
 	        }
 
 			// Not used?
