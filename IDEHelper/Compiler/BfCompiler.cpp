@@ -9440,6 +9440,8 @@ BF_EXPORT bool BF_CALLTYPE BfCompiler_ClassifySource(BfCompiler* bfCompiler, BfP
 {
 	BP_ZONE("BfCompiler_ClassifySource");	
 	
+	bfCompiler->mSystem->AssertWeHaveLock();
+
 	String& autoCompleteResultString = *gTLStrReturn.Get();
 	autoCompleteResultString.clear();
 	
@@ -9464,6 +9466,8 @@ BF_EXPORT bool BF_CALLTYPE BfCompiler_ClassifySource(BfCompiler* bfCompiler, BfP
 
 BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCompiler, BfParser* bfParser, BfResolvePassData* resolvePassData, char* explicitEmitTypeNames)
 {
+	bfCompiler->mSystem->AssertWeHaveLock();
+
 	String& outString = *gTLStrReturn.Get();
 	outString.Clear();
 	
@@ -10029,6 +10033,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 
 BF_EXPORT bool BF_CALLTYPE BfCompiler_VerifyTypeName(BfCompiler* bfCompiler, char* name, int cursorPos)
 {
+	bfCompiler->mSystem->AssertWeHaveLock();
+
 	String typeName = name;
 
 	auto system = bfCompiler->mSystem;
@@ -10096,7 +10102,7 @@ BF_EXPORT bool BF_CALLTYPE BfCompiler_VerifyTypeName(BfCompiler* bfCompiler, cha
 		resolvePassData.mAutoComplete->mModule = bfCompiler->mContext->mScratchModule;
 	}
 	resolvePassData.mParsers.Add(&parser);
-			
+				
 	SetAndRestoreValue<BfResolvePassData*> prevCompilerResolvePassData(bfCompiler->mResolvePassData, &resolvePassData);
 	SetAndRestoreValue<BfPassInstance*> prevPassInstance(bfCompiler->mPassInstance, &passInstance);
 
@@ -10248,6 +10254,8 @@ BF_EXPORT int BF_CALLTYPE BfCompiler_GetTypeId(BfCompiler* bfCompiler, const cha
 
 BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler, const char* name)
 {
+	bfCompiler->mSystem->AssertWeHaveLock();
+
 	String& outString = *gTLStrReturn.Get();
 	outString = "";
 
@@ -10564,6 +10572,8 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_FileChanged(BfCompiler* bfCompiler, const 
 
 BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetSymbolReferences(BfCompiler* bfCompiler, BfPassInstance* bfPassInstance, BfResolvePassData* resolvePassData)
 {
+	bfCompiler->mSystem->AssertWeHaveLock();
+
 	BP_ZONE("BfCompiler_GetSymbolReferences");
 
 	String& outString = *gTLStrReturn.Get();

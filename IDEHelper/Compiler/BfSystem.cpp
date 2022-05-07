@@ -3754,7 +3754,9 @@ void BfSystem::Unlock()
 
 void BfSystem::AssertWeHaveLock()
 {
-	//mSystemLock.mCritSect
+#ifdef BF_PLATFORM_WINDOWS	
+	BF_ASSERT_REL(((CRITICAL_SECTION*)mSystemLock.mCritSect)->OwningThread == (HANDLE)(uintptr)::GetCurrentThreadId());
+#endif
 }
 
 void BfSystem::RemoveDeletedParsers()

@@ -1448,6 +1448,7 @@ namespace IDE.ui
 		public void DoRefreshCollapse(BfParser parser, int32 textVersion, IdSpan charIdSpan)
 		{
 			var bfCompiler = BfResolveCompiler;
+			var bfSystem = BfResolveSystem;
 
 			String explicitEmitTypeNames = scope .();
 			for (var explicitType in mExplicitEmitTypes)
@@ -1459,6 +1460,7 @@ namespace IDE.ui
 			var resolvePassData = parser.CreateResolvePassData(.None);
 			defer delete resolvePassData;
 
+			bfSystem.Lock(0);
 			var collapseData = bfCompiler.GetCollapseRegions(parser, resolvePassData, explicitEmitTypeNames, .. scope .());
 			using (mMonitor.Enter())
 			{
@@ -1468,6 +1470,7 @@ namespace IDE.ui
 				mQueuedCollapseData.mTextVersion = textVersion;
 				mQueuedCollapseData.mCharIdSpan = charIdSpan;
 			}
+			bfSystem.Unlock();
 		}
 
         public void DoFullClassify(ResolveParams resolveParams)
