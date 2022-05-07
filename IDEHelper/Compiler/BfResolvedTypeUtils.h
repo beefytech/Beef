@@ -1903,16 +1903,22 @@ public:
 
 class BfCeTypeInfo;
 
+struct BfReifyMethodDependency
+{
+public:
+	BfNonGenericMethodRef mDepMethod;
+	int mMethodIdx;
+};
+
 // Instance of struct or class
 class BfTypeInstance : public BfDependedType
 {
-public:		
+public:
 	int mSignatureRevision;
 	int mLastNonGenericUsedRevision;
 	int mInheritanceId;
 	int mInheritanceCount;
 	BfModule* mModule;
-
 	BfTypeDef* mTypeDef;
 	BfTypeInstance* mBaseType;
 	BfCustomAttributes* mCustomAttributes;
@@ -1920,12 +1926,12 @@ public:
 	BfTypeInfoEx* mTypeInfoEx;
 	BfGenericTypeInfo* mGenericTypeInfo;
 	BfCeTypeInfo* mCeTypeInfo;
-
 	Array<BfTypeInterfaceEntry> mInterfaces;	
-	Array<BfTypeInterfaceMethodEntry> mInterfaceMethodTable;
+	Array<BfTypeInterfaceMethodEntry> mInterfaceMethodTable;	
 	Array<BfMethodInstanceGroup> mMethodInstanceGroups;
 	Array<BfOperatorInfo*> mOperatorInfo;
-	Array<BfVirtualMethodEntry> mVirtualMethodTable;	
+	Array<BfVirtualMethodEntry> mVirtualMethodTable;
+	Array<BfReifyMethodDependency> mReifyMethodDependencies;
 	BfHotTypeData* mHotTypeData;	
 	int mVirtualMethodTableSize; // With hot reloading, mVirtualMethodTableSize can be larger than mInterfaceMethodTable (live vtable versioning)	
 	Array<BfFieldInstance> mFieldInstances;

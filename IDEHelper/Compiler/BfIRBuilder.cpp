@@ -5314,6 +5314,12 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 	return retVal;
 }
 
+void BfIRBuilder::SetFunctionName(BfIRValue func, const StringImpl& name)
+{
+	WriteCmd(BfIRCmd_SetFunctionName, func, name);
+	NEW_CMD_INSERTED_IRVALUE;	
+}
+
 void BfIRBuilder::EnsureFunctionPatchable()
 {
 	BfIRValue retVal = WriteCmd(BfIRCmd_EnsureFunctionPatchable);

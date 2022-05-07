@@ -57,6 +57,14 @@ extension LibClassA
 
 namespace LibA
 {
+	extension LibA0
+	{
+		public new override int GetA()
+		{
+			return 3;
+		}
+	}
+
 	extension LibA3
 	{
 		this
@@ -385,6 +393,10 @@ namespace Tests
 			Test.Assert(ca.mA == 107);
 			delete ca;
 			Test.Assert(LibClassA.sMagic == 7771);
+
+			LibA.LibA0 la0 = scope .();
+			int la0a = la0.GetA();
+			Test.Assert(la0a == 3);
 
 			LibA.LibA3 la3 = scope .();
 			Test.Assert(la3.mA == 114);

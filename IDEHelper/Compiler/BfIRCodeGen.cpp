@@ -2959,13 +2959,21 @@ void BfIRCodeGen::HandleNextCmd()
 		{			
 			CMD_PARAM(llvm::FunctionType*, type);
 			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();
-			CMD_PARAM(String, name);			
+			CMD_PARAM(String, name);
 
 			auto func = mLLVMModule->getFunction(name.c_str());
 			if ((func == NULL) || (func->getFunctionType() != type))
 				func = llvm::Function::Create(type, LLVMMapLinkageType(linkageType), name.c_str(), mLLVMModule);
 			
 			SetResult(curId, func);
+		}
+		break;
+	case BfIRCmd_SetFunctionName:
+		{
+			CMD_PARAM(llvm::Value*, func);
+			CMD_PARAM(String, name);
+			llvm::Function* llvmFunc = llvm::dyn_cast<llvm::Function>(func);
+			llvmFunc->setName(name.c_str());
 		}
 		break;
 	case BfIRCmd_EnsureFunctionPatchable:

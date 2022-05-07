@@ -2291,6 +2291,14 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, mBeModule->CreateFunction(type, linkageType, name));			
 		}
 		break;
+	case BfIRCmd_SetFunctionName:
+		{
+			CMD_PARAM(BeValue*, func);
+			CMD_PARAM(String, name);
+			BeFunction* beFunc = BeValueDynCast<BeFunction>(func);
+			beFunc->mName = name;
+		}
+		break;
 	case BfIRCmd_EnsureFunctionPatchable:
 		{
 

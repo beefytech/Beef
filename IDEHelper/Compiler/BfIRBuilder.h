@@ -278,6 +278,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_GetIntrinsic,	
 	BfIRCmd_CreateFunctionType,	
 	BfIRCmd_CreateFunction,	
+	BfIRCmd_SetFunctionName,
 	BfIRCmd_EnsureFunctionPatchable,
 	BfIRCmd_RemapBindFunction,
 	BfIRCmd_SetActiveFunction,
@@ -1305,6 +1306,7 @@ public:
 	BfIRFunctionType MapMethod(BfMethodInstance* methodInstance);
 	BfIRFunctionType CreateFunctionType(BfIRType resultType, const BfSizedArray<BfIRType>& paramTypes, bool isVarArg = false);
 	BfIRFunction CreateFunction(BfIRFunctionType funcType, BfIRLinkageType linkageType, const StringImpl& name);	
+	void SetFunctionName(BfIRValue func, const StringImpl& name);
 	void EnsureFunctionPatchable();
 	BfIRValue RemapBindFunction(BfIRValue func);
 	void SetActiveFunction(BfIRFunction func);

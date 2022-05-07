@@ -1225,7 +1225,8 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	delete typeInst->mAttributeData;
 	typeInst->mAttributeData = NULL;	
 	typeInst->mVirtualMethodTableSize = 0;
-	typeInst->mVirtualMethodTable.Clear();		
+	typeInst->mVirtualMethodTable.Clear();
+	typeInst->mReifyMethodDependencies.Clear();
 	typeInst->mSize = -1;
 	typeInst->mAlign = -1;
 	typeInst->mInstSize = -1;

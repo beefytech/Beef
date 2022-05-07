@@ -45,6 +45,19 @@ namespace LibA
 			T val = default;
 			return Overload0(val);
 		}
+
+		public virtual int GetA()
+		{
+			return 1;
+		}
+	}
+
+	extension LibA0
+	{
+		public override int GetA()
+		{
+			return 2;
+		}
 	}
 
 	struct Handler

@@ -22547,7 +22547,9 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 						auto checkMethodInstance = mCurTypeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
 						if (checkMethodInstance == NULL)
 							continue;
-						if ((checkMethodInstance->mIRFunction == prevFunc) && (checkMethodInstance->mMethodDef->mMethodDeclaration != NULL))
+						if ((checkMethodInstance->mIRFunction == prevFunc) &&
+							(checkMethodInstance->mMethodDef->mMethodDeclaration != NULL) &&
+							(checkMethodInstance->mVirtualTableIdx < 0))
 						{
 							BfAstNode* refNode = methodDef->GetRefNode();
 							if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
@@ -24633,12 +24635,38 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						auto declMethodInstance = (BfMethodInstance*)typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mDeclaringMethod;
 						_AddVirtualDecl(declMethodInstance);
 						setMethodInstance->mVirtualTableIdx = virtualMethodMatchIdx;
+
+						auto& implMethodRef = typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mImplementingMethod;
+						if ((!mCompiler->mIsResolveOnly) && (implMethodRef.mMethodNum >= 0) && 
+							(implMethodRef.mTypeInstance == typeInstance) && (methodInstance->GetOwner() == typeInstance))
+						{
+							auto prevImplMethodInstance = (BfMethodInstance*)implMethodRef;
+							if (prevImplMethodInstance->mMethodDef->mDeclaringType->mProject != methodInstance->mMethodDef->mDeclaringType->mProject)
+							{
+								// We may need to have to previous method reified when we must re-slot in another project during vdata creation								
+								BfReifyMethodDependency dep;
+								dep.mDepMethod = typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mDeclaringMethod;
+								dep.mMethodIdx = implMethodRef.mMethodNum;
+								typeInstance->mReifyMethodDependencies.Add(dep);
+							}
+
+							if (!methodInstance->mMangleWithIdx)
+							{
+								// Keep mangled names from conflicting
+								methodInstance->mMangleWithIdx = true;
+								if ((methodInstance->mIRFunction) && (methodInstance->mDeclModule->mIsModuleMutable))
+								{
+									StringT<4096> mangledName;
+									BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), methodInstance);
+									methodInstance->mDeclModule->mBfIRBuilder->SetFunctionName(methodInstance->mIRFunction, mangledName);
+								}
+							}
+						}
+						
 						typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mImplementingMethod = setMethodInstance;
 					}
 				}
-
-
-
+				
 				if (methodOverriden != NULL)
 				{
 					CheckOverridenMethod(methodInstance, methodOverriden);					

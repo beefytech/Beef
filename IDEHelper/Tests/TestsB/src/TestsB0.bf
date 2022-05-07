@@ -42,6 +42,10 @@ namespace TestsB
 			Test.Assert(ca.mB == 1008);
 			Test.Assert(ca.mC == 9);
 			Test.Assert(ca.GetVal2() == 11);
+
+			LibA.LibA0 la0 = scope .();
+			int la0a = la0.GetA();
+			Test.Assert(la0a == 2);
 		}
 	}
 

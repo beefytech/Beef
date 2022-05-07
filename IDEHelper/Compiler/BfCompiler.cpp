@@ -5878,6 +5878,23 @@ void BfCompiler::PopulateReified()
 
 						checkType = checkType->mBaseType;
 					}
+
+					for (auto& reifyDep : typeInst->mReifyMethodDependencies)
+					{
+ 						if ((reifyDep.mDepMethod.mTypeInstance == NULL) ||
+ 							(reifyDep.mDepMethod.mTypeInstance->IsIncomplete()))
+ 							continue;
+
+						BfMethodInstance* depMethod = reifyDep.mDepMethod;
+						if (depMethod == NULL)
+							continue;
+
+						if ((depMethod->mIsReified) && (depMethod->mMethodInstanceGroup->IsImplemented()))
+						{
+							auto methodDef = typeInst->mTypeDef->mMethods[reifyDep.mMethodIdx];
+							typeInst->mModule->GetMethodInstance(typeInst, methodDef, BfTypeVector());							
+						}
+					}
 				}
 			}
 		}
