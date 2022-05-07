@@ -1556,7 +1556,10 @@ namespace IDE
 		{
 			String typeInfo = scope String();
 			var compiler = (compilerId == 0) ? gApp.mBfResolveCompiler : gApp.mBfBuildCompiler;
+			var system = (compilerId == 0) ? gApp.mBfResolveSystem : gApp.mBfBuildSystem;
+			system.Lock(0);
 			compiler.GetTypeInfo(typeName, typeInfo);
+			system.Unlock();
 
 			if (typeInfo != wantTypeInfo)
 				mScriptManager.Fail("Assert failed: {0} == {1}", typeInfo, wantTypeInfo);
