@@ -9571,6 +9571,7 @@ CeContext* CeMachine::AllocContext()
 		ceContext = new CeContext();
 		ceContext->mCeMachine = this;
 		ceContext->mMemory.Reserve(BF_CE_INITIAL_MEMORY);
+		memset(ceContext->mMemory.mVals, 0, BF_CE_INITIAL_MEMORY);
 	}
 
 	ceContext->mCurEmitContext = mCurEmitContext;	
