@@ -489,6 +489,7 @@ namespace IDE.ui
 		int32 mResolveJobCount;
 		bool mWantsParserCleanup;
 		bool mInPostRemoveUpdatePanels;
+		bool mDeleteAfterPostRemoveUpdate;
 
 		// For multi-view files...
 		PersistentTextPosition mTrackCursorPos;

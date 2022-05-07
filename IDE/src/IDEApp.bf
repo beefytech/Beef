@@ -6914,7 +6914,15 @@ namespace IDE
 			int recentFileIdx = -1;
             if (sourceViewPanel != null)
             {
-                sourceViewPanel.Dispose();
+				if (sourceViewPanel.[Friend]NeedsPostRemoveUpdate)
+				{
+					sourceViewPanel.[Friend]mDeleteAfterPostRemoveUpdate = true;
+					tabButton.mContent.RemoveSelf();
+					tabButton.mContent = null;
+				}
+				else
+                	sourceViewPanel.Dispose();
+
 				if (sourceViewPanel.mFilePath != null)
 					recentFileIdx = GetRecentFilesIdx(sourceViewPanel.mFilePath);
             }
@@ -14167,6 +14175,8 @@ namespace IDE
 					//Debug.WriteLine("Removing sourceViewPanel from mPostRemoveUpdatePanel {0} from IDEApp.Update", sourceViewPanel);
 					sourceViewPanel.[Friend]mInPostRemoveUpdatePanels = false;
 					@sourceViewPanel.Remove();
+					if (sourceViewPanel.[Friend]mDeleteAfterPostRemoveUpdate)
+						DeferDelete(sourceViewPanel);
 				}
 			}
 
