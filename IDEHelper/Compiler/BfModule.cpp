@@ -20622,6 +20622,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		{
 			BfLocalVariable* localVar = new BfLocalVariable();
 			*localVar = constLocal;
+			localVar->mIsBumpAlloc = false;
 			AddLocalVariableDef(localVar, true);
 		}
 	}
