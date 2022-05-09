@@ -214,9 +214,6 @@ namespace System
 
 		public static void Write(StringView line)
 		{
-#if DEBUG
-			System.Diagnostics.Debug.Write(line);
-#endif
 			Out.Write(line).IgnoreError();
 		}
 
@@ -244,9 +241,6 @@ namespace System
 
 		public static void WriteLine(StringView line)
 		{
-#if DEBUG
-			System.Diagnostics.Debug.WriteLine(line);
-#endif
 			Out.WriteLine(line).IgnoreError();
 		}
 
