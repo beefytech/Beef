@@ -43,6 +43,8 @@ BF_IMPORT bool BF_CALLTYPE BfParser_BuildDefs(void* bfParser, void* bfPassInstan
 //////////////////////////////////////////////////////////////////////////
 
 BF_IMPORT void* BF_CALLTYPE BfSystem_Create();
+BF_EXPORT void BF_CALLTYPE BfSystem_Lock(void* bfSystem, int priority);
+BF_EXPORT void BF_CALLTYPE BfSystem_Unlock(void* bfSystem);
 BF_IMPORT void BF_CALLTYPE BfSystem_ReportMemory(void* bfSystem);
 BF_IMPORT void BF_CALLTYPE BfSystem_Delete(void* bfSystem);
 BF_IMPORT void* BF_CALLTYPE BfSystem_CreatePassInstance(void* bfSystem);
@@ -663,7 +665,11 @@ void BootApp::DoLinkMS()
 	String targetPath = mTargetPath;
 
 	bool hadOutputChanges;
+
+	BfSystem_Lock(mSystem, 0);
 	const char* result = BfCompiler_GetUsedOutputFileNames(mCompiler, mProject, true, &hadOutputChanges);
+	BfSystem_Unlock(mSystem);
+	
 	if (result == NULL)
 		return;
 	std::string fileNamesStr;
