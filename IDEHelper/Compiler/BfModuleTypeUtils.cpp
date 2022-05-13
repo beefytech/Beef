@@ -792,6 +792,10 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 			BF_ASSERT(!genericArg->IsVar());
 #endif
 
+		// We need to add generic dependencies here because when we are just doing an Identity population there may be
+		//  on-demand types that could get deleted before initializing the type
+		DoPopulateType_SetGenericDependencies(genericTypeInstance);
+
 		// Do it here so the location we attempted to specialize this type will throw the failure if there is one
  		if (!InitGenericParams(resolvedTypeRef))
   			return;
@@ -2103,8 +2107,7 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 	
 	BfParser* emitParser = NULL;
 
-	int64 emitSourceMapKey = ((int64)declaringType->mPartialIdx << 32) | refNode->mSrcStart;
-
+	int64 emitSourceMapKey = ((int64)declaringType->mPartialIdx << 32) | refNode->mSrcStart;	
 	if (typeInstance->mCeTypeInfo == NULL)
 		typeInstance->mCeTypeInfo = new BfCeTypeInfo();
 	auto ceTypeInfo = typeInstance->mCeTypeInfo;
@@ -2117,6 +2120,22 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 	}
 	else
 	{
+		auto refParser = refNode->GetParser();
+		if ((refParser != NULL) && (refParser->mIsEmitted))
+		{
+			// Default to type declaration
+			emitSourceMapKey = mCurTypeInstance->mTypeDef->GetRefNode()->mSrcStart;
+			for (auto& kv : ceTypeInfo->mEmitSourceMap)
+			{
+				if ((refNode->mSrcStart >= kv.mValue.mSrcStart) && (refNode->mSrcStart < kv.mValue.mSrcEnd))
+				{
+					// We found the initial emit source
+					emitSourceMapKey = kv.mKey;
+					break;
+				}
+			}
+		}
+
 		if (ceTypeInfo->mEmitSourceMap.TryAdd(emitSourceMapKey, NULL, &ceEmitSource))
 		{
 			if (typeInstance->IsSpecializedType())
@@ -3140,11 +3159,6 @@ void BfModule::DoPopulateType_InitSearches(BfTypeInstance* typeInstance)
 {
 	auto typeDef = typeInstance->mTypeDef;
 	
-	if (typeInstance->IsGenericTypeInstance())
-	{
-		DoPopulateType_SetGenericDependencies(typeInstance);
-	}
-
 	auto _AddStaticSearch = [&](BfTypeDef* typeDef)
 	{
 		if (!typeDef->mStaticSearch.IsEmpty())
