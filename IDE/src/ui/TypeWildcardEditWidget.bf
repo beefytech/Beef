@@ -51,12 +51,15 @@ namespace IDE.ui
 					editText.RemoveToEnd(semiPos);
 			}
 
-			bool isValid;
-			if (editText.StartsWith("@"))
-				isValid = true;
-			else
+			bool isValid = true;
+			if (!editText.StartsWith("@"))
 			{
-				isValid = gApp.mBfResolveCompiler.VerifyTypeName(editText, cursorPos);
+				if (gApp.mBfResolveCompiler?.IsPerformingBackgroundOperation() == false)
+				{
+					gApp.mBfResolveSystem.Lock(0);
+					isValid = gApp.mBfResolveCompiler.VerifyTypeName(editText, cursorPos);
+					gApp.mBfResolveSystem.Unlock();
+				}
 			}
 
 			for (int ofs < editText.Length)
@@ -102,15 +105,19 @@ namespace IDE.ui
 					typeName.RemoveFromStart(1);
 					startOfs++;
 				}
-
-				bool isValid = gApp.mBfResolveCompiler.VerifyTypeName(scope String(typeName), -1);
-				if (!isValid)
+				if (gApp.mBfResolveCompiler?.IsPerformingBackgroundOperation() == false)
 				{
-					for (int ofs < typeName.Length)
+					gApp.mBfResolveSystem.Lock(0);
+					bool isValid = gApp.mBfResolveCompiler.VerifyTypeName(scope String(typeName), -1);
+					if (!isValid)
 					{
-						text[@typeName.Pos + startOfs + ofs].mDisplayTypeId = 1;
+						for (int ofs < typeName.Length)
+						{
+							text[@typeName.Pos + startOfs + ofs].mDisplayTypeId = 1;
+						}
 					}
-				}	
+					gApp.mBfResolveSystem.Unlock();
+				}
 			}
 		}
 

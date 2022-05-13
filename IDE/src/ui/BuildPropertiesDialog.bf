@@ -282,8 +282,13 @@ namespace IDE.ui
 							typeName.RemoveFromStart(1);
 						}
 
-						if (!gApp.mBfResolveCompiler.VerifyTypeName(scope String(typeName), -1))
-							isValid = false;
+						if (gApp.mBfResolveCompiler?.IsPerformingBackgroundOperation() == false)
+						{
+							gApp.mBfResolveSystem.Lock(0);
+							if (!gApp.mBfResolveCompiler.VerifyTypeName(scope String(typeName), -1))
+								isValid = false;
+							gApp.mBfResolveSystem.Unlock();
+						}
 					}
 				}
 				subItem.mTextColor = isValid ? 0xFFFFFFFF : 0xFFFF8080;
