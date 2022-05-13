@@ -9,7 +9,7 @@ Compile()
 ExpectError()
 
 AssertTypeInfo(1, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>", "Found Reified ValidateErrors")
-AssertTypeInfo(1, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>.Entry", "Found Reified ValidateErrors")
+AssertTypeInfo(1, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>.Entry", "Found Reified")
 
 ToggleCommentAt("Method3_BadCall")
 ToggleCommentAt("Method3_GoodCall")
