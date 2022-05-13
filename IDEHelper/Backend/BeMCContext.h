@@ -1362,7 +1362,7 @@ public:
 	String ToString(bool showVRegFlags = true, bool showVRegDetails = false);
 	void Print(bool showVRegFlags, bool showVRegDetails);
 	void Print();
-	BeMCOperand GetOperand(BeValue* value, bool allowMetaResult = false, bool allowFail = false); // Meta results are PHIs or CmpResults
+	BeMCOperand GetOperand(BeValue* value, bool allowMetaResult = false, bool allowFail = false, bool skipForceVRegAddr = false); // Meta results are PHIs or CmpResults
 	BeMCOperand CreateNot(const BeMCOperand& operand);
 	BeMCOperand TryToVector(BeValue* value);
 	BeType* GetType(const BeMCOperand& operand);

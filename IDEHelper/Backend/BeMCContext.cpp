@@ -2155,7 +2155,7 @@ String BeMCContext::ToString(const BeMCOperand& operand)
 	return "???";
 }
 
-BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool allowFail)
+BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool allowFail, bool skipForceVRegAddr)
 {
 	if (value == NULL)
 		return BeMCOperand();
@@ -2570,6 +2570,13 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 		xorVal.mKind = BeMCOperandKind_Immediate_i8;
 		xorVal.mImmediate = 0x1;
 		AllocInst(BeMCInstKind_Xor, operand, xorVal);
+	}
+
+	if ((operand.mKind == BeMCOperandKind_VRegAddr) && (!skipForceVRegAddr))
+	{
+		auto vregInfo = GetVRegInfo(operand);
+		if (!vregInfo->mForceMem)
+			vregInfo->mForceMem = true;
 	}
 
 	return operand;
@@ -16959,7 +16966,7 @@ void BeMCContext::Generate(BeFunction* function)
 			case BeLifetimeStartInst::TypeId:
 				{
 					auto castedInst = (BeLifetimeEndInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false, true);
+					auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
 					if (mcPtr)
 					{
 						auto vregInfo = GetVRegInfo(mcPtr);
@@ -16976,7 +16983,7 @@ void BeMCContext::Generate(BeFunction* function)
 			case BeLifetimeExtendInst::TypeId:
 				{
 					auto castedInst = (BeLifetimeEndInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false, true);
+					auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
 					if (mcPtr)
 						AllocInst(BeMCInstKind_LifetimeExtend, mcPtr);
 				}
@@ -16984,7 +16991,7 @@ void BeMCContext::Generate(BeFunction* function)
 			case BeLifetimeEndInst::TypeId:
 				{
 					auto castedInst = (BeLifetimeEndInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false, true);
+					auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
 					if (mcPtr.IsVRegAny())
 					{
 						AllocInst(BeMCInstKind_LifetimeEnd, mcPtr);
@@ -17031,7 +17038,7 @@ void BeMCContext::Generate(BeFunction* function)
 			case BeLoadInst::TypeId:
 				{
 					auto castedInst = (BeLoadInst*)inst;
-					auto mcTarget = GetOperand(castedInst->mTarget);
+					auto mcTarget = GetOperand(castedInst->mTarget, false, false, true);
 					result = CreateLoad(mcTarget);
 				}
 				break;
@@ -17039,7 +17046,7 @@ void BeMCContext::Generate(BeFunction* function)
 				{
 					auto castedInst = (BeStoreInst*)inst;
 					auto mcVal = GetOperand(castedInst->mVal);
-					auto mcPtr = GetOperand(castedInst->mPtr);
+					auto mcPtr = GetOperand(castedInst->mPtr, false, false, true);
 
 					bool handled = false;
 
@@ -17049,7 +17056,7 @@ void BeMCContext::Generate(BeFunction* function)
 			case BeSetCanMergeInst::TypeId:
 				{
 					auto castedInst = (BeSetCanMergeInst*)inst;
-					auto mcVal = GetOperand(castedInst->mVal);
+					auto mcVal = GetOperand(castedInst->mVal, false, false, true);
 					auto vregInfo = GetVRegInfo(mcVal);
 					vregInfo->mForceMerge = true;
 				}
@@ -18002,7 +18009,7 @@ void BeMCContext::Generate(BeFunction* function)
 				{
 					auto castedInst = (BeDbgDeclareInst*)inst;
 					auto dbgVar = castedInst->mDbgVar;
-					auto mcValue = GetOperand(castedInst->mValue);
+					auto mcValue = GetOperand(castedInst->mValue, false, false, true);
 					auto mcVReg = mcValue;
 					auto vregInfo = GetVRegInfo(mcVReg);
 
