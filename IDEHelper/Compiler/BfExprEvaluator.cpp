@@ -23317,11 +23317,20 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 			BfPointerType* resultPointerType = (BfPointerType*)resultType;
 			BfType* intPtrType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-			convLeftValue = mModule->CastToValue(leftExpression, leftValue, intPtrType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromCompiler));
-			convRightValue = mModule->CastToValue(rightExpression, rightValue, intPtrType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromCompiler));
-			BfIRValue diffValue = mModule->mBfIRBuilder->CreateSub(convLeftValue, convRightValue);
-			diffValue = mModule->mBfIRBuilder->CreateDiv(diffValue, mModule->GetConstValue(resultPointerType->mElementType->mSize, intPtrType), true);
-			mResult = BfTypedValue(diffValue, intPtrType);
+			if (resultPointerType->mElementType->mSize == 0)
+			{
+				if (!mModule->IsInSpecializedSection())
+					mModule->Warn(0, "Subtracting pointers to zero-sized elements will always result in zero", opToken);
+				mResult = mModule->GetDefaultTypedValue(intPtrType);
+			}
+			else			
+			{				
+				convLeftValue = mModule->CastToValue(leftExpression, leftValue, intPtrType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromCompiler));
+				convRightValue = mModule->CastToValue(rightExpression, rightValue, intPtrType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromCompiler));
+				BfIRValue diffValue = mModule->mBfIRBuilder->CreateSub(convLeftValue, convRightValue);
+				diffValue = mModule->mBfIRBuilder->CreateDiv(diffValue, mModule->GetConstValue(resultPointerType->mElementType->mSize, intPtrType), true);
+				mResult = BfTypedValue(diffValue, intPtrType);
+			}
 			return;
 		}
 		else if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_StrictEquality) &&
@@ -23381,10 +23390,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		mModule->PopulateType(underlyingType);
 		if (underlyingType->IsValuelessType())
 		{
-			if (!mModule->IsInSpecializedSection())
-			{
-				mModule->Warn(0, "Adding to a pointer to a zero-sized element has no effect", opToken);
-			}
+			if (!mModule->IsInSpecializedSection())			
+				mModule->Warn(0, "Adding to a pointer to a zero-sized element has no effect", opToken);			
 			mResult = *resultTypedValue;
 			return;
 		}
