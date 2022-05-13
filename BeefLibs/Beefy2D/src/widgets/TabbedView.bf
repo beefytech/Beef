@@ -100,7 +100,8 @@ namespace Beefy.widgets
                 if (mIsActive)
                 {
                     mIsActive = false;
-                    mTabbedView.RemoveWidget(mContent);
+					if (mContent != null)
+                    	mTabbedView.RemoveWidget(mContent);
                 }
             }
 
