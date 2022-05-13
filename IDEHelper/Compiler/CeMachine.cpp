@@ -3921,7 +3921,7 @@ bool CeContext::GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolde
 		if (!value)
 			Fail("Failed to encoded attribute");
 		auto attrConstant = module->mBfIRBuilder->GetConstant(value);
-		if (!WriteConstant(module, resultAddr, attrConstant, customAttr->mType))
+		if ((attrConstant == NULL) || (!WriteConstant(module, resultAddr, attrConstant, customAttr->mType)))
 			Fail("Failed to decode attribute");
 	}	
 
