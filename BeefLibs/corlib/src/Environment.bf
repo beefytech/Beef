@@ -14,6 +14,8 @@ namespace System
 
 		public static OperatingSystem OSVersion = new OperatingSystem() ~ delete _;
 
+		public static void* ModuleHandle => Internal.[Friend]sModuleHandle;
+
 #if BF_PLATFORM_WINDOWS
 		public const bool IsFileSystemCaseSensitive = false;
 #else
