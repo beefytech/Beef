@@ -2381,7 +2381,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			for (auto& ifaceEntry : checkAttrType->mInterfaces)
 			{
 				isFieldApply = false;
-				isFieldApply = (ceEmitContext != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIOnFieldInitTypeDef));
+				isFieldApply = (ceEmitContext != NULL) && (fieldInstance != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIOnFieldInitTypeDef));
 				
 				if ((isFieldApply) ||
 					((ceEmitContext != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIComptimeTypeApply))) ||
