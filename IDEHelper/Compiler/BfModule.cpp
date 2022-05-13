@@ -7786,7 +7786,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			{
 				if (bfAutocomplete != NULL)
 					bfAutocomplete->CheckTypeRef(opConstraint->mLeftType, false);
-				opConstraintInstance.mLeftType = ResolveTypeRef(opConstraint->mLeftType, BfPopulateType_Interfaces);
+				opConstraintInstance.mLeftType = ResolveTypeRef(opConstraint->mLeftType, BfPopulateType_Interfaces_All);
 				if (opConstraintInstance.mLeftType == NULL)
 					continue;
 			}
@@ -7801,7 +7801,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			{
 				if (bfAutocomplete != NULL)
 					bfAutocomplete->CheckTypeRef(opConstraint->mRightType, false);
-				opConstraintInstance.mRightType = ResolveTypeRef(opConstraint->mRightType, BfPopulateType_Interfaces);
+				opConstraintInstance.mRightType = ResolveTypeRef(opConstraint->mRightType, BfPopulateType_Interfaces_All);
 				if (opConstraintInstance.mRightType == NULL)
 					continue;
 			}

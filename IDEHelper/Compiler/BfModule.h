@@ -38,14 +38,15 @@ class CeDbgState;
 enum BfCeTypeEmitSourceKind : int8;
 
 enum BfPopulateType
-{	
+{
 	BfPopulateType_TypeDef,
 	BfPopulateType_Identity,
 	BfPopulateType_IdentityNoRemapAlias,
 	BfPopulateType_Declaration,
 	BfPopulateType_BaseType,
-	BfPopulateType_Interfaces,
+	BfPopulateType_Interfaces_Direct,
 	BfPopulateType_AllowStaticMethods,
+	BfPopulateType_Interfaces_All,
 	BfPopulateType_Data,
 	BfPopulateType_DataAndMethods,
 	BfPopulateType_Full = BfPopulateType_DataAndMethods,

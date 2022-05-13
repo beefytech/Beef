@@ -409,7 +409,7 @@ bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* ge
 	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, mIgnoreErrors || ignoreErrors);
 	genericTypeInst->mGenericTypeInfo->mValidatedGenericConstraints = true;
 	if (!genericTypeInst->mGenericTypeInfo->mFinishedGenericParams)
-		PopulateType(genericTypeInst, BfPopulateType_Interfaces);
+		PopulateType(genericTypeInst, BfPopulateType_Interfaces_All);
 
 	if (genericTypeInst->IsTypeAlias())
 	{
@@ -549,8 +549,8 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 			{
 				if (!checkOuter->mInterfaceConstraintSet->Add(ifaceType))
 					return;
-				if (ifaceType->mDefineState < BfTypeDefineState_HasInterfaces)
-					PopulateType(ifaceType);
+				if (ifaceType->mDefineState < BfTypeDefineState_HasInterfaces_Direct)
+					PopulateType(ifaceType, Beefy::BfPopulateType_Interfaces_Direct);
 				for (auto& ifaceEntry : ifaceType->mInterfaces)
 					_AddInterface(ifaceEntry.mInterfaceType);
 			};
@@ -1188,7 +1188,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 					{
 						canFastReify = true;
 						for (auto ownedTypes : typeModule->mOwnedTypeInstances)
-							if (ownedTypes->mDefineState > BfTypeDefineState_HasInterfaces)
+							if (ownedTypes->mDefineState > BfTypeDefineState_HasInterfaces_Direct)
 								canFastReify = false;
 					}
 
@@ -3450,8 +3450,20 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if ((populateType >= BfPopulateType_Identity) && (populateType <= BfPopulateType_IdentityNoRemapAlias))
 		return;
 
-	if ((populateType <= BfPopulateType_AllowStaticMethods) && (typeInstance->mDefineState >= BfTypeDefineState_HasInterfaces))
+	if ((populateType <= BfPopulateType_AllowStaticMethods) && (typeInstance->mDefineState >= BfTypeDefineState_HasInterfaces_Direct))
 		return;
+
+	// During CE init we need to avoid interface checking loops, so we only allow show direct interface declarations
+	if ((populateType == BfPopulateType_Interfaces_All) && (typeInstance->mDefineState >= Beefy::BfTypeDefineState_CETypeInit))
+	{
+		if ((typeInstance->mDefineState == Beefy::BfTypeDefineState_CEPostTypeInit) && (typeInstance->mCeTypeInfo != NULL) &&
+			(!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty()))
+		{
+			// We have finished CETypeInit and we have pending interfaces we need to apply
+		}
+		else
+			return;
+	}
 
 	if (!mCompiler->EnsureCeUnpaused(resolvedTypeRef))
 	{
@@ -4230,7 +4242,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	if ((mCompiler->mOptions.mAllowHotSwapping) &&
-		(typeInstance->mDefineState < BfTypeDefineState_HasInterfaces) && 
+		(typeInstance->mDefineState < BfTypeDefineState_HasInterfaces_Direct) && 
 		(typeInstance->mDefineState != BfTypeDefineState_ResolvingBaseType))
 	{		
 		if (typeInstance->mHotTypeData == NULL)
@@ -4268,8 +4280,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
-	if (typeInstance->mDefineState < BfTypeDefineState_HasInterfaces)
-		typeInstance->mDefineState = BfTypeDefineState_HasInterfaces;
+	if (typeInstance->mDefineState < BfTypeDefineState_HasInterfaces_Direct)
+		typeInstance->mDefineState = BfTypeDefineState_HasInterfaces_Direct;	
 	
 	for (auto& validateEntry : deferredTypeValidateList)
 	{
@@ -4840,6 +4852,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				return;
  		}
 	}
+
+	// Type now has interfaces added from CEInit
+	if (typeInstance->mDefineState < BfTypeDefineState_HasInterfaces_All)
+		typeInstance->mDefineState = BfTypeDefineState_HasInterfaces_All;
 
 	if (_CheckTypeDone())
 		return;
@@ -11527,7 +11543,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		BfTypeReference* elementTypeRef = nullableTypeRef->mElementType;
 		auto typeDef = mCompiler->mNullableTypeDef;
 
-		auto elementType = ResolveTypeRef(elementTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);
+		auto elementType = ResolveTypeRef(elementTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
 		if ((elementType == NULL) || (elementType->IsVar()))
 		{
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
@@ -11561,7 +11577,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	else if (auto pointerTypeRef = BfNodeDynCast<BfPointerTypeRef>(typeRef))
 	{
 		BfPointerType* pointerType = new BfPointerType();
-		auto elementType = ResolveTypeRef(pointerTypeRef->mElementType, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);		
+		auto elementType = ResolveTypeRef(pointerTypeRef->mElementType, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);		
 		if ((elementType == NULL) || (elementType->IsVar()))
 		{
 			delete pointerType;
@@ -11592,7 +11608,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			refType->mRefKind = BfRefType::RefKind_Out;
 		else if (refTypeRef->mRefToken->GetToken() == BfToken_Mut)
 			refType->mRefKind = BfRefType::RefKind_Mut;
-		auto elementType = ResolveTypeRef(refTypeRef->mElementType, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);		
+		auto elementType = ResolveTypeRef(refTypeRef->mElementType, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
 		if ((elementType == NULL) || (elementType->IsVar()))
 		{
 			delete refType;
@@ -14289,7 +14305,7 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 	if (srcType == wantType)
 		return true;
 
-	if (srcType->mDefineState < BfTypeDefineState_HasInterfaces)
+	if (srcType->mDefineState < BfTypeDefineState_HasInterfaces_Direct)
 	{
 		if (srcType->mDefineState == BfTypeDefineState_ResolvingBaseType)
 		{
@@ -14306,12 +14322,15 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 
 		// Type is incomplete.  We don't do the IsIncomplete check here because of re-entry
 		//  While handling 'var' resolution, we don't want to force a PopulateType reentry 
-		//  but we do have enough information for TypeIsSubTypeOf
-		PopulateType(srcType, BfPopulateType_Interfaces);
+		//  but we do have enough information for TypeIsSubTypeOf		
+		PopulateType(srcType, BfPopulateType_Interfaces_Direct);
 	}
 
 	if (wantType->IsInterface())
 	{
+		if (wantType->mDefineState < BfTypeDefineState_HasInterfaces_All)
+			PopulateType(srcType, BfPopulateType_Interfaces_All);
+
 		BfTypeDef* checkActiveTypeDef = NULL;
 		bool checkAccessibility = true;		
 		if (IsInSpecializedSection())
@@ -14352,9 +14371,10 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 				}
 			}
 			checkType = checkType->GetImplBaseType();
-			if ((checkType != NULL) && (checkType->mDefineState < BfTypeDefineState_HasInterfaces))
-			{				
-				PopulateType(checkType, BfPopulateType_Interfaces);
+			if ((checkType != NULL) && (checkType->mDefineState < BfTypeDefineState_CETypeInit))
+			{
+				// We check BfTypeDefineState_CETypeInit so we don't cause a populate loop during interface checking during CETypeInit
+				PopulateType(checkType, BfPopulateType_Interfaces_All);
 			}
 		}
 
@@ -14383,7 +14403,7 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeDef* wantType)
 	if (srcType->IsInstanceOf(wantType))
 		return true;
 
-	if (srcType->mDefineState < BfTypeDefineState_HasInterfaces)
+	if (srcType->mDefineState < BfTypeDefineState_HasInterfaces_Direct)
 	{
 		if (srcType->mDefineState == BfTypeDefineState_ResolvingBaseType)
 		{
@@ -14401,11 +14421,14 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeDef* wantType)
 		// Type is incomplete.  We don't do the IsIncomplete check here because of re-entry
 		//  While handling 'var' resolution, we don't want to force a PopulateType reentry 
 		//  but we do have enough information for TypeIsSubTypeOf
-		PopulateType(srcType, BfPopulateType_Interfaces);
+		PopulateType(srcType, BfPopulateType_Interfaces_Direct);
 	}
 
 	if (wantType->mTypeCode == BfTypeCode_Interface)
 	{
+		if (srcType->mDefineState < BfTypeDefineState_HasInterfaces_All)
+			PopulateType(srcType, BfPopulateType_Interfaces_All);
+
 		BfTypeDef* checkActiveTypeDef = NULL;
 
 		auto checkType = srcType;
@@ -14417,9 +14440,9 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeDef* wantType)
 					return true;
 			}
 			checkType = checkType->GetImplBaseType();
-			if ((checkType != NULL) && (checkType->mDefineState < BfTypeDefineState_HasInterfaces))
+			if ((checkType != NULL) && (checkType->mDefineState < BfTypeDefineState_HasInterfaces_All))
 			{
-				PopulateType(checkType, BfPopulateType_Interfaces);
+				PopulateType(checkType, BfPopulateType_Interfaces_All);
 			}
 		}
 

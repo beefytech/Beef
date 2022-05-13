@@ -6757,7 +6757,7 @@ void BfCompiler::CompileReified()
 		if (typeInst->mIsReified)
 			continue;
 
-		mContext->mUnreifiedModule->PopulateType(typeInst, BfPopulateType_Interfaces);
+		mContext->mUnreifiedModule->PopulateType(typeInst, BfPopulateType_Interfaces_Direct);
 		if (typeInst->mCustomAttributes == NULL)
 			continue;
 		
@@ -7257,6 +7257,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}
 		
 	ProcessPurgatory(true);
+	if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
+		DoWorkLoop();
 
 	// Mark used modules
 	if ((mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude) && (!mCanceling))

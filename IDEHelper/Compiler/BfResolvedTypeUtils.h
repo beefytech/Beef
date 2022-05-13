@@ -456,9 +456,10 @@ enum BfTypeDefineState : uint8
 	BfTypeDefineState_Declaring,
 	BfTypeDefineState_Declared,
 	BfTypeDefineState_ResolvingBaseType,	
-	BfTypeDefineState_HasInterfaces,
+	BfTypeDefineState_HasInterfaces_Direct,
 	BfTypeDefineState_CETypeInit,
 	BfTypeDefineState_CEPostTypeInit,
+	BfTypeDefineState_HasInterfaces_All,
 	BfTypeDefineState_Defined,
 	BfTypeDefineState_CEAfterFields,
 	BfTypeDefineState_DefinedAndMethodsSlotting,
@@ -2122,7 +2123,7 @@ public:
 	bool IsAlwaysInclude();	
 	bool HasBeenInstantiated() { return mHasBeenInstantiated || ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_AssumeInstantiated) != 0); }
 	bool IncludeAllMethods() { return ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_IncludeAllMethods) != 0); }
-	bool DefineStateAllowsStaticMethods() { return mDefineState >= BfTypeDefineState_HasInterfaces; }
+	bool DefineStateAllowsStaticMethods() { return mDefineState >= BfTypeDefineState_HasInterfaces_Direct; }
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };
