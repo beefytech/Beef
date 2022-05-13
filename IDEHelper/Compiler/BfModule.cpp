@@ -21239,8 +21239,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 						expectingType = NULL;
 				}
 
+				BfExprEvaluator exprEvaluator(this);
+				if (mCurMethodInstance->mMethodDef->mIsReadOnly)
+					exprEvaluator.mAllowReadOnlyReference = true;
+
 				UpdateSrcPos(expressionBody);
-				auto retVal = CreateValueFromExpression(expressionBody, expectingType, exprEvalFlags);
+				auto retVal = CreateValueFromExpression(exprEvaluator, expressionBody, expectingType, exprEvalFlags);
 				if ((retVal) && (!retVal.mType->IsVar()) && (expectingType != NULL))
 				{
 					mCurMethodState->mHadReturn = true;
