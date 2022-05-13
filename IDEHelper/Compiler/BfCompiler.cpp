@@ -10431,8 +10431,10 @@ enum BfUsedOutputFlags
 
 BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* bfCompiler, BfProject* bfProject, BfUsedOutputFlags flags, bool* hadOutputChanges)
 {	
-	BP_ZONE("BfCompiler_GetUsedOutputFileNames");
+	bfCompiler->mSystem->AssertWeHaveLock();
 
+	BP_ZONE("BfCompiler_GetUsedOutputFileNames");
+	
 	*hadOutputChanges = false;
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();

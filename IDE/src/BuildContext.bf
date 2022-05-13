@@ -1262,6 +1262,9 @@ namespace IDE
 
 		    Workspace.Options workspaceOptions = gApp.GetCurWorkspaceOptions();
 		    BfCompiler bfCompiler = gApp.mBfBuildCompiler;
+			BfSystem bfSystem = gApp.mBfBuildSystem;
+
+			bfSystem.Lock(0);
 		    var bfProject = gApp.mBfBuildSystem.mProjectMap[project];
 		    bool bfHadOutputChanges = false;
 		    List<String> bfFileNames = scope List<String>();
@@ -1284,6 +1287,8 @@ namespace IDE
 				bfCompiler.GetOutputFileNames(bfProject, .FlushQueuedHotFiles, out bfHadOutputChanges, bfFileNames);
 				defer:: ClearAndDeleteItems(bfFileNames);
 			}
+			bfSystem.Unlock();
+
 		    if (bfHadOutputChanges)
 		        project.mNeedsTargetRebuild = true;
 

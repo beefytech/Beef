@@ -10400,10 +10400,16 @@ namespace IDE
 		        return;
 		    
 		    BfCompiler bfCompiler = mBfBuildCompiler;
+			BfSystem bfSystem = mBfBuildSystem;
+
 		    var bfProject = mBfBuildSystem.mProjectMap[project];
 		    bool bfHadOutputChanges;
 		    List<String> bfFileNames = scope List<String>();
+
+			bfSystem.Lock(0);
 			bfCompiler.GetOutputFileNames(bfProject, .None, out bfHadOutputChanges, bfFileNames);
+			bfSystem.Unlock();
+
 			defer ClearAndDeleteItems(bfFileNames);
 		    if (bfHadOutputChanges)
 		        project.mNeedsTargetRebuild = true;
