@@ -538,7 +538,7 @@ Name = "[RawChars]"
 Value = "mPtr,arraysize=mLength"
 
 [[Type]]
-Name = "Beefy::Dictionary<*, *>"
+Name = "Beefy::Dictionary<*, *, *>"
 DisplayString = "{{ count={mCount - mFreeCount} }}"
 [[Type.Expand.Item]]
 Name = "[Count]"
@@ -552,7 +552,7 @@ Value = "mValue"
 Next = "mNext"
 
 [[Type]]
-Name = "Beefy::Dictionary<*, *>::Entry"
+Name = "Beefy::Dictionary<*, *, *>::Entry"
 DisplayString = "{{[{*($T1*)&mKey}, {*($T2*)&mValue}]}}"
 [[Type.Expand.Item]]
 Name = "[Key]"
