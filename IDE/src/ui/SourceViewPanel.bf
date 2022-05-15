@@ -639,6 +639,7 @@ namespace IDE.ui
 	            mNavigationBar = new NavigationBar(this);            
 	            AddWidget(mNavigationBar); 
 			}
+			mAlwaysUpdateF = true;
         }
 		public ~this()
 		{
@@ -6811,12 +6812,18 @@ namespace IDE.ui
 
 			UpdateQueuedEmitShowData();
 
-			if (ewc.mCollapseNeedsUpdate)
-				ewc.UpdateCollapse();
-
 			// Process after mQueuedCollapseData so mCharIdSpan is still valid
 			ProcessDeferredResolveResults(0);
         }
+
+		public override void UpdateF(float updatePct)
+		{
+			base.UpdateF(updatePct);
+
+			var ewc = (SourceEditWidgetContent)mEditWidget.Content;
+			if (ewc.mCollapseNeedsUpdate)
+				ewc.UpdateCollapse(updatePct);
+		}
 
 		public void UpdateQueuedEmitShowData()
 		{

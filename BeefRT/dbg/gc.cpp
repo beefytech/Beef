@@ -1429,6 +1429,9 @@ bool BFGC::ScanThreads()
 			thread = mThreadList[threadIdx++];
 		}
 
+		if (thread->mExcluded)
+			continue;
+
 		if (!thread->mRunning)
 		{
 			AutoCrit autoCrit(mCritSect);
@@ -2367,11 +2370,12 @@ void BFGC::SuspendThreads()
 	auto curThreadId = GetCurrentThreadId();
 	for (auto thread : mThreadList)
 	{
-		if ((thread->mThreadId != curThreadId) && (thread->mRunning) && (thread->WantsSuspend()))
+		if ((thread->mThreadId != curThreadId) && (!thread->mExcluded) && (thread->mRunning) && (thread->WantsSuspend()))
 		{
 			// We must lock this before suspending so we can access mStackMarkableObjects
 			//  Otherwise we could deadlock
 			thread->mCritSect.Lock();
+			thread->mSuspended = true;
 
 			BfpThreadResult result;
 			BfpThread_Suspend(thread->mThreadHandle, &result);
@@ -2386,11 +2390,12 @@ void BFGC::ResumeThreads()
 	auto curThreadId = GetCurrentThreadId();
 	for (auto thread : mThreadList)
 	{
-		if ((thread->mThreadId != curThreadId) && (thread->mRunning) && (thread->WantsSuspend()))
+		if ((thread->mThreadId != curThreadId) && (thread->mSuspended) && (thread->mRunning) && (thread->WantsSuspend()))
 		{
 			// Previously locked in SuspendThreads
 			thread->mCritSect.Unlock();
 
+			thread->mSuspended = false;
 			BfpThread_Resume(thread->mThreadHandle, NULL);
 		}
 	}
@@ -2743,6 +2748,16 @@ void BFGC::SetMaxRawDeferredObjectFreePercentage(intptr maxPercentage)
 	mMaxRawDeferredObjectFreePercentage = maxPercentage;
 }
 
+void BFGC::ExcludeThreadId(intptr threadId)
+{
+	Beefy::AutoCrit autoCrit(mCritSect);
+	for (auto thread : mThreadList)
+	{
+		if (thread->mThreadId == threadId)
+			thread->mExcluded = true;
+	}
+}
+
 using namespace bf::System;
 
 void GC::Run()
@@ -2830,6 +2845,11 @@ BFRT_EXPORT void bf::System::GC::SetMaxPausePercentage(intptr maxPausePercentage
 BFRT_EXPORT void bf::System::GC::SetMaxRawDeferredObjectFreePercentage(intptr maxPercentage)
 {
 	gBFGC.SetMaxRawDeferredObjectFreePercentage(maxPercentage);
+}
+
+BFRT_EXPORT void bf::System::GC::ExcludeThreadId(intptr threadId)
+{
+	gBFGC.ExcludeThreadId(threadId);
 }
 
 #else // BF_GC_SUPPORTED

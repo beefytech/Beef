@@ -1,12 +1,14 @@
 #pragma once
 
 #include "Common.h"
+#include "util/CritSect.h"
 #include <list>
 
 NS_BF_BEGIN;
 
 typedef void (*BFApp_UpdateFunc)(bool batchStart);
-typedef void (*BFApp_DrawFunc)();
+typedef void (*BFApp_UpdateFFunc)(float updatePct);
+typedef void (*BFApp_DrawFunc)(bool forceDraw);
 
 class BFApp;
 class BFSoundManager;
@@ -50,12 +52,15 @@ public:
 class BFApp
 {
 public:
+	CritSect				mCritSect;
 	String					mTitle;
 	String					mInstallDir;
 	String					mDataDir;
 	bool					mDrawEnabled;
 	float					mRefreshRate;	
-	int						mMaxUpdatesPerDraw;
+	int						mMaxUpdatesPerDraw;	
+	double					mUpdateCntF;
+	double					mClientUpdateCntF;
 
 	bool					mInProcess;
 	bool					mRunning;
@@ -63,16 +68,20 @@ public:
 	int						mSysDialogCnt;
 	int						mUpdateCnt;
 	int						mNumPhysUpdates;
+	SyncEvent				mVSyncEvent;
+	volatile bool			mVSyncActive;
 	bool                    mVSynched;
 	bool					mVSyncFailed;
+	bool					mForceNextDraw;
 
 	int                     mUpdateSampleCount;
 	int                     mUpdateSampleTimes;
 
 	uint32 mLastProcessTick;
-	float mFrameTimeAcc;
+	float mPhysFrameTimeAcc;
 
 	BFApp_UpdateFunc		mUpdateFunc;
+	BFApp_UpdateFFunc		mUpdateFFunc;
 	BFApp_DrawFunc			mDrawFunc;
 	int						mCursor;
 
@@ -81,6 +90,7 @@ public:
 
 public:
 	virtual void			Update(bool batchStart);
+	virtual void			UpdateF(float updatePct);
 	virtual void			Draw();
 	virtual void			Process();
 	virtual void			PhysSetCursor() = 0;
@@ -114,6 +124,8 @@ public:
 	virtual FileStream*		OpenBinaryFile(const StringImpl& fileName);
 
 	virtual BFSoundManager* GetSoundManager() { return NULL; }
+
+	virtual intptr			GetCriticalThreadId(int idx) { return 0; }
 };
 
 extern BFApp* gBFApp;

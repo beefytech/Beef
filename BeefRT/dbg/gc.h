@@ -181,6 +181,8 @@ public:
 		intptr mStackStart;
 		intptr mLastStackPtr;
 		bool mRunning;
+		bool mExcluded;
+		bool mSuspended;
 		Beefy::Array<bf::System::Object*> mStackMarkableObjects;
 
 		ThreadInfo()
@@ -192,6 +194,8 @@ public:
 			mTEB = NULL;
 			mStackStart = NULL;
 			mRunning = true;
+			mExcluded = false;
+			mSuspended = false;
 		}
 
 		~ThreadInfo();
@@ -424,6 +428,7 @@ public:
 	void SetCollectFreeThreshold(int freeBytes);
 	void SetMaxPausePercentage(int maxPausePercentage);
 	void SetMaxRawDeferredObjectFreePercentage(intptr maxPercentage);
+	void ExcludeThreadId(intptr threadId);
 };
 
 extern BFGC gBFGC;
@@ -466,7 +471,7 @@ namespace bf
 			BFRT_EXPORT static void StopCollecting();
 			BFRT_EXPORT static void AddStackMarkableObject(Object* obj);
 			BFRT_EXPORT static void RemoveStackMarkableObject(Object* obj);
-			BFRT_EXPORT static void AddPendingThread(void* internalThreadInfo);
+			BFRT_EXPORT static void AddPendingThread(void* internalThreadInfo);			
 			
 		public:
 			BFRT_EXPORT static void Shutdown();			
@@ -488,6 +493,7 @@ namespace bf
 			BFRT_EXPORT static void SetCollectFreeThreshold(intptr freeBytes);
 			BFRT_EXPORT static void SetMaxPausePercentage(intptr maxPausePercentage);
 			BFRT_EXPORT static void SetMaxRawDeferredObjectFreePercentage(intptr maxPercentage);			
+			BFRT_EXPORT static void ExcludeThreadId(intptr threadId);
 		};
 	}
 }

@@ -19,10 +19,11 @@ BFApp::BFApp()
 	mTitle = "Beefy Application";
 	mRefreshRate = 60;	
 	mLastProcessTick = BFTickCount();
-	mFrameTimeAcc = 0;
+	mPhysFrameTimeAcc = 0;
 	mDrawEnabled = true;
 	
 	mUpdateFunc = NULL;
+	mUpdateFFunc = NULL;
 	mDrawFunc = NULL;
 	
 	gBFApp = this;
@@ -43,6 +44,12 @@ BFApp::BFApp()
 	mRunning = false;
 	mRenderDevice = NULL;
 	mVSynched = false;
+	mVSyncActive = false;
+	mForceNextDraw = false;
+
+	mUpdateCnt = 0;
+	mUpdateCntF = 0;
+	mClientUpdateCntF = 0;
 }
 
 BFApp::~BFApp()
@@ -90,10 +97,16 @@ void BFApp::Update(bool batchStart)
 	mPendingWindowDeleteList.clear();
 }
 
+void BFApp::UpdateF(float updatePct)
+{
+	mUpdateFFunc(updatePct);
+}
+
 void BFApp::Draw()
 {    
 	gPerfManager->ZoneStart("BFApp::Draw");
-	mDrawFunc();	
+	mDrawFunc(mForceNextDraw);	
+	mForceNextDraw = false;
 	gPerfManager->ZoneEnd();
 }
 
@@ -103,90 +116,88 @@ void BFApp::Process()
 {
     //Beefy::DebugTimeGuard suspendTimeGuard(30, "BFApp::Process");
     
+	RenderWindow* headRenderWindow = NULL;
+
+ 	float physRefreshRate = 0;
+	if (!mRenderDevice->mRenderWindowList.IsEmpty())
+	{
+		headRenderWindow = mRenderDevice->mRenderWindowList[0];
+		physRefreshRate = headRenderWindow->GetRefreshRate();
+	}
+
+	if (physRefreshRate <= 0)
+		physRefreshRate = 60.0f;
+
+	float ticksPerFrame = 1;
+	float physTicksPerFrame = 1000.0f / physRefreshRate;
+
 	if (mInProcess)
 		return; // No reentry
 	mInProcess = true;
-
-	int updates;
 	
 	uint32 tickNow = BFTickCount();
 	const int vSyncTestingPeriod = 250;
-
-	if (mRefreshRate != 0)
-	{
-		float ticksPerFrame = 1000.0f / mRefreshRate;
-		int ticksSinceLastProcess = tickNow - mLastProcessTick;
-
-        mUpdateSampleCount++;
-        mUpdateSampleTimes += ticksSinceLastProcess;
-        //TODO: Turn off mVSynched based on error calculations - (?)
-
-		// Two VSync failures in a row means we set mVSyncFailed and permanently disable it
-		if (mUpdateSampleTimes >= vSyncTestingPeriod)
-		{
-			int expectedFrames = (int)(mUpdateSampleTimes / ticksPerFrame);
-			if (mUpdateSampleCount > expectedFrames * 1.5)			
-			{
-				if (!mVSynched)
-					mVSyncFailed = true;				
-				mVSynched = false;
-			}
-			else
-				if (!mVSyncFailed)
-					mVSynched = true;
-			
-			mUpdateSampleCount = 0;
-			mUpdateSampleTimes = 0;
-		}
-        
-		mFrameTimeAcc += tickNow - mLastProcessTick;			
-        
-		bool vSynched = mVSynched;
-
-		if (vSynched)
-		{
-			// For the startup, try not to go hyper during those first samplings
-			if (mUpdateSampleTimes <= vSyncTestingPeriod)
-			{
-				if (ticksSinceLastProcess < ticksPerFrame / 1.5)
-					vSynched = false;
-			}
-		}
-
-        if (vSynched)
-        {
-       		updates = std::max(1, (int)(mFrameTimeAcc / ticksPerFrame + 0.5f));
-            mFrameTimeAcc = std::max(0.0f, mFrameTimeAcc - ticksPerFrame * updates);
-        }
-        else
-        {
-            updates = std::max(0, (int)(mFrameTimeAcc / ticksPerFrame));
-            mFrameTimeAcc = mFrameTimeAcc - ticksPerFrame * updates;
-        }
-        
-		if (updates > mRefreshRate)
-		{
-			// If more than 1 second of updates is queued, just re-sync
-			updates = 1;
-			mFrameTimeAcc = 0;
-		}
-
-		// Compensate for "slow start" by limiting the number of catchup-updates we can do when starting the app
-		int maxUpdates = BF_MIN(mNumPhysUpdates + 1, mMaxUpdatesPerDraw);
-
-		updates = BF_MIN(updates, maxUpdates);
-        
-        /*if (updates > 2)
-            OutputDebugStrF("Updates: %d  TickDelta: %d\n", updates, tickNow - mLastProcessTick);*/
+		
+	bool didVBlankWait = false;
+		
+	if (mVSyncActive)
+	{		
+		// Have a time limit in the cases we miss the vblank
+		if (mVSyncEvent.WaitFor((int)(physTicksPerFrame + 1)))
+			didVBlankWait = true;
 	}
-	else
-		updates = 1; // RefreshRate of 0 means to update as fast as possible
+
+	if (mRefreshRate > 0)
+		ticksPerFrame = 1000.0f / mRefreshRate;
+	int ticksSinceLastProcess = tickNow - mLastProcessTick;
+
+    mUpdateSampleCount++;
+    mUpdateSampleTimes += ticksSinceLastProcess;
+    //TODO: Turn off mVSynched based on error calculations - (?)
+
+	// Two VSync failures in a row means we set mVSyncFailed and permanently disable it
+	if (mUpdateSampleTimes >= vSyncTestingPeriod)
+	{
+		int expectedFrames = (int)(mUpdateSampleTimes / ticksPerFrame);
+		if (mUpdateSampleCount > expectedFrames * 1.5)			
+		{
+			if (!mVSynched)
+				mVSyncFailed = true;				
+			mVSynched = false;
+		}
+		else
+		{
+			if (!mVSyncFailed)
+				mVSynched = true;
+		}
+			
+		mUpdateSampleCount = 0;
+		mUpdateSampleTimes = 0;
+	}
+        		
+	mPhysFrameTimeAcc += tickNow - mLastProcessTick;
+        	
+	if (didVBlankWait)
+	{
+		// Try to keep time synced with vblank
+		if (mPhysFrameTimeAcc < physTicksPerFrame * 2)
+		{
+			float timeAdjust = physTicksPerFrame - mPhysFrameTimeAcc + 0.001f;
+			mPhysFrameTimeAcc += timeAdjust;				
+		}
+	}
+
+    /*if (updates > 2)
+        OutputDebugStrF("Updates: %d  TickDelta: %d\n", updates, tickNow - mLastProcessTick);*/	
     
-    if (updates == 0)
-    {
-        // Yield
-        BfpThread_Sleep(1);
-    }
+	// Compensate for "slow start" by limiting the number of catchup-updates we can do when starting the app
+	int maxUpdates = BF_MIN(mNumPhysUpdates + 1, mMaxUpdatesPerDraw);
+
+	while (mPhysFrameTimeAcc >= physTicksPerFrame)
+	{
+		mPhysFrameTimeAcc -= physTicksPerFrame;
+		mUpdateCntF += physTicksPerFrame / ticksPerFrame;
+	}
     	
 	static uint32 lastUpdate = BFTickCount();	
 		
@@ -202,17 +213,46 @@ void BFApp::Process()
 	}
 #endif
 
-	if (updates > 0)
+		
+	int didUpdateCnt = 0;
+	
+	if (mClientUpdateCntF - mUpdateCntF > physRefreshRate / 2)
+	{
+		// Too large of a difference, just sync
+		mClientUpdateCntF = mUpdateCntF - 1;
+	}
+
+	while ((int)mClientUpdateCntF < (int)mUpdateCntF)
+	{
+		Update(didUpdateCnt == 0);
+		didUpdateCnt++;		
+		mClientUpdateCntF = (int)mClientUpdateCntF + 1.000001;
+		if (didUpdateCnt >= maxUpdates)
+			break;
+	}
+
+	// Only attempt UpdateF updates if our rates aren't nearl) the same
+	if ((mRefreshRate != 0) && (fabs(physRefreshRate - mRefreshRate) / (float)mRefreshRate > 0.1f))
+	{
+		float updateFAmt = (float)(mUpdateCntF - mClientUpdateCntF);
+		if ((updateFAmt > 0.05f) && (updateFAmt < 1.0f) && (didUpdateCnt < maxUpdates))
+		{
+			UpdateF(updateFAmt);
+			didUpdateCnt++;
+			mClientUpdateCntF = mUpdateCntF;
+		}
+	}
+
+	if (didUpdateCnt > 0)
 		mNumPhysUpdates++;
 
-	for (int updateNum = 0; updateNum < updates; updateNum++)
+	if ((mRunning) && (didUpdateCnt == 0))
 	{
-		if (!mRunning)
-			break;
-		Update(updateNum == 0);
+		BfpThread_Sleep(1);				
 	}
 	
-	if ((mRunning) && (updates > 0))
+	if ((mRunning) && 
+		((didUpdateCnt != 0) || (mForceNextDraw)))
 		Draw();
 
 #ifdef PERIODIC_PERF_TIMING
@@ -229,6 +269,8 @@ void BFApp::Process()
 
 void BFApp::RemoveWindow(BFWindow* window)
 {
+	AutoCrit autoCrit(mCritSect);
+
 	auto itr = std::find(mWindowList.begin(), mWindowList.end(), window);
 	if (itr == mWindowList.end()) // Allow benign failure (double removal)
 		return; 

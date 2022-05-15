@@ -76,6 +76,8 @@ public:
 	virtual void			SetAsTarget() = 0;
 	virtual void			Resized() = 0;
 	virtual void			Present() = 0;
+	virtual float			GetRefreshRate() { return 60.0f; }
+	virtual bool			WaitForVBlank() { return false; }
 };
 
 const int DRAWBUFFER_IDXBUFFER_SIZE = 8*1024;
@@ -175,6 +177,14 @@ public:
 		mElementData = NULL;
 		mNumElements = 0;
 	}
+
+	VertexDefinition(VertexDefinition* src)
+	{
+		mElementData = new VertexDefData[src->mNumElements];
+		mNumElements = src->mNumElements;
+		memcpy(mElementData, src->mElementData, sizeof(VertexDefData) * mNumElements);
+	}
+
 	virtual ~VertexDefinition()
 	{
 		delete [] mElementData;
@@ -262,6 +272,7 @@ class RenderDevice
 public:	
 	Array<DrawBatch*>		mDrawBatchPool;	
 	
+	BFApp*					mApp;
 	RenderWindow*			mPhysRenderWindow;
 	RenderState*			mPhysRenderState;
 	int						mResizeCount;
@@ -283,7 +294,7 @@ public:
 public:
 	RenderDevice();
 	virtual ~RenderDevice();
-	virtual bool			Init(BFApp* app) = 0;	
+	virtual bool			Init(BFApp* app) = 0;
 	virtual void			AddRenderWindow(RenderWindow* renderWindow);
 	virtual void			RemoveRenderWindow(RenderWindow* renderWindow);
 	

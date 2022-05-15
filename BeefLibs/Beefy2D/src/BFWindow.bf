@@ -664,6 +664,11 @@ namespace Beefy
         public virtual void Update()
         {            
         }
+
+		public virtual void UpdateF(float updatePct)
+		{
+
+		}
     }
 #else
     public class BFWindow : BFWindowBase, IStudioClientWindow

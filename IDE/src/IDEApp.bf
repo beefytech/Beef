@@ -11767,7 +11767,6 @@ namespace IDE
         public override void Init()
         {
 			scope AutoBeefPerf("IDEApp.Init");
-
 			//int zag = 123;
 
 			if (mVerbosity == .Default)
@@ -14203,7 +14202,7 @@ namespace IDE
 			//mDebugger.InitiateHotResolve(.ActiveMethods | .Allocations);
         }
 
-        public override void Draw()
+        public override void Draw(bool forceDraw)
         {
 			scope AutoBeefPerf("IDEApp.Draw");
 #if CLI
@@ -14213,7 +14212,7 @@ namespace IDE
 			if (mBfResolveSystem != null)
 			{
 	            mBfResolveSystem.PerfZoneStart("IDEApp.Draw");
-	            base.Draw();
+	            base.Draw(forceDraw);
 	            mBfResolveSystem.PerfZoneEnd();
 	            if (mBfResolveSystem.mIsTiming)
 	            {
@@ -14222,7 +14221,7 @@ namespace IDE
 	            }
 			}
 			else
-				base.Draw();
+				base.Draw(forceDraw);
         }
 
         public void DrawSquiggle(Graphics g, float x, float y, float width)

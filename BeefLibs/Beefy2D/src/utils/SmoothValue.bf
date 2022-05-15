@@ -37,9 +37,9 @@ namespace Beefy.utils
             get { return mPct != 1.0f; }
         }
 
-        public void Update()
+        public void Update(float updatePct = 1.0f)
         {
-            mPct = Math.Min(1.0f, mPct + mSpeed * mSpeedScale);
+            mPct = Math.Min(1.0f, mPct + mSpeed * mSpeedScale * updatePct);
         }
 
         public void Set(double val, bool immediate = false)

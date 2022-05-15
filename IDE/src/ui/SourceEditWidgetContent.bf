@@ -6508,7 +6508,7 @@ namespace IDE.ui
 			}
 		}
 
-		public void UpdateCollapse()
+		public void UpdateCollapse(float updatePct)
 		{
 			MarkDirty();
 
@@ -6564,9 +6564,12 @@ namespace IDE.ui
 					{
 						if (emitEmbed.mIsOpen)
 						{
-							emitEmbed.mOpenPct = Math.Min(1.0f, emitEmbed.mOpenPct + 0.1f);
+							emitEmbed.mOpenPct = Math.Min(1.0f, emitEmbed.mOpenPct + 0.1f * updatePct);
 							if (emitEmbed.mOpenPct != 1.0f)
+							{
 								mCollapseNeedsUpdate = true;
+								mWidgetWindow.mTempWantsUpdateF = true;
+							}
 
 							if (emitEmbed.mView == null)
 							{
@@ -6577,7 +6580,7 @@ namespace IDE.ui
 						}
 						else
 						{
-							emitEmbed.mOpenPct = Math.Max(0.0f, emitEmbed.mOpenPct - 0.1f);
+							emitEmbed.mOpenPct = Math.Max(0.0f, emitEmbed.mOpenPct - 0.1f * updatePct);
 							if (emitEmbed.mOpenPct == 0.0f)
 							{
 								if (emitEmbed.mView != null)
@@ -6587,7 +6590,10 @@ namespace IDE.ui
 								}
 							}
 							else
+							{
 								mCollapseNeedsUpdate = true;
+								mWidgetWindow.mTempWantsUpdateF = true;
+							}
 						}
 					}
 				}
@@ -6664,13 +6670,14 @@ namespace IDE.ui
 			var entry = mOrderedCollapseEntries[animIdx];
 			if ((entry.mIsOpen) && (entry.mOpenPct < 1.0f))
 			{
-				entry.mOpenPct = Math.Min(entry.mOpenPct + animSpeed, 1.0f);
+				entry.mOpenPct = Math.Min(entry.mOpenPct + animSpeed * updatePct, 1.0f);
+				mWidgetWindow.mTempWantsUpdateF = true;
 			}
 
 			if ((!entry.mIsOpen) && (entry.mOpenPct > 0))
 			{
-				entry.mOpenPct = Math.Max(entry.mOpenPct - animSpeed, 0.0f);
-
+				entry.mOpenPct = Math.Max(entry.mOpenPct - animSpeed * updatePct, 0.0f);
+				mWidgetWindow.mTempWantsUpdateF = true;
 				if (entry.mOpenPct == 0.0f)
 					FinishCollapseClose(animIdx, entry);
 			}

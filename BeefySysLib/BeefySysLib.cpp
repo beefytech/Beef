@@ -210,9 +210,10 @@ BF_EXPORT const char* BF_CALLTYPE BFApp_GetDataDir()
 	return gBFApp->mDataDir.c_str();
 }
 
-BF_EXPORT void BF_CALLTYPE BFApp_SetCallbacks(BFApp_UpdateFunc updateFunc, BFApp_DrawFunc drawFunc)
+BF_EXPORT void BF_CALLTYPE BFApp_SetCallbacks(BFApp_UpdateFunc updateFunc, BFApp_UpdateFFunc updateFFunc, BFApp_DrawFunc drawFunc)
 {
 	gBFApp->mUpdateFunc = updateFunc;
+	gBFApp->mUpdateFFunc = updateFFunc;
 	gBFApp->mDrawFunc = drawFunc;
 	//public delegate void UpdateProc();
 }
@@ -274,6 +275,11 @@ BF_EXPORT BFInputDevice* BFApp_CreateInputDevice(const char* guid)
 BF_EXPORT BFSoundManager* BF_CALLTYPE BFApp_GetSoundManager()
 {
 	return gBFApp->GetSoundManager();
+}
+
+BF_EXPORT intptr BF_CALLTYPE BFApp_GetCriticalThreadId(int idx)
+{
+	return gBFApp->GetCriticalThreadId(idx);
 }
 
 ///

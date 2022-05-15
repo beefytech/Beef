@@ -32,7 +32,7 @@ typedef Dictionary<HMENU, WinBFMenu*> WinHMenuMap;
 
 class WinBFWindow : public BFWindow
 {
-public:
+public:	
 	HWND					mHWnd;	
 	bool					mIsMouseInside;		
 	WinMenuIDMap			mMenuIDMap;
@@ -93,13 +93,19 @@ public:
 
 class WinBFApp : public BFApp
 {
-public:
+public:	
 	bool					mInMsgProc;
 	StringToUIntMap			mClipboardFormatMap;
 	DSoundManager*			mDSoundManager;
 	DInputManager*			mDInputManager;
-	
+	BfpThreadId				mVSyncThreadId;
+	BfpThread*				mVSyncThread;	
+	volatile bool			mClosing;
+
 protected:
+	void					VSyncThreadProc();
+	static void BFP_CALLTYPE VSyncThreadProcThunk(void* ptr);
+
 	virtual void			Draw() override;	
 	virtual void			PhysSetCursor() override;
 	
@@ -107,10 +113,11 @@ protected:
 
 public:
 	WinBFApp();
-	virtual ~WinBFApp();
+	virtual ~WinBFApp();	
 
 	virtual void			Init() override;
-	virtual void			Run() override;		
+	virtual void			Run() override;	
+	virtual void			Process() override;
 
 	virtual void			GetDesktopResolution(int& width, int& height) override;
 	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) override;
@@ -129,6 +136,8 @@ public:
 	virtual BFSysBitmap*	LoadSysBitmap(const WCHAR* fileName) override;
 
 	virtual BFSoundManager* GetSoundManager() override;
+
+	virtual intptr			GetCriticalThreadId(int idx) override;
 };
 
 NS_BF_END;

@@ -600,6 +600,9 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 		switch (uMsg)
 		{		
+		case WM_DISPLAYCHANGE:
+			((DXRenderWindow*)mRenderWindow)->mRefreshRate = 0;
+			break;
 		case WM_SIZE:
 			mRenderWindow->Resized();
 			if (mMovedFunc != NULL)
@@ -986,7 +989,6 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		case WM_SYSKEYDOWN:
 		case WM_KEYDOWN:
 			{
-
 				mIsMenuKeyHandled = false;
 				int keyCode = (int) wParam;
 				if (keyCode == VK_APPS)
@@ -995,8 +997,13 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				if ((mKeyLayoutHasAltGr) && (keyCode == VK_MENU) && ((lParam & 0x01000000) != 0))
 					keyCode = VK_RMENU;
 
-				mIsKeyDown[keyCode] = true;				
+				mIsKeyDown[keyCode] = true;
 				
+// 				if ((keyCode == 192) && (mIsKeyDown[VK_MENU]))
+// 				{
+// 					((DXRenderDevice*)mRenderWindow->mRenderDevice)->mNeedsReinitNative = true;
+// 				}
+
 				for (auto kv : *menuIDMap)
 				{
 					WinBFMenu* aMenu = kv.mValue;
@@ -1275,10 +1282,71 @@ WinBFApp::WinBFApp()
 	mInMsgProc = false;
 	mDSoundManager = NULL;
 	mDInputManager = NULL;	
+
+	mVSyncThreadId = 0;
+	mClosing = false;
+	mVSyncActive = false;
+	mVSyncThread = BfpThread_Create(VSyncThreadProcThunk, (void*)this, 128 * 1024, BfpThreadCreateFlag_StackSizeReserve, &mVSyncThreadId);
+	BfpThread_SetPriority(mVSyncThread, BfpThreadPriority_High, NULL);
+}
+
+void BFP_CALLTYPE WinBFApp::VSyncThreadProcThunk(void* ptr)
+{
+	((WinBFApp*)ptr)->VSyncThreadProc();
+}
+
+void WinBFApp::VSyncThreadProc()
+{
+	while (!mClosing)
+	{
+		bool didWait = false;
+
+		IDXGIOutput* output = NULL;
+
+		//
+		{
+			AutoCrit autoCrit(mCritSect);
+			if ((mRenderDevice != NULL) && (!mRenderDevice->mRenderWindowList.IsEmpty()))
+			{
+				auto renderWindow = (DXRenderWindow*)mRenderDevice->mRenderWindowList[0];				
+				renderWindow->mDXSwapChain->GetContainingOutput(&output);				
+			}
+		}
+
+		if (output != NULL)
+		{
+			DWORD start = GetTickCount();
+			bool success = output->WaitForVBlank() == 0;
+			int elapsed = (int)(GetTickCount() - start);
+			if (elapsed >= 20)
+			{
+				NOP;
+			}
+
+			if (success)
+			{
+				didWait = true;
+				mVSyncActive = true;
+				mVSyncEvent.Set();
+			}
+
+			output->Release();
+		}
+
+		if (!didWait)		
+		{
+			mVSyncActive = false;
+			BfpThread_Sleep(20);
+		}
+	}
 }
 
 WinBFApp::~WinBFApp()
 {	
+	mClosing = true;
+	BfpThread_WaitFor(mVSyncThread, -1);
+	BfpThread_Release(mVSyncThread);
+
 	delete mRenderDevice;
 	delete mDSoundManager;
 	delete mDInputManager;
@@ -1287,6 +1355,8 @@ WinBFApp::~WinBFApp()
 void WinBFApp::Init()
 {	
 	BP_ZONE("WinBFApp::Init");
+
+	AutoCrit autoCrit(mCritSect);
 
 	mRunning = true;
 	mInMsgProc = false;
@@ -1311,10 +1381,23 @@ void WinBFApp::Run()
 	}	
 }
 
+void WinBFApp::Process()
+{
+	BFApp::Process();
+
+	auto dxRenderDevice = (DXRenderDevice*)mRenderDevice;
+	if (dxRenderDevice->mNeedsReinitNative)
+	{
+		dxRenderDevice->mNeedsReinitNative = false;
+		dxRenderDevice->ReinitNative();
+		mForceNextDraw = true;
+	}
+}
+
 void WinBFApp::Draw()
 {
 	mRenderDevice->FrameStart();	
-	BFApp::Draw();	
+	BFApp::Draw();
 	mRenderDevice->FrameEnd();	
 }
 
@@ -1392,6 +1475,8 @@ void WinBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fro
 
 BFWindow* WinBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {	
+	AutoCrit autoCrit(mCritSect);
+
 	BFWindow* aWindow = new WinBFWindow(parent, title, x, y, width, height, windowFlags);
 	mWindowList.push_back(aWindow);
 	
@@ -2023,6 +2108,13 @@ BFSoundManager* WinBFApp::GetSoundManager()
 	if (mDSoundManager == NULL)
 		mDSoundManager = new DSoundManager(NULL);
 	return mDSoundManager;
+}
+
+intptr WinBFApp::GetCriticalThreadId(int idx)
+{
+	if (idx == 0)
+		return mVSyncThreadId;
+	return 0;
 }
 
 void WinBFWindow::ModalsRemoved()

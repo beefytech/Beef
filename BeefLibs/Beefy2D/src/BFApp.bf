@@ -45,7 +45,8 @@ namespace Beefy
 #endif
     {
         public delegate void UpdateDelegate(bool batchStart);
-        public delegate void DrawDelegate();
+		public delegate void UpdateFDelegate(float updatePct);
+        public delegate void DrawDelegate(bool forceDraw);
 
         public static BFApp sApp;
         public int32 mUpdateCnt;
@@ -106,7 +107,7 @@ namespace Beefy
         static extern void BFApp_Shutdown();
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void BFApp_SetCallbacks(void* updateDelegate, void* drawDelegate);
+        static extern void BFApp_SetCallbacks(void* updateDelegate, void* updateFDelegate, void* drawDelegate);
 
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BFApp_GetInstallDir();
@@ -132,7 +133,11 @@ namespace Beefy
 		[CallingConvention(.Stdcall), CLink]
 		public static extern void* BFApp_GetSoundManager();
 
+		[CallingConvention(.Stdcall), CLink]
+		public static extern int BFApp_GetCriticalThreadId(int32 idx);
+
         UpdateDelegate mUpdateDelegate ~ delete _;
+		UpdateFDelegate mUpdateFDelegate ~ delete _;
         DrawDelegate mDrawDelegate ~ delete _;
 		
 #if STUDIO_CLIENT
@@ -165,15 +170,20 @@ namespace Beefy
 		}
 #endif
         
-        static void Static_Draw()
+        static void Static_Draw(bool forceDraw)
         {
-            sApp.Draw();
+            sApp.Draw(forceDraw);
         }
         
         static void Static_Update(bool batchStart)
         {
             sApp.Update(batchStart);
         }
+
+		static void Static_UpdateF(float updatePct)
+		{
+		    sApp.UpdateF(updatePct);
+		}
 
         float mLastUpdateDelta; // In seconds
 
@@ -198,9 +208,10 @@ namespace Beefy
             BFApp_SetRefreshRate(mRefreshRate);
 			
 			mUpdateDelegate = new => Static_Update;
-			mDrawDelegate = new => Static_Draw;			
+			mUpdateFDelegate = new => Static_UpdateF;
+			mDrawDelegate = new => Static_Draw;
 #endif
-            BFApp_SetCallbacks(mUpdateDelegate.GetFuncPtr(), mDrawDelegate.GetFuncPtr());
+            BFApp_SetCallbacks(mUpdateDelegate.GetFuncPtr(), mUpdateFDelegate.GetFuncPtr(),  mDrawDelegate.GetFuncPtr());
         }
 
 #if STUDIO_CLIENT
@@ -515,6 +526,14 @@ namespace Beefy
                 structuredData.Load(resFileName);
                 mResourceManager.ParseConfigData(structuredData);
             }
+
+			for (int32 i = 0; true; i++)
+			{
+				int threadId = BFApp_GetCriticalThreadId(i);
+				if (threadId == 0)
+					break;
+				GC.ExcludeThreadId(threadId);
+			}
         }
 
         public void InitGraphics()
@@ -671,6 +690,14 @@ namespace Beefy
             //Utils.BFRT_CPP("gBFGC.MutatorSectionExit()");
         }        
 
+		public virtual void UpdateF(float updatePct)
+		{
+			for (int32 windowIdx = 0; windowIdx < mWindows.Count; windowIdx++)
+			{
+			    mWindows[windowIdx].UpdateF(updatePct);
+			}
+		}
+
         public virtual void DoDraw()
         {
         }
@@ -695,12 +722,11 @@ namespace Beefy
         }
 #endif
         
-        public virtual void Draw()
+        public virtual void Draw(bool forceDraw)
         {
 #if STUDIO_CLIENT            
             
-#endif            
-
+#endif
             PerfTimer.ZoneStart("BFApp.Draw");
             PerfTimer.Message("Client Draw Start");
 
@@ -716,7 +742,8 @@ namespace Beefy
 
             for (BFWindow window in mWindows)
             {
-                if ((window.mVisible) && ((window.mIsDirty) || (mAutoDirty)))
+                if ((window.mVisible) &&
+					((window.mIsDirty) || (mAutoDirty) || (forceDraw)))
                 {
                     window.PreDraw(mGraphics);
 					if (mColorMatrix != null)

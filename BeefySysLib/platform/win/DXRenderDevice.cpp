@@ -18,6 +18,7 @@ using namespace DirectX;
 //#include <D3DX11async.h>
 //#include <D3DX10math.h>
 //#include <DxErr.h>
+#include <dxgi1_3.h>
 #pragma warning(pop)
 
 #include "util/AllocDebug.h"
@@ -192,6 +193,7 @@ void DXShaderParam::SetFloat4(float x, float y, float z, float w)
 DXShader::DXShader()
 {
 	//? mD3DEffect = NULL;
+	mVertexDef = NULL;
 	mD3DPixelShader = NULL;
 	mD3DVertexShader = NULL;
 	mD3DLayout = NULL;
@@ -201,23 +203,233 @@ DXShader::DXShader()
 
 DXShader::~DXShader()
 {
-	DXShaderParamMap::iterator itr = mParamsMap.begin();
-	while (itr != mParamsMap.end())
-	{
-		delete itr->second;
-		++itr;
-	}
-	if (mD3DLayout != NULL)
-		mD3DLayout->Release();
-	if (mD3DVertexShader != NULL)
-		mD3DVertexShader->Release();
-	if (mD3DPixelShader != NULL)
-		mD3DPixelShader->Release();
-	if (mConstBuffer != NULL)
-		mConstBuffer->Release();
-
+	delete mVertexDef;
+	ReleaseNative();
+		
 	//? if (mD3DEffect != NULL)
 	//? 	mD3DEffect->Release();	
+}
+
+void DXShader::ReleaseNative()
+{
+	if (mD3DLayout != NULL)
+		mD3DLayout->Release();
+	mD3DLayout = NULL;
+	if (mD3DVertexShader != NULL)
+		mD3DVertexShader->Release();
+	mD3DVertexShader = NULL;
+	if (mD3DPixelShader != NULL)
+		mD3DPixelShader->Release();
+	mD3DPixelShader = NULL;
+	if (mConstBuffer != NULL)
+		mConstBuffer->Release();
+	mConstBuffer = NULL;
+}
+
+extern "C"
+typedef HRESULT(WINAPI* Func_D3DX10CompileFromFileW)(LPCWSTR pSrcFile, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
+	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
+
+static Func_D3DX10CompileFromFileW gFunc_D3DX10CompileFromFileW;
+
+static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
+{
+	HRESULT hr;
+	String outObj = filePath + "_" + entry + "_" + profile;
+
+	bool useCache = false;
+	auto srcDate = ::BfpFile_GetTime_LastWrite(filePath.c_str());
+	auto cacheDate = ::BfpFile_GetTime_LastWrite(outObj.c_str());
+	if (cacheDate >= srcDate)
+		useCache = true;
+
+	if (!useCache)
+	{
+		if (gFunc_D3DX10CompileFromFileW == NULL)
+		{
+			auto lib = LoadLibraryA("D3DCompiler_47.dll");
+			if (lib != NULL)
+				gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
+		}
+
+		if (gFunc_D3DX10CompileFromFileW == NULL)
+			useCache = true;
+	}
+
+	if (!useCache)
+	{
+		if (gFunc_D3DX10CompileFromFileW == NULL)
+		{
+			auto lib = LoadLibraryA("D3DCompiler_47.dll");
+			if (lib != NULL)
+				gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
+		}
+
+		ID3D10Blob* errorMessage = NULL;
+		auto dxResult = gFunc_D3DX10CompileFromFileW(UTF8Decode(filePath).c_str(), NULL, NULL, entry.c_str(), profile.c_str(),
+			D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+
+		if (DXFAILED(dxResult))
+		{
+			if (errorMessage != NULL)
+			{
+				BF_FATAL(StrFormat("Vertex shader load failed: %s", (char*)errorMessage->GetBufferPointer()).c_str());
+				errorMessage->Release();
+			}
+			else
+				BF_FATAL("Shader load failed");
+			return false;
+		}
+
+		auto ptr = (*outBuffer)->GetBufferPointer();
+		int size = (int)(*outBuffer)->GetBufferSize();
+
+		FILE* fp = fopen(outObj.c_str(), "wb");
+		if (fp != NULL)
+		{
+			fwrite(ptr, 1, size, fp);
+			fclose(fp);
+		}
+		return true;
+	}
+
+	FILE* fp = fopen(outObj.c_str(), "rb");
+	if (fp == NULL)
+	{
+		BF_FATAL("Failed to load compiled shader");
+		return false;
+	}
+
+	fseek(fp, 0, SEEK_END);
+	int size = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+	D3D10CreateBlob(size, outBuffer);
+	auto ptr = (*outBuffer)->GetBufferPointer();
+	fread(ptr, 1, size, fp);
+	fclose(fp);
+
+	return true;
+}
+
+bool DXShader::Load()
+{
+	//HRESULT hr;
+
+	ID3D10Blob* errorMessage = NULL;
+	ID3D10Blob* vertexShaderBuffer = NULL;
+	ID3D10Blob* pixelShaderBuffer = NULL;
+
+	LoadDXShader(mSrcPath + ".fx", "VS", "vs_4_0", &vertexShaderBuffer);
+	LoadDXShader(mSrcPath + ".fx", "PS", "ps_4_0", &pixelShaderBuffer);
+
+	defer(
+		{
+			vertexShaderBuffer->Release();
+			pixelShaderBuffer->Release();
+		});
+
+	mHas2DPosition = false;
+	mVertexSize = 0;
+	mD3DLayout = NULL;
+
+	static const char* semanticNames[] = {
+		"POSITION",
+		"POSITION",
+		"COLOR",
+		"TEXCOORD",
+		"NORMAL",
+		"BINORMAL",
+		"TANGENT",
+		"BLENDINDICES",
+		"BLENDWEIGHT",
+		"DEPTH",
+		"FOG",
+		"POINTSIZE",
+		"SAMPLE",
+		"TESSELLATEFACTOR" };
+
+	static const DXGI_FORMAT dxgiFormat[] = {
+		DXGI_FORMAT_R32_FLOAT/*VertexElementFormat_Single*/,
+		DXGI_FORMAT_R32G32_FLOAT/*VertexElementFormat_Vector2*/,
+		DXGI_FORMAT_R32G32B32_FLOAT/*VertexElementFormat_Vector3*/,
+		DXGI_FORMAT_R32G32B32A32_FLOAT/*VertexElementFormat_Vector4*/,
+		DXGI_FORMAT_R8G8B8A8_UNORM/*VertexElementFormat_Color*/,
+		DXGI_FORMAT_R8G8B8A8_UINT/*VertexElementFormat_Byte4*/,
+		DXGI_FORMAT_R16G16_UINT/*VertexElementFormat_Short2*/,
+		DXGI_FORMAT_R16G16B16A16_UINT/*VertexElementFormat_Short4*/,
+		DXGI_FORMAT_R16G16_UNORM/*VertexElementFormat_NormalizedShort2*/,
+		DXGI_FORMAT_R16G16B16A16_UNORM/*VertexElementFormat_NormalizedShort4*/,
+		DXGI_FORMAT_R16G16_FLOAT/*VertexElementFormat_HalfVector2*/,
+		DXGI_FORMAT_R16G16B16A16_FLOAT/*VertexElementFormat_HalfVector4*/
+	};
+
+	static const int dxgiSize[] = {
+		sizeof(float) * 1/*VertexElementFormat_Single*/,
+		sizeof(float) * 2/*VertexElementFormat_Vector2*/,
+		sizeof(float) * 3/*VertexElementFormat_Vector3*/,
+		sizeof(float) * 4/*VertexElementFormat_Vector4*/,
+		sizeof(uint32)/*VertexElementFormat_Color*/,
+		sizeof(uint8) * 4/*VertexElementFormat_Byte4*/,
+		sizeof(uint16) * 2/*VertexElementFormat_Short2*/,
+		sizeof(uint16) * 4/*VertexElementFormat_Short4*/,
+		sizeof(uint16) * 2/*VertexElementFormat_NormalizedShort2*/,
+		sizeof(uint16) * 4/*VertexElementFormat_NormalizedShort4*/,
+		sizeof(uint16) * 2/*VertexElementFormat_HalfVector2*/,
+		sizeof(uint16) * 4/*VertexElementFormat_HalfVector4*/
+	};
+
+	D3D11_INPUT_ELEMENT_DESC layout[64];
+	for (int elementIdx = 0; elementIdx < mVertexDef->mNumElements; elementIdx++)
+	{
+		VertexDefData* vertexDefData = &mVertexDef->mElementData[elementIdx];
+
+		if (vertexDefData->mUsage == VertexElementUsage_Position2D)
+			mHas2DPosition = true;
+
+		D3D11_INPUT_ELEMENT_DESC* elementDesc = &layout[elementIdx];
+		elementDesc->SemanticName = semanticNames[vertexDefData->mUsage];
+		elementDesc->SemanticIndex = vertexDefData->mUsageIndex;
+		elementDesc->Format = dxgiFormat[vertexDefData->mFormat];
+		elementDesc->InputSlot = 0;
+		elementDesc->AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+		elementDesc->InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+		elementDesc->InstanceDataStepRate = 0;
+		mVertexSize += dxgiSize[vertexDefData->mFormat];
+	}
+
+	/* =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM,  0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+	UINT numElements = sizeof(layout) / sizeof(layout[0]);*/
+	HRESULT result = mRenderDevice->mD3DDevice->CreateInputLayout(layout, mVertexDef->mNumElements, vertexShaderBuffer->GetBufferPointer(),
+		vertexShaderBuffer->GetBufferSize(), &mD3DLayout);
+	DXCHECK(result);
+	if (FAILED(result))
+		return false;
+
+	// Create the vertex shader from the buffer.
+	result = mRenderDevice->mD3DDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &mD3DVertexShader);
+	DXCHECK(result);
+	if (FAILED(result))
+		return false;
+
+	// Create the pixel shader from the buffer.
+	result = mRenderDevice->mD3DDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &mD3DPixelShader);
+	DXCHECK(result);
+	if (FAILED(result))
+		return false;	
+
+	Init();	
+	return true;
+}
+
+void DXShader::ReinitNative()
+{
+	ReleaseNative();
+	Load();
 }
 
 ShaderParam* DXShader::GetShaderParam(const StringImpl& name)
@@ -248,8 +460,8 @@ DXTexture::DXTexture()
 	mD3DRenderTargetView = NULL;	
 	mRenderDevice = NULL;
 	mD3DDepthBuffer = NULL;
-	mD3DDepthStencilView = NULL;	
-	mImageData = NULL;
+	mD3DDepthStencilView = NULL;		
+	mContentBits = NULL;
 }
 
 DXTexture::~DXTexture()
@@ -258,7 +470,7 @@ DXTexture::~DXTexture()
 		((DXRenderDevice*)mRenderDevice)->mTextureMap.Remove(mPath);
 
 	//OutputDebugStrF("DXTexture::~DXTexture %@\n", this);
-	delete mImageData;
+	delete mContentBits;
 	if (mD3DResourceView != NULL)
 		mD3DResourceView->Release();
 	if (mD3DDepthStencilView != NULL)
@@ -267,6 +479,8 @@ DXTexture::~DXTexture()
 		mD3DDepthBuffer->Release();
 	if (mD3DTexture != NULL)
 		mD3DTexture->Release();
+	if (mRenderDevice != NULL)
+		mRenderDevice->mTextures.Remove(this);
 }
 
 void DXTexture::ReleaseNative()
@@ -297,6 +511,44 @@ void DXTexture::ReleaseNative()
 
 void DXTexture::ReinitNative()
 {
+	ReleaseNative();
+
+	int aWidth = 0;
+	int aHeight = 0;
+
+	D3D11_SUBRESOURCE_DATA resData;
+	resData.pSysMem = mContentBits;
+	resData.SysMemPitch = mWidth * 4;
+	resData.SysMemSlicePitch = mWidth * mHeight * 4;
+
+	// Create the target texture
+	D3D11_TEXTURE2D_DESC desc;
+	ZeroMemory(&desc, sizeof(desc));
+	desc.Width = mWidth;
+	desc.Height = mHeight;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.CPUAccessFlags = 0;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	//OutputDebugStrF("Creating texture\n");
+
+	auto dxRenderDevice = (DXRenderDevice*)mRenderDevice;
+	
+	DXCHECK(dxRenderDevice->mD3DDevice->CreateTexture2D(&desc, (mContentBits != NULL) ? &resData : NULL, &mD3DTexture));
+	
+	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
+	srDesc.Format = desc.Format;
+	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srDesc.Texture2D.MostDetailedMip = 0;
+	srDesc.Texture2D.MipLevels = 1;
+	
+	DXCHECK(dxRenderDevice->mD3DDevice->CreateShaderResourceView(mD3DTexture, &srDesc, &mD3DResourceView));
+
+	OutputDebugStrF("DXTexture::ReinitNative %p\n", this);
 }
 
 void DXTexture::PhysSetAsTarget()
@@ -338,12 +590,24 @@ void DXTexture::Blt(ImageData* imageData, int x, int y)
 	box.front = 0;
 	box.back = 1;
 	mRenderDevice->mD3DDeviceContext->UpdateSubresource(mD3DTexture, 0, &box, imageData->mBits, imageData->mWidth * sizeof(uint32), 0);	
+
+	if (mContentBits != NULL)
+	{
+		for (int yOfs = 0; yOfs < imageData->mHeight; yOfs++)
+			memcpy(mContentBits + x + (y + yOfs) * mWidth, imageData->mBits + yOfs * imageData->mWidth, imageData->mWidth * 4);
+	}
 }
 
 void DXTexture::SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits)
 {
 	D3D11_BOX box = { (UINT)destX, (UINT)destY, (UINT)0, (UINT)(destX + destWidth), (UINT)(destY + destHeight), 1 };
 	mRenderDevice->mD3DDeviceContext->UpdateSubresource(mD3DTexture, 0, &box, bits, srcPitch * sizeof(uint32), 0);
+
+	if (mContentBits != NULL)
+	{
+		for (int y = 0; y < destHeight; y++)
+			memcpy(mContentBits + destX + (destY + y) * mWidth, bits + (y * srcPitch), destWidth * 4);
+	}
 }
 
 void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
@@ -367,7 +631,7 @@ void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int des
 	srcBox.top = srcY;
 	srcBox.right = srcX + srcWidth;
 	srcBox.bottom = srcY + srcHeight;
-	srcBox.back = 1;
+	srcBox.back = 1;	
 
 	ID3D11Texture2D *texture;
 	DXCHECK(mRenderDevice->mD3DDevice->CreateTexture2D(&texDesc, 0, &texture));
@@ -532,20 +796,18 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		{
 			HRESULT result = NULL;
 
-			D3D11_BUFFER_DESC matrixBufferDesc;
-			matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-			matrixBufferDesc.ByteWidth = sizeof(float[4]);
-			matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-			matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-			matrixBufferDesc.MiscFlags = 0;
-			matrixBufferDesc.StructureByteStride = 0;
-
-			static ID3D11Buffer* matrixBuffer = NULL;
-
-			if (matrixBuffer == NULL)
+			if (mMatrix2DBuffer == NULL)
 			{
+				D3D11_BUFFER_DESC matrixBufferDesc;
+				matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+				matrixBufferDesc.ByteWidth = sizeof(float[4]);
+				matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+				matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+				matrixBufferDesc.MiscFlags = 0;
+				matrixBufferDesc.StructureByteStride = 0;
+						
 				// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-				result = mD3DDevice->CreateBuffer(&matrixBufferDesc, NULL, &matrixBuffer);
+				result = mD3DDevice->CreateBuffer(&matrixBufferDesc, NULL, &mMatrix2DBuffer);
 				if (FAILED(result))
 				{
 					return;
@@ -554,7 +816,7 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 
 			// Lock the constant buffer so it can be written to.
 			D3D11_MAPPED_SUBRESOURCE mappedResource;
-			result = mD3DDeviceContext->Map(matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+			result = mD3DDeviceContext->Map(mMatrix2DBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 			if (FAILED(result))
 			{
 				return;
@@ -568,10 +830,10 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			dataPtr[3] = 0;
 
 			// Unlock the constant buffer.
-			mD3DDeviceContext->Unmap(matrixBuffer, 0);
+			mD3DDeviceContext->Unmap(mMatrix2DBuffer, 0);
 
 			//float params[4] = {mCurRenderTarget->mWidth, mCurRenderTarget->mHeight, 0, 0};
-			mD3DDeviceContext->VSSetConstantBuffers(0, 1, &matrixBuffer);
+			mD3DDeviceContext->VSSetConstantBuffers(0, 1, &mMatrix2DBuffer);
 		}
 	}
 
@@ -1003,7 +1265,7 @@ void DXRenderState::ReleaseNative()
 
 void DXRenderState::ReinitNative()
 {
-
+	ReleaseNative();
 }
 
 void DXRenderState::InvalidateRasterizerState() 
@@ -1264,6 +1526,8 @@ DXRenderWindow::DXRenderWindow(DXRenderDevice* renderDevice, WinBFWindow* window
 	mD3DRenderTargetView = NULL;	
 	mD3DDepthBuffer = NULL;
 	mD3DDepthStencilView = NULL;
+	mRefreshRate = 0;
+	mFrameWaitObject = NULL;	
 
 	mRenderDevice = renderDevice;
 	mDXRenderDevice = renderDevice;
@@ -1275,30 +1539,31 @@ DXRenderWindow::DXRenderWindow(DXRenderDevice* renderDevice, WinBFWindow* window
 	ReinitNative();
 }
 
-
 DXRenderWindow::~DXRenderWindow()
 {
 	ReleaseNative();
 }
 
-
 void DXRenderWindow::ReleaseNative()
 {
-	if (mD3DRenderTargetView != NULL)
-	{
+	if (mFrameWaitObject != NULL)
+		::CloseHandle(mFrameWaitObject);
+	mFrameWaitObject = NULL;
+	if (mD3DRenderTargetView != NULL)	
 		mD3DRenderTargetView->Release();
-		mD3DRenderTargetView = NULL;
-	}
-	if (mD3DBackBuffer != NULL)
-	{
+	mD3DRenderTargetView = NULL;	
+	if (mD3DBackBuffer != NULL)	
 		mD3DBackBuffer->Release();
-		mD3DBackBuffer = NULL;
-	}
-	if (mDXSwapChain != NULL)
-	{
+	mD3DBackBuffer = NULL;	
+	if (mDXSwapChain != NULL)	
 		mDXSwapChain->Release();
-		mDXSwapChain = NULL;
-	}
+	mDXSwapChain = NULL;	
+	if (mD3DRenderTargetView != NULL)
+		mD3DRenderTargetView->Release();
+	mD3DRenderTargetView = NULL;
+	if (mD3DDepthStencilView != NULL)
+		mD3DDepthStencilView->Release();
+	mD3DDepthStencilView = NULL;
 }
 
 void DXRenderWindow::ReinitNative()
@@ -1314,8 +1579,8 @@ void DXRenderWindow::ReinitNative()
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.SampleDesc.Quality = 0;
 	swapChainDesc.Windowed = mWindowed ? TRUE : FALSE;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;// DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH /*| DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT*/;
 
 	IDXGIDevice* pDXGIDevice = NULL;
 	mDXRenderDevice->mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&pDXGIDevice);
@@ -1324,6 +1589,14 @@ void DXRenderWindow::ReinitNative()
 	pDXGIDevice->Release();
 	pDXGIDevice = NULL;
 
+// 	IDXGISwapChain2* swapChain2 = NULL;
+// 	mDXSwapChain->QueryInterface(__uuidof(IDXGISwapChain2), (void**)&swapChain2);
+// 	if (swapChain2 != NULL)
+// 	{
+// 		mFrameWaitObject = swapChain2->GetFrameLatencyWaitableObject();
+// 		swapChain2->Release();
+// 	}
+	
 	DXCHECK(mDXSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mD3DBackBuffer));
 	DXCHECK(mDXRenderDevice->mD3DDevice->CreateRenderTargetView(mD3DBackBuffer, NULL, &mD3DRenderTargetView));
 
@@ -1406,7 +1679,14 @@ void DXRenderWindow::Resized()
 		mD3DDepthBuffer->Release();
 		mD3DRenderTargetView->Release();		
 		mD3DDepthStencilView->Release();
-		DXCHECK(mDXSwapChain->ResizeBuffers(0, mWidth, mHeight, DXGI_FORMAT_UNKNOWN, 0));
+
+		HRESULT hr = mDXSwapChain->ResizeBuffers(0, mWidth, mHeight, DXGI_FORMAT_UNKNOWN,
+			DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH /*| DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT*/);
+
+		if ((hr == DXGI_ERROR_DEVICE_REMOVED) || (hr == DXGI_ERROR_DEVICE_RESET))
+			((DXRenderDevice*)mRenderDevice)->mNeedsReinitNative = true;
+		else
+			DXCHECK(hr);
 		
 		D3D11_TEXTURE2D_DESC descDepth;
 		ZeroMemory(&descDepth, sizeof(descDepth));
@@ -1435,8 +1715,10 @@ void DXRenderWindow::Resized()
 
 void DXRenderWindow::Present()
 {	
-	mDXSwapChain->Present((mWindow->mFlags & BFWINDOW_VSYNC) ? 1 : 0, 0);
-	//DXCHECK();
+	HRESULT hr = mDXSwapChain->Present((mWindow->mFlags & BFWINDOW_VSYNC) ? 1 : 0, 0);
+
+	if ((hr == DXGI_ERROR_DEVICE_REMOVED) || (hr == DXGI_ERROR_DEVICE_RESET))
+		((DXRenderDevice*)mRenderDevice)->mNeedsReinitNative = true;
 }
 
 void DXRenderWindow::CopyBitsTo(uint32* dest, int width, int height)
@@ -1476,28 +1758,110 @@ void DXRenderWindow::CopyBitsTo(uint32* dest, int width, int height)
 	texture->Release();
 }
 
+float DXRenderWindow::GetRefreshRate()
+{
+	if (mRefreshRate == 0)
+	{
+		mRefreshRate = -1;
+
+		IDXGIOutput* output = NULL;
+		mDXSwapChain->GetContainingOutput(&output);
+		if (output != NULL)
+		{
+			DXGI_OUTPUT_DESC outputDesc;
+			output->GetDesc(&outputDesc);
+
+			MONITORINFOEXW info;
+			info.cbSize = sizeof(info);
+			// get the associated monitor info
+			if (GetMonitorInfoW(outputDesc.Monitor, &info) != 0)
+			{
+				// using the CCD get the associated path and display configuration
+				UINT32 requiredPaths, requiredModes;
+				if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &requiredPaths, &requiredModes) == ERROR_SUCCESS)
+				{
+					std::vector<DISPLAYCONFIG_PATH_INFO> paths(requiredPaths);
+					std::vector<DISPLAYCONFIG_MODE_INFO> modes2(requiredModes);
+					if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &requiredPaths, paths.data(), &requiredModes, modes2.data(), nullptr) == ERROR_SUCCESS)
+					{
+						// iterate through all the paths until find the exact source to match
+						for (auto& p : paths)
+						{
+							DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName;
+							sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+							sourceName.header.size = sizeof(sourceName);
+							sourceName.header.adapterId = p.sourceInfo.adapterId;
+							sourceName.header.id = p.sourceInfo.id;
+							if (DisplayConfigGetDeviceInfo(&sourceName.header) == ERROR_SUCCESS)
+							{
+								// find the matched device which is associated with current device 
+								// there may be the possibility that display may be duplicated and windows may be one of them in such scenario
+								// there may be two callback because source is same target will be different
+								// as window is on both the display so either selecting either one is ok
+								if (wcscmp(info.szDevice, sourceName.viewGdiDeviceName) == 0)
+								{
+									// get the refresh rate
+									UINT numerator = p.targetInfo.refreshRate.Numerator;
+									UINT denominator = p.targetInfo.refreshRate.Denominator;
+									mRefreshRate = (float)numerator / (float)denominator;
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			output->Release();
+		}
+	}
+
+	return mRefreshRate;
+}
+
+bool DXRenderWindow::WaitForVBlank()
+{
+	IDXGIOutput* output = NULL;
+	mDXSwapChain->GetContainingOutput(&output);
+	if (output == NULL)
+		return false;		
+	bool success = output->WaitForVBlank() == 0;
+	return success;
+}
+
 ///
 
 DXRenderDevice::DXRenderDevice()
 {	
-	mD3DDevice = NULL;
-	
+	mD3DDevice = NULL;	
+	mNeedsReinitNative = false;
+	mMatrix2DBuffer = NULL;
 }
 
 DXRenderDevice::~DXRenderDevice()
 {
-	for (auto& kv : mTextureMap)
-		kv.mValue->mRenderDevice = NULL;
+	for (auto window : mRenderWindowList)
+		((DXRenderWindow*)window)->ReleaseNative();
+	for (auto shader : mShaders)
+		shader->ReleaseNative();
+	for (auto renderState : mRenderStates)
+		renderState->ReleaseNative();
+	for (auto texture : mTextures)
+	{
+		texture->ReleaseNative();
+		texture->mRenderDevice = NULL;
+	}
 
-	mD3DVertexBuffer->Release();
-	mD3DIndexBuffer->Release();
-	delete mDefaultRenderState;
+	ReleaseNative();	
+	
+	delete mDefaultRenderState;	
 }
 
 bool DXRenderDevice::Init(BFApp* app)
 {
 	BP_ZONE("DXRenderDevice::Init");
 
+	mApp = app;
 	WinBFApp* winApp = (WinBFApp*) app;
 	
 	D3D_FEATURE_LEVEL featureLevelArr[] =
@@ -1626,6 +1990,9 @@ void DXRenderDevice::ReleaseNative()
 {
 	mD3DVertexBuffer->Release();
 	mD3DVertexBuffer = NULL;
+	if (mMatrix2DBuffer != NULL)
+		mMatrix2DBuffer->Release();
+	mMatrix2DBuffer = NULL;
 	mD3DIndexBuffer->Release();
 	mD3DIndexBuffer = NULL;
 	mD3DNormalBlendState->Release();
@@ -1636,20 +2003,37 @@ void DXRenderDevice::ReleaseNative()
 	mD3DWrapSamplerState = NULL;
 	mD3DDeviceContext->Release();
 	mD3DDeviceContext = NULL;
+
+// 	ID3D11Debug* debug = NULL;
+// 	mD3DDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&debug);
+// 	if (debug != NULL)
+// 	{
+// 		debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+// 		debug->Release();
+// 	}
+
 	mD3DDevice->Release();
 	mD3DDevice = NULL;
 }
 
 void DXRenderDevice::ReinitNative()
 {
-	Init(NULL);
+	AutoCrit autoCrit(mApp->mCritSect);
+
+	if (mMatrix2DBuffer != NULL)
+		mMatrix2DBuffer->Release();
+	mMatrix2DBuffer = NULL;
+	
+	Init(mApp);
 	
 	for (auto window : mRenderWindowList)
 		((DXRenderWindow*)window)->ReinitNative();
-	for (auto kv : mRenderStates)
-		kv->ReinitNative();
-	for (auto kv : mRenderStates)
-		kv->ReinitNative();
+	for (auto shader : mShaders)
+		shader->ReinitNative();
+	for (auto renderState : mRenderStates)
+		renderState->ReinitNative();
+	for (auto tex : mTextures)
+		tex->ReinitNative();
 }
 
 void DXRenderDevice::FrameStart()
@@ -1918,6 +2302,10 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	DXCHECK(mD3DDevice->CreateShaderResourceView(d3DTexture, &srDesc, &d3DShaderResourceView));
 
 	DXTexture* aTexture = new DXTexture();
+
+	aTexture->mContentBits = new uint32[aWidth * aHeight];
+	memcpy(aTexture->mContentBits, imageData->mBits, aWidth * aHeight * 4);
+
 	aTexture->mRenderDevice = this;
 	aTexture->mWidth = aWidth;
 	aTexture->mHeight = aHeight;	
@@ -1976,204 +2364,21 @@ Texture* DXRenderDevice::CreateDynTexture(int width, int height)
 	return aTexture;
 }
 
-extern "C"
-typedef HRESULT (WINAPI* Func_D3DX10CompileFromFileW)(LPCWSTR pSrcFile, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
-	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
-
-static Func_D3DX10CompileFromFileW gFunc_D3DX10CompileFromFileW;
-
-static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
-{
-	HRESULT hr;
-	String outObj = filePath + "_" + entry + "_" + profile;
-
-	bool useCache = false;
-	auto srcDate = ::BfpFile_GetTime_LastWrite(filePath.c_str());
-	auto cacheDate = ::BfpFile_GetTime_LastWrite(outObj.c_str());
-	if (cacheDate >= srcDate)
-		useCache = true;
-
-	if (!useCache)
-	{
-		if (gFunc_D3DX10CompileFromFileW == NULL)
-		{
-			auto lib = LoadLibraryA("D3DCompiler_47.dll");
-			if (lib != NULL)
-				gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
-		}
-
-		if (gFunc_D3DX10CompileFromFileW == NULL)
-			useCache = true;
-	}
-
-	if (!useCache)
-	{
-		if (gFunc_D3DX10CompileFromFileW == NULL)
-		{
-			auto lib = LoadLibraryA("D3DCompiler_47.dll");
-			if (lib != NULL)
-				gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
-		}
-
-		ID3D10Blob* errorMessage = NULL;
-		auto dxResult = gFunc_D3DX10CompileFromFileW(UTF8Decode(filePath).c_str(), NULL, NULL, entry.c_str(), profile.c_str(),
-			D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
-
-		if (DXFAILED(dxResult))
-		{
-			if (errorMessage != NULL)
-			{
-				BF_FATAL(StrFormat("Vertex shader load failed: %s", (char*)errorMessage->GetBufferPointer()).c_str());
-				errorMessage->Release();
-			}
-			else
-				BF_FATAL("Shader load failed");
-			return false;
-		}
-
-		auto ptr = (*outBuffer)->GetBufferPointer();
-		int size = (int)(*outBuffer)->GetBufferSize();
-
-		FILE* fp = fopen(outObj.c_str(), "wb");
-		if (fp != NULL)
-		{
-			fwrite(ptr, 1, size, fp);
-			fclose(fp);
-		}
-		return true;
-	}
-	
-	FILE* fp = fopen(outObj.c_str(), "rb");
-	if (fp == NULL)
-	{
-		BF_FATAL("Failed to load compiled shader");
-		return false;
-	}
-	
-	fseek(fp, 0, SEEK_END);
-	int size = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	D3D10CreateBlob(size, outBuffer);		
-	auto ptr = (*outBuffer)->GetBufferPointer();
-	fread(ptr, 1, size, fp);
-	fclose(fp);
-	
-	return true;
-}
-
 Shader* DXRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition)
 {
 	BP_ZONE("DXRenderDevice::LoadShader");
 
-	//HRESULT hr;
-	
-	ID3D10Blob* errorMessage = NULL;
-	ID3D10Blob* vertexShaderBuffer = NULL;
-	ID3D10Blob* pixelShaderBuffer = NULL;
-
-	LoadDXShader(fileName + ".fx", "VS", "vs_4_0", &vertexShaderBuffer);
-	LoadDXShader(fileName + ".fx", "PS", "ps_4_0", &pixelShaderBuffer);
-
 	DXShader* dxShader = new DXShader();
-
-	dxShader->mVertexSize = 0;
-	dxShader->mD3DLayout = NULL;
-
-	static const char* semanticNames[] = {
-		"POSITION",
-		"POSITION",
-		"COLOR",
-		"TEXCOORD",
-		"NORMAL",
-		"BINORMAL",
-		"TANGENT",
-		"BLENDINDICES",
-		"BLENDWEIGHT",
-		"DEPTH",
-		"FOG",
-		"POINTSIZE",
-		"SAMPLE",
-		"TESSELLATEFACTOR"};
-
-	static const DXGI_FORMAT dxgiFormat[] = {
-		DXGI_FORMAT_R32_FLOAT/*VertexElementFormat_Single*/,
-		DXGI_FORMAT_R32G32_FLOAT/*VertexElementFormat_Vector2*/,
-		DXGI_FORMAT_R32G32B32_FLOAT/*VertexElementFormat_Vector3*/,
-		DXGI_FORMAT_R32G32B32A32_FLOAT/*VertexElementFormat_Vector4*/,
-		DXGI_FORMAT_R8G8B8A8_UNORM/*VertexElementFormat_Color*/,
-		DXGI_FORMAT_R8G8B8A8_UINT/*VertexElementFormat_Byte4*/,
-		DXGI_FORMAT_R16G16_UINT/*VertexElementFormat_Short2*/,
-		DXGI_FORMAT_R16G16B16A16_UINT/*VertexElementFormat_Short4*/,
-		DXGI_FORMAT_R16G16_UNORM/*VertexElementFormat_NormalizedShort2*/,
-		DXGI_FORMAT_R16G16B16A16_UNORM/*VertexElementFormat_NormalizedShort4*/,
-		DXGI_FORMAT_R16G16_FLOAT/*VertexElementFormat_HalfVector2*/,
-		DXGI_FORMAT_R16G16B16A16_FLOAT/*VertexElementFormat_HalfVector4*/
-	};
-
-	static const int dxgiSize[] = {
-		sizeof(float) * 1/*VertexElementFormat_Single*/,
-		sizeof(float) * 2/*VertexElementFormat_Vector2*/,
-		sizeof(float) * 3/*VertexElementFormat_Vector3*/,
-		sizeof(float) * 4/*VertexElementFormat_Vector4*/,
-		sizeof(uint32)/*VertexElementFormat_Color*/,
-		sizeof(uint8) * 4/*VertexElementFormat_Byte4*/,
-		sizeof(uint16) * 2/*VertexElementFormat_Short2*/,
-		sizeof(uint16) * 4/*VertexElementFormat_Short4*/,
-		sizeof(uint16) * 2/*VertexElementFormat_NormalizedShort2*/,
-		sizeof(uint16) * 4/*VertexElementFormat_NormalizedShort4*/,
-		sizeof(uint16) * 2/*VertexElementFormat_HalfVector2*/,
-		sizeof(uint16) * 4/*VertexElementFormat_HalfVector4*/
-	};
-
-	D3D11_INPUT_ELEMENT_DESC layout[64];
-	for (int elementIdx = 0; elementIdx < vertexDefinition->mNumElements; elementIdx++)
+	dxShader->mRenderDevice = this;
+	dxShader->mSrcPath = fileName;
+	dxShader->mVertexDef = new VertexDefinition(vertexDefinition);
+	if (!dxShader->Load())
 	{
-		VertexDefData* vertexDefData = &vertexDefinition->mElementData[elementIdx];
-
-		if (vertexDefData->mUsage == VertexElementUsage_Position2D)
-			dxShader->mHas2DPosition = true;
-
-		D3D11_INPUT_ELEMENT_DESC* elementDesc = &layout[elementIdx];
-		elementDesc->SemanticName = semanticNames[vertexDefData->mUsage];
-		elementDesc->SemanticIndex = vertexDefData->mUsageIndex;
-		elementDesc->Format = dxgiFormat[vertexDefData->mFormat];
-		elementDesc->InputSlot = 0;
-		elementDesc->AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-		elementDesc->InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-		elementDesc->InstanceDataStepRate = 0;
-		dxShader->mVertexSize += dxgiSize[vertexDefData->mFormat];
+		delete dxShader;
+		return NULL;
 	}
-	
-	/* =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM,  0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-	UINT numElements = sizeof(layout) / sizeof(layout[0]);*/
-	HRESULT result = mD3DDevice->CreateInputLayout(layout, vertexDefinition->mNumElements, vertexShaderBuffer->GetBufferPointer(),
-		vertexShaderBuffer->GetBufferSize(), &dxShader->mD3DLayout);
-	DXCHECK(result);
-	if (FAILED(result))
-		return NULL;
-
-	// Create the vertex shader from the buffer.
-	result = mD3DDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &dxShader->mD3DVertexShader);
-	DXCHECK(result);
-	if (FAILED(result))	
-		return NULL;
-
-	// Create the pixel shader from the buffer.
-	result = mD3DDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &dxShader->mD3DPixelShader);
-	DXCHECK(result);
-	if (FAILED(result))	
-		return NULL;
-	
-	vertexShaderBuffer->Release();
-	pixelShaderBuffer->Release();
-	
-	dxShader->Init();
-	return dxShader;	
+	mShaders.Add(dxShader);
+	return dxShader;
 }
 
 void DXRenderDevice::SetRenderState(RenderState* renderState)

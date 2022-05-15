@@ -62,6 +62,7 @@ RenderDevice::RenderDevice() :
 	mCurRenderTarget = NULL;		
 	mCurDrawLayer = NULL;
 	mPhysRenderWindow = NULL;	
+	mApp = NULL;
 }
 
 RenderDevice::~RenderDevice()

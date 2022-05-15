@@ -133,6 +133,8 @@ namespace System
 		public extern static void SetMaxPausePercentage(int maxPausePercentage); // 0 = disabled. Defaults to 20.
 		[CallingConvention(.Cdecl)]
 		extern static void AddPendingThread(void* internalThread);
+		[CallingConvention(.Cdecl)]
+		public extern static void ExcludeThreadId(int thereadId);
 #else
 		public static void Collect(bool async = true) {}
 		private static void MarkAllStaticMembers() {}
@@ -144,6 +146,7 @@ namespace System
 		public static void SetCollectFreeThreshold(int freeBytes) {}
 		public static void SetMaxPausePercentage(int maxPausePercentage) {}
 		static void AddPendingThread(void* internalThreadInfo) {}
+		public static void ExcludeThreadId(int thereadId) {}
 #endif
 
 		static void MarkDerefedObject(Object* obj)

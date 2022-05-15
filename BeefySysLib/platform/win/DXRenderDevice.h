@@ -60,22 +60,22 @@ public:
 	DXRenderDevice*			mRenderDevice;
 	ID3D11Texture2D*		mD3DTexture;
 	ID3D11ShaderResourceView* mD3DResourceView;
-	ID3D11RenderTargetView*	mD3DRenderTargetView;	
+	ID3D11RenderTargetView*	mD3DRenderTargetView;
 	ID3D11Texture2D*		mD3DDepthBuffer;
-	ID3D11DepthStencilView*	mD3DDepthStencilView;	
-	ImageData*				mImageData;
+	ID3D11DepthStencilView*	mD3DDepthStencilView;
+	uint32*					mContentBits;
 
 public:
 	DXTexture();
 	~DXTexture();
-
-	void ReleaseNative();
-	void ReinitNative();
+	
+	void					ReleaseNative();
+	void					ReinitNative();
 
 	virtual void			PhysSetAsTarget() override;
 	virtual void			Blt(ImageData* imageData, int x, int y) override;
 	virtual void			SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits) override;
-	virtual void			GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits) override;
+	virtual void			GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits) override;	
 };
 
 class DXShaderParam : public ShaderParam
@@ -95,7 +95,11 @@ typedef std::map<String, DXShaderParam*> DXShaderParamMap;
 
 class DXShader : public Shader
 {
-public:		
+public:	
+	DXRenderDevice*			mRenderDevice;
+	String					mSrcPath;
+	VertexDefinition*		mVertexDef;
+
 	ID3D11InputLayout*		mD3DLayout;
 	ID3D11VertexShader*		mD3DVertexShader;
 	ID3D11PixelShader*		mD3DPixelShader;
@@ -107,7 +111,11 @@ public:
 	DXShader();
 	~DXShader();
 	
-	virtual ShaderParam*	GetShaderParam(const StringImpl& name) override;
+	void					ReleaseNative();
+	void					ReinitNative();
+
+	bool					Load();
+	virtual ShaderParam*	GetShaderParam(const StringImpl& name) override;	
 };
 
 class DXDrawBatch : public DrawBatch
@@ -144,8 +152,10 @@ public:
 	ID3D11RenderTargetView*	mD3DRenderTargetView;	
 	ID3D11Texture2D*		mD3DDepthBuffer;
 	ID3D11DepthStencilView*	mD3DDepthStencilView;
+	HANDLE					mFrameWaitObject;	
+	float					mRefreshRate;
 	bool					mResizePending;
-	bool					mWindowed;
+	bool					mWindowed;	
 	int						mPendingWidth;
 	int						mPendingHeight;
 
@@ -164,6 +174,8 @@ public:
 	virtual void			Present() override;
 
 	void					CopyBitsTo(uint32* dest, int width, int height);
+	virtual float			GetRefreshRate() override;
+	virtual bool			WaitForVBlank() override;
 };
 
 typedef std::vector<DXDrawBatch*> DXDrawBatchVector;
@@ -174,7 +186,7 @@ typedef std::vector<DXDrawBatch*> DXDrawBatchVector;
 class DXDrawBufferPool
 {
 public:
-	std::vector<void*>		mPooledIndexBuffers;	
+	std::vector<void*>		mPooledIndexBuffers;
 	int						mIdxPoolIdx;
 	std::vector<void*>		mPooledVertexBuffers;
 	int						mVtxPoolIdx;
@@ -237,8 +249,8 @@ public:
 class DXModelInstance : public ModelInstance
 {
 public:	
-	DXRenderDevice*			mD3DRenderDevice;	
-	Array<DXModelMesh>		mDXModelMeshs;	
+	DXRenderDevice*			mD3DRenderDevice;
+	Array<DXModelMesh>		mDXModelMeshs;
 
 public:
 	DXModelInstance(ModelDef* modelDef);
@@ -282,11 +294,12 @@ public:
 	IDXGIFactory*			mDXGIFactory;
 	ID3D11Device*			mD3DDevice;	
 	ID3D11DeviceContext*	mD3DDeviceContext;
-	ID3D11BlendState*		mD3DNormalBlendState;		
+	ID3D11BlendState*		mD3DNormalBlendState;
 	ID3D11SamplerState*		mD3DDefaultSamplerState;
 	ID3D11SamplerState*		mD3DWrapSamplerState;
-	bool					mHasVSync;
+	bool					mNeedsReinitNative;
 
+	ID3D11Buffer*			mMatrix2DBuffer;
 	ID3D11Buffer*			mD3DVertexBuffer;
 	ID3D11Buffer*			mD3DIndexBuffer;
 	int						mVtxByteIdx;
@@ -294,6 +307,7 @@ public:
 
 	HashSet<DXRenderState*>	mRenderStates;
 	HashSet<DXTexture*>		mTextures;
+	HashSet<DXShader*>		mShaders;
 	Dictionary<String, DXTexture*> mTextureMap;
 	Dictionary<int, ID3D11Buffer*> mBufferMap;
 			

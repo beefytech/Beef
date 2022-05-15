@@ -62,6 +62,8 @@ namespace Beefy.widgets
         public bool mHasMouseInside;
         public bool mHasProxyMouseInside;
         public bool mIsKeyDownHandled;
+		public bool mWantsUpdateF;
+		public bool mTempWantsUpdateF;
 
         public int32 mContentClientWidth;
         public int32 mContentClientHeight;
@@ -153,8 +155,18 @@ namespace Beefy.widgets
 				return;
             base.Update();
             RehupMouse(false);
+			mTempWantsUpdateF = false;
             mRootWidget.UpdateAll();
         }
+
+		public override void UpdateF(float updatePct)
+		{
+			if (mRootWidget == null)
+				return;
+			base.Update();
+			if (mWantsUpdateF || mTempWantsUpdateF)
+				mRootWidget.UpdateFAll(updatePct);
+		}
         
         public override int32 CloseQuery()
         {

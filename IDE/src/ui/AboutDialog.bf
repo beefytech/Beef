@@ -3,11 +3,15 @@ using Beefy.gfx;
 using System;
 using Beefy.events;
 using Beefy.widgets;
+using System.Collections;
+using System.Diagnostics;
 
 namespace IDE.ui
 {
 	class AboutDialog : IDEDialog
 	{
+		static AboutDialog gAboutDialog;
+
 		const int cWidth = 320;
 		const int cHeight = 240;
 		const int cRandSize = 3777;
@@ -20,6 +24,14 @@ namespace IDE.ui
 		uint8[cHeight][cWidth] mFire;
 		uint8[cRandSize] mRand;
 		int mRandIdx;
+
+		Stopwatch mStopwatch = new .()..Start() ~ delete _;
+		struct Entry
+		{
+			public double mUpdateCntF;
+			public float mTimeMS;
+		}
+		List<Entry> mEntries = new .() ~ delete _;
 
 		struct CColor
 		{
@@ -70,8 +82,24 @@ namespace IDE.ui
 				Color colorOut = Color.ToNative(Color.Lerp(mainColors[(int)colorPos], mainColors[(int)colorPos + 1], colorPos - (int)colorPos));
 				mPalette[i] = colorOut;
 			}
+
+			/*mWindowFlags |= .Resizable;
+			mWindowFlags &= ~.Modal;*/
+
+			gAboutDialog = this;
 		}
-		
+
+		~this()
+		{
+			gAboutDialog = null;
+		}
+
+		public override void AddedToParent()
+		{
+			base.AddedToParent();
+			mWidgetWindow.mWantsUpdateF = true;
+		}
+
 		public override void CalcSize()
 		{
 			mWidth = GS!(640);
@@ -140,12 +168,12 @@ namespace IDE.ui
 
 			mImage.SetBits(0, 0, cWidth, cHeight, cWidth, newBits);
 
-			float ang = Math.Min(mUpdateCnt * 0.006f, Math.PI_f / 2);
+			float ang = Math.Min((float)(mUpdateCntF * 0.006f), Math.PI_f / 2);
 			g.SetFont(mBigFont);
 			g.DrawString("Beef IDE", 0, GS!(20) + (1.0f - Math.Sin(ang))*GS!(300), .Centered, mWidth);
 
-			float angMed = Math.Min(mUpdateCnt * 0.0055f, Math.PI_f / 2);
-			float alpha = Math.Clamp(mUpdateCnt * 0.007f - 1.3f, 0, 1.0f);
+			float angMed = Math.Min((float)(mUpdateCntF * 0.0055f), Math.PI_f / 2);
+			float alpha = Math.Clamp((float)(mUpdateCntF * 0.007f) - 1.3f, 0, 1.0f);
 
 			using (g.PushColor(Color.Get(alpha)))
 			{
@@ -164,6 +192,33 @@ namespace IDE.ui
 			}
 
 			g.DrawQuad(mImage, 0, 0, 0.0f, 0.0f, mWidth, mHeight, 1.0f, 1.0f);
+
+			/*if (gAboutDialog == this)
+			{
+				/*Entry entry;
+				entry.mTimeMS = mStopwatch.ElapsedMicroseconds / 1000.0f;
+				entry.mUpdateCntF = mUpdateCntF;*/
+				mEntries.Add(Entry() {mTimeMS = mStopwatch.ElapsedMicroseconds / 1000.0f, mUpdateCntF = mUpdateCntF});
+
+				if (mEntries.Count == 100)
+				{
+					float prevTime = 0;
+
+					for (var entry in mEntries)
+					{
+						Debug.WriteLine($"Entry Time:{entry.mTimeMS - prevTime:0.00} UpdateCntF:{entry.mUpdateCntF:0.00}");
+						prevTime = entry.mTimeMS;
+
+						if (@entry.Index == 20)
+							break;
+					}
+
+					mEntries.Clear();
+				}
+			}
+
+			using (g.PushColor(0xFFFFFFFF))
+				g.FillRect(Math.Cos((float)(mUpdateCntF * 0.2f)) * 600 + mWidth / 2, 0, 8, mHeight);*/
 		}
 
 		public override void Update()
@@ -175,6 +230,12 @@ namespace IDE.ui
 				mRandIdx = 0;
 
 			DoFire();
+		}
+
+		public override void UpdateF(float updatePct)
+		{
+			base.UpdateF(updatePct);
+			MarkDirty();
 		}
 
 		public override void KeyDown(KeyCode keyCode, bool isRepeat)

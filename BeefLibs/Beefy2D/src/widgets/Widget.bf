@@ -39,6 +39,7 @@ namespace Beefy.widgets
         public float mWidth;
         public float mHeight;
         public int32 mUpdateCnt;
+		public double mUpdateCntF;
         public String mIdStr ~ delete _;
         public List<Widget> mChildWidgets;
         public MouseFlag mMouseFlags;
@@ -56,6 +57,7 @@ namespace Beefy.widgets
 		public bool mDeferredDelete;
         public Insets mMouseInsets ~ delete _;
         public bool mAutoFocus;
+		public bool mAlwaysUpdateF;
         
         public float X { get { return mX; } set { mX = value; } }        
         public float Y { get { return mY; } set { mY = value; } }
@@ -455,7 +457,15 @@ namespace Beefy.widgets
         public virtual void Update()
         {
             mUpdateCnt++;
+			if ((mAlwaysUpdateF) && (mWidgetWindow != null))
+				UpdateF((float)(mUpdateCnt - mUpdateCntF));
+			mUpdateCntF = mUpdateCnt;
         }
+
+		public virtual void UpdateF(float updatePct)
+		{
+		    mUpdateCntF += updatePct;
+		}
 
 		public void DeferDelete()
 		{
@@ -486,6 +496,31 @@ namespace Beefy.widgets
                 }
             }
         }
+
+		public virtual void UpdateFAll(float updatePct)
+		{
+		    UpdateF(updatePct);
+			if (mDeferredDelete)
+			{
+				delete this;
+				return;
+			}
+
+		    // Removed self?
+		    if (mWidgetWindow == null)
+		        return;
+
+		    if (mChildWidgets != null)
+		    {
+		        for (int32 anIdx = 0; anIdx < mChildWidgets.Count; anIdx++)
+		        {
+		            Widget child = mChildWidgets[anIdx];
+		            Debug.Assert(child.mParent == this);
+		            Debug.Assert(child.mWidgetWindow == mWidgetWindow);
+		            child.UpdateFAll(updatePct);
+		        }
+		    }
+		}
 
         public virtual void Resize(float x, float y, float width, float height)
         {

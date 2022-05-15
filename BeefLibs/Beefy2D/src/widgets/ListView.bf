@@ -788,9 +788,14 @@ namespace Beefy.widgets
         public override void UpdateAll()
         {
             base.UpdateAll();
-
             UpdateListSize();
         }
+
+		public override void UpdateFAll(float updatePct)
+		{
+		    base.UpdateFAll(updatePct);
+		    UpdateListSize();
+		}
 
         public virtual float GetListWidth()
         {
@@ -802,7 +807,7 @@ namespace Beefy.widgets
 
         public void UpdateListSize()
         {
-            // Do this in UpdateAll to give children a change to resize items
+            // Do this in UpdateAll to give children a chance to resize items
             if (mListSizeDirty)
             {
 				float listWidth = GetListWidth();

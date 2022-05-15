@@ -50,6 +50,7 @@ namespace Beefy.widgets
             mScrollContentContainer.mClipGfx = true;
             mScrollContentContainer.mClipMouse = true;
             AddWidget(mScrollContentContainer);
+			mAlwaysUpdateF = true;
         }
 
 		public ~this()
@@ -248,14 +249,22 @@ namespace Beefy.widgets
         {
             base.Update();
 
-            if ((mHorzPos.IsMoving) || (mVertPos.IsMoving))
-            {
-                mHorzPos.Update();
-                mVertPos.Update();
-                UpdateContentPosition();
-				MarkDirty();
-            }
+            
         }
+
+		public override void UpdateF(float updatePct)
+		{
+			base.UpdateF(updatePct);
+
+			if ((mHorzPos.IsMoving) || (mVertPos.IsMoving))
+			{
+				mWidgetWindow.mTempWantsUpdateF = true;
+			    mHorzPos.Update(updatePct);
+			    mVertPos.Update(updatePct);
+			    UpdateContentPosition();
+				MarkDirty();
+			}
+		}
 
         public override void MouseWheel(float x, float y, float deltaX, float deltaY)
         {

@@ -18,7 +18,12 @@ namespace Beefy.theme.dark
         public bool mIsOpen;
         public bool mAllowOpen = true;
 		public bool mIsReversed;
-        
+
+		public this()
+		{
+			mAlwaysUpdateF = true;
+		}
+
         public override void Draw(Graphics g)
         {
             base.Draw(g);
@@ -52,9 +57,9 @@ namespace Beefy.theme.dark
                 mRot = mIsOpen ? (Math.PI_f / 2) : 0;
         }
 
-        public override void Update()
+        public override void UpdateF(float updatePct)
         {
-            base.Update();
+            base.UpdateF(updatePct);
 
             int childCount = mItem.mChildItems.Count;
 
@@ -62,15 +67,17 @@ namespace Beefy.theme.dark
 
             if ((mIsOpen) && (mRot < Math.PI_f / 2))
             {
-                mRot = Math.Min(Math.PI_f / 2, mRot + rotSpeed);
+                mRot = Math.Min(Math.PI_f / 2, mRot + rotSpeed * updatePct);
                 mItem.mListView.mListSizeDirty = true;
 				MarkDirty();
+				mWidgetWindow.mTempWantsUpdateF = true;
             }
             else if ((!mIsOpen) && (mRot > 0))
             {
-                mRot = (float)Math.Max(0, mRot - rotSpeed);
+                mRot = (float)Math.Max(0, mRot - rotSpeed * updatePct);
                 mItem.mListView.mListSizeDirty = true;
 				MarkDirty();
+				mWidgetWindow.mTempWantsUpdateF = true;
             }
 
             float x;
@@ -872,6 +879,25 @@ namespace Beefy.theme.dark
 					    Debug.Assert(child.mParent == this);
 					    Debug.Assert(child.mWidgetWindow == mWidgetWindow);
 					    child.UpdateAll();
+					}
+				}
+			}
+		}
+
+		public override void UpdateFAll(float updatePct)
+		{
+			if (mVisible)
+			{
+				base.UpdateFAll(updatePct);
+
+				if (mChildItems != null)
+				{
+					for (int32 anIdx = 0; anIdx < mChildItems.Count; anIdx++)
+					{
+					    Widget child = mChildItems[anIdx];
+					    Debug.Assert(child.mParent == this);
+					    Debug.Assert(child.mWidgetWindow == mWidgetWindow);
+					    child.UpdateFAll(updatePct);
 					}
 				}
 			}
