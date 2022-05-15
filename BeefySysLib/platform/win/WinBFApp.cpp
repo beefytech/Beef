@@ -1297,6 +1297,10 @@ void BFP_CALLTYPE WinBFApp::VSyncThreadProcThunk(void* ptr)
 
 void WinBFApp::VSyncThreadProc()
 {
+	DWORD lastBlankFinish = GetTickCount();
+
+	Array<int> waitTimes;
+
 	while (!mClosing)
 	{
 		bool didWait = false;
@@ -1315,13 +1319,29 @@ void WinBFApp::VSyncThreadProc()
 
 		if (output != NULL)
 		{
-			DWORD start = GetTickCount();
+			DWORD startTick = GetTickCount();
 			bool success = output->WaitForVBlank() == 0;
-			int elapsed = (int)(GetTickCount() - start);
-			if (elapsed >= 20)
+			DWORD endTick = GetTickCount();			
+			
+			if (success)
 			{
-				NOP;
-			}
+				int elapsed = (int)(endTick - startTick);
+				waitTimes.Add(elapsed);
+				if (waitTimes.mSize > 8)
+					waitTimes.RemoveAt(0);
+
+				if (elapsed <= 1)
+				{
+					bool hadNonZero = false;
+					for (auto waitTime : waitTimes)
+					{
+						if (waitTime > 1)
+							hadNonZero = true;
+					}
+					if (!hadNonZero)
+						success = false;
+				}
+			}			
 
 			if (success)
 			{
