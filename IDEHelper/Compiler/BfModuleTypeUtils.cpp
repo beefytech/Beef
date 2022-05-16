@@ -12240,6 +12240,73 @@ bool BfModule::AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNe
 	return true;
 }
 
+BfType* BfModule::GetClosestNumericCastType(const BfTypedValue& typedVal, BfType* wantType)
+{
+	BfType* toType = wantType;
+	if ((toType == NULL) ||
+		((!toType->IsFloat()) && (!toType->IsIntegral())))
+		toType = NULL;
+
+	BfType* bestReturnType = NULL;
+
+	if (typedVal.mType->IsTypedPrimitive())
+		return NULL;
+
+	auto checkType = typedVal.mType->ToTypeInstance();
+	while (checkType != NULL)
+	{
+		for (auto operatorDef : checkType->mTypeDef->mOperators)
+		{
+			if (operatorDef->mOperatorDeclaration->mIsConvOperator)
+			{
+				if (operatorDef->IsExplicit())
+					continue;
+
+				auto returnType = CheckOperator(checkType, operatorDef, typedVal, BfTypedValue());
+				if ((returnType != NULL) &&
+					((returnType->IsIntegral()) || (returnType->IsFloat())))
+				{
+					bool canCastTo = true;
+
+					if ((toType != NULL) && (!CanCast(GetFakeTypedValue(returnType), toType)))
+						canCastTo = false;
+										
+					if (canCastTo)
+					{
+						if (bestReturnType == NULL)
+						{
+							bestReturnType = returnType;
+						}
+						else
+						{
+							if (CanCast(GetFakeTypedValue(bestReturnType), returnType))
+							{
+								bestReturnType = returnType;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		checkType = checkType->mBaseType;
+	}
+
+	if ((toType == NULL) && (bestReturnType != NULL))
+	{
+		auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
+		if (!CanCast(GetFakeTypedValue(bestReturnType), intPtrType))
+		{
+			// If no 'wantType' is specified, try to get closest one to an intptr
+			auto otherType = GetClosestNumericCastType(typedVal, intPtrType);
+			if (otherType != NULL)
+				return otherType;
+		}
+	}
+
+	return bestReturnType;
+}
+
 BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targetValue, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags, BfIRValue irFunc)
 {	
 	auto invokeMethodInstance = GetDelegateInvokeMethod(toType->ToTypeInstance());

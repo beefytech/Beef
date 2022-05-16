@@ -1647,6 +1647,7 @@ public:
 	void EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);	
 	bool CanCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	bool AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNeedsMemberCasting);
+	BfType* GetClosestNumericCastType(const BfTypedValue& typedVal, BfType* wantType);
 	BfTypedValue BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType /*Can be System.Object or interface*/, const BfAllocTarget& allocTarget, BfCastFlags castFlags = BfCastFlags_None);
 	BfIRValue CastToFunction(BfAstNode* srcNode, const BfTypedValue& targetValue, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags = BfCastFlags_None, BfIRValue irFunc = BfIRValue());
 	BfIRValue CastToValue(BfAstNode* srcNode, BfTypedValue val, BfType* toType, BfCastFlags castFlags = BfCastFlags_None, BfCastResultFlags* resultFlags = NULL);
@@ -1832,8 +1833,8 @@ public:
 	BfIRType GetIRLoweredType(BfTypeCode loweredTypeCode, BfTypeCode loweredTypeCode2);
 	BfMethodRefType* CreateMethodRefType(BfMethodInstance* methodInstance, bool mustAlreadyExist = false);
 	BfType* FixIntUnknown(BfType* type);
-	void FixIntUnknown(BfTypedValue& typedVal, BfType* matchType = NULL);	
-	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);		
+	void FixIntUnknown(BfTypedValue& typedVal, BfType* matchType = NULL);
+	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);
 	void FixValueActualization(BfTypedValue& typedVal, bool force = false);
 	bool TypeEquals(BfTypedValue& val, BfType* type);
 	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);

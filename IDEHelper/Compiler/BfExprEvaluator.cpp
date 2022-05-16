@@ -22159,14 +22159,14 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 
 	if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(opToken, leftExpression, rightExpression, leftValue, wantType, NULL)))
 		return;
-		
+	
 	BfType* rightWantType = wantType;
 	if (origWantType->IsIntUnknown())
 		rightWantType = NULL;
 	else if ((mExpectingType != NULL) && (wantType != NULL) && (mExpectingType->IsIntegral()) && (wantType->IsIntegral()) && (mExpectingType->mSize > wantType->mSize) &&
 		((binaryOp == BfBinaryOp_Add) || (binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_Multiply)))
 		rightWantType = mExpectingType;
-	rightValue = mModule->CreateValueFromExpression(rightExpression, rightWantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
+	rightValue = mModule->CreateValueFromExpression(rightExpression, rightWantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowIntUnknown));
 	if ((rightWantType != wantType) && (rightValue.mType == rightWantType))
 		wantType = rightWantType;
 	if ((!leftValue) || (!rightValue))
@@ -22286,6 +22286,57 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 	}
 
 	return false;
+}
+
+bool BfExprEvaluator::PerformBinaryOperation_Numeric(BfAstNode* leftExpression, BfAstNode* rightExpression, BfBinaryOp binaryOp, BfAstNode* opToken, BfBinOpFlags flags, BfTypedValue leftValue, BfTypedValue rightValue)
+{
+	switch (binaryOp)
+	{
+	case BfBinaryOp_Add:
+	case BfBinaryOp_Subtract:
+	case BfBinaryOp_Multiply:
+	case BfBinaryOp_Divide:
+	case BfBinaryOp_Modulus:
+		break;
+	default:
+		return false;
+	}
+
+	auto wantType = mExpectingType;
+	if ((wantType == NULL) ||
+		((!wantType->IsFloat()) && (!wantType->IsIntegral())))
+		wantType = NULL;
+
+	auto leftType = mModule->GetClosestNumericCastType(leftValue, mExpectingType);
+	auto rightType = mModule->GetClosestNumericCastType(rightValue, mExpectingType);
+
+	if (leftType != NULL)
+	{
+		if ((rightType == NULL) || (mModule->CanCast(mModule->GetFakeTypedValue(rightType), leftType)))
+			wantType = leftType;
+		else if ((rightType != NULL) && (mModule->CanCast(mModule->GetFakeTypedValue(leftType), rightType)))
+			wantType = rightType;
+	}
+	else if (rightType != NULL)
+		wantType = rightType;
+
+	if (wantType == NULL)
+		wantType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
+
+	auto convLeftValue = mModule->Cast(opToken, leftValue, wantType, BfCastFlags_SilentFail);
+	if (!convLeftValue)
+		return false;
+
+	auto convRightValue = mModule->Cast(opToken, rightValue, wantType, BfCastFlags_SilentFail);
+	if (!convRightValue)
+		return false;
+
+	mResult = BfTypedValue();
+
+	// Let the error come from here, if any - so we always return 'true' to avoid a second error
+	PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, convLeftValue, convRightValue);
+
+	return true;
 }
 
 void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExpression* rightExpression, BfBinaryOp binaryOp, BfTokenNode* opToken, BfBinOpFlags flags)
@@ -22586,6 +22637,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	if (rightValue.mType->IsRef())
 		rightValue.mType = rightValue.mType->GetUnderlyingType();
 
+	BfType* origLeftType = leftValue.mType;
+	BfType* origRightType = rightValue.mType;
+		
 	mModule->FixIntUnknown(leftValue, rightValue);
 	
 	// Prefer floats, prefer chars
@@ -23269,12 +23323,30 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				if (flippedBinaryOp != BfBinaryOp_None)
 					findBinaryOp = flippedBinaryOp;				
 			}
-			
-			auto prevResultType = resultType;
-			if ((leftValue.mType->IsPrimitiveType()) && (!rightValue.mType->IsTypedPrimitive()))
-				resultType = leftValue.mType;
-			if ((rightValue.mType->IsPrimitiveType()) && (!leftValue.mType->IsTypedPrimitive()))
-				resultType = rightValue.mType;			
+
+			bool resultHandled = false;
+			if (((origLeftType != NULL) && (origLeftType->IsIntUnknown())) ||
+				((origRightType != NULL) && (origRightType->IsIntUnknown())))
+			{
+				if (!resultType->IsPrimitiveType())
+				{
+					BfType* numericCastType = mModule->GetClosestNumericCastType(*resultTypedValue, mExpectingType);
+					if (numericCastType != NULL)
+					{
+						resultHandled = true;
+						resultType = numericCastType;
+					}
+				}
+			}
+
+			if (!resultHandled)
+			{
+				auto prevResultType = resultType;
+				if ((leftValue.mType->IsPrimitiveType()) && (!origLeftType->IsIntUnknown()) && (!rightValue.mType->IsTypedPrimitive()))
+					resultType = leftValue.mType;
+				if ((rightValue.mType->IsPrimitiveType()) && (!origRightType->IsIntUnknown()) && (!leftValue.mType->IsTypedPrimitive()))
+					resultType = rightValue.mType;
+			}
 		}
 	}
 
@@ -23641,6 +23713,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					return;
 			}
 
+			if (PerformBinaryOperation_Numeric(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue, rightValue))
+				return;
+
 			if (mModule->PreFail())
 			{
 				mModule->Fail(StrFormat("Operator '%s' cannot be applied to operands of type '%s'",
@@ -23686,6 +23761,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						}
 					}
 				}
+
+				if (PerformBinaryOperation_Numeric(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue, rightValue))
+					return;
 
 				mModule->Fail(StrFormat("Operator '%s' cannot be applied to operands of type '%s' and '%s'",
 					BfGetOpName(binaryOp),
