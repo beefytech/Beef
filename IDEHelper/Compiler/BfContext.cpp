@@ -1798,7 +1798,7 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 					
 					// This was only needed for 'zombie modules', which we don't need anymore?
 					//  To avoid linking errors.  Used instead of directly removing from mModules.
-					mDeletingModules.push_back(module);
+					mDeletingModules.Add(module);
 				}
 			}
 		}
@@ -3187,7 +3187,7 @@ void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 {
 	BP_ZONE("BfContext::MarkUsedModules");
 
-	BF_ASSERT(!module->mIsDeleting);
+	BF_ASSERT_REL(!module->mIsDeleting);
 
 	if (module->mIsScratchModule)
 		return;
@@ -3316,10 +3316,15 @@ void BfContext::Cleanup()
 		{
 			for (auto itr = project->mUsedModules.begin(); itr != project->mUsedModules.end(); )
 			{
-				if ((*itr)->mIsDeleting)
+				auto module = *itr;
+				
+				if (module->mIsDeleting)
 					itr = project->mUsedModules.Remove(itr);
 				else
+				{
+					BF_ASSERT_REL(module->mRevision > -2);
 					++itr;
+				}
 			}
 		}
 	}

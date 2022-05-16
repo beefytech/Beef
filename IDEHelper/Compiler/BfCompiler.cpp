@@ -487,7 +487,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 }
 
 BfCompiler::~BfCompiler()
-{		
+{
 	delete mCeMachine;
 	mCeMachine = NULL;
 	delete mContext;
@@ -895,6 +895,7 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 		testMethod.mMethodInstance = methodInstance;
 		testMethods.Add(testMethod);
 
+		BF_ASSERT_REL(!typeInstance->mModule->mIsDeleting);
 		if (!bfModule->mProject->mUsedModules.Contains(typeInstance->mModule))
 		{
 			bfModule->mProject->mUsedModules.Add(typeInstance->mModule);
@@ -1077,6 +1078,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	BfLogSysM("CreateVData %s\n", bfModule->mProject->mName.c_str());
 	CompileLog("CreateVData %s\n", bfModule->mProject->mName.c_str());
 	
+	BF_ASSERT_REL(!bfModule->mIsDeleting);
 	bfModule->mProject->mUsedModules.Add(bfModule);
 
 	auto project = bfModule->mProject;
@@ -7609,7 +7611,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 						if (bfModule->mParentModule != NULL)
 						{
-							for (auto&& fileName : bfModule->mOutFileNames)
+							for (auto& fileName : bfModule->mOutFileNames)
 							{
 								if (!mainModule->mOutFileNames.Contains(fileName))
 									mainModule->mOutFileNames.push_back(fileName);
@@ -7704,7 +7706,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 				BfModule* bfModule = mainModule;
 				if (bfModule->mIsReified)
 				{
-					for (auto outFileName : bfModule->mOutFileNames)
+					for (auto& outFileName : bfModule->mOutFileNames)
 					{
 						if (outFileName.mModuleWritten)
 							BeLibManager::Get()->AddUsedFileName(outFileName.mFileName);
@@ -10473,9 +10475,12 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 	HashSet<String> usedFileNames;
 	usedFileNames.Reserve(moduleList.size());
 
-	for (auto mainModule : moduleList)
+	//for (auto mainModule : moduleList)
+	for (int i = 0; i < moduleList.mSize; i++)
 	{
-		BF_ASSERT(!mainModule->mIsDeleting);
+		auto mainModule = moduleList[i];
+		BF_ASSERT_REL(!mainModule->mIsDeleting);
+		BF_ASSERT_REL((mainModule->mRevision > -2) && (mainModule->mRevision < 1000000));
 
 		if ((flags & BfUsedOutputFlags_SkipImports) == 0)
 		{
@@ -10490,7 +10495,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 			}
 		}
 
-		for (auto&& moduleFileName : mainModule->mOutFileNames)
+		for (auto& moduleFileName : mainModule->mOutFileNames)
 		{
 			if (!moduleFileName.mModuleWritten)
 				continue;

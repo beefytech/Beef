@@ -930,6 +930,8 @@ void BfReportMemory();
 
 BfModule::~BfModule()
 {	
+	mRevision = -2;
+
 	BfLogSysM("Deleting module %p: %s \n", this, mModuleName.c_str());
 
 	if (!mIsDeleting)
@@ -1311,7 +1313,13 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 		for (auto& specPair : mSpecializedMethodModules)
 		{
 			auto specModule = specPair.mValue;
-			delete specModule;
+
+			BfLogSysM("Setting module mIsDeleting %p due to parent module starting a new revision\n", module);
+
+			// This module is no longer needed
+			specModule->RemoveModuleData();
+			specModule->mIsDeleting = true;
+			mContext->mDeletingModules.Add(specModule);
 		}
 	}
 	mSpecializedMethodModules.Clear();
