@@ -20960,8 +20960,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 						methodMatcher.mTarget = target;
 						methodMatcher.CheckMethod(startCheckTypeInst, curCheckType, checkMethod, false);						
 
-						if ((methodMatcher.mBestMethodDef == checkMethod) ||
-							((foundProp == NULL) && (methodMatcher.mBackupMethodDef == checkMethod)))
+						if ((methodMatcher.mBestMethodDef == checkMethod) || (methodMatcher.mBackupMethodDef == checkMethod))
 						{
 							foundPropTypeInst = curCheckType;
 							foundProp = prop;
