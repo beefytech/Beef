@@ -7454,7 +7454,8 @@ void BfModule::FixIntUnknown(BfTypedValue& typedVal, BfType* matchType)
 
 void BfModule::FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs)
 {	
-	if ((lhs.mType != NULL) && (lhs.mType->IsIntUnknown()) && (rhs.mType != NULL) && (rhs.mType->IsInteger()))
+	if ((lhs.mType != NULL) && (lhs.mType->IsIntUnknown()) && (rhs.mType != NULL) && 
+		(rhs.mType->IsInteger()) && (!rhs.mType->IsIntUnknown()))
 	{
 		if (CanCast(lhs, rhs.mType))
 		{
@@ -7465,7 +7466,8 @@ void BfModule::FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs)
 		}
 	}
 
-	if ((rhs.mType != NULL) && (rhs.mType->IsIntUnknown()) && (lhs.mType != NULL) && (lhs.mType->IsInteger()))
+	if ((rhs.mType != NULL) && (rhs.mType->IsIntUnknown()) && (lhs.mType != NULL) && 
+		(lhs.mType->IsInteger()) && (!lhs.mType->IsIntUnknown()))
 	{
 		if (CanCast(rhs, lhs.mType))
 		{
