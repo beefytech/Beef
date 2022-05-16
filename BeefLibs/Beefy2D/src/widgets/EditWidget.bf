@@ -540,6 +540,7 @@ namespace Beefy.widgets
         public EditWidget mEditWidget;
                 
         public float mTabSize;
+		public bool	mWantsTabsAsSpaces;
         public float mCharWidth = -1;
 		public int32 mTabLength = 4;
         public uint8 mExtendDisplayFlags;
@@ -1267,7 +1268,9 @@ namespace Beefy.widgets
 					{
 		                int prevTabCount = (int)((textX + 0.5f) / mTabSize);
 		                int wantTabCount = (int)((cursorX + 0.5f) / mTabSize);
-		                int wantAddTabs = wantTabCount - prevTabCount;                                
+		                int wantAddTabs = 0;
+						if (!mWantsTabsAsSpaces)
+							wantAddTabs = wantTabCount - prevTabCount;                                
 		                if (wantAddTabs > 0)                
 		                    textX = wantTabCount * mTabSize + mTextInsets.mLeft;                
 
@@ -3209,6 +3212,14 @@ namespace Beefy.widgets
             mEditWidget.UpdateScrollbars();
         }
 
+		protected void GetTabString(String str, int tabCount = 1)
+		{
+			if (mWantsTabsAsSpaces)
+				str.Append(' ', mTabLength * tabCount);
+			else
+				str.Append('\t', tabCount);
+		}
+
         public void BlockIndentSelection(bool unIndent = false)
         {
 			if (CheckReadOnly())
@@ -3270,15 +3281,30 @@ namespace Beefy.widgets
                 }
                 else
                 {
-                    startAdjust++;
+					if (mWantsTabsAsSpaces)
+						startAdjust += mTabLength;
+					else
+						startAdjust++;
+						
                     for (int lineIdx = minLineIdx; lineIdx <= maxLineIdx; lineIdx++)
                     {
                         int lineStart;
                         int lineEnd;
                         GetLinePosition(lineIdx, out lineStart, out lineEnd);
                         lineStart += endAdjust;
-                        indentTextAction.mInsertCharList.Add(((int32)lineStart, '\t'));
-                        endAdjust++;
+						if (mWantsTabsAsSpaces)
+						{
+							for (int i < mTabLength)
+							{
+								indentTextAction.mInsertCharList.Add(((int32)lineStart, ' '));
+								endAdjust++;
+							}
+						}
+						else
+						{
+	                        indentTextAction.mInsertCharList.Add(((int32)lineStart, '\t'));
+	                        endAdjust++;
+						}
                     }
 
 					indentTextAction.Redo();
@@ -3413,17 +3439,16 @@ namespace Beefy.widgets
 						let prevSelection = mSelection.Value;
 						mSelection = null;
 						for (int32 i = 0; i < indentCount; i++)
-						    InsertAtCursor("\t");
+						    InsertAtCursor(GetTabString(.. scope .()));
 						GetLinePosition(minLineIdx, out lineStart, out lineEnd);
 						mSelection = EditSelection(prevSelection.mStartPos + indentCount, prevSelection.mEndPos + indentCount);
 					}
 					else
-						InsertAtCursor("\t");
+						InsertAtCursor(GetTabString(.. scope .()));
 				}
 				else
 				{
-					for (int32 i = 0; i < indentCount; i++)
-						InsertAtCursor("\t");
+					InsertAtCursor(GetTabString(.. scope .(), indentCount));
 				}
             }
         }

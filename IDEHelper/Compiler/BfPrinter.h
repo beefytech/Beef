@@ -79,6 +79,9 @@ public:
 	bool mExpectingNewLine;
 	int mCurCol;
 	int mMaxCol;
+	int mTabSize;
+	bool mWantsTabsAsSpaces;
+	bool mIndentCaseLabels;
 
 	bool mIsFirstStatementInBlock;
 	bool mForceUseTrivia;

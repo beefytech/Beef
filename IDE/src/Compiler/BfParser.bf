@@ -145,7 +145,8 @@ namespace IDE.Compiler
         static extern bool BfParser_Reduce(void* bfParser, void* bfPassInstance);
 
         [CallingConvention(.Stdcall), CLink]        
-        static extern char8* BfParser_Format(void* bfParser, int32 formatEnd, int32 formatStart, out int32* outCharMapping, int32 maxCol);
+        static extern char8* BfParser_Format(void* bfParser, int32 formatEnd, int32 formatStart, out int32* outCharMapping, int32 maxCol, int32 tabSize, bool wantsTabsAsSpaces,
+			bool indentCaseLabels);
 
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BfParser_GetDebugExpressionAt(void* bfParser, int32 cursorIdx);
@@ -244,7 +245,8 @@ namespace IDE.Compiler
         {                                    
             int32* charMappingPtr;
             var maxCol = gApp.mSettings.mEditorSettings.mWrapCommentsAt;
-            var stringPtr = BfParser_Format(mNativeBfParser, (int32)formatStart, (int32)formatEnd, out charMappingPtr, maxCol);
+            var stringPtr = BfParser_Format(mNativeBfParser, (int32)formatStart, (int32)formatEnd, out charMappingPtr, maxCol,
+				gApp.mSettings.mEditorSettings.mTabSize, gApp.mSettings.mEditorSettings.mTabsOrSpaces == .Spaces, gApp.mSettings.mEditorSettings.mIndentCaseLabels);
             str.Append(stringPtr);
 
             charMapping = new int32[str.Length];

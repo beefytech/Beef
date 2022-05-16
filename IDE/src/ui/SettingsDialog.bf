@@ -128,10 +128,18 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Show Line Numbers", "mShowLineNumbers");
 			AddPropertiesItem(category, "Free Cursor Movement", "mFreeCursorMovement");
 			AddPropertiesItem(category, "Enable File Recovery", "mEnableFileRecovery");
-			AddPropertiesItem(category, "Format on Save", "mFormatOnSave");
 			AddPropertiesItem(category, "Sync with Workspace Panel", "mSyncWithWorkspacePanel");
-			AddPropertiesItem(category, "Wrap Comments at Column", "mWrapCommentsAt");
+			category.Open(true, true);
 
+			(category, propEntry) = AddPropertiesItem(root, "Formatting");
+			category.mIsBold = true;
+			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+			AddPropertiesItem(category, "Format on Save", "mFormatOnSave");
+			AddPropertiesItem(category, "Tabs or Spaces", "mTabsOrSpaces");
+			AddPropertiesItem(category, "Tab Size", "mTabSize");
+			AddPropertiesItem(category, "Wrap Comments at Column", "mWrapCommentsAt");
+			AddPropertiesItem(category, "Indent Case Labels", "mIndentCaseLabels");
+			AddPropertiesItem(category, "Left Align Preprocessor", "mLeftAlignPreprocessor");
 			category.Open(true, true);
 		}
 

@@ -45,6 +45,9 @@ BfPrinter::BfPrinter(BfRootNode *rootNode, BfRootNode *sidechannelRootNode, BfRo
 	mCurTypeDecl = NULL;
 	mCurCol = 0;
 	mMaxCol = 120;
+	mTabSize = 4;
+	mWantsTabsAsSpaces = false;
+	mIndentCaseLabels = false;
 }
 
 void BfPrinter::Write(const StringView& str)
@@ -59,7 +62,7 @@ void BfPrinter::Write(const StringView& str)
 		{
 			char c = str[i];
 			if (c == '\t')
-				mCurCol = ((mCurCol + 1) & ~3) + 4;			
+				mCurCol = ((mCurCol / mTabSize) + 1) * mTabSize;
 			else
 				mCurCol++;
 		}	
@@ -114,10 +117,10 @@ void BfPrinter::Write(const StringView& str)
 
 void BfPrinter::FlushIndent()
 {	
-	while (mQueuedSpaceCount >= 4)
+	while ((mQueuedSpaceCount >= mTabSize) && (!mWantsTabsAsSpaces))
 	{
 		Write("\t");
-		mQueuedSpaceCount -= 4;
+		mQueuedSpaceCount -= mTabSize;
 	}
 
 	while (mQueuedSpaceCount > 0)
@@ -141,15 +144,10 @@ void BfPrinter::Write(BfAstNode* node, int start, int len)
 		{
 			char c = parserData->mSrc[start + i];
 			if (c == '\t')
-				mCurCol = ((mCurCol + 1) & ~3) + 4;
+				mCurCol = ((mCurCol / mTabSize) + 1) * mTabSize;
 			else
 				mCurCol++;
-		}
-
- 		if ((mCurCol > mMaxCol) && (startCol != 0))
- 		{
-			NOP;
- 		}
+		} 		
 	}
 
 	mOutString.Append(node->GetSourceData()->mSrc + start, len);
@@ -287,7 +285,7 @@ int BfPrinter::CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx)
 		if (c == '\n')
 			break;
 		if (c == '\t')
-			origLineSpacing += 4;
+			origLineSpacing += mTabSize;
 		else if (c == ' ')
 			origLineSpacing += 1;
 		else
@@ -539,7 +537,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 			}
 			else if (c == '\t')
 			{
-				mQueuedSpaceCount += 4;
+				mQueuedSpaceCount += mTabSize;
 				emitChar = false;
 			}
 			else
@@ -548,7 +546,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 				if ((c != '#') || (mQueuedSpaceCount > 0))
 					mQueuedSpaceCount = std::max(0, mQueuedSpaceCount + mLastSpaceOffset);
 				else
-					mQueuedSpaceCount = mCurIndentLevel * 4; // Do default indent
+					mQueuedSpaceCount = mCurIndentLevel * mTabSize; // Do default indent
 				isNewLine = false;				
 			}
 		}
@@ -581,7 +579,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 				if ((mCurCol + len > mMaxCol) && (lineEmittedChars >= 8))
 				{
 					Write("\n");
-					mQueuedSpaceCount = mCurIndentLevel * 4;
+					mQueuedSpaceCount = mCurIndentLevel * mTabSize;
 					FlushIndent();
 
 					if (isStarredBlockComment)
@@ -674,7 +672,7 @@ void BfPrinter::CheckRawNode(BfAstNode* node)
 		{
 			ExpectSpace();
 			if (inLineStart)
-				spaceCount += 4;
+				spaceCount += mTabSize;
 		}
 		else if (c == ' ')
 		{
@@ -690,7 +688,7 @@ void BfPrinter::CheckRawNode(BfAstNode* node)
 
 	if ((spaceCount > 0) && (mCurBlockState != NULL))
 	{
-		int indentCount = spaceCount / 4;
+		int indentCount = spaceCount / mTabSize;
 		mNextStateModify.mWantVirtualIndent = BF_MAX(indentCount, mCurBlockState->mIndentStart + 1);
 	}
 }
@@ -765,11 +763,11 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 			if (c == ' ')
 				prevSpaceCount++;
 			else if (c == '\t')
-				prevSpaceCount += 4;
+				prevSpaceCount += mTabSize;
 			else if (c == '\n')
 			{
 				// Found previous line
-				mCurIndentLevel = prevSpaceCount / 4;
+				mCurIndentLevel = prevSpaceCount / mTabSize;
 				break;
 			}
 			else
@@ -819,11 +817,11 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 					if (c == ' ')
 						spaceCount++;
 					else if (c == '\t')
-						spaceCount += 4;
+						spaceCount += mTabSize;
 
 					if (((c == '\n') || (i == bfAstNode->GetSrcStart() - 1)) && (hadPrevLineSpacing) && (prevSpaceCount > 0))
 					{							
-						mQueuedSpaceCount += std::max(0, spaceCount - prevSpaceCount) - std::max(0, indentOffset * 4);
+						mQueuedSpaceCount += std::max(0, spaceCount - prevSpaceCount) - std::max(0, indentOffset * mTabSize);
 						
 						prevSpaceCount = -1;
 						hadPrevLineSpacing = false;
@@ -840,18 +838,18 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 							if (c == ' ')
 								prevSpaceCount++;
 							else if (c == '\t')
-								prevSpaceCount += 4;
+								prevSpaceCount += mTabSize;
 							
 							if ((c == '\n') || (backIdx == 0))
 							{
 								// Found previous line
 								usedTrivia = true;
 								Write("\n");
-								mQueuedSpaceCount = mCurIndentLevel * 4;
+								mQueuedSpaceCount = mCurIndentLevel * mTabSize;
 
 								// Indents extra if we have a statement split over multiple lines
 								if (!mExpectingNewLine)
-									mQueuedSpaceCount += 4;
+									mQueuedSpaceCount += mTabSize;
 
 								break;
 							}
@@ -885,7 +883,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 					if (!isspace((uint8)c))
 					{
 						Write("\n");
-						mQueuedSpaceCount = mCurIndentLevel * 4;
+						mQueuedSpaceCount = mCurIndentLevel * mTabSize;
 						if (!mNextStateModify.mDoingBlockClose)
 						{
 							int origLineSpacing = CalcOrigLineSpacing(bfAstNode, NULL);
@@ -1958,6 +1956,9 @@ void BfPrinter::Visit(BfCaseExpression* caseExpr)
 
 void BfPrinter::Visit(BfSwitchCase* switchCase)
 {
+	if (mIndentCaseLabels)
+		ExpectIndent();
+
 	VisitChild(switchCase->mCaseToken);	
 	for (int caseIdx = 0; caseIdx < (int) switchCase->mCaseExpressions.size(); caseIdx++)
 	{
@@ -1979,6 +1980,9 @@ void BfPrinter::Visit(BfSwitchCase* switchCase)
 		VisitChild(switchCase->mEndingSemicolonToken);
 		ExpectNewLine();
 	}
+
+	if (mIndentCaseLabels)
+		ExpectUnindent();
 }
 
 void BfPrinter::Visit(BfWhenExpression* whenExpr)

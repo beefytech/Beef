@@ -779,7 +779,9 @@ namespace IDE.ui
             SetFont(IDEApp.sApp.mCodeFont, true, true);
 			//SetFont(DarkTheme.sDarkTheme.mSmallFont, false, false);
 
-            mTabSize = mFont.GetWidth("    ");
+			mWantsTabsAsSpaces = gApp.mSettings.mEditorSettings.mTabsOrSpaces == .Spaces;
+			mTabLength = gApp.mSettings.mEditorSettings.mTabSize;
+            mTabSize = mFont.GetWidth(scope String(' ', gApp.mSettings.mEditorSettings.mTabSize));
             mTextColors = sTextColors;
             mExtendDisplayFlags = (uint8)(SourceElementFlags.SpellingError | SourceElementFlags.SymbolReference);
             mShowLineBottomPadding = 2;
@@ -793,7 +795,9 @@ namespace IDE.ui
 		public override void RehupScale(float oldScale, float newScale)
 		{
 			base.RehupScale(oldScale, newScale);
-			mTabSize = mFont.GetWidth("    ");
+			mWantsTabsAsSpaces = gApp.mSettings.mEditorSettings.mTabsOrSpaces == .Spaces;
+			mTabLength = gApp.mSettings.mEditorSettings.mTabSize;
+			mTabSize = mFont.GetWidth(scope String(' ', gApp.mSettings.mEditorSettings.mTabSize));
 		}
 
 		protected override EditWidgetContent.Data CreateEditData()
@@ -1244,7 +1248,7 @@ namespace IDE.ui
 					else if (c == ' ')
 						blockOpenSpaceCount++;
 					else if (c == '\t')
-						blockOpenSpaceCount += 4; // SpacesInTab
+						blockOpenSpaceCount += gApp.mSettings.mEditorSettings.mTabSize; // SpacesInTab
 					else
 					{
 						blockOpenSpaceCount = 0;
@@ -1332,7 +1336,7 @@ namespace IDE.ui
 			return spaceCount;
 		}
 
-		public int GetLineEndColumn(int line, bool openingBlock, bool force, bool ignoreLineText = false, bool insertingElseStmt = false, float* outWidth = null)
+		public int GetLineEndColumn(int line, bool openingBlock, bool force, bool ignoreLineText = false, bool insertingElseStmt = false, bool ignoreCaseExpr = false, float* outWidth = null)
 		{
 			String curLineStr = scope String();
 			GetLineText(line, curLineStr);
@@ -1404,6 +1408,8 @@ namespace IDE.ui
 			List<int32> ifCtlDepthStack = scope List<int32>();
 
 			bool keepBlockIndented = false;
+			bool inSwitchCaseBlock = false;
+			bool mayBeDefaultCase = false;
 			for (int checkIdx = foundBlockStartIdx + 1; checkIdx < endingPos; checkIdx++)
 			{
 				char8 c = mData.mText[checkIdx].mChar;
@@ -1425,6 +1431,14 @@ namespace IDE.ui
 				{
 					isLineStart = false;
 					skippingLine = true;
+				}
+
+				if (mayBeDefaultCase)
+				{
+					if (c == ':')
+						inSwitchCaseBlock = true;
+					else if (!isWhitespace)
+						mayBeDefaultCase = false;
 				}
 
 				if ((inCaseExpr) && (c == ':') && (elementType == .Normal) && (parenDepth == 0))
@@ -1499,9 +1513,12 @@ namespace IDE.ui
 						case "case":
 							if (parenDepth == 0)
 							{
-								caseStartPos = checkIdx - 4;
+								caseStartPos = checkIdx - gApp.mSettings.mEditorSettings.mTabSize;
 								inCaseExpr = true;
+								inSwitchCaseBlock = true;
 							}
+						case "default":
+							mayBeDefaultCase = true;
 						case "switch":
 							ifDepth = 0;
 						}
@@ -1725,9 +1742,12 @@ namespace IDE.ui
 			if ((openingBlock) && (!keepBlockIndented) && (parenDepth == 0))
 				extraTab = Math.Max(1, extraTab - 1);
 
+			if ((inSwitchCaseBlock) && (!ignoreCaseExpr) && (gApp.mSettings.mEditorSettings.mIndentCaseLabels))
+				extraTab++;
+
 			int wantSpaceCount = blockOpenSpaceCount;
 			//if (!openingBlock)
-				wantSpaceCount += extraTab * 4;
+				wantSpaceCount += extraTab * gApp.mSettings.mEditorSettings.mTabSize;
 
 			if (inCaseExprNextLine)
 				wantSpaceCount++;
@@ -1890,7 +1910,7 @@ namespace IDE.ui
 
 				int alignColumn = GetLineEndColumn(lineAndColumn.mLine, isBlock, true,  true);
 
-			    String linePrefix = scope String('\t', alignColumn / tabSpaceCount);
+			    String linePrefix = GetTabString(.. scope String(), alignColumn / tabSpaceCount);
 			    CursorLineAndColumn = LineAndColumn(lineAndColumn.mLine, alignColumn);
 
 				bool isFullSwitch = false;
@@ -2080,7 +2100,7 @@ namespace IDE.ui
 			float x;
 			float y;
 			float wantWidth = 0;
-			int column = GetLineEndColumn(line, false, false, false, false, &wantWidth);
+			int column = GetLineEndColumn(line, false, false, false, false, false, &wantWidth);
 			GetTextCoordAtLineAndColumn(line, column, out x, out y);
 			if (wantWidth != 0)
 				x = wantWidth + mTextInsets.mLeft;
@@ -2285,7 +2305,7 @@ namespace IDE.ui
 					}
                 }                 
 
-				int indentCount = GetLineEndColumn(minLineIdx, true, true, true) / 4;
+				int indentCount = GetLineEndColumn(minLineIdx, true, true, true) / gApp.mSettings.mEditorSettings.mTabSize;
 				bool wantsContentTab = indentCount == selectedIndentCount;
 				
                 /*if (mAllowVirtualCursor)
@@ -2339,25 +2359,39 @@ namespace IDE.ui
                     	lineStart += endAdjust;
 						lineEnd += endAdjust;
 					}
+
+					String tabStr = scope .();
+					GetTabString(tabStr);
+					int32 i = 0;
+
+					void AddTab()
+					{
+						InsertText(lineStart + i, tabStr);
+						for (var c in tabStr.RawChars)
+						{
+						    indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), c));
+						    endAdjust++;
+							i++;
+						}
+					}
+
                     if (lineIdx == minLineIdx)
                     {
-                        int32 i;
-                        for (i = 0; i < indentCount; i++)
+                        for (int indentIdx < indentCount)
                         {
-                            InsertText(lineStart + i, "\t");
-                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '\t'));
-                            endAdjust++;
+                            AddTab();
                         }
 
                         newSel.mStartPos = (int32)(lineStart + i);
 
                         if (wantsContentTab)
                         {
-                            InsertText(lineStart + i, "{\n\t");
+                            InsertText(lineStart + i, "{\n");
                             indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '{'));
                             indentTextAction.mInsertCharList.Add(((int32)(lineStart + i + 1), '\n'));
-                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i + 2), '\t'));
-                            endAdjust += 3;
+							i += 2;
+                            endAdjust += 2;
+							AddTab();
                         }
                         else
                         {
@@ -2381,12 +2415,10 @@ namespace IDE.ui
 							lineStart++;
 						}
 
-                        int32 i;
-                        for (i = 0; i < indentCount; i++)
-                        {
-                            InsertText(lineStart + i, "\t");
-                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '\t'));
-                        }
+                        for (int indentIdx < indentCount)
+						{
+						    AddTab();
+						}
 
 						if (isEmbeddedEnd)
 						{
@@ -2409,9 +2441,7 @@ namespace IDE.ui
 							char8 c = mData.mText[lineStart].mChar;
 							if (c != '#')
 							{
-		                        InsertText(lineStart, "\t");
-		                        indentTextAction.mInsertCharList.Add(((int32)(lineStart), '\t'));
-		                        endAdjust++;
+		                        AddTab();
 							}
 						}
                     }                    
@@ -2465,7 +2495,7 @@ namespace IDE.ui
                         int column = GetLineEndColumn(lineIdx, true, false, true);
 
 						// If we're aligned with the previous line then do the 'block indent' logic, otherwise are are already indented
-						if (indentCount == column / 4)
+						if (indentCount == column / gApp.mSettings.mEditorSettings.mTabSize)
 						{
 							bool isExpr = false;
 							bool mayBeExpr = false;
@@ -2542,12 +2572,12 @@ namespace IDE.ui
 							if (isExpr)
 							{
 								// Lambda opening or initializer expression
-								column += 4;
+								column += gApp.mSettings.mEditorSettings.mTabSize;
 							}
 						}
 
                         CursorLineAndColumn = LineAndColumn(lineIdx, column);
-                        indentCount = column / 4;
+                        indentCount = column / gApp.mSettings.mEditorSettings.mTabSize;
                     }
 
                     if (lineIdx < GetLineCount() - 1)
@@ -2559,13 +2589,13 @@ namespace IDE.ui
                         for (int32 i = 0; i < nextLineText.Length; i++)
                         {
                             if (nextLineText[i] == '\t')
-                                spaceCount += 4;
+                                spaceCount += gApp.mSettings.mEditorSettings.mTabSize;
                             else if (nextLineText[i] == ' ')
                                 spaceCount++;
                             else
                                 break;                            
                         }
-                        if (spaceCount > indentCount * 4)
+                        if (spaceCount > indentCount * gApp.mSettings.mEditorSettings.mTabSize)
                         {
                             // Next line is indented? Just simple open
                             InsertAtCursor("{");
@@ -2581,15 +2611,14 @@ namespace IDE.ui
                         if ((lineText.Length > 0) && (String.IsNullOrWhiteSpace(lineText)))
                         {
                             ClearLine();
-                            CursorLineAndColumn = LineAndColumn(lineIdx, indentCount * 4);                
+                            CursorLineAndColumn = LineAndColumn(lineIdx, indentCount * gApp.mSettings.mEditorSettings.mTabSize);
                         }
 
                         // This will already insert at correct position
                         InsertAtCursor("{");
                         sb.Append("\n");
                         sb.Append("\n");
-                        for (int32 i = 0; i < indentCount; i++)
-                            sb.Append("\t");
+						GetTabString(sb, indentCount);
                         sb.Append("}");
                         InsertAtCursor(sb);
                     }
@@ -2607,11 +2636,9 @@ namespace IDE.ui
                         for (int i = lineText.Length; i < indentCount; i++)
                             sb.Append("\t");
                         sb.Append("{\n");
-                        for (int i = 0; i < indentCount; i++)
-                            sb.Append("\t");
+						GetTabString(sb, indentCount);
                         sb.Append("\t\n");
-                        for (int i = 0; i < indentCount; i++)
-                            sb.Append("\t");
+						GetTabString(sb, indentCount);
                         sb.Append("}");
                         InsertAtCursor(sb);
                     }
@@ -2771,7 +2798,7 @@ namespace IDE.ui
 					InsertAtCursor("*/");
 
 					if (doComment != null)
-						mSelection = EditSelection(firstCharPos, lastCharPos + 4);
+						mSelection = EditSelection(firstCharPos, lastCharPos + gApp.mSettings.mEditorSettings.mTabSize);
 				}
 
 				if (undoBatchStart != null)
@@ -2877,7 +2904,7 @@ namespace IDE.ui
 					continue;
 				}
 				if (c == '\t')
-					lineStartCol += 4;
+					lineStartCol += gApp.mSettings.mEditorSettings.mTabSize;
 				else if (c == ' ')
 					lineStartCol++;
 				else
@@ -2911,7 +2938,7 @@ namespace IDE.ui
 					commentNow = true;
 
 				if (c == '\t')
-					lineStartCol += 4;
+					lineStartCol += gApp.mSettings.mEditorSettings.mTabSize;
 				else if (c == ' ')
 					lineStartCol++;
 				else
@@ -2921,9 +2948,9 @@ namespace IDE.ui
 				{
 					CursorTextPos = i;
 					String str = scope .();
-					while (lineStartCol + 4 <= wantLineCol)
+					while (lineStartCol + gApp.mSettings.mEditorSettings.mTabSize <= wantLineCol)
 					{
-						lineStartCol += 4;
+						lineStartCol += gApp.mSettings.mEditorSettings.mTabSize;
 						str.Append("\t");
 					}
 					str.Append("//");
@@ -3927,13 +3954,13 @@ namespace IDE.ui
                         int column = GetLineEndColumn(line, isBlockOpen, true, true);
 						if (lineTextAtCursor.StartsWith("}"))
 						{
-							column -= 4; // SpacesInTab
+							column -= gApp.mSettings.mEditorSettings.mTabSize; // SpacesInTab
 						}
                         if (column > 0)
                         {
 							String tabStr = scope String();
-							tabStr.Append('\t', column / 4);
-							tabStr.Append(' ', column % 4);
+							tabStr.Append('\t', column / gApp.mSettings.mEditorSettings.mTabSize);
+							tabStr.Append(' ', column % gApp.mSettings.mEditorSettings.mTabSize);
                             InsertAtCursor(tabStr);
 						}
 
@@ -4076,7 +4103,7 @@ namespace IDE.ui
 								int closeLineChar;
 								GetLineCharAtIdx(checkPos, out closeLine, out closeLineChar);
 
-								int expectedColumn = GetLineEndColumn(closeLine, true, true, true) - 4;
+								int expectedColumn = GetLineEndColumn(closeLine, true, true, true) - gApp.mSettings.mEditorSettings.mTabSize;
 								int actualColumn = GetActualLineStartColumn(closeLine);
 
 								if (expectedColumn == actualColumn)
@@ -4145,7 +4172,7 @@ namespace IDE.ui
                     String lineText = scope String();
                     GetLineText(line, lineText);
                     lineText.Trim();
-                    if ((lineText.Length == 0) && (mAllowVirtualCursor))
+                    if ((lineText.Length == 0) && (mAllowVirtualCursor) && (gApp.mSettings.mEditorSettings.mLeftAlignPreprocessor))
                         CursorLineAndColumn = LineAndColumn(line, 0);
                     doChar = true;
                 }
@@ -4162,7 +4189,7 @@ namespace IDE.ui
                     if (lineText.Length == 0)
                     {
                         ClearLine();
-                        CursorLineAndColumn = LineAndColumn(line, Math.Max(0, GetLineEndColumn(line, false, false) - 4));
+                        CursorLineAndColumn = LineAndColumn(line, Math.Max(0, GetLineEndColumn(line, false, false) - gApp.mSettings.mEditorSettings.mTabSize));
                         CursorMoved();
                     }
                     base.KeyChar(keyChar);
@@ -4282,7 +4309,11 @@ namespace IDE.ui
 							if ((isLabel) && (trimmedLineText != "default:"))
 								wantLineColumn = GetLineEndColumn(line, true, true, true);
 							else
-                            	wantLineColumn = GetLineEndColumn(line, false, true, true) - 4;
+							{
+                            	wantLineColumn = GetLineEndColumn(line, false, true, true, false, true);
+								if (!gApp.mSettings.mEditorSettings.mIndentCaseLabels)
+									wantLineColumn -= gApp.mSettings.mEditorSettings.mTabSize;
+							}
 						}
 
                         // Move "case" back to be inline with switch statement
@@ -4291,7 +4322,7 @@ namespace IDE.ui
 	                        String tabStartStr = scope String();
 	                        tabStartStr.Append(lineText, 0, lineChar - trimmedLineText.Length);
 	                        int32 columnPos = (int32)(GetTabbedWidth(tabStartStr, 0) / mCharWidth + 0.001f);
-	                        if (columnPos >= wantLineColumn + 4)
+	                        if (columnPos >= wantLineColumn + gApp.mSettings.mEditorSettings.mTabSize)
 	                        {
 	                            mSelection = EditSelection();
 	                            mSelection.ValueRef.mEndPos = (int32)(cursorTextIdx - trimmedLineText.Length);
@@ -5193,7 +5224,7 @@ namespace IDE.ui
 			GetCursorLineChar(out line, out lineChar);            
 			
 			float wantWidth = 0;
-			int virtualEnd = GetLineEndColumn(line, false, false, false, false, &wantWidth);
+			int virtualEnd = GetLineEndColumn(line, false, false, false, false, false, &wantWidth);
 
 			String curLineStr = scope String();
 			GetLineText(line, curLineStr);

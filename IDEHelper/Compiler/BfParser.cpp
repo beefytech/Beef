@@ -3940,7 +3940,8 @@ BF_EXPORT bool BF_CALLTYPE BfParser_Reduce(BfParser* bfParser, BfPassInstance* b
 }
 
 static Array<int> gCharMapping;
-BF_EXPORT const char* BF_CALLTYPE BfParser_Format(BfParser* bfParser, int formatStart, int formatEnd, int** outCharMapping, int maxCol)
+BF_EXPORT const char* BF_CALLTYPE BfParser_Format(BfParser* bfParser, int formatStart, int formatEnd, int** outCharMapping, int maxCol, int tabSize, bool wantsTabsAsSpaces,
+	bool indentCaseLabels)
 {
 	BP_ZONE("BfParser_Reduce");
 	String& outString = *gTLStrReturn.Get();
@@ -3948,6 +3949,9 @@ BF_EXPORT const char* BF_CALLTYPE BfParser_Format(BfParser* bfParser, int format
 	gCharMapping.Clear();
 	BfPrinter bfPrinter(bfParser->mRootNode, bfParser->mSidechannelRootNode, bfParser->mErrorRootNode);
 	bfPrinter.mMaxCol = maxCol;
+	bfPrinter.mTabSize = tabSize;
+	bfPrinter.mWantsTabsAsSpaces = wantsTabsAsSpaces;
+	bfPrinter.mIndentCaseLabels = indentCaseLabels;
 	bfPrinter.mFormatStart = formatStart;
 	bfPrinter.mFormatEnd = formatEnd;
 	bfPrinter.mCharMapping = &gCharMapping;

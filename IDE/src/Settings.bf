@@ -622,6 +622,12 @@ namespace IDE
 				BackupOnly
 			}
 
+			public enum TabsOrSpaces
+			{
+				Tabs,
+				Spaces
+			}
+
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
@@ -641,9 +647,13 @@ namespace IDE
 			public bool mShowLineNumbers = true;
 			public bool mFreeCursorMovement;
 			public FileRecoveryKind mEnableFileRecovery = .Yes;
-			public bool mFormatOnSave = false;
 			public bool mSyncWithWorkspacePanel = false;
 			public int32 mWrapCommentsAt = 0;
+			public bool mFormatOnSave = false;
+			public bool mIndentCaseLabels = false;
+			public bool mLeftAlignPreprocessor = true;
+			public TabsOrSpaces mTabsOrSpaces = .Tabs;
+			public int32 mTabSize = 4;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -669,9 +679,13 @@ namespace IDE
 				sd.Add("ShowLineNumbers", mShowLineNumbers);
 				sd.Add("FreeCursorMovement", mFreeCursorMovement);
 				sd.Add("EnableFileRecovery", mEnableFileRecovery);
-				sd.Add("FormatOnSave", mFormatOnSave);
 				sd.Add("SyncWithWorkspacePanel", mSyncWithWorkspacePanel);
 				sd.Add("WrapCommentsAt", mWrapCommentsAt);
+				sd.Add("FormatOnSave", mFormatOnSave);
+				sd.Add("TabsOrSpaces", mTabsOrSpaces);
+				sd.Add("TabSize", mTabSize);
+				sd.Add("IndentCaseLabels", mIndentCaseLabels);
+				sd.Add("LeftAlignPreprocessor", mLeftAlignPreprocessor);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -701,9 +715,13 @@ namespace IDE
 				sd.Get("ShowLineNumbers", ref mShowLineNumbers);
 				sd.Get("FreeCursorMovement", ref mFreeCursorMovement);
 				sd.GetEnum<FileRecoveryKind>("EnableFileRecovery", ref mEnableFileRecovery);
-				sd.Get("FormatOnSave", ref mFormatOnSave);
 				sd.Get("SyncWithWorkspacePanel", ref mSyncWithWorkspacePanel);
 				sd.Get("WrapCommentsAt", ref mWrapCommentsAt);
+				sd.Get("FormatOnSave", ref mFormatOnSave);
+				sd.Get("TabsOrSpaces", ref mTabsOrSpaces);
+				sd.Get("TabSize", ref mTabSize);
+				sd.Get("IndentCaseLabels", ref mIndentCaseLabels);
+				sd.Get("LeftAlignPreprocessor", ref mLeftAlignPreprocessor);
 			}
 
 			public void SetDefaults()
@@ -717,6 +735,8 @@ namespace IDE
 
 			public void Apply()
 			{
+				mTabSize = Math.Clamp(mTabSize, 1, 16);
+
 				if (mSpellCheckEnabled)
 				{
 					if (gApp.mSpellChecker == null)
@@ -1197,6 +1217,7 @@ namespace IDE
 			gApp.mSettings.mEditorSettings.mFontSize = Math.Clamp(gApp.mSettings.mEditorSettings.mFontSize, 6.0f, 72.0f);
 
 			mUISettings.Apply();
+			mEditorSettings.Apply();
 
 			Font.ClearFontNameCache();
 			gApp.PhysSetScale(gApp.mSettings.mUISettings.mScale / 100.0f, true);
@@ -1205,7 +1226,7 @@ namespace IDE
 
 			mKeySettings.Apply();
 			mDebuggerSettings.Apply();
-			mEditorSettings.Apply();
+			
 
 			for (var window in gApp.mWindows)
 			{

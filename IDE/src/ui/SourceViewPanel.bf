@@ -6873,7 +6873,8 @@ namespace IDE.ui
 									{
 										int idx = embedEWC.GetTextIdx(mQueuedEmitShowData.mLine, mQueuedEmitShowData.mColumn);
 										emitEmbed.mView.mSourceViewPanel.FocusEdit();
-										emitEmbed.mView.mSourceViewPanel.ShowFileLocation(idx, .Always);
+										if (idx >= 0)
+											emitEmbed.mView.mSourceViewPanel.ShowFileLocation(idx, .Always);
 										DeleteAndNullify!(mQueuedEmitShowData);
 									}
 								}
