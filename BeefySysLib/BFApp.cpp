@@ -119,7 +119,7 @@ void BFApp::Process()
 	RenderWindow* headRenderWindow = NULL;
 
  	float physRefreshRate = 0;
-	if (!mRenderDevice->mRenderWindowList.IsEmpty())
+	if ((mRenderDevice != NULL) && (!mRenderDevice->mRenderWindowList.IsEmpty()))
 	{
 		headRenderWindow = mRenderDevice->mRenderWindowList[0];
 		physRefreshRate = headRenderWindow->GetRefreshRate();
