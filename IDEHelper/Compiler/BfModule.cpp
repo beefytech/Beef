@@ -1314,7 +1314,7 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 		{
 			auto specModule = specPair.mValue;
 
-			BfLogSysM("Setting module mIsDeleting %p due to parent module starting a new revision\n", module);
+			BfLogSysM("Setting module mIsDeleting %p due to parent module starting a new revision\n", specModule);
 
 			// This module is no longer needed
 			specModule->RemoveModuleData();
