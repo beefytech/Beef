@@ -9927,9 +9927,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				else
 				{
 					int dollarPos = (int)emitParser->mFileName.LastIndexOf('$');
-					if (dollarPos == -1)
-						return -1;
-					outString += emitParser->mFileName.Substring(dollarPos + 1);
+					if (dollarPos != -1)						
+						outString += emitParser->mFileName.Substring(dollarPos + 1);
 				}
 				outString += "\n";
 			}

@@ -464,7 +464,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				else
 					useModule = mUnreifiedModule;
 			}
-			useModule->PopulateType(type, BfPopulateType_Full);			
+			if (!type->IsDeleting())
+				useModule->PopulateType(type, BfPopulateType_Full);
 			mCompiler->mStats.mQueuedTypesProcessed++;
 			mCompiler->UpdateCompletion();
 			didWork = true;
