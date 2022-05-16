@@ -8983,7 +8983,7 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 {
 	if (type->mGenericParamKind == BfGenericParamKind_Method)
 	{
-		if ((mCurMethodInstance->mMethodInfoEx == NULL) || (type->mGenericParamIdx >= mCurMethodInstance->mMethodInfoEx->mGenericParams.mSize))
+		if ((mCurMethodInstance == NULL) || (mCurMethodInstance->mMethodInfoEx == NULL) || (type->mGenericParamIdx >= mCurMethodInstance->mMethodInfoEx->mGenericParams.mSize))
 		{
 			FatalError("Invalid GetGenericParamInstance method generic param");
 			return NULL;

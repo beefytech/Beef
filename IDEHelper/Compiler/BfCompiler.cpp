@@ -4957,7 +4957,7 @@ void BfCompiler::GetSymbolReferences()
 				auto typeDef = lookupKV.mValue.mTypeDef;
 				if ((typeDef != NULL) && (typeDef->mNamespace.StartsWith(mResolvePassData->mSymbolReferenceNamespace)))
 				{
-					rebuildTypeInstList.Add(typeInst);
+					AddToRebuildTypeList(typeInst, rebuildTypeInstList);
 				}
 			}
 		}
