@@ -185,8 +185,12 @@ namespace System
 
 		public static Result<double> Parse(StringView val)
 		{
-			var tempStr = scope String(val);
-			return .Ok(strtod(tempStr, null));
+			var tempStr = val.ToScopeCStr!();
+			char8* endPtr = null;
+			var result = strtod(tempStr, &endPtr);
+			if (endPtr != tempStr + val.Length)
+				return .Err;
+			return .Ok(result);
 		}
 
 		[CallingConvention(.Stdcall), CLink]
