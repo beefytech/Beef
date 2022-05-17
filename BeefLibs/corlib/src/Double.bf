@@ -194,7 +194,7 @@ namespace System
 				else if(c == '.')
 				{
 					count++;
-					if(count > 0)
+					if(count > 1)
 						return .Err;
 				}
 				//This doesnt handle other writing styles yet (hex etc.)
