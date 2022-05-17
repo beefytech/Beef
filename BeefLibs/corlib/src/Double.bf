@@ -186,6 +186,20 @@ namespace System
 		public static Result<double> Parse(StringView val)
 		{
 			var tempStr = scope String(val);
+			int count = 0;
+			L:for(char8 c in val)
+			{
+				if(c.IsDigit)
+					continue L;
+				else if(c == '.')
+				{
+					count++;
+					if(count > 0)
+						return .Err;
+				}
+				//This doesnt handle other writing styles yet (hex etc.)
+				return .Err
+			}
 			return .Ok(strtod(tempStr, null));
 		}
 
