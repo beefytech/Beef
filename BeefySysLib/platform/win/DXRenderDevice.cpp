@@ -18,7 +18,6 @@ using namespace DirectX;
 //#include <D3DX11async.h>
 //#include <D3DX10math.h>
 //#include <DxErr.h>
-#include <dxgi1_3.h>
 #pragma warning(pop)
 
 #include "util/AllocDebug.h"
