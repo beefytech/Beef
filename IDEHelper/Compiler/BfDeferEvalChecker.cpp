@@ -14,6 +14,11 @@ void BfDeferEvalChecker::Visit(BfAstNode* attribExpr)
 	mNeedsDeferEval = false;
 }
 
+void BfDeferEvalChecker::Visit(BfInitializerExpression* collectionInitExpr)
+{
+	VisitChild(collectionInitExpr->mTarget);
+}
+
 void BfDeferEvalChecker::Visit(BfLiteralExpression* literalExpr)
 {
 	switch (literalExpr->mValue.mTypeCode)
