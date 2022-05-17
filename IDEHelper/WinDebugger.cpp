@@ -3576,58 +3576,61 @@ void WinDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 {	
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
-	if (breakpoint == mActiveBreakpoint)
-		mActiveBreakpoint = NULL;
-
-	BfLogDbg("WinDebugger::DeleteBreakpoint %p Count:%d\n", breakpoint, mBreakpoints.size());
-
 	WdBreakpoint* wdBreakpoint = (WdBreakpoint*)breakpoint;
 
-	if (wdBreakpoint->mCondition != NULL)
+	while (wdBreakpoint != NULL)
 	{
-		if (!wdBreakpoint->mIsLinkedSibling)
-			delete wdBreakpoint->mCondition;
-	}
+		BfLogDbg("WinDebugger::DeleteBreakpoint %p Count:%d\n", wdBreakpoint, mBreakpoints.size());
 
-	if (wdBreakpoint->mMemoryBreakpointInfo != NULL)
-	{
-		for (int memoryWatchSlot = 0; memoryWatchSlot < 4; memoryWatchSlot++)
+		if (wdBreakpoint == mActiveBreakpoint)
+			mActiveBreakpoint = NULL;
+
+		if (wdBreakpoint->mCondition != NULL)
 		{
-			if (mMemoryBreakpoints[memoryWatchSlot].mBreakpoint == wdBreakpoint)
+			if (!wdBreakpoint->mIsLinkedSibling)
+				delete wdBreakpoint->mCondition;
+		}
+
+		if (wdBreakpoint->mMemoryBreakpointInfo != NULL)
+		{
+			for (int memoryWatchSlot = 0; memoryWatchSlot < 4; memoryWatchSlot++)
 			{
-				mFreeMemoryBreakIndices.push_back(memoryWatchSlot);
-				mMemoryBreakpoints[memoryWatchSlot] = WdMemoryBreakpointBind();
-				mMemoryBreakpointVersion++;
-				UpdateThreadDebugRegisters();
+				if (mMemoryBreakpoints[memoryWatchSlot].mBreakpoint == wdBreakpoint)
+				{
+					mFreeMemoryBreakIndices.push_back(memoryWatchSlot);
+					mMemoryBreakpoints[memoryWatchSlot] = WdMemoryBreakpointBind();
+					mMemoryBreakpointVersion++;
+					UpdateThreadDebugRegisters();
+				}
+			}
+
+			wdBreakpoint->mMemoryBreakpointInfo->mMemoryWatchSlotBitmap = 0;
+		}
+
+		if (wdBreakpoint->mAddr != 0)
+		{
+			mBreakpointAddrMap.Remove(wdBreakpoint->mAddr, wdBreakpoint);
+			RemoveBreakpoint(wdBreakpoint->mAddr);
+
+			for (auto thread : mThreadList)
+			{
+				if (thread->mIsAtBreakpointAddress == wdBreakpoint->mAddr)
+					thread->mIsAtBreakpointAddress = NULL;
+				if (thread->mBreakpointAddressContinuing == wdBreakpoint->mAddr)
+					thread->mBreakpointAddressContinuing = NULL;
 			}
 		}
 
-		wdBreakpoint->mMemoryBreakpointInfo->mMemoryWatchSlotBitmap = 0;
-	}
-
-	if (wdBreakpoint->mAddr != 0)
-	{	
-		mBreakpointAddrMap.Remove(wdBreakpoint->mAddr, wdBreakpoint);
-		RemoveBreakpoint(wdBreakpoint->mAddr);	
-
-		for (auto thread : mThreadList)
+		if (!wdBreakpoint->mIsLinkedSibling)
 		{
-			if (thread->mIsAtBreakpointAddress == wdBreakpoint->mAddr)
-				thread->mIsAtBreakpointAddress = NULL;
-			if (thread->mBreakpointAddressContinuing == wdBreakpoint->mAddr)
-				thread->mBreakpointAddressContinuing = NULL;
-		}		
+			mBreakpoints.Remove(wdBreakpoint);
+		}
+
+		auto nextBreakpoint = (WdBreakpoint*)wdBreakpoint->mLinkedSibling;
+		delete wdBreakpoint;
+
+		wdBreakpoint = nextBreakpoint;
 	}
-
-	if (!wdBreakpoint->mIsLinkedSibling)
-	{		
-		mBreakpoints.Remove(wdBreakpoint);
-	}
-
-	if (wdBreakpoint->mLinkedSibling != NULL)
-		DeleteBreakpoint(wdBreakpoint->mLinkedSibling);
-
-	delete wdBreakpoint;
 }
 
 void WinDebugger::DetachBreakpoint(Breakpoint* breakpoint)
