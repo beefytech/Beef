@@ -1907,12 +1907,14 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 		case COFFFrameProgram::Command_T0:
 		case COFFFrameProgram::Command_T1:
 		case COFFFrameProgram::Command_RASearch:
-			BF_ASSERT(stackPos < 8);
+			if (stackPos >= 8)
+				return false;
 			stackCmds[stackPos++] = cmd;						
 			break;
 		case COFFFrameProgram::Command_Add:		
 			{
-			BF_ASSERT(stackPos >= 2);
+				if (stackPos < 2)
+					return false;
 				addr_target lhs = _GetValue(stackPos - 2);
 				addr_target rhs = _GetValue(stackPos - 1);
 				stackPos -= 2;
@@ -1922,7 +1924,8 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 			break;
 		case COFFFrameProgram::Command_Subtract:
 			{
-				BF_ASSERT(stackPos >= 2);
+				if (stackPos < 2)
+					return false;
 				addr_target lhs = _GetValue(stackPos - 2);
 				addr_target rhs = _GetValue(stackPos - 1);
 				stackPos -= 2;
@@ -1932,7 +1935,8 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 			break;
 		case COFFFrameProgram::Command_Align:
 			{
-				BF_ASSERT(stackPos >= 2);
+				if (stackPos < 2)
+					return false;
 				addr_target lhs = _GetValue(stackPos - 2);
 				addr_target rhs = _GetValue(stackPos - 1);
 				stackPos -= 2;
@@ -1942,7 +1946,8 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 			break;
 		case COFFFrameProgram::Command_Set:
 			{				
-				BF_ASSERT(stackPos >= 2);
+				if (stackPos < 2)
+					return false;
 				addr_target rhs = _GetValue(stackPos - 1);
 				switch (stackCmds[stackPos - 2])
 				{
@@ -1990,8 +1995,9 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 			}
 			break;
 		case COFFFrameProgram::Command_Deref:
-			{
-				BF_ASSERT(stackPos >= 1);
+			{				
+				if (stackPos < 1)
+					return false;
 				addr_target addr = _GetValue(stackPos - 1);				
 				stackPos--;
 				stackValues[stackPos] = mDebugger->ReadMemory<addr_target>(addr);
@@ -2000,6 +2006,8 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 			break;		
 		case COFFFrameProgram::Command_Value:
 			{
+				if (stackPos >= 8)
+					return false;
 				addr_target val = *(addr_target*)cmdPtr;
 				cmdPtr += 4;
 				stackValues[stackPos] = val;
@@ -2008,6 +2016,8 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 			break;
 		case COFFFrameProgram::Command_Value8:
 			{
+				if (stackPos >= 8)
+					return false;
 				addr_target val = (uint8)*(cmdPtr++);
 				stackValues[stackPos] = val;
 				stackCmds[stackPos++] = COFFFrameProgram::Command_Value;
