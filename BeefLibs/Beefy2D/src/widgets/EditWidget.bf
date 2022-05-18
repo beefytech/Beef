@@ -3469,7 +3469,19 @@ namespace Beefy.widgets
 			GetTextCoordAtLineChar(line, lineChar, out x, out y);
 
 			int coordLine;
-			GetLineAndColumnAtCoord(x, y, out coordLine, out lineColumn);
+			if (!GetLineAndColumnAtCoord(x, y, out coordLine, out lineColumn))
+			{
+				GetLinePosition(line, var lineStart, var lineEnd);
+
+				lineColumn = 0;
+				int checkTextPos = lineStart;
+				for (int i < lineChar)
+				{
+					let c32 = mData.GetChar32(ref checkTextPos);
+					if (!c32.IsCombiningMark)
+						lineColumn++;
+				}
+			}
 		}
 
         public virtual void MoveCursorTo(int line, int charIdx, bool centerCursor = false, int movingDir = 0, CursorMoveKind cursorMoveKind = .Unknown)

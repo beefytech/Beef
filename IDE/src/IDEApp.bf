@@ -1923,9 +1923,12 @@ namespace IDE
 			            DebugManager.IntDisplayType intDisplayType;
 			            DebugManager.MmDisplayType mmDisplayType;
 						DebugManager.FloatDisplayType floatDisplayType;
-			            mDebugger.GetDisplayTypes(referenceId, out intDisplayType, out mmDisplayType, out floatDisplayType);
+						String formatStr = scope .();
+			            mDebugger.GetDisplayTypes(referenceId, formatStr, out intDisplayType, out mmDisplayType, out floatDisplayType);
 			            using (sd.CreateObject(referenceId))
 			            {
+							if (!formatStr.IsEmpty)
+								sd.Add("FormatStr", formatStr);
 			                sd.ConditionalAdd("IntDisplayType", intDisplayType);
 			                sd.ConditionalAdd("MmDisplayType", mmDisplayType);
 							sd.ConditionalAdd("FloatDisplayType", floatDisplayType);
@@ -3310,11 +3313,13 @@ namespace IDE
 				var referenceIdStr = scope String(referenceId);
 		        if (referenceIdStr.Length == 0)
 		            referenceIdStr = null;
-			        
+
+				String formatStr = scope .();
+				data.GetString("FormatStr", formatStr);
 	            var intDisplayType = data.GetEnum<DebugManager.IntDisplayType>("IntDisplayType");
 	            var mmDisplayType = data.GetEnum<DebugManager.MmDisplayType>("MmDisplayType");
 				var floatDisplayType = data.GetEnum<DebugManager.FloatDisplayType>("FloatDisplayType");
-	            mDebugger.SetDisplayTypes(referenceIdStr, intDisplayType, mmDisplayType, floatDisplayType);
+	            mDebugger.SetDisplayTypes(referenceIdStr, formatStr, intDisplayType, mmDisplayType, floatDisplayType);
 			}
 
 			for (data.Enumerate("StepFilters"))

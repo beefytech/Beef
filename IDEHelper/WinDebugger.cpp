@@ -2711,7 +2711,7 @@ bool WinDebugger::DoUpdate()
 								
 								DwFormatInfo formatInfo;
 								formatInfo.mRawString = true;
-								String nameStr = ReadString(DbgType_SChar, (intptr)threadNameInfo->szName, false, 1024, formatInfo);
+								String nameStr = ReadString(DbgType_SChar, (intptr)threadNameInfo->szName, false, 1024, formatInfo, false);
 
 								WdThreadInfo* namingThreadInfo = threadInfo;
 								if (threadNameInfo->dwThreadID != (DWORD)-1)
@@ -2739,7 +2739,7 @@ bool WinDebugger::DoUpdate()
 
 								FailMessage failMessage = ReadMemory<FailMessage>(exceptionRecord->ExceptionInformation[2]);								
 								DwFormatInfo formatInfo;
-								String failStr = ReadString(DbgType_SChar16, failMessage.mErrorStr, false, 8192, formatInfo);
+								String failStr = ReadString(DbgType_SChar16, failMessage.mErrorStr, false, 8192, formatInfo, false);
 
 								mDebugManager->mOutMessages.push_back(StrFormat("error Run-Time Check Failure %d - %s", exceptionRecord->ExceptionInformation[6], failStr.c_str()));								
 								mRunState = RunState_Paused;								
@@ -6283,7 +6283,15 @@ DwDisplayInfo* WinDebugger::GetDisplayInfo(const StringImpl& referenceId)
 	DwDisplayInfo* displayInfo = &mDebugManager->mDefaultDisplayInfo;
 	if (!referenceId.empty())
 	{		
-		mDebugManager->mDisplayInfos.TryGetValue(referenceId, &displayInfo);
+		if (!mDebugManager->mDisplayInfos.TryGetValue(referenceId, &displayInfo))
+		{
+			int dollarIdx = referenceId.LastIndexOf('$');
+			if ((dollarIdx > 0) && (referenceId[dollarIdx - 1] == ']'))
+			{
+				// Try getting series displayinfo
+				mDebugManager->mDisplayInfos.TryGetValueWith(StringView(referenceId, 0, dollarIdx), &displayInfo);
+			}
+		}
 	}
 	return displayInfo;
 }
@@ -6351,7 +6359,7 @@ DebugVisualizerEntry* WinDebugger::FindVisualizerForType(DbgType* dbgType, Array
 
 #define GET_FROM(ptr, T) *((T*)(ptr += sizeof(T)) - 1)
 
-String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAddr, intptr maxLength, DwFormatInfo& formatInfo)
+String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAddr, intptr maxLength, DwFormatInfo& formatInfo, bool wantStringView)
 {	
 	int origMaxLength = maxLength;
 	if (addr == 0)
@@ -6364,6 +6372,11 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 	String valString;	
 	intptr maxShowSize = 255;
 
+	if (wantStringView)
+	{
+		NOP;
+	}
+
 	if (maxLength == -1)
 		maxLength = formatInfo.mOverrideCount;
 	else if (formatInfo.mOverrideCount != -1)
@@ -6373,8 +6386,14 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 
 	if (maxLength == -1)
 		maxLength = 8 * 1024 * 1024; // Is 8MB crazy?	
-	if (!formatInfo.mRawString)
+	if ((!formatInfo.mRawString) && (!wantStringView))
 		maxLength = BF_MIN(maxLength, maxShowSize);
+
+	if (wantStringView)
+	{
+		// Limit the original string view to 1MB, reevaluate on "More"
+		maxLength = BF_MIN(maxLength, 1024 * 1024);
+	}
 
 	//EnableMemCache();
 	bool readFailed = false;
@@ -6494,7 +6513,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 // 		valString = UTF8Encode(ToWString(valString));
 // 	}
 	
-	if (formatInfo.mRawString)
+	if ((formatInfo.mRawString) || (wantStringView))
 	{
 		if ((formatInfo.mDisplayType == DwDisplayType_Utf8) || (!hasHighAscii))
 			return valString;
@@ -6520,7 +6539,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 	retVal += SlashString(valString, true, true, formatInfo.mLanguage == DbgLanguage_Beef);
 	
 	// We could go over 'maxShowSize' if we have a lot of slashed chars. An uninitialized string can be filled with '\xcc' chars
-	if ((!formatInfo.mRawString) && ((int)retVal.length() > maxShowSize))
+	if ((!formatInfo.mRawString) && (!wantStringView) && ((int)retVal.length() > maxShowSize))
 	{
 		retVal = retVal.Substring(0, maxShowSize);
 		wasTerminated = false;
@@ -6640,8 +6659,10 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 	bool isEnum = false;
 	int64 enumVal = 0;
 	String result;
+	String stringViewData;
 
 	DwDisplayInfo* displayInfo = GetDisplayInfo(formatInfo.mReferenceId);
+	bool wantStringView = (displayInfo->mFormatStr == "str") && (formatInfo.mAllowStringView);
 
 	DbgType* origValueType = typedValue.mType;
 	bool origHadRef = false;
@@ -7232,16 +7253,23 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			}
 
 			SetAndRestoreValue<intptr> prevOverrideLen(formatInfo.mOverrideCount, strLen);
-			String strResult = ReadString(unmodInnerType->mTypeCode, typedValue.mLocalIntPtr, typedValue.mIsLiteral, strLen, formatInfo);
+			String strResult = ReadString(unmodInnerType->mTypeCode, typedValue.mLocalIntPtr, typedValue.mIsLiteral, strLen, formatInfo, wantStringView);
 			if (formatInfo.mRawString)
 				return strResult;
 			if (!strResult.IsEmpty())
 			{
 				if (!retVal.IsEmpty())
 					retVal += " ";
-				retVal += strResult;
+				if (!wantStringView)
+					retVal += strResult;
 			}
 			retVal += "\n" + origValueType->ToString(language);
+			retVal += "\n:stringView";
+			if (wantStringView)
+			{
+				retVal += "\t";
+				retVal += SlashString(strResult, false, false, true);
+			}
 			return retVal;
 		}
 		else if ((unmodInnerType != NULL) && 
@@ -7436,7 +7464,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 		if (innerType->IsChar(language))
 		{
-			String strVal = ReadString(innerType->mTypeCode, typedValue.mSrcAddress, false, arraySize, formatInfo);
+			String strVal = ReadString(innerType->mTypeCode, typedValue.mSrcAddress, false, arraySize, formatInfo, false);
 			if (formatInfo.mRawString)
 				return strVal;
 			retVal += strVal;
@@ -7927,7 +7955,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		bool hadCustomDisplayString = false;
 		if (debugVis != NULL)
 		{	
-			auto& displayStringList = formatInfo.mRawString ? debugVis->mStringViews : debugVis->mDisplayStrings;
+			auto& displayStringList = (formatInfo.mRawString || wantStringView) ? debugVis->mStringViews : debugVis->mDisplayStrings;
 
 			for (auto displayEntry : displayStringList)
 			{
@@ -7941,7 +7969,15 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				String displayStr = mDebugManager->mDebugVisualizers->DoStringReplace(displayEntry->mString, dbgVisWildcardCaptures);
 				if (displayString.length() > 0)
 					displayString += " ";
-				ProcessEvalString(dbgCompileUnit, useTypedValue, displayStr, displayString, formatInfo, debugVis, true);
+
+				if (wantStringView)
+				{
+					DwFormatInfo strFormatInfo = formatInfo;
+					strFormatInfo.mRawString = true;
+					ProcessEvalString(dbgCompileUnit, useTypedValue, displayStr, stringViewData, strFormatInfo, debugVis, true);
+				}
+				else
+					ProcessEvalString(dbgCompileUnit, useTypedValue, displayStr, displayString, formatInfo, debugVis, true);				
 				if (formatInfo.mRawString)
 					return displayString;
 				
@@ -8309,8 +8345,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		}
 
 		if (formatInfo.mExpandItemDepth > 0)
-			return retVal;
-
+			return retVal;		
 		if (isAppendBfObject)
 			retVal += "\n:appendAlloc";
 		if (isStackBfObject)
@@ -8329,6 +8364,15 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		if ((!typedValue.mIsLiteral) && (dwValueType->IsPointer()))
 		{
 			retVal += "\n:editVal\t" + EncodeDataPtr(ptrVal, true);			
+		}
+
+		if (((debugVis != NULL) && (!debugVis->mStringViews.IsEmpty())) || (wantStringView))
+			retVal += "\n:stringView";
+
+		if (wantStringView)
+		{
+			retVal += "\t";
+			retVal += SlashString(stringViewData, false, false, true);
 		}
 
 		return retVal;
@@ -8512,7 +8556,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 			else
 			{	
 				String evalStr = "*(" + debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures) + " + {0}), this=" + ptrUseDataStr;
-				evalStr += ", refid=\"" + referenceId + ".[]\"";
+				evalStr += ", refid=\"" + referenceId + ".[]${0}\"";
 				if (isReadOnly)
 					evalStr += ", ne";
 				retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, sizeValue.GetInt64(), 50000) +
@@ -9574,6 +9618,11 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 	if ((expressionFlags & DwEvalExpressionFlag_RawStr) != 0)
 	{
 		formatInfo.mRawString = true;
+	}
+
+	if ((expressionFlags & DwEvalExpressionFlag_AllowStringView) != 0)
+	{
+		formatInfo.mAllowStringView = true;
 	}
 
 	auto dbgModule = GetCallStackDbgModule(callStackIdx);

@@ -531,10 +531,23 @@ namespace Beefy.theme.dark
 				}
 			}
 
+			var darkListView = mListView as DarkListView;
+			float height = darkListView.mFont.GetLineSpacing();
+
             uint32 color = Focused ? mFocusColor : mSelectColor;
             using (g.PushColor(color))
-                g.DrawButton(DarkTheme.sDarkTheme.GetImage(Focused ? DarkTheme.ImageIdx.MenuSelect : DarkTheme.ImageIdx.MenuNonFocusSelect),
-                    hiliteX, 0, Math.Max(lastStrWidth + GS!(16), mWidth - GS!(4) - hiliteX));
+			{
+				if (Math.Abs(height - mSelfHeight) < height * 0.5f)
+				{
+	                g.DrawButton(DarkTheme.sDarkTheme.GetImage(Focused ? DarkTheme.ImageIdx.MenuSelect : DarkTheme.ImageIdx.MenuNonFocusSelect),
+	                    hiliteX, 0, Math.Max(lastStrWidth + GS!(16), mWidth - GS!(4) - hiliteX));
+				}
+				else
+				{
+					g.DrawBox(DarkTheme.sDarkTheme.GetImage(Focused ? DarkTheme.ImageIdx.MenuSelect : DarkTheme.ImageIdx.MenuNonFocusSelect),
+						hiliteX, 0, Math.Max(lastStrWidth + GS!(16), mWidth - GS!(4) - hiliteX), mSelfHeight);
+				}
+			}
         }
 
 		int FindItemAtY(float y)

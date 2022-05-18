@@ -269,24 +269,43 @@ namespace IDE.ui
 
             g.SetFont(DarkTheme.sDarkTheme.mSmallFont);            
 
+			bool showIndex = gApp.mSettings.mEnableDevMode;
+
+			EditWidget activeEditWidget = null;
             var activeDocument = gApp.GetActiveDocumentPanel();
             if (activeDocument is SourceViewPanel)
             {
                 var sourceViewPanel = (SourceViewPanel)activeDocument;
 				sourceViewPanel = sourceViewPanel.GetActivePanel();
+				activeEditWidget = sourceViewPanel.mEditWidget;
+            }
+			else
+			{
+				for (var window in gApp.mWindows)
+				{
+					if ((window.mHasFocus) && (var widgetWindow = window as WidgetWindow))
+					{
+						if (var editWidget = widgetWindow.mFocusWidget as WatchStringEditWidget)
+						{
+							activeEditWidget = editWidget;
+							showIndex = true;
+						}
+					}
+				}
+			}
 
-                int32 line;
-                int32 column;
-                sourceViewPanel.GetCursorPosition(out line, out column);
+			if (activeEditWidget != null)
+			{
+				var lineAndColumn = activeEditWidget.mEditWidgetContent.CursorLineAndColumn;
 
 				using (g.PushColor(DarkTheme.COLOR_TEXT))
 				{
-					if (gApp.mSettings.mEnableDevMode)
-						g.DrawString(StackStringFormat!("Idx {0}", sourceViewPanel.mEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
-	                g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(150), 0);
-	                g.DrawString(StackStringFormat!("Col {0}", column + 1), mWidth - GS!(78), 0);
+					if (showIndex)
+						g.DrawString(StackStringFormat!("Idx {0}", activeEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
+				    g.DrawString(StackStringFormat!("Ln {0}", lineAndColumn.mLine + 1), mWidth - GS!(150), 0);
+				    g.DrawString(StackStringFormat!("Col {0}", lineAndColumn.mColumn + 1), mWidth - GS!(78), 0);
 				}
-            }
+			}
 
             using (g.PushColor(0xFF101010))
             {                

@@ -3665,6 +3665,11 @@ namespace System
 			return String.Unquote(Ptr, Length, outString);
 		}
 
+		public Result<void> Unescape(String outString)
+		{
+			return String.Unescape(Ptr, Length, outString);
+		}
+
 		[NoDiscard]
 		public StringView Substring(int pos)
 		{

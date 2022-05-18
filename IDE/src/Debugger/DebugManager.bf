@@ -100,6 +100,7 @@ namespace IDE.Debugger
 			Symbol				= 0x100,
 			StepIntoCall		= 0x200,
 			RawStr				= 0x400,
+			AllowStringView		= 0x800
 		}
 
 		[Reflect]
@@ -205,10 +206,10 @@ namespace IDE.Debugger
 		static extern void* Debugger_CreateStepFilter(char8* filter, bool isGlobal, StepFilterKind stepFilterKind);
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern void Debugger_SetDisplayTypes(char8* referenceId, IntDisplayType intDisplayType, MmDisplayType mmDisplayType, FloatDisplayType floatDisplayType);
+		static extern void Debugger_SetDisplayTypes(char8* referenceId, char8* formatStr, IntDisplayType intDisplayType, MmDisplayType mmDisplayType, FloatDisplayType floatDisplayType);
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern bool Debugger_GetDisplayTypes(char8* referenceId, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType, out FloatDisplayType floatDisplayType);
+		static extern char8* Debugger_GetDisplayTypes(char8* referenceId, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType, out FloatDisplayType floatDisplayType, out bool foundSpecific);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetDisplayTypeNames();
@@ -1100,14 +1101,17 @@ namespace IDE.Debugger
 			Debugger_WriteMemory(addr, size, data.CArray());
 		}
 
-		public void SetDisplayTypes(String referenceId, IntDisplayType intDisplayType, MmDisplayType mmDisplayType, FloatDisplayType floatDisplayType)
+		public void SetDisplayTypes(String referenceId, String formatStr, IntDisplayType intDisplayType, MmDisplayType mmDisplayType, FloatDisplayType floatDisplayType)
 		{
-			Debugger_SetDisplayTypes(referenceId, intDisplayType, mmDisplayType, floatDisplayType);
+			Debugger_SetDisplayTypes(referenceId, formatStr, intDisplayType, mmDisplayType, floatDisplayType);
 		}
 
-		public bool GetDisplayTypes(String referenceId, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType, out FloatDisplayType floatDisplayType)
+		public bool GetDisplayTypes(String referenceId, String formatStr, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType, out FloatDisplayType floatDisplayType)
 		{
-			return Debugger_GetDisplayTypes(referenceId, out intDisplayType, out mmDisplayType, out floatDisplayType);
+			bool foundSpecific = false;
+			char8* result = Debugger_GetDisplayTypes(referenceId, out intDisplayType, out mmDisplayType, out floatDisplayType, out foundSpecific);
+			formatStr.Append(result);
+			return foundSpecific;
 		}
 
 		public void GetDisplayTypeNames(String outDisplayTypeNames)

@@ -1168,32 +1168,37 @@ BF_EXPORT void BF_CALLTYPE Debugger_Update()
 		gDebugger->Update();
 }
 
-BF_EXPORT void BF_CALLTYPE Debugger_SetDisplayTypes(const char* referenceId, int8 intDisplayType, int8 mmDisplayType, int8 floatDisplayType)
+BF_EXPORT void BF_CALLTYPE Debugger_SetDisplayTypes(const char* referenceId, const char* formatStr, int8 intDisplayType, int8 mmDisplayType, int8 floatDisplayType)
 {
-	DwDisplayInfo displayInfo;
-	displayInfo.mIntDisplayType = (DwIntDisplayType)intDisplayType;
-	displayInfo.mMmDisplayType = (DwMmDisplayType)mmDisplayType;
-	displayInfo.mFloatDisplayType = (DwFloatDisplayType)floatDisplayType;
+	AutoCrit autoCrit(gDebugManager->mCritSect);
 
+	DwDisplayInfo* displayInfo = NULL;
 	if (referenceId == NULL)
-	{
-		gDebugManager->mDefaultDisplayInfo = displayInfo;
-	}
-	else if ((displayInfo.mIntDisplayType == DwIntDisplayType_Default) &&
-		(displayInfo.mMmDisplayType == DwMmDisplayType_Default) &&
-		(displayInfo.mFloatDisplayType == DwFloatDisplayType_Default))
+		displayInfo = &gDebugManager->mDefaultDisplayInfo;
+	else
+		gDebugManager->mDisplayInfos.TryAdd(referenceId, NULL, &displayInfo);
+	
+	if (formatStr != NULL)
+		displayInfo->mFormatStr = formatStr;
+	displayInfo->mIntDisplayType = (DwIntDisplayType)intDisplayType;
+	displayInfo->mMmDisplayType = (DwMmDisplayType)mmDisplayType;
+	displayInfo->mFloatDisplayType = (DwFloatDisplayType)floatDisplayType;
+
+	if ((referenceId != NULL) &&
+		(displayInfo->mFormatStr.IsEmpty()) &&
+		(displayInfo->mIntDisplayType == DwIntDisplayType_Default) &&
+		(displayInfo->mMmDisplayType == DwMmDisplayType_Default) &&
+		(displayInfo->mFloatDisplayType == DwFloatDisplayType_Default))
 	{
 		gDebugManager->mDisplayInfos.Remove(referenceId);
 	}
-	else
-	{
-		gDebugManager->mDisplayInfos[referenceId] = displayInfo;
-	}
 }
 
-BF_EXPORT bool BF_CALLTYPE Debugger_GetDisplayTypes(const char* referenceId, int8* intDisplayType, int8* mmDisplayType, int8* floatDisplayType)
+BF_EXPORT const char* BF_CALLTYPE Debugger_GetDisplayTypes(const char* referenceId, int8* intDisplayType, int8* mmDisplayType, int8* floatDisplayType, bool* foundSpecific)
 {
-	bool foundSpecific = false;
+	AutoCrit autoCrit(gDebugManager->mCritSect);
+
+	*foundSpecific = false;
 	DwDisplayInfo* displayInfo = &gDebugManager->mDefaultDisplayInfo;
 	if (referenceId != NULL)
 	{
@@ -1206,18 +1211,20 @@ BF_EXPORT bool BF_CALLTYPE Debugger_GetDisplayTypes(const char* referenceId, int
 
 		if (gDebugManager->mDisplayInfos.TryGetValue(referenceId, &displayInfo))
 		{
-			foundSpecific = true;
+			*foundSpecific = true;
 		}
 	}
 
 	*intDisplayType = (int8)displayInfo->mIntDisplayType;
 	*mmDisplayType = (int8)displayInfo->mMmDisplayType;
 	*floatDisplayType = (int8)displayInfo->mFloatDisplayType;
-	return foundSpecific;
+	return displayInfo->mFormatStr.c_str();
 }
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetDisplayTypeNames()
 {
+	AutoCrit autoCrit(gDebugManager->mCritSect);
+
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
 	for (auto& displayInfoEntry : gDebugManager->mDisplayInfos)

@@ -192,6 +192,7 @@ struct DwFormatInfo
 	bool mNoVisualizers;
 	bool mNoMembers;
 	bool mRawString;
+	bool mAllowStringView;
 	bool mNoEdit;
 	DbgTypeKindFlags mTypeKindFlags;
 	intptr mArrayLength;
@@ -213,6 +214,7 @@ struct DwFormatInfo
 		mHidePointers = false;
 		mIgnoreDerivedClassInfo = false;
 		mRawString = false;
+		mAllowStringView = false;
 		mNoVisualizers = false;
 		mNoMembers = false;
 		mNoEdit = false;

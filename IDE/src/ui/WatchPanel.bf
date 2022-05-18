@@ -28,7 +28,7 @@ namespace IDE.ui
         TypeValueType = 0x100,
         Namespace 	= 0x200,
         Text 		= 0x400,
-		RawText		= 0x800
+		RawText		= 0x800,
     }
 
     public class WatchEntry
@@ -49,6 +49,7 @@ namespace IDE.ui
 		public bool mIsPending;
 		public int mMemoryBreakpointAddr;
         public int32 mHadStepCount;
+		public String mStringView ~ delete _;
         public String mReferenceId ~ delete _;
         public String mResultTypeStr ~ delete _;
 		public String mAction ~ delete _;
@@ -417,7 +418,7 @@ namespace IDE.ui
 			{
 				using (g.PushColor(0x60404040))
 					g.FillRect(0, 0, mWidth, mHeight);
-			}	
+			}
 		}
     }
 
@@ -511,11 +512,34 @@ namespace IDE.ui
                 DarkTooltipManager.CloseTooltip();
         }
 
-		public override void RecalcSize()
+		/*public override void RecalcSize()
 		{
 			base.RecalcSize();
 			if (mWatchStringEdit.mMoreButton != null)
 				mHeight += GS!(32);
+		}*/
+
+		public override void GetTextData()
+		{
+			
+			base.GetTextData();
+
+			
+		}
+
+		public override void CheckLineCoords()
+		{
+			bool changed = (mLineCoordTextVersionId != mData.mCurTextVersionId);
+
+			base.CheckLineCoords();
+
+			if ((changed) && (!mLineCoords.IsEmpty) && (mWatchStringEdit.mMoreButton != null))
+			{
+				mLineCoords.Back += GS!(32);
+				var dewc = mEditWidget.mEditWidgetContent as DarkEditWidgetContent;
+				dewc.mHeight = mLineCoords.Back;
+				mWatchStringEdit.RehupSize();
+			}
 		}
 
 		public override void CursorToEnd()
@@ -554,6 +578,17 @@ namespace IDE.ui
 			    return;
 			}
 		}
+
+		public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
+		{
+			base.MouseClicked(x, y, origX, origY, btn);
+
+			if (btn == 1)
+			{
+				SelfToOtherTranslate(mWatchStringEdit, x, y, var transX, var transY);
+				mWatchStringEdit.[Friend]ShowMenu(transX, transY);
+			}
+		}
     }
 
 	public class WatchStringEditWidget : DarkEditWidget
@@ -583,10 +618,15 @@ namespace IDE.ui
 		public QuickFind mQuickFind;
 		public DarkTabbedView.DarkTabMenuButton mMenuButton;
 		public bool mViewWhiteSpace;
+		public bool mIsEmbedded;
+		public bool mShowStatusBar;
 
-        public this(String text, String evalStr)
+        public this(String text, String evalStr, bool isEmbedded = false)
         {
 			scope AutoBeefPerf("WatchStringEdit.this");
+
+			mIsEmbedded = isEmbedded;
+			mShowStatusBar = !mIsEmbedded;
 
 			let editWidgetContent = new WatchStringEditWidgetContent();
 			editWidgetContent.mWatchStringEdit = this;
@@ -596,6 +636,9 @@ namespace IDE.ui
             mEditWidget.Content.mIsReadOnly = true;
             mEditWidget.Content.mWordWrap = text.Length < cWordWrapMax;
             mEditWidget.Content.mAllowMaximalScroll = false;
+
+			if (mIsEmbedded)
+				mEditWidget.InitScrollbars(false, true);
 
 			bool needsStrCleaning = false;
 
@@ -626,36 +669,77 @@ namespace IDE.ui
 			if (evalStr != null)
 				mEvalString.Set(evalStr);
 
-			mMenuButton = new DarkTabbedView.DarkTabMenuButton();
-			AddWidget(mMenuButton);
+			if (!mIsEmbedded)
+			{
+				mMenuButton = new DarkTabbedView.DarkTabMenuButton();
+				AddWidget(mMenuButton);
 			
-			mMenuButton.mOnMouseDown.Add(new (evt) =>
-				{
-					float x = mMenuButton.mX + GS!(14);
-					float y = mMenuButton.mY + GS!(6);
-
-					Menu menu = new Menu();
-					var menuItem = menu.AddItem("Show Whitespace");
-					if (mViewWhiteSpace)
-						menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
-					menuItem.mOnMenuItemSelected.Add(new (menu) =>
-						{
-							mViewWhiteSpace = !mViewWhiteSpace;
-							var darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
-							darkEditWidgetContent.mViewWhiteSpaceColor = mViewWhiteSpace ? SourceEditWidgetContent.sTextColors[(int)SourceElementType.VisibleWhiteSpace] : 0;
-						});
-
-					MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
-					menuWidget.Init(this, x, y, .AllowScrollable);
-
-					menu.mOnMenuClosed.Add(new (menu, itemSelected) =>
-						{
-							if (DarkTooltipManager.sTooltip != null)
-								DarkTooltipManager.sTooltip.mAutoCloseDelay = 90;
-						});
-					//menuWidget.mWidgetWindow.mOnWindowClosed.Add(new => MenuClosed);
-				});
+				mMenuButton.mOnMouseDown.Add(new (evt) =>
+					{
+						float x = mMenuButton.mX + GS!(14);
+						float y = mMenuButton.mY + GS!(6);
+	
+						ShowMenu(x, y);
+						//menuWidget.mWidgetWindow.mOnWindowClosed.Add(new => MenuClosed);
+					});
+			}
         }
+
+		void ShowMenu(float x, float y)
+		{
+			Menu menu = new Menu();
+			var menuItem = menu.AddItem("Show Whitespace");
+			if (mViewWhiteSpace)
+				menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+			menuItem.mOnMenuItemSelected.Add(new (menu) =>
+				{
+					mViewWhiteSpace = !mViewWhiteSpace;
+					var darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
+					darkEditWidgetContent.mViewWhiteSpaceColor = mViewWhiteSpace ? SourceEditWidgetContent.sTextColors[(int)SourceElementType.VisibleWhiteSpace] : 0;
+				});
+
+			if (mIsEmbedded)
+			{
+				menuItem = menu.AddItem("Show Status Bar");
+				if (mShowStatusBar)
+					menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+				menuItem.mOnMenuItemSelected.Add(new (menu) =>
+					{
+						mShowStatusBar = !mShowStatusBar;
+						MarkDirty();
+						RehupSize();
+					});
+			}
+
+			MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+			menuWidget.Init(this, x, y, .AllowScrollable);
+
+			menu.mOnMenuClosed.Add(new (menu, itemSelected) =>
+				{
+					if (DarkTooltipManager.sTooltip != null)
+						DarkTooltipManager.sTooltip.mAutoCloseDelay = 90;
+				});
+		}
+
+		public void UpdateString(String str)
+		{
+			var dewc = (DarkEditWidgetContent)mEditWidget.mEditWidgetContent;
+
+			String oldText = scope .();
+			mEditWidget.GetText(oldText);
+			if (oldText == str)
+			{
+				dewc.mFont = DarkTheme.sDarkTheme.mSmallFont;
+				return;
+			}
+
+			bool scrollbarAtBottom = (mEditWidget.mVertPos.mDest > 0) && (mEditWidget.mVertPos.mDest >= (mEditWidget.mVertScrollbar.mContentSize - mEditWidget.mVertScrollbar.mPageSize - 0.1f));
+			mEditWidget.SetText(str);
+			if (scrollbarAtBottom)
+				mEditWidget.VertScrollTo(mEditWidget.mVertScrollbar.mContentSize - mEditWidget.mVertScrollbar.mPageSize);
+
+			dewc.mFont = DarkTheme.sDarkTheme.mSmallBoldFont;
+		}
 
 		public void ShowQuickFind(bool isReplace)
 		{
@@ -708,6 +792,13 @@ namespace IDE.ui
 				{
 					ShowMore();
 				});
+
+			var dewc = mEditWidget.mEditWidgetContent as DarkEditWidgetContent;
+			if (!dewc.mLineCoords.IsEmpty)
+			{
+				dewc.mLineCoords.Back += GS!(32);
+				dewc.mHeight += GS!(32);
+			}	
 		}
 
         public override void DrawAll(Graphics g)
@@ -790,9 +881,12 @@ namespace IDE.ui
 				textPosString.Append(charStr);
 			}
 
-			g.DrawString(textPosString, 16, textY, .Left, mWidth - GS!(140), .Ellipsis);
-            g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(130), textY);
-            g.DrawString(StackStringFormat!("Col {0}", col + 1), mWidth - GS!(70), textY);
+			if (mShowStatusBar)
+			{
+				g.DrawString(textPosString, 16, textY, .Left, mWidth - GS!(140), .Ellipsis);
+	            g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(130), textY);
+	            g.DrawString(StackStringFormat!("Col {0}", col + 1), mWidth - GS!(70), textY);
+			}
 
 			//using (g.PushColor(0xD0FFFFFF))
 				base.DrawAll(g);
@@ -802,11 +896,17 @@ namespace IDE.ui
         {
             base.Resize(x, y, width, height);
 
-            mEditWidget.Resize(0, 0, width, height - GS!(16));
+            mEditWidget.Resize(0, 0, width, height - (mShowStatusBar ? GS!(16) : GS!(0)));
 			if (mQuickFind != null)
 				mQuickFind.ResizeSelf();
 
-			mMenuButton.Resize(width - GS!(26), height - GS!(12), GS!(16), GS!(16));
+			if (mIsEmbedded)
+				mMenuButton?.Resize(width + GS!(-4), height - GS!(18), GS!(16), GS!(16));
+			else
+				mMenuButton?.Resize(width - GS!(26), height - GS!(12), GS!(16), GS!(16));
+
+			var dewc = mEditWidget.mEditWidgetContent as DarkEditWidgetContent;
+			mMoreButton?.Resize(GS!(4), dewc.mHeight - GS!(24), GS!(68), GS!(20));
         }
 
         public float GetWantHeight(float wantWidth)
@@ -834,6 +934,69 @@ namespace IDE.ui
 		}
     }
 
+	public class ResizeHandleWidget : Widget
+	{
+		public float mDownX;
+		public float mDownY;
+
+		public override void Draw(Graphics g)
+		{
+			g.Draw(DarkTheme.sDarkTheme.GetImage(.ResizeGrabber), 0, 0);
+		}
+
+		public override void MouseEnter()
+		{
+			base.MouseEnter();
+			gApp.SetCursor(.SizeNWSE);
+		}
+
+		public override void MouseLeave()
+		{
+			base.MouseLeave();
+			if (!mMouseDown)
+				gApp.SetCursor(.Pointer);
+		}
+
+		public override void RehupScale(float oldScale, float newScale)
+		{
+			base.RehupScale(oldScale, newScale);
+			mWidth = GS!(20);
+			mHeight = GS!(20);
+		}
+
+		public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
+		{
+			base.MouseDown(x, y, btn, btnCount);
+			mDownX = x;
+			mDownY = y;
+		}
+
+		public override void MouseMove(float x, float y)
+		{
+			base.MouseMove(x, y);
+
+			if (mMouseDown)
+			{
+				var listViewItem = mParent as WatchListViewItem;
+
+				SelfToOtherTranslate(listViewItem.mListView, x, y, var lvX, var lvY);
+
+				listViewItem.mListView.mColumns[1].mWidth = Math.Max(GS!(40), lvX - mDownX - listViewItem.mListView.mColumns[0].mWidth + GS!(4));
+				listViewItem.mListView.mListSizeDirty = true;
+
+				var rootItem = listViewItem.GetSubItem(0) as WatchListViewItem;
+				rootItem.mSelfHeight = Math.Max(GS!(40), mY + y - mDownY + GS!(20));
+			}
+		}
+
+		public override void MouseUp(float x, float y, int32 btn)
+		{
+			base.MouseUp(x, y, btn);
+			if (!mMouseOver)
+				gApp.SetCursor(.Pointer);
+		}
+	}
+
     public class WatchListViewItem : IDEListViewItem
     {
         public IWatchOwner mWatchOwner;
@@ -843,7 +1006,6 @@ namespace IDE.ui
         public int32 mErrorEnd;
         
         public WatchSeriesInfo mWatchSeriesInfo;
-		//public bool mOwnsWatchSeriesInfo;
         public int32 mSeriesMemberIdx;
 
         public WatchListViewItem mPrevPlaceholder;
@@ -858,7 +1020,8 @@ namespace IDE.ui
 		public ActionButton mActionButton;
 		public String mTextAction ~ delete _;
 		public bool mMustUpdateBeforeEvaluate;
-
+		public Widget mCustomContentWidget;
+		
         public override bool Selected
         {
             get
@@ -892,6 +1055,12 @@ namespace IDE.ui
 			if (mWatchSeriesInfo != null)
 			{
 				mWatchSeriesInfo.ReleaseRef();
+			}
+
+			if (mCustomContentWidget != null)
+			{
+				mCustomContentWidget.RemoveSelf();
+				delete mCustomContentWidget;
 			}
 		}
 
@@ -1057,6 +1226,13 @@ namespace IDE.ui
 				var typeSubItem = (WatchListViewItem)GetSubItem(1);
                 mActionButton.Resize(typeSubItem.Font.GetWidth(typeSubItem.mLabel) + 8, 0, 20, 20);
 			}
+
+			if (mColumnIdx == 0)
+			{
+				var dataItem = (WatchListViewItem)GetSubItem(1);
+				if (dataItem.mCustomContentWidget != null)
+					mSelfHeight = dataItem.mCustomContentWidget.mHeight;
+			}
 		}
 
         public void SetDisabled(bool disabled, bool allowRefresh)
@@ -1093,6 +1269,15 @@ namespace IDE.ui
                 mTextAreaLengthOffset = -16;
             else
                 mTextAreaLengthOffset = 0;
+
+			if (mCustomContentWidget != null)
+			{
+				if (mColumnIdx == 1)
+					mCustomContentWidget.Resize(0, 0, mWidth, mHeight);
+				else
+					mCustomContentWidget.Resize(-GS!(6), mHeight - mCustomContentWidget.mHeight, mCustomContentWidget.mWidth, mCustomContentWidget.mHeight);
+			}
+
             return retVal;
         }
 
@@ -1466,7 +1651,17 @@ namespace IDE.ui
                         if (curWatchListViewItem != null)
                             prevY = curY;
 
-                        curY += itemHeight;
+						if (curWatchListViewItem != null)
+						{
+							var dataItem = curWatchListViewItem.GetSubItem(1) as WatchListViewItem;
+							if (dataItem.mCustomContentWidget != null)
+                        		curY += curWatchListViewItem.mSelfHeight;
+							else
+								curY += itemHeight;
+						}
+						else
+							curY += itemHeight;
+
                         if (curWatchListViewItem != null)
                         {                            
                             curY += curWatchListViewItem.mChildAreaHeight;
@@ -2138,7 +2333,7 @@ namespace IDE.ui
 			{
 				DarkListViewItem widget = (DarkListViewItem)item;
 			    float clickX = x;
-				float clickY = widget.mHeight + GS!(2);
+				float clickY = Math.Max(y + GS!(2), GS!(19));
 				widget.SelfToOtherTranslate(mListView.GetRoot(), clickX, clickY, var aX, var aY);
 				ShowRightClickMenu(mListView, aX, aY);
 			}
@@ -2214,6 +2409,17 @@ namespace IDE.ui
             listViewItem.mErrorEnd = 0;
 
             var watch = listViewItem.mWatchEntry;
+
+			bool doProfile = false;//watch.mResultType.HasFlag(.Text);
+			ProfileInstance pi = default;
+			if (doProfile)
+				pi = Profiler.StartSampling("UpdateWatch").GetValueOrDefault();
+			defer
+			{
+				if (pi.HasValue)
+					pi.Dispose();
+			}
+
             bool wasNewExpression = watch.mIsNewExpression;
             String val = scope String();
 			if (watch.mIsPending)
@@ -2227,20 +2433,19 @@ namespace IDE.ui
                     evalStr.Append(",refid=", watch.mReferenceId);
                 //gApp.DebugEvaluate(watch.mResultTypeStr, evalStr, val, -1, watch.mIsNewExpression, watch.mIsNewExpression);
 				//TODO: Why did we have the mResultTypeStr in there?
-				DebugManager.EvalExpressionFlags flags = default;
+				DebugManager.EvalExpressionFlags flags = .AllowStringView;
 				if (watch.mIsNewExpression)
 					flags |= .AllowSideEffects | .AllowCalls;
 				gApp.DebugEvaluate(null, evalStr, val, -1, watch.mLanguage, flags);
                 watch.mIsNewExpression = false;                
             }
 			watch.mIsPending = false;
+			DeleteAndNullify!(watch.mStringView);
 
-            var valViews = scope List<StringView>(val.Split('\n'));
+			StringView valSV = val;
+
+            var vals = scope List<StringView>(valSV.Split('\n'));
             
-			var vals = scope List<String>();
-			for (var strView in valViews)
-				vals.Add(scope:: String(strView));
-
             var valueSubItem = (WatchListViewItem)listViewItem.GetSubItem(1);
             if (vals[0].StartsWith("!", StringComparison.Ordinal))
             {   
@@ -2282,7 +2487,7 @@ namespace IDE.ui
             else
             {
                 listViewItem.SetDisabled(false, false);
-                String newVal = vals[0];
+                StringView newVal = vals[0];
 
                 if (watch.mHadStepCount == 1)
                     valueSubItem.mValueChanged = (newVal != valueSubItem.mLabel) || (valueSubItem.mFailed);
@@ -2488,6 +2693,12 @@ namespace IDE.ui
 							gApp.OutputLineSmart("WARNING: {0}", memberVals[1]);
 						}
 					}
+					else if (memberVals0 == ":stringView")
+					{
+						watch.mResultType |= .Text;
+						if (memberVals.Count > 1)
+							watch.mStringView = memberVals[1].Unescape(.. new .());
+					}
 					else
                         watch.ParseCmd(memberVals);
                     continue;
@@ -2548,6 +2759,50 @@ namespace IDE.ui
 
             if (watch.mEvalStr.Length == 0)
                 watch.mResultType = WatchResultType.None;
+
+			var dataItem = listViewItem.GetSubItem(1) as WatchListViewItem;
+			var typeItem = listViewItem.GetSubItem(2) as WatchListViewItem;
+
+			void RemoveCustomContent()
+			{
+				if (dataItem.mCustomContentWidget != null)
+				{
+					dataItem.mCustomContentWidget.RemoveSelf();
+					DeleteAndNullify!(dataItem.mCustomContentWidget);
+					mListView.mListSizeDirty = true;
+					listViewItem.mSelfHeight = mListView.mFont.GetLineSpacing();
+				}
+				if (typeItem.mCustomContentWidget != null)
+				{
+					typeItem.mCustomContentWidget.RemoveSelf();
+					DeleteAndNullify!(typeItem.mCustomContentWidget);
+				}
+			}
+
+			if (watch.mStringView != null)
+			{
+				dataItem.Label = "";
+
+				if (var watchStringEdit = dataItem.mCustomContentWidget as WatchStringEdit)
+				{
+					watchStringEdit.UpdateString(watch.mStringView);
+				}
+				else if (dataItem.mCustomContentWidget == null)
+				{
+					dataItem.mCustomContentWidget = new WatchStringEdit(watch.mStringView, watch.mEvalStr, true);
+					dataItem.AddWidget(dataItem.mCustomContentWidget);
+					listViewItem.mSelfHeight = GS!(80);
+					mListView.mListSizeDirty = true;
+
+					typeItem.mCustomContentWidget = new ResizeHandleWidget();
+					typeItem.mCustomContentWidget.Resize(0, 0, GS!(20), GS!(20));
+					typeItem.AddWidget(typeItem.mCustomContentWidget);
+				}
+			}
+			else
+			{
+				RemoveCustomContent();
+			}
 
             watch.mHasValue = true;
             watch.mHadValue = true;
@@ -2641,21 +2896,23 @@ namespace IDE.ui
             menuItem.mOnMenuItemSelected.Add(new (imenu) => action()  ~ { delete action; });			
         }
 
-        public static void SetDisplayType(String referenceId, DebugManager.IntDisplayType intDisplayType, DebugManager.MmDisplayType mmDisplayType, DebugManager.FloatDisplayType floatDisplayType)
+        public static void SetDisplayType(String referenceId, String formatStr, DebugManager.IntDisplayType intDisplayType, DebugManager.MmDisplayType mmDisplayType, DebugManager.FloatDisplayType floatDisplayType)
         {
-            gApp.mDebugger.SetDisplayTypes(referenceId, intDisplayType, mmDisplayType, floatDisplayType);
+            gApp.mDebugger.SetDisplayTypes(referenceId, (formatStr == null) ? null : formatStr, intDisplayType, mmDisplayType, floatDisplayType);
             gApp.RefreshWatches();
         }
 
         public static bool AddDisplayTypeMenu(String label, Menu menu, WatchResultType watchResultType, String referenceId, bool includeDefault)
         {
-            bool hasInt = watchResultType.HasFlag(WatchResultType.Int);
-			bool hasFloat = watchResultType.HasFlag(WatchResultType.Float);
-            bool hasMM128 = watchResultType.HasFlag(WatchResultType.MM128);
-            bool canSetFormat = hasInt || hasFloat || hasMM128;
+            bool hasInt = watchResultType.HasFlag(.Int);
+			bool hasFloat = watchResultType.HasFlag(.Float);
+            bool hasMM128 = watchResultType.HasFlag(.MM128);
+			bool hasText = watchResultType.HasFlag(.Text) && (referenceId != null) && (!referenceId.EndsWith(".[]"));
+            bool canSetFormat = hasInt || hasFloat || hasMM128 || hasText;
 
             var debugger = IDEApp.sApp.mDebugger;
-            bool foundSpecific = debugger.GetDisplayTypes(referenceId, var intDisplayType, var mmDisplayType, var floatDisplayType);
+			String formatStr = scope .();
+            bool foundSpecific = debugger.GetDisplayTypes(referenceId, formatStr, var intDisplayType, var mmDisplayType, var floatDisplayType);
             if ((referenceId != null) && (!foundSpecific))
             {
                 intDisplayType = .Default;
@@ -2665,8 +2922,26 @@ namespace IDE.ui
 
             if (!canSetFormat)
                 return false;
-            
-            Menu parentItem = menu.AddItem(label);                                
+
+			var referenceId;
+			if (referenceId != null)
+			{
+				referenceId = new String(referenceId);
+				menu.mOnMenuClosed.Add(new (menu, itemSelected) =>
+					{
+					   gApp.DeferDelete(referenceId);
+					});
+			}
+
+            Menu parentItem = menu.AddItem(label);
+			if (hasText)
+			{
+				AddSelectableMenuItem(parentItem, "Default", formatStr.IsEmpty, 
+					new () => SetDisplayType(referenceId, "", intDisplayType, mmDisplayType, floatDisplayType));
+				AddSelectableMenuItem(parentItem, "String", formatStr == "str",
+					new () => SetDisplayType(referenceId, "str", intDisplayType, mmDisplayType, floatDisplayType));
+			}
+
             if (hasInt)
             {
                 for (DebugManager.IntDisplayType i = default; i < DebugManager.IntDisplayType.COUNT; i++)
@@ -2680,7 +2955,7 @@ namespace IDE.ui
 
                     var toType = i;
                     AddSelectableMenuItem(parentItem, ToStackString!(i), intDisplayType == i, 
-                        new () => SetDisplayType(referenceId, toType, mmDisplayType, floatDisplayType));
+                        new () => SetDisplayType(referenceId, null, toType, mmDisplayType, floatDisplayType));
                 }
             }
 
@@ -2697,7 +2972,7 @@ namespace IDE.ui
 
 				    var toType = i;
 				    AddSelectableMenuItem(parentItem, ToStackString!(i), floatDisplayType == i, 
-				        new () => SetDisplayType(referenceId, intDisplayType, mmDisplayType, toType));
+				        new () => SetDisplayType(referenceId, null, intDisplayType, mmDisplayType, toType));
 				}
 			}
 
@@ -2707,7 +2982,7 @@ namespace IDE.ui
                 {                    
                     var toType = i;
                     AddSelectableMenuItem(parentItem, ToStackString!(i), mmDisplayType == i,
-                        new () => SetDisplayType(referenceId, intDisplayType, toType, floatDisplayType));
+                        new () => SetDisplayType(referenceId, null, intDisplayType, toType, floatDisplayType));
                 }
             }
             return true;
@@ -2754,7 +3029,16 @@ namespace IDE.ui
 					anItem = menu.AddItem();
 
 				if (watchEntry.mReferenceId != null)
+				{
 					AddDisplayTypeMenu("Watch Display", menu, listViewItem.mWatchEntry.mResultType, watchEntry.mReferenceId, true);
+
+					int arrayPos = watchEntry.mReferenceId.IndexOf(".[]$");
+					if (arrayPos != -1)
+					{
+						var refId = scope String(watchEntry.mReferenceId, 0, arrayPos + 3);
+						AddDisplayTypeMenu("Series Watch Display", menu, listViewItem.mWatchEntry.mResultType, refId, true);
+					}
+				}
 
 				anItem = menu.AddItem("Add Watch");
 				anItem.mOnMenuItemSelected.Add(new (menu) =>

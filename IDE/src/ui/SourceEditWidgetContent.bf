@@ -1084,9 +1084,12 @@ namespace IDE.ui
             return true;
         }
 
+		[DisableChecks]
 		public override void ApplyTextFlags(int index, String text, uint8 typeNum, uint8 flags)
 		{
 			uint8 curTypeNum = typeNum;
+
+			Runtime.Assert((index >= 0) && (index + text.Length < mData.mText.Count));
 
 			for (int i = 0; i < text.Length; i++)
 			{
