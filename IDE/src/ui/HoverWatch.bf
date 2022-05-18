@@ -413,15 +413,22 @@ namespace IDE.ui
             if ((lastListView != null) && (lastListView.mVertScrollbar != null))
                 return;
 
-			var widgetWindow = evt.mSender as BFWindow;
-			while (widgetWindow != null)
+			if (mListViews.Count > 1)
 			{
-				if (widgetWindow == mWidgetWindow)
-					return;
-				widgetWindow = widgetWindow.mParent;
+				var widgetWindow = evt.mSender as BFWindow;
+				while (widgetWindow != null)
+				{
+					if (widgetWindow == mWidgetWindow)
+						return;
+					widgetWindow = widgetWindow.mParent;
+				}
 			}
-			
+			EditWidget editWidget = mEditWidget;
+			if (var sourceViewPanel = mTextPanel as SourceViewPanel)
+				editWidget = sourceViewPanel.mEditWidget;
+
             Close();
+			editWidget?.MouseWheel(0, 0, evt.mWheelDeltaX, evt.mWheelDeltaY);
         }
 
         void HandleMouseDown(MouseEvent evt)
