@@ -4189,7 +4189,7 @@ namespace IDE.ui
                     if (lineText.Length == 0)
                     {
                         ClearLine();
-                        CursorLineAndColumn = LineAndColumn(line, Math.Max(0, GetLineEndColumn(line, false, false) - gApp.mSettings.mEditorSettings.mTabSize));
+                        CursorLineAndColumn = LineAndColumn(line, Math.Max(0, GetLineEndColumn(line, false, false, false, false, true) - gApp.mSettings.mEditorSettings.mTabSize));
                         CursorMoved();
                     }
                     base.KeyChar(keyChar);
