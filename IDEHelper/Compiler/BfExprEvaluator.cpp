@@ -18863,14 +18863,28 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue& typedVal, BfAstNode* refNo
 				if (!mModule->mCurMethodInstance->IsMixin())
 				{
 					if (mModule->mCurMethodState->mMixinState != NULL)
+					{
 						error = _Fail(StrFormat("Cannot %s mixin parameter '%s'", modifyType,
 							localVar->mName.c_str()), refNode);
+					}
 					else if ((onlyNeedsMut) && (localVar->mResolvedType != NULL) && (localVar->mResolvedType->IsGenericParam()))
-						error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'mut' or 'ref' specifier to parameter or declaring 'var %s;' to create a mutable copy.", modifyType,
-							localVar->mName.c_str(), localVar->mName.c_str()), refNode);
+					{
+						if (emitWarning)
+							error = _Fail(StrFormat("The address of '%s' may be temporary or immutable. Consider adding 'mut' or 'ref' specifier to parameter or declaring 'var %s;' to create a mutable copy.",
+								localVar->mName.c_str(), localVar->mName.c_str()), refNode);
+						else
+							error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'mut' or 'ref' specifier to parameter or declaring 'var %s;' to create a mutable copy.", modifyType,
+								localVar->mName.c_str(), localVar->mName.c_str()), refNode);
+					}
 					else
-						error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'ref' specifier to parameter or declaring 'var %s;' to create a mutable copy.", modifyType,
-							localVar->mName.c_str(), localVar->mName.c_str()), refNode);
+					{
+						if (emitWarning)
+							error = _Fail(StrFormat("The address of '%s' may be temporary or immutable. Consider adding 'ref' specifier to parameter or declaring 'var %s;' to create a mutable copy.",
+								localVar->mName.c_str(), localVar->mName.c_str()), refNode);
+						else
+							error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'ref' specifier to parameter or declaring 'var %s;' to create a mutable copy.", modifyType,
+								localVar->mName.c_str(), localVar->mName.c_str()), refNode);
+					}
 					return false;
 				}
 			}
