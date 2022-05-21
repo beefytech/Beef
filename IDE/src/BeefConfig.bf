@@ -161,10 +161,8 @@ namespace IDE
 
 						regEntry.mLocation = .Path(new String(filePath));
 					}
-					else
-					{
-						AddFromLibraryPath(filePath);
-					}
+					
+					AddFromLibraryPath(filePath);
 				}
 			}
 
