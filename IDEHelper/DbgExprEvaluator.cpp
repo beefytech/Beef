@@ -761,8 +761,9 @@ DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModul
 	mBlockedSideEffects = false;
 	mReferenceId = NULL;
 	mIsComplexExpression = false;
-	mHadMemberReference = false;		
+	mHadMemberReference = false;
 	mCreatedPendingCall = false;
+	mStackSearch = NULL;
 	mValidateOnly = false;
 	mReceivingValue = NULL;
 	mCallResults = NULL;
@@ -770,11 +771,12 @@ DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModul
 	mCallStackPreservePos = 0;
 	mPropGet = NULL;
 	mPropSet = NULL;
-	mPropSrc = NULL;	
+	mPropSrc = NULL;
 }
 
 DbgExprEvaluator::~DbgExprEvaluator()
 {	
+	delete mStackSearch;
 }
 
 DbgTypedValue DbgExprEvaluator::GetInt(int value)
@@ -2526,6 +2528,15 @@ bool DbgExprEvaluator::HasField(DbgType* curCheckType, const StringImpl& fieldNa
 
 DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValue target, DbgType* curCheckType, const StringImpl& fieldName, CPUStackFrame* stackFrame, bool allowImplicitThis)
 {	
+	if (mStackSearch != NULL)
+	{
+		if (mStackSearch->mIdentifier == targetSrc)
+		{
+			if (!mStackSearch->mSearchedTypes.Add(curCheckType))
+				return DbgTypedValue();
+		}
+	}
+
 	bool wantsStatic = (!target) || (target.mHasNoValue);
 	auto flavor = GetFlavor();
 	auto language = GetLanguage();
@@ -3548,7 +3559,7 @@ void DbgExprEvaluator::AutocompleteAddTopLevelTypes(const StringImpl& filter)
 	}*/
 }
 
-DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError, bool* hadError)
+DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError, bool* hadError)
 {			
 	if (!mDebugger->mIsRunning)
 		return DbgTypedValue();
@@ -3963,6 +3974,92 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 	return DbgTypedValue();
 }
 
+DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError, bool* hadError)
+{
+	if ((mStackSearch != NULL) && (mStackSearch->mIdentifier == NULL))
+	{		
+		mStackSearch->mIdentifier = identifierNode;
+		mStackSearch->mStartingStackIdx = mCallStackIdx;
+
+		int skipCount = 0;
+
+		StringT<256> findStr;
+		for (int i = 0; i < mStackSearch->mSearchStr.mLength; i++)
+		{			
+			char c = mStackSearch->mSearchStr[i];
+
+			if (c == '^')
+			{
+				skipCount = atoi(mStackSearch->mSearchStr.c_str() + i + 1);
+				break;
+			}
+
+			if (c == '.')
+			{
+				findStr += ':';
+				findStr += ':';
+			}
+			else
+				findStr += c;
+		}
+
+		while (true)
+		{
+			auto stackFrame = GetStackFrame();
+			bool matches = true;
+
+			if (mStackSearch->mSearchStr != "*")
+			{
+				mDebugger->UpdateCallStackMethod(mCallStackIdx);
+				if (stackFrame->mSubProgram != NULL)
+				{	
+					int strLen = strlen(stackFrame->mSubProgram->mName);
+					if (strLen >= findStr.mLength)
+					{
+						if (strncmp(stackFrame->mSubProgram->mName + strLen - findStr.mLength, findStr.c_str(), findStr.mLength) == 0)
+						{
+							if (strLen > findStr.mLength)
+							{
+								char endC = stackFrame->mSubProgram->mName[strLen - findStr.mLength - 1];
+								if (endC != ':')
+									matches = false;
+							}
+						}
+						else
+							matches = false;
+					}
+					else
+						matches = false;
+				}
+				else
+					matches = false;
+			}
+
+			if (matches)
+			{
+				if (skipCount > 0)
+				{
+					skipCount--;
+				}
+				else
+				{
+					auto result = DoLookupIdentifier(identifierNode, ignoreInitialError, hadError);
+					if (result)
+						return result;
+				}
+			}
+
+			mCallStackIdx++;
+			if (mCallStackIdx >= mDebugger->mCallStack.mSize)
+				mDebugger->UpdateCallStack();
+			if (mCallStackIdx >= mDebugger->mCallStack.mSize)
+				return DbgTypedValue();
+		}
+	}
+
+	return DoLookupIdentifier(identifierNode, ignoreInitialError, hadError);
+}
+
 void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 {
 	mHadSideEffects = true;
@@ -4295,6 +4392,12 @@ void DbgExprEvaluator::AutocompleteAddMethod(const char* methodName, const Strin
 
 void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic, bool wantsNonStatic, const StringImpl& filter, bool isCapture)
 {
+	if (mStackSearch != NULL)
+	{
+		if (!mStackSearch->mAutocompleteSearchedTypes.Add(dbgType))
+			return;
+	}
+
 	DbgLanguage language = GetLanguage();
 	DbgFlavor flavor = GetFlavor();
 	if ((mDbgCompileUnit != NULL) && (dbgType->mLanguage != DbgLanguage_Unknown) && (dbgType->mLanguage != language))
@@ -7609,7 +7712,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 			}
 			else if (mDebugTarget->FindSymbolAt(funcPtr, &symbolName, &offset, &dwarf))
 			{
-				demangledName = BfDemangler::Demangle(symbolName, DbgLanguage_Beef);
+				demangledName = BfDemangler::Demangle(symbolName, GetLanguage());
 			}
 			else
 			{
@@ -7634,7 +7737,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 			DbgModule* dwarf;
 			if (mDebugTarget->FindSymbolAt(funcPtr, &symbolName, &offset, &dwarf))
 			{
-				String firstParamType = BfDemangler::Demangle(symbolName, DbgLanguage_Beef, BfDemangler::Flag_CaptureTargetType);
+				String firstParamType = BfDemangler::Demangle(symbolName, GetLanguage(), BfDemangler::Flag_CaptureTargetType);
 				auto targetType = mDbgModule->FindType(firstParamType, NULL, DbgLanguage_BeefUnfixed);
 				if (targetType)
 				{

@@ -194,6 +194,7 @@ struct DwFormatInfo
 	bool mRawString;
 	bool mAllowStringView;
 	bool mNoEdit;
+	String mStackSearchStr;
 	DbgTypeKindFlags mTypeKindFlags;
 	intptr mArrayLength;
 	intptr mOverrideCount;
@@ -283,6 +284,23 @@ public:
 	Array<uint8> mSRetData;
 };
 
+class DbgStackSearch
+{
+public:
+	String mSearchStr;
+	BfAstNode* mIdentifier;
+	HashSet<DbgType*> mSearchedTypes;
+	HashSet<DbgType*> mAutocompleteSearchedTypes;
+	int mStartingStackIdx;
+
+public:
+	DbgStackSearch()
+	{
+		mIdentifier = NULL;
+		mStartingStackIdx = -1;
+	}
+};
+
 class DbgExprEvaluator : public BfStructuralVisitor
 {
 public:
@@ -351,11 +369,12 @@ public:
 	bool mBlockedSideEffects;	
 	bool mIgnoreErrors;
 	bool mCreatedPendingCall;
-	bool mValidateOnly;
+	bool mValidateOnly;	
 	int mCallStackIdx;
 	int mCursorPos;	
 
 	DwAutoComplete* mAutoComplete;
+	DbgStackSearch* mStackSearch;
 
 	Array<Array<uint8>> mTempStorage;
 	Array<NodeReplaceRecord> mDeferredInsertExplicitThisVector;
@@ -431,6 +450,7 @@ public:
 	bool HasField(DbgType* type, const StringImpl& fieldName);
 	DbgTypedValue DoLookupField(BfAstNode* targetSrc, DbgTypedValue target, DbgType* curCheckType, const StringImpl& fieldName, CPUStackFrame* stackFrame, bool allowImplicitThis);	
 	DbgTypedValue LookupField(BfAstNode* targetSrc, DbgTypedValue target, const StringImpl& fieldName);	
+	DbgTypedValue DoLookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError, bool* hadError);
 	DbgTypedValue LookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void LookupSplatMember(const DbgTypedValue& target, const StringImpl& fieldName);
 	void LookupSplatMember(BfAstNode* srcNode, BfAstNode* lookupNode, const DbgTypedValue& target, const StringImpl& fieldName, String* outFindName = NULL, bool* outIsConst = NULL, StringImpl* forceName = NULL);

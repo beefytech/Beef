@@ -131,6 +131,14 @@ namespace Beefy.theme.dark
                         CloseSubMenu();
                 }
             }
+
+			if (mMenuItem.mTooltip != null)
+			{
+				if (DarkTooltipManager.CheckMouseover(this, 20, var mousePoint))
+				{
+					DarkTooltipManager.ShowTooltip(mMenuItem.mTooltip, this, mWidth + GS!(8), GS!(-8));
+				}
+			}
         }
 
         public override void Submit()

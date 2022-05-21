@@ -11,6 +11,7 @@ using Beefy.theme.dark;
 using Beefy.events;
 using Beefy.utils;
 using IDE.Debugger;
+using Beefy.geom;
 
 namespace IDE.ui
 {
@@ -40,6 +41,8 @@ namespace IDE.ui
 		public DebugManager.Language mLanguage = .NotSet;
 
         public String mName ~ delete _;
+		public String mStackFrameId ~ delete _;
+		public bool mWantsStackFrameId;
         public String mEvalStr ~ delete _;
         public bool mCanEdit;
         public String mEditInitialize ~ delete _;
@@ -47,6 +50,8 @@ namespace IDE.ui
         public bool mHasValue;
         public bool mIsNewExpression;
 		public bool mIsPending;
+		public bool mUsedLock;
+		public int32 mCurStackIdx;
 		public int mMemoryBreakpointAddr;
         public int32 mHadStepCount;
 		public String mStringView ~ delete _;
@@ -511,21 +516,6 @@ namespace IDE.ui
             if (keyCode == KeyCode.Escape)
                 DarkTooltipManager.CloseTooltip();
         }
-
-		/*public override void RecalcSize()
-		{
-			base.RecalcSize();
-			if (mWatchStringEdit.mMoreButton != null)
-				mHeight += GS!(32);
-		}*/
-
-		public override void GetTextData()
-		{
-			
-			base.GetTextData();
-
-			
-		}
 
 		public override void CheckLineCoords()
 		{
@@ -1325,6 +1315,28 @@ namespace IDE.ui
                     }
                 }
             }
+
+			if (mColumnIdx == 1)
+			{
+				var headItem = GetSubItem(0) as WatchListViewItem;
+				if (headItem.mWatchEntry?.mStackFrameId != null)
+				{
+					float drawX = mWidth - GS!(16);
+					if (headItem.mWatchRefreshButton != null)
+						drawX -= GS!(16);
+
+					uint32 color = Color.White;
+					if (headItem.mDisabled)
+					    color = 0x80FFFFFF;
+					else if (mFailed)
+					    color = 0xFFFF4040;
+					else if (headItem.mWatchEntry.mUsedLock)
+						color = 0xFFE39C39;
+
+					using (g.PushColor(color))
+						g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), drawX, GS!(-1));
+				}
+			}
             
             base.DrawAll(g);
         }
@@ -1756,6 +1768,34 @@ namespace IDE.ui
                     }*/
                 }
             }
+
+			if (mColumnIdx == 1)
+			{
+				var nameItem = GetSubItem(0) as WatchListViewItem;
+				if (nameItem.mWatchEntry?.mStackFrameId != null)
+				{
+					if (DarkTooltipManager.CheckMouseover(this, 20, var mousePoint))
+					{
+						float drawX = mWidth - GS!(16);
+						if (nameItem.mWatchRefreshButton != null)
+							drawX -= GS!(16);
+
+						if (Rect(drawX, 0, GS!(16), GS!(20)).Contains(mousePoint))
+						{
+							String tooltip = scope String();
+							tooltip.Append(nameItem.mWatchEntry.mStackFrameId);
+
+							int lastColon = nameItem.mWatchEntry.mStackFrameId.LastIndexOf(':');
+							if ((lastColon > -1) && (var addr = int64.Parse(nameItem.mWatchEntry.mStackFrameId.Substring(lastColon + 1), .HexNumber)))
+							{
+								tooltip.Append("\n");
+								gApp.mDebugger.GetAddressSymbolName(addr, true, tooltip);
+							}
+							DarkTooltipManager.ShowTooltip(tooltip, this, mousePoint.x, mousePoint.y);
+						}	
+					}
+				}
+			}
 
             base.Update();
         }
@@ -2428,7 +2468,14 @@ namespace IDE.ui
 			}
             else if (watch.mEvalStr.Length > 0)
             {
-                String evalStr = scope String(watch.mEvalStr);
+                String evalStr = scope String(1024);
+				if (watch.mStackFrameId != null)
+				{
+					evalStr.Append("{");
+					evalStr.Append(watch.mStackFrameId);
+					evalStr.Append("}");
+				}
+				evalStr.Append(watch.mEvalStr);
                 if ((watch.mReferenceId != null) && (watch.mReferenceId.StartsWith("0", StringComparison.Ordinal)))
                     evalStr.Append(",refid=", watch.mReferenceId);
                 //gApp.DebugEvaluate(watch.mResultTypeStr, evalStr, val, -1, watch.mIsNewExpression, watch.mIsNewExpression);
@@ -2478,6 +2525,13 @@ namespace IDE.ui
                     listViewItem.mErrorStart = int32.Parse(scope String(errorVals[0]));
                     listViewItem.mErrorEnd = listViewItem.mErrorStart + int32.Parse(scope String(errorVals[1])).Get();
                     valueSubItem.Label = errorVals[2];
+
+					if (watch.mStackFrameId != null)
+					{
+						int32 idPrefixLen = (.)watch.mStackFrameId.Length + 2;
+						listViewItem.mErrorStart -= idPrefixLen;
+						listViewItem.mErrorEnd -= idPrefixLen;
+					}
                 }
                 else
                     valueSubItem.Label = errorVals[0];
@@ -2518,6 +2572,8 @@ namespace IDE.ui
             watch.mIsDeleted = false;
             watch.mIsAppendAlloc = false;
             watch.mIsStackAlloc = false;
+			watch.mUsedLock = false;
+			watch.mCurStackIdx = -1;
 			watch.mLanguage = .NotSet;
             DeleteAndNullify!(watch.mEditInitialize);
 			DeleteAndNullify!(watch.mAction);
@@ -2699,6 +2755,15 @@ namespace IDE.ui
 						if (memberVals.Count > 1)
 							watch.mStringView = memberVals[1].Unescape(.. new .());
 					}
+					else if (memberVals0 == ":usedLock")
+					{
+						watch.mUsedLock = true;
+					}
+					else if (memberVals0 == ":stackIdx")
+					{
+						if (int32 stackIdx = int32.Parse(memberVals[1]))
+							watch.mCurStackIdx = stackIdx;
+					}
 					else
                         watch.ParseCmd(memberVals);
                     continue;
@@ -2738,6 +2803,14 @@ namespace IDE.ui
                     memberCount++;
                 }
             }
+
+			if (watch.mWantsStackFrameId)
+			{
+				watch.mWantsStackFrameId = false;
+				watch.mStackFrameId = gApp.mDebugger.GetStackFrameId((watch.mCurStackIdx != -1) ? watch.mCurStackIdx : gApp.mDebugger.mActiveCallStackIdx, .. new .());
+				if (gApp.mDebugger.mActiveCallStackIdx != watch.mCurStackIdx)
+					watch.mUsedLock = true;
+			}
 
             if ((watch.mReferenceId == null) && (watch.mEvalStr.Length > 0) && (!valueSubItem.mFailed))
             {
@@ -2988,6 +3061,16 @@ namespace IDE.ui
             return true;
         }
 
+		protected static void WithSelectedWatchEntries(WatchListView listView, delegate void(WatchEntry) dlg)
+		{
+			listView.GetRoot().WithSelectedItems(scope (item) =>
+				{
+					var watchListViewItem = item as WatchListViewItem;
+					if (watchListViewItem.mWatchEntry != null)
+						dlg(watchListViewItem.mWatchEntry);
+				});
+		}
+
 		public static void ShowRightClickMenu(WatchPanel watchPanel, WatchListView listView, WatchListViewItem listViewItem, float x, float y)
 		{
 			if (watchPanel != null)
@@ -3038,6 +3121,60 @@ namespace IDE.ui
 						var refId = scope String(watchEntry.mReferenceId, 0, arrayPos + 3);
 						AddDisplayTypeMenu("Series Watch Display", menu, listViewItem.mWatchEntry.mResultType, refId, true);
 					}
+				}
+				
+				var lockMenu = menu.AddItem("Lock");
+				var lockUnlockedItem = lockMenu.AddItem("Unlocked");
+				lockUnlockedItem.mOnMenuItemSelected.Add(new (menu) =>
+					{
+						WithSelectedWatchEntries(listView, scope (selectedWatchEntry) =>
+							{
+								DeleteAndNullify!(selectedWatchEntry.mStackFrameId);
+							});
+						gApp.RefreshWatches();
+					});
+				var lockNewItem = lockMenu.AddItem("Current Stack Frame");
+				lockNewItem.mOnMenuItemSelected.Add(new (menu) =>
+					{
+						WithSelectedWatchEntries(listView, scope (selectedWatchEntry) =>
+							{
+								int32 callStackIdx = gApp.mDebugger.mActiveCallStackIdx;
+								if (selectedWatchEntry.mCurStackIdx != -1)
+									callStackIdx = selectedWatchEntry.mCurStackIdx;
+								DeleteAndNullify!(selectedWatchEntry.mStackFrameId);
+								selectedWatchEntry.mWantsStackFrameId = true;
+							});
+						
+						gApp.RefreshWatches();
+					});
+				if (watchEntry.mStackFrameId != null)
+				{
+					var lockCurItem = lockMenu.AddItem(watchEntry.mStackFrameId);
+					lockCurItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+
+					int lastColon = watchEntry.mStackFrameId.LastIndexOf(':');
+					if ((lastColon > -1) && (var addr = int64.Parse(watchEntry.mStackFrameId.Substring(lastColon + 1), .HexNumber)))
+					{
+						lockCurItem.mTooltip = gApp.mDebugger.GetAddressSymbolName(addr, true, .. new .());
+						if (lockCurItem.mTooltip.IsEmpty)
+							DeleteAndNullify!(lockCurItem.mTooltip);
+					}
+
+					String stackFrameId = new String(watchEntry.mStackFrameId);
+					lockCurItem.mOnMenuItemSelected.Add(new (menu) =>
+						{
+							WithSelectedWatchEntries(listView, scope (selectedWatchEntry) =>
+								{
+									DeleteAndNullify!(selectedWatchEntry.mStackFrameId);
+									selectedWatchEntry.mStackFrameId = new .(stackFrameId);
+								});
+							gApp.RefreshWatches();
+						}
+						~ delete stackFrameId);
+				}
+				else
+				{
+					lockUnlockedItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
 				}
 
 				anItem = menu.AddItem("Add Watch");

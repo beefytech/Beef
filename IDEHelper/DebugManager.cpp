@@ -1403,6 +1403,13 @@ BF_EXPORT const char* BF_CALLTYPE CallStack_GetStackFrameInfo(int stackFrameIdx,
 	return outString.c_str();
 }
 
+BF_EXPORT const char* BF_CALLTYPE CallStack_GetStackFrameId(int stackFrameIdx)
+{
+	String& outString = *gTLStrReturn.Get();
+	outString = gDebugger->GetStackFrameId(stackFrameIdx);
+	return outString.c_str();
+}
+
 BF_EXPORT const char* BF_CALLTYPE Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 {
 	String& outString = *gTLStrReturn.Get();

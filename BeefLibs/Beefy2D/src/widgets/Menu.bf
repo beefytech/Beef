@@ -564,6 +564,7 @@ namespace Beefy.widgets
     {
         public Menu mParent;
         public String mLabel ~ delete _;
+		public String mTooltip ~ delete _;
         public List<Menu> mItems = new List<Menu>() ~ DeleteContainerAndItems!(_);
         
         public Event<delegate void(Menu menu)> mOnMenuItemSelected ~ _.Dispose();

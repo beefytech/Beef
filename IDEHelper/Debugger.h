@@ -329,6 +329,7 @@ public:
 	virtual void GetCodeAddrInfo(intptr addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) = 0;
 	virtual void GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx) = 0;
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags) = 0;
+	virtual String GetStackFrameId(int stackFrameIdx) { return ""; }
 	virtual String Callstack_GetStackFrameOldFileInfo(int stackFrameIdx) = 0;
 	virtual int GetJmpState(int stackFrameIdx) = 0;
 	virtual intptr GetStackFrameCalleeAddr(int stackFrameIdx) = 0;

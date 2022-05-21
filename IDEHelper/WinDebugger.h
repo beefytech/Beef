@@ -416,6 +416,7 @@ public:
 	Dictionary<addr_target, WdBreakpoint*> mBreakpointAddrMap;
 	Array<int> mFreeMemoryBreakIndices;
 	Array<WdStackFrame*> mCallStack;
+	Dictionary<WdThreadInfo*, Array<WdStackFrame*>> mSavedCallStacks;
 	bool mIsPartialCallStack;
 	int mRequestedStackFrameIdx; // -1 means to show mShowPCOverride, -2 means "auto" stop, -3 means breakpoint - normally 0 but during inlining the address can be ambiguous
 	int mBreakStackFrameIdx;
@@ -560,6 +561,7 @@ public:
 	bool CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubprogram* dbgSubprogram, addr_target pcAddress);
 	void CleanupDebugEval(bool restoreRegisters = true);
 	bool FixCallStackIdx(int& callStackIdx);	
+	void DoClearCallStack(bool clearSavedStacks);
 	
 	int LoadDebugInfoForModule(DbgModule* dbgModule);	
 
@@ -631,6 +633,7 @@ public:
 	virtual void GetCodeAddrInfo(intptr addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
 	virtual void GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx) override;
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn, int* outLanguage, int* outStackSize, int8* outFlags) override;
+	virtual String GetStackFrameId(int stackFrameIdx) override;
 	virtual String Callstack_GetStackFrameOldFileInfo(int stackFrameIdx) override;
 	virtual int GetJmpState(int stackFrameIdx) override;
 	virtual intptr GetStackFrameCalleeAddr(int stackFrameIdx) override;

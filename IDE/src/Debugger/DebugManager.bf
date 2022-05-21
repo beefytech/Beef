@@ -269,6 +269,9 @@ namespace IDE.Debugger
 		static extern char8* CallStack_GetStackFrameInfo(int32 stackFrameIdx, out int addr, out char8* outFile, out int32 hotIdx, out int32 defLineStart, out int32 defLineEnd, out int32 outLine, out int32 outColumn, out int32 outLanguage, out int32 outStackSize, out FrameFlags flags);
 
 		[CallingConvention(.Stdcall),CLink]
+		static extern char8* CallStack_GetStackFrameId(int32 stackFrameIdx);
+
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Callstack_GetStackFrameOldFileInfo(int32 stackFrameIdx);
 
 		[CallingConvention(.Stdcall),CLink]
@@ -1254,6 +1257,15 @@ namespace IDE.Debugger
 			if (str == null)
 				return false;
 			outText.Append(str);
+			return true;
+		}
+
+		public bool GetStackFrameId(int32 callStackIdx, String outString)
+		{
+			char8* stackId = CallStack_GetStackFrameId(callStackIdx);
+			if (stackId == null)
+				return false;
+			outString.Append(stackId);
 			return true;
 		}
 	}

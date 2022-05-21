@@ -6371,12 +6371,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 	bool wasTerminated = false;
 	String valString;	
 	intptr maxShowSize = 255;
-
-	if (wantStringView)
-	{
-		NOP;
-	}
-
+	
 	if (maxLength == -1)
 		maxLength = formatInfo.mOverrideCount;
 	else if (formatInfo.mOverrideCount != -1)
@@ -6771,7 +6766,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			return retVal;
 		}
 	}
-
+	
 	switch (dwValueType->mTypeCode)
 	{
 	case DbgType_Void:
@@ -9239,6 +9234,11 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 	}
 	
 	DbgExprEvaluator dbgExprEvaluator(this, dbgModule, &bfPassInstance, pendingExpr->mCallStackIdx, pendingExpr->mCursorPos);
+	if (!pendingExpr->mFormatInfo.mStackSearchStr.IsEmpty())
+	{
+		dbgExprEvaluator.mStackSearch = new DbgStackSearch();
+		dbgExprEvaluator.mStackSearch->mSearchStr = pendingExpr->mFormatInfo.mStackSearchStr;
+	}
 	dbgExprEvaluator.mLanguage = pendingExpr->mFormatInfo.mLanguage;
 	dbgExprEvaluator.mReferenceId = &pendingExpr->mReferenceId;	
 	dbgExprEvaluator.mExpressionFlags = pendingExpr->mExpressionFlags;	
@@ -9446,6 +9446,8 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 
 		if (dbgExprEvaluator.mHadSideEffects)
 			val += "\n:sideeffects";
+		if ((dbgExprEvaluator.mStackSearch != NULL) && (dbgExprEvaluator.mStackSearch->mStartingStackIdx != dbgExprEvaluator.mCallStackIdx))
+			val += StrFormat("\n:stackIdx\t%d", dbgExprEvaluator.mCallStackIdx);
 
 		auto underlyingType = exprResult.mType->RemoveModifiers();
 		bool canEdit = true;
@@ -9625,13 +9627,172 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 		formatInfo.mAllowStringView = true;
 	}
 
+	auto terminatedExpr = expr + ";";
+
+	auto prevActiveThread = mActiveThread;
+	bool restoreActiveThread = false;
+	defer(
+		{
+			if (restoreActiveThread)
+				SetActiveThread(prevActiveThread->mThreadId);
+		});
+
+	bool usedSpecifiedLock = false;
+	int stackIdxOverride = -1;	
+
+	if (terminatedExpr.StartsWith('{'))
+	{
+		int closeIdx = terminatedExpr.IndexOf('}');
+		String locString = terminatedExpr.Substring(1, closeIdx - 1);
+
+		for (int i = 0; i <= closeIdx; i++)
+			terminatedExpr[i] = ' ';
+
+		locString.Trim();
+		if (locString.StartsWith("Thread:", StringImpl::CompareKind_OrdinalIgnoreCase))
+		{
+			bool foundLockMatch = true;
+
+			locString.Remove(0, 7);
+			char* endPtr = NULL;
+			int64 threadId = (int64)strtoll(locString.c_str(), &endPtr, 10);
+
+			if (endPtr != NULL)
+			{
+				locString.Remove(0, endPtr - locString.c_str());
+				locString.Trim();
+
+				if (locString.StartsWith("SP:", StringImpl::CompareKind_OrdinalIgnoreCase))
+				{
+					locString.Remove(0, 3);
+					char* endPtr = NULL;
+					uint64 sp = (uint64)strtoll(locString.c_str(), &endPtr, 16);
+
+					if (endPtr != NULL)
+					{
+						locString.Remove(0, endPtr - locString.c_str());
+						locString.Trim();
+
+						if (locString.StartsWith("Func:", StringImpl::CompareKind_OrdinalIgnoreCase))
+						{
+							locString.Remove(0, 5);
+							char* endPtr = NULL;
+							int64 funcAddr = (int64)strtoll(locString.c_str(), &endPtr, 16);
+							
+							if (endPtr != NULL)
+							{	
+								// Actually do it
+
+								if ((mActiveThread != NULL) && (mActiveThread->mThreadId != threadId))
+									restoreActiveThread = true;
+								if ((mActiveThread == NULL) || (mActiveThread->mThreadId != threadId))
+									SetActiveThread(threadId);
+								if ((mActiveThread != NULL) && (mActiveThread->mThreadId == threadId))
+								{
+									int foundStackIdx = -1;
+
+									int checkStackIdx = 0;
+									while (true)
+									{
+										if (checkStackIdx >= mCallStack.mSize)
+											UpdateCallStack();
+										if (checkStackIdx >= mCallStack.mSize)
+											break;
+
+										auto stackFrame = mCallStack[checkStackIdx];
+										if (stackFrame->mRegisters.GetSP() == sp)
+										{
+											foundStackIdx = checkStackIdx;
+											break;
+										}
+
+										if (stackFrame->mRegisters.GetSP() > sp)
+										{
+											foundStackIdx = checkStackIdx - 1;
+											break;											
+										}
+
+										checkStackIdx++;
+									}
+
+									if (foundStackIdx != -1)
+									{
+										UpdateCallStackMethod(foundStackIdx);
+										auto stackFrame = mCallStack[foundStackIdx];
+										
+										if ((stackFrame->mSubProgram != NULL) && ((int64)stackFrame->mSubProgram->mBlock.mLowPC == funcAddr))
+										{
+											if ((callStackIdx != foundStackIdx) || (mActiveThread != prevActiveThread))
+												usedSpecifiedLock = true;
+											callStackIdx = foundStackIdx;
+											foundLockMatch = true;
+										}
+									}
+								}								
+							}
+						}
+					}
+				}
+			}
+
+			if (!foundLockMatch)
+				return "!Locked stack frame not found";
+
+			bool doClear = false;
+			for (int i = closeIdx; i < terminatedExpr.mLength; i++)
+			{
+				char c = terminatedExpr[i];
+				if (doClear)
+				{
+					terminatedExpr[i] = ' ';
+					if (c == '}')
+						break;
+				}
+				else 
+				{
+					if (c == '{')
+					{
+						int endIdx = terminatedExpr.IndexOf('}');
+						if (endIdx == -1)
+							break;
+						terminatedExpr[i] = ' ';
+						doClear = true;
+					}
+					else if (!::isspace((uint8)c))
+						break;					
+				}
+
+			}
+		}		
+		else if (!locString.IsEmpty())
+		{			
+			const char* checkPtr = locString.c_str();
+			if ((*checkPtr == '^') || (*checkPtr == '@'))
+				checkPtr++;
+			
+			char* endPtr = NULL;
+			int useCallStackIdx = strtol(checkPtr, &endPtr, 10);
+			if (endPtr == locString.c_str() + locString.length())
+			{
+				if (locString[0] == '@')
+					callStackIdx = useCallStackIdx;
+				else
+					callStackIdx += useCallStackIdx;
+				stackIdxOverride = callStackIdx;
+			}
+			else
+			{
+				formatInfo.mStackSearchStr = locString;
+			}
+		}
+	}
+
 	auto dbgModule = GetCallStackDbgModule(callStackIdx);
 	auto dbgSubprogram = GetCallStackSubprogram(callStackIdx);
 	DbgCompileUnit* dbgCompileUnit = NULL;
 	if (dbgSubprogram != NULL)
 		dbgCompileUnit = dbgSubprogram->mCompileUnit;	
-
-	auto terminatedExpr = expr + ";";
+	
 	if ((expr.length() > 0) && (expr[0] == '!'))
 	{
 		if (expr.StartsWith("!step "))
@@ -9688,7 +9849,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 	parser->mCompatMode = true;
 	
 	BfPassInstance bfPassInstance(mBfSystem);	
-	
+		
 	if ((terminatedExpr.length() > 2) && (terminatedExpr[0] == '@'))
 	{
 		if (terminatedExpr[1] == '!') // Return string as error
@@ -9852,6 +10013,13 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 	}
 	else
 		delete pendingExpr;
+
+	if ((!formatInfo.mRawString) && (usedSpecifiedLock))
+		result += "\n:usedLock";
+
+	if ((!formatInfo.mRawString) && (stackIdxOverride != -1))
+		result += StrFormat("\n:stackIdx\t%d", stackIdxOverride);
+
 	return result;
 }
 
@@ -10663,10 +10831,33 @@ void WinDebugger::SetActiveThread(int threadId)
 {	
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 	
+	if ((mActiveThread != NULL) && (mActiveThread->mThreadId == threadId))
+		return;
+
+	auto prevThread = mActiveThread;
+
 	if (mThreadMap.TryGetValue(threadId, &mActiveThread))
 	{
 		BfLogDbg("SetActiveThread %d\n", threadId);
-		ClearCallStack();
+
+		if (prevThread != NULL)
+		{
+			Array<WdStackFrame*>* prevFrameArray = NULL;
+			mSavedCallStacks.TryAdd(prevThread, NULL, &prevFrameArray);
+			for (auto frameInfo : *prevFrameArray)
+				delete frameInfo;
+			*prevFrameArray = mCallStack;
+			mCallStack.Clear();
+		}
+		
+		DoClearCallStack(false);
+
+		Array<WdStackFrame*>* newFrameArray = NULL;
+		if (mSavedCallStacks.TryGetValue(mActiveThread, &newFrameArray))
+		{
+			mCallStack = *newFrameArray;
+			newFrameArray->Clear();
+		}
 	}
 	else
 	{
@@ -10718,8 +10909,8 @@ bool WinDebugger::IsActiveThreadWaiting()
 	return mActiveThread == mDebuggerWaitingThread;
 }
 
-void WinDebugger::ClearCallStack()
-{	
+void WinDebugger::DoClearCallStack(bool clearSavedStacks)
+{
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	BfLogDbg("ClearCallstack\n");
@@ -10728,8 +10919,23 @@ void WinDebugger::ClearCallStack()
 	for (auto wdStackFrame : mCallStack)
 		delete wdStackFrame;
 
+	if (clearSavedStacks)
+	{
+		for (auto& kv : mSavedCallStacks)
+		{
+			for (auto wdStackFrame : kv.mValue)
+				delete wdStackFrame;
+		}
+		mSavedCallStacks.Clear();
+	}
+
 	mCallStack.Clear();
 	mIsPartialCallStack = true;
+}
+
+void WinDebugger::ClearCallStack()
+{	
+	DoClearCallStack(true);
 }
 
 void WinDebugger::UpdateCallStack(bool slowEarlyOut)
@@ -11356,6 +11562,27 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 	return outName;
 }
 
+String WinDebugger::GetStackFrameId(int stackFrameIdx)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	if (!FixCallStackIdx(stackFrameIdx))
+		return "";
+
+	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
+	UpdateCallStackMethod(actualStackFrameIdx);
+	WdStackFrame* wdStackFrame = mCallStack[actualStackFrameIdx];
+
+	intptr addr = 0;
+	if (wdStackFrame->mSubProgram != NULL)
+		addr = wdStackFrame->mSubProgram->mBlock.mLowPC;
+	else
+		addr = wdStackFrame->mRegisters.GetPC();
+
+	String str = StrFormat("Thread:%d SP:%llX Func:%llX", mActiveThread->mThreadId, wdStackFrame->mRegisters.GetSP(), addr);
+	return str;
+}
+
 String WinDebugger::Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
@@ -11550,6 +11777,10 @@ String WinDebugger::GetAddressSourceLocation(intptr address)
 
 String WinDebugger::GetAddressSymbolName(intptr address, bool demangle)
 {
+	auto subProgram = mDebugTarget->FindSubProgram(address);
+	if (subProgram != NULL)
+		return subProgram->ToString();	
+
 	String outSymbol;
 	addr_target offset = 0;
 	DbgModule* dbgModule;
