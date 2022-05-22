@@ -11702,7 +11702,17 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			continue;
 		}
 
-		BfType* attrType = ResolveTypeRef(attributesDirective->mAttributeTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_Attribute | BfResolveTypeRefFlag_NoReify));
+		BfType* attrType;
+		if (mContext->mCurTypeState != NULL)
+		{
+			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurAttributeTypeRef, attributesDirective->mAttributeTypeRef);				
+			attrType = ResolveTypeRef(attributesDirective->mAttributeTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_Attribute | BfResolveTypeRefFlag_NoReify));
+		}
+		else
+		{
+			attrType = ResolveTypeRef(attributesDirective->mAttributeTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_Attribute | BfResolveTypeRefFlag_NoReify));
+		}
+		
 		BfTypeDef* attrTypeDef = NULL;										
 		if ((attrType != NULL) && (attrType->IsTypeInstance()))
 			attrTypeDef = attrType->ToTypeInstance()->mTypeDef;

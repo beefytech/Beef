@@ -3873,7 +3873,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if ((checkType != NULL) && (!checkType->IsInterface()) && (populateBase))
 			{
 				SetAndRestoreValue<BfTypeInstance*> prevBaseType(mContext->mCurTypeState->mCurBaseType, checkType->ToTypeInstance());
-				PopulateType(checkType, BfPopulateType_Data);
+				PopulateType(checkType, (populateType <= BfPopulateType_BaseType) ? BfPopulateType_BaseType : BfPopulateType_Data);
 			}
 
 			if (typeInstance->mDefineState >= BfTypeDefineState_Defined)
@@ -4331,25 +4331,33 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				SetAndRestoreValue<bool> prevSkipTypeProtectionChecks(typeInstance->mSkipTypeProtectionChecks, true);
 				if (typeDef->mIsCombinedPartial)
 				{
+					auto customAttributes = new BfCustomAttributes();
+
 					for (auto partialTypeDef : typeDef->mPartials)
 					{
 						if (partialTypeDef->mTypeDeclaration->mAttributes == NULL)
 							continue;
 						
 						typeState.mCurTypeDef = partialTypeDef;
-						if (typeInstance->mCustomAttributes == NULL)
-							typeInstance->mCustomAttributes = new BfCustomAttributes();
-						GetCustomAttributes(typeInstance->mCustomAttributes, partialTypeDef->mTypeDeclaration->mAttributes, attrTarget);
+						GetCustomAttributes(customAttributes, partialTypeDef->mTypeDeclaration->mAttributes, attrTarget);
 					}
+
+					if (typeInstance->mCustomAttributes == NULL)
+						typeInstance->mCustomAttributes = customAttributes;
+					else
+						delete customAttributes;
 				}
 				else
 				{
-					
-					typeInstance->mCustomAttributes = new BfCustomAttributes();
-					GetCustomAttributes(typeInstance->mCustomAttributes, typeDef->mTypeDeclaration->mAttributes, attrTarget);
+					auto customAttributes = new BfCustomAttributes();
+					GetCustomAttributes(customAttributes, typeDef->mTypeDeclaration->mAttributes, attrTarget);
+					if (typeInstance->mCustomAttributes == NULL)
+						typeInstance->mCustomAttributes = customAttributes;
+					else
+						delete customAttributes;
 				}
 			}
-		}
+		}		
 	}
 
 	if (typeInstance->mTypeOptionsIdx == -2)
