@@ -495,7 +495,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 		if (!argType->IsGenericTypeInstance())
 			return true;
 		auto argGenericType = (BfTypeInstance*)argType;
-		if (argGenericType->mTypeDef != wantGenericType->mTypeDef)
+		if (argGenericType->mTypeDef->GetDefinition() != wantGenericType->mTypeDef->GetDefinition())
 			return true;
 		
 		for (int genericArgIdx = 0; genericArgIdx < (int)argGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); genericArgIdx++)
