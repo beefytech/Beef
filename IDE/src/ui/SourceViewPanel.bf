@@ -3691,7 +3691,7 @@ namespace IDE.ui
 			{
 				Debug.Assert(mOldVerLoadExecutionInstance == null);
 				mOldVerLoadExecutionInstance = gApp.DoRun(null, mOldVerLoadCmd, gApp.mInstallDir, .None);
-				mOldVerLoadExecutionInstance.mAutoDelete = false;
+				mOldVerLoadExecutionInstance?.mAutoDelete = false;
 			}
 
 			CloseHeader();
