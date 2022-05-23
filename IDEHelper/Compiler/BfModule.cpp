@@ -21083,7 +21083,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 						BfExprEvaluator exprEvaluator(this);
 						auto localVal = exprEvaluator.LoadLocal(lastParam);
 						localVal = LoadOrAggregateValue(localVal);
-						mBfIRBuilder->CreateAlignedStore(localVal.mValue, lookupAddr, localVal.mType->mAlign);
+						if (!localVal.mType->IsValuelessType())
+							mBfIRBuilder->CreateAlignedStore(localVal.mValue, lookupAddr, localVal.mType->mAlign);
 					}
 					else if (!fieldInstance->mResolvedType->IsValuelessType())
 					{
