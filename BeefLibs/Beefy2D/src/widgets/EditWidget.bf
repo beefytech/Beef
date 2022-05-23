@@ -2085,12 +2085,14 @@ namespace Beefy.widgets
 			{
 				UndoBatchStart undoBatchStart = new UndoBatchStart("paste");
 				mData.mUndoManager.Add(undoBatchStart);
-				var origPosition = CursorLineAndColumn;
-				CursorLineAndColumn = .(origPosition.mLine, 0);
+
+				var setCursorAction = new SetCursorAction(this);
+				mData.mUndoManager.Add(setCursorAction);
+
+				var origLineAndColumn = CursorLineAndColumn;
+				CursorLineAndColumn = .(origLineAndColumn.mLine, 0);
 				var lineStartPosition = CursorLineAndColumn;
 				InsertAtCursor("\n");
-				if (var insertTextAction = mData.mUndoManager.GetLastUndoAction() as InsertTextAction)
-					insertTextAction.mVirtualCursorPos = origPosition;
 				CursorLineAndColumn = lineStartPosition;
 				
 				CursorToLineStart(false);
@@ -2109,7 +2111,7 @@ namespace Beefy.widgets
 				}
 
 				PasteText(text);
-				CursorLineAndColumn = .(origPosition.mLine + 1, origPosition.mColumn);
+				CursorLineAndColumn = .(origLineAndColumn.mLine + 1, origLineAndColumn.mColumn);
 				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 			}
 			else
