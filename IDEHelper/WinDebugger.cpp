@@ -389,6 +389,8 @@ DbgPendingExpr::DbgPendingExpr()
 	mIdleTicks = 0;
 	mExplitType = NULL;
 	mExpressionFlags = DwEvalExpressionFlag_None;
+	mUsedSpecifiedLock = false;
+	mStackIdxOverride = -1;
 }
 
 DbgPendingExpr::~DbgPendingExpr()
@@ -8727,7 +8729,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 		}
 	}			
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_Dictionary)
-	{		
+	{
 		DbgTypedValue sizeValue = EvaluateInContext(dbgCompileUnit, useTypedValue, debugVisualizers->DoStringReplace(debugVis->mSize, dbgVisWildcardCaptures), &formatInfo);
 		DbgTypedValue entriesPtrValue = EvaluateInContext(dbgCompileUnit, useTypedValue, debugVisualizers->DoStringReplace(debugVis->mEntries, dbgVisWildcardCaptures), &formatInfo);
 
@@ -9461,6 +9463,25 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		if (exprResult.mIsReadOnly)
 			canEdit = false;
 
+		const char* langStr = (pendingExpr->mFormatInfo.mLanguage == DbgLanguage_Beef) ? "@Beef:" : "@C:";
+
+		if (exprResult.mSrcAddress != 0)
+		{			
+			val += StrFormat("\n:addrValueExpr\t%s(%s*)", langStr, exprResult.mType->ToString(pendingExpr->mFormatInfo.mLanguage).c_str());
+			val += EncodeDataPtr(exprResult.mSrcAddress, true);
+		}
+
+		if (exprResult.mType->IsPointerOrRef())
+		{
+			auto underlyingType = exprResult.mType->mTypeParam;
+			if (underlyingType != NULL)
+			{
+				val += StrFormat("\n:pointeeExpr\t%s(%s%s)", langStr, underlyingType->ToString(pendingExpr->mFormatInfo.mLanguage).c_str(),
+					underlyingType->IsBfObject() ? "" : "*");
+				val += EncodeDataPtr(exprResult.mPtr, true);
+			}
+		}
+
 		if (val[0] == '!')
 		{
 			// Already has an error embedded, can't edit
@@ -9503,6 +9524,15 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 
 	if (pendingExpr->mFormatInfo.mRawString)
 		return "";
+
+	if (val[0] != '!')
+	{
+		if (pendingExpr->mUsedSpecifiedLock)
+			val += "\n:usedLock";
+
+		if (pendingExpr->mStackIdxOverride != -1)
+			val += StrFormat("\n:stackIdx\t%d", pendingExpr->mStackIdxOverride);
+	}
 
 	if (pendingExpr->mCursorPos != -1)	
 		val += GetAutocompleteOutput(autoComplete);
@@ -9642,8 +9672,10 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 
 	if (terminatedExpr.StartsWith('{'))
 	{
+		String locString;
 		int closeIdx = terminatedExpr.IndexOf('}');
-		String locString = terminatedExpr.Substring(1, closeIdx - 1);
+		if (closeIdx != -1)
+			locString = terminatedExpr.Substring(1, closeIdx - 1);
 
 		for (int i = 0; i <= closeIdx; i++)
 			terminatedExpr[i] = ' ';
@@ -9728,7 +9760,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 											foundLockMatch = true;
 										}
 									}
-								}								
+								}
 							}
 						}
 					}
@@ -9995,6 +10027,8 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 		return result;
 	}
 		
+	pendingExpr->mUsedSpecifiedLock = usedSpecifiedLock;
+	pendingExpr->mStackIdxOverride = stackIdxOverride;
 	pendingExpr->mExplitType = explicitType;
 	pendingExpr->mFormatInfo = formatInfo;
 	String result = EvaluateContinue(pendingExpr, bfPassInstance);
@@ -10012,13 +10046,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 		mActiveThread->mBreakpointAddressContinuing = 0;
 	}
 	else
-		delete pendingExpr;
-
-	if ((!formatInfo.mRawString) && (usedSpecifiedLock))
-		result += "\n:usedLock";
-
-	if ((!formatInfo.mRawString) && (stackIdxOverride != -1))
-		result += StrFormat("\n:stackIdx\t%d", stackIdxOverride);
+		delete pendingExpr;	
 
 	return result;
 }
@@ -10579,8 +10607,17 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 	parser.SetSource(terminatedExpr.c_str(), terminatedExpr.length());
 	parser.Parse(&bfPassInstance);
 
-	BfParser parentParser(mBfSystem);
 	auto terminatedParentExpr = parentExpr + ";";
+
+	String parentPrefix;
+	if (terminatedParentExpr.StartsWith('{'))
+	{
+		int prefixEnd = terminatedParentExpr.IndexOf('}');
+		parentPrefix = terminatedParentExpr.Substring(0, prefixEnd + 1);
+		terminatedParentExpr.Remove(0, prefixEnd + 1);
+	}
+
+	BfParser parentParser(mBfSystem);	
 	parentParser.mCompatMode = language != DbgLanguage_Beef;
 	parentParser.SetSource(terminatedParentExpr.c_str(), terminatedParentExpr.length());
 	parentParser.Parse(&bfPassInstance);
@@ -10633,7 +10670,9 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 	printer.mIgnoreTrivia = true;
 	printer.mReformatting = true;
 	printer.VisitChild(headNode);
-	auto result = printer.mOutString;
+	String result;
+	result += parentPrefix;
+	result += printer.mOutString;
 	if (formatInfo.mNoVisualizers)
 		result += ", nv";
 	if (formatInfo.mNoMembers)

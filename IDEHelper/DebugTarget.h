@@ -38,7 +38,8 @@ public:
 	String mTargetPath;
 	DbgModule* mLaunchBinary;
 	DbgModule* mTargetBinary;	
-	Array<DbgModule*> mDbgModules;	
+	Array<DbgModule*> mDbgModules;
+	Dictionary<int, DbgModule*> mDbgModuleMap;
 	HashSet<DbgSrcFile*> mPendingSrcFileRehup; // Waiting to remove old/invalid line info
 	
 	BumpAllocator mAlloc;	
@@ -51,6 +52,7 @@ public:
 	bool mBfHasLargeCollections;
 	int mBfObjectVDataIntefaceSlotCount;
 	int mBfObjectSize;
+	int mCurModuleId;
 
 	Array<DwCommonFrameDescriptor*> mCommonFrameDescriptors;
 	std::map<addr_target, DwFrameDescriptor> mDwFrameDescriptorMap;

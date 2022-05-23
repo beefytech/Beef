@@ -4137,7 +4137,7 @@ void CeDebugger::HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry*
 				if (!valueType->IsPointer())
 					ptrType = ceModule->CreatePointerType(valueType);
 				evalStr = StrFormat("(comptype(%d)", ptrType->mTypeId);
-				evalStr += ")0x{1}";;
+				evalStr += ")0x{1}";
 			}
 			else
 			{

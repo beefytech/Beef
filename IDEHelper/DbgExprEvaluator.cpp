@@ -970,10 +970,20 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfTypeReference* typeRef)
 
 	String name = typeRef->ToString();
 	if (name.StartsWith("_T_"))
-	{		
-		int idx = atoi(name.c_str() + 3);
-		if ((idx >= 0) && (idx < (int)mDbgModule->mTypes.size()))
-			return mDbgModule->mTypes[idx];
+	{
+		auto dbgModule = mDbgModule;
+
+		char* endPtr = NULL;
+		int typeIdx = strtol(name.c_str() + 3, &endPtr, 10);
+		if ((endPtr != NULL) && (*endPtr == '_'))
+		{
+			int moduleIdx = typeIdx;
+			typeIdx = atoi(endPtr + 1);
+			mDebugTarget->mDbgModuleMap.TryGetValue(moduleIdx, &dbgModule);
+		}
+		
+		if ((dbgModule != NULL) && (typeIdx >= 0) && (typeIdx < (int)dbgModule->mTypes.size()))
+			return dbgModule->mTypes[typeIdx];
 	}
 
 	auto entry = mDbgModule->mTypeMap.Find(name.c_str(), GetLanguage());
@@ -1023,23 +1033,33 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfAstNode* typeRef, BfAstNode** parent
 		for (int i = 3; i < (int)name.length(); i++)
 		{
 			char c = name[i];
-			if ((c < '0') || (c > '9'))
+			if (((c < '0') || (c > '9')) && (c != '_'))
 			{
 				endIdx = i;
 				break;
 			}
 		}
 
-		int idx = atoi(name.c_str() + 3);
-		if ((idx >= 0) && (idx < (int)mDbgModule->mTypes.size()))
+		auto dbgModule = mDbgModule;
+
+		char* endPtr = NULL;
+		int typeIdx = strtol(name.c_str() + 3, &endPtr, 10);
+		if ((endPtr != NULL) && (*endPtr == '_'))
+		{
+			int moduleIdx = typeIdx;
+			typeIdx = atoi(endPtr + 1);
+			mDebugTarget->mDbgModuleMap.TryGetValue(moduleIdx, &dbgModule);
+		}
+		
+		if ((dbgModule != NULL) && (typeIdx >= 0) && (typeIdx < (int)dbgModule->mTypes.size()))
 		{
 			if ((mExplicitThisExpr != NULL) && (parentChildRef != NULL))
 				mDeferredInsertExplicitThisVector.push_back(NodeReplaceRecord(typeRef, parentChildRef, true));
-			DbgType* dbgType = mDbgModule->mTypes[idx];
+			DbgType* dbgType = dbgModule->mTypes[typeIdx];
 			for (int i = endIdx; i < (int)name.length(); i++)
 			{
 				if (name[i] == '*')
-					dbgType = mDbgModule->GetPointerType(dbgType);
+					dbgType = dbgModule->GetPointerType(dbgType);
 			}
 			return dbgType;
 		}

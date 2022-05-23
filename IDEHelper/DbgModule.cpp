@@ -1547,7 +1547,7 @@ DbgType* DbgType::RemoveModifiers(bool* hadRef)
 String DbgType::ToStringRaw(DbgLanguage language)
 {
 	if (mTypeIdx != -1)
-		return StrFormat("_T_%d", mTypeIdx);	
+		return StrFormat("_T_%d_%d", mCompileUnit->mDbgModule->mId, mTypeIdx);	
 	return ToString(language);
 }
 

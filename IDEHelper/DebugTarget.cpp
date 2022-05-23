@@ -33,6 +33,7 @@ DebugTarget::DebugTarget(WinDebugger* debugger)
 	mLastHotHeapCleanIdx = 0;	
 	mIsEmpty = false;
 	mWasLocallyBuilt = false;
+	mCurModuleId = 0;
 	
 	/*dbgType = new DbgType();
 	dbgType->mName = "int";
@@ -252,9 +253,12 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 
 			if (mTargetBinary == dwarf)
 				mTargetBinary = NULL;
+			
+			mDbgModules.RemoveAt(i);
+			bool success = mDbgModuleMap.Remove(dwarf->mId);
+			BF_ASSERT_REL(success);
 
 			delete dwarf;
-			mDbgModules.erase(mDbgModules.begin() + i);
 			return filePath;
 		}
 	}	
@@ -292,9 +296,11 @@ void DebugTarget::CleanupHotHeap()
 		{
 			DbgModule* dbgModule = mDbgModules[dwarfIdx];
 			if (dbgModule->mDeleting)
-			{
+			{				
+				mDbgModules.RemoveAt(dwarfIdx);
+				bool success = mDbgModuleMap.Remove(dbgModule->mId);
+				BF_ASSERT_REL(success);
 				delete dbgModule;
-				mDbgModules.erase(mDbgModules.begin() + dwarfIdx);
 				dwarfIdx--;
 			}
 		}		
@@ -906,10 +912,11 @@ void DebugTarget::GetCompilerSettings()
 }
 
 void DebugTarget::AddDbgModule(DbgModule* dbgModule)
-{
-	static int id = 0;	
-	dbgModule->mId = ++id;
+{	
+	dbgModule->mId = ++mCurModuleId;
 	mDbgModules.Add(dbgModule);
+	bool success = mDbgModuleMap.TryAdd(dbgModule->mId, dbgModule);
+	BF_ASSERT_REL(success);
 }
 
 #if 1

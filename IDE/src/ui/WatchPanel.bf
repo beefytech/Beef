@@ -44,6 +44,8 @@ namespace IDE.ui
 		public String mStackFrameId ~ delete _;
 		public bool mWantsStackFrameId;
         public String mEvalStr ~ delete _;
+		public String mAddrValueExpr ~ delete _;
+		public String mPointeeExpr ~ delete _;
         public bool mCanEdit;
         public String mEditInitialize ~ delete _;
         public bool mHadValue;
@@ -2577,6 +2579,8 @@ namespace IDE.ui
 			watch.mLanguage = .NotSet;
             DeleteAndNullify!(watch.mEditInitialize);
 			DeleteAndNullify!(watch.mAction);
+			DeleteAndNullify!(watch.mAddrValueExpr);
+			DeleteAndNullify!(watch.mPointeeExpr);
             watch.mCanEdit = false;
 			watch.mAction = null;
 
@@ -2764,6 +2768,14 @@ namespace IDE.ui
 						if (int32 stackIdx = int32.Parse(memberVals[1]))
 							watch.mCurStackIdx = stackIdx;
 					}
+					else if (memberVals0 == ":addrValueExpr")
+					{
+						watch.mAddrValueExpr = new .(memberVals[1]);
+					}
+					else if (memberVals0 == ":pointeeExpr")
+					{
+						watch.mPointeeExpr = new .(memberVals[1]);
+					}
 					else
                         watch.ParseCmd(memberVals);
                     continue;
@@ -2808,7 +2820,7 @@ namespace IDE.ui
 			{
 				watch.mWantsStackFrameId = false;
 				watch.mStackFrameId = gApp.mDebugger.GetStackFrameId((watch.mCurStackIdx != -1) ? watch.mCurStackIdx : gApp.mDebugger.mActiveCallStackIdx, .. new .());
-				if (gApp.mDebugger.mActiveCallStackIdx != watch.mCurStackIdx)
+				if ((gApp.mDebugger.mActiveCallStackIdx != watch.mCurStackIdx) && (watch.mCurStackIdx != -1))
 					watch.mUsedLock = true;
 			}
 
@@ -3061,7 +3073,7 @@ namespace IDE.ui
             return true;
         }
 
-		protected static void WithSelectedWatchEntries(WatchListView listView, delegate void(WatchEntry) dlg)
+		protected static void WithSelectedWatchEntries(WatchListView listView, delegate void(WatchEntry watchEntry) dlg)
 		{
 			listView.GetRoot().WithSelectedItems(scope (item) =>
 				{
@@ -3082,28 +3094,12 @@ namespace IDE.ui
 			Menu menu = new Menu();
 
 			Menu anItem;
-
-			/*if (listViewItem.mParent != mListView.GetRoot())
-			{
-				anItem = menu.AddItem("Add Watch");
-			}*/
-
 			if (listViewItem != null)
 			{
 				var clickedHoverItem = listViewItem.GetSubItem(0) as HoverWatch.HoverListViewItem;
 
 				var watchEntry = listViewItem.mWatchEntry;
-				if (listViewItem.mParentItem != listView.GetRoot())
-				{
-					anItem = menu.AddItem("Add Watch");
-					anItem.mOnMenuItemSelected.Add(new (menu) =>
-						{
-							String compactEvalStr = scope String();
-							CompactChildExpression(listViewItem, compactEvalStr);
-							gApp.AddWatch(compactEvalStr);
-						});
-				}
-
+				
 			    AddDisplayTypeMenu("Default Display", menu, listViewItem.mWatchEntry.mResultType, null, false);
 
 			    //Debug.WriteLine(String.Format("RefType: {0}", watchEntry.mReferenceId));
@@ -3178,10 +3174,94 @@ namespace IDE.ui
 				}
 
 				anItem = menu.AddItem("Add Watch");
-				anItem.mOnMenuItemSelected.Add(new (menu) =>
+				var addWatchNew = anItem.AddItem("Duplicate");
+				addWatchNew.mOnMenuItemSelected.Add(new (menu) =>
 					{
-						IDEApp.sApp.AddWatch(watchEntry.mEvalStr);
+						List<String> pendingEvalStrs = scope .();
+
+						listView.GetRoot().WithSelectedItems(scope (item) =>
+							{
+								var watchListViewItem = item as WatchListViewItem;
+								if (watchListViewItem.mWatchEntry != null)
+								{
+									if (watchListViewItem.mParentItem != listView.GetRoot())
+									{
+										String compactEvalStr = new String();
+										CompactChildExpression(watchListViewItem, compactEvalStr);
+										pendingEvalStrs.Add(compactEvalStr);
+									}
+									else
+									{
+										pendingEvalStrs.Add(new .(watchEntry.mEvalStr));
+									}
+								}
+							});
+
+						for (var str in pendingEvalStrs)
+						{
+							gApp.AddWatch(str);
+							delete str;
+						}
 					});
+
+				String pointeeExpr = null;
+				String addrValueExpr = null;
+				WithSelectedWatchEntries(listView, scope [&] (selectedWatchEntry) =>
+					{
+						if (selectedWatchEntry.mPointeeExpr != null)
+						{
+							if (pointeeExpr != null)
+								pointeeExpr = "";
+							else
+								pointeeExpr = selectedWatchEntry.mPointeeExpr;
+						}
+						if (selectedWatchEntry.mAddrValueExpr != null)
+						{
+							if (addrValueExpr != null)
+								addrValueExpr = "";
+							else
+								addrValueExpr = selectedWatchEntry.mAddrValueExpr;
+						}	
+					});
+
+
+				if (pointeeExpr != null)
+				{
+					var addWatchPointee = anItem.AddItem(scope $"Pointee Address {pointeeExpr}");
+					addWatchPointee.mOnMenuItemSelected.Add(new (menu) =>
+						{
+							WithSelectedWatchEntries(listView, scope (selectedWatchEntry) =>
+								{
+									if (selectedWatchEntry.mPointeeExpr != null)
+										gApp.AddWatch(selectedWatchEntry.mPointeeExpr);
+								});
+						});
+
+					if (addrValueExpr != null)
+					{
+						var addWatchPointer = anItem.AddItem(scope $"Pointer Address {addrValueExpr}");
+						addWatchPointer.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								WithSelectedWatchEntries(listView, scope (selectedWatchEntry) =>
+									{
+										if (selectedWatchEntry.mAddrValueExpr != null)
+											gApp.AddWatch(selectedWatchEntry.mAddrValueExpr);
+									});
+							});
+					}
+				}
+				else if (addrValueExpr != null)
+				{
+					var addValuePointer = anItem.AddItem(scope $"Value Address {addrValueExpr}");
+					addValuePointer.mOnMenuItemSelected.Add(new (menu) =>
+						{
+							WithSelectedWatchEntries(listView, scope (selectedWatchEntry) =>
+								{
+									if (selectedWatchEntry.mAddrValueExpr != null)
+										gApp.AddWatch(selectedWatchEntry.mAddrValueExpr);
+								});
+						});
+				}
 
 				if (!watchEntry.IsConstant)
 				{
@@ -3192,10 +3272,19 @@ namespace IDE.ui
 							{
 								String evalStr = scope String();
 								CompactChildExpression(listViewItem, evalStr);
-								if (evalStr.StartsWith("*"))
-									evalStr.Remove(0, 1);
+
+								int valStart = 0;
+								if (evalStr.StartsWith('{'))
+								{
+									int endPos = evalStr.IndexOf('}');
+									valStart = endPos + 1;
+									while ((valStart < evalStr.Length) && (evalStr[valStart].IsWhiteSpace))
+										valStart++;
+								}
+								if ((valStart < evalStr.Length) && (evalStr[valStart] == '*'))
+									evalStr.Remove(valStart, 1);
 								else
-									evalStr.Insert(0, "&");
+									evalStr.Insert(valStart, "&");
 								gApp.mBreakpointPanel.CreateMemoryBreakpoint(evalStr);
 								gApp.MarkDirty();
 							});

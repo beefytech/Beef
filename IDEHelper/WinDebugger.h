@@ -288,6 +288,8 @@ public:
 	Array<DbgCallResult> mCallResults;
 	int mIdleTicks;
 	String mException;
+	bool mUsedSpecifiedLock;
+	int mStackIdxOverride;
 
 	DbgPendingExpr();
 	~DbgPendingExpr();

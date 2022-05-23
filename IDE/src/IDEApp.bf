@@ -4598,7 +4598,7 @@ namespace IDE
 
 			            DebuggerUnpaused();
 			        }
-			        else
+			        else if (sourceViewPanel != null)
 			        {
 						var activePanel = sourceViewPanel.GetActivePanel();
 
