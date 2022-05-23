@@ -84,7 +84,9 @@ public:
 
 		int mReifiedModuleCount;
 		int mIRBytes;
-		int mConstBytes;		
+		int mConstBytes;
+
+		int mMidCompileRebuilds;
 	};
 	Stats mStats;
 

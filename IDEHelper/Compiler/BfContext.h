@@ -477,6 +477,9 @@ public:
 	void QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkSpecializedMethodRebuildFlag);
 	void MarkAsReferenced(BfDependedType* depType);
 	void RemoveInvalidFailTypes();
+	bool IsWorkItemValid(BfWorkListEntry* item);
+	bool IsWorkItemValid(BfMethodProcessRequest* item);
+	bool IsWorkItemValid(BfMethodSpecializationRequest* item);
 	void RemoveInvalidWorkItems();	
 	BfType* FindTypeById(int typeId);
 	void AddTypeToWorkList(BfType* type);

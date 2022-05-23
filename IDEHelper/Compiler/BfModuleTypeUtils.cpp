@@ -1171,7 +1171,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 // 						RebuildMethods(typeInst);
 // 					}
 // 					else
-// 						mContext->RebuildType(typeInst, false, false);					
+// 						mContext->RebuildType(typeInst, false, false);
 
 					if (typeInst->mGenericTypeInfo != NULL)
 					{
@@ -1302,7 +1302,12 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		BfTypeDef* typeDef = NULL;
 		if (typeInstance != NULL)
 			typeDef = typeInstance->mTypeDef;
-		BfLogSysM("PopulateType: %p %s populateType:%d ResolveOnly:%d Reified:%d AutoComplete:%d Ctx:%p Mod:%p TypeId:%d TypeDef:%p\n", resolvedTypeRef, TypeToString(resolvedTypeRef, BfTypeNameFlags_None).c_str(), populateType, mCompiler->mIsResolveOnly, mIsReified, mCompiler->IsAutocomplete(), mContext, this, resolvedTypeRef->mTypeId, typeDef);
+
+		auto typeModule = resolvedTypeRef->GetModule();
+		if (typeModule != NULL)
+			BF_ASSERT(!typeModule->mAwaitingFinish);
+
+		BfLogSysM("PopulateType: %p %s populateType:%d ResolveOnly:%d Reified:%d AutoComplete:%d Ctx:%p Mod:%p TypeId:%d TypeDef:%p\n", resolvedTypeRef, TypeToString(resolvedTypeRef, BfTypeNameFlags_None).c_str(), populateType, mCompiler->mIsResolveOnly, mIsReified, mCompiler->IsAutocomplete(), mContext, resolvedTypeRef->GetModule(), resolvedTypeRef->mTypeId, typeDef);
 
 		BF_ASSERT(!resolvedTypeRef->IsDeleting());
 	}

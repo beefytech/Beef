@@ -23343,6 +23343,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			}
 		}
 		
+		BF_ASSERT(!resolvedParamType->IsDeleting());
+
 		if (!methodInstance->IsSpecializedGenericMethod())
 			AddDependency(resolvedParamType, typeInstance, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		PopulateType(resolvedParamType, BfPopulateType_Declaration);		
@@ -23456,8 +23458,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				hadDelegateParams = true;
 
-				// This means we copy the params from a delegate				
-				BfMethodParam methodParam;				
+				// This means we copy the params from a delegate
+				BfMethodParam methodParam;
 				methodParam.mResolvedType = resolvedParamType;
 				methodParam.mParamDefIdx = paramDefIdx;
 				methodParam.mDelegateParamIdx = 0;
@@ -23793,6 +23795,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 // 	if (methodInstance->mIsReified)
 // 		CheckHotMethod(methodInstance, mangledName);	
+
+	for (auto& param : methodInstance->mParams)
+	{
+		BF_ASSERT(!param.mResolvedType->IsDeleting());
+	}
 
 	BfLogSysM("DoMethodDeclaration %s Module: %p Type: %p MethodInst: %p Reified: %d Unspecialized: %d IRFunction: %d MethodId:%llx\n", mangledName.c_str(), this, mCurTypeInstance, methodInstance, methodInstance->mIsReified, mCurTypeInstance->IsUnspecializedType(), methodInstance->mIRFunction.mId, methodInstance->mIdHash);
 	

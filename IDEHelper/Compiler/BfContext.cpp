@@ -510,7 +510,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 					break;
 				
 				auto workItemRef = mMethodSpecializationWorkList[workIdx];
-				if (workItemRef == NULL)
+				if ((workItemRef == NULL) || (!IsWorkItemValid(workItemRef)))
 				{
 					workIdx = mMethodSpecializationWorkList.RemoveAt(workIdx);
 					continue;
@@ -577,7 +577,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				wantProcessMethod = false;
 			else if (workItem->mType->IsDeleting())
 				wantProcessMethod = false;
-
+			if (!IsWorkItemValid(workItem))
+				wantProcessMethod = false;
 			if (methodInstance != NULL)
 				BF_ASSERT(methodInstance->mMethodProcessRequest == workItem);
 			
@@ -633,7 +634,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			if (methodInstance != NULL)
 				methodInstance->mMethodProcessRequest = NULL;
 
-			if ((!module->mAwaitingFinish) && (module->WantsFinishModule()))
+			if ((!module->mAwaitingFinish) && (module->WantsFinishModule()) && (wantProcessMethod))
 			{								
 				BfLogSysM("Module finished: %p %s HadBuildErrors:%d\n", module, module->mModuleName.c_str(), module->mHadBuildError);				
 				QueueFinishModule(module);				
@@ -772,7 +773,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			BF_ASSERT(module->mContext == this);
 			BF_ASSERT(module->mIsModuleMutable);
 
-			if (module->WantsFinishModule())
+			if ((wantProcessMethod) && (!module->mAwaitingFinish) && (module->WantsFinishModule()))
 			{
 				BfLogSysM("Module finished: %s (from inlining)\n", module->mModuleName.c_str());
 				QueueFinishModule(module);				
@@ -1269,9 +1270,8 @@ void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const St
 		BF_ASSERT(!module->mIsDeleting);
 		BF_ASSERT(!module->mOwnedTypeInstances.IsEmpty());
 	}
-
 	
-
+	mCompiler->mStats.mMidCompileRebuilds++;
 	dType->mRebuildFlags = (BfTypeRebuildFlags)(dType->mRebuildFlags | BfTypeRebuildFlag_ChangedMidCompile);
 	int prevDeletedTypes = mCompiler->mStats.mTypesDeleted;
 	if (mCompiler->mIsResolveOnly)
@@ -2978,6 +2978,52 @@ void ReportRemovedItem<BfMethodProcessRequest*>(BfMethodProcessRequest* workItem
 		BfLogSys(workItem->mFromModule->mSystem, "DoRemoveInvalidWorkItems MethodInstance:%p\n", workItem->mMethodInstance);
 }
 
+bool BfContext::IsWorkItemValid(BfWorkListEntry* item)
+{
+	return true;
+}
+
+bool BfContext::IsWorkItemValid(BfMethodProcessRequest* item)
+{
+	// If we had mid-compile rebuilds then we may have deleted types referenced in methods
+	if (mCompiler->mStats.mMidCompileRebuilds == 0)
+		return true;
+
+	if (item->mMethodInstance == NULL)
+		return false;
+
+	for (auto& param : item->mMethodInstance->mParams)
+	{
+		if (param.mResolvedType->IsDeleting())
+			return false;
+	}
+
+	if (item->mMethodInstance->mMethodInfoEx != NULL)
+	{
+		for (auto genericArg : item->mMethodInstance->mMethodInfoEx->mMethodGenericArguments)
+			if (genericArg->IsDeleting())
+				return false;
+	}
+
+	return true;
+}
+
+bool BfContext::IsWorkItemValid(BfMethodSpecializationRequest* item)
+{
+	// If we had mid-compile rebuilds then we may have deleted types referenced in methods
+	if (mCompiler->mStats.mMidCompileRebuilds == 0)
+		return true;
+
+	for (auto type : item->mMethodGenericArguments)
+		if (type->IsDeleting())
+			return false;
+
+	if ((item->mForeignType != NULL) && (item->mForeignType->IsDeleting()))
+		return false;
+
+	return true;
+}
+
 template <typename T>
 void DoRemoveInvalidWorkItems(BfContext* bfContext, WorkQueue<T>& workList, bool requireValidType)
 {	
@@ -3001,7 +3047,8 @@ void DoRemoveInvalidWorkItems(BfContext* bfContext, WorkQueue<T>& workList, bool
 			((workItem->mSignatureRevision != -1) && (typeInst != NULL) && (workItem->mSignatureRevision != typeInst->mSignatureRevision)) ||
 			((workItem->mFromModuleRevision != -1) && (workItem->mFromModuleRevision != workItem->mFromModule->mRevision)) ||
 			((workItem->mFromModule != NULL) && (workItem->mFromModule->mIsDeleting)) ||
-			((requireValidType) && (workItem->mType->mDefineState == BfTypeDefineState_Undefined)))
+			((requireValidType) && (workItem->mType->mDefineState == BfTypeDefineState_Undefined)) ||
+			(!bfContext->IsWorkItemValid(workItem)))
 		{
 			if (typeInst != NULL)
 			{
