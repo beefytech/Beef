@@ -20514,6 +20514,8 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 	}	
 
 	thisValue = mModule->LoadValue(thisValue);
+	if (thisValue.mType->IsVar())
+		return thisValue;
 
 	BfPendingNullConditional* pendingNullCond = mModule->mCurMethodState->mPendingNullConditional;
 	if (pendingNullCond == NULL)
