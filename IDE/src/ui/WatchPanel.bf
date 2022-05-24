@@ -793,7 +793,7 @@ namespace IDE.ui
 			}	
 		}
 
-        public override void DrawAll(Graphics g)
+        void DoDrawAll(Graphics g)
         {
             g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
 			var editWidgetContent = mEditWidget.Content;
@@ -883,6 +883,20 @@ namespace IDE.ui
 			//using (g.PushColor(0xD0FFFFFF))
 				base.DrawAll(g);
         }
+
+		public override void DrawAll(Graphics g)
+		{
+			uint32 color = Color.White;
+			if (var lvItem = mParent as WatchListViewItem)
+			{
+				var headItem = lvItem.GetSubItem(0) as WatchListViewItem;
+				if ((headItem.mDisabled) || (lvItem.mFailed))
+				    color = 0xFFFF4040;
+			}
+
+			using (g.PushColor(color))
+				DoDrawAll(g);
+		}
 
         public override void Resize(float x, float y, float width, float height)
         {
