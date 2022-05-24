@@ -404,7 +404,7 @@ namespace IDE.Compiler
             }
 
             editWidgetContent.ContentChanged();
-            Debug.WriteLine("Reformat {0} inserts, total of {1} chars. {2} deletes, total of {3} chars.", insertCount, insertChars, deleteCount, deleteChars);
+            //Debug.WriteLine("Reformat {0} inserts, total of {1} chars. {2} deletes, total of {3} chars.", insertCount, insertChars, deleteCount, deleteChars);
 
             sourceEditBatchHelper.Finish();
         }

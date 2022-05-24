@@ -48,6 +48,7 @@ BfPrinter::BfPrinter(BfRootNode *rootNode, BfRootNode *sidechannelRootNode, BfRo
 	mTabSize = 4;
 	mWantsTabsAsSpaces = false;
 	mIndentCaseLabels = false;
+	mFormatDisableCount = 0;
 }
 
 void BfPrinter::Write(const StringView& str)
@@ -298,6 +299,16 @@ int BfPrinter::CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx)
 
 void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 {
+	Update(node);
+
+	if (!mReformatting)
+	{
+		int startIdx = BF_MAX(node->mTriviaStart, mTriviaIdx);
+		Write(node, startIdx, node->mSrcEnd - startIdx);
+		mTriviaIdx = node->mSrcEnd; 
+		return;
+	}
+
 	bool startsWithSpace = false;
 	
 	bool wasExpectingNewLine = mExpectingNewLine;
@@ -600,7 +611,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 			}
 
 			if (wantsPrefixSpace)
-			{
+			{				
 				mQueuedSpaceCount++;
 				wantsPrefixSpace = false;
 			}
@@ -693,6 +704,54 @@ void BfPrinter::CheckRawNode(BfAstNode* node)
 	}
 }
 
+void BfPrinter::Update(BfAstNode* bfAstNode)
+{
+	// This won't be true if we move nodes around during refactoring
+	if (bfAstNode->GetSrcStart() >= mCurSrcIdx)
+	{
+		mCurSrcIdx = bfAstNode->GetSrcStart();
+	}
+
+	if ((!mReformatting) && (mFormatDisableCount == 0) && (mFormatStart != -1) && (mCurSrcIdx >= mFormatStart) && ((mCurSrcIdx < mFormatEnd) || (mFormatEnd == -1)))
+	{
+		mReformatting = true;
+
+		// We entered the format region, figure our what our current indent level is
+		int backIdx = mCurSrcIdx - 1;
+		int prevSpaceCount = 0;
+		auto astNodeSrc = bfAstNode->GetSourceData();
+		while (backIdx >= 0)
+		{
+			char c = astNodeSrc->mSrc[backIdx];
+			if (c == ' ')
+				prevSpaceCount++;
+			else if (c == '\t')
+				prevSpaceCount += mTabSize;
+			else if (c == '\n')
+			{
+				// Found previous line
+				mCurIndentLevel = prevSpaceCount / mTabSize;
+				break;
+			}
+			else
+			{
+				prevSpaceCount = 0;
+			}
+			backIdx--;
+		}
+	}
+
+	if (mFormatDisableCount != 0)
+		mReformatting = false;
+
+	if ((mCurSrcIdx >= mFormatEnd) && (mFormatEnd != -1))
+		mReformatting = false;
+
+	bool expectingNewLine = mNextStateModify.mWantNewLineIdx != mVirtualNewLineIdx;
+	if (expectingNewLine)
+		mExpectingNewLine = true;
+}
+
 void BfPrinter::Visit(BfAstNode* bfAstNode)
 {		
 	SetAndRestoreValue<bool> prevForceTrivia(mForceUseTrivia);
@@ -743,43 +802,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 			break;
 	}
 	
-	// This won't be true if we move nodes around during refactoring
-	if (bfAstNode->GetSrcStart() >= mCurSrcIdx)
-	{		
-		mCurSrcIdx = bfAstNode->GetSrcStart();
-	}
-	
-	if ((!mReformatting) && (mFormatStart != -1) && (mCurSrcIdx >= mFormatStart) && ((mCurSrcIdx < mFormatEnd) || (mFormatEnd == -1)))
-	{		
-		mReformatting = true;
-
-		// We entered the format region, figure our what our current indent level is
-		int backIdx = mCurSrcIdx - 1;
-		int prevSpaceCount = 0;
-		auto astNodeSrc = bfAstNode->GetSourceData();
-		while (backIdx >= 0)
-		{
-			char c = astNodeSrc->mSrc[backIdx];
-			if (c == ' ')
-				prevSpaceCount++;
-			else if (c == '\t')
-				prevSpaceCount += mTabSize;
-			else if (c == '\n')
-			{
-				// Found previous line
-				mCurIndentLevel = prevSpaceCount / mTabSize;
-				break;
-			}
-			else
-			{				
-				prevSpaceCount = 0;
-			}
-			backIdx--;
-		}		
-	}
-
-	if ((mCurSrcIdx >= mFormatEnd) && (mFormatEnd != -1))
-		mReformatting = false;
+	Update(bfAstNode);	
 	
 	// When triviaStart == -1, that indicates it's a combined node where the text we want to process is on the inside
 	if (bfAstNode->GetTriviaStart() != -1) 
@@ -807,7 +830,11 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 				int prevSpaceCount = -1;
 				int spaceCount = 0;
 				auto astNodeSrc = bfAstNode->GetSourceData();
-				for (int i = mTriviaIdx; i < bfAstNode->GetSrcStart(); i++)
+
+				bool canUseTrivia = true;
+				int spaceTriviaStart = -1;
+				int triviaEnd = bfAstNode->GetSrcStart();
+				for (int i = mTriviaIdx; i < triviaEnd; i++)
 				{
 					if (mIgnoreTrivia)
 						break;					
@@ -815,9 +842,17 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 					char c = astNodeSrc->mSrc[i];
 					
 					if (c == ' ')
+					{
+						if (spaceTriviaStart == -1)
+							spaceTriviaStart = i;
 						spaceCount++;
+					}
 					else if (c == '\t')
+					{
+						if (spaceTriviaStart == -1)
+							spaceTriviaStart = i;
 						spaceCount += mTabSize;
+					}
 
 					if (((c == '\n') || (i == bfAstNode->GetSrcStart() - 1)) && (hadPrevLineSpacing) && (prevSpaceCount > 0))
 					{							
@@ -829,6 +864,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 
 					if (c == '\n')
 					{
+						canUseTrivia = false;
 						hadNewline = true;
 						int backIdx = i - 1;
 						prevSpaceCount = 0;						
@@ -861,15 +897,28 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 							backIdx--;
 						}
 						spaceCount = 0;
+						spaceTriviaStart = -1;
 					}
 					else if (!isspace((uint8)c))
-						spaceCount = 0;					
-				}				
+					{
+						spaceCount = 0;
+						spaceTriviaStart = -1;
+					}				
+
+				}
+
+				if ((canUseTrivia) && (spaceCount > 1) && (spaceTriviaStart != -1))
+				{
+					Write(bfAstNode, spaceTriviaStart, triviaEnd - spaceTriviaStart);
+					mNextStateModify.mExpectingSpace = false;
+					usedTrivia = true;
+				}
 			}
 
 			if (usedTrivia)
 			{
 				// Already did whitespace
+				mNextStateModify.mExpectingSpace = false;
 			}
 			else if ((mNextStateModify.mDoingBlockOpen) || (mNextStateModify.mDoingBlockClose) || (mIsFirstStatementInBlock))
 			{
@@ -1057,11 +1106,27 @@ void BfPrinter::Visit(BfCommentNode* commentNode)
 void BfPrinter::Visit(BfPreprocesorIgnoredSectionNode* preprocesorIgnoredSection)
 {
 	WriteIgnoredNode(preprocesorIgnoredSection);
+	ExpectNewLine();
 }
 
 void BfPrinter::Visit(BfPreprocessorNode* preprocessorNode)
 {
 	WriteIgnoredNode(preprocessorNode);
+
+	if ((preprocessorNode->mCommand->ToStringView() == "pragma") && 
+		(preprocessorNode->mArgument != NULL) &&
+		(preprocessorNode->mArgument->mChildArr.mSize == 2) &&
+		(preprocessorNode->mArgument->mChildArr[0] != NULL) &&
+		(preprocessorNode->mArgument->mChildArr[0]->ToStringView() == "format") &&
+		(preprocessorNode->mArgument->mChildArr[1] != NULL))
+	{
+		if (preprocessorNode->mArgument->mChildArr[1]->ToStringView() == "disable")
+			mFormatDisableCount++;
+		else if (preprocessorNode->mArgument->mChildArr[1]->ToStringView() == "restore")
+			mFormatDisableCount = BF_MAX(0, mFormatDisableCount - 1);
+	}
+
+	ExpectNewLine();	
 }
 
 void BfPrinter::Visit(BfAttributeDirective* attributeDirective)
@@ -2976,6 +3041,8 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 			VisitChild(typeDeclaration->mDefineNode);
 		}
 	}		
+
+	ExpectNewLine();
 }
 
 void BfPrinter::Visit(BfUsingDirective* usingDirective)

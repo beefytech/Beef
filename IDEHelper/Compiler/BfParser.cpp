@@ -785,7 +785,7 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 	auto itr = block->begin();
 	auto paramNode = *itr;
 
-	if (paramNode->ToString() == "warning")
+	if (paramNode->ToStringView() == "warning")
 	{
 		++itr;
 		//auto iterNode = paramNode->mNext;		
@@ -797,11 +797,11 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 			++itr;
 
 			bool enable;
-			if (iterNode->ToString() == "disable")
+			if (iterNode->ToStringView() == "disable")
 			{
 				enable = false;
 			}
-			else if (iterNode->ToString() == "restore")
+			else if (iterNode->ToStringView() == "restore")
 			{
 				enable = true;
 			}
@@ -849,6 +849,19 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 		else
 		{
 			mPassInstance->FailAfterAt("Expected \"disable\" or \"restore\" after \"warning\"", mSourceData, paramNode->GetSrcEnd() - 1);
+		}
+	}
+	else if (paramNode->ToStringView() == "format")
+	{
+		++itr;		
+		BfAstNode* iterNode = itr.Get();
+		if (iterNode)
+		{
+			if ((iterNode->ToStringView() != "disable") &&			
+				(iterNode->ToStringView() != "restore"))
+			{
+				mPassInstance->FailAfterAt("Expected \"disable\" or \"restore\" after \"format\"", mSourceData, paramNode->GetSrcEnd() - 1);
+			}
 		}
 	}
 	else
@@ -2306,7 +2319,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 						}
 					}
 
-					if (!handled)
+					if ((!handled) && (!disablePreprocessor))
 					{
 						auto bfCommentNode = mAlloc->Alloc<BfCommentNode>();
 						bfCommentNode->Init(this);						

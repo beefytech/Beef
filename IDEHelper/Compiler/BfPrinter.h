@@ -66,6 +66,7 @@ public:
 	Array<StateModify> mChildNodeQueue;
 	int mFormatStart;
 	int mFormatEnd;	
+	int mFormatDisableCount;
 	StateModify mNextStateModify;
 	
 	String mOutString;
@@ -98,6 +99,7 @@ public:
 	BfPrinter(BfRootNode* rootNode, BfRootNode* sidechannelRootNode, BfRootNode* errorRootNode);
 		
 public:	
+	void Update(BfAstNode* bfAstNode);
 	bool CheckReplace(BfAstNode* astNode);
 	void FlushIndent();
 	void Write(const StringView& str);
