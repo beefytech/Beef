@@ -179,13 +179,13 @@ namespace bf
 		struct Float
 		{
 		private:
-			BFRT_EXPORT static int ToString(float f, char* outStr);			
+			BFRT_EXPORT static int ToString(float f, char* outStr, bool roundTrip);
 		};
 
 		struct Double
 		{
 		private:
-			BFRT_EXPORT static int ToString(double f, char* outStr);
+			BFRT_EXPORT static int ToString(double f, char* outStr, bool roundTrip);
 		};
 	}
 }
@@ -932,54 +932,29 @@ void bf::System::FFI::FFILIB::Call(bf::System::FFI::FFILIB::FFICIF* cif, void* f
 
 //////////////////////////////////////////////////////////////////////////
 
-static int ToString(float d, char* outStr)
+static int ToString(float d, char* outStr, bool roundTrip)
 {
-	sprintf(outStr, "%1.9g", d);
-	int len = (int)strlen(outStr);
-	for (int i = 0; outStr[i] != 0; i++)
+	if (!roundTrip)
 	{
-		if (outStr[i] == '.')
-		{
-			int checkC = len - 1;
-			while (true)
-			{
-				char c = outStr[checkC];
-				if (c == '.')
-				{
-					return checkC;
-				}				
-				else if (c != '0')
-				{
-					for (int j = i + 1; j <= checkC; j++)
-						if (outStr[j] == 'e')
-							return len;
-					return checkC + 1;
-				}
-				checkC--;
-			}
-		}
-	}
-	if ((len == 3) && (outStr[0] == 'i'))
-	{
-		strcpy(outStr, "Infinity");
-		return 8;
-	}
-	if ((len == 4) && (outStr[0] == '-') && (outStr[1] == 'i'))
-	{
-		strcpy(outStr, "-Infinity");
-		return 9;
-	}
-	if ((len == 9) && (outStr[0] == '-') && (outStr[1] == 'n')) //-nan(xxx)
-	{
-		strcpy(outStr, "NaN");
-		return 3;
-	}
-	return len;
-}
+		int digits;
+		if (d > 100000)
+			digits = 1;
+		else if (d > 10000)
+			digits = 2;
+		else if (d > 1000)
+			digits = 3;
+		else if (d > 100)
+			digits = 4;
+		else if (d > 10)
+			digits = 5;
+		else
+			digits = 6;
 
-static int ToString(double d, char* outStr)
-{
-	sprintf(outStr, "%1.17g", d);
+		sprintf(outStr, "%1.*f", digits, d);
+	}
+	else
+		sprintf(outStr, "%1.9g", d);
+
 	int len = (int)strlen(outStr);
 	for (int i = 0; outStr[i] != 0; i++)
 	{
@@ -1026,22 +1001,99 @@ static int ToString(double d, char* outStr)
 	return len;
 }
 
-int Float::ToString(float f, char* outStr)
+static int ToString(double d, char* outStr, bool roundTrip)
+{
+	if (!roundTrip)
+	{
+		int digits;
+		if (d > 1000000000)
+			digits = 1;
+		else if (d > 100000000)
+			digits = 2;
+		else if (d > 10000000)
+			digits = 3;
+		else if (d > 1000000)
+			digits = 4;
+		else if (d > 100000)
+			digits = 5;
+		else if (d > 10000)
+			digits = 6;
+		else if (d > 1000)
+			digits = 7;
+		else if (d > 100)
+			digits = 8;
+		else if (d > 10)
+			digits = 9;
+		else 
+			digits = 10;
+
+		sprintf(outStr, "%1.*f", digits, d);
+	}
+	else
+		sprintf(outStr, "%1.17g", d);
+	
+	int len = (int)strlen(outStr);
+	for (int i = 0; outStr[i] != 0; i++)
+	{
+		if (outStr[i] == '.')
+		{
+			int checkC = len - 1;
+			while (true)
+			{
+				char c = outStr[checkC];
+				if (c == '.')
+				{
+					return checkC;
+				}
+				else if (c == 'e')
+				{
+					return len;
+				}
+				else if (c != '0')
+				{
+					for (int j = i + 1; j <= checkC; j++)
+						if (outStr[j] == 'e')
+							return len;
+					return checkC + 1;
+				}
+				checkC--;
+			}
+		}
+	}
+	if ((len == 3) && (outStr[0] == 'i'))
+	{
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	if ((len == 4) && (outStr[0] == '-') && (outStr[1] == 'i'))
+	{
+		strcpy(outStr, "-Infinity");
+		return 9;
+	}
+	if ((len == 9) && (outStr[0] == '-') && (outStr[1] == 'n')) //-nan(xxx)
+	{
+		strcpy(outStr, "NaN");
+		return 3;
+	}
+	return len;
+}
+
+int Float::ToString(float f, char* outStr, bool roundTrip)
 {
 #ifdef USE_CHARCONV
 	auto result = std::to_chars(outStr, outStr + 256, f);
 	return (int)(result.ptr - outStr);
 #else
-	return ::ToString(f, outStr);
+	return ::ToString(f, outStr, roundTrip);
 #endif
 }
 
-int Double::ToString(double d, char* outStr)
+int Double::ToString(double d, char* outStr, bool roundTrip)
 {
 #ifdef USE_CHARCONV
 	auto result = std::to_chars(outStr, outStr + 256, d);
 	return (int)(result.ptr - outStr);
 #else
-	return ::ToString(d, outStr);
+	return ::ToString(d, outStr, roundTrip);
 #endif
 }
