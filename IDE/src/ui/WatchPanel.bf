@@ -891,7 +891,7 @@ namespace IDE.ui
 			{
 				var headItem = lvItem.GetSubItem(0) as WatchListViewItem;
 				if ((headItem.mDisabled) || (lvItem.mFailed))
-				    color = 0xFFFF4040;
+				    color = 0x80FFFFFF;
 			}
 
 			using (g.PushColor(color))
