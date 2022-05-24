@@ -703,6 +703,11 @@ namespace Beefy.widgets
 			EditWidgetContent.CharData* readPtr = &mData.mText[idx + 1];
 			
 			int trailingBytes = UTF8.sTrailingBytesForUTF8[c];
+			if (idx + trailingBytes + 1 >= mData.mTextLength)
+			{
+				return (c, 1);
+			}
+
 			switch (trailingBytes)
 			{
 			case 4: c <<= 6; c += (uint8)(readPtr++).mChar; fallthrough;
@@ -3507,6 +3512,12 @@ namespace Beefy.widgets
 				}
 				if (movingDir > 0)
 				{
+					if ((useCharIdx == charIdx) && (c < (.)0xC0))
+					{
+						// This is an invalid UTF8 sequence
+						break;
+					}
+
 					useCharIdx++;
 					mCursorTextPos++;
 				}
