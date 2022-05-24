@@ -193,14 +193,8 @@ namespace System.Threading
 			}
 		}
 
-        public void Suspend() { SuspendInternal(); }
-        private extern void SuspendInternal();
-
-        public void Resume() { ResumeInternal(); }
-        private extern void ResumeInternal();
-
-        public void Interrupt() { InterruptInternal(); }
-        private extern void InterruptInternal();
+        public extern void Suspend();
+		public extern void Resume();
 
         public ThreadPriority Priority
         {

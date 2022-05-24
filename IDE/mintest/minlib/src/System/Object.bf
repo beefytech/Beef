@@ -366,13 +366,13 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 ftoa(float val, char8* str);
 
-		static extern int32 ToString(float val, char8* str);
+		static extern int32 ToString(float val, char8* str, bool roundTrip);
 
 		public override void ToString(String strBuffer)
 		{
 			char8[128] outBuff = ?;
 			//ftoa((float)this, &outBuff);
-			int len = ToString((float)this, &outBuff);
+			int len = ToString((float)this, &outBuff, false);
 			strBuffer.Append(&outBuff, len);
 		}
     }
