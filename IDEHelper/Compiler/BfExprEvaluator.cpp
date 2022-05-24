@@ -3608,11 +3608,11 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 			auto dscrType = caseValAddr.mType->ToTypeInstance()->GetDiscriminatorType(&dscrDataIdx);
 			auto enumTagVal = mModule->LoadValue(mModule->ExtractValue(caseValAddr, NULL, 2));
 			int uncondTagId = -1;			
-			mResult = mModule->TryCaseEnumMatch(caseValAddr, enumTagVal, caseExpr->mCaseExpression, NULL, NULL, NULL, uncondTagId, hadConditional, clearOutOnMismatch);
+			mResult = mModule->TryCaseEnumMatch(caseValAddr, enumTagVal, caseExpr->mCaseExpression, NULL, NULL, NULL, uncondTagId, hadConditional, clearOutOnMismatch, false);
 		}
 		else
 		{
-			mResult = mModule->TryCaseTupleMatch(caseValAddr, tupleExpr, NULL, NULL, NULL, hadConditional, clearOutOnMismatch);
+			mResult = mModule->TryCaseTupleMatch(caseValAddr, tupleExpr, NULL, NULL, NULL, hadConditional, clearOutOnMismatch, false);
 		}
 		
 		if (mResult)

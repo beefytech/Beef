@@ -2256,7 +2256,7 @@ void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl)
 		AssertErrorState();
 }
 
-void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArray<BfExpression*>& arguments, BfAstNode* tooFewRef, BfIRValue phiVal, BfIRBlock& matchedBlockStart, BfIRBlock& matchedBlockEnd, BfIRBlock& falseBlockStart, BfIRBlock& falseBlockEnd, bool& hadConditional, bool clearOutOnMismatch)
+void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArray<BfExpression*>& arguments, BfAstNode* tooFewRef, BfIRValue phiVal, BfIRBlock& matchedBlockStart, BfIRBlock& matchedBlockEnd, BfIRBlock& falseBlockStart, BfIRBlock& falseBlockEnd, bool& hadConditional, bool clearOutOnMismatch, bool prevHadFallthrough)
 {
 	SetAndRestoreValue<bool> prevInCondBlock(mCurMethodState->mInConditionalBlock);
 
@@ -2316,6 +2316,10 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 			PopulateType(tupleElement.mType);
 			if (!isRef)
 				tupleElement = LoadValue(tupleElement);
+
+			if (prevHadFallthrough)
+				Fail("Destructuring cannot be used when the previous case contains a fallthrough", expr);
+
 			auto localVar = HandleVariableDeclaration(varDecl, tupleElement, false, true);
 			localVar->mReadFromId = 0; // Don't give usage errors for binds
 			continue;
@@ -2337,7 +2341,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 						tooFewRef = tupleExpr->mValues[tupleExpr->mValues.size() - 1];
 					if (tooFewRef == NULL)
 						tooFewRef = tupleExpr->mOpenParen;					
-					HandleCaseEnumMatch_Tuple(tupleElement, tupleExpr->mValues, tooFewRef, phiVal, matchedBlockStart, matchedBlockEnd, falseBlockStart, falseBlockEnd, hadConditional, clearOutOnMismatch);
+					HandleCaseEnumMatch_Tuple(tupleElement, tupleExpr->mValues, tooFewRef, phiVal, matchedBlockStart, matchedBlockEnd, falseBlockStart, falseBlockEnd, hadConditional, clearOutOnMismatch, prevHadFallthrough);
 					continue;
 				}
 			}
@@ -2375,7 +2379,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 							
 							int uncondTagId = -1;
 							bool hadConditional = false;
-							exprResult = TryCaseEnumMatch(tupleElementAddr, enumTagVal, expr, NULL, NULL, NULL, uncondTagId, hadConditional, clearOutOnMismatch);
+							exprResult = TryCaseEnumMatch(tupleElementAddr, enumTagVal, expr, NULL, NULL, NULL, uncondTagId, hadConditional, clearOutOnMismatch, prevHadFallthrough);
 						}
 					}
 				}
@@ -2515,7 +2519,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 	}
 }
 
-BfTypedValue BfModule::TryCaseTupleMatch(BfTypedValue tupleVal, BfTupleExpression* tupleExpr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, bool& hadConditional, bool clearOutOnMismatch)
+BfTypedValue BfModule::TryCaseTupleMatch(BfTypedValue tupleVal, BfTupleExpression* tupleExpr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, bool& hadConditional, bool clearOutOnMismatch, bool prevHadFallthrough)
 {
 	if (!tupleVal.mType->IsTuple())
 		return BfTypedValue();
@@ -2642,7 +2646,7 @@ BfTypedValue BfModule::TryCaseTupleMatch(BfTypedValue tupleVal, BfTupleExpressio
 	mBfIRBuilder->SetInsertPoint(matchedBlockStart);
 	BfIRBlock matchedBlockEnd = matchedBlockStart;
 	HandleCaseEnumMatch_Tuple(tupleVal, tupleExpr->mValues, tooFewRef, falseBlockStart ? BfIRValue() : phiVal, matchedBlockStart, matchedBlockEnd, 
-		falseBlockStart ? falseBlockStart : doneBlockStart, falseBlockEnd ? falseBlockEnd : doneBlockEnd, hadConditional, clearOutOnMismatch);
+		falseBlockStart ? falseBlockStart : doneBlockStart, falseBlockEnd ? falseBlockEnd : doneBlockEnd, hadConditional, clearOutOnMismatch, prevHadFallthrough);
 	
 	if (phiVal)
 	{
@@ -2675,7 +2679,7 @@ BfTypedValue BfModule::TryCaseTupleMatch(BfTypedValue tupleVal, BfTupleExpressio
 		return GetDefaultTypedValue(boolType);
 }
 
-BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVal, BfExpression* expr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, int& tagId, bool& hadConditional, bool clearOutOnMismatch)
+BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVal, BfExpression* expr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, int& tagId, bool& hadConditional, bool clearOutOnMismatch, bool prevHadFallthrough)
 {
 	auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(expr);
 	if (invocationExpr == NULL)
@@ -2916,7 +2920,7 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 
 			HandleCaseEnumMatch_Tuple(tupleVal, invocationExpr->mArguments, tooFewRef, falseBlockStart ? BfIRValue() : phiVal, matchedBlockStart, matchedBlockEnd, 
 				falseBlockStart ? falseBlockStart : doneBlockStart, falseBlockEnd ? falseBlockEnd : doneBlockEnd,
-				hadConditional, clearOutOnMismatch);
+				hadConditional, clearOutOnMismatch, prevHadFallthrough);
 
 			///////
 
@@ -4499,14 +4503,6 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				hadWhen = true;
 				whenExpr = checkWhenExpr;
 			}
-
-			if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(caseExpr))
-			{
-				if (prevHadFallthrough)
-				{
-					Fail("Destructuring cannot be used when the previous case contains a fallthrough", caseExpr);
-				}
-			}
 		}
 
 		bool wantsOpenedScope = isPayloadEnum || isTuple;
@@ -4555,7 +4551,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				}
 				else
 				{
-					eqTypedResult = TryCaseEnumMatch(switchValueAddr, enumTagVal, caseExpr, &caseBlock, &notEqBB, &matchBlock, tagId, hadConditional, false);
+					eqTypedResult = TryCaseEnumMatch(switchValueAddr, enumTagVal, caseExpr, &caseBlock, &notEqBB, &matchBlock, tagId, hadConditional, false, prevHadFallthrough);
 					if (hadConditional)
 						hadCondCase = true;
 				}				
@@ -4579,7 +4575,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				notEqBB = mBfIRBuilder->CreateBlock(StrFormat("switch.notEq.%d", blockIdx), false);
 
 				BfIRBlock matchBlock;
-				BfTypedValue eqTypedResult = TryCaseTupleMatch(switchValue, tupleExpr, &caseBlock, &notEqBB, &matchBlock, hadConditional, false);
+				BfTypedValue eqTypedResult = TryCaseTupleMatch(switchValue, tupleExpr, &caseBlock, &notEqBB, &matchBlock, hadConditional, false, prevHadFallthrough);
 				if (hadConditional)
 					hadCondCase = true;
 				if (eqTypedResult)
