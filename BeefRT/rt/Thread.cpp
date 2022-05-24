@@ -29,19 +29,14 @@ bf::System::Threading::Thread* BfGetCurrentThread()
 #endif	
 }
 
-void Thread::SuspendInternal()
+void Thread::Suspend()
 {
 	BfpThread_Suspend(GetInternalThread()->mThreadHandle, NULL);	
 }
 
-void Thread::ResumeInternal()
+void Thread::Resume()
 {
 	BfpThread_Resume(GetInternalThread()->mThreadHandle, NULL);	
-}
-
-void Thread::InterruptInternal()
-{
-	//TODO:
 }
 
 void Thread::SetJoinOnDelete(bool joinOnDelete)

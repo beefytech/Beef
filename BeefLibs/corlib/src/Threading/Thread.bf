@@ -217,17 +217,8 @@ namespace System.Threading
 			}
 		}
 
-        public void Suspend() { SuspendInternal(); }
-		[CallingConvention(.Cdecl)]
-        private extern void SuspendInternal();
-
-        public void Resume() { ResumeInternal(); }
-		[CallingConvention(.Cdecl)]
-        private extern void ResumeInternal();
-
-        public void Interrupt() { InterruptInternal(); }
-		[CallingConvention(.Cdecl)]
-        private extern void InterruptInternal();
+        public extern void Suspend();
+        public extern void Resume();
 
         public ThreadPriority Priority
         {
