@@ -136,7 +136,7 @@ public:
 class BfGenericInferContext
 {
 public:
-	HashSet<BfType*> mCheckedTypeSet;
+	HashSet<int64> mCheckedTypeSet;
 	BfModule* mModule;
 	BfTypeVector* mCheckMethodGenericArguments;
 	SizedArray<BfIRValue, 4> mPrevArgValues;
@@ -148,7 +148,9 @@ public:
 		mModule = NULL;
 		mInferredCount = 0;		
 	}
-	bool InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue);
+
+	bool AddToCheckedSet(BfType* argType, BfType* wantType);
+	bool InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue, bool checkCheckedSet = false);
 	int GetUnresolvedCount()
 	{
 		return (int)mCheckMethodGenericArguments->size() - mInferredCount;

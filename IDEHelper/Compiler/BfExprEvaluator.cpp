@@ -255,22 +255,25 @@ bool BfMethodMatcher::IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* de
 	return true;
 }
 
-bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue)
+bool BfGenericInferContext::AddToCheckedSet(BfType* argType, BfType* wantType)
+{
+	int64 idPair = ((int64)argType->mTypeId << 32) | (wantType->mTypeId);
+	return mCheckedTypeSet.Add(idPair);
+}
+
+bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue, bool checkCheckedSet)
 {
 	if (argType == NULL)
 		return false;	
 		
 	if (!wantType->IsUnspecializedType())
 		return true; 
-
-	bool alreadyChecked = false;
-	auto _AddToCheckedSet = [](BfType* type, HashSet<BfType*>& checkedTypeSet, bool& alreadyChecked)
+	
+	if (checkCheckedSet)
 	{
-		if (alreadyChecked)
+		if (!AddToCheckedSet(argType, wantType))
 			return true;
-		alreadyChecked = true;
-		return checkedTypeSet.Add(type);
-	};
+	}
 
 	if (wantType->IsGenericParam())
 	{
@@ -305,7 +308,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 								if (argGenericType->mTypeDef->GetLatest() == wantGenericType->mTypeDef->GetLatest())
 								{
 									for (int genericArgIdx = 0; genericArgIdx < (int)argGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); genericArgIdx++)
-										InferGenericArgument(methodInstance, argGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], wantGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], BfIRValue());
+										InferGenericArgument(methodInstance, argGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], wantGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], BfIRValue(), true);
 								}
 							}
 							else if (checkArgType->IsSizedArray())
@@ -316,7 +319,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 									InferGenericArgument(methodInstance, sizedArrayType->mElementType, wantGenericType->mGenericTypeInfo->mTypeGenericArguments[0], BfIRValue());
 									auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 									BfTypedValue arraySize = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)sizedArrayType->mElementCount), intType);
-									InferGenericArgument(methodInstance, mModule->CreateConstExprValueType(arraySize), wantGenericType->mGenericTypeInfo->mTypeGenericArguments[1], BfIRValue());
+									InferGenericArgument(methodInstance, mModule->CreateConstExprValueType(arraySize), wantGenericType->mGenericTypeInfo->mTypeGenericArguments[1], BfIRValue(), true);
 								}
 							}
 							else if (checkArgType->IsPointer())
@@ -324,7 +327,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 								auto pointerType = (BfPointerType*)checkArgType;
 								if (wantGenericType->IsInstanceOf(mModule->mCompiler->mPointerTTypeDef))
 								{
-									InferGenericArgument(methodInstance, pointerType->mElementType, wantGenericType->mGenericTypeInfo->mTypeGenericArguments[0], BfIRValue());
+									InferGenericArgument(methodInstance, pointerType->mElementType, wantGenericType->mGenericTypeInfo->mTypeGenericArguments[0], BfIRValue(), true);
 								}
 							}
 
@@ -502,10 +505,8 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 		{
 			BfType* wantGenericArgument = wantGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx];
 			if (!wantGenericArgument->IsUnspecializedType())
-				continue;
-			if (!_AddToCheckedSet(argType, mCheckedTypeSet, alreadyChecked))
-				return true;
-			InferGenericArgument(methodInstance, argGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], wantGenericArgument, BfIRValue());
+				continue;			
+			InferGenericArgument(methodInstance, argGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], wantGenericArgument, BfIRValue(), true);
 		}
 		return true;
 	}
@@ -567,7 +568,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 		if (((argType->IsDelegate()) || (argType->IsFunction())) &&
 			(wantType->IsDelegate() == argType->IsDelegate()))
 		{
-			if (!_AddToCheckedSet(argType, mCheckedTypeSet, alreadyChecked))
+			if (!AddToCheckedSet(argType, wantType))
 				return true;
 
 			auto argInvokeMethod = mModule->GetRawMethodByName(argType->ToTypeInstance(), "Invoke");
@@ -583,7 +584,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 		else if (argType->IsMethodRef())
 		{
  			auto methodTypeRef = (BfMethodRefType*)argType;
-			if (!_AddToCheckedSet(argType, mCheckedTypeSet, alreadyChecked))
+			if (!AddToCheckedSet(argType, wantType))
 				return true;
 
 			auto argInvokeMethod = methodTypeRef->mMethodRef;
@@ -1687,7 +1688,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 	BfGenericInferContext genericInferContext;
 	genericInferContext.mModule = mModule;
-	genericInferContext.mCheckMethodGenericArguments = &mCheckMethodGenericArguments;
+	genericInferContext.mCheckMethodGenericArguments = &mCheckMethodGenericArguments;	
 
 	HashSet<int> allowEmptyGenericSet;
 	BfAutoComplete* autoComplete = NULL;
@@ -1900,8 +1901,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 						if ((wantType->IsArray()) || (wantType->IsSizedArray()) || (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
 							wantType = wantType->GetUnderlyingType();
 					}
-
-					genericInferContext.mCheckedTypeSet.Clear();
+					
 					if (!genericInferContext.InferGenericArgument(methodInstance, type, wantType, argTypedValue.mValue))
 						return ResultKind_Failed;
 				}
@@ -1994,8 +1994,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		}
 
 		if ((mCheckReturnType != NULL) && (methodInstance->mReturnType->IsUnspecializedType()))
-		{
-			genericInferContext.mCheckedTypeSet.Clear();
+		{			
 			if (!genericInferContext.InferGenericArgument(methodInstance, mCheckReturnType, methodInstance->mReturnType, BfIRValue()))
 				return ResultKind_Failed;
 		}
