@@ -986,6 +986,15 @@ void BfTypeDef::ReportMemory(MemReporter* memReporter)
 	memReporter->AddVec(mDirectAllocNodes, false);
 }
 
+bool BfTypeDef::ContainsPartial(BfTypeDef* partialTypeDef)
+{
+	if (partialTypeDef->mPartialIdx < 0)
+		return false;
+	if (partialTypeDef->mPartialIdx >= mPartials.mSize)
+		return false;
+	return mPartials[partialTypeDef->mPartialIdx] == partialTypeDef;
+}
+
 bool BfTypeDef::NameEquals(BfTypeDef* otherTypeDef)
 {
  	if (mName != otherTypeDef->mName)

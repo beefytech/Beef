@@ -1211,6 +1211,7 @@ public:
 	BfMethodDef* GetMethodByName(const StringImpl& name, int paramCount = -1);
 	BfFieldDef* GetFieldByName(const StringImpl& name);
 	bool HasAutoProperty(BfPropertyDeclaration* propertyDeclaration);	
+	bool ContainsPartial(BfTypeDef* partialTypeDef);
 	String GetAutoPropertyName(BfPropertyDeclaration* propertyDeclaration);
 	BfAstNode* GetRefNode();
 
