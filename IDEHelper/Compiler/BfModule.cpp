@@ -2955,7 +2955,7 @@ bool BfModule::IsSkippingExtraResolveChecks()
 	return mCompiler->IsSkippingExtraResolveChecks();
 }
 
-bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool& isWhileSpecializing, bool isWarning)
+bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, BfWhileSpecializingFlags& isWhileSpecializing, bool isWarning)
 {
 	bool isWhileSpecializingMethod = false;
 	if ((mIsSpecialModule) && (mModuleName == "vdata"))
@@ -3011,19 +3011,20 @@ bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool
 			if (isSpecializedMethod)
 			{
 				errorString += StrFormat("\n  while specializing method '%s'", MethodToString(methodInstance).c_str());
-				isWhileSpecializing = true;
+				isWhileSpecializing = (BfWhileSpecializingFlags)(isWhileSpecializing | BfWhileSpecializingFlag_Method);
 				isWhileSpecializingMethod = true;
 			}
 			else if ((methodInstance != NULL) && (methodInstance->mIsForeignMethodDef))
 			{
 				errorString += StrFormat("\n  while implementing default interface method '%s'", MethodToString(methodInstance).c_str());
-				isWhileSpecializing = true;
+				isWhileSpecializing = (BfWhileSpecializingFlags)(isWhileSpecializing | BfWhileSpecializingFlag_Method);
 				isWhileSpecializingMethod = true;
 			}
-			else if ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType()))
+
+			if ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType()))
 			{
 				errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
-				isWhileSpecializing = true;
+				isWhileSpecializing = (BfWhileSpecializingFlags)(isWhileSpecializing | BfWhileSpecializingFlag_Type);
 			}
 
 			return true;
@@ -3059,7 +3060,7 @@ bool BfModule::AddErrorContext(StringImpl& errorString, BfAstNode* refNode, bool
 	if ((!isWhileSpecializing) && (mCurTypeInstance != NULL) && ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType())))
 	{
 		errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
-		isWhileSpecializing = true;
+		isWhileSpecializing = (BfWhileSpecializingFlags)(isWhileSpecializing | BfWhileSpecializingFlag_Type);
 	}
 	
 	return true;
@@ -3131,7 +3132,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	BfLogSysM("BfModule::Fail module %p type %p %s\n", this, mCurTypeInstance, error.c_str());
 	
  	String errorString = error;	
-	bool isWhileSpecializing = false;	
+	BfWhileSpecializingFlags isWhileSpecializing = BfWhileSpecializingFlag_None;
 	if (!AddErrorContext(errorString, refNode, isWhileSpecializing, false))
 		return NULL;
 	
@@ -3276,10 +3277,10 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 		refNode = BfNodeToNonTemporary(refNode);
 
 	String warningString = warning;
-	bool isWhileSpecializing = false;
+	BfWhileSpecializingFlags isWhileSpecializing = BfWhileSpecializingFlag_None;
 	if (!AddErrorContext(warningString, refNode, isWhileSpecializing, true))
 		return NULL;
-	bool deferWarning = isWhileSpecializing;
+	bool deferWarning = isWhileSpecializing != BfWhileSpecializingFlag_None;
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
 	{

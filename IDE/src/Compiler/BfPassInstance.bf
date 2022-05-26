@@ -31,7 +31,7 @@ namespace IDE.Compiler
 
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BfPassInstance_GetErrorData(void* mNativeResolvePassData, int32 errorIdx, out int32 code, out bool isWarning,
-            out bool isAfter, out bool isDeferred, out bool isWhileSpecializing, out bool isPersistent, out char8* projectName,
+            out bool isAfter, out bool isDeferred, out int8 isWhileSpecializing, out bool isPersistent, out char8* projectName,
 			out char8* fileName, out int32 srcStart, out int32 srcEnd, int32* srcLine, int32* srcColumn, out int32 moreInfoCount);
 
 		[CallingConvention(.Stdcall), CLink]
@@ -42,11 +42,18 @@ namespace IDE.Compiler
 
         public class BfError
         {
+			public enum SpecializingKind
+			{
+				None,
+				Type,
+				Method
+			}
+
             public bool mIsWarning;
 			public int32 mCode;
             public bool mIsAfter;
             public bool mIsDeferred;
-            public bool mIsWhileSpecializing;
+            public SpecializingKind mWhileSpecializing;
             public bool mIsPersistent;
 			public String mProject ~ delete _;
             public String mError ~ delete _;
@@ -127,7 +134,7 @@ namespace IDE.Compiler
 			char8* projectName = null;
 			char8* fileName = null;
             bfError.mError = new String(BfPassInstance_GetErrorData(mNativeBfPassInstance, errorIdx, out bfError.mCode, out bfError.mIsWarning, out bfError.mIsAfter, out bfError.mIsDeferred, 
-                out bfError.mIsWhileSpecializing, out bfError.mIsPersistent, out projectName, out fileName, out bfError.mSrcStart, out bfError.mSrcEnd,
+                out *(int8*)&bfError.mWhileSpecializing, out bfError.mIsPersistent, out projectName, out fileName, out bfError.mSrcStart, out bfError.mSrcEnd,
 				getLine ? &bfError.mLine : null, getLine ? &bfError.mColumn : null,
 				out bfError.mMoreInfoCount));
 			if (projectName != null)

@@ -9919,7 +9919,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				*valuePtr = foundTypeIds.mCount - 1;
 				outString += "+";
 
-				if (emitParser == NULL)
+				if ((emitParser == NULL) || (!emitParser->mIsEmitted))
 				{
 					String typeName;
 					outString += typeInst->mTypeDef->mProject->mName;
@@ -9989,7 +9989,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 
 					int startLine = 0;
 					int startLineChar = 0;
-					emitParser->GetLineCharAtIdx(kv.mValue.mSrcStart, startLine, startLineChar);
+					if (kv.mValue.mSrcStart >= 0)
+						emitParser->GetLineCharAtIdx(kv.mValue.mSrcStart, startLine, startLineChar);
 
 					int srcEnd = kv.mValue.mSrcEnd - 1;
 					while (srcEnd >= kv.mValue.mSrcStart)
@@ -10006,8 +10007,9 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 
 					int endLine = 0;
 					int endLineChar = 0;
-					emitParser->GetLineCharAtIdx(srcEnd, endLine, endLineChar);
-					outString += StrFormat("e%d,%d,%d,%d\n", embedId, charIdx, startLine, endLine + 1);
+					if (srcEnd >= 0)
+						emitParser->GetLineCharAtIdx(srcEnd, endLine, endLineChar);
+					outString += StrFormat("e%d,%d,%d,%d,%d\n", embedId, charIdx, startLine, endLine + 1, typeInst->mTypeDef->mTypeDeclaration->GetParser()->mTextVersion);
 				}
 			}
 
@@ -10036,7 +10038,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 							if (embedId == -1)
 								continue;
 
-							outString += StrFormat("e%d,%d,%d,%d\n", embedId, kv.mKey, 0, 0);
+							outString += StrFormat("e%d,%d,%d,%d,%d\n", embedId, kv.mKey, 0, 0, -1);
 						}
 					}
 				};

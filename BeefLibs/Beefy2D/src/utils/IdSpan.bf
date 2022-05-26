@@ -3,6 +3,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 namespace Beefy.utils
 {
@@ -1061,7 +1062,7 @@ namespace Beefy.utils
 
 				        if (cmd == 0)
 						{
-							outString.Append("}");
+							outString.AppendF($"}} EndIdx:{charIdx}");
 				            return;
 						}
 
@@ -1069,6 +1070,13 @@ namespace Beefy.utils
 				    }
 				}
 			}
+		}
+
+		public int GetHashCode() mut
+		{
+			Prepare();
+			var hash = MD5.Hash(.(mData, 0, mLength));
+			return *(int*)&hash;
 		}
     }
 }

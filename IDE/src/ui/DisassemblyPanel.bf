@@ -331,7 +331,7 @@ namespace IDE.ui
 	                var passInstance = bfSystem.CreatePassInstance();
 	            
 					parser.SetIsClassifying();
-	                parser.SetSource(text, useFileName);	                
+	                parser.SetSource(text, useFileName, -1);	                
 	                parser.Parse(passInstance, !isBeefSource);
 	                if (isBeefSource)
 	                    parser.Reduce(passInstance);

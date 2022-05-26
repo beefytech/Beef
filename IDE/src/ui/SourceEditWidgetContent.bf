@@ -217,6 +217,7 @@ namespace IDE.ui
 				public Monitor mMonitor = new .() ~ delete _;
 				public WorkState mTypeWorkState;
 				public bool mAwaitingLoad;
+				public bool mEmitRemoved;
 				bool mIgnoreChange = false;
 
 				public this(EmitEmbed emitEmbed)
@@ -261,6 +262,11 @@ namespace IDE.ui
 						mGenericTypeCombo.mEditWidget.mOnKeyDown.Add(new => EditKeyDownHandler);
 						mGenericTypeCombo.mEditWidget.mOnGotFocus.Add(new (widget) => mGenericTypeCombo.mEditWidget.mEditWidgetContent.SelectAll());
 					}
+				}
+
+				public ~this()
+				{
+
 				}
 
 				private void GenericTypeEditChanged(EditEvent theEvent)
@@ -376,15 +382,18 @@ namespace IDE.ui
 					}
 
 					mAwaitingLoad = false;
-					for (var explicitTypeName in mEmitEmbed.mEditWidgetContent.mSourceViewPanel.[Friend]mExplicitEmitTypes)
+					if (!mEmitRemoved)
 					{
-						if ((IDEUtils.GenericEquals(mTypeName, explicitTypeName)) && (mTypeName != explicitTypeName))
+						for (var explicitTypeName in mEmitEmbed.mEditWidgetContent.mSourceViewPanel.[Friend]mExplicitEmitTypes)
+						{
+							if ((IDEUtils.GenericEquals(mTypeName, explicitTypeName)) && (mTypeName != explicitTypeName))
+								mAwaitingLoad = true;
+						}
+
+						var ewc = (SourceEditWidgetContent)mSourceViewPanel.mEditWidget.mEditWidgetContent;
+						if ((ewc.mLineRange.GetValueOrDefault().Length != 0) && (mSourceViewPanel.mEditWidget.mEditWidgetContent.mData.mTextLength == 0))
 							mAwaitingLoad = true;
 					}
-
-					var ewc = (SourceEditWidgetContent)mSourceViewPanel.mEditWidget.mEditWidgetContent;
-					if ((ewc.mLineRange.GetValueOrDefault().Length != 0) && (mSourceViewPanel.mEditWidget.mEditWidgetContent.mData.mTextLength == 0))
-						mAwaitingLoad = true;
 
 					if ((mAwaitingLoad) && (gApp.mUpdateCnt % 4 == 0))
 						MarkDirty();
@@ -415,7 +424,7 @@ namespace IDE.ui
 				{
 					base.DrawAll(g);
 
-					if (mAwaitingLoad)
+					if (mAwaitingLoad || mEmitRemoved)
 					{
 						var rect = mSourceViewPanel.mEditWidget.GetRect();
 						mSourceViewPanel.mEditWidget.SelfToOtherTranslate(this, 0, 0, out rect.mX, out rect.mY);
@@ -424,7 +433,9 @@ namespace IDE.ui
 						{
 							g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 						}
-						IDEUtils.DrawWait(g, rect.mX + rect.mWidth / 2, rect.mY + rect.mHeight / 2, mUpdateCnt);
+
+						if (mAwaitingLoad)
+							IDEUtils.DrawWait(g, rect.mX + rect.mWidth / 2, rect.mY + rect.mHeight / 2, mUpdateCnt);
 					}
 				}
 
@@ -615,6 +626,7 @@ namespace IDE.ui
 			public int32 mCollapseTextVersionId;
 			public List<CollapseData> mCollapseData = new .() ~ delete _;
 			public List<EmitData> mEmitData = new .() ~ delete _;
+			public Dictionary<String, int32> mHasFailedEmitSet = new .() ~ delete _;
 			public List<String> mTypeNames = new .() ~ DeleteContainerAndItems!(_);
 
 			public void Clear()
@@ -625,7 +637,6 @@ namespace IDE.ui
 
 			public void ClearCollapse()
 			{
-
 				mCollapseData.Clear();
 			}
 
@@ -633,6 +644,7 @@ namespace IDE.ui
 			{
 				mEmitData.Clear();
 				ClearAndDeleteItems(mTypeNames);
+				mHasFailedEmitSet.Clear();
 			}
 
 			public ~this()
@@ -4763,7 +4775,7 @@ namespace IDE.ui
 										defer:: delete parser;
 	                                    var text = scope String();
 	                                    mEditWidget.GetText(text);
-	                                    parser.SetSource(text, mSourceViewPanel.mFilePath);
+	                                    parser.SetSource(text, mSourceViewPanel.mFilePath, -1);
 	                                    parser.SetAutocomplete(textIdx);
 	                                    passInstance = bfSystem.CreatePassInstance();
 	                                    parser.Parse(passInstance, !mSourceViewPanel.mIsBeefSource);
@@ -5631,9 +5643,24 @@ namespace IDE.ui
 								emitEmbed.mView.MinHeight, emitEmbed.mView.MaxAutoHeight);
 						}
 
+						//float prevPhysHeight = emitEmbed.mView.mHeight;
+
 						float height = emitEmbed.mView.mWantHeight * emitEmbed.mOpenPct;
 						emitEmbed.mView.SizeTo(GS!(0), (float)curY + lineHeight, mParent.mWidth, height);
 						lineHeight += height;
+
+						/*float physHeightChange = emitEmbed.mView.mHeight - prevPhysHeight;
+						if (physHeightChange != 0)
+						{
+							bool isCursorAfter = false;
+							if (mVirtualCursorPos != null)
+								isCursorAfter = mVirtualCursorPos.Value.mLine > line;
+							else
+								isCursorAfter = mCursorTextPos >= data.mLineStarts[line + 1];
+
+							if (isCursorAfter)
+								mEditWidget.VertScrollTo(mEditWidget.mVertPos.mDest + physHeightChange);
+						}*/
 					}
 				}
 
@@ -5706,9 +5733,14 @@ namespace IDE.ui
 
 			if (data.mCollapseParseRevision != mCollapseParseRevision)
 			{
+				//Debug.WriteLine($"GetTextData NewCollapseParseRevision:{data.mCollapseParseRevision} OldCollapseParseRevision:{mCollapseParseRevision}");
+
 				mCollapseParseRevision = data.mCollapseParseRevision;
 				mCollapseTextVersionId = data.mCollapseTextVersionId;
-				mCollapseTypeNames.ClearAndDeleteItems();
+				List<String> prevTypeNames = scope .()..AddRange(mCollapseTypeNames);
+				defer prevTypeNames.ClearAndDeleteItems();
+
+				mCollapseTypeNames.Clear();
 				for (var name in data.mTypeNames)
 					mCollapseTypeNames.Add(new .(name));
 
@@ -5718,6 +5750,8 @@ namespace IDE.ui
 					if (var emitEmbed = embed as SourceEditWidgetContent.EmitEmbed)
 					{
 						emitEmbedMap[emitEmbed.mAnchorId] = emitEmbed;
+
+						//Debug.WriteLine($" mEmbed {embed} AnchorId:{emitEmbed.mAnchorId}");
 					}
 				}
 
@@ -5730,9 +5764,21 @@ namespace IDE.ui
 					{
 						if (line != emitEmbed.mLine)
 						{
-						   	mEmbeds.Remove(emitEmbed.mLine);
+							//Debug.WriteLine($" Moving {emitEmbed} from {emitEmbed.mLine} to {line}");
+
+							mEmbeds.Remove(emitEmbed.mLine);
 							emitEmbed.mLine = (.)line;
-							mEmbeds[(.)line] = emitEmbed;
+
+							if (mEmbeds.TryAdd((.)line, var keyPtr, var valuePtr))
+							{
+								*valuePtr = emitEmbed;
+							}
+							else
+							{
+								//Debug.WriteLine($"  Occupied- deleting {emitEmbed}");
+								delete emitEmbed;
+								emitEmbed = null;
+							}
 						}
 					}
 					else if (mEmbeds.TryAdd((.)line, var keyPtr, var valuePtr))
@@ -5755,6 +5801,7 @@ namespace IDE.ui
 					
 					if (emitEmbed.mView != null)
 					{
+						emitEmbed.mView.mEmitRemoved = false;
 						Range range = .(emitData.mStartLine, emitData.mEndLine);
 						var ew = emitEmbed.mView.mSourceViewPanel.mEditWidget;
 						var ewc = ew.mEditWidgetContent as DarkEditWidgetContent;
@@ -5774,9 +5821,24 @@ namespace IDE.ui
 
 				for (var emitEmbed in emitEmbedMap.Values)
 				{
-					mCollapseNeedsUpdate = true;
-					mEmbeds.Remove(emitEmbed.mLine);
-					delete emitEmbed;
+					//Debug.WriteLine($" Deleting(1) {emitEmbed}");
+
+					int32 typeNameIdx = -1;
+					if (emitEmbed.mView != null)
+						if (!data.mHasFailedEmitSet.TryGet(emitEmbed.mTypeName, ?, out typeNameIdx))
+							typeNameIdx = -1;
+
+					if (typeNameIdx != -1)
+					{
+						emitEmbed.mTypeName = mCollapseTypeNames[typeNameIdx];
+						emitEmbed.mView.mEmitRemoved = true;
+					}
+					else
+					{
+						mCollapseNeedsUpdate = true;
+						mEmbeds.Remove(emitEmbed.mLine);
+						delete emitEmbed;
+					}
 				}
 
 				for (var collapseData in ref data.mCollapseData)
@@ -5798,6 +5860,7 @@ namespace IDE.ui
 					{
 						if (mEmbeds.GetAndRemove(entry.mAnchorLine) case .Ok(let val))
 						{
+							//Debug.WriteLine($" Deleting(2) {val.value}");
 							delete val.value;
 						}
 						@entry.Remove();
@@ -5820,6 +5883,7 @@ namespace IDE.ui
 					{
 						if (mEmbeds.GetAndRemove(entry.mAnchorIdx) case .Ok(let val))
 						{
+							//Debug.WriteLine($" Removing {val.value}");
 							if (val.value is CollapseSummary)
 								delete val.value;
 						}
@@ -5837,13 +5901,18 @@ namespace IDE.ui
 					
 						if (mEmbeds.TryAdd(entry.mAnchorLine, var keyPtr, var valuePtr))
 						{
+							//Debug.WriteLine($" Moving {val} to line {entry.mAnchorLine}");
+
 							if (var collapseSummary = val as SourceEditWidgetContent.CollapseSummary)
 								collapseSummary.mCollapseIndex = (.)@entry.Index;
 							val.mLine = entry.mAnchorLine;
 							*valuePtr = val;
 						}
 						else
+						{
+							//Debug.WriteLine($" Deleting(3) {val}");
 							delete val;
+						}
 					}
 				}
 
@@ -6202,6 +6271,8 @@ namespace IDE.ui
 
 		public void RefreshCollapseRegion(SourceEditWidgetContent.CollapseEntry* entry, int32 prevAnchorLine, bool failed)
 		{
+			//Debug.WriteLine($"RefreshCollapseRegion PrevLine:{prevAnchorLine} NewLine:{entry.mAnchorLine}");
+
 			if (failed)
 			{
 				if (mEmbeds.GetAndRemove(prevAnchorLine) case .Ok(let val))
@@ -6213,13 +6284,18 @@ namespace IDE.ui
 			{
 				if (mEmbeds.GetAndRemove(prevAnchorLine) case .Ok(let val))
 				{
+					//Debug.WriteLine($" Moving {val.value} from line {prevAnchorLine} to line {entry.mAnchorLine}");
+
 					if (mEmbeds.TryAdd(entry.mAnchorLine, var keyPtr, var valuePtr))
 					{
 						val.value.mLine = entry.mAnchorLine;
 						*valuePtr = val.value;
 					}
 					else
+					{
+						//Debug.WriteLine($"  Occupied- deleting {val}");
 						delete val.value;
+					}
 				}
 			}
 		}
@@ -6329,6 +6405,8 @@ namespace IDE.ui
 				data.ClearCollapse();
 			}
 
+			//Debug.WriteLine($"ParseCollapseRegions {resolveType} CollapseRevision:{data.mCollapseParseRevision+1} TextVersion:{textVersion} IdSpan:{idSpan:D}");
+
 			List<int32> typeNameIdxMap = scope .();
 			Dictionary<StringView, int32> typeNameMap = scope .();
 			Dictionary<int32, int32> emitAnchorIds = scope .();
@@ -6399,12 +6477,21 @@ namespace IDE.ui
 					emitData.mStartLine = int32.Parse(itr.GetNext().Value);
 					emitData.mEndLine = int32.Parse(itr.GetNext().Value);
 					emitData.mAnchorId = lookupCtx.GetIdAtIndex(emitData.mAnchorIdx);
+					//var foundTextVersion = int32.Parse(itr.GetNext().Value).Value;
 					emitData.mOnlyInResolveAll = resolveType == .None;
 					emitData.mIncludedInClassify = resolveType != .None;
 					emitData.mIncludedInResolveAll = resolveType == .None;
 
+					if (emitData.mAnchorIdx == -1)
+					{
+						data.mHasFailedEmitSet[data.mTypeNames[emitData.mTypeNameIdx]] = emitData.mTypeNameIdx;
+						continue;
+					}
+
 					if (emitAnchorIds.TryGetValue(emitData.mAnchorId, var idx))
 					{
+						//Debug.WriteLine($" Found emit AnchorIdx:{emitData.mAnchorIdx} AnchorId:{emitData.mAnchorId} CurTextVersion:{textVersion} FoundTextVersion:{foundTextVersion}");
+
 						var curEmitData = ref data.mEmitData[idx];
 
 						if (resolveType == .None)
@@ -6420,6 +6507,7 @@ namespace IDE.ui
 						continue;
 					}
 
+					//Debug.WriteLine($" New emit AnchorIdx:{emitData.mAnchorIdx} AnchorId:{emitData.mAnchorId} CurTextVersion:{textVersion} FoundTextVersion:{foundTextVersion}");
 					data.mEmitData.Add(emitData);
 					continue;
 				}

@@ -160,6 +160,7 @@ public:
 	BfPassInstance* mPassInstance;
 	BfSourceClassifier* mSourceClassifier;
 	String mFileName;	
+	int mTextVersion;
 	BfSourceEmbedKind mEmbedKind;
 	bool mAwaitingDelete;	
 	

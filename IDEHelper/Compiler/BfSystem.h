@@ -166,6 +166,13 @@ struct BfAtomCompositeEquals
 	}
 };
 
+enum BfWhileSpecializingFlags : int8
+{
+	BfWhileSpecializingFlag_None = 0,
+	BfWhileSpecializingFlag_Type = 1,
+	BfWhileSpecializingFlag_Method = 2
+};
+
 enum BfCompilerOptionFlags
 {
 	BfCompilerOptionFlag_EmitDebugInfo = 1,
@@ -1480,7 +1487,7 @@ class BfError : public BfErrorBase
 public:	
 	bool mIsAfter;	
 	bool mIsPersistent;
-	bool mIsWhileSpecializing;
+	BfWhileSpecializingFlags mIsWhileSpecializing;
 	bool mIgnore;	
 	BfProject* mProject;
 	String mError;
@@ -1489,10 +1496,10 @@ public:
 
 public:
 	BfError()
-	{				
+	{
 		mIsAfter = false;		
 		mIsPersistent = false;
-		mIsWhileSpecializing = false;
+		mIsWhileSpecializing = BfWhileSpecializingFlag_None;
 		mIgnore = false;		
 		mProject = NULL;
 		mWarningNumber = 0;

@@ -345,6 +345,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 
 	gParserCount++;	
 
+	mTextVersion = -1;
 	mEmbedKind = BfSourceEmbedKind_None;
 	mUsingCache = false;
 	mParserData = NULL;
@@ -3850,9 +3851,10 @@ static BfAstNode* FindDebugExpressionNode(BfAstNode* checkNode, int cursorIdx)
 
 //////////////////////////////////////////////////////////////////////////
 
-BF_EXPORT void BF_CALLTYPE BfParser_SetSource(BfParser* bfParser, const char* data, int length, const char* fileName)
+BF_EXPORT void BF_CALLTYPE BfParser_SetSource(BfParser* bfParser, const char* data, int length, const char* fileName, int textVersion)
 {
 	bfParser->mFileName = fileName;
+	bfParser->mTextVersion = textVersion;
 	bfParser->SetSource(data, length);
 }
 

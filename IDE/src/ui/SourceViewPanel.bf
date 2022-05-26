@@ -392,6 +392,17 @@ namespace IDE.ui
 			SkipResult
         }
 
+		struct ParsedState
+		{
+			public IdSpan mIdSpan;
+			public int32 mTextVersion = -1;
+
+			public void Dispose() mut
+			{
+				mIdSpan.Dispose();
+			}
+		}
+
 		public bool mAsyncAutocomplete = true;
 
         public SourceEditWidget mEditWidget;        
@@ -426,6 +437,7 @@ namespace IDE.ui
         bool mWantsFullClassify; // This triggers a classify
         bool mWantsFullRefresh; // If mWantsFullClassify is set, mWantsFullRefresh makes the whole thing refresh
 		bool mWantsCollapseRefresh;
+		ParsedState mParsedState ~ _.Dispose(); // The current data the resolver is using from this file
 		bool mRefireMouseOverAfterRefresh;
         bool mWantsBackgroundAutocomplete;
 		bool mSkipFastClassify;
@@ -1463,14 +1475,18 @@ namespace IDE.ui
 			defer delete resolvePassData;
 
 			bfSystem.Lock(0);
+
 			var collapseData = bfCompiler.GetCollapseRegions(parser, resolvePassData, explicitEmitTypeNames, .. scope .());
+
 			using (mMonitor.Enter())
 			{
 				DeleteAndNullify!(mQueuedCollapseData);
 				mQueuedCollapseData = new .();
 				mQueuedCollapseData.mData.Set(collapseData);
 				mQueuedCollapseData.mTextVersion = textVersion;
-				mQueuedCollapseData.mCharIdSpan = charIdSpan;
+				mQueuedCollapseData.mCharIdSpan = charIdSpan.Duplicate();
+
+				//Debug.WriteLine($"DoRefreshCollapse finished TextVersion:{textVersion} IdSpan:{charIdSpan:D}");
 			}
 			bfSystem.Unlock();
 		}
@@ -1530,7 +1546,7 @@ namespace IDE.ui
 			defer delete resolvePassData;
             var passInstance = bfSystem.CreatePassInstance("DoFastClassify");
 			defer delete passInstance;
-            parser.SetSource(text, mFilePath);
+            parser.SetSource(text, mFilePath, -1);
             parser.SetIsClassifying();
             parser.Parse(passInstance, !mIsBeefSource);
             if (mIsBeefSource)
@@ -1582,7 +1598,7 @@ namespace IDE.ui
 			defer delete resolvePassData;
 		    var passInstance = bfSystem.CreatePassInstance("DoFastClassify");
 			defer delete passInstance;
-		    parser.SetSource(text, mFilePath);
+		    parser.SetSource(text, mFilePath, -1);
 		    parser.SetIsClassifying();
 		    parser.Parse(passInstance, !mIsBeefSource);
 		    if (mIsBeefSource)
@@ -1929,6 +1945,14 @@ namespace IDE.ui
 			if ((resolveType == .Classify) || (resolveType == .ClassifyFullRefresh))
 				gApp.mErrorsPanel.SetNeedsResolveAll();
 
+			if ((resolveType.IsClassify) && (!resolveParams.mCharIdSpan.IsEmpty))
+			{
+				//Debug.WriteLine($"DoClassify {resolveType} TextVersion:{resolveParams.mTextVersion} IdSpan:{resolveParams.mCharIdSpan:D}");
+
+				mParsedState.mIdSpan.DuplicateFrom(ref resolveParams.mCharIdSpan);
+				mParsedState.mTextVersion = resolveParams.mTextVersion;
+			}
+
 			/*if (resolveType == .Autocomplete)
 			{
 				Thread.Sleep(250);
@@ -2050,14 +2074,18 @@ namespace IDE.ui
                 charData[i].mDisplayPassId = (int32)SourceDisplayId.Cleared;
                 chars[i] = (char8)charData[i].mChar;
             }
-                
+
+			int textVersion = -1;
+			if (resolveParams != null)
+				textVersion = resolveParams.mTextVersion;
+
             if (!isBackground)
             {
                 bfSystem.PerfZoneEnd();
                 bfSystem.PerfZoneStart("SetSource");
             }
 			parser.SetIsClassifying();
-            parser.SetSource(.(chars, charLen), mFilePath);
+            parser.SetSource(.(chars, charLen), mFilePath, textVersion);
             if (!isBackground)
             {
                 bfSystem.PerfZoneEnd();
@@ -5045,7 +5073,7 @@ namespace IDE.ui
 			defer delete parser;
             var text = scope String();
             mEditWidget.GetText(text);
-            parser.SetSource(text, mFilePath);
+            parser.SetSource(text, mFilePath, -1);
             var passInstance = bfSystem.CreatePassInstance();
 			defer delete passInstance;
             parser.Parse(passInstance, false);
@@ -5252,7 +5280,7 @@ namespace IDE.ui
 
 			var text = scope String();
 			mEditWidget.GetText(text);
-			parser.SetSource(text, mFilePath);
+			parser.SetSource(text, mFilePath, -1);
 			parser.SetAutocomplete(textIdx);
 			let passInstance = bfSystem.CreatePassInstance("Mouseover");
 			parser.SetCompleteParse();
@@ -5321,7 +5349,7 @@ namespace IDE.ui
 					
 	                    var text = scope String();
 	                    mEditWidget.GetText(text);
-	                    parser.SetSource(text, mFilePath);
+	                    parser.SetSource(text, mFilePath, -1);
 	                    parser.SetAutocomplete(textIdx);
 	                    passInstance = bfSystem.CreatePassInstance("Mouseover");
 						parser.SetCompleteParse();
@@ -5643,8 +5671,10 @@ namespace IDE.ui
 
 	                    for (var bfError in mErrorList)
 	                    {
-	                        if (bfError.mIsWhileSpecializing)
+							if ((bfError.mWhileSpecializing.HasFlag(.Type)) && (mEmbedKind == .None))
 	                            continue;
+							if ((bfError.mWhileSpecializing.HasFlag(.Method)) && (mEmbedKind != .Method))
+								continue;
 
 	                        if ((textIdx >= bfError.mSrcStart) && (textIdx < bfError.mSrcEnd))
 	                        {
@@ -6515,9 +6545,16 @@ namespace IDE.ui
 								break;
 
 							var data = mEditWidget.mEditWidgetContent.mData;
+							if (mParsedState.mTextVersion == -1)
+							{
+								mParsedState.mIdSpan.DuplicateFrom(ref data.mTextIdData);
+								mParsedState.mTextVersion = data.mCurTextVersionId;
+							}
+
+							//Debug.WriteLine($"Queueing DoRefreshCollapse TextVersion:{mParsedState.mTextVersion} IdSpan:{mParsedState.mIdSpan:D}");
 							compiler.DoBackground(new () =>
 								{
-									DoRefreshCollapse(bfParser, data.mCurTextVersionId, data.mTextIdData.Duplicate());
+									DoRefreshCollapse(bfParser, mParsedState.mTextVersion, mParsedState.mIdSpan);
 								});
 						}
 					}
@@ -6959,8 +6996,10 @@ namespace IDE.ui
                     int srcStart = bfError.mSrcStart;
                     int srcEnd = bfError.mSrcEnd;
 
-                    if (bfError.mIsWhileSpecializing)
-                        continue;
+                    if ((bfError.mWhileSpecializing.HasFlag(.Type)) && (mEmbedKind == .None))
+					    continue;
+					if ((bfError.mWhileSpecializing.HasFlag(.Method)) && (mEmbedKind != .Method))
+						continue;
 
 					if ((bfError.mIsDeferred) && (hadNonDeferredErrors))
 						continue;

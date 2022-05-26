@@ -115,7 +115,7 @@ namespace IDE.Compiler
 		static extern void BfSystem_DeleteParser(void* bfSystem, void* bfParser);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void BfParser_SetSource(void* bfParser, char8* data, int32 length, char8* fileName);
+        static extern void BfParser_SetSource(void* bfParser, char8* data, int32 length, char8* fileName, int32 textVersion);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_SetCharIdData(void* bfParser, uint8* data, int32 length);
@@ -197,11 +197,11 @@ namespace IDE.Compiler
 			mNativeBfParser = null;
 		}
 
-        public void SetSource(StringView data, String fileName)
+        public void SetSource(StringView data, String fileName, int textVersion)
         {
             Debug.Assert(!mIsUsed);
             mIsUsed = true;
-            BfParser_SetSource(mNativeBfParser, data.Ptr, (int32)data.Length, fileName);
+            BfParser_SetSource(mNativeBfParser, data.Ptr, (int32)data.Length, fileName, (.)textVersion);
         }
 
         public void SetCharIdData(ref IdSpan char8IdData)

@@ -5725,7 +5725,7 @@ namespace IDE
 				internalDebugMenu.AddMenuItem("Error Test", null, new (menu) => { DoErrorTest(); } );
 				internalDebugMenu.AddMenuItem("Reconnect BeefPerf", null, new (menu) => { BeefPerf.RetryConnect(); } );
 	            AddMenuItem(internalDebugMenu, "Report Memory", "Report Memory");
-				internalDebugMenu.AddMenuItem("Crash", null, new (menu) => { Runtime.FatalError("Bad"); });
+				internalDebugMenu.AddMenuItem("Crash", null, new (menu) => { int* ptr = null; *ptr = 123; });
 				internalDebugMenu.AddMenuItem("Show Welcome", null, new (menu) => { ShowWelcome(); });
 				internalDebugMenu.AddMenuItem("Exit Test", null, new (menu) => { ExitTest(); });
 				internalDebugMenu.AddMenuItem("Run Test", null, new (menu) => { mRunTest = !mRunTest; });
@@ -8969,7 +8969,7 @@ namespace IDE
             mFileWatcher.FileIsValid(fullPath);
 
             var bfParser = bfSystem.CreateParser(projectSource);
-            bfParser.SetSource(data, fullPath);
+            bfParser.SetSource(data, fullPath, -1);
             worked &= bfParser.Parse(passInstance, false);
             worked &= bfParser.Reduce(passInstance);
             worked &= bfParser.BuildDefs(passInstance, null, false);

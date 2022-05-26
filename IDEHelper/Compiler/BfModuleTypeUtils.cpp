@@ -2507,7 +2507,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext == NULL))
 					typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
 				if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext != NULL))
-					typeInstance->mCeTypeInfo->mNext->mFailed = true;
+					typeInstance->mCeTypeInfo->mNext->mFastFinished = true;
 				if (typeInstance->mCeTypeInfo != NULL)
 				{
 					BfCeTypeEmitEntry* entry = NULL;
@@ -2528,6 +2528,8 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				entry.mEmitData = ceEmitContext->mEmitData;
 				typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
 			}
+			else if ((ceEmitContext->mFailed) && (typeInstance->mCeTypeInfo != NULL))
+				typeInstance->mCeTypeInfo->mFailed = true;
 
 			if ((ceEmitContext->HasEmissions()) && (!mCompiler->mFastFinish))
 			{
@@ -2787,7 +2789,7 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext == NULL))
 					typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
 				if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext != NULL))
-					typeInstance->mCeTypeInfo->mNext->mFailed = true;
+					typeInstance->mCeTypeInfo->mNext->mFastFinished = true;
 				if (typeInstance->mCeTypeInfo != NULL)
 				{
 					BfCeTypeEmitEntry* entry = NULL;
@@ -2808,6 +2810,8 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				entry.mEmitData = ceEmitContext->mEmitData;
 				typeInstance->mCeTypeInfo->mNext->mOnCompileMap[methodDef->mIdx] = entry;
 			}
+			else if ((ceEmitContext->mFailed) && (typeInstance->mCeTypeInfo != NULL))
+				typeInstance->mCeTypeInfo->mFailed = true;
 			
 			if (!ceEmitContext->mEmitData.IsEmpty())
 			{
@@ -4798,6 +4802,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			if (typeInstance->mCeTypeInfo != NULL)
 			{
+				bool prevHadEmissions = !typeInstance->mCeTypeInfo->mEmitSourceMap.IsEmpty();
+
 				if (typeInstance->mCeTypeInfo->mNext != NULL)
 				{
 					BfLogSysM("Type %p injecting next ceTypeInfo %p into ceTypeInfo %p\n", typeInstance, typeInstance->mCeTypeInfo->mNext, typeInstance->mCeTypeInfo);
@@ -4828,16 +4834,16 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 					typeInstance->mCeTypeInfo->mNext->mHash = hashCtx.Finish128();
 
-					if (!typeInstance->mCeTypeInfo->mNext->mFailed)
+					if (!typeInstance->mCeTypeInfo->mNext->mFastFinished)
 					{
 						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
 							mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "comptime hash changed");
 						typeInstance->mCeTypeInfo->mEmitSourceMap = typeInstance->mCeTypeInfo->mNext->mEmitSourceMap;
 						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
 						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
-						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;						
+						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;
 					}
-					
+										
 					delete typeInstance->mCeTypeInfo->mNext;
 					typeInstance->mCeTypeInfo->mNext = NULL;
 				}
@@ -4851,6 +4857,15 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					typeInstance->mCeTypeInfo->mTypeIFaceMap.Clear();
 					typeInstance->mCeTypeInfo->mHash = Val128();
 				}
+
+				if ((typeInstance->mCeTypeInfo->mFailed) &&
+					(prevHadEmissions) &&
+					(typeInstance->mCeTypeInfo->mEmitSourceMap.IsEmpty()))
+				{
+					// Just add a marker to retain the previous open emits
+					typeInstance->mCeTypeInfo->mEmitSourceMap[-1] = BfCeTypeEmitSource();
+				}
+				typeInstance->mCeTypeInfo->mFailed = false;
 			}
 
 			if ((typeInstance->mCeTypeInfo != NULL) && (!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty()))

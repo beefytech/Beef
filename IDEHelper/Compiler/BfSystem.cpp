@@ -4102,7 +4102,7 @@ BF_EXPORT int BF_CALLTYPE BfPassInstance_GetErrorCount(BfPassInstance* bfPassIns
 	return (int)bfPassInstance->mErrors.size();
 }
 
-BF_EXPORT const char* BF_CALLTYPE BfPassInstance_GetErrorData(BfPassInstance* bfPassInstance, int errorIdx, int& outCode, bool& outIsWarning, bool& outIsAfter, bool& outIsDeferred, bool& outIsWhileSpecializing, bool& outIsPersistent, 
+BF_EXPORT const char* BF_CALLTYPE BfPassInstance_GetErrorData(BfPassInstance* bfPassInstance, int errorIdx, int& outCode, bool& outIsWarning, bool& outIsAfter, bool& outIsDeferred, BfWhileSpecializingFlags& outIsWhileSpecializing, bool& outIsPersistent,
 	char*& projectName, char*& fileName, int& outSrcStart, int& outSrcEnd, int* outLine, int* outColumn, int& outMoreInfoCount)
 {
 	BfError* bfError = bfPassInstance->mErrors[errorIdx];

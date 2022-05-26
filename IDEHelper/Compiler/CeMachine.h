@@ -1011,6 +1011,7 @@ public:
 	Array<int> mPendingInterfaces;
 	Dictionary<CeRebuildKey, CeRebuildValue> mRebuildMap;
 	Val128 mHash;
+	bool mFastFinished;
 	bool mFailed;
 	bool mMayHaveUniqueEmitLocations;
 	BfCeTypeInfo* mNext;
@@ -1018,6 +1019,7 @@ public:
 public:
 	BfCeTypeInfo()
 	{
+		mFastFinished = false;
 		mFailed = false;
 		mMayHaveUniqueEmitLocations = false;
 		mNext = NULL;

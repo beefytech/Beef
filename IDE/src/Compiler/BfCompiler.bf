@@ -555,9 +555,9 @@ namespace IDE.Compiler
 
 	                    var bfParser = mBfSystem.CreateParser(projectSourceCommand.mProjectSource);
 						if (data != null)
-	                        bfParser.SetSource(data, sourceFilePath);
+	                        bfParser.SetSource(data, sourceFilePath, -1);
 						else
-							bfParser.SetSource("", sourceFilePath);
+							bfParser.SetSource("", sourceFilePath, -1);
 						bfParser.SetCharIdData(ref char8IdData);
 
 						if (hash case .MD5(let md5Hash))
