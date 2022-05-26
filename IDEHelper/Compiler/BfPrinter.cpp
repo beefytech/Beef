@@ -756,14 +756,15 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 {		
 	SetAndRestoreValue<bool> prevForceTrivia(mForceUseTrivia);
 
-	bool expectingNewLine = mNextStateModify.mWantNewLineIdx != mVirtualNewLineIdx;
-	if (expectingNewLine)
+	bool newExpectingNewLine = mNextStateModify.mWantNewLineIdx != mVirtualNewLineIdx;
+	if (newExpectingNewLine)
 		mExpectingNewLine = true;
+	bool expectingNewLine = mExpectingNewLine;
 
 	int indentOffset = 0;
 	if (bfAstNode->GetTriviaStart() != -1)
 	{				
-		if (expectingNewLine)
+		if (newExpectingNewLine)
 		{
 			indentOffset = mNextStateModify.mWantVirtualIndent - mVirtualIndentLevel;
 			mVirtualIndentLevel += indentOffset;
@@ -884,7 +885,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 								mQueuedSpaceCount = mCurIndentLevel * mTabSize;
 
 								// Indents extra if we have a statement split over multiple lines
-								if (!mExpectingNewLine)
+								if (!expectingNewLine)
 									mQueuedSpaceCount += mTabSize;
 
 								break;
@@ -944,7 +945,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 					idx--;
 				}
 			}
-			else if ((mNextStateModify.mExpectingSpace) || (expectingNewLine))
+			else if ((mNextStateModify.mExpectingSpace) || (newExpectingNewLine))
 			{				
 				FlushIndent();
 				char startChar = bfAstNode->GetSourceData()->mSrc[bfAstNode->GetSrcStart()];
