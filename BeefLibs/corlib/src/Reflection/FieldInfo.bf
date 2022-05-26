@@ -230,6 +230,24 @@ namespace System.Reflection
 	        *((*(T2**)&data)++)
 	    }
 
+		public bool HasCustomAttribute<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+			{
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Field_GetCustomAttributeType((int32)mTypeInstance.TypeId, mFieldData.mCustomAttributesIdx, ++attrIdx);
+					if (attrType == typeof(T))
+						return true;
+				}
+				while (attrType != null);
+				return false;
+			}
+			return mTypeInstance.[Friend]HasCustomAttribute<T>(mFieldData.mCustomAttributesIdx);
+		}
+
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
 			if (Compiler.IsComptime)

@@ -133,6 +133,24 @@ namespace System.Reflection
 			return mTypeInstance.[Friend]GetCustomAttributes<T>(mData.mMethodData.mParamData[paramIdx].mCustomAttributesIdx);
 		}
 
+		public bool HasCustomAttribute<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+			{
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Method_GetCustomAttributeType(mData.mComptimeMethodInstance, ++attrIdx);
+					if (attrType == typeof(T))
+						return true;
+				}
+				while (attrType != null);
+				return false;
+			}
+			return mTypeInstance.[Friend]HasCustomAttribute<T>(mData.mMethodData.mCustomAttributesIdx);
+		}
+
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
 			if (Compiler.IsComptime)
