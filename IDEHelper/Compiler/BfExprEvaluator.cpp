@@ -5982,7 +5982,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	if (methodInstance->GetOwner()->IsUnspecializedType())
 	{
-		BF_ASSERT((!methodInstance->mIRFunction) || (methodInstance == mModule->mCurMethodInstance));
+		BF_ASSERT((!methodInstance->mIRFunction) || (methodInstance == mModule->mCurMethodInstance) || (methodInstance->mMethodDef->mIsLocalMethod));
 	}
 
 	if (mFunctionBindResult != NULL)
