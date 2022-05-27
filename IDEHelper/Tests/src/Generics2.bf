@@ -143,6 +143,12 @@ namespace Tests
 				d();
 		}
 
+		class GenClass<T> { public int test { get; set; }; } // Using a field instead of a property wouldn't cause the error
+
+		public static int GenClassMethodA<A>(A a) where A : GenClass<int> { return a.test++; }
+		public static int GenClassMethodB(GenClass<int> a) { return a.test++; }
+		public static int GenClassMethodC<A>(A a) where A : GenClass<int> { return a.test += 1; }
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -161,6 +167,14 @@ namespace Tests
 			Test.Assert(StrTest("ABCDE") == 5);
 
 			Test.Assert(TestEmitMixin(123, 456, .. scope .()) == "123456");
+
+			GenClass<int> gci = scope .();
+			Test.Assert(GenClassMethodA(gci) == 0);
+			Test.Assert(gci.test == 1);
+			Test.Assert(GenClassMethodB(gci) == 1);
+			Test.Assert(gci.test == 2);
+			Test.Assert(GenClassMethodC(gci) == 3);
+			Test.Assert(gci.test == 3);
 		}
 	}
 }

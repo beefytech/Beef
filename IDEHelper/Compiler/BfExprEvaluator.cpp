@@ -21479,7 +21479,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags)
 {
 	BfAstNode* propSrc = mPropSrc;
-	BfTypedValue propTarget = mPropTarget;
+	BfTypedValue propTarget = mOrigPropTarget;
 	BfPropertyDef* propDef = mPropDef;
 	SizedArray<BfResolvedArg, 2> indexerVals = mIndexerValues;
 	BfTypedValue writeToProp;
