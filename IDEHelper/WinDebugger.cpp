@@ -11874,6 +11874,9 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 		{			
 			memCache = new DbgModuleMemoryCache(addrStart & (4096 - 1), 4096 * 2);
 		}
+
+		if (memCache->mAddr == 0)
+			return "";
 		
 		//addr_target imageBase = dbgModule->mImageBase;
 		//int imageSize = dbgModule->mImageSize;
