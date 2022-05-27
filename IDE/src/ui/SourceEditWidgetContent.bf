@@ -5858,10 +5858,13 @@ namespace IDE.ui
 				{
 					if (entry.mParseRevision != data.mCollapseParseRevision)
 					{
-						if (mEmbeds.GetAndRemove(entry.mAnchorLine) case .Ok(let val))
+						if (mEmbeds.TryGet(entry.mAnchorLine, ?, var value))
 						{
-							//Debug.WriteLine($" Deleting(2) {val.value}");
-							delete val.value;
+							if (!(value is EmitEmbed))
+							{
+								mEmbeds.Remove(entry.mAnchorLine);
+								delete value;
+							}
 						}
 						@entry.Remove();
 					}
@@ -6275,8 +6278,15 @@ namespace IDE.ui
 
 			if (failed)
 			{
-				if (mEmbeds.GetAndRemove(prevAnchorLine) case .Ok(let val))
-					delete val.value;
+				if (mEmbeds.TryGet(prevAnchorLine, ?, var value))
+				{
+					if (!(value is EmitEmbed))
+					{
+						mEmbeds.Remove(prevAnchorLine);
+						delete value;
+					}
+				}
+
 				entry.mDeleted = true;
 			}
 

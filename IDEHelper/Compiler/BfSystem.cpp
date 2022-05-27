@@ -1030,6 +1030,22 @@ bool BfTypeDef::HasCustomAttributes()
 	return false;
 }
 
+bool BfTypeDef::HasParsingFailed()
+{
+	auto parser = mTypeDeclaration->GetParser();
+	if ((parser != NULL) && (parser->mParsingFailed))
+		return true;	
+		
+	for (auto partial : mPartials)
+	{
+		parser = partial->mTypeDeclaration->GetParser();
+		if ((parser != NULL) && (parser->mParsingFailed))
+			return true;
+	}
+
+	return false;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BfProject::BfProject()

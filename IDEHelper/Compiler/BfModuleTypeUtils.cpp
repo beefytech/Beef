@@ -4843,7 +4843,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
 						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;
 					}
-										
+
 					delete typeInstance->mCeTypeInfo->mNext;
 					typeInstance->mCeTypeInfo->mNext = NULL;
 				}
@@ -4857,10 +4857,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					typeInstance->mCeTypeInfo->mTypeIFaceMap.Clear();
 					typeInstance->mCeTypeInfo->mHash = Val128();
 				}
-
-				if ((typeInstance->mCeTypeInfo->mFailed) &&
-					(prevHadEmissions) &&
-					(typeInstance->mCeTypeInfo->mEmitSourceMap.IsEmpty()))
+				
+				if (((typeInstance->mCeTypeInfo->mFailed) || (typeInstance->mTypeDef->HasParsingFailed())) &&
+					(prevHadEmissions))
 				{
 					// Just add a marker to retain the previous open emits
 					typeInstance->mCeTypeInfo->mEmitSourceMap[-1] = BfCeTypeEmitSource();

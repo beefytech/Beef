@@ -1219,6 +1219,7 @@ public:
 	BfFieldDef* GetFieldByName(const StringImpl& name);
 	bool HasAutoProperty(BfPropertyDeclaration* propertyDeclaration);	
 	bool ContainsPartial(BfTypeDef* partialTypeDef);
+	bool HasParsingFailed();
 	String GetAutoPropertyName(BfPropertyDeclaration* propertyDeclaration);
 	BfAstNode* GetRefNode();
 
