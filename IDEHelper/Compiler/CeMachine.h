@@ -1090,6 +1090,7 @@ public:
 	BfModule* mCurModule;
 	CeFrame* mCurFrame;
 	CeEmitContext* mCurEmitContext;	
+	String mWorkingDir;
 
 public:
 	CeContext();
@@ -1097,8 +1098,9 @@ public:
 	
 	BfError* Fail(const StringImpl& error);
 	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
-
-	void FixProjectRelativePath(StringImpl& path);
+	
+	void CalcWorkingDir();
+	void FixRelativePath(StringImpl& path);
 	bool AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value);
 	void AddFileRebuild(const StringImpl& filePath);
 	uint8* CeMalloc(int size);

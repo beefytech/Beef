@@ -57,6 +57,7 @@ namespace IDE.ui
 		public String mRelPath ~ delete _;
 		PathKind mPathKind;
 		DarkButton mBrowseButton;
+		public String mDefaultFolderPath ~ delete _;
 
 		public this(PathKind pathKind = .Unknown)
 		{
@@ -73,6 +74,9 @@ namespace IDE.ui
 						{
 							String path = scope .();
 							GetText(path);
+
+							if (path.IsWhiteSpace)
+								path.Set(mDefaultFolderPath);
 #if !CLI
 							FolderBrowserDialog folderDialog = scope .();
 							folderDialog.SelectedPath = path;
@@ -82,6 +86,30 @@ namespace IDE.ui
 								SetText(scope String()..Append(folderDialog.SelectedPath));
 							}
 #endif							
+						}
+						else if (mPathKind == .File)
+						{
+							String path = scope .();
+							GetText(path);
+
+
+							String dirPath = scope .();
+							Path.GetDirectoryPath(path, dirPath).IgnoreError();
+							if ((dirPath.IsWhiteSpace) && (mDefaultFolderPath != null))
+								dirPath.Set(mDefaultFolderPath);
+
+#if !CLI
+							OpenFileDialog fileDialog = scope .();
+							fileDialog.FileName = path;
+							if (!dirPath.IsWhiteSpace)
+								fileDialog.InitialDirectory = dirPath;
+							mWidgetWindow.PreModalChild();
+							if (fileDialog.ShowDialog(gApp.GetActiveWindow()).GetValueOrDefault() == .OK)
+							{
+								if (!fileDialog.FileNames.IsEmpty)
+									SetText(scope String()..Append(fileDialog.FileNames[0]));
+							}
+#endif						
 						}
 					});
 				mEditWidgetContent.mTextInsets.mRight += GS!(20);

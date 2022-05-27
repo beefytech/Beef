@@ -48,6 +48,28 @@ namespace System
 				mCmdInfo.Append("\n");
 			}
 
+			public void AddFilePath(StringView dataName, StringView label, StringView defaultValue)
+			{
+				mCmdInfo.AppendF($"addFilePath\t");
+				dataName.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				label.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				defaultValue.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\n");
+			}
+
+			public void AddFolderPath(StringView dataName, StringView label, StringView defaultValue)
+			{
+				mCmdInfo.AppendF($"addFolderPath\t");
+				dataName.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				label.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\t");
+				defaultValue.QuoteString(mCmdInfo);
+				mCmdInfo.Append("\n");
+			}
+
 			public void AddCombo(StringView dataName, StringView label, StringView defaultValue, Span<StringView> values)
 			{
 				mCmdInfo.AppendF($"addCombo\t");
@@ -105,6 +127,10 @@ namespace System
 					int tabPos = line.IndexOf('\t');
 					var key = line.Substring(0, tabPos);
 					var value = line.Substring(tabPos + 1);
+
+					if (key == "FolderDir")
+						Directory.SetCurrentDirectory(value).IgnoreError();
+
 					if (mParams.TryAdd(key, var keyPtr, var valuePtr))
 					{
 						*keyPtr = key;

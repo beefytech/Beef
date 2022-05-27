@@ -548,6 +548,8 @@ namespace IDE.ui
 
 					if (mUIData != null)
 					{
+						Project project = gApp.mWorkspace.FindProject(mProjectName);
+
 						if (mOutputPanel != null)
 						{
 							mOutputPanel.RemoveSelf();
@@ -580,6 +582,23 @@ namespace IDE.ui
 								uiEntry.mLabel = partItr.GetNext().Value.UnQuoteString(.. new .());
 								var defaultValue = partItr.GetNext().Value.UnQuoteString(.. scope .());
 								DarkEditWidget editWidget = new DarkEditWidget();
+								uiEntry.mWidget = editWidget;
+								editWidget.SetText(defaultValue);
+								editWidget.mEditWidgetContent.SelectAll();
+								editWidget.mOnSubmit.Add(new => EditSubmitHandler);
+								AddWidget(editWidget);
+								mUIEntries.Add(uiEntry);
+								mTabWidgets.Add(editWidget);
+							case "addFilePath", "addFolderPath":
+								if (mSubmitting)
+									break;
+								UIEntry uiEntry = new UIEntry();
+								uiEntry.mName = partItr.GetNext().Value.UnQuoteString(.. new .());
+								uiEntry.mLabel = partItr.GetNext().Value.UnQuoteString(.. new .());
+								var defaultValue = partItr.GetNext().Value.UnQuoteString(.. scope .());
+								PathEditWidget editWidget = new PathEditWidget((kind == "addFilePath") ? .File : .Folder);
+								if (project != null)
+									editWidget.mDefaultFolderPath = new .(project.mProjectDir);
 								uiEntry.mWidget = editWidget;
 								editWidget.SetText(defaultValue);
 								editWidget.mEditWidgetContent.SelectAll();
