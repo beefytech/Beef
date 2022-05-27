@@ -3854,6 +3854,7 @@ void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolation
 			auto stringType = mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef);
 			if (stringType != NULL)
 			{
+				SetAndRestoreValue<bool> prevUsedAsStatement(mUsedAsStatement, true);
 				SizedArray<BfExpression*, 2> argExprs;
 				argExprs.Add(stringInterpolationExpression);
 				BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
@@ -3883,6 +3884,7 @@ void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolation
 		BfTypedValue newString = mResult;
 		BF_ASSERT(newString);
 
+		SetAndRestoreValue<bool> prevUsedAsStatement(mUsedAsStatement, true);
 		SizedArray<BfExpression*, 2> argExprs;
 		argExprs.Add(stringInterpolationExpression);
 		BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
