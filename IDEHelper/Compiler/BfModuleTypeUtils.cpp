@@ -9702,6 +9702,12 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	BfTypeInstance* typeInstance = (typeInstanceOverride != NULL) ? typeInstanceOverride : mCurTypeInstance;
 	auto useTypeDef = GetActiveTypeDef(typeInstanceOverride, true);
 
+	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
+		typeInstance = mCurMethodState->mMixinState->mMixinMethodInstance->GetOwner();
+
+	if (useTypeDef != NULL)
+		useTypeDef = useTypeDef->GetDefinition();
+
 	if ((typeInstance == NULL) && (useTypeDef == NULL))
 	{		
 		BfProject* project = NULL;
@@ -9746,7 +9752,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 		return result;
 	}	
 
-	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) && (typeInstance != NULL))
+	if ((mCompiler->mResolvePassData != NULL) && (typeInstance != NULL))
 	{
 		if (mCompiler->mResolvePassData->mAutoCompleteTempTypes.Contains(useTypeDef))
 			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error, NULL, resolveFlags);
@@ -9761,6 +9767,22 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	BfTypeLookupResult* resultPtr = NULL;
 	if ((typeInstance != NULL) && (typeInstance->mLookupResults.TryAdd(typeLookupEntry, &typeLookupEntryPtr, &resultPtr)))
 	{
+		BF_ASSERT(!useTypeDef->IsEmitted());
+
+		bool isValid;
+		if (useTypeDef->mIsPartial)
+			isValid = typeInstance->mTypeDef->GetDefinition()->ContainsPartial(useTypeDef);
+		else
+			isValid = typeInstance->mTypeDef->GetDefinition() == useTypeDef;		
+
+		if ((!isValid) && (mCurMethodInstance != NULL) && (mCurMethodInstance->mIsForeignMethodDef))
+		{
+			BF_ASSERT(mCurMethodInstance->mIsForeignMethodDef);
+			isValid = mCurMethodInstance->mMethodDef->mDeclaringType == useTypeDef;
+		}
+
+		BF_ASSERT(isValid);
+		
 		typeLookupEntryPtr->mAtomUpdateIdx = typeLookupEntry.mName.GetAtomUpdateIdx();
 
 		// FindTypeDefRaw may re-enter when finding base types, so we need to expect that resultPtr can change
