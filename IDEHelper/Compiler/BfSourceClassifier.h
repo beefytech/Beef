@@ -69,6 +69,7 @@ public:
 	uint8 mClassifierPassId;
 	BfAstNode* mPrevNode;
 	BfAstNode* mCurMember;
+	BfLocalMethodDeclaration* mCurLocalMethodDeclaration;
 
 public:
 	void HandleLeafNode(BfAstNode* node);

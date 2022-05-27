@@ -17,6 +17,7 @@ BfSourceClassifier::BfSourceClassifier(BfParser* bfParser, CharData* charData)
 	mEnabled = true;
 	mPrevNode = NULL;
 	mCurMember = NULL;
+	mCurLocalMethodDeclaration = NULL;
 }
 
 void BfSourceClassifier::ModifyFlags(BfAstNode* node, uint8 andFlags, uint8 orFlags)
@@ -213,10 +214,13 @@ void BfSourceClassifier::Visit(BfAttributeDirective* attributeDirective)
 				return;
 		}
 
-		if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(mCurMember))
+		if (mCurLocalMethodDeclaration == NULL)
 		{
-			if (methodDecl->mAttributes == attributeDirective)
-				return;
+			if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(mCurMember))
+			{
+				if (methodDecl->mAttributes == attributeDirective)
+					return;
+			}
 		}
 
 		if (auto propDecl = BfNodeDynCast<BfPropertyDeclaration>(mCurMember))
@@ -384,7 +388,10 @@ void BfSourceClassifier::Visit(BfGenericInstanceTypeRef* genericInstTypeRef)
 void BfSourceClassifier::Visit(BfLocalMethodDeclaration* methodDecl)
 {
 	if (IsInterestedInMember(methodDecl, true))
+	{
+		SetAndRestoreValue<BfLocalMethodDeclaration*> prevLocalMethodDecl(mCurLocalMethodDeclaration, methodDecl);
 		BfElementVisitor::Visit(methodDecl);
+	}
 }
 
 void BfSourceClassifier::Visit(BfLiteralExpression* literalExpr)

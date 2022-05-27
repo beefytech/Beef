@@ -4134,7 +4134,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 		}
 		else if (token == BfToken_LBracket)
 		{
-			return CreateAttributedStatement(tokenNode);
+			return CreateAttributedStatement(tokenNode, createStmtFlags);
 		}
 	}
 
@@ -5663,15 +5663,23 @@ Do_RBracket:
 	return attributeDirective;
 }
 
-BfStatement* BfReducer::CreateAttributedStatement(BfTokenNode* tokenNode)
+BfStatement* BfReducer::CreateAttributedStatement(BfTokenNode* tokenNode, CreateStmtFlags createStmtFlags)
 {
 	auto attrib = CreateAttributeDirective(tokenNode);
 	if (attrib == NULL)
 		return NULL;
 	
-	BfAstNode* stmt = CreateStatementAfter(attrib);
+	BfAstNode* stmt = CreateStatementAfter(attrib, createStmtFlags);
 	if (stmt != NULL)
-	{		
+	{	
+		if (auto localMethodDecl = BfNodeDynCastExact<BfLocalMethodDeclaration>(stmt))
+		{
+			BF_ASSERT(localMethodDecl->mMethodDeclaration->mAttributes == NULL);
+			localMethodDecl->mSrcStart = attrib->mSrcStart;			
+			MEMBER_SET(localMethodDecl->mMethodDeclaration, mAttributes, attrib);
+			return localMethodDecl;
+		}
+
 		bool isValid = true;
 
 		auto checkNode = stmt;
