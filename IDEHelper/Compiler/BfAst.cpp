@@ -767,7 +767,10 @@ BfAstNode* Beefy::BfNodeToNonTemporary(BfAstNode* node)
 bool BfAstNode::IsMissingSemicolon()
 {
 	if (auto deferStmt = BfNodeDynCast<BfDeferStatement>(this))
-		return BfNodeDynCastExact<BfBlock>(deferStmt->mTargetNode) == NULL;
+	{
+		if (BfNodeIsExact<BfBlock>(deferStmt->mTargetNode))
+			return false;
+	}
 	if (auto stmt = BfNodeDynCast<BfCompoundStatement>(this))
 	{
 		if (auto repeatStmt = BfNodeDynCast<BfRepeatStatement>(this))
@@ -790,7 +793,10 @@ bool BfAstNode::IsMissingSemicolon()
 bool BfAstNode::IsExpression()
 {
 	if (auto deferStmt = BfNodeDynCast<BfDeferStatement>(this))
-		return BfNodeDynCastExact<BfBlock>(deferStmt->mTargetNode) == NULL;
+	{
+		if (BfNodeIsExact<BfBlock>(deferStmt->mTargetNode))
+			return false;
+	}
 	if (auto block = BfNodeDynCast<BfBlock>(this))
 	{
 		if (block->mChildArr.mSize == 0)
