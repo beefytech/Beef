@@ -1118,9 +1118,7 @@ namespace IDE
 				{
 					int32 charIdx = int32.Parse(loc).GetValueOrDefault();
 					var fileEditData = GetEditData(cmds[1]);
-					if (fileEditData == null)
-						break;
-					fileEditData.mEditWidget.mEditWidgetContent.GetLineCharAtIdx(charIdx, out line, out lineChar);
+					fileEditData?.mEditWidget?.mEditWidgetContent.GetLineCharAtIdx(charIdx, out line, out lineChar);
 				}
 				ShowSourceFileLocation(cmds[1], -1, -1, line, lineChar, .Smart, true);
 			case "ShowCodeAddr":
