@@ -1037,6 +1037,13 @@ namespace System
 				}
 			}
 		}
+		
+		public void Append(Object object)
+		{
+			if (object == null)
+				return;
+			Append(object.ToString(.. scope .()));
+		}
 
 		public void operator+=(String str)
 		{
@@ -1056,6 +1063,11 @@ namespace System
 		public void operator+=(char32 c)
 		{
 			Append(c);
+		}
+
+		public void operator+=(Object obj)
+		{
+			Append(obj);
 		}
 
 		[Error("String addition is not supported. Consider allocating a new string and using Append, Concat, or +=")]
