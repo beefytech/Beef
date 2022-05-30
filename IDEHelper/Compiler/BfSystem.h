@@ -229,11 +229,12 @@ enum BfMethodFlags
 	BfMethodFlags_Public = 6,
 	BfMethodFlags_Static = 0x10,
 	BfMethodFlags_Virtual = 0x40,
+	BfMethodFlags_ReadOnly = 0x100,
 	BfMethodFlags_StdCall = 0x1000,
 	BfMethodFlags_FastCall = 0x2000,
 	BfMethodFlags_ThisCall = 0x3000,
 	BfMethodFlags_Mutating = 0x4000,
-	BfMethodFlags_Constructor = 0x8000,
+	BfMethodFlags_Constructor = 0x8000	
 };
 
 enum BfObjectFlags : uint8
@@ -1666,7 +1667,8 @@ enum BfFieldFlags
 	BfFieldFlags_SpecialName = 0x80,
 	BfFieldFlags_EnumPayload = 0x100,
 	BfFieldFlags_EnumDiscriminator = 0x200,
-	BfFieldFlags_EnumCase = 0x400
+	BfFieldFlags_EnumCase = 0x400,
+	BfFieldFlags_ReadOnly = 0x800
 };
 
 enum BfReflectKind

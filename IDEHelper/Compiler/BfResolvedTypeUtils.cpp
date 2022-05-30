@@ -697,6 +697,8 @@ BfMethodFlags BfMethodInstance::GetMethodFlags()
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Mutating);
 	if (mMethodDef->mMethodType == BfMethodType_Ctor)
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Constructor);
+	if (mMethodDef->mIsReadOnly)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_ReadOnly);
 
 	auto callingConvention = GetOwner()->mModule->GetIRCallingConvention(this);
 	if (callingConvention == BfIRCallingConv_ThisCall)
@@ -705,6 +707,7 @@ BfMethodFlags BfMethodInstance::GetMethodFlags()
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_StdCall);
 	else if (callingConvention == BfIRCallingConv_FastCall)
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_FastCall);
+
 	return methodFlags;
 }
 

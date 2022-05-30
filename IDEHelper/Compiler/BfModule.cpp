@@ -5585,6 +5585,8 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Const);
 	if (fieldDef->IsEnumCaseEntry())
 		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_EnumCase);
+	if (fieldDef->mIsReadOnly)
+		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_ReadOnly);	
 	
 	BfIRValue constValue;
 	BfIRValue constValue2;
@@ -7163,7 +7165,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				paramFlags = (ParamFlags)(paramFlags | ParamFlag_Splat);
 			if (defaultMethod->GetParamKind(paramIdx) == BfParamKind_AppendIdx)
 				paramFlags = (ParamFlags)(paramFlags | ParamFlag_Implicit | ParamFlag_AppendIdx);
-
+			
 			BfIRValue paramNameConst = GetStringObjectValue(paramName, !mIsComptimeModule);
 
 			int paramCustomAttrIdx = -1;

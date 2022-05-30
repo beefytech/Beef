@@ -1477,7 +1477,8 @@ namespace System.Reflection
         SpecialName             = 0x0080,     // field is special.  Name describes how.
         EnumPayload				= 0x0100,
 		EnumDiscriminator		= 0x0200,
-		EnumCase				= 0x0400
+		EnumCase				= 0x0400,
+		ReadOnly				= 0x0800,
     }
 
 	public enum MethodFlags : uint16
@@ -1487,27 +1488,17 @@ namespace System.Reflection
 		Public                  = 0x0006,
 
 		// method contract attributes.
-		Static              	=  0x0010,     // Defined on type, else per instance.
-		Final               	=  0x0020,     // Method may not be overridden.
-		Virtual             	=  0x0040,     // Method virtual.
-		HideBySig           	=  0x0080,     // Method hides by name+sig, else just by name.
-		CheckAccessOnOverride	=  0x0200,
-
-		// vtable layout mask - Use this mask to retrieve vtable attributes.
-		VtableLayoutMask    	=  0x0100,
-#unwarn
-		ReuseSlot           	=  0x0000,     // The default.
-#unwarn
-		NewSlot             	=  0x0100,     // Method always gets a new slot in the vtable.
-		// end vtable layout mask
-
-		// method implementation attributes.
-		Abstract            	=  0x0400,     // Method does not provide an implementation.
-		SpecialName         	=  0x0800,     // Method is special.  Name describes how.
-		StdCall					=  0x1000,
-		FastCall				=  0x2000,
-		ThisCall				=  0x3000, // Purposely resuing StdCall|FastCall
-		Mutating				=  0x4000,
-		Constructor				=  0x8000,
+		Static              	= 0x0010,     // Defined on type, else per instance.
+		Final               	= 0x0020,     // Method may not be overridden.
+		Virtual             	= 0x0040,     // Method virtual.
+		HideBySig           	= 0x0080,     // Method hides by name+sig, else just by name.
+		ReadOnly				= 0x0100,
+		Abstract            	= 0x0400,     // Method does not provide an implementation.
+		SpecialName         	= 0x0800,     // Method is special.  Name describes how.
+		StdCall					= 0x1000,
+		FastCall				= 0x2000,
+		ThisCall				= 0x3000, // Purposely resuing StdCall|FastCall
+		Mutating				= 0x4000,
+		Constructor				= 0x8000,
 	}
 }

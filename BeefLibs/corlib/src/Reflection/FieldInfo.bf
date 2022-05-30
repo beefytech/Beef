@@ -24,6 +24,7 @@ namespace System.Reflection
 	    public int32 MemberOffset => (int32)mFieldData.mData;
 	    public Type FieldType => Type.[Friend]GetType(mFieldData.mFieldTypeId);
 		public bool IsConst => mFieldData.mFlags.HasFlag(.Const);
+		public bool IsReadOnly => mFieldData.mFlags.HasFlag(.ReadOnly);
 		public bool IsStatic => mFieldData.mFlags.HasFlag(.Static);
 		public bool IsPublic => (mFieldData.mFlags & .FieldAccessMask) == .Public;
 		public bool IsProtected => (mFieldData.mFlags & .FieldAccessMask) == .Protected;
