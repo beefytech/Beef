@@ -3725,10 +3725,8 @@ void BfSystem::CheckLockYield()
 	//mHighestYieldTime = BF_MAX(yieldTime, mHighestYieldTime);
 	//mYieldTickCount = curTime;
 
-	if (mPendingSystemLockPri > mCurSystemLockPri)
+	if ((mPendingSystemLockPri > mCurSystemLockPri) && (mCurSystemLockThreadId == BfpThread_GetCurrentId()))
 	{
-		BF_ASSERT(mCurSystemLockThreadId == BfpThread_GetCurrentId());
-
 		int mySystemLockPri = mCurSystemLockPri;
 		BF_ASSERT(mSystemLock.mLockCount == 1);
 		mSystemLock.Unlock();
