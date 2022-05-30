@@ -172,6 +172,12 @@ namespace System
 	    
 	}
 
+	
+	[AttributeUsage(.Block)]
+	public struct ConstSkipAttribute : Attribute
+	{
+	}
+
 	[AttributeUsage(.Block)]
 	public struct IgnoreErrorsAttribute : Attribute
 	{
@@ -316,7 +322,7 @@ namespace System
 		{
 
 		}
-	}	
+	}
 
 	[AttributeUsage(.Method /*2*/)]
 	public struct IntrinsicAttribute : Attribute

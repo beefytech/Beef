@@ -528,6 +528,16 @@ void BfElementVisitor::Visit(BfDefaultExpression* defaultExpr)
 	VisitChild(defaultExpr->mCloseParen);
 }
 
+void BfElementVisitor::Visit(BfIsConstExpression* isConstExpr)
+{
+	Visit(isConstExpr->ToBase());
+
+	VisitChild(isConstExpr->mIsConstToken);
+	VisitChild(isConstExpr->mOpenParen);
+	VisitChild(isConstExpr->mExpression);
+	VisitChild(isConstExpr->mCloseParen);
+}
+
 void BfElementVisitor::Visit(BfUninitializedExpression* uninitializedExpr)
 {
 	Visit(uninitializedExpr->ToBase());

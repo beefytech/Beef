@@ -3143,6 +3143,10 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 						if ((!mCompatMode) && (SrcPtrHasToken("is")))
 							mToken = BfToken_Is;
 						break;
+					case TOKEN_HASH('i', 's', 'c', 'o'):
+						if ((!mCompatMode) && (SrcPtrHasToken("isconst")))
+							mToken = BfToken_IsConst;
+						break;
 					case TOKEN_HASH('l', 'e', 't', 0):
 						if ((!mCompatMode) && (SrcPtrHasToken("let")))
 							mToken = BfToken_Let;

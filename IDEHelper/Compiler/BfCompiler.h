@@ -454,6 +454,7 @@ public:
 	BfTypeDef* mObsoleteAttributeTypeDef;
 	BfTypeDef* mErrorAttributeTypeDef;
 	BfTypeDef* mWarnAttributeTypeDef;
+	BfTypeDef* mConstSkipAttributeTypeDef;
 	BfTypeDef* mIgnoreErrorsAttributeTypeDef;
 	BfTypeDef* mReflectAttributeTypeDef;		
 	BfTypeDef* mOnCompileAttributeTypeDef;

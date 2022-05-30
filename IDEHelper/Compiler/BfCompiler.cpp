@@ -474,6 +474,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mObsoleteAttributeTypeDef = NULL;
 	mErrorAttributeTypeDef = NULL;
 	mWarnAttributeTypeDef = NULL;
+	mConstSkipAttributeTypeDef = NULL;
 	mIgnoreErrorsAttributeTypeDef = NULL;
 	mReflectAttributeTypeDef = NULL;
 	mOnCompileAttributeTypeDef = NULL;
@@ -7104,6 +7105,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mObsoleteAttributeTypeDef = _GetRequiredType("System.ObsoleteAttribute");
 	mErrorAttributeTypeDef = _GetRequiredType("System.ErrorAttribute");
 	mWarnAttributeTypeDef = _GetRequiredType("System.WarnAttribute");
+	mConstSkipAttributeTypeDef = _GetRequiredType("System.ConstSkipAttribute");
 	mIgnoreErrorsAttributeTypeDef = _GetRequiredType("System.IgnoreErrorsAttribute");
 	mReflectAttributeTypeDef = _GetRequiredType("System.ReflectAttribute");
 	mOnCompileAttributeTypeDef = _GetRequiredType("System.OnCompileAttribute");

@@ -3742,11 +3742,16 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 
 	if (includeTrueStmt)
 	{
-		SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites);
+		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites);
+		SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore);
+
 		if (trueBB)
 			mBfIRBuilder->SetInsertPoint(trueBB);
 		if ((isConstBranch) && (constResult != true))
+		{
 			mBfIRBuilder->mIgnoreWrites = true;
+			mCurMethodState->mCurScope->mInConstIgnore = true;
+		}
 		else
 			ignoredLastBlock = false;
 		VisitEmbeddedStatement(ifStmt->mTrueStatement);
@@ -3785,9 +3790,14 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 		ignoredLastBlock = true;
 		//		
 		{
-			SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites);
+			SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites);
+			SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore);
+
 			if ((isConstBranch) && (constResult != false))
+			{
 				mBfIRBuilder->mIgnoreWrites = true;
+				mCurMethodState->mCurScope->mInConstIgnore = true;
+			}
 			else
 				ignoredLastBlock = false;
 			falseDeferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData);
@@ -3896,6 +3906,18 @@ void BfModule::Visit(BfAttributedStatement* attribStmt)
 				attributeState.mFlags = BfAttributeState::Flag_StopOnError;
 		}
 		VisitChild(attribStmt->mStatement);
+		attributeState.mUsed = true;
+	}
+	else if (attributeState.mCustomAttributes->Contains(mCompiler->mConstSkipAttributeTypeDef))
+	{
+		if ((mCurMethodState == NULL) || (mCurMethodState->mCurScope == NULL) || (!mCurMethodState->mCurScope->mInConstIgnore))
+		{
+			VisitChild(attribStmt->mStatement);
+		}
+		else
+		{
+			BF_ASSERT(mBfIRBuilder->mIgnoreWrites);
+		}
 		attributeState.mUsed = true;
 	}
 	else
@@ -4755,7 +4777,9 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 		auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
 		
-		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, !mayHaveMatch && !prevHadFallthrough);
+		bool isConstIgnore = !mayHaveMatch && !prevHadFallthrough;
+		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, isConstIgnore);
+		SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore, true, isConstIgnore);
 		
 		mBfIRBuilder->AddBlock(caseBlock);
 		mBfIRBuilder->SetInsertPoint(caseBlock);
@@ -4921,6 +4945,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	if (switchStmt->mDefaultCase != NULL)
 	{
 		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, hadConstMatch);
+		SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore, true, hadConstMatch);
 
 		mBfIRBuilder->AddBlock(defaultBlock);
 		mBfIRBuilder->SetInsertPoint(defaultBlock);
@@ -5742,6 +5767,7 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 		if (isFalseLoop)
 		{
 			SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+			SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore, true);
 			VisitEmbeddedStatement(whileStmt->mEmbeddedStatement);
 		}
 		else
@@ -6693,6 +6719,8 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		{
 			if (!isVarEnumerator)
 				AssertErrorState();
+
+			mBfIRBuilder->CreateBr(endBB);
 		}
 		else
 		{						

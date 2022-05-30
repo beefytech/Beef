@@ -547,8 +547,9 @@ public:
 	virtual void Visit(BfTypeOfExpression* typeOfExpr) override;
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr) override;
 	virtual void Visit(BfAlignOfExpression* alignOfExpr) override;
-	virtual void Visit(BfStrideOfExpression* strideOfExpr) override;	
+	virtual void Visit(BfStrideOfExpression* strideOfExpr) override;
 	virtual void Visit(BfOffsetOfExpression* offsetOfExpr) override;
+	virtual void Visit(BfIsConstExpression* isConstExpr) override;
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;
 	virtual void Visit(BfUninitializedExpression* uninitialziedExpr) override;
 	virtual void Visit(BfCheckTypeExpression* checkTypeExpr) override;

@@ -1042,7 +1042,7 @@ namespace System
 		{
 			if (object == null)
 				return;
-			Append(object.ToString(.. scope .()));
+			Append(object.ToString(.. scope .(128)));
 		}
 
 		public void operator+=(String str)

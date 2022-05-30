@@ -3317,7 +3317,7 @@ void BfExprEvaluator::Visit(BfAttributedExpression* attribExpr)
 	attributeState.mSrc = attribExpr->mAttributes;
 	attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_Invocation | BfAttributeTargets_MemberAccess);	
 	if (auto block = BfNodeDynCast<BfBlock>(attribExpr->mExpression))	
-		attributeState.mTarget = BfAttributeTargets_Block;	
+		attributeState.mTarget = BfAttributeTargets_Block;
 
 	attributeState.mCustomAttributes = mModule->GetCustomAttributes(attribExpr->mAttributes, attributeState.mTarget);	
 	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, &attributeState);
@@ -3343,6 +3343,19 @@ void BfExprEvaluator::Visit(BfAttributedExpression* attribExpr)
 			// Make empty or 'var' resolve as 'false' because var is only valid if we threw errors
 			mResult = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Boolean));
 		}
+	}
+	else if (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mConstSkipAttributeTypeDef))
+	{
+		if ((mModule->mCurMethodState == NULL) || (mModule->mCurMethodState->mCurScope == NULL) || (!mModule->mCurMethodState->mCurScope->mInConstIgnore))
+		{
+			VisitChild(attribExpr->mExpression);
+		}
+		else
+		{
+			BF_ASSERT(mModule->mBfIRBuilder->mIgnoreWrites);
+			mResult = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
+		}
+		attributeState.mUsed = true;
 	}
 	else
 	{
@@ -11480,7 +11493,6 @@ void BfExprEvaluator::DoTypeIntAttr(BfTypeReference* typeRef, BfTokenNode* comma
 {	
 	auto autoComplete = GetAutoComplete();
 	
-
 	auto type = mModule->ResolveTypeRef(typeRef, BfPopulateType_Data, BfResolveTypeRefFlag_AutoComplete);
 	if (type == NULL)
 		return;
@@ -11612,6 +11624,30 @@ void BfExprEvaluator::Visit(BfOffsetOfExpression* offsetOfExpr)
 	DoTypeIntAttr(offsetOfExpr->mTypeRef, offsetOfExpr->mCommaToken, offsetOfExpr->mMemberName, BfToken_OffsetOf);
 }
 
+void BfExprEvaluator::Visit(BfIsConstExpression* isConstExpr)
+{	
+	if (isConstExpr->mExpression == NULL)
+	{
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+		return;
+	}
+
+	BfMethodState methodState;
+	SetAndRestoreValue<BfMethodState*> prevMethodState(mModule->mCurMethodState, &methodState, false);
+	if (mModule->mCurMethodState == NULL)
+		prevMethodState.Set();
+	methodState.mTempKind = BfMethodState::TempKind_NonStatic;
+
+	SetAndRestoreValue<bool> ignoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+	SetAndRestoreValue<bool> allowUninitReads(mModule->mCurMethodState->mAllowUinitReads, true);
+
+	BfEvalExprFlags exprFlags = BfEvalExprFlags_None;
+		
+	auto result = mModule->CreateValueFromExpression(isConstExpr->mExpression, NULL, BfEvalExprFlags_DeclType);
+	bool isConst = mModule->mBfIRBuilder->IsConstValue(result.mValue);
+	mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, isConst ? 1 : 0), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+}
+
 void BfExprEvaluator::Visit(BfDefaultExpression* defaultExpr)
 {
 	auto autoComplete = GetAutoComplete();	
@@ -11669,7 +11705,7 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 	if (autoComplete != NULL)		
 		autoComplete->CheckTypeRef(checkTypeExpr->mTypeRef, false, true);	
 
-	auto targetType = mModule->ResolveTypeRef(checkTypeExpr->mTypeRef);
+	auto targetType = mModule->ResolveTypeRef(checkTypeExpr->mTypeRef, BfPopulateType_Declaration);
 	if (!targetType)
 	{
 		mModule->AssertErrorState();
@@ -16442,41 +16478,6 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	}
 	
 	auto curMethodState = mModule->mCurMethodState;
-	//
-
-	// Why was this required? It doesn't check for matching generic args (we only want to throw an error if we call back into a mixin with the same generic args as before)
-// 	{
-// 		bool hasCircularRef = false;
-// 
-// 		auto checkMethodState = curMethodState;
-// 		while (checkMethodState != NULL)
-// 		{			
-// 			auto curMixinState = checkMethodState->mMixinState;
-// 			while (curMixinState != NULL)
-// 			{
-// 				if (curMixinState->mSource == targetSrc)				
-// 					hasCircularRef = true;									
-// 				curMixinState = curMixinState->mPrevMixinState;
-// 			}
-// 
-// 			if ((checkMethodState->mClosureState != NULL) && (checkMethodState->mClosureState->mActiveDeferredLocalMethod != NULL))
-// 			{
-// 				for (auto& mixinRecord : checkMethodState->mClosureState->mActiveDeferredLocalMethod->mMixinStateRecords)
-// 				{
-// 					if (mixinRecord.mSource == targetSrc)					
-// 						hasCircularRef = true;					
-// 				}
-// 			}
-// 
-// 			checkMethodState = checkMethodState->mPrevMethodState;
-// 		}
-// 
-// 		if (hasCircularRef)
-// 		{
-// 			mModule->Fail("Circular reference detected between mixins", targetSrc);
-// 			return;
-// 		}
-// 	}
 	
 	auto moduleMethodInstance = GetSelectedMethod(targetSrc, methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher);
 	if (!moduleMethodInstance)
@@ -16522,30 +16523,78 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		}
 	}
 
-	// Check circular ref based on methodInstance
+	if (curMethodState->mCurScope->mMixinDepth >= 128)
+	{
+		mModule->Fail("Maximum nested mixin depth exceeded", targetSrc);
+		return;
+	}
+
+	// Check circular ref based on methodInstance. We must check the arg types since we could be making progress in mixin evaluation
+	//  based on method selection within the mixin dependent on args
  	{
  		bool hasCircularRef = false;
  
+		BfMixinState* checkMixinState = NULL;
+
  		auto checkMethodState = curMethodState;
  		while (checkMethodState != NULL)
- 		{			
- 			if (checkMethodState->mMethodInstance == methodInstance)
- 				hasCircularRef = true;
-
+ 		{			 			
 			auto curMixinState = checkMethodState->mMixinState;
 			while (curMixinState != NULL)
 			{
-				if (curMixinState->mMixinMethodInstance == methodInstance)				
-					hasCircularRef = true;				
+				if ((curMixinState->mDoCircularVarResult) && (curMixinState->mMixinMethodInstance == methodInstance))
+				{
+					mResult = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
+					return;
+				}
+
+				if ((!curMixinState->mCheckedCircularRef) && (curMixinState->mMixinMethodInstance == methodInstance))
+				{
+					checkMixinState = curMixinState;
+					checkMixinState->mCheckedCircularRef = true;
+				}
+				else if (checkMixinState != NULL)
+				{
+					if ((curMixinState->mMixinMethodInstance == checkMixinState->mMixinMethodInstance) &&
+						(curMixinState->mArgTypes == checkMixinState->mArgTypes) &&
+						(curMixinState->mArgConsts.mSize == checkMixinState->mArgConsts.mSize))
+					{
+						bool constsMatch = true;
+
+						for (int i = 0; i < curMixinState->mArgConsts.mSize; i++)
+						{
+							if (!mModule->mBfIRBuilder->CheckConstEquality(curMixinState->mArgConsts[i], checkMixinState->mArgConsts[i]))
+							{
+								constsMatch = false;
+								break;
+							}
+						}
+
+						if (constsMatch)
+							hasCircularRef = true;
+					}
+				}
+
 				curMixinState = curMixinState->mPrevMixinState;
 			}
 
-
  			checkMethodState = checkMethodState->mPrevMethodState;
- 		}
+ 		}		
  
  		if (hasCircularRef)
  		{
+			for (auto argType : checkMixinState->mArgTypes)
+			{
+				if (argType->IsVar())
+					checkMixinState->mDoCircularVarResult = true;
+			}
+
+			if (checkMixinState->mDoCircularVarResult)
+			{
+				mResult = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
+				return;
+			}
+
  			mModule->Fail("Circular reference detected between mixins", targetSrc);
  			return;
  		}
@@ -16981,6 +17030,9 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		}
 
 		newLocalVar->mParamIdx = -3;
+		mixinState->mArgTypes.Add(newLocalVar->mResolvedType);
+		if (mModule->mBfIRBuilder->IsConstValue(newLocalVar->mConstValue))
+			mixinState->mArgConsts.Add(newLocalVar->mConstValue);
 	};
 	
 	argExprEvaluatorItr = argExprEvaluators.begin();
@@ -18993,13 +19045,14 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 		{			
 			auto curBlock = mModule->mBfIRBuilder->GetInsertBlock();
 			SetAndRestoreValue<bool> ignoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+			SetAndRestoreValue<bool> prevInConstIgnore(mModule->mCurMethodState->mCurScope->mInConstIgnore, true);
 			ignoredValue = mModule->CreateValueFromExpression(ignoredExpr, mExpectingType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast));
 			mModule->mBfIRBuilder->SetInsertPoint(curBlock);
 		}
 
 		if (!actualValue)
 			return;
-		if ((ignoredValue) && (ignoredValue.mType != actualValue.mType))
+		if ((ignoredValue) && (ignoredValue.mType != actualValue.mType) && (!ignoredValue.mType->IsVar()))
 		{
 			// Cast to more specific 'ignored' type if applicable
 			if (mModule->CanCast(actualValue, ignoredValue.mType))
@@ -19078,7 +19131,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 		{
 			BfTypedValue trueToFalse;
 			{
-				SetAndRestoreValue<bool> prevIgnoreError(mModule->mIgnoreErrors, true);
+				SetAndRestoreValue<bool> prevIgnoreError(mModule->mIgnoreErrors, true);				
 				mModule->mBfIRBuilder->SetInsertPoint(trueBlockPos);
 				trueToFalse = mModule->Cast(condExpr->mTrueExpression, trueValue, falseValue.mType);
 			}
@@ -22078,7 +22131,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				else
 				{
 					// Always false
-					SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);					
+					SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+					SetAndRestoreValue<bool> prevInConstIgnore(mModule->mCurMethodState->mCurScope->mInConstIgnore, true);
 					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0), boolType);
 				}
@@ -22131,6 +22185,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				{
 					// Always true					
 					SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);					
+					SetAndRestoreValue<bool> prevInConstIgnore(mModule->mCurMethodState->mCurScope->mInConstIgnore, true);
 					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1), boolType);
 				}
@@ -22208,6 +22263,7 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 
 			// Already have a value, we don't need the right side
 			SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+			SetAndRestoreValue<bool> prevInConstIgnore(mModule->mCurMethodState->mCurScope->mInConstIgnore, true);
 			mModule->CreateValueFromExpression(rightExpression, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_CreateConditionalScope));
 			mResult = leftValue;
 			return true;

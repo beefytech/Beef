@@ -1998,6 +1998,19 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 				exprLeft = defaultExpr;
 			}
+			else if (token == BfToken_IsConst)
+			{
+				auto isConstExpr = mAlloc->Alloc<BfIsConstExpression>();
+				ReplaceNode(tokenNode, isConstExpr);
+				isConstExpr->mIsConstToken = tokenNode;
+				tokenNode = ExpectTokenAfter(isConstExpr, BfToken_LParen);
+				MEMBER_SET_CHECKED(isConstExpr, mOpenParen, tokenNode);
+				auto expr = CreateExpressionAfter(isConstExpr);
+				MEMBER_SET_CHECKED(isConstExpr, mExpression, expr);
+				tokenNode = ExpectTokenAfter(isConstExpr, BfToken_RParen);
+				MEMBER_SET_CHECKED(isConstExpr, mCloseParen, tokenNode);				
+				exprLeft = isConstExpr;
+			}
 			else if (token == BfToken_Question)
 			{
 				auto uninitExpr = mAlloc->Alloc<BfUninitializedExpression>();

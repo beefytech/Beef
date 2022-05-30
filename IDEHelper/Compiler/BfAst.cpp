@@ -356,6 +356,11 @@ void BfStructuralVisitor::Visit(BfOffsetOfExpression* offsetOfExpr)
 	Visit(offsetOfExpr->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfIsConstExpression* isConstExpr)
+{
+	Visit(isConstExpr->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfDefaultExpression* defaultExpr)
 {
 	Visit(defaultExpr->ToBase());
@@ -1398,6 +1403,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "internal";
 	case BfToken_Is:
 		return "is";
+	case BfToken_IsConst:
+		return "isconst";
 	case BfToken_Let:
 		return "let";
 	case BfToken_Mixin:

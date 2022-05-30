@@ -1764,6 +1764,16 @@ void BfPrinter::Visit(BfDefaultExpression* defaultExpr)
 	VisitChild(defaultExpr->mCloseParen);
 }
 
+void BfPrinter::Visit(BfIsConstExpression* isConstExpr)
+{
+	Visit(isConstExpr->ToBase());
+
+	VisitChild(isConstExpr->mIsConstToken);
+	VisitChild(isConstExpr->mOpenParen);
+	VisitChild(isConstExpr->mExpression);
+	VisitChild(isConstExpr->mCloseParen);
+}
+
 void BfPrinter::Visit(BfCheckTypeExpression* checkTypeExpr)
 {
 	Visit(checkTypeExpr->ToBase());

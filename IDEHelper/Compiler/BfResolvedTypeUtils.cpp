@@ -3221,6 +3221,7 @@ void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupCon
 				}
 				else
 				{
+					ctx->mModule->Fail("Generic argument expected", genericTypeRef->mOpenChevron);
 					ctx->mFailed = true;
 					return;
 				}
@@ -3807,7 +3808,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					else
 					{
 						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, NULL, BfEvalExprFlags_DeclType);
-					}					
+					}
 				}
 								
 				if ((result) && (exprModTypeRef->mToken->mToken == BfToken_Comptype))

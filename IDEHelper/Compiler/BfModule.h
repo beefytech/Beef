@@ -445,6 +445,7 @@ public:
 	bool mAllowVariableDeclarations;
 	bool mInInitBlock;
 	bool mSupressNextUnreachable;
+	bool mInConstIgnore;
 	BfMixinState* mMixinState;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
@@ -484,6 +485,7 @@ public:
 		mAllowTargeting = true;		
 		mAllowVariableDeclarations = true;
 		mInInitBlock = false;
+		mInConstIgnore = false;
 		mMixinDepth = 0;
 		mScopeDepth = 0;
 		mScopeLocalId = -1;
@@ -794,7 +796,7 @@ public:
 
 class BfMixinState
 {
-public:
+public:	
 	BfMixinState* mPrevMixinState;
 	BfAstNode* mSource;
 	BfScopeData* mCallerScope;
@@ -802,15 +804,30 @@ public:
 	BfFilePosition mInjectFilePosition;
 	BfMethodInstance* mMixinMethodInstance;
 	BfAstNode* mResultExpr;
+	SizedArray<BfType*, 8> mArgTypes;
+	SizedArray<BfIRValue, 8> mArgConsts;
 	int mLocalsStartIdx;
 	bool mUsedInvocationScope;
 	bool mHasDeferredUsage;
+	bool mCheckedCircularRef;
+	bool mDoCircularVarResult;
 	BfTypedValue mTarget;
 	int mLastTargetAccessId;
 
 public:
 	BfMixinState()
 	{
+		mPrevMixinState = NULL;
+		mSource = NULL;
+		mCallerScope = NULL;
+		mTarget = NULL;
+		mMixinMethodInstance = NULL;
+		mResultExpr = NULL;
+		mLocalsStartIdx = 0;
+		mUsedInvocationScope = false;
+		mHasDeferredUsage = false;
+		mCheckedCircularRef = false;
+		mDoCircularVarResult = false;
 		mLastTargetAccessId = -1;
 	}
 
@@ -1126,6 +1143,7 @@ public:
 		newScopeData->mPrevScope = mCurScope;		
 		newScopeData->mMixinDepth = mCurScope->mMixinDepth;		
 		newScopeData->mScopeDepth = mCurScope->mScopeDepth + 1;
+		newScopeData->mInConstIgnore = mCurScope->mInConstIgnore;
 		mCurScope = newScopeData;
 		mTailScope = mCurScope;
 	}

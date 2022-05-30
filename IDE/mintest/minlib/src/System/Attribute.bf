@@ -146,6 +146,11 @@ namespace System
 	}
 
 	[AttributeUsage(.Block)]
+	public struct ConstSkipAttribute : Attribute
+	{
+	}
+
+	[AttributeUsage(.Block)]
 	public struct IgnoreErrorsAttribute : Attribute
 	{
 		public this(bool stopOnErrors = false)
