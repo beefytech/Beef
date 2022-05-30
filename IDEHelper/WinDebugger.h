@@ -632,7 +632,7 @@ public:
 	addr_target GetTLSOffset(int tlsIndex);
 	virtual void UpdateRegisterUsage(int stackFrameIdx) override;
 	virtual void UpdateCallStackMethod(int stackFrameIdx) override;
-	virtual void GetCodeAddrInfo(intptr addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
+	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
 	virtual void GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx) override;
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn, int* outLanguage, int* outStackSize, int8* outFlags) override;
 	virtual String GetStackFrameId(int stackFrameIdx) override;

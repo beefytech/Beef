@@ -326,7 +326,7 @@ public:
 	virtual DbgMemoryFlags GetMemoryFlags(intptr address) = 0;
 	virtual void UpdateRegisterUsage(int stackFrameIdx) = 0;	
 	virtual void UpdateCallStackMethod(int stackFrameIdx) = 0;	
-	virtual void GetCodeAddrInfo(intptr addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) = 0;
+	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) = 0;
 	virtual void GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx) = 0;
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags) = 0;
 	virtual String GetStackFrameId(int stackFrameIdx) { return ""; }

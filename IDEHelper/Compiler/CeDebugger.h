@@ -374,7 +374,7 @@ public:
 	virtual DbgMemoryFlags GetMemoryFlags(intptr address) override;
 	virtual void UpdateRegisterUsage(int stackFrameIdx) override;
 	virtual void UpdateCallStackMethod(int stackFrameIdx) override;
-	virtual void GetCodeAddrInfo(intptr addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
+	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
 	virtual void GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx) override;
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags) override;
 	virtual String Callstack_GetStackFrameOldFileInfo(int stackFrameIdx) override;

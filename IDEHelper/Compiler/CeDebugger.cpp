@@ -4498,7 +4498,7 @@ void CeDebugger::UpdateCallStackMethod(int stackFrameIdx)
 {
 }
 
-void CeDebugger::GetCodeAddrInfo(intptr addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn)
+void CeDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn)
 {
 }
 

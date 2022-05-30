@@ -2,8 +2,13 @@
 
 [[Type]]
 Name = "System.CallStackAddr"
-DisplayString = "{__funcName(this), ne}"
-Action = "ShowCodeAddr {(int)this,X}"
+DisplayString = "{__funcName(this - 1), ne}"
+Action = "ShowCodeAddr {(int)this - 1,X}"
+
+[[Type]]
+Name = "System.CallStackList"
+DisplayString = "{__funcName(((int*)(int)this)[0] - 1), ne}"
+[Type.Expand.CallStackList]
 
 [[Type]]
 Name = "System.DeferredCall"

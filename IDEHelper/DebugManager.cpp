@@ -1428,11 +1428,11 @@ BF_EXPORT intptr BF_CALLTYPE Debugger_GetStackFrameCalleeAddr(int stackFrameIdx)
 	return gDebugger->GetStackFrameCalleeAddr(stackFrameIdx);
 }
 
-BF_EXPORT const char* BF_CALLTYPE Debugger_GetCodeAddrInfo(intptr addr, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn)
+BF_EXPORT const char* BF_CALLTYPE Debugger_GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn)
 {
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
-	gDebugger->GetCodeAddrInfo(addr, &outString, outHotIdx, outDefLineStart, outDefLineEnd, outLine, outColumn);
+	gDebugger->GetCodeAddrInfo(addr, inlineCallAddr, &outString, outHotIdx, outDefLineStart, outDefLineEnd, outLine, outColumn);
 	return outString.c_str();
 }
 

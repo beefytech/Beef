@@ -47,6 +47,14 @@ namespace System
 
 	}
 
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+	[AlwaysInclude]
+#endif
+	struct CallStackList : int
+	{
+
+	}
+
 	interface IDisposable
 	{
 	    void Dispose() mut;

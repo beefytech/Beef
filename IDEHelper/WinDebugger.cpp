@@ -5653,25 +5653,31 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 			else if (strncmp(formatCmd.c_str(), "refid=", 6) == 0)
 			{
 				formatInfo->mReferenceId = formatCmd.Substring(6);
-				if (formatInfo->mReferenceId[0] == '\"')
+				if ((formatInfo->mReferenceId.mLength >= 2) && (formatInfo->mReferenceId[0] == '\"'))
 					formatInfo->mReferenceId = formatInfo->mReferenceId.Substring(1, formatInfo->mReferenceId.length() - 2);
+			}
+			else if (strncmp(formatCmd.c_str(), "action=", 7) == 0)
+			{
+				formatInfo->mAction = formatCmd.Substring(7);
+				if ((formatInfo->mAction.mLength >= 2) && (formatInfo->mAction[0] == '\"'))
+					formatInfo->mAction = formatInfo->mReferenceId.Substring(1, formatInfo->mReferenceId.length() - 2);
 			}
 			else if (strncmp(formatCmd.c_str(), "_=", 2) == 0)
 			{
 				formatInfo->mSubjectExpr = formatCmd.Substring(2);
-				if (formatInfo->mSubjectExpr[0] == '\"')
+				if ((formatInfo->mSubjectExpr.mLength >= 2) && (formatInfo->mSubjectExpr[0] == '\"'))
 					formatInfo->mSubjectExpr = formatInfo->mSubjectExpr.Substring(1, formatInfo->mSubjectExpr.length() - 2);
 			}
 			else if (strncmp(formatCmd.c_str(), "expectedType=", 13) == 0)
 			{
 				formatInfo->mExpectedType = formatCmd.Substring(13);
-				if (formatInfo->mExpectedType[0] == '\"')
+				if ((formatInfo->mExpectedType.mLength >= 2) && (formatInfo->mExpectedType[0] == '\"'))
 					formatInfo->mExpectedType = formatInfo->mExpectedType.Substring(1, formatInfo->mExpectedType.length() - 2);
 			}
 			else if (strncmp(formatCmd.c_str(), "namespaceSearch=", 16) == 0)
 			{
 				formatInfo->mNamespaceSearch = formatCmd.Substring(16);
-				if (formatInfo->mNamespaceSearch[0] == '\"')
+				if ((formatInfo->mNamespaceSearch.mLength >= 2) && (formatInfo->mNamespaceSearch[0] == '\"'))
 					formatInfo->mNamespaceSearch = formatInfo->mNamespaceSearch.Substring(1, formatInfo->mNamespaceSearch.length() - 2);
 			}
 			else if (formatCmd == "d")
@@ -6088,7 +6094,6 @@ String WinDebugger::GetTreeItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizer
 			}			
 		}
 
-
 		DbgTypedValue val = valueEvaluationContext.EvaluateInContext(readNode);
 		if (valueType == NULL)
 			valueType = val.mType;
@@ -6185,7 +6190,7 @@ String WinDebugger::GetCollectionContinuation(const StringImpl& continuationData
 		retVal += "\n" + newContinuationData;
 		return retVal;
 	}
-	
+		
 	return "";
 }
 
@@ -8307,14 +8312,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				stackTraceAddr = ptrVal + (dbgAllocInfo >> 16);
 			}
 
-			if (stackTraceLen == 1)
-			{
-				retVal += StrFormat("\n[AllocStackTrace]\t*(System.CallStackAddr*)%s, nm", EncodeDataPtr(stackTraceAddr, true).c_str());
-			}
-			else if (stackTraceLen > 0)
-			{
-				retVal += StrFormat("\n[AllocStackTrace]\t(System.CallStackAddr*)%s, %d, na", EncodeDataPtr(stackTraceAddr, true).c_str(), stackTraceLen);
-			}
+			retVal += StrFormat("\n[AllocStackTrace]\t(System.CallStackList)%s, count=%d, na", EncodeDataPtr(stackTraceAddr, true).c_str(), stackTraceLen);
 		}
 
 		retVal += StrFormat("\n:language\t%d", language);
@@ -8350,6 +8348,12 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		if (isDeletedBfObject)
 			retVal += "\n:deleted";
 
+		if (!formatInfo.mAction.IsEmpty())
+		{
+			retVal += "\n:action\t";
+			retVal += formatInfo.mAction;
+		}
+		else
 		if ((debugVis != NULL) && (!debugVis->mAction.empty()))
 		{
 			String rawActionStr = mDebugManager->mDebugVisualizers->DoStringReplace(debugVis->mAction, dbgVisWildcardCaptures);
@@ -8770,6 +8774,58 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 					retVal += "\n:continuation\t" + continuationData;
 			}					
 		}
+	}
+	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_CallStackList)
+	{	
+		int size = 0;
+
+		String addrs;
+		String firstVal;		
+		auto ptr = useTypedValue.mPtr;
+
+		for (int i = 0; i < formatInfo.mOverrideCount; i++)
+		{
+			auto funcAddr = ReadMemory<addr_target>(ptr + i * sizeof(addr_target));
+			auto srcFuncAddr = funcAddr;
+
+			addrs += EncodeDataPtr(funcAddr - 1, false);
+			if (i == 0)
+				firstVal = addrs;
+			addrs += EncodeDataPtr((addr_target)0, false);
+			size++;
+			
+			int inlineIdx = 0;
+
+			auto subProgram = mDebugTarget->FindSubProgram(funcAddr - 1, DbgOnDemandKind_LocalOnly);
+			while (subProgram != NULL)
+			{
+				if (subProgram->mInlineeInfo == NULL)
+					break;
+				
+				auto prevFuncAddr = subProgram->mBlock.mLowPC;
+
+				subProgram = subProgram->mInlineeInfo->mInlineParent;
+				addrs += EncodeDataPtr(subProgram->mBlock.mLowPC + 1, false);
+				addrs += EncodeDataPtr(prevFuncAddr, false);
+				size++;
+
+				inlineIdx++;
+			}
+		}
+
+		String evalStr = "(CallStackAddr)0x{1}";
+
+		if (!debugVis->mShowElementAddrs)
+			evalStr.Insert(0, "*");
+		
+		evalStr += ", refid=\"" + referenceId + ".[]\"";		
+		evalStr += ", ne";
+		retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, size, 10000) +
+			"\t[{0}]\t(CallStackAddr)0x{1}, action=ShowCodeAddr {1} {2}\t" + firstVal + "\t" + EncodeDataPtr((addr_target)0, false);
+				
+		retVal += "\n:addrs\t" + addrs;		
+		retVal += "\n:addrsEntrySize\t2";
+		return;
 	}
 
 	if (formatInfo.mExpandItemDepth == 0)
@@ -11232,6 +11288,8 @@ void WinDebugger::UpdateCallStackMethod(int stackFrameIdx)
 			mDebugTarget->FindSymbolAt(pcAddress, &symbolName, &offset, &dbgModule);
 		}
 
+		auto prevStackFrame = wdStackFrame;
+
 		// Insert inlines
 		int insertIdx = checkFrameIdx + 1;
 		while ((dwSubprogram != NULL) && (dwSubprogram->mInlineeInfo != NULL))
@@ -11245,18 +11303,57 @@ void WinDebugger::UpdateCallStackMethod(int stackFrameIdx)
 			dwSubprogram = dwSubprogram->mInlineeInfo->mInlineParent;
 			insertIdx++;
 			checkFrameIdx++;
+
+			prevStackFrame = inlineStackFrame;
 		}
 	}
 }
 
-void WinDebugger::GetCodeAddrInfo(intptr addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn)
+void WinDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	DbgSubprogram* subProgram = NULL;
 	DbgLineData* callingLineData = FindLineDataAtAddress((addr_target)addr, &subProgram);	
+
+	if (inlineCallAddr != 0)
+	{
+		auto inlinedSubProgram = mDebugTarget->FindSubProgram(inlineCallAddr);
+		if (inlinedSubProgram != 0)
+		{
+			FixupLineDataForSubprogram(inlinedSubProgram->mInlineeInfo->mRootInliner);
+			DbgSubprogram* parentSubprogram = inlinedSubProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
+			auto foundLine = parentSubprogram->FindClosestLine(inlinedSubProgram->mBlock.mLowPC, &parentSubprogram);
+			if (foundLine != NULL)
+			{
+				auto srcFile = parentSubprogram->GetLineSrcFile(*foundLine);
+				*outFile = srcFile->GetLocalPath();
+				*outLine = foundLine->mLine;
+			}
+
+			*outHotIdx = inlinedSubProgram->mCompileUnit->mDbgModule->mHotIdx;
+			*outColumn = -1;
+
+			DbgSubprogram* callingSubProgram = NULL;
+			DbgLineData* callingLineData = FindLineDataAtAddress(inlinedSubProgram->mBlock.mLowPC - 1, &callingSubProgram);
+			if ((callingLineData != NULL) && (callingSubProgram == subProgram))
+			{
+				auto callingSrcFile = callingSubProgram->GetLineSrcFile(*callingLineData);
+				auto srcFile = callingSrcFile;
+				*outFile = srcFile->GetLocalPath();
+
+				if (*outLine == callingLineData->mLine)
+					*outColumn = callingLineData->mColumn;
+			}
+			return;
+		}		
+	}
+
 	if (subProgram != NULL)
 	{
+		if ((subProgram->mInlineeInfo != NULL) && ((addr_target)addr >= subProgram->mBlock.mHighPC))
+			callingLineData = &subProgram->mInlineeInfo->mLastLineData;
+
 		*outHotIdx = subProgram->mCompileUnit->mDbgModule->mHotIdx;
 		*outFile = subProgram->GetLineSrcFile(*callingLineData)->GetLocalPath();
 		*outLine = callingLineData->mLine;		
@@ -11499,6 +11596,9 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		addr_target findAddress = wdStackFrame->GetSourcePC();				
 		DbgSubprogram* specificSubprogram = dwSubprogram;
 		dwLineData = dwSubprogram->FindClosestLine(findAddress, &specificSubprogram);
+
+		if ((dwLineData == NULL) && (dwSubprogram->mInlineeInfo != NULL) && (findAddress >= dwSubprogram->mBlock.mHighPC))
+			dwLineData = &dwSubprogram->mInlineeInfo->mLastLineData;
 
 		if (dwLineData != NULL)		
 			dwSrcFile = dwSubprogram->GetLineSrcFile(*dwLineData);

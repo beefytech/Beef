@@ -260,7 +260,7 @@ namespace IDE.Debugger
 		static extern int32 CallStack_GetBreakStackFrameIdx();
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern char8* Debugger_GetCodeAddrInfo(int addr, out int32 hotIdx, out int32 defLineStart, out int32 defLineEnd, out int32 line, out int32 column);
+		static extern char8* Debugger_GetCodeAddrInfo(int addr, int inlineCallAddr, out int32 hotIdx, out int32 defLineStart, out int32 defLineEnd, out int32 line, out int32 column);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_GetStackAllocInfo(int addr, out int threadId, int32* outStackIdx);
@@ -940,14 +940,14 @@ namespace IDE.Debugger
 			return Debugger_GetStackFrameCalleeAddr(stackFrameIdx);
 		}
 
-		public void GetCodeAddrInfo(int addr, String outFile, out int hotIdx, out int defLineStart, out int defLineEnd, out int line, out int column)
+		public void GetCodeAddrInfo(int addr, int inlineCallAddr, String outFile, out int hotIdx, out int defLineStart, out int defLineEnd, out int line, out int column)
 		{
 			int32 hotIdxOut;
 			int32 lineOut;
 			int32 columnOut;
 			int32 defLineStartOut = -1;
 			int32 defLineEndOut = -1;
-			char8* locationStr = Debugger_GetCodeAddrInfo(addr, out hotIdxOut, out defLineStartOut, out defLineEndOut, out lineOut, out columnOut);
+			char8* locationStr = Debugger_GetCodeAddrInfo(addr, inlineCallAddr, out hotIdxOut, out defLineStartOut, out defLineEndOut, out lineOut, out columnOut);
 			hotIdx = hotIdxOut;
 			defLineStart = defLineStartOut;
 			defLineEnd = defLineEndOut;

@@ -203,6 +203,7 @@ struct DwFormatInfo
 	DbgTypedValue mExplicitThis;
 	int mTotalSummaryLength;
 	String mReferenceId;
+	String mAction;
 	String mSubjectExpr;
 	String mExpectedType;
 	String mNamespaceSearch;

@@ -35,7 +35,8 @@ public:
 		CollectionType_LinkedList,
 		CollectionType_Delegate,
 		CollectionType_Dictionary,
-		CollectionType_ExpandedItem
+		CollectionType_ExpandedItem,
+		CollectionType_CallStackList
 	};
 
 public:

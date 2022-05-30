@@ -1127,13 +1127,17 @@ namespace IDE
 					sourceViewPanel.RecordHistoryLocation();
 
 				int64 addr = int64.Parse(cmds[1], System.Globalization.NumberStyles.HexNumber).GetValueOrDefault();
+				int64 inlineCallAddr = 0;
+				if (cmds.Count >= 2)
+					inlineCallAddr = int64.Parse(cmds[2], System.Globalization.NumberStyles.HexNumber).GetValueOrDefault();
+
 				String fileName = scope String();
 				int lineNum = 0;
 				int column;
 				int hotIdx;
 				int defLineStart;
 				int defLineEnd;
-				mDebugger.GetCodeAddrInfo((int)addr, fileName, out hotIdx, out defLineStart, out defLineEnd, out lineNum, out column);
+				mDebugger.GetCodeAddrInfo((int)addr, (int)inlineCallAddr, fileName, out hotIdx, out defLineStart, out defLineEnd, out lineNum, out column);
 				if (fileName.Length > 0)
 				{
 					int showHotIdx = -1;

@@ -325,6 +325,10 @@ bool DebugVisualizers::ReadFileTOML(const StringImpl& fileName)
 										Fail("Unexpected entry", value);
 								}
 							}
+							else if (name == "CallStackList")
+							{
+								entry->mCollectionType = DebugVisualizerEntry::CollectionType_CallStackList;
+							}
 							else
 								Fail("Unexpected entry", value);
 						}
