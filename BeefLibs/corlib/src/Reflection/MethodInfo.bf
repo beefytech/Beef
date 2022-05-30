@@ -48,8 +48,8 @@ namespace System.Reflection
 			(Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags & .MethodAccessMask) == 0 :
 			(mData.mMethodData.[Friend]mFlags & .MethodAccessMask) == 0;
 		public bool IsReadOnly => Compiler.IsComptime ?
-			(Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags & .ReadOnly) == 0 :
-			(mData.mMethodData.[Friend]mFlags & .ReadOnly) == 0;
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.ReadOnly) :
+			mData.mMethodData.[Friend]mFlags.HasFlag(.ReadOnly);
 
 		public StringView Name => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetName(mData.mComptimeMethodInstance) :
