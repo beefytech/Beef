@@ -176,11 +176,19 @@ static CeOpInfo gOpInfo[] =
 	{"CeOp_Conv_F32_I16", CEOI_FrameRef16, CEOI_FrameRefF32},
 	{"CeOp_Conv_F32_I32", CEOI_FrameRef32, CEOI_FrameRefF32},
 	{"CeOp_Conv_F32_I64", CEOI_FrameRef64, CEOI_FrameRefF32},
+	{"CeOp_Conv_F32_U8", CEOI_FrameRef8, CEOI_FrameRefF32},
+	{"CeOp_Conv_F32_U16", CEOI_FrameRef16, CEOI_FrameRefF32},
+	{"CeOp_Conv_F32_U32", CEOI_FrameRef32, CEOI_FrameRefF32},
+	{"CeOp_Conv_F32_U64", CEOI_FrameRef64, CEOI_FrameRefF32},
 	{"CeOp_Conv_F32_F64", CEOI_FrameRefF32, CEOI_FrameRefF32},
 	{"CeOp_Conv_F64_I8", CEOI_FrameRef8, CEOI_FrameRefF64},
 	{"CeOp_Conv_F64_I16", CEOI_FrameRef16, CEOI_FrameRefF64},
 	{"CeOp_Conv_F64_I32", CEOI_FrameRef32, CEOI_FrameRefF64},
 	{"CeOp_Conv_F64_I64", CEOI_FrameRef64, CEOI_FrameRefF64},
+	{"CeOp_Conv_F64_U8", CEOI_FrameRef8, CEOI_FrameRefF64},
+	{"CeOp_Conv_F64_U16", CEOI_FrameRef16, CEOI_FrameRefF64},
+	{"CeOp_Conv_F64_U32", CEOI_FrameRef32, CEOI_FrameRefF64},
+	{"CeOp_Conv_F64_U64", CEOI_FrameRef64, CEOI_FrameRefF64},
 	{"CeOp_Conv_F64_F32", CEOI_FrameRefF32, CEOI_FrameRefF64},
 	
 	CEOPINFO_SIZED_NUMERIC_PLUSF_2("Abs", CEOI_FrameRef, CEOI_FrameRef),
@@ -2263,6 +2271,40 @@ void CeBuilder::Build()
 										break;
 									case BeTypeCode_Double:
 										op = CeOp_Conv_I64_F64;
+										break;
+									}
+									break;
+								case BeTypeCode_Float:
+									switch (toTypeCode)
+									{
+									case BeTypeCode_Int8:
+										op = CeOp_Conv_F32_U8;
+										break;
+									case BeTypeCode_Int16:
+										op = CeOp_Conv_F32_U16;
+										break;
+									case BeTypeCode_Int32:
+										op = CeOp_Conv_F32_U32;
+										break;
+									case BeTypeCode_Int64:
+										op = CeOp_Conv_F32_U64;
+										break;
+									}
+									break;
+								case BeTypeCode_Double:
+									switch (toTypeCode)
+									{
+									case BeTypeCode_Int8:
+										op = CeOp_Conv_F64_U8;
+										break;
+									case BeTypeCode_Int16:
+										op = CeOp_Conv_F64_U16;
+										break;
+									case BeTypeCode_Int32:
+										op = CeOp_Conv_F64_U32;
+										break;
+									case BeTypeCode_Int64:
+										op = CeOp_Conv_F64_U64;
 										break;
 									}
 									break;
@@ -7936,6 +7978,30 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			break;
 		case CeOp_Conv_F64_F32:
 			CE_CAST(double, float);
+			break;
+		case CeOp_Conv_F32_U8:
+			CE_CAST(float, uint8);
+			break;
+		case CeOp_Conv_F32_U16:
+			CE_CAST(float, uint16);
+			break;
+		case CeOp_Conv_F32_U32:
+			CE_CAST(float, uint32);
+			break;
+		case CeOp_Conv_F32_U64:
+			CE_CAST(float, uint64);
+			break;
+		case CeOp_Conv_F64_U8:
+			CE_CAST(float, uint8);
+			break;
+		case CeOp_Conv_F64_U16:
+			CE_CAST(float, uint16);
+			break;
+		case CeOp_Conv_F64_U32:
+			CE_CAST(float, uint32);
+			break;
+		case CeOp_Conv_F64_U64:
+			CE_CAST(float, uint64);
 			break;
 
 		case CeOp_Abs_I8:
