@@ -305,7 +305,7 @@ bool BfParserData::IsUnwarnedAt(BfAstNode* node)
 
 bool BfParserData::IsWarningEnabledAtSrcIndex(int warningNumber, int srcIdx)
 {
-	bool enabled = true; //CDH TODO if/when we add warning level support, this default will change based on the warning number and the general project warning level setting
+	int enabled = 1; //CDH TODO if/when we add warning level support, this default will change based on the warning number and the general project warning level setting
 	int lastUnwarnPos = 0;
 
 	for (const auto& it : mWarningEnabledChanges)
@@ -313,11 +313,16 @@ bool BfParserData::IsWarningEnabledAtSrcIndex(int warningNumber, int srcIdx)
 		if (it.mKey > srcIdx)
 			break;
 		if (it.mValue.mWarningNumber == warningNumber)
-			enabled = it.mValue.mEnable;
+		{
+			if (it.mValue.mEnable)
+				enabled++;
+			else
+				enabled--;
+		}
 		if (it.mValue.mWarningNumber == -1)
 			lastUnwarnPos = -1;
 	}
-	return enabled;
+	return enabled > 0;
 }
 
 void BfParserData::Deref()

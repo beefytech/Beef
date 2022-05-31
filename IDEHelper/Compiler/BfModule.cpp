@@ -3143,14 +3143,6 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	if (!mHadBuildError)
 		mHadBuildError = true;
 
-	if ((mCurMethodState != NULL) && (mCurMethodState->mEmitRefNode != NULL))
-	{
-		bfError = mCompiler->mPassInstance->Fail("Emitted code had errors", mCurMethodState->mEmitRefNode);
-		if (bfError != NULL)
-			mCompiler->mPassInstance->MoreInfo(errorString, refNode);	
-		return bfError;
-	}
-
 	// Check mixins
 	{
 		auto checkMethodState = mCurMethodState;
@@ -3199,6 +3191,8 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 		if ((mCurMethodState != NULL) && (mCurMethodState->mDeferredCallEmitState != NULL) && (mCurMethodState->mDeferredCallEmitState->mCloseNode != NULL))
 			mCompiler->mPassInstance->MoreInfo("Error during deferred statement handling", mCurMethodState->mDeferredCallEmitState->mCloseNode);
+		else if ((mCurMethodState != NULL) && (mCurMethodState->mEmitRefNode != NULL))
+			mCompiler->mPassInstance->MoreInfo("Error in emitted code", mCurMethodState->mEmitRefNode);
 	}
 
 	return bfError;

@@ -2252,6 +2252,18 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 	}
 	else if (ceEmitSource->mSrcStart == -1)
 	{
+		auto parserData = refNode->GetParserData();
+		if (parserData != NULL)
+		{
+			// Add the warning changes occur before the start of the buffer.
+			//  We use this conservatively now - any temporary disabling will permanently disable
+			for (auto& warning : parserData->mWarningEnabledChanges)			
+			{
+				if (!warning.mValue.mEnable)
+					emitParser->mParserData->mWarningEnabledChanges[-warning.mValue.mWarningNumber] = warning.mValue;
+			}
+		}
+
 		ceEmitSource->mSrcStart = emitSrcStart;
 		ceEmitSource->mSrcEnd = emitParser->mSrcLength;
 	}
@@ -2555,6 +2567,12 @@ void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 	if (code.IsEmpty())
 		return;
 
+	if (mCurMethodInstance == NULL)
+	{
+		Fail("Invalid code mixin", refNode);
+		return;
+	}	
+
 	auto activeTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
 	//auto emitParser = activeTypeDef->mEmitParser;
 			
@@ -2631,6 +2649,8 @@ void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 
 	mBfIRBuilder->RestoreDebugLocation();
 	mBfIRBuilder->DupDebugLocation();
+
+	prevCustomAttribute.Restore();
 
 	FinishCEParseContext(refNode, mCurTypeInstance, &ceParseContext);
 }
