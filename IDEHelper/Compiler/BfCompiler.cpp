@@ -9870,7 +9870,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 		if (typeInst == NULL)
 			continue;
 		
-		if (typeHashSet.Contains(typeInst->mTypeDef->GetLatest()))
+		if (typeHashSet.Contains(typeInst->mTypeDef->GetDefinition()->GetLatest()))
 		{
 			if (typeInst->mCeTypeInfo == NULL)
 				continue;
@@ -9893,7 +9893,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 				auto emitParser = typeInst->mTypeDef->GetLastSource()->ToParser();
 
 				Dictionary<int, _EmitSource>* map = NULL;
-				emitLocMap.TryAdd(typeDef->GetLatest(), NULL, &map);
+				emitLocMap.TryAdd(typeDef->GetDefinition()->GetLatest(), NULL, &map);
 				_EmitSource emitSource;
 				emitSource.mEmitParser = emitParser;
 				emitSource.mIsPrimary = false;
@@ -9981,7 +9981,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 						continue;
 
 					Dictionary<int, _EmitSource>* map = NULL;
-					if (emitLocMap.TryGetValue(typeDef, &map))
+					if (emitLocMap.TryGetValue(typeDef->GetDefinition(), &map))
 					{
 						_EmitSource emitSource;
 						emitSource.mEmitParser = emitParser;
@@ -10045,7 +10045,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 					}
 				};
 
-				_CheckTypeDef(typeInst->mTypeDef);
+				_CheckTypeDef(typeInst->mTypeDef->GetDefinition());
 				for (auto partialTypeDef : typeInst->mTypeDef->mPartials)
 					_CheckTypeDef(partialTypeDef);
 			}
