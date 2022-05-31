@@ -2321,7 +2321,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 						auto dependentType = itr->mKey;							
 						if (dependentType->IsIncomplete())
 						{								
-							BF_ASSERT(dependentType->IsDeleting() || dependentType->IsOnDemand() || !dependentType->HasBeenReferenced() || !madeFullPass || dependentType->IsSpecializedByAutoCompleteMethod());
+							BF_ASSERT(dependentType->IsDeleting() || dependentType->IsOnDemand() || !dependentType->HasBeenReferenced() || mCanceling || !madeFullPass || dependentType->IsSpecializedByAutoCompleteMethod());
 						}
 					}
 #endif

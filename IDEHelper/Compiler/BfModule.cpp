@@ -20320,6 +20320,27 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				
 				if (!paramVar->mIsSplat)
 				{
+					if ((paramVar->mParamIdx >= 0) && (paramVar->mParamIdx < methodInstance->mDefaultValues.mSize))
+					{
+						auto defaultValue = methodInstance->mDefaultValues[paramVar->mParamIdx];
+						auto constant = mCurTypeInstance->mConstHolder->GetConstant(defaultValue.mValue);
+						if ((constant != NULL) &&
+							((BfIRConstHolder::IsIntable(constant->mTypeCode)) || (BfIRConstHolder::IsFloat(constant->mTypeCode))))
+						{
+							int64 writeVal = constant->mInt64;
+							if (constant->mTypeCode == BfTypeCode_Float)
+							{
+								// We need to do this because Singles are stored in mDouble, so we need to reduce here
+								float floatVal = (float)constant->mDouble;
+								writeVal = *(uint32*)&floatVal;
+							}
+							if (writeVal < 0)
+								paramName += StrFormat("$_%llu", -writeVal);
+							else
+								paramName += StrFormat("$%llu", writeVal);
+						}
+					}
+
 					if (paramVar->mResolvedType->IsValuelessType())
 					{
 						diVariable = mBfIRBuilder->DbgCreateAutoVariable(diFunction,
@@ -23787,6 +23808,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			addToWorkList = false;
 		}
 	}
+	else
+	{
+		GetMethodCustomAttributes(methodInstance);
+	}
 
 	auto func = methodInstance->mIRFunction;
 
@@ -24379,25 +24404,43 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 					if ((!checkMethodDef->mIsVirtual) || (checkMethodDef->mIsOverride))
 						continue;
 
+					BfMethodInstance* baseMethodInstance = NULL;
+
+					int checkMethodIdx = -1;
 					BfMethodInstance* lookupMethodInstance = lookupType->mMethodInstanceGroups[checkMethodDef->mIdx].mDefault;
 					if ((lookupMethodInstance == NULL) || (lookupMethodInstance->mVirtualTableIdx == -1))
-						continue;
-				
-					int checkMethodIdx = lookupMethodInstance->mVirtualTableIdx;
-					if (checkMethodIdx >= baseVirtualMethodTable.mSize)
-						FatalError("SlotVirtualMethod OOB in baseVirtualMethodTable[checkMethodIdx]");
-					auto& baseMethodRef = baseVirtualMethodTable[checkMethodIdx];
-					if (baseMethodRef.mDeclaringMethod.mMethodNum == -1)
 					{
-						BF_ASSERT(mCompiler->mOptions.mHasVDataExtender);
-						continue;
+						if (lookupType->IsUnspecializedTypeVariation())
+						{
+							if (!lookupMethodInstance->mMethodDef->mIsOverride)
+							{
+								baseMethodInstance = lookupMethodInstance;
+								checkMethodIdx = -2;
+							}
+						}
+
+						if (baseMethodInstance == NULL)
+							continue;
 					}
 
-					BfMethodInstance* baseMethodInstance = baseVirtualMethodTable[checkMethodIdx].mDeclaringMethod;
 					if (baseMethodInstance == NULL)
 					{
-						AssertErrorState();
-						continue;
+						checkMethodIdx = lookupMethodInstance->mVirtualTableIdx;
+						if (checkMethodIdx >= baseVirtualMethodTable.mSize)
+							FatalError("SlotVirtualMethod OOB in baseVirtualMethodTable[checkMethodIdx]");
+						auto& baseMethodRef = baseVirtualMethodTable[checkMethodIdx];
+						if (baseMethodRef.mDeclaringMethod.mMethodNum == -1)
+						{
+							BF_ASSERT(mCompiler->mOptions.mHasVDataExtender);
+							continue;
+						}
+
+						baseMethodInstance = baseVirtualMethodTable[checkMethodIdx].mDeclaringMethod;
+						if (baseMethodInstance == NULL)
+						{
+							AssertErrorState();
+							continue;
+						}
 					}
 
 					if ((baseMethodInstance != NULL) && (CompareMethodSignatures(baseMethodInstance, methodInstance)))
@@ -24405,7 +24448,9 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						if (methodDef->mIsOverride)
 						{
 							BfMethodInstance* checkMethodInstance;
-							if (typeInstance->IsValueType())
+							if (checkMethodIdx == -2)
+								checkMethodInstance = baseMethodInstance;
+							else if (typeInstance->IsValueType())
 								checkMethodInstance = checkBase->mVirtualMethodTable[checkMethodIdx].mDeclaringMethod;
 							else
 								checkMethodInstance = typeInstance->mVirtualMethodTable[checkMethodIdx].mDeclaringMethod;
@@ -24526,7 +24571,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 		if (bestOverrideMethodInstance != NULL)
 		{
 			if (ambiguousOverrideMethodInstance != NULL)
-			{								
+			{
 				bool allow = false;
 
 				// If neither of these declarations "include" each other then it's okay.  This can happen when we have two extensions that create the same virtual method but with different constraints.
@@ -24547,7 +24592,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 
 				if (!canSeeEachOther)
 				{
-					BF_ASSERT(bestOverrideMethodInstance->GetOwner()->IsUnspecializedType() && ambiguousOverrideMethodInstance->GetOwner()->IsUnspecializedType());						
+					BF_ASSERT(bestOverrideMethodInstance->GetOwner()->IsUnspecializedType() && ambiguousOverrideMethodInstance->GetOwner()->IsUnspecializedType());
 				}
 				else
 				{
@@ -24557,9 +24602,17 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", MethodToString(bestOverrideMethodInstance).c_str()), bestOverrideMethodInstance->mMethodDef->GetRefNode());
 						mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", MethodToString(ambiguousOverrideMethodInstance).c_str()), ambiguousOverrideMethodInstance->mMethodDef->GetRefNode());
 					}
-				}				
+				}
 			}
+		}
 
+		if (bestOverrideMethodIdx == -2)
+		{
+			// Comes from an unspecialized variation
+			virtualMethodMatchIdx = bestOverrideMethodIdx;
+		}
+		else if ((bestOverrideMethodInstance != NULL) && (bestOverrideMethodIdx != -1))
+		{
 			auto& baseVirtualMethodTable = checkBase->mVirtualMethodTable;
 			BfMethodInstance* baseVirtualMethodInstance = baseVirtualMethodTable[bestOverrideMethodIdx].mDeclaringMethod;
 			if ((baseVirtualMethodInstance != methodInstance) && (methodDef->mIsOverride))

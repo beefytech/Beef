@@ -7246,9 +7246,16 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 		}
 
 		BfExpression* arg = NULL;
+		DbgTypedValue argValue;
 		if (argIdx < (int) arguments.size())
 		{
 			arg = arguments[argIdx];
+			argValue = argValues[argIdx];
+		}
+		else if (param->mIsConst)
+		{
+			argValue.mType = param->mType;
+			argValue.mInt64 = param->mConstValue;
 		}
 		else if (mPassInstance != NULL)
 		{
@@ -7276,7 +7283,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 			continue;
 		}
 
-		auto argValue = argValues[argIdx];
+		
 		if (argValue.mType == NULL)
 			return DbgTypedValue();
 

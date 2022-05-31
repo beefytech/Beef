@@ -3206,12 +3206,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 						if (fieldInstance->mResolvedType->IsComposite())
 							PopulateType(fieldInstance->mResolvedType);
 
-						BfIRMDNode constDIType;
-						if (resolvedFieldType->IsTypedPrimitive())
-							constDIType = DbgGetType(resolvedFieldType->GetUnderlyingType());//resolvedFieldType->GetUnderlyingType()->mDIType ;
-						else
-							constDIType = DbgCreateConstType(resolvedFieldDIType);
-
+						BfIRMDNode constDIType = DbgCreateConstType(resolvedFieldDIType);
 						if ((fieldDef->mIsExtern) && (resolvedFieldType->IsPointer()))
 						{
 							auto underlyingType = resolvedFieldType->GetUnderlyingType();

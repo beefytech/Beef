@@ -1586,7 +1586,8 @@ void CeBuilder::Build()
 				BfMethodInstance dupUnspecMethodInstance;
 				dupUnspecMethodInstance.CopyFrom(unspecializedMethodInstance);
 				ProcessMethod(unspecializedMethodInstance, &dupUnspecMethodInstance, false);
-				dupMethodInstance.GetMethodInfoEx()->mGenericTypeBindings = dupUnspecMethodInstance.mMethodInfoEx->mGenericTypeBindings;
+				if (dupUnspecMethodInstance.mMethodInfoEx != NULL)
+					dupMethodInstance.GetMethodInfoEx()->mGenericTypeBindings = dupUnspecMethodInstance.mMethodInfoEx->mGenericTypeBindings;
 			}
 		}
 		

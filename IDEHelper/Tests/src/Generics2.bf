@@ -5,6 +5,22 @@ namespace Tests
 {
 	class Generics2
 	{
+		class ClassA<T, T2>
+		{
+			public virtual int32 GetWidth()
+			{
+				return 123;
+			}
+		}
+
+		class ClassB<T> : ClassA<T, T>
+		{
+			public override int32 GetWidth()
+			{
+				return base.GetWidth();
+			}
+		}
+
 		struct TestFunc<T, Del>
 		{
 			private int mId;

@@ -3290,9 +3290,9 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 		{
 			auto fieldInstance = &fieldInstanceRef;
 			auto fieldDef = fieldInstance->GetFieldDef();
-			if ((fieldDef != NULL) && (fieldDef->IsEnumCaseEntry()))
+			if (fieldDef != NULL)
 			{
-				if (fieldInstance->mConstIdx == -1)
+				if ((fieldInstance->mConstIdx == -1) || (fieldInstance->mResolvedType != typeInstance))
 					continue;
 
 				auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
@@ -3343,9 +3343,7 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 				for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 				{
 					auto fieldInstance = &fieldInstanceRef;
-					if (fieldInstance->mConstIdx == -1)
-						continue;
-					if (!fieldInstance->GetFieldDef()->IsEnumCaseEntry())
+					if ((fieldInstance->mConstIdx == -1) || (fieldInstance->mResolvedType != typeInstance))
 						continue;
 					auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
 					if (constant->mTypeCode == typeCode)

@@ -12,6 +12,7 @@ AssertEvalEquals("ClassA.TEST_StaticMethodA()", "100")
 AssertEvalContains("ClassA.TEST_StaticMethodB()", "Unable to find address for method")
 AssertAutocompleteEquals("ClassA.TEST_", "TEST_StaticMethodA\nTEST_StaticMethodB")
 AssertAutocompleteEquals("ca.TEST_", "TEST_MethodA\nTEST_MethodB")
+AssertEvalEquals("Test0(EnumA.C, 200)", "1202")
 NavigateBackwards()
 
 ToggleCommentAt("ClassA_MethodC")

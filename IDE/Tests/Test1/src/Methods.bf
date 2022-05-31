@@ -50,6 +50,20 @@ namespace IDETest
 			*/
 		}
 
+		enum EnumA
+		{
+			case A;
+			case B;
+			case C;
+
+			public const EnumA D = (EnumA)4;
+		}
+
+		static int Test0(EnumA a, int b, int c = 1000)
+		{
+			return (int)a + (int)b + (int)c;
+		}
+
 		public static void Test()
 		{
 			//Test_Start
@@ -57,6 +71,7 @@ namespace IDETest
 			ca.TEST_MethodA();
 			ClassA.TEST_StaticMethodA();
 			DoTest();
+			Test0(.A, 1, 2);
 		}
 	}
 }
