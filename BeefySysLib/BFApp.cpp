@@ -216,7 +216,7 @@ void BFApp::Process()
 		
 	int didUpdateCnt = 0;
 	
-	if (mClientUpdateCntF - mUpdateCntF > physRefreshRate / 2)
+	if (mUpdateCntF - mClientUpdateCntF > physRefreshRate / 2)
 	{
 		// Too large of a difference, just sync
 		mClientUpdateCntF = mUpdateCntF - 1;
@@ -231,7 +231,7 @@ void BFApp::Process()
 			break;
 	}
 
-	// Only attempt UpdateF updates if our rates aren't nearl) the same
+	// Only attempt UpdateF updates if our rates aren't nearly the same
 	if ((mRefreshRate != 0) && (fabs(physRefreshRate - mRefreshRate) / (float)mRefreshRate > 0.1f))
 	{
 		float updateFAmt = (float)(mUpdateCntF - mClientUpdateCntF);
