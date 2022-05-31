@@ -8813,15 +8813,12 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 			}
 		}
 
-		String evalStr = "(CallStackAddr)0x{1}";
-
-		if (!debugVis->mShowElementAddrs)
-			evalStr.Insert(0, "*");
-		
+		String evalStr = "(System.CallStackAddr)0x{1}";		
 		evalStr += ", refid=\"" + referenceId + ".[]\"";		
 		evalStr += ", ne";
+
 		retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, size, 10000) +
-			"\t[{0}]\t(CallStackAddr)0x{1}, action=ShowCodeAddr {1} {2}\t" + firstVal + "\t" + EncodeDataPtr((addr_target)0, false);
+			"\t[{0}]\t" + evalStr + ", action=ShowCodeAddr {1} {2}\t" + firstVal + "\t" + EncodeDataPtr((addr_target)0, false);
 				
 		retVal += "\n:addrs\t" + addrs;		
 		retVal += "\n:addrsEntrySize\t2";
