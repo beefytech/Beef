@@ -8353,8 +8353,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			retVal += "\n:action\t";
 			retVal += formatInfo.mAction;
 		}
-		else
-		if ((debugVis != NULL) && (!debugVis->mAction.empty()))
+		else if ((debugVis != NULL) && (!debugVis->mAction.empty()))
 		{
 			String rawActionStr = mDebugManager->mDebugVisualizers->DoStringReplace(debugVis->mAction, dbgVisWildcardCaptures);
 			String actionStr;
