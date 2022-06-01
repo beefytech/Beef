@@ -1369,6 +1369,7 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 
 	AddEntry(AutoCompleteEntry("token", "function"), filter);
 	AddEntry(AutoCompleteEntry("token", "delegate"), filter);
+	AddEntry(AutoCompleteEntry("token", "decltype"), filter);
 	
 	if (mModule->mCurTypeInstance != NULL)
 	{
