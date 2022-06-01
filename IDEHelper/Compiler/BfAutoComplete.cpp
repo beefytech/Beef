@@ -3671,6 +3671,7 @@ void BfAutoComplete::FixitAddNamespace(BfAstNode* refNode, const StringImpl& nam
 	auto parserData = refNode->GetParserData();
 
 	BfUsingFinder usingFinder;
+	usingFinder.mFromIdx = refNode->mSrcStart;
 	usingFinder.VisitMembers(refNode->GetSourceData()->mRootNode);
 	AddEntry(AutoCompleteEntry("fixit", StrFormat("using %s;\t.using|%s|%d||using %s;", namespaceStr.c_str(), parserData->mFileName.c_str(),
 		usingFinder.mLastIdx, namespaceStr.c_str()).c_str()));

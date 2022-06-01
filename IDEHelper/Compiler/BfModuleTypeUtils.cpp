@@ -9931,6 +9931,7 @@ void BfModule::CheckTypeRefFixit(BfAstNode* typeRef, const char* appendName)
 		int insertLoc = 0;
 
 		BfUsingFinder usingFinder;
+		usingFinder.mFromIdx = typeRef->mSrcStart;
 		usingFinder.VisitMembers(typeRef->GetSourceData()->mRootNode);
 
 		for (auto& namespaceStr : fixitNamespaces)

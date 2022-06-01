@@ -55,16 +55,33 @@ public:
 class BfUsingFinder : public BfFixitFinder
 {
 public:
+	int mFromIdx;
 	int mLastIdx;
 
 public:
 	BfUsingFinder()
 	{
 		mLastIdx = 0;
+		mFromIdx = -1;
 	}
+
 	virtual void Visit(BfUsingDirective* usingDirective) override
 	{
 		mLastIdx = FindLineStartAfter(usingDirective->GetSourceData(), usingDirective->GetSrcEnd());		
+	}
+
+	virtual void Visit(BfNamespaceDeclaration* namespaceDecl) override
+	{
+		if (mFromIdx != -1)
+		{ 
+			if ((mFromIdx < namespaceDecl->mSrcStart) || (mFromIdx >= namespaceDecl->mSrcEnd))
+			{
+				// Not inside
+				return;
+			}
+		}
+
+		BfFixitFinder::Visit(namespaceDecl);
 	}
 };
 
