@@ -1574,7 +1574,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 
 			// This can fail if an inlined method is not emitted contiguously, or if multiple copies of the same method
 			//  get inlined at exactly the same DbgLoc -- which isn't possible in Beef
-			BF_ASSERT(curInlineBuilder == newInlineBuilder);
+			//BF_ASSERT(curInlineBuilder == newInlineBuilder);
 		}		
 		
 		DbgSStartTag();
