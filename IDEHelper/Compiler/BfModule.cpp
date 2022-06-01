@@ -4950,19 +4950,6 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 		auto _SizedIndex = [&](BfIRValue target, BfIRValue index)
 		{
 			BfTypedValue result;
-// 			if (sizedArrayType->mElementType->IsSizeAligned())
-// 			{
-// 				auto ptrType = CreatePointerType(sizedArrayType->mElementType);
-// 				auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
-// 				auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
-// 				result = BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
-// 			}
-// 			else
-// 			{
-// 				auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
-// 				result = BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
-// 			}
-
 			auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index, true);
 			result = BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
 
@@ -5117,8 +5104,11 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 		{
 			BfExprEvaluator exprEvaluator(this);
 			BfTypedValue leftTypedVal = exprEvaluator.LoadLocal(mCurMethodState->mLocals[0]);
+			leftTypedVal = AggregateSplat(leftTypedVal);
 			BfTypedValue leftUnionTypedVal = ExtractValue(leftTypedVal, NULL, 1);
+
 			BfTypedValue rightTypedVal = exprEvaluator.LoadLocal(mCurMethodState->mLocals[1]);
+			rightTypedVal = AggregateSplat(rightTypedVal);
 			BfTypedValue rightUnionTypedVal = ExtractValue(rightTypedVal, NULL, 1);
 
 			EmitEquals(leftUnionTypedVal, rightUnionTypedVal, exitBB, strictEquals);
