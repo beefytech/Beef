@@ -2176,11 +2176,7 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 		
 		BfLogSys(mSystem, "Emit typeDef for type %p created %p parser %p typeDecl %p\n", typeInstance, emitTypeDef, emitParser, emitTypeDef->mTypeDeclaration);
 
-		String typeName;
-		typeName += typeInstance->mTypeDef->mProject->mName;
-		typeName += ":";
-
-		typeName += TypeToString(typeInstance, BfTypeNameFlags_None);
+		String typeName = TypeToString(typeInstance, BfTypeNameFlag_AddProjectName);
 		
 		if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mEmitEmbedEntries.IsEmpty()))
 			mCompiler->mResolvePassData->mEmitEmbedEntries.TryGetValue(typeName, &emitEmbedEntry);
@@ -5933,11 +5929,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		
 		if (isCurrentEntry)
 		{
-			String typeName;
-			typeName += typeInstance->mTypeDef->mProject->mName;
-			typeName += ":";
-			typeName += TypeToString(typeInstance, BfTypeNameFlags_None);
-
+			String typeName = TypeToString(typeInstance, BfTypeNameFlag_AddProjectName);
 			if (mCompiler->mResolvePassData->mEmitEmbedEntries.ContainsKey(typeName))
 			{
 				wantsOnDemandMethods = false;
@@ -14808,6 +14800,31 @@ void BfModule::VariantToString(StringImpl& str, const BfVariant& variant)
 void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameFlags typeNameFlags, Array<String>* genericMethodNameOverrides)
 {
 	BP_ZONE("BfModule::DoTypeToString");
+
+	if ((typeNameFlags & BfTypeNameFlag_AddProjectName) != 0)
+	{
+		BfProject* defProject = NULL;
+
+		auto typeInst = resolvedType->ToTypeInstance();
+		if (typeInst != NULL)
+		{
+			defProject = typeInst->mTypeDef->mProject;
+			str += defProject->mName;
+			str += ":";
+		}
+
+		SizedArray<BfProject*, 4> projectList;
+		BfTypeUtils::GetProjectList(resolvedType, &projectList, 0);
+		if (!projectList.IsEmpty())
+		{
+			if (defProject != projectList[0])
+			{
+				str += projectList[0]->mName;
+				str += ":";
+			}
+		}
+		typeNameFlags = (BfTypeNameFlags)(typeNameFlags & ~BfTypeNameFlag_AddProjectName);
+	}
 
 	// This is clearly wrong.  If we pass in @T0 from a generic type, this would immediately disable the ability to get its name
 	/*if (resolvedType->IsUnspecializedType())

@@ -45,6 +45,13 @@ namespace IDE
 				if (lc != rc)
 					return false;
 
+				if (lc == ':')
+				{
+					// If one has a subproject specified then ignore that
+					li = lhs.LastIndexOf(':');
+					ri = rhs.LastIndexOf(':');
+				}
+
 				if (lc == '<')
 				{
 					SkipGeneric(lhs, ref li);

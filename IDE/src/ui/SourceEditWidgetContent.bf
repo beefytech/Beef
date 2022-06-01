@@ -302,7 +302,7 @@ namespace IDE.ui
 
 					DeleteAndNullify!(mGenericTypeFilter);
 					mIgnoreChange = true;
-					int colonPos = typeName.IndexOf(':');
+					int colonPos = typeName.LastIndexOf(':');
 					if (colonPos != -1)
 						mGenericTypeCombo.Label = typeName.Substring(colonPos + 1);
 					else
@@ -321,7 +321,7 @@ namespace IDE.ui
 						EntryLoop: for (var entry in mGenericTypeData)
 						{
 							StringView useName = entry.mTypeName;
-							int colonPos = useName.IndexOf(':');
+							int colonPos = useName.LastIndexOf(':');
 							if (colonPos != -1)
 								useName.RemoveFromStart(colonPos + 1);
 

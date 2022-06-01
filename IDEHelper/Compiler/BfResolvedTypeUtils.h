@@ -57,7 +57,8 @@ enum BfTypeNameFlags : uint16
 	BfTypeNameFlag_InternalName = 0x100, // Use special delimiters to remove ambiguities (ie: '+' for inner types)	
 	BfTypeNameFlag_HideGlobalName = 0x200,
 	BfTypeNameFlag_ExtendedInfo = 0x400,
-	BfTypeNameFlag_ShortConst = 0x800	
+	BfTypeNameFlag_ShortConst = 0x800,
+	BfTypeNameFlag_AddProjectName = 0x1000
 };
 
 enum BfMethodNameFlags : uint8

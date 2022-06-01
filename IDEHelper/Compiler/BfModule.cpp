@@ -13894,7 +13894,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				else
 				{
 					methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
-					mOnDemandMethodCount++;
+					if (!mIsScratchModule)
+						mOnDemandMethodCount++;
 				}
 			}
 		}

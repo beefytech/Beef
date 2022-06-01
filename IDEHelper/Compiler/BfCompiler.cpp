@@ -9132,11 +9132,13 @@ void BfCompiler::GetTypeDefs(const StringImpl& inTypeName, Array<BfTypeDef*>& ty
 	BfProject* project = NULL;
 	int idx = 0;
 
-	int sep = (int)inTypeName.IndexOf(':');
+	int sep = (int)inTypeName.LastIndexOf(':');
 	if (sep != -1)
 	{
+		int startProjName = (int)inTypeName.LastIndexOf(':', sep - 1) + 1;
+
 		idx = sep + 1;
-		project = mSystem->GetProject(inTypeName.Substring(0, sep));
+		project = mSystem->GetProject(inTypeName.Substring(startProjName, sep - startProjName));
 	}
 
 	String typeName;
@@ -9271,10 +9273,11 @@ BfType* BfCompiler::GetType(const StringImpl& fullTypeName)
 	BfProject* activeProject = NULL;
 	
 	String typeName = fullTypeName;
-	int colonPos = (int)typeName.IndexOf(':');
+	int colonPos = (int)typeName.LastIndexOf(':');
 	if (colonPos != -1)
 	{
-		activeProject = mSystem->GetProject(typeName.Substring(0, colonPos));
+		int startProjName = (int)typeName.LastIndexOf(':', colonPos - 1) + 1;
+		activeProject = mSystem->GetProject(typeName.Substring(startProjName, colonPos - startProjName));
 		typeName.Remove(0, colonPos + 1);
 	}
 
@@ -9923,10 +9926,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 
 				if ((emitParser == NULL) || (!emitParser->mIsEmitted))
 				{
-					String typeName;
-					outString += typeInst->mTypeDef->mProject->mName;
-					outString += ":";
-					outString += bfCompiler->mContext->mScratchModule->TypeToString(typeInst, BfTypeNameFlags_None);
+					outString += bfCompiler->mContext->mScratchModule->TypeToString(typeInst, BfTypeNameFlag_AddProjectName);
 				}
 				else
 				{
@@ -10416,10 +10416,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetGenericTypeInstances(BfCompiler*
 			continue;
 
 		if (typeInst->mTypeDef->GetDefinition()->GetLatest() == lookupTypeInst->mTypeDef->GetDefinition()->GetLatest())
-		{
-			outString += typeInst->mTypeDef->mProject->mName;
-			outString += ":";
-			outString += bfCompiler->mContext->mScratchModule->TypeToString(typeInst, BfTypeNameFlags_None);
+		{			
+			outString += bfCompiler->mContext->mScratchModule->TypeToString(typeInst, BfTypeNameFlag_AddProjectName);
 			outString += "\n";
 		}
 	}
