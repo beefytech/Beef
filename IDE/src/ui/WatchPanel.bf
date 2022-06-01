@@ -2454,7 +2454,28 @@ namespace IDE.ui
                 }
             }            
         }
-        
+
+		static void RemoveCustomContent(WatchListViewItem listViewItem)
+		{
+			var dataItem = listViewItem.GetSubItem(1) as WatchListViewItem;
+			var typeItem = listViewItem.GetSubItem(2) as WatchListViewItem;
+
+			var listView = listViewItem.mListView as WatchListView;
+
+			if (dataItem.mCustomContentWidget != null)
+			{
+				dataItem.mCustomContentWidget.RemoveSelf();
+				DeleteAndNullify!(dataItem.mCustomContentWidget);
+				listView.mListSizeDirty = true;
+				listViewItem.mSelfHeight = listView.mFont.GetLineSpacing();
+			}
+			if (typeItem.mCustomContentWidget != null)
+			{
+				typeItem.mCustomContentWidget.RemoveSelf();
+				DeleteAndNullify!(typeItem.mCustomContentWidget);
+			}
+		}
+
         void IWatchOwner.UpdateWatch(WatchListViewItem listViewItem)
         {
             if (mDisabled)
@@ -2862,22 +2883,6 @@ namespace IDE.ui
 			var dataItem = listViewItem.GetSubItem(1) as WatchListViewItem;
 			var typeItem = listViewItem.GetSubItem(2) as WatchListViewItem;
 
-			void RemoveCustomContent()
-			{
-				if (dataItem.mCustomContentWidget != null)
-				{
-					dataItem.mCustomContentWidget.RemoveSelf();
-					DeleteAndNullify!(dataItem.mCustomContentWidget);
-					mListView.mListSizeDirty = true;
-					listViewItem.mSelfHeight = mListView.mFont.GetLineSpacing();
-				}
-				if (typeItem.mCustomContentWidget != null)
-				{
-					typeItem.mCustomContentWidget.RemoveSelf();
-					DeleteAndNullify!(typeItem.mCustomContentWidget);
-				}
-			}
-
 			if (watch.mStringView != null)
 			{
 				dataItem.Label = "";
@@ -2900,7 +2905,7 @@ namespace IDE.ui
 			}
 			else
 			{
-				RemoveCustomContent();
+				RemoveCustomContent(listViewItem);
 			}
 
             watch.mHasValue = true;
@@ -3001,7 +3006,7 @@ namespace IDE.ui
             gApp.RefreshWatches();
         }
 
-        public static bool AddDisplayTypeMenu(String label, Menu menu, WatchResultType watchResultType, String referenceId, bool includeDefault)
+        public static bool AddDisplayTypeMenu(String label, WatchListView listView, Menu menu, WatchResultType watchResultType, String referenceId, bool includeDefault)
         {
             bool hasInt = watchResultType.HasFlag(.Int);
 			bool hasFloat = watchResultType.HasFlag(.Float);
@@ -3036,7 +3041,15 @@ namespace IDE.ui
 			if (hasText)
 			{
 				AddSelectableMenuItem(parentItem, "Default", formatStr.IsEmpty, 
-					new () => SetDisplayType(referenceId, "", intDisplayType, mmDisplayType, floatDisplayType));
+					new () =>
+					{
+						listView.GetRoot().WithSelectedItems(scope (item) =>
+							{
+								var watchListViewItem = item as WatchListViewItem;
+								RemoveCustomContent(watchListViewItem);
+							});
+						SetDisplayType(referenceId, "", intDisplayType, mmDisplayType, floatDisplayType);
+					});
 				AddSelectableMenuItem(parentItem, "String", formatStr == "str",
 					new () => SetDisplayType(referenceId, "str", intDisplayType, mmDisplayType, floatDisplayType));
 			}
@@ -3114,7 +3127,7 @@ namespace IDE.ui
 
 				var watchEntry = listViewItem.mWatchEntry;
 				
-			    AddDisplayTypeMenu("Default Display", menu, listViewItem.mWatchEntry.mResultType, null, false);
+			    AddDisplayTypeMenu("Default Display", listView, menu, listViewItem.mWatchEntry.mResultType, null, false);
 
 			    //Debug.WriteLine(String.Format("RefType: {0}", watchEntry.mReferenceId));
 
@@ -3123,13 +3136,13 @@ namespace IDE.ui
 
 				if (watchEntry.mReferenceId != null)
 				{
-					AddDisplayTypeMenu("Watch Display", menu, listViewItem.mWatchEntry.mResultType, watchEntry.mReferenceId, true);
+					AddDisplayTypeMenu("Watch Display", listView, menu, listViewItem.mWatchEntry.mResultType, watchEntry.mReferenceId, true);
 
 					int arrayPos = watchEntry.mReferenceId.IndexOf(".[]$");
 					if (arrayPos != -1)
 					{
 						var refId = scope String(watchEntry.mReferenceId, 0, arrayPos + 3);
-						AddDisplayTypeMenu("Series Watch Display", menu, listViewItem.mWatchEntry.mResultType, refId, true);
+						AddDisplayTypeMenu("Series Watch Display", listView, menu, listViewItem.mWatchEntry.mResultType, refId, true);
 					}
 				}
 				
