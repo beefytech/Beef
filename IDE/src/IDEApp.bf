@@ -1128,7 +1128,7 @@ namespace IDE
 
 				int64 addr = int64.Parse(cmds[1], System.Globalization.NumberStyles.HexNumber).GetValueOrDefault();
 				int64 inlineCallAddr = 0;
-				if (cmds.Count >= 2)
+				if (cmds.Count > 2)
 					inlineCallAddr = int64.Parse(cmds[2], System.Globalization.NumberStyles.HexNumber).GetValueOrDefault();
 
 				String fileName = scope String();
