@@ -3406,6 +3406,9 @@ void BfExprEvaluator::Visit(BfBlock* blockExpr)
 
 bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail)
 {
+	if (BfNodeIsA<BfUninitializedExpression>(checkNode))
+		return true;
+
 	BfAstNode* checkChild = checkNode;
 	bool childWasAndRHS = false;
 	bool foundIf = false;
