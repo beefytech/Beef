@@ -5346,8 +5346,11 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						continue;
 				}
 
-				if (!curCheckType->IsTypeMemberAccessible(field->mDeclaringType, activeTypeDef))
-					continue;
+				if (!mModule->IsInSpecializedSection())
+				{
+					if (!curCheckType->IsTypeMemberAccessible(field->mDeclaringType, activeTypeDef))
+						continue;
+				}
 
 				if (matchedField != NULL)
 				{
