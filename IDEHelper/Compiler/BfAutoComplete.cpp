@@ -1314,7 +1314,8 @@ bool BfAutoComplete::WantsEntries()
 	return (mResolveType == BfResolveType_Autocomplete) || 
 		(mResolveType == BfResolveType_Autocomplete_HighPri) ||
 		(mResolveType == BfResolveType_GetSymbolInfo) ||
-		(mResolveType == BfResolveType_GoToDefinition);
+		(mResolveType == BfResolveType_GoToDefinition) ||
+		(mResolveType == BfResolveType_VerifyTypeName);
 }
 
 void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
