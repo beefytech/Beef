@@ -668,7 +668,7 @@ namespace System.Collections
 			{
 				mQueue.RemoveAt(mIndex);
 #if VERSION_QUEUE
-				mVersion = mList.mVersion;
+				mVersion = mQueue.mVersion;
 #endif
 				mIndex--;
 			}
