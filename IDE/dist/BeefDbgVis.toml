@@ -8,6 +8,7 @@ Action = "ShowCodeAddr {(int)this - 1,X}"
 [[Type]]
 Name = "System.CallStackList"
 DisplayString = "{__funcName(((int*)(int)this)[0] - 1), ne}"
+Action = "ShowCodeAddr {((int*)(int)this)[0] - 1,X}"
 [Type.Expand.CallStackList]
 
 [[Type]]
