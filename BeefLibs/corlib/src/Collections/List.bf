@@ -429,10 +429,10 @@ namespace System.Collections
 			if (mSize > 0)
 			{
 				mSize = 0;
-			}
 #if VERSION_LIST
-			mVersion++;
+				mVersion++;
 #endif
+			}
 		}
 
 		/*public static void DeleteItemsAndClear<T>(List<T> list) where T : delete
