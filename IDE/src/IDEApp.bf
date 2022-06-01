@@ -2898,11 +2898,15 @@ namespace IDE
 
 		public void GetRelaunchCmd(bool safeMode, String outRelaunchCmd)
 		{
-			outRelaunchCmd.Append("\"");
-			Environment.GetExecutableFilePath(outRelaunchCmd);
-			outRelaunchCmd.Append("\" -workspace=\"");
-			outRelaunchCmd.Append(mWorkspace.mDir);
-			outRelaunchCmd.Append("\"");
+			if (mWorkspace.mDir != null)
+			{
+				outRelaunchCmd.Append("\"");
+				Environment.GetExecutableFilePath(outRelaunchCmd);
+				outRelaunchCmd.Append("\" -workspace=\"");
+				outRelaunchCmd.Append(mWorkspace.mDir);
+				outRelaunchCmd.Append("\"");
+			}
+
 			if (safeMode)
 				outRelaunchCmd.Append(" -safe");
 		}
@@ -7540,6 +7544,9 @@ namespace IDE
 
 					String fullDir = new String();
 					Path.GetFullPath(relDir, fullDir);
+
+					if (fullDir.EndsWith("BeefSpace.toml", .OrdinalIgnoreCase))
+						fullDir.RemoveFromEnd("BeefSpace.toml".Length);
 
 					if ((File.Exists(fullDir)) || (IsBeefFile(fullDir)))
 					{
