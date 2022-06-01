@@ -23221,7 +23221,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			bool interfaceFound = false;
 			for (auto ifaceInst : typeInstance->mInterfaces)
 				interfaceFound |= ifaceInst.mInterfaceType == mCurMethodInstance->mMethodInfoEx->mExplicitInterface;
-			if (!interfaceFound)
+			if ((!interfaceFound) && (!typeInstance->mTypeFailed))
 			{				
 				if (methodDef->mMethodDeclaration != NULL)
 					Fail("Containing class has not declared to implement this interface", methodDef->mMethodDeclaration);

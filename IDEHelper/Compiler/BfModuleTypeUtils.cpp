@@ -4957,7 +4957,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						bool interfaceFound = false;
 						for (auto ifaceInst : typeInstance->mInterfaces)
 							interfaceFound |= ifaceInst.mInterfaceType == explicitInterface;
-						if (!interfaceFound)
+						if ((!interfaceFound) && (!typeInstance->mTypeFailed))
 						{
 							Fail("Containing class has not declared to implement this interface", propDecl->mExplicitInterface, true);
 						}
