@@ -8705,7 +8705,22 @@ public:
 		mResult += "\n";
 	}
 
-	void GetMethodDefString(BfMethodDef* methodDef, StringImpl& result)
+	void GetGenericStr(BfMethodDef* methodDef, StringImpl& result)
+	{
+		if (methodDef->mGenericParams.IsEmpty())
+			return;
+
+		result += "<";
+		for (int i = 0; i < methodDef->mGenericParams.mSize; i++)
+		{
+			if (i > 0)
+				result += ", ";
+			result += methodDef->mGenericParams[i]->mName;
+		}
+		result += ">";
+	}
+
+	void GetMethodDefString(BfMethodDef* methodDef, StringImpl& result, int* genericStrIdx = NULL)
 	{
 		if (methodDef->mMethodType == BfMethodType_Ctor)
 		{
@@ -8723,6 +8738,19 @@ public:
 			result += methodDef->mName;
 		if (methodDef->mMethodType == BfMethodType_Mixin)
 			result += "!";
+
+		if (!methodDef->mGenericParams.IsEmpty())
+		{
+			if (genericStrIdx != NULL)
+			{
+				*genericStrIdx = result.mLength;
+			}
+			else
+			{
+				GetGenericStr(methodDef, result);
+			}
+		}
+
 		result += "(";
 		AddParams(methodDef, result);
 		result += ")";
@@ -8986,6 +9014,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 				bool matches = matchHelper.CheckMemberMatch(typeDef, methodDef->mName);
 				bool hasTypeString = false;
 				bool hasMethodString = false;
+				int genericMethodParamIdx = -1;
 
 				if ((!matches) && (openParenIdx != -1))
 				{
@@ -8997,7 +9026,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 						if (BfTypeUtils::TypeToString(tempStr, typeDef, (BfTypeNameFlags)(BfTypeNameFlag_HideGlobalName | BfTypeNameFlag_InternalName)))
 							tempStr += ".";
 					}
-					matchHelper.GetMethodDefString(methodDef, tempStr);
+					matchHelper.GetMethodDefString(methodDef, tempStr, &genericMethodParamIdx);					
 					matchHelper.CheckMatch(tempStr, openParenIdx);
 					matches = matchHelper.IsFullMatch();
 				}
@@ -9014,7 +9043,18 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 							result += ".";
 					}
 					if (hasMethodString)
-						matchHelper.AddMethodDef(methodDef, &tempStr);
+					{
+						if (genericMethodParamIdx != -1)
+						{
+							result += StringView(tempStr, 0, genericMethodParamIdx);
+							matchHelper.GetGenericStr(methodDef, result);
+							result += StringView(tempStr, genericMethodParamIdx);
+							tempStr.Clear();
+							matchHelper.AddMethodDef(methodDef, &tempStr);
+						}
+						else
+							matchHelper.AddMethodDef(methodDef, &tempStr);
+					}
 					else
 						matchHelper.AddMethodDef(methodDef);
 				}
