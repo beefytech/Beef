@@ -7688,7 +7688,7 @@ BfIRFunction BfModule::GetBuiltInFunc(BfBuiltInFuncType funcTypeId)
 				else
 				{
 					String funcName = mCompiler->mOptions.mMallocLinkName;
-					if (funcName.IsEmpty())
+					if ((funcName.IsEmpty()) || (mIsComptimeModule))
 						funcName = "malloc";
 					func = mBfIRBuilder->GetFunction(funcName);
 					if (!func)
@@ -7711,7 +7711,7 @@ BfIRFunction BfModule::GetBuiltInFunc(BfBuiltInFuncType funcTypeId)
 				else
 				{
 					String funcName = mCompiler->mOptions.mFreeLinkName;
-					if (funcName.IsEmpty())
+					if ((funcName.IsEmpty()) || (mIsComptimeModule))
 						funcName = "free";
 					func = mBfIRBuilder->GetFunction(funcName);
 					if (!func)
