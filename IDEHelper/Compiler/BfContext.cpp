@@ -907,25 +907,30 @@ void BfContext::ValidateDependencies()
 // 	BfLogSysM("ValidateDependencies\n");
 // 
 // 	bool deletedNewTypes = false;
-// 	auto itr = mResolvedTypes.begin();
-// 	while (itr != mResolvedTypes.end())
-// 	{
-// 		auto type = itr.mCurEntry->mValue;		
-// 		if ((type->IsGenericTypeInstance()) && (type->mDefineState > BfTypeDefineState_Undefined))
+// 	for (auto type : mResolvedTypes)	
+// 	{	
+// 		if (type->IsDeleting())
+// 			continue;
+// 
+// 		if (type->IsGenericTypeInstance())
 // 		{
 // 			// We can't contain deleted generic arguments without being deleted ourselves
 // 			BfTypeInstance* genericType = (BfTypeInstance*)type;
 // 
-// 			for (auto genericTypeArg : genericType->mTypeGenericArguments)
+// 			for (auto genericTypeArg : genericType->mGenericTypeInfo->mTypeGenericArguments)
 // 			{
-// 				auto depType = genericTypeArg->ToDependedType();
-// 				if (depType != NULL)
+// 				BF_ASSERT((!genericTypeArg->IsDeleting()));
+// 
+// 				auto argDepType = genericTypeArg->ToDependedType();
+// 				if (argDepType != NULL)
 // 				{
-// 					BF_ASSERT(depType->mDependencyMap.mTypeSet.ContainsKey(type));					
+// 					BfDependencyMap::DependencyEntry* depEntry = NULL;
+// 					argDepType->mDependencyMap.mTypeSet.TryGetValue(type, &depEntry);
+// 					BF_ASSERT(depEntry != NULL);
+// 					BF_ASSERT((depEntry->mFlags & BfDependencyMap::DependencyFlag_TypeGenericArg) != 0);
 // 				}
 // 			}
-// 		}
-// 		++itr;
+// 		}		
 // 	}
 #endif
 }
@@ -979,6 +984,11 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	{
 		BfLogSysM("Setting revision.  Type: %p  Revision: %d\n", typeInst, mCompiler->mRevision);
 		typeInst->mRevision = mCompiler->mRevision;
+		if (typeInst->IsGenericTypeInstance())
+		{
+			BfLogSysM("Setting BfTypeRebuildFlag_PendingGenericArgDep for type %p\n", typeInst);
+			typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags | BfTypeRebuildFlag_PendingGenericArgDep);
+		}
 	}
 
 	if ((typeInst->IsTypeAlias()) != (typeInst->mTypeDef->mTypeCode == BfTypeCode_TypeAlias))
@@ -1970,6 +1980,15 @@ void BfContext::UpdateAfterDeletingTypes()
 					for (auto genericTypeArg : genericType->mGenericTypeInfo->mTypeGenericArguments)
 					{
 						BF_ASSERT((!genericTypeArg->IsDeleting()));
+
+						auto argDepType = genericTypeArg->ToDependedType();
+						if (argDepType != NULL)
+						{
+							BfDependencyMap::DependencyEntry* depEntry = NULL;
+							argDepType->mDependencyMap.mTypeSet.TryGetValue(type, &depEntry);
+							BF_ASSERT(depEntry != NULL);
+							BF_ASSERT((depEntry->mFlags & BfDependencyMap::DependencyFlag_TypeGenericArg) != 0);
+						}
 					}
 				}
 #endif
@@ -2176,7 +2195,7 @@ void BfContext::UpdateRevisedTypes()
 		}
 		
 		// Clear flags we don't want to propagate
-		typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags & BfTypeRebuildFlag_UnderlyingTypeDeferred);
+		typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags & (BfTypeRebuildFlag_UnderlyingTypeDeferred | BfTypeRebuildFlag_PendingGenericArgDep));
 		
 		if (typeDef->mIsPartial)
 		{

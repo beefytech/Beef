@@ -447,6 +447,7 @@ enum BfTypeRebuildFlags
 	BfTypeRebuildFlag_RebuildQueued = 0x20000,
 	BfTypeRebuildFlag_ConstEvalCancelled = 0x40000,
 	BfTypeRebuildFlag_ChangedMidCompile = 0x80000,
+	BfTypeRebuildFlag_PendingGenericArgDep = 0x100000
 };
 
 class BfTypeDIReplaceCallback;

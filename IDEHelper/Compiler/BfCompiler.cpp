@@ -2307,14 +2307,14 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 		for (auto type : mContext->mResolvedTypes)
 		{
 			if (type != NULL)
-			{				
-				auto depType = type->ToDependedType();					
+			{
+				auto depType = type->ToDependedType();
 				auto typeInst = type->ToTypeInstance();
-							
+
 				if (depType != NULL)
 				{
 					extern BfModule* gLastCreatedModule;
-						
+
 #ifdef _DEBUG
 					for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end(); ++itr)
 					{
@@ -2334,7 +2334,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 						auto dependentType = itr->mKey;
 						auto depTypeInst = dependentType->ToTypeInstance();
 						auto& depData = itr->mValue;
-							
+						
 						bool isInvalidVersion = (dependentType->mRevision > depData.mRevision);// && (deleteUnusued) && (madeFullPass);
 							
 						//TODO: Just to cause crash if dependentType is deleted
@@ -2491,7 +2491,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 		{
 			// This flag should be handled by now
 			BF_ASSERT((type->mRebuildFlags & BfTypeRebuildFlag_AwaitingReference) == 0);
-		}		
+		}
 	}
 #endif
 
@@ -2549,7 +2549,7 @@ void BfCompiler::SanitizeDependencyMap()
 		auto depType = type->ToDependedType();			
 		if (depType == NULL)
 			continue;
-															
+
 		// Not combined with previous loop because PopulateType could modify typeInst->mDependencyMap
 		for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end();)
 		{
@@ -2626,7 +2626,7 @@ bool BfCompiler::VerifySlotNums()
 
 	SmallVector<BfTypeInstance*, 16> isSlotUsed;		
 	for (auto type : mContext->mResolvedTypes)
-	{		
+	{
 		if (!type->IsReified())
 			continue;
 

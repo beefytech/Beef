@@ -1142,7 +1142,15 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 {
 	if ((populateType == BfPopulateType_Declaration) && (resolvedTypeRef->mDefineState >= BfTypeDefineState_Declared))
 		return;
-	
+
+	if ((resolvedTypeRef->mRebuildFlags & BfTypeRebuildFlag_PendingGenericArgDep) != 0)
+	{		
+		BfLogSysM("PopulateType handling BfTypeRebuildFlag_PendingGenericArgDep for type %p\n", resolvedTypeRef);
+		// Reinit dependencies
+		resolvedTypeRef->mRebuildFlags = (BfTypeRebuildFlags)(resolvedTypeRef->mRebuildFlags & ~BfTypeRebuildFlag_PendingGenericArgDep);
+		DoPopulateType_SetGenericDependencies(resolvedTypeRef->ToTypeInstance());
+	}
+
 	// Are we "demanding" to reify a type that is currently resolve-only?
 	if ((mIsReified) && (populateType >= BfPopulateType_Declaration))
 	{
@@ -1252,23 +1260,15 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 
  	if (populateType <= BfPopulateType_TypeDef)
  		return;
-
+	
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
 	CheckInjectNewRevision(typeInstance);	
 
-	BF_ASSERT((resolvedTypeRef->mRebuildFlags & (BfTypeRebuildFlag_Deleted | BfTypeRebuildFlag_DeleteQueued)) == 0);
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
 
-	/*BfTypeRebuildFlags allowedFlags = (BfTypeRebuildFlags)(BfTypeRebuildFlag_AddedToWorkList | BfTypeRebuildFlag_AwaitingReference | BfTypeRebuildFlag_UnderlyingTypeDeferred);
-	if ((resolvedTypeRef->mRebuildFlags & ~allowedFlags) != 0)
-	{
-		// BfContext::UpdateAfterDeletingTypes should clear out all flags except for the Deleted flag
-		// If this type was deleted then we should never be able to reach PopulateType here.
-		//  This may happen if dependent types were not properly rebuilt when a used type
-		//  was deleted.
-		auto hadFlags = resolvedTypeRef->mRebuildFlags;
-		BF_ASSERT((resolvedTypeRef->mRebuildFlags & ~allowedFlags) == 0);
-		resolvedTypeRef->mRebuildFlags = (BfTypeRebuildFlags)(resolvedTypeRef->mRebuildFlags & ~allowedFlags);
-	}*/
+	BF_ASSERT((resolvedTypeRef->mRebuildFlags & (BfTypeRebuildFlag_Deleted | BfTypeRebuildFlag_DeleteQueued)) == 0);
 
 	bool isNew = resolvedTypeRef->mDefineState == BfTypeDefineState_Undefined;
 	if (isNew)
@@ -3076,15 +3076,31 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 
 void BfModule::DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance)
 {
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, genericTypeInstance);
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
+
 	// Add generic dependencies if needed
-	for (auto genericType : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
+	for (auto genericArgType : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
 	{
-		if (genericType->IsPrimitiveType())
-			genericType = GetWrappedStructType(genericType);
-		if (genericType != NULL)
+		if (genericArgType->IsPrimitiveType())
+			genericArgType = GetWrappedStructType(genericArgType);
+		if (genericArgType != NULL)
 		{
-			AddDependency(genericType, genericTypeInstance, BfDependencyMap::DependencyFlag_TypeGenericArg);
-			BfLogSysM("Adding generic dependency of %p for type %p\n", genericType, genericTypeInstance);
+			AddDependency(genericArgType, genericTypeInstance, BfDependencyMap::DependencyFlag_TypeGenericArg);
+			BfLogSysM("Adding generic dependency of %p for type %p revision %d\n", genericArgType, genericTypeInstance, genericTypeInstance->mRevision);
+
+#ifdef _DEBUG
+// 			auto argDepType = genericArgType->ToDependedType();
+// 			if (argDepType != NULL)
+// 			{
+// 				BfDependencyMap::DependencyEntry* depEntry = NULL;
+// 				argDepType->mDependencyMap.mTypeSet.TryGetValue(genericTypeInstance, &depEntry);
+// 				BF_ASSERT(depEntry != NULL);
+// 				BF_ASSERT(depEntry->mRevision == genericTypeInstance->mRevision);
+// 				BF_ASSERT((depEntry->mFlags & BfDependencyMap::DependencyFlag_TypeGenericArg) != 0);
+// 			}
+#endif
 		}
 	}
 	if ((genericTypeInstance->IsSpecializedType()) &&

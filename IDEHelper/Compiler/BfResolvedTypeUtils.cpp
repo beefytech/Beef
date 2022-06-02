@@ -117,7 +117,7 @@ bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::Dependen
 		{						
 			if ((dependencyEntry->mFlags & flags) == flags)
 				return false;
-			dependencyEntry->mFlags = (BfDependencyMap::DependencyFlags)(dependencyEntry->mFlags | flags);
+			dependencyEntry->mFlags = (DependencyFlags)(dependencyEntry->mFlags | flags);
 			return true;
 		}
 	}
