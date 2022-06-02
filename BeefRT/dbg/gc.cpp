@@ -599,6 +599,7 @@ void* BfObjectAllocate(intptr size, bf::System::Type* objType)
 		result = BF_do_malloc_pages(ThreadCache::GetCache(), totalSize);
 	}
 
+	BF_ASSERT(totalSize - size <= kPageSize);
 	*(uint16*)((uint8*)result + size) = 0xBFBF;
 	*(uint16*)((uint8*)result + totalSize - 2) = totalSize - size;
 	
@@ -974,7 +975,7 @@ void BFGC::ObjectDeleteRequested(bf::System::Object* obj)
 
 	int sizeOffset = *(uint16*)((uint8*)obj + allocSize - 2);
 	int requestedSize = allocSize - sizeOffset;
-	if ((sizeOffset < 4) || (sizeOffset >= allocSize) || (sizeOffset >= kPageSize) ||
+	if ((sizeOffset < 4) || (sizeOffset >= allocSize) || (sizeOffset > kPageSize) ||
 		(*(uint16*)((uint8*)obj + requestedSize) != 0xBFBF))
 	{
 		Beefy::String err = Beefy::StrFormat("Memory deallocation detected write-past-end error in %d-byte object allocation at 0x%@", requestedSize, obj);

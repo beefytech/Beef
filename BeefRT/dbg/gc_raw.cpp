@@ -632,7 +632,7 @@ void BfRawFree(void* ptr)
 		}
 		
 		int markOffset = *markOffsetPtr;
-		if ((markOffset < 2) || (markOffset >= allocSize) || (markOffset >= kPageSize) ||
+		if ((markOffset < 2) || (markOffset >= allocSize) || (markOffset > kPageSize + 2) ||
 			(*(uint16*)((uint8*)markOffsetPtr - markOffset) != 0xBFBF))
 		{
 			int requestedSize = (uint8*)markOffsetPtr - (uint8*)ptr - markOffset;
