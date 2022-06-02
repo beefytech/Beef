@@ -1,4 +1,4 @@
-#ifdef BF_USE_STOMP_ALLOC
+#if defined BF_USE_STOMP_ALLOC || defined BF_STOMP_EXPORT
 
 #include "BeefySysLib/Common.h"
 
@@ -166,7 +166,11 @@ public:
 static std::list<SA_AllocRange> gAllocRanges;
 static CritSect gSA_CritSect;
 
-extern "C" void* StompAlloc(intptr size)
+extern "C" 
+#ifdef BF_STOMP_EXPORT
+__declspec(dllexport)
+#endif
+void* StompAlloc(intptr size)
 {
 	AutoCrit autoCrit(gSA_CritSect);
 
@@ -184,7 +188,11 @@ extern "C" void* StompAlloc(intptr size)
 	}		
 }
 
-extern "C" void StompFree(void* addr)
+extern "C" 
+#ifdef BF_STOMP_EXPORT
+__declspec(dllexport)
+#endif
+void StompFree(void* addr)
 {	
 	AutoCrit autoCrit(gSA_CritSect);
 

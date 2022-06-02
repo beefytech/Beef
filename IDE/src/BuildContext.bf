@@ -740,7 +740,7 @@ namespace IDE
 				outRt.Append(dynName ? ".dll" : ".lib");
 			}
 
-			if ((workspaceOptions.mEnableObjectDebugFlags) || (workspaceOptions.mAllocType == .Debug))
+			if ((workspaceOptions.mEnableObjectDebugFlags) || (workspaceOptions.mAllocType == .Debug) || (workspaceOptions.mAllocType == .Stomp))
 			{
 				outDbg.Append("Beef", IDEApp.sRTVersionStr, "Dbg");
 				outDbg.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");

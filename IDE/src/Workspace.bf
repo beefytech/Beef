@@ -215,6 +215,7 @@ namespace IDE
 		public enum AllocType
 		{
 			Debug,
+			Stomp,
 			CRT,
 			JEMalloc,
 			TCMalloc,

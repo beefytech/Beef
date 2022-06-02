@@ -733,7 +733,8 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Preprocessor Macros", "mPreprocessorMacros");
 			AddPropertiesItem(category, "Incremental Build", "mIncrementalBuild");
             AddPropertiesItem(category, "Intermediate Type", "mIntermediateType");
-			var (allocCategory, allocPropEntry) = AddPropertiesItem(category, "Memory Allocator", "mAllocType");
+			var (allocCategory, allocPropEntry) = AddPropertiesItem(category, "Memory Allocator", "mAllocType",
+				scope String[] ("Debug", "Stomp (Debug)", "CRT", "JEMalloc", "TCMalloc"));
 			var (mallocItem, mallocPropEntry) = AddPropertiesItem(allocCategory, "Malloc", "mAllocMalloc");
 			var (freeItem, freePropEntry) = AddPropertiesItem(allocCategory, "Free", "mAllocFree");
 			allocPropEntry.mOnUpdate.Add(new () =>
@@ -757,6 +758,11 @@ namespace IDE.ui
 						{
 							mallocSubItem.Label = "";
 							freeSubItem.Label = "";
+						}
+						else if (allocType == .Stomp)
+						{
+							mallocSubItem.Label = "StompAlloc";
+							freeSubItem.Label = "StompFree";
 						}
 						else if (allocType == .CRT)
 						{

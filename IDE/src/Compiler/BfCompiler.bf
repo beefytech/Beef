@@ -745,6 +745,9 @@ namespace IDE.Compiler
 				optionFlags |= .DebugAlloc;
 				mallocLinkName = "";
 				freeLinkName = "";
+			case .Stomp:
+				mallocLinkName = "StompAlloc";
+				freeLinkName = "StompFree";
 			case .CRT:
 				mallocLinkName = "malloc";
 				freeLinkName = "free";

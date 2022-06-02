@@ -582,7 +582,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;BFRT_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;BFRT_DYNAMIC;BF_STOMP_EXPORT;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
@@ -607,7 +607,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;BF_STOMP_EXPORT;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
@@ -633,7 +633,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;BF_STOMP_EXPORT;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
@@ -720,7 +720,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;BFRT_DYNAMIC;;BF_STOMP_EXPORT;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -742,7 +742,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;BF_STOMP_EXPORT;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -764,7 +764,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BFRTDBG;BP_DISABLED;BF_NO_BFAPP;BF_STOMP_EXPORT;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
