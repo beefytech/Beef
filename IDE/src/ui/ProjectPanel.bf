@@ -2463,6 +2463,22 @@ namespace IDE.ui
 				return proj;
 			}
 
+			if ((proj.mGeneralOptions.mTargetType == .BeefLib) && (!gApp.mSettings.mTutorialsFinished.mDependencies))
+			{
+				Dialog dialog = ThemeFactory.mDefault.CreateDialog("Add Dependencies",
+					"""
+					A library has been added to the workspace but it won't be accessible until your project is dependent on it.
+
+					Right click on 'Workspace', select 'Properties...', and set dependencies under the 'Projects' tab.
+					""", DarkTheme.sDarkTheme.mIconWarning);
+				dialog.mDefaultButton = dialog.AddButton("OK");
+				dialog.mEscButton = dialog.mDefaultButton;
+				dialog.mWindowFlags &= ~.Modal;
+				
+				dialog.PopupWindow(gApp.mMainWindow);
+				gApp.mSettings.mTutorialsFinished.mDependencies = true;
+			}
+
 			return proj;
 		}
 

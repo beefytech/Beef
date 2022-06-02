@@ -1064,6 +1064,7 @@ namespace IDE
 		{
 			public bool mCtrlCursor;
 			public bool mRanDebug;
+			public bool mDependencies;
 		}
 
 		public bool mLoadedSettings;
@@ -1148,6 +1149,7 @@ namespace IDE
 			{
 				sd.Add("CtrlCursor", mTutorialsFinished.mCtrlCursor);
 				sd.Add("RanDebug", mTutorialsFinished.mRanDebug);
+				sd.Add("Dependencies", mTutorialsFinished.mDependencies);
 			}
 
 			String dataStr = scope String();
@@ -1208,6 +1210,8 @@ namespace IDE
 			{
 				sd.Get("CtrlCursor", ref mTutorialsFinished.mCtrlCursor);
 				sd.Get("RanDebug", ref mTutorialsFinished.mRanDebug);
+				if (!sd.Get("Dependencies", ref mTutorialsFinished.mDependencies))
+					mTutorialsFinished.mDependencies = true;
 			}
 		}
 
