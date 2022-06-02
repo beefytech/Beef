@@ -174,15 +174,22 @@ namespace System.Reflection
 				}
 			}
 
-#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+#if BF_ENABLE_REALTIME_LEAK_CHECK
 			int32 stackCount = Compiler.Options.AllocStackCount;
 			if (mAllocStackCountOverride != 0)
 				stackCount = mAllocStackCountOverride;
 			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, allocSize, mInstAlign, stackCount);
 #else
-			void* mem = new [Align(16)] uint8[mInstSize]* (?);
+			void* mem = new [Align(16)] uint8[allocSize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);
-			obj.[Friend]mClassVData = (.)(void*)mTypeClassVData;
+			*(void**)mem = (void*)mTypeClassVData;
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			Internal.Dbg_ObjectAllocated(obj, allocSize, (.)(void*)mTypeClassVData);
+			*(int*)mem |= 0x04/*BfObjectFlag_Allocate*/;
+#else
+			*(void**)mem = (void*)mTypeClassVData;
+#endif
+
 #endif
 			Internal.MemSet((uint8*)Internal.UnsafeCastToPtr(obj) + objType.mInstSize, 0, mInstSize - objType.mInstSize);
 			if (methodInfo.IsInitialized)
