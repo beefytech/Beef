@@ -528,7 +528,7 @@ void BFGC::RawShutdown()
 void* BfRawAllocate(intptr size, bf::System::DbgRawAllocData* rawAllocData, void* stackTraceInfo, int stackTraceCount)
 {		
 	size_t totalSize = size;	
-	totalSize += sizeof(intptr);
+	totalSize += sizeof(intptr) + 4; // int16 protectBytes, <unused bytes>, int16 sizeOffset, <stack trace data>, DbgRawAllocData ptr
 	if (rawAllocData->mMaxStackTrace == 1)
 		totalSize += sizeof(intptr);
 	else if (rawAllocData->mMaxStackTrace > 1)	
@@ -548,17 +548,27 @@ void* BfRawAllocate(intptr size, bf::System::DbgRawAllocData* rawAllocData, void
  	{
  		result = BF_do_malloc_pages(ThreadCache::GetCache(), totalSize);
  	}
+
+	*(uint16*)((uint8*)result + size) = 0xBFBF;	
 	
+	uint16* markOffsetPtr = NULL;
 	if (rawAllocData->mMaxStackTrace == 1)
 	{
 		memcpy((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr), stackTraceInfo, sizeof(intptr));
+		markOffsetPtr = (uint16*)((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr) - 2);
 	}
 	else if (rawAllocData->mMaxStackTrace > 1)
 	{
 		memcpy((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr), &stackTraceCount, sizeof(intptr));
 		memcpy((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr) - stackTraceCount*sizeof(intptr), stackTraceInfo, stackTraceCount*sizeof(intptr));
+		markOffsetPtr = (uint16*)((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr) - stackTraceCount * sizeof(intptr) - 2);
+	}
+	else
+	{
+		markOffsetPtr = (uint16*)((uint8*)result + totalSize - sizeof(intptr) - 2);
 	}
 
+	*markOffsetPtr = ((uint8*)markOffsetPtr) - ((uint8*)result + size);
 	memcpy((uint8*)result + totalSize - sizeof(intptr), &rawAllocData, sizeof(intptr));
 	
 	BfpSystem_InterlockedExchangeAdd32((uint32*)&gRawAllocSize, (uint32)totalSize);
@@ -572,7 +582,7 @@ void BfRawFree(void* ptr)
 	size_t cl = Static::pageheap()->GetSizeClassIfCached(p);
 	intptr allocSize = 0;
 	if (cl == 0)
-	{		
+	{
 		auto span = Static::pageheap()->GetDescriptor(p);
 		if (span != NULL)
 		{
@@ -588,7 +598,7 @@ void BfRawFree(void* ptr)
 
 	if (allocSize == 0)
 	{
-		Beefy::String err = Beefy::StrFormat("Memory deallocation requested at invalid address %@", ptr);
+		Beefy::String err = Beefy::StrFormat("Memory deallocation requested at invalid address 0x%@", ptr);
 		BF_FATAL(err);		
 	}
 
@@ -600,10 +610,38 @@ void BfRawFree(void* ptr)
 		void** dbgAllocDataAddr = (void**)((uint8*)ptr + allocSize - sizeof(void*));
 		if (*dbgAllocDataAddr == 0)
 		{
-			Beefy::String err = Beefy::StrFormat("Memory deallocation requested at %@ but no allocation is recorded. Double delete?", ptr);
+			Beefy::String err = Beefy::StrFormat("Memory deallocation requested at 0x%@ but no allocation is recorded. Double delete?", ptr);
 			BF_FATAL(err);
+			return;
 		}
-		else if ((*dbgAllocDataAddr == &sObjectAllocData) && ((gBFGC.mMaxRawDeferredObjectFreePercentage != 0) || (!gDeferredFrees.IsEmpty())))
+		
+		auto rawAllocData = (bf::System::DbgRawAllocData*)*dbgAllocDataAddr;		
+		uint16* markOffsetPtr;
+		if (rawAllocData->mMaxStackTrace == 1)
+		{
+			markOffsetPtr = (uint16*)((uint8*)ptr + allocSize - sizeof(intptr) - sizeof(intptr) - 2);
+		}
+		else if (rawAllocData->mMaxStackTrace > 1)
+		{
+			int stackTraceCount = *(int*)((uint8*)ptr + allocSize - sizeof(intptr) - sizeof(intptr));
+			markOffsetPtr = (uint16*)((uint8*)ptr + allocSize - sizeof(intptr) - sizeof(intptr) - stackTraceCount * sizeof(intptr) - 2);
+		}
+		else
+		{
+			markOffsetPtr = (uint16*)((uint8*)ptr + allocSize - sizeof(intptr) - 2);
+		}
+		
+		int markOffset = *markOffsetPtr;
+		if ((markOffset < 2) || (markOffset >= allocSize) || (markOffset >= kPageSize) ||
+			(*(uint16*)((uint8*)markOffsetPtr - markOffset) != 0xBFBF))
+		{
+			int requestedSize = (uint8*)markOffsetPtr - (uint8*)ptr - markOffset;
+			Beefy::String err = Beefy::StrFormat("Memory deallocation detected write-past-end error in %d-byte raw allocation at 0x%@", requestedSize, ptr);
+			BF_FATAL(err);
+			return;
+		}
+		
+		if ((*dbgAllocDataAddr == &sObjectAllocData) && ((gBFGC.mMaxRawDeferredObjectFreePercentage != 0) || (!gDeferredFrees.IsEmpty())))
 		{
 			*dbgAllocDataAddr = NULL;
 

@@ -292,10 +292,12 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::Reflection::TypeInstan
 {	
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	Object* result;	
-	intptr allocSize = BF_ALIGN(size, typeInst->mInstAlign);
+	
+	//TODO: Why did we align this?
+	//intptr allocSize = BF_ALIGN(size, typeInst->mInstAlign);
+	intptr allocSize = size;
+
 	uint8* allocBytes = (uint8*)BfObjectAllocate(allocSize, typeInst->_GetType());
-// 	int dataOffset = (int)(sizeof(intptr) * 2);
-// 	memset(allocBytes + dataOffset, 0, size - dataOffset);
 	result = (bf::System::Object*)allocBytes;
 	auto classVData = typeInst->mTypeClassVData;
 	(void)classVData;	
@@ -343,10 +345,11 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 	bf::System::Object* result;
 	if ((BFRTFLAGS & BfRtFlags_LeakCheck) != 0)
 	{
-		allocSize = BF_ALIGN(allocSize, align);
+		//TODO: Why did we align this?
+		//intptr allocSize = BF_ALIGN(size, typeInst->mInstAlign);
+		intptr allocSize = size;
+
 		uint8* allocBytes = (uint8*)BfObjectAllocate(allocSize, classVData->mType);
-// 		int dataOffset = (int)(sizeof(intptr) * 2);
-// 		memset(allocBytes + dataOffset, 0, size - dataOffset);
 		result = (bf::System::Object*)(allocBytes);
 	}
 	else

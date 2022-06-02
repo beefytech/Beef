@@ -526,9 +526,83 @@ void BFCheckSuspended()
     BF_ASSERT((internalThread == NULL) || (!internalThread->mIsSuspended));
 }
 
+inline void* BF_do_malloc_pages(ThreadCache* heap, size_t& size)
+{
+	void* result;
+	bool report_large;
+
+	heap->requested_bytes_ += size;
+	Length num_pages = TCMALLOC_NAMESPACE::pages(size);
+	size = num_pages << kPageShift;
+
+	if ((TCMALLOC_NAMESPACE::FLAGS_tcmalloc_sample_parameter > 0) && heap->SampleAllocation(size)) {
+		result = DoSampledAllocation(size);
+
+		SpinLockHolder h(Static::pageheap_lock());
+		report_large = should_report_large(num_pages);
+	}
+	else {
+		SpinLockHolder h(Static::pageheap_lock());
+		Span* span = Static::pageheap()->New(num_pages);
+		result = (UNLIKELY(span == NULL) ? NULL : SpanToMallocResult(span));
+		report_large = should_report_large(num_pages);
+	}
+
+	if (report_large) {
+		ReportLargeAlloc(num_pages, result);
+	}
+
+	return result;
+}
+
+inline void* BF_do_malloc_small(ThreadCache* heap, size_t& size)
+{
+	if (size == 0)
+		size = (int)sizeof(void*);
+
+	ASSERT(Static::IsInited());
+	ASSERT(heap != NULL);
+	heap->requested_bytes_ += size;
+	size_t cl = Static::sizemap()->SizeClass(size);
+	size = Static::sizemap()->class_to_size(cl);
+
+	void* result;
+	if ((TCMALLOC_NAMESPACE::FLAGS_tcmalloc_sample_parameter > 0) && heap->SampleAllocation(size)) {
+		result = DoSampledAllocation(size);
+	}
+	else {
+		// The common case, and also the simplest.  This just pops the
+		// size-appropriate freelist, after replenishing it if it's empty.
+		result = CheckedMallocResult(heap->Allocate(size, cl));
+	}
+
+	return result;
+}
+
 void* BfObjectAllocate(intptr size, bf::System::Type* objType)
 {
-	bf::System::Object* obj = (bf::System::Object*)tc_malloc(size);
+	size_t totalSize = size;
+	totalSize += 4; // int16 protectBytes, <unused bytes>, int16 sizeOffset
+
+	void* result;
+	if (ThreadCache::have_tls &&
+		LIKELY(totalSize < ThreadCache::MinSizeForSlowPath()))
+	{
+		result = BF_do_malloc_small(ThreadCache::GetCacheWhichMustBePresent(), totalSize);
+	}
+	else if (totalSize <= kMaxSize)
+	{
+		result = BF_do_malloc_small(ThreadCache::GetCache(), totalSize);
+	}
+	else
+	{
+		result = BF_do_malloc_pages(ThreadCache::GetCache(), totalSize);
+	}
+
+	*(uint16*)((uint8*)result + size) = 0xBFBF;
+	*(uint16*)((uint8*)result + totalSize - 2) = totalSize - size;
+	
+	bf::System::Object* obj = (bf::System::Object*)result;
 
 	BFLOG2(GCLog::EVENT_ALLOC, (intptr)obj, (intptr)objType);
 
@@ -880,6 +954,34 @@ void BFGC::MarkStatics()
 
 void BFGC::ObjectDeleteRequested(bf::System::Object* obj)
 {
+	const PageID p = reinterpret_cast<uintptr_t>(obj) >> kPageShift;
+	size_t cl = Static::pageheap()->GetSizeClassIfCached(p);
+	intptr allocSize = 0;
+	if (cl == 0)
+	{
+		auto span = Static::pageheap()->GetDescriptor(p);
+		if (span != NULL)
+		{
+			cl = span->sizeclass;
+			if (cl == 0)
+			{
+				allocSize = span->length << kPageShift;
+			}
+		}
+	}
+	if (cl != 0)
+		allocSize = Static::sizemap()->class_to_size(cl);
+
+	int sizeOffset = *(uint16*)((uint8*)obj + allocSize - 2);
+	int requestedSize = allocSize - sizeOffset;
+	if ((sizeOffset < 4) || (sizeOffset >= allocSize) || (sizeOffset >= kPageSize) ||
+		(*(uint16*)((uint8*)obj + requestedSize) != 0xBFBF))
+	{
+		Beefy::String err = Beefy::StrFormat("Memory deallocation detected write-past-end error in %d-byte object allocation at 0x%@", requestedSize, obj);
+		BF_FATAL(err);
+		return;
+	}
+
 	if (mFreeTrigger >= 0)
 	{
 		int objSize = BFGetObjectSize(obj);
@@ -1577,21 +1679,11 @@ static void GCObjFree(void* ptr)
 		tc_free(ptr);
 		return;
 	}
-	
-	
+
 	int size = Static::sizemap()->class_to_size(span->sizeclass);
 	int dataOffset = (int)(sizeof(intptr) * 2);
 	memset((uint8*)ptr + dataOffset, 0, size - dataOffset);
 
-//     const PageID p = reinterpret_cast<uintptr_t>(ptr) >> kPageShift;
-//     size_t cl = Static::pageheap()->GetSizeClassIfCached(p);
-//     if (cl == 0)
-//     {
-//         tc_free(ptr);
-//         return;
-//     }
-//     
-//     Span* span = TCGetSpanAt(ptr);
     if (span->freeingObjectsTail == NULL)
     {
         span->freeingObjectsTail = ptr;
