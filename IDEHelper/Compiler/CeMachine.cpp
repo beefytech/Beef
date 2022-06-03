@@ -180,7 +180,7 @@ static CeOpInfo gOpInfo[] =
 	{"CeOp_Conv_F32_U16", CEOI_FrameRef16, CEOI_FrameRefF32},
 	{"CeOp_Conv_F32_U32", CEOI_FrameRef32, CEOI_FrameRefF32},
 	{"CeOp_Conv_F32_U64", CEOI_FrameRef64, CEOI_FrameRefF32},
-	{"CeOp_Conv_F32_F64", CEOI_FrameRefF32, CEOI_FrameRefF32},
+	{"CeOp_Conv_F32_F64", CEOI_FrameRefF64, CEOI_FrameRefF32},
 	{"CeOp_Conv_F64_I8", CEOI_FrameRef8, CEOI_FrameRefF64},
 	{"CeOp_Conv_F64_I16", CEOI_FrameRef16, CEOI_FrameRefF64},
 	{"CeOp_Conv_F64_I32", CEOI_FrameRef32, CEOI_FrameRefF64},
