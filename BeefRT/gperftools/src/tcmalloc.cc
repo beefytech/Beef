@@ -1585,7 +1585,7 @@ TCMALLOC_EXTERN PERFTOOLS_DLL_DECL int tc_set_new_mode(int flag) __THROW {
 
 //int main( int argc, const char* argv[]);
 
-TCMALLOC_EXTERN PERFTOOLS_DLL_DECL void* tc_malloc(size_t size) __THROW {
+PERFTOOLS_TCMALLOC_EXPORT void* tc_malloc(size_t size) __THROW {
 //    main(0, 0);
     
   void* result = do_malloc_or_cpp_alloc(size);
@@ -1593,7 +1593,7 @@ TCMALLOC_EXTERN PERFTOOLS_DLL_DECL void* tc_malloc(size_t size) __THROW {
   return result;
 }
 
-TCMALLOC_EXTERN PERFTOOLS_DLL_DECL void tc_free(void* ptr) __THROW {
+PERFTOOLS_TCMALLOC_EXPORT void tc_free(void* ptr) __THROW {
   MallocHook::InvokeDeleteHook(ptr);
   do_free(ptr);
 }

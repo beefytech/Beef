@@ -77,8 +77,8 @@ extern "C" {
   PERFTOOLS_DLL_DECL const char* tc_version(int* major, int* minor,
                                             const char** patch) __THROW;
 
-  PERFTOOLS_DLL_DECL void* tc_malloc(size_t size) __THROW;
-  PERFTOOLS_DLL_DECL void tc_free(void* ptr) __THROW;
+  PERFTOOLS_TCMALLOC_EXPORT void* tc_malloc(size_t size) __THROW;
+  PERFTOOLS_TCMALLOC_EXPORT void tc_free(void* ptr) __THROW;
   PERFTOOLS_DLL_DECL void* tc_realloc(void* ptr, size_t size) __THROW;
   PERFTOOLS_DLL_DECL void* tc_calloc(size_t nmemb, size_t size) __THROW;
   PERFTOOLS_DLL_DECL void tc_cfree(void* ptr) __THROW;

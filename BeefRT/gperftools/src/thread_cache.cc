@@ -43,7 +43,6 @@
 using std::min;
 using std::max;
 
-
 namespace TCMALLOC_NAMESPACE
 {
 	DEFINE_int64(tcmalloc_max_total_thread_cache_bytes,

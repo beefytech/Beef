@@ -259,7 +259,15 @@
    "config.h" before anything else. */
 #ifndef PERFTOOLS_DLL_DECL
 # define PERFTOOLS_IS_A_DLL  0   /* not set if you're statically linking */
-# define PERFTOOLS_DLL_DECL  
+
+# define PERFTOOLS_DLL_DECL
+
+#ifdef TCMALLOC_EXPORT
+#define PERFTOOLS_TCMALLOC_EXPORT __declspec(dllexport)
+#else
+#define PERFTOOLS_TCMALLOC_EXPORT static
+#endif
+
 # define PERFTOOLS_DLL_DECL_FOR_UNITTESTS  
 //# define PERFTOOLS_DLL_DECL  __declspec(dllexport)
 //# define PERFTOOLS_DLL_DECL_FOR_UNITTESTS  __declspec(dllimport)
