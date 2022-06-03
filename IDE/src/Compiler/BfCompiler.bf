@@ -741,6 +741,9 @@ namespace IDE.Compiler
 			String freeLinkName;
 			switch (options.mAllocType)
 			{
+			case .CRT:
+				mallocLinkName = "malloc";
+				freeLinkName = "free";	
 			case .Debug:
 				optionFlags |= .DebugAlloc;
 				mallocLinkName = "";
@@ -748,9 +751,6 @@ namespace IDE.Compiler
 			case .Stomp:
 				mallocLinkName = "StompAlloc";
 				freeLinkName = "StompFree";
-			case .CRT:
-				mallocLinkName = "malloc";
-				freeLinkName = "free";
 			case .JEMalloc, .JEMalloc_Debug:
 				mallocLinkName = "je_malloc";
 				freeLinkName = "je_free";

@@ -734,7 +734,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Incremental Build", "mIncrementalBuild");
             AddPropertiesItem(category, "Intermediate Type", "mIntermediateType");
 			var (allocCategory, allocPropEntry) = AddPropertiesItem(category, "Memory Allocator", "mAllocType",
-				scope String[] ("Debug", "Stomp (Debug)", "CRT", "JEMalloc", "JEMalloc Debug", "TCMalloc", "TCMalloc Debug"));
+				scope String[] ("CRT", "Debug", "Stomp (Paranoid)", "JEMalloc", "JEMalloc Debug", "TCMalloc", "TCMalloc Debug"));
 			var (mallocItem, mallocPropEntry) = AddPropertiesItem(allocCategory, "Malloc", "mAllocMalloc");
 			var (freeItem, freePropEntry) = AddPropertiesItem(allocCategory, "Free", "mAllocFree");
 			allocPropEntry.mOnUpdate.Add(new () =>
