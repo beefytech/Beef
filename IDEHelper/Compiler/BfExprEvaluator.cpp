@@ -3895,8 +3895,11 @@ void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolation
 		BfTokenNode* newToken = NULL;
 		BfAllocTarget allocTarget;
 		ResolveAllocTarget(allocTarget, stringInterpolationExpression->mAllocNode, newToken);
-		
-		CreateObject(NULL, stringInterpolationExpression->mAllocNode, stringType);
+		//
+		{
+			SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete));
+			CreateObject(NULL, stringInterpolationExpression->mAllocNode, stringType);
+		}
 		BfTypedValue newString = mResult;
 		BF_ASSERT(newString);
 

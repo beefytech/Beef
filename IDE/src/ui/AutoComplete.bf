@@ -1444,9 +1444,13 @@ namespace IDE.ui
 				{
 	                mInvokeSrcPositions.Clear();
 	                int32 openDepth = 0;
+					int32 braceDepth = 0;
 	                int32 checkIdx = startIdx;
 	                mInvokeSrcPositions.Add(startIdx);
 	                int32 argCount = 0;
+
+					bool inInterpolatedString = false;
+					bool inInterpolatedExpr = false;
 
 					void HadContent()
 					{
@@ -1455,31 +1459,55 @@ namespace IDE.ui
 					}
 
 					bool failed = false;
-	                while (checkIdx < mTargetEditWidget.Content.mData.mText.Count)
+	                while (checkIdx < data.mText.Count)
 	                {
-	                    var char8Data = mTargetEditWidget.Content.mData.mText[checkIdx];
-	                    if (char8Data.mDisplayTypeId == 0)
-	                    {
-							if (char8Data.mChar == '{')
+	                    var charData = data.mText[checkIdx];
+						if (inInterpolatedExpr)
+						{
+							if ((SourceElementType)charData.mDisplayTypeId == .Normal)
 							{
-								openDepth++;
-								failed = true;
-								break;
+								if (charData.mChar == '{')
+								{
+									braceDepth++;
+								}
+								else if (charData.mChar == '}')
+								{
+									braceDepth--;
+									if (braceDepth == 0)
+										inInterpolatedExpr = false;
+								}
 							}
-							else if (char8Data.mChar == '}')
-								openDepth--;
-	                        else if (char8Data.mChar == '(')
+
+						}
+	                    else if ((SourceElementType)charData.mDisplayTypeId == .Normal)
+	                    {
+							if (charData.mChar == '{')
+							{
+								braceDepth++;
+								if (inInterpolatedString)
+								{
+									inInterpolatedExpr = true;
+								}
+								else
+								{
+									failed = true;
+									break;
+								}
+							}
+							else if (charData.mChar == '}')
+								braceDepth--;
+	                        else if (charData.mChar == '(')
 	                            openDepth++;
-	                        else if (char8Data.mChar == ')')
+	                        else if (charData.mChar == ')')
 	                        {
 								openDepth--;
 	                        }
-	                        else if ((char8Data.mChar == ',') && (openDepth == 1))
+	                        else if ((charData.mChar == ',') && (openDepth == 1))
 	                        {
 	                            mInvokeSrcPositions.Add(checkIdx);
 	                            argCount++;
 	                        }
-	                        else if (!((char8)char8Data.mChar).IsWhiteSpace)
+	                        else if (!((char8)charData.mChar).IsWhiteSpace)
 	                            HadContent();
 
 							if (openDepth == 0)
@@ -1488,8 +1516,24 @@ namespace IDE.ui
 								break;
 							}
 	                    }
-						else if (char8Data.mDisplayPassId != (.)SourceElementType.Comment)
+						else if ((SourceElementType)charData.mDisplayPassId != .Comment)
 						{
+							if ((SourceElementType)charData.mDisplayTypeId == .Literal)
+							{
+								if ((charData.mChar == '"') &&
+									(checkIdx > 1) && (data.mText[checkIdx - 1].mChar == '$') &&
+									((SourceElementType)data.mText[checkIdx - 1].mDisplayTypeId == .Literal))
+								{
+									inInterpolatedString = true;
+								}
+								else if ((inInterpolatedString) &&
+									(charData.mChar == '"') &&
+									(checkIdx > 1) && (data.mText[checkIdx - 1].mChar != '\\'))
+								{
+									inInterpolatedString = false;
+								}
+							}
+
 							HadContent();
 						}
 	                    checkIdx++;
