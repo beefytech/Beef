@@ -9478,8 +9478,12 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		if (!pendingExpr->mFormatInfo.mReferenceId.empty())
 			val += "\n:referenceId\t" + pendingExpr->mFormatInfo.mReferenceId;
 
-		if ((exprResult.mSrcAddress != 0) && (HasMemoryBreakpoint(exprResult.mSrcAddress, exprResult.mType->GetByteCount())))
-			val += StrFormat("\n:break\t%@", exprResult.mSrcAddress);
+		auto breakAddress = exprResult.mSrcAddress;
+		int breakSize = exprResult.mType->GetByteCount();
+		if (exprResult.mType->IsRef())
+			breakSize = exprResult.mType->mTypeParam->GetByteCount();
+		if ((breakAddress != 0) && (HasMemoryBreakpoint(breakAddress, breakSize)))
+			val += StrFormat("\n:break\t%@", breakAddress);
 
 		auto checkType = exprResult.mType->RemoveModifiers();
 		if (checkType->IsBfObjectPtr())
@@ -10695,7 +10699,8 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 	DbgExprEvaluator dbgExprEvaluator(this, dbgModule, &bfPassInstance, callStackIdx, -1);	
 
 	DwFormatInfo formatInfo;
-	formatInfo.mCallStackIdx = callStackIdx;
+	formatInfo.mCallStackIdx = callStackIdx;	
+	formatInfo.mLanguage = language;
 
 	String formatFlags;
 	String assignExpr;
