@@ -75,7 +75,7 @@ namespace IDE.ui
 							String path = scope .();
 							GetText(path);
 
-							if (path.IsWhiteSpace)
+							if ((path.IsWhiteSpace) && (mDefaultFolderPath != null))
 								path.Set(mDefaultFolderPath);
 #if !CLI
 							FolderBrowserDialog folderDialog = scope .();

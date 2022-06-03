@@ -188,6 +188,9 @@ namespace IDE.ui
 			else
 				mDirBase = new String();
             mDirectoryEdit = new PathEditWidget(.Folder);
+			if (gApp.mWorkspace.mDir != null)
+				mDirectoryEdit.mDefaultFolderPath = new .(gApp.mWorkspace.mDir);
+
 			AddEdit(mDirectoryEdit);
 			mDirectoryEdit.mOnContentChanged.Add(new (dlg) =>
 				{
