@@ -2589,50 +2589,12 @@ void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 	SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, refNode);
 	
 	EmitEnsureInstructionAt();
-	bool wantsDIData = (mBfIRBuilder->DbgHasInfo()) && (mHasFullDebugInfo);
-	mBfIRBuilder->SaveDebugLocation();
 
 	BfCEParseContext ceParseContext = CEEmitParse(mCurTypeInstance, activeTypeDef, src, refNode, BfCeTypeEmitSourceKind_Method);
 	auto emitParser = mCurTypeInstance->mTypeDef->mSource->ToParser();
 	bfReducer.mSource = emitParser;
 	bfReducer.mAlloc = emitParser->mAlloc;
 	bfReducer.HandleBlock(emitParser->mRootNode, false);
-
-	SetAndRestoreValue<BfIRMDNode> prevInlinedAt(mCurMethodState->mCurScope->mDIInlinedAt);
-	SetAndRestoreValue<BfIRMDNode> prevDIScope(mCurMethodState->mCurScope->mDIScope);
-	SetAndRestoreValue<BfIRMDNode> prevAltDIFile(mCurMethodState->mCurScope->mAltDIFile);
-
-	if (wantsDIData)
-	{
-		llvm::SmallVector<BfIRMDNode, 8> diParams;
-		diParams.push_back(mBfIRBuilder->DbgGetType(GetPrimitiveType(BfTypeCode_None)));
-		BfIRMDNode diFuncType = mBfIRBuilder->DbgCreateSubroutineType(diParams);
-
-		//int defLine = mModule->mCurFilePosition.mCurLine;
-
-		int flags = 0;
-		mCurMethodState->mCurScope->mDIInlinedAt = mBfIRBuilder->DbgGetCurrentLocation();
-
-		// We used to have the "def" line be the inlining position, but the linker we de-duplicate instances of these functions without regard to their unique line
-		//  definitions, so we need to be consistent and use the actual line
-		UpdateSrcPos(emitParser->mRootNode, BfSrcPosFlag_NoSetDebugLoc);
-		int defLine = mCurFilePosition.mCurLine;
-		auto diParentType = mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance);
-		if (!mBfIRBuilder->mIgnoreWrites)
-		{
-			String methodName = "Comptime_Mixin";				
-			String linkageName;
-			if (mIsComptimeModule)
-				linkageName = StrFormat("Comptime_Mixin:%llX", mCurMethodInstance);
-			mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(diParentType, methodName, "", mCurFilePosition.mFileInstance->mDIFile,
-				defLine + 1, diFuncType, false, true, mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
-			mCurMethodState->mCurScope->mAltDIFile = mCurFilePosition.mFileInstance->mDIFile;
-		}
-	}
-	
-	UpdateSrcPos(emitParser->mRootNode);
-
-	SetIllegalSrcPos();
 
 	if (emitParser->mSourceClassifier != NULL)
 	{
@@ -2642,9 +2604,6 @@ void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 	}
 
 	Visit(emitParser->mRootNode);
-
-	mBfIRBuilder->RestoreDebugLocation();
-	mBfIRBuilder->DupDebugLocation();
 
 	prevCustomAttribute.Restore();
 
