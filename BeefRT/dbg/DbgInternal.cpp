@@ -213,10 +213,12 @@ void* bf::System::Runtime::Dbg_GetCrashInfoFunc()
 void Internal::Dbg_MarkObjectDeleted(bf::System::Object* object)
 {
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
+	auto prevFlags = object->mObjectFlags;
 	if ((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0)
 		object->mObjectFlags = (BfObjectFlags)((object->mObjectFlags & ~BfObjectFlag_StackAlloc) | BfObjectFlag_Deleted);
 #ifdef BF_GC_SUPPORTED
-	gBFGC.ObjectDeleteRequested(object);
+	if ((prevFlags & BfObjectFlag_Allocated) != 0)
+		gBFGC.ObjectDeleteRequested(object);
 #endif
 }
 
