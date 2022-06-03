@@ -28,3 +28,4 @@ wasm/*
 BeefPerf.txt
 IDE/Tests/Rando
 install/
+JEMalloc/

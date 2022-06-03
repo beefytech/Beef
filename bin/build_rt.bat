@@ -46,6 +46,44 @@ IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 CALL bin\msbuild.bat BeefRT\BeefDbg\BeefDbg.vcxproj /p:Configuration="Release Static CStatic" /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 
+@ECHO ---- Building TCMalloc64 (Debug) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc64 (Debug Static) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration="Debug Static" /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc64 (Debug Static CStatic) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration="Debug Static CStatic" /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc64 (Release) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc64 (Release Static) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration="Release Static" /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc64 (Release Static CStatic) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration="Release Static CStatic" /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+
+@ECHO ---- Building JEMalloc64 (Debug) ----
+CALL bin\msbuild.bat BeefRT\JEMalloc\JEMalloc.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\BeefRT\JEMalloc\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building JEMalloc64 (Debug Static) ----
+CALL bin\msbuild.bat BeefRT\JEMalloc\JEMalloc.vcxproj /p:Configuration="Debug Static" /p:Platform=x64 /p:SolutionDir=%cd%\BeefRT\JEMalloc\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building JEMalloc64 (Debug Static CStatic) ----
+CALL bin\msbuild.bat BeefRT\JEMalloc\JEMalloc.vcxproj /p:Configuration="Debug Static CStatic" /p:Platform=x64 /p:SolutionDir=%cd%\BeefRT\JEMalloc\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building JEMalloc64 (Release) ----
+CALL bin\msbuild.bat BeefRT\JEMalloc\JEMalloc.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=%cd%\BeefRT\JEMalloc\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building JEMalloc64 (Release Static) ----
+CALL bin\msbuild.bat BeefRT\JEMalloc\JEMalloc.vcxproj /p:Configuration="Release Static" /p:Platform=x64 /p:SolutionDir=%cd%\BeefRT\JEMalloc\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building JEMalloc64 (Release Static CStatic) ----
+CALL bin\msbuild.bat BeefRT\JEMalloc\JEMalloc.vcxproj /p:Configuration="Release Static CStatic" /p:Platform=x64 /p:SolutionDir=%cd%\BeefRT\JEMalloc\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+
 @ECHO ---- Building MinRT (Debug) ----
 CALL bin\msbuild.bat BeefRT\MinRT\MinRT.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
@@ -97,6 +135,25 @@ CALL bin\msbuild.bat BeefRT\BeefDbg\BeefDbg.vcxproj /p:Configuration="Release St
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 @ECHO ---- Building BeefDbg32 (Release Static CStatic) ----
 CALL bin\msbuild.bat BeefRT\BeefDbg\BeefDbg.vcxproj /p:Configuration="Release Static CStatic" /p:Platform=Win32 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+
+@ECHO ---- Building TCMalloc32 (Debug) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc32 (Debug Static) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration="Debug Static" /p:Platform=Win32 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc32 (Debug Static CStatic) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration="Debug Static CStatic" /p:Platform=Win32 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc32 (Release) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration=Release /p:Platform=Win32 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc32 (Release Static) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration="Release Static" /p:Platform=Win32 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building TCMalloc32 (Release Static CStatic) ----
+CALL bin\msbuild.bat BeefRT\TCMalloc\TCMalloc.vcxproj /p:Configuration="Release Static CStatic" /p:Platform=Win32 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 
 @ECHO ---- Building MinRT (Debug) ----

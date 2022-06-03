@@ -218,7 +218,9 @@ namespace IDE
 			Stomp,
 			CRT,
 			JEMalloc,
+			JEMalloc_Debug,
 			TCMalloc,
+			TCMalloc_Debug,
 			Custom
 		}
 

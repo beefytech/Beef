@@ -734,7 +734,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Incremental Build", "mIncrementalBuild");
             AddPropertiesItem(category, "Intermediate Type", "mIntermediateType");
 			var (allocCategory, allocPropEntry) = AddPropertiesItem(category, "Memory Allocator", "mAllocType",
-				scope String[] ("Debug", "Stomp (Debug)", "CRT", "JEMalloc", "TCMalloc"));
+				scope String[] ("Debug", "Stomp (Debug)", "CRT", "JEMalloc", "JEMalloc Debug", "TCMalloc", "TCMalloc Debug"));
 			var (mallocItem, mallocPropEntry) = AddPropertiesItem(allocCategory, "Malloc", "mAllocMalloc");
 			var (freeItem, freePropEntry) = AddPropertiesItem(allocCategory, "Free", "mAllocFree");
 			allocPropEntry.mOnUpdate.Add(new () =>
@@ -769,15 +769,15 @@ namespace IDE.ui
 							mallocSubItem.Label = "malloc";
 							freeSubItem.Label = "free";
 						}
-						else if (allocType == .JEMalloc)
+						else if ((allocType == .JEMalloc) || (allocType == .JEMalloc_Debug))
 						{
 							mallocSubItem.Label = "je_malloc";
 							freeSubItem.Label = "je_free";
 						}
-						else if (allocType == .TCMalloc)
+						else if ((allocType == .TCMalloc) || (allocType == .TCMalloc_Debug))
 						{
-							mallocSubItem.Label = "tcmalloc";
-							freeSubItem.Label = "tcfree";
+							mallocSubItem.Label = "tc_malloc";
+							freeSubItem.Label = "tc_free";
 						}
 
 						mallocSubItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFC0C0C0);

@@ -9979,7 +9979,8 @@ namespace IDE
 									let platformType = Workspace.PlatformType.GetFromName(platformName, workspaceOptions.mTargetTriple);
 									String rtName = scope String();
 									String dbgName = scope String();
-									BuildContext.GetRtLibNames(platformType, workspaceOptions, options, false, rtName, dbgName);
+									String allocName = scope String();
+									BuildContext.GetRtLibNames(platformType, workspaceOptions, options, false, rtName, dbgName, allocName);
 
 									switch (platformType)
 									{
@@ -9987,14 +9988,8 @@ namespace IDE
 										newString.Append(rtName);
 										if (!dbgName.IsEmpty)
 											newString.Append(" ", dbgName);
-										switch (workspaceOptions.mAllocType)
-										{
-										case .JEMalloc:
-											newString.Append(" jemalloc.lib");
-										case .TCMalloc:
-											newString.Append(" tcmalloc.lib");
-										default:
-										}
+										if (!allocName.IsEmpty)
+											newString.Append(" ", allocName);
 									case .macOS:
 										newString.AppendF("./{} -Wl,-rpath -Wl,@executable_path", rtName);
 									case .iOS:

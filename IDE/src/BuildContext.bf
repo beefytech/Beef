@@ -708,7 +708,7 @@ namespace IDE
 			outPdbPath.Append(".pdb");
 		}
 
-		public static void GetRtLibNames(Workspace.PlatformType platformType, Workspace.Options workspaceOptions, Project.Options options, bool dynName, String outRt, String outDbg)
+		public static void GetRtLibNames(Workspace.PlatformType platformType, Workspace.Options workspaceOptions, Project.Options options, bool dynName, String outRt, String outDbg, String outAlloc)
 		{			
 			if ((platformType == .Linux) || (platformType == .macOS) || (platformType == .iOS))
 			{
@@ -748,6 +748,16 @@ namespace IDE
 					outDbg.Append("_d");
 				outDbg.Append(dynName ? ".dll" : ".lib");
 			}
+
+			if ((workspaceOptions.mAllocType == .TCMalloc) || (workspaceOptions.mAllocType == .TCMalloc_Debug) ||
+				(workspaceOptions.mAllocType == .JEMalloc) || (workspaceOptions.mAllocType == .JEMalloc_Debug))
+			{
+				outAlloc.Append(((workspaceOptions.mAllocType == .TCMalloc) || (workspaceOptions.mAllocType == .TCMalloc_Debug)) ? "TCMalloc" : "JEMalloc");
+				outAlloc.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
+				if ((workspaceOptions.mAllocType == .TCMalloc_Debug) || (workspaceOptions.mAllocType == .JEMalloc_Debug))
+					outAlloc.Append("_d");
+				outAlloc.Append(dynName ? ".dll" : ".lib");
+			}
 		}
 
 		bool CopyLibFiles(String targetPath, Workspace.Options workspaceOptions, Project.Options options)
@@ -775,21 +785,17 @@ namespace IDE
 
 			String rtName = scope String();
 			String dbgName = scope String();
-			GetRtLibNames(mPlatformType, workspaceOptions, options, true, rtName, dbgName);
+			String allocName = scope String();
+			GetRtLibNames(mPlatformType, workspaceOptions, options, true, rtName, dbgName, allocName);
 			if (!rtName.IsEmpty)
 				if (!AddLib(rtName))
 					return false;
 			if (!dbgName.IsEmpty)
 				if (!AddLib(dbgName))
 					return false;
-			switch (workspaceOptions.mAllocType)
-			{
-			case .JEMalloc:
-				if (!AddLib("jemalloc.dll"))
+			if (!allocName.IsEmpty)
+				if (!AddLib(allocName))
 					return false;
-			default:
-			}
-
 			return true;
 		}
 

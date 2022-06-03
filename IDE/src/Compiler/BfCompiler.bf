@@ -751,12 +751,12 @@ namespace IDE.Compiler
 			case .CRT:
 				mallocLinkName = "malloc";
 				freeLinkName = "free";
-			case .JEMalloc:
+			case .JEMalloc, .JEMalloc_Debug:
 				mallocLinkName = "je_malloc";
 				freeLinkName = "je_free";
-			case .TCMalloc:
-				mallocLinkName = "tcmalloc";
-				freeLinkName = "tcfree";
+			case .TCMalloc, .TCMalloc_Debug:
+				mallocLinkName = "tc_malloc";
+				freeLinkName = "tc_free";
 			case .Custom:
 				mallocLinkName = options.mAllocMalloc;
 				freeLinkName = options.mAllocFree;
