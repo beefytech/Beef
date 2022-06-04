@@ -294,9 +294,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::Reflection::TypeInstan
 {	
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	Object* result;	
-	
-	//TODO: Why did we align this?
-	//intptr allocSize = BF_ALIGN(size, typeInst->mInstAlign);
+
 	intptr allocSize = size;
 
 	uint8* allocBytes = (uint8*)BfObjectAllocate(allocSize, typeInst->_GetType());
@@ -347,10 +345,6 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 	bf::System::Object* result;
 	if ((BFRTFLAGS & BfRtFlags_LeakCheck) != 0)
 	{
-		//TODO: Why did we align this?
-		//intptr allocSize = BF_ALIGN(size, typeInst->mInstAlign);
-		intptr allocSize = size;
-
 		uint8* allocBytes = (uint8*)BfObjectAllocate(allocSize, classVData->mType);
 		result = (bf::System::Object*)(allocBytes);
 	}
