@@ -11,12 +11,19 @@ namespace System
 
 		public struct Unmarked<T>
 		{
-			public static DbgRawAllocData sRawAllocData;
-			public static this()
+			static DbgRawAllocData sRawAllocData;
+			public static DbgRawAllocData* Data
 			{
-				sRawAllocData.mMarkFunc = null;
-				sRawAllocData.mMaxStackTrace = 1;
-				sRawAllocData.mType = typeof(T);
+				get
+				{
+					if (sRawAllocData.mMaxStackTrace == 0)
+					{
+						sRawAllocData.mMarkFunc = null;
+						sRawAllocData.mMaxStackTrace = 1;
+						sRawAllocData.mType = typeof(T);
+					}
+					return &sRawAllocData;
+				}
 			}
 		}
 	}
@@ -188,7 +195,7 @@ namespace System
 				return new T[size]*(?);
 			// We don't want to use the default mark function because the GC will mark the entire array,
 			//  whereas we have a custom marking routine because we only want to mark up to mSize
-			return (T*)Internal.Dbg_RawAlloc(size * strideof(T), &DbgRawAllocData.Unmarked<T>.sRawAllocData);
+			return (T*)Internal.Dbg_RawAlloc(size * strideof(T), DbgRawAllocData.Unmarked<T>.Data);
 #else
 			return new T[size]*(?);
 #endif
