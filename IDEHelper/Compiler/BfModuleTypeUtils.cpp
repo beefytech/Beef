@@ -8730,10 +8730,10 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			directTypeRef->Init(paramType);
 
 			BfParameterDef* paramDef = new BfParameterDef();
-
+			paramDef->mParamKind = unspecializedParamDef->mParamKind;
 			paramDef->mTypeRef = directTypeRef;
 			paramDef->mName = unspecializedParamDef->mName;
-			methodDef->mParams.push_back(paramDef);			
+			methodDef->mParams.push_back(paramDef);
 
 			delegateInfo->mParams.Add(paramType);
 		}
@@ -11905,7 +11905,31 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			if ((paramIdx == 0) && (functionThisType != NULL))
 				paramDef->mParamKind = BfParamKind_ExplicitThis;
 			methodDef->mParams.push_back(paramDef);
-
+			if ((param->mModToken != NULL) && (param->mModToken->mToken == BfToken_Params))
+			{
+				if (paramIdx == (int)paramTypes.size() - 1)
+					paramDef->mParamKind = BfParamKind_Params;
+				else
+				{
+					failed = true;
+					Fail("Params parameter must be the last parameter", param);
+				}
+			}
+						
+			if (auto dotTypeRef = BfNodeDynCast<BfDotTypeReference>(paramDef->mTypeRef))
+			{
+				if (dotTypeRef->mDotToken->mToken == BfToken_DotDotDot)
+				{
+					if (paramIdx == (int)paramTypes.size() - 1)
+						paramDef->mParamKind = BfParamKind_VarArgs;
+					else
+					{
+						failed = true;
+						Fail("Varargs specifier must be the last parameter", param);
+					}
+				}
+			}
+			
 			delegateInfo->mParams.Add(paramType);			
 
 			delegateType->mGenericDepth = BF_MAX(delegateType->mGenericDepth, paramType->GetGenericDepth() + 1);

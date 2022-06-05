@@ -656,7 +656,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 				if (paramIdx == (int)methodDeclaration->mParams.size() - 1)
 					paramDef->mParamKind = BfParamKind_VarArgs;
 				else
-					Fail("Varargs specifier must be the last parameter", methodDef->mParams[paramIdx - 1]->mParamDeclaration);
+					Fail("Varargs specifier must be the last parameter", paramDecl);
 			}
 		}
 
