@@ -189,6 +189,7 @@ enum DbgHotResolveFlags : uint8
 	DbgHotResolveFlag_None = 0,
 	DbgHotResolveFlag_ActiveMethods = 1,
 	DbgHotResolveFlag_Allocations = 2,
+	DbgHotResolveFlag_KeepThreadState = 4
 };
 
 enum DbgMemoryFlags : uint8

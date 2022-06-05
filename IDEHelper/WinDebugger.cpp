@@ -1220,7 +1220,7 @@ String WinDebugger::GetDbgAllocInfo()
 
 	mHotResolveData = new DbgHotResolveData();
 	DbgHotScanner* hotScanner = new DbgHotScanner(this);
-	hotScanner->Scan(DbgHotResolveFlag_Allocations);	
+	hotScanner->Scan((DbgHotResolveFlags)(DbgHotResolveFlag_Allocations | DbgHotResolveFlag_KeepThreadState));
 	delete hotScanner;				
 
 	String result;

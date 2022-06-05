@@ -338,7 +338,7 @@ void DbgHotScanner::ScanRoot(addr_target rootPtr, int memKind)
 void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 {
 	auto prevRunState = mDebugger->mRunState;
-	if (mDebugger->mRunState == RunState_Running)
+	if ((mDebugger->mRunState == RunState_Running) && ((flags & DbgHotResolveFlag_KeepThreadState) == 0))
 	{
 		mDebugger->ThreadRestorePause(NULL, NULL);
 		mDebugger->mRunState = RunState_Paused;
@@ -379,7 +379,7 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 			ScanRoot(mDbgGCData.mRawRootPtr, 1);		
 	}
 
-	if (prevRunState == RunState_Running)
+	if ((prevRunState == RunState_Running) && ((flags & DbgHotResolveFlag_KeepThreadState) == 0))
 	{
 		mDebugger->ThreadRestoreUnpause();
 		mDebugger->mRunState = prevRunState;
