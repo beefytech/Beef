@@ -1851,7 +1851,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		if (!resolvedType->IsValuelessType())
 		{
 			AssertErrorState();
-			initValue = GetDefaultTypedValue(resolvedType);
+			initValue = GetDefaultTypedValue(resolvedType, true, BfDefaultValueKind_Undef);
 			localDef->mValue = initValue.mValue;
 		}
 	}
