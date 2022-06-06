@@ -23531,6 +23531,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		}
 		
 		auto underlyingType = resultType->GetUnderlyingType();
+
+		if ((underlyingType->IsSizedArray()) && (!mModule->IsInSpecializedSection()))
+			mModule->Warn(0, "Performing arithmetic on a pointer to a sized array. Consider performing arithmetic on an element pointer if this is not intended.", resultTypeSrc);
+
 		BfIRValue addValue = otherTypedValue->mValue;		
 		if ((!otherTypedValue->mType->IsSigned()) && (otherTypedValue->mType->mSize < mModule->mSystem->mPtrSize))		
 			addValue = mModule->mBfIRBuilder->CreateNumericCast(addValue, false, BfTypeCode_UIntPtr);
