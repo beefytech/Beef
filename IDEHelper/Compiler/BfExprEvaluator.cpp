@@ -5905,6 +5905,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 				else if ((!resolvedArg.mResolvedType->IsStruct()) && (!resolvedArg.mResolvedType->IsSizedArray()) && (!resolvedArg.mResolvedType->IsValuelessType()))
 					argValue = mModule->LoadValue(argValue, NULL, exprEvaluator.mIsVolatileReference);
 			}
+			resolvedArg.mUncastedTypedValue = argValue;
 			resolvedArg.mTypedValue = argValue;
 
 			if (deferParamValues)
@@ -8000,7 +8001,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		if ((argExprIdx != -1) && (argExprIdx < (int)argValues.size()) && ((argValues[argExprIdx].mArgFlags & BfArgFlag_Cascade) != 0))
 		{
 			mUsedAsStatement = true;
-			argCascades.Add(argValue);
+			if (argValues[argExprIdx].mUncastedTypedValue)
+				argCascades.Add(argValues[argExprIdx].mUncastedTypedValue);
+			else
+				argCascades.Add(argValue);
 		}
 	
 		if (expandedParamsArray)
@@ -8430,6 +8434,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 		auto expr = BfNodeDynCast<BfExpression>(resolvedArg.mExpression);
 		BF_ASSERT(expr != NULL); 		
 		argValue = mModule->CreateValueFromExpression(expr, wantType, (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr));
+		resolvedArg.mUncastedTypedValue = argValue;
 		if ((argValue) && (wantType != NULL))
 			argValue = mModule->Cast(expr, argValue, wantType);
 	}

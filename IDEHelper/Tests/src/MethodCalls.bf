@@ -154,6 +154,11 @@ namespace Tests
 			scPtr.mData[0] += 100;
 		}
 
+		static void ObjMethod(Object obj)
+		{
+
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -198,6 +203,9 @@ namespace Tests
 			function [CallingConvention(.Cdecl)] void (StructC) scFunc2 = => ModifyC2;
 			scFunc2(sc);
 			Test.Assert(sc.mData[0] == 323);
+
+			var v = ObjMethod(.. scope String());
+			Test.Assert(v.GetType() == typeof(String));
 		}
 	}
 }

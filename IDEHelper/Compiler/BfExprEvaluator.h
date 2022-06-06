@@ -56,6 +56,7 @@ class BfResolvedArg
 {
 public:
 	BfTypedValue mTypedValue;
+	BfTypedValue mUncastedTypedValue;
 	BfType* mResolvedType;
 	BfAstNode* mExpression;
 	BfArgFlags mArgFlags;	
