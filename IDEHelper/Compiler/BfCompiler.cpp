@@ -2574,9 +2574,11 @@ void BfCompiler::SanitizeDependencyMap()
 //   1) It gets built on demand
 //   2) It gets deleted in UpdateDependencyMap
 //   3) It stays undefined and we need to build it here
-void BfCompiler::ProcessPurgatory(bool reifiedOnly)
+bool BfCompiler::ProcessPurgatory(bool reifiedOnly)
 {
 	BP_ZONE("BfCompiler::ProcessPurgatory");	
+
+	bool didWork = false;
 
 	while (true)
 	{		
@@ -2614,10 +2616,12 @@ void BfCompiler::ProcessPurgatory(bool reifiedOnly)
 			mGenericInstancePurgatory.Clear();
 
 		int prevPurgatorySize = (int)mGenericInstancePurgatory.size();
-		mContext->ProcessWorkList(reifiedOnly, reifiedOnly);
+		if (mContext->ProcessWorkList(reifiedOnly, reifiedOnly))
+			didWork = true;
 		if (prevPurgatorySize == (int)mGenericInstancePurgatory.size())
 			break;
 	}
+	return didWork;
 }
 
 bool BfCompiler::VerifySlotNums()
@@ -7259,10 +7263,18 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 		BfLogSysM("DoCompile looping over CompileReified due to mHasReifiedQueuedRebuildTypes\n");
 	}
-		
-	ProcessPurgatory(true);
-	if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
-		DoWorkLoop();
+	
+	// Handle purgatory (ie: old generic types)
+	{
+		bool didWork = ProcessPurgatory(true);
+		if (mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)
+		{
+			if (DoWorkLoop())
+				didWork = true;
+			if (didWork)
+				PopulateReified();
+		}
+	}
 
 	// Mark used modules
 	if ((mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude) && (!mCanceling))

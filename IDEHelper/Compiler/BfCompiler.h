@@ -481,7 +481,7 @@ public:
 	void CreateVData(BfVDataModule* bfModule);	
 	void UpdateDependencyMap(bool deleteUnusued, bool& didWork);
 	void SanitizeDependencyMap();
-	void ProcessPurgatory(bool reifiedOnly);
+	bool ProcessPurgatory(bool reifiedOnly);
 	bool VerifySlotNums();
 	bool QuickGenerateSlotNums();
 	bool SlowGenerateSlotNums();

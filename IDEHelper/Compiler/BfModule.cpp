@@ -6423,6 +6423,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					if ((methodInstance != NULL) && (!methodInstance->mMethodDef->mIsAbstract))
 					{
 						BF_ASSERT(methodInstance->mIsReified);
+
 						// This doesn't work because we may have FOREIGN methods from implicit interface methods
 						//auto moduleMethodInst = GetMethodInstanceAtIdx(methodRef.mTypeInstance, methodRef.mMethodNum);						
 						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance, BfGetMethodInstanceFlag_NoInline);
@@ -13911,6 +13912,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 	auto _SetReified = [&]()
 	{
+		if (!mCompiler->mIsResolveOnly)
+			BF_ASSERT(mCompiler->mCompileState <= BfCompiler::CompileState_Normal);
 		methodInstance->mIsReified = true;		
 	};
 
