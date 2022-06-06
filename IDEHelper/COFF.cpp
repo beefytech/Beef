@@ -1748,6 +1748,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			const char* name = _ParseString();
 			dbgType->mName = name;
 			dbgType->mSize = size;
+			dbgType->mAlign = dbgType->mTypeParam->GetAlign();
 			// Beef arrays do not necessarily have aligned sizes
 			dbgType->mSizeCalculated = false;
 			dbgType->mLanguage = dbgType->mTypeParam->mLanguage;
