@@ -774,7 +774,7 @@ namespace MiniZ
 			if (pState.m_dict_avail != 0)
 			{
 				n = Math.Min(pState.m_dict_avail, pStream.mAvailOut);
-				Internal.MemCpy(pStream.mNextOut, &pState.m_dict + pState.m_dict_ofs, n);
+				Internal.MemCpy(pStream.mNextOut, &pState.m_dict[0] + pState.m_dict_ofs, n);
 				pStream.mNextOut += n; pStream.mAvailOut -= n; pStream.mTotalOut += n;
 				pState.m_dict_avail -= n; pState.m_dict_ofs = (pState.m_dict_ofs + n) & (TINFL_LZ_DICT_SIZE - 1);
 				return ((pState.m_last_status == .Done) && (pState.m_dict_avail == 0)) ? .STREAM_END : .OK;
@@ -785,7 +785,7 @@ namespace MiniZ
 				in_bytes = pStream.mAvailIn;
 				out_bytes = TINFL_LZ_DICT_SIZE - pState.m_dict_ofs;
 
-				status = tinfl_decompress(&pState.m_decomp, pStream.mNextIn, &in_bytes, &pState.m_dict, &pState.m_dict + pState.m_dict_ofs, &out_bytes, decomp_flags);
+				status = tinfl_decompress(&pState.m_decomp, pStream.mNextIn, &in_bytes, &pState.m_dict, &pState.m_dict[0] + pState.m_dict_ofs, &out_bytes, decomp_flags);
 				pState.m_last_status = status;
 
 				pStream.mNextIn += (uint32)in_bytes; pStream.mAvailIn -= (uint32)in_bytes;
@@ -794,7 +794,7 @@ namespace MiniZ
 				pState.m_dict_avail = (uint32)out_bytes;
 
 				n = Math.Min(pState.m_dict_avail, pStream.mAvailOut);
-				Internal.MemCpy(pStream.mNextOut, &pState.m_dict + pState.m_dict_ofs, n);
+				Internal.MemCpy(pStream.mNextOut, &pState.m_dict[0] + pState.m_dict_ofs, n);
 				pStream.mNextOut += n; pStream.mAvailOut -= n; pStream.mTotalOut += n;
 				pState.m_dict_avail -= n; pState.m_dict_ofs = (pState.m_dict_ofs + n) & (TINFL_LZ_DICT_SIZE - 1);
 
@@ -2046,7 +2046,7 @@ namespace MiniZ
 			Internal.MemSet(&d.m_huff_count[0][0], 0, sizeof(uint16) * TDEFL_MAX_HUFF_SYMBOLS_0);
 			Internal.MemSet(&d.m_huff_count[1][0], 0, sizeof(uint16) * TDEFL_MAX_HUFF_SYMBOLS_1);
 
-			d.m_pLZ_code_buf = &d.m_lz_code_buf + 1; d.m_pLZ_flags = &d.m_lz_code_buf; d.m_num_flags_left = 8; d.m_lz_code_buf_dict_pos += d.m_total_lz_bytes; d.m_total_lz_bytes = 0; d.m_block_index++;
+			d.m_pLZ_code_buf = &d.m_lz_code_buf[0] + 1; d.m_pLZ_flags = &d.m_lz_code_buf[0]; d.m_num_flags_left = 8; d.m_lz_code_buf_dict_pos += d.m_total_lz_bytes; d.m_total_lz_bytes = 0; d.m_block_index++;
 
 			if ((n = (int32)(d.m_pOutput_buf - pOutput_buf_start)) != 0)
 			{
@@ -2451,7 +2451,7 @@ namespace MiniZ
 			if (d.m_pOut_buf_size != null)
 			{
 				int32 n = (int32)Math.Min(*d.m_pOut_buf_size - d.m_out_buf_ofs, d.m_output_flush_remaining);
-				Internal.MemCpy((uint8*)d.m_pOut_buf + d.m_out_buf_ofs, &d.m_output_buf + d.m_output_flush_ofs, n);
+				Internal.MemCpy((uint8*)d.m_pOut_buf + d.m_out_buf_ofs, &d.m_output_buf[0] + d.m_output_flush_ofs, n);
 				d.m_output_flush_ofs += (int32)n;
 				d.m_output_flush_remaining -= (int32)n;
 				d.m_out_buf_ofs += n;
@@ -2647,8 +2647,8 @@ namespace MiniZ
 				var pnghdr = uint8[41](0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
 					0, 0, (uint8)(w >> 8), (uint8)w, 0, 0, (uint8)(h >> 8), (uint8)h, 8, chans[num_chans], 0, 0, 0, 0, 0, 0, 0,
 					(uint8)(*pLen_out >> 24), (uint8)(*pLen_out >> 16), (uint8)(*pLen_out >> 8), (uint8) * pLen_out, 0x49, 0x44, 0x41, 0x54);
-				c = (uint32)crc32(CRC32_INIT, &pnghdr + 12, 17);
-				for (i = 0; i < 4; ++i,c <<= 8) ((uint8*)(&pnghdr + 29))[i] = (uint8)(c >> 24);
+				c = (uint32)crc32(CRC32_INIT, &pnghdr[0] + 12, 17);
+				for (i = 0; i < 4; ++i,c <<= 8) ((uint8*)(&pnghdr[0] + 29))[i] = (uint8)(c >> 24);
 				Internal.MemCpy(out_buf.m_pBuf, &pnghdr, 41);
 			}
 			// write footer (IDAT CRC-32, followed by IEND chunk)
