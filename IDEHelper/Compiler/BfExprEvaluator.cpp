@@ -20940,6 +20940,9 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 			mModule->mAttributeState->mUsed = true;
 		}
 	}
+
+	// Avoid attempting to apply the current attributes to the indexer arguments
+	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, NULL);
 	
 	bool isNullCondLookup = (indexerExpr->mOpenBracket != NULL) && (indexerExpr->mOpenBracket->GetToken() == BfToken_QuestionLBracket);
 	if (isNullCondLookup)
@@ -20959,16 +20962,11 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		BfSizedArray<BfExpression*> sizedArgExprs(indexerExpr->mArguments);
 		BfResolvedArgs argValues(&sizedArgExprs);
 		ResolveArgValues(argValues, (BfResolveArgsFlags)(BfResolveArgsFlag_DeferParamEval | BfResolveArgsFlag_FromIndexer));
-		//exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, NULL);
 
 		mIndexerValues = argValues.mResolvedArgs;
-		for (auto& val : mIndexerValues)
-			if (!val.mTypedValue)
-				val.mTypedValue = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
 
 		BfMethodMatcher methodMatcher(indexerExpr->mTarget, mModule, "[]", mIndexerValues, BfMethodGenericArguments());
 		methodMatcher.mCheckedKind = checkedKind;
-		//methodMatcher.CheckType(target.mType->ToTypeInstance(), target, false);
 		
 		BfMethodDef* methodDef = NULL;
 		
