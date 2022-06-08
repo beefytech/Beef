@@ -76,6 +76,17 @@ namespace Tests
 			}
 		}
 
+		class Foo
+		{
+		    public virtual int this[int i] => i;
+		}
+
+		class Bar : Foo
+		{
+		    public override int this[int i] => i*i;
+		    public Span<int> this[Range r] => default;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -102,6 +113,9 @@ namespace Tests
 			int a = sa[3, 4, 5];
 			Test.Assert(a == 12);
 			Test.Assert(sa.mA == 9024);
+
+			Bar bar = scope .();
+			Test.Assert(bar[3] == 9);
 		}
 	}
 }

@@ -20981,15 +20981,13 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		{
 			bool isFailurePass = pass == 1;
 
+			BfPropertyDef* foundProp = NULL;
+			BfTypeInstance* foundPropTypeInst = NULL;
+
 			auto curCheckType = startCheckTypeInst;
 			while (curCheckType != NULL)
 			{
 				BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
-
-				BfPropertyDef* foundProp = NULL;
-				BfTypeInstance* foundPropTypeInst = NULL;
-
-				int matchedIndexCount = 0;
 
 				curCheckType->mTypeDef->PopulateMemberSets();
 
@@ -21042,45 +21040,43 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 						
 						methodMatcher.mCheckedKind = checkedKind;
 						methodMatcher.mTarget = target;
-						methodMatcher.CheckMethod(startCheckTypeInst, curCheckType, checkMethod, false);						
+						bool hadMatch = methodMatcher.CheckMethod(startCheckTypeInst, curCheckType, checkMethod, false);
 
-						if ((methodMatcher.mBestMethodDef == checkMethod) || (methodMatcher.mBackupMethodDef == checkMethod))
+						if ((hadMatch) || (methodMatcher.mBackupMethodDef == checkMethod))
 						{
 							foundPropTypeInst = curCheckType;
 							foundProp = prop;
-							matchedIndexCount = (int)checkMethod->mParams.size();
 						}
 					}
 				}
 
-				if (foundProp != NULL)
-				{
-
-					mPropSrc = indexerExpr->mOpenBracket;
-					mPropDef = foundProp;
-					if (foundProp->mIsStatic)
-					{
-						mPropTarget = BfTypedValue(curCheckType);
-					}
-					else
-					{
-						if (target.mType != foundPropTypeInst)
-							mPropTarget = mModule->Cast(indexerExpr->mTarget, target, foundPropTypeInst);
-						else
-							mPropTarget = target;
-					}
-					mOrigPropTarget = mPropTarget;
-					if (isInlined)
-						mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
-					mPropCheckedKind = checkedKind;
-
-					if ((target.IsBase()) && (mPropDef->IsVirtual()))
-						mPropDefBypassVirtual = true;
-
-					return;
-				}
-
 				curCheckType = curCheckType->mBaseType;
+			}
+
+			if (foundProp != NULL)
+			{
+				mPropSrc = indexerExpr->mOpenBracket;
+				mPropDef = foundProp;
+				if (foundProp->mIsStatic)
+				{
+					mPropTarget = BfTypedValue(curCheckType);
+				}
+				else
+				{
+					if (target.mType != foundPropTypeInst)
+						mPropTarget = mModule->Cast(indexerExpr->mTarget, target, foundPropTypeInst);
+					else
+						mPropTarget = target;
+				}
+				mOrigPropTarget = mPropTarget;
+				if (isInlined)
+					mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
+				mPropCheckedKind = checkedKind;
+
+				if ((target.IsBase()) && (mPropDef->IsVirtual()))
+					mPropDefBypassVirtual = true;
+
+				return;
 			}
 		}
 		
