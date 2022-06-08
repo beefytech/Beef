@@ -155,6 +155,10 @@ namespace IDE.ui
 			{
 			    panel = gApp.mModulePanel;
 			}
+			else if (type == "BookmarksPanel")
+			{                
+			    panel = gApp.mBookmarksPanel;
+			}
 
             if (panel != null)
             {

@@ -184,6 +184,8 @@ namespace Beefy.theme.dark
 			CollapseClosed,
 			CollapseOpened,
 
+			IconBookmarkDisabled,
+
             COUNT
         };
 

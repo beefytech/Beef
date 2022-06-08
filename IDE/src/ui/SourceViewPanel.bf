@@ -4641,7 +4641,8 @@ namespace IDE.ui
 								if (ewc.IsLineCollapsed(drawLineNum))
 									continue;
 								//hadLineIcon[drawLineNum - lineStart] = true;
-                                g.Draw(DarkTheme.sDarkTheme.GetImage(.IconBookmark), Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - leftAdjust),
+								Image image = DarkTheme.sDarkTheme.GetImage(bookmark.mIsDisabled ? .IconBookmarkDisabled : .IconBookmark);
+                                g.Draw(image, Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - leftAdjust),
 									0 + bookmark.mLineNum * lineSpacing);
 
 								var curLineFlags = ref lineFlags[drawLineNum - lineStart];

@@ -48,8 +48,10 @@ namespace IDE
     }
 
     public class Bookmark : TrackedTextElement
-    {              
+    {
+		public String mTitle ~ delete _;
         public String mNotes ~ delete _;
+		public bool mIsDisabled;
     }
 
     public class BookmarkManager
@@ -61,18 +63,47 @@ namespace IDE
 				delete _;
             };
         public int32 mBookmarkIdx;
+		
+		private int32 _createdBookmarks;
 
-        public Bookmark CreateBookmark(String fileName, int wantLineNum, int wantColumn)
-        {
+		public bool AllBookmarksDisabled
+		{
+			get
+			{
+				for (Bookmark b in mBookmarkList)
+				{
+					if (!b.mIsDisabled)
+						return false;
+				}
+
+				return true;
+			}
+		}
+
+		public Bookmark CreateBookmark(String fileName, int wantLineNum, int wantColumn, bool isDisabled = false, String title = null)
+		{
             mBookmarkIdx = (int32)mBookmarkList.Count;
+			_createdBookmarks++;
 
             Bookmark bookmark = new Bookmark();
             bookmark.mFileName = new String(fileName);
             bookmark.mLineNum = (int32)wantLineNum;
             bookmark.mColumn = (int32)wantColumn;
+
+			if (title == null)
+				bookmark.mTitle = new $"Bookmark {_createdBookmarks++}";
+			else
+				bookmark.mTitle = new String(title);
+
+			bookmark.mIsDisabled = isDisabled;
+
             mBookmarkList.Add(bookmark);            
 
             gApp.mDebugger.mBreakpointsChangedDelegate();
+			
+			//gApp.mBookmarksPanel.UpdateBookmarks();
+			gApp.mBookmarksPanel.mBookmarksDirty = true;
+
             return bookmark;
         }
 
@@ -86,6 +117,9 @@ namespace IDE
                 mBookmarkIdx = (int32)mBookmarkList.Count - 1;
             gApp.mDebugger.mBreakpointsChangedDelegate();
 			bookmark.Kill();
+
+			//gApp.mBookmarksPanel.UpdateBookmarks();
+			gApp.mBookmarksPanel.mBookmarksDirty = true;
         }
 
 		public void Clear()
@@ -95,6 +129,9 @@ namespace IDE
 			mBookmarkList.Clear();
 			mBookmarkIdx = 0;
 			gApp.mDebugger.mBreakpointsChangedDelegate();
+			
+			//gApp.mBookmarksPanel.UpdateBookmarks();
+			gApp.mBookmarksPanel.mBookmarksDirty = true;
 		}
 
         public void PrevBookmark()
@@ -102,12 +139,22 @@ namespace IDE
             if (mBookmarkList.Count == 0)
                 return;
 
-            mBookmarkIdx--;
-            if (mBookmarkIdx < 0)
-                mBookmarkIdx = (int32)mBookmarkList.Count - 1;
+			int32 currentIdx = mBookmarkIdx;
 
-            var bookmark = mBookmarkList[mBookmarkIdx];
-            gApp.ShowSourceFileLocation(bookmark.mFileName, -1, -1, bookmark.mLineNum, bookmark.mColumn, LocatorType.Smart);
+			Bookmark prevBookmark;
+
+			repeat
+			{
+	            mBookmarkIdx++;
+	            if (mBookmarkIdx >= mBookmarkList.Count)
+	                mBookmarkIdx = 0;
+	
+	            prevBookmark = mBookmarkList[mBookmarkIdx];
+			}
+			// skip disabled bookmarks, stop when we reach starting point
+			while (prevBookmark.mIsDisabled && (currentIdx != mBookmarkIdx));
+
+            GotoBookmark(prevBookmark);
         }
 
         public void NextBookmark()
@@ -115,12 +162,27 @@ namespace IDE
             if (mBookmarkList.Count == 0)
                 return;
 
-            mBookmarkIdx++;
-            if (mBookmarkIdx >= mBookmarkList.Count)
-                mBookmarkIdx = 0;
+			int32 currentIdx = mBookmarkIdx;
 
-            var bookmark = mBookmarkList[mBookmarkIdx];
-            gApp.ShowSourceFileLocation(bookmark.mFileName, -1, -1, bookmark.mLineNum, bookmark.mColumn, LocatorType.Smart);
+			Bookmark nextBookmark;
+
+			repeat
+			{
+			    mBookmarkIdx--;
+			    if (mBookmarkIdx < 0)
+			        mBookmarkIdx = (int32)mBookmarkList.Count - 1;
+
+			    nextBookmark = mBookmarkList[mBookmarkIdx];
+			}
+			// skip disabled bookmarks, stop when we reach starting point
+			while (nextBookmark.mIsDisabled && (currentIdx != mBookmarkIdx));
+
+            GotoBookmark(nextBookmark);
         }
+
+		public void GotoBookmark(Bookmark bookmark)
+		{
+			gApp.ShowSourceFileLocation(bookmark.mFileName, -1, -1, bookmark.mLineNum, bookmark.mColumn, LocatorType.Smart);
+		}
     }
 }

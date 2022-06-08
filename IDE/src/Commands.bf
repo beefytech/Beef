@@ -294,6 +294,7 @@ namespace IDE
 			Add("Settings", new => gApp.ShowSettings);
 			Add("Show Auto Watches", new => gApp.ShowAutoWatches);
 			Add("Show Autocomplete Panel", new => gApp.ShowAutoCompletePanel);
+			Add("Show Bookmarks", new => gApp.ShowBookmarks);
 			Add("Show Breakpoints", new => gApp.ShowBreakpoints);
 			Add("Show Call Stack", new => gApp.ShowCallstack);
 			Add("Show Class View", new => gApp.ShowClassViewPanel);

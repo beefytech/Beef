@@ -213,6 +213,7 @@ namespace IDE
 		public Widget mLastActivePanel;
 		public SourceViewPanel mLastActiveSourceViewPanel;
 		public AutoCompletePanel mAutoCompletePanel;
+		public BookmarksPanel mBookmarksPanel;
         
         public Rect mRequestedWindowRect = Rect(64, 64, 1200, 1024);
 		public BFWindow.ShowKind mRequestedShowKind;
@@ -703,6 +704,7 @@ namespace IDE
 			RemoveAndDelete!(mProfilePanel);
 			RemoveAndDelete!(mPropertiesPanel);
 			RemoveAndDelete!(mAutoCompletePanel);
+			RemoveAndDelete!(mBookmarksPanel);
 
 			if (mSymbolReferenceHelper != null)
 				mSymbolReferenceHelper.Close();
@@ -1908,6 +1910,9 @@ namespace IDE
 			                sd.Add("File", relPath);
 			                sd.Add("Line", bookmark.mLineNum);
 			                sd.Add("Column", bookmark.mColumn);
+			                sd.Add("Title", bookmark.mTitle);
+			                if (bookmark.mIsDisabled)
+								sd.Add("Disabled", true);
 			            }
 			        }
 			    }
@@ -2403,6 +2408,8 @@ namespace IDE
 			mWorkspace = new Workspace();
 
 			mErrorsPanel.Clear();
+
+			mBookmarksPanel.Clear();
 
 			OutputLine("Workspace closed.");
 		}
@@ -3311,7 +3318,12 @@ namespace IDE
 				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
 	            int32 lineNum = data.GetInt("Line");
 	            int32 column = data.GetInt("Column");
-	            mBookmarkManager.CreateBookmark(absPath, lineNum, column);
+				String title = scope String();
+				data.GetString("Title", title);
+
+	            bool isDisabled = data.GetBool("Disabled", false);
+
+	            mBookmarkManager.CreateBookmark(absPath, lineNum, column, isDisabled, title);
 			}
 
 			for (var referenceId in data.Enumerate("DebuggerDisplayTypes"))
@@ -3878,6 +3890,10 @@ namespace IDE
 			else if (var watchPanel = activePanel as WatchPanel)
 			{
 				watchPanel.TryRenameItem();
+			}
+			else if (var bookmarksPanel = activePanel as BookmarksPanel)
+			{
+				bookmarksPanel.TryRenameItem();
 			}
 		}
 
@@ -4975,6 +4991,12 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void ShowBookmarks()
+		{
+		    ShowPanel(mBookmarksPanel, "Bookmarks");						
+		}
+
+		[IDECommand]
 		public void ShowQuickWatch()
 		{
 			QuickWatchDialog dialog = new .();
@@ -5655,6 +5677,7 @@ namespace IDE
             subMenu = root.AddMenuItem("&View");
 			AddMenuItem(subMenu, "AutoComplet&e", "Show Autocomplete Panel");
 			AddMenuItem(subMenu, "&Auto Watches", "Show Auto Watches");
+			AddMenuItem(subMenu, "Boo&kmarks", "Show Bookmarks");
 			AddMenuItem(subMenu, "&Breakpoints", "Show Breakpoints");
 			AddMenuItem(subMenu, "&Call Stack", "Show Call Stack");
 			AddMenuItem(subMenu, "C&lass View", "Show Class View");
@@ -11902,6 +11925,8 @@ namespace IDE
 			mPropertiesPanel.mAutoDelete = false;
 			mAutoCompletePanel = new AutoCompletePanel();
 			mAutoCompletePanel.mAutoDelete = false;
+			mBookmarksPanel = new BookmarksPanel();
+			mBookmarksPanel.mAutoDelete = false;
 
 			GetVersionInfo(var exeDate);
 			let localExeDate = exeDate.ToLocalTime();
