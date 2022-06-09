@@ -3171,16 +3171,19 @@ namespace IDE.ui
                 mTrackedTextElementViewList = new List<TrackedTextElementView>();
 				if (mFilePath == null)
 					return mTrackedTextElementViewList;
-
-                for (var bookmark in IDEApp.sApp.mBookmarkManager.mBookmarkList)
-                {
-                    if (Path.Equals(bookmark.mFileName, findFileName))
-                    {
-                        var bookmarkView = new TrackedTextElementView(bookmark);
-                        UpdateTrackedElementView(bookmarkView);
-                        mTrackedTextElementViewList.Add(bookmarkView);
-                    }
-                }
+				
+				for (var folder in IDEApp.sApp.mBookmarkManager.mBookmarkFolders)
+				{
+				    for (var bookmark in folder.mBookmarkList)
+				    {
+				        if (Path.Equals(bookmark.mFileName, findFileName))
+				        {
+				            var bookmarkView = new TrackedTextElementView(bookmark);
+				            UpdateTrackedElementView(bookmarkView);
+				            mTrackedTextElementViewList.Add(bookmarkView);
+				        }
+				    }
+				}
 
                 for (var breakpoint in debugManager.mBreakpointList)
                 {
@@ -4393,11 +4396,14 @@ namespace IDE.ui
 
             bool hadBookmark = false;
             
-            WithTrackedElementsAtCursor<Bookmark>(IDEApp.sApp.mBookmarkManager.mBookmarkList, scope [&] (bookmark) =>
-                {
-                    bookmarkManager.DeleteBookmark(bookmark);
-                    hadBookmark = true;
-                });
+			for (var folder in IDEApp.sApp.mBookmarkManager.mBookmarkFolders)
+			{
+				WithTrackedElementsAtCursor<Bookmark>(folder.mBookmarkList, scope [&] (bookmark) =>
+				    {
+				        bookmarkManager.DeleteBookmark(bookmark);
+				        hadBookmark = true;
+				    });
+			}
             
             if (!hadBookmark)
             {
