@@ -343,8 +343,52 @@ namespace IDE
 			int32 currentFolderIdx = mFolderIdx;
 			int32 currentBookmarkIdx = mBookmarkIdx;
 
-			Bookmark nextBookmark = null;
+			Bookmark prevBookmark = null;
+			
+			repeat
+			{
+			    mBookmarkIdx--;
 
+			    if (mBookmarkIdx < 0)
+				{
+					if (!currentFolderOnly)
+					{
+						mFolderIdx--;
+
+						if (mFolderIdx < 0)
+						{
+							// wrap to last folder
+							mFolderIdx = (int32)mBookmarkFolders.Count - 1;
+						}
+					}
+
+					// Select last bookmark in current folder
+					mBookmarkIdx = (int32)mBookmarkFolders[mFolderIdx].mBookmarkList.Count - 1;
+				}
+
+				if (mBookmarkIdx >= 0)
+			    	prevBookmark = mBookmarkFolders[mFolderIdx].mBookmarkList[mBookmarkIdx];
+				else
+					prevBookmark = null;
+			}
+			// skip disabled bookmarks, stop when we reach starting point
+			while ((prevBookmark == null || prevBookmark.mIsDisabled) && ((currentFolderIdx != mFolderIdx) || (currentBookmarkIdx != mBookmarkIdx) && mBookmarkIdx != -1));
+
+			// If prevBookmark is disabled no bookmark is enabled.
+			if (prevBookmark != null && !prevBookmark.mIsDisabled)
+				GotoBookmark(prevBookmark);
+        }
+
+        public void NextBookmark(bool currentFolderOnly = false)
+        {
+			if (mBookmarkCount == 0)
+				return;
+
+			int32 currentFolderIdx = mFolderIdx;
+			int32 currentBookmarkIdx = mBookmarkIdx;
+
+			Bookmark nextBookmark = null;
+			
 			repeat
 			{
 			    mBookmarkIdx++;
@@ -364,50 +408,6 @@ namespace IDE
 
 					// Select first bookmark in current folder (or -1 if there is no bookmark)
 					mBookmarkIdx = mBookmarkFolders[mFolderIdx].mBookmarkList.IsEmpty ? -1 : 0;
-				}
-
-				if (mBookmarkIdx >= 0)
-			    	nextBookmark = mBookmarkFolders[mFolderIdx].mBookmarkList[mBookmarkIdx];
-				else
-					nextBookmark = null;
-			}
-			// skip disabled bookmarks, stop when we reach starting point
-			while ((nextBookmark == null || nextBookmark.mIsDisabled) && ((currentFolderIdx != mFolderIdx) || (currentBookmarkIdx != mBookmarkIdx) && mBookmarkIdx != -1));
-
-			// If nextBookmark is disabled no bookmark is enabled.
-			if (nextBookmark != null && !nextBookmark.mIsDisabled)
-				GotoBookmark(nextBookmark);
-        }
-
-        public void NextBookmark(bool currentFolderOnly = false)
-        {
-			if (mBookmarkCount == 0)
-				return;
-
-			int32 currentFolderIdx = mFolderIdx;
-			int32 currentBookmarkIdx = mBookmarkIdx;
-
-			Bookmark nextBookmark = null;
-
-			repeat
-			{
-			    mBookmarkIdx--;
-
-			    if (mBookmarkIdx < 0)
-				{
-					if (!currentFolderOnly)
-					{
-						mFolderIdx--;
-	
-						if (mFolderIdx < 0)
-						{
-							// wrap to last folder
-							mFolderIdx = (int32)mBookmarkFolders.Count - 1;
-						}
-					}
-
-					// Select last bookmark in current folder
-					mBookmarkIdx = (int32)mBookmarkFolders[mFolderIdx].mBookmarkList.Count - 1;
 				}
 
 				if (mBookmarkIdx >= 0)

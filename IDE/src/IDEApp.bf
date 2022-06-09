@@ -2423,6 +2423,8 @@ namespace IDE
 
 			mBookmarksPanel.Clear();
 
+			mBookmarkManager.Clear();
+
 			OutputLine("Workspace closed.");
 		}
 
