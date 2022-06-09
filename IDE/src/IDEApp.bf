@@ -809,6 +809,7 @@ namespace IDE
 			dlg(mProfilePanel);
 			dlg(mPropertiesPanel);
 			dlg(mAutoCompletePanel);
+			dlg(mBookmarksPanel);
 		}
 
 		public override void ShutdownCompleted()

@@ -185,6 +185,11 @@ namespace Beefy.theme.dark
 			CollapseOpened,
 
 			IconBookmarkDisabled,
+			NewBookmarkFolder,
+			PrevBookmark,
+			NextBookmark,
+			PrevBookmarkInFolder,
+			NextBookmarkInFolder,
 
             COUNT
         };

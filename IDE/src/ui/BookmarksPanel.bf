@@ -6,6 +6,9 @@ using System.Collections;
 using Beefy.theme;
 using Beefy.events;
 using System.Diagnostics;
+using Beefy.theme.dark;
+using Beefy.gfx;
+using Beefy.geom;
 
 namespace IDE.ui
 {
@@ -63,35 +66,63 @@ namespace IDE.ui
 
 	class BookmarksPanel : Panel
 	{
-		public DarkButton mCreateBookmarkFolder;
+		public DarkIconButton mBtnCreateBookmarkFolder;
+		public DarkIconButton mBtnPrevBookmark;
+		public DarkIconButton mBtnNextBookmark;
+		public DarkIconButton mBtnPrevBookmarkInFolder;
+		public DarkIconButton mBtnNextBookmarkInFolder;
 
-		public BookmarksListView mBookmarksLV;
+		public BookmarksListView mBookmarksListView;
 
 		public this()
 		{
-			mCreateBookmarkFolder = new DarkButton();
-			mCreateBookmarkFolder.Label = "New Folder";
-			mCreateBookmarkFolder.mOnMouseClick.Add(new (args) =>
-				{
-					gApp.mBookmarkManager.CreateFolder();
-				});
-			AddWidget(mCreateBookmarkFolder);
+			mBtnCreateBookmarkFolder = new DarkIconButton();
+			mBtnCreateBookmarkFolder.Icon = DarkTheme.sDarkTheme.GetImage(.NewBookmarkFolder);
+			mBtnCreateBookmarkFolder.mOnMouseClick.Add(new (args) => gApp.mBookmarkManager.CreateFolder());
+			AddWidget(mBtnCreateBookmarkFolder);
 
-			mBookmarksLV = new .();
-			mBookmarksLV.mOnEditDone.Add(new => HandleEditDone);
+			float iconButtonWidth = mBtnCreateBookmarkFolder.Width;
 
-			mBookmarksLV.InitScrollbars(true, true);
-			mBookmarksLV.mLabelX = GS!(6);
-			mBookmarksLV.mOnItemMouseClicked.Add(new => ListViewItemMouseClicked);
+			mBtnPrevBookmark = new DarkIconButton();
+			mBtnPrevBookmark.Icon = DarkTheme.sDarkTheme.GetImage(.PrevBookmark);
+			mBtnPrevBookmark.mOnMouseClick.Add(new (args) => gApp.Cmd_PrevBookmark());
+			mBtnPrevBookmark.X = GS!(1) + iconButtonWidth;
+			AddWidget(mBtnPrevBookmark);
 
-			mBookmarksLV.AddColumn(200, "Bookmark");
-			mBookmarksLV.AddColumn(400, "File");
-			mBookmarksLV.AddColumn(120, "Line");
+			mBtnNextBookmark = new DarkIconButton();
+			mBtnNextBookmark.Icon = DarkTheme.sDarkTheme.GetImage(.NextBookmark);
+			mBtnNextBookmark.mOnMouseClick.Add(new (args) => gApp.Cmd_NextBookmark());
+			mBtnNextBookmark.X = (GS!(1) + iconButtonWidth) * 2;
+			AddWidget(mBtnNextBookmark);
 
-            mBookmarksLV.mOnDragEnd.Add(new => BookmarksLV_OnDragEnd);
-            mBookmarksLV.mOnDragUpdate.Add(new => BookmarksLV_OnDragUpdate);
+			mBtnPrevBookmarkInFolder = new DarkIconButton();
+			mBtnPrevBookmarkInFolder.Icon = DarkTheme.sDarkTheme.GetImage(.PrevBookmarkInFolder);
+			mBtnPrevBookmarkInFolder.mOnMouseClick.Add(new (args) => gApp.Cmd_PrevBookmarkInFolder());
+			mBtnPrevBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 3;
+			AddWidget(mBtnPrevBookmarkInFolder);
 
-			mBookmarksLV.mOnItemMouseDown.Add(new (item, x, y, btnNum, btnCount) =>
+			mBtnNextBookmarkInFolder = new DarkIconButton();
+			mBtnNextBookmarkInFolder.Icon = DarkTheme.sDarkTheme.GetImage(.NextBookmarkInFolder);
+			mBtnNextBookmarkInFolder.mOnMouseClick.Add(new (args) => gApp.Cmd_NextBookmarkInFolder());
+			mBtnNextBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 4;
+			AddWidget(mBtnNextBookmarkInFolder);
+
+
+			mBookmarksListView = new .();
+			mBookmarksListView.mOnEditDone.Add(new => HandleEditDone);
+
+			mBookmarksListView.InitScrollbars(true, true);
+			mBookmarksListView.mLabelX = GS!(6);
+			mBookmarksListView.mOnItemMouseClicked.Add(new => ListViewItemMouseClicked);
+
+			mBookmarksListView.AddColumn(200, "Bookmark");
+			mBookmarksListView.AddColumn(400, "File");
+			mBookmarksListView.AddColumn(120, "Line");
+
+            mBookmarksListView.mOnDragEnd.Add(new => BookmarksLV_OnDragEnd);
+            mBookmarksListView.mOnDragUpdate.Add(new => BookmarksLV_OnDragUpdate);
+
+			mBookmarksListView.mOnItemMouseDown.Add(new (item, x, y, btnNum, btnCount) =>
 				{
 					if ((btnNum == 0) && (btnCount == 2))
 					{
@@ -101,10 +132,10 @@ namespace IDE.ui
 
 					ListViewItemMouseDown(item, x, y, btnNum, btnCount);
 				});
-			mBookmarksLV.mOnItemMouseClicked.Add(new => ListViewItemMouseClicked);
-			mBookmarksLV.mOnKeyDown.Add(new => BookmarksLV_OnKeyDown);
+			mBookmarksListView.mOnItemMouseClicked.Add(new => ListViewItemMouseClicked);
+			mBookmarksListView.mOnKeyDown.Add(new => BookmarksLV_OnKeyDown);
 
-			AddWidget(mBookmarksLV);
+			AddWidget(mBookmarksListView);
 		}
 
 		private void BookmarksLV_OnKeyDown(KeyDownEvent event)
@@ -119,7 +150,15 @@ namespace IDE.ui
 		
 		public override void RehupScale(float oldScale, float newScale)
 		{
-			mBookmarksLV.mOpenButtonX = GS!(4);
+			mBookmarksListView.mOpenButtonX = GS!(4);
+
+			float iconButtonWidth = mBtnCreateBookmarkFolder.Width;
+			
+			mBtnPrevBookmark.X = GS!(1) + iconButtonWidth;
+			mBtnNextBookmark.X = (GS!(1) + iconButtonWidth) * 2;
+			mBtnPrevBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 3;
+			mBtnNextBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 4;
+
 			base.RehupScale(oldScale, newScale);
 		}
 		
@@ -166,7 +205,7 @@ namespace IDE.ui
 			            return;
 
 					List<BookmarksListViewItem> selectedItems = scope .();
-					mBookmarksLV.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
+					mBookmarksListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
 					    {
 					        selectedItems.Add((BookmarksListViewItem)selectedItem);
 					    });
@@ -231,7 +270,7 @@ namespace IDE.ui
 		/// Tries to rename the currently selected bookmark
 		public void TryRenameItem()
 		{
-			ListViewItem selectedItem = mBookmarksLV.GetRoot().FindFirstSelectedItem();
+			ListViewItem selectedItem = mBookmarksListView.GetRoot().FindFirstSelectedItem();
 
 			RenameItem(selectedItem);
 		}
@@ -242,7 +281,7 @@ namespace IDE.ui
 			editWidget.GetText(newValue);
 			newValue.Trim();
 
-			ListViewItem listViewItem = mBookmarksLV.mEditingItem;
+			ListViewItem listViewItem = mBookmarksListView.mEditingItem;
 
 			if (var item = listViewItem as BookmarksListViewItem)
 			{
@@ -289,7 +328,7 @@ namespace IDE.ui
 				anItem = menu.AddItem("Rename");
 				anItem.mOnMenuItemSelected.Add(new (item) =>
 					{
-						var selectedItem = mBookmarksLV.GetRoot().FindFirstSelectedItem();
+						var selectedItem = mBookmarksListView.GetRoot().FindFirstSelectedItem();
 						if (selectedItem != null)
 							RenameItem(selectedItem);
 					});
@@ -320,7 +359,7 @@ namespace IDE.ui
 
 		void EditListViewItem(ListViewItem listViewItem)
 		{
-			mBookmarksLV.EditListViewItem(listViewItem);
+			mBookmarksListView.EditListViewItem(listViewItem);
 		}
 
 		void RenameItem(ListViewItem listViewItem)
@@ -340,31 +379,48 @@ namespace IDE.ui
 		{
 			base.Resize(x, y, width, height);
 
-			float buttonWidth = GS!(140);
-			float buttonHeight = GS!(22);
-			mCreateBookmarkFolder.Resize(0, 0, buttonWidth, buttonHeight);
+			float buttonHeight = mBtnCreateBookmarkFolder.mHeight;
 
-			mBookmarksLV.Resize(0, buttonHeight, width, Math.Max(mHeight - buttonHeight, 0));
-		}
-
-		public void Clear()
-		{
+			mBookmarksListView.Resize(0, buttonHeight, width, Math.Max(mHeight - buttonHeight, 0));
 		}
 
 		public bool mBookmarksDirty;
-
 
 		public override void Update()
 		{
 			if (mBookmarksDirty)
 				UpdateBookmarks();
 
+			ShowTooltip(mBtnCreateBookmarkFolder, "Create a new folder.");
+			ShowTooltip(mBtnPrevBookmark, "Move the cursor to previous bookmark.");
+			ShowTooltip(mBtnNextBookmark, "Move the cursor to next bookmark.");
+			ShowTooltip(mBtnPrevBookmarkInFolder, "Move the cursor to previous bookmark in the current folder.");
+			ShowTooltip(mBtnNextBookmarkInFolder, "Move the cursor to next bookmark in the current folder.");
+
 			base.Update();
+		}
+
+		public void Clear()
+		{
+			var root = mBookmarksListView.GetRoot();
+
+			root.Clear();
+
+			mBookmarksDirty = true;
+		}
+
+		private void ShowTooltip(Widget widget, String text)
+		{
+		    Point mousePoint;
+		    if (DarkTooltipManager.CheckMouseover(widget, 20, out mousePoint))
+		    {
+                DarkTooltipManager.ShowTooltip(text, widget, mousePoint.x, mousePoint.y);
+			}
 		}
 
 		private void UpdateBookmarks()
 		{
-			var root = mBookmarksLV.GetRoot();
+			var root = mBookmarksListView.GetRoot();
 
 			root.Clear();
 
@@ -377,6 +433,7 @@ namespace IDE.ui
 				if (!isRoot)
 				{
 					FolderItem = (BookmarksListViewItem)root.CreateChildItem();
+
 					SetupListViewItemFolder(FolderItem, folder);
 				}
 				else
@@ -447,14 +504,14 @@ namespace IDE.ui
 
 		public override void KeyDown(KeyCode keyCode, bool isRepeat)
 		{
-			mBookmarksLV.KeyDown(keyCode, isRepeat);
+			mBookmarksListView.KeyDown(keyCode, isRepeat);
 
 			base.KeyDown(keyCode, isRepeat);
 		}
 
 		private void DeleteSelectedItems()
 		{
-			var root = mBookmarksLV.GetRoot();
+			var root = mBookmarksListView.GetRoot();
 			List<ListViewItem> selectedItems = scope List<ListViewItem>();
 			root.WithSelectedItems(scope (listViewItem) =>
 				{
