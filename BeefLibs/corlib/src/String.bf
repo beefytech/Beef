@@ -48,7 +48,7 @@ namespace System
 
 		int_strsize mLength;
 		uint_strsize mAllocSizeAndFlags;
-		char8* mPtr = null;
+		char8* mPtrOrBuffer = null;
 
 		extern const String* sStringLiterals;
 		extern const String* sIdStringLiterals;
@@ -326,7 +326,7 @@ namespace System
 		public ~this()
 		{
 			if (IsDynAlloc)
-			    delete:this mPtr;
+			    delete:this mPtrOrBuffer;
 		}
 
 		void FakeMethod ()
@@ -390,7 +390,7 @@ namespace System
 			//[Optimize]
 			get
 			{
-				return ((mAllocSizeAndFlags & cStrPtrFlag) != 0) ? mPtr : (char8*)&mPtr;
+				return ((mAllocSizeAndFlags & cStrPtrFlag) != 0) ? mPtrOrBuffer : (char8*)&mPtrOrBuffer;
 			}
 		}
 
@@ -660,10 +660,10 @@ namespace System
 			{
 				if (str.IsDynAlloc)
 				{
-					delete str.mPtr;
+					delete str.mPtrOrBuffer;
 				}
 	
-				str.mPtr = mPtr;
+				str.mPtrOrBuffer = mPtrOrBuffer;
 				str.mAllocSizeAndFlags = mAllocSizeAndFlags;
 				str.mLength = mLength;
 
@@ -673,7 +673,7 @@ namespace System
 				}
 				else
 				{
-					mPtr = null;
+					mPtrOrBuffer = null;
 					mAllocSizeAndFlags = (int_strsize)sizeof(char8*);
 					mLength = 0;
 				}
@@ -689,8 +689,8 @@ namespace System
 		public void Reference(String str)
 		{
 			if (IsDynAlloc)
-				delete:this mPtr;
-			mPtr = str.Ptr;
+				delete:this mPtrOrBuffer;
+			mPtrOrBuffer = str.Ptr;
 			mLength = str.mLength;
 			mAllocSizeAndFlags = cStrPtrFlag;
 		}
@@ -698,8 +698,8 @@ namespace System
 		public void Reference(char8* ptr, int length, int allocSize)
 		{
 			if (IsDynAlloc)
-				delete:this mPtr;
-			mPtr = ptr;
+				delete:this mPtrOrBuffer;
+			mPtrOrBuffer = ptr;
 			mLength = (int_strsize)length;
 			mAllocSizeAndFlags = cStrPtrFlag;
 		}
@@ -707,8 +707,8 @@ namespace System
 		public void Reference(char8* ptr, int length)
 		{
 			if (IsDynAlloc)
-				delete:this mPtr;
-			mPtr = ptr;
+				delete:this mPtrOrBuffer;
+			mPtrOrBuffer = ptr;
 			mLength = (int_strsize)length;
 			mAllocSizeAndFlags = cStrPtrFlag;
 		}
@@ -721,8 +721,8 @@ namespace System
 		public void Reference(char8* ptr)
 		{
 			if (IsDynAlloc)
-				delete:this mPtr;
-			mPtr = ptr;
+				delete:this mPtrOrBuffer;
+			mPtrOrBuffer = ptr;
 			mLength = StrLen(ptr);
 			mAllocSizeAndFlags = cStrPtrFlag;
 		}
@@ -734,7 +734,7 @@ namespace System
 			Debug.Assert(!IsDynAlloc);
 			Debug.Assert(AllocSize == 0); // Assert is reference
 			Debug.Assert((uint)mLength >= (uint)adjBytes);
-			mPtr += adjBytes;
+			mPtrOrBuffer += adjBytes;
 			mLength -= (int_strsize)adjBytes;
 		}
 
@@ -763,8 +763,8 @@ namespace System
 			Internal.MemSet(newPtr + mLength, 0, newSize - mLength);
 #endif
 			if (IsDynAlloc)
-				delete:this mPtr;
-			mPtr = newPtr;
+				delete:this mPtrOrBuffer;
+			mPtrOrBuffer = newPtr;
 			mAllocSizeAndFlags = (uint_strsize)newSize | cDynAllocFlag | cStrPtrFlag;
 		}
 
@@ -780,8 +780,8 @@ namespace System
 			Debug.Assert((uint)newSize <= cSizeFlags);
 			Internal.MemCpy(newPtr, Ptr, mLength);
 			if (IsDynAlloc)
-				delete:this mPtr;
-			mPtr = newPtr;
+				delete:this mPtrOrBuffer;
+			mPtrOrBuffer = newPtr;
 			mAllocSizeAndFlags = (uint_strsize)newSize | cDynAllocFlag | cStrPtrFlag;
 		}
 
@@ -1603,8 +1603,8 @@ namespace System
 				newPtr[outIdx] = '\0';
 
 				if (IsDynAlloc)
-					delete mPtr;
-				mPtr = newPtr;
+					delete mPtrOrBuffer;
+				mPtrOrBuffer = newPtr;
 				mAllocSizeAndFlags = (uint_strsize)newSize | cDynAllocFlag | cStrPtrFlag;
 			}
 		}
@@ -1633,8 +1633,8 @@ namespace System
 			int newLen = UTF8Map(Ptr, mLength, newStr, allocSize, (int32)unicodeNormalizationOptions);
 
 			if (IsDynAlloc)
-				delete:this mPtr;
-			mPtr = newStr;
+				delete:this mPtrOrBuffer;
+			mPtrOrBuffer = newStr;
 			mLength = (int_strsize)newLen;
 			mAllocSizeAndFlags = (uint32)(allocSize) | cDynAllocFlag | cStrPtrFlag;
 			return .Ok;
@@ -1656,8 +1656,8 @@ namespace System
 			int newLen = UTF8Map(Ptr, mLength, newStr, allocSize, (int32)unicodeNormalizationOptions);
 
 			if (destStr.IsDynAlloc)
-				delete:destStr destStr.mPtr;
-			destStr.mPtr = newStr;
+				delete:destStr destStr.mPtrOrBuffer;
+			destStr.mPtrOrBuffer = newStr;
 			destStr.mLength = (int_strsize)newLen;
 			destStr.mAllocSizeAndFlags = (uint_strsize)(newLen + 1) | cDynAllocFlag | cStrPtrFlag;
 			return .Ok;
@@ -2059,7 +2059,7 @@ namespace System
 		{
 			if (mLength != str.[Friend]mLength)
 				return false;
-			return EqualsHelper(str.Ptr, mPtr, mLength);
+			return EqualsHelper(str.Ptr, Ptr, mLength);
 		}
 
 		public bool Equals(StringView str, StringComparison comparisonType = StringComparison.Ordinal)
