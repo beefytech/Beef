@@ -86,12 +86,12 @@ namespace IDE
 				for (var bookmark in mBookmarkList)
 					bookmark.mIsDisabled = value;
 
-				gApp.mBookmarksPanel.mBookmarksDirty = true;
+				gApp.mBookmarkManager.mBookmarksChangedDelegate();
 			}
 		}
 
 		/// Adds the given bookmark to this folder. If needed, removes it from its old folder.
-		public void AddBookmark(Bookmark bookmark)
+		internal void AddBookmark(Bookmark bookmark)
 		{
 			if (bookmark.mFolder != null)
 			{
@@ -99,8 +99,6 @@ namespace IDE
 			}
 			mBookmarkList.Add(bookmark);
 			bookmark.mFolder = this;
-
-			//gApp.mBookmarksPanel.mBookmarksDirty = true;
 		}
 	}
 
@@ -108,6 +106,8 @@ namespace IDE
     {
 		public BookmarkFolder mRootFolder = new .();
 		public List<BookmarkFolder> mBookmarkFolders = new .() {mRootFolder} ~ DeleteContainerAndItems!(_);
+
+		public Event<Action> mBookmarksChangedDelegate ~ _.Dispose();
 
 		private int mBookmarkCount;
 
@@ -141,7 +141,7 @@ namespace IDE
 					folder.IsDisabled = value;
 				}
 				
-				gApp.mBookmarksPanel.mBookmarksDirty = true;
+				mBookmarksChangedDelegate();
 			}
 		}
 		
@@ -163,7 +163,7 @@ namespace IDE
 
 			mBookmarkFolders.Add(folder);            
 
-			gApp.mBookmarksPanel.mBookmarksDirty = true;
+			mBookmarksChangedDelegate();
 
 			return folder;
 		}
@@ -187,7 +187,7 @@ namespace IDE
 			if (mBookmarkIdx >= mBookmarkFolders[mFolderIdx].mBookmarkList.Count)
 			    mBookmarkIdx = (int32)mBookmarkFolders[mFolderIdx].mBookmarkList.Count - 1;
 			
-			gApp.mBookmarksPanel.mBookmarksDirty = true;
+			mBookmarksChangedDelegate();
 		}
 
         public Bookmark CreateBookmark(String fileName, int wantLineNum, int wantColumn, bool isDisabled = false, String title = null, BookmarkFolder folder = null)
@@ -212,11 +212,11 @@ namespace IDE
 
 			bookmark.mIsDisabled = isDisabled;
    			
-			folder.AddBookmark(bookmark);
+			folder.[Friend]AddBookmark(bookmark);
 
             gApp.mDebugger.mBreakpointsChangedDelegate();
 			
-			gApp.mBookmarksPanel.mBookmarksDirty = true;
+			mBookmarksChangedDelegate();
 
 			mBookmarkCount++;
 
@@ -250,7 +250,7 @@ namespace IDE
 			
 			FixupIndices();
 
-			gApp.mBookmarksPanel.mBookmarksDirty = true;
+			mBookmarksChangedDelegate();
 		}
 
 		enum Placement
@@ -283,7 +283,7 @@ namespace IDE
 			
 			FixupIndices();
 
-			gApp.mBookmarksPanel.mBookmarksDirty = true;
+			mBookmarksChangedDelegate();
 		}
 
 		/// Make sure that the bookmark and folder indices are valid.
@@ -310,7 +310,7 @@ namespace IDE
 			gApp.mDebugger.mBreakpointsChangedDelegate();
 			bookmark.Kill();
 
-			gApp.mBookmarksPanel.mBookmarksDirty = true;
+			mBookmarksChangedDelegate();
 
 			mBookmarkCount--;
         }
@@ -332,7 +332,7 @@ namespace IDE
 			mBookmarkIdx = 0;
 			gApp.mDebugger.mBreakpointsChangedDelegate();
 			
-			gApp.mBookmarksPanel.mBookmarksDirty = true;
+			mBookmarksChangedDelegate();
 		}
 
         public void PrevBookmark(bool currentFolderOnly = false)

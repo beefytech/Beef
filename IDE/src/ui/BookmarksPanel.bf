@@ -136,6 +136,8 @@ namespace IDE.ui
 			mBookmarksListView.mOnKeyDown.Add(new => BookmarksLV_OnKeyDown);
 
 			AddWidget(mBookmarksListView);
+
+			gApp.mBookmarkManager.mBookmarksChangedDelegate.Add(new => BookmarksChanged);
 		}
 
 		private void BookmarksLV_OnKeyDown(KeyDownEvent event)
@@ -384,7 +386,13 @@ namespace IDE.ui
 			mBookmarksListView.Resize(0, buttonHeight, width, Math.Max(mHeight - buttonHeight, 0));
 		}
 
-		public bool mBookmarksDirty;
+		private bool mBookmarksDirty;
+
+		/// Marks the bookmarks list view as dirty so that it will be rebuild in the next update.
+		private void BookmarksChanged()
+		{
+			mBookmarksDirty = true;
+		}
 
 		public override void Update()
 		{
@@ -400,27 +408,44 @@ namespace IDE.ui
 			base.Update();
 		}
 
+		/// Clears the Panel (does NOT clear the actual bookmarks).
 		public void Clear()
 		{
-			var root = mBookmarksListView.GetRoot();
-
-			root.Clear();
+			mBookmarksListView.GetRoot().Clear();
 
 			mBookmarksDirty = true;
 		}
 
+		/// Shows a tooltip with the given text for the specified widget if the widget is hovered.
 		private void ShowTooltip(Widget widget, String text)
 		{
-		    Point mousePoint;
-		    if (DarkTooltipManager.CheckMouseover(widget, 20, out mousePoint))
+		    if (DarkTooltipManager.CheckMouseover(widget, 20, let mousePoint))
 		    {
                 DarkTooltipManager.ShowTooltip(text, widget, mousePoint.x, mousePoint.y);
 			}
 		}
 
+		/// Rebuilds the list view.
 		private void UpdateBookmarks()
 		{
-			var root = mBookmarksListView.GetRoot();
+			var root = (BookmarksListViewItem)mBookmarksListView.GetRoot();
+
+			var openFolders = scope List<BookmarkFolder>();
+
+			if (root.mChildItems != null)
+			{
+				// Find all open Folders so that we can open them again after rebuilding the list view
+				for (var child in root.mChildItems)
+				{
+					if (!child.IsOpen)
+						continue;
+	
+					if (var bookmarkFolder = ((BookmarksListViewItem)child).RefObject as BookmarkFolder)
+					{
+						openFolders.Add(bookmarkFolder);
+					}
+				}
+			}
 
 			root.Clear();
 
@@ -432,9 +457,7 @@ namespace IDE.ui
 
 				if (!isRoot)
 				{
-					FolderItem = (BookmarksListViewItem)root.CreateChildItem();
-
-					SetupListViewItemFolder(FolderItem, folder);
+					FolderItem = AddFolderToListView(root, folder);
 				}
 				else
 				{
@@ -443,19 +466,31 @@ namespace IDE.ui
 
 				for (Bookmark bookmark in folder.mBookmarkList)
 				{
-					var listViewItem = (BookmarksListViewItem)(FolderItem.CreateChildItem());
-					SetupListViewItem(listViewItem, bookmark);
+					AddBookmarkToListView(FolderItem, bookmark);
+				}
+
+				if (!isRoot)
+				{
+					// Open folder if it was open before recreating the list view.
+					int idx = openFolders.IndexOf(folder);
+					if (idx >= 0)
+					{
+						openFolders.RemoveAtFast(idx);
+						FolderItem.Open(true, true);
+					}
 				}
 			}
 
 			mBookmarksDirty = false;
 		}
 
-		private void SetupListViewItemFolder(BookmarksListViewItem listViewItem, BookmarkFolder folder)
+		/// Creates a new ListViewItem for the given folder.
+		private BookmarksListViewItem AddFolderToListView(BookmarksListViewItem parent, BookmarkFolder folder)
 		{
-			listViewItem.AllowDragging = true;
-
+			var listViewItem = (BookmarksListViewItem)parent.CreateChildItem();
+			
 			listViewItem.RefObject = folder;
+			listViewItem.AllowDragging = true;
 
 			var subViewItem = (DarkListViewItem)listViewItem.GetOrCreateSubItem(0);
 
@@ -470,13 +505,17 @@ namespace IDE.ui
 
 			subViewItem.Label = folder.mTitle;
 			subViewItem.Resize(GS!(22), 0, 0, 0);
+
+			return listViewItem;
 		}
 
-		private void SetupListViewItem(BookmarksListViewItem listViewItem, Bookmark bookmark)
+		/// Creates a new ListViewItem for the given bookmark.
+		private BookmarksListViewItem AddBookmarkToListView(BookmarksListViewItem parent, Bookmark bookmark)
 		{
-			listViewItem.AllowDragging = true;
-
+			var listViewItem = (BookmarksListViewItem)(parent.CreateChildItem());
+			
 			listViewItem.RefObject = bookmark;
+			listViewItem.AllowDragging = true;
 
 			var subViewItem = (DarkListViewItem)listViewItem.GetOrCreateSubItem(0);
 
@@ -500,6 +539,8 @@ namespace IDE.ui
 
 			subViewItem = (DarkListViewItem)listViewItem.GetOrCreateSubItem(2);
 			subViewItem.Label = listViewItem.BookmarkLine;
+
+			return listViewItem;
 		}
 
 		public override void KeyDown(KeyCode keyCode, bool isRepeat)
