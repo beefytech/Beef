@@ -52,14 +52,14 @@ String = "{{ {__demangleFakeMember(this)} }}"
 Name = "System.String"
 [[Type.DisplayString]]
 Condition = "(__getHighBits(mAllocSizeAndFlags, 2) & 1) == 0"
-String = "{(char8*)&mPtr,s8,count=mLength}"
+String = "{(char8*)&mPtrOrBuffer,s8,count=mLength}"
 [[Type.DisplayString]]
-String = "{mPtr,s8,count=mLength}"
+String = "{mPtrOrBuffer,s8,count=mLength}"
 [[Type.StringView]]
 Condition = "(__getHighBits(mAllocSizeAndFlags, 2) & 1) == 0"
-String = "{(char8*)&mPtr,s8,count=mLength}"
+String = "{(char8*)&mPtrOrBuffer,s8,count=mLength}"
 [[Type.StringView]]
-String = "{mPtr,s8,count=mLength}"
+String = "{mPtrOrBuffer,s8,count=mLength}"
 [[Type.Expand.Item]]
 Name = "[Length]"
 Value = "mLength"
@@ -78,11 +78,11 @@ Value = "__clearHighBits(mAllocSizeAndFlags, 2)"
 [[Type.Expand.Item]]
 Condition = "(__getHighBits(mAllocSizeAndFlags, 2) & 1) == 0"
 Name = "[RawChars]"
-Value = "(char8*)&mPtr,arraysize=mLength"
+Value = "(char8*)&mPtrOrBuffer,arraysize=mLength"
 [[Type.Expand.Item]]
 Condition = "(__getHighBits(mAllocSizeAndFlags, 2) & 1) != 0"
 Name = "[RawChars]"
-Value = "mPtr,arraysize=mLength"
+Value = "mPtrOrBuffer,arraysize=mLength"
 
 [[Type]]
 Name = "System.StringView"
