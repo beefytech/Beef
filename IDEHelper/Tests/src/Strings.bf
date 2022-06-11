@@ -28,6 +28,10 @@ namespace Tests
 			Test.Assert(wStr[2] == 's');
 			Test.Assert(wStr[3] == 't');
 			Test.Assert(wStr[4] == '\0');
+
+			StringView sv = "Abcd";
+			sv.Length--;
+			Test.Assert(sv == "Abc");
 		}
 	}
 }

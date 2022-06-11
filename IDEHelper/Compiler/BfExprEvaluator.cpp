@@ -21544,7 +21544,8 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags)
 {
 	BfAstNode* propSrc = mPropSrc;
-	BfTypedValue propTarget = mOrigPropTarget;
+	BfTypedValue origPropTarget = mOrigPropTarget;
+	BfTypedValue propTarget = mPropTarget;
 	BfPropertyDef* propDef = mPropDef;
 	SizedArray<BfResolvedArg, 2> indexerVals = mIndexerValues;
 	BfTypedValue writeToProp;
@@ -22056,8 +22057,14 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 
 		SizedArray<BfIRValue, 4> args;
 		if (!setMethod->mIsStatic)
-			PushThis(propSrc, propTarget, methodInstance.mMethodInstance, args);
-			//args.push_back(propTarget.mValue);
+		{
+			auto usePropTarget = propTarget;
+			if (origPropTarget.mType == methodInstance.mMethodInstance->GetOwner())
+				usePropTarget = origPropTarget;
+			else
+				BF_ASSERT(propTarget.mType == methodInstance.mMethodInstance->GetOwner());
+			PushThis(propSrc, usePropTarget, methodInstance.mMethodInstance, args);			
+		}
 
 		for (int paramIdx = 0; paramIdx < (int)indexerVals.size(); paramIdx++)
 		{
