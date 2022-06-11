@@ -8889,9 +8889,11 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 
 	if (genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo != NULL)
 	{
+		bool isAutocomplete = (mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL);
+
 		auto activeTypeDef = GetActiveTypeDef(NULL, true);
 		if ((activeTypeDef->mTypeDeclaration != genericTypeInst->mTypeDef->mTypeDeclaration) && (activeTypeDef->IsExtension()) &&
-			(genericTypeInst->mTypeDef->ContainsPartial(activeTypeDef)))
+			((genericTypeInst->mTypeDef->ContainsPartial(activeTypeDef)) || (isAutocomplete)))
 		{
 			BfTypeDef* lookupTypeDef = activeTypeDef;
 			while (lookupTypeDef->mNestDepth > genericTypeInst->mTypeDef->mNestDepth)
@@ -8904,7 +8906,7 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 			}
 			else
 			{
-				if ((mCompiler->mResolvePassData == NULL) || (mCompiler->mResolvePassData->mAutoComplete == NULL))
+				if (!isAutocomplete)
 				{
 					FatalError("Invalid GetGenericParamInstance with extension");
 				}
