@@ -11835,8 +11835,8 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 {		
 	auto targetValue = mModule->CreateValueFromExpression(dynCastExpr->mTarget);	
 	auto targetType = mModule->ResolveTypeRefAllowUnboundGenerics(dynCastExpr->mTypeRef, BfPopulateType_Data, false);
-			
-	auto autoComplete = GetAutoComplete();	
+
+	auto autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)	
 	{
 		autoComplete->CheckTypeRef(dynCastExpr->mTypeRef, false, true);				
@@ -11873,25 +11873,32 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 	}
 	
 	mModule->AddDependency(targetType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
-
+	
 	if (targetType->IsGenericParam())
 	{
 		wasGenericParamType = true;
-		//wasGenericParamType = false; // "was", not "is"
-		auto genericParamType = (BfGenericParamType*) targetType;
-		auto genericParam = mModule->GetGenericParamInstance(genericParamType);
-		auto typeConstraint = genericParam->mTypeConstraint;
-		if ((typeConstraint == NULL) && (genericParam->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Interface)))
-			typeConstraint = mModule->mContext->mBfObjectType;
-
-		if ((typeConstraint == NULL) || (!typeConstraint->IsObject()))
+		BfGenericParamInstance* origGenericParam = NULL;
+		int pass = 0;
+		while ((targetType != NULL) && (targetType->IsGenericParam()))
 		{
-			mModule->Fail(StrFormat("The type parameter '%s' cannot be used with the 'as' operator because it does not have a class type constraint nor a 'class' or 'interface' constraint",
-				genericParam->GetGenericParamDef()->mName.c_str()), dynCastExpr->mTypeRef);
-			return;
+			auto genericParamType = (BfGenericParamType*)targetType;
+			auto genericParam = mModule->GetGenericParamInstance(genericParamType);
+			if (pass == 0)
+				origGenericParam = genericParam;
+			auto typeConstraint = genericParam->mTypeConstraint;
+			if ((typeConstraint == NULL) && (genericParam->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Interface)))
+				typeConstraint = mModule->mContext->mBfObjectType;
+			targetType = typeConstraint;
+			if (++pass >= 100) // Sanity - but we should have caught circular error before
+				break;
 		}
 
-		targetType = typeConstraint;		
+		if ((targetType == NULL) || (!targetType->IsObjectOrInterface()))
+		{
+			mModule->Fail(StrFormat("The type parameter '%s' cannot be used with the 'as' operator because it does not have a class type constraint nor a 'class' or 'interface' constraint",
+				origGenericParam->GetGenericParamDef()->mName.c_str()), dynCastExpr->mTypeRef);
+			return;
+		}
 	}
 
 	if (targetType->IsVar())
@@ -11930,7 +11937,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 	auto _CheckResult = [&]()
 	{
 		if ((mResult) && (origTargetType->IsGenericParam()))
-			mResult = mModule->GetDefaultTypedValue(origTargetType);		
+			mResult = mModule->GetDefaultTypedValue(origTargetType, false, BfDefaultValueKind_Undef);
 	};
 
 	if ((targetValue.mType->IsNullable()) && (targetType->IsInterface()))
@@ -12053,7 +12060,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		mModule->Fail("Invalid dynamic cast type", dynCastExpr->mTypeRef);
 		return;
 	}
-	
+		
 	BfTypeInstance* srcTypeInstance = targetValue.mType->ToTypeInstance();
 	BfTypeInstance* targetTypeInstance = targetType->ToTypeInstance();
 

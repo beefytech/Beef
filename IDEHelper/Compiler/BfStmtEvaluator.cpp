@@ -1197,15 +1197,24 @@ void BfModule::TryInitVar(BfAstNode* checkNode, BfLocalVariable* localVar, BfTyp
 	bool isDynamicCast = false;
 
 	if (varType->IsGenericParam())
-	{		
-		auto genericParamType = (BfGenericParamType*) varType;
-		auto genericParam = GetGenericParamInstance(genericParamType);
-		auto typeConstraint = genericParam->mTypeConstraint;
-		if ((typeConstraint == NULL) && (genericParam->mGenericParamFlags & BfGenericParamFlag_Class))
-			typeConstraint = mContext->mBfObjectType;
-		if (typeConstraint != NULL)
-			varType = typeConstraint;
-		initValue = GetDefaultTypedValue(varType);
+	{	
+		int pass = 0;
+		while (varType->IsGenericParam())
+		{
+			auto genericParamType = (BfGenericParamType*)varType;
+
+			auto genericParam = GetGenericParamInstance(genericParamType);
+			auto typeConstraint = genericParam->mTypeConstraint;
+			if ((typeConstraint == NULL) && (genericParam->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Interface)))
+				typeConstraint = mContext->mBfObjectType;
+			if (typeConstraint != NULL)
+				varType = typeConstraint;
+			else
+				break;
+			if (++pass >= 100) // Sanity - but we should have caught circular error before
+				break;
+		}
+		initValue = GetDefaultTypedValue(varType, false, BfDefaultValueKind_Undef);
 	}
 
 	BfTypeInstance* srcTypeInstance = initValue.mType->ToTypeInstance();

@@ -165,6 +165,19 @@ namespace Tests
 		public static int GenClassMethodB(GenClass<int> a) { return a.test++; }
 		public static int GenClassMethodC<A>(A a) where A : GenClass<int> { return a.test += 1; }
 
+		public static TDerived AssertSubtype<TBase, TDerived>(TBase instance)
+			where TDerived : TBase
+			where TBase : class
+		{
+			if (instance == null)
+				Runtime.FatalError();
+			if (TDerived derived = instance as TDerived)
+			{
+				return derived;
+			}
+			Runtime.FatalError();
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
