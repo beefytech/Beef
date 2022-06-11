@@ -2067,8 +2067,8 @@ namespace System
 			if (mLength != str.[Friend]mLength)
 				return false;
 			if (comparisonType == StringComparison.OrdinalIgnoreCase)
-				return EqualsIgnoreCaseHelper(str.Ptr, mPtr, mLength);
-			return EqualsHelper(str.Ptr, mPtr, mLength);
+				return EqualsIgnoreCaseHelper(str.Ptr, Ptr, mLength);
+			return EqualsHelper(str.Ptr, Ptr, mLength);
 		}
 
 		public bool StartsWith(StringView b, StringComparison comparisonType = StringComparison.Ordinal)
