@@ -404,7 +404,11 @@ BfParser::~BfParser()
 {
 	int parserCount = gParserCount--;
 
-	if (mParserData->mRefCount == -1)
+	if (mParserData == NULL)
+	{
+
+	}
+	else if (mParserData->mRefCount == -1)
 	{
 		// Owned data, never intended for cache
 		mParserData->mSrc = NULL; // Count on BfSource dtor to release strc

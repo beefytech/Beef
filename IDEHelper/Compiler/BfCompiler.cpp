@@ -9823,65 +9823,68 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 	BfAstNode* regionStart = NULL;
 	BfPreprocessorNode* prevPreprocessorNode = NULL;
 	int ignoredSectionStart = -1;
-	
-	for (auto element : bfParser->mSidechannelRootNode->mChildArr)
+
+	if (bfParser->mSidechannelRootNode != NULL)
 	{
-		if (auto preprocessorNode = BfNodeDynCast<BfPreprocessorNode>(element))
+		for (auto element : bfParser->mSidechannelRootNode->mChildArr)
 		{
-			if ((ignoredSectionStart != -1) && (prevPreprocessorNode != NULL) && (prevPreprocessorNode->mCommand != NULL))
+			if (auto preprocessorNode = BfNodeDynCast<BfPreprocessorNode>(element))
 			{
-				collapseVisitor.Add(prevPreprocessorNode->mCommand->mSrcStart, preprocessorNode->mSrcEnd - 1);
-				ignoredSectionStart = -1;
-			}
-
-			StringView sv = preprocessorNode->mCommand->ToStringView();
-			if (sv == "region")
-				regionStart = preprocessorNode->mCommand;
-			else if (sv == "endregion")
-			{
-				if (regionStart != NULL)
-					collapseVisitor.Add(regionStart->mSrcStart, preprocessorNode->mCommand->mSrcStart, 'R');
-				regionStart = NULL;
-			}			
-			else if (sv == "if")
-			{
-				condStart = preprocessorNode->mCommand;
-			}
-			else if (sv == "endif")
-			{
-				if (condStart != NULL)
-					collapseVisitor.Add(condStart->mSrcStart, preprocessorNode->mCommand->mSrcStart);
-				condStart = NULL;
-			}
-			else if ((sv == "else") || (sv == "elif"))
-			{
-				if (condStart != NULL)
-					collapseVisitor.Add(condStart->mSrcStart, collapseVisitor.GetLineEndBefore(preprocessorNode->mSrcStart));
-				condStart = preprocessorNode->mCommand;
-			}
-
-			prevPreprocessorNode = preprocessorNode;
-		}
-
-		if (auto preprocessorNode = BfNodeDynCast<BfPreprocesorIgnoredSectionNode>(element))
-		{
-			if (ignoredSectionStart == -1)
-			{
-				for (int i = preprocessorNode->mSrcStart; i < preprocessorNode->mSrcEnd - 1; i++)
+				if ((ignoredSectionStart != -1) && (prevPreprocessorNode != NULL) && (prevPreprocessorNode->mCommand != NULL))
 				{
-					if (bfParser->mSrc[i] == '\n')
-					{
-						ignoredSectionStart = i + 1;
-						break;
-					}
-				}				
-			}
-		}
+					collapseVisitor.Add(prevPreprocessorNode->mCommand->mSrcStart, preprocessorNode->mSrcEnd - 1);
+					ignoredSectionStart = -1;
+				}
 
-		char kind = 0;
-		if (auto commentNode = BfNodeDynCast<BfCommentNode>(element))
-		{
-			collapseVisitor.UpdateSeries(commentNode, 'C');
+				StringView sv = preprocessorNode->mCommand->ToStringView();
+				if (sv == "region")
+					regionStart = preprocessorNode->mCommand;
+				else if (sv == "endregion")
+				{
+					if (regionStart != NULL)
+						collapseVisitor.Add(regionStart->mSrcStart, preprocessorNode->mCommand->mSrcStart, 'R');
+					regionStart = NULL;
+				}			
+				else if (sv == "if")
+				{
+					condStart = preprocessorNode->mCommand;
+				}
+				else if (sv == "endif")
+				{
+					if (condStart != NULL)
+						collapseVisitor.Add(condStart->mSrcStart, preprocessorNode->mCommand->mSrcStart);
+					condStart = NULL;
+				}
+				else if ((sv == "else") || (sv == "elif"))
+				{
+					if (condStart != NULL)
+						collapseVisitor.Add(condStart->mSrcStart, collapseVisitor.GetLineEndBefore(preprocessorNode->mSrcStart));
+					condStart = preprocessorNode->mCommand;
+				}
+
+				prevPreprocessorNode = preprocessorNode;
+			}
+
+			if (auto preprocessorNode = BfNodeDynCast<BfPreprocesorIgnoredSectionNode>(element))
+			{
+				if (ignoredSectionStart == -1)
+				{
+					for (int i = preprocessorNode->mSrcStart; i < preprocessorNode->mSrcEnd - 1; i++)
+					{
+						if (bfParser->mSrc[i] == '\n')
+						{
+							ignoredSectionStart = i + 1;
+							break;
+						}
+					}				
+				}
+			}
+
+			char kind = 0;
+			if (auto commentNode = BfNodeDynCast<BfCommentNode>(element))
+			{
+				collapseVisitor.UpdateSeries(commentNode, 'C');
+			}
 		}
 	}
 
@@ -10063,7 +10066,12 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 					int endLineChar = 0;
 					if (srcEnd >= 0)
 						emitParser->GetLineCharAtIdx(srcEnd, endLine, endLineChar);
-					outString += StrFormat("e%d,%d,%d,%d,%d\n", embedId, charIdx, startLine, endLine + 1, typeInst->mTypeDef->mTypeDeclaration->GetParser()->mTextVersion);
+
+					int textVersion = -1;
+					auto declParser = typeInst->mTypeDef->mTypeDeclaration->GetParser();
+					if (declParser != NULL)
+						textVersion = declParser->mTextVersion;
+					outString += StrFormat("e%d,%d,%d,%d,%d\n", embedId, charIdx, startLine, endLine + 1, textVersion);
 				}
 			}
 
