@@ -9035,8 +9035,12 @@ bool BeMCContext::DoLegalization()
 
 								auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
 								// If a scratch vreg needs to preserve a register like the remapped vreg
+								scratchVRegInfo->mDisableR11 |= remappedVRegInfo->mDisableR11;
+								scratchVRegInfo->mDisableR12 |= remappedVRegInfo->mDisableR12;
+								scratchVRegInfo->mDisableR13 |= remappedVRegInfo->mDisableR13;
 								scratchVRegInfo->mDisableRAX |= remappedVRegInfo->mDisableRAX;
 								scratchVRegInfo->mDisableRDX |= remappedVRegInfo->mDisableRDX;
+								scratchVRegInfo->mDisableEx |= remappedVRegInfo->mDisableEx;
 
 								if ((insertPos == instIdx) || (!scratchForceReg))
 								{
@@ -11556,7 +11560,7 @@ void BeMCContext::DoRegFinalization()
 							continue;
 						}
 
-						if (IsVolatileReg(vregInfo->mReg))
+						if ((inst->mArg0) || (IsVolatileReg(vregInfo->mReg)))
 						{
 							if (vregInfo->mVolatileVRegSave == -1)
 							{
@@ -16139,7 +16143,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@CAXXZ");
+	//mDebugging = (function->mName == "?CreateEntity@ModelLoader@Content@GlitchyEngine@bf@@CA?AU?$__TUPLE_Entity_Transform@VEcsEntity@World@GlitchyEngine@bf@@PEA?AUTransformComponent@123@@4@PEAVEcsWorld@World@34@U?$Nullable@UStringView@System@bf@@@System@4@VEcsEntity@734@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
