@@ -220,7 +220,7 @@ namespace Tests
 
 				String serializeBuffer = new .();
 
-				Compiler.Assert(!type.IsUnion);
+				Runtime.Assert(!type.IsUnion);
 
 				for (let field in type.GetFields())
 				{

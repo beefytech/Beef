@@ -4911,7 +4911,11 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 
 		if (!isConst)
 		{
-			if ((argIdx != thisArgIdx) && (argIdx != appendAllocIdx))
+			if ((argIdx == thisArgIdx) && (methodInstance->mMethodDef->mMethodType == BfMethodType_Ctor))
+			{
+				// Allow non-const 'this' for ctor
+			}
+			else if (argIdx != appendAllocIdx)
 			{
 				Fail(StrFormat("Non-constant argument for param '%s'", methodInstance->GetParamName(paramIdx).c_str()));
 				return BfTypedValue();
