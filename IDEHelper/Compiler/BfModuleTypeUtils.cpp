@@ -11,6 +11,7 @@
 #include "BfMangler.h"
 #include "BeefySysLib/util/PerfTimer.h"
 #include "BeefySysLib/util/BeefPerf.h"
+#include "BeefySysLib/util/StackHelper.h"
 #include "BfSourceClassifier.h"
 #include "BfAutoComplete.h"
 #include "BfDemangler.h"
@@ -3575,6 +3576,23 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		DoPopulateType_InitSearches(typeInstance);
 	}
 
+	//
+	{
+		BP_ZONE("DoPopulateType:CheckStack");
+		StackHelper stackHelper;
+		if (!stackHelper.CanStackExpand(128 * 1024))
+		{			
+			if (!stackHelper.Execute([&]()
+				{
+					DoPopulateType(resolvedTypeRef, populateType);
+				}))
+			{
+				Fail("Stack exhausted in DoPopulateType", typeDef->GetRefNode());
+			}
+			return;
+		}
+	}
+
 	bool underlyingTypeDeferred = false;
 	BfType* underlyingType = NULL;	
 	if (typeInstance->mBaseType != NULL)
@@ -5663,6 +5681,23 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	{
 		BfLogSysM("DoTypeInstanceMethodProcessing %p re-entrancy exit\n", typeInstance);
 		return;
+	}
+
+	//
+	{
+		BP_ZONE("DoTypeInstanceMethodProcessing:CheckStack");
+		StackHelper stackHelper;
+		if (!stackHelper.CanStackExpand(128 * 1024))
+		{
+			if (!stackHelper.Execute([&]()
+				{
+					DoTypeInstanceMethodProcessing(typeInstance);
+				}))
+			{
+				Fail("Stack exhausted in DoPopulateType", typeInstance->mTypeDef->GetRefNode());
+			}
+			return;
+		}
 	}
 
 	BF_ASSERT_REL(typeInstance->mNeedsMethodProcessing);
