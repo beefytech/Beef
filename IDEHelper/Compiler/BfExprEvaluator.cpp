@@ -9744,7 +9744,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			if (targetType != NULL)
 			{
 				auto typeInst = targetType->ToTypeInstance();
-				if ((targetType != NULL) && (!methodName.IsEmpty()))
+				if ((typeInst != NULL) && (!methodName.IsEmpty()))
 				{
 					BfTypeVector paramTypes;
 					for (int argIdx = 0; argIdx < (int)argValues.mResolvedArgs.size(); argIdx++)
