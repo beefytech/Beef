@@ -8319,25 +8319,29 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs, mCurTypeInstance);
 			if (convCheckConstraint == NULL)
 				return false;
-			if (((checkArgType->IsMethodRef()) || (checkArgType->IsFunction())) && (convCheckConstraint->IsDelegate()))
+			if ((checkArgType->IsMethodRef()) || (checkArgType->IsFunction()))
 			{
-				BfMethodInstance* checkMethodInstance;
-				if (checkArgType->IsMethodRef())
+				if (convCheckConstraint->IsDelegate())
 				{
-					auto methodRefType = (BfMethodRefType*)checkArgType;
-					checkMethodInstance = methodRefType->mMethodRef;
-				}
-				else
-				{
-					checkMethodInstance = GetRawMethodInstanceAtIdx(checkArgType->ToTypeInstance(), 0, "Invoke");
-				}
-				
-				auto invokeMethod = GetRawMethodInstanceAtIdx(convCheckConstraint->ToTypeInstance(), 0, "Invoke");
+					BfMethodInstance* checkMethodInstance;
+					if (checkArgType->IsMethodRef())
+					{
+						auto methodRefType = (BfMethodRefType*)checkArgType;
+						checkMethodInstance = methodRefType->mMethodRef;
+					}
+					else
+					{
+						checkMethodInstance = GetRawMethodInstanceAtIdx(checkArgType->ToTypeInstance(), 0, "Invoke");
+					}
 
-				BfExprEvaluator exprEvaluator(this);
-				if (exprEvaluator.IsExactMethodMatch(checkMethodInstance, invokeMethod))
+					auto invokeMethod = GetRawMethodInstanceAtIdx(convCheckConstraint->ToTypeInstance(), 0, "Invoke");
+
+					BfExprEvaluator exprEvaluator(this);
+					if (exprEvaluator.IsExactMethodMatch(checkMethodInstance, invokeMethod))
+						constraintMatched = true;
+				}
+				else if (convCheckConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef))
 					constraintMatched = true;
-
 			}
 			else if (CanCast(GetFakeTypedValue(checkArgType), convCheckConstraint))
 			{
@@ -23466,7 +23470,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				isValid = true;
 			}
-			else if ((resolvedParamType->IsDelegate()) || (resolvedParamType->IsFunction()))
+			else if ((resolvedParamType->IsDelegate()) || (resolvedParamType->IsFunction()) || (resolvedParamType->IsMethodRef()))
 			{
 				hadDelegateParams = true;
 
@@ -23487,7 +23491,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				}
 				isValid = true;
 				addParams = false;
-			}
+			}			
 			else if (resolvedParamType->IsGenericParam())
 			{
 				auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)resolvedParamType);
@@ -23745,7 +23749,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				// If we have generic delegate params, it's possible we will fail constraints later if we specialize with an invalid type, but we can't allow that 
 				//  to cause us to throw an assertion in the declaration here
-				if (!defaultMethodInstance->mHadGenericDelegateParams)
+				if ((!defaultMethodInstance->mHadGenericDelegateParams) && (!methodInstance->mHasFailed) && (!defaultMethodInstance->mHasFailed))
 					BF_ASSERT((isDone) && (isDefaultDone));
 
 				break;

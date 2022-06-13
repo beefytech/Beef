@@ -1920,10 +1920,10 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				goto NoMatch;
 		}
 
-		if ((checkMethod->mParams.mSize > 0) && (methodInstance->GetParamKind(checkMethod->mParams.mSize - 1) == BfParamKind_Params))
+		if ((methodInstance->mParams.mSize > 0) && (methodInstance->GetParamKind(methodInstance->mParams.mSize - 1) == BfParamKind_Params))
 		{
 			// Handle `params int[C]` generic sized array params case
-			auto paramsType = methodInstance->GetParamType(checkMethod->mParams.mSize - 1);
+			auto paramsType = methodInstance->GetParamType(methodInstance->mParams.mSize - 1);
 			if (paramsType->IsUnknownSizedArrayType())
 			{
 				auto unknownSizedArray = (BfUnknownSizedArrayType*)paramsType;

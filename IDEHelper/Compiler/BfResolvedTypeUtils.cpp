@@ -568,6 +568,12 @@ BfMethodCustomAttributes::~BfMethodCustomAttributes()
 
 BfMethodInstance* BfMethodParam::GetDelegateParamInvoke()
 {
+	if (mResolvedType->IsMethodRef())
+	{
+		auto methodRefType = (BfMethodRefType*)mResolvedType;
+		return methodRefType->mMethodRef;
+	}
+
 	BF_ASSERT(mResolvedType->IsDelegate() || mResolvedType->IsFunction());
 	auto bfModule = BfModule::GetModuleFor(mResolvedType);
 	BfMethodInstance* invokeMethodInstance = bfModule->GetRawMethodInstanceAtIdx(mResolvedType->ToTypeInstance(), 0, "Invoke");
