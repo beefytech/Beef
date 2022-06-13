@@ -9107,6 +9107,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			lookupTypeInst = NULL;
 	}
 
+	if ((mModule->mIsReified) && (targetTypeInst != NULL) && (!targetTypeInst->mIsReified) && (!targetTypeInst->mModule->mReifyQueued))
+		mModule->PopulateType(targetTypeInst);
+
 	BfMethodDef* methodDef = NULL;
 	BfTypeVector checkMethodGenericArguments;
 
@@ -15926,12 +15929,6 @@ int BfExprEvaluator::GetMixinVariable()
 BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, BfTypeInstance* curTypeInst, BfMethodDef* methodDef, BfMethodMatcher& methodMatcher, BfType** overrideReturnType)
 {
 	bool failed = false;
-
-	if ((mModule->mIsReified) && (!curTypeInst->mIsReified))	
-	{
-		// Make sure target type gets reified
-		mModule->PopulateType(curTypeInst);
-	}
 
 	BfTypeVector resolvedGenericArguments;
 	BfMethodState* rootMethodState = NULL;
