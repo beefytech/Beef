@@ -628,6 +628,12 @@ namespace IDE
 				Spaces
 			}
 
+			public enum CompilerKind
+			{
+				Resolve,
+				Build
+			}
+
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
@@ -641,6 +647,7 @@ namespace IDE
 			public bool mHiliteCurrentLine = false;
 			public bool mLockEditing;
 			public LockWhileDebuggingKind mLockEditingWhenDebugging = .WhenNotHotSwappable;// Only applicable for
+			public CompilerKind mEmitCompiler;
 			// non-Beef sources
 			public bool mPerforceAutoCheckout = true;
 			public bool mSpellCheckEnabled = true;
@@ -674,6 +681,7 @@ namespace IDE
 				sd.Add("HiliteCurrentLine", mHiliteCurrentLine);
 				sd.Add("LockEditing", mLockEditing);
 				sd.Add("LockEditingWhenDebugging", mLockEditingWhenDebugging);
+				sd.Add("EmitCompiler", mEmitCompiler);
 				sd.Add("PerforceAutoCheckout", mPerforceAutoCheckout);
 				sd.Add("SpellCheckEnabled", mSpellCheckEnabled);
 				sd.Add("ShowLineNumbers", mShowLineNumbers);
@@ -710,6 +718,7 @@ namespace IDE
 				sd.Get("HiliteCurrentLine", ref mHiliteCurrentLine);
 				sd.Get("LockEditing", ref mLockEditing);
 				sd.Get("LockEditingWhenDebugging", ref mLockEditingWhenDebugging);
+				sd.Get("EmitCompiler", ref mEmitCompiler);
 				sd.Get("PerforceAutoCheckout", ref mPerforceAutoCheckout);
 				sd.Get("SpellCheckEnabled", ref mSpellCheckEnabled);
 				sd.Get("ShowLineNumbers", ref mShowLineNumbers);

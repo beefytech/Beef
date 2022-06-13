@@ -33,7 +33,7 @@ namespace Beefy.theme.dark
 
 			}
 
-			public virtual void MouseDown(float x, float y, int btn, int btnCount)
+			public virtual void MouseDown(Rect rect, float x, float y, int btn, int btnCount)
 			{
 
 			}
@@ -63,6 +63,7 @@ namespace Beefy.theme.dark
 		public bool mScrollToStartOnLostFocus;
 		public bool mHiliteCurrentLine;
 		public Dictionary<int32, Embed> mEmbeds = new .() ~ DeleteDictionaryAndValues!(_);
+		public Embed mEmbedSelected;
 		public Range? mLineRange;
 
 		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;

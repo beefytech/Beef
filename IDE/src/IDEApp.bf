@@ -1472,6 +1472,14 @@ namespace IDE
 			return true;
 		}
 
+		public void SetEmbedCompiler(Settings.EditorSettings.CompilerKind emitCompiler)
+		{
+			gApp.mSettings.mEditorSettings.mEmitCompiler = emitCompiler;
+			mBfResolveCompiler?.QueueRefreshViewCommand(.Collapse);
+			if (emitCompiler == .Resolve)
+				mBfResolveCompiler?.QueueRefreshViewCommand(.FullRefresh);
+		}
+
 		public Result<void, FileError> LoadTextFile(String fileName, String outBuffer, bool autoRetry = true, delegate void() onPreFilter = null)
 		{
 			if (mWorkspace.IsSingleFileWorkspace)
@@ -1487,9 +1495,18 @@ namespace IDE
 
 			if (fileName.StartsWith("$Emit$"))
 			{
-				BfCompiler compiler = mBfResolveCompiler;
+				String useFileName = fileName;
+
+				BfCompiler compiler = (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve) ? mBfResolveCompiler : mBfBuildCompiler;
+
+				if (useFileName.StartsWith("$Emit$Build$"))
+				{
+					useFileName = scope:: $"$Emit${useFileName.Substring("$Emit$Build$".Length)}";
+					compiler = mBfBuildCompiler;
+				}
+
 				if (!compiler.IsPerformingBackgroundOperation())
-					compiler.GetEmitSource(fileName, outBuffer);
+					compiler.GetEmitSource(useFileName, outBuffer);
 				
 				if (onPreFilter != null)
 					onPreFilter();
@@ -5624,6 +5641,17 @@ namespace IDE
 			AddMenuItem(bookmarkMenu, "&Previous Bookmark", "Bookmark Prev");
 			AddMenuItem(bookmarkMenu, "&Clear Bookmarks", "Bookmark Clear");
 
+			var comptimeMenu = subMenu.AddMenuItem("Comptime");
+			var emitViewCompiler = comptimeMenu.AddMenuItem("Emit View Compiler");
+			var subItem = emitViewCompiler.AddMenuItem("Resolve", null,
+				new (menu) => { SetEmbedCompiler(.Resolve); } ,
+				new (menu) => { menu.SetCheckState((mSettings.mEditorSettings.mEmitCompiler == .Resolve) ? 1 : 0); },
+				null, true, (mSettings.mEditorSettings.mEmitCompiler == .Resolve) ? 1 : 0);
+			subItem = emitViewCompiler.AddMenuItem("Build", null,
+				new (menu) => { SetEmbedCompiler(.Build); } ,
+				new (menu) => { menu.SetCheckState((mSettings.mEditorSettings.mEmitCompiler == .Build) ? 1 : 0); },
+				null, true, (mSettings.mEditorSettings.mEmitCompiler == .Build) ? 1 : 0);
+			
 			var advancedEditMenu = subMenu.AddMenuItem("Advanced");
 			AddMenuItem(advancedEditMenu, "Duplicate Line", "Duplicate Line");
 			AddMenuItem(advancedEditMenu, "Move Line Up", "Move Line Up");
@@ -7095,10 +7123,11 @@ namespace IDE
 
         public SourceViewPanel ShowSourceFileLocation(String filePath, int showHotIdx, int refHotIdx, int line, int column, LocatorType hilitePosition, bool showTemp = false)
         {
+			var useFilePath = filePath;
+
 			if (filePath.StartsWith("$Emit$"))
 			{
-				var compiler = mBfResolveCompiler;
-				if (compiler.IsPerformingBackgroundOperation())
+				if ((mBfBuildCompiler.IsPerformingBackgroundOperation()) || (mBfResolveCompiler.IsPerformingBackgroundOperation()))
 				{
 					DeleteAndNullify!(mDeferredShowSource);
 					mDeferredShowSource = new DeferredShowSource()
@@ -7119,13 +7148,26 @@ namespace IDE
 				itr.GetNext();
 				var typeName = itr.GetNext().Value;
 
-				//var compiler = (kindStr == "Emit") ? mBfBuildCompiler : mBfResolveCompiler;
-				
-				compiler.mBfSystem.Lock(0);
-				var embedFilePath = compiler.GetEmitLocation(typeName, line, .. scope .(), var embedLine, var embedLineChar);
-				compiler.mBfSystem.Unlock();
+				mBfBuildCompiler.mBfSystem.Lock(0);
+				var embedFilePath = mBfBuildCompiler.GetEmitLocation(typeName, line, .. scope .(), var embedLine, var embedLineChar, var embedHash);
+				mBfBuildCompiler.mBfSystem.Unlock();
 
-				if (!embedFilePath.IsEmpty)
+				bool isViewValid = true;
+
+				if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve)
+				{
+					mBfResolveCompiler.mBfSystem.Lock(0);
+					mBfResolveCompiler.GetEmitLocation(typeName, line, .. scope .(), var resolveLine, var resolveLineChar, var resolveHash);
+					mBfResolveCompiler.mBfSystem.Unlock();
+
+					if ((resolveLine != embedLine) || (resolveLineChar != embedLineChar) || (embedHash != resolveHash))
+					{
+						isViewValid = false;
+						useFilePath = scope:: $"$Emit$Build${useFilePath.Substring("$Emit$".Length)}";
+					}
+				}
+
+				if ((!embedFilePath.IsEmpty) && (isViewValid))
 				{
 					var sourceViewPanel = ShowSourceFile(scope .(embedFilePath), null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting).panel;
 					if (sourceViewPanel == null)
@@ -7141,11 +7183,7 @@ namespace IDE
 					emitShowData.mColumn = (.)column;
 					DeleteAndNullify!(sourceViewPanel.[Friend]mQueuedEmitShowData);
 					sourceViewPanel.[Friend]mQueuedEmitShowData = emitShowData;
-
-					//sourceViewPanel.ShowHotFileIdx(showHotIdx);
 					sourceViewPanel.ShowFileLocation(refHotIdx, embedLine, embedLineChar, .None);
-					//sourceViewPanel.QueueFullRefresh(false);
-					//sourceViewPanel.mBackgroundDelay = 1; // Don't immediately perform the full classify
 
 					if (typeName.Contains('<'))
 					{
@@ -7160,7 +7198,7 @@ namespace IDE
 				}
 			}
 
-            var (sourceViewPanel, tabButton) = ShowSourceFile(filePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting);
+            var (sourceViewPanel, tabButton) = ShowSourceFile(useFilePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting);
             if (sourceViewPanel == null)
                 return null;
 			if (((filePath.StartsWith("$")) && (var svTabButton = tabButton as SourceViewTabButton)))
@@ -14197,7 +14235,8 @@ namespace IDE
 			if (IDEApp.sApp.mSpellChecker != null)
 				IDEApp.sApp.mSpellChecker.CheckThreadDone();
 
-			if ((mDeferredShowSource != null) && (mBfResolveCompiler?.IsPerformingBackgroundOperation() == false))
+			if ((mDeferredShowSource != null) && (!mBfBuildCompiler.IsPerformingBackgroundOperation()) &&
+				(mBfResolveCompiler?.IsPerformingBackgroundOperation() != true))
 			{
 				var deferredShowSource = mDeferredShowSource;
 				mDeferredShowSource = null;

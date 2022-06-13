@@ -552,7 +552,7 @@ public:
 	int GetTypeId(const StringImpl& typeName);
 	BfType* GetType(const StringImpl& typeName);
 	int GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer);
-	String GetEmitLocation(const StringImpl& typeName, int line, int& outEmbedLine, int& outEmbedLineChar);
+	String GetEmitLocation(const StringImpl& typeName, int line, int& outEmbedLine, int& outEmbedLineChar, uint64& outHash);
 	bool WriteEmitData(const StringImpl& filePath, BfProject* project);
 
 	void CompileLog(const char* fmt ...);

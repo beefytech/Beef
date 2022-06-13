@@ -367,6 +367,7 @@ namespace IDE.ui
 	class QueuedCollapseData
 	{
 		public String mData = new .() ~ delete _;
+		public String mBuildData ~ delete _;
 		public int32 mTextVersion;
 		public IdSpan mCharIdSpan ~ _.Dispose();
 		public ResolveType mResolveType;
@@ -1262,6 +1263,9 @@ namespace IDE.ui
 
 			void FindEmbeds(ResolveParams resolveParams)
 			{
+				if (gApp.mSettings.mEditorSettings.mEmitCompiler != .Resolve)
+					return;
+
 				HashSet<FileEditData> foundEditData = scope .();
 				Dictionary<String, String> remappedTypeNames = scope .();
 
@@ -1478,11 +1482,27 @@ namespace IDE.ui
 
 			var collapseData = bfCompiler.GetCollapseRegions(parser, resolvePassData, explicitEmitTypeNames, .. scope .());
 
+			String buildCollapseData = null;
+			if ((gApp.mSettings.mEditorSettings.mEmitCompiler == .Build) && (!gApp.mBfBuildCompiler.IsPerformingBackgroundOperation()))
+			{
+				gApp.mBfBuildSystem.Lock(0);
+				var buildParser = gApp.mBfBuildSystem.GetParser(mProjectSource);
+				if (buildParser != null)
+				{
+					var buildResolvePassData = buildParser.CreateResolvePassData(.None);
+					defer delete buildResolvePassData;
+					buildCollapseData = gApp.mBfBuildCompiler.GetCollapseRegions(buildParser, buildResolvePassData, explicitEmitTypeNames, .. scope:: .());
+				}
+				gApp.mBfBuildSystem.Unlock();
+			}
+
 			using (mMonitor.Enter())
 			{
 				DeleteAndNullify!(mQueuedCollapseData);
 				mQueuedCollapseData = new .();
 				mQueuedCollapseData.mData.Set(collapseData);
+				if (buildCollapseData != null)
+					mQueuedCollapseData.mBuildData = new String(buildCollapseData);
 				mQueuedCollapseData.mTextVersion = textVersion;
 				mQueuedCollapseData.mCharIdSpan = charIdSpan.Duplicate();
 
@@ -1524,13 +1544,13 @@ namespace IDE.ui
 				return;
             //var compiler = ResolveCompiler;
 
-            var char8Data = mEditWidget.Content.mData.mText;
-            int char8Len = Math.Min(char8Data.Count, mEditWidget.Content.mData.mTextLength);
+            var charData = mEditWidget.Content.mData.mText;
+            int charLen = Math.Min(charData.Count, mEditWidget.Content.mData.mTextLength);
 
-            char8[] chars = new char8[char8Len];
+            char8[] chars = new char8[charLen];
 			defer delete chars;
-            for (int32 i = 0; i < char8Len; i++)
-                chars[i] = (char8)char8Data[i].mChar;
+            for (int32 i = 0; i < charLen; i++)
+                chars[i] = (char8)charData[i].mChar;
 
             String text = scope String();
             text.Append(chars, 0, chars.Count);
@@ -1554,7 +1574,7 @@ namespace IDE.ui
 				parser.SetEmbedKind(mEmbedKind);
                 parser.Reduce(passInstance);
 			}
-            parser.ClassifySource(char8Data, !mIsBeefSource);
+            parser.ClassifySource(charData, !mIsBeefSource);
 			mWantsParserCleanup = true;
         }
 
@@ -2208,7 +2228,7 @@ namespace IDE.ui
             {
 				parser.CreateClassifier(passInstance, resolvePassData, charData);
 
-				if (resolveParams != null)
+				if ((resolveParams != null) && (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve))
 				{
 					for (var emitEmbedData in resolveParams.mEmitEmbeds)
 					{
@@ -6588,7 +6608,7 @@ namespace IDE.ui
 				}
                 if ((mTicksSinceTextChanged >= 60) && (mWantsSpellCheck))
                 {
-					if (IsControllingEditData())
+					if ((IsControllingEditData()) && (mEmbedKind == .None))
                     	StartSpellCheck();
                     mWantsSpellCheck = false;
                 }
@@ -6843,7 +6863,42 @@ namespace IDE.ui
 			using (mMonitor.Enter())
 			{
 				if (mQueuedCollapseData != null)
+				{
+					if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Build)
+					{
+						if (mQueuedCollapseData.mBuildData != null)
+						{
+							using (gApp.mMonitor.Enter())
+							{                
+							    var projectSourceCompileInstance = gApp.mWorkspace.GetProjectSourceCompileInstance(projectSource, gApp.mWorkspace.HotCompileIdx);
+								if (projectSourceCompileInstance != null)
+								{
+									ewc.ParseCollapseRegions(mQueuedCollapseData.mBuildData, mQueuedCollapseData.mTextVersion, ref projectSourceCompileInstance.mSourceCharIdData, null);
+
+									HashSet<EditWidgetContent.Data> dataLoaded = scope .();
+
+									for (var embed in ewc.mEmbeds.Values)
+									{
+										if (var emitEmbed = embed as SourceEditWidgetContent.EmitEmbed)
+										{
+											if (emitEmbed.mView != null)
+											{
+												if (dataLoaded.Add(emitEmbed.mView.mSourceViewPanel.mEditWidget.mEditWidgetContent.mData))
+												{
+													emitEmbed.mView.mSourceViewPanel.mSkipFastClassify = false;
+													emitEmbed.mView.mSourceViewPanel.Reload();
+													emitEmbed.mView.mSourceViewPanel.mWantsFastClassify = true;
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					
 					ewc.ParseCollapseRegions(mQueuedCollapseData.mData, mQueuedCollapseData.mTextVersion, ref mQueuedCollapseData.mCharIdSpan, mQueuedCollapseData.mResolveType);
+				}
 				DeleteAndNullify!(mQueuedCollapseData);
 			}
 
@@ -7063,7 +7118,7 @@ namespace IDE.ui
 
         float GetEditX()
         {
-			if (!gApp.mSettings.mEditorSettings.mShowLineNumbers && (mEmbedKind == .None))
+			if ((!gApp.mSettings.mEditorSettings.mShowLineNumbers) || (mEmbedKind != .None))
 				return GS!(24);
 
             var font = IDEApp.sApp.mTinyCodeFont;

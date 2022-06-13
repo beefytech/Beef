@@ -9399,7 +9399,7 @@ int BfCompiler::GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer)
 	return typeInst->mRevision;
 }
 
-String BfCompiler::GetEmitLocation(const StringImpl& typeName, int emitLine, int& outEmbedLine, int& outEmbedLineChar)
+String BfCompiler::GetEmitLocation(const StringImpl& typeName, int emitLine, int& outEmbedLine, int& outEmbedLineChar, uint64& outHash)
 {
 	outEmbedLine = 0;
 
@@ -9442,6 +9442,8 @@ String BfCompiler::GetEmitLocation(const StringImpl& typeName, int emitLine, int
 		int endLine = 0;
 		int endLineChar = 0;
 		emitParser->GetLineCharAtIdx(kv.mValue.mSrcEnd - 1, endLine, endLineChar);
+
+		outHash = Hash64(emitParser->mSrc + kv.mValue.mSrcStart, kv.mValue.mSrcEnd - kv.mValue.mSrcStart);
 
 		if ((emitLine >= startLine) && (emitLine <= endLine))
 		{			
@@ -10071,7 +10073,9 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 					auto declParser = typeInst->mTypeDef->mTypeDeclaration->GetParser();
 					if (declParser != NULL)
 						textVersion = declParser->mTextVersion;
-					outString += StrFormat("e%d,%d,%d,%d,%d\n", embedId, charIdx, startLine, endLine + 1, textVersion);
+
+					char emitChar = (kv.mValue.mKind == BfCeTypeEmitSourceKind_Type) ? 't' : 'm';
+					outString += StrFormat("%c%d,%d,%d,%d,%d\n", emitChar, embedId, charIdx, startLine, endLine + 1, textVersion);
 				}
 			}
 
@@ -10091,7 +10095,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 					Dictionary<int, _EmitSource>* map = NULL;
 					if (emitLocMap.TryGetValue(typeDef, &map))
 					{
-						for (auto kv : *map)
+						for (auto& kv : *map)
 						{
 							if (kv.mValue.mIsPrimary)
 								continue;
@@ -10100,7 +10104,8 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 							if (embedId == -1)
 								continue;
 
-							outString += StrFormat("e%d,%d,%d,%d,%d\n", embedId, kv.mKey, 0, 0, -1);
+							char emitChar = 't';
+							outString += StrFormat("%c%d,%d,%d,%d,%d\n", emitChar, embedId, kv.mKey, 0, 0, -1);
 						}
 					}
 				};
@@ -10909,11 +10914,11 @@ BF_EXPORT int32 BF_CALLTYPE BfCompiler_GetEmitSourceVersion(BfCompiler* bfCompil
 	return bfCompiler->GetEmitSource(fileName, NULL);
 }
 
-BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetEmitLocation(BfCompiler* bfCompiler, char* typeName, int line, int& outEmbedLine, int& outEmbedLineChar)
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetEmitLocation(BfCompiler* bfCompiler, char* typeName, int line, int& outEmbedLine, int& outEmbedLineChar, uint64& outHash)
 {
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
-	outString = bfCompiler->GetEmitLocation(typeName, line, outEmbedLine, outEmbedLineChar);
+	outString = bfCompiler->GetEmitLocation(typeName, line, outEmbedLine, outEmbedLineChar, outHash);
 	return outString.c_str();
 }
 
