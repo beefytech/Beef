@@ -3706,7 +3706,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		// Don't allow 'let'
 		ctx->mModule->Fail("Invalid use of 'let'", typeRef);
 		ctx->mFailed = true;
-		return 0;		
+		return 0;
 	}
 	else if (auto retTypeTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(typeRef))
 	{	
@@ -3715,7 +3715,12 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		if (ctx->mRootTypeRef != retTypeTypeRef)
 		{
 			auto type = ctx->mModule->ResolveTypeRef(retTypeTypeRef, BfPopulateType_Identity, GetResolveFlags(retTypeTypeRef, ctx, flags));
-			if ((type != NULL) && (type->IsRef()))
+			if (type == NULL)
+			{
+				ctx->mFailed = true;
+				return 0;
+			}
+			if (type->IsRef())
 				type = type->GetUnderlyingType();
 			return Hash(type, ctx, flags, hashSeed);
 		}
