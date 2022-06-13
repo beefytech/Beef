@@ -5800,13 +5800,14 @@ void BfCompiler::PopulateReified()
 						}
 					}
 				}
-
+				
 				// Only check virtual stuff if we have been instantiated
 				if ((typeInst->HasBeenInstantiated()) && (!mCanceling))
 				{
-					// If we have any virtual methods overrides that are unreified but the declaring virtual method is reified then we also need to reify
-					for (auto&& vEntry : typeInst->mVirtualMethodTable)
+					// If we have any virtual methods overrides that are unreified but the declaring virtual method is reified then we also need to reify					
+					for (int virtIdx = 0; virtIdx < typeInst->mVirtualMethodTable.mSize; virtIdx++)
 					{
+						auto& vEntry = typeInst->mVirtualMethodTable[virtIdx];
 						if ((vEntry.mDeclaringMethod.mTypeInstance == NULL) ||
 							(vEntry.mDeclaringMethod.mTypeInstance->IsIncomplete()) ||
 							(vEntry.mImplementingMethod.mTypeInstance == NULL) ||

@@ -9177,7 +9177,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 	int allocAlign = type->mAlign;
 	if (typeInstance != NULL)
 	{	
-		if (!mBfIRBuilder->mIgnoreWrites)
+		if ((!mBfIRBuilder->mIgnoreWrites) && (!mIsComptimeModule))
 			typeInstance->mHasBeenInstantiated = true;
 		allocSize = typeInstance->mInstSize;
 		allocAlign = typeInstance->mInstAlign;
