@@ -8806,7 +8806,7 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 
 	if ((!typedVal.mType->IsComposite()) && (!typedVal.mType->IsGenericParam())) // Load non-structs by default
 	{
-		if ((!mBfIRBuilder->mIgnoreWrites) && (!typedVal.mType->IsValuelessType()) && (!typedVal.mType->IsVar()))
+		if ((!mBfIRBuilder->mIgnoreWrites) && (!typedVal.mType->IsDataIncomplete()) && (!typedVal.mType->IsValuelessType()) && (!typedVal.mType->IsVar()))
 		{
 			BF_ASSERT(!typedVal.mValue.IsFake());
 		}
