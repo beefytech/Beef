@@ -17185,6 +17185,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		// If we didn't have an expression body then just make the result "void"
 		mResult = BfTypedValue(BfIRValue(), mModule->GetPrimitiveType(BfTypeCode_None));
 	}
+
+	mResult = mModule->LoadValue(mResult);
 	
 	int localIdx = startLocalIdx;
 	
