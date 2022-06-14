@@ -13778,6 +13778,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				// Handle the typedPrim<->underlying part implicitly
 				if (fromType->IsTypedPrimitive())
 				{
+					typedVal = LoadValue(typedVal);
 					auto convTypedValue = BfTypedValue(typedVal.mValue, fromType->GetUnderlyingType());
 					return CastToValue(srcNode, convTypedValue, toType, (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
 				}
