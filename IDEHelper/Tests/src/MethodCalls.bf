@@ -159,6 +159,29 @@ namespace Tests
 
 		}
 
+
+		static void InInt(in int a)
+		{
+			Test.Assert(a == 123);
+#unwarn
+			int* aPtr = &a;
+			*aPtr = 234;
+		}
+
+		static void CopyStructA(StructA sa)
+		{
+#unwarn
+			StructA* saPtr = &sa;
+			saPtr.mA += 1000;
+		}
+
+		static void InStructA(in StructA sa)
+		{
+#unwarn
+			StructA* saPtr = &sa;
+			saPtr.mA += 1000;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -206,6 +229,16 @@ namespace Tests
 
 			var v = ObjMethod(.. scope String());
 			Test.Assert(v.GetType() == typeof(String));
+
+			int b = 123;
+			InInt(b);
+			Test.Assert(b == 234);
+
+			StructA sa4 = .(400, 401);
+			CopyStructA(sa4);
+			Test.Assert(sa4.mA == 400);
+			InStructA(sa4);
+			Test.Assert(sa4.mA == 1400);
 		}
 	}
 }

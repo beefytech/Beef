@@ -578,6 +578,7 @@ public:
 enum BfTypedValueKind
 {
 	BfTypedValueKind_Addr,
+	BfTypedValueKind_VolatileAddr,
 	BfTypedValueKind_CopyOnMutateAddr,
 	BfTypedValueKind_CopyOnMutateAddr_Derived,
 	BfTypedValueKind_ReadOnlyAddr,
@@ -586,7 +587,7 @@ enum BfTypedValueKind
 	BfTypedValueKind_ReadOnlyTempAddr,
 	BfTypedValueKind_ThisAddr,
 	BfTypedValueKind_BaseAddr,
-	BfTypedValueKind_ReadOnlyThisAddr,	
+	BfTypedValueKind_ReadOnlyThisAddr,
 	BfTypedValueKind_ReadOnlyBaseAddr,
 
 	BfTypedValueKind_Value,
@@ -748,6 +749,11 @@ public:
 	{
 		BF_ASSERT(IsBase());
 		mKind = (BfTypedValueKind)((int)mKind - 1);
+	}
+
+	bool IsVolatile() const
+	{
+		return mKind == BfTypedValueKind_VolatileAddr;
 	}
 
 	bool IsSplat() const

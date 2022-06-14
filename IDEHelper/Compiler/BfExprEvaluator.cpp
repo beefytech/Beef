@@ -5093,6 +5093,9 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 		}
 	}
 
+	if ((fieldDef->mIsVolatile) && (retVal.IsAddr()))
+		retVal.mKind = BfTypedValueKind_VolatileAddr;
+
 	if (wantsLoadValue)
 		retVal = mModule->LoadValue(retVal, NULL, mIsVolatileReference);
 	else
@@ -5902,8 +5905,8 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 				resolvedArg.mResolvedType = argValue.mType;
 				if (resolvedArg.mResolvedType->IsRef())
 					argValue.mKind = BfTypedValueKind_Value;
-				else if ((!resolvedArg.mResolvedType->IsStruct()) && (!resolvedArg.mResolvedType->IsSizedArray()) && (!resolvedArg.mResolvedType->IsValuelessType()))
-					argValue = mModule->LoadValue(argValue, NULL, exprEvaluator.mIsVolatileReference);
+				if (exprEvaluator.mIsVolatileReference)
+					resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_Volatile);
 			}
 			resolvedArg.mUncastedTypedValue = argValue;
 			resolvedArg.mTypedValue = argValue;

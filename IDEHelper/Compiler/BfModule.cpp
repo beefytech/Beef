@@ -12583,11 +12583,9 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 		{			
 			return BfTypedValue(loadedVal, typedValue.mType, false);
 		}
-
-		/*if (isVolatile)
-			mBfIRBuilder->CreateFence(BfIRFenceType_AcquireRelease);*/
+		
 		PopulateType(typedValue.mType, BfPopulateType_Data);
-		loadedVal = mBfIRBuilder->CreateAlignedLoad(loadedVal, std::max(1, (int)typedValue.mType->mAlign), isVolatile);		
+		loadedVal = mBfIRBuilder->CreateAlignedLoad(loadedVal, std::max(1, (int)typedValue.mType->mAlign), isVolatile || typedValue.IsVolatile());
 	}
 	return BfTypedValue(loadedVal, typedValue.mType, false);
 }
@@ -14739,6 +14737,8 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 	if (type->IsValuelessType())
 		return BfTypedValue(globalValue, type);
 
+	if (fieldDef->mIsVolatile)
+		return BfTypedValue(globalValue, type, BfTypedValueKind_VolatileAddr);
 	return BfTypedValue(globalValue, type, !fieldDef->mIsConst);
 }
 
