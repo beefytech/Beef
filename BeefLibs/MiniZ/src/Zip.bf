@@ -2781,6 +2781,11 @@ namespace MiniZ
 			array_ptr.m_element_size = element_size;
 		}
 
+		static mixin ZIP_ARRAY_ELEMENT_PTR<T>(var array_ptr, int index)
+		{
+			&((T*)(array_ptr.m_p))[index]
+		}
+
 		static mixin ZIP_ARRAY_ELEMENT<T>(var array_ptr, int index)
 		{
 			((T*)(array_ptr.m_p))[index]
@@ -2929,9 +2934,9 @@ namespace MiniZ
 
 		static bool zip_reader_filename_less(ZipArray* pCentral_dir_array, ZipArray* pCentral_dir_offsets, uint32 l_index, uint32 r_index)
 		{
-			uint8* pL = &ZIP_ARRAY_ELEMENT!<uint8>(pCentral_dir_array, ZIP_ARRAY_ELEMENT!<uint32>(pCentral_dir_offsets, l_index));
+			uint8* pL = ZIP_ARRAY_ELEMENT_PTR!<uint8>(pCentral_dir_array, ZIP_ARRAY_ELEMENT!<uint32>(pCentral_dir_offsets, l_index));
 			uint8* pE;
-			uint8* pR = &ZIP_ARRAY_ELEMENT!<uint8>(pCentral_dir_array, ZIP_ARRAY_ELEMENT!<uint32>(pCentral_dir_offsets, r_index));
+			uint8* pR = ZIP_ARRAY_ELEMENT_PTR!<uint8>(pCentral_dir_array, ZIP_ARRAY_ELEMENT!<uint32>(pCentral_dir_offsets, r_index));
 			uint32 l_len = ReadLE16!(pL + ZIP_CDH_FILENAME_LEN_OFS), r_len = ReadLE16!(pR + ZIP_CDH_FILENAME_LEN_OFS);
 			char8 l = 0, r = 0;
 			pL += ZIP_CENTRAL_DIR_HEADER_SIZE; pR += ZIP_CENTRAL_DIR_HEADER_SIZE;
@@ -2951,7 +2956,7 @@ namespace MiniZ
 			ZipInternalState* pState = pZip.m_pState;
 			ZipArray* pCentral_dir_offsets = &pState.m_central_dir_offsets;
 			ZipArray* pCentral_dir = &pState.m_central_dir;
-			uint32* pIndices = &ZIP_ARRAY_ELEMENT!<uint32>(&pState.m_sorted_central_dir_offsets, 0);
+			uint32* pIndices = ZIP_ARRAY_ELEMENT_PTR!<uint32>(&pState.m_sorted_central_dir_offsets, 0);
 			int size = (int)pZip.m_total_files;
 			int start = (size - 2) >> 1, end;
 			while (start >= 0)
@@ -3063,9 +3068,9 @@ namespace MiniZ
 					int32 total_header_size, comp_size, decomp_size, disk_index;
 					if ((n < ZIP_CENTRAL_DIR_HEADER_SIZE) || (ReadLE32!(p) != ZIP_CENTRAL_DIR_HEADER_SIG))
 						return false;
-					ZIP_ARRAY_ELEMENT!<uint32>(&pZip.m_pState.m_central_dir_offsets, i) = (uint32)(p - (uint8*)pZip.m_pState.m_central_dir.m_p);
+					*ZIP_ARRAY_ELEMENT_PTR!<uint32>(&pZip.m_pState.m_central_dir_offsets, i) = (uint32)(p - (uint8*)pZip.m_pState.m_central_dir.m_p);
 					if (sort_central_dir)
-						ZIP_ARRAY_ELEMENT!<uint32>(&pZip.m_pState.m_sorted_central_dir_offsets, i) = (uint32)i;
+						*ZIP_ARRAY_ELEMENT_PTR!<uint32>(&pZip.m_pState.m_sorted_central_dir_offsets, i) = (uint32)i;
 					comp_size = (int32)ReadLE32!(p + ZIP_CDH_COMPRESSED_SIZE_OFS);
 					decomp_size = (int32)ReadLE32!(p + ZIP_CDH_DECOMPRESSED_SIZE_OFS);
 					if (((ReadLE32!(p + ZIP_CDH_METHOD_OFS) == 0) && (decomp_size != comp_size)) || ((decomp_size != 0) && (comp_size == 0)) || (decomp_size == -1) || (comp_size == -1))
@@ -3210,7 +3215,7 @@ namespace MiniZ
 		{
 			if ((pZip == null) || (pZip.m_pState == null) || (file_index >= pZip.m_total_files) || (pZip.m_zip_mode != .Reading))
 				return null;
-			return &ZIP_ARRAY_ELEMENT!<uint8>(&pZip.m_pState.m_central_dir, ZIP_ARRAY_ELEMENT!<uint32>(&pZip.m_pState.m_central_dir_offsets, file_index));
+			return ZIP_ARRAY_ELEMENT_PTR!<uint8>(&pZip.m_pState.m_central_dir, ZIP_ARRAY_ELEMENT!<uint32>(&pZip.m_pState.m_central_dir_offsets, file_index));
 		}
 
 		static bool zip_reader_is_file_encrypted(ZipArchive* pZip, int32 file_index)
@@ -3313,7 +3318,7 @@ namespace MiniZ
 		{
 			char8* pR = pR_in;
 
-			uint8* pL = &ZIP_ARRAY_ELEMENT!<uint8>(pCentral_dir_array, ZIP_ARRAY_ELEMENT!<uint32>(pCentral_dir_offsets, l_index));
+			uint8* pL = ZIP_ARRAY_ELEMENT_PTR!<uint8>(pCentral_dir_array, ZIP_ARRAY_ELEMENT!<uint32>(pCentral_dir_offsets, l_index));
 			uint8* pE;
 			int32 l_len = ReadLE16!(pL + ZIP_CDH_FILENAME_LEN_OFS);
 			char8 l = 0, r = 0;
@@ -3334,7 +3339,7 @@ namespace MiniZ
 			ZipInternalState* pState = pZip.m_pState;
 			ZipArray* pCentral_dir_offsets = &pState.m_central_dir_offsets;
 			ZipArray* pCentral_dir = &pState.m_central_dir;
-			uint32* pIndices = &ZIP_ARRAY_ELEMENT!<uint32>(&pState.m_sorted_central_dir_offsets, 0);
+			uint32* pIndices = ZIP_ARRAY_ELEMENT_PTR!<uint32>(&pState.m_sorted_central_dir_offsets, 0);
 			int32 size = pZip.m_total_files;
 			int32 filename_len = (int32)Internal.CStrLen(pFilename);
 			int32 l = 0, h = size - 1;
@@ -3363,7 +3368,7 @@ namespace MiniZ
 			comment_len = (pComment != null) ? Internal.CStrLen(pComment) : 0; if (comment_len > 0xFFFF) return -1;
 			for (file_index = 0; file_index < pZip.m_total_files; file_index++)
 			{
-				uint8* pHeader = &ZIP_ARRAY_ELEMENT!<uint8>(&pZip.m_pState.m_central_dir, ZIP_ARRAY_ELEMENT!<uint32>(&pZip.m_pState.m_central_dir_offsets, file_index));
+				uint8* pHeader = ZIP_ARRAY_ELEMENT_PTR!<uint8>(&pZip.m_pState.m_central_dir, ZIP_ARRAY_ELEMENT!<uint32>(&pZip.m_pState.m_central_dir_offsets, file_index));
 				int32 filename_len = ReadLE16!(pHeader + ZIP_CDH_FILENAME_LEN_OFS);
 				char8* pFilename = (char8*)pHeader + ZIP_CENTRAL_DIR_HEADER_SIZE;
 				if (filename_len < name_len)
