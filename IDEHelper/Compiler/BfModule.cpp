@@ -8336,9 +8336,16 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 					auto invokeMethod = GetRawMethodInstanceAtIdx(convCheckConstraint->ToTypeInstance(), 0, "Invoke");
 
-					BfExprEvaluator exprEvaluator(this);
-					if (exprEvaluator.IsExactMethodMatch(checkMethodInstance, invokeMethod))
-						constraintMatched = true;
+					if (checkMethodInstance->HasExplicitThis() != 0)
+					{
+						// Don't allow functions with explicit 'this'
+					}
+					else
+					{
+						BfExprEvaluator exprEvaluator(this);
+						if (exprEvaluator.IsExactMethodMatch(checkMethodInstance, invokeMethod))
+							constraintMatched = true;
+					}
 				}
 				else if (convCheckConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef))
 					constraintMatched = true;
