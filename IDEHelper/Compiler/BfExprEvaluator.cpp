@@ -3403,6 +3403,11 @@ void BfExprEvaluator::Visit(BfBlock* blockExpr)
 
 	mModule->VisitEmbeddedStatement(blockExpr, this, BfNodeIsA<BfUnscopedBlock>(blockExpr) ? BfEmbeddedStatementFlags_Unscoped : BfEmbeddedStatementFlags_None);
 	mResult = mModule->SanitizeAddr(mResult);
+	if ((mResult) && (mResult.mType->IsStruct()))
+	{
+		mResult = mModule->MakeAddressable(mResult, true);
+		mResult.MakeTemporary(true);
+	}
 }
 
 bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail)
@@ -17248,6 +17253,12 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 	mModule->mBfIRBuilder->RestoreDebugLocation();
 	mModule->mBfIRBuilder->DupDebugLocation();
+
+	if ((mResult) && (mResult.mType->IsStruct()))
+	{
+		mResult = mModule->MakeAddressable(mResult, true);
+		mResult.MakeTemporary(true);
+	}
 }
 
 void BfExprEvaluator::SetMethodElementType(BfAstNode* target)

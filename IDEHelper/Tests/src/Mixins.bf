@@ -79,6 +79,11 @@ namespace Tests
 			ref a
 		}
 
+		static mixin Unwrap(var res)
+		{
+			res.Value
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -139,6 +144,11 @@ namespace Tests
 			var c = { ref b };
 			c = 99;
 			Test.Assert(b == 99);
+
+			Result<StringView> svRes = "ab ";
+			var sv2 = Unwrap!(svRes)..Trim();
+			Test.Assert(svRes.Value == "ab ");
+			Test.Assert(sv2 == "ab");
 		}
 
 	}

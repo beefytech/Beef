@@ -798,6 +798,21 @@ public:
 		}
 	}
 
+	void MakeTemporary(bool restricted = false)
+	{
+		switch (mKind)
+		{
+		case BfTypedValueKind_Addr:
+			mKind = restricted ? BfTypedValueKind_RestrictedTempAddr : BfTypedValueKind_TempAddr;
+			break;
+		case BfTypedValueKind_ReadOnlyAddr:
+			mKind = BfTypedValueKind_ReadOnlyTempAddr;
+			break;
+		default:
+			break;
+		}
+	}
+
 	bool CanModify() const;
 };
 
