@@ -515,7 +515,7 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_Struct);
 			else if (checkOuter->mTypeConstraint->IsStructOrStructPtr())
 				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_StructPtr);
-			else if (checkOuter->mTypeConstraint->IsObject())
+			else if ((checkOuter->mTypeConstraint->IsObject()) && (!checkOuter->mTypeConstraint->IsDelegate()))
 				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_Class);
 			else if (checkOuter->mTypeConstraint->IsEnum())
 				outerFlags = (BfGenericParamFlags)(outerFlags | BfGenericParamFlag_Enum | BfGenericParamFlag_Struct);

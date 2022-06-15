@@ -178,6 +178,23 @@ namespace Tests
 			Runtime.FatalError();
 		}
 
+		public static int TestOverload<TProc>(TProc proc)
+			where TProc : class, delegate void()
+		{
+			return 1;
+		}
+
+		public static int TestOverload<TProc>(TProc proc)
+			where TProc : delegate void()
+		{
+			return 2;
+		}
+
+		public static int TestOverload2(function void() proc)
+		{
+			return 3;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -204,6 +221,13 @@ namespace Tests
 			Test.Assert(gci.test == 2);
 			Test.Assert(GenClassMethodC(gci) == 3);
 			Test.Assert(gci.test == 3);
+
+			delegate void() dlg = scope () => {};
+			function void() func = () => {};
+			Test.Assert(TestOverload(dlg) == 1);
+			Test.Assert(TestOverload(() => {}) == 2);
+			Test.Assert(TestOverload(func) == 2);
+			Test.Assert(TestOverload2(func) == 3);
 		}
 	}
 }
