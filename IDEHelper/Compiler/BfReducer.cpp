@@ -4427,15 +4427,10 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 			(unaryOperatorExpr->mOp == BfUnaryOp_Decrement) ||
 			(unaryOperatorExpr->mOp == BfUnaryOp_PostDecrement);
 
-		if ((unaryOperatorExpr->mOp == BfUnaryOp_Ref) || (unaryOperatorExpr->mOp == BfUnaryOp_Mut) || (unaryOperatorExpr->mOp == BfUnaryOp_Out))
+		if (unaryOperatorExpr->mOp == BfUnaryOp_Out)
 		{
-			if (unaryOperatorExpr->mOp == BfUnaryOp_Ref)
-				Fail("Cannot use 'ref' in this context", unaryOperatorExpr);
-			else if (unaryOperatorExpr->mOp == BfUnaryOp_Mut)
-				Fail("Cannot use 'mut' in this context", unaryOperatorExpr);
-			else
-				Fail("Cannot use 'out' in this context", unaryOperatorExpr);
-			return NULL;
+			unaryOperatorExpr->mOp = BfUnaryOp_Ref;
+			Fail("Cannot use 'out' in this context", unaryOperatorExpr);
 		}
 	}
 

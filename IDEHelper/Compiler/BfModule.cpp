@@ -8791,13 +8791,26 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 		{
 			// Only allow a 'ref' type if we have an explicit 'ref' operator
 			bool allowRef = false;
-			BfExpression* checkExpr = expr;
-			while (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(checkExpr))
-				checkExpr = parenExpr->mExpression;
-			if (auto unaryOp = BfNodeDynCast<BfUnaryOperatorExpression>(checkExpr))
+			BfAstNode* checkExpr = expr;
+
+			while (checkExpr != NULL)
 			{
-				if ((unaryOp->mOp == BfUnaryOp_Ref) || (unaryOp->mOp == BfUnaryOp_Mut))
-					allowRef = true;
+				if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(checkExpr))
+					checkExpr = parenExpr->mExpression;
+				else if (auto unaryOp = BfNodeDynCast<BfUnaryOperatorExpression>(checkExpr))
+				{
+					if ((unaryOp->mOp == BfUnaryOp_Ref) || (unaryOp->mOp == BfUnaryOp_Mut))
+						allowRef = true;
+					break;
+				}
+				if (auto block = BfNodeDynCast<BfBlock>(checkExpr))
+				{
+					if (block->mChildArr.mSize == 0)
+						break;
+					checkExpr = block->mChildArr.back();
+				}
+				else
+					break;
 			}
 			if (!allowRef)
 				typedVal = RemoveRef(typedVal);
@@ -12477,6 +12490,23 @@ BfTypedValue BfModule::RemoveRef(BfTypedValue typedValue)
 				typedValue.mKind = BfTypedValueKind_ReadOnlyAddr;
 		}
 	}
+	return typedValue;
+}
+
+BfTypedValue BfModule::SanitizeAddr(BfTypedValue typedValue)
+{
+	if (!typedValue)
+		return typedValue;
+
+	if (typedValue.mType->IsRef())
+	{
+		typedValue = LoadValue(typedValue);
+
+		auto copiedVal = BfTypedValue(CreateAlloca(typedValue.mType), typedValue.mType, true);
+		mBfIRBuilder->CreateStore(typedValue.mValue, copiedVal.mValue);
+		return copiedVal;
+	}
+
 	return typedValue;
 }
 

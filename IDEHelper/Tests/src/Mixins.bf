@@ -73,6 +73,12 @@ namespace Tests
 			total + 100
 		}
 
+		static mixin GetRef(var a)
+		{
+			a += 1000;
+			ref a
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -125,6 +131,14 @@ namespace Tests
 			AppendAndNullify!(str0);
 			Test.Assert(str0 == null);
 			Test.Assert(str1 == "AB");
+
+			int b = 12;
+			GetRef!(b) += 200;
+			Test.Assert(b == 1212);
+
+			var c = { ref b };
+			c = 99;
+			Test.Assert(b == 99);
 		}
 
 	}

@@ -1700,6 +1700,7 @@ public:
 	void EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool allowNull);
 	void CheckStaticAccess(BfTypeInstance* typeInstance);	
 	BfTypedValue RemoveRef(BfTypedValue typedValue);
+	BfTypedValue SanitizeAddr(BfTypedValue typedValue);
 	BfTypedValue ToRef(BfTypedValue typedValue, BfRefType* refType = NULL);
 	BfTypedValue LoadOrAggregateValue(BfTypedValue typedValue);
 	BfTypedValue LoadValue(BfTypedValue typedValue, BfAstNode* refNode = NULL, bool isVolatile = false);	

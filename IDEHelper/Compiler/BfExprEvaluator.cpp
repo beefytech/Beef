@@ -3402,6 +3402,7 @@ void BfExprEvaluator::Visit(BfBlock* blockExpr)
 	}			
 
 	mModule->VisitEmbeddedStatement(blockExpr, this, BfNodeIsA<BfUnscopedBlock>(blockExpr) ? BfEmbeddedStatementFlags_Unscoped : BfEmbeddedStatementFlags_None);
+	mResult = mModule->SanitizeAddr(mResult);
 }
 
 bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail)
@@ -17164,6 +17165,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 				if (!exprNode->IsA<BfBlock>())
 				{
 					// Mixin expression result
+					SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_AllowRefExpr));
 					mModule->UpdateSrcPos(exprNode);
 					VisitChild(exprNode);
 					FinishExpressionResult();
@@ -17187,6 +17189,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	}
 
 	mResult = mModule->LoadValue(mResult);
+	mResult = mModule->SanitizeAddr(mResult);
 	
 	int localIdx = startLocalIdx;
 	
@@ -19497,7 +19500,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 	}
 
 	ResolveGenericType();
-	auto ptr = mResult;
+	auto ptr = mModule->RemoveRef(mResult);
 	mResult = BfTypedValue();
 			
 	if (mPropDef != NULL)
@@ -21569,8 +21572,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 	if (!mResult)
 		return;	
 
-	if (mResult.mType->IsRef())
-		mResult.mType = mResult.mType->GetUnderlyingType();
+	mResult = mModule->RemoveRef(mResult);	
 
 	if (mResult.mType->IsVar())
 	{
