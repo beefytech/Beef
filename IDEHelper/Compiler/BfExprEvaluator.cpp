@@ -9998,7 +9998,14 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		if ((identifierNode != NULL) && (methodDef->mIdx >= 0) && (!isIndirectMethodCall) && 
 			((targetTypeInst == NULL) || (!targetTypeInst->IsDelegateOrFunction())))
 		{
-			mModule->mCompiler->mResolvePassData->HandleMethodReference(identifierNode, moduleMethodInstance.mMethodInstance->GetOwner()->mTypeDef, methodDef);
+			auto refMethodInstance = moduleMethodInstance.mMethodInstance;
+			if (refMethodInstance->mVirtualTableIdx != -1)
+			{
+				auto& virtualEntry = refMethodInstance->GetOwner()->mVirtualMethodTable[refMethodInstance->mVirtualTableIdx];
+				refMethodInstance = virtualEntry.mDeclaringMethod;
+			}
+
+			mModule->mCompiler->mResolvePassData->HandleMethodReference(identifierNode, refMethodInstance->GetOwner()->mTypeDef, refMethodInstance->mMethodDef);
 			auto autoComplete = GetAutoComplete();
 			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(identifierNode)))
 			{		
@@ -10026,8 +10033,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	
 				if (autoComplete->mDefType == NULL)
 				{
-					autoComplete->mDefMethod = methodDef;
-					autoComplete->mDefType = moduleMethodInstance.mMethodInstance->GetOwner()->mTypeDef;					
+					autoComplete->mDefMethod = refMethodInstance->mMethodDef;
+					autoComplete->mDefType = refMethodInstance->GetOwner()->mTypeDef;
 				}
 
 				if (autoComplete->mResolveType == BfResolveType_GetResultString)
@@ -10721,8 +10728,8 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 	// Lookup left side as a type
 	{		
 		BfType* type = mModule->ResolveTypeRef(nameLeft, NULL, BfPopulateType_Declaration, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_AllowGlobalContainer));
-		if ((type != NULL) && (type->IsVar()) && (nameLeft->Equals("var")))
-			type = NULL;
+		//if ((type != NULL) && (type->IsVar()) && (nameLeft->Equals("var")))
+			//type = NULL;
 
 		if (type != NULL)
 		{
