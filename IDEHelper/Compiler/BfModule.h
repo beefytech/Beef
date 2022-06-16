@@ -587,6 +587,17 @@ public:
 		}
 		return depth;
 	}
+
+	bool ExtendLifetime(BfIRValue irValue)
+	{
+		if (mDeferredLifetimeEnds.Remove(irValue))
+		{
+			if (mPrevScope != NULL)
+				mPrevScope->mDeferredLifetimeEnds.Add(irValue);
+			return true;
+		}
+		return false;
+	}
 };
 
 struct BfCaptureInfo

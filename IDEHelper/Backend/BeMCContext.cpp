@@ -34,11 +34,10 @@ static const char* gOpName[] =
 	"@DefLoad",
 	"@DefPhi",
 	"@DbgDecl",
-	"@DbgRangeStart",
-	"@DbgRangeEnd",
 	"@LifetimeExtend",
 	"@LifetimeStart",
 	"@LifetimeEnd",
+	"@LifetimeSoftEnd",
 	"@ValueScopeSoftEnd",
 	"@ValueScopeHardEnd",
 	"@Label",
@@ -13234,28 +13233,24 @@ void BeMCContext::DoCodeEmission()
 					}
 				}
 				break;
-			case BeMCInstKind_DbgRangeStart:
-				{
-
-				}
-				break;
-			case BeMCInstKind_DbgRangeEnd:
-				{
-					auto vregInfo = GetVRegInfo(inst->mArg0);
-					if (vregInfo->mDbgVariable != NULL)
-					{
-						auto dbgVar = vregInfo->mDbgVariable;
-						dbgVar->mDeclEnd = funcCodePos;
-						dbgVar->mDeclLifetimeExtend = false;
-						BF_ASSERT((uint)dbgVar->mDeclEnd >= (uint)dbgVar->mDeclStart);
-					}
-				}
-				break;
 			case BeMCInstKind_LifetimeExtend:
 				break;
 			case BeMCInstKind_LifetimeStart:
 				break;
 			case BeMCInstKind_LifetimeEnd:
+				break;
+			case BeMCInstKind_LifetimeSoftEnd:
+				{
+					auto vregInfo = GetVRegInfo(inst->mArg0);
+					if ((vregInfo != NULL) && (vregInfo->mDbgVariable != NULL))
+					{
+						auto dbgVar = vregInfo->mDbgVariable;
+						dbgVar->mDeclEnd = funcCodePos;
+						dbgVar->mDeclLifetimeExtend = false;
+						dbgVar->mDbgLifeEnded = true;
+						BF_ASSERT((uint)dbgVar->mDeclEnd >= (uint)dbgVar->mDeclStart);
+					}
+				}	
 				break;
 			case BeMCInstKind_ValueScopeSoftEnd:
 				break;
@@ -16143,7 +16138,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?CreateEntity@ModelLoader@Content@GlitchyEngine@bf@@CA?AU?$__TUPLE_Entity_Transform@VEcsEntity@World@GlitchyEngine@bf@@PEA?AUTransformComponent@123@@4@PEAVEcsWorld@World@34@U?$Nullable@UStringView@System@bf@@@System@4@VEcsEntity@734@@Z");
+	mDebugging = (function->mName == "?NumberToString@NumberFormatter@System@bf@@SAXUStringView@23@HPEAVIFormatProvider@23@PEAVString@23@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
@@ -16999,6 +16994,16 @@ void BeMCContext::Generate(BeFunction* function)
 					if (mcPtr.IsVRegAny())
 					{
 						AllocInst(BeMCInstKind_LifetimeEnd, mcPtr);
+					}
+				}
+				break;
+			case BeLifetimeSoftEndInst::TypeId:
+				{
+					auto castedInst = (BeLifetimeSoftEndInst*)inst;
+					auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
+					if (mcPtr.IsVRegAny())
+					{
+						AllocInst(BeMCInstKind_LifetimeSoftEnd, mcPtr);
 					}
 				}
 				break;

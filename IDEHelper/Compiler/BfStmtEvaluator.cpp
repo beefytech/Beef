@@ -3526,6 +3526,12 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 											(wasReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr));										
 									}
 								}
+
+								if (exprEvaluator->mResult.IsAddr())
+								{
+									if (mCurMethodState->mCurScope->ExtendLifetime(exprEvaluator->mResult.mValue))
+										mBfIRBuilder->CreateLifetimeSoftEnd(exprEvaluator->mResult.mValue);
+								}
 							}
 
 							break;

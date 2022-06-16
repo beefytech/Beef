@@ -484,11 +484,10 @@ enum BeMCInstKind
 	BeMCInstKind_DefLoad,
 	BeMCInstKind_DefPhi,
 	BeMCInstKind_DbgDecl,
-	BeMCInstKind_DbgRangeStart,
-	BeMCInstKind_DbgRangeEnd, // Extends life of local variables/arguments to their lexical scope end
 	BeMCInstKind_LifetimeExtend,
 	BeMCInstKind_LifetimeStart,
 	BeMCInstKind_LifetimeEnd,
+	BeMCInstKind_LifetimeSoftEnd,
 	BeMCInstKind_ValueScopeSoftEnd,
 	BeMCInstKind_ValueScopeHardEnd,
 	BeMCInstKind_Label,

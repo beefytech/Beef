@@ -1860,9 +1860,10 @@ void CeBuilder::Build()
 			}
 
 			switch (instType)
-			{			
-			case BeNopInst::TypeId:			
-			case BeLifetimeStartInst::TypeId:			
+			{
+			case BeNopInst::TypeId:	
+			case BeLifetimeSoftEndInst::TypeId:
+			case BeLifetimeStartInst::TypeId:
 			case BeLifetimeExtendInst::TypeId:
 			case BeValueScopeStartInst::TypeId:
 			case BeValueScopeEndInst::TypeId:

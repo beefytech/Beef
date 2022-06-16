@@ -300,6 +300,12 @@ void BeInliner::Visit(BeLifetimeEndInst* lifetimeEndInst)
 	destlifetimeEndInst->mPtr = Remap(lifetimeEndInst->mPtr);	
 }
 
+void BeInliner::Visit(BeLifetimeSoftEndInst* lifetimeEndInst)
+{
+	auto destlifetimeEndInst = AllocInst(lifetimeEndInst);
+	destlifetimeEndInst->mPtr = Remap(lifetimeEndInst->mPtr);
+}
+
 void BeInliner::Visit(BeLifetimeFenceInst* lifetimeFenceInst)
 {
 	auto destlifetimeFenceInst = AllocInst(lifetimeFenceInst);
@@ -2344,6 +2350,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 				DISPLAY_INST1(BeAliasValueInst, "aliasvalue", mPtr);
 				DISPLAY_INST1(BeLifetimeStartInst, "lifetime.start", mPtr);				
 				DISPLAY_INST1(BeLifetimeEndInst, "lifetime.end", mPtr);
+				DISPLAY_INST1(BeLifetimeSoftEndInst, "lifetime.softEnd", mPtr);
 				DISPLAY_INST2(BeLifetimeFenceInst, "lifetime.fence", mFenceBlock, mPtr);
 				DISPLAY_INST0(BeValueScopeStartInst, "valueScope.start");
 				DISPLAY_INST1(BeValueScopeRetainInst, "valueScope.retain", mValue);

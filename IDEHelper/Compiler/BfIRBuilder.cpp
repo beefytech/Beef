@@ -4907,6 +4907,13 @@ BfIRValue BfIRBuilder::CreateLifetimeEnd(BfIRValue val)
 	return retVal;
 }
 
+BfIRValue BfIRBuilder::CreateLifetimeSoftEnd(BfIRValue val)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_LifetimeSoftEnd, val);
+	NEW_CMD_INSERTED;
+	return retVal;
+}
+
 BfIRValue BfIRBuilder::CreateLifetimeExtend(BfIRValue val)
 {
 	BfIRValue retVal = WriteCmd(BfIRCmd_LifetimeExtend, val);

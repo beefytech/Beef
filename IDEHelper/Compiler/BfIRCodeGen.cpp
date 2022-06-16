@@ -2487,6 +2487,11 @@ void BfIRCodeGen::HandleNextCmd()
 			SetResult(curId, mIRBuilder->CreateLifetimeEnd(val));
 		}
 		break;
+	case BfIRCmd_LifetimeSoftEnd:
+		{
+			CMD_PARAM_NOTRANS(llvm::Value*, val);
+		}
+		break;
 	case BfIRCmd_LifetimeExtend:
 		{
 			CMD_PARAM_NOTRANS(llvm::Value*, val);

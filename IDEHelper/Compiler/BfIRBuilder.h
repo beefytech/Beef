@@ -230,7 +230,8 @@ enum BfIRCmd : uint8
 	BfIRCmd_AliasValue,
 	BfIRCmd_LifetimeStart,	
 	BfIRCmd_LifetimeEnd,
-	BfIRCmd_LifetimeExtend,
+	BfIRCmd_LifetimeSoftEnd,
+	BfIRCmd_LifetimeExtend,	
 	BfIRCmd_ValueScopeStart,
 	BfIRCmd_ValueScopeRetain,
 	BfIRCmd_ValueScopeSoftEnd,
@@ -1253,8 +1254,9 @@ public:
 	void SetAllocaNoChkStkHint(BfIRValue val);	
 	void SetAllocaForceMem(BfIRValue val);
 	BfIRValue CreateAliasValue(BfIRValue val);
-	BfIRValue CreateLifetimeStart(BfIRValue val);	
+	BfIRValue CreateLifetimeStart(BfIRValue val);
 	BfIRValue CreateLifetimeEnd(BfIRValue val);
+	BfIRValue CreateLifetimeSoftEnd(BfIRValue val);
 	BfIRValue CreateLifetimeExtend(BfIRValue val);
 	BfIRValue CreateValueScopeStart();
 	void CreateValueScopeRetain(BfIRValue val); // When a value is held by a variable -- don't release until we have a HardValueScopeEnd

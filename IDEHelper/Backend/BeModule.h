@@ -36,6 +36,7 @@ class BeLifetimeExtendInst;
 class BeAliasValueInst;
 class BeLifetimeStartInst;
 class BeLifetimeEndInst;
+class BeLifetimeSoftEndInst;
 class BeLifetimeFenceInst;
 class BeValueScopeStartInst;
 class BeValueScopeRetainInst;
@@ -90,6 +91,7 @@ public:
 	virtual void Visit(BeLifetimeExtendInst* lifetimeExtendInst) {}
 	virtual void Visit(BeLifetimeStartInst* lifetimeStartInst) {}
 	virtual void Visit(BeLifetimeEndInst* lifetimeEndInst) {}
+	virtual void Visit(BeLifetimeSoftEndInst* lifetimeEndInst) {}
 	virtual void Visit(BeLifetimeFenceInst* lifetimeFenceInst) {}
 	virtual void Visit(BeValueScopeStartInst* valueScopeStartInst) {}
 	virtual void Visit(BeValueScopeRetainInst* valueScopeRetainInst) {}
@@ -183,6 +185,7 @@ public:
 	virtual void Visit(BeLifetimeStartInst* lifetimeStartInst) override;
 	virtual void Visit(BeLifetimeExtendInst* lifetimeExtendInst) override;
 	virtual void Visit(BeLifetimeEndInst* lifetimeEndInst) override;
+	virtual void Visit(BeLifetimeSoftEndInst* lifetimeEndInst) override;
 	virtual void Visit(BeLifetimeFenceInst* lifetimeFenceInst) override;
 	virtual void Visit(BeValueScopeStartInst* valueScopeStartInst) override;
 	virtual void Visit(BeValueScopeRetainInst* valueScopeRetainInst) override;
@@ -968,6 +971,20 @@ class BeLifetimeEndInst : public BeInst
 {
 public:
 	BE_VALUE_TYPE(BeLifetimeEndInst, BeInst);
+
+	BeValue* mPtr;
+
+	virtual void HashInst(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		mPtr->HashReference(hashCtx);
+	}
+};
+
+class BeLifetimeSoftEndInst : public BeInst
+{
+public:
+	BE_VALUE_TYPE(BeLifetimeSoftEndInst, BeInst);
 
 	BeValue* mPtr;
 

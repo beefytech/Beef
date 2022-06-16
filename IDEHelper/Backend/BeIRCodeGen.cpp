@@ -1754,6 +1754,14 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, inst);
 		}
 		break;
+	case BfIRCmd_LifetimeSoftEnd:
+		{
+			CMD_PARAM(BeValue*, val);	
+			auto inst = mBeModule->AllocInst<BeLifetimeSoftEndInst>();
+			inst->mPtr = val;
+			SetResult(curId, inst);
+		}
+		break;
 	case BfIRCmd_LifetimeExtend:
 		{
 			CMD_PARAM(BeValue*, val);

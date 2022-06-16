@@ -3402,12 +3402,6 @@ void BfExprEvaluator::Visit(BfBlock* blockExpr)
 	}			
 
 	mModule->VisitEmbeddedStatement(blockExpr, this, BfNodeIsA<BfUnscopedBlock>(blockExpr) ? BfEmbeddedStatementFlags_Unscoped : BfEmbeddedStatementFlags_None);
-	mResult = mModule->SanitizeAddr(mResult);
-	if ((mResult) && (mResult.mType->IsStruct()))
-	{
-		mResult = mModule->MakeAddressable(mResult, true);
-		mResult.MakeTemporary(true);
-	}
 }
 
 bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail)
@@ -17193,9 +17187,14 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		mResult = BfTypedValue(BfIRValue(), mModule->GetPrimitiveType(BfTypeCode_None));
 	}
 
-	mResult = mModule->LoadValue(mResult);
-	mResult = mModule->SanitizeAddr(mResult);
-	
+	mResult = mModule->RemoveRef(mResult);
+
+	if (mResult.IsAddr())
+	{
+		if (mModule->mCurMethodState->mCurScope->ExtendLifetime(mResult.mValue))
+			mModule->mBfIRBuilder->CreateLifetimeSoftEnd(mResult.mValue);
+	}
+
 	int localIdx = startLocalIdx;
 	
 	argExprEvaluatorItr = argExprEvaluators.begin();
@@ -17253,12 +17252,6 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 	mModule->mBfIRBuilder->RestoreDebugLocation();
 	mModule->mBfIRBuilder->DupDebugLocation();
-
-	if ((mResult) && (mResult.mType->IsStruct()))
-	{
-		mResult = mModule->MakeAddressable(mResult, true);
-		mResult.MakeTemporary(true);
-	}
 }
 
 void BfExprEvaluator::SetMethodElementType(BfAstNode* target)
@@ -19513,7 +19506,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 	ResolveGenericType();
 	auto ptr = mModule->RemoveRef(mResult);
 	mResult = BfTypedValue();
-			
+
 	if (mPropDef != NULL)
 	{
 		bool hasLeftVal = false;
@@ -21583,7 +21576,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 	if (!mResult)
 		return;	
 
-	mResult = mModule->RemoveRef(mResult);	
+	mResult = mModule->RemoveRef(mResult);
 
 	if (mResult.mType->IsVar())
 	{
