@@ -262,6 +262,15 @@ namespace BeefPerf
 		{
 			base.Stop();
 			mListenSocket.Close();
+
+			Widget.RemoveAndDelete(mWorkspacePanel);
+			mWorkspacePanel = null;
+			Widget.RemoveAndDelete(mBoard);
+			mBoard = null;
+			Widget.RemoveAndDelete(mProfilePanel);
+			mProfilePanel = null;
+			Widget.RemoveAndDelete(mFindPanel);
+			mFindPanel = null;
 		}
 		
 		void ShowWorkspacePanel()
@@ -512,16 +521,6 @@ namespace BeefPerf
 		public override void Shutdown()
 		{
 			base.Shutdown();
-
-			Widget.RemoveAndDelete(mWorkspacePanel);
-			mWorkspacePanel = null;
-			Widget.RemoveAndDelete(mBoard);
-			mBoard = null;
-			Widget.RemoveAndDelete(mProfilePanel);
-			mProfilePanel = null;
-			Widget.RemoveAndDelete(mFindPanel);
-			mFindPanel = null;
-
 			mShutdownEvent.Set(true);
 		}
 
