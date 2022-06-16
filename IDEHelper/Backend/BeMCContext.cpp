@@ -13245,10 +13245,13 @@ void BeMCContext::DoCodeEmission()
 					if ((vregInfo != NULL) && (vregInfo->mDbgVariable != NULL))
 					{
 						auto dbgVar = vregInfo->mDbgVariable;
-						dbgVar->mDeclEnd = funcCodePos;
-						dbgVar->mDeclLifetimeExtend = false;
-						dbgVar->mDbgLifeEnded = true;
-						BF_ASSERT((uint)dbgVar->mDeclEnd >= (uint)dbgVar->mDeclStart);
+						if (dbgVar->mDeclStart != -1)
+						{
+							dbgVar->mDeclEnd = funcCodePos;
+							dbgVar->mDeclLifetimeExtend = false;
+							dbgVar->mDbgLifeEnded = true;
+							BF_ASSERT((uint)dbgVar->mDeclEnd >= (uint)dbgVar->mDeclStart);
+						}
 					}
 				}	
 				break;
@@ -16138,7 +16141,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?NumberToString@NumberFormatter@System@bf@@SAXUStringView@23@HPEAVIFormatProvider@23@PEAVString@23@@Z");
+	//mDebugging = (function->mName == "?NumberToString@NumberFormatter@System@bf@@SAXUStringView@23@HPEAVIFormatProvider@23@PEAVString@23@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
