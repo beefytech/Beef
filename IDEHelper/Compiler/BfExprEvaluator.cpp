@@ -10721,6 +10721,9 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 	// Lookup left side as a type
 	{		
 		BfType* type = mModule->ResolveTypeRef(nameLeft, NULL, BfPopulateType_Declaration, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_AllowGlobalContainer));
+		if ((type != NULL) && (type->IsVar()) && (nameLeft->Equals("var")))
+			type = NULL;
+
 		if (type != NULL)
 		{
 			BfTypedValue lookupType;
