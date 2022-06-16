@@ -9364,7 +9364,8 @@ BfType* BfCompiler::GetType(const StringImpl& fullTypeName)
 	SetAndRestoreValue<bool> prevIgnoreWarnings(mContext->mScratchModule->mIgnoreWarnings, true);
 	SetAndRestoreValue<BfResolvePassData*> prevResolvePass(mResolvePassData, &resolvePass);
 
-	auto type = mContext->mScratchModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_AllowUnboundGeneric));
+	auto type = mContext->mScratchModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(
+		BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_AllowUnboundGeneric | BfResolveTypeRefFlag_AllowGlobalContainer));
 	if (type != NULL)
 		return type;
 
