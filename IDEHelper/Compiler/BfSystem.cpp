@@ -2531,6 +2531,8 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	BfTypeDef* foundTypeDef = NULL;	
 	BfAtomCompositeT<16> qualifiedFindName;
 
+	bool allowGlobal = (flags & BfFindTypeDefFlag_AllowGlobal) != 0;
+
 	int foundPri = (int)0x80000000;
 	for (int namespaceIdx = 0; namespaceIdx <= (int) namespaceSearch.size(); namespaceIdx++)
 	{		
@@ -2556,7 +2558,7 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 				((typeDef->IsGlobalsContainer()) && ((flags & BfFindTypeDefFlag_AllowGlobal) == 0)))
 			{
 				bool handled = false;
-				if (itr.mCurEntry < mTypeDefs.mPartialSkipCache.mSize)
+				if ((itr.mCurEntry < mTypeDefs.mPartialSkipCache.mSize) && (!allowGlobal))
 				{
 					auto& entry = mTypeDefs.mPartialSkipCache[itr.mCurEntry];
 					if (entry.mRevision == mTypeDefs.mRevision)
@@ -2582,7 +2584,7 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 				}
 			}
 			
-			if ((partialStartEntryIdx != -1) && ((flags & BfFindTypeDefFlag_AllowGlobal) == 0))
+			if ((partialStartEntryIdx != -1) && (!allowGlobal))
 			{
 				mTypeDefs.SetPartialSkipCache(partialStartEntryIdx, itr.mCurEntry);
 				partialStartEntryIdx = -1;
@@ -2613,7 +2615,7 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 			itr.MoveToNextHashMatch();
 		}
 
-		if ((partialStartEntryIdx != -1) && ((flags & BfFindTypeDefFlag_AllowGlobal) == 0))
+		if ((partialStartEntryIdx != -1) && (!allowGlobal))
 			mTypeDefs.SetPartialSkipCache(partialStartEntryIdx, -1);
 	}	
 
