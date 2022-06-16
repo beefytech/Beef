@@ -9761,8 +9761,12 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 			}
 		}
 
+		BfFindTypeDefFlags findDefFlags = BfFindTypeDefFlag_None;
+		if ((resolveFlags & BfResolveTypeRefFlag_AllowGlobalContainer) != 0)		
+			findDefFlags = (BfFindTypeDefFlags)(findDefFlags | BfFindTypeDefFlag_AllowGlobal);		
+
 		BfTypeDef* ambiguousTypeDef = NULL;
-		BfTypeDef *result = mSystem->FindTypeDef(findName, numGenericArgs, project, namespaceSearch, &ambiguousTypeDef);
+		BfTypeDef *result = mSystem->FindTypeDef(findName, numGenericArgs, project, namespaceSearch, &ambiguousTypeDef, findDefFlags);
 		if ((ambiguousTypeDef != NULL) && (error != NULL))
 		{
 			error->mErrorKind = BfTypeLookupError::BfErrorKind_Ambiguous;
@@ -10763,7 +10767,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 				//auto typeDef = mSystem->FindTypeDef(findName, wantNumGenericArgs, bfProject, {}, &ambiguousTypeDef);
 				BfTypeLookupError lookupError;
-				auto typeDef = FindTypeDef(findName, wantNumGenericArgs, NULL, &lookupError);
+				auto typeDef = FindTypeDef(findName, wantNumGenericArgs, NULL, &lookupError, resolveFlags);
 				if (typeDef != NULL)
 				{
 					if (ambiguousTypeDef != NULL)
@@ -12624,6 +12628,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// Func -> void*
 	if ((typedVal.mType->IsFunction()) && (toType->IsVoidPtr()))
 	{
+		typedVal = LoadValue(typedVal);
 		return mBfIRBuilder->CreateIntToPtr(typedVal.mValue, mBfIRBuilder->MapType(toType));
 	}
 
@@ -12632,6 +12637,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		// void* -> Func
 		if ((typedVal.mType->IsVoidPtr()) && (toType->IsFunction()))
 		{
+			typedVal = LoadValue(typedVal);
 			return mBfIRBuilder->CreatePtrToInt(typedVal.mValue, BfTypeCode_IntPtr);
 		}
 
