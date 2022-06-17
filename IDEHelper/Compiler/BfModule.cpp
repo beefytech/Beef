@@ -15195,6 +15195,16 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 
 			if (!mBfIRBuilder->mIgnoreWrites)
 			{
+				if ((localVarDef->mIsStatic) && (localVarDef->mAddr) && (!localVarDef->mResolvedType->IsValuelessType()))
+				{
+					auto refType = CreateRefType(localVarDef->mResolvedType);
+					diType = mBfIRBuilder->DbgGetType(refType);
+
+					auto refAlloca = CreateAlloca(refType);
+					mBfIRBuilder->CreateStore(localVarDef->mAddr, refAlloca);
+					diValue = refAlloca;
+				}
+
 				auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
 					localVarDef->mName, mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, diType, initType);
 				localVarDef->mDbgVarInst = diVariable;
