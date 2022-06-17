@@ -9608,7 +9608,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 					{
 						BfExprEvaluator exprEvaluator(mModule);
 						exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_AllowParamsExpr;
-						exprEvaluator.Evaluate((*argValues.mArguments)[0]);
+						auto argExpr = (*argValues.mArguments)[0];
+						if (argExpr != NULL)
+							exprEvaluator.Evaluate(argExpr);
 						if ((mModule->mCurMethodState != NULL) && (exprEvaluator.mResultLocalVar != NULL) && (exprEvaluator.mResultLocalVarRefNode != NULL))
 						{
 							auto localVar = exprEvaluator.mResultLocalVar;
