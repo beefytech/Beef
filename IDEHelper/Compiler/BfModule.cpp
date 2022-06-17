@@ -18765,6 +18765,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 				DoAddLocalVariable(localVar);
 			}
 			mCurMethodState->mLocals[compositeVariableIdx]->mCompositeCount++;
+			paramVar->mIsImplicitParam = true;
 		}
 
 		if (!mCurTypeInstance->IsDelegateOrFunction())
