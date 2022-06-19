@@ -10827,10 +10827,14 @@ BfModuleMethodInstance BfModule::GetMethodByName(BfTypeInstance* typeInstance, c
 
 		while (methodDef != NULL)
 		{
- 			if ((methodDef->mMethodType != BfMethodType_Mixin) &&
+			if ((methodDef->mMethodType != BfMethodType_Mixin) &&
 				(methodDef->mGenericParams.size() == 0) &&
- 				((paramCount == -1) || (paramCount == (int)methodDef->mParams.size())))
- 				return GetMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
+				((paramCount == -1) || (paramCount == (int)methodDef->mParams.size())))
+			{
+				auto moduleMethodInstance = GetMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
+				if (moduleMethodInstance)
+					return moduleMethodInstance;
+			}
 			methodDef = methodDef->mNextWithSameName;
  		}
 
