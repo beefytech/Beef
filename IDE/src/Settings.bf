@@ -953,7 +953,7 @@ namespace IDE
 								curCmdMap = (*valuePtr) as CommandMap;
 								if (curCmdMap == null)
 								{
-									curCmdMap.FailValues.Add(ideCommand);
+									gApp.OutputLineSmart("ERROR: The same key is bound for '{0}' and as part of a key chord", entry.mCommand);
 									break;
 								}
 							}

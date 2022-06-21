@@ -221,6 +221,30 @@ namespace IDE.ui
 				}
 			}
 
+			// Do chord prefix search
+			for (var propEntries in mPropPage.mPropEntries.Values)
+			{
+				var propEntry = propEntries[0];
+				let keyEntry = (KeyEntry)propEntry.mTarget;
+				let origKeys = propEntry.mCurValue.Get<List<KeyState>>();
+				var keys = scope List<KeyState>(origKeys.GetEnumerator());
+				while (keys.Count > 1)
+				{
+					keys.PopBack();
+					let keyEntryStr = scope String();
+					KeyState.ToString(keys, keyEntryStr);
+					keyEntryStr.Append(" ");
+					CommandContextToString(keyEntry.mContextFlags, keyEntryStr);
+
+					if (mappedEntries.TryGet(keyEntryStr, var keyPtr, var valuePtr))
+					{
+						let other = valuePtr;
+						other.mHasConflict = true;
+						keyEntry.mHasConflict = true;
+					}
+				}
+			}
+
 			for (let keyEntryStr in mappedEntries.Keys)
 				delete keyEntryStr;
 
