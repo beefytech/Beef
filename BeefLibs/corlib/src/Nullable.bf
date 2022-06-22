@@ -35,6 +35,15 @@ namespace System
             }
         }
 
+		public T ValueOrDefault
+		{
+			[Inline]
+		    get
+		    {
+		        return mValue;
+		    }
+		}
+
         public ref T ValueRef
         {
 			[Inline]
@@ -96,8 +105,18 @@ namespace System
         [Inline]
         public static explicit operator T(Nullable<T> value)
         {
+			if (!value.mHasValue)
+			    Debug.FatalError("Value requested for null nullable.");
             return value.mValue;
         }
+
+		[Inline]
+		public static ref T operator->(ref Nullable<T> value)
+		{
+			if (!value.mHasValue)
+				Debug.FatalError("Value requested for null nullable.");
+		    return ref value.mValue;
+		}
 
         [Inline, Commutable]
         public static bool operator==(Nullable<T> lhs, T rhs)

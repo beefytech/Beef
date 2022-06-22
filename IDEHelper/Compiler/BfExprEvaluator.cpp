@@ -21939,9 +21939,9 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 
 			CheckResultForReading(mResult);
 			
-			if ((unaryOp == BfUnaryOp_Mut) && (!mResult.mType->IsComposite()) && (!mResult.mType->IsGenericParam()))
+			if ((unaryOp == BfUnaryOp_Mut) && (!mResult.mType->IsValueType()) && (!mResult.mType->IsGenericParam()))
 			{
-				// Non-composite types are already mutable, leave them alone...
+				// Non-valuetypes types are already mutable, leave them alone...
 				break;
 			}
 

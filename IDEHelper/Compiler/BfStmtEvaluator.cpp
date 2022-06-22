@@ -1945,9 +1945,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	if (auto varRefTypeReference = BfNodeDynCast<BfVarRefTypeReference>(varDecl->mTypeRef))
 	{
-		BF_ASSERT(val.IsAddr());
 		isRef = true;
-
 		isLet = varRefTypeReference->mVarToken->GetToken() == BfToken_Let;
 		isVar = varRefTypeReference->mVarToken->GetToken() == BfToken_Var;
 	}
@@ -2010,8 +2008,13 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		localDef->mAddr = AllocLocalVariable(localDef->mResolvedType, localDef->mName);		
 		if ((val.mValue) && (!localDef->mResolvedType->IsValuelessType()) && (!localDef->mResolvedType->IsVar()))
 		{
+			if (localDef->mResolvedType->IsRef())
+				val = MakeAddressable(val, true, true);
+
 			if (val.IsSplat())
+			{
 				AggregateSplatIntoAddr(val, localDef->mAddr);
+			}
 			else
 				mBfIRBuilder->CreateAlignedStore(val.mValue, localDef->mAddr, localDef->mResolvedType->mAlign);
 		}

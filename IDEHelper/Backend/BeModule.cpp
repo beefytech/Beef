@@ -3409,14 +3409,17 @@ BeStoreInst* BeModule::CreateAlignedStore(BeValue* val, BeValue* ptr, int alignm
 
 BeGEPInst* BeModule::CreateGEP(BeValue* ptr, BeValue* idx0, BeValue* idx1)
 {	
+#ifdef _DEBUG
+	BF_ASSERT(ptr->GetType()->IsPointer());
+#endif
+
 	auto inst = mAlloc.Alloc<BeGEPInst>();
 	inst->mPtr = ptr;
 	inst->mIdx0 = idx0;
 	inst->mIdx1 = idx1;		
 	AddInst(inst);	
 	
-#ifdef _DEBUG
-	BF_ASSERT(ptr->GetType()->IsPointer());
+#ifdef _DEBUG	
 	inst->GetType();
 #endif
 
