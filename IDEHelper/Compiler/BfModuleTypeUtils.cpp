@@ -10742,7 +10742,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 			if (!findName.IsEmpty())
 			{
-				int wantNumGenericArgs = 0;
+				int wantNumGenericArgs = numGenericArgs;
 #ifdef BF_AST_HAS_PARENT_MEMBER
 				if (auto genericTypeParent = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef->mParent))
 				{
@@ -10756,7 +10756,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				{
 					if (auto genericTypeParent = BfNodeDynCast<BfGenericInstanceTypeRef>(mParentNodeEntry->mNode))
 					{
-						wantNumGenericArgs = (int)genericTypeParent->mGenericArguments.size();
+						wantNumGenericArgs += (int)genericTypeParent->mGenericArguments.size();
 						genericTypeRef = genericTypeParent;
 					}
 				}
