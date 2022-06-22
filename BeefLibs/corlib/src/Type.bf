@@ -852,7 +852,8 @@ namespace System.Reflection
 			None = 0,
 			Splat = 1,
 			Implicit = 2,
-			AppendIdx = 4
+			AppendIdx = 4,
+			Params = 8
 		}
 
 		[CRepr, AlwaysInclude]

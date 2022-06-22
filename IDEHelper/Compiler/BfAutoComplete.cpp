@@ -1857,6 +1857,14 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 
 		bool isStatic = false;
 		BfTypedValue targetValue = LookupTypeRefOrIdentifier(target, &isStatic, (BfEvalExprFlags)(BfEvalExprFlags_IgnoreNullConditional | BfEvalExprFlags_NoCast), expectingType);
+		if ((targetValue) && (dotToken->mToken == BfToken_Arrow))
+		{
+			SetAndRestoreValue<bool> prevIgnoreClassifying(mModule->mIsInsideAutoComplete, true);
+			BfExprEvaluator exprEvaluator(mModule);
+			auto arrowValue = exprEvaluator.PerformUnaryOperation_TryOperator(targetValue, NULL, BfUnaryOp_Arrow, BfNodeDynCast<BfTokenNode>(dotToken), BfUnaryOpFlag_None);
+			if (arrowValue)			
+				targetValue = arrowValue;
+		}
 
 		bool hadResults = false;
 		bool doAsNamespace = true;

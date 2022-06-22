@@ -709,6 +709,13 @@ namespace Tests
 			Test.Assert(sA == 222);
 			Val += 1000;
 			Test.Assert(sA == 1222);
+
+			RefCounted<String> rcStr = .Create("Abc");
+			Test.Assert(rcStr->Length == 3);
+			rcStr->Clear();
+			rcStr.Release();
+
+			//RefCounted<StructB> rcB = .Create();
 		}
 
 		struct IntStruct
@@ -739,8 +746,6 @@ namespace Tests
 				mA++;
 			}
 		}
-
-		
 
 		[Test]
 		public static void TestCompareWithCastOperator()

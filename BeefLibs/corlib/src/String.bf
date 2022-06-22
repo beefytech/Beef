@@ -40,7 +40,7 @@ namespace System
 	[Ordered]
 	class String : IHashable, IFormattable, IPrintable
 	{
-		enum CreateFlags
+		public enum CreateFlags
 		{
 			None = 0,
 			NullTerminate = 1

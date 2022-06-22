@@ -1901,6 +1901,7 @@ enum BfUnaryOp
 {
 	BfUnaryOp_None,
 	BfUnaryOp_AddressOf,
+	BfUnaryOp_Arrow,
 	BfUnaryOp_Dereference,
 	BfUnaryOp_Negate,
 	BfUnaryOp_Not,

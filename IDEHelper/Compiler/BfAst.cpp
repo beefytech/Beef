@@ -1768,6 +1768,7 @@ const char* Beefy::BfGetOpName(BfUnaryOp unaryOp)
 	{
 	case BfUnaryOp_None: return "";
 	case BfUnaryOp_AddressOf: return "&";
+	case BfUnaryOp_Arrow: return "->";
 	case BfUnaryOp_Dereference: return "*";
 	case BfUnaryOp_Negate: return "-";
 	case BfUnaryOp_Not: return "!";
@@ -1862,6 +1863,8 @@ BfUnaryOp Beefy::BfTokenToUnaryOp(BfToken token)
 		return BfUnaryOp_Dereference;
 	case BfToken_Ampersand:
 		return BfUnaryOp_AddressOf;
+	case BfToken_Arrow:
+		return BfUnaryOp_Arrow;
 	case BfToken_Minus:
 		return BfUnaryOp_Negate;
 	case BfToken_Bang:

@@ -2556,9 +2556,12 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 						mToken = BfToken_MinusEquals;
 						mSrcIdx++;
 					}
-					else if ((mCompatMode) && (mSrc[mSrcIdx] == '>'))
+					else if (mSrc[mSrcIdx] == '>')
 					{
-						mToken = BfToken_Dot;
+						if (mCompatMode)
+							mToken = BfToken_Dot;
+						else
+							mToken = BfToken_Arrow;
 						mSrcIdx++;
 					}
 					else

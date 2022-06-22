@@ -2527,8 +2527,7 @@ void BfMethodMatcher::FlushAmbiguityError()
 				error = mModule->Fail("Ambiguous method call", mTargetSrc);
 			if (error != NULL)
 			{
-				auto unspecializedType = mModule->GetUnspecializedTypeInstance(mBestMethodTypeInstance);
-				BfMethodInstance* bestMethodInstance = mModule->GetRawMethodInstance(unspecializedType, mBestMethodDef);
+				BfMethodInstance* bestMethodInstance = mModule->GetUnspecializedMethodInstance(mBestRawMethodInstance, true);
 				BfTypeVector* typeGenericArguments = NULL;
 				if (mBestMethodTypeInstance->mGenericTypeInfo != NULL)
 					typeGenericArguments = &mBestMethodTypeInstance->mGenericTypeInfo->mTypeGenericArguments;
@@ -4578,6 +4577,16 @@ void BfExprEvaluator::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType
 	}
 
 	mModule->mCompiler->mResolvePassData->mAutoComplete->FixitAddMember(typeInst, fieldType, fieldName, isStatic, mModule->mCurTypeInstance);
+}
+
+BfTypedValue BfExprEvaluator::TryArrowLookup(BfTypedValue typedValue, BfTokenNode* arrowToken)
+{
+	auto arrowValue = PerformUnaryOperation_TryOperator(typedValue, NULL, BfUnaryOp_Arrow, arrowToken, BfUnaryOpFlag_None);
+	if (arrowValue)
+		return arrowValue;	
+	if (mModule->PreFail())
+		mModule->Fail(StrFormat("Type '%s' does not contain a '->' operator", mModule->TypeToString(typedValue.mType).c_str()), arrowToken);
+	return typedValue;
 }
 
 BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInlined)
@@ -17635,6 +17644,9 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		}
 		thisValue = mResult;
 		mResult = BfTypedValue();
+
+		if ((thisValue) && (memberRefExpression->mDotToken != NULL) && (memberRefExpression->mDotToken->mToken == BfToken_Arrow))
+			thisValue = TryArrowLookup(thisValue, memberRefExpression->mDotToken);
 	}
 	else if (auto qualifiedName = BfNodeDynCast<BfQualifiedNameNode>(target))
 	{
@@ -20795,10 +20807,11 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 
 	bool isNullCondLookup = (memberRefExpr->mDotToken != NULL) && (memberRefExpr->mDotToken->GetToken() == BfToken_QuestionDot);
 	bool isCascade = ((memberRefExpr->mDotToken != NULL) && (memberRefExpr->mDotToken->GetToken() == BfToken_DotDot));
+	bool isArrowLookup = ((memberRefExpr->mDotToken != NULL) && (memberRefExpr->mDotToken->GetToken() == BfToken_Arrow));
 		
 	BfIdentifierNode* nameLeft = BfNodeDynCast<BfIdentifierNode>(memberRefExpr->mTarget);
 	BfIdentifierNode* nameRight = BfIdentifierCast(memberRefExpr->mMemberName);
-	if ((nameLeft != NULL) && (nameRight != NULL) && (!isNullCondLookup) && (!isCascade))
+	if ((nameLeft != NULL) && (nameRight != NULL) && (!isNullCondLookup) && (!isCascade) && (!isArrowLookup))
 	{
 		bool hadError = false;
 		LookupQualifiedName(memberRefExpr, nameLeft, nameRight, true, &hadError);
@@ -20856,6 +20869,9 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 	if (isNullCondLookup)
 		thisValue = SetupNullConditional(thisValue, memberRefExpr->mDotToken);
 
+	if ((isArrowLookup) && (thisValue))
+		thisValue = TryArrowLookup(thisValue, memberRefExpr->mDotToken);
+	
 	mResult = LookupField(nameRefNode, thisValue, findName);
 
 	if ((!mResult) && (mPropDef == NULL))
@@ -21093,7 +21109,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				mPropDef = foundProp;
 				if (foundProp->mIsStatic)
 				{
-					mPropTarget = BfTypedValue(curCheckType);
+					mPropTarget = BfTypedValue(foundPropTypeInst);
 				}
 				else
 				{

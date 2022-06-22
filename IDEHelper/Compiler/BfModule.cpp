@@ -7136,7 +7136,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			ParamFlag_None = 0,
 			ParamFlag_Splat = 1,
 			ParamFlag_Implicit = 2,
-			ParamFlag_AppendIdx = 4
+			ParamFlag_AppendIdx = 4,
+			ParamFlag_Params = 8
 		};
 
 		SizedArray<BfIRValue, 8> paramVals;
@@ -7150,6 +7151,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				paramFlags = (ParamFlags)(paramFlags | ParamFlag_Splat);
 			if (defaultMethod->GetParamKind(paramIdx) == BfParamKind_AppendIdx)
 				paramFlags = (ParamFlags)(paramFlags | ParamFlag_Implicit | ParamFlag_AppendIdx);
+			if (defaultMethod->GetParamKind(paramIdx) == BfParamKind_Params)
+				paramFlags = (ParamFlags)(paramFlags | ParamFlag_Params);
 			
 			BfIRValue paramNameConst = GetStringObjectValue(paramName, !mIsComptimeModule);
 

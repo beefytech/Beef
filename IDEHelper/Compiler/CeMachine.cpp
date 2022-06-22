@@ -6011,11 +6011,28 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("paramIdx is out of range");
 					return false;
 				}
+				
+				enum ParamFlags
+				{
+					ParamFlag_None = 0,
+					ParamFlag_Splat = 1,
+					ParamFlag_Implicit = 2,
+					ParamFlag_AppendIdx = 4,
+					ParamFlag_Params = 8
+				};
+
+				ParamFlags paramFlags = ParamFlag_None;
+				if (methodInstance->GetParamIsSplat(paramIdx))
+					paramFlags = (ParamFlags)(paramFlags | ParamFlag_Splat);
+				if (methodInstance->GetParamKind(paramIdx) == BfParamKind_AppendIdx)
+					paramFlags = (ParamFlags)(paramFlags | ParamFlag_Implicit | ParamFlag_AppendIdx);
+				if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params)
+					paramFlags = (ParamFlags)(paramFlags | ParamFlag_Params);
 
 				addr_ce stringAddr = GetString(methodInstance->GetParamName(paramIdx));
 				_FixVariables();
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
-				*(int16*)(stackPtr + 4) = 0; // Flags
+				*(int16*)(stackPtr + 4) = (int16)paramFlags;
 				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);								
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetGenericArg)

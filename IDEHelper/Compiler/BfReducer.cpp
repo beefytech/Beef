@@ -2913,7 +2913,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			{
 				exprLeft = CreateIndexerExpression(exprLeft);
 			}
-			else if ((token == BfToken_Dot) || (token == BfToken_DotDot) || (token == BfToken_QuestionDot))
+			else if ((token == BfToken_Dot) || (token == BfToken_DotDot) || (token == BfToken_QuestionDot) || (token == BfToken_Arrow))
 			{
 				if ((token == BfToken_DotDot) && ((createExprFlags & CreateExprFlags_BreakOnCascade) != 0))
 					return exprLeft;
@@ -5506,7 +5506,10 @@ BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode)
 
 		// If the previous dotted span failed (IE: had chevrons) then don't insert qualified names in the middle of it
 		auto prevNodeToken = BfNodeDynCast<BfTokenNode>(prevNode);
-		if ((prevNodeToken != NULL) && ((prevNodeToken->GetToken() == BfToken_Dot) || (prevNodeToken->GetToken() == BfToken_QuestionDot)))
+		if ((prevNodeToken != NULL) && 
+			((prevNodeToken->GetToken() == BfToken_Dot) || 
+			 (prevNodeToken->GetToken() == BfToken_QuestionDot) || 
+			 (prevNodeToken->GetToken() == BfToken_Arrow)))
 			return leftIdentifier;
 
 		mVisitorPos.MoveNext(); // past .
@@ -8120,7 +8123,7 @@ BfExpression* BfReducer::CreateIndexerExpression(BfExpression* target)
 
 BfMemberReferenceExpression* BfReducer::CreateMemberReferenceExpression(BfAstNode* target)
 {
-	auto tokenNode = ExpectTokenAfter(target, BfToken_Dot, BfToken_DotDot, BfToken_QuestionDot);
+	auto tokenNode = ExpectTokenAfter(target, BfToken_Dot, BfToken_DotDot, BfToken_QuestionDot, BfToken_Arrow);
 
 	auto memberReferenceExpr = mAlloc->Alloc<BfMemberReferenceExpression>();
 	if (target != NULL)
@@ -9356,7 +9359,8 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 			if ((paramIdx == 0) && (
 				(token == BfToken_In) || (token == BfToken_Out) || (token == BfToken_Ref) || (token == BfToken_Mut) ||
 				(token == BfToken_Delegate) || (token == BfToken_Function) ||
-				(token == BfToken_Comptype) || (token == BfToken_Decltype) ||
+				(token == BfToken_Comptype) || (token == BfToken_Decltype) || 
+				(token == BfToken_AllocType) || (token == BfToken_RetType) ||
 				(token == BfToken_Params) || (token == BfToken_LParen) ||
 				(token == BfToken_Var) || (token == BfToken_LBracket) ||
 				(token == BfToken_ReadOnly) || (token == BfToken_DotDotDot)))
@@ -9413,7 +9417,8 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 			BfToken token = tokenNode->GetToken();
 			if ((token == BfToken_Var) || (token == BfToken_LParen) ||
 				(token == BfToken_Delegate) || (token == BfToken_Function) ||
-				(token == BfToken_Comptype) || (token == BfToken_Decltype) ||
+				(token == BfToken_Comptype) || (token == BfToken_Decltype) || 
+				(token == BfToken_AllocType) || (token == BfToken_RetType) ||
 				(token == BfToken_DotDotDot))
 			{
 				mVisitorPos.MoveNext();
