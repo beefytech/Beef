@@ -23712,7 +23712,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 		auto underlyingType = resultType->GetUnderlyingType();
 
-		if (binaryOp == BfBinaryOp_Subtract)
+		if ((binaryOp == BfBinaryOp_Subtract) && (otherTypedValue->mType == resultType))
 		{
 			intptr maxDist = 0;
 			auto resultTypeInstance = resultType->ToTypeInstance();
