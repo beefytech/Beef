@@ -713,15 +713,27 @@ const char* BfAutoComplete::GetTypeName(BfType* type)
 }
 
 void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate)
-{	
+{
 	if (typeInst->IsEnum())
 		AddEntry(AutoCompleteEntry("valuetype", "UnderlyingType"), filter);
 
 	for (auto innerType : typeInst->mTypeDef->mNestedTypes)
 	{
+		if (innerType->mOuterType->mTypeCode == BfTypeCode_Extension)
+		{
+			if (typeInst->mDefineState < BfTypeDefineState_Defined)
+				mModule->PopulateType(typeInst);
+
+			if ((typeInst->mGenericTypeInfo != NULL) && (typeInst->mGenericTypeInfo->mGenericExtensionInfo != NULL))
+			{
+				if (!typeInst->mGenericTypeInfo->mGenericExtensionInfo->mConstraintsPassedSet.IsSet(innerType->mOuterType->mPartialIdx))
+					continue;
+			}
+		}
+
 		if (CheckProtection(innerType->mProtection, innerType, allowProtected, allowPrivate))
 			AddTypeDef(innerType, filter);
-	}	
+	}
 
 	allowPrivate = false;
 	if (typeInst->mBaseType != NULL)

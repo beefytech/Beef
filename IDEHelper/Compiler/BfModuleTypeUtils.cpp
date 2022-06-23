@@ -9423,14 +9423,31 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	populateModule->PopulateType(resolvedTypeRef, populateType);
 	
 	if ((typeInstance != NULL) && (typeInstance->mTypeDef != NULL) && (typeInstance->mTypeDef->mProtection == BfProtection_Internal) && 
-		(typeInstance != mCurTypeInstance) && (typeInstance->mTypeDef->mOuterType == NULL) &&	(!typeRef->IsTemporary()))
+		(typeInstance != mCurTypeInstance) && (typeInstance->mTypeDef->mOuterType == NULL) && (!typeRef->IsTemporary()))
 	{
 		if (!CheckProtection(typeInstance->mTypeDef->mProtection, typeInstance->mTypeDef, false, false))
 			Fail(StrFormat("'%s' is inaccessible due to its protection level", TypeToString(typeInstance).c_str()), typeRef); // CS0122
 	}
 
-	if ((populateType > BfPopulateType_IdentityNoRemapAlias) && (!ResolveTypeResult_Validate(typeRef, resolvedTypeRef)))
-		return NULL;
+	// If the inner type is definted in an extension then we need to make sure the constraints are good
+	if ((typeInstance != NULL) && (typeInstance->mTypeDef != NULL) && (typeInstance->mTypeDef->mOuterType != NULL) && 
+		(typeInstance->mTypeDef->mOuterType->mTypeCode == BfTypeCode_Extension))
+	{
+		auto outerType = GetOuterType(typeInstance);
+		if ((outerType->mGenericTypeInfo != NULL) && (outerType->mGenericTypeInfo->mGenericExtensionInfo != NULL))
+		{
+			if (!outerType->mGenericTypeInfo->mGenericExtensionInfo->mConstraintsPassedSet.IsSet(typeInstance->mTypeDef->mOuterType->mPartialIdx))
+			{
+				Fail(StrFormat("'%s' is declared inside a type extension whose constraints were not met", TypeToString(typeInstance).c_str()), typeRef);
+			}
+		}
+	}
+
+	if (populateType > BfPopulateType_IdentityNoRemapAlias)
+	{
+		if (!ResolveTypeResult_Validate(typeRef, resolvedTypeRef))
+			return NULL;
+	}
 	
 	if ((populateType != BfPopulateType_TypeDef) && (populateType != BfPopulateType_IdentityNoRemapAlias))
 	{
@@ -10827,7 +10844,16 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if (leftType == NULL)
 		{
 			BfAutoParentNodeEntry autoParentNodeEntry(this, qualifiedTypeRef);
-			leftType = ResolveTypeRef(qualifiedTypeRef->mLeft, BfPopulateType_Identity, (BfResolveTypeRefFlags)((resolveFlags | BfResolveTypeRefFlag_IgnoreLookupError) & ~BfResolveTypeRefFlag_Attribute)); // We throw an error below if we can't find the type
+			
+			auto leftPopulateType = BfPopulateType_Identity;
+			if ((resolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) == 0)
+			{
+				// We can't just pass 'Identity' here because it won't validate a generic type ref on the left
+				leftPopulateType = BfPopulateType_Declaration;
+			}
+
+			leftType = ResolveTypeRef(qualifiedTypeRef->mLeft, leftPopulateType,
+				(BfResolveTypeRefFlags)((resolveFlags | BfResolveTypeRefFlag_IgnoreLookupError) & ~BfResolveTypeRefFlag_Attribute)); // We throw an error below if we can't find the type
 		}
 				
 		if (leftType == NULL)
