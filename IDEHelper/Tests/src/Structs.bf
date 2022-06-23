@@ -298,5 +298,39 @@ namespace Tests
 			Test.Assert(clr.R == 10);
 			Test.Assert(clr.G == 20);
 		}
+
+		struct SplitStruct : this(int32 mA, float mB)
+		{
+			int16 mC = 123;
+		}
+
+		[Test]
+		static void TestSplitList()
+		{
+			SplitList<SplitStruct> sl = scope .();
+			sl.Add(.(1, 2));
+			sl.Add(.(3, 4));
+
+			Test.Assert(sl[0].mA == 1);
+			Test.Assert(sl[0].mB == 2);
+			Test.Assert(sl[0].mC == 123);
+			Test.Assert(sl[1].mA == 3);
+			Test.Assert(sl[1].mB == 4);
+			Test.Assert(sl[1].mC == 123);
+			Test.Assert(sl.Data.mA[0] == 1);
+			Test.Assert(sl.Data.mA[1] == 3);
+			Test.Assert(sl.Data.mB[0] == 2);
+			Test.Assert(sl.Data.mB[1] == 4);
+			Test.Assert(sl.Data.mC[0] == 123);
+			Test.Assert(sl.Data.mC[1] == 123);
+
+			SplitStruct s = sl[0];
+			Test.Assert(s == .(1, 2));
+
+			for (var entry in sl)
+			{
+				Test.Assert(entry.mA == @entry.Index * 2 + 1);
+			}
+		}
 	}
 }
