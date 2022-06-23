@@ -1630,6 +1630,7 @@ public:
 	StringT<128> MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags = BfMethodNameFlag_ResolveGenericParamNames, BfTypeVector* typeGenericArgs = NULL, BfTypeVector* methodGenericArgs = NULL);
 	void pt(BfType* type);
 	void pm(BfMethodInstance* type);
+	BfIRType CurrentAddToConstHolder(BfIRType irType);
 	void CurrentAddToConstHolder(BfIRValue& irVal);
 	void ClearConstData();
 	bool HasUnactializedConstant(BfConstant* constant, BfIRConstHolder* constHolder);

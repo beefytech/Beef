@@ -11343,6 +11343,17 @@ static String GetAttributesTargetListString(BfAttributeTargets attrTarget)
 	return resultStr;
 }
 
+BfIRType BfModule::CurrentAddToConstHolder(BfIRType irType)
+{
+	if (irType.mKind == BfIRTypeData::TypeKind_SizedArray)
+	{
+		auto sizedArrayType = (BfConstantSizedArrayType*)mBfIRBuilder->GetConstantById(irType.mId);
+		return mCurTypeInstance->GetOrCreateConstHolder()->GetSizedArrayType(CurrentAddToConstHolder(sizedArrayType->mType), sizedArrayType->mLength);
+	}
+
+	return irType;
+}
+
 void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 {
 	auto constant = mBfIRBuilder->GetConstant(irVal);
@@ -11357,7 +11368,7 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 	if (constant->mConstType == BfConstType_Agg)
 	{
 		auto constArray = (BfConstantAgg*)constant;
-		
+				
 		SizedArray<BfIRValue, 8> newVals;
 		for (auto val : constArray->mValues)
 		{
@@ -11366,7 +11377,7 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 			newVals.push_back(newVal);			
 		}
 
-		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstAgg(constArray->mType, newVals);
+		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstAgg(CurrentAddToConstHolder(constArray->mType), newVals);
 		return;
 	}
 
@@ -11382,7 +11393,7 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 		}
 		else
 			newVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstNull();
-		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstBitCast(newVal, bitcast->mToType);
+		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstBitCast(newVal, CurrentAddToConstHolder(bitcast->mToType));
 		return;
 	}
 
@@ -11489,12 +11500,12 @@ bool BfModule::HasUnactializedConstant(BfConstant* constant, BfIRConstHolder* co
 
 	if (constant->mConstType == BfConstType_Agg)
 	{
-		auto constArray = (BfConstantAgg*)constant;		
+		auto constArray = (BfConstantAgg*)constant;
 		for (auto val : constArray->mValues)
 		{
 			if (HasUnactializedConstant(constHolder->GetConstant(val), constHolder))
-				return true;			
-		}		
+				return true;
+		}
 	}
 
 	return false;
@@ -11576,11 +11587,14 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 
 		if ((wantType == NULL) && (constArray->mType.mKind == BfIRTypeData::TypeKind_TypeId))
 			wantType = mContext->mTypes[constArray->mType.mId];
+		
+		if (wantType->IsArray())		
+			wantType = CreateSizedArrayType(wantType->GetUnderlyingType(), (int)constArray->mValues.mSize);
 
 		SizedArray<BfIRValue, 8> newVals;
 		if (wantType->IsSizedArray())
 		{
-			auto elementType = wantType->GetUnderlyingType();			
+			auto elementType = wantType->GetUnderlyingType();
 			for (auto val : constArray->mValues)
 			{
 				newVals.Add(ConstantToCurrent(constHolder->GetConstant(val), constHolder, elementType));

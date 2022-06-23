@@ -946,6 +946,10 @@ public:
 	BfIRConstHolder(BfModule* module);
 	virtual ~BfIRConstHolder();
 
+	String ToString(BfIRValue irValue);
+	String ToString(BfIRType irType);
+	void pv(const BfIRValue& irValue);
+
 	BfConstant* GetConstantById(int id);	
 	BfConstant* GetConstant(BfIRValue id);
 	bool TryGetBool(BfIRValue id, bool& boolVal);
@@ -953,6 +957,8 @@ public:
 	bool IsConstValue(BfIRValue val);
 	int CheckConstEquality(BfIRValue lhs, BfIRValue rhs); // -1 = fail, 0 = false, 1 = true
 	//void WriteConstant(void* data, BeConstant* constVal);
+
+	BfIRType GetSizedArrayType(BfIRType elementType, int length);
 
 	BfIRValue CreateConst(BfTypeCode typeCode, uint64 val);	
 	BfIRValue CreateConst(BfTypeCode typeCode, int val);
@@ -1172,7 +1178,7 @@ public:
 	String ToString(BfIRMDNode irMDNode);
 	String ActiveFuncToString();
 	void PrintActiveFunc();
-	void pv(const BfIRValue& irValue);	
+	void pv(const BfIRValue& irValue);
 	void pt(const BfIRType& irType);
 	void pbft(BfType* type);
 	void pt(const BfIRFunction& irFun);

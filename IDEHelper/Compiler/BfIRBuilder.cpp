@@ -284,6 +284,186 @@ BfIRConstHolder::~BfIRConstHolder()
 {	
 }
 
+String BfIRConstHolder::ToString(BfIRValue irValue)
+{
+	if ((irValue.mFlags & BfIRValueFlags_Const) != 0)
+	{
+		auto constant = GetConstantById(irValue.mId);
+
+		if (constant->mTypeCode == BfTypeCode_None)
+		{
+			return "void";
+		}
+		else if (constant->mTypeCode == BfTypeCode_NullPtr)
+		{
+			String ret = "null";
+			if (constant->mIRType)
+			{
+				ret += "\n";
+				ret += ToString(constant->mIRType);
+			}
+			return ret;
+		}
+		else if (constant->mTypeCode == BfTypeCode_Boolean)
+		{
+			return constant->mBool ? "true" : "false";
+		}
+		else if (constant->mTypeCode == BfTypeCode_Float)
+		{
+			return StrFormat("Constant %ff", constant->mDouble);
+		}
+		else if (constant->mTypeCode == BfTypeCode_Double)
+		{
+			return StrFormat("Constant %f", constant->mDouble);
+		}
+		else if (IsInt(constant->mTypeCode))
+		{
+			return StrFormat("Constant %lld", constant->mInt64);
+		}
+		else if (constant->mTypeCode == BfTypeCode_StringId)
+		{
+			return StrFormat("StringId %d", constant->mInt64);
+		}
+		else if (constant->mConstType == BfConstType_GlobalVar)
+		{
+			auto gvConst = (BfGlobalVar*)constant;			
+			return String("GlobalVar ") + gvConst->mName;
+		}
+		else if (constant->mConstType == BfConstType_BitCast)
+		{
+			auto bitcast = (BfConstantBitCast*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
+			return ToString(targetConst) + " BitCast to " + ToString(bitcast->mToType);
+		}
+		else if (constant->mConstType == BfConstType_Box)
+		{
+			auto box = (BfConstantBox*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, box->mTarget);
+			return ToString(targetConst) + " box to " + ToString(box->mToType);
+		}
+		else if (constant->mConstType == BfConstType_GEP32_1)
+		{
+			auto gepConst = (BfConstantGEP32_1*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+			return ToString(targetConst) + StrFormat(" Gep32 %d", gepConst->mIdx0);
+		}
+		else if (constant->mConstType == BfConstType_GEP32_2)
+		{
+			auto gepConst = (BfConstantGEP32_2*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+			return ToString(targetConst) + StrFormat(" Gep32 %d,%d", gepConst->mIdx0, gepConst->mIdx1);
+		}
+		else if (constant->mConstType == BfConstType_ExtractValue)
+		{
+			auto gepConst = (BfConstantExtractValue*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+			return ToString(targetConst) + StrFormat(" ExtractValue %d", gepConst->mIdx0);
+		}
+		else if (constant->mConstType == BfConstType_PtrToInt)
+		{
+			auto ptrToIntConst = (BfConstantPtrToInt*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, ptrToIntConst->mTarget);
+			return ToString(targetConst) + StrFormat(" PtrToInt TypeCode:%d", ptrToIntConst->mToTypeCode);
+		}
+		else if (constant->mConstType == BfConstType_IntToPtr)
+		{
+			auto bitcast = (BfConstantIntToPtr*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
+			return ToString(targetConst) + " IntToPtr " + ToString(bitcast->mToType);
+		}
+		else if (constant->mConstType == BfConstType_Agg)
+		{
+			auto constAgg = (BfConstantAgg*)constant;
+			String str = ToString(constAgg->mType);
+			str += "(";
+
+			for (int i = 0; i < (int)constAgg->mValues.size(); i++)
+			{
+				if (i > 0)
+					str += ", ";
+				str += ToString(constAgg->mValues[i]);
+			}
+			str += ")";
+			return str;
+		}
+		else if (constant->mConstType == BfConstType_AggZero)
+		{
+			return ToString(constant->mIRType) + " zeroinitializer";
+		}
+		else if (constant->mConstType == BfConstType_AggCE)
+		{
+			auto constAgg = (BfConstantAggCE*)constant;
+			return ToString(constAgg->mType) + StrFormat(" aggCe@%p", constAgg->mCEAddr);
+		}
+		else if (constant->mConstType == BfConstType_ArrayZero8)
+		{
+			return StrFormat("zero8[%d]", constant->mInt32);
+		}
+		else if (constant->mConstType == BfConstType_TypeOf)
+		{
+			auto typeofConst = (BfTypeOf_Const*)constant;
+			return "typeof " + mModule->TypeToString(typeofConst->mType);
+		}
+		else if (constant->mConstType == BfConstType_TypeOf_WithData)
+		{
+			auto typeofConst = (BfTypeOf_WithData_Const*)constant;
+			return "typeof_withData " + mModule->TypeToString(typeofConst->mType);
+		}
+		else if (constant->mConstType == BfConstType_Undef)
+		{
+			auto constUndef = (BfConstantUndef*)constant;
+			return "undef " + ToString(constUndef->mType);
+		}
+		else
+		{
+			BF_FATAL("Unhandled");
+		}
+	}
+	else if ((irValue.mFlags & BfIRValueFlags_Arg) != 0)
+	{
+		return StrFormat("Arg %d", irValue.mId);
+	}
+	else if (irValue.mFlags != 0)
+	{		
+		return "Value???";
+	}
+	else
+	{
+		BF_ASSERT(irValue.mId == -1);
+	}
+	return "empty";
+}
+
+String BfIRConstHolder::ToString(BfIRType irType)
+{
+	if (irType.mKind == BfIRTypeData::TypeKind_TypeId)
+	{
+		return StrFormat("Type#%d:%s", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
+	}
+	else if (irType.mKind == BfIRTypeData::TypeKind_TypeInstId)
+	{
+		return StrFormat("TypeInst#%d:%s", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
+	}
+	else if (irType.mKind == BfIRTypeData::TypeKind_TypeInstPtrId)
+	{
+		return StrFormat("TypeInstPtr#%d:%s", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
+	}
+	else if (irType.mKind == BfIRTypeData::TypeKind_SizedArray)
+	{
+		auto sizedArrayType = (BfConstantSizedArrayType*)GetConstantById(irType.mId);
+		return StrFormat("%s[%d]", ToString(sizedArrayType->mType).c_str(), (int)sizedArrayType->mLength);
+	}
+	else
+	{
+		return "Type ???";
+	}
+}
+
+void BfIRConstHolder::pv(const BfIRValue& irValue)
+{
+	OutputDebugStrF("%s\n", ToString(irValue).c_str());
+}
+
 void BfIRConstHolder::FixTypeCode(BfTypeCode& typeCode)
 {
 	if (typeCode == BfTypeCode_IntPtr)
@@ -542,6 +722,21 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 // 	}
 		
 	return -1;
+}
+
+BfIRType BfIRConstHolder::GetSizedArrayType(BfIRType elementType, int length)
+{
+	auto constSizedArrayType = mTempAlloc.Alloc<BfConstantSizedArrayType>();
+	constSizedArrayType->mConstType = BfConstType_SizedArrayType;
+	constSizedArrayType->mType = elementType;
+	constSizedArrayType->mLength = length;
+
+	int chunkId = mTempAlloc.GetChunkedId(constSizedArrayType);
+
+	BfIRType retType;
+	retType.mKind = BfIRTypeData::TypeKind_SizedArray;
+	retType.mId = chunkId;
+	return retType;
 }
 
 BfIRValue BfIRConstHolder::CreateConst(BfTypeCode typeCode, uint64 val)
@@ -1627,157 +1822,7 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 {
 	if ((irValue.mFlags & BfIRValueFlags_Const) != 0)
 	{
-		auto constant = GetConstantById(irValue.mId);
-		
-		if (constant->mTypeCode == BfTypeCode_None)
-		{
-			return "void";
-		}
-		else if (constant->mTypeCode == BfTypeCode_NullPtr)
-		{
-			String ret = "null";
-			if (constant->mIRType)
-			{
-				ret += "\n";
-				ret += ToString(constant->mIRType);
-			}
-			return ret;
-		}
-		else if (constant->mTypeCode == BfTypeCode_Boolean)
-		{
-			return constant->mBool ? "true" : "false";
-		}
-		else if (constant->mTypeCode == BfTypeCode_Float)
-		{
-			return StrFormat("Constant %ff", constant->mDouble);			
-		}
-		else if (constant->mTypeCode == BfTypeCode_Double)
-		{
-			return StrFormat("Constant %f", constant->mDouble);
-		}
-		else if (IsInt(constant->mTypeCode))
-		{
-			return StrFormat("Constant %lld", constant->mInt64);
-		}
-		else if (constant->mTypeCode == BfTypeCode_StringId)
-		{
-			return StrFormat("StringId %d", constant->mInt64);
-		}
-		else if (constant->mConstType == BfConstType_GlobalVar)
-		{
-			auto gvConst = (BfGlobalVar*)constant;
-			if (gvConst->mStreamId == -1)
-			{
-			}
-			else if (mBfIRCodeGen != NULL)
-			{				
-				auto val = mBfIRCodeGen->GetLLVMValue(gvConst->mStreamId);
-				std::string outStr;
-				llvm::raw_string_ostream strStream(outStr);
-				val->print(strStream);
-				strStream.flush();
-				return outStr;
-			}
-			else if (mBeIRCodeGen != NULL)
-			{				
-				auto val = mBeIRCodeGen->GetBeValue(gvConst->mStreamId);
-				String outStr;
-				BeDumpContext dumpCtx;				
-				dumpCtx.ToString(outStr, val);								
-				return outStr;
-			}
-			else
-				return String("GlobalVar ") + gvConst->mName;
-		}		
-		else if (constant->mConstType == BfConstType_BitCast)
-		{
-			auto bitcast = (BfConstantBitCast*)constant;
-			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
-			return ToString(targetConst) + " BitCast to " + ToString(bitcast->mToType);
-		}
-		else if (constant->mConstType == BfConstType_Box)
-		{
-			auto box = (BfConstantBox*)constant;
-			BfIRValue targetConst(BfIRValueFlags_Const, box->mTarget);
-			return ToString(targetConst) + " box to " + ToString(box->mToType);
-		}
-		else if (constant->mConstType == BfConstType_GEP32_1)
-		{
-			auto gepConst = (BfConstantGEP32_1*)constant;
-			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
-			return ToString(targetConst) + StrFormat(" Gep32 %d", gepConst->mIdx0);
-		}
-		else if (constant->mConstType == BfConstType_GEP32_2)
-		{
-			auto gepConst = (BfConstantGEP32_2*)constant;
-			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
-			return ToString(targetConst) + StrFormat(" Gep32 %d,%d", gepConst->mIdx0, gepConst->mIdx1);			
-		}
-		else if (constant->mConstType == BfConstType_ExtractValue)
-		{
-			auto gepConst = (BfConstantExtractValue*)constant;
-			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
-			return ToString(targetConst) + StrFormat(" ExtractValue %d", gepConst->mIdx0);
-		}
-		else if (constant->mConstType == BfConstType_PtrToInt)
-		{
-			auto ptrToIntConst = (BfConstantPtrToInt*)constant;
-			BfIRValue targetConst(BfIRValueFlags_Const, ptrToIntConst->mTarget);
-			return ToString(targetConst) + StrFormat(" PtrToInt TypeCode:%d", ptrToIntConst->mToTypeCode);			
-		}
-		else if (constant->mConstType == BfConstType_IntToPtr)
-		{
-			auto bitcast = (BfConstantIntToPtr*)constant;
-			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
-			return ToString(targetConst) + " IntToPtr " + ToString(bitcast->mToType);
-		}
-		else if (constant->mConstType == BfConstType_Agg)
-		{
-			auto constAgg = (BfConstantAgg*)constant;
-			String str = ToString(constAgg->mType);
-			str += "(";
-
-			for (int i = 0; i < (int)constAgg->mValues.size(); i++)
-			{
-				if (i > 0)
-					str += ", ";
-				str += ToString(constAgg->mValues[i]);
-			}
-			str += ")";
-			return str;
-		}
-		else if (constant->mConstType == BfConstType_AggZero)
-		{
-			return ToString(constant->mIRType) + " zeroinitializer";
-		}
-		else if (constant->mConstType == BfConstType_AggCE)
-		{
-			auto constAgg = (BfConstantAggCE*)constant;
-			return ToString(constAgg->mType) + StrFormat(" aggCe@%p", constAgg->mCEAddr);
-		}
-		else if (constant->mConstType == BfConstType_ArrayZero8)
-		{
-			return StrFormat("zero8[%d]", constant->mInt32);
-		}
-		else if (constant->mConstType == BfConstType_TypeOf)
-		{
-			auto typeofConst = (BfTypeOf_Const*)constant;
-			return "typeof " + mModule->TypeToString(typeofConst->mType);
-		}
-		else if (constant->mConstType == BfConstType_TypeOf_WithData)
-		{
-			auto typeofConst = (BfTypeOf_WithData_Const*)constant;
-			return "typeof_withData " + mModule->TypeToString(typeofConst->mType);
-		}
-		else if (constant->mConstType == BfConstType_Undef)
-		{
-			auto constUndef = (BfConstantUndef*)constant;
-			return "undef " + ToString(constUndef->mType);
-		}
-		else
-		{
-			BF_FATAL("Unhandled");
-		}
+		return BfIRConstHolder::ToString(irValue);
 	}
 	else if ((irValue.mFlags & BfIRValueFlags_Arg) != 0)
 	{
