@@ -10723,7 +10723,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				bfProject = activeTypeDef->mProject;
 
 			if (mSystem->ContainsNamespace(leftComposite, bfProject))
-			{								
+			{
 				qualifiedTypeRef->mLeft->ToString(findName);
 				findName.Append('.');
 				if (genericTypeRef != NULL)
@@ -10763,9 +10763,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 				BfTypeDef* ambiguousTypeDef = NULL;
 
-				//auto typeDef = mSystem->FindTypeDef(findName, wantNumGenericArgs, bfProject, {}, &ambiguousTypeDef);
-
-				//auto typeDef = mSystem->FindTypeDef(findName, wantNumGenericArgs, bfProject, {}, &ambiguousTypeDef);
 				BfTypeLookupError lookupError;
 				auto typeDef = FindTypeDef(findName, wantNumGenericArgs, NULL, &lookupError, resolveFlags);
 				if (typeDef != NULL)
@@ -10812,7 +10809,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if (leftType == NULL)
 		{
 			BfAutoParentNodeEntry autoParentNodeEntry(this, qualifiedTypeRef);
-			leftType = ResolveTypeRef(qualifiedTypeRef->mLeft, BfPopulateType_Identity, (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_IgnoreLookupError)); // We throw an error below if we can't find the type
+			leftType = ResolveTypeRef(qualifiedTypeRef->mLeft, BfPopulateType_Identity, (BfResolveTypeRefFlags)((resolveFlags | BfResolveTypeRefFlag_IgnoreLookupError) & ~BfResolveTypeRefFlag_Attribute)); // We throw an error below if we can't find the type
 		}
 				
 		if (leftType == NULL)
