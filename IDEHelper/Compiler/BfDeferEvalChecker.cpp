@@ -1,12 +1,20 @@
 #include "BfDeferEvalChecker.h"
+#include "BfUtil.h"
 
 USING_NS_BF;
 
 BfDeferEvalChecker::BfDeferEvalChecker()
 {
+	mRootNode = NULL;
 	mNeedsDeferEval = false;
 	mDeferLiterals = true;
-	mDeferDelegateBind = true;
+	mDeferDelegateBind = true;	
+}
+
+void BfDeferEvalChecker::Check(BfAstNode* node)
+{
+	SetAndRestoreValue<BfAstNode*> rootNode(mRootNode, node);
+	node->Accept(this);
 }
 
 void BfDeferEvalChecker::Visit(BfAstNode* attribExpr)
@@ -171,6 +179,12 @@ void BfDeferEvalChecker::Visit(BfBinaryOperatorExpression* binOpExpr)
 void BfDeferEvalChecker::Visit(BfDefaultExpression* defaultExpr)
 {	
 	if (defaultExpr->mTypeRef == NULL)
+		mNeedsDeferEval = true;
+}
+
+void BfDeferEvalChecker::Visit(BfVariableDeclaration* varDecl)
+{
+	if (varDecl != mRootNode)
 		mNeedsDeferEval = true;
 }
 

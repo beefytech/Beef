@@ -5,6 +5,67 @@ namespace System
 {
 	struct Enum
 	{
+		public static int Count
+		{
+			[Comptime(ConstEval=true)]
+			get
+			{
+				int count = 0;
+				for (var field in Compiler.OrigCalleeType.GetFields())
+				{
+					if (field.IsEnumCase)
+						count++;
+				}
+				return count;
+			}
+		}
+
+		public static var MinValue
+		{
+			[Comptime(ConstEval=true)]
+			get
+			{
+				Compiler.SetReturnType(Compiler.OrigCalleeType);
+
+				int? minValue = null;
+				for (var field in Compiler.OrigCalleeType.GetFields())
+				{
+					if (field.IsEnumCase)
+					{
+						if (minValue == null)
+							minValue = field.[Friend]mFieldData.mData;
+						else
+							minValue = Math.Min(minValue.Value, field.[Friend]mFieldData.mData);
+					}
+				}
+				return minValue.ValueOrDefault;
+			}
+		}
+
+		public static var MaxValue
+		{
+			[Comptime(ConstEval=true)]
+			get
+			{
+				Compiler.SetReturnType(Compiler.OrigCalleeType);
+
+				int? maxValue = null;
+				for (var field in Compiler.OrigCalleeType.GetFields())
+				{
+					if (field.IsEnumCase)
+					{
+						if (maxValue == null)
+							maxValue = field.[Friend]mFieldData.mData;
+						else
+							maxValue = Math.Max(maxValue.Value, field.[Friend]mFieldData.mData);
+					}
+				}
+				if (maxValue == null)
+					return -1;
+				return maxValue.ValueOrDefault;
+			}
+		}
+
 		public static void EnumToString(Type type, String strBuffer, int64 iVal)
 		{
 			for (var field in type.GetFields())

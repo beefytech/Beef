@@ -259,6 +259,9 @@ namespace System
 		[LinkName("#CallerExpression")]
 		public static extern String[0x00FFFFFF] CallerExpression;
 
+		[LinkName("#OrigCalleeType")]
+		public static extern Type OrigCalleeType;
+
 		[LinkName("#ProjectName")]
 		public static extern String ProjectName;
 
@@ -287,6 +290,7 @@ namespace System
 				Runtime.FatalError("Assert failed");
 		}
 
+		static extern void Comptime_SetReturnType(int32 typeId);
 		static extern void* Comptime_MethodBuilder_EmitStr(void* native, StringView str);
 		static extern void* Comptime_CreateMethod(int32 typeId, StringView methodName, Type returnType, MethodFlags methodFlags);
 		static extern void Comptime_EmitTypeBody(int32 typeId, StringView text);
@@ -307,6 +311,12 @@ namespace System
 		public static void EmitTypeBody(Type owner, StringView text)
 		{
 			Comptime_EmitTypeBody((.)owner.TypeId, text);
+		}
+
+		[Comptime(OnlyFromComptime=true)]
+		public static void SetReturnType(Type type)
+		{
+			Comptime_SetReturnType((.)type.TypeId);
 		}
 
 		[Comptime(OnlyFromComptime=true)]

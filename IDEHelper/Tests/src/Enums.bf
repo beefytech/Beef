@@ -137,6 +137,10 @@ namespace Tests
 			EnumG eg = .A;
 			eg.Set(66);
 			Test.Assert(eg == .B);
+
+			var ea = EnumA.MaxValue;
+			Test.Assert(ea == .B);
+			Test.Assert(EnumA.Count == 2);
 		}
 	}
 }

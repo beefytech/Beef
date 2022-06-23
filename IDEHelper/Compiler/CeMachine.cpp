@@ -1024,6 +1024,19 @@ int CeBuilder::GetCallTableIdx(BeFunction* beFunction, CeOperand* outOperand)
 		callEntry.mFunctionInfo = ceFunctionInfo;
 		*callIdxPtr = (int)mCeFunction->mCallTable.size();
 		mCeFunction->mCallTable.Add(callEntry);
+
+		if (ceFunctionInfo != NULL)
+		{
+			auto callerType = mCeFunction->mCeFunctionInfo->GetOwner();
+			auto calleeType = ceFunctionInfo->GetOwner();
+
+			if ((callerType != NULL) && (calleeType != NULL))
+			{
+				// This will generally already be set, but there are some error cases (such as duplicate type names)
+				//  where this will not be set yet
+				callerType->mModule->AddDependency(calleeType, callerType, BfDependencyMap::DependencyFlag_Calls);
+			}
+		}
 	}
 	return *callIdxPtr;
 }
@@ -5148,7 +5161,8 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	mCeMachine->mAppendAllocInfo = NULL;
 
 	BfType* returnType = NULL;
-	bool success = Execute(ceFunction, stackPtr - ceFunction->mFrameSize, stackPtr, returnType);
+	BfType* castReturnType = NULL;
+	bool success = Execute(ceFunction, stackPtr - ceFunction->mFrameSize, stackPtr, returnType, castReturnType);
 	memStart = &mMemory[0];
 
 	addr_ce retInstAddr = retAddr;
@@ -5226,6 +5240,13 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	{
 		BF_ASSERT((flags& CeEvalFlags_DbgCall) != 0);
 		mCallStack = prevCallStack;
+	}
+
+	if ((castReturnType != NULL) && (returnValue))
+	{
+		auto castedReturnValue = module->Cast(callSource.mRefNode, returnValue, castReturnType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromComptimeReturn));
+		if (castedReturnValue)
+			return castedReturnValue;
 	}
 
 	return returnValue;
@@ -5486,7 +5507,7 @@ public:
 	}
 };
 
-bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType)
+bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType, BfType*& castReturnType)
 {
 	auto ceModule = mCeMachine->mCeModule;
 	CeFunction* ceFunction = startFunction;
@@ -6056,6 +6077,14 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectType(methodInstance->mMethodInfoEx->mMethodGenericArguments[genericArgIdx]->mTypeId);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_SetReturnType)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr);
+				if (returnType->IsVar())
+					castReturnType = GetBfType(typeId);
+				else
+					_Fail("Comptime return types can only be set on methods declared with a 'var' return type");
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitTypeBody)
 			{
@@ -7621,7 +7650,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			auto& ceStaticFieldEntry = ceFunction->mStaticFieldTable[tableIdx];
 			if (ceStaticFieldEntry.mBindExecuteId != mExecuteId)
 			{
-				if (mStaticCtorExecSet.TryAdd(ceStaticFieldEntry.mTypeId, NULL))
+				if ((mStaticCtorExecSet.TryAdd(ceStaticFieldEntry.mTypeId, NULL)) && (!ceStaticFieldEntry.mName.StartsWith("#")))
 				{
 					auto bfType = GetBfType(ceStaticFieldEntry.mTypeId);
 					BfTypeInstance* bfTypeInstance = NULL;
@@ -7667,6 +7696,74 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if (ceStaticFieldEntry.mSize > 0)
 						memset(ptr, 0, ceStaticFieldEntry.mSize);
 					staticFieldInfo->mAddr = (addr_ce)(ptr - memStart);
+
+					if (ceStaticFieldEntry.mName.StartsWith("#"))
+					{
+						addr_ce resultAddr = 0;
+
+						if (ceStaticFieldEntry.mName == "#CallerLineNum")
+						{
+							*(int*)ptr = mCurModule->mCurFilePosition.mCurLine;
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerFilePath")
+						{
+							String filePath;
+							if (mCurModule->mCurFilePosition.mFileInstance != NULL)
+								filePath = mCurModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+							resultAddr = GetString(filePath);
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerFileName")
+						{
+							String filePath;
+							if (mCurModule->mCurFilePosition.mFileInstance != NULL)
+								filePath = mCurModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+							resultAddr = GetString(GetFileName(filePath));
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerFileDir")
+						{
+							String filePath;
+							if (mCurModule->mCurFilePosition.mFileInstance != NULL)
+								filePath = mCurModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+							resultAddr = GetString(GetFileDir(filePath));
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerTypeName")
+						{
+							String typeName = "";
+							typeName = mCeMachine->mCeModule->TypeToString(mCallerTypeInstance);
+							resultAddr = GetString(typeName);
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerType")
+						{
+							addr_ce typeAddr = GetReflectType(mCallerTypeInstance->mTypeId);
+							resultAddr = typeAddr;
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerMemberName")
+						{
+							String memberName = mCeMachine->mCeModule->MethodToString(mCallerMethodInstance);
+							resultAddr = GetString(memberName);
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerProject")
+						{
+							BfProject* project = NULL;
+							project = mCallerTypeInstance->mTypeDef->mProject;
+							if (project != NULL)
+								resultAddr = GetString(project->mName);
+						}
+						else if (ceStaticFieldEntry.mName == "#OrigCalleeType")
+						{
+							if (mCurCallSource->mOrigCalleeType != NULL)
+							{
+								addr_ce typeAddr = GetReflectType(mCurCallSource->mOrigCalleeType->mTypeId);
+								resultAddr = typeAddr;
+							}
+						}
+
+						if (resultAddr != 0)
+						{
+							_FixVariables();
+							CeSetAddrVal(memStart + staticFieldInfo->mAddr, resultAddr, ptrSize);
+						}
+					}
 				}
 
 				ceStaticFieldEntry.mAddr = staticFieldInfo->mAddr;
@@ -9199,11 +9296,15 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mCompilerTypeDef))
 			{
-				if (methodDef->mName == "Comptime_EmitTypeBody")
+				if (methodDef->mName == "Comptime_SetReturnType")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_SetReturnType;
+				}
+				else if (methodDef->mName == "Comptime_EmitTypeBody")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_EmitTypeBody;
 				}
-				if (methodDef->mName == "Comptime_EmitAddInterface")
+				else if (methodDef->mName == "Comptime_EmitAddInterface")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_EmitAddInterface;
 				}
@@ -9493,7 +9594,7 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 	CeFunctionInfo* ceFunctionInfo = NULL;
 	CeFunction* ceFunction = NULL;
 	if (!mFunctions.TryAdd(methodInstance, NULL, &functionInfoPtr))	
-	{
+	{ 
 		ceFunctionInfo = *functionInfoPtr;		
 		BF_ASSERT(ceFunctionInfo->mCeFunction != NULL);		
 		return ceFunctionInfo->mCeFunction;
@@ -9524,6 +9625,11 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 			else
 			{
 				ceFunctionInfo = *namedFunctionInfoPtr;
+				if ((ceFunctionInfo->mMethodInstance != NULL) && (ceFunctionInfo->mMethodInstance != methodInstance))
+				{
+					// This ceFunctionInfo is already taken - probably from a name mangling conflict
+					ceFunctionInfo = new CeFunctionInfo();
+				}
 			}
 		}
 		else

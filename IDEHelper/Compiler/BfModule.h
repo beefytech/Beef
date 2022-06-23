@@ -109,7 +109,8 @@ enum BfCastFlags
 	BfCastFlags_WarnOnBox = 0x800,
 	BfCastFlags_IsCastCheck = 0x1000,
 	BfCastFlags_IsConstraintCheck = 0x2000,
-	BfCastFlags_WantsConst = 0x4000
+	BfCastFlags_WantsConst = 0x4000,
+	BfCastFlags_FromComptimeReturn = 0x8000
 };
 
 enum BfCastResultFlags : int8

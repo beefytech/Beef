@@ -11348,7 +11348,7 @@ BfIRType BfModule::CurrentAddToConstHolder(BfIRType irType)
 	if (irType.mKind == BfIRTypeData::TypeKind_SizedArray)
 	{
 		auto sizedArrayType = (BfConstantSizedArrayType*)mBfIRBuilder->GetConstantById(irType.mId);
-		return mCurTypeInstance->GetOrCreateConstHolder()->GetSizedArrayType(CurrentAddToConstHolder(sizedArrayType->mType), sizedArrayType->mLength);
+		return mCurTypeInstance->GetOrCreateConstHolder()->GetSizedArrayType(CurrentAddToConstHolder(sizedArrayType->mType), (int)sizedArrayType->mLength);
 	}
 
 	return irType;
@@ -12591,7 +12591,9 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 						}
 						return result;
 					}
-					return GetDefaultTypedValue(typedValue.mType);
+
+					if (!mIsComptimeModule)
+						return GetDefaultTypedValue(typedValue.mType);
 				}
 			}
 
@@ -14654,6 +14656,25 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 				filePath = mCurMethodState->mMixinState->mInjectFilePosition.mFileInstance->mParser->mFileName;
 			return BfTypedValue(GetStringObjectValue(GetFileDir(filePath)), ResolveTypeDef(mCompiler->mStringTypeDef));
 		}
+		else if (str == "#CallerTypeName")
+		{
+			String typeName = "";
+			if (mCurMethodState->mMixinState->mMixinMethodInstance)
+				typeName = TypeToString(mCurMethodState->mMixinState->mMixinMethodInstance->GetOwner());
+			return BfTypedValue(GetStringObjectValue(typeName), ResolveTypeDef(mCompiler->mStringTypeDef));
+		}
+		else if (str == "#CallerType")
+		{
+			auto typeType = ResolveTypeDef(mCompiler->mTypeTypeDef);
+			BfType* type = NULL;
+			if (mCurMethodState->mMixinState->mMixinMethodInstance)
+				type = mCurMethodState->mMixinState->mMixinMethodInstance->GetOwner();
+			if (type != NULL)
+			{
+				AddDependency(type, mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+				return BfTypedValue(CreateTypeDataRef(type), typeType);
+			}
+		}
 		else if (str == "#CallerMemberName")
 		{
  			String memberName = "";
@@ -14668,7 +14689,7 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 			if (project != NULL)
 				return BfTypedValue(GetStringObjectValue(mProject->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
 		}
-	}
+	}	
 
 	if (str == "#TimeLocal")
 	{
@@ -15099,6 +15120,9 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 
 void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 {
+	if ((localVar->mName == "maxValue") && (mIsComptimeModule))
+		BF_ASSERT(!localVar->mAddr.IsFake());
+
 	while (localVar->mName.StartsWith('@'))
 	{
 		localVar->mNamePrefixCount++;

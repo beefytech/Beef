@@ -476,7 +476,7 @@ public:
 	BfTypedValue LookupIdentifier(BfIdentifierNode* identifierNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void AddCallDependencies(BfMethodInstance* methodInstance);
 	void PerformCallChecks(BfMethodInstance* methodInstance, BfAstNode* targetSrc);
-	BfTypedValue CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, BfCreateCallFlags callFlags = BfCreateCallFlags_None);
+	BfTypedValue CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, BfCreateCallFlags callFlags = BfCreateCallFlags_None, BfType* origTargetType = NULL);
 	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, BfCreateCallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade = NULL);
 	BfTypedValue CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target);
 	void MakeBaseConcrete(BfTypedValue& typedValue);

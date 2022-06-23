@@ -8,12 +8,15 @@ NS_BF_BEGIN
 class BfDeferEvalChecker : public BfStructuralVisitor
 {
 public:
+	BfAstNode* mRootNode;
 	bool mNeedsDeferEval;
 	bool mDeferDelegateBind;
 	bool mDeferLiterals;	
 
 public:
 	BfDeferEvalChecker();
+
+	void Check(BfAstNode* node);
 
 	virtual void Visit(BfAstNode* node) override;
 
@@ -29,8 +32,9 @@ public:
 	virtual void Visit(BfConditionalExpression* condExpr) override;
 	virtual void Visit(BfUnaryOperatorExpression* unaryOpExpr) override;
 	virtual void Visit(BfObjectCreateExpression* objCreateExpr) override;
-	virtual void Visit(BfBinaryOperatorExpression* binOpExpr) override; 	
+	virtual void Visit(BfBinaryOperatorExpression* binOpExpr) override;
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;
+	virtual void Visit(BfVariableDeclaration* varDecl) override;
 };
 
 

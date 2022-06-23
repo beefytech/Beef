@@ -329,8 +329,15 @@ public:
 		mCeFunction = NULL;
 		mRefCount = 0;
 	}
-
+	
 	~CeFunctionInfo();
+
+	BfTypeInstance* GetOwner()
+	{
+		if (mMethodInstance != NULL)
+			return mMethodInstance->GetOwner();
+		return mMethodRef.mTypeInstance;
+	}
 };
 
 class CeCallEntry
@@ -440,6 +447,7 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetParamInfo,
 	CeFunctionKind_Method_GetGenericArg,
 	
+	CeFunctionKind_SetReturnType,
 	CeFunctionKind_EmitTypeBody,
 	CeFunctionKind_EmitAddInterface,
 	CeFunctionKind_EmitMethodEntry,
@@ -1050,6 +1058,7 @@ public:
 	Kind mKind;
 	BfAstNode* mRefNode;
 	BfFieldInstance* mFieldInstance;
+	BfType* mOrigCalleeType;
 
 public:
 	CeCallSource(BfAstNode* refNode)
@@ -1057,6 +1066,7 @@ public:
 		mKind = Kind_Unknown;
 		mRefNode = refNode;
 		mFieldInstance = NULL;
+		mOrigCalleeType = NULL;
 	}
 
 	CeCallSource()
@@ -1064,6 +1074,7 @@ public:
 		mKind = Kind_Unknown;
 		mRefNode = NULL;
 		mFieldInstance = NULL;
+		mOrigCalleeType = NULL;
 	}
 };
 
@@ -1135,7 +1146,7 @@ public:
 	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);	
 	BfIRValue CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute, addr_ce ceAttrAddr = 0);
 
-	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType);
+	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType, BfType*& castReturnType);
 	BfTypedValue Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
 };
 

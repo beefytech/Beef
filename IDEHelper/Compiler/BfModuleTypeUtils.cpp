@@ -4328,6 +4328,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		ValidateGenericConstraints(validateEntry.mTypeRef, validateEntry.mGenericType, false);
 	}
 
+	bool isRootSystemType = typeInstance->IsInstanceOf(mCompiler->mValueTypeTypeDef) ||
+		typeInstance->IsInstanceOf(mCompiler->mAttributeTypeDef) ||
+		typeInstance->IsInstanceOf(mCompiler->mEnumTypeDef);
+
 	if (!typeInstance->IsBoxed())
 	{
 		if ((typeInstance->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->HasCustomAttributes()))
@@ -4696,7 +4700,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			{
 				// Already handled
 			}
-			else if ((fieldDef != NULL) && (fieldDef->GetFieldDeclaration() != NULL) && (fieldDef->GetFieldDeclaration()->mAttributes != NULL) && (!typeInstance->mTypeFailed))
+			else if ((fieldDef != NULL) && (fieldDef->GetFieldDeclaration() != NULL) && (fieldDef->GetFieldDeclaration()->mAttributes != NULL) && (!typeInstance->mTypeFailed) && (!isRootSystemType))
 			{
 				if (auto propDecl = BfNodeDynCast<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
 				{
@@ -4941,7 +4945,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				if (propDef->IsExpressionBodied())
 					target = (BfAttributeTargets)(target | BfAttributeTargets_Method);
 
-				if ((propDef->GetFieldDeclaration()->mAttributes != NULL) && (!typeInstance->mTypeFailed))
+				if ((propDef->GetFieldDeclaration()->mAttributes != NULL) && (!typeInstance->mTypeFailed) && (!isRootSystemType))
 				{
 					auto customAttrs = GetCustomAttributes(propDef->GetFieldDeclaration()->mAttributes, target);
 					delete customAttrs;
@@ -5523,7 +5527,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			typeState.mCurTypeDef = propDef->mDeclaringType;
 			typeState.mType = typeInstance;
 			SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-			ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowRef);
+
+			if (BfNodeIsA<BfVarTypeReference>(propDef->mTypeRef))
+			{
+				// This is only valid for ConstEval properties
+			}
+			else
+				ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowRef);
 		}
 	}
 
@@ -14044,7 +14054,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			"Unable to cast '%s' to '%s'" :
 			"Unable to implicitly cast '%s' to '%s'";
 
-		String errStr = StrFormat(errStrF, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str());
+		if ((castFlags & BfCastFlags_FromComptimeReturn) != 0)
+			errStrF = "Comptime return unable to cast '%s' to '%s'";
+
+		String errStr = StrFormat(errStrF, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str());		
+
 		auto error = Fail(errStr, srcNode);
 		if ((error != NULL) && (srcNode != NULL))
 		{

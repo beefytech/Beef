@@ -4691,7 +4691,13 @@ void BfCompiler::ProcessAutocompleteTempType()
 		auto propDeclaration = BfNodeDynCast<BfPropertyDeclaration>(fieldDecl);
 		if (propDeclaration != NULL)
 			autoComplete->CheckProperty(propDeclaration);
-		module->ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowRef);
+
+		if (BfNodeIsA<BfVarTypeReference>(propDef->mTypeRef))
+		{
+			// This is only valid for ConstEval properties
+		}
+		else
+			module->ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowRef);
 
 		if (auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propDef->mFieldDeclaration))
 		{
