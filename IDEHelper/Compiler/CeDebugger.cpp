@@ -658,6 +658,7 @@ void CeDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 	mBreakpoints.Remove((CeBreakpoint*)breakpoint);
 	delete breakpoint;
 	ClearBreakpointCache();
+	mBreakpointVersion++;
 }
 
 void CeDebugger::DetachBreakpoint(Breakpoint* breakpoint)
@@ -669,6 +670,7 @@ void CeDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantCol
 	breakpoint->mLineNum = lineNum;
 	breakpoint->mColumn = wantColumn;
 	ClearBreakpointCache();
+	mBreakpointVersion++;
 }
 
 void CeDebugger::MoveMemoryBreakpoint(Breakpoint* breakpoint, intptr addr, int byteCount)
