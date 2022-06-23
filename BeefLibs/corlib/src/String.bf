@@ -1313,7 +1313,7 @@ namespace System
 				if (pos == len || (ch = format[pos]) < '0' || ch > '9')
 				{
 					if ((pos < len) &&
-						((ch == '}') || (ch == ':')))
+						((ch == '}') || (ch == ':') || (ch == ',')))
 						index = autoArgIdx++;
 					else
 						return FormatError();
