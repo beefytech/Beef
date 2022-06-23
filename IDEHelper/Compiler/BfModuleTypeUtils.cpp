@@ -2820,6 +2820,14 @@ void BfModule::DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers, bool 
 {
 	BfLogSysM("BfModule::DoCEEmit %p\n", typeInstance);
 
+	if (((typeInstance->IsInstanceOf(mCompiler->mValueTypeTypeDef))) ||
+		((typeInstance->IsInstanceOf(mCompiler->mEnumTypeDef))) ||
+		((typeInstance->IsInstanceOf(mCompiler->mAttributeTypeDef))))
+	{
+		// These are not allowed to emit
+		return;
+	}
+
 	CeEmitContext ceEmitContext;
 	ceEmitContext.mType = typeInstance;
 	ExecuteCEOnCompile(&ceEmitContext, typeInstance, BfCEOnCompileKind_TypeInit, underlyingTypeDeferred);
