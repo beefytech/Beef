@@ -341,6 +341,8 @@ struct DeferredTupleAssignData
 	struct Entry
 	{		
 		BfExpression* mExpr;
+		BfType* mVarType;
+		BfAstNode* mVarNameNode;
 		BfExprEvaluator* mExprEvaluator;
 		DeferredTupleAssignData* mInnerTuple;
 	};

@@ -1598,14 +1598,6 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 							if (isTuple)
 								isLocalVariable = true;
 						}
-						else if (endingToken == BfToken_Star)
-						{
-							// Check spacing for "a* b" to determine if it's a pointer definition or a multiply
-							auto beforeStarNode = mVisitorPos.Get(outEndNode - 2);
-							if ((endingTokenNode->GetSrcStart() == beforeStarNode->GetSrcEnd()) &&
-								(identifierNode->GetSrcStart() > endingTokenNode->GetSrcEnd()))
-								isLocalVariable = true;
-						}
 						else if ((endingToken != BfToken_Star) && (endingToken != BfToken_Question))
 							isLocalVariable = true;
 					}

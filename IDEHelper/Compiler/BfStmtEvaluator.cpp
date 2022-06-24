@@ -1932,6 +1932,40 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	return localVar;
 }
 
+BfLocalVariable* BfModule::HandleVariableDeclaration(BfType* type, BfAstNode* nameNode, BfTypedValue val, bool updateSrcLoc, bool forceAddr)
+{
+	BfLocalVariable* localDef = new BfLocalVariable();
+	nameNode->ToString(localDef->mName);
+	localDef->mNameNode = BfNodeDynCast<BfIdentifierNode>(nameNode);
+	localDef->mResolvedType = type;
+	localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
+	localDef->mValue = val.mValue;
+
+	if ((!localDef->mIsReadOnly) || (mHasFullDebugInfo))
+	{
+		localDef->mAddr = AllocLocalVariable(localDef->mResolvedType, localDef->mName);
+		if ((val.mValue) && (!localDef->mResolvedType->IsValuelessType()) && (!localDef->mResolvedType->IsVar()))
+		{
+			if (localDef->mResolvedType->IsRef())
+				val = MakeAddressable(val, true, true);
+
+			if (val.IsSplat())
+			{
+				AggregateSplatIntoAddr(val, localDef->mAddr);
+			}
+			else
+				mBfIRBuilder->CreateAlignedStore(val.mValue, localDef->mAddr, localDef->mResolvedType->mAlign);
+		}
+	}
+
+	CheckVariableDef(localDef);
+
+	if (nameNode->GetSourceData() != NULL)
+		UpdateSrcPos(nameNode);
+	localDef->Init();
+	return AddLocalVariableDef(localDef, true);	
+}
+
 BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varDecl, BfTypedValue val, bool updateSrcLoc, bool forceAddr)
 {
 	if (varDecl->mEqualsNode != NULL)
@@ -2335,6 +2369,31 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 			auto localVar = HandleVariableDeclaration(varDecl, tupleElement, false, true);
 			localVar->mReadFromId = 0; // Don't give usage errors for binds
 			continue;
+		}
+
+		if (auto binOpExpr = BfNodeDynCast<BfBinaryOperatorExpression>(expr))
+		{
+			if (binOpExpr->mOp == BfBinaryOp_Multiply)
+			{
+				SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);
+				auto resolvedType = ResolveTypeRef(binOpExpr->mLeft, NULL);
+				prevIgnoreError.Restore();
+				if (resolvedType != NULL)
+				{
+					resolvedType = CreatePointerType(resolvedType);
+
+					PopulateType(tupleElement.mType);					
+					tupleElement = LoadValue(tupleElement);
+					tupleElement = Cast(binOpExpr->mLeft, tupleElement, resolvedType);
+
+					if (prevHadFallthrough)
+						Fail("Destructuring cannot be used when the previous case contains a fallthrough", expr);
+
+					auto localVar = HandleVariableDeclaration(resolvedType, binOpExpr->mRight, tupleElement, false, true);
+					localVar->mReadFromId = 0; // Don't give usage errors for binds
+					continue;
+				}
+			}
 		}
 
 		if (auto uninitExpr = BfNodeDynCast<BfUninitializedExpression>(expr))

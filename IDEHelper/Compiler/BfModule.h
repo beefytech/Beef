@@ -1893,6 +1893,7 @@ public:
 	BfTypedValue HandleCaseBind(BfTypedValue enumVal, const BfTypedValue& tagVal, BfEnumCaseBindExpression* bindExpr, BfIRBlock* eqBlock = NULL, BfIRBlock* notEqBlock = NULL, BfIRBlock* matchBlock = NULL, int* outEnumIdx = NULL);
 	void TryInitVar(BfAstNode* checkNode, BfLocalVariable* varDecl, BfTypedValue initValue, BfTypedValue& checkResult);
 	BfLocalVariable* HandleVariableDeclaration(BfVariableDeclaration* varDecl, BfExprEvaluator* exprEvaluator = NULL);
+	BfLocalVariable* HandleVariableDeclaration(BfType* type, BfAstNode* nameNode, BfTypedValue val, bool updateSrcLoc = true, bool forceAddr = false);
 	BfLocalVariable* HandleVariableDeclaration(BfVariableDeclaration* varDecl, BfTypedValue val, bool updateSrcLoc = true, bool forceAddr = false);
 	void CheckVariableDef(BfLocalVariable* variableDef);		
 	BfScopeData* FindScope(BfAstNode* scopeName, BfMixinState* curMixinState, bool allowAcrossDeferredBlock);

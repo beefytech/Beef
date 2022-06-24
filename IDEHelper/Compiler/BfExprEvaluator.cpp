@@ -19262,6 +19262,8 @@ void BfExprEvaluator::PopulateDeferrredTupleAssignData(BfTupleExpression* tupleE
 		DeferredTupleAssignData::Entry entry;
 		entry.mExprEvaluator = NULL;
 		entry.mInnerTuple = NULL;
+		entry.mVarType = NULL;
+		entry.mVarNameNode = NULL;
 
 		BfExpression* valueExpr = tupleExpr->mValues[valueIdx];
 		entry.mExpr = valueExpr;
@@ -19294,6 +19296,23 @@ void BfExprEvaluator::PopulateDeferrredTupleAssignData(BfTupleExpression* tupleE
 					resultType = ResolveTypeRef(varDecl->mTypeRef);				
 					if (resultType == NULL)
 						resultType = mModule->GetPrimitiveType(BfTypeCode_Var);
+				}
+				entry.mVarType = resultType;
+			}
+
+			if (auto binOpExpr = BfNodeDynCast<BfBinaryOperatorExpression>(valueExpr))
+			{
+				if (binOpExpr->mOp == BfBinaryOp_Multiply)
+				{
+					SetAndRestoreValue<bool> prevIgnoreError(mModule->mIgnoreErrors, true);
+					auto resolvedType = mModule->ResolveTypeRef(binOpExpr->mLeft, NULL);
+					prevIgnoreError.Restore();
+					if (resolvedType != NULL)
+					{
+						resultType = mModule->CreatePointerType(resolvedType);
+						entry.mVarType = resultType;
+						entry.mVarNameNode = binOpExpr->mRight;
+					}
 				}
 			}
 
@@ -19383,11 +19402,19 @@ void BfExprEvaluator::AssignDeferrredTupleAssignData(BfAssignmentExpression* ass
 			}
 		}
 
-		if (auto varDecl = BfNodeDynCast<BfVariableDeclaration>(child.mExpr))
+		if (child.mVarType != NULL)
 		{
-			if (!elementValue)
-				elementValue = mModule->GetDefaultTypedValue(fieldInstance->GetResolvedType());
-			mModule->HandleVariableDeclaration(varDecl, elementValue);			
+			if (auto varDecl = BfNodeDynCast<BfVariableDeclaration>(child.mExpr))
+			{
+				if (!elementValue)
+					elementValue = mModule->GetDefaultTypedValue(fieldInstance->GetResolvedType());
+				mModule->HandleVariableDeclaration(varDecl, elementValue);
+			}
+			else
+			{
+				// This handles the 'a*b' disambiguated variable decl case
+				mModule->HandleVariableDeclaration(child.mVarType, child.mVarNameNode, elementValue);
+			}
 		}
 	}
 }
