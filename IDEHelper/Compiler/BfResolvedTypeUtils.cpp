@@ -3545,8 +3545,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
 				constResolver.mExpectingType = intType;
 				BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
+				
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 				{
+					ctx->mResolvedValueMap[sizeExpr] = typedVal;
 					int elemHash = Hash(typedVal.mType, ctx, BfHashFlag_None, hashSeed);
 					hashVal = ((hashVal ^ elemHash) << 5) - hashVal;
 					return hashVal;
@@ -3558,6 +3560,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					SetAndRestoreValue<bool> prevIgnoreWrites(ctx->mModule->mBfIRBuilder->mIgnoreWrites, true);
 					typedVal = ctx->mModule->Cast(sizeExpr, typedVal, intType);
 				}
+				ctx->mResolvedValueMap[sizeExpr] = typedVal;
 			
 				if (typedVal)
 				{
@@ -4804,12 +4807,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		BF_ASSERT(sizeExpr != NULL);
 		if (sizeExpr != NULL)
 		{
-			SetAndRestoreValue<bool> prevIgnoreError(ctx->mModule->mIgnoreErrors, true);
-			BfConstResolver constResolver(ctx->mModule);
 			BfType* intType = ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-			constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
-			constResolver.mExpectingType = intType;			
-			BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
+			BfTypedValue typedVal;
+			ctx->mResolvedValueMap.TryGetValue(sizeExpr, &typedVal);
 			if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 			{
 				if (!lhs->IsUnknownSizedArrayType())
@@ -4820,6 +4820,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			}
 			if (typedVal)
 				typedVal = ctx->mModule->Cast(sizeExpr, typedVal, intType);
+			
 			if (typedVal)
 			{				
 				if (lhs->IsUnknownSizedArrayType())

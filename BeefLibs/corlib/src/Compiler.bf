@@ -283,6 +283,9 @@ namespace System
 		[LinkName("#CompileRev")]
 		public static extern int32 CompileRev;
 
+		[LinkName("#NextId")]
+		public static extern int64 NextId;
+
 		[Comptime(ConstEval=true)]
 		public static void Assert(bool cond)
 		{

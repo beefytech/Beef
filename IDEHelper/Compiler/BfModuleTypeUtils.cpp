@@ -11272,16 +11272,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			BfExpression* sizeExpr = BfNodeDynCast<BfExpression>(arrayTypeRef->mParams[0]);
 			BF_ASSERT(sizeExpr != NULL);
 			if (sizeExpr != NULL)
-			{				
-				BfConstResolver constResolver(this);
+			{
 				BfType* intType = GetPrimitiveType(BfTypeCode_IntPtr);
-				constResolver.mExpectingType = intType;
-				constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
 				BfTypedValue typedVal;
-				{
-					SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
-					typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
-				}
+				lookupCtx.mResolvedValueMap.TryGetValue(sizeExpr, &typedVal);
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 				{					
 					BfUnknownSizedArrayType* arrayType = new BfUnknownSizedArrayType();

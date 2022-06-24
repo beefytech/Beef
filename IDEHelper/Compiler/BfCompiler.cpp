@@ -353,7 +353,8 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mIsResolveOnly = isResolveOnly;
 	mResolvePassData = NULL;
 	mPassInstance = NULL;
-	mRevision = 0;	
+	mRevision = 0;
+	mUniqueId = 0;
 	mLastRevisionAborted = false;
 	gBfCompiler = this;
 	mSystem = bfSystem;

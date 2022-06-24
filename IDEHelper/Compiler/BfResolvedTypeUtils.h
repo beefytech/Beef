@@ -2622,6 +2622,7 @@ public:
 		BfTypeInstance* mRootOuterTypeInstance;
 		BfType* mRootResolvedType;
 		Dictionary<BfAstNode*, BfType*> mResolvedTypeMap;
+		Dictionary<BfAstNode*, BfTypedValue> mResolvedValueMap;
 		BfResolveTypeRefFlags mResolveFlags;		
 		BfCallingConvention mCallingConvention;
 		bool mHadVar;

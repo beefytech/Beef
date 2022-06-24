@@ -323,7 +323,8 @@ public:
 	bool mIsResolveOnly;
 	BfResolvePassData* mResolvePassData;
 	Dictionary<String, Array<int>> mAttributeTypeOptionMap;
-	int mRevision;	
+	int mRevision;
+	int64 mUniqueId;
 	bool mLastRevisionAborted;
 	BfContext* mContext;
 	BfCodeGen mCodeGen;
