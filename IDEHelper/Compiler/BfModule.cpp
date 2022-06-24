@@ -14617,7 +14617,7 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	}
 	if (str == "#NextId")
 	{
-		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int64, ++mCompiler->mUniqueId), GetPrimitiveType(BfTypeCode_Int32));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int64, (uint64)++mCompiler->mUniqueId), GetPrimitiveType(BfTypeCode_Int32));
 	}
 	if (str == "#ModuleName")
 	{
