@@ -138,9 +138,9 @@ namespace Tests
 			eg.Set(66);
 			Test.Assert(eg == .B);
 
-			var ea = EnumA.GetMaxValue();
+			var ea = Enum.GetMaxValue<EnumA>();
 			Test.Assert(ea == .B);
-			Test.Assert(EnumA.GetCount() == 2);
+			Test.Assert(Enum.GetCount<EnumA>() == 2);
 		}
 	}
 }
