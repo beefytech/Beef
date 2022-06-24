@@ -22532,6 +22532,9 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 	auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration();
 	auto typeInstance = methodInstance->GetOwner();
 
+	if (typeInstance->IsInstanceOf(mCompiler->mValueTypeTypeDef))
+		return;
+
 	BfTypeState typeState(typeInstance);
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);

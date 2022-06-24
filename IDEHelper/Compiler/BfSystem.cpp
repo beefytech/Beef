@@ -2975,7 +2975,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	BF_ASSERT(typeDef->mTypeCode == nextTypeDef->mTypeCode);
 
 	typeDef->mTypeCode = nextTypeDef->mTypeCode;
-
+	typeDef->mShow = nextTypeDef->mShow;
 	typeDef->mIsAlwaysInclude = nextTypeDef->mIsAlwaysInclude;
 	typeDef->mIsNoDiscard = nextTypeDef->mIsNoDiscard;	
 	typeDef->mIsPartial = nextTypeDef->mIsPartial;
@@ -3080,6 +3080,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 
 		typeDef->mSystem = partialTypeDef->mSystem;
 		typeDef->mTypeCode = partialTypeDef->mTypeCode;
+		typeDef->mShow = partialTypeDef->mShow;
 		typeDef->mIsFunction = partialTypeDef->mIsFunction;
 		typeDef->mIsDelegate = partialTypeDef->mIsDelegate;
 		typeDef->mNestDepth = partialTypeDef->mNestDepth;
@@ -3500,9 +3501,7 @@ void BfSystem::CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* fromTypeDef)
 	typeDef->mProtection = fromTypeDef->mProtection;
 
 	typeDef->mTypeCode = fromTypeDef->mTypeCode;
-
-	typeDef->mTypeCode = fromTypeDef->mTypeCode;
-
+	typeDef->mShow = fromTypeDef->mShow;
 	typeDef->mIsAlwaysInclude = fromTypeDef->mIsAlwaysInclude;
 	typeDef->mIsNoDiscard = fromTypeDef->mIsNoDiscard;
 	typeDef->mIsPartial = fromTypeDef->mIsPartial;

@@ -851,7 +851,18 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				methodDef->mHasComptime = true;
 			}
 			else if (typeRefName == "NoShow")
-				methodDef->mIsNoShow = true;
+			{
+				methodDef->mShow = BfShow_Hide;
+
+				if (!attributes->mArguments.IsEmpty())
+				{
+					if (auto literalExpr = BfNodeDynCast<BfLiteralExpression>(attributes->mArguments[0]))
+					{
+						if (literalExpr->mValue.mBool)
+							methodDef->mShow = BfShow_HideIndirect;
+					}
+				}
+			}
 			else if (typeRefName == "NoDiscard")
 				methodDef->mIsNoDiscard = true;
 			else if (typeRefName == "NoSplat")
@@ -883,7 +894,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfTypeDef* typeDef)
 {
 	while (attributes != NULL)
-	{		
+	{
 		if (attributes->mAttributeTypeRef != NULL)
 		{
 			auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
@@ -891,7 +902,20 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfTypeDef* 
 			if (typeRefName == "AlwaysInclude")
 				typeDef->mIsAlwaysInclude = true;
 			else if (typeRefName == "NoDiscard")
-				typeDef->mIsNoDiscard = true;			
+				typeDef->mIsNoDiscard = true;
+			else if (typeRefName == "NoShow")
+			{
+				typeDef->mShow = BfShow_Hide;
+
+				if (!attributes->mArguments.IsEmpty())
+				{
+					if (auto literalExpr = BfNodeDynCast<BfLiteralExpression>(attributes->mArguments[0]))
+					{
+						if (literalExpr->mValue.mBool)
+							typeDef->mShow = BfShow_HideIndirect;
+					}
+				}
+			}
 		}
 
 		attributes = attributes->mNextAttribute;

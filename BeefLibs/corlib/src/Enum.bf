@@ -5,11 +5,12 @@ namespace System
 {
 	struct Enum
 	{
+		[NoShow(true)]
 		[Comptime(ConstEval=true)]
-		public static int GetCount()
+		public static int GetCount<T>() where T : Enum
 		{
 			int count = 0;
-			for (var field in Compiler.OrigCalleeType.GetFields())
+			for (var field in typeof(T).GetFields())
 			{
 				if (field.IsEnumCase)
 					count++;
@@ -17,13 +18,14 @@ namespace System
 			return count;
 		}
 
+		[NoShow(true)]
 		[Comptime(ConstEval=true)]
-		public static var GetMinValue()
+		public static var GetMinValue<T>() where T : Enum
 		{
-			Compiler.SetReturnType(Compiler.OrigCalleeType);
+			Compiler.SetReturnType(typeof(T));
 
 			int? minValue = null;
-			for (var field in Compiler.OrigCalleeType.GetFields())
+			for (var field in typeof(T).GetFields())
 			{
 				if (field.IsEnumCase)
 				{
@@ -36,13 +38,14 @@ namespace System
 			return minValue.ValueOrDefault;
 		}
 
+		[NoShow(true)]
 		[Comptime(ConstEval=true)]
-		public static var GetMaxValue()
+		public static var GetMaxValue<T>() where T : Enum
 		{
-			Compiler.SetReturnType(Compiler.OrigCalleeType);
+			Compiler.SetReturnType(typeof(T));
 
 			int? maxValue = null;
-			for (var field in Compiler.OrigCalleeType.GetFields())
+			for (var field in typeof(T).GetFields())
 			{
 				if (field.IsEnumCase)
 				{
@@ -57,6 +60,7 @@ namespace System
 			return maxValue.ValueOrDefault;
 		}
 
+		[NoShow(true)]
 		public static void EnumToString(Type type, String strBuffer, int64 iVal)
 		{
 			for (var field in type.GetFields())
@@ -71,6 +75,7 @@ namespace System
 			iVal.ToString(strBuffer);
 		}
 
+		[NoShow(true)]
 		public static Result<T> Parse<T>(StringView str, bool ignoreCase = false) where T : enum
 		{
 			for (var (name, data) in GetEnumerator<T>())
@@ -84,7 +89,8 @@ namespace System
 			return .Err;
 		}
 
-		public static bool IsDefined<T>(T value)
+		[NoShow(true)]
+		public static bool IsDefined<T>(T value) where T : Enum
 			where T : enum
 		{
 			for (var data in GetValues<T>())
@@ -96,24 +102,28 @@ namespace System
 			return false;
 		}
 
+		[NoShow(true)]
 		public static EnumEnumerator<TEnum> GetEnumerator<TEnum>()
 			where TEnum : enum
 		{
 		    return .();
 		}
 
+		[NoShow(true)]
 		public static EnumValuesEnumerator<TEnum> GetValues<TEnum>()
 			where TEnum : enum
 		{
 		    return .();
 		}
-		
+
+		[NoShow(true)]
 		public static EnumNamesEnumerator<TEnum> GetNames<TEnum>()
 			where TEnum : enum
 		{
 		    return .();
 		}
 
+		[NoShow(true)]
 		private struct EnumFieldsEnumerator<TEnum>
 			where TEnum : enum
 		{
@@ -179,6 +189,7 @@ namespace System
 			}
 		}
 
+		[NoShow(true)]
 		public struct EnumEnumerator<TEnum> : EnumFieldsEnumerator<TEnum>, IEnumerator<(StringView name, TEnum value)>
 			where TEnum : enum
 		{
@@ -198,6 +209,7 @@ namespace System
 			}
 		}
 
+		[NoShow(true)]
 		public struct EnumValuesEnumerator<TEnum> : EnumFieldsEnumerator<TEnum>, IEnumerator<TEnum>
 			where TEnum : enum
 		{
@@ -217,6 +229,7 @@ namespace System
 			}
 		}
 
+		[NoShow(true)]
 		public struct EnumNamesEnumerator<TEnum> : EnumFieldsEnumerator<TEnum>, IEnumerator<StringView>
 			where TEnum : enum
 		{

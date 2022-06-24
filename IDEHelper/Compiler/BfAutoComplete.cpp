@@ -712,13 +712,18 @@ const char* BfAutoComplete::GetTypeName(BfType* type)
 	return "value";
 }
 
-void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate)
+void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, BfTypeInstance* startType, bool allowProtected, bool allowPrivate)
 {
 	if (typeInst->IsEnum())
 		AddEntry(AutoCompleteEntry("valuetype", "UnderlyingType"), filter);
 
+	BfShow checkShow = (typeInst == startType) ? BfShow_Hide : BfShow_HideIndirect;
+
 	for (auto innerType : typeInst->mTypeDef->mNestedTypes)
 	{
+		if (innerType->mShow >= checkShow)
+			continue;
+
 		if (innerType->mOuterType->mTypeCode == BfTypeCode_Extension)
 		{
 			if (typeInst->mDefineState < BfTypeDefineState_Defined)
@@ -737,7 +742,7 @@ void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& f
 
 	allowPrivate = false;
 	if (typeInst->mBaseType != NULL)
-		AddInnerTypes(typeInst->mBaseType, filter, allowProtected, allowPrivate);
+		AddInnerTypes(typeInst->mBaseType, filter, startType, allowProtected, allowPrivate);
 }
 
 void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate, bool onlyAttribute)
@@ -900,7 +905,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
-	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()))
+	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()) && (allowImplicitThis))
 	{
 		AddEntry(AutoCompleteEntry("value", "_"), filter);
 	}
@@ -909,6 +914,8 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 
 	mModule->PopulateType(typeInst, BfPopulateType_Data);
 
+	BfShow checkShow = (startType == typeInst) ? BfShow_Hide : BfShow_HideIndirect;
+
 	BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
 	for (auto& fieldInst : typeInst->mFieldInstances)
 	{		
@@ -916,7 +923,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		if (fieldDef == NULL)
 			continue;
 
-		if (fieldDef->mIsNoShow)
+		if (fieldDef->mShow >= checkShow)
 			continue;
 
 		if ((CHECK_STATIC(fieldDef->mIsStatic)) && 
@@ -934,7 +941,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 	{
 		if (methodDef->mIsOverride)
 			continue;
-		if (methodDef->mIsNoShow)
+		if (methodDef->mShow >= checkShow)
 			continue;
 		if (methodDef->mName.IsEmpty())
 			continue;
@@ -965,7 +972,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 
 	for (auto propDef : typeInst->mTypeDef->mProperties)
 	{
-		if (propDef->mIsNoShow)
+		if (propDef->mShow >= checkShow)
 			continue;
 
 		if ((!typeInst->IsTypeMemberIncluded(propDef->mDeclaringType, activeTypeDef, mModule)) ||
@@ -1016,13 +1023,15 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 
 	mModule->PopulateType(typeInst, BfPopulateType_Data);
 
+	BfShow checkShow = allowPrivate ? BfShow_Hide : BfShow_HideIndirect;
+
 	for (auto& fieldInst : typeInst->mFieldInstances)
 	{
 		auto fieldDef = fieldInst.GetFieldDef();
 		if (fieldDef == NULL)
 			continue;
 
-		if (fieldDef->mIsNoShow)
+		if (fieldDef->mShow > checkShow)
 			continue;
 		
 		if ((fieldDef->mIsStatic) && (CheckProtection(fieldDef->mProtection, fieldDef->mDeclaringType, allowProtected, allowPrivate)))
@@ -1042,7 +1051,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 	{
 		if (methodDef->mIsOverride)
 			continue;
-		if (methodDef->mIsNoShow)
+		if (methodDef->mShow > checkShow)
 			continue;
 		if (methodDef->mName.IsEmpty())
 			continue;
@@ -1082,7 +1091,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 
 	for (auto propDef : typeInst->mTypeDef->mProperties)
 	{
-		if (propDef->mIsNoShow)
+		if (propDef->mShow > checkShow)
 			continue;
 
 		if ((!typeInst->IsTypeMemberIncluded(propDef->mDeclaringType, activeTypeDef, mModule)) ||
@@ -1216,11 +1225,13 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 
 	mModule->PopulateType(extensionContainer, BfPopulateType_Data);
 
+	BfShow checkShow = allowPrivate ? BfShow_Hide : BfShow_HideIndirect;
+
 	for (auto methodDef : extensionContainer->mTypeDef->mMethods)
 	{
 		if (methodDef->mMethodType != BfMethodType_Extension)
 			continue;		
-		if (methodDef->mIsNoShow)
+		if (methodDef->mShow >= checkShow)
 			continue;
 		if (methodDef->mName.IsEmpty())
 			continue;
@@ -1596,7 +1607,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		for (auto typeInst : staticSearch->mStaticTypes)
 		{
 			AddTypeMembers(typeInst, true, false, filter, typeInst, true, true, false);
-			AddInnerTypes(typeInst, filter, false, false);
+			AddInnerTypes(typeInst, filter, typeInst, false, false);
 		}
 	}
 	
@@ -1977,7 +1988,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
  				bool allowProtected = allowPrivate;
 
 				if (isStatic)
-					AddInnerTypes(typeInst, filter, allowProtected, allowPrivate);
+					AddInnerTypes(typeInst, filter, typeInst, allowProtected, allowPrivate);
 
 				if (!onlyShowTypes)
 				{
@@ -2116,11 +2127,13 @@ bool BfAutoComplete::CheckExplicitInterface(BfTypeInstance* interfaceType, BfAst
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
+	BfShow checkShow = BfShow_Hide;
+
 	for (auto methodDef : interfaceType->mTypeDef->mMethods)
 	{
 		if (methodDef->mIsOverride)
 			continue;
-		if (methodDef->mIsNoShow)
+		if (methodDef->mShow >= checkShow)
 			continue;
 		if (methodDef->mName.IsEmpty())
 			continue;
@@ -2617,12 +2630,14 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
+	BfShow checkShow = BfShow_Hide;
+
 	BfTypeInstance* curType = mModule->mCurTypeInstance;
 	while (curType != NULL)
 	{
 		for (auto methodDef : curType->mTypeDef->mMethods)
 		{
-			if (methodDef->mIsNoShow)
+			if (methodDef->mShow >= checkShow)
 				continue;
 
 			bool allowInternalOverride = false;

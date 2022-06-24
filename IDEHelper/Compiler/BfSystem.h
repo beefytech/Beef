@@ -536,6 +536,13 @@ enum BfParamKind : uint8
 	BfParamKind_VarArgs
 };
 
+enum BfShow : uint8
+{
+	BfShow_Show,
+	BfShow_HideIndirect,
+	BfShow_Hide
+};
+
 class BfParameterDef
 {
 public:
@@ -570,7 +577,7 @@ public:
 	BfProtection mProtection;
 	uint8 mNamePrefixCount; // Number of @'s
 	bool mIsStatic;
-	bool mIsNoShow;
+	BfShow mShow;
 	bool mIsReadOnly;
 	bool mHasMultiDefs;	
 
@@ -581,7 +588,7 @@ public:
 		mProtection = BfProtection_Public;
 		mNamePrefixCount = 0;
 		mIsStatic = false;
-		mIsNoShow = false;
+		mShow = BfShow_Show;
 		mIsReadOnly = false;
 		mHasMultiDefs = false;
 	}
@@ -1133,7 +1140,8 @@ public:
 	int mPartialIdx;
 	int mNestDepth;
 	int mDupDetectedRevision; // Error state
-	BfTypeCode mTypeCode;	
+	BfTypeCode mTypeCode;
+	BfShow mShow;
 	bool mIsAlwaysInclude;
 	bool mIsNoDiscard;
 	bool mIsPartial;
@@ -1170,7 +1178,8 @@ public:
 		mNameEx = NULL;
 		mSystem = NULL;
 		mProject = NULL;
-		mTypeCode = BfTypeCode_None;		
+		mTypeCode = BfTypeCode_None;
+		mShow = BfShow_Show;
 		mIsAlwaysInclude = false;
 		mIsNoDiscard = false;
 		mIsExplicitPartial = false;
