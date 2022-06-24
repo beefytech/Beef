@@ -15120,9 +15120,6 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 
 void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 {
-	if ((localVar->mName == "maxValue") && (mIsComptimeModule))
-		BF_ASSERT(!localVar->mAddr.IsFake());
-
 	while (localVar->mName.StartsWith('@'))
 	{
 		localVar->mNamePrefixCount++;
