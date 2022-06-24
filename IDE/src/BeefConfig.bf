@@ -13,6 +13,7 @@ namespace IDE
 		public class RegistryEntry
 		{
 			public String mProjName ~ delete _;
+			public Project.TargetType mTargetType;
 			public SemVer mVersion ~ delete _;
 			public VerSpec mLocation ~ _.Dispose();
 			public ConfigFile mConfigFile;
@@ -50,6 +51,29 @@ namespace IDE
 							{
 								using (mMonitor.Enter())
 									entry.mProjName.Set(projName);
+							}
+							
+							if (sd.Contains("StartupObject"))
+								entry.mTargetType = .BeefConsoleApplication;
+							else
+								entry.mTargetType = .BeefLib;
+
+							var targetTypeName = scope String();
+							sd.GetString("TargetType", targetTypeName);
+
+							if (!targetTypeName.IsEmpty)
+							{
+								switch (targetTypeName)
+								{ // Handle Legacy names first
+								case "BeefWindowsApplication":
+									entry.mTargetType = .BeefGUIApplication;
+								case "C_WindowsApplication":
+									entry.mTargetType = .C_GUIApplication;
+								case "BeefDynLib":
+									entry.mTargetType = .BeefLib;
+								default:
+									entry.mTargetType = sd.GetEnum<Project.TargetType>("TargetType", entry.mTargetType);
+								}
 							}
 						}
 					}

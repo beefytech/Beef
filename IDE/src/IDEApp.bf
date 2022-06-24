@@ -2973,6 +2973,8 @@ namespace IDE
 				{
 					using (mBeefConfig.mRegistry.mMonitor.Enter())
 					{
+						BeefConfig.RegistryEntry matchedEntry = null;
+
 						for (int regEntryIdx = mBeefConfig.mRegistry.mEntries.Count - 1; regEntryIdx >= 0; regEntryIdx--)
 						{
 							var regEntry = mBeefConfig.mRegistry.mEntries[regEntryIdx];
@@ -2982,10 +2984,18 @@ namespace IDE
 
 							if (regEntry.mProjName == projectName)
 							{
-								useVerSpec = regEntry.mLocation;
-								verConfigDir = regEntry.mConfigFile.mConfigDir;
-								break FindLoop;
+								// Prioritize a lib file over a non-lib
+								if ((matchedEntry == null) ||
+									((!matchedEntry.mTargetType.IsLib) && (regEntry.mTargetType.IsLib)))
+									matchedEntry = regEntry;
 							}
+						}
+
+						if (matchedEntry != null)
+						{
+							useVerSpec = matchedEntry.mLocation;
+							verConfigDir = matchedEntry.mConfigFile.mConfigDir;
+							break FindLoop;
 						}
 					}
 					mBeefConfig.mRegistry.WaitFor();
