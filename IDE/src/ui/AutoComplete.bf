@@ -1017,7 +1017,7 @@ namespace IDE.ui
 				if (cursorSection >= textSections.Count - 1)
 				    cursorSection = textSections.Count - 2;
 
-				if (cursorSection < mAutoComplete.mInvokeSrcPositions.Count)
+				if ((cursorSection >= 0) && (cursorSection < mAutoComplete.mInvokeSrcPositions.Count))
 				{
 					var argText = mAutoComplete.mTargetEditWidget.mEditWidgetContent.ExtractString(mAutoComplete.mInvokeSrcPositions[cursorSection - 1],
 						mAutoComplete.mInvokeSrcPositions[cursorSection] - mAutoComplete.mInvokeSrcPositions[cursorSection - 1], .. scope .());
@@ -1081,11 +1081,6 @@ namespace IDE.ui
 							}
 						}
 					}
-
-					/*if ((argText.StartsWith('(')) || (argText.StartsWith(',')))
-						argText.Remove(0, 1);
-					argText.Trim();
-					Debug.WriteLine($"ArgText: {argText}");*/
 				}
 
 				float paramX = 0;
