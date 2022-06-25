@@ -3082,10 +3082,12 @@ void BfAutoComplete::CheckNamespace(BfAstNode* node, const BfAtomComposite& name
 			while (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNode))
 				checkNode = qualifiedNameNode->mRight;
 
-			mInsertStartIdx = checkNode->GetSrcStart();
-			mInsertEndIdx = checkNode->GetSrcEnd();
-			
-			mDefNamespace.Set(namespaceName.mParts, namespaceCount, NULL, 0);
+			if (checkNode != NULL)
+			{
+				mInsertStartIdx = checkNode->GetSrcStart();
+				mInsertEndIdx = checkNode->GetSrcEnd();
+				mDefNamespace.Set(namespaceName.mParts, namespaceCount, NULL, 0);
+			}						
 		}
 	}	
 }
