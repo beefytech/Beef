@@ -13,6 +13,12 @@ BfDeferEvalChecker::BfDeferEvalChecker()
 
 void BfDeferEvalChecker::Check(BfAstNode* node)
 {
+	if (auto namedNode = BfNodeDynCastExact<BfNamedExpression>(node))
+		node = namedNode->mExpression;
+	
+	if (node == NULL)
+		return;
+
 	SetAndRestoreValue<BfAstNode*> rootNode(mRootNode, node);
 	node->Accept(this);
 }
@@ -20,6 +26,11 @@ void BfDeferEvalChecker::Check(BfAstNode* node)
 void BfDeferEvalChecker::Visit(BfAstNode* attribExpr)
 {
 	mNeedsDeferEval = false;
+}
+
+void BfDeferEvalChecker::Visit(BfAttributedExpression* attributedExpr)
+{
+	VisitChild(attributedExpr->mExpression);
 }
 
 void BfDeferEvalChecker::Visit(BfInitializerExpression* collectionInitExpr)

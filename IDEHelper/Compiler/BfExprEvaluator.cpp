@@ -173,6 +173,7 @@ void BfMethodMatcher::Init(const BfMethodGenericArguments& methodGenericArgument
 	mSelfType = NULL;
 	mMethodType = BfMethodType_Normal;
 	mCheckReturnType = NULL;
+	mHasArgNames = false;
 	mHadExplicitGenericArguments = false;
 	mHadOpenGenericArguments = methodGenericArguments.mIsOpen;
 	mHadPartialGenericArguments = methodGenericArguments.mIsPartial;
@@ -206,6 +207,9 @@ void BfMethodMatcher::Init(const BfMethodGenericArguments& methodGenericArgument
 					mHasVarArguments = true;
 			}
 		}
+
+		if (arg.mNameNode != NULL)
+			mHasArgNames = true;
 	}
 
 	if (methodGenericArguments.mArguments != NULL)
@@ -1644,7 +1648,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	//  because on structs we know the exact type
 	if ((checkMethod->mIsOverride) && (!mBypassVirtual) && (!typeInstance->IsValueType()))
 		return false;
-		
+	
 	mMethodCheckCount++;
 	
 	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);
@@ -1741,6 +1745,40 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				goto NoMatch;
 		}
 	}
+
+
+	if (mHasArgNames)
+	{
+		checkMethod->BuildParamNameMap();
+
+		bool prevWasNull = false;
+		for (int argIdx = (int)mArguments.mSize - 1; argIdx >= 0; argIdx--)
+		{
+			auto& arg = mArguments[argIdx];
+			if (arg.mNameNode != NULL)
+			{
+				if (prevWasNull)
+				{
+					if (argIdx >= checkMethod->mParams.mSize)
+						goto NoMatch;
+					if (checkMethod->mParams[argIdx]->mName != arg.mNameNode->ToStringView())
+						goto NoMatch;
+				}
+				else
+				{
+					if (!checkMethod->mParamNameMap->ContainsKey(arg.mNameNode->ToStringView()))
+						goto NoMatch;
+				}
+
+				prevWasNull = false;
+			}
+			else
+			{
+				prevWasNull = true;
+			}
+		}
+	}
+
 	
 	for (auto& checkGenericArgRef : mCheckMethodGenericArguments)
 		checkGenericArgRef = NULL;
@@ -3362,6 +3400,12 @@ void BfExprEvaluator::Visit(BfAttributedExpression* attribExpr)
 	}
 
 	mModule->FinishAttributeState(&attributeState);	
+}
+
+void BfExprEvaluator::Visit(BfNamedExpression* namedExpr)
+{
+	if (namedExpr->mExpression != NULL)
+		VisitChild(namedExpr->mExpression);
 }
 
 void BfExprEvaluator::Visit(BfBlock* blockExpr)
@@ -5753,6 +5797,12 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		bool handled = false;
 		bool evaluated = false;
 
+		if (auto namedExpression = BfNodeDynCastExact<BfNamedExpression>(argExpr))
+		{
+			resolvedArg.mNameNode = namedExpression->mNameNode;
+			argExpr = namedExpression->mExpression;
+		}
+
 		if (auto interpolateExpr = BfNodeDynCastExact<BfStringInterpolationExpression>(argExpr))
 		{
 			if ((interpolateExpr->mAllocNode == NULL) || ((flags & BfResolveArgsFlag_InsideStringInterpolationAlloc) != 0))
@@ -7308,6 +7358,81 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		return mModule->GetDefaultTypedValue(returnType);
 	}
 
+	bool hasNamedArgs = false;
+	for (auto& arg : argValues)
+		if (arg.mNameNode != NULL)
+			hasNamedArgs = true;
+	if (hasNamedArgs)
+	{
+		methodDef->BuildParamNameMap();
+		
+		BfIdentifierNode* outOfPlaceName = NULL;
+		int curParamIdx = 0;
+
+		SizedArrayImpl<BfResolvedArg> origArgValues = argValues;
+		argValues.Clear();
+
+		for (int argIdx = 0; argIdx < origArgValues.mSize; argIdx++)
+		{
+			int paramIdx = curParamIdx;
+
+			auto& argValue = origArgValues[argIdx];
+			if (argValue.mNameNode != NULL)
+			{
+				int namedParamIdx = -1;
+				if (methodDef->mParamNameMap->TryGetValue(argValue.mNameNode->ToStringView(), &namedParamIdx))
+				{
+					paramIdx = namedParamIdx;
+				}
+				else
+				{
+					if (mModule->PreFail())
+					{
+						mModule->Fail(StrFormat("The best overload for '%s' does not have a parameter named '%s'", methodInstance->mMethodDef->mName.c_str(),
+							argValue.mNameNode->ToString().c_str()), argValue.mNameNode);
+					}
+				}
+
+				if (paramIdx != curParamIdx)
+					outOfPlaceName = argValue.mNameNode;
+			}
+			else if (outOfPlaceName != NULL)
+			{
+				if (mModule->PreFail())				
+					mModule->Fail(StrFormat("Named argument '%s' is used out-of-position but is followed by an unnamed argument", outOfPlaceName->ToString().c_str()), outOfPlaceName);				
+				outOfPlaceName = NULL;
+			}
+
+			if ((paramIdx < methodInstance->GetParamCount()) && (paramIdx != argIdx))
+			{
+				if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Normal)
+				{
+					auto wantType = methodInstance->GetParamType(paramIdx);
+					auto resolvedValue = ResolveArgValue(argValue, wantType);
+					if (resolvedValue)
+					{
+						argValue.mTypedValue = resolvedValue;
+						argValue.mArgFlags = (BfArgFlags)(argValue.mArgFlags | BfArgFlag_Finalized);
+					}
+				}
+			}
+			
+			while (paramIdx >= argValues.mSize)
+				argValues.Add(BfResolvedArg());
+			if (argValues[paramIdx].mExpression != NULL)
+			{
+				if (argValue.mNameNode != NULL)
+				{
+					if (mModule->PreFail())
+						mModule->Fail(StrFormat("Named argument '%s' cannot be specified multiple times", argValue.mNameNode->ToString().c_str()), argValue.mNameNode);
+				}
+			}
+			argValues[paramIdx] = argValue;
+
+			curParamIdx++;
+		}
+	}
+
 	int argIdx = 0;
 	int paramIdx = 0;
 	
@@ -7608,7 +7733,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					mModule->Warn(BfWarning_BF4205_StringInterpolationParam, "Expanded string interpolation argument not used as 'params'. If string allocation was intended then consider adding a specifier such as 'scope'.", errorRef);
 				}
 
-				if ((arg == NULL) && (argValues[argExprIdx].mExpression != NULL))
+				
+// 				if ((arg == NULL) && (argValues[argExprIdx].mExpression != NULL))
+// 					hadMissingArg = true;
+
+				if ((arg == NULL) && (!argValues[argExprIdx].mTypedValue))
 					hadMissingArg = true;
 			}
 			else
@@ -7710,7 +7839,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				if (mModule->PreFail())
 				{
 					if (error == NULL)
-						error = mModule->Fail(StrFormat("Not enough parameters specified, expected %d more.", methodInstance->GetParamCount() - paramIdx), refNode);
+					{
+						if (hasNamedArgs)
+							error = mModule->Fail(StrFormat("There is no argument given that corresponds to the required formal parameter '%s' of '%s'.",
+								methodInstance->GetParamName(paramIdx).c_str(), mModule->MethodToString(methodInstance).c_str()), refNode);
+						else
+							error = mModule->Fail(StrFormat("Not enough parameters specified, expected %d more.", methodInstance->GetParamCount() - paramIdx), refNode);
+					}
 					if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
 						mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 				}
@@ -8439,6 +8574,9 @@ static int sInvocationIdx = 0;
 BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue, BfParamKind paramKind, BfIdentifierNode* paramNameNode)
 {
 	BfTypedValue argValue = resolvedArg.mTypedValue;
+	if ((resolvedArg.mArgFlags & BfArgFlag_Finalized) != 0)
+		return argValue;
+
 	if ((resolvedArg.mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt | BfArgFlag_DeferredEval)) != 0)
 	{
 		if ((!argValue) || (argValue.mValue.IsFake()) || (resolvedArg.mWantsRecalc))

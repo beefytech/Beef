@@ -278,6 +278,7 @@ class BfStatement;
 class BfLabelableStatement;
 class BfExpression;
 class BfExpressionStatement;
+class BfNamedExpression;
 class BfAttributedExpression;
 class BfAttributedStatement;
 class BfLiteralExpression;
@@ -447,6 +448,7 @@ public:
 	virtual void Visit(BfLabeledBlock* labeledBlock);
 	virtual void Visit(BfExpression* expr);
 	virtual void Visit(BfExpressionStatement* exprStmt);
+	virtual void Visit(BfNamedExpression* namedExpr);
 	virtual void Visit(BfAttributedExpression* attribExpr);	
 	virtual void Visit(BfStatement* stmt);
 	virtual void Visit(BfAttributedStatement* attribStmt);
@@ -2811,6 +2813,16 @@ public:
 	BfAstNode* mBody; // Either expression or block
 	BfFieldDtorDeclaration* mDtor;
 };	BF_AST_DECL(BfLambdaBindExpression, BfExpression);
+
+class BfNamedExpression : public BfExpression
+{
+public:
+	BF_AST_TYPE(BfNamedExpression, BfExpression);
+
+	BfIdentifierNode* mNameNode;
+	BfTokenNode* mColonToken;
+	BfExpression* mExpression;
+};	BF_AST_DECL(BfNamedExpression, BfExpression);
 
 class BfAttributedExpression : public BfExpression
 {

@@ -141,6 +141,11 @@ void BfStructuralVisitor::Visit(BfExpressionStatement* exprStmt)
 	Visit(exprStmt->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfNamedExpression* namedExpr)
+{
+	Visit(namedExpr->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfAttributedExpression* attribExpr)
 {
 	Visit(attribExpr->ToBase());

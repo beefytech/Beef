@@ -542,6 +542,7 @@ void BfMethodDef::FreeMembers()
 	for (auto genericParam : mGenericParams)
 		delete genericParam;
 	mGenericParams.Clear();
+	delete mParamNameMap;
 }
 
 BfMethodDeclaration* BfMethodDef::GetMethodDeclaration()
@@ -658,6 +659,16 @@ int BfMethodDef::GetExplicitParamCount()
 	}
 
 	return (int)mParams.size();
+}
+
+void BfMethodDef::BuildParamNameMap()
+{
+	if (mParamNameMap != NULL)
+		return;
+
+	mParamNameMap = new Dictionary<StringView, int>();
+	for (int i = 0; i < mParams.mSize; i++)
+		(*mParamNameMap)[mParams[i]->mName] = i;
 }
 
 ///

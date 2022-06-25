@@ -873,6 +873,7 @@ public:
 	Array<BfParameterDef*> mParams;
 	Array<BfGenericParamDef*> mGenericParams;
 	Array<BfExternalConstraintDef> mExternalConstraints;
+	Dictionary<StringView, int>* mParamNameMap;
 	BfMethodDef* mNextWithSameName;
 	Val128 mFullHash;
 
@@ -934,8 +935,8 @@ public:
 		mAddedAfterEmit = false;
 		mBody = NULL;
 		mExplicitInterface = NULL;
-		mReturnTypeRef = NULL;		
-		mMethodDeclaration = NULL;		
+		mReturnTypeRef = NULL;
+		mMethodDeclaration = NULL;
 		mCodeChanged = false;
 		mWantsBody = true;
 		mCommutableKind = BfCommutableKind_None;
@@ -944,7 +945,8 @@ public:
 		mMethodType = BfMethodType_Normal;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mHasAppend = false;
-		mAlwaysInline = false;		
+		mAlwaysInline = false;
+		mParamNameMap = NULL;
 		mNextWithSameName = NULL;
 	}
 
@@ -965,6 +967,7 @@ public:
 	bool IsCtorOrInit();
 	String ToString();		
 	int GetExplicitParamCount();
+	void BuildParamNameMap();
 };
 
 class BfOperatorDef : public BfMethodDef

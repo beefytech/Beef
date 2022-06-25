@@ -19,8 +19,9 @@ public:
 	void Check(BfAstNode* node);
 
 	virtual void Visit(BfAstNode* node) override;
-
-	virtual void Visit(BfInitializerExpression* collectionInitExpr);
+	
+	virtual void Visit(BfAttributedExpression* attributedExpr) override;
+	virtual void Visit(BfInitializerExpression* collectionInitExpr) override;
 	virtual void Visit(BfLiteralExpression* literalExpr) override;
 	virtual void Visit(BfCastExpression* castExpr) override;
 	virtual void Visit(BfParenthesizedExpression* parenExpr) override;

@@ -185,6 +185,15 @@ void BfElementVisitor::Visit(BfExpressionStatement* exprStmt)
 	VisitChild(exprStmt->mExpression);
 }
 
+void BfElementVisitor::Visit(BfNamedExpression* namedExpr)
+{
+	Visit(namedExpr->ToBase());
+
+	VisitChild(namedExpr->mNameNode);
+	VisitChild(namedExpr->mColonToken);
+	VisitChild(namedExpr->mExpression);
+}
+
 void BfElementVisitor::Visit(BfAttributedExpression* attribExpr)
 {
 	Visit(attribExpr->ToBase());

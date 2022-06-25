@@ -1033,6 +1033,16 @@ void BfPrinter::Visit(BfExpressionStatement* exprStmt)
 	VisitChild(exprStmt->mTrailingSemicolon);
 }
 
+void BfPrinter::Visit(BfNamedExpression* namedExpr)
+{
+	Visit(namedExpr->ToBase());
+
+	VisitChild(namedExpr->mNameNode);
+	VisitChild(namedExpr->mColonToken);
+	ExpectSpace();
+	VisitChild(namedExpr->mExpression);
+}
+
 void BfPrinter::Visit(BfAttributedExpression* attribExpr)
 {	
 	Visit(attribExpr->ToBase());

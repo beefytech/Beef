@@ -128,6 +128,7 @@ public:
 	virtual void Visit(BfNewNode * newNode) override;
 	virtual void Visit(BfExpression* expr) override;
 	virtual void Visit(BfExpressionStatement* exprStmt) override;
+	virtual void Visit(BfNamedExpression* namedExpr) override;
 	virtual void Visit(BfAttributedExpression* attribExpr) override;
 	virtual void Visit(BfStatement* stmt) override;	
 	virtual void Visit(BfLabelableStatement* labelableStmt) override;

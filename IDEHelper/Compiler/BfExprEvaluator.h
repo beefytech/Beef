@@ -22,7 +22,8 @@ enum BfArgFlags
 	BfArgFlag_StringInterpolateFormat = 0x800,
 	BfArgFlag_StringInterpolateArg = 0x1000,
 	BfArgFlag_Cascade = 0x2000,
-	BfArgFlag_Volatile = 0x8000
+	BfArgFlag_Volatile = 0x8000,
+	BfArgFlag_Finalized = 0x10000,
 };
 
 enum BfResolveArgsFlags
@@ -58,6 +59,7 @@ class BfResolvedArg
 public:
 	BfTypedValue mTypedValue;
 	BfTypedValue mUncastedTypedValue;
+	BfIdentifierNode* mNameNode;
 	BfType* mResolvedType;
 	BfAstNode* mExpression;
 	BfArgFlags mArgFlags;	
@@ -68,6 +70,7 @@ public:
 public:
 	BfResolvedArg()
 	{
+		mNameNode = NULL;
 		mResolvedType = NULL;
 		mExpression = NULL;
 		mArgFlags = BfArgFlag_None;
@@ -211,6 +214,7 @@ public:
 	BfType* mCheckReturnType;
 	BfMethodType mMethodType;
 	BfCheckedKind mCheckedKind;
+	bool mHasArgNames;
 	bool mHadExplicitGenericArguments;	
 	bool mHadOpenGenericArguments;
 	bool mHadPartialGenericArguments;
@@ -243,7 +247,7 @@ public:
 	BfTypeVector mBestMethodGenericArguments;
 	BfTypeVector mExplicitMethodGenericArguments;
 	bool mFakeConcreteTarget;
-	Array<BfAmbiguousEntry> mAmbiguousEntries;	
+	Array<BfAmbiguousEntry> mAmbiguousEntries;
 
 public:
 	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute, BfType *origCheckType = NULL, BfResolveArgFlags flags = BfResolveArgFlag_None);
@@ -534,6 +538,7 @@ public:
 	virtual void Visit(BfErrorNode* errorNode) override;
 	virtual void Visit(BfTypeReference* typeRef) override;
 	virtual void Visit(BfAttributedExpression* attribExpr) override;
+	virtual void Visit(BfNamedExpression* namedExpr) override;
 	virtual void Visit(BfBlock* blockExpr) override;
 	virtual void Visit(BfVariableDeclaration* varDecl) override;
 	virtual void Visit(BfCaseExpression* caseExpr) override;

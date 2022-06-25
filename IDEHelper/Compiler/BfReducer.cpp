@@ -5806,6 +5806,8 @@ BfTokenNode* BfReducer::ReadArguments(BfAstNode* parentNode, BfAstNode* afterNod
 			}
 		}
 
+		BfExpression* argumentExpr = NULL;
+
 		if (allowSkippedArgs)
 		{
 			auto nextNode = mVisitorPos.GetNext();
@@ -5824,9 +5826,33 @@ BfTokenNode* BfReducer::ReadArguments(BfAstNode* parentNode, BfAstNode* afterNod
 					continue;
 				}
 			}
+
+			if (auto identifierNode = BfNodeDynCastExact<BfIdentifierNode>(nextNode))
+			{
+				if (auto nextNextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.Get(mVisitorPos.mReadPos + 2)))
+				{
+					if (nextNextToken->mToken == BfToken_Colon)
+					{
+						auto namedExpr = mAlloc->Alloc<BfNamedExpression>();
+						ReplaceNode(identifierNode, namedExpr);
+						MEMBER_SET(namedExpr, mNameNode, identifierNode);
+						MEMBER_SET(namedExpr, mColonToken, nextNextToken)
+						mVisitorPos.MoveNext();
+						mVisitorPos.MoveNext();
+
+						auto innerExpr = CreateExpressionAfter(namedExpr, CreateExprFlags_AllowVariableDecl);
+						if (innerExpr != NULL)
+						{
+							MEMBER_SET(namedExpr, mExpression, innerExpr);
+						}
+						argumentExpr = namedExpr;
+					}
+				}
+			}
 		}
 
-		auto argumentExpr = CreateExpressionAfter(afterNode, CreateExprFlags_AllowVariableDecl);
+		if (argumentExpr == NULL)
+			argumentExpr = CreateExpressionAfter(afterNode, CreateExprFlags_AllowVariableDecl);
 		if ((argumentExpr != NULL) || (endToken != BfToken_None))
 			arguments->push_back(argumentExpr);
 		if (argumentExpr == NULL)
@@ -7409,32 +7435,6 @@ BfInvocationExpression* BfReducer::CreateInvocationExpression(BfAstNode* target,
 				{
 					if (nextToken->GetToken() == BfToken_Colon)
 					{
-						/*auto scopedInvocationTarget = mAlloc->Alloc<BfScopedInvocationTarget>();
-						ReplaceNode(invocationExpr->mTarget, scopedInvocationTarget);
-						scopedInvocationTarget->mTarget = invocationExpr->mTarget;
-						invocationExpr->mTarget = scopedInvocationTarget;
-						MEMBER_SET(scopedInvocationTarget, mColonToken, nextToken);
-
-						mVisitorPos.MoveNext();
-						if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
-						{
-						if ((nextToken->GetToken() == BfToken_Colon) || (nextToken->GetToken() == BfToken_Mixin))
-						{
-						MEMBER_SET(scopedInvocationTarget, mScopeName, nextToken);
-						mVisitorPos.MoveNext();
-						}
-						}
-						else if (auto identifier = BfNodeDynCast<BfIdentifierNode>(mVisitorPos.GetNext()))
-						{
-						MEMBER_SET(scopedInvocationTarget, mScopeName, identifier);
-						mVisitorPos.MoveNext();
-						}
-
-						if (scopedInvocationTarget->mScopeName == NULL)
-						{
-						FailAfter("Expected scope name", scopedInvocationTarget);
-						}*/
-
 						auto scopedInvocationTarget = CreateScopedInvocationTarget(invocationExpr->mTarget, nextToken);
 						invocationExpr->SetSrcEnd(scopedInvocationTarget->GetSrcEnd());
 					}
