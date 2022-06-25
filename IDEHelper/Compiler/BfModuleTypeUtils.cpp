@@ -12597,9 +12597,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// Ref X to Ref Y, X* to Y*
 	{
 		bool checkUnderlying = false;
+		bool isRef = false;
 		
 		if (((typedVal.mType->IsRef()) && (toType->IsRef())))
 		{
+			isRef = true;
 			auto fromRefType = (BfRefType*)typedVal.mType;
 			auto toRefType = (BfRefType*)toType;
 			if (fromRefType->mRefKind == toRefType->mRefKind)
@@ -12639,9 +12641,21 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					if (matches)
 					{
 						// This is either a ref or a ptr so we don't need to set the "IsAddr" flag
-						typedVal = MakeAddressable(typedVal);						
+						typedVal = MakeAddressable(typedVal);
 						return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));						
 					}
+				}
+			}
+
+			if ((isRef) && (fromInner->IsStruct()) && (toInner->IsStruct()))
+			{
+				if (TypeIsSubTypeOf(fromInner->ToTypeInstance(), toInner->ToTypeInstance()))
+				{
+					if (toInner->IsValuelessType())
+						return mBfIRBuilder->GetFakeVal();
+					// Is this valid?
+					typedVal = MakeAddressable(typedVal);
+					return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
 				}
 			}
 
