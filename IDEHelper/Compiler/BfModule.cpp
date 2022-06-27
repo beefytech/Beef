@@ -3113,6 +3113,12 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 		}
 	}
 
+	if ((mCurMethodState != NULL) && (mCurMethodState->mConstResolveState != NULL) && (mCurMethodState->mConstResolveState->mInCalcAppend))
+	{
+		mCurMethodState->mConstResolveState->mFailed = true;
+		return NULL;
+	}
+
  	if (mCurMethodInstance != NULL)
 		mCurMethodInstance->mHasFailed = true;
 
@@ -16617,6 +16623,8 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 		appendAllocVisitor.mModule = this;
 		
 		appendAllocVisitor.VisitChild(methodDecl->mBody);		
+		if (constResolveState.mFailed)
+			appendAllocVisitor.mFailed = true;
 		if (!appendAllocVisitor.mFailed)
 			constValue = appendAllocVisitor.mConstAccum;
 		if (isFirstRun)

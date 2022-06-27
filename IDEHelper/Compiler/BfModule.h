@@ -921,12 +921,14 @@ public:
 	BfMethodInstance* mMethodInstance;
 	BfConstResolveState* mPrevConstResolveState;
 	bool mInCalcAppend;
+	bool mFailed;
 
 	BfConstResolveState()
 	{
 		mMethodInstance = NULL;
 		mPrevConstResolveState = NULL;
 		mInCalcAppend = false;
+		mFailed = false;
 	}
 };
 
