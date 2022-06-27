@@ -7224,6 +7224,9 @@ void BeMCContext::DoChainedBlockMerge()
 	for (int blockIdx = 0; blockIdx < mBlocks.size() - 1; blockIdx++)
 	{
 		auto mcBlock = mBlocks[blockIdx];
+		if (mcBlock->mHasFakeBr)
+			continue;
+
 		auto nextMcBlock = mBlocks[blockIdx + 1];
 
 		// We only branch into one block, and the the next block only has current block as a predecessor?
@@ -16141,7 +16144,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?NumberToString@NumberFormatter@System@bf@@SAXUStringView@23@HPEAVIFormatProvider@23@PEAVString@23@@Z");
+	mDebugging = (function->mName == "?CheckMatch@?$StringSplitEnumeratorBase@D@System@bf@@IEAA_NXZ");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
@@ -17247,6 +17250,7 @@ void BeMCContext::Generate(BeFunction* function)
 					{
 						mcInst->mArg1.mKind = BeMCOperandKind_Immediate_i8;
 						mcInst->mArg1.mImmediate = 2;
+						mcBlock->mHasFakeBr = true;
 					}
 				}
 				break;
