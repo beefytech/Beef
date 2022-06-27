@@ -2474,6 +2474,11 @@ namespace System
 			return StringCharSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
+		public StringCharSplitEnumerator Split(char8[] separators)
+		{
+			return StringCharSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
+		}
+
 		public StringCharSplitEnumerator Split(char8[] separators, int count)
 		{
 			return StringCharSplitEnumerator(Ptr, Length, separators, count, StringSplitOptions.None);
@@ -2510,6 +2515,11 @@ namespace System
 		}
 
 		public StringStringSplitEnumerator Split(params StringView[] separators)
+		{
+			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
+		}
+
+		public StringStringSplitEnumerator Split(StringView[] separators)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
@@ -3862,6 +3872,11 @@ namespace System
 			return StringCharSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
+		public StringCharSplitEnumerator Split(char8[] separators)
+		{
+			return StringCharSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
+		}
+
 		public StringCharSplitEnumerator Split(char8[] separators, int count)
 		{
 			return StringCharSplitEnumerator(Ptr, Length, separators, count, StringSplitOptions.None);
@@ -3898,6 +3913,11 @@ namespace System
 		}
 
 		public StringStringSplitEnumerator Split(params StringView[] separators)
+		{
+			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
+		}
+
+		public StringStringSplitEnumerator Split(StringView[] separators)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
