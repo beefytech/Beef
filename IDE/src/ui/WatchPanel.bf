@@ -2752,20 +2752,29 @@ namespace IDE.ui
                     }                    
                     else if (memberVals0 == ":addrs")
                     {
-                        WatchListViewItem memberItem = (WatchListViewItem)listViewItem.GetChildAtIndex(memberCount - 1);
-                        String.NewOrSet!(memberItem.mWatchSeriesInfo.mAddrs, memberVals[1]);
-                        memberItem.mWatchSeriesInfo.mAddrsEntrySize = 1;
+						if (memberCount > 0)
+						{
+	                        WatchListViewItem memberItem = (WatchListViewItem)listViewItem.GetChildAtIndex(memberCount - 1);
+	                        String.NewOrSet!(memberItem.mWatchSeriesInfo.mAddrs, memberVals[1]);
+	                        memberItem.mWatchSeriesInfo.mAddrsEntrySize = 1;
+						}
                     }
                     else if (memberVals0 == ":addrsEntrySize")
                     {
-                        int32 addrsEntrySize = int32.Parse(scope String(memberVals[1]));
-                        WatchListViewItem memberItem = (WatchListViewItem)listViewItem.GetChildAtIndex(memberCount - 1);
-                        memberItem.mWatchSeriesInfo.mAddrsEntrySize = addrsEntrySize;
+						if (memberCount > 0)
+						{
+	                        int32 addrsEntrySize = int32.Parse(scope String(memberVals[1]));
+	                        WatchListViewItem memberItem = (WatchListViewItem)listViewItem.GetChildAtIndex(memberCount - 1);
+	                        memberItem.mWatchSeriesInfo.mAddrsEntrySize = addrsEntrySize;
+						}
                     }
                     else if (memberVals0 == ":continuation")
                     {
-                        WatchListViewItem memberItem = (WatchListViewItem)listViewItem.GetChildAtIndex(memberCount - 1);
-                        String.NewOrSet!(memberItem.mWatchSeriesInfo.mContinuationData, memberVals[1]);
+						if (memberCount > 0)
+						{
+	                        WatchListViewItem memberItem = (WatchListViewItem)listViewItem.GetChildAtIndex(memberCount - 1);
+	                        String.NewOrSet!(memberItem.mWatchSeriesInfo.mContinuationData, memberVals[1]);
+						}
                     }
 					else if (memberVals0 == ":action")
 					{
