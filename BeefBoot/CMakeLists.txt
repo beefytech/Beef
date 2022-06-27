@@ -137,7 +137,16 @@ execute_process(
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/bin/llvm-config --system-libs --link-static
   OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
   OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE EXEC_RESULT
 )
+
+if (EXEC_RESULT AND NOT EXEC_RESULT EQUAL 0)
+  if (EXEC_RESULT MATCHES "^[0-9]+$")
+    message(FATAL_ERROR "llvm-config exited with code ${EXEC_RESULT}.")
+  else()
+    message(FATAL_ERROR "llvm-config couldn't be executed: ${EXEC_RESULT}")
+  endif()
+endif()
 
 if (${APPLE})
     set(TARGET_LIBS_OS "")
