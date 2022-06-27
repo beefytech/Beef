@@ -156,7 +156,7 @@ namespace System
 			if (maskedVData == null)
 				return;
 #else
-			if (obj.mClassVData == null)
+			if (obj.[Friend]mClassVData == null)
 				return;
 #endif
 			obj.[Friend]GCMarkMembers();
