@@ -4942,6 +4942,10 @@ namespace IDE.ui
 						menuItem.SetDisabled(!isPaused);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.ShowDisassemblyAtCursor());
 
+						menuItem = menu.AddItem("Set Next Statement");
+						menuItem.SetDisabled(!isPaused);
+						menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.[Friend]SetNextStatement());
+
 					    var stepIntoSpecificMenu = menu.AddItem("Step into Specific");
 						stepIntoSpecificMenu.SetDisabled(!isPaused);
 						stepIntoSpecificMenu.IsParent = true;

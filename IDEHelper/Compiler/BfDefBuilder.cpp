@@ -1184,7 +1184,8 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 		fieldDef->mProtection = BfProtection_Public;	
 	fieldDef->mIsReadOnly = fieldDeclaration->mReadOnlySpecifier != NULL;	
 	fieldDef->mIsInline = (fieldDeclaration->mReadOnlySpecifier != NULL) && (fieldDeclaration->mReadOnlySpecifier->GetToken() == BfToken_Inline);
-	fieldDef->mIsExtern = (fieldDeclaration->mExternSpecifier != NULL);
+	fieldDef->mIsExtern = (fieldDeclaration->mExternSpecifier != NULL) && (fieldDeclaration->mExternSpecifier->mToken == BfToken_Extern);
+	fieldDef->mIsAppend = (fieldDeclaration->mExternSpecifier != NULL) && (fieldDeclaration->mExternSpecifier->mToken == BfToken_Append);
 	auto constSpecifierToken = BfNodeDynCast<BfTokenNode>(fieldDeclaration->mConstSpecifier);
 	fieldDef->mIsConst = ((constSpecifierToken != NULL) && (constSpecifierToken->mToken == BfToken_Const)) || (isEnumEntryDecl);	
 	if (auto usingSpecifier = BfNodeDynCast<BfUsingSpecifierNode>(fieldDeclaration->mConstSpecifier))
@@ -2197,6 +2198,11 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					}
 					if (field->GetFieldDeclaration()->mFieldDtor != NULL)
 						needsStaticDtor = true;
+					if (field->mIsAppend)
+					{
+						needsStaticInit = true;
+						needsStaticDtor = true;
+					}
 				}
 			}
 
@@ -2222,6 +2228,11 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			hasNonStaticField = true;
 			if (field->GetInitializer() != NULL)
 				needsDefaultCtor = true;
+			if (field->mIsAppend)
+			{
+				needsDefaultCtor = true;
+				needsDtor = true;
+			}
 			if (auto fieldDecl = field->GetFieldDeclaration())
 			{
 				if (fieldDecl->mFieldDtor != NULL)

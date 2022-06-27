@@ -5008,6 +5008,42 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 		bool isStaticCtor = (mModule->mCurMethodInstance != NULL) &&
 			(mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) &&
 			(mModule->mCurMethodInstance->mMethodDef->mIsStatic);
+
+		if ((mModule->mCompiler->mOptions.mRuntimeChecks) && (fieldInstance->IsAppendedObject()) && (!mModule->mBfIRBuilder->mIgnoreWrites) &&
+			(!mModule->IsSkippingExtraResolveChecks()))
+		{
+			auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
+			auto intPtrType = mModule->CreatePointerType(intType);
+			auto intPtrVal = mModule->mBfIRBuilder->CreateBitCast(retVal.mValue, mModule->mBfIRBuilder->MapType(intPtrType));
+			auto intVal = mModule->mBfIRBuilder->CreateLoad(intPtrVal);
+
+			auto oobBlock = mModule->mBfIRBuilder->CreateBlock("oob", true);
+			auto contBlock = mModule->mBfIRBuilder->CreateBlock("cont", true);
+
+			auto cmpRes = mModule->mBfIRBuilder->CreateCmpEQ(intVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
+			mModule->mBfIRBuilder->CreateCondBr(cmpRes, oobBlock, contBlock);
+
+			mModule->mBfIRBuilder->SetInsertPoint(oobBlock);
+			auto internalType = mModule->ResolveTypeDef(mModule->mCompiler->mInternalTypeDef);
+			auto oobFunc = mModule->GetMethodByName(internalType->ToTypeInstance(), "ThrowObjectNotInitialized");
+			if (oobFunc.mFunc)
+			{
+				if (mModule->mIsComptimeModule)
+					mModule->mCompiler->mCeMachine->QueueMethod(oobFunc.mMethodInstance, oobFunc.mFunc);
+
+				SizedArray<BfIRValue, 1> args;
+				args.push_back(mModule->GetConstValue(0));
+				mModule->mBfIRBuilder->CreateCall(oobFunc.mFunc, args);
+				mModule->mBfIRBuilder->CreateUnreachable();				
+			}
+			else
+			{
+				mModule->Fail("System.Internal class must contain method 'ThrowObjectNotInitialized'", fieldDef->GetRefNode());
+			}
+
+			mModule->mBfIRBuilder->SetInsertPoint(contBlock);
+		}
+
 		if ((fieldDef->mIsReadOnly) && (!isStaticCtor))
 		{
 			if (retVal.IsAddr())
@@ -5135,8 +5171,16 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 		if ((targetValue.IsAddr()) && (!typeInstance->IsValueType()))
 			targetValue = mModule->LoadValue(targetValue);
 
-		retVal = BfTypedValue(mModule->mBfIRBuilder->CreateInBoundsGEP(targetValue.mValue, 0, fieldInstance->mDataIdx/*, fieldDef->mName*/),
-			resolvedFieldType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+		if (fieldInstance->IsAppendedObject())
+		{
+			auto elemPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(targetValue.mValue, 0, fieldInstance->mDataIdx);
+			retVal = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(elemPtr, mModule->mBfIRBuilder->MapType(resolvedFieldType)), resolvedFieldType);
+		}
+		else
+		{
+			retVal = BfTypedValue(mModule->mBfIRBuilder->CreateInBoundsGEP(targetValue.mValue, 0, fieldInstance->mDataIdx/*, fieldDef->mName*/),
+				resolvedFieldType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+		}
 	}
 
 	if (!retVal.IsSplat())
@@ -9649,15 +9693,24 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 		if (resolvedTypeInstance != NULL)
 		{
-			if ((!resolvedTypeInstance->IsStruct()) && (!resolvedTypeInstance->IsTypedPrimitive()))
+			if ((mBfEvalExprFlags & BfEvalExprFlags_AppendFieldInitializer) == 0)
 			{
-				if (mModule->PreFail())
-					mModule->Fail("Objects must be allocated through 'new' or 'scope'", targetSrc);
-				return BfTypedValue();
+				if ((!resolvedTypeInstance->IsStruct()) && (!resolvedTypeInstance->IsTypedPrimitive()))
+				{
+					if (mModule->PreFail())
+						mModule->Fail("Objects must be allocated through 'new' or 'scope'", targetSrc);
+					return BfTypedValue();
+				}
 			}
 			
 			if (auto identifier = BfNodeDynCastExact<BfIdentifierNode>(targetSrc))
-				mModule->SetElementType(identifier, resolvedTypeInstance->IsEnum() ? BfSourceElementType_Type : BfSourceElementType_Struct);
+			{
+				auto elementType = resolvedTypeInstance->IsEnum() ? BfSourceElementType_Type : BfSourceElementType_Struct;
+				if (resolvedTypeInstance->IsObject())
+					elementType = BfSourceElementType_RefType;
+				mModule->SetElementType(identifier, elementType);
+			}
+
 			if (mModule->mCompiler->mResolvePassData != NULL)
 			{
 				if (!BfNodeIsA<BfMemberReferenceExpression>(targetSrc))
@@ -9688,7 +9741,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			mResultLocalVar = NULL;
 			mResultFieldInstance = NULL;
 			mResultLocalVarRefNode = NULL;									
-			auto result = MatchConstructor(targetSrc, methodBoundExpr, structInst, resolvedTypeInstance, argValues, false, false);
+			auto result = MatchConstructor(targetSrc, methodBoundExpr, structInst, resolvedTypeInstance, argValues, false, resolvedTypeInstance->IsObject());
 			if ((result) && (!result.mType->IsVoid()))
 				return result;
 			mModule->ValidateAllocation(resolvedTypeInstance, targetSrc);
@@ -17564,7 +17617,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							else
 								mResult = BfTypedValue(mModule->CreateAlloca(expectingType), expectingType, BfTypedValueKind_TempAddr);
 							
-							auto ctorResult = MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, false);																					
+							auto ctorResult = MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, false);
 							if ((ctorResult) && (!ctorResult.mType->IsVoid()))
 								mResult = ctorResult;							
 							mModule->ValidateAllocation(expectingType, invocationExpr->mTarget);
@@ -17599,7 +17652,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				{
 					// Allow
 				}
-				else
+				else if ((mBfEvalExprFlags & BfEvalExprFlags_AppendFieldInitializer) == 0)
 				{
 					gaveUnqualifiedDotError = true;
 					if (mModule->PreFail())
@@ -21419,25 +21472,20 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				auto oobFunc = mModule->GetMethodByName(internalType->ToTypeInstance(), "ThrowIndexOutOfRange");
 				if (oobFunc.mFunc)
 				{
-					/*if (!mModule->mCompiler->mIsResolveOnly)
-					{
-						OutputDebugStrF("-OOB %d %d\n", oobFunc.mFunc.mId, oobFunc.mFunc.mFlags);
-					}*/
-
 					if (mModule->mIsComptimeModule)
 						mModule->mCompiler->mCeMachine->QueueMethod(oobFunc.mMethodInstance, oobFunc.mFunc);
 
 					SizedArray<BfIRValue, 1> args;
 					args.push_back(mModule->GetConstValue(0));
 					mModule->mBfIRBuilder->CreateCall(oobFunc.mFunc, args);
-					mModule->mBfIRBuilder->CreateUnreachable();
-
-					mModule->mBfIRBuilder->SetInsertPoint(contBlock);
+					mModule->mBfIRBuilder->CreateUnreachable();					
 				}
 				else
 				{
 					mModule->Fail("System.Internal class must contain method 'ThrowIndexOutOfRange'");
 				}
+
+				mModule->mBfIRBuilder->SetInsertPoint(contBlock);
 			}
 		}
 		

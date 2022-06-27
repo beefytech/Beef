@@ -1480,6 +1480,7 @@ namespace System.Reflection
 		EnumDiscriminator		= 0x0200,
 		EnumCase				= 0x0400,
 		ReadOnly				= 0x0800,
+		Appended				= 0x1000,
     }
 
 	public enum MethodFlags : uint16

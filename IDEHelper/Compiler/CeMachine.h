@@ -422,6 +422,7 @@ enum CeFunctionKind
 	CeFunctionKind_Normal,
 	CeFunctionKind_Extern,
 	CeFunctionKind_OOB,
+	CeFunctionKind_ObjectNotInitialized,
 	CeFunctionKind_Malloc,
 	CeFunctionKind_Free,
 	CeFunctionKind_DynCheckFailed,

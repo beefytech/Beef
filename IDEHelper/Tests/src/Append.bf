@@ -76,6 +76,13 @@ namespace Tests
 			}
 		}
 
+		class ClassF
+		{
+			public int mA = 123;
+			public append String mB = .(mA);
+			public int mC = 234;
+		}
+
 		static void CheckData(Object obj, int lastAllocSize, uint8[] data)
 		{
 			int objSize = typeof(Object).InstanceSize;
@@ -110,6 +117,17 @@ namespace Tests
 				0x80, 0x70, 0x60, 0x50, 0x40, 0x30, 0x20, 0x10
 				));
 			delete:trackedAlloc ce;
+
+			int sizeDiff = Math.Abs(typeof(ClassF).InstanceSize - (1024 + sizeof(int)*5));
+			Test.Assert(sizeDiff < 32);
+
+			ClassF cf = scope .();
+			cf.mB.Append("Abc");
+			Test.Assert(cf.mA == 123);
+			Test.Assert(cf.mB == "Abc");
+			Test.Assert(cf.mB.AllocSize == 1024);
+			Test.Assert(cf.mC == 234);
+			cf.mB.Append('!', 2048);
 		}
 	}
 }

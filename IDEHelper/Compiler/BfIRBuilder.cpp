@@ -3203,6 +3203,9 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 			PopulateType(resolvedFieldType, BfIRPopulateType_Eventually_Full);		
 		resolvedFieldDIType = DbgGetType(resolvedFieldType);
 
+		if (fieldInstance->IsAppendedObject())
+			resolvedFieldDIType = DbgGetTypeInst(resolvedFieldType->ToTypeInstance());
+
 		if ((fieldDef == NULL) && (typeInstance->IsPayloadEnum()))
 		{
 			orderedFields.push_back(fieldInstance);
@@ -3409,7 +3412,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 					if (fieldDef->mHasMultiDefs)
 						fieldName += "$" + fieldDef->mDeclaringType->mProject->mName;
 					auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, lineNum,
-						resolvedFieldType->mSize * 8, resolvedFieldType->mAlign * 8, fieldInstance->mDataOffset * 8,
+						fieldInstance->mDataSize * 8, resolvedFieldType->mAlign * 8, fieldInstance->mDataOffset * 8,
 						flags, resolvedFieldDIType);
 					diFieldTypes.push_back(memberType);
 				}
@@ -3712,6 +3715,9 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 		if ((fieldDef != NULL) && (resolvedFieldType->IsStruct()))
 			PopulateType(resolvedFieldType, BfIRPopulateType_Eventually_Full);
 
+		if (fieldInstance->IsAppendedObject())
+			PopulateType(resolvedFieldType, BfIRPopulateType_Eventually_Full);
+
 		if ((fieldDef == NULL) && (typeInstance->IsPayloadEnum()))
 		{
 			orderedFields.push_back(fieldInstance);
@@ -3761,9 +3767,26 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 		if (fieldInstance == NULL)
 			continue;
 
+		auto fieldDef = fieldInstance->GetFieldDef();
+
 		auto resolvedFieldType = fieldInstance->GetResolvedType();
 
 		BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
+
+		if (fieldInstance->IsAppendedObject())
+		{
+			auto fieldTypeInst = fieldInstance->mResolvedType->ToTypeInstance();
+
+			if (fieldInstance->mDataSize != fieldTypeInst->mInstSize)
+			{
+				SizedArray<BfIRType, 2> types;
+				types.push_back(MapTypeInst(fieldTypeInst));
+				types.push_back(GetSizedArrayType(GetPrimitiveType(BfTypeCode_Int8), fieldInstance->mDataSize - fieldTypeInst->mInstSize));
+				resolvedFieldIRType = CreateStructType(types);
+			}
+			else
+				resolvedFieldIRType = MapTypeInst(fieldTypeInst);		
+		}
 
 		if (fieldInstance->mDataOffset > dataPos)
 		{

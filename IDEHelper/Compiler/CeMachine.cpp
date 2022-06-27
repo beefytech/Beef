@@ -5667,6 +5667,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				Fail(_GetCurFrame(), "Array out of bounds");
 				return false;
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_OOB)
+			{
+				Fail(_GetCurFrame(), "Object not initialized");
+				return false;
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Malloc)
 			{
 				int64 size;
@@ -9340,6 +9345,8 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 			{
 				if (methodDef->mName == "ThrowIndexOutOfRange")
 					ceFunction->mFunctionKind = CeFunctionKind_OOB;
+				else if (methodDef->mName == "ThrowObjectNotInitialized")
+					ceFunction->mFunctionKind = CeFunctionKind_ObjectNotInitialized;
 				else if (methodDef->mName == "FatalError")
 					ceFunction->mFunctionKind = CeFunctionKind_FatalError;
 				else if (methodDef->mName == "Dbg_RawAlloc")

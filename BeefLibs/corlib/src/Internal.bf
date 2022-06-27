@@ -89,6 +89,8 @@ namespace System
 		[CallingConvention(.Cdecl), NoReturn]
 		public static extern void ThrowIndexOutOfRange(int stackOffset = 0);
 		[CallingConvention(.Cdecl), NoReturn]
+		public static extern void ThrowObjectNotInitialized(int stackOffset = 0);
+		[CallingConvention(.Cdecl), NoReturn]
 		public static extern void FatalError(String error, int stackOffset = 0);
 		[Intrinsic("memcpy")]
 		public static extern void MemCpy(void* dest, void* src, int length, int32 align = 1, bool isVolatile = false);

@@ -6319,6 +6319,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 	case BfToken_Override:
 	case BfToken_Abstract:
 	case BfToken_Concrete:
+	case BfToken_Append:
 	case BfToken_Extern:
 	case BfToken_New:
 	case BfToken_Implicit:
@@ -6575,6 +6576,30 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 
 		if (token == BfToken_Extern)
 		{
+			if ((fieldDecl->mExternSpecifier != NULL) && (fieldDecl->mExternSpecifier->mToken == BfToken_Append))
+ 			{
+ 				Fail("Extern cannot be used with 'append' specified", tokenNode);
+ 			}
+ 			else if (fieldDecl->mExternSpecifier != NULL)
+ 			{
+				Fail("Extern already specified", tokenNode);
+ 			}
+
+			MEMBER_SET(fieldDecl, mExternSpecifier, tokenNode);
+			handled = true;
+		}
+
+		if (token == BfToken_Append)
+		{
+			if ((fieldDecl->mExternSpecifier != NULL) && (fieldDecl->mExternSpecifier->mToken == BfToken_Extern))
+			{
+				Fail("Append cannot be used with 'extern' specified", tokenNode);
+			}
+			else if (fieldDecl->mExternSpecifier != NULL)
+			{
+				Fail("Append already specified", tokenNode);
+			}
+
 			MEMBER_SET(fieldDecl, mExternSpecifier, tokenNode);
 			handled = true;
 		}

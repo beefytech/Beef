@@ -1469,6 +1469,7 @@ public:
 	void SetResolvedType(BfType* type);
 	void GetDataRange(int& dataIdx, int& dataCount);
 	int GetAlign(int packing);
+	bool IsAppendedObject();
 };
 
 enum BfMethodRefKind

@@ -1929,6 +1929,13 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	BfLocalVariable* localVar = AddLocalVariableDef(localDef, true, false, BfIRValue(), initType);
 	if (wantsStore)
 		mBfIRBuilder->CreateAlignedStore(initValue.mValue, localVar->mAddr, localVar->mResolvedType->mAlign);
+
+	if ((mCurMethodState->mConstResolveState != NULL) && (mCurMethodState->mConstResolveState->mInCalcAppend))
+	{
+		if (localDef->mValue.IsConst())
+			localDef->mConstValue = localDef->mValue;
+	}
+
 	return localVar;
 }
 

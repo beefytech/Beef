@@ -3169,7 +3169,7 @@ public:
 	BfAstNode* mConstSpecifier; // Could be 'const' or 'using'	
 	BfTokenNode* mVolatileSpecifier;
 	BfTokenNode* mNewSpecifier;
-	BfTokenNode* mExternSpecifier;
+	BfTokenNode* mExternSpecifier; // Could be 'extern' or 'append'
 	BfTypeReference* mTypeRef;
 	BfIdentifierNode* mNameNode;
 	BfTokenNode* mEqualsNode;

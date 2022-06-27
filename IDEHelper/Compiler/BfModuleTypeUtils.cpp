@@ -820,6 +820,9 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 void BfModule::AddFieldDependency(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfType* fieldType)
 {
 	auto depFlag = fieldType->IsValueType() ? BfDependencyMap::DependencyFlag_ValueTypeMemberData : BfDependencyMap::DependencyFlag_PtrMemberData;
+	if (fieldInstance->IsAppendedObject())
+		depFlag = BfDependencyMap::DependencyFlag_ValueTypeMemberData;
+
 	AddDependency(fieldType, typeInstance, depFlag);
 
 	if ((fieldType->IsStruct()) && (fieldType->IsGenericTypeInstance()))
@@ -4565,6 +4568,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 								
 				auto initializer = field->GetInitializer();
 
+				if ((field->mIsAppend) && (!resolvedTypeRef->IsObject()))
+					Fail("Appended objects can only be declared in class types", field->GetFieldDeclaration()->mExternSpecifier, true);
+
+				if ((field->mIsAppend) && (isUnion))
+					Fail("Appended objects cannot be declared in unions", field->GetFieldDeclaration()->mExternSpecifier, true);
+				
 				if (field->IsEnumCaseEntry())
 				{
 					if (typeInstance->IsEnum())
@@ -5109,6 +5118,83 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 						int dataSize = resolvedFieldType->mSize;
 						int alignSize = resolvedFieldType->mAlign;
+
+						if (fieldInstance->IsAppendedObject())
+						{
+							SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
+							SetAndRestoreValue<BfTypeState::ResolveKind> prevResolveKind(mContext->mCurTypeState->mResolveKind, BfTypeState::ResolveKind_FieldType);
+
+							auto fieldTypeInst = resolvedFieldType->ToTypeInstance();
+							dataSize = fieldTypeInst->mInstSize;
+							alignSize = fieldTypeInst->mInstAlign;
+
+							if ((typeInstance != NULL) && (fieldTypeInst->mTypeDef->mIsAbstract))
+							{
+								Fail("Cannot create an instance of an abstract class", nameRefNode);
+							}
+
+							SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+							BfMethodState methodState;
+							SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
+							methodState.mTempKind = BfMethodState::TempKind_NonStatic;
+							
+							BfTypedValue appendIndexValue;
+							BfExprEvaluator exprEvaluator(this);
+
+							BfResolvedArgs resolvedArgs;
+
+							auto fieldDecl = fieldDef->GetFieldDeclaration();
+							if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(fieldDecl->mInitializer))
+							{
+								resolvedArgs.Init(invocationExpr->mOpenParen, &invocationExpr->mArguments, &invocationExpr->mCommas, invocationExpr->mCloseParen);
+								exprEvaluator.ResolveArgValues(resolvedArgs, BfResolveArgsFlag_DeferParamEval);
+							}
+
+							BfFunctionBindResult bindResult;
+							bindResult.mSkipThis = true;
+							bindResult.mWantsArgs = true;
+							SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(exprEvaluator.mFunctionBindResult, &bindResult);
+							
+							BfTypedValue emptyThis(mBfIRBuilder->GetFakeVal(), resolvedTypeRef, resolvedTypeRef->IsStruct());
+
+							exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_Comptime;
+							auto ctorResult = exprEvaluator.MatchConstructor(nameRefNode, NULL, emptyThis, fieldTypeInst, resolvedArgs, false, true);
+
+							if ((bindResult.mMethodInstance != NULL) && (bindResult.mMethodInstance->mMethodDef->mHasAppend))
+							{
+								auto calcAppendMethodModule = GetMethodInstanceAtIdx(bindResult.mMethodInstance->GetOwner(), bindResult.mMethodInstance->mMethodDef->mIdx + 1, BF_METHODNAME_CALCAPPEND);
+
+								SizedArray<BfIRValue, 2> irArgs;
+								if (bindResult.mIRArgs.size() > 1)
+									irArgs.Insert(0, &bindResult.mIRArgs[1], bindResult.mIRArgs.size() - 1);
+								BfTypedValue appendSizeTypedValue = TryConstCalcAppend(calcAppendMethodModule.mMethodInstance, irArgs, true);
+								if (appendSizeTypedValue)
+								{
+									int appendAlign = calcAppendMethodModule.mMethodInstance->mAppendAllocAlign;
+									dataSize = BF_ALIGN(dataSize, appendAlign);
+									alignSize = BF_MAX(alignSize, appendAlign);
+
+									auto constant = mBfIRBuilder->GetConstant(appendSizeTypedValue.mValue);
+									if (constant != NULL)
+									{
+										dataSize += constant->mInt32;
+									}
+								}
+								else
+								{
+									Fail(StrFormat("Append constructor '%s' does not result in a constant size", MethodToString(bindResult.mMethodInstance).c_str()), nameRefNode);
+								}
+								
+							}
+						}
+						else if (fieldDef->mIsAppend)
+						{
+							if (typeInstance->IsObject())
+								Fail("Append fields can only be declared in classes", nameRefNode, true);
+							else if ((!resolvedFieldType->IsObject()) && (!resolvedFieldType->IsGenericParam()))
+								Fail("Append fields must be classes", nameRefNode, true);
+						}
+
 						fieldInstance->mDataSize = dataSize;
 						if (!isUnion)
 						{
@@ -5244,7 +5330,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					alignBuckets[alignBits].RemoveAt(0);
 					dataFieldVec.push_back(fieldInst);
 					curSize = BF_ALIGN(curSize, fieldInst->GetAlign(packing));
-					curSize += fieldInst->mResolvedType->mSize;
+					curSize += fieldInst->mDataSize;
 					foundEntry = true;
 
 					if (!isHighestBucket)
@@ -5265,7 +5351,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						 	alignBuckets[alignBits].RemoveAt(0);
 						 	dataFieldVec.push_back(fieldInst);
 						 	curSize = BF_ALIGN(curSize, fieldInst->GetAlign(packing));
-						 	curSize += fieldInst->mResolvedType->mSize;
+						 	curSize += fieldInst->mDataSize;
 							break;
 						}
 					}
@@ -5281,9 +5367,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			auto resolvedFieldType = fieldInstance->GetResolvedType();
 
 			BF_ASSERT(resolvedFieldType->mSize >= 0);
-			int dataSize = resolvedFieldType->mSize;
+			
+			if (fieldInstance->mDataSize == 0)			
+				fieldInstance->mDataSize = resolvedFieldType->mSize;			
+
+			int dataSize = fieldInstance->mDataSize;
 			int alignSize = fieldInstance->GetAlign(packing);
-			fieldInstance->mDataSize = dataSize;
 
 			int nextDataPos = dataPos;			
 			nextDataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);

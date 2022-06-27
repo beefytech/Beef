@@ -4048,8 +4048,18 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 		BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), fieldInstance);
 		if ((!fieldType->IsValuelessType()) && (!staticVarName.StartsWith("#")))
 		{
+			BfIRType irType;
+
+			if (fieldInstance->IsAppendedObject())
+			{
+				irType = mBfIRBuilder->MapTypeInst(fieldType->ToTypeInstance(), BfIRPopulateType_Eventually_Full);
+				initValue = mBfIRBuilder->CreateConstAggZero(irType);
+			}
+			else
+				irType = mBfIRBuilder->MapType(fieldType, BfIRPopulateType_Eventually_Full);
+
 			BfIRValue globalVar = mBfIRBuilder->CreateGlobalVariable(					
-				mBfIRBuilder->MapType(fieldType, BfIRPopulateType_Eventually_Full),
+				irType,
 				false,
 				BfIRLinkageType_External,
 				initValue,
@@ -4549,6 +4559,83 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 	}
 
 	return result;
+}
+
+void BfModule::AppendedObjectInit(BfFieldInstance* fieldInst)
+{
+	BfExprEvaluator exprEvaluator(this);
+
+	bool failed = false;
+
+	auto fieldDef = fieldInst->GetFieldDef();
+	auto initializer = fieldDef->GetInitializer();
+
+	BfResolvedArgs resolvedArgs;
+	if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(initializer))
+	{
+		bool isDot = false;
+
+		if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(invocationExpr->mTarget))
+			isDot = (memberRefExpr->mTarget == NULL) && (memberRefExpr->mMemberName == NULL);
+
+		if (!isDot)
+		{
+			auto resolvedType = ResolveTypeRef(invocationExpr->mTarget, {});
+			if ((resolvedType == NULL) || (resolvedType != fieldInst->mResolvedType))
+				failed = true;
+		}
+
+		SetAndRestoreValue<BfType*> prevExpectingType(exprEvaluator.mExpectingType, fieldInst->mResolvedType);
+
+		resolvedArgs.Init(invocationExpr->mOpenParen, &invocationExpr->mArguments, &invocationExpr->mCommas, invocationExpr->mCloseParen);
+		exprEvaluator.ResolveArgValues(resolvedArgs, BfResolveArgsFlag_DeferParamEval);
+	}
+	else if (initializer != NULL)
+	{
+		GetFieldInitializerValue(fieldInst);
+		failed = true;
+	}
+
+	if (failed)
+		Fail("Append fields can only be initialized with a call to their constructor", initializer);
+
+	auto intType = GetPrimitiveType(BfTypeCode_IntPtr);
+	auto int8Type = mBfIRBuilder->GetPrimitiveType(BfTypeCode_Int8);
+	auto ptrType = mBfIRBuilder->GetPointerTo(int8Type);
+	auto ptrPtrType = mBfIRBuilder->GetPointerTo(ptrType);
+
+
+	BfIRValue fieldAddr;
+	if (fieldDef->mIsStatic)
+	{
+		fieldAddr = ReferenceStaticField(fieldInst).mValue;
+	}
+	else
+		fieldAddr = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, fieldInst->mDataIdx);
+	auto thisValue = BfTypedValue(mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(fieldInst->mResolvedType)), fieldInst->mResolvedType);
+
+	auto indexVal = BfTypedValue(CreateAlloca(intType), CreateRefType(intType));
+	auto intThisVal = mBfIRBuilder->CreatePtrToInt(thisValue.mValue, (intType->mSize == 4) ? BfTypeCode_Int32 : BfTypeCode_Int64);
+	mBfIRBuilder->CreateStore(intThisVal, indexVal.mValue);
+
+	auto ctorResult = exprEvaluator.MatchConstructor(fieldDef->GetNameNode(), NULL, thisValue, fieldInst->mResolvedType->ToTypeInstance(), resolvedArgs, false, true, &indexVal);
+
+	auto vObjectAddr = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, 0);
+
+	auto vDataRef = CreateClassVDataGlobal(fieldInst->mResolvedType->ToTypeInstance());
+
+	auto destAddr = mBfIRBuilder->CreateBitCast(vObjectAddr, ptrPtrType);
+	auto srcVal = mBfIRBuilder->CreateBitCast(vDataRef, ptrType);
+	mBfIRBuilder->CreateStore(srcVal, destAddr);
+
+	if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule))
+	{
+		auto int8Type = mBfIRBuilder->GetPrimitiveType(BfTypeCode_Int8);
+		auto ptrType = mBfIRBuilder->GetPointerTo(int8Type);
+
+		auto thisFlagsPtr = mBfIRBuilder->CreateBitCast(thisValue.mValue, ptrType);
+		mBfIRBuilder->CreateStore(GetConstValue8(BfObjectFlag_AppendAlloc), thisFlagsPtr);
+	}
 }
 
 void BfModule::CheckInterfaceMethod(BfMethodInstance* methodInstance)
@@ -5570,7 +5657,9 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 	if (fieldDef->IsEnumCaseEntry())
 		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_EnumCase);
 	if (fieldDef->mIsReadOnly)
-		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_ReadOnly);	
+		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_ReadOnly);
+	if (fieldInstance->IsAppendedObject())
+		fieldFlags = (BfFieldFlags)(fieldFlags | BfFieldFlags_Appended);
 	
 	BfIRValue constValue;
 	BfIRValue constValue2;
@@ -5608,8 +5697,13 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 			}
 		}
 
-		if ((refVal.IsAddr()) && (!isComptimeArg))
-			constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
+		if (!isComptimeArg)
+		{
+			if (refVal.IsAddr())
+				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
+			else if (fieldInstance->IsAppendedObject())
+				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
+		}
 	}
 
 	if (!constValue)
@@ -11240,7 +11334,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 		for (int paramIdx = 0; paramIdx < (int)methodInst->GetParamCount(); paramIdx++)
 		{
 			int paramKind = methodInst->GetParamKind(paramIdx);
-			if (paramKind == BfParamKind_ImplicitCapture)
+			if ((paramKind == BfParamKind_ImplicitCapture) || (paramKind == BfParamKind_AppendIdx))
 				continue;
 
 			if (dispParamIdx > 0)
@@ -14799,6 +14893,9 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 		{
 			BfIRType irType = mBfIRBuilder->MapType(typeType);
 
+			if (fieldInstance->IsAppendedObject())
+				irType = mBfIRBuilder->MapTypeInst(typeType->ToTypeInstance());
+
 			SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mBfIRBuilder->mIgnoreWrites || staticVarName.StartsWith('#'));
 
 			globalValue = mBfIRBuilder->CreateGlobalVariable(
@@ -14822,7 +14919,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 
 	if (fieldDef->mIsVolatile)
 		return BfTypedValue(globalValue, type, BfTypedValueKind_VolatileAddr);
-	return BfTypedValue(globalValue, type, !fieldDef->mIsConst);
+	return BfTypedValue(globalValue, type, !fieldDef->mIsConst && !fieldInstance->IsAppendedObject());
 }
 
 BfFieldInstance* BfModule::GetFieldInstance(BfTypeInstance* typeInst, int fieldIdx, const char* fieldName)
@@ -16381,13 +16478,13 @@ void BfModule::CalcAppendAlign(BfMethodInstance* methodInst)
 	methodInst->mAppendAllocAlign = 1;
 }
 
-BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArrayImpl<BfIRValue>& args)
+BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArrayImpl<BfIRValue>& args, bool force)
 {
 	BP_ZONE("BfModule::TryConstCalcAppend");
 
 	BF_ASSERT(methodInst->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend);
 
-	if ((mCompiler->mIsResolveOnly) && (!mIsComptimeModule))
+	if ((mCompiler->mIsResolveOnly) && (!mIsComptimeModule) && (!force))
 		return BfTypedValue();
 
 	// We want to regenerate all ctor calls when the method internals change
@@ -16476,6 +16573,7 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 		BfConstResolveState constResolveState;
 		constResolveState.mMethodInstance = methodInst;
 		constResolveState.mPrevConstResolveState = mCurMethodState->mConstResolveState;
+		constResolveState.mInCalcAppend = true;
 
 		SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 		BfMethodState methodState;
@@ -16630,7 +16728,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 	BF_ASSERT(bindResult.mIRArgs[0].IsFake());
 	bindResult.mIRArgs.RemoveAt(0);
 	auto calcAppendMethodModule = GetMethodInstanceAtIdx(bindResult.mMethodInstance->GetOwner(), bindResult.mMethodInstance->mMethodDef->mIdx + 1, BF_METHODNAME_CALCAPPEND);	
-	BfTypedValue appendSizeTypedValue = TryConstCalcAppend(calcAppendMethodModule.mMethodInstance, bindResult.mIRArgs);
+	BfTypedValue appendSizeTypedValue = TryConstCalcAppend(calcAppendMethodModule.mMethodInstance, bindResult.mIRArgs, true);
 	BF_ASSERT(calcAppendMethodModule.mMethodInstance->mAppendAllocAlign >= 0);
 	mCurMethodInstance->mAppendAllocAlign = BF_MAX((int)mCurMethodInstance->mAppendAllocAlign, calcAppendMethodModule.mMethodInstance->mAppendAllocAlign);
 	BF_ASSERT(calcAppendMethodModule.mMethodInstance->mEndingAppendAllocAlign > -1);
@@ -16757,7 +16855,10 @@ void BfModule::CreateStaticCtor()
 				{					
 					continue;
 				}
-				GetFieldInitializerValue(fieldInst, NULL, NULL, NULL, true);				
+				if (fieldInst->IsAppendedObject())
+					AppendedObjectInit(fieldInst);
+				else
+					GetFieldInitializerValue(fieldInst, NULL, NULL, NULL, true);
 			}
 		}
 
@@ -16788,8 +16889,13 @@ void BfModule::CreateStaticCtor()
 							if ((!BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef)) && (!BfNodeIsA<BfLetTypeReference>(fieldDef->mTypeRef)))
 							{
 								wantType = ResolveTypeRef(fieldDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowInferredSizedArray);
-							}							
-							CreateValueFromExpression(fieldDef->GetInitializer(), wantType, BfEvalExprFlags_FieldInitializer);
+							}
+
+							BfEvalExprFlags exprFlags = BfEvalExprFlags_FieldInitializer;
+							if (fieldDef->mIsAppend)
+								exprFlags = (BfEvalExprFlags)(exprFlags | BfEvalExprFlags_AppendFieldInitializer);
+
+							CreateValueFromExpression(fieldDef->GetInitializer(), wantType, exprFlags);
 						}						
 					}
 				}
@@ -16875,6 +16981,66 @@ void BfModule::EmitDtorBody()
 			BfFieldDeclaration* fieldDecl = NULL;
 			if (fieldDef != NULL)
 				fieldDecl = fieldDef->GetFieldDeclaration();
+
+			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldInst->IsAppendedObject()))
+			{
+				auto refNode = fieldDef->GetRefNode();
+				UpdateSrcPos(refNode);
+
+				auto objectType = mContext->mBfObjectType;
+				BfTypeInstance* checkTypeInst = mCurTypeInstance->ToTypeInstance();
+
+				BfTypedValue val;
+				if (fieldDef->mIsStatic)
+					val = ReferenceStaticField(fieldInst);
+				else
+				{
+					auto fieldAddr = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, fieldInst->mDataIdx);
+					val = BfTypedValue(mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(fieldInst->mResolvedType)), fieldInst->mResolvedType);
+				}
+
+				bool allowPrivate = checkTypeInst == mCurTypeInstance;
+				bool allowProtected = allowPrivate || TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst);
+				while (checkTypeInst != NULL)
+				{
+					auto dtorMethodDef = checkTypeInst->mTypeDef->GetMethodByName("~this");
+					if (dtorMethodDef)
+					{
+						if (!CheckProtection(dtorMethodDef->mProtection, checkTypeInst->mTypeDef, allowProtected, allowPrivate))
+						{
+							auto error = Fail(StrFormat("'%s.~this()' is inaccessible due to its protection level", TypeToString(checkTypeInst).c_str()), refNode); // CS0122																																												
+						}
+					}
+					checkTypeInst = checkTypeInst->mBaseType;
+					allowPrivate = false;
+				}
+				
+				// call dtor
+				BfExprEvaluator expressionEvaluator(this);
+				PopulateType(val.mType);
+				PopulateType(objectType, BfPopulateType_DataAndMethods);
+
+				if (objectType->mVirtualMethodTable.size() == 0)
+				{
+					if (!mCompiler->IsAutocomplete())
+						AssertErrorState();
+				}
+				else if (!IsSkippingExtraResolveChecks())
+				{
+					BfMethodInstance* methodInstance = objectType->mVirtualMethodTable[mCompiler->GetVTableMethodOffset() + 0].mImplementingMethod;
+					BF_ASSERT(methodInstance->mMethodDef->mName == "~this");
+					SizedArray<BfIRValue, 4> llvmArgs;
+					llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(objectType)));
+					expressionEvaluator.CreateCall(refNode, methodInstance, mBfIRBuilder->GetFakeVal(), false, llvmArgs);
+				}
+
+				if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule))
+				{
+					auto int8PtrType = CreatePointerType(GetPrimitiveType(BfTypeCode_Int8));					
+					auto int8PtrVal = mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(int8PtrType));
+					mBfIRBuilder->CreateStore(GetConstValue8(BfObjectFlag_Deleted), int8PtrVal);
+				}
+			}
 
 			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDecl != NULL) && (fieldDecl->mFieldDtor != NULL))
 			{
@@ -17730,6 +17896,13 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						continue;
 					auto initializer = fieldDef->GetInitializer();
 
+					if (fieldInst->IsAppendedObject())
+					{
+						UpdateSrcPos(fieldDef->GetNameNode());
+						AppendedObjectInit(fieldInst);						
+						continue;
+					}
+
 					if (initializer == NULL)
 					{
 						continue;
@@ -17819,7 +17992,12 @@ void BfModule::EmitCtorBody(bool& skipBody)
 							if ((wantType != NULL) &&
 								((wantType->IsVar()) || (wantType->IsLet()) || (wantType->IsRef())))
 								wantType = NULL;
-							CreateValueFromExpression(initializer, wantType, BfEvalExprFlags_FieldInitializer);
+
+							BfEvalExprFlags exprFlags = BfEvalExprFlags_FieldInitializer;
+							if (fieldDef->mIsAppend)
+								exprFlags = (BfEvalExprFlags)(exprFlags | BfEvalExprFlags_AppendFieldInitializer);
+
+							CreateValueFromExpression(initializer, wantType, exprFlags);
 						}
 					}
 
@@ -18373,6 +18551,21 @@ void BfModule::EmitIteratorBlock(bool& skipBody)
 	auto blockBody = BfNodeDynCast<BfBlock>(methodDeclaration->mBody);
 	if (blockBody == NULL)
 		return;	
+}
+
+void BfModule::EmitGCMarkAppended(BfTypedValue markVal)
+{	
+	auto gcType = ResolveTypeDef(mCompiler->mGCTypeDef, BfPopulateType_DataAndMethods);
+	if (gcType == NULL)
+		return;
+	BfModuleMethodInstance markFromGCThreadMethodInstance = GetMethodByName(gcType->ToTypeInstance(), "MarkAppendedObject", 1);
+	if (!markFromGCThreadMethodInstance)
+		return;
+	
+	SizedArray<BfIRValue, 1> args;
+	args.push_back(mBfIRBuilder->CreateBitCast(markVal.mValue, mBfIRBuilder->MapType(mContext->mBfObjectType)));
+	BfExprEvaluator exprEvaluator(this);
+	exprEvaluator.CreateCall(NULL, markFromGCThreadMethodInstance.mMethodInstance, markFromGCThreadMethodInstance.mFunc, false, args);	
 }
 
 void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance markFromGCThreadMethodInstance)
@@ -19048,7 +19241,7 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 	}
 }
 
-void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int memberDepth, int curOffset, HashSet<int>& objectOffsets, BfModuleMethodInstance markFromGCThreadMethodInstance)
+void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int memberDepth, int curOffset, HashSet<int>& objectOffsets, BfModuleMethodInstance markFromGCThreadMethodInstance, bool isAppendObject)
 {
 	if (checkType->IsComposite())
 		PopulateType(checkType, BfPopulateType_Data);
@@ -19184,7 +19377,10 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 			markValue = BfTypedValue(mBfIRBuilder->CreateBitCast(offsetValue, mBfIRBuilder->MapType(memberPtrType)), memberType, true);
 		}
 
-		EmitGCMarkValue(markValue, markFromGCThreadMethodInstance);
+		if (isAppendObject)
+			EmitGCMarkAppended(markValue);
+		else
+			EmitGCMarkValue(markValue, markFromGCThreadMethodInstance);
 		return;
 	}
 
@@ -19219,7 +19415,8 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 			if ((fieldDef->mDeclaringType->mTypeDeclaration != methodDef->mDeclaringType->mTypeDeclaration))
 				continue;
 		}
-		EmitGCMarkValue(thisValue, fieldInst.mResolvedType, memberDepth + 1, curOffset + fieldInst.mDataOffset, objectOffsets, markFromGCThreadMethodInstance);
+		
+		EmitGCMarkValue(thisValue, fieldInst.mResolvedType, memberDepth + 1, curOffset + fieldInst.mDataOffset, objectOffsets, markFromGCThreadMethodInstance, fieldInst.IsAppendedObject());
 	}
 	
 	if ((typeInstance->mBaseType != NULL) && (typeInstance->mBaseType != mContext->mBfObjectType))
@@ -19373,11 +19570,25 @@ void BfModule::EmitGCMarkMembers()
 						}
 						else if (!fieldDef->mIsStatic)
 						{
-							markVal = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInst.mDataIdx/*, fieldDef->mName*/), fieldInst.mResolvedType, true);
+							if (fieldInst.IsAppendedObject())
+							{
+								auto fieldAddr = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, fieldInst.mDataIdx);
+								auto val = mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(mContext->mBfObjectType));
+								markVal = BfTypedValue(mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(fieldInst.mResolvedType)), fieldInst.mResolvedType);
+							}
+							else
+							{
+								markVal = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInst.mDataIdx/*, fieldDef->mName*/), fieldInst.mResolvedType, true);
+							}
 						}
 
 						if (markVal)
-							EmitGCMarkValue(markVal, markFromGCThreadMethodInstance);
+						{
+							if (fieldInst.IsAppendedObject())
+								EmitGCMarkAppended(markVal);
+							else
+								EmitGCMarkValue(markVal, markFromGCThreadMethodInstance);
+						}
 					}
 				}
 			}
@@ -20881,13 +21092,45 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				}
 			}
 		}
+		auto int8PtrType = CreatePointerType(GetPrimitiveType(BfTypeCode_Int8));
+
 		int curSize = mCurTypeInstance->mInstSize;
 		if (curSize > prevSize)
-		{
-			auto int8PtrType = CreatePointerType(GetPrimitiveType(BfTypeCode_Int8));
+		{			
 			auto int8PtrVal = mBfIRBuilder->CreateBitCast(thisVal.mValue, mBfIRBuilder->MapType(int8PtrType));
 			int8PtrVal = mBfIRBuilder->CreateInBoundsGEP(int8PtrVal, GetConstValue(prevSize));
 			mBfIRBuilder->CreateMemSet(int8PtrVal, GetConstValue8(0), GetConstValue(curSize - prevSize), GetConstValue(mCurTypeInstance->mInstAlign));
+		}
+
+		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule))
+		{
+			auto useThis = mCurMethodState->mLocals[0]->mValue;
+			auto useThisType = mCurTypeInstance;
+
+			auto checkTypeInst = mCurTypeInstance;
+			while (checkTypeInst != NULL)
+			{
+				for (auto& fieldInstance : checkTypeInst->mFieldInstances)
+				{
+					auto fieldDef = fieldInstance.GetFieldDef();
+					if ((fieldDef == NULL) || (fieldDef->mIsStatic))
+						continue;
+					if (fieldInstance.IsAppendedObject())
+					{
+						if (checkTypeInst != useThisType)
+						{
+							useThis = mBfIRBuilder->CreateBitCast(useThis, mBfIRBuilder->MapType(checkTypeInst));
+							useThisType = checkTypeInst;
+						}
+
+						BfIRValue fieldAddr = mBfIRBuilder->CreateInBoundsGEP(useThis, 0, fieldInstance.mDataIdx);
+						auto int8PtrVal = mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(int8PtrType));
+						mBfIRBuilder->CreateStore(GetConstValue8(BfObjectFlag_Deleted), int8PtrVal);
+					}
+				}
+
+				checkTypeInst = checkTypeInst->mBaseType;
+			}
 		}
 
 		skipUpdateSrcPos = true;

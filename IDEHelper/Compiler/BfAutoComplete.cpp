@@ -1741,7 +1741,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	{		
 		const char* tokens [] =
 		{
-			"alignof", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "const", "default", "defer",
+			"alignof", "append", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "const", "default", "defer",
 			"delegate", "delete", "do", "else", "false", "finally", 
 			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "isconst", "new", "mixin", "null",
 			"offsetof", "out", "params", "readonly", "ref", "rettype", "return",
@@ -1762,7 +1762,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	{
 		const char* tokens[] =
 		{
-			"abstract", "base", "class", "const", 
+			"abstract", "append", "base", "class", "const", 
 			"delegate", "extern", "enum", "explicit", "extension", "function",
 			"interface", "in", "implicit", "internal", "mixin", "namespace", "new",
 			"operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "rettype", "return",

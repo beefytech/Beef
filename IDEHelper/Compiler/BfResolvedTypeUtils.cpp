@@ -498,6 +498,8 @@ void BfFieldInstance::GetDataRange(int& dataIdx, int& dataCount)
 int BfFieldInstance::GetAlign(int packing)
 {
 	int align = mResolvedType->mAlign;
+	if (IsAppendedObject())
+		align = mResolvedType->ToTypeInstance()->mInstAlign;
 	if (packing > 0)
 		align = BF_MIN(align, packing);
 	if (mCustomAttributes != NULL)
@@ -526,6 +528,12 @@ int BfFieldInstance::GetAlign(int packing)
 		}
 	}
 	return align;
+}
+
+bool BfFieldInstance::IsAppendedObject()
+{
+	auto fieldDef = GetFieldDef();
+	return (fieldDef != NULL) && (fieldDef->mIsAppend) && (mResolvedType->IsObject()) && (mOwner->IsObject());
 }
 
 //////////////////////////////////////////////////////////////////////////

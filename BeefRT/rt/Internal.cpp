@@ -86,6 +86,7 @@ namespace bf
 			BFRT_EXPORT static void ObjectDynCheck(Object* object, int typeId, bool allowNull);
 			BFRT_EXPORT static void ObjectDynCheckFailed(Object* object, int typeId);			
 			BFRT_EXPORT static void ThrowIndexOutOfRange(intptr stackOffset);
+			BFRT_EXPORT static void ThrowObjectNotInitialized(intptr stackOffset);
 			BFRT_EXPORT static void FatalError(String* error, intptr stackOffset = 0);
 			BFRT_EXPORT static void MemCpy(void* dest, void* src, intptr length);
 			BFRT_EXPORT static void MemMove(void* dest, void* src, intptr length);
@@ -421,6 +422,30 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 	}
 	
 	Internal_FatalError("Index out of range");
+}
+
+void Internal::ThrowObjectNotInitialized(intptr stackOffset)
+{
+	if (gClientPipe != NULL)
+	{
+		if (gTestBreakOnFailure)
+		{
+			SETUP_ERROR("Object not initialized", (int)(2 + stackOffset));
+			BF_DEBUG_BREAK();
+		}
+
+		Beefy::String str = ":TestFail\tObject not initialized\n";
+		TestString(str);
+		exit(1);
+	}
+
+	if ((stackOffset != -1) && (::IsDebuggerPresent()))
+	{
+		SETUP_ERROR("Object not initialized", (int)(2 + stackOffset));
+		BF_DEBUG_BREAK();
+	}
+
+	Internal_FatalError("Object not initialized");
 }
 
 void Internal::FatalError(bf::System::String* error, intptr stackOffset)

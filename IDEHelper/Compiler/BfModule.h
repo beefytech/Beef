@@ -88,6 +88,7 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_FromConversionOp_Explicit = 0x10000000,
 	BfEvalExprFlags_AllowGenericConstValue = 0x20000000,
 	BfEvalExprFlags_IsExpressionBody = 0x40000000,
+	BfEvalExprFlags_AppendFieldInitializer = 0x80000000,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };
@@ -919,11 +920,13 @@ class BfConstResolveState
 public:
 	BfMethodInstance* mMethodInstance;
 	BfConstResolveState* mPrevConstResolveState;
+	bool mInCalcAppend;
 
 	BfConstResolveState()
 	{
 		mMethodInstance = NULL;
 		mPrevConstResolveState = NULL;
+		mInCalcAppend = false;
 	}
 };
 
@@ -1840,6 +1843,7 @@ public:
 	void CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLocal = false);
 	void ResolveConstField(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field, bool forceResolve = false);
 	BfTypedValue GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer = NULL, BfFieldDef* fieldDef = NULL, BfType* fieldType = NULL, bool doStore = false);
+	void AppendedObjectInit(BfFieldInstance* fieldInstance);
 	void MarkFieldInitialized(BfFieldInstance* fieldInstance);
 	bool IsThreadLocal(BfFieldInstance* fieldInstance);
 	BfType* ResolveVarFieldType(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field);	
@@ -1967,7 +1971,7 @@ public:
 	void AddMethodToWorkList(BfMethodInstance* methodInstance);
 	bool IsInterestedInMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef);
 	void CalcAppendAlign(BfMethodInstance* methodInst);
-	BfTypedValue TryConstCalcAppend(BfMethodInstance* methodInst, SizedArrayImpl<BfIRValue>& args);
+	BfTypedValue TryConstCalcAppend(BfMethodInstance* methodInst, SizedArrayImpl<BfIRValue>& args, bool force = false);
 	BfTypedValue CallBaseCtorCalc(bool constOnly);
 	void EmitCtorCalcAppend();	
 	void CreateStaticCtor();	
@@ -1980,7 +1984,8 @@ public:
 	void EmitDtorBody();
 	void EmitEnumToStringBody();
 	void EmitTupleToStringBody();		
-	void EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int memberDepth, int curOffset, HashSet<int>& objectOffsets, BfModuleMethodInstance markFromGCThreadMethodInstance);
+	void EmitGCMarkAppended(BfTypedValue markVal);
+	void EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int memberDepth, int curOffset, HashSet<int>& objectOffsets, BfModuleMethodInstance markFromGCThreadMethodInstance, bool isAppendObject = false);
 	void EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance markFromGCThreadMethodInstance);
 	void EmitGCMarkMembers();
 	void EmitGCFindTLSMembers();

@@ -610,6 +610,7 @@ public:
 	bool mIsInline;
 	bool mIsVolatile;
 	bool mIsExtern;	
+	bool mIsAppend;
 	bool mIsProperty;	
 	BfAstNode* mFieldDeclaration;
 	// It may seem that fields and properties don't need a 'mNextWithSameName', but with extensions it's possible
@@ -625,6 +626,7 @@ public:
 		mUsingProtection = BfProtection_Hidden;
 		mIsInline = false;
 		mIsExtern = false;
+		mIsAppend = false;
 		mIsVolatile = false;
 		mIsProperty = false;
 		mFieldDeclaration = NULL;
@@ -1680,7 +1682,8 @@ enum BfFieldFlags
 	BfFieldFlags_EnumPayload = 0x100,
 	BfFieldFlags_EnumDiscriminator = 0x200,
 	BfFieldFlags_EnumCase = 0x400,
-	BfFieldFlags_ReadOnly = 0x800
+	BfFieldFlags_ReadOnly = 0x800,
+	BfFieldFlags_Appended = 0x1000
 };
 
 enum BfReflectKind

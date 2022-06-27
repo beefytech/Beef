@@ -8,7 +8,8 @@ namespace System.Reflection
 		public enum Error
 		{
 			InvalidTargetType,
-			InvalidValueType
+			InvalidValueType,
+			AppendedField
 		}
 
 	    TypeInstance mTypeInstance;
@@ -24,6 +25,7 @@ namespace System.Reflection
 	    public int32 MemberOffset => (int32)mFieldData.mData;
 	    public Type FieldType => Type.[Friend]GetType(mFieldData.mFieldTypeId);
 		public bool IsConst => mFieldData.mFlags.HasFlag(.Const);
+		public bool IsAppended => mFieldData.mFlags.HasFlag(.Appended);
 		public bool IsEnumCase => mFieldData.mFlags.HasFlag(.EnumCase);
 		public bool IsReadOnly => mFieldData.mFlags.HasFlag(.ReadOnly);
 		public bool IsStatic => mFieldData.mFlags.HasFlag(.Static);
@@ -86,7 +88,12 @@ namespace System.Reflection
 			if (valueType == fieldType)
 			{
 				if (valueType.IsObject)
+				{
+					if (mFieldData.mFlags.HasFlag(.Appended))
+						return .Err(.AppendedField);
+
 					*((void**)dataAddr) = Internal.UnsafeCastToPtr(value);
+				}
 				else
 					Internal.MemCpy(dataAddr, valueDataAddr, fieldType.[Friend]mSize);
 			}
@@ -385,7 +392,10 @@ namespace System.Reflection
 			if (typeCode == TypeCode.Object)
 			{
 				value.[Friend]mStructType = 0;
-			    value.[Friend]mData = *(int*)targetDataAddr;
+				if (mFieldData.mFlags.HasFlag(.Appended))
+			    	value.[Friend]mData = (int)targetDataAddr;
+				else
+					value.[Friend]mData = *(int*)targetDataAddr;
 			}
 			else
 			{
