@@ -152,6 +152,7 @@ namespace System
 		static void MarkAppendedObject(Object obj)
 		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			ClassVData* maskedVData = (ClassVData*)(void*)(obj.[Friend]mClassVData & ~(int)0xFF);
 			if (maskedVData == null)
 				return;
@@ -160,6 +161,7 @@ namespace System
 				return;
 #endif
 			obj.[Friend]GCMarkMembers();
+#endif
 		}
 
 		static void MarkDerefedObject(Object* obj)
