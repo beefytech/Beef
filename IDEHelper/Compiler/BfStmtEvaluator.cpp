@@ -6343,6 +6343,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		if (targetTypeInstance != NULL)
 		{
 			PopulateType(targetTypeInstance, BfPopulateType_DataAndMethods);
+
 			auto getEnumeratorMethod = GetMethodByName(targetTypeInstance, "GetEnumerator", 0, true);
 			if (!getEnumeratorMethod)
 			{
@@ -6410,9 +6411,10 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			};
 
 			auto enumeratorTypeInst = itr.mType->ToTypeInstance();
-
-			if (enumeratorTypeInst != NULL)
+			while (enumeratorTypeInst != NULL)
 			{
+				PopulateType(enumeratorTypeInst, Beefy::BfPopulateType_Interfaces_All);
+
 				for (auto& interfaceRef : enumeratorTypeInst->mInterfaces)
 				{
 					BfTypeInstance* interface = interfaceRef.mInterfaceType;
@@ -6432,7 +6434,10 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 								varType = CreateRefType(varType);
 						}
 					}
+					break;
 				}
+
+				enumeratorTypeInst = enumeratorTypeInst->mBaseType;
 			}
 
 			if ((genericItrInterface == NULL) && (genericParamInst != NULL))
