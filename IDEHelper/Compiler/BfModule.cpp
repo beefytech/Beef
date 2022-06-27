@@ -4610,6 +4610,7 @@ void BfModule::AppendedObjectInit(BfFieldInstance* fieldInst)
 	auto ptrType = mBfIRBuilder->GetPointerTo(int8Type);
 	auto ptrPtrType = mBfIRBuilder->GetPointerTo(ptrType);
 
+	auto fieldTypeInst = fieldInst->mResolvedType->ToTypeInstance();
 
 	BfIRValue fieldAddr;
 	if (fieldDef->mIsStatic)
@@ -4622,9 +4623,8 @@ void BfModule::AppendedObjectInit(BfFieldInstance* fieldInst)
 
 	auto indexVal = BfTypedValue(CreateAlloca(intType), CreateRefType(intType));
 	auto intThisVal = mBfIRBuilder->CreatePtrToInt(thisValue.mValue, (intType->mSize == 4) ? BfTypeCode_Int32 : BfTypeCode_Int64);
-	mBfIRBuilder->CreateStore(intThisVal, indexVal.mValue);
-
-	auto ctorResult = exprEvaluator.MatchConstructor(fieldDef->GetNameNode(), NULL, thisValue, fieldInst->mResolvedType->ToTypeInstance(), resolvedArgs, false, true, &indexVal);
+	auto curValPtr = mBfIRBuilder->CreateAdd(intThisVal, GetConstValue(fieldTypeInst->mInstSize, intType));
+	mBfIRBuilder->CreateStore(curValPtr, indexVal.mValue);
 
 	auto vObjectAddr = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, 0);
 
@@ -4642,6 +4642,8 @@ void BfModule::AppendedObjectInit(BfFieldInstance* fieldInst)
 		auto thisFlagsPtr = mBfIRBuilder->CreateBitCast(thisValue.mValue, ptrType);
 		mBfIRBuilder->CreateStore(GetConstValue8(BfObjectFlag_AppendAlloc), thisFlagsPtr);
 	}
+
+	exprEvaluator.MatchConstructor(fieldDef->GetNameNode(), NULL, thisValue, fieldInst->mResolvedType->ToTypeInstance(), resolvedArgs, false, true, &indexVal);
 }
 
 void BfModule::CheckInterfaceMethod(BfMethodInstance* methodInstance)
