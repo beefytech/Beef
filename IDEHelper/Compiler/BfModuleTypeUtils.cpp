@@ -13905,14 +13905,17 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		else if (isConstraintCheck)
 		{
 			auto result = BfTypedValue(mBfIRBuilder->GetFakeVal(), operatorConstraintReturnType);
-			if (result.mType != toType)
+			if (result)
 			{
-				auto castedResult = CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
-				if (castedResult)
-					return castedResult;
+				if (result.mType != toType)
+				{
+					auto castedResult = CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
+					if (castedResult)
+						return castedResult;
+				}
+				else
+					return result.mValue;
 			}
-			else if (result)
-				return result.mValue;
 		}
 		else
 		{
