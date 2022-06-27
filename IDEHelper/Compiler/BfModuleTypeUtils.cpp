@@ -13911,7 +13911,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if (castedResult)
 					return castedResult;
 			}
-			if (result)
+			else if (result)
 				return result.mValue;
 		}
 		else
