@@ -4,6 +4,18 @@ using System;
 
 namespace System
 {
+	extension RefCounted<T>
+	{
+		public static RefCounted<T> Attach(RefCounted<T> val)
+		{
+			val.AddRef();
+			return val;
+		}
+	}
+}
+
+namespace System
+{
 	public extension Event<T>
 	{
 		public implicit void operator+=(T action) mut

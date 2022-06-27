@@ -1174,8 +1174,11 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 
 	if (typeInst->mTypeDef->mEmitParent != NULL)
 	{
-		auto emitTypeDef = typeInst->mTypeDef;		
-		typeInst->mTypeDef = emitTypeDef->mEmitParent;		
+		auto emitTypeDef = typeInst->mTypeDef;
+		typeInst->mTypeDef = emitTypeDef->mEmitParent;
+		if (typeInst->mTypeDef->mIsPartial)
+			typeInst->mTypeDef = mSystem->GetCombinedPartial(typeInst->mTypeDef);
+
 		BfLogSysM("Type %p queueing delete of typeDef %p, resetting typeDef to %p\n", typeInst, emitTypeDef, typeInst->mTypeDef);
 		if (emitTypeDef->mDefState != BfTypeDef::DefState_Deleted)
 		{

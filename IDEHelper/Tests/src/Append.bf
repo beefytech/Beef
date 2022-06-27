@@ -79,7 +79,7 @@ namespace Tests
 		class ClassF
 		{
 			public int mA = 123;
-			public append String mB = .(mA);
+			public append String mB = .(1024);
 			public int mC = 234;
 		}
 
