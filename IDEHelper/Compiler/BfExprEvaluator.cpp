@@ -5340,15 +5340,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			return BfTypedValue();
 		}
 		mModule->PopulateType(startCheckType, BfPopulateType_BaseType);
-	}
-
-	if ((startCheckType != NULL) && (mModule->mContext->mCurTypeState != NULL))
-	{
-		// Don't allow lookups yet
-		if ((mModule->mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes) &&
-			(startCheckType == mModule->mContext->mCurTypeState->mType))
-			return BfTypedValue();
-	}
+	}	
 
 	String findName;
 	int varSkipCount = 0;
@@ -5377,6 +5369,25 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		bool isBaseLookup = false;
 		while (curCheckType != NULL)
 		{
+			bool isPopulatingType = false;
+			if (mModule->mContext->mCurTypeState != NULL)
+			{
+				if (curCheckType == mModule->mContext->mCurTypeState->mType)
+				{
+					isPopulatingType = true;
+					if (mModule->mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes)
+					{
+						// Don't allow lookups yet
+						return BfTypedValue();
+					}
+				}
+			}
+			if ((!isPopulatingType) && (curCheckType->mDefineState < Beefy::BfTypeDefineState_Defined))
+			{
+				// We MAY have emitted fields so we need to do this
+				mModule->PopulateType(curCheckType);
+			}
+
 			curCheckType->mTypeDef->PopulateMemberSets();
 			BfFieldDef* nextField = NULL;
 			BfMemberSetEntry* entry;
