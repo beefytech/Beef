@@ -3553,13 +3553,13 @@ bool CeContext::AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value)
 {
 	if (mCurModule == NULL)
 		return false;
-	if (mCurModule->mCurTypeInstance == NULL)
+	if (mCallerTypeInstance == NULL)
 		return false;
 	if ((mCurEvalFlags & CeEvalFlags_NoRebuild) != 0)
 		return false;
-	if (mCurModule->mCurTypeInstance->mCeTypeInfo == NULL)
-		mCurModule->mCurTypeInstance->mCeTypeInfo = new BfCeTypeInfo();
-	mCurModule->mCurTypeInstance->mCeTypeInfo->mRebuildMap[key] = value;
+	if (mCallerTypeInstance->mCeTypeInfo == NULL)
+		mCallerTypeInstance->mCeTypeInfo = new BfCeTypeInfo();
+	mCallerTypeInstance->mCeTypeInfo->mRebuildMap[key] = value;
 	mCurModule->mCompiler->mHasComptimeRebuilds = true;
 	return true;
 }

@@ -2712,6 +2712,11 @@ public:
 
 void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 {	
+	auto populateModule = mModule->mContext->mUnreifiedModule;
+	auto typeInstance = type->ToTypeInstance();
+	if (typeInstance != NULL)
+		populateModule = typeInstance->mModule;
+
 	bool wantDIData = DbgHasInfo() && (!type->IsUnspecializedType());
 			
 	// Types that don't have a proper 'defining module' need to be defined in every module they are used	
@@ -2736,7 +2741,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	bool isPrimEnum = (type->IsEnum()) && (type->IsTypedPrimitive());
 
 	if (!type->IsDeclared())
-		mModule->PopulateType(type, BfPopulateType_Declaration);
+		populateModule->PopulateType(type, BfPopulateType_Declaration);
 
 	BF_ASSERT(type->IsDeclared());
 	
@@ -2747,8 +2752,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	BfIRType irType;
 	BfIRMDNode diType;
 	bool trackDIType = false;
-	
-	BfTypeInstance* typeInstance = type->ToTypeInstance();	
+		
 	BfType* underlyingArrayType = NULL;
 	int underlyingArraySize = -1;
 	bool underlyingArrayIsVector = false;
@@ -2758,7 +2762,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	if (type->IsPointer())
 	{
 		BfPointerType* pointerType = (BfPointerType*)type;				
-		mModule->PopulateType(pointerType->mElementType, BfPopulateType_Data);
+		populateModule->PopulateType(pointerType->mElementType, BfPopulateType_Data);
 		if (pointerType->mElementType->IsValuelessType())
 		{
 			irType = GetPrimitiveType(BfTypeCode_NullPtr);
@@ -3069,7 +3073,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		}
 		else if (type->IsTypedPrimitive())
 		{
-			mModule->PopulateType(type);
+			populateModule->PopulateType(type);
 			auto underlyingType = type->GetUnderlyingType();			
 			irType = MapType(underlyingType);		
 			SetType(type, irType);

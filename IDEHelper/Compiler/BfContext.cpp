@@ -2238,7 +2238,8 @@ void BfContext::UpdateRevisedTypes()
 
 			if (changed)
 			{
-				RebuildType(typeInst);
+				TypeDataChanged(typeInst, true);
+				TypeMethodSignaturesChanged(typeInst);
 			}
 		}
 
@@ -2312,7 +2313,7 @@ void BfContext::UpdateRevisedTypes()
 		if (isSignatureChange)
 		{
 			TypeDataChanged(typeInst, true);
-			TypeMethodSignaturesChanged(typeInst);			
+			TypeMethodSignaturesChanged(typeInst);
 		}
 
 		/*if (!mCompiler->mIsResolveOnly)
