@@ -2967,8 +2967,8 @@ namespace System
 	public struct StringSplitEnumerator : IEnumerator<StringView>
 	{
 		StringSplitOptions mSplitOptions;
-		char8 mSplitChar0;
-		char8[] mSplitChars;
+		char8 mFirstSeparator;
+		char8[] mSeparators;
 		char8* mPtr;
 		int_strsize mStrLen;
 		int32 mCurCount;
@@ -2976,15 +2976,15 @@ namespace System
 		int_strsize mPos;
 		int_strsize mMatchPos;
 
-		public this(char8* ptr, int strLength, char8[] splitChars, int count, StringSplitOptions splitOptions)
+		public this(char8* ptr, int strLength, char8[] separators, int count, StringSplitOptions splitOptions)
 		{
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
-			if (splitChars?.Count > 0)
-				mSplitChar0 = splitChars[0];
+			if (separators?.Count > 0)
+				mFirstSeparator = separators[0];
 			else
-				mSplitChar0 = '\0';
-			mSplitChars = splitChars;
+				mFirstSeparator = '\0';
+			mSeparators = separators;
 			mCurCount = 0;
 			mMaxCount = (int32)count;
 			mPos = 0;
@@ -2992,12 +2992,12 @@ namespace System
 			mSplitOptions = splitOptions;
 		}
 
-		public this(char8* ptr, int strLength, char8 splitChar, int count, StringSplitOptions splitOptions)
+		public this(char8* ptr, int strLength, char8 separator, int count, StringSplitOptions splitOptions)
 		{
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
-			mSplitChar0 = splitChar;
-			mSplitChars = null;
+			mFirstSeparator = separator;
+			mSeparators = null;
 			mCurCount = 0;
 			mMaxCount = (int32)count;
 			mPos = 0;
@@ -3078,18 +3078,18 @@ namespace System
 				else
 				{
 					char8 c = mPtr[mMatchPos];
-					if (c.IsWhiteSpace && mSplitChar0 == '\0' && (mSplitChars == null || mSplitChars.IsEmpty))
+					if (c.IsWhiteSpace && mFirstSeparator == '\0' && (mSeparators == null || mSeparators.IsEmpty))
 					{
 						foundMatch = true;
 					}
-					else if (c == mSplitChar0)
+					else if (c == mFirstSeparator)
 					{
 						foundMatch = true;
 					}
-					else if (mSplitChars != null)
+					else if (mSeparators != null)
 					{
-						for (int i = 1; i < mSplitChars.Count; i++)
-							if (c == mSplitChars[i])
+						for (int i = 1; i < mSeparators.Count; i++)
+							if (c == mSeparators[i])
 								foundMatch = true;
 					}
 				}
@@ -3127,8 +3127,8 @@ namespace System
 	public struct StringStringSplitEnumerator : IEnumerator<StringView>
 	{
 		StringSplitOptions mSplitOptions;
-		StringView mSplitChar0;
-		StringView[] mSplitChars;
+		StringView mFirstSeparator;
+		StringView[] mSeparators;
 		char8* mPtr;
 		int_strsize mStrLen;
 		int32 mCurCount;
@@ -3137,15 +3137,15 @@ namespace System
 		int_strsize mMatchPos;
 		int_strsize mMatchLen;
 
-		public this(char8* ptr, int strLength, StringView[] splitChars, int count, StringSplitOptions splitOptions)
+		public this(char8* ptr, int strLength, StringView[] separators, int count, StringSplitOptions splitOptions)
 		{
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
-			if (splitChars?.Count > 0)
-				mSplitChar0 = splitChars[0];
+			if (separators?.Count > 0)
+				mFirstSeparator = separators[0];
 			else
-				mSplitChar0 = .();
-			mSplitChars = splitChars;
+				mFirstSeparator = .();
+			mSeparators = separators;
 			mCurCount = 0;
 			mMaxCount = (int32)count;
 			mPos = 0;
@@ -3154,12 +3154,12 @@ namespace System
 			mSplitOptions = splitOptions;
 		}
 
-		public this(char8* ptr, int strLength, StringView splitChar, int count, StringSplitOptions splitOptions)
+		public this(char8* ptr, int strLength, StringView separator, int count, StringSplitOptions splitOptions)
 		{
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
-			mSplitChar0 = splitChar;
-			mSplitChars = null;
+			mFirstSeparator = separator;
+			mSeparators = null;
 			mCurCount = 0;
 			mMaxCount = (int32)count;
 			mPos = 0;
@@ -3240,24 +3240,24 @@ namespace System
 				}
 				else
 				{
-					if (mSplitChar0.IsNull && (mSplitChars == null || mSplitChars.IsEmpty) && mPtr[mMatchPos].IsWhiteSpace)
+					if (mFirstSeparator.IsNull && (mSeparators == null || mSeparators.IsEmpty) && mPtr[mMatchPos].IsWhiteSpace)
 					{
 						foundMatch = true;
 						mMatchLen = 1;
 					}
-					else if (mSplitChar0.Length <= mStrLen - mMatchPos && StringView(&mPtr[mMatchPos], mSplitChar0.Length) == mSplitChar0)
+					else if (mFirstSeparator.Length <= mStrLen - mMatchPos && StringView(&mPtr[mMatchPos], mFirstSeparator.Length) == mFirstSeparator)
 					{
 						foundMatch = true;
-						mMatchLen = (int_strsize)mSplitChar0.Length;
+						mMatchLen = (int_strsize)mFirstSeparator.Length;
 					}
-					else if (mSplitChars != null)
+					else if (mSeparators != null)
 					{
-						for (int i = 1; i < mSplitChars.Count; i++)
+						for (int i = 1; i < mSeparators.Count; i++)
 						{
-							if (mSplitChars[i].Length <= mStrLen - mMatchPos && StringView(&mPtr[mMatchPos], mSplitChars[i].Length) == mSplitChars[i])
+							if (mSeparators[i].Length <= mStrLen - mMatchPos && StringView(&mPtr[mMatchPos], mSeparators[i].Length) == mSeparators[i])
 							{
 								foundMatch = true;
-								mMatchLen = (int_strsize)mSplitChars[i].Length;
+								mMatchLen = (int_strsize)mSeparators[i].Length;
 							}
 						}
 					}
