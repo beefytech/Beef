@@ -24420,16 +24420,17 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 									methodInstance->mIsInnerOverride = true;
 									CheckOverridenMethod(methodInstance, checkMethodInstance);
 								}
-								else if ((methodDef->mDeclaringType->mProject != checkMethod->mDeclaringType->mProject) &&
-									(!checkMethod->mDeclaringType->IsExtension()))
+								else if (!checkMethod->mDeclaringType->IsExtension())
 								{
 									foundHiddenMethod = true;
 									if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
 										silentlyAllow = true;
 									else if (methodDef->mIsNew)
-									{										
+									{
 										silentlyAllow = true;
 									}
+									else if (checkMethod->GetMethodDeclaration() == NULL)
+										silentlyAllow = true;
 									else
 										extensionWarn = true;
 								}
@@ -24448,19 +24449,25 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 								auto refNode = methodDef->GetRefNode();
 								BfError* bfError;
 								if (extensionWarn)
-									bfError = Warn(BfWarning_CS0114_MethodHidesInherited,
-										StrFormat("This method hides a method in the root type definition. Use the 'new' keyword if the hiding was intentional. Note that this method is not callable from project '%s'.",
-											checkMethod->mDeclaringType->mProject->mName.c_str()), refNode);
+								{
+									if (methodDef->mDeclaringType->mProject != checkMethod->mDeclaringType->mProject)
+										bfError = Warn(BfWarning_CS0114_MethodHidesInherited,
+											StrFormat("This method hides a method in the root type definition. Use the 'new' keyword if the hiding was intentional. Note that this method is not callable from project '%s'.",
+												checkMethod->mDeclaringType->mProject->mName.c_str()), refNode);
+									else
+										bfError = Warn(BfWarning_CS0114_MethodHidesInherited,
+											"This method hides a method in the root type definition. Use the 'new' keyword if the hiding was intentional.", refNode);
+								}
 								else
 								{
-									bfError = Fail(StrFormat("Method '%s' already declared with the same parameter types", MethodToString(checkMethodInstance).c_str()), refNode, true);									
+									bfError = Fail(StrFormat("Method '%s' already declared with the same parameter types", MethodToString(checkMethodInstance).c_str()), refNode, true);
 								}
 								if ((bfError != NULL) && (checkMethod->GetRefNode() != refNode))
 									mCompiler->mPassInstance->MoreInfo("First declaration", checkMethod->GetRefNode());
 							}
 						}
 					}
-				}				
+				}
 			}
 		}
 
