@@ -2717,9 +2717,6 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	if ((typeInstance != NULL) && (typeInstance->mModule != NULL))
 		populateModule = typeInstance->mModule;
 
-	//TODO: Temporary
-	populateModule = mModule;
-
 	bool wantDIData = DbgHasInfo() && (!type->IsUnspecializedType());
 			
 	// Types that don't have a proper 'defining module' need to be defined in every module they are used	

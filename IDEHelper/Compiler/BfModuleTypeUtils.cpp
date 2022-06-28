@@ -1257,6 +1257,22 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 				}
 			}
 		}
+		else		
+		{
+			// If we're a type like "A*", make sure we reify "A" if necessary
+			auto checkUnderlying = resolvedTypeRef->GetUnderlyingType();
+			while (checkUnderlying != NULL)
+			{
+				auto checkTypeInst = checkUnderlying->ToTypeInstance();
+				if (checkTypeInst != NULL)
+				{
+					if (!checkTypeInst->mIsReified)
+						PopulateType(checkTypeInst, BfPopulateType_BaseType);
+					break;
+				}
+				checkUnderlying = checkUnderlying->GetUnderlyingType();
+			}
+		}
 	}
 
 	if (!resolvedTypeRef->IsIncomplete())
