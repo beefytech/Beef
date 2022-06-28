@@ -267,6 +267,18 @@ namespace Tests
 		    }
 		}
 
+		struct TestExtern<T>
+		{
+			public extern void MethodA();
+		}
+
+		extension TestExtern<T> where T : Char8
+		{
+			public override void MethodA()
+			{
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{

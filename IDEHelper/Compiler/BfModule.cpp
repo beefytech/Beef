@@ -24355,7 +24355,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				auto checkMethodInstance = typeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;				
 				if (checkMethodInstance == NULL)
 				{
-					if ((methodDef->mIsNew) && (methodDef->mDeclaringType->IsExtension()) && (!checkMethod->mDeclaringType->IsExtension()))
+					if ((methodDef->mDeclaringType->IsExtension()) && (!checkMethod->mDeclaringType->IsExtension()))
 						checkMethodInstance = GetRawMethodInstanceAtIdx(typeInstance, checkMethod->mIdx);
 					if (checkMethodInstance == NULL)
 						continue;
