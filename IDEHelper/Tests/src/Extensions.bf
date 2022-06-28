@@ -204,7 +204,7 @@ namespace Tests
 				return mTVal;
 			}
 
-			public int GetB()
+			public new int GetB()
 			{
 				return 2;
 			}

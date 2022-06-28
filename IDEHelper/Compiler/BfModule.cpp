@@ -24431,6 +24431,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 									}
 									else if (checkMethod->GetMethodDeclaration() == NULL)
 										silentlyAllow = true;
+									else if (methodDef->mIsOverride)
+										silentlyAllow = true;
 									else
 										extensionWarn = true;
 								}

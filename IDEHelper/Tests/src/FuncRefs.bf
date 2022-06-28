@@ -201,7 +201,7 @@ namespace Tests
 
 		extension MethodRefHolder<T> where T : Delegate
 		{
-			public void Dispose()
+			public new void Dispose()
 			{
 				delete mVal;
 			}
