@@ -5385,7 +5385,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			if ((!isPopulatingType) && (curCheckType->mDefineState < Beefy::BfTypeDefineState_Defined))
 			{
 				// We MAY have emitted fields so we need to do this
-				mModule->PopulateType(curCheckType);
+				mModule->mContext->mUnreifiedModule->PopulateType(curCheckType, Beefy::BfPopulateType_Interfaces_All);
 			}
 
 			curCheckType->mTypeDef->PopulateMemberSets();

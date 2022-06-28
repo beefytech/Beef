@@ -5221,6 +5221,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						{
 							if ((fieldTypeInst->mRebuildFlags & BfTypeRebuildFlag_UnderlyingTypeDeferred) != 0)
 							{
+								if (populateType < BfPopulateType_Data)
+								{
+									// We don't actually need the data - bail out
+									return;
+								}
+
 								BfAstNode* refNode = fieldDef->mFieldDeclaration;
 								String failStr;
 								failStr = StrFormat("Circular data reference detected between '%s' and '%s'", TypeToString(mCurTypeInstance).c_str(), TypeToString(fieldTypeInst).c_str());

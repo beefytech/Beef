@@ -2714,7 +2714,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 {	
 	auto populateModule = mModule->mContext->mUnreifiedModule;
 	auto typeInstance = type->ToTypeInstance();
-	if (typeInstance != NULL)
+	if ((typeInstance != NULL) && (typeInstance->mModule != NULL))
 		populateModule = typeInstance->mModule;
 
 	bool wantDIData = DbgHasInfo() && (!type->IsUnspecializedType());
