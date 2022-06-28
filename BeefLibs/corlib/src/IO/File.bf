@@ -31,7 +31,7 @@ namespace System.IO
 		public static Result<void, FileError> ReadAll(StringView path, List<uint8> outData)
 		{
 			FileStream fs = scope FileStream();
-			var result = fs.Open(path, .Open, .Read);
+			var result = fs.Open(path, .Open, .Read, .ReadWrite);
 			if (result case .Err(let err))
 				return .Err(.OpenError(err));
 
