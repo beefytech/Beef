@@ -23068,11 +23068,6 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 			}
 			else
 			{
-				if (mangledName == "?GCMarkStaticMembers@Glfw@GLFW@bf@@SAXXZ")
-				{
-					NOP;
-				}
-
 				func = mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, mangledName);
 				BfLogSysM("Creating FuncId:%d %s in module %p\n", func.mId, mangledName.c_str(), this);
 				if (methodInstance->mAlwaysInline)
