@@ -1004,6 +1004,12 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 			AddTypeMembers(mModule->mContext->mBfObjectType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis, false);
 	}
 
+	if (typeInst->IsInterface())
+	{
+		for (auto interface : typeInst->mInterfaces)
+			AddTypeMembers(interface.mInterfaceType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis, false);
+	}
+
 	if ((addStatic) && (allowImplicitThis) && (checkOuterType))
 	{
 		auto outerType = mModule->GetOuterType(typeInst);
