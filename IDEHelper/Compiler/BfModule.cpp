@@ -14566,7 +14566,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		addToWorkList = false;
 	}
 
-	if ((flags & BfGetMethodInstanceFlag_MethodInstanceOnly) != 0)
+	if (((flags & BfGetMethodInstanceFlag_MethodInstanceOnly) != 0) && (methodInstGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude))
 	{
 		addToWorkList = false;
 	}
@@ -23068,6 +23068,11 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 			}
 			else
 			{
+				if (mangledName == "?GCMarkStaticMembers@Glfw@GLFW@bf@@SAXXZ")
+				{
+					NOP;
+				}
+
 				func = mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, mangledName);
 				BfLogSysM("Creating FuncId:%d %s in module %p\n", func.mId, mangledName.c_str(), this);
 				if (methodInstance->mAlwaysInline)
