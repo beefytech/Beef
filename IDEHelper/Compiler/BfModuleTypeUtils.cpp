@@ -10906,7 +10906,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				{
 					if (auto genericTypeParent = BfNodeDynCast<BfGenericInstanceTypeRef>(mParentNodeEntry->mNode))
 					{
-						wantNumGenericArgs += (int)genericTypeParent->mGenericArguments.size();
+						wantNumGenericArgs = (int)genericTypeParent->mGenericArguments.size();
 						genericTypeRef = genericTypeParent;
 					}
 				}
