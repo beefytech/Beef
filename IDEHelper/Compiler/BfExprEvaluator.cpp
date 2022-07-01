@@ -17603,7 +17603,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 						}
 					}
 				}
-				else if (expectingType->IsStruct())
+				else if ((expectingType->IsStruct()) || (expectingType->IsTypedPrimitive()))
 				{
 					if ((wasCapturingMethodInfo) && (autoComplete->mMethodMatchInfo != NULL))
 					{						
