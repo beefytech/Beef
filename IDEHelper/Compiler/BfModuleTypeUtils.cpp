@@ -4924,7 +4924,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			if (hadNewMembers)
 			{
-				DoPopulateType(resolvedTypeRef, populateType);
+				// We need to avoid passing in BfPopulateType_Interfaces_All because it could cause us to miss out on new member processing,
+				//  including resizing the method group table
+				DoPopulateType(resolvedTypeRef, BF_MAX(populateType, BfPopulateType_Data));
 				return;
 			}
 
