@@ -196,5 +196,7 @@ namespace System
 		{
 		    TimeSpanFormat.[Friend]Format(this, format, formatProvider, outStr);
 		}
+
+		public static TimeSpan operator-(Self lhs, Self rhs) => .((int64)lhs - (int64)rhs);
     }
 }
