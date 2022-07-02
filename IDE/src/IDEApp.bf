@@ -5402,6 +5402,20 @@ namespace IDE
 			sysMenu.Modify(null, null, null, true, checkVal ? 1 : 0);
 		}
 
+		public Menu AddMenuItem(Menu menu, StringView label, StringView command = default)
+		{
+			var command;
+			if (command.IsEmpty)
+				command = label;
+			String labelStr = scope String(label);
+			if (mCommands.mCommandMap.TryGetAlt(command, var matchKey, var ideCommand))
+			{
+				labelStr.Append("|");
+				ideCommand.ToString(labelStr);
+			}
+			return menu.AddItem(labelStr);
+		}
+
 		public bool AreTestsRunning()
 		{
 			return (mTestManager != null);

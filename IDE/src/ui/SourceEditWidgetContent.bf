@@ -4819,15 +4819,15 @@ namespace IDE.ui
 					{
 	                    Menu menuItem;
 
-						menuItem = menu.AddItem("Go to Definition");
+						menuItem = gApp.AddMenuItem(menu, "Go to Definition", "Goto Definition");
 						menuItem.SetDisabled(!hasText);
 	                    menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.GoToDefinition(true));
 
-						menuItem = menu.AddItem("Find All References");
+						menuItem = gApp.AddMenuItem(menu, "Find All References");
 						menuItem.SetDisabled(!hasText);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.Cmd_FindAllReferences());
 
-						menuItem = menu.AddItem("Rename Symbol");
+						menuItem = gApp.AddMenuItem(menu, "Rename Symbol");
 						menuItem.SetDisabled(!hasText);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.Cmd_RenameSymbol());
 
@@ -4950,11 +4950,11 @@ namespace IDE.ui
 						menu.AddItem();
 						var debugger = IDEApp.sApp.mDebugger;
 						bool isPaused = debugger.IsPaused();
-						menuItem = menu.AddItem("Show Disassembly");
+						menuItem = gApp.AddMenuItem(menu, "Show Disassembly");
 						menuItem.SetDisabled(!isPaused);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.ShowDisassemblyAtCursor());
 
-						menuItem = menu.AddItem("Set Next Statement");
+						menuItem = gApp.AddMenuItem(menu, "Set Next Statement");
 						menuItem.SetDisabled(!isPaused);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.[Friend]SetNextStatement());
 

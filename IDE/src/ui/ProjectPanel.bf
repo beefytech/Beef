@@ -2717,7 +2717,7 @@ namespace IDE.ui
 						    });
 					}
 
-					item = menu.AddItem("Remove...");
+					item = menu.AddItem("Remove...|Del");
 					if (gApp.IsCompiling)
 						item.SetDisabled(true);
 					item.mOnMenuItemSelected.Add(new (item) =>
@@ -2725,7 +2725,7 @@ namespace IDE.ui
 							RemoveSelectedItems();
 						});
 
-					item = menu.AddItem("Rename");
+					item = gApp.AddMenuItem(menu, "Rename", "Rename Item");
 					if (gApp.IsCompiling)
 						item.SetDisabled(true);
 					item.mOnMenuItemSelected.Add(new (item) =>
@@ -2769,13 +2769,13 @@ namespace IDE.ui
 
                 if ((projectItem != null) && (!isProject))
                 {
-                    item = menu.AddItem("Remove ...");
+                    item = menu.AddItem("Remove ...|Del");
                     item.mOnMenuItemSelected.Add(new (item) =>
                         {
 							RemoveSelectedItems();
                         });
 
-					item = menu.AddItem("Rename");
+					item = gApp.AddMenuItem(menu, "Rename", "Rename Item");
 					item.mOnMenuItemSelected.Add(new (item) =>
 					    {
 							var projectItem = GetSelectedProjectItem();

@@ -90,10 +90,11 @@ namespace IDE
 		{
 			if (mParent == null)
 				return;
+			int startIdx = strBuffer.Length;
 			mParent.ToString(strBuffer);
 			if (mBoundKeyState != null)
 			{
-				if (!strBuffer.IsEmpty)
+				if (strBuffer.Length > startIdx)
 					strBuffer.Append(", ");
 				mBoundKeyState.ToString(strBuffer);
 			}
