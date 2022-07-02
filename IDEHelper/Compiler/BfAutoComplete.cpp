@@ -3155,6 +3155,8 @@ bool BfAutoComplete::CheckFixit(BfAstNode* node)
 {
 	if (mIgnoreFixits)
 		return false;
+	if (mModule == NULL)
+		return false;
 	if (mCompiler->mResolvePassData->mResolveType != BfResolveType_GetFixits)
 		return false;
 	if (!IsAutocompleteLineNode(node))

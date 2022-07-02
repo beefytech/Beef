@@ -2378,8 +2378,8 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 	if (emitParser->mSourceClassifier != NULL)
 	{
 		emitParser->mSourceClassifier->VisitChild(emitParser->mRootNode);
-		emitParser->mSourceClassifier->VisitChild(emitParser->mSidechannelRootNode);
-		emitParser->mSourceClassifier->VisitChild(emitParser->mErrorRootNode);
+		emitParser->mSourceClassifier->DeferNodes(emitParser->mSidechannelRootNode);
+		emitParser->mSourceClassifier->DeferNodes(emitParser->mErrorRootNode);
 	}
 
 	if (typeInstance->mTypeDef->mEmitParent != NULL)

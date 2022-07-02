@@ -6232,6 +6232,15 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 				((autoComplete->mResolveType != BfResolveType_Autocomplete) &&
 				(autoComplete->mResolveType != BfResolveType_Autocomplete_HighPri) &&
 				(autoComplete->mResolveType != BfResolveType_GetResultString));
+
+			for (auto& entry : mModule->mCompiler->mResolvePassData->mEmitEmbedEntries)
+			{
+				if (entry.mValue.mCursorIdx >= 0)
+				{
+					// Needed for Go To Definition in Compiler.Mixin
+					wantQuickEval = false;
+				}
+			}			
 		}
 
 		if (wantQuickEval)

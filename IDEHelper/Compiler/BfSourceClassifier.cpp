@@ -694,6 +694,19 @@ void BfSourceClassifier::MarkSkipped(BfAstNode* node)
 	MarkSkipped(node->GetSrcStart(), node->GetSrcEnd());
 }
 
+void BfSourceClassifier::DeferNodes(BfBlock* block)
+{
+	for (auto child : *block)
+		mDeferredNodes.Add(child);
+}
+
+void BfSourceClassifier::FlushDeferredNodes()
+{
+	for (auto node : mDeferredNodes)
+		VisitChild(node);
+	mDeferredNodes.Clear();
+}
+
 void BfSourceClassifier::Visit(BfTypeAliasDeclaration* typeDeclaration)
 {
 	if (typeDeclaration->mIgnoreDeclaration)

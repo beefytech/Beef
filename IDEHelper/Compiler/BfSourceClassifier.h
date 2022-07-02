@@ -70,6 +70,7 @@ public:
 	BfAstNode* mPrevNode;
 	BfAstNode* mCurMember;
 	BfLocalMethodDeclaration* mCurLocalMethodDeclaration;
+	Array<BfAstNode*> mDeferredNodes;
 
 public:
 	void HandleLeafNode(BfAstNode* node);
@@ -86,6 +87,8 @@ public:
 	void Handle(BfTypeDeclaration* typeDeclaration);
 	void MarkSkipped(int startPos, int endPos);
 	void MarkSkipped(BfAstNode* node);
+	void DeferNodes(BfBlock* block);
+	void FlushDeferredNodes();
 
 public:
 	BfSourceClassifier(BfParser* bfParser, CharData* charData);

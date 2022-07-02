@@ -64,6 +64,7 @@ public:
 	BfResolveType mResolveType;
 
 	Array<BfParser*> mParsers;
+	Dictionary<BfParser*, BfParser*> mCompatParserMap;
 	BfAutoComplete* mAutoComplete;
 	Array<BfTypeDef*> mAutoCompleteTempTypes; // Contains multiple values when we have nested types
 	Dictionary<BfTypeDef*, BfStaticSearch> mStaticSearchMap;

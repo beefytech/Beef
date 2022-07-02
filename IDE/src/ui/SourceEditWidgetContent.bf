@@ -1839,7 +1839,19 @@ namespace IDE.ui
                 int line;
                 int lineChar;
                 GetCursorLineChar(out line, out lineChar);
-                return IDEApp.sApp.mHistoryManager.CreateHistory(mSourceViewPanel, mSourceViewPanel.mFilePath, line, lineChar, ignoreIfClose);
+
+				String useFilePath = mSourceViewPanel.mFilePath;
+				if ((mSourceViewPanel.mFilePath.StartsWith("$Emit$")) &&
+					(!mSourceViewPanel.mFilePath.StartsWith("$Emit$Build$")) &&
+					(!mSourceViewPanel.mFilePath.StartsWith("$Emit$Resolve$")))
+				{
+					if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve)
+						useFilePath = scope:: String("$Emit$Resolve$")..Append(mSourceViewPanel.mFilePath.Substring("$Emit$".Length));
+					else
+						useFilePath = scope:: String("$Emit$Build$")..Append(mSourceViewPanel.mFilePath.Substring("$Emit$".Length));
+				}
+
+                return IDEApp.sApp.mHistoryManager.CreateHistory(mSourceViewPanel, useFilePath, line, lineChar, ignoreIfClose);
             }
 			return null;
         }
@@ -6505,7 +6517,7 @@ namespace IDE.ui
 
 			var data = PreparedData;
 
-			if (resolveType != .None)
+			if ((resolveType != null) && (resolveType != .None))
 			{
 				data.ClearCollapse();
 			}

@@ -1504,6 +1504,11 @@ namespace IDE
 					useFileName = scope:: $"$Emit${useFileName.Substring("$Emit$Build$".Length)}";
 					compiler = mBfBuildCompiler;
 				}
+				else if (useFileName.StartsWith("$Emit$Resolve$"))
+				{
+					useFileName = scope:: $"$Emit${useFileName.Substring("$Emit$Resolve$".Length)}";
+					compiler = mBfResolveCompiler;
+				}
 
 				if (!compiler.IsPerformingBackgroundOperation())
 					compiler.GetEmitSource(useFileName, outBuffer);
@@ -7153,31 +7158,76 @@ namespace IDE
 					return null;
 				}
 
-				var itr = filePath.Split('$');
-				itr.GetNext();
-				itr.GetNext();
-				var typeName = itr.GetNext().Value;
-
-				mBfBuildCompiler.mBfSystem.Lock(0);
-				var embedFilePath = mBfBuildCompiler.GetEmitLocation(typeName, line, .. scope .(), var embedLine, var embedLineChar, var embedHash);
-				mBfBuildCompiler.mBfSystem.Unlock();
-
+				String embedFilePath;
 				bool isViewValid = true;
+				StringView typeName;
+				int embedLine;
+				int embedLineChar;
 
-				if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve)
+				if (filePath.StartsWith("$Emit$Resolve$"))
 				{
-					mBfResolveCompiler.mBfSystem.Lock(0);
-					mBfResolveCompiler.GetEmitLocation(typeName, line, .. scope .(), var resolveLine, var resolveLineChar, var resolveHash);
-					mBfResolveCompiler.mBfSystem.Unlock();
-
-					if ((resolveLine != embedLine) || (resolveLineChar != embedLineChar) || (embedHash != resolveHash))
+					if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve)
 					{
+						var itr = filePath.Split('$');
+						itr.GetNext();
+						itr.GetNext();
+						itr.GetNext();
+						typeName = itr.GetNext().Value;
+	
+						mBfResolveCompiler.mBfSystem.Lock(0);
+						embedFilePath = mBfResolveCompiler.GetEmitLocation(typeName, line, .. scope:: .(), out embedLine, out embedLineChar, var embedHash);
+						mBfResolveCompiler.mBfSystem.Unlock();
+						
+						useFilePath = scope:: $"$Emit${useFilePath.Substring("$Emit$Resolve$".Length)}";
+					}
+					else
 						isViewValid = false;
-						useFilePath = scope:: $"$Emit$Build${useFilePath.Substring("$Emit$".Length)}";
+				}
+				else if (filePath.StartsWith("$Emit$Build$"))
+				{
+					if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Build)
+					{
+						var itr = filePath.Split('$');
+						itr.GetNext();
+						itr.GetNext();
+						itr.GetNext();
+						typeName = itr.GetNext().Value;
+	
+						mBfBuildCompiler.mBfSystem.Lock(0);
+						embedFilePath = mBfBuildCompiler.GetEmitLocation(typeName, line, .. scope:: .(), out embedLine, out embedLineChar, var embedHash);
+						mBfBuildCompiler.mBfSystem.Unlock();
+						
+						useFilePath = scope:: $"$Emit${useFilePath.Substring("$Emit$Build$".Length)}";
+					}
+					else
+						isViewValid = false;
+				}
+				else
+				{
+					var itr = filePath.Split('$');
+					itr.GetNext();
+					itr.GetNext();
+					typeName = itr.GetNext().Value;
+
+					mBfBuildCompiler.mBfSystem.Lock(0);
+					embedFilePath = mBfBuildCompiler.GetEmitLocation(typeName, line, .. scope:: .(), out embedLine, out embedLineChar, var embedHash);
+					mBfBuildCompiler.mBfSystem.Unlock();
+
+					if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve)
+					{
+						mBfResolveCompiler.mBfSystem.Lock(0);
+						mBfResolveCompiler.GetEmitLocation(typeName, line, scope .(), var resolveLine, var resolveLineChar, var resolveHash);
+						mBfResolveCompiler.mBfSystem.Unlock();
+
+						if ((resolveLine != embedLine) || (resolveLineChar != embedLineChar) || (embedHash != resolveHash))
+						{
+							isViewValid = false;
+							useFilePath = scope:: $"$Emit$Build${useFilePath.Substring("$Emit$".Length)}";
+						}
 					}
 				}
 
-				if ((!embedFilePath.IsEmpty) && (isViewValid))
+				if ((isViewValid) && (!embedFilePath.IsEmpty))
 				{
 					var sourceViewPanel = ShowSourceFile(scope .(embedFilePath), null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting).panel;
 					if (sourceViewPanel == null)

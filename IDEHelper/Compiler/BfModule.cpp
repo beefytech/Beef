@@ -11509,6 +11509,7 @@ void BfModule::ClearConstData()
 	mStringCharPtrPool.Clear();
 	mStringPoolRefs.Clear();
 	mUnreifiedStringPoolRefs.Clear();
+	mStaticFieldRefs.Clear();
 }
 
 BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType)
@@ -14860,11 +14861,11 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 		}
 	}	
 
-	if ((mIsScratchModule) && (mCompiler->mIsResolveOnly))
-	{
+	if ((mIsScratchModule) && (mCompiler->mIsResolveOnly) && (!fieldInstance->mOwner->IsInstanceOf(mCompiler->mCompilerTypeDef)))
+	{		
 		// Just fake it for the extern and unspecialized modules
-		// We can't do this for compilation because unreified methods with default params need to get acutal global variable refs
-		return BfTypedValue(mBfIRBuilder->CreateConstNull(), fieldInstance->GetResolvedType(), true);
+		// We can't do this for compilation because unreified methods with default params need to get actual global variable refs
+		return BfTypedValue(mBfIRBuilder->CreateConstNull(), fieldInstance->GetResolvedType(), true);	
 	}
 	
 	BfIRValue* globalValuePtr = NULL;

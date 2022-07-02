@@ -458,6 +458,12 @@ namespace Beefy.theme.dark
 			LineStartsChanged();
 		}
 
+		public override void ClearText()
+		{
+			mLineRange = null;
+			base.ClearText();
+		}
+
         public virtual float DrawText(Graphics g, String str, float x, float y, uint16 typeIdAndFlags)
         {
             using (g.PushColor(mTextColors[typeIdAndFlags & 0xFF]))

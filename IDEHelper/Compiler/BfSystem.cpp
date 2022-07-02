@@ -4075,6 +4075,10 @@ BF_EXPORT void* BfResolvePassData_GetEmitEmbedData(BfResolvePassData* resolvePas
 		return NULL;
 	*revision = emitEmbedEntry->mRevision;
 	*charCount = emitEmbedEntry->mParser->mSrcLength;
+
+	auto emitParser = emitEmbedEntry->mParser;
+	emitParser->mSourceClassifier->FlushDeferredNodes();	
+
 	return emitEmbedEntry->mParser->mSourceClassifier->mCharData;
 }
 

@@ -1493,6 +1493,10 @@ namespace IDE.ui
 					defer delete buildResolvePassData;
 					buildCollapseData = gApp.mBfBuildCompiler.GetCollapseRegions(buildParser, buildResolvePassData, explicitEmitTypeNames, .. scope:: .());
 				}
+				else
+				{
+					buildCollapseData = "";
+				}
 				gApp.mBfBuildSystem.Unlock();
 			}
 
@@ -2504,7 +2508,10 @@ namespace IDE.ui
             int32 prevLine = mEditWidget.Content.CursorLineAndColumn.mLine;
 			
             mEditWidget.Content.mSelection = null;
-            mEditWidget.Content.CursorTextPos = cursorIdx;
+
+			int wantCursorPos = Math.Min(mEditWidget.Content.mData.mTextLength - 1, cursorIdx);
+			if (wantCursorPos >= 0)
+            	mEditWidget.Content.CursorTextPos = wantCursorPos;
             mEditWidget.Content.CursorMoved();
             mEditWidget.Content.EnsureCursorVisible(true, true);
 			mEditWidget.Content.mCursorImplicitlyMoved = true;
@@ -6288,15 +6295,15 @@ namespace IDE.ui
 										emitEmbedView.mGenericMethodCombo?.mEditWidget.SetFocus();
 								}
 
-								var sourceViewPanel = emitEmbedView.mSourceViewPanel;
+								var firstSourceViewPanel = emitEmbedView.mSourceViewPanel;
 
-								var embedEWC = sourceViewPanel.mEditWidget.mEditWidgetContent;
+								var firstEmbedEWC = firstSourceViewPanel.mEditWidget.mEditWidgetContent;
 
-								var prevCursorLineAndColumn = embedEWC.CursorLineAndColumn;
+								var prevCursorLineAndColumn = firstEmbedEWC.CursorLineAndColumn;
 
-								var editData = sourceViewPanel.mEditWidget.mEditWidgetContent.mData;
+								var editData = firstSourceViewPanel.mEditWidget.mEditWidgetContent.mData;
 								if (editData.mTextLength == 0)
-									DeleteAndNullify!(sourceViewPanel.mTrackedTextElementViewList);
+									DeleteAndNullify!(firstSourceViewPanel.mTrackedTextElementViewList);
 
 								delete editData.mText;
 								editData.mText = embed.mCharData;
@@ -6307,15 +6314,23 @@ namespace IDE.ui
 								editData.mNextCharId = 0;
 								editData.mTextIdData.Insert(0, editData.mTextLength, ref editData.mNextCharId);
 
-								sourceViewPanel.mEditWidget.mEditWidgetContent.ContentChanged();
-								// We have a full classify now, FastClassify will just mess it up
-								sourceViewPanel.mSkipFastClassify = true; 
+								firstSourceViewPanel.mEmitRevision = embed.mRevision;
+								firstSourceViewPanel.InjectErrors(resolveResult.mPassInstance, editData.mText, editData.mTextIdData, false, true);
 
-								if (prevCursorLineAndColumn.mLine >= embedEWC.GetLineCount())
-									embedEWC.CursorLineAndColumn = .(embedEWC.GetLineCount() - 1, prevCursorLineAndColumn.mColumn);
-								
-								sourceViewPanel.mEmitRevision = embed.mRevision;
-								sourceViewPanel.InjectErrors(resolveResult.mPassInstance, editData.mText, editData.mTextIdData, false, true);
+								for (var user in editData.mUsers)
+								{
+									if (var embedEWC = user as SourceEditWidgetContent)
+									{
+										var sourceViewPanel = embedEWC.mSourceViewPanel;
+
+										sourceViewPanel.mEditWidget.mEditWidgetContent.ContentChanged();
+										// We have a full classify now, FastClassify will just mess it up
+										sourceViewPanel.mSkipFastClassify = true; 
+
+										if (prevCursorLineAndColumn.mLine >= firstEmbedEWC.GetLineCount())
+											embedEWC.CursorLineAndColumn = .(firstEmbedEWC.GetLineCount() - 1, prevCursorLineAndColumn.mColumn);
+									}
+								}
 							}
 						}
 					}
@@ -6868,11 +6883,14 @@ namespace IDE.ui
 					{
 						if (mQueuedCollapseData.mBuildData != null)
 						{
+							bool foundData = false;
+
 							using (gApp.mMonitor.Enter())
 							{                
 							    var projectSourceCompileInstance = gApp.mWorkspace.GetProjectSourceCompileInstance(projectSource, gApp.mWorkspace.HotCompileIdx);
 								if (projectSourceCompileInstance != null)
 								{
+									foundData = true;
 									ewc.ParseCollapseRegions(mQueuedCollapseData.mBuildData, mQueuedCollapseData.mTextVersion, ref projectSourceCompileInstance.mSourceCharIdData, null);
 
 									HashSet<EditWidgetContent.Data> dataLoaded = scope .();
@@ -6890,6 +6908,20 @@ namespace IDE.ui
 													emitEmbed.mView.mSourceViewPanel.mWantsFastClassify = true;
 												}
 											}
+										}
+									}
+								}
+							}
+
+							if (!foundData)
+							{
+								for (var embed in ewc.mEmbeds.Values)
+								{
+									if (var emitEmbed = embed as SourceEditWidgetContent.EmitEmbed)
+									{
+										if (emitEmbed.mView != null)
+										{
+											emitEmbed.mView.mSourceViewPanel.mEditWidget.mEditWidgetContent.ClearText();
 										}
 									}
 								}

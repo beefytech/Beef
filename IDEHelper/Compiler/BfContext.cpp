@@ -592,6 +592,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 				auto owner = methodInstance->mMethodInstanceGroup->mOwner;
 
+				auto autoComplete = mCompiler->GetAutoComplete();
+
 				BF_ASSERT(!module->mAwaitingFinish);
 				if ((resolveParser != NULL) && (methodInstance->mMethodDef->mDeclaringType != NULL) && (methodInstance->mMethodDef->mDeclaringType->GetDefinition()->mSource != resolveParser))
 				{
@@ -599,6 +601,39 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mHasCursorIdx))
 					{
 						auto parser = methodInstance->mMethodDef->mDeclaringType->GetLastSource()->ToParser();
+
+						if ((parser != NULL) && (autoComplete != NULL) && (autoComplete->mModule == NULL))
+						{
+							bool emitHasCursor = false;
+							for (auto& checkEntry : mCompiler->mResolvePassData->mEmitEmbedEntries)
+							{
+								if (checkEntry.mValue.mCursorIdx >= 0)
+									emitHasCursor = true;
+							}
+
+							if (emitHasCursor)
+							{
+								// Go To Definition in an emit mixin?
+								BfParser** foundParserPtr = NULL;
+								if (mCompiler->mResolvePassData->mCompatParserMap.TryAdd(parser, NULL, &foundParserPtr))
+								{
+									*foundParserPtr = NULL;
+									for (auto checkParser : mCompiler->mResolvePassData->mParsers)
+									{
+										if ((checkParser->mFileName == parser->mFileName) && (checkParser->mOrigSrcLength == parser->mOrigSrcLength) &&
+											(memcmp(checkParser->mSrc, parser->mSrc, checkParser->mOrigSrcLength) == 0))
+										{
+											*foundParserPtr = checkParser;
+										}
+									}
+								}
+
+								auto* compatParser = *foundParserPtr;
+								if (compatParser != NULL)
+									allow = true;
+							}
+						}
+
 						if ((parser != NULL) && (parser->mCursorIdx >= 0))
 							allow = true;
 					}
@@ -616,13 +651,12 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				{
 					if (!mCompiler->mIsResolveOnly)
 						BF_ASSERT(!methodInstance->mIsReified || methodInstance->mDeclModule->mIsModuleMutable);
-
-					auto autoComplete = mCompiler->GetAutoComplete();
+					
 					if ((autoComplete != NULL) && (autoComplete->mModule == NULL))
 					{
-						autoComplete->mModule = methodInstance->mDeclModule;
+						autoComplete->SetModule(methodInstance->mDeclModule);
 						ProcessMethod(methodInstance);
-						autoComplete->mModule = NULL;
+						autoComplete->SetModule(NULL);
 					}
 					else
 						ProcessMethod(methodInstance);
