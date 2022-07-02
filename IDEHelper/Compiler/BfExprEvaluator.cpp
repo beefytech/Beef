@@ -1673,11 +1673,19 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		if ((methodInstance->mVirtualTableIdx < targetTypeInstance->mVirtualMethodTable.mSize) && (methodInstance->mVirtualTableIdx >= 0))
 		{
 			BfVirtualMethodEntry& vEntry = targetTypeInstance->mVirtualMethodTable[methodInstance->mVirtualTableIdx];
-			auto implMethod = (BfMethodInstance*)vEntry.mImplementingMethod;
-			if ((implMethod != methodInstance) && (implMethod != NULL))
+			if ((vEntry.mImplementingMethod.mTypeInstance != NULL) && (vEntry.mImplementingMethod.mTypeInstance->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted) &&
+				(mModule->mCompiler->IsAutocomplete()))
 			{
-				SetAndRestoreValue<bool> prevBypassVirtual(mBypassVirtual, true);
-				return CheckMethod(targetTypeInstance, implMethod->GetOwner(), implMethod->mMethodDef, isFailurePass);
+				// Silently ignore
+			}
+			else
+			{
+				auto implMethod = (BfMethodInstance*)vEntry.mImplementingMethod;
+				if ((implMethod != methodInstance) && (implMethod != NULL))
+				{
+					SetAndRestoreValue<bool> prevBypassVirtual(mBypassVirtual, true);
+					return CheckMethod(targetTypeInstance, implMethod->GetOwner(), implMethod->mMethodDef, isFailurePass);
+				}
 			}
 		}
 		else
