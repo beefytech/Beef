@@ -10882,6 +10882,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					genericTypeRef->mElementType->ToString(findName);
 				else
 					qualifiedTypeRef->mRight->ToString(findName);
+				if ((resolveFlags & BfResolveTypeRefFlag_Attribute) != 0)
+					findName += "Attribute";
 			}
 			else if ((activeTypeDef != NULL) && (activeTypeDef->mNamespace.EndsWith(leftComposite)))
 			{
