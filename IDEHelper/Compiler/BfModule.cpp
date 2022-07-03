@@ -14736,7 +14736,7 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mAllocStackCount), GetPrimitiveType(BfTypeCode_Int32));
 	}
 
-	if (mCurMethodState->mMixinState != NULL)
+	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
 	{
 		if (str == "#CallerLineNum")
 		{
