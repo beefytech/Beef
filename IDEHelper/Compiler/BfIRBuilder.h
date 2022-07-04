@@ -299,6 +299,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_Func_SetParamName,	
 	BfIRCmd_Func_DeleteBody,
 	BfIRCmd_Func_SafeRename,
+	BfIRCmd_Func_SafeRenameFrom,
 	BfIRCmd_Func_SetLinkage,
 
 	BfIRCmd_Comptime_Error,
@@ -1336,6 +1337,7 @@ public:
 	void Func_SetParamName(BfIRFunction func, int argIdx, const StringImpl& name);	
 	void Func_DeleteBody(BfIRFunction func);
 	void Func_SafeRename(BfIRFunction func);
+	void Func_SafeRenameFrom(BfIRFunction func, const StringImpl& prevName);
 	void Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage);
 	
 	void Comptime_Error(int errorKind);

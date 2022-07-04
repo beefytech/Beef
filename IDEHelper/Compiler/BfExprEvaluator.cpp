@@ -2928,7 +2928,7 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 
 						bool isBetter;
 						bool isWorse;
-						mModule->CompareDeclTypes(iface.mDeclaringType, bestIFaceEntry->mDeclaringType, isBetter, isWorse);						
+						mModule->CompareDeclTypes(NULL, iface.mDeclaringType, bestIFaceEntry->mDeclaringType, isBetter, isWorse);						
 						if (isBetter == isWorse)
 						{
 							// Failed
@@ -18669,7 +18669,7 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 
 						bool isBetter;
 						bool isWorse;
-						mModule->CompareDeclTypes(iface.mDeclaringType, bestIFaceEntry->mDeclaringType, isBetter, isWorse);						
+						mModule->CompareDeclTypes(NULL, iface.mDeclaringType, bestIFaceEntry->mDeclaringType, isBetter, isWorse);						
 						if (isBetter == isWorse)
 						{
 							// Failed

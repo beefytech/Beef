@@ -2647,6 +2647,14 @@ void BeIRCodeGen::HandleNextCmd()
 			func->mName += StrFormat("__RENAME%d", curId);
 		}
 		break;
+	case BfIRCmd_Func_SafeRenameFrom:
+		{
+			CMD_PARAM(BeFunction*, func);
+			CMD_PARAM(String, prevName);
+			if (func->mName == prevName)
+				func->mName += StrFormat("__RENAME%d", curId);
+		}
+		break;
 	case BfIRCmd_Func_SetLinkage:
 		{
 			CMD_PARAM(BeFunction*, func);

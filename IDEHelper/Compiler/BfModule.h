@@ -2027,7 +2027,7 @@ public:
 	bool StrictCompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstance* methodB); // Compares return types and static
 	bool IsCompatibleInterfaceMethod(BfMethodInstance* methodA, BfMethodInstance* methodB);
 	void UniqueSlotVirtualMethod(BfMethodInstance* methodInstance);	
-	void CompareDeclTypes(BfTypeDef* newDeclType, BfTypeDef* prevDeclType, bool& isBetter, bool& isWorse);
+	void CompareDeclTypes(BfTypeInstance* typeInst, BfTypeDef* newDeclType, BfTypeDef* prevDeclType, bool& isBetter, bool& isWorse);
 	bool SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityContext* ambiguityContext = NULL);	
 	void CheckOverridenMethod(BfMethodInstance* methodInstance, BfMethodInstance* methodOverriden);
 	bool SlotInterfaceMethod(BfMethodInstance* methodInstance);	

@@ -3997,6 +3997,14 @@ void BfIRCodeGen::HandleNextCmd()
 			func->setName(llvm::Twine((Beefy::String(func->getName().data()) + StrFormat("__RENAME%d", curId)).c_str()));
 		}
 		break;
+	case BfIRCmd_Func_SafeRenameFrom:
+		{
+			CMD_PARAM(llvm::Function*, func);
+			CMD_PARAM(String, prevName);
+			if (String(func->getName().data()) == prevName)
+				func->setName(llvm::Twine((Beefy::String(func->getName().data()) + StrFormat("__RENAME%d", curId)).c_str()));
+		}
+		break;
 	case BfIRCmd_Func_SetLinkage:
 		{
 			CMD_PARAM(llvm::Function*, func);

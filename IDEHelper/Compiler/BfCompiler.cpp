@@ -5827,13 +5827,53 @@ void BfCompiler::PopulateReified()
 
 						if ((declaringMethod->mIsReified) && (declaringMethod->mMethodInstanceGroup->IsImplemented()))
 						{
-							BfMethodInstance* implMethod = vEntry.mImplementingMethod;
-							if ((implMethod != NULL) && ((!implMethod->mMethodInstanceGroup->IsImplemented()) || (!implMethod->mIsReified)))
+							if (vEntry.mImplementingMethod.mKind == BfMethodRefKind_AmbiguousRef)
 							{
-								didWork = true;
-								if (!typeInst->mModule->mIsModuleMutable)
-									typeInst->mModule->StartExtension();
-								typeInst->mModule->GetMethodInstance(implMethod);
+								auto checkTypeInst = typeInst;
+
+								while (checkTypeInst != NULL)
+								{
+									BfMemberSetEntry* memberSetEntry;
+									if (checkTypeInst->mTypeDef->mMethodSet.TryGetWith(String(declaringMethod->mMethodDef->mName), &memberSetEntry))
+									{
+										BfMethodDef* methodDef = (BfMethodDef*)memberSetEntry->mMemberDef;
+										while (methodDef != NULL)
+										{
+											if ((methodDef->mIsOverride) && (methodDef->mParams.mSize == declaringMethod->mMethodDef->mParams.mSize))
+											{
+												auto implMethod = typeInst->mModule->GetRawMethodInstance(typeInst, methodDef);
+												if (typeInst->mModule->CompareMethodSignatures(declaringMethod, implMethod))
+												{
+													if ((implMethod != NULL) && ((!implMethod->mMethodInstanceGroup->IsImplemented()) || (!implMethod->mIsReified)))
+													{
+														didWork = true;
+														if (!typeInst->mModule->mIsModuleMutable)
+															typeInst->mModule->StartExtension();
+														typeInst->mModule->GetMethodInstance(implMethod);
+													}
+												}
+											}
+											
+											methodDef = methodDef->mNextWithSameName;
+										}
+									}
+
+									if (checkTypeInst == declaringMethod->GetOwner())
+										break;
+
+									checkTypeInst = checkTypeInst->mBaseType;
+								}
+							}
+							else
+							{
+								BfMethodInstance* implMethod = vEntry.mImplementingMethod;
+								if ((implMethod != NULL) && ((!implMethod->mMethodInstanceGroup->IsImplemented()) || (!implMethod->mIsReified)))
+								{
+									didWork = true;
+									if (!typeInst->mModule->mIsModuleMutable)
+										typeInst->mModule->StartExtension();
+									typeInst->mModule->GetMethodInstance(implMethod);
+								}
 							}
 						}
 					}

@@ -5547,6 +5547,12 @@ void BfIRBuilder::Func_SafeRename(BfIRFunction func)
 	NEW_CMD_INSERTED;
 }
 
+void BfIRBuilder::Func_SafeRenameFrom(BfIRFunction func, const StringImpl& prevName)
+{
+	WriteCmd(BfIRCmd_Func_SafeRenameFrom, func, prevName);
+	NEW_CMD_INSERTED;
+}
+
 void BfIRBuilder::Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage)
 {
 	WriteCmd(BfIRCmd_Func_SetLinkage, func, (uint8)linkage);

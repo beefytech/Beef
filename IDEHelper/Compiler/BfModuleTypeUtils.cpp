@@ -6786,7 +6786,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 											bool isWorse = TypeIsSubTypeOf(bestInterface, checkIFaceInst);
 											if (isBetter == isWorse)
 											{
-												CompareDeclTypes(checkIFaceMethodInst->mMethodDef->mDeclaringType, bestMethodInst->mMethodDef->mDeclaringType, isBetter, isWorse);
+												CompareDeclTypes(NULL, checkIFaceMethodInst->mMethodDef->mDeclaringType, bestMethodInst->mMethodDef->mDeclaringType, isBetter, isWorse);
 											}
 											if ((isBetter) && (!isWorse))
 											{

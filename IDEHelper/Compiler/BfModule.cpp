@@ -6283,7 +6283,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						isWorse = false;
 					}
 					if (isBetter == isWorse)								
-						CompareDeclTypes(interfaceEntry.mDeclaringType, prevEntry->mDeclaringType, isBetter, isWorse);
+						CompareDeclTypes(checkTypeInst, interfaceEntry.mDeclaringType, prevEntry->mDeclaringType, isBetter, isWorse);
 					if (isBetter == isWorse)
 					{
 						if (matchEntry->mAmbiguousEntries.empty())
@@ -18675,7 +18675,7 @@ void BfModule::CallChainedMethods(BfMethodInstance* methodInstance, bool reverse
 		{
 			bool isBetter;
 			bool isWorse;
-			CompareDeclTypes(lhs->mMethodDef->mDeclaringType, rhs->mMethodDef->mDeclaringType, isBetter, isWorse);
+			CompareDeclTypes(mCurTypeInstance, lhs->mMethodDef->mDeclaringType, rhs->mMethodDef->mDeclaringType, isBetter, isWorse);
 			if (isBetter == isWorse)
 			{
 				return false;
@@ -22975,7 +22975,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 				{
 					BfLogSysM("Function collision from inner override erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
 					if (!mIsComptimeModule)
-						mBfIRBuilder->Func_SafeRename(prevFunc);
+						mBfIRBuilder->Func_SafeRenameFrom(prevFunc, mangledName);
 				}
 			}
 			else if (methodDef->mIsExtern)
@@ -23000,7 +23000,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 			{
 				BfLogSysM("Function collision erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
 				if (!mIsComptimeModule)
-					mBfIRBuilder->Func_SafeRename(prevFunc);
+					mBfIRBuilder->Func_SafeRenameFrom(prevFunc, mangledName);
 			}
 		}
 	}
@@ -24387,7 +24387,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 					{
 						bool isBetter;
 						bool isWorse;
-						CompareDeclTypes(checkMethodInstance->mMethodDef->mDeclaringType, methodInstance->mMethodDef->mDeclaringType, isBetter, isWorse);
+						CompareDeclTypes(typeInstance, checkMethodInstance->mMethodDef->mDeclaringType, methodInstance->mMethodDef->mDeclaringType, isBetter, isWorse);
 						if (isBetter && !isWorse)
 						{
 							methodInstance->mChainType = BfMethodChainType_ChainHead;
@@ -24634,7 +24634,7 @@ void BfModule::UniqueSlotVirtualMethod(BfMethodInstance* methodInstance)
 	}
 }
 
-void BfModule::CompareDeclTypes(BfTypeDef* newDeclType, BfTypeDef* prevDeclType, bool& isBetter, bool& isWorse)
+void BfModule::CompareDeclTypes(BfTypeInstance* typeInst, BfTypeDef* newDeclType, BfTypeDef* prevDeclType, bool& isBetter, bool& isWorse)
 {	
 	if ((!prevDeclType->IsExtension()) && (newDeclType->IsExtension()))
 	{
@@ -24646,7 +24646,33 @@ void BfModule::CompareDeclTypes(BfTypeDef* newDeclType, BfTypeDef* prevDeclType,
 	{
 		isBetter = newDeclType->mProject->ContainsReference(prevDeclType->mProject);
 		isWorse = prevDeclType->mProject->ContainsReference(newDeclType->mProject);				
-	}			
+	}
+
+	if ((isBetter == isWorse) && (typeInst != NULL) && (newDeclType->IsExtension()) && (prevDeclType->IsExtension()))
+	{
+		if ((typeInst->mGenericTypeInfo != NULL) && (typeInst->mGenericTypeInfo->mGenericExtensionInfo != NULL))
+		{
+			isBetter = false;
+			isWorse = false;
+
+			auto newConstraints = typeInst->GetGenericParamsVector(newDeclType);
+			auto prevConstraints = typeInst->GetGenericParamsVector(prevDeclType);
+
+			for (int genericIdx = 0; genericIdx < (int)newConstraints->size(); genericIdx++)
+			{
+				auto newConstraint = (*newConstraints)[genericIdx];
+				auto prevConstraint = (*prevConstraints)[genericIdx];
+
+				bool newIsSubset = AreConstraintsSubset(newConstraint, prevConstraint);
+				bool prevIsSubset = AreConstraintsSubset(prevConstraint, newConstraint);
+
+				if ((prevIsSubset) && (!newIsSubset))
+					isBetter = true;
+				if ((!prevIsSubset) && (newIsSubset))
+					isWorse = true;
+			}
+		}
+	}
 }
 
 bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityContext* ambiguityContext)
@@ -25028,7 +25054,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						{
 							bool isBetter = false;
 							bool isWorse = false;
-							CompareDeclTypes(methodInstance->mMethodDef->mDeclaringType, methodOverriden->mMethodDef->mDeclaringType, isBetter, isWorse);
+							CompareDeclTypes(typeInstance, methodInstance->mMethodDef->mDeclaringType, methodOverriden->mMethodDef->mDeclaringType, isBetter, isWorse);
 							if (isBetter == isWorse)
 							{
 								// We have to resolve later per-project
@@ -25250,7 +25276,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 					isBetter = (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mExplicitInterface != NULL);
 					isWorse = (prevMethod->mMethodInfoEx != NULL) && (prevMethod->mMethodInfoEx->mExplicitInterface != NULL);
 					if (isBetter == isWorse)
-						CompareDeclTypes(methodInstance->mMethodDef->mDeclaringType, prevMethod->mMethodDef->mDeclaringType, isBetter, isWorse);
+						CompareDeclTypes(typeInstance, methodInstance->mMethodDef->mDeclaringType, prevMethod->mMethodDef->mDeclaringType, isBetter, isWorse);
 					if (isBetter == isWorse)
 					{
 						if (ambiguityContext != NULL)
