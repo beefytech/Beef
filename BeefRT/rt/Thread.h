@@ -39,7 +39,7 @@ namespace bf
 			private:
 				BfInternalThread* SetupInternalThread();
 
-				BFRT_EXPORT void ManualThreadInit();				
+				BFRT_EXPORT void ManualThreadInit();								
 				BFRT_EXPORT int GetPriorityNative();
 				BFRT_EXPORT void SetPriorityNative(int priority);
 				BFRT_EXPORT void SetJoinOnDelete(bool joinOnDelete);
@@ -59,7 +59,7 @@ namespace bf
 				BFRT_EXPORT void SetBackgroundNative(bool isBackground);
 				BFRT_EXPORT int GetThreadStateNative();
 				BFRT_EXPORT void InformThreadNameChange(String* name);				
-				BFRT_EXPORT int GetThreadId();
+				BFRT_EXPORT intptr GetThreadId();
 
 				BFRT_EXPORT void Dbg_CreateInternal();
 
@@ -68,6 +68,7 @@ namespace bf
 				BFRT_EXPORT void Resume();
 				BFRT_EXPORT void Abort();
 
+				BFRT_EXPORT static void RequestExitNotify();
 				BFRT_EXPORT static void MemoryBarrier();
 
 				static Thread* Alloc()

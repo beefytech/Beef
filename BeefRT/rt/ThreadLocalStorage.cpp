@@ -35,7 +35,7 @@ uint32 BfTLSManager::Alloc()
 		}
 	}
 
-    mAllocatedKeys[idx] = BfpTLS_Create();
+    mAllocatedKeys[idx] = BfpTLS_Create(NULL);
 	mAssociatedTLSDatums[idx] = NULL;
 	return idx;
 }

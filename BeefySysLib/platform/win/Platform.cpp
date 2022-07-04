@@ -2530,24 +2530,24 @@ BFP_EXPORT void BFP_CALLTYPE BfpCritSect_Leave(BfpCritSect* critSect)
 #define BFPTLS_TO_DWORD(val) ((DWORD)(intptr)(val))
 
 struct BfpTLS;
-BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create()
+BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create(BfpTLSProc exitProc)
 {
-	return DWORD_TO_BFPTLS(::TlsAlloc());
+	return DWORD_TO_BFPTLS(::FlsAlloc(exitProc));
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpTLS_Release(BfpTLS* tls)
 {
-	::TlsFree(BFPTLS_TO_DWORD(tls));
+	::FlsFree(BFPTLS_TO_DWORD(tls));
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpTLS_SetValue(BfpTLS* tls, void* value)
 {
-	::TlsSetValue(BFPTLS_TO_DWORD(tls), value);
+	::FlsSetValue(BFPTLS_TO_DWORD(tls), value);
 }
 
 BFP_EXPORT void* BFP_CALLTYPE BfpTLS_GetValue(BfpTLS* tls)
 {
-	return ::TlsGetValue(BFPTLS_TO_DWORD(tls));
+	return ::FlsGetValue(BFPTLS_TO_DWORD(tls));
 }
 
 BFP_EXPORT BfpEvent* BFP_CALLTYPE BfpEvent_Create(BfpEventFlags flags)

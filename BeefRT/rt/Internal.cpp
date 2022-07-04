@@ -55,6 +55,12 @@ static Beefy::StringT<0> gCmdLineString;
 bf::System::Runtime::BfRtCallbacks gBfRtCallbacks;
 BfRtFlags gBfRtFlags = (BfRtFlags)0;
 
+#ifdef BF_PLATFORM_WINDOWS
+DWORD gBfTLSKey = 0;
+#else
+pthread_key_t gBfTLSKey = 0;
+#endif
+
 static int gTestMethodIdx = -1;
 static uint32 gTestStartTick = 0;
 static bool gTestBreakOnFailure = false;
@@ -287,6 +293,11 @@ static void GetCrashInfo()
 	}
 }
 
+static void NTAPI TlsFreeFunc(void* ptr)
+{
+	gBfRtCallbacks.Thread_Exiting();
+}
+
 void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 {
 	BfpSystemInitFlags sysInitFlags = BfpSystemInitFlag_InstallCrashCatcher;
@@ -343,6 +354,12 @@ void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 			useCmdLineStr++;
 	}
 	gCmdLineString = useCmdLineStr;
+
+#ifdef BF_PLATFORM_WINDOWS
+	gBfTLSKey = FlsAlloc(TlsFreeFunc);	
+#else	
+	pthread_key_create(&gBfTLSKey, TlsFreeFunc);
+#endif
 }
 
 void bf::System::Runtime::SetErrorString(char* errorStr)

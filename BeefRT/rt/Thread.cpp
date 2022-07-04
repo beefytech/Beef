@@ -19,6 +19,12 @@ BF_TLS_DECLSPEC Thread* Thread::sCurrentThread;
 static volatile int gLiveThreadCount;
 static Beefy::SyncEvent gThreadsDoneEvent;
 
+#ifdef BF_PLATFORM_WINDOWS
+extern DWORD gBfTLSKey;
+#else
+extern pthread_key_t gBfTLSKey;
+#endif
+
 bf::System::Threading::Thread* BfGetCurrentThread()
 {
 #ifdef BF_THREAD_TLS
@@ -133,7 +139,8 @@ static void BF_CALLTYPE CStartProc(void* threadParam)
 	bool wantsDelete = false;
 	//
 	{	
-		internalThread->ThreadStopped();
+		internalThread->ThreadStopped();		
+
 		Beefy::AutoCrit autoCrit(internalThread->mCritSect);
 		if (isAutoDelete)
 			gBfRtCallbacks.Thread_AutoDelete(thread);
@@ -207,15 +214,28 @@ void Thread::StartInternal()
 #endif
 }
 
+void Thread::RequestExitNotify()
+{
+	// Do we already have implicit exiting notification?
+	if (BfGetCurrentThread() != NULL)
+		return;
+
+#ifdef BF_PLATFORM_WINDOWS	
+	FlsSetValue(gBfTLSKey, (void*)&gBfRtCallbacks);
+#else		
+	pthread_setspecific(gBfTLSKey, (void*)&gBfRtCallbacks);
+#endif
+}
+
 void Thread::ThreadStarted()
 {
 	auto internalThread = GetInternalThread();
 	internalThread->mCritSect.Unlock();
 }
 
-int Thread::GetThreadId()
+intptr Thread::GetThreadId()
 {
-	return (int)GetInternalThread()->mThreadId;
+	return GetInternalThread()->mThreadId;
 }
 
 void Thread::SetStackStart(void* ptr)

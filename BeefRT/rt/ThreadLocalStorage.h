@@ -43,7 +43,7 @@ public:
 
 	BfTLSManager()
 	{
-        sInternalThreadKey = BfpTLS_Create();
+        sInternalThreadKey = BfpTLS_Create(NULL);
 		mAssociatedTLSDatums = NULL;
 		mAllocSize = 0;
 		mAllocIdx = 1;

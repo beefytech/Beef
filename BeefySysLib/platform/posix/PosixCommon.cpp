@@ -1528,10 +1528,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpCritSect_Leave(BfpCritSect* critSect)
     pthread_mutex_unlock(&critSect->mPMutex);
 }
 
-BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create()
+BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create(BfpTLSProc exitProc)
 {
     pthread_key_t key = 0;
-    pthread_key_create(&key, NULL);
+    pthread_key_create(&key, exitProc);
     return (BfpTLS*)(intptr)key;
 }
 
