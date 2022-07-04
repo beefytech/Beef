@@ -4094,9 +4094,12 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 	auto checkType = val.mType;
 	if (genericType != NULL)
 	{
-		auto genericParamInst = GetGenericParamInstance(genericType);
-		if (genericParamInst->mTypeConstraint != NULL)
-			checkType = genericParamInst->mTypeConstraint;
+		BfGenericParamFlags genericParamFlags = BfGenericParamFlag_None;
+		BfType* typeConstraint = NULL;
+		auto genericParam = GetMergedGenericParamData(genericType, genericParamFlags, typeConstraint);
+
+		if (typeConstraint != NULL)
+			checkType = typeConstraint;
 		bool canAlwaysDelete = checkType->IsDelegate() || checkType->IsFunction() || checkType->IsArray();
 		if (auto checkTypeInst = checkType->ToTypeInstance())
 		{
@@ -4107,12 +4110,13 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 
 		if (!canAlwaysDelete)
 		{
-			if (genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
+			if (genericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
 				return;
-			if (genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr)
+			if (genericParamFlags & BfGenericParamFlag_StructPtr)
 				return;
-			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Struct) && (checkType->IsPointer()))
+			if ((genericParamFlags & BfGenericParamFlag_Struct) && (checkType->IsPointer()))
 				return;
+			auto genericParamInst = GetGenericParamInstance(genericType);
 			Fail(StrFormat("Must add 'where %s : delete' constraint to generic parameter to delete generic type '%s'",
 				genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
 			return;
