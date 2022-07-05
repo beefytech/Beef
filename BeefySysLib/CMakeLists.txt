@@ -274,6 +274,7 @@ file(GLOB SRC_FILES
     third_party/zlib/uncompr.c
     third_party/zlib/zutil.c
     third_party/miniz/miniz.c
+    third_party/putty/wildcard.c
     util/AllocDebug.cpp
     util/BeefPerf.cpp
     util/BSpline.cpp

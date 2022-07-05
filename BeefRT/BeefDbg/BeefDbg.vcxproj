@@ -140,6 +140,7 @@
     <ClCompile Include="..\..\BeefySysLib\platform\win\CrashCatcher.cpp" />
     <ClCompile Include="..\..\BeefySysLib\platform\win\Platform.cpp" />
     <ClCompile Include="..\..\BeefySysLib\third_party\utf8proc\utf8proc.c" />
+    <ClCompile Include="..\..\BeefySysLib\third_party\putty\wildcard.c" />
     <ClCompile Include="..\..\BeefySysLib\util\BeefPerf.cpp" />
     <ClCompile Include="..\..\BeefySysLib\util\String.cpp" />
     <ClCompile Include="..\..\BeefySysLib\util\UTF8.cpp" />
@@ -356,6 +357,7 @@
     <ClInclude Include="..\..\BeefySysLib\platform\win\BFPlatform.h" />
     <ClInclude Include="..\..\BeefySysLib\platform\win\CrashCatcher.h" />
     <ClInclude Include="..\..\BeefySysLib\third_party\utf8proc\utf8proc.h" />
+    <ClInclude Include="..\..\BeefySysLib\third_party\putty\wildcard.h" />
     <ClInclude Include="..\..\BeefySysLib\util\BeefPerf.h" />
     <ClInclude Include="..\..\BeefySysLib\util\String.h" />
     <ClInclude Include="..\..\BeefySysLib\util\UTF8.h" />

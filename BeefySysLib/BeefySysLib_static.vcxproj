@@ -859,6 +859,7 @@
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Level1</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Level1</WarningLevel>
     </ClCompile>
+    <ClCompile Include="third_party\putty\wildcard.c" />
     <ClCompile Include="util\AllocDebug.cpp" />
     <ClCompile Include="util\BeefPerf.cpp" />
     <ClCompile Include="util\BSpline.cpp" />
@@ -1025,6 +1026,7 @@
     <ClInclude Include="third_party\zlib\zconf.h" />
     <ClInclude Include="third_party\zlib\zlib.h" />
     <ClInclude Include="third_party\zlib\zutil.h" />
+    <ClInclude Include="third_party\putty\wildcard.h" />
     <ClInclude Include="util\BeefPerf.h" />
     <ClInclude Include="util\BSpline.h" />
     <ClInclude Include="util\CabUtil.h" />
