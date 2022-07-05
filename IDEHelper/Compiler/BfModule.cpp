@@ -17030,73 +17030,7 @@ void BfModule::EmitDtorBody()
 			BfFieldDeclaration* fieldDecl = NULL;
 			if (fieldDef != NULL)
 				fieldDecl = fieldDef->GetFieldDeclaration();
-
-			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldInst->IsAppendedObject()))
-			{
-				if (fieldDef->mDeclaringType != mCurMethodInstance->mMethodDef->mDeclaringType)
-				{
-					BF_ASSERT(mCurTypeInstance->mTypeDef->mIsCombinedPartial);
-					continue;
-				}
-
-				auto refNode = fieldDef->GetRefNode();
-				UpdateSrcPos(refNode);
-
-				auto objectType = mContext->mBfObjectType;
-				BfTypeInstance* checkTypeInst = mCurTypeInstance->ToTypeInstance();
-
-				BfTypedValue val;
-				if (fieldDef->mIsStatic)
-					val = ReferenceStaticField(fieldInst);
-				else
-				{
-					auto fieldAddr = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, fieldInst->mDataIdx);
-					val = BfTypedValue(mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(fieldInst->mResolvedType)), fieldInst->mResolvedType);
-				}
-
-				bool allowPrivate = checkTypeInst == mCurTypeInstance;
-				bool allowProtected = allowPrivate || TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst);
-				while (checkTypeInst != NULL)
-				{
-					auto dtorMethodDef = checkTypeInst->mTypeDef->GetMethodByName("~this");
-					if (dtorMethodDef)
-					{
-						if (!CheckProtection(dtorMethodDef->mProtection, checkTypeInst->mTypeDef, allowProtected, allowPrivate))
-						{
-							auto error = Fail(StrFormat("'%s.~this()' is inaccessible due to its protection level", TypeToString(checkTypeInst).c_str()), refNode); // CS0122																																												
-						}
-					}
-					checkTypeInst = checkTypeInst->mBaseType;
-					allowPrivate = false;
-				}
-				
-				// call dtor
-				BfExprEvaluator expressionEvaluator(this);
-				PopulateType(val.mType);
-				PopulateType(objectType, BfPopulateType_DataAndMethods);
-
-				if (objectType->mVirtualMethodTable.size() == 0)
-				{
-					if (!mCompiler->IsAutocomplete())
-						AssertErrorState();
-				}
-				else if (!IsSkippingExtraResolveChecks())
-				{
-					BfMethodInstance* methodInstance = objectType->mVirtualMethodTable[mCompiler->GetVTableMethodOffset() + 0].mImplementingMethod;
-					BF_ASSERT(methodInstance->mMethodDef->mName == "~this");
-					SizedArray<BfIRValue, 4> llvmArgs;
-					llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(objectType)));
-					expressionEvaluator.CreateCall(refNode, methodInstance, mBfIRBuilder->GetFakeVal(), false, llvmArgs);
-				}
-
-				if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule))
-				{
-					auto int8PtrType = CreatePointerType(GetPrimitiveType(BfTypeCode_Int8));					
-					auto int8PtrVal = mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(int8PtrType));
-					mBfIRBuilder->CreateStore(GetConstValue8(BfObjectFlag_Deleted), int8PtrVal);
-				}
-			}
-
+			
 			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDecl != NULL) && (fieldDecl->mFieldDtor != NULL))
 			{
 				if (fieldDef->mDeclaringType != mCurMethodInstance->mMethodDef->mDeclaringType)
@@ -17205,6 +17139,72 @@ void BfModule::EmitDtorBody()
 				}
 
 				RestoreScopeState();
+			}
+
+			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldInst->IsAppendedObject()))
+			{
+				if (fieldDef->mDeclaringType != mCurMethodInstance->mMethodDef->mDeclaringType)
+				{
+					BF_ASSERT(mCurTypeInstance->mTypeDef->mIsCombinedPartial);
+					continue;
+				}
+
+				auto refNode = fieldDef->GetRefNode();
+				UpdateSrcPos(refNode);
+
+				auto objectType = mContext->mBfObjectType;
+				BfTypeInstance* checkTypeInst = mCurTypeInstance->ToTypeInstance();
+
+				BfTypedValue val;
+				if (fieldDef->mIsStatic)
+					val = ReferenceStaticField(fieldInst);
+				else
+				{
+					auto fieldAddr = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, fieldInst->mDataIdx);
+					val = BfTypedValue(mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(fieldInst->mResolvedType)), fieldInst->mResolvedType);
+				}
+
+				bool allowPrivate = checkTypeInst == mCurTypeInstance;
+				bool allowProtected = allowPrivate || TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst);
+				while (checkTypeInst != NULL)
+				{
+					auto dtorMethodDef = checkTypeInst->mTypeDef->GetMethodByName("~this");
+					if (dtorMethodDef)
+					{
+						if (!CheckProtection(dtorMethodDef->mProtection, checkTypeInst->mTypeDef, allowProtected, allowPrivate))
+						{
+							auto error = Fail(StrFormat("'%s.~this()' is inaccessible due to its protection level", TypeToString(checkTypeInst).c_str()), refNode); // CS0122																																												
+						}
+					}
+					checkTypeInst = checkTypeInst->mBaseType;
+					allowPrivate = false;
+				}
+
+				// call dtor
+				BfExprEvaluator expressionEvaluator(this);
+				PopulateType(val.mType);
+				PopulateType(objectType, BfPopulateType_DataAndMethods);
+
+				if (objectType->mVirtualMethodTable.size() == 0)
+				{
+					if (!mCompiler->IsAutocomplete())
+						AssertErrorState();
+				}
+				else if (!IsSkippingExtraResolveChecks())
+				{
+					BfMethodInstance* methodInstance = objectType->mVirtualMethodTable[mCompiler->GetVTableMethodOffset() + 0].mImplementingMethod;
+					BF_ASSERT(methodInstance->mMethodDef->mName == "~this");
+					SizedArray<BfIRValue, 4> llvmArgs;
+					llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(objectType)));
+					expressionEvaluator.CreateCall(refNode, methodInstance, mBfIRBuilder->GetFakeVal(), false, llvmArgs);
+				}
+
+				if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule))
+				{
+					auto int8PtrType = CreatePointerType(GetPrimitiveType(BfTypeCode_Int8));
+					auto int8PtrVal = mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(int8PtrType));
+					mBfIRBuilder->CreateStore(GetConstValue8(BfObjectFlag_Deleted), int8PtrVal);
+				}
 			}
 		}
 
