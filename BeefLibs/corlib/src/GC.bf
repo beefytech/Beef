@@ -149,6 +149,7 @@ namespace System
 		public static void ExcludeThreadId(int thereadId) {}
 #endif
 
+		[DisableObjectAccessChecks]
 		static void MarkAppendedObject(Object obj)
 		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK
