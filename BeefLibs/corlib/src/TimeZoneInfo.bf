@@ -1942,7 +1942,8 @@ namespace System {
              }
             // the data returned from the PAL is completely bogus; return a dummy entry
             return CreateCustomTimeZone(c_localId, TimeSpan.Zero, c_localId, c_localId);*/
-			Runtime.NotImplemented();
+			// TODO: Not implemented.
+            return Utc;
         }
 #endif // !FEATURE_WIN32_REGISTRY
 
