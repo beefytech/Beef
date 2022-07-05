@@ -5137,9 +5137,18 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 							SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
 							SetAndRestoreValue<BfTypeState::ResolveKind> prevResolveKind(mContext->mCurTypeState->mResolveKind, BfTypeState::ResolveKind_FieldType);
 
+							PopulateType(resolvedFieldType, BfPopulateType_Data);
+							
 							auto fieldTypeInst = resolvedFieldType->ToTypeInstance();
-							dataSize = fieldTypeInst->mInstSize;
-							alignSize = fieldTypeInst->mInstAlign;
+							dataSize = BF_MAX(fieldTypeInst->mInstSize, 0);
+							alignSize = BF_MAX(fieldTypeInst->mInstAlign, 1);
+
+							if (fieldTypeInst->mTypeFailed)
+							{
+								TypeFailed(fieldTypeInst);
+								fieldInstance->mResolvedType = GetPrimitiveType(BfTypeCode_Var);
+								continue;
+							}
 
 							if ((typeInstance != NULL) && (fieldTypeInst->mTypeDef->mIsAbstract))
 							{
@@ -5208,6 +5217,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 								Fail("Append fields must be classes", nameRefNode, true);
 						}
 
+						BF_ASSERT(dataSize >= 0);
 						fieldInstance->mDataSize = dataSize;
 						if (!isUnion)
 						{

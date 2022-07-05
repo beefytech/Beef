@@ -3781,7 +3781,7 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 		{
 			auto fieldTypeInst = fieldInstance->mResolvedType->ToTypeInstance();
 
-			if (fieldInstance->mDataSize != fieldTypeInst->mInstSize)
+			if (fieldInstance->mDataSize > fieldTypeInst->mInstSize)
 			{
 				SizedArray<BfIRType, 2> types;
 				types.push_back(MapTypeInst(fieldTypeInst));
@@ -3789,7 +3789,7 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 				resolvedFieldIRType = CreateStructType(types);
 			}
 			else
-				resolvedFieldIRType = MapTypeInst(fieldTypeInst);		
+				resolvedFieldIRType = MapTypeInst(fieldTypeInst);
 		}
 
 		if (fieldInstance->mDataOffset > dataPos)
