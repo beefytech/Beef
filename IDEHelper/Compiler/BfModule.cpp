@@ -17033,6 +17033,12 @@ void BfModule::EmitDtorBody()
 
 			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldInst->IsAppendedObject()))
 			{
+				if (fieldDef->mDeclaringType != mCurMethodInstance->mMethodDef->mDeclaringType)
+				{
+					BF_ASSERT(mCurTypeInstance->mTypeDef->mIsCombinedPartial);
+					continue;
+				}
+
 				auto refNode = fieldDef->GetRefNode();
 				UpdateSrcPos(refNode);
 

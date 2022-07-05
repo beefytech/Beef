@@ -3319,6 +3319,8 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 				if (auto paramDeclaration = BfNodeDynCast<BfParameterDeclaration>(fieldDef->mFieldDeclaration))
 					if (paramDeclaration->mInitializer != NULL)
 						hasInitializers = true;
+				if (fieldDef->mIsAppend)
+					hasInitializers = true;
 			}
 		}
 
