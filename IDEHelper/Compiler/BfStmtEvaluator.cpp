@@ -3297,7 +3297,7 @@ void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEval
 		mCurMethodState->mCurScope->mOuterIsConditional = (flags & BfEmbeddedStatementFlags_IsConditional) != 0;
 		mCurMethodState->mCurScope->mIsDeferredBlock = (flags & BfEmbeddedStatementFlags_IsDeferredBlock) != 0;
 		mCurMethodState->mCurScope->mExprEvaluator = exprEvaluator;		
-		
+
 		//
 		{
 			SetAndRestoreValue<bool> inDeferredBlock(mCurMethodState->mInDeferredBlock, mCurMethodState->mInDeferredBlock || mCurMethodState->mCurScope->mIsDeferredBlock);
@@ -3345,7 +3345,7 @@ void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEval
 	}
 }
 
-void BfModule::VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn, BfLabelNode* labelNode, bool closeScope)
+void BfModule::VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn, BfLabelNode* labelNode, bool closeScope, BfEmbeddedStatementFlags flags)
 {
 	BfBreakData breakData;
 	breakData.mIRContinueBlock = continueBlock;
@@ -3355,7 +3355,7 @@ void BfModule::VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock
 	breakData.mPrevBreakData = mCurMethodState->mBreakData;
 
 	SetAndRestoreValue<BfBreakData*> prevBreakData(mCurMethodState->mBreakData, &breakData);
-	Visit(block);
+	VisitEmbeddedStatement(block, NULL, flags);
 
 	if (closeScope)	
 		RestoreScopeState();
@@ -3843,7 +3843,8 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 			ignoredLastBlock = false;
 		VisitEmbeddedStatement(ifStmt->mTrueStatement);
 	}
-	prevDLA.Restore();
+	prevDLA.Restore();	
+
 	if (mCurMethodState->mDeferredLocalAssignData != NULL)
 		mCurMethodState->mDeferredLocalAssignData->mHadBreak |= deferredLocalAssignData.mHadBreak;
 
@@ -3858,7 +3859,10 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 		mBfIRBuilder->CreateBr_NoCollapse(contBB);
 
 	if (mCurMethodState->mLeftBlockUncond)
+	{
+		deferredLocalAssignData.mLeftBlockUncond = true;
 		mCurMethodState->mLeftBlockCond = true;
+	}
 
 	mCurMethodState->mLeftBlockUncond = false;
 	mCurMethodState->SetHadReturn(false);
@@ -3908,7 +3912,10 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 		}
 		falseHadReturn = mCurMethodState->mHadReturn;
 		if (mCurMethodState->mLeftBlockUncond)
+		{
+			falseDeferredLocalAssignData.mLeftBlockUncond = true;
 			mCurMethodState->mLeftBlockCond = true;
+		}
 		mCurMethodState->mLeftBlockUncond = false;
 		mCurMethodState->SetHadReturn(false);
 
@@ -4633,6 +4640,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				openedScope = true;
 
 				caseScopeData.mOuterIsConditional = true;
+				caseScopeData.mIsSharedTempBlock = true;
 				mCurMethodState->AddScope(&caseScopeData);
 				NewScopeState();
 				UpdateSrcPos(caseExpr);				
@@ -4915,7 +4923,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		{
 			UpdateSrcPos(switchCase->mCodeBlock);			
 
-			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, fallthroughBlock, true, &hadReturn, switchStmt->mLabelNode, openedScope);
+			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, fallthroughBlock, true, &hadReturn, switchStmt->mLabelNode, openedScope /*, BfEmbeddedStatementFlags_RescopeDLA*/);
+
 			openedScope = false;
 			deferredLocalAssignDataVec[blockIdx].mHadReturn = hadReturn;
 			caseCount++;
@@ -4953,7 +4962,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 		mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 		
-		prevHadFallthrough = mCurMethodState->mDeferredLocalAssignData->mHadFallthrough;
+		prevHadFallthrough = mCurMethodState->mDeferredLocalAssignData->mHadFallthrough;		
 
 		blockIdx++;
 	}
@@ -5053,7 +5062,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			mCurMethodState->mDeferredLocalAssignData->mVarIdBarrier = startingLocalVarId;
 
 			bool hadReturn = false;
-			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, BfIRBlock(), true, &hadReturn, switchStmt->mLabelNode);		
+			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, BfIRBlock(), true, &hadReturn, switchStmt->mLabelNode);
 			deferredLocalAssignDataVec[blockIdx].mHadReturn = hadReturn;
 			caseCount++;
 			if (!hadReturn)
@@ -5381,18 +5390,7 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 			checkScope = checkScope->mPrevScope;
 		}
 	}
-
-	auto checkLocalAssignData = mCurMethodState->mDeferredLocalAssignData;
-	while (checkLocalAssignData != NULL)
-	{
-		if ((checkLocalAssignData->mScopeData != NULL) && (checkLocalAssignData->mScopeData->mScopeDepth >= breakData->mScope->mScopeDepth))
-		{
-			checkLocalAssignData->mLeftBlock = true;
-			checkLocalAssignData->mHadBreak = true;
-		}
-		checkLocalAssignData = checkLocalAssignData->mChainedAssignData;
-	}
-
+	
 	if (HasDeferredScopeCalls(breakData->mScope))
 	{		
 		EmitDeferredScopeCalls(true, breakData->mScope, breakData->mIRBreakBlock);
@@ -5403,16 +5401,41 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 	}
 	mCurMethodState->mLeftBlockUncond = true;	
 
+	bool isCond = false;
+	int uncondScopeDepth = 0;
+	if (mCurMethodState->mCurScope != NULL)
+		uncondScopeDepth = mCurMethodState->mCurScope->mScopeDepth + 1;
+
 	BfIRValue earliestValueScopeStart;	
 	auto checkScope = mCurMethodState->mCurScope;
 	while (checkScope != NULL)
-	{		
+	{	
+		if (!isCond)
+			uncondScopeDepth = checkScope->mScopeDepth;
+		if ((checkScope->mOuterIsConditional) && (!checkScope->mIsSharedTempBlock))
+			isCond = true;
+
 		if (checkScope->mValueScopeStart)
 			earliestValueScopeStart = checkScope->mValueScopeStart;
 		if (checkScope == breakData->mScope)
 			break;
+		
 		checkScope = checkScope->mPrevScope;
 	}
+
+	auto checkLocalAssignData = mCurMethodState->mDeferredLocalAssignData;
+	while (checkLocalAssignData != NULL)
+	{
+		if ((checkLocalAssignData->mScopeData != NULL) && (checkLocalAssignData->mScopeData->mScopeDepth >= breakData->mScope->mScopeDepth))
+		{
+			if (checkLocalAssignData->mScopeData->mScopeDepth >= uncondScopeDepth)
+				checkLocalAssignData->mLeftBlockUncond = true;
+			checkLocalAssignData->mLeftBlock = true;
+			checkLocalAssignData->mHadBreak = true;
+		}
+		checkLocalAssignData = checkLocalAssignData->mChainedAssignData;
+	}
+
 	MarkScopeLeft(breakData->mScope);
 	ValueScopeEnd(earliestValueScopeStart);	
 
@@ -5734,11 +5757,18 @@ void BfModule::Visit(BfRepeatStatement* repeatStmt)
 
 	mBfIRBuilder->CreateBr(bodyBB);
 	mBfIRBuilder->SetInsertPoint(bodyBB);	
-	scopeData.mIsLoop = true;
-	VisitEmbeddedStatement(repeatStmt->mEmbeddedStatement);	
+	scopeData.mIsLoop = true;	
+
+	BfDeferredLocalAssignData deferredLocalAssignData(mCurMethodState->mCurScope);
+	deferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData, false);
+	deferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
+	SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
+
+	VisitEmbeddedStatement(repeatStmt->mEmbeddedStatement);
+
 	if (!mCurMethodState->mLeftBlockUncond)
 		mBfIRBuilder->CreateBr(condBB);
-	mCurMethodState->SetHadReturn(false);
+	mCurMethodState->SetHadReturn(false);	
 	mCurMethodState->mLeftBlockUncond = false;
 	mCurMethodState->mLeftBlockCond = false;
 

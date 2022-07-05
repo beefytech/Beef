@@ -378,6 +378,7 @@ public:
 	bool mIsIfCondition;
 	bool mIfMayBeSkipped;
 	bool mLeftBlock;	
+	bool mLeftBlockUncond;
 
 public:
 	BfDeferredLocalAssignData(BfScopeData* scopeData = NULL)
@@ -393,6 +394,7 @@ public:
 		mIsIfCondition = false;
 		mIfMayBeSkipped = false;
 		mLeftBlock = false;
+		mLeftBlockUncond = false;
 	}
 	
 	bool Contains(const BfAssignedLocal& val)
@@ -448,6 +450,7 @@ public:
 	bool mInInitBlock;
 	bool mSupressNextUnreachable;
 	bool mInConstIgnore;
+	bool mIsSharedTempBlock;
 	BfMixinState* mMixinState;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
@@ -488,6 +491,7 @@ public:
 		mAllowVariableDeclarations = true;
 		mInInitBlock = false;
 		mInConstIgnore = false;
+		mIsSharedTempBlock = false;
 		mMixinDepth = 0;
 		mScopeDepth = 0;
 		mScopeLocalId = -1;
@@ -1668,7 +1672,7 @@ public:
 	void AddBasicBlock(BfIRBlock bb, bool activate = true);	
 	void VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator = NULL, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None);
 	void VisitCodeBlock(BfBlock* block);
-	void VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn = NULL, BfLabelNode* labelNode = NULL, bool closeScope = false);	
+	void VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn = NULL, BfLabelNode* labelNode = NULL, bool closeScope = false, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None);
 	void DoForLess(BfForEachStatement* forEachStmt);
 
 	// Util

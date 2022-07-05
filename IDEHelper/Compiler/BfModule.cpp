@@ -133,48 +133,61 @@ void BfDeferredLocalAssignData::BreakExtendChain()
 void BfDeferredLocalAssignData::SetIntersection(const BfDeferredLocalAssignData& otherLocalAssignData)
 {	
 	BreakExtendChain();
-
-	for (int i = 0; i < (int)mAssignedLocals.size(); )
+	
+	if (otherLocalAssignData.mLeftBlockUncond)
 	{
-		auto& local = mAssignedLocals[i];
-
-		bool wantRemove = true;
-		bool foundOtherFields = false;
-		for (auto& otherLocalAssignData : otherLocalAssignData.mAssignedLocals)
+		// Intersection of self and infinity is self
+	}
+	else if (mLeftBlockUncond)
+	{
+		// Intersection of infinity and other is other
+		mAssignedLocals = otherLocalAssignData.mAssignedLocals;
+	}
+	else
+	{
+		for (int i = 0; i < (int)mAssignedLocals.size(); )
 		{
-			if (otherLocalAssignData.mLocalVar == local.mLocalVar)
-			{
-				if ((otherLocalAssignData.mLocalVarField == local.mLocalVarField) || (otherLocalAssignData.mLocalVarField == -1))
-				{
-					if (otherLocalAssignData.mAssignKind == BfLocalVarAssignKind_Conditional)
-						local.mAssignKind = BfLocalVarAssignKind_Conditional;
-					wantRemove = false;
-				}
-				else
-					foundOtherFields = true;
-			}
-		}
+			auto& local = mAssignedLocals[i];
 
-		if ((wantRemove) && (foundOtherFields))
-		{
+			bool wantRemove = true;
+			bool foundOtherFields = false;
 			for (auto& otherLocalAssignData : otherLocalAssignData.mAssignedLocals)
 			{
 				if (otherLocalAssignData.mLocalVar == local.mLocalVar)
 				{
-					mAssignedLocals.Add(otherLocalAssignData);
+					if ((otherLocalAssignData.mLocalVarField == local.mLocalVarField) || (otherLocalAssignData.mLocalVarField == -1))
+					{
+						if (otherLocalAssignData.mAssignKind == BfLocalVarAssignKind_Conditional)
+							local.mAssignKind = BfLocalVarAssignKind_Conditional;
+						wantRemove = false;
+					}
+					else
+						foundOtherFields = true;
 				}
 			}
-		}
 
-		if (wantRemove)
-		{
-			mAssignedLocals.RemoveAt(i);
+			if ((wantRemove) && (foundOtherFields))
+			{
+				for (auto& otherLocalAssignData : otherLocalAssignData.mAssignedLocals)
+				{
+					if (otherLocalAssignData.mLocalVar == local.mLocalVar)
+					{
+						mAssignedLocals.Add(otherLocalAssignData);
+					}
+				}
+			}
+
+			if (wantRemove)
+			{
+				mAssignedLocals.RemoveAt(i);
+			}
+			else
+				i++;
 		}
-		else
-			i++;
 	}
 
 	mHadFallthrough = mHadFallthrough && otherLocalAssignData.mHadFallthrough;
+	mLeftBlockUncond = mLeftBlockUncond && otherLocalAssignData.mLeftBlockUncond;	
 }
 
 void BfDeferredLocalAssignData::Validate() const
@@ -191,7 +204,7 @@ void BfDeferredLocalAssignData::SetUnion(const BfDeferredLocalAssignData& otherL
 
 	Validate();
 	otherLocalAssignData.Validate();
-
+	
 	auto otherItr = otherLocalAssignData.mAssignedLocals.begin();
 	while (otherItr != otherLocalAssignData.mAssignedLocals.end())
 	{		
@@ -200,6 +213,7 @@ void BfDeferredLocalAssignData::SetUnion(const BfDeferredLocalAssignData& otherL
 		++otherItr;
 	}
 	mHadFallthrough = mHadFallthrough || otherLocalAssignData.mHadFallthrough;
+	mLeftBlockUncond = mLeftBlockUncond || otherLocalAssignData.mLeftBlockUncond;
 }
 
 BfMethodState::~BfMethodState()
@@ -311,9 +325,36 @@ void BfMethodState::ApplyDeferredLocalAssignData(const BfDeferredLocalAssignData
 {
 	BF_ASSERT(&deferredLocalAssignData != mDeferredLocalAssignData);
 
-	for (auto& assignedLocal : deferredLocalAssignData.mAssignedLocals)
+	if (deferredLocalAssignData.mLeftBlockUncond)
 	{
-		LocalDefined(assignedLocal.mLocalVar, assignedLocal.mLocalVarField, assignedLocal.mAssignKind, true);
+		if (mLeftBlockUncond)
+		{
+			for (int localIdx = 0; localIdx < (int)mLocals.size(); localIdx++)
+			{
+				auto localDef = mLocals[localIdx];
+				if (localDef->mAssignedKind == BfLocalVarAssignKind_None)
+				{
+					bool hadAssignment = false;
+					if (mDeferredLocalAssignData != NULL)
+					{
+						for (auto& entry : mDeferredLocalAssignData->mAssignedLocals)
+							if (entry.mLocalVar == localDef)
+								hadAssignment = true;
+					}
+					if (!hadAssignment)
+					{						
+						LocalDefined(localDef);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		for (auto& assignedLocal : deferredLocalAssignData.mAssignedLocals)
+		{
+			LocalDefined(assignedLocal.mLocalVar, assignedLocal.mLocalVarField, assignedLocal.mAssignKind, true);
+		}
 	}
 }
 

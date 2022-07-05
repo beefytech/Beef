@@ -18952,6 +18952,8 @@ void BfExprEvaluator::CheckResultForReading(BfTypedValue& typedValue)
 								undefinedFieldFlags = 0;
 						}
 					}
+					if (deferredLocalAssignData->mLeftBlockUncond)
+						isAssigned = true;
 				}
 
 				if (fieldIdx == -1)
