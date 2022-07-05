@@ -327,27 +327,24 @@ void BfMethodState::ApplyDeferredLocalAssignData(const BfDeferredLocalAssignData
 
 	if (deferredLocalAssignData.mLeftBlockUncond)
 	{
-		if (mLeftBlockUncond)
+		for (int localIdx = 0; localIdx < (int)mLocals.size(); localIdx++)
 		{
-			for (int localIdx = 0; localIdx < (int)mLocals.size(); localIdx++)
+			auto localDef = mLocals[localIdx];
+			if (localDef->mAssignedKind == BfLocalVarAssignKind_None)
 			{
-				auto localDef = mLocals[localIdx];
-				if (localDef->mAssignedKind == BfLocalVarAssignKind_None)
+				bool hadAssignment = false;
+				if (mDeferredLocalAssignData != NULL)
 				{
-					bool hadAssignment = false;
-					if (mDeferredLocalAssignData != NULL)
-					{
-						for (auto& entry : mDeferredLocalAssignData->mAssignedLocals)
-							if (entry.mLocalVar == localDef)
-								hadAssignment = true;
-					}
-					if (!hadAssignment)
-					{						
-						LocalDefined(localDef);
-					}
+					for (auto& entry : mDeferredLocalAssignData->mAssignedLocals)
+						if (entry.mLocalVar == localDef)
+							hadAssignment = true;
+				}
+				if (!hadAssignment)
+				{						
+					LocalDefined(localDef);
 				}
 			}
-		}
+		}		
 	}
 	else
 	{

@@ -5054,12 +5054,18 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		if (switchCase->mCodeBlock != NULL)
 		{
 			isComprehensive = true;
-			UpdateSrcPos(switchCase->mCodeBlock);			
-			
+			UpdateSrcPos(switchCase->mCodeBlock);
+
 			deferredLocalAssignDataVec[blockIdx].mScopeData = mCurMethodState->mCurScope;
 			deferredLocalAssignDataVec[blockIdx].ExtendFrom(mCurMethodState->mDeferredLocalAssignData);
 			SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignDataVec[blockIdx]);
 			mCurMethodState->mDeferredLocalAssignData->mVarIdBarrier = startingLocalVarId;
+
+			BfScopeData caseScopeData;
+			caseScopeData.mOuterIsConditional = true;
+			caseScopeData.mIsSharedTempBlock = true;
+			mCurMethodState->AddScope(&caseScopeData);
+			NewScopeState();
 
 			bool hadReturn = false;
 			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, BfIRBlock(), true, &hadReturn, switchStmt->mLabelNode);
@@ -5067,6 +5073,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			caseCount++;
 			if (!hadReturn)
 				allHadReturns = false;
+
+			RestoreScopeState();
 		}				
 	}
 	else
@@ -5796,8 +5804,11 @@ void BfModule::Visit(BfRepeatStatement* repeatStmt)
 		}
 
 	}
-
+	
 	RestoreScopeState();
+
+	prevDLA.Restore();
+	mCurMethodState->ApplyDeferredLocalAssignData(deferredLocalAssignData);
 
 	if (isInfiniteLoop)
 		EmitDefaultReturn();

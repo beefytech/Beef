@@ -416,5 +416,38 @@ namespace IDETest
 		    }
 		    while (read > 0); //FAIL
 		}
+
+		public void Local13()
+		{
+			int a = 123;
+			int b;
+			switch (a)
+			{
+			default: b = 0;
+			}
+			int c = b;
+		}
+
+		public void Local14()
+		{
+			int a = 123;
+			int b;
+			switch (a)
+			{
+			default: b = 0; break;
+			}
+			int c = b;
+		}
+
+		public void Local15()
+		{
+			int a = 123;
+			int b;
+			switch (a)
+			{
+			default: break;
+			}
+			int c = b; //FAIL
+		}
 	}
 }
