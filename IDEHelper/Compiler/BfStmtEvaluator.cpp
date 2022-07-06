@@ -6482,6 +6482,9 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					break;
 				}
 
+				if (itrInterface != NULL)
+					break;
+
 				enumeratorTypeInst = enumeratorTypeInst->mBaseType;
 			}
 
