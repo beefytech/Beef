@@ -8029,7 +8029,7 @@ void BfModule::HandleMethodGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDe
 		mCompiler->mResolvePassData->HandleMethodGenericParam(refNode, typeDef, methodDef, methodGenericParamIdx);
 }
 
-BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopulateType populateType, bool ignoreErrors, int numGenericArgs)
+BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopulateType populateType, bool ignoreErrors, int numGenericArgs, BfResolveTypeRefFlags resolveFlags)
 {
 	BfTypeDef* nestedTypeDef = NULL;
 
@@ -8092,7 +8092,8 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopu
 						{							
 							auto latestCheckType = checkType->GetLatest();
 
-							if ((!isFailurePass) && (!CheckProtection(latestCheckType->mProtection, latestCheckType, allowProtected, allowPrivate)))
+							if ((!isFailurePass) && ((resolveFlags & BfResolveTypeRefFlag_IgnoreProtection) == 0) && 
+								(!CheckProtection(latestCheckType->mProtection, latestCheckType, allowProtected, allowPrivate)))
 								continue;
 
 							if (checkType->mProject != checkOuterType->mTypeDef->mProject)
@@ -8135,7 +8136,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopu
 
 		if (nestedTypeDef == NULL)
 		{
-			if (!mIgnoreErrors && !ignoreErrors)
+			if ((!mIgnoreErrors) && (!ignoreErrors) && ((resolveFlags & BfResolveTypeRefFlag_IgnoreLookupError) == 0))
 			{
 				StringT<64> name;
 				name.Append(findName);
@@ -11020,7 +11021,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			}
 		}
 
-		auto resolvedType = ResolveInnerType(leftType, qualifiedTypeRef->mRight, populateType, false, numGenericArgs);
+		auto resolvedType = ResolveInnerType(leftType, qualifiedTypeRef->mRight, populateType, false, numGenericArgs, resolveFlags);
 		if ((resolvedType != NULL) && (mCurTypeInstance != NULL))
 			AddDependency(leftType, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
 		return ResolveTypeResult(typeRef, resolvedType, populateType, resolveFlags);

@@ -361,6 +361,11 @@ void BfStructuralVisitor::Visit(BfOffsetOfExpression* offsetOfExpr)
 	Visit(offsetOfExpr->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfNameOfExpression* nameOfExpr)
+{
+	Visit(nameOfExpr->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfIsConstExpression* isConstExpr)
 {
 	Visit(isConstExpr->ToBase());

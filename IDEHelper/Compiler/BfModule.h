@@ -54,7 +54,7 @@ enum BfPopulateType
 	BfPopulateType_Full_Force
 };
 
-enum BfEvalExprFlags
+enum BfEvalExprFlags : int64
 {
 	BfEvalExprFlags_None = 0,
 	BfEvalExprFlags_ExplicitCast = 1,
@@ -89,6 +89,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_AllowGenericConstValue = 0x20000000,
 	BfEvalExprFlags_IsExpressionBody = 0x40000000,
 	BfEvalExprFlags_AppendFieldInitializer = 0x80000000,
+	BfEvalExprFlags_NameOf = 0x100000000LL,
+	BfEvalExprFlags_NameOfSuccess = 0x200000000LL,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };
@@ -1947,7 +1949,7 @@ public:
 	BfType* ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	BfType* ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	BfType* ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
-	BfType* ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false, int numGenericArgs = 0);	
+	BfType* ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false, int numGenericArgs = 0, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	BfTypeDef* GetCombinedPartialTypeDef(BfTypeDef* type);
 	BfTypeInstance* GetOuterType(BfType* type);
 	bool IsInnerType(BfType* checkInnerType, BfType* checkOuterType);	

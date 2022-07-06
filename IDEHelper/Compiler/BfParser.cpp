@@ -3174,6 +3174,8 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					case TOKEN_HASH('n', 'a', 'm', 'e'):
 						if (SrcPtrHasToken("namespace"))
 							mToken = BfToken_Namespace;
+						else if (SrcPtrHasToken("nameof"))
+							mToken = BfToken_NameOf;
 						break;
 					case TOKEN_HASH('n', 'e', 'w', 0):
 						if (SrcPtrHasToken("new"))

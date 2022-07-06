@@ -381,6 +381,7 @@ class BfTypeAttrExpression;
 class BfSizeOfExpression;
 class BfAlignOfExpression;
 class BfOffsetOfExpression;
+class BfNameOfExpression;
 class BfStrideOfExpression;
 class BfIsConstExpression;
 class BfDefaultExpression;
@@ -508,6 +509,7 @@ public:
 	virtual void Visit(BfAlignOfExpression* alignOfExpr);
 	virtual void Visit(BfStrideOfExpression* strideOfExpr);	
 	virtual void Visit(BfOffsetOfExpression* offsetOfExpr);
+	virtual void Visit(BfNameOfExpression* nameOfExpr);
 	virtual void Visit(BfIsConstExpression* isConstExpr);
 	virtual void Visit(BfDefaultExpression* defaultExpr);
 	virtual void Visit(BfUninitializedExpression* uninitializedExpr);
@@ -2727,6 +2729,16 @@ public:
 	BfTokenNode* mCommaToken;
 	BfIdentifierNode* mMemberName;
 };	BF_AST_DECL(BfOffsetOfExpression, BfTypeAttrExpression);
+
+class BfNameOfExpression : public BfExpression
+{
+public:
+	BF_AST_TYPE(BfNameOfExpression, BfExpression);		
+	BfTokenNode* mToken;
+	BfTokenNode* mOpenParen;
+	BfAstNode* mTarget;
+	BfTokenNode* mCloseParen;
+};	BF_AST_DECL(BfNameOfExpression, BfExpression);
 
 class BfIsConstExpression : public BfExpression
 {

@@ -689,7 +689,13 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 }
 
 bool BfAutoComplete::CheckProtection(BfProtection protection, BfTypeDef* typeDef, bool allowProtected, bool allowPrivate)
-{
+{	
+	if (mResolveType == BfResolveType_GetSymbolInfo)
+	{
+		// This is needed for nameof on private inner types
+		return true;
+	}
+
 	if ((protection == BfProtection_Internal) && (typeDef != NULL))
 	{
 		return mModule->CheckProtection(protection, typeDef, allowProtected, allowPrivate);			

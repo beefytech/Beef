@@ -3762,6 +3762,49 @@ static bool IsCharType(BfTypeCode typeCode)
 	}
 }
 
+bool BfExprEvaluator::CheckForMethodName(BfAstNode* refNode, BfTypeInstance* typeInst, const StringImpl& findName)
+{
+	BF_ASSERT((mBfEvalExprFlags & BfEvalExprFlags_NameOf) != 0);
+	
+	auto autoComplete = GetAutoComplete();
+
+	while (typeInst != NULL)
+	{
+		auto typeDef = typeInst->mTypeDef;
+		typeDef->PopulateMemberSets();
+
+		BfMemberSetEntry* memberSetEntry;
+		if (typeDef->mMethodSet.TryGetWith(findName, &memberSetEntry))
+		{
+			if (mModule->mCompiler->mResolvePassData != NULL)
+				mModule->mCompiler->mResolvePassData->HandleMethodReference(refNode, typeDef, (BfMethodDef*)memberSetEntry->mMemberDef);
+
+			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(refNode)))
+			{				
+				autoComplete->SetDefinitionLocation(((BfMethodDef*)memberSetEntry->mMemberDef)->GetRefNode());
+				if ((autoComplete->mResolveType == BfResolveType_GetSymbolInfo) && (autoComplete->mDefType == NULL))
+				{
+					autoComplete->mDefType = typeDef;
+					autoComplete->mDefMethod = (BfMethodDef*)memberSetEntry->mMemberDef;
+				}
+			}
+
+			if (mModule->mCompiler->mResolvePassData != NULL)
+			{
+				if (auto sourceClassifier = mModule->mCompiler->mResolvePassData->GetSourceClassifier(refNode))									
+					sourceClassifier->SetElementType(refNode, BfSourceElementType_Method);
+			}
+
+			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NameOfSuccess);
+			return true;
+		}
+
+		typeInst = typeInst->mBaseType;
+	}
+
+	return false;
+}
+
 bool BfExprEvaluator::IsVar(BfType* type, bool forceIgnoreWrites)
 {
 	if (type->IsVar())
@@ -4591,6 +4634,9 @@ void BfExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 			}
 		}
 
+		if (((mBfEvalExprFlags & BfEvalExprFlags_NameOf) != 0) && (mModule->mCurTypeInstance != NULL) && (CheckForMethodName(identifierNode, mModule->mCurTypeInstance, identifierNode->ToString())))
+			return;
+
 		if ((mBfEvalExprFlags & BfEvalExprFlags_NoLookupError) == 0)
 			mModule->Fail("Identifier not found", identifierNode);
 	}
@@ -5063,7 +5109,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	}
 	else if (!target)
 	{
-		if (mModule->PreFail())
+		if (((mBfEvalExprFlags & BfEvalExprFlags_NameOf) == 0) && (mModule->PreFail()))
 		{
 			if ((flags & BfLookupFieldFlag_CheckingOuter) != 0)
 				mModule->Fail(StrFormat("An instance reference is required to reference non-static outer field '%s.%s'", mModule->TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()),
@@ -5530,7 +5576,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					auto prop = nextProp;
 					nextProp = nextProp->mNextWithSameName;
 
-					if ((!isFailurePass) && (!mModule->CheckProtection(protectionCheckFlags, curCheckType, prop->mDeclaringType->mProject, prop->mProtection, startCheckType)))
+					if ((!isFailurePass) && ((mBfEvalExprFlags & BfEvalExprFlags_NameOf) == 0) && (!mModule->CheckProtection(protectionCheckFlags, curCheckType, prop->mDeclaringType->mProject, prop->mProtection, startCheckType)))
 					{
 						continue;
 					}
@@ -5543,7 +5589,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 							continue;
 					}
 					
-					if ((!target.IsStatic()) || (prop->mIsStatic))
+					if ((!target.IsStatic()) || (prop->mIsStatic) || ((mBfEvalExprFlags & BfEvalExprFlags_NameOf) != 0))
 					{						
 						if (!mModule->IsInSpecializedSection())
 						{
@@ -10864,6 +10910,10 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	{
 		FixitAddMember(typeInst, mExpectingType, nameRight->ToString(), false);
 	}
+
+	if (((mBfEvalExprFlags & BfEvalExprFlags_NameOf) != 0) && (typeInst != NULL) && (CheckForMethodName(nameRight, typeInst, fieldName)))
+		return;
+
 	mModule->Fail(StrFormat("Unable to find member '%s' in '%s'", fieldName.c_str(), mModule->TypeToString(lookupType).c_str()), nameRight);
 }
 
@@ -11011,6 +11061,13 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 				{
 					FixitAddMember(typeInst, mExpectingType, nameRight->ToString(), true);
 				}
+			}
+
+			if ((mBfEvalExprFlags & BfEvalExprFlags_NameOf) != 0)
+			{
+				auto typeInst = lookupType.mType->ToTypeInstance();
+				if ((typeInst != NULL) && (CheckForMethodName(nameRight, typeInst, findName)))
+					return;
 			}
 
 			if ((mBfEvalExprFlags & BfEvalExprFlags_NoLookupError) == 0)
@@ -11883,6 +11940,135 @@ void BfExprEvaluator::Visit(BfStrideOfExpression* strideOfExpr)
 void BfExprEvaluator::Visit(BfOffsetOfExpression* offsetOfExpr)
 {	
 	DoTypeIntAttr(offsetOfExpr->mTypeRef, offsetOfExpr->mCommaToken, offsetOfExpr->mMemberName, BfToken_OffsetOf);
+}
+
+void BfExprEvaluator::Visit(BfNameOfExpression* nameOfExpr)
+{
+	String name;
+
+	if (mModule->IsInSpecializedGeneric())
+	{
+		if (auto identifierNode = BfNodeDynCastExact<BfIdentifierNode>(nameOfExpr->mTarget))
+		{
+			// This is necessary so we don't resolve 'T' to the actual generic argument type
+			name = identifierNode->ToString();
+		}
+	}
+
+	if (name.IsEmpty())
+	{		
+		auto type = mModule->ResolveTypeRef(nameOfExpr->mTarget, {}, BfPopulateType_IdentityNoRemapAlias, 
+			(BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowUnboundGeneric | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_IgnoreProtection));
+		if (type != NULL)
+		{
+			auto typeInst = type->ToTypeInstance();
+			if (typeInst != NULL)
+				name = typeInst->mTypeDef->mName->ToString();
+			else
+				name = mModule->TypeToString(type);
+
+			mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
+
+			// Just do this for autocomplete
+			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
+			VisitChild(nameOfExpr->mTarget);
+		}
+	}
+
+	if (name.IsEmpty())
+	{
+		if (auto identifer = BfNodeDynCast<BfIdentifierNode>(nameOfExpr->mTarget))
+		{			
+			String targetStr = nameOfExpr->mTarget->ToString();
+			BfAtomComposite targetComposite;
+			bool isValid = mModule->mSystem->ParseAtomComposite(targetStr, targetComposite);
+			bool namespaceExists = false;
+
+			BfProject* bfProject = NULL;
+			auto activeTypeDef = mModule->GetActiveTypeDef();
+			if (activeTypeDef != NULL)
+				bfProject = activeTypeDef->mProject;
+			auto _CheckProject = [&](BfProject* project)
+			{
+				if ((isValid) && (project->mNamespaces.ContainsKey(targetComposite)))
+					namespaceExists = true;
+			};
+
+			if (bfProject != NULL)
+			{
+				for (int depIdx = -1; depIdx < (int)bfProject->mDependencies.size(); depIdx++)
+				{
+					BfProject* depProject = (depIdx == -1) ? bfProject : bfProject->mDependencies[depIdx];
+					_CheckProject(depProject);
+				}
+			}
+			else
+			{
+				for (auto project : mModule->mSystem->mProjects)
+					_CheckProject(project);
+			}
+
+			if (namespaceExists)
+			{
+				if (mModule->mCompiler->mResolvePassData != NULL)
+				{
+					if (auto sourceClassifier = mModule->mCompiler->mResolvePassData->GetSourceClassifier(nameOfExpr->mTarget))
+					{
+						BfAstNode* checkIdentifier = identifer;
+						while (true)
+						{
+							auto qualifiedIdentifier = BfNodeDynCast<BfQualifiedNameNode>(checkIdentifier);
+							if (qualifiedIdentifier == NULL)
+								break;
+							sourceClassifier->SetElementType(qualifiedIdentifier->mRight, BfSourceElementType_Namespace);
+							checkIdentifier = qualifiedIdentifier->mLeft;
+						}
+
+						sourceClassifier->SetElementType(checkIdentifier, BfSourceElementType_Namespace);
+					}
+				}
+
+				name = targetComposite.mParts[targetComposite.mSize - 1]->ToString();
+			}
+		}
+	}
+	
+	if (name.IsEmpty())
+	{
+		SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NameOf));
+		VisitChild(nameOfExpr->mTarget);
+
+		if ((mBfEvalExprFlags & BfEvalExprFlags_NameOfSuccess) != 0)
+		{
+			BfAstNode* nameNode = nameOfExpr->mTarget;
+			if (auto attributedIdentifierNode = BfNodeDynCast<BfAttributedIdentifierNode>(nameNode))			
+				nameNode = attributedIdentifierNode->mIdentifier;			
+			if (auto memberReferenceExpr = BfNodeDynCast<BfMemberReferenceExpression>(nameNode))			
+				nameNode = memberReferenceExpr->mMemberName;			
+			if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(nameNode))
+				nameNode = qualifiedNameNode->mRight;
+			name = nameNode->ToString();
+		}
+		else if (mResultFieldInstance != NULL)
+		{
+			auto fieldDef = mResultFieldInstance->GetFieldDef();
+			if (fieldDef != NULL)
+				name = fieldDef->mName;
+		}
+		else if (mResultLocalVar != NULL)
+		{
+			name = mResultLocalVar->mName;
+		}
+		else if (mPropDef != NULL)
+		{
+			name = mPropDef->mName;
+		}		
+	}
+
+	if ((name.IsEmpty()) && (nameOfExpr->mTarget != NULL))
+		mModule->Fail("Expression does not have a name", nameOfExpr->mTarget);
+
+	mResult = BfTypedValue(mModule->GetStringObjectValue(name), mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
 }
 
 void BfExprEvaluator::Visit(BfIsConstExpression* isConstExpr)
@@ -21142,6 +21328,13 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		{
 			if (auto targetIdentifier = BfNodeDynCast<BfIdentifierNode>(memberRefExpr->mMemberName))
 			{
+				if ((mBfEvalExprFlags & BfEvalExprFlags_NameOf) != 0)
+				{
+					auto typeInst = thisValue.mType->ToTypeInstance();
+					if ((typeInst != NULL) && (CheckForMethodName(nameRight, typeInst, findName)))
+						return;
+				}
+
 				mResult.mType = mModule->ResolveInnerType(thisValue.mType, targetIdentifier, BfPopulateType_Declaration);
 			}
 		}

@@ -2352,6 +2352,41 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 					exprLeft = CreateMemberReferenceExpression(typeRef);
 				}
 			}
+			else if (tokenNode->GetToken() == BfToken_NameOf)
+			{
+				BfNameOfExpression* nameOfExpr = mAlloc->Alloc<BfNameOfExpression>();				
+				ReplaceNode(tokenNode, nameOfExpr);
+				nameOfExpr->mToken = tokenNode;
+				tokenNode = ExpectTokenAfter(nameOfExpr, BfToken_LParen);
+				MEMBER_SET_CHECKED(nameOfExpr, mOpenParen, tokenNode);
+
+				mVisitorPos.MoveNext();
+				int outEndNode = -1;
+				bool isTypeRef = IsTypeReference(mVisitorPos.GetCurrent(), BfToken_RParen, -1, &outEndNode);
+				mVisitorPos.mReadPos--;
+				
+ 				if ((isTypeRef) && (outEndNode > 0))
+ 				{
+					if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.Get(outEndNode - 1)))
+					{
+						if ((tokenNode->mToken == BfToken_RChevron) || (tokenNode->mToken == BfToken_RDblChevron))
+						{
+							// Can ONLY be a type reference
+							auto typeRef = CreateTypeRefAfter(nameOfExpr);
+							MEMBER_SET_CHECKED(nameOfExpr, mTarget, typeRef);
+						}
+					} 					
+ 				}
+				
+				if (nameOfExpr->mTarget == NULL)
+				{
+					auto expr = CreateExpressionAfter(nameOfExpr);
+					MEMBER_SET_CHECKED(nameOfExpr, mTarget, expr);
+				}				
+				tokenNode = ExpectTokenAfter(nameOfExpr, BfToken_RParen);
+				MEMBER_SET_CHECKED(nameOfExpr, mCloseParen, tokenNode);
+				exprLeft = nameOfExpr;				
+			}
 
 			if (exprLeft == NULL)
 			{

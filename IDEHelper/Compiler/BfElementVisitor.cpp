@@ -519,12 +519,24 @@ void BfElementVisitor::Visit(BfTypeAttrExpression* typeAttrExpr)
 
 void BfElementVisitor::Visit(BfOffsetOfExpression* offsetOfExpr)
 {
+	Visit(offsetOfExpr->ToBase());
+
 	VisitChild(offsetOfExpr->mToken);
 	VisitChild(offsetOfExpr->mOpenParen);
 	VisitChild(offsetOfExpr->mTypeRef);
 	VisitChild(offsetOfExpr->mCommaToken);
 	VisitChild(offsetOfExpr->mMemberName);
 	VisitChild(offsetOfExpr->mCloseParen);
+}
+
+void BfElementVisitor::Visit(BfNameOfExpression* nameOfExpr)
+{
+	Visit(nameOfExpr->ToBase());
+
+	VisitChild(nameOfExpr->mToken);
+	VisitChild(nameOfExpr->mOpenParen);
+	VisitChild(nameOfExpr->mTarget);	
+	VisitChild(nameOfExpr->mCloseParen);
 }
 
 void BfElementVisitor::Visit(BfDefaultExpression* defaultExpr)

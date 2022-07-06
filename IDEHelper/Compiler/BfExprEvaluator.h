@@ -273,8 +273,6 @@ public:
 	bool IsVarCall(BfType*& outReturnType);
 };
 
-
-
 class BfBaseClassWalker
 {
 public:
@@ -432,6 +430,7 @@ public:
 	BfExprEvaluator(BfModule* module);
 	~BfExprEvaluator();
 
+	bool CheckForMethodName(BfAstNode* refNode, BfTypeInstance* typeInst, const StringImpl& findName);
 	bool IsVar(BfType* type, bool forceIgnoreWrites = false);
 	void GetLiteral(BfAstNode* refNode, const BfVariant& variant);
 	void FinishExpressionResult();	
@@ -559,6 +558,7 @@ public:
 	virtual void Visit(BfAlignOfExpression* alignOfExpr) override;
 	virtual void Visit(BfStrideOfExpression* strideOfExpr) override;
 	virtual void Visit(BfOffsetOfExpression* offsetOfExpr) override;
+	virtual void Visit(BfNameOfExpression* nameOfExpr) override;
 	virtual void Visit(BfIsConstExpression* isConstExpr) override;
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;
 	virtual void Visit(BfUninitializedExpression* uninitialziedExpr) override;
