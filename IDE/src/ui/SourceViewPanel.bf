@@ -447,6 +447,7 @@ namespace IDE.ui
         int32 mTicksSinceTextChanged;
         int32 mErrorLookupTextIdx = -1;
 		LinePointerDrawData mLinePointerDrawData;
+		bool mIsDraggingLinePointer;
 		Point? mMousePos;
 	#if IDE_C_SUPPORT
         public String mClangHoverErrorData ~ delete mClangHoverErrorData;
@@ -4497,6 +4498,8 @@ namespace IDE.ui
 			BreakpointCountMask = 0x7F,
 			Boomkmark = 0x80
 		}
+		
+		static float sDrawLeftAdjust = GS!(12);
 
         public override void Draw(Graphics g)
         {
@@ -4526,7 +4529,6 @@ namespace IDE.ui
                 using (g.PushTranslate(0, mEditWidget.mY + mEditWidget.Content.Y + GS!(2)))
                 {
 					float editX = GetEditX();
-					float leftAdjust = GS!(12);
 
 					float lineSpacing = ewc.mFont.GetLineSpacing();
 					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
@@ -4644,7 +4646,7 @@ namespace IDE.ui
 							int breakpointCount = (.)(curLineFlags & .BreakpointCountMask);
 							curLineFlags++;
 
-							float iconX = Math.Max(GS!(-2), mEditWidget.mX - GS!(24) - leftAdjust) + breakpointCount*-GS!(2);
+							float iconX = Math.Max(GS!(-2), mEditWidget.mX - GS!(24) - sDrawLeftAdjust) + breakpointCount*-GS!(2);
 							float iconY = 0 + ewc.mLineCoords[drawLineNum] + (lineSpacing - DarkTheme.sUnitSize + GS!(5)) / 2;
 
 							// Just leave last digit visible
@@ -4668,7 +4670,7 @@ namespace IDE.ui
 								if (ewc.IsLineCollapsed(drawLineNum))
 									continue;
 								//hadLineIcon[drawLineNum - lineStart] = true;
-                                g.Draw(DarkTheme.sDarkTheme.GetImage(.IconBookmark), Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - leftAdjust),
+                                g.Draw(DarkTheme.sDarkTheme.GetImage(.IconBookmark), Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - sDrawLeftAdjust),
 									0 + bookmark.mLineNum * lineSpacing);
 
 								var curLineFlags = ref lineFlags[drawLineNum - lineStart];
@@ -4832,8 +4834,19 @@ namespace IDE.ui
 							{
 								mLinePointerDrawData.mUpdateCnt = gApp.mUpdateCnt;
 								mLinePointerDrawData.mDebuggerContinueIdx = gApp.mDebuggerContinueIdx;
-								g.Draw(img, mEditWidget.mX - GS!(20) - leftAdjust,
+								g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
 									0 + ewc.GetLineY(lineNum, 0));
+							}
+
+							if (mMousePos != null && mIsDraggingLinePointer)
+							{
+								int dragLineNum = GetLineAt(0, mMousePos.Value.y);
+								if (dragLineNum >= 0 && dragLineNum != lineNum)
+								{
+									using (g.PushColor(0x7FFFFFFF))
+										g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
+											0 + ewc.GetLineY(dragLineNum, 0));
+								}
 							}
                         }
                     }
@@ -7348,6 +7361,29 @@ namespace IDE.ui
 			}
 		}
 
+		public override void MouseUp(float x, float y, int32 btn)
+		{
+			base.MouseUp(x, y, btn);
+
+			if (mIsDraggingLinePointer)
+			{
+				mIsDraggingLinePointer = false;
+
+				float origX;
+				float origY;
+				RootToSelfTranslate(mWidgetWindow.mMouseDownX, mWidgetWindow.mMouseDownY, out origX, out origY);
+
+				int newLine = GetLineAt(0, y);
+				if (newLine >= 0 && newLine != GetLineAt(origX, origY))
+				{
+					gApp.mDebugger.SetNextStatement(false, mFilePath, (int)newLine, 0);
+
+					gApp.[Friend]PCChanged();
+					gApp.[Friend]DebuggerUnpaused();
+				}
+			}
+		}
+
 		public int GetLineAt(float x, float y)
 		{
 			if (x > mEditWidget.mX - GS!(4))
@@ -7401,8 +7437,9 @@ namespace IDE.ui
 			{
 				if ((x >= GS!(3)) && (x < mEditWidget.mX - GS!(14)))
 				{
+					int lineMouseDown = GetLineAt(origX, origY);
 					int lineClick = GetLineAt(x, y);
-					if (lineClick >= 0)
+					if (lineClick >= 0 && lineMouseDown == lineClick)
 					{
 						ToggleBreakpointAt(lineClick, 0);
 					}
@@ -7431,6 +7468,37 @@ namespace IDE.ui
 		{
 			base.MouseMove(x, y);
 			mMousePos = .(x, y);
+
+			if (!mIsDraggingLinePointer && IDEApp.sApp.mExecutionPaused && gApp.mDebugger.mActiveCallStackIdx == 0 && mMouseFlags.HasFlag(.Left))
+			{         
+				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
+				Rect linePointerRect = .(
+					mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
+					0 + ewc.GetLineY(mLinePointerDrawData.mLine, 0),
+					GS!(15),
+					GS!(15)
+				);
+
+				float origX;
+                float origY;
+                RootToSelfTranslate(mWidgetWindow.mMouseDownX, mWidgetWindow.mMouseDownY, out origX, out origY);
+
+				if (linePointerRect.Contains(origX, origY - mEditWidget.mY - mEditWidget.Content.Y - GS!(3)))
+				{
+					mIsDraggingLinePointer = true;
+				}
+			}
+			else if (mIsDraggingLinePointer)
+			{
+				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
+				float linePos = ewc.GetLineY(GetLineAt(0, mMousePos.Value.y), 0);
+				Rect visibleRange = mEditWidget.GetVisibleContentRange();
+
+				if (visibleRange.Top > linePos)
+					mEditWidget.mVertScrollbar.ScrollTo(linePos);
+				else if (visibleRange.Bottom - mEditWidget.mHorzScrollbar.mHeight < linePos)
+					mEditWidget.mVertScrollbar.ScrollTo(linePos - visibleRange.mHeight + ewc.GetLineHeight(0));
+			}
 		}
 
         public override void DrawAll(Graphics g)
