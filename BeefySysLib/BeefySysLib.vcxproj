@@ -1926,6 +1926,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">TurnOffAllWarnings</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">TurnOffAllWarnings</WarningLevel>
     </ClCompile>
+    <ClCompile Include="third_party\putty\wildcard.c" />
     <ClCompile Include="util\AllocDebug.cpp" />
     <ClCompile Include="util\BeefPerf.cpp" />
     <ClCompile Include="util\BSpline.cpp" />
@@ -2152,6 +2153,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="third_party\zlib\zconf.h" />
     <ClInclude Include="third_party\zlib\zlib.h" />
     <ClInclude Include="third_party\zlib\zutil.h" />
+    <ClInclude Include="third_party\putty\wildcard.h" />
     <ClInclude Include="Util\AllocDebug.h" />
     <ClInclude Include="util\Array.h" />
     <ClInclude Include="util\BeefPerf.h" />

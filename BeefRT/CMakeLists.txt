@@ -219,8 +219,9 @@ file(GLOB SRC_FILES
     ../BeefySysLib/util/BeefPerf.cpp
     ../BeefySysLib/util/String.cpp
     ../BeefySysLib/util/UTF8.cpp
-    ../BeefySysLib/util/Hash.cpp    
-    ../BeefySysLib/third_party/utf8proc/utf8proc.c    
+    ../BeefySysLib/util/Hash.cpp
+    ../BeefySysLib/third_party/utf8proc/utf8proc.c
+    ../BeefySysLib/third_party/putty/wildcard.c
 )
 
 if (${IOS})

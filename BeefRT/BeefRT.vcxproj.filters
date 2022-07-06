@@ -28,6 +28,9 @@
     <Filter Include="BeefySysLib\third_party\libffi\x86">
       <UniqueIdentifier>{f94ea9c5-428b-4925-a59e-b7688752d7d7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="BeefySysLib\third_party\putty">
+      <UniqueIdentifier>{e790c845-8b10-4edd-b2c0-71e35b0d80b2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="rt\Internal.cpp">
@@ -86,6 +89,9 @@
     </ClCompile>
     <ClCompile Include="..\BeefySysLib\third_party\libffi\src\types.c">
       <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\putty\wildcard.c">
+      <Filter>BeefySysLib\third_party\putty</Filter>
     </ClCompile>
     <ClCompile Include="rt\Chars.cpp">
       <Filter>rt</Filter>
@@ -148,6 +154,9 @@
     <CustomBuild Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">
       <Filter>BeefySysLib\third_party\libffi\x86</Filter>
     </CustomBuild>
+    <ClInclude Include="..\BeefySysLib\third_party\putty\wildcard.h">
+      <Filter>BeefySysLib\third_party\putty</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="BeefRT.def" />
