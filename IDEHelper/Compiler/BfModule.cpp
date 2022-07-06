@@ -23141,8 +23141,10 @@ void BfModule::CheckHotMethod(BfMethodInstance* methodInstance, const StringImpl
 		return;
 	
 	if ((mCompiler->mOptions.mAllowHotSwapping) && (!methodInstance->mIsUnspecialized))
-	{		
+	{
 		auto srcTypeInst = methodInstance->GetOwner();
+		if (srcTypeInst->mHotTypeData == NULL)
+			return;
 		
 		StringT<128> mangledName = inMangledName;
 
