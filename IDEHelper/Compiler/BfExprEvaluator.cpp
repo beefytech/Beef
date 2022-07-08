@@ -12036,6 +12036,7 @@ void BfExprEvaluator::Visit(BfNameOfExpression* nameOfExpr)
 	if (name.IsEmpty())
 	{
 		SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NameOf));
+		SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mBfIRBuilder->mIgnoreWrites, true);
 		VisitChild(nameOfExpr->mTarget);
 
 		if ((mBfEvalExprFlags & BfEvalExprFlags_NameOfSuccess) != 0)
