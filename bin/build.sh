@@ -7,6 +7,11 @@ ROOTPATH="$(dirname "$SCRIPTPATH")"
 echo Building from from $SCRIPTPATH
 cd $SCRIPTPATH
 
+USE_NINJA=""
+if command -v ninja >/dev/null 2>&1 ; then
+    USE_NINJA="-GNinja"
+fi
+
 # exit when any command fails
 set -e
 
@@ -35,10 +40,10 @@ if [ ! -d jbuild_d ]; then
 	mkdir jbuild
 fi
 cd jbuild_d
-cmake -DCMAKE_BUILD_TYPE=Debug ../
+cmake $USE_NINJA -DCMAKE_BUILD_TYPE=Debug ../
 cmake --build .
 cd ../jbuild
-cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
+cmake $USE_NINJA -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
 cmake --build .
 
 cd ../IDE/dist
