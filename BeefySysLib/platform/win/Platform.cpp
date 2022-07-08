@@ -3511,6 +3511,7 @@ static bool BfpFindFileData_CheckFilter(BfpFindFileData* findData)
 	}
 
 	Beefy::String fileName = UTF8Encode(findData->mFindData.cFileName);
+	Beefy::MakeUpper(fileName);
     if (!wc_match(findData->mWildcard.c_str(), fileName.c_str()))
         return false;
 
@@ -3535,6 +3536,7 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
 	BfpFindFileData* findData = new BfpFindFileData();
 	findData->mFlags = flags;
 	findData->mWildcard = wildcard;
+	Beefy::MakeUpper(findData->mWildcard);
 
 	FINDEX_SEARCH_OPS searchOps;
 	if ((flags & BfpFindFileFlag_Files) == 0)
