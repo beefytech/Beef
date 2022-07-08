@@ -4,12 +4,28 @@ echo Starting build.sh
 PATH=/usr/local/bin:$PATH:$HOME/bin
 SCRIPTPATH=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 ROOTPATH="$(dirname "$SCRIPTPATH")"
-echo Building from from $SCRIPTPATH
+echo Building from $SCRIPTPATH
 cd $SCRIPTPATH
 
-USE_NINJA=""
+if [[ $1 == "clean" ]]; then
+	rm -rf ../jbuild
+	rm -rf ../jbuild_d
+fi
+
 if command -v ninja >/dev/null 2>&1 ; then
-    USE_NINJA="-GNinja"
+	CAN_USE_NINJA=1
+	if [ -d ../jbuild_d ] && [ ! -f ../jbuild_d/build.ninja ]; then
+		CAN_USE_NINJA=0
+	fi
+
+	if [ $CAN_USE_NINJA == 1 ]; then
+		echo "Ninja is enabled for this build."
+		USE_NINJA="-GNinja"
+	else
+		echo "Ninja couldn't be enabled for this build, consider doing a clean build to start using Ninja for faster build speeds."
+	fi
+else
+	echo "Ninja isn't installed, consider installing it for faster build speeds."
 fi
 
 # exit when any command fails
