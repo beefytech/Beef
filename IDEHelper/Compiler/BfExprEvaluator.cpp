@@ -20321,9 +20321,16 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				
 				leftValue = mModule->LoadValue(leftValue);
 
-				if ((binaryOp == BfBinaryOp_NullCoalesce) && (PerformBinaryOperation_NullCoalesce(assignExpr->mOpToken, assignExpr->mLeft, assignExpr->mRight, leftValue, leftValue.mType, &ptr)))
+				if (binaryOp == BfBinaryOp_NullCoalesce)
 				{
-					return;
+					if (!CheckModifyResult(ptr, assignExpr->mOpToken, "assign to", false, false, true))
+					{
+						mModule->CreateValueFromExpression(assignExpr->mRight, ptr.mType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
+						mResult = leftValue;
+						return;
+					}
+					if (PerformBinaryOperation_NullCoalesce(assignExpr->mOpToken, assignExpr->mLeft, assignExpr->mRight, leftValue, leftValue.mType, &ptr))
+						return;
 				}
 
 				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, flags, leftValue, rightValue);				
