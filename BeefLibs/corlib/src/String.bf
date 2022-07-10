@@ -3307,12 +3307,23 @@ namespace System
 
 		public this(String string)
 		{
+			if (string == null)
+			{
+				this = default;
+				return;
+			}
 			mPtr = string.Ptr;
 			mLength = string.Length;
 		}
 
 		public this(String string, int offset)
 		{
+			if (string == null)
+			{
+				Debug.Assert(offset == 0);
+				this = default;
+				return;
+			}
 			Debug.Assert((uint)offset <= (uint)string.Length);
 			mPtr = string.Ptr + offset;
 			mLength = string.Length - offset;
@@ -3320,6 +3331,12 @@ namespace System
 
 		public this(String string, int offset, int length)
 		{
+			if (string == null)
+			{
+				Debug.Assert(offset == 0 && length == 0);
+				this = default;
+				return;
+			}
 			Debug.Assert((uint)offset + (uint)length <= (uint)string.Length);
 			mPtr = string.Ptr + offset;
 			mLength = length;
@@ -3347,6 +3364,12 @@ namespace System
 
 		public this(char8[] arr, int offset, int length)
 		{
+			if (arr == null)
+			{
+				Debug.Assert(offset == 0 && length == 0);
+				this = default;
+				return;
+			}
 			Debug.Assert((uint)offset + (uint)length <= (uint)arr.Count);
 			mPtr = arr.CArray() + offset;
 			mLength = length;
@@ -3354,13 +3377,23 @@ namespace System
 
 		public this(char8* ptr)
 		{
+			if (ptr == null)
+			{
+				this = default;
+				return;
+			}
 			mPtr = ptr;
 			mLength = String.StrLen(ptr);
 		}
 
 		public this(char8* ptr, int length)
-
 		{
+			if (ptr == null)
+			{
+				Debug.Assert(length == 0);
+				this = default;
+				return;
+			}
 			mPtr = ptr;
 			mLength = length;
 		}
