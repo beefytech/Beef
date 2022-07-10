@@ -173,6 +173,7 @@
       <PreprocessorDefinitions>MINRT_CONSOLE;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include;C:\Program Files (x86)\Microsoft Visual Studio\Preview\Professional\VC\Tools\MSVC\14.14.26412\crt\src\vcruntime</AdditionalIncludeDirectories>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -188,6 +189,7 @@
       <PreprocessorDefinitions>MINRT_GUI;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include;C:\Program Files (x86)\Microsoft Visual Studio\Preview\Professional\VC\Tools\MSVC\14.14.26412\crt\src\vcruntime</AdditionalIncludeDirectories>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -208,6 +210,7 @@
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -233,6 +236,7 @@
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -254,6 +258,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>MINRT_CONSOLE;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include;C:\Program Files (x86)\Microsoft Visual Studio\Preview\Professional\VC\Tools\MSVC\14.14.26412\crt\src\vcruntime</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -272,6 +277,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>MINRT_GUI;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include;C:\Program Files (x86)\Microsoft Visual Studio\Preview\Professional\VC\Tools\MSVC\14.14.26412\crt\src\vcruntime</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -291,6 +297,7 @@
       <PreprocessorDefinitions>MINRT_CONSOLE;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include;C:\Program Files (x86)\Microsoft Visual Studio\Preview\Professional\VC\Tools\MSVC\14.14.26412\crt\src\vcruntime</AdditionalIncludeDirectories>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -316,6 +323,7 @@
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include;C:\Program Files (x86)\Microsoft Visual Studio\Preview\Professional\VC\Tools\MSVC\14.14.26412\crt\src\vcruntime</AdditionalIncludeDirectories>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>false</ExceptionHandling>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
