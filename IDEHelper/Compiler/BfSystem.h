@@ -1052,38 +1052,6 @@ public:
 	}
 };
 
-class BfUsingFieldData
-{
-public:
-	struct FieldRef
-	{
-		BfTypeInstance* mTypeInstance;
-		BfFieldDef* mFieldDef;
-
-		FieldRef()
-		{
-			mTypeInstance = NULL;
-			mFieldDef = NULL;
-		}
-
-		FieldRef(BfTypeInstance* typeInst, BfFieldDef* fieldDef)
-		{
-			mTypeInstance = typeInst;
-			mFieldDef = fieldDef;
-		}
-	};
-
-	struct Entry
-	{
-		Array<FieldRef> mConflicts;
-		SizedArray<FieldRef, 1> mLookup;
-	};	
-
-public:
-	Array<BfFieldDef*> mUsingFields;
-	Dictionary<String, Entry> mEntries;
-};
-
 // For partial classes, the first entry in the map will contain the combined data 
 class BfTypeDef
 {
@@ -1127,7 +1095,6 @@ public:
 	Array<BfTypeReference*> mStaticSearch;
 	Array<BfTypeReference*> mInternalAccessSet;
 	Array<BfFieldDef*> mFields;
-	BfUsingFieldData* mUsingFieldData; // Created during mFieldSet
 	Array<BfPropertyDef*> mProperties;
 	Array<BfMethodDef*> mMethods;
 	BfTypeDefMemberSet mMethodSet;
@@ -1217,8 +1184,7 @@ public:
 		mOuterType = NULL;
 		mTypeDeclaration = NULL;		
 		mNextRevision = NULL;
-		mProtection = BfProtection_Public;
-		mUsingFieldData = NULL;
+		mProtection = BfProtection_Public;		
 	}
 
 	BfSource* GetLastSource();

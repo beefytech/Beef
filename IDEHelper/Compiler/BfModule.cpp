@@ -291,20 +291,27 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLoca
 		{
 			if (fieldIdx >= 0)
 			{
-				localVar->mUnassignedFieldFlags &= ~((int64)1 << fieldIdx);				
+				localVar->mUnassignedFieldFlags &= ~((int64)1 << fieldIdx);
+				
+				if (localVar->mResolvedType->IsUnion())
+				{
+					// We need more 'smarts' to determine assignment of unions
+					localVar->mUnassignedFieldFlags = 0;
+				}
+
 				if (localVar->mUnassignedFieldFlags == 0)
 				{
 					if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
-						localVar->mAssignedKind = assignKind;					
+						localVar->mAssignedKind = assignKind;
 				}
 			}
 			else
 			{
-				localVar->mAssignedKind = assignKind;								
+				localVar->mAssignedKind = assignKind;
 			}
 		}
 		else
-		{				
+		{
 			BF_ASSERT(deferredLocalAssignData->mVarIdBarrier != -1);
 
 			BfAssignedLocal defineVal = {localVar, fieldIdx, assignKind};			

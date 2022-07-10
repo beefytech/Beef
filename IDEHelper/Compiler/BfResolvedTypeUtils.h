@@ -1821,18 +1821,90 @@ public:
 	Array<BfAtomComposite> mNamespaces;
 };
 
+class BfUsingFieldData
+{
+public:
+	struct MemberRef
+	{
+		enum Kind
+		{
+			Kind_None,
+			Kind_Field,
+			Kind_Property,
+			Kind_Method,
+			Kind_Local
+		};
+
+		BfTypeInstance* mTypeInstance;
+		Kind mKind;
+		int mIdx;
+
+		MemberRef()
+		{
+			mTypeInstance = NULL;
+			mKind = Kind_None;
+			mIdx = -1;
+		}
+
+		MemberRef(BfTypeInstance* typeInst, BfFieldDef* fieldDef)
+		{
+			mTypeInstance = typeInst;
+			mKind = Kind_Field;
+			mIdx = fieldDef->mIdx;
+		}
+
+		MemberRef(BfTypeInstance* typeInst, BfMethodDef* methodDef)
+		{
+			mTypeInstance = typeInst;
+			mKind = Kind_Method;
+			mIdx = methodDef->mIdx;
+		}
+
+		MemberRef(BfTypeInstance* typeInst, BfPropertyDef* propDef)
+		{
+			mTypeInstance = typeInst;
+			mKind = Kind_Property;
+			mIdx = propDef->mIdx;
+		}
+
+		BfProtection GetProtection() const;
+		BfProtection GetUsingProtection() const;
+		BfTypeDef* GetDeclaringType(BfModule* curModule) const;
+		String GetFullName(BfModule* curModule) const;
+		String GetName(BfModule* curModule) const;
+		BfAstNode* GetRefNode(BfModule* curModule) const;
+		bool IsStatic() const;
+	};
+
+	struct Entry
+	{		
+		SizedArray<SizedArray<MemberRef, 1>, 1> mLookups;
+	};
+
+public:	
+	Dictionary<String, Entry> mEntries;
+	Dictionary<String, Entry> mMethods;
+};
+
 class BfTypeInfoEx
 {
 public:
+	BfUsingFieldData* mUsingFieldData;
 	BfType* mUnderlyingType;
 	int64 mMinValue;
 	int64 mMaxValue;
 
 	BfTypeInfoEx()
 	{
+		mUsingFieldData = NULL;
 		mUnderlyingType = NULL;
 		mMinValue = 0;
 		mMaxValue = 0;
+	}
+
+	~BfTypeInfoEx()
+	{
+		delete mUsingFieldData;
 	}
 };
 

@@ -214,6 +214,7 @@ public:
 	BfType* mCheckReturnType;
 	BfMethodType mMethodType;
 	BfCheckedKind mCheckedKind;
+	Array<SizedArray<BfUsingFieldData::MemberRef, 1>*>* mUsingLists;
 	bool mHasArgNames;
 	bool mHadExplicitGenericArguments;	
 	bool mHadOpenGenericArguments;

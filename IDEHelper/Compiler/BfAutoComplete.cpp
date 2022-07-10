@@ -857,13 +857,13 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 				if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 				{
 					hasGetter = true;
-					propType = methodInstance->mReturnType;					
+					propType = methodInstance->mReturnType;	
 				}
 				if (methodDef->mMethodType == BfMethodType_PropertySetter)
 				{
 					hasSetter = true;
-					if (methodInstance->GetParamCount() > 0)					
-						propType = methodInstance->GetParamType(0);					
+					if (methodInstance->GetParamCount() > 0)
+						propType = methodInstance->GetParamType(0);
 				}
 			}
 
@@ -1022,6 +1022,63 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		if (outerType != NULL)
 		{
 			AddTypeMembers(outerType, true, false, filter, startType, false, allowImplicitThis, false);
+		}
+	}
+
+	if ((typeInst->mTypeDef->mHasUsingFields) &&
+		((typeInst->mTypeInfoEx == NULL) || (typeInst->mTypeInfoEx->mUsingFieldData == NULL)))
+		mModule->PopulateUsingFieldData(typeInst);
+
+	if ((typeInst->mTypeInfoEx != NULL) && (typeInst->mTypeInfoEx->mUsingFieldData != NULL))
+	{
+		for (int pass = 0; pass < 2; pass++)
+		{
+			auto& dict = (pass == 0) ? typeInst->mTypeInfoEx->mUsingFieldData->mEntries : typeInst->mTypeInfoEx->mUsingFieldData->mMethods;
+			for (auto& entryKV : dict)
+			{
+				for (auto& entryList : entryKV.mValue.mLookups)
+				{
+					auto& endEntry = entryList.back();
+
+					bool isStatic = endEntry.IsStatic();
+					if ((isStatic) && (!addStatic))
+						continue;
+					if ((!isStatic) && (!addNonStatic))
+						continue;
+
+					bool passesProtection = true;
+					for (int entryIdx = 0; entryIdx < entryList.mSize; entryIdx++)
+					{
+						auto& entry = entryList[entryIdx];
+						if (!mModule->CheckProtection(protectionCheckFlags, entry.mTypeInstance, entry.GetDeclaringType(mModule)->mProject,
+							(entryIdx < entryList.mSize - 1) ? entry.GetUsingProtection() : entry.GetProtection(), typeInst))
+						{
+							passesProtection = false;
+							break;
+						}
+					}
+					if (!passesProtection)
+						continue;
+
+					switch (endEntry.mKind)
+					{
+					case BfUsingFieldData::MemberRef::Kind_Field:
+						if (endEntry.mTypeInstance->mDefineState < BfTypeDefineState_Defined)
+							mModule->PopulateType(endEntry.mTypeInstance);
+						AddField(endEntry.mTypeInstance, endEntry.mTypeInstance->mTypeDef->mFields[endEntry.mIdx], &endEntry.mTypeInstance->mFieldInstances[endEntry.mIdx], filter);
+						break;
+					case BfUsingFieldData::MemberRef::Kind_Property:
+						AddProp(endEntry.mTypeInstance, endEntry.mTypeInstance->mTypeDef->mProperties[endEntry.mIdx], filter);
+						break;
+					case BfUsingFieldData::MemberRef::Kind_Method:
+					{
+						auto methodDef = endEntry.mTypeInstance->mTypeDef->mMethods[endEntry.mIdx];
+						AddMethod(endEntry.mTypeInstance, methodDef, NULL, methodDef->GetMethodDeclaration(), methodDef->mName, filter);
+					}
+					break;
+					}
+				}
+			}
 		}
 	}
 }
@@ -3865,4 +3922,28 @@ void BfAutoComplete::SetResultStringType(BfType * type)
 		mResultString += "\n:type\tpointer";
 	else
 		mResultString += "\n:type\tvaluetype";
+}
+
+void BfAutoComplete::FixitAddFullyQualify(BfAstNode* refNode, const StringImpl& findName, const SizedArrayImpl<BfUsingFieldData::MemberRef>& foundList)
+{
+	BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
+	String fullName;
+	for (int entryIdx = 0; entryIdx < foundList.mSize - 1; entryIdx++)
+	{
+		auto& entry = foundList[entryIdx];
+		if (entryIdx > 0)		
+			fullName += ".";					
+		if (!mModule->CheckProtection(protectionCheckFlags, entry.mTypeInstance, entry.GetDeclaringType(mModule)->mProject, entry.GetProtection(), mModule->mCurTypeInstance))		
+			fullName += "[Friend]";		
+		fullName += entry.GetName(mModule);
+	}
+
+	BfParserData* parser = refNode->GetSourceData()->ToParserData();
+	if (parser != NULL)
+	{
+		AddEntry(AutoCompleteEntry("fixit", StrFormat("Fully qualify 'using' name as '%s.%s'\tqualify|%s|%d|%s.",
+			fullName.c_str(), findName.c_str(),
+			parser->mFileName.c_str(), refNode->mSrcStart,
+			fullName.c_str()).c_str()));
+	}
 }

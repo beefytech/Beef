@@ -1838,6 +1838,7 @@ public:
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind, bool underlyingTypeDeferred);
 	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers, bool underlyingTypeDeferred);
 	void DoCEEmit(BfMethodInstance* methodInstance);
+	void PopulateUsingFieldData(BfTypeInstance* typeInstance);
 	void DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias);
 	void DoPopulateType_InitSearches(BfTypeInstance* typeInstance);
 	void DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance);	

@@ -64,6 +64,125 @@ bool BfTypedValue::CanModify() const
 
 //////////////////////////////////////////////////////////////////////////
 
+BfProtection BfUsingFieldData::MemberRef::GetProtection() const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mProtection;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mProtection;
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->mProtection;
+	}
+	return BfProtection_Public;
+}
+
+BfProtection BfUsingFieldData::MemberRef::GetUsingProtection() const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mUsingProtection;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mUsingProtection;
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->mProtection;
+	}
+	return BfProtection_Public;
+}
+
+BfTypeDef* BfUsingFieldData::MemberRef::GetDeclaringType(BfModule* curModule) const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mDeclaringType;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mDeclaringType;
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->mDeclaringType;
+	case Kind_Local:
+		return curModule->GetActiveTypeDef();
+	}
+	return NULL;
+}
+
+String BfUsingFieldData::MemberRef::GetFullName(BfModule* curModule) const
+{
+	if (mKind == Kind_Local)
+		return curModule->mCurMethodState->mLocals[mIdx]->mName;
+
+	String result = curModule->TypeToString(mTypeInstance);
+	if (!result.IsEmpty())
+		result += ".";
+
+	switch (mKind)
+	{
+	case Kind_Field:
+		result += mTypeInstance->mTypeDef->mFields[mIdx]->mName;
+		break;
+	case Kind_Property:
+		result += mTypeInstance->mTypeDef->mProperties[mIdx]->mName;
+		break;
+	case Kind_Method:
+		result += mTypeInstance->mTypeDef->mMethods[mIdx]->mName;
+		break;
+	}
+	return result;
+}
+
+String BfUsingFieldData::MemberRef::GetName(BfModule* curModule) const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mName;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mName;
+	case Kind_Method:
+		{
+			auto methodInstance = curModule->GetRawMethodInstance(mTypeInstance, mTypeInstance->mTypeDef->mMethods[mIdx]);
+			return curModule->MethodToString(methodInstance, BfMethodNameFlag_OmitTypeName);
+		}		
+	case Kind_Local:
+		return curModule->mCurMethodState->mLocals[mIdx]->mName;	
+	}
+	return "";
+}
+
+BfAstNode* BfUsingFieldData::MemberRef::GetRefNode(BfModule* curModule) const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->GetRefNode();
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->GetRefNode();
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->GetRefNode();
+	case Kind_Local:
+		return curModule->mCurMethodState->mLocals[mIdx]->mNameNode;
+	}
+	return NULL;
+}
+
+bool BfUsingFieldData::MemberRef::IsStatic() const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mIsStatic;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mIsStatic;
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->mIsStatic;	
+	}
+	return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 bool BfGenericParamInstance::IsEnum()
 {
 	if ((mGenericParamFlags & BfGenericParamFlag_Enum) != 0)

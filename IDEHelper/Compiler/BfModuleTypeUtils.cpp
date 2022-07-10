@@ -3056,6 +3056,151 @@ void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 	}
 }
 
+void BfModule::PopulateUsingFieldData(BfTypeInstance* typeInstance)
+{
+	if (typeInstance->mTypeInfoEx == NULL)
+		typeInstance->mTypeInfoEx = new BfTypeInfoEx();
+
+	BF_ASSERT(typeInstance->mTypeInfoEx->mUsingFieldData == NULL);
+
+	BfUsingFieldData* usingFieldData = new BfUsingFieldData();
+	typeInstance->mTypeInfoEx->mUsingFieldData = usingFieldData;
+
+	HashSet<BfTypeInstance*> checkedTypeSet;
+	Array<BfUsingFieldData::MemberRef> memberRefs;
+	std::function<void(BfTypeInstance*, bool)> _CheckType = [&](BfTypeInstance* usingType, bool staticOnly)
+	{
+		if (!checkedTypeSet.Add(usingType))
+			return;
+		defer(
+			{
+				checkedTypeSet.Remove(usingType);
+			});
+
+		for (auto fieldDef : usingType->mTypeDef->mFields)
+		{
+			if ((staticOnly) && (!fieldDef->mIsStatic))
+				continue;
+
+			memberRefs.Add(BfUsingFieldData::MemberRef(usingType, fieldDef));
+			defer(
+				{
+					memberRefs.pop_back();
+				});
+
+			if (memberRefs.Count() > 1)
+			{
+				BfUsingFieldData::Entry* entry = NULL;
+				usingFieldData->mEntries.TryAdd(fieldDef->mName, NULL, &entry);
+				SizedArray<BfUsingFieldData::MemberRef, 1> lookup;
+				for (auto entry : memberRefs)
+					lookup.Add(entry);				
+				entry->mLookups.Add(lookup);
+			}
+
+			if (fieldDef->mUsingProtection == BfProtection_Hidden)
+				continue;
+
+			if (usingType->mDefineState < BfTypeDefineState_Defined)
+			{
+				// We need to populate this type now
+				PopulateType(usingType);
+			}
+
+			auto fieldInstance = &usingType->mFieldInstances[fieldDef->mIdx];
+			auto fieldTypeInst = fieldInstance->mResolvedType->ToTypeInstance();
+			if (fieldTypeInst != NULL)
+				_CheckType(fieldTypeInst, fieldDef->mIsStatic);
+		}
+
+		for (auto propDef : usingType->mTypeDef->mProperties)
+		{
+			if ((staticOnly) && (!propDef->mIsStatic))
+				continue;
+
+			memberRefs.Add(BfUsingFieldData::MemberRef(usingType, propDef));
+			defer(
+				{
+					memberRefs.pop_back();
+				});
+
+			if (memberRefs.Count() > 1)
+			{
+				BfUsingFieldData::Entry* entry = NULL;
+				usingFieldData->mEntries.TryAdd(propDef->mName, NULL, &entry);
+				SizedArray<BfUsingFieldData::MemberRef, 1> lookup;				
+				for (auto entry : memberRefs)
+					lookup.Add(entry);				
+				entry->mLookups.Add(lookup);
+			}
+
+			if (propDef->mUsingProtection == BfProtection_Hidden)
+				continue;
+
+			if (usingType->mDefineState < BfTypeDefineState_Defined)
+			{
+				// We need to populate this type now
+				PopulateType(usingType);
+			}
+
+			BfType* propType = NULL;
+			for (auto methodDef : propDef->mMethods)
+			{
+				auto methodInstance = GetRawMethodInstance(usingType, methodDef);
+				if (methodInstance == NULL)
+					continue;
+				if (methodDef->mMethodType == BfMethodType_PropertyGetter)
+				{					
+					propType = methodInstance->mReturnType;
+					break;
+				}
+				if (methodDef->mMethodType == BfMethodType_PropertySetter)
+				{					
+					if (methodInstance->GetParamCount() > 0)
+					{
+						propType = methodInstance->GetParamType(0);
+						break;
+					}
+				}
+			}
+			if ((propType != NULL) && (propType->IsTypeInstance()))
+				_CheckType(propType->ToTypeInstance(), propDef->mIsStatic);
+		}
+
+		for (auto methodDef : usingType->mTypeDef->mMethods)
+		{
+			if ((staticOnly) && (!methodDef->mIsStatic))
+				continue;
+
+			//TODO: Support mixins as well
+			if (methodDef->mMethodType != BfMethodType_Normal)
+				continue;
+
+			// No auto methods
+			if (methodDef->mMethodDeclaration == NULL)
+				continue;			
+
+			memberRefs.Add(BfUsingFieldData::MemberRef(usingType, methodDef));
+			defer(
+				{
+					memberRefs.pop_back();
+				});
+
+			if (memberRefs.Count() > 1)
+			{
+				BfUsingFieldData::Entry* entry = NULL;
+				usingFieldData->mMethods.TryAdd(methodDef->mName, NULL, &entry);
+				SizedArray<BfUsingFieldData::MemberRef, 1> lookup;				
+				for (auto entry : memberRefs)
+					lookup.Add(entry);				
+				entry->mLookups.Add(lookup);
+			}
+		}
+	};
+	
+	_CheckType(typeInstance, false);
+}
+
 void BfModule::DoPopulateType_SetGenericDependencies(BfTypeInstance* genericTypeInstance)
 {
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, genericTypeInstance);

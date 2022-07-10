@@ -775,13 +775,6 @@ void BfTypeDef::PopulateMemberSets()
  			fieldDef->mNextWithSameName = (BfFieldDef*)entry->mMemberDef;
  			entry->mMemberDef = fieldDef;
 		}
-		
-		if (fieldDef->mUsingProtection != BfProtection_Hidden)
-		{
-			if (mUsingFieldData == NULL)
-				mUsingFieldData = new BfUsingFieldData();
-			mUsingFieldData->mUsingFields.Add(fieldDef);
-		}
 	}
 
 	while (mPropertySet.mSourceSize < mProperties.mSize)
@@ -795,13 +788,6 @@ void BfTypeDef::PopulateMemberSets()
  			propDef->mNextWithSameName = (BfPropertyDef*)entry->mMemberDef;
  			entry->mMemberDef = propDef;
 		}
-
-		if (propDef->mUsingProtection != BfProtection_Hidden)
-		{
-			if (mUsingFieldData == NULL)
-				mUsingFieldData = new BfUsingFieldData();
-			mUsingFieldData->mUsingFields.Add(propDef);
-		}
 	}
 }
 
@@ -813,9 +799,7 @@ void BfTypeDef::ClearMemberSets()
 
 	for (auto entry : mFieldSet)
 		((BfFieldDef*)entry.mMemberDef)->mNextWithSameName = NULL;
-	mFieldSet.Clear();
-	delete mUsingFieldData;
-	mUsingFieldData = NULL;
+	mFieldSet.Clear();	
 
 	for (auto entry : mPropertySet)
 		((BfPropertyDef*)entry.mMemberDef)->mNextWithSameName = NULL;
@@ -834,7 +818,6 @@ BfTypeDef::~BfTypeDef()
 		mSource->mRefCount--;
 		BF_ASSERT(mSource->mRefCount >= 0);
 	}
-	delete mUsingFieldData;
 }
 
 BfSource* BfTypeDef::GetLastSource()
@@ -3055,8 +3038,6 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mPartials = nextTypeDef->mPartials;	
 	typeDef->mMethodSet.Clear();
 	typeDef->mFieldSet.Clear();
-	delete typeDef->mUsingFieldData;
-	typeDef->mUsingFieldData = NULL;
 	typeDef->mPropertySet.Clear();
 
 	delete nextTypeDef;
@@ -3170,9 +3151,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		newField->mIdx = (int)typeDef->mFields.size();
 		typeDef->mFields.push_back(newField);
 	}
-	typeDef->mFieldSet.Clear();
-	delete typeDef->mUsingFieldData;
-	typeDef->mUsingFieldData = NULL;
+	typeDef->mFieldSet.Clear();	
 		
 	bool hadNoDeclMethod = false;
 	int startMethodIdx = (int)typeDef->mMethods.size();

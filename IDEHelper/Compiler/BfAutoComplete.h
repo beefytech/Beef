@@ -277,6 +277,7 @@ public:
 	void FixitAddNamespace(BfAstNode* refNode, const StringImpl& namespacStr);
 	void FixitCheckNamespace(BfTypeDef* activeTypeDef, BfAstNode* typeRef, BfTokenNode* nextDotToken);
 	void FixitAddConstructor(BfTypeInstance* typeInstance);
+	void FixitAddFullyQualify(BfAstNode* refNode, const StringImpl& findName, const SizedArrayImpl<BfUsingFieldData::MemberRef>& foundList);
 
 	void SetResultStringType(BfType* type);
 };

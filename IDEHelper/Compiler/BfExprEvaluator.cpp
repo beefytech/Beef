@@ -163,6 +163,7 @@ BfMethodMatcher::BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMetho
 void BfMethodMatcher::Init(const BfMethodGenericArguments& methodGenericArguments)
 {
 	//mArguments = arguments;	
+	mUsingLists = NULL;
 	mActiveTypeDef = NULL;
 	mBestMethodDef = NULL;	
 	mBackupMethodDef = NULL;
@@ -2642,7 +2643,7 @@ bool BfMethodMatcher::IsType(BfTypedValue& typedVal, BfType* type)
 // This method checks all base classes before checking interfaces.  Is that correct?
 bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue target, bool isFailurePass, bool forceOuterCheck)
 {
-	BfMethodDef* prevBesstMethodDef = mBestMethodDef;
+	BfMethodDef* prevBestMethodDef = mBestMethodDef;
 	auto curTypeInst = typeInstance;
 	auto curTypeDef = typeInstance->mTypeDef;
 		
@@ -2812,10 +2813,94 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 		}
 
 		if ((mBestMethodDef != NULL) && (mMethodType != BfMethodType_Extension))
-		{			
+		{
+			if ((mUsingLists != NULL) && (mUsingLists->mSize != 0))
+				mUsingLists->Clear();
+
 			if (mAutoFlushAmbiguityErrors)
 				FlushAmbiguityError();
 			return true;
+		}
+
+		if ((mUsingLists != NULL) && (curTypeInst->mTypeDef->mHasUsingFields) &&
+			((curTypeInst->mTypeInfoEx == NULL) || (curTypeInst->mTypeInfoEx->mUsingFieldData == NULL)))
+			mModule->PopulateUsingFieldData(curTypeInst);
+
+		if (mUsingLists != NULL)
+		{
+			auto _CheckUsingData = [&](BfUsingFieldData* usingData)
+			{
+				BfUsingFieldData::Entry* entry = NULL;
+				if (!usingData->mMethods.TryGetValue(mMethodName, &entry))
+					return;
+
+				for (int listIdx = 0; listIdx < entry->mLookups.mSize; listIdx++)
+				{
+					bool passesProtection = true;
+					auto& entryList = entry->mLookups[listIdx];
+					for (int entryIdx = 0; entryIdx < entryList.mSize; entryIdx++)
+					{
+						auto& entry = entryList[entryIdx];
+						if (!mModule->CheckProtection(protectionCheckFlags, entry.mTypeInstance, entry.GetDeclaringType(mModule)->mProject, 
+							(entryIdx < entryList.mSize - 1) ? entry.GetUsingProtection() : entry.GetProtection(), curTypeInst))
+						{
+							passesProtection = false;
+							break;
+						}
+					}
+					if (!passesProtection)
+						continue;
+					
+					auto& entry = entryList.back();
+					BF_ASSERT(entry.mKind == BfUsingFieldData::MemberRef::Kind_Method);
+					auto methodDef = entry.mTypeInstance->mTypeDef->mMethods[entry.mIdx];
+					CheckMethod(curTypeInst, entry.mTypeInstance, methodDef, isFailurePass);
+					if ((mBestMethodDef != methodDef) && (mBackupMethodDef != methodDef))
+					{
+						bool foundAmbiguous = false;
+						for (int checkIdx = 0; checkIdx < mAmbiguousEntries.mSize; checkIdx++)
+						{
+							if (mAmbiguousEntries[checkIdx].mMethodInstance->mMethodDef == methodDef)
+							{
+								mAmbiguousEntries.RemoveAt(checkIdx);
+								foundAmbiguous = true;
+								break;
+							}
+						}
+
+						if (!foundAmbiguous)
+							continue;
+					}
+
+					if (mUsingLists->mSize == 0)
+					{
+						mUsingLists->Add(&entryList);
+					}
+					else
+					{
+						if (entryList.mSize < (*mUsingLists)[0]->mSize)
+						{
+							// New is shorter
+							mUsingLists->Clear();
+							mUsingLists->Add(&entryList);
+						}
+						else if (entryList.mSize > (*mUsingLists)[0]->mSize)
+						{
+							// Ignore longer
+						}
+						else
+						{
+							mUsingLists->Add(&entryList);
+						}
+					}
+				}
+			};
+
+			if ((curTypeInst->mTypeInfoEx != NULL) && (curTypeInst->mTypeInfoEx->mUsingFieldData != NULL))
+				_CheckUsingData(curTypeInst->mTypeInfoEx->mUsingFieldData);
+
+			if (mBestMethodDef != NULL)											
+				break;
 		}
 
 		auto baseType = curTypeInst->mBaseType;
@@ -2867,7 +2952,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 	if (mAutoFlushAmbiguityErrors)
 		FlushAmbiguityError();
 
-	return mBestMethodDef != prevBesstMethodDef;
+	return mBestMethodDef != prevBestMethodDef;
 }
 
 void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* origTarget, BfTypedValue* staticResult)
@@ -4879,7 +4964,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	}
 
 	auto resolvePassData = mModule->mCompiler->mResolvePassData;
-	if ((resolvePassData != NULL) && (resolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Field))
+	if ((resolvePassData != NULL) && (resolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Field) && ((flags & BfLookupFieldFlag_IsAnonymous) == 0))
 	{
 		resolvePassData->HandleFieldReference(targetSrc, typeInstance->mTypeDef, fieldDef);
 	}
@@ -5620,187 +5705,140 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					return LoadProperty(targetSrc, target, curCheckType, matchedProp, flags, checkedKind, isInlined);
 			}
 
-			if ((curCheckType->mTypeDef->mHasUsingFields) && ((flags & BfLookupFieldFlag_BindOnly) == 0))
+			if ((curCheckType->mTypeDef->mHasUsingFields) && 
+				((curCheckType->mTypeInfoEx == NULL) || (curCheckType->mTypeInfoEx->mUsingFieldData == NULL)))
+				mModule->PopulateUsingFieldData(curCheckType);
+
+			///
 			{
-				auto usingFieldData = curCheckType->mTypeDef->mUsingFieldData;
-				
-				BfUsingFieldData::Entry* usingEntry = NULL;
-				if (usingFieldData->mEntries.TryAdd(findName, NULL, &usingEntry))
+				Array<SizedArray<BfUsingFieldData::MemberRef, 1>*> foundLists;
+
+				auto _CheckUsingData = [&](BfUsingFieldData* usingData)
 				{
-					HashSet<BfTypeInstance*> checkedTypeSet;
-					BfUsingFieldData::FieldRef firstFoundField;
+					BfUsingFieldData::Entry* entry = NULL;
+					if (!usingData->mEntries.TryGetValue(findName, &entry))
+						return;
 
-					std::function<bool(BfTypeInstance*)> _CheckTypeDef = [&](BfTypeInstance* usingType)
+					for (int listIdx = 0; listIdx < entry->mLookups.mSize; listIdx++)
 					{
-						if (!checkedTypeSet.Add(usingType))
-							return false;
-
-						BfFieldDef* matchedField = NULL;
-						BfTypeInstance* matchedTypeInst = NULL;
-
-						if (curCheckType != usingType)
+						bool passesProtection = true;
+						auto& entryList = entry->mLookups[listIdx];
+						for (int entryIdx = 0; entryIdx < entryList.mSize; entryIdx++)
 						{
-							auto curUsingType = usingType;
-							while (curUsingType != NULL)
+							auto& entry = entryList[entryIdx];
+							if (!mModule->CheckProtection(protectionCheckFlags, entry.mTypeInstance, entry.GetDeclaringType(mModule)->mProject, 
+								(entryIdx < entryList.mSize - 1) ? entry.GetUsingProtection() : entry.GetProtection(), curCheckType))
 							{
-								curUsingType->mTypeDef->PopulateMemberSets();
-
-								BfFieldDef* nextField = NULL;
-								BfMemberSetEntry* entry;
-								if (curUsingType->mTypeDef->mFieldSet.TryGetWith(findName, &entry))
-									nextField = (BfFieldDef*)entry->mMemberDef;
-
-								while (nextField != NULL)
-								{
-									auto field = nextField;
-									nextField = nextField->mNextWithSameName;
-
-									if (!mModule->CheckProtection(protectionCheckFlags, curUsingType, field->mDeclaringType->mProject, field->mProtection, usingType))
-										continue;
-
-									matchedTypeInst = curUsingType;
-									matchedField = field;
-									break;
-								}
-
-								if (matchedField == NULL)								
-								{
-									BfPropertyDef* nextProp = NULL;
-									if (curUsingType->mTypeDef->mPropertySet.TryGetWith(findName, &entry))
-										nextProp = (BfPropertyDef*)entry->mMemberDef;
-									while (nextProp != NULL)
-									{
-										auto propDef = nextProp;
-										nextProp = nextProp->mNextWithSameName;
-
-										if (!mModule->CheckProtection(protectionCheckFlags, curUsingType, propDef->mDeclaringType->mProject, propDef->mProtection, usingType))
-											continue;
-
-										matchedTypeInst = curUsingType;
-										matchedField = propDef;
-										break;
-									}
-								}
-
-								if (matchedField != NULL)
-								{
-									if (firstFoundField.mTypeInstance == NULL)
-									{
-										firstFoundField = BfUsingFieldData::FieldRef(curUsingType, matchedField);
-									}
-									else
-									{
-										usingEntry->mConflicts.Add(firstFoundField);
-										usingEntry->mConflicts.Add(BfUsingFieldData::FieldRef(curUsingType, matchedField));
-									}
-									break;
-								}
-
-								curUsingType = curUsingType->mBaseType;
-							}							
-						}
-
-						auto curUsingType = usingType;
-						while (curUsingType != NULL)
-						{
-							if (curUsingType->mTypeDef->mUsingFieldData != NULL)
-							{								
-								for (auto fieldDef : curUsingType->mTypeDef->mUsingFieldData->mUsingFields)
-								{
-									if (!mModule->CheckProtection(protectionCheckFlags, curUsingType, fieldDef->mDeclaringType->mProject, fieldDef->mUsingProtection, usingType))
-										continue;
-
-									if (fieldDef->mIsProperty)
-									{
-										auto propDef = (BfPropertyDef*)fieldDef;
-										for (auto methodDef : propDef->mMethods)
-										{
-											if (methodDef->mMethodType == BfMethodType_PropertyGetter)
-											{
-												auto methodInstance = mModule->GetRawMethodInstance(curUsingType, methodDef);
-												if (methodInstance == NULL)
-													continue;
-												BfType* returnType = methodInstance->mReturnType;
-												if ((returnType->IsRef()) || (returnType->IsPointer()))
-													returnType = returnType->GetUnderlyingType();
-												auto fieldTypeInst = returnType->ToTypeInstance();
-												if ((fieldTypeInst != NULL) && (_CheckTypeDef(fieldTypeInst)))
-													usingEntry->mLookup.Insert(0, BfUsingFieldData::FieldRef(curUsingType, fieldDef));
-											}
-										}
-									}
-									else
-									{
-										if (curUsingType->mFieldInstances.IsEmpty())
-											mModule->PopulateType(curCheckType, BfPopulateType_Data);
-										BF_ASSERT(fieldDef->mIdx < (int)curUsingType->mFieldInstances.size());
-										auto fieldInstance = &curUsingType->mFieldInstances[fieldDef->mIdx];
-										if (!fieldInstance->mFieldIncluded)
-											continue;
-										auto fieldType = fieldInstance->mResolvedType;
-										if (fieldType->IsPointer())
-											fieldType = fieldType->GetUnderlyingType();
-										auto fieldTypeInst = fieldType->ToTypeInstance();
-										if ((fieldTypeInst != NULL) && (_CheckTypeDef(fieldTypeInst)))
-											usingEntry->mLookup.Insert(0, BfUsingFieldData::FieldRef(curUsingType, fieldDef));
-									}
-								}
+								passesProtection = false;
+								break;
 							}
-							curUsingType = curUsingType->mBaseType;
 						}
-						
-						if ((matchedField != NULL) && (usingEntry->mLookup.IsEmpty()))
+						if (!passesProtection)
+							continue;
+
+						if (foundLists.mSize == 0)
 						{
-							usingEntry->mLookup.Add(BfUsingFieldData::FieldRef(matchedTypeInst, matchedField));
-							return true;
+							foundLists.Add(&entryList);
 						}
-
-						return false;
-					};
-					_CheckTypeDef(curCheckType);
-				}
-
-				if ((!usingEntry->mConflicts.IsEmpty()) && (mModule->PreFail()))
-				{
-					BfError* error = mModule->Fail("Ambiguous 'using' field reference", targetSrc);
-					if (error != NULL)
-					{
-						for (auto& conflict : usingEntry->mConflicts)
+						else
 						{
-							mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s.%s' is a candidate", mModule->TypeToString(conflict.mTypeInstance).c_str(), conflict.mFieldDef->mName.c_str()), conflict.mFieldDef->GetRefNode());
+							if (entryList.mSize < foundLists[0]->mSize)
+							{
+								// New is shorter
+								foundLists.Clear();
+								foundLists.Add(&entryList);
+							}
+							else if (entryList.mSize > foundLists[0]->mSize)
+							{
+								// Ignore longer
+							}
+							else
+							{
+								foundLists.Add(&entryList);
+							}
 						}
 					}
-				}
+				};
 
-				if (!usingEntry->mLookup.IsEmpty())
+				if ((curCheckType->mTypeInfoEx != NULL) && (curCheckType->mTypeInfoEx->mUsingFieldData != NULL))
+					_CheckUsingData(curCheckType->mTypeInfoEx->mUsingFieldData);
+
+				if (!foundLists.IsEmpty())
 				{
-					auto initialFieldDef = usingEntry->mLookup[0].mFieldDef;
-					if ((initialFieldDef->mIsStatic == target.IsStatic()) &&
-						(mModule->CheckProtection(protectionCheckFlags, curCheckType, initialFieldDef->mDeclaringType->mProject, initialFieldDef->mUsingProtection, startCheckType)))
-					{
-						BfTypeInstance* curTypeInst = curCheckType;
-						BfTypedValue curResult = target;
-						for (int i = 0; i < usingEntry->mLookup.mSize; i++)
-						{
-							auto& fieldRef = usingEntry->mLookup[i];
-							if (mPropDef != NULL)
-							{
-								SetAndRestoreValue<BfTypedValue> prevResult(mResult, BfTypedValue());
-								mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_Friend);
-								curResult = GetResult();
-								if (!curResult)
-									return curResult;
-							}
+					auto foundList = foundLists[0];
 
-							auto useFlags = flags;
-							if (i < usingEntry->mLookup.mSize - 1)
-								useFlags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_IsAnonymous);							
-							curResult = LoadField(targetSrc, curResult, fieldRef.mTypeInstance, fieldRef.mFieldDef, useFlags);
-							if ((!curResult) && (mPropDef == NULL))
+					if (foundLists.mSize > 1)
+					{
+						BfError* error = mModule->Fail("Ambiguous 'using' field reference", targetSrc);
+						if (error != NULL)
+						{
+							for (auto checkList : foundLists)	
+							{
+								String errorStr = "'";
+								for (int entryIdx = 0; entryIdx < checkList->mSize; entryIdx++)
+								{
+									if (entryIdx == 0)									
+										errorStr += (*checkList)[entryIdx].GetFullName(mModule);
+									else
+									{
+										errorStr += ".";
+										errorStr += (*checkList)[entryIdx].GetName(mModule);
+									}
+								}
+								errorStr += "' is a candidate";
+								mModule->mCompiler->mPassInstance->MoreInfo(errorStr, (*checkList)[0].GetRefNode(mModule));
+							}
+						}
+					}
+
+					BfTypedValue curResult = target;
+					for (int entryIdx = 0; entryIdx < foundList->mSize; entryIdx++)
+					{
+						if ((entryIdx == 0) && (foundList->back().IsStatic()))						
+							entryIdx = (int)foundList->mSize - 1;
+
+						auto& entry = (*foundList)[entryIdx];
+						if (mPropDef != NULL)
+						{
+							SetAndRestoreValue<BfTypedValue> prevResult(mResult, BfTypedValue());
+							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_Friend);
+							curResult = GetResult();
+							if (!curResult)
 								return curResult;
 						}
-						return curResult;
+
+						auto useFlags = flags;
+						if (entryIdx < foundList->mSize - 1)
+							useFlags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_IsAnonymous);
+
+						if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Field)
+						{
+							curResult = LoadField(targetSrc, curResult, entry.mTypeInstance, entry.mTypeInstance->mTypeDef->mFields[entry.mIdx], useFlags);
+						}
+						else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Property)
+						{
+							curResult = LoadProperty(targetSrc, curResult, entry.mTypeInstance, entry.mTypeInstance->mTypeDef->mProperties[entry.mIdx], useFlags, BfCheckedKind_NotSet, false);
+						}
+						else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Local)
+						{
+							auto localDef = mModule->mCurMethodState->mLocals[entry.mIdx];
+							curResult = LoadLocal(localDef);
+						}
+						if ((!curResult) && (mPropDef == NULL))
+							return curResult;
+
+						if (entryIdx == foundList->mSize - 1)
+						{
+							auto autoComplete = GetAutoComplete();
+							if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(targetSrc)))
+								autoComplete->SetDefinitionLocation(entry.GetRefNode(mModule));
+
+							if ((autoComplete != NULL) && (autoComplete->CheckFixit(targetSrc)))
+								autoComplete->FixitAddFullyQualify(targetSrc, findName, *foundList);							
+						}
 					}
+
+					return curResult;
 				}
 			}
 
@@ -9412,7 +9450,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	BfTypeInstance* curTypeInst = targetTypeInst;
 
+	Array<SizedArray<BfUsingFieldData::MemberRef, 1>*> methodUsingLists;
 	BfMethodMatcher methodMatcher(targetSrc, mModule, methodName, argValues.mResolvedArgs, methodGenericArgs);
+	methodMatcher.mUsingLists = &methodUsingLists;
 	methodMatcher.mOrigTarget = origTarget;
 	methodMatcher.mTarget = target;
 	methodMatcher.mCheckedKind = checkedKind;
@@ -9581,7 +9621,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		if (lookupTypeInst != NULL)
 			methodMatcher.CheckType(lookupTypeInst, target, true);		
 	}
-
+	
 	BfTypedValue staticResult;
 	//
 	{
@@ -9603,6 +9643,96 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	if ((methodDef) && (!methodDef->mIsStatic) && (!target) && (allowImplicitThis))
 	{
 		target = mModule->GetThis();		
+	}
+
+	if (!methodUsingLists.IsEmpty())
+	{
+		auto foundList = methodUsingLists[0];
+			 
+		if (methodUsingLists.mSize > 1)
+		{
+			BfError* error = mModule->Fail("Ambiguous 'using' method reference", targetSrc);
+			if (error != NULL)
+			{
+			 	for (auto checkList : methodUsingLists)
+			 	{
+			 		String errorStr = "'";
+			 		for (int entryIdx = 0; entryIdx < checkList->mSize; entryIdx++)
+			 		{
+			 			if (entryIdx == 0)
+			 				errorStr += (*checkList)[entryIdx].GetFullName(mModule);
+			 			else
+			 			{
+			 				errorStr += ".";
+			 				errorStr += (*checkList)[entryIdx].GetName(mModule);
+			 			}
+			 		}
+			 		errorStr += "' is a candidate";
+			 		mModule->mCompiler->mPassInstance->MoreInfo(errorStr, (*checkList)[0].GetRefNode(mModule));
+			 	}
+			}
+		}
+
+		BfTypedValue curResult = target;
+		for (int entryIdx = 0; entryIdx < foundList->mSize; entryIdx++)
+		{
+			if ((entryIdx == 0) && (foundList->back().IsStatic()))
+				entryIdx = (int)foundList->mSize - 1;
+
+			auto& entry = (*foundList)[entryIdx];
+			if (mPropDef != NULL)
+			{
+			 	SetAndRestoreValue<BfTypedValue> prevResult(mResult, BfTypedValue());
+			 	mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_Friend);
+			 	curResult = GetResult();
+			 	if (!curResult)
+			 		break;
+			}
+			 
+			auto useFlags = BfLookupFieldFlag_None;
+			if (entryIdx < foundList->mSize - 1)
+			 	useFlags = (BfLookupFieldFlags)(useFlags | BfLookupFieldFlag_IsAnonymous);
+			 
+			if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Field)
+			{
+			 	curResult = LoadField(targetSrc, curResult, entry.mTypeInstance, entry.mTypeInstance->mTypeDef->mFields[entry.mIdx], useFlags);
+			}
+			else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Property)
+			{
+			 	curResult = LoadProperty(targetSrc, curResult, entry.mTypeInstance, entry.mTypeInstance->mTypeDef->mProperties[entry.mIdx], useFlags, BfCheckedKind_NotSet, false);
+			}
+			else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Local)
+			{
+			 	auto localDef = mModule->mCurMethodState->mLocals[entry.mIdx];
+			 	curResult = LoadLocal(localDef);
+			}
+			else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Local)
+			{
+				auto checkMethodDef = entry.mTypeInstance->mTypeDef->mMethods[entry.mIdx];
+				BF_ASSERT(methodDef == checkMethodDef);
+				break;
+			}
+
+			if ((!curResult) && (mPropDef == NULL))
+			 	break;
+			 
+			if (entryIdx == foundList->mSize - 1)
+			{
+			 	auto autoComplete = GetAutoComplete();
+			 	if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(targetSrc)))
+			 		autoComplete->SetDefinitionLocation(entry.GetRefNode(mModule));
+			 
+			 	if ((autoComplete != NULL) && (autoComplete->CheckFixit(targetSrc)))
+					autoComplete->FixitAddFullyQualify(targetSrc, methodName, *foundList);
+			}
+		}
+		
+		if (methodDef->mIsStatic)
+			target = BfTypedValue(curTypeInst);
+		else if (curResult)
+			target = curResult;
+		else if ((!methodDef->mIsStatic) && (curTypeInst != NULL))
+			target = mModule->GetDefaultTypedValue(curTypeInst);
 	}
 
 	// If we call "GetType" on a value type, statically determine the type rather than boxing and then dispatching 
@@ -10034,6 +10164,11 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 	}
 
+	if (methodDef == NULL)
+	{
+
+	}
+
 	// This will flush out any new ambiguity errors from extension methods
 	methodMatcher.FlushAmbiguityError();
 
@@ -10041,8 +10176,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	{
 		FinishDeferredEvals(argValues);
 		auto compiler = mModule->mCompiler;
-		if ((compiler->IsAutocomplete()) && (compiler->mResolvePassData->mAutoComplete->CheckFixit(targetSrc)))
-		{	
+		if ((autoComplete != NULL) && (autoComplete->CheckFixit(targetSrc)))
+		{
 			mModule->CheckTypeRefFixit(targetSrc);			
 			bool wantStatic = !target.mValue;
 			if ((targetType == NULL) && (allowImplicitThis))
@@ -19934,13 +20069,16 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 		
 	BfAutoComplete* autoComplete = GetAutoComplete();
 	bool deferredFixits = false;
-	if ((autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GetFixits))																								 
+
+	//TODO: Why was this needed? This breaks fixits on target nodes (ie: 'using' field fixit for 'fully quality')
+	/*if ((autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GetFixits))
 	{
 		SetAndRestoreValue<bool> ignoreFixits(autoComplete->mIgnoreFixits, true);
 		VisitChild(targetNode);
 		deferredFixits = true;
 	}
-	else if (!evaluatedLeft)
+	else*/
+	if (!evaluatedLeft)
 	{
 		if (auto memberReferenceExpr = BfNodeDynCast<BfMemberReferenceExpression>(targetNode))
 		{

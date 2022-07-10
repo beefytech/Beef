@@ -6570,23 +6570,23 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 			handled = true;
 		}
 
-// 		if (token == BfToken_Using)
-// 		{
-// 			if ((fieldDecl->mConstSpecifier != NULL) && (fieldDecl->mConstSpecifier->mToken == BfToken_Const))
-// 			{
-// 				Fail("Const cannot be used with 'using' specified", tokenNode);
-// 			}
-// 			else if (fieldDecl->mConstSpecifier != NULL)
-// 			{
-// 				Fail("Using already specified", tokenNode);
-// 			}
-// 
-// 			auto usingSpecifier = mAlloc->Alloc<BfUsingSpecifierNode>();
-// 			ReplaceNode(tokenNode, usingSpecifier);
-// 			MEMBER_SET(usingSpecifier, mUsingToken, tokenNode);				
-// 			MEMBER_SET(fieldDecl, mConstSpecifier, usingSpecifier);
-// 			handled = true;
-// 		}
+		if (token == BfToken_Using)
+		{
+			if ((fieldDecl->mConstSpecifier != NULL) && (fieldDecl->mConstSpecifier->mToken == BfToken_Const))
+			{
+				Fail("Const cannot be used with 'using' specified", tokenNode);
+			}
+			else if (fieldDecl->mConstSpecifier != NULL)
+			{
+				Fail("Using already specified", tokenNode);
+			}
+
+			auto usingSpecifier = mAlloc->Alloc<BfUsingSpecifierNode>();
+			ReplaceNode(tokenNode, usingSpecifier);
+			MEMBER_SET(usingSpecifier, mUsingToken, tokenNode);				
+			MEMBER_SET(fieldDecl, mConstSpecifier, usingSpecifier);
+			handled = true;
+		}
 
 		if (token == BfToken_ReadOnly)
 		{
