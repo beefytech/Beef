@@ -21208,8 +21208,13 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 		// Also good
 	}	
 	else
-	{		
-		mModule->Warn(0, StrFormat("Null conditional reference is unnecessary since value type '%s' can never be null", mModule->TypeToString(thisValue.mType).c_str()), dotToken);		
+	{
+		bool canBeNull = false;
+		if (thisValue.mType->IsGenericParam())		
+			canBeNull = true;
+		
+		if (!canBeNull)
+			mModule->Warn(0, StrFormat("Null conditional reference is unnecessary since value type '%s' can never be null", mModule->TypeToString(thisValue.mType).c_str()), dotToken);		
 		return thisValue;
 	}	
 
