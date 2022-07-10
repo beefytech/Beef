@@ -1398,12 +1398,19 @@ double BfParser::ParseLiteralDouble()
 	char buf[256];
 	int len = std::min(mTokenEnd - mTokenStart, 255);
 
-	memcpy(buf, &mSrc[mTokenStart], len);
-	char c = buf[len - 1];
+	int outLen = 0;
+	for (int i = 0; i < len; i++)
+	{
+		char c = mSrc[mTokenStart + i];
+		if (c != '\'')
+			buf[outLen++] = c;
+	}
+
+	char c = buf[outLen - 1];
 	if ((c == 'd') || (c == 'D') || (c == 'f') || (c == 'F'))
-		buf[len - 1] = '\0';
+		buf[outLen - 1] = '\0';
 	else
-		buf[len] = '\0';
+		buf[outLen] = '\0';
 
 	return strtod(buf, NULL);
 }
