@@ -5754,7 +5754,7 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 		{
 			if (refVal.IsAddr())
 				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
-			else if (fieldInstance->IsAppendedObject())
+			else if ((fieldInstance->IsAppendedObject()) && (refVal))
 				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
 		}
 	}
