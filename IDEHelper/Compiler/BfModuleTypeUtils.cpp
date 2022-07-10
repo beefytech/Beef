@@ -5206,7 +5206,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				auto resolvedFieldType = fieldInstance->GetResolvedType();				
 				if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
 				{
-					if ((fieldDef->mUsingProtection != BfProtection_Hidden) && (!resolvedFieldType->IsStruct()) && (!resolvedFieldType->IsObject()))
+					if ((fieldDef->mUsingProtection != BfProtection_Hidden) && (!resolvedFieldType->IsGenericParam()) && (!resolvedFieldType->IsObject()))
 						Warn(0, StrFormat("Field type '%s' is not applicable for 'using'", TypeToString(resolvedFieldType).c_str()), fieldDef->GetFieldDeclaration()->mConstSpecifier);
 
 					if (fieldInstance->mIsEnumPayloadCase)
