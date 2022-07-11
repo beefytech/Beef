@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 
 namespace Tests
@@ -92,6 +94,9 @@ namespace Tests
 
 			Test.Assert(DoAdd(iNull, iNull) == 200);
 			Test.Assert(DoAdd(iNull, null) == null);
+
+			String str = "Abc";
+			StringView? svn = str;
 		}
 	}
 }

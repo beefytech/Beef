@@ -13961,8 +13961,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		BfBaseClassWalker baseClassWalker(walkFromType, walkToType, this);
 		
 		bool isConstraintCheck = ((castFlags & BfCastFlags_IsConstraintCheck) != 0);		
-
-		BfType* operatorConstraintReturnType = NULL;
+		
 		BfType* bestSelfType = NULL;
 		while (true)
 		{
@@ -13986,14 +13985,24 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						// Try without arg
 						args.mSize = 0;
 					}
-										
+
 					if (isConstraintCheck)
 					{
 						auto returnType = CheckOperator(checkType, operatorDef, typedVal, BfTypedValue());
 						if (returnType != NULL)
 						{
-							operatorConstraintReturnType = returnType;
-							methodMatcher.mBestMethodDef = operatorDef;
+							auto result = BfTypedValue(mBfIRBuilder->GetFakeVal(), returnType);
+							if (result)
+							{
+								if (result.mType != toType)
+								{
+									auto castedResult = CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
+									if (castedResult)
+										return castedResult;
+								}
+								else
+									return result.mValue;
+							}
 						}
 					}
 					else
@@ -14087,22 +14096,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 				}
 			}
-		}
-		else if (isConstraintCheck)
-		{
-			auto result = BfTypedValue(mBfIRBuilder->GetFakeVal(), operatorConstraintReturnType);
-			if (result)
-			{
-				if (result.mType != toType)
-				{
-					auto castedResult = CastToValue(srcNode, result, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit | BfCastFlags_NoConversionOperator), resultFlags);
-					if (castedResult)
-						return castedResult;
-				}
-				else
-					return result.mValue;
-			}
-		}
+		}		
 		else
 		{
 			BfTypedValue result;
