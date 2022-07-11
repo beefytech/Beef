@@ -6665,8 +6665,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	if (mDeferCallRef != NULL)
 	{
-		mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, func), irArgs, mDeferScopeAlloc, mDeferCallRef);
-		//return _GetDefaultReturnValue();
+		mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, func), irArgs, mDeferScopeAlloc, mDeferCallRef, bypassVirtual);
 		return mModule->GetFakeTypedValue(returnType);
 	}
 
@@ -6677,7 +6676,6 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			// This can happen either from an error, or from the resolver while doing Internals_Changed processing
 			mModule->AssertErrorState();
 		}
-		//return mModule->GetDefaultTypedValue(returnType,/*, true*/false, returnType->IsComposite());
 		return _GetDefaultReturnValue();
 	}
 	
