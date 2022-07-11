@@ -3308,8 +3308,31 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 	int64 nodeId = ((int64)parser->mDataId << 32) + node->GetSrcStart();
 
 	auto genericTypeBindings = mModule->mCurMethodState->GetRootMethodState()->mGenericTypeBindings;
+	auto methodInstance = mModule->mCurMethodInstance;
 
-	if ((mModule->mCurMethodInstance->mIsUnspecialized) && (!mModule->mCurMethodInstance->mIsUnspecializedVariation))
+	if (mModule->mCurMethodState->mMixinState != NULL)
+	{
+		auto mixinMethodInstance = mModule->mCurMethodState->mMixinState->mMixinMethodInstance;
+		if (!mixinMethodInstance->mMethodDef->mGenericParams.IsEmpty())
+		{
+			auto unspecMixinMethodInstance = mModule->GetUnspecializedMethodInstance(mixinMethodInstance, false);			
+
+			if (!unspecMixinMethodInstance->mHasBeenProcessed)
+			{
+				// Make sure the unspecialized method is processed so we can take its bindings				
+				// Clear mCurMethodState so we don't think we're in a local method
+				SetAndRestoreValue<BfMethodState*> prevMethodState_Unspec(mModule->mCurMethodState, NULL);
+				if (unspecMixinMethodInstance->mMethodProcessRequest == NULL)
+					unspecMixinMethodInstance->mDeclModule->mIncompleteMethodCount++;
+				mModule->mContext->ProcessMethod(unspecMixinMethodInstance);
+			}
+
+			methodInstance = mixinMethodInstance;
+			genericTypeBindings = &unspecMixinMethodInstance->mMethodInfoEx->mGenericTypeBindings;
+		}
+	}
+
+	if ((methodInstance->mIsUnspecialized) && (!methodInstance->mIsUnspecializedVariation))
 	{
 		if (!bindType->IsGenericParam())
 			return bindType;

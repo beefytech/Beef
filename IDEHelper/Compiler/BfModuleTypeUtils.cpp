@@ -5206,7 +5206,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				auto resolvedFieldType = fieldInstance->GetResolvedType();				
 				if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
 				{
-					if ((fieldDef->mUsingProtection != BfProtection_Hidden) && (!resolvedFieldType->IsGenericParam()) && (!resolvedFieldType->IsObject()))
+					if ((fieldDef->mUsingProtection != BfProtection_Hidden) && (!resolvedFieldType->IsGenericParam()) && (!resolvedFieldType->IsObject()) && (!resolvedFieldType->IsStruct()))
 						Warn(0, StrFormat("Field type '%s' is not applicable for 'using'", TypeToString(resolvedFieldType).c_str()), fieldDef->GetFieldDeclaration()->mConstSpecifier);
 
 					if (fieldInstance->mIsEnumPayloadCase)
@@ -9315,12 +9315,16 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 {
 	if (type->mGenericParamKind == BfGenericParamKind_Method)
 	{
-		if ((mCurMethodInstance == NULL) || (mCurMethodInstance->mMethodInfoEx == NULL) || (type->mGenericParamIdx >= mCurMethodInstance->mMethodInfoEx->mGenericParams.mSize))
+		auto curGenericMethodInstance = mCurMethodInstance;
+		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
+			curGenericMethodInstance = mCurMethodState->mMixinState->mMixinMethodInstance;
+
+		if ((curGenericMethodInstance == NULL) || (curGenericMethodInstance->mMethodInfoEx == NULL) || (type->mGenericParamIdx >= curGenericMethodInstance->mMethodInfoEx->mGenericParams.mSize))
 		{
 			FatalError("Invalid GetGenericParamInstance method generic param");
 			return NULL;
 		}
-		return mCurMethodInstance->mMethodInfoEx->mGenericParams[type->mGenericParamIdx];
+		return curGenericMethodInstance->mMethodInfoEx->mGenericParams[type->mGenericParamIdx];
 	}
 
 	return GetGenericTypeParamInstance(type->mGenericParamIdx);

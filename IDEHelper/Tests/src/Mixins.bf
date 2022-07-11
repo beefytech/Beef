@@ -84,6 +84,19 @@ namespace Tests
 			res.Value
 		}
 
+		static mixin DisposeIt<T>(T val) where T : IDisposable
+		{
+			val?.Dispose();
+		}
+
+		class DispClass : IDisposable
+		{
+			void IDisposable.Dispose()
+			{
+
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -114,6 +127,9 @@ namespace Tests
 			Dictionary<int, Dictionary<int, int>> test = scope .() {(1,null)};
 			int val = CircularMixin!(test);
 			Test.Assert(val == 211);
+
+			DispClass dc = scope .();
+			DisposeIt!(dc);
 		}
 
 		[Test]
