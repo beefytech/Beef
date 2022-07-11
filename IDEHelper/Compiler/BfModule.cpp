@@ -16896,25 +16896,30 @@ void BfModule::CreateStaticCtor()
 	{
 		for (auto fieldDef : typeDef->mFields)
 		{
-			if ((!fieldDef->mIsConst) && (fieldDef->mIsStatic) && (fieldDef->GetInitializer() != NULL))
+			if ((!fieldDef->mIsConst) && (fieldDef->mIsStatic))
 			{
 				// For extensions, only handle these fields in the appropriate extension
 				if ((fieldDef->mDeclaringType->mTypeDeclaration != methodDef->mDeclaringType->mTypeDeclaration))
 					continue;
-								
-				UpdateSrcPos(fieldDef->GetInitializer());				
 				
-				auto fieldInst = &mCurTypeInstance->mFieldInstances[fieldDef->mIdx];					
+				auto initializer = fieldDef->GetInitializer();
+				auto fieldInst = &mCurTypeInstance->mFieldInstances[fieldDef->mIdx];
 				if (!fieldInst->mFieldIncluded)
 					continue;
 				if (fieldInst->mResolvedType->IsVar())
-				{					
+				{
 					continue;
 				}
+
 				if (fieldInst->IsAppendedObject())
+				{
 					AppendedObjectInit(fieldInst);
-				else
+				}
+				else if (initializer != NULL)
+				{
+					UpdateSrcPos(initializer);
 					GetFieldInitializerValue(fieldInst, NULL, NULL, NULL, true);
+				}
 			}
 		}
 
@@ -17106,27 +17111,38 @@ void BfModule::EmitDtorBody()
 					BfLocalVariable* localDef = new BfLocalVariable();
 					localDef->mName = "_";
 					localDef->mResolvedType = fieldInst->mResolvedType;
-					localDef->mAddr = value;
-
-					if ((mBfIRBuilder->DbgHasInfo()) && (!IsTargetingBeefBackend()))
+					
+					if (fieldInst->IsAppendedObject())
 					{
-						// Create another pointer indirection, a ref to the gep
-						auto refFieldType = CreateRefType(fieldInst->mResolvedType);
+						localDef->mValue = mBfIRBuilder->CreateBitCast(value, mBfIRBuilder->MapType(fieldInst->mResolvedType));
+					}
+					else
+					{
+						localDef->mAddr = value;
+						if ((mBfIRBuilder->DbgHasInfo()) && (!IsTargetingBeefBackend()))
+						{
+							// Create another pointer indirection, a ref to the gep
+							auto refFieldType = CreateRefType(fieldInst->mResolvedType);
 
-						auto allocaInst = CreateAlloca(refFieldType);
-						
-						auto storeResult = mBfIRBuilder->CreateStore(value, allocaInst);
+							auto allocaInst = CreateAlloca(refFieldType);
 
-						localDef->mResolvedType = refFieldType;
-						localDef->mAddr = allocaInst;
+							auto storeResult = mBfIRBuilder->CreateStore(value, allocaInst);
+
+							localDef->mResolvedType = refFieldType;
+							localDef->mAddr = allocaInst;
+						}
 					}
 					
 					mBfIRBuilder->RestoreDebugLocation();
 										
 					auto defLocalVar = AddLocalVariableDef(localDef, true);
-					// Put back so we actually modify the correct value*/
-					defLocalVar->mResolvedType = fieldInst->mResolvedType;
-					defLocalVar->mAddr = value; 
+
+					if (!fieldInst->IsAppendedObject())
+					{
+						// Put back so we actually modify the correct value*/
+						defLocalVar->mResolvedType = fieldInst->mResolvedType;
+						defLocalVar->mAddr = value;
+					}
 				}								
 
 				while (fieldDtor != NULL)
