@@ -14,6 +14,8 @@ using IDE.Debugger;
 using IDE.Compiler;
 using Beefy.geom;
 using Beefy.events;
+using System.Security.Cryptography;
+using System.IO;
 
 namespace IDE.ui
 {    
@@ -656,6 +658,8 @@ namespace IDE.ui
 			public int32 mParseRevision;
 			public int32 mTextRevision;
 			public bool mDeleted;
+
+			public bool DefaultOpen => mKind != .Region;
 		}
 
 		public struct EmitData
@@ -812,6 +816,8 @@ namespace IDE.ui
 		public int32 mCollapseTextVersionId;
 		public bool mCollapseNeedsUpdate;
 		public bool mCollapseNoCheckOpen;
+		public bool mCollapseDBDirty;
+		public bool mCollapseAwaitingDB = true;
 
 		public List<PersistentTextPosition> PersistentTextPositions
 		{
@@ -5950,7 +5956,8 @@ namespace IDE.ui
 
 				for (var collapseData in ref data.mCollapseData)
 				{
-					if (mCollapseMap.TryAdd(collapseData.mAnchorId, ?, var entry))
+					bool isNew = mCollapseMap.TryAdd(collapseData.mAnchorId, ?, var entry);
+					if (isNew)
 					{
 						*entry = .();
 					}
@@ -5959,6 +5966,12 @@ namespace IDE.ui
 					entry.mPrevAnchorLine = prevAnchorLine;
 					entry.mParseRevision = mCollapseParseRevision;
 					entry.mDeleted = false;
+
+					if ((isNew) && (!entry.DefaultOpen) && (!mCollapseAwaitingDB))
+					{
+						// Likely a '#region' that we need to serialize as being open
+						mCollapseDBDirty = true;
+					}
 				}
 
 				for (var entry in ref mCollapseMap.Values)
@@ -6024,6 +6037,50 @@ namespace IDE.ui
 							DeleteEmbed(val);
 						}
 					}
+				}
+
+				if ((mCollapseAwaitingDB) && (mSourceViewPanel != null))
+				{
+					String filePath = scope .(mSourceViewPanel.mFilePath);
+					IDEUtils.MakeComparableFilePath(filePath);
+
+					HashSet<int32> toggledIndices = scope .();
+
+					List<uint8> dbData = scope .();
+					if (gApp.mFileRecovery.GetDB(filePath, dbData))
+					{
+						MemoryStream memStream = scope .(dbData, false);
+						var dbHash = memStream.Read<MD5Hash>().GetValueOrDefault();
+
+						String text = scope .();
+						mEditWidget.GetText(text);
+						var curHash = MD5.Hash(.((uint8*)text.Ptr, text.Length));
+						if (curHash == dbHash)
+						{
+							while (true)
+							{
+								if (memStream.Read<int32>() case .Ok(let idx))
+								{
+									// We recorded indices, which (upon load) will generate an id of idx+1
+									toggledIndices.Add(idx + 1);
+								}
+								else
+									break;
+							}
+						}
+					}
+
+					for (var collapseEntry in mOrderedCollapseEntries)
+					{
+						bool wantOpen = collapseEntry.DefaultOpen;
+						if (toggledIndices.Contains(collapseEntry.mAnchorId))
+							wantOpen = !wantOpen;
+
+						if (collapseEntry.mIsOpen != wantOpen)
+							SetCollapseOpen(@collapseEntry.Index, wantOpen, true);
+					}
+
+					mCollapseAwaitingDB = false;
 				}
 
 				//Debug.WriteLine($"ParseCollapseRegions Count:{mOrderedCollapseEntries.Count} Time:{sw.ElapsedMilliseconds}ms");
@@ -6335,8 +6392,8 @@ namespace IDE.ui
 			entry.mIsOpen = wantOpen;
 			if (immediate)
 				entry.mOpenPct = entry.mIsOpen ? 1.0f : 0.0f;
-			else
-				mCollapseNeedsUpdate = true;
+			mCollapseNeedsUpdate = true;
+			mCollapseDBDirty = true;
 
 			var cursorLineAndColumn = CursorLineAndColumn;
 

@@ -4,7 +4,8 @@ namespace System.IO
 {
 	class MemoryStream : Stream
 	{
-		List<uint8> mMemory ~ delete _;
+		bool mOwns;
+		List<uint8> mMemory ~ { if (mOwns) delete _; }
 		int mPosition = 0;
 
 		public override int64 Position
@@ -46,13 +47,17 @@ namespace System.IO
 
 		public this()
 		{
+			mOwns = true;
 			mMemory = new List<uint8>();
 		}
 
-		public this(List<uint8> memory)
+		public this(List<uint8> memory, bool owns = true)
 		{
+			mOwns = owns;
 			mMemory = memory;
 		}
+
+		public List<uint8> Memory => mMemory;
 
 		public override Result<int> TryRead(Span<uint8> data)
 		{

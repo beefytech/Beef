@@ -6951,6 +6951,36 @@ namespace IDE.ui
 
 			// Process after mQueuedCollapseData so mCharIdSpan is still valid
 			ProcessDeferredResolveResults(0);
+
+			if (ewc.mCollapseDBDirty)
+			{
+				MemoryStream memStream = scope .();
+
+				String text = scope .();
+				mEditWidget.GetText(text);
+				var hash = MD5.Hash(.((uint8*)text.Ptr, text.Length));
+				memStream.Write(hash);
+
+				bool hadData = false;
+
+				for (var kv in ewc.mOrderedCollapseEntries)
+				{
+					if (kv.mIsOpen != kv.DefaultOpen)
+					{
+						hadData = true;
+						memStream.Write(kv.mAnchorIdx);
+					}
+				}
+
+				String filePath = scope .(mFilePath);
+				IDEUtils.MakeComparableFilePath(filePath);
+
+				if (!hadData)
+					gApp.mFileRecovery.DeleteDB(filePath);
+				else
+					gApp.mFileRecovery.SetDB(filePath, memStream.Memory);
+				ewc.mCollapseDBDirty = false;
+			}
         }
 
 		public override void UpdateF(float updatePct)

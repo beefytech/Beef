@@ -57,6 +57,14 @@ namespace IDE
 		String mWorkspaceDir = new String() ~ delete _;
 		bool mWantWorkspaceCleanup;
 		public bool mDisabled;
+		Dictionary<String, List<uint8>> mDB = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
+		public bool mDBDirty;
+		public String mDBWorkspaceDir = new String() ~ delete _;
+
+		public this()
+		{
+			
+		}
 
 		public ~this()
 		{
@@ -84,6 +92,26 @@ namespace IDE
 			bool wantWorkspaceCleanup = false;
 			using (mMonitor.Enter())
 			{
+				if (mDBDirty)
+				{
+					String recoverPath = scope String();
+					recoverPath.Append(mWorkspaceDir);
+					recoverPath.Append("/recovery/db.bin");
+
+					FileStream fs = scope .();
+					if (fs.Create(recoverPath) case .Ok)
+					{
+						fs.Write((uint32)0xBEEF0701);
+						for (var kv in mDB)
+						{
+							fs.WriteStrSized32(kv.key).IgnoreError();
+							fs.Write((int32)kv.value.Count);
+							fs.TryWrite(kv.value).IgnoreError();
+						}
+					}
+					mDBDirty = false;
+				}
+
 				for (var entry in mFileSet)
 				{
 					if (entry.mRecoveryFileName == null)
@@ -250,6 +278,104 @@ namespace IDE
 			}
 		}
 
+		public void CheckDB()
+		{
+			if (mDBWorkspaceDir == gApp.mWorkspace.mDir)
+				return;
+
+			using (mMonitor.Enter())
+			{
+				for (var kv in mDB)
+				{
+					delete kv.key;
+					delete kv.value;
+				}
+				mDB.Clear();
+
+				mDBWorkspaceDir.Set(gApp.mWorkspace.mDir);
+				if (mDBWorkspaceDir.IsEmpty)
+					return;
+
+				String recoverPath = scope String();
+				recoverPath.Append(mDBWorkspaceDir);
+				recoverPath.Append("/recovery/db.bin");
+
+				FileStream fs = scope .();
+				if (fs.Open(recoverPath) case .Ok)
+				{
+					if (fs.Read<uint32>() == 0xBEEF0701)
+					{
+						String filePath = scope .();
+						while (true)
+						{
+							filePath.Clear();
+							if (fs.ReadStrSized32(filePath) case .Err)
+								break;
+							if (filePath.IsEmpty)
+								break;
+
+							int32 dataSize = fs.Read<int32>();
+							List<uint8> list = new List<uint8>();
+							mDB[new String(filePath)] = list;
+
+							list.Resize(dataSize);
+							if (fs.TryRead(.(list.Ptr, dataSize)) case .Err)
+								break;
+						}
+					}
+				}
+			}
+		}
+
+		public void SetDB(StringView key, Span<uint8> data)
+		{
+			using (mMonitor.Enter())
+			{
+				CheckDB();
+
+				if (mDB.TryAddAlt(key, var keyPtr, var valuePtr))
+				{
+					*keyPtr = new .(key);
+					*valuePtr = new .();
+				}
+				(*valuePtr).Clear();
+				(*valuePtr).AddRange(data);
+				mDBDirty = true;
+			}
+		}
+
+		public bool GetDB(StringView key, List<uint8> data)
+		{
+			using (mMonitor.Enter())
+			{
+				CheckDB();
+
+				if (mDB.TryGetAlt(key, var matchKey, var value))
+				{
+					data.AddRange(value);
+					return true;
+				}
+				return false;
+			}
+		}
+
+		public bool DeleteDB(StringView key)
+		{
+			using (mMonitor.Enter())
+			{
+				CheckDB();
+
+				if (mDB.GetAndRemoveAlt(key) case .Ok((var mapKey, var value)))
+				{
+					mDBDirty = true;
+					delete mapKey;
+					delete value;
+					return true;
+				}
+				return false;
+			}
+		}
+
 		public void Update()
 		{
 			if (mProcessingEvent != null)
@@ -261,7 +387,7 @@ namespace IDE
 
 			using (mMonitor.Enter())
 			{
-				if ((!mDirty) && (!mWantWorkspaceCleanup))
+				if ((!mDirty) && (!mDBDirty) && (!mWantWorkspaceCleanup))
 					return;
 			}
 
