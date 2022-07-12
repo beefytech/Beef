@@ -6952,6 +6952,7 @@ namespace IDE.ui
 			// Process after mQueuedCollapseData so mCharIdSpan is still valid
 			ProcessDeferredResolveResults(0);
 
+#if !CLI
 			if (ewc.mCollapseDBDirty)
 			{
 				MemoryStream memStream = scope .();
@@ -6981,6 +6982,7 @@ namespace IDE.ui
 					gApp.mFileRecovery.SetDB(filePath, memStream.Memory);
 				ewc.mCollapseDBDirty = false;
 			}
+#endif
         }
 
 		public override void UpdateF(float updatePct)

@@ -6039,6 +6039,7 @@ namespace IDE.ui
 					}
 				}
 
+#if !CLI
 				if ((mCollapseAwaitingDB) && (mSourceViewPanel != null))
 				{
 					String filePath = scope .(mSourceViewPanel.mFilePath);
@@ -6082,6 +6083,7 @@ namespace IDE.ui
 
 					mCollapseAwaitingDB = false;
 				}
+#endif
 
 				//Debug.WriteLine($"ParseCollapseRegions Count:{mOrderedCollapseEntries.Count} Time:{sw.ElapsedMilliseconds}ms");
 			}
