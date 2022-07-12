@@ -45,6 +45,21 @@ if (HAVE_BACKTRACE_HEADERS)
    add_definitions(-DBFP_HAS_BACKTRACE)
 endif ()
 
+execute_process(
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/bin/llvm-config --host-target
+  OUTPUT_VARIABLE HOST_TARGET
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE EXEC_RESULT
+)
+
+if (EXEC_RESULT AND NOT EXEC_RESULT EQUAL 0)
+  if (EXEC_RESULT MATCHES "^[0-9]+$")
+    message(FATAL_ERROR "llvm-config exited with code ${EXEC_RESULT}.")
+  else()
+    message(FATAL_ERROR "llvm-config couldn't be executed: ${EXEC_RESULT}")
+  endif()
+endif()
+
 if (${IOS})  
   include_directories(
     .
@@ -66,7 +81,7 @@ elseif (${APPLE})
     ../BeefySysLib/  
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
-    ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/include
+    ../BeefySysLib/third_party/libffi/${HOST_TARGET}/include
     ../  
     ../extern
     ../extern/llvm/include  
@@ -143,7 +158,7 @@ else()
     ../BeefySysLib/  
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
-    ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/include
+    ../BeefySysLib/third_party/libffi/${HOST_TARGET}/include
     ../  
     ../extern
     ../extern/llvm/include  
@@ -242,13 +257,13 @@ elseif (${APPLE})
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/darwin/BFPlatform.cpp
         ../BeefySysLib/platform/darwin/DarwinCommon.cpp
-        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/prep_cif.o
-        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/types.o
-        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/raw_api.o
-        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/java_raw_api.o
-        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/closures.o
-        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/ffi64.o
-        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/darwin64.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/types.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/closures.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/x86/ffi64.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/x86/darwin64.o
     )
 elseif (${ANDROID})
   file(GLOB SRC_FILES_OS
@@ -259,14 +274,14 @@ else()
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/linux/BFPlatform.cpp
         ../BeefySysLib/platform/linux/LinuxCommon.cpp
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/prep_cif.o
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/types.o
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/raw_api.o
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/java_raw_api.o
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/closures.o
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/ffi64.o
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/unix64.o
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/ffiw64.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/types.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/closures.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/x86/ffi64.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/x86/unix64.o
+        ../BeefySysLib/third_party/libffi/${HOST_TARGET}/src/x86/ffiw64.o
     )
 endif()
 
