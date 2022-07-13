@@ -2822,8 +2822,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 			return true;
 		}
 
-		if ((mUsingLists != NULL) && (curTypeInst->mTypeDef->mHasUsingFields) &&
-			((curTypeInst->mTypeInfoEx == NULL) || (curTypeInst->mTypeInfoEx->mUsingFieldData == NULL)))
+		if ((mUsingLists != NULL) && (curTypeInst->mTypeDef->mHasUsingFields))
 			mModule->PopulateUsingFieldData(curTypeInst);
 
 		if (mUsingLists != NULL)
@@ -2841,6 +2840,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 					for (int entryIdx = 0; entryIdx < entryList.mSize; entryIdx++)
 					{
 						auto& entry = entryList[entryIdx];
+						BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
 						if (!mModule->CheckProtection(protectionCheckFlags, entry.mTypeInstance, entry.GetDeclaringType(mModule)->mProject, 
 							(entryIdx < entryList.mSize - 1) ? entry.GetUsingProtection() : entry.GetProtection(), curTypeInst))
 						{
@@ -5531,23 +5531,29 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		bool isBaseLookup = false;
 		while (curCheckType != NULL)
 		{
-			bool isPopulatingType = false;
-			if (mModule->mContext->mCurTypeState != NULL)
+			///
 			{
-				if (curCheckType == mModule->mContext->mCurTypeState->mType)
+				bool isPopulatingType = false;
+
+				auto checkTypeState = mModule->mContext->mCurTypeState;
+				while (checkTypeState != NULL)
 				{
-					isPopulatingType = true;
-					if (mModule->mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes)
+					if (curCheckType == checkTypeState->mType)
 					{
-						// Don't allow lookups yet
-						return BfTypedValue();
+						isPopulatingType = true;
+						if (checkTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes)
+						{
+							// Don't allow lookups yet
+							return BfTypedValue();
+						}
 					}
+					checkTypeState = checkTypeState->mPrevState;
 				}
-			}
-			if ((!isPopulatingType) && (curCheckType->mDefineState < Beefy::BfTypeDefineState_Defined))
-			{
-				// We MAY have emitted fields so we need to do this
-				mModule->mContext->mUnreifiedModule->PopulateType(curCheckType, Beefy::BfPopulateType_Interfaces_All);
+				if ((!isPopulatingType) && (curCheckType->mDefineState < Beefy::BfTypeDefineState_Defined))
+				{
+					// We MAY have emitted fields so we need to do this
+					mModule->mContext->mUnreifiedModule->PopulateType(curCheckType, Beefy::BfPopulateType_Interfaces_All);
+				}
 			}
 
 			curCheckType->mTypeDef->PopulateMemberSets();
@@ -5728,8 +5734,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					return LoadProperty(targetSrc, target, curCheckType, matchedProp, flags, checkedKind, isInlined);
 			}
 
-			if ((curCheckType->mTypeDef->mHasUsingFields) && 
-				((curCheckType->mTypeInfoEx == NULL) || (curCheckType->mTypeInfoEx->mUsingFieldData == NULL)))
+			if (curCheckType->mTypeDef->mHasUsingFields)				
 				mModule->PopulateUsingFieldData(curCheckType);
 
 			///
@@ -5749,6 +5754,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						for (int entryIdx = 0; entryIdx < entryList.mSize; entryIdx++)
 						{
 							auto& entry = entryList[entryIdx];
+							BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
 							if (!mModule->CheckProtection(protectionCheckFlags, entry.mTypeInstance, entry.GetDeclaringType(mModule)->mProject, 
 								(entryIdx < entryList.mSize - 1) ? entry.GetUsingProtection() : entry.GetProtection(), curCheckType))
 							{
