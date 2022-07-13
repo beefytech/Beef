@@ -3060,12 +3060,33 @@ void BfModule::PopulateUsingFieldData(BfTypeInstance* typeInstance)
 {
 	if (typeInstance->mTypeInfoEx == NULL)
 		typeInstance->mTypeInfoEx = new BfTypeInfoEx();
+	
+	BfUsingFieldData* usingFieldData;
+	if (typeInstance->mTypeInfoEx->mUsingFieldData != NULL)
+	{
+		usingFieldData = typeInstance->mTypeInfoEx->mUsingFieldData;
+		Array<BfTypeInstance*> populatedTypes;
 
-	BF_ASSERT(typeInstance->mTypeInfoEx->mUsingFieldData == NULL);
+		for (auto checkType : usingFieldData->mAwaitingPopulateSet)
+		{
+			if (checkType->mDefineState >= BfTypeDefineState_Defined)
+				populatedTypes.Add(checkType);
+		}
 
-	BfUsingFieldData* usingFieldData = new BfUsingFieldData();
-	typeInstance->mTypeInfoEx->mUsingFieldData = usingFieldData;
+		if (populatedTypes.IsEmpty())
+			return;
 
+		for (auto type : populatedTypes)
+			usingFieldData->mAwaitingPopulateSet.Remove(type);
+		usingFieldData->mEntries.Clear();
+		usingFieldData->mMethods.Clear();
+	}
+	else
+	{
+		usingFieldData = new BfUsingFieldData();
+		typeInstance->mTypeInfoEx->mUsingFieldData = usingFieldData;
+	}
+		
 	HashSet<BfTypeInstance*> checkedTypeSet;
 	Array<BfUsingFieldData::MemberRef> memberRefs;
 	std::function<void(BfTypeInstance*, bool)> _CheckType = [&](BfTypeInstance* usingType, bool staticOnly)
@@ -3103,8 +3124,29 @@ void BfModule::PopulateUsingFieldData(BfTypeInstance* typeInstance)
 
 			if (usingType->mDefineState < BfTypeDefineState_Defined)
 			{
-				// We need to populate this type now
-				PopulateType(usingType);
+				bool isPopulatingType = false;
+
+				auto checkTypeState = mContext->mCurTypeState;
+				while (checkTypeState != NULL)
+				{
+					if ((checkTypeState->mType == usingType) && (checkTypeState->mPopulateType >= BfPopulateType_Data))
+					{
+						isPopulatingType = true;
+						break;
+					}
+
+					checkTypeState = checkTypeState->mPrevState;
+				}
+
+				if (isPopulatingType)
+				{
+					typeInstance->mTypeInfoEx->mUsingFieldData->mAwaitingPopulateSet.Add(usingType);
+				}
+				else
+				{
+					// We need to populate this type now
+					PopulateType(usingType);
+				}
 			}
 
 			auto fieldInstance = &usingType->mFieldInstances[fieldDef->mIdx];

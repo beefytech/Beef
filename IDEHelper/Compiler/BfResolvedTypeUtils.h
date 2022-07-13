@@ -1884,6 +1884,7 @@ public:
 public:	
 	Dictionary<String, Entry> mEntries;
 	Dictionary<String, Entry> mMethods;
+	HashSet<BfTypeInstance*> mAwaitingPopulateSet;
 };
 
 class BfTypeInfoEx
