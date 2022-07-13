@@ -3181,9 +3181,10 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		}
 		else
 		{
-			newMethod = new BfMethodDef();		
+			newMethod = new BfMethodDef();
 			*newMethod = *method;
 		}
+		method->mParamNameMap = NULL;
 		newMethod->mIdx = (int)typeDef->mMethods.size();
 		for (int paramIdx = 0; paramIdx < (int)newMethod->mParams.size(); paramIdx++)		
 		{
@@ -3408,6 +3409,7 @@ void BfSystem::CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* fromTypeDef)
 			methodDef = new BfMethodDef();
 			*methodDef = *fromMethodDef;
 		}
+		fromMethodDef->mParamNameMap = NULL;
 
 		if (methodDef->mDeclaringType == fromTypeDef)
 			methodDef->mDeclaringType = typeDef;
