@@ -1307,6 +1307,15 @@ void BfPrinter::Visit(BfTokenPairNode* tokenPairNode)
 	VisitChild(tokenPairNode->mRight);
 }
 
+void BfPrinter::Visit(BfUsingSpecifierNode* usingSpecifier)
+{
+	Visit(usingSpecifier->ToBase());
+
+	VisitChild(usingSpecifier->mProtection);
+	ExpectSpace();
+	VisitChild(usingSpecifier->mUsingToken);
+}
+
 void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 {
 	Visit(literalExpr->ToBase());

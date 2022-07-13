@@ -6438,6 +6438,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 			if (auto usingSpecifier = BfNodeDynCastExact<BfUsingSpecifierNode>(fieldDecl->mConstSpecifier))
 			{
 				SetProtection(memberDecl, usingSpecifier->mProtection, tokenNode);
+				usingSpecifier->mTriviaStart = tokenNode->mTriviaStart;
 				return memberDecl;
 			}
 		}
