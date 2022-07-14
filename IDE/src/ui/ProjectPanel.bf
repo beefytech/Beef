@@ -134,6 +134,7 @@ namespace IDE.ui
         bool mImportFolderDeferred;
         bool mImportProjectDeferred;
 		bool mImportInstalledDeferred;
+		WorkspaceFolder mAddProjectTargetFolder;
         public Dictionary<ListViewItem, ProjectItem> mListViewToProjectMap = new .() ~ delete _;
         public Dictionary<ProjectItem, ProjectListViewItem> mProjectToListViewMap = new .() ~ delete _;
 		public Dictionary<ListViewItem, WorkspaceFolder> mListViewToWorkspaceFolderMap = new .() ~ delete _;
@@ -522,6 +523,19 @@ namespace IDE.ui
         {            
             var projectListViewItem = InitProjectItem(project.mRootFolder);
             projectListViewItem.mRefObject = project;
+			if (mAddProjectTargetFolder != null)
+			{
+				let root = mListView.GetRoot();
+				root.RemoveChildItem(projectListViewItem, false);
+				mAddProjectTargetFolder.mListView.MakeParent();
+				mAddProjectTargetFolder.mListView.AddChild(projectListViewItem);
+				mAddProjectTargetFolder.mListView.Open(true);
+				mProjectToWorkspaceFolderMap[project.mRootFolder] = mAddProjectTargetFolder;
+
+				mAddProjectTargetFolder.mProjects.Add(project);
+
+				mAddProjectTargetFolder = null;
+			}
         }
 
         public void RebuildUI()
@@ -2623,6 +2637,29 @@ namespace IDE.ui
 					anItem = menu.AddItem("Rename");
 					anItem.mOnMenuItemSelected.Add(new (item) => { EditListViewItem(focusedItem); });
 					menu.AddItem();
+					anItem = menu.AddItem("Add New Project...");
+					anItem.mOnMenuItemSelected.Add(new (item) => {
+						mAddProjectTargetFolder = folder;
+						AddNewProject();
+					});
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
+
+					anItem = menu.AddItem("Add Existing Project...");
+					anItem.mOnMenuItemSelected.Add(new (item) => {
+						mImportProjectDeferred = true;
+						mAddProjectTargetFolder = folder;
+					});
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
+
+					anItem = menu.AddItem("Add From Installed...");
+					anItem.mOnMenuItemSelected.Add(new (item) => {
+						mImportInstalledDeferred = true;
+						mAddProjectTargetFolder = folder;
+					});
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
 					anItem = menu.AddItem("New Folder");
 					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder(folder.mListView); });
 					handled = true;
@@ -2633,12 +2670,18 @@ namespace IDE.ui
 					menu.AddItem();
 
 	                anItem = menu.AddItem("Add New Project...");
-	                anItem.mOnMenuItemSelected.Add(new (item) => { AddNewProject(); });
+	                anItem.mOnMenuItemSelected.Add(new (item) => {
+						mAddProjectTargetFolder = null;
+						AddNewProject();
+					});
 					if (gApp.IsCompiling)
 						anItem.SetDisabled(true);
 
 	                anItem = menu.AddItem("Add Existing Project...");
-	                anItem.mOnMenuItemSelected.Add(new (item) => { mImportProjectDeferred = true; });
+	                anItem.mOnMenuItemSelected.Add(new (item) => {
+						mAddProjectTargetFolder = null;
+						mImportProjectDeferred = true;
+					});
 					if (gApp.IsCompiling)
 						anItem.SetDisabled(true);
 
