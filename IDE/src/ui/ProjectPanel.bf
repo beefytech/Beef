@@ -533,7 +533,6 @@ namespace IDE.ui
 				mProjectToWorkspaceFolderMap[project.mRootFolder] = mAddProjectTargetFolder;
 
 				mAddProjectTargetFolder.mProjects.Add(project);
-
 				mAddProjectTargetFolder = null;
 			}
         }
@@ -2388,7 +2387,7 @@ namespace IDE.ui
 			return true;
 		}
 
-		public void AddWorkspaceFolder(ProjectListViewItem parentListViewItem)
+		public WorkspaceFolder AddWorkspaceFolder(ProjectListViewItem parentListViewItem)
 		{
 		    ProjectListViewItem listViewItem;
 		    listViewItem = (ProjectListViewItem)parentListViewItem.CreateChildItem();
@@ -2420,6 +2419,7 @@ namespace IDE.ui
 		    mListView.GetRoot().SelectItemExclusively(listViewItem);
 		    EditListViewItem(listViewItem);
 		    gApp.mWorkspace.SetChanged();
+			return folder;
 		}
 
 
@@ -2661,7 +2661,10 @@ namespace IDE.ui
 					if (gApp.IsCompiling)
 						anItem.SetDisabled(true);
 					anItem = menu.AddItem("New Folder");
-					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder(folder.mListView); });
+					anItem.mOnMenuItemSelected.Add(new (item) => {
+						let newfolder = AddWorkspaceFolder(folder.mListView);
+						newfolder.mParent = folder;
+					});
 					handled = true;
 				}
 				else if (gApp.mWorkspace.IsInitialized)
