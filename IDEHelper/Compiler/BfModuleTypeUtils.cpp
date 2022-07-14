@@ -9358,8 +9358,11 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 	if (type->mGenericParamKind == BfGenericParamKind_Method)
 	{
 		auto curGenericMethodInstance = mCurMethodInstance;
-		if ((checkMixinBind) && (mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
-			curGenericMethodInstance = mCurMethodState->mMixinState->mMixinMethodInstance;
+		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
+		{
+			if ((checkMixinBind) || (mCurMethodState->mMixinState->mUseMixinGenerics))
+				curGenericMethodInstance = mCurMethodState->mMixinState->mMixinMethodInstance;
+		}
 
 		if ((curGenericMethodInstance == NULL) || (curGenericMethodInstance->mMethodInfoEx == NULL) || (type->mGenericParamIdx >= curGenericMethodInstance->mMethodInfoEx->mGenericParams.mSize))
 		{

@@ -10981,8 +10981,19 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	auto lookupType = BindGenericType(nameNode, mResult.mType);	
 	if ((lookupType->IsGenericParam()) && (!mResult.mType->IsGenericParam()))
 	{
+		bool prevUseMixinGenerics = false;
+		if (mModule->mCurMethodState->mMixinState != NULL)
+		{
+			prevUseMixinGenerics = mModule->mCurMethodState->mMixinState->mUseMixinGenerics;
+			mModule->mCurMethodState->mMixinState->mUseMixinGenerics = true;
+		}
+
 		// Try to lookup from generic binding
 		mResult = LookupField(nameRight, BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), lookupType), fieldName, BfLookupFieldFlag_BindOnly);
+
+		if (mModule->mCurMethodState->mMixinState != NULL)
+			mModule->mCurMethodState->mMixinState->mUseMixinGenerics = prevUseMixinGenerics;
+
 		if (mPropDef != NULL)
 		{
 			mOrigPropTarget = lookupVal;

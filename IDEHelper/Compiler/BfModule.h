@@ -830,6 +830,7 @@ public:
 	bool mHasDeferredUsage;
 	bool mCheckedCircularRef;
 	bool mDoCircularVarResult;
+	bool mUseMixinGenerics;
 	BfTypedValue mTarget;
 	int mLastTargetAccessId;
 
@@ -847,6 +848,7 @@ public:
 		mHasDeferredUsage = false;
 		mCheckedCircularRef = false;
 		mDoCircularVarResult = false;
+		mUseMixinGenerics = false;
 		mLastTargetAccessId = -1;
 	}
 
