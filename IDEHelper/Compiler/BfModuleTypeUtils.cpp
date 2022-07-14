@@ -9353,12 +9353,12 @@ BfGenericParamInstance* BfModule::GetMergedGenericParamData(BfGenericParamType* 
 	return genericParam;
 }
 
-BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* type)
+BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* type, bool checkMixinBind)
 {
 	if (type->mGenericParamKind == BfGenericParamKind_Method)
 	{
 		auto curGenericMethodInstance = mCurMethodInstance;
-		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
+		if ((checkMixinBind) && (mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
 			curGenericMethodInstance = mCurMethodState->mMixinState->mMixinMethodInstance;
 
 		if ((curGenericMethodInstance == NULL) || (curGenericMethodInstance->mMethodInfoEx == NULL) || (type->mGenericParamIdx >= curGenericMethodInstance->mMethodInfoEx->mGenericParams.mSize))
@@ -15681,8 +15681,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 				return;
 			}
 		}
-
-		//TEMPORARY
+		
 		if (genericParam->mGenericParamKind == BfGenericParamKind_Type)
 		{
 			auto curTypeInstance = mCurTypeInstance;
@@ -15696,6 +15695,12 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		}
 
 		auto genericParamInstance = GetGenericParamInstance(genericParam);
+		if (genericParamInstance == NULL)
+		{
+			str += StrFormat("@M%d", genericParam->mGenericParamIdx);
+			return;
+		}
+
 		auto genericParamDef = genericParamInstance->GetGenericParamDef();
 		if (genericParamDef != NULL)
 			str += genericParamInstance->GetGenericParamDef()->mName;

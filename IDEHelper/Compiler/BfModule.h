@@ -1922,7 +1922,7 @@ public:
 	BfType* ResolveSelfType(BfType* type, BfType* selfType);
 	bool IsUnboundGeneric(BfType* type);
 	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
-	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type);	
+	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type, bool checkMixinBind = false);
 	void GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInstance*, 4>& genericParamInstance);
 	BfGenericParamInstance* GetMergedGenericParamData(BfGenericParamType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint);
 	BfTypeInstance* GetBaseType(BfTypeInstance* typeInst);

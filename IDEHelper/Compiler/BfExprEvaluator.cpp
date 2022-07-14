@@ -3310,6 +3310,7 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 	auto genericTypeBindings = mModule->mCurMethodState->GetRootMethodState()->mGenericTypeBindings;
 	auto methodInstance = mModule->mCurMethodInstance;
 
+	bool isMixinBind = false;
 	if (mModule->mCurMethodState->mMixinState != NULL)
 	{
 		auto mixinMethodInstance = mModule->mCurMethodState->mMixinState->mMixinMethodInstance;
@@ -3327,6 +3328,7 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 				mModule->mContext->ProcessMethod(unspecMixinMethodInstance);
 			}
 
+			isMixinBind = true;
 			methodInstance = mixinMethodInstance;
 			genericTypeBindings = &unspecMixinMethodInstance->mMethodInfoEx->mGenericTypeBindings;
 		}
@@ -3334,6 +3336,9 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 
 	if ((methodInstance->mIsUnspecialized) && (!methodInstance->mIsUnspecializedVariation))
 	{
+		if (isMixinBind)
+			return bindType;
+
 		if (!bindType->IsGenericParam())
 			return bindType;
 
@@ -9604,7 +9609,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 					}
 				};
 
-				auto genericParamInstance = mModule->GetGenericParamInstance(genericParamTarget);
+				auto genericParamInstance = mModule->GetGenericParamInstance(genericParamTarget, true);
 				_HandleGenericParamInstance(genericParamInstance);
 				
 				// Check method generic constraints
@@ -10794,7 +10799,7 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 	mResult = LookupField(nameNode->mRight, lookupVal, fieldName);
 	if ((!mResult) && (mPropDef == NULL) && (lookupType->IsGenericParam()))
 	{
-		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)lookupType);
+		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)lookupType, true);
 		SizedArray<BfTypeInstance*, 8> searchConstraints;
 		for (auto ifaceConstraint : genericParamInst->mInterfaceConstraints)
 		{			
@@ -10990,7 +10995,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 
 	if ((!mResult) && (mPropDef == NULL) && (lookupType->IsGenericParam()))
 	{
-		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)lookupType);
+		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)lookupType, true);
 		SizedArray<BfTypeInstance*, 8> searchConstraints;
 		for (auto ifaceConstraint : genericParamInst->mInterfaceConstraints)
 		{			
