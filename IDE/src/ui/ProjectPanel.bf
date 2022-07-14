@@ -1798,12 +1798,34 @@ namespace IDE.ui
 						if (mListViewToProjectMap.TryGetValue(projectListViewItem, let projectItem))
 							mProjectToWorkspaceFolderMap.Remove(projectItem);
 		            }
+
+					HashSet<void*> deletedFolders = scope .();
+					bool HasDeletedParent(WorkspaceFolder folder)
+					{
+						WorkspaceFolder parent = folder;
+						repeat
+						{
+							parent = parent.mParent;
+
+							if (deletedFolders.Contains(Internal.UnsafeCastToPtr(parent)))
+								return true;
+						}
+						while (parent != null);
+
+						return false;
+					}
+
 		            for (let folder in foldersToDelete)
 		            {
-		                let folderItem = folder.mListView;
-		                mListViewToWorkspaceFolderMap.Remove(folderItem);
-		                folderItem.mParentItem.RemoveChildItem(folderItem);
-		                gApp.mWorkspace.mWorkspaceFolders.Remove(folder);
+						if (!HasDeletedParent(folder))
+						{
+							let folderItem = folder.mListView;
+							mListViewToWorkspaceFolderMap.Remove(folderItem);
+							folderItem.mParentItem.RemoveChildItem(folderItem);
+						}
+
+		               	gApp.mWorkspace.mWorkspaceFolders.Remove(folder);
+						deletedFolders.Add(Internal.UnsafeCastToPtr(folder));
 		                delete folder;
 		            }
 
