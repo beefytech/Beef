@@ -8098,9 +8098,19 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 		{
 			SetAndRestoreValue<BfVisitorPos> prevVisitorPos(mVisitorPos, BfVisitorPos(block));
 			ReadArguments(objectCreateExpr, objectCreateExpr, &arguments, &commas, BfToken_None, true);
+
+			while (true)
+			{
+				auto nextNode = mVisitorPos.GetNext();
+				if (nextNode == NULL)
+					break;
+				AddErrorNode(nextNode);
+				mVisitorPos.MoveNext();
+			}
 		}
 		if (block->mCloseBrace != NULL)
 			MEMBER_SET(objectCreateExpr, mCloseToken, block->mCloseBrace);
+		objectCreateExpr->mSrcEnd = block->mSrcEnd;
 		return objectCreateExpr;
 	}	
 
