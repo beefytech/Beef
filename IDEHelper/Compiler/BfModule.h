@@ -47,6 +47,7 @@ enum BfPopulateType
 	BfPopulateType_Interfaces_Direct,
 	BfPopulateType_AllowStaticMethods,
 	BfPopulateType_Interfaces_All,
+	BfPopulateType_Data_Soft,
 	BfPopulateType_Data,
 	BfPopulateType_DataAndMethods,
 	BfPopulateType_Full = BfPopulateType_DataAndMethods,
@@ -1609,7 +1610,7 @@ public:
 	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false, bool showInSpecialized = false);
 	void CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc);
 	void CheckRangeError(BfType* type, BfAstNode* refNode);
-	bool CheckCircularDataError();
+	bool CheckCircularDataError(bool failTypes = true);
 	BfFileInstance* GetFileFromNode(BfAstNode* astNode);
 	//void UpdateSrcPos(BfAstNode* astNode, bool setDebugLoc = true, int debugLocOffset = 0, bool force = false);		
 	void UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags = BfSrcPosFlag_None, int debugLocOffset = 0);

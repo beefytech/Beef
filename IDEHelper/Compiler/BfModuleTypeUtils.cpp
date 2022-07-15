@@ -1038,7 +1038,7 @@ void BfModule::TypeFailed(BfTypeInstance* typeInstance)
 	mHadBuildError = true;
 }
 
-bool BfModule::CheckCircularDataError()
+bool BfModule::CheckCircularDataError(bool failTypes)
 {	
 	// Find two loops of mCurTypeInstance. Just finding one loop can give some false errors.
 
@@ -1104,10 +1104,13 @@ bool BfModule::CheckCircularDataError()
 			((checkTypeState->mType == NULL) || (checkTypeState->mType->IsTypeInstance())))
 			return hadError;
 
+		hadError = true;
+		if (!failTypes)
+			return hadError;
+
 		// We only get one chance to fire off these errors, they can't be ignored.
 		SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, false);
 
-		hadError = true;
 		if (checkTypeState->mCurAttributeTypeRef != NULL)
 		{
 			Fail(StrFormat("Attribute type '%s' causes a data cycle", BfTypeUtils::TypeToString(checkTypeState->mCurAttributeTypeRef).c_str()), checkTypeState->mCurAttributeTypeRef, true);
@@ -3138,15 +3141,14 @@ void BfModule::PopulateUsingFieldData(BfTypeInstance* typeInstance)
 					checkTypeState = checkTypeState->mPrevState;
 				}
 
-				if (isPopulatingType)
-				{
-					typeInstance->mTypeInfoEx->mUsingFieldData->mAwaitingPopulateSet.Add(usingType);
-				}
-				else
+				if (!isPopulatingType)				
 				{
 					// We need to populate this type now
-					PopulateType(usingType);
+					PopulateType(usingType, BfPopulateType_Data_Soft);
 				}
+
+				if (usingType->mDefineState < BfTypeDefineState_Defined)
+					typeInstance->mTypeInfoEx->mUsingFieldData->mAwaitingPopulateSet.Add(usingType);
 			}
 
 			auto fieldInstance = &usingType->mFieldInstances[fieldDef->mIdx];
@@ -3777,7 +3779,15 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	if (!typeInstance->mTypeFailed)
+	{
+		if (populateType == BfPopulateType_Data_Soft)
+		{
+			if (CheckCircularDataError(false))
+				return;
+		}
+
 		CheckCircularDataError();
+	}
 
 	if (typeInstance->mDefineState < BfTypeDefineState_Declaring)
 	{
@@ -4894,6 +4904,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if (typeInstance->mResolvingConstField)
 			return;
 
+		bool hadSoftFail = false;
+
 		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 		{
 			auto fieldInstance = &fieldInstanceRef;
@@ -4947,9 +4959,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
 				bool populateChildType = !typeInstance->mTypeFailed;
 				//bool populateChildType = true;
-				PopulateType(resolvedFieldType, populateChildType ? BfPopulateType_Data : BfPopulateType_Declaration);				
+				PopulateType(resolvedFieldType, populateChildType ? ((populateType == BfPopulateType_Data_Soft) ? BfPopulateType_Data_Soft : BfPopulateType_Data) : BfPopulateType_Declaration);
 
-				if (populateChildType)
+				if (populateType == BfPopulateType_Data_Soft)
+				{
+					if (resolvedFieldType->IsDataIncomplete())
+						hadSoftFail = true;
+				}
+				else if (populateChildType)
 				{
 					if (resolvedFieldType->IsFinishingType())
 					{
@@ -4971,9 +4988,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					}
 				}
 			}
-
-
 		}
+
+		if (hadSoftFail)
+			return;
 		
 		bool tryCE = true;
  		if (typeInstance->mDefineState == BfTypeDefineState_CETypeInit)
