@@ -3974,7 +3974,7 @@ namespace IDE.ui
 				prevChar = mData.mText[cursorTextPos - 1].mChar;
 			}
 
-            if (((keyChar == '\n') || (keyChar == '\r')) && (mIsMultiline) && (!CheckReadOnly()))
+            if (((keyChar == '\n') || (keyChar == '\r')) && (!HasSelection()) && (mIsMultiline) && (!CheckReadOnly()))
             {
                 UndoBatchStart undoBatchStart = new UndoBatchStart("newline");
                 mData.mUndoManager.Add(undoBatchStart);                
