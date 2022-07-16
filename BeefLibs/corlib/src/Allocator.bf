@@ -5,13 +5,13 @@ namespace System
 {
 	interface IRawAllocator
 	{
-		void* Alloc(int size, int align);
-		void Free(void* ptr);
+		void* Alloc(int size, int align) mut;
+		void Free(void* ptr) mut;
 	}
 
 	interface ITypedAllocator : IRawAllocator
 	{
-		void* AllocTyped(Type type, int size, int align);
+		void* AllocTyped(Type type, int size, int align) mut;
 	}
 
 	struct StdAllocator : IRawAllocator

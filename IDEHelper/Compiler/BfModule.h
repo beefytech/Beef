@@ -1662,7 +1662,7 @@ public:
 	BfVariant TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& value, bool allowUndef = false);
 
 	BfTypedValue FlushNullConditional(BfTypedValue result, bool ignoreNullable = false);	
-	void NewScopeState(bool createLexicalBlock = true, bool flushValueScope = true); // returns prev scope data
+	void NewScopeState(bool createLexicalBlock = true, bool flushValueScope = true); // returns prev scope data	
 	BfIRValue CreateAlloca(BfType* type, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime = true, const char* name = NULL);
 	BfDeferredCallEntry* AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false, BfIRBlock valBlock = BfIRBlock());
@@ -1707,13 +1707,13 @@ public:
 	void AssertErrorState();
 	void AssertParseErrorState();
 	void InitTypeInst(BfTypedValue typedValue, BfScopeData* scope, bool zeroMemory, BfIRValue dataSize);		
+	bool IsAllocatorAligned();
 	BfIRValue AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTarget, BfType* type, BfIRValue sizeValue, BfIRValue alignValue, BfAllocFlags allocFlags/*bool zeroMemory, bool defaultToMalloc*/);
 	BfIRValue GetMarkFuncPtr(BfType* type);
 	BfIRValue GetDbgRawAllocData(BfType* type);
 	BfIRValue AllocFromType(BfType* type, const BfAllocTarget& allocTarget, BfIRValue appendSizeValue = BfIRValue(), BfIRValue arraySize = BfIRValue(), int arrayDim = 0, /*bool isRawArrayAlloc = false, bool zeroMemory = true*/BfAllocFlags allocFlags = BfAllocFlags_ZeroMemory, int alignOverride = -1);
 	void ValidateAllocation(BfType* type, BfAstNode* refNode);
-	bool IsOptimized();
-	void EmitAlign(BfIRValue& appendCurIdx, int align);
+	bool IsOptimized();	
 	void EmitAppendAlign(int align, int sizeMultiple = 0);
 	BfIRValue AppendAllocFromType(BfType* type, BfIRValue appendSizeValue = BfIRValue(), int appendAllocAlign = 0, BfIRValue arraySize = BfIRValue(), int arrayDim = 0, bool isRawArrayAlloc = false, bool zeroMemory = true);	
 	bool IsTargetingBeefBackend();

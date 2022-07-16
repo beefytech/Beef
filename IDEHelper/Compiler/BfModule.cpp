@@ -9094,6 +9094,13 @@ void BfModule::InitTypeInst(BfTypedValue typedValue, BfScopeData* scopeData, boo
 	}
 }
 
+bool BfModule::IsAllocatorAligned()
+{	
+	if (mCompiler->mOptions.mMallocLinkName == "StompAlloc")
+		return false;
+	return true;
+}
+
 BfIRValue BfModule::AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTarget, BfType* type, BfIRValue sizeValue, BfIRValue alignValue, BfAllocFlags allocFlags/*, bool zeroMemory, bool defaultToMalloc*/)
 {
 	BfIRValue result;
@@ -10010,19 +10017,17 @@ void BfModule::ValidateAllocation(BfType* type, BfAstNode* refNode)
 		Fail(StrFormat("Unable to allocate opaque type '%s'", TypeToString(type).c_str()), refNode);
 }
 
-void BfModule::EmitAlign(BfIRValue& appendCurIdx, int align)
-{	
-	appendCurIdx = mBfIRBuilder->CreateAdd(appendCurIdx, GetConstValue(align - 1));
-	appendCurIdx = mBfIRBuilder->CreateAnd(appendCurIdx, GetConstValue(~(align - 1)));
-}
-
 void BfModule::EmitAppendAlign(int align, int sizeMultiple)
 {	
 	if (sizeMultiple == 0)
 		sizeMultiple = align;
 	if ((mCurMethodState->mCurAppendAlign != 0) && (mCurMethodState->mCurAppendAlign % align != 0))
 	{
-		if (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)
+		if (!IsAllocatorAligned())
+		{
+			// Don't align
+		}
+		else if (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)
 		{
 			auto localVar = mCurMethodState->GetRootMethodState()->mLocals[1];
 			BF_ASSERT(localVar->mName == "appendIdx");
