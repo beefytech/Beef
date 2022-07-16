@@ -1777,29 +1777,35 @@ namespace IDE.ui
 		            let root = mListView.GetRoot();
 		            List<ListViewItem> itemsToMove = scope .();
 		            List<WorkspaceFolder> foldersToDelete = scope .();
+
 		            root.WithSelectedItems(scope [&] (selectedItem) => {
 		                if (mListViewToWorkspaceFolderMap.GetValue(selectedItem) case .Ok(let folder))
 		                {
 		                    foldersToDelete.Add(folder);
+							mListViewToWorkspaceFolderMap.Remove(folder.mListView);
 		                    selectedItem.WithItems(scope [&] (item) => {
 		                        if (mListViewToProjectMap.GetValue(item) case .Ok(let project))
 		                        {
 		                            if (project.mParentFolder == null)
 		                                itemsToMove.Add(item);
 		                        }
+								else if (mListViewToWorkspaceFolderMap.GetValue(item) case .Ok(let itemFolder))
+								{
+									foldersToDelete.Add(itemFolder);
+									mListViewToWorkspaceFolderMap.Remove(itemFolder.mListView);
+								}
 		                    });
 		                }
 		            });
-		            
-		            for (let projectListViewItem in itemsToMove)
+
+		            for (let listViewItem in itemsToMove)
 		            {
-		                projectListViewItem.mParentItem.RemoveChildItem(projectListViewItem, false);
-		                root.AddChildAtIndex(1, projectListViewItem);
-						if (mListViewToProjectMap.TryGetValue(projectListViewItem, let projectItem))
+		                listViewItem.mParentItem.RemoveChildItem(listViewItem, false);
+		                root.AddChildAtIndex(1, listViewItem);
+						if (mListViewToProjectMap.TryGetValue(listViewItem, let projectItem))
 							mProjectToWorkspaceFolderMap.Remove(projectItem);
 		            }
 
-					HashSet<void*> deletedFolders = scope .();
 					bool HasDeletedParent(WorkspaceFolder folder)
 					{
 						WorkspaceFolder parent = folder;
@@ -1807,7 +1813,7 @@ namespace IDE.ui
 						{
 							parent = parent.mParent;
 
-							if (deletedFolders.Contains(Internal.UnsafeCastToPtr(parent)))
+							if (foldersToDelete.Contains(parent))
 								return true;
 						}
 						while (parent != null);
@@ -1815,17 +1821,15 @@ namespace IDE.ui
 						return false;
 					}
 
-		            for (let folder in foldersToDelete)
+					for (let folder in foldersToDelete)
 		            {
 						if (!HasDeletedParent(folder))
 						{
 							let folderItem = folder.mListView;
-							mListViewToWorkspaceFolderMap.Remove(folderItem);
 							folderItem.mParentItem.RemoveChildItem(folderItem);
 						}
 
 		               	gApp.mWorkspace.mWorkspaceFolders.Remove(folder);
-						deletedFolders.Add(Internal.UnsafeCastToPtr(folder));
 		                delete folder;
 		            }
 
