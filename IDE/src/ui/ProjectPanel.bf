@@ -134,7 +134,6 @@ namespace IDE.ui
         bool mImportFolderDeferred;
         bool mImportProjectDeferred;
 		bool mImportInstalledDeferred;
-		WorkspaceFolder mAddProjectTargetFolder;
         public Dictionary<ListViewItem, ProjectItem> mListViewToProjectMap = new .() ~ delete _;
         public Dictionary<ProjectItem, ProjectListViewItem> mProjectToListViewMap = new .() ~ delete _;
 		public Dictionary<ListViewItem, WorkspaceFolder> mListViewToWorkspaceFolderMap = new .() ~ delete _;
@@ -519,21 +518,21 @@ namespace IDE.ui
             }            
         }
 
-        public void InitProject(Project project)
-        {            
+        public void InitProject(Project project, WorkspaceFolder workspaceFolder)
+        {
             var projectListViewItem = InitProjectItem(project.mRootFolder);
             projectListViewItem.mRefObject = project;
-			if (mAddProjectTargetFolder != null)
+			if (workspaceFolder != null)
 			{
 				let root = mListView.GetRoot();
 				root.RemoveChildItem(projectListViewItem, false);
-				mAddProjectTargetFolder.mListView.MakeParent();
-				mAddProjectTargetFolder.mListView.AddChild(projectListViewItem);
-				mAddProjectTargetFolder.mListView.Open(true);
-				mProjectToWorkspaceFolderMap[project.mRootFolder] = mAddProjectTargetFolder;
+				workspaceFolder.mListView.MakeParent();
+				workspaceFolder.mListView.AddChild(projectListViewItem);
+				workspaceFolder.mListView.Open(true);
+				mProjectToWorkspaceFolderMap[project.mRootFolder] = workspaceFolder;
 
-				mAddProjectTargetFolder.mProjects.Add(project);
-				mAddProjectTargetFolder = null;
+				workspaceFolder.mProjects.Add(project);
+				QueueSortItem(workspaceFolder.mListView);
 			}
         }
 
@@ -577,7 +576,7 @@ namespace IDE.ui
 			mProjectToWorkspaceFolderMap.Clear();
 
             for (var project in IDEApp.sApp.mWorkspace.mProjects)
-                InitProject(project);
+                InitProject(project, null);
 
 			let root = mListView.GetRoot();
 
@@ -1501,6 +1500,14 @@ namespace IDE.ui
             }
 #endif
         }
+
+		public WorkspaceFolder GetSelectedWorkspaceFolder()
+		{
+			ListViewItem selectedItem = mListView.GetRoot().FindFirstSelectedItem();
+			if (mListViewToWorkspaceFolderMap.TryGetValue(selectedItem, let folder))
+				return folder;
+			return null;
+		}
 
         ListViewItem GetSelectedParentItem()
         {
@@ -2449,7 +2456,7 @@ namespace IDE.ui
 		}
 
 
-		public Project ImportProject(String filePath, VerSpec verSpec = .None)
+		public Project ImportProject(String filePath, WorkspaceFolder workspaceFolder, VerSpec verSpec = .None)
 		{
 			if (gApp.IsCompiling)
 				return null;
@@ -2496,7 +2503,7 @@ namespace IDE.ui
 			gApp.AddNewProjectToWorkspace(proj, verSpec);
 			gApp.mWorkspace.FixOptions();
 			gApp.[Friend]FlushDeferredLoadProjects(true);
-			InitProject(proj);
+			InitProject(proj, workspaceFolder);
 			if (failed)
 			{
 			    gApp.Fail(StackStringFormat!("Failed to load project: {0}", filePath));
@@ -2542,6 +2549,8 @@ namespace IDE.ui
 				initialDir.Concat(Path.DirectorySeparatorChar, "Samples");
 			}
 
+			var workspaceFolder = GetSelectedWorkspaceFolder();
+
             fileDialog.InitialDirectory = initialDir;
             fileDialog.ValidateNames = true;
             fileDialog.DefaultExt = ".toml";
@@ -2551,7 +2560,7 @@ namespace IDE.ui
             {
                 for (String origProjFilePath in fileDialog.FileNames)
                 {
-					ImportProject(origProjFilePath);
+					ImportProject(origProjFilePath, workspaceFolder);
                 }
             }
 #endif
@@ -2656,16 +2665,10 @@ namespace IDE.ui
             {
 				Menu anItem;
 
-				if (mListViewToWorkspaceFolderMap.TryGetValue(focusedItem, let folder))
+				void AddWorkspaceMenuItems()
 				{
-					anItem = menu.AddItem("Remove");
-					anItem.mOnMenuItemSelected.Add(new (item) => { RemoveSelectedWorkspaceFolder(); });
-					anItem = menu.AddItem("Rename");
-					anItem.mOnMenuItemSelected.Add(new (item) => { EditListViewItem(focusedItem); });
-					menu.AddItem();
 					anItem = menu.AddItem("Add New Project...");
 					anItem.mOnMenuItemSelected.Add(new (item) => {
-						mAddProjectTargetFolder = folder;
 						AddNewProject();
 					});
 					if (gApp.IsCompiling)
@@ -2674,7 +2677,6 @@ namespace IDE.ui
 					anItem = menu.AddItem("Add Existing Project...");
 					anItem.mOnMenuItemSelected.Add(new (item) => {
 						mImportProjectDeferred = true;
-						mAddProjectTargetFolder = folder;
 					});
 					if (gApp.IsCompiling)
 						anItem.SetDisabled(true);
@@ -2682,15 +2684,34 @@ namespace IDE.ui
 					anItem = menu.AddItem("Add From Installed...");
 					anItem.mOnMenuItemSelected.Add(new (item) => {
 						mImportInstalledDeferred = true;
-						mAddProjectTargetFolder = folder;
 					});
 					if (gApp.IsCompiling)
 						anItem.SetDisabled(true);
 					anItem = menu.AddItem("New Folder");
 					anItem.mOnMenuItemSelected.Add(new (item) => {
-						let newfolder = AddWorkspaceFolder(folder.mListView);
-						newfolder.mParent = folder;
+						var workspaceFolder = GetSelectedWorkspaceFolder();
+						if (workspaceFolder != null)
+						{
+							let newFolder = AddWorkspaceFolder(workspaceFolder.mListView);
+							newFolder.mParent = workspaceFolder;
+						}
+						else
+						{
+							AddWorkspaceFolder((ProjectListViewItem)mListView.GetRoot());
+						}
 					});
+				}
+
+				if (mListViewToWorkspaceFolderMap.TryGetValue(focusedItem, let folder))
+				{
+					anItem = menu.AddItem("Remove");
+					anItem.mOnMenuItemSelected.Add(new (item) => { RemoveSelectedWorkspaceFolder(); });
+					anItem = menu.AddItem("Rename");
+					anItem.mOnMenuItemSelected.Add(new (item) => { EditListViewItem(focusedItem); });
+					menu.AddItem();
+
+					AddWorkspaceMenuItems();
+
 					handled = true;
 				}
 				else if (gApp.mWorkspace.IsInitialized)
@@ -2698,29 +2719,7 @@ namespace IDE.ui
 					AddOpenContainingFolder();
 					menu.AddItem();
 
-	                anItem = menu.AddItem("Add New Project...");
-	                anItem.mOnMenuItemSelected.Add(new (item) => {
-						mAddProjectTargetFolder = null;
-						AddNewProject();
-					});
-					if (gApp.IsCompiling)
-						anItem.SetDisabled(true);
-
-	                anItem = menu.AddItem("Add Existing Project...");
-	                anItem.mOnMenuItemSelected.Add(new (item) => {
-						mAddProjectTargetFolder = null;
-						mImportProjectDeferred = true;
-					});
-					if (gApp.IsCompiling)
-						anItem.SetDisabled(true);
-
-					anItem = menu.AddItem("Add From Installed...");
-					anItem.mOnMenuItemSelected.Add(new (item) => { mImportInstalledDeferred = true; });
-					if (gApp.IsCompiling)
-						anItem.SetDisabled(true);
-
-					anItem = menu.AddItem("New Folder");
-					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder((ProjectListViewItem)mListView.GetRoot()); });
+	                AddWorkspaceMenuItems();
 					menu.AddItem();
 	                anItem = menu.AddItem("Properties...");
 	                anItem.mOnMenuItemSelected.Add(new (item) => { ShowWorkspaceProperties(); });

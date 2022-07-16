@@ -203,7 +203,7 @@ namespace IDE.ui
 				VerSpec verSpec = .SemVer(new .("*"));
 				defer verSpec.Dispose();
 
-				let project = gApp.mProjectPanel.ImportProject(entry.mPath, verSpec);
+				let project = gApp.mProjectPanel.ImportProject(entry.mPath, null, verSpec);
 				if (project == null)
 				{
 					return;

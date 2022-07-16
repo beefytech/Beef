@@ -2304,7 +2304,7 @@ namespace IDE
 			AddNewProjectToWorkspace(project);
 			project.FinishCreate();
 
-            mProjectPanel.InitProject(project);
+            mProjectPanel.InitProject(project, mProjectPanel.GetSelectedWorkspaceFolder());
             mProjectPanel.Sort();
             mWorkspace.FixOptions();
 			mWorkspace.mHasChanged = true;
@@ -2694,7 +2694,7 @@ namespace IDE
 
 						AddProjectToWorkspace(project, false);
 						if (addToUI)
-							mProjectPanel.InitProject(project);
+							mProjectPanel.InitProject(project, null);
 					}
 				}
 				if (!hadLoad)
