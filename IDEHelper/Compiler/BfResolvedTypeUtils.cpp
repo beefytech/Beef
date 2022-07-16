@@ -3499,6 +3499,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			return 0;
 		}
 
+		int typeAliasHash = 0;
+
+		bool isInnerTypeAlias = false;
+
 		// Don't translate aliases for the root type, just element types
 		if (ctx->mRootTypeRef == typeRef)
 		{
@@ -3506,35 +3510,12 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			ctx->mRootTypeDef = elementTypeDef;
 		}
 		else if (elementTypeDef->mTypeCode == BfTypeCode_TypeAlias)
-		{			
-			BfTypeVector genericArgs;
-			for (auto genericArgTypeRef : genericInstTypeRef->mGenericArguments)
-			{
-				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, NULL, BfPopulateType_Identity, GetResolveFlags(genericArgTypeRef, ctx, flags));
-				if (argType != NULL)
-					genericArgs.Add(argType);
-				else
-					ctx->mFailed = true;				
-			}
-
-			if (!ctx->mFailed)
-			{
-				auto resolvedType = ctx->mModule->ResolveTypeDef(elementTypeDef, genericArgs);
-				if ((resolvedType != NULL) && (resolvedType->IsTypeAlias()))
-				{
-					auto underlyingType = resolvedType->GetUnderlyingType();
-					if (underlyingType == NULL)
-					{
-						ctx->mFailed = true;
-						return 0;
-					}
-					int hashVal = Hash(underlyingType, ctx, flags, hashSeed);
-					hashSeed = 0;
-					return hashVal;
-				}
-			}
+		{
+			isInnerTypeAlias = true;			
 		}
-		
+				
+		BfTypeVector typeAliasGenericArgs;
+
 		bool fullyQualified = false;
 		int hashVal = elementTypeDef->mHash;
 		
@@ -3582,7 +3563,12 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			if (outerType != NULL)
 			{
 				for (auto genericArg : outerType->mGenericTypeInfo->mTypeGenericArguments)
-					hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+				{
+					if (isInnerTypeAlias)
+						typeAliasGenericArgs.Add(genericArg);
+					else
+						hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+				}
 			}
 		}
 		else
@@ -3602,12 +3588,46 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					auto parentTypeInstance = checkTypeInstance;
 					int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
 					for (int i = 0; i < numParentGenericParams; i++)
-						hashVal = HASH_MIX(hashVal, Hash(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i], ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+					{
+						if (isInnerTypeAlias)
+							typeAliasGenericArgs.Add(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
+						else
+							hashVal = HASH_MIX(hashVal, Hash(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i], ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+					}
 				}
 			}
 		}
 
-		HashGenericArguments(genericInstTypeRef, ctx, hashVal, hashSeed);
+		if (isInnerTypeAlias)
+		{			
+			for (auto genericArgTypeRef : genericInstTypeRef->mGenericArguments)
+			{
+				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, NULL, BfPopulateType_Identity, GetResolveFlags(genericArgTypeRef, ctx, flags));
+				if (argType != NULL)
+					typeAliasGenericArgs.Add(argType);
+				else
+					ctx->mFailed = true;
+			}
+
+			if (!ctx->mFailed)
+			{
+				auto resolvedType = ctx->mModule->ResolveTypeDef(elementTypeDef, typeAliasGenericArgs);
+				if ((resolvedType != NULL) && (resolvedType->IsTypeAlias()))
+				{
+					auto underlyingType = resolvedType->GetUnderlyingType();
+					if (underlyingType == NULL)
+					{
+						ctx->mFailed = true;
+						return 0;
+					}
+					int hashVal = Hash(underlyingType, ctx, flags, hashSeed);
+					hashSeed = 0;
+					return hashVal;
+				}
+			}
+		}
+		else
+			HashGenericArguments(genericInstTypeRef, ctx, hashVal, hashSeed);
 
 		return hashVal;
 	}
