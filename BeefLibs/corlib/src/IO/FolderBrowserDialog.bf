@@ -110,7 +110,7 @@ namespace System.IO
 				Windows.SHCreateItemFromParsingName(mSelectedPath.ToScopedNativeWChar!(), null, Windows.COM_IShellItem.sIID, (void**)&folderShellItem);
 				if (folderShellItem != null)
 				{
-					fileDialog.VT.SetDefaultFolder(fileDialog, folderShellItem);
+					fileDialog.VT.SetFolder(fileDialog, folderShellItem);
 					folderShellItem.VT.Release(folderShellItem);
 				}
 			}
