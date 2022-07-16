@@ -3762,7 +3762,7 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 				}
 				else if (auto unaryOpExpr = BfNodeDynCast<BfUnaryOperatorExpression>(arg))
 				{
-					if (unaryOpExpr->mOpToken->mToken == BfToken_Out)
+					if ((unaryOpExpr->mOpToken != NULL) && (unaryOpExpr->mOpToken->mToken == BfToken_Out))
 					{
 						hasOut = true;
 					}
