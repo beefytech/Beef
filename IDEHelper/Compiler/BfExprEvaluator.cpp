@@ -16226,6 +16226,18 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 								BF_ASSERT(vtableEntry.mImplementingMethod.mKind == BfMethodRefKind_AmbiguousRef);
 							}
 
+							if (!needsCall)
+							{
+								for (auto& fieldInst : typeInstance->mFieldInstances)
+								{
+									if (fieldInst.IsAppendedObject())
+									{
+										needsCall = true;
+										break;
+									}
+								}
+							}
+
 							if (needsCall)
 							{
 								SizedArray<BfIRValue, 1> irArgs;
