@@ -23,9 +23,9 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
 add_definitions(
-   -D_DEBUG   
-   -DIDEHELPER_EXPORTS 
-   -DBFSYSLIB_DYNAMIC 
+   -D_DEBUG
+   -DIDEHELPER_EXPORTS
+   -DBFSYSLIB_DYNAMIC
    -DUNICODE
    -D_UNICODE
    -DBF_NO_FBX
@@ -40,9 +40,9 @@ include_directories(
   ../BeefySysLib/third_party
   ../BeefySysLib/third_party/freetype/include
   ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/include
-  ../  
+  ../
   ../extern
-  ../extern/llvm/include  
+  ../extern/llvm/include
   ../extern/llvm_linux/include
   ../extern/llvm/lib/Target
   ../extern/llvm_linux/lib/Target/X86
@@ -66,16 +66,16 @@ endif()
 # Add Dependencies to project.                    #
 ###################################################
 
-option(BUILD_DEPENDS 
-   "Build other CMake project." 
-   ON 
+option(BUILD_DEPENDS
+   "Build other CMake project."
+   ON
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   
+
 else()
-   
+
 endif()
 
 ################# Flags ################
@@ -87,7 +87,7 @@ if(MSVC)
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /GL /Od /Oi /Gy /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")  
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
   endif()
@@ -97,8 +97,8 @@ endif(NOT MSVC)
 #   --   Add files to project.   --   #
 #######################################
 
-file(GLOB SRC_FILES    
-    
+file(GLOB SRC_FILES
+
 )
 
 # Add library to build.

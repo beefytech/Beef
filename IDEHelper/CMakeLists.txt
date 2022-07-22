@@ -24,8 +24,8 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
 add_definitions(
-   -DIDEHELPER_EXPORTS 
-   -DBFSYSLIB_DYNAMIC 
+   -DIDEHELPER_EXPORTS
+   -DBFSYSLIB_DYNAMIC
    -DUNICODE
    -D_UNICODE
    -DBF_NO_FBX
@@ -39,17 +39,17 @@ set (CMAKE_CXX_STANDARD 14)
 INCLUDE(CheckIncludeFiles)
 CHECK_INCLUDE_FILES(backtrace.h HAVE_BACKTRACE_HEADERS)
 if (HAVE_BACKTRACE_HEADERS)
-   add_definitions(-DBFP_HAS_BACKTRACE) 
+   add_definitions(-DBFP_HAS_BACKTRACE)
 endif ()
 
 if (${APPLE})
   include_directories(
     .
     ../
-    ../BeefySysLib/    
+    ../BeefySysLib/
     ../BeefySysLib/third_party
-    ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_13_0_1/llvm/include  
+    ../BeefySysLib/third_party/freetype/include
+    ../extern/llvm-project_13_0_1/llvm/include
     ../extern/llvm-project_13_0_1/llvm/lib/Target
 
     ../BeefySysLib/platform/osx
@@ -58,13 +58,13 @@ else()
   include_directories(
     .
     ../
-    ../BeefySysLib/    
+    ../BeefySysLib/
     ../BeefySysLib/third_party
-    ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_13_0_1/llvm/include  
+    ../BeefySysLib/third_party/freetype/include
+    ../extern/llvm-project_13_0_1/llvm/include
     ../extern/llvm-project_13_0_1/llvm/lib/Target
 
-    ../BeefySysLib/platform/linux    
+    ../BeefySysLib/platform/linux
   )
 endif()
 
@@ -101,16 +101,16 @@ endif()
 # Add Dependencies to project.                    #
 ###################################################
 
-option(BUILD_DEPENDS 
-   "Build other CMake project." 
-   ON 
+option(BUILD_DEPENDS
+   "Build other CMake project."
+   ON
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   
+
 else()
-   
+
 endif()
 
 ################# Flags ################
@@ -130,7 +130,7 @@ endif(NOT MSVC)
 #######################################
 
 file(GLOB SRC_FILES
-    BfDiff.cpp    
+    BfDiff.cpp
     Debugger.cpp
     DebugManager.cpp
     DebugVisualizers.cpp
@@ -143,8 +143,8 @@ file(GLOB SRC_FILES
     X86XmmInfo.cpp
 
     LinuxDebugger.cpp
-        
-    Beef/BfCommon.cpp    
+
+    Beef/BfCommon.cpp
     Clang/CDepChecker.cpp
     Clang/ClangHelper.cpp
     Compiler/BfAst.cpp
@@ -181,7 +181,7 @@ file(GLOB SRC_FILES
     Compiler/CeMachine.cpp
     Compiler/CeDebugger.cpp
     Compiler/MemReporter.cpp
-    
+
     Backend/BeContext.cpp
     Backend/BeIRCodeGen.cpp
     Backend/BeModule.cpp
@@ -218,18 +218,18 @@ list(APPEND LLVM_LIBS
   ${LLVM_LIB}/libLLVMCore.a
   ${LLVM_LIB}/libLLVMCodeGen.a
   ${LLVM_LIB}/libLLVMMC.a
-  ${LLVM_LIB}/libLLVMMCParser.a  
-  ${LLVM_LIB}/libLLVMMCDisassembler.a    
+  ${LLVM_LIB}/libLLVMMCParser.a
+  ${LLVM_LIB}/libLLVMMCDisassembler.a
   ${LLVM_LIB}/libLLVMObject.a
   ${LLVM_LIB}/libLLVMBitReader.a
-  ${LLVM_LIB}/libLLVMAsmParser.a    
-  ${LLVM_LIB}/libLLVMTarget.a    
+  ${LLVM_LIB}/libLLVMAsmParser.a
+  ${LLVM_LIB}/libLLVMTarget.a
   ${LLVM_LIB}/libLLVMScalarOpts.a
   ${LLVM_LIB}/libLLVMInstCombine.a
   ${LLVM_LIB}/libLLVMSelectionDAG.a
   ${LLVM_LIB}/libLLVMProfileData.a
-    
-  ${LLVM_LIB}/libLLVMAnalysis.a    
+
+  ${LLVM_LIB}/libLLVMAnalysis.a
   ${LLVM_LIB}/libLLVMAsmPrinter.a
   ${LLVM_LIB}/libLLVMBitWriter.a
   ${LLVM_LIB}/libLLVMVectorize.a
@@ -237,21 +237,21 @@ list(APPEND LLVM_LIBS
   ${LLVM_LIB}/libLLVMInstrumentation.a
   ${LLVM_LIB}/libLLVMDebugInfoDWARF.a
   ${LLVM_LIB}/libLLVMDebugInfoPDB.a
-  ${LLVM_LIB}/libLLVMDebugInfoCodeView.a  
+  ${LLVM_LIB}/libLLVMDebugInfoCodeView.a
   ${LLVM_LIB}/libLLVMGlobalISel.a
   ${LLVM_LIB}/libLLVMTransformUtils.a
-  ${LLVM_LIB}/libLLVMBinaryFormat.a    
+  ${LLVM_LIB}/libLLVMBinaryFormat.a
   ${LLVM_LIB}/libLLVMIRReader.a
-  ${LLVM_LIB}/libLLVMLinker.a    
+  ${LLVM_LIB}/libLLVMLinker.a
   ${LLVM_LIB}/libLLVMAggressiveInstCombine.a
 
-  ${LLVM_LIB}/libLLVMBitstreamReader.a  
+  ${LLVM_LIB}/libLLVMBitstreamReader.a
   ${LLVM_LIB}/libLLVMCFGuard.a
   ${LLVM_LIB}/libLLVMTextAPI.a
   ${LLVM_LIB}/libLLVMRemarks.a
 
-  ${LLVM_LIB}/libLLVMX86Info.a    
-  ${LLVM_LIB}/libLLVMX86Desc.a    
+  ${LLVM_LIB}/libLLVMX86Info.a
+  ${LLVM_LIB}/libLLVMX86Desc.a
   ${LLVM_LIB}/libLLVMX86CodeGen.a
   ${LLVM_LIB}/libLLVMX86AsmParser.a
   ${LLVM_LIB}/libLLVMX86Disassembler.a
@@ -282,7 +282,7 @@ list(APPEND LLVM_LIBS
 
 FOREACH (lib ${LLVM_LIBS})
   string(APPEND TARGET_LIBS_OS " " ${lib})
-ENDFOREACH()  
+ENDFOREACH()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" )
   FILE(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/../IDE/dist/IDEHelper_libs_d.txt" ${TARGET_LIBS_OS})
@@ -294,7 +294,7 @@ endif()
 if(MSVC)
   target_link_libraries(${PROJECT_NAME} BeefySysLib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib LLVMX86Disassembler.lib LLVMMCDisassembler.lib LLVMSupport.lib LLVMX86Info.lib LLVMX86Desc.lib %(AdditionalDependencies) LLVMMC.lib LLVMObject.lib LLVMCore.lib LLVMBitReader.lib LLVMAsmParser.lib LLVMMCParser.lib LLVMCodeGen.lib LLVMTarget.lib LLVMX86CodeGen.lib LLVMScalarOpts.lib LLVMInstCombine.lib LLVMSelectionDAG.lib LLVMProfileData.lib LLVMTransformUtils.lib LLVMAnalysis.lib LLVMX86AsmParser.lib LLVMAsmPrinter.lib LLVMBitWriter.lib LLVMVectorize.lib LLVMipo.lib LLVMInstrumentation.lib LLVMDebugInfoDWARF.lib LLVMDebugInfoPDB.lib LLVMDebugInfoCodeView.lib LLVMGlobalISel.lib LLVMBinaryFormat.lib LLVMAggressiveInstCombine.lib libcurl_a.lib)
 else()
-  target_link_libraries(${PROJECT_NAME} BeefySysLib hunspell pthread dl ${TARGET_LIBS_OS}    
-        
+  target_link_libraries(${PROJECT_NAME} BeefySysLib hunspell pthread dl ${TARGET_LIBS_OS}
+
   )
 endif()
