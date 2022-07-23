@@ -147,7 +147,7 @@ namespace System
 			static Type Object_GetType(Object obj)
 			{
 #if BF_DBG_RUNTIME
-				return obj.[Friend]RawGetType();
+				return obj.[Friend, DisableObjectAccessChecks]RawGetType();
 #else
 				return null;
 #endif
