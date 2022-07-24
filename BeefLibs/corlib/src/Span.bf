@@ -276,6 +276,7 @@ namespace System
 
 		public void RemoveFromEnd(int length) mut
 		{
+			Debug.Assert((uint)length <= (uint)mLength);
 			mLength -= length;
 		}
 
