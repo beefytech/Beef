@@ -24,9 +24,9 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
 add_definitions(
-   -D_DEBUG   
-   -DIDEHELPER_EXPORTS 
-   -DBFSYSLIB_DYNAMIC 
+   -D_DEBUG
+   -DIDEHELPER_EXPORTS
+   -DBFSYSLIB_DYNAMIC
    -DUNICODE
    -D_UNICODE
    -DBF_NO_FBX
@@ -57,16 +57,16 @@ endif()
 # Add Dependencies to project.                    #
 ###################################################
 
-option(BUILD_DEPENDS 
-   "Build other CMake project." 
-   ON 
+option(BUILD_DEPENDS
+   "Build other CMake project."
+   ON
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   
+
 else()
-   
+
 endif()
 
 ################# Flags ################

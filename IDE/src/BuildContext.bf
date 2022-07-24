@@ -634,7 +634,7 @@ namespace IDE
 					IDEUtils.FixFilePath(llvmDir);
 					llvmDir.Append("llvm/");
 #else
-					String llvmDir = "";					
+					//String llvmDir = "";
 #endif
 					if (gApp.mSettings.mEmscriptenPath.IsEmpty)
 					{
