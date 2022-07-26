@@ -11776,6 +11776,8 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		}
 		else if (type->IsEnum())
 		{
+			if (type->IsDataIncomplete())
+				mModule->PopulateType(type);
 			auto underlyingType = type->GetUnderlyingType();
 			if (underlyingType != NULL)
 			{

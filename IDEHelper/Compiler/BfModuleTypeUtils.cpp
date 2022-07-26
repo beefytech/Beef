@@ -8325,6 +8325,8 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopu
 
 					if ((outerTypeInstance->IsEnum()) && (findName == "UnderlyingType"))
 					{
+						if (outerTypeInstance->IsDataIncomplete())
+							PopulateType(outerTypeInstance);
 						auto underlyingType = outerTypeInstance->GetUnderlyingType();
 						if (underlyingType != NULL)
 							return underlyingType;
