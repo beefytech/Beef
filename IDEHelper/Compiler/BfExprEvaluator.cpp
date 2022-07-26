@@ -1752,38 +1752,6 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		}
 	}
 
-	if (mHasArgNames)
-	{
-		checkMethod->BuildParamNameMap();
-
-		bool prevWasNull = false;
-		for (int argIdx = (int)mArguments.mSize - 1; argIdx >= 0; argIdx--)
-		{
-			auto& arg = mArguments[argIdx];
-			if (arg.mNameNode != NULL)
-			{
-				if (prevWasNull)
-				{
-					if (argIdx >= checkMethod->mParams.mSize)
-						goto NoMatch;
-					if (checkMethod->mParams[argIdx]->mName != arg.mNameNode->ToStringView())
-						goto NoMatch;
-				}
-				else
-				{
-					if (!checkMethod->mParamNameMap->ContainsKey(arg.mNameNode->ToStringView()))
-						goto NoMatch;
-				}
-
-				prevWasNull = false;
-			}
-			else
-			{
-				prevWasNull = true;
-			}
-		}
-	}
-
 	for (auto& checkGenericArgRef : mCheckMethodGenericArguments)
 		checkGenericArgRef = NULL;
 
@@ -1819,6 +1787,38 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	}
 	else if (needInferGenericParams)
 		genericArgumentsSubstitute = &mCheckMethodGenericArguments;
+
+	if (mHasArgNames)
+	{
+		checkMethod->BuildParamNameMap();
+
+		bool prevWasNull = false;
+		for (int argIdx = (int)mArguments.mSize - 1; argIdx >= 0; argIdx--)
+		{
+			auto& arg = mArguments[argIdx];
+			if (arg.mNameNode != NULL)
+			{
+				if (prevWasNull)
+				{
+					if (argIdx >= checkMethod->mParams.mSize)
+						goto NoMatch;
+					if (checkMethod->mParams[argIdx]->mName != arg.mNameNode->ToStringView())
+						goto NoMatch;
+				}
+				else
+				{
+					if (!checkMethod->mParamNameMap->ContainsKey(arg.mNameNode->ToStringView()))
+						goto NoMatch;
+				}
+
+				prevWasNull = false;
+			}
+			else
+			{
+				prevWasNull = true;
+			}
+		}
+	}
 
 	if ((checkMethod->mIsMutating) && (targetTypeInstance != NULL) && (targetTypeInstance->IsValueType()) &&
 		((mTarget.IsReadOnly()) || (!mTarget.IsAddr())) &&
