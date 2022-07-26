@@ -3504,7 +3504,7 @@ void BfIRCodeGen::HandleNextCmd()
 					break;
 				case BfIRIntrinsic_AtomicStore:
 					{
-						auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[1]);
+						auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[2]);
 						if (memoryKindConst == NULL)
 						{
 							FatalError("Non-constant success ordering on AtomicLoad");
