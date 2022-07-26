@@ -83,10 +83,10 @@ void NetRequest::Cleanup()
 {
 	if (mCURLMulti != NULL)
 		curl_multi_remove_handle(mCURLMulti, mCURL);
-	if (mCURL != NULL)	
-		curl_easy_cleanup(mCURL);		
-	if (mCURLMulti != NULL)	
-		curl_multi_cleanup(mCURLMulti);	
+	if (mCURL != NULL)
+		curl_easy_cleanup(mCURL);
+	if (mCURLMulti != NULL)
+		curl_multi_cleanup(mCURLMulti);
 
 	mCURL = NULL;
 	mCURLMulti = NULL;
@@ -160,7 +160,7 @@ void NetRequest::DoTransfer()
 		// 		mFailed = true;
 		// 		return;
 		// 	}
-		
+
 		response_code = 0;
 		curl_easy_getinfo(mCURL, CURLINFO_RESPONSE_CODE, &response_code);
 		mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Result for '%s': %d\n", mURL.c_str(), response_code));
@@ -199,20 +199,20 @@ void NetRequest::DoTransfer()
 	}
 
 	if (response_code != 200)
-	{		
+	{
 		mOutFile.Close();
 		// Bad result
 		mFailed = true;
 		return;
 	}
-	
+
 	BfLogDbg("NetManager successfully completed %s\n", mURL.c_str());
 
 	if (mCancelOnSuccess != NULL)
 		mNetManager->Cancel(mCancelOnSuccess);
 
 	if (!mOutFile.IsOpen())
-	{		
+	{
 		mFailed = true;
 		return; // No data
 	}
@@ -223,14 +223,14 @@ void NetRequest::DoTransfer()
 	BfpFile_Rename(mOutTempPath.c_str(), mOutPath.c_str(), &renameResult);
 
 	if (renameResult != BfpFileResult_Ok)
-	{		
-		mFailed = true;		
+	{
+		mFailed = true;
 	}
 }
 
 void NetRequest::Perform()
-{	
-	DoTransfer();	
+{
+	DoTransfer();
 }
 
 #elif defined BF_PLATFORM_WINDOWS
@@ -263,16 +263,16 @@ void NetRequest::Perform()
 		Fail("Invalid URL");
 		return;
 	}
-	
+
 	protoName = mURL.Substring(0, colonPos);
 	serverName = mURL.Substring(colonPos + 3);
-		
+
 	int slashPos = (int)serverName.IndexOf('/');
 	if (slashPos != -1)
 	{
 		objectName = serverName.Substring(slashPos);
 		serverName.RemoveToEnd(slashPos);
-	}	
+	}
 
 	mOutTempPath = mOutPath + "__partial";
 
@@ -291,8 +291,8 @@ void NetRequest::Perform()
 
 		if (mOutFile.IsOpen())
 			mOutFile.Close();
-	};	
-	
+	};
+
 	bool isHttp = protoName.Equals("http", StringImpl::CompareKind_OrdinalIgnoreCase);
 	bool isHttps = protoName.Equals("https", StringImpl::CompareKind_OrdinalIgnoreCase);
 	if ((!isHttp) && (!isHttps))
@@ -350,23 +350,23 @@ void NetRequest::Perform()
 	}
 
 	if (mShowTracking)
-	{		
+	{
 		mNetManager->mDebugManager->OutputRawMessage(StrFormat("symsrv Getting '%s'", mURL.c_str()));
 	}
 
-	uint8 buffer[4096];	
+	uint8 buffer[4096];
 	while (true)
 	{
 		DWORD dwBytesRead = 0;
 		BOOL bRead = InternetReadFile(hHttpFile, buffer, 4096, &dwBytesRead);
-		if (dwBytesRead == 0) 
+		if (dwBytesRead == 0)
 			break;
-		if (!bRead) 
+		if (!bRead)
 		{
 			//printf("InternetReadFile error : <%lu>\n", GetLastError());
 			Fail("Failed to receive");
 			return;
-		}		
+		}
 
 		if (!mOutFile.IsOpen())
 		{
@@ -378,7 +378,7 @@ void NetRequest::Perform()
 			}
 		}
 		mOutFile.Write(buffer, (int)dwBytesRead);
-	}	
+	}
 
 	BfLogDbg("NetManager successfully completed %s\n", mURL.c_str());
 
@@ -402,7 +402,6 @@ void NetRequest::Perform()
 
 void NetRequest::Cleanup()
 {
-
 }
 
 #else
@@ -414,7 +413,6 @@ void NetRequest::Perform()
 
 void NetRequest::Cleanup()
 {
-
 }
 
 #endif
@@ -437,7 +435,7 @@ NetRequest::~NetRequest()
 			delete mResult;
 	}
 
-	mNetManager->mRequestDoneEvent.Set();	
+	mNetManager->mRequestDoneEvent.Set();
 }
 
 void NetRequest::Fail(const StringImpl& error)
@@ -456,7 +454,7 @@ bool NetRequest::Cancel()
 }
 
 void NetRequest::ShowTracking()
-{	
+{
 	//mNetManager->mDebugManager->OutputMessage(StrFormat("Getting '%s'\n", mURL.c_str()));
 	mNetManager->mDebugManager->OutputRawMessage(StrFormat("symsrv Getting '%s'", mURL.c_str()));
 	mShowTracking = true;
@@ -464,7 +462,6 @@ void NetRequest::ShowTracking()
 
 void NetManagerThread()
 {
-
 }
 
 NetManager::NetManager() : mThreadPool(8, 1*1024*1024)
@@ -480,13 +477,13 @@ NetManager::~NetManager()
 	for (auto kv : mCachedResults)
 	{
 		delete kv.mValue;
-	}	
+	}
 }
 
 NetRequest* NetManager::CreateGetRequest(const StringImpl& url, const StringImpl& destPath, bool useCache)
 {
 	AutoCrit autoCrit(mThreadPool.mCritSect);
-		
+
 	NetRequest* netRequest = new NetRequest();
 	netRequest->mNetManager = this;
 	netRequest->mURL = url;
@@ -520,7 +517,7 @@ NetRequest* NetManager::CreateGetRequest(const StringImpl& url, const StringImpl
 NetResult* NetManager::QueueGet(const StringImpl& url, const StringImpl& destPath, bool useCache)
 {
 	BfLogDbg("NetManager queueing %s %d\n", url.c_str(), useCache);
-	
+
 	auto netRequest = CreateGetRequest(url, destPath, useCache);
 	auto netResult = netRequest->mResult;
 	mThreadPool.AddJob(netRequest);
@@ -528,7 +525,7 @@ NetResult* NetManager::QueueGet(const StringImpl& url, const StringImpl& destPat
 }
 
 bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
-{	
+{
 	NetRequest* netRequest = NULL;
 	int waitCount = 0;
 	while (true)
@@ -539,7 +536,7 @@ bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
 
 			mWaitingResult = NULL;
 			NetResult* netResult;
-			if (mCachedResults.TryGetValue(url, &netResult))			
+			if (mCachedResults.TryGetValue(url, &netResult))
 			{
 				if (netResult->mCurRequest == NULL)
 				{
@@ -547,7 +544,7 @@ bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
 					return (!netResult->mFailed) && (FileExists(netResult->mOutPath));
 				}
 				else if (!netResult->mCurRequest->mShowTracking) // Is done?
-				{	
+				{
 					if (!netResult->mCurRequest->mProcessing)
 					{
 						BfLogDbg("NetManager::Get pulling queued request into current thread %s\n", url.c_str());
@@ -557,9 +554,9 @@ bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
 						break;
 					}
 
-					mWaitingResult = netResult;					
+					mWaitingResult = netResult;
 					netResult->mCurRequest->ShowTracking();
-				}				
+				}
 			}
 			else
 			{
@@ -597,12 +594,12 @@ void NetManager::CancelAll()
 	AutoCrit autoCrit(mThreadPool.mCritSect);
 	if (mWaitingRequest != NULL)
 		mWaitingRequest->Cancel();
-	mThreadPool.CancelAll();	
+	mThreadPool.CancelAll();
 }
 
 void NetManager::Clear()
 {
-	AutoCrit autoCrit(mThreadPool.mCritSect);		
+	AutoCrit autoCrit(mThreadPool.mCritSect);
 	BF_ASSERT(mWaitingResult == NULL); // The debugger thread shouldn't be waiting on anything, it should be detached at this point
 
 	for (auto job : mThreadPool.mJobs)
@@ -649,7 +646,7 @@ void NetManager::SetCancelOnSuccess(NetResult* dependentResult, NetResult* cance
 {
 	AutoCrit autoCrit(mThreadPool.mCritSect);
 	if (dependentResult->mCurRequest != NULL)
-	{		
+	{
 		dependentResult->mCurRequest->mCancelOnSuccess = cancelOnSucess;
 	}
 }

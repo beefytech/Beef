@@ -45,16 +45,15 @@ public:
 	Array<String> mErrorMessages;
 };
 
-
 class BfCodeGenRequest
 {
-public:	
+public:
 	BfModule* mSrcModule;
 	BfCodeGenOptions mOptions;
 	BfCodeGenResult mResult;
 	Array<uint8> mOutBuffer;
 	BfSizedArray<uint8> mData;
-	String mOutFileName;	
+	String mOutFileName;
 
 	BfCodeGenResult* mExternResultPtr;
 
@@ -64,13 +63,13 @@ public:
 		mSrcModule = NULL;
 		mResult.mType = BfCodeGenResult_NotDone;
 		mResult.mErrorMsgBufLen = 0;
-		mExternResultPtr = NULL;		
+		mExternResultPtr = NULL;
 	}
 
 	~BfCodeGenRequest()
-	{				
+	{
 	}
-	
+
 	void DbgSaveData();
 };
 
@@ -78,18 +77,18 @@ class BfCodeGen;
 
 class BfCodeGenThread
 {
-public:	
-	BfCodeGen* mCodeGen;		
+public:
+	BfCodeGen* mCodeGen;
 	int mThreadIdx;
 
-	//std::vector<BfCodeGenRequest*> mRequests;	
+	//std::vector<BfCodeGenRequest*> mRequests;
 	volatile bool mShuttingDown;
 	volatile bool mRunning;
 
 public:
 	bool RawWriteObjectFile(llvm::Module* module, const StringImpl& outFileName, const BfCodeGenOptions& codeGenOptions);
-	
-public:	
+
+public:
 	BfCodeGenThread();
 	~BfCodeGenThread();
 
@@ -103,7 +102,7 @@ class BfCodeGenFileData
 {
 public:
 	Val128 mIRHash; // Equal when exact IR bits are equal
-	Val128 mIROrderedHash; // Equal when isomorphic (when alphabetically reordered functions hash equally)	
+	Val128 mIROrderedHash; // Equal when isomorphic (when alphabetically reordered functions hash equally)
 	bool mLastWasObjectWrite;
 };
 
@@ -115,7 +114,7 @@ public:
 	Dictionary<String, String> mBuildSettings;
 	String mDirectoryName;
 	bool mDirty;
-	bool mVerified;	
+	bool mVerified;
 	int64 mFileTime;
 	String mError;
 	bool mFileFailed;
@@ -163,18 +162,18 @@ public:
 	typedef void (BF_CALLTYPE* FinishFunc)();
 	typedef void (BF_CALLTYPE* GenerateObjFunc)(const void* ptr, int size, const char* outFileName, BfCodeGenResult* resultPtr, const BfCodeGenOptions& options);
 
-public:	
+public:
     BfpDynLib* mReleaseModule;
 	bool mAttemptedReleaseThunkLoad;
 	bool mIsUsingReleaseThunk;
 	ClearCacheFunc mClearCacheFunc;
 	GetVersionFunc mGetVersionFunc;
-	KillFunc mKillFunc;	
+	KillFunc mKillFunc;
 	CancelFunc mCancelFunc;
 	FinishFunc mFinishFunc;
-	GenerateObjFunc mGenerateObjFunc;	
+	GenerateObjFunc mGenerateObjFunc;
 
-	Val128 mBackendHash;	
+	Val128 mBackendHash;
 	int mMaxThreadCount;
 	CritSect mThreadsCritSect;
 	Array<BfCodeGenThread*> mThreads;
@@ -184,19 +183,19 @@ public:
 	Deque<BfCodeGenRequest*> mPendingRequests;
 	SyncEvent mRequestEvent;
 	int mRequestIdx;
-	SyncEvent mDoneEvent;	
+	SyncEvent mDoneEvent;
 
 	int mQueuedCount;
-	int mCompletionCount;	
+	int mCompletionCount;
 
 	Array<BfCodeGenErrorEntry> mFailedRequests;
 	Array<BfCodeGenFileEntry> mCodeGenFiles;
-		
+
 	CritSect mCacheCritSect;
 	bool mDisableCacheReads;
 	Dictionary<String, BfCodeGenDirectoryData*> mDirectoryCache;
 
-public:		
+public:
 	void SetMaxThreads(int maxThreads);
 	void BindReleaseThunks();
 	void ClearResults();
@@ -208,13 +207,13 @@ public:
 	void ProcessErrors(BfPassInstance* passInstance, bool canceled);
 	BfCodeGenDirectoryData* GetDirCache(const StringImpl& cacheDir);
 
-public:	
+public:
 	BfCodeGen();
 	~BfCodeGen();
 
 	void ResetStats();
 	void UpdateStats();
-	void WriteObjectFile(BfModule* module, const StringImpl& outFileName, const BfCodeGenOptions& options);	
+	void WriteObjectFile(BfModule* module, const StringImpl& outFileName, const BfCodeGenOptions& options);
 	String GetBuildValue(const StringImpl& buildDir, const StringImpl& key);
 	void SetBuildValue(const StringImpl& buildDir, const StringImpl& key, const StringImpl& value);
 	void WriteBuildCache(const StringImpl& buildDir);

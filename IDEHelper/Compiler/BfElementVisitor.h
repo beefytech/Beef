@@ -48,7 +48,7 @@ public:
 	virtual void Visit(BfMixinExpression* thisExpr);
 	virtual void Visit(BfSizedArrayCreateExpression* createExpr);
 	virtual void Visit(BfInitializerExpression* initExpr);
-	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);	
+	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);
 	virtual void Visit(BfTypeReference* typeRef);
 	virtual void Visit(BfNamedTypeReference* typeRef);
 	virtual void Visit(BfQualifiedTypeReference* qualifiedType);
@@ -69,8 +69,8 @@ public:
 	virtual void Visit(BfNullableTypeRef* typeRef);
 	virtual void Visit(BfVariableDeclaration* varDecl);
 	virtual void Visit(BfLocalMethodDeclaration* methodDecl);
-	virtual void Visit(BfParameterDeclaration* paramDecl);		
-	virtual void Visit(BfTypeAttrExpression* typeAttrExpr);		
+	virtual void Visit(BfParameterDeclaration* paramDecl);
+	virtual void Visit(BfTypeAttrExpression* typeAttrExpr);
 	virtual void Visit(BfOffsetOfExpression* offsetOfExpr);
 	virtual void Visit(BfNameOfExpression* nameOfExpr);
 	virtual void Visit(BfDefaultExpression* defaultExpr);
@@ -85,7 +85,7 @@ public:
 	virtual void Visit(BfBoxExpression* boxExpr);
 	virtual void Visit(BfScopedInvocationTarget* scopedTarget);
 	virtual void Visit(BfInvocationExpression* invocationExpr);
-	virtual void Visit(BfDeferStatement* deferStmt);	
+	virtual void Visit(BfDeferStatement* deferStmt);
 	virtual void Visit(BfEnumCaseBindExpression* caseBindExpr);
 	virtual void Visit(BfCaseExpression* caseExpr);
 	virtual void Visit(BfSwitchCase* switchCase);

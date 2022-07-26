@@ -1,14 +1,14 @@
-#include "BfResolvePass.h" 
+#include "BfResolvePass.h"
 #include "BfParser.h"
 #include "BfModule.h"
 
 USING_NS_BF;
 
 BfResolvePassData::BfResolvePassData()
-{	
+{
 	mGetSymbolReferenceKind = BfGetSymbolReferenceKind_None;
 
-	mSymbolReferenceTypeDef = NULL;	
+	mSymbolReferenceTypeDef = NULL;
 
 	mSymbolReferenceLocalIdx = -1;
 	mSymbolReferenceFieldIdx = -1;
@@ -31,7 +31,7 @@ BfResolvePassData::~BfResolvePassData()
 		auto parser = emitEntryKV.mValue.mParser;
 		if (parser != NULL)
 		{
-			delete parser->mSourceClassifier;			
+			delete parser->mSourceClassifier;
 			parser->mSourceClassifier = NULL;
 			parser->mParserFlags = ParserFlag_None;
 			parser->mCursorCheckIdx = -1;
@@ -56,7 +56,7 @@ void BfResolvePassData::RecordReplaceNode(BfAstNode* node)
 	auto parser = node->GetSourceData()->ToParserData();
 	if (node->GetSrcStart() >= parser->mSrcLength)
 		return;
-		
+
 	while (true)
 	{
 		if (auto qualifiedName = BfNodeDynCast<BfQualifiedNameNode>(node))
@@ -65,35 +65,35 @@ void BfResolvePassData::RecordReplaceNode(BfAstNode* node)
 		}
 		else
 			break;
-	}	
+	}
 
 	RecordReplaceNode(parser, node->GetSrcStart(), node->GetSrcLength());
 }
 
 void BfResolvePassData::HandleMethodReference(BfAstNode* node, BfTypeDef* typeDef, BfMethodDef* methodDef)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Method) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Method) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) &&
 		(mSymbolReferenceMethodIdx == methodDef->mIdx))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandleFieldReference(BfAstNode* node, BfTypeDef* typeDef, BfFieldDef* fieldDef)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Field) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Field) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) &&
 		(mSymbolReferenceFieldIdx == fieldDef->mIdx))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandlePropertyReference(BfAstNode* node, BfTypeDef* typeDef, BfPropertyDef* propDef)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Property) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Property) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) &&
 		(mSymbolReferencePropertyIdx == propDef->mIdx))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandleLocalReference(BfIdentifierNode* identifier, BfTypeDef* typeDef, BfMethodDef* methodDef, int localVarIdx)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Local) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Local) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) &&
 		(mSymbolReferenceMethodIdx == methodDef->mIdx) && (localVarIdx == mSymbolReferenceLocalIdx))
 		RecordReplaceNode(identifier);
 }
@@ -106,14 +106,14 @@ void BfResolvePassData::HandleTypeGenericParam(BfAstNode* node, BfTypeDef* typeD
 
 void BfResolvePassData::HandleMethodGenericParam(BfAstNode* node, BfTypeDef* typeDef, BfMethodDef* methodDef, int genericParamIdx)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_MethodGenericParam) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_MethodGenericParam) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) &&
 		(mSymbolReferenceMethodIdx == methodDef->mIdx) && (genericParamIdx == mSymbolMethodGenericParamIdx))
 		RecordReplaceNode(node);
 }
 
 void BfResolvePassData::HandleLocalReference(BfIdentifierNode* identifier, BfIdentifierNode* origNameNode, BfTypeDef* typeDef, BfMethodDef* methodDef, int localVarIdx)
 {
-	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Local) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) && 
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Local) && (mSymbolReferenceTypeDef == typeDef->GetDefinition()) &&
 		(mSymbolReferenceMethodIdx == methodDef->mIdx) && (localVarIdx == mSymbolReferenceLocalIdx))
 	{
 		if (origNameNode == NULL)
@@ -122,7 +122,7 @@ void BfResolvePassData::HandleLocalReference(BfIdentifierNode* identifier, BfIde
 		int origLen = origNameNode->GetSrcLength();
 		int refLen = identifier->GetSrcLength();
 
-		// The lengths can be different if we have one or more @'s prepended	
+		// The lengths can be different if we have one or more @'s prepended
 		RecordReplaceNode(identifier->GetSourceData()->ToParserData(), identifier->GetSrcStart() + (refLen - origLen), origLen);
 	}
 }

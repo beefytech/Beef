@@ -56,7 +56,7 @@
 struct Find_Result {
 	int windows_sdk_version = 0;   // Zero if no Windows SDK found.
 
-	wchar_t *windows_sdk_root = NULL;	
+	wchar_t *windows_sdk_root = NULL;
 
 	wchar_t* vs_version = NULL;
 	wchar_t *vs_exe32_path = NULL;
@@ -68,7 +68,7 @@ struct Find_Result {
 Find_Result find_visual_studio_and_windows_sdk();
 
 void free_resources(Find_Result *result) {
-	free(result->windows_sdk_root);	
+	free(result->windows_sdk_root);
 	free(result->vs_version);
 	free(result->vs_exe32_path);
 	free(result->vs_exe64_path);
@@ -95,10 +95,10 @@ void free_resources(Find_Result *result) {
 // I am not making this up: https://github.com/Microsoft/vswhere
 //
 // Several people have therefore found the need to solve this problem
-// themselves. We referred to some of these other solutions when 
+// themselves. We referred to some of these other solutions when
 // figuring out what to do, most prominently ziglang's version,
 // by Ryan Saunderson.
-// 
+//
 // I hate this kind of code. The fact that we have to do this at all
 // is stupid, and the actual maneuvers we need to go through
 // are just painful. If programming were like this all the time,
@@ -148,7 +148,6 @@ public:
 
 #define defer const auto& CONCAT(defer__, __LINE__) = ExitScopeHelp() + [&]()
 
-
 // COM objects for the ridiculous Microsoft craziness.
 
 struct DECLSPEC_UUID("B41463C3-8866-43B5-BC33-2B0676F7F42E") DECLSPEC_NOVTABLE ISetupInstance : public IUnknown
@@ -177,7 +176,6 @@ struct DECLSPEC_UUID("42843719-DB4C-46C2-8E7C-64F1816EFD5B") DECLSPEC_NOVTABLE I
 	STDMETHOD(GetInstanceForCurrentProcess)(_Out_ ISetupInstance** ppInstance) = 0;
 	STDMETHOD(GetInstanceForPath)(_In_z_ LPCWSTR wzPath, _Out_ ISetupInstance** ppInstance) = 0;
 };
-
 
 // The beginning of the actual code that does things.
 
@@ -224,7 +222,6 @@ wchar_t *concat(wchar_t *a, wchar_t *b, wchar_t *c = nullptr, wchar_t *d = nullp
 
 typedef void(*Visit_Proc_W)(wchar_t *short_name, wchar_t *full_name, Version_Data *data);
 bool visit_files_w(wchar_t *dir_name, Version_Data *data, Visit_Proc_W proc) {
-
 	// Visit everything in one folder (non-recursively). If it's a directory
 	// that doesn't start with ".", call the visit proc on it. The visit proc
 	// will see if the filename conforms to the expected versioning pattern.
@@ -252,7 +249,6 @@ bool visit_files_w(wchar_t *dir_name, Version_Data *data, Visit_Proc_W proc) {
 
 	return true;
 }
-
 
 wchar_t *find_windows_kit_root(HKEY key, wchar_t *version) {
 	// Given a key to an already opened registry entry,
@@ -340,7 +336,7 @@ void find_windows_kit_root(Find_Result *result) {
 	// is stored in the same place in the registry. We open a key
 	// to that place, first checking preferentially for a Windows 10 kit,
 	// then, if that's not found, a Windows 8 kit.
-	
+
 	HKEY main_key;
 
 	auto rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
@@ -385,7 +381,6 @@ void find_windows_kit_root(Find_Result *result) {
 
 	// If we get here, we failed to find anything.
 }
-
 
 void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *result) {
 	// The name of this procedure is kind of cryptic. Its purpose is
@@ -449,7 +444,7 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *res
 		if (!success) continue;
 
 		auto version_bytes = (tools_file_size.QuadPart + 1) * 2;  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
-		wchar_t *version = (wchar_t *)malloc(version_bytes);		
+		wchar_t *version = (wchar_t *)malloc(version_bytes);
 
 		auto read_result = fgetws(version, (int)version_bytes, f);
 		if (!read_result) continue;
@@ -465,15 +460,15 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *res
 
 		bool use = false;
 		if ((os_file_exists(library_file)) && (os_file_exists(vs_exe64_link_path)))
-		{			
+		{
 			if (result->vs_version == NULL)
 			{
 				use = true;
-			}			
+			}
 			else if (wcscmp(version, result->vs_version) > 0)
 			{
 				use = true;
-			}			
+			}
 		}
 
 		if (use)
@@ -492,7 +487,7 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *res
 			free(library32_path);
 			free(library64_path);
 		}
-		
+
 		free(library_file);
 		free(vs_exe64_link_path);
 
@@ -562,7 +557,6 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *res
 	// If we get here, we failed to find anything.
 }
 
-
 Find_Result find_visual_studio_and_windows_sdk() {
 	Find_Result result;
 
@@ -582,7 +576,7 @@ BF_EXPORT const char* BF_CALLTYPE VSSupport_Find()
 {
 	Beefy::String& outString = *Beefy::gTLStrReturn.Get();
 	outString.clear();
-	
+
 	Find_Result findResult = find_visual_studio_and_windows_sdk();
 
 	auto _AddPath = [&](wchar_t* str)
@@ -593,11 +587,11 @@ BF_EXPORT const char* BF_CALLTYPE VSSupport_Find()
 			outString += Beefy::UTF8Encode(str);
 		}
 	};
-	
+
 	if (findResult.vs_exe32_path != NULL)
 		outString += "TOOL32\t" + Beefy::UTF8Encode(findResult.vs_exe32_path) + "\n";
 	if (findResult.vs_exe64_path != NULL)
-		outString += "TOOL64\t" + Beefy::UTF8Encode(findResult.vs_exe64_path) + "\n";		
+		outString += "TOOL64\t" + Beefy::UTF8Encode(findResult.vs_exe64_path) + "\n";
 
 	if (findResult.windows_sdk_root != NULL)
 	{
@@ -630,7 +624,7 @@ BF_EXPORT const char* BF_CALLTYPE VSSupport_Find()
 		outString += Beefy::UTF8Encode(findResult.vs_library64_path);
 		outString += "\n";
 	}
-	
+
 	free_resources(&findResult);
 
 	return outString.c_str();

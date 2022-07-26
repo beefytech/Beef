@@ -80,17 +80,17 @@ enum CeOp : int16
 	CeOp_JmpIf,
 	CeOp_JmpIfNot,
 
-	CeOp_Error,	
+	CeOp_Error,
 	CeOp_DynamicCastCheck,
 	CeOp_GetReflectType,
 	CeOp_GetString,
 	CeOp_Malloc,
 	CeOp_Free,
-	
+
 	CeOp_MemSet,
 	CeOp_MemSet_Const,
 	CeOp_MemCpy,
-	
+
 	CeOp_FrameAddr_32,
 	CeOp_FrameAddr_64,
 	CeOp_FrameAddrOfs_32,
@@ -116,7 +116,7 @@ enum CeOp : int16
 	CeOp_GetMethod_Virt,
 	CeOp_GetMethod_IFace,
 	CeOp_Call,
-	
+
 	CeOp_Conv_I8_I16,
 	CeOp_Conv_I8_I32,
 	CeOp_Conv_I8_I64,
@@ -128,7 +128,7 @@ enum CeOp : int16
 	CeOp_Conv_I16_F64,
 	CeOp_Conv_I32_I64,
 	CeOp_Conv_I32_F32,
-	CeOp_Conv_I32_F64,	
+	CeOp_Conv_I32_F64,
 	CeOp_Conv_I64_F32,
 	CeOp_Conv_I64_F64,
 	CeOp_Conv_U8_U16,
@@ -168,7 +168,7 @@ enum CeOp : int16
 	CEOP_SIZED_NUMERIC_PLUSF(AddConst),
 	CEOP_SIZED_NUMERIC_PLUSF(Add),
 	CEOP_SIZED_NUMERIC_PLUSF(Sub),
-	CEOP_SIZED_NUMERIC_PLUSF(Mul),	
+	CEOP_SIZED_NUMERIC_PLUSF(Mul),
 	CEOP_SIZED_NUMERIC_PLUSF(Div),
 	CEOP_SIZED_UNUMERIC(Div),
 	CEOP_SIZED_NUMERIC_PLUSF(Mod),
@@ -179,7 +179,7 @@ enum CeOp : int16
 	CEOP_SIZED_NUMERIC(Shl),
 	CEOP_SIZED_NUMERIC(Shr),
 	CEOP_SIZED_UNUMERIC(Shr),
-	
+
 	CEOP_SIZED_FLOAT(Acos),
 	CEOP_SIZED_FLOAT(Asin),
 	CEOP_SIZED_FLOAT(Atan),
@@ -190,7 +190,7 @@ enum CeOp : int16
 	CEOP_SIZED_FLOAT(Exp),
 	CEOP_SIZED_FLOAT(Floor),
 	CEOP_SIZED_FLOAT(Log),
-	CEOP_SIZED_FLOAT(Log10),	
+	CEOP_SIZED_FLOAT(Log10),
 	CEOP_SIZED_FLOAT(Pow),
 	CEOP_SIZED_FLOAT(Round),
 	CEOP_SIZED_FLOAT(Sin),
@@ -198,7 +198,7 @@ enum CeOp : int16
 	CEOP_SIZED_FLOAT(Sqrt),
 	CEOP_SIZED_FLOAT(Tan),
 	CEOP_SIZED_FLOAT(Tanh),
-	
+
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_EQ),
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_NE),
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_SLT),
@@ -307,7 +307,7 @@ public:
 };
 
 struct CeDbgInlineEntry
-{	
+{
 	int mScope;
 	int mLine;
 	int mColumn;
@@ -329,7 +329,7 @@ public:
 		mCeFunction = NULL;
 		mRefCount = 0;
 	}
-	
+
 	~CeFunctionInfo();
 
 	BfTypeInstance* GetOwner()
@@ -447,14 +447,14 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetInfo,
 	CeFunctionKind_Method_GetParamInfo,
 	CeFunctionKind_Method_GetGenericArg,
-	
+
 	CeFunctionKind_SetReturnType,
 	CeFunctionKind_EmitTypeBody,
 	CeFunctionKind_EmitAddInterface,
 	CeFunctionKind_EmitMethodEntry,
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
-	
+
 	CeFunctionKind_BfpDirectory_Create,
 	CeFunctionKind_BfpDirectory_Rename,
 	CeFunctionKind_BfpDirectory_Delete,
@@ -483,7 +483,7 @@ enum CeFunctionKind
 	CeFunctionKind_BfpFile_GetTempFileName,
 	CeFunctionKind_BfpFile_GetFullPath,
 	CeFunctionKind_BfpFile_GetActualPath,
-	
+
 	CeFunctionKind_BfpFindFileData_FindFirstFile,
 	CeFunctionKind_BfpFindFileData_FindNextFile,
 	CeFunctionKind_BfpFindFileData_GetFileName,
@@ -521,7 +521,7 @@ enum CeFunctionKind
 	CeFunctionKind_Math_Asin,
 	CeFunctionKind_Math_Atan,
 	CeFunctionKind_Math_Atan2,
-	CeFunctionKind_Math_Ceiling,	
+	CeFunctionKind_Math_Ceiling,
 	CeFunctionKind_Math_Cos,
 	CeFunctionKind_Math_Cosh,
 	CeFunctionKind_Math_Exp,
@@ -535,7 +535,7 @@ enum CeFunctionKind
 	CeFunctionKind_Math_Sinh,
 	CeFunctionKind_Math_Sqrt,
 	CeFunctionKind_Math_Tan,
-	CeFunctionKind_Math_Tanh,	
+	CeFunctionKind_Math_Tanh,
 };
 
 class CeConstStructFixup
@@ -596,14 +596,14 @@ public:
 	{
 		mTypeId = -1;
 		mSize = 0;
-		mAddr = 0;		
-		mBindExecuteId = -1;		
+		mAddr = 0;
+		mBindExecuteId = -1;
 	}
 };
 
 class CeDbgVariable
 {
-public:	
+public:
 	String mName;
 	CeOperand mValue;
 	BfType* mType;
@@ -641,17 +641,17 @@ public:
 	CeMachine* mCeMachine;
 	CeFunctionInfo* mCeFunctionInfo;
 	CeInnerFunctionInfo* mCeInnerFunctionInfo;
-	BfMethodInstance* mMethodInstance;	
-	CeFunctionKind mFunctionKind;	
+	BfMethodInstance* mMethodInstance;
+	CeFunctionKind mFunctionKind;
 	InitializeState mInitializeState;
 	bool mFailed;
 	bool mIsVarReturn;
-	Array<uint8> mCode;	
+	Array<uint8> mCode;
 	Array<CeDbgScope> mDbgScopes;
 	Array<CeDbgInlineEntry> mDbgInlineTable;
 	Array<CeDbgMethodRef> mDbgMethodRefTable;
-	Array<CeEmitEntry> mEmitTable;	
-	Array<CeCallEntry> mCallTable;	
+	Array<CeEmitEntry> mEmitTable;
+	Array<CeCallEntry> mCallTable;
 	Array<CeStringEntry> mStringTable;
 	Array<CeConstStructData> mConstStructTable;
 	Array<CeStaticFieldEntry> mStaticFieldTable;
@@ -659,7 +659,7 @@ public:
 	Array<CeFunction*> mInnerFunctions;
 	Dictionary<int, CeBreakpointBind> mBreakpoints;
 	String mGenError;
-	int mFrameSize;	
+	int mFrameSize;
 	int mMaxReturnSize;
 	int mId;
 	int mBreakpointVersion;
@@ -671,7 +671,7 @@ public:
 		mCeMachine = NULL;
 		mCeFunctionInfo = NULL;
 		mCeInnerFunctionInfo = NULL;
-		mFunctionKind = CeFunctionKind_NotSet;		
+		mFunctionKind = CeFunctionKind_NotSet;
 		mInitializeState = InitializeState_None;
 		mMethodInstance = NULL;
 		mFailed = false;
@@ -681,7 +681,7 @@ public:
 		mBreakpointVersion = 0;
 		mId = -1;
 		mDbgInfo = NULL;
-	}	
+	}
 
 	~CeFunction();
 	void Print();
@@ -747,7 +747,7 @@ enum CeSizeClass
 
 class CeDumpContext
 {
-public:	
+public:
 	Dictionary<int, CeDbgVariable*> mVarMap;
 	CeFunction* mCeFunction;
 	String mStr;
@@ -765,13 +765,13 @@ public:
 	void DumpOperandInfo(CeOperandInfoKind operandInfoKind);
 
 	void Next();
-	void Dump();	
+	void Dump();
 };
 
 struct CePhiOutgoing
 {
 	BeValue* mPhiValue;
-	BePhiInst* mPhiInst;	
+	BePhiInst* mPhiInst;
 	int mPhiBlockIdx;
 };
 
@@ -784,7 +784,7 @@ public:
 public:
 	CeBlock()
 	{
-		mEmitOfs = -1;		
+		mEmitOfs = -1;
 	}
 };
 
@@ -811,7 +811,7 @@ struct CeDbgInlineLookup
 		mDbgFile = NULL;
 		mInlineAtIdx = -1;
 	}
-	
+
 	bool operator==(const CeDbgInlineLookup& second) const
 	{
 		return (mDbgFile == second.mDbgFile) && (mDbgFile == second.mDbgFile);
@@ -820,18 +820,18 @@ struct CeDbgInlineLookup
 
 class CeBuilder
 {
-public:	
+public:
 	CeBuilder* mParentBuilder;
-	CeMachine* mCeMachine;	
+	CeMachine* mCeMachine;
 	CeFunction* mCeFunction;
-	BeFunction* mBeFunction;	
+	BeFunction* mBeFunction;
 	CeOperand mReturnVal;
 	BeType* mIntPtrType;
-	int mPtrSize;	
+	int mPtrSize;
 
 	String mError;
 	BeDbgLoc* mCurDbgLoc;
-	Array<CeBlock> mBlocks;	
+	Array<CeBlock> mBlocks;
 	Array<CeJumpEntry> mJumpTable;
 	Dictionary<BeValue*, CeOperand> mValueToOperand;
 	int mFrameSize;
@@ -845,7 +845,7 @@ public:
 	Dictionary<BeGlobalVariable*, int> mStaticFieldMap;
 	Dictionary<String, BfFieldInstance*> mStaticFieldInstanceMap;
 	Dictionary<BeValue*, int> mDbgVariableMap;
-	
+
 public:
 	CeBuilder()
 	{
@@ -857,7 +857,7 @@ public:
 		mCurDbgLoc = NULL;
 		mFrameSize = 0;
 	}
-		
+
 	void Fail(const StringImpl& error);
 
 	CeOperand FrameAlloc(BeType* type);
@@ -871,7 +871,7 @@ public:
 	int GetCodePos();
 
 	void HandleParams();
-	
+
 	void Emit(uint8 val);
 	void Emit(CeOp val);
 	void EmitSizedOp(CeOp val, int size);
@@ -881,7 +881,7 @@ public:
 	void Emit(void* ptr, int size);
 	void EmitZeroes(int size);
 	void EmitJump(CeOp op, const CeOperand& block);
-	void EmitBinarySwitchSection(BeSwitchInst* switchInst, int startIdx, int endIdx);	
+	void EmitBinarySwitchSection(BeSwitchInst* switchInst, int startIdx, int endIdx);
 
 	void EmitFrameOffset(const CeOperand& val);
 	void FlushPhi(CeBlock* ceBlock, int targetBlockIdx);
@@ -920,7 +920,7 @@ public:
 
 class CeStaticFieldInfo
 {
-public:	
+public:
 	addr_ce mAddr;
 
 public:
@@ -970,16 +970,16 @@ public:
 class CeEmitContext
 {
 public:
-	BfType* mType;	
+	BfType* mType;
 	BfMethodInstance* mMethodInstance;
-	Array<int32> mInterfaces;	
+	Array<int32> mInterfaces;
 	String mEmitData;
 	String mExitEmitData;
 	bool mFailed;
 
 	CeEmitContext()
 	{
-		mType = NULL;		
+		mType = NULL;
 		mMethodInstance = NULL;
 		mFailed = false;
 	}
@@ -1088,15 +1088,15 @@ public:
 	int mExecuteId;
 	CeEvalFlags mCurEvalFlags;
 
-	// These are only valid for the current execution	
+	// These are only valid for the current execution
 	ContiguousHeap* mHeap;
 	Array<CeFrame> mCallStack;
 	Array<uint8> mMemory;
 	int mStackSize;
 	Dictionary<int, addr_ce> mStringMap;
 	Dictionary<int, addr_ce> mReflectMap;
-	Dictionary<Val128, addr_ce> mConstDataMap;	
-	HashSet<int> mStaticCtorExecSet;	
+	Dictionary<Val128, addr_ce> mConstDataMap;
+	HashSet<int> mStaticCtorExecSet;
 	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
 	Dictionary<int, CeInternalData*> mInternalDataMap;
 	int mCurHandleId;
@@ -1109,16 +1109,16 @@ public:
 	CeCallSource* mCurCallSource;
 	BfModule* mCurModule;
 	CeFrame* mCurFrame;
-	CeEmitContext* mCurEmitContext;	
+	CeEmitContext* mCurEmitContext;
 	String mWorkingDir;
 
 public:
 	CeContext();
 	~CeContext();
-	
+
 	BfError* Fail(const StringImpl& error);
 	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
-	
+
 	void CalcWorkingDir();
 	void FixRelativePath(StringImpl& path);
 	bool AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value);
@@ -1143,8 +1143,8 @@ public:
 	bool GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolder, BfCustomAttributes* customAttributes, int attributeIdx, addr_ce resultAddr);
 	BfType* GetCustomAttributeType(BfCustomAttributes* customAttributes, int attributeIdx);
 
-	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type, bool isParams = false);	
-	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);	
+	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type, bool isParams = false);
+	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);
 	BfIRValue CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute, addr_ce ceAttrAddr = 0);
 
 	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType, BfType*& castReturnType);
@@ -1173,14 +1173,14 @@ public:
 		Kind_Evaluate
 	};
 
-	Kind mKind;	
+	Kind mKind;
 	int mNextInstIdx;
 	int mStartDepth;
 
 public:
 	CeStepState()
 	{
-		mKind = Kind_None;		
+		mKind = Kind_None;
 		mNextInstIdx = -1;
 		mStartDepth = 0;
 	}
@@ -1194,24 +1194,24 @@ public:
 	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit and debugging
 	Dictionary<BfType*, CeTypeInfo> mTypeInfoMap;
 	HashSet<BfMethodInstance*> mMethodInstanceSet;
-	HashSet<BfFieldInstance*> mFieldInstanceSet;	
-		
+	HashSet<BfFieldInstance*> mFieldInstanceSet;
+
 	Array<CeContext*> mContextList;
 
 	BfCompiler* mCompiler;
 	BfModule* mCeModule;
 	int mRevision;
 	int mMethodBindRevision;
-	int mRevisionExecuteTime;	
-	int mCurFunctionId;	
+	int mRevisionExecuteTime;
+	int mCurFunctionId;
 	int mExecuteId;
-	CeAppendAllocInfo* mAppendAllocInfo;	
-	
+	CeAppendAllocInfo* mAppendAllocInfo;
+
 	CeContext* mCurContext;
 	CeEmitContext* mCurEmitContext;
 	CeCallSource* mCurCallSource;
 	CeBuilder* mCurBuilder;
-	CeFunction* mPreparingFunction;		
+	CeFunction* mPreparingFunction;
 
 	BfParser* mTempParser;
 	BfReducer* mTempReducer;
@@ -1221,27 +1221,27 @@ public:
 	SyncEvent mDebugEvent;
 	CeStepState mStepState;
 	CeDebugger* mDebugger;
-	bool mDbgPaused;	
+	bool mDbgPaused;
 	bool mSpecialCheck;
 	bool mDbgWantBreak;
 
 public:
 	CeMachine(BfCompiler* compiler);
-	~CeMachine();		
+	~CeMachine();
 
-	void Init();		
+	void Init();
 	BeContext* GetBeContext();
 	BeModule* GetBeModule();
 
 	int GetInstSize(CeFunction* ceFunction, int instIdx);
 	void DerefMethodInfo(CeFunctionInfo* ceFunctionInfo);
 	void RemoveFunc(CeFunction* ceFunction);
-	void RemoveMethod(BfMethodInstance* methodInstance);					
-	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);			
-	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext);	
+	void RemoveMethod(BfMethodInstance* methodInstance);
+	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);
+	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext);
 
 	void CheckFunctionKind(CeFunction* ceFunction);
-	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);	
+	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);
 	void MapFunctionId(CeFunction* ceFunction);
 
 	void CheckFunctions();
@@ -1249,14 +1249,14 @@ public:
 	CeFunction* GetPreparedFunction(BfMethodInstance* methodInstance);
 	CeTypeInfo* GetTypeInfo(BfType* type);
 	BfMethodInstance* GetMethodInstance(int64 methodHandle);
-	BfFieldInstance* GetFieldInstance(int64 fieldHandle);	
+	BfFieldInstance* GetFieldInstance(int64 fieldHandle);
 
 public:
 	void CompileStarted();
 	void CompileDone();
 	CeFunction* QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
 	void QueueMethod(BfModuleMethodInstance moduleMethodInstance);
-	void QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName);	
+	void QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName);
 
 	void SetAppendAllocInfo(BfModule* module, BfIRValue allocValue, BfIRValue appendSizeValue);
 	void ClearAppendAllocInfo();
@@ -1277,7 +1277,7 @@ namespace std
 		{
 			return BeefHash<Beefy::String>()(key.mString) ^ (size_t)key.mKind;
 		}
-	};	
+	};
 
 	template <>
 	struct hash<Beefy::CeDbgInlineLookup>

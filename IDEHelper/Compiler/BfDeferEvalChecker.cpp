@@ -8,14 +8,14 @@ BfDeferEvalChecker::BfDeferEvalChecker()
 	mRootNode = NULL;
 	mNeedsDeferEval = false;
 	mDeferLiterals = true;
-	mDeferDelegateBind = true;	
+	mDeferDelegateBind = true;
 }
 
 void BfDeferEvalChecker::Check(BfAstNode* node)
 {
 	if (auto namedNode = BfNodeDynCastExact<BfNamedExpression>(node))
 		node = namedNode->mExpression;
-	
+
 	if (node == NULL)
 		return;
 
@@ -46,16 +46,16 @@ void BfDeferEvalChecker::Visit(BfLiteralExpression* literalExpr)
 	case BfTypeCode_Boolean:
 	case BfTypeCode_Char8:
 	case BfTypeCode_Int8:
-	case BfTypeCode_UInt8:		
-	case BfTypeCode_Int16:		
+	case BfTypeCode_UInt8:
+	case BfTypeCode_Int16:
 	case BfTypeCode_UInt16:
 	case BfTypeCode_Int32:
-	case BfTypeCode_UInt32:		
-	case BfTypeCode_Int64:		
+	case BfTypeCode_UInt32:
+	case BfTypeCode_Int64:
 	case BfTypeCode_UInt64:
-	case BfTypeCode_IntPtr:		
+	case BfTypeCode_IntPtr:
 	case BfTypeCode_UIntPtr:
-	case BfTypeCode_IntUnknown:		
+	case BfTypeCode_IntUnknown:
 	case BfTypeCode_UIntUnknown:
 		if (mDeferLiterals)
 			mNeedsDeferEval = true;
@@ -63,11 +63,10 @@ void BfDeferEvalChecker::Visit(BfLiteralExpression* literalExpr)
 	default:
 		mNeedsDeferEval = false;
 	}
-	
 }
 
 void BfDeferEvalChecker::Visit(BfCastExpression* castExpr)
-{	
+{
 	if (auto namedTypeRef = BfNodeDynCastExact<BfNamedTypeReference>(castExpr->mTypeRef))
 	{
 		if (namedTypeRef->ToString() == "ExpectedType")
@@ -122,11 +121,11 @@ void BfDeferEvalChecker::Visit(BfDelegateBindExpression* delegateBindExpr)
 }
 
 void BfDeferEvalChecker::Visit(BfConditionalExpression* condExpr)
-{	
+{
 	VisitChild(condExpr->mConditionExpression);
 	bool prev = mNeedsDeferEval;
 	VisitChild(condExpr->mTrueExpression);
-	prev |= mNeedsDeferEval;	
+	prev |= mNeedsDeferEval;
 	VisitChild(condExpr->mFalseExpression);
 	mNeedsDeferEval |= prev;
 }
@@ -154,7 +153,7 @@ void BfDeferEvalChecker::Visit(BfObjectCreateExpression * objCreateExpr)
 	{
 		if (objCreateExpr->mTypeRef->IsExact<BfDotTypeReference>())
 			mNeedsDeferEval = true;
-	}	
+	}
 }
 
 void BfDeferEvalChecker::Visit(BfBinaryOperatorExpression* binOpExpr)
@@ -170,14 +169,14 @@ void BfDeferEvalChecker::Visit(BfBinaryOperatorExpression* binOpExpr)
 	case BfBinaryOp_BitwiseOr:
 	case BfBinaryOp_ExclusiveOr:
 	case BfBinaryOp_LeftShift:
-	case BfBinaryOp_RightShift:	
+	case BfBinaryOp_RightShift:
 	case BfBinaryOp_GreaterThan:
 	case BfBinaryOp_LessThan:
 	case BfBinaryOp_GreaterThanOrEqual:
 	case BfBinaryOp_LessThanOrEqual:
 		{
 			VisitChild(binOpExpr->mLeft);
-			bool prev = mNeedsDeferEval;			
+			bool prev = mNeedsDeferEval;
 			VisitChild(binOpExpr->mRight);
 			mNeedsDeferEval |= prev;
 		}
@@ -188,7 +187,7 @@ void BfDeferEvalChecker::Visit(BfBinaryOperatorExpression* binOpExpr)
 }
 
 void BfDeferEvalChecker::Visit(BfDefaultExpression* defaultExpr)
-{	
+{
 	if (defaultExpr->mTypeRef == NULL)
 		mNeedsDeferEval = true;
 }
@@ -198,4 +197,3 @@ void BfDeferEvalChecker::Visit(BfVariableDeclaration* varDecl)
 	if (varDecl != mRootNode)
 		mNeedsDeferEval = true;
 }
-

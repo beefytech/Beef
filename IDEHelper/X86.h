@@ -193,7 +193,7 @@ public:
 	struct XmmDReg
 	{
 		double d[2];
-	};	
+	};
 
 	struct XmmI32Reg
 	{
@@ -289,7 +289,7 @@ public:
 	llvm::raw_svector_ostream mAnnotationStream;
 	static uint8 sRegForm[];
 
-	X86Instr() : 
+	X86Instr() :
 		mAnnotationStream(mAnnotationStr)
 	{
 		mX86 = NULL;
@@ -297,7 +297,7 @@ public:
 		mSize = 0;
 	}
 
-	int GetLength();	
+	int GetLength();
 	bool StackAdjust(uint32& adjust);
 	bool IsBranch();
 	bool IsCall();
@@ -340,7 +340,7 @@ public:
 	bool Decode(uint32 baseAddress, const uint8* dataBase, int dataLength, const uint8* dataPtr, X86Instr* inst);
 	uint32 DecodeThunk(uint32 address, DbgModuleMemoryCache* memoryCache) { return 0; }
 
-	bool IsReturnInstruction(X86Instr* inst);	
+	bool IsReturnInstruction(X86Instr* inst);
 	String InstructionToString(X86Instr* inst, uint32 addr);
 
 	void GetNextPC(uint32 baseAddress, const uint8* dataBase, int dataLength, const uint8* dataPtr, uint32* regs, uint32 nextPCs[2]);

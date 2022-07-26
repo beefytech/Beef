@@ -64,25 +64,25 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 						// Dot-initialized
 						if (memberRefExpr->mTarget == NULL)
 							arraySize = (int)invocationExpr->mArguments.size();
-					}					
+					}
 					else if (auto indexerExpr = BfNodeDynCast<BfIndexerExpression>(invocationExpr->mTarget))
 					{
 						if (indexerExpr->mArguments.size() == 0)
 						{
 							// Inferred-type sized array initializer
 							arraySize = (int)invocationExpr->mArguments.size();
-						}						
+						}
 					}
 				}
 			}
 
 			if (arraySize != -1)
-			{				
+			{
 				mResult = BfTypedValue(mModule->GetConstValue(arraySize), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 				return mResult;
 			}
 			else
-			{				
+			{
 				mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_IntPtr)), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 				return mResult;
 			}
@@ -103,16 +103,16 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	}
 
 	SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, wantIgnoreWrites);
-	
+
 	auto prevInsertBlock = mModule->mBfIRBuilder->GetInsertBlock();
 
 	mNoBind = true;
 	if (wantType != NULL)
 		mExpectingType = wantType;
 	VisitChildNoRef(expr);
-	
+
 	mResult = GetResult();
-	
+
 	auto compilerVal = mModule->GetCompilerFieldValue(mResult);
 	if (compilerVal)
 		mResult = compilerVal;
@@ -131,14 +131,14 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 					(toType == mResult.mType)))
 			{
 				auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
-				
+
 				if (constant->mTypeCode == BfTypeCode_NullPtr)
 				{
 					return mModule->GetDefaultTypedValue(toType);
 				}
 				else
 				{
-					int stringId = mModule->GetStringPoolIdx(mResult.mValue);					
+					int stringId = mModule->GetStringPoolIdx(mResult.mValue);
 					if (stringId != -1)
 					{
 						if ((flags & BfConstResolveFlag_ActualizeValues) != 0)
@@ -166,9 +166,9 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 				mResult = convValue;
 		}
 		else
-		{			
+		{
 			mResult = mModule->Cast(expr, mResult, wantType, (BfCastFlags)(BfCastFlags_NoConversionOperator | (explicitCast ? BfCastFlags_Explicit : BfCastFlags_None)));
-		}				
+		}
 	}
 
 	if (mResult.mKind == BfTypedValueKind_GenericConstValue)
@@ -195,9 +195,9 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 					isConst = false;
 			}
 		}
-		
+
 		if ((!isConst) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowNonConst) == 0))
-		{			
+		{
 			mModule->Fail("Expression does not evaluate to a constant value", expr);
 
 			if (wantType != NULL)
@@ -210,7 +210,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	{
 		if (wantType != NULL)
 			mResult = mModule->GetDefaultTypedValue(wantType);
-	}	
+	}
 
 	if (prevInsertBlock)
 		mModule->mBfIRBuilder->SetInsertPoint(prevInsertBlock);
@@ -221,7 +221,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		mModule->mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 	}*/
 
-	mModule->FixIntUnknown(mResult);	
+	mModule->FixIntUnknown(mResult);
 
 	if ((flags & BfConstResolveFlag_NoActualizeValues) == 0)
 	{
@@ -240,10 +240,10 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 	int extendedParamIdx = 0;
 
 	SetAndRestoreValue<bool> ignoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
-	
+
 	llvm::SmallVector<BfIRValue, 4> expandedParamsConstValues;
 	BfType* expandedParamsElementType = NULL;
-	
+
 	// We don't do GetMethodInstance in mModule, because our module may not have init finished yet
 	//auto targetModule = methodMatcher->mBestMethodTypeInstance->mModule;
 	auto targetModule = mModule->mContext->mUnreifiedModule;
@@ -260,7 +260,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 	auto& arguments = methodMatcher->mArguments;
 
 	mModule->AddDependency(methodInstance->mReturnType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_LocalUsage);
-	for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)	
+	for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
 	{
 		auto paramType = methodInstance->GetParamType(paramIdx);
 		mModule->AddDependency(paramType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_LocalUsage);
@@ -271,7 +271,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 		if (paramIdx >= (int)methodInstance->GetParamCount())
 		{
 			if (argIdx < (int)arguments.size())
-			{				
+			{
 				BfAstNode* errorRef = arguments[methodInstance->GetParamCount()].mExpression;
 				if (errorRef->GetSourceData() == NULL)
 					errorRef = targetSrc;
@@ -281,7 +281,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 				return false;
 			}
 			break;
-		}				
+		}
 
 		BfType* wantType = NULL;
 		if (expandedParamsElementType != NULL)
@@ -351,7 +351,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 						if (attributeDirective->mCtorCloseParen != NULL)
 							refNode = attributeDirective->mCtorCloseParen;
 					}
-				}				
+				}
 
 				auto autoComplete = GetAutoComplete();
 				if (autoComplete != NULL)
@@ -361,14 +361,14 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 						autoComplete->CheckEmptyStart(prevNode, wantType);
 					}
 				}
-				
+
 				if (mModule->PreFail())
 					mModule->Fail(StrFormat("Not enough parameters specified. Expected %d more.", methodInstance->GetParamCount() - (int)arguments.size()), refNode);
 				return false;
 			}
 
 			auto foreignDefaultVal = methodInstance->mDefaultValues[argIdx];
-			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(foreignDefaultVal.mValue);			
+			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(foreignDefaultVal.mValue);
 			argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, foreignDefaultVal.mType);
 		}
 
@@ -387,7 +387,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 				arg.mArgFlags = BfArgFlag_None;
 			}
 		}
-		
+
 		if (!argValue)
 			return BfTypedValue();
 
@@ -410,14 +410,14 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 			extendedParamIdx++;
 		}
 		else
-		{	
+		{
 			bool requiresConst = false;
 			if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Mixin))
 				requiresConst = true;
 
 			if ((requiresConst) && (argValue.mValue.IsFake()) && (!argValue.mType->IsValuelessType()))
-			{				
-				mModule->Fail("Expression does not evaluate to a constant value", argExpr);				
+			{
+				mModule->Fail("Expression does not evaluate to a constant value", argExpr);
 			}
 
 			if (!argValue.mType->IsVar())
@@ -433,11 +433,11 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 	}
 
 	if (expandedParamsElementType != NULL)
-	{				
+	{
 		auto arrayType = mModule->mBfIRBuilder->GetSizedArrayType(mModule->mBfIRBuilder->MapType(expandedParamsElementType), (int)expandedParamsConstValues.size());
 		auto constArray = mModule->mBfIRBuilder->CreateConstAgg(arrayType, expandedParamsConstValues);
 		llvmArgs.push_back(constArray);
-	}	
+	}
 
 	return true;
 }

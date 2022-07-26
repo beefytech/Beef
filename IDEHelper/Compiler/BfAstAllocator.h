@@ -49,13 +49,12 @@ public:
 class BfAstPageHeader
 {
 public:
-	BfSourceData* mSourceData;	
+	BfSourceData* mSourceData;
 };
 #endif
 
 class BfAstAllocChunk;
 class BfAstAllocManager;
-
 
 struct BfAstFreePage
 {
@@ -75,7 +74,7 @@ public:
 	Array<uint8*> mAllocChunks;
 #endif
 
-public:	
+public:
 	BfAstAllocManager();
 	~BfAstAllocManager();
 
@@ -90,7 +89,7 @@ public:
 // {
 // 	int mCount;
 // 	int mSize;
-// 
+//
 // 	BumpAllocTrackedEntry()
 // 	{
 // 		mCount = 0;
@@ -103,9 +102,9 @@ class BfAstAllocator
 {
 public:
 	static const int LARGE_ALLOC_SIZE = 2048;
-	BfSourceData* mSourceData;		
-	uint8* mCurPtr;	
-	uint8* mCurPageEnd;	
+	BfSourceData* mSourceData;
+	uint8* mCurPtr;
+	uint8* mCurPageEnd;
 	Array<void*> mLargeAllocs;
 	Array<uint8*> mPages;
 	int mLargeAllocSizes;
@@ -117,8 +116,8 @@ public:
 
 public:
 	BfAstAllocator();
-	~BfAstAllocator();	
-	
+	~BfAstAllocator();
+
 	void InitChunkHead(int wantSize);
 
 	int GetAllocSize() const
@@ -141,7 +140,7 @@ public:
 	{
 		int alignSize = alignof(T);
 		mCurPtr = (uint8*)(((intptr)mCurPtr + alignSize - 1) & ~(alignSize - 1));
-		int wantSize = sizeof(T) + extraBytes;		
+		int wantSize = sizeof(T) + extraBytes;
 
 #ifdef BUMPALLOC_TRACKALLOCS
 		const char* name = typeid(T).name();
@@ -152,10 +151,10 @@ public:
 #endif
 
 		if (mCurPtr + wantSize >= mCurPageEnd)
-			InitChunkHead(wantSize);		
+			InitChunkHead(wantSize);
 		memset(mCurPtr, 0, wantSize);
-		T* retVal = new (mCurPtr) T();		
-		mCurPtr += wantSize;		
+		T* retVal = new (mCurPtr) T();
+		mCurPtr += wantSize;
 
 #ifndef BF_AST_ALLOCATOR_USE_PAGES
 		retVal->mSourceData = this->mSourceData;
@@ -165,8 +164,8 @@ public:
 	}
 
 	uint8* AllocBytes(int wantSize, int alignSize, const char* dbgName = "AllocBytes")
-	{	
-#ifdef BUMPALLOC_TRACKALLOCS		
+	{
+#ifdef BUMPALLOC_TRACKALLOCS
 		BumpAllocTrackedEntry* allocSizePtr;
 		mTrackedAllocs.TryAdd(dbgName, NULL, &allocSizePtr);
 		allocSizePtr->mCount++;
@@ -188,13 +187,13 @@ public:
 			InitChunkHead(wantSize);
 		memset(mCurPtr, 0, wantSize);
 		uint8* retVal = mCurPtr;
-		mCurPtr += wantSize;		
+		mCurPtr += wantSize;
 		return retVal;
 	}
 
 	uint8* AllocBytes(int wantSize, const char* dbgName = "AllocBytes")
 	{
-#ifdef BUMPALLOC_TRACKALLOCS		
+#ifdef BUMPALLOC_TRACKALLOCS
 		BumpAllocTrackedEntry* allocSizePtr;
 		mTrackedAllocs.TryAdd(dbgName, NULL, &allocSizePtr);
 		allocSizePtr->mCount++;
@@ -211,12 +210,10 @@ public:
 		if (mCurPtr + wantSize >= mCurPageEnd)
 			InitChunkHead(wantSize);
 		memset(mCurPtr, 0, wantSize);
-		uint8* retVal = mCurPtr;	
+		uint8* retVal = mCurPtr;
 		mCurPtr += wantSize;
 		return retVal;
 	}
 };
 
 NS_BF_END
-
-

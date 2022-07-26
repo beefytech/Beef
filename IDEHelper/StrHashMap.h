@@ -8,10 +8,10 @@ NS_BF_DBG_BEGIN
 template <typename T>
 class StrHashMap
 {
-public:	
+public:
 	struct Entry
 	{
-		T mValue;		
+		T mValue;
 		Entry* mNext;
 		int mHash;
 	};
@@ -102,7 +102,7 @@ public:
 public:
 	Beefy::BumpAllocator mAlloc;
 	Entry** mHashHeads;
-	int mHashSize;	
+	int mHashSize;
 	int mCount;
 
 public:
@@ -140,7 +140,7 @@ public:
 			Entry* checkEntry = mHashHeads[hashIdx];
 			while (checkEntry != NULL)
 			{
-				auto nextEntry = checkEntry->mNext;				
+				auto nextEntry = checkEntry->mNext;
 				int newHashIdx = checkEntry->mHash % newHashSize;
 				checkEntry->mNext = newHashHeads[newHashIdx];
 				newHashHeads[newHashIdx] = checkEntry;
@@ -196,6 +196,5 @@ public:
 		return itr;
 	}
 };
-
 
 NS_BF_DBG_END

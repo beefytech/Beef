@@ -17,8 +17,8 @@ BfPrinter::BfPrinter(BfRootNode *rootNode, BfRootNode *sidechannelRootNode, BfRo
 	mSidechannelNextNode = mSidechannelItr.Get();
 
 	if (errorRootNode != NULL)
-		mErrorItr = errorRootNode->begin();	
-	mErrorNextNode = mErrorItr.Get();	
+		mErrorItr = errorRootNode->begin();
+	mErrorNextNode = mErrorItr.Get();
 
 	mTriviaIdx = 0;
 	mCurSrcIdx = 0;
@@ -26,11 +26,11 @@ BfPrinter::BfPrinter(BfRootNode *rootNode, BfRootNode *sidechannelRootNode, BfRo
 	mCurBlockState = NULL;
 	mQueuedSpaceCount = 0;
 	mLastSpaceOffset = 0;
-	mReformatting = false;	
+	mReformatting = false;
 	mDocPrep = false;
 	mIgnoreTrivia = false;
-	mForceUseTrivia = false;	
-	mIsFirstStatementInBlock = false;	
+	mForceUseTrivia = false;
+	mIsFirstStatementInBlock = false;
 	mFormatStart = -1;
 	mFormatEnd = -1;
 	mInSideChannel = false;
@@ -52,7 +52,7 @@ BfPrinter::BfPrinter(BfRootNode *rootNode, BfRootNode *sidechannelRootNode, BfRo
 }
 
 void BfPrinter::Write(const StringView& str)
-{	
+{
 	if (str == '\n')
 		mCurCol = 0;
 	else if (mMaxCol > 0)
@@ -66,8 +66,8 @@ void BfPrinter::Write(const StringView& str)
 				mCurCol = ((mCurCol / mTabSize) + 1) * mTabSize;
 			else
 				mCurCol++;
-		}	
-	}	
+		}
+	}
 
 	mOutString.Append(str);
 	if (mCharMapping != NULL)
@@ -75,8 +75,8 @@ void BfPrinter::Write(const StringView& str)
 		for (int i = 0; i < (int)str.length(); i++)
 		{
 			int prevSrcIdx = -1;
-			if (mCharMapping->size() > 0)			
-				prevSrcIdx = mCharMapping->back();			
+			if (mCharMapping->size() > 0)
+				prevSrcIdx = mCharMapping->back();
 			if (prevSrcIdx != -1)
 			{
 				bool matched = false;
@@ -99,7 +99,7 @@ void BfPrinter::Write(const StringView& str)
 
 				if (matched)
 				{
-					// It matches the source character, extend...					
+					// It matches the source character, extend...
 					mCharMapping->push_back(curSrcIdx);
 				}
 				else
@@ -113,11 +113,11 @@ void BfPrinter::Write(const StringView& str)
 				mCharMapping->push_back(-1);
 			}
 		}
-	}	
+	}
 }
 
 void BfPrinter::FlushIndent()
-{	
+{
 	while ((mQueuedSpaceCount >= mTabSize) && (!mWantsTabsAsSpaces))
 	{
 		Write("\t");
@@ -126,19 +126,19 @@ void BfPrinter::FlushIndent()
 
 	while (mQueuedSpaceCount > 0)
 	{
-		Write(" ");		
+		Write(" ");
 		mQueuedSpaceCount--;
 	}
 }
 
 void BfPrinter::Write(BfAstNode* node, int start, int len)
 {
-	FlushIndent();	
+	FlushIndent();
 
 	if (mMaxCol > 0)
 	{
 		int startCol = mCurCol;
-		
+
 		auto parserData = node->GetParserData();
 
 		for (int i = 0; i < len; i++)
@@ -148,7 +148,7 @@ void BfPrinter::Write(BfAstNode* node, int start, int len)
 				mCurCol = ((mCurCol / mTabSize) + 1) * mTabSize;
 			else
 				mCurCol++;
-		} 		
+		}
 	}
 
 	mOutString.Append(node->GetSourceData()->mSrc + start, len);
@@ -157,7 +157,7 @@ void BfPrinter::Write(BfAstNode* node, int start, int len)
 		if (start < mParser->mSrcLength)
 		{
 			for (int i = 0; i < len; i++)
-			{				
+			{
 				mCharMapping->push_back(start + i);
 			}
 		}
@@ -171,11 +171,11 @@ void BfPrinter::Write(BfAstNode* node, int start, int len)
 
 void BfPrinter::WriteSourceString(BfAstNode* node)
 {
-	Write(node, node->GetSrcStart(), node->GetSrcLength());	
+	Write(node, node->GetSrcStart(), node->GetSrcLength());
 }
 
 void BfPrinter::QueueVisitChild(BfAstNode* astNode)
-{	
+{
 	if (astNode != NULL)
 	{
 		mNextStateModify.mQueuedNode = astNode;
@@ -188,7 +188,7 @@ void BfPrinter::QueueVisitErrorNodes(BfRootNode* astNode)
 {
 	for (auto& childNodeRef : *astNode)
 	{
-		BfAstNode* childNode = childNodeRef;		
+		BfAstNode* childNode = childNodeRef;
 		if (childNode->IsA<BfErrorNode>())
 			QueueVisitChild(childNode);
 	}
@@ -203,16 +203,16 @@ void BfPrinter::FlushVisitChild()
 {
 	if (mChildNodeQueue.size() == 0)
 		return;
-	
+
 	auto nodeQueue = mChildNodeQueue;
-	mChildNodeQueue.Clear();		
-	
-	std::stable_sort(nodeQueue.begin(), nodeQueue.end(), CompareNodeStart);	
+	mChildNodeQueue.Clear();
+
+	std::stable_sort(nodeQueue.begin(), nodeQueue.end(), CompareNodeStart);
 
 	for (auto& node : nodeQueue)
 	{
 		mNextStateModify = node;
-		
+
 		VisitChild(node.mQueuedNode);
 		if (mVirtualNewLineIdx == mNextStateModify.mWantNewLineIdx)
 			mVirtualNewLineIdx = node.mWantNewLineIdx;
@@ -230,29 +230,29 @@ void BfPrinter::VisitChildWithPrecedingSpace(BfAstNode* bfAstNode)
 void BfPrinter::VisitChildWithProceedingSpace(BfAstNode* bfAstNode)
 {
 	if (bfAstNode == NULL)
-		return;	
+		return;
 	VisitChild(bfAstNode);
 	ExpectSpace();
 }
 
 void BfPrinter::ExpectSpace()
 {
-	mNextStateModify.mExpectingSpace = true;	
+	mNextStateModify.mExpectingSpace = true;
 }
 
 void BfPrinter::ExpectNewLine()
 {
-	mNextStateModify.mWantNewLineIdx++;	
+	mNextStateModify.mWantNewLineIdx++;
 }
 
 void BfPrinter::ExpectIndent()
-{		
+{
 	mNextStateModify.mWantVirtualIndent++;
 	ExpectNewLine();
 }
 
 void BfPrinter::ExpectUnindent()
-{	
+{
 	mNextStateModify.mWantVirtualIndent--;
 	ExpectNewLine();
 }
@@ -261,13 +261,13 @@ void BfPrinter::VisitChildNextLine(BfAstNode* node)
 {
 	if (node == NULL)
 		return;
-	
+
 	if (node->IsA<BfBlock>())
 	{
 		VisitChild(node);
 	}
 	else
-	{		
+	{
 		ExpectNewLine();
 		ExpectIndent();
 		VisitChild(node);
@@ -290,7 +290,7 @@ int BfPrinter::CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx)
 		else if (c == ' ')
 			origLineSpacing += 1;
 		else
-			return -1;						
+			return -1;
 	}
 	if (lineStartIdx != NULL)
 		*lineStartIdx = checkIdx + 1;
@@ -305,16 +305,16 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 	{
 		int startIdx = BF_MAX(node->mTriviaStart, mTriviaIdx);
 		Write(node, startIdx, node->mSrcEnd - startIdx);
-		mTriviaIdx = node->mSrcEnd; 
+		mTriviaIdx = node->mSrcEnd;
 		return;
 	}
 
 	bool startsWithSpace = false;
-	
+
 	bool wasExpectingNewLine = mExpectingNewLine;
 
 	mTriviaIdx = std::max(mTriviaIdx, node->GetTriviaStart());
-	int endIdx = mTriviaIdx;	
+	int endIdx = mTriviaIdx;
 	int crCount = 0;
 	auto astNodeSrc = node->GetSourceData();
 	int srcEnd = node->GetSrcEnd();
@@ -331,9 +331,9 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 	}
 
 	bool wantsPrefixSpace = (!mOutString.IsEmpty()) && (!isspace((uint8)mOutString[mOutString.mLength - 1]));
-	
+
 	bool expectingNewLine = mNextStateModify.mWantNewLineIdx != mVirtualNewLineIdx;
-	
+
 	int startIdx = mTriviaIdx;
 	if ((expectingNewLine) && (mReformatting))
 	{
@@ -351,9 +351,9 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 			startIdx = node->GetSrcStart();
 			// Leave left-aligned preprocessor nodes
 			if ((node->GetSourceData()->mSrc[node->GetSrcStart()] != '#') || (origLineSpacing > 0))
-				mQueuedSpaceCount = origLineSpacing + mLastSpaceOffset;			
+				mQueuedSpaceCount = origLineSpacing + mLastSpaceOffset;
 		}
-	}	
+	}
 
 	auto commentNode = BfNodeDynCast<BfCommentNode>(node);
 	bool isBlockComment = false;
@@ -395,7 +395,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 		startIdx = node->mSrcStart;
 
 		if (doWrap)
-		{			
+		{
 			bool wantWrap = false;
 
 			int spacedWordCount = 0;
@@ -442,8 +442,8 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 	int lineEmittedChars = 0;
 
 	// This handles tab adjustment within multiline comments
-	FlushIndent();	
-	bool isNewLine = false;	
+	FlushIndent();
+	bool isNewLine = false;
 	for (int srcIdx = startIdx; srcIdx < endIdx; srcIdx++)
 	{
 #ifdef A
@@ -451,7 +451,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 #endif
 
 		bool emitChar = true;
-		
+
 		char c = astNodeSrc->mSrc[srcIdx];
 
  		if ((wantsPrefixSpace) && (isspace((uint8)c)))
@@ -471,7 +471,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 				int startIdx = srcIdx;
 				for (int checkIdx = srcIdx + 1; checkIdx < endIdx + 1; checkIdx++)
 				{
-					char checkC = astNodeSrc->mSrc[checkIdx];					
+					char checkC = astNodeSrc->mSrc[checkIdx];
 
 					if (isBlockComment)
 					{
@@ -518,7 +518,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 
 						if ((checkC != ' ') && (checkC != '\t'))
 							break;
-					}					
+					}
 				}
 
 				if (merging)
@@ -539,7 +539,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 			mCurCol = 0;
 			prevHadWrap = false;
 		}
-		else if (isNewLine) 
+		else if (isNewLine)
 		{
 			if (c == ' ')
 			{
@@ -552,31 +552,31 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 				emitChar = false;
 			}
 			else
-			{					
+			{
 				// Leave left-aligned preprocessor nodes that are commented out
 				if ((c != '#') || (mQueuedSpaceCount > 0))
 					mQueuedSpaceCount = std::max(0, mQueuedSpaceCount + mLastSpaceOffset);
 				else
 					mQueuedSpaceCount = mCurIndentLevel * mTabSize; // Do default indent
-				isNewLine = false;				
+				isNewLine = false;
 			}
 		}
 
 		if (emitChar)
-		{	
+		{
 			int startIdx = srcIdx;
 
 			if (c != '\n')
 			{
 				while (srcIdx < endIdx)
-				{				
+				{
 					char c = astNodeSrc->mSrc[srcIdx + 1];
 					if (isspace((uint8)c))
 						break;
 					srcIdx++;
 				}
 			}
-			
+
 			if (doWrap)
 			{
 				int len = 0;
@@ -586,7 +586,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 					if (isutf(c))
 						len++;
 				}
-				
+
 				if ((mCurCol + len > mMaxCol) && (lineEmittedChars >= 8))
 				{
 					Write("\n");
@@ -595,10 +595,10 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 
 					if (isStarredBlockComment)
 						Write(" * ");
-					else if (!isBlockComment)					
+					else if (!isBlockComment)
 						Write("// ");
-					prevHadWrap = true;					
-					
+					prevHadWrap = true;
+
 					while (startIdx < endIdx)
 					{
 						char c = astNodeSrc->mSrc[startIdx];
@@ -611,7 +611,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 			}
 
 			if (wantsPrefixSpace)
-			{				
+			{
 				mQueuedSpaceCount++;
 				wantsPrefixSpace = false;
 			}
@@ -645,7 +645,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 
 	FlushIndent();
 
-	mTriviaIdx = endIdx;	
+	mTriviaIdx = endIdx;
 	mIsFirstStatementInBlock = false;
 	mExpectingNewLine = wasExpectingNewLine;
 }
@@ -658,7 +658,7 @@ void BfPrinter::CheckRawNode(BfAstNode* node)
 		(!BfNodeIsExact<BfIdentifierNode>(node)) &&
 		(!BfNodeIsExact<BfLiteralExpression>(node)))
 		return;
-	
+
 	//mForceUseTrivia = true;
 
 	// Usually 'raw' nodes get merged into larger nodes like expressions/statements, but if they don't then this tries to help formatting
@@ -669,7 +669,7 @@ void BfPrinter::CheckRawNode(BfAstNode* node)
 	bool inLineStart = false;
 	int spaceCount = 0;
 
-	auto parserData = node->GetParserData();			
+	auto parserData = node->GetParserData();
 	for (int i = node->mTriviaStart; i < node->mSrcStart; i++)
 	{
 		char c = parserData->mSrc[i];
@@ -753,7 +753,7 @@ void BfPrinter::Update(BfAstNode* bfAstNode)
 }
 
 void BfPrinter::Visit(BfAstNode* bfAstNode)
-{		
+{
 	SetAndRestoreValue<bool> prevForceTrivia(mForceUseTrivia);
 
 	bool newExpectingNewLine = mNextStateModify.mWantNewLineIdx != mVirtualNewLineIdx;
@@ -763,7 +763,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 
 	int indentOffset = 0;
 	if (bfAstNode->GetTriviaStart() != -1)
-	{				
+	{
 		if (newExpectingNewLine)
 		{
 			indentOffset = mNextStateModify.mWantVirtualIndent - mVirtualIndentLevel;
@@ -774,7 +774,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 
 	while (true)
 	{
-		int sidechannelDist = -1;		
+		int sidechannelDist = -1;
 		if (mSidechannelNextNode != NULL)
 			sidechannelDist = bfAstNode->GetSrcStart() - mSidechannelNextNode->GetSrcStart();
 
@@ -795,30 +795,30 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 		{
 			auto curErrorNode = mErrorNextNode;
 			++mErrorItr;
-			mErrorNextNode = mErrorItr.Get();			
+			mErrorNextNode = mErrorItr.Get();
 			mForceUseTrivia = true;
-			VisitChild(curErrorNode);			
+			VisitChild(curErrorNode);
 		}
 		else
 			break;
 	}
-	
-	Update(bfAstNode);	
-	
+
+	Update(bfAstNode);
+
 	// When triviaStart == -1, that indicates it's a combined node where the text we want to process is on the inside
-	if (bfAstNode->GetTriviaStart() != -1) 
-	{		
+	if (bfAstNode->GetTriviaStart() != -1)
+	{
 		mTriviaIdx = std::max(mTriviaIdx, bfAstNode->GetTriviaStart());
 		bool usedTrivia = false;
-						
+
 		if ((!mIgnoreTrivia) && (mTriviaIdx < bfAstNode->GetSrcStart()))
 		{
 			if ((!mReformatting) || (mForceUseTrivia))
 			{
 				Write(bfAstNode, mTriviaIdx, bfAstNode->GetSrcStart() - mTriviaIdx);
 				usedTrivia = true;
-			}			
-		}		
+			}
+		}
 
 		if ((mReformatting) && (!mInSideChannel))
 		{
@@ -838,10 +838,10 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 				for (int i = mTriviaIdx; i < triviaEnd; i++)
 				{
 					if (mIgnoreTrivia)
-						break;					
+						break;
 
 					char c = astNodeSrc->mSrc[i];
-					
+
 					if (c == ' ')
 					{
 						if (spaceTriviaStart == -1)
@@ -856,9 +856,9 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 					}
 
 					if (((c == '\n') || (i == bfAstNode->GetSrcStart() - 1)) && (hadPrevLineSpacing) && (prevSpaceCount > 0))
-					{							
+					{
 						mQueuedSpaceCount += std::max(0, spaceCount - prevSpaceCount) - std::max(0, indentOffset * mTabSize);
-						
+
 						prevSpaceCount = -1;
 						hadPrevLineSpacing = false;
 					}
@@ -868,7 +868,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 						canUseTrivia = false;
 						hadNewline = true;
 						int backIdx = i - 1;
-						prevSpaceCount = 0;						
+						prevSpaceCount = 0;
 						while (backIdx >= 0)
 						{
 							char c = astNodeSrc->mSrc[backIdx];
@@ -876,7 +876,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 								prevSpaceCount++;
 							else if (c == '\t')
 								prevSpaceCount += mTabSize;
-							
+
 							if ((c == '\n') || (backIdx == 0))
 							{
 								// Found previous line
@@ -904,8 +904,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 					{
 						spaceCount = 0;
 						spaceTriviaStart = -1;
-					}				
-
+					}
 				}
 
 				if ((canUseTrivia) && (spaceCount > 1) && (spaceTriviaStart != -1))
@@ -946,14 +945,14 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 				}
 			}
 			else if ((mNextStateModify.mExpectingSpace) || (newExpectingNewLine))
-			{				
+			{
 				FlushIndent();
 				char startChar = bfAstNode->GetSourceData()->mSrc[bfAstNode->GetSrcStart()];
 				bool isEnding = (startChar == ';') || (startChar == ')');
 				if ((!isEnding) && (mOutString.length() > 0) && (!isspace((uint8)mOutString[mOutString.length() - 1])))
 					Write(" ");
-			}			
-		}				
+			}
+		}
 
 		if (!mInSideChannel)
 		{
@@ -968,7 +967,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 			mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
 		}
 
-		mForceUseTrivia = false;		
+		mForceUseTrivia = false;
 		if (bfAstNode->GetSrcStart() >= mTriviaIdx)
 			mTriviaIdx = bfAstNode->GetSrcStart();
 
@@ -978,7 +977,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 }
 
 bool BfPrinter::CheckReplace(BfAstNode* astNode)
-{	
+{
 	return false;
 }
 
@@ -1018,10 +1017,9 @@ void BfPrinter::Visit(BfNewNode* newNode)
 	}
 }
 
-
 void BfPrinter::Visit(BfExpression* expr)
 {
-	Visit(expr->ToBase());	
+	Visit(expr->ToBase());
 }
 
 void BfPrinter::Visit(BfExpressionStatement* exprStmt)
@@ -1044,7 +1042,7 @@ void BfPrinter::Visit(BfNamedExpression* namedExpr)
 }
 
 void BfPrinter::Visit(BfAttributedExpression* attribExpr)
-{	
+{
 	Visit(attribExpr->ToBase());
 
 	if (auto indexerExpr = BfNodeDynCast<BfIndexerExpression>(attribExpr->mExpression))
@@ -1062,20 +1060,20 @@ void BfPrinter::Visit(BfAttributedExpression* attribExpr)
 			VisitChild(indexerExpr->mArguments[i]);
 		}
 
-		VisitChild(indexerExpr->mCloseBracket);				
+		VisitChild(indexerExpr->mCloseBracket);
 	}
 	else
 	{
 		VisitChild(attribExpr->mAttributes);
 		VisitChild(attribExpr->mExpression);
-	}		
+	}
 }
 
 void BfPrinter::Visit(BfStatement* stmt)
-{	
+{
 	// Trailing semicolon must come after, so every derived type is responsible for printing it
 
-#ifdef BF_AST_HAS_PARENT_MEMBER	
+#ifdef BF_AST_HAS_PARENT_MEMBER
 // 	if (stmt->mParent != NULL)
 // 	{
 // 		if (auto block = BfNodeDynCast<BfBlock>(stmt->mParent))
@@ -1088,7 +1086,7 @@ void BfPrinter::Visit(BfStatement* stmt)
 // 		}
 // 	}
 #endif
-		
+
 	if (stmt == mCurBlockMember)
 		ExpectNewLine();
 
@@ -1108,7 +1106,7 @@ void BfPrinter::Visit(BfLabelableStatement* labelableStmt)
 }
 
 void BfPrinter::Visit(BfCommentNode* commentNode)
-{	
+{
 	WriteIgnoredNode(commentNode);
 	if (commentNode->mCommentKind == BfCommentKind_Line)
 		ExpectNewLine();
@@ -1124,7 +1122,7 @@ void BfPrinter::Visit(BfPreprocessorNode* preprocessorNode)
 {
 	WriteIgnoredNode(preprocessorNode);
 
-	if ((preprocessorNode->mCommand->ToStringView() == "pragma") && 
+	if ((preprocessorNode->mCommand->ToStringView() == "pragma") &&
 		(preprocessorNode->mArgument != NULL) &&
 		(preprocessorNode->mArgument->mChildArr.mSize == 2) &&
 		(preprocessorNode->mArgument->mChildArr[0] != NULL) &&
@@ -1137,13 +1135,13 @@ void BfPrinter::Visit(BfPreprocessorNode* preprocessorNode)
 			mFormatDisableCount = BF_MAX(0, mFormatDisableCount - 1);
 	}
 
-	ExpectNewLine();	
+	ExpectNewLine();
 }
 
 void BfPrinter::Visit(BfAttributeDirective* attributeDirective)
 {
 	Visit(attributeDirective->ToBase());
-	
+
 	if (attributeDirective->mAttrOpenToken != NULL)
 	{
 		if (attributeDirective->mAttrOpenToken->mToken == BfToken_Comma)
@@ -1157,7 +1155,7 @@ void BfPrinter::Visit(BfAttributeDirective* attributeDirective)
 			VisitChild(attributeDirective->mAttrOpenToken);
 		}
 	}
-		
+
 	if (attributeDirective->mAttributeTargetSpecifier != NULL)
 	{
 		if (auto attributeTargetSpecifier = BfNodeDynCast<BfAttributeTargetSpecifier>(attributeDirective->mAttributeTargetSpecifier))
@@ -1171,7 +1169,7 @@ void BfPrinter::Visit(BfAttributeDirective* attributeDirective)
 			VisitChild(attributeDirective->mAttributeTargetSpecifier);
 		}
 	}
-	
+
 	VisitChild(attributeDirective->mAttributeTypeRef);
 	VisitChild(attributeDirective->mCtorOpenParen);
 	for (int i = 0; i < (int)attributeDirective->mArguments.size(); i++)
@@ -1181,7 +1179,7 @@ void BfPrinter::Visit(BfAttributeDirective* attributeDirective)
 			VisitChildNoRef(attributeDirective->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
-		VisitChild(attributeDirective->mArguments[i]);		
+		VisitChild(attributeDirective->mArguments[i]);
 	}
 	VisitChild(attributeDirective->mCtorCloseParen);
 	VisitChild(attributeDirective->mAttrCloseToken);
@@ -1244,7 +1242,7 @@ void BfPrinter::Visit(BfGenericConstraintsDeclaration* genericConstraints)
 					VisitChildNoRef(genericConstraint->mCommas.GetSafe(i - 1));
 				ExpectSpace();
 			}
-			VisitChild(genericConstraint->mConstraintTypes[i]);			
+			VisitChild(genericConstraint->mConstraintTypes[i]);
 		}
 	}
 }
@@ -1261,7 +1259,7 @@ void BfPrinter::Visit(BfGenericArgumentsNode* genericArgumentsNode)
 			VisitChildNoRef(genericArgumentsNode->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
-		VisitChild(genericArgumentsNode->mGenericArgs[i]);		
+		VisitChild(genericArgumentsNode->mGenericArgs[i]);
 	}
 	for (int i = (int)genericArgumentsNode->mGenericArgs.size() - 1; i < (int)genericArgumentsNode->mCommas.size(); i++)
 		VisitChildNoRef(genericArgumentsNode->mCommas.GetSafe(i));
@@ -1286,7 +1284,7 @@ void BfPrinter::Visit(BfTokenNode* tokenNode)
 	}
 
 	if (tokenNode->GetSrcEnd() == 0)
-	{		
+	{
 		String tokenStr = BfTokenToString(tokenNode->GetToken());
 		Write(tokenStr);
 	}
@@ -1294,7 +1292,7 @@ void BfPrinter::Visit(BfTokenNode* tokenNode)
 	{
 		BF_ASSERT(tokenNode->GetSrcEnd() > tokenNode->GetSrcStart());
 		WriteSourceString(tokenNode);
-	}	
+	}
 }
 
 void BfPrinter::Visit(BfTokenPairNode* tokenPairNode)
@@ -1334,7 +1332,6 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 				break;
 			}
 		}
-				
 
 		if (isMultiLine)
 		{
@@ -1351,7 +1348,7 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 				}
 				checkIdx--;
 			}
-			
+
 			int queuedSpaceCount = mQueuedSpaceCount;
 			FlushIndent();
 
@@ -1379,14 +1376,14 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 					FlushIndent();
 
 					i--;
-				}									
+				}
 			}
-			
+
 			return;
 		}
 	}
 
-	WriteSourceString(literalExpr);	
+	WriteSourceString(literalExpr);
 }
 
 void BfPrinter::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
@@ -1399,7 +1396,7 @@ void BfPrinter::Visit(BfStringInterpolationExpression* stringInterpolationExpres
 
 void BfPrinter::Visit(BfIdentifierNode* identifierNode)
 {
-	Visit(identifierNode->ToBase());	
+	Visit(identifierNode->ToBase());
 
 	if (!CheckReplace(identifierNode))
 		WriteSourceString(identifierNode);
@@ -1449,7 +1446,7 @@ void BfPrinter::Visit(BfInitializerExpression* initExpr)
 
 	VisitChild(initExpr->mTarget);
 	BlockState blockState;
-	DoBlockOpen(initExpr->mTarget, initExpr->mOpenBrace, initExpr->mCloseBrace, false, blockState);	
+	DoBlockOpen(initExpr->mTarget, initExpr->mOpenBrace, initExpr->mCloseBrace, false, blockState);
 	for (int i = 0; i < (int)initExpr->mValues.size(); i++)
 	{
 		if (i > 0)
@@ -1460,13 +1457,13 @@ void BfPrinter::Visit(BfInitializerExpression* initExpr)
 			else
 				ExpectNewLine();
 		}
-		
+
 		VisitChild(initExpr->mValues[i]);
 	}
 	DoBlockClose(initExpr->mTarget, initExpr->mOpenBrace, initExpr->mCloseBrace, false, blockState);
 
 // 	Visit(initExpr->ToBase());
-// 
+//
 // 	VisitChild(initExpr->mTarget);
 // 	ExpectSpace();
 // 	VisitChild(initExpr->mOpenBrace);
@@ -1569,11 +1566,11 @@ void BfPrinter::Visit(BfRefTypeRef* typeRef)
 void BfPrinter::Visit(BfArrayTypeRef* arrayTypeRef)
 {
 	Visit((BfAstNode*)arrayTypeRef);
-	
+
  	std::function<void(BfTypeReference*)> _VisitElements = [&](BfTypeReference* elementRef)
  	{
  		auto arrType = BfNodeDynCast<BfArrayTypeRef>(elementRef);
- 		
+
  		if (arrType != NULL)
  		{
 			_VisitElements(arrType->mElementType);
@@ -1594,7 +1591,6 @@ void BfPrinter::Visit(BfArrayTypeRef* arrayTypeRef)
 			{
 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(param))
 				{
-
 				}
 				else
 				{
@@ -1612,7 +1608,6 @@ void BfPrinter::Visit(BfArrayTypeRef* arrayTypeRef)
 
 	_VisitElements(arrayTypeRef);
 	_VisitBrackets(arrayTypeRef);
-  	
 }
 
 void BfPrinter::Visit(BfGenericInstanceTypeRef* genericInstTypeRef)
@@ -1645,9 +1640,9 @@ void BfPrinter::Visit(BfTupleTypeRef* typeRef)
 {
 	Visit((BfAstNode*) typeRef);
 
-	VisitChild(typeRef->mOpenParen);	
+	VisitChild(typeRef->mOpenParen);
 	for (int i = 0; i < (int)typeRef->mFieldTypes.size(); i++)
-	{		
+	{
 		if (i > 0)
 		{
 			VisitChildNoRef(typeRef->mCommas.GetSafe(i - 1));
@@ -1659,7 +1654,7 @@ void BfPrinter::Visit(BfTupleTypeRef* typeRef)
 		{
 			ExpectSpace();
 			auto fieldNameNode = typeRef->mFieldNames[i];
-			if (fieldNameNode != NULL)			
+			if (fieldNameNode != NULL)
 				VisitChild(fieldNameNode);
 		}
 	}
@@ -1674,7 +1669,7 @@ void BfPrinter::Visit(BfDelegateTypeRef* typeRef)
 	ExpectSpace();
 	VisitChild(typeRef->mAttributes);
 	ExpectSpace();
-	VisitChild(typeRef->mReturnType);	
+	VisitChild(typeRef->mReturnType);
 	VisitChild(typeRef->mOpenParen);
 
 	for (int i = 0; i < (int)typeRef->mParams.size(); i++)
@@ -1684,8 +1679,8 @@ void BfPrinter::Visit(BfDelegateTypeRef* typeRef)
 			VisitChildNoRef(typeRef->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
-		VisitChild(typeRef->mParams[i]);	
-	}	
+		VisitChild(typeRef->mParams[i]);
+	}
 	VisitChild(typeRef->mCloseParen);
 }
 
@@ -1719,16 +1714,16 @@ void BfPrinter::Visit(BfVariableDeclaration* varDecl)
 	}
 	else
 		VisitChild(varDecl->mTypeRef);
-			
+
 	VisitChildWithPrecedingSpace(varDecl->mNameNode);
 	VisitChildWithPrecedingSpace(varDecl->mEqualsNode);
-	
+
 	if (varDecl->mInitializer != NULL)
 	{
 		if (varDecl->mNameNode != NULL)
 			ExpectSpace();
 		VisitChild(varDecl->mInitializer);
-	}	
+	}
 }
 
 void BfPrinter::Visit(BfParameterDeclaration* paramDecl)
@@ -1749,7 +1744,7 @@ void BfPrinter::Visit(BfTypeOfExpression* typeOfExpr)
 	VisitChild(typeOfExpr->mToken);
 	VisitChild(typeOfExpr->mOpenParen);
 	VisitChild(typeOfExpr->mTypeRef);
-	VisitChild(typeOfExpr->mCloseParen);	
+	VisitChild(typeOfExpr->mCloseParen);
 }
 
 void BfPrinter::Visit(BfSizeOfExpression* sizeOfExpr)
@@ -1766,7 +1761,7 @@ void BfPrinter::Visit(BfOffsetOfExpression* offsetOfExpr)
 {
 	VisitChild(offsetOfExpr->mToken);
 	VisitChild(offsetOfExpr->mOpenParen);
-	VisitChild(offsetOfExpr->mTypeRef);	
+	VisitChild(offsetOfExpr->mTypeRef);
 	VisitChild(offsetOfExpr->mCommaToken);
 	ExpectSpace();
 	VisitChild(offsetOfExpr->mMemberName);
@@ -1816,7 +1811,7 @@ void BfPrinter::Visit(BfDynamicCastExpression* dynCastExpr)
 }
 
 void BfPrinter::Visit(BfCastExpression* castExpr)
-{	
+{
 	Visit((BfAstNode*)castExpr);
 
 	VisitChild(castExpr->mOpenParen);
@@ -1824,7 +1819,7 @@ void BfPrinter::Visit(BfCastExpression* castExpr)
 	VisitChild(castExpr->mCloseParen);
 
 	bool surroundWithParen = false;
-	
+
 	if (surroundWithParen)
 		Write("(");
 	VisitChild(castExpr->mExpression);
@@ -1861,19 +1856,19 @@ void BfPrinter::Visit(BfLambdaBindExpression* lambdaBindExpr)
 			VisitChildNoRef(lambdaBindExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
-		VisitChild(lambdaBindExpr->mParams[i]);		
+		VisitChild(lambdaBindExpr->mParams[i]);
 	}
 	VisitChild(lambdaBindExpr->mCloseParen);
 	ExpectSpace();
-	VisitChild(lambdaBindExpr->mFatArrowToken);	
+	VisitChild(lambdaBindExpr->mFatArrowToken);
 	if (lambdaBindExpr->mBody != NULL)
 	{
 		if (lambdaBindExpr->mBody->IsA<BfBlock>())
 		{
 			ExpectNewLine();
 			ExpectIndent();
-			VisitChild(lambdaBindExpr->mBody);			
-			ExpectUnindent();						
+			VisitChild(lambdaBindExpr->mBody);
+			ExpectUnindent();
 		}
 		else
 		{
@@ -1894,8 +1889,8 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 
 	VisitChild(newExpr->mNewNode);
 	ExpectSpace();
-	
-	VisitChild(newExpr->mTypeRef);	
+
+	VisitChild(newExpr->mTypeRef);
 
 	if (newExpr->mStarToken != NULL)
 	{
@@ -1920,9 +1915,9 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 			VisitChildNoRef(newExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
-		VisitChild(newExpr->mArguments[i]);		
+		VisitChild(newExpr->mArguments[i]);
 	}
-	_WriteToken(newExpr->mCloseToken, BfToken_RParen);	
+	_WriteToken(newExpr->mCloseToken, BfToken_RParen);
 }
 
 void BfPrinter::Visit(BfBoxExpression* boxExpr)
@@ -1933,7 +1928,7 @@ void BfPrinter::Visit(BfBoxExpression* boxExpr)
 	ExpectSpace();
 	VisitChild(boxExpr->mBoxToken);
 	ExpectSpace();
-	VisitChild(boxExpr->mExpression);	
+	VisitChild(boxExpr->mExpression);
 }
 
 void BfPrinter::Visit(BfThrowStatement* throwStmt)
@@ -1956,7 +1951,6 @@ void BfPrinter::Visit(BfDeleteStatement* deleteStmt)
 	VisitChild(deleteStmt->mAllocExpr);
 	ExpectSpace();
 	VisitChild(deleteStmt->mExpression);
-	
 
 	VisitChild(deleteStmt->mTrailingSemicolon);
 }
@@ -1991,8 +1985,8 @@ void BfPrinter::Visit(BfDeferStatement* deferStmt)
 	if (deferStmt->mBind != NULL)
 	{
 		auto bind = deferStmt->mBind;
-		
-		VisitChild(bind->mOpenBracket);		
+
+		VisitChild(bind->mOpenBracket);
 		for (int i = 0; i < bind->mParams.size(); i++)
 		{
 			if (i > 0)
@@ -2007,10 +2001,10 @@ void BfPrinter::Visit(BfDeferStatement* deferStmt)
 
 	VisitChild(deferStmt->mOpenParen);
 	VisitChild(deferStmt->mScopeToken);
-	VisitChild(deferStmt->mCloseParen);		
+	VisitChild(deferStmt->mCloseParen);
 	ExpectSpace();
 	VisitChild(deferStmt->mTargetNode);
-	
+
 	VisitChild(deferStmt->mTrailingSemicolon);
 }
 
@@ -2040,13 +2034,13 @@ void BfPrinter::Visit(BfCaseExpression* caseExpr)
 	}
 	else
 	{
-		VisitChild(caseExpr->mValueExpression); 
+		VisitChild(caseExpr->mValueExpression);
 		ExpectSpace();
-		VisitChild(caseExpr->mCaseToken);						
+		VisitChild(caseExpr->mCaseToken);
 		BF_ASSERT(caseExpr->mEqualsNode == NULL);
 		ExpectSpace();
 		VisitChild(caseExpr->mCaseExpression);
-	}	
+	}
 }
 
 void BfPrinter::Visit(BfSwitchCase* switchCase)
@@ -2054,7 +2048,7 @@ void BfPrinter::Visit(BfSwitchCase* switchCase)
 	if (mIndentCaseLabels)
 		ExpectIndent();
 
-	VisitChild(switchCase->mCaseToken);	
+	VisitChild(switchCase->mCaseToken);
 	for (int caseIdx = 0; caseIdx < (int) switchCase->mCaseExpressions.size(); caseIdx++)
 	{
 		if ((caseIdx == 0) || (caseIdx > (int)switchCase->mCaseCommas.size()))
@@ -2099,30 +2093,29 @@ void BfPrinter::Visit(BfSwitchStatement* switchStmt)
 	ExpectNewLine();
 
 	VisitChild(switchStmt->mOpenBrace);
-	ExpectNewLine();	
-	
+	ExpectNewLine();
+
 	for (auto switchCase : switchStmt->mSwitchCases)
 		Visit(switchCase);
 	if (switchStmt->mDefaultCase != NULL)
 		Visit(switchStmt->mDefaultCase);
-	
+
 	ExpectNewLine();
 	VisitChild(switchStmt->mCloseBrace);
 
 	VisitChild(switchStmt->mTrailingSemicolon);
 }
 
-
 void BfPrinter::Visit(BfTryStatement* tryStmt)
 {
 	Visit(tryStmt->ToBase());
-	
+
 	VisitChild(tryStmt->mTryToken);
 	VisitChild(tryStmt->mStatement);
 }
 
 void BfPrinter::Visit(BfCatchStatement* catchStmt)
-{	
+{
 	Visit(catchStmt->ToBase());
 
 	WriteSourceString(catchStmt);
@@ -2160,12 +2153,12 @@ void BfPrinter::Visit(BfIfStatement* ifStmt)
 
 	VisitChild(ifStmt->mIfToken);
 	ExpectSpace();
-	VisitChild(ifStmt->mOpenParen);	
+	VisitChild(ifStmt->mOpenParen);
 	VisitChild(ifStmt->mCondition);
 	VisitChild(ifStmt->mCloseParen);
-	ExpectSpace();	
-	VisitChildNextLine(ifStmt->mTrueStatement);		
-	VisitChild(ifStmt->mElseToken);	
+	ExpectSpace();
+	VisitChildNextLine(ifStmt->mTrueStatement);
+	VisitChild(ifStmt->mElseToken);
 	if (ifStmt->mFalseStatement != NULL)
 	{
 		ExpectSpace();
@@ -2179,9 +2172,9 @@ void BfPrinter::Visit(BfIfStatement* ifStmt)
 }
 
 void BfPrinter::Visit(BfReturnStatement* returnStmt)
-{	
+{
 	Visit(returnStmt->ToBase());
-	
+
 	VisitChild(returnStmt->mReturnToken);
 	if (returnStmt->mExpression != NULL)
 	{
@@ -2192,7 +2185,7 @@ void BfPrinter::Visit(BfReturnStatement* returnStmt)
 }
 
 void BfPrinter::Visit(BfUsingStatement* doStmt)
-{	
+{
 	Visit(doStmt->ToBase());
 
 	VisitChild(doStmt->mUsingToken);
@@ -2210,20 +2203,20 @@ void BfPrinter::Visit(BfDoStatement* doStmt)
 	Visit(doStmt->ToBase());
 
 	VisitChild(doStmt->mDoToken);
-	VisitChildNextLine(doStmt->mEmbeddedStatement);	
+	VisitChildNextLine(doStmt->mEmbeddedStatement);
 }
 
 void BfPrinter::Visit(BfRepeatStatement* repeatStmt)
 {
 	Visit(repeatStmt->ToBase());
 
-	VisitChild(repeatStmt->mRepeatToken);	
+	VisitChild(repeatStmt->mRepeatToken);
 	VisitChildNextLine(repeatStmt->mEmbeddedStatement);
 	VisitChild(repeatStmt->mWhileToken);
 	ExpectSpace();
 	VisitChild(repeatStmt->mOpenParen);
 	VisitChild(repeatStmt->mCondition);
-	VisitChild(repeatStmt->mCloseParen);	
+	VisitChild(repeatStmt->mCloseParen);
 
 	VisitChild(repeatStmt->mTrailingSemicolon);
 }
@@ -2232,7 +2225,7 @@ void BfPrinter::Visit(BfWhileStatement* whileStmt)
 {
 	Visit(whileStmt->ToBase());
 
-	VisitChild(whileStmt->mWhileToken);	
+	VisitChild(whileStmt->mWhileToken);
 	ExpectSpace();
 	VisitChild(whileStmt->mOpenParen);
 	VisitChild(whileStmt->mCondition);
@@ -2252,7 +2245,7 @@ void BfPrinter::Visit(BfBreakStatement* breakStmt)
 		ExpectSpace();
 		VisitChild(breakStmt->mLabel);
 	}
-	VisitChild(breakStmt->mTrailingSemicolon);	
+	VisitChild(breakStmt->mTrailingSemicolon);
 }
 
 void BfPrinter::Visit(BfContinueStatement* continueStmt)
@@ -2307,11 +2300,11 @@ void BfPrinter::Visit(BfForStatement* forStmt)
 
 void BfPrinter::Visit(BfForEachStatement* forEachStmt)
 {
-	Visit(forEachStmt->ToBase());	
+	Visit(forEachStmt->ToBase());
 
 	VisitChild(forEachStmt->mForToken);
 	ExpectSpace();
-	VisitChild(forEachStmt->mOpenParen);	
+	VisitChild(forEachStmt->mOpenParen);
 	if (forEachStmt->mReadOnlyToken != NULL)
 	{
 		VisitChild(forEachStmt->mReadOnlyToken);
@@ -2323,7 +2316,7 @@ void BfPrinter::Visit(BfForEachStatement* forEachStmt)
 	ExpectSpace();
 	VisitChild(forEachStmt->mInToken);
 	ExpectSpace();
-	VisitChild(forEachStmt->mCollectionExpression);	
+	VisitChild(forEachStmt->mCollectionExpression);
 	VisitChild(forEachStmt->mCloseParen);
 	ExpectNewLine();
 	VisitChildNextLine(forEachStmt->mEmbeddedStatement);
@@ -2361,8 +2354,8 @@ void BfPrinter::Visit(BfParenthesizedExpression* parenExpr)
 {
 	Visit(parenExpr->ToBase());
 
-	VisitChild(parenExpr->mOpenParen);	
-	VisitChild(parenExpr->mExpression);	
+	VisitChild(parenExpr->mOpenParen);
+	VisitChild(parenExpr->mExpression);
 	VisitChild(parenExpr->mCloseParen);
 }
 
@@ -2389,7 +2382,7 @@ void BfPrinter::Visit(BfTupleExpression* tupleExpr)
 				ExpectSpace();
 			}
 		}
-		
+
 		VisitChild(tupleExpr->mValues[i]);
 	}
 
@@ -2418,7 +2411,7 @@ void BfPrinter::Visit(BfIndexerExpression* indexerExpr)
 			VisitChildNoRef(indexerExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
-		VisitChild(indexerExpr->mArguments[i]);		
+		VisitChild(indexerExpr->mArguments[i]);
 	}
 
 	VisitChild(indexerExpr->mCloseBracket);
@@ -2460,11 +2453,11 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 		ExpectNewLine();
 	}
 
-	QueueVisitChild(ctorDeclaration->mProtectionSpecifier);	
+	QueueVisitChild(ctorDeclaration->mProtectionSpecifier);
 	ExpectSpace();
 	QueueVisitChild(ctorDeclaration->mNewSpecifier);
 	ExpectSpace();
-	QueueVisitChild(ctorDeclaration->mStaticSpecifier);	
+	QueueVisitChild(ctorDeclaration->mStaticSpecifier);
 	ExpectSpace();
 
 	if (mDocPrep)
@@ -2476,7 +2469,7 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 	else
 	{
 		QueueVisitChild(ctorDeclaration->mThisToken);
-	}	
+	}
 
 	QueueVisitChild(ctorDeclaration->mOpenParen);
 	for (int i = 0; i < (int) ctorDeclaration->mParams.size(); i++)
@@ -2496,7 +2489,7 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 
 	QueueVisitChild(ctorDeclaration->mFatArrowToken);
 	QueueVisitChild(ctorDeclaration->mBody);
-	
+
 	FlushVisitChild();
 }
 
@@ -2507,7 +2500,7 @@ void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 	QueueVisitChild(dtorDeclaration->mAttributes);
 	ExpectNewLine();
 	ExpectSpace();
-	QueueVisitChild(dtorDeclaration->mProtectionSpecifier);	
+	QueueVisitChild(dtorDeclaration->mProtectionSpecifier);
 	ExpectSpace();
 	QueueVisitChild(dtorDeclaration->mNewSpecifier);
 	ExpectSpace();
@@ -2517,14 +2510,14 @@ void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 
 	if (mDocPrep)
 	{
-		FlushVisitChild();		
+		FlushVisitChild();
 		VisitChild(mCurTypeDecl->mNameNode);
 	}
 	else
 	{
 		QueueVisitChild(dtorDeclaration->mThisToken);
 	}
-	
+
 	QueueVisitChild(dtorDeclaration->mOpenParen);
 	for (int i = 0; i < (int) dtorDeclaration->mParams.size(); i++)
 	{
@@ -2535,7 +2528,7 @@ void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 		}
 		QueueVisitChild(dtorDeclaration->mParams[i]);
 	}
-	QueueVisitChild(dtorDeclaration->mCloseParen);	
+	QueueVisitChild(dtorDeclaration->mCloseParen);
 
 	QueueVisitChild(dtorDeclaration->mFatArrowToken);
 	QueueVisitChild(dtorDeclaration->mBody);
@@ -2543,41 +2536,40 @@ void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 	FlushVisitChild();
 }
 
-
 void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
-{	
+{
 	if (methodDeclaration->mAttributes != NULL)
 	{
 		QueueVisitChild(methodDeclaration->mAttributes);
 		ExpectNewLine();
 	}
-	
+
 	if (methodDeclaration->mExternSpecifier != NULL)
-	{		
+	{
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mExternSpecifier);		
+		QueueVisitChild(methodDeclaration->mExternSpecifier);
 	}
 
 	if (methodDeclaration->mProtectionSpecifier != NULL)
-	{		
+	{
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mProtectionSpecifier);		
+		QueueVisitChild(methodDeclaration->mProtectionSpecifier);
 	}
-	
+
 	if (methodDeclaration->mNewSpecifier != NULL)
-	{		
+	{
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mNewSpecifier);		
+		QueueVisitChild(methodDeclaration->mNewSpecifier);
 	}
-	
+
 	if (methodDeclaration->mVirtualSpecifier != NULL)
-	{	
+	{
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mVirtualSpecifier);		
+		QueueVisitChild(methodDeclaration->mVirtualSpecifier);
 	}
-	
+
 	if (methodDeclaration->mStaticSpecifier != NULL)
-	{		
+	{
 		ExpectSpace();
 		QueueVisitChild(methodDeclaration->mStaticSpecifier);
 	}
@@ -2589,23 +2581,23 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 	}
 
 	if (methodDeclaration->mMixinSpecifier != NULL)
-	{		
+	{
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mMixinSpecifier);		
+		QueueVisitChild(methodDeclaration->mMixinSpecifier);
 	}
 
 	if (methodDeclaration->mPartialSpecifier != NULL)
-	{			
+	{
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mPartialSpecifier);		
+		QueueVisitChild(methodDeclaration->mPartialSpecifier);
 	}
-	
+
 	if ((methodDeclaration->mNameNode != NULL) || (methodDeclaration->mExplicitInterface != NULL))
 		ExpectSpace();
-	QueueVisitChild(methodDeclaration->mExplicitInterface);	
+	QueueVisitChild(methodDeclaration->mExplicitInterface);
 	QueueVisitChild(methodDeclaration->mExplicitInterfaceDotToken);
 	QueueVisitChild(methodDeclaration->mNameNode);
-	
+
 	if (auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDeclaration))
 	{
 		if ((operatorDecl->mOpTypeToken != NULL) && (operatorDecl->mOpTypeToken->mToken == BfToken_LChevron))
@@ -2614,7 +2606,7 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 	QueueVisitChild(methodDeclaration->mGenericParams);
 
 	if (auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDeclaration))
-	{	
+	{
 		ExpectSpace();
 		QueueVisitChild(operatorDecl->mExplicitToken);
 		ExpectSpace();
@@ -2622,14 +2614,14 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 		ExpectSpace();
 		QueueVisitChild(operatorDecl->mOpTypeToken);
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mReturnType);		
+		QueueVisitChild(methodDeclaration->mReturnType);
 	}
 	else if (methodDeclaration->mReturnType != NULL)
-	{		
+	{
 		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mReturnType);		
+		QueueVisitChild(methodDeclaration->mReturnType);
 	}
-	
+
 	QueueVisitChild(methodDeclaration->mOpenParen);
 	if (methodDeclaration->mThisToken != NULL)
 	{
@@ -2642,7 +2634,7 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 		{
 			QueueVisitChild(methodDeclaration->mCommas.GetSafe(i - 1));
 			ExpectSpace();
-		}		
+		}
 		QueueVisitChild(methodDeclaration->mParams[i]);
 	}
 	QueueVisitChild(methodDeclaration->mCloseParen);
@@ -2655,15 +2647,15 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 		ExpectSpace();
 		QueueVisitChild(methodDeclaration->mFatArrowToken);
 		ExpectSpace();
-	}	
+	}
 	QueueVisitChild(methodDeclaration->mBody);
-	QueueVisitChild(methodDeclaration->mEndSemicolon);	
+	QueueVisitChild(methodDeclaration->mEndSemicolon);
 }
 
 void BfPrinter::Visit(BfMethodDeclaration* methodDeclaration)
 {
 	//Visit(methodDeclaration->ToBase());
-	
+
 	ExpectNewLine();
 	QueueMethodDeclaration(methodDeclaration);
 	//?? QueueVisitErrorNodes(methodDeclaration);
@@ -2678,12 +2670,12 @@ void BfPrinter::Visit(BfOperatorDeclaration* opreratorDeclaration)
 }
 
 void BfPrinter::Visit(BfPropertyMethodDeclaration* propertyMethodDeclaration)
-{	
+{
 	ExpectNewLine();
 	QueueVisitChild(propertyMethodDeclaration->mAttributes);
 	ExpectNewLine();
 	QueueVisitChild(propertyMethodDeclaration->mProtectionSpecifier);
-	ExpectSpace();		
+	ExpectSpace();
 	QueueVisitChild(propertyMethodDeclaration->mNameNode);
 	ExpectSpace();
 	QueueVisitChild(propertyMethodDeclaration->mSetRefSpecifier);
@@ -2692,8 +2684,8 @@ void BfPrinter::Visit(BfPropertyMethodDeclaration* propertyMethodDeclaration)
 	ExpectSpace();
 	QueueVisitChild(propertyMethodDeclaration->mFatArrowToken);
 	ExpectSpace();
-	if (auto block = BfNodeDynCast<BfBlock>(propertyMethodDeclaration->mBody))	
-		ExpectNewLine();	
+	if (auto block = BfNodeDynCast<BfBlock>(propertyMethodDeclaration->mBody))
+		ExpectNewLine();
 	QueueVisitChild(propertyMethodDeclaration->mBody);
 	QueueVisitChild(propertyMethodDeclaration->mEndSemicolon);
 }
@@ -2711,7 +2703,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	ExpectNewLine();
 	QueueVisitChild(propertyDeclaration->mAttributes);
-	ExpectNewLine();	
+	ExpectNewLine();
 	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mProtectionSpecifier);
 	ExpectSpace();
@@ -2735,7 +2727,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	QueueVisitChild(propertyDeclaration->mExplicitInterfaceDotToken);
 	QueueVisitChild(propertyDeclaration->mNameNode);
 	ExpectSpace();
-	
+
 	if (indexerDeclaration != NULL)
 	{
 		QueueVisitChild(indexerDeclaration->mThisToken);
@@ -2799,10 +2791,10 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 	bool isEnumDecl = false;
 
 	if (auto enumEntry = BfNodeDynCast<BfEnumEntryDeclaration>(fieldDeclaration))
-	{		
+	{
 		isEnumDecl = true;
 	}
-		
+
 	if (fieldDeclaration->mPrecedingComma != NULL)
 	{
 		mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
@@ -2865,7 +2857,7 @@ void BfPrinter::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
 {
 	ExpectNewLine();
 
-	Visit(enumCaseDeclaration->ToBase());	
+	Visit(enumCaseDeclaration->ToBase());
 
 	if (mDocPrep)
 	{
@@ -2883,7 +2875,7 @@ void BfPrinter::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
 	}
 
 	VisitChild(enumCaseDeclaration->mCaseToken);
-	ExpectSpace();	
+	ExpectSpace();
 
 	for (int i = 0; i < (int)enumCaseDeclaration->mEntries.size(); i++)
 	{
@@ -2908,8 +2900,8 @@ void BfPrinter::Visit(BfTypeAliasDeclaration* typeDeclaration)
 }
 
 void BfPrinter::Visit(BfFieldDtorDeclaration* fieldDtorDeclaration)
-{	
-	ExpectSpace();	
+{
+	ExpectSpace();
 	if (fieldDtorDeclaration->mBody != NULL)
 	{
 		if (fieldDtorDeclaration->mBody->IsA<BfBlock>())
@@ -2949,16 +2941,16 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 			break;
 		}
 	}
-	
-	ExpectNewLine();	
+
+	ExpectNewLine();
 	QueueVisitChild(typeDeclaration->mAttributes);
 	if (!isOneLine)
-		ExpectNewLine();	
+		ExpectNewLine();
 	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mAbstractSpecifier);
 	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mSealedSpecifier);
-	ExpectSpace();	
+	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mProtectionSpecifier);
 	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mStaticSpecifier);
@@ -2970,16 +2962,15 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 	if ((mDocPrep) && (typeDeclaration->mTypeNode != NULL) && (typeDeclaration->mTypeNode->mToken == BfToken_Enum))
 	{
 		if (auto defineBlock = BfNodeDynCast<BfBlock>(typeDeclaration->mDefineNode))
-		{			
+		{
 			if (auto enumEntryDecl = BfNodeDynCast<BfEnumEntryDeclaration>(defineBlock->GetFirst()))
 			{
-				
 			}
 			else
 			{
 				isEnumDoc = true;
 			}
-		}		
+		}
 	}
 
 	if (isEnumDoc)
@@ -3010,14 +3001,14 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 				QueueVisitChild(typeDeclaration->mBaseClassCommas.GetSafe(i - 1));
 			}
 		}
-		ExpectSpace();		
+		ExpectSpace();
 	}
 	QueueVisitChild(typeDeclaration->mGenericConstraintsDeclaration);
 
 	if (queueChildren)
 	{
 		if (auto defineBlock = BfNodeDynCast<BfBlock>(typeDeclaration->mDefineNode))
-		{						
+		{
 			for (auto member : defineBlock->mChildArr)
 			{
 				SetAndRestoreValue<BfAstNode*> prevBlockMember(mCurBlockMember, member);
@@ -3037,7 +3028,7 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 		}
 	}
 	else
-	{		
+	{
 		FlushVisitChild();
 		if (auto defineBlock = BfNodeDynCast<BfBlock>(typeDeclaration->mDefineNode))
 		{
@@ -3063,14 +3054,14 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 				VisitChild(member);
 			}
 			ExpectUnindent();
-			VisitChild(defineBlock->mCloseBrace);			
-		}		
+			VisitChild(defineBlock->mCloseBrace);
+		}
 		else
 		{
 			FlushVisitChild();
 			VisitChild(typeDeclaration->mDefineNode);
 		}
-	}		
+	}
 
 	ExpectNewLine();
 }
@@ -3078,13 +3069,13 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 void BfPrinter::Visit(BfUsingDirective* usingDirective)
 {
 	//Visit(usingDirective->ToBase());
-	
-	ExpectNewLine();
-	VisitChild(usingDirective->mUsingToken);	
-	ExpectSpace();
-	VisitChild(usingDirective->mNamespace);	
 
-	VisitChild(usingDirective->mTrailingSemicolon);	
+	ExpectNewLine();
+	VisitChild(usingDirective->mUsingToken);
+	ExpectSpace();
+	VisitChild(usingDirective->mNamespace);
+
+	VisitChild(usingDirective->mTrailingSemicolon);
 
 	ExpectNewLine();
 }
@@ -3110,12 +3101,12 @@ void BfPrinter::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 	ExpectNewLine();
 	VisitChild(namespaceDeclaration->mNamespaceNode);
 	ExpectSpace();
-	VisitChild(namespaceDeclaration->mNameNode);	
+	VisitChild(namespaceDeclaration->mNameNode);
 	VisitChild(namespaceDeclaration->mBody);
 }
 
 void BfPrinter::DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState)
-{		
+{
 	blockState.mLastSpaceOffset = mLastSpaceOffset;
 	blockState.mIndentStart = mNextStateModify.mWantVirtualIndent;
 
@@ -3160,7 +3151,7 @@ void BfPrinter::DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToke
 {
 	if (!blockState.mDoInlineBlock)
 	{
-		ExpectUnindent();		
+		ExpectUnindent();
 		mNextStateModify.mDoingBlockClose = true;
 	}
 	else
@@ -3169,7 +3160,7 @@ void BfPrinter::DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToke
 		QueueVisitChild(blockClose);
 	else
 		VisitChild(blockClose);
-	
+
 	if (!blockState.mDoInlineBlock)
 	{
 		mNextStateModify.mWantVirtualIndent = blockState.mIndentStart;
@@ -3178,7 +3169,7 @@ void BfPrinter::DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToke
 }
 
 void BfPrinter::Visit(BfBlock* block)
-{	
+{
 	BlockState blockState;
 	SetAndRestoreValue<BlockState*> prevBlockState(mCurBlockState, &blockState);
 
@@ -3186,7 +3177,7 @@ void BfPrinter::Visit(BfBlock* block)
 	for (auto& childNodeRef : *block)
 	{
 		BfAstNode* child = childNodeRef;
-		SetAndRestoreValue<bool> prevForceTrivia(mForceUseTrivia);		
+		SetAndRestoreValue<bool> prevForceTrivia(mForceUseTrivia);
 		SetAndRestoreValue<int> prevVirtualIndent(mNextStateModify.mWantVirtualIndent);
 		SetAndRestoreValue<BfAstNode*> prevBlockMember(mCurBlockMember, child);
 		CheckRawNode(child);
@@ -3198,7 +3189,7 @@ void BfPrinter::Visit(BfBlock* block)
 }
 
 void BfPrinter::Visit(BfRootNode* rootNode)
-{			
+{
 	for (auto child : rootNode->mChildArr)
 	{
 		SetAndRestoreValue<BfAstNode*> prevBlockMember(mCurBlockMember, child);
@@ -3208,7 +3199,7 @@ void BfPrinter::Visit(BfRootNode* rootNode)
 	// Flush whitespace at the end of the document
 	BfParserData* bfParser = rootNode->GetSourceData()->ToParserData();
 	if (bfParser != NULL)
-	{		
+	{
 		BfAstNode* endNode = mSource->mAlloc.Alloc<BfAstNode>();
 		endNode->Init(rootNode->GetSrcEnd(), bfParser->mSrcLength, bfParser->mSrcLength);
 		Visit(endNode);
@@ -3222,5 +3213,4 @@ void BfPrinter::Visit(BfRootNode* rootNode)
 
 void BfPrinter::Visit(BfInlineAsmStatement* asmStmt)
 {
-	
 }

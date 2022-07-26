@@ -11,7 +11,7 @@ public:
 	BfAstNode* mRootNode;
 	bool mNeedsDeferEval;
 	bool mDeferDelegateBind;
-	bool mDeferLiterals;	
+	bool mDeferLiterals;
 
 public:
 	BfDeferEvalChecker();
@@ -19,7 +19,7 @@ public:
 	void Check(BfAstNode* node);
 
 	virtual void Visit(BfAstNode* node) override;
-	
+
 	virtual void Visit(BfAttributedExpression* attributedExpr) override;
 	virtual void Visit(BfInitializerExpression* collectionInitExpr) override;
 	virtual void Visit(BfLiteralExpression* literalExpr) override;
@@ -37,6 +37,5 @@ public:
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;
 	virtual void Visit(BfVariableDeclaration* varDecl) override;
 };
-
 
 NS_BF_END

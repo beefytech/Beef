@@ -14,7 +14,7 @@ public:
 	int mCurIdx;
 	String mResult;
 	bool mFailed;
-	String mMangledName;		
+	String mMangledName;
 	SubstituteList mSubstituteList;
 	bool mInArgs;
 	bool mBeefFixed;
@@ -28,25 +28,25 @@ public:
 
 class DwDemangler : public DemangleBase
 {
-public:	
+public:
 	SubstituteList mTemplateList;
 	bool mIsFirstName;
-	int mTemplateDepth;	
-	bool mOmitSubstituteAdd;	
+	int mTemplateDepth;
+	bool mOmitSubstituteAdd;
 	bool mCaptureTargetType;
 	bool mFunctionPopSubstitute;
-	bool mRawDemangle;	
+	bool mRawDemangle;
 
-public:	
+public:
 	bool DemangleEnd();
 	bool DemangleArrayType(StringImpl& outName);
 	bool DemangleBuiltinType(StringImpl& outName);
 	bool DemangleFunctionType(StringImpl& outName);
 	bool DemangleSourceName(StringImpl& outName);
-	bool DemangleRefQualifier(StringImpl& outName);	
+	bool DemangleRefQualifier(StringImpl& outName);
 	bool DemangleType(StringImpl& outName);
 	bool DemangleNestedName(StringImpl& outName);
-	bool DemangleCVQualifiers(StringImpl& outName);		
+	bool DemangleCVQualifiers(StringImpl& outName);
 	bool DemangleOperatorName(StringImpl& outName);
 	bool DemangleExprPriamry(StringImpl& outName);
 	bool DemangleTemplateArgPack(StringImpl& outName);
@@ -62,7 +62,7 @@ public:
 	bool DemangleName(StringImpl& outName, bool* outHasTemplateArgs = NULL);
 	bool DemangleFunction(StringImpl& outName);
 
-public:	
+public:
 	DwDemangler();
 
 	String Demangle(const StringImpl& mangledName);
@@ -104,7 +104,7 @@ public:
 	bool DemangleType();
 	bool DemangleScopedName();
 	bool DemangleName();
-	
+
 public:
 	MsDemangleScanner();
 

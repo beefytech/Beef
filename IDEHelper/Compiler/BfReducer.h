@@ -36,8 +36,8 @@ public:
 		CreateStmtFlags_NoCaseExpr = 1,
 		CreateStmtFlags_FindTrailingSemicolon = 2,
 		CreateStmtFlags_AllowUnterminatedExpression = 4,
-		CreateStmtFlags_AllowLocalFunction = 8,		
-		CreateStmtFlags_ForceVariableDecl = 0x10,		
+		CreateStmtFlags_AllowLocalFunction = 8,
+		CreateStmtFlags_ForceVariableDecl = 0x10,
 
 		CreateStmtFlags_To_CreateExprFlags_Mask = 1
 	};
@@ -127,7 +127,7 @@ public:
 		}
 	};
 
-public:	
+public:
 	BfAstAllocator* mAlloc;
 	BfSystem* mSystem;
 	BfSource* mSource;
@@ -141,12 +141,12 @@ public:
 	BfMethodDeclaration* mCurMethodDecl;
 	BfAstNode* mLastBlockNode;
 	bool mStmtHasError;
-	bool mPrevStmtHadError;	
+	bool mPrevStmtHadError;
 	bool mCompatMode; // Does C++ compatible parsing
 	bool mAllowTypeWildcard;
 	bool mIsFieldInitializer;
 	bool mInParenExpr;
-	bool mSkipCurrentNodeAssert;	
+	bool mSkipCurrentNodeAssert;
 	BfVisitorPos mVisitorPos;
 	int mDocumentCheckIdx;
 	SizedArray<BfNamespaceDeclaration*, 4> mCurNamespaceStack;
@@ -154,15 +154,15 @@ public:
 
 	int mAssertCurrentNodeIdx;
 
-public:	
+public:
 	BfAstNode* Fail(const StringImpl& errorMsg, BfAstNode* refNode);
 	BfAstNode* FailAfter(const StringImpl& errorMsg, BfAstNode* refNode);
 	void AddErrorNode(BfAstNode* astNode, bool removeNode = true);
-			
-public:		
+
+public:
 	bool StringEquals(BfAstNode* node, BfAstNode* node2);
 	bool IsSemicolon(BfAstNode* node);
-	BfTokenNode* ExpectTokenAfter(BfAstNode* node, BfToken token);	
+	BfTokenNode* ExpectTokenAfter(BfAstNode* node, BfToken token);
 	BfTokenNode* ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToken tokenB);
 	BfTokenNode* ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToken tokenB, BfToken tokenC);
 	BfTokenNode* ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToken tokenB, BfToken tokenC, BfToken tokenD);
@@ -176,8 +176,8 @@ public:
 	bool IsNodeRelevant(BfAstNode* astNode);
 	bool IsNodeRelevant(BfAstNode* startNode, BfAstNode* endNode);
 	void MoveNode(BfAstNode* srcNode, BfAstNode* newOwner);
-	void ReplaceNode(BfAstNode* prevNode, BfAstNode* newNode);	
-	
+	void ReplaceNode(BfAstNode* prevNode, BfAstNode* newNode);
+
 	bool SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeRef, BfTokenNode* tokenNode);
 	BfAstNode* CreateAllocNode(BfTokenNode* newNode);
 	BfAstNode* ReplaceTokenStarter(BfAstNode* astNode, int idx = -1, bool allowIn = false);
@@ -195,12 +195,12 @@ public:
 	void CreateQualifiedNames(BfAstNode* node);
 	BfFieldDtorDeclaration* CreateFieldDtorDeclaration(BfAstNode* srcNode);
 	BfFieldDeclaration* CreateFieldDeclaration(BfTokenNode* tokenNode, BfTypeReference* typeRef, BfIdentifierNode* nameIdentifier, BfFieldDeclaration* prevFieldDeclaration);
-	BfAttributeDirective* CreateAttributeDirective(BfTokenNode* startToken);	
+	BfAttributeDirective* CreateAttributeDirective(BfTokenNode* startToken);
 	BfStatement* CreateAttributedStatement(BfTokenNode* tokenNode, CreateStmtFlags createStmtFlags = CreateStmtFlags_None);
 	BfExpression* CreateAttributedExpression(BfTokenNode* tokenNode, bool onlyAllowIdentifier);
 	BfDelegateBindExpression* CreateDelegateBindExpression(BfAstNode* allocNode);
 	BfLambdaBindExpression* CreateLambdaBindExpression(BfAstNode* allocNode, BfTokenNode* parenToken = NULL);
-	BfCollectionInitializerExpression* CreateCollectionInitializerExpression(BfBlock* block);	
+	BfCollectionInitializerExpression* CreateCollectionInitializerExpression(BfBlock* block);
 	BfCollectionInitializerExpression* CreateCollectionInitializerExpression(BfTokenNode* openToken);
 	BfObjectCreateExpression* CreateObjectCreateExpression(BfAstNode* allocNode);
 	BfScopedInvocationTarget* CreateScopedInvocationTarget(BfAstNode*& targetRef, BfTokenNode* colonToken);
@@ -225,7 +225,7 @@ public:
 	BfTypeReference* DoCreateTypeRef(BfAstNode* identifierNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None, int endNode = -1);
 	BfTypeReference* CreateTypeRef(BfAstNode* identifierNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None);
 	BfTypeReference* CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None);
-	BfTypeReference* CreateRefTypeRef(BfTypeReference* elementType, BfTokenNode* refToken);	
+	BfTypeReference* CreateRefTypeRef(BfTypeReference* elementType, BfTokenNode* refToken);
 	bool ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, bool alwaysIncludeBlock = false);
 	BfGenericArgumentsNode* CreateGenericArguments(BfTokenNode* tokenNode, bool allowPartial = false);
 	BfGenericParamsDeclaration* CreateGenericParamsDeclaration(BfTokenNode* tokenNode);

@@ -17,11 +17,11 @@ BfStructuralVisitor::BfStructuralVisitor()
 }
 
 void BfStructuralVisitor::VisitMembers(BfBlock* node)
-{	
+{
 	for (auto& child : *node)
-	{		
+	{
 		child->Accept(this);
-	}			
+	}
 }
 
 void BfStructuralVisitor::VisitChildNoRef(BfAstNode* node)
@@ -673,7 +673,7 @@ void BfStructuralVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 
 void BfStructuralVisitor::Visit(BfBlock* block)
 {
-	Visit(block->ToBase());	
+	Visit(block->ToBase());
 }
 
 void BfStructuralVisitor::Visit(BfUnscopedBlock* block)
@@ -688,7 +688,7 @@ void BfStructuralVisitor::Visit(BfBlockExtension* block)
 
 void BfStructuralVisitor::Visit(BfRootNode* rootNode)
 {
-	Visit(rootNode->ToBase());	
+	Visit(rootNode->ToBase());
 }
 
 void BfStructuralVisitor::Visit(BfInlineAsmStatement* asmStmt)
@@ -715,7 +715,7 @@ BfAstTypeInfo::BfAstTypeInfo(const char* name, BfAstTypeInfo* baseType, BfAstAcc
 	if (mBaseType != NULL)
 	{
 		mBaseType->mDerivedTypes.Add(this);
-	}		
+	}
 	sTypeCount++;
 
 #ifdef _DEBUG
@@ -800,7 +800,7 @@ bool BfAstNode::IsMissingSemicolon()
 		return (attribExpr->mStatement == NULL) || (attribExpr->mStatement->IsMissingSemicolon());
 
 	if (auto stmt = BfNodeDynCast<BfStatement>(this))
-		return stmt->mTrailingSemicolon == NULL;	
+		return stmt->mTrailingSemicolon == NULL;
 
 	return false;
 }
@@ -832,7 +832,7 @@ bool BfAstNode::WantsWarning(int warningNumber)
 }
 
 bool BfAstNode::LocationEquals(BfAstNode* otherNode)
-{	
+{
 	return (GetSourceData() == otherNode->GetSourceData()) &&
 		(GetSrcStart() == otherNode->GetSrcStart()) &&
 		(GetSrcEnd() == otherNode->GetSrcEnd());
@@ -851,7 +851,7 @@ String BfAstNode::LocationToString()
 		return String();
 
 	String loc;
-	
+
 	int line = -1;
 	int lineChar = -1;
 	parserData->GetLineCharAtIdx(mSrcStart, line, lineChar);
@@ -864,10 +864,10 @@ String BfAstNode::LocationToString()
 }
 
 void BfAstNode::Add(BfAstNode* bfAstNode)
-{	
+{
 #ifdef BF_AST_HAS_PARENT_MEMBER
 	BF_ASSERT(bfAstNode->mParent == NULL);
-	bfAstNode->mParent = this;	
+	bfAstNode->mParent = this;
 #endif
 
 	if (!IsInitialized())
@@ -897,7 +897,7 @@ void BfAstNode::Add(BfAstNode* bfAstNode)
 		SetSrcStart(childSrcStart);
 	if (childSrcEnd > prevSrcEnd)
 		SetSrcEnd(childSrcEnd);
-#else	
+#else
 	BF_ASSERT(mSrcStart >= 0);
 	BF_ASSERT(bfAstNode->mSrcStart >= 0);
 
@@ -934,14 +934,14 @@ void BfAstNode::RemoveNextSibling()
 }
 
 void BfAstNode::DeleteNextSibling()
-{	
+{
 	//mNext->DeleteSelf();
 }
 
 void BfAstNode::Init(BfParser* bfParser)
 {
 	BF_ASSERT(GetSourceData() == bfParser->mSourceData);
-	Init(bfParser->mTriviaStart, bfParser->mTokenStart, bfParser->mTokenEnd);		
+	Init(bfParser->mTriviaStart, bfParser->mTokenStart, bfParser->mTokenEnd);
 }
 
 void BfAstNode::Accept(BfStructuralVisitor* bfVisitor)
@@ -960,7 +960,7 @@ bool BfAstNode::IsTemporary()
 
 int BfAstNode::GetStartCharId()
 {
-	if (!IsTemporary())	
+	if (!IsTemporary())
 	{
 		auto bfParser = GetSourceData()->ToParserData();
 		if (bfParser != NULL)
@@ -970,8 +970,8 @@ int BfAstNode::GetStartCharId()
 }
 
 BfSourceData* BfAstNode::GetSourceData()
-{	
-#ifdef BF_AST_ALLOCATOR_USE_PAGES	
+{
+#ifdef BF_AST_ALLOCATOR_USE_PAGES
 	//BF_ASSERT((intptr)this > 0x4200000000);
 	BfAstPageHeader* pageHeader = (BfAstPageHeader*)((intptr)this & ~(BfAstAllocManager::PAGE_SIZE - 1));
 	return pageHeader->mSourceData;
@@ -1021,14 +1021,14 @@ String BfAstNode::ToString()
 	int srcLen = GetSrcLength();
 	if (srcLen <= 0)
 	{
-		if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(this))		
-			return namedTypeRef->mNameNode->ToString();					
+		if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(this))
+			return namedTypeRef->mNameNode->ToString();
 
 		return "";
 	}
 
 	auto source = GetSourceData();
-	String str(source->mSrc + GetSrcStart(), srcLen);	
+	String str(source->mSrc + GetSrcStart(), srcLen);
 	return str;
 }
 
@@ -1057,7 +1057,7 @@ void BfAstNode::ToString(StringImpl& str)
 	}
 
 	auto source = GetSourceData();
-	str.Append(source->mSrc + GetSrcStart(), srcLen);	
+	str.Append(source->mSrc + GetSrcStart(), srcLen);
 }
 
 bool BfAstNode::Equals(const StringImpl& str)
@@ -1079,7 +1079,7 @@ bool BfAstNode::Equals(const StringView& str)
 }
 
 bool BfAstNode::Equals(const char* str)
-{	
+{
 	auto source = GetSourceData();
 	const char* ptrLhs = source->mSrc + mSrcStart;
 	const char* ptrLhsEnd = source->mSrc + mSrcEnd;
@@ -1087,7 +1087,7 @@ bool BfAstNode::Equals(const char* str)
 
 	while (true)
 	{
-		char cRhs = *(ptrRhs++);		
+		char cRhs = *(ptrRhs++);
 		if (cRhs == 0)
 			return ptrLhs == ptrLhsEnd;
 		if (ptrLhs == ptrLhsEnd)
@@ -1097,7 +1097,6 @@ bool BfAstNode::Equals(const char* str)
 			return false;
 	}
 }
-
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -1112,18 +1111,18 @@ void BfBlock::Init(const SizedArrayImpl<BfAstNode*>& vec, BfAstAllocator* alloc)
 	{
 		int bytesLeft = alloc->GetCurPageBytesLeft();
 		int useElems = std::min(bytesLeft / (int)sizeof(ASTREF(BfAstNode*)), elemsLeft);
-		BfBlockExtension* nextExt = NULL;		
+		BfBlockExtension* nextExt = NULL;
 		BfSizedArray<ASTREF(BfAstNode*)>& childArrRef = (curExt != NULL) ? curExt->mChildArr : mChildArr;
 		childArrRef.mVals = (ASTREF(BfAstNode*)*)alloc->AllocBytes(useElems * sizeof(ASTREF(BfAstNode*)), sizeof(ASTREF(BfAstNode*)));
 		childArrRef.mSize = useElems;
-		if (useElems < elemsLeft)		
+		if (useElems < elemsLeft)
 		{
 			nextExt = alloc->Alloc<BfBlockExtension>();
 			useElems--;
 		}
 
 		for (int i = 0; i < useElems; i++)
-			childArrRef[i] = vec[curIdx++];			
+			childArrRef[i] = vec[curIdx++];
 		if (nextExt != NULL)
 		{
 			childArrRef[useElems] = nextExt;
@@ -1131,7 +1130,7 @@ void BfBlock::Init(const SizedArrayImpl<BfAstNode*>& vec, BfAstAllocator* alloc)
 		}
 		elemsLeft -= useElems;
 	}
-#else	
+#else
 	BfSizedArrayInitIndirect(mChildArr, vec, alloc);
 #endif
 }
@@ -1157,10 +1156,10 @@ int BfBlock::GetSize()
 {
 	int size = mChildArr.mSize;
 	if (mChildArr.mSize == 0)
-		return size;	
+		return size;
 	BfAstNode* backNode = mChildArr.mVals[mChildArr.mSize - 1];
 	while (true)
-	{		
+	{
 		if (auto blockExt = BfNodeDynCastExact<BfBlockExtension>(backNode))
 		{
 			size--;
@@ -1172,12 +1171,12 @@ int BfBlock::GetSize()
 			break;
 		}
 	}
-	
+
 	return size;
 }
 
 void BfBlock::SetSize(int wantSize)
-{	
+{
 	int size = mChildArr.mSize;
 	if (wantSize == size)
 		return;
@@ -1390,7 +1389,7 @@ const char* Beefy::BfTokenToString(BfToken token)
 	case BfToken_Extension:
 		return "extension";
 	case BfToken_Fallthrough:
-		return "fallthrough";	
+		return "fallthrough";
 	case BfToken_Finally:
 		return "finally";
 	case BfToken_Fixed:
@@ -1426,7 +1425,7 @@ const char* Beefy::BfTokenToString(BfToken token)
 	case BfToken_Namespace:
 		return "namespace";
 	case BfToken_New:
-		return "new";	
+		return "new";
 	case BfToken_Null:
 		return "null";
 	case BfToken_Nullable:
@@ -1578,7 +1577,7 @@ const char* Beefy::BfTokenToString(BfToken token)
 	case BfToken_Colon:
 		return ":";
 	case BfToken_Comma:
-		return ",";	
+		return ",";
 	case BfToken_Dot:
 	case BfToken_AutocompleteDot:
 		return ".";
@@ -1645,7 +1644,7 @@ bool Beefy::BfTokenIsKeyword(BfToken token)
 BfBinaryOp Beefy::BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp)
 {
 	switch (assignmentOp)
-	{	
+	{
 	case BfAssignmentOp_Add:
 		return BfBinaryOp_Add;
 	case BfAssignmentOp_Subtract:
@@ -1681,9 +1680,9 @@ BfBinaryOp Beefy::BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp)
 }
 
 int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
-{	
+{
 	switch (binOp)
-	{			
+	{
 	case BfBinaryOp_Multiply:
 	case BfBinaryOp_OverflowMultiply:
 	case BfBinaryOp_Divide:
@@ -1693,7 +1692,7 @@ int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
 	case BfBinaryOp_Subtract:
 	case BfBinaryOp_OverflowAdd:
 	case BfBinaryOp_OverflowSubtract:
-		return 13;	
+		return 13;
 	case BfBinaryOp_LeftShift:
 	case BfBinaryOp_RightShift:
 		return 12;
@@ -1722,7 +1721,7 @@ int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
 	case BfBinaryOp_StrictInEquality:
 		return 4;
 	case BfBinaryOp_ConditionalAnd:
-		return 3;	
+		return 3;
 	case BfBinaryOp_ConditionalOr:
 		return 2;
 	case BfBinaryOp_NullCoalesce:
@@ -1797,7 +1796,7 @@ const char* Beefy::BfGetOpName(BfUnaryOp unaryOp)
 	case BfUnaryOp_FromEnd: return "^";
 	case BfUnaryOp_PartialRangeUpTo: return "..<";
 	case BfUnaryOp_PartialRangeThrough: return "...";
-	case BfUnaryOp_PartialRangeFrom: return "...";	
+	case BfUnaryOp_PartialRangeFrom: return "...";
 	default: return "???";
 	}
 }
@@ -1929,7 +1928,6 @@ bool Beefy::BfCanOverloadOperator(BfUnaryOp unaryOp)
 	}
 }
 
-
 BfAssignmentOp Beefy::BfTokenToAssignmentOp(BfToken token)
 {
 	switch (token)
@@ -1941,7 +1939,7 @@ BfAssignmentOp Beefy::BfTokenToAssignmentOp(BfToken token)
 	case BfToken_MinusEquals:
 		return BfAssignmentOp_Subtract;
 	case BfToken_MultiplyEquals:
-		return BfAssignmentOp_Multiply;	
+		return BfAssignmentOp_Multiply;
 	case BfToken_AndPlusEquals:
 		return BfAssignmentOp_OverflowAdd;
 	case BfToken_AndMinusEquals:

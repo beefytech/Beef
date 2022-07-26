@@ -48,7 +48,7 @@ public:
 
 	OwnedVector<ExpandItem> mExpandItems;
 	CollectionType mCollectionType;
-	
+
 	String mSize;
 	Array<String> mLowerDimSizes;
 	String mNextPointer;
@@ -58,11 +58,11 @@ public:
 	String mRightPointer;
 	String mValueType;
 	String mValuePointer;
-	String mTargetPointer;		
+	String mTargetPointer;
 	String mCondition;
 	String mBuckets;
 	String mEntries;
-	String mKey;		
+	String mKey;
 	bool mShowedError;
 	bool mShowElementAddrs;
 
@@ -76,7 +76,7 @@ public:
 		mCollectionType = CollectionType_None;
 		mShowedError = false;
 		mShowElementAddrs = false;
-	}	
+	}
 };
 
 class DebugVisualizers
@@ -87,9 +87,9 @@ public:
 	String mCurFileName;
 	const char* mSrcStr;
 	OwnedVector<DebugVisualizerEntry> mDebugVisualizers;
-	
+
 	void Fail(const StringImpl& error);
-	void Fail(const StringImpl& error, const toml::Value& value);	
+	void Fail(const StringImpl& error, const toml::Value& value);
 
 	String ExpectString(const toml::Value& value);
 	bool ExpectBool(const toml::Value& value);

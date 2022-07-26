@@ -41,7 +41,7 @@ public:
 public:
 	SetAndRestoreValue()
 	{
-		mVarPtr = NULL;		
+		mVarPtr = NULL;
 	}
 
 	SetAndRestoreValue(T& varRef)
@@ -54,14 +54,14 @@ public:
 	SetAndRestoreValue(T& varRef, T newVal)
 	{
 		mPrevVal = varRef;
-		mVarPtr = &varRef;		
+		mVarPtr = &varRef;
 		varRef = newVal;
 		mNewVal = newVal;
 	}
 
 	SetAndRestoreValue(T& varRef, T newVal, bool doSet)
 	{
-		mPrevVal = varRef;		
+		mPrevVal = varRef;
 		mVarPtr = &varRef;
 		if (doSet)
 			varRef = newVal;
@@ -183,14 +183,14 @@ public:
 				mVals.pop_back();
 				return val;
 			}
-			
+
 			if (mZeroAlloc)
 			{
 				void* addr = malloc(sizeof(T));
 				memset(addr, 0, sizeof(T));
 				val = new(addr) T();
 			}
-			else 			
+			else
 				val = new T();
 			if (mOwnsAll)
 				mVals.push_back(val);
@@ -226,15 +226,15 @@ inline void EncodeSLEB128(uint8*& buf, int value)
 	bool hasMore;
 	do
 	{
-		uint8 curByte = (uint8)(value & 0x7f);    
+		uint8 curByte = (uint8)(value & 0x7f);
 		value >>= 7;
 		hasMore = !((((value == 0) && ((curByte & 0x40) == 0)) ||
 			((value == -1) && ((curByte & 0x40) != 0))));
 		if (hasMore)
 			curByte |= 0x80;
-		*(buf++) = curByte;                
+		*(buf++) = curByte;
 	}
-	while (hasMore);        
+	while (hasMore);
 }
 
 inline void EncodeSLEB128(uint8*& buf, int64_t value)
@@ -242,15 +242,15 @@ inline void EncodeSLEB128(uint8*& buf, int64_t value)
 	bool hasMore;
 	do
 	{
-		uint8 curByte = (uint8)(value & 0x7f);    
+		uint8 curByte = (uint8)(value & 0x7f);
 		value >>= 7;
 		hasMore = !((((value == 0) && ((curByte & 0x40) == 0)) ||
 			((value == -1) && ((curByte & 0x40) != 0))));
 		if (hasMore)
 			curByte |= 0x80;
-		*(buf++) = curByte;                
+		*(buf++) = curByte;
 	}
-	while (hasMore);        
+	while (hasMore);
 }
 
 #pragma warning(push)
@@ -258,7 +258,7 @@ inline void EncodeSLEB128(uint8*& buf, int64_t value)
 
 /// Utility function to decode a SLEB128 value.
 inline int64_t DecodeSLEB128(const uint8*& p)
-{	
+{
 	int value = 0;
 	int shift = 0;
 	int curByte;
@@ -267,7 +267,6 @@ inline int64_t DecodeSLEB128(const uint8*& p)
 		curByte = (uint8_t)*p++;
 		value |= ((curByte & 0x7f) << shift);
 		shift += 7;
-
 	} while (curByte >= 128);
 	// Sign extend negative numbers.
 	if (((curByte & 0x40) != 0) && (shift < 64))

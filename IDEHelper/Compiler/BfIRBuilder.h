@@ -60,16 +60,16 @@ public:
 		mCurSrcPos = 0;
 		mCurLine = 0;
 		mCurColumn = 0;
-	}	
+	}
 };
 
 enum BfTypeCode : uint8
-{	
+{
 	BfTypeCode_None,
 	BfTypeCode_CharPtr,
 	BfTypeCode_StringId,
 	BfTypeCode_Pointer,
-	BfTypeCode_NullPtr,	
+	BfTypeCode_NullPtr,
 	BfTypeCode_Self,
 	BfTypeCode_Dot,
 	BfTypeCode_Var,
@@ -123,7 +123,7 @@ enum BfTypeCode : uint8
 
 enum BfConstType
 {
-	BfConstType_GlobalVar = BfTypeCode_Length,	
+	BfConstType_GlobalVar = BfTypeCode_Length,
 	BfConstType_BitCast,
 	BfConstType_BitCastNull,
 	BfConstType_GEP32_1,
@@ -145,13 +145,13 @@ enum BfConstType
 
 enum BfIRValueFlags : uint8
 {
-	BfIRValueFlags_None,	
+	BfIRValueFlags_None,
 	BfIRValueFlags_Value = 1,
 	BfIRValueFlags_Arg = 2,
 	BfIRValueFlags_Const = 4,
 	BfIRValueFlags_FromLLVM = 8,
 	BfIRValueFlags_Block = 16,
-	BfIRValueFlags_Func = 32	
+	BfIRValueFlags_Func = 32
 };
 
 enum BfIRCmd : uint8
@@ -162,7 +162,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_WriteIR,
 
 	BfIRCmd_SetType,
-	BfIRCmd_SetInstType,	
+	BfIRCmd_SetInstType,
 	BfIRCmd_PrimitiveType,
 	BfIRCmd_CreateAnonymousStruct,
 	BfIRCmd_CreateStruct,
@@ -175,7 +175,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_GetPointerToType,
 	BfIRCmd_GetSizedArrayType,
 	BfIRCmd_GetVectorType,
-	
+
 	BfIRCmd_CreateConstStructZero,
 	BfIRCmd_CreateConstAgg,
 	BfIRCmd_CreateConstArrayZero,
@@ -228,10 +228,10 @@ enum BfIRCmd : uint8
 	BfIRCmd_SetAllocaNoChkStkHint,
 	BfIRCmd_SetAllocaForceMem,
 	BfIRCmd_AliasValue,
-	BfIRCmd_LifetimeStart,	
+	BfIRCmd_LifetimeStart,
 	BfIRCmd_LifetimeEnd,
 	BfIRCmd_LifetimeSoftEnd,
-	BfIRCmd_LifetimeExtend,	
+	BfIRCmd_LifetimeExtend,
 	BfIRCmd_ValueScopeStart,
 	BfIRCmd_ValueScopeRetain,
 	BfIRCmd_ValueScopeSoftEnd,
@@ -255,9 +255,9 @@ enum BfIRCmd : uint8
 
 	BfIRCmd_CreateBlock,
 	BfIRCmd_MaybeChainNewBlock,
-	BfIRCmd_AddBlock,	
+	BfIRCmd_AddBlock,
 	BfIRCmd_DropBlocks,
-	BfIRCmd_MergeBlockDown,	
+	BfIRCmd_MergeBlockDown,
 	BfIRCmd_GetInsertBlock,
 	BfIRCmd_SetInsertPoint,
 	BfIRCmd_SetInsertPointAtStart,
@@ -276,9 +276,9 @@ enum BfIRCmd : uint8
 	BfIRCmd_CreatePhi,
 	BfIRCmd_AddPhiIncoming,
 
-	BfIRCmd_GetIntrinsic,	
-	BfIRCmd_CreateFunctionType,	
-	BfIRCmd_CreateFunction,	
+	BfIRCmd_GetIntrinsic,
+	BfIRCmd_CreateFunctionType,
+	BfIRCmd_CreateFunction,
 	BfIRCmd_SetFunctionName,
 	BfIRCmd_EnsureFunctionPatchable,
 	BfIRCmd_RemapBindFunction,
@@ -293,10 +293,10 @@ enum BfIRCmd : uint8
 	BfIRCmd_CreateRetVoid,
 	BfIRCmd_CreateUnreachable,
 	BfIRCmd_Call_AddAttribute,
-	BfIRCmd_Call_AddAttribute1,	
+	BfIRCmd_Call_AddAttribute1,
 	BfIRCmd_Func_AddAttribute,
 	BfIRCmd_Func_AddAttribute1,
-	BfIRCmd_Func_SetParamName,	
+	BfIRCmd_Func_SetParamName,
 	BfIRCmd_Func_DeleteBody,
 	BfIRCmd_Func_SafeRename,
 	BfIRCmd_Func_SafeRenameFrom,
@@ -385,7 +385,7 @@ enum BfIRParamType : uint8
 	BfIRParamType_Arg,
 	BfIRParamType_StreamId_Abs8,
 	BfIRParamType_StreamId_Rel,
-	BfIRParamType_StreamId_Back1,	
+	BfIRParamType_StreamId_Back1,
 	BfIRParamType_StreamId_Back_LAST = 0xFF, // Use remaining encoding
 };
 
@@ -425,9 +425,9 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_AtomicAnd,
 	BfIRIntrinsic_AtomicCmpStore,
 	BfIRIntrinsic_AtomicCmpStore_Weak,
-	BfIRIntrinsic_AtomicCmpXChg,	
+	BfIRIntrinsic_AtomicCmpXChg,
 	BfIRIntrinsic_AtomicFence,
-	BfIRIntrinsic_AtomicLoad,		
+	BfIRIntrinsic_AtomicLoad,
 	BfIRIntrinsic_AtomicMax,
 	BfIRIntrinsic_AtomicMin,
 	BfIRIntrinsic_AtomicNAnd,
@@ -440,14 +440,14 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_AtomicXor,
 	BfIRIntrinsic_BSwap,
 	BfIRIntrinsic_Cast,
-	BfIRIntrinsic_Cos,	
+	BfIRIntrinsic_Cos,
 	BfIRIntrinsic_DebugTrap,
 	BfIRIntrinsic_Div,
 	BfIRIntrinsic_Eq,
 	BfIRIntrinsic_Floor,
-	BfIRIntrinsic_Free,	
+	BfIRIntrinsic_Free,
 	BfIRIntrinsic_Gt,
-	BfIRIntrinsic_GtE,	
+	BfIRIntrinsic_GtE,
 	BfIRIntrinsic_Index,
 	BfIRIntrinsic_Log,
 	BfIRIntrinsic_Log10,
@@ -459,7 +459,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_MemMove,
 	BfIRIntrinsic_MemSet,
 	BfIRIntrinsic_Mod,
-	BfIRIntrinsic_Mul,	
+	BfIRIntrinsic_Mul,
 	BfIRIntrinsic_Neq,
 	BfIRIntrinsic_Not,
 	BfIRIntrinsic_Or,
@@ -472,8 +472,8 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_SHR,
 	BfIRIntrinsic_Shuffle,
 	BfIRIntrinsic_Sin,
-	BfIRIntrinsic_Sqrt,	
-	BfIRIntrinsic_Sub,	
+	BfIRIntrinsic_Sqrt,
+	BfIRIntrinsic_Sub,
 	BfIRIntrinsic_VAArg,
 	BfIRIntrinsic_VAEnd,
 	BfIRIntrinsic_VAStart,
@@ -537,7 +537,7 @@ public:
 		ID_IMPLICIT = -3
 	};
 
-public:	
+public:
 	int mId;
 	BfIRValueFlags mFlags;
 	static BfIRValue sValueless;
@@ -548,7 +548,7 @@ public:
 
 public:
 	BfIRValue()
-	{		
+	{
 		mId = -1;
 		mFlags = BfIRValueFlags_None;
 #ifdef CHECK_CONSTHOLDER
@@ -557,7 +557,7 @@ public:
 	}
 
 	BfIRValue(const BfIRValue& from)
-	{		
+	{
 		mFlags = from.mFlags;
 		mId = from.mId;
 #ifdef CHECK_CONSTHOLDER
@@ -566,23 +566,23 @@ public:
 	}
 
 	BfIRValue(BfIRValueFlags flags, int id)
-	{		
+	{
 		mFlags = flags;
-		mId = id;	
+		mId = id;
 	}
-		
+
 	operator bool() const
-	{		
+	{
 		return mFlags != BfIRValueFlags_None;
-	}	
-	
+	}
+
 	bool IsFake() const;
 	bool IsConst() const;
-	bool IsArg() const;	
+	bool IsArg() const;
 	bool IsFromLLVM() const;
 
 	bool operator==(const BfIRValue& rhs) const
-	{		
+	{
 		if (mFlags != rhs.mFlags)
 			return false;
 		if (mId != rhs.mId)
@@ -591,7 +591,7 @@ public:
 	}
 
 	bool operator!=(const BfIRValue& rhs) const
-	{	
+	{
 		if (mFlags != rhs.mFlags)
 			return true;
 		if (mId != rhs.mId)
@@ -608,7 +608,7 @@ struct BfIRTypeData
 		TypeKind_TypeId,
 		TypeKind_TypeCode,
 		TypeKind_TypeInstId,
-		TypeKind_TypeInstPtrId,		
+		TypeKind_TypeInstPtrId,
 		TypeKind_Stream,
 		TypeKind_SizedArray
 	};
@@ -624,12 +624,12 @@ struct BfIRTypeData
 
 struct BfIRType : public BfIRTypeData
 {
-public:	
+public:
 	BfIRType()
 	{
 		mKind = TypeKind_None;
 		mId = -1;
-	}	
+	}
 
 	BfIRType(BfIRTypeData typeData)
 	{
@@ -637,17 +637,17 @@ public:
 		mId = typeData.mId;
 	}
 
-	BfIRType(const BfIRValue& val) { mKind = TypeKind_Stream; mId = val.mId; }		
+	BfIRType(const BfIRValue& val) { mKind = TypeKind_Stream; mId = val.mId; }
 };
 
 struct BfIRBlock : public BfIRValue
 {
-public:	
+public:
 	BfIRBlock();
-	BfIRBlock(const BfIRValue& fromVal) : BfIRValue(fromVal) {}		
+	BfIRBlock(const BfIRValue& fromVal) : BfIRValue(fromVal) {}
 };
 
-enum BfIRAttribute 
+enum BfIRAttribute
 {
 	BfIRAttribute_NoReturn,
 	BfIRAttribute_NoAlias,
@@ -670,83 +670,83 @@ enum BfIRAttribute
 
 struct BfIRFunctionType
 {
-public:	
-	int mId;	
+public:
+	int mId;
 
-public:	
+public:
 	BfIRFunctionType();
-	BfIRFunctionType(const BfIRValue& val) { mId = val.mId; }	
+	BfIRFunctionType(const BfIRValue& val) { mId = val.mId; }
 	operator bool() const
 	{
 		return mId != -1;
-	}	
+	}
 };
 
 struct BfIRFunction : public BfIRRawValue
 {
-public:	
+public:
 	BfIRFunction();
 	BfIRFunction(const BfIRValue& val)
 	{
 		BF_ASSERT((val.mFlags == BfIRValueFlags_None) || (val.mFlags == BfIRValueFlags_Value));
 		mId = val.mId;
-	}		
+	}
 		//: BfIRValue(val) {}
-	
+
 	bool operator==(const BfIRFunction& rhs) const
-	{		
+	{
 		if (mId != rhs.mId)
 			return false;
 		return true;
 	}
 
 	bool operator!=(const BfIRFunction& rhs) const
-	{		
+	{
 		if (mId == rhs.mId)
 			return false;
 		return true;
 	}
 
 	operator bool() const
-	{		
+	{
 		return mId != -1;
 	}
 
 	operator BfIRValue() const
-	{		
+	{
 		return BfIRValue((mId == -1) ? BfIRValueFlags_None : BfIRValueFlags_Value, mId);
 	}
 };
 
 struct BfIRMDNode
 {
-public:	
+public:
 	int mId;
 
 	BfIRMDNode()
-	{	
+	{
 		mId = -1;
 	}
 
 	BfIRMDNode(const BfIRValue& val)
-	{		
+	{
 		mId = val.mId;
 	}
-	
+
 	operator bool() const
-	{		
+	{
 		return mId != -1;
-	}	
+	}
 
 	bool operator==(const BfIRMDNode& rhs) const
-	{		
+	{
 		if (mId != rhs.mId)
 			return false;
 		return true;
 	}
 
 	bool operator!=(const BfIRMDNode& rhs) const
-	{		
+	{
 		if (mId == rhs.mId)
 			return false;
 		return true;
@@ -763,7 +763,7 @@ public:
 public:
 	BfFileInstance()
 	{
-		mParser = NULL;		
+		mParser = NULL;
 	}
 };
 
@@ -776,7 +776,7 @@ struct BfGlobalVar
 	BfIRLinkageType mLinkageType;
 	int mStreamId;
 	BfIRValue mInitializer;
-	bool mIsTLS;	
+	bool mIsTLS;
 	int mAlignment;
 };
 
@@ -789,7 +789,7 @@ struct BfGlobalVar_TypeInst
 	BfIRLinkageType mLinkageType;
 	int mStreamId;
 	BfIRValue mInitializer;
-	bool mIsTLS;	
+	bool mIsTLS;
 };
 
 struct BfTypeOf_Const
@@ -813,7 +813,7 @@ public:
 	{
 		BfTypeCode mTypeCode;
 		BfConstType mConstType;
-	};	
+	};
 	union
 	{
 		bool mBool;
@@ -886,7 +886,7 @@ struct BfConstantGEP32_1
 {
 	BfConstType mConstType;
 	int mTarget;
-	int mIdx0;	
+	int mIdx0;
 };
 
 struct BfConstantGEP32_2
@@ -901,7 +901,7 @@ struct BfConstantExtractValue
 {
 	BfConstType mConstType;
 	int mTarget;
-	int mIdx0;	
+	int mIdx0;
 };
 
 struct BfConstantAgg
@@ -931,15 +931,15 @@ public:
 	BumpAllocatorT<256> mTempAlloc;
 	BfModule* mModule;
 	Dictionary<String, BfIRValue> mGlobalVarMap;
-	
+
 public:
 	void FixTypeCode(BfTypeCode& typeCode);
 	int GetSize(BfTypeCode typeCode);
 	static int GetSize(BfTypeCode typeCode, int ptrSize);
-	static bool IsInt(BfTypeCode typeCode);	
+	static bool IsInt(BfTypeCode typeCode);
 	static bool IsChar(BfTypeCode typeCode);
 	static bool IsIntable(BfTypeCode typeCode);
-	static bool IsSigned(BfTypeCode typeCode);	
+	static bool IsSigned(BfTypeCode typeCode);
 	static bool IsFloat(BfTypeCode typeCode);
 	const char* AllocStr(const StringImpl& str);
 
@@ -951,7 +951,7 @@ public:
 	String ToString(BfIRType irType);
 	void pv(const BfIRValue& irValue);
 
-	BfConstant* GetConstantById(int id);	
+	BfConstant* GetConstantById(int id);
 	BfConstant* GetConstant(BfIRValue id);
 	bool TryGetBool(BfIRValue id, bool& boolVal);
 	int IsZero(BfIRValue val);
@@ -961,7 +961,7 @@ public:
 
 	BfIRType GetSizedArrayType(BfIRType elementType, int length);
 
-	BfIRValue CreateConst(BfTypeCode typeCode, uint64 val);	
+	BfIRValue CreateConst(BfTypeCode typeCode, uint64 val);
 	BfIRValue CreateConst(BfTypeCode typeCode, int val);
 	BfIRValue CreateConst(BfTypeCode typeCode, double val);
 	BfIRValue CreateConst(BfConstant* fromConst, BfIRConstHolder* fromHolder);
@@ -976,11 +976,11 @@ public:
 	BfIRValue CreateConstBox(BfIRValue val, BfIRType type);
 	BfIRValue CreateTypeOf(BfType* type);
 	BfIRValue CreateTypeOf(BfType* type, BfIRValue typeData);
-	BfIRValue GetUndefConstValue(BfIRType type);	
+	BfIRValue GetUndefConstValue(BfIRType type);
 	BfIRValue CreateGlobalVariableConstant(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);
 
 	bool WriteConstant(BfIRValue val, void* ptr, BfType* type);
-	BfIRValue ReadConstant(void* ptr, BfType* type);	
+	BfIRValue ReadConstant(void* ptr, BfType* type);
 };
 
 enum BfIRPopulateType
@@ -1011,16 +1011,16 @@ enum BfOverflowCheckKind : int8
 
 class BfIRBuilder : public BfIRConstHolder
 {
-public:	
+public:
 	bool mIgnoreWrites;
 	bool mDbgVerifyCodeGen;
 	int mCurFakeId;
 	bool mHasGlobalDefs;
 	bool mIsBeefBackend;
-	int mNumFunctionsWithBodies;	
+	int mNumFunctionsWithBodies;
 	int mBlockCount;
-	bool mHasStarted;		
-	int mCmdCount;	
+	bool mHasStarted;
+	int mCmdCount;
 
 	ChunkedDataBuffer mStream;
 	BfIRBlock mActualInsertBlock; // Only when not ignoring writes
@@ -1032,12 +1032,12 @@ public:
 	Dictionary<StringView, BfIRFunction> mFunctionMap;
 	Dictionary<BfType*, BfIRPopulateType> mTypeMap;
 	Dictionary<int, BfIRValue> mConstMemMap;
-	Array<BfTypeInstance*> mDITemporaryTypes;	
+	Array<BfTypeInstance*> mDITemporaryTypes;
 	BfIRFunction mActiveFunction;
 	bool mActiveFunctionHasBody;
 	Array<BfFilePosition> mSavedDebugLocs;
 	Array<BfType*> mDeferredDbgTypeDefs;
-		
+
 	BfIRCodeGenBase* mIRCodeGen;
 	BfIRCodeGen* mBfIRCodeGen;
 	BeIRCodeGen* mBeIRCodeGen;
@@ -1050,7 +1050,7 @@ public:
 
 public:
 	~BfIRBuilder();
-	
+
 	void WriteSLEB128(int64 val);
 	void WriteSLEB128(int32 val);
 	void Write(uint8 val);
@@ -1061,24 +1061,24 @@ public:
 	void Write(const StringImpl& str);
 	void Write(const BfIRValue& irValue);
 	void Write(BfTypeCode typeCode);
-	void Write(const BfIRTypeData& type);	
+	void Write(const BfIRTypeData& type);
 	void Write(BfIRFunctionType func);
 	void Write(BfIRFunction funcType);
 	void Write(BfIRBlock block);
-	void Write(BfIRMDNode node);	
+	void Write(BfIRMDNode node);
 	template <typename T>
 	void Write(const BfSizedArray<T>& sizedArray)
 	{
-		WriteSLEB128(sizedArray.mSize);		
+		WriteSLEB128(sizedArray.mSize);
 		for (int i = 0; i < sizedArray.mSize; i++)
 			Write(sizedArray.mVals[i]);
-	}	
-	BfIRValue WriteCmd(BfIRCmd cmd);	
+	}
+	BfIRValue WriteCmd(BfIRCmd cmd);
 
 	template <typename T>
 	void WriteArg(const T& first)
 	{
-		Write(first);		
+		Write(first);
 	}
 
 	template <typename T, typename... Args>
@@ -1090,17 +1090,17 @@ public:
 
 	template <typename... Args>
 	BfIRValue WriteCmd(BfIRCmd cmd, const Args&... args)
-	{			
+	{
 		if (mIgnoreWrites)
 			return GetFakeVal();
 		//int dataPos = mStream.GetSize();
-		auto result = WriteCmd(cmd);		
-		WriteArg(args...);		
+		auto result = WriteCmd(cmd);
+		WriteArg(args...);
 		return result;
 		//return BfIRValue(BfIRValueFlags_Value, dataPos);
 	}
 
-public:	
+public:
 	void NewCmdInserted();
 	BfIRMDNode CreateNamespaceScope(BfType* type, BfIRMDNode fileDIScope);
 	String GetDebugTypeName(BfTypeInstance* typeInstance, bool includeOuterTypeName);
@@ -1114,18 +1114,18 @@ public:
 	BfIRPopulateType GetPopulateTypeState(BfType* type);
 	void PopulateType(BfType* type, BfIRPopulateType populateType = BfIRPopulateType_Full);
 	void SetType(BfType* type, BfIRType irType);
-	void SetInstType(BfType* type, BfIRType irType);	
+	void SetInstType(BfType* type, BfIRType irType);
 	int GetFakeId();
 	BfIRValue GetFakeVal();
 	BfIRValue GetFakeConst();
-	BfIRType GetFakeType();	
-	BfIRType GetFakeBlock();	
-	BfIRFunctionType GetFakeFunctionType();	
-	BfIRFunction GetFakeFunction();	
+	BfIRType GetFakeType();
+	BfIRType GetFakeBlock();
+	BfIRFunctionType GetFakeFunctionType();
+	BfIRFunction GetFakeFunction();
 
 public:
 	void OpFailed();
-	
+
 	uint8 CheckedAdd(uint8 a, uint8 b);
 	uint16 CheckedAdd(uint16 a, uint16 b);
 	uint32 CheckedAdd(uint32 a, uint32 b);
@@ -1169,7 +1169,7 @@ public:
 	int64 CheckedShl(int64 a, int64 b);
 
 public:
-	BfIRBuilder(BfModule* module);		
+	BfIRBuilder(BfModule* module);
 	bool HasExports(); // Contains non-empty functions and/or non-empty globals
 
 	String ToString(BfIRValue irValue);
@@ -1183,9 +1183,9 @@ public:
 	void pt(const BfIRType& irType);
 	void pbft(BfType* type);
 	void pt(const BfIRFunction& irFun);
-	void pft(const BfIRFunctionType& irType);	
+	void pft(const BfIRFunctionType& irType);
 	void pmd(const BfIRMDNode& irMDNode);
-			
+
 	void GetBufferData(Array<uint8>& outBuffer);
 	void ClearConstData();
 	void ClearNonConstData();
@@ -1194,11 +1194,11 @@ public:
 	void SetBackend(bool isBeefBackend);
 	void RemoveIRCodeGen();
 	void WriteIR(const StringImpl& fileName);
-	
+
 	void Module_SetTargetTriple(const StringImpl& targetTriple, const StringImpl& targetCPU);
 	void Module_AddModuleFlag(const StringImpl& flag, int val);
 
-	BfIRType GetPrimitiveType(BfTypeCode typeCode);	
+	BfIRType GetPrimitiveType(BfTypeCode typeCode);
 	BfIRType CreateStructType(const StringImpl& name);
 	BfIRType CreateStructType(const BfSizedArray<BfIRType>& memberTypes);
 	void StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& memberTypes, int size, int align, bool isPacked);
@@ -1210,7 +1210,7 @@ public:
 	BfIRType GetPointerTo(BfIRType type);
 	BfIRType GetSizedArrayType(BfIRType elementType, int length);
 	BfIRType GetVectorType(BfIRType elementType, int length);
-	
+
 	BfIRValue CreateConstAgg_Value(BfIRType type, const BfSizedArray<BfIRValue>& values);
 	BfIRValue CreateConstString(const StringImpl& string);
 	BfIRValue ConstToMemory(BfIRValue constVal);
@@ -1252,13 +1252,13 @@ public:
 	BfIRValue CreateExtractValue(BfIRValue val, int idx);
 	BfIRValue CreateExtractValue(BfIRValue val, BfIRValue idx);
 	BfIRValue CreateInsertValue(BfIRValue agg, BfIRValue val, int idx);
-	
+
 	BfIRValue CreateAlloca(BfIRType type);
 	BfIRValue CreateAlloca(BfIRType type, BfIRValue arraySize);
 	void SetAllocaAlignment(BfIRValue val, int alignment);
 	// When we do a dynamic alloca where we know the memory access patterns will not cause a page fault, we can omit the __chkstk call
 	//  Generally, this is when we allocate less than 4k and we know there will be a write on this memory before the next alloca
-	void SetAllocaNoChkStkHint(BfIRValue val);	
+	void SetAllocaNoChkStkHint(BfIRValue val);
 	void SetAllocaForceMem(BfIRValue val);
 	BfIRValue CreateAliasValue(BfIRValue val);
 	BfIRValue CreateLifetimeStart(BfIRValue val);
@@ -1277,8 +1277,8 @@ public:
 	void CreateFence(BfIRFenceType fenceType);
 	BfIRValue CreateStackSave();
 	BfIRValue CreateStackRestore(BfIRValue stackVal);
-	
-	BfIRValue CreateGlobalVariable(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);	
+
+	BfIRValue CreateGlobalVariable(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);
 	void CreateGlobalVariable(BfIRValue irValue);
 	void GlobalVar_SetUnnamedAddr(BfIRValue val, bool unnamedAddr);
 	void GlobalVar_SetInitializer(BfIRValue globalVar, BfIRValue initVal);
@@ -1289,32 +1289,32 @@ public:
 
 	BfIRBlock CreateBlock(const StringImpl& name, bool addNow = false);
 	BfIRBlock MaybeChainNewBlock(const StringImpl& name); // Creates new block if current block isn't empty
-	void AddBlock(BfIRBlock block);	
+	void AddBlock(BfIRBlock block);
 	void DropBlocks(BfIRBlock block);
-	void MergeBlockDown(BfIRBlock fromBlock, BfIRBlock intoBlock);	
+	void MergeBlockDown(BfIRBlock fromBlock, BfIRBlock intoBlock);
 	void SetInsertPoint(BfIRValue value);
 	void SetInsertPoint(BfIRBlock block);
 	void SetInsertPointAtStart(BfIRBlock block);
-	void EraseFromParent(BfIRBlock block);	
+	void EraseFromParent(BfIRBlock block);
 	void DeleteBlock(BfIRBlock block);
 	void EraseInstFromParent(BfIRValue val);
 	BfIRValue CreateBr(BfIRBlock block);
 	BfIRValue CreateBr_Fake(BfIRBlock block);
 	BfIRValue CreateBr_NoCollapse(BfIRBlock block);
 	void CreateCondBr(BfIRValue val, BfIRBlock trueBlock, BfIRBlock falseBlock);
-	BfIRBlock GetInsertBlock();	
-	void MoveBlockToEnd(BfIRBlock block);	
+	BfIRBlock GetInsertBlock();
+	void MoveBlockToEnd(BfIRBlock block);
 
 	BfIRValue CreateSwitch(BfIRValue value, BfIRBlock dest, int numCases);
 	BfIRValue AddSwitchCase(BfIRValue switchVal, BfIRValue caseVal, BfIRBlock caseBlock);
 	void SetSwitchDefaultDest(BfIRValue switchVal, BfIRBlock caseBlock);
 	BfIRValue CreatePhi(BfIRType type, int incomingCount);
 	void AddPhiIncoming(BfIRValue phi, BfIRValue value, BfIRBlock comingFrom);
-	
-	BfIRFunction GetIntrinsic(String intrinName, int intrinId, BfIRType returnType, const BfSizedArray<BfIRType>& paramTypes);	
+
+	BfIRFunction GetIntrinsic(String intrinName, int intrinId, BfIRType returnType, const BfSizedArray<BfIRType>& paramTypes);
 	BfIRFunctionType MapMethod(BfMethodInstance* methodInstance);
 	BfIRFunctionType CreateFunctionType(BfIRType resultType, const BfSizedArray<BfIRType>& paramTypes, bool isVarArg = false);
-	BfIRFunction CreateFunction(BfIRFunctionType funcType, BfIRLinkageType linkageType, const StringImpl& name);	
+	BfIRFunction CreateFunction(BfIRFunctionType funcType, BfIRLinkageType linkageType, const StringImpl& name);
 	void SetFunctionName(BfIRValue func, const StringImpl& name);
 	void EnsureFunctionPatchable();
 	BfIRValue RemapBindFunction(BfIRValue func);
@@ -1328,18 +1328,18 @@ public:
 	void SetCallAttribute(BfIRValue callInst, int paramIdx, BfIRAttribute attribute);
 	BfIRValue CreateRet(BfIRValue val);
 	BfIRValue CreateSetRet(BfIRValue val, int returnTypeId);
-	void CreateRetVoid();	
+	void CreateRetVoid();
 	void CreateUnreachable();
 	void Call_AddAttribute(BfIRValue callInst, int argIdx, BfIRAttribute attr);
-	void Call_AddAttribute(BfIRValue callInst, int argIdx, BfIRAttribute attr, int arg);	
+	void Call_AddAttribute(BfIRValue callInst, int argIdx, BfIRAttribute attr, int arg);
 	void Func_AddAttribute(BfIRFunction func, int argIdx, BfIRAttribute attr);
 	void Func_AddAttribute(BfIRFunction func, int argIdx, BfIRAttribute attr, int arg);
-	void Func_SetParamName(BfIRFunction func, int argIdx, const StringImpl& name);	
+	void Func_SetParamName(BfIRFunction func, int argIdx, const StringImpl& name);
 	void Func_DeleteBody(BfIRFunction func);
 	void Func_SafeRename(BfIRFunction func);
 	void Func_SafeRenameFrom(BfIRFunction func, const StringImpl& prevName);
 	void Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage);
-	
+
 	void Comptime_Error(int errorKind);
 	BfIRValue Comptime_GetBfType(int typeId, BfIRType resultType);
 	BfIRValue Comptime_GetReflectType(int typeId, BfIRType resultType);
@@ -1351,7 +1351,7 @@ public:
 	void RestoreDebugLocation();
 	void DupDebugLocation();
 	bool HasDebugLocation();
-	void ClearDebugLocation();	
+	void ClearDebugLocation();
 	void ClearDebugLocation(BfIRValue inst);
 	void ClearDebugLocation_Last();
 	void UpdateDebugLocation(BfIRValue inst);
@@ -1360,29 +1360,29 @@ public:
 	void CreateEnsureInstructionAt();
 	void CreateStatementStart();
 	void CreateObjectAccessCheck(BfIRValue value, bool useAsm);
-	
+
 	void DbgInit();
-	void DbgFinalize();	
+	void DbgFinalize();
 	bool DbgHasInfo();
 	bool DbgHasLineInfo();
 	String DbgGetStaticFieldName(BfFieldInstance* fieldInstance);
 	void DbgAddPrefix(String& name);
-	BfIRMDNode DbgCreateCompileUnit(int lang, const StringImpl& filename, const StringImpl& directory, const StringImpl& producer, bool isOptimized, 
-		const StringImpl& flags, int runtimeVer, bool linesOnly);	
+	BfIRMDNode DbgCreateCompileUnit(int lang, const StringImpl& filename, const StringImpl& directory, const StringImpl& producer, bool isOptimized,
+		const StringImpl& flags, int runtimeVer, bool linesOnly);
 	BfIRMDNode DbgCreateFile(const StringImpl& fileName, const StringImpl& directory, const Val128& md5Hash);
 	BfIRMDNode DbgGetCurrentLocation();
 	void DbgSetType(BfType * type, BfIRMDNode diType);
-	void DbgSetInstType(BfType * type, BfIRMDNode diType);	
+	void DbgSetInstType(BfType * type, BfIRMDNode diType);
 	BfIRMDNode DbgCreateConstValue(int64 val);
-	BfIRMDNode DbgGetType(BfType* type, BfIRPopulateType populateType = BfIRPopulateType_Declaration);	
+	BfIRMDNode DbgGetType(BfType* type, BfIRPopulateType populateType = BfIRPopulateType_Declaration);
 	BfIRMDNode DbgGetTypeInst(BfTypeInstance* typeInst, BfIRPopulateType populateType = BfIRPopulateType_Declaration);
 	void DbgTrackDITypes(BfType* type);
 	BfIRMDNode DbgCreateNameSpace(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNum);
 	BfIRMDNode DbgCreateImportedModule(BfIRMDNode context, BfIRMDNode namespaceNode, int line);
 	BfIRMDNode DbgCreateBasicType(const StringImpl& name, int64 sizeInBits, int64 alignInBits, int encoding);
-	BfIRMDNode DbgCreateStructType(BfIRMDNode context, const StringImpl& name, BfIRMDNode file, int lineNum, int64 sizeInBits, int64 alignInBits, 
+	BfIRMDNode DbgCreateStructType(BfIRMDNode context, const StringImpl& name, BfIRMDNode file, int lineNum, int64 sizeInBits, int64 alignInBits,
 		int flags, BfIRMDNode derivedFrom, const BfSizedArray<BfIRMDNode>& elements);
-	BfIRMDNode DbgCreateEnumerationType(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNumber, int64 SizeInBits, int64 alignInBits, 
+	BfIRMDNode DbgCreateEnumerationType(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNumber, int64 SizeInBits, int64 alignInBits,
 		const BfSizedArray<BfIRMDNode>& elements, BfIRMDNode underlyingType);
 	BfIRMDNode DbgCreatePointerType(BfIRMDNode diType);
 	BfIRMDNode DbgCreateReferenceType(BfIRMDNode diType);
@@ -1397,14 +1397,14 @@ public:
 	void DbgDeleteTemporary(BfIRMDNode diNode);
 	BfIRMDNode DbgMakePermanent(BfIRMDNode diNode, BfIRMDNode diBaseType, const BfSizedArray<BfIRMDNode>& elements);
 	BfIRMDNode DbgCreateEnumerator(const StringImpl& name, int64 val);
-	BfIRMDNode DbgCreateMemberType(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNumber, int64 sizeInBits, int64 alignInBits, 
+	BfIRMDNode DbgCreateMemberType(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNumber, int64 sizeInBits, int64 alignInBits,
 		int64 offsetInBits, int flags, BfIRMDNode type);
 	BfIRMDNode DbgCreateStaticMemberType(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNumber, BfIRMDNode type, int flags, BfIRValue val);
 	BfIRMDNode DbgCreateInheritance(BfIRMDNode type, BfIRMDNode baseType, int64 baseOffset, int flags);
 	BfIRMDNode DbgCreateMethod(BfIRMDNode context, const StringImpl& name, const StringImpl& linkageName, BfIRMDNode file, int lineNum, BfIRMDNode type,
-		bool isLocalToUnit, bool isDefinition, int vk, int vIndex, BfIRMDNode vTableHolder, int flags, bool isOptimized, BfIRValue fn, 
+		bool isLocalToUnit, bool isDefinition, int vk, int vIndex, BfIRMDNode vTableHolder, int flags, bool isOptimized, BfIRValue fn,
 		const BfSizedArray<BfIRMDNode>& genericArgs, const BfSizedArray<BfIRValue>& genericConstValueArgs);
-	BfIRMDNode DbgCreateFunction(BfIRMDNode context, const StringImpl& name, const StringImpl& linkageName, BfIRMDNode file, int lineNum, BfIRMDNode type, 
+	BfIRMDNode DbgCreateFunction(BfIRMDNode context, const StringImpl& name, const StringImpl& linkageName, BfIRMDNode file, int lineNum, BfIRMDNode type,
 		bool isLocalToUnit, bool isDefinition, int scopeLine, int flags, bool isOptimized, BfIRValue fn);
 	BfIRMDNode DbgCreateParameterVariable(BfIRMDNode scope, const StringImpl& name, int argNo, BfIRMDNode file, int lineNum, BfIRMDNode type,
 		bool AlwaysPreserve = false, int flags = 0);
@@ -1414,14 +1414,13 @@ public:
 	BfIRValue DbgInsertValueIntrinsic(BfIRValue val, BfIRMDNode varInfo);
 	BfIRValue DbgInsertDeclare(BfIRValue val, BfIRMDNode varInfo, BfIRValue declareBefore = BfIRValue());
 	BfIRValue DbgLifetimeEnd(BfIRMDNode varInfo);
-	void DbgCreateGlobalVariable(BfIRMDNode context, const StringImpl& name, const StringImpl& linkageName, BfIRMDNode file, int lineNumber, 
+	void DbgCreateGlobalVariable(BfIRMDNode context, const StringImpl& name, const StringImpl& linkageName, BfIRMDNode file, int lineNumber,
 		BfIRMDNode type, bool isLocalToUnit, BfIRValue val, BfIRMDNode Decl = BfIRMDNode());
-	BfIRMDNode DbgCreateLexicalBlock(BfIRMDNode scope, BfIRMDNode file, int line, int col);	
-	void DbgCreateAnnotation(BfIRMDNode scope, const StringImpl& name, BfIRValue value);	
+	BfIRMDNode DbgCreateLexicalBlock(BfIRMDNode scope, BfIRMDNode file, int line, int col);
+	void DbgCreateAnnotation(BfIRMDNode scope, const StringImpl& name, BfIRValue value);
 
 	BfIRState GetState();
 	void SetState(const BfIRState& state);
 };
 
 NS_BF_END
-

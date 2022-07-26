@@ -36,7 +36,7 @@ enum X64CPURegister
 	X64Reg_None = -1,
 
 	// integer general registers (DO NOT REORDER THESE; must exactly match DbgModule X64 register mappings)
-	X64Reg_RAX = 0,	
+	X64Reg_RAX = 0,
 	X64Reg_RDX,
 	X64Reg_RCX,
 	X64Reg_RBX,
@@ -51,7 +51,7 @@ enum X64CPURegister
 	X64Reg_R12,
 	X64Reg_R13,
 	X64Reg_R14,
-	X64Reg_R15,	
+	X64Reg_R15,
 	X64Reg_RIP,
 	X64Reg_EFL,
 	X64Reg_GS,
@@ -74,7 +74,7 @@ enum X64CPURegister
 	X64Reg_AX,
 	X64Reg_DX,
 	X64Reg_CX,
-	X64Reg_BX,	
+	X64Reg_BX,
 	X64Reg_SI,
 	X64Reg_DI,
 	X64Reg_R8W,
@@ -93,7 +93,7 @@ enum X64CPURegister
 	X64Reg_AH,
 	X64Reg_DH,
 	X64Reg_CH,
-	X64Reg_BH,	
+	X64Reg_BH,
 	X64Reg_SIL,
 	X64Reg_DIL,
 	X64Reg_R8B,
@@ -159,7 +159,7 @@ enum X64CPURegister
 	X64Reg_XMM12_f32,
 	X64Reg_XMM13_f32,
 	X64Reg_XMM14_f32,
-	X64Reg_XMM15_f32,	
+	X64Reg_XMM15_f32,
 
 	// xmm registers
 	X64Reg_XMM00,
@@ -298,14 +298,14 @@ public:
 
 	struct IntRegs
 	{
-		int64 rax;				
+		int64 rax;
 		int64 rdx;
 		int64 rcx;
-		int64 rbx;				
+		int64 rbx;
 		int64 rsi;
 		int64 rdi;
 		uint64 rbp;
-		uint64 rsp;	
+		uint64 rsp;
 		int64 r8;
 		int64 r9;
 		int64 r10;
@@ -395,7 +395,7 @@ public:
 				X64Reg_RSP,
 				X64Reg_RBP,
 				X64Reg_RSI,
-				X64Reg_RDI,								
+				X64Reg_RDI,
 				X64Reg_R8,
 				X64Reg_R9,
 				X64Reg_R10,
@@ -466,7 +466,7 @@ public:
 	bool IsCall();
 	bool IsRep(bool& isPrefixOnly);
 	bool IsReturn();
-	bool IsLoadAddress();	
+	bool IsLoadAddress();
 	bool GetIndexRegisterAndOffset(int* outRegister, int* outOffset); // IE: [ebp + 0x4]
 	bool GetImmediate(uint64* outImm);
 	int GetJmpState(int flags);
@@ -475,7 +475,6 @@ public:
 	uint64 GetTarget(Debugger* debugger = NULL, X64CPURegisters* registers = NULL);
 	bool PartialSimulate(Debugger* debugger, X64CPURegisters* registers);
 };
-
 
 class X64CPU
 {

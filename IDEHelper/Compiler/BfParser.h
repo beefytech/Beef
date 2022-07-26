@@ -20,15 +20,15 @@ enum BfSyntaxToken
 {
 	BfSyntaxToken_None,
 	BfSyntaxToken_Token,
-	BfSyntaxToken_Identifier,	
+	BfSyntaxToken_Identifier,
 	BfSyntaxToken_CharQuote,
-	BfSyntaxToken_StringQuote,	
+	BfSyntaxToken_StringQuote,
 	BfSyntaxToken_ForwardSlash,
-	BfSyntaxToken_Literal,	
+	BfSyntaxToken_Literal,
 	BfSyntaxToken_CommentLine,
 	BfSyntaxToken_CommentBlock,
-	BfSyntaxToken_GeneratedNode,	
-	BfSyntaxToken_FAILED,	
+	BfSyntaxToken_GeneratedNode,
+	BfSyntaxToken_FAILED,
 	BfSyntaxToken_HIT_END_IDX,
 	BfSyntaxToken_EOF
 };
@@ -59,12 +59,12 @@ enum MaybeBool
 {
 	MaybeBool_None = -1,
 	MaybeBool_False = 0,
-	MaybeBool_True = 1,	
+	MaybeBool_True = 1,
 };
 
 class BfParserData : public BfSourceData
 {
-public:	
+public:
 	uint64 mHash;
 	int mDataId;
 	int mRefCount; // -1 = not cached
@@ -82,7 +82,7 @@ public:
 	Dictionary<int, BfParserWarningEnabledChange> mWarningEnabledChanges;
 	std::set<int> mUnwarns;
 	bool mFailed; // Don't cache if there's a warning or an error
-	bool mDidReduce;			
+	bool mDidReduce;
 
 public:
 	BfParserData();
@@ -95,11 +95,11 @@ public:
 	}
 
 	virtual BfParser* ToParser() override;
-	int GetCharIdAtIndex(int findIndex);	
+	int GetCharIdAtIndex(int findIndex);
 	void GetLineCharAtIdx(int idx, int& line, int& lineChar);
 	bool IsUnwarnedAt(BfAstNode* node);
 	bool IsWarningEnabledAtSrcIndex(int warningNumber, int srcIdx);
-	void ReportMemory(MemReporter* memReporter);	
+	void ReportMemory(MemReporter* memReporter);
 };
 
 class BfParserCache
@@ -115,7 +115,7 @@ public:
 	};
 
 	struct DataEntry
-	{		
+	{
 		BfParserData* mParserData;
 
 		bool operator==(const LookupEntry& lookup) const;
@@ -123,7 +123,7 @@ public:
 		{
 			return lookup.mParserData == mParserData;
 		}
-	};		
+	};
 
 public:
 	CritSect mCritSect;
@@ -131,7 +131,7 @@ public:
 	BfAstAllocManager mAstAllocManager;
 	HashSet<DataEntry> mEntries;
 
-public:	
+public:
 	BfParserCache();
 	~BfParserCache();
 	void ReportMemory(MemReporter* memReporter);
@@ -153,30 +153,30 @@ enum BfSourceEmbedKind : int8
 
 class BfParser : public BfSource
 {
-public:		
+public:
 	BfParserData* mParserData;
 	bool mUsingCache;
 
 	BfPassInstance* mPassInstance;
 	BfSourceClassifier* mSourceClassifier;
-	String mFileName;	
+	String mFileName;
 	int mTextVersion;
 	BfSourceEmbedKind mEmbedKind;
-	bool mAwaitingDelete;	
-	
+	bool mAwaitingDelete;
+
 	bool mCompatMode; // Does C++ compatible parsing
-	bool mQuickCompatMode;	
+	bool mQuickCompatMode;
 	bool mScanOnly;
 	bool mCompleteParse;
 	bool mIsEmitted;
 	BfLineStartEntry* mJumpTable;
 	int mJumpTableSize;
-	int mOrigSrcLength;	
+	int mOrigSrcLength;
 	int mDataId;
 
 	int mSrcIdx;
 	int mLineStart;
-	int mLineNum;	
+	int mLineNum;
 	bool mInAsmBlock;
 
 	BfParserFlag mParserFlags;
@@ -186,43 +186,43 @@ public:
 	BfSyntaxToken mSyntaxToken;
 	int mTriviaStart; // mTriviaStart < mTokenStart when there's leading whitespace
 	int mTokenStart;
-	int mTokenEnd;	
+	int mTokenEnd;
 	BfAstNode* mGeneratedNode;
-	BfVariant mLiteral;	
+	BfVariant mLiteral;
 	BfToken mToken;
 	BfPreprocesorIgnoredSectionNode* mPreprocessorIgnoredSectionNode;
 	int mPreprocessorIgnoreDepth;
 	Array< std::pair<BfAstNode*, bool> > mPreprocessorNodeStack;
 
 	Dictionary<String, BfDefineState> mPreprocessorDefines;
-	
-	std::set<int> mPreprocessorIgnoredSectionStarts;			
+
+	std::set<int> mPreprocessorIgnoredSectionStarts;
 
 public:
 	virtual void HandleInclude(BfAstNode* paramNode);
 	virtual void HandleIncludeNext(BfAstNode* paramNode);
 	virtual void HandlePragma(const StringImpl& pragma, BfBlock* block);
 	virtual void HandleDefine(const StringImpl& name, BfAstNode* paramNode);
-	virtual void HandleUndefine(const StringImpl& name);	
+	virtual void HandleUndefine(const StringImpl& name);
 	virtual MaybeBool HandleIfDef(const StringImpl& name);
 	virtual MaybeBool HandleProcessorCondition(BfBlock* paramNode);
 
-public:		
+public:
 	void Init(uint64 cacheHash = 0);
-	void NewLine();	
+	void NewLine();
 	BfExpression* CreateInlineExpressionFromNode(BfBlock* block);
 	bool EvaluatePreprocessor(BfExpression* expr);
 	BfBlock* ParseInlineBlock(int spaceIdx, int endIdx);
-	bool HandlePreprocessor();	
+	bool HandlePreprocessor();
 	bool IsUnwarnedAt(BfAstNode* node);
 	bool SrcPtrHasToken(const char* name);
 	uint32 GetTokenHash();
 	void ParseBlock(BfBlock* astNode, int depth, bool isInterpolate = false);
-	double ParseLiteralDouble();	
+	double ParseLiteralDouble();
 	void AddErrorNode(int startIdx, int endIdx);
-	BfCommentKind GetCommentKind(int startIdx);	
+	BfCommentKind GetCommentKind(int startIdx);
 
-public:	
+public:
 	BfParser(BfSystem* bfSystem, BfProject* bfProject = NULL);
 	~BfParser();
 
@@ -232,23 +232,23 @@ public:
 	void GetLineCharAtIdx(int idx, int& line, int& lineChar);
 
 	void Fail(const StringImpl& error, int offset = -1);
-	void TokenFail(const StringImpl& error, int offset = -1);	
-	
-	void SetSource(const char* data, int length);	
+	void TokenFail(const StringImpl& error, int offset = -1);
+
+	void SetSource(const char* data, int length);
 	void MoveSource(const char* data, int length); // Takes ownership of data ptr
 	void RefSource(const char* data, int length);
 	void MakeNegative(uint64& val, bool& hadOverflow);
 	void NextToken(int endIdx = -1, bool outerIsInterpolate = false, bool disablePreprocessor = false);
-	BfAstNode* CreateNode();	
-		
-	void Parse(BfPassInstance* passInstance);		
+	BfAstNode* CreateNode();
+
+	void Parse(BfPassInstance* passInstance);
 	int GetCharIdAtIndex(int findIndex);
 	virtual void Close() override;
 	virtual void HadSrcRealloc() override;
 
-	void GenerateAutoCompleteFrom(int srcPosition);	
-		
-	void ReportMemory(MemReporter* memReporter);	
+	void GenerateAutoCompleteFrom(int srcPosition);
+
+	void ReportMemory(MemReporter* memReporter);
 	void GetSrcPosition(int idx, int& lineNum, int& column);
 };
 

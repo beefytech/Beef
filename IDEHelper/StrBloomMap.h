@@ -13,7 +13,7 @@ public:
 	Beefy::BumpAllocator mAlloc;
 
 	struct Entry
-	{		
+	{
 		T mValue;
 		Entry* mNext;
 	};
@@ -30,7 +30,7 @@ public:
 		{
 			mMap = map;
 			mCurBucket = 0;
-			mCurEntry = NULL;	
+			mCurEntry = NULL;
 		}
 
 		Iterator& operator++()
@@ -67,7 +67,7 @@ public:
 
 public:
 	int GetHash(const char* str, const char* strEnd)
-	{	
+	{
 		if (str == NULL)
 			return 0;
 
@@ -83,20 +83,20 @@ public:
 		return curHash & 0x7FFFFFFF;
 	}
 
-public:	
+public:
 	Entry** mHashHeads;
 
 public:
 	StrBloomMap()
 	{
-		mHashHeads = NULL;		
+		mHashHeads = NULL;
 	}
 
 	void InsertUnique(int hash, T value)
 	{
 		if (mHashHeads == NULL)
 			mHashHeads = (Entry**)mAlloc.AllocBytes(sizeof(Entry*) * HashSize, alignof(Entry*));
-		
+
 		int hashIdx = hash % HashSize;
 		Entry* headEntry = mHashHeads[hashIdx];
 
@@ -116,12 +116,12 @@ public:
 	}
 
 	Entry* FindFirst(const char* name)
-	{		
+	{
 		if (mHashHeads == NULL)
 			return NULL;
 
 		int hash = GetHash(name, NULL) % HashSize;
-		return mHashHeads[hash];		
+		return mHashHeads[hash];
 	}
 
 	Iterator begin()
@@ -138,4 +138,3 @@ public:
 };
 
 NS_BF_DBG_END
-

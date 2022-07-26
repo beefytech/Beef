@@ -54,7 +54,7 @@ const char* X64CPURegisters::sCPURegisterNames[] =
 	"NONE",
 
 	// integer general registers (DO NOT REORDER THESE; must exactly match DbgModule x86 register mappings)
-	"RAX",	
+	"RAX",
 	"RDX",
 	"RCX",
 	"RBX",
@@ -69,7 +69,7 @@ const char* X64CPURegisters::sCPURegisterNames[] =
 	"R12",
 	"R13",
 	"R14",
-	"R15",			
+	"R15",
 	"RIP",
 	"EFL",
 	"GS",
@@ -88,7 +88,7 @@ const char* X64CPURegisters::sCPURegisterNames[] =
 	"R13D",
 	"R14D",
 	"R15D",
-	
+
 	"AX",
 	"DX",
 	"CX",
@@ -141,7 +141,7 @@ const char* X64CPURegisters::sCPURegisterNames[] =
 	"MM4",
 	"MM5",
 	"MM6",
-	"MM7",	
+	"MM7",
 
 	"XMM0_f64",
 	"XMM1_f64",
@@ -354,7 +354,7 @@ bool X64Instr::IsRep(bool& isPrefixOnly)
 
 bool X64Instr::IsReturn()
 {
-	const MCInstrDesc &instDesc = mX64->mInstrInfo->get(mMCInst.getOpcode()); 
+	const MCInstrDesc &instDesc = mX64->mInstrInfo->get(mMCInst.getOpcode());
 	return (instDesc.getFlags() & (1 << MCID::Return)) != 0;
 }
 
@@ -402,7 +402,7 @@ static int ConvertRegNum(const MCOperand& operand)
 		return X64Reg_RBP;
 	case llvm::X86::RSP:
 		return X64Reg_RSP;
-	
+
 	case llvm::X86::R8:
 	case llvm::X86::R8D:
 	case llvm::X86::R8W:
@@ -507,7 +507,7 @@ static int ConvertRegNum(const MCOperand& operand)
 	case llvm::X86::XMM14:
 		return X64Reg_M128_XMM14;
 	case llvm::X86::XMM15:
-		return X64Reg_M128_XMM15;	
+		return X64Reg_M128_XMM15;
 	}
 
 	return -1;
@@ -573,13 +573,13 @@ bool X64Instr::GetImmediate(uint64* outImm)
 
 int X64Instr::GetJmpState(int flags)
 {
-	const MCInstrDesc &instDesc = mX64->mInstrInfo->get(mMCInst.getOpcode());	
+	const MCInstrDesc &instDesc = mX64->mInstrInfo->get(mMCInst.getOpcode());
 	if ((instDesc.getFlags() & (1 << MCID::Branch)) == 0)
 		return -1;
 
 	if (mMCInst.getNumOperands() < 1)
 		return 0;
-	
+
 #define FLAGVAR(abbr, name) int flag##abbr = ((flags & ((uint64)1 << X64CPURegisters::GetFlagBitForRegister(X64Reg_FLAG_##abbr##_##name))) != 0) ? 1 : 0
 	FLAGVAR(CF, CARRY);
 	FLAGVAR(PF, PARITY);
@@ -641,10 +641,10 @@ void X64Instr::MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm)
 
 	int opCode = instDesc.getOpcode();
 	auto form = (instDesc.TSFlags & llvm::X86II::FormMask);
-	
-	/*if (opCode == 1724) 
+
+	/*if (opCode == 1724)
 	{
-		// MOVAPSrr is emitted for all moves between XMM registers, regardless of 
+		// MOVAPSrr is emitted for all moves between XMM registers, regardless of
 		//  their actual format, so we just copy the actual RegForm form here
 		if (instDesc.getNumOperands() != 2)
 			return;
@@ -655,7 +655,7 @@ void X64Instr::MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm)
 		int regNumFrom = ConvertRegNum(operand);
 
 		if (regNumFrom == -1) // ??
-			return; 
+			return;
 
 		while (std::max(regNumFrom, regNumTo) >= (int)regsUsed.size())
 			regsUsed.push_back(RegForm_Invalid);
@@ -680,7 +680,7 @@ void X64Instr::MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm)
 	int checkIdx = opCode * 3;
 
 	//const MCInstrDesc &instDesc = mX64->mInstrInfo->get(mMCInst.getOpcode());
-	//auto form = (instDesc.TSFlags & llvm::X86II::FormMask);	
+	//auto form = (instDesc.TSFlags & llvm::X86II::FormMask);
 
 	for (int opIdx = 0; opIdx < std::min((int)instDesc.getNumOperands(), 3); opIdx++)
 	{
@@ -696,7 +696,7 @@ void X64Instr::MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm)
 				regsUsed[regNum] = regForm;
 
 			checkIdx++;
-		}		
+		}
 	}
 }
 
@@ -733,7 +733,7 @@ uint64 X64Instr::GetTarget(Debugger* debugger, X64CPURegisters* registers)
 
 	if (operand.isImm())
 	{
-		auto targetAddr = (uint64)operand.getImm();		
+		auto targetAddr = (uint64)operand.getImm();
 		if (instDesc.OpInfo[opIdx].OperandType == MCOI::OPERAND_PCREL)
 			targetAddr += mAddress + mSize;
 		return targetAddr;
@@ -756,10 +756,10 @@ bool X64Instr::PartialSimulate(Debugger* debugger, X64CPURegisters* registers)
 //		auto form = (instDesc.TSFlags & llvm::X86II::FormMask);
 //
 //		if ((form == llvm::X86II::MRMSrcMem) && (instDesc.NumOperands == 6))
-//		{			
+//		{
 //			auto destReg = mMCInst.getOperand(llvm::X86::AddrBaseReg);
 //			if (destReg.isReg())
-//			{				
+//			{
 //				int regNum = 0;
 //				int offset = 0;
 //				if (GetIndexRegisterAndOffset(&regNum, &offset))
@@ -767,7 +767,7 @@ bool X64Instr::PartialSimulate(Debugger* debugger, X64CPURegisters* registers)
 //					uint64 addr = registers->mIntRegsArray[regNum] + offset;
 //					uint64 val = 0;
 //					debugger->ReadMemory(addr, 8, &val);
-//					
+//
 //					switch (destReg.getReg())
 //					{
 //
@@ -779,7 +779,7 @@ bool X64Instr::PartialSimulate(Debugger* debugger, X64CPURegisters* registers)
 //// 		if ((form == llvm::X86II::MRMDestMem) || (form == llvm::X86II::MRMSrcMem) ||
 //// 			((form >= llvm::X86II::MRM0m) && (form <= llvm::X86II::MRM7m)))
 //// 		{
-//// 		}		
+//// 		}
 //	}
 //
 //	if (instDesc.getOpcode() == X86::XOR8rr)
@@ -792,7 +792,7 @@ bool X64Instr::PartialSimulate(Debugger* debugger, X64CPURegisters* registers)
 //			if ((destReg.isReg()) && (srcReg.isReg()))
 //			{
 //				if (destReg.getReg() == srcReg.getReg())
-//				{					
+//				{
 //					switch (destReg.getReg())
 //					{
 //					case X86::AL:
@@ -817,8 +817,8 @@ X64CPU::X64CPU() :
 	mInstrInfo = NULL;
 	mInstPrinter = NULL;
 
-	//InitializeAllTargets();		
-	
+	//InitializeAllTargets();
+
 	auto& TheX86_64Target = llvm::getTheX86_64Target();
 
 	const char* triple = "x86_64-pc-mingw32";
@@ -835,7 +835,7 @@ X64CPU::X64CPU() :
 		return;
 
 	mInstrInfo = TheX86_64Target.createMCInstrInfo();
-	
+
 	mMCContext = new MCContext(Triple(triple), mAsmInfo, mRegisterInfo, mSubtargetInfo);
 
 	mMCObjectFileInfo = TheX86_64Target.createMCObjectFileInfo(*mMCContext, false);
@@ -875,11 +875,11 @@ X64CPU::~X64CPU()
 }
 
 bool X64CPU::Decode(uint64 address, DbgModuleMemoryCache* memoryCache, X64Instr* inst)
-{	
+{
 	inst->mAddress = address;
 	inst->mX64 = this;
 
-	uint64 size = 0;		
+	uint64 size = 0;
 	uint8 data[15];
 	memoryCache->Read(address, data, 15);
 
@@ -939,7 +939,6 @@ void X64CPU::GetNextPC(uint64 baseAddress, const uint8* dataBase, int dataLength
 	mDisAsm->CommentStream = &nulls();
 	ArrayRef<uint8_t> dataArrayRef(dataPtr, dataLength - (dataPtr - dataBase));
 	MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(mcInst, size, dataArrayRef, address, nulls());
-
 }
 
 bool X64CPU::IsReturnInstruction(X64Instr* inst)
@@ -957,7 +956,7 @@ String X64CPU::InstructionToString(X64Instr* inst, uint64 addr)
 	//mInstPrinter->CurPCRelImmOffset = addr + inst->GetLength();
 	mInstPrinter->printInst(&inst->mMCInst, addr, annotationsStr, *mSubtargetInfo, OS);
 	//OS.flush();
-	//llvm::StringRef str = OS.str();	
+	//llvm::StringRef str = OS.str();
 
 	String result;
 	for (int idx = 0; idx < (int)insnStr.size(); idx++)
@@ -991,21 +990,21 @@ String X64CPU::InstructionToString(X64Instr* inst, uint64 addr)
 }
 
 DbgBreakKind X64CPU::GetDbgBreakKind(uint64 address, DbgModuleMemoryCache* memoryCache, int64* regs, int64* outObjectPtr)
-{	
+{
 	// We've looking for a CMP BYTE PTR [<reg>], -0x80
 	//  if <reg> is R12 then encoding takes an extra 2 bytes
-	X64Instr inst;	
+	X64Instr inst;
 	for (int checkLen = 5; checkLen >= 3; checkLen--)
-	{		
+	{
 		int offset = -3 - checkLen;
 
 		if (!Decode(address + offset, memoryCache, &inst))
-			continue;	
+			continue;
 
 		if (inst.GetLength() != checkLen)
 			continue;
 
-		const MCInstrDesc &instDesc = mInstrInfo->get(inst.mMCInst.getOpcode());		
+		const MCInstrDesc &instDesc = mInstrInfo->get(inst.mMCInst.getOpcode());
 		if (!instDesc.isCompare())
 			continue;
 
@@ -1052,18 +1051,18 @@ DbgBreakKind X64CPU::GetDbgBreakKind(uint64 address, DbgModuleMemoryCache* memor
 	for (int offset = 3; offset <= 3; offset++)
 	{
 		if (!Decode(address - offset, memoryCache, &inst))
-			continue;	
+			continue;
 
 		if (inst.GetLength() != 2)
 			continue;
 
-		const MCInstrDesc &instDesc = mInstrInfo->get(inst.mMCInst.getOpcode());		
+		const MCInstrDesc &instDesc = mInstrInfo->get(inst.mMCInst.getOpcode());
 		if (!instDesc.isBranch())
 			continue;
 
 		auto immediateType = (instDesc.TSFlags & llvm::X86II::ImmMask);
 		if ((immediateType == llvm::X86II::Imm8PCRel) && (inst.mMCInst.getNumOperands() == 2))
-		{			
+		{
 			auto immOp = inst.mMCInst.getOperand(1);
 			if (!immOp.isImm())
 				continue;

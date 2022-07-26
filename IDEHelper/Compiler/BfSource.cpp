@@ -16,7 +16,7 @@ BfSource::BfSource(BfSystem* bfSystem)
 	if (bfSystem != NULL)
 		mAstAllocManager = &gBfParserCache->mAstAllocManager;
 	mSrc = NULL;
-	
+
 	mSrcLength = 0;
 	mSrcAllocSize = -1;
 
@@ -36,7 +36,7 @@ BfSource::BfSource(BfSystem* bfSystem)
 
 BfSource::~BfSource()
 {
-	int sourceCount = gSourceCount--;	
+	int sourceCount = gSourceCount--;
 
 	delete mSourceData;
 
@@ -65,7 +65,7 @@ BfErrorNode* BfSource::CreateErrorNode(BfAstNode* astNode)
 }
 
 void BfSource::AddErrorNode(BfAstNode* astNode)
-{	
+{
 	mPendingErrorNodes.push_back(CreateErrorNode(astNode));
 }
 
@@ -85,10 +85,10 @@ int BfSource::AllocChars(int charCount)
 		mSrcAllocSize = newAllocSize;
 
 		BF_ASSERT(mSourceData->ToParser() != NULL);
-		mSourceData->mSrc = mSrc;		
+		mSourceData->mSrc = mSrc;
 
 		HadSrcRealloc();
-	}	
+	}
 
 	int retVal = mSrcLength;
 	mSrcLength += charCount;
@@ -130,7 +130,7 @@ void BfSource::FinishSideNodes()
 }
 
 void BfSource::Close()
-{	
+{
 // 	if (mAlloc->mSource == NULL)
 // 	{
 // 		BF_ASSERT(mErrorRootNode == NULL);

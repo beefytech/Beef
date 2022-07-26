@@ -80,7 +80,7 @@ DebugManager::DebugManager()
 	mStepOverExternalFiles = false;
 
 	mDebugger32 = NULL;
-	mDebugger64 = NULL;	
+	mDebugger64 = NULL;
 	mNetManager = new NetManager();
 	mNetManager->mDebugManager = this;
 
@@ -106,12 +106,11 @@ DebugManager::~DebugManager()
 
 	delete mNetManager;
 	delete mDebugger64;
-	delete mDebugger32;		
+	delete mDebugger32;
 	/*for (auto stepFilter : mStepFilters)
 	{
-
 	}*/
-	delete mDebugVisualizers;	
+	delete mDebugVisualizers;
 }
 
 void DebugManager::OutputMessage(const StringImpl& msg)
@@ -144,7 +143,6 @@ void DebugManager::SetSourceServerCacheDir()
 #endif
 }
 
-
 //#define CAPTURE_ALLOC_BACKTRACE
 //#define CAPTURE_ALLOC_SOURCES
 
@@ -153,7 +151,7 @@ const int sNumAllocAddrs = 0x300000;
 const int sCaptureDepth = 14;
 const int sCaptureOffset = 4;
 static intptr gAllocAddrs[sNumAllocAddrs][sCaptureDepth];
-#endif 
+#endif
 
 #ifdef CAPTURE_ALLOC_SOURCES
 #include <Dbghelp.h>
@@ -191,7 +189,7 @@ static void ReallocEntry(long oldRequest, long newRequest, int newSize)
 		entry->mAllocSize = newSize;
 		gBfCaptureSourceAllocMap[newRequest] = *entry;
 		gBfCaptureSourceAllocMap.erase(itr);
-	}	
+	}
 }
 
 static void RemoveAllocEntry(long lRequest)
@@ -203,12 +201,10 @@ static void RemoveAllocEntry(long lRequest)
 
 		entry->mLoc->mTotalSize -= entry->mAllocSize;
 		gBfCaptureSourceAllocMap.erase(itr);
-	}	
+	}
 }
 
-
 //const LOC_HASHES
-
 
 #endif
 
@@ -246,7 +242,7 @@ static int BfAllocHook(int nAllocType, void *pvData,
 	if (hProcess == NULL)
 	{
 		hProcess = GetCurrentProcess();
-		BOOL worked = SymInitialize(hProcess, NULL, TRUE);		
+		BOOL worked = SymInitialize(hProcess, NULL, TRUE);
 	}
 
 	if (nAllocType == _HOOK_ALLOC)
@@ -317,7 +313,6 @@ static int BfAllocHook(int nAllocType, void *pvData,
 
 				if ((captureAllocLoc->mIsEndpoint) && (foundSym))
 				{
-					
 				}
 
 				gHashCaptureAllocSize[hashVal] = captureAllocLoc;
@@ -329,7 +324,6 @@ static int BfAllocHook(int nAllocType, void *pvData,
 			{
 				continue;
 			}
-
 
 			captureAllocLoc->mTotalSize += (int)nSize;
 
@@ -433,19 +427,18 @@ static int BfAllocHook(int nAllocType, void *pvData,
 
 #endif //BF_PLATFORM_WINDOWS
 
-
 void BfReportMemory()
 {
 	BfLogDbg("Used: %.2fM NumAllocs: %d Allocs: %.2fM\n", (gBfAllocCount - gBfFreeCount) / (1024.0 * 1024.0), gBfNumAllocs, gBfAllocCount / (1024.0 * 1024.0));
 }
 
 void BfFullReportMemory()
-{		
+{
 	/*OutputDebugStrF("Testing OOB\n");
 	char* str = new char[12];
 	delete str;
 	char c = str[1];*/
-	
+
 	if (gBfParserCache != NULL)
 	{
 		MemReporter memReporter;
@@ -457,7 +450,7 @@ void BfFullReportMemory()
 
 	OutputDebugStrF("Used: %.2fM NumAllocs: %d Allocs: %.2fM\n", (gBfAllocCount - gBfFreeCount) / (1024.0 * 1024.0), gBfNumAllocs, gBfAllocCount / (1024.0 * 1024.0));
 	OutputDebugStrF("ChunkedDataBuffer allocated blocks: %d\n", ChunkedDataBuffer::sBlocksAllocated);
-	
+
 	if (gDebugManager != NULL)
 	{
 		MemReporter memReporter;
@@ -493,7 +486,7 @@ void BfFullReportMemory()
 
 	for (auto kv : byNameMap)
 	{
-		//OutputDebugStrF("%dk %s\n", (kv.second + 1023) / 1024, kv.first.c_str());		
+		//OutputDebugStrF("%dk %s\n", (kv.second + 1023) / 1024, kv.first.c_str());
 		bySizeMap.insert(std::multimap<int, String>::value_type(-kv.second, kv.first));
 	}
 
@@ -528,7 +521,7 @@ struct _CrtMemBlockHeader
 //static _CrtMemBlockHeader* __acrt_last_block;
 
 void ShowMemoryUsage()
-{	
+{
 #ifdef BF_PLATFORM_WINDOWS
 	PROCESS_MEMORY_COUNTERS processMemCounters;
 	processMemCounters.cb = sizeof(PROCESS_MEMORY_COUNTERS);
@@ -538,7 +531,7 @@ void ShowMemoryUsage()
 
 	static bool hasCheckpoint = true;
 	_CrtMemState memState;
-	_CrtMemCheckpoint(&memState);	
+	_CrtMemCheckpoint(&memState);
 	//OutputDebugStrF("Crt Size: %dk\n", (int)(memState.lTotalCount / 1024));
 
 	char* names[6] = { "_FREE_BLOCK", "_NORMAL_BLOCK", "_CRT_BLOCK", "_IGNORE_BLOCK", "_CLIENT_BLOCK", "_MAX_BLOCKS" };
@@ -546,7 +539,7 @@ void ShowMemoryUsage()
 	{
 		OutputDebugStrF("%s : %d %dk\n", names[i], memState.lCounts[i], memState.lSizes[i] / 1024);
 	}
-	
+
 #ifdef _DEBUG
 // 	int64 totalCrtSize = 0;
 // 	int64 totalUseCrtSize = 0;
@@ -568,9 +561,9 @@ void ShowMemoryUsage()
 	while ((heapStatus = _heapwalk(&heapInfo)) == _HEAPOK)
 	{
 		heapSize += (int64)heapInfo._size;
-	}		
+	}
 	OutputDebugStrF("WALKED HEAP SIZE: %dk\n", heapSize / 1024);
-	
+
 	//_CrtMemDumpStatistics(&memState);
 #endif
 }
@@ -591,9 +584,7 @@ BOOL WINAPI DllMain(
 	HANDLE  hDllHandle,
 	DWORD   dwReason,
 	LPVOID  lpreserved)
-{	
-	
-
+{
 	if (dwReason == DLL_PROCESS_ATTACH)
 	{
 		BpInit("127.0.0.1", "Beef IDE");
@@ -638,13 +629,13 @@ namespace BeefyDbg64
 static _CrtMemState gStartMemCheckpoint;
 #endif
 BF_EXPORT void BF_CALLTYPE Debugger_Create()
-{			
+{
 	//TODO: Very slow, remove
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_CHECK_ALWAYS_DF);
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_CHECK_EVERY_16_DF);
 	//TODO: _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF /*| _CRTDBG_CHECK_EVERY_16_DF*/);
 	//_CrtSetAllocHook(BfAllocHook);
-	
+
 #ifdef BF_PLATFORM_WINDOWS
 	_CrtMemCheckpoint(&gStartMemCheckpoint);
 #endif
@@ -661,7 +652,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 	gDebugManager->mDebugger64 = NULL;
 #else
 	gDebugManager->mDebugger64 = CreateDebugger64(gDebugManager, NULL);
-#endif	
+#endif
 
 #ifdef BF_PLATFORM_WINDOWS
 	::AllowSetForegroundWindow(ASFW_ANY);
@@ -672,12 +663,11 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 
 BF_EXPORT void BF_CALLTYPE Debugger_SetCallbacks(void* callback)
 {
-
 }
 
 BF_EXPORT void BF_CALLTYPE Debugger_FullReportMemory()
 {
-	//WdAllocTest();	
+	//WdAllocTest();
 	ShowMemoryUsage();
 	BfFullReportMemory();
 }
@@ -777,7 +767,7 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 
 	Array<uint8> envBlock;
 	if (envBlockPtr != NULL)
-	{		
+	{
 		if (envBlockSize != 0)
 			envBlock.Insert(0, (uint8*)envBlockPtr, envBlockSize);
 	}
@@ -787,7 +777,7 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 }
 
 BF_EXPORT bool BF_CALLTYPE Debugger_ComptimeAttach(void* bfCompiler)
-{	
+{
 	gDebugger = new CeDebugger(gDebugManager, (BfCompiler*)bfCompiler);
 	return true;
 }
@@ -808,12 +798,12 @@ BF_EXPORT void BF_CALLTYPE Debugger_SetSymSrvOptions(const char* symCacheDir, co
 			if (!symStr.IsEmpty())
 				symServers.Add(symStr);
 			startStr = cPtr;
-		}		
+		}
 
 		if (*cPtr == 0)
 			break;
 	}
-	
+
 	AutoCrit autoCrit(gDebugManager->mCritSect);
 
 	gDebugManager->mSymSrvOptions.mCacheDir = symCacheDir;
@@ -834,12 +824,11 @@ BF_EXPORT void BF_CALLTYPE Debugger_SetSymSrvOptions(const char* symCacheDir, co
 	}
 
 	gDebugManager->SetSourceServerCacheDir();
-
 }
 
 BF_EXPORT bool BF_CALLTYPE Debugger_OpenMiniDump(const char* fileName)
 {
-#ifdef BF_PLATFORM_WINDOWS	
+#ifdef BF_PLATFORM_WINDOWS
 	DbgMiniDump* dbgMiniDump = new DbgMiniDump();
 	bool result = dbgMiniDump->StartLoad(fileName);
 	if (!result)
@@ -847,7 +836,6 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenMiniDump(const char* fileName)
 		delete dbgMiniDump;
 		return false;
 	}
-	
 
 	if (dbgMiniDump->GetTargetBitCount() == 32)
 		gDebugger = CreateDebugger32(gDebugManager, dbgMiniDump);
@@ -875,7 +863,7 @@ BF_EXPORT bool BF_CALLTYPE Debugger_Attach(int processId, BfDbgAttachFlags attac
 		gDebugger = gDebugManager->mDebugger32;
 		return true;
 	}
-	
+
 	return false;
 }
 
@@ -886,7 +874,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_Run()
 
 BF_EXPORT bool BF_CALLTYPE Debugger_HotLoad(const char* fileNamesStr, int hotIdx)
 {
-	//DbgModule* dwarf = new DbgModule(gDebugger);	
+	//DbgModule* dwarf = new DbgModule(gDebugger);
 	//dwarf->ReadPE(fileName);
 
 	Array<String> fileNames;
@@ -919,8 +907,8 @@ BF_EXPORT bool BF_CALLTYPE Debugger_HotLoad(const char* fileNamesStr, int hotIdx
 BF_EXPORT bool BF_CALLTYPE Debugger_LoadDebugVisualizers(const char* fileName)
 {
 	String fn = fileName;
-	bool worked = false;	
-	worked = gDebugManager->mDebugVisualizers->Load(fileName);	
+	bool worked = false;
+	worked = gDebugManager->mDebugVisualizers->Load(fileName);
 	if (!gDebugManager->mDebugVisualizers->mErrorString.empty())
 	{
 		gDebugManager->mOutMessages.push_back(StrFormat("msg ERROR: %s\n", gDebugManager->mDebugVisualizers->mErrorString.c_str()));
@@ -999,7 +987,7 @@ BF_EXPORT void BF_CALLTYPE Breakpoint_HotBindBreakpoint(Breakpoint* breakpoint, 
 
 BF_EXPORT void BF_CALLTYPE Breakpoint_SetThreadId(Breakpoint* breakpoint, intptr threadId)
 {
-	BfLogDbg("Breakpoint %p set ThreadId=%d\n", breakpoint, threadId);	
+	BfLogDbg("Breakpoint %p set ThreadId=%d\n", breakpoint, threadId);
 	breakpoint->mThreadId = threadId;
 	gDebugger->CheckBreakpoint(breakpoint);
 }
@@ -1064,19 +1052,19 @@ BF_EXPORT void BF_CALLTYPE Breakpoint_Disable(Breakpoint* wdBreakpoint)
 
 BF_EXPORT void BF_CALLTYPE Debugger_CreateStepFilter(const char* filter, bool isGlobal, BfStepFilterKind filterKind)
 {
-	AutoCrit autoCrit(gDebugManager->mCritSect);	
+	AutoCrit autoCrit(gDebugManager->mCritSect);
 	StepFilter stepFilter;
 	stepFilter.mFilterKind = filterKind;
 	gDebugManager->mStepFilters[filter] = stepFilter;
-	gDebugManager->mStepFilterVersion++;	
+	gDebugManager->mStepFilterVersion++;
 }
 
 BF_EXPORT void BF_CALLTYPE StepFilter_Delete(const char* filter)
 {
-	AutoCrit autoCrit(gDebugManager->mCritSect);	
+	AutoCrit autoCrit(gDebugManager->mCritSect);
 	bool didRemove = gDebugManager->mStepFilters.Remove(filter);
 	BF_ASSERT(didRemove);
-	
+
 	gDebugManager->mStepFilterVersion++;
 }
 
@@ -1110,7 +1098,7 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_PopMessage()
 BF_EXPORT bool BF_CALLTYPE Debugger_HasMessages()
 {
 	AutoCrit autoCrit(gDebugManager->mCritSect);
-	return gDebugManager->mOutMessages.size() != 0;		
+	return gDebugManager->mOutMessages.size() != 0;
 }
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetCurrentException()
@@ -1177,7 +1165,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_SetDisplayTypes(const char* referenceId, con
 		displayInfo = &gDebugManager->mDefaultDisplayInfo;
 	else
 		gDebugManager->mDisplayInfos.TryAdd(referenceId, NULL, &displayInfo);
-	
+
 	if (formatStr != NULL)
 		displayInfo->mFormatStr = formatStr;
 	displayInfo->mIntDisplayType = (DwIntDisplayType)intDisplayType;
@@ -1246,11 +1234,11 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_EvaluateContinue()
 BF_EXPORT void BF_CALLTYPE Debugger_EvaluateContinueKeep()
 {
 	auto debugger = gDebugger;
-	debugger->EvaluateContinueKeep();	
+	debugger->EvaluateContinueKeep();
 }
 
 BF_EXPORT StringView BF_CALLTYPE Debugger_Evaluate(const char* expr, int callStackIdx, int cursorPos, int32 language, uint16 expressionFlags)
-{	
+{
 	auto debugger = gDebugger;
 
 	if (debugger == NULL)
@@ -1291,39 +1279,37 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_EvaluateAtAddress(const char* expr, i
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen)
 {
-	String& outString = *gTLStrReturn.Get();	
+	String& outString = *gTLStrReturn.Get();
 	outString = gDebugger->GetAutoExpressions(callStackIdx, memoryRangeStart, memoryRangeLen);
 	return outString.c_str();
 }
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetAutoLocals(int callStackIdx, bool showRegs)
 {
-	String& outString = *gTLStrReturn.Get();	
+	String& outString = *gTLStrReturn.Get();
 	outString = gDebugger->GetAutoLocals(callStackIdx, showRegs);
 	return outString.c_str();
 }
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_CompactChildExpression(const char* expr, const char* parentExpr, int callStackIdx)
 {
-	String& outString = *gTLStrReturn.Get();	
+	String& outString = *gTLStrReturn.Get();
 	outString = gDebugger->CompactChildExpression(expr, parentExpr, callStackIdx);
 	return outString.c_str();
 }
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetCollectionContinuation(const char* continuationData, int callStackIdx, int count)
 {
-	String& outString = *gTLStrReturn.Get();	
+	String& outString = *gTLStrReturn.Get();
 	outString = gDebugger->GetCollectionContinuation(continuationData, callStackIdx, count);
 	return outString.c_str();
 }
 
-
 BF_EXPORT void BF_CALLTYPE Debugger_ForegroundTarget()
 {
 	gDebugger->ForegroundTarget();
-	
 
-	//BOOL worked = EnumThreadWindows(gDebugger->mProcessInfo.dwThreadId, WdEnumWindowsProc, 0);	
+	//BOOL worked = EnumThreadWindows(gDebugger->mProcessInfo.dwThreadId, WdEnumWindowsProc, 0);
 	//BF_ASSERT(worked);
 }
 
@@ -1394,7 +1380,7 @@ BF_EXPORT int BF_CALLTYPE CallStack_GetBreakStackFrameIdx()
 
 BF_EXPORT const char* BF_CALLTYPE CallStack_GetStackFrameInfo(int stackFrameIdx, intptr* addr, const char** outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd,
 	int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags)
-{	
+{
 	String& outString = *gTLStrReturn.Get();
 	String& outString2 = *gTLStrReturn2.Get();
 
@@ -1413,7 +1399,7 @@ BF_EXPORT const char* BF_CALLTYPE CallStack_GetStackFrameId(int stackFrameIdx)
 BF_EXPORT const char* BF_CALLTYPE Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 {
 	String& outString = *gTLStrReturn.Get();
-	outString = gDebugger->Callstack_GetStackFrameOldFileInfo(stackFrameIdx);	
+	outString = gDebugger->Callstack_GetStackFrameOldFileInfo(stackFrameIdx);
 	return outString.c_str();
 }
 
@@ -1531,7 +1517,7 @@ BF_EXPORT int BF_CALLTYPE Debugger_LoadDebugInfoForModuleWith(const char* module
 }
 
 BF_EXPORT void BF_CALLTYPE Debugger_SetStepOverExternalFiles(bool stepOverExternalFiles)
-{	
+{
 	gDebugManager->mStepOverExternalFiles = stepOverExternalFiles;
 	gDebugManager->mStepFilterVersion++;
 }
@@ -1552,7 +1538,7 @@ BF_EXPORT Profiler* BF_CALLTYPE Debugger_StartProfiling(intptr threadId, char* d
 	Profiler* profiler = gDebugger->StartProfiling();
 	profiler->mTargetThreadId = threadId;
 	if (desc != NULL)
-		profiler->mDescription = desc;	
+		profiler->mDescription = desc;
 	profiler->mSamplesPerSecond = sampleRate;
 	profiler->Start();
 	return profiler;
@@ -1560,7 +1546,7 @@ BF_EXPORT Profiler* BF_CALLTYPE Debugger_StartProfiling(intptr threadId, char* d
 
 BF_EXPORT Profiler* BF_CALLTYPE Debugger_PopProfiler()
 {
-	Profiler* profiler = gDebugger->PopProfiler();	
+	Profiler* profiler = gDebugger->PopProfiler();
 	return profiler;
 }
 
@@ -1569,7 +1555,6 @@ BF_EXPORT void BF_CALLTYPE Debugger_InitiateHotResolve(int flags)
 	if (gDebugger != NULL)
 		gDebugger->InitiateHotResolve((DbgHotResolveFlags)flags);
 }
-
 
 BF_EXPORT intptr BF_CALLTYPE Debugger_GetDbgAllocHeapSize()
 {
@@ -1580,7 +1565,7 @@ BF_EXPORT intptr BF_CALLTYPE Debugger_GetDbgAllocHeapSize()
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetDbgAllocInfo()
 {
 	AutoCrit autoCrit(gDebugManager->mCritSect);
-	
+
 	String& outString = *gTLStrReturn.Get();
 	outString = gDebugger->GetDbgAllocInfo();
 	return outString.c_str();
@@ -1640,7 +1625,7 @@ BF_EXPORT NetResult* HTTP_GetFile(char* url, char* destPath)
 {
 	AutoCrit autoCrit(gDebugManager->mNetManager->mThreadPool.mCritSect);
 
-	auto netResult = gDebugManager->mNetManager->QueueGet(url, destPath, false);	
+	auto netResult = gDebugManager->mNetManager->QueueGet(url, destPath, false);
 	netResult->mDoneEvent = new SyncEvent();
 	return netResult;
 }
@@ -1674,7 +1659,7 @@ BF_EXPORT void HTTP_Delete(NetResult* netResult)
 				netResult->mCurRequest->Cancel();
 		}
 		netResult->mDoneEvent->WaitFor(-1);
-	}				
+	}
 	delete netResult;
 }
 
@@ -1738,12 +1723,12 @@ BF_EXPORT void BF_CALLTYPE TimeTest(uint32 startTime)
 }
 
 BF_EXPORT void BF_CALLTYPE BFTest()
-{	
+{
 	struct DeferredResolveEntry2
 	{
 		BfFieldDef* mFieldDef;
 		int mTypeArrayIdx;
-	};	
+	};
 
 	DeferredResolveEntry2 entry = { NULL, 333 };
 
@@ -1752,9 +1737,9 @@ BF_EXPORT void BF_CALLTYPE BFTest()
 	vec.push_back(DeferredResolveEntry2 { NULL, 222 } );
 }
 
-///	
+///
 
-// __attribute__((weak)) 
+// __attribute__((weak))
 // Debugger* Beefy::CreateDebugger32(DebugManager* debugManager, DbgMiniDump* miniDump)
 // {
 // 	return NULL;

@@ -11,7 +11,7 @@ static char SafeGetChar(const StringImpl& str, int idx)
 
 DemangleBase::DemangleBase()
 {
-	mCurIdx = 0;	
+	mCurIdx = 0;
 	mFailed = false;
 	mLanguage = DbgLanguage_Unknown;
 	mInArgs = false;
@@ -20,30 +20,30 @@ DemangleBase::DemangleBase()
 
 bool DemangleBase::Failed()
 {
-	//BF_DBG_FATAL("DwDemangler::Failed");	
+	//BF_DBG_FATAL("DwDemangler::Failed");
 	mFailed = true;
 	return false;
 }
 
 void DemangleBase::Require(bool result)
 {
-	//BF_ASSERT(result); 
+	//BF_ASSERT(result);
 	if (!result)
 	{
-		mFailed = true;		
+		mFailed = true;
 	}
 }
 
 //////////////////////////////////////////////////////////////////////////
 
 DwDemangler::DwDemangler()
-{	
+{
 	mOmitSubstituteAdd = false;
 	mIsFirstName = true;
 	mTemplateDepth = 0;
 	mCaptureTargetType = false;
 	mFunctionPopSubstitute = false;
-	mRawDemangle = false;	
+	mRawDemangle = false;
 }
 
 #define RETURN_STR(strVal) do { outName = strVal; return true; } while(false)
@@ -54,11 +54,11 @@ bool DwDemangler::DemangleBuiltinType(StringImpl& outName)
 	switch (firstChar)
 	{
 	case 'v':
-		RETURN_STR("void");	
+		RETURN_STR("void");
 	case 'w':
 		RETURN_STR("wchar_t");
 	case 'b':
-		RETURN_STR("bool");	
+		RETURN_STR("bool");
 	case 'a':
 		if (mLanguage == DbgLanguage_Beef)
 			RETURN_STR("int8");
@@ -95,7 +95,7 @@ bool DwDemangler::DemangleBuiltinType(StringImpl& outName)
 			RETURN_STR("uint32");
 		else
 			RETURN_STR("uint");
-	case 'y':		
+	case 'y':
 		RETURN_STR("ulong");
 	case 'c':
 		if (mLanguage == DbgLanguage_Beef)
@@ -149,9 +149,8 @@ bool DwDemangler::DemangleArrayType(StringImpl& outName)
 	/*auto firstChar = SafeGetChar(mMangledName, mCurIdx++);
 	switch (firstChar)
 	{
-	case 'A':		
+	case 'A':
 		{
-			
 		}
 		break;
 	default:
@@ -169,7 +168,7 @@ bool DwDemangler::DemangleClassEnumType(StringImpl& outName)
 }
 
 bool DwDemangler::DemangleFunction(StringImpl& outName)
-{	
+{
 	bool wantsReturnValue = false;
 	//String outName;
 	bool hasTemplateArgs;
@@ -189,7 +188,7 @@ bool DwDemangler::DemangleFunction(StringImpl& outName)
 		{
 			DwDemangler subDemangler;
 			outName.Remove(0, lastAt + 1);
-			outName = subDemangler.Demangle(outName);			
+			outName = subDemangler.Demangle(outName);
 			return true;
 		}
 		int lastDot = (int)outName.LastIndexOf('.');
@@ -197,7 +196,7 @@ bool DwDemangler::DemangleFunction(StringImpl& outName)
 			outName.RemoveToEnd(lastDot);
 		return true;
 	}
-	
+
 	// New
 	if (mFunctionPopSubstitute)
 	{
@@ -206,7 +205,7 @@ bool DwDemangler::DemangleFunction(StringImpl& outName)
 			mSubstituteList.pop_back();
 		mFunctionPopSubstitute = false;
 	}
-	
+
 	if (mCurIdx < (int) mMangledName.length())
 	{
 		//TODO: Needed? Caused a crash. mSubstituteList.pop_back(); // Remove method name
@@ -231,15 +230,15 @@ bool DwDemangler::DemangleFunction(StringImpl& outName)
 
 		for (int paramIdx = 0; mCurIdx < (int)mMangledName.length(); paramIdx++)
 		{
-			if (SafeGetChar(mMangledName, mCurIdx) == 'E')			
-				break;			
+			if (SafeGetChar(mMangledName, mCurIdx) == 'E')
+				break;
 
 			if (needsComma)
 				outName += ", ";
-			
+
 			StringT<256> paramType;
 			Require(DemangleType(paramType));
-			
+
 			bool atEnd = mCurIdx >= (int) mMangledName.length();
 			if ((paramIdx == 0) && (wantsReturnValue))
 			{
@@ -323,7 +322,7 @@ bool DwDemangler::DemangleType(StringImpl& outName)
 
 	auto firstChar = SafeGetChar(mMangledName, mCurIdx++);
 	switch (firstChar)
-	{	
+	{
 	case 'D':
 		{
 			auto nextChar = SafeGetChar(mMangledName, mCurIdx++);
@@ -376,13 +375,13 @@ bool DwDemangler::DemangleType(StringImpl& outName)
 				outName = modName + " " + outName;
 			return true;
 		}
-		break;	
-	//TODO: 'C', 'G', 'U'			
+		break;
+	//TODO: 'C', 'G', 'U'
 	default:
 		mCurIdx--;
 		break;
-	}	
-	
+	}
+
 	if (DemangleBuiltinType(outName))
 		return true;
 	if (DemangleFunctionType(outName))
@@ -402,11 +401,11 @@ bool DwDemangler::DemangleType(StringImpl& outName)
 	if (DemangleClassEnumType(outName))
 		return true;
 	//TODO: DemangleArrayType
-	//TODO: DemanglePointerToMemberType	
+	//TODO: DemanglePointerToMemberType
 	if (DemangleTemplateParam(outName))
 		return true;
 	//TODO: TemplateTemplateParam
-	//TODO: DeclType	
+	//TODO: DeclType
 
 	return false;
 }
@@ -447,9 +446,8 @@ bool DwDemangler::DemangleNestedName(StringImpl& outName)
 	{
 	case 'N':
 		{
-			
 		}
-		break;	
+		break;
 	}
 	mCurIdx--;
 
@@ -480,18 +478,17 @@ bool DwDemangler::DemangleRefQualifier(StringImpl& outName)
 	case 'R':
 		RETURN_STR("&");
 	case 'O':
-		RETURN_STR("&&");	
+		RETURN_STR("&&");
 	}
 	mCurIdx--;
 	return false;
 }
 
-
 bool DwDemangler::DemangleOperatorName(StringImpl& outName)
 {
-	auto firstChar = SafeGetChar(mMangledName, mCurIdx++);	
+	auto firstChar = SafeGetChar(mMangledName, mCurIdx++);
 	StringT<64> opCode;
-	opCode += firstChar;	
+	opCode += firstChar;
 	opCode += SafeGetChar(mMangledName, mCurIdx++);
 	StringT<64> opName;
 
@@ -544,7 +541,7 @@ bool DwDemangler::DemangleOperatorName(StringImpl& outName)
 	else if (opCode == "eq")
 		opName = "==";
 	else if (opCode == "ne")
-		opName = "!=";	
+		opName = "!=";
 	else if (opCode == "lt")
 		opName = "<";
 	else if (opCode == "gt")
@@ -612,15 +609,15 @@ bool DwDemangler::DemangleOperatorName(StringImpl& outName)
 	if (!opName.empty())
 		outName += "operator" + opName;
 	//mSubstituteList.push_back(outName);
-	
+
 	return true;
 }
 
 bool DwDemangler::DemangleSourceName(StringImpl& outName)
 {
-	auto c = SafeGetChar(mMangledName, mCurIdx);	
+	auto c = SafeGetChar(mMangledName, mCurIdx);
 	if ((c >= '0') && (c <= '9'))
-	{		
+	{
 		int nameLen = 0;
 		while (mCurIdx < (int) mMangledName.length())
 		{
@@ -644,7 +641,7 @@ bool DwDemangler::DemangleSourceName(StringImpl& outName)
 		return true;
 	}
 
-	return false; 
+	return false;
 }
 
 bool DwDemangler::DemangleUnqualifiedName(StringImpl& outName)
@@ -652,12 +649,12 @@ bool DwDemangler::DemangleUnqualifiedName(StringImpl& outName)
 	if (DemangleOperatorName(outName)) // Also handles ctor/dtor
 		return true;
 	if (DemangleSourceName(outName))
-		return true;	
+		return true;
 	return false;
 }
 
 bool DwDemangler::DemangleEnd()
-{	
+{
 	auto firstChar = SafeGetChar(mMangledName, mCurIdx++);
 	if (firstChar == 'E')
 		return true;
@@ -704,7 +701,6 @@ bool DwDemangler::DemangleExprPriamry(StringImpl& outName)
 	return false;
 }
 
-
 bool DwDemangler::DemangleTemplateArg(StringImpl& outName)
 {
 	if (DemangleType(outName))
@@ -716,7 +712,7 @@ bool DwDemangler::DemangleTemplateArg(StringImpl& outName)
 }
 
 bool DwDemangler::DemangleTemplateArgs(StringImpl& outName)
-{		
+{
 	auto firstChar = SafeGetChar(mMangledName, mCurIdx++);
 	if (firstChar == 'I')
 	{
@@ -728,7 +724,7 @@ bool DwDemangler::DemangleTemplateArgs(StringImpl& outName)
 		bool inParamPack = false;
 		bool foundEnd = false;
 		bool needsComma = false;
-		
+
 		outName = "<";
 		for (int argIdx = 0; true; argIdx++)
 		{
@@ -737,9 +733,9 @@ bool DwDemangler::DemangleTemplateArgs(StringImpl& outName)
 
 			if (DemangleEnd())
 			{
-				if (inParamPack)			
+				if (inParamPack)
 				{
-					inParamPack = false;				
+					inParamPack = false;
 					continue;
 				}
 				else
@@ -782,7 +778,7 @@ bool DwDemangler::DemangleSubstitution(StringImpl& outName)
 		bool hadChars = 0;
 		while (true)
 		{
-			char idxChar = SafeGetChar(mMangledName, mCurIdx++);			
+			char idxChar = SafeGetChar(mMangledName, mCurIdx++);
 			if (idxChar == 't')
 			{
 				DemangleUnqualifiedName(outName);
@@ -804,7 +800,7 @@ bool DwDemangler::DemangleSubstitution(StringImpl& outName)
 			{
 				RETURN_STR("std.string");
 			}
-			if (idxChar == 'i')				
+			if (idxChar == 'i')
 			{
 				RETURN_STR("std.basic_istream<char, std.char_traits<char>>");
 			}
@@ -853,7 +849,7 @@ bool DwDemangler::DemangleTemplateParam(StringImpl& outName)
 		bool hadChars = 0;
 		while (true)
 		{
-			char idxChar = SafeGetChar(mMangledName, mCurIdx++);			
+			char idxChar = SafeGetChar(mMangledName, mCurIdx++);
 			if (idxChar == '?')
 				break;
 			if (idxChar == '_')
@@ -887,7 +883,7 @@ bool DwDemangler::DemangleUnscopedName(StringImpl& outName)
 	if (DemangleUnqualifiedName(outName))
 		return true;
 	if (DemangleSubstitution(outName))
-		return true;	
+		return true;
 	return false;
 }
 
@@ -899,17 +895,17 @@ bool DwDemangler::DemangleName(StringImpl& outName, bool* outHasTemplateArgs)
 	switch (firstChar)
 	{
 	case 'N': // NestedName
-		{			
+		{
 			StringT<64> cvQualifier;
 			if (DemangleCVQualifiers(cvQualifier))
 				outName += cvQualifier + " ";
 			StringT<64> refQualifier;
 			if (DemangleRefQualifier(refQualifier))
-				outName += refQualifier + " ";			
+				outName += refQualifier + " ";
 
 			int nameCount = 0;
 			while ((!DemangleEnd()) && (!mFailed))
-			{				
+			{
 				StringT<128> unqualifiedName;
 				mOmitSubstituteAdd = false;
 				if ((DemangleUnscopedName(unqualifiedName)) ||
@@ -917,7 +913,7 @@ bool DwDemangler::DemangleName(StringImpl& outName, bool* outHasTemplateArgs)
 				{
 					if (outHasTemplateArgs != NULL)
 						*outHasTemplateArgs = false;
-					if (nameCount > 0)						
+					if (nameCount > 0)
 					{
 						if (mLanguage == DbgLanguage_Beef)
 							outName += ".";
@@ -932,7 +928,7 @@ bool DwDemangler::DemangleName(StringImpl& outName, bool* outHasTemplateArgs)
 					nameCount++;
 					continue;
 				}
-				
+
 				StringT<128> templateArgs;
 				if (DemangleTemplateArgs(templateArgs))
 				{
@@ -974,11 +970,11 @@ bool DwDemangler::DemangleName(StringImpl& outName, bool* outHasTemplateArgs)
 					}
 					continue;
 				}
-				
+
 				Failed();
 				break;
 			}
-			
+
 			return true;
 		}
 		break;
@@ -997,7 +993,7 @@ bool DwDemangler::DemangleName(StringImpl& outName, bool* outHasTemplateArgs)
 		{
 			if (outHasTemplateArgs != NULL)
 				*outHasTemplateArgs = true;
-			outName += templateArgs;			
+			outName += templateArgs;
 		}
 
 		if ((outName.length() > 0) && (outName[outName.length() - 1] == '.'))
@@ -1012,11 +1008,11 @@ bool DwDemangler::DemangleName(StringImpl& outName, bool* outHasTemplateArgs)
 			else
 			{
 				Failed();
-			}			
+			}
 		}
 
 		return true;
-	}	
+	}
 
 	if (DemangleLocalName(outName))
 		return true;
@@ -1026,7 +1022,7 @@ bool DwDemangler::DemangleName(StringImpl& outName, bool* outHasTemplateArgs)
 
 String DwDemangler::Demangle(const StringImpl& mangledName)
 {
-	BF_ASSERT(mCurIdx == 0);	
+	BF_ASSERT(mCurIdx == 0);
 
 	/*String overrideVal = "_ZZL9DumpStatsP16TCMalloc_PrinteriE3MiB";
 	//String overrideVal = "_ZN3Hey4Dude3Bro9TestClass7MethodBEivf";
@@ -1047,16 +1043,16 @@ String DwDemangler::Demangle(const StringImpl& mangledName)
 	//"__ZN6System6String6ConcatEU6paramsPNS_6Array1INS_6ObjectEEE";
 	//_ZNSt3mapI3HeyfSt4lessIiESaISt4pairIKifEEEixES_S0_S1_S2_S3_S4_S5_S6_
 	String overrideDemangled;
-	if (mangledName != overrideVal)	
+	if (mangledName != overrideVal)
 	{
 		BfDemangler demangler;
 		overrideDemangled = demangler.Demangle(overrideVal);
 	}*/
-	
-	mMangledName = mangledName;	
+
+	mMangledName = mangledName;
 
 	String outStr;
-	
+
 	if (mangledName.length() < 3)
 		return mangledName;
 
@@ -1098,7 +1094,7 @@ String DwDemangler::Demangle(const StringImpl& mangledName)
 	{
 		mCurIdx++;
 		char typeChar2 = SafeGetChar(mangledName, mCurIdx++);
-		if (typeChar2 == 'S') 
+		if (typeChar2 == 'S')
 		{
 			// typeinfo
 		}
@@ -1110,7 +1106,7 @@ String DwDemangler::Demangle(const StringImpl& mangledName)
 		{
 			return mangledName;
 		}
-	}	
+	}
 	else if (typeChar == 'S')
 	{
 		mayHaveParams = false;
@@ -1148,12 +1144,12 @@ MsDemangler::MsDemangler()
 }
 
 bool MsDemangler::DemangleString(StringImpl& outName)
-{	
+{
 	while (true)
 	{
 		char c = SafeGetChar(mMangledName, mCurIdx++);
 		if ((c == '!') || (c == '?'))
-			return Failed();		
+			return Failed();
 		if (c == '@')
 			break;
 		outName.Append(c);
@@ -1175,7 +1171,7 @@ bool MsDemangler::DemangleTemplateName(StringImpl& outName, String* primaryName)
 	{
 		String paramType;
 		if (!DemangleType(paramType))
-			break;		
+			break;
 		if (paramIdx > 0)
 			outName += ", ";
 		outName += paramType;
@@ -1185,21 +1181,20 @@ bool MsDemangler::DemangleTemplateName(StringImpl& outName, String* primaryName)
 	return true;
 }
 
-
 bool MsDemangler::DemangleScopedName(StringImpl& outName, String* primaryName)
-{			
+{
 	for (int nameIdx = 0; true; nameIdx++)
 	{
 		if (mFailed)
 			return false;
 
-		char c = SafeGetChar(mMangledName, mCurIdx++);		
+		char c = SafeGetChar(mMangledName, mCurIdx++);
 		if (c == '@')
 			return true;
 
 		/*{
-		if (curScope.length() == 0)			
-		return true;			
+		if (curScope.length() == 0)
+		return true;
 		if (nameIdx == 0)
 		{
 		if (primaryName != NULL)
@@ -1220,11 +1215,11 @@ bool MsDemangler::DemangleScopedName(StringImpl& outName, String* primaryName)
 		{
 			c = SafeGetChar(mMangledName, mCurIdx++);
 			if (c == '$')
-			{				
+			{
 				SubstituteList oldSubList = mSubstituteList;
 				mSubstituteList.Clear();
 				DemangleTemplateName(namePart, /*primaryName*/NULL);
-				mSubstituteList = oldSubList;				
+				mSubstituteList = oldSubList;
 			}
 			else if (c == '?')
 			{
@@ -1236,10 +1231,9 @@ bool MsDemangler::DemangleScopedName(StringImpl& outName, String* primaryName)
 				int num = DemangleNumber();
 				outName = StrFormat("%d", num);
 			}
-
 		}
 		else if ((c >= '0') && (c <= '9'))
-		{			
+		{
 			int subIdx = c - '0';
 			if (subIdx < mSubstituteList.size())
 			{
@@ -1252,25 +1246,25 @@ bool MsDemangler::DemangleScopedName(StringImpl& outName, String* primaryName)
 		}
 		else
 		{
-			mCurIdx--;			
-			Require(DemangleString(namePart));			
+			mCurIdx--;
+			Require(DemangleString(namePart));
 		}
 
 		if (nameIdx == 0)
-		{			
+		{
 			//We moved this down so we get the template args for the ctor name
 						/*if ((primaryName != NULL) && (primaryName->empty()))
 						*primaryName = namePart;*/
 			outName = namePart;
 			if ((primaryName != NULL) && (primaryName->empty()))
-				*primaryName = namePart;			
+				*primaryName = namePart;
 		}
 		else if (mLanguage == DbgLanguage_Beef)
 		{
 			if ((mBeefFixed) && (namePart == "bf"))
 				namePart.Clear();
 
-			if (!namePart.IsEmpty()) 			
+			if (!namePart.IsEmpty())
 				outName = namePart + "." + outName;
 		}
 		else
@@ -1285,7 +1279,7 @@ bool MsDemangler::DemangleScopedName(StringImpl& outName, String* primaryName)
 bool MsDemangler::DemangleModifiedType(StringImpl& outName, bool isPtr)
 {
 	String modifier;
-	DemangleCV(modifier);	
+	DemangleCV(modifier);
 
 	char c = SafeGetChar(mMangledName, mCurIdx);
 	if (c == 'Y') // Sized array
@@ -1323,7 +1317,7 @@ bool MsDemangler::DemangleType(StringImpl& outName)
 		return false;
 
 	switch (c)
-	{	
+	{
 	case '0':
 	case '1':
 	case '2':
@@ -1418,7 +1412,7 @@ bool MsDemangler::DemangleType(StringImpl& outName)
 					char c = SafeGetChar(mMangledName, mCurIdx++);
 					if (c == 'C')
 					{
-						String modifier;						
+						String modifier;
 						DemangleCV(modifier);
 						DemangleType(outName);
 						outName = modifier + " " + outName;
@@ -1426,7 +1420,7 @@ bool MsDemangler::DemangleType(StringImpl& outName)
 					}
 					else if (c == 'Q')
 					{
-						String modifier;						
+						String modifier;
 						DemangleCV(modifier);
 						DemangleType(outName);
 						outName = modifier + " " + outName;
@@ -1435,7 +1429,6 @@ bool MsDemangler::DemangleType(StringImpl& outName)
 				}
 				break;
 			}
-
 		}
 		break;
 
@@ -1443,7 +1436,7 @@ bool MsDemangler::DemangleType(StringImpl& outName)
 		{
 			c = SafeGetChar(mMangledName, mCurIdx++);
 			switch (c)
-			{			
+			{
 			case 'D':
 				outName = "int8";
 				return true;
@@ -1485,20 +1478,20 @@ bool MsDemangler::DemangleType(StringImpl& outName)
 				break;
 			}
 		}
-		break;	
+		break;
 
 	case 'A':
 		{
 			DemangleModifiedType(outName, false);
-			outName += "&";			
+			outName += "&";
 		}
 		return true;
 	case 'B':
 		DemangleModifiedType(outName, false);
 		outName = "volatile " + outName + "&";
 		return true;
-	case 'P':		
-		DemangleModifiedType(outName, true);	
+	case 'P':
+		DemangleModifiedType(outName, true);
 		return true;
 	case 'Q':
 		DemangleModifiedType(outName, true);
@@ -1587,7 +1580,7 @@ bool MsDemangler::DemangleType(StringImpl& outName)
 	case 'X':
 		outName += "void";
 		return true;
-	case '?':	
+	case '?':
 		if (mInArgs)
 		{
 			int num = DemangleNumber();
@@ -1607,13 +1600,13 @@ bool MsDemangler::DemangleType(StringImpl& outName)
 }
 
 int MsDemangler::DemangleNumber()
-{	
+{
 	char c = SafeGetChar(mMangledName, mCurIdx++);
 	bool isSigned = false;
 	if (c == '?')
-	{		
+	{
 		isSigned = true;
-		c = SafeGetChar(mMangledName, mCurIdx++);		
+		c = SafeGetChar(mMangledName, mCurIdx++);
 	}
 
 	if ((c >= '0') && (c <= '9'))
@@ -1625,7 +1618,7 @@ int MsDemangler::DemangleNumber()
 	while ((c >= 'A') && (c <= 'P'))
 	{
 		val = (val * 0x10) + (c - 'A');
-		c = SafeGetChar(mMangledName, mCurIdx++);		
+		c = SafeGetChar(mMangledName, mCurIdx++);
 	}
 
 	if (c != '@')
@@ -1721,7 +1714,7 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 
 	char c = SafeGetChar(mMangledName, mCurIdx++);
 	if (c == '?')
-	{		
+	{
 		c = SafeGetChar(mMangledName, mCurIdx++);
 		if (c == '$')
 		{
@@ -1736,7 +1729,7 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 		switch (c)
 		{
 		case '0':
-			// Ctor		
+			// Ctor
 			Require(DemangleScopedName(outName, &primaryName));
 			if (mLanguage == DbgLanguage_Beef)
 				outName += ".this";
@@ -1747,9 +1740,9 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 			// Dtor
 			Require(DemangleScopedName(outName, &primaryName));
 			if (mLanguage == DbgLanguage_Beef)
-				outName += ".~this";		
+				outName += ".~this";
 			else
-				outName += "::~" + primaryName;		
+				outName += "::~" + primaryName;
 			break;
 		case '2': funcName = "operator new"; break;
 		case '3': funcName = "operator delete"; break;
@@ -1760,7 +1753,7 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 		case '8': funcName = "operator=="; break;
 		case '9': funcName = "operator!="; break;
 		case 'A': funcName = "operator[]"; break;
-		case 'B': 
+		case 'B':
 			funcName = "operator ";
 			appendRetType = true;
 			break;
@@ -1818,15 +1811,15 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 				case 'M': funcName = "`eh vector destructor iterator'"; break;
 				case 'N': funcName = "`eh vector vbase constructor iterator'"; break;
 				case 'O': funcName = "`copy constructor closure'"; break;
-				case 'R':				
+				case 'R':
 					c = SafeGetChar(mMangledName, mCurIdx++);
 					switch (c)
 					{
 					case 0: funcName = "`RTTI Type Descriptor'"; break;
-					case 1: funcName = "`RTTI Class Descriptor'"; break;					
+					case 1: funcName = "`RTTI Class Descriptor'"; break;
 					case '2': funcName = "`RTTI Base Class Array'"; break;
 					case '3': funcName = "`RTTI Class Hierarchy Descriptor'"; break;
-					case '4': funcName = "`RTTI Complete Object Locater"; break;				
+					case '4': funcName = "`RTTI Complete Object Locater"; break;
 					}
 					break;
 				case 'S': funcName = "`local vftable'"; break;
@@ -1834,12 +1827,12 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 				case 'U': funcName = "operator new[]"; break;
 				case 'V': funcName = "operator delete[]"; break;
 				case 'X': funcName = "`placement delete closure'"; break;
-				case 'Y': funcName = "`placement delete[] closure'"; break;			
+				case 'Y': funcName = "`placement delete[] closure'"; break;
 				}
 			}
-			break;	
+			break;
 		default:
-			mCurIdx -= 2;		
+			mCurIdx -= 2;
 			break;
 		}
 
@@ -1876,7 +1869,7 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 				if (!scopeName.empty())
 				{
 					if (mLanguage == DbgLanguage_Beef)
-					{						
+					{
 						scopeName += ".";
 					}
 					else
@@ -1967,7 +1960,7 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 		{
 			// Global variable / static member
 			String varType;
-			Require(DemangleType(varType));		
+			Require(DemangleType(varType));
 
 			c = SafeGetChar(mMangledName, mCurIdx++);
 			// 0 = private, 1 = protected, 2 = public
@@ -1975,11 +1968,11 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 		}
 
 		return true;
-	}	
+	}
 
-	// Method attribute	
+	// Method attribute
 	if (c == 0)
-		return true;	
+		return true;
 
 	struct
 	{
@@ -1993,7 +1986,7 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 	//int funcTypeVal = c - 'A';
 	//int accessType = funcTypeVal >> 3;
 
-	//bool isNonMember = c == 'Y';	
+	//bool isNonMember = c == 'Y';
 	//bool isVirtual = (c == 'E') || (c == 'M') || (c == 'U');
 	//bool hasThis = isVirtual || (c == 'A') || (c == 'I') || (c == 'Q');
 
@@ -2010,15 +2003,15 @@ bool MsDemangler::DemangleName(StringImpl& outName)
 	}
 
 	// Calling convention
-	c = SafeGetChar(mMangledName, mCurIdx++);		
+	c = SafeGetChar(mMangledName, mCurIdx++);
 	union
-	{		
+	{
 		uint8 mDllExport : 1;
-		uint8 mCallingConv : 7; // cdecl, pascal, thiscall, stdcall, fastcall				
+		uint8 mCallingConv : 7; // cdecl, pascal, thiscall, stdcall, fastcall
 	} callType;
 	*((uint8*)&callType) = (c - 'A');
 
-	if (callType.mCallingConv > 6)	
+	if (callType.mCallingConv > 6)
 		return Failed();
 
 	String retType;
@@ -2071,7 +2064,6 @@ String MsDemangler::Demangle(const StringImpl& mangledName)
 	return outName;
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 
 MsDemangleScanner::MsDemangleScanner()
@@ -2081,14 +2073,14 @@ MsDemangleScanner::MsDemangleScanner()
 }
 
 bool MsDemangleScanner::DemangleString()
-{	
+{
 	while (true)
 	{
 		char c = SafeGetChar(mMangledName, mCurIdx++);
 		if ((c == '!') || (c == '?'))
-			return Failed();		
+			return Failed();
 		if (c == '@')
-			break;		
+			break;
 	}
 
 	//mSubstituteList.push_back(outName);
@@ -2097,26 +2089,25 @@ bool MsDemangleScanner::DemangleString()
 
 bool MsDemangleScanner::DemangleTemplateName()
 {
-	DemangleString();	
-		
+	DemangleString();
+
 	for (int paramIdx = 0; true; paramIdx++)
-	{		
+	{
 		if (!DemangleType())
-			break;						
-	}	
+			break;
+	}
 
 	return true;
 }
 
-
 bool MsDemangleScanner::DemangleScopedName()
-{			
+{
 	for (int nameIdx = 0; true; nameIdx++)
 	{
 		if (mFailed)
 			return false;
 
-		char c = SafeGetChar(mMangledName, mCurIdx++);		
+		char c = SafeGetChar(mMangledName, mCurIdx++);
 		if (c == '@')
 			return true;
 
@@ -2125,7 +2116,7 @@ bool MsDemangleScanner::DemangleScopedName()
 			c = SafeGetChar(mMangledName, mCurIdx++);
 			if (c == '$')
 			{
-				DemangleTemplateName();				
+				DemangleTemplateName();
 			}
 			else if (c == '?')
 			{
@@ -2134,12 +2125,11 @@ bool MsDemangleScanner::DemangleScopedName()
 			else
 			{
 				mCurIdx--;
-				int num = DemangleNumber();				
+				int num = DemangleNumber();
 			}
-			
 		}
 		else if ((c >= '0') && (c <= '9'))
-		{			
+		{
 			int subIdx = c - '0';
 			if (subIdx < mSubstituteList.size())
 			{
@@ -2152,33 +2142,33 @@ bool MsDemangleScanner::DemangleScopedName()
 		}
 		else
 		{
-			mCurIdx--;			
+			mCurIdx--;
 			Require(DemangleString());
-		}				
+		}
 	}
 }
 
 bool MsDemangleScanner::DemangleModifiedType(bool isPtr)
-{	
-	DemangleCV();	
+{
+	DemangleCV();
 
 	char c = SafeGetChar(mMangledName, mCurIdx);
 	if (c == 'Y') // Sized array
-	{		
+	{
 		mCurIdx++;
 		int dimCount = DemangleNumber();
 		for (int dim = 0; dim < dimCount; dim++)
 		{
-			int dimSize = DemangleNumber();			
+			int dimSize = DemangleNumber();
 		}
 
-		DemangleType();		
+		DemangleType();
 	}
 	else
 	{
-		DemangleType();		
+		DemangleType();
 	}
-	
+
 	return true;
 }
 
@@ -2189,7 +2179,7 @@ bool MsDemangleScanner::DemangleType()
 		return false;
 
 	switch (c)
-	{	
+	{
 	case '0':
 	case '1':
 	case '2':
@@ -2205,11 +2195,11 @@ bool MsDemangleScanner::DemangleType()
 				return false;
 			int subIdx = c - '0';
 			if ((subIdx < 0) || (subIdx >= (int)mSubstituteList.size()))
-				return Failed();			
+				return Failed();
 			return true;
 		}
 		break;
-	
+
 	case '$':
 		{
 			char c = SafeGetChar(mMangledName, mCurIdx++);
@@ -2249,79 +2239,78 @@ bool MsDemangleScanner::DemangleType()
 				{
 					char c = SafeGetChar(mMangledName, mCurIdx++);
 					if (c == 'C')
-					{						
+					{
 						DemangleCV();
-						DemangleType();						
+						DemangleType();
 						return true;
 					}
 					else if (c == 'Q')
-					{						
+					{
 						DemangleCV();
-						DemangleType();						
+						DemangleType();
 						return true;
 					}
 				}
 				break;
 			}
-			
 		}
 		break;
-	
+
 	case '_':
 		{
 			c = SafeGetChar(mMangledName, mCurIdx++);
 			switch (c)
-			{			
-			case 'D':				
+			{
+			case 'D':
 				return true;
-			case 'E':				
+			case 'E':
 				return true;
-			case 'F':				
+			case 'F':
 				return true;
-			case 'G':				
+			case 'G':
 				return true;
-			case 'H':				
+			case 'H':
 				return true;
-			case 'I':				
+			case 'I':
 				return true;
-			case 'J':				
+			case 'J':
 				return true;
-			case 'K':				
+			case 'K':
 				return true;
-			case 'L':				
+			case 'L':
 				return true;
-			case 'M':				
+			case 'M':
 				return true;
-			case 'W':				
+			case 'W':
 				return true;
-			case 'N':				
+			case 'N':
 				return true;
 			default:
 				return Failed();
 				break;
 			}
 		}
-		break;	
+		break;
 
 	case 'A':
 		{
-			DemangleModifiedType(false);				
+			DemangleModifiedType(false);
 		}
 		return true;
 	case 'B':
-		DemangleModifiedType(false);		
+		DemangleModifiedType(false);
 		return true;
-	case 'P':		
-		DemangleModifiedType(true);	
+	case 'P':
+		DemangleModifiedType(true);
 		return true;
 	case 'Q':
-		DemangleModifiedType(true);		
+		DemangleModifiedType(true);
 		return true;
 	case 'R':
-		DemangleModifiedType(true);		
+		DemangleModifiedType(true);
 		return true;
 	case 'S':
-		DemangleModifiedType(true);		
+		DemangleModifiedType(true);
 		return true;
 	case 'T':
 		// union
@@ -2341,20 +2330,20 @@ bool MsDemangleScanner::DemangleType()
 		Require((c >= '0') && (c <= '8'));
 		DemangleScopedName();
 		return true;
-	
-	case 'C':		
+
+	case 'C':
 		return true;
-	case 'D':		
+	case 'D':
 		return true;
-	case 'E':		
+	case 'E':
 		return true;
-	case 'F':		
+	case 'F':
 		return true;
-	case 'G':		
+	case 'G':
 		return true;
-	case 'H':		
+	case 'H':
 		return true;
-	case 'I':		
+	case 'I':
 		return true;
 	case 'J':
 		return true;
@@ -2362,13 +2351,13 @@ bool MsDemangleScanner::DemangleType()
 		return true;
 	case 'M':
 		return true;
-	case 'N':		
+	case 'N':
 		return true;
-	case 'O':		
+	case 'O':
 		return true;
-	case 'X':		
+	case 'X':
 		return true;
-	case '?':	
+	case '?':
 		if (mInArgs)
 		{
 			int num = DemangleNumber();
@@ -2388,13 +2377,13 @@ bool MsDemangleScanner::DemangleType()
 }
 
 int MsDemangleScanner::DemangleNumber()
-{	
+{
 	char c = SafeGetChar(mMangledName, mCurIdx++);
 	bool isSigned = false;
 	if (c == '?')
-	{		
+	{
 		isSigned = true;
-		c = SafeGetChar(mMangledName, mCurIdx++);		
+		c = SafeGetChar(mMangledName, mCurIdx++);
 	}
 
 	if ((c >= '0') && (c <= '9'))
@@ -2406,7 +2395,7 @@ int MsDemangleScanner::DemangleNumber()
 	while ((c >= 'A') && (c <= 'P'))
 	{
 		val = (val * 10) + (c - 'A');
-		c = SafeGetChar(mMangledName, mCurIdx++);		
+		c = SafeGetChar(mMangledName, mCurIdx++);
 	}
 
 	if (c != '@')
@@ -2416,7 +2405,7 @@ int MsDemangleScanner::DemangleNumber()
 }
 
 bool MsDemangleScanner::DemangleCV()
-{	
+{
 	while (true)
 	{
 		char c = SafeGetChar(mMangledName, mCurIdx++);
@@ -2437,9 +2426,9 @@ bool MsDemangleScanner::DemangleCV()
 			break;
 	}
 	mCurIdx--;
-	
+
 	char c = SafeGetChar(mMangledName, mCurIdx++);
-	int constVal = 0;	
+	int constVal = 0;
 	if ((c < 'A') || (c > 'X'))
 	{
 		return Failed();
@@ -2455,7 +2444,7 @@ bool MsDemangleScanner::DemangleName()
 
 	char c = SafeGetChar(mMangledName, mCurIdx++);
 	if (c == '?')
-	{		
+	{
 		// A ?? is always a function
 		return true;
 	}
@@ -2469,16 +2458,16 @@ bool MsDemangleScanner::DemangleName()
 	if ((c >= '0') && (c <= '9'))
 	{
 		// Global variable / static member
-		mIsData = true;		
+		mIsData = true;
 		return true;
-	}	
+	}
 
 	// Not data
-	return true;	
+	return true;
 }
 
 void MsDemangleScanner::Process(const StringImpl& mangledName)
-{	
+{
 	mMangledName = mangledName;
 
 	char c = mangledName[mCurIdx++];
@@ -2489,13 +2478,13 @@ void MsDemangleScanner::Process(const StringImpl& mangledName)
 	if (mFailed)
 	{
 		mIsData = false;
-	}	
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
 
 String BfDemangler::Demangle(const StringImpl& mangledName, DbgLanguage language, Flags flags)
-{	
+{
 	if (mangledName.IsEmpty())
 		return "";
 	if (mangledName[0] == '?')
@@ -2526,4 +2515,3 @@ bool BfDemangler::IsData(const StringImpl& mangledName)
 	}
 	return false;
 }
-

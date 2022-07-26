@@ -7,7 +7,6 @@ struct CV_LVAR_ADDR_GAP;
 
 NS_BF_BEGIN
 
-
 #define PE_SIZEOF_SHORT_NAME              8
 #define PE_DIRECTORY_ENTRY_EXPORT         0   // Export Directory
 #define PE_NUMBEROF_DIRECTORY_ENTRIES    16
@@ -16,7 +15,6 @@ NS_BF_BEGIN
 
 #define PE_MACHINE_X86 0x14c
 #define PE_MACHINE_X64 0x8664
-
 
 // DOS .EXE header
 struct PEHeader
@@ -174,8 +172,8 @@ struct PE_NTHeaders64
 
 struct PESectionHeader
 {
-	char    mName[IMAGE_SIZEOF_SHORT_NAME];	
-	DWORD   mVirtualSize;	
+	char    mName[IMAGE_SIZEOF_SHORT_NAME];
+	DWORD   mVirtualSize;
 	DWORD   mVirtualAddress;
 	DWORD   mSizeOfRawData;
 	DWORD   mPointerToRawData;
@@ -234,8 +232,8 @@ struct PE_SymInfoAux
 //	int GetPrologSize() const { return mAttributes & 0xF; }
 //
 //	// # regs saved
-//	int GetNumSavedRegs() const { return (mAttributes >> 8) & 0x7; }	
-//	bool HasSEH() const { return (mAttributes >> 9) & 1; }	
+//	int GetNumSavedRegs() const { return (mAttributes >> 8) & 0x7; }
+//	bool HasSEH() const { return (mAttributes >> 9) & 1; }
 //	bool UseBP() const { return (mAttributes >> 10) & 1; }
 //
 //	// cbFrame: frame pointer
@@ -279,7 +277,7 @@ struct COFFFrameProgram
 		Command_Align,
 		Command_Set,
 		Command_Deref,
-		Command_Value,		
+		Command_Value,
 		Command_Value8
 	};
 

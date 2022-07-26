@@ -21,7 +21,7 @@ public:
 		ExternalNodesState_Failed
 	};
 
-public:	
+public:
 	const char* mSrc;
 	int mSrcLength;
 	BfAstAllocManager* mAstAllocManager;
@@ -30,7 +30,7 @@ public:
 	BfRootNode* mSidechannelRootNode; // Holds comments and preprocessor nodes
 	BfRootNode* mRootNode;
 	BfRootNode* mErrorRootNode;
-	
+
 	BfSizedArray<BfExteriorNode> mExteriorNodes;
 	int mExteriorNodesCheckIdx; // 0 = unchecked, -1 = failed, >0 means success and equals the BfSystem.mTypesIdx
 
@@ -76,7 +76,7 @@ public:
 	BfAstAllocator* mAlloc;
 	const char* mSrc;
 	int mSrcLength;
-	int mSrcAllocSize;	
+	int mSrcAllocSize;
 	bool mParsingFailed;
 	bool mIsClosed;
 	uint8* mAstScratch;
@@ -86,28 +86,28 @@ public:
 	BfRootNode* mSidechannelRootNode; // Holds comments and preprocessor nodes
 	BfRootNode* mRootNode;
 	BfRootNode* mErrorRootNode;
-	
+
 	BfParser* mNextRevision;
 	BfParser* mPrevRevision;
 
 	SizedArray<BfAstNode*, 8> mPendingSideNodes;
 	SizedArray<BfAstNode*, 8> mPendingErrorNodes;
 
-public:	
+public:
 	bool WantsStats();
 
 public:
 	BfSource(BfSystem* bfSystem);
 	virtual ~BfSource();
 
-	virtual BfParser* ToParser() { return NULL; }	
+	virtual BfParser* ToParser() { return NULL; }
 	virtual void HadSrcRealloc() {}
-	
+
 	BfErrorNode* CreateErrorNode(BfAstNode* astNode);
-	void AddErrorNode(BfAstNode* astNode);	
-	int AllocChars(int charCount);	
+	void AddErrorNode(BfAstNode* astNode);
+	int AllocChars(int charCount);
 	void FinishSideNodes();
-	virtual void Close(); // Writing done, return unused pages but retain used pages	
+	virtual void Close(); // Writing done, return unused pages but retain used pages
 };
 
 NS_BF_END;
