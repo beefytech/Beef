@@ -3582,7 +3582,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 										auto lifetimeStart = mBfIRBuilder->CreateLifetimeStart(tempVar);
 										mBfIRBuilder->ClearDebugLocation(lifetimeStart);
 
-										if (!mBfIRBuilder->mIgnoreWrites)
+										if ((!mBfIRBuilder->mIgnoreWrites) && (IsTargetingBeefBackend()))
 											mCurMethodState->mCurScope->mPrevScope->mDeferredLifetimeEnds.push_back(tempVar);
 										mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 										if (exprEvaluator->mResult.IsSplat())
@@ -4314,6 +4314,11 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 
 void BfModule::Visit(BfSwitchStatement* switchStmt)
 {
+	if (mModuleName == "BeefTest_TestProgram")
+	{
+		NOP;
+	}
+
 	BfScopeData outerScope;
 	outerScope.mInnerIsConditional = false;
 	outerScope.mCloseNode = switchStmt;
