@@ -75,40 +75,40 @@ class BeIRCodeGen : public BfIRCodeGenBase
 {
 public:
 	bool mDebugging;
-	
-	BfIRBuilder* mBfIRBuilder;	
+
+	BfIRBuilder* mBfIRBuilder;
 	BeFunction* mActiveFunction;
 
 	BeContext* mBeContext;
-	BeModule* mBeModule;	
-	Array<BeDbgLoc*> mSavedDebugLocs;	
-	bool mHasDebugLoc;		
+	BeModule* mBeModule;
+	Array<BeDbgLoc*> mSavedDebugLocs;
+	bool mHasDebugLoc;
 
 	int mCmdCount;
 	Dictionary<int, BeIRCodeGenEntry> mResults;
-	Dictionary<int, BeIRTypeEntry> mTypes;	
+	Dictionary<int, BeIRTypeEntry> mTypes;
 
 	Dictionary<BeType*, BeDbgType*> mOnDemandTypeMap;
 	Dictionary<BeType*, BeValue*> mReflectDataMap;
-	Array<int> mConfigConsts;	
+	Array<int> mConfigConsts;
 
-public:	
+public:
 	void FatalError(const StringImpl& str);
 	void NotImpl();
 	BfTypeCode GetTypeCode(BeType* type, bool isSigned);
 	void SetResult(int id, BeValue* value);
 	void SetResult(int id, BeType* type);
 	void SetResult(int id, BeBlock* value);
-	void SetResult(int id, BeMDNode* md);	
+	void SetResult(int id, BeMDNode* md);
 
 	BeType* GetBeType(BfTypeCode typeCode, bool& isSigned);
-	BeIRTypeEntry& GetTypeEntry(int typeId);	
+	BeIRTypeEntry& GetTypeEntry(int typeId);
 
 	void FixValues(BeStructType* structType, CmdParamVec<BeValue*>& values);
 
 public:
 	BeIRCodeGen();
-	~BeIRCodeGen();	
+	~BeIRCodeGen();
 
 	void Hash(BeHashContext& hashCtx);
 	bool IsModuleEmpty();
@@ -127,12 +127,12 @@ public:
 	void Read(BeConstant*& beConstant);
 	void Read(BeFunction*& beFunc);
 	void Read(BeBlock*& beBlock);
-	void Read(BeMDNode*& beMD);	
+	void Read(BeMDNode*& beMD);
 
 	template <typename T>
 	void Read(SizedArrayImpl<T>& vec)
 	{
-		int len = (int)ReadSLEB128();		
+		int len = (int)ReadSLEB128();
 		for (int i = 0; i < len; i++)
 		{
 			T result;
@@ -140,11 +140,11 @@ public:
 			vec.push_back(result);
 		}
 	}
-	
+
 	void Init(const BfSizedArray<uint8>& buffer);
 	void Process();
 
-	virtual void ProcessBfIRData(const BfSizedArray<uint8>& buffer) override;	
+	virtual void ProcessBfIRData(const BfSizedArray<uint8>& buffer) override;
 	virtual void HandleNextCmd() override;
 	virtual void SetConfigConst(int idx, int value) override;
 

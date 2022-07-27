@@ -39,7 +39,7 @@ struct BeLibMemberHeader
 		memcpy(mDate, "0", 1);
 		memcpy(mMode, mode, strlen(mode));
 
-		char sizeStr[32];		
+		char sizeStr[32];
 		sprintf(sizeStr, "%d", size);
 		memcpy(mSize, sizeStr, strlen(sizeStr));
 	}
@@ -60,7 +60,7 @@ public:
 	Array<uint8> mData;
 	BeLibEntry* mNextWithSameName;
 
-public:	
+public:
 	BeLibEntry()
 	{
 		mReferenced = false;
@@ -84,7 +84,7 @@ public:
 	String mFilePath;
 	String mOldFilePath;
 	FileStream mOldFileStream;
-	FileStream mFileStream;	
+	FileStream mFileStream;
 	Dictionary<String, BeLibEntry*> mOldEntries;
 	Dictionary<String, BeLibEntry*> mEntries;
 	bool mFailed;
@@ -107,7 +107,7 @@ public:
 	Dictionary<String, BeLibFile*> mLibFiles;
 	Array<String> mErrors;
 
-public:	
+public:
 	BeLibManager();
 	~BeLibManager();
 
@@ -118,8 +118,7 @@ public:
 	void Finish();
 
 	static String GetLibFilePath(const StringImpl& objFilePath);
-	static BeLibManager* Get();		
+	static BeLibManager* Get();
 };
-
 
 NS_BF_END

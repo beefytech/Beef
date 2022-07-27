@@ -28,7 +28,7 @@ BeType* BeContext::GetPrimitiveType(BeTypeCode typeCode)
 	primType->mTypeCode = typeCode;
 	switch (typeCode)
 	{
-	case BeTypeCode_None:		
+	case BeTypeCode_None:
 		primType->mSize = 0;
 		primType->mAlign = 0;
 		break;
@@ -80,24 +80,24 @@ BeStructType* BeContext::CreateStruct(const StringImpl& name)
 	BeStructType* structType = mTypes.Alloc<BeStructType>();
 	structType->mContext = this;
 	structType->mTypeCode = BeTypeCode_Struct;
-	structType->mName = name;	
+	structType->mName = name;
 	structType->mIsOpaque = true;
 	return structType;
 }
 
 BeStructType* BeContext::CreateStruct(const SizedArrayImpl<BeType*>& types)
-{	
-	BeStructType** valuePtr = NULL;	
-	if (mAnonymousStructMap.TryGetValueWith(types, &valuePtr))	
-		return *valuePtr;	
+{
+	BeStructType** valuePtr = NULL;
+	if (mAnonymousStructMap.TryGetValueWith(types, &valuePtr))
+		return *valuePtr;
 
 	Array<BeType*> key;
 	for (auto type : types)
 		key.Add(type);
-	
+
 	BeStructType* structType = CreateStruct("");
 	SetStructBody(structType, types, false);
-	mAnonymousStructMap.TryAdd(key, structType);	
+	mAnonymousStructMap.TryAdd(key, structType);
 	return structType;
 }
 
@@ -109,7 +109,7 @@ BePointerType* BeContext::GetPointerTo(BeType* beType)
 		pointerType->mTypeCode = BeTypeCode_Pointer;
 		pointerType->mElementType = beType;
 		pointerType->mSize = mPointerSize;
-		pointerType->mAlign = mPointerSize;		
+		pointerType->mAlign = mPointerSize;
 		beType->mPointerType = pointerType;
 
 		/*if (beType->IsSizedArray())
@@ -197,12 +197,12 @@ bool BeContext::AreTypesEqual(BeType* lhs, BeType* rhs)
 {
 	if (lhs == rhs)
 		return true;
-	
+
 	if (lhs->mTypeCode != rhs->mTypeCode)
 		return false;
 
 	switch (lhs->mTypeCode)
-	{	
+	{
  	case BeTypeCode_None:
  	case BeTypeCode_NullPtr:
  	case BeTypeCode_Boolean:
@@ -214,7 +214,7 @@ bool BeContext::AreTypesEqual(BeType* lhs, BeType* rhs)
  	case BeTypeCode_Double:
 		return true;
 	case BeTypeCode_Pointer:
-		return AreTypesEqual(((BePointerType*)lhs)->mElementType, ((BePointerType*)rhs)->mElementType);	
+		return AreTypesEqual(((BePointerType*)lhs)->mElementType, ((BePointerType*)rhs)->mElementType);
 	case BeTypeCode_SizedArray:
 		{
 			auto lhsSizedArray = (BeSizedArrayType*)lhs;
@@ -222,7 +222,7 @@ bool BeContext::AreTypesEqual(BeType* lhs, BeType* rhs)
 			if (lhsSizedArray->mLength != rhsSizedArray->mLength)
 				return false;
 			return AreTypesEqual(lhsSizedArray->mElementType, rhsSizedArray->mElementType);
-		}	
+		}
 	case BeTypeCode_Vector:
 		{
 			auto lhsSizedArray = (BeVectorType*)lhs;
@@ -234,4 +234,3 @@ bool BeContext::AreTypesEqual(BeType* lhs, BeType* rhs)
 	}
 	return false;
 }
-

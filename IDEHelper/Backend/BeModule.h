@@ -68,7 +68,7 @@ public:
 
 	virtual void Visit(BeValue* beValue) {}
 	virtual void Visit(BeBlock* beBlock) {}
-	virtual void Visit(BeArgument* beArgument) {}	
+	virtual void Visit(BeArgument* beArgument) {}
 	virtual void Visit(BeInst* beInst) {}
 	virtual void Visit(BeNopInst* nopInst) {}
 	virtual void Visit(BeUnreachableInst* unreachableInst) {}
@@ -76,10 +76,10 @@ public:
 	virtual void Visit(BeUndefValueInst* undefValue) {}
 	virtual void Visit(BeExtractValueInst* extractValue) {}
 	virtual void Visit(BeInsertValueInst* insertValue) {}
-	virtual void Visit(BeNumericCastInst* castInst) {}	
-	virtual void Visit(BeBitCastInst* castInst) {}	
-	virtual void Visit(BeNegInst* negInst) {}	
-	virtual void Visit(BeNotInst* notInst) {}	
+	virtual void Visit(BeNumericCastInst* castInst) {}
+	virtual void Visit(BeBitCastInst* castInst) {}
+	virtual void Visit(BeNegInst* negInst) {}
+	virtual void Visit(BeNotInst* notInst) {}
 	virtual void Visit(BeBinaryOpInst* binaryOpInst) {}
 	virtual void Visit(BeFenceInst* fenceInst) {}
 	virtual void Visit(BeStackSaveInst* stackSaveInst) {}
@@ -108,8 +108,8 @@ public:
 	virtual void Visit(BeSwitchInst* switchInst) {}
 	virtual void Visit(BeRetInst* retInst) {}
 	virtual void Visit(BeCallInst* callInst) {}
-	
-	//virtual void Visit(BeDbgVariable* dbgVariable) {}	
+
+	//virtual void Visit(BeDbgVariable* dbgVariable) {}
 	virtual void Visit(BeDbgDeclareInst* dbgDeclareInst) {}
 };
 
@@ -122,15 +122,15 @@ class BeInliner : public BeValueVisitor
 public:
 	BumpAllocator* mAlloc;
 	OwnedVector<BeValue>* mOwnedValueVec;
-	Dictionary<BeValue*, BeValue*> mValueMap;	
+	Dictionary<BeValue*, BeValue*> mValueMap;
 	Dictionary<BeDbgLoc*, BeDbgLoc*> mInlinedAtMap;
-	
+
 	BeModule* mModule;
 	BeFunction* mSrcFunc;
 	BeFunction* mDestFunc;
-	BeCallInst* mCallInst;	
-	BeBlock* mDestBlock;	
-	BeDbgLoc* mSrcDbgLoc;	
+	BeCallInst* mCallInst;
+	BeBlock* mDestBlock;
+	BeDbgLoc* mSrcDbgLoc;
 	BeDbgLoc* mDestDbgLoc;
 
 public:
@@ -158,7 +158,7 @@ public:
 		auto inst = mOwnedValueVec->Alloc<T>();
 		AddInst(inst, srcInst);
 		return inst;
-	}	
+	}
 
 	virtual void Visit(BeValue* beValue) override;
 	virtual void Visit(BeBlock* beBlock) override;
@@ -202,7 +202,7 @@ public:
 	virtual void Visit(BeSwitchInst* switchInst) override;
 	virtual void Visit(BeRetInst* retInst) override;
 	virtual void Visit(BeCallInst* callInst) override;
-		
+
 	virtual void Visit(BeDbgDeclareInst* dbgDeclareInst) override;
 };
 
@@ -212,7 +212,7 @@ public:
 	int mRefCount;
 #ifdef _DEBUG
 	bool mLifetimeEnded;
-	bool mWasRemoved;	
+	bool mWasRemoved;
 	BeValue()
 	{
 		mLifetimeEnded = false;
@@ -228,12 +228,11 @@ public:
 
 	virtual ~BeValue()
 	{
-
 	}
 
 	static const int TypeId = 0;
 	virtual void Accept(BeValueVisitor* beVisitor) = 0;
-	virtual bool TypeIdIsA(int typeId) = 0;		
+	virtual bool TypeIdIsA(int typeId) = 0;
 	virtual BeValue* DynCast(int typeId)
 	{
 		if (TypeIdIsA(typeId))
@@ -246,7 +245,6 @@ public:
 	}
 	virtual int GetTypeId() { return TypeId; }
 
-
 public:
 	virtual BeType* GetType()
 	{
@@ -255,7 +253,6 @@ public:
 
 	virtual void SetName(const StringImpl& name)
 	{
-
 	}
 };
 
@@ -310,8 +307,8 @@ class BeConstant : public BeValue
 {
 public:
 	BE_VALUE_TYPE(BeConstant, BeValue);
-		
-	BeType* mType;	
+
+	BeType* mType;
 	union
 	{
 		bool mBool;
@@ -325,7 +322,7 @@ public:
 		uint8 mUInt8;
 		uint8 mChar;
 		uint32 mChar32;
-		double mDouble;		
+		double mDouble;
 		//BeType* mTypeParam;
 		//BeGlobalVariable* mGlobalVar;
 		BeConstant* mTarget;
@@ -338,7 +335,7 @@ public:
 		return false;
 	}
 
-	virtual BeType* GetType();	
+	virtual BeType* GetType();
 	virtual void GetData(BeConstData& data);
 	virtual void HashContent(BeHashContext& hashCtx) override;
 };
@@ -365,7 +362,7 @@ class BeGEP1Constant : public BeConstant
 {
 public:
 	BE_VALUE_TYPE(BeGEP1Constant, BeConstant);
-	int mIdx0;	
+	int mIdx0;
 
 	virtual BeType* GetType();
 
@@ -373,14 +370,14 @@ public:
 	{
 		hashCtx.Mixin(TypeId);
 		mTarget->HashReference(hashCtx);
-		hashCtx.Mixin(mIdx0);		
+		hashCtx.Mixin(mIdx0);
 	}
 };
 
 class BeGEP2Constant : public BeConstant
 {
 public:
-	BE_VALUE_TYPE(BeGEP2Constant, BeConstant);	
+	BE_VALUE_TYPE(BeGEP2Constant, BeConstant);
 	int mIdx0;
 	int mIdx1;
 
@@ -388,7 +385,7 @@ public:
 
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
-		hashCtx.Mixin(TypeId);		
+		hashCtx.Mixin(TypeId);
 		mTarget->HashReference(hashCtx);
 		hashCtx.Mixin(mIdx0);
 		hashCtx.Mixin(mIdx1);
@@ -399,7 +396,7 @@ class BeExtractValueConstant : public BeConstant
 {
 public:
 	BE_VALUE_TYPE(BeExtractValueConstant, BeConstant);
-	int mIdx0;	
+	int mIdx0;
 
 	virtual BeType* GetType();
 
@@ -407,14 +404,14 @@ public:
 	{
 		hashCtx.Mixin(TypeId);
 		mTarget->HashReference(hashCtx);
-		hashCtx.Mixin(mIdx0);		
+		hashCtx.Mixin(mIdx0);
 	}
 };
 
 class BeStructConstant : public BeConstant
 {
 public:
-	BE_VALUE_TYPE(BeStructConstant, BeConstant);	
+	BE_VALUE_TYPE(BeStructConstant, BeConstant);
 
 	SizedArray<BeConstant*, 4> mMemberValues;
 
@@ -434,25 +431,25 @@ class BeUndefConstant : public BeConstant
 {
 public:
 	BE_VALUE_TYPE(BeUndefConstant, BeConstant);
-	
+
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
 		hashCtx.Mixin(mType);
-		hashCtx.Mixin(TypeId);		
+		hashCtx.Mixin(TypeId);
 	}
 };
 
 class BeStringConstant : public BeConstant
 {
 public:
-	BE_VALUE_TYPE(BeStringConstant, BeConstant);	
+	BE_VALUE_TYPE(BeStringConstant, BeConstant);
 
 	String mString;
 
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
 		hashCtx.Mixin(TypeId);
-		hashCtx.MixinStr(mString);		
+		hashCtx.MixinStr(mString);
 	}
 };
 
@@ -471,8 +468,8 @@ public:
 	int mAlign;
 	bool mUnnamedAddr;
 
-	virtual BeType* GetType();	
-	
+	virtual BeType* GetType();
+
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
 		hashCtx.Mixin(TypeId);
@@ -485,12 +482,12 @@ public:
 		hashCtx.Mixin(mIsTLS);
 		hashCtx.Mixin(mAlign);
 		hashCtx.Mixin(mUnnamedAddr);
-	}	
+	}
 
 	virtual void GetData(BeConstData& data) override
 	{
 		data.mConsts.Add({ (int)data.mData.size(), this });
-		data.mData.Insert(data.mData.size(), (uint8)0, 8);				
+		data.mData.Insert(data.mData.size(), (uint8)0, 8);
 	}
 };
 
@@ -522,13 +519,13 @@ class BeIntrinsic : public BeValue
 {
 public:
 	BE_VALUE_TYPE(BeIntrinsic, BeValue);
-	
+
 	String mName;
 	BfIRIntrinsic mKind;
 	BeType* mReturnType;
 
 	BeIntrinsic()
-	{		
+	{
 		mReturnType = NULL;
 	}
 
@@ -536,7 +533,7 @@ public:
 	{
 		hashCtx.Mixin(TypeId);
 		hashCtx.Mixin(mKind);
-	}	
+	}
 };
 
 class BeFunction : public BeConstant
@@ -544,15 +541,15 @@ class BeFunction : public BeConstant
 public:
 	BE_VALUE_TYPE(BeFunction, BeConstant);
 
-	BeModule* mModule;	
+	BeModule* mModule;
 #ifdef _DEBUG
 	StringT<256> mName;
 #else
 	String mName;
 #endif
-	BfIRLinkageType mLinkageType;	
+	BfIRLinkageType mLinkageType;
 	bool mIsVarReturn;
-	bool mAlwaysInline;		
+	bool mAlwaysInline;
 	bool mNoUnwind;
 	bool mUWTable;
 	bool mNoReturn;
@@ -561,10 +558,10 @@ public:
 	bool mIsDLLExport;
 	bool mIsDLLImport;
 	BfIRCallingConv mCallingConv;
-	Array<BeBlock*> mBlocks;		
+	Array<BeBlock*> mBlocks;
 	Array<BeFunctionParam> mParams;
 	BeDbgFunction* mDbgFunction;
-	BeGlobalVariable* mRemapBindVar;	
+	BeGlobalVariable* mRemapBindVar;
 
 public:
 	BeFunction()
@@ -575,15 +572,15 @@ public:
 		mDbgFunction = NULL;
 		mIsVarReturn = false;
 		mAlwaysInline = false;
-		mDidInlinePass = false;		
+		mDidInlinePass = false;
 		mNoUnwind = false;
 		mUWTable = false;
 		mNoReturn = false;
 		mNoFramePointerElim = false;
 		mIsDLLExport = false;
 		mIsDLLImport = false;
-		mRemapBindVar = NULL;		
-	}	
+		mRemapBindVar = NULL;
+	}
 
 	BeFunctionType* GetFuncType()
 	{
@@ -600,7 +597,7 @@ public:
 	{
 		return (!mParams.IsEmpty()) && (mParams[0].mStructRet);
 	}
-	
+
 	virtual void HashContent(BeHashContext& hashCtx) override;
 };
 
@@ -614,11 +611,10 @@ public:
 	BeFunction* mFunction;
 
 public:
-	bool IsEmpty();	
+	bool IsEmpty();
 
 	virtual void HashContent(BeHashContext& hashCtx) override;
 };
-
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -630,8 +626,8 @@ public:
 	BeBlock* mParentBlock;
 	const char* mName;
 	BeDbgLoc* mDbgLoc;
-	
-public:	
+
+public:
 	BeContext* GetContext();
 	BeModule* GetModule();
 
@@ -640,7 +636,7 @@ public:
 		return GetType() != NULL;
 	}
 
-	virtual void SetName(const StringImpl& name) override;	
+	virtual void SetName(const StringImpl& name) override;
 
 	BeInst()
 	{
@@ -650,7 +646,7 @@ public:
 	}
 
 	virtual void HashInst(BeHashContext& hashCtx) = 0;
-	virtual void HashContent(BeHashContext& hashCtx) override;	
+	virtual void HashContent(BeHashContext& hashCtx) override;
 };
 
 class BeNopInst : public BeInst
@@ -707,7 +703,7 @@ class BeExtractValueInst : public BeInst
 public:
 	BE_VALUE_TYPE(BeExtractValueInst, BeInst);
 
-	BeValue* mAggVal;	
+	BeValue* mAggVal;
 	int mIdx;
 
 	virtual BeType* GetType() override;
@@ -769,7 +765,7 @@ public:
 
 	BeValue* mValue;
 	BeType* mToType;
-	
+
 	virtual BeType* GetType() override;
 
 	virtual void HashInst(BeHashContext& hashCtx) override
@@ -777,7 +773,7 @@ public:
 		hashCtx.Mixin(TypeId);
 		mValue->HashReference(hashCtx);
 		mToType->HashReference(hashCtx);
-	}	
+	}
 };
 
 class BeNegInst : public BeInst
@@ -785,7 +781,7 @@ class BeNegInst : public BeInst
 public:
 	BE_VALUE_TYPE(BeNegInst, BeInst);
 
-	BeValue* mValue;	
+	BeValue* mValue;
 	virtual BeType* GetType() override;
 
 	virtual void HashInst(BeHashContext& hashCtx) override
@@ -823,15 +819,15 @@ enum BeBinaryOpKind
 	BeBinaryOpKind_BitwiseAnd,
 	BeBinaryOpKind_BitwiseOr,
 	BeBinaryOpKind_ExclusiveOr,
-	BeBinaryOpKind_LeftShift,	
-	BeBinaryOpKind_RightShift,	
+	BeBinaryOpKind_LeftShift,
+	BeBinaryOpKind_RightShift,
 	BeBinaryOpKind_ARightShift,
 	BeBinaryOpKind_Equality,
 	BeBinaryOpKind_InEquality,
 	BeBinaryOpKind_GreaterThan,
 	BeBinaryOpKind_LessThan,
 	BeBinaryOpKind_GreaterThanOrEqual,
-	BeBinaryOpKind_LessThanOrEqual,		
+	BeBinaryOpKind_LessThanOrEqual,
 };
 
 class BeBinaryOpInst : public BeInst
@@ -844,7 +840,7 @@ public:
 	BeValue* mLHS;
 	BeValue* mRHS;
 
-	virtual BeType* GetType() override;	
+	virtual BeType* GetType() override;
 
 	virtual void HashInst(BeHashContext& hashCtx) override
 	{
@@ -920,7 +916,7 @@ public:
 	bool mForceMem;
 
 public:
-	virtual BeType* GetType() override; 
+	virtual BeType* GetType() override;
 
 	virtual void HashInst(BeHashContext& hashCtx) override
 	{
@@ -1034,7 +1030,7 @@ public:
 
 	virtual void HashInst(BeHashContext& hashCtx) override
 	{
-		hashCtx.Mixin(TypeId);		
+		hashCtx.Mixin(TypeId);
 	}
 };
 
@@ -1043,7 +1039,7 @@ class BeValueScopeRetainInst : public BeInst
 public:
 	BE_VALUE_TYPE(BeValueScopeRetainInst, BeInst);
 
-	BeValue* mValue;	
+	BeValue* mValue;
 
 	virtual void HashInst(BeHashContext& hashCtx) override
 	{
@@ -1054,7 +1050,7 @@ public:
 
 class BeValueScopeEndInst : public BeInst
 {
-public:	
+public:
 	BE_VALUE_TYPE(BeValueScopeEndInst, BeInst);
 
 	BeValueScopeStartInst* mScopeStart;
@@ -1077,7 +1073,7 @@ public:
 	bool mIsVolatile;
 
 public:
-	virtual BeType* GetType() override;	
+	virtual BeType* GetType() override;
 
 	virtual void HashInst(BeHashContext& hashCtx) override
 	{
@@ -1144,7 +1140,7 @@ public:
 
 	virtual void HashInst(BeHashContext& hashCtx) override
 	{
-		hashCtx.Mixin(TypeId);		
+		hashCtx.Mixin(TypeId);
 	}
 };
 
@@ -1155,7 +1151,7 @@ public:
 
 	virtual void HashInst(BeHashContext& hashCtx) override
 	{
-		hashCtx.Mixin(TypeId);		
+		hashCtx.Mixin(TypeId);
 	}
 
 	virtual BeType* GetType() override
@@ -1278,7 +1274,7 @@ class BeSwitchCase
 {
 public:
 	BeConstant* mValue;
-	BeBlock* mBlock;	
+	BeBlock* mBlock;
 };
 
 class BeSwitchInst : public BeInst
@@ -1338,7 +1334,7 @@ public:
 		bool mStructRet;
 		bool mZExt;
 		bool mNoAlias;
-		bool mNoCapture;		
+		bool mNoCapture;
 		Arg()
 		{
 			mValue = NULL;
@@ -1352,14 +1348,14 @@ public:
 	};
 
 public:
-	BE_VALUE_TYPE(BeCallInst, BeInst);	
+	BE_VALUE_TYPE(BeCallInst, BeInst);
 
 	BeValue* mInlineResult;
 	BeValue* mFunc;
 	SizedArray<Arg, 4> mArgs;
 	BfIRCallingConv mCallingConv;
 	bool mNoReturn;
-	bool mTailCall;		
+	bool mTailCall;
 
 	virtual BeType* GetType() override;
 
@@ -1369,7 +1365,7 @@ public:
 		mFunc = NULL;
 		mCallingConv = BfIRCallingConv_CDecl;
 		mNoReturn = false;
-		mTailCall = false;		
+		mTailCall = false;
 	}
 
 	virtual void HashInst(BeHashContext& hashCtx) override
@@ -1379,7 +1375,7 @@ public:
 			mInlineResult->HashReference(hashCtx);
 		mFunc->HashReference(hashCtx);
 		for (auto& arg : mArgs)
-		{			
+		{
 			arg.mValue->HashReference(hashCtx);
 			hashCtx.Mixin(arg.mStructRet);
 			hashCtx.Mixin(arg.mZExt);
@@ -1388,7 +1384,7 @@ public:
 		}
 		hashCtx.Mixin(mCallingConv);
 		hashCtx.Mixin(mNoReturn);
-		hashCtx.Mixin(mTailCall);		
+		hashCtx.Mixin(mTailCall);
 	}
 
 	bool HasStructRet()
@@ -1405,9 +1401,9 @@ public:
 	BE_VALUE_TYPE(BeComptimeError, BeInst);
 
 public:
-	int mError;	
+	int mError;
 
-public:	
+public:
 	virtual void HashInst(BeHashContext& hashCtx) override
 	{
 		hashCtx.Mixin(TypeId);
@@ -1424,7 +1420,7 @@ public:
 	int mTypeId;
 	BeType* mResultType;
 
-public:	
+public:
 	virtual BeType* GetType() override
 	{
 		return mResultType;
@@ -1476,7 +1472,7 @@ public:
 	}
 
 	virtual void HashInst(BeHashContext& hashCtx) override
-	{		
+	{
 		hashCtx.Mixin(TypeId);
 		mValue->HashReference(hashCtx);
 		hashCtx.Mixin(mTypeId);
@@ -1554,7 +1550,7 @@ public:
 
 struct BeDumpContext
 {
-public:	
+public:
 	Dictionary<BeValue*, String> mValueNameMap;
 	Dictionary<String, int> mSeenNames;
 
@@ -1588,7 +1584,6 @@ public:
 	bool mIsValue;
 
 	virtual void HashInst(BeHashContext& hashCtx) override;
-	
 };
 
 class BeMDNode : public BeValue
@@ -1599,7 +1594,6 @@ public:
 public:
 	virtual ~BeMDNode()
 	{
-
 	}
 
 	virtual void HashContent(BeHashContext& hashCtx) override
@@ -1620,20 +1614,20 @@ public:
 	int mColumn;
 	BeMDNode* mDbgScope;
 	BeDbgLoc* mDbgInlinedAt;
-	int mIdx;	
+	int mIdx;
 	bool mHadInline;
 
 public:
 	BeDbgLoc()
-	{		
+	{
 	}
 
-	int GetInlineDepth();	
+	int GetInlineDepth();
 	int GetInlineMatchDepth(BeDbgLoc* other);
 	BeDbgLoc* GetInlinedAt(int idx = 0);
 	BeDbgLoc* GetRoot();
 	BeDbgFunction* GetDbgFunc();
-	BeDbgFile* GetDbgFile();	
+	BeDbgFile* GetDbgFile();
 
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
@@ -1645,7 +1639,7 @@ public:
 		else
 			hashCtx.Mixin(-1);
 		if (mDbgInlinedAt != NULL)
-			mDbgInlinedAt->HashReference(hashCtx);		
+			mDbgInlinedAt->HashReference(hashCtx);
 	}
 };
 
@@ -1660,7 +1654,7 @@ public:
 	BeBlock* mLastBeBlock;
 	int mId;
 
-	virtual void HashContent(BeHashContext& hashCtx) override;	
+	virtual void HashContent(BeHashContext& hashCtx) override;
 };
 
 class BeDbgNamespace : public BeMDNode
@@ -1687,16 +1681,16 @@ public:
 
 public:
 	int mTypeId;
-	
+
 	BeDbgTypeId()
 	{
 		mTypeId = -1;
 	}
-	
+
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
 		hashCtx.Mixin(TypeId);
-		hashCtx.Mixin(mTypeId);		
+		hashCtx.Mixin(mTypeId);
 	}
 };
 
@@ -1704,7 +1698,7 @@ class BeDbgType : public BeMDNode
 {
 public:
 	BE_VALUE_TYPE(BeDbgType, BeMDNode);
-	
+
 public:
 	int mSize;
 	int mAlign;
@@ -1744,7 +1738,7 @@ public:
 	BE_VALUE_TYPE(BeDbgBasicType, BeDbgType);
 
 public:
-	String mName;	
+	String mName;
 	int mEncoding;
 
 	virtual void HashContent(BeHashContext& hashCtx) override
@@ -1763,7 +1757,7 @@ public:
 	BE_VALUE_TYPE(BeDbgArrayType, BeDbgType);
 
 public:
-	BeDbgType* mElement;	
+	BeDbgType* mElement;
 	int mNumElements;
 
 	virtual void HashContent(BeHashContext& hashCtx) override
@@ -1772,7 +1766,7 @@ public:
 		hashCtx.Mixin(mSize);
 		hashCtx.Mixin(mAlign);
 		hashCtx.Mixin(mNumElements);
-		mElement->HashReference(hashCtx);				
+		mElement->HashReference(hashCtx);
 	}
 };
 
@@ -1824,10 +1818,10 @@ public:
 class BeDbgPointerType : public BeDbgType
 {
 public:
-	BE_VALUE_TYPE(BeDbgPointerType, BeDbgType);		
+	BE_VALUE_TYPE(BeDbgPointerType, BeDbgType);
 
 public:
-	BeDbgType* mElement;	
+	BeDbgType* mElement;
 
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
@@ -1862,7 +1856,7 @@ public:
 	int mFlags;
 	int mOffset;
 	bool mIsStatic;
-	BeValue* mStaticValue;	
+	BeValue* mStaticValue;
 
 public:
 	BeDbgStructMember()
@@ -1895,7 +1889,7 @@ public:
 public:
 	BeDbgType* mReturnType;
 	Array<BeDbgType*> mParams;
-	
+
 public:
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
@@ -1954,9 +1948,9 @@ public:
 		Kind_SymbolAddr
 	};
 
-	Kind mKind;	
-	X64CPURegister mReg;	
-	int mOfs;	
+	Kind mKind;
+	X64CPURegister mReg;
+	int mOfs;
 
 public:
 	BeDbgVariableLoc()
@@ -1974,7 +1968,7 @@ public:
 
 public:
 	String mName;
-	BeMDNode* mType;	
+	BeMDNode* mType;
 	BeValue* mValue;
 	int mParamNum;
 	BfIRInitType mInitType;
@@ -1984,13 +1978,13 @@ public:
 
 	BeDbgLoc* mDeclDbgLoc;
 	BeDbgVariableLoc mPrimaryLoc;
-	BeDbgVariableLoc mSavedLoc;	
+	BeDbgVariableLoc mSavedLoc;
 	int mDeclStart;
-	int mDeclEnd;	
-	int mDeclMCBlockId;	
+	int mDeclEnd;
+	int mDeclMCBlockId;
 	bool mDeclLifetimeExtend;
 	bool mDbgLifeEnded;
-	bool mIsValue; // Value vs Addr	
+	bool mIsValue; // Value vs Addr
 
 	Array<BeDbgVariableRange> mSavedRanges;
 	Array<BeDbgVariableRange> mGaps;
@@ -2027,7 +2021,7 @@ public:
 		if (mScope != NULL)
 			mScope->HashReference(hashCtx);
 		if (mDeclDbgLoc != NULL)
-			mDeclDbgLoc->HashReference(hashCtx);		
+			mDeclDbgLoc->HashReference(hashCtx);
 
 		// The others only get filled in after generation -- not part of hash
 	}
@@ -2065,8 +2059,8 @@ public:
 	bool mIncludedAsMember;
 	int mFlags;
 	int mVK;
-	int mVIndex;	
-		
+	int mVIndex;
+
 	Array<BeDbgVariable*> mVariables;
 	int mPrologSize;
 	int mCodeLen;
@@ -2089,9 +2083,9 @@ public:
 		mIsLocalToUnit = false;
 		mVK = -1;
 		mVIndex = -1;
-		mIsStaticMethod = true;		
+		mIsStaticMethod = true;
 		mIncludedAsMember = false;
-		mPrologSize = 0;		
+		mPrologSize = 0;
 		mCodeLen = -1;
 		mCvTypeId = -1;
 		mCvFuncId = -1;
@@ -2128,7 +2122,7 @@ public:
 			return ((mVariables.size() > 0) && (mVariables[0]->mName == "this"));
 		}*/
 	}
-	
+
 	virtual void HashContent(BeHashContext& hashCtx) override;
 };
 
@@ -2166,7 +2160,7 @@ public:
 public:
 	BeDbgStructType()
 	{
-		mScope = NULL;		
+		mScope = NULL;
 		mDerivedFrom = NULL;
 		mIsStatic = false;
 		mIsFullyDefined = false;
@@ -2236,12 +2230,12 @@ public:
 	BE_VALUE_TYPE(BeDbgFile, BeMDNode);
 
 public:
-	String mFileName;	
+	String mFileName;
 	String mDirectory;
 	Val128 mMD5Hash;
-	int mIdx;	
+	int mIdx;
 
-	void ToString(String& str);	
+	void ToString(String& str);
 	void GetFilePath(String& outStr);
 
 	virtual void HashContent(BeHashContext& hashCtx) override
@@ -2295,7 +2289,7 @@ public:
 	String mFileName;
 	String mDirectory;
 	String mProducer;
-		
+
 	OwnedVector<BeDbgFile> mFiles;
 	OwnedVector<BeDbgNamespace> mNamespaces;
 	OwnedVector<BeDbgGlobalVariable> mGlobalVariables;
@@ -2303,7 +2297,7 @@ public:
 	OwnedVector<BeMDNode> mTypes;
 	Array<BeDbgFunction*> mFuncs; // Does not include methods in structs
 
-	virtual void HashContent(BeHashContext& hashCtx) override;	
+	virtual void HashContent(BeHashContext& hashCtx) override;
 	BeDbgReferenceType* CreateReferenceType(BeDbgType* dbgType);
 };
 
@@ -2330,18 +2324,18 @@ public:
 	int mInsertPos;
 	BeDbgLoc* mCurDbgLoc;
 	BeDbgLoc* mPrevDbgLocInline;
-	BeDbgLoc* mLastDbgLoc;	
-	Array<BeArgument*> mArgs;	
-	Array<BeFunction*> mFunctions;	
+	BeDbgLoc* mLastDbgLoc;
+	Array<BeArgument*> mArgs;
+	Array<BeFunction*> mFunctions;
 	Dictionary<String, BeFunction*> mFunctionMap;
 	int mCurDbgLocIdx;
-	int mCurLexBlockId;	
+	int mCurLexBlockId;
 
 	BeDbgModule* mDbgModule;
 	CeMachine* mCeMachine;
 
-public:	
-	void AddInst(BeInst* inst);	
+public:
+	void AddInst(BeInst* inst);
 	static void ToString(StringImpl& str, BeType* type);
 	static void StructToString(StringImpl& str, BeStructType* type);
 
@@ -2362,7 +2356,7 @@ public:
 	}
 
 public:
-	BeModule(const StringImpl& moduleName, BeContext* context);		
+	BeModule(const StringImpl& moduleName, BeContext* context);
 	~BeModule();
 
 	void Hash(BeHashContext& hashCtx);
@@ -2375,11 +2369,11 @@ public:
 	void DoInlining(BeFunction* func);
 	void DoInlining();
 
-	static BeCmpKind InvertCmp(BeCmpKind cmpKind);	
-	static BeCmpKind SwapCmpSides(BeCmpKind cmpKind);	
+	static BeCmpKind InvertCmp(BeCmpKind cmpKind);
+	static BeCmpKind SwapCmpSides(BeCmpKind cmpKind);
 	void SetActiveFunction(BeFunction* function);
 	BeArgument* GetArgument(int arg);
-	BeBlock* CreateBlock(const StringImpl& name);	
+	BeBlock* CreateBlock(const StringImpl& name);
 	void AddBlock(BeFunction* function, BeBlock* block);
 	void RemoveBlock(BeFunction* function, BeBlock* block);
 	BeBlock* GetInsertBlock();
@@ -2395,9 +2389,9 @@ public:
 	///
 	BeNopInst* CreateNop();
 	BeUndefValueInst* CreateUndefValue(BeType* type);
-	BeNumericCastInst* CreateNumericCast(BeValue* value, BeType* toType, bool valSigned, bool toSigned);	
+	BeNumericCastInst* CreateNumericCast(BeValue* value, BeType* toType, bool valSigned, bool toSigned);
 	BeBitCastInst* CreateBitCast(BeValue* value, BeType* toType);;
-	BeCmpInst* CreateCmp(BeCmpKind cmpKind, BeValue* lhs, BeValue* rhs);	
+	BeCmpInst* CreateCmp(BeCmpKind cmpKind, BeValue* lhs, BeValue* rhs);
 	BeBinaryOpInst* CreateBinaryOp(BeBinaryOpKind opKind, BeValue* lhs, BeValue* rhs, BfOverflowCheckKind overflowCheckKind = BfOverflowCheckKind_None);
 
 	BeAllocaInst* CreateAlloca(BeType* type);
@@ -2407,19 +2401,17 @@ public:
 	BeStoreInst* CreateAlignedStore(BeValue* val, BeValue* ptr, int alignment, bool isVolatile);
 	BeGEPInst* CreateGEP(BeValue* ptr, BeValue* idx0, BeValue* idx1);
 
-	BeBrInst* CreateBr(BeBlock* block);	
+	BeBrInst* CreateBr(BeBlock* block);
 	BeCondBrInst* CreateCondBr(BeValue* cond, BeBlock* trueBlock, BeBlock* falseBlock);
 	BeRetInst* CreateRetVoid();
-	BeRetInst* CreateRet(BeValue* value);	
+	BeRetInst* CreateRet(BeValue* value);
 	BeSetRetInst* CreateSetRet(BeValue* value, int returnTypeId);
 	BeCallInst* CreateCall(BeValue* func, const SizedArrayImpl<BeValue*>& args);
-
-	
 
 	BeConstant* GetConstant(BeType* type, double floatVal);
 	BeConstant* GetConstant(BeType* type, int64 intVal);
 	BeConstant* GetConstant(BeType* type, bool boolVal);
-	BeConstant* GetConstantNull(BePointerType* type);			
+	BeConstant* GetConstantNull(BePointerType* type);
 };
 
 NS_BF_END

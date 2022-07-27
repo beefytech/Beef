@@ -14,7 +14,6 @@ NS_BF_BEGIN
 class BeMCAddInst
 {
 public:
-
 };
 
 struct BeVTrackingBits
@@ -109,9 +108,7 @@ public:
 
 		DiffIterator& operator++()
 		{
-
 		}
-
 	};*/
 
 	Iterator begin()
@@ -198,7 +195,7 @@ enum BeMCOperandKind
 	BeMCOperandKind_Immediate_f64,
 	BeMCOperandKind_Immediate_f32_Packed128,
 	BeMCOperandKind_Immediate_f64_Packed128,
-	BeMCOperandKind_Immediate_int32x4,	
+	BeMCOperandKind_Immediate_int32x4,
 	BeMCOperandKind_ConstAgg,
 	BeMCOperandKind_Block,
 	BeMCOperandKind_Label,
@@ -769,14 +766,14 @@ class BeMCVRegInfo
 {
 public:
 	X64CPURegister mReg;
-	X64CPURegister mNaturalReg; // From param	
+	X64CPURegister mNaturalReg; // From param
 	BeType* mType;
 	int mAlign;
 	int mFrameOffset; // 0 = 'RBP' (probably first local var or saved RBP), 8 means retAddr
 	bool mRegNumPinned;
 	bool mHasDynLife;
 	bool mDoConservativeLife; // Keep alive through 'init' as well as 'uninit'
-	bool mIsExpr; // Not an actual value, something like 'mRelTo + mRelOffset'		
+	bool mIsExpr; // Not an actual value, something like 'mRelTo + mRelOffset'
 	bool mWantsExprActualize;
 	bool mWantsExprOffsetActualize;
 	bool mChainLifetimeEnd; // Kill relTo's when we are killed
@@ -794,7 +791,7 @@ public:
 	bool mDisableR13; // Special case when this vreg is used in an ModRM scale, which isn't allowed
 	bool mDisableRAX; // Special case when RAX must be preserved (ie: For IDIV)
 	bool mDisableRDX; // Special case when RDX must be preserved (ie: For IDIV)
-	bool mDisableEx; // Disable any registers that require a REX 
+	bool mDisableEx; // Disable any registers that require a REX
 	int mVRegAffinity; // Try to match the mReg of this vreg
 	BeMCOperand mRelTo;
 	int mRelOffsetScale;
@@ -804,7 +801,7 @@ public:
 
 	bool mFoundLastUse;
 	bool mMustExist; // Regs we must be able to debug
-	// Must be refreshed with RefreshRefCounts	
+	// Must be refreshed with RefreshRefCounts
 	int mRefCount;
 	int mAssignCount;
 
@@ -960,7 +957,6 @@ enum BeTrackKind
 
 	BeTrackKind_COUNT = 2
 };
-
 
 // BeVTrackingEntry is immutable -- the Set/Clear/Merge methods allocate new entries if
 //  the requested change produces a new liveness set
@@ -1476,7 +1472,7 @@ public:
 	void EmitStdInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode_rm_r, uint8 opcode_r_rm, uint8 opcode_rm_imm, uint8 opcode_rm_imm_rx, uint8 opcode_rm_imm8, uint8 opcode_rm_imm8_rx);
 	bool EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
 	bool EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode, uint8 opcode_dest_frm);
-	bool EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);	
+	bool EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
 	bool EmitIntXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
 	bool EmitIntBitwiseXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
 	void EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src);

@@ -88,7 +88,6 @@ public:
 
 	virtual ~BeType()
 	{
-
 	}
 
 	int GetStride()
@@ -120,7 +119,6 @@ public:
 	{
 		return (mTypeCode == BeTypeCode_Float) || (mTypeCode == BeTypeCode_Double);
 	}
-	
 
 	bool IsStruct()
 	{
@@ -159,10 +157,10 @@ public:
 	}
 
 	virtual void HashContent(BeHashContext& hashCtx)
-	{		
+	{
 		BF_ASSERT(mTypeCode < BeTypeCode_Struct);
 		hashCtx.Mixin(mTypeCode);
-	}	
+	}
 };
 
 class BeStructMember
@@ -174,21 +172,21 @@ public:
 
 class BeStructType : public BeType
 {
-public:	
+public:
 	BeContext* mContext;
 	String mName;
-	Array<BeStructMember> mMembers;		
+	Array<BeStructMember> mMembers;
 	bool mIsPacked;
 	bool mIsOpaque;
-	
+
 	virtual void HashContent(BeHashContext& hashCtx) override
-	{				
+	{
 		hashCtx.MixinStr(mName);
 		hashCtx.Mixin(mMembers.size());
 		for (auto& member : mMembers)
 		{
 			member.mType->HashReference(hashCtx);
-			hashCtx.Mixin(member.mByteOffset);				
+			hashCtx.Mixin(member.mByteOffset);
 		}
 		hashCtx.Mixin(mIsPacked);
 		hashCtx.Mixin(mIsOpaque);
@@ -213,9 +211,9 @@ public:
 	BeContext* mContext;
 	BeType* mElementType;
 	int mLength;
-	
+
 	virtual void HashContent(BeHashContext& hashCtx) override
-	{		
+	{
 		hashCtx.Mixin(BeTypeCode_SizedArray);
 		hashCtx.Mixin(mLength);
 		mElementType->HashReference(hashCtx);
@@ -247,27 +245,27 @@ class BeFunctionType : public BeType
 {
 public:
 	String mName;
-	BeType* mReturnType;	
+	BeType* mReturnType;
 	Array<BeFunctionTypeParam> mParams;
 	bool mIsVarArg;
-	
+
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
 		hashCtx.Mixin(BeTypeCode_Function);
 		hashCtx.MixinStr(mName);
-		mReturnType->HashReference(hashCtx);			
+		mReturnType->HashReference(hashCtx);
 		hashCtx.Mixin(mParams.size());
 		for (auto& param : mParams)
 		{
 			param.mType->HashReference(hashCtx);
 		}
-		hashCtx.Mixin(mIsVarArg);					
+		hashCtx.Mixin(mIsVarArg);
 	}
 };
 
 class BeContext
 {
-public:	
+public:
 	int mPointerSize;
 	//BumpAllocator mAlloc;
 	BeType* mPrimitiveTypes[BeTypeCode_COUNT];
@@ -278,8 +276,8 @@ public:
 	void NotImpl();
 
 public:
-	BeContext();	
-	BeType* GetPrimitiveType(BeTypeCode typeCode);	
+	BeContext();
+	BeType* GetPrimitiveType(BeTypeCode typeCode);
 	BeType* GetVoidPtrType();
 	BeStructType* CreateStruct(const StringImpl& name);
 	BeStructType* CreateStruct(const SizedArrayImpl<BeType*>& types);
