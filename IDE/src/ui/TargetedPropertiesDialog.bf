@@ -384,6 +384,8 @@ namespace IDE.ui
 
 		protected void ConfigDeleted(String configName)
 		{
+			int32 category = mPropPage.mCategoryType;
+
 			bool currentChanged = false;
 			int idx = mConfigNames.IndexOf(configName);
 			if (idx != -1)
@@ -422,7 +424,17 @@ namespace IDE.ui
 			}
 
 			if (currentChanged)
-				SelectConfig(mConfigNames);
+			{
+				mPropPage = null;
+				SelectConfig(mConfigNames, category);
+			}
+
+			if ((mActiveConfigName == configName) && (!mConfigNames.IsEmpty))
+			{
+				var newConfigName = mConfigNames[0];
+				gApp.mMainFrame.mStatusBar.SelectConfig(newConfigName);
+				mActiveConfigName.Set(newConfigName);
+			}
 		}
 
 		protected void ConfigRenamed(String from, String to)
@@ -761,7 +773,7 @@ namespace IDE.ui
 				ShowPropPage(categoryType);
 		}
 
-		protected void SelectConfig(List<String> configNames)
+		protected void SelectConfig(List<String> configNames, int32 category = -1)
 		{
 			if (configNames != mConfigNames)
 			{
@@ -770,7 +782,7 @@ namespace IDE.ui
 					mConfigNames.Add(configName);
 			}
 			if (mConfigNames.Count == 1)
-				SelectConfig(mConfigNames[0]);
+				SelectConfig(mConfigNames[0], category);
 			else
 			{
 				mConfigComboBox.Label = "<Multiple>";
@@ -795,13 +807,16 @@ namespace IDE.ui
 			}
 		}
 
-        protected void SelectConfig(String configName)
+        protected void SelectConfig(String configName, int32 category = -1)
         {
+			var category;
+			if (category == -1)
+				category = mPropPage.mCategoryType;
 			var newConfigName = new String(configName);
 			ClearAndDeleteItems(mConfigNames);
             mConfigNames.Add(newConfigName);
             mConfigComboBox.Label = newConfigName;
-            ShowPropPage(mPropPage.mCategoryType);
+            ShowPropPage(category);
         }
 
         protected void SelectPlatform(String platformName, int32 category = -1)
