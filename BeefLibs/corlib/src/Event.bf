@@ -13,10 +13,17 @@ namespace System
 		//  If we are enumerating then mData points to the enumerator.
 		int mData;
 
+#if BF_64_BIT
+		const int sIsEnumerating = (.)0x8000'0000'0000'0000;
+		const int sHadEnumRemoves = 0x4000'0000'0000'0000;
+		const int sFlagsMask = (.)0xC000'0000'0000'0000;
+		const int sDataMask = ~sFlagsMask;
+#else
 		const int sIsEnumerating = 1;
 		const int sHadEnumRemoves = 2;
 		const int sFlagsMask = 3;
 		const int sDataMask = ~sFlagsMask;
+#endif
 
 		public bool HasListeners
 		{
