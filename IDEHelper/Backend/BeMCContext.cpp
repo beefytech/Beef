@@ -11540,7 +11540,7 @@ void BeMCContext::DoRegFinalization()
 							continue;
 						}
 
-						if ((inst->mArg0) || (IsVolatileReg(vregInfo->mReg)))
+						if ((inst->mArg0.IsNativeReg()) || (IsVolatileReg(vregInfo->mReg)))
 						{
 							if (vregInfo->mVolatileVRegSave == -1)
 							{
@@ -16117,7 +16117,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?stbi__gif_load_next@6$StbImage@StbImageBeef@bf@@SAPEAEPEAVstbi__context@123@PEAVstbi__gif@123@PEAHHPEAE@Z");
+	//mDebugging = (function->mName == "?stbi__gif_load_next@6$StbImage@StbImageBeef@bf@@SAPEAEPEAVstbi__context@123@PEAVstbi__gif@123@PEAHHPEAE@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
