@@ -5616,9 +5616,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 	auto _Fail = [&](const StringImpl& error)
 	{
-		Fail(_GetCurFrame(), error);
-
-		if (mCeMachine->mDebugger != NULL)
+		auto bfError = Fail(_GetCurFrame(), error);
+		if ((bfError != NULL) && (mCeMachine->mDebugger != NULL))
 		{
 			mCeMachine->mDebugger->OutputRawMessage(StrFormat("error %s", error.c_str()));
 			_DbgPause();
