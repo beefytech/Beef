@@ -1009,6 +1009,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		return;
 	}
 
+	if (mCompiler->mCeMachine != NULL)
+		mCompiler->mCeMachine->ClearTypeData(typeInst);
+
 	BF_ASSERT_REL(typeInst->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotting);
 
 	// We need to verify lookups before we rebuild the type, because a type lookup change needs to count as a TypeDataChanged

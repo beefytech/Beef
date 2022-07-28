@@ -1257,6 +1257,7 @@ public:
 	CeFunction* QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
 	void QueueMethod(BfModuleMethodInstance moduleMethodInstance);
 	void QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName);
+	void ClearTypeData(BfTypeInstance* typeInstance);
 
 	void SetAppendAllocInfo(BfModule* module, BfIRValue allocValue, BfIRValue appendSizeValue);
 	void ClearAppendAllocInfo();

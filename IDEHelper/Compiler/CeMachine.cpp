@@ -9759,6 +9759,23 @@ void CeMachine::QueueStaticField(BfFieldInstance* fieldInstance, const StringImp
 		mCurBuilder->mStaticFieldInstanceMap[mangledFieldName] = fieldInstance;
 }
 
+void CeMachine::ClearTypeData(BfTypeInstance* typeInstance)
+{
+	if (mTypeInfoMap.Remove(typeInstance))
+	{
+		for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
+		{
+			if (methodGroup.mDefault != NULL)
+				mMethodInstanceSet.Remove(methodGroup.mDefault);
+			if (methodGroup.mMethodSpecializationMap != NULL)
+			{
+				for (auto& kv : *methodGroup.mMethodSpecializationMap)
+					mMethodInstanceSet.Remove(kv.mValue);
+			}
+		}
+	}
+}
+
 void CeMachine::SetAppendAllocInfo(BfModule* module, BfIRValue allocValue, BfIRValue appendSizeValue)
 {
 	delete mAppendAllocInfo;
