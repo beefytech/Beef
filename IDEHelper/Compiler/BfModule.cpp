@@ -4007,7 +4007,7 @@ void BfModule::AddFailType(BfTypeInstance* typeInstance)
 	if ((typeInstance->mRebuildFlags & BfTypeRebuildFlag_InFailTypes) != 0)
 		return;
 	typeInstance->mRebuildFlags = (BfTypeRebuildFlags)(typeInstance->mRebuildFlags | BfTypeRebuildFlag_InFailTypes);
-	mContext->mFailTypes.Add(typeInstance);
+	mContext->mFailTypes.TryAdd(typeInstance, BfFailKind_Normal);
 }
 
 void BfModule::DeferRebuildType(BfTypeInstance* typeInstance)
@@ -13632,6 +13632,7 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 			inlineMethodRequest->mFromModule = this;
 			inlineMethodRequest->mFunc = func;
 			inlineMethodRequest->mFromModuleRevision = mRevision;
+			inlineMethodRequest->mFromModuleRebuildIdx = mRebuildIdx;
 			inlineMethodRequest->mMethodInstance = methodInstance;
 			BF_ASSERT(mIsModuleMutable);
 
@@ -14362,6 +14363,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					inlineMethodRequest->mFromModule = this;
 					inlineMethodRequest->mFunc = methodInstance->mIRFunction;
 					inlineMethodRequest->mFromModuleRevision = mRevision;
+					inlineMethodRequest->mFromModuleRebuildIdx = mRebuildIdx;
 					inlineMethodRequest->mMethodInstance = methodInstance;
 
 					BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in GetMethodInstance\n", inlineMethodRequest, methodInstance, this);
@@ -23761,7 +23763,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				auto boxedType = (BfBoxedType*)mCurTypeInstance;
 				// If we failed a lookup here then we better have also failed it in the original type
-				BF_ASSERT(boxedType->mElementType->ToTypeInstance()->mModule->mHadBuildError || mContext->mFailTypes.Contains(boxedType->mElementType->ToTypeInstance()));
+				BF_ASSERT(boxedType->mElementType->ToTypeInstance()->mModule->mHadBuildError || mContext->mFailTypes.ContainsKey(boxedType->mElementType->ToTypeInstance()));
 			}
 		}
 

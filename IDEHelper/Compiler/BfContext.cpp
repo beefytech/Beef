@@ -577,7 +577,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				wantProcessMethod = false;
 			else if (workItem->mType->IsDeleting())
 				wantProcessMethod = false;
-			if (!IsWorkItemValid(workItem))
+			else if (!IsWorkItemValid(workItem))
 				wantProcessMethod = false;
 			if (methodInstance != NULL)
 				BF_ASSERT(methodInstance->mMethodProcessRequest == workItem);
@@ -771,38 +771,41 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			}
 
 			auto workItem = *workItemRef;
-			auto owner = workItem.mMethodInstance->mMethodInstanceGroup->mOwner;
 			auto module = workItem.mFromModule;
 			auto methodInstance = workItem.mMethodInstance;
 
-			BF_ASSERT(module->mIsModuleMutable);
-			module->PrepareForIRWriting(methodInstance->GetOwner());
+			bool wantProcessMethod = methodInstance != NULL;
+			if ((workItem.mFromModuleRebuildIdx != -1) && (workItem.mFromModuleRebuildIdx != module->mRebuildIdx))
+				wantProcessMethod = false;
+			else if (workItem.mType->IsDeleting())
+				wantProcessMethod = false;
+ 			else if (!IsWorkItemValid(&workItem))
+ 				wantProcessMethod = false;
 
 			workIdx = mInlineMethodWorkList.RemoveAt(workIdx);
 
-			BfLogSysM("Module %p inlining method %p into func:%p\n", module, methodInstance, workItem.mFunc);
-
-			BfMethodInstance dupMethodInstance;
-			dupMethodInstance.CopyFrom(methodInstance);
-			dupMethodInstance.mIRFunction = workItem.mFunc;
-			dupMethodInstance.mIsReified = true;
-			dupMethodInstance.mInCEMachine = false; // Only have the original one
-			BF_ASSERT(module->mIsReified); // We should only bother inlining in reified modules
-
-			bool wantProcessMethod = true;
-			if (owner->IsDeleting())
-				wantProcessMethod = false;
+			BfLogSysM("Module %p inlining method %p into func:%p wantProcessMethod:%d\n", module, methodInstance, workItem.mFunc, wantProcessMethod);
 
 			if (wantProcessMethod)
 			{
+				BF_ASSERT(module->mIsModuleMutable);
+				module->PrepareForIRWriting(methodInstance->GetOwner());
+
+				BfMethodInstance dupMethodInstance;
+				dupMethodInstance.CopyFrom(methodInstance);
+				dupMethodInstance.mIRFunction = workItem.mFunc;
+				dupMethodInstance.mIsReified = true;
+				dupMethodInstance.mInCEMachine = false; // Only have the original one
+				BF_ASSERT(module->mIsReified); // We should only bother inlining in reified modules
+
 				// These errors SHOULD be duplicates, but if we have no other errors at all then we don't ignoreErrors, which
 				//  may help unveil some kinds of compiler bugs
 				SetAndRestoreValue<bool> prevIgnoreErrors(module->mIgnoreErrors, mCompiler->mPassInstance->HasFailed());
 				module->ProcessMethod(&dupMethodInstance, true);
-			}
 
-			static int sMethodIdx = 0;
-			module->mBfIRBuilder->Func_SetLinkage(workItem.mFunc, BfIRLinkageType_Internal);
+				static int sMethodIdx = 0;
+				module->mBfIRBuilder->Func_SetLinkage(workItem.mFunc, BfIRLinkageType_Internal);
+			}
 
 			BF_ASSERT(module->mContext == this);
 			BF_ASSERT(module->mIsModuleMutable);
@@ -1949,7 +1952,9 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 			}
 
 			if ((deferDepRebuilds) && (dependentTypeInst != NULL))
-				mFailTypes.Add(dependentTypeInst);
+			{
+				mFailTypes.TryAdd(dependentTypeInst, BfFailKind_Normal);
+			}
 			else
 			{
 				rebuildTypeQueue.Add(dependentType);
@@ -2359,14 +2364,18 @@ void BfContext::UpdateRevisedTypes()
 		RebuildType(typeInst);
 	}
 
-	for (auto typeInst : failTypes)
+	for (auto failKV : failTypes)
 	{
+		auto typeInst = failKV.mKey;
 		if (!typeInst->IsDeleting())
 		{
 			if (!typeInst->mTypeDef->mProject->mDisabled)
 			{
-				BfLogSysM("Rebuilding failed type %p\n", typeInst);
-				RebuildType(typeInst);
+				BfLogSysM("Rebuilding failed type %p %d\n", typeInst, (int)failKV.mValue);
+				if (failKV.mValue == BfFailKind_Deep)
+					TypeDataChanged(typeInst, true);
+				else
+					RebuildType(typeInst);
 			}
 		}
 	}
@@ -3041,27 +3050,49 @@ bool BfContext::IsWorkItemValid(BfWorkListEntry* item)
 	return true;
 }
 
+bool BfContext::IsWorkItemValid(BfMethodInstance* methodInstance)
+{
+	if (methodInstance == NULL)
+		return false;
+
+	for (auto& param : methodInstance->mParams)
+	{
+		if (param.mResolvedType->IsDeleting())
+			return false;
+	}
+
+	if (methodInstance->mMethodInfoEx != NULL)
+	{
+		for (auto genericArg : methodInstance->mMethodInfoEx->mMethodGenericArguments)
+			if (genericArg->IsDeleting())
+				return false;
+	}
+
+	return true;
+}
+
 bool BfContext::IsWorkItemValid(BfMethodProcessRequest* item)
 {
 	// If we had mid-compile rebuilds then we may have deleted types referenced in methods
 	if (mCompiler->mStats.mMidCompileRebuilds == 0)
 		return true;
 
-	if (item->mMethodInstance == NULL)
+	if (!IsWorkItemValid(item->mMethodInstance))
 		return false;
 
-	for (auto& param : item->mMethodInstance->mParams)
-	{
-		if (param.mResolvedType->IsDeleting())
-			return false;
-	}
+	return true;
+}
 
-	if (item->mMethodInstance->mMethodInfoEx != NULL)
-	{
-		for (auto genericArg : item->mMethodInstance->mMethodInfoEx->mMethodGenericArguments)
-			if (genericArg->IsDeleting())
-				return false;
-	}
+bool BfContext::IsWorkItemValid(BfInlineMethodRequest* item)
+{
+	if (mCompiler->mStats.mMidCompileRebuilds == 0)
+		return true;
+
+	if (!IsWorkItemValid(item->mMethodInstance))
+		return false;
+
+	if (item->mMethodInstance->GetOwner()->IsDeleting())
+		return false;
 
 	return true;
 }
@@ -3130,7 +3161,7 @@ void BfContext::RemoveInvalidFailTypes()
 {
 	for (auto itr = mFailTypes.begin(); itr != mFailTypes.end(); )
 	{
-		auto typeInst = *itr;
+		auto typeInst = itr->mKey;
 		BfLogSysM("Checking FailType: %p\n", typeInst);
 		if ((typeInst->IsDeleting()) || (typeInst->mRebuildFlags & BfTypeRebuildFlag_Deleted))
 		{

@@ -355,6 +355,12 @@ public:
 	}
 };
 
+enum BfFailKind
+{
+	BfFailKind_Normal,
+	BfFailKind_Deep
+};
+
 class BfContext
 {
 public:
@@ -379,7 +385,7 @@ public:
 	Dictionary<BfProject*, BfModule*> mProjectModule;
 	Array<BfModule*> mModules;
 	Array<BfModule*> mDeletingModules;
-	HashSet<BfTypeInstance*> mFailTypes; // All types handled after a failure need to be rebuild on subsequent compile
+	Dictionary<BfTypeInstance*, BfFailKind> mFailTypes; // All types handled after a failure need to be rebuild on subsequent compile
 	HashSet<BfTypeInstance*> mReferencedIFaceSlots;
 
 	BfMethodInstance* mValueTypeDeinitSentinel;
@@ -478,7 +484,9 @@ public:
 	void MarkAsReferenced(BfDependedType* depType);
 	void RemoveInvalidFailTypes();
 	bool IsWorkItemValid(BfWorkListEntry* item);
+	bool IsWorkItemValid(BfMethodInstance* methodInstance);
 	bool IsWorkItemValid(BfMethodProcessRequest* item);
+	bool IsWorkItemValid(BfInlineMethodRequest* item);
 	bool IsWorkItemValid(BfMethodSpecializationRequest* item);
 	void RemoveInvalidWorkItems();
 	BfType* FindTypeById(int typeId);

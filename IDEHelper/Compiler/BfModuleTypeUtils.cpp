@@ -1034,7 +1034,7 @@ void BfModule::TypeFailed(BfTypeInstance* typeInstance)
 		typeInstance->mAlign = 1;
 	if (typeInstance->mSize == -1)
 		typeInstance->mSize = 1;
-	mContext->mFailTypes.Add(typeInstance);
+	mContext->mFailTypes.TryAdd(typeInstance, BfFailKind_Normal);
 	mHadBuildError = true;
 }
 
@@ -3338,7 +3338,7 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias)
 		AddDependency(aliasToType, typeAlias, BfDependencyMap::DependencyFlag_DerivedFrom);
 	}
 	else
-		mContext->mFailTypes.Add(typeAlias);
+		mContext->mFailTypes.TryAdd(typeAlias, BfFailKind_Normal);
 
 	if (typeAlias->mTypeFailed)
 		aliasToType = NULL;

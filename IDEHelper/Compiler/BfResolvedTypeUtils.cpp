@@ -3982,6 +3982,17 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						{
 							ctx->mHadVar = true;
 							cachedResolvedType = ctx->mModule->GetPrimitiveType(BfTypeCode_Var);
+
+							auto typeState = ctx->mModule->mContext->mCurTypeState;
+							if ((typeState != NULL) && (typeState->mType != NULL) && (typeState->mType->IsTypeInstance()))
+							{
+								auto typeInst = typeState->mType->ToTypeInstance();
+								if (typeInst->mDefineState == BfTypeDefineState_ResolvingBaseType)
+								{
+									// Make sure we regenerate this type
+									ctx->mModule->mContext->mFailTypes.TryAdd(typeState->mType->ToTypeInstance(), BfFailKind_Deep);
+								}
+							}
 						}
 						else if (BfIRConstHolder::IsInt(constant->mTypeCode))
 						{
