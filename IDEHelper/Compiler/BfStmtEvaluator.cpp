@@ -3507,7 +3507,12 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 				BfLocalMethod* localMethod = mCurMethodState->mLocalMethods[curLocalMethodIdx];
 				BF_ASSERT(localMethod->mMethodDeclaration == localMethodDecl->mMethodDeclaration);
 
-				if ((wantsAllLocalMethods) || (autoComplete->IsAutocompleteNode(localMethod->mMethodDeclaration)))
+				bool wantsLocalMethod = (wantsAllLocalMethods) || (autoComplete->IsAutocompleteNode(localMethod->mMethodDeclaration));
+
+				if ((!wantsLocalMethod) && (mCurMethodInstance->mMethodDef->mIsLocalMethod))
+					wantsLocalMethod = true;
+
+				if (wantsLocalMethod)
 				{
 					if (!mCurMethodInstance->IsSpecializedGenericMethodOrType())
 						GetLocalMethodInstance(localMethod, BfTypeVector(), NULL, true); // Only necessary on unspecialized pass
