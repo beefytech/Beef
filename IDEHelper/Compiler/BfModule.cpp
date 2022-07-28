@@ -22315,6 +22315,12 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 			auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, genericParamIdx);
 			methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);
 		}
+
+		for (int externConstraintIdx = 0; externConstraintIdx < (int)methodDef->mExternalConstraints.size(); externConstraintIdx++)
+		{
+			auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, externConstraintIdx + (int)methodDef->mGenericParams.size());
+			methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);
+		}
 	};
 
 	//////////////////////////////////////////////////////////////////////////
