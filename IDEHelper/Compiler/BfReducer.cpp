@@ -9399,6 +9399,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				if (initExpr == NULL)
 					return NULL;
 				MEMBER_SET(paramDecl, mInitializer, initExpr);
+				node->mSrcEnd = paramDecl->mSrcEnd;
 				auto nextNode = mVisitorPos.GetNext();
 				tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 				if (tokenNode == NULL)
