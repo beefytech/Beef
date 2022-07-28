@@ -97,15 +97,12 @@ namespace IDE
 
 			if ((isDirectory) && (changeType == .Renamed))
 			{
-				if (filePath.Equals(newPath, .OrdinalIgnoreCase))
-				{
-					// On Windows, renaming a directory with only case changes will result in a remove before a rename
-					var dirName = scope String();
-					Path.GetDirectoryPath(newPath.Substring(0, newPath.Length - 1), dirName);
-					dirName.Append(Path.DirectorySeparatorChar);
+				// On Windows, renaming a directory with only case changes will result in a remove before a rename
+				var dirName = scope String();
+				Path.GetDirectoryPath(newPath.Substring(0, newPath.Length - 1), dirName);
+				dirName.Append(Path.DirectorySeparatorChar);
 
-					FileChanged(dirName, newPath, .DirectoryCreated);
-				}
+				FileChanged(dirName, newPath, .DirectoryCreated);
 			}
 
 			var newPath;
