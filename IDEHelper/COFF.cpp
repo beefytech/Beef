@@ -109,7 +109,7 @@ static const char* GetNamespaceEnd(const char* name)
 		if ((c == '<') || (c == ' '))
 			return NULL;
 		if ((c == ':') && (checkPtr[1] == ':'))
-			lastDblColon = checkPtr;		
+			lastDblColon = checkPtr;
 	}
 	return lastDblColon;
 }
@@ -163,7 +163,7 @@ uint8* CvStreamReader::GetTempPtr(int offset, int size, bool mayRecurse, bool* m
 	if (pageStart >= pageEnd)
 		return mStreamPtrs.mVals[pageStart] + (offset & ((1<<mPageBits) - 1));
 
-	// Handle the relatively-rare case of spanning multiple pages	
+	// Handle the relatively-rare case of spanning multiple pages
 	if (madeCopy != NULL)
 		*madeCopy = true;
 
@@ -178,12 +178,12 @@ uint8* CvStreamReader::GetTempPtr(int offset, int size, bool mayRecurse, bool* m
 		destPtr = arr.mVals;
 	}
 	else
-	{		
+	{
 		if (mTempData.size() < size)
 			mTempData.Resize(size);
 		destPtr = mTempData.mVals;
-	}	
-	
+	}
+
 	uint8* dest = destPtr;
 	while (size > 0)
 	{
@@ -193,7 +193,7 @@ uint8* CvStreamReader::GetTempPtr(int offset, int size, bool mayRecurse, bool* m
 		memcpy(destPtr, mStreamPtrs.mVals[copyPage] + pageOffset, copyBytes);
 		destPtr += copyBytes;
 		offset += copyBytes;
-		size -= copyBytes;		
+		size -= copyBytes;
 	}
 	return dest;
 }
@@ -203,15 +203,15 @@ uint8* CvStreamReader::GetPermanentPtr(int offset, int size, bool* madeCopy)
 	int pageStart = offset >> mPageBits;
 	int pageEnd = (offset + size - 1) >> mPageBits;
 
-	if (pageStart == pageEnd)	
-		return mStreamPtrs.mVals[pageStart] + (offset & ((1 << mPageBits) - 1));	
-	
-	// Handle the relatively-rare case of spanning multiple pages	
+	if (pageStart == pageEnd)
+		return mStreamPtrs.mVals[pageStart] + (offset & ((1 << mPageBits) - 1));
+
+	// Handle the relatively-rare case of spanning multiple pages
 	BP_ALLOC("GetPermanentPtr", size);
 	uint8* destData = mCOFF->mAlloc.AllocBytes(size, "GetPermanentPtr");
 	if (madeCopy != NULL)
 		*madeCopy = true;
-		
+
 	uint8* destPtr = destData;
 	while (size > 0)
 	{
@@ -231,13 +231,13 @@ uint8* CvStreamReader::GetPermanentPtr(int offset, int size, bool* madeCopy)
 COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 {
 	mParseKind = ParseKind_Full;
-	memset(mWantPDBGuid, 0, 16);	
-	memset(mPDBGuid, 0, 16);	
+	memset(mWantPDBGuid, 0, 16);
+	memset(mPDBGuid, 0, 16);
 	mWantAge = -1;
 	mDebugAge = -1;
 	mFileAge = -1;
 	mCvMinTag = -1;
-	mCvMaxTag = -1;		
+	mCvMaxTag = -1;
 	mCvIPIMinTag = -1;
 	mCvIPIMaxTag = -1;
 	mMasterCompileUnit = NULL;
@@ -247,8 +247,8 @@ COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mCvPageSize = 0;
 	mCvPageBits = 31;
 	mCvDataStream = NULL;
-	mCvHeaderData = NULL;		
-	mCvStrTableData = NULL;	
+	mCvHeaderData = NULL;
+	mCvStrTableData = NULL;
 	mCvPublicSymbolData = NULL;
 	mCvGlobalSymbolData = NULL;
 	mNewFPOData = NULL;
@@ -261,10 +261,10 @@ COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mCvMappedViewOfFile = NULL;
 	mCvMappedFileSize = 0;
 	//mParsedProcRecs = false;
-		
+
 	mGlobalsTargetType = NULL;
 	mPrevScanName = NULL;
-	mProcSymCount = 0;	
+	mProcSymCount = 0;
 	mCvSrcSrvStream = -1;
 	mCvEmitStream = -1;
 	mIsFastLink = false;
@@ -272,8 +272,8 @@ COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mHotThunkDataLeft = 0;
 
 	mTriedSymSrv = false;
-	mDbgSymRequest = NULL;	
-	mWantsAutoLoadDebugInfo = false;		
+	mDbgSymRequest = NULL;
+	mWantsAutoLoadDebugInfo = false;
 	mPDBLoaded = false;
 	mEmitSourceFile = NULL;
 }
@@ -282,7 +282,7 @@ COFF::~COFF()
 {
 	BF_ASSERT(mTempBufIdx == 0);
 	ClosePDB();
-	mDebugger->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);	
+	mDebugger->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
 }
 
 const char* COFF::CvCheckTargetMatch(const char* name, bool& wasBeef)
@@ -359,7 +359,7 @@ const char* COFF::CvCheckTargetMatch(const char* name, bool& wasBeef)
 }
 
 int COFF::CvGetStringHash(const char* str)
-{	
+{
 	if (str == NULL)
 		return 0;
 
@@ -367,7 +367,7 @@ int COFF::CvGetStringHash(const char* str)
 	const char* curHashPtr = str;
 	while (*curHashPtr != 0)
 	{
-		char c = *curHashPtr;		
+		char c = *curHashPtr;
 		curHash = ((curHash ^ *curHashPtr) << 5) - curHash;
 		curHashPtr++;
 	}
@@ -395,8 +395,8 @@ void COFF::CvFixupName(char* name)
 		}
 	}
 
-	if (cPtrOut != NULL)	
-		*(cPtrOut++) = '\0';	
+	if (cPtrOut != NULL)
+		*(cPtrOut++) = '\0';
 }
 
 void COFF::InitCvTypes()
@@ -418,18 +418,18 @@ void COFF::InitCvTypes()
 #else
 	const int ptrMask = 0x0600; // T_64*
 #endif
-	mMasterCompileUnit = new DbgCompileUnit(this);	
-	mMasterCompileUnit->mDbgModule = this;	
+	mMasterCompileUnit = new DbgCompileUnit(this);
+	mMasterCompileUnit->mDbgModule = this;
 	mMasterCompileUnit->mIsMaster = true;
 	mCompileUnits.push_back(mMasterCompileUnit);
-	
+
 	CREATE_PRIMITIVE(T_NOTTRANS, DbgType_Void, "void", void*);
 	mCvSystemTypes[T_NOTTRANS]->mSize = 0;
 	mCvSystemTypes[T_NOTTRANS]->mAlign = 0;
 	CREATE_PRIMITIVE(T_NOTYPE, DbgType_Void, "void", void*);
 	mCvSystemTypes[T_NOTYPE]->mSize = 0;
 	mCvSystemTypes[T_NOTYPE]->mAlign = 0;
-	CREATE_PRIMITIVE(T_VOID, DbgType_Void, "void", void*);	
+	CREATE_PRIMITIVE(T_VOID, DbgType_Void, "void", void*);
 	mCvSystemTypes[T_VOID]->mSize = 0;
 	mCvSystemTypes[T_VOID]->mAlign = 0;
 	mCvSystemTypes[T_PVOID] = ptrType;
@@ -444,7 +444,7 @@ void COFF::InitCvTypes()
 	ptrType->mTypeParam = dbgType;
 	dbgType->mPtrType = ptrType;
 	mCvSystemTypes[(int)T_VOID | 0x0600] = ptrType;
-#endif	
+#endif
 
 #ifdef BF_DBG_32
 	CREATE_PRIMITIVE(T_HRESULT, DbgType_u32, "HRESULT", addr_target);
@@ -502,7 +502,7 @@ addr_target COFF::GetSectionAddr(uint16 section, uint32 offset)
 }
 
 DbgType* COFF::CvGetType(int typeId)
-{		
+{
 	//TODO: How do we handle types that have the high bit set?
 	if (typeId < 0)
 		return NULL;
@@ -510,7 +510,7 @@ DbgType* COFF::CvGetType(int typeId)
 	/*if (typeId == 0)
 		return NULL;*/
 	if (typeId < 0x1000)
-	{		
+	{
 		TYPE_ENUM_e typeEnum = (TYPE_ENUM_e)typeId;
 		DbgType* type = mCvSystemTypes[typeId];
 		BF_ASSERT(type != NULL);
@@ -521,7 +521,7 @@ DbgType* COFF::CvGetType(int typeId)
 	if (type == NULL)
 		type = CvParseType(typeId);
 
-	/*if ((!allowNull) || (type != NULL))		
+	/*if ((!allowNull) || (type != NULL))
 	{
 		BF_ASSERT(type->mCompileUnit->mDbgModule == this);
 	}*/
@@ -577,7 +577,7 @@ uint8* COFF::CvGetTagData(int tagIdx, bool ipi, int* outDataSize)
 
 	auto& reader = ipi ? mCvIPIReader : mCvTypeSectionReader;
 	int offset = ipi ? mCvIPITagStartMap[tagIdx - mCvIPIMinTag] : mCvTagStartMap[tagIdx - mCvMinTag];
-	
+
 	uint8* data = reader.GetTempPtr(offset, 4);
 	uint16 trLength = *(uint16*)data;
 	data = reader.GetTempPtr(offset + 2, trLength, true);
@@ -616,16 +616,16 @@ int64 COFF::CvParseConstant(uint16 constVal, uint8*& data)
 
 int64 COFF::CvParseConstant(uint8*& data)
 {
-	uint16 val = GET(uint16);	
-	return CvParseConstant(val, data);	
+	uint16 val = GET(uint16);
+	return CvParseConstant(val, data);
 }
 
 const char* COFF::CvParseString(uint8*& data)
-{	
+{
 	const char* strStart = (const char*)data;
 	int strLen = strlen((const char*)data);
 	if (strLen == 0)
-		return NULL;	
+		return NULL;
 	data += strLen + 1;
 	return strStart;
 }
@@ -647,7 +647,7 @@ const char* COFF::CvParseAndDupString(uint8*& data)
 }
 
 const char* COFF::CvDupString(const char* str, int strLen)
-{		
+{
 	BP_ALLOC("CvDupString", strLen + 1);
 	char* dupStr = (char*)mAlloc.AllocBytes(strLen + 1, "CvParseAndDupString");
 	memcpy(dupStr, str, strLen);
@@ -660,18 +660,18 @@ void COFF::CvParseArgList(DbgSubprogram* subprogram, int tagIdx, bool ipi)
 	uint8* data = CvGetTagData(tagIdx, ipi);
 	CvAutoReleaseTempData releaseTempData(this, data);
 
-	int16 trLeafType = GET(int16);	
+	int16 trLeafType = GET(int16);
 
 	BF_ASSERT(trLeafType == LF_ARGLIST);
 
-	int argCount = GET(int32);	
+	int argCount = GET(int32);
 	for (int argIdx = 0; argIdx < argCount; argIdx++)
 	{
 		CV_typ_t argTypeId = GET(CV_typ_t);
 		DbgType* argType = CvGetType(argTypeId);
 
 		BP_ALLOC_T(DbgVariable);
-		DbgVariable* arg = mAlloc.Alloc<DbgVariable>();		
+		DbgVariable* arg = mAlloc.Alloc<DbgVariable>();
 		arg->mType = argType;
 		arg->mIsParam = true;
 		subprogram->mParams.PushBack(arg);
@@ -693,10 +693,10 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 
 	uint8* dataStart = data;
 	int16 trLeafType = GET(int16);
-	
+
 	if (trLeafType == LF_FUNC_ID)
 	{
-		lfFuncId* funcData = (lfFuncId*)dataStart;				
+		lfFuncId* funcData = (lfFuncId*)dataStart;
 		subprogram = CvParseMethod(NULL, (const char*)funcData->name, funcData->type, false, subprogram);
 		return subprogram;
 	}
@@ -704,7 +704,7 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 	if (trLeafType == LF_MFUNC_ID)
 	{
 		lfMFuncId* funcData = (lfMFuncId*)dataStart;
-		auto parentType = CvGetType(funcData->parentType);				
+		auto parentType = CvGetType(funcData->parentType);
 		//subprogram = CvParseMethod(parentType, (const char*)funcData->name, funcData->type, false, subprogram);
 
 		// We shouldn't pass parentType in there, because that would be the declType and not the actual primary type (ie: definition type)
@@ -712,7 +712,7 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 		return subprogram;
 	}
 
-	//DbgSubprogram* subprogram = mAlloc.Alloc<DbgSubprogram>();	
+	//DbgSubprogram* subprogram = mAlloc.Alloc<DbgSubprogram>();
 	if (subprogram == NULL)
 	{
 		BP_ALLOC_T(DbgSubprogram);
@@ -720,13 +720,13 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 	}
 
 	subprogram->mName = methodName;
-	
+
 	int argListId = 0;
 	if (trLeafType == LF_MFUNCTION)
 	{
 		static int gMFuncIdx = 0;
 		gMFuncIdx++;
-		
+
 		lfMFunc* funcData = (lfMFunc*)dataStart;
 		argListId = funcData->arglist;
 		subprogram->mReturnType = CvGetType(funcData->rvtype);
@@ -737,9 +737,9 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 
 		DbgType* thisType = CvGetType(funcData->thistype);
 		if ((thisType != NULL) && (!thisType->IsVoid()))
-		{			
+		{
 			BP_ALLOC_T(DbgVariable);
-			DbgVariable* arg = mAlloc.Alloc<DbgVariable>();					
+			DbgVariable* arg = mAlloc.Alloc<DbgVariable>();
 			arg->mType = thisType;
 			arg->mIsParam = true;
 			arg->mTagIdx = gMFuncIdx;
@@ -769,20 +769,20 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 	else if (trLeafType == LF_MFUNC_ID)
 	{
 		//
-		
+
 	}
 	else
 	{
-		SoftFail(StrFormat("Unhandled func type at tagId %d ipi %d", tagIdx, ipi));		
+		SoftFail(StrFormat("Unhandled func type at tagId %d ipi %d", tagIdx, ipi));
 	}
 
 
 	if ((parentType != NULL) && (!IsObjectFile()))
-	{		
+	{
 		subprogram->mCompileUnit = parentType->mCompileUnit;
 		parentType->mMethodList.PushBack(subprogram);
 	}
-	
+
 	mSubprograms.push_back(subprogram);
 	CvParseArgList(subprogram, argListId, ipi);
 	return subprogram;
@@ -796,7 +796,7 @@ void COFF::CvParseMethodList(DbgType* parentType, const char* methodName, int ta
 
 	uint8* dataEnd = data + dataSize;
 	int16 trLeafType = GET(int16);
-	
+
 	BF_ASSERT(trLeafType == LF_METHODLIST);
 
 	while (data < dataEnd)
@@ -820,10 +820,10 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 	offset += 2;
 	data = reader.GetTempPtr(offset, trLength, true);
 	CvAutoReleaseTempData releaseTempData(this, data);
-	
-	uint8* dataStart = data;	
+
+	uint8* dataStart = data;
 	uint8* dataEnd = data + trLength;
-	int16 trLeafType = GET(int16);	
+	int16 trLeafType = GET(int16);
 	bool strMadeCopy;
 
 	auto _ParseString = [&]()
@@ -840,7 +840,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 		return;
 	switch (trLeafType)
 	{
-	case LF_FIELDLIST:	
+	case LF_FIELDLIST:
 		{
 			uint8* sectionStart = data;
 
@@ -853,7 +853,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 				case LF_VFUNCTAB:
 					{
 						lfVFuncTab& vfuncTab = *(lfVFuncTab*)leafDataStart;
-						
+
 						DbgType* vtableType = CvGetType(vfuncTab.type);
 
 						BP_ALLOC_T(DbgVariable);
@@ -865,15 +865,15 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 					}
 					break;
 				case LF_BCLASS:
-					{						
-						lfBClass& baseClassInfo = *(lfBClass*)leafDataStart;						
+					{
+						lfBClass& baseClassInfo = *(lfBClass*)leafDataStart;
 
 						BP_ALLOC_T(DbgBaseTypeEntry);
 						DbgBaseTypeEntry* baseTypeEntry = mAlloc.Alloc<DbgBaseTypeEntry>();
 						data = (uint8*)&baseClassInfo.offset;
 						baseTypeEntry->mThisOffset = (int)CvParseConstant(data);
 						if (baseClassInfo.index != 0)
-						{							
+						{
 							baseTypeEntry->mBaseType = CvGetType(baseClassInfo.index);
 
 // 							if (parentType->mLanguage == DbgLanguage_Beef)
@@ -881,12 +881,12 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 // 								if (!parentType->mBaseTypes.IsEmpty())
 // 									parentType->mTypeParam = baseTypeEntry->mBaseType;
 // 							}
-							
+
 							parentType->mBaseTypes.PushBack(baseTypeEntry);
-							parentType->mAlign = std::max(parentType->mAlign, baseTypeEntry->mBaseType->GetAlign());							
-							
+							parentType->mAlign = std::max(parentType->mAlign, baseTypeEntry->mBaseType->GetAlign());
+
 							if (!parentType->mSizeCalculated)
-							{	
+							{
 								if ((baseTypeEntry->mBaseType->GetByteCount() == 0) && (baseTypeEntry->mBaseType->IsBfObject()))
 								{
 									parentType->mExtType = DbgExtType_Interface;
@@ -899,9 +899,9 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 					break;
 				case LF_VBCLASS:
 				case LF_IVBCLASS:
-					{						
+					{
 						lfVBClass& baseClassInfo = *(lfVBClass*)leafDataStart;
-						
+
 						BP_ALLOC_T(DbgBaseTypeEntry);
 						DbgBaseTypeEntry* baseTypeEntry = mAlloc.Alloc<DbgBaseTypeEntry>();
 						baseTypeEntry->mBaseType = CvGetType(baseClassInfo.index);
@@ -916,14 +916,14 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 					{
 						CV_fldattr_t fieldAttr = GET(CV_fldattr_t);
 						int64 fieldVal = CvParseConstant(data);
-						
-						const char* fieldName = _ParseString();						
-						
+
+						const char* fieldName = _ParseString();
+
 						BP_ALLOC_T(DbgVariable);
 						DbgVariable* member = mAlloc.Alloc<DbgVariable>();
 						member->mCompileUnit = parentType->mCompileUnit;
 						member->mConstValue = fieldVal;
-						member->mName = fieldName;						
+						member->mName = fieldName;
 						member->mIsStatic = true;
 						member->mIsConst = true;
 						member->mType = parentType->mTypeParam;
@@ -950,16 +950,16 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 							nestedType->mTypeParam = CvGetType(nestedTypeId);
 							nestedType->mTypeCode = DbgType_TypeDef;
 							nestedType->mName = typeName;
-							nestedType->mTypeName = typeName;							
+							nestedType->mTypeName = typeName;
 							nestedType->mParent = parentType;
 							parentType->mSubTypeList.PushBack(nestedType);
 						}*/
 
 						int16 pad = GET(int16);
 						int32 nestedTypeId = GET(int32);
-						
+
 						const char* typeName = _ParseString();
-						
+
 						DbgType* nestedType = CvCreateType();
 						nestedType->mTypeParam = CvGetType(nestedTypeId);
 						nestedType->mTypeCode = DbgType_TypeDef;
@@ -967,20 +967,20 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 						{
 							nestedType->mName = typeName;
 							nestedType->mTypeName = typeName;
-						}						
+						}
 						nestedType->mParent = parentType;
-						parentType->mSubTypeList.PushBack(nestedType);						
+						parentType->mSubTypeList.PushBack(nestedType);
 					}
 					break;
 				case LF_ONEMETHOD:
 					{
 						CV_fldattr_t attr = GET(CV_fldattr_t);
 						CV_typ_t methodTypeId = GET(CV_typ_t);
-						
+
 						int virtOffset = -1;
 						if ((attr.mprop == CV_MTintro) || (attr.mprop == CV_MTpureintro))
 							virtOffset = GET(int32);
-						const char* methodName = _ParseString();						
+						const char* methodName = _ParseString();
 						DbgSubprogram* subProgram = CvParseMethod(parentType, methodName, methodTypeId, ipi);
 						subProgram->mVirtual = (attr.mprop == CV_MTintro) || (attr.mprop == CV_MTpureintro) || (attr.mprop == CV_MTvirtual);
 						subProgram->mVTableLoc = virtOffset;
@@ -1006,19 +1006,19 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 
 						for (int methodIdx = 0; methodIdx < count; methodIdx++)
 						{
-							CV_fldattr_t attr = GET_FROM(listData, CV_fldattr_t);														
+							CV_fldattr_t attr = GET_FROM(listData, CV_fldattr_t);
 							int16 unused = GET_FROM(listData, int16);
 							CV_typ_t methodTypeId = GET_FROM(listData, CV_typ_t);
 							int virtOffset = -1;
 							if ((attr.mprop == CV_MTintro) || (attr.mprop == CV_MTpureintro))
 								virtOffset = GET_FROM(listData, int32);
 
-							DbgSubprogram* subProgram = CvParseMethod(parentType, methodName, methodTypeId, ipi);							
+							DbgSubprogram* subProgram = CvParseMethod(parentType, methodName, methodTypeId, ipi);
 							subProgram->mVirtual = (attr.mprop == CV_MTintro) || (attr.mprop == CV_MTpureintro) || (attr.mprop == CV_MTvirtual);
 							subProgram->mVTableLoc = virtOffset;
 						}
 					}
-					break;				
+					break;
 				case LF_MEMBER:
 				case LF_STMEMBER:
 					{
@@ -1026,7 +1026,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 						bool isConst = false;
 						CV_fldattr_t attr = GET(CV_fldattr_t);
 						CV_typ_t fieldTypeId = GET(CV_typ_t);
-						
+
 						if (parentType->mTagIdx == 29184)
 						{
 							NOP;
@@ -1035,7 +1035,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 						int memberOffset = -1;
 						if (isStatic)
 						{
-							//?							
+							//?
 						}
 						else
 						{
@@ -1049,18 +1049,23 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 							{
 								parentType->mTypeParam = CvGetType(fieldTypeId);
 								parentType->mTypeParam = GetPrimitiveType(parentType->mTypeParam->mTypeCode, DbgLanguage_Beef);
-								
+
 								parentType->mSize = parentType->mTypeParam->mSize;
 								parentType->mAlign = parentType->mTypeParam->mAlign;
 								if ((parentType->mBaseTypes.mHead != NULL) && (strcmp(parentType->mBaseTypes.mHead->mBaseType->mName, "System.Enum") == 0))
 									parentType->mTypeCode = DbgType_Enum;
 								break;
 							}
+
+							if (strncmp(fieldName, "$using$", 7) == 0)
+							{
+								fieldName = NULL;
+							}
 						}
 
 						int64 constVal = 0;
-						if ((parentType->mLanguage == DbgLanguage_Beef) && (isStatic))
-						{							
+						if ((fieldName != NULL) && (parentType->mLanguage == DbgLanguage_Beef) && (isStatic))
+						{
 							for (char* cPtr = fieldName; true; cPtr++)
 							{
 								char c = *cPtr;
@@ -1087,52 +1092,52 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 									break;
 								}
 							}
-						}						
+						}
 
 						if ((isStatic) && (!isConst) && (IsObjectFile()))
 						{
 							// Already has statics filled in
 							break;
-						}						
+						}
 
 						BP_ALLOC_T(DbgVariable);
 						DbgVariable* member = mAlloc.Alloc<DbgVariable>();
-						member->mIsStatic = isStatic;												
+						member->mIsStatic = isStatic;
 
 						DbgType* fieldType = CvGetType(fieldTypeId);
 // 						if (fieldType == NULL)
-// 						{														
+// 						{
 // 							uint8* fieldTypeData = CvGetTagData(fieldTypeId, ipi);
 // 							CvAutoReleaseTempData releaseTempData(this, fieldTypeData);
-// 
+//
 // 							// It's a section data ptr
 // 							int16 memberLeafType = *((int16*)fieldTypeData);
 // 							switch (memberLeafType)
 // 							{
 // 							case LF_BITFIELD:
-// 								{										
+// 								{
 // 									lfBitfield& bitfield = *(lfBitfield*)fieldTypeData;
 // 									fieldType = CvGetType(bitfield.type);
-// 										
-// 									// Bit offset is expressed in MSB form										
+//
+// 									// Bit offset is expressed in MSB form
 // 									member->mBitOffset = (fieldType->mSize * 8) - bitfield.position - bitfield.length;
 // 									member->mBitSize = bitfield.length;
 // 								}
 // 								break;
 // 							default:
 // 								BF_FATAL("Unhandled");
-// 							}							
-// 						}	
+// 							}
+// 						}
 
 						if (fieldType == NULL)
 							fieldType = CvGetType(fieldTypeId);
-						
+
 						if ((fieldType->mTypeCode == DbgType_Enum) && (fieldType->GetByteCount() == 0))
 							fieldType = fieldType->GetPrimaryType();
 
 // 						if (fieldType->mTypeCode == DbgType_Bitfield)
 // 						{
-// 							auto bitfieldType = (DbgBitfieldType*)fieldType;							
+// 							auto bitfieldType = (DbgBitfieldType*)fieldType;
 // 							member->mBitOffset = bitfieldType->mPosition;
 // 							member->mBitSize = bitfieldType->mLength;
 // 							fieldType = fieldType->mTypeParam;
@@ -1145,13 +1150,13 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 						}
 						else if (isStatic)
 						{
-							// NOP 
+							// NOP
 						}
 						else
 							member->mMemberOffset = memberOffset;
 						member->mType = fieldType;
-						member->mCompileUnit = parentType->mCompileUnit;						
-						member->mName = fieldName;											
+						member->mCompileUnit = parentType->mCompileUnit;
+						member->mName = fieldName;
 
 						// Size should already be set, right?  It gets set on 'dataSize' in the LF_STRUCT/LF_CLASS
 						//parentType->mSize = std::max(memberOffset + fieldType->mSize, parentType->mSize);
@@ -1161,7 +1166,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 								parentType->mAlign = std::max(parentType->mAlign, fieldType->GetAlign());
 
 							if (!parentType->mSizeCalculated)
-							{								
+							{
 								parentType->mSize = std::max(memberOffset + fieldType->GetByteCount(), parentType->mSize);
 							}
 						}
@@ -1175,7 +1180,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 						if (isStatic)
 							parentType->mNeedsGlobalsPopulated = true;
 					}
-					break;								
+					break;
 				case LF_INDEX:
 					{
 						int _pad = (int)GET(uint16);
@@ -1257,7 +1262,7 @@ int COFF::CvConvRegNum(int regNum, int* outBits)
 	case CV_AMD64_DIL: if (outBits != NULL) *outBits = 8; return X64Reg_RDI;
 	case CV_REG_DI: if (outBits != NULL) *outBits = 16; return X64Reg_RDI;
 	case CV_REG_EDI: if (outBits != NULL) *outBits = 32; return X64Reg_RDI;
-	
+
 	case CV_AMD64_R8B: *outBits = 8; return X64Reg_R8;
 	case CV_AMD64_R8W: *outBits = 16; return X64Reg_R8;
 	case CV_AMD64_R8D: *outBits = 32; return X64Reg_R8;
@@ -1378,7 +1383,7 @@ int COFF::CvConvRegNum(int regNum, int* outBits)
 	// 	case CV_REG_XMM5: return X86Reg_XMM05;
 	// 	case CV_REG_XMM6: return X86Reg_XMM06;
 	// 	case CV_REG_XMM7: return X86Reg_XMM07;
-#endif	
+#endif
 	}
 
 	return 0; // Nope
@@ -1394,7 +1399,7 @@ DbgType* COFF::CvCreateType()
 	DbgType* dbgType = mAlloc.Alloc<DbgType>();
 	dbgType->mCompileUnit = mMasterCompileUnit;
 	dbgType->mTypeIdx = (int)linkedModule->mTypes.size();
-	linkedModule->mTypes.push_back(dbgType);	
+	linkedModule->mTypes.push_back(dbgType);
 
 	return dbgType;
 }
@@ -1436,21 +1441,21 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			int underlyingType = GET(int32);
 			int typeIndex = GET(int32);
 			const char* name = _ParseString();
-						
+
 			dbgType = CvCreateType();
 			dbgType->mCompileUnit = mMasterCompileUnit;
 			dbgType->mName = name;
 			dbgType->mTypeName = name;
-			//SplitName(dbgType->mName, dbgType->mTypeName, dbgType->mTemplateParams);			
+			//SplitName(dbgType->mName, dbgType->mTypeName, dbgType->mTemplateParams);
 			dbgType->mTypeCode = DbgType_Enum;
-			dbgType->mTypeParam = CvGetTypeSafe(underlyingType);			
+			dbgType->mTypeParam = CvGetTypeSafe(underlyingType);
 			dbgType->mIsIncomplete = true;
 
 			if (dbgType->mTypeParam->GetByteCount() == 0)
 				dbgType->mIsDeclaration = true;
 
 			dbgType->mSize = dbgType->mTypeParam->mSize;
-			dbgType->mAlign = dbgType->mTypeParam->mAlign;			
+			dbgType->mAlign = dbgType->mTypeParam->mAlign;
 
 			/*if (dbgType->mTypeParam->GetByteCount() == 0)
 			{
@@ -1485,19 +1490,19 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			dbgType->mTypeCode = DbgType_Bitfield;
 			//bitfieldType->mPosition = (dbgType->mTypeParam->mSize * 8) - bitfield.position - bitfield.length;
 			bitfieldType->mPosition = bitfield.position;
-			bitfieldType->mLength = bitfield.length;			
+			bitfieldType->mLength = bitfield.length;
 			bitfieldType->mSize = dbgType->mTypeParam->mSize;
 			bitfieldType->mAlign = dbgType->mTypeParam->mAlign;
 			dbgType->mSizeCalculated = true;
 			dbgType->mPriority = DbgTypePriority_Unique;
 		}
 		break;
-	
+
 	case LF_CLASS:
-	case LF_STRUCTURE:	
+	case LF_STRUCTURE:
 	case LF_CLASS_EX:
 	case LF_STRUCTURE_EX:
-		{		
+		{
 			unsigned short  count;          // count of number of elements in class
 			CV_prop_t       property;       // property attribute field (prop_t)
 			CV_typ_t        field;          // type index of LF_FIELD descriptor list
@@ -1507,14 +1512,14 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 
 			int16 extra = 0;
 			if ((trLeafType == 0x1608) || (trLeafType == 0x1609))
-			{				
+			{
 				property = GET(CV_prop_t);
 				extra = GET(int16);
 				field = GET(CV_typ_t);
 				derived = GET(CV_typ_t);
 				vshape = GET(CV_typ_t);
 				count = GET(unsigned short);
-				dataSize = (int)CvParseConstant(data);				
+				dataSize = (int)CvParseConstant(data);
 			}
 			else
 			{
@@ -1532,7 +1537,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 // 			{
 // 				NOP;
 // 			}
-			
+
 // 			if ((strstr(name, "`") != NULL) || (strstr(name, "::__l") != NULL))
 // 			{
 // 				OutputDebugStrF("Local type: %s\n", name);
@@ -1590,7 +1595,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			else
 				dbgType->mTypeCode = DbgType_Struct;
 
-			
+
 
 			DbgType* baseType = NULL;
 			if (derived != 0)
@@ -1598,7 +1603,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				baseType = CvGetTypeSafe(derived);
 				BP_ALLOC_T(DbgBaseTypeEntry);
 				DbgBaseTypeEntry* baseTypeEntry = mAlloc.Alloc<DbgBaseTypeEntry>();
-				baseTypeEntry->mBaseType = baseType;				
+				baseTypeEntry->mBaseType = baseType;
 				dbgType->mBaseTypes.PushBack(baseTypeEntry);
 			}
 
@@ -1606,10 +1611,10 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			{
 				dbgType->mAlign = 1;
 				dbgType->mIsPacked = true;
-			}			
+			}
 
 			if (!dbgType->mIsDeclaration)
-			{	
+			{
 				dbgType->mSizeCalculated = true;
 				dbgType->mSize = dataSize;
 
@@ -1619,26 +1624,26 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 					// some BF_MAX calculations we perform on it
 					dbgType->mSizeCalculated = false;
 					dbgType->mSize = 0;
-				}				
+				}
 			}
-			
-			if (vshape != 0)			
+
+			if (vshape != 0)
 			{
 				CvGetTypeSafe(vshape);
-				dbgType->mHasVTable = true;			
+				dbgType->mHasVTable = true;
 			}
 
 			dbgType->mIsIncomplete = true;
 
-// 			if (classInfo.field != 0)			
-// 				dbgType->mDefinedMembersSize = CvGetTagSize(classInfo.field, ipi);			
-			
+// 			if (classInfo.field != 0)
+// 				dbgType->mDefinedMembersSize = CvGetTagSize(classInfo.field, ipi);
+
 			//CvParseMembers(dbgType, classInfo.field, sectionData);
 		}
 		break;
 	case LF_UNION:
-		{			
-			lfUnion& classInfo = *(lfUnion*)dataStart;				
+		{
+			lfUnion& classInfo = *(lfUnion*)dataStart;
 			data = (uint8*)&classInfo.data;
 			int dataSize = (int)CvParseConstant(data);
 			const char* name = _ParseString();
@@ -1649,8 +1654,8 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			dbgType->mName = name;
 			dbgType->mTypeName = name;
 			//SplitName(dbgType->mName, dbgType->mTypeName, dbgType->mTemplateParams);
-			dbgType->mTypeCode = DbgType_Union;				
-			dbgType->mSize = dataSize;				
+			dbgType->mTypeCode = DbgType_Union;
+			dbgType->mSize = dataSize;
 			dbgType->mAlign = 1;
 			dbgType->mSizeCalculated = !dbgType->mIsDeclaration;
 
@@ -1660,7 +1665,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 		break;
 
 	case LF_MODIFIER:
-		{				
+		{
 			lfModifier& modifier = *(lfModifier*)dataStart;
 			DbgType* outerType = CvGetTypeSafe(modifier.type);
 			dbgType = outerType;
@@ -1668,7 +1673,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			if (modifier.attr.MOD_const)
 			{
 				DbgType* innerType = dbgType;
-				dbgType = CvCreateType();					
+				dbgType = CvCreateType();
 				dbgType->mTypeParam = innerType;
 				dbgType->mTypeCode = DbgType_Const;
 				dbgType->mLanguage = innerType->mLanguage;
@@ -1690,14 +1695,14 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				dbgType->mTypeParam = innerType;
 				dbgType->mTypeCode = DbgType_Unaligned;
 				dbgType->mLanguage = innerType->mLanguage;
-			}			
+			}
 		}
 		break;
 	case LF_POINTER:
 		{
 			lfPointer* pointerInfo = (lfPointer*)dataStart;
 
-			dbgType = CvCreateType();				
+			dbgType = CvCreateType();
 			dbgType->mTypeParam = CvGetTypeSafe(pointerInfo->utype);
 			if (pointerInfo->attr.ptrmode == CV_PTR_MODE_RVREF)
 				dbgType->mTypeCode = DbgType_RValueReference;
@@ -1709,27 +1714,27 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				if ((dbgType->mTypeParam != NULL) && (dbgType->mTypeParam->mPtrType == NULL))
 					dbgType->mTypeParam->mPtrType = dbgType;
 			}
-			//dbgType->mSize = pointerInfo->attr.size;				
+			//dbgType->mSize = pointerInfo->attr.size;
 			dbgType->mSize = sizeof(addr_target);
 			dbgType->mAlign = dbgType->mSize;
 			dbgType->mSizeCalculated = true;
 			dbgType->mLanguage = dbgType->mTypeParam->mLanguage;
-			
+
 			/*if (prop.isconst)
 			{
 			DbgType* innerType = dbgType;
-			dbgType = CvCreateType();					
+			dbgType = CvCreateType();
 			dbgType->mTypeParam = innerType;
 			dbgType->mTypeCode = DbgType_Const;
 			dbgType->mSize = innerType->mSize;
 			}*/
 
-			//TODO: Handle const, volatile, ref, restrict, etc				
+			//TODO: Handle const, volatile, ref, restrict, etc
 		}
 		break;
 	case LF_DIMARRAY:
 		{
-			
+
 		}
 		break;
 	case LF_ARRAY:
@@ -1740,7 +1745,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 
 			dbgType = CvCreateType();
 			dbgType->mTypeParam = CvGetTypeSafe(array->elemtype);
-			dbgType->mTypeCode = DbgType_SizedArray;			
+			dbgType->mTypeCode = DbgType_SizedArray;
 			dbgType->mLanguage = dbgType->mTypeParam->mLanguage;
 			data = (uint8*)&array->data;
 
@@ -1770,14 +1775,14 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			uint8* argData = CvGetTagData(proc->arglist, ipi);
 			CvAutoReleaseTempData releaseTempData(this, argData);
 
-			int16 argLeafType = GET_FROM(argData, int16);				
+			int16 argLeafType = GET_FROM(argData, int16);
 			BF_ASSERT(argLeafType == LF_ARGLIST);
 			int argCount = GET_FROM(argData, int32);
 			CV_typ_t* argTypes = (CV_typ_t*)argData;
 			for (int paramIdx = 0; paramIdx < proc->parmcount; paramIdx++)
 			{
 				BP_ALLOC_T(DbgVariable);
-				DbgVariable* arg = mAlloc.Alloc<DbgVariable>();		
+				DbgVariable* arg = mAlloc.Alloc<DbgVariable>();
 				arg->mIsParam = true;
 				arg->mType = CvGetTypeSafe(argTypes[paramIdx]);
 				arg->mName = "$arg";
@@ -1801,14 +1806,14 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			uint8* argData = CvGetTagData(proc->arglist, ipi);
 			CvAutoReleaseTempData releaseTempData(this, argData);
 
-			int16 argLeafType = GET_FROM(argData, int16);				
+			int16 argLeafType = GET_FROM(argData, int16);
 			BF_ASSERT(argLeafType == LF_ARGLIST);
 			int argCount = GET_FROM(argData, int32);
 			CV_typ_t* argTypes = (CV_typ_t*)argData;
 			for (int paramIdx = 0; paramIdx < proc->parmcount; paramIdx++)
 			{
 				BP_ALLOC_T(DbgVariable);
-				DbgVariable* arg = mAlloc.Alloc<DbgVariable>();		
+				DbgVariable* arg = mAlloc.Alloc<DbgVariable>();
 				arg->mIsParam = true;
 				arg->mType = CvGetTypeSafe(argTypes[paramIdx]);
 				arg->mName = "$arg";
@@ -1857,7 +1862,7 @@ void COFF::ParseTypeData(CvStreamReader& reader, int dataOffset)
 			break;
 		if (offset >= reader.mSize)
 			break;
-		
+
 		//OutputDebugStrF("%X %X\n", tagIdx, (int)(data - sectionData));
 
 		BF_ASSERT(((offset) & 3) == 0);
@@ -1865,8 +1870,8 @@ void COFF::ParseTypeData(CvStreamReader& reader, int dataOffset)
 		//PTR_ALIGN(data, sectionData, 4);
 
 		uint8* data = reader.GetTempPtr(offset, 4);
-		uint16 trLength = *(uint16*)data;		
-		uint16 trLeafType = *(uint16*)(data + 2);		
+		uint16 trLength = *(uint16*)data;
+		uint16 trLeafType = *(uint16*)(data + 2);
 
 // 		uint16 trLength = GET(uint16);
 // 		uint8* dataStart = data;
@@ -1907,7 +1912,7 @@ void COFF::ParseTypeData(int sectionNum, CvStreamReader& reader, int& sectionSiz
 // 	sectionData = CvReadStream(sectionNum, &sectionSize);
 // 	if (sectionData == NULL)
 // 		return;
-// 	uint8* data = sectionData;	
+// 	uint8* data = sectionData;
 
 	CvReadStream(sectionNum, reader);
 	uint8* data = reader.GetTempPtr(0, 0);
@@ -1948,7 +1953,7 @@ void COFF::ParseTypeData(int sectionNum, CvStreamReader& reader, int& sectionSiz
 
 		//////// Validate Type indices
 		int typeIndexCount = hashTypeIndexSize / 8;
-		// We expect a TypeIndexOffset for every 8k of data, plus the zero at the start		
+		// We expect a TypeIndexOffset for every 8k of data, plus the zero at the start
 		int expectedTypeIndices = (sectionSize - (int)(data - sectionData)) / 8192 + 1;
 		// Assert it's in some acceptable range...
 
@@ -2069,11 +2074,11 @@ void COFF::ParseTypeData()
 	int hashAdjOffset = 0;
 	int32 hashStream = -1;
 	int32 hashAdjSize = 0;
-	int32 dataOffset = 0;	
-	
+	int32 dataOffset = 0;
+
 	ParseTypeData(2, mCvTypeSectionReader, sectionSize, dataOffset, hashStream, hashAdjOffset, hashAdjSize, mCvMinTag, mCvMaxTag);
 	//mCvTypeSectionData = sectionData;
-		
+
 	mCvTypeMap.Clear();
 	mCvTagStartMap.Clear();
 	mCvTypeMap.Resize(mCvMaxTag - mCvMinTag);
@@ -2105,7 +2110,7 @@ void COFF::ParseTypeData()
 			GET_INTO(int32, unk3);
 		}
 
-		// Types listed in the adjustment table are always primary types, 
+		// Types listed in the adjustment table are always primary types,
 		//  they should override any "old types" with the same name
 		for (int adjIdx = 0; adjIdx < adjustCount; adjIdx++)
 		{
@@ -2113,12 +2118,12 @@ void COFF::ParseTypeData()
 			GET_INTO(CV_typ_t, typeId);
 			DbgType* dbgType = CvGetType(typeId);
 			if (dbgType != NULL)
-			{				
+			{
 				dbgType->mPriority = DbgTypePriority_Primary_Explicit;
 			}
 		}
 
-		delete [] sectionData;		
+		delete [] sectionData;
 	}
 
 	FixTypes(startingTypeIdx);
@@ -2140,14 +2145,14 @@ void COFF::FixConstant(DbgVariable* constVar)
 void COFF::MapRanges(DbgVariable* variable, CV_LVAR_ADDR_RANGE* range, CV_LVAR_ADDR_GAP* gaps)
 {
 	auto rangeStart = GetSectionAddr(range->isectStart, range->offStart);
-	
+
 	if (variable->mRangeStart == 0)
 	{
-		variable->mRangeStart = rangeStart;		
+		variable->mRangeStart = rangeStart;
 		variable->mRangeLen = (rangeStart + range->cbRange) - variable->mRangeStart;
 	}
 	else
-	{		
+	{
 		addr_target maxEnd = BF_MAX(variable->mRangeStart + variable->mRangeLen, rangeStart + range->cbRange);
 		variable->mRangeStart = BF_MIN(variable->mRangeStart, rangeStart);
 		variable->mRangeLen = maxEnd - variable->mRangeStart;
@@ -2177,7 +2182,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 	CvCompileUnit* cvCompileUnit = (CvCompileUnit*)compileUnit;
 
 	uint8* symDataStart = data;
-	DbgSubprogram* curSubprogram = NULL;	
+	DbgSubprogram* curSubprogram = NULL;
 	DbgVariable* curRegRelVariable = NULL;
 	DbgVariable* curParam = NULL;
 	DbgVariable* localVar = NULL;
@@ -2202,10 +2207,10 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		{
 			mVariable = NULL;
 			mRangedStart = NULL;
-			mRangedLength = 0;			
+			mRangedLength = 0;
 		}
 	};
-	SizedArray<_DeferredVariableLocation, 16> deferredVariableLocations;	
+	SizedArray<_DeferredVariableLocation, 16> deferredVariableLocations;
 	int unrangedIdx = -1;
 
 	auto _NextUnrangedLocalVar = [&](const char* name, DbgType* varType)
@@ -2213,7 +2218,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		inLocalVarRanged = false;
 
 		localVar = NULL;
-				
+
 		unrangedIdx++;
 		while (unrangedIdx < deferredVariableLocations.size())
 		{
@@ -2222,7 +2227,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				break;
 			localVar = NULL;
 			unrangedIdx++;
-		}		
+		}
 
 		bool isParam = false;
 		if (localVar == NULL)
@@ -2252,7 +2257,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				blockStack.back()->mVariables.PushBack(localVar);
 			//return;
 		}
-		
+
 		localVar->mName = name;
 		if (isParam)
 			localVar->mIsParam = true;
@@ -2311,7 +2316,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				deferredVariableLocation.mRangedLength = -1; // Mark as 'handled'
 			}
 		}
-		
+
 		locationDataStart = NULL;
 		locationDataEnd = NULL;
 		locationDataCount = 0;
@@ -2322,7 +2327,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		for (auto& deferredVariableLocation : deferredVariableLocations)
 		{
 			if (deferredVariableLocation.mRangedLength == -1)
-				continue;			
+				continue;
 			auto deferredVar = deferredVariableLocation.mVariable;
 			if (deferredVar->mLocationData != NULL)
 			{
@@ -2338,12 +2343,12 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 	};
 
 	bool inlineDebugDump = false;
-		
+
 	if (useSubprogram != NULL)
 	{
 		curSubprogram = useSubprogram;
 		blockStack.push_back(&curSubprogram->mBlock);
-	
+
 		curParam = curSubprogram->mParams.mHead;
 		curRegRelVariable = curParam;
 	}
@@ -2382,7 +2387,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			}
 			break;
 		}
-		
+
 		/*if (handled)
 		{
 			data = dataEnd;
@@ -2401,7 +2406,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				DbgType* typeDefType = CvCreateType();
 				typeDefType->mTypeCode = DbgType_TypeDef;
 				typeDefType->mTypeParam = CvGetTypeSafe(udtSym.typind);
-				typeDefType->mName = DbgDupString((const char*)udtSym.name, "DbgDupString.S_UDT");				
+				typeDefType->mName = DbgDupString((const char*)udtSym.name, "DbgDupString.S_UDT");
 				if (strncmp(typeDefType->mName, "_bf::", 5) == 0)
 				{
 					typeDefType->mLanguage = DbgLanguage_Beef;
@@ -2417,7 +2422,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		case S_OBJNAME:
 			{
 				GET_INTO(int32, objSig);
-				const char* objName = CvParseAndDupString(data);				
+				const char* objName = CvParseAndDupString(data);
 			}
 			break;
 		case S_CONSTANT:
@@ -2435,7 +2440,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				data = constSym.name + strlen((const char*)constSym.name) + 1;
 				constVar->mConstValue = CvParseConstant(constSym.value, data);
 				FixConstant(constVar);
-				
+
 				if (constVar->mName != NULL)
 					blockStack.back()->mVariables.PushBack(constVar);
 			}
@@ -2454,7 +2459,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					unsigned short  reserved : 10;      // Reserved. Must be zero.
 				};
 				GET_INTO(ExpFlags, flags);
-				const char* symName = CvParseAndDupString(data);				
+				const char* symName = CvParseAndDupString(data);
 			}
 			break;
 		case S_GDATA32:
@@ -2464,8 +2469,8 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			{
 				auto linkedModule = GetLinkedModule();
 				DATASYM32& dataSym = *(DATASYM32*)dataStart;
-				
-				char* name = (char*)dataSym.name;				
+
+				char* name = (char*)dataSym.name;
 				char* targetName = NULL;
 				DbgType* targetType = mMasterCompileUnit->mGlobalType;
 				bool overrideBeef = false;
@@ -2475,7 +2480,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					targetName = name;
 					name = lastDblColon + 2;
 					*lastDblColon = 0;
-					
+
 					if (strcmp(targetName, "_bf") == 0)
 					{
 						overrideBeef = true;
@@ -2485,12 +2490,12 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 						targetType = CvGetTypeOrNamespace(targetName);
 					}
 				}
-								
+
 				DbgType* dbgType = CvGetTypeSafe(dataSym.typind);
 
 				BP_ALLOC_T(DbgVariable);
 				DbgVariable* variable = mAlloc.Alloc<DbgVariable>();
-				variable->mType = dbgType;				
+				variable->mType = dbgType;
 				variable->mLocationData = dataStart;
 				variable->mLocationLen = 1;
 				variable->mIsStatic = true;
@@ -2510,25 +2515,25 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 						auto newPtr = mAlloc.Alloc<DATASYM32>();
 						memcpy(newPtr, variable->mLocationData, sizeof(DATASYM32));
 						variable->mLocationData = (uint8*)newPtr;
-					}					
+					}
 					if (variable->mName != NULL)
 						blockStack.back()->mVariables.PushBack(variable);
 					break;
 				}
 
-				//variable->mCompileUnit = m;				
+				//variable->mCompileUnit = m;
 				// Push front so we will find before the original static declaration (that has no memory associated with it)
 				if (targetType != NULL)
 					targetType->mMemberList.PushFront(variable);
-				
+
 				if ((variable->mIsExtern) && (variable->mLinkName != NULL))
-					mStaticVariables.push_back(variable);				
-			}			
-			break;		
+					mStaticVariables.push_back(variable);
+			}
+			break;
 		case S_GTHREAD32:
 		case S_LTHREAD32:
 			{
-				if ((IsObjectFile()) || (curSubprogram != NULL))				
+				if ((IsObjectFile()) || (curSubprogram != NULL))
 				{
 					auto linkedModule = GetLinkedModule();
 					THREADSYM32& dataSym = *(THREADSYM32*)dataStart;
@@ -2563,7 +2568,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					variable->mLocationLen = 1;
 					variable->mIsStatic = true;
 					variable->mCompileUnit = mMasterCompileUnit;
-					variable->mName = name;					
+					variable->mName = name;
 					if (targetType == mMasterCompileUnit->mGlobalType)
 						variable->mLinkName = name;
 					variable->mIsExtern = symType == S_GTHREAD32;
@@ -2578,19 +2583,19 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 								auto newPtr = mAlloc.Alloc<DATASYM32>();
 							memcpy(newPtr, variable->mLocationData, sizeof(DATASYM32));
 							variable->mLocationData = (uint8*)newPtr;
-						}						
+						}
 						if (variable->mName != NULL)
 							blockStack.back()->mVariables.PushBack(variable);
 						break;
 					}
 
-					//variable->mCompileUnit = m;				
+					//variable->mCompileUnit = m;
 					// Push front so we will find before the original static declaration (that has no memory associated with it)
 					targetType->mMemberList.PushFront(variable);
 
 					if ((variable->mIsExtern) && (variable->mLinkName != NULL))
 						mStaticVariables.push_back(variable);
-				}				
+				}
 			}
 			break;
 		case S_GPROC32:
@@ -2600,24 +2605,24 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			{
 				BF_ASSERT(curSubprogram == NULL);
 
-				PROCSYM32* procSym = (PROCSYM32*)dataStart;				
+				PROCSYM32* procSym = (PROCSYM32*)dataStart;
 
 				DbgType* parentType = NULL;
 
 				auto addr = GetSectionAddr(procSym->seg, procSym->off);
-				
+
 				DbgSubprogram* subprogram = NULL;
-				if (procSym->typind != 0)				
-				{					
+				if (procSym->typind != 0)
+				{
 					bool ipi = false;
-					if ((!IsObjectFile()) && 
+					if ((!IsObjectFile()) &&
 						((symType == S_GPROC32_ID) || (symType == S_LPROC32_ID)))
 					{
 						if (!mCvIPIReader.IsSetup())
 							CvParseIPI();
 						ipi = true;
-					}					
-					subprogram = CvParseMethod(parentType, NULL, procSym->typind, ipi);				
+					}
+					subprogram = CvParseMethod(parentType, NULL, procSym->typind, ipi);
 				}
 
 				if (subprogram == NULL)
@@ -2628,9 +2633,9 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				subprogram->mTagIdx = (int)(dataEnd - sectionData); // Position for method data
 				subprogram->mIsOptimized = isOptimized;
-				subprogram->mCompileUnit = compileUnit;				
+				subprogram->mCompileUnit = compileUnit;
 				char* name = DbgDupString((const char*)procSym->name, "DbgDupString.S_GPROC32");
-				
+
 				if (procSym->flags.CV_PFLAG_OPTDBGINFO)
 				{
 					subprogram->mIsOptimized = true;
@@ -2666,23 +2671,23 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 							subprogram->mCheckedKind = BfCheckedKind_Unchecked;
 							*cPtr = NULL;
 							break;
-						}						
+						}
 					}
 				}
-				
+
 				subprogram->mPrologueSize = procSym->DbgStart;
 				subprogram->mBlock.mLowPC = addr;
 				subprogram->mBlock.mHighPC = subprogram->mBlock.mLowPC + (int32)procSym->len;
 				BF_ASSERT(procSym->len >= 0);
 
 				MapSubprogram(subprogram);
-				
+
 				curSubprogram = subprogram;
 				curParam = subprogram->mParams.mHead;
 				curRegRelVariable = curParam;
 				blockStack.push_back(&subprogram->mBlock);
 				//OutputDebugStrF("Func: %s\n", subprogram->mName);
-							
+
 				if (hasColon)
 				{
 					subprogram->mName = name;
@@ -2694,7 +2699,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					subprogram->mName = name;
 					compileUnit->mGlobalType->mMethodList.PushBack(curSubprogram);
 				}
-			
+
 				BF_ASSERT(unrangedIdx == -1);
 			}
 			break;
@@ -2704,9 +2709,9 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				DbgType* parentType = NULL;
 
-				DbgSubprogram* subprogram;				
+				DbgSubprogram* subprogram;
 				BP_ALLOC_T(DbgSubprogram);
-				subprogram = mAlloc.Alloc<DbgSubprogram>();				
+				subprogram = mAlloc.Alloc<DbgSubprogram>();
 				subprogram->mCompileUnit = compileUnit;
 				subprogram->mHasQualifiedName = true;
 				subprogram->mName = DbgDupString((const char*)thunkSym.name, "DbgDupString.S_THUNK32");
@@ -2717,7 +2722,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				BF_ASSERT(thunkSym.len >= 0);
 
 				MapSubprogram(subprogram);
-				
+
 				curSubprogram = subprogram;
 				curParam = subprogram->mParams.mHead;
 				blockStack.push_back(&subprogram->mBlock);
@@ -2734,7 +2739,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					deferBlockDepth++;
 					break;
 				}
-				
+
 				BP_ALLOC_T(DbgBlock);
 				DbgBlock* block = mAlloc.Alloc<DbgBlock>();
 				blockStack.back()->mSubBlocks.PushBack(block);
@@ -2748,7 +2753,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			break;
 		case S_FRAMEPROC:
 			{
-				FRAMEPROCSYM* frameProc = (FRAMEPROCSYM*)dataStart;				
+				FRAMEPROCSYM* frameProc = (FRAMEPROCSYM*)dataStart;
 				if (curSubprogram != NULL)
 				{
 // 					if ((curSubprogram->mName != NULL) && (strcmp(curSubprogram->mName, "_bf::IDETest::HotTester::TestFuncs") == 0))
@@ -2774,7 +2779,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				_NextUnrangedLocalVar(name, varType);
 
 				localVar->mName = name;
-				localVar->mCompileUnit = compileUnit;				
+				localVar->mCompileUnit = compileUnit;
 				localVar->mType = varType;
 				// This is location data now, not just a S_LOCAL opener
 				//prevLocalVar = localVar;
@@ -2785,14 +2790,14 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			{
 				if (deferInternals)
 					break;
-				REGSYM* regSym = (REGSYM*)dataStart;				
+				REGSYM* regSym = (REGSYM*)dataStart;
 				const char* name = DbgDupString((const char*)regSym->name);
 				DbgType* varType = CvGetTypeSafe(regSym->typind);
 
 				_NextUnrangedLocalVar(name, varType);
 
 				localVar->mName = name;
-				localVar->mCompileUnit = compileUnit;				
+				localVar->mCompileUnit = compileUnit;
 				localVar->mType = varType;
 				// This is location data now, not just a S_LOCAL opener
 				//prevLocalVar = localVar;
@@ -2805,12 +2810,12 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					break;
 				REGREL32* regRel32 = (REGREL32*)dataStart;
 				const char* name = DbgDupString((const char*)regRel32->name);
-				DbgType* varType = CvGetTypeSafe(regRel32->typind);				
+				DbgType* varType = CvGetTypeSafe(regRel32->typind);
 
 				_NextUnrangedLocalVar(name, varType);
 
 				localVar->mName = name;
-				localVar->mCompileUnit = compileUnit;				
+				localVar->mCompileUnit = compileUnit;
 				if ((localVar->mType != NULL) && (!localVar->mType->IsPointer()) && (varType != NULL) && (varType->IsPointer()))
 					localVar->mSigNoPointer = true;
 				localVar->mType = varType;
@@ -2819,7 +2824,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				newLocalVarHasLocData = true;
 			}
 			break;
-		case S_LOCAL:			
+		case S_LOCAL:
 			{
 				if (deferInternals)
 					break;
@@ -2828,7 +2833,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				LOCALSYM& localSym = *(LOCALSYM*)dataStart;
 				char* name = DbgDupString((const char*)localSym.name);
-				
+
 				bool isConst = false;
 				int64 constVal = 0;
 				if ((compileUnit->mLanguage == DbgLanguage_Beef) && (name != NULL) && (name[0] != '$'))
@@ -2844,7 +2849,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 							{
 								cPtr[1] = '-';
 								isConst = true;
-								constVal = atoll(cPtr + 1);								
+								constVal = atoll(cPtr + 1);
 								*cPtr = 0;
 							}
 							else if ((cPtr[1] >= '0') && (cPtr[1] <= '9'))
@@ -2853,22 +2858,22 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 								constVal = atoll(cPtr + 1);
 								*cPtr = 0;
 							}
-						}						
+						}
 					}
 				}
-				
+
 				if ((name != NULL) && (name[0] == '#'))
 				{
 					if (strcmp(name + 1, "StepOver") == 0)
 					{
 						curSubprogram->mIsStepFilteredDefault = true;
-					}					
+					}
 
 					localVar = NULL;
 					break;
-				}				
+				}
 
-				DbgType* varType = CvGetType(localSym.typind, cvCompileUnit); 
+				DbgType* varType = CvGetType(localSym.typind, cvCompileUnit);
 				if (varType == NULL)
 					varType = CvGetType(T_VOID);
 
@@ -2891,11 +2896,11 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				bool handledLocalVar = false;
 				if (curParam != NULL)
-				{					
+				{
 					if ((name != NULL) && (name[0] == '$'))
 					{
 						int strLen = strlen(name);
-						
+
 						// Splat head
 						const char* dollarPos = strchr(name + 1, '$');
 						const char* nameStr = name + 1;
@@ -2919,7 +2924,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					{
 						// Type was different, probably from a 'ref' being added when we are passing composites
 						curParam->mName = name;
-						curParam = curParam->mNext;						
+						curParam = curParam->mNext;
 					}
 					else
 					{
@@ -2932,13 +2937,13 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				if (!handledLocalVar)
 				{
 					BP_ALLOC_T(DbgVariable);
-					localVar = mAlloc.Alloc<DbgVariable>();					
+					localVar = mAlloc.Alloc<DbgVariable>();
 					if (name != NULL)
 						blockStack.back()->mVariables.PushBack(localVar);
 				}
 				localVar->mName = name;
 
-				localVar->mCompileUnit = compileUnit;				
+				localVar->mCompileUnit = compileUnit;
 				localVar->mType = varType;
 				localVar->mIsConst = isConst;
 				localVar->mConstValue = constVal;
@@ -2954,22 +2959,22 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					break;
 				DEFRANGESYMREGISTER& defRangeReg = *(DEFRANGESYMREGISTER*)dataStart;
 				if (localVar != NULL)
-					MapRanges(localVar, &defRangeReg.range, defRangeReg.gaps);				
+					MapRanges(localVar, &defRangeReg.range, defRangeReg.gaps);
 			}
-			break;			
+			break;
 		case S_DEFRANGE_FRAMEPOINTER_REL:
 			{
 				if (deferInternals)
 					break;
-				DEFRANGESYMFRAMEPOINTERREL& defRangeFPRel = *(DEFRANGESYMFRAMEPOINTERREL*)dataStart;				
-				MapRanges(localVar, &defRangeFPRel.range, defRangeFPRel.gaps);				
+				DEFRANGESYMFRAMEPOINTERREL& defRangeFPRel = *(DEFRANGESYMFRAMEPOINTERREL*)dataStart;
+				MapRanges(localVar, &defRangeFPRel.range, defRangeFPRel.gaps);
 			}
 			break;
 		case S_DEFRANGE_SUBFIELD_REGISTER:
 			{
 				if (deferInternals)
 					break;
-				DEFRANGESYMSUBFIELDREGISTER& defRangeSubFieldReg = *(DEFRANGESYMSUBFIELDREGISTER*)dataStart;				
+				DEFRANGESYMSUBFIELDREGISTER& defRangeSubFieldReg = *(DEFRANGESYMSUBFIELDREGISTER*)dataStart;
 			}
 			break;
 		case S_DEFRANGE_FRAMEPOINTER_REL_FULL_SCOPE:
@@ -2985,7 +2990,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					break;
 				DEFRANGESYMREGISTERREL& defRangeRegRel = *(DEFRANGESYMREGISTERREL*)dataStart;
 				if (localVar != NULL)
-					MapRanges(localVar, &defRangeRegRel.range, defRangeRegRel.gaps);								
+					MapRanges(localVar, &defRangeRegRel.range, defRangeRegRel.gaps);
 			}
 			break;
 		case S_ENDARG:
@@ -2995,8 +3000,8 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			break;
 		case S_END:
 		case S_PROC_ID_END:
-			if (deferBlockDepth > 0)			
-				--deferBlockDepth;			
+			if (deferBlockDepth > 0)
+				--deferBlockDepth;
 			else
 				blockStack.pop_back();
 			BF_ASSERT(blockStack.size() > 0);
@@ -3021,18 +3026,18 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				inlineDebugDump = false;
 				curSubprogram = NULL;
-				curParam = NULL;	
-				
+				curParam = NULL;
+
 			}
 			break;
 		case S_COMPILE2:
 			{
-				COMPILESYM* compileSym = (COMPILESYM*)dataStart;				
+				COMPILESYM* compileSym = (COMPILESYM*)dataStart;
 			}
 			break;
 		case S_COMPILE3:
 			{
-				COMPILESYM3* compileSym = (COMPILESYM3*)dataStart;				
+				COMPILESYM3* compileSym = (COMPILESYM3*)dataStart;
 			}
 			break;
 		case S_ENVBLOCK:
@@ -3049,7 +3054,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			break;
 		case S_BUILDINFO:
 			{
-				CV_ItemId buildInfoId = GET(CV_ItemId);				
+				CV_ItemId buildInfoId = GET(CV_ItemId);
 			}
 			break;
 		case S_TRAMPOLINE:
@@ -3060,48 +3065,48 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			break;
 		case S_FRAMECOOKIE:
 			{
-				FRAMECOOKIE& frameCookie = *(FRAMECOOKIE*)dataStart;				
+				FRAMECOOKIE& frameCookie = *(FRAMECOOKIE*)dataStart;
 			}
 			break;
 		case S_LABEL32:
 			{
-				LABELSYM32& labelSym = *(LABELSYM32*)dataStart;				
+				LABELSYM32& labelSym = *(LABELSYM32*)dataStart;
 			}
 			break;
 		case S_CALLSITEINFO:
 			{
-				CALLSITEINFO& callSiteInfo = *(CALLSITEINFO*)dataStart;				
+				CALLSITEINFO& callSiteInfo = *(CALLSITEINFO*)dataStart;
 			}
 			break;
 		case S_HEAPALLOCSITE:
 			{
-				HEAPALLOCSITE& heapAllocSite = *(HEAPALLOCSITE*)dataStart;				
+				HEAPALLOCSITE& heapAllocSite = *(HEAPALLOCSITE*)dataStart;
 			}
 			break;
 		case S_FILESTATIC:
 			{
-				FILESTATICSYM& fileStaticSym = *(FILESTATICSYM*)dataStart;				
+				FILESTATICSYM& fileStaticSym = *(FILESTATICSYM*)dataStart;
 			}
 			break;
 		case S_CALLEES:
 			{
-				FUNCTIONLIST& calleeList = *(FUNCTIONLIST*)dataStart;				
+				FUNCTIONLIST& calleeList = *(FUNCTIONLIST*)dataStart;
 			}
 			break;
 		case S_CALLERS:
 			{
-				FUNCTIONLIST& calleeList = *(FUNCTIONLIST*)dataStart;				
+				FUNCTIONLIST& calleeList = *(FUNCTIONLIST*)dataStart;
 			}
 			break;
 		case S_POGODATA:
 			{
-				POGOINFO& pogoInfo = *(POGOINFO*)dataStart;				
+				POGOINFO& pogoInfo = *(POGOINFO*)dataStart;
 			}
 			break;
-		
+
 		case S_INLINESITE:
 		case S_INLINESITE2:
-			{						
+			{
 				if (useSubprogram != NULL)
 				{
 					deferInlineDepth++;
@@ -3110,7 +3115,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				uint32 inlinee;
 				uint8* binaryAnnotations;
-								
+
 				if (symType == S_INLINESITE)
 				{
 					INLINESITESYM& inlineSite = *(INLINESITESYM*)dataStart;
@@ -3123,13 +3128,13 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					inlinee = inlineSite.inlinee;
 					binaryAnnotations = (uint8*)&inlineSite.binaryAnnotations;
 				}
-				
+
 				DbgSubprogram* inlineParent = curSubprogram;
 				DbgSubprogram* subprogram = NULL;
 				if (IsObjectFile())
 				{
 					subprogram = CvParseMethod(NULL, NULL, inlinee, false);
-					subprogram->mCompileUnit = compileUnit;					
+					subprogram->mCompileUnit = compileUnit;
 					curSubprogram = subprogram;
 				}
 				else if ((inlinee & 0x80000000) != 0)
@@ -3137,7 +3142,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					BP_ALLOC_T(DbgSubprogram);
 					subprogram = mAlloc.Alloc<DbgSubprogram>(); // ??
 					subprogram->mCompileUnit = compileUnit;
-					
+
 					if (!mCvIPIReader.IsSetup())
 						CvParseIPI();
 
@@ -3148,7 +3153,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					BP_ALLOC_T(DbgSubprogram);
 					subprogram = mAlloc.Alloc<DbgSubprogram>();
 
-					subprogram->mCompileUnit = compileUnit;					
+					subprogram->mCompileUnit = compileUnit;
 					curSubprogram = subprogram;
 
 					FixupInlinee(curSubprogram, inlinee);
@@ -3176,7 +3181,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 					String name = StrFormat("<Inline>@%@", curSubprogram);
 					curSubprogram->mName = DbgDupString(name.c_str());*/
-					
+
 					String name = StrFormat("<Inline>@%@", curSubprogram);
 					curSubprogram->mName = DbgDupString(name.c_str());
 
@@ -3185,12 +3190,12 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				if (inlineDebugDump)
 				{
-					int depth = curSubprogram->GetInlineDepth();					
-					BfLogCv("S_INLINESITE Ofs:%d Depth:%d Inlinee:%X Subprogram:%@ %s\n  Parent:%@ %s\n", (dataStart - symDataStart), depth, inlinee, 
+					int depth = curSubprogram->GetInlineDepth();
+					BfLogCv("S_INLINESITE Ofs:%d Depth:%d Inlinee:%X Subprogram:%@ %s\n  Parent:%@ %s\n", (dataStart - symDataStart), depth, inlinee,
 						curSubprogram, curSubprogram->mName, curSubprogram->mInlineeInfo->mInlineParent, curSubprogram->mInlineeInfo->mInlineParent->mName);
 				}
 
-				CvInlineInfo inlineInfo;				
+				CvInlineInfo inlineInfo;
 				inlineInfo.mNext = NULL;
 				inlineInfo.mTail = NULL;
 				inlineInfo.mInlinee = inlinee;
@@ -3220,17 +3225,17 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 						curSubprogram->mDeferredInternalsSize = endOffset - curSubprogram->mTagIdx;
 					}
 
-					curSubprogram = curSubprogram->mInlineeInfo->mInlineParent;					
+					curSubprogram = curSubprogram->mInlineeInfo->mInlineParent;
 					blockStack.pop_back();
 				}
 			}
 			break;
 		case S_SSEARCH:
 			{
-				SEARCHSYM* searchSym = (SEARCHSYM*)dataStart;				
+				SEARCHSYM* searchSym = (SEARCHSYM*)dataStart;
 			}
 			break;
-		case S_SEPCODE:		
+		case S_SEPCODE:
 			{
 				BP_ALLOC_T(DbgSubprogram);
 				curSubprogram = mAlloc.Alloc<DbgSubprogram>();
@@ -3258,11 +3263,11 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			break;
 		case S_UNAMESPACE:
 			break;
-		case /*S_FASTLINK*/0x1167:			
+		case /*S_FASTLINK*/0x1167:
 			break;
-		case /*S_INLINEES*/0x1168:			
+		case /*S_INLINEES*/0x1168:
 			break;
-		case 0x1176:			
+		case 0x1176:
 			break;
 		case 0x1178:
 			break;
@@ -3278,7 +3283,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 		bool hasNewLocalVar = (localVar != prevLocalVar) && (localVar != NULL);
 		if (newLocalVarHasLocData)
-		{			
+		{
 			prevLocalVar = localVar;
 		}
 
@@ -3297,9 +3302,9 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				{
 					if (prevLocalVar != NULL)
 					{
-						/*if (localVar->mLocationData == NULL)					
+						/*if (localVar->mLocationData == NULL)
 						localVar->mLocationData = dataStart;
-						localVar->mLocationLen++;*/					
+						localVar->mLocationLen++;*/
 						if (locationDataStart == NULL)
 							locationDataStart = dataStart;
 						locationDataEnd = dataEnd;
@@ -3322,7 +3327,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				//  to the same memory location, which can happen during mixin injection.  The result is that the mixin gets
 				//  some premature instructions attributed to it from the variable declaration.  This fixes that.
 				if ((aliasPos != NULL) && (aliasPos > localVar->mName))
-				{						
+				{
 					String findName = String(aliasPos + 7);
 					localVar->mName = CvDupString(localVar->mName + 1, aliasPos - localVar->mName - 1);
 
@@ -3334,7 +3339,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					/*bool found = false;
 
 					auto _CheckBlock = [&](DbgBlock* block)
-					{						
+					{
 						for (auto checkVar : block->mVariables)
 						{
 							if (checkVar->mName == NULL)
@@ -3352,15 +3357,15 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 						}
 
 						return false;
-						
+
 					};
 
 					for (int blockIdx = (int)blockStack.size() - 1; blockIdx >= 0; blockIdx--)
 					{
-						DbgBlock* block = blockStack[blockIdx];												
-						if (_CheckBlock(block))						
-							break;						
-					}				
+						DbgBlock* block = blockStack[blockIdx];
+						if (_CheckBlock(block))
+							break;
+					}
 
 					if (!found)
 					{
@@ -3379,7 +3384,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 								if ((checkAddr < block->mLowPC) || (checkAddr >= block->mHighPC))
 									return;
 
-								if (_CheckBlock(block))								
+								if (_CheckBlock(block))
 									return;
 
 								for (auto block : block->mSubBlocks)
@@ -3389,7 +3394,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 							_RecurseBlock(&checkSubprogram->mBlock);
 						}
 					}*/
-				}				
+				}
 			}
 
 			if ((compileUnit->mLanguage != DbgLanguage_Beef) && (localVar->mName != NULL))
@@ -3409,10 +3414,10 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		{
 			BF_ASSERT(locationDataCount == prevLocalVar->mLocationLen);
 		}*/
-		
+
 
 		data = dataEnd;
-		//PTR_ALIGN(data, sectionData, 4);		
+		//PTR_ALIGN(data, sectionData, 4);
 	}
 
 	if (localVar != NULL)
@@ -3460,8 +3465,8 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 	{
 		compileUnit->mModuleIdx = NULL;
 		compileUnit->mName = mFilePath.c_str();
-	}	
-		
+	}
+
 	uint8* data = sectionData;
 	uint8* dataEnd = NULL;
 
@@ -3472,15 +3477,15 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 
 	uint8* debugSubSectionsStart = data;
 	if (moduleInfo != NULL)
-	{		
-		taggedSize = moduleInfo->mLinesBytes;		
+	{
+		taggedSize = moduleInfo->mLinesBytes;
 		debugSubSectionsStart = data + moduleInfo->mSymbolBytes - sizeof(uint32);
 	}
 	else
 	{
 		taggedSize = sectionSize - sizeof(uint32);
-	}	
-	
+	}
+
 	if (mStringTable.mStrTable == NULL)
 	{
 		data = debugSubSectionsStart;
@@ -3496,7 +3501,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 			{
 				if (mStringTable.mStrTable == NULL)
 					mStringTable.mStrTable = (const char*)data;
-			}			
+			}
 			data = dataEnd;
 		}
 	}
@@ -3527,7 +3532,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 					crossScopeImport.mScopeName = fileName;
 
 					//
-					/*for (int checkIdx = 0; checkIdx < (int)mCvModuleInfo.size(); checkIdx++)					
+					/*for (int checkIdx = 0; checkIdx < (int)mCvModuleInfo.size(); checkIdx++)
 					{
 						auto checkModuleInfo = mCvModuleInfo[checkIdx];
 						if ((checkModuleInfo != NULL) && (checkModuleInfo->mModuleName != NULL) && (stricmp(checkModuleInfo->mModuleName, fileName) == 0))
@@ -3568,7 +3573,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 			else if (lineInfoType == DEBUG_S_FRAMEDATA)
 			{
 				uint8* dataPtr = data;
-				addr_target baseAddr = 0;				
+				addr_target baseAddr = 0;
 				int relAddr = GET_FROM(dataPtr, int32);
 				ParseFrameDescriptors(dataPtr, dataEnd - dataPtr, GetLinkedModule()->mImageBase + relAddr);
 			}
@@ -3584,7 +3589,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 		ParseCompileUnit_Symbols(compileUnit, sectionData, data, dataEnd, inlineDataVec, wantsDeferInternals, NULL);
 		//ParseCompileUnit_Symbols(compileUnit, sectionData, data, dataEnd, inlineDataVec, false, NULL);
 		data = dataEnd;
-	}	
+	}
 
 	// Scan debug subsections to find file checksum table, and to load symbol data for hotloads
 	Dictionary<int, int> checksumFileRefs;
@@ -3610,7 +3615,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 			else if (lineInfoType == DEBUG_S_SYMBOLS)
 			{
 				ParseCompileUnit_Symbols(compileUnit, sectionData, data, dataEnd, inlineDataVec, false, NULL);
-			}			
+			}
 			else if (lineInfoType == DEBUG_S_FILECHKSMS)
 			{
 				BF_ASSERT(checksumFileRefs.size() == 0);
@@ -3620,7 +3625,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 					int dataOfs = (int)(data - dataStart);
 
 					GET_INTO(uint, fileTableOfs);
-					
+
 					const char* fileName = mStringTable.mStrTable + fileTableOfs;
 
 					if ((fileName[0] == '\\') && (fileName[1] == '$'))
@@ -3631,9 +3636,9 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 					if (fileName[0] == '$')
 					{
 						srcFile = AddSrcFile(compileUnit, fileName);
-					}					
+					}
 					else if ((fileName[0] == '/') || (fileName[0] == '\\') ||
-						((fileName[0] != 0) && (fileName[1] == ':')))					
+						((fileName[0] != 0) && (fileName[1] == ':')))
 					{
 						srcFile = AddSrcFile(compileUnit, fileName);
 					}
@@ -3659,12 +3664,12 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 						srcFile->mHashKind = DbgHashKind_SHA256;
 						memcpy(srcFile->mHash, data, 32);
 					}
-					
+
 					data += hashLen;
 					checksumFileRefs.TryAdd(dataOfs, (int)compileUnit->mSrcFileRefs.size() - 1);
 					PTR_ALIGN(data, sectionData, 4);
 				}
-			}			
+			}
 			else
 			{
 				BF_ASSERT((lineInfoType >= DEBUG_S_SYMBOLS) && (lineInfoType <= DEBUG_S_COFF_SYMBOL_RVA));
@@ -3693,12 +3698,12 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 		}
 	}
 	int inlineDataIdx = 0;
-	
+
 	DbgLineDataBuilder lineBuilder(this);
 
 	//
 	{
-		BP_ZONE("ParseCompileUnit_LineInfo");		
+		BP_ZONE("ParseCompileUnit_LineInfo");
 
 		//int totalLineCount = 0;
 		//int targetLineCount = 0;
@@ -3710,16 +3715,16 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 // 			bool mWantSummaryDump;
 // 			Array<DbgInlinee> mInlinees;
 // 			Array<DbgInlineLineData> mInlineLineData;
-// 
+//
 // 			_InlinerData()
 // 			{
 // 				mWantSummaryDump = false;
 // 			}
 // 		};
-// 
+//
 // 		Dictionary<DbgSubprogram*, _InlinerData> deferredInlinerDatas;
 
-		// Line info					
+		// Line info
 		data = debugSubSectionsStart;
 		dataEnd = data + taggedSize;
 		while (data < dataEnd)
@@ -3739,13 +3744,13 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 				CV_DebugSLinesHeader_t& lineSec = GET(CV_DebugSLinesHeader_t);
 
 				Array<DbgLineData> lineDataVec;
-				
+
 				addr_target contribStartAddr = GetSectionAddr(lineSec.segCon, lineSec.offCon);
 
 				while (data < dataEnd)
 				{
 					lineDataVec.Clear();
-					
+
 					CV_DebugSLinesFileBlockHeader_t& linesFileHeader = GET(CV_DebugSLinesFileBlockHeader_t);
 					DbgSrcFileReference* srcFileRef = &compileUnit->mSrcFileRefs[checksumFileRefs[linesFileHeader.offFile]];
 					bool isBeef = srcFileRef->mSrcFile->IsBeef();
@@ -3761,7 +3766,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 						CV_Line_t& srcLineData = GET(CV_Line_t);
 
 						DbgLineData& lineData = lineDataVec[lineIdx];
-						lineData.mRelAddress = (uint32)((contribStartAddr + srcLineData.offset) - mImageBase);						
+						lineData.mRelAddress = (uint32)((contribStartAddr + srcLineData.offset) - mImageBase);
 
 						if (srcLineData.linenumStart == 0xf00f00) // Never step into
 						{
@@ -3777,7 +3782,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 						}
 						else
 							lineData.mLine = srcLineData.linenumStart - 1;
-						
+
 						// In Beef we always set the column, so a section without CV_LINES_HAVE_COLUMNS indicates a block of invalid
 						//  positions that we want to skip over
 						if (isBeef)
@@ -3798,16 +3803,16 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 					DbgLineData* lastLineData = NULL;
 					for (int lineIdx = 0; lineIdx < linesFileHeader.nLines; lineIdx++)
 					{
-						DbgLineData& lineData = lineDataVec[lineIdx];						
+						DbgLineData& lineData = lineDataVec[lineIdx];
 						lastLineData = lineBuilder.Add(compileUnit, lineData, srcFileRef->mSrcFile, NULL);
-					}					
+					}
 				}
 			}
 			else if (lineInfoType == DEBUG_S_INLINEELINES)
-			{					
+			{
 				int linesType = GET(int);
 				while (data < dataEnd)
-				{					
+				{
 					int inlinee = 0;
 					int srcFileIdx = -1;
 					int startLine;
@@ -3819,7 +3824,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 						srcFileIdx = checksumFileRefs[lineInfo.fileId];
 						startSrcFileRef = &compileUnit->mSrcFileRefs[srcFileIdx];
 						startLine = lineInfo.sourceLineNum;
-						inlinee = lineInfo.inlinee;						
+						inlinee = lineInfo.inlinee;
 					}
 					else if (linesType == 1)
 					{
@@ -3834,12 +3839,12 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 					}
 					else
 						BF_FATAL("Invalid DEBUG_S_INLINEELINES lines type");
-					
+
 					CvInlineInfo* inlineData = NULL;
 					inlineDataDict.TryGetValue(inlinee, &inlineData);
-					
+
 					while (inlineData != NULL)
-					{		
+					{
 						bool inlineDebugDump = inlineData->mDebugDump;
 
 						if (inlineData->mInlinee == -1)
@@ -3852,30 +3857,30 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 						// Mark as done
 						inlineData->mInlinee = -1;
 
-						int chunkNum = 0;						
-						int curLine = startLine;						
-						int curValidLine = curLine;						
+						int chunkNum = 0;
+						int curLine = startLine;
+						int curValidLine = curLine;
 						bool flushOnLineOffset = false;
 						addr_target lastLineAddr = 0;
-																		
+
 
 						DbgSrcFileReference* srcFileRef = startSrcFileRef;
 						DbgSubprogram* curSubprogram = inlineData->mSubprogram;
-						
+
 						DbgSubprogram* inlineParent = inlineData->mSubprogram->GetRootInlineParent();
-						
+
 						addr_target curAddr = inlineParent->mBlock.mLowPC;
 						lastLineAddr = 0;
 
 						if (inlineDebugDump)
 						{
 							//inlinerData->mWantSummaryDump = true;
-							BfLogCv("------------------------------------------------\nINLINE DATA:%X Idx:%d CurAddr:%@ Line:%d\n SubProgram:%@ %s\n File:%s\n", inlinee, inlineIdx, curAddr, curLine,  
+							BfLogCv("------------------------------------------------\nINLINE DATA:%X Idx:%d CurAddr:%@ Line:%d\n SubProgram:%@ %s\n File:%s\n", inlinee, inlineIdx, curAddr, curLine,
 								curSubprogram, curSubprogram->mName, srcFileRef->mSrcFile->mFilePath.c_str());
 						}
 
 						uint8* annData = inlineData->mData;
-						uint8* annDataEnd = inlineData->mData + inlineData->mDataLen;												
+						uint8* annDataEnd = inlineData->mData + inlineData->mDataLen;
 
 						DbgLineData* curLineData = NULL;
 
@@ -3887,16 +3892,16 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 								return;
 							}
 
-							DbgLineData lineData;														
-							lineData.mLine = curValidLine - 1;							
+							DbgLineData lineData;
+							lineData.mLine = curValidLine - 1;
 							lineData.mRelAddress = (uint32)(curAddr - mImageBase);
 							lineData.mColumn = 0;
 							if (curLine <= 0) // Negative lines mean "invalid position" for inlining
-								lineData.mColumn = -1;							
+								lineData.mColumn = -1;
 							lineData.mContribSize = 0;
-							
+
 							if ((curSubprogram->mBlock.mLowPC == 0) && (curLineData != NULL))
-								curSubprogram->mBlock.mLowPC = mImageBase + curLineData->mRelAddress;							
+								curSubprogram->mBlock.mLowPC = mImageBase + curLineData->mRelAddress;
 
 							if (inlineDebugDump)
 								BfLogCv(" Adding Line:%d Addr:%@\n", lineData.mLine + 1, lineData.mRelAddress + mImageBase);
@@ -3907,14 +3912,14 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 
 						int codeIdx = 0;
 						while (annData < annDataEnd)
-						{							
+						{
 							auto annVal = CodeViewInfo::CVUncompressData(annData);
-	
+
 							switch (annVal)
 							{
 							case CodeViewInfo::BA_OP_Invalid:               // link time pdb contains PADDINGs
 								break;
-							case CodeViewInfo::BA_OP_CodeOffset:            // param : start offset 
+							case CodeViewInfo::BA_OP_CodeOffset:            // param : start offset
 								{
 									int32 offset = (int32)CodeViewInfo::CVUncompressData(annData);
 									curAddr = inlineParent->mBlock.mLowPC + offset;
@@ -3924,17 +3929,17 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 								break;
 							case CodeViewInfo::BA_OP_ChangeCodeOffsetBase:  // param : nth separated code chunk (main code chunk == 0)
 								{
-									chunkNum = (int32)CodeViewInfo::CVUncompressData(annData);								
+									chunkNum = (int32)CodeViewInfo::CVUncompressData(annData);
 
 									if (inlineDebugDump)
-										BfLogCv("xxxxxxxxx BA_OP_ChangeCodeOffsetBase(%d) CurAddr:%@ Line:%d\n", chunkNum, curAddr, curLine);									
+										BfLogCv("xxxxxxxxx BA_OP_ChangeCodeOffsetBase(%d) CurAddr:%@ Line:%d\n", chunkNum, curAddr, curLine);
 								}
 								break;
 							case CodeViewInfo::BA_OP_ChangeCodeOffset:      // param : delta of offset
 								{
 									int32 offset = (int32)CodeViewInfo::CVUncompressData(annData);
-								
-									curAddr += offset;								
+
+									curAddr += offset;
 									if (inlineDebugDump)
 										BfLogCv(" BA_OP_ChangeCodeOffset(%d) CurAddr:%@ Line:%d\n", offset, curAddr, curLine);
 
@@ -3946,7 +3951,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 									}
 									else
 										_AddLine();
-								
+
 									flushOnLineOffset = true;
 								}
 								break;
@@ -3959,10 +3964,10 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 										curLineData->mContribSize = newCodeLen;
 
 									if (inlineDebugDump)
-										BfLogCv(" BA_OP_ChangeCodeLength(%d) Addr:%@ EndAddr:%@\n", newCodeLen, curLineData->mRelAddress + mImageBase, curLineData->mRelAddress + mImageBase + curLineData->mContribSize);	
+										BfLogCv(" BA_OP_ChangeCodeLength(%d) Addr:%@ EndAddr:%@\n", newCodeLen, curLineData->mRelAddress + mImageBase, curLineData->mRelAddress + mImageBase + curLineData->mContribSize);
 								}
 								break;
-							case CodeViewInfo::BA_OP_ChangeFile:            // param : fileId 
+							case CodeViewInfo::BA_OP_ChangeFile:            // param : fileId
 								{
 									uint32 newFileId = CodeViewInfo::CVUncompressData(annData);
 									srcFileRef = &compileUnit->mSrcFileRefs[checksumFileRefs[newFileId]];
@@ -3976,7 +3981,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 									int32 lineOfs = (int32)CodeViewInfo::DecodeSignedInt32(CodeViewInfo::CVUncompressData(annData));
 									curLine += lineOfs;
 									if (curLine > 0)
-										curValidLine = curLine;				
+										curValidLine = curLine;
 
 									if (inlineDebugDump)
 										BfLogCv(" BA_OP_ChangeLineOffset(%d) CurAddr:%@ Line:%d\n", lineOfs, curAddr, curLine);
@@ -3992,7 +3997,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 										BfLogCv(" BA_OP_ChangeLineEndDelta(%d) CurAddr:%@ Line:%d\n", numLines, curAddr, curLine);
 								}
 								break;
-							case CodeViewInfo::BA_OP_ChangeRangeKind:       // param : either 1 (default, for statement) or 0 (for expression)															 
+							case CodeViewInfo::BA_OP_ChangeRangeKind:       // param : either 1 (default, for statement) or 0 (for expression)
 								{
 									int32 readKind = (int32)CodeViewInfo::CVUncompressData(annData);
 									if (inlineDebugDump)
@@ -4021,11 +4026,11 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 									int offsetData = (int32)CodeViewInfo::CVUncompressData(annData);
 									int codeDelta = offsetData & 0xF;
 									int sourceDelta = CodeViewInfo::DecodeSignedInt32(offsetData >> 4);
-								
+
 									curAddr += codeDelta;
 									curLine += sourceDelta;
 									if (curLine > 0)
-										curValidLine = curLine;								
+										curValidLine = curLine;
 
 									if (inlineDebugDump)
 										BfLogCv(" BA_OP_ChangeCodeOffsetAndLineOffset(%d, %d) CurAddr:%@ Line:%d\n", codeDelta, sourceDelta,  curAddr, curLine);
@@ -4040,7 +4045,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 									int codeOffset = (int32)CodeViewInfo::CVUncompressData(annData);
 
 									curAddr += codeOffset;
-								
+
 									if (inlineDebugDump)
 										BfLogCv(" BA_OP_ChangeCodeLengthAndCodeOffset(%d, %d) CurAddr:%@ Line:%d\n", codeLen, codeOffset, curAddr, curLine);
 
@@ -4085,19 +4090,19 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 // 		{
 // 			auto inlinerParent = deferredInlinerDataKV.mKey;
 // 			auto deferredInlinerData = &deferredInlinerDataKV.mValue;
-// 						
+//
 // 			inlinerParent->mInlinerData = mAlloc.Alloc<DbgInlinerData>();
 // 			inlinerParent->mInlinerData->mInlinees.CopyFrom(deferredInlinerData->mInlinees.mVals, deferredInlinerData->mInlinees.mSize, mAlloc);
 // 			inlinerParent->mInlinerData->mInlineLineData.CopyFrom(deferredInlinerData->mInlineLineData.mVals, deferredInlinerData->mInlineLineData.mSize, mAlloc);
 // 			//deferredInlinerData->
-// 
+//
 // 			if (deferredInlinerData->mWantSummaryDump)
 // 			{
 // 				BfLogCv("------------------------------\nSUMMARY FOR: %s\n", inlinerParent->mName);
-// 
+//
 // 				for (auto& inlineLine : inlinerParent->mInlinerData->mInlineLineData)
-// 				{					
-// 					BfLogCv("Addr:%@ EndAddr:%@ Line:%d Column:%d Inlinee:%d\n", inlineLine.mAddress, inlineLine.mAddress + inlineLine.mContribSize, 
+// 				{
+// 					BfLogCv("Addr:%@ EndAddr:%@ Line:%d Column:%d Inlinee:%d\n", inlineLine.mAddress, inlineLine.mAddress + inlineLine.mContribSize,
 // 						inlineLine.mLine + 1, inlineLine.mColumn + 1, inlineLine.mInlineIdx);
 // 				}
 // 			}
@@ -4107,7 +4112,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 	lineBuilder.Commit();
 
 
-	//OutputDebugStrF("Module loaded, AllocSize added: %d\n", (mAlloc.GetAllocSize() - allocSizeStart) / 1024);	
+	//OutputDebugStrF("Module loaded, AllocSize added: %d\n", (mAlloc.GetAllocSize() - allocSizeStart) / 1024);
 	return compileUnit;
 }
 
@@ -4118,7 +4123,7 @@ CvCompileUnit* COFF::ParseCompileUnit(int compileUnitId)
 		return moduleInfo->mCompileUnit;
 
 	BP_ZONE("ParseCompileUnit");
-	
+
 	ParseTypeData();
 
 	if (moduleInfo->mStream == -1)
@@ -4151,7 +4156,7 @@ DbgType* COFF::CvGetTypeOrNamespace(char* name, DbgLanguage language)
 			language = DbgLanguage_Beef;
 		}
 		else
-		{			
+		{
 			language = DbgLanguage_C;
 
 			// Check for a primitive array type like 'double[]'
@@ -4176,7 +4181,7 @@ DbgType* COFF::CvGetTypeOrNamespace(char* name, DbgLanguage language)
 			return dbgType->mHotNewType;
 		return dbgType;
 	}
-	
+
 	// It's possible that we get a reference to a template name that isn't actually in our type database
 	//  These may indicate VS compiler bugs or anonymous namespaces
 	bool isValidName = true;
@@ -4189,12 +4194,12 @@ DbgType* COFF::CvGetTypeOrNamespace(char* name, DbgLanguage language)
 	//OutputDebugStrF("CvGetTypeOrNamespace Creating: %s\n", name);
 
 	char* lastDblColon = (char*)GetLastDoubleColon(name);
-	
+
 	DbgType* dbgType = CvCreateType();
 
 	DbgType* parentType = mMasterCompileUnit->mGlobalType;
 	if (lastDblColon != NULL)
-	{		
+	{
 		*lastDblColon = 0;
 		parentType = CvGetTypeOrNamespace(name, language);
 		dbgType->mTypeName = DbgDupString(lastDblColon + 2, "DbgDupString.TypeOrNamespace0");
@@ -4204,9 +4209,9 @@ DbgType* COFF::CvGetTypeOrNamespace(char* name, DbgLanguage language)
 	else
 	{
 		dbgType->mTypeName = DbgDupString(name, "DbgDupString.TypeOrNamespace2");
-		dbgType->mName = dbgType->mTypeName;		
-	}	
-		
+		dbgType->mName = dbgType->mTypeName;
+	}
+
 	parentType->mSubTypeList.PushBack(dbgType);
 	dbgType->mTypeCode = DbgType_Namespace;
 	dbgType->mLanguage = language;
@@ -4222,14 +4227,14 @@ void COFF::MapCompileUnitMethods(DbgCompileUnit* compileUnit)
 	DbgSubprogram* prevDbgMethod = NULL;
 	DbgSubprogram* dbgMethod = compileUnit->mOrphanMethods.mHead;
 	while (dbgMethod != NULL)
-	{		
-		auto nextDbgMethod = dbgMethod->mNext;		
+	{
+		auto nextDbgMethod = dbgMethod->mNext;
 		bool movedMethod = false;
 		if (dbgMethod->mHasQualifiedName)
 		{
 			char* name = (char*)dbgMethod->mName;
 			char* lastDblColon = (char*)GetLastDoubleColon(name);
-			
+
 			if (lastDblColon != NULL)
 			{
 				dbgMethod->mName = lastDblColon + 2;
@@ -4244,7 +4249,7 @@ void COFF::MapCompileUnitMethods(DbgCompileUnit* compileUnit)
 					{
 						mHotPrimaryTypes.Add(parentType);
 					}
-					
+
 					compileUnit->mOrphanMethods.Remove(dbgMethod, prevDbgMethod);
 					parentType->mMethodList.PushBack(dbgMethod);
 					dbgMethod->mParentType = parentType;
@@ -4280,7 +4285,7 @@ void COFF::PopulateType(DbgType* dbgType)
 	CvAutoReleaseTempData releaseTempData(this, data);
 
 	uint8* dataStart = data;
-	uint16 trLeafType = GET(uint16);	
+	uint16 trLeafType = GET(uint16);
 
 	switch (trLeafType)
 	{
@@ -4291,7 +4296,7 @@ void COFF::PopulateType(DbgType* dbgType)
 		}
 		break;
 	case LF_CLASS:
-	case LF_STRUCTURE:	
+	case LF_STRUCTURE:
 		{
 			lfClass& classInfo = *(lfClass*)dataStart;
 			CvParseMembers(dbgType, classInfo.field, false);
@@ -4307,10 +4312,10 @@ void COFF::PopulateType(DbgType* dbgType)
 			CvParseMembers(dbgType, field, false);
 		}
 		break;
-		
+
 	case LF_UNION:
 		{
-			lfUnion& classInfo = *(lfUnion*)dataStart;	
+			lfUnion& classInfo = *(lfUnion*)dataStart;
 			CvParseMembers(dbgType, classInfo.field, false);
 		}
 		break;
@@ -4320,7 +4325,7 @@ void COFF::PopulateType(DbgType* dbgType)
 }
 
 void COFF::PopulateTypeGlobals(DbgType* dbgType)
-{	
+{
 	//gDbgPerfManager->StartRecording();
 
 	{
@@ -4345,13 +4350,13 @@ void COFF::PopulateSubprogram(DbgSubprogram* dbgSubprogram)
 	BP_ZONE("COFF::PopulateSubprogram");
 
 	auto compileUnit = (CvCompileUnit*)dbgSubprogram->mCompileUnit;
-	CvModuleInfo* moduleInfo = mCvModuleInfo[compileUnit->mModuleIdx];		
-	
+	CvModuleInfo* moduleInfo = mCvModuleInfo[compileUnit->mModuleIdx];
+
 	int sectionSize = 0;
 	uint8* sectionData = CvReadStreamSegment(moduleInfo->mStream, dbgSubprogram->mTagIdx, dbgSubprogram->mDeferredInternalsSize);
 	CvInlineInfoVec inlineDataVec;
 	ParseCompileUnit_Symbols(compileUnit, NULL, sectionData, sectionData + dbgSubprogram->mDeferredInternalsSize, inlineDataVec, false, dbgSubprogram);
-	delete sectionData;	
+	delete sectionData;
 
 	dbgSubprogram->mDeferredInternalsSize = 0;
 }
@@ -4362,7 +4367,7 @@ void COFF::FixSubprogramName(DbgSubprogram* dbgSubprogram)
 
 	for (const char* cPtr = name; *cPtr != 0; cPtr++)
 	{
-		char c = *cPtr;		
+		char c = *cPtr;
 		if (c == '$')
 		{
 			bool isChecked = strcmp(cPtr, "$CHK") == 0;
@@ -4372,7 +4377,7 @@ void COFF::FixSubprogramName(DbgSubprogram* dbgSubprogram)
 				dbgSubprogram->mCheckedKind = isChecked ? BfCheckedKind_Checked : BfCheckedKind_Unchecked;
 				dbgSubprogram->mName = CvDupString(name, cPtr - name);
 				return;
-			}			
+			}
 		}
 	}
 }
@@ -4436,7 +4441,7 @@ void COFF::FixupInlinee(DbgSubprogram* dbgSubprogram, uint32 ipiTag)
 	case LF_MFUNC_ID:
 		{
 			lfMFuncId* funcData = (lfMFuncId*)dataStart;
-			CvParseMethod(NULL, NULL, funcData->type, false, dbgSubprogram);			
+			CvParseMethod(NULL, NULL, funcData->type, false, dbgSubprogram);
 			dbgSubprogram->mName = (const char*)funcData->name;
 
 			if (dbgSubprogram->mName != NULL)
@@ -4480,7 +4485,7 @@ int COFF::MapImport(CvCompileUnit* compileUnit, int id)
 		{
 			String name = moduleInfo->mModuleName;
 			name = ToUpper(name);
-			
+
 			CvModuleInfoNameEntry entry;
 			entry.mModuleInfo = moduleInfo;
 			mModuleNameSet.Add(entry);
@@ -4549,7 +4554,7 @@ int COFF::MapImport(CvCompileUnit* compileUnit, int id)
 					{
 						return exportId;
 					}
-				}				
+				}
 			}
 		}
 	}
@@ -4561,7 +4566,7 @@ void COFF::FixupInlinee(DbgSubprogram* dbgSubprogram)
 {
 	BF_ASSERT(dbgSubprogram->mInlineeInfo != NULL);
 	BF_ASSERT((dbgSubprogram->mInlineeInfo->mInlineeId & 0x80000000) != 0);
-	
+
 	int scopeIdx = (dbgSubprogram->mInlineeInfo->mInlineeId & 0x7FFF0000) >> 20;
 	int itemId = (dbgSubprogram->mInlineeInfo->mInlineeId & 0x0000FFFF);
 
@@ -4613,7 +4618,7 @@ void COFF::FixupInlinee(DbgSubprogram* dbgSubprogram)
 }
 
 void COFF::PopulateStaticVariableMap()
-{	
+{
 	if (mPopulatedStaticVariables)
 		return;
 
@@ -4623,7 +4628,7 @@ void COFF::PopulateStaticVariableMap()
 	{
 		PopulateTypeGlobals(mMasterCompileUnit->mGlobalType);
 		for (auto variable : mMasterCompileUnit->mGlobalType->mMemberList)
-		{		
+		{
 			if ((variable->mIsExtern) && (variable->mLinkName != NULL))
 				mStaticVariables.push_back(variable);
 		}
@@ -4637,25 +4642,25 @@ void COFF::ScanCompileUnit(int compileUnitId)
 	BP_ZONE("COFF::ScanCompileUnit");
 
 	CvModuleInfo* moduleInfo = mCvModuleInfo[compileUnitId];
-	
+
 	if (moduleInfo->mStream < 0)
 		return;
 
 	BF_ASSERT(moduleInfo->mSymbolBytes % 4 == 0);
-	uint8* sectionData = CvReadStreamSegment(moduleInfo->mStream, moduleInfo->mSymbolBytes, moduleInfo->mLinesBytes);	
+	uint8* sectionData = CvReadStreamSegment(moduleInfo->mStream, moduleInfo->mSymbolBytes, moduleInfo->mLinesBytes);
 	uint8* data = sectionData;
-	uint8* dataEnd = sectionData + moduleInfo->mLinesBytes;	
+	uint8* dataEnd = sectionData + moduleInfo->mLinesBytes;
 
 	while (data < dataEnd)
-	{		
+	{
 		GET_INTO(int32, lineInfoType);
-		GET_INTO(int32, lineInfoLength);		
+		GET_INTO(int32, lineInfoLength);
 		uint8* dataEnd = data + lineInfoLength;
 
 		if (lineInfoType == DEBUG_S_FILECHKSMS)
-		{			
+		{
 			while (data < dataEnd)
-			{				
+			{
 				GET_INTO(uint, fileTableOfs);
 
 				DbgSrcFile* srcFile;
@@ -4689,10 +4694,10 @@ void COFF::ScanCompileUnit(int compileUnitId)
 				PTR_ALIGN(data, sectionData, 4);
 			}
 
-			
+
 			break; // Stop once we handle the file checksums
 		}
-		
+
 		data = dataEnd;
 	}
 
@@ -4711,7 +4716,7 @@ void COFF::FixTypes(int startingIdx)
 	for (int typeIdx = startingIdx; typeIdx < (int)linkedModule->mTypes.size(); typeIdx++)
 	{
 		DbgType* dbgType = linkedModule->mTypes[typeIdx];
-				
+
 		DbgType* prevNamespaceType = NULL;
 		if (dbgType->mName == NULL)
 		{
@@ -4761,17 +4766,17 @@ void COFF::FixTypes(int startingIdx)
 		}
 
 		// This never happens anymore - nested types are always handled as "internal typedefs"
-		//TODO: Check the 'isnested' flag on the leaf instead of counting on parent to be specified?		
+		//TODO: Check the 'isnested' flag on the leaf instead of counting on parent to be specified?
 		bool hadParent = dbgType->mParent != NULL;
 
 		int chevronDepth = 0;
 
-		if ((dbgType->mTypeCode == DbgType_Class) || (dbgType->mTypeCode == DbgType_Struct) || (dbgType->mTypeCode == DbgType_Union) || 
+		if ((dbgType->mTypeCode == DbgType_Class) || (dbgType->mTypeCode == DbgType_Struct) || (dbgType->mTypeCode == DbgType_Union) ||
 			(dbgType->mTypeCode == DbgType_Enum) || (dbgType->mTypeCode == DbgType_TypeDef))
-		{			
+		{
 			int startIdx = -1;
 			const char* name = dbgType->mTypeName;
-			
+
 			for (int i = 0; true; i++)
 			{
 				char c = name[i];
@@ -4779,15 +4784,15 @@ void COFF::FixTypes(int startingIdx)
 					chevronDepth++;
 				else if (c == '>')
 					chevronDepth--;
-								
+
 				if ((chevronDepth == 0) && ((c == ':') || (c == '.')))
 				{
 					if ((!hadParent) && (i - startIdx > 1))
-					{						
+					{
 						//String wholeNamespace = String(name, name + i);
 						wholeNamespace.clear();
 						wholeNamespace.Insert(0, name, i);
-						
+
 						auto entry = linkedModule->mTypeMap.Find(wholeNamespace.c_str(), dbgType->mLanguage);
 						if (entry == NULL)
 						{
@@ -4817,7 +4822,7 @@ void COFF::FixTypes(int startingIdx)
 				}
 				else if ((c == 0) /*|| (c == '<')*/ || (c == '('))
 					break;
-			}				
+			}
 
 			if (prevNamespaceType != NULL)
 			{
@@ -4878,7 +4883,7 @@ uint8* COFF::CvReadStream(int streamIdx, int* outSize)
 		*outSize = streamSize;
 	if (streamSize <= 0)
 		return NULL;
-	int streamPageCount = (streamSize + mCvPageSize - 1) / mCvPageSize;	
+	int streamPageCount = (streamSize + mCvPageSize - 1) / mCvPageSize;
 
 	uint8* sectionData = new uint8[streamSize];
 	bool deferDeleteSectionData = false;
@@ -4900,7 +4905,7 @@ uint8* COFF::CvReadStreamSegment(int streamIdx, int offset, int size)
 
 	//int streamSize = mCvStreamSizes[streamIdx];
 	//int streamPageCount = (streamSize + mCvPageSize - 1) / mCvPageSize;
-	
+
 	uint8* sectionData = new uint8[size];
 	//delete [] sectionData;
 
@@ -4911,7 +4916,7 @@ uint8* COFF::CvReadStreamSegment(int streamIdx, int offset, int size)
 	int curOffset = offset;
 	int sizeLeft = size;
 
-	int streamPtrIdx = mCvStreamPtrStartIdxs[streamIdx];	
+	int streamPtrIdx = mCvStreamPtrStartIdxs[streamIdx];
 	streamPtrIdx += offset / mCvPageSize;
 	curOffset = offset - (offset / mCvPageSize) * mCvPageSize;
 
@@ -4931,9 +4936,9 @@ uint8* COFF::CvReadStreamSegment(int streamIdx, int offset, int size)
 }
 
 void COFF::ReleaseTempBuf(uint8* buf)
-{	
+{
 	if ((mTempBufIdx > 0) && (mTempBufs.mVals[mTempBufIdx - 1].mVals == buf))
-		mTempBufIdx--;	
+		mTempBufIdx--;
 }
 
 bool COFF::CvParseHeader(uint8 wantGuid[16], int32 wantAge)
@@ -4941,13 +4946,13 @@ bool COFF::CvParseHeader(uint8 wantGuid[16], int32 wantAge)
 	int streamSize = 0;
 	uint8* data = CvReadStream(1, &streamSize);
 	mCvHeaderData = data;
-	
+
 	int32 pdbVersion = GET(int32);
 	int32 timestamp = GET(int32);
-	int32 pdbAge = GET(int32);	
+	int32 pdbAge = GET(int32);
 	for (int i = 0; i < 16; i++)
 		mPDBGuid[i] = GET(int8);
-	
+
 	if ((wantAge != -1) &&
 		(/*(pdbAge != wantAge) ||*/ (memcmp(mPDBGuid, wantGuid, 16) != 0)))
 	{
@@ -4962,11 +4967,11 @@ bool COFF::CvParseHeader(uint8 wantGuid[16], int32 wantAge)
 
 			msg += StrFormat(" PDB GUID   : ");
 			for (int i = 0; i < 16; i++)
-				msg += StrFormat("%02X", (uint8)mPDBGuid[i]);			
+				msg += StrFormat("%02X", (uint8)mPDBGuid[i]);
 			Fail(msg);
 		}
 		return false;
-	}	
+	}
 
 	if (mParseKind == ParseKind_Header)
 		return true;
@@ -5011,8 +5016,8 @@ bool COFF::CvParseHeader(uint8 wantGuid[16], int32 wantAge)
 bool COFF::CvParseDBI(int wantAge)
 {
 	BP_ZONE("CvParseDBI");
-		
-	uint8* data = CvReadStream(3);	
+
+	uint8* data = CvReadStream(3);
 	if (data == NULL)
 		return false;
 
@@ -5065,7 +5070,7 @@ bool COFF::CvParseDBI(int wantAge)
 	else if (machine == 0x014C)
 		mIs64Bit = false;
 	else // Unknown machine
-		return false; 
+		return false;
 
 	uint8* headerEnd = data;
 
@@ -5163,7 +5168,7 @@ bool COFF::CvParseDBI(int wantAge)
 				contribEntry->mDbgModule = this;
 				contribEntry->mCompileUnitId = contrib.mModule;
 				mDebugTarget->mContribMap.Insert(contribEntry);
-			}			
+			}
 		}
 	}
 
@@ -5183,7 +5188,7 @@ bool COFF::CvParseDBI(int wantAge)
 		GET_INTO(int32, unknownData2);
 		// Value added to the address offset when calculating the RVA.
 		GET_INTO(uint32, rva_offset);
-		GET_INTO(uint32, section_length);		
+		GET_INTO(uint32, section_length);
 	}
 
 	// Dbi File info
@@ -5193,12 +5198,12 @@ bool COFF::CvParseDBI(int wantAge)
 
 	int fileInfoNumSourceFiles = 0;
 
-	uint16* modIndices = (uint16*)data;	
+	uint16* modIndices = (uint16*)data;
 	data += fileInfoNumModules * sizeof(uint16);
 	uint16* modFileCounts = (uint16*)data;
 	data += fileInfoNumModules * sizeof(uint16);
 
-	for (int moduleIdx = 0; moduleIdx < fileInfoNumModules; moduleIdx++)	
+	for (int moduleIdx = 0; moduleIdx < fileInfoNumModules; moduleIdx++)
 		fileInfoNumSourceFiles += modFileCounts[moduleIdx];
 
 	int32* fileNameOffsets = (int32*)data;
@@ -5215,14 +5220,14 @@ bool COFF::CvParseDBI(int wantAge)
 
 		for (int fileIdx = 0; fileIdx < modFileCounts[moduleIdx]; fileIdx++)
 		{
-			char* fileName = namePtr + *fileNameOffsets;			
+			char* fileName = namePtr + *fileNameOffsets;
 			curFileOfs++;
 			fileNameOffsets++;
-		}		
+		}
 		//int blockStart = fileBlockTable[i];
 		//int blockLength = fileBlockTable[fileInfoNumModules + i];
 
-		//int offset = offsetTable[blockStart]; through blockLength...		
+		//int offset = offsetTable[blockStart]; through blockLength...
 	}
 
 	// File name table
@@ -5230,7 +5235,7 @@ bool COFF::CvParseDBI(int wantAge)
 	while (data < dataEnd)
 	{
 		int offset = (int)(data - dataStart);
-		const char* fileName = DataGetString(data);							
+		const char* fileName = DataGetString(data);
 		//DbgSrcFile* srcFile = AddSrcFile(mMasterCompileUnit, fileName);
 		//fileTable.insert(std::make_pair(offset, srcFile));
 	}*/
@@ -5253,8 +5258,8 @@ bool COFF::CvParseDBI(int wantAge)
 	for (int entryIdx = 0; entryIdx < strTabEntryCount; entryIdx++)
 	{
 		GET_INTO(int32, strOffset);
-		const char* str = (const char*)strTabData + strOffset;		
-	}		
+		const char* str = (const char*)strTabData + strOffset;
+	}
 
 	return true;
 }
@@ -5266,7 +5271,7 @@ void COFF::ParseSectionHeader(int sectionIdx)
 	int sectionSize = 0;
 	uint8* sectionData = CvReadStream(sectionIdx, &sectionSize);
 	uint8* data = sectionData;
-	
+
 	uint8* dataEnd = data + sectionSize;
 	while (data < dataEnd)
 	{
@@ -5292,24 +5297,24 @@ void COFF::CvParseIPI()
 	int hashAdjOffset = 0;
 	int32 hashStream = -1;
 	int32 hashAdjSize = 0;
-	int32 dataOffset = 0;	
+	int32 dataOffset = 0;
 	ParseTypeData(4, mCvIPIReader, sectionSize, dataOffset, hashStream, hashAdjOffset, hashAdjSize, mCvIPIMinTag, mCvIPIMaxTag);
 	//mCvIPIData = sectionData;
-	
+
 	int recordCount = mCvIPIMaxTag - mCvIPIMinTag;
 	mCvIPITagStartMap.Resize(recordCount + 1);
 
 	//uint8* data = sectionData + dataOffset;
 	int offset = dataOffset;
 	for (int idx = 0; idx < recordCount; idx++)
-	{		
+	{
 		//BF_ASSERT(((offset) & 3) == 0);
-		uint8* data = mCvIPIReader.GetTempPtr(offset, 4);		
+		uint8* data = mCvIPIReader.GetTempPtr(offset, 4);
 		uint16 trLength = GET(uint16);
 		int offsetStart = offset;
 		offset += 2;
 		data = mCvIPIReader.GetTempPtr(offset, trLength);
-		uint8* dataStart = data;		
+		uint8* dataStart = data;
 		uint16 trLeafType = GET(uint16);
 		//uint8* dataEnd = dataStart + trLength;
 		offset += trLength;
@@ -5322,18 +5327,18 @@ void COFF::CvParseIPI()
 		{
 		case LF_FUNC_ID:
 			{
-				lfFuncId* funcData = (lfFuncId*)dataStart;				
+				lfFuncId* funcData = (lfFuncId*)dataStart;
 				//subprogram->mName = (const char*)funcData->name;
 
 				bool doScope = true;
 
 				/*if (strcmp(curSubprogram->mName, "DispatchToMethod") == 0)
 				{
-				doScope = true;						
+				doScope = true;
 				}*/
 
 				if ((funcData->scopeId != 0) && (doScope))
-				{					
+				{
 					uint8* data = CvGetTagData(funcData->scopeId, true);
 					CvAutoReleaseTempData releaseTempData(this, data);
 
@@ -5365,24 +5370,24 @@ void COFF::CvParseIPI()
 
 			}
 			break;
-		}			
+		}
 
 		mCvIPITagStartMap[idx] = offsetStart;
 	}
-	
+
 	mCvIPITagStartMap[recordCount] = offset;
 }
 
 const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_target& outAddr)
 {
 	const char* retName = NULL;
-	
+
 	int offsetStart = offset;
-	uint8* data = mCvSymbolRecordReader.GetTempPtr(offset, 4);	
+	uint8* data = mCvSymbolRecordReader.GetTempPtr(offset, 4);
 	uint16 symLen = *(uint16*)data;
 	bool madeCopy = false;
 	data = mCvSymbolRecordReader.GetTempPtr(offset, symLen + 2, false, &madeCopy);
-	uint8* dataStart = data;	
+	uint8* dataStart = data;
 	uint16 symType = *(uint16*)(data + 2);
 
 	BF_ASSERT(symLen % 4 == 2);
@@ -5399,23 +5404,23 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 
 #ifdef _DEBUG
 			ParseTypeData();
-			auto type = CvGetType(udt.typind);			
-#endif			
+			auto type = CvGetType(udt.typind);
+#endif
 			retName = name;
 		}
 		break;
 	case S_PUB32:
 		{
 			PUBSYM32& pubSym = *(PUBSYM32*)dataStart;
-			
+
 			if (symStreamType != CvSymStreamType_Symbols)
-				break;			
+				break;
 
 			BP_ALLOC_T(DbgSymbol);
 			DbgSymbol* dbgSymbol = mAlloc.Alloc<DbgSymbol>();
 
 			const char* name = (const char*)mCvSymbolRecordReader.GetPermanentPtr(offsetStart + offsetof(PUBSYM32, name), symLen - offsetof(PUBSYM32, name) + 2); // pubSym.name;
-			//OutputDebugStrF("Sym: %s\n", name);			
+			//OutputDebugStrF("Sym: %s\n", name);
 #ifdef BF_DBG_32
 			if ((name != NULL) && (name[0] == '_'))
 				name++;
@@ -5424,7 +5429,7 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 			dbgSymbol->mName = name;
 			dbgSymbol->mAddress = GetSectionAddr(pubSym.seg, pubSym.off);
 			dbgSymbol->mDbgModule = this;
-			
+
 			if ((dbgSymbol->mAddress >= mImageBase) && (dbgSymbol->mAddress < mImageBase + mImageSize))
 			{
 				if ((dbgSymbol->mAddress & 0xFFFF'0000'0000'0000) == 0)
@@ -5442,7 +5447,7 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 		break;
 	case S_CONSTANT:
 		{
-			CONSTSYM& constSym = *(CONSTSYM*)dataStart;			
+			CONSTSYM& constSym = *(CONSTSYM*)dataStart;
 		}
 		break;
 	case S_GDATA32:
@@ -5455,41 +5460,41 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 			{
 				mTLSIndexAddr = GetSectionAddr(dataSym.seg, dataSym.off);
 			}
-						
+
 			char* name = (char*)dataSym.name;
 			retName = name;
-			
+
 			if (symStreamType == CvSymStreamType_Globals_Scan)
 			{
 				scanName = (char*)dataSym.name;
-				break;			
+				break;
 			}
-			
+
 			bool wasBeef = false;
 			const char* memberName = CvCheckTargetMatch(name, wasBeef);
 			if (memberName == NULL)
 				break;
-			
+
 			DbgType* dbgType = CvGetType(dataSym.typind);
 
 			BP_ALLOC_T(DbgVariable);
 			DbgVariable* variable = mAlloc.Alloc<DbgVariable>();
-			variable->mType = dbgType;			
+			variable->mType = dbgType;
 			variable->mLocationData = permDataPtr;
 			variable->mLocationLen = 1;
 
 			variable->mIsStatic = true;
 			variable->mCompileUnit = mMasterCompileUnit;
-			variable->mName = memberName;			
+			variable->mName = memberName;
 			variable->mLinkName = name;
 
 			if (strcmp((const char*)dataSym.name, "__ImageBase") == 0)
 				variable->mLinkName = NULL; // Avoid adding to map
 
 			variable->mIsExtern = symType == S_GDATA32;
-			variable->mCompileUnit = mGlobalsTargetType->mCompileUnit;			
+			variable->mCompileUnit = mGlobalsTargetType->mCompileUnit;
 			// Push front so we will find before the original static declaration (that has no memory associated with it)
-			mGlobalsTargetType->mMemberList.PushFront(variable);			
+			mGlobalsTargetType->mMemberList.PushFront(variable);
 
 			if (IsObjectFile())
 			{
@@ -5503,7 +5508,7 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 		{
 			uint8* permDataPtr = madeCopy ? mCvSymbolRecordReader.GetPermanentPtr(offsetStart, symLen + 2) : dataStart;
 			THREADSYM32& threadSym = *(THREADSYM32*)permDataPtr;
-						
+
 			if (symStreamType == CvSymStreamType_Globals_Scan)
 			{
 				scanName = (char*)threadSym.name;
@@ -5522,7 +5527,7 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 
 			BP_ALLOC_T(DbgVariable);
 			DbgVariable* variable = mAlloc.Alloc<DbgVariable>();
-			variable->mType = dbgType;			
+			variable->mType = dbgType;
 			variable->mLocationData = permDataPtr;
 			variable->mLocationLen = 1;
 			variable->mIsStatic = true;
@@ -5543,20 +5548,20 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 
 			char* name = (char*)refSym.name;
 			retName = name;
-			
+
 			if (symStreamType == CvSymStreamType_Globals_Scan)
 			{
 				scanName = (char*)refSym.name;
 				break;
-			}			
+			}
 
-			int moduleId = refSym.imod - 1;									
-			
+			int moduleId = refSym.imod - 1;
+
 			bool wasBeef = false;
 			char* memberName = (char*)CvCheckTargetMatch(name, wasBeef);
-			if (memberName == NULL)									
+			if (memberName == NULL)
 				break;
-			
+
 			bool wantsCopy = madeCopy;
 
 			bool isIllegal = false;
@@ -5572,23 +5577,23 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 						memberName[cPtr - prevName] = 0;
 						wantsCopy = false;
 						break;
-					}					
+					}
 					else
 						isIllegal = true;
 				}
 
 				if ((c == '<') || (c == '`'))
 					isIllegal = true;
-			}			
+			}
 
 			if (!isIllegal)
-			{				
+			{
 				BP_ALLOC_T(DbgMethodNameEntry);
 				auto methodNameEntry = mAlloc.Alloc<DbgMethodNameEntry>();
 				methodNameEntry->mCompileUnitId = moduleId;
 				methodNameEntry->mName = wantsCopy ? DbgDupString(memberName) : memberName;
 				mGlobalsTargetType->mMethodNameList.PushBack(methodNameEntry);
-			}			
+			}
 		}
 		break;
 	default:
@@ -5597,30 +5602,30 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 	}
 
 	if (scanName != NULL)
-	{		
+	{
 		//TODO: Remove
 		//String origName = name;
 
 		//CvFixupName(name);
 		char* lastDblColon = (char*)GetNamespaceEnd(scanName);
 		if (lastDblColon != NULL)
-		{			
+		{
 			if (mPrevScanName != NULL)
 			{
 				int namespaceLen = lastDblColon - scanName;
 				if (strncmp(scanName, mPrevScanName, namespaceLen + 2) == 0) // +2 includes the ending '::'
 				{
 					// We've already inserted this namespace
-					return retName;		
+					return retName;
 				}
 			}
 
 			StringT<256> tempName;
-			tempName = String(scanName, lastDblColon - scanName);			
+			tempName = String(scanName, lastDblColon - scanName);
 
 			DbgType* dbgType = CvGetTypeOrNamespace((char*)tempName.c_str());
 
-// 			*lastDblColon = '\0';				
+// 			*lastDblColon = '\0';
 // 			DbgType* dbgType = CvGetTypeOrNamespace(scanName);
 // 			*lastDblColon = ':';
 
@@ -5656,13 +5661,13 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 			methodNameEntry->mCompileUnitId = moduleId;
 			methodNameEntry->mName = methodName;
 			dbgParent->mMethodNameList.PushBack(methodNameEntry);
-			}*/				
+			}*/
 		}
 		else
 		{
 			mMasterCompileUnit->mGlobalType->mNeedsGlobalsPopulated = true;
 		}
-	}	
+	}
 
 	return retName;
 }
@@ -5682,7 +5687,7 @@ uint8* COFF::HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, 
 	uint8* dataEnd = data + sizeHr;
 	uint8* refDataHead = data;
 	int entryIdxMax = sizeHr / 8;
-	
+
 	data = dataEnd;
 
 	dataEnd = data + sizeBuckets ;
@@ -5703,7 +5708,7 @@ uint8* COFF::HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, 
 		return dataEnd; // No hash
 
 	std::multimap<addr_target, int> checkAddrMap;
-		
+
 	int bitCount = 0;
 	for (int blockIdx = 0; blockIdx < 0x81; blockIdx++)
 	{
@@ -5729,7 +5734,7 @@ uint8* COFF::HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, 
 						continue;
 
 					addr_target addr = 0;
-					const char* symName = CvParseSymbol(symDataPtr - 1, symStreamType, addr);					
+					const char* symName = CvParseSymbol(symDataPtr - 1, symStreamType, addr);
 #ifdef _DEBUG
 					if ((verify) && (addrMap != NULL))
 					{
@@ -5757,15 +5762,15 @@ uint8* COFF::HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, 
 		data = addrMap;
 		for (int entryIdx = 0; entryIdx < numRecordsRead; entryIdx++)
 		{
-			int verifyIdx = GET(int32);			
+			int verifyIdx = GET(int32);
 			int actualIdx = itr->second;
 			if (actualIdx != verifyIdx)
 			{
 				OutputDebugStrF("Mismatch #%X %X %X %08X\n", entryIdx, verifyIdx, actualIdx, itr->first);
 			}
 			++itr;
-		} 
-	} 
+		}
+	}
 #endif
 
 	BF_ASSERT(numRecordsRead == entryIdxMax);
@@ -5777,8 +5782,8 @@ uint8* COFF::HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, 
 
 void COFF::ParseSymbolStream(CvSymStreamType symStreamType)
 {
-	if (mCvSymbolRecordStream == 0)	
-		return;	
+	if (mCvSymbolRecordStream == 0)
+		return;
 
 	BP_ZONE("COFF::ParseSymbolStream");
 
@@ -5801,14 +5806,14 @@ void COFF::ParseSymbolStream(CvSymStreamType symStreamType)
 		uint8* data;
 		if (mCvPublicSymbolData == NULL)
 			mCvPublicSymbolData = CvReadStream(mCvPublicSymbolInfoStream, &streamSize); // psgsi
-		data = mCvPublicSymbolData;		
-		uint8* sectionData = data;		
+		data = mCvPublicSymbolData;
+		uint8* sectionData = data;
 
 		GET_INTO(int32, symHashSize);
-		GET_INTO(int32, addrMapSize);		
+		GET_INTO(int32, addrMapSize);
 		GET_INTO(int32, thunkCount);
 		GET_INTO(int32, thunkSize);
-		GET_INTO(int32, thunkTableStream);		
+		GET_INTO(int32, thunkTableStream);
 		GET_INTO(int32, thunkTableOfs);
 		GET_INTO(int32, thunkSectCount);
 
@@ -5818,24 +5823,24 @@ void COFF::ParseSymbolStream(CvSymStreamType symStreamType)
 		/*int addrMapEntryCount = addrMapSize / 4;
 		for (int addrIdx = 0; addrIdx < addrMapEntryCount; addrIdx++)
 		{
-			GET_INTO(int32, addrVal);			
+			GET_INTO(int32, addrVal);
 		}
 
 		for (int thunkIdx = 0; thunkIdx < thunkCount; thunkIdx++)
 		{
-			GET_INTO(int32, thunkVal);			
+			GET_INTO(int32, thunkVal);
 		}
 
 		for (int sectionIdx = 0; sectionIdx < thunkSectCount; sectionIdx++)
 		{
 			GET_INTO(int32, ofs);
-			GET_INTO(int32, sectNum);						
+			GET_INTO(int32, sectNum);
 		}*/
-	}	
+	}
 }
 
 void COFF::Fail(const StringImpl& error)
-{	
+{
 	DbgModule::Fail(StrFormat("%s in %s", error.c_str(), mPDBPath.c_str()));
 }
 
@@ -5856,14 +5861,14 @@ void COFF::ParseGlobalsData()
 	if (mParsedGlobalsData)
 		return;
 	ParseTypeData();
-	mParsedGlobalsData = true;	
+	mParsedGlobalsData = true;
 
 	//gDbgPerfManager->StartRecording();
 
 	int startTypeIdx = (int)mTypes.size();
 
 	ParseSymbolStream(CvSymStreamType_Globals_Scan);
-	
+
 	//gDbgPerfManager->StopRecording(true);
 
 	//int addedTypes = (int)mTypes.size() - startTypeIdx;
@@ -5892,19 +5897,19 @@ bool COFF::ParseCv(DataStream& pdbFS, uint8* rootDirData, int pageSize, uint8 wa
 
 	InitCvTypes();
 
-	int startingTypeIdx = mTypes.size();	
+	int startingTypeIdx = mTypes.size();
 
 	uint8* data = rootDirData;
 
 	bool failed = false;
 	int numStreams = GET(int32);
-	if (numStreams == 0)	
+	if (numStreams == 0)
 		return true;
 
 	mCvStreamSizes.Resize(numStreams);
 	mCvStreamPtrStartIdxs.Resize(numStreams);
 
-	int streamPages = 0;	
+	int streamPages = 0;
 	for (int i = 0; i < (int)mCvStreamSizes.size(); i++)
 		mCvStreamSizes[i] = GET(int32);
 	for (int streamIdx = 0; streamIdx < numStreams; streamIdx++)
@@ -5915,14 +5920,14 @@ bool COFF::ParseCv(DataStream& pdbFS, uint8* rootDirData, int pageSize, uint8 wa
 	}
 	mCvStreamPtrs.Resize(streamPages);
 	for (int i = 0; i < (int)mCvStreamPtrs.size(); i++)
-		mCvStreamPtrs[i] = GET(int32);	
+		mCvStreamPtrs[i] = GET(int32);
 
 
 	//////////////////////////////////////////////////////////////////////////
 
 	if (!CvParseHeader(wantGuid, wantAge))
 		return false;
-		
+
 	if (!CvParseDBI(wantAge))
 		return false;
 
@@ -5940,19 +5945,19 @@ bool COFF::ParseCv(DataStream& pdbFS, uint8* rootDirData, int pageSize, uint8 wa
 	}
 
 	for (int compileUnitId = 0; compileUnitId < (int)mCvModuleInfo.size(); compileUnitId++)
-	{		
+	{
 		ScanCompileUnit(compileUnitId);
 	}
 
 	//////////////////////////////////////////////////////////////////////////
-		
+
 	return true;
 }
 
 void COFF::ReportMemory(MemReporter* memReporter)
 {
 	DbgModule::ReportMemory(memReporter);
-	
+
 	memReporter->AddVec("mCvTypeMap", mCvTypeMap);
 	memReporter->AddVec("mCvTagStartMap", mCvTagStartMap);
 	memReporter->AddVec("mCvIPITagStartMap", mCvIPITagStartMap);
@@ -5963,14 +5968,14 @@ void COFF::ReportMemory(MemReporter* memReporter)
 	memReporter->AddVec(mCVSrcFileRefCache);
 
 	if (mCvHeaderData != NULL)
-		memReporter->Add("mCvHeaderData", mCvStreamSizes[1]);	
-	for (auto& entry : mCvTypeSectionData)	
+		memReporter->Add("mCvHeaderData", mCvStreamSizes[1]);
+	for (auto& entry : mCvTypeSectionData)
 	{
 		if (entry.mSize != -1)
 			memReporter->Add("mCvTypeSectionData", entry.mSize);
 		else
 			memReporter->Add("mCvTypeSectionData", mCvStreamSizes[2]);
-	}		
+	}
 	if (mCvStrTableData != NULL)
 		memReporter->Add("mCvStrTableData", mCvStreamSizes[mStringTable.mStream]);
 	if (mCvPublicSymbolData != NULL)
@@ -5990,7 +5995,7 @@ bool COFF::TryLoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 
 	mCvMappedFile = CreateFileA(pdbPath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
 	if (mCvMappedFile == INVALID_HANDLE_VALUE)
-	{		
+	{
 		return false;
 	}
 
@@ -6023,22 +6028,22 @@ bool COFF::TryLoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 			Fail("PDB signature error");
 		return false;
 	}
-	
+
 	BfLogDbg("Loading PDB %s\n", pdbPath.c_str());
 
 	BP_ZONE_F("LoadCv %s", pdbPath.c_str());
-	
+
 	int pageSize = mCvDataStream->ReadInt32();
 	int fpmPageNum = mCvDataStream->ReadInt32();
 	int totalPageCount = mCvDataStream->ReadInt32();
 	int rootDirSize = mCvDataStream->ReadInt32();
 	int unknown = mCvDataStream->ReadInt32();
-	
+
 	int rootDirPtrs[NUM_ROOT_DIRS];
 	mCvDataStream->ReadT(rootDirPtrs);
-	
+
 	bool failed = false;
-	
+
 	mCvPageSize = pageSize;
 	for (int i = 0; i < 31; i++)
 	{
@@ -6077,16 +6082,16 @@ bool COFF::TryLoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 		}
 	}
 
-	int startingTypeIdx = mTypes.size();	
+	int startingTypeIdx = mTypes.size();
 	if (!ParseCv(*mCvDataStream, &rootDirData[0], pageSize, wantGuid, wantAge))
 	{
 		//mDebugger->OutputMessage("Failed to parse PDB\n");
-		return false;	
+		return false;
 	}
-	
+
 	if (mCvDataStream->mFailed)
 		return false;
-		
+
 	//OutputDebugStrF("COFF::TryLoadPDB %s\n", pdbPath.c_str());
 	if (!isVerifyOnly)
 		mDebugger->ModuleChanged(this);
@@ -6101,7 +6106,7 @@ void COFF::ClosePDB()
 	delete mCvDataStream;
 	mCvDataStream = NULL;
 	delete mCvHeaderData;
-	mCvHeaderData = NULL;		
+	mCvHeaderData = NULL;
 	delete mCvStrTableData;
 	mCvStrTableData = NULL;
 	for (auto& entry : mCvTypeSectionData)
@@ -6128,7 +6133,7 @@ void COFF::ClosePDB()
 
 	for (auto kv : mHotLibMap)
 		delete kv.mValue;
-	mHotLibMap.Clear();	
+	mHotLibMap.Clear();
 	mHotLibSymMap.Clear();
 
 	delete mEmitSourceFile;
@@ -6136,7 +6141,7 @@ void COFF::ClosePDB()
 }
 
 bool COFF::LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
-{	
+{
 	if (mDebugTarget->mTargetBinary == this)
 	{
 		// If we don't have to load the debug symbols from a remote source or the cache
@@ -6149,20 +6154,20 @@ bool COFF::LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 	memcpy(mWantPDBGuid, wantGuid, 16);
 	mWantAge = wantAge;
 
-	mDbgSymRequest = mDebugger->mDbgSymSrv.CreateRequest(mFilePath, pdbPath, wantGuid, wantAge);	
+	mDbgSymRequest = mDebugger->mDbgSymSrv.CreateRequest(mFilePath, pdbPath, wantGuid, wantAge);
 	mDbgSymRequest->SearchLocal();
 
 	if (!mDbgSymRequest->mFinalPDBPath.IsEmpty())
-	{		
+	{
 		TryLoadPDB(mDbgSymRequest->mFinalPDBPath, wantGuid, wantAge);
 		mDebugger->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
 		mDbgSymRequest = NULL;
 	}
 	else
 		mMayBeOld = true;
-	
+
 	String fileName = GetFileName(mFilePath);
-	mWantsAutoLoadDebugInfo = !mDebugTarget->mWasLocallyBuilt;	
+	mWantsAutoLoadDebugInfo = !mDebugTarget->mWasLocallyBuilt;
 
 	if ((fileName.Equals("KERNEL32.DLL", String::CompareKind_OrdinalIgnoreCase)) ||
 		(fileName.Equals("KERNELBASE.DLL", String::CompareKind_OrdinalIgnoreCase)) ||
@@ -6193,7 +6198,7 @@ bool COFF::LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 
 	//char exePath[MAX_PATH];
 	//GetModuleFileNameA(NULL, exePath, sizeof(exePath));
-	
+
 	/*String checkPath = ::GetFileDir(mFilePath);
 	checkPath += "/";
 	checkPath += GetFileName(pdbPath);
@@ -6215,12 +6220,12 @@ bool COFF::CheckSection(const char* name, uint8* sectionData, int sectionSize)
 		DbgSectionData entry;
 		entry.mData = sectionData;
 		entry.mSize = sectionSize;
-		mCvTypeSectionData.Add(entry);		
+		mCvTypeSectionData.Add(entry);
 		return true;
 	}
 
 	if (strcmp(name, ".debug$S") == 0)
-	{		
+	{
 		DbgSectionData entry;
 		entry.mData = sectionData;
 		entry.mSize = sectionSize;
@@ -6236,19 +6241,19 @@ void COFF::ProcessDebugInfo()
 	BP_ZONE("COFF::ProcessDebugInfo");
 
 	if ((!mCvTypeSectionData.IsEmpty()) && (!mCvCompileUnitData.IsEmpty()))
-	{		
+	{
 		auto linkedModule = (COFF*)GetLinkedModule();
 		int startingTypeIdx = (int)linkedModule->mTypes.size();
 
 		InitCvTypes();
-		
+
 		for (auto entry : mCvTypeSectionData)
 		{
 			uint8* data = entry.mData;
 			GET_INTO(uint32, infoType);
 			BF_ASSERT(infoType == CV_SIGNATURE_C13);
 
-			CvInitStreamRaw(mCvTypeSectionReader, entry.mData + 4, entry.mSize - 4);			
+			CvInitStreamRaw(mCvTypeSectionReader, entry.mData + 4, entry.mSize - 4);
 			ParseTypeData(mCvTypeSectionReader, 0);
 		}
 
@@ -6258,7 +6263,7 @@ void COFF::ProcessDebugInfo()
 		CvCompileUnit* compileUnit = NULL;
 		for (auto entry : mCvCompileUnitData)
 		{
-			compileUnit = ParseCompileUnit(NULL, compileUnit, entry.mData, entry.mSize);			
+			compileUnit = ParseCompileUnit(NULL, compileUnit, entry.mData, entry.mSize);
 		}
 		compileUnit->mLanguage = DbgLanguage_Beef;
 		mMasterCompileUnit->mLanguage = DbgLanguage_Beef;
@@ -6268,9 +6273,9 @@ void COFF::ProcessDebugInfo()
 }
 
 void COFF::FinishHotSwap()
-{	
+{
 	DbgModule::FinishHotSwap();
-	mTypeMap.Clear();	
+	mTypeMap.Clear();
 }
 
 intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)
@@ -6288,11 +6293,11 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 	addr_target pc = 0;
 	if (stackFrame != NULL)
 	{
-		// Use 'GetSourcePC', which will offset the RSP when we're not at the top position of the call stack, since RSP will be the 
+		// Use 'GetSourcePC', which will offset the RSP when we're not at the top position of the call stack, since RSP will be the
 		//  return address in those cases
 		pc = stackFrame->GetSourcePC();
 	}
-	
+
 	int inlineDepth = 0;
 	uint8* data = (uint8*)locData;
 	for (int locIdx = 0; locIdx < locDataLen; locIdx++)
@@ -6301,7 +6306,7 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 		GET_INTO(uint16, symLen);
 		uint8* dataEnd = data + symLen;
 		GET_INTO(uint16, symType);
-		
+
 		CV_LVAR_ADDR_RANGE* rangeInfo = NULL;
 		CV_LVAR_ADDR_GAP* gapsInfo = NULL;
 		addr_target result = 0;
@@ -6322,7 +6327,7 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 		case S_GDATA32:
 		case S_LDATA32:
 			{
-				DATASYM32& dataSym = *(DATASYM32*)dataStart;				
+				DATASYM32& dataSym = *(DATASYM32*)dataStart;
 				*outAddrType = DbgAddrType_Target;
 				return GetSectionAddr(dataSym.seg, dataSym.off);
 			}
@@ -6344,10 +6349,10 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 		case S_GTHREAD32:
 			{
 				THREADSYM32& threadSym = *(THREADSYM32*)dataStart;
-				
+
 				int tlsIndex = mDebugger->ReadMemory<int>(mTLSIndexAddr);
 				addr_target tlsEntry = mDebugger->GetTLSOffset(tlsIndex);
-								
+
 				*outAddrType = DbgAddrType_Target;
 				return threadSym.off + tlsEntry;
 			}
@@ -6364,7 +6369,7 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 			{
 				REGREL32* regRel32 = (REGREL32*)dataStart;
 				*outAddrType = DbgAddrType_Target;
-				int regNum = CvConvRegNum(regRel32->reg); 
+				int regNum = CvConvRegNum(regRel32->reg);
 				return stackFrame->mRegisters.mIntRegsArray[regNum] + regRel32->off;
 			}
 			break;
@@ -6380,36 +6385,36 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 		case S_DEFRANGE_FRAMEPOINTER_REL:
 			{
 				DEFRANGESYMFRAMEPOINTERREL& defRangeFPRel = *(DEFRANGESYMFRAMEPOINTERREL*)dataStart;
-				
+
 				DbgSubprogram::LocalBaseRegKind baseReg = ((flags & DbgEvalLocFlag_IsParam) != 0) ? dwSubprogram->mParamBaseReg : dwSubprogram->mLocalBaseReg;
 
 				*outAddrType = DbgAddrType_Target;
-#ifdef BF_DBG_64				
+#ifdef BF_DBG_64
 				if (baseReg == DbgSubprogram::LocalBaseRegKind_RSP)
 					result = stackFrame->mRegisters.mIntRegsArray[X64Reg_RSP] + defRangeFPRel.offFramePointer;
 				else if (baseReg == DbgSubprogram::LocalBaseRegKind_R13)
 					result = stackFrame->mRegisters.mIntRegsArray[X64Reg_R13] + defRangeFPRel.offFramePointer;
 				else
 					result = stackFrame->mRegisters.mIntRegsArray[X64Reg_RBP] + defRangeFPRel.offFramePointer;
-#else				
+#else
 				if (baseReg == DbgSubprogram::LocalBaseRegKind_VFRAME)
-					result = stackFrame->mRegisters.mIntRegsArray[X86Reg_ESP] + dwSubprogram->mFrameBaseLen + defRangeFPRel.offFramePointer;									
+					result = stackFrame->mRegisters.mIntRegsArray[X86Reg_ESP] + dwSubprogram->mFrameBaseLen + defRangeFPRel.offFramePointer;
 				else if (baseReg == DbgSubprogram::LocalBaseRegKind_EBX)
 					result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBX] + defRangeFPRel.offFramePointer;
 				else
 					result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBP] + defRangeFPRel.offFramePointer;
-#endif									
-				
+#endif
+
 				rangeInfo = &defRangeFPRel.range;
 				gapsInfo = &defRangeFPRel.gaps[0];
 			}
 			break;
 		case S_DEFRANGE_SUBFIELD_REGISTER:
 			{
-				DEFRANGESYMSUBFIELDREGISTER& defRangeSubfieldReg = *(DEFRANGESYMSUBFIELDREGISTER*)dataStart;				
-				
+				DEFRANGESYMSUBFIELDREGISTER& defRangeSubfieldReg = *(DEFRANGESYMSUBFIELDREGISTER*)dataStart;
+
 				*outAddrType = DbgAddrType_Target;
-				int regNum = CvConvRegNum(defRangeSubfieldReg.reg); 
+				int regNum = CvConvRegNum(defRangeSubfieldReg.reg);
 				result = stackFrame->mRegisters.mIntRegsArray[regNum] + defRangeSubfieldReg.offParent;
 
 				rangeInfo = &defRangeSubfieldReg.range;
@@ -6424,7 +6429,7 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 				int regNum = X64Reg_RSP;
 #else
 				int regNum = X86Reg_ESP;
-#endif			
+#endif
 				*outAddrType = DbgAddrType_Target;
 				result = stackFrame->mRegisters.mIntRegsArray[regNum] + defFPRel.offFramePointer;
 				return result;
@@ -6449,7 +6454,7 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 			{
 				inlineDepth++;
 			}
-			break;	
+			break;
 		case S_FILESTATIC:
 			{
 				FILESTATICSYM& fileStaticSym = *(FILESTATICSYM*)dataStart;
@@ -6462,9 +6467,9 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 		}
 
 		if (rangeInfo != NULL)
-		{			
-			auto rangeStart = GetSectionAddr(rangeInfo->isectStart, rangeInfo->offStart);			
-			
+		{
+			auto rangeStart = GetSectionAddr(rangeInfo->isectStart, rangeInfo->offStart);
+
 			if ((pc >= rangeStart) && (pc < rangeStart + rangeInfo->cbRange))
 			{
 				bool inRange = true;
@@ -6473,7 +6478,7 @@ intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData,
 					if ((pc >= rangeStart + gapsInfo->gapStartOffset) && (pc < rangeStart + gapsInfo->gapStartOffset + gapsInfo->cbRange))
 					{
 						inRange = false;
-						break;						
+						break;
 					}
 					gapsInfo++;
 				}
@@ -6502,7 +6507,7 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 {
 	if (mCvSrcSrvStream == -1)
 		return "";
-	
+
 	int outSize;
 	uint8* data = CvReadStream(mCvSrcSrvStream, &outSize);
 	String cmdBlock = String((char*)data, outSize);
@@ -6519,7 +6524,7 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 		_SectType_SourceFiles
 	};
 	_SectType sectType = _SectType_None;
-	
+
 	//
 	{
 		AutoCrit autoCrit(gDebugManager->mCritSect);
@@ -6535,7 +6540,7 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 				int endIdx = str.IndexOf('%', i + 1);
 				if (endIdx != -1)
 				{
-					String varName = ToUpper(str.Substring(i + 1, endIdx - i - 1));					
+					String varName = ToUpper(str.Substring(i + 1, endIdx - i - 1));
 					if (((endIdx < str.length() - 1) && (str[endIdx + 1] == '(')) &&
 						((varName == "FNVAR") || (varName == "FNBKSL") || (varName == "FNFILE")))
 					{
@@ -6552,7 +6557,7 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 							else
 							{
 								if (varName == "FNBKSL")
-								{									
+								{
 									paramStr.Replace("/", "\\");
 								}
 								else if (varName == "FNFILE")
@@ -6636,7 +6641,7 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 						int starPos = line.IndexOf('*', curStrPos);
 						if (starPos == -1)
 							starPos = line.length();
-						
+
 						//var = line.Substring(curStrPos, starPos - curStrPos);
 						var.Clear();
 						var.Insert(0, line.c_str() + curStrPos, starPos - curStrPos);
@@ -6647,7 +6652,7 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 							if (!matches)
 								break;
 						}
-						
+
 						defs[StrFormat("VAR%d", curStrIdx + 1)] = var;
 
 						curStrIdx++;
@@ -6664,7 +6669,7 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 					_Expand(target);
 					_Expand(cmd);
 					_Expand(env);
-					
+
 					String retVal;
 					if ((cmd.IsEmpty()) && (target.StartsWith("HTTP", StringImpl::CompareKind_OrdinalIgnoreCase)))
 					{
@@ -6678,7 +6683,7 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 							localFile.Append("SymbolCache\\src\\");
 							localFile.Append(StringView(target, dotPos + 3));
 							localFile.Replace("/", "\\");
-						}						
+						}
 
 						retVal = localFile;
 						retVal += "\n";
@@ -6694,11 +6699,11 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 						retVal += "\n";
 						retVal += env;
 					}
-					
+
 					return retVal;
 				}
 				break;
-			}			
+			}
 		}
 
 		linePos = crPos + 1;
@@ -6711,7 +6716,7 @@ bool COFF::GetEmitSource(const StringImpl& filePath, String& outText)
 {
 	if (!filePath.StartsWith("$Emit"))
 		return false;
-	
+
 	if (mEmitSourceFile == NULL)
 	{
 		mEmitSourceFile = new ZipFile();
@@ -6724,10 +6729,10 @@ bool COFF::GetEmitSource(const StringImpl& filePath, String& outText)
 		{
 			if (mCvEmitStream == -1)
 				return "";
-			
+
 			int outSize;
 			uint8* data = CvReadStream(mCvEmitStream, &outSize);
-						
+
 			FileStream fileStream;
 			fileStream.Open(zipPath, "wb");
 			fileStream.Write(data, outSize);
@@ -6746,7 +6751,7 @@ bool COFF::GetEmitSource(const StringImpl& filePath, String& outText)
 		{
 			int dollarPos = usePath.IndexOf('$', 1);
 			usePath.Remove(0, dollarPos + 1);
-		}		
+		}
 		usePath = EncodeFileName(usePath);
 		usePath.Append(".bf");
 
@@ -6846,20 +6851,20 @@ bool COFF::RequestImage()
 		return false;
 
 	auto miniDumpDebugger = (MiniDumpDebugger*)mDebugger;
-	
+
 	if (mOrigImageData != NULL)
 		return false;
 
 	if (GetCurrentThreadId() == mDebugger->mDebuggerThreadId)
-	{		
+	{
 		auto prevRunState = mDebugger->mRunState;
 		mDebugger->mRunState = RunState_SearchingSymSrv;
 		mDebugger->mDebugManager->mOutMessages.push_back(StrFormat("symsrv Searching for image '%s'", mFilePath.c_str()));
-		
+
 		auto dbgSymRequest = mDebugger->mDbgSymSrv.CreateRequest();
 		mDebugger->mActiveSymSrvRequest = dbgSymRequest;
 		BF_ASSERT(mDebugger->mDebugManager->mCritSect.mLockCount == 1);
-		mDebugger->mDebugManager->mCritSect.Unlock();		
+		mDebugger->mDebugManager->mCritSect.Unlock();
 		// We unlock to allow the IDE to continue updating while we search
 		String imagePath = dbgSymRequest->SearchForImage(mFilePath, mTimeStamp, mImageSize);
 		mDebugger->mDebugManager->mCritSect.Lock();
@@ -6867,8 +6872,8 @@ bool COFF::RequestImage()
 		mDebugger->mActiveSymSrvRequest = NULL;
 
 		mDebugger->mRunState = prevRunState;
-		
-		return LoadModuleImage(imagePath);		
+
+		return LoadModuleImage(imagePath);
 	}
 	else
 	{
@@ -6885,28 +6890,28 @@ bool COFF::RequestDebugInfo(bool allowRemote)
 
 	if (mDbgSymRequest->mInProcess)
 		return false;
-		
+
 	bool hasDebugInfo = false;
 	mDbgSymRequest->SearchCache();
 	if (mDbgSymRequest->mFinalPDBPath.IsEmpty())
-	{	
+	{
 		if (!allowRemote)
 			return false;
 
 		if (GetCurrentThreadId() == mDebugger->mDebuggerThreadId)
-		{ 
+		{
 			auto prevRunState = mDebugger->mRunState;
 			mDebugger->mRunState = RunState_SearchingSymSrv;
-			
+
 			mDbgSymRequest->mInProcess = true;
 			mDebugger->mActiveSymSrvRequest = mDbgSymRequest;
 			BF_ASSERT(mDebugger->mDebugManager->mCritSect.mLockCount == 1);
-			mDebugger->mDebugManager->mCritSect.Unlock();			
+			mDebugger->mDebugManager->mCritSect.Unlock();
 			mDbgSymRequest->SearchSymSrv();
 			mDebugger->mDebugManager->mCritSect.Lock();
 			mDebugger->mActiveSymSrvRequest = NULL;
 			mDbgSymRequest->mInProcess = false;
-			
+
 			mDebugger->mRunState = prevRunState;
 		}
 		else
@@ -6958,7 +6963,7 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 			String libName = moduleInfo->mObjectName;
 			if (!libName.EndsWith(".lib", StringImpl::CompareKind_OrdinalIgnoreCase))
 				continue;
-			
+
 			CvLibInfo** libInfoPtr;
 			if (!mHotLibMap.TryAdd(libName, NULL, &libInfoPtr))
 				continue;
@@ -6966,7 +6971,7 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 			CvLibInfo* libInfo = new CvLibInfo();
 			*libInfoPtr = libInfo;
 
-			if (!libInfo->mLibFile.Init(libName, false))			
+			if (!libInfo->mLibFile.Init(libName, false))
 				continue;
 
 			for (auto kv : libInfo->mLibFile.mOldEntries)
@@ -7001,14 +7006,14 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 		// We already tried to load this
 		return 0;
 	}
-	
+
 	auto fileExt = GetFileExtension(libEntry->mName);
 	if (String::Equals(fileExt, ".dll", StringImpl::CompareKind_OrdinalIgnoreCase))
 	{
 		for (auto dbgModule : mDebugTarget->mDbgModules)
 		{
 			if (String::Equals(libEntry->mName, dbgModule->mDisplayName))
-			{				
+			{
 				dbgModule->ParseSymbolData();
 				auto entry = dbgModule->mSymbolNameMap.Find(name.c_str());
 				if (entry == NULL)
@@ -7042,7 +7047,7 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 				{
 					uint8 mOpCode0;
 					uint8 mOpCode1;
-					int32 mRIPRel;					
+					int32 mRIPRel;
 					uint64 mTarget;
 				};
 #pragma pack(pop)
@@ -7074,9 +7079,9 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 
 // #ifdef _DEBUG
 // 	FILE* fpTest = fopen("c:\\temp\\locateSym.obj", "wb");
-// 
+//
 // 	uint8* data = new uint8[libEntry->mLength];
-// 
+//
 // 	fseek(libEntry->mLibFile->mOldFileStream.mFP, libEntry->mOldDataPos + sizeof(BeLibMemberHeader), SEEK_SET);
 // 	fread(data, 1, libEntry->mLength, libEntry->mLibFile->mOldFileStream.mFP);
 // 	fwrite(data, 1, libEntry->mLength, fpTest);
@@ -7107,7 +7112,7 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 		Fail(StrFormat("Debugger failed to read binary '%s' in '%s'", libEntry->mName.c_str(), libEntry->mLibFile->mFilePath.c_str()));
 		delete dbgModule;
 		return 0;
-	}	
+	}
 	mDebugger->mDebugTarget->AddDbgModule(dbgModule);
 
 	auto symbolEntry = mSymbolNameMap.Find(name.c_str());
@@ -7252,10 +7257,10 @@ NS_BF_DBG_BEGIN
 // 		COFF coff(debugTarget);
 // 		coff.mCvTypeSectionData = (uint8*)tdata;
 // 		coff.mCvTypeSectionDataSize = tdataSize;
-// 
+//
 // 		coff.mCvCompileUnitData = (uint8*)cuData;
 // 		coff.mCvCompileUnitDataSize = cuDataSize;
-// 
+//
 // 		coff.ProcessDebugInfo();
 // 	}
 // 	delete debugTarget;
@@ -7264,7 +7269,7 @@ NS_BF_DBG_BEGIN
 void TestPDB(const StringImpl& fileName, WinDebugger* debugger)
 {
 	DebugTarget* debugTarget = new DebugTarget(NULL);
-	COFF coff(debugTarget);		
+	COFF coff(debugTarget);
 	coff.mDebugger = debugger;
 	uint8 wantGuid[16];
 	coff.TryLoadPDB(fileName, wantGuid, -1);

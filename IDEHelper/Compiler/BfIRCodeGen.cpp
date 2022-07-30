@@ -4488,7 +4488,11 @@ void BfIRCodeGen::HandleNextCmd()
             os << "\n";
             os.flush();*/
 
-            auto member = mDIBuilder->createMemberType((llvm::DIScope*)scope, name.c_str(), (llvm::DIFile*)file, lineNumber, sizeInBits, (uint32)alignInBits, offsetInBits, diFlags, (llvm::DIType*)type);
+			const char* namePtr = name.c_str();
+			if (name.IsEmpty())
+				namePtr = NULL;
+
+            auto member = mDIBuilder->createMemberType((llvm::DIScope*)scope, namePtr, (llvm::DIFile*)file, lineNumber, sizeInBits, (uint32)alignInBits, offsetInBits, diFlags, (llvm::DIType*)type);
             SetResult(curId, member);
             //OutputDebugStrF("BfIRCmd_DbgCreateMemberType = %p\n", member);
 		}

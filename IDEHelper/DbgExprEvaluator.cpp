@@ -21,7 +21,7 @@ using namespace llvm;
 
 DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEvaluator, const StringImpl& methodName, SizedArrayImpl<DbgTypedValue>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments) :
 	mArguments(arguments)
-{	
+{
 	mTargetSrc = targetSrc;
 	mExprEvaluator = exprEvaluator;
 	mMethodName = methodName;
@@ -29,12 +29,12 @@ DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEva
 	mBestMethodDef = NULL;
 	mBackupMethodDef = NULL;
 	mBestMethodTypeInstance = NULL;
-	mExplicitInterfaceCheck = NULL;		
-	mHadExplicitGenericArguments = false;			
+	mExplicitInterfaceCheck = NULL;
+	mHadExplicitGenericArguments = false;
 	mTargetIsConst = false;
 
 	if (methodGenericArguments != NULL)
-	{				
+	{
 		for (auto genericArg : *methodGenericArguments)
 		{
 			if (genericArg == NULL)
@@ -46,7 +46,7 @@ DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEva
 			//mBestMethodGenericArgumentSrcs.push_back(genericArg);
 		}
 		mHadExplicitGenericArguments = true;
-	}	
+	}
 }
 
 /*bool DwMethodMatcher::InferGenericArgument(DbgType* argType, DbgType* wantType)
@@ -60,15 +60,15 @@ DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEva
 		if (wantGenericParam->mGenericParamKind == BfGenericParamKind_Method)
 		{
 			auto prevGenericMethodArg = mCheckMethodGenericArguments[wantGenericParam->mGenericParamIdx];
-			if (prevGenericMethodArg == NULL)				
+			if (prevGenericMethodArg == NULL)
 			{
 				mCheckMethodGenericArguments[wantGenericParam->mGenericParamIdx] = argType;
 				return true;
-			}			
+			}
 
 			// Prev is already best
 			if (mModule->CanCast(DbgTypedValue(NULL, argType), prevGenericMethodArg))
-				return true; 
+				return true;
 
 			// New best?
 			if (mModule->CanCast(DbgTypedValue(NULL, prevGenericMethodArg), argType))
@@ -115,18 +115,18 @@ DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEva
 		if (!argType->IsPointer())
 			return true;
 		auto wantPointerType = (BfPointerType*) wantType;
-		auto argPointerType = (BfPointerType*) argType;		
+		auto argPointerType = (BfPointerType*) argType;
 		InferGenericArgument(argPointerType->mElementType, wantPointerType->mElementType);
 		return true;
 	}
-	
-	return true;	
+
+	return true;
 }*/
 
 void DwMethodMatcher::CompareMethods(DbgSubprogram* prevMethodInstance, DwTypeVector* prevGenericArgumentsSubstitute,
-	DbgSubprogram* newMethodInstance, DwTypeVector* genericArgumentsSubstitute, 
+	DbgSubprogram* newMethodInstance, DwTypeVector* genericArgumentsSubstitute,
 	bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail)
-{	
+{
 	int numUsedParams = 0;
 	int prevNumUsedParams = 0;
 	bool usedExtendedForm = false;
@@ -135,16 +135,16 @@ void DwMethodMatcher::CompareMethods(DbgSubprogram* prevMethodInstance, DwTypeVe
 	bool isBetter = false;
 	bool isWorse = false;
 	int argIdx = 0;
-	
+
 	DbgSubprogram* prevMethodDef = prevMethodInstance;
 	DbgSubprogram* newMethodDef = newMethodInstance;
 
 #define SET_BETTER_OR_WORSE(lhs, rhs) \
 		if ((lhs) && !(rhs)) isBetter = true; \
 		if (!(lhs) && (rhs)) isWorse = true;
-	
+
 	int newArgOffset = newMethodInstance->mHasThis ? 1 : 0;
-	int prevArgOffset = prevMethodInstance->mHasThis ? 1 : 0;	
+	int prevArgOffset = prevMethodInstance->mHasThis ? 1 : 0;
 
 	DbgVariable* param = newMethodInstance->mParams.mHead;
 	if (newMethodInstance->mHasThis)
@@ -267,7 +267,7 @@ void DwMethodMatcher::CompareMethods(DbgSubprogram* prevMethodInstance, DwTypeVe
 			DbgType* paramType = param->mType;
 			DbgType* prevParamType = prevParam->mType;
 
-			//TODO: 
+			//TODO:
 			//isBetter |= mModule->IsTypeMoreSpecific(paramType, prevParamType);
 			//isWorse |= mModule->IsTypeMoreSpecific(prevParamType, paramType);
 
@@ -293,13 +293,13 @@ void DwMethodMatcher::CompareMethods(DbgSubprogram* prevMethodInstance, DwTypeVe
 		if ((newMethodInstance->mHasThis) && (prevMethodInstance->mHasThis))
 		{
 			SET_BETTER_OR_WORSE(
-				newMethodInstance->mParams.mHead->mType->IsConst() == mTargetIsConst, 
+				newMethodInstance->mParams.mHead->mType->IsConst() == mTargetIsConst,
 				prevMethodInstance->mParams.mHead->mType->IsConst() == mTargetIsConst);
 		}
 	}
 
 	*outNewIsBetter = isBetter;
-	*outNewIsWorse = isWorse;	
+	*outNewIsWorse = isWorse;
 }
 
 bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMethod)
@@ -308,7 +308,7 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 
 	checkMethod->PopulateSubprogram();
 
-	// Never consider overrides - they only get found at original method declaration	
+	// Never consider overrides - they only get found at original method declaration
 	/*if ((checkMethod->mVirtual) && (checkMethod->mVTableLoc == -1))
 		return true;*/
 
@@ -319,24 +319,24 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo))
 	{
 		DwAutoComplete::MethodMatchEntry methodMatchEntry;
-		methodMatchEntry.mDwSubprogram = methodInstance;		
-		autoComplete->mMethodMatchInfo->mInstanceList.push_back(methodMatchEntry);		
+		methodMatchEntry.mDwSubprogram = methodInstance;
+		autoComplete->mMethodMatchInfo->mInstanceList.push_back(methodMatchEntry);
 	}
 
 	/*if ((mHadExplicitGenericArguments) && (checkMethod->mGenericParams.size() != mBestMethodGenericArguments.size()))
 		goto NoMatch;*/
-	
+
 	for (auto& checkGenericArgRef : mCheckMethodGenericArguments)
 		checkGenericArgRef = NULL;
 
-	/*mCheckMethodGenericArguments.resize(checkMethod->mGenericParams.size());	
+	/*mCheckMethodGenericArguments.resize(checkMethod->mGenericParams.size());
 	for (auto& genericArgRef : mCheckMethodGenericArguments)
 		genericArgRef = NULL;*/
-	
+
 	int argIdx = 0;
-	int paramIdx = 0;	
+	int paramIdx = 0;
 	DbgType* paramsElementType = NULL;
-	
+
 	//bool needInferGenericParams = (checkMethod->mGenericParams.size() != 0) && (!mHadExplicitGenericArguments);
 
 	DwTypeVector* genericArgumentsSubstitute = NULL;
@@ -358,21 +358,21 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 					goto NoMatch;
 			}
 		}
-		
+
 		for (int checkArgIdx = 0; checkArgIdx < (int) checkMethod->mGenericParams.size(); checkArgIdx++)
 			if (mCheckMethodGenericArguments[checkArgIdx] == NULL)
 				goto NoMatch;
 	}*/
 
 	// Iterate through params
-	
+
 	int paramOffset = checkMethod->mHasThis ? 1 : 0;
 
 	while (true)
-	{		
+	{
 		// Too many arguments
 		if (paramIdx >= checkMethod->mParams.Size() - paramOffset)
-		{			
+		{
 			break;
 		}
 
@@ -395,7 +395,7 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 				paramIdx++;
 				break;
 			}
-			
+
 			BF_ASSERT(paramsArrayType->IsArray());
 			auto arrayType = (BfArrayType*)paramsArrayType;
 			paramsElementType = arrayType->mTypeGenericArguments[0];
@@ -429,10 +429,10 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 		if (!mArguments[argIdx])
 			goto NoMatch;
 
-		
+
 		if (!mExprEvaluator->CanCast(mArguments[argIdx], wantType))
 			goto NoMatch;
-		
+
 		paramIdx++;
 		argIdx++;
 
@@ -444,12 +444,12 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 				bool isBetter = false;
 				bool isWorse = false;
 				int methodIdx = (int)methodMatchInfo->mInstanceList.size() - 1;
-								
+
 				if (methodMatchInfo->mBestIdx < (int)methodMatchInfo->mInstanceList.size())
-				{					
+				{
 					auto prevMethodMatchEntry = &methodMatchInfo->mInstanceList[methodMatchInfo->mBestIdx];
 					if (checkMethod->mParams.Size() < (int)mArguments.size())
-					{						
+					{
 						isWorse = true;
 					}
 					else if (prevMethodMatchEntry->mDwSubprogram->mParams.Size() < (int) mArguments.size())
@@ -464,7 +464,7 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 							methodInstance, genericArgumentsSubstitute, &isBetter, &isWorse, true);
 					}
 				}
-				
+
 				if ((argIdx > methodMatchInfo->mMostParamsMatched) ||
 					((argIdx == methodMatchInfo->mMostParamsMatched) && (isBetter)) ||
 					((argIdx == methodMatchInfo->mMostParamsMatched) && (methodIdx == methodMatchInfo->mPrevBestIdx) && (!isWorse)))
@@ -479,7 +479,7 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 	//TODO: Does this ever get hit?
 	// Not enough arguments?
 	if (argIdx < (int)mArguments.size())
-	{		
+	{
 		goto NoMatch;
 	}
 
@@ -503,11 +503,11 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 					methodInstance->ToString().c_str()), mTargetSrc);
 			}
 		}
-		
+
 		if (!isBetter)
 			goto Done;
 	}
-	
+
 	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo))
 	{
 		auto methodMatchInfo = autoComplete->mMethodMatchInfo;
@@ -525,10 +525,10 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 
 NoMatch:
 	if (!hadMatch)
-	{	
+	{
 		if (mBestMethodDef != NULL)
 			return true;
-		
+
 		//TODO:
 		/*if ((mHadExplicitGenericArguments) && (mBestMethodGenericArguments.size() != checkMethod->mGenericParams.size()))
 			return true;*/
@@ -536,25 +536,25 @@ NoMatch:
 		// At least prefer a backup method that we have an address for
 		if ((mBackupMethodDef != NULL) && (mBackupMethodDef->mBlock.mLowPC != 0))
 			return true;
-		
+
 		mBackupMethodDef = checkMethod;
 		// Lie temporarily to store at least one candidate (but mBestMethodDef is still NULL)
 		hadMatch = true;
 	}
-	
+
 	if (hadMatch)
 	{
 		mBestMethodTypeInstance = typeInstance;
 		if (!mHadExplicitGenericArguments)
-		{						
-			mBestMethodGenericArguments = mCheckMethodGenericArguments;									
-		}				
+		{
+			mBestMethodGenericArguments = mCheckMethodGenericArguments;
+		}
 	}
 
 Done:
 	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo) && (genericArgumentsSubstitute != NULL))
 	{
-		auto methodMatchInfo = autoComplete->mMethodMatchInfo;	
+		auto methodMatchInfo = autoComplete->mMethodMatchInfo;
 		methodMatchInfo->mInstanceList[methodMatchInfo->mInstanceList.size() - 1].mDwGenericArguments = *genericArgumentsSubstitute;
 	}
 
@@ -573,7 +573,7 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 	bool allowPrivate = true;
 	bool allowProtected = true;
 
-	auto curType = typeInstance;	
+	auto curType = typeInstance;
 
 	bool wantCtor = false;
 
@@ -581,7 +581,7 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 	auto altItr = typeInstance->mAlternates.begin();
 
 	while (true)
-	{	
+	{
 		bool foundMethodInType = false;
 
 		curType->PopulateType();
@@ -593,7 +593,7 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 			// These aren't proper TPI types so we don't have any method declarations until we PopulateTypeGlobals
 			mExprEvaluator->mDbgModule->PopulateTypeGlobals(curType);
 		}
-		
+
 		for (auto methodNameEntry : curType->mMethodNameList)
 		{
 			if ((methodNameEntry->mCompileUnitId != -1) && (methodNameEntry->mName == mMethodName))
@@ -602,7 +602,7 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 				if (!curType->mCompileUnit->mDbgModule->IsObjectFile())
 					curType->mCompileUnit->mDbgModule->MapCompileUnitMethods(methodNameEntry->mCompileUnitId);
 				methodNameEntry->mCompileUnitId = -1;
-			}		
+			}
 		}
 
 		auto checkMethod = curType->mMethodList.mHead;
@@ -641,12 +641,12 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 				checkMethod = checkMethod->mNext;
 				continue;
 			}
-			
+
 			if (!curType->mHasGlobalsPopulated)
-				mExprEvaluator->mDbgModule->PopulateTypeGlobals(curType);			
+				mExprEvaluator->mDbgModule->PopulateTypeGlobals(curType);
 
 			/*if (!foundMethodInType)
-			{				
+			{
 				if (curType->mCompileUnit->mLanguage != DbgLanguage_Beef)
 				{
 					String fullMethodName = String(curType->mTypeName) + "::" + mMethodName;
@@ -659,7 +659,7 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 				return false;
 
 			checkMethod = checkMethod->mNext;
-		}		
+		}
 
 		if (mBestMethodDef != NULL)
 		{
@@ -672,7 +672,7 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 			else
 				return true;
 		}
-		
+
 		/*if (baseItr != typeInstance->mBaseTypes.end())
 		{
 			auto baseTypeEntry = *baseItr;
@@ -680,13 +680,13 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 			baseItr++;
 			continue;;
 		}*/
-		
+
 		if (altItr != typeInstance->mAlternates.end())
-		{		
+		{
 			curType = *altItr;
 			++altItr;
 			continue;
-		}				
+		}
 
 		/*allowPrivate = false;
 
@@ -694,11 +694,11 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 			break;*/
 		break;
 	}
-	
+
 	if (mBestMethodDef == NULL)
 	{
 		// FAILED, but select the first method which will fire an actual error on param type matching
-		mBestMethodDef = mBackupMethodDef;		
+		mBestMethodDef = mBackupMethodDef;
 
 		for (auto subType : typeInstance->mSubTypeList)
 		{
@@ -720,7 +720,7 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 				if (mBestMethodDef != NULL)
 					break;
 			}
-		}		
+		}
 	}
 
 	return true;
@@ -729,12 +729,12 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 //////////////////////////////////////////////////////////////////////////
 
 DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModule, BfPassInstance* passInstance, int callStackIdx, int cursorPos)
-{	
+{
 	mCountResultOverride = -1;
 	mCapturingChildRef = true;
 	mPassInstance = passInstance;
 	mDebugger = winDebugger;
-	mLanguage = DbgLanguage_NotSet;	
+	mLanguage = DbgLanguage_NotSet;
 	mOrigDbgModule = dbgModule;
 	if (dbgModule != NULL)
 	{
@@ -752,7 +752,7 @@ DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModul
 	mExpectingType = NULL;
 	mCurMethod = NULL;
 	mIgnoreErrors = false;
-	mCallStackIdx = callStackIdx;	
+	mCallStackIdx = callStackIdx;
 	mCursorPos = cursorPos;
 	mAutoComplete = NULL;
 	mIsEmptyTarget = (dbgModule == NULL) || (dbgModule->mDebugTarget->mIsEmpty);
@@ -775,7 +775,7 @@ DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModul
 }
 
 DbgExprEvaluator::~DbgExprEvaluator()
-{	
+{
 	delete mStackSearch;
 }
 
@@ -784,7 +784,7 @@ DbgTypedValue DbgExprEvaluator::GetInt(int value)
 	DbgTypedValue dbgValue;
 	dbgValue.mType = mDbgModule->GetPrimitiveType(DbgType_i32, GetLanguage());
 	dbgValue.mInt32 = value;
-	return dbgValue;	
+	return dbgValue;
 }
 
 DbgTypedValue DbgExprEvaluator::GetString(const StringImpl& str)
@@ -804,7 +804,7 @@ DbgTypedValue DbgExprEvaluator::GetString(const StringImpl& str)
 		dbgValue.mLocalPtr = resultPtr->c_str();
 		dbgValue.mIsLiteral = true;
 		dbgValue.mDataLen = resultPtr->mLength;
-	}	
+	}
 
 	return dbgValue;
 }
@@ -832,7 +832,7 @@ DbgType* DbgExprEvaluator::GetExpectingType()
 }
 
 void DbgExprEvaluator::GetNamespaceSearch()
-{	
+{
 	if (!mNamespaceSearch.empty())
 		return;
 
@@ -841,13 +841,13 @@ void DbgExprEvaluator::GetNamespaceSearch()
 	{
 		auto parent = currentMethod->GetParent();
 		while (parent != NULL)
-		{	
+		{
 			parent = parent->GetPrimaryType();
-			mNamespaceSearch.push_back(parent);			
+			mNamespaceSearch.push_back(parent);
 			parent = parent->mParent;
 		}
 	}
-	
+
 	if (!mNamespaceSearchStr.empty())
 	{
 		auto language = GetLanguage();
@@ -868,7 +868,7 @@ void DbgExprEvaluator::GetNamespaceSearch()
 		auto dbgTypeEntry = mDbgModule->mTypeMap.Find(namespaceEntry.c_str(), language);
 		if (dbgTypeEntry != NULL)
 			mNamespaceSearch.push_back(dbgTypeEntry->mValue);
-	}	
+	}
 }
 
 DbgType* DbgExprEvaluator::ResolveSubTypeRef(DbgType* checkType, const StringImpl& name)
@@ -900,7 +900,7 @@ DbgType* DbgExprEvaluator::FixType(DbgType* dbgType)
 
 DbgTypedValue DbgExprEvaluator::FixThis(const DbgTypedValue& thisVal)
 {
-	/*if ((thisVal.mType != NULL) && (thisVal.mType->GetLanguage() == DbgLanguage_Beef) && 
+	/*if ((thisVal.mType != NULL) && (thisVal.mType->GetLanguage() == DbgLanguage_Beef) &&
 		(!thisVal.mType->IsBfObjectPtr()) && (thisVal.mType->IsPointer()))
 	{
 		// Beef structs expect 'this' as a valuetype, not a pointer
@@ -952,13 +952,13 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfTypeReference* typeRef)
 				else
 				{
 					Fail(StrFormat("Illegal array size type"), arrayTypeRef->mParams[0]);
-				}								
+				}
 
 				return mDbgModule->GetSizedArrayType(elementType, count);
 			}
 		}
 	}
-	
+
 	if (auto declTypeRef = BfNodeDynCastExact<BfExprModTypeRef>(typeRef))
 	{
 		mResult = DbgTypedValue();
@@ -981,7 +981,7 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfTypeReference* typeRef)
 			typeIdx = atoi(endPtr + 1);
 			mDebugTarget->mDbgModuleMap.TryGetValue(moduleIdx, &dbgModule);
 		}
-		
+
 		if ((dbgModule != NULL) && (typeIdx >= 0) && (typeIdx < (int)dbgModule->mTypes.size()))
 			return dbgModule->mTypes[typeIdx];
 	}
@@ -989,7 +989,7 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfTypeReference* typeRef)
 	auto entry = mDbgModule->mTypeMap.Find(name.c_str(), GetLanguage());
 	if (entry != NULL)
 		return FixType(entry->mValue);
-		
+
 	if (mExplicitThis)
 	{
 		bool isPtr = typeRef->IsA<BfPointerTypeRef>();
@@ -1005,7 +1005,7 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfTypeReference* typeRef)
 			checkType = checkType->mTypeParam;
 
 		ResolveSubTypeRef(checkType, name);
-	}		
+	}
 
 	auto currentType = GetCurrentType();
 	if (currentType != NULL)
@@ -1025,8 +1025,8 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfTypeReference* typeRef)
 }
 
 DbgType* DbgExprEvaluator::ResolveTypeRef(BfAstNode* typeRef, BfAstNode** parentChildRef)
-{	
-	StringT<128> name = typeRef->ToString();	
+{
+	StringT<128> name = typeRef->ToString();
 	if ((name.StartsWith("_T_")) && ((int)name.IndexOf('.') == -1))
 	{
 		int endIdx = name.length();
@@ -1050,7 +1050,7 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfAstNode* typeRef, BfAstNode** parent
 			typeIdx = atoi(endPtr + 1);
 			mDebugTarget->mDbgModuleMap.TryGetValue(moduleIdx, &dbgModule);
 		}
-		
+
 		if ((dbgModule != NULL) && (typeIdx >= 0) && (typeIdx < (int)dbgModule->mTypes.size()))
 		{
 			if ((mExplicitThisExpr != NULL) && (parentChildRef != NULL))
@@ -1070,7 +1070,7 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfAstNode* typeRef, BfAstNode** parent
 		if ((name[i] == ':') && (name[i - 1] == ':'))
 		{
 			name[i] = '.';
-			name.erase(name.begin() + i - 1);			
+			name.erase(name.begin() + i - 1);
 			i--;
 		}
 	}*/
@@ -1081,7 +1081,7 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfAstNode* typeRef, BfAstNode** parent
 		return entry->mValue;
 	auto currentType = GetCurrentType();
 	if (currentType != NULL)
-	{		
+	{
 		GetNamespaceSearch();
 		for (auto usingNamespace : mNamespaceSearch)
 		{
@@ -1096,7 +1096,7 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfAstNode* typeRef, BfAstNode** parent
 }
 
 DbgType* DbgExprEvaluator::ResolveTypeRef(const StringImpl& typeName)
-{	
+{
 	auto entry = mDbgModule->mTypeMap.Find(typeName.c_str(), GetLanguage());
 	if (entry != NULL)
 		return entry->mValue;
@@ -1121,12 +1121,12 @@ bool DbgExprEvaluator::TypeIsSubTypeOf(DbgType* srcType, DbgType* wantType, int*
 		return false;
 	if (srcType->Equals(wantType))
 		return true;
-	
+
 	if (srcType->mTypeCode == DbgType_TypeDef)
 		return TypeIsSubTypeOf(srcType->mTypeParam, wantType);
 	if (wantType->mTypeCode == DbgType_TypeDef)
 		return TypeIsSubTypeOf(srcType, wantType->mTypeParam);
-	
+
 	srcType->PopulateType();
 	for (auto srcBaseType : srcType->mBaseTypes)
 	{
@@ -1142,7 +1142,7 @@ bool DbgExprEvaluator::TypeIsSubTypeOf(DbgType* srcType, DbgType* wantType, int*
 				addr_target vtableAddr = 0;
 				gDebugger->ReadMemory(*thisAddr, sizeof(addr_target), &vtableAddr);
 				gDebugger->ReadMemory(vtableAddr + srcBaseType->mVTableOffset * sizeof(int32), sizeof(int32), &virtThisOffset);
-				
+
 				*thisOffset += virtThisOffset;
 			}
 			else if (thisOffset != NULL)
@@ -1165,7 +1165,7 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 
 		mDebugTarget->mTargetBinary->ParseTypeData();
 		auto typeTypeEntry = mDebugTarget->mTargetBinary->FindType("System.Type", DbgLanguage_Beef);
-		if ((typeTypeEntry != NULL) && (typeTypeEntry->mValue != NULL))			
+		if ((typeTypeEntry != NULL) && (typeTypeEntry->mValue != NULL))
 		{
 			auto typeType = typeTypeEntry->mValue;
 			mDebugTarget->mTargetBinary->mBfTypeType = typeType;
@@ -1178,13 +1178,13 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 				{
 					auto stackFrame = GetStackFrame();
 					DbgAddrType addrType;
-					mDebugTarget->mTargetBinary->mBfTypesInfoAddr = member->mCompileUnit->mDbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, stackFrame, &addrType);					
+					mDebugTarget->mTargetBinary->mBfTypesInfoAddr = member->mCompileUnit->mDbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, stackFrame, &addrType);
 				}
 			}
-			
+
 			if (mDebugTarget->mTargetBinary->mBfTypesInfoAddr <= 0)
 			{
-				mDebugTarget->mTargetBinary->ParseSymbolData();				
+				mDebugTarget->mTargetBinary->ParseSymbolData();
 				auto entry = mDebugTarget->mTargetBinary->mSymbolNameMap.Find(
 #ifdef BF_DBG_64
 					"?sTypes@Type@System@bf@@2PEAPEAV123@A"
@@ -1192,7 +1192,7 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 					"?sTypes@Type@System@bf@@2PAPAV123@A"
 #endif
 					);
-				
+
 				if (entry)
 					mDebugTarget->mTargetBinary->mBfTypesInfoAddr = entry->mValue->mAddress;
 			}
@@ -1283,7 +1283,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		_TypeId mTypeId;
 		_TypeId mBoxedType;
 		_TypeFlags mTypeFlags;
-		int32 mMemberDataOffset;		
+		int32 mMemberDataOffset;
 		_TypeCode mTypeCode;
 		uint8 mAlign;
 	};
@@ -1325,7 +1325,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 #else
 		int16 mPadding0;
 #endif
-		
+
 		addr_target mTypeClassVData;
 		addr_target mName;
 		addr_target mNamespace;
@@ -1336,14 +1336,14 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		_TypeId mUnderlyingType;
 		_TypeId mOuterType;
 		int32 mInheritanceId;
-		int32 mInheritanceCount;		
+		int32 mInheritanceCount;
 
 		uint8 mInterfaceSlot;
 		uint8 mInterfaceCount;
 		int16 mInterfaceMethodCount;
 		int16 mMethodDataCount;
 		int16 mPropertyDataCount;
-		int16 mFieldDataCount;		
+		int16 mFieldDataCount;
 
 #ifdef BF_DBG_32
 		int16 mPadding1;
@@ -1373,16 +1373,16 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		int32 mElementSize;
 		uint8 mRank;
 		uint8 mElemensDataOffset;
-	};	
+	};
 #pragma pack(pop)
-	
+
 	int typeIdSize = sizeof(_TypeId);
 	int ptrSize = (int)sizeof(addr_target);
 	int objectSize = mDebugTarget->mBfObjectSize;
 	int typeSize = sizeof(_Type);
 
 	int typeInstanceSize = objectSize + sizeof(_TypeInstance);
- 	
+
 	auto addr = useVal.mSrcAddress;
 	auto typeAddr = addr + objectSize;
 
@@ -1495,7 +1495,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 	}
 	else
 	{
-		BfTypeCode typeCode = (BfTypeCode)mDebugger->ReadMemory<uint8>(typeAddr + (int)offsetof(_Type, mTypeCode));	
+		BfTypeCode typeCode = (BfTypeCode)mDebugger->ReadMemory<uint8>(typeAddr + (int)offsetof(_Type, mTypeCode));
 		if (typeCode == BfTypeCode_Pointer)
 		{
 			_TypeId elementType = mDebugger->ReadMemory<_TypeId>(typeAddr + offsetof(_PointerType, mElementType));
@@ -1531,7 +1531,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		case BfTypeCode_Float: outStr += "float"; break;
 		case BfTypeCode_Double: outStr += "double"; break;
 		}
-	}	
+	}
 }
 
 CPUStackFrame* DbgExprEvaluator::GetStackFrame()
@@ -1577,10 +1577,10 @@ DbgTypedValue DbgExprEvaluator::GetRegister(const StringImpl& regName)
 		if (mCallStackIdx < (int)mDebugger->mCallStack.size())
 			regForms = &mDebugger->mCallStack[mCallStackIdx]->mRegForms;
 	}
-	DbgTypedValue result = mDebugger->GetRegister(regName, GetLanguage(), GetRegisters(), regForms);	
+	DbgTypedValue result = mDebugger->GetRegister(regName, GetLanguage(), GetRegisters(), regForms);
 	if ((result) && (mReferenceId != NULL))
 	{
-		int regNum = CPURegisters::GetCompositeRegister(result.mRegNum);		
+		int regNum = CPURegisters::GetCompositeRegister(result.mRegNum);
 		const char* regName = CPURegisters::GetRegisterName(regNum);
 		if (regName != NULL)
 			*mReferenceId = String("$") + regName;
@@ -1602,11 +1602,11 @@ DbgSubprogram* DbgExprEvaluator::GetCurrentMethod()
 	mDebugger->UpdateCallStackMethod(mCallStackIdx);
 	if (mCallStackIdx >= (int)mDebugger->mCallStack.size())
 		return NULL;
-	auto callStack = mDebugger->mCallStack[mCallStackIdx];		
+	auto callStack = mDebugger->mCallStack[mCallStackIdx];
 	auto subProgram = callStack->mSubProgram;
 	if (subProgram != NULL)
 		subProgram->PopulateSubprogram();
-	return subProgram;	
+	return subProgram;
 }
 
 DbgType* DbgExprEvaluator::GetCurrentType()
@@ -1720,7 +1720,7 @@ bool DbgExprEvaluator::CanCast(DbgTypedValue typedVal, DbgType* toType, BfCastFl
 	}
 
 	if ((fromType->IsPrimitiveType()) && (toType->IsPrimitiveType()))
-	{		
+	{
 		DbgTypeCode fromTypeCode = fromType->mTypeCode;
 		DbgTypeCode toTypeCode = toType->mTypeCode;
 		if ((fromTypeCode == toTypeCode))
@@ -1728,10 +1728,10 @@ bool DbgExprEvaluator::CanCast(DbgTypedValue typedVal, DbgType* toType, BfCastFl
 
 		// Must be from a default int to do an implicit constant cast, not casted by user, ie: (ushort)123
 		if ((toType->IsInteger()) /*&& (typedVal.mValue != NULL) && (fromTypeCode == DbgType_i32)*/)
-		{			
+		{
 			// Allow constant ints to be implicitly downcasted if they fit
 			if (typedVal.mIsLiteral)
-			{				
+			{
 				int64 srcVal = typedVal.GetInt64();
 				if (toType->IsSigned())
 				{
@@ -1783,10 +1783,10 @@ bool DbgExprEvaluator::CanCast(DbgTypedValue typedVal, DbgType* toType, BfCastFl
 			break;
 		case DbgType_u16:
 			switch (fromTypeCode)
-			{				
+			{
 			case DbgType_i8:
 				return true;
-			case DbgType_u8:			
+			case DbgType_u8:
 			case DbgType_UChar:
 			case DbgType_UChar16:
 				return true;
@@ -1910,14 +1910,14 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 {
 	if (!typedVal)
 		return typedVal;
-	
+
 	DbgType* fromType = typedVal.mType;
 	fromType = fromType->RemoveModifiers();
 	toType = toType->RemoveModifiers();
 
 	fromType = fromType->GetPrimaryType();
 	toType = toType->GetPrimaryType();
-	
+
 	if ((toType->IsBfObject()) && (fromType->IsPointer()))
 		toType = toType->GetDbgModule()->GetPointerType(toType);
 
@@ -1938,7 +1938,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 			}
 		}
 	}
-	
+
 	if (fromType == toType)
 		return typedVal;
 
@@ -1947,7 +1947,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 	{
 		DbgTypedValue val;
 		val.mPtr = typedVal.mPtr;
-		val.mType = toType;		
+		val.mType = toType;
 		return val;
 	}
 
@@ -1975,7 +1975,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		if (fromType->IsBfPayloadEnum())
 		{
 			if (!allowCast)
-			{				
+			{
 				for (auto member : fromType->mMemberList)
 				{
 					if (member->mType->Equals(toType))
@@ -2006,7 +2006,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 	{
 		intptr valAddr;
 		DbgType* valType;
-		DbgAddrType addrType = DbgAddrType_Value;				
+		DbgAddrType addrType = DbgAddrType_Value;
 		String findName = "$";
 		//BF_ASSERT(typedVal.mVariable != NULL);
 		if (typedVal.mVariable != NULL)
@@ -2014,8 +2014,8 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		findName += "$d";
 		if (mDebugTarget->GetValueByName(GetCurrentMethod(), findName, GetStackFrame(), &valAddr, &valType, &addrType))
 		{
-			return ReadTypedValue(srcNode, valType, valAddr, addrType);			
-		}		
+			return ReadTypedValue(srcNode, valType, valAddr, addrType);
+		}
 	}
 
 	// Optimized composite - probably stored in register
@@ -2058,7 +2058,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		}
 	}
 
-	if ((fromType->IsPointer()) && (fromType->mTypeParam->IsCompositeType()) &&		
+	if ((fromType->IsPointer()) && (fromType->mTypeParam->IsCompositeType()) &&
 		(toType->IsPointer()) && (toType->mTypeParam->IsCompositeType()))
 	{
 		auto fromInnerType = fromType->mTypeParam->RemoveModifiers();
@@ -2105,7 +2105,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		}
 	}
 
-	
+
 	// IFace -> object|IFace
 	if ((fromType->IsInterface()) ||
 		((fromType->IsPointer()) && (fromType->mTypeParam->IsInterface())))
@@ -2134,13 +2134,13 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 				val.mPtr = typedVal.GetPointer();
 			val.mType = toType;
 			return val;
-		}		
+		}
 	}
-	
+
 	// Enum -> Int
 	if ((((fromType->IsBfEnum()) || (fromType->IsEnum())) && (toType->IsInteger())) &&
 		((explicitCast) || (fromType == curTypeInstance)))
-	{		
+	{
 		DbgTypedValue result = typedVal;
 		result.mType = toType;
 		return result;
@@ -2150,14 +2150,14 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 	if (((fromType->IsInteger()) && ((toType->IsBfEnum()) || (toType->IsEnum()))) &&
 		((explicitCast) || (toType == curTypeInstance)))
 	{
-		DbgTypedValue result = typedVal;		
+		DbgTypedValue result = typedVal;
 		result.mType = toType;
 		return result;
 	}
 
 	// TypedPrimitive -> Primitive
 	if ((fromType->IsTypedPrimitive()) && (toType->IsPrimitiveType()))
-	{		
+	{
 		DbgTypedValue fromValue = typedVal;
 		fromValue.mType = fromType->GetBaseType();
 		return Cast(srcNode, fromValue, toType, explicitCast);
@@ -2178,7 +2178,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 
 	// Primitive -> TypedPrimitive
 	if ((fromType->IsPrimitiveType()) && (toType->IsTypedPrimitive()))
-	{		
+	{
 		DbgTypedValue primTypedVal = Cast(srcNode, typedVal, toType->GetBaseType(), true);
 		if (primTypedVal)
 		{
@@ -2186,10 +2186,10 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 			return primTypedVal;
 		}
 	}
-	
+
 
 	if ((fromType->IsPrimitiveType()) && (toType->IsPrimitiveType()))
-	{		
+	{
 		DbgTypeCode fromTypeCode = fromType->mTypeCode;
 		DbgTypeCode toTypeCode = toType->mTypeCode;
 
@@ -2200,7 +2200,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 			{
 				int64 srcVal = typedVal.GetInt64();
 				/*if (toType->IsSigned())
-				{					
+				{
 					int64 minVal = -(1LL << (8 * toType->mSize - 1));
 					int64 maxVal = (1LL << (8 * toType->mSize - 1)) - 1;
 					if ((srcVal >= minVal) && (srcVal <= maxVal))
@@ -2212,7 +2212,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 						explicitCast = true;
 				}
 				else
-				{					
+				{
 					int64 minVal = 0;
 					int64 maxVal = (1LL << (8 * toType->mSize)) - 1;
 					if ((srcVal >= minVal) && (srcVal <= maxVal))
@@ -2253,7 +2253,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 				}
 			}
 		}
-		
+
 		DbgTypedValue result;
 		result.mType = toType;
 		if (((fromType->IsInteger()) || (fromType->IsChar())) &&
@@ -2265,11 +2265,11 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		}
 
 		switch (toTypeCode)
-		{	
+		{
 		case DbgType_u8:
 		case DbgType_UChar:
 			switch (fromTypeCode)
-			{			
+			{
 			case DbgType_u8:
 			case DbgType_UChar:
 				return result;
@@ -2293,7 +2293,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		case DbgType_u16:
 		case DbgType_UChar16:
 			switch (fromTypeCode)
-			{			
+			{
 			case DbgType_i8:
 			case DbgType_SChar:
 				return result;
@@ -2323,11 +2323,11 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		case DbgType_UChar32:
 		case DbgType_u32:
 			switch (fromTypeCode)
-			{	
+			{
 			case DbgType_i8:
-			case DbgType_i16:			
+			case DbgType_i16:
 			case DbgType_SChar:
-			case DbgType_SChar16:			
+			case DbgType_SChar16:
 				return result;
 			case DbgType_u8:
 			case DbgType_u16:
@@ -2378,7 +2378,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		case DbgType_Single:
 			switch (fromTypeCode)
 			{
-			case DbgType_i8:	
+			case DbgType_i8:
 			case DbgType_i16:
 			case DbgType_i32:
 			case DbgType_i64:
@@ -2387,7 +2387,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 			case DbgType_SChar32:
 				result.mSingle = typedVal.GetInt64();
 				return result;
-			case DbgType_u8:			
+			case DbgType_u8:
 			case DbgType_u16:
 			case DbgType_u32:
 			case DbgType_u64:
@@ -2400,7 +2400,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 			break;
 		case DbgType_Double:
 			switch (fromTypeCode)
-			{			
+			{
 			case DbgType_i8:
 			case DbgType_i16:
 			case DbgType_i32:
@@ -2416,7 +2416,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 			case DbgType_u64:
 			case DbgType_UChar:
 			case DbgType_UChar16:
-			case DbgType_UChar32:			
+			case DbgType_UChar32:
 				result.mDouble = typedVal.GetInt64();
 				return result;
 			case DbgType_Single:
@@ -2445,7 +2445,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 			}
 
 			switch (toTypeCode)
-			{					
+			{
 			case DbgType_Single:
 				switch (fromTypeCode)
 				{
@@ -2469,7 +2469,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 					result.mSingle = (float)typedVal.mDouble;
 					return result;
 				}
-				break;			
+				break;
 			}
 		}
 	}
@@ -2478,11 +2478,11 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 	{
 		DbgTypedValue realTypedVal = typedVal;
 		realTypedVal.mType = fromType->mTypeParam;
-		return Cast(srcNode, realTypedVal, toType, explicitCast, silentFail);	
+		return Cast(srcNode, realTypedVal, toType, explicitCast, silentFail);
 	}
 
-	if (toType->mTypeCode == DbgType_TypeDef)	
-		return Cast(srcNode, typedVal, toType->mTypeParam, explicitCast, silentFail);	
+	if (toType->mTypeCode == DbgType_TypeDef)
+		return Cast(srcNode, typedVal, toType->mTypeParam, explicitCast, silentFail);
 
 	if (!silentFail)
 	{
@@ -2498,17 +2498,17 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 
 bool DbgExprEvaluator::HasField(DbgType* curCheckType, const StringImpl& fieldName)
 {
-	curCheckType = curCheckType->RemoveModifiers();	
-	curCheckType = curCheckType->GetPrimaryType();	
+	curCheckType = curCheckType->RemoveModifiers();
+	curCheckType = curCheckType->GetPrimaryType();
 	curCheckType->PopulateType();
 
 	for (auto checkMember : curCheckType->mMemberList)
 	{
 		if (checkMember->mName == NULL)
-		{							
+		{
 			auto checkResult = HasField(checkMember->mType, fieldName);
-			if (checkResult)									
-				return checkResult;	
+			if (checkResult)
+				return checkResult;
 		}
 		else if (checkMember->mName == fieldName)
 			return true;
@@ -2516,10 +2516,10 @@ bool DbgExprEvaluator::HasField(DbgType* curCheckType, const StringImpl& fieldNa
 
 	for (auto baseTypeEntry : curCheckType->mBaseTypes)
 	{
-		auto baseType = baseTypeEntry->mBaseType;		
+		auto baseType = baseTypeEntry->mBaseType;
 		auto result = HasField(baseType, fieldName);
 		if (result)
-			return result;		
+			return result;
 	}
 
 	//if (wantsStatic)
@@ -2536,7 +2536,7 @@ bool DbgExprEvaluator::HasField(DbgType* curCheckType, const StringImpl& fieldNa
 		}
 
 		for (auto altType : curCheckType->mAlternates)
-		{			
+		{
 			auto result = HasField(altType, fieldName);
 			if (result)
 				return result;
@@ -2547,7 +2547,7 @@ bool DbgExprEvaluator::HasField(DbgType* curCheckType, const StringImpl& fieldNa
 }
 
 DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValue target, DbgType* curCheckType, const StringImpl& fieldName, CPUStackFrame* stackFrame, bool allowImplicitThis)
-{	
+{
 	if (mStackSearch != NULL)
 	{
 		if (mStackSearch->mIdentifier == targetSrc)
@@ -2566,8 +2566,8 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 		wantsStatic = true;
 	}
 
-	curCheckType = curCheckType->RemoveModifiers();	
-	curCheckType = curCheckType->GetPrimaryType();	
+	curCheckType = curCheckType->RemoveModifiers();
+	curCheckType = curCheckType->GetPrimaryType();
 	curCheckType->PopulateType();
 
 	//BfLogDbgExpr("DoLookupField %s %s Priority=%d\n", fieldName.c_str(), curCheckType->mName, curCheckType->mPriority);
@@ -2575,20 +2575,20 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 	if ((curCheckType->mNeedsGlobalsPopulated) && ((curCheckType->IsNamespace()) || (curCheckType->IsRoot())))
 	{
 		// Global variables don't show up in any type declaration like static fields do, so we need to populate here
-		mDbgModule->PopulateTypeGlobals(curCheckType);	
+		mDbgModule->PopulateTypeGlobals(curCheckType);
 	}
 
 	/*auto checkMember = curCheckType->mMemberList.mHead;
 	while (checkMember != NULL)*/
 
-	String findFieldName = fieldName;	
+	String findFieldName = fieldName;
 	if ((language == DbgLanguage_Beef) && (flavor == DbgFlavor_MS) && (target.mHasNoValue))
 	{
 		//if ((curCheckType->IsRoot()) || (curCheckType->IsNamespace()))
 			//findFieldName.insert(0, "bf__");
 	}
-	
-	//for (auto checkMember : curCheckType->mMemberList)	
+
+	//for (auto checkMember : curCheckType->mMemberList)
 	auto nextMember = curCheckType->mMemberList.mHead;
 	while (nextMember != NULL)
 	{
@@ -2596,7 +2596,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 		nextMember = checkMember->mNext;
 
 		if (checkMember->mName == NULL)
-		{				
+		{
 			//TODO: Check inside anonymous type
 			DbgTypedValue innerTarget;
 
@@ -2609,11 +2609,11 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 			innerTarget.mType = checkMember->mType;
 
 			auto checkResult = LookupField(targetSrc, innerTarget, fieldName);
-			if (checkResult)									
-				return checkResult;				
+			if (checkResult)
+				return checkResult;
 		}
 		else if (checkMember->mName == findFieldName)
-		{	
+		{
 			//BfLogDbgExpr(" Got Match\n");
 
 			//TODO:
@@ -2625,14 +2625,14 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 			return DbgTypedValue(fieldInstance->mStaticValue, fieldInstance->mType);
 			}*/
 
-			//checkMember->mMemberOffset				
+			//checkMember->mMemberOffset
 
 			if (mReferenceId != NULL)
 			{
 				if (curCheckType->IsRoot())
 					*mReferenceId = fieldName;
 				else if (curCheckType->IsEnum())
-					*mReferenceId = curCheckType->ToString();				
+					*mReferenceId = curCheckType->ToString();
 				else
 					*mReferenceId = curCheckType->ToString() + "." + fieldName;
 			}
@@ -2646,7 +2646,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 						mDbgModule->PopulateTypeGlobals(curCheckType);
 						return DoLookupField(targetSrc, target, curCheckType, fieldName, stackFrame, allowImplicitThis);
 					}
-					
+
 					/*String memberName = curCheckType->ToString() + "::" + checkMember->mName;
 					mDbgModule->ParseSymbolData();
 					auto entry = mDbgModule->mSymbolNameMap.Find(memberName.c_str());
@@ -2665,8 +2665,8 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 						BF_ASSERT("Static field not found" == 0);
 					}*/
 				}
-				else 
-				{	
+				else
+				{
 					continue;
 
 					//BF_FATAL("Unhandled");
@@ -2734,10 +2734,10 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 				Fail("Static variable not found, may have be optimized out", targetSrc);
 				//BfLogDbgExpr(" Static variable optimized out\n");
 			}
-			else 
+			else
 			{
 				if ((allowImplicitThis) && (target.mPtr == 0))
-					target = GetThis();	
+					target = GetThis();
 
 				if (!target)
 				{
@@ -2766,7 +2766,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 				}
 
 				if (checkMember->mBitSize != 0)
-				{						
+				{
 					int expectedShift = (checkMember->mType->mSize * 8) - checkMember->mBitSize;
 					int shift = expectedShift - checkMember->mBitOffset;
 
@@ -2808,11 +2808,11 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 					methodNameEntry->mCompileUnitId = -1;
 				}
 			}
-		}		
+		}
 	}
 
 	for (int pass = 0; pass < 2; pass++)
-	{		
+	{
 		for (auto method : curCheckType->mMethodList)
 		{
 			if (method->mName != NULL)
@@ -2836,7 +2836,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 								continue;
 						}
 
-						DbgSubprogram*& subprogramRef = isGetter ? mPropGet : mPropSet;						
+						DbgSubprogram*& subprogramRef = isGetter ? mPropGet : mPropSet;
 
 						if ((subprogramRef == NULL) ||
 							((!method->mHasThis) && (wantsStatic)) ||
@@ -2846,11 +2846,11 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 							{
 								target = GetThis();
 							}
-							
+
 							if (subprogramRef == NULL)
 								subprogramRef = method;
 							else if ((method->mVTableLoc != -1) || (subprogramRef->mVTableLoc == -1))
-								subprogramRef = method;							
+								subprogramRef = method;
 						}
 					}
 				}
@@ -2865,9 +2865,9 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 				continue;
 
 			if (method->mBlock.mLowPC == 0)
-			{				
+			{
 				if (!curCheckType->mHasGlobalsPopulated)
-					mDbgModule->PopulateTypeGlobals(curCheckType);				
+					mDbgModule->PopulateTypeGlobals(curCheckType);
 				for (auto methodNameEntry : curCheckType->mMethodNameList)
 				{
 					const char* methodName = methodNameEntry->mName;
@@ -2902,8 +2902,8 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 	}
 	}*/
 
-	
-	//curCheckType = curCheckType->GetBaseType();	
+
+	//curCheckType = curCheckType->GetBaseType();
 
 	for (auto baseTypeEntry : curCheckType->mBaseTypes)
 	{
@@ -2919,7 +2919,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 		if (ptrRef != NULL)
 		{
 			if (baseTypeEntry->mVTableOffset != -1)
-			{				
+			{
 				addr_target vtableAddr = mDebugger->ReadMemory<addr_target>(target.mPtr);
 				int32 virtThisOffset = mDebugger->ReadMemory<int32>(vtableAddr + baseTypeEntry->mVTableOffset * sizeof(int32));
 				*ptrRef += virtThisOffset;
@@ -2931,9 +2931,9 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 		//BF_ASSERT(baseTypeEntry->mVTableOffset == -1);
 		auto result = DoLookupField(targetSrc, baseTarget, baseType, fieldName, stackFrame, allowImplicitThis);
 		if (result)
-			return result;		
+			return result;
 	}
-	
+
 	if (wantsStatic)
 	{
 		// Look for statics in anonymous inner classes
@@ -2946,7 +2946,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 			{
 				if ((checkSubType->IsGlobalsContainer()) && (checkSubType->mPriority <= DbgTypePriority_Normal))
 					continue;
-				auto rawCheckSubType = checkSubType->RemoveModifiers();				
+				auto rawCheckSubType = checkSubType->RemoveModifiers();
 				auto result = DoLookupField(targetSrc, DbgTypedValue(), rawCheckSubType, fieldName, stackFrame, false);
 				if (result)
 					return result;
@@ -2955,7 +2955,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 
 		//Turn alternates back on!
 		/*for (auto altType : curCheckType->mAlternates)
-		{			
+		{
 			auto result = DoLookupField(targetSrc, DbgTypedValue(), altType, fieldName, stackFrame, false);
 			if (result)
 				return result;
@@ -2966,10 +2966,10 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 }
 
 DbgTypedValue DbgExprEvaluator::LookupField(BfAstNode* targetSrc, DbgTypedValue target, const StringImpl& fieldName)
-{	
+{
 	CPUStackFrame* stackFrame = GetStackFrame();
-		
-	DbgType* curCheckType = NULL;	
+
+	DbgType* curCheckType = NULL;
 	/*if (currentMethod != NULL)
 		curCheckType = currentMethod->mParentType;*/
 	DbgType* curMethodType = curCheckType;
@@ -2984,13 +2984,13 @@ DbgTypedValue DbgExprEvaluator::LookupField(BfAstNode* targetSrc, DbgTypedValue 
 		}
 		else
 		{
-			curCheckType = target.mType;			
+			curCheckType = target.mType;
 		}
 		BF_ASSERT(curCheckType != NULL);
 	}
 	else if (target.mType != NULL)
 		curCheckType = target.mType;
-	
+
 	if (curCheckType != NULL)
 	{
 		curCheckType = curCheckType->RemoveModifiers();
@@ -3005,9 +3005,9 @@ DbgTypedValue DbgExprEvaluator::LookupField(BfAstNode* targetSrc, DbgTypedValue 
 		if (currentMethod != NULL)
 		{
 			curCheckType = currentMethod->GetTargetType();
-			allowImplicitThis = currentMethod->mHasThis;			
+			allowImplicitThis = currentMethod->mHasThis;
 		}
-	}	
+	}
 
 	//SetAndRestoreValue<DbgType*> prevTypeInstance(curMethodType, curCheckType);
 
@@ -3029,7 +3029,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 	if (addrType == DbgAddrType_Alias)
 	{
 		String findName = (const char*)valAddr;
-		
+
 		if (targetSrc == NULL)
 			return DbgTypedValue();
 
@@ -3042,12 +3042,12 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 		int srcStart = bfParser->AllocChars(findName.length());
 		memcpy((char*)source->mSrc + srcStart, findName.c_str(), findName.length());
 		identifierNode->Init(srcStart, srcStart, srcStart + findName.length());
-		
+
 		SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
 		auto result = LookupIdentifier(identifierNode);
 		if (result)
 			return result;
-				
+
 		// Allow lookup in calling method if we are inlined (for mixin references)
 		auto currentMethod = GetCurrentMethod();
 		if ((currentMethod != NULL) && (currentMethod->mInlineeInfo != NULL))
@@ -3082,12 +3082,12 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 	}
 
 	if (addrType == DbgAddrType_NoValue)
-	{		
+	{
 		mPassInstance->Fail(StrFormat("No value", valAddr));
 		return DbgTypedValue();
 	}
 	else if (addrType == DbgAddrType_OptimizedOut)
-	{		
+	{
 		mPassInstance->Fail(StrFormat("Optimized out", valAddr));
 		return DbgTypedValue();
 	}
@@ -3097,7 +3097,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 	while (true)
 	{
 		if (dbgType->mTypeCode == DbgType_Const)
-		{			
+		{
 			dbgType = mDbgModule->GetInnerTypeOrVoid(dbgType);
 		}
 		else if ((dbgType->mTypeCode == DbgType_TypeDef) || (dbgType->mTypeCode == DbgType_Volatile))
@@ -3115,7 +3115,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 				if (addrType == DbgAddrType_Register)
 				{
 					auto registers = GetRegisters();
-					valAddr = registers->mIntRegsArray[valAddr]; 
+					valAddr = registers->mIntRegsArray[valAddr];
 				}
 
 				//valIsAddr = true;
@@ -3129,27 +3129,27 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 				if (addrType == DbgAddrType_Register)
 				{
 					auto registers = GetRegisters();
-					valAddr = registers->mIntRegsArray[valAddr]; 
+					valAddr = registers->mIntRegsArray[valAddr];
 				}
 				addrType = DbgAddrType_Target;
 			}
-			dbgType = dbgType->mTypeParam;			
+			dbgType = dbgType->mTypeParam;
 		}
 		else
 			break;
 	}
 
 	dbgType = dbgType->GetPrimaryType();
-	
+
 	if (dbgType->GetByteCount() == 0)
-	{			
+	{
 		DbgTypedValue result;
 		result.mType = dbgType;
 		return result;
 	}
 
 	if (dbgType->mTypeCode == DbgType_Bitfield)
-	{		
+	{
 		DbgType* underlyingType = dbgType->mTypeParam;
 		DbgTypedValue result = ReadTypedValue(targetSrc, dbgType->mTypeParam, valAddr, addrType);
 		result.mType = dbgType;
@@ -3174,7 +3174,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 	bool valIsAddr = (addrType == DbgAddrType_Local) || (addrType == DbgAddrType_Target);
 
 	DbgTypedValue result;
-	result.mType = origDwType;	
+	result.mType = origDwType;
 
 	if (addrType == DbgAddrType_Register)
 	{
@@ -3182,7 +3182,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 
 		auto registers = GetRegisters();
 		if (result.mRegNum < CPURegisters::kNumIntRegs)
-			result.mUInt64 = registers->mIntRegsArray[result.mRegNum]; 
+			result.mUInt64 = registers->mIntRegsArray[result.mRegNum];
 		else if ((result.mRegNum >= CPUReg_XMMREG_FIRST) && (result.mRegNum <= CPUReg_XMMREG_LAST))
 		{
 			auto dwType = origDwType->RemoveModifiers();
@@ -3213,11 +3213,11 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 		dbgType = dbgType->mTypeParam;
 
 	switch (dbgType->mTypeCode)
-	{	
+	{
 	case DbgType_Void:
 		break;
 
-	case DbgType_Bool:	
+	case DbgType_Bool:
 	case DbgType_i8:
 	case DbgType_u8:
 	case DbgType_SChar:
@@ -3263,7 +3263,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 	case DbgType_Struct:
 	case DbgType_Class:
 	case DbgType_Union:
-	case DbgType_SizedArray:		
+	case DbgType_SizedArray:
 		if (((dbgType->IsTypedPrimitive()) || (local)) && (dbgType->GetByteCount() <= 8))
 		{
 			mDebugger->ReadMemory(valAddr, dbgType->GetByteCount(), &result.mInt64, local);
@@ -3278,7 +3278,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 				result.mSrcAddress = (addr_target)valAddr;
 		}
 			//result.mPtr = (addr_target)valAddr;
-		break;	
+		break;
 
 	//TODO: Why was it treated as a pointer
 	//case DbgType_SizedArray:
@@ -3289,10 +3289,10 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 			result.mPtr = valAddr;
 		break;
 
-	case DbgType_Enum:		
+	case DbgType_Enum:
 		result = ReadTypedValue(targetSrc, dbgType->mTypeParam, valAddr, addrType);
 		if (result)
-			result.mType = dbgType;		
+			result.mType = dbgType;
 		break;
 
 	case DbgType_Subroutine:
@@ -3307,12 +3307,12 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 #ifdef BF_DBG_32
 				if ((symbolName.length() > 0) && (symbolName[0] == '_'))
 					symbolName = symbolName.Substring(1);
-#endif				
+#endif
 				static String demangledName;
 				demangledName = BfDemangler::Demangle(symbolName, dbgType->GetLanguage());
 
-				DbgTypedValue result;				
-				result.mCharPtr = demangledName.c_str();				
+				DbgTypedValue result;
+				result.mCharPtr = demangledName.c_str();
 			}
 			else
 			{
@@ -3411,16 +3411,16 @@ DbgTypedValue DbgExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, DbgType*
 		Fail("Address for enum cannot be inferred", targetSrc);
 		return DbgTypedValue();
 	}
-	
+
 	enumType = enumType->RemoveModifiers();
 	enumType = enumType->GetPrimaryType();
 
-	int caseNum = -1;	
+	int caseNum = -1;
 	DbgVariable* matchedMember = NULL;
 	for (auto member : enumType->mMemberList)
 	{
 		if ((member->mName[0] == '_') && (member->mName[1] >= '0') && (member->mName[1] <= '9'))
-		{			
+		{
 			for (int i = 1; true; i++)
 			{
 				if (member->mName[i] == '_')
@@ -3477,11 +3477,11 @@ void DbgExprEvaluator::AutocompleteCheckType(BfTypeReference* typeReference)
 	else if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeReference))
 	{
 		if (IsAutoCompleteNode(qualifiedTypeRef->mLeft))
-		{			
+		{
 			AutocompleteCheckType(qualifiedTypeRef->mLeft);
 			return;
 		}
-		
+
 		auto dbgType = ResolveTypeRef(qualifiedTypeRef->mLeft);
 		if (dbgType != NULL)
 		{
@@ -3499,7 +3499,7 @@ void DbgExprEvaluator::AutocompleteCheckType(BfTypeReference* typeReference)
 			}
 			AutocompleteAddMembers(dbgType, false, false, filter);
 		}
-	}	
+	}
 	else if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(typeReference))
 	{
 		AutocompleteCheckType(elementedTypeRef->mElementType);
@@ -3580,22 +3580,22 @@ void DbgExprEvaluator::AutocompleteAddTopLevelTypes(const StringImpl& filter)
 }
 
 DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError, bool* hadError)
-{			
+{
 	if (!mDebugger->mIsRunning)
 		return DbgTypedValue();
-	
+
 	auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(identifierNode);
 	if (qualifiedNameNode != NULL)
 	{
 		LookupQualifiedName(qualifiedNameNode, ignoreInitialError, hadError);
-		auto qualifiedResult = mResult;		
+		auto qualifiedResult = mResult;
 		mResult = DbgTypedValue();
 		return qualifiedResult;
-	}	
+	}
 
-	String findName = identifierNode->ToString();	
+	String findName = identifierNode->ToString();
 	if ((findName.StartsWith('$')) && (findName != "$prim"))
-	{	
+	{
 		if (IsAutoCompleteNode(identifierNode))
 		{
 			String filter = identifierNode->ToString();
@@ -3620,8 +3620,8 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 			return GetString(mDebugger->mActiveThread->mName);
 		else if (findName == "$TargetName")
 			return GetString(GetFileName(mDebugTarget->mTargetPath));
-		else if (findName == "LaunchName")					
-			return GetString(GetFileName(mDebugTarget->mLaunchBinary->mFilePath));		
+		else if (findName == "LaunchName")
+			return GetString(GetFileName(mDebugTarget->mLaunchBinary->mFilePath));
 		else if (findName == "$TargetPath")
 			return GetString(mDebugTarget->mTargetPath);
 		else if (findName == "$ModuleName")
@@ -3659,7 +3659,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 	if (mExplicitThis)
 	{
 		if ((mExplicitThis.mSrcAddress == -1) && ((DbgVariable*)mExplicitThis.mVariable != NULL))
-		{			
+		{
 			mResult = DbgTypedValue();
 			LookupSplatMember(mExplicitThis, findName);
 			result = mResult;
@@ -3668,11 +3668,11 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 		else if (!result)
 		{
 			mExplicitThis.mType = mExplicitThis.mType->RemoveModifiers();
-			result = LookupField(identifierNode, mExplicitThis, findName);			
+			result = LookupField(identifierNode, mExplicitThis, findName);
 		}
 
 		if (result)
-		{			
+		{
 			if (mExplicitThisExpr != NULL)
 				mDeferredInsertExplicitThisVector.push_back(NodeReplaceRecord(identifierNode, mCurChildRef));
 			return result;
@@ -3681,14 +3681,14 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 
 	CPUStackFrame* stackFrame = GetStackFrame();
 	auto language = GetLanguage();
-	
+
 	intptr valAddr;
 	DbgType* valType;
-	DbgAddrType addrType = DbgAddrType_None;	
+	DbgAddrType addrType = DbgAddrType_None;
 
 	if (IsAutoCompleteNode(identifierNode))
-	{		
-		String filter = identifierNode->ToString();		
+	{
+		String filter = identifierNode->ToString();
 
 		DbgType* dbgType = NULL;
 
@@ -3702,19 +3702,19 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 			else if (!thisVal)
 				dbgType = currentMethod->GetTargetType();
 		}
-		
+
 		Array<String> capturedNames;
 		Array<DbgType*> capturedTypes;
 		mDebugTarget->mCapturedNamesPtr = &capturedNames;
 		mDebugTarget->mCapturedTypesPtr = &capturedTypes;
-		{			
+		{
 			mDebugTarget->GetValueByName(GetCurrentMethod(), "*", stackFrame, &valAddr, &valType, &addrType);
 		}
 		mDebugTarget->mCapturedNamesPtr = NULL;
 		mDebugTarget->mCapturedTypesPtr = NULL;
 		auto language = GetLanguage();
 		BF_ASSERT(capturedTypes.size() == capturedNames.size());
-		{			
+		{
 			//for (auto capturedName : capturedNames)
 			for (int i = 0; i < (int)capturedNames.size(); i++)
 			{
@@ -3736,7 +3736,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 		}
 
 		if (dbgType != NULL)
-		{						
+		{
 			dbgType = dbgType->RemoveModifiers();
 			if (dbgType->IsPointerOrRef())
 			{
@@ -3745,7 +3745,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 			}
 			if (dbgType->mIsDeclaration)
 				dbgType = dbgType->GetPrimaryType();
-			
+
 			bool wantsStatic = true;
 			bool wantsNonStatic = currentMethod->mHasThis;
 			// In Beef, we can only access statics by class name
@@ -3761,7 +3761,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 					if (currentMethod != NULL)
 					{
 						if (strstr(currentMethod->mName, "operator()") != NULL)
-						{							
+						{
 							if (mDebugTarget->GetValueByName(currentMethod, "this", stackFrame, &valAddr, &valType, &addrType))
 							{
 								valType = valType->RemoveModifiers();
@@ -3769,7 +3769,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 									valType = valType->mTypeParam;
 								valType = valType->RemoveModifiers();
 								AutocompleteAddMembers(valType, true, true, filter, true);
-							}							
+							}
 						}
 					}
 				}
@@ -3795,13 +3795,13 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 
 		mAutoComplete->mInsertStartIdx = identifierNode->GetSrcStart();
 		mAutoComplete->mInsertEndIdx = identifierNode->GetSrcEnd();
-		
-		AutocompleteAddTopLevelTypes(filter);		
+
+		AutocompleteAddTopLevelTypes(filter);
 	}
-	
+
 	if (language == DbgLanguage_C)
 	{
-		// For C++ lambdas, captured a "this" is named "__this", so allow lookups into that		
+		// For C++ lambdas, captured a "this" is named "__this", so allow lookups into that
 		auto currentMethod = GetCurrentMethod();
 		if (currentMethod != NULL)
 		{
@@ -3829,7 +3829,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 		return GetThis();
 	if (findName == "_")
 	{
-		if (mSubjectValue)			
+		if (mSubjectValue)
 		{
 			if (mSubjectValue.mSrcAddress != 0)
 			{
@@ -3839,7 +3839,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 			}
 			return mSubjectValue;
 		}
-		
+
 		if (!mSubjectExpr.IsEmpty())
 		{
 			DwFormatInfo formatInfo;
@@ -3857,7 +3857,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 	}
 
 	if (stackFrame != NULL)
-	{				
+	{
 		if (mDebugTarget->GetValueByName(GetCurrentMethod(), findName, stackFrame, &valAddr, &valType, &addrType))
 		{
 			//BF_ASSERT(valType != NULL);
@@ -3883,10 +3883,10 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 		}
 	}
 
-	bool isClosure = false;	
+	bool isClosure = false;
 
 	if (language == DbgLanguage_Beef)
-	{		
+	{
 		intptr valAddr;
 		DbgType* valType;
 		//bool valIsAddr = false;
@@ -3929,23 +3929,23 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 		}
 	}*/
 
-	if (!isClosure) 
+	if (!isClosure)
 	{
 		// This uses an incorrect 'this' in the case of a closure
 		result = LookupField(identifierNode, DbgTypedValue(), findName);
 		if ((result) || (HasPropResult()))
-			return result;		
+			return result;
 	}
-	
-	result = GetRegister(findName);	
+
+	result = GetRegister(findName);
 	if ((result) || (HasPropResult()))
-	{		
+	{
 		return result;
 	}
 
 	mDbgModule->ParseGlobalsData();
 	for (auto compileUnit : mDbgModule->mCompileUnits)
-	{	
+	{
 		if (mDbgCompileUnit == NULL)
 			continue;
 		if ((compileUnit->mLanguage != DbgLanguage_Unknown) && (compileUnit->mLanguage != mDbgCompileUnit->mLanguage))
@@ -3967,28 +3967,28 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 		auto dbgType = currentMethod->mParentType;
 		if (dbgType->IsPointerOrRef())
 			dbgType = dbgType->mTypeParam;
-		
-		auto curAlloc = &dbgType->mCompileUnit->mDbgModule->mAlloc;			
+
+		auto curAlloc = &dbgType->mCompileUnit->mDbgModule->mAlloc;
 
 		result = DoLookupField(identifierNode, DbgTypedValue(), dbgType, findName, NULL, false);
 		if ((result) || (HasPropResult()))
 			return result;
-		
+
 		GetNamespaceSearch();
 		for (auto usingNamespace : mNamespaceSearch)
-		{			
+		{
 			usingNamespace = usingNamespace->GetPrimaryType();
 			result = DoLookupField(identifierNode, DbgTypedValue(), usingNamespace, findName, NULL, false);
 			if ((result) || (HasPropResult()))
 				return result;
 
 			for (auto checkNamespace : usingNamespace->mAlternates)
-			{				
+			{
 				result = DoLookupField(identifierNode, DbgTypedValue(), checkNamespace, findName, NULL, false);
-				if ((result) || (HasPropResult()))				
-					return result;					
+				if ((result) || (HasPropResult()))
+					return result;
 			}
-		}		
+		}
 	}
 
 	return DbgTypedValue();
@@ -3997,7 +3997,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError, bool* hadError)
 {
 	if ((mStackSearch != NULL) && (mStackSearch->mIdentifier == NULL))
-	{		
+	{
 		mStackSearch->mIdentifier = identifierNode;
 		mStackSearch->mStartingStackIdx = mCallStackIdx;
 
@@ -4005,7 +4005,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 
 		StringT<256> findStr;
 		for (int i = 0; i < mStackSearch->mSearchStr.mLength; i++)
-		{			
+		{
 			char c = mStackSearch->mSearchStr[i];
 
 			if (c == '^')
@@ -4032,7 +4032,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 			{
 				mDebugger->UpdateCallStackMethod(mCallStackIdx);
 				if (stackFrame->mSubProgram != NULL)
-				{	
+				{
 					int strLen = strlen(stackFrame->mSubProgram->mName);
 					if (strLen >= findStr.mLength)
 					{
@@ -4086,11 +4086,11 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 
 	auto binaryOp = BfAssignOpToBinaryOp(assignExpr->mOp);
 
-	//auto ptr = mModule->GetOrCreateVarAddr(assignExpr->mLeft);	
+	//auto ptr = mModule->GetOrCreateVarAddr(assignExpr->mLeft);
 	VisitChild(assignExpr->mLeft);
 	if ((!mResult) && (!HasPropResult()))
 		return;
-		
+
 	if (HasPropResult())
 	{
 		if (mPropSet == NULL)
@@ -4103,7 +4103,7 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 		auto propSet = mPropSet;
 		auto propTarget = mPropTarget;
 		auto indexerValues = mIndexerValues;
-		
+
 		auto indexerExprValues = mIndexerExprValues;
 		mPropGet = NULL;
 		mPropSet = NULL;
@@ -4125,15 +4125,15 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 			PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, true);
 			if (!mResult)
 				return;
-			convVal = mResult;			
+			convVal = mResult;
 		}
 		else
 		{
-			convVal = CreateValueFromExpression(assignExpr->mRight, valueParam->mType);			
+			convVal = CreateValueFromExpression(assignExpr->mRight, valueParam->mType);
 		}
 		if (!convVal)
 			return;
-		
+
 
 // 		SizedArray<DbgTypedValue, 4> argPushQueue;
 // 		if (propSet->mHasThis)
@@ -4142,12 +4142,12 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 // 			argPushQueue.push_back(indexer);
 // 		argPushQueue.push_back(convVal);
 // 		if (propSet->mParams.Size() == argPushQueue.size())
-// 		{			
+// 		{
 // 			mResult = CreateCall(propSet, argPushQueue, false);
-// 		
+//
 //		}
 
-		indexerExprValues.push_back(assignExpr->mRight);		
+		indexerExprValues.push_back(assignExpr->mRight);
 		indexerValues.push_back(convVal);
 		mResult = CreateCall(propSrc, propTarget, propSet, false, indexerExprValues, indexerValues);
 
@@ -4155,13 +4155,13 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 	}
 
 	GetResult();
-	auto ptr = mResult;	
+	auto ptr = mResult;
 	mResult = DbgTypedValue();
-	
+
 	if (binaryOp != NULL)
 	{
 		PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, true);
-	}	
+	}
 	else
 	{
 		SetAndRestoreValue<DbgTypedValue*> prevReceiveValue(mReceivingValue, &ptr);
@@ -4178,7 +4178,7 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 	}
 	if (!mResult)
 		return;
-	
+
 	if ((ptr.mType->mTypeCode == DbgType_Ref) || (ptr.mType->mTypeCode == DbgType_RValueReference))
 		ptr.mType = ptr.mType->mTypeParam;
 
@@ -4197,14 +4197,14 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 	mResult = Cast(assignExpr->mRight, mResult, ptr.mType, true);
 	if (!mResult)
 		return;
-	
+
 	if ((mExpressionFlags & DwEvalExpressionFlag_AllowSideEffects) == 0)
-	{		
+	{
 		mBlockedSideEffects = true;
 		return;
 	}
 
-	StoreValue(ptr, mResult, assignExpr->mLeft);	
+	StoreValue(ptr, mResult, assignExpr->mLeft);
 }
 
 bool DbgExprEvaluator::StoreValue(DbgTypedValue& ptr, DbgTypedValue& value, BfAstNode* refNode)
@@ -4272,7 +4272,7 @@ bool DbgExprEvaluator::StoreValue(DbgTypedValue& ptr, BfExpression* expr)
 		return true; // Already written
 	if (!result)
 		return false;
-	
+
 	return StoreValue(ptr, result, expr);;
 }
 
@@ -4301,22 +4301,22 @@ DbgTypedValue DbgExprEvaluator::GetResult()
 		{
 			if (mPropGet == NULL)
 			{
-				Fail("Property has no getter", mPropSrc);				
+				Fail("Property has no getter", mPropSrc);
 			}
 			else
 			{
 // 				SizedArray<DbgTypedValue, 4> argPushQueue;
 // 				auto curParam = mPropGet->mParams.mHead;
 // 				if (mPropGet->mHasThis)
-// 				{				
+// 				{
 // 					argPushQueue.push_back(mPropTarget);
 // 					if (curParam != NULL)
 // 						curParam = curParam->mNext;
 // 				}
 // 				bool failed = false;
-// 				for (int indexerIdx = 0; indexerIdx < (int)mIndexerValues.size(); indexerIdx++)				
+// 				for (int indexerIdx = 0; indexerIdx < (int)mIndexerValues.size(); indexerIdx++)
 // 				{
-// 					auto val = mIndexerValues[indexerIdx];					
+// 					auto val = mIndexerValues[indexerIdx];
 // 					if (curParam != NULL)
 // 					{
 // 						val = Cast(mPropSrc, val, curParam->mType);
@@ -4327,7 +4327,7 @@ DbgTypedValue DbgExprEvaluator::GetResult()
 // 						}
 // 					}
 // 					argPushQueue.push_back(val);
-// 
+//
 // 					if (curParam != NULL)
 // 						curParam = curParam->mNext;
 // 				}
@@ -4342,7 +4342,7 @@ DbgTypedValue DbgExprEvaluator::GetResult()
 // 						Fail("Indexer parameter count mismatch", mPropSrc);
 // 					}
 // 				}
-				
+
 				SetAndRestoreValue<DwEvalExpressionFlags> prevFlags(mExpressionFlags);
 				if ((mExpressionFlags & DwEvalExpressionFlag_AllowPropertyEval) != 0)
 					mExpressionFlags = (DwEvalExpressionFlags)(mExpressionFlags | DwEvalExpressionFlag_AllowCalls);
@@ -4430,7 +4430,7 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 	// Don't get primary type for namespace, causes mAlternates infinite loop
 	if (!dbgType->IsNamespace())
 		dbgType = dbgType->GetPrimaryType();
-	
+
 	// false/false means just add subtypes
 	if ((wantsStatic) || (!wantsNonStatic))
 	{
@@ -4439,7 +4439,7 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 		{
 			if (subType->mLanguage != language)
 			{
-				// Ignore				
+				// Ignore
 			}
 			else if (subType->mTypeName == NULL)
 			{
@@ -4473,7 +4473,7 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 						if (subType->IsBfObject())
 							entry->mEntryType = "class";
 						else if (subType->IsNamespace())
-							entry->mEntryType = "namespace";							
+							entry->mEntryType = "namespace";
 						else
 							entry->mEntryType = "valuetype";
 					}
@@ -4508,7 +4508,7 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 		return;
 
 	for (auto member : dbgType->mMemberList)
-	{		
+	{
 		if (((member->mIsStatic) && (wantsStatic)) ||
 			((!member->mIsStatic) && (wantsNonStatic)))
 		{
@@ -4517,7 +4517,7 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 			{
 				if (member->mName[0] == '?')
 					continue;
-								
+
 				mAutoComplete->AddEntry(AutoCompleteEntry(GetTypeName(member->mType), name), filter);
 
 				if ((isCapture) && (strcmp(member->mName, "__this") == 0))
@@ -4554,12 +4554,12 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 	}
 
 	for (auto method : dbgType->mMethodList)
-	{	
+	{
 		if (((!method->mHasThis) && (wantsStatic)) ||
 			((method->mHasThis) && (wantsNonStatic)))
-		{					
+		{
 			if ((method->mName != NULL) && (strcmp(method->mName, "this") != 0))
-			{				
+			{
 				mDbgModule->FindTemplateStr(method->mName, method->mTemplateNameIdx);
 				if (method->mTemplateNameIdx == -1)
 				{
@@ -4573,7 +4573,7 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 	{
 		BF_ASSERT(!dbgType->mMethodList.IsEmpty());
 	}*/
-	
+
 	/*
 	for (auto methodNameEntry : dbgType->mMethodNameList)
 	{
@@ -4584,7 +4584,7 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 	for (auto baseTypeEntry : dbgType->mBaseTypes)
 	{
 		AutocompleteAddMembers(baseTypeEntry->mBaseType, wantsStatic, wantsNonStatic, filter);
-	}	
+	}
 }
 
 void DbgExprEvaluator::AutocompleteCheckMemberReference(BfAstNode* target, BfAstNode* dotToken, BfAstNode* memberName)
@@ -4699,12 +4699,12 @@ void DbgExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 	}*/
 
 	auto flavor = GetFlavor();
-	
+
 	String findName;
 	BfAstNode* nameRefNode = memberRefExpr->mMemberName;
 	if (auto attrIdentifierExpr = BfNodeDynCast<BfAttributedIdentifierNode>(memberRefExpr->mMemberName))
 	{
-		nameRefNode = attrIdentifierExpr->mIdentifier;		
+		nameRefNode = attrIdentifierExpr->mIdentifier;
 		if (nameRefNode != NULL)
 			findName = attrIdentifierExpr->mIdentifier->ToString();
 	}
@@ -4715,7 +4715,7 @@ void DbgExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 
 	//
 	{
-		SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);		
+		SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);
 		mResult.mType = ResolveTypeRef(memberRefExpr);
 		if (mResult.mType != NULL)
 		{
@@ -4735,7 +4735,7 @@ void DbgExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 		if (expectingType != NULL)
 		{
 			DbgTypedValue expectingVal;
-			expectingVal.mType = expectingType;			
+			expectingVal.mType = expectingType;
 			mResult = LookupField(memberRefExpr->mMemberName, expectingVal, findName);
 			if ((mResult) || (HasPropResult()))
 				return;
@@ -4748,8 +4748,8 @@ void DbgExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 			thisValue.mType = mExpectingType;
 		else
 			thisValue.mType = ResolveTypeRef(memberRefExpr->mTarget, (BfAstNode**)&(memberRefExpr->mTarget));
-		if (thisValue.mType != NULL)		
-			thisValue.mHasNoValue = true;		
+		if (thisValue.mType != NULL)
+			thisValue.mHasNoValue = true;
 	}
 
 	if (thisValue.mType == NULL)
@@ -4778,7 +4778,7 @@ void DbgExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 		// Look up static field
 		thisValue.mType = ResolveTypeRef(typeRef);
 	}*/
-	
+
 	if (thisValue.mSrcAddress == -1)
 	{
 		LookupSplatMember(memberRefExpr->mTarget, memberRefExpr, thisValue, findName);
@@ -4788,7 +4788,7 @@ void DbgExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 	/*if (mResult)
 	{
 		if (mReferenceId != NULL)
-			*mReferenceId = thisValue.mType->ToString() + "." + findName;		
+			*mReferenceId = thisValue.mType->ToString() + "." + findName;
 	}*/
 
 	if ((!mResult) && (!HasPropResult()))
@@ -4805,14 +4805,14 @@ void DbgExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 		if (thisValue.mHasNoValue)
 		{
 			for (auto altDwType : thisValue.mType->mAlternates)
-			{				
+			{
 				auto altThisValue = thisValue;
 				altThisValue.mType = altDwType;
 				mResult = LookupField(memberRefExpr->mMemberName, altThisValue, findName);
 				if (mResult)
 					return;
 			}
-		}		
+		}
 
 		Fail("Unable to find member", memberRefExpr->mMemberName);
 	}
@@ -4828,7 +4828,7 @@ DbgTypedValue DbgExprEvaluator::RemoveRef(DbgTypedValue typedValue)
 }
 
 void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
-{	
+{
 	VisitChild(indexerExpr->mTarget);
 	GetResult();
 	if (!mResult)
@@ -4849,7 +4849,7 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		if (!mResult)
 			indexerFailed = true;
 		indexerValues.push_back(mResult);
-		mResult = DbgTypedValue();		
+		mResult = DbgTypedValue();
 	}
 
 	if (indexerFailed)
@@ -4870,12 +4870,12 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				isBfArrayIndex = true;
 			}
 		}
-		
+
 		if (!isBfArrayIndex)
 		{
 			mIndexerExprValues = indexerExprValues;
 			mIndexerValues = indexerValues;
-			mResult = LookupField(indexerExpr->mTarget, collection, "");			
+			mResult = LookupField(indexerExpr->mTarget, collection, "");
 			if (HasPropResult())
 			{
 				// Only use this if we actually have the method. Otherwise fall through so we can try a debug visualizer or something
@@ -4896,14 +4896,14 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		Fail("Expected single index", indexerExpr->mOpenBracket);
 		return;
 	}
-	DbgTypedValue indexArgument = indexerValues[0];	
+	DbgTypedValue indexArgument = indexerValues[0];
 	indexArgument.mType = indexArgument.mType->RemoveModifiers();
 	if (!indexArgument.mType->IsInteger())
 	{
 		mResult = DbgTypedValue();
 		Fail("Expected integer index", indexerExpr->mArguments[0]);
 		return;
-	}	 
+	}
 
 	if (mReferenceId != NULL)
 		*mReferenceId += "[]";
@@ -4971,11 +4971,11 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 			}
 		}
 	}
-	
+
 	addr_target target = collection.mPtr;
 	if (collection.mType->mTypeCode == DbgType_SizedArray)
 		target = collection.mSrcAddress;
-	
+
 	if ((!collection.mType->IsPointer()) && (collection.mType->mTypeCode != DbgType_SizedArray))
 	{
 		mResult = DbgTypedValue();
@@ -4988,8 +4988,8 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 	{
 		int innerSize = collection.mType->mTypeParam->GetStride();
 		int len = 0;
-		if (innerSize > 0)		
-			len = collection.mType->GetStride() / innerSize;		
+		if (innerSize > 0)
+			len = collection.mType->GetStride() / innerSize;
 		int idx = (int)indexArgument.GetInt64();
 		if ((idx < 0) || (idx >= len))
 		{
@@ -5019,7 +5019,7 @@ void DbgExprEvaluator::Visit(BfThisExpression* thisExpr)
 		if (mExplicitThisExpr != NULL)
 			mDeferredInsertExplicitThisVector.push_back(NodeReplaceRecord(thisExpr, mCurChildRef));
 		mResult = mExplicitThis;
-		
+
 		/*if (mReferenceId != NULL)
 		{
 			auto checkType = mExplicitThis.mType;
@@ -5043,7 +5043,7 @@ void DbgExprEvaluator::Visit(BfThisExpression* thisExpr)
 }
 
 void DbgExprEvaluator::Visit(BfIdentifierNode* identifierNode)
-{	
+{
 	//BfLogDbgExpr("Visit BfIdentifierNode %s\n", identifierNode->ToString().c_str());
 
 	mResult = LookupIdentifier(identifierNode, false, NULL);
@@ -5055,7 +5055,7 @@ void DbgExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 	}
 
 	if ((mResult) || (HasPropResult()))
-		return;			
+		return;
 
 	{
 		SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);
@@ -5114,7 +5114,7 @@ void DbgExprEvaluator::LookupSplatMember(const DbgTypedValue& target, const Stri
 			}
 		}
 	}*/
-	
+
 	bool found = false;
 	while (checkType != NULL)
 	{
@@ -5177,13 +5177,13 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 
 	SplatLookupEntry* splatLookupEntry = NULL;
 	if (lookupNode != NULL)
-	{		
+	{
 		if (mSplatLookupMap.TryAdd(lookupNode, NULL, &splatLookupEntry))
 		{
 			//
 		}
 		else if (forceName == NULL)
-		{			
+		{
 			if (outFindName != NULL)
 				*outFindName = splatLookupEntry->mFindName;
 			if (outIsConst != NULL)
@@ -5241,18 +5241,18 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 
 	if (forceName != NULL)
 		findName = *forceName;
-		
+
 	CPUStackFrame* stackFrame = GetStackFrame();
 	intptr valAddr;
 	DbgType* valType = NULL;
 	DbgAddrType addrType = DbgAddrType_Value;
-	
+
 	bool foundWantType = true;
 	DbgType* wantType = target.mType;
 	auto checkType = target.mType;
 	checkType = checkType->RemoveModifiers();
 	bool valWasConst = false;
-	
+
 	bool foundParent = false;
 	if (target.mSrcAddress == -1)
 	{
@@ -5270,20 +5270,20 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 			{
 				foundParent = true;
 				findName = parentFindName;
-				valType = mResult.mType;				
+				valType = mResult.mType;
 				valWasConst = parentIsConst;
 			}
 		}
 	}
-		
+
 	if (!foundParent)
-	{		
+	{
 		if (!mDebugTarget->GetValueByName(curMethod, findName, stackFrame, &valAddr, &valType, &addrType))
 			return;
 
 		if (addrType == DbgAddrType_Alias)
 		{
-			findName = (const char*)valAddr;								
+			findName = (const char*)valAddr;
 
 			if (!mDebugTarget->GetValueByName(curMethod, findName, stackFrame, &valAddr, &valType, &addrType))
 			{
@@ -5297,18 +5297,18 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 
 				return;
 			}
-		}			
-			
+		}
+
 		if (addrType == DbgAddrType_LocalSplat)
 		{
 			DbgVariable* dbgVariable = (DbgVariable*)valAddr;
 			// Use real name, in case of aliases
 			findName = dbgVariable->mName;
-		}		
+		}
 	}
 
 	if ((wasCast) && (valType != NULL))
-	{		
+	{
 		checkType = valType->RemoveModifiers();
 		foundWantType = false;
 
@@ -5342,7 +5342,7 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 				if (member->mName == fieldName)
 				{
 					wasUnion = checkType->IsBfUnion();
-					memberType = member->mType;				
+					memberType = member->mType;
 					found = true;
 					break;
 				}
@@ -5364,7 +5364,7 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 			findName += "$u";
 		else
 			findName += "$m$" + fieldName;
-		
+
 		if (outFindName != NULL)
 			*outFindName = findName;
 		if (outIsConst != NULL)
@@ -5381,14 +5381,14 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 				/*if ((valType->IsConst()) && (!memberType->IsConst()))
 				{
 					// Set readonly if the original value was const
-					memberType = mDbgModule->GetConstType(valType);										
+					memberType = mDbgModule->GetConstType(valType);
 				}*/
-				mResult = ReadTypedValue(targetNode, memberType, valAddr, addrType);				
+				mResult = ReadTypedValue(targetNode, memberType, valAddr, addrType);
 				if (wantConst)
 				{
 					// Set readonly if the original value was const
 					mResult.mIsReadOnly = true;
-				}				
+				}
 			}
 		}
 		else
@@ -5412,7 +5412,7 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
  				//BF_ASSERT((target.mVariable != NULL) || (target.mType->GetByteCount() == 0));
  				mResult = target;
  				mResult.mType = memberType;
- 			}						
+ 			}
 		}
 
 		if (splatLookupEntry != NULL)
@@ -5427,10 +5427,10 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 void DbgExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ignoreInitialError, bool* hadError)
 {
 	String fieldName = nameNode->mRight->ToString();
-	
+
 	mResult = LookupIdentifier(nameNode->mLeft, ignoreInitialError, hadError);
 	mResult = GetResult();
-	
+
 	if (!mResult)
 	{
 		if (!ignoreInitialError)
@@ -5451,7 +5451,7 @@ void DbgExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool i
 	{
 		auto target = mResult;
 		mResult = DbgTypedValue();
-		LookupSplatMember(nameNode->mLeft, nameNode, target, fieldName);		
+		LookupSplatMember(nameNode->mLeft, nameNode, target, fieldName);
 	}
 	else
 	{
@@ -5465,7 +5465,7 @@ void DbgExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool i
 		}
 	}
 	if ((mResult) || (mPropSrc != NULL))
-		return;	
+		return;
 
 	if (hadError != NULL)
 		*hadError = true;
@@ -5480,7 +5480,7 @@ DbgType* DbgExprEvaluator::FindSubtype(DbgType* type, const StringImpl& name)
 			return subType;
 	}
 	for (auto baseType : type->mBaseTypes)
-	{		
+	{
 		auto subType = FindSubtype(baseType->mBaseType->GetPrimaryType(), name);
 		if (subType != NULL)
 			return subType;
@@ -5575,7 +5575,7 @@ bool DbgExprEvaluator::EnsureRunning(BfAstNode* astNode)
 }
 
 void DbgExprEvaluator::Visit(BfQualifiedNameNode* nameNode)
-{		
+{
 	AutocompleteCheckMemberReference(nameNode->mLeft, nameNode->mDot, nameNode->mRight);
 
 	bool hadError = false;
@@ -5599,7 +5599,7 @@ void DbgExprEvaluator::Visit(BfDefaultExpression* defaultExpr)
 }
 
 void DbgExprEvaluator::Visit(BfLiteralExpression* literalExpr)
-{	
+{
 	mIsComplexExpression = true;
 
 	mResult.mIsLiteral = true;
@@ -5608,17 +5608,17 @@ void DbgExprEvaluator::Visit(BfLiteralExpression* literalExpr)
 	switch (literalExpr->mValue.mTypeCode)
 	{
 	case BfTypeCode_NullPtr:
-		{		
+		{
 			mResult.mPtr = 0;
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Null, GetLanguage());
 		}
 		break;
-	case BfTypeCode_CharPtr:		
-		mResult = GetString(*literalExpr->mValue.mString);		
-		break;	
+	case BfTypeCode_CharPtr:
+		mResult = GetString(*literalExpr->mValue.mString);
+		break;
 	case BfTypeCode_Boolean:
 		mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
-		mResult.mBool = literalExpr->mValue.mBool;		
+		mResult.mBool = literalExpr->mValue.mBool;
 		break;
 	case BfTypeCode_Char8:
 		mResult.mType = mDbgModule->GetPrimitiveType((language == DbgLanguage_Beef) ? DbgType_UChar : DbgType_SChar, language);
@@ -5722,11 +5722,11 @@ void DbgExprEvaluator::Visit(BfCastExpression* castExpr)
 	mResult = CreateValueFromExpression(castExpr->mExpression);
 	if (!mResult)
 		return;
-	mResult = Cast(castExpr, mResult, resolvedType, true);		
+	mResult = Cast(castExpr, mResult, resolvedType, true);
 }
 
 // We pass by reference to support "RAW" debug expression simplification
-DbgTypedValue DbgExprEvaluator::CreateValueFromExpression(ASTREF(BfExpression*)& expr, DbgType* castToType, DbgEvalExprFlags flags) 
+DbgTypedValue DbgExprEvaluator::CreateValueFromExpression(ASTREF(BfExpression*)& expr, DbgType* castToType, DbgEvalExprFlags flags)
 {
 	//
 	{
@@ -5763,18 +5763,18 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 {
 	DbgTypedValue leftValue;
 	if (leftExpression != NULL)
-		leftValue = CreateValueFromExpression(leftExpression, mExpectingType, DbgEvalExprFlags_NoCast);	
+		leftValue = CreateValueFromExpression(leftExpression, mExpectingType, DbgEvalExprFlags_NoCast);
 	DbgTypedValue rightValue;
 	if (rightExpression == NULL)
-	{		
+	{
 		return;
-	}	
+	}
 	if (!leftValue)
-	{		
+	{
 		VisitChild(rightExpression);
 		return;
 	}
-		
+
 	leftValue.mType = leftValue.mType->RemoveModifiers();
 
 	/*if (leftValue.mType->IsRef())
@@ -5790,7 +5790,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 			return;
 		}
 
-		auto boolType = leftValue.mType;		
+		auto boolType = leftValue.mType;
 
 		if (isAnd)
 		{
@@ -5799,14 +5799,14 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 				mResult = leftValue;
 				return;
 			}
-			
+
 			rightValue = CreateValueFromExpression(rightExpression);
-			if (rightValue)			
+			if (rightValue)
 				rightValue = Cast(rightExpression, rightValue, boolType);
 			mResult = rightValue;
 		}
 		else
-		{	
+		{
 			if (leftValue.mBool)
 			{
 				mResult = leftValue;
@@ -5814,29 +5814,29 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 			}
 
 			rightValue = CreateValueFromExpression(rightExpression);
-			if (rightValue)			
+			if (rightValue)
 				rightValue = Cast(rightExpression, rightValue, boolType);
 			mResult = rightValue;
 		}
 		return;
 	}
-		
+
 	if ((binaryOp == BfBinaryOp_NullCoalesce) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsBfObject())))
-	{		
+	{
 		if (leftValue.mPtr != 0)
 		{
 			mResult = leftValue;
 			return;
 		}
-				
+
 		CreateValueFromExpression(rightExpression, leftValue.mType);
 		return;
 	}
 
-	rightValue = CreateValueFromExpression(rightExpression, mExpectingType, DbgEvalExprFlags_NoCast);	
+	rightValue = CreateValueFromExpression(rightExpression, mExpectingType, DbgEvalExprFlags_NoCast);
 	if ((!leftValue) || (!rightValue))
 		return;
-		
+
 	rightValue.mType = rightValue.mType->RemoveModifiers();
 
 	if (leftValue.mType->IsTypedPrimitive())
@@ -5860,7 +5860,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		rightCompareSize += 0x100;
 	if ((rightValue.mIsLiteral) && (rightValue.mType->IsPointer()))
 		rightCompareSize += 0x200;
-	
+
 	/*if ((leftValue.mType->IsTypedPrimitive()) && (rightValue.mType->IsTypedPrimitive()))
 	{
 		int leftInheritDepth = leftValue.mType->ToTypeInstance()->mInheritDepth;
@@ -5873,7 +5873,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		}
 	}*/
 
-	auto resultType = leftValue.mType;	
+	auto resultType = leftValue.mType;
 	if (!forceLeftType)
 	{
 		if ((resultType->IsNull()) ||
@@ -5896,7 +5896,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 	DbgTypedValue* otherTypedValue;
 	DbgType* otherType;
 	BfAstNode* resultTypeSrc;
-	BfAstNode* otherTypeSrc;		
+	BfAstNode* otherTypeSrc;
 
 	if (resultType == leftValue.mType)
 	{
@@ -5906,7 +5906,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		otherTypeSrc = rightExpression;
 		otherType = otherTypedValue->mType;
 	}
-	else		
+	else
 	{
 		resultTypedValue = &rightValue;
 		resultTypeSrc = rightExpression;
@@ -5914,9 +5914,9 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		otherTypeSrc = leftExpression;
 		otherType = otherTypedValue->mType;
 	}
-	
+
 	if ((resultTypedValue->mIsLiteral) && (resultType->IsPointer()))
-	{	
+	{
 		// If we're comparing against a string literal like 'str == "Hey!"', handle that
 		if (BfBinOpEqualityCheck(binaryOp))
 		{
@@ -5966,9 +5966,9 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 				}
 			}
 		}
-				
+
 		Fail("Cannot perform operation with a literal value", resultTypeSrc);
-		return;		
+		return;
 	}
 
 	DbgTypedValue convLeftValue;
@@ -5989,17 +5989,17 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 			/*if (!mModule->IsInSpecializedGeneric())
 			{
 				//CS0472: The result of the expression is always 'true' since a value of type 'int' is never equal to 'null' of type '<null>'
-				mModule->mCompiler->mPassInstance->Warn(BfWarning_CS0472_ValueTypeNullCompare, 
-					StrFormat("The result of the expression is always '%s' since a value of type '%s' can never be null", 
+				mModule->mCompiler->mPassInstance->Warn(BfWarning_CS0472_ValueTypeNullCompare,
+					StrFormat("The result of the expression is always '%s' since a value of type '%s' can never be null",
 						isEquality ? "false" : "true", mModule->TypeToString(resultType).c_str()), otherTypeSrc);
 			}*/
 
 			// Valuetypes never equal null
 			auto boolType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 			mResult.mType = boolType;
-			mResult.mBool = !isEquality;			
+			mResult.mBool = !isEquality;
 			return;
-		}		
+		}
 	}
 
 	//TODO: Use operator methods?
@@ -6039,10 +6039,10 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		}
 		if (methodMatcher.mBestMethodDef != NULL)
 		{
-			SetElementType(opToken, BfSourceElementType_Method);						
+			SetElementType(opToken, BfSourceElementType_Method);
 			mResult = CreateCall(&methodMatcher, DbgTypedValue());
-			if ((invertResult) && (mResult.mType == mModule->GetPrimitiveType(BfTypeCode_Boolean)))			
-				mResult.mValue = mModule->mIRBuilder->CreateNot(mResult.mValue);			
+			if ((invertResult) && (mResult.mType == mModule->GetPrimitiveType(BfTypeCode_Boolean)))
+				mResult.mValue = mModule->mIRBuilder->CreateNot(mResult.mValue);
 			return;
 		}
 	}*/
@@ -6054,13 +6054,13 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		{
 			if (!resultType->Equals(otherType))
 			{
-				Fail(StrFormat("Operands must be the same type, '%s' doesn't match '%s'", 
+				Fail(StrFormat("Operands must be the same type, '%s' doesn't match '%s'",
 					leftValue.mType->ToString().c_str(), rightValue.mType->ToString().c_str()),
 					opToken);
 				return;
 			}
-			
-			DbgType* intPtrType = mDbgModule->GetPrimitiveType(DbgType_IntPtr_Alias, GetLanguage());			
+
+			DbgType* intPtrType = mDbgModule->GetPrimitiveType(DbgType_IntPtr_Alias, GetLanguage());
 			long ptrDiff = leftValue.mPtr - rightValue.mPtr;
 			int elemSize = resultType->mTypeParam->GetStride();
 			if (elemSize == 0)
@@ -6080,7 +6080,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		{
 			Fail("Invalid operation on pointers", opToken);
 			return;
-		}				
+		}
 
 		// Compare them as ints
 		resultType = mDbgModule->GetPrimitiveType(DbgType_UIntPtr_Alias, GetLanguage());
@@ -6133,13 +6133,13 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 			}
 
 			if (innerType->GetByteCount() == 0)
-			{				
+			{
 				Warn("Adding to a pointer to a zero-sized element has no effect", opToken);
 			}
 
 			return;
 		}
-	}	
+	}
 
 	if ((resultType->IsPointer()) || (resultType->IsBfObject()) || (resultType->IsInterface()) /*|| (resultType->IsGenericParam())*/)
 	{
@@ -6174,24 +6174,24 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 				mResult.mBool = resultTypedValue->mPtr == convertedValue.mPtr;
 			else
-				mResult.mBool = resultTypedValue->mPtr != convertedValue.mPtr;			
+				mResult.mBool = resultTypedValue->mPtr != convertedValue.mPtr;
 		}
 
 		return;
-	}	
+	}
 	/*else if (resultType->IsTypedPrimitive())
 	{
 		bool needsOtherCast = true;
 		if (otherType != resultType)
-		{			
+		{
 			if (otherType->IsPrimitiveType())
-			{		
+			{
 				// Allow zero comparisons to match all typed primitives
 				if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
 				{
 					auto intConstant = dyn_cast<ConstantInt>(otherTypedValue->mValue);
 					if (intConstant != NULL)
-					{						
+					{
 						if (intConstant->getSExtValue() == 0)
 						{
 							needsOtherCast = false;
@@ -6215,14 +6215,14 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		Value* convOtherValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, underlyingType, true);
 
 		if ((!underlyingType->IsValuelessType()) && ((convResultValue == NULL) || (convOtherValue == NULL)))
-			return;		
+			return;
 
 		if (resultTypedValue == &leftValue)
 			PerformBinaryOperation(underlyingType, convResultValue, convOtherValue, binaryOp, opToken);
 		else
 			PerformBinaryOperation(underlyingType, convOtherValue, convResultValue, binaryOp, opToken);
 		if (mResult.mType == underlyingType)
-			mResult.mType = resultType;			
+			mResult.mType = resultType;
 		return;
 	}*/
 	else if (((leftValue.mType->IsStruct()) || (leftValue.mType->IsBfObject())) && (!resultType->IsEnum()))
@@ -6241,7 +6241,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 				TypeToString(rightValue.mType).c_str()), opToken);
 		}
 		return;
-	}	
+	}
 
 	if ((resultType->IsInteger()) && (!forceLeftType))
 	{
@@ -6257,7 +6257,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		{
 			if (binaryOp == BfBinaryOp_Subtract)
 			{
-				
+
 			}
 			else if (resultType->GetByteCount() < 4)
 			{
@@ -6290,8 +6290,8 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 					explicitCast = true;
 				}
 			}
-		}		
-	}	
+		}
+	}
 
 	if (convLeftValue == NULL)
 		convLeftValue = Cast(leftExpression, leftValue, resultType, explicitCast);
@@ -6304,13 +6304,13 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue convLeftValue, DbgTypedValue convRightValue, BfBinaryOp binaryOp, BfTokenNode* opToken)
 {
 	if (resultType->IsValuelessType())
-	{		
+	{
 		switch (binaryOp)
 		{
 		case BfBinaryOp_Equality:
 		case BfBinaryOp_StrictEquality:
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
-			mResult.mBool = true;			
+			mResult.mBool = true;
 			break;
 		case BfBinaryOp_InEquality:
 		case BfBinaryOp_StrictInEquality:
@@ -6321,14 +6321,14 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			Fail("Invalid operation for void", opToken);
 			break;
 		}
-		return;		
+		return;
 	}
 
 	if ((convLeftValue == NULL) || (convRightValue == NULL))
 		return;
 
-	if ((resultType->IsEnum()) || (resultType->IsTypedPrimitive()))	
-		resultType = resultType->GetUnderlyingType();	
+	if ((resultType->IsEnum()) || (resultType->IsTypedPrimitive()))
+		resultType = resultType->GetUnderlyingType();
 
 	if (resultType->IsPrimitiveType())
 	{
@@ -6361,7 +6361,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			}
 			return;
 		}
-	}	
+	}
 
 	if ((!resultType->IsIntegral()) && (!resultType->IsFloat()))
 	{
@@ -6371,7 +6371,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 
 	mResult.mType = resultType;
 	if (resultType->IsInteger())
-	{		
+	{
 		switch (binaryOp)
 		{
 		case BfBinaryOp_BitwiseAnd:
@@ -6386,7 +6386,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 		case BfBinaryOp_LeftShift:
 			mResult.mInt64 = convLeftValue.GetInt64() << convRightValue.GetInt64();
 			return;
-		case BfBinaryOp_RightShift:			
+		case BfBinaryOp_RightShift:
 			mResult.mInt64 = convLeftValue.GetInt64() >> convRightValue.GetInt64();
 			return;
 		}
@@ -6401,7 +6401,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 		else if (resultType->mTypeCode == DbgType_Double)
 			mResult.mDouble = convLeftValue.mDouble + convRightValue.mDouble;
 		else
-			mResult.mInt64 = convLeftValue.GetInt64() + convRightValue.GetInt64();			
+			mResult.mInt64 = convLeftValue.GetInt64() + convRightValue.GetInt64();
 		break;
 	case BfBinaryOp_Subtract:
 	case BfBinaryOp_OverflowSubtract:
@@ -6529,7 +6529,7 @@ void DbgExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 	//PerformBinaryOperation(binOpExpr->mLeft, binOpExpr->mRight, binOpExpr->mOp, binOpExpr->mOpToken, false);
 
 	// Check for "(double)-1.0" style cast, misidentified as a binary operation
-	if ((binOpExpr->mOp == BfBinaryOp_Add) || (binOpExpr->mOp == BfBinaryOp_Subtract) || 
+	if ((binOpExpr->mOp == BfBinaryOp_Add) || (binOpExpr->mOp == BfBinaryOp_Subtract) ||
 		(binOpExpr->mOp == BfBinaryOp_BitwiseAnd) || (binOpExpr->mOp == BfBinaryOp_Multiply))
 	{
 		if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(binOpExpr->mLeft))
@@ -6557,7 +6557,7 @@ void DbgExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 					{
 						VisitChild(binOpExpr->mRight);
 						if (!mResult)
-							return;						
+							return;
 					}
 
 					if ((mResult) && (binOpExpr->mOp == BfBinaryOp_Subtract))
@@ -6570,7 +6570,7 @@ void DbgExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 							mResult.mInt64 = -mResult.GetInt64();
 					}
 
-					mResult = Cast(binOpExpr, mResult, resolvedType, true);					
+					mResult = Cast(binOpExpr, mResult, resolvedType, true);
 					return;
 				}
 			}
@@ -6586,7 +6586,7 @@ void DbgExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 			VisitChild(binOpExpr->mLeft);
 
 		if (mResult)
-		{			
+		{
 			//if (mAutoComplete != NULL)
 				//mAutoComplete->CheckEmptyStart(binOpExpr->mOpToken, mResult.mType);
 		}
@@ -6624,7 +6624,7 @@ void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unar
 
 		if (ptr.mType->IsEnum())
 			ptr.mType = ptr.mType->mTypeParam;
-				
+
 		auto val = mResult;
 		int add = ((unaryOp == BfUnaryOp_Decrement) || (unaryOp == BfUnaryOp_PostDecrement)) ? -1 : 1;
 		switch (ptr.mType->mTypeCode)
@@ -6690,7 +6690,7 @@ void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unar
 			{
 				Fail("Operator can only be used on pointer values", opToken);
 				return;
-			}			
+			}
 			mResult = ReadTypedValue(opToken, type->mTypeParam, mResult.mPtr, DbgAddrType_Target);
 		}
 		break;
@@ -6722,7 +6722,7 @@ void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unar
 			{
 				Fail("Operator can only be used on boolean values", opToken);
 				return;
-			}		
+			}
 			mResult.mIsLiteral = wasLiteral;
 			mResult.mBool = !mResult.mBool;
 		}
@@ -6737,7 +6737,7 @@ void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unar
 				if (wasLiteral)
 				{
 					// This is a special case where the user entered -0x80000000 (maxint) but we thought "0x80000000" was a uint in the parser
-					//  which would get expanded to an int64 for this negate.  Properly bring back down to an int32					
+					//  which would get expanded to an int64 for this negate.  Properly bring back down to an int32
 					if ((primType->mTypeCode == DbgType_u32) && (mResult.GetInt64() == -0x80000000LL))
 					{
 						//mResult = DbgTypedValue(mModule->GetConstValue((int) i64Val), mModule->GetPrimitiveType(DwTypeCode_Int32));
@@ -6763,7 +6763,7 @@ void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unar
 			}
 
 			mResult.mIsLiteral = wasLiteral;
-			if (mResult.mType->mTypeCode == DbgType_Single)		
+			if (mResult.mType->mTypeCode == DbgType_Single)
 				mResult.mSingle = -mResult.mSingle;
 			else if (mResult.mType->mTypeCode == DbgType_Double)
 				mResult.mDouble = -mResult.mDouble;
@@ -6814,9 +6814,9 @@ void DbgExprEvaluator::Visit(BfUnaryOperatorExpression* unaryOpExpr)
 bool DbgExprEvaluator::ResolveArgValues(const BfSizedArray<ASTREF(BfExpression*)>& arguments, SizedArrayImpl<DbgTypedValue>& outArgValues)
 {
 	for (int argIdx = 0; argIdx < (int) arguments.size(); argIdx++)
-	{		
+	{
 		//BfExprEvaluator exprEvaluator(mModule);
-		//exprEvaluator.Evaluate(arguments[argIdx]);		
+		//exprEvaluator.Evaluate(arguments[argIdx]);
 		auto arg = arguments[argIdx];
 		DbgTypedValue argValue;
 		if (arg != NULL)
@@ -6844,7 +6844,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 	   	mPassInstance->Fail("Not running");
 		return DbgTypedValue();
 	}*/
-	
+
 #ifdef BF_WANTS_LOG_DBGEXPR
 	auto _GetResultString = [&](DbgTypedValue val)
 	{
@@ -6852,7 +6852,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 		if (val.mSrcAddress != 0)
 		{
 			result += StrFormat("0x%p ", val.mSrcAddress);
-			
+
 			int64 vals[4] = { 0 };
 			mDebugger->ReadMemory(val.mSrcAddress, 4 * 8, vals);
 
@@ -6864,18 +6864,18 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 		}
 		return result;
 	};
-#endif	
-	
+#endif
+
 	int curCallResultIdx = mCallResultIdx++;
 	if (((mExpressionFlags & DwEvalExpressionFlag_AllowCalls) == 0) || (mCreatedPendingCall))
 	{
 		BfLogDbgExpr(" BlockedSideEffects\n");
 
-		mBlockedSideEffects = true;				
+		mBlockedSideEffects = true;
 		return GetDefaultTypedValue(method->mReturnType);
 	}
-	mHadSideEffects = true;	
-	
+	mHadSideEffects = true;
+
 	// Our strategy is to create "pending results" for each call in a debug expression, and then we continually re-evaluate the
 	//  entire expression using the actual returned results for each of those calls until we can finally evaluate it as a whole
 	if (curCallResultIdx < (int)mCallResults->size() - 1)
@@ -6909,7 +6909,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 				returnVal = mDebugger->ReadReturnValue(&newPhysRegisters, method->mReturnType);
 			bool hadRef = false;
 			auto returnType = method->mReturnType->RemoveModifiers(&hadRef);
-			if (hadRef) 
+			if (hadRef)
 			{
 				returnVal = ReadTypedValue(NULL, returnType, returnVal.mPtr, DbgAddrType_Target);
 				returnVal.mType = returnType;
@@ -6919,17 +6919,17 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 		{
 			returnVal.mType = mDbgModule->GetPrimitiveType(DbgType_Void, GetLanguage());
 		}
-		
+
 		BfLogDbgExpr(" using new results %s\n", _GetResultString(returnVal).c_str());
 
 		mDebugger->RestoreAllRegisters();
-		
+
 		if ((method->mReturnType->IsCompositeType()) && (mDebugger->CheckNeedsSRetArgument(method->mReturnType)))
 		{
 			callResult.mSRetData.Resize(method->mReturnType->GetByteCount());
 			mDebugger->ReadMemory(returnVal.mSrcAddress, method->mReturnType->GetByteCount(), &callResult.mSRetData[0]);
 		}
-		callResult.mResult = returnVal;		
+		callResult.mResult = returnVal;
 
 		return returnVal;
 	}
@@ -6990,14 +6990,14 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 	}
 
 	mDebugger->SaveAllRegisters();
-	
+
 	BfLogDbg("Starting RunState_DebugEval on thread %d\n", mDebugger->mActiveThread->mThreadId);
 
-	addr_target prevSP = registers->GetSP();	
-	
+	addr_target prevSP = registers->GetSP();
+
 	//registers->mIntRegs.efl = 0x244;
 
-	//mDebugger->PushValue(registers, 0);	
+	//mDebugger->PushValue(registers, 0);
 	mDebugger->PushValue(registers, 42);
 
 	*(registers->GetPCRegisterRef()) = startAddr;
@@ -7007,12 +7007,12 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 	//  If we step ONTO the PC we set, then that means we have returned from kernel mode
 	//  so we need to set the registers again (they would have been clobbered due to SetThreadContext bugs).
 	// If we step past the PC then we're all good
-	registers->mIntRegs.efl |= 0x100; 
-	mDebugger->SetRegisters(registers);	
+	registers->mIntRegs.efl |= 0x100;
+	mDebugger->SetRegisters(registers);
 	//::ResumeThread(mDebugger->mActiveThread->mHThread);
 
 	//TODO: For debugging stepping:
-	
+
 	if ((mExpressionFlags & DwEvalExpressionFlag_StepIntoCalls) != 0)
 	{
 		mDebugger->mDebugManager->mOutMessages.push_back("rehupLoc");
@@ -7031,7 +7031,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 	mDebugger->mRequestedStackFrameIdx = -1;
 
 	BfLogDbg("DbgExprEvaluator::CreateCall %p in thread %d\n", startAddr, mDebugger->mActiveThread->mThreadId);
-			
+
 	DbgCallResult callResult;
 	callResult.mSubProgram = method;
 	callResult.mStructRetVal = structRetVal;
@@ -7044,8 +7044,8 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue target, DbgSubprogram* method, bool bypassVirtual, const BfSizedArray<ASTREF(BfExpression*)>& arguments, SizedArrayImpl<DbgTypedValue>& argValues)
 {
 	HashSet<String> splatParams;
-	SizedArray<DbgMethodArgument, 4> argPushQueue;		
-	
+	SizedArray<DbgMethodArgument, 4> argPushQueue;
+
 	//
 	{
 		for (auto variable : method->mBlock.mVariables)
@@ -7064,7 +7064,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 
 	int argIdx = 0;
 	int paramIdx = 0;
-	
+
 	auto _PushArg = [&](const DbgTypedValue& typedValue, DbgVariable* param)
 	{
 		if (typedValue.mType->GetByteCount() == 0)
@@ -7087,7 +7087,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 					{
 						auto elemTypedValue = ReadTypedValue(targetSrc, type, typedVal.mSrcAddress, DbgAddrType_Target);
 						DbgMethodArgument methodArg;
-						methodArg.mTypedValue = elemTypedValue;						
+						methodArg.mTypedValue = elemTypedValue;
 						argPushQueue.push_back(methodArg);
 						return;
 					}
@@ -7117,7 +7117,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 				return;
 			}
 		}
-		
+
 		DbgMethodArgument methodArg;
 		methodArg.mTypedValue = typedValue;
 		methodArg.mWantsRef = param->mType->IsRef();
@@ -7133,7 +7133,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 
 	if (method->mHasThis)
 	{
-		auto param = method->mParams[paramIdx];		
+		auto param = method->mParams[paramIdx];
 		if ((param->mType != NULL) && (param->mType->IsValueType()))
 			thisByValue = true;
 
@@ -7142,12 +7142,12 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 			Fail(StrFormat("An object reference is required to invoke the non-static method '%s'", method->ToString().c_str()), targetSrc);
 			return DbgTypedValue();
 		}
-				
+
 		_PushArg(target, param);
-		methodParamCount--;		
+		methodParamCount--;
 	}
 	else
-	{		
+	{
 		if (target.mPtr != 0)
 		{
 			Fail(StrFormat("Method '%s' cannot be accessed with an instance reference; qualify it with a type name instead", method->ToString().c_str()), targetSrc);
@@ -7157,8 +7157,8 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 
 	DbgTypedValue expandedParamsArray;
 	DbgType* expandedParamsElementType = NULL;
-	int extendedParamIdx = 0;	
-	
+	int extendedParamIdx = 0;
+
 	int paramOffset = method->mHasThis ? 1 : 0;
 	while (true)
 	{
@@ -7180,18 +7180,18 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 			}
 			break;
 		}
-				
+
 		DbgVariable* param = NULL;
 		DbgType* wantType = NULL;
-		if (expandedParamsElementType != NULL)	
+		if (expandedParamsElementType != NULL)
 		{
-			wantType = expandedParamsElementType;			
+			wantType = expandedParamsElementType;
 		}
 		else
 		{
 			param = method->mParams[paramIdx + paramOffset];
 			wantType = param->mType;
-		
+
 			//TODO:
 			/*if (method->mParams[paramIdx]->mParamType == BfParamType_Params)
 			{
@@ -7199,7 +7199,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 
 				bool isDirectPass = false;
 				if (argIdx < (int)arguments.size())
-				{					
+				{
 					if (argValues[argIdx].mValue == NULL)
 						return DbgTypedValue();
 					if (mModule->CanCast(argValues[argIdx], wantType))
@@ -7268,7 +7268,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 				BfAstNode* refNode = targetSrc;
 				if (arguments.size() > 0)
 					refNode = arguments.back();
-				mModule->Fail(StrFormat("Not enough parameters specified. Got %d, expected %d.", arguments.size(), methodInstance->mParamTypes.size()), refNode);				
+				mModule->Fail(StrFormat("Not enough parameters specified. Got %d, expected %d.", arguments.size(), methodInstance->mParamTypes.size()), refNode);
 				return DbgTypedValue();
 			}
 			llvmArgs.push_back(methodInstance->mDefaultValues[argIdx]);*/
@@ -7283,7 +7283,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 			continue;
 		}
 
-		
+
 		if (argValue.mType == NULL)
 			return DbgTypedValue();
 
@@ -7319,7 +7319,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 				wantType = mDbgModule->GetPointerType(wantType->mTypeParam);
 				argValue.mPtr = argValue.mSrcAddress;
 				argValue.mSrcAddress = 0;
-				argValue.mType = wantType;				
+				argValue.mType = wantType;
 			}*/
 
 			argValue = Cast(arg, argValue, wantType);
@@ -7348,7 +7348,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 			Fail("Invalid expression type", arg);
 			return DbgTypedValue();
 		}
-		
+
 		//TODO:
 		/*if (expandedParamsArray)
 		{
@@ -7360,18 +7360,18 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 		else*/
 		{
 			//llvmArgs.push_back(argValue.mValue);
-			_PushArg(argValue, param);			
+			_PushArg(argValue, param);
 			paramIdx++;
-		}		
+		}
 		argIdx++;
 	}
 
 	return CreateCall(method, argPushQueue, bypassVirtual);
 }
-	
+
 DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl<DbgMethodArgument>& argPushQueue, bool bypassVirtual)
 {
-	BfLogDbgExpr("CreateCall #%d %s", mCallResultIdx, method->mName);	
+	BfLogDbgExpr("CreateCall #%d %s", mCallResultIdx, method->mName);
 
 	if (mDebugger->IsMiniDumpDebugger())
 	{
@@ -7384,7 +7384,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 		mBlockedSideEffects = true;
 		return GetDefaultTypedValue(method->mReturnType);
 	}
-	mHadSideEffects = true;	
+	mHadSideEffects = true;
 
 	// We need current physical registers to make sure we push params in correct stack frame
 	CPURegisters registers;
@@ -7408,18 +7408,18 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 		if ((param->mType != NULL) && (param->mType->IsValueType()))
 			thisByValue = true;
 	}
-	
+
 	DbgTypedValue structRetVal;
 	if (mDebugger->CheckNeedsSRetArgument(method->mReturnType))
 	{
 		int retSize = BF_ALIGN(method->mReturnType->GetByteCount(), 16);
-		*regSP -= retSize;		
+		*regSP -= retSize;
 		structRetVal.mType = method->mReturnType;
 		structRetVal.mSrcAddress = *regSP;
 
 		// For chained calls we need to leave the sret form the previous calls intact
 		mCallStackPreservePos = *regSP;
-	}	
+	}
 
 	for (int i = (int)argPushQueue.size() - 1; i >= 0; i--)
 	{
@@ -7429,19 +7429,19 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 		//  on the stack and pass that address
 		if (arg.mWantsRef)
 		{
-			auto& typedValue = arg.mTypedValue;		
+			auto& typedValue = arg.mTypedValue;
 			auto rootType = typedValue.mType->RemoveModifiers();
 			if (arg.mTypedValue.mSrcAddress != 0)
 			{
 				typedValue.mPtr = typedValue.mSrcAddress;
 			}
 			else
-			{				
+			{
 				int rootSize = rootType->GetByteCount();
-				*regSP -= BF_ALIGN(rootSize, 16);				
+				*regSP -= BF_ALIGN(rootSize, 16);
 				mDebugger->WriteMemory(*regSP, &arg.mTypedValue.mInt64, rootSize); // Write from debugger memory to target
 				typedValue.mPtr = *regSP;
-			}			
+			}
 
 			typedValue.mType = mDbgModule->GetPointerType(rootType);
 			typedValue.mSrcAddress = 0;
@@ -7449,11 +7449,11 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 	}
 
 	if (structRetVal.mSrcAddress != 0)
-	{		
+	{
 		BfLogDbgExpr(" SRet:0x%p", structRetVal.mSrcAddress);
 		mDebugger->AddParamValue(0, method->mHasThis && !thisByValue, &registers, structRetVal);
 		paramIdx++;
-	}		
+	}
 
 	DbgTypedValue thisVal;
 	for (int padCount = 0; true; padCount++)
@@ -7462,12 +7462,12 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 		int paramIdxSave = paramIdx;
 
 		*regSP -= padCount * sizeof(addr_target);
-		
+
 		for (int i = (int)argPushQueue.size() - 1; i >= 0; i--)
 		{
 			auto& arg = argPushQueue[i];
 			if ((i == 0) && (method->mHasThis) && (!method->ThisIsSplat()))
-			{				
+			{
 				thisVal = arg.mTypedValue;
 				addr_target thisAddr;
 				if (thisVal.mType->IsCompositeType())
@@ -7496,14 +7496,14 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 
 		registers = regSave;
 		paramIdx = paramIdxSave;
-		
+
 		BF_ASSERT(padCount < 3);
 	}
 
 	return CreateCall(method, thisVal, structRetVal, bypassVirtual, &registers);
 }
 
-DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName, 
+DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName,
 	const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments)
 {
 	SetAndRestoreValue<String*> prevReferenceId(mReferenceId, NULL);
@@ -7516,7 +7516,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	SizedArray<DbgTypedValue, 4> argValues;
 	if (!ResolveArgValues(arguments, argValues))
 		return DbgTypedValue();
-	
+
 	if ((methodName == "__cast") || (methodName == "__bitcast"))
 	{
 		if (argValues.size() > 0)
@@ -7547,7 +7547,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 					BeefTypeToString(arg, typeName);
 				}
 			}
-			
+
 			auto castedType = mDbgModule->FindType(typeName, NULL, GetLanguage(), true);
 			if (castedType == NULL)
 			{
@@ -7565,22 +7565,22 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 				Fail(StrFormat("Unable to find type: '%s'", typeName.c_str()), targetSrc);
 				return argValues[targetArgIdx];
 			}
-			
+
 			if (methodName == "__bitcast")
 			{
 				DbgTypedValue result = argValues[targetArgIdx];
 				result.mType = castedType;
 				return result;
 			}
-			
-			return Cast(arguments[targetArgIdx], argValues[targetArgIdx], castedType, true);			
-		}		
-	}	
+
+			return Cast(arguments[targetArgIdx], argValues[targetArgIdx], castedType, true);
+		}
+	}
 	else if (methodName == "__hasField")
 	{
 		if (argValues.size() == 2)
 		{
-			auto checkType = argValues[0].mType;			
+			auto checkType = argValues[0].mType;
 			if ((checkType != NULL) && (checkType->IsPointer()))
 				checkType = checkType->mTypeParam;
 			if (checkType != NULL)
@@ -7784,7 +7784,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	else if (methodName == "__stringView")
 	{
 		if (argValues.size() >= 2)
-		{			
+		{
 			if ((argValues[1].mType != NULL) && (argValues[1].mType->IsInteger()))
 				mCountResultOverride = (intptr)argValues[1].GetInt64();
 			return argValues[0];
@@ -7812,7 +7812,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 
 			if (bitCount <= 0)
 				return argValues[0];
-			
+
 			int64 andBits = (0x8000000000000000LL) >> ((argValues[0].mType->GetByteCount() - 8) * 8 + bitCount - 1);
 			DbgTypedValue result;
 			result.mType = argValues[0].mType;
@@ -7823,7 +7823,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	else if (methodName == "__parseCompileUnits")
 	{
 		for (auto dbgModule : mDebugTarget->mDbgModules)
-		{						
+		{
 			dbgModule->ParseCompileUnits();
 		}
 	}
@@ -7832,7 +7832,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	DbgType* targetTypeInst = NULL;
 	bool checkNonStatic = true;
 	if (target)
-	{				
+	{
 		targetTypeInst = target.mType;
 		curTypeDef = targetTypeInst;
 	}
@@ -7842,7 +7842,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 		{
 			//TODO ;
 			//targetTypeInst = mModule->GetPrimitiveStructType(target.mType);
-		}		
+		}
 		else
 			targetTypeInst = target.mType;
 		if (targetTypeInst == NULL)
@@ -7854,15 +7854,15 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 		checkNonStatic = false;
 	}
 	else // Current scope
-	{		
+	{
 		curTypeDef = GetCurrentType();
 		targetTypeInst = GetCurrentType();
 		auto currentMethod = GetCurrentMethod();
-		
+
 		checkNonStatic = (currentMethod != NULL) && (currentMethod->mHasThis);
 	}
 
-	DbgSubprogram* methodDef = NULL;	
+	DbgSubprogram* methodDef = NULL;
 	BfTypeVector checkMethodGenericArguments;
 
 	bool isFailurePass = false;
@@ -7872,7 +7872,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 		methodMatcher.mTargetIsConst = targetTypeInst->IsConst();
 	if (targetTypeInst != NULL)
 	{
-		methodMatcher.CheckType(targetTypeInst, false);		
+		methodMatcher.CheckType(targetTypeInst, false);
 		if (methodMatcher.mBestMethodDef == NULL)
 		{
 			isFailurePass = true;
@@ -7904,8 +7904,8 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 		if (allowImplicitThis)
 		{
 			//auto thisValue = mModule->GetThis();
-			//LookupField(targetSrc, thisValue, methodName);			
-			fieldVal = LookupIdentifier(BfNodeDynCast<BfIdentifierNode>(targetSrc));											
+			//LookupField(targetSrc, thisValue, methodName);
+			fieldVal = LookupIdentifier(BfNodeDynCast<BfIdentifierNode>(targetSrc));
 		}
 		else
 		{
@@ -7924,9 +7924,9 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 				if (fieldTypeInst->mTypeDef->mIsDelegate)
 					return MatchMethod(targetSrc, fieldVal, false, false, "Invoke", arguments, methodGenericArguments);
 			}
-			fieldVal.mType = mModule->ResolveGenericParam(fieldVal.mType);			
-			if (fieldVal.mType->IsVar())			
-				return DbgTypedValue(mModule->GetDefaultValue(fieldVal.mType), fieldVal.mType);		
+			fieldVal.mType = mModule->ResolveGenericParam(fieldVal.mType);
+			if (fieldVal.mType->IsVar())
+				return DbgTypedValue(mModule->GetDefaultValue(fieldVal.mType), fieldVal.mType);
 			mModule->Fail(StrFormat("Cannot perform invocation on type '%s'", mModule->TypeToString(fieldVal.mType).c_str()), targetSrc);
 			return DbgTypedValue();
 		}*/
@@ -7960,7 +7960,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 					mModule->Fail("Objects must be allocated through 'new' or 'stack'", targetSrc);
 					return DbgTypedValue();
 				}
-				
+
 				DbgTypedValue structInst = DbgTypedValue(mModule->mIRBuilder->CreateAlloca(resolvedType->mLLVMType),
 					resolvedType, false);
 				MatchConstructor(targetSrc, structInst, resolvedType, arguments, false);
@@ -7970,11 +7970,11 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	}*/
 
 	if ((methodDef == NULL) && (!target))
-	{			
+	{
 		for (int compileUnitIdx = 0; compileUnitIdx < (int)mDbgModule->mCompileUnits.size(); compileUnitIdx++)
 		{
 			auto compileUnit = mDbgModule->mCompileUnits[compileUnitIdx];
-			methodMatcher.CheckType(compileUnit->mGlobalType, isFailurePass);				
+			methodMatcher.CheckType(compileUnit->mGlobalType, isFailurePass);
 			if (methodMatcher.mBestMethodDef != NULL)
 			{
 				isFailurePass = false;
@@ -7982,7 +7982,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 				methodDef = methodMatcher.mBestMethodDef;
 				break;
 			}
-		}		
+		}
 	}
 
 	if ((methodDef == NULL) && ((methodGenericArguments == NULL) || (methodGenericArguments->IsEmpty())))
@@ -7998,11 +7998,11 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	}
 
 	if (methodDef == NULL)
-	{		
+	{
 		Fail("Method does not exist", targetSrc);
 		return DbgTypedValue();
-	}		
-	
+	}
+
 	// Don't execute the method if we've had a failure (like an ambiguous lookup)
 	if ((mPassInstance != NULL) && (mPassInstance->HasFailed()))
 		return DbgTypedValue();
@@ -8013,7 +8013,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 		callTarget = target;
 	}
 	else if (target)
-	{		
+	{
 		bool handled = false;
 		if (target.mType->IsCompositeType())
 		{
@@ -8022,7 +8022,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 			/*if (curTypeInst->IsObject())
 			{
 				// Box it
-				callTarget = mModule->Cast(targetSrc, target, curTypeInst, true);				
+				callTarget = mModule->Cast(targetSrc, target, curTypeInst, true);
 				handled = true;
 			}*/
 		}
@@ -8034,7 +8034,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 			callTarget = DbgTypedValue(mModule->mIRBuilder->CreateBitCast(targetValue, curTypeInst->mPtrLLVMType), curTypeInst);*/
 			callTarget = target;
 		}
-	}		
+	}
 
 	if (prevReferenceId.mPrevVal != NULL)
 	{
@@ -8043,7 +8043,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 		*prevReferenceId.mPrevVal += methodDef->ToString();
 	}
 
-	return CreateCall(targetSrc, callTarget, methodDef, bypassVirtual, arguments, argValues);		
+	return CreateCall(targetSrc, callTarget, methodDef, bypassVirtual, arguments, argValues);
 }
 
 void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments)
@@ -8056,11 +8056,11 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 	DbgTypedValue thisValue;
 	//TODO: This may just be a fully qualified static method name, so let's check that also
 	if (auto memberRefExpression = BfNodeDynCast<BfMemberReferenceExpression>(target))
-	{		
+	{
 		//GetAutoComplete()->CheckMemberReference(memberRefExpression->mTarget, memberRefExpression->mDotToken, memberRefExpression->mMemberName);
 
 		if (memberRefExpression->mMemberName == NULL)
-			return;		
+			return;
 
 		if (memberRefExpression->IsA<BfBaseExpression>())
 			bypassVirtual = true;
@@ -8069,13 +8069,13 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 
 		if (auto attrIdentifier = BfNodeDynCast<BfAttributedIdentifierNode>(memberRefExpression->mMemberName))
 		{
-			methodNodeSrc = attrIdentifier->mIdentifier;			
+			methodNodeSrc = attrIdentifier->mIdentifier;
 			if (attrIdentifier->mIdentifier != NULL)
 				targetFunctionName = attrIdentifier->mIdentifier->ToString();
 		}
 		else
 			targetFunctionName = memberRefExpression->mMemberName->ToString();
-		
+
 		if (memberRefExpression->mTarget == NULL)
 		{
 			// Dot-qualified
@@ -8102,22 +8102,22 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 		mResult = DbgTypedValue();
 	}
 	else if (auto qualifiedName = BfNodeDynCast<BfQualifiedNameNode>(target))
-	{		
+	{
 		/*if (GetAutoComplete() != NULL)
 			GetAutoComplete()->CheckMemberReference(qualifiedName->mLeft, qualifiedName->mDot, qualifiedName->mRight);*/
-		
-		String leftName = qualifiedName->mLeft->ToString();
-		if (leftName == "base")	
-			bypassVirtual = true;		
 
-		methodNodeSrc = qualifiedName->mRight;		
+		String leftName = qualifiedName->mLeft->ToString();
+		if (leftName == "base")
+			bypassVirtual = true;
+
+		methodNodeSrc = qualifiedName->mRight;
 		if (auto attrIdentifier = BfNodeDynCast<BfAttributedIdentifierNode>(qualifiedName->mRight))
 		{
-			methodNodeSrc = attrIdentifier->mIdentifier;			
+			methodNodeSrc = attrIdentifier->mIdentifier;
 			targetFunctionName = attrIdentifier->mIdentifier->ToString();
 		}
 		else
-			targetFunctionName = qualifiedName->mRight->ToString();	
+			targetFunctionName = qualifiedName->mRight->ToString();
 
 		bool hadError = false;
 		thisValue = LookupIdentifier(qualifiedName->mLeft, true, &hadError);
@@ -8132,12 +8132,12 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 			{
 				SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
 				type = ResolveTypeRef(qualifiedName->mLeft);
-			}						
+			}
 
 			/*if (type->IsGenericParam())
 			{
 				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)type);
-				type = genericParamInstance->mTypeConstraint;				
+				type = genericParamInstance->mTypeConstraint;
 			}*/
 
 			if (type != NULL)
@@ -8156,13 +8156,13 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 			return;
 		}
 		mResult = DbgTypedValue();
-	}																																														    
+	}
 	else if (auto identiferExpr = BfNodeDynCast<BfIdentifierNode>(target))
 	{
 		allowImplicitThis = true;
 
 		targetFunctionName = target->ToString();
-		
+
 	}
 	else if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(target))
 	{
@@ -8173,7 +8173,7 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 
 		if (!innerInvocationResult)
 			return;
-		
+
 		/*if (innerInvocationResult.mType->IsTypeInstance())
 		{
 			auto invocationTypeInst = innerInvocationResult.mType->ToTypeInstance();
@@ -8188,7 +8188,7 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 		{
 			Fail(StrFormat("Cannot perform invocation on type '%s'", innerInvocationResult.mType->ToString().c_str()), invocationExpr->mTarget);
 			return;
-		}		
+		}
 	}
 	else
 	{
@@ -8197,16 +8197,16 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 	}
 
 	if (thisValue)
-	{		
+	{
 		if (thisValue.mType->IsPointer())
 		{
-			//BF_ASSERT(thisValue.mIsAddr);			
+			//BF_ASSERT(thisValue.mIsAddr);
 			thisValue.mType = thisValue.mType->mTypeParam;
 			thisValue.mSrcAddress = thisValue.mPtr;
 		}
 
 		if (thisValue.mType->IsPrimitiveType())
-		{			
+		{
 			//TODO:
 			/*auto primStructType = GetPrimitiveStructType(thisValue.mType);
 			//thisValue = mModule->Cast(target, thisValue, primStructType);
@@ -8215,19 +8215,19 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 			srcAlloca->setAlignment(primStructType->mAlign);
 			auto primPtr = mModule->mIRBuilder->CreateConstInBoundsGEP2_32(srcAlloca, 0, 0);
 			mModule->mIRBuilder->CreateStore(thisValue.mValue, primPtr);
-			
+
 			thisValue = DbgTypedValue(srcAlloca, primStructType, true);*/
 		}
 
 		if (thisValue.mType->IsEnum())
-		{			
+		{
 			//auto enumStructType = thisValue.mType->ToTypeInstance();
 
 			/*auto srcAlloca = mModule->GetHeadIRBuilder()->CreateAlloca(enumStructType->mInstLLVMType, 0);
 			srcAlloca->setAlignment(enumStructType->mAlign);
 			auto enumPtr = mModule->mIRBuilder->CreateConstInBoundsGEP2_32(srcAlloca, 0, 0);
 			mModule->mIRBuilder->CreateStore(thisValue.mValue, enumPtr);*/
-						
+
 			//thisValue = DbgTypedValue(mModule->mIRBuilder->CreateBitCast(srcAlloca, enumStructType->mBaseType->mPtrLLVMType), enumStructType->mBaseType, true);
 		}
 
@@ -8238,29 +8238,29 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 		}*/
 	}
 
-	mResult = MatchMethod(methodNodeSrc, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, args, methodGenericArguments);	
+	mResult = MatchMethod(methodNodeSrc, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, args, methodGenericArguments);
 }
 
 void DbgExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
-{	
+{
 	mIsComplexExpression = true;
 
 	auto wasCapturingMethodInfo = (mAutoComplete != NULL) && (mAutoComplete->mIsCapturingMethodMatchInfo);
 	/*if (mAutoComplete != NULL)
 		mAutoComplete->CheckInvocation(invocationExpr, invocationExpr->mOpenParen, invocationExpr->mCloseParen, invocationExpr->mCommas);*/
-	
+
 	BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments = NULL;
 	if (invocationExpr->mGenericArgs != NULL)
 		methodGenericArguments = &invocationExpr->mGenericArgs->mGenericArgs;
 	DoInvocation(invocationExpr->mTarget, invocationExpr->mArguments, methodGenericArguments);
-	
+
 	if ((wasCapturingMethodInfo) && (!mAutoComplete->mIsCapturingMethodMatchInfo))
-	{		
+	{
 		mAutoComplete->mIsCapturingMethodMatchInfo = true;
 		BF_ASSERT(mAutoComplete->mMethodMatchInfo != NULL);
 	}
 	else if (mAutoComplete != NULL)
-		mAutoComplete->mIsCapturingMethodMatchInfo = false;	
+		mAutoComplete->mIsCapturingMethodMatchInfo = false;
 }
 
 void DbgExprEvaluator::Visit(BfConditionalExpression* condExpr)
@@ -8294,7 +8294,7 @@ void DbgExprEvaluator::Visit(BfTypeAttrExpression* typeAttrExpr)
 {
 	if (typeAttrExpr->mTypeRef == NULL)
 		return;
-	
+
 	AutocompleteCheckType(typeAttrExpr->mTypeRef);
 	auto dbgType = ResolveTypeRef(typeAttrExpr->mTypeRef);
 	if (dbgType == NULL)
@@ -8337,13 +8337,13 @@ void DbgExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 		Fail(StrFormat("Tuple expressions cannot be used for type '%s'", mReceivingValue->mType->ToString().c_str()), tupleExpr);
 		return;
 	}
-	
+
 	CheckTupleCreation(mReceivingValue->mSrcAddress, tupleExpr, mReceivingValue->mType, tupleExpr->mValues, &tupleExpr->mNames);
 	mReceivingValue = NULL;
 }
 
 DbgTypedValue DbgExprEvaluator::Resolve(BfExpression* expr, DbgType* wantType)
-{	
+{
 	//BfLogDbgExpr("Dbg Evaluate %s\n", expr->ToString().c_str());
 
 	BF_ASSERT(!HasPropResult());
@@ -8368,12 +8368,12 @@ DbgTypedValue DbgExprEvaluator::Resolve(BfExpression* expr, DbgType* wantType)
 	{
 		if (!mResult)
 			break;
-		if (//(mResult.mType->mTypeCode == DbgType_Const) ||			
+		if (//(mResult.mType->mTypeCode == DbgType_Const) ||
 			(mResult.mType->mTypeCode == DbgType_Volatile))
 			mResult.mType = mResult.mType->mTypeParam;
 		else
 			break;
-	}	
+	}
 
 	if ((mResult) && (wantType != NULL))
 		mResult = Cast(expr, mResult, wantType);
@@ -8407,7 +8407,7 @@ BfAstNode* DbgExprEvaluator::FinalizeExplicitThisReferences(BfAstNode* headNode)
 		if ((unaryOpExpr->mOp != BfUnaryOp_AddressOf) && (unaryOpExpr->mOp != BfUnaryOp_Dereference))
 			doWrap = true;
 	}
-	if ((explicitThisExpr->IsA<BfCastExpression>()) ||		
+	if ((explicitThisExpr->IsA<BfCastExpression>()) ||
 		(explicitThisExpr->IsA<BfBinaryOperatorExpression>()) ||
 		(explicitThisExpr->IsA<BfUnaryOperatorExpression>()))
 		doWrap = true;
@@ -8421,14 +8421,14 @@ BfAstNode* DbgExprEvaluator::FinalizeExplicitThisReferences(BfAstNode* headNode)
 
 	auto source = headNode->GetSourceData();
 	for (auto& replaceNodeRecord : mDeferredInsertExplicitThisVector)
-	{	
+	{
 		auto replaceNode = replaceNodeRecord.mNode;
 
 		DbgType* castType = NULL;
 
 		auto typeRef = BfNodeDynCast<BfTypeReference>(replaceNode);
 		if ((typeRef != NULL) || (replaceNodeRecord.mForceTypeRef))
-		{		
+		{
 			castType = ResolveTypeRef(replaceNode);
 			if (castType == NULL)
 				continue;
@@ -8438,14 +8438,14 @@ BfAstNode* DbgExprEvaluator::FinalizeExplicitThisReferences(BfAstNode* headNode)
 		//  We must do this because we can't insert the actual 'this' node into multiple parents
 		auto thisExprNode = source->mAlloc.Alloc<BfIdentifierNode>();
 		BfAstNode* newNode = NULL;
-		
+
 		if (castType != NULL)
 		{
 			bfReducer.ReplaceNode(replaceNode, thisExprNode);
 			newNode = thisExprNode;
 		}
 		else if (auto thisNode = BfNodeDynCast<BfThisExpression>(replaceNode))
-		{			
+		{
 			bfReducer.ReplaceNode(replaceNode, thisExprNode);
 			newNode = thisExprNode;
 		}
@@ -8463,7 +8463,7 @@ BfAstNode* DbgExprEvaluator::FinalizeExplicitThisReferences(BfAstNode* headNode)
 			bfReducer.MoveNode(thisExprNode, memberRefNode);
 			memberRefNode->mTarget = thisExprNode;
 
-			newNode = memberRefNode;			
+			newNode = memberRefNode;
 		}
 
 		if (newNode != NULL)
@@ -8484,7 +8484,7 @@ BfAstNode* DbgExprEvaluator::FinalizeExplicitThisReferences(BfAstNode* headNode)
 
 		int thisLen = (int)replaceString.length();
 		int srcStart = bfParser->AllocChars(thisLen);
-		memcpy((char*)source->mSrc + srcStart, replaceString.c_str(), thisLen);		
+		memcpy((char*)source->mSrc + srcStart, replaceString.c_str(), thisLen);
 		thisExprNode->Init(srcStart, srcStart, srcStart + thisLen);
 	}
 

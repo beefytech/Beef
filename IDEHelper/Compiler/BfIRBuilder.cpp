@@ -3334,6 +3334,13 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								constDIType, flags, useIntConstant ? intConstant : BfIRValue());
 							diFieldTypes.push_back(memberType);
 
+							if (fieldDef->mUsingProtection != BfProtection_Hidden)
+							{
+								auto memberType = DbgCreateStaticMemberType(diForwardDecl, "$using$" + fieldName, fileDIScope, 0,
+									constDIType, flags, useIntConstant ? intConstant : BfIRValue());
+								diFieldTypes.push_back(memberType);
+							}
+
 							if (staticValue)
 							{
 								String qualifiedName = DbgGetStaticFieldName(fieldInstance);
@@ -3384,6 +3391,13 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 						resolvedFieldDIType, flags, BfIRValue());
 					diFieldTypes.push_back(memberType);
 
+					if (fieldDef->mUsingProtection != BfProtection_Hidden)
+					{
+						auto memberType = DbgCreateStaticMemberType(diForwardDecl, "$using$" + fieldDef->mName, fileDIScope, 0,
+							resolvedFieldDIType, flags, BfIRValue());
+						diFieldTypes.push_back(memberType);
+					}
+
 					StringT<128> staticVarName;
 					BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
 					if (!staticVarName.StartsWith('#'))
@@ -3416,6 +3430,14 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 						fieldInstance->mDataSize * 8, resolvedFieldType->mAlign * 8, fieldInstance->mDataOffset * 8,
 						flags, resolvedFieldDIType);
 					diFieldTypes.push_back(memberType);
+
+					if (fieldDef->mUsingProtection != BfProtection_Hidden)
+					{
+						auto memberType = DbgCreateMemberType(diForwardDecl, "$using$" + fieldName, fileDIScope, lineNum,
+							fieldInstance->mDataSize * 8, resolvedFieldType->mAlign * 8, fieldInstance->mDataOffset * 8,
+							flags, resolvedFieldDIType);
+						diFieldTypes.push_back(memberType);
+					}
 				}
 			}
 		}
