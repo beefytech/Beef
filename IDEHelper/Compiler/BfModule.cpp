@@ -22502,10 +22502,18 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 			}
 		}
 
-		// Keep outs for being marked as assigned
+		// Keep outs from being marked as assigned
 		auto rootMethodState = mCurMethodState->GetRootMethodState();
 		BfDeferredLocalAssignData deferredLocalAssignData(rootMethodState->mCurScope);
 		deferredLocalAssignData.mVarIdBarrier = rootMethodState->mCurLocalVarId;
+		if (rootMethodState->mDeferredLocalAssignData != NULL)
+		{
+			auto prevDLA = rootMethodState->mDeferredLocalAssignData;
+			while ((prevDLA != NULL) && (prevDLA->mIsChained))
+				prevDLA = prevDLA->mChainedAssignData;
+			deferredLocalAssignData.mAssignedLocals = prevDLA->mAssignedLocals;
+			deferredLocalAssignData.mLeftBlockUncond = prevDLA->mLeftBlockUncond;
+		}
 		SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(rootMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
 		if (!mIgnoreErrors)
 			localMethod->mDidBodyErrorPass = true;
