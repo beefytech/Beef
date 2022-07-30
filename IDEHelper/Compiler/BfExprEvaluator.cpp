@@ -4143,9 +4143,7 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 	}
 	else if (varDecl->mIsSplat)
 	{
-		if ((!preferValue) && (varDecl->mAddr))
-			localResult = BfTypedValue(varDecl->mAddr, varDecl->mResolvedType, BfTypedValueKind_SplatHead);
-		else if (!varDecl->mResolvedType->IsValuelessType())
+		if (!varDecl->mResolvedType->IsValuelessType())
 			localResult = BfTypedValue(varDecl->mValue, varDecl->mResolvedType, BfTypedValueKind_SplatHead);
 		else if ((varDecl->mResolvedType->IsRef()) && (!allowRef))
 		{
