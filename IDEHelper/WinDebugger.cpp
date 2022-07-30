@@ -10763,8 +10763,8 @@ String WinDebugger::GetProcessInfo()
 	FILETIME currentTime = { 0 };
 	::GetSystemTimeAsFileTime(&currentTime);
 
-	retStr += StrFormat("VirtualMemory\t%d\n", memInfo.PagefileUsage);
-	retStr += StrFormat("WorkingMemory\t%d\n", memInfo.WorkingSetSize);
+	retStr += StrFormat("VirtualMemory\t%lld\n", memInfo.PagefileUsage);
+	retStr += StrFormat("WorkingMemory\t%lld\n", memInfo.WorkingSetSize);
 	retStr += StrFormat("RunningTime\t%lld\n", *(int64*)&currentTime - *(int64*)&creationTime);
 	retStr += StrFormat("KernelTime\t%lld\n", *(int64*)&kernelTime / sysinfo.dwNumberOfProcessors);
 	retStr += StrFormat("UserTime\t%lld\n", *(int64*)&userTime / sysinfo.dwNumberOfProcessors);
