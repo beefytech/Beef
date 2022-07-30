@@ -18124,6 +18124,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				{
 					auto thisVal = GetThis();
 					auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(thisVal.mValue, 0, fieldInstance.mDataIdx);
+					if (mCurTypeInstance->IsUnion())
+						fieldPtr = mBfIRBuilder->CreateBitCast(fieldPtr, mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapType(fieldInstance.mResolvedType)));
 					mBfIRBuilder->CreateAlignedStore(localVal.mValue, fieldPtr, localVar->mResolvedType->mAlign);
 				}
 				MarkFieldInitialized(&fieldInstance);

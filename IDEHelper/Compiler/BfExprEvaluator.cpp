@@ -9215,7 +9215,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			}
 		}
 
-		if ((!target.mType->IsGenericParam()) && (!target.IsSplat()) && (!IsVar(target.mType)))
+		if ((!target.mType->IsGenericParam()) &&
+			((!target.IsSplat()) || (target.mType->IsWrappableType())) &&
+			(!IsVar(target.mType)))
 			target = MakeCallableTarget(targetSrc, target);
 	}
 
