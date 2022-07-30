@@ -1,0 +1,9 @@
+ShowFile("src/UsingFields.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+AssertEvalEquals("v0.x", "123")
+AssertEvalEquals("v0.GetX()", "123")
+AssertEvalEquals("v1.x", "345")
+AssertEvalEquals("v1.GetX()", "345")

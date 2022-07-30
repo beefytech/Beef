@@ -31,6 +31,7 @@ namespace IDETest
 			Stepping_Scope.Test();
 			TypedPrimitives.Test();
 			Unions.Test();
+			UsingFields.Test();
 			Virtuals.Test();
 
 			Bug001.Test();

@@ -388,13 +388,13 @@ public:
 	DbgTypedValue ReadTypedValue(BfAstNode* targetSrc, DbgType* type, uint64 valAddr, DbgAddrType addrType);
 	bool CheckTupleCreation(addr_target receiveAddr, BfAstNode* targetSrc, DbgType* tupleType, const BfSizedArray<BfExpression*>& argValues, BfSizedArray<BfTupleNameNode*>* names);
 	DbgTypedValue CheckEnumCreation(BfAstNode* targetSrc, DbgType* enumType, const StringImpl& caseName, const BfSizedArray<BfExpression*>& argValues);
-	void DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments);
+	void DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, bool& failed);
 	bool ResolveArgValues(const BfSizedArray<ASTREF(BfExpression*)>& arguments, SizedArrayImpl<DbgTypedValue>& outArgValues);
 	DbgTypedValue CreateCall(DbgSubprogram* method, DbgTypedValue thisVal, DbgTypedValue structRetVal, bool bypassVirtual, CPURegisters* registers);
 	DbgTypedValue CreateCall(DbgSubprogram* method, SizedArrayImpl<DbgMethodArgument>& argPushQueue, bool bypassVirtual);
 	DbgTypedValue CreateCall(BfAstNode* targetSrc, DbgTypedValue target, DbgSubprogram* methodDef, bool bypassVirtual, const BfSizedArray<ASTREF(BfExpression*)>& arguments, SizedArrayImpl<DbgTypedValue>& argValues);
 	DbgTypedValue MatchMethod(BfAstNode* targetSrc, DbgTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName,
-		const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments);
+		const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, bool& failed);
 	DbgType* ResolveSubTypeRef(DbgType* checkType, const StringImpl& name);
 	void PerformBinaryOperation(ASTREF(BfExpression*)& leftExpression, ASTREF(BfExpression*)& rightExpression, BfBinaryOp binaryOp, BfTokenNode* opToken, bool forceLeftType);
 	void PerformBinaryOperation(DbgType* resultType, DbgTypedValue convLeftValue, DbgTypedValue convRightValue, BfBinaryOp binaryOp, BfTokenNode* opToken);

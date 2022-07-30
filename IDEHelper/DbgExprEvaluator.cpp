@@ -7489,7 +7489,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 }
 
 DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName,
-	const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments)
+	const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, bool& failed)
 {
 	SetAndRestoreValue<String*> prevReferenceId(mReferenceId, NULL);
 
@@ -7983,7 +7983,77 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 
 	if (methodDef == NULL)
 	{
-		Fail("Method does not exist", targetSrc);
+		if (target)
+		{
+			std::function<DbgTypedValue(DbgTypedValue)> _CheckUsingFields = [&](DbgTypedValue checkTarget)
+			{
+				auto curCheckType = checkTarget.mType->RemoveModifiers();
+				curCheckType = curCheckType->GetPrimaryType();
+				curCheckType->PopulateType();
+
+				auto nextMember = curCheckType->mMemberList.mHead;
+				while (nextMember != NULL)
+				{
+					auto checkMember = nextMember;
+					nextMember = checkMember->mNext;
+
+					if (checkMember->mName == NULL)
+					{
+						//TODO: Check inside anonymous type
+						DbgTypedValue innerTarget;
+
+						addr_target targetPtr = checkTarget.mSrcAddress;
+						if ((checkTarget.mType != NULL) && (checkTarget.mType->HasPointer()))
+							targetPtr = checkTarget.mPtr;
+						innerTarget.mSrcAddress = targetPtr + checkMember->mMemberOffset;
+						innerTarget.mType = checkMember->mType;
+
+						failed = false;
+						auto result = MatchMethod(targetSrc, innerTarget, false, bypassVirtual, methodName, arguments, methodGenericArguments, failed);
+						if (!failed)
+							return result;
+					}
+				}
+
+				for (auto baseTypeEntry : curCheckType->mBaseTypes)
+				{
+					auto baseType = baseTypeEntry->mBaseType;
+
+					DbgTypedValue baseTarget = target;
+					addr_target* ptrRef = NULL;
+					if ((baseTarget.mPtr != 0) && (checkTarget.mType->HasPointer()))
+						ptrRef = &baseTarget.mPtr;
+					else if (baseTarget.mSrcAddress != 0)
+						ptrRef = &baseTarget.mSrcAddress;
+
+					if (ptrRef != NULL)
+					{
+						if (baseTypeEntry->mVTableOffset != -1)
+						{
+							addr_target vtableAddr = mDebugger->ReadMemory<addr_target>(checkTarget.mPtr);
+							int32 virtThisOffset = mDebugger->ReadMemory<int32>(vtableAddr + baseTypeEntry->mVTableOffset * sizeof(int32));
+							*ptrRef += virtThisOffset;
+						}
+						else
+							*ptrRef += baseTypeEntry->mThisOffset;
+					}
+
+					baseTarget.mType = baseType;
+					auto result = _CheckUsingFields(baseTarget);
+					if (!failed)
+						return result;
+				}
+
+				failed = true;
+				return DbgTypedValue();
+			};
+
+			auto result = _CheckUsingFields(target);
+			if (!failed)
+				return result;
+		}
+
+		failed = true;
 		return DbgTypedValue();
 	}
 
@@ -8030,7 +8100,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	return CreateCall(targetSrc, callTarget, methodDef, bypassVirtual, arguments, argValues);
 }
 
-void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments)
+void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, bool& failed)
 {
 	bool allowImplicitThis = false;
 	BfAstNode* methodNodeSrc = target;
@@ -8221,7 +8291,8 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 		}*/
 	}
 
-	mResult = MatchMethod(methodNodeSrc, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, args, methodGenericArguments);
+
+	mResult = MatchMethod(methodNodeSrc, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, args, methodGenericArguments, failed);
 }
 
 void DbgExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
@@ -8235,7 +8306,10 @@ void DbgExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
 	BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments = NULL;
 	if (invocationExpr->mGenericArgs != NULL)
 		methodGenericArguments = &invocationExpr->mGenericArgs->mGenericArgs;
-	DoInvocation(invocationExpr->mTarget, invocationExpr->mArguments, methodGenericArguments);
+	bool failed = false;
+	DoInvocation(invocationExpr->mTarget, invocationExpr->mArguments, methodGenericArguments, failed);
+	if (failed)
+		Fail("Method does not exist", invocationExpr->mTarget);
 
 	if ((wasCapturingMethodInfo) && (!mAutoComplete->mIsCapturingMethodMatchInfo))
 	{
