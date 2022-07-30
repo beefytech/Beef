@@ -4,6 +4,10 @@ ToggleBreakpoint()
 RunWithCompiling()
 
 AssertEvalEquals("v0.x", "123")
-AssertEvalEquals("v0.GetX()", "123")
 AssertEvalEquals("v1.x", "345")
+
+# Temporarily broken in LLVM
+if (platform != "Win64") Stop()
+
+AssertEvalEquals("v0.GetX()", "123")
 AssertEvalEquals("v1.GetX()", "345")

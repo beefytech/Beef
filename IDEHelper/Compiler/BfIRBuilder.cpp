@@ -3031,7 +3031,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 			else
 			{
 				if (wantsDIPartialDef)
-					typeName += "$part";
+					typeName += "$part$";
 
 				// Will fill in later (during definition phase)
 				int flags = 0;

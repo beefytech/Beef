@@ -1547,17 +1547,25 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			for (int i = 0; true; i++)
 			{
 				char c = name[i];
+
 				if (c == 0)
+					break;
+
+				if (c == '$')
 				{
-					if ((i >= 4) && (strcmp(&name[i - 5], "$part") == 0))
+					if ((i >= 5) && (strncmp(&name[i - 5], "$part$", 6) == 0))
 					{
 						if (!strMadeCopy)
 							name = DbgDupString(name, "CvParseType.LF_CLASS");
-						((char*)name)[i - 5] = '\0';
-						isPartialDef = true;
+						strcpy((char*)&name[i - 5], &name[i + 1]);
+						if (name[i - 5] == '\0')
+						{
+							isPartialDef = true;
+							break;
+						}
 					}
-					break;
 				}
+
 				if ((c == ' ') && (i >= 5))
 				{
 					if ((name[i - 4] == 'e') &&
