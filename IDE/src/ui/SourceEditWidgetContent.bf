@@ -6078,7 +6078,7 @@ namespace IDE.ui
 							wantOpen = !wantOpen;
 
 						if (collapseEntry.mIsOpen != wantOpen)
-							SetCollapseOpen(@collapseEntry.Index, wantOpen, true);
+							SetCollapseOpen(@collapseEntry.Index, wantOpen, true, true);
 					}
 
 					mCollapseAwaitingDB = false;
@@ -6387,17 +6387,26 @@ namespace IDE.ui
 		}
 
 		
-		public void SetCollapseOpen(int collapseIdx, bool wantOpen, bool immediate = false)
+		public void SetCollapseOpen(int collapseIdx, bool wantOpen, bool immediate = false, bool keepCursorVisible = false)
 		{
 			var entry = mOrderedCollapseEntries[collapseIdx];
+
+			var cursorLineAndColumn = CursorLineAndColumn;
+
+			if ((!wantOpen) && (keepCursorVisible) && (cursorLineAndColumn.mLine >= entry.mStartLine) && (cursorLineAndColumn.mLine <= entry.mEndLine))
+			{
+				if (CursorTextPos < entry.mEndIdx)
+				{
+					// Ignore close
+					return;
+				}
+			}
 
 			entry.mIsOpen = wantOpen;
 			if (immediate)
 				entry.mOpenPct = entry.mIsOpen ? 1.0f : 0.0f;
 			mCollapseNeedsUpdate = true;
 			mCollapseDBDirty = true;
-
-			var cursorLineAndColumn = CursorLineAndColumn;
 
 			if (wantOpen)
 			{
