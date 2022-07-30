@@ -21,7 +21,6 @@
 
 #include "BeefySysLib/util/AllocDebug.h"
 
-
 #define LF_CLASS_EX 0x1608
 #define LF_STRUCTURE_EX 0x1609
 
@@ -769,13 +768,11 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 	else if (trLeafType == LF_MFUNC_ID)
 	{
 		//
-
 	}
 	else
 	{
 		SoftFail(StrFormat("Unhandled func type at tagId %d ipi %d", tagIdx, ipi));
 	}
-
 
 	if ((parentType != NULL) && (!IsObjectFile()))
 	{
@@ -1595,8 +1592,6 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			else
 				dbgType->mTypeCode = DbgType_Struct;
 
-
-
 			DbgType* baseType = NULL;
 			if (derived != 0)
 			{
@@ -1734,7 +1729,6 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 		break;
 	case LF_DIMARRAY:
 		{
-
 		}
 		break;
 	case LF_ARRAY:
@@ -3027,7 +3021,6 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				inlineDebugDump = false;
 				curSubprogram = NULL;
 				curParam = NULL;
-
 			}
 			break;
 		case S_COMPILE2:
@@ -3357,7 +3350,6 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 						}
 
 						return false;
-
 					};
 
 					for (int blockIdx = (int)blockStack.size() - 1; blockIdx >= 0; blockIdx--)
@@ -3414,7 +3406,6 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		{
 			BF_ASSERT(locationDataCount == prevLocalVar->mLocationLen);
 		}*/
-
 
 		data = dataEnd;
 		//PTR_ALIGN(data, sectionData, 4);
@@ -3863,7 +3854,6 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 						bool flushOnLineOffset = false;
 						addr_target lastLineAddr = 0;
 
-
 						DbgSrcFileReference* srcFileRef = startSrcFileRef;
 						DbgSubprogram* curSubprogram = inlineData->mSubprogram;
 
@@ -3907,7 +3897,6 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 								BfLogCv(" Adding Line:%d Addr:%@\n", lineData.mLine + 1, lineData.mRelAddress + mImageBase);
 
 							curLineData = lineBuilder.Add(compileUnit, lineData, srcFileRef->mSrcFile, curSubprogram);
-
 						};
 
 						int codeIdx = 0;
@@ -4110,7 +4099,6 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 	}
 
 	lineBuilder.Commit();
-
 
 	//OutputDebugStrF("Module loaded, AllocSize added: %d\n", (mAlloc.GetAllocSize() - allocSizeStart) / 1024);
 	return compileUnit;
@@ -4693,7 +4681,6 @@ void COFF::ScanCompileUnit(int compileUnitId)
 
 				PTR_ALIGN(data, sectionData, 4);
 			}
-
 
 			break; // Stop once we handle the file checksums
 		}
@@ -5349,7 +5336,6 @@ void COFF::CvParseIPI()
 						{
 							lfStringId& str = *(lfStringId*)data;
 							const char* parentStr = (const char*)str.name;
-
 						}
 						break;
 					case LF_UDT_MOD_SRC_LINE:
@@ -5367,7 +5353,6 @@ void COFF::CvParseIPI()
 			{
 				lfMFuncId* funcData = (lfMFuncId*)dataStart;
 				auto parentType = CvGetType(funcData->parentType);
-
 			}
 			break;
 		}
@@ -5921,7 +5906,6 @@ bool COFF::ParseCv(DataStream& pdbFS, uint8* rootDirData, int pageSize, uint8 wa
 	mCvStreamPtrs.Resize(streamPages);
 	for (int i = 0; i < (int)mCvStreamPtrs.size(); i++)
 		mCvStreamPtrs[i] = GET(int32);
-
 
 	//////////////////////////////////////////////////////////////////////////
 
@@ -7089,7 +7073,6 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 // 	delete data;
 // #endif
 
-
 	FileSubStream fileStream;
 	fileStream.mFP = libEntry->mLibFile->mOldFileStream.mFP;
 	fileStream.mOffset = libEntry->mOldDataPos + sizeof(BeLibMemberHeader);
@@ -7234,7 +7217,6 @@ void COFF::ParseFrameDescriptors(uint8* data, int size, addr_target baseAddr)
 	}
 
 	mParsedFrameDescriptors = true;
-
 }
 
 void COFF::ParseFrameDescriptors()

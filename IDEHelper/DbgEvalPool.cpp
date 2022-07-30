@@ -12,7 +12,5 @@ DbgEvalPool::Entry* DbgEvalPool::Add(const std::string& expr, int callStackIdx, 
 	entry->mAllowCall = allowCalls;
 	entry->mExpressionFlags = expressionFlags;
 
-
-
 	return NULL;
 }

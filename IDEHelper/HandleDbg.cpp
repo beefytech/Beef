@@ -149,7 +149,7 @@ void HDCheckHandles(const std::string& traceStr)
     handleInfo = (PSYSTEM_HANDLE_INFORMATION)malloc(handleInfoSize);
 	NTSTATUS status;
 
-    /* NtQuerySystemInformation won't give us the correct buffer size, 
+    /* NtQuerySystemInformation won't give us the correct buffer size,
        so we guess by doubling the buffer size. */
     while ((status = gNtQuerySystemInformation(
         SystemHandleInformation,
@@ -181,7 +181,7 @@ void HDCheckHandles(const std::string& traceStr)
         /* Check if this handle belongs to the PID the user specified. */
         if (handle.ProcessId != GetCurrentProcessId())
             continue;
-		
+
 		auto itr = oldHandleMap.find(handle.Handle);
 		if (itr != oldHandleMap.end())
 			gHDHandleMap.insert(*itr);
@@ -261,7 +261,7 @@ void HDDump()
 				continue;
 			}
 
-			/* Query the object name (unless it has an access of 
+			/* Query the object name (unless it has an access of
 			   0x0012019f, on which NtQueryObject could hang. */
 			if (handle.GrantedAccess == 0x0012019f)
 			{
@@ -375,7 +375,7 @@ int ZZwmain(int argc, WCHAR *argv[])
 
     handleInfo = (PSYSTEM_HANDLE_INFORMATION)malloc(handleInfoSize);
 
-    /* NtQuerySystemInformation won't give us the correct buffer size, 
+    /* NtQuerySystemInformation won't give us the correct buffer size,
        so we guess by doubling the buffer size. */
     while ((status = NtQuerySystemInformation(
         SystemHandleInformation,
@@ -435,7 +435,7 @@ int ZZwmain(int argc, WCHAR *argv[])
             continue;
         }
 
-        /* Query the object name (unless it has an access of 
+        /* Query the object name (unless it has an access of
            0x0012019f, on which NtQueryObject could hang. */
         if (handle.GrantedAccess == 0x0012019f)
         {

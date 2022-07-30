@@ -873,7 +873,6 @@ void DbgSrcFile::RemoveDeferredRefs(DbgModule* debugModule)
 	}
 }
 
-
 void DbgSrcFile::RemoveLines(DbgModule* debugModule)
 {
  	if (!mHasLineDataFromMultipleModules)
@@ -1951,7 +1950,6 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 	return str;
 }
 
-
 intptr DbgType::GetByteCount()
 {
 	if (!mSizeCalculated)
@@ -2406,17 +2404,14 @@ void DbgModule::MapCompileUnitMethods(DbgCompileUnit * compileUnit)
 
 void DbgModule::MapCompileUnitMethods(int compileUnitId)
 {
-
 }
 
 void DbgModule::PopulateType(DbgType* dbgType)
 {
-
 }
 
 void DbgModule::PopulateTypeGlobals(DbgType* dbgType)
 {
-
 }
 
 void DbgModule::PopulateStaticVariableMap()
@@ -2706,7 +2701,6 @@ T DbgModule::GetOrCreate(int idx, DbgDataMap& dataMap)
 	dataMap.Set(idx, val);
 	return val;
 }
-
 
 template <typename T>
 static T GetStackTop(DataStack* dataStack)
@@ -3609,7 +3603,6 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				if (highPC > (addr_target)atHighPC)
 					atHighPC = highPC;*/
 			}
-
 		}
 
 		switch (entryTag)
@@ -4002,7 +3995,6 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 				if (atAbstractOrigin != 0)
 				{
-
 				}
 			}
 			break;
@@ -4178,7 +4170,6 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 							}
 							else
 							{
-
 								int nameSepLen = strlen(nameSep);
 								int parentNameLen = strlen(dbgType->mParent->mName);
 								int nameLen = strlen(atName);
@@ -4687,7 +4678,6 @@ void DbgModule::ParseEHFrameData()
 
 void DbgModule::FlushLineData(DbgSubprogram* curSubprogram, std::list<DbgLineData>& queuedLineData)
 {
-
 }
 
 DbgSrcFile* DbgModule::AddSrcFile(DbgCompileUnit* compileUnit, const String& srcFilePath)
@@ -4922,8 +4912,6 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 				}
 
 				queuedPostPrologue = false;
-
-
 			}
 			break;
 		}
@@ -4977,7 +4965,6 @@ uint8* DbgModule::GetHotTargetData(addr_target address)
 
 void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& coffReloc, addr_target resolvedSymbolAddr, PE_SymInfo* symInfo)
 {
-
 #ifdef BF_DBG_32
 	if (coffReloc.mType == IMAGE_REL_I386_DIR32)
 	{
@@ -5067,7 +5054,6 @@ void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& c
 		}
 
 		*(uint32*)(hotTargetSection->mData + coffReloc.mVirtualAddress) += (uint32)(resolvedSymbolAddr & 0x7FFFFFF);
-
 	}
 	else if (coffReloc.mType == IMAGE_REL_AMD64_ADDR64)
 	{
@@ -5347,7 +5333,6 @@ void DbgModule::HotReplaceType(DbgType* newType)
 			}
  		}
 	}
-
 
 	//DbgType* primaryType = newType->GetPrimaryType();
 
@@ -5883,7 +5868,6 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 		if ((IsObjectFile()) && (sectHdr.mNumberOfRelocations > 0))
 		{
-
 			//mDebugger->AllocTargetMemory(sectHdr.mSizeOfRawData, true, true);
 		}
 
@@ -7212,7 +7196,6 @@ void DbgModule::RevertWritingEnable()
 			section->mWritingEnabled = false;
 		}
 	}
-
 }
 
 template <typename TRadixMap>
@@ -7477,7 +7460,6 @@ DbgType* DbgModule::GetPrimitiveStructType(DbgTypeCode typeCode)
 		return NULL;
 	return FindType(name, NULL, DbgLanguage_Beef);
 }
-
 
 DbgType* DbgModule::GetSizedArrayType(DbgType * elementType, int count)
 {

@@ -23,9 +23,9 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 		if (section.mStreamType == ThreadExListStream)
 		{
 			auto& threadEx = mMiniDump->GetStreamData<MINIDUMP_THREAD_EX_LIST>(section);
-			
+
 			/*WdThreadInfo* threadInfo = new WdThreadInfo();
-			threadInfo->mThreadId = threadEx.ThreadId;			
+			threadInfo->mThreadId = threadEx.ThreadId;
 			mThreadList.Add(threadInfo);
 
 			if (mActiveThread == NULL)
@@ -54,7 +54,7 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 				//TODO: 'get' the actual image
 				dbgModule->mTimeStamp = module.TimeDateStamp;
 				//dbgModule->mExpectedFileSize = module.;
-				
+
 				const wchar_t* moduleName = &mMiniDump->GetData<wchar_t>(module.ModuleNameRva + 4);
 				dbgModule->mFilePath = UTF8Encode(moduleName);
 				dbgModule->mDisplayName = GetFileName(dbgModule->mFilePath);
@@ -74,8 +74,8 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 					//dbgModule->LoadPDB(codeViewEntry.mPDBPath, codeViewEntry.mGUID, codeViewEntry.mAge);
 				}
 
-				auto miscEntry = &mMiniDump->GetData<char>(module.MiscRecord.Rva);				
-				
+				auto miscEntry = &mMiniDump->GetData<char>(module.MiscRecord.Rva);
+
 				mDebugTarget->AddDbgModule(dbgModule);
 
 				//TESTING
@@ -124,7 +124,7 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 			auto& memoryInfoList = mMiniDump->GetStreamData<MINIDUMP_MEMORY_INFO_LIST>(section);
 			for (int memoryInfoIdx = 0; memoryInfoIdx < (int)memoryInfoList.NumberOfEntries; memoryInfoIdx++)
 			{
-				auto& memoryInfo = mMiniDump->GetData<MINIDUMP_MEMORY_INFO>(section.mDataRVA + memoryInfoList.SizeOfHeader + memoryInfoIdx*memoryInfoList.SizeOfEntry);				
+				auto& memoryInfo = mMiniDump->GetData<MINIDUMP_MEMORY_INFO>(section.mDataRVA + memoryInfoList.SizeOfHeader + memoryInfoIdx*memoryInfoList.SizeOfEntry);
 			}
 		}
 		else if (section.mStreamType == MemoryListStream)
@@ -143,15 +143,15 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 		else if (section.mStreamType == ExceptionStream)
 		{
 			auto& exceptionStream = mMiniDump->GetStreamData<MINIDUMP_EXCEPTION_STREAM>(section);
-			
-			//mCurException = exceptionStream.ExceptionRecord;			
+
+			//mCurException = exceptionStream.ExceptionRecord;
 			mCurException.ExceptionCode = exceptionStream.ExceptionRecord.ExceptionCode;
 			mCurException.ExceptionFlags = exceptionStream.ExceptionRecord.ExceptionFlags;
 			mCurException.ExceptionAddress = (PVOID)exceptionStream.ExceptionRecord.ExceptionAddress;
 			mCurException.NumberParameters = exceptionStream.ExceptionRecord.NumberParameters;
 			for (int i = 0; i < EXCEPTION_MAXIMUM_PARAMETERS; i++)
 				mCurException.ExceptionInformation[i] = exceptionStream.ExceptionRecord.ExceptionInformation[i];
-			
+
 			WdThreadInfo* threadInfo = NULL;
 			if (mThreadMap.TryGetValue(exceptionStream.ThreadId, &threadInfo))
 			{
@@ -168,19 +168,19 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 		}
 		else if (section.mStreamType == SystemInfoStream)
 		{
-			auto& systemInfo = mMiniDump->GetStreamData<MINIDUMP_SYSTEM_INFO>(section);			
+			auto& systemInfo = mMiniDump->GetStreamData<MINIDUMP_SYSTEM_INFO>(section);
 		}
 		else if (section.mStreamType == MiscInfoStream)
 		{
-			auto& miscInfo = mMiniDump->GetStreamData<MINIDUMP_MISC_INFO>(section);			
+			auto& miscInfo = mMiniDump->GetStreamData<MINIDUMP_MISC_INFO>(section);
 		}
 		else if (section.mStreamType == 21/*SystemMemoryInfoStream*/)
 		{
-			auto data = ((uint8*)mMiniDump->mMF.mData + section.mDataRVA);			
+			auto data = ((uint8*)mMiniDump->mMF.mData + section.mDataRVA);
 		}
 		else if (section.mStreamType == 22/*ProcessVmCountersStream*/)
 		{
-			auto data = ((uint8*)mMiniDump->mMF.mData + section.mDataRVA);			
+			auto data = ((uint8*)mMiniDump->mMF.mData + section.mDataRVA);
 		}
 		else if (section.mStreamType == 24) // Thread names
 		{
@@ -199,7 +199,7 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 
 				int nameLen = *(int32*)((uint8*)mMiniDump->mMF.mData + threadNameInfo->mNameRVA);
 				UTF16String name = UTF16String((wchar_t*)((uint8*)mMiniDump->mMF.mData + threadNameInfo->mNameRVA + 4), nameLen);
-				
+
 				WdThreadInfo* threadInfo = NULL;
 				if (mThreadMap.TryGetValue(threadNameInfo->mThreadId, &threadInfo))
 				{
@@ -216,15 +216,15 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 				GUID mClientID;
 			};
 
-			auto& crashPadInfo = mMiniDump->GetStreamData<_MiniDumpCrashPadInfo>(section);			
+			auto& crashPadInfo = mMiniDump->GetStreamData<_MiniDumpCrashPadInfo>(section);
 		}
 		else if (section.mStreamType == 0x4b6b0002) // Stability report
 		{
-			const char* report = &mMiniDump->GetStreamData<char>(section);			
+			const char* report = &mMiniDump->GetStreamData<char>(section);
 		}
 		else if (section.mStreamType == 0x4b6b0002) // Stability report
 		{
-			const char* report = &mMiniDump->GetStreamData<char>(section);		
+			const char* report = &mMiniDump->GetStreamData<char>(section);
 		}
 		else if (section.mStreamType == 0xBEEF00) // Error text
 		{
@@ -257,7 +257,7 @@ void MiniDumpDebugger::MapMemory(addr_target addr, void* data, intptr_target siz
 			break;
 
 		MiniDumpMemoryRegion* memRegion = mAlloc.Alloc<MiniDumpMemoryRegion>();
-		memRegion->mAddress = beginAddress + memOffset;		
+		memRegion->mAddress = beginAddress + memOffset;
 		memRegion->mAddressLength = curSize;
 		memRegion->mData = (uint8*)data + memOffset;
 		memRegion->mNext = NULL;
@@ -271,9 +271,9 @@ MappedFile* MiniDumpDebugger::MapModule(COFF* dbgModule, const StringImpl& fileN
 	if (!mappedFile->Open(fileName))
 	{
 		delete mappedFile;
-		return NULL;	
+		return NULL;
 	}
-	mMappedFiles.Add(mappedFile);	
+	mMappedFiles.Add(mappedFile);
 	return mappedFile;
 }
 
@@ -289,7 +289,6 @@ bool MiniDumpDebugger::PopulateRegisters(CPURegisters* registers)
 	{
 		if (section.mStreamType == ThreadExListStream)
 		{
-			
 		}
 		else if (section.mStreamType == ThreadListStream)
 		{
@@ -352,16 +351,16 @@ bool MiniDumpDebugger::ReadMemory(intptr address, uint64 length, void* dest, boo
 						return false;
 				}
 				return true;
-			}			
+			}
 
 			useAddr = BF_MIN(useAddr, memRegion->mAddress - 1);
-			memRegion = memRegion->mNext;			
+			memRegion = memRegion->mNext;
 		}
 
 		//if (((uintptr)address < (uintptr)memRegion->mAddress) || ((uintptr)(address + length) > uintptr(memRegion->mAddress + memRegion->mAddressLength)))
 			//return false; // Out of bounds
 	}
-	
+
 	return false;
 }
 
@@ -369,4 +368,3 @@ bool MiniDumpDebugger::WriteMemory(intptr address, void* src, uint64 length)
 {
 	return false;
 }
-

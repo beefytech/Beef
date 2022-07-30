@@ -19,13 +19,13 @@
 USING_NS_BF_DBG;
 
 DbgSymRequest::DbgSymRequest()
-{	
+{
 	mFailed = false;
 	mSearchingSymSrv = false;
 	mCancelling = false;
 	mInProcess = false;
 	mLastUpdateTick = 0;
-	mDbgSymSrv = NULL;	
+	mDbgSymSrv = NULL;
 	mWantAge = 0;
 	mMayBeOld = false;
 	mIsPreCache = false;
@@ -33,18 +33,17 @@ DbgSymRequest::DbgSymRequest()
 
 DbgSymRequest::~DbgSymRequest()
 {
-	
 }
 
 String DbgSymRequest::GetGuidString()
 {
 	String str;
-	
+
 	// Seems like weird ordering, but the guid is really supposed to be (uint32, uint16, uint16, uint8[8])
-	str += StrFormat("%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X", 
+	str += StrFormat("%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 		mWantGuid[3], mWantGuid[2], mWantGuid[1], mWantGuid[0],
 		mWantGuid[5], mWantGuid[4],
-		mWantGuid[7], mWantGuid[6],		
+		mWantGuid[7], mWantGuid[6],
 		mWantGuid[8], mWantGuid[9], mWantGuid[10], mWantGuid[11], mWantGuid[12], mWantGuid[13], mWantGuid[14], mWantGuid[15]);
 	return str;
 }
@@ -87,7 +86,7 @@ bool DbgSymRequest::CheckPDBData(const StringImpl& pdbPath, uint8 outGuid[16], i
 		{
 			mDbgSymSrv->mDebugger->OutputMessage(StrFormat("ERROR: %s cannot be used due to age mismatch\n", pdbPath.c_str()));
 		}
-		else 
+		else
 		{
 			bool hasGuid = false;
 			for (int i = 0; i < 16; i++)
@@ -108,9 +107,9 @@ bool DbgSymRequest::CheckPDBData(const StringImpl& pdbPath, uint8 outGuid[16], i
 }
 
 bool DbgSymRequest::Get(const StringImpl& url, const StringImpl& destPath, NetResult** chainNetResult, bool ignoreSuccess)
-{	
+{
 	if (mIsPreCache)
-	{		
+	{
 		auto netResult = mDbgSymSrv->mDebugger->mDebugManager->mNetManager->QueueGet(url, destPath, true);
 		if (chainNetResult != NULL)
 		{
@@ -121,7 +120,7 @@ bool DbgSymRequest::Get(const StringImpl& url, const StringImpl& destPath, NetRe
 		}
 		return false;
 	}
-	
+
 	return mDbgSymSrv->mDebugger->mDebugManager->mNetManager->Get(url, destPath);
 }
 
@@ -144,7 +143,7 @@ void DbgSymRequest::SearchLocal()
 			return;
 		}
 
-		// Check in same dir as module	
+		// Check in same dir as module
 		String checkPath = ::GetFileDir(mModulePath);
 		checkPath += "\\";
 		checkPath += GetFileName(mPDBRequested);
@@ -157,7 +156,7 @@ void DbgSymRequest::SearchLocal()
 			}
 		}
 	}
-	
+
 	mMayBeOld = true;
 }
 
@@ -206,12 +205,12 @@ void DbgSymRequest::SearchSymSrv()
 	/*if (mPDBRequested.Contains("IDEHelper"))
 		Sleep(3000);*/
 
-	SetAndRestoreValue<bool> prevSearchingSymSrv(mSearchingSymSrv, true);	
+	SetAndRestoreValue<bool> prevSearchingSymSrv(mSearchingSymSrv, true);
 
 	NetResult* chainNetResult = NULL;
 	uint8 outGuid[16];
 	int32 outAge;
-	
+
 	String cacheDir = mOptions.mCacheDir;
 	cacheDir += GetPDBStoreDir();
 
@@ -244,7 +243,7 @@ void DbgSymRequest::SearchSymSrv()
 			checkPath += GetFileName(mPDBRequested);
 			if (Get(checkPath, cacheFilePath, &chainNetResult))
 				done = true;
-				
+
 			if ((!done) && (!mCancelling))
 			{
 				// Compressed version
@@ -264,7 +263,7 @@ void DbgSymRequest::SearchSymSrv()
 					}
 					done = true;
 				}
-			}						
+			}
 
 			if ((!done) && (!mCancelling))
 			{
@@ -312,7 +311,7 @@ void DbgSymRequest::SearchSymSrv()
 		if (mIsPreCache)
 			continue;
 
-		// Re-check cache		
+		// Re-check cache
 		if (CheckPDBData(cacheFilePath, outGuid, outAge))
 		{
 			mFinalPDBPath = cacheFilePath;
@@ -329,12 +328,12 @@ bool DbgSymRequest::CheckPEFile(const StringImpl& filePath, uint32 fileTime, int
 
 	if (!fs.Open(filePath, "rb"))
 		return false;
-	
+
 	PEHeader hdr;
 	fs.ReadT(hdr);
-		
-	PE_NTHeaders64 ntHdr64;	
-	fs.SetPos(hdr.e_lfanew);	
+
+	PE_NTHeaders64 ntHdr64;
+	fs.SetPos(hdr.e_lfanew);
 	fs.Read(&ntHdr64, sizeof(PE_NTHeaders64));
 	if (ntHdr64.mFileHeader.mMachine == PE_MACHINE_X64)
 	{
@@ -349,12 +348,12 @@ bool DbgSymRequest::CheckPEFile(const StringImpl& filePath, uint32 fileTime, int
 		if ((ntHdr32.mFileHeader.mTimeDateStamp != fileTime) || (ntHdr32.mOptionalHeader.mSizeOfImage != size))
 			return false;
 	}
-		
+
 	return true;
 }
 
 String DbgSymRequest::SearchForImage(const String& filePath, uint32 fileTime, int size)
-{	
+{
 	if ((gDebugManager->mSymSrvOptions.mFlags & BfSymSrvFlag_Disable) != 0)
 		return "";
 
@@ -371,15 +370,15 @@ String DbgSymRequest::SearchForImage(const String& filePath, uint32 fileTime, in
 	{
 		mFailed = true;
 		return "";
-	}	
+	}
 
 	NetResult* chainNetResult = NULL;
 
 	String fileName = GetFileName(filePath);
 	String imageStoreDir = "/";
 	imageStoreDir += fileName;
-	imageStoreDir += "/";	
-	imageStoreDir += StrFormat("%08X%x/", fileTime, size);	
+	imageStoreDir += "/";
+	imageStoreDir += StrFormat("%08X%x/", fileTime, size);
 
 	SetAndRestoreValue<bool> prevSearchingSymSrv(mSearchingSymSrv, true);
 
@@ -400,7 +399,7 @@ String DbgSymRequest::SearchForImage(const String& filePath, uint32 fileTime, in
 	if (CheckPEFile(cacheFilePath, fileTime, size))
 	{
 		return cacheFilePath;
-	}	
+	}
 
 	for (auto& symServAddr : mOptions.mSymbolServers)
 	{
@@ -466,7 +465,7 @@ String DbgSymRequest::SearchForImage(const String& filePath, uint32 fileTime, in
 			checkPath += imageStoreDir;
 			checkPath += fileName;
 			if (CheckPEFile(checkPath, fileTime, size))
-			{				
+			{
 				return checkPath;
 			}
 
@@ -490,14 +489,14 @@ String DbgSymRequest::SearchForImage(const String& filePath, uint32 fileTime, in
 		// Re-check cache
 		if (CheckPEFile(cacheFilePath, fileTime, size))
 		{
-			return cacheFilePath;			
+			return cacheFilePath;
 		}
 	}
 
 	if (!mIsPreCache)
 	{
-		mDbgSymSrv->mDebugger->mHadImageFindError = true;		
-		mDbgSymSrv->mDebugger->OutputMessage(StrFormat("ERROR: Unable to locate image '%s' (%08X%x). If this file is located on a symbol server, configure the symbol server location in File\\Preferences\\Settings under Debugger\\Symbol File Locations.\n", 
+		mDbgSymSrv->mDebugger->mHadImageFindError = true;
+		mDbgSymSrv->mDebugger->OutputMessage(StrFormat("ERROR: Unable to locate image '%s' (%08X%x). If this file is located on a symbol server, configure the symbol server location in File\\Preferences\\Settings under Debugger\\Symbol File Locations.\n",
 			GetFileName(filePath).c_str(), fileTime, size));
 	}
 
@@ -526,7 +525,7 @@ bool DbgSymRequest::IsDone()
 
 DbgSymSrv::DbgSymSrv(Debugger* debugger)
 {
-	mDebugger = debugger;	
+	mDebugger = debugger;
 }
 
 void DbgSymSrv::PreCacheImage(const String& filePath, uint32 fileTime, int size)
@@ -558,7 +557,7 @@ DbgSymRequest* DbgSymSrv::CreateRequest()
 
 	DbgSymRequest* symRequest = new DbgSymRequest();
 	symRequest->mOptions = mDebugger->mDebugManager->mSymSrvOptions;
-	symRequest->mDbgSymSrv = this;	
+	symRequest->mDbgSymSrv = this;
 	return symRequest;
 }
 
@@ -569,6 +568,4 @@ void DbgSymSrv::ReleaseRequest(DbgSymRequest* dbgSymRequest)
 
 void DbgSymSrv::Update()
 {
-	
 }
-

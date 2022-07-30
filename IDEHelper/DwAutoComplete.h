@@ -15,7 +15,7 @@ class DwAutoComplete : public Beefy::AutoCompleteBase
 public:
 	class MethodMatchEntry
 	{
-	public:		
+	public:
 		DwTypeVector mDwGenericArguments;
 		DbgSubprogram* mDwSubprogram;
 	};

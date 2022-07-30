@@ -23,13 +23,13 @@ class DebugTarget
 public:
 	WinDebugger* mDebugger;
 
-	DbgRadixMap<DbgSymbol*> mSymbolMap;	
+	DbgRadixMap<DbgSymbol*> mSymbolMap;
 	DbgAutoStaticEntryBucketMap mAutoStaticEntryBucketMap;
 	Array<Array<DbgAutoStaticEntry> > mAutoStaticEntryBuckets;
 	DbgRadixMap<DbgSubprogramMapEntry*> mSubprogramMap;
 	DbgRadixMap<DbgExceptionDirectoryEntry*> mExceptionDirectoryMap;
 	DbgRadixMap<DbgCompileUnitContrib*> mContribMap;
-	
+
 	Array<String>* mCapturedNamesPtr;
 	Array<DbgType*>* mCapturedTypesPtr;
 
@@ -37,17 +37,17 @@ public:
 	int mLastHotHeapCleanIdx;
 	String mTargetPath;
 	DbgModule* mLaunchBinary;
-	DbgModule* mTargetBinary;	
+	DbgModule* mTargetBinary;
 	Array<DbgModule*> mDbgModules;
 	Dictionary<int, DbgModule*> mDbgModuleMap;
 	HashSet<DbgSrcFile*> mPendingSrcFileRehup; // Waiting to remove old/invalid line info
-	
-	BumpAllocator mAlloc;	
+
+	BumpAllocator mAlloc;
 	bool mWasLocallyBuilt;
 	bool mIsEmpty;
 	bool mCheckedCompilerSettings;
 	bool mBfObjectHasFlags;
-	bool mBfObjectHasVDataExtender;	
+	bool mBfObjectHasVDataExtender;
 	bool mBfHasLargeStrings;
 	bool mBfHasLargeCollections;
 	int mBfObjectVDataIntefaceSlotCount;
@@ -57,11 +57,11 @@ public:
 	Array<DwCommonFrameDescriptor*> mCommonFrameDescriptors;
 	std::map<addr_target, DwFrameDescriptor> mDwFrameDescriptorMap;
 	std::map<addr_target, COFFFrameDescriptorEntry> mCOFFFrameDescriptorMap;
-		
+
 	Dictionary<String, DbgSrcFile*> mSrcFiles;
 	Dictionary<String, String> mLocalToOrigSrcMap;
 
-protected:	
+protected:
 	bool RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPURegisters* registers, addr_target* outReturnAddressLoc, bool& alreadyRolledBackPC);
 	bool RollBackStackFrame_ExceptionDirectory(CPURegisters* registers, addr_target* outReturnAddressLoc, bool& alreadyRolledBackPC);
 	bool RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, addr_target* outReturnAddressLoc);
@@ -74,7 +74,7 @@ protected:
 public:
 	DebugTarget(WinDebugger* debugger);
 	~DebugTarget();
-	
+
 	void AddDbgModule(DbgModule* dbgModule);
 	DbgModule* Init(const StringImpl& launchPath, const StringImpl& targetPath, intptr imageBase = 0);
 	void SetupTargetBinary();
@@ -89,8 +89,8 @@ public:
 	DbgSrcFile* GetSrcFile(const String& srcFilePath);
 
 	bool FindSymbolAt(addr_target addr, String* outSymbol, addr_target* outOffset = NULL, DbgModule** outDWARF = NULL, bool allowRemote = true);
-	addr_target FindSymbolAddr(const StringImpl& name);	
-		
+	addr_target FindSymbolAddr(const StringImpl& name);
+
 	addr_target GetStaticAddress(DbgVariable* dwVariable);
 	DbgSubprogram* FindSubProgram(addr_target address, DbgOnDemandKind onDemandKind = DbgOnDemandKind_AllowRemote);
 	void GetCompilerSettings();
@@ -103,7 +103,7 @@ public:
 	bool GetValueByNameInBlock(DbgSubprogram* dwSubprogram, DbgBlock* dwBlock, String& name, WdStackFrame* stackFrame, intptr* outAddr, DbgType** outType, DbgAddrType* outAddrType);
 	void GetAutoValueNames(DbgAutoValueMapType& outAutos, WdStackFrame* stackFrame, uint64 memoryRangeStart, uint64 memoryRangeLen);
 	void GetAutoValueNamesInBlock(DbgAutoValueMapType& outAutos, DbgSubprogram* dwSubprogram, DbgBlock* dwBlock, WdStackFrame* stackFrame, uint64 memoryRangeStart, uint64 memoryRangeLen);
-	bool GetAutoLocalsInBlock(Array<String>& outLocals, DbgSubprogram* dwSubprogram, DbgBlock* dwBlock, WdStackFrame* stackFrame, DbgLineData* dwLineData);	
+	bool GetAutoLocalsInBlock(Array<String>& outLocals, DbgSubprogram* dwSubprogram, DbgBlock* dwBlock, WdStackFrame* stackFrame, DbgLineData* dwLineData);
 	bool RollBackStackFrame(CPURegisters* registers, addr_target* outReturnAddressLoc, bool isStackStart);
 	bool PropogateRegisterUpCallStack(CPURegisters* callerRegisters, CPURegisters* calleeRegisters, void* regPtr, bool& wasSaved);
 	int GetFrameBaseRegister(DbgSubprogram* dwSubprogram);

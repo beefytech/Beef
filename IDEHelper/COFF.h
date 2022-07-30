@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "DbgModule.h"
 #include "StrBloomMap.h"
 #include "DbgSymSrv.h"
@@ -68,11 +67,11 @@ struct CvCrossScopeExportEntry
 
 class CvCompileUnit : public DbgCompileUnit
 {
-public:	
+public:
 	Array<CvCrossScopeExportEntry> mExports;
 	Array<CvCrossScopeImport> mImports;
 	Dictionary<uint32, uint32> mExportMap;
-	int mModuleIdx;	
+	int mModuleIdx;
 
 	CvCompileUnit(DbgModule* dbgModule) : DbgCompileUnit(dbgModule)
 	{
@@ -80,12 +79,12 @@ public:
 };
 
 struct CvModuleInfo : public CvModuleInfoBase
-{		
+{
 	const char* mModuleName;
 	const char* mObjectName;
 	CvCompileUnit* mCompileUnit;
 	int mIdx;
-	bool mHasMappedMethods;	
+	bool mHasMappedMethods;
 };
 
 struct CvStringTable
@@ -112,17 +111,17 @@ enum CvSymStreamType
 struct CvModuleRef
 {
 	CvModuleRef* mNext;
-	int mModule;	
+	int mModule;
 };
 
 struct CvInlineInfo
 {
 	CvInlineInfo* mNext;
 	CvInlineInfo* mTail;
-	DbgSubprogram* mSubprogram;	
+	DbgSubprogram* mSubprogram;
 	uint8* mData;
-	int mDataLen;	
-	int mInlinee;	
+	int mDataLen;
+	int mInlinee;
 	bool mDebugDump;
 };
 typedef Array<CvInlineInfo> CvInlineInfoVec;
@@ -172,18 +171,18 @@ class COFF;
 
 class CvStreamReader
 {
-public:	
+public:
 	COFF* mCOFF;
 	int mPageBits;
 	Array<uint8*> mStreamPtrs;
 	Array<uint8> mTempData;
 	int mSize;
-		
+
 public:
 	CvStreamReader()
 	{
 		mCOFF = NULL;
-		mPageBits = 0;		
+		mPageBits = 0;
 		mSize = 0;
 	}
 
@@ -203,7 +202,6 @@ public:
 	Dictionary<String, BeLibEntry*> mSymDict;
 };
 
-
 class COFF : public DbgModule
 {
 public:
@@ -214,14 +212,14 @@ public:
 		ParseKind_Full
 	};
 
-public:	
+public:
 	ZipFile* mEmitSourceFile;
 	uint8 mWantPDBGuid[16];
 	int mWantAge;
 
 	uint8 mPDBGuid[16];
 	int mFileAge;
-	int mDebugAge;	
+	int mDebugAge;
 	ParseKind mParseKind;
 	bool mPDBLoaded;
 	bool mIs64Bit;
@@ -229,46 +227,46 @@ public:
 	int mCvPageSize;
 	int mCvPageBits;
 	int mCvMinTag;
-	int mCvMaxTag;	
+	int mCvMaxTag;
 	int mCvIPIMinTag;
 	int mCvIPIMaxTag;
 	//Array<void*> mCvTagData; // a DbgType* for type info, or a ptr to the data stream for child info
 	Array<DbgType*> mCvTypeMap;
 	Array<int> mCvTagStartMap;
 	Array<int> mCvIPITagStartMap;
-	
-	Array<Array<uint8>> mTempBufs;
-	int mTempBufIdx;	
 
-	Array<DbgType*> mCvSystemTypes;	
-	
+	Array<Array<uint8>> mTempBufs;
+	int mTempBufIdx;
+
+	Array<DbgType*> mCvSystemTypes;
+
 	Array<int32> mCvStreamSizes;
 	Array<int32> mCvStreamPtrStartIdxs;
 	Array<int32> mCvStreamPtrs;
-	
+
 	CvStreamReader mCvTypeSectionReader;
 	CvStreamReader mCvIPIReader;
 	CvStreamReader mCvSymbolRecordReader;
 
-	StringT<128> mPDBPath;	
+	StringT<128> mPDBPath;
 
 	SafeMemStream* mCvDataStream;
 	CvStringTable mStringTable;
-	uint8* mCvHeaderData;		
+	uint8* mCvHeaderData;
 	//uint8* mCvTypeSectionData
-	uint8* mCvStrTableData;	
+	uint8* mCvStrTableData;
 	uint8* mCvPublicSymbolData;
 	uint8* mCvGlobalSymbolData;
 	uint8* mNewFPOData;
 	int mCvGlobalSymbolInfoStream;
 	int mCvPublicSymbolInfoStream;
-	int mCvSymbolRecordStream;	
+	int mCvSymbolRecordStream;
 	int mCvSrcSrvStream;
 	int mCvEmitStream;
 	int mCvNewFPOStream;
-	Array<CvModuleInfo*> mCvModuleInfo;	
+	Array<CvModuleInfo*> mCvModuleInfo;
 	Dictionary<int, DbgSrcFile*> mCVSrcFileRefCache;
-	Dictionary<CaseInsensitiveString, CvModuleInfo*> mModuleNameMap;	
+	Dictionary<CaseInsensitiveString, CvModuleInfo*> mModuleNameMap;
 	HashSet<CvModuleInfoNameEntry> mModuleNameSet;
 	Dictionary<String, CvLibInfo*> mHotLibMap;
 	Dictionary<String, BeLibEntry*> mHotLibSymMap;
@@ -282,7 +280,7 @@ public:
 	Array<DbgSectionData> mCvCompileUnitData;
 	//int mCvTypeSectionDataSize;
 	//uint8* mCvCompileUnitData;
-	//int mCvCompileUnitDataSize;	
+	//int mCvCompileUnitDataSize;
 
 	HANDLE mCvMappedFile;
 	void* mCvMappedViewOfFile;
@@ -290,12 +288,12 @@ public:
 	HANDLE mCvMappedFileMapping;
 	bool mIsFastLink;
 	bool mTriedSymSrv;
-	DbgSymRequest* mDbgSymRequest;	
-	bool mWantsAutoLoadDebugInfo;		
-		
-	int mProcSymCount;		
+	DbgSymRequest* mDbgSymRequest;
+	bool mWantsAutoLoadDebugInfo;
 
-public:		
+	int mProcSymCount;
+
+public:
 	virtual void Fail(const StringImpl& error) override;
 	virtual void SoftFail(const StringImpl& error);
 	virtual void HardFail(const StringImpl& error) override;
@@ -304,7 +302,7 @@ public:
 	virtual void ParseSymbolData() override;
 	virtual void ParseTypeData(CvStreamReader& reader, int dataOffset);
 	void ParseTypeData(int sectionNum, CvStreamReader& reader, int& sectionSize, int& dataOfs, int& hashStream, int& hashAdjOffset, int& hashAdjSize, int& minVal, int& maxVal);
-	virtual void ParseTypeData() override;	
+	virtual void ParseTypeData() override;
 	void ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionData, uint8* data, uint8* dataEnd, CvInlineInfoVec& inlineDataVec, bool deferInternals, DbgSubprogram* useSubprogram);
 	CvCompileUnit* ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* compileUnit, uint8* sectionData, int sectionSize);
 	virtual CvCompileUnit* ParseCompileUnit(int compileUnitId) override;
@@ -323,7 +321,7 @@ public:
 	virtual void FinishHotSwap() override;
 	virtual intptr EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags = DbgEvalLocFlag_None) override;
 	virtual bool CanGetOldSource() override;
-	virtual String GetOldSourceCommand(const StringImpl& path) override;	
+	virtual String GetOldSourceCommand(const StringImpl& path) override;
 	virtual bool GetEmitSource(const StringImpl& filePath, String& outText) override;
 	virtual bool HasPendingDebugInfo() override;
 	virtual void PreCacheImage() override;
@@ -346,36 +344,36 @@ public:
 	void ParseSymbolStream(CvSymStreamType symStreamType);
 	void ScanCompileUnit(int compileUnitId);
 	void ParseFrameDescriptors(uint8* data, int size, addr_target baseAddr);
-	
+
 	const char* CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_target& outAddr);
 	uint8* HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, uint8* addrMap);
 	const char* CvParseString(uint8*& data);
-	const char* CvParseAndDupString(uint8*& data);	
+	const char* CvParseAndDupString(uint8*& data);
 	const char* CvDupString(const char* str, int strLen);
-	
-	void CvReadStream(int sectionIdx, CvStreamReader& streamReader);	
+
+	void CvReadStream(int sectionIdx, CvStreamReader& streamReader);
 	void CvInitStreamRaw(CvStreamReader& streamReader, uint8* data, int size);
-	uint8* CvReadStream(int sectionIdx, int* outSize = NULL);	
+	uint8* CvReadStream(int sectionIdx, int* outSize = NULL);
 	uint8* CvReadStreamSegment(int sectionIdx, int offset, int size);
 	void ReleaseTempBuf(uint8* buf);
-		
+
 	void InitCvTypes();
 	DbgType* CvCreateType();
 	int CvConvRegNum(int regNum, int* outBits = NULL);
-	addr_target GetSectionAddr(uint16 section, uint32 offset);	
+	addr_target GetSectionAddr(uint16 section, uint32 offset);
 	int64 CvParseConstant(uint16 constVal, uint8*& data);
-	int64 CvParseConstant(uint8*& data);	
-	DbgType* CvGetType(int typeId);	
+	int64 CvParseConstant(uint8*& data);
+	DbgType* CvGetType(int typeId);
 	DbgType* CvGetTypeSafe(int typeId);
 	DbgType* CvGetType(int typeId, CvCompileUnit* compileUnit);
-	int CvGetTagStart(int tagIdx, bool ipi);	
+	int CvGetTagStart(int tagIdx, bool ipi);
 	int CvGetTagSize(int tagIdx, bool ipi);
 	uint8* CvGetTagData(int tagIdx, bool ipi, int* outDataSize = NULL);
 	void CvParseArgList(DbgSubprogram* subprogram, int tagIdx, bool ipi);
 	DbgSubprogram* CvParseMethod(DbgType* parentType, const char* methodName, int tagIdx, bool ipi, DbgSubprogram* subprogram = NULL);
 	void CvParseMethodList(DbgType* parentType, const char* methodName, int tagIdx, bool ipi);
-	void CvParseMembers(DbgType* parentType, int tagIdx, bool ipi);	
-	DbgType* CvParseType(int tagIdx, bool ipi = false);	
+	void CvParseMembers(DbgType* parentType, int tagIdx, bool ipi);
+	DbgType* CvParseType(int tagIdx, bool ipi = false);
 	bool CvParseDBI(int wantAge);
 	void ParseSectionHeader(int sectionIdx);
 	void CvParseIPI();
@@ -384,7 +382,7 @@ public:
 	bool ParseCv(DataStream& CvFS, uint8* rootDirData, int pageSize, uint8 wantGuid[16], int32 wantAge);
 	bool TryLoadPDB(const String& CvPath, uint8 wantGuid[16], int32 wantAge);
 	void ClosePDB();
-	virtual void ReportMemory(MemReporter* memReporter) override;		
+	virtual void ReportMemory(MemReporter* memReporter) override;
 
 public:
 	COFF(DebugTarget* debugTarget);
@@ -392,7 +390,7 @@ public:
 
 	virtual bool LoadPDB(const String& CvPath, uint8 wantGuid[16], int32 wantAge) override;
 	virtual bool CheckSection(const char* name, uint8* sectionData,
-		int sectionSize) override;		
+		int sectionSize) override;
 };
 
 class CvAutoReleaseTempData
@@ -422,10 +420,8 @@ namespace std
 	struct hash<NS_BF_DBG::CvModuleInfoNameEntry>
 	{
 		size_t operator()(const NS_BF_DBG::CvModuleInfoNameEntry& val) const
-		{			
+		{
 			return NS_BF_DBG::CvModuleInfoNameEntry::GetHashCode(Beefy::StringImpl::MakeRef(val.mModuleInfo->mModuleName));
 		}
 	};
 }
-
-

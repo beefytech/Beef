@@ -76,7 +76,7 @@ public:
 	addr_target mRawRootPtr;
 	addr_target mRawObjectSentinel;
 
-	int mSizeClasses[TCFake::kNumClasses];	
+	int mSizeClasses[TCFake::kNumClasses];
 };
 
 class DbgHotScanner
@@ -88,7 +88,7 @@ public:
 	Beefy::Dictionary<addr_target, int> mFoundRawAllocDataAddrs;
 	Beefy::Dictionary<addr_target, int> mFoundTypeAddrs;
 	Beefy::HashSet<addr_target> mFoundFuncPtrs;
-	
+
 #ifdef BF_DBG_32
 	TCFake::PageHeap::PageMap::Root mRoot;
 	TCFake::PageHeap::PageMap::Leaf mNode;
@@ -97,7 +97,7 @@ public:
 	TCFake::PageHeap::PageMap::Node mNode1;
 	TCFake::PageHeap::PageMap::Leaf mNode2;
 #endif
-	Beefy::Array<uint8> mScanData;	
+	Beefy::Array<uint8> mScanData;
 
 public:
 	void AddSubProgram(DbgSubprogram* subProgram, bool followInlineParent, const Beefy::StringImpl& prefix);

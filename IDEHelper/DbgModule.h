@@ -31,7 +31,7 @@ enum DbgTypeCode : uint8
 {
 	DbgType_Void,
 	DbgType_Root,
-	DbgType_Null,	
+	DbgType_Null,
 	DbgType_i8,
 	DbgType_u8,
 	DbgType_i16,
@@ -80,10 +80,10 @@ enum DbgTypeCode : uint8
 
 	DbgType_Ptr,
 	DbgType_PtrToMember,
-	DbgType_SizedArray,	
+	DbgType_SizedArray,
 	DbgType_Ref,
 	DbgType_RValueReference,
-	DbgType_Const,	
+	DbgType_Const,
 	DbgType_Volatile,
 	DbgType_Unaligned,
 	DbgType_Restrict,
@@ -107,9 +107,9 @@ enum DbgClassType : uint8
 	DbgClassType_CompileUnit,
 	DbgClassType_Subprogram,
 	DbgClassType_Type,
-	DbgClassType_Member,		
+	DbgClassType_Member,
 	DbgClassType_Block,
-	DbgClassType_Variable,	
+	DbgClassType_Variable,
 };
 
 enum DbgFileExistKind : uint8
@@ -117,7 +117,7 @@ enum DbgFileExistKind : uint8
 	DbgFileExistKind_NotChecked,
 	DbgFileExistKind_NotFound,
 	DbgFileExistKind_HasOldSourceCommand,
-	DbgFileExistKind_Found	
+	DbgFileExistKind_Found
 };
 
 enum DbgModuleKind : uint8
@@ -162,15 +162,15 @@ enum DbgLocationLenKind
 class DbgVariable : public DbgDebugData
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_Variable;	
-	
+	static const DbgClassType ClassType = DbgClassType_Variable;
+
 	const char* mName;
 	const char* mLinkName;
 	addr_target mRangeStart;
 	int64 mConstValue;
 	DbgType* mType;
-	const uint8* mLocationData;	
-	int mRangeLen;	
+	const uint8* mLocationData;
+	int mRangeLen;
 	int mMemberOffset;
 	int8 mLocationLen;
 	uint8 mBitSize;
@@ -180,9 +180,9 @@ public:
 	bool mIsMember;
 	bool mIsStatic;
 	bool mIsConst;
-	bool mInAutoStaticMap;	
+	bool mInAutoStaticMap;
 	bool mSigNoPointer; // Signature was without pointer, mType has pointer
-		
+
 	addr_target mStaticCachedAddr;
 	DbgVariable* mNext;
 
@@ -218,14 +218,14 @@ typedef std::map<int, Array<int> > DwAsmDebugLineMap;
 class DbgBlock : public DbgDebugData
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_Block;	
+	static const DbgClassType ClassType = DbgClassType_Block;
 
 	addr_target mLowPC; // If LowPC is -1 then mHighPC is index into debugRanges
-	addr_target mHighPC; 
+	addr_target mHighPC;
 
 	SLIList<DbgVariable*> mVariables;
 	SLIList<DbgBlock*> mSubBlocks;
-	
+
 	DwAsmDebugLineMap* mAsmDebugLineMap; // empty unless inline asm is used
 
 	DbgBlock* mNext;
@@ -259,17 +259,17 @@ class DbgSubprogram;
 
 class DbgLineData
 {
-public:		
+public:
 	uint32 mRelAddress;
 	int32 mLine;
 	int16 mColumn;
 	uint16 mContribSize;
-	uint16 mCtxIdx;	
+	uint16 mCtxIdx;
 
 	bool IsStackFrameSetup()
 	{
 		return mColumn != -2;
-	}	
+	}
 };
 
 struct DbgLineDataEx
@@ -335,7 +335,7 @@ class DbgInlineeInfo
 {
 public:
 	DbgSubprogram* mInlineParent;
-	DbgSubprogram* mRootInliner;	
+	DbgSubprogram* mRootInliner;
 	DbgLineData mFirstLineData;
 	DbgLineData mLastLineData;
 	uint32 mInlineeId;
@@ -373,16 +373,16 @@ public:
 		HotReplaceKind_Invalid = 3 // Mangles matched but arguments were incompatible
 	};
 
-	const char* mName;	
+	const char* mName;
 	const char* mLinkName;
-	int mTemplateNameIdx;		
-	int mFrameBaseLen;	
+	int mTemplateNameIdx;
+	int mFrameBaseLen;
 	int mPrologueSize;
 	const uint8* mFrameBaseData;
 	DbgBlock mBlock;
 	int mDeferredInternalsSize;
 	int mVTableLoc;
-	int mStepFilterVersion;	
+	int mStepFilterVersion;
 	LocalBaseRegKind mParamBaseReg;
 	LocalBaseRegKind mLocalBaseReg;
 	bool mHasQualifiedName:1;
@@ -390,14 +390,14 @@ public:
 	bool mIsStepFilteredDefault:1;
 	bool mVirtual:1;
 	bool mHasThis:1;
-	bool mNeedLineDataFixup:1;		
+	bool mNeedLineDataFixup:1;
 	bool mIsOptimized:1;
-	bool mHasLineAddrGaps:1; // There are gaps of addresses which are not covered by lineinfo			
+	bool mHasLineAddrGaps:1; // There are gaps of addresses which are not covered by lineinfo
 	HotReplaceKind mHotReplaceKind;
 	DbgLineInfo* mLineInfo;
 	DbgInlineeInfo* mInlineeInfo;
 	DbgType* mParentType;
-	DbgType* mReturnType;	
+	DbgType* mReturnType;
 	DbgMethodType mMethodType;
 	BfProtection mProtection;
 	BfCheckedKind mCheckedKind;
@@ -409,13 +409,13 @@ public:
 	DbgSubprogram()
 	{
 		mName = NULL;
-		mLinkName = NULL;				
+		mLinkName = NULL;
 		mHasThis = false;
 		mNeedLineDataFixup = true;
-		mHotReplaceKind = HotReplaceKind_None;		
-		mHasLineAddrGaps = false; 
+		mHotReplaceKind = HotReplaceKind_None;
+		mHasLineAddrGaps = false;
 		mPrologueSize = -1;
-		mParentType = NULL;						
+		mParentType = NULL;
 		mInlineeInfo = NULL;
 		mFrameBaseData = NULL;
 		mFrameBaseLen = 0;
@@ -428,30 +428,30 @@ public:
 		mStepFilterVersion = -1;
 	}
 
-	~DbgSubprogram();	
-		
+	~DbgSubprogram();
+
 	void ToString(StringImpl& str, bool internalName);
 	String ToString();
-	DbgLineData* FindClosestLine(addr_target addr, DbgSubprogram** inlinedSubprogram = NULL, DbgSrcFile** srcFile = NULL, int* outLineIdx = NULL);	
+	DbgLineData* FindClosestLine(addr_target addr, DbgSubprogram** inlinedSubprogram = NULL, DbgSrcFile** srcFile = NULL, int* outLineIdx = NULL);
 	DbgType* GetParent();
 	DbgType* GetTargetType(); // usually mParentType except for closures
 	DbgLanguage GetLanguage();
-	bool Equals(DbgSubprogram* checkMethod, bool allowThisMismatch = false);	
+	bool Equals(DbgSubprogram* checkMethod, bool allowThisMismatch = false);
 	int GetParamCount();
 	String GetParamName(int paramIdx);
 	bool IsGenericMethod();
-	bool ThisIsSplat();	
+	bool ThisIsSplat();
 	bool IsLambda();
 
 	DbgSubprogram* GetRootInlineParent()
-	{		
+	{
 		if (mInlineeInfo == NULL)
 			return this;
-		return mInlineeInfo->mRootInliner;		
+		return mInlineeInfo->mRootInliner;
 	}
 
 	int GetInlineDepth()
-	{		
+	{
 		int inlineDepth = 0;
 		auto checkSubprogram = this;
 		while (checkSubprogram->mInlineeInfo != NULL)
@@ -464,7 +464,7 @@ public:
 		return inlineDepth;
 	}
 
-	addr_target GetLineAddr(const DbgLineData& lineData);	
+	addr_target GetLineAddr(const DbgLineData& lineData);
 	DbgSubprogram* GetLineInlinee(const DbgLineData& lineData);
 	DbgSrcFile* GetLineSrcFile(const DbgLineData& lineData);
 	bool HasValidLines();
@@ -481,7 +481,7 @@ public:
 
 class DbgExceptionDirectoryEntry
 {
-public:	
+public:
 	DbgExceptionDirectoryEntry* mNext;
 	DbgModule* mDbgModule;
 	addr_target mAddress;
@@ -493,7 +493,7 @@ public:
 class DbgBaseTypeEntry
 {
 public:
-	DbgType* mBaseType;	
+	DbgType* mBaseType;
 	DbgBaseTypeEntry* mNext;
 	int mThisOffset;
 	int mVTableOffset;
@@ -533,39 +533,39 @@ enum DbgExtType : int8
 class DbgType : public DbgDebugData
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_Type;	
-	DbgType* mParent;	
+	static const DbgClassType ClassType = DbgClassType_Type;
+	DbgType* mParent;
 	BumpList<DbgType*> mAlternates; // From other compile units
 	DbgType* mPrimaryType;
-	
-	DbgTypeCode mTypeCode;	
+
+	DbgTypeCode mTypeCode;
 	SLIList<DbgBaseTypeEntry*> mBaseTypes;
-	DbgType* mTypeParam;	
-	SLIList<DbgVariable*> mMemberList;	
+	DbgType* mTypeParam;
+	SLIList<DbgVariable*> mMemberList;
 
 	DbgType* mPtrType;
-	
-	DbgBlock* mBlockParam;	
+
+	DbgBlock* mBlockParam;
 	SLIList<DbgMethodNameEntry*> mMethodNameList;
-	SLIList<DbgSubprogram*> mMethodList;		
+	SLIList<DbgSubprogram*> mMethodList;
 	SLIList<DbgType*> mSubTypeList;
 	BumpList<DbgType*> mUsingNamespaces;
-	SLIList<DbgSubprogram*> mHotReplacedMethodList; // Old methods	
+	SLIList<DbgSubprogram*> mHotReplacedMethodList; // Old methods
 	DbgType* mHotNewType; // Only non-null during actual hotloading
-		
+
 	const char* mName;
 	const char* mTypeName;
 	intptr mSize; // In bytes
-	int mTemplateNameIdx;	
-	int mAlign;		
+	int mTemplateNameIdx;
+	int mAlign;
 	int mTypeIdx;
 	uint16 mDefinedMembersSize;
-	uint16 mMethodsWithParamsCount;	
+	uint16 mMethodsWithParamsCount;
 	bool mIsIncomplete:1; // Not fully loaded
 	bool mIsPacked:1;
 	bool mNeedsGlobalsPopulated:1;
-	bool mHasGlobalsPopulated:1;	
-	bool mIsDeclaration:1;	
+	bool mHasGlobalsPopulated:1;
+	bool mIsDeclaration:1;
 	bool mHasStaticMembers:1;
 	bool mHasVTable:1;
 	bool mFixedName:1;
@@ -575,20 +575,20 @@ public:
 	bool mSizeCalculated;
 
 	DbgType* mNext;
-	
+
 public:
 	DbgType();
-	~DbgType();	
+	~DbgType();
 
 	//uint64 GetHash();
 	DbgType* ResolveTypeDef();
 	bool Equals(DbgType* dbgType);
-	
+
 	bool IsRoot();
 	bool IsNull();
 	bool IsVoid();
 	bool IsValuelessType();
-	bool IsPrimitiveType();	
+	bool IsPrimitiveType();
 	bool IsStruct();
 	bool IsValueType();
 	bool IsTypedPrimitive();
@@ -598,8 +598,8 @@ public:
 	bool IsChar();
 	bool IsChar(DbgLanguage language);
 	bool IsNamespace();
-	bool IsFloat();	
-	bool IsCompositeType();	
+	bool IsFloat();
+	bool IsCompositeType();
 	bool WantsRefThis(); // Beef valuetypes want 'this' by ref, Objects and C++ want 'this' by pointer
 	bool IsBfObjectPtr();
 	bool IsBfObject();
@@ -609,34 +609,34 @@ public:
 	bool IsBfUnion();
 	bool HasCPPVTable();
 	bool IsBaseBfObject();
-	bool IsInterface();	
+	bool IsInterface();
 	bool IsEnum();
-	bool IsSigned();		
+	bool IsSigned();
 	bool IsRef();
 	bool IsConst();
-	bool IsPointer(bool includeBfObjectPointer = true);	
-	bool HasPointer(bool includeBfObjectPointer = true);	
+	bool IsPointer(bool includeBfObjectPointer = true);
+	bool HasPointer(bool includeBfObjectPointer = true);
 	bool IsPointerOrRef(bool includeBfObjectPointer = true);
-	bool IsSizedArray();	
+	bool IsSizedArray();
 	bool IsAnonymous();
 	bool IsGlobalsContainer();
-	
+
 	DbgExtType CalcExtType();
 	DbgLanguage GetLanguage();
 	void FixName();
 	void PopulateType();
 	DbgModule* GetDbgModule();
-	DbgType* GetUnderlyingType();	
+	DbgType* GetUnderlyingType();
 	DbgType* GetPrimaryType();
-	DbgType* GetBaseType();	
+	DbgType* GetBaseType();
 	DbgType* GetRootBaseType();
-	DbgType* RemoveModifiers(bool* hadRef = NULL);	
+	DbgType* RemoveModifiers(bool* hadRef = NULL);
 	String ToStringRaw(DbgLanguage language = DbgLanguage_Unknown);
 	void ToString(StringImpl& str, DbgLanguage language, bool allowDirectBfObject, bool internalName);
 	String ToString(DbgLanguage language = DbgLanguage_Unknown, bool allowDirectBfObject = false);
 	intptr GetByteCount();
 	intptr GetStride();
-	int GetAlign();	
+	int GetAlign();
 	void EnsureMethodsMapped();
 };
 
@@ -685,11 +685,11 @@ public:
 
 class DbgLineDataState : public DbgLineData
 {
-public:		
+public:
 	int mOpIndex;
 	int mDiscriminator;
-	int mIsa;	
-	bool mBasicBlock;		
+	int mIsa;
+	bool mBasicBlock;
 	bool mIsStmt;
 };
 
@@ -724,7 +724,7 @@ enum DbgHashKind
 
 class DbgSrcFile
 {
-public:	
+public:
 	String mFilePath;
 	String mLocalPath;
 	bool mHadLineData;
@@ -733,10 +733,10 @@ public:
 	int mStepFilterVersion;
 	DbgHashKind mHashKind;
 	uint8 mHash[32];
-	DbgModule* mFirstLineDataDbgModule; // Just used to detect mHasLineDataFromMultipleModules	
+	DbgModule* mFirstLineDataDbgModule; // Just used to detect mHasLineDataFromMultipleModules
 	Array<DbgDeferredSrcFileReference> mDeferredRefs;
 	Array<DbgSubprogram*> mLineDataRefs;
-	Array<HotReplacedLineInfo*> mHotReplacedDbgLineInfo; // Indexing starts at -1	
+	Array<HotReplacedLineInfo*> mHotReplacedDbgLineInfo; // Indexing starts at -1
 
 public:
 	DbgSrcFile()
@@ -747,15 +747,15 @@ public:
 		mHashKind = DbgHashKind_None;
 		mFileExistKind = DbgFileExistKind_NotChecked;
 		mStepFilterVersion = 0;
-		
+
 		//mLineData.Reserve(64);
 	}
 
 	bool IsBeef();
 
 	~DbgSrcFile();
-	
-	void RemoveDeferredRefs(DbgModule* debugModule);		
+
+	void RemoveDeferredRefs(DbgModule* debugModule);
 	void RemoveLines(DbgModule* debugModule);
 	void RemoveLines(DbgModule* debugModule, DbgSubprogram* dbgSubprogram, bool isHotReplaced);
 	void RehupLineData();
@@ -765,7 +765,7 @@ public:
 
 class DwCommonFrameDescriptor
 {
-public:	
+public:
 	DbgModule* mDbgModule;
 	const char* mAugmentation;
 	int mAugmentationLength;
@@ -776,7 +776,7 @@ public:
 	int mReturnAddressColumn;
 	const uint8* mInstData;
 	int mInstLen;
-	int mAddressPointerEncoding;	
+	int mAddressPointerEncoding;
 	addr_target mLSDARoutine;
 	int mLSDAPointerEncodingFDE;
 
@@ -789,13 +789,13 @@ public:
 		mAugmentationLength = 0;
 		mAddressPointerEncoding = 0;
 		mLSDARoutine = 0;
-		mLSDAPointerEncodingFDE = 0;		
+		mLSDAPointerEncodingFDE = 0;
 	}
 };
 
 class DwFrameDescriptor
 {
-public:	
+public:
 	addr_target mLowPC;
 	addr_target mHighPC;
 	const uint8* mInstData;
@@ -808,7 +808,7 @@ public:
 	DwFrameDescriptor()
 	{
 		mAddressPointerEncoding = 0;
-		mLSDARoutine = 0;		
+		mLSDARoutine = 0;
 	}
 };
 
@@ -819,33 +819,33 @@ class DbgCompileUnitContrib
 public:
 	DbgCompileUnitContrib* mNext;
 	DbgModule* mDbgModule;
-	addr_target mAddress;	
+	addr_target mAddress;
 	int mCompileUnitId;
-	int mLength;	
+	int mLength;
 };
 
 class DbgCompileUnit
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_CompileUnit;	
+	static const DbgClassType ClassType = DbgClassType_CompileUnit;
 
-	DbgModule* mDbgModule;	
+	DbgModule* mDbgModule;
 	DbgLanguage mLanguage;
 	DbgBlock* mGlobalBlock;
 	DbgType* mGlobalType;
-	Array<DbgSrcFileReference> mSrcFileRefs;	
+	Array<DbgSrcFileReference> mSrcFileRefs;
 	String mName;
 	String mProducer;
 	String mCompileDir;
 	addr_target mLowPC;
-	addr_target mHighPC;	
+	addr_target mHighPC;
 	bool mNeedsLineDataFixup;
-	bool mWasHotReplaced;	
+	bool mWasHotReplaced;
 	bool mIsMaster;
 
 	SLIList<DbgSubprogram*> mOrphanMethods;
 
-public:	
+public:
 	DbgCompileUnit(DbgModule* dbgModule);
 
 	virtual ~DbgCompileUnit()
@@ -860,14 +860,14 @@ public:
 	//int mDbgIdx;
 	DbgSymbol()
 	{
-		//mDbgIdx = ++gDbgSymbol_Idx;		
+		//mDbgIdx = ++gDbgSymbol_Idx;
 	}
 
-public:	
-	const char* mName;	
-	addr_target mAddress;	
+public:
+	const char* mName;
+	addr_target mAddress;
 	DbgModule* mDbgModule;
-	DbgSymbol* mNext;	
+	DbgSymbol* mNext;
 };
 
 class DbgSection
@@ -969,8 +969,8 @@ struct DbgAutoStaticEntry
 class DbgHotTargetSection
 {
 public:
-	uint8* mData;	
-	int mDataSize;	
+	uint8* mData;
+	int mDataSize;
 	addr_target mTargetSectionAddr;
 	int mImageOffset;
 	int mTargetSectionSize;
@@ -985,18 +985,18 @@ public:
 	{
 		mData = NULL;
 		mDataSize = 0;
-		mImageOffset = 0;		
+		mImageOffset = 0;
 		mTargetSectionAddr = 0;
 		mTargetSectionSize = 0;
 		mPointerToRelocations = 0;
 		mNumberOfRelocations = 0;
 		mCanExecute = false;
 		mCanWrite = false;
-		mNoTargetAlloc = false;		
+		mNoTargetAlloc = false;
 	}
 
 	~DbgHotTargetSection()
-	{		
+	{
 	}
 };
 
@@ -1008,7 +1008,7 @@ struct DbgDeferredHotResolve
 {
 public:
 	DbgHotTargetSection* mHotTargetSection;
-	String mName;	
+	String mName;
 	addr_target mNewAddr;
 	COFFRelocation mReloc;
 };
@@ -1114,7 +1114,7 @@ public:
 	MappedFile* mMappedImageFile;
 	MemReporter* mMemReporter;
 
-	const uint8* mDebugLineData;	
+	const uint8* mDebugLineData;
 	const uint8* mDebugInfoData;
 	const uint8* mDebugPubNames;
 	const uint8* mDebugFrameData;
@@ -1124,26 +1124,26 @@ public:
 	addr_target mCodeAddress;
 	const uint8* mDebugAbbrevData;
 	const uint8* mDebugStrData;
-	const uint8** mDebugAbbrevPtrData;	
-	Array<DbgSectionData> mExceptionDirectory;	
+	const uint8** mDebugAbbrevPtrData;
+	Array<DbgSectionData> mExceptionDirectory;
 	const uint8* mEHFrameData;
-	const char* mStringTable;	
+	const char* mStringTable;
 	const uint8* mSymbolData;
 	addr_target mEHFrameAddress;
 	addr_target mTLSAddr;
 	addr_target mTLSExtraAddr;
 	int mTLSSize;
-	int mTLSExtraSize;	
+	int mTLSExtraSize;
 	addr_target mTLSIndexAddr;
 	DbgFlavor mDbgFlavor;
 
 	bool mParsedGlobalsData;
 	bool mParsedSymbolData;
 	bool mParsedTypeData;
-	bool mPopulatedStaticVariables;	
-	bool mParsedFrameDescriptors;	
+	bool mPopulatedStaticVariables;
+	bool mParsedFrameDescriptors;
 
-	bool mMayBeOld; // If we had to load debug info from the SymCache or a SymServer then it may be old	
+	bool mMayBeOld; // If we had to load debug info from the SymCache or a SymServer then it may be old
 	bool mDeleting;
 	bool mFailed;
 	int mId;
@@ -1155,23 +1155,23 @@ public:
 	int mStartSubprogramIdx;
 	int mEndSubprogramIdx;
 	int mStartTypeIdx;
-	int mEndTypeIdx;	
+	int mEndTypeIdx;
 	uintptr mPreferredImageBase;
 	uintptr mImageBase;
-	uint32 mImageSize;	
+	uint32 mImageSize;
 	uintptr mEntryPoint;
-	String mVersion;	
+	String mVersion;
 	String* mFailMsgPtr;
 
 	DbgType* mBfTypeType;
 	intptr mBfTypesInfoAddr;
 
 	DbgModuleMemoryCache* mOrigImageData;
-	DbgCompileUnit* mMasterCompileUnit;	
+	DbgCompileUnit* mMasterCompileUnit;
 	StrHashMap<DbgVariable*> mGlobalVarMap; // Dedups entries into mMasterCompileUnit
 
-	BumpAllocator mAlloc;	
-	
+	BumpAllocator mAlloc;
+
 	std::list<DwAsmDebugLineMap> mAsmDebugLineMaps;
 	Array<DbgSection> mSections;
 	Dictionary<addr_target, int> mSecRelEncodingMap;
@@ -1179,39 +1179,39 @@ public:
 	bool mCheckedBfObject;
 	bool mBfObjectHasFlags;
 	DbgModuleKind mModuleKind;
-	bool mIsDwarf64;	
+	bool mIsDwarf64;
 
 	HashSet<DbgSrcFile*> mSrcFileDeferredRefs;
 	Array<addr_target> mSectionRVAs;
 	SLIList<DbgSymbol*> mDeferredSymbols;
 	Beefy::OwnedVector<DbgDeferredHotResolve> mDeferredHotResolveList;
-	Array<DbgHotTargetSection*> mHotTargetSections;		
+	Array<DbgHotTargetSection*> mHotTargetSections;
 	HashSet<DbgType*> mHotPrimaryTypes; // List of types where we have entries in mHotReplacedMethodList
 	DbgCompileUnit mDefaultCompileUnit;
 	Dictionary<DbgType*, DbgType*> mConstTypes;
 	Dictionary<String, DbgFileExistKind> mFileExistsCache;
 	Dictionary<DbgSizedArrayEntry, DbgType*> mSizedArrayTypes;
-	
+
 	int mAllocSizeData;
 	Array<const uint8*> mOwnedSectionData;
 
-public:	
+public:
 	Array<DbgSrcFile*> mEmptySrcFiles;
-	Array<DbgCompileUnit*> mCompileUnits;		
+	Array<DbgCompileUnit*> mCompileUnits;
 	Array<DbgVariable*> mStaticVariables;
 
 	DbgType* mCPrimitiveTypes[DbgType_COUNT];
 	DbgType* mBfPrimitiveTypes[DbgType_COUNT];
-	const char* mPrimitiveStructNames[DbgType_COUNT];	
+	const char* mPrimitiveStructNames[DbgType_COUNT];
 	DbgTypeMap mTypeMap;
 
 	Array<DbgType*> mTypes;
 	Array<DbgSubprogram*> mSubprograms;
-	
+
 	StrHashMap<DbgSymbol*> mSymbolNameMap;
 	std::unordered_map<const char*, DbgVariable*, DbgCharPtrHash, DbgCharPtrEquals> mStaticVariableMap;
 
-public:	
+public:
 	virtual void ParseGlobalsData();
 	virtual void ParseSymbolData();
 	virtual void ParseTypeData();
@@ -1219,8 +1219,8 @@ public:
 	virtual void ParseCompileUnits() {}
 	virtual void MapCompileUnitMethods(DbgCompileUnit* compileUnit);
 	virtual void MapCompileUnitMethods(int compileUnitId);
-	virtual void PopulateType(DbgType* dbgType);		
-	virtual void PopulateTypeGlobals(DbgType* dbgType);	
+	virtual void PopulateType(DbgType* dbgType);
+	virtual void PopulateTypeGlobals(DbgType* dbgType);
 	virtual void PopulateSubprogram(DbgSubprogram* dbgSubprogram) { }
 	virtual void FixupInlinee(DbgSubprogram* dbgSubprogram) {}
 	virtual void PopulateStaticVariableMap();
@@ -1232,7 +1232,7 @@ public:
 	virtual addr_target LocateSymbol(const StringImpl& name) { return 0; }
 	virtual DbgSubprogram* FindSubprogram(DbgType* dbgType, const char* methodName);
 	const char* GetStringTable(DataStream* stream, int stringTablePos);
-	
+
 	virtual void Fail(const StringImpl& error);
 	virtual void SoftFail(const StringImpl& error);
 	virtual void HardFail(const StringImpl& error);
@@ -1240,7 +1240,7 @@ public:
 	void TempRemoveTemplateStr(const char*& name, int& templateNameIdx);
 	void ReplaceTemplateStr(const char*& name, int& templateNameIdx);
 
-	char* DbgDupString(const char* str, const char* allocName = NULL);	
+	char* DbgDupString(const char* str, const char* allocName = NULL);
 	DbgModule* GetLinkedModule();
 	addr_target GetTargetImageBase();
 	addr_target RemapAddr(addr_target addr);
@@ -1255,27 +1255,27 @@ public:
 	void ParseDebugFrameData();
 	void ParseEHFrameData();
 	void FlushLineData(DbgSubprogram* curSubprogram, std::list<DbgLineData>& queuedLineData);
-	DbgSrcFile* AddSrcFile(DbgCompileUnit* compileUnit, const String& srcFilePath);	
+	DbgSrcFile* AddSrcFile(DbgCompileUnit* compileUnit, const String& srcFilePath);
 	void AddLineData(DbgCompileUnit* dwCompileUnit, DbgLineData& lineData, DbgSubprogram*& curSubProgram, std::list<DbgLineData>& queuedLineData);
 	bool ParseDebugLineInfo(const uint8*& data, int compileUnitIdx);
 	void FixupInnerTypes(int startingTypeIdx);
-	void MapTypes(int startingTypeIdx);	
-	void CreateNamespaces();	
+	void MapTypes(int startingTypeIdx);
+	void CreateNamespaces();
 	bool IsObjectFile() { return mModuleKind != DbgModuleKind_Module; }
 	bool IsHotSwapObjectFile() { return mModuleKind == DbgModuleKind_HotObject; }
 	bool IsHotSwapPreserve(const String& name);
-	addr_target GetHotTargetAddress(DbgHotTargetSection* hotTargetSection);	
+	addr_target GetHotTargetAddress(DbgHotTargetSection* hotTargetSection);
 	uint8* GetHotTargetData(addr_target address);
 	void DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& coffReloc, addr_target resolveSymbolAddr, PE_SymInfo* symInfo);
 	void ParseHotTargetSections(DataStream* stream, addr_target* resovledSymbolAddrs);
-	void CommitHotTargetSections();		
-	void HotReplaceType(DbgType* newType);		
+	void CommitHotTargetSections();
+	void HotReplaceType(DbgType* newType);
 	void ProcessHotSwapVariables();
 	virtual bool LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge) { return false; }
-	virtual bool CheckSection(const char* name, uint8* sectionData, int sectionSize) { return false; }	
+	virtual bool CheckSection(const char* name, uint8* sectionData, int sectionSize) { return false; }
 	virtual void PreCacheImage() {}
 	virtual void PreCacheDebugInfo() {}
-	virtual bool RequestImage() { return false; }	
+	virtual bool RequestImage() { return false; }
 	virtual bool HasPendingDebugInfo() { return false; }
 	virtual bool RequestDebugInfo(bool allowRemote = true) { return false; }
 	virtual bool WantsAutoLoadDebugInfo() { return false; }
@@ -1286,7 +1286,7 @@ public:
 	T ReadValue(const uint8*& data, int form, int refOffset = 0, const uint8** extraData = NULL, const uint8* startData = NULL);
 
 	void EnableWriting(addr_target address);
-	void RevertWritingEnable();		
+	void RevertWritingEnable();
 
 public:
 	DbgModule(DebugTarget* debugTarget);
@@ -1297,18 +1297,18 @@ public:
 	bool ReadCOFF(DataStream* stream, DbgModuleKind dbgModuleKind);
 	void RemoveTargetData();
 	virtual void ReportMemory(MemReporter* memReporter);
-		
-	int64 GetImageSize();	
-	virtual void FinishHotSwap();	
+
+	int64 GetImageSize();
+	virtual void FinishHotSwap();
 	addr_target ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, CPURegisters* registers, DbgAddrType* outAddrType, DbgEvalLocFlags flags, addr_target* pushValue = NULL);
 	virtual intptr EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags = DbgEvalLocFlag_None);
 
 	//const uint8* CopyOrigImageData(addr_target address, int length);
-	
+
 	DbgType* FindTypeHelper(const String& typeName, DbgType* checkType);
 	DbgType* FindType(const String& typeName, DbgType* contextType = NULL, DbgLanguage language = DbgLanguage_Unknown, bool bfObjectPtr = false);
 	DbgTypeMap::Entry* FindType(const char* typeName, DbgLanguage language);
-	
+
 	DbgType* GetPointerType(DbgType* innerType);
 	DbgType* GetConstType(DbgType* innerType);
 	DbgType* GetPrimaryType(DbgType* dbgType);
@@ -1326,7 +1326,7 @@ namespace std
 	struct hash<NS_BF_DBG::DbgSizedArrayEntry>
 	{
 		size_t operator()(const NS_BF_DBG::DbgSizedArrayEntry& val) const
-		{			
+		{
 			return (size_t)val.mElementType ^ (val.mCount << 10);
 		}
 	};

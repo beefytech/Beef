@@ -48,7 +48,7 @@ struct ProfileDataListEquals
 
 class ProfileAddrEntry : public ProfileDataList<addr_target>
 {
-public:	
+public:
 	//int mSampleCount;
 	int mEntryIdx;
 
@@ -88,7 +88,7 @@ public:
 	int mEntryIdx;
 	bool mUsed;
 
-public:	
+public:
 	ProfileProcEntry()
 	{
 		mEntryIdx = -1;
@@ -122,7 +122,7 @@ public:
 	WinDebugger* mDebugger;
 	volatile bool mIsRunning;
 	bool mWantsClear;
-	SyncEvent mShutdownEvent;	
+	SyncEvent mShutdownEvent;
 	bool mNeedsProcessing;
 	uint32 mStartTick;
 	uint32 mEndTick;
@@ -130,37 +130,37 @@ public:
 	int mTotalVirtualSamples;
 	int mTotalActualSamples;
 	int mTotalActiveSamplingMS;
-	
+
 	BumpAllocator mAlloc;
 	Dictionary<uint, ProfileThreadInfo*> mThreadInfo;
 	Array<uint> mThreadIdList;
 
-	ProfileAddrEntrySet mProfileAddrEntrySet;	
+	ProfileAddrEntrySet mProfileAddrEntrySet;
 	Array<ProfileAddrEntry*> mProfileAddrEntries;
 	Array<ProfileAddrEntry> mPendingProfileEntries;
 
 	ProfileProcEntrySet mProfileProcEntrySet;
-	Array<ProfileProcEntry*> mProfileProcEntries;	
+	Array<ProfileProcEntry*> mProfileProcEntries;
 
 	Array<int> mProfileAddrToProcMap;
 
-	Dictionary<void*, ProfileProcId*> mProcMap; // Keyed on either DwSubprogram or DwSymbol. Multiple pointers can reference the same ProfileProcId (in the case of inlined functions, for example)	
-	HashSet<ProfileProdIdEntry> mUniqueProcSet;	
+	Dictionary<void*, ProfileProcId*> mProcMap; // Keyed on either DwSubprogram or DwSymbol. Multiple pointers can reference the same ProfileProcId (in the case of inlined functions, for example)
+	HashSet<ProfileProdIdEntry> mUniqueProcSet;
 	HashSet<String> mIdleSymbolNames;
 
 public:
 	void ThreadProc();
-	void AddEntries(String& str, Array<ProfileProcEntry*>& procEntries, int rangeStart, int rangeEnd, int stackIdx, ProfileProcId* findProc);	
+	void AddEntries(String& str, Array<ProfileProcEntry*>& procEntries, int rangeStart, int rangeEnd, int stackIdx, ProfileProcId* findProc);
 
  	template <typename T>
  	typename T::key_type* AddToSet(T& map, typename T::key_type::data_type* data, int size)
  	{
  		typedef T::key_type::data_type DataType;
- 
+
  		typename T::key_type entry;
  		entry.mData = data;
  		entry.mSize = size;
- 
+
 		typename T::key_type* entryPtr;
 		if (map.TryAdd(entry, &entryPtr))
 		{
@@ -187,7 +187,7 @@ public:
 
 	bool IsSampling() override { return mIsRunning; }
 	String GetOverview() override;
-	String GetThreadList() override;	
+	String GetThreadList() override;
 	String GetCallTree(int threadId, bool reverse) override;
 };
 

@@ -10,7 +10,7 @@ class BumpList
 {
 public:
 	struct Node
-	{		
+	{
 		T mValue;
 		Node* mNext;
 	};
@@ -18,14 +18,14 @@ public:
 	struct Iterator
 	{
 	public:
-		Node* mNode;		
+		Node* mNode;
 
 	public:
 		Iterator(Node* node)
 		{
 			mNode = node;
 		}
-		
+
 		Iterator& operator++()
 		{
 			mNode = mNode->mNext;
@@ -50,20 +50,20 @@ public:
 
 	struct RemovableIterator
 	{
-	public:		
+	public:
 		Node** mPrevNextPtr;
 
 	public:
 		RemovableIterator(Node** headPtr)
-		{			
+		{
 			mPrevNextPtr = headPtr;
 		}
 
 		RemovableIterator& operator++()
 		{
-			Node* newNode = *mPrevNextPtr;			
-			if (newNode != NULL)			
-				mPrevNextPtr = &newNode->mNext;			
+			Node* newNode = *mPrevNextPtr;
+			if (newNode != NULL)
+				mPrevNextPtr = &newNode->mNext;
 			return *this;
 		}
 
@@ -96,7 +96,7 @@ public:
 	}
 
 	void PushFront(T value, BumpAllocator* bumpAllocator)
-	{				
+	{
 		auto newHead = bumpAllocator->Alloc<Node>();
 		newHead->mValue = value;
 		newHead->mNext = mHead;
@@ -152,7 +152,7 @@ public:
 			mVals[2] = NULL;
 			mNextBlock = NULL;
 		}
-	};	
+	};
 
 	struct Iterator
 	{
@@ -163,7 +163,7 @@ public:
 	public:
 		Iterator(NodeBlock* nodeBlock)
 		{
-			SetNodeBlock(nodeBlock);			
+			SetNodeBlock(nodeBlock);
 		}
 
 		void SetNodeBlock(NodeBlock* nodeBlock)
@@ -183,7 +183,7 @@ public:
 		{
 			mMemberIdx--;
 			if (mMemberIdx < 0)
-				SetNodeBlock(mNodeBlock->mNextBlock);							
+				SetNodeBlock(mNodeBlock->mNextBlock);
 			return *this;
 		}
 
@@ -209,11 +209,11 @@ public:
 	BlockBumpList()
 	{
 		mHeadBlock = NULL;
-	}	
+	}
 
 	void Add(T value, BumpAllocator* bumpAllocator)
 	{
-		if (mHeadBlock == NULL)		
+		if (mHeadBlock == NULL)
 			mHeadBlock = bumpAllocator->Alloc<NodeBlock>();
 		else if (mHeadBlock->mVals[NodeBlock::NodeCount - 1])
 		{

@@ -429,7 +429,6 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 		if (!mArguments[argIdx])
 			goto NoMatch;
 
-
 		if (!mExprEvaluator->CanCast(mArguments[argIdx], wantType))
 			goto NoMatch;
 
@@ -1303,19 +1302,15 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 
 	struct _String
 	{
-
 	};
 	struct _MethodData
 	{
-
 	};
 	struct _FieldData
 	{
-
 	};
 	struct _ClassVData
 	{
-
 	};
 
 	struct _TypeInstance : public _Type
@@ -2105,7 +2100,6 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		}
 	}
 
-
 	// IFace -> object|IFace
 	if ((fromType->IsInterface()) ||
 		((fromType->IsPointer()) && (fromType->mTypeParam->IsInterface())))
@@ -2186,7 +2180,6 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 			return primTypedVal;
 		}
 	}
-
 
 	if ((fromType->IsPrimitiveType()) && (toType->IsPrimitiveType()))
 	{
@@ -2619,7 +2612,6 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 			//TODO:
 			/*if (field->mIsConst)
 			{
-
 			if (fieldInstance->mStaticValue == NULL)
 			mModule->ResolveConstField(curCheckType, field);
 			return DbgTypedValue(fieldInstance->mStaticValue, fieldInstance->mType);
@@ -2901,7 +2893,6 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 	return DbgTypedValue();
 	}
 	}*/
-
 
 	//curCheckType = curCheckType->GetBaseType();
 
@@ -4134,7 +4125,6 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 		if (!convVal)
 			return;
 
-
 // 		SizedArray<DbgTypedValue, 4> argPushQueue;
 // 		if (propSet->mHasThis)
 // 			argPushQueue.push_back(propTarget);
@@ -4685,7 +4675,6 @@ void DbgExprEvaluator::AutocompleteCheckMemberReference(BfAstNode* target, BfAst
 			//return AutocompleteAddMembersFromNamespace(memberRefExpr->mTarget->ToString(), filter, isCType);
 		}
 	}
-
 }
 
 void DbgExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
@@ -5191,7 +5180,6 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 			mResult = splatLookupEntry->mResult;
 			return;
 		}
-
 	}
 
 	String findName;
@@ -6257,7 +6245,6 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		{
 			if (binaryOp == BfBinaryOp_Subtract)
 			{
-
 			}
 			else if (resultType->GetByteCount() < 4)
 			{
@@ -6598,7 +6585,6 @@ void DbgExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 
 	PerformBinaryOperation(binOpExpr->mLeft, binOpExpr->mRight, binOpExpr->mOp, binOpExpr->mOpToken, false);
 }
-
 
 void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unaryOp, ASTREF(BfExpression*)& expr)
 {
@@ -7283,7 +7269,6 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 			continue;
 		}
 
-
 		if (argValue.mType == NULL)
 			return DbgTypedValue();
 
@@ -7585,7 +7570,6 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 				checkType = checkType->mTypeParam;
 			if (checkType != NULL)
 			{
-
 				//TODO: Protect
 				String findFieldName = argValues[1].mCharPtr;
 
@@ -8162,7 +8146,6 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 		allowImplicitThis = true;
 
 		targetFunctionName = target->ToString();
-
 	}
 	else if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(target))
 	{

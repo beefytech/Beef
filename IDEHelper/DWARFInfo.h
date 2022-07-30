@@ -453,7 +453,7 @@ enum
 	DW_OP_breg12 = 0x7C,
 	DW_OP_breg13 = 0x7D,
 	DW_OP_breg14 = 0x7E,
-	DW_OP_breg15 = 0x7F,	
+	DW_OP_breg15 = 0x7F,
 	DW_OP_breg31 = 0x8f,
 	DW_OP_regx = 0x90,
 	DW_OP_fbreg = 0x91,
@@ -520,7 +520,7 @@ enum
 	DW_CFA_hi_user = 0x3f,
 };
 
-enum SymbolFlags 
+enum SymbolFlags
 {
 	SF_TypeMask = 0x0000FFFF,
 	SF_TypeShift = 0,
@@ -576,7 +576,7 @@ enum SymbolStorageClass
 	COFF_SYM_CLASS_CLR_TOKEN = 107
 };
 
-enum SymbolBaseType 
+enum SymbolBaseType
 {
 	COFF_SYM_TYPE_NULL = 0,  ///< No type information or unknown base type.
 	COFF_SYM_TYPE_VOID = 1,  ///< Used with void pointers and functions.
@@ -596,7 +596,7 @@ enum SymbolBaseType
 	COFF_SYM_TYPE_DWORD = 15  ///< An unsigned 4-byte integer.
 };
 
-enum SymbolComplexType 
+enum SymbolComplexType
 {
 	COFF_SYM_DTYPE_NULL = 0, ///< No complex type; simple scalar variable.
 	COFF_SYM_DTYPE_POINTER = 1, ///< A pointer to base type.
@@ -642,4 +642,3 @@ enum RelocationTypeAMD64
 	COFF_REL_AMD64_PAIR = 0x000F,
 	COFF_REL_AMD64_SSPAN32 = 0x0010
 };
-

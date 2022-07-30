@@ -118,7 +118,7 @@ void DbgEvaluationContext::Init(WinDebugger* winDebugger, DbgModule* dbgModule, 
 	mPassInstance = new BfPassInstance(winDebugger->mBfSystem);
 	auto terminatedExpr = expr + ";";
 	mParser->SetSource(terminatedExpr.c_str(), terminatedExpr.length());
-	mParser->Parse(mPassInstance);		
+	mParser->Parse(mPassInstance);
 
 	mReducer = new BfReducer();
 	mReducer->mAlloc = mParser->mAlloc;
@@ -130,7 +130,7 @@ void DbgEvaluationContext::Init(WinDebugger* winDebugger, DbgModule* dbgModule, 
 	mReducer->mSource = mParser;
 	mExprNode = mReducer->CreateExpression(mParser->mRootNode->GetFirst());
 	mParser->Close();
-	mDbgExprEvaluator = new DbgExprEvaluator(winDebugger, dbgModule, mPassInstance, -1, -1);		
+	mDbgExprEvaluator = new DbgExprEvaluator(winDebugger, dbgModule, mPassInstance, -1, -1);
 
 	if ((formatInfo != NULL) && (mExprNode != NULL) && (mExprNode->GetSrcEnd() < (int) expr.length()))
 	{
@@ -140,7 +140,7 @@ void DbgEvaluationContext::Init(WinDebugger* winDebugger, DbgModule* dbgModule, 
 		{
 			mPassInstance->FailAt(errorString, mParser->mSourceData, mExprNode->GetSrcEnd(), (int)expr.length() - mExprNode->GetSrcEnd());
 			formatFlags = "";
-		}			
+		}
 	}
 
 	if (formatInfo != NULL)
@@ -157,20 +157,20 @@ bool DbgEvaluationContext::HasExpression()
 }
 
 DbgEvaluationContext::~DbgEvaluationContext()
-{		
-	delete mParser;	
-	delete mReducer;	
-	delete mDbgExprEvaluator;	
+{
+	delete mParser;
+	delete mReducer;
+	delete mDbgExprEvaluator;
 	delete mPassInstance;
 }
 
 DbgTypedValue DbgEvaluationContext::EvaluateInContext(DbgTypedValue contextTypedValue)
-{		
+{
 	if (mExprNode == NULL)
-		return DbgTypedValue();		
+		return DbgTypedValue();
 	mPassInstance->ClearErrors();
 	if (contextTypedValue)
-	{		
+	{
 		mDbgExprEvaluator->mExplicitThis = contextTypedValue;
 		if ((mDbgExprEvaluator->mExplicitThis.mType->IsPointer()) && (mDbgExprEvaluator->mExplicitThis.mType->mTypeParam->WantsRefThis()))
 		{
@@ -192,7 +192,7 @@ DbgTypedValue DbgEvaluationContext::EvaluateInContext(DbgTypedValue contextTyped
 	if (contextTypedValue.mType != NULL)
 		mDbgExprEvaluator->mDbgCompileUnit = contextTypedValue.mType->mCompileUnit;
 	DbgTypedValue exprResult;
-	auto result = mDbgExprEvaluator->Resolve(mExprNode);		
+	auto result = mDbgExprEvaluator->Resolve(mExprNode);
 	return result;
 }
 
@@ -287,7 +287,7 @@ static void CreateFilterName(String& name, const char* srcStr, DbgLanguage langu
 		if (c == '<')
 			chevronDepth++;
 		if (inGeneric) // Bundle all generic instances together
-			continue; 
+			continue;
 		if (c == '[') // Bundle all arrays together
 			name.clear();
 		if (c == '(')
@@ -303,7 +303,7 @@ static void CreateFilterName(String& name, const char* srcStr, DbgLanguage langu
 }
 
 static void CreateFilterName(String& name, DbgSubprogram* subprogram)
-{	
+{
 	auto language = subprogram->GetLanguage();
 	if (subprogram->mName == NULL)
 	{
@@ -313,7 +313,7 @@ static void CreateFilterName(String& name, DbgSubprogram* subprogram)
 			return;
 		}
 		name = BfDemangler::Demangle(subprogram->mLinkName, language);
-		// Strip off the params since we need to generate those ourselves		
+		// Strip off the params since we need to generate those ourselves
 		int parenPos = (int)name.IndexOf('(');
 		if (parenPos != -1)
 			name.RemoveToEnd(parenPos);
@@ -323,22 +323,22 @@ static void CreateFilterName(String& name, DbgSubprogram* subprogram)
 	{
 		const char* cPtr = subprogram->mName;
 		if (strncmp(cPtr, "_bf::", 5) == 0)
-		{			
-			CreateFilterName(name, cPtr + 5, DbgLanguage_Beef);			
+		{
+			CreateFilterName(name, cPtr + 5, DbgLanguage_Beef);
 			name.Replace(".__BfStaticCtor", ".this$static");
 			name.Replace(".__BfCtorClear", ".this$clear");
 			name.Replace(".__BfCtor", ".this");
 		}
 		else
 			CreateFilterName(name, subprogram->mName, language);
-		
+
 		return;
 	}
 	else
 	{
 		if (subprogram->mParentType != NULL)
 		{
-			String parentName = subprogram->mParentType->ToString();			
+			String parentName = subprogram->mParentType->ToString();
 			CreateFilterName(name, parentName.c_str(), language);
 			if (!name.empty())
 			{
@@ -380,11 +380,11 @@ static void CreateFilterName(String& name, DbgSubprogram* subprogram)
 //////////////////////////////////////////////////////////////////////////
 
 DbgPendingExpr::DbgPendingExpr()
-{	
+{
 	mThreadId = -1;
 	mCallStackIdx = -1;
 	mParser = NULL;
-	mCursorPos = -1;	
+	mCursorPos = -1;
 	mExprNode = NULL;
 	mIdleTicks = 0;
 	mExplitType = NULL;
@@ -394,8 +394,8 @@ DbgPendingExpr::DbgPendingExpr()
 }
 
 DbgPendingExpr::~DbgPendingExpr()
-{	
-	delete mParser;	
+{
+	delete mParser;
 }
 
 // conversion logic based on table at http://en.wikipedia.org/wiki/Extended_precision
@@ -455,7 +455,7 @@ static double ConvertFloat80ToDouble(const byte fp80[10])
 		return s * HUGE_VAL;
 
 	useExponent += 1023;
-	
+
 	BF_ASSERT((useExponent > 0) && (useExponent < 0x7ff)); // assume we've filtered for valid exponent range
 	BF_ASSERT(m & bit63); // assume we've filtered out values that aren't normalized by now
 
@@ -488,12 +488,12 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 	mStepInAssembly = false;
 	mStepSP = 0;
 	mStepIsRecursing = false;
-	mStepStopOnNextInstruction = false;	
+	mStepStopOnNextInstruction = false;
 	mDebugTarget = NULL;
-	mShuttingDown = false;	
-	mBfSystem = new BfSystem();	
+	mShuttingDown = false;
+	mBfSystem = new BfSystem();
 	mAtBreakThread = NULL;
-	mActiveThread = NULL;		
+	mActiveThread = NULL;
 	mActiveBreakpoint = NULL;
 	mSteppingThread = NULL;
 	mExplicitStopThread = NULL;
@@ -503,10 +503,10 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 	mContinueFromBreakpointFailed = false;
 	mIsStepIntoSpecific = false;
 	mDbgBreak = false;
-	mDebuggerWaitingThread = NULL;	
+	mDebuggerWaitingThread = NULL;
 	mStepType = StepType_None;
 	mOrigStepType = StepType_None;
-	mLastValidStepIntoPC = 0;	
+	mLastValidStepIntoPC = 0;
 	mActiveSymSrvRequest = NULL;
 
 	mStoredReturnValueAddr = 0;
@@ -515,10 +515,10 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 #else
 	mCPU = gX86Target->mX64CPU;
 #endif
-	mRunState = RunState_NotStarted;	
-	mIsRunning = false;	
+	mRunState = RunState_NotStarted;
+	mIsRunning = false;
 	mSavedAtBreakpointAddress = 0;
-	mSavedBreakpointAddressContinuing = 0;	
+	mSavedBreakpointAddressContinuing = 0;
 	mRequestedStackFrameIdx = 0;
 	mShowPCOverride = 0;
 	mCurNoInfoStepTries = 0;
@@ -528,30 +528,30 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 	mDbgProcessId = 0;
 	mDbgHeapData = NULL;
 	mIsPartialCallStack = true;
-		
+
 	for (int i = 0; i < 4; i++)
-	{		
+	{
 		mFreeMemoryBreakIndices.push_back(i);
 	}
 	mMemoryBreakpointVersion = 0;
 
 	SYSTEM_INFO systemInfo;
 	GetSystemInfo(&systemInfo);
-	mPageSize = systemInfo.dwPageSize;	
+	mPageSize = systemInfo.dwPageSize;
 
 	mEmptyDebugTarget = new DebugTarget(this);
 	mEmptyDebugTarget->CreateEmptyTarget();
 	mEmptyDebugTarget->mIsEmpty = true;
-	mDebugTarget = mEmptyDebugTarget;	
+	mDebugTarget = mEmptyDebugTarget;
 	mDebugPendingExpr = NULL;
 	mDebugEvalThreadInfo = WdThreadInfo();
-	
-	mMemCacheAddr = 0;		
-	mDebuggerThreadId = 0;	
+
+	mMemCacheAddr = 0;
+	mDebuggerThreadId = 0;
 }
 
 WinDebugger::~WinDebugger()
-{	
+{
 	mDestroying = true;
 
 	delete gDbgPerfManager;
@@ -561,7 +561,7 @@ WinDebugger::~WinDebugger()
 		Detach();
 
 	for (auto breakpoint : mBreakpoints)
-	{		
+	{
 		auto checkBreakpoint = breakpoint->mLinkedSibling;
 		while (checkBreakpoint != NULL)
 		{
@@ -575,7 +575,7 @@ WinDebugger::~WinDebugger()
 
 	delete mEmptyDebugTarget;
 
-	delete mBfSystem;	
+	delete mBfSystem;
 	for (auto kv : mPendingProfilerMap)
 		delete kv.mValue;
 	for (auto profiler : mNewProfilerList)
@@ -602,7 +602,7 @@ void WinDebugger::ThreadRestorePause(WdThreadInfo* onlyPauseThread, WdThreadInfo
 
 			BfLogDbg("SuspendThread %d\n", threadInfo->mThreadId);
 			::SuspendThread(threadInfo->mHThread);
-			
+
 			threadInfo->mIsBreakRestorePaused = true;
 		}
 	}
@@ -623,11 +623,11 @@ void WinDebugger::ThreadRestoreUnpause()
 }
 
 void WinDebugger::UpdateThreadDebugRegisters(WdThreadInfo* threadInfo)
-{	
+{
 	if (threadInfo->mMemoryBreakpointVersion == mMemoryBreakpointVersion)
 		return;
 
-	auto threadId = threadInfo->mHThread;	
+	auto threadId = threadInfo->mHThread;
 
 	BF_CONTEXT lcContext;
 	lcContext.ContextFlags = BF_CONTEXT_DEBUG_REGISTERS;
@@ -679,11 +679,11 @@ void WinDebugger::PhysSetBreakpoint(addr_target address)
 	BfLogDbg("PhysSetBreakpoint %p\n", address);
 
 	uint8 newData = 0xCC;
-	
+
 	// This ensure that we have the orig image data cached
 	DbgMemoryFlags flags = mDebugTarget->ReadOrigImageData(address, NULL, 1);
 	if ((flags & DbgMemoryFlags_Execute) == 0)
-	{		
+	{
 		BfLogDbg("Breakpoint ignored - execute flag NOT set in breakpoint address\n", address);
 
 		BfLogDbg("Memory Flags = %d\n", gDebugger->GetMemoryFlags(address));
@@ -708,7 +708,7 @@ void WinDebugger::PhysSetBreakpoint(addr_target address)
 }
 
 void WinDebugger::SetBreakpoint(addr_target address, bool fromRehup)
-{			
+{
 	int* countPtr = NULL;
 	if (mPhysBreakpointAddrMap.TryAdd(address, NULL, &countPtr))
 	{
@@ -716,7 +716,7 @@ void WinDebugger::SetBreakpoint(addr_target address, bool fromRehup)
 		*countPtr = 1;
 	}
 	else
-	{	
+	{
 		if (fromRehup)
 		{
 			BfLogDbg("SetBreakpoint %p Count: %d. Rehup (ignored).\n", address, *countPtr);
@@ -739,7 +739,7 @@ void WinDebugger::SetTempBreakpoint(addr_target address)
 }
 
 void WinDebugger::PhysRemoveBreakpoint(addr_target address)
-{	
+{
 	BfLogDbg("PhysRemoveBreakpoint %p\n", address);
 
 	uint8 origData;
@@ -760,7 +760,7 @@ void WinDebugger::PhysRemoveBreakpoint(addr_target address)
 }
 
 void WinDebugger::RemoveBreakpoint(addr_target address)
-{		
+{
 	int* countPtr = NULL;
 	mPhysBreakpointAddrMap.TryGetValue(address, &countPtr);
 
@@ -771,13 +771,13 @@ void WinDebugger::RemoveBreakpoint(addr_target address)
 		BfLogDbg("RemoveBreakpoint %p FAILED\n", address);
 		return;
 	}
-	
+
 	BfLogDbg("RemoveBreakpoint %p count: %d\n", address, *countPtr);
 	if (*countPtr > 1)
 	{
 		(*countPtr)--;
 		return;
-	}	
+	}
 	mPhysBreakpointAddrMap.Remove(address);
 	PhysRemoveBreakpoint(address);
 }
@@ -816,10 +816,10 @@ bool WinDebugger::ContinueFromBreakpoint()
 		mDebuggerWaitingThread->mIsAtBreakpointAddress = 0;
 		return true;
 	}
-	
+
 	mActiveThread = mDebuggerWaitingThread;
-	mActiveBreakpoint = NULL;	
-	
+	mActiveBreakpoint = NULL;
+
 	BfLogDbg("ContinueFromBreakpoint. ActiveThread: %d\n", (mActiveThread != NULL) ? mActiveThread->mThreadId : -1);
 
 	BfLogDbg("ResumeThread %d\n", mActiveThread->mThreadId);
@@ -827,7 +827,7 @@ bool WinDebugger::ContinueFromBreakpoint()
 	if (success)
 	{
 		// It's possible the active thread is suspended - possibly by the GC, so we would deadlock if we
-		//  attempted to pause the other threads		
+		//  attempted to pause the other threads
 		BfLogDbg("SuspendThread %d\n", mActiveThread->mThreadId);
 		BfLogDbg("Thread already paused!\n");
 		::SuspendThread(mActiveThread->mHThread);
@@ -841,7 +841,7 @@ bool WinDebugger::ContinueFromBreakpoint()
 	BF_CONTEXT lcContext;
 	lcContext.ContextFlags = BF_CONTEXT_ALL;
 
-	BF_GetThreadContext(mActiveThread->mHThread, &lcContext);	
+	BF_GetThreadContext(mActiveThread->mHThread, &lcContext);
 	lcContext.EFlags |= 0x100; // Set trap flag, which raises "single-step" exception
 	BF_SetThreadContext(mActiveThread->mHThread, &lcContext);
 
@@ -853,11 +853,11 @@ bool WinDebugger::ContinueFromBreakpoint()
 }
 
 void WinDebugger::ValidateBreakpoints()
-{	
+{
 	HashSet<addr_target> usedBreakpoints;
 
 	std::function<void(WdBreakpoint*)> _AddBreakpoint = [&](WdBreakpoint* breakpoint)
-	{		
+	{
 		if (breakpoint->mAddr != 0)
 		{
 			usedBreakpoints.Add(breakpoint->mAddr);
@@ -880,12 +880,12 @@ void WinDebugger::ValidateBreakpoints()
 		{
 			_AddBreakpoint(checkSibling);
 			checkSibling = (WdBreakpoint*)checkSibling->mLinkedSibling;
-		}		
+		}
 	};
 
 	for (auto breakpoint : mBreakpoints)
 		_AddBreakpoint(breakpoint);
-	
+
 	for (auto& entry : mBreakpointAddrMap)
 	{
 		BF_ASSERT(usedBreakpoints.Contains(entry.mKey));
@@ -911,7 +911,7 @@ Breakpoint* WinDebugger::GetActiveBreakpoint()
 }
 
 void WinDebugger::DebugThreadProc()
-{	
+{
 	BpSetThreadName("DebugThread");
 	BfpThread_SetName(NULL, "DebugThread", NULL);
 
@@ -929,9 +929,9 @@ void WinDebugger::DebugThreadProc()
 			mRunState = RunState_Terminated;
 		}
 	}
-	
+
 	while (!mShuttingDown)
-	{		
+	{
 		DoUpdate();
 	}
 
@@ -972,7 +972,7 @@ void WinDebugger::DebugThreadProc()
 			mIsDebuggerWaiting = false;
 			mDebuggerWaitingThread = NULL;
 		}
-	}		
+	}
 
 	mDebuggerThreadId = 0;
 }
@@ -1001,7 +1001,7 @@ bool WinDebugger::CanOpen(const StringImpl& fileName, DebuggerResult* outResult)
 
 	*outResult = DebuggerResult_Ok;
 	bool canRead = DbgModule::CanRead(&fs, outResult);
-	fclose(fp);	
+	fclose(fp);
 	return canRead;
 }
 
@@ -1033,18 +1033,18 @@ bool WinDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
 		return false;
 	}
 
-	bool want32Bit = sizeof(intptr_target) == 4; 
+	bool want32Bit = sizeof(intptr_target) == 4;
 	if (want32Bit != (is32Bit != 0))
 	{
 		mDbgProcessHandle = 0;
 		::CloseHandle(mDbgProcessHandle);
-		return false;	
+		return false;
 	}
 
 	HMODULE mainModule = 0;
 	DWORD memNeeded = 0;
 	::EnumProcessModules(mDbgProcessHandle, &mainModule, sizeof(HMODULE), &memNeeded);
-	
+
 	WCHAR fileName[MAX_PATH] = {0};
 	GetModuleFileNameExW(mDbgProcessHandle, mainModule, fileName, MAX_PATH);
 	mLaunchPath = UTF8Encode(fileName);
@@ -1060,16 +1060,16 @@ bool WinDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
 }
 
 void WinDebugger::Run()
-{	
+{
 	mIsRunning = true;
 	DWORD localThreadId;
 	HANDLE hThread = ::CreateThread(NULL, 64 * 1024, (LPTHREAD_START_ROUTINE) &DebugThreadProcThunk, (void*)this, 0, &localThreadId);
-	CloseHandle(hThread);		
+	CloseHandle(hThread);
 }
 
 void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
-{		
-	AutoCrit autoCrit(mDebugManager->mCritSect);	
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	if (mDebugTarget->mTargetBinary == NULL)
 	{
@@ -1083,20 +1083,20 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		return;
 	}
 
-	BfLogDbg("WinDebugger::HotLoad Start %d\n", hotIdx);	
+	BfLogDbg("WinDebugger::HotLoad Start %d\n", hotIdx);
 
 	SetAndRestoreValue<int> prevHotIdx(mActiveHotIdx, hotIdx);
 
 	BF_ASSERT(mHotThreadStates.empty());
 	mHotThreadStates.Resize(mThreadList.size());
-	for (int threadIdx = 0; threadIdx < (int)mThreadList.size(); threadIdx++)	
-	{		
+	for (int threadIdx = 0; threadIdx < (int)mThreadList.size(); threadIdx++)
+	{
 		WdThreadInfo* threadInfo = mThreadList[threadIdx];
-		SetAndRestoreValue<WdThreadInfo*> prevActiveThread(mActiveThread, threadInfo);		
+		SetAndRestoreValue<WdThreadInfo*> prevActiveThread(mActiveThread, threadInfo);
 		BfLogDbg("SuspendThread %d\n", threadInfo->mThreadId);
 		::SuspendThread(threadInfo->mHThread);
 		mHotThreadStates[threadIdx].mThreadId = threadInfo->mThreadId;
-		PopulateRegisters(&mHotThreadStates[threadIdx].mRegisters);		
+		PopulateRegisters(&mHotThreadStates[threadIdx].mRegisters);
 	}
 
 	for (auto address : mTempBreakpoint)
@@ -1109,27 +1109,27 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	}
 
 	int startingModuleIdx = (int)mDebugTarget->mDbgModules.size();
-	
+
 	bool failed = false;
 	for (auto fileName : objectFiles)
 	{
 		BfLogDbg("WinDebugger::HotLoad: %s\n", fileName.c_str());
-		DbgModule* newBinary = mDebugTarget->HotLoad(fileName, hotIdx);		
+		DbgModule* newBinary = mDebugTarget->HotLoad(fileName, hotIdx);
 		if ((newBinary != NULL) && (newBinary->mFailed))
 			failed = true;
 	}
-		
+
 	for (int moduleIdx = startingModuleIdx; moduleIdx < (int)mDebugTarget->mDbgModules.size(); moduleIdx++)
 	{
 		auto dbgModule = mDebugTarget->mDbgModules[moduleIdx];
 		BF_ASSERT(dbgModule->IsObjectFile());
 		BF_ASSERT(dbgModule->mHotIdx == hotIdx);
 		dbgModule->FinishHotSwap();
-	}	
+	}
 
 	for (auto dwarf : mDebugTarget->mDbgModules)
 		dwarf->RevertWritingEnable();
-		
+
 	int blockAllocSinceClean = mDebugTarget->mHotHeap->mBlockAllocIdx - mDebugTarget->mLastHotHeapCleanIdx;
 	// Clean up the hot heap every 64MB
 	int blocksBetweenCleans = (64 * 1024 * 1024) / HotHeap::BLOCK_SIZE;
@@ -1149,7 +1149,7 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	{
 		auto breakpoint = mBreakpoints[breakIdx];
 		CheckBreakpoint(breakpoint);
-	}	
+	}
 
 	for (int hotThreadIdx = 0; hotThreadIdx < (int)mHotThreadStates.size(); hotThreadIdx++)
 	{
@@ -1157,10 +1157,10 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		WdThreadInfo* threadInfo = NULL;
 		if (!mThreadMap.TryGetValue((uint32)hotThreadState.mThreadId, &threadInfo))
 			continue;
-		
+
 		BfLogDbg("ResumeThread %d\n", threadInfo->mThreadId);
 		::ResumeThread(threadInfo->mHThread);
-	}	
+	}
 
 	mHotThreadStates.Clear();
 
@@ -1168,13 +1168,13 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	{
 		ClearCallStack();
 		UpdateCallStack();
-	}		
+	}
 }
 
 void WinDebugger::InitiateHotResolve(DbgHotResolveFlags flags)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
-	
+
 	delete mHotResolveData;
 	mHotResolveData = NULL;
 
@@ -1190,7 +1190,7 @@ intptr WinDebugger::GetDbgAllocHeapSize()
 	{
 		Beefy::String memName = StrFormat("BFGC_stats_%d", mProcessInfo.dwProcessId);
 
-		mDbgHeapData = new WinDbgHeapData();		
+		mDbgHeapData = new WinDbgHeapData();
 		mDbgHeapData->mFileMapping = ::OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, memName.c_str());
 		if (mDbgHeapData->mFileMapping == 0)
 		{
@@ -1198,8 +1198,8 @@ intptr WinDebugger::GetDbgAllocHeapSize()
 			mDbgHeapData = NULL;
 			return 0;
 		}
-		
-		mDbgHeapData->mStats = (WinDbgHeapData::Stats*)MapViewOfFile(mDbgHeapData->mFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(WinDbgHeapData::Stats));		
+
+		mDbgHeapData->mStats = (WinDbgHeapData::Stats*)MapViewOfFile(mDbgHeapData->mFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(WinDbgHeapData::Stats));
 	}
 
 	if (mDbgHeapData->mStats == NULL)
@@ -1221,10 +1221,10 @@ String WinDebugger::GetDbgAllocInfo()
 	mHotResolveData = new DbgHotResolveData();
 	DbgHotScanner* hotScanner = new DbgHotScanner(this);
 	hotScanner->Scan((DbgHotResolveFlags)(DbgHotResolveFlag_Allocations | DbgHotResolveFlag_KeepThreadState));
-	delete hotScanner;				
+	delete hotScanner;
 
 	String result;
-	
+
 	if (mHotResolveData != NULL)
 	{
 		DbgExprEvaluator exprEvaluator(this, NULL, NULL, -1, -1);
@@ -1259,26 +1259,26 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 {
 	BP_ZONE("WinDebugger::DoOpenFile");
 
-	AutoCrit autoCrit(mDebugManager->mCritSect);	
+	AutoCrit autoCrit(mDebugManager->mCritSect);
 	//gDbgPerfManager->StartRecording();
 
 	STARTUPINFOW si;
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
-	ZeroMemory(&mProcessInfo, sizeof(mProcessInfo));	
+	ZeroMemory(&mProcessInfo, sizeof(mProcessInfo));
 
 	if (mDbgProcessId != 0)
 	{
 		BOOL success = ::DebugActiveProcess(mDbgProcessId);
 		if (!success)
-			return false;		
+			return false;
 
-		mProcessInfo.dwProcessId = mDbgProcessId;		
+		mProcessInfo.dwProcessId = mDbgProcessId;
 	}
 	else
 	{
 		BP_ZONE("DoOpenFile_CreateProcessW");
-		
+
 		UTF16String envW;
 
 		DWORD flags = DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS | CREATE_DEFAULT_ERROR_MODE;
@@ -1304,7 +1304,7 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 		String cmdLine = "\"";
 		cmdLine += fileName;
 		cmdLine += "\"";
-		
+
 		if (!args.IsEmpty())
 		{
 			cmdLine += " ";
@@ -1313,7 +1313,7 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 
 		BOOL worked = CreateProcessW(NULL, (WCHAR*)UTF8Decode(cmdLine).c_str(), NULL, NULL, FALSE,
 			flags, envPtr, (WCHAR*)UTF8Decode(workingDir).c_str(), &si, &mProcessInfo);
-				
+
 		if (!worked)
 		{
 			auto lastError = ::GetLastError();
@@ -1334,9 +1334,9 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 		mThreadMap[mProcessInfo.dwThreadId] = threadInfo;
 		mThreadList.push_back(threadInfo);
 	}
-	
+
 	mRunState = RunState_Running;
-		
+
 	while (true)
 	{
 		BP_ZONE("DoOpenFile_WaitForImageBase");
@@ -1345,10 +1345,10 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 		autoCrit.mCritSect->Lock();
 
 		ContinueDebugEvent();
-		
+
 		if ((mDebugTarget->mLaunchBinary != NULL) && (mDebugTarget->mLaunchBinary->mOrigImageData != NULL))
 			break;
-	}	
+	}
 
 	RehupBreakpoints(true);
 
@@ -1365,13 +1365,13 @@ void WinDebugger::StopDebugging()
 	if (mActiveSymSrvRequest != NULL)
 		mActiveSymSrvRequest->Cancel();
 	if ((mRunState == RunState_NotStarted) || (mRunState == RunState_Terminated) || (mRunState == RunState_Terminating))
-		return;	
+		return;
 
-	if ((mDbgProcessId != 0) && ((mDbgAttachFlags & BfDbgAttachFlag_ShutdownOnExit) == 0))	
+	if ((mDbgProcessId != 0) && ((mDbgAttachFlags & BfDbgAttachFlag_ShutdownOnExit) == 0))
 	{
 		for (auto address : mTempBreakpoint)
 			RemoveBreakpoint(address);
-		for (auto breakpoint : mBreakpoints)		
+		for (auto breakpoint : mBreakpoints)
 			DetachBreakpoint(breakpoint);
 
 		BfLogDbg("StopDebugging\n");
@@ -1385,18 +1385,17 @@ void WinDebugger::StopDebugging()
 		mRunState = RunState_Terminating;
 		BfLogDbg("mRunState = RunState_Terminating\n");
 	}
-	
 }
 
 void WinDebugger::Terminate()
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
-	BfLogDbg("WinDebugger::Terminate\n");	
+	BfLogDbg("WinDebugger::Terminate\n");
 	if (mActiveSymSrvRequest != NULL)
 		mActiveSymSrvRequest->Cancel();
 	if ((mRunState == RunState_NotStarted) || (mRunState == RunState_Terminated) || (mRunState == RunState_Terminating))
-		return;	
-	TerminateProcess(mProcessInfo.hProcess, 0);		
+		return;
+	TerminateProcess(mProcessInfo.hProcess, 0);
 	mRunState = RunState_Terminating;
 	BfLogDbg("mRunState = RunState_Terminating\n");
 }
@@ -1404,7 +1403,7 @@ void WinDebugger::Terminate()
 static int gDebugUpdateCnt = 0;
 
 void WinDebugger::Detach()
-{	
+{
 	BfLogDbg("Debugger Detach\n");
 
 	mDebugManager->mNetManager->CancelAll();
@@ -1423,7 +1422,7 @@ void WinDebugger::Detach()
 	for (auto profiler : mNewProfilerList)
 		delete profiler;
 	mNewProfilerList.Clear();
-	
+
 	mPendingImageLoad.Clear();
 	mPendingDebugInfoLoad.Clear();
 
@@ -1432,7 +1431,7 @@ void WinDebugger::Detach()
 	if (mDebugTarget != mEmptyDebugTarget)
 		delete mDebugTarget;
 	mDebugTarget = mEmptyDebugTarget;
-	
+
 	mShuttingDown = false;
 	mStepSP = 0;
 	ClearCallStack();
@@ -1446,7 +1445,7 @@ void WinDebugger::Detach()
 
 	for (auto threadPair : mThreadMap)
 	{
-		auto threadInfo = threadPair.mValue;		
+		auto threadInfo = threadPair.mValue;
 		delete threadInfo;
 	}
 	mThreadMap.Clear();
@@ -1473,30 +1472,30 @@ void WinDebugger::Detach()
 		}
 	}
 
-	ZeroMemory(&mProcessInfo, sizeof(mProcessInfo));	
+	ZeroMemory(&mProcessInfo, sizeof(mProcessInfo));
 	mStepBreakpointAddrs.Clear();
 	mIsRunning = false;
-	
+
 	mDbgAttachFlags = BfDbgAttachFlag_None;
 	mDbgProcessId = 0;
 	delete mDbgHeapData;
 	mDbgHeapData = NULL;
-	mDbgProcessHandle = 0;	
-	ClearCallStack();	
+	mDbgProcessHandle = 0;
+	ClearCallStack();
 	mWantsDebugContinue = false;
 	mAtBreakThread = NULL;
-	mActiveThread = NULL;	
+	mActiveThread = NULL;
 	mActiveBreakpoint = NULL;
 	mSteppingThread = NULL;
-	mExplicitStopThread = NULL;	
+	mExplicitStopThread = NULL;
 	mIsContinuingFromException = false;
-	mGotStartupEvent = false;	
-		
+	mGotStartupEvent = false;
+
 	mIsDebuggerWaiting = false;
 	mPhysBreakpointAddrMap.Clear();
 	mBreakpointAddrMap.Clear();
-	
-	gDebugUpdateCnt = 0;	
+
+	gDebugUpdateCnt = 0;
 }
 
 Profiler* WinDebugger::StartProfiling()
@@ -1509,7 +1508,7 @@ Profiler* WinDebugger::PopProfiler()
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 	if (mNewProfilerList.IsEmpty())
 		return NULL;
-	auto profiler = (DbgProfiler*)mNewProfilerList[0];	
+	auto profiler = (DbgProfiler*)mNewProfilerList[0];
 	mNewProfilerList.erase(mNewProfilerList.begin());
 	return profiler;
 }
@@ -1553,7 +1552,7 @@ bool WinDebugger::GetEmitSource(const StringImpl& filePath, String& outText)
 
 void WinDebugger::ModuleChanged(DbgModule* dbgModule)
 {
-	mDebugManager->mOutMessages.push_back(String("dbgInfoLoaded ") + dbgModule->mFilePath);	
+	mDebugManager->mOutMessages.push_back(String("dbgInfoLoaded ") + dbgModule->mFilePath);
 }
 
 bool WinDebugger::DoUpdate()
@@ -1564,12 +1563,12 @@ bool WinDebugger::DoUpdate()
 		::DebugSetProcessKillOnExit(TRUE);
 
 	//
-	{		
+	{
 		AutoCrit autoCrit(mDebugManager->mCritSect);
 		auto _ModuleChanged = [&](DbgModule* dbgModule)
 		{
 			ModuleChanged(dbgModule);
-			ClearCallStack(); // We may have actual dbgSubprograms and stuff now...			
+			ClearCallStack(); // We may have actual dbgSubprograms and stuff now...
 		};
 
 		for (auto dbgModule : mPendingImageLoad)
@@ -1596,7 +1595,7 @@ bool WinDebugger::DoUpdate()
 			for (auto kv : mPendingDebugInfoLoad)
 				pendingList.Add(kv.mValue);
 			mPendingDebugInfoLoad.Clear();
-			
+
 			for (auto& entry : pendingList)
 			{
 				auto dbgModule = entry.mModule;
@@ -1605,11 +1604,11 @@ bool WinDebugger::DoUpdate()
 				//  saying "<Loading...>"
 				_ModuleChanged(entry.mModule);
 			}
-		}		
+		}
 	}
 
 	if (IsMiniDumpDebugger())
-	{	
+	{
 		//
 		{
 			AutoCrit autoCrit(mDebugManager->mCritSect);
@@ -1620,34 +1619,34 @@ bool WinDebugger::DoUpdate()
 			}
 		}
 
-		Sleep(20);		
+		Sleep(20);
 		return false;
 	}
 
 	if (mIsDebuggerWaiting)
-	{		
+	{
 		if ((IsInRunState()) || (mRunState == RunState_Terminating) || (mRunState == RunState_DebugEval))
 			ContinueDebugEvent();
 		if (mContinueEvent.WaitFor(8))
-		{			
+		{
 			BF_ASSERT(!mWantsDebugContinue); // mWantsDebugContinue should already been reset
 			BfLogDbg("::ContinueDebugEvent 1 ThreadId:%d\n", mDebuggerWaitingThread->mThreadId);
 			BF_ASSERT_REL(mDebuggerWaitingThread->mIsAtBreakpointAddress == 0);
 			::ContinueDebugEvent(mDebuggerWaitingThread->mProcessId, mDebuggerWaitingThread->mThreadId, mIsContinuingFromException ? DBG_EXCEPTION_NOT_HANDLED : DBG_CONTINUE);
 			mIsContinuingFromException = false;
 			mIsDebuggerWaiting = false;
-			mDebuggerWaitingThread = NULL;				
+			mDebuggerWaitingThread = NULL;
 		}
 		else
-			return false;		
+			return false;
 	}
-	
+
 	if (!WaitForDebugEvent(&mDebugEvent, 8))
 		return false;
-		
+
 	gDebugUpdateCnt++;
 
-	static const char* eventNames[] = { "DBG_EVENT ?", 
+	static const char* eventNames[] = { "DBG_EVENT ?",
 		"EXCEPTION_DEBUG_EVENT",
 		"CREATE_THREAD_DEBUG_EVENT",
 		"CREATE_PROCESS_DEBUG_EVENT",
@@ -1662,26 +1661,26 @@ bool WinDebugger::DoUpdate()
 
 	BP_ZONE(eventNames[mDebugEvent.dwDebugEventCode]);
 
-	AutoCrit autoCrit(mDebugManager->mCritSect);	
+	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	mActiveBreakpoint = NULL;
 	mIsDebuggerWaiting = true;
 	mWantsDebugContinue = true;
 	mRequestedStackFrameIdx = 0;
 	mBreakStackFrameIdx = 0;
-	mShowPCOverride = 0;	
+	mShowPCOverride = 0;
 
 	WdThreadInfo* threadInfo = NULL;
-	
+
 	mThreadMap.TryGetValue(mDebugEvent.dwThreadId, &threadInfo);
 
 	mDebuggerWaitingThread = threadInfo;
 	mExplicitStopThread = mDebuggerWaitingThread;
-		
+
 	switch (mDebugEvent.dwDebugEventCode)
 	{
 	case CREATE_PROCESS_DEBUG_EVENT:
-		{	
+		{
 			if (threadInfo == NULL)
 			{
 				BF_ASSERT(mThreadMap.size() == 0);
@@ -1700,7 +1699,7 @@ bool WinDebugger::DoUpdate()
 
 				mThreadMap[mDebugEvent.dwThreadId] = newThreadInfo;
 				mDebuggerWaitingThread = newThreadInfo;
-				mThreadList.push_back(mDebuggerWaitingThread);				
+				mThreadList.push_back(mDebuggerWaitingThread);
 				UpdateThreadDebugRegisters();
 				OutputMessage(StrFormat("Creating thread from CREATE_PROCESS_DEBUG_EVENT %d\n", mDebugEvent.dwThreadId));
 
@@ -1730,12 +1729,12 @@ bool WinDebugger::DoUpdate()
 			launchBinary->mImageBase = gotImageBase;
 			launchBinary->mImageSize = (int)launchBinary->GetImageSize();
 			launchBinary->mOrigImageData = new DbgModuleMemoryCache(launchBinary->mImageBase, launchBinary->mImageSize);
-			
+
 			if (launchBinary == mDebugTarget->mTargetBinary)
 				mDebugTarget->SetupTargetBinary();
-			
+
 			if (mDebugEvent.u.CreateProcessInfo.hFile != NULL)
-				CloseHandle(mDebugEvent.u.CreateProcessInfo.hFile);			
+				CloseHandle(mDebugEvent.u.CreateProcessInfo.hFile);
 
 			mDbgProcessHandle = mDebugEvent.u.CreateProcessInfo.hProcess;
 			mDbgThreadHandle = mDebugEvent.u.CreateProcessInfo.hThread;
@@ -1778,11 +1777,11 @@ bool WinDebugger::DoUpdate()
 			mDebugManager->mOutMessages.push_back("modulesChanged");
 		}
 		break;
-	case LOAD_DLL_DEBUG_EVENT:					
-		{		
-			WCHAR moduleNameStr[MAX_PATH] = { 0 };			
+	case LOAD_DLL_DEBUG_EVENT:
+		{
+			WCHAR moduleNameStr[MAX_PATH] = { 0 };
 			GetFinalPathNameByHandleW(mDebugEvent.u.LoadDll.hFile, moduleNameStr, MAX_PATH, FILE_NAME_NORMALIZED);
-			
+
 			std::wstring wow64Dir;
 			std::wstring systemDir;
 
@@ -1791,9 +1790,9 @@ bool WinDebugger::DoUpdate()
 			if (wow64DirPtr != NULL)
 			{
 				wow64Dir = wow64DirPtr;
-				CoTaskMemFree(wow64DirPtr);				
+				CoTaskMemFree(wow64DirPtr);
 			}
-			
+
 			PWSTR systemDirPtr = NULL;
 			SHGetKnownFolderPath(FOLDERID_System, KF_FLAG_NO_ALIAS, NULL, &systemDirPtr);
 			if (systemDirPtr != NULL)
@@ -1801,14 +1800,14 @@ bool WinDebugger::DoUpdate()
 				systemDir = systemDirPtr;
 				CoTaskMemFree(systemDirPtr);
 			}
-			
+
 			if ((mDebugEvent.u.LoadDll.lpImageName != 0) && (mDebugEvent.u.LoadDll.fUnicode))
 			{
 				addr_target strAddr = ReadMemory<addr_target>((addr_target)(intptr)mDebugEvent.u.LoadDll.lpImageName);
 
 				for (int i = 0; i < MAX_PATH - 1; i++)
 				{
-					WCHAR c = ReadMemory<WCHAR>(strAddr + i*2);					
+					WCHAR c = ReadMemory<WCHAR>(strAddr + i*2);
 					moduleNameStr[i] = (WCHAR)c;
 					if (c == 0)
 						break;
@@ -1817,7 +1816,7 @@ bool WinDebugger::DoUpdate()
 
 			String origModuleName = UTF8Encode(moduleNameStr);
 			String moduleName = origModuleName;
-			
+
 			String loadMsg;
 			HANDLE altFileHandle = INVALID_HANDLE_VALUE;
 			if (moduleName != origModuleName)
@@ -1840,7 +1839,7 @@ bool WinDebugger::DoUpdate()
 				loadMsg += " - Skipped";
 			}
 #endif
-			
+
 			if (!skipLoad)
 			{
 				FileHandleStream stream;
@@ -1849,7 +1848,7 @@ bool WinDebugger::DoUpdate()
 					stream.mFileHandle = altFileHandle;
 				if (mDebugTarget->SetupDyn(moduleName, &stream, (intptr)mDebugEvent.u.LoadDll.lpBaseOfDll) == NULL)
 					loadMsg += " - Failed to load";
-				stream.mFileHandle = 0;							
+				stream.mFileHandle = 0;
 			}
 
 			OutputMessage(loadMsg + "\n");
@@ -1864,9 +1863,9 @@ bool WinDebugger::DoUpdate()
 		}
 		break;
 	case UNLOAD_DLL_DEBUG_EVENT:
-		{	
+		{
 			bool needsBreakpointRehup = false;
-			
+
 			String name = "???";
 			DbgModule* dbgModule = mDebugTarget->FindDbgModuleForAddress((addr_target)(intptr)mDebugEvent.u.UnloadDll.lpBaseOfDll);
 			if (dbgModule != NULL)
@@ -1874,24 +1873,24 @@ bool WinDebugger::DoUpdate()
 				name = dbgModule->mFilePath;
 
 				for (int i = 0; i < (int)mBreakpoints.size(); i++)
-				{					
+				{
 					auto breakpoint = mBreakpoints[i];
 					auto checkBreakpoint = breakpoint;
 					bool hasAddr = false;
 					while (checkBreakpoint != NULL)
 					{
 						if ((checkBreakpoint->mAddr >= dbgModule->mImageBase) && (checkBreakpoint->mAddr < dbgModule->mImageBase + dbgModule->mImageSize))
-							hasAddr = true;						
+							hasAddr = true;
 						checkBreakpoint = (WdBreakpoint*)checkBreakpoint->mLinkedSibling;
 					}
 
 					if (hasAddr)
 					{
-						DetachBreakpoint(breakpoint);					
+						DetachBreakpoint(breakpoint);
 						needsBreakpointRehup = true;
 					}
 				}
-			
+
 				mDebugTarget->UnloadDyn(dbgModule->mImageBase);
 				if (needsBreakpointRehup)
 					RehupBreakpoints(true);
@@ -1899,7 +1898,7 @@ bool WinDebugger::DoUpdate()
 				mPendingDebugInfoLoad.Remove(dbgModule);
 				mPendingDebugInfoRequests.Remove(dbgModule);
 				mDebugManager->mOutMessages.push_back("modulesChanged");
-			}			
+			}
 
 			if (!name.empty())
 				OutputMessage(StrFormat("Unloading DLL: %s @ %0s\n", name.c_str(), EncodeDataPtr((addr_target)(intptr)mDebugEvent.u.UnloadDll.lpBaseOfDll, true).c_str()));
@@ -1907,8 +1906,8 @@ bool WinDebugger::DoUpdate()
 			BfLogDbg("UNLOAD_DLL_DEBUG_EVENT %s\n", name.c_str());
 		}
 		break;
-	case OUTPUT_DEBUG_STRING_EVENT:		
-		{									
+	case OUTPUT_DEBUG_STRING_EVENT:
+		{
 			const int maxChars = 1024 * 1024;
 			int len = BF_MIN(maxChars, (int)mDebugEvent.u.DebugString.nDebugStringLength); // 1MB max
 			char* message = new char[len + 1];
@@ -1916,18 +1915,18 @@ bool WinDebugger::DoUpdate()
 			message[0] = 0;
 			message[len] = 0;
 			ReadMemory((addr_target)(intptr)mDebugEvent.u.DebugString.lpDebugStringData, len, message);
-			
+
 			if ((mRunState == RunState_DebugEval) && (mDebuggerWaitingThread->mThreadId == mDebugEvalThreadInfo.mThreadId))
 				mDebugManager->mOutMessages.push_back(String("dbgEvalMsg ") + message);
 			else
 				mDebugManager->mOutMessages.push_back(String("msg ") + message);
 
 			BfLogDbg("OUTPUT_DEBUG_STRING_EVENT (BreakAddr:%@): %s\n", threadInfo->mIsAtBreakpointAddress, message);
-			
+
 			BF_ASSERT_REL(threadInfo->mIsAtBreakpointAddress == 0);
 
 			delete [] message;
-		}	
+		}
 		break;
 	case CREATE_THREAD_DEBUG_EVENT:
 		{
@@ -1945,13 +1944,13 @@ bool WinDebugger::DoUpdate()
 
 			mThreadMap[mDebugEvent.dwThreadId] = threadInfo;
 			mDebuggerWaitingThread = threadInfo;
-			mThreadList.push_back(mDebuggerWaitingThread);			
+			mThreadList.push_back(mDebuggerWaitingThread);
 			UpdateThreadDebugRegisters();
 			OutputMessage(StrFormat("Creating thread %d\n", mDebugEvent.dwThreadId));
-		}		
+		}
 		break;
 	case EXIT_THREAD_DEBUG_EVENT:
-		{				
+		{
 			OutputMessage(StrFormat("Exiting thread %d\n", mDebugEvent.dwThreadId));
 			if (mSteppingThread == threadInfo)
 			{
@@ -1966,29 +1965,29 @@ bool WinDebugger::DoUpdate()
 			{
 				// Thread terminated while evaluating! Is there a more graceful way of handling this?
 				CleanupDebugEval(false);
-				mRunState = RunState_Running;				
+				mRunState = RunState_Running;
 			}
 
 			mThreadList.Remove(mDebuggerWaitingThread);
 
 			delete mDebuggerWaitingThread;
-			mDebuggerWaitingThread = NULL;			
+			mDebuggerWaitingThread = NULL;
 			mThreadMap.Remove(mDebugEvent.dwThreadId);
 			return true;
-		}		
+		}
 		break;
 	case RIP_EVENT:
 		OutputMessage("RIP Event\n");
 		break;
-	case EXCEPTION_DEBUG_EVENT:		
+	case EXCEPTION_DEBUG_EVENT:
 		{
-			auto exceptionRecord = &mDebugEvent.u.Exception.ExceptionRecord;						
+			auto exceptionRecord = &mDebugEvent.u.Exception.ExceptionRecord;
 
 			switch (exceptionRecord->ExceptionCode)
 			{
 			case STATUS_WX86_BREAKPOINT:
-			case EXCEPTION_BREAKPOINT:												
-				{											
+			case EXCEPTION_BREAKPOINT:
+				{
 					if (mRunState == RunState_Terminating)
 					{
 						BfLogDbg("Ignoring event because of RunState_Terminating\n");
@@ -2007,8 +2006,8 @@ bool WinDebugger::DoUpdate()
 							// Skip the initial Wow64 ntdll.dll!LdrpDoDebuggerBreak
 							mRunState = RunState_Running;
 							break;
-						}						
-						isHighAddr = true;						
+						}
+						isHighAddr = true;
 					}
 #endif
 
@@ -2016,11 +2015,11 @@ bool WinDebugger::DoUpdate()
 					if (isHighAddr)
 						pcAddress = (addr_target)-1;
 					//mStoppedAtAddress = pcAddress;
-					
+
 					bool isStepOut = false;
 
 					if ((mStepType == StepType_StepOut) || (mStepType == StepType_StepOut_ThenInto))
-					{						
+					{
 						isStepOut = mStepBreakpointAddrs.Contains(pcAddress);
 					}
 
@@ -2043,12 +2042,12 @@ bool WinDebugger::DoUpdate()
 							dwSubprogram = mDebugTarget->FindSubProgram(pcAddress, DbgOnDemandKind_LocalOnly);
 					}
 
-					bool isLineStart = (dwLineData != NULL) && (dwSubprogram->GetLineAddr(*dwLineData) == pcAddress);					
+					bool isLineStart = (dwLineData != NULL) && (dwSubprogram->GetLineAddr(*dwLineData) == pcAddress);
 					bool isNonDebuggerBreak = false;
 
 					if (wasDebugBreakpoint)
-					{						
-						// Go ahead and set EIP back one instruction												
+					{
+						// Go ahead and set EIP back one instruction
 						BF_CONTEXT_IP(lcContext)--;
 						BF_SetThreadContext(threadInfo->mHThread, &lcContext);
 
@@ -2061,10 +2060,10 @@ bool WinDebugger::DoUpdate()
 							PhysRemoveBreakpoint(pcAddress);
 							break;
 						}
-					}					
+					}
 					else
 					{
-						// This was an actual "break" instruction						
+						// This was an actual "break" instruction
 						BfLogDbg("Non-debugger break\n");
 						isNonDebuggerBreak = true;
 
@@ -2080,14 +2079,14 @@ bool WinDebugger::DoUpdate()
 							BF_ASSERT((prevState == RunState_Running) || (prevState == RunState_DebugEval));
 							mRunState = prevState;
 							break; // Continue as if nothing happened
-						}						
+						}
 
 						if (prevState == RunState_DebugEval)
 							mRequestedStackFrameIdx = -1; // Don't show a rolled back stack idx if a debug eval fails
 
 						ClearStep();
 					}
-					
+
 					if (threadInfo->mIsBreakRestorePaused)
 					{
 						// The thread is supposed to be paused, but the IP has been reset
@@ -2106,14 +2105,14 @@ bool WinDebugger::DoUpdate()
 						{
 							mNeedsRehupBreakpoints = true;
 							RemoveBreakpoint(breakpoint->mLineData.GetAddress());
-						}						
+						}
 						break;
 					}
 
 					bool isDeeper = false;
 
 					int stepBreakAddrIdx = (int)mStepBreakpointAddrs.IndexOf(pcAddress);
-					
+
 					WdBreakpoint* breakpoint = NULL;
 					bool ignoreBreakpoint = false;
 
@@ -2137,7 +2136,7 @@ bool WinDebugger::DoUpdate()
 						if (!isStepOut)
 							breakpoint = (WdBreakpoint*)FindBreakpointAt(pcAddress);
 
-						// Ignore breakpoint if it's on the line we're stepping off of	
+						// Ignore breakpoint if it's on the line we're stepping off of
 						if ((breakpoint != NULL) && (breakpoint->mAddr == mStepPC) &&
 							(mStepSP == BF_CONTEXT_SP(lcContext)))
 						{
@@ -2154,8 +2153,8 @@ bool WinDebugger::DoUpdate()
 							BfLogDbg("Ignoring step break (old breakpoint)\n");
 
 							if ((mSteppingThread == mAtBreakThread) && (mStepSwitchedThreads))
-							{								
-								SetupStep(mStepType);								
+							{
+								SetupStep(mStepType);
 							}
 							break;
 						}
@@ -2166,8 +2165,8 @@ bool WinDebugger::DoUpdate()
 							ThreadRestorePause(mSteppingThread, mActiveThread);
 							threadInfo->mIsAtBreakpointAddress = pcAddress;
 							break;
-						}						
-						
+						}
+
 						isDeeper = mStepSP > BF_CONTEXT_SP(lcContext);
 						if ((mStepType == StepType_StepOut) || (mStepType == StepType_StepOut_ThenInto))
 						{
@@ -2184,11 +2183,11 @@ bool WinDebugger::DoUpdate()
 							threadInfo->mIsAtBreakpointAddress = pcAddress;
 							break; // Don't fall through, we don't want to set mIsAtBreakpointAddress
 						}
-						
+
 						if (isStepOut)
-						{							
+						{
 							threadInfo->mIsAtBreakpointAddress = pcAddress;
-							
+
 							if (mStepType == StepType_StepOut_ThenInto)
 							{
 								dwLineData = FindLineDataAtAddress(pcAddress, &dwSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
@@ -2230,7 +2229,7 @@ bool WinDebugger::DoUpdate()
 									SetupStep(StepType_StepOut);
 									break;
 								}
-							}						
+							}
 
 							ClearStep();
 							mRunState = RunState_Paused;
@@ -2238,7 +2237,7 @@ bool WinDebugger::DoUpdate()
 
 							break;
 						}
-						
+
 						mRunState = RunState_Paused;
 						if (breakpoint != NULL)
 						{
@@ -2246,8 +2245,8 @@ bool WinDebugger::DoUpdate()
 							threadInfo->mIsAtBreakpointAddress = breakpoint->mAddr;
 
 							// Ignore breakpoint on return statement if we're return-stepping
-							mRunState = RunState_Breakpoint;																					
-						}												
+							mRunState = RunState_Breakpoint;
+						}
 
 						if ((mStepType == StepType_StepInto) && (dwSubprogram != NULL))
 						{
@@ -2259,7 +2258,7 @@ bool WinDebugger::DoUpdate()
 								mRunState = RunState_Running;
 								SetupStep(StepType_StepOut_ThenInto);
 								break;
-							}							
+							}
 						}
 
 						if ((mStepType == StepType_StepOver) && (stepBreakAddrIdx == 0) && (mStepBreakpointAddrs[0] != 0) && (mStepBreakpointAddrs.size() > 1))
@@ -2278,19 +2277,19 @@ bool WinDebugger::DoUpdate()
 
 						if ((mStepType == StepType_StepOver) && (stepBreakAddrIdx > 0) && (mStepBreakpointAddrs[0] != 0) && (isDeeper))
 						{
-							// This is the first time we've hit the target breakpoint.							
+							// This is the first time we've hit the target breakpoint.
 							if (HasSteppedIntoCall())
 							{
-								mStepIsRecursing = true;																
+								mStepIsRecursing = true;
 								RemoveBreakpoint(mStepBreakpointAddrs[0]);
 								mStepBreakpointAddrs[0] = 0;
-								//mStepBreakpointAddrs.erase(mStepBreakpointAddrs.begin());																	
-							}														
+								//mStepBreakpointAddrs.erase(mStepBreakpointAddrs.begin());
+							}
 						}
 
 						if ((mStepType == StepType_StepOver) && (mStepIsRecursing) && (stepBreakAddrIdx != -1) && (isDeeper))
 						{
-							// Decrement so the equality test on "step out" marks us as not being deeper when we 
+							// Decrement so the equality test on "step out" marks us as not being deeper when we
 							//  hit the expected SP
 							BfLogDbg("Converting StepOver to StepOut\n");
 							mStepSP--;
@@ -2308,7 +2307,7 @@ bool WinDebugger::DoUpdate()
 							// mTempBreakpoints will have 2 entries if we are on a 'call' line.  If we have an inlined call immediately following a call, then we
 							//  assume we're hitting a return break
 							/*if ((dwSubprogram != NULL) && (dwSubprogram->mInlineParent != NULL) && (pcAddress == dwSubprogram->mBlock.mLowPC) && (mTempBreakpoint.size() < 2))
-							{								
+							{
 								BfLogDbg("Attempting StepOver of inlined method\n");
 								SetupStep(StepType_StepOut);
 								mRunState = RunState_Running;
@@ -2318,14 +2317,14 @@ bool WinDebugger::DoUpdate()
 							//TODO: The previous logic with the "(mTempBreakpoint.size() < 2)" was causing Try!(Method()); stepovers to enter into Try!.  What did we mean by
 							//  "assume we're hitting a return break"?
 							if ((dwSubprogram != NULL) && (dwSubprogram->mInlineeInfo != NULL) && (pcAddress == dwSubprogram->mBlock.mLowPC))
-							{	
+							{
 								RemoveTempBreakpoints();
 								BfLogDbg("Attempting StepOver of inlined method\n");
 								SetupStep(StepType_StepOut);
 								mRunState = RunState_Running;
 								break;
-							}							
-						}					
+							}
+						}
 
 						if (mStepType == StepType_StepOut_Inline)
 						{
@@ -2336,7 +2335,7 @@ bool WinDebugger::DoUpdate()
 								auto origLineData = FindLineDataAtAddress(mStepStartPC, &origSubprogram);
 								DbgSubprogram* curSubprogram = NULL;
 								auto curLineData = FindLineDataAtAddress(pcAddress, &curSubprogram);
-								if ((origLineData != NULL) && 
+								if ((origLineData != NULL) &&
 									((origLineData == curLineData) ||
 									 ((origSubprogram == curSubprogram) && (origLineData->mLine == curLineData->mLine))))
 								{
@@ -2345,11 +2344,11 @@ bool WinDebugger::DoUpdate()
 									break;
 								}
 							}
-							
+
 							ClearStep();
 							break;
 						}
-						
+
 						if ((mStepType != StepType_None) && (ignoreBreakpoint) && (!mStepInAssembly) && (stepBreakAddrIdx == -1))
 						{
 							// Ignore breakpoint by just continuing...
@@ -2358,15 +2357,15 @@ bool WinDebugger::DoUpdate()
 						}
 
 						RemoveTempBreakpoints();
-						
+
 						if ((mStepType != StepType_None) && (!mStepInAssembly)  && (!isLineStart) && (stepBreakAddrIdx != -1))
 						{
-							SetupStep(mStepType);							
+							SetupStep(mStepType);
 							mRunState = RunState_Running;
-						}						
+						}
 						else
 						{
-							//if (mStepType != StepType_Return)							
+							//if (mStepType != StepType_Return)
 							if (stepBreakAddrIdx != -1)
 							{
 								// Even if we've detected we're at a breakpoint, we mark ourselves as just stepping if we also
@@ -2376,7 +2375,7 @@ bool WinDebugger::DoUpdate()
 
 							if (mRunState == RunState_Paused)
 								ClearStep();
-						}						
+						}
 
 						if (ignoreBreakpoint)
 						{
@@ -2390,7 +2389,7 @@ bool WinDebugger::DoUpdate()
 							CheckConditionalBreakpoint(breakpoint, dwSubprogram, pcAddress);
 						}
 					}
-					else 
+					else
 					{
 						breakpoint = (WdBreakpoint*)FindBreakpointAt((uintptr_t)exceptionRecord->ExceptionAddress);
 						if ((breakpoint != NULL) && (!CheckConditionalBreakpoint(breakpoint, dwSubprogram, pcAddress)))
@@ -2402,7 +2401,7 @@ bool WinDebugger::DoUpdate()
 							break;
 						}
 						if (breakpoint != NULL)
-						{							
+						{
 							BfLogDbg("Breakpoint hit. mIsAtBreakpointAddress = %p\n", breakpoint->mAddr);
 							threadInfo->mIsAtBreakpointAddress = breakpoint->mAddr;
 							mRunState = RunState_Breakpoint;
@@ -2425,15 +2424,15 @@ bool WinDebugger::DoUpdate()
 							}
 						}
 						else
-						{								
+						{
 							BfLogDbg("Ignoring break (old or ignored breakpoint)\n");
-							mRunState = RunState_Running;							
+							mRunState = RunState_Running;
 						}
 					}
 
 					if ((breakpoint != NULL) && (!ignoreBreakpoint))
 					{
-						mActiveBreakpoint = breakpoint;						
+						mActiveBreakpoint = breakpoint;
 						mBreakStackFrameIdx = -1;
 					}
 
@@ -2442,8 +2441,8 @@ bool WinDebugger::DoUpdate()
 				}
 				break;
 			case STATUS_WX86_SINGLE_STEP:
-			case EXCEPTION_SINGLE_STEP:								
-				{					
+			case EXCEPTION_SINGLE_STEP:
+				{
 					if (mRunState == RunState_Terminating)
 					{
 						BfLogDbg("Ignoring event because of RunState_Terminating\n");
@@ -2458,18 +2457,18 @@ bool WinDebugger::DoUpdate()
 
 					if (mRunState == RunState_HotStep)
 					{
-						BF_ASSERT(mActiveThread == mDebuggerWaitingThread);						
+						BF_ASSERT(mActiveThread == mDebuggerWaitingThread);
 						mRunState = RunState_Paused;
 						break;
 					}
-					
+
 					mActiveThread = mDebuggerWaitingThread;
 
 					BF_CONTEXT lcContext;
 					lcContext.ContextFlags = BF_CONTEXT_ALL;
-					BF_GetThreadContext(mActiveThread->mHThread, &lcContext);					
+					BF_GetThreadContext(mActiveThread->mHThread, &lcContext);
 					addr_target pcAddress = BF_CONTEXT_IP(lcContext);
-					
+
 					bool wasUnfilteredStep = mStepType == StepType_StepInto_Unfiltered;
 					if (mStepType == StepType_StepInto_UnfilteredSingle)
 					{
@@ -2491,10 +2490,10 @@ bool WinDebugger::DoUpdate()
 								break;
 							}
 						}
-						
+
 						BF_ASSERT(foundBreakpoint != NULL);
 
-						DbgSubprogram* subprogram = mDebugTarget->FindSubProgram(pcAddress);						
+						DbgSubprogram* subprogram = mDebugTarget->FindSubProgram(pcAddress);
 						if (CheckConditionalBreakpoint(foundBreakpoint, subprogram, pcAddress))
 						{
 							if (foundBreakpoint != NULL)
@@ -2530,15 +2529,15 @@ bool WinDebugger::DoUpdate()
 						BfLogDbg("Continuing breakpoint at %p WantsReset:%d\n", threadInfo->mBreakpointAddressContinuing, wantsBreakpoint);
 
 						if (wantsBreakpoint)
-						{							
+						{
 							PhysSetBreakpoint(threadInfo->mBreakpointAddressContinuing);
 						}
 						threadInfo->mBreakpointAddressContinuing = NULL;
 						hadBreakpointContinue = true;
 
-						ThreadRestoreUnpause();						
+						ThreadRestoreUnpause();
 					}
-					
+
 					if ((mSteppingThread != NULL) && (mSteppingThread != mActiveThread))
 					{
 						// This SINGLE_STEP happened in the wrong thread - we need the stepping thread to do the stepping!
@@ -2547,23 +2546,23 @@ bool WinDebugger::DoUpdate()
 						SingleStepX86();
 						break;
 					}
-					
+
 					bool isDeeper = mStepSP > BF_CONTEXT_SP(lcContext);
 					if ((mStepSwitchedThreads) && (mStepType == StepType_StepOver) && (isDeeper))
 					{
 						if (HasSteppedIntoCall())
-						{						
-							// Since we switched threads, we needed to do a hardware step which has placed us inside a 
+						{
+							// Since we switched threads, we needed to do a hardware step which has placed us inside a
 							//  call, so we need to step out of that now...
-							SetupStep(StepType_StepOut_NoFrame);							
+							SetupStep(StepType_StepOut_NoFrame);
 							break;
 						}
 					}
 
-					// If we don't have a mStepBreakpointAddrs set, that means we're stepping through individual instructions -- 
-					//  so process the new location here										
+					// If we don't have a mStepBreakpointAddrs set, that means we're stepping through individual instructions --
+					//  so process the new location here
 					if (((mStepType == StepType_StepInto) || (mStepType == StepType_StepInto_Unfiltered) || (mStepType == StepType_StepOver)) && (mStepBreakpointAddrs.size() == 0))
-					{								
+					{
 						DbgSubprogram* dwSubprogram = NULL;
 						DbgLineData* dwLineData = FindLineDataAtAddress(pcAddress, &dwSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
 
@@ -2587,11 +2586,11 @@ bool WinDebugger::DoUpdate()
 						}
 
 						// Column of -1 means "Illegal", keep stepping!
-						if ((mStepInAssembly) ||							
+						if ((mStepInAssembly) ||
 							((dwLineData != NULL) && (dwLineData->IsStackFrameSetup()) && (dwLineData->mColumn >= 0) &&
 								((dwSubprogram->GetLineAddr(*dwLineData) == pcAddress) || (mStepStopOnNextInstruction))))
-						{							
-							// Hit a line while stepping, we're done!							
+						{
+							// Hit a line while stepping, we're done!
 							mRunState = RunState_Paused;
 							StepLineTryPause(pcAddress, false);
 							if (mRunState == RunState_Paused)
@@ -2616,20 +2615,20 @@ bool WinDebugger::DoUpdate()
 								SetupStep(mStepType);
 						}
 						else if (dwSubprogram != NULL)
-						{	
+						{
 							if ((dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) && ((mStepType == StepType_StepInto) || (mStepType == StepType_StepInto_Unfiltered)))
 							{
 								SingleStepX86();
 							}
 							else
 							{
-								// Inside a line's instruction, keep going							
+								// Inside a line's instruction, keep going
 								SetupStep(mStepType);
 								mCurNoInfoStepTries = 0; // Reset
 							}
 						}
 						else if (mStepType == StepType_StepInto_Unfiltered)
-						{							
+						{
 							CPUInst inst;
 							if (mDebugTarget->DecodeInstruction(pcAddress, &inst))
 							{
@@ -2655,7 +2654,7 @@ bool WinDebugger::DoUpdate()
 						}
 						else
 						{
-							// No debug info!			
+							// No debug info!
 							bool doStepOut = false;
 							if (mCurNoInfoStepTries < 16)
 							{
@@ -2687,7 +2686,7 @@ bool WinDebugger::DoUpdate()
 				break;
 			default:
 				{
-					bool isSystemException = 
+					bool isSystemException =
 						(exceptionRecord->ExceptionCode >= STATUS_ACCESS_VIOLATION) &&
 						(exceptionRecord->ExceptionCode <= STATUS_ASSERTION_FAILURE);
 
@@ -2710,7 +2709,7 @@ bool WinDebugger::DoUpdate()
 								};
 
 								THREADNAME_INFO* threadNameInfo = (THREADNAME_INFO*)exceptionRecord->ExceptionInformation;
-								
+
 								DwFormatInfo formatInfo;
 								formatInfo.mRawString = true;
 								String nameStr = ReadString(DbgType_SChar, (intptr)threadNameInfo->szName, false, 1024, formatInfo, false);
@@ -2726,7 +2725,7 @@ bool WinDebugger::DoUpdate()
 								{
 									namingThreadInfo->mName = nameStr;
 									FilterThreadName(namingThreadInfo->mName);
-								}								
+								}
 							}
 							else if (((int32)exceptionRecord->ExceptionInformation[0] == 0x1001) && ((int32)exceptionRecord->ExceptionInformation[1] == 0x1002))
 							{
@@ -2739,12 +2738,12 @@ bool WinDebugger::DoUpdate()
 									addr_target mErrorStr;
 								};
 
-								FailMessage failMessage = ReadMemory<FailMessage>(exceptionRecord->ExceptionInformation[2]);								
+								FailMessage failMessage = ReadMemory<FailMessage>(exceptionRecord->ExceptionInformation[2]);
 								DwFormatInfo formatInfo;
 								String failStr = ReadString(DbgType_SChar16, failMessage.mErrorStr, false, 8192, formatInfo, false);
 
-								mDebugManager->mOutMessages.push_back(StrFormat("error Run-Time Check Failure %d - %s", exceptionRecord->ExceptionInformation[6], failStr.c_str()));								
-								mRunState = RunState_Paused;								
+								mDebugManager->mOutMessages.push_back(StrFormat("error Run-Time Check Failure %d - %s", exceptionRecord->ExceptionInformation[6], failStr.c_str()));
+								mRunState = RunState_Paused;
 								mRequestedStackFrameIdx = -2; // -2 = "auto"
 								handled = true;
 							}
@@ -2758,28 +2757,28 @@ bool WinDebugger::DoUpdate()
 						}
 					}
 					else
-					{			
+					{
 						BfLogDbg("EXCEPTION in thread %d at %p\n", threadInfo->mThreadId, exceptionRecord->ExceptionAddress);
 						OutputDebugStrF("EXCEPTION\n");
 						mActiveThread = threadInfo;
-						memcpy(&mCurException, exceptionRecord, sizeof(EXCEPTION_RECORD));						
-						
-						if (mRunState == RunState_DebugEval)									
+						memcpy(&mCurException, exceptionRecord, sizeof(EXCEPTION_RECORD));
+
+						if (mRunState == RunState_DebugEval)
 						{
 							if ((intptr)mCurException.ExceptionAddress == 42)
-							{								
+							{
 								BfLogDbg("RunState_DebugEval_Done\n");
 								OutputDebugStrF(" RunState_DebugEval_Done\n");
 							}
 							else
-							{	
+							{
 								BfLogDbg("Exception at 0x%@ in thread %d, exception code 0x%08X",
 									mCurException.ExceptionAddress, mActiveThread->mThreadId, mCurException.ExceptionCode);
 								mDebugPendingExpr->mException = StrFormat("Exception at 0x%@ in thread %d, exception code 0x%08X",
 									mCurException.ExceptionAddress, mActiveThread->mThreadId, mCurException.ExceptionCode);
 							}
 							mRunState = RunState_DebugEval_Done;
-							
+
 							mExplicitStopThread = mActiveThread;
 							mRequestedStackFrameIdx = mDebugPendingExpr->mCallStackIdx;
 						}
@@ -2790,14 +2789,14 @@ bool WinDebugger::DoUpdate()
 					}
 				}
 				break;
-			}			
+			}
 		}
 		break;
 	}
 
 	if ((mDebugEvalThreadInfo.mThreadId != 0) && (mRunState != RunState_DebugEval) && (mRunState != RunState_DebugEval_Done))
 	{
-		CleanupDebugEval();		
+		CleanupDebugEval();
 	}
 
 	// Stepping done?
@@ -2824,11 +2823,11 @@ void WinDebugger::Update()
 			if (mDebugPendingExpr->mIdleTicks >= 2)
 			{
 				BfLogDbg("Finishing pending expr in thread %d\n", mDebugEvalThreadInfo.mThreadId);
-				
+
 				mRunState = RunState_Paused;
-				CleanupDebugEval();								
-			} 
-		}		
+				CleanupDebugEval();
+			}
+		}
 	}
 	else if (mDebugPendingExpr != NULL)
 	{
@@ -2879,20 +2878,19 @@ void WinDebugger::ContinueDebugEvent()
 			mContinueEvent.Set();
 			return;
 		}
-	}	
+	}
 
 	if ((mRunState == RunState_Breakpoint) || (mRunState == RunState_Paused))
-	{		
+	{
 		ClearCallStack();
 		mRunState = RunState_Running;
 	}
-	
+
 	mDebuggerWaitingThread->mStoppedAtAddress = 0;
 	mWantsDebugContinue = false;
 	BF_ASSERT_REL(mDebuggerWaitingThread->mIsAtBreakpointAddress == 0);
-	mContinueEvent.Set();	
+	mContinueEvent.Set();
 }
-
 
 static BOOL CALLBACK WdEnumWindowsProc(HWND hwnd, LPARAM lParam)
 {
@@ -2926,17 +2924,17 @@ DbgLineData* WinDebugger::FindLineDataAtAddress(addr_target address, DbgSubprogr
 	auto dwSubprogram = mDebugTarget->FindSubProgram((addr_target)address, onDemandKind);
 	if (dwSubprogram == NULL)
 		return NULL;
-	
+
 	FixupLineDataForSubprogram(dwSubprogram);
 	auto lineData = dwSubprogram->FindClosestLine(address, outSubProgram, outSrcFile, outLineIdx);
-	
+
 	return lineData;
 }
 
 DbgLineData* WinDebugger::FindLineDataInSubprogram(addr_target address, DbgSubprogram* dwSubprogram)
 {
 	auto dwCompileUnit = dwSubprogram->mCompileUnit;
-	
+
 	FixupLineDataForSubprogram(dwSubprogram);
 	auto lineData = dwSubprogram->FindClosestLine(address);
 	return lineData;
@@ -2957,11 +2955,11 @@ bool WinDebugger::IsStepFiltered(DbgSubprogram* dbgSubprogram, DbgLineData* dbgL
 
 		StepFilter* stepFilterPtr;
 		if (mDebugManager->mStepFilters.TryGetValue(filterName, &stepFilterPtr))
-		{			
+		{
 			switch (stepFilterPtr->mFilterKind)
 			{
 			case BfStepFilterKind_Default:
-				doDefault = true;				
+				doDefault = true;
 				break;
 			case BfStepFilterKind_Filtered:
 				dbgSubprogram->mIsStepFiltered = true;
@@ -2973,7 +2971,7 @@ bool WinDebugger::IsStepFiltered(DbgSubprogram* dbgSubprogram, DbgLineData* dbgL
 		}
 		else
 		{
-			doDefault = true;			
+			doDefault = true;
 		}
 
 		if (doDefault)
@@ -2994,9 +2992,9 @@ bool WinDebugger::IsStepFiltered(DbgSubprogram* dbgSubprogram, DbgLineData* dbgL
 				dbgSrcFile->mFileExistKind = dbgSubprogram->mCompileUnit->mDbgModule->CheckSourceFileExist(dbgSrcFile->GetLocalPath());
 				dbgSrcFile->mStepFilterVersion = mDebugManager->mStepFilterVersion;
 			}
-			
+
 			switch (dbgSrcFile->mFileExistKind)
-			{			
+			{
 			case DbgFileExistKind_NotFound:
 				return true;
 			case DbgFileExistKind_HasOldSourceCommand:
@@ -3023,16 +3021,16 @@ void WinDebugger::RemoveTempBreakpoints()
 // 		else
 // 		{
 // 			BfLogDbg("Ignoring remove on temp breakpoint %p\n", address);
-// 		}		
+// 		}
 	}
 	mTempBreakpoint.Clear();
 	mStepBreakpointAddrs.Clear();
 }
 
 void WinDebugger::RehupBreakpoints(bool doFlush)
-{	
+{
 	BfLogDbg("RehupBreakpoints\n");
-		
+
 	// First pass- detach breakpoints that need to be rebound
 	for (int i = 0; i < (int)mBreakpoints.size(); i++)
 	{
@@ -3044,9 +3042,9 @@ void WinDebugger::RehupBreakpoints(bool doFlush)
 			{
 				// This breakpoint was already bound, but we loaded a debug module that also had this file so rebind it
 				DetachBreakpoint(breakpoint);
-			}						
-			
-			breakpoint = (WdBreakpoint*)breakpoint->mLinkedSibling;			
+			}
+
+			breakpoint = (WdBreakpoint*)breakpoint->mLinkedSibling;
 		}
 	}
 
@@ -3055,8 +3053,8 @@ void WinDebugger::RehupBreakpoints(bool doFlush)
 	{
 		auto breakpoint = mBreakpoints[i];
 		while (breakpoint != NULL)
-		{			
-			CheckBreakpoint(breakpoint);			
+		{
+			CheckBreakpoint(breakpoint);
  			if (breakpoint->mAddr != 0)
  				SetBreakpoint(breakpoint->mAddr, true);
 			breakpoint = (WdBreakpoint*)breakpoint->mLinkedSibling;
@@ -3067,18 +3065,18 @@ void WinDebugger::RehupBreakpoints(bool doFlush)
 }
 
 bool WinDebugger::WantsBreakpointAt(addr_target address)
-{	
+{
 	if (mTempBreakpoint.Contains(address))
 		return true;
 	for (auto breakpoint : mBreakpoints)
-	{	
+	{
 		WdBreakpoint* checkBreakpoint = breakpoint;
 		while (checkBreakpoint != NULL)
 		{
 			if (address == checkBreakpoint->mAddr)
 				return true;
 			checkBreakpoint = (WdBreakpoint*)checkBreakpoint->mLinkedSibling;
-		}		
+		}
 	}
 	return false;
 }
@@ -3096,7 +3094,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 
 	bool foundInSequence = false;
 	DbgSubprogram* lastFoundSubprogram = NULL;
-	
+
 	int highestHotIdx = -1;
 	bool foundLine = false;
 
@@ -3104,9 +3102,9 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 	int bestLineOffset = 0x7FFFFFFF;
 
 	auto _CheckLineInfo = [&](DbgSubprogram* dbgSubprogram, DbgLineInfo* dbgLineInfo)
-	{		
+	{
 		// Scan first so we can determine if we want to do fix up line data or not.
-		bool hasNear = false;		
+		bool hasNear = false;
 		int maxLineDist = 6;
 
 		for (int lineIdx = 0; lineIdx < dbgLineInfo->mLines.mSize; lineIdx++)
@@ -3130,7 +3128,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 		{
 			//TODO: Do fixup lineData... ?
 			auto lineData = &dbgLineInfo->mLines[lineIdx];
-			auto& ctx = dbgLineInfo->mContexts[lineData->mCtxIdx]; 			
+			auto& ctx = dbgLineInfo->mContexts[lineData->mCtxIdx];
 			if (ctx.mSrcFile != srcFile)
 				continue;
 
@@ -3143,7 +3141,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 // 					{
 // 						// Use the later entry (same logic from DisassembleAt)
 // 						continue;
-// 					}					
+// 					}
 // 				}
 // 			}
 
@@ -3160,7 +3158,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 				auto subProgram = mDebugTarget->FindSubProgram(address);
 				if (subProgram->mNeedLineDataFixup)
 					FixupLineDataForSubprogram(subProgram);
-					
+
 				if (subProgram != NULL)
 					highestHotIdx = BF_MAX(highestHotIdx, subProgram->mCompileUnit->mDbgModule->mHotIdx);
 
@@ -3193,7 +3191,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 						wdBreakpoint->mRequestedLineNum = headBreakpoint->mRequestedLineNum;
 						wdBreakpoint->mLineNum = headBreakpoint->mLineNum;
 						wdBreakpoint->mColumn = headBreakpoint->mColumn;
-						wdBreakpoint->mInstrOffset = headBreakpoint->mInstrOffset;						
+						wdBreakpoint->mInstrOffset = headBreakpoint->mInstrOffset;
 						wdBreakpoint->mIsLinkedSibling = true;
 						wdBreakpoint->mHead = headBreakpoint;
 					}
@@ -3212,7 +3210,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 					wdBreakpoint->mSrcFile = ctx.mSrcFile;
 					wdBreakpoint->mLineData = DbgLineDataEx(lineData, subProgram);
 					wdBreakpoint->mBreakpointType = BreakpointType_User;
-					wdBreakpoint->mAddr = address;					
+					wdBreakpoint->mAddr = address;
 
 					if ((mDebuggerWaitingThread != NULL) && (mDebuggerWaitingThread->mStoppedAtAddress == address))
 					{
@@ -3242,7 +3240,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 					bestLineNum = lineData->mLine;
 					bestLineOffset = lineOffset;
 				}
-			}									
+			}
 		}
 	};
 
@@ -3252,10 +3250,10 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 			break;
 
 		bestLineNum = -1;
-		bestLineOffset = 0x7FFFFFFF;				
-		
+		bestLineOffset = 0x7FFFFFFF;
+
 		if (hotIdx >= 0)
-		{			
+		{
 			if (hotIdx >= srcFile->mHotReplacedDbgLineInfo.size())
 				return;
 
@@ -3270,7 +3268,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 			for (auto subprogram : srcFile->mLineDataRefs)
 				_CheckLineInfo(subprogram, subprogram->mLineInfo);
 		}
-		
+
 		if (foundLine)
 			break;
 
@@ -3290,7 +3288,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 		highestCheckHotIdx = hotIdx - 1;
 
 	for (int hotFileIdx = highestCheckHotIdx; hotFileIdx >= 0; hotFileIdx--)
-	{				
+	{
 		auto& hotReplacedDbgLineData = wdBreakpoint->mSrcFile->mHotReplacedDbgLineInfo;
 		// Only try to bind to an old hot version if we haven't unloaded the hot module
 		if ((hotFileIdx < (int)hotReplacedDbgLineData.size()) && (hotReplacedDbgLineData[hotFileIdx]->mEntries.size() > 0))
@@ -3368,13 +3366,13 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 
 			wdBreakpoint->mMemoryBreakpointInfo->mMemoryWatchSlotBitmap |= 1<<memoryBreakIdx;
 		}
-								
+
 		UpdateThreadDebugRegisters();
 	}
 
 	if (wdBreakpoint->mAddr != 0)
 		return;
-	
+
 	if (!wdBreakpoint->mSymbolName.IsEmpty())
 	{
 		auto headBreakpoint = wdBreakpoint->GetHeadBreakpoint();
@@ -3388,7 +3386,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 		}
 
 		for (auto dbgModule : mDebugTarget->mDbgModules)
-		{			
+		{
 			dbgModule->ParseSymbolData();
 
 			addr_target targetAddr = -1;
@@ -3415,7 +3413,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 					wdBreakpoint->mAddr = targetAddr;
 					wdBreakpoint->mBreakpointType = BreakpointType_User;
 					mBreakpointAddrMap.ForceAdd(wdBreakpoint->mAddr, wdBreakpoint);
-					SetBreakpoint(wdBreakpoint->mAddr);					
+					SetBreakpoint(wdBreakpoint->mAddr);
 				}
 				else
 				{
@@ -3423,7 +3421,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 					// Insert at head
 					wdBreakpoint->mLinkedSibling = headBreakpoint->mLinkedSibling;
 					headBreakpoint->mLinkedSibling = wdBreakpoint;
-					wdBreakpoint->mSymbolName = headBreakpoint->mSymbolName;					
+					wdBreakpoint->mSymbolName = headBreakpoint->mSymbolName;
 					wdBreakpoint->mIsLinkedSibling = true;
 					wdBreakpoint->mHead = headBreakpoint;
 				}
@@ -3431,7 +3429,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 				if (onlyBindFirst)
 					break;
 			}
-		}		
+		}
 		return;
 	}
 
@@ -3440,23 +3438,22 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 	// Rehup if we load a DLL that also uses this file we bound to (thus the mDeferredRefs check)
 	if (wdBreakpoint->mSrcFile == NULL)
 	{
-		DbgSrcFile* srcFile = mDebugTarget->GetSrcFile(wdBreakpoint->mFilePath);		
+		DbgSrcFile* srcFile = mDebugTarget->GetSrcFile(wdBreakpoint->mFilePath);
 		if (srcFile == NULL)
 			return;
 
 		for (auto& deferredSrcFileRef : srcFile->mDeferredRefs)
 		{
 			deferredSrcFileRef.mDbgModule->ParseCompileUnit(deferredSrcFileRef.mCompileUnitId);
-
 		}
 		srcFile->mDeferredRefs.Clear();
 
-		CheckBreakpoint(wdBreakpoint, srcFile, wdBreakpoint->mRequestedLineNum, -1);		
+		CheckBreakpoint(wdBreakpoint, srcFile, wdBreakpoint->mRequestedLineNum, -1);
 	}
 }
 
 bool WinDebugger::IsMemoryBreakpointSizeValid(addr_target addr, int size)
-{	
+{
 	int wantBindCount = 0;
 	int bytesLeft = size;
 	addr_target curAddr = addr;
@@ -3467,7 +3464,7 @@ bool WinDebugger::IsMemoryBreakpointSizeValid(addr_target addr, int size)
 #ifdef BF_DBG_64
 		if ((bytesLeft >= 8) && ((curAddr & 7) == 0))
 			curByteCount = 8;
-		else 
+		else
 #endif
 		if ((bytesLeft >= 4) && ((curAddr & 3) == 0))
 			curByteCount = 4;
@@ -3503,16 +3500,16 @@ Breakpoint* WinDebugger::CreateBreakpoint(const StringImpl& fileName, int lineNu
 	BfLogDbg("CreateBreakpoint %s %d %d\n", fileName.c_str(), lineNum, wantColumn);
 
 	WdBreakpoint* wdBreakpoint = new WdBreakpoint();
-	wdBreakpoint->mFilePath = FixPathAndCase(fileName);	
+	wdBreakpoint->mFilePath = FixPathAndCase(fileName);
 	wdBreakpoint->mRequestedLineNum = lineNum;
-	wdBreakpoint->mLineNum = lineNum;	
+	wdBreakpoint->mLineNum = lineNum;
 	wdBreakpoint->mColumn = wantColumn;
 	wdBreakpoint->mInstrOffset = instrOffset;
-	mBreakpoints.push_back(wdBreakpoint);	
+	mBreakpoints.push_back(wdBreakpoint);
 
 	BfLogDbg("CreateBreakpoint Created %p\n", wdBreakpoint);
 
-	return wdBreakpoint;		
+	return wdBreakpoint;
 }
 
 void WinDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
@@ -3528,7 +3525,7 @@ Breakpoint* WinDebugger::CreateMemoryBreakpoint(intptr addr, int byteCount)
 
 	BfLogDbg("CreateMemoryBreakpoint %p %d\n", addr, byteCount);
 
-	WdBreakpoint* wdBreakpoint = new WdBreakpoint();	
+	WdBreakpoint* wdBreakpoint = new WdBreakpoint();
 
 	WdMemoryBreakpointInfo* memoryBreakInfo = new WdMemoryBreakpointInfo();
 	memoryBreakInfo->mMemoryAddress = addr;
@@ -3570,12 +3567,12 @@ Breakpoint* WinDebugger::CreateAddressBreakpoint(intptr inAddress)
 		mDebuggerWaitingThread->mIsAtBreakpointAddress = address;
 	}
 
-	mBreakpoints.push_back(wdBreakpoint);	
+	mBreakpoints.push_back(wdBreakpoint);
 	return wdBreakpoint;
 }
 
 void WinDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
-{	
+{
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	WdBreakpoint* wdBreakpoint = (WdBreakpoint*)breakpoint;
@@ -3638,7 +3635,7 @@ void WinDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 void WinDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
-	
+
 	BfLogDbg("WinDebugger::DetachBreakpoint %p\n", breakpoint);
 
 	WdBreakpoint* wdBreakpoint = (WdBreakpoint*)breakpoint;
@@ -3652,7 +3649,7 @@ void WinDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 		if ((mDebuggerWaitingThread != NULL) && (mDebuggerWaitingThread->mBreakpointAddressContinuing == wdBreakpoint->mAddr))
 			mDebuggerWaitingThread->mBreakpointAddressContinuing = NULL;
 		wdBreakpoint->mLineData = DbgLineDataEx();
-		wdBreakpoint->mAddr = 0;		
+		wdBreakpoint->mAddr = 0;
 	}
 
 	if (wdBreakpoint->mCondition != NULL)
@@ -3666,7 +3663,7 @@ void WinDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 		for (int memoryWatchSlot = 0; memoryWatchSlot < 4; memoryWatchSlot++)
 		{
 			if (mMemoryBreakpoints[memoryWatchSlot].mBreakpoint == wdBreakpoint)
-			{				
+			{
 				mFreeMemoryBreakIndices.push_back(memoryWatchSlot);
 				mMemoryBreakpoints[memoryWatchSlot] = WdMemoryBreakpointBind();
 				mMemoryBreakpointVersion++;
@@ -3694,8 +3691,8 @@ void WinDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantCo
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	DetachBreakpoint(wdBreakpoint);
-	
-	//TODO: This doesn't actually rebind correctly while the app is running	
+
+	//TODO: This doesn't actually rebind correctly while the app is running
 	if ((lineNum != -1) && (wantColumn != -1))
 	{
 		wdBreakpoint->mRequestedLineNum = lineNum;
@@ -3703,7 +3700,7 @@ void WinDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantCo
 		wdBreakpoint->mColumn = wantColumn;
 	}
 	if (rebindNow)
-		CheckBreakpoint(wdBreakpoint);	
+		CheckBreakpoint(wdBreakpoint);
 }
 
 void WinDebugger::MoveMemoryBreakpoint(Breakpoint* breakpoint, intptr addr, int byteCount)
@@ -3711,21 +3708,21 @@ void WinDebugger::MoveMemoryBreakpoint(Breakpoint* breakpoint, intptr addr, int 
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	WdBreakpoint* wdBreakpoint = (WdBreakpoint*)breakpoint;
-	DetachBreakpoint(wdBreakpoint);	
+	DetachBreakpoint(wdBreakpoint);
 	wdBreakpoint->mMemoryBreakpointInfo->mMemoryAddress = addr;
 	wdBreakpoint->mMemoryBreakpointInfo->mByteCount = byteCount;
 	CheckBreakpoint(wdBreakpoint);
 }
 
 void WinDebugger::DisableBreakpoint(Breakpoint* breakpoint)
-{	
+{
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	WdBreakpoint* wdBreakpoint = (WdBreakpoint*)breakpoint;
 	DetachBreakpoint(wdBreakpoint);
 
 	delete wdBreakpoint->mMemoryBreakpointInfo;
-	wdBreakpoint->mMemoryBreakpointInfo = NULL;	
+	wdBreakpoint->mMemoryBreakpointInfo = NULL;
 }
 
 void WinDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringImpl& conditionExpr)
@@ -3736,10 +3733,10 @@ void WinDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringImp
 	BF_ASSERT(!wdBreakpoint->mIsLinkedSibling);
 
 	if (conditionExpr.empty())
-	{		
+	{
 		delete wdBreakpoint->mCondition;
 		WdBreakpoint* curBreakpoint = wdBreakpoint;
-		wdBreakpoint->mCondition = NULL;		
+		wdBreakpoint->mCondition = NULL;
 	}
 	else
 	{
@@ -3747,7 +3744,7 @@ void WinDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringImp
 		auto condition = new WdBreakpointCondition();
 		condition->mExpr = conditionExpr;
 		wdBreakpoint->mCondition = condition;
-	}	
+	}
 }
 
 void WinDebugger::SetBreakpointLogging(Breakpoint* breakpoint, const StringImpl& logging, bool breakAfterLogging)
@@ -3772,7 +3769,7 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 		if ((mActiveThread != NULL) && (mActiveThread->mThreadId != headBreakpoint->mThreadId))
 			return false;
 	}
-	
+
 	auto _SplitExpr = [&](const StringImpl& expr, StringImpl& outExpr, StringImpl& outSubject)
 	{
 		int crPos = expr.IndexOf('\n');
@@ -3836,8 +3833,8 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 		PopulateRegisters(&wdStackFrame->mRegisters);
 		mCallStack.Add(wdStackFrame);
 		DbgTypedValue result = conditional->mDbgEvaluationContext->EvaluateInContext(DbgTypedValue());
-		ClearCallStack();		
-		
+		ClearCallStack();
+
 		if ((result.mType != NULL) && (result.mType->mTypeCode == DbgType_Bitfield))
 			result.mType = result.mType->mTypeParam;
 
@@ -3848,7 +3845,6 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 			{
 				if (!error->mIsWarning)
 					errorStr = error->mError;
-
 			}
 			String condError = StrFormat("error Conditional breakpoint expression '%s' failed: %s", conditional->mExpr.c_str(), errorStr.c_str());
 			mDebugManager->mOutMessages.push_back(condError);
@@ -3866,7 +3862,6 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 		}
 		else if (!result.mBool)
 			return false;
-
 	}
 
 	headBreakpoint->mHitCount++;
@@ -3893,7 +3888,7 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 		ClearCallStack();
 
 		DwFormatInfo formatInfo;
-		formatInfo.mCallStackIdx = 0;		
+		formatInfo.mCallStackIdx = 0;
 
 		DbgCompileUnit* dbgCompileUnit = NULL;
 		if (dbgSubprogram == NULL)
@@ -3901,13 +3896,13 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 		if (dbgSubprogram != NULL)
 		{
 			dbgCompileUnit = dbgSubprogram->mCompileUnit;
-			formatInfo.mLanguage = dbgSubprogram->GetLanguage();			
+			formatInfo.mLanguage = dbgSubprogram->GetLanguage();
 		}
 
 		auto prevRunState = mRunState;
 		mRunState = RunState_Paused; // We need to be paused to avoid certain errors in the eval
 		String displayString;
-		
+
 		String expr;
 		_SplitExpr(headBreakpoint->mLogging, expr, formatInfo.mSubjectExpr);
 		if (expr.StartsWith("@Beef:"))
@@ -3923,7 +3918,7 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 
 		ProcessEvalString(dbgCompileUnit, DbgTypedValue(), expr, displayString, formatInfo, NULL, false);
 		mRunState = prevRunState;
-		
+
 		displayString.Insert(0, "log ");
 		displayString.Append("\n");
 
@@ -3997,7 +3992,7 @@ bool WinDebugger::HasLineInfoAt(addr_target address)
 }
 
 void WinDebugger::StepLineTryPause(addr_target address, bool requireExactMatch)
-{	
+{
 	if (mStepInAssembly)
 		return;
 
@@ -4017,17 +4012,17 @@ void WinDebugger::StepLineTryPause(addr_target address, bool requireExactMatch)
 			}
 
 			// If we're on the same line but a different column or a <= address then keep it keep looking
-			if ((dbgSrcFile == mStepLineData.GetSrcFile()) && 
+			if ((dbgSrcFile == mStepLineData.GetSrcFile()) &&
 				((!requireExactMatch) || (dwLineData != mStepLineData.mLineData) || (address <= mStepStartPC)) &&
 				(dwLineData->mLine == mStepLineData.mLineData->mLine))
-			{				
+			{
 				SetupStep(mStepType);
 				mRunState = RunState_Running;
 				return;
 			}
 		}
 	}
-	
+
 	mRunState = RunState_Paused;
 }
 
@@ -4038,7 +4033,7 @@ void WinDebugger::BreakAll()
 }
 
 void WinDebugger::StepInto(bool inAssembly)
-{	
+{
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	if (!TryRunContinue())
@@ -4067,7 +4062,7 @@ void WinDebugger::StepIntoSpecific(intptr inAddr)
 	mCurNoInfoStepTries = 0; // Reset
 	mStepInAssembly = false;
 
-	SetupStep(StepType_StepInto);		
+	SetupStep(StepType_StepInto);
 	mIsStepIntoSpecific = true;
 	mStepType = StepType_StepInto_Unfiltered;
 	if (mStepStartPC != addr)
@@ -4090,7 +4085,7 @@ void WinDebugger::PushValue(CPURegisters* registers, int64 val)
 void WinDebugger::PushValue(CPURegisters* registers, const DbgTypedValue& typedValue)
 {
 	addr_target* regSP = registers->GetSPRegisterRef();
-	
+
 	int byteCount = typedValue.mType->GetByteCount();
 	if ((byteCount == 8) || (sizeof(addr_target) == 8))
 	{
@@ -4108,7 +4103,7 @@ void WinDebugger::PushValue(CPURegisters* registers, const DbgTypedValue& typedV
 		if (typedValue.mType->IsCompositeType())
 			val = typedValue.mSrcAddress;
 		WriteMemory<int32>(*regSP, val);
-	}	
+	}
 }
 
 void WinDebugger::SetThisRegister(CPURegisters* registers, addr_target val)
@@ -4125,9 +4120,9 @@ void WinDebugger::AddParamValue(int paramIdx, bool hadThis, CPURegisters* regist
 #if BF_DBG_32
 	PushValue(registers, typedValue);
 #else
-	int regIdx = paramIdx + (hadThis ? 1 : 0);	
+	int regIdx = paramIdx + (hadThis ? 1 : 0);
 	if (typedValue.mType->IsFloat())
-	{	
+	{
 		PushValue(registers, typedValue);
 		if (regIdx < 4)
 		{
@@ -4144,7 +4139,7 @@ void WinDebugger::AddParamValue(int paramIdx, bool hadThis, CPURegisters* regist
 	else
 	{
 		PushValue(registers, typedValue);
-		if (regIdx < 4)		
+		if (regIdx < 4)
 		{
 			int64 val;
 			if (typedValue.mType->IsCompositeType())
@@ -4165,7 +4160,7 @@ void WinDebugger::AddParamValue(int paramIdx, bool hadThis, CPURegisters* regist
 }
 
 bool WinDebugger::CheckNeedsSRetArgument(DbgType* retType)
-{		
+{
 	if (!retType->IsCompositeType())
 		return false;
 
@@ -4183,7 +4178,6 @@ bool WinDebugger::CheckNeedsSRetArgument(DbgType* retType)
 	return true;
 }
 
-
 DbgTypedValue WinDebugger::ReadReturnValue(CPURegisters* registers, DbgType* type)
 {
 	DbgTypedValue retValue;
@@ -4191,7 +4185,7 @@ DbgTypedValue WinDebugger::ReadReturnValue(CPURegisters* registers, DbgType* typ
 	if (type->IsFloat())
 	{
 		retValue.mType = type;
-#if BF_DBG_32		
+#if BF_DBG_32
 		retValue.mDouble = ConvertFloat80ToDouble(registers->mFpMmRegsArray[0].fp.fp80);
 		if (type->mSize == 4)
 			retValue.mSingle = (float)retValue.mDouble;
@@ -4201,7 +4195,7 @@ DbgTypedValue WinDebugger::ReadReturnValue(CPURegisters* registers, DbgType* typ
 		else
 			retValue.mDouble = registers->mXmmDRegsArray[0].d[0];
 #endif
-	}	
+	}
 	else if (type->IsCompositeType())
 	{
 		retValue.mType = type;
@@ -4223,12 +4217,12 @@ DbgTypedValue WinDebugger::ReadReturnValue(CPURegisters* registers, DbgType* typ
 		}
 	}
 	else
-	{		
+	{
 #ifdef BF_DBG_32
 		retValue.mType = type;
 		retValue.mInt32 = registers->mIntRegs.eax;
-		if (type->mSize == 8)		
-			(&retValue.mInt32)[1] = registers->mIntRegs.edx;		
+		if (type->mSize == 8)
+			(&retValue.mInt32)[1] = registers->mIntRegs.edx;
 #else
 		retValue.mType = type;
 		retValue.mInt64 = registers->mIntRegs.rax;
@@ -4241,12 +4235,12 @@ DbgTypedValue WinDebugger::ReadReturnValue(CPURegisters* registers, DbgType* typ
 
 bool WinDebugger::SetRegisters(CPURegisters* registers)
 {
-	BF_CONTEXT lcContext;	
-	lcContext.ContextFlags = BF_CONTEXT_CONTROL | BF_CONTEXT_INTEGER | BF_CONTEXT_FLOATING_POINT | BF_CONTEXT_EXTENDED_REGISTERS | BF_CONTEXT_SEGMENTS;	
+	BF_CONTEXT lcContext;
+	lcContext.ContextFlags = BF_CONTEXT_CONTROL | BF_CONTEXT_INTEGER | BF_CONTEXT_FLOATING_POINT | BF_CONTEXT_EXTENDED_REGISTERS | BF_CONTEXT_SEGMENTS;
 	lcContext.ContextFlags |= BF_CONTEXT_EXCEPTION_REQUEST;
 
 	BF_GetThreadContext(mActiveThread->mHThread, &lcContext);
-	
+
 #ifdef BF_DBG_32
 	lcContext.Eax = registers->mIntRegs.eax;
 	lcContext.Ecx = registers->mIntRegs.ecx;
@@ -4296,13 +4290,13 @@ bool WinDebugger::SetRegisters(CPURegisters* registers)
 
 	//lcContext.ContextFlags |= BF_CONTEXT_EXCEPTION_REQUEST;
 
-	BF_SetThreadContext(mActiveThread->mHThread, &lcContext);	
+	BF_SetThreadContext(mActiveThread->mHThread, &lcContext);
 
 	return (lcContext.ContextFlags & (BF_CONTEXT_EXCEPTION_ACTIVE | BF_CONTEXT_SERVICE_ACTIVE)) == 0;
 }
 
 void WinDebugger::SaveAllRegisters()
-{	
+{
 	BfLogDbg("SaveAllRegisters setting mSavedAtBreakpointAddress = %p\n", mActiveThread->mIsAtBreakpointAddress);
 	mSavedAtBreakpointAddress = mActiveThread->mIsAtBreakpointAddress;
 	mSavedBreakpointAddressContinuing = mActiveThread->mBreakpointAddressContinuing;
@@ -4311,7 +4305,7 @@ void WinDebugger::SaveAllRegisters()
 }
 
 void WinDebugger::RestoreAllRegisters()
-{		
+{
 	BfLogDbg("RestoreAllRegisters setting mIsAtBreakpointAddress = %p\n", mSavedAtBreakpointAddress);
 	mActiveThread->mIsAtBreakpointAddress = mSavedAtBreakpointAddress;
 	mActiveThread->mBreakpointAddressContinuing = mSavedBreakpointAddressContinuing;
@@ -4356,17 +4350,17 @@ void WinDebugger::SetRunState(RunState runState)
 }
 
 bool WinDebugger::TryRunContinue()
-{		
+{
 	if (mRunState == RunState_Exception)
 	{
 		mIsContinuingFromException = true;
-		mRunState = RunState_Paused;	
+		mRunState = RunState_Paused;
 	}
 
 	if (((mRunState == RunState_Paused) || (mRunState == RunState_Breakpoint)) && (mNeedsRehupBreakpoints))
 		RehupBreakpoints(true);
 
-	return true;	
+	return true;
 }
 
 void WinDebugger::ClearStep()
@@ -4378,7 +4372,7 @@ void WinDebugger::ClearStep()
 	mStepType = StepType_None;
 	mStepStartPC = 0;
 	mStepSP = 0;
-	mStepPC = 0;	
+	mStepPC = 0;
 	mIsStepIntoSpecific = false;
 	mStepIsRecursing = false;
 	mStepStopOnNextInstruction = false;
@@ -4386,20 +4380,20 @@ void WinDebugger::ClearStep()
 }
 
 bool WinDebugger::SetupStep(StepType stepType)
-{	
+{
 	BP_ZONE("SetupStep");
 
 	RemoveTempBreakpoints();
 	if (mNeedsRehupBreakpoints)
 		RehupBreakpoints(true);
-	
+
 	if (mOrigStepType == StepType_None)
 		mOrigStepType = stepType;
 	mStepType = stepType;
 	mSteppingThread = mActiveThread;
 	mStepSwitchedThreads = false;
 	mContinueFromBreakpointFailed = false;
-	
+
 	CPURegisters registers;
 	PopulateRegisters(&registers);
 	addr_target pcAddress = registers.GetPC();
@@ -4411,30 +4405,30 @@ bool WinDebugger::SetupStep(StepType stepType)
 		mStepLineData = DbgLineDataEx(dbgLineData, dbgSubprogram);
 		mStepStartPC = registers.GetPC();
 	}
-	
+
 	bool isDeeper = mStepSP > registers.GetSP();
 
 	BfLogDbg("SetupStep %d PC:%p SP:%p StepStartSP:%p Thread:%d\n", stepType, (addr_target)registers.GetPC(), (addr_target)registers.GetSP(), (addr_target)mStepSP, mSteppingThread->mThreadId);
-	
+
 	mStepSP = registers.GetSP();
 	mStepPC = registers.GetPC();
 
 	if ((mStepType == StepType_StepOut) || (mStepType == StepType_StepOut_NoFrame) || (mStepType == StepType_StepOut_ThenInto))
-	{	
+	{
 		if (mStepType != StepType_StepOut_NoFrame)
 		{
 			// Test for stepping out of an inline method
 			DbgSubprogram* dwSubprogram = mDebugTarget->FindSubProgram(pcAddress);
 			if ((dwSubprogram != NULL) && (dwSubprogram->mInlineeInfo != NULL))
-			{	
+			{
 				DbgSubprogram* topSubprogram = dwSubprogram->GetRootInlineParent();
-				
+
 				if ((mOrigStepType == StepType_StepInto) || (mOrigStepType == StepType_StepInto_Unfiltered))
 				{
 					mStepType = mOrigStepType;
 				}
 				else
-				{					
+				{
 					mStepType = StepType_StepOut_Inline;
 					// Set up pcAddress to detect recursion
 					//TODO: We can't set a physical breakpoint here because we will immediately hit it when attempting to step over an inlined method.
@@ -4446,7 +4440,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 
 				addr_target endAddress = dwSubprogram->mBlock.mHighPC;
 				if (dwSubprogram->mHasLineAddrGaps)
-				{						
+				{
 					// Keep bumping out the address as long as we can find lines that contain the nextPC
 					addr_target nextAddr = pcAddress;
 					for (auto& lineInfo : topSubprogram->mLineInfo->mLines)
@@ -4464,7 +4458,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 					if (nextAddr != pcAddress)
 						endAddress = nextAddr;
 				}
-				
+
 				BfLogDbg("Stepping out of inlined method, end address: %p\n", endAddress);
 				SetTempBreakpoint(endAddress);
 				mStepBreakpointAddrs.push_back(endAddress);
@@ -4472,13 +4466,13 @@ bool WinDebugger::SetupStep(StepType stepType)
 				addr_target decodeAddress = dwSubprogram->mBlock.mLowPC;
 				while (decodeAddress < endAddress)
 				{
-					CPUInst inst;					
+					CPUInst inst;
 					if (!mDebugTarget->DecodeInstruction(decodeAddress, &inst))
 						break;
 
 					addr_target targetAddress = inst.GetTarget();
 					// We need to find a targetAddress
-					if ((targetAddress != 0) && 
+					if ((targetAddress != 0) &&
 						!((targetAddress >= dwSubprogram->mBlock.mLowPC) && (targetAddress < dwSubprogram->mBlock.mHighPC)) &&
 						((targetAddress >= topSubprogram->mBlock.mLowPC) && (targetAddress < topSubprogram->mBlock.mHighPC)))
 					{
@@ -4489,7 +4483,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 
 					decodeAddress += inst.GetLength();
 				}
-				
+
 				return true;
 			}
 		}
@@ -4513,7 +4507,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 				mStepSP = 0;
 			}
 			else
-			{							
+			{
 				addr_target oldAddress = pcAddress;
 
 				CPUInst inst;
@@ -4528,7 +4522,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 #ifdef BF_DBG_32
 					if (!inst.StackAdjust(mStepSP))
 						break;
-#endif					
+#endif
 					DbgSubprogram* checkSubprogram = NULL;
 					auto checkLineData = FindLineDataAtAddress(pcAddress, &checkSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
 					if (checkLineData == NULL)
@@ -4546,7 +4540,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 
 			BfLogDbg("SetupStep Stepout SetTempBreakpoint %p\n", pcAddress);
 			SetTempBreakpoint(pcAddress);
-			mStepBreakpointAddrs.push_back(pcAddress);			
+			mStepBreakpointAddrs.push_back(pcAddress);
 			if (mStepType != StepType_StepOut_ThenInto)
 				mStepType = StepType_StepOut;
 		}
@@ -4573,7 +4567,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 				// Just do stepovers until we eventually step out
 				//BF_DBG_FATAL("StepOut Failed");
 				BfLogDbg("StepOut Failed\n");
-				
+
 				if (mLastValidStepIntoPC != 0)
 				{
 					BfLogDbg("Using mLastValidStepIntoPC: %p\n", mLastValidStepIntoPC);
@@ -4591,11 +4585,11 @@ bool WinDebugger::SetupStep(StepType stepType)
 				{
 					BfLogDbg("Stopping");
 					mStepType = StepType_None;
-					mRunState = RunState_Paused;					
+					mRunState = RunState_Paused;
 					return true;
 				}
-			}			
-		}		
+			}
+		}
 	}
 
 	if ((mStepType != StepType_StepOut) && (mStepType != StepType_StepOut_ThenInto))
@@ -4609,7 +4603,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 			//  if the current PC is actually at an instruction start, so we do a single step with a
 			//  slower stack call check to see if we need to step out after a "step over"
 			BfLogDbg("Step - switched threads mIsAtBreakpointAddress:%p\n", mSteppingThread->mIsAtBreakpointAddress);
-			mStepSwitchedThreads = true;			
+			mStepSwitchedThreads = true;
 			SingleStepX86();
 			return true;
 		}
@@ -4621,19 +4615,19 @@ bool WinDebugger::SetupStep(StepType stepType)
 		{
 			bool isAtLine = false;
 			DbgSubprogram* dwSubprogram = NULL;
-			
+
 			auto dwLineData = FindLineDataAtAddress(pcAddress, &dwSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
 			isAtLine = (instIdx > 0) && (dwLineData != NULL) && (dwLineData->IsStackFrameSetup()) && (dwSubprogram->GetLineAddr(*dwLineData) == pcAddress);
 
 			// "Never step into" line
 			if ((dwLineData != NULL) && (dwLineData->mColumn == -2) && (stepType == StepType_StepInto))
-				stepType = StepType_StepOver;				
+				stepType = StepType_StepOver;
 
-			CPUInst inst;			
+			CPUInst inst;
 			if (!mDebugTarget->DecodeInstruction(pcAddress, &inst))
 			{
 				BfLogDbg("Decode failed, set up SingleStepX86 %p\n", pcAddress);
-				SingleStepX86();				
+				SingleStepX86();
 				mStepStopOnNextInstruction = true;
 				return true;
 			}
@@ -4661,9 +4655,9 @@ bool WinDebugger::SetupStep(StepType stepType)
 					{
 						// Continue - sets a breakpoint on the call line to detect recursion.
 						//  The next loop through will set a breakpoint on the line after the return
-						BfLogDbg("StepHadCall\n");						
+						BfLogDbg("StepHadCall\n");
 						breakOnNext = true;
-						
+
 						BfLogDbg("StepHadCall setting mIsAtBreakpointAddress = %p\n", pcAddress);
 						mSteppingThread->mIsAtBreakpointAddress = pcAddress;
 
@@ -4675,7 +4669,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 						if (inst.IsCall())
 						{
 							if ((mLastValidStepIntoPC == 0) || (dwSubprogram != NULL))
-								mLastValidStepIntoPC = pcAddress + inst.mSize;							
+								mLastValidStepIntoPC = pcAddress + inst.mSize;
 						}
 
 						if ((dwLineData != NULL) && (inst.IsBranch()))
@@ -4698,7 +4692,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 								{
 									if (nextInst.IsBranch())
 									{
-										// repne jmp - this appears in __chkstk (for example)									
+										// repne jmp - this appears in __chkstk (for example)
 										// We don't have a good way to "step over" this one, so just do a single step
 									}
 									else
@@ -4738,7 +4732,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 					SetTempBreakpoint(pcAddress);
 					mStepBreakpointAddrs.push_back(pcAddress);
 					break;
-				}				
+				}
 			}
 
 			// Not an interesting instruction - move to next
@@ -4764,12 +4758,12 @@ bool WinDebugger::SetupStep(StepType stepType)
 }
 
 void WinDebugger::CheckNonDebuggerBreak()
-{	
+{
 	enum MessageType
 	{
 		MessageType_None = 0,
 		MessageType_Error = 1,
-		MessageType_ProfilerCmd = 2		
+		MessageType_ProfilerCmd = 2
 	};
 
 	CPURegisters registers;
@@ -4799,7 +4793,7 @@ void WinDebugger::CheckNonDebuggerBreak()
 			llvm::SmallVector<char, 4096> strBuf;
 			int strLen = messageData.mBufParamLen;
 			strBuf.resize(strLen + 1);
-			
+
 			char* str = &strBuf[0];
 			str[strLen] = 0;
 			if (ReadMemory(messageData.mBufParam, strLen, str))
@@ -4847,7 +4841,7 @@ void WinDebugger::CheckNonDebuggerBreak()
 
 								mDebugManager->mOutMessages.push_back("newProfiler");
 								mNewProfilerList.push_back(profiler);
-							}							
+							}
 						}
 					}
 					else if (strcmp(cmd, "StopSampling") == 0)
@@ -4859,17 +4853,17 @@ void WinDebugger::CheckNonDebuggerBreak()
 
 							Profiler* profiler;
 							if (mPendingProfilerMap.Remove(sessionId, &profiler))
-							{								
+							{
 								if (profiler->IsSampling())
 								{
 									// Need to unlock so we don't deadlock
 									mDebugManager->mCritSect.Unlock();
 									profiler->Stop();
-									mDebugManager->mCritSect.Lock();									
+									mDebugManager->mCritSect.Lock();
 								}
 							}
 						}
-					}					
+					}
 					else if (strcmp(cmd, "ClearSampling") == 0)
 					{
 						for (auto& kv : mPendingProfilerMap)
@@ -4914,7 +4908,7 @@ void WinDebugger::CheckNonDebuggerBreak()
 	{
 		if ((symbol == "DbgBreakPoint") || (symbol == "RtlUserThreadStart") || (symbol == "RtlUserThreadStart@8"))
 		{
-			showMainThread = true;			
+			showMainThread = true;
 		}
 	}
 #ifdef BF_DBG_32
@@ -4969,13 +4963,13 @@ void WinDebugger::StepOver(bool inAssembly)
 
 	mCurNoInfoStepTries = 0; // Reset
 	mStepInAssembly = inAssembly;
-	
+
 	SetupStep(StepType_StepOver);
 	ContinueDebugEvent();
 }
 
 void WinDebugger::StepOut(bool inAssembly)
-{	
+{
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	BfLogDbg("StepOut\n");
@@ -4983,8 +4977,8 @@ void WinDebugger::StepOut(bool inAssembly)
 	if (!TryRunContinue())
 		return;
 
-	mCurNoInfoStepTries = 0; // Reset	
-	mStepInAssembly = inAssembly;	
+	mCurNoInfoStepTries = 0; // Reset
+	mStepInAssembly = inAssembly;
 
 	SetupStep(StepType_StepOut);
 
@@ -4995,7 +4989,7 @@ void WinDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, 
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
-	DbgSubprogram* subProgram = NULL;	
+	DbgSubprogram* subProgram = NULL;
 	if (!inAssembly)
 	{
 		if (mCallStack.size() == 0)
@@ -5019,7 +5013,7 @@ void WinDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, 
 
 	DbgSrcFile* srcFile = NULL;
 	if (!fileName.IsEmpty())
-	{				
+	{
 		srcFile = mDebugTarget->GetSrcFile(fileName);
 		if (srcFile == NULL)
 			return;
@@ -5033,7 +5027,7 @@ void WinDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, 
 	else
 	{
 		int lineNum = (int)lineNumOrAsmAddr;
-		
+
 		addr_target bestAddr[2] = { 0, 0 };
 		int checkLineNum[2] = { lineNum - 1, lineNum };
 
@@ -5066,7 +5060,7 @@ void WinDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, 
 		for (int checkHotIdx = -1; checkHotIdx < (int)srcFile->mHotReplacedDbgLineInfo.size(); checkHotIdx++)
 		{
 			if (checkHotIdx >= 0)
-			{				
+			{
 				auto hotReplacedLineInfo = srcFile->mHotReplacedDbgLineInfo[checkHotIdx];
 				for (auto& hotReplacedEntry : hotReplacedLineInfo->mEntries)
 				{
@@ -5077,7 +5071,7 @@ void WinDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, 
 			{
 				for (auto subprogram : srcFile->mLineDataRefs)
 					_CheckLineInfo(subprogram, subprogram->mLineInfo);
-			}					
+			}
 
 			if (bestAddr[1] != 0)
 				break;
@@ -5087,24 +5081,24 @@ void WinDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, 
 		{
 			const int kMaxAddrDist = 64; // within reasonable range
 			if ((bestAddr[0] != 0) && (bestAddr[1] - bestAddr[0] <= kMaxAddrDist))
-			{				
+			{
 				addr_target addrStart = bestAddr[0];
 				addr_target addrEnd = bestAddr[1];
 				addr_target addr = addrStart;
-				
+
 				BF_ASSERT(addrEnd - addr <= kMaxAddrDist);
 
 				addr_target lastOp = 0;
 				while (addr < addrEnd)
 				{
-					CPUInst inst;					
+					CPUInst inst;
 					if (!mDebugTarget->DecodeInstruction(addr, &inst))
 						break;
 					lastOp = addr;
 					addr += inst.GetLength();
-				}				
+				}
 			}
-		
+
 			pcAddress = (uint64)bestAddr[1];
 		}
 	}
@@ -5118,13 +5112,13 @@ void WinDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, 
 		if (mCallStack.size() == 0)
 			UpdateCallStack();
 
-		CPURegisters* regs = &mCallStack.front()->mRegisters;		
+		CPURegisters* regs = &mCallStack.front()->mRegisters;
 		*regs->GetPCRegisterRef() = pcAddress;
 
 		SetRegisters(regs);
 
 		WdBreakpoint* breakpoint = (WdBreakpoint*)FindBreakpointAt(pcAddress);
-		if (breakpoint != NULL)		
+		if (breakpoint != NULL)
 		{
 			BfLogDbg("SetNextStatement setting mIsAtBreakpointAddress = %p\n", breakpoint->mAddr);
 			mActiveThread->mIsAtBreakpointAddress = breakpoint->mAddr;
@@ -5151,7 +5145,7 @@ bool WinDebugger::PopulateRegisters(CPURegisters* registers, BF_CONTEXT& lcConte
 
 	BF_ASSERT(sizeof(registers->mXmmRegsArray) == 32 * sizeof(float));
 	memcpy(registers->mXmmRegsArray, &lcContext.ExtendedRegisters[160], sizeof(registers->mXmmRegsArray));
-#else	
+#else
 	registers->mIntRegs.rax = lcContext.Rax;
 	registers->mIntRegs.rcx = lcContext.Rcx;
 	registers->mIntRegs.rdx = lcContext.Rdx;
@@ -5205,14 +5199,14 @@ bool WinDebugger::PopulateRegisters(CPURegisters* registers)
 	lcContext.ContextFlags = BF_CONTEXT_ALL | BF_CONTEXT_EXCEPTION_REQUEST;
 	BF_GetThreadContext(mActiveThread->mHThread, &lcContext);
 
-	return PopulateRegisters(registers, lcContext);	
+	return PopulateRegisters(registers, lcContext);
 }
 
 bool WinDebugger::RollBackStackFrame(CPURegisters* registers, bool isStackStart)
 {
 	BF_ASSERT(registers != nullptr);
 
-	return mDebugTarget->RollBackStackFrame(registers, NULL, isStackStart);	
+	return mDebugTarget->RollBackStackFrame(registers, NULL, isStackStart);
 }
 
 bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize)
@@ -5224,7 +5218,7 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 
 	addr_target jmpInstStart = oldSubprogram->mBlock.mLowPC;
 	addr_target jmpInstEnd = jmpInstStart + sizeof(HotJumpOp);
-	
+
 	if (jmpInstEnd > oldSubprogram->mBlock.mHighPC)
 	{
 		if ((oldSubprogram->mBlock.mHighPC - oldSubprogram->mBlock.mLowPC == 1) &&
@@ -5234,9 +5228,9 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 		Fail(err);
 		return false;
 	}
-	
+
 	if (oldSubprogram->mHotReplaceKind != DbgSubprogram::HotReplaceKind_Replaced)
-	{		
+	{
 		for (int hotThreadIdx = 0; hotThreadIdx < (int)mHotThreadStates.size(); hotThreadIdx++)
 		{
 			auto& hotThreadState = mHotThreadStates[hotThreadIdx];
@@ -5253,12 +5247,12 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 					Fail("Failed to hot replace method, can't move past prelude");
 					return false;
 				}
-				
+
 				BfLogDbg("SetHotJump skipping through %p\n", hotThreadState.mRegisters.GetPC());
 
 				bool removedBreakpoint = false;
 
-				mActiveThread = threadInfo;				
+				mActiveThread = threadInfo;
 				if ((mActiveThread->mStoppedAtAddress >= jmpInstStart) && (mActiveThread->mStoppedAtAddress < jmpInstEnd))
 				{
 					for (addr_target addr = jmpInstStart; addr < jmpInstEnd; addr++)
@@ -5271,14 +5265,14 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 					}
 				}
 
-				RunState oldRunState = mRunState;				
+				RunState oldRunState = mRunState;
 				mRunState = RunState_HotStep;
 
 				if (mWantsDebugContinue)
 				{
 					mWantsDebugContinue = false;
 					BF_ASSERT_REL(mActiveThread->mIsAtBreakpointAddress == 0);
-					mContinueEvent.Set();					
+					mContinueEvent.Set();
 				}
 
 				BF_CONTEXT lcContext;
@@ -5286,13 +5280,13 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 				BF_GetThreadContext(mActiveThread->mHThread, &lcContext);
 				lcContext.EFlags |= 0x100; // Set trap flag, which raises "single-step" exception
 				BF_SetThreadContext(mActiveThread->mHThread, &lcContext);
-					
+
 				::ResumeThread(mActiveThread->mHThread);
 				BfLogDbg("ResumeThread %d\n", mActiveThread->mThreadId);
 
 				while (mRunState != RunState_Terminated)
 				{
-					mDebugManager->mCritSect.Unlock();					
+					mDebugManager->mCritSect.Unlock();
 					Sleep(0);
 					mDebugManager->mCritSect.Lock();
 					if (IsPaused())
@@ -5303,15 +5297,15 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 
 						mWantsDebugContinue = false;
 						BF_ASSERT_REL(mActiveThread->mIsAtBreakpointAddress == 0);
-						mContinueEvent.Set();						
+						mContinueEvent.Set();
 					}
 				}
 
 				BF_GetThreadContext(mActiveThread->mHThread, &lcContext);
 
-				::SuspendThread(mActiveThread->mHThread);				
+				::SuspendThread(mActiveThread->mHThread);
 				BfLogDbg("SuspendThread %d\n", mActiveThread->mThreadId);
-				mRunState = oldRunState;				
+				mRunState = oldRunState;
 
 				if ((mRunState != RunState_Terminated) && (mRunState != RunState_Terminating))
 				{
@@ -5351,7 +5345,7 @@ DbgSubprogram* WinDebugger::TryFollowHotJump(DbgSubprogram* subprogram, addr_tar
 	if (jumpOp.mOpCode != 0xE9)
 		return subprogram;
 	addr_target jumpAddr = addr + jumpOp.mRelTarget + sizeof(HotJumpOp);
-	
+
 	auto jumpSubprogram = mDebugTarget->FindSubProgram(jumpAddr);
 	if (jumpSubprogram == NULL)
 		return subprogram;
@@ -5361,15 +5355,15 @@ DbgSubprogram* WinDebugger::TryFollowHotJump(DbgSubprogram* subprogram, addr_tar
 
 bool WinDebugger::ShouldShowStaticMember(DbgType* dbgType, DbgVariable* member)
 {
-	// If locationData is non-null, that means it was added in addition to the static declaration in the CV type info, 
+	// If locationData is non-null, that means it was added in addition to the static declaration in the CV type info,
 	//  so only add the names from the type definition
 	auto flavor = dbgType->mCompileUnit->mDbgModule->mDbgFlavor;
-	return ((((dbgType->IsNamespace()) || (flavor != DbgFlavor_MS)) && ((member->mLocationData != NULL) || member->mIsConst)) || 
+	return ((((dbgType->IsNamespace()) || (flavor != DbgFlavor_MS)) && ((member->mLocationData != NULL) || member->mIsConst)) ||
 		((flavor == DbgFlavor_MS) && (member->mLocationData == NULL)));
 }
 
 String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool isPtr, bool isStatic, bool forceCast, bool isSplat, bool isReadOnly)
-{	
+{
 	auto dbgModule = dbgType->GetDbgModule();
 	dbgType->PopulateType();
 	auto language = dbgType->GetLanguage();
@@ -5381,11 +5375,11 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 		bool isBfObject = false;
 
 		if (dbgType->IsBfObjectPtr())
-		{			
-			isBfObject = true;			
+		{
+			isBfObject = true;
 			dbgType = dbgType->mTypeParam;
 		}
-		
+
 		int baseIdx = 0;
 		for (auto baseTypeEntry : dbgType->mBaseTypes)
 		{
@@ -5409,9 +5403,9 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 
 			baseIdx++;
 		}
-				
-		String thisExpr = expr;		
-		String castString;		
+
+		String thisExpr = expr;
+		String castString;
 		if (dbgType->IsBfObject())
 		{
 			auto ptrType = dbgType->GetDbgModule()->GetPointerType(dbgType);
@@ -5420,11 +5414,11 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 		else
 			castString = dbgType->ToStringRaw(language);
 
-		bool hadStatics = false;		
+		bool hadStatics = false;
 		for (auto member : dbgType->mMemberList)
 		{
 			if (member->mMemberOffset < 0)
-				continue;			
+				continue;
 
 			if (member->mIsStatic)
 			{
@@ -5441,14 +5435,14 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 						(strncmp(member->mName, "_vptr$", 6) == 0))
 						ignoreMember = true;
 				}
-				
+
 				if (!ignoreMember)
-				{					
+				{
 					if (needsNewline)
 						retVal += "\n";
 
 					if (member->mName == NULL)
-					{						
+					{
 						retVal += GetMemberList(member->mType, expr, isPtr, isStatic, forceCast, isSplat, isReadOnly);
 					}
 					else
@@ -5463,7 +5457,7 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 								retVal += ", ne";*/
 						}
 						else
-						{							
+						{
 							if (forceCast)
 								retVal += "\t((" + castString + ")this)." + String(member->mName);
 							else if ((member->mName[0] >= '0') && (member->mName[0] <= '9')) // Numbered tuple member?
@@ -5478,7 +5472,7 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 					}
 					needsNewline = true;
 				}
-			}			
+			}
 		}
 		if (hadStatics)
 		{
@@ -5490,17 +5484,17 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 	}
 	else
 	{
-		if (dbgType->IsBfObjectPtr())		
-			dbgType = dbgType->mTypeParam;		
+		if (dbgType->IsBfObjectPtr())
+			dbgType = dbgType->mTypeParam;
 
-		String retVal;		
+		String retVal;
 		String memberPrefix = expr;
 
 		bool needsNewline = false;
-		bool hadStatics = false;				
+		bool hadStatics = false;
 		for (auto member : dbgType->mMemberList)
 		{
-			if (member->mIsStatic)		
+			if (member->mIsStatic)
 			{
 				if (ShouldShowStaticMember(dbgType, member))
 				{
@@ -5509,8 +5503,8 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 					retVal += String(member->mName) + "\t" + memberPrefix + "." + String(member->mName);
 					needsNewline = true;
 				}
-			}			
-		}		
+			}
+		}
 		return retVal;
 	}
 	return "";
@@ -5529,7 +5523,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 			break;
 		if (formatFlags[0] != ',')
 		{
-			return false;			
+			return false;
 		}
 		else
 		{
@@ -5540,7 +5534,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				int nextQuotePos = formatFlags.IndexOf('"', quotePos + 1);
 				if (nextQuotePos != -1)
 					nextComma = formatFlags.IndexOf(',', nextQuotePos + 1);
-			}			
+			}
 			if (nextComma == -1)
 				nextComma = formatFlags.length();
 
@@ -5562,12 +5556,12 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 					if (errorString != NULL)
 						*errorString = dbgEvaluationContext.GetErrorStr();
 					return false;
-				}				
+				}
 				formatFlags = thisExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
 				continue;
 			}
 			else if (strncmp(formatCmd.c_str(), "count=", 6) == 0)
-			{								
+			{
 				formatCmd = formatFlags.Substring(1);
 				formatCmd = Trim(formatCmd);
 				String countExpr = formatCmd.Substring(6);
@@ -5578,11 +5572,11 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				if ((countValue) && (countValue.mType->IsInteger()))
 					formatInfo->mOverrideCount = (intptr)countValue.GetInt64();
 				if (dbgEvaluationContext.HadError())
-				{					
+				{
 					if (errorString != NULL)
 						*errorString = dbgEvaluationContext.GetErrorStr();
 					return false;
-				}				
+				}
 				formatFlags = countExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
 				continue;
 			}
@@ -5625,7 +5619,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				}
 				formatFlags = countExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
 				continue;
-			}			
+			}
 			else if (strncmp(formatCmd.c_str(), "assign=", 7) == 0)
 			{
 				formatCmd = formatFlags.Substring(1);
@@ -5633,7 +5627,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				String assignExpr = formatCmd.Substring(7);
 				if (assignExpr.empty())
 					break;
-				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, assignExpr, formatInfo);				
+				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, assignExpr, formatInfo);
 				if (dbgEvaluationContext.HadError())
 				{
 					if (errorString != NULL)
@@ -5735,10 +5729,10 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 			else if (formatCmd == "rawStr")
 			{
 				formatInfo->mRawString = true;
-			}						
+			}
 			else if (((!formatCmd.IsEmpty()) && ((formatCmd[0] >= '0') && (formatCmd[0] <= '9'))) ||
 					 (formatCmd.StartsWith("(")))
-			{				
+			{
 				String countExpr = formatCmd;
 				if (countExpr.empty())
 					break;
@@ -5757,7 +5751,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 			}
 			else
 				hadError = true;
-			
+
 			if (hadError)
 			{
 				if (errorString != NULL)
@@ -5798,7 +5792,7 @@ DbgTypedValue WinDebugger::EvaluateInContext(DbgCompileUnit* dbgCompileUnit, con
 		dbgEvaluationContext.mDbgExprEvaluator->mLanguage = formatInfo->mLanguage;
 		dbgEvaluationContext.mDbgExprEvaluator->mSubjectExpr = formatInfo->mSubjectExpr;
 	}
-	dbgEvaluationContext.mDbgExprEvaluator->mReferenceId = outReferenceId;	
+	dbgEvaluationContext.mDbgExprEvaluator->mReferenceId = outReferenceId;
 	auto result = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
 	if ((formatInfo != NULL) && (dbgEvaluationContext.mDbgExprEvaluator->mCountResultOverride != -1))
 		formatInfo->mOverrideCount = dbgEvaluationContext.mDbgExprEvaluator->mCountResultOverride;
@@ -5808,7 +5802,7 @@ DbgTypedValue WinDebugger::EvaluateInContext(DbgCompileUnit* dbgCompileUnit, con
 		{
 			int errIdx = 0;
 			for (auto err : dbgEvaluationContext.mPassInstance->mErrors)
-			{	
+			{
 				if (errIdx > 0)
 					(*outErrors) += "\n";
 				(*outErrors) += err->mError;
@@ -5821,10 +5815,10 @@ DbgTypedValue WinDebugger::EvaluateInContext(DbgCompileUnit* dbgCompileUnit, con
 }
 
 void WinDebugger::DbgVisFailed(DebugVisualizerEntry* debugVis, const StringImpl& evalString, const StringImpl& errors)
-{	
+{
 	bool onlyMemError = errors.StartsWith("Failed to read") && !errors.Contains('\n');
 	if ((!debugVis->mShowedError) && (!onlyMemError))
-	{		
+	{
 		debugVis->mShowedError = true;
 		String errStr = StrFormat("DbgVis '%s' failed while evaluating condition '%s'\n", debugVis->mName.c_str(), evalString.c_str());
 		String spacedErrors = errors;
@@ -5848,7 +5842,7 @@ bool WinDebugger::EvalCondition(DebugVisualizerEntry* debugVis, DbgCompileUnit* 
 	{
 		if (formatInfo.mRawString)
 			return false;
-		
+
 		errorStr += "<DbgVis Failed>";
 		DbgVisFailed(debugVis, conditionStr, errors);
 		return false;
@@ -5858,16 +5852,16 @@ bool WinDebugger::EvalCondition(DebugVisualizerEntry* debugVis, DbgCompileUnit* 
 }
 
 String WinDebugger::GetArrayItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData)
-{	
+{
 	DbgEvaluationContext conditionEvaluationContext(this, dbgCompileUnit, debugVis->mCondition);
 
 	String addrs;
 
 	bool checkLeft = true;
 
-	int usedCount = 0;		
+	int usedCount = 0;
 	while (usedCount < count)
-	{		
+	{
 		DbgTypedValue condVal = conditionEvaluationContext.EvaluateInContext(curNode);
 		if (!condVal)
 			break;
@@ -5904,19 +5898,19 @@ String WinDebugger::GetLinkedListItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 {
 	DbgEvaluationContext nextEvaluationContext(this, dbgCompileUnit, debugVis->mNextPointer);
 	DbgEvaluationContext valueEvaluationContext(this, dbgCompileUnit, debugVis->mValuePointer);
-	
+
 	String addrs;
 
 	bool checkLeft = true;
-	
+
 	int mapIdx;
 	for (mapIdx = 0; mapIdx < count; mapIdx++)
-	{	
+	{
 		if (curNode.mPtr == endNodePtr)
 			break;
-		DbgTypedValue val = valueEvaluationContext.EvaluateInContext(curNode);		
+		DbgTypedValue val = valueEvaluationContext.EvaluateInContext(curNode);
 		if (!val)
-			break;				
+			break;
 		if (val.mPtr == 0)
 			break;
 
@@ -5927,17 +5921,17 @@ String WinDebugger::GetLinkedListItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 			typeAddr.Append(' ', sizeof(addr_target)*2 - typeAddr.length());
 			addrs += typeAddr;
 		}
-		
+
 		String addr = EncodeDataPtr(val.mPtr, false);
 		addrs += addr;
-		
-		curNode = nextEvaluationContext.EvaluateInContext(curNode);		
+
+		curNode = nextEvaluationContext.EvaluateInContext(curNode);
 	}
 	count = mapIdx;
 
 	if (outContinuationData != NULL)
 	{
-		*outContinuationData += EncodeDataPtr(debugVis, false) + EncodeDataPtr(endNodePtr, false) + EncodeDataPtr(valueType, false) + 
+		*outContinuationData += EncodeDataPtr(debugVis, false) + EncodeDataPtr(endNodePtr, false) + EncodeDataPtr(valueType, false) +
 			EncodeDataPtr(curNode.mType, false) + EncodeDataPtr(curNode.mPtr, false);
 	}
 
@@ -5949,7 +5943,7 @@ String WinDebugger::GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 	//DbgEvaluationContext bucketsEvaluationContext(this, dbgModule, debugVis->mBuckets);
 	DbgEvaluationContext nextEvaluationContext(this, dbgCompileUnit->mDbgModule, debugVis->mNextPointer);
 
-	DbgTypedValue bucketsPtr = EvaluateInContext(dbgCompileUnit, dictValue, debugVis->mBuckets);	
+	DbgTypedValue bucketsPtr = EvaluateInContext(dbgCompileUnit, dictValue, debugVis->mBuckets);
 	DbgTypedValue entriesPtr = EvaluateInContext(dbgCompileUnit, dictValue, debugVis->mEntries);
 	if ((!bucketsPtr) || (!entriesPtr))
 	{
@@ -5973,7 +5967,7 @@ String WinDebugger::GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 			entryValue.mType = entriesPtr.mType->mTypeParam;
 
 			addrs += EncodeDataPtr(entryValue.mSrcAddress, false);
-			
+
 			DbgTypedValue nextValue = nextEvaluationContext.EvaluateInContext(entryValue);
 			if ((!nextValue) || (!nextValue.mType->IsInteger()))
 			{
@@ -5984,7 +5978,7 @@ String WinDebugger::GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 			encodeCount++;
 		}
 		else
-		{	
+		{
 			if (bucketIdxSize == 4)
 				nodeIdx = ReadMemory<int>(bucketsPtr.mPtr + bucketIdx * sizeof(int32));
 			else
@@ -5992,13 +5986,13 @@ String WinDebugger::GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 			bucketIdx++;
 		}
 	}
-	
+
 	count = encodeCount;
 	//count = mapIdx;
 
 	if (outContinuationData != NULL)
 	{
-		*outContinuationData += EncodeDataPtr(debugVis, false) + EncodeDataPtr(dictValue.mType, false) + EncodeDataPtr(dictValue.mSrcAddress, false) + 
+		*outContinuationData += EncodeDataPtr(debugVis, false) + EncodeDataPtr(dictValue.mType, false) + EncodeDataPtr(dictValue.mSrcAddress, false) +
 			EncodeDataPtr((addr_target)bucketIdx, false) + EncodeDataPtr((addr_target)nodeIdx, false);
 	}
 
@@ -6012,9 +6006,9 @@ String WinDebugger::GetTreeItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizer
 	DbgEvaluationContext valueEvaluationContext(this, dbgCompileUnit, debugVis->mValuePointer);
 
 	DbgEvaluationContext conditionEvaluationContext(this, dbgCompileUnit, debugVis->mCondition);
-	
+
 	String addrs;
-	
+
 	bool checkLeft = true;
 
 	if ((curNode.mPtr & 2) != 0) // Flag from continuation
@@ -6024,17 +6018,17 @@ String WinDebugger::GetTreeItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizer
 	}
 
 	HashSet<intptr> seenAddrs;
-	
+
 	for (int mapIdx = 0; mapIdx < count; mapIdx++)
 	{
 		DbgTypedValue readNode;
 		while (true)
-		{			
-			bool checkNode = (curNode.mPtr & 1) == 0;			
+		{
+			bool checkNode = (curNode.mPtr & 1) == 0;
 
 			readNode = curNode;
 			readNode.mPtr &= (addr_target)~1;
-			
+
 			if (checkLeft)
 			{
 				DbgTypedValue leftValue = leftEvaluationContext.EvaluateInContext(readNode);
@@ -6050,7 +6044,7 @@ String WinDebugger::GetTreeItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizer
 					checkLeft = false;
 					break; // Handle node
 				}
-				
+
 				parentList.push_back(curNode.mPtr);
 				curNode = leftValue;
 			}
@@ -6080,7 +6074,7 @@ String WinDebugger::GetTreeItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizer
 						// Failed
 						break;
 					}
-					
+
 					curNode.mPtr = parentList.back();
 					parentList.pop_back();
 					continue; // Don't check against seenAddrs
@@ -6091,13 +6085,13 @@ String WinDebugger::GetTreeItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizer
 			{
 				// Failed!
 				return "";
-			}			
+			}
 		}
 
 		DbgTypedValue val = valueEvaluationContext.EvaluateInContext(readNode);
 		if (valueType == NULL)
 			valueType = val.mType;
-		
+
 		String addr = EncodeDataPtr(val.mPtr, false);
 		addrs += addr;
 
@@ -6108,7 +6102,7 @@ String WinDebugger::GetTreeItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizer
 		curNode.mPtr |= 2;
 
 	if (outContinuationData != NULL)
-	{		
+	{
 		*outContinuationData += EncodeDataPtr(debugVis, false) + EncodeDataPtr(valueType, false) +  EncodeDataPtr(curNode.mType, false) + EncodeDataPtr(curNode.mPtr, false);
 		for (auto parent : parentList)
 			*outContinuationData += EncodeDataPtr(parent, false);
@@ -6147,21 +6141,21 @@ String WinDebugger::GetCollectionContinuation(const StringImpl& continuationData
 	{
 		addr_target endNodePtr = DecodeTargetDataPtr(dataPtr);
 		DbgType* valueType = (DbgType*) DecodeLocalDataPtr(dataPtr);
-		DbgTypedValue curNode;		
+		DbgTypedValue curNode;
 		curNode.mType = (DbgType*)DecodeLocalDataPtr(dataPtr);
 		curNode.mPtr = DecodeTargetDataPtr(dataPtr);
-		
-		String newContinuationData;		
 
-		if (count < 0)		
-			count = 3;		
+		String newContinuationData;
+
+		if (count < 0)
+			count = 3;
 
 		String retVal = GetLinkedListItems(dbgCompileUnit, debugVis, endNodePtr, valueType, curNode, count, &newContinuationData);
 		retVal += "\n" + newContinuationData;
 		return retVal;
 	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_Array)
-	{		
+	{
 		DbgType* valueType = (DbgType*)DecodeLocalDataPtr(dataPtr);
 		DbgTypedValue curNode;
 		curNode.mType = (DbgType*)DecodeLocalDataPtr(dataPtr);
@@ -6181,16 +6175,16 @@ String WinDebugger::GetCollectionContinuation(const StringImpl& continuationData
 		DbgTypedValue dictValue;
 		dictValue.mType = (DbgType*)DecodeLocalDataPtr(dataPtr);
 		dictValue.mSrcAddress = DecodeTargetDataPtr(dataPtr);
-		
+
 		int bucketIdx = (int)DecodeTargetDataPtr(dataPtr);
 		int nodeIdx = (int)DecodeTargetDataPtr(dataPtr);
-		
-		String newContinuationData;				
+
+		String newContinuationData;
 		String retVal = GetDictionaryItems(dbgCompileUnit, debugVis, dictValue, bucketIdx, nodeIdx, count, &newContinuationData);
 		retVal += "\n" + newContinuationData;
 		return retVal;
 	}
-		
+
 	return "";
 }
 
@@ -6217,7 +6211,6 @@ static String IntTypeToString(T val, const StringImpl& name, DwDisplayInfo* disp
 				binary = "'" + binary;
 
 			binary = ((val & ((T)1 << i)) ? "1" : "0") + binary;
-			
 		}
 		return StrFormat("0b'%s\n%s", binary.c_str(), name.c_str());
 	}
@@ -6238,7 +6231,7 @@ static String IntTypeToString(T val, const StringImpl& name, DwDisplayInfo* disp
 	{
 		String format;
 		if (sizeof(T) == 8)
-		{			
+		{
 			format = StrFormat("0x%%l@\n%s", name.c_str());
 		}
 		else
@@ -6251,14 +6244,14 @@ static String IntTypeToString(T val, const StringImpl& name, DwDisplayInfo* disp
 	{
 		String format;
 		if (sizeof(T) == 8)
-		{			
+		{
 			format = StrFormat("0x%%l@\n%s", name.c_str());
 		}
 		else
 			format = StrFormat("0x%%0%dX\n%s", sizeof(val) * 2, name.c_str());
 		return StrFormat(format.c_str(), (std::make_unsigned<T>::type)(val));
 	}
-	
+
 	if (std::is_unsigned<T>::value)
 	{
 		if (sizeof(T) == 8)
@@ -6289,7 +6282,7 @@ DwDisplayInfo* WinDebugger::GetDisplayInfo(const StringImpl& referenceId)
 {
 	DwDisplayInfo* displayInfo = &mDebugManager->mDefaultDisplayInfo;
 	if (!referenceId.empty())
-	{		
+	{
 		if (!mDebugManager->mDisplayInfos.TryGetValue(referenceId, &displayInfo))
 		{
 			int dollarIdx = referenceId.LastIndexOf('$');
@@ -6308,7 +6301,7 @@ static String WrapWithModifiers(const StringImpl& origName, DbgType* dbgType, Db
 	if (language == DbgLanguage_Unknown)
 		language = dbgType->GetLanguage();
 
-	String name = origName;	
+	String name = origName;
 	while (true)
 	{
 		if (dbgType->mTypeCode == DbgType_Const)
@@ -6330,15 +6323,15 @@ static String WrapWithModifiers(const StringImpl& origName, DbgType* dbgType, Db
 		}
 		else if (dbgType->mTypeCode == DbgType_Ref)
 		{
-			if (language == DbgLanguage_Beef)			
-				name = "ref " + name;			
-			else			
+			if (language == DbgLanguage_Beef)
+				name = "ref " + name;
+			else
 				name = name + "&";
 			dbgType = dbgType->mTypeParam;
 		}
 		else if (dbgType->mTypeCode == DbgType_Bitfield)
 		{
-			return dbgType->ToString(language);			
+			return dbgType->ToString(language);
 		}
 		else
 			return name;
@@ -6348,7 +6341,7 @@ static String WrapWithModifiers(const StringImpl& origName, DbgType* dbgType, Db
 DebugVisualizerEntry* WinDebugger::FindVisualizerForType(DbgType* dbgType, Array<String>* wildcardCaptures)
 {
 	auto entry = mDebugManager->mDebugVisualizers->FindEntryForType(dbgType->ToString(DbgLanguage_Unknown, true), dbgType->mCompileUnit->mDbgModule->mDbgFlavor, wildcardCaptures);
-	
+
 	if (entry == NULL)
 	{
 		dbgType = dbgType->GetPrimaryType();
@@ -6358,16 +6351,16 @@ DebugVisualizerEntry* WinDebugger::FindVisualizerForType(DbgType* dbgType, Array
 			entry = FindVisualizerForType(baseTypeEntry->mBaseType, wildcardCaptures);
 			if (entry != NULL)
 				break;
-		}		
+		}
 	}
-	
+
 	return entry;
 }
 
 #define GET_FROM(ptr, T) *((T*)(ptr += sizeof(T)) - 1)
 
 String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAddr, intptr maxLength, DwFormatInfo& formatInfo, bool wantStringView)
-{	
+{
 	int origMaxLength = maxLength;
 	if (addr == 0)
 		return "";
@@ -6376,9 +6369,9 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 
 	String retVal = "\"";
 	bool wasTerminated = false;
-	String valString;	
+	String valString;
 	intptr maxShowSize = 255;
-	
+
 	if (maxLength == -1)
 		maxLength = formatInfo.mOverrideCount;
 	else if (formatInfo.mOverrideCount != -1)
@@ -6387,7 +6380,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 		maxLength = BF_MIN(formatInfo.mMaxCount, maxLength);
 
 	if (maxLength == -1)
-		maxLength = 8 * 1024 * 1024; // Is 8MB crazy?	
+		maxLength = 8 * 1024 * 1024; // Is 8MB crazy?
 	if ((!formatInfo.mRawString) && (!wantStringView))
 		maxLength = BF_MIN(maxLength, maxShowSize);
 
@@ -6417,7 +6410,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 
 	int i;
 	for (i = 0; i < maxLength; i++)
-	{	
+	{
 		if (bufPtr >= bufEnd)
 		{
 			while (true)
@@ -6430,14 +6423,14 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 
 				if (ReadMemory(strPtr, readSize, buf, isLocalAddr))
 					break;
-				
-				readSize /= 2;					
+
+				readSize /= 2;
 			}
 			if (readFailed)
 				break;
-			
+
 			bufPtr = buf;
-			bufEnd = buf + readSize;			
+			bufEnd = buf + readSize;
 		}
 
 		switch (charLen)
@@ -6492,7 +6485,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 		if ((wasTerminated) || (readFailed))
 		{
 			break;
-		}		
+		}
 		strPtr += charLen;
 	}
 	//DisableMemCache();
@@ -6514,7 +6507,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 // 		// Our encoding for retVal is already assumed to be UTF8, so the special case here actually Ascii
 // 		valString = UTF8Encode(ToWString(valString));
 // 	}
-	
+
 	if ((formatInfo.mRawString) || (wantStringView))
 	{
 		if ((formatInfo.mDisplayType == DwDisplayType_Utf8) || (!hasHighAscii))
@@ -6539,7 +6532,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 		return "< Failed to read string >";
 
 	retVal += SlashString(valString, true, true, formatInfo.mLanguage == DbgLanguage_Beef);
-	
+
 	// We could go over 'maxShowSize' if we have a lot of slashed chars. An uninitialized string can be filled with '\xcc' chars
 	if ((!formatInfo.mRawString) && (!wantStringView) && ((int)retVal.length() > maxShowSize))
 	{
@@ -6578,7 +6571,7 @@ void WinDebugger::ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValu
 			DwFormatInfo displayStrFormatInfo = formatInfo;
 			displayStrFormatInfo.mTotalSummaryLength = formatInfo.mTotalSummaryLength + (int)displayString.length();
 			displayStrFormatInfo.mHidePointers = false;
-			
+
 			if ((limitLength) && (displayStrFormatInfo.mTotalSummaryLength > 255))
 			{
 				displayString += "...";
@@ -6668,7 +6661,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 	DbgType* origValueType = typedValue.mType;
 	bool origHadRef = false;
-	DbgType* dwValueType = typedValue.mType->RemoveModifiers(&origHadRef);	
+	DbgType* dwValueType = typedValue.mType->RemoveModifiers(&origHadRef);
 
 	if (dwValueType == NULL)
 		dwValueType = dbgModule->GetPrimitiveType(DbgType_Void, language);
@@ -6687,7 +6680,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		if ((dwValueType->mTypeCode != DbgType_Struct) && (dwValueType->mTypeCode != DbgType_Class) && (dwValueType->mTypeCode != DbgType_Ptr) && (dwValueType->mTypeCode != DbgType_SizedArray))
 			return "";
 	}
-	
+
 	auto _ShowArraySummary = [&](String& retVal, addr_target ptrVal, int64 arraySize, DbgType* innerType)
 	{
 		String displayString;
@@ -6743,7 +6736,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			{
 				retVal = EncodeDataPtr(ptrVal, true) + " ";
 				retVal += dwValueType->mTypeParam->ToString(language);
-				retVal += StrFormat("[%lld] ", (int64)formatInfo.mArrayLength);				
+				retVal += StrFormat("[%lld] ", (int64)formatInfo.mArrayLength);
 			}
 
 			_ShowArraySummary(retVal, ptrVal, formatInfo.mArrayLength, dwValueType->mTypeParam);
@@ -6751,7 +6744,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			String idxStr = "[{0}]";
 
 			DbgType* innerType = dwValueType->mTypeParam;
-			
+
 			retVal += "\n" + dwValueType->ToString(language);
 
 			String evalStr = "*((" + typedValue.mType->ToStringRaw(language) + ")" + EncodeDataPtr(ptrVal, true) + " + {0})";
@@ -6773,13 +6766,13 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			return retVal;
 		}
 	}
-	
+
 	switch (dwValueType->mTypeCode)
 	{
 	case DbgType_Void:
 		return "\nvoid";
 	case DbgType_Bool:
-		{			
+		{
 			if (typedValue.mUInt8 == 0)
 				return "false\n" + WrapWithModifiers("bool", origValueType, language);
 			else if (typedValue.mUInt8 == 1)
@@ -6792,7 +6785,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		if (language != DbgLanguage_Beef)
 			return IntTypeToString<uint8>(typedValue.mUInt8, WrapWithModifiers("uint8_t", origValueType, language), displayInfo, formatInfo);
 	case DbgType_SChar:
-		{						
+		{
 			if (typedValue.mInt8 != 0)
 			{
 				char str[2] = {(char)typedValue.mInt8};
@@ -6812,7 +6805,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		if (language != DbgLanguage_Beef)
 			return IntTypeToString<int16>(typedValue.mUInt8, WrapWithModifiers("uint16_t", origValueType, language), displayInfo, formatInfo);
 	case DbgType_SChar16:
-		{			
+		{
 			if (typedValue.mInt16 != 0)
 			{
 				u8_toutf8(str, 8, typedValue.mUInt32);
@@ -6829,41 +6822,41 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		break;
 	case DbgType_UChar32:
 	case DbgType_SChar32:
-		{			
+		{
 			if (typedValue.mInt32 != 0)
-			{								
+			{
 				u8_toutf8(str, 8, typedValue.mUInt32);
-				result = SlashString(str, true, true);				
-				if (!IsNormalChar(typedValue.mUInt32))				
+				result = SlashString(str, true, true);
+				if (!IsNormalChar(typedValue.mUInt32))
 					result = StrFormat("'%s' (0x%02X)\n", result.c_str(), typedValue.mUInt32);
 				else
-					result = StrFormat("'%s'\n", result.c_str());									
+					result = StrFormat("'%s'\n", result.c_str());
 			}
 			else
 				result = "'\\0'\n";
 			return result + WrapWithModifiers(isBeef ? "char32" : "int32_t", origValueType, language);
 		}
 		break;
-	case DbgType_i8:		
+	case DbgType_i8:
 		return IntTypeToString<int8>(typedValue.mInt8, WrapWithModifiers(isBeef ? "int8" : "int8_t", origValueType, language), displayInfo, formatInfo);
 	case DbgType_u8:
 		return IntTypeToString<uint8>(typedValue.mUInt8, WrapWithModifiers(isBeef ? "uint8" : "uint8_t", origValueType, language), displayInfo, formatInfo);
-	case DbgType_i16:		
+	case DbgType_i16:
 		return IntTypeToString<int16>(typedValue.mInt16, WrapWithModifiers(isBeef ? "int16" : "int16_t", origValueType, language), displayInfo, formatInfo);
-	case DbgType_u16:		
+	case DbgType_u16:
 		return IntTypeToString<uint16>(typedValue.mUInt16, WrapWithModifiers(isBeef ? "uint16" : "uint16_t", origValueType, language), displayInfo, formatInfo);
-	case DbgType_i32:		
+	case DbgType_i32:
 		return IntTypeToString<int32>(typedValue.mInt32, WrapWithModifiers(isBeef ? "int32" : "int32_t", origValueType, language), displayInfo, formatInfo);
-	case DbgType_u32:		
+	case DbgType_u32:
 		return IntTypeToString<uint32>(typedValue.mUInt32, WrapWithModifiers(isBeef ? "uint32" : "uint32_t", origValueType, language), displayInfo, formatInfo);
-	case DbgType_i64:		
+	case DbgType_i64:
 		return IntTypeToString<int64>(typedValue.mInt64, WrapWithModifiers(isBeef ? "int64" : "int64_t", origValueType, language), displayInfo, formatInfo);
-	case DbgType_u64:		
+	case DbgType_u64:
 		return IntTypeToString<uint64>(typedValue.mUInt64, WrapWithModifiers(isBeef ? "uint64" : "uint64_t", origValueType, language), displayInfo, formatInfo);
 	case DbgType_RegGroup:
-		{			
+		{
 			if ((typedValue.mRegNum >= CPUReg_M128_XMMREG_FIRST) && (typedValue.mRegNum <= CPUReg_M128_XMMREG_LAST))
-			{				
+			{
 				int callStackIdx = formatInfo.mCallStackIdx;
 				FixCallStackIdx(callStackIdx);
 
@@ -6883,7 +6876,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					(regForm == RegForm_Long) || (regForm == RegForm_Long2) ||
 					(regForm == RegForm_ULong) || (regForm == RegForm_ULong2))
 					xmmCount = 2;
-				//TODO: add byte, short, int, etc...								
+				//TODO: add byte, short, int, etc...
 
 				if (optEvaluator)
 				{
@@ -6895,7 +6888,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						else if (regForm == RegForm_Int4)
 							mmDwMmDisplayType = DwMmDisplayType_Int32;
 					}
-					
+
 					if (mmDwMmDisplayType == DwMmDisplayType_Double)
 					{
 						xmmType = "__m128d";
@@ -6923,7 +6916,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 							BF_ASSERT(xmmReg.mRegNum == CPUReg_XMMREG_FIRST + (xmmMajor * 4) + xmmMinor);
 							xmmRegVals[xmmMinor] = xmmReg.mInt32;
 						}
-						headerStr = StrFormat("(%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
+						headerStr = StrFormat("(%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)",
 							xmmRegVals[0] & 0xFF, (xmmRegVals[0] >> 8) & 0xFF, (xmmRegVals[0] >> 16) & 0xFF, (xmmRegVals[0] >> 24) & 0xFF,
 							xmmRegVals[1] & 0xFF, (xmmRegVals[1] >> 8) & 0xFF, (xmmRegVals[1] >> 16) & 0xFF, (xmmRegVals[1] >> 24) & 0xFF,
 							xmmRegVals[2] & 0xFF, (xmmRegVals[2] >> 8) & 0xFF, (xmmRegVals[2] >> 16) & 0xFF, (xmmRegVals[2] >> 24) & 0xFF,
@@ -6941,7 +6934,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 							BF_ASSERT(xmmReg.mRegNum == CPUReg_XMMREG_FIRST + (xmmMajor * 4) + xmmMinor);
 							xmmRegVals[xmmMinor] = xmmReg.mInt32;
 						}
-						headerStr = StrFormat("(%d, %d, %d, %d, %d, %d, %d, %d)", 
+						headerStr = StrFormat("(%d, %d, %d, %d, %d, %d, %d, %d)",
 							xmmRegVals[0] & 0xFFFF, (xmmRegVals[0] >> 16) & 0xFFFF,
 							xmmRegVals[1] & 0xFFFF, (xmmRegVals[1] >> 16) & 0xFFFF,
 							xmmRegVals[2] & 0xFFFF, (xmmRegVals[2] >> 16) & 0xFFFF,
@@ -6960,7 +6953,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 							xmmRegVals[xmmMinor] = xmmReg.mInt32;
 						}
 						headerStr = StrFormat("(%d, %d, %d, %d)", xmmRegVals[0], xmmRegVals[1], xmmRegVals[2], xmmRegVals[3]);
-					}					
+					}
 					else if (mmDwMmDisplayType == DwMmDisplayType_Int64)
 					{
 						int64 xmmRegVals[2];
@@ -6988,7 +6981,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 							xmmRegVals[xmmMinor] = xmmReg.mSingle;
 						}
 						headerStr = StrFormat("(%f, %f, %f, %f)", xmmRegVals[0], xmmRegVals[1], xmmRegVals[2], xmmRegVals[3]);
-					}					
+					}
 				}
 				else
 				{
@@ -7046,7 +7039,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 							(uint64)regs->mIntRegs.rip,
 							(uint64)regs->mIntRegs.r8, (uint64)regs->mIntRegs.r9, (uint64)regs->mIntRegs.r10, (uint64)regs->mIntRegs.r11,
 							(uint64)regs->mIntRegs.r12, (uint64)regs->mIntRegs.r13, (uint64)regs->mIntRegs.r14, (uint64)regs->mIntRegs.r15,
-							(uint32)regs->mIntRegs.efl);						
+							(uint32)regs->mIntRegs.efl);
 					}
 					else
 					{
@@ -7130,7 +7123,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					if (optEvaluator)
 					{
 						CPURegisters* regs = optEvaluator->GetRegisters();
-#ifdef BF_DBG_32						
+#ifdef BF_DBG_32
 #define FLAGVAR(abbr, name) int flag##abbr = ((regs->mIntRegs.efl & ((uint64)1 << CPURegisters::GetFlagBitForRegister(X86Reg_FLAG_##abbr##_##name))) != 0) ? 1 : 0
 						FLAGVAR(CF, CARRY);
 						FLAGVAR(PF, PARITY);
@@ -7187,7 +7180,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				sprintf(str, "0x%04x", typedValue.mUInt32);
 			return StrFormat("%s\n%s", str, WrapWithModifiers("float", origValueType, language).c_str());
 		}
-	case DbgType_Double:				
+	case DbgType_Double:
 		{
 			DwFloatDisplayType floatDisplayType = displayInfo->mFloatDisplayType;
 			if (floatDisplayType == DwFloatDisplayType_Default)
@@ -7208,15 +7201,15 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		else
 			return "\nfunc";
 	case DbgType_RawText:
-		return StrFormat("%s\nrawtext", typedValue.mCharPtr);	
+		return StrFormat("%s\nrawtext", typedValue.mCharPtr);
 	case DbgType_Ptr:
 	{
-		addr_target ptrVal = (addr_target)typedValue.mPtr;		
-		String retVal;		
-		DbgType* innerType = dwValueType->mTypeParam;		
+		addr_target ptrVal = (addr_target)typedValue.mPtr;
+		String retVal;
+		DbgType* innerType = dwValueType->mTypeParam;
 		if (innerType == NULL)
-			return EncodeDataPtr(ptrVal, true) + "\nvoid*";				
-		
+			return EncodeDataPtr(ptrVal, true) + "\nvoid*";
+
 		bool isChar = false;
 
 		DbgType* unmodInnerType = innerType->RemoveModifiers();
@@ -7235,11 +7228,11 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					(unmodInnerType->mTypeCode == DbgType_SChar16) ||
 					(unmodInnerType->mTypeCode == DbgType_SChar32))
 					isChar = true;
-			}			
+			}
 		}
 
 		if ((isChar) && (formatInfo.mArrayLength == -1))
-		{			
+		{
 			if ((!typedValue.mIsLiteral) && (!formatInfo.mHidePointers))
 				retVal = EncodeDataPtr(ptrVal, true);
 
@@ -7274,10 +7267,10 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			}
 			return retVal;
 		}
-		else if ((unmodInnerType != NULL) && 
+		else if ((unmodInnerType != NULL) &&
 			((unmodInnerType->mTypeCode == DbgType_Class) || (unmodInnerType->mTypeCode == DbgType_Struct) || (unmodInnerType->mTypeCode == DbgType_Union)))
 		{
-			isCompositeType = true;			
+			isCompositeType = true;
 		}
 		else if ((unmodInnerType != NULL) && (unmodInnerType->mTypeCode == DbgType_SizedArray))
 		{
@@ -7311,8 +7304,8 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			else
 			{
 				auto dbgModule = mDebugTarget->FindDbgModuleForAddress(funcPtr);
-				if (dbgModule != NULL)				
-					demangledName += dbgModule->GetLinkedModule()->mDisplayName + "!";				
+				if (dbgModule != NULL)
+					demangledName += dbgModule->GetLinkedModule()->mDisplayName + "!";
 				demangledName += StrFormat("0x%@", funcPtr);
 			}
 
@@ -7344,7 +7337,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					retVal += "}";
 				}
 			}
-						
+
 			retVal += "\n" + origValueType->ToString(language);
 
 			return retVal;
@@ -7356,7 +7349,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			addr_target ptrVal = (addr_target)typedValue.mPtr;
 			String retVal;
 			if ((!typedValue.mIsLiteral) && (!formatInfo.mHidePointers))
-				retVal = EncodeDataPtr(ptrVal, true);				
+				retVal = EncodeDataPtr(ptrVal, true);
 
 			if (ptrVal != 0)
 			{
@@ -7383,17 +7376,17 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					else
 					{
 						retVal += "{ ??? }";
-					}					
+					}
 				}
 			}
 
 			retVal += "\n" + origValueType->ToString(language);
 			innerType->PopulateType();
-			
+
 			if ((ptrVal != 0) &&
 				((!innerType->mMemberList.IsEmpty()) || (innerType->mSize > 0) || (innerType->mTypeParam != NULL)))
 			{
-				String ptrDataStr = StrFormat("(%s)", dwValueType->ToStringRaw(language).c_str()) + EncodeDataPtr(typedValue.mPtr, true);								
+				String ptrDataStr = StrFormat("(%s)", dwValueType->ToStringRaw(language).c_str()) + EncodeDataPtr(typedValue.mPtr, true);
 				retVal += "\n*\t";
 				// Why did we have this?  It messed up a pointer to sized array
 				/*if (language == DbgLanguage_Beef)
@@ -7409,22 +7402,22 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			return retVal;
 		}
 
-		break;		
+		break;
 	}
 	case DbgType_Union:
 	case DbgType_Class:
-	case DbgType_Struct:	
+	case DbgType_Struct:
 		isCompositeType = true;
-		break;	
+		break;
 	case DbgType_Enum:
 		enumVal = typedValue.GetInt64();
 		isEnum = true;
-		break;	
+		break;
 	case DbgType_SizedArray:
 		{
-			isSizedArray = true;			
+			isSizedArray = true;
 		}
-		break;	
+		break;
 	default:
 		break;
 	}
@@ -7451,7 +7444,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				retVal = EncodeDataPtr(ptrVal, true) + " ";
 		}
 		if (ptrVal == 0)
-			ptrVal = typedValue.mPtr;		
+			ptrVal = typedValue.mPtr;
 
 		intptr arraySize = 0;
 		intptr innerSize = innerType->GetStride();
@@ -7459,7 +7452,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			arraySize = arrayType->GetStride() / innerSize;
 		else
 		{
-			// Failure!			
+			// Failure!
 		}
 
 		String idxStr = "[{0}]";
@@ -7478,13 +7471,13 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 			_ShowArraySummary(retVal, ptrVal, arraySize, innerType);
 		}
-		
+
 		retVal += "\n" + origValueType->ToString(language);
 
 		String referenceId = dwValueType->ToString(language);
 		String evalStr;
 
-		// Why did we have the "na"? Do we not want to show addresses for all members?		
+		// Why did we have the "na"? Do we not want to show addresses for all members?
 		evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + ")[{0}], refid=" + MaybeQuoteFormatInfoParam(referenceId + ".[]");
 		if (typedValue.mIsReadOnly)
 			evalStr += ", ne";
@@ -7494,13 +7487,13 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 	}
 
 	dwValueType->PopulateType();
-	
+
 	if (isEnum)
-	{		
+	{
 		String retVal;
 		int64 bitsLeft = enumVal;
 		int valueCount = 0;
-		
+
 		String editVal;
 
 		dwValueType = dwValueType->GetPrimaryType();
@@ -7510,7 +7503,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		while ((bitsLeft != 0) || (valueCount == 0))
 		{
 			DbgVariable* bestMatch = NULL;
-			
+
 			for (auto member : dwValueType->mMemberList)
 			{
 				if (member->mConstValue == bitsLeft)
@@ -7521,13 +7514,13 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			}
 
 			if (bestMatch == NULL)
-			{				
+			{
 				for (auto member : dwValueType->mMemberList)
 				{
-					if ((member->mConstValue != 0) && 
+					if ((member->mConstValue != 0) &&
 						((member->mConstValue & bitsLeft) == member->mConstValue))
 					{
-						bestMatch = member;					
+						bestMatch = member;
 						break;
 					}
 				}
@@ -7542,7 +7535,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				if (language == DbgLanguage_C)
 					editVal += " | ";
 			}
-			
+
 			if (language == DbgLanguage_Beef)
 				retVal += ".";
 			retVal += bestMatch->mName;
@@ -7574,7 +7567,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				editVal += StrFormat("%lld", bitsLeft);
 			}
 		}
-		
+
 		retVal += "\n" + origValueType->ToString();
 		if (language == DbgLanguage_C)
 		{
@@ -7592,12 +7585,12 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			ptrVal = (addr_target)typedValue.mPtr;
 		else
 			ptrVal = (addr_target)typedValue.mSrcAddress;
-		String retVal;			
+		String retVal;
 		if ((!typedValue.mIsLiteral) && (dwValueType->IsPointer()) &&
-			((!formatInfo.mHidePointers) || (ptrVal == 0)))		
-			retVal = EncodeDataPtr(ptrVal, true);		
-			
-		DbgType* innerType = dwValueType;						
+			((!formatInfo.mHidePointers) || (ptrVal == 0)))
+			retVal = EncodeDataPtr(ptrVal, true);
+
+		DbgType* innerType = dwValueType;
 		bool wasPtr = false;
 		if (innerType->mTypeCode == DbgType_Ptr)
 		{
@@ -7610,7 +7603,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		addr_target dataPtr = wasPtr ? typedValue.mPtr : typedValue.mSrcAddress;
 		DbgType* actualType = NULL;
 		bool useActualRawType = false;
-		
+
 		bool isBfObject = innerType->IsBfObject();
 		bool hasCPPVTable = false;
 		if (!isBfObject)
@@ -7632,10 +7625,10 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			int tagIdx = 0;
 
 			if (dataPtr == -1)
-			{								
+			{
 				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, "(int)" + expr, &formatInfo);
 				auto dscValue = dbgEvaluationContext.EvaluateInContext(DbgTypedValue());
-				tagIdx = dscValue.mInt32;				
+				tagIdx = dscValue.mInt32;
 			}
 			else if (!ReadMemory((intptr)ptrVal + tagMember->mMemberOffset, tagMember->mType->mSize, (void*)&tagIdx))
 			{
@@ -7658,7 +7651,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				if (strncmp(member->mName, findStr, len) == 0)
 				{
 					retVal += ".";
-					retVal += member->mName + len;					
+					retVal += member->mName + len;
 
 					String tupleExpr;
 
@@ -7681,7 +7674,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					displayStrFormatInfo.mTotalSummaryLength = formatInfo.mTotalSummaryLength + (int)retVal.length();
 					displayStrFormatInfo.mExpandItemDepth++;
 					displayStrFormatInfo.mHidePointers = false;
-					retVal += DbgTypedValueToString(tupleVal, tupleExpr, displayStrFormatInfo, NULL);					
+					retVal += DbgTypedValueToString(tupleVal, tupleExpr, displayStrFormatInfo, NULL);
 					int idx = (int)retVal.IndexOf('\n');
 					if (idx != -1)
 					{
@@ -7708,22 +7701,22 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if (mDebugTarget->mBfObjectHasFlags)
 			{
 				bfObjectFlags = ((int)classVDataPtr) & 0xFF;
-				
+
 				if ((bfObjectFlags & BfObjectFlag_Deleted) != 0)
 					isDeletedBfObject = true;
 				if ((bfObjectFlags & BfObjectFlag_AppendAlloc) != 0)
-					isAppendBfObject = true;				
+					isAppendBfObject = true;
 				if ((bfObjectFlags & (BfObjectFlag_StackAlloc | BfObjectFlag_Allocated)) == BfObjectFlag_StackAlloc)
 					isStackBfObject = true;
 
 				classVDataPtr &= ~0xFF;
 			}
 		}
-		
+
 		if (!formatInfo.mIgnoreDerivedClassInfo)
 		{
 			if (isBfObject)
-			{	
+			{
 				dbgModule->ParseSymbolData();
 
 				String symbolName;
@@ -7743,9 +7736,9 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					symEndLen = strlen(symEnd);
 					if (((int) symbolName.length() > symEndLen) && (strstr(symbolName.c_str(), symEnd) != NULL))
 						mangledClassName = symbolName;
-					
+
 					if (mangledClassName.length() > 0)
-					{												
+					{
 						String className = BfDemangler::Demangle(mangledClassName, innerType->GetLanguage(), BfDemangler::Flag_RawDemangle);
 
 						for (int i = 0; i < className.length() - 3; i++)
@@ -7787,13 +7780,13 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						if (typeEntry != NULL)
 						{
 							actualType = typeEntry->mValue;
-							if (!actualType->IsBfObject())							
-							{								
+							if (!actualType->IsBfObject())
+							{
 								if (actualType->mTypeCode == DbgType_Ptr)
 								{
 									actualType = actualType->mTypeParam;
-								}								
-							}							
+								}
+							}
 						}
 					}
 				}
@@ -7834,7 +7827,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 								if (!DbgExprEvaluator::TypeIsSubTypeOf(actualType, innerType, &thisOffset))
 								{
 									// This catches virtual inheritance cases where we can't downcast
-									actualType = NULL;									
+									actualType = NULL;
 								}
 							}
 						}
@@ -7845,17 +7838,17 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 		DbgType* displayType = origValueType;
 
-		String displayString;		
+		String displayString;
 		bool wantsCustomExpandedItems = false;
 		DebugVisualizerEntry* debugVis = NULL;
 		Array<String> dbgVisWildcardCaptures;
-		DbgType* dwUseType = (actualType != NULL) ? actualType : innerType;						
+		DbgType* dwUseType = (actualType != NULL) ? actualType : innerType;
 		//auto ptrDataType = dwValueType;
 		//TODO: Changed this from the above to account for COFF types where 'this' is always a fwd reference, does this cause any issues?
-		auto ptrDataType = innerType; 
+		auto ptrDataType = innerType;
 		String ptrDataStr;
 		if (/*(!innerType->IsBfObject()) &&*/ (!ptrDataType->IsPointer()))
-		{			
+		{
 			if ((dataPtr != 0) || (ptrDataType->GetByteCount() > sizeof(addr_target)))
 			{
 				bool wantsRefThis = ptrDataType->WantsRefThis();
@@ -7870,7 +7863,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				dataPtr = typedValue.mPtr;
 			}
 		}
-		String ptrDataTypeStr = ptrDataType->ToStringRaw();		
+		String ptrDataTypeStr = ptrDataType->ToStringRaw();
 		ptrDataStr += StrFormat("(%s)", ptrDataTypeStr.c_str()) + EncodeDataPtr(dataPtr, true);
 
 		DbgType* dwUsePtrType = dwUseType;
@@ -7882,7 +7875,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if (wantsRefThis)
 				ptrUseDataStr += "*";
 		}
-		String ptrUseDataTypeStr = dwUsePtrType->ToStringRaw();		
+		String ptrUseDataTypeStr = dwUsePtrType->ToStringRaw();
 		ptrUseDataStr += StrFormat("(%s)", ptrUseDataTypeStr.c_str()) + EncodeDataPtr(dataPtr, true);
 
 		if ((origTypedValue.mSrcAddress == -1) && (origTypedValue.mVariable != NULL))
@@ -7907,7 +7900,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 			ptrDataStr = "(" + dwUseType->ToStringRaw() + ")";
 			ptrDataStr += DbgTypedValueToString(rawVal, expr, formatInfo, optEvaluator, fullPrecision);
-			
+
 			int editValIdx = ptrDataStr.IndexOf(":editVal");
 			if (editValIdx != -1)
 				ptrDataStr.Remove(0, editValIdx + 9);
@@ -7928,8 +7921,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		}
 		else if ((ptrVal == 0) && (dwValueType->IsCompositeType()))
 		{
-			
-		}				
+		}
 
 		DbgTypedValue useTypedValue = typedValue;
 		if ((origHadRef) || ((typedValue.mType->HasPointer()) && (!dwUseType->HasPointer())))
@@ -7944,7 +7936,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				{
 					ReadMemory(useTypedValue.mSrcAddress, byteCount, &useTypedValue.mPtr);
 				}
-			}			
+			}
 		}
 		useTypedValue.mType = dwUseType;
 		if ((!formatInfo.mNoVisualizers) && (!isNull) && (!isBadSrc))
@@ -7953,10 +7945,10 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				dwUseType->FixName();
 			debugVis = FindVisualizerForType(dwUseType, &dbgVisWildcardCaptures);
 		}
-		
+
 		bool hadCustomDisplayString = false;
 		if (debugVis != NULL)
-		{	
+		{
 			auto& displayStringList = (formatInfo.mRawString || wantStringView) ? debugVis->mStringViews : debugVis->mDisplayStrings;
 
 			for (auto displayEntry : displayStringList)
@@ -7979,12 +7971,12 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					ProcessEvalString(dbgCompileUnit, useTypedValue, displayStr, stringViewData, strFormatInfo, debugVis, true);
 				}
 				else
-					ProcessEvalString(dbgCompileUnit, useTypedValue, displayStr, displayString, formatInfo, debugVis, true);				
+					ProcessEvalString(dbgCompileUnit, useTypedValue, displayStr, displayString, formatInfo, debugVis, true);
 				if (formatInfo.mRawString)
 					return displayString;
-				
+
 				break;
-			}			
+			}
 
 			if ((!debugVis->mExpandItems.empty()) || (debugVis->mCollectionType != DebugVisualizerEntry::CollectionType_None))
 			{
@@ -8007,7 +7999,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 			String firstRet;
 			String bigRet = isTuple ? "(" : "{ ";
-			
+
 			int memberIdx = 0;
 			DbgType* summaryType = dwUseType;
 			bool summaryDone = false;
@@ -8022,8 +8014,8 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			while (summaryType != NULL)
 			{
 				summaryType->PopulateType();
-				
-				if ((summaryType->IsTypedPrimitive()) && 
+
+				if ((summaryType->IsTypedPrimitive()) &&
 					((summaryType->mBaseTypes.IsEmpty()) || (!summaryType->mBaseTypes.front()->mBaseType->IsTypedPrimitive())))
 				{
 					if (formatInfo.mTotalSummaryLength + (int)displayString.length() > 255)
@@ -8033,15 +8025,15 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						bigRet += "...";
 					}
 					else
-					{						
+					{
 						DwFormatInfo displayStrFormatInfo = formatInfo;
 						displayStrFormatInfo.mExpandItemDepth = 1;
 						displayStrFormatInfo.mTotalSummaryLength += (int)displayString.length();
 						displayStrFormatInfo.mHidePointers = false;
-						
+
 						DbgType* primType = summaryType->mTypeParam;
 						String result;
-						
+
 						if (primType->IsInteger())
 							formatInfo.mTypeKindFlags = (DbgTypeKindFlags)(formatInfo.mTypeKindFlags | DbgTypeKindFlag_Int);
 
@@ -8058,7 +8050,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 							evalResult.mType = primType;
 							String evalString = "(" + primType->ToString() + ")" + expr;
 							result = DbgTypedValueToString(evalResult, evalString, displayStrFormatInfo, NULL);
-						}					
+						}
 
 						if (formatInfo.mRawString)
 							return result;
@@ -8070,7 +8062,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						if (memberIdx == 0)
 							firstRet = result;
 
-						bigRet += result;						
+						bigRet += result;
 						memberIdx++;
 					}
 				}
@@ -8110,7 +8102,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 							}
 
 							DwFormatInfo displayStrFormatInfo = formatInfo;
-							displayStrFormatInfo.mExpandItemDepth = 1;							
+							displayStrFormatInfo.mExpandItemDepth = 1;
 							displayStrFormatInfo.mHidePointers = false;
 							displayStrFormatInfo.mTotalSummaryLength = formatInfo.mTotalSummaryLength + retVal.length() + bigRet.length();
 
@@ -8150,13 +8142,13 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 							if (formatInfo.mRawString)
 								return result;
-							
+
 							if (memberIdx == 0)
-								firstRet = result;														
-								
+								firstRet = result;
+
 							bigRet += result;
 							//formatInfo.mEmbeddedDisplayCount = displayStrFormatInfo.mEmbeddedDisplayCount;
-							memberIdx++;													
+							memberIdx++;
 						}
 						else
 						{
@@ -8178,11 +8170,11 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					if ((checkBaseType->GetByteCount() > 0) || (checkBaseType->IsPrimitiveType()))
 					{
 						if (!splatStr.empty())
-						{							
+						{
 							splatStr = "(" + checkBaseType->ToString() + ")" + splatStr;
 						}
 						else
-						{							
+						{
 							summaryTypedValue.mType = checkBaseType;
 						}
 						nextSummaryType = checkBaseType;
@@ -8214,10 +8206,10 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if ((memberIdx == 1) && (!truncatedMemberList) && (firstRet.IndexOf('{') == -1) && (!isTuple))
 				displayString += "{ " + firstRet + " }";
 			else
-				displayString += bigRet;			
+				displayString += bigRet;
 		}
-		
-		DbgType* memberListType = actualType;				
+
+		DbgType* memberListType = actualType;
 		bool memberListForceCast = false;
 		if (actualType != NULL)
 		{
@@ -8230,12 +8222,12 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 			if (useActualRawType)
 				actualUseTypeName = actualType->ToStringRaw();
-						
+
 			if (displayString.empty())
 			{
 				// Nothing to display
 			}
-			else	
+			else
 			{
 				if (!retVal.empty())
 					retVal += " ";
@@ -8245,28 +8237,28 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			retVal += "\n" + valTypeName;
 
 			if ((innerType->IsBaseBfObject()) || (innerType->IsInterface()))
-			{				
+			{
 				if (actualType != innerType)
 				{
-					retVal += " {" + actualTypeName + "}";					
+					retVal += " {" + actualTypeName + "}";
 					memberListForceCast = true;
-				}				
+				}
 			}
 			else
-			{				
+			{
 				if (actualType != innerType)
 				{
 					retVal += " {" + actualTypeName + "}";
 					retVal += "\n";
 					if (!wantsCustomExpandedItems)
 					{
-						retVal += "[" + actualTypeName + "]\t((" + actualUseTypeName;						
+						retVal += "[" + actualTypeName + "]\t((" + actualUseTypeName;
 						if (!actualType->IsBfObject())
 							retVal += "*";
-						retVal += ")this), nd, na, nv, this=" + ptrDataStr;						
+						retVal += ")this), nd, na, nv, this=" + ptrDataStr;
 						memberListType = innerType;
 					}
-				}				
+				}
 			}
 		}
 		else
@@ -8293,7 +8285,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			retVal += "\n" + displayType->ToString(DbgLanguage_Unknown, true);
 			memberListType = innerType;
 		}
-		
+
 		if ((isBfObject) && (mDebugTarget->mBfObjectHasFlags) && (!formatInfo.mNoVisualizers) && (!formatInfo.mRawString))
 		{
 			int stackTraceLen = 1;
@@ -8326,7 +8318,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			HandleCustomExpandedItems(retVal, dbgCompileUnit, debugVis, dwUseType, dwValueType, ptrUseDataStr, ptrDataStr, useTypedValue, dbgVisWildcardCaptures, formatInfo);
 		}
 		else if ((!isNull) && (!isBadSrc))
-		{			
+		{
 			if (dataPtr == -1)
 			{
 				//String splatName = ((origTypedValue.mSrcAddress == -1) && (origTypedValue.mVariable != NULL)) ? origTypedValue.mVariable->mName : expr;
@@ -8340,7 +8332,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		}
 
 		if (formatInfo.mExpandItemDepth > 0)
-			return retVal;		
+			return retVal;
 		if (isAppendBfObject)
 			retVal += "\n:appendAlloc";
 		if (isStackBfObject)
@@ -8363,7 +8355,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 		if ((!typedValue.mIsLiteral) && (dwValueType->IsPointer()))
 		{
-			retVal += "\n:editVal\t" + EncodeDataPtr(ptrVal, true);			
+			retVal += "\n:editVal\t" + EncodeDataPtr(ptrVal, true);
 		}
 
 		if (((debugVis != NULL) && (!debugVis->mStringViews.IsEmpty())) || (wantStringView))
@@ -8388,7 +8380,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 
 	if (formatInfo.mExpandItemDepth > 10) // Avoid crashing on circular ExpandItems
 		return;
-	
+
 	auto language = formatInfo.mLanguage;
 
 	bool isReadOnly = false;
@@ -8414,7 +8406,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 	String referenceId = dwUseType->ToString();
 
 	if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_ExpandedItem)
-	{		
+	{
 		DbgTypedValue itemValue = EvaluateInContext(dbgCompileUnit, useTypedValue, debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures), &formatInfo);
 		if (itemValue)
 		{
@@ -8428,11 +8420,11 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 				crIdx = (int)itemRetVal.IndexOf('\n', crIdx + 1);
 				if (crIdx != -1)
 					retVal += itemRetVal.Substring(crIdx);
-			}			
+			}
 		}
 	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_Array)
-	{				
+	{
 		DbgTypedValue sizeValue = EvaluateInContext(dbgCompileUnit, useTypedValue, debugVisualizers->DoStringReplace(debugVis->mSize, dbgVisWildcardCaptures), &formatInfo);
 		Array<int> lowerDimSizes;
 		for (auto lowerDim : debugVis->mLowerDimSizes)
@@ -8510,7 +8502,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 			{
 				int dimSize1 = lowerDimSizes[0];
 
-				String evalStr = "(" + debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures) + 
+				String evalStr = "(" + debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures) +
 					StrFormat(" + {0} * %d), arraysize=%d, na, this=", dimSize1, dimSize1) + ptrUseDataStr;
 				evalStr += ", refid=\"" + referenceId + ".[]\"";
 				if (isReadOnly)
@@ -8526,7 +8518,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 				DbgTypedValue headPointer = EvaluateInContext(dbgCompileUnit, useTypedValue, debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures), &formatInfo);
 				if ((headPointer.mType != NULL) && (headPointer.mType->IsPointer()))
 				{
-					String evalStr = StrFormat("((%s[%d]*)", headPointer.mType->mTypeParam->ToStringRaw(language).c_str(), dimSize2) + debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures) + 
+					String evalStr = StrFormat("((%s[%d]*)", headPointer.mType->mTypeParam->ToStringRaw(language).c_str(), dimSize2) + debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures) +
 						StrFormat(" + {0} * %d), arraysize=%d, na, this=", dimSize1, dimSize1) + ptrUseDataStr;
 					evalStr += ", refid=\"" + referenceId + ".[]\"";
 					if (isReadOnly)
@@ -8554,7 +8546,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 				}
 			}
 			else
-			{	
+			{
 				String evalStr = "*(" + debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures) + " + {0}), this=" + ptrUseDataStr;
 				evalStr += ", refid=\"" + referenceId + ".[]${0}\"";
 				if (isReadOnly)
@@ -8565,11 +8557,11 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 		}
 	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_IndexItems)
-	{				
+	{
 		DbgTypedValue sizeValue = EvaluateInContext(dbgCompileUnit, useTypedValue, debugVisualizers->DoStringReplace(debugVis->mSize, dbgVisWildcardCaptures), &formatInfo);
-				
+
 		if ((sizeValue) && (sizeValue.mType->IsInteger()) && (sizeValue.GetInt64() > 0))
-		{			
+		{
 			String evalStr = debugVis->mValuePointer + ", this=" + ptrUseDataStr;
 			evalStr.Replace("$i", "{0}");
 
@@ -8577,7 +8569,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 			if (isReadOnly)
 				evalStr += ", ne";
 			retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, sizeValue.GetInt64(), 50000) +
-				"\t[{0}]\t" + evalStr;			
+				"\t[{0}]\t" + evalStr;
 		}
 	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_LinkedList)
@@ -8619,7 +8611,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 			{
 				const char* addrsPtr = addrs.c_str();
 				firstAddr = addrs.Substring(0, sizeof(addr_target)*2);
-				if (hasSecondAddr)						
+				if (hasSecondAddr)
 					secondAddr = addrs.Substring(sizeof(addr_target)*2, sizeof(addr_target)*2);
 			}
 
@@ -8676,7 +8668,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 		if (sizeValue)
 			sizeValue.mType = sizeValue.mType->RemoveModifiers();
 		if ((sizeValue) && (headPointer) && (sizeValue.mType->IsInteger()) && (sizeValue.GetInt64() > 0))
-		{					
+		{
 			DbgTypedValue curNode = headPointer;
 			Array<addr_target> parentList;
 			String continuationData;
@@ -8728,9 +8720,9 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 				retVal += "\n:addrs\t" + addrs;
 				if (continuationData.length() > 0)
 					retVal += "\n:continuation\t" + continuationData;
-			}					
+			}
 		}
-	}			
+	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_Dictionary)
 	{
 		DbgTypedValue sizeValue = EvaluateInContext(dbgCompileUnit, useTypedValue, debugVisualizers->DoStringReplace(debugVis->mSize, dbgVisWildcardCaptures), &formatInfo);
@@ -8739,7 +8731,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 		if (sizeValue)
 			sizeValue.mType = sizeValue.mType->RemoveModifiers();
 		if ((sizeValue) && (entriesPtrValue) && (sizeValue.mType->IsInteger()) && (sizeValue.GetInt64() > 0))
-		{	
+		{
 			String continuationData;
 
 			DbgType* valueType = entriesPtrValue.mType;
@@ -8771,15 +8763,15 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 				retVal += "\n:addrs\t" + addrs;
 				if (continuationData.length() > 0)
 					retVal += "\n:continuation\t" + continuationData;
-			}					
+			}
 		}
 	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_CallStackList)
-	{	
+	{
 		int size = 0;
 
 		String addrs;
-		String firstVal;		
+		String firstVal;
 		auto ptr = useTypedValue.mPtr;
 
 		for (int i = 0; i < formatInfo.mOverrideCount; i++)
@@ -8792,7 +8784,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 				firstVal = addrs;
 			addrs += EncodeDataPtr((addr_target)0, false);
 			size++;
-			
+
 			int inlineIdx = 0;
 
 			auto subProgram = mDebugTarget->FindSubProgram(funcAddr - 1, DbgOnDemandKind_LocalOnly);
@@ -8800,7 +8792,7 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 			{
 				if (subProgram->mInlineeInfo == NULL)
 					break;
-				
+
 				auto prevFuncAddr = subProgram->mBlock.mLowPC;
 
 				subProgram = subProgram->mInlineeInfo->mInlineParent;
@@ -8812,14 +8804,14 @@ void WinDebugger::HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgC
 			}
 		}
 
-		String evalStr = "(System.CallStackAddr)0x{1}";		
-		evalStr += ", refid=\"" + referenceId + ".[]\"";		
+		String evalStr = "(System.CallStackAddr)0x{1}";
+		evalStr += ", refid=\"" + referenceId + ".[]\"";
 		evalStr += ", ne";
 
 		retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, size, 10000) +
 			"\t[{0}]\t" + evalStr + ", action=ShowCodeAddr {1} {2}\t" + firstVal + "\t" + EncodeDataPtr((addr_target)0, false);
-				
-		retVal += "\n:addrs\t" + addrs;		
+
+		retVal += "\n:addrs\t" + addrs;
 		retVal += "\n:addrsEntrySize\t2";
 		return;
 	}
@@ -8867,7 +8859,7 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 		regNum = X86Reg_EIP;
 	else if (lwrRegName == "efl")
 		regNum = X86Reg_EFL;
-#else	
+#else
 	DbgTypeCode regType = DbgType_i64;
 
 	if (lwrRegName == "rax")
@@ -8887,7 +8879,7 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 	else if (lwrRegName == "rdi")
 		regNum = X64Reg_RDI;
 	else if (lwrRegName == "rip")
-		regNum = X64Reg_RIP;	
+		regNum = X64Reg_RIP;
 	else if (lwrRegName == "r8")
 		regNum = X64Reg_R8;
 	else if (lwrRegName == "r9")
@@ -8920,7 +8912,7 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 		else if (lwrRegName == "esi")
 			regNum = X64Reg_RSI;
 		else if (lwrRegName == "edi")
-			regNum = X64Reg_RDI;		
+			regNum = X64Reg_RDI;
 		else if (lwrRegName == "r8d")
 			regNum = X64Reg_R8;
 		else if (lwrRegName == "r9d")
@@ -8947,11 +8939,11 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 			else if (lwrRegName == "dx")
 				regNum = X64Reg_RDX;
 			else if (lwrRegName == "bx")
-				regNum = X64Reg_RBX;			
+				regNum = X64Reg_RBX;
 			else if (lwrRegName == "si")
 				regNum = X64Reg_RSI;
 			else if (lwrRegName == "di")
-				regNum = X64Reg_RDI;		
+				regNum = X64Reg_RDI;
 			else if (lwrRegName == "r8w")
 				regNum = X64Reg_R8;
 			else if (lwrRegName == "r9w")
@@ -8982,7 +8974,7 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 				else if (lwrRegName == "sil")
 					regNum = X64Reg_RSI;
 				else if (lwrRegName == "dil")
-					regNum = X64Reg_RDI;	
+					regNum = X64Reg_RDI;
 				else if (lwrRegName == "r8b")
 					regNum = X64Reg_R8;
 				else if (lwrRegName == "r9b")
@@ -9003,9 +8995,9 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 		}
 	}
 #endif
-	
+
 	auto dbgModule = mEmptyDebugTarget->GetMainDbgModule();
-	
+
 	if (regNum != -1)
 	{
 		DbgTypedValue typedVal;
@@ -9054,12 +9046,12 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 		regNum = CPUReg_XMMREG_FIRST + ((lwrRegName[3] - '0') * 4) + (lwrRegName[5] - '0');
 	}
 #else
-	if ((lwrRegName.length() == 6) && (lwrRegName[0] == 'x') && (lwrRegName[1] == 'm') && (lwrRegName[2] == 'm') && (lwrRegName[3] >= '0') && (lwrRegName[3] <= '9') && 
+	if ((lwrRegName.length() == 6) && (lwrRegName[0] == 'x') && (lwrRegName[1] == 'm') && (lwrRegName[2] == 'm') && (lwrRegName[3] >= '0') && (lwrRegName[3] <= '9') &&
 		(lwrRegName[4] == '_') && (lwrRegName[5] >= '0') && (lwrRegName[5] <= '3'))
 	{
 		regNum = CPUReg_XMMREG_FIRST + ((lwrRegName[3] - '0') * 4) + (lwrRegName[5] - '0');
 	}
-	if ((lwrRegName.length() == 7) && (lwrRegName[0] == 'x') && (lwrRegName[1] == 'm') && (lwrRegName[2] == 'm') && (lwrRegName[3] == '1') && (lwrRegName[4] >= '0') && (lwrRegName[4] <= '9') && 
+	if ((lwrRegName.length() == 7) && (lwrRegName[0] == 'x') && (lwrRegName[1] == 'm') && (lwrRegName[2] == 'm') && (lwrRegName[3] == '1') && (lwrRegName[4] >= '0') && (lwrRegName[4] <= '9') &&
 		(lwrRegName[5] == '_') && (lwrRegName[6] >= '0') && (lwrRegName[6] <= '3'))
 	{
 		regNum = CPUReg_XMMREG_FIRST + ((10 + (lwrRegName[4] - '0')) * 4) + (lwrRegName[6] - '0');
@@ -9097,7 +9089,7 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 			typedVal.mRegNum = regNum;
 			return typedVal;
 		}
-		else if ((mmDisplayType == DwMmDisplayType_UInt8) || (mmDisplayType == DwMmDisplayType_Int16) || (mmDisplayType == DwMmDisplayType_Int32))		
+		else if ((mmDisplayType == DwMmDisplayType_UInt8) || (mmDisplayType == DwMmDisplayType_Int16) || (mmDisplayType == DwMmDisplayType_Int32))
 		{
 			DbgTypedValue typedVal;
 			typedVal.mType = dbgModule->GetPrimitiveType(DbgType_i32, language);
@@ -9195,12 +9187,12 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 		typedVal.mRegNum = regNum;
 		return typedVal;
 	}
-	
+
 	return DbgTypedValue();
 }
 
 DbgModule* WinDebugger::GetCallStackDbgModule(int callStackIdx)
-{	
+{
 	if ((mRunState == RunState_NotStarted) || (!IsPaused()))
 		return mEmptyDebugTarget->GetMainDbgModule();
 	if (callStackIdx == -1)
@@ -9216,7 +9208,7 @@ DbgModule* WinDebugger::GetCallStackDbgModule(int callStackIdx)
 	auto dbgModule = mDebugTarget->FindDbgModuleForAddress(mCallStack[callStackIdx]->mRegisters.GetPC());
 	if (dbgModule != NULL)
 		return dbgModule;
-	return mDebugTarget->GetMainDbgModule();	
+	return mDebugTarget->GetMainDbgModule();
 }
 
 DbgSubprogram* WinDebugger::GetCallStackSubprogram(int callStackIdx)
@@ -9228,7 +9220,7 @@ DbgSubprogram* WinDebugger::GetCallStackSubprogram(int callStackIdx)
 	if (mCallStack.IsEmpty())
 		return NULL;
 	if (callStackIdx >= (int)mCallStack.size())
-		callStackIdx = 0;	
+		callStackIdx = 0;
 	UpdateCallStackMethod(callStackIdx);
 	auto subProgram = mCallStack[callStackIdx]->mSubProgram;
 	return subProgram;
@@ -9286,7 +9278,7 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		// Don't allow pending calls if we've already failed in the calling Evaluate()
 		pendingExpr->mExpressionFlags = (DwEvalExpressionFlags)(pendingExpr->mExpressionFlags & ~DwEvalExpressionFlag_AllowCalls);
 	}
-	
+
 	DbgExprEvaluator dbgExprEvaluator(this, dbgModule, &bfPassInstance, pendingExpr->mCallStackIdx, pendingExpr->mCursorPos);
 	if (!pendingExpr->mFormatInfo.mStackSearchStr.IsEmpty())
 	{
@@ -9294,8 +9286,8 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		dbgExprEvaluator.mStackSearch->mSearchStr = pendingExpr->mFormatInfo.mStackSearchStr;
 	}
 	dbgExprEvaluator.mLanguage = pendingExpr->mFormatInfo.mLanguage;
-	dbgExprEvaluator.mReferenceId = &pendingExpr->mReferenceId;	
-	dbgExprEvaluator.mExpressionFlags = pendingExpr->mExpressionFlags;	
+	dbgExprEvaluator.mReferenceId = &pendingExpr->mReferenceId;
+	dbgExprEvaluator.mExpressionFlags = pendingExpr->mExpressionFlags;
 	dbgExprEvaluator.mExplicitThis = pendingExpr->mFormatInfo.mExplicitThis;
 	dbgExprEvaluator.mSubjectExpr = pendingExpr->mFormatInfo.mSubjectExpr;
 	dbgExprEvaluator.mNamespaceSearchStr = pendingExpr->mFormatInfo.mNamespaceSearch;
@@ -9308,19 +9300,19 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 
 	if (pendingExpr->mCursorPos != -1)
 	{
-		dbgExprEvaluator.mAutoComplete = &autoComplete;	
+		dbgExprEvaluator.mAutoComplete = &autoComplete;
 	}
 	dbgExprEvaluator.mDbgCompileUnit = dbgCompileUnit;
 
-	DbgTypedValue exprResult;	
+	DbgTypedValue exprResult;
 	if (pendingExpr->mExplitType != NULL)
 	{
 		exprResult.mHasNoValue = true;
-		exprResult.mType = pendingExpr->mExplitType;		
+		exprResult.mType = pendingExpr->mExplitType;
 	}
 	else if (pendingExpr->mExprNode != NULL)
 	{
-		exprResult = dbgExprEvaluator.Resolve(pendingExpr->mExprNode);		
+		exprResult = dbgExprEvaluator.Resolve(pendingExpr->mExprNode);
 	}
 
 	if (dbgExprEvaluator.mCreatedPendingCall)
@@ -9334,24 +9326,24 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		pendingExpr->mFormatInfo.mOverrideCount = dbgExprEvaluator.mCountResultOverride;
 
 	String val;
-	if (bfPassInstance.HasFailed())		
+	if (bfPassInstance.HasFailed())
 	{
 		BfLogDbgExpr("Evaluate Failed: %s\n", bfPassInstance.mErrors[0]->mError.c_str());
-		val = StrFormat("!%d\t%d\t%s", bfPassInstance.mErrors[0]->GetSrcStart(), bfPassInstance.mErrors[0]->GetSrcLength(), bfPassInstance.mErrors[0]->mError.c_str());					
+		val = StrFormat("!%d\t%d\t%s", bfPassInstance.mErrors[0]->GetSrcStart(), bfPassInstance.mErrors[0]->GetSrcLength(), bfPassInstance.mErrors[0]->mError.c_str());
 	}
 	else if (dbgExprEvaluator.mBlockedSideEffects)
 	{
 		BfLogDbgExpr("Evaluate blocked side effects\n");
 		val = "!sideeffects";
-	}	
+	}
 	else if (!exprResult)
 	{
 		if (exprResult.mType != NULL)
 		{
 			BfLogDbgExpr("Evaluate success\n");
 
-			String typeName = exprResult.mType->ToString();			
-			DbgType* rawType = exprResult.mType;			
+			String typeName = exprResult.mType->ToString();
+			DbgType* rawType = exprResult.mType;
 			if (rawType->IsBfObjectPtr())
 				rawType = rawType->mTypeParam;
 			String typeNameRaw = rawType->ToStringRaw();
@@ -9394,11 +9386,11 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		}
 	}
 	else if ((pendingExpr->mExpressionFlags & (DwEvalExpressionFlag_MemoryWatch)) != 0)
-	{	
+	{
 		DbgType* resultType = exprResult.mType->RemoveModifiers();
 
 		bool isMemoryWatch = (pendingExpr->mExpressionFlags & DwEvalExpressionFlag_MemoryWatch) != 0;
-				
+
 		if (!resultType->IsPointerOrRef())
 		{
 			if (exprResult.mSrcAddress != 0)
@@ -9452,7 +9444,7 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 			exprResult.mIsReadOnly = true;
 		if (!pendingExpr->mReferenceId.empty())
 			pendingExpr->mFormatInfo.mReferenceId = pendingExpr->mReferenceId;
-		val = DbgTypedValueToString(exprResult, pendingExpr->mExprNode->ToString(), pendingExpr->mFormatInfo, &dbgExprEvaluator, (pendingExpr->mExpressionFlags & DwEvalExpressionFlag_FullPrecision) != 0);					
+		val = DbgTypedValueToString(exprResult, pendingExpr->mExprNode->ToString(), pendingExpr->mFormatInfo, &dbgExprEvaluator, (pendingExpr->mExpressionFlags & DwEvalExpressionFlag_FullPrecision) != 0);
 
 		if ((!val.empty()) && (val[0] == '!'))
 			return val;
@@ -9522,7 +9514,7 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		const char* langStr = (pendingExpr->mFormatInfo.mLanguage == DbgLanguage_Beef) ? "@Beef:" : "@C:";
 
 		if (exprResult.mSrcAddress != 0)
-		{			
+		{
 			val += StrFormat("\n:addrValueExpr\t%s(%s*)", langStr, exprResult.mType->ToString(pendingExpr->mFormatInfo.mLanguage).c_str());
 			val += EncodeDataPtr(exprResult.mSrcAddress, true);
 		}
@@ -9541,7 +9533,7 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		if (val[0] == '!')
 		{
 			// Already has an error embedded, can't edit
-		}		
+		}
 		else if ((exprResult.mSrcAddress != 0) && (underlyingType->mTypeCode >= DbgType_i8) && (underlyingType->mTypeCode <= DbgType_Ptr) &&
             (underlyingType->mTypeCode != DbgType_Class) && (underlyingType->mTypeCode != DbgType_Struct))
 		{
@@ -9550,13 +9542,13 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 			if (exprResult.mType->mTypeCode == DbgType_Ptr)
 			{
 				val += "\n:editVal\t" + EncodeDataPtr(exprResult.mPtr, true);
-			}			
+			}
 		}
 		else if ((underlyingType->IsStruct()) && (exprResult.mSrcAddress != 0) && (underlyingType->IsTypedPrimitive()))
 		{
 			auto primType = underlyingType->GetRootBaseType();
 			DbgTypedValue primVal = dbgExprEvaluator.ReadTypedValue(NULL, primType, exprResult.mSrcAddress, DbgAddrType_Target);
-						
+
 			String primResult = DbgTypedValueToString(primVal, "", pendingExpr->mFormatInfo, NULL);
 			int crPos = (int)primResult.IndexOf('\n');
 			if (crPos != -1)
@@ -9571,12 +9563,12 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 			bool isPseudoReg = ( ((exprResult.mRegNum >= X86Reg_M128_XMMREG_FIRST) && (exprResult.mRegNum <= X86Reg_M128_XMMREG_LAST))
 				|| ((exprResult.mRegNum >= X86Reg_CAT_FIRST) && (exprResult.mRegNum <= X86Reg_CAT_LAST)) );
 			if (!isPseudoReg)
-			{				
+			{
 				if (canEdit)
 					val += "\n:canEdit";
 			}
-		}		
-	}	
+		}
+	}
 
 	if (pendingExpr->mFormatInfo.mRawString)
 		return "";
@@ -9590,10 +9582,10 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 			val += StrFormat("\n:stackIdx\t%d", pendingExpr->mStackIdxOverride);
 	}
 
-	if (pendingExpr->mCursorPos != -1)	
+	if (pendingExpr->mCursorPos != -1)
 		val += GetAutocompleteOutput(autoComplete);
-	
-	return val;	
+
+	return val;
 }
 
 String WinDebugger::EvaluateContinue()
@@ -9606,7 +9598,7 @@ String WinDebugger::EvaluateContinue()
 		return "!Evaluation canceled";
 
 	if (!IsPaused())
-		return "!Not paused";	
+		return "!Not paused";
 
 	if (mRunState == RunState_DebugEval_Done)
 		mRunState = RunState_Paused;
@@ -9616,7 +9608,7 @@ String WinDebugger::EvaluateContinue()
 	if (result != "!pending")
 	{
 		BfLogDbg("EvaluateContinue finishing pending expr in thread %d\n", mDebugEvalThreadInfo.mThreadId);
-		CleanupDebugEval();		
+		CleanupDebugEval();
 	}
 
 	return result;
@@ -9629,27 +9621,27 @@ void WinDebugger::EvaluateContinueKeep()
 }
 
 static void PdbTestFile(WinDebugger* debugger, const StringImpl& path)
-{	
+{
 	if (!path.EndsWith(".PDB", StringImpl::CompareKind_OrdinalIgnoreCase))
 		return;
-	
+
 	OutputDebugStrF("Testing %s\n", path.c_str());
 	COFF coffFile(debugger->mDebugTarget);
 	uint8 wantGuid[16] = { 0 };
 	if (!coffFile.TryLoadPDB(path, wantGuid, -1))
-		return;	
+		return;
 	if (!coffFile.mIs64Bit)
-		return;	
+		return;
 	coffFile.ParseTypeData();
 	coffFile.ParseSymbolData();
-	coffFile.ParseGlobalsData();	
-	
+	coffFile.ParseGlobalsData();
+
 	for (int i = 0; i < coffFile.mTypes.mSize; i++)
 		coffFile.mTypes[i]->PopulateType();
 }
 
 static void PdbTest(WinDebugger* debugger, const StringImpl& path)
-{		
+{
 	for (auto& fileEntry : FileEnumerator(path, FileEnumerator::Flags_Files))
 	{
 		String filePath = fileEntry.GetFilePath();
@@ -9662,15 +9654,15 @@ static void PdbTest(WinDebugger* debugger, const StringImpl& path)
 		String childPath = fileEntry.GetFilePath();
 		String dirName;
 		dirName = GetFileName(childPath);
-			
+
 		PdbTest(debugger, childPath);
-	}	
+	}
 }
 
 String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags)
 {
 	BP_ZONE_F("WinDebugger::Evaluate %s", BP_DYN_STR(expr.c_str()));
-	
+
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	if ((expressionFlags & DwEvalExpressionFlag_Symbol) != 0)
@@ -9686,20 +9678,20 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 	UpdateCallStackMethod(callStackIdx);
 
 	BfLogDbgExpr("Evaluate %s in thread %d\n", expr.c_str(), (mActiveThread != NULL) ? mActiveThread->mThreadId : 0);
- 	
+
 	if (language != -1)
 		formatInfo.mLanguage = (DbgLanguage)language;
 
 	auto activeThread = mActiveThread;
 	if ((!IsPaused()) && (mRunState != RunState_NotStarted) && (mRunState != RunState_DebugEval))
-	{		
+	{
 		activeThread = NULL;
 		callStackIdx = -1;
 	}
-		
+
 	if (mDebugPendingExpr != NULL)
 	{
-		// We already have a pending call		
+		// We already have a pending call
 		expressionFlags = (DwEvalExpressionFlags)(expressionFlags & ~DwEvalExpressionFlag_AllowCalls);
 	}
 
@@ -9724,7 +9716,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 		});
 
 	bool usedSpecifiedLock = false;
-	int stackIdxOverride = -1;	
+	int stackIdxOverride = -1;
 
 	if (terminatedExpr.StartsWith('{'))
 	{
@@ -9766,9 +9758,9 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 							locString.Remove(0, 5);
 							char* endPtr = NULL;
 							int64 funcAddr = (int64)strtoll(locString.c_str(), &endPtr, 16);
-							
+
 							if (endPtr != NULL)
-							{	
+							{
 								// Actually do it
 
 								if ((mActiveThread != NULL) && (mActiveThread->mThreadId != threadId))
@@ -9797,7 +9789,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 										if (stackFrame->mRegisters.GetSP() > sp)
 										{
 											foundStackIdx = checkStackIdx - 1;
-											break;											
+											break;
 										}
 
 										checkStackIdx++;
@@ -9807,7 +9799,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 									{
 										UpdateCallStackMethod(foundStackIdx);
 										auto stackFrame = mCallStack[foundStackIdx];
-										
+
 										if ((stackFrame->mSubProgram != NULL) && ((int64)stackFrame->mSubProgram->mBlock.mLowPC == funcAddr))
 										{
 											if ((callStackIdx != foundStackIdx) || (mActiveThread != prevActiveThread))
@@ -9836,7 +9828,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 					if (c == '}')
 						break;
 				}
-				else 
+				else
 				{
 					if (c == '{')
 					{
@@ -9847,17 +9839,16 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 						doClear = true;
 					}
 					else if (!::isspace((uint8)c))
-						break;					
+						break;
 				}
-
 			}
-		}		
+		}
 		else if (!locString.IsEmpty())
-		{			
+		{
 			const char* checkPtr = locString.c_str();
 			if ((*checkPtr == '^') || (*checkPtr == '@'))
 				checkPtr++;
-			
+
 			char* endPtr = NULL;
 			int useCallStackIdx = strtol(checkPtr, &endPtr, 10);
 			if (endPtr == locString.c_str() + locString.length())
@@ -9879,8 +9870,8 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 	auto dbgSubprogram = GetCallStackSubprogram(callStackIdx);
 	DbgCompileUnit* dbgCompileUnit = NULL;
 	if (dbgSubprogram != NULL)
-		dbgCompileUnit = dbgSubprogram->mCompileUnit;	
-	
+		dbgCompileUnit = dbgSubprogram->mCompileUnit;
+
 	if ((expr.length() > 0) && (expr[0] == '!'))
 	{
 		if (expr.StartsWith("!step "))
@@ -9930,14 +9921,14 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 				PdbTestFile(this, cmd.Substring(9));
 		}
 	}
-	
+
 	bool valIsAddr = false;
-	
+
 	BfParser* parser = new BfParser(mBfSystem);
 	parser->mCompatMode = true;
-	
-	BfPassInstance bfPassInstance(mBfSystem);	
-		
+
+	BfPassInstance bfPassInstance(mBfSystem);
+
 	if ((terminatedExpr.length() > 2) && (terminatedExpr[0] == '@'))
 	{
 		if (terminatedExpr[1] == '!') // Return string as error
@@ -9956,7 +9947,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 			else
 				return terminatedExpr.Substring(2);
 		}
-		else // Look for "@:" or "@Beef:" style 
+		else // Look for "@:" or "@Beef:" style
 		{
 			int colonIdx = terminatedExpr.IndexOf(':');
 			if (colonIdx > 0)
@@ -9982,13 +9973,13 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 					if (dbgSubprogram != NULL)
 						curLanguage = dbgSubprogram->GetLanguage();
 					if (language != curLanguage)
-					{						
+					{
 						dbgModule = mDebugTarget->mTargetBinary;
 						dbgSubprogram = NULL;
 						formatInfo.mLanguage = language;
 						callStackIdx = -1;
 					}
-				}				
+				}
 			}
 		}
 	}
@@ -10006,24 +9997,24 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 	bfReducer.mSource = parser;
 	auto exprNode = bfReducer.CreateExpression(parser->mRootNode->mChildArr.GetAs<BfAstNode*>(0));
 	parser->Close();
-				
+
 	formatInfo.mCallStackIdx = callStackIdx;
 	if ((formatInfo.mLanguage == DbgLanguage_Unknown) && (dbgSubprogram != NULL))
 		formatInfo.mLanguage = dbgSubprogram->GetLanguage();
-	
-	DbgPendingExpr* pendingExpr = new DbgPendingExpr();		
+
+	DbgPendingExpr* pendingExpr = new DbgPendingExpr();
 	if (activeThread != NULL)
 		pendingExpr->mThreadId = activeThread->mThreadId;
-	pendingExpr->mParser = parser;	
+	pendingExpr->mParser = parser;
 	pendingExpr->mCallStackIdx = callStackIdx;
-	pendingExpr->mCursorPos = cursorPos;		
+	pendingExpr->mCursorPos = cursorPos;
 	pendingExpr->mExpressionFlags = expressionFlags;
-	pendingExpr->mExprNode = exprNode;	
+	pendingExpr->mExprNode = exprNode;
 
 	DbgType* explicitType = NULL;
 	String formatFlags;
 	String assignExpr;
-	int assignExprOffset = -1;	
+	int assignExprOffset = -1;
 
 	if ((exprNode != NULL) && (exprNode->GetSrcEnd() < (int)expr.length()))
 	{
@@ -10046,9 +10037,9 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 		{
 			explicitType = dbgModule->FindType(expr);
 		}
-		
+
 		if ((explicitType == NULL) && (formatFlags.length() > 0))
-		{			
+		{
 			String errorString = "Invalid expression";
 			if (!ParseFormatInfo(dbgModule, formatFlags, &formatInfo, &bfPassInstance, &assignExprOffset, &assignExpr, &errorString))
 			{
@@ -10060,13 +10051,13 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 			if (assignExprOffset != -1)
 				assignExprOffset += formatOffset;
 		}
-	}	
+	}
 
 	if (assignExpr.length() > 0)
 	{
 		String newEvalStr = exprNode->ToString() + " = ";
 		int errorOffset = (int)newEvalStr.length();
-		newEvalStr += assignExpr;		
+		newEvalStr += assignExpr;
 		String result = Evaluate(newEvalStr, formatInfo, callStackIdx, cursorPos, language, expressionFlags);
 		if (result[0] == '!')
 		{
@@ -10082,7 +10073,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 		}
 		return result;
 	}
-		
+
 	pendingExpr->mUsedSpecifiedLock = usedSpecifiedLock;
 	pendingExpr->mStackIdxOverride = stackIdxOverride;
 	pendingExpr->mExplitType = explicitType;
@@ -10097,12 +10088,12 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 		}
 		mDebugPendingExpr = pendingExpr;
 		mDebugEvalThreadInfo = *mActiveThread;
-		mActiveThread->mIsAtBreakpointAddress = 0;		
+		mActiveThread->mIsAtBreakpointAddress = 0;
 		mActiveThread->mStoppedAtAddress = 0;
 		mActiveThread->mBreakpointAddressContinuing = 0;
 	}
 	else
-		delete pendingExpr;	
+		delete pendingExpr;
 
 	return result;
 }
@@ -10173,7 +10164,7 @@ static void ConvertDoubleToFloat80(double d, byte fp80[10])
 bool WinDebugger::AssignToReg(int callStackIdx, DbgTypedValue regVal, DbgTypedValue value, String& outError)
 {
 	BF_ASSERT(regVal.mRegNum >= 0);
-	
+
 	if (mCallStack.size() == 0)
 	{
 		outError = "No call stack";
@@ -10290,7 +10281,7 @@ bool WinDebugger::AssignToReg(int callStackIdx, DbgTypedValue regVal, DbgTypedVa
 		if (value.mType->GetByteCount() == 4)
 			registers->mXmmRegsArray[xmmMajor].f[xmmMinor] = value.mSingle;
 		else if (value.mType->GetByteCount() == 8)
-			registers->mXmmDRegsArray[xmmMajor].d[xmmMinor] = value.mDouble; 
+			registers->mXmmDRegsArray[xmmMajor].d[xmmMinor] = value.mDouble;
 		else
 			BF_FATAL("Invalid XMM set value type");
 		regPtr = &registers->mXmmRegsArray[xmmMajor];
@@ -10325,9 +10316,9 @@ bool WinDebugger::AssignToReg(int callStackIdx, DbgTypedValue regVal, DbgTypedVa
 	else
 		BF_FATAL("Not implemented");
 #endif
-	
+
 	if (callStackIdx == 0)
-	{		
+	{
 		SetRegisters(&mCallStack[0]->mRegisters);
 		return true;
 	}
@@ -10336,7 +10327,7 @@ bool WinDebugger::AssignToReg(int callStackIdx, DbgTypedValue regVal, DbgTypedVa
 		bool wasSaved = false;
 		for (int calleeStackIdx = callStackIdx - 1; calleeStackIdx >= 0; calleeStackIdx--)
 		{
-			auto calleeRegisters = &mCallStack[calleeStackIdx]->mRegisters;		
+			auto calleeRegisters = &mCallStack[calleeStackIdx]->mRegisters;
 			if (!mDebugTarget->PropogateRegisterUpCallStack(registers, calleeRegisters, regPtr, wasSaved))
 			{
 				outError = "Failed to set register";
@@ -10345,10 +10336,10 @@ bool WinDebugger::AssignToReg(int callStackIdx, DbgTypedValue regVal, DbgTypedVa
 			if (wasSaved)
 				return true;
 		}
-		
+
 		// This register wasn't saved, so commit it to the callstack top
 		return AssignToReg(0, regVal, value, outError);
-	}	
+	}
 }
 
 String WinDebugger::GetAutocompleteOutput(DwAutoComplete& autoComplete)
@@ -10412,13 +10403,13 @@ String WinDebugger::EvaluateToAddress(const StringImpl& expr, int callStackIdx, 
 	bfReducer.mSystem = mBfSystem;
 	bfReducer.mPassInstance = &bfPassInstance;
 	bfReducer.mVisitorPos = BfReducer::BfVisitorPos(parser.mRootNode);
-	bfReducer.mVisitorPos.MoveNext();	
+	bfReducer.mVisitorPos.MoveNext();
 	bfReducer.mSource = &parser;
 	auto exprNode = bfReducer.CreateExpression(parser.mRootNode->GetFirst());
 	parser.Close();
-	
+
 	DwAutoComplete autoComplete;
-	DbgExprEvaluator dbgExprEvaluator(this, dbgModule, &bfPassInstance, callStackIdx, cursorPos);		
+	DbgExprEvaluator dbgExprEvaluator(this, dbgModule, &bfPassInstance, callStackIdx, cursorPos);
 	if (cursorPos != -1)
 		dbgExprEvaluator.mAutoComplete = &autoComplete;
 	dbgExprEvaluator.mDbgCompileUnit = dbgCompileUnit;
@@ -10442,7 +10433,7 @@ String WinDebugger::EvaluateToAddress(const StringImpl& expr, int callStackIdx, 
 		val = "!Invalid expression";
 	}
 	else if (!resultType->IsPointerOrRef())
-	{		
+	{
 		if (exprResult.mSrcAddress != 0)
 			val = StrFormat("!Type '%s' is invalid. A sized pointer type is expected. Try using the '&' address-of operator.", exprResult.mType->ToString().c_str());
 		else
@@ -10509,17 +10500,17 @@ String WinDebugger::EvaluateAtAddress(const StringImpl& expr, intptr atAddr, int
 String WinDebugger::GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen)
 {
 	BP_ZONE("WinDebugger::GetAutoExpressions");
-	
+
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	if (IsInRunState())
 		return "!Not paused";
 
 	if (!IsPaused())
-		return "!Not running";	
+		return "!Not running";
 
 	if (!FixCallStackIdx(callStackIdx))
-		return "";	
+		return "";
 
 	CPUStackFrame* stackFrame = (callStackIdx >= 0) ? mCallStack[callStackIdx] : mCallStack.front();
 
@@ -10550,7 +10541,7 @@ String WinDebugger::GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart
 	if (callStackIdx < (int)mCallStack.size() - 2)
 	{
 		WdStackFrame* prevStackFrame = mCallStack[callStackIdx + 1];
-		// Inlined methods have no stack frame		
+		// Inlined methods have no stack frame
 		int stackSize = prevStackFrame->mRegisters.GetSP() - stackFrame->mRegisters.GetSP();
 		result += StrFormat("&$StackFrame\t%llu\t%llu\n", stackSize, stackFrame->mRegisters.GetSP());
 	}
@@ -10571,18 +10562,18 @@ String WinDebugger::GetAutoLocals(int stackFrameIdx, bool showRegs)
 		return "";
 
 	if (mCallStack.size() == 0)
-		UpdateCallStack();	
-	String result;		
+		UpdateCallStack();
+	String result;
 
 	Array<String> localList;
-	
+
 	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
 	UpdateCallStackMethod(actualStackFrameIdx);
 
 	if (actualStackFrameIdx >= mCallStack.size())
 		return "";
 	WdStackFrame* wdStackFrame = mCallStack[actualStackFrameIdx];
-	
+
 	DbgSubprogram* dwSubprogram = wdStackFrame->mSubProgram;
 	if (dwSubprogram == NULL)
 		return "";
@@ -10600,7 +10591,7 @@ String WinDebugger::GetAutoLocals(int stackFrameIdx, bool showRegs)
 	for (auto local : localList)
 	{
 		if (langage == DbgLanguage_C)
-		{ 
+		{
 			if ((local == "this") && (strncmp(dwSubprogram->mName, "<lambda_", 8) == 0))
 			{
 				// Use explicit "$this" so we can see the actual capture
@@ -10630,7 +10621,7 @@ String WinDebugger::GetAutoLocals(int stackFrameIdx, bool showRegs)
 	}
 
 	if (showRegs)
-	{		
+	{
 		result += "$FLAGS\n";
 
 		UpdateRegisterUsage(stackFrameIdx);
@@ -10640,7 +10631,7 @@ String WinDebugger::GetAutoLocals(int stackFrameIdx, bool showRegs)
 				result += "$" + String(CPURegisters::GetRegisterName(regIdx)) + "\n";
 		}
 	}
-	
+
 	return result;
 }
 
@@ -10657,7 +10648,7 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 
 	BfPassInstance bfPassInstance(mBfSystem);
 
-	BfParser parser(mBfSystem);	
+	BfParser parser(mBfSystem);
 	parser.mCompatMode = language != DbgLanguage_Beef;
 	auto terminatedExpr = expr + ";";
 	parser.SetSource(terminatedExpr.c_str(), terminatedExpr.length());
@@ -10673,7 +10664,7 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 		terminatedParentExpr.Remove(0, prefixEnd + 1);
 	}
 
-	BfParser parentParser(mBfSystem);	
+	BfParser parentParser(mBfSystem);
 	parentParser.mCompatMode = language != DbgLanguage_Beef;
 	parentParser.SetSource(terminatedParentExpr.c_str(), terminatedParentExpr.length());
 	parentParser.Parse(&bfPassInstance);
@@ -10692,14 +10683,14 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 	bfReducer.mVisitorPos.MoveNext();
 	auto parentExprNode = bfReducer.CreateExpression(parentParser.mRootNode->GetFirst());
 	parser.Close();
-	
-	if ((exprNode == NULL) || (parentExprNode == NULL))
-		return "!failed";		
 
-	DbgExprEvaluator dbgExprEvaluator(this, dbgModule, &bfPassInstance, callStackIdx, -1);	
+	if ((exprNode == NULL) || (parentExprNode == NULL))
+		return "!failed";
+
+	DbgExprEvaluator dbgExprEvaluator(this, dbgModule, &bfPassInstance, callStackIdx, -1);
 
 	DwFormatInfo formatInfo;
-	formatInfo.mCallStackIdx = callStackIdx;	
+	formatInfo.mCallStackIdx = callStackIdx;
 	formatInfo.mLanguage = language;
 
 	String formatFlags;
@@ -10721,7 +10712,7 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 	dbgExprEvaluator.mExplicitThisExpr = parentExprNode;
 
 	DbgTypedValue exprResult = dbgExprEvaluator.Resolve(exprNode);
-	BfAstNode* headNode = dbgExprEvaluator.FinalizeExplicitThisReferences(exprNode);	
+	BfAstNode* headNode = dbgExprEvaluator.FinalizeExplicitThisReferences(exprNode);
 
 	BfPrinter printer(parser.mRootNode, NULL, NULL);
 	printer.mIgnoreTrivia = true;
@@ -10752,7 +10743,7 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 String WinDebugger::GetProcessInfo()
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
-	
+
 	if ((mActiveThread == NULL) && (!mIsRunning))
 		return "";
 
@@ -10766,9 +10757,9 @@ String WinDebugger::GetProcessInfo()
 	::GetProcessTimes(mProcessInfo.hProcess, &creationTime, &exitTime, &kernelTime, &userTime);
 
 	String retStr;
-	PROCESS_MEMORY_COUNTERS memInfo = { 0 };	
+	PROCESS_MEMORY_COUNTERS memInfo = { 0 };
 	::GetProcessMemoryInfo(mProcessInfo.hProcess, &memInfo, sizeof(PROCESS_MEMORY_COUNTERS));
-	
+
 	FILETIME currentTime = { 0 };
 	::GetSystemTimeAsFileTime(&currentTime);
 
@@ -10777,7 +10768,7 @@ String WinDebugger::GetProcessInfo()
 	retStr += StrFormat("RunningTime\t%lld\n", *(int64*)&currentTime - *(int64*)&creationTime);
 	retStr += StrFormat("KernelTime\t%lld\n", *(int64*)&kernelTime / sysinfo.dwNumberOfProcessors);
 	retStr += StrFormat("UserTime\t%lld\n", *(int64*)&userTime / sysinfo.dwNumberOfProcessors);
-	
+
 	return retStr;
 }
 
@@ -10794,20 +10785,20 @@ String WinDebugger::GetThreadInfo()
 	{
 		if (mActiveThread != NULL)
 			retStr = StrFormat("%d", mActiveThread->mThreadId);
-		
+
 		for (auto threadInfo : mThreadList)
 		{
 			SetAndRestoreValue<WdThreadInfo*> prevThread(mActiveThread, threadInfo);
 
 			retStr += "\n";
-						
+
 			for (int pass = 0; pass < 2; pass++)
 			{
 				CPURegisters registers;
 				PopulateRegisters(&registers);
 
 				String locString = EncodeDataPtr((addr_target)registers.GetPC(), true);
-				
+
 				TryGetThreadName(threadInfo);
 
 				bool hadThreadName = true;
@@ -10821,7 +10812,7 @@ String WinDebugger::GetThreadInfo()
 						threadName = "Worker Thread";
 				}
 
-				bool isInvalid = false; 
+				bool isInvalid = false;
 				addr_target appendAddr = 0;
 
 				for (int stackIdx = 0; true; stackIdx++)
@@ -10847,22 +10838,22 @@ String WinDebugger::GetThreadInfo()
 							break;
 						}
 					}
-	
+
 					DbgModule* module = mDebugTarget->FindDbgModuleForAddress(registers.GetPC());
-					if (module == NULL)	
+					if (module == NULL)
 					{
 						isInvalid = true;
 						break;
 					}
-	
+
 					DbgModule* linkedModule = module->GetLinkedModule();
 					appendAddr = (addr_target)registers.GetPC();
 					locString = linkedModule->mDisplayName + "!" + EncodeDataPtr((addr_target)registers.GetPC(), true);
 					if (!hadThreadName)
 						threadName = linkedModule->mDisplayName + " thread";
-	
+
 					if ((mActiveThread == mExplicitStopThread) && (mActiveBreakpoint != NULL))
-					{						
+					{
 						if ((subProgram == NULL) ||
 							(mActiveBreakpoint->mAddr < subProgram->mBlock.mLowPC) ||
 							(mActiveBreakpoint->mAddr >= subProgram->mBlock.mHighPC))
@@ -10885,7 +10876,7 @@ String WinDebugger::GetThreadInfo()
 
 				if ((isInvalid) && (pass == 0))
 					continue;
-	
+
 				if (appendAddr != 0)
 				{
 					String symbolName;
@@ -10902,7 +10893,7 @@ String WinDebugger::GetThreadInfo()
 						locString = demangledName + StrFormat("+0x%X", offset);
 					}
 				}
-	
+
 				retStr += StrFormat("%d\t%s\t%s", threadInfo->mThreadId, threadName.c_str(), locString.c_str());
 
 				String attrs;
@@ -10913,7 +10904,7 @@ String WinDebugger::GetThreadInfo()
 				if (!attrs.IsEmpty())
 				{
 					retStr += "\t";
-					retStr += attrs;					
+					retStr += attrs;
 				}
 
 				break;
@@ -10924,9 +10915,9 @@ String WinDebugger::GetThreadInfo()
 }
 
 void WinDebugger::SetActiveThread(int threadId)
-{	
+{
 	AutoCrit autoCrit(mDebugManager->mCritSect);
-	
+
 	if ((mActiveThread != NULL) && (mActiveThread->mThreadId == threadId))
 		return;
 
@@ -10945,7 +10936,7 @@ void WinDebugger::SetActiveThread(int threadId)
 			*prevFrameArray = mCallStack;
 			mCallStack.Clear();
 		}
-		
+
 		DoClearCallStack(false);
 
 		Array<WdStackFrame*>* newFrameArray = NULL;
@@ -11030,7 +11021,7 @@ void WinDebugger::DoClearCallStack(bool clearSavedStacks)
 }
 
 void WinDebugger::ClearCallStack()
-{	
+{
 	DoClearCallStack(true);
 }
 
@@ -11069,7 +11060,7 @@ void WinDebugger::UpdateCallStack(bool slowEarlyOut)
 
 	bool isPartial = false;
 
-	// Incrementally fill callstack structure to avoid stepping slowdown during deep nesting	
+	// Incrementally fill callstack structure to avoid stepping slowdown during deep nesting
 	for (int fillIdx = 0; fillIdx < (slowEarlyOut ? 10000 : 100000); fillIdx++)
 	{
 		WdStackFrame* wdStackFrame = new WdStackFrame();
@@ -11137,26 +11128,26 @@ int WinDebugger::GetCallStackCount()
 }
 
 int WinDebugger::GetRequestedStackFrameIdx()
-{	
+{
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	if ((mActiveThread == mExplicitStopThread) && (mRequestedStackFrameIdx >= -1))
 	{
 		if (mActiveBreakpoint != NULL)
-			mRequestedStackFrameIdx = GetBreakStackFrameIdx();		
+			mRequestedStackFrameIdx = GetBreakStackFrameIdx();
 		if (mRequestedStackFrameIdx == -1)
 			mRequestedStackFrameIdx = 0;
 		return mRequestedStackFrameIdx;
-	}	
-		
-	int newCallStackIdx = 0;	
+	}
+
+	int newCallStackIdx = 0;
 	while (true)
-	{		
+	{
 		if (newCallStackIdx >= (int)mCallStack.size() - 1)
 			UpdateCallStack();
 		if (newCallStackIdx >= (int)mCallStack.size() - 1)
 			break;
-		
+
 		intptr addr;
 		String file;
 		int hotIdx;
@@ -11168,7 +11159,7 @@ int WinDebugger::GetRequestedStackFrameIdx()
 		int stackSize;
 		int8 flags;
 		GetStackFrameInfo(newCallStackIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
-		if (!file.empty())		
+		if (!file.empty())
 			return newCallStackIdx;
 		newCallStackIdx++;
 	}
@@ -11177,14 +11168,14 @@ int WinDebugger::GetRequestedStackFrameIdx()
 }
 
 int WinDebugger::GetBreakStackFrameIdx()
-{	
+{
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	if ((mActiveBreakpoint == NULL) || (mRunState != RunState_Breakpoint))
 		return -1;
 	if ((mBreakStackFrameIdx != -1) || (mActiveThread != mExplicitStopThread))
-		return mBreakStackFrameIdx;	
-		
+		return mBreakStackFrameIdx;
+
 	mBreakStackFrameIdx = 0;
 	BF_ASSERT(mActiveBreakpoint != NULL);
 	if (mCallStack.IsEmpty())
@@ -11195,12 +11186,12 @@ int WinDebugger::GetBreakStackFrameIdx()
 
 		for (int stackIdx = 0; stackIdx < (int)mCallStack.size(); stackIdx++)
 		{
-			auto callStackEntry = mCallStack[stackIdx];			
+			auto callStackEntry = mCallStack[stackIdx];
 			if (callStackEntry->mSubProgram == NULL)
 				break;
 			if ((mActiveBreakpoint->mAddr < callStackEntry->mSubProgram->mBlock.mLowPC) ||
 				(mActiveBreakpoint->mAddr >= callStackEntry->mSubProgram->mBlock.mHighPC))
-				break;			
+				break;
 
 			DbgSubprogram* specificSubprogram = callStackEntry->mSubProgram;
 			auto dwLineData = callStackEntry->mSubProgram->FindClosestLine(mActiveBreakpoint->mAddr, &specificSubprogram);
@@ -11233,13 +11224,13 @@ void WinDebugger::UpdateRegisterUsage(int stackFrameIdx)
 	auto dwSubprogram = wdStackFrame->mSubProgram;
 	if (dwSubprogram == NULL)
 		return;
-	
+
 	addr_target addr = dwSubprogram->mBlock.mLowPC;
-	
+
 	const uint8* baseOp = nullptr;
 	while (addr < dwSubprogram->mBlock.mHighPC)
 	{
-		CPUInst inst;		
+		CPUInst inst;
 		if (!mDebugTarget->DecodeInstruction(addr, &inst))
 			break;
 
@@ -11255,7 +11246,7 @@ void WinDebugger::UpdateCallStackMethod(int stackFrameIdx)
 {
 	if (mCallStack.empty())
 		return;
-	
+
 	int startIdx = std::min(stackFrameIdx, (int)mCallStack.size() - 1);
 	while (startIdx >= 0)
 	{
@@ -11272,10 +11263,10 @@ void WinDebugger::UpdateCallStackMethod(int stackFrameIdx)
 		if (checkFrameIdx >= mCallStack.size())
 			break;
 
-		WdStackFrame* wdStackFrame = mCallStack[checkFrameIdx];		
+		WdStackFrame* wdStackFrame = mCallStack[checkFrameIdx];
 
 		wdStackFrame->mHasGottenSubProgram = true;
-		addr_target pcAddress = (addr_target)wdStackFrame->GetSourcePC();		
+		addr_target pcAddress = (addr_target)wdStackFrame->GetSourcePC();
 		DbgSubprogram* dwSubprogram = mDebugTarget->FindSubProgram(pcAddress, DbgOnDemandKind_LocalOnly);
 		wdStackFrame->mHasGottenSubProgram = true;
 		wdStackFrame->mSubProgram = dwSubprogram;
@@ -11315,7 +11306,7 @@ void WinDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* ou
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	DbgSubprogram* subProgram = NULL;
-	DbgLineData* callingLineData = FindLineDataAtAddress((addr_target)addr, &subProgram);	
+	DbgLineData* callingLineData = FindLineDataAtAddress((addr_target)addr, &subProgram);
 
 	if (inlineCallAddr != 0)
 	{
@@ -11347,7 +11338,7 @@ void WinDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* ou
 					*outColumn = callingLineData->mColumn;
 			}
 			return;
-		}		
+		}
 	}
 
 	if (subProgram != NULL)
@@ -11357,7 +11348,7 @@ void WinDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* ou
 
 		*outHotIdx = subProgram->mCompileUnit->mDbgModule->mHotIdx;
 		*outFile = subProgram->GetLineSrcFile(*callingLineData)->GetLocalPath();
-		*outLine = callingLineData->mLine;		
+		*outLine = callingLineData->mLine;
 		*outColumn = callingLineData->mColumn;
 
 		FixupLineDataForSubprogram(subProgram);
@@ -11381,7 +11372,7 @@ void WinDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* ou
 		}
 
 		if (dwEndLineData != NULL)
-		{			
+		{
 			*outDefLineStart = dwStartLineData->mLine;
 			*outDefLineEnd = dwEndLineData->mLine;
 		}
@@ -11400,7 +11391,7 @@ void WinDebugger::GetStackAllocInfo(intptr addr, int* outThreadId, int* outStack
 		return;
 
 	for (auto thread : mThreadList)
-	{		
+	{
 		NT_TIB64 tib = { 0 };
 		if (!ReadMemory((intptr)thread->mThreadLocalBase, sizeof(tib), &tib))
 			continue;
@@ -11408,14 +11399,14 @@ void WinDebugger::GetStackAllocInfo(intptr addr, int* outThreadId, int* outStack
 		MEMORY_BASIC_INFORMATION stackInfo = { 0 };
 		if (VirtualQueryEx(mProcessInfo.hProcess, (void*)(tib.StackBase - 1), &stackInfo, sizeof(MEMORY_BASIC_INFORMATION)) == 0)
 			continue;
-				
+
 		if ((addr >= (intptr)stackInfo.AllocationBase) && (addr < (intptr)tib.StackBase))
 		{
 			*outThreadId = thread->mThreadId;
 
 			if (outStackIdx == NULL)
 				return;
-			
+
 			if (mActiveThread == thread)
 			{
 				UpdateCallStack(false);
@@ -11466,11 +11457,11 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 	UpdateCallStackMethod(stackFrameIdx);
 
 	if (stackFrameIdx >= mCallStack.size())
-	{		
+	{
 		return "";
 	}
 
-	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);	
+	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
 
 	UpdateCallStackMethod(actualStackFrameIdx);
 	WdStackFrame* wdStackFrame = mCallStack[actualStackFrameIdx];
@@ -11484,8 +11475,8 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 	if (actualStackFrameIdx < (int)mCallStack.size() - 2)
 	{
 		WdStackFrame* prevStackFrame = mCallStack[actualStackFrameIdx + 1];
-		// Inlined methods have no stack frame		
-		*outStackSize = prevStackFrame->mRegisters.GetSP() - wdStackFrame->mRegisters.GetSP();		
+		// Inlined methods have no stack frame
+		*outStackSize = prevStackFrame->mRegisters.GetSP() - wdStackFrame->mRegisters.GetSP();
 	}
 
 	const auto& _CheckHashSrcFile = [&](String& outStr, DbgModule* dbgModule, DbgSrcFile* srcFile)
@@ -11493,7 +11484,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		if (srcFile->mHashKind != DbgHashKind_None)
 		{
 			outStr += "#";
-			srcFile->GetHash(outStr);			
+			srcFile->GetHash(outStr);
 		}
 	};
 
@@ -11526,17 +11517,17 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 	};
 
 	if (wdStackFrame->mInInlineMethod)
-	{		
+	{
 		WdStackFrame* nextStackFrame = mCallStack[actualStackFrameIdx - 1];
 		auto subProgram = nextStackFrame->mSubProgram;
 
 		_SetFlags(subProgram);
 
-		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);			
+		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
 		DbgSubprogram* parentSubprogram = subProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
 		auto foundLine = parentSubprogram->FindClosestLine(subProgram->mBlock.mLowPC, &parentSubprogram);
 		if (foundLine != NULL)
-		{				
+		{
 			auto srcFile = parentSubprogram->GetLineSrcFile(*foundLine);
 			*outFile = srcFile->GetLocalPath();
 			_CheckHashSrcFile(*outFile, subProgram->mCompileUnit->mDbgModule, srcFile);
@@ -11544,7 +11535,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		}
 
 		*outLanguage = subProgram->GetLanguage();
-		*outHotIdx = subProgram->mCompileUnit->mDbgModule->mHotIdx;		
+		*outHotIdx = subProgram->mCompileUnit->mDbgModule->mHotIdx;
 		*outColumn = -1;
 
 		DbgSubprogram* callingSubProgram = NULL;
@@ -11565,11 +11556,11 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		DbgModule* dbgModule = wdStackFrame->mSubProgram->mCompileUnit->mDbgModule;
 		DbgModule* linkedModule = dbgModule->GetLinkedModule();
 		if (!linkedModule->mDisplayName.empty())
-			name = linkedModule->mDisplayName + "!" + name;		
+			name = linkedModule->mDisplayName + "!" + name;
 		_FixFilePath(dbgModule);
 		return name;
 	}
-	
+
 	DbgSubprogram* dwSubprogram = wdStackFrame->mSubProgram;
 	if (dwSubprogram != NULL)
 	{
@@ -11589,19 +11580,19 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		{
 			dwSubprogram->ToString(demangledName, true);
 		}
-		
+
 		DbgSrcFile* dwSrcFile = NULL;
 		DbgLineData* dwLineData = NULL;
 
 		FixupLineDataForSubprogram(dwSubprogram);
-		addr_target findAddress = wdStackFrame->GetSourcePC();				
+		addr_target findAddress = wdStackFrame->GetSourcePC();
 		DbgSubprogram* specificSubprogram = dwSubprogram;
 		dwLineData = dwSubprogram->FindClosestLine(findAddress, &specificSubprogram);
 
 		if ((dwLineData == NULL) && (dwSubprogram->mInlineeInfo != NULL) && (findAddress >= dwSubprogram->mBlock.mHighPC))
 			dwLineData = &dwSubprogram->mInlineeInfo->mLastLineData;
 
-		if (dwLineData != NULL)		
+		if (dwLineData != NULL)
 			dwSrcFile = dwSubprogram->GetLineSrcFile(*dwLineData);
 
 		DbgLineData* dwStartLineData = NULL;
@@ -11622,7 +11613,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 				dwEndLineData = &dwSubprogram->mInlineeInfo->mLastLineData;
 			}
 		}
-		
+
 		DbgModule* dbgModule = dwSubprogram->mCompileUnit->mDbgModule;
 		DbgModule* linkedModule = dbgModule->GetLinkedModule();
 		if (!linkedModule->mDisplayName.empty())
@@ -11635,8 +11626,8 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 
 		if ((dwLineData != NULL) && (dwSrcFile != NULL))
 		{
-			*outFile = dwSrcFile->GetLocalPath();			
-			_CheckHashSrcFile(*outFile, dbgModule, dwSrcFile);			
+			*outFile = dwSrcFile->GetLocalPath();
+			_CheckHashSrcFile(*outFile, dbgModule, dwSrcFile);
 
 			*outHotIdx = dbgModule->mHotIdx;
 			*outLine = dwLineData->mLine;
@@ -11644,7 +11635,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 			*outLanguage = (int)dwSubprogram->mCompileUnit->mLanguage;
 
 			if (dwEndLineData != NULL)
-			{				
+			{
 				*outDefLineStart = dwStartLineData->mLine;
 				*outDefLineEnd = dwEndLineData->mLine;
 			}
@@ -11664,11 +11655,11 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		addr_target offset;
 		DbgModule* dbgModule = NULL;
 		if (mDebugTarget->FindSymbolAt(pcAddress, &symbolName, &offset, &dbgModule))
-		{			
+		{
 			if (dbgModule->HasPendingDebugInfo())
 			{
 				*outFlags |= FrameFlags_HasPendingDebugInfo;
-				
+
 				if (mPendingDebugInfoLoad.ContainsKey(dbgModule))
 				{
 					String outName = EncodeDataPtr(pcAddress, true);
@@ -11677,16 +11668,16 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 					return outName;
 				}
 			}
-			
+
 			DbgModule* linkedModule = dbgModule->GetLinkedModule();
 			String demangledName = BfDemangler::Demangle(symbolName, DbgLanguage_Unknown);
 			if (!linkedModule->mDisplayName.empty())
 				demangledName = linkedModule->mDisplayName + "!" + demangledName;
 			_FixFilePath(dbgModule);
-			return demangledName + StrFormat("+0x%X", offset);			
-		}		
+			return demangledName + StrFormat("+0x%X", offset);
+		}
 	}
-	
+
 	DbgModule* dbgModule = mDebugTarget->FindDbgModuleForAddress(pcAddress);
 	DbgModule* linkedModule = NULL;
 	if (dbgModule != NULL)
@@ -11695,7 +11686,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		if (dbgModule->HasPendingDebugInfo())
 			*outFlags |= FrameFlags_HasPendingDebugInfo;
 	}
-	String outName = EncodeDataPtr(pcAddress, true);	
+	String outName = EncodeDataPtr(pcAddress, true);
 	if ((linkedModule != NULL) && (!linkedModule->mDisplayName.empty()))
 		outName = linkedModule->mDisplayName + "!" + outName;
 	_FixFilePath(dbgModule);
@@ -11729,7 +11720,7 @@ String WinDebugger::Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 
 	if (!FixCallStackIdx(stackFrameIdx))
 		return "";
-	
+
 	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
 	UpdateCallStackMethod(actualStackFrameIdx);
 	WdStackFrame* wdStackFrame = mCallStack[actualStackFrameIdx];
@@ -11742,32 +11733,32 @@ String WinDebugger::Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 		WdStackFrame* nextStackFrame = mCallStack[actualStackFrameIdx - 1];
 		auto subProgram = nextStackFrame->mSubProgram;
 		dbgModule = subProgram->mCompileUnit->mDbgModule;
-		
+
 		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
 		DbgSubprogram* parentSubprogram = subProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
 		auto foundLine = parentSubprogram->FindClosestLine(subProgram->mBlock.mLowPC, &parentSubprogram);
-		if (foundLine != NULL)		
+		if (foundLine != NULL)
 			dbgSrcFile = parentSubprogram->GetLineSrcFile(*foundLine);
 
 		DbgSubprogram* callingSubProgram = NULL;
 		DbgLineData* callingLineData = FindLineDataAtAddress(nextStackFrame->mSubProgram->mBlock.mLowPC - 1, &callingSubProgram);
-		if ((callingLineData != NULL) && (callingSubProgram == wdStackFrame->mSubProgram))		
-			dbgSrcFile = callingSubProgram->GetLineSrcFile(*callingLineData);					
+		if ((callingLineData != NULL) && (callingSubProgram == wdStackFrame->mSubProgram))
+			dbgSrcFile = callingSubProgram->GetLineSrcFile(*callingLineData);
 	}
 	else
 	{
 		DbgSubprogram* dwSubprogram = wdStackFrame->mSubProgram;
 		if (dwSubprogram != NULL)
-		{						
+		{
 			FixupLineDataForSubprogram(dwSubprogram);
 			addr_target findAddress = wdStackFrame->GetSourcePC();
 
-			DbgSubprogram* dbgSubprogram = NULL;			
+			DbgSubprogram* dbgSubprogram = NULL;
 			DbgLineData* dwLineData = dwSubprogram->FindClosestLine(findAddress, &dbgSubprogram, &dbgSrcFile);
 			dbgModule = dwSubprogram->mCompileUnit->mDbgModule;
 		}
 	}
-	
+
 	if (dbgSrcFile != NULL)
 	{
 		// Note: we must use mFilePath here, make sure we don't use GetLocalPath()
@@ -11782,7 +11773,7 @@ int WinDebugger::GetJmpState(int stackFrameIdx)
 
 	if (!FixCallStackIdx(stackFrameIdx))
 		return -1;
-	
+
 	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
 	UpdateCallStackMethod(actualStackFrameIdx);
 	WdStackFrame* wdStackFrame = mCallStack[actualStackFrameIdx];
@@ -11791,7 +11782,7 @@ int WinDebugger::GetJmpState(int stackFrameIdx)
 
 	CPUInst inst;
 	if (!mDebugTarget->DecodeInstruction(pcAddress, &inst))
-		return -1;	
+		return -1;
 
 	return inst.GetJmpState(wdStackFrame->mRegisters.mIntRegs.efl);
 }
@@ -11826,7 +11817,7 @@ String WinDebugger::GetStackMethodOwner(int stackFrameIdx, int& language)
 
 	if (!FixCallStackIdx(stackFrameIdx))
 		return "";
-	
+
 	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
 	if (actualStackFrameIdx >= (int)mCallStack.size())
 		actualStackFrameIdx = 0;
@@ -11854,7 +11845,7 @@ String WinDebugger::FindCodeAddresses(const StringImpl& fileName, int line, int 
 		return result;
 
 	bool foundInSequence = false;
-	WdBreakpoint* prevBreakpoint = NULL;	
+	WdBreakpoint* prevBreakpoint = NULL;
 
 	int bestLineOffset = 0x7FFFFFFF;
 
@@ -11878,7 +11869,7 @@ String WinDebugger::FindCodeAddresses(const StringImpl& fileName, int line, int 
 				if (!foundInSequence)
 				{
 					auto addr = dbgSubprogram->GetLineAddr(lineData);
-					result += EncodeDataPtr(addr, false) + "\t" + dbgSubprogram->ToString() + "\n";					
+					result += EncodeDataPtr(addr, false) + "\t" + dbgSubprogram->ToString() + "\n";
 				}
 			}
 
@@ -11895,15 +11886,15 @@ String WinDebugger::GetAddressSourceLocation(intptr address)
 {
 	DbgSubprogram* subProgram = NULL;
 	DbgLineData* lineData = FindLineDataAtAddress(address, &subProgram);
-	if (lineData != NULL)	
+	if (lineData != NULL)
 		return StrFormat("%s:%d:%d", subProgram->GetLineSrcFile(*lineData)->GetLocalPath().c_str(), lineData->mLine + 1, lineData->mColumn + 1);
-	
+
 	String outSymbol;
 	addr_target offset = 0;
 	DbgModule* dbgModule;
 	if (mDebugTarget->FindSymbolAt(address, &outSymbol, &offset, &dbgModule))
 	{
-		if (offset < 0x10000)		
+		if (offset < 0x10000)
 		{
 			outSymbol = BfDemangler::Demangle(outSymbol, DbgLanguage_Unknown);
 			if (offset > 0)
@@ -11919,7 +11910,7 @@ String WinDebugger::GetAddressSymbolName(intptr address, bool demangle)
 {
 	auto subProgram = mDebugTarget->FindSubProgram(address);
 	if (subProgram != NULL)
-		return subProgram->ToString();	
+		return subProgram->ToString();
 
 	String outSymbol;
 	addr_target offset = 0;
@@ -11929,7 +11920,7 @@ String WinDebugger::GetAddressSymbolName(intptr address, bool demangle)
 		if (offset < 0x10000)
 		{
 			if (demangle)
-				outSymbol = BfDemangler::Demangle(outSymbol, DbgLanguage_Unknown);			
+				outSymbol = BfDemangler::Demangle(outSymbol, DbgLanguage_Unknown);
 			if (offset > 0)
 				outSymbol += StrFormat("+%x", offset);
 			return outSymbol;
@@ -11944,12 +11935,12 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 	addr_target address = (addr_target)inAddress;
 
 	const int addrBorder = 1024;
-	
+
 	for (int offset = 0; offset < 8; offset++)
 	{
 		String result;
 		bool addOffset = true;
-		bool hadAddr = false;		
+		bool hadAddr = false;
 
 		DbgModule* dbgModule = mDebugTarget->FindDbgModuleForAddress(address);
 		DbgModuleMemoryCache* memCache = NULL;
@@ -11972,13 +11963,13 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 			addrStart = BF_MAX((addr_target)dbgModule->mImageBase, address - addrBorder - offset);
 		}
 		else
-		{			
+		{
 			memCache = new DbgModuleMemoryCache(addrStart & (4096 - 1), 4096 * 2);
 		}
 
 		if (memCache->mAddr == 0)
 			return "";
-		
+
 		//addr_target imageBase = dbgModule->mImageBase;
 		//int imageSize = dbgModule->mImageSize;
 
@@ -11986,16 +11977,16 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 		addr_target addrEnd = addrStart + addrBorder * 2 + 16;
 
 		while (dataAddr < addrEnd)
-		{			
+		{
 			if (dataAddr == address)
 				hadAddr = true;
 			if (dataAddr > address)
-			{				
+			{
 				if (!hadAddr)
 				{
 					if (offset == 7)
 					{
-						dataAddr = address;						
+						dataAddr = address;
 					}
 					break;
 				}
@@ -12008,7 +11999,7 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 			if (mDebugTarget->FindSymbolAt(dataAddr, &outSymbol, &symOffset, &symDWARF))
 			{
 				if (symOffset == 0)
-				{					
+				{
 					outSymbol = BfDemangler::Demangle(outSymbol, DbgLanguage_Unknown);
 					if ((symDWARF != NULL) && (!symDWARF->mDisplayName.empty()))
 						outSymbol = symDWARF->GetLinkedModule()->mDisplayName + "!" + outSymbol;
@@ -12020,7 +12011,7 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 			if (!mCPU->Decode(dataAddr, memCache, &inst))
 			{
 				if ((offset == 7) && (!hadAddr))
-				{	
+				{
 					uint8 instData[1];
 					memCache->Read(dataAddr, instData, 1);
 					int instLen = 1;
@@ -12065,11 +12056,11 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 			{
 				addr_target targetAddr = inst.GetTarget();
 				if (targetAddr != 0)
-				{					
+				{
 					if (mDebugTarget->FindSymbolAt(targetAddr, &outSymbol, &symOffset))
 					{
 						if (symOffset < 0x10000)
-						{							
+						{
 							outSymbol = BfDemangler::Demangle(outSymbol, DbgLanguage_Unknown);
 
 							result += " ; " + outSymbol;
@@ -12078,7 +12069,6 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 							//result += ">";
 						}
 					}
-					
 				}
 			}
 
@@ -12104,35 +12094,34 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 	addr_target address = (addr_target)inAddress;
 
 	if (mDebugTarget == NULL)
-		return "";	
+		return "";
 
 	String result;
-	auto dwSubProgram = mDebugTarget->FindSubProgram(address);	
-	if (dwSubProgram == NULL)	
-		return DisassembleAtRaw(address);	
+	auto dwSubProgram = mDebugTarget->FindSubProgram(address);
+	if (dwSubProgram == NULL)
+		return DisassembleAtRaw(address);
 	dwSubProgram = dwSubProgram->GetRootInlineParent();
 	DbgModule* dwarf = dwSubProgram->mCompileUnit->mDbgModule;
 
-	int frameBaseRegister = mDebugTarget->GetFrameBaseRegister(dwSubProgram);	
+	int frameBaseRegister = mDebugTarget->GetFrameBaseRegister(dwSubProgram);
 
 	addr_target addrStart = dwSubProgram->mBlock.mLowPC;
 	addr_target addrEnd = dwSubProgram->mBlock.mHighPC;
 
-	
 	auto dwCompileUnit = dwSubProgram->mCompileUnit;
-	{		
+	{
 		FixupLineData(dwCompileUnit);
-	}	
+	}
 
 	DbgSrcFile* dwSrcFile = NULL;
-	
+
 	FixupLineDataForSubprogram(dwSubProgram);
-	
+
 	DbgLineData* dwLineData = NULL;
 	if (dwSubProgram->mLineInfo != NULL)
-    	dwLineData = &dwSubProgram->mLineInfo->mLines[0];	
-	int nextLineDataIdx = 1;	
-	
+    	dwLineData = &dwSubProgram->mLineInfo->mLines[0];
+	int nextLineDataIdx = 1;
+
 	if (dwSubProgram->mIsOptimized)
 		result += "O\n";
 
@@ -12140,7 +12129,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 	int firstLine = 0;
 	int curLine = 0;
 	if (dwLineData != NULL)
-	{		
+	{
 		srcFile = dwSubProgram->GetLineSrcFile(*dwLineData);
 		result += "S " + srcFile->GetLocalPath() + "\n";
 		if (srcFile->mHashKind != DbgHashKind_None)
@@ -12156,14 +12145,14 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 		curLine = dwLineData->mLine + 1;
 		firstLine = dwLineData->mLine;
 	}
-	
-	Array<DbgSubprogram*> inlineStack;	
+
+	Array<DbgSubprogram*> inlineStack;
 
 	Array<DbgBlock*> blockList;
 	blockList.push_back(&dwSubProgram->mBlock);
 
-	addr_target dataAddr = addrStart;		
-	int decodeFailureCount = 0;	
+	addr_target dataAddr = addrStart;
+	int decodeFailureCount = 0;
 
 	auto& _PopInlineStack = [&]()
 	{
@@ -12179,7 +12168,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 	};
 
 	std::function<void(DbgSubprogram* subprogram, int depth)> _UpdateInlineStackHelper = [&](DbgSubprogram* subprogram, int depth)
-	{		
+	{
 		int stackIdx = depth - 1;
 		if (stackIdx < inlineStack.size())
 		{
@@ -12222,20 +12211,20 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 	};
 
 	while (dataAddr < addrEnd)
-	{				
+	{
 		// Pop off old scopes
 		while (blockList.size() > 0)
 		{
 			auto lastBlock = blockList.back();
 			if (dataAddr < lastBlock->mHighPC)
 				break;
-			blockList.pop_back();			
+			blockList.pop_back();
 		}
 
 		// Check entry into new child scopes
-		auto lastBlock = blockList.back();		
+		auto lastBlock = blockList.back();
 		for (auto checkBlock : lastBlock->mSubBlocks)
-		{			
+		{
 			if ((dataAddr >= checkBlock->mLowPC) && (dataAddr < checkBlock->mHighPC))
 			{
 				blockList.push_back(checkBlock);
@@ -12244,12 +12233,12 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 		}
 
 		bool allowSourceJump = false;
-				
+
 		if ((dwLineData != NULL) && (dwLineData->mContribSize != 0) && (dataAddr >= dwSubProgram->GetLineAddr(*dwLineData) + dwLineData->mContribSize))
 		{
-			DbgSubprogram* inlinedSubprogram = NULL;			
+			DbgSubprogram* inlinedSubprogram = NULL;
 			auto inlinedLine = dwSubProgram->FindClosestLine(dataAddr, &inlinedSubprogram);
-			
+
 			_UpdateInlineStack(dwSubProgram);
 		}
 
@@ -12257,7 +12246,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 		while ((dwLineData != NULL) && (dwSubProgram->GetLineAddr(*dwLineData) <= dataAddr))
 		{
 			_UpdateInlineStack(dwSubProgram->GetLineInlinee(*dwLineData));
-			
+
 			const int lineLimit = 5; // 15
 
 			if (allowSourceJump)
@@ -12266,7 +12255,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 			auto lineSrcFile = dwSubProgram->GetLineSrcFile(*dwLineData);
 
 			if (lineSrcFile != srcFile)
-			{				
+			{
 				srcFile = lineSrcFile;
 				result += "S ";
 				result += srcFile->GetLocalPath();
@@ -12274,7 +12263,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 				// Just show the one line from the new file
 				curLine = dwLineData->mLine;
 			}
-			
+
 			if (dwLineData->mLine < curLine - 1)
 			{
 				// Jumping backwards - possibly into inlined method, or possibly in current method.
@@ -12297,10 +12286,10 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 			//for ( ; curLine <= dwLineData->mLine; curLine++)
 			result += StrFormat("L %d %d\n", curLine, dwLineData->mLine - curLine + 1);
 			curLine = dwLineData->mLine + 1;
-						
+
 			DbgLineData* nextLineData = NULL;
 			while (nextLineDataIdx < dwSubProgram->mLineInfo->mLines.mSize)
-			{				
+			{
 				nextLineData = &dwSubProgram->mLineInfo->mLines[nextLineDataIdx];
 
 				//TODO:
@@ -12348,12 +12337,12 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 				break;
 			_PopInlineStack();
 		}
-		
+
 		bool hadDecodeFailure = false;
-		CPUInst inst;				
+		CPUInst inst;
 		if (!mCPU->Decode(dataAddr, dwarf->mOrigImageData, &inst))
-			hadDecodeFailure = true;					
-		
+			hadDecodeFailure = true;
+
 		if ((decodeFailureCount == 8) || ((decodeFailureCount > 0) && (!hadDecodeFailure)))
 		{
 			for (int i = decodeFailureCount; i < 4 + sizeof(addr_target); i++)
@@ -12389,7 +12378,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 			result += StrFormat("%02X ", instData[i]);
 
 		for (int i = instLen; i < 4 + sizeof(addr_target); i++)
-			result += "   ";		
+			result += "   ";
 
 		result += " ";
 
@@ -12413,9 +12402,9 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 						if ((reg == varRegister) && (offset == varOffset))
 						{
 							result += " ; ";
-							result += variable->mName;							
+							result += variable->mName;
 							break;
-						}						
+						}
 					}
 				}
 			}
@@ -12424,9 +12413,9 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 		{
 			addr_target targetAddr = inst.GetTarget();
 			if (targetAddr != 0)
-			{				
+			{
 				if ((targetAddr >= addrStart) && (targetAddr < addrEnd))
-				{					
+				{
 					result += StrFormat("\nJ %s", EncodeDataPtr(targetAddr, false).c_str());
 				}
 				else
@@ -12436,7 +12425,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 					if (mDebugTarget->FindSymbolAt(targetAddr, &outSymbol, &offset))
 					{
 						if (offset < 0x10000)
-						{							
+						{
 							outSymbol = BfDemangler::Demangle(outSymbol, dwSubProgram->GetLanguage());
 
 							result += " ; " + outSymbol;
@@ -12444,7 +12433,6 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 								result += StrFormat("+%x", offset);
 						}
 					}
-
 				}
 			}
 		}
@@ -12458,7 +12446,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 	/*if (curLine > 0)
 	{
 		for (int i = 0; i < 6; i++, curLine++)
-			result += StrFormat("L %d\n", curLine);		
+			result += StrFormat("L %d\n", curLine);
 	}*/
 	return result;
 }
@@ -12469,10 +12457,10 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 
 	addr_target address = (addr_target)inAddress;
 
-	DbgSubprogram* dwSubprogram = NULL;	
-	
+	DbgSubprogram* dwSubprogram = NULL;
+
 	DbgLineData* startLineData = FindLineDataAtAddress(address, &dwSubprogram, NULL);
-	
+
 	if (dwSubprogram == NULL)
 		return "";
 
@@ -12480,12 +12468,12 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 	PopulateRegisters(&registers);
 
 	auto inlinerSubprogram = dwSubprogram->GetRootInlineParent();
-	FixupLineDataForSubprogram(inlinerSubprogram);	
+	FixupLineDataForSubprogram(inlinerSubprogram);
 
 	if (inlinerSubprogram->mLineInfo->mLines.mSize == 0)
 		return "";
 	auto lineData = &inlinerSubprogram->mLineInfo->mLines[0];
-		
+
 	addr_target addr = dwSubprogram->mBlock.mLowPC;
 	addr_target endAddr = dwSubprogram->mBlock.mHighPC;
 
@@ -12509,7 +12497,7 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 		else
 			nextLineAddr = inlinerSubprogram->mBlock.mHighPC;
 
-		// This stuff doesn't make sense... 
+		// This stuff doesn't make sense...
 		DbgSubprogram* nextSubProgram;
 		if (nextLineData != NULL)
 		{
@@ -12545,7 +12533,7 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 
 					if (addr < (addr_target)inAddress)
 						callAddresses += "-";
-					callAddresses += EncodeDataPtr(addr, false);					
+					callAddresses += EncodeDataPtr(addr, false);
 
 					addr_target targetAddr = inst.GetTarget(this, &registers);
 					if (targetAddr != 0)
@@ -12586,7 +12574,7 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 								callAddresses += "\tFunc@" + EncodeDataPtr(targetAddr, false);
 							else
 								callAddresses += "\t" + outSymbol;
-							
+
 							String attrs;
 							bool isFiltered = false;
 							if (subprogram != NULL)
@@ -12598,12 +12586,12 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 							}
 
 							StepFilter* stepFilterPtr = NULL;
-							if (mDebugManager->mStepFilters.TryGetValue(outSymbol, &stepFilterPtr))							
-								isFiltered = stepFilterPtr->IsFiltered(isFiltered);														
-							
+							if (mDebugManager->mStepFilters.TryGetValue(outSymbol, &stepFilterPtr))
+								isFiltered = stepFilterPtr->IsFiltered(isFiltered);
+
 							if (isFiltered)
 								attrs += "f";  // 'f' for filter
-							
+
 							if (!attrs.IsEmpty())
 								callAddresses += "\t" + attrs;
 						}
@@ -12629,15 +12617,15 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 			if (checkLineAddr == checkSubprogram->mBlock.mLowPC)
 			{
 				addr_target inlineStartAddr = checkSubprogram->mBlock.mLowPC;
-				
+
 				// Find the calling line
-				DbgSubprogram* callingSubprogram = dwSubprogram;				
-				auto checkLineData = dwSubprogram->FindClosestLine(inlineStartAddr, &callingSubprogram);				
+				DbgSubprogram* callingSubprogram = dwSubprogram;
+				auto checkLineData = dwSubprogram->FindClosestLine(inlineStartAddr, &callingSubprogram);
 				if ((checkLineData != NULL) && (checkLineData->mCtxIdx == startLineData->mCtxIdx) && (checkLineData->mLine == startLineData->mLine))
 				{
 					if (inlineStartAddr <= (addr_target)inAddress)
 						callAddresses += "-";
-					callAddresses += EncodeDataPtr(inlineStartAddr, false);					
+					callAddresses += EncodeDataPtr(inlineStartAddr, false);
 					String outSymbol;
 					CreateFilterName(outSymbol, checkSubprogram);
 					callAddresses += "\t" + outSymbol;
@@ -12646,13 +12634,13 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 					StepFilter* stepFilterPtr;
 					if (mDebugManager->mStepFilters.TryGetValue(outSymbol, &stepFilterPtr))
 						isFiltered = stepFilterPtr->IsFiltered(isFiltered);
-					
-					if (isFiltered)					
-						callAddresses += "\tf"; // 'f' for filter					
-					
+
+					if (isFiltered)
+						callAddresses += "\tf"; // 'f' for filter
+
 					callAddresses += "\n";
 				}
-				
+
 // 				if (checkSubprogram->mBlock.mHighPC < endAddr)
 // 				{
 // 					addr = checkSubprogram->mBlock.mHighPC;
@@ -12701,7 +12689,7 @@ String WinDebugger::GetCurrentException()
 	}
 	break;
 	case EXCEPTION_DATATYPE_MISALIGNMENT:
-		exStr = "EXCEPTION_DATATYPE_MISALIGNMENT";		
+		exStr = "EXCEPTION_DATATYPE_MISALIGNMENT";
 	case EXCEPTION_SINGLE_STEP:
 		exStr = "EXCEPTION_SINGLE_STEP";
 		break;
@@ -12784,13 +12772,13 @@ String WinDebugger::GetCurrentException()
 void WinDebugger::SetAliasPath(const StringImpl& origPath, const StringImpl& localPath)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
-	
+
 	String fixedOrigPath = FixPathAndCase(origPath);
 	String fixedLocalPath = FixPathAndCase(localPath);
 
 	auto origFile = mDebugTarget->AddSrcFile(origPath);
 	origFile->mLocalPath = FixPath(localPath);
-	
+
 	mDebugTarget->mLocalToOrigSrcMap[fixedLocalPath] = fixedOrigPath;
 	// We invalidate the step filters, because previously-failing 'CheckSourceFileExist' checks may now succeed
 	mDebugManager->mStepFilterVersion++;
@@ -12812,7 +12800,7 @@ String WinDebugger::GetModulesInfo()
 		str += "\t";
 		if (module->mLoadState == DbgModuleLoadState_Loaded)
 		{
-			str += module->mFilePath;			
+			str += module->mFilePath;
 		}
 		else if (module->mLoadState == DbgModuleLoadState_NotLoaded)
 		{
@@ -12831,23 +12819,23 @@ String WinDebugger::GetModulesInfo()
 			str += module->mMappedImageFile->mFileName;
 			str += ")";
 		}
-		
+
 		str += "\t";
 		str += coff->mPDBPath;
 		str += "\t";
-		str += module->mVersion;		
-		str += StrFormat("\t%@-%@\t%dk\t", module->mImageBase, module->mImageBase + module->mImageSize, module->mImageSize / 1024);				
+		str += module->mVersion;
+		str += StrFormat("\t%@-%@\t%dk\t", module->mImageBase, module->mImageBase + module->mImageSize, module->mImageSize / 1024);
 
 		time_t timestamp = coff->mTimeStamp;
 		if (timestamp == 0)
-			timestamp = GetFileTimeWrite(coff->mFilePath);		
+			timestamp = GetFileTimeWrite(coff->mFilePath);
 		if (timestamp != 0)
 		{
 			char timeString[256];
 			auto time_info = localtime(&timestamp);
 			strftime(timeString, sizeof(timeString), "%D %T", time_info);
 			str += timeString;
-		}		
+		}
 		str += "\n";
 	}
 
@@ -12910,14 +12898,14 @@ int WinDebugger::LoadDebugInfoForModule(DbgModule* dbgModule)
 		return 2;
 	}
 	dbgPendingDebugInfoLoad->mAllowRemote = true;
-	
+
 	return 0;
 }
 
 int WinDebugger::LoadDebugInfoForModule(const StringImpl& moduleName)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
-	
+
 	for (auto dbgModule : mDebugTarget->mDbgModules)
 	{
 		String checkModuleName = GetFileName(dbgModule->mFilePath);
@@ -12935,11 +12923,11 @@ int WinDebugger::LoadDebugInfoForModule(const StringImpl& modulePath, const Stri
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	for (auto dbgModule : mDebugTarget->mDbgModules)
-	{		
+	{
 		if (modulePath.Equals(dbgModule->mFilePath, StringImpl::CompareKind_OrdinalIgnoreCase))
 		{
 			auto coff = (COFF*)dbgModule;
-			
+
 			String err;
 			if (!coff->mPDBLoaded)
 			{
@@ -12948,8 +12936,8 @@ int WinDebugger::LoadDebugInfoForModule(const StringImpl& modulePath, const Stri
 				{
 					ModuleChanged(dbgModule);
 				}
-				dbgModule->mFailMsgPtr = NULL;				
-			}			
+				dbgModule->mFailMsgPtr = NULL;
+			}
 			else
 			{
 				err = StrFormat("Module '%s' already has debug information loaded", GetFileName(modulePath).c_str());
@@ -12971,14 +12959,14 @@ void WinDebugger::FixupLineData(DbgCompileUnit* compileUnit)
 {
 	if (!compileUnit || !compileUnit->mNeedsLineDataFixup)
 		return;
-	compileUnit->mNeedsLineDataFixup = false;	
+	compileUnit->mNeedsLineDataFixup = false;
 }
 
 static int CompareLineData(const void* lineDataP1, const void* lineDataP2)
 {
-	int cmpResult = (int)(((DbgLineData*)lineDataP1)->mRelAddress - ((DbgLineData*)lineDataP2)->mRelAddress);	
+	int cmpResult = (int)(((DbgLineData*)lineDataP1)->mRelAddress - ((DbgLineData*)lineDataP2)->mRelAddress);
 	if (cmpResult != 0)
-		return cmpResult;	
+		return cmpResult;
 
 	// A larger contrib size means it's the 'outer' inlinee
 	cmpResult = -(((DbgLineData*)lineDataP1)->mContribSize - ((DbgLineData*)lineDataP2)->mContribSize);
@@ -12989,26 +12977,26 @@ static int CompareLineData(const void* lineDataP1, const void* lineDataP2)
 }
 
 void WinDebugger::FixupLineDataForSubprogram(DbgSubprogram* subProgram)
-{	
+{
 	if ((subProgram == NULL) || (!subProgram->mNeedLineDataFixup))
 		return;
 
-	BP_ZONE("FixupLineDataForSubprogram");	
+	BP_ZONE("FixupLineDataForSubprogram");
 
 	subProgram->mNeedLineDataFixup = false;
 	if (subProgram->mInlineeInfo != NULL)
 		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
-	
+
 	if ((subProgram->mLineInfo == NULL) || (subProgram->mLineInfo->mLines.mSize == 0))
 		return;
 
-	//TODO: I think this was covering up a bug in DWARF line encoding? Figure this out	
+	//TODO: I think this was covering up a bug in DWARF line encoding? Figure this out
 // 	if (subProgram->mLineInfo->mLines.mSize >= 2)
 // 	{
 // 		DbgLineData* line0 = &subProgram->mLineInfo->mLines[0];
 // 		DbgLineData* line1 = &subProgram->mLineInfo->mLines[1];
-// 		
-// 		 
+//
+//
 // 		if ((line0->mRelAddress == line1->mRelAddress) && (!line0->IsStackFrameSetup()) && (line1->IsStackFrameSetup()))
 // 		{
 // 			CPUInst inst;
@@ -13017,7 +13005,7 @@ void WinDebugger::FixupLineDataForSubprogram(DbgSubprogram* subProgram)
 // 		}
 // 	}
 
-	qsort(subProgram->mLineInfo->mLines.mVals, subProgram->mLineInfo->mLines.mSize, sizeof(DbgLineData), CompareLineData);	
+	qsort(subProgram->mLineInfo->mLines.mVals, subProgram->mLineInfo->mLines.mSize, sizeof(DbgLineData), CompareLineData);
 
 	// If we have multiple lines with the same line/column/context, merge them
 	if (!subProgram->mLineInfo->mLines.IsEmpty())
@@ -13052,8 +13040,8 @@ void WinDebugger::ReserveHotTargetMemory(int size)
 
 	if (size > 0)
 	{
-		// In 64-bit mode we have a reserved region on program load that we commit here because the offsets 
-		//  must be within 32-bits of the original EXE image, but in 32-bit mode we don't reserve anything 
+		// In 64-bit mode we have a reserved region on program load that we commit here because the offsets
+		//  must be within 32-bits of the original EXE image, but in 32-bit mode we don't reserve anything
 		//  until here
 #ifdef BF_DBG_32
 	//hotTargetMemory.mSize = std::max(1024 * 1024, size);
@@ -13081,12 +13069,12 @@ addr_target WinDebugger::AllocHotTargetMemory(int size, bool canExecute, bool ca
 	if (canExecute && canWrite)
 		prot = PAGE_EXECUTE_READWRITE;
 	else if (canExecute)
-		prot = PAGE_EXECUTE_READ;	
+		prot = PAGE_EXECUTE_READ;
 
 	auto hotTargetMemory = (HotTargetMemory*)&mHotTargetMemory.back();
 
 	if (hotTargetMemory->mPtr == 0)
-	{		
+	{
 		Fail("Failed to allocate memory for hot loading");
 		return 0;
 	}
@@ -13105,17 +13093,17 @@ addr_target WinDebugger::AllocHotTargetMemory(int size, bool canExecute, bool ca
 }
 
 void WinDebugger::ReleaseHotTargetMemory(addr_target addr, int size)
-{	
+{
 #ifdef BF_DBG_32
 	::VirtualFreeEx(mProcessInfo.hProcess, (void*)(intptr)addr, 0, MEM_RELEASE);
 #else
 	mDebugTarget->mHotHeap->Release(addr, size);
 	::VirtualFreeEx(mProcessInfo.hProcess, (void*)(intptr)addr, size, MEM_DECOMMIT);
-#endif	
+#endif
 }
 
 void WinDebugger::CleanupHotHeap()
-{	
+{
 	mDebugTarget->mLastHotHeapCleanIdx = mDebugTarget->mHotHeap->mBlockAllocIdx;
 
 	// Our criteria for determining whether a hot loaded file is still being used:
@@ -13141,7 +13129,7 @@ void WinDebugger::CleanupHotHeap()
 	for (int threadIdx = 0; threadIdx < (int)mThreadList.size(); threadIdx++)
 	{
 		WdThreadInfo* threadInfo = mThreadList[threadIdx];
-		
+
 		BF_CONTEXT lcContext;
 		lcContext.ContextFlags = BF_CONTEXT_CONTROL;
 		BF_GetThreadContext(threadInfo->mHThread, &lcContext);
@@ -13164,7 +13152,7 @@ void WinDebugger::CleanupHotHeap()
 			int numAddrsChecking = BF_MIN(1024, (int)((threadInfo->mStartSP - checkStackAddr) / sizeof(addr_target)));
 			ReadMemory(checkStackAddr, numAddrsChecking * sizeof(addr_target), checkAddrArr);
 			checkStackAddr += numAddrsChecking * sizeof(addr_target);
-			
+
 			for (int addrIdx = 0; addrIdx < numAddrsChecking; addrIdx++)
 			{
 				addr_target checkAddr = checkAddrArr[addrIdx];
@@ -13173,17 +13161,17 @@ void WinDebugger::CleanupHotHeap()
 			}
 		}
 	}
-	
+
 	auto mainModule = mDebugTarget->mTargetBinary;
 	for (auto entry : mainModule->mSymbolNameMap)
 	{
 		auto dwSymbol = entry->mValue;
 		addr_target checkAddr = dwSymbol->mAddress;
 		if ((checkAddr >= lowAddr) && (checkAddr < highAddr))
-			mDebugTarget->mHotHeap->MarkBlockReferenced(checkAddr);		
+			mDebugTarget->mHotHeap->MarkBlockReferenced(checkAddr);
 	}
 
-	mDebugTarget->CleanupHotHeap();	
+	mDebugTarget->CleanupHotHeap();
 
 	BfLogDbg("Hot load memory used: %dk\n", (int)mDebugTarget->mHotHeap->GetUsedSize() / 1024);
 }
@@ -13194,7 +13182,7 @@ int WinDebugger::EnableWriting(intptr address, int size)
 	bool success = ::VirtualProtectEx(mProcessInfo.hProcess, (void*)(intptr)address, size, PAGE_READWRITE, &oldProt);
 	if (!success)
 	{
-		int err = GetLastError();		
+		int err = GetLastError();
 	}
 	return (int)oldProt;
 }
@@ -13229,10 +13217,10 @@ bool WinDebugger::ReadMemory(intptr address, uint64 length, void* dest, bool loc
 		{
 			return false;
 		}
-	} 
-	
+	}
+
 	if (mMemCacheAddr != 0)
-	{		
+	{
 		addr_target targetAddr = (addr_target)address;
 		if ((targetAddr >= mMemCacheAddr) && (targetAddr + length <= mMemCacheAddr + WD_MEMCACHE_SIZE) && (mMemCacheAddr > 1))
 		{
@@ -13250,7 +13238,7 @@ bool WinDebugger::ReadMemory(intptr address, uint64 length, void* dest, bool loc
 		}
 
 		// Failed, turn off caching
-		mMemCacheAddr = 0;		
+		mMemCacheAddr = 0;
 	}
 
 	SIZE_T dwReadBytes;
@@ -13264,7 +13252,7 @@ bool WinDebugger::ReadMemory(intptr address, uint64 length, void* dest, bool loc
 bool WinDebugger::WriteMemory(intptr address, void* src, uint64 length)
 {
 	SIZE_T dwBytesWritten = 0;
-	int result = ::WriteProcessMemory(mProcessInfo.hProcess, (void*)(intptr)address, src, (SIZE_T)length, &dwBytesWritten);	
+	int result = ::WriteProcessMemory(mProcessInfo.hProcess, (void*)(intptr)address, src, (SIZE_T)length, &dwBytesWritten);
 	return result != 0;
 }
 
@@ -13310,7 +13298,7 @@ addr_target WinDebugger::GetTLSOffset(int tlsIndex)
 		return 0;
 	NTSTATUS status = NtQueryInformationThread(mActiveThread->mHThread, (THREADINFOCLASS)0, &threadInfo, sizeof(threadInfo), nullptr);
 	if (status < 0)
-		return 0;	
+		return 0;
 
 #ifdef BF_DBG_32
 	addr_target tibAddr = ReadMemory<addr_target>((intptr)threadInfo.mTebBaseAddress + 0x0);
@@ -13346,8 +13334,8 @@ DbgMemoryFlags WinDebugger::GetMemoryFlags(intptr address)
 		flags = (DbgMemoryFlags)(flags | DbgMemoryFlags_Read);
 		flags = (DbgMemoryFlags)(flags | DbgMemoryFlags_Write);
 	}
-	if (memBasicInfo.AllocationProtect & PAGE_READONLY)	
-		flags = (DbgMemoryFlags)(flags | DbgMemoryFlags_Read);	
+	if (memBasicInfo.AllocationProtect & PAGE_READONLY)
+		flags = (DbgMemoryFlags)(flags | DbgMemoryFlags_Read);
 	if (memBasicInfo.AllocationProtect & PAGE_WRITECOPY)
 		flags = (DbgMemoryFlags)(flags | DbgMemoryFlags_Write);
 	if (memBasicInfo.AllocationProtect & PAGE_EXECUTE)
@@ -13355,7 +13343,7 @@ DbgMemoryFlags WinDebugger::GetMemoryFlags(intptr address)
 	if (memBasicInfo.AllocationProtect & PAGE_EXECUTE_READ)
 	{
 		flags = (DbgMemoryFlags)(flags | DbgMemoryFlags_Execute);
-		flags = (DbgMemoryFlags)(flags | DbgMemoryFlags_Read);		
+		flags = (DbgMemoryFlags)(flags | DbgMemoryFlags_Read);
 	}
 	if (memBasicInfo.AllocationProtect & PAGE_EXECUTE_READWRITE)
 	{
@@ -13380,7 +13368,7 @@ Debugger* Beefy::CreateDebugger64(DebugManager* debugManager, DbgMiniDump* miniD
 	if (miniDump != NULL)
 	{
 		auto debugger = new MiniDumpDebugger(debugManager, miniDump);
-		
+
 		return debugger;
 	}
 	return new WinDebugger(debugManager);
@@ -13399,6 +13387,5 @@ void WdAllocTest()
 	}
 }
 #endif
-
 
 #endif //!defined BF32 || !defined BF_DBG_64

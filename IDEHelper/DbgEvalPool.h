@@ -16,7 +16,7 @@ public:
 		int mAllowAssignment;
 		int mAllowCall;
 		int mExpressionFlags;
-	};	
+	};
 
 public:
 	std::vector<Entry*> mEntryList;
