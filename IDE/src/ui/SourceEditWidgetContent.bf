@@ -6071,6 +6071,8 @@ namespace IDE.ui
 						}
 					}
 
+					bool wasCursorVisible = IsCursorVisible();
+					bool hadCloses = false;
 					for (var collapseEntry in mOrderedCollapseEntries)
 					{
 						bool wantOpen = collapseEntry.DefaultOpen;
@@ -6078,7 +6080,16 @@ namespace IDE.ui
 							wantOpen = !wantOpen;
 
 						if (collapseEntry.mIsOpen != wantOpen)
+						{
+							if (!wantOpen)
+								hadCloses = true;
 							SetCollapseOpen(@collapseEntry.Index, wantOpen, true, true);
+						}
+					}
+					if ((wasCursorVisible) && (hadCloses))
+					{
+						UpdateCollapse(0.0f);
+						EnsureCursorVisible();
 					}
 
 					mCollapseAwaitingDB = false;
