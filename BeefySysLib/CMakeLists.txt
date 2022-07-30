@@ -16,7 +16,7 @@ set(OUTPUT_RELEASE Release/bin)
 
 project(${PROJECT_NAME} CXX C)
 
-# Define Release by default.
+# Define Debug by default.
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
   message(STATUS "Build type not specified: Use Debug by default.")
