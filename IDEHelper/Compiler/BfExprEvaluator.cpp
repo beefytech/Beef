@@ -22925,9 +22925,18 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 
 bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, BfExpression* leftExpression, BfExpression* rightExpression, BfTypedValue leftValue, BfType* wantType, BfTypedValue* assignTo)
 {
-	if ((leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())))
+	if ((leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())) /* || (leftValue.mType->IsNullable())*/)
 	{
 		leftValue = mModule->LoadValue(leftValue);
+
+		BfIRValue nullableHasValue;
+		if (leftValue.mType->IsNullable())
+		{
+			if (wantType == leftValue.mType)
+				wantType = leftValue.mType->GetUnderlyingType();
+			nullableHasValue = mModule->mBfIRBuilder->CreateExtractValue(leftValue.mValue, 1);
+			leftValue = BfTypedValue(mModule->mBfIRBuilder->CreateExtractValue(leftValue.mValue, 0), leftValue.mType->GetUnderlyingType());
+		}
 
 		if (leftValue.mValue.IsConst())
 		{
@@ -22954,7 +22963,9 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 		auto endLhsBB = prevBB;
 
 		BfIRValue isNull;
-		if (leftValue.mType->IsFunction())
+		if (nullableHasValue)
+			isNull = mModule->mBfIRBuilder->CreateCmpEQ(nullableHasValue, mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0));
+		else if (leftValue.mType->IsFunction())
 			isNull = mModule->mBfIRBuilder->CreateIsNull(
 				mModule->mBfIRBuilder->CreateIntToPtr(leftValue.mValue, mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_NullPtr))));
 		else
