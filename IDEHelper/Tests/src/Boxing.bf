@@ -1,6 +1,7 @@
 #pragma warning disable 168
 
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -86,6 +87,9 @@ namespace Tests
 			var scObjResult = scVariant.GetBoxed();
 			Test.Assert(scObjResult case .Err);
 			scVariant.Dispose();
+
+			List<int> l = scope .();
+			IEnumerator<int> e = (l != null) ? (.)null : l.GetEnumerator();
 		}
 
 		[Test]

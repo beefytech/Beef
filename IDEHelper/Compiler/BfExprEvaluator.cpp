@@ -19742,8 +19742,6 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 		mModule->FixIntUnknown(falseValue);
  	}
 
-	prevInCondBlock.Restore();
-
 	bool isValid = trueValue && falseValue;
 
 	if (isValid)
@@ -19779,6 +19777,8 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 				trueValue = trueToFalse;
 		}
 	}
+
+	prevInCondBlock.Restore();
 
 	mModule->mBfIRBuilder->SetInsertPoint(trueBlockPos);
 	if (isValid)
