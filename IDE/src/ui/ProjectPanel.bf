@@ -2061,8 +2061,42 @@ namespace IDE.ui
 			}
 
             base.KeyDown(keyCode, isRepeat);
-            if (keyCode == KeyCode.Delete)
-            	RemoveSelectedItems();
+
+			if (mWidgetWindow.GetKeyFlags() == .Ctrl)
+			{
+				switch (keyCode)
+				{
+				case (.)'C':
+
+					String clipData = scope .();
+					mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
+						{
+							if (mListViewToProjectMap.GetValue(selectedItem) case .Ok(var sourceProjectItem))
+							{
+								if (var projectSource = sourceProjectItem as ProjectSource)
+								{
+									var path = scope String();
+									sourceProjectItem.mProject.GetProjectFullPath(projectSource.mPath, path);
+									path.Replace('\\', '/');
+
+									if (!clipData.IsEmpty)
+										clipData.Append("\n");
+									clipData.Append("file:///");
+									IDEUtils.URLEncode(path, clipData);
+								}
+							}
+						});
+					if (!clipData.IsEmpty)
+						gApp.SetClipboardData("code/file-list", clipData.Ptr, (.)clipData.Length, true);
+				case (.)'V':
+				default:
+				}
+			}
+			else if (mWidgetWindow.GetKeyFlags() == .None)
+			{
+				if (keyCode == KeyCode.Delete)
+					RemoveSelectedItems();
+			}
         }
 
         void ItemClicked(MouseEvent theEvent)
@@ -2909,6 +2943,12 @@ namespace IDE.ui
 						    {
 								Regenerate(false);
 						    });
+
+						item = gApp.AddMenuItem(menu, "Duplicate", "Duplicate Item");
+						item.mOnMenuItemSelected.Add(new (item) =>
+							{
+
+							});
 					}
 					else if (let projectFolder = projectItem as ProjectFolder)
 					{
