@@ -22506,15 +22506,17 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 		auto rootMethodState = mCurMethodState->GetRootMethodState();
 		BfDeferredLocalAssignData deferredLocalAssignData(rootMethodState->mCurScope);
 		deferredLocalAssignData.mVarIdBarrier = rootMethodState->mCurLocalVarId;
-		if (rootMethodState->mDeferredLocalAssignData != NULL)
+
+		auto prevDLA = rootMethodState->mDeferredLocalAssignData;
+		while ((prevDLA != NULL) && (prevDLA->mIsChained))
+			prevDLA = prevDLA->mChainedAssignData;
+		if (prevDLA != NULL)
 		{
-			auto prevDLA = rootMethodState->mDeferredLocalAssignData;
-			while ((prevDLA != NULL) && (prevDLA->mIsChained))
-				prevDLA = prevDLA->mChainedAssignData;
 			deferredLocalAssignData.mAssignedLocals = prevDLA->mAssignedLocals;
 			deferredLocalAssignData.mLeftBlockUncond = prevDLA->mLeftBlockUncond;
 		}
-		SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(rootMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
+
+		SetAndRestoreValue<BfDeferredLocalAssignData*> sarDLA(rootMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
 		if (!mIgnoreErrors)
 			localMethod->mDidBodyErrorPass = true;
 
