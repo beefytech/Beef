@@ -18263,6 +18263,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		}
 	}
 
+	auto autoComplete = mCompiler->GetAutoComplete();
 	if (targetType != NULL)
 	{
 		BfAstNode* refNode = methodDeclaration;
@@ -18271,7 +18272,6 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 		BfAutoParentNodeEntry autoParentNodeEntry(this, refNode);
 
-		auto autoComplete = mCompiler->GetAutoComplete();
 		auto wasCapturingMethodInfo = (autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo);
 		if ((autoComplete != NULL) && (ctorDeclaration != NULL) && (ctorInvocation != NULL))
 		{
@@ -18315,6 +18315,91 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			}
 			else
 				autoComplete->mIsCapturingMethodMatchInfo = false;
+		}
+	}
+
+	auto autoCtorDecl = BfNodeDynCast<BfAutoConstructorDeclaration>(methodDeclaration);
+	if ((autoComplete != NULL) && (autoComplete->CheckFixit(methodDeclaration)) && (methodDeclaration != NULL) && (autoCtorDecl != NULL))
+	{
+		auto typeDecl = methodDef->mDeclaringType->mTypeDeclaration;
+		BfParserData* parser = typeDecl->GetSourceData()->ToParserData();
+		if (parser != NULL)
+		{
+			String fixitStr = "Expand auto constructor\t";
+			int insertPos = typeDecl->mSrcStart;
+
+			bool needsBlock = false;
+
+			if (auto defBlock = BfNodeDynCast<BfBlock>(typeDecl->mDefineNode))
+			{
+				insertPos = defBlock->mOpenBrace->mSrcStart + 1;
+			}
+			else if (auto tokenNode = BfNodeDynCast<BfTokenNode>(typeDecl->mDefineNode))
+			{
+				insertPos = tokenNode->mSrcStart;
+				fixitStr += StrFormat("delete|%s-%d|\x01",
+					autoComplete->FixitGetLocation(parser, tokenNode->mSrcStart).c_str(), tokenNode->mSrcEnd - tokenNode->mSrcStart);
+				needsBlock = true;
+			}
+
+			int srcStart = methodDeclaration->mSrcStart;
+			if ((autoCtorDecl->mPrefix == NULL) && (typeDecl->mColonToken != NULL))
+				srcStart = typeDecl->mColonToken->mSrcStart;
+
+			while ((srcStart > 0) && (::isspace((uint8)parser->mSrc[srcStart - 1])))
+				srcStart--;
+
+			fixitStr += StrFormat("expand|%s|%d|",
+				parser->mFileName.c_str(), insertPos);
+
+			if (needsBlock)
+				fixitStr += "\t";
+			else
+				fixitStr += "\f";
+
+			for (int paramIdx = 0; paramIdx < autoCtorDecl->mParams.mSize; paramIdx++)
+			{
+				String paramStr = autoCtorDecl->mParams[paramIdx]->ToString();
+				paramStr.Replace('\n', '\r');
+
+				fixitStr += "public ";
+				fixitStr += paramStr;
+				fixitStr += ";\r";
+			}
+
+			fixitStr += "\rpublic this(";
+			for (int paramIdx = 0; paramIdx < autoCtorDecl->mParams.mSize; paramIdx++)
+			{
+				if (paramIdx > 0)
+					fixitStr += ", ";
+				String paramStr = autoCtorDecl->mParams[paramIdx]->ToString();
+				paramStr.Replace('\n', '\r');
+				fixitStr += paramStr;
+			}
+			fixitStr += ")\t";
+			for (int paramIdx = 0; paramIdx < autoCtorDecl->mParams.mSize; paramIdx++)
+			{
+				if (paramIdx > 0)
+					fixitStr += "\r";
+				auto nameNode = autoCtorDecl->mParams[paramIdx]->mNameNode;
+				if (nameNode == NULL)
+					continue;
+				String nameStr = nameNode->ToString();
+				fixitStr += "this.";
+				fixitStr += nameStr;
+				fixitStr += " = ";
+				fixitStr += nameStr;
+				fixitStr += ";";
+			}
+			fixitStr += "\b";
+
+			if (needsBlock)
+				fixitStr += "\b";
+
+			fixitStr += StrFormat("\x01""delete|%s-%d|",
+				autoComplete->FixitGetLocation(parser, srcStart).c_str(), autoCtorDecl->mSrcEnd - srcStart);
+
+			mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", fixitStr.c_str()));
 		}
 	}
 }

@@ -596,6 +596,11 @@ void BfStructuralVisitor::Visit(BfConstructorDeclaration* ctorDeclaration)
 	Visit(ctorDeclaration->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfAutoConstructorDeclaration* ctorDeclaration)
+{
+	Visit(ctorDeclaration->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfDestructorDeclaration* dtorDeclaration)
 {
 	Visit(dtorDeclaration->ToBase());

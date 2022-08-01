@@ -119,6 +119,7 @@ public:
 	virtual void Visit(BfUnaryOperatorExpression* binOpExpr);
 	virtual void Visit(BfBinaryOperatorExpression* binOpExpr);
 	virtual void Visit(BfConstructorDeclaration* ctorDeclaration);
+	virtual void Visit(BfAutoConstructorDeclaration* ctorDeclaration);
 	virtual void Visit(BfDestructorDeclaration* dtorDeclaration);
 	virtual void Visit(BfMethodDeclaration* methodDeclaration);
 	virtual void Visit(BfOperatorDeclaration* operatorDeclaration);

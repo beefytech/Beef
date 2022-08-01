@@ -8960,6 +8960,13 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 						MEMBER_SET(ctorDecl, mThisToken, tokenNode);
 						ParseMethod(ctorDecl, &params, &commas);
 
+						if (!baseClassCommas.IsEmpty())
+						{
+							ctorDecl->mPrefix = baseClassCommas.back();
+							baseClassCommas.pop_back();
+							ctorDecl->mSrcStart = ctorDecl->mPrefix->mSrcStart;
+						}
+
 						if (typeDeclaration->mAutoCtor == NULL)
 						{
 							MEMBER_SET(typeDeclaration, mAutoCtor, ctorDecl);

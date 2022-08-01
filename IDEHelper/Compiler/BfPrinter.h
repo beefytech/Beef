@@ -218,6 +218,7 @@ public:
 	virtual void Visit(BfUnaryOperatorExpression* binOpExpr) override;
 	virtual void Visit(BfBinaryOperatorExpression* binOpExpr) override;
 	virtual void Visit(BfConstructorDeclaration* ctorDeclaration) override;
+	virtual void Visit(BfAutoConstructorDeclaration* ctorDeclaration) override;
 	virtual void Visit(BfDestructorDeclaration* dtorDeclaration) override;
 	virtual void Visit(BfMethodDeclaration* methodDeclaration) override;
 	virtual void Visit(BfOperatorDeclaration* opreratorDeclaration) override;

@@ -1038,6 +1038,12 @@ void BfElementVisitor::Visit(BfConstructorDeclaration* ctorDeclaration)
 	VisitChild(ctorDeclaration->mInitializer);
 }
 
+void BfElementVisitor::Visit(BfAutoConstructorDeclaration* ctorDeclaration)
+{
+	VisitChild(ctorDeclaration->mPrefix);
+	Visit(ctorDeclaration->ToBase());
+}
+
 void BfElementVisitor::Visit(BfDestructorDeclaration* dtorDeclaration)
 {
 	Visit(dtorDeclaration->ToBase());

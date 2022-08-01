@@ -4913,7 +4913,12 @@ namespace IDE.ui
 											var autoComplete = new AutoComplete(mEditWidget);
 											autoComplete.SetInfo(infoCopy);
 											autoComplete.mAutoCompleteListWidget.mSelectIdx = fixitIdx;
+
+											UndoBatchStart undoBatchStart = new UndoBatchStart("autocomplete");
+											mData.mUndoManager.Add(undoBatchStart);
 											autoComplete.InsertSelection(0);
+											mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+
 											autoComplete.Close();
 										}
 										~

@@ -2493,6 +2493,16 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 	FlushVisitChild();
 }
 
+void BfPrinter::Visit(BfAutoConstructorDeclaration* ctorDeclaration)
+{
+	if (ctorDeclaration->mPrefix != NULL)
+	{
+		VisitChild(ctorDeclaration->mPrefix);
+		ExpectSpace();
+	}
+	Visit(ctorDeclaration->ToBase());
+}
+
 void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 {
 	//Visit((BfAstNode*)dtorDeclaration);
