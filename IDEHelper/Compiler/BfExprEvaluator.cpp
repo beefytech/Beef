@@ -22925,17 +22925,21 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 
 bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, BfExpression* leftExpression, BfExpression* rightExpression, BfTypedValue leftValue, BfType* wantType, BfTypedValue* assignTo)
 {
-	if ((leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())) /* || (leftValue.mType->IsNullable())*/)
+	if ((leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())) || (leftValue.mType->IsNullable()))
 	{
 		leftValue = mModule->LoadValue(leftValue);
 
+		BfType* nullableElementType = NULL;
 		BfIRValue nullableHasValue;
+		BfTypedValue nullableExtractedLeftValue;
 		if (leftValue.mType->IsNullable())
 		{
-			if (wantType == leftValue.mType)
-				wantType = leftValue.mType->GetUnderlyingType();
-			nullableHasValue = mModule->mBfIRBuilder->CreateExtractValue(leftValue.mValue, 1);
-			leftValue = BfTypedValue(mModule->mBfIRBuilder->CreateExtractValue(leftValue.mValue, 0), leftValue.mType->GetUnderlyingType());
+			nullableElementType = leftValue.mType->GetUnderlyingType();
+			nullableHasValue = mModule->mBfIRBuilder->CreateExtractValue(leftValue.mValue, nullableElementType->IsValuelessType() ? 1 : 2); // has_value
+			if (!nullableElementType->IsValuelessType())
+				nullableExtractedLeftValue = BfTypedValue(mModule->mBfIRBuilder->CreateExtractValue(leftValue.mValue, 1), nullableElementType); // value
+			else
+				nullableExtractedLeftValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), nullableElementType);
 		}
 
 		if (leftValue.mValue.IsConst())
@@ -22984,6 +22988,14 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 			mModule->AssertErrorState();
 			return true;
 		}
+
+		if ((assignTo == NULL) && (leftValue.mType->IsNullable()) && (!rightValue.mType->IsNullable()))
+		{
+			if (wantType == leftValue.mType)
+				wantType = nullableElementType;
+			leftValue = nullableExtractedLeftValue;
+		}
+
 		rightValue = mModule->LoadValue(rightValue);
 
 		if (assignTo == NULL)

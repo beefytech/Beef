@@ -1,6 +1,7 @@
 #pragma warning disable 168
 
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -97,6 +98,22 @@ namespace Tests
 
 			String str = "Abc";
 			StringView? svn = str;
+
+			iNull = null;
+			int? iNull2 = 123;
+			List<int> l = null;
+			List<int> l2 = scope .();
+
+			int a = iNull2 ?? l.Count;
+			int b = iNull ?? l2.Count;
+			var c = iNull ?? iNull2;
+
+			Test.Assert(a == 123);
+			Test.Assert(b == 0);
+			Test.Assert(typeof(decltype(c)) == typeof(int?));
+
+			iNull ??= iNull2;
+			Test.Assert(iNull == 123);
 		}
 	}
 }
