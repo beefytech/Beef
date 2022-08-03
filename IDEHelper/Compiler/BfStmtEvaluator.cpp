@@ -6709,7 +6709,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		else
 		{
 			// Normal case
-			if ((nextResult) && (varType->IsComposite()))
+			if ((nextResult) && (varType->IsComposite()) && (!isRefExpression))
 			{
 				needsValCopy = false;
 				varType = CreateRefType(varType);
