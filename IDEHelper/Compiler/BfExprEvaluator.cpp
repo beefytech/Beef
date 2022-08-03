@@ -22930,7 +22930,7 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 {
 	if ((leftValue) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsFunction()) || (leftValue.mType->IsObject())) || (leftValue.mType->IsNullable()))
 	{
-		leftValue = mModule->LoadValue(leftValue);
+		leftValue = mModule->LoadOrAggregateValue(leftValue);
 
 		BfType* nullableElementType = NULL;
 		BfIRValue nullableHasValue;
