@@ -16808,8 +16808,16 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 		bindResult.mIRArgs.RemoveAt(0);
 		calcAppendArgs = bindResult.mIRArgs;
 	}
-	BF_ASSERT(calcAppendMethodModule.mFunc);
-	appendSizeTypedValue = exprEvaluator.CreateCall(NULL, calcAppendMethodModule.mMethodInstance, calcAppendMethodModule.mFunc, false, calcAppendArgs);
+
+	if (mBfIRBuilder->mIgnoreWrites)
+	{
+		appendSizeTypedValue = GetFakeTypedValue(GetPrimitiveType(BfTypeCode_IntPtr));
+	}
+	else
+	{
+		BF_ASSERT(calcAppendMethodModule.mFunc);
+		appendSizeTypedValue = exprEvaluator.CreateCall(NULL, calcAppendMethodModule.mMethodInstance, calcAppendMethodModule.mFunc, false, calcAppendArgs);
+	}
 
 	BF_ASSERT(appendSizeTypedValue.mType == GetPrimitiveType(BfTypeCode_IntPtr));
 	return appendSizeTypedValue;
