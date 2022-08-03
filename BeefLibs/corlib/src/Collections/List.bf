@@ -72,6 +72,12 @@ namespace System.Collections
 		}
 
 		[AllowAppend]
+		public this(Span<T> span) : this(span.Length)
+		{
+			AddRange(span);
+		}
+
+		[AllowAppend]
 		public this(int capacity)
 		{
 			Debug.Assert((uint)capacity <= (uint)SizeFlags);
