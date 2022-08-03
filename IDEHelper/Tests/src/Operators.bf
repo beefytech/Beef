@@ -483,6 +483,16 @@ namespace Tests
 			}
 		}
 
+		class ClassA
+		{
+			public String value = new .() ~ delete _;
+
+			public void operator+=(StringView value)
+			{
+				this.value.Append(value);
+			}
+		}
+
 		public struct Vector2 : this(float x, float y);
 
 		public static Event<Action> sEvent ~ _.Dispose(); // Workaround for the lack of auto-destructor in properties
@@ -728,6 +738,11 @@ namespace Tests
 			rcStr.Release();
 
 			//RefCounted<StructB> rcB = .Create();
+
+			ClassA ca = scope .();
+			ca += "ab";
+			ca += "cd";
+			Test.Assert(ca.value == "abcd");
 		}
 
 		struct IntStruct

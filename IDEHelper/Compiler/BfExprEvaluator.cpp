@@ -20046,6 +20046,9 @@ BfTypedValue BfExprEvaluator::PerformAssignment_CheckOp(BfAssignmentExpression* 
 			{
 				if (!mModule->CanCast(rightValue, paramType))
 					continue;
+
+				rightValue = mModule->Cast(assignExpr->mLeft, rightValue, paramType);
+				BF_ASSERT(rightValue);
 			}
 
 			mModule->SetElementType(assignExpr->mOpToken, BfSourceElementType_Method);
