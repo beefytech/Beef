@@ -183,6 +183,10 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 
 	int objectSize = ((mDbgGCData.mDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0) ? sizeof(addr_target)*2 : sizeof(addr_target);
 
+	mDebugger->mDebugTarget->GetCompilerSettings();
+	if (mDebugger->mDebugTarget->mBfObjectSize != 0)
+		objectSize = mDebugger->mDebugTarget->mBfObjectSize;
+
 	while (spanPtr <= (uint8*)spanEnd - elementSize)
 	{
 		addr_target classVDataAddr = 0;
