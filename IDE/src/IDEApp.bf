@@ -6282,6 +6282,11 @@ namespace IDE
 								let process = scope SpawnedProcess();
 								process.Start(procInfo).IgnoreError();
 							});
+						item = menu.AddItem("Show in Workspace Panel");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								sourceViewPanel.SyncWithWorkspacePanel();
+							});
 						item = menu.AddItem("Close");
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
