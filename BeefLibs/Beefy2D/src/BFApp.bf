@@ -792,9 +792,23 @@ namespace Beefy
             BFApp_SetCursor((int32)cursor);
         }
 
-        public virtual void* GetClipboardData(String format, out int32 size)
+        public virtual void* GetClipboardData(String format, out int32 size, int waitTime = 500)
         {
-            return BFApp_GetClipboardData(format, out size);
+			Stopwatch sw = null;
+			repeat
+			{
+				if (sw != null)
+					Thread.Sleep(1);
+				void* result = BFApp_GetClipboardData(format, out size);
+				if (size != -1)
+					return result;
+				if (waitTime == 0)
+					return null;
+				if (sw == null)
+					sw = scope:: .()..Start();
+			}
+            while (waitTime < sw.ElapsedMilliseconds);
+			return null;
         }
 
         public virtual void ReleaseClipboardData(void* ptr)
@@ -802,9 +816,9 @@ namespace Beefy
             BFApp_ReleaseClipboardData(ptr);
         }
 
-        public virtual bool GetClipboardText(String outStr)
+        public virtual bool GetClipboardText(String outStr, int waitTime = 500)
         {
-			return GetClipboardTextData("text", outStr);
+			return GetClipboardTextData("text", outStr, waitTime);
         }
 
 		public virtual bool GetClipboardText(String outStr, String extra)
@@ -813,10 +827,10 @@ namespace Beefy
 			return GetClipboardTextData("text", outStr);
 		}
 
-		public bool GetClipboardTextData(String format, String outStr)
+		public bool GetClipboardTextData(String format, String outStr, int waitTime = 500)
 		{
 			int32 aSize;
-			void* clipboardData = GetClipboardData(format, out aSize);
+			void* clipboardData = GetClipboardData(format, out aSize, waitTime);
 			if (clipboardData == null)
 			    return false;
 

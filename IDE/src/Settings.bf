@@ -304,6 +304,7 @@ namespace IDE
 			public Color mWorkspaceFailedText = 0xFFE04040;
 			public Color mWorkspaceManualIncludeText = 0xFFE0E0FF;
 			public Color mWorkspaceIgnoredText = 0xFF909090;
+			public Color mWorkspaceCutText = 0xFFC0B0B0;
 
 			public Color mCode = 0xFFFFFFFF;
 			public Color mKeyword = 0xFFE1AE9A;
