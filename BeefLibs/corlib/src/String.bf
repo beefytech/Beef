@@ -210,8 +210,8 @@ namespace System
 		[AllowAppend]
 		public this(StringView strView)
 		{			
-			let tryBufferSize = strView.Length - sizeof(char8*);
-			let bufferSize = (tryBufferSize >= 0) ? tryBufferSize : 0;
+			let count = strView.Length;
+			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
 			char8* addlPtr = append char8[bufferSize]*(?);
 			Init(bufferSize);
