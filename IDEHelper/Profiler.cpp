@@ -101,7 +101,7 @@ DbgProfiler::DbgProfiler(WinDebugger* debugger) : mShutdownEvent(true)
 	mEndTick = 0;
 
 	mDebugger->AddProfiler(this);
-	
+
 	mIdleSymbolNames.Add("NtUserGetMessage");
 	mIdleSymbolNames.Add("NtWaitForAlertByThreadId");
 	mIdleSymbolNames.Add("NtWaitForMultipleObjects");
@@ -167,7 +167,7 @@ ProfileProcId* DbgProfiler::Get(const StringImpl& str, bool* outIsNew)
 		auto procId = new ProfileProcId();
 		procId->mProcName = str;
 		procId->mIsIdle = false;
-		entryPtr->mProcId = procId;		
+		entryPtr->mProcId = procId;
 		if (outIsNew != NULL)
 			*outIsNew = true;
 		return procId;
@@ -372,7 +372,7 @@ void DbgProfiler::ThreadProc()
 			ProfileAddrEntry* insertedProfileEntry = AddToSet(mProfileAddrEntrySet, stackTrace, stackSize);
 			if (insertedProfileEntry->mEntryIdx == -1)
 			{
-				insertedProfileEntry->mEntryIdx = (int)mProfileAddrEntrySet.size(); // Starts at '1'				
+				insertedProfileEntry->mEntryIdx = (int)mProfileAddrEntrySet.size(); // Starts at '1'
 				mPendingProfileEntries.Add(*insertedProfileEntry);
 			}
 
@@ -652,7 +652,7 @@ void DbgProfiler::HandlePendingEntries()
 		auto procEntry = AddToSet(mProfileProcEntrySet, procStackTraceHead, stackTraceProcIdx);
 		if (procEntry->mEntryIdx == -1)
 		{
-			procEntry->mEntryIdx = (int)mProfileProcEntrySet.size() - 1; // Start at '0'			
+			procEntry->mEntryIdx = (int)mProfileProcEntrySet.size() - 1; // Start at '0'
 		}
 		mProfileAddrToProcMap[addrEntry->mEntryIdx] = procEntry->mEntryIdx;
 	}
@@ -681,7 +681,7 @@ void DbgProfiler::Process()
 	for (auto threadKV : mThreadInfo)
 	{
 		auto threadInfo = threadKV.mValue;
-		
+
 		for (auto addrEntryIdx : threadInfo->mProfileAddrEntries)
 		{
 			if (addrEntryIdx < 0)
@@ -691,10 +691,10 @@ void DbgProfiler::Process()
 
 			int procEntryIdx = mProfileAddrToProcMap[addrEntryIdx];
 			auto procEntry = mProfileProcEntries[procEntryIdx];
-			
+
 			auto curProc = procEntry->mData[0];
 			if (curProc->mIsIdle)
-				threadInfo->mTotalIdleSamples++;			
+				threadInfo->mTotalIdleSamples++;
 		}
 	}
 }
@@ -766,4 +766,3 @@ String DbgProfiler::GetCallTree(int threadId, bool reverse)
 
 	return str;
 }
-

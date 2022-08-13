@@ -156,7 +156,7 @@ namespace IDE.Compiler
 		static extern int32 BfCompiler_GetEmitSourceVersion(void* bfCompiler, char8* fileName);
 
 		[CallingConvention(.Stdcall), CLink]
-		static extern char8* BfCompiler_GetEmitLocation(void* bfCompiler, char8* typeName, int32 line, out int32 embedLine, out int32 embedLineChar);
+		static extern char8* BfCompiler_GetEmitLocation(void* bfCompiler, char8* typeName, int32 line, out int32 embedLine, out int32 embedLineChar, out uint64 hash);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_WriteEmitData(void* bfCompiler, char8* filePath, void* bfProject);
@@ -362,11 +362,11 @@ namespace IDE.Compiler
 			return BfCompiler_GetEmitSourceVersion(mNativeBfCompiler, fileName.ToScopeCStr!());
 		}
 
-		public void GetEmitLocation(StringView typeName, int line, String outFilePath, out int embedLine, out int embedLineChar)
+		public void GetEmitLocation(StringView typeName, int line, String outFilePath, out int embedLine, out int embedLineChar, out uint64 hash)
 		{
 			int32 embedLine32;
 			int32 embedLineChar32;
-			outFilePath.Append(BfCompiler_GetEmitLocation(mNativeBfCompiler, typeName.ToScopeCStr!(), (.)line, out embedLine32, out embedLineChar32));
+			outFilePath.Append(BfCompiler_GetEmitLocation(mNativeBfCompiler, typeName.ToScopeCStr!(), (.)line, out embedLine32, out embedLineChar32, out hash));
 			embedLine = embedLine32;
 			embedLineChar = embedLineChar32;
 		}
@@ -603,6 +603,8 @@ namespace IDE.Compiler
 					UpdateRebuildFileWatches();
                     mBfSystem.RemoveOldParsers();
                     mBfSystem.RemoveOldData();
+					if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Build)
+						QueueRefreshViewCommand(.Collapse);
                 }
 
                 if (command is ResolveAllCommand)

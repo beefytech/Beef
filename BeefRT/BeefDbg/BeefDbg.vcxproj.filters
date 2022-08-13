@@ -25,6 +25,9 @@
     <Filter Include="BeefySysLib\third_party\utf8proc">
       <UniqueIdentifier>{0027c869-120a-44d3-80e6-e2ab12ce83bc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="BeefySysLib\third_party\putty">
+      <UniqueIdentifier>{59aee039-211d-47df-abb4-ca95d75d2c56}</UniqueIdentifier>
+    </Filter>
     <Filter Include="BeefySysLib\util">
       <UniqueIdentifier>{8e5503bc-1b01-46f1-be03-bb504d93f05d}</UniqueIdentifier>
     </Filter>
@@ -104,6 +107,9 @@
     </ClCompile>
     <ClCompile Include="..\..\BeefySysLib\third_party\utf8proc\utf8proc.c">
       <Filter>BeefySysLib\third_party\utf8proc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\BeefySysLib\third_party\putty\wildcard.c">
+      <Filter>BeefySysLib\third_party\putty</Filter>
     </ClCompile>
     <ClCompile Include="..\..\BeefySysLib\util\BeefPerf.cpp">
       <Filter>BeefySysLib\util</Filter>
@@ -325,6 +331,9 @@
     </ClInclude>
     <ClInclude Include="..\..\BeefySysLib\third_party\utf8proc\utf8proc.h">
       <Filter>BeefySysLib\third_party\utf8proc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\BeefySysLib\third_party\putty\wildcard.h">
+      <Filter>BeefySysLib\third_party\putty</Filter>
     </ClInclude>
     <ClInclude Include="..\..\BeefySysLib\util\BeefPerf.h">
       <Filter>BeefySysLib\util</Filter>

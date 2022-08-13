@@ -852,7 +852,8 @@ namespace System.Reflection
 			None = 0,
 			Splat = 1,
 			Implicit = 2,
-			AppendIdx = 4
+			AppendIdx = 4,
+			Params = 8
 		}
 
 		[CRepr, AlwaysInclude]
@@ -1479,6 +1480,7 @@ namespace System.Reflection
 		EnumDiscriminator		= 0x0200,
 		EnumCase				= 0x0400,
 		ReadOnly				= 0x0800,
+		Appended				= 0x1000,
     }
 
 	public enum MethodFlags : uint16

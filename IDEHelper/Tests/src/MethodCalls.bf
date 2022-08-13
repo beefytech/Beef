@@ -159,6 +159,47 @@ namespace Tests
 
 		}
 
+
+		static void InInt(in int a)
+		{
+			Test.Assert(a == 123);
+#unwarn
+			int* aPtr = &a;
+			*aPtr = 234;
+		}
+
+		static void CopyStructA(StructA sa)
+		{
+#unwarn
+			StructA* saPtr = &sa;
+			saPtr.mA += 1000;
+		}
+
+		static void InStructA(in StructA sa)
+		{
+#unwarn
+			StructA* saPtr = &sa;
+			saPtr.mA += 1000;
+		}
+
+		static int Named(int p1, float p2, int p3)
+		{
+			return 10000 + p1*100 + (int)p2*10 + p3;
+		}
+
+		static int Named(int p0, int p1, float p2)
+		{
+			return 20000 + p0*100 + p1*10 + (.)p2;
+		}
+
+		static int Named(int p0=1, int p1=2, double p2=3)
+		{
+			return 30000 + p0*100 + p1*10 + (.)p2;
+		}
+
+		static int sIdx = 0;
+		static int GetNext() => ++sIdx;
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -206,6 +247,24 @@ namespace Tests
 
 			var v = ObjMethod(.. scope String());
 			Test.Assert(v.GetType() == typeof(String));
+
+			int b = 123;
+			InInt(b);
+			Test.Assert(b == 234);
+
+			StructA sa4 = .(400, 401);
+			CopyStructA(sa4);
+			Test.Assert(sa4.mA == 400);
+			InStructA(sa4);
+			Test.Assert(sa4.mA == 1400);
+
+			Test.Assert(Named(1, 2, p3:3) == 10123);
+			Test.Assert(Named(p1: 1, 2, p3: 3) == 10123);
+			Test.Assert(Named(p0: 1, 2, 3) == 20123);
+			Test.Assert(Named(1, p1:2, 3) == 20123);
+			Test.Assert(Named(p3:GetNext(), p2:GetNext(), p1:GetNext()) == 10321);
+			Test.Assert(Named(p2:GetNext(), p1:GetNext(), p0:GetNext()) == 20654);
+			Test.Assert(Named(p1:9) == 30193);
 		}
 	}
 }

@@ -43,7 +43,7 @@ class HotHeap;
 #define BF_CONTEXT_EXCEPTION_REQUEST CONTEXT_EXCEPTION_REQUEST
 #define BF_CONTEXT_EXCEPTION_ACTIVE CONTEXT_EXCEPTION_ACTIVE
 #define BF_CONTEXT_SERVICE_ACTIVE CONTEXT_SERVICE_ACTIVE
-#define BF_CONTEXT_ALL CONTEXT_ALL 
+#define BF_CONTEXT_ALL CONTEXT_ALL
 #define BF_CONTEXT_SP(ctx) ctx.Esp
 #define BF_CONTEXT_BP(ctx) ctx.Ebp
 #define BF_CONTEXT_IP(ctx) ctx.Eip
@@ -62,7 +62,7 @@ class HotHeap;
 #define BF_CONTEXT_EXCEPTION_REQUEST WOW64_CONTEXT_EXCEPTION_REQUEST
 #define BF_CONTEXT_EXCEPTION_ACTIVE WOW64_CONTEXT_EXCEPTION_ACTIVE
 #define BF_CONTEXT_SERVICE_ACTIVE WOW64_CONTEXT_SERVICE_ACTIVE
-#define BF_CONTEXT_ALL WOW64_CONTEXT_ALL 
+#define BF_CONTEXT_ALL WOW64_CONTEXT_ALL
 #define BF_CONTEXT_SP(ctx) ctx.Esp
 #define BF_CONTEXT_BP(ctx) ctx.Ebp
 #define BF_CONTEXT_IP(ctx) ctx.Eip
@@ -84,7 +84,7 @@ class HotHeap;
 #define BF_CONTEXT_EXCEPTION_REQUEST CONTEXT_EXCEPTION_REQUEST
 #define BF_CONTEXT_EXCEPTION_ACTIVE CONTEXT_EXCEPTION_ACTIVE
 #define BF_CONTEXT_SERVICE_ACTIVE CONTEXT_SERVICE_ACTIVE
-#define BF_CONTEXT_ALL CONTEXT_ALL 
+#define BF_CONTEXT_ALL CONTEXT_ALL
 #define BF_CONTEXT_SP(ctx) ctx.Rsp
 #define BF_CONTEXT_BP(ctx) ctx.Rbp
 #define BF_CONTEXT_IP(ctx) ctx.Rip
@@ -123,7 +123,7 @@ public:
 
 class WdBreakpointCondition
 {
-public:	
+public:
 	DbgEvaluationContext* mDbgEvaluationContext;
 	String mExpr;
 	~WdBreakpointCondition();
@@ -135,7 +135,7 @@ public:
 	addr_target mMemoryAddress;
 	int mByteCount;
 	String mReferenceName;
-	int8 mMemoryWatchSlotBitmap;	
+	int8 mMemoryWatchSlotBitmap;
 
 	WdMemoryBreakpointInfo()
 	{
@@ -147,31 +147,31 @@ public:
 
 class WdBreakpoint : public Breakpoint
 {
-public:	
+public:
 	WdMemoryBreakpointInfo* mMemoryBreakpointInfo;
-	
+
 	addr_target mAddr;
 	DbgSrcFile* mSrcFile;
 	DbgLineDataEx mLineData;
 	WdBreakpointCondition* mCondition;
-	BreakpointType mBreakpointType;		
+	BreakpointType mBreakpointType;
 
 public:
 	WdBreakpoint()
-	{				
+	{
 		mMemoryBreakpointInfo = NULL;
 		mAddr = 0;
 		mSrcFile = NULL;
 		mLineData = DbgLineDataEx();
 		mCondition = NULL;
-		mBreakpointType = BreakpointType_User;		
+		mBreakpointType = BreakpointType_User;
 	}
 
 	virtual uintptr GetAddr() override
 	{
 		return (uintptr)mAddr;
 	}
-	
+
 	virtual bool IsMemoryBreakpointBound() override
 	{
 		return (mMemoryBreakpointInfo != NULL) && (mMemoryBreakpointInfo->mMemoryWatchSlotBitmap != 0);
@@ -188,7 +188,7 @@ public:
 enum StepType
 {
 	StepType_None,
-	StepType_StepInto,	
+	StepType_StepInto,
 	StepType_StepInto_Unfiltered,
 	StepType_StepInto_UnfilteredSingle,
 	StepType_StepOver,
@@ -201,7 +201,7 @@ enum StepType
 
 class WdStackFrame
 {
-public:	
+public:
 	CPURegisters mRegisters;
 	bool mIsStart;
 	bool mIsEnd;
@@ -214,7 +214,7 @@ public:
 
 public:
 	WdStackFrame()
-	{		
+	{
 		mSubProgram = NULL;
 		mHasGottenSubProgram = false;
 		mIsStart = true;
@@ -241,11 +241,11 @@ struct WdThreadInfo
 public:
 	uint mProcessId;
 	uint mThreadId;
-	HANDLE mHThread;	
+	HANDLE mHThread;
 	void* mThreadLocalBase;
 	void* mStartAddress;
 	bool mIsBreakRestorePaused;
-	bool mFrozen;	
+	bool mFrozen;
 	addr_target mStartSP;
 	String mName;
 	addr_target mStoppedAtAddress;
@@ -263,7 +263,7 @@ public:
 		mThreadLocalBase = NULL;
 		mStartAddress = NULL;
 		mIsBreakRestorePaused = false;
-		mFrozen = false;		
+		mFrozen = false;
 
 		mIsAtBreakpointAddress = 0;
 		mStoppedAtAddress = 0;
@@ -274,16 +274,16 @@ public:
 
 class DbgPendingExpr
 {
-public:	
+public:
 	int mThreadId;
 	BfParser* mParser;
-	DbgType* mExplitType;	
-	DwFormatInfo mFormatInfo;	
+	DbgType* mExplitType;
+	DwFormatInfo mFormatInfo;
 	DwEvalExpressionFlags mExpressionFlags;
 	int mCursorPos;
 	BfExpression* mExprNode;
 	String mReferenceId;
-	int mCallStackIdx;	
+	int mCallStackIdx;
 	String mResult;
 	Array<DbgCallResult> mCallResults;
 	int mIdleTicks;
@@ -311,13 +311,13 @@ struct WdMemoryBreakpointBind
 	addr_target mAddress;
 	int mOfs;
 	int mByteCount;
-	
+
 	WdMemoryBreakpointBind()
 	{
 		mAddress = 0;
 		mBreakpoint = NULL;
 		mOfs = 0;
-		mByteCount = 0;		
+		mByteCount = 0;
 	}
 };
 
@@ -349,12 +349,12 @@ public:
 
 public:
 	HANDLE mFileMapping;
-	Stats* mStats;	
+	Stats* mStats;
 
 	WinDbgHeapData()
 	{
 		mFileMapping = 0;
-		mStats = NULL;		
+		mStats = NULL;
 	}
 
 	~WinDbgHeapData()
@@ -368,8 +368,8 @@ struct DwFormatInfo;
 
 class WinDebugger : public Debugger
 {
-public:	
-	SyncEvent mContinueEvent;	
+public:
+	SyncEvent mContinueEvent;
 
 	Array<HotTargetMemory> mHotTargetMemory;
 	Array<WinHotThreadState> mHotThreadStates;
@@ -383,10 +383,10 @@ public:
 	String mArgs;
 	String mWorkingDir;
 	bool mHotSwapEnabled;
-	Array<uint8> mEnvBlock;	
+	Array<uint8> mEnvBlock;
 	DebugTarget* mEmptyDebugTarget;
 	DebugTarget* mDebugTarget;
-	BfSystem* mBfSystem;	
+	BfSystem* mBfSystem;
 	CPU* mCPU;
 	PROCESS_INFORMATION mProcessInfo;
 	BfDbgAttachFlags mDbgAttachFlags;
@@ -396,25 +396,25 @@ public:
 	HANDLE mDbgThreadHandle;
 	bool mIsDebuggerWaiting;
 	bool mWantsDebugContinue;
-	bool mNeedsRehupBreakpoints;	
+	bool mNeedsRehupBreakpoints;
 	bool mContinueFromBreakpointFailed;
 	WdThreadInfo* mDebuggerWaitingThread;
 	WdThreadInfo* mAtBreakThread;
 	WdThreadInfo* mActiveThread;
 	WdBreakpoint* mActiveBreakpoint;
 	WdThreadInfo* mSteppingThread;
-	WdThreadInfo* mExplicitStopThread; // Don't try to show first frame-with-source for this thread (when we hit breakpoint in asm, encounter exception, etc)		
+	WdThreadInfo* mExplicitStopThread; // Don't try to show first frame-with-source for this thread (when we hit breakpoint in asm, encounter exception, etc)
 	DEBUG_EVENT mDebugEvent;
 	bool mGotStartupEvent;
-	int mPageSize;	
+	int mPageSize;
 	DbgSymSrv mDbgSymSrv;
 	DbgSymRequest* mActiveSymSrvRequest;
 	DWORD mDebuggerThreadId;
-	
+
 	WdMemoryBreakpointBind mMemoryBreakpoints[4];
 	int mMemoryBreakpointVersion;
-	Dictionary<addr_target, int> mPhysBreakpointAddrMap; // To make sure we don't create multiple physical breakpoints at the same addr	
-	Array<WdBreakpoint*> mBreakpoints;	
+	Dictionary<addr_target, int> mPhysBreakpointAddrMap; // To make sure we don't create multiple physical breakpoints at the same addr
+	Array<WdBreakpoint*> mBreakpoints;
 	Dictionary<addr_target, WdBreakpoint*> mBreakpointAddrMap;
 	Array<int> mFreeMemoryBreakIndices;
 	Array<WdStackFrame*> mCallStack;
@@ -424,20 +424,20 @@ public:
 	int mBreakStackFrameIdx;
 	addr_target mShowPCOverride;
 	Dictionary<uint32, WdThreadInfo*> mThreadMap;
-	Array<WdThreadInfo*> mThreadList;	
+	Array<WdThreadInfo*> mThreadList;
 	StepType mOrigStepType;
-	StepType mStepType;	
+	StepType mStepType;
 	int mCurNoInfoStepTries;
 	DbgLineDataEx mStepLineData;
 	bool mStepInAssembly;
 	bool mStepIsRecursing;
 	bool mStepSwitchedThreads;
-	bool mStepStopOnNextInstruction;		
-	bool mDbgBreak;	
-		
+	bool mStepStopOnNextInstruction;
+	bool mDbgBreak;
+
 	addr_target mStepStartPC;
 	addr_target mStepPC;
-	addr_target mStepSP;		
+	addr_target mStepSP;
 	addr_target mStoredReturnValueAddr;
 	addr_target mLastValidStepIntoPC;
 	bool mIsStepIntoSpecific;
@@ -449,27 +449,27 @@ public:
 	Array<DbgModule*> mPendingDebugInfoRequests;
 	HashSet<String> mLiteralSet;
 
-	EXCEPTION_RECORD mCurException;	
+	EXCEPTION_RECORD mCurException;
 	bool mIsContinuingFromException;
 	Array<int64> mTempBreakpoint;
-	Array<int64> mStepBreakpointAddrs;	
-	
+	Array<int64> mStepBreakpointAddrs;
+
 	addr_target mSavedBreakpointAddressContinuing;
 	addr_target mSavedAtBreakpointAddress;
-	BF_CONTEXT mSavedContext;		
-	
+	BF_CONTEXT mSavedContext;
+
 	Dictionary<int, Profiler*> mPendingProfilerMap;
 	Array<Profiler*> mNewProfilerList;
 	HashSet<Profiler*> mProfilerSet;
-		
+
 	addr_target mMemCacheAddr;
-	uint8 mMemCacheData[WD_MEMCACHE_SIZE];	
+	uint8 mMemCacheData[WD_MEMCACHE_SIZE];
 
 public:
-	void Fail(const StringImpl& error);	
+	void Fail(const StringImpl& error);
 	void TryGetThreadName(WdThreadInfo* threadInfo);
 	void ThreadRestorePause(WdThreadInfo* onlyPauseThread, WdThreadInfo* dontPauseThread);
-	void ThreadRestoreUnpause();	
+	void ThreadRestoreUnpause();
 	void UpdateThreadDebugRegisters(WdThreadInfo* threadInfo);
 	void UpdateThreadDebugRegisters();
 	void ValidateBreakpoints();
@@ -477,13 +477,13 @@ public:
 	void SetBreakpoint(addr_target address, bool fromRehup = false);
 	void SetTempBreakpoint(addr_target address);
 	void PhysRemoveBreakpoint(addr_target address);
-	void RemoveBreakpoint(addr_target address);			
+	void RemoveBreakpoint(addr_target address);
 	void SingleStepX86();
 	bool IsInRunState();
-	bool ContinueFromBreakpoint();		
+	bool ContinueFromBreakpoint();
 	bool HasLineInfoAt(addr_target address);
 	DbgLineData* FindLineDataAtAddress(addr_target address, DbgSubprogram** outSubProgram = NULL, DbgSrcFile** outSrcFile = NULL, int* outLineIdx = NULL, DbgOnDemandKind onDemandKind = DbgOnDemandKind_AllowRemote);
-	DbgLineData* FindLineDataInSubprogram(addr_target address, DbgSubprogram* dwSubprogram);	
+	DbgLineData* FindLineDataInSubprogram(addr_target address, DbgSubprogram* dwSubprogram);
 	bool IsStepFiltered(DbgSubprogram* dbgSubprogram, DbgLineData* dbgLineData);
 	void RemoveTempBreakpoints();
 	void RehupBreakpoints(bool doFlush);
@@ -496,7 +496,7 @@ public:
 	virtual bool PopulateRegisters(CPURegisters* registers);
 	bool RollBackStackFrame(CPURegisters* registers, bool isStackStart);
 	bool SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize);
-	DbgSubprogram* TryFollowHotJump(DbgSubprogram* subprogram, addr_target addr);	
+	DbgSubprogram* TryFollowHotJump(DbgSubprogram* subprogram, addr_target addr);
 
 	bool ParseFormatInfo(DbgModule* dbgModule, const StringImpl& formatInfoStr, DwFormatInfo* formatInfo, BfPassInstance* bfPassInstance, int* assignExprOffset, String* assignExpr = NULL, String* errorString = NULL, DbgTypedValue contextTypedValue = DbgTypedValue());
 	String MaybeQuoteFormatInfoParam(const StringImpl& str);
@@ -508,12 +508,12 @@ public:
 	String ReadString(DbgTypeCode charType, intptr addr, bool isLocalAddr, intptr maxLength, DwFormatInfo& formatInfo, bool wantStringView);
 	String DbgTypedValueToString(const DbgTypedValue& typedValue, const StringImpl& expr, DwFormatInfo& formatFlags, DbgExprEvaluator* optEvaluator, bool fullPrecision = false);
 	bool ShouldShowStaticMember(DbgType* dbgType, DbgVariable* member);
-	String GetMemberList(DbgType* dbgType, const StringImpl& expr, bool isPtr, bool isStatic, bool forceCast = false, bool isSplat = false, bool isReadOnly = false);	
+	String GetMemberList(DbgType* dbgType, const StringImpl& expr, bool isPtr, bool isStatic, bool forceCast = false, bool isSplat = false, bool isReadOnly = false);
 	DebugVisualizerEntry* FindVisualizerForType(DbgType* dbgType, Array<String>* wildcardCaptures);
-	void ReserveHotTargetMemory(int size);	
+	void ReserveHotTargetMemory(int size);
 	addr_target AllocHotTargetMemory(int size, bool canExecute, bool canWrite, int* outAllocSize);
 	void ReleaseHotTargetMemory(addr_target addr, int size);
-	void CleanupHotHeap();	
+	void CleanupHotHeap();
 	int EnableWriting(intptr address, int size);
 	int SetProtection(intptr address, int size, int prot);
 	void EnableMemCache();
@@ -522,14 +522,14 @@ public:
 	bool WriteInstructions(intptr address, void* src, uint64 length);
 	template<typename T> bool WriteMemory(intptr addr, T val);
 	virtual DbgMemoryFlags GetMemoryFlags(intptr address) override;
-	
-	void SetRunState(RunState runState);	
+
+	void SetRunState(RunState runState);
 	bool IsPaused();
 	void ClearStep();
-	bool SetupStep(StepType stepType);	
+	bool SetupStep(StepType stepType);
 	void CheckNonDebuggerBreak();
 	bool HasSteppedIntoCall();
-	void StepLineTryPause(addr_target address, bool requireExactMatch);	
+	void StepLineTryPause(addr_target address, bool requireExactMatch);
 	void PushValue(CPURegisters* registers, int64 val);
 	void PushValue(CPURegisters* registers, const DbgTypedValue& typedValue);
 	void SetThisRegister(CPURegisters* registers, addr_target val);
@@ -538,7 +538,7 @@ public:
 	DbgTypedValue ReadReturnValue(CPURegisters* registers, DbgType* type);
 	bool SetRegisters(CPURegisters* registers);
 	void SaveAllRegisters();
-	void RestoreAllRegisters();		
+	void RestoreAllRegisters();
 	String GetArrayItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData);
 	String GetLinkedListItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, addr_target endNodePtr, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData);
 	String GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgTypedValue dictValue, int bucketIdx, int nodeIdx, int& count, String* outContinuationData);
@@ -548,13 +548,13 @@ public:
 	bool DoUpdate();
 	void DebugThreadProc();
 	bool DoOpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock);
-	
+
 	DbgTypedValue GetRegister(const StringImpl& regName, DbgLanguage language, CPURegisters* registers, Array<RegForm>* regForms = NULL);
 	void FixupLineData(DbgCompileUnit* compileUnit);
 	void FixupLineDataForSubprogram(DbgSubprogram* subProgram);
 	DbgModule* GetCallStackDbgModule(int callStackIdx);
-	DbgSubprogram* GetCallStackSubprogram(int callStackIdx);	
-	DbgCompileUnit* GetCallStackCompileUnit(int callStackIdx);	
+	DbgSubprogram* GetCallStackSubprogram(int callStackIdx);
+	DbgCompileUnit* GetCallStackCompileUnit(int callStackIdx);
 	String Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags);
 	String EvaluateContinue() override;
 	void EvaluateContinueKeep() override;
@@ -562,15 +562,15 @@ public:
 	String GetAutocompleteOutput(DwAutoComplete& autoComplete);
 	bool CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubprogram* dbgSubprogram, addr_target pcAddress);
 	void CleanupDebugEval(bool restoreRegisters = true);
-	bool FixCallStackIdx(int& callStackIdx);	
+	bool FixCallStackIdx(int& callStackIdx);
 	void DoClearCallStack(bool clearSavedStacks);
-	
-	int LoadDebugInfoForModule(DbgModule* dbgModule);	
+
+	int LoadDebugInfoForModule(DbgModule* dbgModule);
 
 public:
 	WinDebugger(DebugManager* debugManager);
 	virtual ~WinDebugger();
-		
+
 	virtual void OutputMessage(const StringImpl& msg) override;
 	virtual void OutputRawMessage(const StringImpl& msg) override;
 	virtual int GetAddrSize() override;
@@ -578,7 +578,7 @@ public:
 	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled) override;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) override;
 	virtual void Run() override;
-	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;	
+	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;
 	virtual void InitiateHotResolve(DbgHotResolveFlags flags) override;
 	virtual intptr GetDbgAllocHeapSize() override;
 	virtual String GetDbgAllocInfo() override;
@@ -591,13 +591,13 @@ public:
 	virtual Breakpoint* CreateAddressBreakpoint(intptr address) override;
 	virtual void CheckBreakpoint(Breakpoint* breakpoint) override;
 	virtual void HotBindBreakpoint(Breakpoint* breakpoint, int lineNum, int hotIdx) override;
-	virtual void DeleteBreakpoint(Breakpoint* breakpoint) override;	
+	virtual void DeleteBreakpoint(Breakpoint* breakpoint) override;
 	virtual void DetachBreakpoint(Breakpoint* breakpoint) override;
 	virtual void MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantColumn, bool rebindNow) override;
 	virtual void MoveMemoryBreakpoint(Breakpoint* breakpoint, intptr addr, int byteCount) override;
 	virtual void DisableBreakpoint(Breakpoint* breakpoint) override;
 	virtual void SetBreakpointCondition(Breakpoint* breakpoint, const StringImpl& condition) override;
-	virtual void SetBreakpointLogging(Breakpoint* wdBreakpoint, const StringImpl& logging, bool breakAfterLogging) override;	
+	virtual void SetBreakpointLogging(Breakpoint* wdBreakpoint, const StringImpl& logging, bool breakAfterLogging) override;
 	virtual Breakpoint* FindBreakpointAt(intptr address) override;
 	virtual Breakpoint* GetActiveBreakpoint() override;
 	virtual void BreakAll() override;
@@ -611,7 +611,7 @@ public:
 	virtual String EvaluateToAddress(const StringImpl& expr, int callStackIdx, int cursorPos) override;
 	virtual String EvaluateAtAddress(const StringImpl& expr, intptr atAddr, int cursorPos) override;
 	virtual bool AssignToReg(int callStackIdx, DbgTypedValue reg, DbgTypedValue value, String& outError);
-	virtual String GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count) override;	
+	virtual String GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count) override;
 	virtual String GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen) override;
 	virtual String GetAutoLocals(int callStackIdx, bool showRegs) override;
 	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) override;
@@ -646,17 +646,17 @@ public:
 	virtual String DisassembleAtRaw(intptr address) override;
 	virtual String DisassembleAt(intptr address) override;
 	virtual String FindLineCallAddresses(intptr address) override;
-	virtual String GetCurrentException() override;	
+	virtual String GetCurrentException() override;
 	virtual void SetAliasPath(const StringImpl& origPath, const StringImpl& localPath) override;
 	virtual String GetModulesInfo() override;
-	virtual void CancelSymSrv() override;	
+	virtual void CancelSymSrv() override;
 	virtual bool HasPendingDebugLoads() override;
 	virtual int LoadImageForModule(const StringImpl& moduleName, const StringImpl& debugFileName) override;
 	virtual int LoadDebugInfoForModule(const StringImpl& moduleName, const StringImpl& debugFileName) override;
 	virtual int LoadDebugInfoForModule(const StringImpl& moduleName) override;
 	virtual void StopDebugging() override;
 	virtual void Terminate() override;
-	virtual void Detach() override;	
+	virtual void Detach() override;
 	virtual Profiler* StartProfiling() override;
 	virtual Profiler* PopProfiler() override;
 	void AddProfiler(DbgProfiler* profiler);
@@ -676,13 +676,13 @@ template<typename T> bool WinDebugger::WriteMemory(intptr addr, T val)
 }
 
 template<typename T> T WinDebugger::ReadMemory(intptr addr, bool local, bool* failed)
-{	
+{
 	bool success = true;
-	T val;	
+	T val;
 	memset(&val, 0, sizeof(T));
 	if (local)
 	{
-		if (addr != 0)					
+		if (addr != 0)
 		{
 			memcpy(&val, (void*)(intptr)addr, sizeof(T));
 			/*__try
@@ -698,7 +698,7 @@ template<typename T> T WinDebugger::ReadMemory(intptr addr, bool local, bool* fa
 			success = false;
 	}
 	else
-	{		
+	{
 		//SIZE_T dwReadBytes;
 		memset(&val, 0, sizeof(T));
 		//success = ReadProcessMemory(mProcessInfo.hProcess, (void*)(intptr)addr, &val, (SIZE_T)sizeof(T), &dwReadBytes) != 0;
@@ -713,4 +713,3 @@ template<typename T> T WinDebugger::ReadMemory(intptr addr, bool local, bool* fa
 addr_target DecodeTargetDataPtr(const char*& strRef);
 
 NS_BF_DBG_END
-

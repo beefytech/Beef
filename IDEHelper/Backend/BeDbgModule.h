@@ -8,4 +8,3 @@
 NS_BF_BEGIN
 
 NS_BF_END
-

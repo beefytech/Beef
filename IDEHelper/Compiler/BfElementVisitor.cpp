@@ -6,7 +6,6 @@ USING_NS_BF;
 
 BfElementVisitor::BfElementVisitor()
 {
-	
 }
 
 void BfElementVisitor::Visit(BfTypedValueExpression* typedValueExpr)
@@ -36,7 +35,7 @@ void BfElementVisitor::Visit(BfPreprocessorDefinedExpression* definedExpr)
 {
 	Visit(definedExpr->ToBase());
 
-	VisitChild(definedExpr->mIdentifier);	
+	VisitChild(definedExpr->mIdentifier);
 }
 
 void BfElementVisitor::Visit(BfAttributeDirective* attributeDirective)
@@ -65,7 +64,7 @@ void BfElementVisitor::Visit(BfGenericParamsDeclaration* genericParams)
 	for (auto& val : genericParams->mGenericParams)
 		VisitChild(val);
 	for (auto& val : genericParams->mCommas)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(genericParams->mCloseChevron);
 }
 
@@ -84,7 +83,7 @@ void BfElementVisitor::Visit(BfGenericConstraintsDeclaration* genericConstraints
 	Visit(genericConstraints->ToBase());
 
 	for (auto genericConstraintNode : genericConstraints->mGenericConstraints)
-	{		
+	{
 		if (auto genericConstraint = BfNodeDynCast<BfGenericConstraint>(genericConstraintNode))
 		{
 			VisitChild(genericConstraint->mWhereToken);
@@ -100,7 +99,7 @@ void BfElementVisitor::Visit(BfGenericConstraintsDeclaration* genericConstraints
 			VisitChild(genericConstraintExpr->mWhereToken);
 			VisitChild(genericConstraintExpr->mExpression);
 		}
-	}		
+	}
 }
 
 void BfElementVisitor::Visit(BfGenericArgumentsNode* genericArgumentsNode)
@@ -111,7 +110,7 @@ void BfElementVisitor::Visit(BfGenericArgumentsNode* genericArgumentsNode)
 	for (auto& val : genericArgumentsNode->mGenericArgs)
 		VisitChild(val);
 	for (auto& val : genericArgumentsNode->mCommas)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(genericArgumentsNode->mCloseChevron);
 }
 
@@ -169,7 +168,7 @@ void BfElementVisitor::Visit(BfNewNode* newNode)
 void BfElementVisitor::Visit(BfLabeledBlock* labeledBlock)
 {
 	Visit(labeledBlock->ToBase());
-	
+
 	VisitChild(labeledBlock->mBlock);
 }
 
@@ -183,6 +182,15 @@ void BfElementVisitor::Visit(BfExpressionStatement* exprStmt)
 	Visit(exprStmt->ToBase());
 
 	VisitChild(exprStmt->mExpression);
+}
+
+void BfElementVisitor::Visit(BfNamedExpression* namedExpr)
+{
+	Visit(namedExpr->ToBase());
+
+	VisitChild(namedExpr->mNameNode);
+	VisitChild(namedExpr->mColonToken);
+	VisitChild(namedExpr->mExpression);
 }
 
 void BfElementVisitor::Visit(BfAttributedExpression* attribExpr)
@@ -257,7 +265,7 @@ void BfElementVisitor::Visit(BfQualifiedNameNode* nameNode)
 
 void BfElementVisitor::Visit(BfThisExpression* thisExpr)
 {
-	Visit(thisExpr->ToBase());	
+	Visit(thisExpr->ToBase());
 }
 
 void BfElementVisitor::Visit(BfBaseExpression* baseExpr)
@@ -297,9 +305,9 @@ void BfElementVisitor::Visit(BfCollectionInitializerExpression* collectionInitEx
 
  	VisitChild(collectionInitExpr->mOpenBrace);
 	for (auto& val : collectionInitExpr->mValues)
-		VisitChild(val);	
+		VisitChild(val);
 	for (auto& val : collectionInitExpr->mCommas)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(collectionInitExpr->mCloseBrace);
 }
 
@@ -318,7 +326,7 @@ void BfElementVisitor::Visit(BfNamedTypeReference* typeRef)
 void BfElementVisitor::Visit(BfQualifiedTypeReference* qualifiedTypeRef)
 {
 	Visit(qualifiedTypeRef->ToBase());
-	
+
 	VisitChild(qualifiedTypeRef->mLeft);
 	VisitChild(qualifiedTypeRef->mDot);
 	VisitChild(qualifiedTypeRef->mRight);
@@ -372,17 +380,17 @@ void BfElementVisitor::Visit(BfConstExprTypeRef* typeRef)
 void BfElementVisitor::Visit(BfRefTypeRef* typeRef)
 {
 	Visit((BfTypeReference*)typeRef); // Skip the Elemented part so we can put the element in the right spot
-	
+
 	VisitChild(typeRef->mRefToken);
 	VisitChild(typeRef->mElementType);
 }
 
 void BfElementVisitor::Visit(BfModifiedTypeRef * typeRef)
-{	
+{
 	Visit((BfTypeReference*)typeRef); // Skip the Elemented part so we can put the element in the right spot
 
 	VisitChild(typeRef->mRetTypeToken);
-	VisitChild(typeRef->mOpenParen);	
+	VisitChild(typeRef->mOpenParen);
 	VisitChild(typeRef->mElementType);
 	VisitChild(typeRef->mCloseParen);
 }
@@ -390,11 +398,11 @@ void BfElementVisitor::Visit(BfModifiedTypeRef * typeRef)
 void BfElementVisitor::Visit(BfArrayTypeRef* typeRef)
 {
 	Visit((BfTypeReference*)typeRef); // Skip the Elemented part so we can put the element in the right spot
-	
+
 	VisitChild(typeRef->mElementType);
 	VisitChild(typeRef->mOpenBracket);
 	for (auto& val : typeRef->mParams)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(typeRef->mCloseBracket);
 }
 
@@ -404,7 +412,7 @@ void BfElementVisitor::Visit(BfGenericInstanceTypeRef* typeRef)
 
 	VisitChild(typeRef->mOpenChevron);
 	for (auto& val : typeRef->mGenericArguments)
-		VisitChild(val);	
+		VisitChild(val);
 	if (typeRef->mCommas.mVals != NULL)
 	{
 		for (auto& val : typeRef->mCommas)
@@ -419,7 +427,7 @@ void BfElementVisitor::Visit(BfTupleTypeRef* typeRef)
 
 	VisitChild(typeRef->mOpenParen);
 	for (auto& val : typeRef->mFieldNames)
-		VisitChild(val);	
+		VisitChild(val);
 	for (auto& val : typeRef->mFieldTypes)
 		VisitChild(val);
 	if (typeRef->mCommas.mVals != NULL)
@@ -510,12 +518,24 @@ void BfElementVisitor::Visit(BfTypeAttrExpression* typeAttrExpr)
 
 void BfElementVisitor::Visit(BfOffsetOfExpression* offsetOfExpr)
 {
+	Visit(offsetOfExpr->ToBase());
+
 	VisitChild(offsetOfExpr->mToken);
 	VisitChild(offsetOfExpr->mOpenParen);
 	VisitChild(offsetOfExpr->mTypeRef);
 	VisitChild(offsetOfExpr->mCommaToken);
 	VisitChild(offsetOfExpr->mMemberName);
 	VisitChild(offsetOfExpr->mCloseParen);
+}
+
+void BfElementVisitor::Visit(BfNameOfExpression* nameOfExpr)
+{
+	Visit(nameOfExpr->ToBase());
+
+	VisitChild(nameOfExpr->mToken);
+	VisitChild(nameOfExpr->mOpenParen);
+	VisitChild(nameOfExpr->mTarget);
+	VisitChild(nameOfExpr->mCloseParen);
 }
 
 void BfElementVisitor::Visit(BfDefaultExpression* defaultExpr)
@@ -587,16 +607,16 @@ void BfElementVisitor::Visit(BfLambdaBindExpression* lambdaBindExpr)
 	Visit(lambdaBindExpr->ToBase());
 
 	VisitChild(lambdaBindExpr->mNewToken);
-	
+
 	VisitChild(lambdaBindExpr->mOpenParen);
 	VisitChild(lambdaBindExpr->mCloseParen);
 	for (auto& val : lambdaBindExpr->mParams)
 		VisitChild(val);
 	for (auto& val : lambdaBindExpr->mCommas)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(lambdaBindExpr->mFatArrowToken);
 	VisitChild(lambdaBindExpr->mBody); // Either expression or block
-		
+
 	VisitChild(lambdaBindExpr->mDtor);
 }
 
@@ -606,13 +626,13 @@ void BfElementVisitor::Visit(BfObjectCreateExpression* newExpr)
 
 	VisitChild(newExpr->mNewNode);
 	VisitChild(newExpr->mStarToken);
-	VisitChild(newExpr->mTypeRef);	
+	VisitChild(newExpr->mTypeRef);
 	VisitChild(newExpr->mOpenToken);
-	VisitChild(newExpr->mCloseToken);	
+	VisitChild(newExpr->mCloseToken);
 	for (auto& val : newExpr->mArguments)
 		VisitChild(val);
 	for (auto& val : newExpr->mCommas)
-		VisitChild(val);	
+		VisitChild(val);
 }
 
 void BfElementVisitor::Visit(BfBoxExpression* boxExpr)
@@ -644,7 +664,7 @@ void BfElementVisitor::Visit(BfThrowStatement* throwStmt)
 void BfElementVisitor::Visit(BfDeleteStatement* deleteStmt)
 {
 	Visit(deleteStmt->ToBase());
-	
+
 	VisitChild(deleteStmt->mDeleteToken);
 	VisitChild(deleteStmt->mTargetTypeToken);
 	VisitChild(deleteStmt->mAllocExpr);
@@ -662,7 +682,7 @@ void BfElementVisitor::Visit(BfInvocationExpression* invocationExpr)
 	for (auto& val : invocationExpr->mArguments)
 		VisitChild(val);
 	for (auto& val : invocationExpr->mCommas)
-		VisitChild(val);	
+		VisitChild(val);
 }
 
 void BfElementVisitor::Visit(BfEnumCaseBindExpression* caseBindExpr)
@@ -692,7 +712,7 @@ void BfElementVisitor::Visit(BfSwitchCase* switchCase)
 	for (auto& val : switchCase->mCaseExpressions)
 		VisitChild(val);
 	for (auto& val : switchCase->mCaseCommas)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(switchCase->mColonToken);
 	VisitChild(switchCase->mCodeBlock);
 	VisitChild(switchCase->mEndingToken);
@@ -787,13 +807,13 @@ void BfElementVisitor::Visit(BfDeferStatement* deferStmt)
 	if (deferStmt->mBind != NULL)
 	{
 		auto bind = deferStmt->mBind;
-		
-		VisitChild(bind->mOpenBracket);		
+
+		VisitChild(bind->mOpenBracket);
 		VisitChild(bind->mCloseBracket);
 		for (auto& val : bind->mParams)
 			VisitChild(val);
 		for (auto& val : bind->mCommas)
-			VisitChild(val);				
+			VisitChild(val);
 	}
 
 	VisitChild(deferStmt->mOpenParen);
@@ -828,7 +848,6 @@ void BfElementVisitor::Visit(BfUsingStatement* usingStmt)
 	VisitChild(usingStmt->mVariableDeclaration);
 	VisitChild(usingStmt->mCloseParen);
 	VisitChild(usingStmt->mEmbeddedStatement);
-	
 }
 
 void BfElementVisitor::Visit(BfDoStatement* doStmt)
@@ -836,7 +855,7 @@ void BfElementVisitor::Visit(BfDoStatement* doStmt)
 	Visit(doStmt->ToBase());
 
 	VisitChild(doStmt->mDoToken);
-	VisitChild(doStmt->mEmbeddedStatement);	
+	VisitChild(doStmt->mEmbeddedStatement);
 }
 
 void BfElementVisitor::Visit(BfRepeatStatement* repeatStmt)
@@ -894,14 +913,14 @@ void BfElementVisitor::Visit(BfForStatement* forStmt)
 	for (auto& val : forStmt->mInitializers)
 		VisitChild(val);
 	for (auto& val : forStmt->mInitializerCommas)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(forStmt->mInitializerSemicolon);
 	VisitChild(forStmt->mCondition);
 	VisitChild(forStmt->mConditionSemicolon);
 	for (auto& val : forStmt->mIterators)
 		VisitChild(val);
 	for (auto& val : forStmt->mIteratorCommas)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(forStmt->mCloseParen);
 	VisitChild(forStmt->mEmbeddedStatement);
 }
@@ -961,12 +980,12 @@ void BfElementVisitor::Visit(BfTupleExpression* tupleExpr)
 		{
 			VisitChild(val->mNameNode);
 			VisitChild(val->mColonToken);
-		}		
+		}
 	}
 	for (auto& val : tupleExpr->mValues)
 		VisitChild(val);
 	for (auto& val : tupleExpr->mCommas)
-		VisitChild(val);	
+		VisitChild(val);
 	VisitChild(tupleExpr->mCloseParen);
 }
 
@@ -985,11 +1004,11 @@ void BfElementVisitor::Visit(BfIndexerExpression* indexerExpr)
 
 	VisitChild(indexerExpr->mTarget);
 	VisitChild(indexerExpr->mOpenBracket);
-	VisitChild(indexerExpr->mCloseBracket);	
+	VisitChild(indexerExpr->mCloseBracket);
 	for (auto& arg : indexerExpr->mArguments)
 		VisitChild(arg);
 	for (auto& comma : indexerExpr->mCommas)
-		VisitChild(comma);	
+		VisitChild(comma);
 }
 
 void BfElementVisitor::Visit(BfUnaryOperatorExpression* binOpExpr)
@@ -1019,6 +1038,12 @@ void BfElementVisitor::Visit(BfConstructorDeclaration* ctorDeclaration)
 	VisitChild(ctorDeclaration->mInitializer);
 }
 
+void BfElementVisitor::Visit(BfAutoConstructorDeclaration* ctorDeclaration)
+{
+	VisitChild(ctorDeclaration->mPrefix);
+	Visit(ctorDeclaration->ToBase());
+}
+
 void BfElementVisitor::Visit(BfDestructorDeclaration* dtorDeclaration)
 {
 	Visit(dtorDeclaration->ToBase());
@@ -1031,11 +1056,11 @@ void BfElementVisitor::Visit(BfMethodDeclaration* methodDeclaration)
 {
 	Visit(methodDeclaration->ToBase());
 
-	VisitChild(methodDeclaration->mAttributes);	
+	VisitChild(methodDeclaration->mAttributes);
 	VisitChild(methodDeclaration->mProtectionSpecifier);
 	VisitChild(methodDeclaration->mReadOnlySpecifier);
 	VisitChild(methodDeclaration->mStaticSpecifier);
-	
+
 	VisitChild(methodDeclaration->mExternSpecifier);
 	VisitChild(methodDeclaration->mVirtualSpecifier); // either 'virtual', 'override', or 'abstract'
 	VisitChild(methodDeclaration->mNewSpecifier);
@@ -1051,7 +1076,7 @@ void BfElementVisitor::Visit(BfMethodDeclaration* methodDeclaration)
 	for (auto& param : methodDeclaration->mParams)
 		VisitChild(param);
 	for (auto& comma : methodDeclaration->mCommas)
-		VisitChild(comma);	
+		VisitChild(comma);
 	VisitChild(methodDeclaration->mCloseParen);
 	VisitChild(methodDeclaration->mGenericParams);
 	VisitChild(methodDeclaration->mGenericConstraintsDeclaration);
@@ -1088,26 +1113,26 @@ void BfElementVisitor::Visit(BfPropertyBodyExpression* propertyBodyExpression)
 	Visit(propertyBodyExpression->ToBase());
 
 	VisitChild(propertyBodyExpression->mMutSpecifier);
-	VisitChild(propertyBodyExpression->mFatTokenArrow);	
+	VisitChild(propertyBodyExpression->mFatTokenArrow);
 }
 
 void BfElementVisitor::Visit(BfPropertyDeclaration* propertyDeclaration)
 {
 	Visit(propertyDeclaration->ToBase());
 
-	VisitChild(propertyDeclaration->mAttributes);	
+	VisitChild(propertyDeclaration->mAttributes);
 	VisitChild(propertyDeclaration->mProtectionSpecifier);
 	VisitChild(propertyDeclaration->mStaticSpecifier);
 
 	VisitChild(propertyDeclaration->mVirtualSpecifier); // either 'virtual', 'override', or 'abstract'
 	VisitChild(propertyDeclaration->mExplicitInterface);
 	VisitChild(propertyDeclaration->mExplicitInterfaceDotToken);
-	
+
 	if (auto block = BfNodeDynCast<BfBlock>(propertyDeclaration->mDefinitionBlock))
 	{
 		VisitChild(block->mOpenBrace);
 		for (auto& method : propertyDeclaration->mMethods)
-			VisitChild(method);		
+			VisitChild(method);
 		VisitChild(block->mCloseBrace);
 	}
 	else
@@ -1135,7 +1160,7 @@ void BfElementVisitor::Visit(BfFieldDeclaration* fieldDeclaration)
 {
 	Visit(fieldDeclaration->ToBase());
 
-	VisitChild(fieldDeclaration->mAttributes);	
+	VisitChild(fieldDeclaration->mAttributes);
 	VisitChild(fieldDeclaration->mProtectionSpecifier);
 	VisitChild(fieldDeclaration->mStaticSpecifier);
 
@@ -1160,7 +1185,7 @@ void BfElementVisitor::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
 	for (auto& entry : enumCaseDeclaration->mEntries)
 		VisitChild(entry);
 	for (auto& comma : enumCaseDeclaration->mCommas)
-		VisitChild(comma);	
+		VisitChild(comma);
 }
 
 void BfElementVisitor::Visit(BfFieldDtorDeclaration* fieldDtorDeclaration)
@@ -1178,7 +1203,7 @@ void BfElementVisitor::Visit(BfTypeDeclaration* typeDeclaration)
 
 	VisitChild(typeDeclaration->mAttributes);
 	VisitChild(typeDeclaration->mAbstractSpecifier);
-	VisitChild(typeDeclaration->mSealedSpecifier);	
+	VisitChild(typeDeclaration->mSealedSpecifier);
 	VisitChild(typeDeclaration->mProtectionSpecifier);
 	VisitChild(typeDeclaration->mStaticSpecifier);
 	VisitChild(typeDeclaration->mPartialSpecifier);
@@ -1189,7 +1214,7 @@ void BfElementVisitor::Visit(BfTypeDeclaration* typeDeclaration)
 	for (auto& baseClass : typeDeclaration->mBaseClasses)
 		VisitChild(baseClass);
 	for (auto& comma : typeDeclaration->mBaseClassCommas)
-		VisitChild(comma);	
+		VisitChild(comma);
 
 	VisitChild(typeDeclaration->mGenericParams);
 	VisitChild(typeDeclaration->mGenericConstraintsDeclaration);
@@ -1200,7 +1225,6 @@ void BfElementVisitor::Visit(BfTypeDeclaration* typeDeclaration)
 		for (auto& member : *typeDeclaration->mDefineBlock)
 			VisitChild(member);
 	}*/
-	
 }
 
 void BfElementVisitor::Visit(BfTypeAliasDeclaration* typeDeclaration)
@@ -1216,7 +1240,7 @@ void BfElementVisitor::Visit(BfUsingDirective* usingDirective)
 {
 	Visit(usingDirective->ToBase());
 
-	VisitChild(usingDirective->mUsingToken);	
+	VisitChild(usingDirective->mUsingToken);
 	VisitChild(usingDirective->mNamespace);
 }
 

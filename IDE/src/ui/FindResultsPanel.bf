@@ -552,7 +552,7 @@ namespace IDE.ui
             return base.Deserialize(data);
         }
         
-        public void QueueLine(String text)
+        public void AddPendingLine(String text)
         {
 			mCurLineNum++;
             using (mMonitor.Enter())
@@ -591,7 +591,17 @@ namespace IDE.ui
 
 			String outStr = scope String();
 			outStr.AppendF("{0}({1}):{2}", fileEditData.mFilePath, line + 1, lineStr);
-			gApp.mFindResultsPanel.QueueLine(outStr);
+			gApp.mFindResultsPanel.AddPendingLine(outStr);
+		}
+
+		public void QueueLine(String text)
+		{
+			using (mMonitor.Enter())
+			{
+				QueuedEntry entry = new .();
+				entry.mText = new .(text);
+				mQueuedEntries.Add(entry);
+			}
 		}
 
 		public void QueueLine(String fileName, int32 line, int32 column, String text)
@@ -641,7 +651,10 @@ namespace IDE.ui
 				while (!mQueuedEntries.IsEmpty)
 				{
 					var entry = mQueuedEntries.PopFront();
-					QueueLine(gApp.GetEditData(entry.mFileName, true, false), entry.mLine, entry.mColumn, entry.mText);
+					if (entry.mFileName == null)
+						AddPendingLine(entry.mText);
+					else
+						QueueLine(gApp.GetEditData(entry.mFileName, true, false), entry.mLine, entry.mColumn, entry.mText);
 					delete entry;
 				}
 

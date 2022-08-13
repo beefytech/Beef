@@ -239,6 +239,16 @@ namespace IDE.Compiler
             }
         }
 
+		public BfParser GetParser(ProjectSource projectSource)
+		{
+		    using (mMonitor.Enter())
+		    {
+				BfParser parser;
+				mParserMap.TryGetValue(projectSource, out parser);
+				return parser;
+			}
+		}
+
         public BfParser CreateNewParserRevision(BfParser prevParser)
         {
             using (mMonitor.Enter())

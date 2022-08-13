@@ -49,4 +49,3 @@ enum RegForm : int8
 	RegForm_Double2,
 	RegForm_Double4,
 };
-

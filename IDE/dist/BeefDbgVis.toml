@@ -21,18 +21,18 @@ ValuePointer = "/*(mMethodId < 0) ? &this :*/ __cast(\"_BF_DeferredData_\", mMet
 
 [[Type]]
 Name = "System.Event<*>"
-DisplayString = "{{ data={__cast(\"System.Object\", mData & ~3)} }}"
+DisplayString = "{{ data={__cast(\"System.Object\", mData & sDataMask)} }}"
 [[Type.Expand.Item]]
 Name = "[target]"
 Value = "__cast(\"System.Object\", mData)"
-Condition = "(mData & 1) == 0"
+Condition = "(mData & sIsEnumerating) == 0"
 [[Type.Expand.Item]]
 Name = "[target]"
-Value = "((System.Event<$T1>.Enumerator*)(mData & ~3)).mTarget"
-Condition = "(mData & 1) != 0"
+Value = "((System.Event<$T1>.Enumerator*)(mData & sDataMask)).mTarget"
+Condition = "(mData & sIsEnumerating) != 0"
 [[Type.Expand.Item]]
 Name = "[flags]"
-Value = "mData & 3"
+Value = "mData & sFlagsMask"
 
 [[Type]]
 Name = "_BF_DeferredData_*"
@@ -52,14 +52,14 @@ String = "{{ {__demangleFakeMember(this)} }}"
 Name = "System.String"
 [[Type.DisplayString]]
 Condition = "(__getHighBits(mAllocSizeAndFlags, 2) & 1) == 0"
-String = "{(char8*)&mPtr,s8,count=mLength}"
+String = "{(char8*)&mPtrOrBuffer,s8,count=mLength}"
 [[Type.DisplayString]]
-String = "{mPtr,s8,count=mLength}"
+String = "{mPtrOrBuffer,s8,count=mLength}"
 [[Type.StringView]]
 Condition = "(__getHighBits(mAllocSizeAndFlags, 2) & 1) == 0"
-String = "{(char8*)&mPtr,s8,count=mLength}"
+String = "{(char8*)&mPtrOrBuffer,s8,count=mLength}"
 [[Type.StringView]]
-String = "{mPtr,s8,count=mLength}"
+String = "{mPtrOrBuffer,s8,count=mLength}"
 [[Type.Expand.Item]]
 Name = "[Length]"
 Value = "mLength"
@@ -78,11 +78,11 @@ Value = "__clearHighBits(mAllocSizeAndFlags, 2)"
 [[Type.Expand.Item]]
 Condition = "(__getHighBits(mAllocSizeAndFlags, 2) & 1) == 0"
 Name = "[RawChars]"
-Value = "(char8*)&mPtr,arraysize=mLength"
+Value = "(char8*)&mPtrOrBuffer,arraysize=mLength"
 [[Type.Expand.Item]]
 Condition = "(__getHighBits(mAllocSizeAndFlags, 2) & 1) != 0"
 Name = "[RawChars]"
-Value = "mPtr,arraysize=mLength"
+Value = "mPtrOrBuffer,arraysize=mLength"
 
 [[Type]]
 Name = "System.StringView"

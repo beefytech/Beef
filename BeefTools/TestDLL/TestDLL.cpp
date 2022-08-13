@@ -138,9 +138,7 @@ void TestMem()
 	char* mem = (char*)::VirtualAlloc(0, 4096 * 2, MEM_RESERVE, PAGE_READWRITE);
 	::VirtualAlloc(mem, 4096, MEM_COMMIT, PAGE_READWRITE);
 
-	char* str = "Hey";
-	char* cPtr = mem + 4096 - 3;
-	memcpy(cPtr, str, 3);
+	
 }
 
 void Test6()
@@ -163,10 +161,41 @@ void Test3(int a)
 	Test4(100, 200, 300);
 }
 
+
+#pragma pack(1)
+class TestStruct
+{
+public:
+	int mA;
+	int mB;
+	int mC;
+	int mD;
+};
+
+enum EnumVal
+{
+	EnumVal_A,
+	EnumVal_B,
+	EnumVal_C
+};
+
+struct Color
+{
+	float r, g, b, a;
+};
+
 // THIS IS VERSION 6.
 extern "C"
-__declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
+__declspec(dllexport) void Test2(int aa, int bb, int cc, int dd, Color func(int a, int b))
 {	
+	Color clr = func(100, 200);
+
+	EnumVal ev = EnumVal_A;
+
+	TestStruct ts;
+	ts.mA = 123;
+	ts.mB = 234;
+
 	int a = 1234;
 
 	for (int i = 0; i < 100; i++)
@@ -174,9 +203,7 @@ __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 		a++;
 	}
 
-	Test3(10);
-
-	char* strP = "Hey yo";
+	Test3(10);	
 
 	TestMem();
 

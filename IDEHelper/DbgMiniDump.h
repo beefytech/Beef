@@ -46,7 +46,7 @@ public:
 	bool StartLoad(const StringImpl& path);
 	int GetTargetBitCount();
 
-	template <typename T> 
+	template <typename T>
 	T& GetStreamData(const StreamDirectoryEntry& entry)
 	{
 		return *(T*)((uint8*)mMF.mData + entry.mDataRVA);

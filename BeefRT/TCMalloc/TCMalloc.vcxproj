@@ -502,6 +502,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -522,6 +523,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -542,6 +544,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -565,6 +568,7 @@
       <SupportJustMyCode>false</SupportJustMyCode>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -591,6 +595,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -616,6 +621,7 @@
       <SupportJustMyCode>false</SupportJustMyCode>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -640,6 +646,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -660,6 +667,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -680,6 +688,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -700,6 +709,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -722,6 +732,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -744,6 +755,7 @@
       <AdditionalIncludeDirectories>.;../;../..;../../BeefySysLib/third_party;../../BeefySysLib;../../BeefySysLib/platform/win;../gperftools/src;../gperftools/src/windows</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

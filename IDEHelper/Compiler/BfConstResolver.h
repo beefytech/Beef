@@ -24,13 +24,13 @@ enum BfConstResolveFlags
 class BfConstResolver : public BfExprEvaluator
 {
 public:
-	bool mIsInvalidConstExpr;	
+	bool mIsInvalidConstExpr;
 
 public:
 	virtual bool CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode) override;
 
 public:
-	BfConstResolver(BfModule* bfModule);		
+	BfConstResolver(BfModule* bfModule);
 
 	BfTypedValue Resolve(BfExpression* expr, BfType* wantType = NULL, BfConstResolveFlags flags = BfConstResolveFlag_None);
 	bool PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatcher* methodMatcher, Array<BfIRValue>& llvmArgs);

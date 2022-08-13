@@ -29,7 +29,7 @@ public:
 
 class CeBreakpoint : public Breakpoint
 {
-public:		
+public:
 	uintptr mCurBindAddr;
 	bool mHasBound;
 	int mIdx;
@@ -37,7 +37,7 @@ public:
 
 public:
 	CeBreakpoint()
-	{				
+	{
 		mCurBindAddr = 1;
 		mHasBound = false;
 		mIdx = -1;
@@ -62,7 +62,7 @@ struct CeFormatInfo
 	intptr mArrayLength;
 	intptr mOverrideCount;
 	intptr mMaxCount;
-	DwDisplayType mDisplayType;	
+	DwDisplayType mDisplayType;
 	int mTotalSummaryLength;
 	String mReferenceId;
 	String mSubjectExpr;
@@ -86,7 +86,7 @@ struct CeFormatInfo
 		mMaxCount = -1;
 		mTotalSummaryLength = 0;
 		mDisplayType = DwDisplayType_NotSpecified;
-		mExpandItemDepth = 0;		
+		mExpandItemDepth = 0;
 	}
 };
 
@@ -99,7 +99,7 @@ public:
 	BfPassInstance* mPassInstance;
 	BfExprEvaluator* mExprEvaluator;
 	BfExpression* mExprNode;
-	BfTypedValue mResultOverride;	
+	BfTypedValue mResultOverride;
 	String mExprString;
 
 	BfTypedValue mExplicitThis;
@@ -110,7 +110,7 @@ public:
 	void Init(CeDebugger* winDebugger, const StringImpl& expr, CeFormatInfo* formatInfo = NULL, BfTypedValue contextValue = BfTypedValue());
 	bool HasExpression();
 	~CeEvaluationContext();
-	BfTypedValue EvaluateInContext(BfTypedValue contextTypedValue, CeDbgState* dbgState = NULL);	
+	BfTypedValue EvaluateInContext(BfTypedValue contextTypedValue, CeDbgState* dbgState = NULL);
 	String GetErrorStr();
 	bool HadError();
 };
@@ -153,9 +153,9 @@ public:
 	BfAstNode* mExprNode;
 	String mReferenceId;
 	int mCallStackIdx;
-	String mResult;	
+	String mResult;
 	int mIdleTicks;
-	String mException;	
+	String mException;
 	bool mDone;
 
 	CePendingExpr();
@@ -197,7 +197,7 @@ public:
 	{
 	public:
 		int mFieldIdx;
-		int64 mVal;		
+		int64 mVal;
 	};
 
 public:
@@ -243,16 +243,16 @@ public:
 	CeMachine* mCeMachine;
 	DebugManager* mDebugManager;
 	CePendingExpr* mDebugPendingExpr;
-	CeDbgState* mCurDbgState;	
+	CeDbgState* mCurDbgState;
 	Array<CeBreakpoint*> mBreakpoints;
-	Dictionary<String, CeFileInfo*> mFileInfo;	
+	Dictionary<String, CeFileInfo*> mFileInfo;
 	Dictionary<int, CeDbgTypeInfo> mDbgTypeInfoMap;
 	Array<CeDbgStackInfo> mDbgCallStack;
 
 	CeEvaluationContext* mCurEvaluationContext;
 	CeBreakpoint* mActiveBreakpoint;
 	int mBreakpointVersion;
-	bool mBreakpointCacheDirty;	
+	bool mBreakpointCacheDirty;
 	bool mBreakpointFramesDirty;
 	int mCurDisasmFuncId;
 	int mPendingActiveFrameOffset;
@@ -270,7 +270,7 @@ public:
 
 	bool CheckConditionalBreakpoint(CeBreakpoint* breakpoint);
 	bool SetupStep(int frameIdx = 0);
-	CeFrame* GetFrame(int callStackIdx);	
+	CeFrame* GetFrame(int callStackIdx);
 	String DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread);
 	String Evaluate(const StringImpl& expr, CeFormatInfo formatInfo, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags);
 	DwDisplayInfo* GetDisplayInfo(const StringImpl& referenceId);
@@ -296,7 +296,7 @@ public:
 	void UpdateBreakpointCache();
 	void UpdateBreakpointFrames();
 	void UpdateBreakpointAddrs();
-	void UpdateBreakpoints(CeFunction* ceFunction);	
+	void UpdateBreakpoints(CeFunction* ceFunction);
 	void Continue();
 	CeDbgTypeInfo* GetDbgTypeInfo(int typeId);
 	CeDbgTypeInfo* GetDbgTypeInfo(BfIRType irType);
@@ -346,7 +346,7 @@ public:
 	virtual void StepIntoSpecific(intptr addr) override;
 	virtual void StepOver(bool inAssembly) override;
 	virtual void StepOut(bool inAssembly) override;
-	virtual void SetNextStatement(bool inAssembly, const StringImpl& fileName, int64 lineNumOrAsmAddr, int wantColumn) override;	
+	virtual void SetNextStatement(bool inAssembly, const StringImpl& fileName, int64 lineNumOrAsmAddr, int wantColumn) override;
 	//virtual DbgTypedValue GetRegister(const StringImpl& regName, CPURegisters* registers, Array<RegForm>* regForms = NULL) override;
 	virtual String Evaluate(const StringImpl& expr, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags) override;
 	virtual String EvaluateContinue() override;

@@ -22,6 +22,7 @@
 #include "../../util/CritSect.h"
 #include "../../util/Dictionary.h"
 #include "../../util/Hash.h"
+#include "../../third_party/putty/wildcard.h"
 #ifdef BFP_HAS_EXECINFO
 #include <execinfo.h>
 #endif
@@ -1528,10 +1529,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpCritSect_Leave(BfpCritSect* critSect)
     pthread_mutex_unlock(&critSect->mPMutex);
 }
 
-BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create()
+BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create(BfpTLSProc exitProc)
 {
     pthread_key_t key = 0;
-    pthread_key_create(&key, NULL);
+    pthread_key_create(&key, exitProc);
     return (BfpTLS*)(intptr)key;
 }
 
@@ -2378,9 +2379,10 @@ static bool BfpFindFileData_CheckFilter(BfpFindFileData* findData)
     {
         if ((findData->mFlags & BfpFindFileFlag_Files) == 0)
             return false;
-    }   
+    }
 
-    //TODO: Check actual wildcards.
+    if (!wc_match(findData->mWildcard.c_str(), findData->mDirEnt->d_name))
+        return false;
 
     return true;
 }

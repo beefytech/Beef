@@ -60,7 +60,6 @@ CePendingExpr::~CePendingExpr()
 
 //////////////////////////////////////////////////////////////////////////
 
-
 CeEvaluationContext::CeEvaluationContext(CeDebugger* winDebugger, const StringImpl& expr, CeFormatInfo* formatInfo, BfTypedValue contextValue)
 {
 	Init(winDebugger, expr, formatInfo, contextValue);
@@ -69,16 +68,16 @@ CeEvaluationContext::CeEvaluationContext(CeDebugger* winDebugger, const StringIm
 void CeEvaluationContext::Init(CeDebugger* ceDebugger, const StringImpl& expr, CeFormatInfo* formatInfo, BfTypedValue contextValue)
 {
 	mDebugger = ceDebugger;
-		
+
 	mCallStackIdx = 0;
 	mParser = NULL;
 	mReducer = NULL;
 	mPassInstance = NULL;
 	mExprEvaluator = NULL;
 	mExprNode = NULL;
-	
+
 	if (expr.empty())
-		return;	
+		return;
 
 	int atPos = (int)expr.IndexOf('@');
 	if ((atPos != -1) && (atPos < expr.mLength - 2) && (expr[atPos + 1] == '0') && (expr[atPos + 2] == 'x'))
@@ -135,7 +134,7 @@ void CeEvaluationContext::Init(CeDebugger* ceDebugger, const StringImpl& expr, C
 		}
 	}
 
-	mParser = new BfParser(ceDebugger->mCompiler->mSystem);	
+	mParser = new BfParser(ceDebugger->mCompiler->mSystem);
 	mPassInstance = new BfPassInstance(ceDebugger->mCompiler->mSystem);
 	auto terminatedExpr = expr + ";";
 	mParser->SetSource(terminatedExpr.c_str(), (int)terminatedExpr.length());
@@ -197,7 +196,7 @@ BfTypedValue CeEvaluationContext::EvaluateInContext(BfTypedValue contextTypedVal
 	auto ceFrame = mDebugger->GetFrame(mCallStackIdx);
 
 	auto module = mDebugger->mCeMachine->mCeModule;
-	
+
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(module->mCurTypeInstance, ceFrame->mFunction->mMethodInstance->GetOwner());
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(module->mCurMethodInstance, ceFrame->mFunction->mMethodInstance);
 	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mDebugger->mCompiler->mPassInstance, mPassInstance);
@@ -260,7 +259,7 @@ CeDebugger::CeDebugger(DebugManager* debugManager, BfCompiler* bfCompiler)
 	mDebugPendingExpr = NULL;
 	mCurDbgState = NULL;
 	mBreakpointVersion = 0;
-	mBreakpointCacheDirty = false;	
+	mBreakpointCacheDirty = false;
 	mBreakpointFramesDirty = false;
 	mCurDisasmFuncId = 0;
 	mActiveBreakpoint = NULL;
@@ -285,7 +284,7 @@ String CeDebugger::TypeToString(BfType* type, CeTypeModKind typeModKind)
 	if (typeModKind == CeTypeModKind_ReadOnly)
 		str += "readonly ";
 	else if (typeModKind == CeTypeModKind_Const)
-		str += "const ";	
+		str += "const ";
 	str += mCeMachine->mCeModule->TypeToString(type);
 	return str;
 }
@@ -363,10 +362,10 @@ String CeDebugger::GetDbgAllocInfo()
 void CeDebugger::Update()
 {
 	AutoCrit autoCrit(mCeMachine->mCritSect);
-	
+
 	if ((mRunState == RunState_Terminated) || (mRunState == RunState_Terminating))
 		return;
-	
+
 	if (mDebugPendingExpr != NULL)
 	{
 		if (mDebugPendingExpr->mDone)
@@ -374,10 +373,10 @@ void CeDebugger::Update()
 		else
 			mRunState = RunState_DebugEval;
 	}
-	else if (mCeMachine->mDbgPaused)	
-		mRunState = RunState_Paused;	
-	else	
-		mRunState = RunState_Running;	
+	else if (mCeMachine->mDbgPaused)
+		mRunState = RunState_Paused;
+	else
+		mRunState = RunState_Running;
 }
 
 void CeDebugger::UpdateBreakpointFrames()
@@ -392,7 +391,7 @@ void CeDebugger::UpdateBreakpointFrames()
 }
 
 void CeDebugger::ContinueDebugEvent()
-{	
+{
 	AutoCrit autoCrit(mCeMachine->mCritSect);
 
 	mRunState = RunState_Running;
@@ -435,9 +434,9 @@ bool CeDebugger::CheckConditionalBreakpoint(CeBreakpoint* breakpoint)
 		{
 			StringT<256> expr;
 			StringT<256> subjectExpr;
-			_SplitExpr(conditional->mExpr, expr, subjectExpr);			
+			_SplitExpr(conditional->mExpr, expr, subjectExpr);
 
-			conditional->mDbgEvaluationContext = new CeEvaluationContext(this, expr);						
+			conditional->mDbgEvaluationContext = new CeEvaluationContext(this, expr);
 			conditional->mDbgEvaluationContext->mCallStackIdx = -1;
 		}
 
@@ -451,7 +450,6 @@ bool CeDebugger::CheckConditionalBreakpoint(CeBreakpoint* breakpoint)
 			{
 				if (!error->mIsWarning)
 					errorStr = error->mError;
-
 			}
 			String condError = StrFormat("error Conditional breakpoint expression '%s' failed: %s", conditional->mExpr.c_str(), errorStr.c_str());
 			mDebugManager->mOutMessages.push_back(condError);
@@ -487,7 +485,7 @@ bool CeDebugger::CheckConditionalBreakpoint(CeBreakpoint* breakpoint)
 			return false;
 		break;
 	}
-	
+
 	if (!breakpoint->mLogging.IsEmpty())
 	{
 		auto ceContext = mCeMachine->mCurContext;
@@ -501,14 +499,14 @@ bool CeDebugger::CheckConditionalBreakpoint(CeBreakpoint* breakpoint)
 
 		CeFormatInfo formatInfo;
 		formatInfo.mCallStackIdx = -1;
-		
+
 		auto prevRunState = mRunState;
 		mRunState = RunState_Paused; // We need to be paused to avoid certain errors in the eval
 		String displayString;
 
 		String expr;
 		_SplitExpr(breakpoint->mLogging, expr, formatInfo.mSubjectExpr);
-		
+
 		ProcessEvalString(BfTypedValue(), expr, displayString, formatInfo, NULL, false);
 		mRunState = prevRunState;
 
@@ -520,7 +518,7 @@ bool CeDebugger::CheckConditionalBreakpoint(CeBreakpoint* breakpoint)
 		if (!breakpoint->mBreakAfterLogging)
 			return false;
 	}
-	
+
 	return true;
 }
 
@@ -533,7 +531,7 @@ Breakpoint* CeDebugger::CreateBreakpoint(const StringImpl& fileName, int lineNum
 	breakpoint->mRequestedLineNum = lineNum;
 	breakpoint->mLineNum = lineNum;
 	breakpoint->mColumn = wantColumn;
-	breakpoint->mInstrOffset = instrOffset;	
+	breakpoint->mInstrOffset = instrOffset;
 	mBreakpoints.Add(breakpoint);
 
 	mBreakpointVersion++;
@@ -572,7 +570,6 @@ void CeDebugger::CheckBreakpoint(Breakpoint* breakpoint)
 
 void CeDebugger::HotBindBreakpoint(Breakpoint* breakpoint, int lineNum, int hotIdx)
 {
-
 }
 
 int64 CeDebugger::ValueToInt(addr_ce addr, BfType* type)
@@ -602,7 +599,7 @@ int64 CeDebugger::ValueToInt(addr_ce addr, BfType* type)
 }
 
 int64 CeDebugger::ValueToInt(const BfTypedValue& typedVal)
-{	
+{
 	auto ceModule = mCeMachine->mCeModule;
 
 	auto constant = ceModule->mBfIRBuilder->GetConstant(typedVal.mValue);
@@ -610,13 +607,13 @@ int64 CeDebugger::ValueToInt(const BfTypedValue& typedVal)
 		return 0;
 
 	if (typedVal.IsAddr())
-	{	
+	{
 		BfType* type = typedVal.mType;
 		if (type->IsTypedPrimitive())
 			type = type->GetUnderlyingType();
 
 		if ((type->IsInteger()) || (type->IsBoolean()))
-		{			
+		{
 			auto ceTypedVal = GetAddr(constant);
 			if (ceTypedVal)
 				return ValueToInt((addr_ce)ceTypedVal.mAddr, type);
@@ -630,9 +627,9 @@ int64 CeDebugger::ValueToInt(const BfTypedValue& typedVal)
 		auto fromConstGEP = (BfConstantExtractValue*)constant;
 		auto fromTarget = ceModule->mBfIRBuilder->GetConstantById(fromConstGEP->mTarget);
 		if (fromTarget->mConstType == BfConstType_AggCE)
-		{			
+		{
 			auto aggCE = (BfConstantAggCE*)fromTarget;
-		
+
 			auto dbgTypeInfo = GetDbgTypeInfo(aggCE->mType);
 			if (dbgTypeInfo == NULL)
 				return 0;
@@ -658,6 +655,7 @@ void CeDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 	mBreakpoints.Remove((CeBreakpoint*)breakpoint);
 	delete breakpoint;
 	ClearBreakpointCache();
+	mBreakpointVersion++;
 }
 
 void CeDebugger::DetachBreakpoint(Breakpoint* breakpoint)
@@ -669,6 +667,7 @@ void CeDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantCol
 	breakpoint->mLineNum = lineNum;
 	breakpoint->mColumn = wantColumn;
 	ClearBreakpointCache();
+	mBreakpointVersion++;
 }
 
 void CeDebugger::MoveMemoryBreakpoint(Breakpoint* breakpoint, intptr addr, int byteCount)
@@ -676,7 +675,7 @@ void CeDebugger::MoveMemoryBreakpoint(Breakpoint* breakpoint, intptr addr, int b
 }
 
 void CeDebugger::DisableBreakpoint(Breakpoint* breakpoint)
-{	
+{
 }
 
 void CeDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringImpl& conditionExpr)
@@ -725,7 +724,6 @@ void CeDebugger::BreakAll()
 {
 	mCeMachine->mSpecialCheck = true;
 	mCeMachine->mDbgWantBreak = true;
-
 }
 
 bool CeDebugger::TryRunContinue()
@@ -750,7 +748,7 @@ bool CeDebugger::SetupStep(int frameIdx)
 		return false;
 	}
 
-	auto ceMachine = mCeMachine;	
+	auto ceMachine = mCeMachine;
 	auto ceContext = mCeMachine->mCurContext;
 
 	if (entryIdx < ceFrame->mFunction->mEmitTable.mSize - 1)
@@ -766,7 +764,7 @@ bool CeDebugger::SetupStep(int frameIdx)
 		}
 	}
 	else
-		ceMachine->mStepState.mNextInstIdx = ceFrame->mFunction->mCode.mSize;	
+		ceMachine->mStepState.mNextInstIdx = ceFrame->mFunction->mCode.mSize;
 	ceMachine->mStepState.mStartDepth = ceContext->mCallStack.mSize - frameIdx;
 	ceMachine->mSpecialCheck = true;
 
@@ -806,7 +804,7 @@ void CeDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, i
 		return;
 
 	if (inAssembly)
-	{		
+	{
 		int32 instIdx = (int32)lineNumOrAsmAddr;
 		if (instIdx < ceFrame->mFunction->mCode.mSize)
 		{
@@ -836,7 +834,7 @@ void CeDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, i
 }
 
 CeFrame* CeDebugger::GetFrame(int callStackIdx)
-{		
+{
 	auto ceContext = mCeMachine->mCurContext;
 	if (ceContext == NULL)
 		return NULL;
@@ -936,7 +934,7 @@ String CeDebugger::DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread)
 	autoComplete.mModule = module;
 	autoComplete.mCompiler = module->mCompiler;
 	autoComplete.mSystem = module->mSystem;
-	
+
 	BfResolvePassData resolvePass;
 	resolvePass.mParsers.Add(pendingExpr->mParser);
 	resolvePass.mAutoComplete = &autoComplete;
@@ -963,14 +961,14 @@ String CeDebugger::DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread)
 	{
 		BfExprEvaluator exprEvaluator(mCeMachine->mCeModule);
 		exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_Comptime);
-		exprEvaluator.VisitChildNoRef(pendingExpr->mExprNode);		
-		exprResult = exprEvaluator.GetResult();		
+		exprEvaluator.VisitChildNoRef(pendingExpr->mExprNode);
+		exprResult = exprEvaluator.GetResult();
 		origExprResult = exprResult;
 		if ((exprResult) && (!exprResult.mType->IsComposite()))
 			exprResult = module->LoadValue(exprResult);
 		module->FixIntUnknown(exprResult);
 	}
-		
+
 	if (dbgState.mBlockedSideEffects)
 	{
 		if ((mCeMachine->mDbgPaused) && ((pendingExpr->mExpressionFlags & DwEvalExpressionFlag_AllowCalls) != 0))
@@ -981,7 +979,7 @@ String CeDebugger::DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread)
 
 		return "!sideeffects";
 	}
-	
+
 	if (!exprResult)
 	{
 		auto resultType = mCeMachine->mCeModule->ResolveTypeRef(pendingExpr->mExprNode, {}, BfPopulateType_Data, BfResolveTypeRefFlag_IgnoreLookupError);
@@ -1075,7 +1073,7 @@ String CeDebugger::DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread)
 // 			val += "\n:canEdit";
 // 	}
 
-	if ((origExprResult.mType != NULL) && (!origExprResult.mType->IsComposite()) && (!origExprResult.mType->IsRef()) && 
+	if ((origExprResult.mType != NULL) && (!origExprResult.mType->IsComposite()) && (!origExprResult.mType->IsRef()) &&
 		(origExprResult.IsAddr()) && (!origExprResult.IsReadOnly()))
 	{
 		val += "\n:canEdit";
@@ -1083,7 +1081,7 @@ String CeDebugger::DoEvaluate(CePendingExpr* pendingExpr, bool inCompilerThread)
 
 	if (pendingExpr->mCursorPos != -1)
 		val += GetAutocompleteOutput(autoComplete);
-	
+
 	return val;
 }
 
@@ -1101,7 +1099,7 @@ String CeDebugger::Evaluate(const StringImpl& expr, CeFormatInfo formatInfo, int
 	auto ceContext = mCeMachine->mCurContext;
 	bool valIsAddr = false;
 
-	BfParser* parser = new BfParser(mCompiler->mSystem);	
+	BfParser* parser = new BfParser(mCompiler->mSystem);
 
 	BfPassInstance* bfPassInstance = new BfPassInstance(mCompiler->mSystem);
 
@@ -1138,14 +1136,14 @@ String CeDebugger::Evaluate(const StringImpl& expr, CeFormatInfo formatInfo, int
 	}
 
 	parser->SetSource(terminatedExpr.c_str(), (int)terminatedExpr.length());
-	parser->Parse(bfPassInstance);	
+	parser->Parse(bfPassInstance);
 
 	BfReducer bfReducer;
 	bfReducer.mAlloc = parser->mAlloc;
 	bfReducer.mSystem = mCompiler->mSystem;
 	bfReducer.mPassInstance = bfPassInstance;
 	bfReducer.mVisitorPos = BfReducer::BfVisitorPos(parser->mRootNode);
-	bfReducer.mVisitorPos.MoveNext();	
+	bfReducer.mVisitorPos.MoveNext();
 	bfReducer.mSource = parser;
 	BfAstNode* exprNode = NULL;
 	if (parseAsType)
@@ -1155,8 +1153,8 @@ String CeDebugger::Evaluate(const StringImpl& expr, CeFormatInfo formatInfo, int
 	parser->Close();
 
 	formatInfo.mCallStackIdx = callStackIdx;
-	
-	CePendingExpr* pendingExpr = new CePendingExpr();	
+
+	CePendingExpr* pendingExpr = new CePendingExpr();
 	pendingExpr->mPassInstance = bfPassInstance;
 	pendingExpr->mParser = parser;
 	pendingExpr->mCallStackIdx = callStackIdx;
@@ -1229,7 +1227,7 @@ String CeDebugger::Evaluate(const StringImpl& expr, CeFormatInfo formatInfo, int
 
 	pendingExpr->mExplitType = explicitType;
 	pendingExpr->mFormatInfo = formatInfo;
-	
+
 	String result = DoEvaluate(pendingExpr, false);
 	if (result == "!pending")
 	{
@@ -1250,7 +1248,7 @@ String CeDebugger::Evaluate(const StringImpl& expr, CeFormatInfo formatInfo, int
 
 void CeDebugger::ClearBreakpointCache()
 {
-	if (!mCeMachine->mDbgPaused)	
+	if (!mCeMachine->mDbgPaused)
 		mCeMachine->mSpecialCheck = true;
 	mBreakpointFramesDirty = true;
 	mBreakpointCacheDirty = true;
@@ -1265,7 +1263,7 @@ void CeDebugger::UpdateBreakpointAddrs()
 	{
 		breakpoint->mCurBindAddr = 1;
 	}
-	
+
 	CeFunction* ceFunction = NULL;
 	if (!mCeMachine->mFunctionIdMap.TryGetValue(mCurDisasmFuncId, &ceFunction))
 		return;
@@ -1283,7 +1281,7 @@ void CeDebugger::UpdateBreakpointCache()
 
 	mBreakpointCacheDirty = false;
 	if (!mFileInfo.IsEmpty())
-		return;	
+		return;
 	for (int i = 0; i < (int)mBreakpoints.mSize; i++)
 	{
 		auto breakpoint = mBreakpoints[i];
@@ -1322,7 +1320,7 @@ void CeDebugger::UpdateBreakpoints(CeFunction* ceFunction)
 
 	UpdateBreakpointCache();
 
-	ceFunction->UnbindBreakpoints();		
+	ceFunction->UnbindBreakpoints();
 
 	String path;
 	int scope = -1;
@@ -1363,7 +1361,7 @@ void CeDebugger::UpdateBreakpoints(CeFunction* ceFunction)
 			int bestRequestedBindLine = 0;
 
 			while ((idx >= 0) && (idx < ceFileInfo->mOrderedBreakpoints.mSize))
-			{				
+			{
 				auto breakpoint = ceFileInfo->mOrderedBreakpoints[idx];
 				if (usedBreakpointSet.IsSet(breakpoint->mIdx))
 				{
@@ -1382,10 +1380,10 @@ void CeDebugger::UpdateBreakpoints(CeFunction* ceFunction)
 					int lineDiff = emitEntry.mLine - breakpoint->mLineNum;
 					if ((lineDiff < 0) || (lineDiff > 4))
 						break;
-					
+
 					if ((breakpoint->mHasBound) && (lineDiff != 0))
 						break;
-					
+
 					bestRequestedBindLine = breakpoint->mRequestedLineNum;
 				}
 
@@ -1435,11 +1433,11 @@ CeDbgTypeInfo* CeDebugger::GetDbgTypeInfo(int typeId)
 			mDbgTypeInfoMap.Remove(typeId);
 			return NULL;
 		}
-		dbgTypeInfo->mType = type;		
+		dbgTypeInfo->mType = type;
 
 		auto typeInst = type->ToTypeInstance();
 		if (typeInst != NULL)
-		{			
+		{
 			for (int fieldIdx = 0; fieldIdx < typeInst->mFieldInstances.mSize; fieldIdx++)
 			{
 				auto& fieldInst = typeInst->mFieldInstances[fieldIdx];
@@ -1464,7 +1462,6 @@ CeDbgTypeInfo* CeDebugger::GetDbgTypeInfo(int typeId)
 				}
 			}
 		}
-
 	}
 	return dbgTypeInfo;
 }
@@ -1512,7 +1509,6 @@ static String IntTypeToString(T val, const StringImpl& name, DwDisplayInfo* disp
 				binary = "'" + binary;
 
 			binary = ((val & ((T)1 << i)) ? "1" : "0") + binary;
-
 		}
 		return StrFormat("0b'%s\n%s", binary.c_str(), name.c_str());
 	}
@@ -1595,7 +1591,7 @@ String CeDebugger::GetMemberList(BfType* type, addr_ce addr, addr_ce addrInst, b
 	auto typeInst = type->ToTypeInstance();
 	if (typeInst == NULL)
 		return "";
-	
+
 	auto module = typeInst->mModule;
 
 	String retVal;
@@ -1606,7 +1602,7 @@ String CeDebugger::GetMemberList(BfType* type, addr_ce addr, addr_ce addrInst, b
 		retVal += StrFormat("[base]\tthis,this=%d@0x%X, nd, na, nv", typeInst->mBaseType->mTypeId, addr);
 		fieldCount++;
 	}
-		
+
 	auto ceContext = mCompiler->mCeMachine->mCurContext;
 	bool didStaticCtor = ceContext->mStaticCtorExecSet.Contains(type->mTypeId);
 
@@ -1616,7 +1612,7 @@ String CeDebugger::GetMemberList(BfType* type, addr_ce addr, addr_ce addrInst, b
 		auto fieldDef = fieldInst.GetFieldDef();
 		if (fieldDef == NULL)
 			continue;
-		
+
 		if (fieldDef->mIsStatic != isStatic)
 		{
 			if (fieldDef->mIsStatic)
@@ -1638,7 +1634,7 @@ String CeDebugger::GetMemberList(BfType* type, addr_ce addr, addr_ce addrInst, b
 		else
 		{
 			retVal += "\t";
-			retVal += fieldDef->mName;			
+			retVal += fieldDef->mName;
 			retVal += StrFormat(",this=%d@0x%X", typeInst->mTypeId, addrInst);
 		}
 
@@ -1649,7 +1645,7 @@ String CeDebugger::GetMemberList(BfType* type, addr_ce addr, addr_ce addrInst, b
 	{
 		if (fieldCount > 0)
 			retVal += "\n";
-			
+
 		retVal += StrFormat("Static values\tcomptype(%d)", typeInst->mTypeId);
 	}
 
@@ -1924,8 +1920,8 @@ String CeDebugger::MaybeQuoteFormatInfoParam(const StringImpl& str)
 }
 
 BfTypedValue CeDebugger::EvaluateInContext(const BfTypedValue& contextTypedValue, const StringImpl& subExpr, CeFormatInfo* formatInfo, String* outReferenceId, String* outErrors)
-{	
-	CeEvaluationContext dbgEvaluationContext(this, subExpr, formatInfo, contextTypedValue);	
+{
+	CeEvaluationContext dbgEvaluationContext(this, subExpr, formatInfo, contextTypedValue);
 // 	if (formatInfo != NULL)
 // 	{
 // 		dbgEvaluationContext.mDbgExprEvaluator->mSubjectExpr = formatInfo->mSubjectExpr;
@@ -2023,11 +2019,11 @@ String CeDebugger::GetArrayItems(DebugVisualizerEntry* debugVis, BfType* valueTy
 		BfTypedValue condVal = conditionEvaluationContext.EvaluateInContext(curNode);
 		if (!condVal)
 			break;
-		
+
 		auto ceTypedVal = GetAddr(curNode);
 		if (!ceTypedVal)
 			break;
-		
+
 		if (ValueToInt(condVal) != 0)
 		{
 			auto val = curNode;
@@ -2064,11 +2060,11 @@ String CeDebugger::GetLinkedListItems(DebugVisualizerEntry* debugVis, addr_ce en
 	CeEvaluationContext nextEvaluationContext(this, debugVis->mNextPointer);
 	CeEvaluationContext valueEvaluationContext(this, debugVis->mValuePointer);
 	auto ceModule = mCeMachine->mCeModule;
-	
+
 	String addrs;
 
 	bool checkLeft = true;
-	
+
 	int mapIdx;
 	for (mapIdx = 0; mapIdx < count; mapIdx++)
 	{
@@ -2102,7 +2098,7 @@ String CeDebugger::GetLinkedListItems(DebugVisualizerEntry* debugVis, addr_ce en
 		curNode = nextEvaluationContext.EvaluateInContext(curNode);
 	}
 	count = mapIdx;
-	
+
 	if (outContinuationData != NULL)
 	{
 		CeTypedValue ceNodeVal = GetAddr(curNode);
@@ -2114,7 +2110,7 @@ String CeDebugger::GetLinkedListItems(DebugVisualizerEntry* debugVis, addr_ce en
 }
 
 String CeDebugger::GetDictionaryItems(DebugVisualizerEntry* debugVis, BfTypedValue dictValue, int bucketIdx, int nodeIdx, int& count, String* outContinuationData)
-{	
+{
 	CeEvaluationContext nextEvaluationContext(this, debugVis->mNextPointer);
 	auto ceModule = mCeMachine->mCeModule;
 
@@ -2125,7 +2121,7 @@ String CeDebugger::GetDictionaryItems(DebugVisualizerEntry* debugVis, BfTypedVal
 		count = -1;
 		return "";
 	}
-	
+
 	auto ceDictTypedVal = GetAddr(dictValue);
 	if (!ceDictTypedVal)
 		return "";
@@ -2155,10 +2151,10 @@ String CeDebugger::GetDictionaryItems(DebugVisualizerEntry* debugVis, BfTypedVal
 	while (encodeCount < count)
 	{
 		if (nodeIdx != -1)
-		{	
+		{
 			addr_ce entryAddr = (addr_ce)ceElemTypedVal.mAddr + (nodeIdx * entrySize);
 
-			BfTypedValue entryValue = BfTypedValue(ceModule->mBfIRBuilder->CreateConstAggCE(ceModule->mBfIRBuilder->MapType(entryType), entryAddr), entryType);			
+			BfTypedValue entryValue = BfTypedValue(ceModule->mBfIRBuilder->CreateConstAggCE(ceModule->mBfIRBuilder->MapType(entryType), entryAddr), entryType);
 			addrs += EncodeDataPtr(entryAddr, false);
 
 			BfTypedValue nextValue = nextEvaluationContext.EvaluateInContext(entryValue);
@@ -2181,7 +2177,7 @@ String CeDebugger::GetDictionaryItems(DebugVisualizerEntry* debugVis, BfTypedVal
 	}
 
 	count = encodeCount;
-	
+
 	if (outContinuationData != NULL)
 	{
 		*outContinuationData += EncodeDataPtr(debugVis, false) + EncodeDataPtr(dictValue.mType, false) + EncodeDataPtr((addr_ce)ceDictTypedVal.mAddr, false) +
@@ -2203,25 +2199,25 @@ String CeDebugger::GetTreeItems(DebugVisualizerEntry* debugVis, Array<addr_ce>& 
 
 	//TODO:
 // 	bool checkLeft = true;
-// 
+//
 // 	if ((curNode.mPtr & 2) != 0) // Flag from continuation
 // 	{
 // 		checkLeft = false;
 // 		curNode.mPtr &= (addr_ce)~2;
 // 	}
-// 
+//
 // 	HashSet<intptr> seenAddrs;
-// 
+//
 // 	for (int mapIdx = 0; mapIdx < count; mapIdx++)
 // 	{
 // 		BfTypedValue readNode;
 // 		while (true)
 // 		{
 // 			bool checkNode = (curNode.mPtr & 1) == 0;
-// 
+//
 // 			readNode = curNode;
 // 			readNode.mPtr &= (addr_ce)~1;
-// 
+//
 // 			if (checkLeft)
 // 			{
 // 				BfTypedValue leftValue = leftEvaluationContext.EvaluateInContext(readNode);
@@ -2237,7 +2233,7 @@ String CeDebugger::GetTreeItems(DebugVisualizerEntry* debugVis, Array<addr_ce>& 
 // 					checkLeft = false;
 // 					break; // Handle node
 // 				}
-// 
+//
 // 				parentList.push_back(curNode.mPtr);
 // 				curNode = leftValue;
 // 			}
@@ -2267,34 +2263,34 @@ String CeDebugger::GetTreeItems(DebugVisualizerEntry* debugVis, Array<addr_ce>& 
 // 						// Failed
 // 						break;
 // 					}
-// 
+//
 // 					curNode.mPtr = parentList.back();
 // 					parentList.pop_back();
 // 					continue; // Don't check against seenAddrs
 // 				}
 // 			}
-// 
+//
 // 			if (!seenAddrs.Add(curNode.mPtr))
 // 			{
 // 				// Failed!
 // 				return "";
 // 			}
 // 		}
-// 
-// 
+//
+//
 // 		BfTypedValue val = valueEvaluationContext.EvaluateInContext(readNode);
 // 		if (valueType == NULL)
 // 			valueType = val.mType;
-// 
+//
 // 		String addr = EncodeDataPtr(val.mPtr, false);
 // 		addrs += addr;
-// 
+//
 // 		curNode.mPtr |= 1; // Node handled
 // 	}
-// 
+//
 // 	if (!checkLeft)
 // 		curNode.mPtr |= 2;
-// 
+//
 // 	if (outContinuationData != NULL)
 // 	{
 // 		*outContinuationData += EncodeDataPtr(debugVis, false) + EncodeDataPtr(valueType, false) + EncodeDataPtr(curNode.mType, false) + EncodeDataPtr(curNode.mPtr, false);
@@ -2306,7 +2302,7 @@ String CeDebugger::GetTreeItems(DebugVisualizerEntry* debugVis, Array<addr_ce>& 
 }
 
 String CeDebugger::GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count)
-{	
+{
 	if (!mCeMachine->mDbgPaused)
 		return "";
 
@@ -2321,26 +2317,26 @@ String CeDebugger::GetCollectionContinuation(const StringImpl& continuationData,
 // 		BfTypedValue curNode;
 // 		curNode.mType = (DbgType*)DecodeLocalDataPtr(dataPtr);
 // 		curNode.mPtr = DecodeTargetDataPtr(dataPtr);
-// 
+//
 // 		Array<addr_ce> parentList;
 // 		String newContinuationData;
 // 		while (*dataPtr != 0)
 // 			parentList.push_back(DecodeTargetDataPtr(dataPtr));
-// 
+//
 // 		String retVal = GetTreeItems(dbgCompileUnit, debugVis, parentList, valueType, curNode, count, &newContinuationData);
 // 		retVal += "\n" + newContinuationData;
 // 		return retVal;
 	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_LinkedList)
-	{		
+	{
 		addr_ce endNodePtr = DecodeTargetDataPtr(dataPtr);
 		BfType* valueType = (BfType*)DecodeLocalDataPtr(dataPtr);
 		BfType* nodeType = (BfType*)DecodeLocalDataPtr(dataPtr);
-		
+
 		BfTypedValue curNode = BfTypedValue(
 			ceModule->mBfIRBuilder->CreateIntToPtr(DecodeTargetDataPtr(dataPtr), ceModule->mBfIRBuilder->MapType(nodeType)),
 			nodeType);
-		
+
 		String newContinuationData;
 
 		if (count < 0)
@@ -2352,9 +2348,9 @@ String CeDebugger::GetCollectionContinuation(const StringImpl& continuationData,
 	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_Array)
 	{
-		BfType* valueType = (BfType*)DecodeLocalDataPtr(dataPtr);		
-		
-		auto nodeType = (BfType*)DecodeLocalDataPtr(dataPtr);		
+		BfType* valueType = (BfType*)DecodeLocalDataPtr(dataPtr);
+
+		auto nodeType = (BfType*)DecodeLocalDataPtr(dataPtr);
 		BfTypedValue curNode = BfTypedValue(
 			ceModule->mBfIRBuilder->CreateIntToPtr(DecodeTargetDataPtr(dataPtr), ceModule->mBfIRBuilder->MapType(nodeType)),
 			nodeType);
@@ -2369,7 +2365,7 @@ String CeDebugger::GetCollectionContinuation(const StringImpl& continuationData,
 		return retVal;
 	}
 	else if (debugVis->mCollectionType == DebugVisualizerEntry::CollectionType_Dictionary)
-	{	
+	{
 		auto dictValueType = (BfType*)DecodeLocalDataPtr(dataPtr);
 		BfTypedValue dictValue = BfTypedValue(
 			ceModule->mBfIRBuilder->CreateIntToPtr(DecodeTargetDataPtr(dataPtr), ceModule->mBfIRBuilder->MapType(dictValueType)),
@@ -2397,9 +2393,9 @@ CeTypedValue CeDebugger::GetAddr(BfConstant* constant, BfType* type)
 		auto globalVar = (BfGlobalVar*)constant;
 
 		String varName(globalVar->mName);
-	
+
 		if (varName.StartsWith("__bfStrObj"))
-		{			
+		{
 			int stringId = atoi(varName.c_str() + 10);
 			auto addr = ceContext->GetString(stringId);
 			return CeTypedValue(addr, globalVar->mType);
@@ -2429,17 +2425,17 @@ CeTypedValue CeDebugger::GetAddr(BfConstant* constant, BfType* type)
 		return CeTypedValue(fieldInfo->mAddr, globalVar->mType);
 	}
 	else if (constant->mTypeCode == BfTypeCode_StringId)
-	{	
+	{
 		auto stringType = module->ResolveTypeDef(module->mCompiler->mStringTypeDef)->ToTypeInstance();
 		if ((type != NULL) && (type->IsPointer()))
 		{
 			BfType* charType = module->GetPrimitiveType(BfTypeCode_Char8);
-			BfType* charPtrType = module->CreatePointerType(charType);			
+			BfType* charPtrType = module->CreatePointerType(charType);
 			auto addr = ceContext->GetString(constant->mInt32) + stringType->mInstSize;
 			return CeTypedValue(addr, module->mBfIRBuilder->MapType(charPtrType));
 		}
 		else
-		{			
+		{
 			auto addr = ceContext->GetString(constant->mInt32);
 			return CeTypedValue(addr, module->mBfIRBuilder->MapType(stringType));
 		}
@@ -2474,15 +2470,15 @@ CeTypedValue CeDebugger::GetAddr(BfConstant* constant, BfType* type)
 		if (!typedVal)
 			return CeTypedValue();
 
-		auto dbgTypeInfo = GetDbgTypeInfo(typedVal.mType);		
+		auto dbgTypeInfo = GetDbgTypeInfo(typedVal.mType);
 		if (dbgTypeInfo == NULL)
 			return CeTypedValue();
 
 		auto addr = typedVal.mAddr;
 
 		if (gepConst->mIdx0 != 0)
-			addr += gepConst->mIdx0 * dbgTypeInfo->mType->GetUnderlyingType()->GetStride();		
-		
+			addr += gepConst->mIdx0 * dbgTypeInfo->mType->GetUnderlyingType()->GetStride();
+
 		return CeTypedValue(addr, module->mBfIRBuilder->MapType(dbgTypeInfo->mType));
 	}
 	else if (constant->mConstType == BfConstType_GEP32_2)
@@ -2496,7 +2492,7 @@ CeTypedValue CeDebugger::GetAddr(BfConstant* constant, BfType* type)
 
 		auto dbgTypeInfo = GetDbgTypeInfo(typedVal.mType);
 
-		if ((dbgTypeInfo != NULL) && 
+		if ((dbgTypeInfo != NULL) &&
 			((dbgTypeInfo->mType->IsPointer()) || ((dbgTypeInfo->mType->IsRef()))))
 			dbgTypeInfo = GetDbgTypeInfo(dbgTypeInfo->mType->GetUnderlyingType()->mTypeId);
 
@@ -2520,7 +2516,7 @@ CeTypedValue CeDebugger::GetAddr(BfConstant* constant, BfType* type)
 					ptrType = module->CreatePointerType(ptrType);
 			}
 		}
-		
+
 		if (ptrType == NULL)
 		{
 			if (gepConst->mIdx1 > dbgTypeInfo->mFieldOffsets.mSize)
@@ -2570,7 +2566,7 @@ String CeDebugger::ReadString(BfTypeCode charType, intptr addr, intptr maxLength
 		maxLength = BF_MIN(formatInfo.mMaxCount, maxLength);
 
 	if (maxLength == -1)
-		maxLength = 8 * 1024 * 1024; // Is 8MB crazy?	
+		maxLength = 8 * 1024 * 1024; // Is 8MB crazy?
 	if (!formatInfo.mRawString)
 		maxLength = BF_MIN(maxLength, maxShowSize);
 
@@ -2838,15 +2834,15 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 	{
 		return "!Invalid expression";
 	}
-	
+
 	bool didAlloc = false;
-	addr_ce addr = 0;	
+	addr_ce addr = 0;
 
 	defer(
 		{
 			if (didAlloc)
 				mCurDbgState->mCeContext->CeFree(addr);
-		}		
+		}
 		);
 
 	if (constant->mConstType == BfConstType_AggCE)
@@ -2878,19 +2874,19 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		if (!mCurDbgState->mCeContext->WriteConstant(mCeMachine->mCeModule, addr, constant, typedValue.mType))
 		{
 			return StrFormat("!Failed to encode value");
-		}		
+		}
 	}
 
 	DwDisplayInfo* displayInfo = GetDisplayInfo(formatInfo.mReferenceId);
 
 	char str[32];
-	String result;	
+	String result;
 	auto memStart = mCurDbgState->mCeContext->mMemory.mVals;
 
 	int checkMemSize = typedValue.mType->mSize;
 	if (typedValue.mType->IsPointer())
 		checkMemSize = typedValue.mType->GetUnderlyingType()->mSize;
-	
+
 	uint8* data = ceContext->GetMemoryPtr(addr, checkMemSize);
 	if ((addr != 0) && (data == NULL))
 	{
@@ -2900,9 +2896,9 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 			return "!Invalid address";
 	}
 
-	addr_ce dataAddr = addr;	
+	addr_ce dataAddr = addr;
 	if ((typedValue.IsAddr()) && (typedValue.mType->IsObjectOrInterface()))
-		dataAddr = *(addr_ce*)data;	
+		dataAddr = *(addr_ce*)data;
 
 	if (formatInfo.mRawString)
 	{
@@ -2935,7 +2931,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 			displayStrFormatInfo.mArrayLength = -1;
 
 			// Why did we have this "na" on here? It made "void*[3]" type things show up as "{,,}"
-			//String evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + StrFormat(")[%d], na", idx);			
+			//String evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + StrFormat(")[%d], na", idx);
 
 			String evalStr = StrFormat("((comptype(%d))(void*)", ptrType->mTypeId) + EncodeDataPtr(ptrVal, true) + StrFormat(")[%lld]", idx);
 			BfTypedValue evalResult = EvaluateInContext(typedValue, evalStr, &displayStrFormatInfo);
@@ -2976,7 +2972,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 
 			_ShowArraySummary(retVal, ptrVal, formatInfo.mArrayLength, elementType);
 
-			String idxStr = "[{0}]";			
+			String idxStr = "[{0}]";
 
 			retVal += "\n" + TypeToString(typedValue);
 
@@ -3066,7 +3062,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		{
 // 			addr = *(addr_ce*)data;
 // 			dataAddr = addr;
-// 
+//
 // 			data = ceContext->GetMemoryPtr(addr, checkMemSize);
 // 			if ((addr != 0) && (data == NULL))
 // 				return "!Invalid address";
@@ -3130,7 +3126,6 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 					retVal += ", refid=" + MaybeQuoteFormatInfoParam(formatInfo.mReferenceId);
 
 				retVal += StrFormat(", this=%d@0x%X", innerType->mTypeId, ptrVal);
-
 			}
 
 			retVal += "\n:canEdit\n:editVal\t" + EncodeDataPtr((uint32)addr, true);
@@ -3142,7 +3137,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 	if (typedValue.mType->IsPrimitiveType())
 	{
 		auto primType = (BfPrimitiveType*)typedValue.mType;
-		
+
 		BfTypeCode typeCode = primType->mTypeDef->mTypeCode;
 		if (typeCode == BfTypeCode_IntPtr)
 			typeCode = (primType->mSize == 8) ? BfTypeCode_Int64 : BfTypeCode_Int32;
@@ -3163,7 +3158,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 				else
 					return StrFormat("true (%d)\n%s", val, TypeToString(origTypedValue.mType, typeModKind).c_str());
 			}
-			break;		
+			break;
 		case BfTypeCode_Char8:
 			{
 				auto val = *(uint8*)(data);
@@ -3181,7 +3176,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 					result = "'\\0'\n";
 				return result + TypeToString(origTypedValue.mType, typeModKind);
 			}
-			break;		
+			break;
 		case BfTypeCode_Char16:
 			{
 				auto val = *(uint16*)(data);
@@ -3198,7 +3193,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 					result = "'\\0'\n";
 				return result + TypeToString(origTypedValue.mType, typeModKind);
 			}
-			break;		
+			break;
 		case BfTypeCode_Char32:
 			{
 				auto val = *(uint32*)(data);
@@ -3246,7 +3241,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 				else //if (floatDisplayType == DwFloatDisplayType_HexLower)
 					sprintf(str, "0x%04x", *(uint32*)data);
 				return StrFormat("%s\n%s", str, TypeToString(origTypedValue.mType, typeModKind).c_str());
-			}			
+			}
 		case BfTypeCode_Double:
 			{
 				DwFloatDisplayType floatDisplayType = displayInfo->mFloatDisplayType;
@@ -3264,7 +3259,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 			}
 		}
 	}
-	
+
 	if (typedValue.mType->IsSizedArray())
 	{
 		auto arrayType = (BfSizedArrayType*)typedValue.mType;
@@ -3272,10 +3267,10 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 
 		String retVal;
 		addr_ce ptrVal = addr;
-		
+
 		intptr arraySize = arrayType->mElementCount;
 		intptr innerSize = innerType->GetStride();
-		
+
 		String idxStr = "[{0}]";
 
 		if (innerType->IsChar())
@@ -3299,7 +3294,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		String referenceId = TypeToString(typedValue.mType);
 		String evalStr;
 
-		// Why did we have the "na"? Do we not want to show addresses for all members?		
+		// Why did we have the "na"? Do we not want to show addresses for all members?
 
 		auto ptrType = module->CreatePointerType(innerType);
 
@@ -3310,14 +3305,14 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 			"\t" + idxStr + "\t" + evalStr;
 		return retVal;
 	}
-	
+
 	if (typedValue.mType->IsEnum())
 	{
 		if (formatInfo.mRawString)
 			return "";
 
 		String retVal;
-		if (typedValue.mType->IsTypedPrimitive())		
+		if (typedValue.mType->IsTypedPrimitive())
 		{
 			int64 bitsLeft = ValueToInt(typedValue);
 			int valueCount = 0;
@@ -3398,25 +3393,25 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 				auto fieldDef = fieldInstance.GetFieldDef();
 				if (!fieldInstance.mIsEnumPayloadCase)
 					continue;
-				
+
 				int tagId = -fieldInstance.mDataIdx - 1;
 				if (dscrVal == tagId)
 				{
 					auto evalResult = BfTypedValue(module->mBfIRBuilder->CreateConstAggCE(
 						module->mBfIRBuilder->MapType(fieldInstance.mResolvedType), (addr_ce)dataAddr), fieldInstance.mResolvedType, true);
-										
+
 					String innerResult = TypedValueToString(evalResult, "", formatInfo, NULL);
 					int crPos = (int)innerResult.IndexOf('\n');
 					if (crPos != -1)
 						innerResult.RemoveToEnd(crPos);
 
 					retVal += ".";
-					retVal += fieldDef->mName;					
-					retVal += innerResult;					
+					retVal += fieldDef->mName;
+					retVal += innerResult;
 
 					retVal += "\n" + TypeToString(origTypedValue.mType, typeModKind);
 					retVal += "\n:canEdit";
-					
+
 					retVal += "\n" + GetMemberList(fieldInstance.mResolvedType, addr, dataAddr, false);
 					return retVal;
 				}
@@ -3459,14 +3454,14 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 
 		if ((((origTypedValue.mType->IsObjectOrInterface()) || (origTypedValue.mType->IsPointer())) &&
 			(!formatInfo.mHidePointers) || (dataAddr == 0)))
-		{				
+		{
 			retVal = EncodeDataPtr((uint32)dataAddr, true);
 			retVal += " ";
 
 			if (!ceContext->CheckMemory(dataAddr, displayType->mInstSize))
 				isMemoryValid = false;
 		}
-		
+
 		bool isBadSrc = false;
 		bool isNull = dataAddr == 0;
 		bool hadCustomDisplayString = false;
@@ -3475,7 +3470,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		bool useActualRawType = false;
 
 		bool isTuple = typedValue.mType->IsTuple();
-		
+
 		String ptrDataStr;
 
 		if (!formatInfo.mIgnoreDerivedClassInfo)
@@ -3494,11 +3489,11 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 				}
 			}
 		}
-	
+
 		BfTypedValue summaryTypedValue = typedValue;
 
 		if ((actualType != NULL) && (actualType != displayType))
-		{			
+		{
 			summaryTypedValue = BfTypedValue(module->mBfIRBuilder->CreateIntToPtr(addr, module->mBfIRBuilder->MapType(actualType)), actualType);
 		}
 
@@ -3506,7 +3501,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		Array<String> dbgVisWildcardCaptures;
 
 		if ((!formatInfo.mNoVisualizers) && (!isNull) && (!isBadSrc))
-		{			
+		{
 			debugVis = FindVisualizerForType(summaryTypedValue.mType, &dbgVisWildcardCaptures);
 		}
 
@@ -3568,8 +3563,8 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 		}
 		else if ((!isNull) && (!formatInfo.mNoVisualizers) && (!hadCustomDisplayString))
 		{
-			// Create our own custom display			
-			
+			// Create our own custom display
+
 			String firstRet;
 			String bigRet = isTuple ? "(" : "{ ";
 
@@ -3577,15 +3572,15 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 			BfType* summaryType = summaryTypedValue.mType;
 			bool summaryDone = false;
 			bool truncatedMemberList = false;
-			
+
 			String summaryDataStr = ptrDataStr;
 			String splatStr;
 			if (dataAddr == -1)
 				splatStr = expr;
 
 			while ((summaryType != NULL) && (isMemoryValid))
-			{	
-				if ((summaryType->IsTypedPrimitive()) 
+			{
+				if ((summaryType->IsTypedPrimitive())
 					//&& ((summaryType->mBaseTypes.IsEmpty()) || (!summaryType->mBaseTypes.front()->mBaseType->IsTypedPrimitive())))
 					)
 				{
@@ -3744,7 +3739,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 							bigRet += result;
 							//formatInfo.mEmbeddedDisplayCount = displayStrFormatInfo.mEmbeddedDisplayCount;
 							memberIdx++;
-						}						
+						}
 					}
 				}
 
@@ -3752,12 +3747,12 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 					break;
 
 				// Find first base class with members
-				BfType* nextSummaryType = summaryTypeInst->mBaseType;				
+				BfType* nextSummaryType = summaryTypeInst->mBaseType;
 				summaryType = nextSummaryType;
 
 				if ((summaryType == NULL) || (summaryType == module->mContext->mBfObjectType))
 					break;
-				
+
 				// If we don't have many members then find a base class with some members to show
 				if ((memberIdx != 0) && (displayString.length() >= 255))
 				{
@@ -3774,7 +3769,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 			if ((memberIdx == 1) && (!truncatedMemberList) && (firstRet.IndexOf('{') == -1) && (!isTuple))
 				displayString += "{ " + firstRet + " }";
 			else
-				displayString += bigRet;						
+				displayString += bigRet;
 		}
 
 		retVal += displayString;
@@ -3822,10 +3817,10 @@ void CeDebugger::HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry*
 {
 	auto debugVisualizers = mDebugManager->mDebugVisualizers;
 	auto ceModule = mCeMachine->mCeModule;
-	
+
 	if (formatInfo.mExpandItemDepth > 10) // Avoid crashing on circular ExpandItems
 		return;
-	
+
 	bool isReadOnly = false;
 // 	if (useTypedValue.mIsReadOnly)
 // 		isReadOnly = true;
@@ -3978,7 +3973,7 @@ void CeDebugger::HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry*
 				int dimSize1 = lowerDimSizes[0];
 				int dimSize2 = lowerDimSizes[1];
 				int dimSize3 = lowerDimSizes[2];
-				
+
 				BfTypedValue headPointer = EvaluateInContext(typedValue, debugVisualizers->DoStringReplace(debugVis->mValuePointer, dbgVisWildcardCaptures), &formatInfo);
 				if ((headPointer.mType != NULL) && (headPointer.mType->IsPointer()))
 				{
@@ -4023,7 +4018,7 @@ void CeDebugger::HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry*
 		BfType* valueType = NULL;
 		if (!debugVis->mValueType.empty())
 		{
-			valueType = FindType(debugVisualizers->DoStringReplace(debugVis->mValueType, dbgVisWildcardCaptures));			
+			valueType = FindType(debugVisualizers->DoStringReplace(debugVis->mValueType, dbgVisWildcardCaptures));
 		}
 
 		BfTypedValue headPointer = EvaluateInContext(typedValue, debugVisualizers->DoStringReplace(debugVis->mHeadPointer, dbgVisWildcardCaptures), &formatInfo);
@@ -4104,12 +4099,12 @@ void CeDebugger::HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry*
 		BfType* valueType = NULL;
 		if (!debugVis->mValueType.empty())
 		{
-			valueType = FindType(debugVisualizers->DoStringReplace(debugVis->mValueType, dbgVisWildcardCaptures));			
+			valueType = FindType(debugVisualizers->DoStringReplace(debugVis->mValueType, dbgVisWildcardCaptures));
 		}
 
 		BfTypedValue sizeValue = EvaluateInContext(typedValue, debugVisualizers->DoStringReplace(debugVis->mSize, dbgVisWildcardCaptures), &formatInfo);
 		BfTypedValue headPointer = EvaluateInContext(typedValue, debugVisualizers->DoStringReplace(debugVis->mHeadPointer, dbgVisWildcardCaptures), &formatInfo);
-		
+
 		if ((sizeValue) && (headPointer) && (sizeValue.mType->IsInteger()) && (ValueToInt(sizeValue) > 0))
 		{
 			BfTypedValue curNode = headPointer;
@@ -4154,7 +4149,7 @@ void CeDebugger::HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry*
 			if (isReadOnly)
 				evalStr += ", ne";
 			retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, size, 10000) +
-				"\t[{0}]\t" + evalStr + "\t" + EncodeDataPtr(firstAddr, false);			
+				"\t[{0}]\t" + evalStr + "\t" + EncodeDataPtr(firstAddr, false);
 
 			if (hasSecondAddr)
 				retVal += "\t" + EncodeDataPtr(secondAddr, false);
@@ -4171,7 +4166,7 @@ void CeDebugger::HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry*
 	{
 		BfTypedValue sizeValue = EvaluateInContext(typedValue, debugVisualizers->DoStringReplace(debugVis->mSize, dbgVisWildcardCaptures), &formatInfo);
 		BfTypedValue entriesPtrValue = EvaluateInContext(typedValue, debugVisualizers->DoStringReplace(debugVis->mEntries, dbgVisWildcardCaptures), &formatInfo);
-		
+
 		if ((sizeValue) && (entriesPtrValue) && (sizeValue.mType->IsInteger()) && (ValueToInt(sizeValue) > 0))
 		{
 			String continuationData;
@@ -4208,7 +4203,7 @@ void CeDebugger::HandleCustomExpandedItems(String& retVal, DebugVisualizerEntry*
 	}
 
 	if (formatInfo.mExpandItemDepth == 0)
-	{		
+	{
 		retVal += "\n[Raw View]\tthis,this=" + ptrUseDataStr + ", nv";
 	}
 }
@@ -4228,7 +4223,7 @@ String CeDebugger::EvaluateContinue()
 
 	if (!mDebugPendingExpr->mDone)
 		return "!pending";
-	
+
 	String result = mDebugPendingExpr->mResult;
 	delete mDebugPendingExpr;
 	mDebugPendingExpr = NULL;
@@ -4263,15 +4258,15 @@ String CeDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 
 	String result;
 
-	auto ceFrame = GetFrame(callStackIdx);	
+	auto ceFrame = GetFrame(callStackIdx);
 	if (ceFrame == NULL)
 		return result;
-	
+
 	int scopeIdx = -1;
 	auto ceEntry = ceFrame->mFunction->FindEmitEntry(ceFrame->GetInstIdx());
 	if (ceEntry != NULL)
 		scopeIdx = ceEntry->mScope;
-	
+
 	int instIdx = ceFrame->GetInstIdx();
 	if (ceFrame->mFunction->mDbgInfo != NULL)
 	{
@@ -4318,9 +4313,9 @@ String CeDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 			else
 			{
 				dbgInfo[i].mIncluded = false;
-			}			
+			}
 		}
-		
+
 		for (int i = 0; i < ceFunction->mDbgInfo->mVariables.mSize; i++)
 		{
 			auto& dbgVar = ceFunction->mDbgInfo->mVariables[i];
@@ -4332,7 +4327,7 @@ String CeDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 				result += "\n";
 			}
 		}
-	}	
+	}
 
 	return result;
 }
@@ -4355,10 +4350,10 @@ DebugVisualizerEntry* CeDebugger::FindVisualizerForType(BfType* dbgType, Array<S
 	auto entry = mDebugManager->mDebugVisualizers->FindEntryForType(ceModule->TypeToString(dbgType), DbgFlavor_Unknown, wildcardCaptures);
 
 	if (entry == NULL)
-	{				
+	{
 		auto typeInst = dbgType->ToTypeInstance();
 		if ((typeInst != NULL) && (typeInst->mBaseType != NULL))
-			entry = FindVisualizerForType(typeInst->mBaseType, wildcardCaptures);		
+			entry = FindVisualizerForType(typeInst->mBaseType, wildcardCaptures);
 	}
 
 	return entry;
@@ -4400,7 +4395,7 @@ void CeDebugger::ClearCallStack()
 void CeDebugger::UpdateCallStack(bool slowEarlyOut)
 {
 	AutoCrit autoCrit(mCeMachine->mCritSect);
-	
+
 	if (!mDbgCallStack.IsEmpty())
 		return;
 
@@ -4408,7 +4403,7 @@ void CeDebugger::UpdateCallStack(bool slowEarlyOut)
 	for (int frameIdx = ceContext->mCallStack.mSize - 1; frameIdx >= 0; frameIdx--)
 	{
 		auto ceFrame = &ceContext->mCallStack[frameIdx];
-		
+
 		auto instIdx = ceFrame->GetInstIdx();
 		auto emitEntry = ceFrame->mFunction->FindEmitEntry(instIdx);
 		if (emitEntry == NULL)
@@ -4417,7 +4412,7 @@ void CeDebugger::UpdateCallStack(bool slowEarlyOut)
 		int scopeIdx = emitEntry->mScope;
 		int prevInlineIdx = -1;
 		while (scopeIdx != -1)
-		{			
+		{
 			CeDbgStackInfo ceDbgStackInfo;
 			ceDbgStackInfo.mFrameIdx = frameIdx;
 			ceDbgStackInfo.mScopeIdx = scopeIdx;
@@ -4447,7 +4442,7 @@ int CeDebugger::GetCallStackCount()
 	if (!mCeMachine->mDbgPaused)
 		return 0;
 
-	UpdateCallStack();	
+	UpdateCallStack();
 	return mDbgCallStack.mSize;
 }
 
@@ -4522,7 +4517,7 @@ void CeDebugger::GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackI
 			if (outStackIdx != NULL)
 				*outStackIdx = (int)ceContext->mCallStack.mSize - i - 1;
 		}
-	}	
+	}
 }
 
 String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags)
@@ -4543,8 +4538,8 @@ String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* ou
 		FrameFlags_HadError = 0x10
 	};
 
-	auto ceContext = mCeMachine->mCurContext;	
-	
+	auto ceContext = mCeMachine->mCurContext;
+
 	*addr = 0;
 	*outFile = "";
 	*outHotIdx = 0;
@@ -4560,11 +4555,11 @@ String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* ou
 		return "";
 
 	auto& dbgCallstackInfo = mDbgCallStack[stackFrameIdx];
-	
+
 	if (dbgCallstackInfo.mFrameIdx == -1)
 	{
 		if (ceContext->mCurCallSource != NULL)
-		{			
+		{
 			int line = -1;
 			int lineChar = -1;
 			auto parserData = ceContext->mCurCallSource->mRefNode->GetParserData();
@@ -4574,7 +4569,7 @@ String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* ou
 				*outLine = line;
 				*outColumn = lineChar;
 				*outFile = parserData->mFileName;
-			}			
+			}
 		}
 
 		// Entry marker
@@ -4605,14 +4600,14 @@ String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* ou
 
 	if (ceFunction->mFailed)
 		*outFlags |= FrameFlags_HadError;
-	
+
 	int instIdx = (int)(ceFrame->mInstPtr - &ceFunction->mCode[0] - 2);
 
 	BF_ASSERT(ceFunction->mId != -1);
 	*addr = ((intptr)ceFunction->mId << 32) | instIdx;
 
 	CeEmitEntry* emitEntry = ceFunction->FindEmitEntry(instIdx);
-		
+
 	*outStackSize = ceContext->mStackSize - ceFrame->mStackAddr;
 	if (stackFrameIdx < mDbgCallStack.mSize - 1)
 	{
@@ -4623,12 +4618,11 @@ String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* ou
 			*outStackSize = prevFrame->mStackAddr - ceFrame->mStackAddr;
 		}
 	}
-	
 
 	CeDbgScope* ceScope = NULL;
 	if (dbgCallstackInfo.mScopeIdx != -1)
 		ceScope = &ceFunction->mDbgScopes[dbgCallstackInfo.mScopeIdx];
-	
+
 	if (emitEntry != NULL)
 	{
 		if (emitEntry->mScope != -1)
@@ -4656,18 +4650,18 @@ String CeDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* ou
 			auto callTableEntry = &ceFunction->mCallTable[ceScope->mMethodVal];
 			return ceContext->mCurModule->MethodToString(callTableEntry->mFunctionInfo->mMethodInstance);
 		}
-	}	
+	}
 
 	return ceContext->mCurModule->MethodToString(ceFrame->mFunction->mMethodInstance);
 }
 
 BfType* CeDebugger::FindType(const StringImpl& name)
-{	
+{
 	if (name == "System.Object")
 		return mCeMachine->mCeModule->mContext->mBfObjectType;
 
 	BfParser parser(mCompiler->mSystem);
-	BfPassInstance passInstance(mCompiler->mSystem);	
+	BfPassInstance passInstance(mCompiler->mSystem);
 	parser.SetSource(name.c_str(), (int)name.length());
 	parser.Parse(&passInstance);
 
@@ -4680,7 +4674,7 @@ BfType* CeDebugger::FindType(const StringImpl& name)
 	reducer.mSource = &parser;
 	auto typeRef = reducer.CreateTypeRef(parser.mRootNode->GetFirst());
 	parser.Close();
-	
+
 	auto ceModule = mCeMachine->mCeModule;
 	SetAndRestoreValue<bool> prevIgnoreErrors(ceModule->mIgnoreErrors, true);
 	SetAndRestoreValue<bool> prevIgnoreWarning(ceModule->mIgnoreWarnings, true);
@@ -4698,7 +4692,7 @@ String CeDebugger::Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 int CeDebugger::GetJmpState(int stackFrameIdx)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
-	
+
 	if (!mCeMachine->mDbgPaused)
 		return -1;
 
@@ -4773,7 +4767,7 @@ String CeDebugger::DisassembleAt(intptr address)
 
 	mCurDisasmFuncId = (int)(address >> 32);
 	UpdateBreakpointAddrs();
-		
+
 	CeFunction* ceFunction = NULL;
 	if (!mCeMachine->mFunctionIdMap.TryGetValue(mCurDisasmFuncId, &ceFunction))
 		return "";
@@ -4785,13 +4779,13 @@ String CeDebugger::DisassembleAt(intptr address)
 	dumpCtx.mEnd = dumpCtx.mPtr + ceFunction->mCode.mSize;
 
 	uint8* start = dumpCtx.mStart;
-	
+
 	dumpCtx.mStr += StrFormat("T Frame Size: %d\n", ceFunction->mFrameSize);
 	dumpCtx.mStr += StrFormat("A %llX\n", (intptr)mCurDisasmFuncId << 32);
 
 	int curEmitIdx = 0;
 	CeEmitEntry* prevEmitEntry = NULL;
-	CeEmitEntry* curEmitEntry = NULL;	
+	CeEmitEntry* curEmitEntry = NULL;
 
 	String prevSourcePath;
 
@@ -4831,11 +4825,11 @@ String CeDebugger::DisassembleAt(intptr address)
 				}
 
 				prevEmitEntry = curEmitEntry;
-			}			
+			}
 		}
-		
+
 		dumpCtx.mStr += StrFormat("D %04X: ", ofs);
-		dumpCtx.Next();		
+		dumpCtx.Next();
 		dumpCtx.mStr += "\n";
 
 		if (dumpCtx.mJmp != -1)
@@ -4843,7 +4837,7 @@ String CeDebugger::DisassembleAt(intptr address)
 			dumpCtx.mStr += StrFormat("J %X\n", dumpCtx.mJmp);
 			dumpCtx.mJmp = -1;
 		}
-	}	
+	}
 
 	return dumpCtx.mStr;
 }

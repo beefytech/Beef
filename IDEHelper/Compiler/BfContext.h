@@ -12,22 +12,22 @@ public:
 	BfModule* mFromModule;
 	int mRevision;
 	int mSignatureRevision;
-	int mFromModuleRevision;	
+	int mFromModuleRevision;
 	int mFromModuleRebuildIdx;
-	int mReqId;	
-	static int sCurReqId;		
+	int mReqId;
+	static int sCurReqId;
 
 public:
 	BfWorkListEntry()
 	{
 		mType = NULL;
 		mFromModule = NULL;
-		mRevision = -1;		
+		mRevision = -1;
 		mSignatureRevision = -1;
 		mFromModuleRevision = -1;
 		mFromModuleRebuildIdx = -1;
-		mReqId = ++sCurReqId;		
-	}	
+		mReqId = ++sCurReqId;
+	}
 };
 
 class BfTypeProcessRequest : public BfWorkListEntry
@@ -43,7 +43,7 @@ public:
 
 class BfMethodSpecializationRequest : public BfWorkListEntry
 {
-public:	
+public:
 	int32 mMethodIdx;
 	BfTypeVector mMethodGenericArguments;
 	BfGetMethodInstanceFlags mFlags;
@@ -51,7 +51,7 @@ public:
 
 public:
 	BfMethodSpecializationRequest()
-	{		
+	{
 		mMethodIdx = -1;
 		mFlags = BfGetMethodInstanceFlag_None;
 		mForeignType = NULL;
@@ -97,9 +97,9 @@ public:
 
 class BfInlineMethodRequest : public BfMethodProcessRequest
 {
-public:	
+public:
 	BfIRFunction mFunc;
-	
+
 	~BfInlineMethodRequest()
 	{
 		mMethodInstance = NULL;
@@ -110,12 +110,12 @@ class BfTypeRefVerifyRequest : public BfWorkListEntry
 {
 public:
 	BfTypeInstance* mCurTypeInstance;
-	BfAstNode* mRefNode;	
+	BfAstNode* mRefNode;
 };
 
 class BfMidCompileRequest : public BfWorkListEntry
 {
-public:	
+public:
 	String mReason;
 };
 
@@ -153,15 +153,15 @@ public:
 
 	BfType* mType;
 	BfTypeDef* mGlobalContainerCurUserTypeDef;
-	Array<BfGlobalContainerEntry> mGlobalContainers; // All global containers that are visible	
+	Array<BfGlobalContainerEntry> mGlobalContainers; // All global containers that are visible
 
 	BfPopulateType mPopulateType;
 	BfTypeReference* mCurBaseTypeRef;
 	BfTypeInstance* mCurBaseType;
 	BfTypeReference* mCurAttributeTypeRef;
-	BfFieldDef* mCurFieldDef;	
+	BfFieldDef* mCurFieldDef;
 	BfTypeDef* mCurTypeDef;
-	BfTypeDef* mForceActiveTypeDef;	
+	BfTypeDef* mForceActiveTypeDef;
 	BfProject* mActiveProject;
 	ResolveKind mResolveKind;
 	BfAstNode* mCurVarInitializer;
@@ -209,7 +209,7 @@ public:
 class BfSavedTypeData
 {
 public:
-	BfHotTypeData* mHotTypeData;	
+	BfHotTypeData* mHotTypeData;
 	int mTypeId;
 
 public:
@@ -221,7 +221,7 @@ public:
 
 struct SpecializedErrorData
 {
-	// We need to store errors during type specialization and method specialization, 
+	// We need to store errors during type specialization and method specialization,
 	//  because if the type is deleted we need to clear the errors
 	BfTypeInstance* mRefType;
 	BfModule* mModule;
@@ -241,8 +241,8 @@ struct BfCaseInsensitiveStringHash
 {
 	size_t operator()(const StringImpl& str) const
 	{
-		int curHash = 0;		
-		for (int i = 0; i < (int)str.length(); i++)		
+		int curHash = 0;
+		for (int i = 0; i < (int)str.length(); i++)
 			curHash = ((curHash ^ (int)(intptr)toupper(str[i])) << 5) - curHash;
 		return curHash;
 	}
@@ -251,7 +251,7 @@ struct BfCaseInsensitiveStringHash
 struct BfCaseInsensitiveStringEquals
 {
 	bool operator()(const StringImpl& lhs, const StringImpl& rhs) const
-	{		
+	{
 		if (lhs.length() != rhs.length())
 			return false;
 		return _stricmp(lhs.c_str(), rhs.c_str()) == 0;
@@ -270,7 +270,7 @@ public:
 		{
 			T*& ref = (*this)[idx];
 			if (ref != NULL)
-				(*ref).~T();			
+				(*ref).~T();
 			Deque<T*>::RemoveAt(0);
 			if (this->mSize == 0)
 			{
@@ -303,7 +303,7 @@ public:
 		T* item = mWorkAlloc.Alloc<T>();
 		this->Add(item);
 		return item;
-	}	
+	}
 };
 
 template <typename T>
@@ -348,19 +348,25 @@ public:
 
 	bool operator==(const BfConstraintState& other) const
 	{
-		return 
+		return
 			(mGenericParamInstance == other.mGenericParamInstance) &&
 			(mLeftType == other.mLeftType) &&
 			(mRightType == other.mRightType);
 	}
 };
 
+enum BfFailKind
+{
+	BfFailKind_Normal,
+	BfFailKind_Deep
+};
+
 class BfContext
 {
 public:
-	CritSect mCritSect;	
-	bool mDeleting;	
-	
+	CritSect mCritSect;
+	bool mDeleting;
+
 	BfTypeState* mCurTypeState;
 	BfSizedArray<BfNamespaceDeclaration*>* mCurNamespaceNodes;
 	BfConstraintState* mCurConstraintState;
@@ -369,25 +375,25 @@ public:
 	bool mAssertOnPopulateType;
 
 	BfSystem* mSystem;
-	BfCompiler* mCompiler;		
-	
+	BfCompiler* mCompiler;
+
 	bool mAllowLockYield;
 	bool mLockModules;
 	BfModule* mScratchModule;
-	BfModule* mUnreifiedModule;	
+	BfModule* mUnreifiedModule;
 	HashSet<String> mUsedModuleNames;
 	Dictionary<BfProject*, BfModule*> mProjectModule;
 	Array<BfModule*> mModules;
-	Array<BfModule*> mDeletingModules;	
-	HashSet<BfTypeInstance*> mFailTypes; // All types handled after a failure need to be rebuild on subsequent compile		
+	Array<BfModule*> mDeletingModules;
+	Dictionary<BfTypeInstance*, BfFailKind> mFailTypes; // All types handled after a failure need to be rebuild on subsequent compile
 	HashSet<BfTypeInstance*> mReferencedIFaceSlots;
 
 	BfMethodInstance* mValueTypeDeinitSentinel;
 
 	Array<BfAstNode*> mTempNodes;
-	BfResolvedTypeSet mResolvedTypes;	
+	BfResolvedTypeSet mResolvedTypes;
 	Array<BfType*> mTypes; // Can contain NULLs for deleted types
-	Array<BfFieldInstance*> mFieldResolveReentrys; // For detecting 'var' field circular refs	
+	Array<BfFieldInstance*> mFieldResolveReentrys; // For detecting 'var' field circular refs
 	Dictionary<String, BfSavedTypeData*> mSavedTypeDataMap;
 	Array<BfSavedTypeData*> mSavedTypeData;
 
@@ -399,7 +405,7 @@ public:
 
 	PtrWorkQueue<BfModule*> mReifyModuleWorkList;
 	WorkQueue<BfMethodProcessRequest> mMethodWorkList;
-	WorkQueue<BfInlineMethodRequest> mInlineMethodWorkList;	
+	WorkQueue<BfInlineMethodRequest> mInlineMethodWorkList;
 	WorkQueue<BfTypeProcessRequest> mPopulateTypeWorkList;
 	WorkQueue<BfMethodSpecializationRequest> mMethodSpecializationWorkList;
 	WorkQueue<BfTypeRefVerifyRequest> mTypeRefVerifyWorkList;
@@ -409,7 +415,7 @@ public:
 	bool mHasReifiedQueuedRebuildTypes;
 
 	Array<BfGenericParamType*> mGenericParamTypes[3];
-	
+
 	Array<BfType*> mTypeGraveyard;
 	Array<BfTypeDef*> mTypeDefGraveyard;
 	Array<BfLocalMethod*> mLocalMethodGraveyard;
@@ -418,9 +424,9 @@ public:
 	Dictionary<int, BfStringPoolEntry> mStringObjectIdMap;
 	int mCurStringObjectPoolId;
 
-	HashSet<BfTypeInstance*> mQueuedSpecializedMethodRebuildTypes;	
+	HashSet<BfTypeInstance*> mQueuedSpecializedMethodRebuildTypes;
 
-	BfAllocPool<BfPointerType> mPointerTypePool;	
+	BfAllocPool<BfPointerType> mPointerTypePool;
 	BfAllocPool<BfArrayType> mArrayTypePool;
 	BfAllocPool<BfSizedArrayType> mSizedArrayTypePool;
 	BfAllocPool<BfUnknownSizedArrayType> mUnknownSizedArrayTypePool;
@@ -429,13 +435,13 @@ public:
 	BfAllocPool<BfTypeAliasType> mAliasTypePool;
 	BfAllocPool<BfRefType> mRefTypePool;
 	BfAllocPool<BfModifiedTypeType> mModifiedTypeTypePool;
-	BfAllocPool<BfTypeInstance> mGenericTypeInstancePool;	
+	BfAllocPool<BfTypeInstance> mGenericTypeInstancePool;
 	BfAllocPool<BfArrayType> mArrayTypeInstancePool;
 	BfAllocPool<BfGenericParamType> mGenericParamTypePool;
 	BfAllocPool<BfDirectTypeDefReference> mTypeDefTypeRefPool;
 	BfAllocPool<BfConcreteInterfaceType> mConcreteInterfaceTypePool;
 	BfAllocPool<BfConstExprValueType> mConstExprValueTypePool;
-	BfAllocPool<BfDelegateType> mDelegateTypePool;	
+	BfAllocPool<BfDelegateType> mDelegateTypePool;
 	BfPrimitiveType* mPrimitiveTypes[BfTypeCode_Length];
 	BfPrimitiveType* mPrimitiveStructTypes[BfTypeCode_Length];
 
@@ -447,15 +453,15 @@ public:
 	void PopulateHotTypeDataVTable(BfTypeInstance* typeInstance);
 	void DeleteType(BfType* type, bool deferDepRebuilds = false);
 	void UpdateAfterDeletingTypes();
-	void VerifyTypeLookups(BfTypeInstance* typeInst);		
+	void VerifyTypeLookups(BfTypeInstance* typeInst);
 	void GenerateModuleName_TypeInst(BfTypeInstance* typeInst, StringImpl& name);
 	void GenerateModuleName_Type(BfType* type, StringImpl& name);
 	void GenerateModuleName(BfTypeInstance* typeInst, StringImpl& name);
 	bool IsSentinelMethod(BfMethodInstance* methodInstance);
-	void SaveDeletingType(BfType* type);		
+	void SaveDeletingType(BfType* type);
 	BfType* FindType(const StringImpl& typeName);
 	String TypeIdToString(int typeId);
-	BfHotTypeData* GetHotTypeData(int typeId);	
+	BfHotTypeData* GetHotTypeData(int typeId);
 	void ReflectInit();
 
 public:
@@ -464,28 +470,30 @@ public:
 
 	void ReportMemory(MemReporter* memReporter);
 	void ProcessMethod(BfMethodInstance* methodInstance);
-	int GetStringLiteralId(const StringImpl& str);		
+	int GetStringLiteralId(const StringImpl& str);
 	void CheckLockYield();
 	bool IsCancellingAndYield();
 	void QueueFinishModule(BfModule * module);
 	void CancelWorkItems();
 	bool ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods);
 	void HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTempType = false);
-	void PreUpdateRevisedTypes();	
-	void UpdateRevisedTypes();	
-	void VerifyTypeLookups();	
+	void PreUpdateRevisedTypes();
+	void UpdateRevisedTypes();
+	void VerifyTypeLookups();
 	void QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkSpecializedMethodRebuildFlag);
 	void MarkAsReferenced(BfDependedType* depType);
 	void RemoveInvalidFailTypes();
 	bool IsWorkItemValid(BfWorkListEntry* item);
+	bool IsWorkItemValid(BfMethodInstance* methodInstance);
 	bool IsWorkItemValid(BfMethodProcessRequest* item);
+	bool IsWorkItemValid(BfInlineMethodRequest* item);
 	bool IsWorkItemValid(BfMethodSpecializationRequest* item);
-	void RemoveInvalidWorkItems();	
+	void RemoveInvalidWorkItems();
 	BfType* FindTypeById(int typeId);
 	void AddTypeToWorkList(BfType* type);
 	void ValidateDependencies();
 	void RebuildType(BfType* type, bool deleteOnDemandTypes = true, bool rebuildModule = true, bool placeSpecializiedInPurgatory = true);
-	void RebuildDependentTypes(BfDependedType* dType);	
+	void RebuildDependentTypes(BfDependedType* dType);
 	void QueueMidCompileRebuildDependentTypes(BfDependedType* dType, const String& reason);
 	void RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason);
 	bool CanRebuild(BfType* type);

@@ -223,6 +223,7 @@ enum BfpThreadCreateFlags
 };
 
 typedef void (BFP_CALLTYPE *BfpThreadStartProc)(void* threadParam);
+typedef void (BFP_CALLTYPE* BfpTLSProc)(void* threadParam);
 
 enum BfpThreadPriority
 {
@@ -273,8 +274,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpCritSect_Enter(BfpCritSect* critSect);
 BFP_EXPORT bool BFP_CALLTYPE BfpCritSect_TryEnter(BfpCritSect* critSect, int waitMS);
 BFP_EXPORT void BFP_CALLTYPE BfpCritSect_Leave(BfpCritSect* critSect);
 
+
 struct BfpTLS;
-BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create();
+BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create(BfpTLSProc exitProc);
 BFP_EXPORT void BFP_CALLTYPE BfpTLS_Release(BfpTLS* tls);
 BFP_EXPORT void BFP_CALLTYPE BfpTLS_SetValue(BfpTLS* tls, void* value);
 BFP_EXPORT void* BFP_CALLTYPE BfpTLS_GetValue(BfpTLS* tls);

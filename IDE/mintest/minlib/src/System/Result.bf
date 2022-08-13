@@ -95,7 +95,7 @@ namespace System
 
 	extension Result<T> where T : IDisposable
 	{
-		public void Dispose()
+		public new void Dispose()
 		{
 			if (this case .Ok(var val))
 				val.Dispose();
@@ -199,7 +199,7 @@ namespace System
 
 	extension Result<T, TErr> where T : IDisposable
 	{
-		public void Dispose()
+		public new void Dispose()
 		{
 			if (this case .Ok(var val))
 				val.Dispose();
@@ -208,7 +208,7 @@ namespace System
 
 	extension Result<T, TErr> where TErr : IDisposable
 	{
-		public void Dispose()
+		public new void Dispose()
 		{
 			if (this case .Err(var err))
 				err.Dispose();
@@ -217,7 +217,7 @@ namespace System
 
 	extension Result<T, TErr> where T : IDisposable where TErr : IDisposable
 	{
-		public void Dispose()
+		public new void Dispose()
 		{
 			if (this case .Ok(var val))
 				val.Dispose();

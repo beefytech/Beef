@@ -18,13 +18,13 @@
 NS_BF_BEGIN
 
 /// raw_null_ostream - A raw_ostream that discards all output.
-class debug_ostream : public llvm::raw_ostream 
+class debug_ostream : public llvm::raw_ostream
 {
 	/// write_impl - See raw_ostream::write_impl.
 	void write_impl(const char *Ptr, size_t size) override
 	{
 		StringT<1024> str;
-		str.Append(Ptr, size);		
+		str.Append(Ptr, size);
 		OutputDebugStr(str);
 	}
 
@@ -33,7 +33,7 @@ class debug_ostream : public llvm::raw_ostream
 	uint64_t current_pos() const override
 	{
 		return 0;
-	}	
+	}
 };
 
 NS_BF_END

@@ -50,7 +50,7 @@ enum BfCompileOnDemandKind
 	BfCompileOnDemandKind_SkipUnused
 };
 
-class BfCompiler 
+class BfCompiler
 {
 public:
 	enum CompileState
@@ -63,22 +63,22 @@ public:
 	};
 
 	struct Stats
-	{	
+	{
 		int mTotalTypes;
 
 		int mMethodDeclarations;
 		int mTypesPopulated;
 		int mMethodsProcessed;
-		int mUnreifiedMethodsProcessed;		
+		int mUnreifiedMethodsProcessed;
 
 		int mQueuedTypesProcessed;
 		int mTypesQueued;
 		int mTypesDeleted;
-		int mMethodsQueued;		
+		int mMethodsQueued;
 
 		int mModulesStarted;
 		int mModulesFinished;
-		
+
 		int mModulesReified;
 		int mModulesUnreified;
 
@@ -94,19 +94,19 @@ public:
 	{
 		BfProject* mHotProject;
 		int mHotCompileIdx;
-		
+
 		int32 mForceRebuildIdx;
-		BfCompileOnDemandKind mCompileOnDemandKind;		
+		BfCompileOnDemandKind mCompileOnDemandKind;
 		String mTargetTriple;
 		String mTargetCPU;
 		BfPlatformType mPlatformType;
 		BfMachineType mMachineType;
 		int mCLongSize;
 		BfToolsetType mToolsetType;
-		BfSIMDSetting mSIMDSetting;		
+		BfSIMDSetting mSIMDSetting;
 		String mMallocLinkName;
 		String mFreeLinkName;
-		bool mIncrementalBuild;		
+		bool mIncrementalBuild;
 
 		bool mEmitDebugInfo;
 		bool mEmitLineInfo;
@@ -116,15 +116,15 @@ public:
 		bool mRuntimeChecks;
 		bool mAllowStructByVal;
 		bool mEmitDynamicCastCheck;
-						
+
 		bool mAllowHotSwapping;
-		bool mObjectHasDebugFlags;		
+		bool mObjectHasDebugFlags;
 		bool mEnableRealtimeLeakCheck;
 		bool mEmitObjectAccessCheck; // Only valid with mObjectHasDebugFlags
 		bool mArithmeticChecks;
 		bool mEnableCustodian;
 		bool mEnableSideStack;
-		bool mHasVDataExtender; 
+		bool mHasVDataExtender;
 		bool mDebugAlloc;
 		bool mOmitDebugHelpers;
 
@@ -167,7 +167,7 @@ public:
 			mAllowHotSwapping = false;
 			mEmitObjectAccessCheck = false;
 			mArithmeticChecks = false;
-			mObjectHasDebugFlags = false;			
+			mObjectHasDebugFlags = false;
 			mEnableRealtimeLeakCheck = false;
 			mWriteIR = false;
 			mGenerateObj = true;
@@ -195,19 +195,19 @@ public:
 		}
 	};
 	Options mOptions;
-	
+
 	enum HotTypeFlags
 	{
 		HotTypeFlag_None		= 0,
 		HotTypeFlag_UserNotUsed = 1,
-		HotTypeFlag_UserUsed	= 2,				
-		
+		HotTypeFlag_UserUsed	= 2,
+
 		HotTypeFlag_Heap		= 4,
 		HotTypeFlag_ActiveFunction = 8, // Only set for a type version mismatch
 		HotTypeFlag_Delegate	= 0x10,    // Only set for a type version mismatch
 		HotTypeFlag_FuncPtr     = 0x20,   // Only set for a type version mismatch
 		HotTypeFlag_CanAllocate = 0x40
-	};	
+	};
 
 	enum HotResolveFlags
 	{
@@ -237,7 +237,7 @@ public:
 		Array<HotTypeFlags> mHotTypeIdFlags;
 		Array<BfHotDepData*> mReasons;
 		HashSet<BfHotMethod*> mDeferredThisCheckMethods;
-				
+
 		~HotResolveData();
 	};
 
@@ -261,7 +261,7 @@ public:
 		BfHotThisType* GetThisType(BfHotTypeVersion* hotVersion);
 		BfHotAllocation* GetAllocation(BfHotTypeVersion* hotVersion);
 		BfHotDevirtualizedMethod* GetDevirtualizedMethod(BfHotMethod* hotMethod);
-		BfHotFunctionReference* GetFunctionReference(BfHotMethod* hotMethod);		
+		BfHotFunctionReference* GetFunctionReference(BfHotMethod* hotMethod);
 		BfHotVirtualDeclaration* GetVirtualDeclaration(BfHotMethod* hotMethod);
 		BfHotInnerMethod* GetInnerMethod(BfHotMethod* hotMethod);
 	};
@@ -270,10 +270,10 @@ public:
 	{
 	public:
 		BfProject* mHotProject;
-		int mLastStringId;		
+		int mLastStringId;
 		int mCommittedHotCompileIdx;
 		bool mHasNewTypes;
-		bool mHasNewInterfaceTypes;		
+		bool mHasNewInterfaceTypes;
 		Array<BfCodeGenFileEntry> mQueuedOutFiles; // Queues up when we have failed hot compiles
 		HashSet<int> mSlotDefineTypeIds;
 		HashSet<int> mNewlySlottedTypeIds;
@@ -284,7 +284,7 @@ public:
 
 	public:
 		HotState()
-		{			
+		{
 			mHotProject = NULL;
 			mLastStringId = -1;
 			mCommittedHotCompileIdx = 0;
@@ -298,32 +298,33 @@ public:
 		void RemovePendingChanges(BfTypeInstance* type);
 	};
 	HotData* mHotData;
-	HotState* mHotState;	
+	HotState* mHotState;
 	HotResolveData* mHotResolveData;
 
 	struct StringValueEntry
 	{
 		int mId;
 		BfIRValue mStringVal;
-	};		
+	};
 
 	struct TestMethod
 	{
 		String mName;
 		BfMethodInstance* mMethodInstance;
-	};	
+	};
 
-public:	
-	BfPassInstance* mPassInstance;	
+public:
+	BfPassInstance* mPassInstance;
 	FILE* mCompileLogFP;
 
 	CeMachine* mCeMachine;
 	int mCurCEExecuteId;
-	BfSystem* mSystem;	
+	BfSystem* mSystem;
 	bool mIsResolveOnly;
 	BfResolvePassData* mResolvePassData;
 	Dictionary<String, Array<int>> mAttributeTypeOptionMap;
-	int mRevision;	
+	int mRevision;
+	int64 mUniqueId;
 	bool mLastRevisionAborted;
 	BfContext* mContext;
 	BfCodeGen mCodeGen;
@@ -342,13 +343,13 @@ public:
 	bool mDepsMayHaveDeletedTypes;
 	float mCompletionPct;
 	int mHSPreserveIdx;
-	BfModule* mLastAutocompleteModule;		
+	BfModule* mLastAutocompleteModule;
 	CompileState mCompileState;
 	HashSet<String> mRebuildFileSet;
 	HashSet<String> mRebuildChangedFileSet; // Files we had actual changes from
 
-	Array<BfVDataModule*> mVDataModules;	
-			
+	Array<BfVDataModule*> mVDataModules;
+
 	BfTypeDef* mBfObjectTypeDef;
 	BfTypeDef* mChar32TypeDef;
 	BfTypeDef* mFloatTypeDef;
@@ -359,16 +360,16 @@ public:
 	BfTypeDef* mArray2TypeDef;
 	BfTypeDef* mArray3TypeDef;
 	BfTypeDef* mArray4TypeDef;
-	BfTypeDef* mSpanTypeDef;	
+	BfTypeDef* mSpanTypeDef;
 	BfTypeDef* mRangeTypeDef;
 	BfTypeDef* mClosedRangeTypeDef;
 	BfTypeDef* mIndexTypeDef;
 	BfTypeDef* mIndexRangeTypeDef;
-		
-	BfTypeDef* mClassVDataTypeDef;	
-	
+
+	BfTypeDef* mClassVDataTypeDef;
+
 	BfTypeDef* mDbgRawAllocDataTypeDef;
-	BfTypeDef* mDeferredCallTypeDef;		
+	BfTypeDef* mDeferredCallTypeDef;
 	BfTypeDef* mDelegateTypeDef;
 	BfTypeDef* mFunctionTypeDef;
 	BfTypeDef* mActionTypeDef;
@@ -376,13 +377,13 @@ public:
 	BfTypeDef* mStringTypeDef;
 	BfTypeDef* mStringViewTypeDef;
 	BfTypeDef* mTypeTypeDef;
-	BfTypeDef* mValueTypeTypeDef;	
-	BfTypeDef* mResultTypeDef;	
-	BfTypeDef* mGCTypeDef;	
+	BfTypeDef* mValueTypeTypeDef;
+	BfTypeDef* mResultTypeDef;
+	BfTypeDef* mGCTypeDef;
 	BfTypeDef* mGenericIEnumerableTypeDef;
 	BfTypeDef* mGenericIEnumeratorTypeDef;
 	BfTypeDef* mGenericIRefEnumeratorTypeDef;
-	
+
 	BfTypeDef* mThreadTypeDef;
 	BfTypeDef* mInternalTypeDef;
 	BfTypeDef* mPlatformTypeDef;
@@ -394,15 +395,15 @@ public:
 	BfTypeDef* mIPrintableTypeDef;
 	BfTypeDef* mIHashableTypeDef;
 	BfTypeDef* mIComptimeTypeApply;
-	BfTypeDef* mIComptimeMethodApply;	
+	BfTypeDef* mIComptimeMethodApply;
 	BfTypeDef* mIOnTypeInitTypeDef;
 	BfTypeDef* mIOnTypeDoneTypeDef;
 	BfTypeDef* mIOnFieldInitTypeDef;
 	BfTypeDef* mIOnMethodInitTypeDef;
-	
+
 	BfTypeDef* mMethodRefTypeDef;
 	BfTypeDef* mNullableTypeDef;
-		
+
 	BfTypeDef* mPointerTTypeDef;
 	BfTypeDef* mPointerTypeDef;
 	BfTypeDef* mReflectTypeIdTypeDef;
@@ -419,17 +420,17 @@ public:
 	BfTypeDef* mReflectConstExprType;
 	BfTypeDef* mReflectSpecializedGenericType;
 	BfTypeDef* mReflectTypeInstanceTypeDef;
-	BfTypeDef* mReflectUnspecializedGenericType;		
+	BfTypeDef* mReflectUnspecializedGenericType;
 	BfTypeDef* mReflectFieldInfoTypeDef;
 	BfTypeDef* mReflectMethodInfoTypeDef;
-	
+
 	BfTypeDef* mSizedArrayTypeDef;
 	BfTypeDef* mAttributeTypeDef;
 	BfTypeDef* mAttributeUsageAttributeTypeDef;
 	BfTypeDef* mLinkNameAttributeTypeDef;
 	BfTypeDef* mCallingConventionAttributeTypeDef;
-	BfTypeDef* mOrderedAttributeTypeDef;	
-	BfTypeDef* mInlineAttributeTypeDef;	
+	BfTypeDef* mOrderedAttributeTypeDef;
+	BfTypeDef* mInlineAttributeTypeDef;
 	BfTypeDef* mCLinkAttributeTypeDef;
 	BfTypeDef* mImportAttributeTypeDef;
 	BfTypeDef* mExportAttributeTypeDef;
@@ -445,30 +446,30 @@ public:
 	BfTypeDef* mConstEvalAttributeTypeDef;
 	BfTypeDef* mNoExtensionAttributeTypeDef;
 	BfTypeDef* mCheckedAttributeTypeDef;
-	BfTypeDef* mUncheckedAttributeTypeDef;	
+	BfTypeDef* mUncheckedAttributeTypeDef;
 	BfTypeDef* mStaticInitAfterAttributeTypeDef;
-	BfTypeDef* mStaticInitPriorityAttributeTypeDef;	
+	BfTypeDef* mStaticInitPriorityAttributeTypeDef;
 	BfTypeDef* mTestAttributeTypeDef;
-	BfTypeDef* mThreadStaticAttributeTypeDef;	
+	BfTypeDef* mThreadStaticAttributeTypeDef;
 	BfTypeDef* mUnboundAttributeTypeDef;
 	BfTypeDef* mObsoleteAttributeTypeDef;
 	BfTypeDef* mErrorAttributeTypeDef;
 	BfTypeDef* mWarnAttributeTypeDef;
 	BfTypeDef* mConstSkipAttributeTypeDef;
 	BfTypeDef* mIgnoreErrorsAttributeTypeDef;
-	BfTypeDef* mReflectAttributeTypeDef;		
+	BfTypeDef* mReflectAttributeTypeDef;
 	BfTypeDef* mOnCompileAttributeTypeDef;
 
-	int mCurTypeId;	
+	int mCurTypeId;
 	int mTypeInitCount;
 	String mOutputPath;
-	Array<BfType*> mGenericInstancePurgatory;	
+	Array<BfType*> mGenericInstancePurgatory;
 	Array<int> mTypeIdFreeList;
 
 	int mMaxInterfaceSlots;
 	bool mInterfaceSlotCountChanged;
 
-public:		
+public:
 	bool IsTypeAccessible(BfType* checkType, BfProject* curProject);
 	bool IsTypeUsed(BfType* checkType, BfProject* curProject);
 	bool IsModuleAccessible(BfModule* module, BfProject* curProject);
@@ -478,22 +479,22 @@ public:
 	BfIRFunction CreateLoadSharedLibraries(BfVDataModule* bfModule, Array<BfMethodInstance*>& dllMethods);
 	void GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& testMethods, HashContext& vdataHashCtx);
 	void EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& testMethods, BfIRValue& retValue);
-	void CreateVData(BfVDataModule* bfModule);	
+	void CreateVData(BfVDataModule* bfModule);
 	void UpdateDependencyMap(bool deleteUnusued, bool& didWork);
 	void SanitizeDependencyMap();
 	bool ProcessPurgatory(bool reifiedOnly);
 	bool VerifySlotNums();
 	bool QuickGenerateSlotNums();
 	bool SlowGenerateSlotNums();
-	void GenerateSlotNums();	
+	void GenerateSlotNums();
 	void GenerateDynCastData();
 	void UpdateRevisedTypes();
-	void VisitAutocompleteExteriorIdentifiers();		
+	void VisitAutocompleteExteriorIdentifiers();
 	void VisitSourceExteriorNodes();
 	void UpdateCompletion();
 	bool DoWorkLoop(bool onlyReifiedTypes = false, bool onlyReifiedMethods = false);
 	BfMangler::MangleKind GetMangleKind();
-	
+
 	BfTypeDef* GetArrayTypeDef(int dimensions);
 	void GenerateAutocompleteInfo();
 	void MarkStringPool(BfModule* module);
@@ -516,7 +517,7 @@ public:
 	bool IsCePaused();
 	bool EnsureCeUnpaused(BfType* refType);
 
-	void HotCommit();	
+	void HotCommit();
 	void HotResolve_Start(HotResolveFlags flags);
 	void HotResolve_PopulateMethodNameMap();
 	bool HotResolve_AddReachableMethod(BfHotMethod* hotMethod, HotTypeFlags flags, bool devirtualized, bool forceProcess = false);
@@ -531,28 +532,28 @@ public:
 
 public:
 	BfCompiler(BfSystem* bfSystem, bool isResolveOnly);
-	~BfCompiler();	
+	~BfCompiler();
 
-	bool Compile(const StringImpl& outputPath);	
+	bool Compile(const StringImpl& outputPath);
 	bool DoCompile(const StringImpl& outputPath);
 	void ClearResults();
-	void ProcessAutocompleteTempType();	
-	void GetSymbolReferences();	
+	void ProcessAutocompleteTempType();
+	void GetSymbolReferences();
 	void Cancel();
-	void RequestFastFinish();	
+	void RequestFastFinish();
 	String GetTypeDefList();
 	String GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args);
 	void HandleGeneratorErrors(StringImpl& result);
 	String GetGeneratorTypeDefList();
 	String GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args);
 	String GetGeneratorGenData(const StringImpl& typeName, const StringImpl& args);
-	String GetTypeDefMatches(const StringImpl& searchSrc);	
+	String GetTypeDefMatches(const StringImpl& searchSrc);
 	void GetTypeDefs(const StringImpl& typeName, Array<BfTypeDef*>& typeDefs);
-	String GetTypeDefInfo(const StringImpl& typeName);	
+	String GetTypeDefInfo(const StringImpl& typeName);
 	int GetTypeId(const StringImpl& typeName);
 	BfType* GetType(const StringImpl& typeName);
 	int GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer);
-	String GetEmitLocation(const StringImpl& typeName, int line, int& outEmbedLine, int& outEmbedLineChar);
+	String GetEmitLocation(const StringImpl& typeName, int line, int& outEmbedLine, int& outEmbedLineChar, uint64& outHash);
 	bool WriteEmitData(const StringImpl& filePath, BfProject* project);
 
 	void CompileLog(const char* fmt ...);
@@ -560,4 +561,3 @@ public:
 };
 
 NS_BF_END
-

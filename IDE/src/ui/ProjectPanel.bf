@@ -61,6 +61,17 @@ namespace IDE.ui
 				else if (projectItem.mIncludeKind == .Ignore)
 					color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceIgnoredText);
 
+				if (let projectFileItem = projectItem as ProjectFileItem)
+				{
+					if (projectPanel.mClipboardCutQueued != null)
+					{
+						var path = projectFileItem.mProject.GetProjectFullPath(projectFileItem.mPath, .. scope .());
+						IDEUtils.MakeComparableFilePath(path);
+						if (projectPanel.mClipboardCutQueued.Contains(path))
+							color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceCutText);
+					}
+				}
+
 				if (let projectSource = projectItem as ProjectSource)
 				{
 					if (projectSource.mLoadFailed)
@@ -146,6 +157,7 @@ namespace IDE.ui
 		public bool mShowIgnored = true;
 		public bool mSortDirty;
 		public bool mWantsRehup;
+		public HashSet<String> mClipboardCutQueued ~ DeleteContainerAndItems!(_);
 
         public this()
         {
@@ -518,10 +530,22 @@ namespace IDE.ui
             }            
         }
 
-        public void InitProject(Project project)
-        {            
+        public void InitProject(Project project, WorkspaceFolder workspaceFolder)
+        {
             var projectListViewItem = InitProjectItem(project.mRootFolder);
             projectListViewItem.mRefObject = project;
+			if (workspaceFolder != null)
+			{
+				let root = mListView.GetRoot();
+				root.RemoveChildItem(projectListViewItem, false);
+				workspaceFolder.mListView.MakeParent();
+				workspaceFolder.mListView.AddChild(projectListViewItem);
+				workspaceFolder.mListView.Open(true);
+				mProjectToWorkspaceFolderMap[project.mRootFolder] = workspaceFolder;
+
+				workspaceFolder.mProjects.Add(project);
+				QueueSortItem(workspaceFolder.mListView);
+			}
         }
 
         public void RebuildUI()
@@ -564,7 +588,7 @@ namespace IDE.ui
 			mProjectToWorkspaceFolderMap.Clear();
 
             for (var project in IDEApp.sApp.mWorkspace.mProjects)
-                InitProject(project);
+                InitProject(project, null);
 
 			let root = mListView.GetRoot();
 
@@ -1489,6 +1513,14 @@ namespace IDE.ui
 #endif
         }
 
+		public WorkspaceFolder GetSelectedWorkspaceFolder()
+		{
+			ListViewItem selectedItem = mListView.GetRoot().FindFirstSelectedItem();
+			if (mListViewToWorkspaceFolderMap.TryGetValue(selectedItem, let folder))
+				return folder;
+			return null;
+		}
+
         ListViewItem GetSelectedParentItem()
         {
             ListViewItem selectedItem = mListView.GetRoot().FindFirstSelectedItem();
@@ -1764,33 +1796,59 @@ namespace IDE.ui
 		            let root = mListView.GetRoot();
 		            List<ListViewItem> itemsToMove = scope .();
 		            List<WorkspaceFolder> foldersToDelete = scope .();
+
 		            root.WithSelectedItems(scope [&] (selectedItem) => {
 		                if (mListViewToWorkspaceFolderMap.GetValue(selectedItem) case .Ok(let folder))
 		                {
 		                    foldersToDelete.Add(folder);
+							mListViewToWorkspaceFolderMap.Remove(folder.mListView);
 		                    selectedItem.WithItems(scope [&] (item) => {
 		                        if (mListViewToProjectMap.GetValue(item) case .Ok(let project))
 		                        {
 		                            if (project.mParentFolder == null)
 		                                itemsToMove.Add(item);
 		                        }
+								else if (mListViewToWorkspaceFolderMap.GetValue(item) case .Ok(let itemFolder))
+								{
+									foldersToDelete.Add(itemFolder);
+									mListViewToWorkspaceFolderMap.Remove(itemFolder.mListView);
+								}
 		                    });
 		                }
 		            });
-		            
-		            for (let projectListViewItem in itemsToMove)
+
+		            for (let listViewItem in itemsToMove)
 		            {
-		                projectListViewItem.mParentItem.RemoveChildItem(projectListViewItem, false);
-		                root.AddChildAtIndex(1, projectListViewItem);
-						if (mListViewToProjectMap.TryGetValue(projectListViewItem, let projectItem))
+		                listViewItem.mParentItem.RemoveChildItem(listViewItem, false);
+		                root.AddChildAtIndex(1, listViewItem);
+						if (mListViewToProjectMap.TryGetValue(listViewItem, let projectItem))
 							mProjectToWorkspaceFolderMap.Remove(projectItem);
 		            }
-		            for (let folder in foldersToDelete)
+
+					bool HasDeletedParent(WorkspaceFolder folder)
+					{
+						WorkspaceFolder parent = folder;
+						repeat
+						{
+							parent = parent.mParent;
+
+							if (foldersToDelete.Contains(parent))
+								return true;
+						}
+						while (parent != null);
+
+						return false;
+					}
+
+					for (let folder in foldersToDelete)
 		            {
-		                let folderItem = folder.mListView;
-		                mListViewToWorkspaceFolderMap.Remove(folderItem);
-		                folderItem.mParentItem.RemoveChildItem(folderItem);
-		                gApp.mWorkspace.mWorkspaceFolders.Remove(folder);
+						if (!HasDeletedParent(folder))
+						{
+							let folderItem = folder.mListView;
+							folderItem.mParentItem.RemoveChildItem(folderItem);
+						}
+
+		               	gApp.mWorkspace.mWorkspaceFolders.Remove(folder);
 		                delete folder;
 		            }
 
@@ -2004,6 +2062,307 @@ namespace IDE.ui
 			}
 		}
 
+		void CopyToClipboard()
+		{
+			String clipData = scope .();
+			mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
+				{
+					if (mListViewToProjectMap.GetValue(selectedItem) case .Ok(var sourceProjectItem))
+					{
+						String path = scope .();
+						if (var projectFileItem = sourceProjectItem as ProjectFileItem)
+						{
+							sourceProjectItem.mProject.GetProjectFullPath(projectFileItem.mPath, path);
+							path.Replace('\\', '/');
+
+							if (!clipData.IsEmpty)
+								clipData.Append("\n");
+							clipData.Append("file:///");
+							IDEUtils.URLEncode(path, clipData);
+						}
+					}
+				});
+			if (!clipData.IsEmpty)
+				gApp.SetClipboardData("code/file-list", clipData.Ptr, (.)clipData.Length, true);
+		}
+
+		void CutToClipboard()
+		{
+			DeleteContainerAndItems!(mClipboardCutQueued);
+			mClipboardCutQueued = null;
+
+			CopyToClipboard();
+			mClipboardCutQueued = new .();
+			ValidateCutClipboard();
+		}
+
+		void ValidateCutClipboard()
+		{
+			if (mClipboardCutQueued == null)
+				return;
+
+			void* data = gApp.GetClipboardData("code/file-list", var size, 0);
+			if (size == -1)
+				return;
+
+			ClearAndDeleteItems!(mClipboardCutQueued);
+
+			if (data != null)
+			{
+				StringView sv = .((.)data, size);
+				for (var line in sv.Split('\n'))
+				{
+					var uri = IDEUtils.URLDecode(line, .. scope .());
+					if (uri.StartsWith("file:///"))
+					{
+						var srcPath = scope String()..Append(uri.Substring("file:///".Length));
+						IDEUtils.MakeComparableFilePath(srcPath);
+						if (mClipboardCutQueued.TryAddAlt(srcPath, var entryPtr))
+							*entryPtr = new String(srcPath);
+					}
+				}
+			}
+
+			if (mClipboardCutQueued.IsEmpty)
+				DeleteAndNullify!(mClipboardCutQueued);
+		}
+
+		void PasteFromClipboard()
+		{
+			ValidateCutClipboard();
+
+			var projectItem = GetSelectedProjectItem();
+			var projectFolder = projectItem as ProjectFolder;
+			if (projectFolder == null)
+				projectFolder = projectItem.mParentFolder;
+			if (projectFolder == null)
+				return;
+
+			var folderPath = projectFolder.GetFullImportPath(.. scope .());
+
+			void* data = gApp.GetClipboardData("code/file-list", var size);
+			if (data == null)
+				return;
+
+			bool isCut = mClipboardCutQueued != null;
+			Dictionary<String, SourceViewPanel> sourceViewPanelMap = null;
+			List<(SourceViewPanel sourceViewPanel, String fromPath, String toPath)> moveList = null;
+
+			HashSet<String> foundDirs = scope .();
+
+			if (isCut)
+			{
+				sourceViewPanelMap = scope:: .();
+				gApp.WithSourceViewPanels(scope (sourceViewPanel) =>
+					{
+						if (sourceViewPanel.mFilePath === null)
+							return;
+						if (sourceViewPanel.mProjectSource == null)
+							return;
+
+						var path = scope String()..Append(sourceViewPanel.mFilePath);
+						IDEUtils.MakeComparableFilePath(path);
+						if (sourceViewPanelMap.TryAdd(path, var keyPtr, var valuePtr))
+						{
+							*keyPtr = new String(path);
+							*valuePtr = sourceViewPanel;
+						}
+					});
+
+				moveList = scope:: .();
+			}
+
+			defer
+			{
+				DeleteContainerAndItems!(mClipboardCutQueued);
+				mClipboardCutQueued = null;
+
+				if (sourceViewPanelMap != null)
+				{
+					for (var key in sourceViewPanelMap.Keys)
+						delete key;
+				}
+
+				if (moveList != null)
+				{
+					for (var val in moveList)
+					{
+						delete val.fromPath;
+						delete val.toPath;
+					}
+				}
+
+				ClearAndDeleteItems!(foundDirs);
+			}
+
+			void QueueDirectoryMove(StringView fromDir, StringView toDir)
+			{
+				var searchStr = scope String();
+				searchStr.Append(fromDir);
+				searchStr.Append("/*");
+				for (var dirEntry in Directory.Enumerate(searchStr, .Directories | .Files))
+				{
+					var fromChildPath = dirEntry.GetFilePath(.. scope .());
+
+					String toChildPath = scope String()..Append(toDir);
+					toChildPath.Append(Path.DirectorySeparatorChar);
+					dirEntry.GetFileName(toChildPath);
+
+					if (dirEntry.IsDirectory)
+					{
+						QueueDirectoryMove(fromChildPath, toChildPath);
+						continue;
+					}
+
+					var cmpPath = IDEUtils.MakeComparableFilePath(.. scope String()..Append(fromChildPath));
+					if (sourceViewPanelMap.TryGet(cmpPath, var matchKey, var sourceViewPanel))
+					{
+						moveList.Add((sourceViewPanel, new String(fromChildPath), new String(toChildPath)));
+					}
+				}
+			}
+
+			Result<void> CopyDirectory(StringView fromDir, StringView toDir)
+			{
+				if (Directory.CreateDirectory(toDir) case .Err)
+				{
+					gApp.Fail(scope $"Failed to create directory '{toDir}'");
+					return .Err;
+				}
+
+				var searchStr = scope String();
+				searchStr.Append(fromDir);
+				searchStr.Append("/*");
+				for (var dirEntry in Directory.Enumerate(searchStr, .Directories | .Files))
+				{
+					var fromChildPath = dirEntry.GetFilePath(.. scope .());
+
+					String toChildPath = scope String()..Append(toDir);
+					toChildPath.Append("/");
+					dirEntry.GetFileName(toChildPath);
+
+					if (dirEntry.IsDirectory)
+					{
+						CopyDirectory(fromChildPath, toChildPath);
+						continue;
+					}
+
+					if (File.Copy(fromChildPath, toChildPath) case .Err)
+					{
+						gApp.Fail(scope $"Failed to copy '{fromChildPath}' to '{toChildPath}'");
+						return .Err;
+					}
+				}
+
+				return .Ok;
+			}
+
+			StringView sv = .((.)data, size);
+			SrcLoop: for (var line in sv.Split('\n'))
+			{
+				var uri = IDEUtils.URLDecode(line, .. scope .());
+				if (uri.StartsWith("file:///"))
+				{
+					var srcPath = scope String()..Append(uri.Substring("file:///".Length));
+
+					for (int i < 100)
+					{
+						var fileName = Path.GetFileNameWithoutExtension(srcPath, .. scope .());
+						var destPath = scope String();
+						destPath.Append(folderPath);
+						destPath.Append("/");
+						destPath.Append(fileName);
+						if ((i > 0) && (!fileName.Contains(" - Copy")))
+							destPath.Append(" - Copy");
+						if (i > 1)
+							destPath.AppendF($" ({i})");
+						Path.GetExtension(srcPath, destPath);
+
+						IDEUtils.FixFilePath(srcPath);
+						IDEUtils.FixFilePath(destPath);
+
+						if ((isCut) && (Path.Equals(srcPath, destPath)))
+							break;
+
+						if (File.Exists(destPath))
+							continue;
+						if (Directory.Exists(destPath))
+							continue;
+
+						if (Directory.Exists(srcPath))
+						{
+							if (foundDirs.TryAdd(srcPath, var entryPtr))
+								*entryPtr = new String(srcPath);
+
+							if (isCut)
+							{
+								QueueDirectoryMove(srcPath, destPath);
+
+								if (Directory.Move(srcPath, destPath) case .Err)
+								{
+									gApp.Fail(scope $"Failed to move '{srcPath}' to '{destPath}'");
+									return;
+								}
+
+								for (var val in moveList)
+								{
+									gApp.FileRenamed(val.sourceViewPanel.mProjectSource, val.fromPath, val.toPath);
+								}
+							}
+							else
+							{
+								if (CopyDirectory(srcPath, destPath) case .Err)
+								{
+									return;
+								}
+							}
+						}
+						else
+						{
+							var checkPath = scope String()..Append(srcPath);
+							while (true)
+							{
+								String checkDir = scope .();
+								if (Path.GetDirectoryPath(checkPath, checkDir) case .Err)
+									break;
+								if (foundDirs.Contains(checkDir))
+								{
+									// Already handled
+									continue SrcLoop; 
+								}
+								checkPath.Set(checkDir);
+							}
+
+							if (isCut)
+							{
+								if (File.Move(srcPath, destPath) case .Err)
+								{
+									gApp.Fail(scope $"Failed to move '{srcPath}' to '{destPath}'");
+									return;
+								}
+
+								var cmpPath = IDEUtils.MakeComparableFilePath(.. scope String()..Append(srcPath));
+								if (sourceViewPanelMap.TryGet(cmpPath, var matchKey, var sourceViewPanel))
+								{
+									gApp.FileRenamed(sourceViewPanel.mProjectSource, srcPath, destPath);
+								}
+							}
+							else
+							{
+								if (File.Copy(srcPath, destPath) case .Err)
+								{
+									gApp.Fail(scope $"Failed to copy '{srcPath}' to '{destPath}'");
+									return;
+								}
+							}
+						}
+
+						break;
+					}
+				}
+			}
+		}
+
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
         {
             mListView.KeyDown(keyCode, isRepeat);
@@ -2015,8 +2374,25 @@ namespace IDE.ui
 			}
 
             base.KeyDown(keyCode, isRepeat);
-            if (keyCode == KeyCode.Delete)
-            	RemoveSelectedItems();
+
+			if (mWidgetWindow.GetKeyFlags() == .Ctrl)
+			{
+				switch (keyCode)
+				{
+				case (.)'C':
+					CopyToClipboard();
+				case (.)'X':
+					CutToClipboard();
+				case (.)'V':
+					PasteFromClipboard();
+				default:
+				}
+			}
+			else if (mWidgetWindow.GetKeyFlags() == .None)
+			{
+				if (keyCode == KeyCode.Delete)
+					RemoveSelectedItems();
+			}
         }
 
         void ItemClicked(MouseEvent theEvent)
@@ -2374,7 +2750,7 @@ namespace IDE.ui
 			return true;
 		}
 
-		public void AddWorkspaceFolder(ProjectListViewItem parentListViewItem)
+		public WorkspaceFolder AddWorkspaceFolder(ProjectListViewItem parentListViewItem)
 		{
 		    ProjectListViewItem listViewItem;
 		    listViewItem = (ProjectListViewItem)parentListViewItem.CreateChildItem();
@@ -2406,10 +2782,11 @@ namespace IDE.ui
 		    mListView.GetRoot().SelectItemExclusively(listViewItem);
 		    EditListViewItem(listViewItem);
 		    gApp.mWorkspace.SetChanged();
+			return folder;
 		}
 
 
-		public Project ImportProject(String filePath, VerSpec verSpec = .None)
+		public Project ImportProject(String filePath, WorkspaceFolder workspaceFolder, VerSpec verSpec = .None)
 		{
 			if (gApp.IsCompiling)
 				return null;
@@ -2456,7 +2833,7 @@ namespace IDE.ui
 			gApp.AddNewProjectToWorkspace(proj, verSpec);
 			gApp.mWorkspace.FixOptions();
 			gApp.[Friend]FlushDeferredLoadProjects(true);
-			InitProject(proj);
+			InitProject(proj, workspaceFolder);
 			if (failed)
 			{
 			    gApp.Fail(StackStringFormat!("Failed to load project: {0}", filePath));
@@ -2502,6 +2879,8 @@ namespace IDE.ui
 				initialDir.Concat(Path.DirectorySeparatorChar, "Samples");
 			}
 
+			var workspaceFolder = GetSelectedWorkspaceFolder();
+
             fileDialog.InitialDirectory = initialDir;
             fileDialog.ValidateNames = true;
             fileDialog.DefaultExt = ".toml";
@@ -2511,7 +2890,7 @@ namespace IDE.ui
             {
                 for (String origProjFilePath in fileDialog.FileNames)
                 {
-					ImportProject(origProjFilePath);
+					ImportProject(origProjFilePath, workspaceFolder);
                 }
             }
 #endif
@@ -2616,6 +2995,43 @@ namespace IDE.ui
             {
 				Menu anItem;
 
+				void AddWorkspaceMenuItems()
+				{
+					anItem = menu.AddItem("Add New Project...");
+					anItem.mOnMenuItemSelected.Add(new (item) => {
+						AddNewProject();
+					});
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
+
+					anItem = menu.AddItem("Add Existing Project...");
+					anItem.mOnMenuItemSelected.Add(new (item) => {
+						mImportProjectDeferred = true;
+					});
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
+
+					anItem = menu.AddItem("Add From Installed...");
+					anItem.mOnMenuItemSelected.Add(new (item) => {
+						mImportInstalledDeferred = true;
+					});
+					if (gApp.IsCompiling)
+						anItem.SetDisabled(true);
+					anItem = menu.AddItem("New Folder");
+					anItem.mOnMenuItemSelected.Add(new (item) => {
+						var workspaceFolder = GetSelectedWorkspaceFolder();
+						if (workspaceFolder != null)
+						{
+							let newFolder = AddWorkspaceFolder(workspaceFolder.mListView);
+							newFolder.mParent = workspaceFolder;
+						}
+						else
+						{
+							AddWorkspaceFolder((ProjectListViewItem)mListView.GetRoot());
+						}
+					});
+				}
+
 				if (mListViewToWorkspaceFolderMap.TryGetValue(focusedItem, let folder))
 				{
 					anItem = menu.AddItem("Remove");
@@ -2623,8 +3039,9 @@ namespace IDE.ui
 					anItem = menu.AddItem("Rename");
 					anItem.mOnMenuItemSelected.Add(new (item) => { EditListViewItem(focusedItem); });
 					menu.AddItem();
-					anItem = menu.AddItem("New Folder");
-					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder(folder.mListView); });
+
+					AddWorkspaceMenuItems();
+
 					handled = true;
 				}
 				else if (gApp.mWorkspace.IsInitialized)
@@ -2632,23 +3049,7 @@ namespace IDE.ui
 					AddOpenContainingFolder();
 					menu.AddItem();
 
-	                anItem = menu.AddItem("Add New Project...");
-	                anItem.mOnMenuItemSelected.Add(new (item) => { AddNewProject(); });
-					if (gApp.IsCompiling)
-						anItem.SetDisabled(true);
-
-	                anItem = menu.AddItem("Add Existing Project...");
-	                anItem.mOnMenuItemSelected.Add(new (item) => { mImportProjectDeferred = true; });
-					if (gApp.IsCompiling)
-						anItem.SetDisabled(true);
-
-					anItem = menu.AddItem("Add From Installed...");
-					anItem.mOnMenuItemSelected.Add(new (item) => { mImportInstalledDeferred = true; });
-					if (gApp.IsCompiling)
-						anItem.SetDisabled(true);
-
-					anItem = menu.AddItem("New Folder");
-					anItem.mOnMenuItemSelected.Add(new (item) => { AddWorkspaceFolder((ProjectListViewItem)mListView.GetRoot()); });
+	                AddWorkspaceMenuItems();
 					menu.AddItem();
 	                anItem = menu.AddItem("Properties...");
 	                anItem.mOnMenuItemSelected.Add(new (item) => { ShowWorkspaceProperties(); });
@@ -2717,7 +3118,7 @@ namespace IDE.ui
 						    });
 					}
 
-					item = menu.AddItem("Remove...");
+					item = menu.AddItem("Remove...|Del");
 					if (gApp.IsCompiling)
 						item.SetDisabled(true);
 					item.mOnMenuItemSelected.Add(new (item) =>
@@ -2725,7 +3126,7 @@ namespace IDE.ui
 							RemoveSelectedItems();
 						});
 
-					item = menu.AddItem("Rename");
+					item = gApp.AddMenuItem(menu, "Rename", "Rename Item");
 					if (gApp.IsCompiling)
 						item.SetDisabled(true);
 					item.mOnMenuItemSelected.Add(new (item) =>
@@ -2769,13 +3170,13 @@ namespace IDE.ui
 
                 if ((projectItem != null) && (!isProject))
                 {
-                    item = menu.AddItem("Remove ...");
+                    item = menu.AddItem("Remove ...|Del");
                     item.mOnMenuItemSelected.Add(new (item) =>
                         {
 							RemoveSelectedItems();
                         });
 
-					item = menu.AddItem("Rename");
+					item = gApp.AddMenuItem(menu, "Rename", "Rename Item");
 					item.mOnMenuItemSelected.Add(new (item) =>
 					    {
 							var projectItem = GetSelectedProjectItem();
@@ -2926,6 +3327,14 @@ namespace IDE.ui
 
 				if (!isFailedLoad)
 				{
+					item = menu.AddItem("Copy|Ctrl+C");
+					item.mOnMenuItemSelected.Add(new (item) => CopyToClipboard());
+					item = menu.AddItem("Cut|Ctrl+X");
+					item.mOnMenuItemSelected.Add(new (item) => CopyToClipboard());
+					item = menu.AddItem("Paste|Ctrl+V");
+					item.mOnMenuItemSelected.Add(new (item) => CopyToClipboard());
+					menu.AddItem();
+
 					item = menu.AddItem("New Folder");
 					item.mOnMenuItemSelected.Add(new (item) =>
 					    {
@@ -3098,6 +3507,8 @@ namespace IDE.ui
 				mImportInstalledDeferred = false;
 				ImportInstalledProject();
 			}
+
+			ValidateCutClipboard();
         }
 
         public override void Resize(float x, float y, float width, float height)
@@ -3114,3 +3525,5 @@ namespace IDE.ui
 		
     }
 }
+
+///////////////////////

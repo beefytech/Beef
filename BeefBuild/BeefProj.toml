@@ -7,7 +7,7 @@ StartupObject = "BeefBuild.Program"
 
 [Platform.Windows]
 Description = "BeefBuild"
-FileVersion = "0.43.3"
+FileVersion = "0.43.4"
 
 [Configs.Debug.Win32]
 TargetName = ""
@@ -19,7 +19,7 @@ TargetName = "$(ProjectName)_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib Rpcrt4.lib Ole32.lib"
 CLibType = "Dynamic"
 BeefLibType = "DynamicDebug"
-DebugCommandArguments = "-proddir=c:\\Beef\\IDEHelper\\Tests -test"
+DebugCommandArguments = "-proddir=c:\\Beef\\IDE -config=Debug2"
 DebugWorkingDirectory = "c:\\beef\\ide"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 PreprocessorMacros = ["DEBUG", "CLI"]
@@ -74,9 +74,6 @@ DebugCommandArguments = "-proddir=..\\..\\BeefPerf -config=Release"
 DebugWorkingDirectory = "$(ProjectDir)\\dist"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 PreprocessorMacros = ["RELEASE", "CLI"]
-
-[Configs.Release.Win64z]
-BuildKind = "StaticLib"
 
 [Configs.Debug2.Win32]
 TargetName = ""

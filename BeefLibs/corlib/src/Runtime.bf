@@ -9,7 +9,7 @@ namespace System
 	[StaticInitPriority(101)]
 	static class Runtime
 	{
-		const int32 cVersion = 9;
+		const int32 cVersion = 10;
 
 		[CRepr, AlwaysInclude]
 		struct BfDebugMessageData
@@ -118,6 +118,7 @@ namespace System
 			function bool (Object thread) mThread_IsAutoDelete;
 			function void (Object thread) mThread_AutoDelete;
 			function int32 (Object thread) mThread_GetMaxStackSize;
+			function void () mThread_Exiting;
 			function void () mGC_MarkAllStaticMembers;
 			function bool () mGC_CallRootCallbacks;
 			function void () mGC_Shutdown;
@@ -146,7 +147,7 @@ namespace System
 			static Type Object_GetType(Object obj)
 			{
 #if BF_DBG_RUNTIME
-				return obj.[Friend]RawGetType();
+				return obj.[Friend, DisableObjectAccessChecks]RawGetType();
 #else
 				return null;
 #endif

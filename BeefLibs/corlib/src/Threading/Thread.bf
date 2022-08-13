@@ -20,8 +20,13 @@ namespace System.Threading
         private Object mThreadStartArg;
 
         bool mAutoDelete;
-        public static Thread sMainThread = new Thread() ~ delete _;
-        
+
+		static Monitor sMonitor = new .() ~ delete _;
+		static Event<delegate void()> sOnExit ~ _.Dispose();
+		Event<delegate void()> mOnExit ~ _.Dispose();
+
+		public static Thread sMainThread = new Thread() ~ delete _;
+
         [StaticInitPriority(102)]
         struct RuntimeThreadInit
         {
@@ -61,6 +66,14 @@ namespace System.Threading
             {
                 return ((Thread)thread).mMaxStackSize;
             }
+
+			static void Thread_Exiting()
+			{
+				using (sMonitor.Enter())
+				{
+					sOnExit();
+				}
+			}
 
             static void Thread_StartProc(Object threadObj)
             {
@@ -103,6 +116,7 @@ namespace System.Threading
                 cb.[Friend]mThread_IsAutoDelete = => Thread_IsAutoDelete;
                 cb.[Friend]mThread_AutoDelete = => Thread_AutoDelete;
                 cb.[Friend]mThread_GetMaxStackSize = => Thread_GetMaxStackSize;
+				cb.[Friend]mThread_Exiting = => Thread_Exiting;
             }
         }
 
@@ -178,6 +192,38 @@ namespace System.Threading
             }
         }
 
+		public void AddExitNotify(delegate void() dlg)
+		{
+			using (sMonitor.Enter())
+			{
+				mOnExit.Add(dlg);
+			}
+		}
+
+		public Result<void> RemovedExitNotify(delegate void() dlg, bool delegateDelegate = false)
+		{
+			using (sMonitor.Enter())
+			{
+				return mOnExit.Remove(dlg, delegateDelegate);
+			}
+		}
+
+		public static void AddGlobalExitNotify(delegate void() dlg)
+		{
+			using (sMonitor.Enter())
+			{
+				sOnExit.Add(dlg);
+			}
+		}
+
+		public static Result<void> RemoveGlobalExitNotify(delegate void() dlg, bool delegateDelegate = false)
+		{
+			using (sMonitor.Enter())
+			{
+				return sOnExit.Remove(dlg, delegateDelegate);
+			}
+		}
+
         extern void ManualThreadInit();
         extern void StartInternal();
         extern void SetStackStart(void* ptr);
@@ -217,6 +263,7 @@ namespace System.Threading
 			}
 		}
 
+		public static extern void RequestExitNotify();
         public extern void Suspend();
         public extern void Resume();
 
@@ -316,15 +363,18 @@ namespace System.Threading
             }
         }
 
-        extern int32 GetThreadId();
+        [CallingConvention(.Cdecl)]
+        extern int GetThreadId();
 
-        public int32 Id
+        public int Id
         {
             get
             {
                 return GetThreadId();
             }
         }
+
+		public static int CurrentThreadId => Platform.BfpThread_GetCurrentId();
 
 		[CallingConvention(.Cdecl)]
         private static extern Thread GetCurrentThreadNative();
@@ -337,6 +387,12 @@ namespace System.Threading
 
         public ~this()
         {
+			using (sMonitor.Enter())
+			{
+				mOnExit();
+				sOnExit();
+			}
+
             // Make sure we're not deleting manually if mAutoDelete is set
             Debug.Assert((!mAutoDelete) || (CurrentThread == this));
             // Delegate to the unmanaged portion.

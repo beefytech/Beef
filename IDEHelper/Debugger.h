@@ -29,7 +29,7 @@ public:
 	int mPendingHotBindIdx;
 	int mHitCount;
 	int mTargetHitCount;
-	DbgHitCountBreakKind mHitCountBreakKind;	
+	DbgHitCountBreakKind mHitCountBreakKind;
 	String mLogging;
 	bool mBreakAfterLogging;
 
@@ -40,7 +40,7 @@ public:
 	Breakpoint* mLinkedSibling; // For things like templates with multiple imps on same source line
 	bool mIsLinkedSibling; // Not in breakpoint list
 
-public:	
+public:
 	Breakpoint()
 	{
 		mRequestedLineNum = -1;
@@ -50,18 +50,17 @@ public:
 		mPendingHotBindIdx = -1;
 		mHitCount = 0;
 		mTargetHitCount = 0;
-		mHitCountBreakKind = DbgHitCountBreakKind_None;			
+		mHitCountBreakKind = DbgHitCountBreakKind_None;
 		mThreadId = -1;
 		mHead = NULL;
 		mLinkedSibling = NULL;
-		mIsLinkedSibling = false;		
+		mIsLinkedSibling = false;
 		mBreakAfterLogging = false;
 	}
 
 	virtual uintptr GetAddr() = 0;
 	virtual bool IsMemoryBreakpointBound() = 0;
 };
-
 
 enum DbgTypeKindFlags
 {
@@ -97,7 +96,7 @@ enum DwFloatDisplayType : int8
 {
 	DwFloatDisplayType_Default,
 	DwFloatDisplayType_Minimal,
-	DwFloatDisplayType_Full,	
+	DwFloatDisplayType_Full,
 	DwFloatDisplayType_HexUpper,
 
 	DwFloatDisplayType_HexLower,
@@ -126,7 +125,7 @@ enum DwEvalExpressionFlags : int16
 	DwEvalExpressionFlag_MemoryAddress = 0x40,
 	DwEvalExpressionFlag_MemoryWatch = 0x80,
 	DwEvalExpressionFlag_Symbol = 0x100,
-	DwEvalExpressionFlag_StepIntoCalls = 0x200,	
+	DwEvalExpressionFlag_StepIntoCalls = 0x200,
 	DwEvalExpressionFlag_RawStr = 0x400,
 	DwEvalExpressionFlag_AllowStringView = 0x800
 };
@@ -148,7 +147,7 @@ struct DwDisplayInfo
 
 enum RunState
 {
-	RunState_NotStarted,	
+	RunState_NotStarted,
 	RunState_Running,
 	RunState_Running_ToTempBreakpoint,
 	RunState_Paused,
@@ -158,7 +157,7 @@ enum RunState
 	RunState_HotStep,
 	RunState_Exception,
 	RunState_Terminating,
-	RunState_Terminated,	
+	RunState_Terminated,
 	RunState_SearchingSymSrv,
 	RunState_HotResolve
 };
@@ -203,16 +202,15 @@ enum DbgMemoryFlags : uint8
 class DbgModuleMemoryCache
 {
 public:
-	
 
-public:	
+public:
 	uintptr mAddr;
 	int mSize;
 	int mBlockSize;
 	uint8** mBlocks;
 	DbgMemoryFlags* mFlags;
 	int mBlockCount;
-	bool mOwns;	
+	bool mOwns;
 
 public:
 	DbgModuleMemoryCache(uintptr addr, int size);
@@ -229,7 +227,7 @@ public:
 	struct TypeData
 	{
 		intptr mCount;
-		intptr mSize;		
+		intptr mSize;
 
 		TypeData()
 		{
@@ -249,7 +247,7 @@ class Debugger
 {
 public:
 	DebugManager* mDebugManager;
-	RunState mRunState;			
+	RunState mRunState;
 	DbgHotResolveData* mHotResolveData;
 	bool mHadImageFindError;
 
@@ -257,7 +255,7 @@ public:
 	Debugger()
 	{
 		mDebugManager = NULL;
-		mRunState = RunState_NotStarted;		
+		mRunState = RunState_NotStarted;
 		mHotResolveData = NULL;
 		mHadImageFindError = false;
 	}
@@ -283,7 +281,7 @@ public:
 	virtual Breakpoint* CreateAddressBreakpoint(intptr address) = 0;
 	virtual void CheckBreakpoint(Breakpoint* breakpoint) = 0;
 	virtual void HotBindBreakpoint(Breakpoint* wdBreakpoint, int lineNum, int hotIdx) = 0;
-	virtual void DeleteBreakpoint(Breakpoint* wdBreakpoint) = 0;	
+	virtual void DeleteBreakpoint(Breakpoint* wdBreakpoint) = 0;
 	virtual void DetachBreakpoint(Breakpoint* wdBreakpoint) = 0;
 	virtual void MoveBreakpoint(Breakpoint* wdBreakpoint, int lineNum, int wantColumn, bool rebindNow) = 0;
 	virtual void MoveMemoryBreakpoint(Breakpoint* wdBreakpoint, intptr addr, int byteCount) = 0;
@@ -306,13 +304,13 @@ public:
 	virtual void EvaluateContinueKeep() = 0;
 	virtual String EvaluateToAddress(const StringImpl& expr, int callStackIdx, int cursorPos) = 0;
 	virtual String EvaluateAtAddress(const StringImpl& expr, intptr atAddr, int cursorPos) = 0;
-	virtual String GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count) = 0;	
+	virtual String GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count) = 0;
 	virtual String GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen) = 0;
 	virtual String GetAutoLocals(int callStackIdx, bool showRegs) = 0;
 	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) = 0;
 	virtual String GetProcessInfo() = 0;
 	virtual String GetThreadInfo() = 0;
-	virtual void SetActiveThread(int threadId) = 0;	
+	virtual void SetActiveThread(int threadId) = 0;
 	virtual int GetActiveThread() = 0;
 	virtual void FreezeThread(int threadId) = 0;
 	virtual void ThawThread(int threadId) = 0;
@@ -321,12 +319,12 @@ public:
 	virtual void UpdateCallStack(bool slowEarlyOut = true) = 0;
 	virtual int GetCallStackCount() = 0;
 	virtual int GetRequestedStackFrameIdx() = 0;
-	virtual int GetBreakStackFrameIdx() = 0;	
+	virtual int GetBreakStackFrameIdx() = 0;
 	virtual bool ReadMemory(intptr address, uint64 length, void* dest, bool local = false) = 0;
 	virtual bool WriteMemory(intptr address, void* src, uint64 length) = 0;
 	virtual DbgMemoryFlags GetMemoryFlags(intptr address) = 0;
-	virtual void UpdateRegisterUsage(int stackFrameIdx) = 0;	
-	virtual void UpdateCallStackMethod(int stackFrameIdx) = 0;	
+	virtual void UpdateRegisterUsage(int stackFrameIdx) = 0;
+	virtual void UpdateCallStackMethod(int stackFrameIdx) = 0;
 	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) = 0;
 	virtual void GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx) = 0;
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags) = 0;
@@ -340,8 +338,8 @@ public:
 	virtual String GetAddressSymbolName(intptr address, bool demangle) = 0;
 	virtual String DisassembleAtRaw(intptr address) = 0;
 	virtual String DisassembleAt(intptr address) = 0;
-	virtual String FindLineCallAddresses(intptr address) = 0;	
-	virtual String GetCurrentException() = 0;	
+	virtual String FindLineCallAddresses(intptr address) = 0;
+	virtual String GetCurrentException() = 0;
 	virtual String GetModulesInfo() = 0;
 	virtual void SetAliasPath(const StringImpl& origPath, const StringImpl& localPath) = 0;
 	virtual void CancelSymSrv() = 0;
@@ -351,7 +349,7 @@ public:
 	virtual int LoadDebugInfoForModule(const StringImpl& moduleName, const StringImpl& debugFileName) = 0;
 	virtual void StopDebugging() = 0;
 	virtual void Terminate() = 0;
-	virtual void Detach() = 0;	
+	virtual void Detach() = 0;
 	virtual Profiler* StartProfiling() = 0;
 	virtual Profiler* PopProfiler() = 0; // Profiler requested by target program
 	virtual void ReportMemory(MemReporter* memReporter) = 0;
@@ -380,7 +378,7 @@ public:
 	virtual bool IsSampling() = 0;
 	virtual String GetOverview() = 0;
 	virtual String GetThreadList() = 0;
-	virtual String GetCallTree(int threadId, bool reverse) = 0;	
+	virtual String GetCallTree(int threadId, bool reverse) = 0;
 };
 
 NS_BF_END

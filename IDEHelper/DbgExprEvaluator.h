@@ -48,14 +48,14 @@ public:
 		intptr mLocalIntPtr;
 		DbgVariable* mVariable;
 	};
-	bool mIsLiteral;	
+	bool mIsLiteral;
 	bool mHasNoValue;
 	bool mIsReadOnly;
-	union 
+	union
 	{
 		int mRegNum;
 		int mDataLen;
-	};	
+	};
 	addr_target mSrcAddress;
 
 public:
@@ -63,13 +63,13 @@ public:
 	{
 		mType = NULL;
 		mUInt64 = 0;
-		mIsLiteral = false;		
+		mIsLiteral = false;
 		mSrcAddress = 0;
 		mHasNoValue = false;
 		mIsReadOnly = false;
 		mRegNum = -1;
 	}
-	
+
 	DbgType* ResolveTypeDef() const
 	{
 		auto typeDef = mType;
@@ -79,7 +79,7 @@ public:
 	}
 
 	int64 GetSExtInt() const
-	{		
+	{
 		auto resolvedType = mType->RemoveModifiers();
 		switch (resolvedType->mTypeCode)
 		{
@@ -139,7 +139,7 @@ public:
 		case DbgType_u32:
 			return (int64) mUInt32;
 		case DbgType_u64:
-			return (int64) mUInt64;		
+			return (int64) mUInt64;
 		case DbgType_Ptr:
 			return (int64) mUInt64;
 		default:
@@ -265,7 +265,7 @@ public:
 	SizedArray<int, 4> mBestMethodGenericArgumentSrcs;
 	DwTypeVector mBestMethodGenericArguments;
 
-public:	
+public:
 	void CompareMethods(DbgSubprogram* prevMethodInstance, DwTypeVector* prevGenericArgumentsSubstitute,
 		DbgSubprogram* newMethodInstance, DwTypeVector* genericArgumentsSubstitute,
 		bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail);
@@ -332,13 +332,13 @@ public:
 	};
 
 public:
-	DebugTarget* mDebugTarget;	
+	DebugTarget* mDebugTarget;
 	DbgModule* mOrigDbgModule;
 	DbgModule* mDbgModule;
-	DbgCompileUnit* mDbgCompileUnit;	
+	DbgCompileUnit* mDbgCompileUnit;
 
 	DbgLanguage mLanguage;
-	BfPassInstance* mPassInstance;	
+	BfPassInstance* mPassInstance;
 	WinDebugger* mDebugger;
 	String mExpectingTypeName;
 	String mSubjectExpr;
@@ -348,9 +348,9 @@ public:
 	DbgTypedValue mResult;
 	DbgTypedValue* mReceivingValue;
 	intptr mCountResultOverride;
-	DbgTypedValue mExplicitThis;	
+	DbgTypedValue mExplicitThis;
 	BfExpression* mExplicitThisExpr;
-	Array<DbgCallResult>* mCallResults;	
+	Array<DbgCallResult>* mCallResults;
 	addr_target mCallStackPreservePos;
 	int mCallResultIdx;
 	String mNamespaceSearchStr;
@@ -367,12 +367,12 @@ public:
 	bool mIsEmptyTarget;
 	DwEvalExpressionFlags mExpressionFlags;
 	bool mHadSideEffects;
-	bool mBlockedSideEffects;	
+	bool mBlockedSideEffects;
 	bool mIgnoreErrors;
 	bool mCreatedPendingCall;
-	bool mValidateOnly;	
+	bool mValidateOnly;
 	int mCallStackIdx;
-	int mCursorPos;	
+	int mCursorPos;
 
 	DwAutoComplete* mAutoComplete;
 	DbgStackSearch* mStackSearch;
@@ -388,18 +388,18 @@ public:
 	DbgTypedValue ReadTypedValue(BfAstNode* targetSrc, DbgType* type, uint64 valAddr, DbgAddrType addrType);
 	bool CheckTupleCreation(addr_target receiveAddr, BfAstNode* targetSrc, DbgType* tupleType, const BfSizedArray<BfExpression*>& argValues, BfSizedArray<BfTupleNameNode*>* names);
 	DbgTypedValue CheckEnumCreation(BfAstNode* targetSrc, DbgType* enumType, const StringImpl& caseName, const BfSizedArray<BfExpression*>& argValues);
-	void DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments);
-	bool ResolveArgValues(const BfSizedArray<ASTREF(BfExpression*)>& arguments, SizedArrayImpl<DbgTypedValue>& outArgValues);	
+	void DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, bool& failed);
+	bool ResolveArgValues(const BfSizedArray<ASTREF(BfExpression*)>& arguments, SizedArrayImpl<DbgTypedValue>& outArgValues);
 	DbgTypedValue CreateCall(DbgSubprogram* method, DbgTypedValue thisVal, DbgTypedValue structRetVal, bool bypassVirtual, CPURegisters* registers);
 	DbgTypedValue CreateCall(DbgSubprogram* method, SizedArrayImpl<DbgMethodArgument>& argPushQueue, bool bypassVirtual);
 	DbgTypedValue CreateCall(BfAstNode* targetSrc, DbgTypedValue target, DbgSubprogram* methodDef, bool bypassVirtual, const BfSizedArray<ASTREF(BfExpression*)>& arguments, SizedArrayImpl<DbgTypedValue>& argValues);
 	DbgTypedValue MatchMethod(BfAstNode* targetSrc, DbgTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName,
-		const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments);		
+		const BfSizedArray<ASTREF(BfExpression*)>& arguments, BfSizedArray<ASTREF(BfAstNode*)>* methodGenericArguments, bool& failed);
 	DbgType* ResolveSubTypeRef(DbgType* checkType, const StringImpl& name);
 	void PerformBinaryOperation(ASTREF(BfExpression*)& leftExpression, ASTREF(BfExpression*)& rightExpression, BfBinaryOp binaryOp, BfTokenNode* opToken, bool forceLeftType);
 	void PerformBinaryOperation(DbgType* resultType, DbgTypedValue convLeftValue, DbgTypedValue convRightValue, BfBinaryOp binaryOp, BfTokenNode* opToken);
 	void PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unaryOp, ASTREF(BfExpression*)& expr);
-	DbgTypedValue CreateValueFromExpression(ASTREF(BfExpression*)& expr, DbgType* castToType = NULL, DbgEvalExprFlags flags = DbgEvalExprFlags_None);	
+	DbgTypedValue CreateValueFromExpression(ASTREF(BfExpression*)& expr, DbgType* castToType = NULL, DbgEvalExprFlags flags = DbgEvalExprFlags_None);
 	const char* GetTypeName(DbgType* type);
 	DbgTypedValue GetResult();
 	bool HasPropResult();
@@ -409,11 +409,11 @@ public:
 public:
 	DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModule, BfPassInstance* passInstance, int callStackIdx, int cursorPos);
 	~DbgExprEvaluator();
-	
+
 	DbgTypedValue GetInt(int value);
 	DbgTypedValue GetString(const StringImpl& str);
 
-	void Fail(const StringImpl& error, BfAstNode* node);	
+	void Fail(const StringImpl& error, BfAstNode* node);
 	void Warn(const StringImpl& error, BfAstNode* node);
 	DbgType* GetExpectingType();
 	void GetNamespaceSearch();
@@ -422,11 +422,11 @@ public:
 	DbgType* ResolveTypeRef(BfTypeReference* typeRef);
 	DbgType* ResolveTypeRef(BfAstNode* typeRef, BfAstNode** parentChildRef = NULL);
 	DbgType* ResolveTypeRef(const StringImpl& typeRef);
-	static bool TypeIsSubTypeOf(DbgType* srcType, DbgType* wantType, int* thisOffset = NULL, addr_target* thisAddr = NULL);	
+	static bool TypeIsSubTypeOf(DbgType* srcType, DbgType* wantType, int* thisOffset = NULL, addr_target* thisAddr = NULL);
 	DbgTypedValue GetBeefTypeById(int typeId);
 	void BeefStringToString(addr_target addr, String& outStr);
 	void BeefStringToString(const DbgTypedValue& val, String& outStr);
-	void BeefTypeToString(const DbgTypedValue& val, String& outStr);	
+	void BeefTypeToString(const DbgTypedValue& val, String& outStr);
 	CPUStackFrame* GetStackFrame();
 	CPURegisters* GetRegisters();
 	DbgTypedValue GetRegister(const StringImpl& regName);
@@ -438,9 +438,9 @@ public:
 	void AutocompleteCheckType(BfTypeReference* typeReference);
 	void AutocompleteAddTopLevelTypes(const StringImpl& filter);
 	void AutocompleteAddMethod(const char* methodName, const StringImpl& filter);
-	void AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic, bool wantsNonStatic, const StringImpl& filter, bool isCapture = false);	
+	void AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic, bool wantsNonStatic, const StringImpl& filter, bool isCapture = false);
 	void AutocompleteCheckMemberReference(BfAstNode* target, BfAstNode* dotToken, BfAstNode* memberName);
-	DbgTypedValue RemoveRef(DbgTypedValue typedValue);	
+	DbgTypedValue RemoveRef(DbgTypedValue typedValue);
 	bool StoreValue(DbgTypedValue& ptr, DbgTypedValue& value, BfAstNode* refNode);
 	bool StoreValue(DbgTypedValue& ptr, BfExpression* expr);
 
@@ -449,16 +449,16 @@ public:
 	bool CanCast(DbgTypedValue typedVal, DbgType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	DbgTypedValue Cast(BfAstNode* srcNode, const DbgTypedValue& val, DbgType* toType, bool explicitCast = false, bool silentFail = false);
 	bool HasField(DbgType* type, const StringImpl& fieldName);
-	DbgTypedValue DoLookupField(BfAstNode* targetSrc, DbgTypedValue target, DbgType* curCheckType, const StringImpl& fieldName, CPUStackFrame* stackFrame, bool allowImplicitThis);	
-	DbgTypedValue LookupField(BfAstNode* targetSrc, DbgTypedValue target, const StringImpl& fieldName);	
+	DbgTypedValue DoLookupField(BfAstNode* targetSrc, DbgTypedValue target, DbgType* curCheckType, const StringImpl& fieldName, CPUStackFrame* stackFrame, bool allowImplicitThis);
+	DbgTypedValue LookupField(BfAstNode* targetSrc, DbgTypedValue target, const StringImpl& fieldName);
 	DbgTypedValue DoLookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError, bool* hadError);
 	DbgTypedValue LookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void LookupSplatMember(const DbgTypedValue& target, const StringImpl& fieldName);
 	void LookupSplatMember(BfAstNode* srcNode, BfAstNode* lookupNode, const DbgTypedValue& target, const StringImpl& fieldName, String* outFindName = NULL, bool* outIsConst = NULL, StringImpl* forceName = NULL);
 	void LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	DbgType* FindSubtype(DbgType* type, const StringImpl& name);
-	void LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, bool ignoreIdentifierNotFoundError = false);		
-	bool EnsureRunning(BfAstNode* astNode);	
+	void LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, bool ignoreIdentifierNotFoundError = false);
+	bool EnsureRunning(BfAstNode* astNode);
 
 	virtual void Visit(BfAssignmentExpression* assignExpr) override;
 	virtual void Visit(BfParenthesizedExpression* parenExpr) override;
@@ -477,10 +477,10 @@ public:
 	virtual void Visit(BfUnaryOperatorExpression* unaryOpExpr) override;
 	virtual void Visit(BfInvocationExpression* invocationExpr) override;
 	virtual void Visit(BfConditionalExpression* condExpr) override;
-	virtual void Visit(BfTypeAttrExpression* typeAttrExpr) override;	
+	virtual void Visit(BfTypeAttrExpression* typeAttrExpr) override;
 	virtual void Visit(BfTupleExpression* tupleExpr) override;
 
-	DbgTypedValue Resolve(BfExpression* expr, DbgType* wantType = NULL);	
+	DbgTypedValue Resolve(BfExpression* expr, DbgType* wantType = NULL);
 	BfAstNode* FinalizeExplicitThisReferences(BfAstNode* headNode);
 };
 

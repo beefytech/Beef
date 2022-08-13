@@ -925,6 +925,8 @@ public:
 			this->mSize = val.mSize;
 			this->mAllocSize = val.mAllocSize;
 			val.mVals = (T*)&val.mFirstVal;
+			val.mSize = 0;
+			val.mAllocSize = TInternalSize;
 		}
 	}
 
@@ -1006,6 +1008,8 @@ public:
 			this->mAllocSize = val.mAllocSize;
 
 			val.mVals = NULL;
+			val.mSize = 0;
+			val.mAllocSize = 0;
 		}
 	}
 
@@ -1079,6 +1083,8 @@ public:
 			this->mAllocSize = val.mAllocSize;
 
 			val.mVals = &val.mInternalBuffer;
+			val.mSize = 0;
+			val.mAllocSize = 1;
 		}
 	}
 

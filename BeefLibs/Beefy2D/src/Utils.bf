@@ -170,7 +170,7 @@ namespace Beefy
 					if (autoRetry)
 					{
 						if (fileOpenErr == .SharingViolation)
-							retry = true;
+							retry = i != 99;
 					}
 					if (!retry)
                     	return .Err(.OpenError(fileOpenErr));

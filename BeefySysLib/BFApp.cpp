@@ -222,7 +222,7 @@ void BFApp::Process()
 		mClientUpdateCntF = mUpdateCntF - 1;
 	}
 
-	while ((int)mClientUpdateCntF < (int)mUpdateCntF)
+	while ((mRunning) && ((int)mClientUpdateCntF < (int)mUpdateCntF))
 	{
 		Update(didUpdateCnt == 0);
 		didUpdateCnt++;		
@@ -232,7 +232,7 @@ void BFApp::Process()
 	}
 
 	// Only attempt UpdateF updates if our rates aren't nearly the same
-	if ((mRefreshRate != 0) && (fabs(physRefreshRate - mRefreshRate) / (float)mRefreshRate > 0.1f))
+	if ((mRunning) && (mRefreshRate != 0) && (fabs(physRefreshRate - mRefreshRate) / (float)mRefreshRate > 0.1f))
 	{
 		float updateFAmt = (float)(mUpdateCntF - mClientUpdateCntF);
 		if ((updateFAmt > 0.05f) && (updateFAmt < 1.0f) && (didUpdateCnt < maxUpdates))

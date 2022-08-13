@@ -39,7 +39,7 @@ static BOOL CALLBACK BFEnumResNameProc(
   LPWSTR lpszName,
   LONG_PTR lParam
 )
-{	
+{
 	gMainIcon = ::LoadIconW(hModule, lpszName);
 	return FALSE;
 }
@@ -56,23 +56,23 @@ struct AdjustedMonRect
 static BOOL ClipToMonitor(HMONITOR mon, HDC hdc, LPRECT monRect, LPARAM userArg)
 {
 	AdjustedMonRect* outRect = (AdjustedMonRect*)userArg;
-	
+
 	MONITORINFO monitorInfo = { sizeof(MONITORINFO) };
 	if (::GetMonitorInfo(mon, &monitorInfo) == 0)
 		return TRUE;
 
 	outRect->mMonCount++;
-	
+
 	if (outRect->mX < monitorInfo.rcWork.left)
 		outRect->mX = monitorInfo.rcWork.left;
  	else if (outRect->mX + outRect->mWidth >= monitorInfo.rcWork.right)
 		outRect->mX = BF_MAX((int)monitorInfo.rcWork.left, monitorInfo.rcWork.right - outRect->mWidth);
- 
+
  	if (outRect->mY < monitorInfo.rcWork.top)
 		outRect->mY = monitorInfo.rcWork.top;
  	else if (outRect->mY + outRect->mHeight >= monitorInfo.rcWork.bottom)
 		outRect->mY = BF_MAX((int)monitorInfo.rcWork.top, monitorInfo.rcWork.bottom - outRect->mHeight);
-	
+
 	return TRUE;
 }
 
@@ -97,9 +97,9 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	//OutputDebugStrF("Wnd %p Create\n", this);
 
 	HINSTANCE hInstance = GetModuleHandle(NULL);
-	
+
 	mMinWidth = 128;
-	mMinHeight = 128;	
+	mMinHeight = 128;
 
 	WNDCLASSW wc;
 	wc.style = 0;
@@ -107,7 +107,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	wc.cbWndExtra = 0;
 	wc.hbrBackground = NULL;
 	//wc.hbrBackground = ::CreateSolidBrush(::GetSysColor(COLOR_BTNFACE));
-	wc.hCursor = NULL;	
+	wc.hCursor = NULL;
 	//wc.hIcon = (HICON) ::LoadImageA(hInstance, "MainIcon", IMAGE_ICON, 0, 0, 0);
 	//wc.hIcon = (HICON) ::LoadImageA(hInstance, MAKEINTRESOURCEA(32512), IMAGE_ICON, 0, 0, 0);
 	if (gMainIcon != NULL)
@@ -117,7 +117,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	else
 	{
 		wc.hIcon = (HICON) ::LoadIconA(hInstance, "MainIcon");
-		if (wc.hIcon == NULL)		
+		if (wc.hIcon == NULL)
 		{
 			EnumResourceNamesW(hInstance, (LPCWSTR)RT_GROUP_ICON, BFEnumResNameProc, 0);
 			wc.hIcon = gMainIcon;
@@ -127,15 +127,15 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	wc.hInstance = hInstance;
 	wc.lpfnWndProc = WindowProcStub;
 	wc.lpszClassName = L"BFWindow";
-	wc.lpszMenuName = NULL;	
-	RegisterClassW(&wc);	
+	wc.lpszMenuName = NULL;
+	RegisterClassW(&wc);
 
 	int requestedX = x;
 	int requestedY = y;
 
 	int aWindowFlags = 0;
 	bool hasDestAlpha = (windowFlags & BFWINDOW_DEST_ALPHA) != 0;
-	
+
 	if (windowFlags & BFWINDOW_MENU)
 	{
 		WinBFMenu* aMenu = new WinBFMenu();
@@ -143,8 +143,8 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		mHMenuMap[aMenu->mMenu] = aMenu;
 		mMenu = aMenu;
 	}
-	
-	int windowFlagsEx = /*WS_EX_COMPOSITED |*/ WS_EX_LAYERED;		
+
+	int windowFlagsEx = /*WS_EX_COMPOSITED |*/ WS_EX_LAYERED;
 	if (windowFlags & BFWINDOW_TOOLWINDOW)
 		windowFlagsEx |= WS_EX_TOOLWINDOW;
 	if (windowFlags & BFWINDOW_BORDER)
@@ -152,11 +152,11 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	if (windowFlags & BFWINDOW_THICKFRAME)
 		aWindowFlags |= WS_THICKFRAME;
 	if ((windowFlags & BFWINDOW_RESIZABLE) && (!hasDestAlpha))
-		aWindowFlags |= WS_SIZEBOX;	
+		aWindowFlags |= WS_SIZEBOX;
 	if (windowFlags & BFWINDOW_SYSMENU)
 		aWindowFlags |= WS_SYSMENU;
 	if (windowFlags & BFWINDOW_CAPTION)
-		aWindowFlags |= WS_CAPTION;	
+		aWindowFlags |= WS_CAPTION;
 	else
 		aWindowFlags |= WS_POPUP;
 	if (windowFlags & BFWINDOW_MINIMIZE)
@@ -177,10 +177,10 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		width = rect.right - rect.left;
 		height = rect.bottom - rect.top;
 	}
-	
+
 	if (windowFlags & BFWINDOW_POPUP_POSITION)
 	{
-		AdjustedMonRect adjustRect = { 0, x, y, width, height };		
+		AdjustedMonRect adjustRect = { 0, x, y, width, height };
 		RECT wantRect = { x, y, x + width, y + height };
 
 		EnumDisplayMonitors(NULL, &wantRect, ClipToMonitor, (LPARAM)&adjustRect);
@@ -191,7 +191,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		width = adjustRect.mWidth;
 		height = adjustRect.mHeight;
 	}
-	
+
 	mFlags = windowFlags;
 	mMouseVisible = true;
 
@@ -204,8 +204,8 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	{
 		WinBFMenu* placeholderMenu = (WinBFMenu*) AddMenuItem(mMenu, 0, ": Placeholder Menu Item :", NULL, NULL, false, -1, false);
 		placeholderMenu->mIsPlaceholder = true;
-	}	
-	
+	}
+
 	mHWnd = CreateWindowExW(windowFlagsEx, L"BFWindow", UTF8Decode(title).c_str(),
 		aWindowFlags,
 		x, y,
@@ -215,7 +215,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		(mMenu != NULL) ? ((WinBFMenu*) mMenu)->mMenu : NULL,
 		hInstance,
 		0);
-	
+
 	if ((windowFlags & BFWINDOW_ALPHA_MASK) == 0)
 		SetLayeredWindowAttributes(mHWnd, 0, 255, 0);
 
@@ -225,7 +225,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	int showFlags = SWP_SHOWWINDOW;
 // 	if (windowFlags & BFWINDOW_SHOWMINIMIZED)
 // 		showFlags = SWP_
-	mHasFocus = true;	
+	mHasFocus = true;
 	mSoftHasFocus = true;
 	if (windowFlags & BFWINDOW_FAKEFOCUS)
 	{
@@ -253,7 +253,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		else if (windowFlags & BFWINDOW_SHOWMAXIMIZED)
 			wndPlacement.showCmd = SW_SHOWMAXIMIZED;
 		else
-			wndPlacement.showCmd = SW_SHOWNORMAL;		
+			wndPlacement.showCmd = SW_SHOWNORMAL;
 
 		wndPlacement.rcNormalPosition.left = x;
 		wndPlacement.rcNormalPosition.top = y;
@@ -266,11 +266,11 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		SetWindowPos(mHWnd, relativeWindow, x, y, width, height, showFlags);
 	}
 
-		
+
 	SetTimer(mHWnd, 0, 10, NULL);
-	
+
 	mIsMouseInside = false;
-	mRenderWindow = new DXRenderWindow((DXRenderDevice*) gBFApp->mRenderDevice, this, (windowFlags & BFWINDOW_FULLSCREEN) == 0);	
+	mRenderWindow = new DXRenderWindow((DXRenderDevice*) gBFApp->mRenderDevice, this, (windowFlags & BFWINDOW_FULLSCREEN) == 0);
 	gBFApp->mRenderDevice->AddRenderWindow(mRenderWindow);
 
 	SetWindowLongPtr(mHWnd, GWLP_USERDATA, (LONG_PTR)this);
@@ -281,7 +281,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mAlphaMaskPixels = NULL;
 	mAlphaMaskWidth = 0;
 	mAlphaMaskHeight = 0;
-	mNeedsStateReset = false;	
+	mNeedsStateReset = false;
 	mAwaitKeyReleases = false;
 	mAwaitKeyReleasesEventTick = 0;
 	mAwaitKeyReleasesCheckIdx = 0;
@@ -293,11 +293,11 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		DwmExtendFrameIntoClientArea(mHWnd, &dWMMargins);
 	}
 
-	if (windowFlags & BFWINDOW_MODAL)	
-	{		
-		EnableWindow(parentHWnd, FALSE);			
+	if (windowFlags & BFWINDOW_MODAL)
+	{
+		EnableWindow(parentHWnd, FALSE);
 	}
-	
+
 	if (parent != NULL)
 	{
 		auto winParent = (WinBFWindow*)parent;
@@ -310,7 +310,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 }
 
 WinBFWindow::~WinBFWindow()
-{	
+{
 	//OutputDebugStrF("Wnd %p Destroyed\n", this);
 
 	if (mHWnd != NULL)
@@ -354,7 +354,7 @@ void WinBFWindow::SetTitle(const char* title)
 }
 
 void WinBFWindow::LostFocus(BFWindow* newFocus)
-{		
+{
 	///OutputDebugStrF("Lost focus\n");
 	mFocusLostTick = ::GetTickCount();
 	WinBFWindow* bfNewFocus = (WinBFWindow*)newFocus;
@@ -362,8 +362,8 @@ void WinBFWindow::LostFocus(BFWindow* newFocus)
 	for (int i = 0; i < KEYCODE_MAX; i++)
 	{
 		// Only transfer mode keys
-		if (mIsKeyDown[i])			
-		{			
+		if (mIsKeyDown[i])
+		{
 			mIsKeyDown[i] = false;
 			mKeyUpFunc(this, i);
 
@@ -374,7 +374,7 @@ void WinBFWindow::LostFocus(BFWindow* newFocus)
 				newFocus->mKeyDownFunc(newFocus, i, 0);
 			}
 		}
-	}	
+	}
 }
 
 void WinBFWindow::GotFocus()
@@ -388,7 +388,7 @@ void WinBFWindow::GotFocus()
 		mAwaitKeyReleases = true;
 		mAwaitKeyReleasesCheckIdx = 0;
 		mAwaitKeyReleasesEventTick = ::GetTickCount();
-	}			
+	}
 }
 
 void WinBFWindow::SetForeground()
@@ -405,7 +405,7 @@ void WinBFWindow::SetForeground()
 
 	::SetFocus(mHWnd);
 	::SetForegroundWindow(mHWnd);
-	
+
 
 	//OutputDebugStrF("SetForeground %p %d %d %d\n", mHWnd, hadFocus, ::GetTickCount() - prevFocusLostTick, mAwaitKeyReleases);
 }
@@ -450,7 +450,7 @@ bool WinBFWindow::CheckKeyReleases(bool isKeyDown)
 
 	bool hasKeyDown = false;
 	uint8 keysDown[256] = { 0 };
-	::GetKeyboardState((PBYTE)&keysDown);	
+	::GetKeyboardState((PBYTE)&keysDown);
 	for (int i = 1; i < 256; i++)
 		if (keysDown[i] & 0x80)
 			hasKeyDown = true;
@@ -476,7 +476,7 @@ bool WinBFWindow::CheckKeyReleases(bool isKeyDown)
 }
 
 LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{	
+{
 	WinBFApp* app = (WinBFApp*) gBFApp;
 
 	if (app == NULL)
@@ -494,7 +494,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		{
 			auto childWindow = (WinBFWindow*)child;
 			if ((childWindow->mSoftHasFocus) && (childWindow->mFlags & BFWINDOW_FAKEFOCUS))
-			{				
+			{
 				return childWindow->WindowProc(hWnd, uMsg, wParam, lParam);
 			}
 		}
@@ -521,8 +521,8 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 						for (auto checkChild : winWindow->mChildren)
 						{
 							auto checkWinChild = (WinBFWindow*)checkChild;
-							if (checkWinChild->mFlags & BFWINDOW_FAKEFOCUS)							
-								altFocusWindow = checkWinChild;							
+							if (checkWinChild->mFlags & BFWINDOW_FAKEFOCUS)
+								altFocusWindow = checkWinChild;
 						}
 						if (altFocusWindow == NULL)
 							break;
@@ -541,7 +541,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	case WM_DESTROY:
 		/*if (mFlags & BFWINDOW_QUIT_ON_CLOSE)
 		{
-			gBFApp->mRunning = false;				
+			gBFApp->mRunning = false;
 		}*/
 		SetWindowLongPtr(mHWnd, GWLP_USERDATA, (LONG_PTR)0);
 		mHWnd = NULL;
@@ -549,7 +549,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		{
 			NOP;
 		}
-		break;	
+		break;
 	}
 
 	LRESULT result = 0;
@@ -558,7 +558,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	if (!app->mInMsgProc)
 	{
 		if (mNeedsStateReset)
-		{			
+		{
 			for (int i = 0; i < KEYCODE_MAX; i++)
 			{
 				if (mIsKeyDown[i])
@@ -585,21 +585,21 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 			//OutputDebugStrF("Rehup ReleaseCapture()\n");
 			ReleaseCapture();
-			
+
 			mNeedsStateReset = false;
 			mIsMouseInside = false;
 		}
-		
+
 		WinBFWindow* menuTarget = this;
-		if (mFlags & BFWINDOW_USE_PARENT_MENU)		
-			menuTarget = ((WinBFWindow*)mParent);		
-		auto* menuIDMap = &menuTarget->mMenuIDMap;		
+		if (mFlags & BFWINDOW_USE_PARENT_MENU)
+			menuTarget = ((WinBFWindow*)mParent);
+		auto* menuIDMap = &menuTarget->mMenuIDMap;
 		auto* hMenuMap = &menuTarget->mHMenuMap;
 
 		app->mInMsgProc = true;
 
 		switch (uMsg)
-		{		
+		{
 		case WM_DISPLAYCHANGE:
 			((DXRenderWindow*)mRenderWindow)->mRefreshRate = 0;
 			break;
@@ -608,7 +608,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			if (mMovedFunc != NULL)
 				mMovedFunc(this);
 			break;
-		case WM_PAINT:						
+		case WM_PAINT:
 			break;
 		case WM_NCHITTEST:
 			{
@@ -618,23 +618,23 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				int y = (short)HIWORD(lParam);
 
 				result = mHitTestFunc(this, x, y);
-				doResult = (result != -3);					
+				doResult = (result != -3);
 			}
 			break;
-		case WM_LBUTTONDOWN:		
+		case WM_LBUTTONDOWN:
 		case WM_RBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_XBUTTONDOWN:
 		case WM_LBUTTONDBLCLK:
 		case WM_RBUTTONDBLCLK:
-		case WM_LBUTTONUP:		
-		case WM_RBUTTONUP:		
+		case WM_LBUTTONUP:
+		case WM_RBUTTONUP:
 		case WM_MBUTTONUP:
 		case WM_XBUTTONUP:
 		case WM_MOUSEWHEEL:
 		case WM_MOUSEHWHEEL:
 		case WM_MOUSEMOVE:
-			{				
+			{
 				int x = (short)LOWORD(lParam);
 				int y = (short)HIWORD(lParam);
 
@@ -660,7 +660,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				bool isMouseOver = windowAtPoint == hWnd;
 				RehupMouseOver(isMouseOver);
 				//OutputDebugStrF("HWnd: %X  Focus Window: %X  Capture: %X\n", hWnd, windowAtPoint, ::GetCapture());
-				
+
 				bool checkNonTransparentMousePosition = mNonExclusiveMouseCapture;
 
 				auto _BtnDown = [&](int btn)
@@ -688,7 +688,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					}
 					mIsMouseDown[btn] = true;
 					BFCoord mouseCoords = { x, y };
-					if ((mouseCoords.mX != mMouseDownCoords[btn].mX) || (mouseCoords.mY != mMouseDownCoords[btn].mY) || 
+					if ((mouseCoords.mX != mMouseDownCoords[btn].mX) || (mouseCoords.mY != mMouseDownCoords[btn].mY) ||
 						(tickNow - mMouseDownTicks[btn] > ::GetDoubleClickTime()))
 						mMouseClickCount[btn] = 0;
 					mMouseDownCoords[btn] = mouseCoords;
@@ -722,19 +722,19 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					break;
 				case WM_MBUTTONDOWN:
 					_BtnDown(2);
-					break;			
+					break;
 				case WM_XBUTTONDOWN:
 					_BtnDown((int)(wParam >> 16) + 2);
 					break;
 				case WM_LBUTTONUP:
-					_BtnUp(0);					
+					_BtnUp(0);
 					break;
-				case WM_RBUTTONUP:							
+				case WM_RBUTTONUP:
 					_BtnUp(1);
 					break;
-				case WM_MBUTTONUP:							
+				case WM_MBUTTONUP:
 					_BtnUp(2);
-					break;							
+					break;
 				case WM_XBUTTONUP:
 					_BtnUp((int)(wParam >> 16) + 2);
 					break;
@@ -746,21 +746,21 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 						if ((gBFApp->mWindowList.size() > 1) && (GetCapture() == NULL))
 						{
 							// See if our mouse is down and has entered into another window's space
-							POINT point = { x, y };							
-							HWND windowAtPoint = ::WindowFromPoint(point);							
+							POINT point = { x, y };
+							HWND windowAtPoint = ::WindowFromPoint(point);
 
 							BFWindowList::iterator itr = gBFApp->mWindowList.begin();
 							while (itr != gBFApp->mWindowList.end())
 							{
-								WinBFWindow* aWindow = (WinBFWindow*) *itr;																
+								WinBFWindow* aWindow = (WinBFWindow*) *itr;
 								LONG targetStyle = ::GetWindowLong(aWindow->mHWnd, GWL_EXSTYLE);
 								if ((::IsWindowEnabled(aWindow->mHWnd)) && ((targetStyle & WS_EX_TRANSPARENT) == 0))
 								{
 									if (aWindow->mHWnd == windowAtPoint)
-									{										
+									{
 										aWindow->mIsMouseInside = true;
 										cursorWindow = aWindow;
-									}									
+									}
 								}
 								++itr;
 							}
@@ -779,7 +779,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 						POINT pt = {x, y};
 						ScreenToClient(cursorWindow->mHWnd, &pt);
-						
+
 						if (uMsg == WM_MOUSEWHEEL)
 						{
 							float delta = ((int16)HIWORD(wParam)) / 120.0f * (float)ucNumLines;
@@ -804,7 +804,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 							LONG captureStyle = ::GetWindowLong(captureWindow, GWL_EXSTYLE);
 							if ((captureStyle & WS_EX_TRANSPARENT) != 0)
 								checkNonTransparentMousePosition = true;
-						}						
+						}
 					}
 					break;
 				}
@@ -832,18 +832,18 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 									POINT clientPt = point;
 									::ScreenToClient(aWindow->mHWnd, &clientPt);
 									aWindow->mMouseProxyMoveFunc(aWindow, clientPt.x, clientPt.y);
-									aWindow->mIsMouseInside = true;									
+									aWindow->mIsMouseInside = true;
 								}
 								else if (aWindow->mIsMouseInside)
 								{
 									aWindow->mMouseLeaveFunc(aWindow);
-									aWindow->mIsMouseInside = false;																		
+									aWindow->mIsMouseInside = false;
 								}
 							}
 						}
 						++itr;
 					}
-				}				
+				}
 
 				if (releaseCapture)
 				{
@@ -871,11 +871,11 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 						++itr;
 					}
 				}
-			}	
+			}
 			break;
-		
+
 		case WM_COMMAND:
-			{				
+			{
 				WinBFMenu* aMenu = (*menuIDMap)[(uint32)wParam];
 				if (aMenu != NULL)
 					menuTarget->mMenuItemSelectedFunc(menuTarget, aMenu);
@@ -910,7 +910,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			}
 			break;
 
-		case WM_MOUSEACTIVATE:			
+		case WM_MOUSEACTIVATE:
 			if (mFlags & BFWINDOW_NO_MOUSE_ACTIVATE)
 			{
 				doResult = true;
@@ -930,7 +930,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			//OutputDebugStrF("WM_KILLFOCUS %p\n", hWnd);
 			mHasFocus = false;
 			mSoftHasFocus = false;
-			LostFocus(NULL);			
+			LostFocus(NULL);
 			mLostFocusFunc(this);
 			break;
 		case WM_SETFOCUS:
@@ -951,7 +951,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			if (mMenu != NULL)
 				mNeedsStateReset = true;
 			break;
-		case WM_NCMOUSELEAVE:						
+		case WM_NCMOUSELEAVE:
 			mIsMouseInside = false;
 			mMouseLeaveFunc(this);
 			break;
@@ -967,7 +967,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 						pD3DDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
 						pD3DDebug->Release();
 					}
-				}*/				
+				}*/
 
 				//NOTE: This line broke Alt+Gr for braces and such. Determine why this was needed.
 				//if ((!mIsKeyDown[VK_MENU]) && (!mIsKeyDown[VK_CONTROL]))
@@ -998,7 +998,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					keyCode = VK_RMENU;
 
 				mIsKeyDown[keyCode] = true;
-				
+
 // 				if ((keyCode == 192) && (mIsKeyDown[VK_MENU]))
 // 				{
 // 					((DXRenderDevice*)mRenderWindow->mRenderDevice)->mNeedsReinitNative = true;
@@ -1014,9 +1014,9 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					{
 						mIsMenuKeyHandled = true;
 						menuTarget->mMenuItemSelectedFunc(menuTarget, aMenu);
-						doResult = true;			
+						doResult = true;
 						break;
-					}					
+					}
 				}
 
 				if (!mIsMenuKeyHandled)
@@ -1024,14 +1024,14 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					if ((CheckKeyReleases(true)) && (mKeyDownFunc(this, keyCode, (lParam & 0x7FFF) != 0)))
 					{
 						mIsMenuKeyHandled = true;
-						doResult = true;				
+						doResult = true;
 					}
 				}
 			}
-			break;		
+			break;
 		case WM_SYSCHAR:
 			{
-				int keyCode = toupper((int) wParam);				
+				int keyCode = toupper((int) wParam);
 
 				for (auto& menuKV : *menuIDMap)
 				{
@@ -1040,11 +1040,11 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 						(aMenu->mKeyShift == mIsKeyDown[VK_SHIFT]) &&
 						(aMenu->mKeyCtrl == mIsKeyDown[VK_CONTROL]) &&
 						(aMenu->mKeyAlt == mIsKeyDown[VK_MENU]))
-					{			
+					{
 						if (CheckKeyReleases(true))
-							doResult = true;			
+							doResult = true;
 						break;
-					}					
+					}
 				}
 
 				if (!mIsKeyDown[VK_MENU])
@@ -1068,7 +1068,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				}
 				CheckKeyReleases(false);
 			}
-			break;			
+			break;
 		case WM_SYSCOMMAND:
 			// Ignore F10
 			if ((wParam == SC_KEYMENU) && (lParam == 0))
@@ -1091,18 +1091,18 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			break;
 		case WM_TIMER:
 			if (gBFApp->mSysDialogCnt == 0)
-			{	
+			{
 				auto checkNonFake = this;
 				while (checkNonFake->mFlags & BFWINDOW_FAKEFOCUS)
 				{
 					checkNonFake = (WinBFWindow*)checkNonFake->mParent;
 				}
 				bool isFocused = GetForegroundWindow() == checkNonFake->mHWnd;
-				
+
 				if ((!isFocused) && (mHasFocus))
 				{
 					mSoftHasFocus = false;
-					mHasFocus = false;					
+					mHasFocus = false;
 					LostFocus(NULL);
 					mLostFocusFunc(this);
 					//OutputDebugStrF("Timer detected lost focus %p\r\n", hWnd);
@@ -1137,7 +1137,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				doResult = true;
 			}
 			break;
-		
+
 		case WM_MOVE:
 		case WM_MOVING:
 			if (mMovedFunc != NULL)
@@ -1148,7 +1148,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			if (mMovedFunc != NULL)
 				mMovedFunc(this);
 			if (gBFApp->mSysDialogCnt == 0)
-				gBFApp->Process();		
+				gBFApp->Process();
 			break;
 
 		case WM_INPUTLANGCHANGE:
@@ -1159,7 +1159,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			{
 				HDROP hDropInfo = (HDROP)wParam;
 				char sItem[MAX_PATH];
-	
+
 				for(int i = 0; DragQueryFileA(hDropInfo, i, (LPSTR)sItem, sizeof(sItem)); i++)
 				    mDragDropFileFunc(this, sItem);
 
@@ -1167,19 +1167,19 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			}
 			break;
 		}
-		
+
 		app->mInMsgProc = false;
 	}
 	else
 	{
 		// We got messages we couldn't process (due to reentrancy)
 		switch (uMsg)
-		{		
+		{
 		case WM_LBUTTONUP:
 		case WM_RBUTTONUP:
 		case WM_MBUTTONUP:
 		case WM_MOUSEMOVE:
-		case WM_KEYUP:		
+		case WM_KEYUP:
 		case WM_MOUSELEAVE:
 			mNeedsStateReset = true;
 			break;
@@ -1239,9 +1239,9 @@ static int WinBFReportHook( int reportType, char *message, int *returnValue )
     /* Ignore: continue execution */
     return 0;
 
-	
 
-	
+
+
 	return 1;
 }
 
@@ -1252,7 +1252,7 @@ static GetDpiForWindow_t gGetDpiForWindow = NULL;
 static HMODULE gUserDll = NULL;
 
 WinBFApp::WinBFApp()
-{		
+{
 #ifndef BF_MINGW
 	//_CrtSetReportHook(WinBFReportHook);
 #endif
@@ -1264,7 +1264,7 @@ WinBFApp::WinBFApp()
 	}
 
 	mRunning = false;
-	mRenderDevice = NULL;	
+	mRenderDevice = NULL;
 
 	mInstallDir = "Hey";
 
@@ -1281,7 +1281,7 @@ WinBFApp::WinBFApp()
 	mDataDir = mInstallDir;
 	mInMsgProc = false;
 	mDSoundManager = NULL;
-	mDInputManager = NULL;	
+	mDInputManager = NULL;
 
 	mVSyncThreadId = 0;
 	mClosing = false;
@@ -1312,8 +1312,8 @@ void WinBFApp::VSyncThreadProc()
 			AutoCrit autoCrit(mCritSect);
 			if ((mRenderDevice != NULL) && (!mRenderDevice->mRenderWindowList.IsEmpty()))
 			{
-				auto renderWindow = (DXRenderWindow*)mRenderDevice->mRenderWindowList[0];				
-				renderWindow->mDXSwapChain->GetContainingOutput(&output);				
+				auto renderWindow = (DXRenderWindow*)mRenderDevice->mRenderWindowList[0];
+				renderWindow->mDXSwapChain->GetContainingOutput(&output);
 			}
 		}
 
@@ -1321,8 +1321,8 @@ void WinBFApp::VSyncThreadProc()
 		{
 			DWORD startTick = GetTickCount();
 			bool success = output->WaitForVBlank() == 0;
-			DWORD endTick = GetTickCount();			
-			
+			DWORD endTick = GetTickCount();
+
 			if (success)
 			{
 				int elapsed = (int)(endTick - startTick);
@@ -1341,7 +1341,7 @@ void WinBFApp::VSyncThreadProc()
 					if (!hadNonZero)
 						success = false;
 				}
-			}			
+			}
 
 			if (success)
 			{
@@ -1353,7 +1353,7 @@ void WinBFApp::VSyncThreadProc()
 			output->Release();
 		}
 
-		if (!didWait)		
+		if (!didWait)
 		{
 			mVSyncActive = false;
 			BfpThread_Sleep(20);
@@ -1362,7 +1362,7 @@ void WinBFApp::VSyncThreadProc()
 }
 
 WinBFApp::~WinBFApp()
-{	
+{
 	mClosing = true;
 	BfpThread_WaitFor(mVSyncThread, -1);
 	BfpThread_Release(mVSyncThread);
@@ -1373,14 +1373,14 @@ WinBFApp::~WinBFApp()
 }
 
 void WinBFApp::Init()
-{	
+{
 	BP_ZONE("WinBFApp::Init");
 
 	AutoCrit autoCrit(mCritSect);
 
 	mRunning = true;
 	mInMsgProc = false;
-	
+
 	mRenderDevice = new DXRenderDevice();
 	mRenderDevice->Init(this);
 }
@@ -1391,14 +1391,14 @@ void WinBFApp::Run()
 	while (mRunning)
 	{
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-		{				
+		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
 
 		if (mRunning)
 			Process();
-	}	
+	}
 }
 
 void WinBFApp::Process()
@@ -1416,9 +1416,9 @@ void WinBFApp::Process()
 
 void WinBFApp::Draw()
 {
-	mRenderDevice->FrameStart();	
+	mRenderDevice->FrameStart();
 	BFApp::Draw();
-	mRenderDevice->FrameEnd();	
+	mRenderDevice->FrameEnd();
 }
 
 void WinBFApp::GetDesktopResolution(int& width, int& height)
@@ -1460,7 +1460,7 @@ static BOOL InflateRectToMonitor(HMONITOR mon, HDC hdc, LPRECT monRect, LPARAM u
 }
 
 void WinBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
-{	
+{
 	AdjustedMonRect inflateRect = { 0 };
 
 	EnumDisplayMonitors(NULL, NULL, InflateRectToMonitor, (LPARAM)&inflateRect);
@@ -1494,12 +1494,12 @@ void WinBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fro
 }
 
 BFWindow* WinBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
-{	
+{
 	AutoCrit autoCrit(mCritSect);
 
 	BFWindow* aWindow = new WinBFWindow(parent, title, x, y, width, height, windowFlags);
 	mWindowList.push_back(aWindow);
-	
+
 	return aWindow;
 }
 
@@ -1535,7 +1535,7 @@ void WinBFWindow::SetMinimumSize(int minWidth, int minHeight, bool clientSized)
 		DWORD windowFlagsEx = ::GetWindowLong(mHWnd, GWL_EXSTYLE);
 
 		RECT rect = { 0, 0, minWidth, minHeight };
-		AdjustWindowRectEx(&rect, windowFlags, mMenu != NULL, windowFlagsEx);		
+		AdjustWindowRectEx(&rect, windowFlags, mMenu != NULL, windowFlagsEx);
 		minWidth = rect.right - rect.left;
 		minHeight = rect.bottom - rect.top;
 	}
@@ -1615,14 +1615,14 @@ void WinBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* norm
 	default:
 		*showKind = 0;
 		break;
-	}	
+	}
 }
 
 void WinBFWindow::Resize(int x, int y, int width, int height, int showKind)
-{	
+{
 	WINDOWPLACEMENT wndPlacement = { sizeof(WINDOWPLACEMENT), 0 };
 	::GetWindowPlacement(mHWnd, &wndPlacement);
-	
+
 	switch (showKind)
 	{
 	case 1:
@@ -1634,7 +1634,7 @@ void WinBFWindow::Resize(int x, int y, int width, int height, int showKind)
 	case 3:
 		wndPlacement.showCmd = SW_SHOWNORMAL;
 		break;
-	}	
+	}
 
 	wndPlacement.rcNormalPosition.left = x;
 	wndPlacement.rcNormalPosition.top = y;
@@ -1645,31 +1645,31 @@ void WinBFWindow::Resize(int x, int y, int width, int height, int showKind)
 	//::MoveWindow(mHWnd, x, y, width, height, FALSE);
 	mRenderWindow->Resized();
 	if (mMovedFunc != NULL)
-		mMovedFunc(this);	
+		mMovedFunc(this);
 }
 
 void WinBFApp::PhysSetCursor()
 {
-	static HCURSOR cursors [] = 
-		{	
+	static HCURSOR cursors [] =
+		{
 			::LoadCursor(NULL, IDC_ARROW),
-			
+
 			//TODO: mApp->mHandCursor);
 			::LoadCursor(NULL, IDC_HAND),
 			//TODO: mApp->mDraggingCursor);
 			::LoadCursor(NULL, IDC_SIZEALL),
 
 			::LoadCursor(NULL, IDC_IBEAM),
-						
-			::LoadCursor(NULL, IDC_NO),		
+
+			::LoadCursor(NULL, IDC_NO),
 			::LoadCursor(NULL, IDC_SIZEALL),
 			::LoadCursor(NULL, IDC_SIZENESW),
-			::LoadCursor(NULL, IDC_SIZENS),		
+			::LoadCursor(NULL, IDC_SIZENS),
 			::LoadCursor(NULL, IDC_SIZENWSE),
-			::LoadCursor(NULL, IDC_SIZEWE),		
-			::LoadCursor(NULL, IDC_WAIT),		
+			::LoadCursor(NULL, IDC_SIZEWE),
+			::LoadCursor(NULL, IDC_WAIT),
 			NULL
-		};	
+		};
 
 	::SetCursor(cursors[mCursor]);
 }
@@ -1705,7 +1705,7 @@ void WinBFWindow::SetMouseVisible(bool isMouseVisible)
 void WinBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible)
 {
 	if (destAlphaSrcMask != 0)
-	{					
+	{
 		if (mAlphaMaskBitmap == NULL)
 		{
 			RECT clientRect;
@@ -1727,7 +1727,7 @@ void WinBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 			bi.bmiHeader.biWidth			= aWidth;
 			bi.bmiHeader.biHeight			= -aHeight;
 			bi.bmiHeader.biCompression		= BI_RGB;
-			bi.bmiHeader.biPlanes			= 1;										
+			bi.bmiHeader.biPlanes			= 1;
 
 			mAlphaMaskBitmap = CreateDIBSection(mAlphaMaskDC, &bi,
 				DIB_RGB_COLORS, (void**)&mAlphaMaskPixels, NULL, 0);
@@ -1741,9 +1741,9 @@ void WinBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 			DXRenderWindow* renderWindow = (DXRenderWindow*) mRenderWindow;
 			renderWindow->CopyBitsTo(mAlphaMaskPixels, mAlphaMaskWidth, mAlphaMaskHeight);
 
-			//for (int i = 0; i < mAlphaMaskWidth*mAlphaMaskHeight/2; i++)			
-				//mAlphaMaskPixels[i] = 0x80FF8000;			
-			
+			//for (int i = 0; i < mAlphaMaskWidth*mAlphaMaskHeight/2; i++)
+				//mAlphaMaskPixels[i] = 0x80FF8000;
+
 			HGDIOBJ hPrevObj = 0;
 			POINT ptDest = {0, 0};
 			POINT ptSrc = {0, 0};
@@ -1752,28 +1752,28 @@ void WinBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 
 			hPrevObj = SelectObject(mAlphaMaskDC, mAlphaMaskBitmap);
 			ClientToScreen(mHWnd, &ptDest);
-			
+
 			BOOL worked = ::UpdateLayeredWindow(mHWnd, hdc, NULL, &client,
 				mAlphaMaskDC, &ptSrc, 0, &blendFunc, ULW_ALPHA);
 
 			DWORD error = GetLastError();
 
 			SelectObject(mAlphaMaskDC, hPrevObj);
-			ReleaseDC(mHWnd, hdc);			
+			ReleaseDC(mHWnd, hdc);
 		}
 	}
 	else
 	{
 		::SetLayeredWindowAttributes(mHWnd, 0, (int) (alpha * 255), LWA_ALPHA);
 	}
-	SetMouseVisible(isMouseVisible);		
+	SetMouseVisible(isMouseVisible);
 }
 
 void WinBFWindow::CaptureMouse()
 {
 	//OutputDebugStrF("Wnd %p CaptureMouse", this);
 	::SetCapture(mHWnd);
-	
+
 	for (auto window : gBFApp->mWindowList)
 	{
 		if (window == this)
@@ -1813,7 +1813,7 @@ uint32 WinBFApp::GetClipboardFormat(const StringImpl& format)
 	uint32 aFormat;
 	if (mClipboardFormatMap.TryGetValue(format, &aFormat))
 		return aFormat;
-	
+
 	aFormat = ::RegisterClipboardFormatA(format.c_str());
 	mClipboardFormatMap[format] = aFormat;
 	return aFormat;
@@ -1840,7 +1840,7 @@ void* WinBFApp::GetClipboardData(const StringImpl& format, int* size)
 				if (aFormat == CF_UNICODETEXT)
 				{
 					CloseClipboard();
-					// Return ascii text					
+					// Return ascii text
 					return (char*)GetClipboardData("atext", size);
 				}
 
@@ -1851,7 +1851,7 @@ void* WinBFApp::GetClipboardData(const StringImpl& format, int* size)
 
 			*size = (int)::GlobalSize(globalHandle);
 			void* aPtr = ::GlobalLock(globalHandle);
-			
+
 			if (aFormat == CF_UNICODETEXT)
 			{
 				gClipboardData = UTF8Encode((WCHAR*)aPtr);
@@ -1862,10 +1862,15 @@ void* WinBFApp::GetClipboardData(const StringImpl& format, int* size)
 				gClipboardData.Clear();
 				gClipboardData.Insert(0, (char*)aPtr, *size);
 			}
-			
+
 			::GlobalUnlock(globalHandle);
 			CloseClipboard();
 			return (void*)gClipboardData.c_str();
+		}
+		else
+		{
+			*size = -1;
+			return NULL;
 		}
 	}
 
@@ -1875,7 +1880,7 @@ void* WinBFApp::GetClipboardData(const StringImpl& format, int* size)
 
 void WinBFApp::ReleaseClipboardData(void* ptr)
 {
-	
+
 }
 
 void WinBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
@@ -1887,7 +1892,7 @@ void WinBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int s
 		aWindow = ((WinBFWindow*) mWindowList.front())->mHWnd;
 
 	uint32 aFormat = GetClipboardFormat(format);
-		
+
 	if (aFormat != 0)
 	{
 		if (OpenClipboard(aWindow))
@@ -1897,7 +1902,7 @@ void WinBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int s
 				BP_ZONE("WinBFApp::SetClipboardData:empty");
 				EmptyClipboard();
 			}
-			
+
 			if (format == "text")
 			{
 				BP_ZONE("WinBFApp::SetClipboardData:text");
@@ -1922,14 +1927,14 @@ void WinBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int s
 				GlobalUnlock(globalHandle);
 				::SetClipboardData(aFormat, globalHandle);
 			}
-		
+
 			CloseClipboard();
 		}
 	}
 }
 
 BFMenu* WinBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* sysBitmap, bool enabled, int checkState, bool radioCheck)
-{	
+{
 	UTF16String lText;
 	if (text != NULL)
 		lText = UTF8Decode(text);
@@ -1938,7 +1943,7 @@ BFMenu* WinBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text
 		lHotKey = UTF8Decode(hotKey);
 
 	bool wasEmpty = mMenu->mBFMenuList.size() == 0;
-	
+
 	if (parent == NULL)
 		parent = mMenu;
 
@@ -1949,7 +1954,7 @@ BFMenu* WinBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text
 		RemoveMenuItem(placeholderMenuItem);
 		delete placeholderMenuItem;
 	}
-	
+
 	WinBFMenu* winBFMenuParent = (WinBFMenu*) parent;
 	WinBFMenu* newMenu = new WinBFMenu();
 	newMenu->mMenuId = ++WinBFMenu::mMenuCount;
@@ -1969,14 +1974,14 @@ BFMenu* WinBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text
 		menuItem.cbSize = sizeof(MENUITEMINFO);
 		menuItem.fMask = MIIM_SUBMENU;
 		menuItem.hSubMenu = winBFMenuParent->mMenu;
-		
-		::SetMenuItemInfo(((WinBFMenu*) winBFMenuParent->mParent)->mMenu, winBFMenuParent->mMenuId, FALSE, &menuItem);		
+
+		::SetMenuItemInfo(((WinBFMenu*) winBFMenuParent->mParent)->mMenu, winBFMenuParent->mMenuId, FALSE, &menuItem);
 	}
 
 	mMenuIDMap[newMenu->mMenuId] = newMenu;
 
 	BF_ASSERT(insertIdx <= (int) parent->mBFMenuList.size());
-	
+
 	////
 	UTF16String lCombinedName;
 
@@ -1986,11 +1991,11 @@ BFMenu* WinBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text
 	menuItem.fMask = MIIM_FTYPE | MIIM_ID;
 	if (text != NULL)
 	{
-		menuItem.fMask |= MIIM_STRING;	
+		menuItem.fMask |= MIIM_STRING;
 		menuItem.fType = MFT_STRING;
 	}
 	else
-		menuItem.fType = MFT_SEPARATOR;		
+		menuItem.fType = MFT_SEPARATOR;
 	menuItem.fState = enabled ? MFS_DEFAULT : MFS_GRAYED;
 	if (checkState == 0)
 		menuItem.fState |= MFS_UNCHECKED;
@@ -1998,14 +2003,14 @@ BFMenu* WinBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text
 		menuItem.fState |= MFS_CHECKED;
 	if (radioCheck)
 		menuItem.fType = MFT_RADIOCHECK;
-			
+
 	menuItem.wID = newMenu->mMenuId;
 	if (text != NULL)
 	{
 		menuItem.dwTypeData = (WCHAR*)lText.c_str();
 	}
 
-	if (hotKey != NULL)	
+	if (hotKey != NULL)
 	{
 		String combinedName = String(text);
 		combinedName += "\t";
@@ -2033,7 +2038,7 @@ BFMenu* WinBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text
 
 	ModifyMenuItem(newMenu, text, hotKey, sysBitmap, enabled, checkState, radioCheck);
 
-	parent->mBFMenuList.push_back(newMenu);					
+	parent->mBFMenuList.push_back(newMenu);
 
 	return newMenu;
 }
@@ -2051,11 +2056,11 @@ void WinBFWindow::ModifyMenuItem(BFMenu* item, const char* text, const char* hot
 	WinBFMenu* parentMenu = (WinBFMenu*) item->mParent;
 
 	UTF16String lCombinedName;
-	
+
 	MENUITEMINFOW menuItem;
 	memset(&menuItem, 0, sizeof(MENUITEMINFO));
 	menuItem.cbSize = sizeof(MENUITEMINFO);
-	menuItem.fMask = MIIM_FTYPE | MIIM_ID;	
+	menuItem.fMask = MIIM_FTYPE | MIIM_ID;
 
 	::GetMenuItemInfoW(parentMenu->mMenu, aMenu->mMenuId, FALSE, &menuItem);
 
@@ -2082,12 +2087,12 @@ void WinBFWindow::ModifyMenuItem(BFMenu* item, const char* text, const char* hot
 		menuItem.fType = MFT_RADIOCHECK;
 
 	menuItem.wID = aMenu->mMenuId;
-	menuItem.dwTypeData = (WCHAR*)lText.c_str();	
+	menuItem.dwTypeData = (WCHAR*)lText.c_str();
 
 	if (hotKey != NULL)
 	{
 		menuItem.fMask |= MIIM_DATA;
-		
+
 		String combinedName = String(text);
 		combinedName += "\t";
 		if (hotKey[0] == '#')
@@ -2107,7 +2112,7 @@ void WinBFWindow::ModifyMenuItem(BFMenu* item, const char* text, const char* hot
 }
 
 void WinBFWindow::RemoveMenuItem(BFMenu* item)
-{	
+{
 	WinBFMenu* aMenu = (WinBFMenu*) item;
 	WinBFMenu* parentMenu = (WinBFMenu*) item->mParent;
 
@@ -2115,7 +2120,7 @@ void WinBFWindow::RemoveMenuItem(BFMenu* item)
 	//mMenuIDMap.erase(itr);
 	mMenuIDMap.Remove(aMenu->mMenuId);
 
-	::RemoveMenu(parentMenu->mMenu, aMenu->mMenuId, MF_BYCOMMAND);	
+	::RemoveMenu(parentMenu->mMenu, aMenu->mMenuId, MF_BYCOMMAND);
 }
 
 BFSysBitmap* WinBFApp::LoadSysBitmap(const WCHAR* fileName)
@@ -2148,8 +2153,8 @@ DrawLayer* WinBFApp::CreateDrawLayer(BFWindow* window)
 {
 	DXDrawLayer* drawLayer = new DXDrawLayer();
 	if (window != NULL)
-	{		
-		drawLayer->mRenderWindow = window->mRenderWindow;	
+	{
+		drawLayer->mRenderWindow = window->mRenderWindow;
 		window->mRenderWindow->mDrawLayerList.push_back(drawLayer);
 	}
 	drawLayer->mRenderDevice = mRenderDevice;

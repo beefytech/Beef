@@ -32,7 +32,7 @@ public:
 
 	void MapMemory(addr_target addr, void* data, intptr_target size);
 	MappedFile* MapModule(COFF* dbgModule, const StringImpl& fileName);
-	
+
 	virtual bool PopulateRegisters(CPURegisters* registers) override;
 	using WinDebugger::PopulateRegisters;
 
@@ -40,7 +40,7 @@ public:
 	virtual bool WriteMemory(intptr address, void* src, uint64 length) override;
 
 	virtual bool IsOnDemandDebugger() override { return true; }
-	virtual bool IsMiniDumpDebugger() override { return true; }	
+	virtual bool IsMiniDumpDebugger() override { return true; }
 
 	virtual void ContinueDebugEvent() { }
 	virtual Breakpoint* CreateBreakpoint(const StringImpl& fileName, int lineNum, int wantColumn, int instrOffset) { return NULL; }
@@ -60,5 +60,3 @@ public:
 };
 
 NS_BF_DBG_END
-
-

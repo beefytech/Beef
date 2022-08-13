@@ -14,7 +14,7 @@ enum BfResolveType
 	BfResolveType_Autocomplete,
 	BfResolveType_Autocomplete_HighPri,
 	BfResolveType_GoToDefinition,
-	BfResolveType_GetSymbolInfo,	
+	BfResolveType_GetSymbolInfo,
 	BfResolveType_RenameSymbol,
 	BfResolveType_ShowFileSymbolReferences,
 	BfResolveType_GetNavigationData,
@@ -64,17 +64,18 @@ public:
 	BfResolveType mResolveType;
 
 	Array<BfParser*> mParsers;
+	Dictionary<BfParser*, BfParser*> mCompatParserMap;
 	BfAutoComplete* mAutoComplete;
 	Array<BfTypeDef*> mAutoCompleteTempTypes; // Contains multiple values when we have nested types
 	Dictionary<BfTypeDef*, BfStaticSearch> mStaticSearchMap;
-	Dictionary<BfTypeDef*, BfInternalAccessSet> mInternalAccessMap;	
+	Dictionary<BfTypeDef*, BfInternalAccessSet> mInternalAccessMap;
 	Array<BfAstNode*> mExteriorAutocompleteCheckNodes;
 
-	BfGetSymbolReferenceKind mGetSymbolReferenceKind;	
+	BfGetSymbolReferenceKind mGetSymbolReferenceKind;
 	String mQueuedReplaceTypeDef;
 	BfTypeDef* mSymbolReferenceTypeDef;
 	String mQueuedSymbolReferenceNamespace;
-	BfAtomComposite mSymbolReferenceNamespace;		
+	BfAtomComposite mSymbolReferenceNamespace;
 	int mSymbolReferenceLocalIdx;
 	int mSymbolReferenceFieldIdx;
 	int mSymbolReferenceMethodIdx;
@@ -84,7 +85,7 @@ public:
 	bool mIsClassifying;
 	bool mHasCursorIdx;
 	bool mHadEmits;
-	
+
 	typedef Dictionary<BfParserData*, String> FoundSymbolReferencesParserDataMap;
 	FoundSymbolReferencesParserDataMap mFoundSymbolReferencesParserData;
 	//std::vector<BfIdentifierNode*> mSymbolReferenceIdentifiers;
@@ -93,7 +94,7 @@ public:
 
 public:
 	void RecordReplaceNode(BfParserData* parser, int srcStart, int srcLen);
-	void RecordReplaceNode(BfAstNode* node);	
+	void RecordReplaceNode(BfAstNode* node);
 	BfAstNode* FindBaseNode(BfAstNode* node);
 
 public:
@@ -107,7 +108,7 @@ public:
 	void HandleMethodReference(BfAstNode* node, BfTypeDef* typeDef, BfMethodDef* methodDef);
 	void HandleFieldReference(BfAstNode* node, BfTypeDef* typeDef, BfFieldDef* fieldDef);
 	void HandlePropertyReference(BfAstNode* node, BfTypeDef* typeDef, BfPropertyDef* propDef);
-	void HandleTypeReference(BfAstNode* node, BfTypeDef* typeDef);	
+	void HandleTypeReference(BfAstNode* node, BfTypeDef* typeDef);
 	void HandleNamespaceReference(BfAstNode* node, const BfAtomComposite& namespaceName);
 
 	BfSourceClassifier* GetSourceClassifier(BfAstNode* astNode);

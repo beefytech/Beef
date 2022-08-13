@@ -6,14 +6,13 @@ USING_NS_BF;
 
 //////////////////////////////////////////////////////////////////////////
 
-
 void BfNamespaceVisitor::Visit(BfUsingDirective* usingDirective)
 {
 	if (usingDirective->mNamespace == NULL)
-	{		
+	{
 		return;
 	}
-	
+
 	String usingString = usingDirective->mNamespace->ToString();
 	BfAtomCompositeT<16> usingComposite;
 	mSystem->ParseAtomComposite(usingString, usingComposite);
@@ -24,11 +23,11 @@ void BfNamespaceVisitor::Visit(BfUsingDirective* usingDirective)
 }
 
 void BfNamespaceVisitor::Visit(BfUsingModDirective* usingDirective)
-{	
+{
 	BfAstNode* useNode = usingDirective->mTypeRef;
 	BfAstNode* checkNode = usingDirective->mTypeRef;
 	while (true)
-	{		
+	{
 		if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkNode))
 			checkNode = qualifiedTypeRef->mLeft;
 		else if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(checkNode))
@@ -42,9 +41,9 @@ void BfNamespaceVisitor::Visit(BfUsingModDirective* usingDirective)
 
 	if (useNode == NULL)
 		return;
-	
+
 	String usingString = useNode->ToString();
-	
+
 	BfAtomCompositeT<16> usingComposite;
 	if (mSystem->ParseAtomComposite(usingString, usingComposite))
 		mResolvePassData->HandleNamespaceReference(useNode, usingComposite);
@@ -53,7 +52,7 @@ void BfNamespaceVisitor::Visit(BfUsingModDirective* usingDirective)
 void BfNamespaceVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 {
 	BfAtomCompositeT<16> prevNamespace = mNamespace;
-	
+
 	if (namespaceDeclaration->mNameNode == NULL)
 		return;
 
@@ -64,7 +63,7 @@ void BfNamespaceVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 		if (dotIdx == -1)
 		{
 			BfAtom* namespaceAtom = mSystem->FindAtom(namespaceLeft);
-			mNamespace.Set(mNamespace.mParts, mNamespace.mSize, &namespaceAtom, 1);						
+			mNamespace.Set(mNamespace.mParts, mNamespace.mSize, &namespaceAtom, 1);
 			break;
 		}
 
@@ -76,7 +75,7 @@ void BfNamespaceVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 	if (mResolvePassData->mAutoComplete != NULL)
 		mResolvePassData->mAutoComplete->CheckNamespace(namespaceDeclaration->mNameNode, mNamespace);
 	mResolvePassData->HandleNamespaceReference(namespaceDeclaration->mNameNode, mNamespace);
-	VisitChild(namespaceDeclaration->mBody);	
+	VisitChild(namespaceDeclaration->mBody);
 	mNamespace = prevNamespace;
 }
 

@@ -60,7 +60,7 @@ String Beefy::EncodeFileName(const StringImpl& fromStr)
 		path.Insert(0, fromStr.mPtr, 80);
 	else
 		path += fromStr;
-	
+
 	path.Replace("$", "\\");
 	for (auto& c : path)
 	{
@@ -178,7 +178,7 @@ bool Beefy::BfCheckWildcard(const StringImpl& wildcard, const StringImpl& checkS
 				break;
 		}
 
-		prevFilterC = filterC;		
+		prevFilterC = filterC;
 	}
 
 	return matched;

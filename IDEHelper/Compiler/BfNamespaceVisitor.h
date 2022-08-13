@@ -9,7 +9,7 @@ class BfResolvePassData;
 
 class BfNamespaceVisitor : public BfStructuralVisitor
 {
-public:	
+public:
 	BfSystem* mSystem;
 	BfResolvePassData* mResolvePassData;
 	BfAtomComposite mNamespace;
@@ -20,7 +20,7 @@ public:
 		mSystem = NULL;
 		mResolvePassData = NULL;
 	}
-	
+
 	virtual void Visit(BfUsingDirective* usingDirective) override;
 	virtual void Visit(BfUsingModDirective* usingDirective) override;
 	virtual void Visit(BfNamespaceDeclaration* namespaceDeclaration) override;

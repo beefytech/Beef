@@ -5,7 +5,7 @@ USING_NS_BF;
 void DebugVisualizers::Fail(const StringImpl& error)
 {
 	if (mErrorString.length() != 0)
-		return;	
+		return;
 	mErrorString = StrFormat("Debug visualizer failure: %s in %s", error.c_str(), mCurFileName.c_str());
 }
 
@@ -125,7 +125,7 @@ bool DebugVisualizers::ReadFileTOML(const StringImpl& fileName)
 					else if ((name == "DisplayString") | (name == "StringView"))
 					{
 						bool isStringView = name == "StringView";
-						
+
 						if (value.is<toml::Array>())
 						{
 							for (auto& displayValue : ExpectArray(value))
@@ -143,7 +143,7 @@ bool DebugVisualizers::ReadFileTOML(const StringImpl& fileName)
 									else
 										Fail("Unexpected entry", value);
 								}
-								
+
 								if (isStringView)
 									entry->mStringViews.push_back(displayStringEntry);
 								else
@@ -158,7 +158,7 @@ bool DebugVisualizers::ReadFileTOML(const StringImpl& fileName)
 								entry->mStringViews.push_back(displayStringEntry);
 							else
 								entry->mDisplayStrings.push_back(displayStringEntry);
-						}						
+						}
 					}
 					else if (name == "Action")
 					{
@@ -193,7 +193,7 @@ bool DebugVisualizers::ReadFileTOML(const StringImpl& fileName)
 										else if (name == "Condition")
 											expandItem->mCondition = ExpectString(value);
 										else
-											Fail("Unexpected entry", value);										
+											Fail("Unexpected entry", value);
 									}
 								}
 							}
@@ -234,7 +234,7 @@ bool DebugVisualizers::ReadFileTOML(const StringImpl& fileName)
 									else if (name == "LowerDimSizes")
 									{
 										for (auto& dimValue : ExpectArray(value))
-											entry->mLowerDimSizes.push_back(ExpectString(dimValue));											
+											entry->mLowerDimSizes.push_back(ExpectString(dimValue));
 									}
 									else if (name == "ValueNode")
 										entry->mValuePointer = ExpectString(value);
@@ -364,7 +364,7 @@ bool DebugVisualizers::Load(const StringImpl& fileNamesStr)
 		fileNames.Add(fileNamesStr.Substring(startIdx, crPos - startIdx));
 		startIdx = crPos + 1;
 	}
-	
+
 	HashContext hashCtx;
 	for (auto fileName : fileNames)
 	{
@@ -376,7 +376,7 @@ bool DebugVisualizers::Load(const StringImpl& fileNamesStr)
 		}
 		hashCtx.Mixin(lastWrite);
 	}
-	
+
 	Val128 hash = hashCtx.Finish128();
 	if ((hash == mHash) && (!hasError))
 		return true;
@@ -394,13 +394,12 @@ bool DebugVisualizers::Load(const StringImpl& fileNamesStr)
 	return success;
 }
 
-
 DebugVisualizerEntry* DebugVisualizers::FindEntryForType(const StringImpl& typeName, DbgFlavor wantFlavor, Array<String>* wildcardCaptures)
-{	
+{
 	//TODO: Do smarter name matching. Right now we just compare up to the '*'
-	
+
 	for (auto entry : mDebugVisualizers)
-	{		
+	{
 		if ((entry->mFlavor != DbgFlavor_Unknown) && (entry->mFlavor != wantFlavor))
 			continue;
 
@@ -435,7 +434,7 @@ DebugVisualizerEntry* DebugVisualizers::FindEntryForType(const StringImpl& typeN
 				int openDepth = 0;
 				String wildcardCapture;
 				while (true)
-				{					
+				{
 					typeC = *typeCharP;
 
 					bool isSep = typeC == ',';
@@ -459,7 +458,7 @@ DebugVisualizerEntry* DebugVisualizers::FindEntryForType(const StringImpl& typeN
 					{
 						typeCharP--;
 						break;
-					}			
+					}
 
 					wildcardCapture += typeC;
 					typeCharP++;
@@ -476,14 +475,14 @@ DebugVisualizerEntry* DebugVisualizers::FindEntryForType(const StringImpl& typeN
 			}
 			else if (entryC != typeC)
 				break;
-			
+
 			typeCharP++;
 			entryCharP++;
 		}
 
 		if (wildcardCaptures != NULL)
-			wildcardCaptures->Clear();		
-	}	
+			wildcardCaptures->Clear();
+	}
 
 	return NULL;
 }

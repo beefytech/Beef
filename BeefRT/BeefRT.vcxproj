@@ -252,6 +252,7 @@
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">TurnOffAllWarnings</WarningLevel>
     </ClCompile>
     <ClCompile Include="..\BeefySysLib\third_party\utf8proc\utf8proc.c" />
+    <ClCompile Include="..\BeefySysLib\third_party\putty\wildcard.c" />
     <ClCompile Include="..\BeefySysLib\util\AllocDebug.cpp" />
     <ClCompile Include="..\BeefySysLib\util\BeefPerf.cpp" />
     <ClCompile Include="..\BeefySysLib\util\String.cpp" />
@@ -271,6 +272,7 @@
     <ClInclude Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\include\ffi.h" />
     <ClInclude Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\include\ffitarget.h" />
     <ClInclude Include="..\BeefySysLib\third_party\utf8proc\utf8proc.h" />
+    <ClInclude Include="..\BeefySysLib\third_party\putty\wildcard.h" />
     <ClInclude Include="..\BeefySysLib\util\BeefPerf.h" />
     <ClInclude Include="..\BeefySysLib\util\String.h" />
     <ClInclude Include="..\BeefySysLib\util\UTF8.h" />
@@ -479,6 +481,7 @@
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -541,6 +544,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -612,6 +616,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -681,6 +686,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

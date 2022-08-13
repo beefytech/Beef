@@ -3,7 +3,7 @@
 
 USING_NS_BF;
 
-enum DbgMiniDumpFlags 
+enum DbgMiniDumpFlags
 {
 	DbgMiniDumpFlag_MiniDumpNormal = 0x00000000,
 	DbgMiniDumpFlag_MiniDumpWithDataSegs = 0x00000001,
@@ -41,18 +41,18 @@ bool DbgMiniDump::StartLoad(const StringImpl& path)
 		uint32 mVersion;
 		uint32 mNumberOfStreams;
 		uint32 mStreamDirectoryRVA;
-		uint32 mCheckSum;		
-		uint32 TimeDateStamp;		
+		uint32 mCheckSum;
+		uint32 TimeDateStamp;
 		uint64 Flags;
 	};
 
-	_Header& header = *(_Header*)((uint8*)mMF.mData);	
+	_Header& header = *(_Header*)((uint8*)mMF.mData);
 	if (header.mSignature != 'PMDM')
 		return false;
-	
+
 	mDirectory.mVals = (StreamDirectoryEntry*)((uint8*)mMF.mData + header.mStreamDirectoryRVA);
 	mDirectory.mSize = header.mNumberOfStreams;
-		
+
 	return true;
 }
 

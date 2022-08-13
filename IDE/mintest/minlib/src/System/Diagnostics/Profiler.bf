@@ -38,7 +38,7 @@ namespace System.Diagnostics
 			}
 		}
 
-		static Result<ProfileId> StartSampling(int32 threadId, StringView profileDesc)
+		static Result<ProfileId> StartSampling(int threadId, StringView profileDesc)
 		{
 			//int32 curId = Interlocked.Increment(ref gProfileId);
 			int32 curId = gProfileId++;

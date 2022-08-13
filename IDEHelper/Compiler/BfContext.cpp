@@ -37,9 +37,9 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mTypeDefTypeRefPool(true, true)
 {
 	mCompiler = compiler;
-	mSystem = compiler->mSystem;	
-	mBfTypeType = NULL;	
-	mBfClassVDataPtrType = NULL;	
+	mSystem = compiler->mSystem;
+	mBfTypeType = NULL;
+	mBfClassVDataPtrType = NULL;
 	mBfObjectType = NULL;
 	mCanSkipObjectCtor = true;
 	mCanSkipValueTypeCtor = true;
@@ -53,7 +53,7 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mCurConstraintState = NULL;
 	mResolvingVarField = false;
 	mAssertOnPopulateType = false;
-	
+
 	for (int i = 0; i < BfTypeCode_Length; i++)
 	{
 		mPrimitiveTypes[i] = NULL;
@@ -65,14 +65,14 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mScratchModule->mIsScratchModule = true;
 	mScratchModule->mIsReified = true;
 	mScratchModule->mGeneratesCode = false;
-	mScratchModule->Init();	
+	mScratchModule->Init();
 
 	mUnreifiedModule = new BfModule(this, "");
-	mUnreifiedModule->mIsSpecialModule = true;	
+	mUnreifiedModule->mIsSpecialModule = true;
 	mUnreifiedModule->mIsScratchModule = true;
 	mUnreifiedModule->mIsReified = false;
 	mUnreifiedModule->mGeneratesCode = false;
-	mUnreifiedModule->Init();	
+	mUnreifiedModule->Init();
 
 	mValueTypeDeinitSentinel = (BfMethodInstance*)1;
 
@@ -83,7 +83,7 @@ BfContext::BfContext(BfCompiler* compiler) :
 void BfReportMemory();
 
 BfContext::~BfContext()
-{		
+{
 	BfLogSysM("Deleting Context...\n");
 
 	mDeleting = true;
@@ -96,21 +96,21 @@ BfContext::~BfContext()
 
 	int numTypesDeleted = 0;
 	for (auto type : mResolvedTypes)
-	{		
+	{
 		//_CrtCheckMemory();
 		delete type;
-	}		
-	
+	}
+
 	delete mScratchModule;
 	delete mUnreifiedModule;
 	for (auto module : mModules)
 		delete module;
-		
+
 	BfReportMemory();
 }
 
 void BfContext::ReportMemory(MemReporter* memReporter)
-{	
+{
 	memReporter->Add(sizeof(BfContext));
 }
 
@@ -124,7 +124,7 @@ void BfContext::ProcessMethod(BfMethodInstance* methodInstance)
 		defModule = mUnreifiedModule;
 
 	auto typeInst = methodInstance->GetOwner();
-	defModule->ProcessMethod(methodInstance);	
+	defModule->ProcessMethod(methodInstance);
 	mCompiler->mStats.mMethodsProcessed++;
 	if (!methodInstance->mIsReified)
 		mCompiler->mStats.mUnreifiedMethodsProcessed++;
@@ -133,7 +133,7 @@ void BfContext::ProcessMethod(BfMethodInstance* methodInstance)
 
 int BfContext::GetStringLiteralId(const StringImpl& str)
 {
-	// Note: We do need string pooling in resolve, for intrinsic names and such		
+	// Note: We do need string pooling in resolve, for intrinsic names and such
 	int* idPtr = NULL;
 
 	if (mStringObjectPool.TryGetValue(str, &idPtr))
@@ -174,15 +174,15 @@ void BfContext::AssignModule(BfType* type)
 		BfTypeProcessRequest* typeProcessEntry = mPopulateTypeWorkList.Alloc();
 		typeProcessEntry->mType = type;
 		BF_ASSERT(typeProcessEntry->mType->mContext == this);
-		BfLogSysM("HandleTypeWorkItem: %p -> %p\n", type, typeProcessEntry->mType);				
+		BfLogSysM("HandleTypeWorkItem: %p -> %p\n", type, typeProcessEntry->mType);
 		mCompiler->mStats.mTypesQueued++;
-		mCompiler->UpdateCompletion();		
+		mCompiler->UpdateCompletion();
 	}
 	else
 	{
 		auto typeInst = type->ToTypeInstance();
 		BF_ASSERT(typeInst != NULL);
-		
+
 		auto project = typeInst->mTypeDef->mProject;
 		if ((project->mSingleModule) && (typeInst->mIsReified))
 		{
@@ -200,7 +200,7 @@ void BfContext::AssignModule(BfType* type)
 				needsModuleInit = true;
 			}
 			else
-			{				
+			{
 				module = *modulePtr;
 				typeInst->mModule = module;
 			}
@@ -210,7 +210,7 @@ void BfContext::AssignModule(BfType* type)
 			StringT<256> moduleName;
 			GenerateModuleName(typeInst, moduleName);
 			module = new BfModule(this, moduleName);
-			module->mIsReified = typeInst->mIsReified;			
+			module->mIsReified = typeInst->mIsReified;
 			module->mProject = project;
 			typeInst->mModule = module;
 			BF_ASSERT(!mLockModules);
@@ -235,7 +235,7 @@ void BfContext::AssignModule(BfType* type)
 }
 
 void BfContext::HandleTypeWorkItem(BfType* type)
-{	
+{
 	AssignModule(type);
 }
 
@@ -251,7 +251,7 @@ void BfContext::EnsureHotMangledVirtualMethodNames()
 	BP_ZONE("BfContext::EnsureHotMangledVirtualMethodNames");
 
 	for (auto type : mResolvedTypes)
-	{		
+	{
 		auto typeInst = type->ToTypeInstance();
 		if (typeInst == NULL)
 			continue;
@@ -322,11 +322,11 @@ void BfContext::CancelWorkItems()
 
 	BfLogSysM("BfContext::CancelWorkItems\n");
 	for (int workIdx = 0; workIdx < (int)mMethodSpecializationWorkList.size(); workIdx++)
-	{		
+	{
 		auto workItemRef = mMethodSpecializationWorkList[workIdx];
-		if (workItemRef != NULL)		
-			workItemRef->mFromModule->mHadBuildError = true;		
-		workIdx = mMethodSpecializationWorkList.RemoveAt(workIdx);		
+		if (workItemRef != NULL)
+			workItemRef->mFromModule->mHadBuildError = true;
+		workIdx = mMethodSpecializationWorkList.RemoveAt(workIdx);
 	}
 	mMethodSpecializationWorkList.Clear();
 
@@ -350,24 +350,24 @@ void BfContext::CancelWorkItems()
 }
 
 bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
-{	
-	bool didAnyWork = false;		
+{
+	bool didAnyWork = false;
 
 	while (!mCompiler->mCanceling)
-	{		
+	{
 		BfParser* resolveParser = NULL;
 		if ((mCompiler->mResolvePassData != NULL) && (!mCompiler->mResolvePassData->mParsers.IsEmpty()))
 			resolveParser = mCompiler->mResolvePassData->mParsers[0];
 
-		bool didWork = false;				
-		
+		bool didWork = false;
+
 		//for (auto itr = mReifyModuleWorkList.begin(); itr != mReifyModuleWorkList.end(); )
 		for (int workIdx = 0; workIdx < mReifyModuleWorkList.size(); workIdx++)
 		{
-			BP_ZONE("PWL_ReifyModule");			
+			BP_ZONE("PWL_ReifyModule");
 			if (IsCancellingAndYield())
-				break; 
-			
+				break;
+
 			BfModule* module = mReifyModuleWorkList[workIdx];
 			if (module == NULL)
 			{
@@ -382,7 +382,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 			didWork = true;
 		}
-		
+
 		// Do this before mPopulateTypeWorkList so we can populate any types that need rebuilding
 		//  in the mPopulateTypeWorkList loop next - this is required for mFinishedModuleWorkList handling
 		for (int workIdx = 0; workIdx < (int)mMidCompileWorkList.size(); workIdx++)
@@ -424,7 +424,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 		{
 			//BP_ZONE("PWL_PopulateType");
 			if (IsCancellingAndYield())
-				break; 
+				break;
 
 			auto workItemRef = mPopulateTypeWorkList[workIdx];
 			if (workItemRef == NULL)
@@ -437,25 +437,25 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			bool rebuildType = workItemRef->mRebuildType;
 
 			if ((onlyReifiedTypes) && (!type->IsReified()))
-			{				
+			{
 				continue;
 			}
 
 			auto typeInst = type->ToTypeInstance();
 			if ((typeInst != NULL) && (resolveParser != NULL))
-			{				
+			{
 				if (!typeInst->mTypeDef->GetLatest()->HasSource(resolveParser))
-				{					
+				{
 					continue;
 				}
-			}			
-			
+			}
+
 			workIdx = mPopulateTypeWorkList.RemoveAt(workIdx);
-			
+
 			if (rebuildType)
 				RebuildType(type);
 
-			BF_ASSERT(this == type->mContext);						
+			BF_ASSERT(this == type->mContext);
 			auto useModule = type->GetModule();
 			if (useModule == NULL)
 			{
@@ -469,7 +469,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			mCompiler->mStats.mQueuedTypesProcessed++;
 			mCompiler->UpdateCompletion();
 			didWork = true;
-		}		
+		}
 
 		for (int workIdx = 0; workIdx < (int)mTypeRefVerifyWorkList.size(); workIdx++)
 		{
@@ -481,7 +481,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			{
 				workIdx = mTypeRefVerifyWorkList.RemoveAt(workIdx);
 				continue;
-			}	
+			}
 
 			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(workItemRef->mFromModule->mCurTypeInstance, workItemRef->mCurTypeInstance);
 
@@ -508,14 +508,14 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			{
 				if (IsCancellingAndYield())
 					break;
-				
+
 				auto workItemRef = mMethodSpecializationWorkList[workIdx];
 				if ((workItemRef == NULL) || (!IsWorkItemValid(workItemRef)))
 				{
 					workIdx = mMethodSpecializationWorkList.RemoveAt(workIdx);
 					continue;
 				}
-				
+
 				if (wantsReified != workItemRef->mFromModule->mIsReified)
 					continue;
 
@@ -523,9 +523,9 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 				auto module = workItemRef->mFromModule;
 				workIdx = mMethodSpecializationWorkList.RemoveAt(workIdx);
-				
+
 				auto typeInst = methodSpecializationRequest.mType->ToTypeInstance();
-				
+
 				if (typeInst->IsDeleting())
 					continue;
 
@@ -551,14 +551,14 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 		for (int workIdx = 0; workIdx < mMethodWorkList.size(); workIdx++)
 		{
-			BP_ZONE("PWL_ProcessMethod");			
-								
+			BP_ZONE("PWL_ProcessMethod");
+
 			mSystem->CheckLockYield();
-			// Don't allow canceling out of the first pass - otherwise we'll just keep reprocessing the 
+			// Don't allow canceling out of the first pass - otherwise we'll just keep reprocessing the
 			//  head of the file over and over
 			if ((resolveParser == NULL) && (mCompiler->mCanceling))
-				break;			
-			
+				break;
+
 			auto workItem = mMethodWorkList[workIdx];
 			if (workItem == NULL)
 			{
@@ -569,19 +569,19 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			intptr prevPopulateTypeWorkListSize = mPopulateTypeWorkList.size();
 			intptr prevInlineMethodWorkListSize = mInlineMethodWorkList.size();
 
-			auto module = workItem->mFromModule;		
+			auto module = workItem->mFromModule;
 			auto methodInstance = workItem->mMethodInstance;
-			
+
 			bool wantProcessMethod = methodInstance != NULL;
 			if ((workItem->mFromModuleRebuildIdx != -1) && (workItem->mFromModuleRebuildIdx != module->mRebuildIdx))
 				wantProcessMethod = false;
 			else if (workItem->mType->IsDeleting())
 				wantProcessMethod = false;
-			if (!IsWorkItemValid(workItem))
+			else if (!IsWorkItemValid(workItem))
 				wantProcessMethod = false;
 			if (methodInstance != NULL)
 				BF_ASSERT(methodInstance->mMethodProcessRequest == workItem);
-			
+
 			bool hasBeenProcessed = true;
 			if (wantProcessMethod)
 			{
@@ -592,6 +592,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 				auto owner = methodInstance->mMethodInstanceGroup->mOwner;
 
+				auto autoComplete = mCompiler->GetAutoComplete();
+
 				BF_ASSERT(!module->mAwaitingFinish);
 				if ((resolveParser != NULL) && (methodInstance->mMethodDef->mDeclaringType != NULL) && (methodInstance->mMethodDef->mDeclaringType->GetDefinition()->mSource != resolveParser))
 				{
@@ -599,13 +601,46 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mHasCursorIdx))
 					{
 						auto parser = methodInstance->mMethodDef->mDeclaringType->GetLastSource()->ToParser();
+
+						if ((parser != NULL) && (autoComplete != NULL) && (autoComplete->mModule == NULL))
+						{
+							bool emitHasCursor = false;
+							for (auto& checkEntry : mCompiler->mResolvePassData->mEmitEmbedEntries)
+							{
+								if (checkEntry.mValue.mCursorIdx >= 0)
+									emitHasCursor = true;
+							}
+
+							if (emitHasCursor)
+							{
+								// Go To Definition in an emit mixin?
+								BfParser** foundParserPtr = NULL;
+								if (mCompiler->mResolvePassData->mCompatParserMap.TryAdd(parser, NULL, &foundParserPtr))
+								{
+									*foundParserPtr = NULL;
+									for (auto checkParser : mCompiler->mResolvePassData->mParsers)
+									{
+										if ((checkParser->mFileName == parser->mFileName) && (checkParser->mOrigSrcLength == parser->mOrigSrcLength) &&
+											(memcmp(checkParser->mSrc, parser->mSrc, checkParser->mOrigSrcLength) == 0))
+										{
+											*foundParserPtr = checkParser;
+										}
+									}
+								}
+
+								auto* compatParser = *foundParserPtr;
+								if (compatParser != NULL)
+									allow = true;
+							}
+						}
+
 						if ((parser != NULL) && (parser->mCursorIdx >= 0))
 							allow = true;
 					}
 					if (!allow)
 						continue;
 				}
-				
+
 				hasBeenProcessed = methodInstance->mHasBeenProcessed;
 				BF_ASSERT(module->mContext == this);
 
@@ -617,30 +652,29 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 					if (!mCompiler->mIsResolveOnly)
 						BF_ASSERT(!methodInstance->mIsReified || methodInstance->mDeclModule->mIsModuleMutable);
 
-					auto autoComplete = mCompiler->GetAutoComplete();
 					if ((autoComplete != NULL) && (autoComplete->mModule == NULL))
 					{
-						autoComplete->mModule = methodInstance->mDeclModule;
+						autoComplete->SetModule(methodInstance->mDeclModule);
 						ProcessMethod(methodInstance);
-						autoComplete->mModule = NULL;
+						autoComplete->SetModule(NULL);
 					}
 					else
 						ProcessMethod(methodInstance);
 				}
 			}
-			
+
 			workIdx = mMethodWorkList.RemoveAt(workIdx);
-			
+
 			if (methodInstance != NULL)
 				methodInstance->mMethodProcessRequest = NULL;
 
 			if ((!module->mAwaitingFinish) && (module->WantsFinishModule()) && (wantProcessMethod))
-			{								
-				BfLogSysM("Module finished: %p %s HadBuildErrors:%d\n", module, module->mModuleName.c_str(), module->mHadBuildError);				
-				QueueFinishModule(module);				
+			{
+				BfLogSysM("Module finished: %p %s HadBuildErrors:%d\n", module, module->mModuleName.c_str(), module->mHadBuildError);
+				QueueFinishModule(module);
 			}
 
-			didWork = true;			
+			didWork = true;
 		}
 
 // 		for (int workIdx = 0; workIdx < (int)mFinishedSlotAwaitModuleWorkList.size(); workIdx++)
@@ -651,13 +685,13 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 // 				workIdx = mFinishedSlotAwaitModuleWorkList.RemoveAt(workIdx);
 // 				continue;
 // 			}
-// 
+//
 // 			auto module = moduleRef;
 // 			if (mCompiler->mMaxInterfaceSlots >= 0)
-// 			{				
+// 			{
 // 				mFinishedModuleWorkList.Add(module);
 // 			}
-// 
+//
 // 			workIdx = mFinishedSlotAwaitModuleWorkList.RemoveAt(workIdx);
 // 			didWork = true;
 // 		}
@@ -677,7 +711,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			if (!module->mAwaitingFinish)
 			{
 				BfLogSysM("mFinishedModuleWorkList removing old:%p\n", module);
-				workIdx = mFinishedModuleWorkList.RemoveAt(workIdx);				
+				workIdx = mFinishedModuleWorkList.RemoveAt(workIdx);
 				continue;
 			}
 
@@ -693,8 +727,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				break;
 			}
 
-			BP_ZONE("PWL_ProcessFinishedModule");			
-			
+			BP_ZONE("PWL_ProcessFinishedModule");
+
 			bool hasUnfinishedSpecModule = false;
 			for (auto& specModulePair : module->mSpecializedMethodModules)
 			{
@@ -704,10 +738,10 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			}
 
 			if (hasUnfinishedSpecModule)
-			{				
+			{
 				continue;
 			}
-			
+
 			if (!module->mIsSpecialModule)
 			{
 				module->Finish();
@@ -722,10 +756,10 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 		for (int workIdx = 0; workIdx < (int)mInlineMethodWorkList.size(); workIdx++)
 		{
-			BP_ZONE("PWL_ProcessMethod");			
+			BP_ZONE("PWL_ProcessMethod");
 
 			mSystem->CheckLockYield();
-			// Don't allow canceling out of the first pass - otherwise we'll just keep reprocessing the 
+			// Don't allow canceling out of the first pass - otherwise we'll just keep reprocessing the
 			//  head of the file over and over
 			if ((resolveParser == NULL) && (mCompiler->mCanceling))
 				break;
@@ -737,46 +771,49 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			}
 
 			auto workItem = *workItemRef;
-			auto owner = workItem.mMethodInstance->mMethodInstanceGroup->mOwner;
 			auto module = workItem.mFromModule;
 			auto methodInstance = workItem.mMethodInstance;
 
-			BF_ASSERT(module->mIsModuleMutable);
-			module->PrepareForIRWriting(methodInstance->GetOwner());
+			bool wantProcessMethod = methodInstance != NULL;
+			if ((workItem.mFromModuleRebuildIdx != -1) && (workItem.mFromModuleRebuildIdx != module->mRebuildIdx))
+				wantProcessMethod = false;
+			else if (workItem.mType->IsDeleting())
+				wantProcessMethod = false;
+ 			else if (!IsWorkItemValid(&workItem))
+ 				wantProcessMethod = false;
 
 			workIdx = mInlineMethodWorkList.RemoveAt(workIdx);
 
-			BfLogSysM("Module %p inlining method %p into func:%p\n", module, methodInstance, workItem.mFunc);
-
-			BfMethodInstance dupMethodInstance;
-			dupMethodInstance.CopyFrom(methodInstance);						
-			dupMethodInstance.mIRFunction = workItem.mFunc;			
-			dupMethodInstance.mIsReified = true;
-			dupMethodInstance.mInCEMachine = false; // Only have the original one
-			BF_ASSERT(module->mIsReified); // We should only bother inlining in reified modules
-
-			bool wantProcessMethod = true;
-			if (owner->IsDeleting())
-				wantProcessMethod = false;
+			BfLogSysM("Module %p inlining method %p into func:%p wantProcessMethod:%d\n", module, methodInstance, workItem.mFunc, wantProcessMethod);
 
 			if (wantProcessMethod)
 			{
+				BF_ASSERT(module->mIsModuleMutable);
+				module->PrepareForIRWriting(methodInstance->GetOwner());
+
+				BfMethodInstance dupMethodInstance;
+				dupMethodInstance.CopyFrom(methodInstance);
+				dupMethodInstance.mIRFunction = workItem.mFunc;
+				dupMethodInstance.mIsReified = true;
+				dupMethodInstance.mInCEMachine = false; // Only have the original one
+				BF_ASSERT(module->mIsReified); // We should only bother inlining in reified modules
+
 				// These errors SHOULD be duplicates, but if we have no other errors at all then we don't ignoreErrors, which
 				//  may help unveil some kinds of compiler bugs
 				SetAndRestoreValue<bool> prevIgnoreErrors(module->mIgnoreErrors, mCompiler->mPassInstance->HasFailed());
 				module->ProcessMethod(&dupMethodInstance, true);
+
+				static int sMethodIdx = 0;
+				module->mBfIRBuilder->Func_SetLinkage(workItem.mFunc, BfIRLinkageType_Internal);
 			}
 
-			static int sMethodIdx = 0;
-			module->mBfIRBuilder->Func_SetLinkage(workItem.mFunc, BfIRLinkageType_Internal);
-			
 			BF_ASSERT(module->mContext == this);
 			BF_ASSERT(module->mIsModuleMutable);
 
 			if ((wantProcessMethod) && (!module->mAwaitingFinish) && (module->WantsFinishModule()))
 			{
 				BfLogSysM("Module finished: %s (from inlining)\n", module->mModuleName.c_str());
-				QueueFinishModule(module);				
+				QueueFinishModule(module);
 			}
 
 			didWork = true;
@@ -786,7 +823,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 		{
 			if ((mPopulateTypeWorkList.size() == 0) && (resolveParser == NULL))
 			{
-				BP_ZONE("PWL_CheckIncompleteGenerics");				
+				BP_ZONE("PWL_CheckIncompleteGenerics");
 
 				for (auto type : mResolvedTypes)
 				{
@@ -817,7 +854,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 		if (!didWork)
 			break;
 		didAnyWork = true;
-	}	
+	}
 
 	return didAnyWork;
 }
@@ -831,9 +868,9 @@ void BfContext::HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTemp
 		return;
 
 	if (typeDef->mDefState != BfTypeDef::DefState_Defined)
-	{		
-		if (mCompiler->mResolvePassData->mIsClassifying)		
-		{							
+	{
+		if (mCompiler->mResolvePassData->mIsClassifying)
+		{
 			auto _CheckSource = [&](BfTypeDef* checkTypeDef)
 			{
 				auto typeDecl = checkTypeDef->mTypeDeclaration;
@@ -844,7 +881,7 @@ void BfContext::HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTemp
 
 				if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(typeDecl))
 				{
-					SetAndRestoreValue<bool> prevSkipTypeDeclaration(sourceClassifier->mSkipTypeDeclarations, true);					
+					SetAndRestoreValue<bool> prevSkipTypeDeclaration(sourceClassifier->mSkipTypeDeclarations, true);
 					sourceClassifier->mSkipMethodInternals = isAutoCompleteTempType;
 					sourceClassifier->Handle(typeDecl);
 				}
@@ -858,8 +895,8 @@ void BfContext::HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTemp
 			else
 			{
 				_CheckSource(typeDef);
-			}			
-		}		
+			}
+		}
 	}
 
 	if ((!typeDef->mIsPartial) && (!isAutoCompleteTempType))
@@ -876,7 +913,7 @@ void BfContext::HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTemp
 BfType * BfContext::FindTypeById(int typeId)
 {
 	for (auto type : mResolvedTypes)
-	{		
+	{
 		if (type->mTypeId == typeId)
 			return type;
 	}
@@ -890,7 +927,7 @@ void BfContext::AddTypeToWorkList(BfType* type)
 
 	BF_ASSERT((type->mRebuildFlags & BfTypeRebuildFlag_InTempPool) == 0);
 	if ((type->mRebuildFlags & BfTypeRebuildFlag_AddedToWorkList) == 0)
-	{		
+	{
 		type->mRebuildFlags = (BfTypeRebuildFlags)(type->mRebuildFlags | BfTypeRebuildFlag_AddedToWorkList);
 
 		BfTypeProcessRequest* typeProcessRequest = mPopulateTypeWorkList.Alloc();
@@ -905,22 +942,22 @@ void BfContext::ValidateDependencies()
 #if _DEBUG
 // 	BP_ZONE("BfContext::ValidateDependencies");
 // 	BfLogSysM("ValidateDependencies\n");
-// 
+//
 // 	bool deletedNewTypes = false;
-// 	for (auto type : mResolvedTypes)	
-// 	{	
+// 	for (auto type : mResolvedTypes)
+// 	{
 // 		if (type->IsDeleting())
 // 			continue;
-// 
+//
 // 		if (type->IsGenericTypeInstance())
 // 		{
 // 			// We can't contain deleted generic arguments without being deleted ourselves
 // 			BfTypeInstance* genericType = (BfTypeInstance*)type;
-// 
+//
 // 			for (auto genericTypeArg : genericType->mGenericTypeInfo->mTypeGenericArguments)
 // 			{
 // 				BF_ASSERT((!genericTypeArg->IsDeleting()));
-// 
+//
 // 				auto argDepType = genericTypeArg->ToDependedType();
 // 				if (argDepType != NULL)
 // 				{
@@ -930,22 +967,22 @@ void BfContext::ValidateDependencies()
 // 					BF_ASSERT((depEntry->mFlags & BfDependencyMap::DependencyFlag_TypeGenericArg) != 0);
 // 				}
 // 			}
-// 		}		
+// 		}
 // 	}
 #endif
 }
 
 void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuildModule, bool placeSpecializiedInPurgatory)
 {
-	BfTypeInstance* typeInst = type->ToTypeInstance();		
-		
+	BfTypeInstance* typeInst = type->ToTypeInstance();
+
 	if (type->IsDeleting())
 	{
 		return;
 	}
-	
+
 	type->mDirty = true;
-	
+
 	bool wantDeleteType = (type->IsOnDemand()) && (deleteOnDemandTypes);
 	if (type->IsConstExprValue())
 	{
@@ -964,16 +1001,19 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	}
 
 	if (typeInst == NULL)
-	{	
+	{
 		type->mDefineState = BfTypeDefineState_Undefined;
 
 		BfTypeProcessRequest* typeProcessRequest = mPopulateTypeWorkList.Alloc();
-		typeProcessRequest->mType = type;		
+		typeProcessRequest->mType = type;
 		mCompiler->mStats.mTypesQueued++;
 		mCompiler->UpdateCompletion();
-		
+
 		return;
 	}
+
+	if (mCompiler->mCeMachine != NULL)
+		mCompiler->mCeMachine->ClearTypeData(typeInst);
 
 	BF_ASSERT_REL(typeInst->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotting);
 
@@ -992,12 +1032,12 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	}
 
 	if ((typeInst->IsTypeAlias()) != (typeInst->mTypeDef->mTypeCode == BfTypeCode_TypeAlias))
-	{		
+	{
 		BfLogSysM("TypeAlias %p status changed - deleting\n", typeInst);
 		DeleteType(type);
-		return;		
+		return;
 	}
-	
+
 	if ((typeInst->IsBoxed()) && (typeInst->mTypeDef->mEmitParent != NULL))
 		typeInst->mTypeDef = typeInst->mTypeDef->mEmitParent;
 
@@ -1010,18 +1050,18 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	{
 		// The type definition failed, so we need to rebuild everyone that was depending on us
 		RebuildDependentTypes(typeInst);
-	}	
-	
+	}
+
 	if (typeInst->mTypeDef->GetDefinition()->mDefState == BfTypeDef::DefState_Deleted)
-		return;	
-		
+		return;
+
 	if (typeInst->mDefineState == BfTypeDefineState_Undefined)
 	{
 		// If we haven't added this type the worklist yet then we reprocess the type rebuilding
 		if ((typeInst->mRebuildFlags & BfTypeRebuildFlag_AddedToWorkList) != 0)
-			return;	
-	}	
-	
+			return;
+	}
+
 	if (typeInst->mIsReified)
 		mHasReifiedQueuedRebuildTypes = true;
 
@@ -1033,12 +1073,12 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		mCompiler->mGenericInstancePurgatory.push_back(typeInst);
 		addToWorkList = false;
 	}
-	
+
 	String typeName = mScratchModule->TypeToString(typeInst, BfTypeNameFlags_None);
 	BfLogSysM("%p Rebuild Type: %p %s deleted:%d\n", this, typeInst, typeName.c_str(), typeInst->IsDeleting());
 	if (addToWorkList)
 	{
-		AddTypeToWorkList(typeInst);		
+		AddTypeToWorkList(typeInst);
 	}
 
 	// Why did we need to do this?  This caused all struct types to be rebuilt when we needed to rebuild ValueType due to
@@ -1055,7 +1095,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 				RebuildType(dependentType);
 		}
 	}*/
-	
+
 	if ((mCompiler->IsHotCompile()) && (!typeInst->IsTypeAlias()))
 	{
 		BF_ASSERT(typeInst->mHotTypeData != NULL);
@@ -1076,7 +1116,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		typeInst->mHotTypeData = NULL;
 	}
 
-	auto typeDef = typeInst->mTypeDef;	
+	auto typeDef = typeInst->mTypeDef;
 
 	// Process deps before clearing mMethodInstanceGroups, to make sure we delete any methodrefs pointing to us before
 	// deleting those methods
@@ -1100,7 +1140,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 			{
 				// Rebuild undefined type.  This isn't necessary when we modify the typeDef, but when we change configurations then
 				//  the specialized types will rebuild
-				
+
 				//TODO: WE just added "no rebuild module" to this. I'm not sure what this is all about anyway...
 				RebuildType(depType, true, false);
 			}
@@ -1127,7 +1167,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 						auto methodInstance = methodSpecializationItr.mValue;
 						if ((!methodInstance->mIsUnspecialized) && (methodInstance->mHasFailed))
 						{
-							// A specialized generic method has failed, but the unspecialized version did not.  This 
+							// A specialized generic method has failed, but the unspecialized version did not.  This
 							//  can only happen for 'var' constrained methods, and we need to cause all referring
 							//  types to rebuild to ensure we're really specializing only the correct methods
 							needMethodCallsRebuild = true;
@@ -1136,14 +1176,14 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 				}
 			}
 			if (needMethodCallsRebuild)
-			{				
-				TypeMethodSignaturesChanged(typeInst);				
+			{
+				TypeMethodSignaturesChanged(typeInst);
 			}
 		}
 	}
 
 	typeInst->ReleaseData();
-	type->mDefineState = BfTypeDefineState_Undefined;	
+	type->mDefineState = BfTypeDefineState_Undefined;
 	typeInst->mSpecializedMethodReferences.Clear();
 	typeInst->mAlwaysIncludeFlags = BfAlwaysIncludeFlag_None;
 	typeInst->mHasBeenInstantiated = false;
@@ -1161,21 +1201,24 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mHasBeenInstantiated = false;
 	typeInst->mHasParameterizedBase = false;
 	typeInst->mTypeFailed = false;
-	typeInst->mTypeWarned = false;			
+	typeInst->mTypeWarned = false;
 	typeInst->mHasUnderlyingArray = false;
-	typeInst->mHasPackingHoles = false;	
+	typeInst->mHasPackingHoles = false;
 	typeInst->mWantsGCMarking = false;
 	typeInst->mHasDeclError = false;
 	delete typeInst->mTypeInfoEx;
 	typeInst->mTypeInfoEx = NULL;
-	
+
 	if (typeInst->mCeTypeInfo != NULL)
 		typeInst->mCeTypeInfo->mRebuildMap.Clear();
 
 	if (typeInst->mTypeDef->mEmitParent != NULL)
 	{
-		auto emitTypeDef = typeInst->mTypeDef;		
-		typeInst->mTypeDef = emitTypeDef->mEmitParent;		
+		auto emitTypeDef = typeInst->mTypeDef;
+		typeInst->mTypeDef = emitTypeDef->mEmitParent;
+		if (typeInst->mTypeDef->mIsPartial)
+			typeInst->mTypeDef = mSystem->GetCombinedPartial(typeInst->mTypeDef);
+
 		BfLogSysM("Type %p queueing delete of typeDef %p, resetting typeDef to %p\n", typeInst, emitTypeDef, typeInst->mTypeDef);
 		if (emitTypeDef->mDefState != BfTypeDef::DefState_Deleted)
 		{
@@ -1192,7 +1235,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 						RebuildType(typeInst);
 				}
 			}
-		}		
+		}
 	}
 
 	//typeInst->mTypeDef->ClearEmitted();
@@ -1213,7 +1256,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		if (genericTypeInstance->mGenericTypeInfo->mGenericExtensionInfo != NULL)
 			genericTypeInstance->mGenericTypeInfo->mGenericExtensionInfo->Clear();
 		genericTypeInstance->mGenericTypeInfo->mProjectsReferenced.Clear();
-	}	
+	}
 
 	typeInst->mStaticSearchMap.Clear();
 	typeInst->mInternalAccessMap.Clear();
@@ -1235,7 +1278,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	delete typeInst->mCustomAttributes;
 	typeInst->mCustomAttributes = NULL;
 	delete typeInst->mAttributeData;
-	typeInst->mAttributeData = NULL;	
+	typeInst->mAttributeData = NULL;
 	typeInst->mVirtualMethodTableSize = 0;
 	typeInst->mVirtualMethodTable.Clear();
 	typeInst->mReifyMethodDependencies.Clear();
@@ -1249,9 +1292,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 
 	if ((typeInst->mModule != NULL) && (rebuildModule))
 	{
-		typeInst->mModule->StartNewRevision();	
+		typeInst->mModule->StartNewRevision();
 		typeInst->mRevision = mCompiler->mRevision;
-	}	
+	}
 }
 
 void BfContext::RebuildDependentTypes(BfDependedType* dType)
@@ -1280,7 +1323,7 @@ void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const St
 		BF_ASSERT(!module->mIsDeleting);
 		BF_ASSERT(!module->mOwnedTypeInstances.IsEmpty());
 	}
-	
+
 	mCompiler->mStats.mMidCompileRebuilds++;
 	dType->mRebuildFlags = (BfTypeRebuildFlags)(dType->mRebuildFlags | BfTypeRebuildFlag_ChangedMidCompile);
 	int prevDeletedTypes = mCompiler->mStats.mTypesDeleted;
@@ -1295,13 +1338,12 @@ void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const St
 			mCompiler->mNeedsFullRefresh = true;
 			mCompiler->mLastMidCompileRefreshRevision = mCompiler->mRevision;
 		}
-
 	}
 	BfLogSysM("Rebuilding dependent types MidCompile Type:%p Reason:%s\n", dType, reason.c_str());
 	RebuildDependentTypes(dType);
 
 	if (mCompiler->mStats.mTypesDeleted != prevDeletedTypes)
-	{		
+	{
 		BfLogSysM("Rebuilding dependent types MidCompile Type:%p Reason:%s - updating after deleting types\n", dType, reason.c_str());
 		UpdateAfterDeletingTypes();
 	}
@@ -1328,20 +1370,20 @@ bool BfContext::CanRebuild(BfType* type)
 //   (obviously) doesn't change the data layout of ClassC
 //  Calls: non-cascading dependency, since it's independent of data layout ConstValue: non-cascading data change
 void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange)
-{	
+{
 	BfLogSysM("TypeDataChanged %p\n", dType);
-	
+
 	auto rebuildFlag = isNonStaticDataChange ? BfTypeRebuildFlag_NonStaticChange : BfTypeRebuildFlag_StaticChange;
 	if ((dType->mRebuildFlags & rebuildFlag) != 0) // Already did this change?
 		return;
 	dType->mRebuildFlags = (BfTypeRebuildFlags)(dType->mRebuildFlags | rebuildFlag);
-	
+
 	// We need to rebuild all other types that rely on our data layout
 	for (auto& depItr : dType->mDependencyMap)
 	{
 		auto dependentType = depItr.mKey;
 		auto dependencyFlags = depItr.mValue.mFlags;
-		
+
 		auto dependentDType = dependentType->ToDependedType();
 		if (dependentDType != NULL)
 		{
@@ -1350,16 +1392,16 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 			{
 				bool hadChange = false;
 
-				if ((dependencyFlags & 
+				if ((dependencyFlags &
 					(BfDependencyMap::DependencyFlag_DerivedFrom |
 					 BfDependencyMap::DependencyFlag_ValueTypeMemberData |
 					 BfDependencyMap::DependencyFlag_NameReference |
 					 BfDependencyMap::DependencyFlag_ValueTypeSizeDep)) != 0)
 				{
-					hadChange = true;					
+					hadChange = true;
 				}
 
-				// This case is for when we were declared as a class on a previous compilation, 
+				// This case is for when we were declared as a class on a previous compilation,
 				//  but then we were changed to a struct
 				if ((dType->IsValueType()) &&
 					(dependencyFlags & BfDependencyMap::DependencyFlag_PtrMemberData))
@@ -1383,15 +1425,15 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 			if (dependencyFlags & BfDependencyMap::DependencyFlag_ConstValue)
 			{
 				TypeDataChanged(dependentDType, false);
-								
+
 				// The ConstValue dependency may be that dependentType used one of our consts as
 				//  a default value to a method param, so assume callsites need rebuilding
 				if (dependentTypeInstance != NULL)
 					TypeMethodSignaturesChanged(dependentTypeInstance);
 			}
 
-			if (CanRebuild(dependentType))			
-			{				
+			if (CanRebuild(dependentType))
+			{
 				// We need to include DependencyFlag_ParamOrReturnValue because it could be a struct that changes its splatting ability
 							//  We can't ONLY check against structs, though, because a type could change from a class to a struct
 				if (dependencyFlags &
@@ -1401,7 +1443,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 				{
 					RebuildType(dependentType);
 				}
-				else if (((dependencyFlags & BfDependencyMap::DependencyFlag_NameReference) != 0) && 
+				else if (((dependencyFlags & BfDependencyMap::DependencyFlag_NameReference) != 0) &&
 					((dType->mRebuildFlags & BfTypeRebuildFlag_ChangedMidCompile) != 0) &&
 					(dType->IsTypeAlias()))
 				{
@@ -1418,9 +1460,9 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 			}
 		}
 	}
-	
+
 	if (CanRebuild(dType))
-		RebuildType(dType);	
+		RebuildType(dType);
 }
 
 void BfContext::TypeMethodSignaturesChanged(BfTypeInstance* typeInst)
@@ -1464,7 +1506,7 @@ void BfContext::TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst)
 	for (auto& depItr : typeInst->mDependencyMap)
 	{
 		auto dependentType = depItr.mKey;
-		
+
 		auto dependencyFlags = depItr.mValue.mFlags;
 
 		if (dependentType->mRevision != mCompiler->mRevision)
@@ -1521,7 +1563,7 @@ void BfContext::TypeConstEvalFieldChanged(BfTypeInstance* typeInst)
 	{
 		auto dependentType = depItr.mKey;
 		auto dependencyFlags = depItr.mValue.mFlags;
-		
+
 		if ((dependencyFlags & BfDependencyMap::DependencyFlag_ConstEvalConstField) != 0)
 		{
 			auto depTypeInst = dependentType->ToTypeInstance();
@@ -1544,12 +1586,12 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 	auto hotTypeData = typeInstance->mHotTypeData;
 	if (hotTypeData == NULL)
 		return;
-	
-	if (typeInstance->IsIncomplete())	
+
+	if (typeInstance->IsIncomplete())
 		return;
 
 	if (hotTypeData->mVTableOrigLength == -1)
-	{		
+	{
 		auto committedHotTypeVersion = typeInstance->mHotTypeData->GetTypeVersion(mCompiler->mHotState->mCommittedHotCompileIdx);
 		if (committedHotTypeVersion != NULL)
 		{
@@ -1557,7 +1599,7 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 			hotTypeData->mOrigInterfaceMethodsLength = typeInstance->GetIFaceVMethodSize();
 		}
 		BfLogSysM("PopulateHotTypeDataVTable set %p HotDataType->mVTableOrigLength To %d\n", typeInstance, hotTypeData->mVTableOrigLength);
-	}	
+	}
 
 	int vTableStart = -1;
 	int primaryVTableSize = 0;
@@ -1572,8 +1614,8 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 		{
 			auto& methodRef = typeInstance->mVirtualMethodTable[vIdx].mDeclaringMethod;
 			if (methodRef.mMethodNum == -1)
-			{				
-				BF_DBG_FATAL("Shouldn't have vext marker");				
+			{
+				BF_DBG_FATAL("Shouldn't have vext marker");
 			}
 		}
 #endif
@@ -1600,11 +1642,11 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 	primaryVTableSize = (int)typeInstance->mVirtualMethodTable.size() - vTableStart;
 
 	BF_ASSERT(vTableStart != -1);
-	
+
 	if (primaryVTableSize > (int)hotTypeData->mVTableEntries.size())
 		hotTypeData->mVTableEntries.Resize(primaryVTableSize);
 
-	int methodIdx = -1;	
+	int methodIdx = -1;
 	for (int vIdx = 0; vIdx < primaryVTableSize; vIdx++)
 	{
 		auto& methodRef = typeInstance->mVirtualMethodTable[vTableStart + vIdx].mDeclaringMethod;
@@ -1612,7 +1654,7 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 		auto methodInstance = (BfMethodInstance*)methodRef;
 		if (methodInstance == NULL)
 			continue;
-		
+
 		BF_ASSERT(methodRef.mTypeInstance == typeInstance);
 		BF_ASSERT(methodInstance->mVirtualTableIdx != -1);
 		BF_ASSERT(!methodInstance->mMethodDef->mIsOverride);
@@ -1630,7 +1672,7 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 
 		auto& entry = hotTypeData->mVTableEntries[vIdx];
 		if (entry.mFuncName.empty())
-		{			
+		{
 			entry.mFuncName = methodInstance->mMethodInfoEx->mMangledName;
 		}
 		else
@@ -1663,7 +1705,7 @@ void BfContext::SaveDeletingType(BfType* type)
 	else
 	{
 		// This can happen if we have a conflicting type definition
-		savedTypeData = *savedTypeDataPtr;		
+		savedTypeData = *savedTypeDataPtr;
 	}
 	savedTypeData->mTypeId = type->mTypeId;
 	while ((int)mSavedTypeData.size() <= savedTypeData->mTypeId)
@@ -1672,7 +1714,7 @@ void BfContext::SaveDeletingType(BfType* type)
 
 	auto typeInst = type->ToTypeInstance();
 	if (typeInst != NULL)
-	{		
+	{
 		delete savedTypeData->mHotTypeData;
 		if (mCompiler->IsHotCompile())
 			savedTypeData->mHotTypeData = typeInst->mHotTypeData;
@@ -1762,13 +1804,13 @@ void BfContext::ReflectInit()
 void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 {
 	if (type == mBfObjectType)
-		mBfObjectType = NULL;	
-	if (type == mBfTypeType)	
+		mBfObjectType = NULL;
+	if (type == mBfTypeType)
 		mBfObjectType = NULL;
 
 	if (type->mRebuildFlags & BfTypeRebuildFlag_Deleted)
-		return;	
-	
+		return;
+
 	mCompiler->mDepsMayHaveDeletedTypes = true;
 	mCompiler->mStats.mTypesDeleted++;
 
@@ -1794,7 +1836,7 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 				BF_ASSERT(module->mOwnedTypeInstances.size() == 0);
 			}
 			else
-			{				
+			{
 				module->mOwnedTypeInstances.Remove(typeInst);
 
 				if ((module->mOwnedTypeInstances.size() == 0) && (module != mScratchModule))
@@ -1805,22 +1847,22 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 					module->RemoveModuleData();
 					module->mIsDeleting = true;
 					mModules.Remove(module);
-					
+
 					// This was only needed for 'zombie modules', which we don't need anymore?
 					//  To avoid linking errors.  Used instead of directly removing from mModules.
 					mDeletingModules.Add(module);
 				}
 			}
 		}
-	}		
+	}
 
 	type->mRebuildFlags = (BfTypeRebuildFlags)((type->mRebuildFlags | BfTypeRebuildFlag_Deleted) & ~BfTypeRebuildFlag_DeleteQueued);
 	SaveDeletingType(type);
-	
+
 	mTypes[type->mTypeId] = NULL;
 
  	BfLogSysM("Deleting Type: %p %s\n", type, mScratchModule->TypeToString(type).c_str());
-	
+
 	if (typeInst != NULL)
 	{
 		for (auto& methodInstGroup : typeInst->mMethodInstanceGroups)
@@ -1839,28 +1881,28 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 		}
 	}
 
-	// All dependencies cause rebuilds when we delete types	
+	// All dependencies cause rebuilds when we delete types
 	if (dType != NULL)
 	{
 		//TODO: Do PopulateHotTypeDataVTable then store the HotTypeDataData
-		
+
 		if (dType->IsUnspecializedType())
-		{				
+		{
 			/*auto itr = mScratchModule->mClassVDataRefs.find(typeInst);
 			if (itr != mScratchModule->mClassVDataRefs.end())
 				mScratchModule->mClassVDataRefs.erase(itr);*/
-			
+
 			mScratchModule->mClassVDataRefs.Remove(typeInst);
-		}		
-		
+		}
+
 		//UH - I think this is not true.
 		//  If A derives from B, and C derives from B, if we delete 'A' then it's true that
 		//   'C' won't rebuild otherwise, BUT 'B' would fail to build but it would do a TypeDataChanged once it WAS able to built.  Right?
 		// Even though we do rebuilds on all types below, we specifically need to call
-		//  TypeDataChanged here for cascading data dependencies		
+		//  TypeDataChanged here for cascading data dependencies
 		/*if (!deferDepRebuilds)
 			TypeDataChanged(typeInst, true);*/
-		
+
 		Array<BfType*> rebuildTypeQueue;
 
 		for (auto& depItr : dType->mDependencyMap)
@@ -1873,7 +1915,7 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 			if ((dependencyEntry.mFlags & (BfDependencyMap::DependencyFlag_MethodGenericArg)) != 0)
 			{
 				if (!dependentType->IsDeleting())
-				{					
+				{
 					if ((deferDepRebuilds) && (dependentTypeInst != NULL))
 						mQueuedSpecializedMethodRebuildTypes.Add(dependentTypeInst);
 				}
@@ -1885,7 +1927,7 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 				DeleteType(dependentType, deferDepRebuilds);
 				continue;
 			}
-			
+
 			if (dependentTypeInst == NULL)
 			{
 				// This was something like a sized array
@@ -1910,15 +1952,17 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 			}
 
 			if ((deferDepRebuilds) && (dependentTypeInst != NULL))
-				mFailTypes.Add(dependentTypeInst);
+			{
+				mFailTypes.TryAdd(dependentTypeInst, BfFailKind_Normal);
+			}
 			else
 			{
 				rebuildTypeQueue.Add(dependentType);
 			}
-		}			
+		}
 
  		if (type->IsMethodRef())
- 		{	
+ 		{
  			// Detach
  			auto methodRefType = (BfMethodRefType*)type;
  			BfMethodInstance* methodInstance = methodRefType->mMethodRef;
@@ -1933,15 +1977,15 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 			if (CanRebuild(dependentType))
 				RebuildType(dependentType);
 		}
-	}	
+	}
 }
 
 void BfContext::UpdateAfterDeletingTypes()
 {
 	BP_ZONE("BfContext::UpdateAfterDeletingTypes");
 	BfLogSysM("UpdateAfterDeletingTypes\n");
-	
-	int graveyardStart = (int)mTypeGraveyard.size();	
+
+	int graveyardStart = (int)mTypeGraveyard.size();
 
 	while (true)
 	{
@@ -1962,11 +2006,11 @@ void BfContext::UpdateAfterDeletingTypes()
 					deletedNewTypes = true;
 					isDeleting = true;
 					DeleteType(type);
-				}				
+				}
 			}
 
 			if (isDeleting)
-			{				
+			{
 				doDelete = true;
 			}
 			else
@@ -2017,14 +2061,14 @@ void BfContext::UpdateAfterDeletingTypes()
 // 		++itr;
 // 	}
 #endif
-	
+
 	if (!mCompiler->mIsResolveOnly)
 	{
 		BP_ZONE("BfContext::UpdateAfterDeletingTypes saving typeData");
 		for (int graveyardIdx = graveyardStart; graveyardIdx < (int)mTypeGraveyard.size(); graveyardIdx++)
 		{
-			auto type = mTypeGraveyard[graveyardIdx];			
-			SaveDeletingType(type);			
+			auto type = mTypeGraveyard[graveyardIdx];
+			SaveDeletingType(type);
 		}
 	}
 }
@@ -2040,21 +2084,20 @@ void BfContext::PreUpdateRevisedTypes()
 // 			auto typeInst = type->ToTypeInstance();
 // 			if (typeInst == NULL)
 // 				continue;
-// 
+//
 // 			auto typeDef = typeInst->mTypeDef;
 // 			if ((typeDef->mDefState != BfTypeDef::DefState_New) && (typeDef->mDefState != BfTypeDef::DefState_Defined))
 // 			{
 // 				if (typeInst->mHotTypeData == NULL)
 // 				{
-// 					typeInst->mHotTypeData = new BfHotTypeData();					
-// 					typeInst->CalcHotVirtualData(&typeInst->mHotTypeData->mInterfaceMapping);					
+// 					typeInst->mHotTypeData = new BfHotTypeData();
+// 					typeInst->CalcHotVirtualData(&typeInst->mHotTypeData->mInterfaceMapping);
 // 				}
 // 				PopulateHotTypeDataVTable(typeInst);
 // 			}
-// 		}		
+// 		}
 // 	}
 }
-
 
 // Note that this method can also cause modules to be build in other contexts.
 //  That's why we do our UpdateAfterDeletingTypes after all the contexts' UpdateRevisedTypes
@@ -2096,7 +2139,7 @@ void BfContext::UpdateRevisedTypes()
 		{
 			BfTypeDef* typeDef = *itr;
 			if ((typeDef->mDefState != BfTypeDef::DefState_Deleted) &&
-				(!typeDef->mIsCombinedPartial))				
+				(!typeDef->mIsCombinedPartial))
 			{
 				if (typeDef->mFullNameEx == qualifiedFindName)
 					if (!_CheckCanSkipCtor(typeDef))
@@ -2107,7 +2150,7 @@ void BfContext::UpdateRevisedTypes()
 
 		return true;
 	};
-		
+
 	bool wantsCanSkipObjectCtor = _CheckCanSkipCtorByName("System.Object");
 	bool wantsCanSkipValueTypeCtor = _CheckCanSkipCtorByName("System.ValueType");
 
@@ -2129,7 +2172,7 @@ void BfContext::UpdateRevisedTypes()
 		auto uintPtrType = mScratchModule->GetPrimitiveType(BfTypeCode_UIntPtr);
 		if (intPtrType != NULL)
 		{
-			RebuildType(intPtrType);						
+			RebuildType(intPtrType);
 			mScratchModule->PopulateType(intPtrType);
 		}
 		if (uintPtrType != NULL)
@@ -2140,17 +2183,17 @@ void BfContext::UpdateRevisedTypes()
 
 		// Rebuild all types
 		for (auto type : mResolvedTypes)
-		{			
+		{
 			RebuildType(type);
 		}
 	}
 
 	// Temporarily store failTypes - we may need to re-insert into them after another failure
 	auto failTypes = mFailTypes;
-	mFailTypes.Clear();	
+	mFailTypes.Clear();
 
 	bool wantsDebugInfo = (mCompiler->mOptions.mEmitDebugInfo);
-	
+
 	Array<BfTypeInstance*> defStateChangedQueue;
 	Array<BfTypeInstance*> defEmitParentCheckQueue;
 
@@ -2170,22 +2213,22 @@ void BfContext::UpdateRevisedTypes()
 
 		/*if ((!mCompiler->mIsResolveOnly) && (!type->IsNull()) && (!type->IsUnspecializedType()))
 		{
-			// We need to completely rebuild all types if we switch from having debug info to not having debug info			
-			if ((typeInst != NULL) && (typeInst->mModule != NULL) && (typeInst->mModule->mHasDebugInfo != wantsDebugInfo))			
+			// We need to completely rebuild all types if we switch from having debug info to not having debug info
+			if ((typeInst != NULL) && (typeInst->mModule != NULL) && (typeInst->mModule->mHasDebugInfo != wantsDebugInfo))
 			{
 				RebuildType(type);
 			}
 		}*/
-					
+
 		if (typeInst == NULL)
 			continue;
-		
+
 		if (typeInst->IsDeleting())
 			continue;
 
-		auto typeDef = typeInst->mTypeDef;		
+		auto typeDef = typeInst->mTypeDef;
 
-		if (typeDef->mEmitParent != NULL)		
+		if (typeDef->mEmitParent != NULL)
 			defEmitParentCheckQueue.Add(typeInst);
 
 		if (typeDef->mProject->mDisabled)
@@ -2193,10 +2236,10 @@ void BfContext::UpdateRevisedTypes()
 			DeleteType(type);
 			continue;
 		}
-		
+
 		// Clear flags we don't want to propagate
 		typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags & (BfTypeRebuildFlag_UnderlyingTypeDeferred | BfTypeRebuildFlag_PendingGenericArgDep));
-		
+
 		if (typeDef->mIsPartial)
 		{
 			// This was a type that wasn't marked as partial before but now it is, so it doesn't need its own typedef
@@ -2223,7 +2266,7 @@ void BfContext::UpdateRevisedTypes()
 					if (*valuePtr != kv.mValue.mInt)
 						changed = true;
 					mCompiler->mRebuildFileSet.Add(kv.mKey.mString);
-				}				
+				}
 
 				if ((kv.mKey.mKind == CeRebuildKey::Kind_File) || (kv.mKey.mKind == CeRebuildKey::Kind_Directory))
 				{
@@ -2235,7 +2278,8 @@ void BfContext::UpdateRevisedTypes()
 
 			if (changed)
 			{
-				RebuildType(typeInst);
+				TypeDataChanged(typeInst, true);
+				TypeMethodSignaturesChanged(typeInst);
 			}
 		}
 
@@ -2262,7 +2306,7 @@ void BfContext::UpdateRevisedTypes()
 
 		if (checkTypeDef->mDefState != BfTypeDef::DefState_New)
 		{
-			defStateChangedQueue.Add(typeInst);									
+			defStateChangedQueue.Add(typeInst);
 		}
 	}
 
@@ -2275,7 +2319,7 @@ void BfContext::UpdateRevisedTypes()
 
 		auto typeDef = typeInst->mTypeDef;
 
-		bool isTypeDefinedInContext = true;		
+		bool isTypeDefinedInContext = true;
 
 		if (typeDef->mEmitParent != NULL)
 		{
@@ -2283,12 +2327,12 @@ void BfContext::UpdateRevisedTypes()
 		}
 
 		if (typeDef->mDefState == BfTypeDef::DefState_Deleted)
-		{			
+		{
 			HandleChangedTypeDef(typeDef);
 			DeleteType(typeInst);
 			continue;
 		}
-		
+
 		if (typeDef->mDefState == BfTypeDef::DefState_InlinedInternals_Changed)
 		{
 			TypeInlineMethodInternalsChanged(typeInst);
@@ -2309,7 +2353,7 @@ void BfContext::UpdateRevisedTypes()
 		if (isSignatureChange)
 		{
 			TypeDataChanged(typeInst, true);
-			TypeMethodSignaturesChanged(typeInst);			
+			TypeMethodSignaturesChanged(typeInst);
 		}
 
 		/*if (!mCompiler->mIsResolveOnly)
@@ -2319,15 +2363,19 @@ void BfContext::UpdateRevisedTypes()
 
 		RebuildType(typeInst);
 	}
-	
-	for (auto typeInst : failTypes)
+
+	for (auto failKV : failTypes)
 	{
+		auto typeInst = failKV.mKey;
 		if (!typeInst->IsDeleting())
 		{
 			if (!typeInst->mTypeDef->mProject->mDisabled)
 			{
-				BfLogSysM("Rebuilding failed type %p\n", typeInst);
-				RebuildType(typeInst);
+				BfLogSysM("Rebuilding failed type %p %d\n", typeInst, (int)failKV.mValue);
+				if (failKV.mValue == BfFailKind_Deep)
+					TypeDataChanged(typeInst, true);
+				else
+					RebuildType(typeInst);
 			}
 		}
 	}
@@ -2362,7 +2410,7 @@ void BfContext::UpdateRevisedTypes()
 		AutoCrit autoCrit(mSystem->mDataLock);
 
 		auto options = &mCompiler->mOptions;
-		HashContext workspaceConfigHashCtx;												
+		HashContext workspaceConfigHashCtx;
 
 		workspaceConfigHashCtx.MixinStr(options->mTargetTriple);
 		workspaceConfigHashCtx.MixinStr(options->mTargetCPU);
@@ -2370,15 +2418,15 @@ void BfContext::UpdateRevisedTypes()
 
 		workspaceConfigHashCtx.Mixin(options->mMachineType);
 		workspaceConfigHashCtx.Mixin(options->mToolsetType);
-		workspaceConfigHashCtx.Mixin(options->mSIMDSetting);		
+		workspaceConfigHashCtx.Mixin(options->mSIMDSetting);
 
 		workspaceConfigHashCtx.Mixin(options->mEmitDebugInfo);
-		workspaceConfigHashCtx.Mixin(options->mEmitLineInfo);		
+		workspaceConfigHashCtx.Mixin(options->mEmitLineInfo);
 
 		workspaceConfigHashCtx.Mixin(options->mNoFramePointerElim);
 		workspaceConfigHashCtx.Mixin(options->mInitLocalVariables);
 		workspaceConfigHashCtx.Mixin(options->mRuntimeChecks);
-		workspaceConfigHashCtx.Mixin(options->mAllowStructByVal);	
+		workspaceConfigHashCtx.Mixin(options->mAllowStructByVal);
 		workspaceConfigHashCtx.Mixin(options->mEmitDynamicCastCheck);
 
 		workspaceConfigHashCtx.Mixin(options->mAllowHotSwapping);
@@ -2418,7 +2466,7 @@ void BfContext::UpdateRevisedTypes()
 			workspaceConfigHashCtx.Mixin(typeOptions.mOrFlags);
 			workspaceConfigHashCtx.Mixin(typeOptions.mReflectMethodFilters.size());
 			for (auto& filter : typeOptions.mReflectMethodFilters)
-			{				
+			{
 				workspaceConfigHashCtx.MixinStr(filter.mFilter);
 				workspaceConfigHashCtx.Mixin(filter.mAndFlags);
 				workspaceConfigHashCtx.Mixin(filter.mOrFlags);
@@ -2448,23 +2496,23 @@ void BfContext::UpdateRevisedTypes()
 			mSystem->mMergedTypeOptions.Clear();
 			mSystem->mWorkspaceConfigHash = workspaceConfigHash;
 		}
-		
+
 		for (auto project : mSystem->mProjects)
 		{
 			HashContext buildConfigHashCtx;
 			buildConfigHashCtx.Mixin(workspaceConfigHash);
-			
+
 			if (!mCompiler->mIsResolveOnly)
 			{
-				auto& codeGenOptions = project->mCodeGenOptions;								
-				
+				auto& codeGenOptions = project->mCodeGenOptions;
+
 				buildConfigHashCtx.MixinStr(mCompiler->mOutputDirectory);
 				buildConfigHashCtx.Mixin(project->mAlwaysIncludeAll);
 				buildConfigHashCtx.Mixin(project->mSingleModule);
 
 				bool isTestConfig = project->mTargetType == BfTargetType_BeefTest;
 				buildConfigHashCtx.Mixin(isTestConfig);
-				
+
 				buildConfigHashCtx.Mixin(codeGenOptions.mOptLevel);
 				buildConfigHashCtx.Mixin(codeGenOptions.mSizeLevel);
 				buildConfigHashCtx.Mixin(codeGenOptions.mUseCFLAA);
@@ -2510,18 +2558,18 @@ void BfContext::UpdateRevisedTypes()
 			auto vDataConfigHash = vDataConfigHashCtx.Finish128();
 
 			project->mBuildConfigChanged = buildConfigHash != project->mBuildConfigHash;
-			project->mBuildConfigHash = buildConfigHash;			
+			project->mBuildConfigHash = buildConfigHash;
 			project->mVDataConfigHash = vDataConfigHash;
 		}
-	}		
-	
+	}
+
 	Array<BfModule*> moduleRebuildList;
 
 	for (int moduleIdx = 0; moduleIdx < (int)mModules.size(); moduleIdx++)
 	{
 		//mCompiler->mOutputDirectory
 		auto module = mModules[moduleIdx];
-		
+
 		// This logic needs to run on both us and our mOptModule
 		//for (int subModuleIdx = 0; subModuleIdx < 2; subModuleIdx++)
 		auto subModule = module;
@@ -2553,7 +2601,7 @@ void BfContext::UpdateRevisedTypes()
 
 			subModule = subModule->mNextAltModule;
 		}
-		
+
 		if ((module->mProject != NULL) && (module->mProject->mDisabled))
 		{
 			continue;
@@ -2567,7 +2615,7 @@ void BfContext::UpdateRevisedTypes()
 			needsModuleRebuild = true;
 		}
 		if (module->mProject != NULL)
-		{			
+		{
 			if ((module->mIsHotModule) && (mCompiler->mOptions.mHotProject == NULL))
 				needsModuleRebuild = true;
 			if (module->mProject->mBuildConfigChanged)
@@ -2581,11 +2629,11 @@ void BfContext::UpdateRevisedTypes()
 		}
 
 		if (needsModuleRebuild)
-			moduleRebuildList.push_back(module);		
+			moduleRebuildList.push_back(module);
 
 		if (module->mIsSpecialModule) // vdata, external, data
 			continue;
-		
+
 		bool wantMethodSpecializations = !mCompiler->mIsResolveOnly;
 
 		// We don't really need this on for resolveOnly passes, but this is useful to force on for debugging.
@@ -2607,7 +2655,7 @@ void BfContext::UpdateRevisedTypes()
 	if (mSystem->mWorkspaceConfigChanged)
 	{
 		for (auto type : mResolvedTypes)
-		{			
+		{
 			RebuildType(type);
 		}
 	}
@@ -2619,7 +2667,7 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 	{
 		BfTypeLookupEntry& lookupEntry = lookupEntryPair.mKey;
 		bool isDirty = false;
-		if (lookupEntry.mName.IsEmpty())		
+		if (lookupEntry.mName.IsEmpty())
 		{
 			// If the name lookup failed before, thats because we didn't have the right atoms.  Are there new atoms now?
 			if (lookupEntry.mAtomUpdateIdx != mSystem->mAtomUpdateIdx)
@@ -2629,10 +2677,10 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 		{
 			// If any atoms have been placed in the graveyard, typesHash will be zero and thus cause a rebuild
 			uint32 atomUpdateIdx = lookupEntry.mName.GetAtomUpdateIdx();
-			
+
 			if (atomUpdateIdx == 0)
 			{
-				isDirty = true;				
+				isDirty = true;
 			}
 			else
 			{
@@ -2665,10 +2713,10 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 						lookupEntry.mAtomUpdateIdx = atomUpdateIdx;
 				}
 			}
-		}		
+		}
 
 		if (isDirty)
-		{						
+		{
 			// Clear lookup results to avoid infinite recursion
 			typeInst->mLookupResults.Clear();
 
@@ -2695,7 +2743,7 @@ void BfContext::GenerateModuleName_TypeInst(BfTypeInstance* typeInst, StringImpl
 			name += '_';*/
 	}
 	else
-	{		
+	{
 		for (int i = 0; i < typeInst->mTypeDef->mNamespace.mSize; i++)
 		{
 			auto atom = typeInst->mTypeDef->mNamespace.mParts[i];
@@ -2715,7 +2763,7 @@ void BfContext::GenerateModuleName_TypeInst(BfTypeInstance* typeInst, StringImpl
 
 	if (typeInst->IsClosure())
 	{
-		auto closureType = (BfClosureType*)typeInst;		
+		auto closureType = (BfClosureType*)typeInst;
 		name += closureType->mNameAdd;
 		return;
 	}
@@ -2757,14 +2805,14 @@ void BfContext::GenerateModuleName_Type(BfType* type, StringImpl& name)
 	{
 		auto ptrType = (BfPointerType*)type;
 		name += "PTR_";
-		GenerateModuleName_Type(ptrType->mElementType, name);		
+		GenerateModuleName_Type(ptrType->mElementType, name);
 		return;
 	}
 
 	if (type->IsTuple())
 	{
 		auto tupleType = (BfTypeInstance*)type;
-		name += "TUPLE_";		
+		name += "TUPLE_";
 		for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 		{
 			BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
@@ -2782,7 +2830,7 @@ void BfContext::GenerateModuleName_Type(BfType* type, StringImpl& name)
 		auto typeInst = type->ToTypeInstance();
 		auto delegateInfo = type->GetDelegateInfo();
 
-		auto methodDef = typeInst->mTypeDef->mMethods[0];		
+		auto methodDef = typeInst->mTypeDef->mMethods[0];
 
 		if (type->IsDelegateFromTypeRef())
 			name += "DELEGATE_";
@@ -2795,7 +2843,7 @@ void BfContext::GenerateModuleName_Type(BfType* type, StringImpl& name)
 			if (paramIdx > 0)
 				name += "_";
 			auto paramDef = methodDef->mParams[paramIdx];
-			GenerateModuleName_Type(mScratchModule->ResolveTypeRef(paramDef->mTypeRef), name);			
+			GenerateModuleName_Type(mScratchModule->ResolveTypeRef(paramDef->mTypeRef), name);
 			name += "_";
 			name += paramDef->mName;
 		}
@@ -2828,7 +2876,7 @@ void BfContext::GenerateModuleName_Type(BfType* type, StringImpl& name)
 			else
 				name += StrFormat("%ld", constExprType->mValue.mInt64);
 			return;
-		}		
+		}
 	}
 
 	auto typeInst = type->ToTypeInstance();
@@ -2836,11 +2884,11 @@ void BfContext::GenerateModuleName_Type(BfType* type, StringImpl& name)
 	{
 		GenerateModuleName_TypeInst(typeInst, name);
 		return;
-	}	
+	}
 }
 
 void BfContext::GenerateModuleName(BfTypeInstance* typeInst, StringImpl& name)
-{		
+{
 	GenerateModuleName_Type(typeInst, name);
 
 	int maxChars = 80;
@@ -2855,7 +2903,7 @@ void BfContext::GenerateModuleName(BfTypeInstance* typeInst, StringImpl& name)
 		if (c == '@')
 			name[i] = '_';
 	}
-	
+
 	for (int i = 2; true; i++)
 	{
 		StringT<256> upperName = name;
@@ -2879,25 +2927,25 @@ bool BfContext::IsSentinelMethod(BfMethodInstance* methodInstance)
 
 void BfContext::VerifyTypeLookups()
 {
-	BP_ZONE("BfContext::VerifyTypeLookups");	
+	BP_ZONE("BfContext::VerifyTypeLookups");
 
 	for (auto type : mResolvedTypes)
-	{		
+	{
 		auto typeInst = type->ToTypeInstance();
 		if ((typeInst != NULL) && (!typeInst->IsDeleting()) && (!typeInst->IsIncomplete()))
 		{
-			VerifyTypeLookups(typeInst);			
+			VerifyTypeLookups(typeInst);
 		}
 	}
 }
 
-// When we are rebuilding 'typeInst' and we want to make sure that we rebuild all the methods that were 
+// When we are rebuilding 'typeInst' and we want to make sure that we rebuild all the methods that were
 //  actively referenced previously, this method will generate BfMethodSpecializationRequest for all used
 //  methods from previously-built modules
 void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkSpecializedMethodRebuildFlag)
 {
 	BF_ASSERT(!typeInst->IsDeleting());
-	
+
 	BP_ZONE("BfContext::QueueMethodSpecializations");
 
 	auto module = typeInst->mModule;
@@ -2918,10 +2966,10 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 	//  modules that are NOT rebuilding to be sure we generate those.  Failure to do this
 	//  will cause a link error from an old module
 	for (auto& methodRefKV : typeInst->mSpecializedMethodReferences)
-	{			
+	{
 		auto& methodRef = methodRefKV.mKey;
 		auto& specializedMethodRefInfo = methodRefKV.mValue;
-				
+
 		if (checkSpecializedMethodRebuildFlag)
 		{
 			if ((methodRef.mTypeInstance->mRebuildFlags & BfTypeRebuildFlag_SpecializedMethodRebuild) == 0)
@@ -2932,7 +2980,7 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 			if ((methodRef.mTypeInstance->mModule == NULL) ||
 				(methodRef.mTypeInstance->mModule->mRevision != mCompiler->mRevision))
 				continue;
-		}		
+		}
 
 		bool allowMismatch = false;
 		if ((methodRef.mTypeInstance->IsInstanceOf(mCompiler->mInternalTypeDef)) || (methodRef.mTypeInstance->IsInstanceOf(mCompiler->mGCTypeDef)))
@@ -2957,7 +3005,7 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 		specializationRequest->mMethodIdx = methodRef.mMethodNum;
 		//specializationRequest->mMethodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
 		specializationRequest->mMethodGenericArguments = methodRef.mMethodGenericArguments;
-		specializationRequest->mType = methodRef.mTypeInstance;				
+		specializationRequest->mType = methodRef.mTypeInstance;
 
 		BfLogSysM("QueueMethodSpecializations typeInst %p specializationRequest %p methodDef %p fromModule %p\n", typeInst, specializationRequest, methodDef, specializationRequest->mFromModule);
 	}
@@ -3002,27 +3050,49 @@ bool BfContext::IsWorkItemValid(BfWorkListEntry* item)
 	return true;
 }
 
+bool BfContext::IsWorkItemValid(BfMethodInstance* methodInstance)
+{
+	if (methodInstance == NULL)
+		return false;
+
+	for (auto& param : methodInstance->mParams)
+	{
+		if (param.mResolvedType->IsDeleting())
+			return false;
+	}
+
+	if (methodInstance->mMethodInfoEx != NULL)
+	{
+		for (auto genericArg : methodInstance->mMethodInfoEx->mMethodGenericArguments)
+			if (genericArg->IsDeleting())
+				return false;
+	}
+
+	return true;
+}
+
 bool BfContext::IsWorkItemValid(BfMethodProcessRequest* item)
 {
 	// If we had mid-compile rebuilds then we may have deleted types referenced in methods
 	if (mCompiler->mStats.mMidCompileRebuilds == 0)
 		return true;
 
-	if (item->mMethodInstance == NULL)
+	if (!IsWorkItemValid(item->mMethodInstance))
 		return false;
 
-	for (auto& param : item->mMethodInstance->mParams)
-	{
-		if (param.mResolvedType->IsDeleting())
-			return false;
-	}
+	return true;
+}
 
-	if (item->mMethodInstance->mMethodInfoEx != NULL)
-	{
-		for (auto genericArg : item->mMethodInstance->mMethodInfoEx->mMethodGenericArguments)
-			if (genericArg->IsDeleting())
-				return false;
-	}
+bool BfContext::IsWorkItemValid(BfInlineMethodRequest* item)
+{
+	if (mCompiler->mStats.mMidCompileRebuilds == 0)
+		return true;
+
+	if (!IsWorkItemValid(item->mMethodInstance))
+		return false;
+
+	if (item->mMethodInstance->GetOwner()->IsDeleting())
+		return false;
 
 	return true;
 }
@@ -3045,7 +3115,7 @@ bool BfContext::IsWorkItemValid(BfMethodSpecializationRequest* item)
 
 template <typename T>
 void DoRemoveInvalidWorkItems(BfContext* bfContext, WorkQueue<T>& workList, bool requireValidType)
-{	
+{
 	//auto itr = workList.begin();
 	//while (itr != workList.end())
 
@@ -3057,11 +3127,11 @@ void DoRemoveInvalidWorkItems(BfContext* bfContext, WorkQueue<T>& workList, bool
 		auto workItem = workList[workIdx];
 		if (workItem == NULL)
 			continue;
-		
+
 		BfTypeInstance* typeInst = workItem->mType->ToTypeInstance();
 
 		if ((workItem->mType->IsDeleting()) ||
-			(workItem->mType->mRebuildFlags & BfTypeRebuildFlag_Deleted) ||			
+			(workItem->mType->mRebuildFlags & BfTypeRebuildFlag_Deleted) ||
 			((workItem->mRevision != -1) && (typeInst != NULL) && (workItem->mRevision != typeInst->mRevision)) ||
 			((workItem->mSignatureRevision != -1) && (typeInst != NULL) && (workItem->mSignatureRevision != typeInst->mSignatureRevision)) ||
 			((workItem->mFromModuleRevision != -1) && (workItem->mFromModuleRevision != workItem->mFromModule->mRevision)) ||
@@ -3080,18 +3150,18 @@ void DoRemoveInvalidWorkItems(BfContext* bfContext, WorkQueue<T>& workList, bool
 			BfLogSys(bfContext->mSystem, "Removing work item: %p ReqId:%d\n", workItem, workItem->mReqId);
 			ReportRemovedItem(workItem);
 			workIdx = workList.RemoveAt(workIdx);
-			//itr = workList.erase(itr);					
+			//itr = workList.erase(itr);
 		}
 		//else
-			//++itr;		
+			//++itr;
 	}
 }
 
 void BfContext::RemoveInvalidFailTypes()
-{	
+{
 	for (auto itr = mFailTypes.begin(); itr != mFailTypes.end(); )
 	{
-		auto typeInst = *itr;
+		auto typeInst = itr->mKey;
 		BfLogSysM("Checking FailType: %p\n", typeInst);
 		if ((typeInst->IsDeleting()) || (typeInst->mRebuildFlags & BfTypeRebuildFlag_Deleted))
 		{
@@ -3100,13 +3170,13 @@ void BfContext::RemoveInvalidFailTypes()
 		}
 		else
 			itr++;
-	}	
+	}
 }
 
 // These work items are left over from a previous canceled run, OR from explicit method
 //  specializations being rebuilt when the type is rebuilt
 void BfContext::RemoveInvalidWorkItems()
-{	
+{
 	BfLogSysM("RemoveInvalidWorkItems %p\n", this);
 
 	// Delete any request that include deleted types.
@@ -3114,20 +3184,20 @@ void BfContext::RemoveInvalidWorkItems()
 	//  whether or not the type has been reset since these work items were requested
 
 	DoRemoveInvalidWorkItems<BfMethodProcessRequest>(this, mMethodWorkList, true);
-	DoRemoveInvalidWorkItems<BfInlineMethodRequest>(this, mInlineMethodWorkList, true);	
+	DoRemoveInvalidWorkItems<BfInlineMethodRequest>(this, mInlineMethodWorkList, true);
 	//TODO: We used to pass true into requireValidType, but this gets populated from UpdateRevisedTypes right before RemoveInvalidWorkItems,
 	//  so we're passing false in here now.  Don't just switch it back and forth - find why 'false' was causing an issue.
-	//  Same with mMethodSpecializationWorkList	
-	DoRemoveInvalidWorkItems<BfTypeProcessRequest>(this, mPopulateTypeWorkList, false);	
+	//  Same with mMethodSpecializationWorkList
+	DoRemoveInvalidWorkItems<BfTypeProcessRequest>(this, mPopulateTypeWorkList, false);
 	DoRemoveInvalidWorkItems<BfMidCompileRequest>(this, mMidCompileWorkList, false);
 	DoRemoveInvalidWorkItems<BfMethodSpecializationRequest>(this, mMethodSpecializationWorkList, false/*true*/);
 
 	DoRemoveInvalidWorkItems<BfTypeRefVerifyRequest>(this, mTypeRefVerifyWorkList, false);
-	
+
 #ifdef _DEBUG
 	for (auto& workItem : mMethodWorkList)
 	{
-		//BF_ASSERT(workItem.mMethodInstance->mDeclModule != NULL);		
+		//BF_ASSERT(workItem.mMethodInstance->mDeclModule != NULL);
 	}
 
 	for (auto workItem : mMethodSpecializationWorkList)
@@ -3148,40 +3218,40 @@ void BfContext::RemoveInvalidWorkItems()
 		for (auto workListItem : mMethodWorkList)
 		{
 			if ((workListItem != NULL) && (workListItem->mType->IsUnspecializedType()))
-			{				
-				workListItem->mMethodInstance->mIRFunction = BfIRFunction();												
-			}			
+			{
+				workListItem->mMethodInstance->mIRFunction = BfIRFunction();
+			}
 		}
-	}		
-	
+	}
+
 	RemoveInvalidFailTypes();
 }
 
 void BfContext::RemapObject()
-{	
+{
 	if (mCompiler->mBfObjectTypeDef == NULL)
 		return;
 
-	// There are several types that get their LLVM type mapped to Object, so make sure to remap that 
+	// There are several types that get their LLVM type mapped to Object, so make sure to remap that
 	//  for when Object itself gets recreated
-		
+
 	auto objectType = mScratchModule->ResolveTypeDef(mCompiler->mBfObjectTypeDef, BfPopulateType_Declaration);
 	auto objectTypeInst = objectType->ToTypeInstance();
 	if (objectTypeInst->mRevision == mMappedObjectRevision)
 		return;
 	mMappedObjectRevision = objectTypeInst->mRevision;
-	
+
 	for (int paramKind = 0; paramKind < 2; paramKind++)
 	{
 		for (int paramIdx = 0; paramIdx < (int)mGenericParamTypes[paramKind].size(); paramIdx++)
 		{
-			auto genericParam = mGenericParamTypes[paramKind][paramIdx];			
+			auto genericParam = mGenericParamTypes[paramKind][paramIdx];
 			genericParam->mSize = objectType->mSize;
 			genericParam->mAlign = objectType->mAlign;
 		}
 	}
 
-	auto varType = mScratchModule->GetPrimitiveType(BfTypeCode_Var);	
+	auto varType = mScratchModule->GetPrimitiveType(BfTypeCode_Var);
 	varType->mSize = objectType->mSize;
 	varType->mAlign = objectType->mAlign;
 }
@@ -3222,7 +3292,7 @@ void BfContext::TryUnreifyModules()
 	BP_ZONE("BfContext::TryUnreifyModules");
 
 	for (auto module : mModules)
-	{		
+	{
 		if (module->mIsSpecialModule)
 			continue;
 
@@ -3238,7 +3308,7 @@ void BfContext::TryUnreifyModules()
 			if (typeInst->mTypeDef->IsGlobalsContainer())
 				isRequired = true;
 
-			if (typeInst->IsAlwaysInclude())			
+			if (typeInst->IsAlwaysInclude())
 				isRequired = true;
 		}
 
@@ -3258,8 +3328,8 @@ void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 	if (module->mIsScratchModule)
 		return;
 
-	if (project->mUsedModules.Contains(module))	
-		return;	
+	if (project->mUsedModules.Contains(module))
+		return;
 
 	if (!mCompiler->IsModuleAccessible(module, project))
 		return;
@@ -3267,7 +3337,7 @@ void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 	project->mUsedModules.Add(module);
 
 	for (auto& typeDataKV : module->mTypeDataRefs)
-		project->mReferencedTypeData.Add(typeDataKV.mKey);	
+		project->mReferencedTypeData.Add(typeDataKV.mKey);
 
 	for (auto& slotKV : module->mInterfaceSlotRefs)
 	{
@@ -3276,7 +3346,7 @@ void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 			mCompiler->mHotState->mHasNewInterfaceTypes = true;
 		mReferencedIFaceSlots.Add(typeInstance);
 	}
-	
+
 	for (auto& kv : module->mStaticFieldRefs)
 	{
 		auto& fieldRef = kv.mKey;
@@ -3289,7 +3359,7 @@ void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 
 	module->mLastUsedRevision = mCompiler->mRevision;
 	for (auto usedModule : module->mModuleRefs)
-	{		
+	{
 		MarkUsedModules(project, usedModule);
 	}
 
@@ -3300,8 +3370,7 @@ void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 }
 
 void BfContext::Finish()
-{		
-	
+{
 }
 
 void BfContext::Cleanup()
@@ -3309,7 +3378,7 @@ void BfContext::Cleanup()
 	BfLogSysM("BfContext::Cleanup() MethodWorkList: %d LocalMethodGraveyard: %d\n", mMethodWorkList.size(), mLocalMethodGraveyard.size());
 
 	// Can't clean up LLVM types, they are allocated with a bump allocator
-	RemoveInvalidFailTypes();	
+	RemoveInvalidFailTypes();
 
 	mCompiler->mCompileState = BfCompiler::CompileState_Cleanup;
 
@@ -3359,7 +3428,7 @@ void BfContext::Cleanup()
 	// These need to get deleted before the modules because we access mModule in the MethodInstance dtors
 	for (int pass = 0; pass < 2; pass++)
 	{
-		for (int i = 0; i < (int)mTypeGraveyard.size(); i++)		
+		for (int i = 0; i < (int)mTypeGraveyard.size(); i++)
 		{
 			auto type = mTypeGraveyard[i];
 			if (type == NULL)
@@ -3383,7 +3452,7 @@ void BfContext::Cleanup()
 			for (auto itr = project->mUsedModules.begin(); itr != project->mUsedModules.end(); )
 			{
 				auto module = *itr;
-				
+
 				if (module->mIsDeleting)
 					itr = project->mUsedModules.Remove(itr);
 				else
@@ -3398,8 +3467,8 @@ void BfContext::Cleanup()
 	for (auto module : mDeletingModules)
 	{
 		int idx = (int)mFinishedModuleWorkList.IndexOf(module);
-		if (idx != -1)		
-			mFinishedModuleWorkList.RemoveAt(idx);		
+		if (idx != -1)
+			mFinishedModuleWorkList.RemoveAt(idx);
 
 		idx = (int)mFinishedSlotAwaitModuleWorkList.IndexOf(module);
 		if (idx != -1)
@@ -3407,15 +3476,14 @@ void BfContext::Cleanup()
 
 		delete module;
 	}
-	mDeletingModules.Clear();	
-	
+	mDeletingModules.Clear();
+
 	for (auto typeDef : mTypeDefGraveyard)
 		delete typeDef;
-	mTypeDefGraveyard.Clear();	
-		
+	mTypeDefGraveyard.Clear();
+
 	mScratchModule->Cleanup();
 	mUnreifiedModule->Cleanup();
-	for (auto module : mModules)		
+	for (auto module : mModules)
 		module->Cleanup();
 }
-

@@ -72,11 +72,6 @@ namespace System
 			return &mVAList;
 #endif
 		}
-
-		public void* ToVAListPtr() mut
-		{
-			return &mVAList;
-		}
 	}
 
 	[AlwaysInclude]
@@ -88,6 +83,8 @@ namespace System
 		public static extern void* UnsafeCastToPtr(Object obj);
 		[CallingConvention(.Cdecl), NoReturn]
 		public static extern void ThrowIndexOutOfRange(int stackOffset = 0);
+		[CallingConvention(.Cdecl), NoReturn]
+		public static extern void ThrowObjectNotInitialized(int stackOffset = 0);
 		[CallingConvention(.Cdecl), NoReturn]
 		public static extern void FatalError(String error, int stackOffset = 0);
 		[Intrinsic("memcpy")]

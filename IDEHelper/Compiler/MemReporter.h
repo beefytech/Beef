@@ -36,24 +36,24 @@ public:
 	Entry* mCurEntry;
 	bool mShowInKB;
 
-public:	
+public:
 	int GetChildSizes(Entry* entry);
 	void Report(int depth, Entry* entry);
 
-public:	
+public:
 	MemReporter();
 	~MemReporter();
 
 	void BeginSection(const StringView& name);
 	void Add(int size);
 	void Add(const StringView& name, int size);
-	
+
 	template <typename T>
 	void AddVec(const T& vec, bool addContainerSize = true)
 	{
 		Add((addContainerSize ? sizeof(T) : 0) + (int)vec.mAllocSize * sizeof(typename T::value_type));
 	}
-	
+
 	template <typename T>
 	void AddVec(const StringView& name, const T& vec, bool addContainerSize = true)
 	{
@@ -61,21 +61,21 @@ public:
 		Add((addContainerSize ? sizeof(T) : 0) + (int)vec.mAllocSize * sizeof(typename T::value_type));
 		EndSection();
 	}
-	
+
 	template <typename T>
 	void AddVecPtr(const std::vector<T>& vec, bool addContainerSize = true)
 	{
 		Add((addContainerSize ? sizeof(T) : 0) +
-			(int)vec.capacity() * sizeof(T) + 
+			(int)vec.capacity() * sizeof(T) +
 			(int)vec.size() * sizeof(typename std::remove_pointer<T>::type)); //-V220
 	}
-	
+
 	template <typename T>
 	void AddVecPtr(const Array<T>& vec, bool addContainerSize = true)
 	{
 		Add((addContainerSize ? sizeof(T) : 0) +
 			(int)vec.mAllocSize * sizeof(T) +
-			(int)vec.size() * sizeof(typename std::remove_pointer<T>::type)); //-V220		
+			(int)vec.size() * sizeof(typename std::remove_pointer<T>::type)); //-V220
 	}
 
 	template <typename T>
@@ -83,12 +83,12 @@ public:
 	{
 		Add(name, (addContainerSize ? sizeof(T) : 0) +
 			(int)vec.mAllocSize * sizeof(T) +
-			(int)vec.size() * sizeof(typename std::remove_pointer<T>::type)); //-V220		
+			(int)vec.size() * sizeof(typename std::remove_pointer<T>::type)); //-V220
 	}
 
 	template <typename T>
 	void AddMap(const StringView& name, const T& map, bool addContainerSize = true)
-	{		
+	{
 		Add(name, (addContainerSize ? sizeof(T) : 0) + map.mAllocSize * (sizeof(typename T::EntryPair) + sizeof(typename T::int_cosize)));
 	}
 
@@ -109,7 +109,7 @@ public:
 	{
 		Add((addContainerSize ? sizeof(T) : 0) + map.mAllocSize * (sizeof(typename T::Entry) + sizeof(typename T::int_cosize)));
 	}
-	
+
 	void AddStr(const StringImpl& str, bool addContainerSize = true)
 	{
 		Add((addContainerSize ? sizeof(StringImpl) : 0) + (int)str.GetAllocSize());
@@ -123,12 +123,11 @@ public:
 	void EndSection();
 	void Report();
 
-
 	template <typename T>
 	void AddBumpAlloc(const StringView& name, const T& alloc)
-	{		
+	{
 		BeginSection(name);
-				
+
 		int usedSize = alloc.CalcUsedSize();
 #ifdef BUMPALLOC_TRACKALLOCS
 
@@ -162,9 +161,9 @@ public:
 			Add("Unaccounted", usedSizeLeft);
 #else
 		Add("Used", usedSize);
-#endif		
+#endif
 		Add("Waste", alloc.GetAllocSize() - usedSize);
-		Add("Unused", alloc.GetTotalAllocSize() - alloc.GetAllocSize());		
+		Add("Unused", alloc.GetTotalAllocSize() - alloc.GetAllocSize());
 
 		EndSection();
 	}
@@ -173,7 +172,7 @@ public:
 class AutoMemReporter
 {
 public:
-	MemReporter* mMemReporter;	
+	MemReporter* mMemReporter;
 
 public:
 	AutoMemReporter(MemReporter* memReporter, const StringImpl& name)

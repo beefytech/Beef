@@ -42,6 +42,7 @@ namespace System
 		public struct BfpEvent {};
 		public struct BfpFileWatcher {}
 		public struct BfpProcess {}
+		public struct BfpTLS;
 
 		public enum BfpSystemResult : int32
 		{
@@ -94,6 +95,18 @@ namespace System
 		public static extern void BfpSystem_CreateGUID(Guid* outGuid);
 		[CallingConvention(.Stdcall), CLink]
 		public static extern void BfpSystem_GetComputerName(char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult);
+
+		[CallingConvention(.Stdcall), CLink]
+		public static extern int BfpThread_GetCurrentId();
+
+		[CallingConvention(.Stdcall), CLink]
+		public static extern BfpTLS* BfpTLS_Create(function [CallingConvention(.Stdcall)] void(void*) exitProc);
+		[CallingConvention(.Stdcall), CLink]
+		public static extern void BfpTLS_Release(BfpTLS* tls);
+		[CallingConvention(.Stdcall), CLink]
+		public static extern void BfpTLS_SetValue(BfpTLS* tls, void* value);
+		[CallingConvention(.Stdcall), CLink]
+		public static extern void* BfpTLS_GetValue(BfpTLS* tls);
 
 		public enum BfpFileWatcherFlags : int32
 		{

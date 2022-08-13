@@ -19,7 +19,7 @@ public:
 			{
 				idx++;
 				break;
-			}			
+			}
 			idx++;
 		}
 		return idx;
@@ -37,10 +37,10 @@ public:
 		{
 			char c = source->mSrc[idx];
 			if (c == '\n')
-			{		
+			{
 				idx++;
 				break;
-			}			
+			}
 			idx--;
 		}
 		return idx;
@@ -67,13 +67,13 @@ public:
 
 	virtual void Visit(BfUsingDirective* usingDirective) override
 	{
-		mLastIdx = FindLineStartAfter(usingDirective->GetSourceData(), usingDirective->GetSrcEnd());		
+		mLastIdx = FindLineStartAfter(usingDirective->GetSourceData(), usingDirective->GetSrcEnd());
 	}
 
 	virtual void Visit(BfNamespaceDeclaration* namespaceDecl) override
 	{
 		if (mFromIdx != -1)
-		{ 
+		{
 			if ((mFromIdx < namespaceDecl->mSrcStart) || (mFromIdx >= namespaceDecl->mSrcEnd))
 			{
 				// Not inside

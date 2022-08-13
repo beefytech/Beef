@@ -192,8 +192,18 @@ namespace System
 
 		[CLink]
 		private static extern double modf(double x, out double intpart);
+
+#if BF_PLATFORM_WINDOWS && BF_64_BIT
 		[CLink]
 		private static extern float modff(float x, out float intpart);
+#else
+		private static float modff(float x, out float intpart)
+		{
+			var f = modf(x, var i);
+			intpart = (.)i;
+			return (.)f;
+		}
+#endif
 
 		public static float Truncate(float f)
 		{

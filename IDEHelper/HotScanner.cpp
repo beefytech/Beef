@@ -12,7 +12,7 @@ DbgHotScanner::DbgHotScanner(WinDebugger* debugger)
 
 NS_BF_DBG_BEGIN
 namespace TCFake
-{	
+{
 	struct Span
 	{
 		addr_target   start;          // Starting page number
@@ -45,7 +45,7 @@ struct Fake_BfObject_WithFlags
 {
 	union
 	{
-		addr_target mClassVData;		
+		addr_target mClassVData;
 		struct
 		{
 			BfObjectFlags mObjectFlags;
@@ -154,15 +154,15 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 	intptr pageSize = (intptr)1 << kPageShift;
 	int spanSize = pageSize * span->length;
 	addr_target spanStart = ((addr_target)span->start << kPageShift);
-	
+
 	if (spanSize > mScanData.size())
 	{
 		mScanData.Resize(spanSize);
 	}
 	void* spanPtr = &mScanData[0];
-	mDebugger->ReadMemory(spanStart, spanSize, spanPtr);	
+	mDebugger->ReadMemory(spanStart, spanSize, spanPtr);
 	void* spanEnd = (void*)((intptr)spanPtr + spanSize);
-	
+
 	//BF_LOGASSERT((spanStart >= TCFake::PageHeap::sAddressStart) && (spanEnd <= TCFake::PageHeap::sAddressEnd));
 
 	int elementSize = mDbgGCData.mSizeClasses[span->sizeclass];
@@ -182,6 +182,10 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 	};
 
 	int objectSize = ((mDbgGCData.mDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0) ? sizeof(addr_target)*2 : sizeof(addr_target);
+
+	mDebugger->mDebugTarget->GetCompilerSettings();
+	if (mDebugger->mDebugTarget->mBfObjectSize != 0)
+		objectSize = mDebugger->mDebugTarget->mBfObjectSize;
 
 	while (spanPtr <= (uint8*)spanEnd - elementSize)
 	{
@@ -211,9 +215,8 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 					if ((mDbgGCData.mDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
 						classVDataAddr = classVDataAddr & ~0xFF;
 				}
-				else 
+				else
 				{
-
 					int* rawTypeIdPtr = NULL;
 					if (mFoundRawAllocDataAddrs.TryAdd(rawAllocDataAddr, NULL, &rawTypeIdPtr))
 					{
@@ -231,8 +234,8 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 									*typeAddrIdPtr = typeData.mTypeId;
 									*rawTypeIdPtr = typeData.mTypeId;
 									_MarkTypeUsed(typeData.mTypeId, elementSize);
-								}								
-							}							
+								}
+							}
 							else
 							{
 								_MarkTypeUsed(*typeAddrIdPtr, elementSize);
@@ -249,7 +252,7 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 
 		if (classVDataAddr != 0)
 		{
-			int* typeIdPtr = NULL;			
+			int* typeIdPtr = NULL;
 			if (mFoundClassVDataAddrs.TryAdd(classVDataAddr, NULL, &typeIdPtr))
 			{
 				addr_target typeAddr = mDebugger->ReadMemory<addr_target>(classVDataAddr);
@@ -271,7 +274,7 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 			}
 			else
 			{
-				_MarkTypeUsed(*typeIdPtr, elementSize);				
+				_MarkTypeUsed(*typeIdPtr, elementSize);
 			}
 		}
 
@@ -296,7 +299,7 @@ void DbgHotScanner::ScanRoot(addr_target rootPtr, int memKind)
 			if (spanAddr == 0)
 				continue;
 
-			int expectedStartPage = (rootIdx * PageHeap::PageMap::LEAF_LENGTH) + leafIdx;			
+			int expectedStartPage = (rootIdx * PageHeap::PageMap::LEAF_LENGTH) + leafIdx;
 			TCFake::Span span;
 			mDebugger->ReadMemory(spanAddr, sizeof(span), &span);
 			ScanSpan(&span, expectedStartPage, memKind);
@@ -367,7 +370,7 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 
 		bool success = mDebugger->ReadMemory(gcDbgDataAddr, sizeof(DbgGCData), &mDbgGCData);
 		if (!success)
-		{ 
+		{
 			BF_ASSERT("Failed to read DbgGCData");
 			success = mDebugger->ReadMemory(gcDbgDataAddr, sizeof(DbgGCData), &mDbgGCData);
 		}
@@ -376,7 +379,7 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 		if (mDbgGCData.mObjRootPtr != NULL)
 			ScanRoot(mDbgGCData.mObjRootPtr, 0);
 		if (mDbgGCData.mRawRootPtr != NULL)
-			ScanRoot(mDbgGCData.mRawRootPtr, 1);		
+			ScanRoot(mDbgGCData.mRawRootPtr, 1);
 	}
 
 	if ((prevRunState == RunState_Running) && ((flags & DbgHotResolveFlag_KeepThreadState) == 0))

@@ -342,5 +342,112 @@ namespace IDETest
 			int b3 = b; //FAIL
 			int c3 = c; //FAIL
 		}
+
+		Result<int> Read()
+		{
+		    return 0;
+		}
+
+		public void Local8()
+		{
+		    int read;
+		    loop: repeat
+		    {
+		        switch (Read())
+		        {
+		            case .Err: return;
+		            case .Ok(let val): read = val;
+		        }
+		    }
+		    while (read > 0);
+		}
+
+		public void Local9()
+		{
+		    int read;
+		    loop: repeat
+		    {
+		        switch (Read())
+		        {
+		            case .Err: break loop;
+		            case .Ok(let val): read = val;
+		        }
+				int a = read;
+		    }
+		    while (read > 0);
+		}
+
+		public void Local10()
+		{
+		    int read;
+		    loop: repeat
+		    {
+		        switch (Read())
+		        {
+		            case .Err: break;
+		            case .Ok(let val): read = val;
+		        }
+				int a = read; //FAIL
+		    }
+		    while (read > 0); //FAIL
+		}
+
+		public void Local11()
+		{
+			int a = 123;
+
+		    int read;
+		    Loop: repeat
+		    {
+		        break;
+		    }
+		    while (read > 0);
+		}
+
+		public void Local12()
+		{
+			int a = 123;
+
+		    int read;
+		    Loop: repeat
+		    {
+				if (a == 123)
+		        	break;
+		    }
+		    while (read > 0); //FAIL
+		}
+
+		public void Local13()
+		{
+			int a = 123;
+			int b;
+			switch (a)
+			{
+			default: b = 0;
+			}
+			int c = b;
+		}
+
+		public void Local14()
+		{
+			int a = 123;
+			int b;
+			switch (a)
+			{
+			default: b = 0; break;
+			}
+			int c = b;
+		}
+
+		public void Local15()
+		{
+			int a = 123;
+			int b;
+			switch (a)
+			{
+			default: break;
+			}
+			int c = b; //FAIL
+		}
 	}
 }

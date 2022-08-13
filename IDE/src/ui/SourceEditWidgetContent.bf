@@ -14,6 +14,8 @@ using IDE.Debugger;
 using IDE.Compiler;
 using Beefy.geom;
 using Beefy.events;
+using System.Security.Cryptography;
+using System.IO;
 
 namespace IDE.ui
 {    
@@ -224,7 +226,7 @@ namespace IDE.ui
 				{
 					mTypeName = new .(emitEmbed.mTypeName);
 					mEmitEmbed = emitEmbed;
-					mSourceViewPanel = new SourceViewPanel((emitEmbed.mEmitKind == .Method) ? .Method : .Type);
+					mSourceViewPanel = new SourceViewPanel((emitEmbed.mEmitKind == .Emit_Method) ? .Method : .Type);
 					mSourceViewPanel.mEmbedParent = mEmitEmbed.mEditWidgetContent.mSourceViewPanel;
 					var emitPath = scope $"$Emit${emitEmbed.mTypeName}";
 
@@ -382,7 +384,7 @@ namespace IDE.ui
 					}
 
 					mAwaitingLoad = false;
-					if (!mEmitRemoved)
+					if ((!mEmitRemoved) && (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve))
 					{
 						for (var explicitTypeName in mEmitEmbed.mEditWidgetContent.mSourceViewPanel.[Friend]mExplicitEmitTypes)
 						{
@@ -397,6 +399,9 @@ namespace IDE.ui
 
 					if ((mAwaitingLoad) && (gApp.mUpdateCnt % 4 == 0))
 						MarkDirty();
+
+					if (mSourceViewPanel.HasFocus())
+						mEmitEmbed.mEditWidgetContent.mEmbedSelected = mEmitEmbed;
 				}
 
 				public void GetGenericTypes()
@@ -516,6 +521,10 @@ namespace IDE.ui
 			public int32 mEndLine;
 			public View mView;
 
+			public this()
+			{
+			}
+
 			public ~this()
 			{
 				if (mView != null)
@@ -525,17 +534,29 @@ namespace IDE.ui
 				}
 			}
 
+			public bool IsSelected => mEditWidgetContent.mEmbedSelected == this;
+			public float LabelWidth = GS!(42);
+			
 			public override float GetWidth(bool hideLine)
 			{
-				return GS!(42);
+				return IsSelected ? GS!(60) : LabelWidth;
 			}
 
 			public override void Draw(Graphics g, Rect rect, bool hideLine)
 			{
+				var rect;
+				rect.mWidth = LabelWidth;
+
 				if (rect.mHeight >= DarkTheme.sDarkTheme.mSmallBoldFont.GetLineSpacing())
 					g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
 
-				using (g.PushColor(0x80707070))
+				uint32 fillColor = 0x80707070;
+				if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Build)
+				{
+					fillColor = 0x805050E0;
+				}
+
+				using (g.PushColor(fillColor))
 				{
 					g.FillRect(rect.mX + 1, rect.mY + 1, rect.mWidth - 2, rect.mHeight - 2);
 				}
@@ -558,6 +579,40 @@ namespace IDE.ui
 
 				var summaryString = "Emit";
 				g.DrawString(summaryString, rect.mX, rect.mY + (int)((rect.mHeight - g.mFont.GetLineSpacing()) * 0.5f), .Centered, rect.mWidth);
+
+				if (IsSelected)
+				{
+					g.Draw(DarkTheme.sDarkTheme.GetImage(.DropMenuButton), rect.Right, rect.Top);
+				}
+			}
+
+			public override void MouseDown(Rect rect, float x, float y, int btn, int btnCount)
+			{
+				base.MouseDown(rect, x, y, btn, btnCount);
+				if (x >= rect.mX + LabelWidth)
+					ShowMenu(x, y);
+			}
+
+			public void ShowMenu(float x, float y)
+			{
+				Menu menuItem;
+
+				Menu menu = new Menu();
+				menuItem = menu.AddItem("Compiler");
+
+				var subItem = menuItem.AddItem("Resolve");
+				if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve)
+					subItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+				subItem.mOnMenuItemSelected.Add(new (menu) => { gApp.SetEmbedCompiler(.Resolve); });
+
+				subItem = menuItem.AddItem("Build");
+				if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Build)
+					subItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+				subItem.mOnMenuItemSelected.Add(new (menu) => { gApp.SetEmbedCompiler(.Build); });
+
+				MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+
+				menuWidget.Init(mEditWidgetContent, x, y);
 			}
 		}
 
@@ -575,10 +630,11 @@ namespace IDE.ui
 				case UsingNamespaces = 'U';
 				case Unknown = '?';
 				case HasUncertainEmits = '~';
-				case Emit = 'e';
+				case Emit_Type = 't';
+				case Emit_Method = 'm';
 				case EmitAddType = '+';
 
-				public bool IsEmit => (this == .Emit);
+				public bool IsEmit => (this == .Emit_Type) || (this == .Emit_Method);
 			}
 
 			public Kind mKind;
@@ -602,6 +658,8 @@ namespace IDE.ui
 			public int32 mParseRevision;
 			public int32 mTextRevision;
 			public bool mDeleted;
+
+			public bool DefaultOpen => mKind != .Region;
 		}
 
 		public struct EmitData
@@ -614,6 +672,7 @@ namespace IDE.ui
 			public bool mOnlyInResolveAll;
 			public bool mIncludedInClassify;
 			public bool mIncludedInResolveAll;
+			public bool mIncludedInBuild;
 
 			public int32 mAnchorId;
 		}
@@ -757,6 +816,8 @@ namespace IDE.ui
 		public int32 mCollapseTextVersionId;
 		public bool mCollapseNeedsUpdate;
 		public bool mCollapseNoCheckOpen;
+		public bool mCollapseDBDirty;
+		public bool mCollapseAwaitingDB = true;
 
 		public List<PersistentTextPosition> PersistentTextPositions
 		{
@@ -1784,7 +1845,19 @@ namespace IDE.ui
                 int line;
                 int lineChar;
                 GetCursorLineChar(out line, out lineChar);
-                return IDEApp.sApp.mHistoryManager.CreateHistory(mSourceViewPanel, mSourceViewPanel.mFilePath, line, lineChar, ignoreIfClose);
+
+				String useFilePath = mSourceViewPanel.mFilePath;
+				if ((mSourceViewPanel.mFilePath.StartsWith("$Emit$")) &&
+					(!mSourceViewPanel.mFilePath.StartsWith("$Emit$Build$")) &&
+					(!mSourceViewPanel.mFilePath.StartsWith("$Emit$Resolve$")))
+				{
+					if (gApp.mSettings.mEditorSettings.mEmitCompiler == .Resolve)
+						useFilePath = scope:: String("$Emit$Resolve$")..Append(mSourceViewPanel.mFilePath.Substring("$Emit$".Length));
+					else
+						useFilePath = scope:: String("$Emit$Build$")..Append(mSourceViewPanel.mFilePath.Substring("$Emit$".Length));
+				}
+
+                return IDEApp.sApp.mHistoryManager.CreateHistory(mSourceViewPanel, useFilePath, line, lineChar, ignoreIfClose);
             }
 			return null;
         }
@@ -3901,7 +3974,7 @@ namespace IDE.ui
 				prevChar = mData.mText[cursorTextPos - 1].mChar;
 			}
 
-            if (((keyChar == '\n') || (keyChar == '\r')) && (mIsMultiline) && (!CheckReadOnly()))
+            if (((keyChar == '\n') || (keyChar == '\r')) && (!HasSelection()) && (mIsMultiline) && (!CheckReadOnly()))
             {
                 UndoBatchStart undoBatchStart = new UndoBatchStart("newline");
                 mData.mUndoManager.Add(undoBatchStart);                
@@ -4408,6 +4481,7 @@ namespace IDE.ui
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
         {
 			mIgnoreKeyChar = false;
+			mEmbedSelected = null;
 
 			bool autoCompleteRequireControl = (gApp.mSettings.mEditorSettings.mAutoCompleteRequireControl) && (mIsMultiline);
 
@@ -4463,7 +4537,6 @@ namespace IDE.ui
             {
                 return;
             }
-                       
 
             if ((keyCode == KeyCode.Escape) && (mSelection != null) && (mSelection.Value.HasSelection))
             {
@@ -4696,6 +4769,23 @@ namespace IDE.ui
         {
             base.MouseClicked(x, y, origX, origY, btn);
 
+			if (btn == 1)
+			{
+				int line = GetLineAt(y);
+				if (mEmbeds.GetValue((.)line) case .Ok(let embed))
+				{
+					Rect embedRect = GetEmbedRect(line, embed);
+					if (embedRect.Contains(x, y))
+					{
+						if (var emitEmbed = embed as EmitEmbed)
+						{
+							emitEmbed.ShowMenu(x, y);
+						}
+						return;
+					}
+				}
+			}
+
 			var useX = x;
 			var useY = y;
 
@@ -4735,15 +4825,15 @@ namespace IDE.ui
 					{
 	                    Menu menuItem;
 
-						menuItem = menu.AddItem("Go to Definition");
+						menuItem = gApp.AddMenuItem(menu, "Go to Definition", "Goto Definition");
 						menuItem.SetDisabled(!hasText);
 	                    menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.GoToDefinition(true));
 
-						menuItem = menu.AddItem("Find All References");
+						menuItem = gApp.AddMenuItem(menu, "Find All References");
 						menuItem.SetDisabled(!hasText);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.Cmd_FindAllReferences());
 
-						menuItem = menu.AddItem("Rename Symbol");
+						menuItem = gApp.AddMenuItem(menu, "Rename Symbol");
 						menuItem.SetDisabled(!hasText);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.Cmd_RenameSymbol());
 
@@ -4823,7 +4913,12 @@ namespace IDE.ui
 											var autoComplete = new AutoComplete(mEditWidget);
 											autoComplete.SetInfo(infoCopy);
 											autoComplete.mAutoCompleteListWidget.mSelectIdx = fixitIdx;
+
+											UndoBatchStart undoBatchStart = new UndoBatchStart("autocomplete");
+											mData.mUndoManager.Add(undoBatchStart);
 											autoComplete.InsertSelection(0);
+											mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+
 											autoComplete.Close();
 										}
 										~
@@ -4866,9 +4961,13 @@ namespace IDE.ui
 						menu.AddItem();
 						var debugger = IDEApp.sApp.mDebugger;
 						bool isPaused = debugger.IsPaused();
-						menuItem = menu.AddItem("Show Disassembly");
+						menuItem = gApp.AddMenuItem(menu, "Show Disassembly");
 						menuItem.SetDisabled(!isPaused);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.ShowDisassemblyAtCursor());
+
+						menuItem = gApp.AddMenuItem(menu, "Set Next Statement");
+						menuItem.SetDisabled(!isPaused);
+						menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.[Friend]SetNextStatement());
 
 					    var stepIntoSpecificMenu = menu.AddItem("Step into Specific");
 						stepIntoSpecificMenu.SetDisabled(!isPaused);
@@ -5019,20 +5118,26 @@ namespace IDE.ui
 				Rect embedRect = GetEmbedRect(line, embed);
 				if (embedRect.Contains(x, y))
 				{
-					if ((btn == 0) && (btnCount % 2 == 0))
+					mEmbedSelected = embed;
+					embed.MouseDown(GetEmbedRect(line, embed), x, y, btn, btnCount);
+					if (btn == 0)
 					{
-						if (var collapseSummary = embed as SourceEditWidgetContent.CollapseSummary)
-							SetCollapseOpen(collapseSummary.mCollapseIndex, true);
-						else if (var emitEmbed = embed as EmitEmbed)
+						if (btnCount % 2 == 0)
 						{
-							emitEmbed.mIsOpen = !emitEmbed.mIsOpen;
-							mCollapseNeedsUpdate = true;
+							if (var collapseSummary = embed as SourceEditWidgetContent.CollapseSummary)
+								SetCollapseOpen(collapseSummary.mCollapseIndex, true);
+							else if (var emitEmbed = embed as EmitEmbed)
+							{
+								emitEmbed.mIsOpen = !emitEmbed.mIsOpen;
+								mCollapseNeedsUpdate = true;
+							}
 						}
 					}
 					return;
 				}
 			}
 
+			mEmbedSelected = null;
 			base.MouseDown(x, y, btn, btnCount);
 		}
 
@@ -5727,6 +5832,13 @@ namespace IDE.ui
 			}
 		}
 
+		void DeleteEmbed(Embed embed)
+		{
+			if (mEmbedSelected == embed)
+				mEmbedSelected = null;
+			delete embed;
+		}
+
 		public override void GetTextData()
 		{
 			var data = Data;
@@ -5755,8 +5867,14 @@ namespace IDE.ui
 					}
 				}
 
+				IdSpan.LookupContext lookupCtx = null;
+
 				for (var emitData in ref data.mEmitData)
 				{
+					if (lookupCtx == null)
+						lookupCtx = scope:: .(mData.mTextIdData);
+					emitData.mAnchorIdx = (.)lookupCtx.GetIndexFromId(emitData.mAnchorId);
+
 					GetLineCharAtIdx(emitData.mAnchorIdx, var line, var lineChar);
 
 					SourceEditWidgetContent.EmitEmbed emitEmbed = null;
@@ -5776,7 +5894,7 @@ namespace IDE.ui
 							else
 							{
 								//Debug.WriteLine($"  Occupied- deleting {emitEmbed}");
-								delete emitEmbed;
+								DeleteEmbed(emitEmbed);
 								emitEmbed = null;
 							}
 						}
@@ -5837,13 +5955,14 @@ namespace IDE.ui
 					{
 						mCollapseNeedsUpdate = true;
 						mEmbeds.Remove(emitEmbed.mLine);
-						delete emitEmbed;
+						DeleteEmbed(emitEmbed);
 					}
 				}
 
 				for (var collapseData in ref data.mCollapseData)
 				{
-					if (mCollapseMap.TryAdd(collapseData.mAnchorId, ?, var entry))
+					bool isNew = mCollapseMap.TryAdd(collapseData.mAnchorId, ?, var entry);
+					if (isNew)
 					{
 						*entry = .();
 					}
@@ -5852,6 +5971,12 @@ namespace IDE.ui
 					entry.mPrevAnchorLine = prevAnchorLine;
 					entry.mParseRevision = mCollapseParseRevision;
 					entry.mDeleted = false;
+
+					if ((isNew) && (!entry.DefaultOpen) && (!mCollapseAwaitingDB))
+					{
+						// Likely a '#region' that we need to serialize as being open
+						mCollapseDBDirty = true;
+					}
 				}
 
 				for (var entry in ref mCollapseMap.Values)
@@ -5863,7 +5988,7 @@ namespace IDE.ui
 							if (!(value is EmitEmbed))
 							{
 								mEmbeds.Remove(entry.mAnchorLine);
-								delete value;
+								DeleteEmbed(value);
 							}
 						}
 						@entry.Remove();
@@ -5888,7 +6013,7 @@ namespace IDE.ui
 						{
 							//Debug.WriteLine($" Removing {val.value}");
 							if (val.value is CollapseSummary)
-								delete val.value;
+								DeleteEmbed(val.value);
 						}
 						continue;
 					}
@@ -5914,10 +6039,67 @@ namespace IDE.ui
 						else
 						{
 							//Debug.WriteLine($" Deleting(3) {val}");
-							delete val;
+							DeleteEmbed(val);
 						}
 					}
 				}
+
+#if !CLI
+				if ((mCollapseAwaitingDB) && (mSourceViewPanel != null))
+				{
+					String filePath = scope .(mSourceViewPanel.mFilePath);
+					IDEUtils.MakeComparableFilePath(filePath);
+
+					HashSet<int32> toggledIndices = scope .();
+
+					List<uint8> dbData = scope .();
+					if (gApp.mFileRecovery.GetDB(filePath, dbData))
+					{
+						MemoryStream memStream = scope .(dbData, false);
+						var dbHash = memStream.Read<MD5Hash>().GetValueOrDefault();
+
+						String text = scope .();
+						mEditWidget.GetText(text);
+						var curHash = MD5.Hash(.((uint8*)text.Ptr, text.Length));
+						if (curHash == dbHash)
+						{
+							while (true)
+							{
+								if (memStream.Read<int32>() case .Ok(let idx))
+								{
+									// We recorded indices, which (upon load) will generate an id of idx+1
+									toggledIndices.Add(idx + 1);
+								}
+								else
+									break;
+							}
+						}
+					}
+
+					bool wasCursorVisible = IsCursorVisible();
+					bool hadCloses = false;
+					for (var collapseEntry in mOrderedCollapseEntries)
+					{
+						bool wantOpen = collapseEntry.DefaultOpen;
+						if (toggledIndices.Contains(collapseEntry.mAnchorId))
+							wantOpen = !wantOpen;
+
+						if (collapseEntry.mIsOpen != wantOpen)
+						{
+							if (!wantOpen)
+								hadCloses = true;
+							SetCollapseOpen(@collapseEntry.Index, wantOpen, true, true);
+						}
+					}
+					if ((wasCursorVisible) && (hadCloses))
+					{
+						UpdateCollapse(0.0f);
+						EnsureCursorVisible();
+					}
+
+					mCollapseAwaitingDB = false;
+				}
+#endif
 
 				//Debug.WriteLine($"ParseCollapseRegions Count:{mOrderedCollapseEntries.Count} Time:{sw.ElapsedMilliseconds}ms");
 			}
@@ -6221,17 +6403,26 @@ namespace IDE.ui
 		}
 
 		
-		public void SetCollapseOpen(int collapseIdx, bool wantOpen, bool immediate = false)
+		public void SetCollapseOpen(int collapseIdx, bool wantOpen, bool immediate = false, bool keepCursorVisible = false)
 		{
 			var entry = mOrderedCollapseEntries[collapseIdx];
+
+			var cursorLineAndColumn = CursorLineAndColumn;
+
+			if ((!wantOpen) && (keepCursorVisible) && (cursorLineAndColumn.mLine >= entry.mStartLine) && (cursorLineAndColumn.mLine <= entry.mEndLine))
+			{
+				if (CursorTextPos < entry.mEndIdx)
+				{
+					// Ignore close
+					return;
+				}
+			}
 
 			entry.mIsOpen = wantOpen;
 			if (immediate)
 				entry.mOpenPct = entry.mIsOpen ? 1.0f : 0.0f;
-			else
-				mCollapseNeedsUpdate = true;
-
-			var cursorLineAndColumn = CursorLineAndColumn;
+			mCollapseNeedsUpdate = true;
+			mCollapseDBDirty = true;
 
 			if (wantOpen)
 			{
@@ -6241,7 +6432,7 @@ namespace IDE.ui
 					{
 						if ((embed.mKind == .HideLine) || (embed.mKind == .LineEnd))
 						{
-							delete embed;
+							DeleteEmbed(embed);
 							mEmbeds.Remove(entry.mAnchorLine);
 						}
 					}
@@ -6283,7 +6474,7 @@ namespace IDE.ui
 					if (!(value is EmitEmbed))
 					{
 						mEmbeds.Remove(prevAnchorLine);
-						delete value;
+						DeleteEmbed(value);
 					}
 				}
 
@@ -6304,7 +6495,7 @@ namespace IDE.ui
 					else
 					{
 						//Debug.WriteLine($"  Occupied- deleting {val}");
-						delete val.value;
+						DeleteEmbed(val.value);
 					}
 				}
 			}
@@ -6360,7 +6551,7 @@ namespace IDE.ui
 				if (entry.mDeleted)
 				{
 					if (mEmbeds.GetAndRemove(entry.mAnchorIdx) case .Ok(let val))
-						delete val.value;
+						DeleteEmbed(val.value);
 					continue;
 				}
 
@@ -6388,7 +6579,7 @@ namespace IDE.ui
 								*valuePtr = val.value;
 							}
 							else
-								delete val.value;
+								DeleteEmbed(val.value);
 						}
 					}
 				}
@@ -6401,7 +6592,7 @@ namespace IDE.ui
 				RehupLineCoords();
 		}
 
-		public void ParseCollapseRegions(String collapseText, int32 textVersion, ref IdSpan idSpan, ResolveType resolveType)
+		public void ParseCollapseRegions(String collapseText, int32 textVersion, ref IdSpan idSpan, ResolveType? resolveType)
 		{
 			/*if (resolveType == .None)
 				return;*/
@@ -6410,10 +6601,12 @@ namespace IDE.ui
 
 			var data = PreparedData;
 
-			if (resolveType != .None)
+			if ((resolveType != null) && (resolveType != .None))
 			{
 				data.ClearCollapse();
 			}
+
+			bool wantsBuildEmits = gApp.mSettings.mEditorSettings.mEmitCompiler == .Build;
 
 			//Debug.WriteLine($"ParseCollapseRegions {resolveType} CollapseRevision:{data.mCollapseParseRevision+1} TextVersion:{textVersion} IdSpan:{idSpan:D}");
 
@@ -6429,7 +6622,7 @@ namespace IDE.ui
 				if (emitInitialized)
 					return;
 				emitInitialized = true;
-				if ((hasUncertainEmits) || (resolveType == .None))
+				if ((hasUncertainEmits) || (wantsBuildEmits) || (resolveType == .None))
 				{
 					// Leave emits alone
 					for (var typeName in data.mTypeNames)
@@ -6437,7 +6630,11 @@ namespace IDE.ui
 					for (var emitData in ref data.mEmitData)
 					{
 						emitAnchorIds[emitData.mAnchorId] = (.)@emitData.Index;
-						if (resolveType == .None)
+						if (resolveType == null)
+						{
+							// Do nothing
+						}
+						else if (resolveType == .None)
 							emitData.mIncludedInResolveAll = false;
 						else
 							emitData.mIncludedInClassify = false;
@@ -6491,6 +6688,7 @@ namespace IDE.ui
 					emitData.mOnlyInResolveAll = resolveType == .None;
 					emitData.mIncludedInClassify = resolveType != .None;
 					emitData.mIncludedInResolveAll = resolveType == .None;
+					emitData.mIncludedInBuild = resolveType == null;
 
 					if (emitData.mAnchorIdx == -1)
 					{
@@ -6508,8 +6706,14 @@ namespace IDE.ui
 						{
 							curEmitData.mIncludedInResolveAll = true;
 						}
+						else if ((wantsBuildEmits) && (resolveType != null))
+						{
+							curEmitData.mIncludedInBuild |= emitData.mIncludedInBuild;
+							curEmitData.mIncludedInClassify |= emitData.mIncludedInClassify;
+						}
 						else
 						{
+							emitData.mIncludedInBuild |= curEmitData.mIncludedInBuild;
 							emitData.mIncludedInClassify |= curEmitData.mIncludedInClassify;
 							curEmitData = emitData;
 						}
@@ -6517,12 +6721,19 @@ namespace IDE.ui
 						continue;
 					}
 
+					if ((wantsBuildEmits) && (resolveType != null))
+					{
+						// Not included in the build emit data - just show as a marker
+						emitData.mStartLine = 0;
+						emitData.mEndLine = 0;
+					}
+
 					//Debug.WriteLine($" New emit AnchorIdx:{emitData.mAnchorIdx} AnchorId:{emitData.mAnchorId} CurTextVersion:{textVersion} FoundTextVersion:{foundTextVersion}");
 					data.mEmitData.Add(emitData);
 					continue;
 				}
 
-				if (resolveType == .None)
+				if ((resolveType == null) || (resolveType == .None))
 					continue;
 
 				CollapseData collapseData;
@@ -6554,7 +6765,11 @@ namespace IDE.ui
 
 			for (var emitData in ref data.mEmitData)
 			{
-				if (((emitData.mOnlyInResolveAll) && (!emitData.mIncludedInResolveAll)) ||
+				if ((emitData.mIncludedInBuild) && (gApp.mSettings.mEditorSettings.mEmitCompiler == .Build))
+				{
+					// Allow build-only markers to survive
+				}
+				else if (((emitData.mOnlyInResolveAll) && (!emitData.mIncludedInResolveAll)) ||
 					((!emitData.mOnlyInResolveAll) && (!emitData.mIncludedInClassify)))
 				{
 					@emitData.RemoveFast();

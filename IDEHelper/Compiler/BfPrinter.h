@@ -5,7 +5,6 @@
 
 NS_BF_BEGIN
 
-
 class BfPrinter : public BfElementVisitor
 {
 public:
@@ -26,10 +25,10 @@ public:
 	struct StateModify
 	{
 	public:
-		bool mExpectingSpace;		
+		bool mExpectingSpace;
 		int mWantNewLineIdx;
 		bool mDoingBlockOpen;
-		bool mDoingBlockClose;		
+		bool mDoingBlockClose;
 		int mWantVirtualIndent;
 		BfAstNode* mQueuedNode;
 
@@ -43,18 +42,18 @@ public:
 
 		void Clear()
 		{
-			mExpectingSpace = false;			
+			mExpectingSpace = false;
 			mDoingBlockOpen = false;
 			mDoingBlockClose = false;
 			mQueuedNode = NULL;
 		}
 	};
-	
+
 	BfSourceData* mSource;
 	BfParserData* mParser;
 
 	BfBlock::Iterator mSidechannelItr;
-	BfAstNode* mSidechannelNextNode;	
+	BfAstNode* mSidechannelNextNode;
 
 	BfBlock::Iterator mErrorItr;
 	BfAstNode* mErrorNextNode;
@@ -65,18 +64,18 @@ public:
 	int mCurSrcIdx;
 	Array<StateModify> mChildNodeQueue;
 	int mFormatStart;
-	int mFormatEnd;	
+	int mFormatEnd;
 	int mFormatDisableCount;
 	StateModify mNextStateModify;
-	
+
 	String mOutString;
-	bool mReformatting;		
+	bool mReformatting;
 	bool mIgnoreTrivia;
 	bool mDocPrep;
 	BlockState* mCurBlockState;
 	int mCurIndentLevel;
 	int mQueuedSpaceCount;
-	int mLastSpaceOffset; // Indent difference from original to new	
+	int mLastSpaceOffset; // Indent difference from original to new
 	bool mExpectingNewLine;
 	int mCurCol;
 	int mMaxCol;
@@ -86,19 +85,19 @@ public:
 
 	bool mIsFirstStatementInBlock;
 	bool mForceUseTrivia;
-	bool mInSideChannel;	
+	bool mInSideChannel;
 
 	int mStateModifyVirtualIndentLevel;
 	int mVirtualIndentLevel;
 	int mVirtualNewLineIdx;
-			
+
 	Array<int>* mCharMapping;
 	int mHighestCharId;
 
-public:	
+public:
 	BfPrinter(BfRootNode* rootNode, BfRootNode* sidechannelRootNode, BfRootNode* errorRootNode);
-		
-public:	
+
+public:
 	void Update(BfAstNode* bfAstNode);
 	bool CheckReplace(BfAstNode* astNode);
 	void FlushIndent();
@@ -106,7 +105,7 @@ public:
 	void Write(BfAstNode* node, int start, int len);
 	void WriteSourceString(BfAstNode* node);
 	void QueueVisitChild(BfAstNode* astNode);
-	void QueueVisitErrorNodes(BfRootNode* astNode);	
+	void QueueVisitErrorNodes(BfRootNode* astNode);
 	void FlushVisitChild();
 	void VisitChildWithPrecedingSpace(BfAstNode* bfAstNode);
 	void VisitChildWithProceedingSpace(BfAstNode* bfAstNode);
@@ -117,9 +116,9 @@ public:
 	void VisitChildNextLine(BfAstNode* node);
 	void DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
 	void DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
-	void QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration);	
+	void QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration);
 	int CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx);
-	void WriteIgnoredNode(BfAstNode* node);	
+	void WriteIgnoredNode(BfAstNode* node);
 	void CheckRawNode(BfAstNode* node);
 
 	virtual void Visit(BfAstNode* bfAstNode) override;
@@ -128,23 +127,25 @@ public:
 	virtual void Visit(BfNewNode * newNode) override;
 	virtual void Visit(BfExpression* expr) override;
 	virtual void Visit(BfExpressionStatement* exprStmt) override;
+	virtual void Visit(BfNamedExpression* namedExpr) override;
 	virtual void Visit(BfAttributedExpression* attribExpr) override;
-	virtual void Visit(BfStatement* stmt) override;	
+	virtual void Visit(BfStatement* stmt) override;
 	virtual void Visit(BfLabelableStatement* labelableStmt) override;
 
 	virtual void Visit(BfCommentNode* commentNode) override;
 	virtual void Visit(BfPreprocesorIgnoredSectionNode* preprocesorIgnoredSection) override;
 	virtual void Visit(BfPreprocessorNode* preprocessorNode) override;
 
-	virtual void Visit(BfAttributeDirective* attributeDirective) override;	
+	virtual void Visit(BfAttributeDirective* attributeDirective) override;
 	virtual void Visit(BfGenericParamsDeclaration* genericParams) override;
 	virtual void Visit(BfGenericOperatorConstraint* genericConstraints) override;
 	virtual void Visit(BfGenericConstraintsDeclaration* genericConstraints) override;
 	virtual void Visit(BfGenericArgumentsNode* genericArgumentsNode) override;
 
-	virtual void Visit(BfEmptyStatement* emptyStmt) override;	
+	virtual void Visit(BfEmptyStatement* emptyStmt) override;
 	virtual void Visit(BfTokenNode* tokenNode) override;
 	virtual void Visit(BfTokenPairNode* tokenPairNode) override;
+	virtual void Visit(BfUsingSpecifierNode* usingSpecifier) override;
 	virtual void Visit(BfLiteralExpression* literalExpr) override;
 	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression) override;
 	virtual void Visit(BfIdentifierNode* identifierNode) override;
@@ -154,7 +155,7 @@ public:
 	virtual void Visit(BfMixinExpression* mixinExpr) override;
 	virtual void Visit(BfSizedArrayCreateExpression* createExpr) override;
 	virtual void Visit(BfInitializerExpression* initExpr) override;
-	virtual void Visit(BfCollectionInitializerExpression* initExpr) override;	
+	virtual void Visit(BfCollectionInitializerExpression* initExpr) override;
 	virtual void Visit(BfTypeReference* typeRef) override;
 	virtual void Visit(BfNamedTypeReference* typeRef) override;
 	virtual void Visit(BfQualifiedTypeReference* qualifiedType) override;
@@ -170,7 +171,7 @@ public:
 	virtual void Visit(BfPointerTypeRef* typeRef) override;
 	virtual void Visit(BfNullableTypeRef* typeRef) override;
 	virtual void Visit(BfVariableDeclaration* varDecl) override;
-	virtual void Visit(BfParameterDeclaration* paramDecl) override;	
+	virtual void Visit(BfParameterDeclaration* paramDecl) override;
 	virtual void Visit(BfTypeOfExpression* typeOfExpr) override;
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr) override;
 	virtual void Visit(BfOffsetOfExpression* offsetOfExpr) override;
@@ -179,11 +180,11 @@ public:
 	virtual void Visit(BfCheckTypeExpression* checkTypeExpr) override;
 	virtual void Visit(BfDynamicCastExpression* dynCastExpr) override;
 	virtual void Visit(BfCastExpression* castExpr) override;
-	virtual void Visit(BfDelegateBindExpression* invocationExpr) override;	
+	virtual void Visit(BfDelegateBindExpression* invocationExpr) override;
 	virtual void Visit(BfLambdaBindExpression* lambdaBindExpr) override;
 	virtual void Visit(BfObjectCreateExpression* invocationExpr) override;
 	virtual void Visit(BfBoxExpression* boxExpr) override;
-	virtual void Visit(BfInvocationExpression* invocationExpr) override;	
+	virtual void Visit(BfInvocationExpression* invocationExpr) override;
 	virtual void Visit(BfSwitchCase* switchCase) override;
 	virtual void Visit(BfWhenExpression* whenExpr) override;
 	virtual void Visit(BfSwitchStatement* switchStmt) override;
@@ -217,6 +218,7 @@ public:
 	virtual void Visit(BfUnaryOperatorExpression* binOpExpr) override;
 	virtual void Visit(BfBinaryOperatorExpression* binOpExpr) override;
 	virtual void Visit(BfConstructorDeclaration* ctorDeclaration) override;
+	virtual void Visit(BfAutoConstructorDeclaration* ctorDeclaration) override;
 	virtual void Visit(BfDestructorDeclaration* dtorDeclaration) override;
 	virtual void Visit(BfMethodDeclaration* methodDeclaration) override;
 	virtual void Visit(BfOperatorDeclaration* opreratorDeclaration) override;

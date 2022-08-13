@@ -52,10 +52,10 @@ public:
 #else
 #endif
 		mCancelling = false;
-		mFailed = false;		
+		mFailed = false;
 		mShowTracking = false;
 		mResult = NULL;
-		mCancelOnSuccess = NULL;		
+		mCancelOnSuccess = NULL;
 	}
 	~NetRequest();
 
@@ -63,7 +63,7 @@ public:
 
 	void Cleanup();
 	void Fail(const StringImpl& error);
-	bool Cancel() override;	
+	bool Cancel() override;
 	void Perform() override;
 	void ShowTracking();
 };
@@ -113,7 +113,7 @@ public:
 	NetRequest* CreateGetRequest(const StringImpl& url, const StringImpl& destPath, bool useCache);
 	NetResult* QueueGet(const StringImpl& url, const StringImpl& destPath, bool useCache);
 	bool Get(const StringImpl& url, const StringImpl& destPath);
-	
+
 	void CancelAll();
 	void Clear();
 	void CancelCurrent();

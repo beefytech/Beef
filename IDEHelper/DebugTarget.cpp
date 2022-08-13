@@ -30,22 +30,22 @@ DebugTarget::DebugTarget(WinDebugger* debugger)
 	mCapturedNamesPtr = NULL;
 	mCapturedTypesPtr = NULL;
 	mHotHeap = NULL;
-	mLastHotHeapCleanIdx = 0;	
+	mLastHotHeapCleanIdx = 0;
 	mIsEmpty = false;
 	mWasLocallyBuilt = false;
 	mCurModuleId = 0;
-	
+
 	/*dbgType = new DbgType();
 	dbgType->mName = "int";
 	dbgType->mTypeCode = DbgType_i32;
 	dbgType->mSize = 4;
-	mPrimitiveTypes[DbgType_i32] = dbgType;*/	
+	mPrimitiveTypes[DbgType_i32] = dbgType;*/
 }
 
 DebugTarget::~DebugTarget()
 {
 	for (auto dwarf : mDbgModules)
-		delete dwarf;	
+		delete dwarf;
 
 	for (auto& dwSrcFilePair : mSrcFiles)
 		delete dwSrcFilePair.mValue;
@@ -63,7 +63,7 @@ static bool PathEquals(const String& pathA, String& pathB)
 	{
 		char cA = *(ptrA++);
 		char cB = *(ptrB++);
-		
+
 		if ((cA == 0) || (cB == 0))
 		{
 			return (cA == 0) && (cB == 0);
@@ -91,7 +91,7 @@ void DebugTarget::SetupTargetBinary()
 #else
 	if (wantsHotHeap)
 	{
-		// 64-bit hot loaded code needs to be placed close to the original EXE so 32-bit relative 
+		// 64-bit hot loaded code needs to be placed close to the original EXE so 32-bit relative
 		//  offsets within the hot code can still reach the old code
 		addr_target checkHotReserveAddr = (addr_target)mTargetBinary->mImageBase + mTargetBinary->mImageSize;
 		int mb = 1024 * 1024;
@@ -104,7 +104,7 @@ void DebugTarget::SetupTargetBinary()
 
 		addr_target reservedPtr = NULL;
 		while ((addr_target)checkHotReserveAddr < (addr_target)mTargetBinary->mImageBase + 0x30000000)
-		{			
+		{
 			reservedPtr = (addr_target)VirtualAllocEx(mDebugger->mProcessInfo.hProcess, (void*)(intptr)checkHotReserveAddr, reserveSize, MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 			if (reservedPtr != NULL)
 				break;
@@ -129,7 +129,7 @@ void DebugTarget::CheckTargetBinary(DbgModule* module)
 	if (mTargetBinary != NULL)
 		return;
 	if (!PathEquals(module->mFilePath, mTargetPath))
-		return;	
+		return;
 	mTargetBinary = module;
 	if (mTargetBinary != mLaunchBinary)
 		SetupTargetBinary();
@@ -150,7 +150,7 @@ DbgModule* DebugTarget::Init(const StringImpl& launchPath, const StringImpl& tar
 		return NULL;
 	}
 
-	DbgModule* dwarf = new COFF(this);	
+	DbgModule* dwarf = new COFF(this);
 	mLaunchBinary = dwarf;
 	dwarf->mDisplayName = GetFileName(launchPath);
 	dwarf->mFilePath = launchPath;
@@ -190,15 +190,15 @@ DbgModule* DebugTarget::HotLoad(const StringImpl& fileName, int hotIdx)
 	}
 
 	DbgModule* dwarf = new COFF(this);
-	dwarf->mHotIdx = hotIdx;	
+	dwarf->mHotIdx = hotIdx;
 	dwarf->mDisplayName = GetFileName(fileName);
 	dwarf->mFilePath = fileName;
 	if (!dwarf->ReadCOFF(&fileStream, DbgModuleKind_HotObject))
 	{
 		mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s\n", fileName.c_str()));
-		delete dwarf;		
+		delete dwarf;
 		return NULL;
-	}	
+	}
 	AddDbgModule(dwarf);
 	return dwarf;
 }
@@ -206,7 +206,7 @@ DbgModule* DebugTarget::HotLoad(const StringImpl& fileName, int hotIdx)
 DbgModule* DebugTarget::SetupDyn(const StringImpl& filePath, DataStream* stream, intptr imageBase)
 {
 	BP_ZONE("DebugTarget::SetupDyn");
-	
+
 	AutoDbgTime dbgTime("DebugTarget::SetupDyn " + filePath);
 
 	DbgModule* dwarf = new COFF(this);
@@ -240,12 +240,12 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 	String filePath;
 
 	AutoDbgTime dbgTime("DebugTarget::UnloadDyn");
-	
+
 	for (int i = 0; i < (int)mDbgModules.size(); i++)
 	{
 		DbgModule* dwarf = mDbgModules[i];
 		if (dwarf->mImageBase == imageBase)
-		{			
+		{
 			dwarf->mDeleting = true;
 			dwarf->RemoveTargetData();
 			RemoveTargetData();
@@ -253,7 +253,7 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 
 			if (mTargetBinary == dwarf)
 				mTargetBinary = NULL;
-			
+
 			mDbgModules.RemoveAt(i);
 			bool success = mDbgModuleMap.Remove(dwarf->mId);
 			BF_ASSERT_REL(success);
@@ -261,7 +261,7 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 			delete dwarf;
 			return filePath;
 		}
-	}	
+	}
 
 	return "";
 }
@@ -282,9 +282,9 @@ void DebugTarget::CleanupHotHeap()
 				Beefy::OutputDebugStrF("Clearing hot module %p data from %@ to %@\n", dbgModule, dbgModule->mImageBase, dbgModule->mImageBase + dbgModule->mImageSize);
 
 				BfLogDbg("Unloading hot idx: %s@%d\n", dbgModule->mFilePath.c_str(), dbgModule->mHotIdx);
-				dbgModule->mDeleting = true;				
-				dbgModule->RemoveTargetData();						
-				hadRemovals = true;		
+				dbgModule->mDeleting = true;
+				dbgModule->RemoveTargetData();
+				hadRemovals = true;
 			}
 		}
 	}
@@ -296,15 +296,15 @@ void DebugTarget::CleanupHotHeap()
 		{
 			DbgModule* dbgModule = mDbgModules[dwarfIdx];
 			if (dbgModule->mDeleting)
-			{				
+			{
 				mDbgModules.RemoveAt(dwarfIdx);
 				bool success = mDbgModuleMap.Remove(dbgModule->mId);
 				BF_ASSERT_REL(success);
 				delete dbgModule;
 				dwarfIdx--;
 			}
-		}		
-	}	
+		}
+	}
 }
 
 void DebugTarget::RehupSrcFiles()
@@ -349,11 +349,11 @@ DbgSrcFile* DebugTarget::GetSrcFile(const String& srcFilePath)
 }
 
 bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target* outOffset, DbgModule** outDWARF, bool allowRemote)
-{	
+{
 	//TODO: First search for symbol, then determine if the addr is within the defining DbgModule
 
 	DbgModule* insideDWARF = NULL;
-	
+
 	auto dbgModule = FindDbgModuleForAddress(addr);
 	if (dbgModule != NULL)
 		dbgModule->ParseSymbolData();
@@ -363,7 +363,7 @@ bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target*
 	{
 		dbgModule = dwSymbol->mDbgModule;
 	}
-	
+
 	if (dbgModule == NULL)
 		return false;
 
@@ -375,7 +375,7 @@ bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target*
 	for (int i = 0; i < (int)dbgModule->mSections.size(); i++)
 	{
 		auto section = &dbgModule->mSections[i];
-		
+
 		if ((addr >= section->mAddrStart + dbgModule->mImageBase) && (addr < section->mAddrStart + dbgModule->mImageBase + section->mAddrLength))
 		{
 			if (dbgModule->HasPendingDebugInfo())
@@ -383,9 +383,9 @@ bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target*
 				if (dbgModule->WantsAutoLoadDebugInfo())
 				{
 					DbgPendingDebugInfoLoad* dbgPendingDebugInfoLoad = NULL;
-					mDebugger->mPendingDebugInfoLoad.TryAdd(dbgModule, NULL, &dbgPendingDebugInfoLoad);					
+					mDebugger->mPendingDebugInfoLoad.TryAdd(dbgModule, NULL, &dbgPendingDebugInfoLoad);
 					dbgPendingDebugInfoLoad->mModule = dbgModule;
-					dbgPendingDebugInfoLoad->mAllowRemote |= allowRemote;					
+					dbgPendingDebugInfoLoad->mAllowRemote |= allowRemote;
 				}
 			}
 
@@ -413,7 +413,7 @@ bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target*
 
 	if (outSymbol != NULL)
 	{
-		*outSymbol = dwSymbol->mName;		
+		*outSymbol = dwSymbol->mName;
 	}
 	if (outOffset != NULL)
 		*outOffset = addr - dwSymbol->mAddress;
@@ -444,7 +444,7 @@ bool DebugTarget::GetValueByName(DbgSubprogram* subProgram, const StringImpl& na
 	BP_ZONE("DebugTarget::GetValueByName");
 
 	//BF_ASSERT(*outAddrType == DbgAddrType_None);
-	
+
 	String checkName = name;
 
 	if (subProgram != NULL)
@@ -477,7 +477,7 @@ void DebugTarget::AddAutoStaticEntry(const DbgAutoStaticEntry& entry)
 	while (remainingSize > 0)
 	{
 		int bucketIndex = -1;
-		
+
 		/*auto map_iter = mAutoStaticEntryBucketMap.find((addr_target)curPage);
 		if (map_iter != mAutoStaticEntryBucketMap.end())*/
 
@@ -610,14 +610,14 @@ void DebugTarget::GetAutoValueNames(DbgAutoValueMapType& outAutos, WdStackFrame*
 			auto subProgram = dbgModule->mSubprograms[subProgramIdx];
 			GetAutoValueNamesInBlock(outAutos, subProgram, &subProgram->mBlock, stackFrame, memoryRangeStart, memoryRangeLen);
 		}
-		
+
 		for (auto compileUnit : dbgModule->mCompileUnits)
 		{
 			GetAutoValueNamesInBlock(outAutos, NULL, compileUnit->mGlobalBlock, stackFrame, memoryRangeStart, memoryRangeLen);
-		}		
+		}
 	}
 
-	std::function<void(const DbgAutoStaticEntry&)> iterFunc = [this, &outAutos](const DbgAutoStaticEntry& entry) 
+	std::function<void(const DbgAutoStaticEntry&)> iterFunc = [this, &outAutos](const DbgAutoStaticEntry& entry)
 	{
 		//outAutos.insert(DbgAutoValueMapType::value_type(entry.mFullName, DbgAutoValueMapType::value_type::second_type(entry.mAddrStart, entry.mAddrLen)));
 		outAutos.TryAdd(entry.mFullName, std::make_pair(entry.mAddrStart, entry.mAddrLen));
@@ -713,7 +713,7 @@ bool DebugTarget::GetAutoLocalsInBlock(Array<String>& outLocals, DbgSubprogram* 
 	{
 		auto dwarf = dwSubprogram->mCompileUnit->mDbgModule;
 		if (dwBlock->mLowPC == -1)
-		{			
+		{
 			//Debug ranges
 			addr_target* rangeData = (addr_target*)(dwarf->mDebugRangesData + dwBlock->mHighPC);
 			while (true)
@@ -733,7 +733,7 @@ bool DebugTarget::GetAutoLocalsInBlock(Array<String>& outLocals, DbgSubprogram* 
 
 	for (auto subBlock : dwBlock->mSubBlocks)
 	{
-		GetAutoLocalsInBlock(outLocals, dwSubprogram, subBlock, stackFrame, dwLineData);		
+		GetAutoLocalsInBlock(outLocals, dwSubprogram, subBlock, stackFrame, dwLineData);
 	}
 
 	if (dwBlock == &dwSubprogram->mBlock)
@@ -763,14 +763,13 @@ bool DebugTarget::GetAutoLocalsInBlock(Array<String>& outLocals, DbgSubprogram* 
 	return true;
 }
 
-
 DbgSubprogram* DebugTarget::FindSubProgram(addr_target pc, DbgOnDemandKind onDemandKind)
 {
 	BP_ZONE("WinDebugger::FindSubProgram");
-	
+
 	for (int pass = 0; pass < 2; pass++)
 	{
-		int mapBlockSize = 1 << DbgRadixMap<DbgSubprogramMapEntry*>::BLOCK_SHIFT;		
+		int mapBlockSize = 1 << DbgRadixMap<DbgSubprogramMapEntry*>::BLOCK_SHIFT;
 
 		DbgSubprogram* foundSubprogram = NULL;
 
@@ -812,7 +811,6 @@ DbgSubprogram* DebugTarget::FindSubProgram(addr_target pc, DbgOnDemandKind onDem
 					}
 					else
 					{
-						
 					}*/
 
 					return dwSubprogram;
@@ -827,11 +825,11 @@ DbgSubprogram* DebugTarget::FindSubProgram(addr_target pc, DbgOnDemandKind onDem
 
 		if (pass != 0)
 			return NULL;
-		
+
 		DbgCompileUnitContrib* contrib = mContribMap.Get(pc, DBG_MAX_LOOKBACK);
 		if ((contrib != NULL) && (pc >= contrib->mAddress) && (pc < contrib->mAddress + contrib->mLength))
-		{						
-			contrib->mDbgModule->ParseCompileUnit(contrib->mCompileUnitId);			
+		{
+			contrib->mDbgModule->ParseCompileUnit(contrib->mCompileUnitId);
 		}
 		else if (onDemandKind != DbgOnDemandKind_None)
 		{
@@ -857,7 +855,7 @@ DbgSubprogram* DebugTarget::FindSubProgram(addr_target pc, DbgOnDemandKind onDem
 					}
 
 					if (module->RequestDebugInfo(onDemandKind == DbgOnDemandKind_AllowRemote))
-					{						
+					{
 						// Give another chance to ParseCompileUnit and then match again
 						found = true;
 						pass = -1;
@@ -912,7 +910,7 @@ void DebugTarget::GetCompilerSettings()
 }
 
 void DebugTarget::AddDbgModule(DbgModule* dbgModule)
-{	
+{
 	dbgModule->mId = ++mCurModuleId;
 	mDbgModules.Add(dbgModule);
 	bool success = mDbgModuleMap.TryAdd(dbgModule->mId, dbgModule);
@@ -944,7 +942,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 
 		struct EntryHeader
 		{
-			uint8 mVersion;			
+			uint8 mVersion;
 			uint8 mPrologSize;
 			uint8 mNumUnwindCodes;
 			uint8 mFrameRegister;
@@ -962,7 +960,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 		//BF_ASSERT(version == 1);
 
 		//uint8 prologSize = GET(uint8);
-		//uint8 numUnwindCodes = GET(uint8);		
+		//uint8 numUnwindCodes = GET(uint8);
 
 		int dataSize = entryHeader.mNumUnwindCodes * 2;
 
@@ -976,14 +974,12 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 		uint8 dataBuf[512];
 		dbgModule->mOrigImageData->Read(dbgModule->mImageBase + exceptionPos + sizeof(EntryHeader), dataBuf, dataSize);
 		const uint8* data = dataBuf;
-		
+
 		if (flags & 1) // UNW_FLAG_EHANDLER
 		{
-
 		}
 		else if (flags & 4) // UNW_FLAG_CHAININFO
 		{
-			
 		}
 
 		/*if (pcAddress < exceptionDirectoryEntry->mAddress + prologSize)
@@ -999,16 +995,16 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 		uint8 frameRegisterOffset = frameRegister >> 4;
 		frameRegister &= 15;
 
-		intptr_target newSP = 0;		
+		intptr_target newSP = 0;
 		const uint8* paramAreaStart = data;
 		const uint8* dataEnd = data + entryHeader.mNumUnwindCodes * 2;
 
 		while (data < dataEnd)
-		{			
+		{
 			uint8 offsetInProlog = GET(uint8);
 			uint8 unwindOpCode = GET(uint8);
 			uint8 opInfo = unwindOpCode >> 4;
-			unwindOpCode &= 15;			
+			unwindOpCode &= 15;
 
 			bool executeOp = pcAddress >= exceptionDirectoryEntry->mAddress - exceptionDirectoryEntry->mOrigAddressOffset + offsetInProlog;
 
@@ -1024,7 +1020,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 			{
 				// UWOP_ALLOC_LARGE
 				int allocSize = 0;
-				if (opInfo == 0)				
+				if (opInfo == 0)
 					allocSize = (int)GET(uint16) * 8;
 				else if (opInfo == 1)
 					allocSize = (int)GET(int32);
@@ -1034,7 +1030,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 			else if ((unwindOpCode == 2) && (executeOp))
 			{
 				// UWOP_ALLOC_SMALL
-				int allocSize = (int)opInfo * 8 + 8;				
+				int allocSize = (int)opInfo * 8 + 8;
 				*regSP += allocSize;
 			}
 			else if ((unwindOpCode == 3) && (executeOp))
@@ -1096,7 +1092,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 					alreadyRolledBackPC = true;
 
 					if (opInfo == 0)
-					{	
+					{
 						addr_target regRIP;
 						gDebugger->ReadMemory(*regSP, sizeof(intptr_target), &regRIP); // RIP (correct back trace)
 						*regSP += sizeof(intptr_target);
@@ -1124,11 +1120,9 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 						*regSP += 6 * sizeof(intptr_target);
 					}
 				}
-
-				
 			}
 
-			// Note: RCX/RDX are reversed 
+			// Note: RCX/RDX are reversed
 		}
 
 		if (flags & 4) // UNW_FLAG_CHAININFO
@@ -1145,7 +1139,6 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 
 			return RollBackStackFrame_ExceptionDirectory(dbgModule->mImageBase + chainedRVAStart, registers, outReturnAddressLoc, alreadyRolledBackPC);
 		}
-
 
 		return true;
 	}
@@ -1175,7 +1168,7 @@ bool DebugTarget::PropogateRegisterUpCallStack_ExceptionDirectory(addr_target fi
 
 		struct EntryHeader
 		{
-			uint8 mVersion;			
+			uint8 mVersion;
 			uint8 mPrologSize;
 			uint8 mNumUnwindCodes;
 			uint8 mFrameRegister;
@@ -1204,11 +1197,9 @@ bool DebugTarget::PropogateRegisterUpCallStack_ExceptionDirectory(addr_target fi
 
 		if (flags & 1) // UNW_FLAG_EHANDLER
 		{
-
 		}
 		else if (flags & 4) // UNW_FLAG_CHAININFO
 		{
-			
 		}
 
 		/*if (pcAddress < exceptionDirectoryEntry->mAddress + prologSize)
@@ -1224,16 +1215,16 @@ bool DebugTarget::PropogateRegisterUpCallStack_ExceptionDirectory(addr_target fi
 		uint8 frameRegisterOffset = frameRegister >> 4;
 		frameRegister &= 15;
 
-		intptr_target newSP = 0;		
+		intptr_target newSP = 0;
 		const uint8* paramAreaStart = data;
 		const uint8* dataEnd = data + entryHeader.mNumUnwindCodes * 2;
 
 		while (data < dataEnd)
-		{			
+		{
 			uint8 offsetInProlog = GET(uint8);
 			uint8 unwindOpCode = GET(uint8);
 			uint8 opInfo = unwindOpCode >> 4;
-			unwindOpCode &= 15;			
+			unwindOpCode &= 15;
 
 			bool executeOp = pcAddress >= exceptionDirectoryEntry->mAddress - exceptionDirectoryEntry->mOrigAddressOffset + offsetInProlog;
 
@@ -1245,14 +1236,14 @@ bool DebugTarget::PropogateRegisterUpCallStack_ExceptionDirectory(addr_target fi
 				{
 					mDebugger->WriteMemory(regSP, regRef, sizeof(intptr_target));
 					wasSaved = true;
-				}				
+				}
 				regSP += sizeof(intptr_target);
 			}
 			else if (unwindOpCode == 1)
 			{
 				// UWOP_ALLOC_LARGE
 				int allocSize = 0;
-				if (opInfo == 0)				
+				if (opInfo == 0)
 					allocSize = (int)GET(uint16) * 8;
 				else if (opInfo == 1)
 					allocSize = (int)GET(int32);
@@ -1262,7 +1253,7 @@ bool DebugTarget::PropogateRegisterUpCallStack_ExceptionDirectory(addr_target fi
 			else if ((unwindOpCode == 2) && (executeOp))
 			{
 				// UWOP_ALLOC_SMALL
-				int allocSize = (int)opInfo * 8 + 8;				
+				int allocSize = (int)opInfo * 8 + 8;
 				regSP += allocSize;
 			}
 			else if ((unwindOpCode == 3) && (executeOp))
@@ -1336,9 +1327,9 @@ bool DebugTarget::PropogateRegisterUpCallStack_ExceptionDirectory(addr_target fi
 				// UWOP_PUSH_MACHFRAME
 
 				if (executeOp)
-				{					
+				{
 					if (opInfo == 0)
-					{	
+					{
 						//addr_target regRIP;
 						//gDebugger->ReadMemory(*regSP, sizeof(intptr_target), &regRIP); // RIP (correct back trace)
 						regSP += sizeof(intptr_target);
@@ -1366,11 +1357,9 @@ bool DebugTarget::PropogateRegisterUpCallStack_ExceptionDirectory(addr_target fi
 						regSP += 6 * sizeof(intptr_target);
 					}
 				}
-
-
 			}
 
-			// Note: RCX/RDX are reversed 
+			// Note: RCX/RDX are reversed
 		}
 
 		if (flags & 4) // UNW_FLAG_CHAININFO
@@ -1410,22 +1399,19 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 		uint8 version = GET(uint8);
 		uint8 flags = (version >> 3);
 		version &= 7;
-		
+
 		uint8 prologSize = GET(uint8);
 		uint8 numUnwindCodes = GET(uint8);
 
 		if (exceptionDirectoryEntry->mAddress - dbgModule->mImageBase == 0x0000000000048efc)
 		{
-			
 		}
 
 		if (flags & 1) // UNW_FLAG_EHANDLER
 		{
-
 		}
 		else if (flags & 4) // UNW_FLAG_CHAININFO
 		{
-			
 		}
 
 		/*if (pcAddress < exceptionDirectoryEntry->mAddress + prologSize)
@@ -1434,38 +1420,38 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 		return false;
 		}*/
 
-		addr_target* regSP = registers->GetSPRegisterRef();		
+		addr_target* regSP = registers->GetSPRegisterRef();
 		int regFPOffset = 0;
 
 		uint8 frameRegister = GET(uint8);
 		uint8 frameRegisterOffset = frameRegister >> 4;
 		frameRegister &= 15;
 
-		intptr_target newSP = 0;		
+		intptr_target newSP = 0;
 		const uint8* paramAreaStart = data;
 		const uint8* dataEnd = data + numUnwindCodes * 2;
 
 		while (data < dataEnd)
-		{			
+		{
 			uint8 offsetInProlog = GET(uint8);
 			uint8 unwindOpCode = GET(uint8);
 			uint8 opInfo = unwindOpCode >> 4;
-			unwindOpCode &= 15;			
+			unwindOpCode &= 15;
 
 			bool executeOp = pcAddress >= exceptionDirectoryEntry->mAddress - exceptionDirectoryEntry->mOrigAddressOffset + offsetInProlog;
 
 			if ((unwindOpCode == 0) && (executeOp))
 			{
-				// UWOP_PUSH_NONVOL				
+				// UWOP_PUSH_NONVOL
 				intptr_target* regRef = registers->GetExceptionRegisterRef(opInfo);
 				gDebugger->ReadMemory(*regSP, sizeof(intptr_target), regRef);
-				*regSP += sizeof(intptr_target);				
+				*regSP += sizeof(intptr_target);
 			}
 			else if (unwindOpCode == 1)
 			{
 				// UWOP_ALLOC_LARGE
 				int allocSize = 0;
-				if (opInfo == 0)				
+				if (opInfo == 0)
 					allocSize = (int)GET(uint16) * 8;
 				else if (opInfo == 1)
 					allocSize = (int)GET(int32);
@@ -1475,7 +1461,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 			else if ((unwindOpCode == 2) && (executeOp))
 			{
 				// UWOP_ALLOC_SMALL
-				int allocSize = (int)opInfo * 8 + 8;				
+				int allocSize = (int)opInfo * 8 + 8;
 				*regSP += allocSize;
 			}
 			else if ((unwindOpCode == 3) && (executeOp))
@@ -1530,7 +1516,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 				BF_ASSERT(0 == "Not supported");
 			}
 
-			// Note: RCX/RDX are reversed 
+			// Note: RCX/RDX are reversed
 		}
 
 		if (flags & 4) // UNW_FLAG_CHAININFO
@@ -1548,7 +1534,6 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 			return RollBackStackFrame_ExceptionDirectory(dbgModule->mImageBase + chainedRVAStart, registers, outReturnAddressLoc);
 		}
 
-
 		return true;
 	}
 
@@ -1558,7 +1543,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 
 bool DebugTarget::RollBackStackFrame_ExceptionDirectory(CPURegisters* registers, addr_target* outReturnAddressLoc, bool& alreadyRolledBackPC)
 {
-	addr_target pcAddress = (addr_target)registers->GetPC();	
+	addr_target pcAddress = (addr_target)registers->GetPC();
 	return RollBackStackFrame_ExceptionDirectory(registers->GetPC(), registers, outReturnAddressLoc, alreadyRolledBackPC);
 }
 
@@ -1583,7 +1568,7 @@ bool DebugTarget::RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, 
 	auto dwFrameDescriptor = &stackFrameItr->second;
 	if (pcAddress > dwFrameDescriptor->mHighPC)
 		return false;
-	
+
 	struct RegisterRuleData
 	{
 	public:
@@ -1621,9 +1606,9 @@ bool DebugTarget::RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, 
 	State rootState;
 	rootState.mRegisterRuleDataIdx = DwarfReg_SP;
 
-	State* state = &rootState;	
+	State* state = &rootState;
 
-	// Set up default rule to restore stack pointer	
+	// Set up default rule to restore stack pointer
 	state->mRegisterRuleDataArray[state->mRegisterRuleDataIdx].mRegisterRule = DW_CFA_val_offset;
 	state->mRegisterRuleDataArray[state->mRegisterRuleDataIdx].mParamOffset = 0;
 
@@ -1656,7 +1641,7 @@ bool DebugTarget::RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, 
 			else
 			{
 				switch (opCode)
-				{				
+				{
 				case DW_CFA_advance_loc1:
 					curLoc += GET(uint8) * dwFrameDescriptor->mCommonFrameDescriptor->mCodeAlignmentFactor;
 					break;
@@ -1719,7 +1704,7 @@ bool DebugTarget::RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, 
 					{
 						int regNum = (int)DecodeULEB128(data);
 						BF_ASSERT(regNum < CPURegisters::kNumIntRegs);
-						int blockLen = (int)DecodeULEB128(data);					
+						int blockLen = (int)DecodeULEB128(data);
 						auto registerRuleData = &state->mRegisterRuleDataArray[regNum];
 						registerRuleData->mRegisterRule = DW_CFA_expression;
 						registerRuleData->mParamOffset = blockLen;
@@ -1826,7 +1811,7 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 	int stackPos = 0;
 	COFFFrameProgram::Command stackCmds[8];
 	addr_target stackValues[8];
-	addr_target temps[4];	
+	addr_target temps[4];
 
 	auto _GetValue = [&](int stackPos)
 	{
@@ -1901,7 +1886,7 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 		if (cmd == COFFFrameProgram::Command_None)
 			break;
 		switch (cmd)
-		{			
+		{
 		case COFFFrameProgram::Command_EIP:
 		case COFFFrameProgram::Command_ESP:
 		case COFFFrameProgram::Command_EBP:
@@ -1916,9 +1901,9 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 		case COFFFrameProgram::Command_RASearch:
 			if (stackPos >= 8)
 				return false;
-			stackCmds[stackPos++] = cmd;						
+			stackCmds[stackPos++] = cmd;
 			break;
-		case COFFFrameProgram::Command_Add:		
+		case COFFFrameProgram::Command_Add:
 			{
 				if (stackPos < 2)
 					return false;
@@ -1938,7 +1923,7 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 				stackPos -= 2;
 				stackValues[stackPos] = lhs - rhs;
 				stackCmds[stackPos++] = COFFFrameProgram::Command_Value;
-			}			
+			}
 			break;
 		case COFFFrameProgram::Command_Align:
 			{
@@ -1949,10 +1934,10 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 				stackPos -= 2;
 				stackValues[stackPos] = BF_ALIGN(lhs, rhs);
 				stackCmds[stackPos++] = COFFFrameProgram::Command_Value;
-			}			
+			}
 			break;
 		case COFFFrameProgram::Command_Set:
-			{				
+			{
 				if (stackPos < 2)
 					return false;
 				addr_target rhs = _GetValue(stackPos - 1);
@@ -2002,15 +1987,15 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 			}
 			break;
 		case COFFFrameProgram::Command_Deref:
-			{				
+			{
 				if (stackPos < 1)
 					return false;
-				addr_target addr = _GetValue(stackPos - 1);				
+				addr_target addr = _GetValue(stackPos - 1);
 				stackPos--;
 				stackValues[stackPos] = mDebugger->ReadMemory<addr_target>(addr);
 				stackCmds[stackPos++] = COFFFrameProgram::Command_Value;
 			}
-			break;		
+			break;
 		case COFFFrameProgram::Command_Value:
 			{
 				if (stackPos >= 8)
@@ -2054,9 +2039,9 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 {
 	if (outReturnAddressLoc != NULL)
 		*outReturnAddressLoc = 0;
-	
+
 	CPUInst inst;
-	if (DecodeInstruction(registers->GetPC(), &inst))	
+	if (DecodeInstruction(registers->GetPC(), &inst))
 	{
 		if (inst.IsReturn())
 		{
@@ -2066,7 +2051,7 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 		}
 	}
 
-#ifdef BF_DBG_32			
+#ifdef BF_DBG_32
 	if (RollBackStackFrame_DwFrameDescriptor(registers, outReturnAddressLoc))
 		return true;
 	if (RollBackStackFrame_COFFFrameDescriptor(registers, outReturnAddressLoc, isStackStart))
@@ -2077,7 +2062,7 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 	{
 		if (pc == dbgSubprogram->mBlock.mLowPC)
 			return RollBackStackFrame_SimpleRet(registers);
-		
+
 		auto dbgModule = dbgSubprogram->mCompileUnit->mDbgModule;
 		if ((dbgModule != NULL) && (!dbgModule->mParsedFrameDescriptors))
 		{
@@ -2087,7 +2072,7 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 		}
 	}
 	else
-	{		
+	{
 		return RollBackStackFrame_SimpleRet(registers);
 	}
 #endif
@@ -2107,7 +2092,7 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 	if (alreadyRolledBackPC)
 		return true;
 
-#ifdef BF_DBG_32 	
+#ifdef BF_DBG_32
 	// Try rollback assuming a frame pointer
 	addr_target newPC = 0;
 	addr_target stackFrame = registers->GetBP();
@@ -2174,7 +2159,7 @@ int DebugTarget::GetFrameBaseRegister(DbgSubprogram* dwSubprogram)
 		}
 	}
 
-#ifdef BF_DBG_32 
+#ifdef BF_DBG_32
 	if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_VFRAME)
 		return X86Reg_EBP;
 	else if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_EBX)
@@ -2187,7 +2172,7 @@ int DebugTarget::GetFrameBaseRegister(DbgSubprogram* dwSubprogram)
 		return X64Reg_R13;
 	return X64Reg_RBP;
 #endif
-	
+
 	return -1;
 }
 
@@ -2216,9 +2201,6 @@ bool DebugTarget::GetVariableIndexRegisterAndOffset(DbgVariable* dwVariable, int
 }
 
 //int64 BfDebuggerReadMemory(int64 addr);
-
-
-
 
 addr_target DebugTarget::GetStaticAddress(DbgVariable* dwVariable)
 {
@@ -2288,7 +2270,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 				*outType = dwSubprogram->mCompileUnit->mDbgModule->GetConstType(*outType);
 		}
 	};
-	
+
 	for (int varIdx = (int)checkVars.size() - 1; varIdx >= 0; varIdx--)
 	{
 		auto variable = checkVars[varIdx];
@@ -2349,7 +2331,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 				return false;
 
 			*outAddr = variable->mCompileUnit->mDbgModule->EvaluateLocation(dwSubprogram, variable->mLocationData, variable->mLocationLen, stackFrame, outAddrType);
-			
+
 			_FixParam(variable);
 
 			return true;
@@ -2361,7 +2343,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 	if (dwBlock == &dwSubprogram->mBlock)
 	{
 		for (auto variable : dwSubprogram->mParams)
-		{			
+		{
 			if (variable->mName == NULL)
 				continue;
 
@@ -2435,22 +2417,20 @@ bool DebugTarget::GetValueByNameInBlock(DbgSubprogram* dwSubprogram, DbgBlock* d
 		if (GetValueByNameInBlock(dwSubprogram, subBlock, name, stackFrame, outAddr, outType, outAddrType))
 			return true;
 	}
-	
+
 	if (GetValueByNameInBlock_Helper(dwSubprogram, dwBlock, name, stackFrame, outAddr, outType, outAddrType))
 		return true;
-	
-	
+
 	return false;
 }
-
 
 const DbgMemoryFlags DebugTarget::ReadOrigImageData(addr_target address, uint8* data, int size)
 {
 	for (auto dwarf : mDbgModules)
 	{
-		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize) && (dwarf->mOrigImageData != NULL))			
-		{			
-			return dwarf->mOrigImageData->Read(address, data, size);			
+		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize) && (dwarf->mOrigImageData != NULL))
+		{
+			return dwarf->mOrigImageData->Read(address, data, size);
 		}
 		//return dbgModule->mOrigImageData + (address - dbgModule->mImageBase);
 	}
@@ -2463,13 +2443,12 @@ bool DebugTarget::DecodeInstruction(addr_target address, CPUInst* inst)
 	for (auto dwarf : mDbgModules)
 	{
 		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize) && (dwarf->mOrigImageData != NULL))
-		{			
+		{
 			return mDebugger->mCPU->Decode(address, dwarf->mOrigImageData, inst);
 		}
 	}
 
 	return false;
-	
 }
 
 DbgBreakKind DebugTarget::GetDbgBreakKind(addr_target address, CPURegisters* registers, intptr_target* objAddr)
@@ -2477,14 +2456,13 @@ DbgBreakKind DebugTarget::GetDbgBreakKind(addr_target address, CPURegisters* reg
 	for (auto dwarf : mDbgModules)
 	{
 		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize) && (dwarf->mOrigImageData != NULL))
-		{			
+		{
 			auto result = mDebugger->mCPU->GetDbgBreakKind(address, dwarf->mOrigImageData, registers->mIntRegsArray, objAddr);
-			return result;			
+			return result;
 		}
 	}
 
 	return DbgBreakKind_None;
-
 }
 
 DbgModule* DebugTarget::FindDbgModuleForAddress(addr_target address)
@@ -2499,7 +2477,7 @@ DbgModule* DebugTarget::FindDbgModuleForAddress(addr_target address)
 }
 
 DbgModule* DebugTarget::GetMainDbgModule()
-{	
+{
 	return mTargetBinary;
 }
 
@@ -2527,12 +2505,12 @@ void ReportRadixMap(MemReporter* memReporter, RadixMap64<T>& radixMap)
 		auto mid = radixMap.mRoot[rootIdx];
 		if (mid != NULL)
 		{
-			memReporter->Add(sizeof(RadixMap64<T>::Mid));			
+			memReporter->Add(sizeof(RadixMap64<T>::Mid));
 			for (int midIdx = 0; midIdx < RadixMap64<T>::MID_LENGTH; midIdx++)
 			{
 				auto leaf = mid->mLeafs[midIdx];
 				if (leaf != NULL)
-				{					
+				{
 					memReporter->Add(sizeof(RadixMap64<T>::Leaf));
 				}
 			}
@@ -2614,7 +2592,6 @@ struct VectorRemoveCtx
 			mVec->RemoveRange(mMatchStartIdx, (int)mVec->size() - mMatchStartIdx);
 		mFinished = true;
 	}
-
 };
 
 void DebugTarget::RemoveTargetData()
@@ -2638,11 +2615,11 @@ void DebugTarget::RemoveTargetData()
 				problemModule = node->mDbgModule;
 				//OutputDebugStrF("Should have been removed by DbgModule::RemoveTargetData %@ %s\n", node->mAddress, node->mName);
 				BF_DBG_FATAL("Should have been removed by DbgModule::RemoveTargetData");
-				mSymbolMap.Remove(node);				
+				mSymbolMap.Remove(node);
 			}
 			node = next;
 		}
-	}	
+	}
 
 	if (problemModule != NULL)
 	{
@@ -2672,13 +2649,13 @@ void DebugTarget::RemoveTargetData()
 		{
 			auto next = node->mNext;
 			if (node->mDbgModule->mDeleting)
-			{				
+			{
 				//BF_DBG_FATAL("Should have been removed by DbgModule::RemoveTargetData");
 				mExceptionDirectoryMap.Remove(node);
 			}
 			node = next;
 		}
-	}	
+	}
 
 #endif
 	VectorRemoveCtx<Array<DwCommonFrameDescriptor*>> cieRemoveCtx(mCommonFrameDescriptors);

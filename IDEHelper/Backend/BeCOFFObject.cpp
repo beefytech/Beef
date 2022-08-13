@@ -74,15 +74,15 @@ void BeInlineLineBuilder::Update(BeDbgCodeEmission* codeEmission)
 }
 
 void BeInlineLineBuilder::Start(BeDbgCodeEmission* codeEmission)
-{	
+{
 	//mCurLine = codeEmission->mDbgLoc->mDbgInlinedAt->mLine;
 
 	int lineOfs = codeEmission->mDbgLoc->mLine - mCurLine;
 	int codeOfs = codeEmission->mPos - mCurCodePos;
-	
+
 	auto usingFile = codeEmission->mDbgLoc->mDbgInlinedAt->GetDbgFile();
 	auto wantFile = codeEmission->mDbgLoc->GetDbgFile();
-	
+
 	mData.push_back(CodeViewInfo::BA_OP_ChangeLineOffset);
 	WriteSigned(lineOfs);
 
@@ -93,10 +93,10 @@ void BeInlineLineBuilder::Start(BeDbgCodeEmission* codeEmission)
 	}*/
 
 	mData.push_back(CodeViewInfo::BA_OP_ChangeCodeOffset);
-	Compress(codeOfs);	
+	Compress(codeOfs);
 
 	mCurLine = codeEmission->mDbgLoc->mLine;
-	mCurCodePos = codeEmission->mPos;	
+	mCurCodePos = codeEmission->mPos;
 
 	/*mData.push_back(CodeViewInfo::BA_OP_ChangeLineOffset);
 	WriteSigned(-mStartDbgLoc->mDbgInlinedAt->mLine - 1);
@@ -122,14 +122,14 @@ void BeInlineLineBuilder::End(BeDbgCodeEmission* codeEmission)
 BeCOFFObject::BeCOFFObject()
 {
 	mWriteToLib = false;
-	mBSSPos = 0;	
+	mBSSPos = 0;
 	mCurTagId = 0x1000;
 	mCurStringId = 0;
 	mCurJumpTableIdx = 0;
 	mBeModule = NULL;
 	mTTagStartPos = -1;
 	mSTagStartPos = -1;
-	mSectionStartPos = -1;	
+	mSectionStartPos = -1;
 	mTypesLocked = false;
 	mTimestamp = 0;
 	mPerfManager = NULL;
@@ -178,11 +178,11 @@ void BeCOFFObject::ToString(BeMDNode* mdNode, String& str)
 	else
 	{
 		BF_FATAL("err");
-	}	
+	}
 }
 
 int BeCOFFObject::GetCVRegNum(X64CPURegister reg, int bits)
-{		
+{
 	if (bits == 8)
 	{
 		switch (reg)
@@ -361,7 +361,7 @@ int BeCOFFObject::GetCVRegNum(X64CPURegister reg, int bits)
 	case X64Reg_XMM72: return CV_AMD64_XMM7_2;
 	case X64Reg_XMM73: return CV_AMD64_XMM7_3;
 	}
-		
+
 	return 0;
 }
 
@@ -400,7 +400,7 @@ void BeCOFFObject::DbgEncodeString(DynMemStream& memStream, const StringImpl& st
 }
 
 void BeCOFFObject::DbgMakeFuncType(BeDbgFunction* dbgFunc)
-{	
+{
 	if (dbgFunc->mCvTypeId != -1)
 		return;
 
@@ -435,12 +435,12 @@ void BeCOFFObject::DbgMakeFuncType(BeDbgFunction* dbgFunc)
 	for (auto paramType : dbgFunc->mType->mParams)
 		DbgGetTypeId(paramType);
 
-	bool hasThis = dbgFunc->HasThis();		
+	bool hasThis = dbgFunc->HasThis();
 
 	/*auto argListResultPair = mArgListSet.insert(dbgFunc);
 	if (!argListResultPair.second)
-	{		
-		dbgFunc->mCvArgListId = (*argListResultPair.first)->mCvArgListId;		
+	{
+		dbgFunc->mCvArgListId = (*argListResultPair.first)->mCvArgListId;
 	}
 	else*/
 
@@ -457,12 +457,12 @@ void BeCOFFObject::DbgMakeFuncType(BeDbgFunction* dbgFunc)
 		outT.Write((int32)(dbgFunc->mType->mParams.size() - (hasThis ? 1 : 0)));
 		for (int paramIdx = hasThis ? 1 : 0; paramIdx < (int)dbgFunc->mType->mParams.size(); paramIdx++)
 		{
-			BeDbgType* dbgType = dbgFunc->mType->mParams[paramIdx];			
+			BeDbgType* dbgType = dbgFunc->mType->mParams[paramIdx];
 			outT.Write(DbgGetTypeId(dbgType));
 		}
 		DbgTEndTag();
 	}
-		
+
 	dbgFunc->mCvTypeId = mCurTagId++;
 	DbgTStartTag();
 
@@ -504,7 +504,7 @@ void BeCOFFObject::DbgMakeFuncType(BeDbgFunction* dbgFunc)
 void BeCOFFObject::DbgMakeFunc(BeDbgFunction* dbgFunc)
 {
 	auto& outT = mDebugTSect.mData;
-	BF_ASSERT(dbgFunc->mCvTypeId == -1);	
+	BF_ASSERT(dbgFunc->mCvTypeId == -1);
 
 	DbgMakeFuncType(dbgFunc);
 
@@ -534,7 +534,7 @@ void BeCOFFObject::DbgMakeFunc(BeDbgFunction* dbgFunc)
 void BeCOFFObject::DbgTAlign()
 {
 	int curPos = mDebugTSect.mData.GetPos();
-	// Perform alignment	
+	// Perform alignment
 	int addPadding = (4 - (curPos & 3)) % 4;
 	while (addPadding > 0)
 	{
@@ -544,17 +544,17 @@ void BeCOFFObject::DbgTAlign()
 }
 
 void BeCOFFObject::DbgTStartTag()
-{	
+{
 	BF_ASSERT(mTTagStartPos == -1);
 	mTTagStartPos = mDebugTSect.mData.GetPos();
 	mDebugTSect.mData.Write((int16)0);
 }
 
 void BeCOFFObject::DbgTEndTag()
-{	
+{
 	BF_ASSERT(mTTagStartPos != -1);
 	DbgTAlign();
-	int tagSize = mDebugTSect.mData.GetPos() - mTTagStartPos;	
+	int tagSize = mDebugTSect.mData.GetPos() - mTTagStartPos;
 	BF_ASSERT(tagSize <= 0xFFFF);
 	*((int16*)&mDebugTSect.mData.mData[mTTagStartPos]) = (int16)(tagSize - 2);
 	mTTagStartPos = -1;
@@ -576,20 +576,20 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 	auto& outT = mDebugTSect.mData;
 
 	auto structType = BeValueDynCast<BeDbgStructType>(dbgType);
-	
+
 	if (structType != NULL)
 	{
-		//lfClass classInfo;			
+		//lfClass classInfo;
 		//BF_CLEAR_VALUE(classInfo);
-		//classInfo.leaf = LF_STRUCTURE;			
-		
-		CV_prop_t structProp = { 0 };		
+		//classInfo.leaf = LF_STRUCTURE;
+
+		CV_prop_t structProp = { 0 };
 
 		if (structType->mAlign == 1)
 			structProp.packed = true;
 
 		int fieldListTag = 0;
-		int memberCount = 0;		
+		int memberCount = 0;
 		if (doDefine)
 		{
 			// Pass over all needed types first to make sure we generate any forward references we'll need
@@ -598,18 +598,18 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 			DbgGetTypeId(structType->mDerivedFrom);
 			for (auto member : structType->mMembers)
 			{
-				auto type = member->mType;				
+				auto type = member->mType;
 				DbgGetTypeId(type);
 			}
 			for (auto func : structType->mMethods)
-				DbgMakeFuncType(func);			
+				DbgMakeFuncType(func);
 
 			fieldListTag = mCurTagId++;
 
 			//int tagStartPos = -1;
 			DbgTStartTag();
 			outT.Write((int16)LF_FIELDLIST);
-			
+
 			if (structType->mDerivedFrom != NULL)
 			{
 				outT.Write((int16)LF_BCLASS);
@@ -629,7 +629,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 					int extFieldListTag = mCurTagId++;
 
 					outT.Write((int16)LF_INDEX);
-					outT.Write((int16)0); // Padding				
+					outT.Write((int16)0); // Padding
 					outT.Write((int32)extFieldListTag); // Padding
 					DbgTEndTag();
 
@@ -639,7 +639,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 			};
 
 			for (auto member : structType->mMembers)
-			{	
+			{
 				_CheckFieldOverflow();
 
 				if (member->mIsStatic)
@@ -657,7 +657,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 				outT.Write(*(int16*)&attr);
 				outT.Write(DbgGetTypeId(member->mType));
 				if (!member->mIsStatic)
-					DbgEncodeConstant(outT, member->mOffset);				
+					DbgEncodeConstant(outT, member->mOffset);
 				DbgEncodeString(outT, member->mName);
 				memberCount++;
 				DbgTAlign();
@@ -706,15 +706,15 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 		outT.Write((int32)0); //derivedfrom - should we ever set this?
 		outT.Write((int32)0); //vshape
 		if (doDefine)
-			DbgEncodeConstant(outT, structType->mSize);		
+			DbgEncodeConstant(outT, structType->mSize);
 		else
 			DbgEncodeConstant(outT, 0);
 		String fullName;
-		ToString(structType, fullName);		
+		ToString(structType, fullName);
 
-		DbgEncodeString(outT, fullName);		
+		DbgEncodeString(outT, fullName);
 		DbgTEndTag(); // LF_STRUCTURE
-		
+
 		if (doDefine)
 			dbgType->mCvDefTypeId = mCurTagId++;
 		else
@@ -753,9 +753,9 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 
 			return dbgType->mCvDefTypeId;
 		}
-		
+
 		return dbgType->mCvDeclTypeId;
-	}	
+	}
 	else if (auto enumType = BeValueDynCast<BeDbgEnumType>(dbgType))
 	{
 		int fieldListId = 0;
@@ -766,14 +766,14 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 			//int tagStartPos = -1;
 			DbgTStartTag();
 			outT.Write((int16)LF_FIELDLIST);
-			
+
 			for (auto member : enumType->mMembers)
-			{				
+			{
 				outT.Write((int16)LF_ENUMERATE);
 
 				CV_fldattr_t attr = { 0 };
 				attr.access = 3; // public
-				outT.Write(*(int16*)&attr);				
+				outT.Write(*(int16*)&attr);
 				DbgEncodeConstant(outT, member->mValue);
 				DbgEncodeString(outT, member->mName);
 				DbgTAlign();
@@ -789,13 +789,13 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 
 		//int32 elementId = DbgGetTypeId(enumType->mElementType);
 
-		CV_prop_t structProp = { 0 };			
+		CV_prop_t structProp = { 0 };
 		if (!enumType->mIsFullyDefined)
 			structProp.fwdref = 1;
 
 		DbgTStartTag();
 		outT.Write((int16)LF_ENUM);
-		outT.Write((int16)enumType->mMembers.size());			
+		outT.Write((int16)enumType->mMembers.size());
 		outT.Write(*(int16*)&structProp);
 		outT.Write(elementId);
 		outT.Write((int32)fieldListId);
@@ -833,7 +833,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 			break;
 		case llvm::dwarf::DW_ATE_float:
 			switch (dbgBasicType->mSize)
-			{			
+			{
 			case 4: dbgBasicType->mCvDefTypeId = T_REAL32; break;
 			case 8: dbgBasicType->mCvDefTypeId = T_REAL64; break;
 			}
@@ -914,10 +914,10 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 		int32 elementId = DbgGetTypeId(ptrType->mElement);
 
 		DbgTStartTag();
-		outT.Write((int16)LF_POINTER);				
+		outT.Write((int16)LF_POINTER);
 		outT.Write(elementId);
 		outT.Write(*(int32*)&attr);
-		DbgTEndTag();		
+		DbgTEndTag();
 		dbgType->mCvDeclTypeId = dbgType->mCvDefTypeId = mCurTagId++;
 		return dbgType->mCvDefTypeId;
 	}
@@ -930,23 +930,23 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 		int32 elementId = DbgGetTypeId(refType->mElement);
 
 		DbgTStartTag();
-		outT.Write((int16)LF_POINTER);		
+		outT.Write((int16)LF_POINTER);
 		outT.Write(elementId);
-		outT.Write(*(int32*)&attr);		
+		outT.Write(*(int32*)&attr);
 		DbgTEndTag();
 		dbgType->mCvDeclTypeId = dbgType->mCvDefTypeId = mCurTagId++;
 		return dbgType->mCvDefTypeId;
 	}
 	else if (auto constType = BeValueDynCast<BeDbgConstType>(dbgType))
-	{	
-		CV_modifier_t attr = { 0 };		
+	{
+		CV_modifier_t attr = { 0 };
 		attr.MOD_const = 1;
 		int32 elementId = DbgGetTypeId(BeValueDynCast<BeDbgType>(constType->mElement));
 
 		DbgTStartTag();
-		outT.Write((int16)LF_MODIFIER);		
+		outT.Write((int16)LF_MODIFIER);
 		outT.Write(elementId);
-		outT.Write(*(int16*)&attr);		
+		outT.Write(*(int16*)&attr);
 		DbgTEndTag();
 		dbgType->mCvDeclTypeId = dbgType->mCvDefTypeId = mCurTagId++;
 		return dbgType->mCvDefTypeId;
@@ -958,7 +958,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 	else if (auto arrayType = BeValueDynCast<BeDbgArrayType>(dbgType))
 	{
 		int32 elementId = DbgGetTypeId(arrayType->mElement);
-		
+
 		DbgTStartTag();
 		outT.Write((int16)LF_ARRAY);
 		outT.Write((int32)elementId);
@@ -968,10 +968,9 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 		DbgTEndTag();
 		dbgType->mCvDeclTypeId = dbgType->mCvDefTypeId = mCurTagId++;
 		return dbgType->mCvDefTypeId;
-	}	
+	}
 	else
 		BF_FATAL("NotImpl");
-
 
 	BF_FATAL("Invalid type");
 	return -1;
@@ -986,12 +985,12 @@ void BeCOFFObject::DbgGenerateTypeInfo()
 	outT.Write((int)CV_SIGNATURE_C13);
 
 	for (auto mdNode : mBeModule->mDbgModule->mTypes)
-	{		
+	{
 		bool defineType = true;
 		if (auto dbgStructType = BeValueDynCast<BeDbgStructType>(mdNode))
 		{
 			if (!dbgStructType->mIsFullyDefined)
-				defineType = false;			
+				defineType = false;
 		}
 
 		if (defineType)
@@ -1010,8 +1009,8 @@ void BeCOFFObject::DbgGenerateTypeInfo()
 
 void BeCOFFObject::DbgStartSection(int sectionNum)
 {
-	auto& outS = mDebugSSect.mData;	
-	BF_ASSERT(mSectionStartPos == -1);	
+	auto& outS = mDebugSSect.mData;
+	BF_ASSERT(mSectionStartPos == -1);
 	outS.Write((int32)sectionNum);
 	outS.Write(0); // Temporary - size
 	mSectionStartPos = outS.GetPos();
@@ -1019,9 +1018,9 @@ void BeCOFFObject::DbgStartSection(int sectionNum)
 
 void BeCOFFObject::DbgEndSection()
 {
-	auto& outS = mDebugSSect.mData;	
-	int totalLen = outS.GetPos() - mSectionStartPos;	
-	*((int32*)&outS.mData[mSectionStartPos - 4]) = totalLen;	
+	auto& outS = mDebugSSect.mData;
+	int totalLen = outS.GetPos() - mSectionStartPos;
+	*((int32*)&outS.mData[mSectionStartPos - 4]) = totalLen;
 	mSectionStartPos = -1;
 	while ((outS.GetPos() & 3) != 0)
 		outS.Write((uint8)0);
@@ -1030,12 +1029,12 @@ void BeCOFFObject::DbgEndSection()
 void BeCOFFObject::DbgStartVarDefRange(BeDbgFunction* dbgFunc, BeDbgVariable* dbgVar, const BeDbgVariableLoc& varLoc, int offset, int range)
 {
 	BF_ASSERT(range >= 0);
-	
+
 	auto funcSym = GetSymbol(dbgFunc->mValue);
 
 	auto varType = BeValueDynCast<BeDbgType>(dbgVar->mType);
 
-	auto& outS = mDebugSSect.mData;	
+	auto& outS = mDebugSSect.mData;
 	if (varLoc.mKind == BeDbgVariableLoc::Kind_SymbolAddr)
 	{
 		BF_FATAL("Not supported");
@@ -1079,9 +1078,8 @@ void BeCOFFObject::DbgStartVarDefRange(BeDbgFunction* dbgFunc, BeDbgVariable* db
 	reloc.mSymTableIdx = funcSym->mIdx;
 	mDebugSSect.mRelocs.push_back(reloc);
 	outS.Write((int16)0); // section
-	outS.Write((int16)range); // Range	
+	outS.Write((int16)range); // Range
 }
-
 
 void BeCOFFObject::DbgEndLineBlock(BeDbgFunction* dbgFunc, const Array<BeDbgCodeEmission>& emissions, int blockStartPos, int emissionStartIdx, int lineCount)
 {
@@ -1111,7 +1109,7 @@ void BeCOFFObject::DbgEndLineBlock(BeDbgFunction* dbgFunc, const Array<BeDbgCode
 void BeCOFFObject::DbgSAlign()
 {
 	int curPos = mDebugSSect.mData.GetPos();
-	// Perform alignment	
+	// Perform alignment
 	int addPadding = (4 - (curPos & 3)) % 4;
 	while (addPadding > 0)
 	{
@@ -1137,23 +1135,23 @@ void BeCOFFObject::DbgSEndTag()
 }
 
 void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgVar)
-{	
+{
 	auto varType = BeValueDynCast<BeDbgType>(dbgVar->mType);
 
 	// CodeView only allows 16-bit lengths, so we need to split ranges for very long spans
 	if (dbgVar->mDeclEnd - dbgVar->mDeclStart > 0xFFFF)
-	{		
+	{
 		int splitPos = dbgVar->mDeclStart + 0xFFFF;
 
 		BeDbgVariable varStart = *dbgVar;
 		varStart.mDeclEnd = splitPos;
 		Array<BeDbgVariableRange>* startArrs[2] = { &varStart.mSavedRanges, &varStart.mGaps };
 		for (auto& arr : startArrs)
-		{			
+		{
 			for (int arrIdx = 0; arrIdx < (int)arr->size(); arrIdx++)
 			{
 				auto& gap = (*arr)[arrIdx];
-				
+
 				int gapStart = gap.mOffset;
 				int gapEnd = gap.mOffset + gap.mLength;
 
@@ -1186,17 +1184,17 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 			{
 				auto& gap = (*arr)[arrIdx];
 
-				int gapStart = gap.mOffset;				
+				int gapStart = gap.mOffset;
 				if (gapStart < splitPos)
 					gapStart = splitPos;
 
 				if (gap.mLength == -1)
-				{					
+				{
 					gap.mOffset = gapStart;
 					continue;
 				}
 
-				int gapEnd = gap.mOffset + gap.mLength;				
+				int gapEnd = gap.mOffset + gap.mLength;
 				if (gapEnd < splitPos)
 					gapEnd = splitPos;
 
@@ -1229,13 +1227,13 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 	outS.Write(*(int16*)&flags);
 
 	bool isConst = false;
-	String varName = dbgVar->mName;	
+	String varName = dbgVar->mName;
 
 	bool isGlobal = false;
 	//
 	{
 		auto checkVal = dbgVar->mValue;
-		
+
 		if (auto beCast = BeValueDynCast<BeCastConstant>(checkVal))
 			checkVal = beCast->mTarget;
 		if (auto beGlobal = BeValueDynCast<BeGlobalVariable>(checkVal))
@@ -1278,8 +1276,8 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 	{
 		declEnd = dbgFunc->mCodeLen;
 		if ((dbgVar->mGaps.size() == 1) && (dbgVar->mGaps[0].mOffset == dbgVar->mDeclStart) && (dbgVar->mGaps[0].mLength == -1) && (!isConst))
-		{			
-			// Variable not used			
+		{
+			// Variable not used
 			declEnd = dbgVar->mDeclStart;
 		}
 	}
@@ -1294,7 +1292,7 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 				continue;
 
 			if (gap.mLength == -1)
-			{				
+			{
 				// Not a real gap, and not an unused variable indicator
 				if (gap.mOffset > dbgVar->mDeclStart)
 					continue;
@@ -1348,7 +1346,7 @@ void BeCOFFObject::DbgOutputLocalVars(BeInlineLineBuilder* curInlineBuilder, BeD
 {
 	auto& outS = mDebugSSect.mData;
 	for (auto dbgVar : curInlineBuilder->mVariables)
-	{	
+	{
 		if (dbgVar == NULL)
 			continue;
 		DbgOutputLocalVar(dbgFunc, dbgVar);
@@ -1362,15 +1360,15 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 
 	auto& outS = mDebugSSect.mData;
 	outS.Write((int)CV_SIGNATURE_C13);
-		
+
 	Array<int> fileDataPositions;
 	Array<BeDbgFunction*> inlinees;
-		
+
 	// Funcs
 	for (auto dbgFunc : mBeModule->mDbgModule->mFuncs)
 	{
 		if (dbgFunc->mValue == NULL)
-			continue;		
+			continue;
 
 		if (dbgFunc->mCvFuncId == -1)
 			continue;
@@ -1380,9 +1378,9 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 		auto funcSym = GetSymbol(dbgFunc->mValue, false);
 		if (funcSym == NULL)
 			continue;
-				
+
 		DbgStartSection(DEBUG_S_SYMBOLS);
-		
+
 		DbgSStartTag();
 		if (dbgFunc->mValue->mLinkageType == BfIRLinkageType_Internal)
 			outS.Write((int16)S_LPROC32_ID);
@@ -1394,7 +1392,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 		outS.Write((int32)BF_MAX(dbgFunc->mCodeLen, 0)); // CodeSize
 		outS.Write((int32)0); // DbgStart
 		outS.Write((int32)0); // DbgEnd
-		outS.Write(dbgFunc->mCvFuncId);		
+		outS.Write(dbgFunc->mCvFuncId);
 
 		BeMCRelocation reloc;
 		reloc.mKind = BeMCRelocationKind_SECREL;
@@ -1402,7 +1400,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 		reloc.mSymTableIdx = funcSym->mIdx;
 		mDebugSSect.mRelocs.push_back(reloc);
 		outS.Write((int32)0); // off
-		
+
 		reloc.mKind = BeMCRelocationKind_SECTION;
 		reloc.mOffset = outS.GetPos();
 		reloc.mSymTableIdx = funcSym->mIdx;
@@ -1420,7 +1418,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 			fullName += "::";
 		fullName += dbgFunc->mName;
 		DbgEncodeString(outS, fullName);
-		DbgSEndTag();		
+		DbgSEndTag();
 
 		BeInlineLineBuilder* curInlineBuilder = NULL;
 		BeDbgLoc* curDbgLoc = NULL;
@@ -1437,28 +1435,28 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 			if (curDbgLoc != newDbgLoc)
 			{
 				curDbgLoc = newDbgLoc;
-				int newInlineDepth = newDbgLoc->GetInlineDepth();				
+				int newInlineDepth = newDbgLoc->GetInlineDepth();
 				int curInlineDepth = 0;
 				if (curInlineBuilder != NULL)
 					curInlineDepth = curInlineBuilder->mStartDbgLoc->GetInlineDepth();
-				
+
 				int depthMatch = 0;
 				if (curInlineBuilder != NULL)
-	                depthMatch = curDbgLoc->GetInlineMatchDepth(curInlineBuilder->mStartDbgLoc);				
+	                depthMatch = curDbgLoc->GetInlineMatchDepth(curInlineBuilder->mStartDbgLoc);
 				while (curInlineDepth > depthMatch)
-				{					
+				{
 					curInlineBuilder->End(&codeEmission);
 					inlineStack.pop_back();
 					if (inlineStack.empty())
 						curInlineBuilder = NULL;
 					else
-						curInlineBuilder = inlineStack.back();					
+						curInlineBuilder = inlineStack.back();
 					curInlineDepth--;
 				}
 
 				// Check for new inlines
 				while (newInlineDepth > curInlineDepth)
-				{					
+				{
 					auto inlineBuilder = inlineBuilders.Alloc<BeInlineLineBuilder>();
 					// If we add more than one inline depth at a time then we need to set startDbgLoc appropriately
 					int inlineIdx = newInlineDepth - curInlineDepth - 2;
@@ -1472,7 +1470,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 						inlinees.Add(dbgFunc);
 
 					inlineBuilder->mCurLine = dbgFunc->mLine;
-					inlineBuilder->Start(&codeEmission);					
+					inlineBuilder->Start(&codeEmission);
 					curInlineBuilder = inlineBuilder;
 					inlineStack.push_back(curInlineBuilder);
 					curInlineDepth++;
@@ -1482,18 +1480,18 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 				}
 
 				if (curInlineBuilder != NULL)
-					curInlineBuilder->Update(&codeEmission);				
-			}			
+					curInlineBuilder->Update(&codeEmission);
+			}
 		}
 		BF_ASSERT(inlineStack.empty());
 
 		for (auto dbgVar : dbgFunc->mVariables)
 		{
-			if ((dbgVar == NULL) || (dbgVar->mDeclDbgLoc == NULL))							
+			if ((dbgVar == NULL) || (dbgVar->mDeclDbgLoc == NULL))
 				continue;
 			if (dbgVar->mDeclDbgLoc->mDbgInlinedAt == NULL)
 				continue;
-			
+
 			BeInlineLineBuilder* inlineBuilder = NULL;
 			if (inlineMap.TryGetValue(dbgVar->mDeclDbgLoc->mDbgInlinedAt, &inlineBuilder))
 			{
@@ -1504,19 +1502,19 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 
 		// Emit inlines and variables
 		int inlineBuilderIdx = 0;
-				
+
 		curInlineBuilder = NULL;
-		
+
 		for (auto dbgVar : dbgFunc->mVariables)
-		{			
-			if ((dbgVar == NULL) || (dbgVar->mDeclDbgLoc == NULL))							
+		{
+			if ((dbgVar == NULL) || (dbgVar->mDeclDbgLoc == NULL))
 				continue;
 			if (dbgVar->mDeclDbgLoc->mDbgInlinedAt == NULL)
 				DbgOutputLocalVar(dbgFunc, dbgVar);
 		}
 
 		while ((inlineBuilderIdx < (int)inlineBuilders.size()) || (curInlineBuilder != NULL) /*|| (varIdx < (int)dbgFunc->mVariables.size())*/)
-		{	
+		{
 			BeInlineLineBuilder* newInlineBuilder = NULL;
 
 			int curInlineDepth = 0;
@@ -1549,7 +1547,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 				if (inlineStack.empty())
 					curInlineBuilder = NULL;
 				else
-					curInlineBuilder = inlineStack.back();				
+					curInlineBuilder = inlineStack.back();
 			}
 
 			if (newInlineDepth > curInlineDepth)
@@ -1562,7 +1560,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 				auto inlinedDbgFunc = newInlineBuilder->mStartDbgLoc->GetDbgFunc();
 				if (inlinedDbgFunc->mCvFuncId == -1)
 					DbgMakeFunc(inlinedDbgFunc);
-				outS.Write(inlinedDbgFunc->mCvFuncId);				
+				outS.Write(inlinedDbgFunc->mCvFuncId);
 				outS.Write(&newInlineBuilder->mData[0], (int)newInlineBuilder->mData.size());
 				DbgSEndTag();
 				newInlineDepth++;
@@ -1575,8 +1573,8 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 			// This can fail if an inlined method is not emitted contiguously, or if multiple copies of the same method
 			//  get inlined at exactly the same DbgLoc -- which isn't possible in Beef
 			//BF_ASSERT(curInlineBuilder == newInlineBuilder);
-		}		
-		
+		}
+
 		DbgSStartTag();
 		outS.Write((int16)S_PROC_ID_END);
 		DbgSEndTag();
@@ -1611,21 +1609,21 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 
 		curDbgLoc = NULL;
 		BeDbgFile* curFile = NULL;
-		int lastBlockStartPos = -1;		
-		int lineCount = 0;		
+		int lastBlockStartPos = -1;
+		int lineCount = 0;
 
 		Array<BeDbgCodeEmission> emissions;
-		emissions.Reserve(dbgFunc->mEmissions.size());		
+		emissions.Reserve(dbgFunc->mEmissions.size());
 		for (int emissionIdx = 0; emissionIdx < (int)dbgFunc->mEmissions.size(); emissionIdx++)
 		{
 			auto& codeEmission = dbgFunc->mEmissions[emissionIdx];
 			auto rootDbgLoc = codeEmission.mDbgLoc->GetRoot();
-			
+
 			bool doEmission = true;
 			if (!emissions.empty())
 			{
 				if (rootDbgLoc == emissions.back().mDbgLoc)
-					doEmission = false;				
+					doEmission = false;
 			}
 
 			if (doEmission)
@@ -1636,7 +1634,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 				emissions.push_back(newEmission);
 			}
 		}
-		
+
 		///
 		{
 			int fileDataPos = 0;
@@ -1656,7 +1654,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 		for (int emissionIdx = 0; emissionIdx < (int)emissions.size(); emissionIdx++)
 		{
 			auto& codeEmission = emissions[emissionIdx];
-			
+
 			auto dbgLoc = codeEmission.mDbgLoc;
 			BeDbgFile* dbgFile = dbgLoc->GetDbgFile();
 
@@ -1669,9 +1667,9 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 					emissionStartIdx = emissionIdx;
 				}
 
-				curDbgLoc = dbgLoc;				
+				curDbgLoc = dbgLoc;
 				curDbgFile = dbgFile;
-				
+
 				lastBlockStartPos = outS.GetPos();
 				outS.Write((int32)fileDataPositions[dbgFile->mIdx]);
 				outS.Write((int32)0); // placeholder nLines
@@ -1691,29 +1689,29 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 		if (curDbgLoc != NULL)
 			DbgEndLineBlock(dbgFunc, emissions, lastBlockStartPos, emissionStartIdx, lineCount);
 		DbgEndSection(); // DEBUG_S_LINES
-	}	
+	}
 
 	if (!inlinees.empty())
-	{		
+	{
 		DbgStartSection(DEBUG_S_INLINEELINES);
 		outS.Write((int32)0); // Lines type
 		for (auto inlinedDbgFunc : inlinees)
-		{						
-			BF_ASSERT(inlinedDbgFunc->mCvFuncId != -1);			
+		{
+			BF_ASSERT(inlinedDbgFunc->mCvFuncId != -1);
 			outS.Write(inlinedDbgFunc->mCvFuncId);
-			
+
 			auto dbgFile = inlinedDbgFunc->mFile;
 			outS.Write((int32)fileDataPositions[dbgFile->mIdx]);
 			outS.Write((int32)inlinedDbgFunc->mLine + 1);
 		}
 		DbgEndSection();
-	}	
+	}
 
-	// Global variables	
+	// Global variables
 	{
-		bool startedSymbols = false;		
+		bool startedSymbols = false;
 		for (auto dbgGlobalVar : mBeModule->mDbgModule->mGlobalVariables)
-		{	
+		{
 			auto gvSym = GetSymbol(dbgGlobalVar->mValue);
 			if (gvSym == NULL)
 			{
@@ -1722,24 +1720,24 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 			}
 
 			if (!startedSymbols)
-			{				
+			{
 				DbgStartSection(DEBUG_S_SYMBOLS);
 				startedSymbols = true;
 			}
 
 			DbgSStartTag();
 			bool isTLS = false;
-			if (auto beGlobalVar = BeValueDynCast<BeGlobalVariable>(dbgGlobalVar->mValue))			
+			if (auto beGlobalVar = BeValueDynCast<BeGlobalVariable>(dbgGlobalVar->mValue))
 				isTLS = beGlobalVar->mIsTLS;
-			
+
 			if (isTLS)
 				outS.Write(dbgGlobalVar->mIsLocalToUnit ? (int16)S_LTHREAD32 : (int16)S_GTHREAD32);
 			else
 				outS.Write(dbgGlobalVar->mIsLocalToUnit ? (int16)S_LDATA32 : (int16)S_GDATA32);
-			
+
 			outS.Write(DbgGetTypeId(BeValueDynCast<BeDbgType>(dbgGlobalVar->mType)));
 
-			BF_ASSERT(dbgGlobalVar->mValue != NULL);			
+			BF_ASSERT(dbgGlobalVar->mValue != NULL);
 
 			BeMCRelocation reloc;
 			reloc.mKind = BeMCRelocationKind_SECREL;
@@ -1761,7 +1759,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 
 		if (startedSymbols)
 			DbgEndSection(); // DEBUG_S_SYMBOLS
-	}		
+	}
 
 	bool startedUDT = false;
 	for (auto dbgType : mBeModule->mDbgModule->mTypes)
@@ -1798,7 +1796,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 
 		if (dbgFile->mMD5Hash.IsZero())
 		{
-			outS.Write((int32)0); // hashLen, hashType, padding	
+			outS.Write((int32)0); // hashLen, hashType, padding
 		}
 		else
 		{
@@ -1838,8 +1836,8 @@ void BeCOFFObject::AlignConst(BeCOFFSection& sect, BeConstant* constVal)
 }
 
 void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
-{	
-	auto beType = constVal->GetType();	
+{
+	auto beType = constVal->GetType();
 	if (auto globalVar = BeValueDynCast<BeGlobalVariable>(constVal))
 	{
 		auto sym = GetSymbol(globalVar);
@@ -1892,7 +1890,7 @@ void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
 		}
 		else
 			BF_FATAL("Invalid StructConst type");
-	}	
+	}
 	else if (auto constStr = BeValueDynCast<BeStringConstant>(constVal))
 	{
 		sect.mData.Write((void*)constStr->mString.c_str(), (int)constStr->mString.length() + 1);
@@ -1905,8 +1903,8 @@ void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
 	{
 		if (auto globalVar = BeValueDynCast<BeGlobalVariable>(constGep->mTarget))
 		{
-			BF_ASSERT(constGep->mIdx0 == 0);			
-			
+			BF_ASSERT(constGep->mIdx0 == 0);
+
 			int64 dataOfs = 0;
 			if (globalVar->mType->mTypeCode == BeTypeCode_Struct)
 			{
@@ -1944,7 +1942,7 @@ void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
 	else if (beType->IsComposite())
 	{
 		BF_ASSERT(constVal->mInt64 == 0);
-		
+
 		int64 zero = 0;
 		int sizeLeft = beType->mSize;
 		while (sizeLeft > 0)
@@ -1985,7 +1983,7 @@ void BeCOFFObject::Generate(BeModule* module)
 		InitSect(mDebugTSect, ".debug$T", IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_ALIGN_4BYTES | IMAGE_SCN_MEM_DISCARDABLE | IMAGE_SCN_MEM_READ, true, false);
 	}
 	InitSect(mPDataSect, ".pdata", IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_ALIGN_4BYTES | IMAGE_SCN_MEM_READ, true, false);
-	
+
 	mTextSect.mData.mData.Reserve(4096);
 
 	BfSizedVector<BeMCSymbol*, 32> globalVarSyms;
@@ -2005,7 +2003,7 @@ void BeCOFFObject::Generate(BeModule* module)
 		sym->mIsStatic = globalVar->mLinkageType == BfIRLinkageType_Internal;
 		sym->mSymKind = BeMCSymbolKind_External;
 		sym->mIdx = (int)mSymbols.size() - 1;
-		sym->mIsTLS = globalVar->mIsTLS;		
+		sym->mIsTLS = globalVar->mIsTLS;
 
 		globalVarSyms.push_back(sym);
 		mSymbolMap[globalVar] = sym;
@@ -2015,7 +2013,7 @@ void BeCOFFObject::Generate(BeModule* module)
 	{
 		auto globalVar = module->mGlobalVariables[globalVarIdx];
 
-		if ((globalVar->mRefCount == 0) && (globalVar->mInitializer == NULL))		
+		if ((globalVar->mRefCount == 0) && (globalVar->mInitializer == NULL))
 			continue;
 
 		auto sym = globalVarSyms[globalVarIdx];
@@ -2037,7 +2035,7 @@ void BeCOFFObject::Generate(BeModule* module)
 				mRDataSect.mAlign = BF_MAX(mRDataSect.mAlign, globalVar->mAlign);
 
 				AlignConst(mRDataSect, constVal);
-				sym->mValue = mRDataSect.mData.GetSize();				
+				sym->mValue = mRDataSect.mData.GetSize();
 				WriteConst(mRDataSect, constVal);
 			}
 			else if (globalVar->mIsTLS)
@@ -2085,8 +2083,8 @@ void BeCOFFObject::Generate(BeModule* module)
 				mBSSSect.mSizeOverride = (mBSSSect.mSizeOverride + globalVar->mAlign - 1) & ~(globalVar->mAlign - 1);
 				mBSSSect.mAlign = BF_MAX(mBSSSect.mAlign, globalVar->mAlign);
 				sym->mValue = mBSSSect.mSizeOverride;
-				mBSSSect.mSizeOverride += globalVar->mType->mSize;				
-			}			
+				mBSSSect.mSizeOverride += globalVar->mType->mSize;
+			}
 		}
 
 		if (globalVar->mStorageKind == BfIRStorageKind_Export)
@@ -2113,10 +2111,10 @@ void BeCOFFObject::Generate(BeModule* module)
 	{
 		auto func = mFuncWorkList[0];
 		mFuncWorkList.RemoveAt(0);
-		
+
 		module->mActiveFunction = func;
 		if (!func->IsDecl())
-		{			
+		{
 			BeMCSymbol* sym = GetSymbol(func);
 			BF_ASSERT(sym != NULL);
 			sym->mValue = mTextSect.mData.GetSize();
@@ -2138,7 +2136,7 @@ void BeCOFFObject::Generate(BeModule* module)
 		InitSect(mDirectiveSect, ".drectve", IMAGE_SCN_LNK_INFO | IMAGE_SCN_LNK_REMOVE | IMAGE_SCN_ALIGN_1BYTES, true, false);
 		mDirectiveSect.mData.Write((void*)mDirectives.c_str(), (int)mDirectives.length());
 	}
-	
+
 	if (hasDebugInfo)
 	{
 		DbgGenerateTypeInfo();
@@ -2153,7 +2151,7 @@ void BeCOFFObject::Generate(BeModule* module)
 bool BeCOFFObject::Generate(BeModule* module, const StringImpl& fileName)
 {
 	BP_ZONE_F("BeCOFFObject::Generate %s", fileName.c_str());
-	AutoPerf perf("BeCOFFObject::Generate", mPerfManager);	
+	AutoPerf perf("BeCOFFObject::Generate", mPerfManager);
 
 	if (mWriteToLib)
 	{
@@ -2171,13 +2169,13 @@ bool BeCOFFObject::Generate(BeModule* module, const StringImpl& fileName)
 			return false;
 
 		for (auto sym : mSymbols)
-		{			
+		{
 			if (sym->mIsStatic)
 				continue;
 
 			if (((sym->mSymKind == BeMCSymbolKind_External) && (sym->mSectionNum != 0)) ||
 				((sym->mSymKind == BeMCSymbolKind_Function)))
-			{				
+			{
 				libEntry->AddSymbol(sym->mName);
 			}
 		}
@@ -2228,7 +2226,7 @@ void BeCOFFObject::Finish()
 		memset(&sectHdr, 0, sizeof(sectHdr));
 		BeCOFFSection* sect = mUsedSections[sectNum];
 		strcpy(sectHdr.mName, sect->mSectName.c_str());
-		
+
 		int characteristics = sect->mCharacteristics;
 		if (sect->mAlign != 0)
 		{
@@ -2246,8 +2244,8 @@ void BeCOFFObject::Finish()
 			else if (sect->mAlign == 4) characteristics |= IMAGE_SCN_ALIGN_4BYTES;
 			else if (sect->mAlign == 2) characteristics |= IMAGE_SCN_ALIGN_2BYTES;
 		}
-		
-		sectData[sectNum] = sect;		
+
+		sectData[sectNum] = sect;
 		int dataSize = sect->mData.GetSize();
 		if (dataSize != 0)
 		{
@@ -2267,9 +2265,9 @@ void BeCOFFObject::Finish()
 					filePos += sizeof(COFFRelocation);
 				}
 				else
-				{ 
+				{
 					sectHdr.mNumberOfRelocations = (int)sect->mRelocs.size();
-				}								
+				}
 				filePos += (int)sect->mRelocs.size() * sizeof(COFFRelocation);
 			}
 		}
@@ -2281,8 +2279,8 @@ void BeCOFFObject::Finish()
 		sectHdr.mCharacteristics = characteristics;
 		BF_ASSERT(characteristics != 0);
 	}
-	
-	header.mPointerToSymbolTable = filePos;	
+
+	header.mPointerToSymbolTable = filePos;
 	header.mNumberOfSymbols = (int)mSymbols.size();
 	mStream->WriteT(header);
 
@@ -2323,7 +2321,7 @@ void BeCOFFObject::Finish()
 			coffReloc.mVirtualAddress = reloc.mOffset;
 			coffReloc.mSymbolTableIndex = reloc.mSymTableIdx;
 			coffReloc.mType = IMAGE_REL_AMD64_ABSOLUTE;
-			
+
 			switch (reloc.mKind)
 			{
 			case BeMCRelocationKind_ADDR32NB:
@@ -2350,7 +2348,7 @@ void BeCOFFObject::Finish()
 	}
 
 	BF_ASSERT(mStream->GetPos() == filePos);
-	
+
 	SizedArray<PE_SymInfo, 16> symInfoVec;
 	symInfoVec.reserve(mSymbols.size() + 16);
 
@@ -2358,8 +2356,8 @@ void BeCOFFObject::Finish()
 	{
 		//BP_ZONE("Finish - AddSym");
 
-		if (sym->mSymKind == BeMCSymbolKind_AuxPlaceholder)		
-			continue;		
+		if (sym->mSymKind == BeMCSymbolKind_AuxPlaceholder)
+			continue;
 
 		PE_SymInfo symInfo;
 		memset(&symInfo, 0, sizeof(symInfo));
@@ -2370,9 +2368,9 @@ void BeCOFFObject::Finish()
 			symInfo.mNameOfs[1] = strTablePos + 4;
 		}
 		else
-			strcpy(symInfo.mName, sym->mName.c_str());		
+			strcpy(symInfo.mName, sym->mName.c_str());
 		if (sym->mSymKind == BeMCSymbolKind_SectionDef)
-		{			
+		{
 			symInfo.mSectionNum = sym->mSectionNum;
 			symInfo.mStorageClass = IMAGE_SYM_CLASS_STATIC;
 			symInfo.mNumOfAuxSymbols = 1;
@@ -2390,41 +2388,41 @@ void BeCOFFObject::Finish()
 			auxSymInfo.mSelection = 2; // Pick any (only applicable for COMDAT but ignored elsewhere)
 			auxSymInfo.mUnused = 0;
 			auxSymInfo.mUnused2 = 0;
-			auxSymInfo.mUnused3 = 0;			
+			auxSymInfo.mUnused3 = 0;
 			symInfoVec.push_back(*(PE_SymInfo*)&auxSymInfo);
 
 			continue;
 		}
 		else if (sym->mSymKind == BeMCSymbolKind_SectionRef)
 		{
-			symInfo.mSectionNum = sym->mSectionNum;			
-			symInfo.mStorageClass = IMAGE_SYM_CLASS_SECTION;			
+			symInfo.mSectionNum = sym->mSectionNum;
+			symInfo.mStorageClass = IMAGE_SYM_CLASS_SECTION;
 		}
 		else if (sym->mSymKind == BeMCSymbolKind_Function)
 		{
 			symInfo.mValue = sym->mValue;
-			symInfo.mSectionNum = mTextSect.mSectionIdx + 1;			
+			symInfo.mSectionNum = mTextSect.mSectionIdx + 1;
 			symInfo.mType = 0x20; //DT_FUNCTION
 			if (sym->mIsStatic)
 				symInfo.mStorageClass = IMAGE_SYM_CLASS_STATIC;
 			else
 				symInfo.mStorageClass = IMAGE_SYM_CLASS_EXTERNAL;
-		}		
+		}
 		else if (sym->mSymKind == BeMCSymbolKind_COMDAT)
 		{
 			symInfo.mValue = sym->mValue;
-			symInfo.mSectionNum = sym->mSectionNum;			
+			symInfo.mSectionNum = sym->mSectionNum;
 			symInfo.mStorageClass = IMAGE_SYM_CLASS_EXTERNAL;
 		}
 		else
-		{			
+		{
 			if (sym->mIsStatic)
 				symInfo.mStorageClass = IMAGE_SYM_CLASS_STATIC;
 			else
 				symInfo.mStorageClass = IMAGE_SYM_CLASS_EXTERNAL;
 			symInfo.mValue = sym->mValue;
 			symInfo.mSectionNum = sym->mSectionNum;
-		}		
+		}
 		symInfoVec.push_back(symInfo);
 	}
 	if (!symInfoVec.IsEmpty())
@@ -2437,7 +2435,7 @@ void BeCOFFObject::Finish()
 }
 
 BeMCSymbol* BeCOFFObject::GetSymbol(BeValue* value, bool allowCreate)
-{	
+{
 	/*auto itr = mSymbolMap.find(value);
 	if (itr != mSymbolMap.end())
 		return itr->second;*/
@@ -2446,7 +2444,7 @@ BeMCSymbol* BeCOFFObject::GetSymbol(BeValue* value, bool allowCreate)
 		return *symbolPtr;
 
 	if (allowCreate)
-	{		
+	{
 		if (auto func = BeValueDynCast<BeFunction>(value))
 		{
 			mFuncWorkList.Add(func);
@@ -2475,7 +2473,7 @@ BeMCSymbol* BeCOFFObject::GetSymbol(BeValue* value, bool allowCreate)
 }
 
 BeMCSymbol* BeCOFFObject::GetSymbolRef(const StringImpl& name)
-{	
+{
 	/*auto itr = mNamedSymbolMap.find(name);
 	if (itr != mNamedSymbolMap.end())
 		return itr->second;*/
@@ -2502,8 +2500,8 @@ void BeCOFFObject::MarkSectionUsed(BeCOFFSection& sect, bool getSectSymbol)
 	if (getSectSymbol)
 	{
 		//TODO: We previously only did sectionDefs when we needed the SelectionNum value, but
-		//  omitting this causes the MS linker to throw "multiple '<X>' sections found with different 
-		//  attributes (0000000000) errors.  This change could potentially break LIB creation in the 
+		//  omitting this causes the MS linker to throw "multiple '<X>' sections found with different
+		//  attributes (0000000000) errors.  This change could potentially break LIB creation in the
 		//  linker.  Verify it still works.
 		if (((sect.mCharacteristics & IMAGE_SCN_LNK_COMDAT) != 0) || (true))
 		{
@@ -2524,7 +2522,7 @@ void BeCOFFObject::MarkSectionUsed(BeCOFFSection& sect, bool getSectSymbol)
 		else
 		{
 			// It's important for the linker's import library output to include
-			//  section refs and not section defs, even when they aren't an external 
+			//  section refs and not section defs, even when they aren't an external
 			//  reference
 			BeMCSymbol* sym;
 			sym = mSymbols.Alloc();
@@ -2549,8 +2547,8 @@ BeMCSymbol* BeCOFFObject::GetCOMDAT(const StringImpl& name, void* data, int size
 
 	BeCOFFSection mRData8Sect;
 	auto* rdataSect = mDynSects.Alloc();
-	int characteristics = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_LNK_COMDAT | IMAGE_SCN_MEM_READ;	
-	InitSect(*rdataSect, ".rdata", characteristics, true, true);	
+	int characteristics = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_LNK_COMDAT | IMAGE_SCN_MEM_READ;
+	InitSect(*rdataSect, ".rdata", characteristics, true, true);
 	rdataSect->mAlign = align;
 
 	auto sym = mSymbols.Alloc();
@@ -2559,9 +2557,9 @@ BeMCSymbol* BeCOFFObject::GetCOMDAT(const StringImpl& name, void* data, int size
 	sym->mIdx = (int)mSymbols.size() - 1;
 	sym->mSectionNum = rdataSect->mSectionIdx + 1;
 	sym->mValue = rdataSect->mData.GetPos();
-	mNamedSymbolMap[name] = sym;	
-	rdataSect->mData.Write(data, size);	
-	return sym;	
+	mNamedSymbolMap[name] = sym;
+	rdataSect->mData.Write(data, size);
+	return sym;
 }
 
 BeCOFFSection* BeCOFFObject::CreateSect(const StringImpl& name, int characteristics, bool makeSectSymbol)

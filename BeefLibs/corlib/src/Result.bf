@@ -27,6 +27,22 @@ namespace System
 			}
 		}
 
+		public ref T ValueRef
+		{
+			[Inline]
+			get mut
+			{
+				switch (this)
+				{
+				case .Ok(var ref val): return ref val;
+				case .Err:
+					{
+						Internal.FatalError("Unhandled error in result", 2);
+					}
+				}
+			}
+		}
+
 		[Inline]
 		public static implicit operator Result<T>(T value)
 		{
@@ -37,6 +53,19 @@ namespace System
 		public static implicit operator T(Result<T> result)
 		{
 			return result.Unwrap();
+		}
+
+		[Inline]
+		public static mut T operator->(ref Result<T> result)
+		{
+			switch (result)
+			{
+			case .Ok(var mut val): return mut val;
+			case .Err:
+				{
+					Internal.FatalError("Unhandled error in result", 2);
+				}
+			}
 		}
 
 		[Inline]
@@ -99,7 +128,7 @@ namespace System
 
 	extension Result<T> where T : IDisposable
 	{
-		public void Dispose()
+		public new void Dispose()
 		{
 			if (this case .Ok(var val))
 				val.Dispose();
@@ -116,9 +145,9 @@ namespace System
 			switch (this)
 			{
 			case .Ok(var val): return val;
-			case .Err(var err):
+			case .Err:
 				{
-					Internal.FatalError(scope String()..AppendF("Unhandled error in result:\n {}", err), 2);
+					Internal.FatalError("Unhandled error in result", 2);
 				}
 			}
 		}
@@ -131,14 +160,45 @@ namespace System
 			}
 		}
 
+		public ref T ValueRef
+		{
+			[Inline]
+			get mut
+			{
+				switch (this)
+				{
+				case .Ok(var ref val): return ref val;
+				case .Err:
+					{
+						Internal.FatalError("Unhandled error in result", 2);
+					}
+				}
+			}
+		}
+
+		[Inline]
 		public static implicit operator Result<T, TErr>(T value)
 		{
 		    return .Ok(value);
 		}
 
+		[Inline]
 		public static implicit operator T(Result<T, TErr> result)
 		{
 			return result.Unwrap();
+		}
+
+		[Inline]
+		public static mut T operator->(ref Result<T, TErr> result)
+		{
+			switch (result)
+			{
+			case .Ok(var mut val): return mut val;
+			case .Err:
+				{
+					Internal.FatalError("Unhandled error in result", 2);
+				}
+			}
 		}
 
 		public void IgnoreError()
@@ -203,7 +263,7 @@ namespace System
 
 	extension Result<T, TErr> where T : IDisposable
 	{
-		public void Dispose()
+		public new void Dispose()
 		{
 			if (this case .Ok(var val))
 				val.Dispose();
@@ -212,7 +272,7 @@ namespace System
 
 	extension Result<T, TErr> where TErr : IDisposable
 	{
-		public void Dispose()
+		public new void Dispose()
 		{
 			if (this case .Err(var err))
 				err.Dispose();
@@ -221,7 +281,7 @@ namespace System
 
 	extension Result<T, TErr> where T : IDisposable where TErr : IDisposable
 	{
-		public void Dispose()
+		public new void Dispose()
 		{
 			if (this case .Ok(var val))
 				val.Dispose();

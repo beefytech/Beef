@@ -25,6 +25,15 @@ namespace Tests
 			public delegate T Zag();
 		}
 
+		class ClassB<T>
+		{
+			typealias AliasB0<T2> = (T a, T2 b, int c);
+
+			public static void MethodB0(List<AliasB0<float>> val)
+			{
+			}
+		}
+
 		public static void Test<T>()
 		{
 			T LocalA(int16 a)
@@ -60,6 +69,8 @@ namespace Tests
 
 			var t2 = (1.2f, 3.4);
 			ClassA<float>.AliasA6<double> v3 = t2;
+
+			ClassB<double>.MethodB0(scope List<(double a, float b, int c)>());
 		}
 	}
 }

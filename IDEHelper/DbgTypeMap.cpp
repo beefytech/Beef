@@ -81,7 +81,7 @@ USING_NS_BF;
 //		char cIn;
 //		do { cIn = *(inPtr++); } while (cIn == ' ');
 //		char cMap;
-//		do { cMap = *(mapPtr++); } while (cMap == ' ');		
+//		do { cMap = *(mapPtr++); } while (cMap == ' ');
 //		if (cIn != cMap)
 //		{
 //			if ((cIn == '`') || (cIn == '\''))
@@ -136,7 +136,7 @@ USING_NS_BF;
 //}
 //
 //void DbgTypeMap::Insert(DbgType* value)
-//{	
+//{
 //	if (mHashHeads == NULL)
 //		mHashHeads = (Entry**)mAlloc.AllocBytes(sizeof(Entry*) * HashSize, alignof(Entry*));
 //
@@ -157,7 +157,7 @@ USING_NS_BF;
 //}
 //
 //DbgTypeMap::Entry* DbgTypeMap::Find(const char* name, DbgLanguage language)
-//{		
+//{
 //	if (language == DbgLanguage_BeefUnfixed)
 //	{
 //		std::string str = name;
@@ -184,7 +184,7 @@ USING_NS_BF;
 //				// Find our way to the end and remove the star
 //				int chevCount = 0;
 //				for (char* cTestPtr = cPtr - 1; cTestPtr >= name; cTestPtr--)
-//				{					
+//				{
 //					char c = *cTestPtr;
 //					if (c == 0)
 //						break;
@@ -217,7 +217,7 @@ USING_NS_BF;
 //						}
 //					}
 //				}
-//				
+//
 //				if (nameStart != NULL)
 //				{
 //					if (strncmp(nameStart, "System.Array1", 13) == 0)
@@ -376,7 +376,7 @@ bool DbgTypeMap::StrEqual(const char* inStr, const char* mapStr)
 }
 
 DbgTypeMap::Entry* DbgTypeMap::Find(const char* name, DbgLanguage language)
-{		
+{
 	if (language == DbgLanguage_BeefUnfixed)
 	{
 		std::string str = name;
@@ -395,7 +395,7 @@ DbgTypeMap::Entry* DbgTypeMap::Find(const char* name, DbgLanguage language)
 				// Find our way to the end and remove the star
 				int chevCount = 0;
 				for (char* cTestPtr = cPtr - 1; cTestPtr >= name; cTestPtr--)
-				{					
+				{
 					char c = *cTestPtr;
 					if (c == 0)
 						break;
@@ -428,7 +428,7 @@ DbgTypeMap::Entry* DbgTypeMap::Find(const char* name, DbgLanguage language)
 						}
 					}
 				}
-				
+
 				if (nameStart != NULL)
 				{
 					if (strncmp(nameStart, "System.Array1", 13) == 0)
@@ -470,15 +470,15 @@ DbgTypeMap::Entry* DbgTypeMap::Find(const char* name, DbgLanguage language)
 
 	int hashCode = GetHash(name, language) & 0x7FFFFFFF;
 	for (int i = mMap.mBuckets[hashCode % mMap.mAllocSize]; i >= 0; i = mMap.mEntries[i].mNext)
-	{		
+	{
 		if (mMap.mEntries[i].mHashCode == hashCode)
 		{
-			Entry* entry = (Entry*)&mMap.mEntries[i].mKey;			
+			Entry* entry = (Entry*)&mMap.mEntries[i].mKey;
 			if (StrEqual(name, entry->mValue->mName))
 				return entry;
 		}
 	}
-	
+
 	return NULL;
 }
 

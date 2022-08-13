@@ -119,6 +119,38 @@ namespace IDETest
 		{
 
 		}
+
+		public class TestExt<T> where T : struct
+		{
+			public struct InnerA
+			{
+
+			}
+
+			public struct InnerB<T2> where T2 : struct
+			{
+
+			}
+		}
+
+		extension TestExt<T>
+			where T : Int
+		{
+			public int a = 0;
+
+			public struct InnerC
+			{
+			}
+		}
+
+		static void TestExtMethod()
+		{
+			TestExt<String>.InnerA a; //FAIL
+			TestExt<String>.InnerB<int> b; //FAIL
+			TestExt<int>.InnerB<int> c;
+			TestExt<int>.InnerC d;
+			TestExt<float>.InnerC e; //FAIL
+		}
 	}
 }
 

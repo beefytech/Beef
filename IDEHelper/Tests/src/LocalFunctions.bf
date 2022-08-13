@@ -347,22 +347,29 @@ namespace Tests
 		public static void TestL()
 		{
 			int a = 8;
+			int b;
 
-			int LocalA()
+			if (a == 8)
 			{
-				return 9;
+				b = 9;
+
+				int LocalA()
+				{
+					return 9;
+				}
+
+				int LocalB()
+				{
+					int q = b;
+					return a;
+				}
+
+				function int() func = => LocalA;
+				Test.Assert(func() == 9);
+
+				delegate int() dlg = scope => LocalB;
+				Test.Assert(dlg() == 8);
 			}
-
-			int LocalB()
-			{
-				return a;
-			}
-
-			function int() func = => LocalA;
-			Test.Assert(func() == 9);
-
-			delegate int() dlg = scope => LocalB;
-			Test.Assert(dlg() == 8);
 		}
 	}
 }

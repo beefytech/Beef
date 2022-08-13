@@ -16,6 +16,7 @@ public:
 	virtual void Visit(BfLabeledBlock* labeledBlock);
 	virtual void Visit(BfExpression* expr);
 	virtual void Visit(BfExpressionStatement* exprStmt);
+	virtual void Visit(BfNamedExpression* namedExpr);
 	virtual void Visit(BfAttributedExpression* attribExpr);
 	virtual void Visit(BfStatement* stmt);
 	virtual void Visit(BfAttributedStatement* attribStmt);
@@ -47,7 +48,7 @@ public:
 	virtual void Visit(BfMixinExpression* thisExpr);
 	virtual void Visit(BfSizedArrayCreateExpression* createExpr);
 	virtual void Visit(BfInitializerExpression* initExpr);
-	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);	
+	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);
 	virtual void Visit(BfTypeReference* typeRef);
 	virtual void Visit(BfNamedTypeReference* typeRef);
 	virtual void Visit(BfQualifiedTypeReference* qualifiedType);
@@ -68,9 +69,10 @@ public:
 	virtual void Visit(BfNullableTypeRef* typeRef);
 	virtual void Visit(BfVariableDeclaration* varDecl);
 	virtual void Visit(BfLocalMethodDeclaration* methodDecl);
-	virtual void Visit(BfParameterDeclaration* paramDecl);		
-	virtual void Visit(BfTypeAttrExpression* typeAttrExpr);		
+	virtual void Visit(BfParameterDeclaration* paramDecl);
+	virtual void Visit(BfTypeAttrExpression* typeAttrExpr);
 	virtual void Visit(BfOffsetOfExpression* offsetOfExpr);
+	virtual void Visit(BfNameOfExpression* nameOfExpr);
 	virtual void Visit(BfDefaultExpression* defaultExpr);
 	virtual void Visit(BfIsConstExpression* isConstExpr);
 	virtual void Visit(BfUninitializedExpression* uninitializedExpr);
@@ -83,7 +85,7 @@ public:
 	virtual void Visit(BfBoxExpression* boxExpr);
 	virtual void Visit(BfScopedInvocationTarget* scopedTarget);
 	virtual void Visit(BfInvocationExpression* invocationExpr);
-	virtual void Visit(BfDeferStatement* deferStmt);	
+	virtual void Visit(BfDeferStatement* deferStmt);
 	virtual void Visit(BfEnumCaseBindExpression* caseBindExpr);
 	virtual void Visit(BfCaseExpression* caseExpr);
 	virtual void Visit(BfSwitchCase* switchCase);
@@ -117,6 +119,7 @@ public:
 	virtual void Visit(BfUnaryOperatorExpression* binOpExpr);
 	virtual void Visit(BfBinaryOperatorExpression* binOpExpr);
 	virtual void Visit(BfConstructorDeclaration* ctorDeclaration);
+	virtual void Visit(BfAutoConstructorDeclaration* ctorDeclaration);
 	virtual void Visit(BfDestructorDeclaration* dtorDeclaration);
 	virtual void Visit(BfMethodDeclaration* methodDeclaration);
 	virtual void Visit(BfOperatorDeclaration* operatorDeclaration);

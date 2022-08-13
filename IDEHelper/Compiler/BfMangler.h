@@ -33,7 +33,7 @@ public:
 			Kind_MethodName,
 			Kind_Prefix,
 			Kind_PrimitivePrefix,
-			Kind_GenericParam			
+			Kind_GenericParam
 		};
 
 	public:
@@ -54,7 +54,7 @@ public:
 			BfTypeInstance* mTypeInst;
 			BfMethodInstance* mMethodInstance;
 			const char* mPrefix;
-		};		
+		};
 
 	public:
 		NameSubstitute(Kind kind, void* param)
@@ -90,7 +90,7 @@ public:
 
 class BfGNUMangler : public BfMangler
 {
-public:				
+public:
 	class MangleContext
 	{
 	public:
@@ -111,22 +111,22 @@ public:
 			mPrefixObjectPointer = false;
 		}
 	};
-	
+
 	static int ParseSubIdx(StringImpl& name, int strIdx);
 	static void AddSubIdx(StringImpl& name, int strIdx);
 	static void AddSizedString(StringImpl& name, const StringImpl& addStr);
 	static BfTypeCode GetPrimTypeAt(MangleContext& mangleContext, StringImpl& name, int strIdx);
-	static void AddPrefix(MangleContext& mangleContext, StringImpl& name, int startIdx, const char* prefix);	
+	static void AddPrefix(MangleContext& mangleContext, StringImpl& name, int startIdx, const char* prefix);
 	static void FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& name, const NameSubstitute& newNameSub, int& curMatchIdx, bool& matchFailed);
 	static void FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& name, BfTypeInstance* typeInst, int& curMatchIdx, bool& matchFailed);
-	static void FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& name, const NameSubstitute& newNameSub);	
+	static void FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& name, const NameSubstitute& newNameSub);
 
 public:
 	static void MangleTypeInst(MangleContext& mangleContext, StringImpl& name, BfTypeInstance* typeInst, BfTypeInstance* postfixTypeInst = NULL, bool* isEndOpen = NULL);
 
 	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, BfType* postfixType = NULL, bool isConst = false);
 	static String Mangle(BfType* type, BfModule* module = NULL);
-	static String Mangle(BfMethodInstance* methodRef);	
+	static String Mangle(BfMethodInstance* methodRef);
 	static String MangleMethodName(BfTypeInstance* type, const StringImpl& methodName);
 	static String Mangle(BfFieldInstance* methodRef);
 	static String MangleStaticFieldName(BfTypeInstance* type, const StringImpl& fieldName);
@@ -138,12 +138,12 @@ public:
 	class MangleContext
 	{
 	public:
-		bool mIsSafeMangle;		
+		bool mIsSafeMangle;
 
 		BfModule* mModule;
 		bool mCCompat;
 		bool mCPPMangle;
-		bool mIs64Bit;		
+		bool mIs64Bit;
 		SizedArray<NameSubstitute, 10> mSubstituteList;
 		SizedArray<BfType*, 10> mSubstituteTypeList;
 
@@ -154,7 +154,7 @@ public:
 	public:
 		MangleContext()
 		{
-			mIsSafeMangle = false;			
+			mIsSafeMangle = false;
 			mModule = NULL;
 			mCCompat = false;
 			mIs64Bit = false;
@@ -164,11 +164,11 @@ public:
 			mInRet = false;
 		}
 
-		BfModule* GetUnreifiedModule();		
+		BfModule* GetUnreifiedModule();
 	};
 
 	static void AddGenericArgs(MangleContext& mangleContext, StringImpl& name, const SizedArrayImpl<BfType*>& genericArgs, int numOuterGenericParams = 0);
-	
+
 	static void AddStr(MangleContext& mangleContext, StringImpl& name, const StringImpl& str);
 	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, bool useTypeList = false, bool isConst = false);
 	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfTypeInstance* typeInst, bool isAlreadyStarted, bool isOuterType = false);
@@ -176,8 +176,8 @@ public:
 
 	void AddPrefix(MangleContext & mangleContext, StringImpl& name, int startIdx, const char * prefix);
 
-	static void AddSubIdx(StringImpl& name, int strIdx);	
-	static void AddTypeStart(MangleContext & mangleContext, StringImpl& name, BfType* type);	
+	static void AddSubIdx(StringImpl& name, int strIdx);
+	static void AddTypeStart(MangleContext & mangleContext, StringImpl& name, BfType* type);
 	static bool FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& name, const NameSubstitute& newNameSub);
 
 public:
@@ -188,7 +188,7 @@ public:
 	static void MangleStaticFieldName(StringImpl& outStr, bool is64Bit, BfTypeInstance* type, const StringImpl& fieldName, BfType* fieldType = NULL);
 };
 
-// A "safe mangle" is used for reconnecting deleted types to their previous id. We make sure we never force a 
+// A "safe mangle" is used for reconnecting deleted types to their previous id. We make sure we never force a
 //  PopulateType with this kind of mangle, as referenced types may be deleted and marked as undefined
 class BfSafeMangler : public BfMSMangler
 {

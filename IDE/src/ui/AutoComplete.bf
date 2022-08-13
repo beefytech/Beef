@@ -1017,6 +1017,72 @@ namespace IDE.ui
 				if (cursorSection >= textSections.Count - 1)
 				    cursorSection = textSections.Count - 2;
 
+				if ((cursorSection >= 0) && (cursorSection < mAutoComplete.mInvokeSrcPositions.Count))
+				{
+					var argText = mAutoComplete.mTargetEditWidget.mEditWidgetContent.ExtractString(mAutoComplete.mInvokeSrcPositions[cursorSection - 1],
+						mAutoComplete.mInvokeSrcPositions[cursorSection] - mAutoComplete.mInvokeSrcPositions[cursorSection - 1], .. scope .());
+
+					int colonPos = argText.IndexOf(':');
+					
+					if (colonPos != -1)
+					{
+						do
+						{
+							bool foundSep = false;
+							int nameStart = -1;
+							for (int i = colonPos - 1; i >= 0; i--)
+							{
+								char8 c = argText[i];
+								if (nameStart == -1)
+								{
+									if ((c != '_') && (!c.IsLetterOrDigit))
+										nameStart = i + 1;
+								}
+								else
+								{
+									if (!c.IsWhiteSpace)
+									{
+										if ((!foundSep) &&
+											((c == ',') || (c == '(')))
+											foundSep = true;
+										else
+											break;
+									}
+								}
+							}
+
+							if (nameStart == -1)
+								break;
+
+							var argParamName = argText.Substring(nameStart, colonPos - nameStart);
+							for (int checkSectionIdx = 1; checkSectionIdx < textSections.Count; checkSectionIdx++)
+							{
+								var sectionStr = textSections[checkSectionIdx];
+
+								var checkParamName = sectionStr;
+								if (checkParamName.EndsWith(','))
+									checkParamName.RemoveFromEnd(1);
+
+								for (int checkIdx = checkParamName.Length - 1; checkIdx >= 0; checkIdx--)
+								{
+									char8 c = checkParamName[checkIdx];
+									if (c.IsWhiteSpace)
+									{
+										checkParamName.RemoveFromStart(checkIdx + 1);
+										break;
+									}
+								}
+
+								if (checkParamName == argParamName)
+								{
+									cursorSection = checkSectionIdx;
+									break;
+								}
+							}
+						}
+					}
+				}
+
 				float paramX = 0;
 				for (int sectionIdx = 0; sectionIdx < textSections.Count; sectionIdx++)
 				{

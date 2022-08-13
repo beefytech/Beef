@@ -231,7 +231,7 @@ BeIRCodeGen::BeIRCodeGen()
 	mBeContext = NULL;
 	mBeModule = NULL;
 	mHasDebugLoc = false;
-	mDebugging = false;	
+	mDebugging = false;
 	mCmdCount = 0;
 }
 
@@ -239,7 +239,7 @@ BeIRCodeGen::~BeIRCodeGen()
 {
 	BF_ASSERT(mSavedDebugLocs.size() == 0);
 	delete mBeModule;
-	delete mBeContext;	
+	delete mBeContext;
 	delete mStream;
 }
 
@@ -254,7 +254,7 @@ void BeIRCodeGen::Hash(BeHashContext& hashCtx)
 	hashCtx.Mixin(mPtrSize);
 	hashCtx.Mixin(mIsOptimized);
 	if (mBeModule != NULL)
-		mBeModule->Hash(hashCtx);	
+		mBeModule->Hash(hashCtx);
 
 	Array<BeStructType*> structHashList;
 
@@ -385,7 +385,7 @@ BeType* BeIRCodeGen::GetBeType(BfTypeCode typeCode, bool& isSigned)
 		isSigned = true;
 		beTypeCode = BeTypeCode_Float;
 		break;
-	case BfTypeCode_Double:	
+	case BfTypeCode_Double:
 		isSigned = true;
 		beTypeCode = BeTypeCode_Double;
 		break;
@@ -395,7 +395,7 @@ BeType* BeIRCodeGen::GetBeType(BfTypeCode typeCode, bool& isSigned)
 }
 
 BeIRTypeEntry& BeIRCodeGen::GetTypeEntry(int typeId)
-{	
+{
 	BeIRTypeEntry& typeEntry = mTypes[typeId];
 	if (typeEntry.mTypeId == -1)
 		typeEntry.mTypeId = typeId;
@@ -482,7 +482,7 @@ void BeIRCodeGen::ProcessBfIRData(const BfSizedArray<uint8>& buffer)
 {
 	BP_ZONE("BeIRCodeGen::ProcessBfIRData");
 
-	Init(buffer);		
+	Init(buffer);
 	Process();
 }
 
@@ -490,7 +490,7 @@ BfTypeCode BeIRCodeGen::GetTypeCode(BeType * type, bool isSigned)
 {
 	switch (type->mTypeCode)
 	{
-	case BeTypeCode_Int8: 
+	case BeTypeCode_Int8:
 		return (isSigned) ? BfTypeCode_Int8 : BfTypeCode_UInt8;
 	case BeTypeCode_Int16:
 		return (isSigned) ? BfTypeCode_Int16 : BfTypeCode_UInt16;
@@ -518,7 +518,7 @@ void BeIRCodeGen::SetResult(int id, BeValue* value)
 void BeIRCodeGen::SetResult(int id, BeType* type)
 {
 	BeIRCodeGenEntry entry;
-	entry.mKind = BeIRCodeGenEntryKind_Type;	
+	entry.mKind = BeIRCodeGenEntryKind_Type;
 	entry.mBeType = type;
 	mResults.TryAdd(id, entry);
 }
@@ -549,7 +549,6 @@ int64 BeIRCodeGen::ReadSLEB128()
 		byteVal = mStream->Read();
 		val |= ((int64)(byteVal & 0x7f)) << shift;
 		shift += 7;
-
 	} while (byteVal >= 128);
 	// Sign extend negative numbers.
 	if ((byteVal & 0x40) && (shift < 64))
@@ -700,7 +699,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				CMD_PARAM(bool, isTLS);
 
 				BF_ASSERT(varType != NULL);
-				
+
 				auto globalVariable = mBeModule->mGlobalVariables.Alloc();
 				globalVariable->mModule = mBeModule;
 				globalVariable->mType = varType;
@@ -710,7 +709,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				globalVariable->mName = name;
 				globalVariable->mIsTLS = isTLS;
 				globalVariable->mAlign = varType->mAlign;
-				globalVariable->mUnnamedAddr = false;				
+				globalVariable->mUnnamedAddr = false;
 				globalVariable->mStorageKind = BfIRStorageKind_Normal;
 				if (initializer != NULL)
 					BF_ASSERT(varType->mAlign > 0);
@@ -723,16 +722,16 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			beValue->mRefCount++;
 			BE_MEM_END("ParamType_Const_GlobalVar");
 			return;
-		}		
+		}
 		else if ((constType == BfConstType_BitCast) || (constType == BfConstType_BitCastNull))
-		{		
+		{
 			CMD_PARAM(BeConstant*, target);
 			CMD_PARAM(BeType*, toType);
 
 			auto castedVal = mBeModule->mAlloc.Alloc<BeCastConstant>();
 			castedVal->mInt64 = target->mInt64;
 			castedVal->mType = toType;
-			castedVal->mTarget = target;			
+			castedVal->mTarget = target;
 			BF_ASSERT(target->GetType() != NULL);
 			BF_ASSERT(!target->GetType()->IsComposite());
 			beValue = castedVal;
@@ -742,12 +741,12 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		else if (constType == BfConstType_GEP32_1)
 		{
 			CMD_PARAM(BeConstant*, target);
-			CMD_PARAM(int, idx0);			
+			CMD_PARAM(int, idx0);
 
 			BF_ASSERT(target->GetType()->IsPointer());
 			auto gepConstant = mBeModule->mAlloc.Alloc<BeGEP1Constant>();
 			gepConstant->mTarget = target;
-			gepConstant->mIdx0 = idx0;			
+			gepConstant->mIdx0 = idx0;
 
 			beValue = gepConstant;
 			BE_MEM_END("ParamType_Const_GEP32_1");
@@ -758,7 +757,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			CMD_PARAM(BeConstant*, target);
 			CMD_PARAM(int, idx0);
 			CMD_PARAM(int, idx1);
-			
+
 			BF_ASSERT(target->GetType()->IsPointer());
 			auto gepConstant = mBeModule->mAlloc.Alloc<BeGEP2Constant>();
 			gepConstant->mTarget = target;
@@ -772,11 +771,11 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		else if (constType == BfConstType_ExtractValue)
 		{
 			CMD_PARAM(BeConstant*, target);
-			CMD_PARAM(int, idx0);			
-			
+			CMD_PARAM(int, idx0);
+
 			auto gepConstant = mBeModule->mAlloc.Alloc<BeExtractValueConstant>();
 			gepConstant->mTarget = target;
-			gepConstant->mIdx0 = idx0;			
+			gepConstant->mIdx0 = idx0;
 
 			beValue = gepConstant;
 			BE_MEM_END("ParamType_Const_ExtractValue");
@@ -794,7 +793,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			auto castedVal = mBeModule->mAlloc.Alloc<BeCastConstant>();
 			castedVal->mInt64 = target->mInt64;
 			castedVal->mType = toType;
-			castedVal->mTarget = target;			
+			castedVal->mTarget = target;
 			BF_ASSERT(target->GetType() != NULL);
 			beValue = castedVal;
 			BE_MEM_END("ParamType_Const_PtrToInt");
@@ -858,11 +857,11 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			}
 
 			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();
-			constStruct->mType = type;			
+			constStruct->mType = type;
 			for (int i = 0; i < (int)values.size(); i++)
 			{
 				auto val = values[i];
-				BeConstant* constant = BeValueDynCast<BeConstant>(val);				
+				BeConstant* constant = BeValueDynCast<BeConstant>(val);
 
 				if (type->IsSizedArray())
 				{
@@ -882,7 +881,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				{
 					BF_ASSERT(type->IsStruct());
 					auto structType = (BeStructType*)type;
-					auto valType = constant->GetType();					
+					auto valType = constant->GetType();
 					if (structType->mIsOpaque)
 					{
 						Fail("ConstAgg with opaque struct");
@@ -922,7 +921,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		}
 		else if (constType == BfConstType_Undef)
 		{
-			CMD_PARAM(BeType*, type);			
+			CMD_PARAM(BeType*, type);
 			auto constUndef = mBeModule->mOwnedValues.Alloc<BeUndefConstant>();
 			constUndef->mType = type;
 			beValue = constUndef;
@@ -940,7 +939,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(BeValue*, value);
 			mReflectDataMap[type] = value;
-			beValue = value;			
+			beValue = value;
 			return;
 		}
 
@@ -969,26 +968,26 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		}
 		else if (typeCode == BfTypeCode_None)
 		{
-			beValue = NULL;			
+			beValue = NULL;
 			BE_MEM_END("ParamType_Const_None");
 		}
 		else if (typeCode == BfTypeCode_NullPtr)
 		{
-			CMD_PARAM(BeType*, nullType);			
-			beValue = mBeModule->GetConstantNull((BePointerType*)nullType);			
+			CMD_PARAM(BeType*, nullType);
+			beValue = mBeModule->GetConstantNull((BePointerType*)nullType);
 			BE_MEM_END("ParamType_Const_NullPtr");
 		}
 		else if (BfIRBuilder::IsInt(typeCode))
-		{			
+		{
 			int64 intVal = ReadSLEB128();
-			auto constVal = mBeModule->GetConstant(llvmConstType, intVal);			
+			auto constVal = mBeModule->GetConstant(llvmConstType, intVal);
 			beValue = constVal;
 			BE_MEM_END("ParamType_Const_Int");
 		}
 		else
 		{
 			BF_FATAL("Unhandled");
-		}		
+		}
 	}
 	else if (paramType == BfIRParamType_Arg)
 	{
@@ -997,7 +996,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		BE_MEM_END("ParamType_Arg");
 	}
 	else if (paramType == BfIRParamType_StreamId_Abs8)
-	{				
+	{
 		int cmdId = mStream->Read();
 		auto& result = mResults[cmdId];
 		BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Value);
@@ -1005,13 +1004,13 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		BE_MEM_END("ParamType_StreamId");
 	}
 	else if (paramType == BfIRParamType_StreamId_Rel)
-	{		
+	{
 		int cmdId = mCmdCount - (int)ReadSLEB128();
 		auto& result = mResults[cmdId];
 		BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Value);
 		beValue = result.mBeValue;
 		BE_MEM_END("ParamType_StreamId");
-	}	
+	}
 	else
 	{
 		int cmdId = mCmdCount - (paramType - BfIRParamType_StreamId_Back1) - 1;
@@ -1019,7 +1018,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Value);
 		beValue = result.mBeValue;
 		BE_MEM_END("ParamType_StreamId");
-	}	
+	}
 
 	if (beValue != NULL)
 		beValue->mRefCount++;
@@ -1052,7 +1051,7 @@ void BeIRCodeGen::Read(BeFunction*& beFunc)
 		return;
 	}
 	auto& result = mResults[streamId];
-	BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Value);	
+	BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Value);
 	BF_ASSERT(BeValueDynCast<BeFunction>(result.mBeValue));
 	beFunc = (BeFunction*)result.mBeValue;
 	BE_MEM_END("BeFunction");
@@ -1097,7 +1096,7 @@ void BeIRCodeGen::HandleNextCmd()
 	BfIRCmd cmd = (BfIRCmd)mStream->Read();
 	mCmdCount++;
 
-#ifdef CODEGEN_TRACK	
+#ifdef CODEGEN_TRACK
 	gBEMemReporter.BeginSection(gIRCmdNames[cmd]);
 	gBEMemReporter.Add(1);
 #endif
@@ -1111,11 +1110,11 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(bool, isOptimized);
 
 			BF_ASSERT(mBeModule == NULL);
-			mPtrSize = ptrSize;			
+			mPtrSize = ptrSize;
 			mIsOptimized = isOptimized;
 			mBeContext = new BeContext();
 			mBeModule = new BeModule(moduleName, mBeContext);
-			mBeModule->mBeIRCodeGen = this;			
+			mBeModule->mBeIRCodeGen = this;
 			mBeContext->mPointerSize = ptrSize;
 
 			for (auto constInt : mConfigConsts)
@@ -1163,7 +1162,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_SetType:
 		{
 			CMD_PARAM(int, typeId);
-			CMD_PARAM(BeType*, type);						
+			CMD_PARAM(BeType*, type);
 			auto& typeEntry = GetTypeEntry(typeId);
 			typeEntry.mBeType = type;
 			if (typeEntry.mInstBeType == NULL)
@@ -1176,7 +1175,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeType*, type);
 			GetTypeEntry(typeId).mInstBeType = type;
 		}
-		break;	
+		break;
 	case BfIRCmd_PrimitiveType:
 		{
 			BfTypeCode typeCode = (BfTypeCode)mStream->Read();
@@ -1186,7 +1185,7 @@ void BeIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_CreateStruct:
 		{
-			CMD_PARAM(String, typeName);			
+			CMD_PARAM(String, typeName);
 			SetResult(curId, mBeContext->CreateStruct(typeName));
 		}
 		break;
@@ -1198,13 +1197,13 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_StructSetBody:
-		{			
+		{
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(CmdParamVec<BeType*>, members);
 			CMD_PARAM(int, instSize);
 			CMD_PARAM(int, instAlign);
 			CMD_PARAM(bool, isPacked);
-			BF_ASSERT(type->mTypeCode == BeTypeCode_Struct);			
+			BF_ASSERT(type->mTypeCode == BeTypeCode_Struct);
 			auto structType = (BeStructType*)type;
 			mBeContext->SetStructBody(structType, members, isPacked);
 			structType->mSize = instSize;
@@ -1229,14 +1228,14 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeIRTypeEntry*, typeEntry);
 			SetResult(curId, mBeContext->GetPointerTo(typeEntry->mInstBeType));
 		}
-		break;	
+		break;
 	case BfIRCmd_GetType:
 		{
 			CMD_PARAM(BeValue*, value);
 			auto type = value->GetType();
 			SetResult(curId, type);
 		}
-		break;	
+		break;
 	case BfIRCmd_GetPointerToFuncType:
 		{
 			CMD_PARAM(BeFunctionType*, funcType);
@@ -1255,24 +1254,24 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, length);
 			SetResult(curId, mBeContext->CreateSizedArrayType(elementType, length));
 		}
-		break;	
+		break;
 	case BfIRCmd_GetVectorType:
 		{
 			CMD_PARAM(BeType*, elementType);
 			CMD_PARAM(int, length);
 			SetResult(curId, mBeContext->CreateVectorType(elementType, length));
 		}
-		break;	
+		break;
 	case BfIRCmd_CreateConstAgg:
-		{			
+		{
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(CmdParamVec<BeValue*>, values);
 
 			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();
 			constStruct->mType = type;
-			
+
 			if (type->IsStruct())
-			{				
+			{
 				FixValues((BeStructType*)type, values);
 
 				BF_ASSERT(((BeStructType*)type)->mMembers.size() == values.size());
@@ -1314,10 +1313,10 @@ void BeIRCodeGen::HandleNextCmd()
 			beConst->mType = type;
 			SetResult(curId, beConst);
 		}
-		break;	
+		break;
 	case BfIRCmd_CreateConstString:
 		{
-			CMD_PARAM(String, str);			
+			CMD_PARAM(String, str);
 			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStringConstant>();
 			constStruct->mString = str;
 			auto charType = mBeContext->GetPrimitiveType(BeTypeCode_Int8);
@@ -1351,7 +1350,7 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_NumericCast:
-		{	
+		{
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(bool, valIsSigned);
 
@@ -1365,20 +1364,20 @@ void BeIRCodeGen::HandleNextCmd()
 			BfTypeCode valTypeCode = GetTypeCode(valType, valIsSigned);
 
 			if (auto srcCastConstant = BeValueDynCast<BeCastConstant>(val))
-			{												
+			{
 				BeType* toType = GetBeType(typeCode, valIsSigned);
 
 				auto castedVal = mBeModule->mAlloc.Alloc<BeCastConstant>();
 				castedVal->mInt64 = srcCastConstant->mInt64;
 				castedVal->mType = toType;
 				castedVal->mTarget = srcCastConstant->mTarget;
-				
+
 				SetResult(curId, castedVal);
 				break;
 			}
-			
+
 			bool toSigned = false;
-			auto toBeType = GetBeType(typeCode, toSigned);		
+			auto toBeType = GetBeType(typeCode, toSigned);
 			BeValue* retVal = mBeModule->CreateNumericCast(val, toBeType, valIsSigned, toSigned);
 			SetResult(curId, retVal);
 		}
@@ -1401,13 +1400,13 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, lhs);
 			CMD_PARAM(BeValue*, rhs);
-			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_SLT, lhs, rhs));			
+			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_SLT, lhs, rhs));
 		}
 		break;
 	case BfIRCmd_CmpULT:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_ULT, lhs, rhs));
 		}
 		break;
@@ -1421,7 +1420,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_CmpULE:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_ULE, lhs, rhs));
 		}
 		break;
@@ -1435,7 +1434,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_CmpUGT:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_UGT, lhs, rhs));
 		}
 		break;
@@ -1449,14 +1448,14 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_CmpUGE:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_UGE, lhs, rhs));
 		}
 		break;
 	case BfIRCmd_Add:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			CMD_PARAM(int8, overflowCheckKind);
 			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_Add, lhs, rhs, (BfOverflowCheckKind)overflowCheckKind));
 		}
@@ -1487,7 +1486,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_UDiv:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_UDivide, lhs, rhs));
 		}
 		break;
@@ -1508,42 +1507,42 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_And:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_BitwiseAnd, lhs, rhs));
 		}
 		break;
 	case BfIRCmd_Or:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_BitwiseOr, lhs, rhs));
 		}
 		break;
 	case BfIRCmd_Xor:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_ExclusiveOr, lhs, rhs));
 		}
 		break;
 	case BfIRCmd_Shl:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_LeftShift, lhs, rhs));
 		}
 		break;
 	case BfIRCmd_AShr:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_ARightShift, lhs, rhs));
 		}
 		break;
 	case BfIRCmd_LShr:
 		{
 			CMD_PARAM(BeValue*, lhs);
-			CMD_PARAM(BeValue*, rhs);			
+			CMD_PARAM(BeValue*, rhs);
 			SetResult(curId, mBeModule->CreateBinaryOp(BeBinaryOpKind_RightShift, lhs, rhs));
 		}
 		break;
@@ -1552,7 +1551,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeValue*, val);
 
 			auto negInst = mBeModule->AllocInst<BeNegInst>();
-			negInst->mValue = val;			
+			negInst->mValue = val;
 			SetResult(curId, negInst);
 		}
 		break;
@@ -1594,7 +1593,7 @@ void BeIRCodeGen::HandleNextCmd()
 			numericCastInst->mValue = val;
 			numericCastInst->mValSigned = false;
 			numericCastInst->mToType = beType;
-			numericCastInst->mToSigned = isSigned;			
+			numericCastInst->mToSigned = isSigned;
 			SetResult(curId, numericCastInst);
 		}
 		break;
@@ -1602,7 +1601,7 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(BeType*, toType);
-			
+
 			auto bitcastInst = mBeModule->AllocInst<BeBitCastInst>();
 			bitcastInst->mValue = val;
 			bitcastInst->mToType = toType;
@@ -1649,26 +1648,26 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, val);
 			BF_ASSERT(val->GetType()->IsPointer());
-			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_EQ, val, mBeModule->GetConstantNull((BePointerType*)val->GetType())));						
+			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_EQ, val, mBeModule->GetConstantNull((BePointerType*)val->GetType())));
 		}
 		break;
 	case BfIRCmd_IsNotNull:
 		{
 			CMD_PARAM(BeValue*, val);
 			BF_ASSERT(val->GetType()->IsPointer());
-			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_NE, val, mBeModule->GetConstantNull((BePointerType*)val->GetType())));	
+			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_NE, val, mBeModule->GetConstantNull((BePointerType*)val->GetType())));
 		}
 		break;
 	case BfIRCmd_ExtractValue:
 		{
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(int, idx);
-			
+
 			BF_ASSERT(val->GetType()->IsComposite());
 
 			auto extractValueInst = mBeModule->AllocInst<BeExtractValueInst>();
 			extractValueInst->mAggVal = val;
-			extractValueInst->mIdx = idx;			
+			extractValueInst->mIdx = idx;
 			SetResult(curId, extractValueInst);
 		}
 		break;
@@ -1681,7 +1680,7 @@ void BeIRCodeGen::HandleNextCmd()
 			auto insertValueInst = mBeModule->AllocInst<BeInsertValueInst>();
 			insertValueInst->mAggVal = agg;
 			insertValueInst->mMemberVal = val;
-			insertValueInst->mIdx = idx;			
+			insertValueInst->mIdx = idx;
 			SetResult(curId, insertValueInst);
 		}
 		break;
@@ -1691,18 +1690,18 @@ void BeIRCodeGen::HandleNextCmd()
 			if (type->IsStruct())
 			{
 				BF_ASSERT(!((BeStructType*)type)->mIsOpaque);
-			}			
+			}
 
 			auto allocaInst = mBeModule->CreateAlloca(type);
 			allocaInst->mAlign = type->mAlign;
-			SetResult(curId, allocaInst);		
+			SetResult(curId, allocaInst);
 		}
 		break;
 	case BfIRCmd_AllocaArray:
 		{
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(BeValue*, arraySize);
-			
+
 			if (auto constant = BeValueDynCast<BeConstant>(arraySize))
 			{
 				//BF_ASSERT(constant->mInt64 >= 0);
@@ -1710,9 +1709,9 @@ void BeIRCodeGen::HandleNextCmd()
 
 			auto allocaInst = mBeModule->AllocInst<BeAllocaInst>();
 			allocaInst->mType = type;
-			allocaInst->mAlign = type->mAlign;			
+			allocaInst->mAlign = type->mAlign;
 			allocaInst->mArraySize = arraySize;
-			
+
 			SetResult(curId, allocaInst);
 		}
 		break;
@@ -1722,7 +1721,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, alignment);
 			auto inst = BeValueDynCast<BeAllocaInst>(val);
 
-			inst->mAlign = alignment;			
+			inst->mAlign = alignment;
 			//TODO: Implement
 			/*inst->setAlignment(alignment);*/
 		}
@@ -1754,6 +1753,14 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, inst);
 		}
 		break;
+	case BfIRCmd_LifetimeSoftEnd:
+		{
+			CMD_PARAM(BeValue*, val);
+			auto inst = mBeModule->AllocInst<BeLifetimeSoftEndInst>();
+			inst->mPtr = val;
+			SetResult(curId, inst);
+		}
+		break;
 	case BfIRCmd_LifetimeExtend:
 		{
 			CMD_PARAM(BeValue*, val);
@@ -1765,7 +1772,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_ValueScopeStart:
 		{
 			auto inst = mBeModule->AllocInst<BeValueScopeStartInst>();
-			SetResult(curId, inst);			
+			SetResult(curId, inst);
 		}
 		break;
 	case BfIRCmd_ValueScopeRetain:
@@ -1776,7 +1783,7 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_ValueScopeSoftEnd:
-		{			
+		{
 			CMD_PARAM(BeValue*, val);
 			auto inst = mBeModule->AllocInst<BeValueScopeEndInst>();
 			inst->mScopeStart = (BeValueScopeStartInst*)val;
@@ -1786,7 +1793,7 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_ValueScopeHardEnd:
-		{		
+		{
 			CMD_PARAM(BeValue*, val);
 			auto inst = mBeModule->AllocInst<BeValueScopeEndInst>();
 			inst->mScopeStart = (BeValueScopeStartInst*)val;
@@ -1812,7 +1819,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_Load:
 		{
 			CMD_PARAM(BeValue*, val);
-#ifdef _DEBUG			
+#ifdef _DEBUG
 			auto ptrType = val->GetType();
 			BF_ASSERT(ptrType->IsPointer());
 			// We call via a function pointer so there's never a reason to allow loading of a funcPtr
@@ -1828,7 +1835,7 @@ void BeIRCodeGen::HandleNextCmd()
 			}
 
 #endif
-			CMD_PARAM(bool, isVolatile);			
+			CMD_PARAM(bool, isVolatile);
 			SetResult(curId, mBeModule->CreateLoad(val, isVolatile));
 		}
 		break;
@@ -1888,7 +1895,7 @@ void BeIRCodeGen::HandleNextCmd()
 
 #ifdef _DEBUG
 			auto ptrType = ptr->GetType();
-			auto valType = val->GetType();			
+			auto valType = val->GetType();
 			if ((!ptrType->IsPointer()) || (!mBeContext->AreTypesEqual(((BePointerType*)ptrType)->mElementType, valType)))
 			{
 				String errStr;
@@ -1907,7 +1914,7 @@ void BeIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_MemSet:
 		{
-			auto inst = mBeModule->AllocInst<BeMemSetInst>();			
+			auto inst = mBeModule->AllocInst<BeMemSetInst>();
 			Read(inst->mAddr);
 			Read(inst->mVal);
 			Read(inst->mSize);
@@ -1938,11 +1945,11 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeType*, varType);
 			CMD_PARAM(bool, isConstant);
-			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();			
+			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();
 			CMD_PARAM(StringT<256>, name);
 			CMD_PARAM(bool, isTLS);
 			CMD_PARAM(BeConstant*, initializer);
-			
+
 			BF_ASSERT(varType != NULL);
 
 			auto globalVariable = mBeModule->mGlobalVariables.Alloc();
@@ -1951,7 +1958,7 @@ void BeIRCodeGen::HandleNextCmd()
 			globalVariable->mIsConstant = isConstant;
 			globalVariable->mLinkageType = linkageType;
 			globalVariable->mInitializer = initializer;
-			globalVariable->mName = name;			
+			globalVariable->mName = name;
 			globalVariable->mIsTLS = isTLS;
 			globalVariable->mUnnamedAddr = false;
 			globalVariable->mStorageKind = BfIRStorageKind_Normal;
@@ -1962,8 +1969,8 @@ void BeIRCodeGen::HandleNextCmd()
 				BF_ASSERT(mBeContext->AreTypesEqual(varType, initializer->GetType()));
 			}
 			else
-				globalVariable->mAlign = -1;			
-			
+				globalVariable->mAlign = -1;
+
 			SetResult(curId, globalVariable);
 		}
 		break;
@@ -1974,18 +1981,18 @@ void BeIRCodeGen::HandleNextCmd()
 
 			BF_ASSERT(BeValueDynCast<BeGlobalVariable>(val) != NULL);
 
-			((BeGlobalVariable*)val)->mUnnamedAddr = true;			
+			((BeGlobalVariable*)val)->mUnnamedAddr = true;
 		}
 		break;
 	case BfIRCmd_GlobalVar_SetInitializer:
 		{
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(BeConstant*, initializer);
-			
+
 			BF_ASSERT(BeValueDynCast<BeGlobalVariable>(val) != NULL);
 
 			auto globalVariable = (BeGlobalVariable*)val;
-			globalVariable->mInitializer = initializer;			
+			globalVariable->mInitializer = initializer;
 
 			if (globalVariable->mInitializer != NULL)
 			{
@@ -2019,7 +2026,7 @@ void BeIRCodeGen::HandleNextCmd()
 			BF_ASSERT(BeValueDynCast<BeGlobalVariable>(val) != NULL);
 
 			auto globalVariable = (BeGlobalVariable*)val;
-			globalVariable->mStorageKind = (BfIRStorageKind)storageKind;			
+			globalVariable->mStorageKind = (BfIRStorageKind)storageKind;
 		}
 		break;
 	case BfIRCmd_GlobalStringPtr:
@@ -2042,11 +2049,11 @@ void BeIRCodeGen::HandleNextCmd()
 			globalVariable->mAlign = 1;
 			globalVariable->mUnnamedAddr = false;
 
-			auto castedVal = mBeModule->mAlloc.Alloc<BeCastConstant>();			
+			auto castedVal = mBeModule->mAlloc.Alloc<BeCastConstant>();
 			castedVal->mType = mBeContext->GetPointerTo(charType);
 			castedVal->mTarget = globalVariable;
 			SetResult(curId, castedVal);
-			
+
 			//SetResult(curId, globalVariable);
 		}
 		break;
@@ -2061,7 +2068,7 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(String, name);
 			CMD_PARAM(bool, addNow);
-			auto block = mBeModule->CreateBlock(name);			
+			auto block = mBeModule->CreateBlock(name);
 			if (addNow)
 				mBeModule->AddBlock(mActiveFunction, block);
 
@@ -2077,7 +2084,7 @@ void BeIRCodeGen::HandleNextCmd()
 				auto bb = mBeModule->CreateBlock(name);
 				mBeModule->CreateBr(bb);
 				mBeModule->AddBlock(mActiveFunction, bb);
-				mBeModule->SetInsertPoint(bb);				
+				mBeModule->SetInsertPoint(bb);
 				newBlock = bb;
 			}
 			SetResult(curId, newBlock);
@@ -2086,7 +2093,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_AddBlock:
 		{
 			CMD_PARAM(BeBlock*, block);
-			mBeModule->AddBlock(mActiveFunction, block);			
+			mBeModule->AddBlock(mActiveFunction, block);
 		}
 		break;
 	case BfIRCmd_DropBlocks:
@@ -2095,10 +2102,10 @@ void BeIRCodeGen::HandleNextCmd()
 			auto& basicBlockList = mActiveFunction->mBlocks;
 			int postExitBlockIdx = -1;
 
-			/*auto itr = basicBlockList.begin();				
+			/*auto itr = basicBlockList.begin();
 			while (itr != basicBlockList.end())
 			{
-				auto block = *itr;				
+				auto block = *itr;
 				if (block == startingBlock)
 				{
 					basicBlockList.erase(itr, basicBlockList.end());
@@ -2120,21 +2127,21 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_MergeBlockDown:
 		{
 			CMD_PARAM(BeBlock*, fromBlock);
-			CMD_PARAM(BeBlock*, intoBlock);			
+			CMD_PARAM(BeBlock*, intoBlock);
 			for (auto inst : fromBlock->mInstructions)
 				inst->mParentBlock = intoBlock;
 			if (!fromBlock->mInstructions.IsEmpty())
 				intoBlock->mInstructions.Insert(0, &fromBlock->mInstructions[0], fromBlock->mInstructions.size());
 			mBeModule->RemoveBlock(mActiveFunction, fromBlock);
 		}
-		break;	
+		break;
 	case BfIRCmd_GetInsertBlock:
 		{
 			SetResult(curId, mBeModule->mActiveBlock);
 		}
 		break;
 	case BfIRCmd_SetInsertPoint:
-		{			
+		{
 			CMD_PARAM(BeBlock*, block);
 			mBeModule->SetInsertPoint(block);
 		}
@@ -2153,9 +2160,9 @@ void BeIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_DeleteBlock:
 		{
-			CMD_PARAM(BeBlock*, block);			
+			CMD_PARAM(BeBlock*, block);
 		}
-		break;	
+		break;
 	case BfIRCmd_EraseInstFromParent:
 		{
 			CMD_PARAM(BeValue*, instVal);
@@ -2164,7 +2171,7 @@ void BeIRCodeGen::HandleNextCmd()
 			bool wasRemoved = inst->mParentBlock->mInstructions.Remove(inst);
 			BF_ASSERT(wasRemoved);
 #ifdef _DEBUG
-			inst->mWasRemoved = true;			
+			inst->mWasRemoved = true;
 #endif
 		}
 		break;
@@ -2178,7 +2185,7 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeBlock*, block);
 			auto inst = mBeModule->CreateBr(block);
-			inst->mIsFake = true;		
+			inst->mIsFake = true;
 		}
 		break;
 	case BfIRCmd_CreateBr_NoCollapse:
@@ -2212,15 +2219,15 @@ void BeIRCodeGen::HandleNextCmd()
 			auto switchInst = mBeModule->AllocInstOwned<BeSwitchInst>();
 			switchInst->mValue = val;
 			switchInst->mDefaultBlock = dest;
-			switchInst->mCases.Reserve(numCases);			
+			switchInst->mCases.Reserve(numCases);
 			SetResult(curId, switchInst);
 		}
 		break;
 	case BfIRCmd_AddSwitchCase:
-		{			
+		{
 			CMD_PARAM(BeValue*, switchVal);
 			CMD_PARAM(BeValue*, caseVal);
-			CMD_PARAM(BeBlock*, caseBlock);						
+			CMD_PARAM(BeBlock*, caseBlock);
 
 			BeSwitchCase switchCase;
 			switchCase.mValue = (BeConstant*)caseVal;
@@ -2261,7 +2268,7 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_GetIntrinsic:
-		{			
+		{
 			CMD_PARAM(String, intrinName);
 			CMD_PARAM(int, intrinId);
 			CMD_PARAM(BeType*, returnType);
@@ -2275,7 +2282,7 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_CreateFunctionType:
-		{			
+		{
 			CMD_PARAM(BeType*, resultType);
 			CMD_PARAM(CmdParamVec<BeType*>, paramTypes);
 			CMD_PARAM(bool, isVarArg);
@@ -2288,7 +2295,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeFunctionType*, type);
 			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();
 			CMD_PARAM(String, name);
-			SetResult(curId, mBeModule->CreateFunction(type, linkageType, name));			
+			SetResult(curId, mBeModule->CreateFunction(type, linkageType, name));
 		}
 		break;
 	case BfIRCmd_SetFunctionName:
@@ -2301,7 +2308,6 @@ void BeIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_EnsureFunctionPatchable:
 		{
-
 		}
 		break;
 	case BfIRCmd_RemapBindFunction:
@@ -2342,25 +2348,25 @@ void BeIRCodeGen::HandleNextCmd()
 						dbgGlobalVariable->mDecl = decl;
 					}*/
 				}
-				
+
 				SetResult(curId, mBeModule->CreateLoad(beFunc->mRemapBindVar, false));
 			}
 			else
-				SetResult(curId, func);			
+				SetResult(curId, func);
 		}
 		break;
 	case BfIRCmd_SetActiveFunction:
 		{
-			CMD_PARAM(BeFunction*, func);			
+			CMD_PARAM(BeFunction*, func);
 			mActiveFunction = func;
 			mBeModule->mActiveFunction = func;
 		}
 		break;
 	case BfIRCmd_CreateCall:
-		{			
+		{
 			CMD_PARAM(BeValue*, func);
 			CMD_PARAM(CmdParamVec<BeValue*>, args);
-			
+
 #ifdef BE_EXTRA_CHECKS
 			auto funcPtrType = func->GetType();
 			if (funcPtrType != NULL)
@@ -2412,7 +2418,7 @@ void BeIRCodeGen::HandleNextCmd()
 				BF_ASSERT(func->GetTypeId() == BeIntrinsic::TypeId);
 			}
 #endif
-			SetResult(curId, mBeModule->CreateCall(func, args));			
+			SetResult(curId, mBeModule->CreateCall(func, args));
 		}
 		break;
 	case BfIRCmd_SetCallCallingConv:
@@ -2425,7 +2431,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_SetFuncCallingConv:
 		{
 			CMD_PARAM(BeFunction*, func);
-			BfIRCallingConv callingConv = (BfIRCallingConv)mStream->Read();						
+			BfIRCallingConv callingConv = (BfIRCallingConv)mStream->Read();
 			func->mCallingConv = callingConv;
 		}
 		break;
@@ -2438,9 +2444,9 @@ void BeIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_SetCallAttribute:
 		{
-			CMD_PARAM(BeValue*, callInstVal);	
+			CMD_PARAM(BeValue*, callInstVal);
 			CMD_PARAM(int, paramIdx);
-			BfIRAttribute attribute = (BfIRAttribute)mStream->Read();			
+			BfIRAttribute attribute = (BfIRAttribute)mStream->Read();
 			BeCallInst* callInst = (BeCallInst*)callInstVal;
 			if (attribute == BfIRAttribute_NoReturn)
 				callInst->mNoReturn = true;
@@ -2495,7 +2501,7 @@ void BeIRCodeGen::HandleNextCmd()
 				else if (attribute == BfIRAttribute_NoCapture)
 					callInst->mArgs[argIdx - 1].mNoCapture = true;
 				else if (attribute == BfIRAttribute_ByVal)
-				{									
+				{
 				}
 				else
 					BF_FATAL("Unhandled");
@@ -2503,10 +2509,10 @@ void BeIRCodeGen::HandleNextCmd()
 			else
 			{
 				if (attribute == BfIRAttribute_NoReturn)
-					callInst->mNoReturn = true;				
+					callInst->mNoReturn = true;
 				else
 					BF_FATAL("Unhandled");
-			}			
+			}
 		}
 		break;
 	case BfIRCmd_Call_AddAttribute1:
@@ -2515,7 +2521,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, argIdx);
 			BfIRAttribute attribute = (BfIRAttribute)mStream->Read();
 			CMD_PARAM(int, arg);
-						
+
 			BeCallInst* callInst = BeValueDynCast<BeCallInst>(inst);
 			if (callInst != NULL)
 			{
@@ -2570,7 +2576,7 @@ void BeIRCodeGen::HandleNextCmd()
 				if (attribute == BfIRAttribute_VarRet)
 					func->mIsVarReturn = true;
 				else if (attribute == BFIRAttribute_AlwaysInline)
-					func->mAlwaysInline = true;				
+					func->mAlwaysInline = true;
 				else if (attribute == BFIRAttribute_NoUnwind)
 					func->mNoUnwind = true;
 				else if (attribute == BFIRAttribute_UWTable)
@@ -2594,7 +2600,7 @@ void BeIRCodeGen::HandleNextCmd()
 				}
 				else
 					BF_FATAL("Unhandled");
-			}			
+			}
 		}
 		break;
 	case BfIRCmd_Func_AddAttribute1:
@@ -2602,15 +2608,15 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeFunction*, func);
 			CMD_PARAM(int, argIdx);
 			BfIRAttribute attribute = (BfIRAttribute)mStream->Read();
-			CMD_PARAM(int, arg);			
+			CMD_PARAM(int, arg);
 			// This is for adding things like Dereferencable, which we don't use
 
 			if (argIdx > 0)
 			{
 				if (attribute == BfIRAttribute_Dereferencable)
 					func->mParams[argIdx - 1].mDereferenceableSize = arg;
-				else if (attribute == BfIRAttribute_ByVal)				
-					func->mParams[argIdx - 1].mByValSize = arg;				
+				else if (attribute == BfIRAttribute_ByVal)
+					func->mParams[argIdx - 1].mByValSize = arg;
 				else
 					BF_FATAL("Unhandled");
 			}
@@ -2624,9 +2630,9 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, argIdx);
 			CMD_PARAM(String, name);
 			if (argIdx > 0)
-				func->mParams[argIdx - 1].mName = name;						
+				func->mParams[argIdx - 1].mName = name;
 		}
-		break;		
+		break;
 	case BfIRCmd_Func_DeleteBody:
 		{
 			CMD_PARAM(BeFunction*, func);
@@ -2639,10 +2645,18 @@ void BeIRCodeGen::HandleNextCmd()
 			func->mName += StrFormat("__RENAME%d", curId);
 		}
 		break;
+	case BfIRCmd_Func_SafeRenameFrom:
+		{
+			CMD_PARAM(BeFunction*, func);
+			CMD_PARAM(String, prevName);
+			if (func->mName == prevName)
+				func->mName += StrFormat("__RENAME%d", curId);
+		}
+		break;
 	case BfIRCmd_Func_SetLinkage:
 		{
 			CMD_PARAM(BeFunction*, func);
-			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();				
+			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();
 			func->mLinkageType = linkageType;
 		}
 		break;
@@ -2666,7 +2680,7 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			mBeModule->SetCurrentDebugLocation(NULL);
 		}
-		break;	
+		break;
 	case BfIRCmd_ClearDebugLocationInst:
 		{
 			CMD_PARAM(BeValue*, instValue);
@@ -2680,7 +2694,7 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				auto inst = mBeModule->mActiveBlock->mInstructions.back();
 				inst->mDbgLoc = NULL;
-			}			
+			}
 		}
 		break;
 	case BfIRCmd_UpdateDebugLocation:
@@ -2702,7 +2716,7 @@ void BeIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_Nop:
 		{
-			mBeModule->CreateNop();			
+			mBeModule->CreateNop();
 		}
 		break;
 	case BfIRCmd_EnsureInstructionAt:
@@ -2712,7 +2726,6 @@ void BeIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_StatementStart:
 		{
-
 		}
 		break;
 	case BfIRCmd_ObjectAccessCheck:
@@ -2731,7 +2744,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int32, error);
 
 			auto inst = mBeModule->AllocInst<BeComptimeError>();
-			inst->mError = error;			
+			inst->mError = error;
 			SetResult(curId, inst);
 		}
 		break;
@@ -2815,7 +2828,6 @@ void BeIRCodeGen::HandleNextCmd()
 					typeEntry.mInstDIType->resolveCycles();
 			}
 			mDIBuilder->finalize();*/
-			
 		}
 		break;
 	case BfIRCmd_DbgCreateCompileUnit:
@@ -2828,7 +2840,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(String, flags);
 			CMD_PARAM(int, runtimeVer);
 			CMD_PARAM(bool, linesOnly);
-			
+
 			mBeModule->mDbgModule->mFileName = fileName;
 			mBeModule->mDbgModule->mDirectory = directory;
 			mBeModule->mDbgModule->mProducer = producer;
@@ -2845,17 +2857,17 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(Val128, md5Hash);
 
 			auto dbgFile = mBeModule->mDbgModule->mFiles.Alloc();
-			dbgFile->mFileName = fileName;			
+			dbgFile->mFileName = fileName;
 			dbgFile->mDirectory = directory;
 			dbgFile->mMD5Hash = md5Hash;
 			dbgFile->mIdx = (int)mBeModule->mDbgModule->mFiles.size() - 1;
 
-			SetResult(curId, dbgFile);			
+			SetResult(curId, dbgFile);
 		}
 		break;
 	case BfIRCmd_DbgGetCurrentLocation:
 		{
-			SetResult(curId, mBeModule->mCurDbgLoc);			
+			SetResult(curId, mBeModule->mCurDbgLoc);
 		}
 		break;
 	case BfIRCmd_DbgSetType:
@@ -2919,7 +2931,7 @@ void BeIRCodeGen::HandleNextCmd()
 			auto dbgNamespace = mBeModule->mOwnedValues.Alloc<BeDbgNamespace>();
 			dbgNamespace->mScope = scope;
 			dbgNamespace->mName = name;
-			SetResult(curId, dbgNamespace);			
+			SetResult(curId, dbgNamespace);
 		}
 		break;
 	case BfIRCmd_DbgCreateImportedModule:
@@ -2943,7 +2955,7 @@ void BeIRCodeGen::HandleNextCmd()
 			dbgType->mSize = (int)(sizeInBits / 8);
 			dbgType->mAlign = (int)(alignInBits / 8);
 			dbgType->mEncoding = encoding;
-			
+
 			SetResult(curId, dbgType);
 		}
 		break;
@@ -2958,21 +2970,21 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, flags);
 			CMD_PARAM(BeMDNode*, derivedFrom);
 			CMD_PARAM(CmdParamVec<BeMDNode*>, members);
-			
+
 			auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgStructType>();
 			dbgType->mScope = context;
 			dbgType->mName = name;
 			dbgType->mSize = (int)(sizeInBits / 8);
-			dbgType->mAlign = (int)(alignInBits / 8);			
+			dbgType->mAlign = (int)(alignInBits / 8);
 			dbgType->mDerivedFrom = BeValueDynCast<BeDbgType>(derivedFrom);
 			dbgType->mDefFile = (BeDbgFile*)file;
 			dbgType->mDefLine = lineNum - 1;
-			dbgType->mIsFullyDefined = true;			
+			dbgType->mIsFullyDefined = true;
 			dbgType->SetMembers(members);
-			
+
 			SetResult(curId, dbgType);
 		}
-		break;	
+		break;
 	case BfIRCmd_DbgCreateEnumerationType:
 		{
 			CMD_PARAM(BeMDNode*, context);
@@ -2980,10 +2992,10 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeMDNode*, file);
 			CMD_PARAM(int, lineNum);
 			CMD_PARAM(int64, sizeInBits);
-			CMD_PARAM(int64, alignInBits);						
+			CMD_PARAM(int64, alignInBits);
 			CMD_PARAM(CmdParamVec<BeMDNode*>, members);
 			CMD_PARAM(BeMDNode*, underlyingType);
-			
+
 			auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgEnumType>();
 			dbgType->mScope = context;
 			dbgType->mName = name;
@@ -2996,7 +3008,7 @@ void BeIRCodeGen::HandleNextCmd()
 				if (auto enumMember = BeValueDynCast<BeDbgEnumMember>(member))
 				{
 					dbgType->mMembers.push_back(enumMember);
-				}				
+				}
 				else
 					NotImpl();
 			}
@@ -3007,9 +3019,9 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_DbgCreatePointerType:
-		{			
+		{
 			CMD_PARAM(BeMDNode*, elementTypeNode);
-			
+
 			BeDbgType* elementType = BeValueDynCast<BeDbgType>(elementTypeNode);
 			if (elementType == NULL)
 			{
@@ -3022,7 +3034,7 @@ void BeIRCodeGen::HandleNextCmd()
 					dbgType->mTypeId = bfPtrType->mTypeId;
 					SetResult(curId, dbgType);
 					break;
-				}				
+				}
 			}
 
 			BeDbgType* useType = elementType->FindDerivedType(BeDbgPointerType::TypeId);
@@ -3034,7 +3046,7 @@ void BeIRCodeGen::HandleNextCmd()
 				dbgType->mAlign = mPtrSize;
 				elementType->mDerivedTypes.PushFront(dbgType, &mBeModule->mAlloc);
 				useType = dbgType;
-			}			
+			}
 
 			SetResult(curId, useType);
 		}
@@ -3042,7 +3054,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_DbgCreateReferenceType:
 		{
 			CMD_PARAM(BeMDNode*, elementTypeNode);
-			
+
 			BeDbgType* elementType = BeValueDynCast<BeDbgType>(elementTypeNode);
 			if (elementType == NULL)
 			{
@@ -3057,7 +3069,7 @@ void BeIRCodeGen::HandleNextCmd()
 					break;
 				}
 			}
-			
+
 			auto useType = mBeModule->mDbgModule->CreateReferenceType(elementType);
 			SetResult(curId, useType);
 		}
@@ -3066,7 +3078,7 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeMDNode*, elementTypeNode);
 
-			BeDbgType* elementType = BeValueDynCast<BeDbgType>(elementTypeNode);			
+			BeDbgType* elementType = BeValueDynCast<BeDbgType>(elementTypeNode);
 			if (elementType == NULL)
 			{
 				auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgConstType>();
@@ -3097,7 +3109,7 @@ void BeIRCodeGen::HandleNextCmd()
 			// Does the artificial thing do anything for us actually?
 			auto dbgType = diType;
 
-			SetResult(curId, dbgType);		
+			SetResult(curId, dbgType);
 		}
 		break;
 	case BfIRCmd_DbgCreateArrayType:
@@ -3144,13 +3156,13 @@ void BeIRCodeGen::HandleNextCmd()
 				dbgType->mScope = scope;
 				dbgType->mName = name;
 				dbgType->mSize = (int)(sizeInBits / 8);
-				dbgType->mAlign = (int)(alignInBits / 8);				
+				dbgType->mAlign = (int)(alignInBits / 8);
 				//dbgType->mDefFile = (BeDbgFile*)file;
 				//dbgType->mDefLine = line - 1;
 				SetResult(curId, dbgType);
 			}
 			else
-				NotImpl();			
+				NotImpl();
 		}
 		break;
 	case BfIRCmd_DbgCreateForwardDecl:
@@ -3165,7 +3177,7 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgStructType>();
 				dbgType->mScope = scope;
-				dbgType->mName = name;		
+				dbgType->mName = name;
 				dbgType->mDefFile = (BeDbgFile*)file;
 				dbgType->mDefLine = line;
 				SetResult(curId, dbgType);
@@ -3178,7 +3190,7 @@ void BeIRCodeGen::HandleNextCmd()
 				SetResult(curId, dbgType);
 			}
 			else
-				NotImpl();			
+				NotImpl();
 		}
 		break;
 	case BfIRCmd_DbgCreateSizedForwardDecl:
@@ -3190,7 +3202,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, line);
 			CMD_PARAM(int64, sizeInBits);
 			CMD_PARAM(int64, alignInBits);
-			
+
 			if (tag == llvm::dwarf::DW_TAG_structure_type)
 			{
 				auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgStructType>();
@@ -3204,7 +3216,7 @@ void BeIRCodeGen::HandleNextCmd()
 			}
 			else if (tag == llvm::dwarf::DW_TAG_enumeration_type)
 			{
-				auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgEnumType>();				
+				auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgEnumType>();
 				dbgType->mScope = scope;
 				dbgType->mName = name;
 				dbgType->mSize = (int)(sizeInBits / 8);
@@ -3222,14 +3234,14 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int64, alignInBits);
 
 			if (auto dbgType = BeValueDynCast<BeDbgType>(mdType))
-			{				
+			{
 				dbgType->mSize = (int)(sizeInBits / 8);
 				dbgType->mAlign = (int)(alignInBits / 8);
-			}			
+			}
 		}
 		break;
 	case BfIRCmd_DbgReplaceAllUses:
-		{			
+		{
 			CMD_PARAM(BeMDNode*, diPrevNode);
 			CMD_PARAM(BeMDNode*, diNewNode);
 			/*diPrevNode->replaceAllUsesWith(diNewNode); 	*/
@@ -3247,12 +3259,12 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeMDNode*, diNode);
 			CMD_PARAM(BeMDNode*, diBaseType);
-			CMD_PARAM(CmdParamVec<BeMDNode*>, members);			
-			
+			CMD_PARAM(CmdParamVec<BeMDNode*>, members);
+
 			if (auto dbgType = BeValueDynCast<BeDbgStructType>(diNode))
 			{
 				dbgType->SetMembers(members);
-			}			
+			}
 			else if (auto dbgType = BeValueDynCast<BeDbgEnumType>(diNode))
 			{
 				dbgType->mElementType = BeValueDynCast<BeDbgType>(diBaseType);
@@ -3306,7 +3318,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeMDNode*, type);
 			CMD_PARAM(int, flags);
 			CMD_PARAM(BeConstant*, val);
-			
+
 			BF_ASSERT(type != NULL);
 
 			auto dbgMember = mBeModule->mOwnedValues.Alloc<BeDbgStructMember>();
@@ -3339,8 +3351,8 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(String, name);
 			CMD_PARAM(String, linkageName);
 			CMD_PARAM(BeMDNode*, file);
-			CMD_PARAM(int, lineNum); 
-			CMD_PARAM(BeMDNode*, type); 
+			CMD_PARAM(int, lineNum);
+			CMD_PARAM(BeMDNode*, type);
 			CMD_PARAM(bool, isLocalToUnit);
 			CMD_PARAM(bool, isDefinition);
 			CMD_PARAM(int, vk);
@@ -3366,14 +3378,14 @@ void BeIRCodeGen::HandleNextCmd()
 			dbgFunc->mIsStaticMethod = (flags & llvm::DINode::FlagStaticMember) != 0;
 			dbgFunc->mFlags = flags;
 
-			for (auto arg : genericArgs)					
+			for (auto arg : genericArgs)
 			{
 				BF_ASSERT(arg != NULL);
 				dbgFunc->mGenericArgs.Add(BeValueDynCast<BeDbgType>(arg));
 			}
 			for (auto genericConstValue : genericConstValueArgs)
 				dbgFunc->mGenericConstValueArgs.Add(genericConstValue);
-			
+
 			if (dbgFunc->mValue != NULL)
 				dbgFunc->mValue->mDbgFunction = dbgFunc;
 			dbgFunc->mIdx = (int)mBeModule->mDbgModule->mFuncs.size();
@@ -3388,15 +3400,15 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(String, name);
 			CMD_PARAM(String, linkageName);
 			CMD_PARAM(BeMDNode*, file);
-			CMD_PARAM(int, lineNum); 
-			CMD_PARAM(BeMDNode*, type); 
+			CMD_PARAM(int, lineNum);
+			CMD_PARAM(BeMDNode*, type);
 			CMD_PARAM(bool, isLocalToUnit);
-			CMD_PARAM(bool, isDefinition);		
+			CMD_PARAM(bool, isDefinition);
 			CMD_PARAM(int, scopeLine);
 			CMD_PARAM(int, flags);
 			CMD_PARAM(bool, isOptimized);
 			CMD_PARAM(BeValue*, fn);
-						
+
 			auto dbgFunc = mBeModule->mOwnedValues.Alloc<BeDbgFunction>();
 			dbgFunc->mScope = context;
 			dbgFunc->mFile = (BeDbgFile*)file;
@@ -3414,12 +3426,11 @@ void BeIRCodeGen::HandleNextCmd()
 			}
 			else
 			{
-				
 			}*/
 			if (dbgFunc->mValue != NULL)
 				dbgFunc->mValue->mDbgFunction = dbgFunc;
 			dbgFunc->mIdx = (int)mBeModule->mDbgModule->mFuncs.size();
-			mBeModule->mDbgModule->mFuncs.push_back(dbgFunc);						
+			mBeModule->mDbgModule->mFuncs.push_back(dbgFunc);
 
 			SetResult(curId, dbgFunc);
 		}
@@ -3455,7 +3466,7 @@ void BeIRCodeGen::HandleNextCmd()
 				dbgFunc->mVariables.Insert(argIdx, dbgVar);
 			}
 			//mActiveFunction->mDbgFunction->mVariables.push_back(dbgVar);
-			
+
 			//dbgVar->mValue = mBeModule->GetArgument(argNo - 1);
 
 			SetResult(curId, dbgVar);
@@ -3556,11 +3567,11 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeMDNode*, file);
 			CMD_PARAM(int, lineNum);
 			CMD_PARAM(BeMDNode*, type);
-			CMD_PARAM(bool, isLocalToUnit);			
+			CMD_PARAM(bool, isLocalToUnit);
 			CMD_PARAM(BeConstant*, val);
 			CMD_PARAM(BeMDNode*, decl);
 
-			auto dbgGlobalVariable = mBeModule->mDbgModule->mGlobalVariables.Alloc();			
+			auto dbgGlobalVariable = mBeModule->mDbgModule->mGlobalVariables.Alloc();
 			dbgGlobalVariable->mContext = context;
 			dbgGlobalVariable->mName = name;
 			dbgGlobalVariable->mLinkageName = linkageName;
@@ -3586,10 +3597,10 @@ void BeIRCodeGen::HandleNextCmd()
 			dbgLexicalBlock->mFile = (BeDbgFile*)file;
 			dbgLexicalBlock->mScope = scope;
 			dbgLexicalBlock->mId = mBeModule->mCurLexBlockId++;
-			
+
 			SetResult(curId, dbgLexicalBlock);
 		}
-		break;	
+		break;
 	case BfIRCmd_DbgCreateAnnotation:
 		{
 			CMD_PARAM(BeMDNode*, scope);
@@ -3602,13 +3613,13 @@ void BeIRCodeGen::HandleNextCmd()
 				BeDbgType** dbgTypePtr;
 				if (mOnDemandTypeMap.TryAdd(beType, NULL, &dbgTypePtr))
 				{
-					auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgBasicType>();					
+					auto dbgType = mBeModule->mDbgModule->mTypes.Alloc<BeDbgBasicType>();
 					dbgType->mSize = beType->mSize;
 					dbgType->mAlign = beType->mAlign;
 					dbgType->mEncoding = llvm::dwarf::DW_ATE_signed;
 					*dbgTypePtr = dbgType;
 				}
-				
+
 				auto dbgVar = mBeModule->mOwnedValues.Alloc<BeDbgVariable>();
 				dbgVar->mName = "#" + name;
 				dbgVar->mType = *dbgTypePtr;
@@ -3619,7 +3630,7 @@ void BeIRCodeGen::HandleNextCmd()
 				auto inst = mBeModule->AllocInst<BeDbgDeclareInst>();
 				inst->mValue = value;
 				inst->mDbgVar = dbgVar;
-				inst->mIsValue = true;							
+				inst->mIsValue = true;
 			}
 			else
 				NotImpl();
@@ -3628,9 +3639,9 @@ void BeIRCodeGen::HandleNextCmd()
 	default:
 		BF_FATAL("Unhandled");
 		break;
-	}	
+	}
 
-#ifdef CODEGEN_TRACK	
+#ifdef CODEGEN_TRACK
 	gBEMemReporter.EndSection();
 
 	gBEMemReporterSize += mStream->GetReadPos() - curId;
@@ -3640,7 +3651,7 @@ void BeIRCodeGen::HandleNextCmd()
 void BeIRCodeGen::SetConfigConst(int idx, int value)
 {
 	BF_ASSERT(idx == (int)mConfigConsts.size());
-	mConfigConsts.Add(value);		
+	mConfigConsts.Add(value);
 }
 
 BeValue* BeIRCodeGen::GetBeValue(int id)

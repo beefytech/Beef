@@ -1,6 +1,5 @@
 #pragma warning(disable:4996)
 
-
 #include "BfParser.h"
 #include "BfReducer.h"
 #include "BfPrinter.h"
@@ -158,7 +157,7 @@ void BfParserCache::ReportMemory(MemReporter* memReporter)
 	int allocPages = 0;
 	int usedPages = 0;
 	mAstAllocManager.GetStats(allocPages, usedPages);
-	
+
 	OutputDebugStrF("Parsers: %d  Chars: %d  UsedAlloc: %dk  BytesPerChar: %d  SysAllocPages: %d  SysUsedPages: %d (%dk)  LargeAllocs: %dk\n", (int)mEntries.size(), srcLen, allocBytesUsed / 1024,
 		allocBytesUsed / BF_MAX(1, srcLen), allocPages, usedPages, (usedPages * BfAstAllocManager::PAGE_SIZE) / 1024, largeAllocs / 1024);
 
@@ -182,7 +181,6 @@ static int DecodeInt(uint8* buf, int& idx)
 		curByte = buf[idx++];
 		value |= ((curByte & 0x7f) << shift);
 		shift += 7;
-
 	} while (curByte >= 128);
 	// Sign extend negative numbers.
 	if (((curByte & 0x40) != 0) && (shift < 64))
@@ -192,14 +190,14 @@ static int DecodeInt(uint8* buf, int& idx)
 
 static int gCurDataId = 0;
 BfParserData::BfParserData()
-{		
+{
 	mDataId = (int)BfpSystem_InterlockedExchangeAdd32((uint32*)&gCurDataId, 1) + 1;
 
 	mHash = 0;
 	mRefCount = -1;
 	mJumpTable = NULL;
 	mJumpTableSize = 0;
-	mFailed = false;	
+	mFailed = false;
 	mCharIdData = NULL;
 	mUniqueParser = NULL;
 	mDidReduce = false;
@@ -239,7 +237,7 @@ int BfParserData::GetCharIdAtIndex(int findIndex)
 }
 
 void BfParserData::GetLineCharAtIdx(int idx, int& line, int& lineChar)
-{	
+{
 	if (mJumpTableSize <= 0)
 	{
 		line = 0;
@@ -348,7 +346,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 {
 	BfLogSys(bfSystem, "BfParser::BfParser %08X\n", this);
 
-	gParserCount++;	
+	gParserCount++;
 
 	mTextVersion = -1;
 	mEmbedKind = BfSourceEmbedKind_None;
@@ -374,15 +372,15 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mLineStart = 0;
 	//mCurToken = (BfSyntaxToken)0;
 	mToken = BfToken_None;
-	mSyntaxToken = BfSyntaxToken_None;	
+	mSyntaxToken = BfSyntaxToken_None;
 
 	mTokenStart = 0;
 	mTokenEnd = 0;
-	mLineNum = 0;	
+	mLineNum = 0;
 	mCompatMode = false;
 	mQuickCompatMode = false;
 	mLiteral.mWarnType = 0;
-	mDataId = -1;	
+	mDataId = -1;
 
 	mTriviaStart = 0;
 	mParsingFailed = false;
@@ -397,14 +395,16 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	}
 }
 
-
 //static std::set<BfAstNode*> gFoundNodes;
 
 BfParser::~BfParser()
 {
 	int parserCount = gParserCount--;
 
-	if (mParserData->mRefCount == -1)
+	if (mParserData == NULL)
+	{
+	}
+	else if (mParserData->mRefCount == -1)
 	{
 		// Owned data, never intended for cache
 		mParserData->mSrc = NULL; // Count on BfSource dtor to release strc
@@ -415,12 +415,12 @@ BfParser::~BfParser()
 		// Just never got added to the cache
 		delete mParserData;
 	}
-	else		
+	else
 	{
-		mParserData->Deref();		
+		mParserData->Deref();
 	}
 
-	mSourceData = NULL; 
+	mSourceData = NULL;
 
 	BfLogSys(mSystem, "BfParser::~BfParser %p\n", this);
 }
@@ -466,9 +466,9 @@ void BfParser::TokenFail(const StringImpl& error, int offset)
 void BfParser::Init(uint64 cacheHash)
 {
 	BF_ASSERT(mParserData == NULL);
-	
+
 	mParserData = new BfParserData();
-	mSourceData = mParserData;			
+	mSourceData = mParserData;
 	mParserData->mFileName = mFileName;
 	if (mDataId != -1)
 		mParserData->mDataId = mDataId;
@@ -477,7 +477,7 @@ void BfParser::Init(uint64 cacheHash)
 	mParserData->mAstAllocManager = &gBfParserCache->mAstAllocManager;
 	mParserData->mSrc = mSrc;
 	mParserData->mSrcLength = mSrcLength;
-		
+
 	if (cacheHash != 0)
 	{
 		BfLogSysM("Creating cached parserData %p for %p %s\n", mParserData, this, mFileName.c_str());
@@ -499,9 +499,9 @@ void BfParser::Init(uint64 cacheHash)
 
 	mParserData->mJumpTable = mJumpTable;
 	mParserData->mJumpTableSize = mJumpTableSize;
-	
+
 	mAlloc = &mParserData->mAlloc;
-	mAlloc->mSourceData = mSourceData;	
+	mAlloc->mSourceData = mSourceData;
 }
 
 void BfParser::NewLine()
@@ -525,7 +525,7 @@ void BfParser::SetSource(const char* data, int length)
 	const int EXTRA_BUFFER_SIZE = 80; // Extra chars for a bit of AllocChars room
 
 	//TODO: Check cache
-	// Don't cache if we have a Cursorid set, 
+	// Don't cache if we have a Cursorid set,
 	//  if mDataId != -1
 	//  if BfParerFlag != 0
 
@@ -566,7 +566,7 @@ void BfParser::SetSource(const char* data, int length)
 
 		BfParserCache::DataEntry* dataEntryP;
 		if (gBfParserCache->mEntries.TryGetWith(lookupEntry, &dataEntryP))
-		{						
+		{
 			mUsingCache = true;
 
 			mParserData = dataEntryP->mParserData;
@@ -591,7 +591,7 @@ void BfParser::SetSource(const char* data, int length)
 
 	mSrcLength = length;
 	mOrigSrcLength = length;
-	mSrcAllocSize = mSrcLength /*+ EXTRA_BUFFER_SIZE*/;	 
+	mSrcAllocSize = mSrcLength /*+ EXTRA_BUFFER_SIZE*/;
 	char* ownedSrc = new char[mSrcAllocSize + 1];
 	if (data != NULL)
 		memcpy(ownedSrc, data, length);
@@ -749,7 +749,7 @@ BfBlock* BfParser::ParseInlineBlock(int spaceIdx, int endIdx)
 			break;
 		if ((childNode->IsA<BfCommentNode>()))
 		{
-			mSidechannelRootNode->Add(childNode);			
+			mSidechannelRootNode->Add(childNode);
 			mPendingSideNodes.push_back(childNode);
 			continue;
 		}
@@ -794,7 +794,7 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 	if (paramNode->ToStringView() == "warning")
 	{
 		++itr;
-		//auto iterNode = paramNode->mNext;		
+		//auto iterNode = paramNode->mNext;
 		//BfAstNode* iterNode = parentNode->mChildArr.GetAs<BfAstNode*>(++curIdx);
 
 		BfAstNode* iterNode = itr.Get();
@@ -859,11 +859,11 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 	}
 	else if (paramNode->ToStringView() == "format")
 	{
-		++itr;		
+		++itr;
 		BfAstNode* iterNode = itr.Get();
 		if (iterNode)
 		{
-			if ((iterNode->ToStringView() != "disable") &&			
+			if ((iterNode->ToStringView() != "disable") &&
 				(iterNode->ToStringView() != "restore"))
 			{
 				mPassInstance->FailAfterAt("Expected \"disable\" or \"restore\" after \"format\"", mSourceData, paramNode->GetSrcEnd() - 1);
@@ -877,13 +877,13 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 }
 
 void BfParser::HandleDefine(const StringImpl& name, BfAstNode* paramNode)
-{	
+{
 	mPreprocessorDefines[name] = BfDefineState_ManualSet;
 }
 
 void BfParser::HandleUndefine(const StringImpl& name)
 {
-	mPreprocessorDefines[name] = BfDefineState_ManualUnset;	
+	mPreprocessorDefines[name] = BfDefineState_ManualUnset;
 }
 
 MaybeBool BfParser::HandleIfDef(const StringImpl& name)
@@ -921,16 +921,14 @@ MaybeBool BfParser::HandleProcessorCondition(BfBlock* paramNode)
 
 void BfParser::HandleInclude(BfAstNode* paramNode)
 {
-
 }
 
 void BfParser::HandleIncludeNext(BfAstNode* paramNode)
 {
-
 }
 
 bool BfParser::HandlePreprocessor()
-{	
+{
 	int triviaStart = mTriviaStart;
 
 	int checkIdx = 0;
@@ -954,7 +952,7 @@ bool BfParser::HandlePreprocessor()
 	String pragmaParam;
 
 	switch (mSrc[mSrcIdx - 1])
-	{	
+	{
 	case '<':
 		if (mPreprocessorIgnoreDepth > 0)
 			return false;
@@ -963,15 +961,15 @@ bool BfParser::HandlePreprocessor()
 	case '=':
 		if (mPreprocessorIgnoreDepth > 0)
 			return false;
-		pragma = "===";	
-		break;	
+		pragma = "===";
+		break;
 	case '>':
 		if (mPreprocessorIgnoreDepth > 1)
-			return false;		
+			return false;
 		pragma = ">>>";
 		break;
 	}
-	
+
 	bool atEnd = false;
 
 	int startIdx = mSrcIdx - 1;
@@ -999,7 +997,7 @@ bool BfParser::HandlePreprocessor()
 			}
 
 			if (!hadSlash)
-				break;			
+				break;
 		}
 
 		if (c == '\0')
@@ -1041,7 +1039,7 @@ bool BfParser::HandlePreprocessor()
 
 	BfBlock* paramNode = NULL;
 	if (pragma.IsEmpty())
-	{		
+	{
 		if (spaceIdx != -1)
 		{
 			pragma = String(mSrc + charIdx, mSrc + spaceIdx);
@@ -1230,7 +1228,7 @@ bool BfParser::HandlePreprocessor()
 				mPreprocessorNodeStack.pop_back();
 		}
 		else if (pragma == "define")
-		{			
+		{
 			if ((paramNode != NULL) && (!paramNode->mChildArr.IsEmpty()))
 				HandleDefine(paramNode->mChildArr[0]->ToString(), paramNode);
 			wantedParam = true;
@@ -1243,7 +1241,7 @@ bool BfParser::HandlePreprocessor()
 		}
 		else if (pragma == "error")
 		{
-			wantsSingleParam = false;			
+			wantsSingleParam = false;
 			mPassInstance->FailAt(pragmaParam, mSourceData, startIdx, mSrcIdx - startIdx);
 			wantedParam = true;
 		}
@@ -1366,7 +1364,6 @@ struct StrHashT<4>
 	{
 		const static int HASH = (StrHashT<3>::HASH) ^ Str[4];
 	};
-
 };
 
 // This is little endian only
@@ -1394,12 +1391,19 @@ double BfParser::ParseLiteralDouble()
 	char buf[256];
 	int len = std::min(mTokenEnd - mTokenStart, 255);
 
-	memcpy(buf, &mSrc[mTokenStart], len);
-	char c = buf[len - 1];
+	int outLen = 0;
+	for (int i = 0; i < len; i++)
+	{
+		char c = mSrc[mTokenStart + i];
+		if (c != '\'')
+			buf[outLen++] = c;
+	}
+
+	char c = buf[outLen - 1];
 	if ((c == 'd') || (c == 'D') || (c == 'f') || (c == 'F'))
-		buf[len - 1] = '\0';
+		buf[outLen - 1] = '\0';
 	else
-		buf[len] = '\0';
+		buf[outLen] = '\0';
 
 	return strtod(buf, NULL);
 }
@@ -1501,7 +1505,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 				if (mSrc[mSrcIdx + 1] == '=')
 				{
 					if (mSrc[mSrcIdx + 2] == '=')
-					{						
+					{
 						if (HandlePreprocessor())
 						{
 							// Conflict split
@@ -1771,7 +1775,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 			}
 			break;
 		case '$':
-						
+
 			c = mSrc[mSrcIdx];
 			if ((c == '\"') || (c == '@') || (c == '$'))
 			{
@@ -1784,7 +1788,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 		case '\'':
 		{
 			SizedArray<BfUnscopedBlock*, 4> interpolateExpressions;
-			
+
 			String lineHeader;
 			String strLiteral;
 			char startChar = c;
@@ -2128,9 +2132,9 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 									mPassInstance->FailAfterAt("Expected '}'", mSourceData, newBlock->GetSrcEnd() - 1);
 								}
 								mInAsmBlock = false;
-								interpolateExpressions.Add(newBlock);								
+								interpolateExpressions.Add(newBlock);
 							}
-							
+
 							if (interpolateSetting == 1)
 							{
 								for (int i = 0; i < braceCount - 1; i++)
@@ -2158,7 +2162,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 								braceCount++;
 								mSrcIdx++;
 							}
-							
+
 							bool isClosingBrace = false;
 
 							if (!interpolateExpressions.IsEmpty())
@@ -2175,14 +2179,14 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 									isClosingBrace = true;
 								}
 								else if (block->mCloseBrace->mSrcStart == mSrcIdx - braceCount)
-								{									
+								{
 									block->mCloseBrace->mSrcEnd = mSrcIdx - braceCount + interpolateSetting;
 									isClosingBrace = true;
 								}
 							}
 
 							if (interpolateSetting == 1)
-							{															
+							{
 								for (int i = 0; i < braceCount - 1; i++)
 									strLiteral += '}';
 							}
@@ -2211,7 +2215,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 			{
 				mTokenStart = stringStart;
 				stringStart = -1;
-			}			
+			}
 
 			mTriviaStart = triviaStart;
 			mTokenEnd = mSrcIdx;
@@ -2235,7 +2239,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					{
 						bool isGraphemeCluster = false;
 
-						// There's no explicit unicode limit to how many diacriticals a grapheme cluster can contain, 
+						// There's no explicit unicode limit to how many diacriticals a grapheme cluster can contain,
 						// but we apply a limit for sanity for the purpose of this error
 						if (strLiteral.length() < 64)
 						{
@@ -2255,7 +2259,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 				{
 					mLiteral.mInt64 = (uint8)strLiteral[0];
 				}
-				
+
 				if (mLiteral.mInt64 >= 0x8000) // Use 0x8000 to remain UTF16-compatible
 					mLiteral.mTypeCode = BfTypeCode_Char32;
 				else if (mLiteral.mInt64 >= 0x80) // Use 0x80 to remain UTF8-compatible
@@ -2278,7 +2282,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					interpolateExpr->mTriviaStart = mTriviaStart;
 					interpolateExpr->mSrcStart = mTokenStart;
 					interpolateExpr->mSrcEnd = mSrcIdx;
-					BfSizedArrayInitIndirect(interpolateExpr->mExpressions, interpolateExpressions, mAlloc);									
+					BfSizedArrayInitIndirect(interpolateExpr->mExpressions, interpolateExpressions, mAlloc);
 					mGeneratedNode = interpolateExpr;
 					mSyntaxToken = BfSyntaxToken_GeneratedNode;
 					mToken = BfToken_None;
@@ -2310,10 +2314,10 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					if (!mPendingSideNodes.IsEmpty())
 					{
 						if (auto prevComment = BfNodeDynCast<BfCommentNode>(mPendingSideNodes.back()))
-						{							
+						{
 							// This is required for folding '///' style multi-line documentation into a single node
 							if (prevComment->GetTriviaStart() == mTriviaStart)
-							{								
+							{
 								auto prevCommentKind = GetCommentKind(prevComment->mSrcStart);
 
 								if ((!BfIsCommentBlock(commentKind)) && (commentKind == prevCommentKind))
@@ -2328,7 +2332,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					if ((!handled) && (!disablePreprocessor))
 					{
 						auto bfCommentNode = mAlloc->Alloc<BfCommentNode>();
-						bfCommentNode->Init(this);						
+						bfCommentNode->Init(this);
 						bfCommentNode->mCommentKind = commentKind;
 						mSidechannelRootNode->Add(bfCommentNode);
 						mPendingSideNodes.push_back(bfCommentNode);
@@ -2536,7 +2540,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 			return;
 		default:
 			if (((c >= '0') && (c <= '9')) || (c == '-'))
-			{				
+			{
 				bool prevIsDot = prevToken == BfToken_Dot;
 
 				if (c == '-')
@@ -2552,9 +2556,12 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 						mToken = BfToken_MinusEquals;
 						mSrcIdx++;
 					}
-					else if ((mCompatMode) && (mSrc[mSrcIdx] == '>'))
+					else if (mSrc[mSrcIdx] == '>')
 					{
-						mToken = BfToken_Dot;
+						if (mCompatMode)
+							mToken = BfToken_Dot;
+						else
+							mToken = BfToken_Arrow;
 						mSrcIdx++;
 					}
 					else
@@ -2563,7 +2570,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					mTokenEnd = mSrcIdx;
 					return;
 				}
-				
+
 				bool hadOverflow = false;
 				uint64 val = 0;
 				int numberBase = 10;
@@ -2660,14 +2667,14 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					{
 						// Skip float parsing if we have a double-dot `1..` case
 						hasDot = false;
-					}					
+					}
 
 					// The 'prevIsDot' helps tuple lookups like "tuple.0.0", interpreting those as two integers rather than a float
 					if (((hasDot) && (!prevIsDot)) || (hasExp))
 					{
 						// Switch to floating point mode
 						//double dVal = val;
-						//double dValScale = 0.1; 
+						//double dValScale = 0.1;
 						//if (hasExp)
 						//dVal *= pow(10, expVal);
 						while (true)
@@ -2782,7 +2789,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					if (endNumber)
 					{
 						mTokenEnd = mSrcIdx - 1;
-						mSrcIdx--;						
+						mSrcIdx--;
 
 						if ((numberBase == 0x10) &&
 							((hexDigits >= 16) || ((hadSeps) && (hexDigits > 8)) || ((hadLeadingHexSep) && (hexDigits == 8))))
@@ -2801,7 +2808,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 							mLiteral.mTypeCode = BfTypeCode_IntUnknown;
 
 							if ((numberBase == 0x10) && (hexDigits == 7))
-								mLiteral.mWarnType = BfWarning_BF4201_Only7Hex;							
+								mLiteral.mWarnType = BfWarning_BF4201_Only7Hex;
 							if ((numberBase == 0x10) && (hexDigits == 9))
 								mLiteral.mWarnType = BfWarning_BF4202_TooManyHexForInt;
 
@@ -2816,9 +2823,9 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 								mLiteral.mTypeCode = BfTypeCode_UInt64;
 							}
 							else if (val > 0xFFFFFFFFLL)
-							{								
+							{
 								mLiteral.mTypeCode = BfTypeCode_Int64;
-							}							
+							}
 						}
 
 						mSyntaxToken = BfSyntaxToken_Literal;
@@ -2845,9 +2852,9 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 						val *= numberBase;
 						val += c - 'a' + 0xa;
 					}
-					
+
 					else if ((c == 'u') || (c == 'U'))
-					{						
+					{
 						if ((mSrc[mSrcIdx] == 'l') || (mSrc[mSrcIdx] == 'L'))
 						{
 							if (mSrc[mSrcIdx] == 'l')
@@ -2874,7 +2881,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					else if ((c == 'l') || (c == 'L'))
 					{
 						if (c == 'l')
-							TokenFail("Uppercase 'L' required for int64");						
+							TokenFail("Uppercase 'L' required for int64");
 						if ((mSrc[mSrcIdx] == 'u') || (mSrc[mSrcIdx] == 'U'))
 						{
 							mSrcIdx++;
@@ -2887,12 +2894,12 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 								mPassInstance->FailAt("Value doesn't fit into uint64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 							mSyntaxToken = BfSyntaxToken_Literal;
 							return;
-						}						
+						}
 						mTokenEnd = mSrcIdx;
 						mLiteral.mTypeCode = BfTypeCode_Int64;
 						mLiteral.mInt64 = (int64)val;
 						if (val == 0x8000000000000000)
-							mLiteral.mTypeCode = BfTypeCode_UInt64; 
+							mLiteral.mTypeCode = BfTypeCode_UInt64;
 						else if (val >= 0x8000000000000000)
 							hadOverflow = true;
 						if (numberBase == 0x10)
@@ -2924,14 +2931,14 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					else
 					{
 						mTokenEnd = mSrcIdx - 1;
-						mSrcIdx--;						
+						mSrcIdx--;
 						mLiteral.mUInt64 = val;
 						mLiteral.mTypeCode = BfTypeCode_IntUnknown;
 						mSyntaxToken = BfSyntaxToken_Literal;
 						TokenFail("Unexpected character while parsing number", 0);
 						return;
 					}
-					
+
 					if ((uint64)prevVal > (uint64)val)
 						hadOverflow = true;
 				}
@@ -3167,12 +3174,14 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					case TOKEN_HASH('n', 'a', 'm', 'e'):
 						if (SrcPtrHasToken("namespace"))
 							mToken = BfToken_Namespace;
+						else if (SrcPtrHasToken("nameof"))
+							mToken = BfToken_NameOf;
 						break;
 					case TOKEN_HASH('n', 'e', 'w', 0):
 						if (SrcPtrHasToken("new"))
 							mToken = BfToken_New;
 						break;
-					case TOKEN_HASH('n', 'u', 'l', 'l'):						
+					case TOKEN_HASH('n', 'u', 'l', 'l'):
 						if (SrcPtrHasToken("null"))
 							mToken = BfToken_Null;
 						else if (SrcPtrHasToken("nullable"))
@@ -3197,7 +3206,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					case TOKEN_HASH('p', 'a', 'r', 'a'):
 						if ((!mCompatMode) && (SrcPtrHasToken("params")))
 							mToken = BfToken_Params;
-						break;					
+						break;
 					case TOKEN_HASH('p', 'r', 'i', 'v'):
 						if (SrcPtrHasToken("private"))
 							mToken = BfToken_Private;
@@ -3444,7 +3453,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 		{
 			if (interpolateSetting == 0)
 				stringStart = mTokenStart;
-			interpolateSetting++;			
+			interpolateSetting++;
 		}
 	}
 }
@@ -3460,7 +3469,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 	bool isAsmBlock = false;
 	bool isTernary = false;
 
-	SizedArray<BfAstNode*, 32> childArr;	
+	SizedArray<BfAstNode*, 32> childArr;
 
 	int parenDepth = 0;
 
@@ -3475,7 +3484,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 		}
 
 		NextToken(-1, isInterpolate && (parenDepth == 0));
-		
+
 		if (mPreprocessorIgnoredSectionNode != NULL)
 		{
 			if (mSyntaxToken != BfSyntaxToken_EOF)
@@ -3492,7 +3501,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 
 		gParseMemberIdx++;
 		int memberIdx = gParseMemberIdx;
-		
+
 		auto childNode = CreateNode();
 		if (childNode == NULL)
 			break;
@@ -3540,12 +3549,12 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 			}
 			mInAsmBlock = false;
 			astNode->Add(newBlock);
-			childArr.push_back(newBlock);			
-		}		
+			childArr.push_back(newBlock);
+		}
 		else if (mToken == BfToken_RBrace)
 		{
 			if (depth == 0)
-				Fail("Unexpected ending brace");			
+				Fail("Unexpected ending brace");
 			break;
 		}
 		else
@@ -3562,7 +3571,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 
 				bool endNow = false;
 				if (mToken == BfToken_Colon)
-				{	
+				{
 					endNow = true;
 					if (!childArr.IsEmpty())
 					{
@@ -3583,7 +3592,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 
 				if (mToken == BfToken_Comma)
 					endNow = true;
-					
+
 				if (endNow)
 				{
 					mSrcIdx = mTokenStart;
@@ -3591,7 +3600,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 				}
 			}
 
-			astNode->Add(childNode);			
+			astNode->Add(childNode);
 			childArr.Add(childNode);
 
 			if ((mSyntaxToken == BfSyntaxToken_Token) && (mToken == BfToken_RBrace))
@@ -3651,7 +3660,7 @@ void BfParser::Parse(BfPassInstance* passInstance)
 	mSyntaxToken = BfSyntaxToken_None;
 	mPassInstance = passInstance;
 
-	int startIdx = mSrcIdx;	
+	int startIdx = mSrcIdx;
 
 	if (mUsingCache)
 	{
@@ -3692,7 +3701,7 @@ void BfParser::Parse(BfPassInstance* passInstance)
 
 	if ((mPassInstance->HasMessages()) || (mParsingFailed))
 	{
-		mParserData->mFailed = true; // Don't reuse cache if there were errors or warnings		
+		mParserData->mFailed = true; // Don't reuse cache if there were errors or warnings
 	}
 
 	mPassInstance = NULL;
@@ -3723,18 +3732,18 @@ void BfParser::Close()
 		}
 		else
 		{
-			// It's possible two of the same entries were being parsed at the same time on different threads. 
+			// It's possible two of the same entries were being parsed at the same time on different threads.
 			//  Just let the loser be deleted in the dtor
 			BfLogSys(mSystem, "Duplicate parser %p not added to cache\n", this);
 		}
-	}	
+	}
 }
 
 void BfParser::HadSrcRealloc()
 {
 	int jumpTableSize = ((mSrcAllocSize + 1) + PARSER_JUMPTABLE_DIVIDE - 1) / PARSER_JUMPTABLE_DIVIDE;
 	if (jumpTableSize > mJumpTableSize)
-	{		
+	{
 		auto jumpTable = new BfLineStartEntry[jumpTableSize];
 		memset(jumpTable, 0, jumpTableSize * sizeof(BfLineStartEntry));
 		memcpy(jumpTable, mJumpTable, mJumpTableSize * sizeof(BfLineStartEntry));
@@ -3747,7 +3756,6 @@ void BfParser::HadSrcRealloc()
 		mParserData->mJumpTable = mJumpTable;
 		mParserData->mJumpTableSize = mJumpTableSize;
 	}
-	
 }
 
 void BfParser::GenerateAutoCompleteFrom(int srcPosition)
@@ -3766,7 +3774,7 @@ void BfParser::ReportMemory(MemReporter* memReporter)
 
 // 	if (!mUsingCache)
 // 		memReporter->AddBumpAlloc("AstAlloc", *mAlloc);
-// 
+//
 // 	memReporter->Add("JumpTable", mJumpTableSize * sizeof(BfLineStartEntry));
 
 	memReporter->Add(sizeof(BfParser));
@@ -3901,7 +3909,7 @@ BF_EXPORT void BF_CALLTYPE BfParser_SetNextRevision(BfParser* bfParser, BfParser
 
 BF_EXPORT void BF_CALLTYPE BfParser_SetCursorIdx(BfParser* bfParser, int cursorIdx)
 {
-	bfParser->SetCursorIdx(cursorIdx);	
+	bfParser->SetCursorIdx(cursorIdx);
 }
 
 BF_EXPORT void BF_CALLTYPE BfParser_SetIsClassifying(BfParser* bfParser)
@@ -3945,7 +3953,7 @@ BF_EXPORT bool BF_CALLTYPE BfParser_Reduce(BfParser* bfParser, BfPassInstance* b
 	BP_ZONE("BfParser_Reduce");
 	if (bfParser->mUsingCache)
 		return true; // Already reduced
-	
+
 	bfParser->FinishSideNodes();
 	int startFailIdx = bfPassInstance->mFailedIdx;
 	int startWarningCount = bfPassInstance->mWarningCount;
@@ -3997,7 +4005,7 @@ BF_EXPORT const char* BF_CALLTYPE BfParser_DocPrep(BfParser* bfParser)
 	bfPrinter.mCharMapping = &gCharMapping;
 	bfPrinter.mDocPrep = true;
 	bfPrinter.Visit(bfParser->mRootNode);
-	outString = bfPrinter.mOutString;	
+	outString = bfPrinter.mOutString;
 	return outString.c_str();
 }
 
@@ -4078,7 +4086,7 @@ BF_EXPORT BfResolvePassData* BF_CALLTYPE BfParser_CreateResolvePassData(BfParser
 }
 
 BF_EXPORT bool BF_CALLTYPE BfParser_BuildDefs(BfParser* bfParser, BfPassInstance* bfPassInstance, BfResolvePassData* resolvePassData, bool fullRefresh)
-{	
+{
 	if (bfParser->mCursorIdx != -1)
 		resolvePassData->mHasCursorIdx = true;
 
@@ -4092,7 +4100,6 @@ BF_EXPORT bool BF_CALLTYPE BfParser_BuildDefs(BfParser* bfParser, BfPassInstance
 
 BF_EXPORT void BF_CALLTYPE BfParser_RemoveDefs(BfParser* bfParser)
 {
-	
 }
 
 BF_EXPORT void BF_CALLTYPE BfParser_ClassifySource(BfParser* bfParser, BfSourceClassifier::CharData* charData, bool preserveFlags)
@@ -4101,18 +4108,18 @@ BF_EXPORT void BF_CALLTYPE BfParser_ClassifySource(BfParser* bfParser, BfSourceC
 		bfParser->Close();
 
 	BfSourceClassifier bfSourceClassifier(bfParser, charData);
-	bfSourceClassifier.mPreserveFlags = preserveFlags;	
+	bfSourceClassifier.mPreserveFlags = preserveFlags;
 	bfSourceClassifier.Visit(bfParser->mRootNode);
 	bfSourceClassifier.mIsSideChannel = false; //? false or true?
 	bfSourceClassifier.Visit(bfParser->mErrorRootNode);
 	bfSourceClassifier.mIsSideChannel = true;
-	bfSourceClassifier.Visit(bfParser->mSidechannelRootNode);	
+	bfSourceClassifier.Visit(bfParser->mSidechannelRootNode);
 }
 
 BF_EXPORT void BF_CALLTYPE BfParser_CreateClassifier(BfParser* bfParser, BfPassInstance* bfPassInstance, BfResolvePassData* resolvePassData, BfSourceClassifier::CharData* charData)
 {
 	resolvePassData->mIsClassifying = true;
-	bfParser->mSourceClassifier = new BfSourceClassifier(bfParser, charData);	
+	bfParser->mSourceClassifier = new BfSourceClassifier(bfParser, charData);
 	bfParser->mSourceClassifier->mClassifierPassId = bfPassInstance->mClassifierPassId;
 
 	if ((resolvePassData->mParsers.IsEmpty()) || (bfParser != resolvePassData->mParsers[0]))
@@ -4124,7 +4131,7 @@ BF_EXPORT void BF_CALLTYPE BfParser_CreateClassifier(BfParser* bfParser, BfPassI
 	bfParser->mSourceClassifier->mSkipMethodInternals = true;
 	bfParser->mSourceClassifier->mSkipTypeDeclarations = true;
 	if (charData != NULL)
-	{		
+	{
 		if ((doClassifyPass) && (bfParser->mRootNode != NULL))
 			bfParser->mSourceClassifier->Visit(bfParser->mRootNode);
 	}

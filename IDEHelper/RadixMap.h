@@ -28,13 +28,12 @@ public:
 	{
 	public:
 		RadixMap32* mRadixMap;
-		int mRootIdx;		
+		int mRootIdx;
 		int mLeafIdx;
 
 	public:
 		Iterator()
 		{
-
 		}
 
 		Iterator& operator++()
@@ -58,7 +57,7 @@ public:
 						mRootIdx++;
 					}
 				}
-				
+
 				if (mRadixMap->mRoot[mRootIdx]->mValues[mLeafIdx] != NULL)
 					return *this;
 
@@ -86,7 +85,7 @@ public:
 
 	struct Leaf
 	{
-		T mValues[LEAF_LENGTH];		
+		T mValues[LEAF_LENGTH];
 
 		T GetFirst(int startLeaf = 0)
 		{
@@ -103,23 +102,23 @@ public:
 						value = value->mNext;
 					}
 					return lowestValue;
-				}				
+				}
 			}
 			return NULL;
 		}
 	};
 
 	Leaf* mRoot[ROOT_LENGTH]; // Pointers to 32 child nodes
-	typedef uint32 Number;	
+	typedef uint32 Number;
 
 public:
 	RadixMap32()
 	{
 		memset(mRoot, 0, sizeof(mRoot));
 	}
-	
+
 	~RadixMap32()
-	{				
+	{
 		int leafCount = 0;
 		for (int i = 0; i < ROOT_LENGTH; i++)
 		{
@@ -135,8 +134,8 @@ public:
 	{
 		Iterator itr;
 		itr.mRadixMap = this;
-		itr.mRootIdx = -1;		
-		itr.mLeafIdx = LEAF_LENGTH - 1;		
+		itr.mRootIdx = -1;
+		itr.mLeafIdx = LEAF_LENGTH - 1;
 		return ++itr;
 	}
 
@@ -144,17 +143,17 @@ public:
 	{
 		Iterator itr;
 		itr.mRadixMap = this;
-		itr.mRootIdx = ROOT_LENGTH;		
+		itr.mRootIdx = ROOT_LENGTH;
 		itr.mLeafIdx = 0;
 		return itr;
 	}
-	
+
 	void Clear()
-	{		
+	{
 		for (int i = 0; i < ROOT_LENGTH; i++)
 		{
 			if (mRoot[i] != NULL)
-			{				
+			{
 				delete mRoot[i];
 				mRoot[i] = NULL;
 			}
@@ -181,18 +180,18 @@ public:
 		return leaf->mValues[i2];
 	}
 
-	T Get(Number addr, int maxOffset = 0) const 
+	T Get(Number addr, int maxOffset = 0) const
 	{
 		int blockOffsetsLeft = (maxOffset + (1 << BLOCK_SHIFT) - 1) >> BLOCK_SHIFT;
 		int blockAddr = (int)(addr >> BLOCK_SHIFT);
 		int i1 = (int)(blockAddr >> LEAF_BITS);
 		int i2 = (int)(blockAddr & (LEAF_LENGTH - 1));
-		
+
 		// Find closest entry to requested addr
 		Leaf* leaf = mRoot[i1];
 		int bestDist = 0x7FFFFFFF;
 		T bestValue = NULL;
-		if (leaf != NULL)			
+		if (leaf != NULL)
 		{
 			T curValue = leaf->mValues[i2];
 			while (curValue != NULL)
@@ -222,7 +221,7 @@ public:
 				i1--;
 				if (i1 < 0)
 					break;
-				i2 = LEAF_LENGTH - 1;				
+				i2 = LEAF_LENGTH - 1;
 			}
 			leaf = mRoot[i1];
 			if (leaf != NULL)
@@ -244,7 +243,7 @@ public:
 
 		return NULL;
 	}
-	
+
 	T GetNext(T value)
 	{
 		const Number blockAddr = value->mAddress >> BLOCK_SHIFT;
@@ -305,7 +304,7 @@ public:
 		}
 
 		return NULL;
-	}	
+	}
 
 	T GetUnordered(Number addr, int maxReverseOffset) const
 	{
@@ -331,7 +330,7 @@ public:
 				blockOffsetsLeft--;
 			}
 			else
-			{				
+			{
 				i1++;
 				blockOffsetsLeft -= LEAF_LENGTH;
 			}
@@ -359,7 +358,7 @@ public:
 			int i2Start;
 			int i2End;
 			if (i1 == i1Start)
-			{ 
+			{
 				i2Start = (int)(blockAddrStart & (LEAF_LENGTH - 1));
 				i2End = LEAF_LENGTH;
 			}
@@ -394,17 +393,17 @@ public:
 					}
 					curValue = curValue->mNext;
 				}
-				*nextPtr = NULL;				
+				*nextPtr = NULL;
 			}
 		}
 	}
 
 	void Insert(T value)
 	{
-		const Number blockAddr = value->mAddress >> BLOCK_SHIFT;				
+		const Number blockAddr = value->mAddress >> BLOCK_SHIFT;
 		const Number i1 = blockAddr >> LEAF_BITS;
 		const Number i2 = blockAddr & (LEAF_LENGTH - 1);
-		
+
 		Leaf* leaf = mRoot[i1];
 		if (leaf == NULL)
 		{
@@ -413,7 +412,7 @@ public:
 			mRoot[i1] = leaf;
 		}
 
-		T prevValue = leaf->mValues[i2];		
+		T prevValue = leaf->mValues[i2];
 		mRoot[i1]->mValues[i2] = value;
 		value->mNext = prevValue;
 	}
@@ -432,14 +431,14 @@ public:
 		{
 			if (curValue == value)
 			{
-				if (prevValue == NULL)				
+				if (prevValue == NULL)
 					leaf->mValues[i2] = curValue->mNext;
 				else
-					prevValue->mNext = curValue->mNext;				
+					prevValue->mNext = curValue->mNext;
 				curValue->mNext = NULL;
 				return;
 			}
-			
+
 			prevValue = curValue;
 			curValue = curValue->mNext;
 		}
@@ -470,19 +469,18 @@ public:
 		RadixMap64* mRadixMap;
 		int mRootIdx;
 		int mMidIdx;
-		int mLeafIdx;		
+		int mLeafIdx;
 
 	public:
 		Iterator()
 		{
-			
 		}
 
 		Iterator& operator++()
 		{
 			mLeafIdx++;
 			while (true)
-			{	
+			{
 				if (mLeafIdx == LEAF_LENGTH)
 				{
 					mLeafIdx = 0;
@@ -494,7 +492,7 @@ public:
 						{
 							mMidIdx = 0;
 
-							mRootIdx++;							
+							mRootIdx++;
 							while (true)
 							{
 								if (mRootIdx == ROOT_LENGTH)
@@ -512,7 +510,7 @@ public:
 
 						mMidIdx++;
 					}
-				}									
+				}
 
 				if (mRadixMap->mRoot[mRootIdx]->mLeafs[mMidIdx]->mValues[mLeafIdx] != NULL)
 					return *this;
@@ -563,7 +561,7 @@ public:
 			return NULL;
 		}
 	};
-	
+
 	struct Mid
 	{
 		Leaf* mLeafs[MID_LENGTH];
@@ -722,7 +720,7 @@ public:
 				}
 				i3 = LEAF_LENGTH - 1;
 			}
-			
+
 			mid = mRoot[i1];
 			if (mid != NULL)
 			{
@@ -829,7 +827,7 @@ public:
 	}
 
 	void RemoveRange(Number startAddr, Number length)
-	{		
+	{
 		Number endAddr = BF_MIN(startAddr + length, 0x0001000000000000LL);
 		startAddr = BF_MIN(startAddr, 0x0000FFFFFFFFFFFFLL);
 
@@ -958,7 +956,7 @@ public:
 				}
 			}
 			else
-			{				
+			{
 				// MID_LENGTH * LEAF_LENGTH is > 4GB, so a mRoot[i1] being NULL indicates no data
 				return NULL;
 			}
@@ -992,7 +990,7 @@ public:
 			sMidSize += sizeof(Mid);
 			mRoot[i1] = mid;
 		}
-		
+
 		BF_ASSERT((i2 >= 0) && (i2 < MID_LENGTH));
 		Leaf* leaf = mid->mLeafs[i2];
 		if (leaf == NULL)

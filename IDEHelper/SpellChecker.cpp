@@ -26,9 +26,9 @@ BF_EXPORT SpellChecker* BF_CALLTYPE SpellChecker_Create(const char* langPath)
 		return NULL;
 	}
 
-	SpellChecker* spellChecker = new SpellChecker();	
+	SpellChecker* spellChecker = new SpellChecker();
 	spellChecker->mHunHandle = hunHandle;
-	
+
 	return spellChecker;
 }
 

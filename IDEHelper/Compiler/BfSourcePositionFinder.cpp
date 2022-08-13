@@ -13,5 +13,5 @@ BfSourcePositionFinder::BfSourcePositionFinder(BfParser* bfParser, int findPosit
 void BfSourcePositionFinder::Visit(BfAstNode* node)
 {
 	if ((mFindPosition >= node->GetSrcStart()) && (mFindPosition <= node->GetSrcEnd()))
-		mClosestElement = node;	
+		mClosestElement = node;
 }

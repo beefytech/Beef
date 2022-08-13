@@ -103,7 +103,7 @@ static CeOpInfo gOpInfo[] =
 	{"Jmp", CEOI_None, CEOI_JMPREL},
 	{"JmpIf", CEOI_None, CEOI_JMPREL, CEOI_FrameRef8},
 	{"JmpIfNot", CEOI_None, CEOI_JMPREL, CEOI_FrameRef8},
-	{"Error", CEOI_None, CEOI_IMM32},	
+	{"Error", CEOI_None, CEOI_IMM32},
 	{"DynamicCastCheck", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM32},
 	{"GetReflectType", CEOI_FrameRef, CEOI_IMM32},
 	{"GetString", CEOI_FrameRef, CEOI_IMM32},
@@ -118,8 +118,8 @@ static CeOpInfo gOpInfo[] =
 	{"FrameAddrOfs_32", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM32},
 	{"ConstData", CEOI_FrameRef, CEOI_IMM32},
 	{"ConstDataRef", CEOI_FrameRef, CEOI_IMM32},
-	{"Zero", CEOI_None, CEOI_FrameRef, CEOI_IMM32},	
-		
+	{"Zero", CEOI_None, CEOI_FrameRef, CEOI_IMM32},
+
 	{"Const_8", CEOI_FrameRef8, CEOI_IMM8},
 	{"Const_16", CEOI_FrameRef16, CEOI_IMM16},
 	{"Const_32", CEOI_FrameRef32, CEOI_IMM32},
@@ -190,14 +190,14 @@ static CeOpInfo gOpInfo[] =
 	{"CeOp_Conv_F64_U32", CEOI_FrameRef32, CEOI_FrameRefF64},
 	{"CeOp_Conv_F64_U64", CEOI_FrameRef64, CEOI_FrameRefF64},
 	{"CeOp_Conv_F64_F32", CEOI_FrameRefF32, CEOI_FrameRefF64},
-	
+
 	CEOPINFO_SIZED_NUMERIC_PLUSF_2("Abs", CEOI_FrameRef, CEOI_FrameRef),
 	{"AddConst_I8", CEOI_FrameRef8, CEOI_FrameRef8, CEOI_IMM8},
 	{"AddConst_I16", CEOI_FrameRef16, CEOI_FrameRef16, CEOI_IMM16},
 	{"AddConst_I32", CEOI_FrameRef32, CEOI_FrameRef32, CEOI_IMM32},
 	{"AddConst_I64", CEOI_FrameRef64, CEOI_FrameRef64, CEOI_IMM64},
 	{"AddConst_F32", CEOI_FrameRefF32, CEOI_FrameRefF32, CEOI_IMMF32},
-	{"AddConst_F64", CEOI_FrameRefF64, CEOI_FrameRefF64, CEOI_IMMF64},	
+	{"AddConst_F64", CEOI_FrameRefF64, CEOI_FrameRefF64, CEOI_IMMF64},
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Add", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Sub", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Mul", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
@@ -211,7 +211,7 @@ static CeOpInfo gOpInfo[] =
 	CEOPINFO_SIZED_NUMERIC_3("Shl", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_3("Shr", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_UNUMERIC_3("Shr", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	
+
 	CEOPINFO_SIZED_FLOAT_2("Acos", CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_FLOAT_2("Asin", CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_FLOAT_2("Atan", CEOI_FrameRef, CEOI_FrameRef),
@@ -240,7 +240,7 @@ static CeOpInfo gOpInfo[] =
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_SGT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_3("Cmp_UGT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_SGE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_3("Cmp_UGE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),	
+	CEOPINFO_SIZED_NUMERIC_3("Cmp_UGE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_2("Neg", CEOI_FrameRef, CEOI_FrameRef),
 	{"Not_I1", CEOI_FrameRef8, CEOI_FrameRef8},
 	CEOPINFO_SIZED_NUMERIC_2("Not", CEOI_FrameRef, CEOI_FrameRef),
@@ -404,7 +404,7 @@ CeEmitEntry* CeFunction::FindEmitEntry(int instIdx, int* entryIdx)
 	if (!mCode.IsEmpty())
 	{
 		int lo = 0;
-		int hi = mEmitTable.size() - 1;		
+		int hi = mEmitTable.size() - 1;
 		while (lo <= hi)
 		{
 			i = (lo + hi) / 2;
@@ -439,7 +439,6 @@ int CeFunction::SafeGetId()
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
-
 	}
 	return 0;
 #else
@@ -549,7 +548,7 @@ void CeDumpContext::DumpOperandInfo(CeOperandInfoKind operandInfoKind)
 			mStr += '[';
 			int32 size = CE_GET(int32);
 			for (int i = 0; i < size; i++)
-			{				
+			{
 				if (i != 0)
 					mStr += ", ";
 				uint8 val = CE_GET(uint8);
@@ -557,7 +556,7 @@ void CeDumpContext::DumpOperandInfo(CeOperandInfoKind operandInfoKind)
 				sprintf(str, "%X", val);
 				mStr += str;
 			}
-			mStr += ']';			
+			mStr += ']';
 		}
 		break;
 	case CEOI_JMPREL:
@@ -587,8 +586,8 @@ void CeDumpContext::Next()
 		}
 	}
 
-	CeOpInfo& opInfo = gOpInfo[op];	
-	
+	CeOpInfo& opInfo = gOpInfo[op];
+
 	auto argPtr = mPtr;
 
 	if (mCeFunction->mDbgInfo != NULL)
@@ -647,17 +646,17 @@ void CeDumpContext::Next()
 		auto methodInstance = callEntry.mFunctionInfo->mMethodInstance;
 		auto ceModule = mCeFunction->mCeMachine->mCeModule;
 		if (!callEntry.mFunctionInfo->mMethodRef.IsNull())
-		{			
+		{
 			auto methodRef = callEntry.mFunctionInfo->mMethodRef;
 			auto methodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
 			methodInstance = ceModule->GetMethodInstance(methodRef.mTypeInstance, methodDef,
-				methodRef.mMethodGenericArguments).mMethodInstance;			
+				methodRef.mMethodGenericArguments).mMethodInstance;
 		}
 		if (methodInstance != NULL)
 			mStr += StrFormat(" ; %s", ceModule->MethodToString(methodInstance).c_str());
 
 		mPtr = endPtr;
-	}		
+	}
 }
 
 void CeDumpContext::Dump()
@@ -669,11 +668,11 @@ void CeDumpContext::Dump()
 	uint8* start = mPtr;
 	int curEmitIdx = 0;
 	CeEmitEntry* curEmitEntry = NULL;
-	
+
 	while (mPtr < mEnd)
 	{
 		int ofs = mPtr - start;
-		
+
 		while ((curEmitIdx < mCeFunction->mEmitTable.mSize - 1) && (ofs >= mCeFunction->mEmitTable[curEmitIdx + 1].mCodePos))
 			curEmitIdx++;
 		if (curEmitIdx < mCeFunction->mEmitTable.mSize)
@@ -683,12 +682,12 @@ void CeDumpContext::Dump()
 		Next();
 
 		if ((curEmitEntry != NULL) && (curEmitEntry->mScope != -1))
-		{						
+		{
 			mStr += StrFormat("  @%d[%s:%d]", curEmitIdx, GetFileName(mCeFunction->mDbgScopes[curEmitEntry->mScope].mFilePath).c_str(),
 				curEmitEntry->mLine + 1, curEmitEntry->mColumn + 1);
 		}
 
-		mStr += "\n";		
+		mStr += "\n";
 	}
 }
 
@@ -723,8 +722,8 @@ void CeBuilder::Emit(CeOp val)
 void CeBuilder::EmitSizedOp(CeOp val, int size)
 {
 	CeSizeClass sizeClass = GetSizeClass(size);
-	Emit((CeOp)(val + sizeClass));	
-	if (sizeClass == CeSizeClass_X)	
+	Emit((CeOp)(val + sizeClass));
+	if (sizeClass == CeSizeClass_X)
 		Emit((int32)size);
 }
 
@@ -773,19 +772,19 @@ void CeBuilder::EmitBinarySwitchSection(BeSwitchInst* switchInst, int startIdx, 
 	if (endIdx - startIdx >= 18)
 	{
 // 		int gteLabel = mCurLabelIdx++;
-// 
+//
 // 		auto mcDefaultBlock = GetOperand(switchInst->mDefaultBlock);
-// 
+//
 // 		int midIdx = startIdx + (endIdx - startIdx) / 2;
 // 		auto& switchCase = switchInst->mCases[midIdx];
 // 		auto switchBlock = GetOperand(switchCase.mBlock);
 // 		auto mcValue = GetOperand(switchInst->mValue);
 // 		auto valueType = GetType(mcValue);
-// 
+//
 // 		AllocInst(BeMCInstKind_Cmp, mcValue, GetOperand(switchCase.mValue));
 // 		AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(gteLabel), BeMCOperand::FromCmpKind(BeCmpKind_SGE));
 // 		switchBlock.mBlock->AddPred(mActiveBlock);
-// 
+//
 // 		CreateBinarySwitchSection(switchInst, startIdx, midIdx);
 // 		AllocInst(BeMCInstKind_Br, mcDefaultBlock);
 // 		CreateLabel(-1, gteLabel);
@@ -818,7 +817,7 @@ void CeBuilder::EmitFrameOffset(const CeOperand& val)
 
 void CeBuilder::FlushPhi(CeBlock* ceBlock, int targetBlockIdx)
 {
-	for (int i = 0; i < (int)ceBlock->mPhiOutgoing.size(); i++)	
+	for (int i = 0; i < (int)ceBlock->mPhiOutgoing.size(); i++)
 	{
 		auto& phiOutgoing = ceBlock->mPhiOutgoing[i];
 		if (phiOutgoing.mPhiBlockIdx == targetBlockIdx)
@@ -839,7 +838,7 @@ void CeBuilder::EmitBinaryOp(CeOp iOp, CeOp fOp, const CeOperand& lhs, const CeO
 {
 	CeOp op = iOp;
 	if (lhs.mType->IsIntable())
-	{		
+	{
 		if (lhs.mType->mSize == 1)
 			op = iOp;
 		else if (lhs.mType->mSize == 2)
@@ -855,7 +854,7 @@ void CeBuilder::EmitBinaryOp(CeOp iOp, CeOp fOp, const CeOperand& lhs, const CeO
 	{
 		BF_ASSERT(fOp != CeOp_InvalidOp);
 		if (lhs.mType->mSize == 4)
-			op = fOp;		
+			op = fOp;
 		else if (lhs.mType->mSize == 8)
 			op = (CeOp)(fOp + 1);
 		else
@@ -864,7 +863,7 @@ void CeBuilder::EmitBinaryOp(CeOp iOp, CeOp fOp, const CeOperand& lhs, const CeO
 	else
 		Fail("Invalid binary operand");
 	Emit(op);
-		
+
 	if (!result)
 		result = FrameAlloc(lhs.mType);
 	EmitFrameOffset(result);
@@ -903,7 +902,7 @@ void CeBuilder::EmitUnaryOp(CeOp iOp, CeOp fOp, const CeOperand& val, CeOperand&
 
 	result = FrameAlloc(val.mType);
 	EmitFrameOffset(result);
-	EmitFrameOffset(val);	
+	EmitFrameOffset(val);
 }
 
 void CeBuilder::EmitSizedOp(CeOp baseOp, const CeOperand& operand, CeOperand* outResult, bool allowNonStdSize)
@@ -924,7 +923,7 @@ void CeBuilder::EmitSizedOp(CeOp baseOp, const CeOperand& operand, CeOperand* ou
 		isStdSize = false;
 		op = (CeOp)(baseOp + 4);
 	}
-	
+
 	Emit(op);
 
 	if (!isStdSize)
@@ -938,9 +937,9 @@ void CeBuilder::EmitSizedOp(CeOp baseOp, const CeOperand& operand, CeOperand* ou
 	{
 		*outResult = FrameAlloc(operand.mType);
 		EmitFrameOffset(*outResult);
-	}	
+	}
 
-	EmitFrameOffset(operand);		
+	EmitFrameOffset(operand);
 }
 
 CeOperand CeBuilder::FrameAlloc(BeType* type)
@@ -950,7 +949,7 @@ CeOperand CeBuilder::FrameAlloc(BeType* type)
 	CeOperand result;
 	result.mKind = CeOperandKind_FrameOfs;
 	result.mFrameOfs = -mFrameSize;
-	result.mType = type;	
+	result.mType = type;
 	return result;
 }
 
@@ -1024,6 +1023,19 @@ int CeBuilder::GetCallTableIdx(BeFunction* beFunction, CeOperand* outOperand)
 		callEntry.mFunctionInfo = ceFunctionInfo;
 		*callIdxPtr = (int)mCeFunction->mCallTable.size();
 		mCeFunction->mCallTable.Add(callEntry);
+
+		if (ceFunctionInfo != NULL)
+		{
+			auto callerType = mCeFunction->mCeFunctionInfo->GetOwner();
+			auto calleeType = ceFunctionInfo->GetOwner();
+
+			if ((callerType != NULL) && (calleeType != NULL))
+			{
+				// This will generally already be set, but there are some error cases (such as duplicate type names)
+				//  where this will not be set yet
+				callerType->mModule->AddDependency(calleeType, callerType, BfDependencyMap::DependencyFlag_Calls);
+			}
+		}
 	}
 	return *callIdxPtr;
 }
@@ -1032,7 +1044,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 {
 	if (value == NULL)
 		return CeOperand();
-	
+
 	BeType* errorType = mIntPtrType;
 	CeErrorKind errorKind = CeErrorKind_None;
 
@@ -1079,7 +1091,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 				Emit(CeOp_GetString);
 				EmitFrameOffset(result);
 				Emit((int32)*stringTableIdxPtr);
-				
+
 				BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeMachine->mCeModule->ResolveTypeDef(
 					mCeMachine->mCeModule->mCompiler->mStringTypeDef, BfPopulateType_Data);
 
@@ -1093,13 +1105,13 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 
 			BfFieldInstance** fieldInstancePtr = NULL;
 			if (mStaticFieldInstanceMap.TryGetValue(globalVar->mName, &fieldInstancePtr))
-			{				
+			{
 				int* staticFieldTableIdxPtr = NULL;
 				if (mStaticFieldMap.TryAdd(globalVar, NULL, &staticFieldTableIdxPtr))
 				{
 					CeStaticFieldEntry staticFieldEntry;
 					staticFieldEntry.mTypeId = (*fieldInstancePtr)->mOwner->mTypeId;
-					staticFieldEntry.mName = globalVar->mName;					
+					staticFieldEntry.mName = globalVar->mName;
 					staticFieldEntry.mSize = globalVar->mType->mSize;
 					*staticFieldTableIdxPtr = (int)mCeFunction->mStaticFieldTable.size();
 					mCeFunction->mStaticFieldTable.Add(staticFieldEntry);
@@ -1138,7 +1150,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 	case BeCastConstant::TypeId:
 		{
  			auto constant = (BeCastConstant*)value;
- 
+
  			CeOperand mcOperand;
  			auto result = GetOperand(constant->mTarget);
 			result.mType = constant->mType;
@@ -1170,7 +1182,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 					return result;
 				}
 
-			case BeTypeCode_Boolean:			
+			case BeTypeCode_Boolean:
 			case BeTypeCode_Double:
 				dataPtr = &constant->mUInt64;
 				dataSize = constant->mType->mSize;
@@ -1196,20 +1208,20 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 						result.mType = constant->mType;
 						return result;
 					}
- 
+
 //  					if (relTo.mKind == CeOperandKind_Immediate_Null)
 //  					{
 //  						mcOperand.mKind = CeOperandKind_Immediate_Null;
 //  						mcOperand.mType = constant->mType;
 //  						return mcOperand;
 //  					}
-//  
+//
 //  					mcOperand = AllocVirtualReg(constant->mType);
 //  					auto vregInfo = GetVRegInfo(mcOperand);
 //  					vregInfo->mDefOnFirstUse = true;
 //  					vregInfo->mRelTo = relTo;
 //  					vregInfo->mIsExpr = true;
-//  
+//
  					//return mcOperand;
 				}
 			}
@@ -1240,10 +1252,10 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 				CeSizeClass sizeClass = GetSizeClass(dataSize);
 				Emit((CeOp)(CeOp_Const_8 + sizeClass));
 				EmitFrameOffset(result);
-				if (sizeClass == CeSizeClass_X)						
+				if (sizeClass == CeSizeClass_X)
 					Emit((int32)dataSize);
 				if (dataPtr != 0)
-					Emit(dataPtr, dataSize);				
+					Emit(dataPtr, dataSize);
 				else
 				{
 					for (int i = 0; i < dataSize; i++)
@@ -1251,7 +1263,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 				}
 
 				return result;
-			}						
+			}
 		}
 		break;
 	case BeStructConstant::TypeId:
@@ -1259,7 +1271,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			int* constDataPtr = NULL;
 			auto structConstant = (BeStructConstant*)value;
 			if (mConstDataMap.TryAdd(structConstant, NULL, &constDataPtr))
-			{												
+			{
 				CeConstStructData constStructData;
 				constStructData.mQueueFixups = true;
 				errorKind = mCeMachine->WriteConstant(constStructData, structConstant, NULL);
@@ -1294,27 +1306,27 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 				}
 			}
 			else
-			{				
+			{
 				errorKind = CeErrorKind_GlobalVariable;
 			}
 		}
-		break;	
+		break;
 	case BeGEP1Constant::TypeId:
 		{
  			auto gepConstant = (BeGEP1Constant*)value;
- 
+
  			auto mcVal = GetOperand(gepConstant->mTarget);
- 
+
  			BePointerType* ptrType = (BePointerType*)mcVal.mType;
  			BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
- 
+
  			auto result = mcVal;
- 
- 			// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.				
+
+ 			// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
  			int64 byteOffset = 0;
  			BeType* elementType = NULL;
  			byteOffset += gepConstant->mIdx0 * ptrType->mElementType->mSize;
- 
+
 			result = FrameAlloc(ptrType);
 			EmitSizedOp(CeOp_AddConst_I8, mPtrSize);
 			EmitFrameOffset(result);
@@ -1327,19 +1339,19 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 	case BeGEP2Constant::TypeId:
 		{
  			auto gepConstant = (BeGEP2Constant*)value;
- 
+
  			auto mcVal = GetOperand(gepConstant->mTarget);
- 
+
  			BePointerType* ptrType = (BePointerType*)mcVal.mType;
  			BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
- 
+
  			auto result = mcVal;
- 
- 			// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.				
+
+ 			// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
  			int64 byteOffset = 0;
  			BeType* elementType = NULL;
  			byteOffset += gepConstant->mIdx0 * ptrType->mElementType->mSize;
- 
+
  			if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
  			{
  				BeStructType* structType = (BeStructType*)ptrType->mElementType;
@@ -1354,7 +1366,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
  				elementType = arrayType->mElementType;
  				byteOffset = gepConstant->mIdx1 * elementType->GetStride();
  			}
- 
+
  			auto elementPtrType = mCeMachine->GetBeContext()->GetPointerTo(elementType);
 			result = FrameAlloc(elementPtrType);
 			EmitSizedOp(CeOp_AddConst_I8, mPtrSize);
@@ -1370,16 +1382,16 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			// Note: this only handles zero-aggregates
  			auto extractConstant = (BeExtractValueConstant*)value;
  			auto elementType = extractConstant->GetType();
- 
- 			auto mcVal = GetOperand(extractConstant->mTarget); 			
- 
+
+ 			auto mcVal = GetOperand(extractConstant->mTarget);
+
  			BeConstant beConstant;
  			beConstant.mType = elementType;
  			beConstant.mUInt64 = 0;
  			return GetOperand(&beConstant);
 		}
 		break;
-	case BeFunction::TypeId:		
+	case BeFunction::TypeId:
 		{
 			auto beFunction = (BeFunction*)value;
 			CeOperand operand;
@@ -1415,7 +1427,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 
 	CeOperand* operandPtr = NULL;
 	mValueToOperand.TryGetValue(value, &operandPtr);
-	
+
 	if (errorKind != CeErrorKind_None)
 	{
 		Emit(CeOp_Error);
@@ -1441,7 +1453,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 	if ((operand.mKind == CeOperandKind_AllocaAddr) && (!allowAlloca))
 	{
 		auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
-		
+
 		auto ptrType = mCeMachine->GetBeContext()->GetPointerTo(operand.mType);
 		auto result = FrameAlloc(ptrType);
 		Emit((mPtrSize == 4) ? CeOp_FrameAddr_32 : CeOp_FrameAddr_64);
@@ -1477,7 +1489,7 @@ int CeBuilder::DbgCreateMethodRef(BfMethodInstance* methodInstance, const String
 	dbgMethodRef.mMethodRef = methodInstance;
 	int* valuePtr = NULL;
 	if (mDbgMethodRefMap.TryAdd(dbgMethodRef, NULL, &valuePtr))
-	{		
+	{
 		*valuePtr = mCeFunction->mDbgMethodRefTable.mSize;
 		mCeFunction->mDbgMethodRefTable.Add(dbgMethodRef);
 	}
@@ -1490,11 +1502,11 @@ void CeBuilder::HandleParams()
 // 	int regIdxOfs = 0;
 // 	int paramOfs = 0;
 	auto retType = mBeFunction->GetFuncType()->mReturnType;
-	
+
 	int frameOffset = 0;
 
 	if (mCeFunction->mMaxReturnSize > 0)
-	{				
+	{
 		mReturnVal.mKind = CeOperandKind_AllocaAddr;
 		mReturnVal.mFrameOfs = frameOffset;
 		frameOffset += mCeFunction->mMaxReturnSize;
@@ -1509,7 +1521,7 @@ void CeBuilder::HandleParams()
 		auto& typeParam = funcType->mParams[paramIdx + paramOfs];
 		auto& param = mBeFunction->mParams[paramIdx + paramOfs];
 		auto beArg = beModule->GetArgument(paramIdx + paramOfs);
-		auto paramType = typeParam.mType;		
+		auto paramType = typeParam.mType;
 
 		CeOperand ceOperand;
 		ceOperand.mKind = CeOperandKind_FrameOfs;
@@ -1539,8 +1551,8 @@ void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance
 
 	dupMethodInstance->mIsReified = true;
 	dupMethodInstance->mInCEMachine = false; // Only have the original one
-	
-	// We can't use methodInstance->mMethodInstanceGroup because we may add foreign method instances which 
+
+	// We can't use methodInstance->mMethodInstanceGroup because we may add foreign method instances which
 	//  would reallocate the methodInstanceGroup
 	BfMethodInstanceGroup methodInstanceGroup;
 	methodInstanceGroup.mOwner = methodInstance->mMethodInstanceGroup->mOwner;
@@ -1555,7 +1567,7 @@ void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance
 	mCeMachine->mCeModule->ProcessMethod(dupMethodInstance, true, forceIRWrites);
 	irCodeGen->SetState(beState);
 	irBuilder->SetState(irState);
-	
+
 	if (mCeMachine->mCeModule->mCompiler->mResolvePassData != NULL)
 		mCeMachine->mCeModule->mCompiler->mResolvePassData->mAutoComplete = prevAutoComplete;
 
@@ -1576,14 +1588,14 @@ void CeBuilder::Build()
 	mCeFunction->mFailed = true;
 
 	auto methodInstance = mCeFunction->mMethodInstance;
-	
+
 	if (methodInstance != NULL)
 	{
 		BfMethodInstance dupMethodInstance;
 		dupMethodInstance.CopyFrom(methodInstance);
 		auto methodDef = methodInstance->mMethodDef;
 
-		bool isGenericVariation = (methodInstance->mIsUnspecializedVariation) || (methodInstance->GetOwner()->IsUnspecializedTypeVariation());				
+		bool isGenericVariation = (methodInstance->mIsUnspecializedVariation) || (methodInstance->GetOwner()->IsUnspecializedTypeVariation());
 		int dependentGenericStartIdx = 0;
 		if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) ||
 			((methodInstance->GetOwner()->IsGenericTypeInstance()) && (!isGenericVariation) && (!methodInstance->mMethodDef->mIsLocalMethod) && (!methodInstance->mIsUnspecialized))))
@@ -1598,12 +1610,12 @@ void CeBuilder::Build()
 					dupMethodInstance.GetMethodInfoEx()->mGenericTypeBindings = dupUnspecMethodInstance.mMethodInfoEx->mGenericTypeBindings;
 			}
 		}
-		
+
 		// Clear this so we can properly get QueueStaticField calls
-		mCeMachine->mCeModule->mStaticFieldRefs.Clear();		
+		mCeMachine->mCeModule->mStaticFieldRefs.Clear();
 
 		int startFunctionCount = (int)beModule->mFunctions.size();
-		ProcessMethod(methodInstance, &dupMethodInstance, true);			
+		ProcessMethod(methodInstance, &dupMethodInstance, true);
 		if (mCeFunction->mInitializeState == CeFunction::InitializeState_Initialized)
 			return;
 
@@ -1611,7 +1623,7 @@ void CeBuilder::Build()
 		{
 			mCeFunction->mFailed = true;
 			return;
-		}		
+		}
 		mBeFunction = (BeFunction*)irCodeGen->GetBeValue(dupMethodInstance.mIRFunction.mId);
 
 		mIntPtrType = irCodeGen->mBeContext->GetPrimitiveType((mPtrSize == 4) ? BeTypeCode_Int32 : BeTypeCode_Int64);
@@ -1624,7 +1636,7 @@ void CeBuilder::Build()
 			if (beFunction->mBlocks.IsEmpty())
 				continue;
 
-			CeFunction* innerFunction = new CeFunction();			
+			CeFunction* innerFunction = new CeFunction();
 			innerFunction->mCeMachine = mCeMachine;
 			innerFunction->mIsVarReturn = beFunction->mIsVarReturn;
 			innerFunction->mCeInnerFunctionInfo = new CeInnerFunctionInfo();
@@ -1663,10 +1675,10 @@ void CeBuilder::Build()
 		mCeFunction->mCeInnerFunctionInfo->mBeFunction = NULL;
 	}
 
-	SetAndRestoreValue<BeFunction*> prevBeFunction(beModule->mActiveFunction, mBeFunction);	
-		
+	SetAndRestoreValue<BeFunction*> prevBeFunction(beModule->mActiveFunction, mBeFunction);
+
 	// Create blocks
-	for (int blockIdx = 0; blockIdx < (int)mBeFunction->mBlocks.size(); blockIdx++)			
+	for (int blockIdx = 0; blockIdx < (int)mBeFunction->mBlocks.size(); blockIdx++)
 	{
 		auto beBlock = mBeFunction->mBlocks[blockIdx];
 
@@ -1684,17 +1696,17 @@ void CeBuilder::Build()
 	{
 		auto beBlock = mBeFunction->mBlocks[blockIdx];
 		auto& ceBlock = mBlocks[blockIdx];
-		
+
 		for (int instIdx = 0; instIdx < (int)beBlock->mInstructions.size(); instIdx++)
 		{
 			auto inst = beBlock->mInstructions[instIdx];
-			
+
 			int instType = inst->GetTypeId();
 
 			switch (instType)
 			{
 			case BePhiInst::TypeId:
-				{					
+				{
 					auto castedInst = (BePhiInst*)inst;
 
 					auto resultType = castedInst->GetType();
@@ -1710,7 +1722,7 @@ void CeBuilder::Build()
 						CePhiOutgoing phiOutgoing;
 						phiOutgoing.mPhiValue = phiIncoming->mValue;
 						phiOutgoing.mPhiInst = castedInst;
-						phiOutgoing.mPhiBlockIdx = blockIdx;						
+						phiOutgoing.mPhiBlockIdx = blockIdx;
 						incomingBlock.mPhiOutgoing.Add(phiOutgoing);
 					}
 				}
@@ -1721,7 +1733,7 @@ void CeBuilder::Build()
 					auto castedInst = (BeRetInst*)inst;
 					if (castedInst->mRetValue != NULL)
 					{
-						auto retType = castedInst->mRetValue->GetType();						
+						auto retType = castedInst->mRetValue->GetType();
 						mCeFunction->mMaxReturnSize = BF_MAX(retType->mSize, mCeFunction->mMaxReturnSize);
 					}
 				}
@@ -1739,11 +1751,11 @@ void CeBuilder::Build()
 	{
 		auto beBlock = mBeFunction->mBlocks[blockIdx];
 		auto ceBlock = &mBlocks[blockIdx];
-		
+
 		ceBlock->mEmitOfs = GetCodePos();
 
 		if (blockIdx == 0)
-			HandleParams();		
+			HandleParams();
 
 		for (int instIdx = 0; instIdx < (int)beBlock->mInstructions.size(); instIdx++)
 		{
@@ -1752,8 +1764,8 @@ void CeBuilder::Build()
 
 			int startCodePos = GetCodePos();
 
-			mCurDbgLoc = inst->mDbgLoc;			
-			
+			mCurDbgLoc = inst->mDbgLoc;
+
 			if ((prevEmitDbgPos != mCurDbgLoc) && (mCurDbgLoc != NULL))
 			{
 				auto _GetScope = [&](BeMDNode* mdNode, int inlinedAt)
@@ -1762,12 +1774,12 @@ void CeBuilder::Build()
 					BeDbgFunction* dbgFunc = NULL;
 					String nameAdd;
 
-					while (auto dbgLexicalBlock = BeValueDynCast<BeDbgLexicalBlock>(mdNode))					
+					while (auto dbgLexicalBlock = BeValueDynCast<BeDbgLexicalBlock>(mdNode))
 						mdNode = dbgLexicalBlock->mScope;
-					
+
 					if (dbgFunc = BeValueDynCast<BeDbgFunction>(mdNode))
 					{
-						dbgFile = dbgFunc->mFile;																		
+						dbgFile = dbgFunc->mFile;
 					}
 					else if (auto dbgLoc = BeValueDynCast<BeDbgLoc>(mdNode))
 						dbgFile = dbgLoc->GetDbgFile();
@@ -1790,14 +1802,14 @@ void CeBuilder::Build()
 						if (dbgFunc != NULL)
 						{
 							if (dbgFunc->mValue == NULL)
-							{								
+							{
 								if (!dbgFunc->mLinkageName.IsEmpty())
 								{
 									int methodRefIdx = atoi(dbgFunc->mLinkageName.c_str());
 									dbgScope.mMethodVal = methodRefIdx | CeDbgScope::MethodValFlag_MethodRef;
 								}
 								else
-								{				
+								{
 									CeDbgMethodRef dbgMethodRef;
 									dbgMethodRef.mNameMod = dbgFunc->mName;
 
@@ -1808,7 +1820,7 @@ void CeBuilder::Build()
 										mCeFunction->mDbgMethodRefTable.Add(dbgMethodRef);
 									}
 									dbgScope.mMethodVal = *valuePtr | CeDbgScope::MethodValFlag_MethodRef;
-								}																
+								}
 							}
 							else if (dbgFunc->mValue != mBeFunction)
 								dbgScope.mMethodVal = GetCallTableIdx(dbgFunc->mValue, NULL);
@@ -1829,10 +1841,10 @@ void CeBuilder::Build()
 					int* valuePtr = NULL;
 					if (mDbgInlineMap.TryAdd(dbgLoc, NULL, &valuePtr))
 					{
-						CeDbgInlineEntry inlineEntry;						
+						CeDbgInlineEntry inlineEntry;
 						inlineEntry.mLine = dbgLoc->mLine;
 						inlineEntry.mColumn = dbgLoc->mColumn;
-						
+
 						auto inlinedAt = _GetInlinedScope(dbgLoc->mDbgInlinedAt);
 						inlineEntry.mScope = _GetScope(dbgLoc->mDbgScope, inlinedAt);
 
@@ -1843,7 +1855,7 @@ void CeBuilder::Build()
 				};
 
 				int inlinedAt = _GetInlinedScope(mCurDbgLoc->mDbgInlinedAt);
-				scopeIdx = _GetScope(mCurDbgLoc->mDbgScope, inlinedAt);				
+				scopeIdx = _GetScope(mCurDbgLoc->mDbgScope, inlinedAt);
 			}
 
 			int instType = inst->GetTypeId();
@@ -1860,9 +1872,10 @@ void CeBuilder::Build()
 			}
 
 			switch (instType)
-			{			
-			case BeNopInst::TypeId:			
-			case BeLifetimeStartInst::TypeId:			
+			{
+			case BeNopInst::TypeId:
+			case BeLifetimeSoftEndInst::TypeId:
+			case BeLifetimeStartInst::TypeId:
 			case BeLifetimeExtendInst::TypeId:
 			case BeValueScopeStartInst::TypeId:
 			case BeValueScopeEndInst::TypeId:
@@ -1890,7 +1903,7 @@ void CeBuilder::Build()
 					bool isAligned16 = false;
 					int align = castedInst->mAlign;
 					BeType* allocType = castedInst->mType;
-					bool preservedVolatiles = false;					
+					bool preservedVolatiles = false;
 
 					if (castedInst->mArraySize != NULL)
 					{
@@ -1900,7 +1913,7 @@ void CeBuilder::Build()
 							ceSize.mImmediate = ceSize.mImmediate * mcArraySize.mImmediate;
 						}
 						else
-						{							
+						{
 							inHeadAlloca = false;
 							if (ceSize.mImmediate == 1)
 							{
@@ -1939,12 +1952,12 @@ void CeBuilder::Build()
 							Emit(CeOp_AdjustSPNeg);
 							EmitFrameOffset(ceSize);
 						}
-						
+
 						auto ptrType = beModule->mContext->GetPointerTo(allocType);
 
 						result = FrameAlloc(ptrType);
 						Emit(CeOp_GetSP);
-						EmitFrameOffset(result);						
+						EmitFrameOffset(result);
 					}
 				}
 				break;
@@ -1961,11 +1974,11 @@ void CeBuilder::Build()
 							result.mKind = CeOperandKind_FrameOfs;
 						}
 						else
-						{							
+						{
 							ceTarget.mKind = CeOperandKind_FrameOfs;
 							result = FrameAlloc(ceTarget.mType);
 							EmitSizedOp(CeOp_Move_8, ceTarget, NULL, true);
-							Emit((int32)result.mFrameOfs);							
+							Emit((int32)result.mFrameOfs);
 						}
 					}
 					else
@@ -1973,9 +1986,9 @@ void CeBuilder::Build()
 						BF_ASSERT(ceTarget.mType->IsPointer());
 						auto pointerType = (BePointerType*)ceTarget.mType;
 						auto elemType = pointerType->mElementType;
-						
+
 						CeOperand refOperand = ceTarget;
-						refOperand.mType = elemType;						
+						refOperand.mType = elemType;
 						EmitSizedOp(CeOp_Load_8, refOperand, &result, true);
 					}
 				}
@@ -2056,7 +2069,7 @@ void CeBuilder::Build()
 						else
 						{
 							// Non-zero constant.  Weird case, just do an actual MOV
-							result = FrameAlloc(toType);							
+							result = FrameAlloc(toType);
 							EmitSizedOp(CeOp_Const_8, result, NULL, true);
 							int64 val = mcValue.mImmediate;
 							Emit(&val, toType->mSize);
@@ -2090,17 +2103,17 @@ void CeBuilder::Build()
 							// For truncating values, no actual instructions are needed
 							// Note that a copy is not needed because of SSA rules
 							result = ceValue;
-							result.mType = toType;							
+							result.mType = toType;
 						}
 						else
-						{							
+						{
 							result = FrameAlloc(toType);
 
 							CeOp op = CeOp_InvalidOp;
-							
+
 							BeTypeCode fromTypeCode = fromType->mTypeCode;
 							BeTypeCode toTypeCode = toType->mTypeCode;
-														
+
 							if ((castedInst->mValSigned) && (castedInst->mToSigned))
 							{
 								switch (fromTypeCode)
@@ -2158,7 +2171,7 @@ void CeBuilder::Build()
 									break;
 								case BeTypeCode_Int64:
 									switch (toTypeCode)
-									{									
+									{
 									case BeTypeCode_Float:
 										op = CeOp_Conv_I64_F32;
 										break;
@@ -2311,18 +2324,18 @@ void CeBuilder::Build()
 									break;
 								}
 							}
-							
+
 							if (op == CeOp_InvalidOp)
 							{
 								Fail("Invalid conversion op");
 							}
 							else
 							{
-								Emit(op);								
+								Emit(op);
 								EmitFrameOffset(result);
 								EmitFrameOffset(ceValue);
-							}							
-						}						
+							}
+						}
 					}
 				}
 				break;
@@ -2338,7 +2351,7 @@ void CeBuilder::Build()
 						Emit((int32)mcPtr.mFrameOfs);
 					}
 					else
-					{						
+					{
 						EmitSizedOp(CeOp_Store_8, mcVal, NULL, true);
 						EmitFrameOffset(mcPtr);
 					}
@@ -2346,7 +2359,7 @@ void CeBuilder::Build()
 				break;
 			case BeRetInst::TypeId:
 			case BeSetRetInst::TypeId:
-				{					
+				{
 					auto castedInst = (BeRetInst*)inst;
 					if (castedInst->mRetValue != NULL)
 					{
@@ -2368,7 +2381,7 @@ void CeBuilder::Build()
 						Emit((int32)setRetInst->mReturnTypeId);
 					}
 				}
-				break;			
+				break;
 			case BeCmpInst::TypeId:
 				{
 					auto castedInst = (BeCmpInst*)inst;
@@ -2388,7 +2401,7 @@ void CeBuilder::Build()
 						iOp = CeOp_Cmp_NE_I8;
 						fOp = CeOp_Cmp_NE_F32;
 						break;
-						
+
 					case BeCmpKind_SLT:
 						iOp = CeOp_Cmp_SLT_I8;
 						fOp = CeOp_Cmp_SLT_F32;
@@ -2431,15 +2444,15 @@ void CeBuilder::Build()
 					EmitBinaryOp(iOp, fOp, ceLHS, ceRHS, result);
 
 // 					auto mcInst = AllocInst(BeMCInstKind_Cmp, mcLHS, mcRHS);
-// 
+//
 // 					auto cmpResultIdx = (int)mCmpResults.size();
 // 					BeCmpResult cmpResult;
 // 					cmpResult.mCmpKind = castedInst->mCmpKind;
 // 					mCmpResults.push_back(cmpResult);
-// 
+//
 // 					result.mKind = BeMCOperandKind_CmpResult;
 // 					result.mCmpResultIdx = cmpResultIdx;
-// 
+//
 // 					mcInst->mResult = result;
 				}
 				break;
@@ -2468,7 +2481,7 @@ void CeBuilder::Build()
 								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
 
 								auto elementPtrType = beModule->mContext->GetPointerTo(arrayType->mElementType);
-								
+
 								if (ceIdx1.IsImmediate())
 								{
 									if (ceIdx1.mImmediate == 0)
@@ -2539,7 +2552,7 @@ void CeBuilder::Build()
 										EmitFrameOffset(ofsValue);
 									}
 									else
-									{										
+									{
 										auto mcElementSize = FrameAlloc(mIntPtrType);
 										Emit(CeOp_Const_64);
 										EmitFrameOffset(mcElementSize);
@@ -2550,16 +2563,16 @@ void CeBuilder::Build()
 										EmitFrameOffset(ofsValue);
 										EmitFrameOffset(ceIdx1);
 										EmitFrameOffset(mcElementSize);
-										
+
 										Emit(CeOp_Add_I64);
 										EmitFrameOffset(result);
 										EmitFrameOffset(ceVal);
 										EmitFrameOffset(ofsValue);
-									}									
+									}
 								}
  							}
  							else
- 								Fail("Invalid GEP");							
+ 								Fail("Invalid GEP");
 						}
 						else
 						{
@@ -2589,7 +2602,7 @@ void CeBuilder::Build()
 							{
 								Fail("Invalid gep target");
 							}
-							
+
 							auto elementPtrType = beModule->mContext->GetPointerTo(elementType);
 
 							if (byteOffset != 0)
@@ -2609,7 +2622,7 @@ void CeBuilder::Build()
 						}
 					}
 					else
-					{						
+					{
  						CeOperand mcRelOffset;
  						int relScale = 1;
  						if (ceIdx0.IsImmediate())
@@ -2624,7 +2637,7 @@ void CeBuilder::Build()
 								Emit((int32)byteOffset);
 								if (mPtrSize == 8)
 									Emit((int32)0);
-							}							
+							}
 						}
 						else
 						{
@@ -2665,17 +2678,17 @@ void CeBuilder::Build()
 								EmitFrameOffset(ceVal);
 								EmitFrameOffset(ofsValue);
 							}
-						}						
+						}
 					}
 				}
 				break;
 			case BeExtractValueInst::TypeId:
 				{
 					auto castedInst = (BeExtractValueInst*)inst;
-					
+
 					BeConstant* constant = BeValueDynCast<BeConstant>(castedInst->mAggVal);
 					CeOperand mcAgg;
-					
+
 					if (constant != NULL)
 					{
 						result.mImmediate = 0;
@@ -2759,7 +2772,7 @@ void CeBuilder::Build()
 						byteOffset = structMember.mByteOffset;
 						memberType = structMember.mType;
 					}
-					
+
 					if (byteOffset != 0)
 					{
 						auto ptrVal = FrameAlloc(beModule->mContext->GetPrimitiveType(BeTypeCode_Int32));
@@ -2784,7 +2797,7 @@ void CeBuilder::Build()
 				{
 					auto castedInst = (BeBrInst*)inst;
 					auto targetBlock = GetOperand(castedInst->mTargetBlock);
-					
+
 					BF_ASSERT(targetBlock.mKind == CeOperandKind_Block);
 
 					FlushPhi(ceBlock, targetBlock.mBlockIdx);
@@ -2795,7 +2808,7 @@ void CeBuilder::Build()
 						break;
 					}
 
-					EmitJump(CeOp_Jmp, targetBlock);					
+					EmitJump(CeOp_Jmp, targetBlock);
 				}
 				break;
 			case BeCondBrInst::TypeId:
@@ -2804,15 +2817,15 @@ void CeBuilder::Build()
 					auto testVal = GetOperand(castedInst->mCond, true);
 					auto trueBlock = GetOperand(castedInst->mTrueBlock);
 					auto falseBlock = GetOperand(castedInst->mFalseBlock);
-					
+
 					FlushPhi(ceBlock, trueBlock.mBlockIdx);
-					
-					EmitJump(CeOp_JmpIf, trueBlock);					
+
+					EmitJump(CeOp_JmpIf, trueBlock);
 					EmitFrameOffset(testVal);
 
 					FlushPhi(ceBlock, falseBlock.mBlockIdx);
 
-					EmitJump(CeOp_Jmp, falseBlock);					
+					EmitJump(CeOp_Jmp, falseBlock);
 				}
 				break;
 			case BePhiInst::TypeId:
@@ -2848,21 +2861,21 @@ void CeBuilder::Build()
 					int numVals = castedInst->mCases.size();
 
 					if (numVals > 0)
-					{						
+					{
 						EmitBinarySwitchSection(castedInst, 0, castedInst->mCases.size());
 					}
 
 					auto mcDefaultBlock = GetOperand(castedInst->mDefaultBlock);
-					EmitJump(CeOp_Jmp, mcDefaultBlock);					
+					EmitJump(CeOp_Jmp, mcDefaultBlock);
 				}
 				break;
 			case BeCallInst::TypeId:
 				{
-					auto castedInst = (BeCallInst*)inst;					
+					auto castedInst = (BeCallInst*)inst;
 					BeType* returnType = NULL;
 					bool isVarArg = false;
 					bool useAltArgs = false;
-					
+
 					CeOperand ceFunc;
 					BeFunctionType* beFuncType = NULL;
 					CeOperand virtTarget;
@@ -2873,8 +2886,8 @@ void CeBuilder::Build()
 					{
 						switch (intrin->mKind)
 						{
-						case BfIRIntrinsic_Abs:													
-							EmitUnaryOp(CeOp_Abs_I8, CeOp_Abs_F32, GetOperand(castedInst->mArgs[0].mValue), result);							
+						case BfIRIntrinsic_Abs:
+							EmitUnaryOp(CeOp_Abs_I8, CeOp_Abs_F32, GetOperand(castedInst->mArgs[0].mValue), result);
 							break;
 						case BfIRIntrinsic_Cast:
 							{
@@ -2911,7 +2924,7 @@ void CeBuilder::Build()
 							// Nothing to do
 							break;
 						case BfIRIntrinsic_AtomicAdd:
-							EmitBinaryOp(CeOp_Add_I8, CeOp_Add_F32, GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), result);							
+							EmitBinaryOp(CeOp_Add_I8, CeOp_Add_F32, GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), result);
 							break;
 						case BfIRIntrinsic_AtomicOr:
 							EmitBinaryOp(CeOp_Or_I8, CeOp_InvalidOp, GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), result);
@@ -3005,7 +3018,7 @@ void CeBuilder::Build()
 									EmitFrameOffset(arg0);
 									EmitFrameOffset(arg1);
 								}
-								
+
 								break;
 							}
 						}
@@ -3034,7 +3047,7 @@ void CeBuilder::Build()
 					{
 						virtTarget = GetOperand(beGetVirtualFunc->mValue);
 						virtualTableIdx = beGetVirtualFunc->mVirtualTableIdx;
-						
+
 						auto resultType = beGetVirtualFunc->GetType();
 						BF_ASSERT(resultType->IsPointer());
 						beFuncType = (BeFunctionType*)((BePointerType*)resultType)->mElementType;
@@ -3051,17 +3064,17 @@ void CeBuilder::Build()
 					}
 					else
 					{
-						ceFunc = GetOperand(castedInst->mFunc, false, true);						
+						ceFunc = GetOperand(castedInst->mFunc, false, true);
  						auto funcType = castedInst->mFunc->GetType();
  						if (funcType->IsPointer())
  						{
  							auto ptrType = (BePointerType*)funcType;
  							if (ptrType->mElementType->mTypeCode == BeTypeCode_Function)
  							{
- 								beFuncType = (BeFunctionType*)ptrType->mElementType; 								
+ 								beFuncType = (BeFunctionType*)ptrType->mElementType;
  							}
- 						}						
-					}					
+ 						}
+					}
 
 					if ((ceFunc) || (virtualTableIdx != -1))
 					{
@@ -3084,7 +3097,7 @@ void CeBuilder::Build()
 						if (beFuncType->mReturnType->mSize > 0)
 						{
 							Emit(CeOp_AdjustSPConst);
-							Emit((int32)-beFuncType->mReturnType->mSize);							
+							Emit((int32)-beFuncType->mReturnType->mSize);
 						}
 
 						if (!ceFunc)
@@ -3105,14 +3118,14 @@ void CeBuilder::Build()
 							EmitFrameOffset(thisOperand);
 							Emit((int32)virtualTableIdx);
 						}
-						
+
 						if (ceFunc.mKind == CeOperandKind_CallTableIdx)
 						{
 							CeOperand result = FrameAlloc(mCeMachine->GetBeContext()->GetPrimitiveType((sizeof(BfMethodInstance*) == 8) ? BeTypeCode_Int64 : BeTypeCode_Int32));
 							Emit(CeOp_GetMethod);
 							EmitFrameOffset(result);
 							Emit((int32)ceFunc.mCallTableIdx);
-							
+
 							ceFunc = result;
 						}
 
@@ -3137,11 +3150,11 @@ void CeBuilder::Build()
 				{
 					auto castedInst = (BeMemSetInst*)inst;
 					auto ceAddr = GetOperand(castedInst->mAddr);
-					
+
 					if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mVal))
 					{
 						if (auto constSize = BeValueDynCast<BeConstant>(castedInst->mSize))
-						{							
+						{
 							if (constVal->mUInt8 == 0)
 							{
 								Emit(CeOp_MemSet_Const);
@@ -3149,7 +3162,7 @@ void CeBuilder::Build()
 								Emit((uint8)0);
 								Emit((int32)constSize->mUInt32);
 								break;
-							}							
+							}
 						}
 					}
 
@@ -3159,16 +3172,16 @@ void CeBuilder::Build()
 					Emit(CeOp_MemSet);
 					EmitFrameOffset(ceAddr);
 					EmitFrameOffset(ceVal);
-					EmitFrameOffset(ceSize);					
+					EmitFrameOffset(ceSize);
 				}
 				break;
-			case BeFenceInst::TypeId:				
+			case BeFenceInst::TypeId:
 				break;
 			case BeStackSaveInst::TypeId:
 				{
 					result = FrameAlloc(mIntPtrType);
 					Emit(CeOp_GetSP);
-					EmitFrameOffset(result);					
+					EmitFrameOffset(result);
 				}
 				break;
 			case BeStackRestoreInst::TypeId:
@@ -3202,7 +3215,7 @@ void CeBuilder::Build()
 					result = FrameAlloc(ptrType);
 
 					Emit(CeOp_GetReflectType);
-					EmitFrameOffset(result);					
+					EmitFrameOffset(result);
 					Emit((int32)castedInst->mTypeId);
 				}
 				break;
@@ -3219,11 +3232,11 @@ void CeBuilder::Build()
 					EmitFrameOffset(mcValue);
 					Emit((int32)castedInst->mTypeId);
 				}
-				break;			
+				break;
 			case BeDbgDeclareInst::TypeId:
 				{
 					auto castedInst = (BeDbgDeclareInst*)inst;
-					auto mcValue = GetOperand(castedInst->mValue, true);					
+					auto mcValue = GetOperand(castedInst->mValue, true);
 
 					if (mCeFunction->mDbgInfo != NULL)
 					{
@@ -3240,7 +3253,7 @@ void CeBuilder::Build()
 						{
 							mDbgVariableMap[castedInst->mValue] = mCeFunction->mDbgInfo->mVariables.mSize;
 
-							CeDbgVariable dbgVariable;							
+							CeDbgVariable dbgVariable;
 							dbgVariable.mName = castedInst->mDbgVar->mName;
 							dbgVariable.mValue = mcValue;
 							dbgVariable.mType = mCeMachine->mCeModule->mContext->mTypes[dbgTypeId->mTypeId];
@@ -3281,7 +3294,7 @@ void CeBuilder::Build()
 				mValueToOperand[inst] = result;
 
 			if ((startCodePos != GetCodePos()) && (prevEmitDbgPos != mCurDbgLoc))
-			{			
+			{
 				CeEmitEntry emitEntry;
 				emitEntry.mCodePos = startCodePos;
 				emitEntry.mScope = scopeIdx;
@@ -3302,7 +3315,7 @@ void CeBuilder::Build()
 					emitEntry.mLine = -1;
 					emitEntry.mColumn = -1;
 				}
-				mCeFunction->mEmitTable.Add(emitEntry);				
+				mCeFunction->mEmitTable.Add(emitEntry);
 
 				prevEmitDbgPos = mCurDbgLoc;
 			}
@@ -3327,11 +3340,11 @@ void CeBuilder::Build()
 		Fail("No method definition available");
 		return;
 	}
-	
-	if (mCeFunction->mGenError.IsEmpty())
-		mCeFunction->mFailed = false;	
 
-	mCeFunction->mFrameSize = mFrameSize;	
+	if (mCeFunction->mGenError.IsEmpty())
+		mCeFunction->mFailed = false;
+
+	mCeFunction->mFrameSize = mFrameSize;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3345,7 +3358,7 @@ CeContext::CeContext()
 	mExecuteId = -1;
 	mStackSize = -1;
 
-	mCurCallSource = NULL;	
+	mCurCallSource = NULL;
 	mHeap = new	ContiguousHeap();
 	mCurFrame = NULL;
 	mCurModule = NULL;
@@ -3354,7 +3367,7 @@ CeContext::CeContext()
 	mCallerTypeInstance = NULL;
 	mCallerActiveTypeDef = NULL;
 	mCurExpectingType = NULL;
-	mCurEmitContext = NULL;	
+	mCurEmitContext = NULL;
 }
 
 CeContext::~CeContext()
@@ -3389,16 +3402,16 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 		((mCurEvalFlags & CeEvalFlags_DeferIfNotOnlyError) != 0) && !mCurModule->mHadBuildError);
 	if (bfError == NULL)
 		return NULL;
-	
+
 	auto passInstance = mCeMachine->mCompiler->mPassInstance;
-	
+
 	for (int stackIdx = mCallStack.size(); stackIdx >= 0; stackIdx--)
 	{
 		bool isHeadEntry = stackIdx == mCallStack.size();
 		auto* ceFrame = (isHeadEntry) ? &curFrame : &mCallStack[stackIdx];
 
-		auto ceFunction = ceFrame->mFunction;		
-		
+		auto ceFunction = ceFrame->mFunction;
+
 		CeEmitEntry* emitEntry = ceFunction->FindEmitEntry(ceFrame->mInstPtr - ceFunction->mCode.mVals - 1);
 		StringT<256> err;
 		if (isHeadEntry)
@@ -3406,23 +3419,23 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 			err = str;
 			err += " ";
 		}
-				
+
 		auto contextMethodInstance = mCallerMethodInstance;
 		auto contextTypeInstance = mCallerTypeInstance;
 		if (stackIdx > 1)
 		{
 			auto func = mCallStack[stackIdx - 1].mFunction;
-			contextMethodInstance = func->mCeFunctionInfo->mMethodInstance;			
+			contextMethodInstance = func->mCeFunctionInfo->mMethodInstance;
 			contextTypeInstance = contextMethodInstance->GetOwner();
 		}
 
 		auto _AddCeMethodInstance = [&](BfMethodInstance* methodInstance)
 		{
 			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, contextTypeInstance);
-			SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, contextMethodInstance);			
-			err += mCeMachine->mCeModule->MethodToString(methodInstance, BfMethodNameFlag_OmitParams);			
+			SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, contextMethodInstance);
+			err += mCeMachine->mCeModule->MethodToString(methodInstance, BfMethodNameFlag_OmitParams);
 		};
-		
+
 		auto _AddError = [&](const StringImpl& filePath, int line, int column)
 		{
 			err += StrFormat(" at line% d:%d in %s", line + 1, column + 1, filePath.c_str());
@@ -3448,14 +3461,14 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 
 				int line = emitEntry->mLine;
 				int column = emitEntry->mColumn;
-				String fileName;					
+				String fileName;
 
 				if (prevInlineIdx != -1)
 				{
 					auto dbgInlineInfo = &ceFunction->mDbgInlineTable[prevInlineIdx];
 					line = dbgInlineInfo->mLine;
 					column = dbgInlineInfo->mColumn;
-				}				
+				}
 
 				CeDbgScope* ceScope = &ceFunction->mDbgScopes[scopeIdx];
 				if (ceScope->mMethodVal == -1)
@@ -3480,7 +3493,7 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 				}
 
 				_AddError(ceFunction->mDbgScopes[emitEntry->mScope].mFilePath, line, column);
-				
+
 				if (ceScope->mInlinedAt == -1)
 					break;
 				auto inlineInfo = &ceFrame->mFunction->mDbgInlineTable[ceScope->mInlinedAt];
@@ -3496,12 +3509,12 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 
 			if (ceFunction->mMethodInstance != NULL)
 				_AddCeMethodInstance(ceFunction->mMethodInstance);
-			else				
+			else
 				_AddCeMethodInstance(ceFunction->mCeInnerFunctionInfo->mOwner->mMethodInstance);
 
 			if ((emitEntry != NULL) && (emitEntry->mScope != -1))
 			{
-				_AddError(ceFunction->mDbgScopes[emitEntry->mScope].mFilePath, emitEntry->mLine, emitEntry->mColumn);				
+				_AddError(ceFunction->mDbgScopes[emitEntry->mScope].mFilePath, emitEntry->mLine, emitEntry->mColumn);
 			}
 			else
 			{
@@ -3530,7 +3543,7 @@ void CeContext::CalcWorkingDir()
 
 void CeContext::FixRelativePath(StringImpl& path)
 {
-	CalcWorkingDir();	
+	CalcWorkingDir();
 	if (!mWorkingDir.IsEmpty())
 		path = GetAbsPath(path, mWorkingDir);
 }
@@ -3539,13 +3552,13 @@ bool CeContext::AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value)
 {
 	if (mCurModule == NULL)
 		return false;
-	if (mCurModule->mCurTypeInstance == NULL)
+	if (mCallerTypeInstance == NULL)
 		return false;
 	if ((mCurEvalFlags & CeEvalFlags_NoRebuild) != 0)
 		return false;
-	if (mCurModule->mCurTypeInstance->mCeTypeInfo == NULL)
-		mCurModule->mCurTypeInstance->mCeTypeInfo = new BfCeTypeInfo();
-	mCurModule->mCurTypeInstance->mCeTypeInfo->mRebuildMap[key] = value;
+	if (mCallerTypeInstance->mCeTypeInfo == NULL)
+		mCallerTypeInstance->mCeTypeInfo = new BfCeTypeInfo();
+	mCallerTypeInstance->mCeTypeInfo->mRebuildMap[key] = value;
 	mCurModule->mCompiler->mHasComptimeRebuilds = true;
 	return true;
 }
@@ -3572,7 +3585,7 @@ void CeContext::AddFileRebuild(const StringImpl& path)
 uint8* CeContext::CeMalloc(int size)
 {
 #ifdef CE_ENABLE_HEAP
-	auto heapRef = mHeap->Alloc(size);	
+	auto heapRef = mHeap->Alloc(size);
 	auto ceAddr = mStackSize + heapRef;
 	int sizeDelta = (ceAddr + size) - mMemory.mSize;
 	if (sizeDelta > 0)
@@ -3599,7 +3612,7 @@ addr_ce CeContext::CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elem
 
 	BfType* elemType = arrayType->GetUnderlyingType();
 	auto countOffset = arrayType->mBaseType->mFieldInstances[0].mDataOffset;
-	auto elemOffset = arrayType->mFieldInstances[0].mDataOffset;	
+	auto elemOffset = arrayType->mFieldInstances[0].mDataOffset;
 
 	int allocSize = elemOffset + elemType->GetStride() * count;
 
@@ -3640,7 +3653,7 @@ addr_ce CeContext::GetReflectType(int typeId)
 		return *addrPtr;
 
 	auto ceModule = mCeMachine->mCeModule;
-	SetAndRestoreValue<bool> ignoreWrites(ceModule->mBfIRBuilder->mIgnoreWrites, false);	
+	SetAndRestoreValue<bool> ignoreWrites(ceModule->mBfIRBuilder->mIgnoreWrites, false);
 
 	if (ceModule->mContext->mBfTypeType == NULL)
 		ceModule->mContext->ReflectInit();
@@ -3655,8 +3668,8 @@ addr_ce CeContext::GetReflectType(int typeId)
 		ceModule->PopulateType(bfType, BfPopulateType_DataAndMethods);
 
 	Dictionary<int, int> usedStringMap;
-	auto irData = ceModule->CreateTypeData(bfType, usedStringMap, true, true, true, false);		
-	
+	auto irData = ceModule->CreateTypeData(bfType, usedStringMap, true, true, true, false);
+
 	BeValue* beValue = NULL;
 	if (auto constant = mCeMachine->mCeModule->mBfIRBuilder->GetConstant(irData))
 	{
@@ -3675,7 +3688,7 @@ addr_ce CeContext::GetReflectType(int typeId)
 	if (auto constant = BeValueDynCast<BeConstant>(beValue))
 		*addrPtr = GetConstantData(constant);
 
-	// We need to 'get' again because we might have resized	
+	// We need to 'get' again because we might have resized
 	return *addrPtr;
 }
 
@@ -3776,11 +3789,11 @@ addr_ce CeContext::GetReflectSpecializedType(addr_ce unspecializedTypeAddr, addr
 }
 
 addr_ce CeContext::GetString(int stringId)
-{	
+{
 	addr_ce* ceAddrPtr = NULL;
 	if (!mStringMap.TryAdd(stringId, NULL, &ceAddrPtr))
 		return *ceAddrPtr;
-	
+
 	BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeMachine->mCeModule->ResolveTypeDef(mCeMachine->mCompiler->mStringTypeDef, BfPopulateType_Data);
 
 	String str;
@@ -3792,9 +3805,9 @@ addr_ce CeContext::GetString(int stringId)
 	}
 
 	int allocSize = stringTypeInst->mInstSize + (int)str.length() + 1;
-	int charsOffset = stringTypeInst->mInstSize;	
-		
-	uint8* mem = CeMalloc(allocSize);	
+	int charsOffset = stringTypeInst->mInstSize;
+
+	uint8* mem = CeMalloc(allocSize);
 
 	memset(mem, 0, allocSize);
 
@@ -3842,7 +3855,7 @@ void CeContext::PrepareConstStructEntry(CeConstStructData& constEntry)
 	if (constEntry.mHash.IsZero())
 	{
 		constEntry.mHash = Hash128(constEntry.mData.mVals, constEntry.mData.mSize);
-		if (!constEntry.mFixups.IsEmpty())		
+		if (!constEntry.mFixups.IsEmpty())
 			constEntry.mHash = Hash128(&constEntry.mFixups[0], constEntry.mFixups.mSize * sizeof(CeConstStructFixup), constEntry.mHash);
 	}
 
@@ -3866,14 +3879,14 @@ void CeContext::PrepareConstStructEntry(CeConstStructData& constEntry)
 				*(addr_ce*)(constEntry.mFixedData.mVals + fixup.mOffset) = addrPtr + stringTypeInst->mInstSize;
 			}
 		}
-	}	
+	}
 
 	constEntry.mBindExecuteId = mExecuteId;
 }
 
 bool CeContext::CheckMemory(addr_ce addr, int32 size)
 {
-	if ((addr < 0x10000) || (addr + size > mMemory.mSize))		
+	if ((addr < 0x10000) || (addr + size > mMemory.mSize))
 		return false;
 	return true;
 }
@@ -3930,7 +3943,7 @@ bool CeContext::GetStringFromAddr(addr_ce strInstAddr, StringImpl& str)
 	}
 
 	int32 ptrVal = *(int32*)(strInst + ptrOffset);
-	
+
 	if (charPtr != NULL)
 		str.Insert(str.length(), charPtr, lenVal);
 	return true;
@@ -3963,9 +3976,9 @@ bool CeContext::GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolde
 	auto customAttr = customAttributes->Get(attributeIdx);
 	if (customAttr == NULL)
 		return false;
-	
+
 	auto ceContext = mCeMachine->AllocContext();
-	BfIRValue foreignValue = ceContext->CreateAttribute(mCurCallSource->mRefNode, module, constHolder, customAttr);	
+	BfIRValue foreignValue = ceContext->CreateAttribute(mCurCallSource->mRefNode, module, constHolder, customAttr);
 	auto foreignConstant = module->mBfIRBuilder->GetConstant(foreignValue);
 	if (foreignConstant->mConstType == BfConstType_AggCE)
 	{
@@ -3976,7 +3989,7 @@ bool CeContext::GetCustomAttribute(BfModule* module, BfIRConstHolder* constHolde
 		auto attrConstant = module->mBfIRBuilder->GetConstant(value);
 		if ((attrConstant == NULL) || (!WriteConstant(module, resultAddr, attrConstant, customAttr->mType)))
 			Fail("Failed to decode attribute");
-	}	
+	}
 
 	mCeMachine->ReleaseContext(ceContext);
 
@@ -3991,7 +4004,7 @@ BfType* CeContext::GetCustomAttributeType(BfCustomAttributes* customAttributes, 
 	auto customAttr = customAttributes->Get(attributeIdx);
 	if (customAttr == NULL)
 		return NULL;
-	
+
 	return customAttr->mType;
 }
 
@@ -4074,7 +4087,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 			auto elemType = type->GetUnderlyingType();
 
 			addr_ce elemsAddr = 0;
-			addr_ce arrayAddr = CeAllocArray((BfArrayType*)type, aggConstant->mValues.size(), elemsAddr);			
+			addr_ce arrayAddr = CeAllocArray((BfArrayType*)type, aggConstant->mValues.size(), elemsAddr);
 
 			for (int i = 0; i < (int)aggConstant->mValues.size(); i++)
 			{
@@ -4084,14 +4097,14 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 				if (!WriteConstant(module, elemsAddr + i * elemType->GetStride(), fieldConstant, elemType))
 					return false;
 			}
-			
+
 			if (ptrSize == 4)
 				CE_GETC(int32) = arrayAddr;
 			else
 				CE_GETC(int64) = arrayAddr;
 
 			return true;
-		}		
+		}
 		else if ((type->IsInstanceOf(module->mCompiler->mSpanTypeDef)) && (isParams))
 		{
 			auto elemType = type->GetUnderlyingType();
@@ -4120,7 +4133,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 			}
 		}
 		else
-		{			
+		{
 			BF_ASSERT(type->IsStruct());
 
 			module->PopulateType(type);
@@ -4154,7 +4167,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 					auto fieldDef = fieldInstance.GetFieldDef();
 					if (!fieldInstance.mIsEnumPayloadCase)
 						continue;
-					int tagIdx = -fieldInstance.mDataIdx - 1;					
+					int tagIdx = -fieldInstance.mDataIdx - 1;
 					if (fieldConstant->mInt32 == tagIdx)
 						payloadType = fieldInstance.mResolvedType;
 				}
@@ -4176,7 +4189,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 							return false;
 						innerType = payloadType;
 					}
-					
+
 					auto fieldConstant = module->mBfIRBuilder->GetConstant(dataVal);
 					if (fieldConstant == NULL)
 						return false;
@@ -4211,7 +4224,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	}
 
 	if (constant->mConstType == BfConstType_ArrayZero8)
-	{		
+	{
 		memset(mMemory.mVals + addr, 0, constant->mInt32);
 		return true;
 	}
@@ -4227,7 +4240,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		auto constAggData = (BfConstantAggCE*)constant;
 
 		if (type->IsPointer())
-		{						
+		{
 			if (ptrSize == 4)
 				CE_GETC(int32) = constAggData->mCEAddr;
 			else
@@ -4235,7 +4248,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		}
 		else
 		{
-			BF_ASSERT(type->IsComposite());			
+			BF_ASSERT(type->IsComposite());
 			memcpy(mMemory.mVals + addr, mMemory.mVals + constAggData->mCEAddr, type->mSize);
 		}
 		return true;
@@ -4250,7 +4263,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 	if (constant->mConstType == BfConstType_Box)
 	{
-		auto constBox = (BfConstantBox*)constant;		
+		auto constBox = (BfConstantBox*)constant;
 		auto boxedType = GetBfType(constBox->mToType);
 		if (boxedType == NULL)
 			return false;
@@ -4263,7 +4276,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		auto& fieldInstance = boxedTypeInst->mFieldInstances.back();
 
 		auto boxedMem = CeMalloc(boxedTypeInst->mInstSize);
-		memset(boxedMem, 0, ptrSize*2);		
+		memset(boxedMem, 0, ptrSize*2);
 		*(int32*)boxedMem = boxedTypeInst->mTypeId;
 
 		auto constTarget = module->mBfIRBuilder->GetConstantById(constBox->mTarget);
@@ -4299,7 +4312,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		memset(mMemory.mVals + addr, 0, type->mSize);
 		return true;
 	}
-	
+
 	if (constant->mConstType == BfConstType_GEP32_2)
 	{
 		auto gepConst = (BfConstantGEP32_2*)constant;
@@ -4328,7 +4341,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		if (strncmp(globalVar->mName, "__bfStrObj", 10) == 0)
 		{
 			int stringId = atoi(globalVar->mName  + 10);
-			addr_ce strAddr = GetString(stringId);			
+			addr_ce strAddr = GetString(stringId);
 			if (ptrSize == 4)
 				CE_GETC(int32) = strAddr;
 			else
@@ -4338,7 +4351,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	}
 
 	if (constant->mTypeCode == BfTypeCode_StringId)
-	{		
+	{
 		addr_ce strAddr = GetString(constant->mInt32);
 
 		if (type->IsPointer())
@@ -4368,7 +4381,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	if (constant->mConstType == BfConstType_ExtractValue)
 	{
 		Array<BfConstantExtractValue*> extractStack;
-		auto checkConstant = constant;		
+		auto checkConstant = constant;
 		while (true)
 		{
 			if (checkConstant == NULL)
@@ -4385,12 +4398,11 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 			if (checkConstant->mConstType == BfConstType_AggCE)
 				return WriteConstant(module, addr, checkConstant, type, isParams);
-		}				
-	}	
+		}
+	}
 
 	return false;
 }
-
 
 #define CE_CREATECONST_CHECKPTR(PTR, SIZE) \
 	if ((((uint8*)(PTR) - memStart) - 0x10000) + (SIZE) > (memSize - 0x10000)) \
@@ -4458,7 +4470,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 		return BfIRValue();
 	}
-	
+
 	if (bfType->IsTypedPrimitive())
 		return CreateConstant(module, ptr, bfType->GetUnderlyingType(), outType);
 
@@ -4468,7 +4480,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 	if (bfType->IsTypeInstance())
 	{
 		auto typeInst = bfType->ToTypeInstance();
-		
+
 		uint8* instData = ptr;
 		// 		if ((typeInst->IsObject()) && (!isBaseType))
 		// 		{
@@ -4612,15 +4624,15 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			Fail(StrFormat("Reference type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));
 			return BfIRValue();
 		}
-		
+
 		if (typeInst->mBaseType != NULL)
 		{
 			auto result = CreateConstant(module, instData, typeInst->mBaseType);
 			if (!result)
 				return BfIRValue();
 			fieldVals.Add(result);
-		}				
-		
+		}
+
 		if (typeInst->IsUnion())
 		{
 			auto innerType = typeInst->GetUnionInnerType();
@@ -4667,7 +4679,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 				}
 			}
 		}
-				
+
 		for (auto& fieldVal : fieldVals)
 		{
 			if (!fieldVal)
@@ -4694,7 +4706,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			if (!elemValue)
 				return BfIRValue();
 			values.Add(elemValue);
-		}		
+		}
 
 		return irBuilder->CreateConstAgg(irBuilder->MapType(sizedArrayType, BfIRPopulateType_Full), values);
 	}
@@ -4708,7 +4720,7 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 
 	module->mContext->mUnreifiedModule->PopulateType(customAttribute->mType);
 	if (ceAttrAddr == 0)
-		ceAttrAddr = CeMalloc(customAttribute->mType->mSize) - mMemory.mVals;	
+		ceAttrAddr = CeMalloc(customAttribute->mType->mSize) - mMemory.mVals;
 	BfIRValue ceAttrVal = module->mBfIRBuilder->CreateConstAggCE(module->mBfIRBuilder->MapType(customAttribute->mType, BfIRPopulateType_Identity), ceAttrAddr);
 	BfTypedValue ceAttrTypedValue(ceAttrVal, customAttribute->mType);
 
@@ -4752,10 +4764,10 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 			module->Fail("Attribute prop failed", targetSrc);
 			return ceAttrVal;
 		}
-		
+
 		SizedArray<BfIRValue, 1> setArgs;
 		if (!customAttribute->mType->IsValuelessType())
-			setArgs.Add(ceAttrVal);		
+			setArgs.Add(ceAttrVal);
 		if (!setProperty.mParam.mType->IsValuelessType())
 		{
 			auto constant = constHolder->GetConstant(setProperty.mParam.mValue);
@@ -4763,7 +4775,7 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 			{
 				module->AssertErrorState();
 				return ceAttrVal;
-			}			
+			}
 			setArgs.Add(module->ConstantToCurrent(constant, constHolder, setProperty.mParam.mType, true));
 		}
 
@@ -4776,14 +4788,13 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 	{
 		BfFieldInstance* fieldInstance = setField.mFieldRef;
 		if (fieldInstance->mDataOffset < 0)
-			continue;		
+			continue;
 		auto constant = constHolder->GetConstant(setField.mParam.mValue);
 		WriteConstant(module, ceAttrAddr + fieldInstance->mDataOffset, constant, fieldInstance->mResolvedType);
 	}
 
 	return ceAttrVal;
 }
-
 
 BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
 {
@@ -4801,19 +4812,19 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	SetAndRestoreValue<BfMethodInstance*> prevCallerMethodInstance(mCallerMethodInstance, module->mCurMethodInstance);
 	SetAndRestoreValue<BfTypeInstance*> prevCallerTypeInstance(mCallerTypeInstance, module->mCurTypeInstance);
 	SetAndRestoreValue<BfTypeDef*> prevCallerActiveTypeDef(mCallerActiveTypeDef, module->GetActiveTypeDef());
-	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);	
-	
+	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);
+
 	SetAndRestoreValue<bool> prevCtxResolvingVar(module->mContext->mResolvingVarField, false);
 	SetAndRestoreValue<BfMethodInstance*> moduleCurMethodInstance(module->mCurMethodInstance, methodInstance);
-	SetAndRestoreValue<BfTypeInstance*> moduleCurTypeInstance(module->mCurTypeInstance, methodInstance->GetOwner());	
+	SetAndRestoreValue<BfTypeInstance*> moduleCurTypeInstance(module->mCurTypeInstance, methodInstance->GetOwner());
 
-	SetAndRestoreValue<int> prevCurExecuteId(mCurModule->mCompiler->mCurCEExecuteId, mCeMachine->mExecuteId);	
+	SetAndRestoreValue<int> prevCurExecuteId(mCurModule->mCompiler->mCurCEExecuteId, mCeMachine->mExecuteId);
 
 	// Reentrancy may occur as methods need defining
 	//SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(module->mCurMethodState, NULL);
 
 	if (mCeMachine->mAppendAllocInfo != NULL)
-	{		
+	{
 		if (mCeMachine->mAppendAllocInfo->mAppendSizeValue)
 		{
 			bool isConst = mCeMachine->mAppendAllocInfo->mAppendSizeValue.IsConst();
@@ -4836,7 +4847,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	int appendAllocIdx = -1;
 	bool hasAggData = false;
 	if (!methodInstance->mMethodDef->mIsStatic)
-	{	
+	{
 		if (!methodInstance->GetOwner()->IsValuelessType())
 		{
 			thisArgIdx = 0;
@@ -4850,7 +4861,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 				}
 
 				if (checkConstant->mConstType == BfConstType_ExtractValue)
-				{					
+				{
 					auto gepConst = (BfConstantExtractValue*)checkConstant;
 					BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
 					checkConstant = module->mBfIRBuilder->GetConstant(targetConst);
@@ -4862,7 +4873,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 		}
 
 		if ((methodInstance->GetParamCount() >= 1) && (methodInstance->GetParamKind(0) == BfParamKind_AppendIdx))
-			appendAllocIdx = 1;		
+			appendAllocIdx = 1;
 	}
 
 	int paramCompositeSize = 0;
@@ -4879,9 +4890,9 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 			if ((!paramType->IsValuelessType()) && (!paramType->IsVar()))
 				break;
 		}
-		
-		BfType* compositeType = paramType->IsComposite() ? paramType : NULL;		
-		
+
+		BfType* compositeType = paramType->IsComposite() ? paramType : NULL;
+
 		auto arg = args[argIdx];
 		bool isConst = arg.IsConst();
 		if (isConst)
@@ -4911,7 +4922,11 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 
 		if (!isConst)
 		{
-			if ((argIdx != thisArgIdx) && (argIdx != appendAllocIdx))
+			if ((argIdx == thisArgIdx) && (methodInstance->mMethodDef->mMethodType == BfMethodType_Ctor))
+			{
+				// Allow non-const 'this' for ctor
+			}
+			else if (argIdx != appendAllocIdx)
 			{
 				Fail(StrFormat("Non-constant argument for param '%s'", methodInstance->GetParamName(paramIdx).c_str()));
 				return BfTypedValue();
@@ -4930,7 +4945,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 
 	if (ceFunction->mInitializeState == CeFunction::InitializeState_Initializing_ReEntry)
 	{
-		String error = "Comptime method preparation recursion";		
+		String error = "Comptime method preparation recursion";
 		auto curContext = this;
 		while (curContext != NULL)
 		{
@@ -4946,9 +4961,9 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	}
 
 	if (ceFunction->mInitializeState < CeFunction::InitializeState_Initialized)
-		mCeMachine->PrepareFunction(ceFunction, NULL);	
+		mCeMachine->PrepareFunction(ceFunction, NULL);
 
-	Array<CeFrame> prevCallStack;	
+	Array<CeFrame> prevCallStack;
 
 	auto stackPtr = &mMemory[0] + mStackSize;
 	auto* memStart = &mMemory[0];
@@ -4956,7 +4971,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	if (!mCallStack.IsEmpty())
 	{
 		BF_ASSERT((flags & CeEvalFlags_DbgCall) != 0);
-		prevCallStack = mCallStack;		
+		prevCallStack = mCallStack;
 		stackPtr = &mMemory[0] + mCallStack.back().mStackAddr;
 		mCallStack.Clear();
 	}
@@ -4991,7 +5006,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 				Fail("Return value too large (>2GB)");
 				return BfTypedValue();
 			}
-			
+
 			if (memSize > mMemory.mSize)
 				mMemory.Resize(memSize);
 			stackPtr = &mMemory[0] + mStackSize;
@@ -5071,12 +5086,12 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 		}
 
 		auto constant = module->mBfIRBuilder->GetConstant(arg);
-		BfType* compositeType = paramType->IsComposite() ? paramType : NULL;		
+		BfType* compositeType = paramType->IsComposite() ? paramType : NULL;
 		if (((constant->mConstType == BfConstType_AggZero) || (constant->mConstType == BfConstType_Agg)) &&
 			((paramType->IsPointer()) || (paramType->IsRef())))
 			compositeType = paramType->GetUnderlyingType();
 		if (compositeType != NULL)
-		{			
+		{
 			useCompositeAddr -= compositeType->mSize;
 			if (!WriteConstant(module, useCompositeAddr, constant, compositeType, isParams))
 			{
@@ -5090,9 +5105,9 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 			if (argIdx == thisArgIdx)
 				thisAddr = addr64;
 			memcpy(stackPtr, &addr64, ceModule->mSystem->mPtrSize);
-		}				
+		}
 		else
-		{			
+		{
 			stackPtr -= paramType->mSize;
 			auto useCompositeAddr = stackPtr - memStart;
 			if (!WriteConstant(module, useCompositeAddr, constant, paramType, isParams))
@@ -5143,7 +5158,8 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	mCeMachine->mAppendAllocInfo = NULL;
 
 	BfType* returnType = NULL;
-	bool success = Execute(ceFunction, stackPtr - ceFunction->mFrameSize, stackPtr, returnType);
+	BfType* castReturnType = NULL;
+	bool success = Execute(ceFunction, stackPtr - ceFunction->mFrameSize, stackPtr, returnType, castReturnType);
 	memStart = &mMemory[0];
 
 	addr_ce retInstAddr = retAddr;
@@ -5208,7 +5224,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 		else if ((returnType->IsComposite()) || (returnType->IsValuelessType()))
 		{
 			returnValue = BfTypedValue(module->mBfIRBuilder->CreateConstAggZero(module->mBfIRBuilder->MapType(returnType, BfIRPopulateType_Identity)), returnType);
-		}		
+		}
 	}
 
 	mCallStack.Clear();
@@ -5221,6 +5237,13 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	{
 		BF_ASSERT((flags& CeEvalFlags_DbgCall) != 0);
 		mCallStack = prevCallStack;
+	}
+
+	if ((castReturnType != NULL) && (returnValue))
+	{
+		auto castedReturnValue = module->Cast(callSource.mRefNode, returnValue, castReturnType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromComptimeReturn));
+		if (castedReturnValue)
+			return castedReturnValue;
 	}
 
 	return returnValue;
@@ -5481,7 +5504,7 @@ public:
 	}
 };
 
-bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType)
+bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType, BfType*& castReturnType)
 {
 	auto ceModule = mCeMachine->mCeModule;
 	CeFunction* ceFunction = startFunction;
@@ -5520,7 +5543,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		stackPtr += memOffset;
 		framePtr += memOffset;
 	};
-	
+
 	auto _DbgPause = [&]()
 	{
 		int itr = 0;
@@ -5539,41 +5562,40 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			///
 			{
 				AutoCrit autoCrit(mCeMachine->mCritSect);
-				
+
 				if ((mCeMachine->mDebugger->mDebugPendingExpr != NULL) && (itr == 0))
 				{
 					// Abandon evaluating expression
-					prevPendingExpr = mCeMachine->mDebugger->mDebugPendingExpr;					
+					prevPendingExpr = mCeMachine->mDebugger->mDebugPendingExpr;
 					mCeMachine->mDebugger->mDebugPendingExpr = NULL;
 				}
 
 				if (itr == 0)
 					mCallStack.Add(_GetCurFrame());
-				mCeMachine->mDbgPaused = true;				
+				mCeMachine->mDbgPaused = true;
 			}
-			
-			
+
 			mCeMachine->mDebugEvent.WaitFor();
-			
+
 			CePendingExpr* pendingExpr = NULL;
 
 			///
 			{
 				AutoCrit autoCrit(mCeMachine->mCritSect);
 				mCeMachine->mDbgPaused = false;
-				
+
 				if (mCeMachine->mStepState.mKind != CeStepState::Kind_Evaluate)
 				{
 					mCallStack.pop_back();
 					_FixVariables();
 					break;
 				}
-				
+
 				mCeMachine->mStepState.mKind = CeStepState::Kind_None;
 				String result;
-				if (mCeMachine->mDebugger->mDebugPendingExpr != NULL)				
-					pendingExpr = mCeMachine->mDebugger->mDebugPendingExpr;								
-			}			
+				if (mCeMachine->mDebugger->mDebugPendingExpr != NULL)
+					pendingExpr = mCeMachine->mDebugger->mDebugPendingExpr;
+			}
 
 			if (pendingExpr == NULL)
 				continue;;
@@ -5594,9 +5616,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 	auto _Fail = [&](const StringImpl& error)
 	{
-		Fail(_GetCurFrame(), error);
-
-		if (mCeMachine->mDebugger != NULL)
+		auto bfError = Fail(_GetCurFrame(), error);
+		if ((bfError != NULL) && (mCeMachine->mDebugger != NULL))
 		{
 			mCeMachine->mDebugger->OutputRawMessage(StrFormat("error %s", error.c_str()));
 			_DbgPause();
@@ -5641,6 +5662,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				Fail(_GetCurFrame(), "Array out of bounds");
 				return false;
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_OOB)
+			{
+				Fail(_GetCurFrame(), "Object not initialized");
+				return false;
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Malloc)
 			{
 				int64 size;
@@ -5649,7 +5675,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				else
 					size = *(int64*)((uint8*)stackPtr + 8);
 				CE_CHECKALLOC(size);
-				uint8* ptr = CeMalloc(size);				
+				uint8* ptr = CeMalloc(size);
 				CeSetAddrVal(stackPtr + 0, ptr - memStart, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Free)
@@ -5661,7 +5687,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_FatalError)
 			{
-				int32 strInstAddr = *(int32*)((uint8*)stackPtr + 0);				
+				int32 strInstAddr = *(int32*)((uint8*)stackPtr + 0);
 				int32 stackOffset = *(int32*)(stackPtr + ceModule->mSystem->mPtrSize);
 
 				if (mCeMachine->mDebugger != NULL)
@@ -5720,7 +5746,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				int32 typeId = *(int32*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
 				auto reflectType = GetReflectType(typeId);
 				_FixVariables();
-				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);				
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectTypeByName)
 			{
@@ -5745,9 +5771,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_ToString)
-			{				
+			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
-				
+
 				BfType* type = GetBfType(typeId);
 				bool success = false;
 				if (type == NULL)
@@ -5755,7 +5781,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("Invalid type");
 					return false;
 				}
-				
+
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
 				CeSetAddrVal(stackPtr + 0, GetString(mCeMachine->mCeModule->TypeToString(type)), ptrSize);
@@ -5813,17 +5839,17 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetCustomAttribute)
 			{
-				int64 methodHandle = *(int64*)((uint8*)stackPtr + 1);				
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + 1);
 				int32 attributeIdx = *(int32*)((uint8*)stackPtr + 1 + 8);
-				addr_ce resultPtr = *(addr_ce*)((uint8*)stackPtr + 1 + 8 + 4);				
+				addr_ce resultPtr = *(addr_ce*)((uint8*)stackPtr + 1 + 8 + 4);
 
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
 				{
 					_Fail("Invalid method instance");
 					return false;
-				}				
-				bool success = GetCustomAttribute(mCurModule, methodInstance->GetOwner()->mConstHolder, methodInstance->GetCustomAttributes(), attributeIdx, resultPtr);				
+				}
+				bool success = GetCustomAttribute(mCurModule, methodInstance->GetOwner()->mConstHolder, methodInstance->GetCustomAttributes(), attributeIdx, resultPtr);
 				_FixVariables();
 				*(addr_ce*)(stackPtr + 0) = success;
 			}
@@ -5883,15 +5909,15 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetCustomAttributeType)
 			{
-				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);				
-				int32 attributeIdx = *(int32*)((uint8*)stackPtr + ptrSize + 8);			
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
+				int32 attributeIdx = *(int32*)((uint8*)stackPtr + ptrSize + 8);
 
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
 				{
 					_Fail("Invalid method instance");
 					return false;
-				}				
+				}
 				auto attrType = GetCustomAttributeType(methodInstance->GetCustomAttributes(), attributeIdx);
 				if (attrType != NULL)
 					CeSetAddrVal(stackPtr + 0, GetReflectType(attrType->mTypeId), ptrSize);
@@ -5902,8 +5928,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethodCount)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + 4);
-				
-				CeTypeInfo* typeInfo = mCeMachine->GetTypeInfo(GetBfType(typeId));				
+
+				CeTypeInfo* typeInfo = mCeMachine->GetTypeInfo(GetBfType(typeId));
 				if (typeInfo == NULL)
 				{
 					_Fail("Invalid type");
@@ -5916,8 +5942,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + 8);
 				int32 methodIdx = *(int32*)((uint8*)stackPtr + 8+4);
-				
-				CeTypeInfo* typeInfo = mCeMachine->GetTypeInfo(GetBfType(typeId));				
+
+				CeTypeInfo* typeInfo = mCeMachine->GetTypeInfo(GetBfType(typeId));
 				if (typeInfo == NULL)
 				{
 					_Fail("Invalid type");
@@ -5931,35 +5957,35 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					*(int64*)(stackPtr + 0) = (int64)(intptr)typeInfo->mMethodInstances[methodIdx];
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_ToString)
-			{				
+			{
 				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
-				
+
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
 				{
 					_Fail("Invalid method instance");
 					return false;
 				}
-				
+
 				CeSetAddrVal(stackPtr + 0, GetString(mCeMachine->mCeModule->MethodToString(methodInstance)), ptrSize);
 				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetName)
-			{				
+			{
 				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
-				
+
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
 				{
 					_Fail("Invalid method instance");
 					return false;
 				}
-				
+
 				CeSetAddrVal(stackPtr + 0, GetString(methodInstance->mMethodDef->mName), ptrSize);
 				_FixVariables();
 			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetInfo)			
-			{	
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetInfo)
+			{
 				// int32 mReturnType
 				// int32 mParamCount
 				// int32 mGenericArgCount
@@ -5967,14 +5993,14 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				// int32 mMethodIdx
 
 				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+4+4+2+4);
-				
+
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
 				{
 					_Fail("Invalid method instance");
 					return false;
 				}
-				
+
 				int genericArgCount = 0;
 				if (methodInstance->mMethodInfoEx != NULL)
 					genericArgCount = methodInstance->mMethodInfoEx->mMethodGenericArguments.mSize;
@@ -5986,14 +6012,14 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				*(int32*)(stackPtr + 4+4+4+2) = methodInstance->mMethodDef->mIdx;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetParamInfo)
-			{	
-				// int32 mParamType				
+			{
+				// int32 mParamType
 				// int16 mFlags
 				// str mName
 
 				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+2+ptrSize);
 				int32 paramIdx = *(int32*)((uint8*)stackPtr + 4+2+ptrSize+8);
-				
+
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
 				{
@@ -6007,17 +6033,34 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 
+				enum ParamFlags
+				{
+					ParamFlag_None = 0,
+					ParamFlag_Splat = 1,
+					ParamFlag_Implicit = 2,
+					ParamFlag_AppendIdx = 4,
+					ParamFlag_Params = 8
+				};
+
+				ParamFlags paramFlags = ParamFlag_None;
+				if (methodInstance->GetParamIsSplat(paramIdx))
+					paramFlags = (ParamFlags)(paramFlags | ParamFlag_Splat);
+				if (methodInstance->GetParamKind(paramIdx) == BfParamKind_AppendIdx)
+					paramFlags = (ParamFlags)(paramFlags | ParamFlag_Implicit | ParamFlag_AppendIdx);
+				if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params)
+					paramFlags = (ParamFlags)(paramFlags | ParamFlag_Params);
+
 				addr_ce stringAddr = GetString(methodInstance->GetParamName(paramIdx));
 				_FixVariables();
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
-				*(int16*)(stackPtr + 4) = 0; // Flags
-				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);								
+				*(int16*)(stackPtr + 4) = (int16)paramFlags;
+				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetGenericArg)
 			{
 				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
 				int32 genericArgIdx = *(int32*)((uint8*)stackPtr + ptrSize + 8);
-				
+
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
 				{
@@ -6030,10 +6073,18 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("genericArgIdx is out of range");
 					return false;
 				}
-				
+
 				auto reflectType = GetReflectType(methodInstance->mMethodInfoEx->mMethodGenericArguments[genericArgIdx]->mTypeId);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_SetReturnType)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr);
+				if (returnType->IsVar())
+					castReturnType = GetBfType(typeId);
+				else
+					_Fail("Comptime return types can only be set on methods declared with a 'var' return type");
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitTypeBody)
 			{
@@ -6053,7 +6104,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitAddInterface)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr);
-				int32 ifaceTypeId = *(int32*)((uint8*)stackPtr + sizeof(int32));				
+				int32 ifaceTypeId = *(int32*)((uint8*)stackPtr + sizeof(int32));
 				if ((mCurEmitContext == NULL) || (mCurEmitContext->mType->mTypeId != typeId))
 				{
 					_Fail("Code cannot be emitted for this type in this context");
@@ -6094,12 +6145,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMixin)			
+			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMixin)
 			{
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurModule->mCurMethodInstance, mCallerMethodInstance);
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurModule->mCurTypeInstance, mCallerTypeInstance);
 
-// 				int32 strInstAddr = *(int32*)((uint8*)stackPtr + 0);				
+// 				int32 strInstAddr = *(int32*)((uint8*)stackPtr + 0);
 // 				String emitStr;
 // 				if (!GetStringFromAddr(strInstAddr, emitStr))
 // 				{
@@ -6138,38 +6189,38 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSystem_GetTimeStamp)
 			{
 				int64& result = *(int64*)((uint8*)stackPtr + 0);
-				result = BfpSystem_GetTimeStamp();				
+				result = BfpSystem_GetTimeStamp();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_ToLower)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 4);
-				result = utf8proc_tolower(val);				
+				result = utf8proc_tolower(val);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_ToUpper)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 4);
-				result = utf8proc_toupper(val);				
+				result = utf8proc_toupper(val);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsLower)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 1);
-				result = utf8proc_category(val) == UTF8PROC_CATEGORY_LL;				
+				result = utf8proc_category(val) == UTF8PROC_CATEGORY_LL;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsUpper)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 1);
-				result = utf8proc_category(val) == UTF8PROC_CATEGORY_LU;				
+				result = utf8proc_category(val) == UTF8PROC_CATEGORY_LU;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsWhiteSpace_EX)
 			{
 				int32& result = *(int32*)((uint8*)stackPtr + 0);
 				int32 val = *(int32*)((uint8*)stackPtr + 1);
 				auto cat = utf8proc_category(val);
-				result = (cat == UTF8PROC_CATEGORY_ZS) || (cat == UTF8PROC_CATEGORY_ZL) || (cat == UTF8PROC_CATEGORY_ZP);				
+				result = (cat == UTF8PROC_CATEGORY_ZS) || (cat == UTF8PROC_CATEGORY_ZL) || (cat == UTF8PROC_CATEGORY_ZP);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsLetterOrDigit)
 			{
@@ -6190,7 +6241,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					break;
 				default:
 					result = false;
-				}				
+				}
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsLetter)
 			{
@@ -6208,7 +6259,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					break;
 				default:
 					result = false;
-				}				
+				}
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_IsNumber)
 			{
@@ -6224,15 +6275,15 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					break;
 				default:
 					result = false;
-				}				
+				}
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Double_Strtod)
 			{
 				double& result = *(double*)((uint8*)stackPtr + 0);
 				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 8);
 				addr_ce endAddr = *(addr_ce*)((uint8*)stackPtr + 8 + ptrSize);
-								
-				addr_ce checkAddr = strAddr;		
+
+				addr_ce checkAddr = strAddr;
 				while (true)
 				{
 					if ((uintptr)checkAddr >= (uintptr)memSize)
@@ -6295,7 +6346,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Create)
 			{
-				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);				
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
@@ -6323,7 +6374,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Delete)
 			{
-				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);				
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
@@ -6338,7 +6389,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
-				
+
 				CE_CHECKADDR(sizeAddr, 4);
 				int& nameSize = *(int*)(memStart + sizeAddr);
 				CE_CHECKADDR(nameAddr, nameSize);
@@ -6351,7 +6402,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_SetCurrent)
 			{
-				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);				
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
@@ -6388,7 +6439,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 4);
 				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + 4 + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + 4 + ptrSize + ptrSize);
-				
+
 				CE_CHECKADDR(sizeAddr, 4);
 				int& nameSize = *(int*)(memStart + sizeAddr);
 				CE_CHECKADDR(nameAddr, nameSize);
@@ -6400,9 +6451,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Close)
 			{
-				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);	
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
-				
+
 				CE_CHECKADDR(outResultAddr, 4);
 
 				CeInternalData* internalData = NULL;
@@ -6420,7 +6471,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
-				CE_CHECKADDR(outResultAddr, 4);				
+				CE_CHECKADDR(outResultAddr, 4);
 				FixRelativePath(path);
 				auto bfpFile = BfpFile_Create(path.c_str(), (BfpFileCreateKind)createKind, (BfpFileCreateFlags)createFlags, (BfpFileAttributes)createFileAttrs, (BfpFileResult*)(memStart + outResultAddr));
 				if (bfpFile != NULL)
@@ -6475,7 +6526,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				while (true)
 				{
 					if (*cancelingPtr)
-						break;					
+						break;
 
 					int useTimeout = timeoutLeft;
 					if (useTimeout < 0)
@@ -6523,7 +6574,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 					asyncOperation->AddRef();
 					asyncThread = BfpThread_Create(CeAsyncOperation::RunProc, asyncOperation);
-				}				
+				}
 
 				if (asyncOperation != NULL)
 					asyncOperation->Release();
@@ -6555,9 +6606,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Truncate)
 			{
-				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);	
+				addr_ce fileId = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
-				
+
 				CE_CHECKADDR(outResultAddr, 4);
 
 				CeInternalData* internalData = NULL;
@@ -6605,7 +6656,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				result = BfpFile_GetAttributes(path.c_str(), (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_SetAttributes)
-			{				
+			{
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				BfpFileAttributes attribs = *(BfpFileAttributes*)((uint8*)stackPtr + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
@@ -6621,7 +6672,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				addr_ce srcAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce destAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
-				BfpFileCopyKind fileCopyKind = *(BfpFileCopyKind*)((uint8*)stackPtr + ptrSize + ptrSize);				
+				BfpFileCopyKind fileCopyKind = *(BfpFileCopyKind*)((uint8*)stackPtr + ptrSize + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + 4);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
@@ -6652,7 +6703,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_Delete)
 			{
-				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);				
+				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
@@ -6669,16 +6720,16 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String path;
 				CE_CHECKADDR_STR(path, nameAddr);
-				FixRelativePath(path);				
+				FixRelativePath(path);
 				AddFileRebuild(path);
 				result = BfpFile_Exists(path.c_str());
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpFile_GetTempPath)
-			{				
+			{
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
-				
+
 				CE_CHECKADDR(sizeAddr, 4);
 				int& nameSize = *(int*)(memStart + sizeAddr);
 				CE_CHECKADDR(nameAddr, nameSize);
@@ -6693,7 +6744,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
 				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
-				
+
 				CE_CHECKADDR(sizeAddr, 4);
 				int& nameSize = *(int*)(memStart + sizeAddr);
 				CE_CHECKADDR(nameAddr, nameSize);
@@ -6709,7 +6760,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
-				
+
 				String srcPath;
 				CE_CHECKADDR_STR(srcPath, srcAddr);
 
@@ -6719,7 +6770,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				char* namePtr = (char*)(memStart + nameAddr);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
-				
+
 				FixRelativePath(srcPath);
 				BfpFile_GetFullPath(srcPath.c_str(), namePtr, &nameSize, (outResultAddr == 0) ? NULL : (BfpFileResult*)(memStart + outResultAddr));
 			}
@@ -6729,7 +6780,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
-				
+
 				String srcPath;
 				CE_CHECKADDR_STR(srcPath, srcAddr);
 
@@ -6766,18 +6817,18 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					CE_CHECKADDR_STR(env, envAddr);
 				if (outResultAddr != 0)
 					CE_CHECKADDR(outResultAddr, 4);
-				
+
 				if ((targetPath.Contains('/')) || (targetPath.Contains('\\')))
 				{
-					FixRelativePath(targetPath);					
+					FixRelativePath(targetPath);
 				}
 
-				auto bfpSpawn = BfpSpawn_Create(targetPath.c_str(), 
+				auto bfpSpawn = BfpSpawn_Create(targetPath.c_str(),
 					(argsAddr == 0) ? NULL : args.c_str(),
 					(workingDirAddr == 0) ? NULL : workingDir.c_str(),
 					(envAddr == 0) ? NULL : env.c_str(), (BfpSpawnFlags)flags, (outResultAddr == 0) ? NULL : (BfpSpawnResult*)(memStart + outResultAddr));
 				if (bfpSpawn != NULL)
-				{					
+				{
 					CeInternalData* internalData = new CeInternalData();
 					internalData->mKind = CeInternalData::Kind_Spawn;
 					internalData->mSpawn = bfpSpawn;
@@ -6806,12 +6857,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				BfpFile* outStdErr = NULL;
 
 				CeInternalData* internalData = NULL;
-				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_Spawn);				
+				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_Spawn);
 				BfpSpawn_GetStdHandles(internalData->mSpawn,
 					(outStdInAddr != 0) ? &outStdIn : NULL,
 					(outStdOutAddr != 0) ? &outStdOut : NULL,
 					(outStdErrAddr != 0) ? &outStdErr : NULL);
-				
+
 				auto _SetHandle = [&](addr_ce addr, BfpFile* file)
 				{
 					if (addr == 0)
@@ -6825,7 +6876,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						CeSetAddrVal(memStart + addr, mCurHandleId, ptrSize);
 					}
 				};
-				
+
 				if (outStdInAddr != 0)
 					_SetHandle(outStdInAddr, outStdIn);
 				if (outStdOutAddr != 0)
@@ -6867,7 +6918,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				CeInternalData* internalData = NULL;
 				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_Spawn);
-				
+
 				int outExitCode = 0;
 				int timeLeft = waitMS;
 				do
@@ -6884,12 +6935,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						waitTime = BF_MIN(timeLeft, 20);
 						timeLeft -= waitTime;
 					}
-					
+
 					result = BfpSpawn_WaitFor(internalData->mSpawn, waitTime, &outExitCode, (outResultAddr == 0) ? NULL : (BfpSpawnResult*)(memStart + outResultAddr));
 					if (result)
 						break;
 					if (waitTime == 0)
-						break;					
+						break;
 				} while (true);
 				*(int*)(memStart + outExitCodeAddr) = outExitCode;
 			}
@@ -6897,7 +6948,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				void* resultPtr = ((uint8*)stackPtr + 0);
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
-				int flags = *(int*)((uint8*)stackPtr + ptrSize + ptrSize);				
+				int flags = *(int*)((uint8*)stackPtr + ptrSize + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + 4);
 
 				String path;
@@ -6916,7 +6967,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					CeRebuildKey rebuildKey;
 					rebuildKey.mKind = CeRebuildKey::Kind_Directory;
 					rebuildKey.mString = dir;
-					CeRebuildValue rebuildValue; 
+					CeRebuildValue rebuildValue;
 					if (AddRebuild(rebuildKey, rebuildValue))
 						mCurModule->mCompiler->mRebuildFileSet.Add(dir);
 
@@ -6943,7 +6994,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
 				addr_ce sizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
 				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
-				
+
 				CeInternalData* internalData = NULL;
 				CE_GET_INTERNAL(internalData, (int)spawnId, CeInternalData::Kind_FindFileData);
 				CE_CHECKADDR(sizeAddr, 4);
@@ -7012,7 +7063,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			return true;
 		}
 
-		if (!checkFunction->mFailed)		
+		if (!checkFunction->mFailed)
 			return true;
 
 		if ((mCeMachine->mDebugger != NULL) && (!mCallStack.IsEmpty()))
@@ -7044,7 +7095,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		CeOp op = CE_GETINST(CeOp);
 
 		if (*specialCheckPtr)
-		{					
+		{
 		SpecialCheck:
 			if (*fastFinishPtr)
 			{
@@ -7059,10 +7110,10 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						_Fail("Comptime evaluation canceled");
 				}
 				return false;
-			}			
+			}
 
 			bool wantsStop = false;
-			
+
 			if (mCeMachine->mStepState.mKind != CeStepState::Kind_None)
 			{
 				int curDepth = mCallStack.mSize + 1;
@@ -7107,7 +7158,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					op = CE_GETINST(CeOp);
 					wantsStop = true;
 					break;
-				}				
+				}
 			}
 			else if (mCeMachine->mDbgWantBreak)
 			{
@@ -7118,13 +7169,13 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				AutoCrit autoCrit(mCeMachine->mCritSect);
 				mCallStack.Add(_GetCurFrame());
 				mCeMachine->mDebugger->UpdateBreakpointFrames();
-				mCallStack.pop_back();				
+				mCallStack.pop_back();
 			}
 			else
 				*specialCheckPtr = false;
 
 			if (wantsStop)
-			{				
+			{
 				mCeMachine->mDbgWantBreak = false;
 				mCeMachine->mStepState.mKind = CeStepState::Kind_None;
 				_DbgPause();
@@ -7133,9 +7184,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				// We may have changed breakpoints so we need to re-read
 				instPtr -= sizeof(CeOp);
 				op = CE_GETINST(CeOp);
-			}			
+			}
 		}
-		
+
 		OpSwitch:
 		switch (op)
 		{
@@ -7157,9 +7208,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 					mCallStack.Add(_GetCurFrame());
 					if (mCeMachine->mDebugger->CheckConditionalBreakpoint(breakpointEntry->mBreakpoint))
-						doBreak = true;						
+						doBreak = true;
 					mCallStack.pop_back();
-					
+
 					op = breakpointEntry->mPrevOpCode;
 					// Keep us from an infinite loop if we set a breakpoint on a manual Break
 					skipInst = op == CeOp_DbgBreak;
@@ -7171,7 +7222,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						_FixVariables();
 						if (skipInst)
 							break;
-						goto OpSwitch;						
+						goto OpSwitch;
 					}
 
 					mCeMachine->mDebugger->mActiveBreakpoint = breakpointEntry->mBreakpoint;
@@ -7281,8 +7332,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					CeSetAddrVal(&result, valueAddr, ptrSize);
 				else
 					CeSetAddrVal(&result, 0, ptrSize);
-					
-			}			
+			}
 		}
 		break;
 		case CeOp_GetReflectType:
@@ -7291,7 +7341,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			int32 typeId = CE_GETINST(int32);
 			auto reflectType = GetReflectType(typeId);
 			_FixVariables();
-			CeSetAddrVal(framePtr + frameOfs, reflectType, ptrSize);			
+			CeSetAddrVal(framePtr + frameOfs, reflectType, ptrSize);
 		}
 		break;
 		case CeOp_GetString:
@@ -7305,7 +7355,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				_FixVariables();
 				ceStringEntry.mBindExecuteId = mExecuteId;
 			}
-			CeSetAddrVal(framePtr + frameOfs, ceStringEntry.mStringAddr, ptrSize);			
+			CeSetAddrVal(framePtr + frameOfs, ceStringEntry.mStringAddr, ptrSize);
 		}
 		break;
 		case CeOp_Malloc:
@@ -7475,7 +7525,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			CE_LOAD(uint32);
 			break;
 		case CeOp_Load_64:
-			CE_LOAD(uint64);			
+			CE_LOAD(uint64);
 			break;
 		case CeOp_Load_X:
 		{
@@ -7574,7 +7624,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_AdjustSPConst:
 		{
 			int32 adjust = CE_GETINST(int32);
-			stackPtr += adjust;			
+			stackPtr += adjust;
 		}
 		break;
 		case CeOp_GetSP:
@@ -7599,7 +7649,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			auto& ceStaticFieldEntry = ceFunction->mStaticFieldTable[tableIdx];
 			if (ceStaticFieldEntry.mBindExecuteId != mExecuteId)
 			{
-				if (mStaticCtorExecSet.TryAdd(ceStaticFieldEntry.mTypeId, NULL))
+				if ((mStaticCtorExecSet.TryAdd(ceStaticFieldEntry.mTypeId, NULL)) && (!ceStaticFieldEntry.mName.StartsWith("#")))
 				{
 					auto bfType = GetBfType(ceStaticFieldEntry.mTypeId);
 					BfTypeInstance* bfTypeInstance = NULL;
@@ -7645,6 +7695,74 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if (ceStaticFieldEntry.mSize > 0)
 						memset(ptr, 0, ceStaticFieldEntry.mSize);
 					staticFieldInfo->mAddr = (addr_ce)(ptr - memStart);
+
+					if (ceStaticFieldEntry.mName.StartsWith("#"))
+					{
+						addr_ce resultAddr = 0;
+
+						if (ceStaticFieldEntry.mName == "#CallerLineNum")
+						{
+							*(int*)ptr = mCurModule->mCurFilePosition.mCurLine;
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerFilePath")
+						{
+							String filePath;
+							if (mCurModule->mCurFilePosition.mFileInstance != NULL)
+								filePath = mCurModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+							resultAddr = GetString(filePath);
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerFileName")
+						{
+							String filePath;
+							if (mCurModule->mCurFilePosition.mFileInstance != NULL)
+								filePath = mCurModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+							resultAddr = GetString(GetFileName(filePath));
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerFileDir")
+						{
+							String filePath;
+							if (mCurModule->mCurFilePosition.mFileInstance != NULL)
+								filePath = mCurModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+							resultAddr = GetString(GetFileDir(filePath));
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerTypeName")
+						{
+							String typeName = "";
+							typeName = mCeMachine->mCeModule->TypeToString(mCallerTypeInstance);
+							resultAddr = GetString(typeName);
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerType")
+						{
+							addr_ce typeAddr = GetReflectType(mCallerTypeInstance->mTypeId);
+							resultAddr = typeAddr;
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerMemberName")
+						{
+							String memberName = mCeMachine->mCeModule->MethodToString(mCallerMethodInstance);
+							resultAddr = GetString(memberName);
+						}
+						else if (ceStaticFieldEntry.mName == "#CallerProject")
+						{
+							BfProject* project = NULL;
+							project = mCallerTypeInstance->mTypeDef->mProject;
+							if (project != NULL)
+								resultAddr = GetString(project->mName);
+						}
+						else if (ceStaticFieldEntry.mName == "#OrigCalleeType")
+						{
+							if (mCurCallSource->mOrigCalleeType != NULL)
+							{
+								addr_ce typeAddr = GetReflectType(mCurCallSource->mOrigCalleeType->mTypeId);
+								resultAddr = typeAddr;
+							}
+						}
+
+						if (resultAddr != 0)
+						{
+							_FixVariables();
+							CeSetAddrVal(memStart + staticFieldInfo->mAddr, resultAddr, ptrSize);
+						}
+					}
 				}
 
 				ceStaticFieldEntry.mAddr = staticFieldInfo->mAddr;
@@ -8258,7 +8376,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_Shr_U64:
 			CEOP_BIN2(>> , uint64, uint8);
 			break;
-		
+
 		case CeOp_Acos_F32:
 			CEOP_UNARY_FUNC(acosf, float);
 			break;
@@ -8367,7 +8485,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_Tanh_F64:
 			CEOP_UNARY_FUNC(tanh, double);
 			break;
-		
+
 		case CeOp_Cmp_NE_I8:
 			CEOP_CMP(!= , int8);
 			break;
@@ -8585,7 +8703,7 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCurBuilder = NULL;
 	mPreparingFunction = NULL;
 
-	mCurEmitContext = NULL;	
+	mCurEmitContext = NULL;
 
 	mAppendAllocInfo = NULL;
 	mTempParser = NULL;
@@ -8599,7 +8717,6 @@ CeMachine::CeMachine(BfCompiler* compiler)
 
 	BfLogSys(mCompiler->mSystem, "CeMachine::CeMachine %p\n", this);
 }
-
 
 CeMachine::~CeMachine()
 {
@@ -8687,7 +8804,7 @@ void CeMachine::CompileStarted()
 	mRevisionExecuteTime = 0;
 	mSpecialCheck = false;
 	mRevision++;
-	mMethodBindRevision++;	
+	mMethodBindRevision++;
 	mDbgWantBreak = false;
 	if (mCeModule != NULL)
 	{
@@ -8716,7 +8833,7 @@ int CeMachine::GetInstSize(CeFunction* ceFunction, int instIdx)
 	{
 		switch (kind)
 		{
-		case CEOI_FrameRef: 
+		case CEOI_FrameRef:
 		case CEOI_FrameRef8:
 		case CEOI_FrameRef16:
 		case CEOI_FrameRef32:
@@ -8739,7 +8856,7 @@ int CeMachine::GetInstSize(CeFunction* ceFunction, int instIdx)
 			break;
 		case CEOI_IMM_VAR:
 			{
-				int32 size = CE_SIZE_GET(int32); 
+				int32 size = CE_SIZE_GET(int32);
 				ptr += size;
 			}
 			break;
@@ -8754,10 +8871,10 @@ int CeMachine::GetInstSize(CeFunction* ceFunction, int instIdx)
 	auto op = CE_SIZE_GET(CeOp);
 
 	if (op == CeOp_DbgBreak)
-	{		
+	{
 		CeBreakpointBind* breakpointEntry = NULL;
 		if (ceFunction->mBreakpoints.TryGetValue(instIdx, &breakpointEntry))
-			op = breakpointEntry->mPrevOpCode;		
+			op = breakpointEntry->mPrevOpCode;
 	}
 
 	CeOpInfo& opInfo = gOpInfo[op];
@@ -8768,7 +8885,7 @@ int CeMachine::GetInstSize(CeFunction* ceFunction, int instIdx)
 	_HandleOperand(opInfo.mOperandA);
 	_HandleOperand(opInfo.mOperandB);
 	_HandleOperand(opInfo.mOperandC);
-	
+
 	return (int)(ptr - startPtr);
 }
 
@@ -8791,7 +8908,7 @@ void CeMachine::DerefMethodInfo(CeFunctionInfo* ceFunctionInfo)
 void CeMachine::RemoveFunc(CeFunction* ceFunction)
 {
 	mFunctionIdMap.Remove(ceFunction->mId);
-	ceFunction->mId = -1;	
+	ceFunction->mId = -1;
 }
 
 void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
@@ -8885,7 +9002,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 // 			if (mCeMachine->mStaticFieldMap.TryGetValue(globalVar->mName, &staticFieldInfoPtr))
 // 			{
 // 				CeStaticFieldInfo* staticFieldInfo = staticFieldInfoPtr;
-// 
+//
 // 				int* staticFieldTableIdxPtr = NULL;
 // 				if (mStaticFieldMap.TryAdd(globalVar, NULL, &staticFieldTableIdxPtr))
 // 				{
@@ -8896,22 +9013,21 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 // 					*staticFieldTableIdxPtr = (int)mCeFunction->mStaticFieldTable.size();
 // 					mCeFunction->mStaticFieldTable.Add(staticFieldEntry);
 // 				}
-// 
+//
 // 				auto result = FrameAlloc(mCeMachine->GetBeContext()->GetPointerTo(globalVar->mType));
-// 
+//
 // 				Emit(CeOp_GetStaticField);
 // 				EmitFrameOffset(result);
 // 				Emit((int32)*staticFieldTableIdxPtr);
-// 
+//
 // 				return result;
 // 			}
 //			return CeErrorKind_GlobalVariable;
 		}
 
-		
 		BF_ASSERT(!data.mQueueFixups);
 		CeConstStructData gvData;
-		
+
 		auto result = WriteConstant(gvData, globalVar->mInitializer, ceContext);
 		if (result != CeErrorKind_None)
 			return result;
@@ -8938,10 +9054,10 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 			for (int memberIdx = 0; memberIdx < (int)constStruct->mMemberValues.size(); memberIdx++)
 			{
 				auto& member = structType->mMembers[memberIdx];
-				// Do any per-member alignment				
+				// Do any per-member alignment
 				int wantZeroes = member.mByteOffset - (data.mData.mSize - startOfs);
-				if (wantZeroes > 0)				
-					data.mData.Insert(data.mData.size(), (uint8)0, wantZeroes);				
+				if (wantZeroes > 0)
+					data.mData.Insert(data.mData.size(), (uint8)0, wantZeroes);
 
 				auto result = WriteConstant(data, constStruct->mMemberValues[memberIdx], ceContext);
 				if (result != CeErrorKind_None)
@@ -8993,7 +9109,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 			{
 				BF_FATAL("Invalid GEP");
 			}
-			
+
 			addr_ce addr = -1;
 
 			if (globalVar->mName.StartsWith("__bfStrData"))
@@ -9028,7 +9144,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 			return CeErrorKind_GlobalVariable;
 
 			// 			auto sym = GetSymbol(globalVar);
-			// 
+			//
 			// 			BeMCRelocation reloc;
 			// 			reloc.mKind = BeMCRelocationKind_ADDR64;
 			// 			reloc.mOffset = sect.mData.GetPos();
@@ -9041,7 +9157,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 			BF_FATAL("Invalid GEPConstant");
 		}
 	}
-	
+
 	/*else if ((beType->IsPointer()) && (constVal->mTarget != NULL))
 	{
 		auto result = WriteConstant(arr, constVal->mTarget);
@@ -9070,13 +9186,13 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 			if (constVal->mType->mSize > 0)
 			{
 				auto ptr = data.mData.GrowUninitialized(constVal->mType->mSize);
-				memset(ptr, 0, constVal->mType->mSize);				
-			}			
+				memset(ptr, 0, constVal->mType->mSize);
+			}
 		}
 		else
 		{
 			auto ptr = data.mData.GrowUninitialized(beType->mSize);
-			memcpy(ptr, &constVal->mInt64, beType->mSize);			
+			memcpy(ptr, &constVal->mInt64, beType->mSize);
 		}
 	}
 	else
@@ -9177,11 +9293,15 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mCompilerTypeDef))
 			{
-				if (methodDef->mName == "Comptime_EmitTypeBody")
+				if (methodDef->mName == "Comptime_SetReturnType")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_SetReturnType;
+				}
+				else if (methodDef->mName == "Comptime_EmitTypeBody")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_EmitTypeBody;
 				}
-				if (methodDef->mName == "Comptime_EmitAddInterface")
+				else if (methodDef->mName == "Comptime_EmitAddInterface")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_EmitAddInterface;
 				}
@@ -9217,6 +9337,8 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 			{
 				if (methodDef->mName == "ThrowIndexOutOfRange")
 					ceFunction->mFunctionKind = CeFunctionKind_OOB;
+				else if (methodDef->mName == "ThrowObjectNotInitialized")
+					ceFunction->mFunctionKind = CeFunctionKind_ObjectNotInitialized;
 				else if (methodDef->mName == "FatalError")
 					ceFunction->mFunctionKind = CeFunctionKind_FatalError;
 				else if (methodDef->mName == "Dbg_RawAlloc")
@@ -9241,8 +9363,8 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "BfpDirectory_Exists")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_Exists;
 				else if (methodDef->mName == "BfpDirectory_GetSysDirectory")
-					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_GetSysDirectory;				
-				
+					ceFunction->mFunctionKind = CeFunctionKind_BfpDirectory_GetSysDirectory;
+
 				else if (methodDef->mName == "BfpFile_Close")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpFile_Close;
 				else if (methodDef->mName == "BfpFile_Create")
@@ -9313,7 +9435,7 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_GetFileSize;
 				else if (methodDef->mName == "BfpFindFileData_Release")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_Release;
-				
+
 				else if (methodDef->mName == "BfpSystem_GetTimeStamp")
 						ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetTimeStamp;
 			}
@@ -9394,7 +9516,7 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Tan;
 				else if (methodDef->mName == "Tanh")
 					ceFunction->mFunctionKind = CeFunctionKind_Math_Tanh;
-			}			
+			}
 
 			ceFunction->mInitializeState = CeFunction::InitializeState_Initialized;
 			return;
@@ -9405,7 +9527,7 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder)
 {
 	AutoTimer autoTimer(mRevisionExecuteTime);
-	SetAndRestoreValue<CeFunction*> prevCEFunction(mPreparingFunction, ceFunction);	
+	SetAndRestoreValue<CeFunction*> prevCEFunction(mPreparingFunction, ceFunction);
 
 	BF_ASSERT(ceFunction->mInitializeState <= CeFunction::InitializeState_Initialized);
 
@@ -9427,13 +9549,13 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 		ceFunction->mInitializeState = CeFunction::InitializeState_Initializing_ReEntry;
 	else
 		ceFunction->mInitializeState = CeFunction::InitializeState_Initializing;
-	
+
 	CeBuilder ceBuilder;
 	SetAndRestoreValue<CeBuilder*> prevBuilder(mCurBuilder, &ceBuilder);
 	ceBuilder.mParentBuilder = parentBuilder;
 	ceBuilder.mPtrSize = mCeModule->mCompiler->mSystem->mPtrSize;
 	ceBuilder.mCeMachine = this;
-	ceBuilder.mCeFunction = ceFunction;	
+	ceBuilder.mCeFunction = ceFunction;
 	ceBuilder.Build();
 
 	ceFunction->mInitializeState = CeFunction::InitializeState_Initialized;
@@ -9452,7 +9574,7 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 }
 
 void CeMachine::MapFunctionId(CeFunction* ceFunction)
-{	
+{
 	if ((mCeModule->mSystem->mPtrSize == 8) && (mDebugger == NULL))
 		return;
 	ceFunction->mId = ++mCurFunctionId;
@@ -9460,7 +9582,7 @@ void CeMachine::MapFunctionId(CeFunction* ceFunction)
 }
 
 CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added)
-{	
+{
 	if (func)
 	{
 		if ((func.IsConst()) || (func.IsFake()))
@@ -9470,10 +9592,10 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 	CeFunctionInfo** functionInfoPtr = NULL;
 	CeFunctionInfo* ceFunctionInfo = NULL;
 	CeFunction* ceFunction = NULL;
-	if (!mFunctions.TryAdd(methodInstance, NULL, &functionInfoPtr))	
+	if (!mFunctions.TryAdd(methodInstance, NULL, &functionInfoPtr))
 	{
-		ceFunctionInfo = *functionInfoPtr;		
-		BF_ASSERT(ceFunctionInfo->mCeFunction != NULL);		
+		ceFunctionInfo = *functionInfoPtr;
+		BF_ASSERT(ceFunctionInfo->mCeFunction != NULL);
 		return ceFunctionInfo->mCeFunction;
 	}
 
@@ -9481,10 +9603,10 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 	methodInstance->mInCEMachine = true;
 
 	BfLogSys(mCeModule->mSystem, "CeMachine::GetFunction %p\n", methodInstance);
-	
+
 	if (!func)
 	{
-		ceFunctionInfo = new CeFunctionInfo();		
+		ceFunctionInfo = new CeFunctionInfo();
 	}
 	else
 	{
@@ -9502,6 +9624,11 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 			else
 			{
 				ceFunctionInfo = *namedFunctionInfoPtr;
+				if ((ceFunctionInfo->mMethodInstance != NULL) && (ceFunctionInfo->mMethodInstance != methodInstance))
+				{
+					// This ceFunctionInfo is already taken - probably from a name mangling conflict
+					ceFunctionInfo = new CeFunctionInfo();
+				}
 			}
 		}
 		else
@@ -9517,10 +9644,10 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 	{
 		added = true;
 		auto module = methodInstance->GetOwner()->mModule;
-		
+
 		BF_ASSERT(ceFunctionInfo->mCeFunction == NULL);
 
-		ceFunction = new CeFunction();		
+		ceFunction = new CeFunction();
 		ceFunction->mCeMachine = this;
 		ceFunction->mIsVarReturn = methodInstance->mReturnType->IsVar();
 		ceFunction->mCeFunctionInfo = ceFunctionInfo;
@@ -9528,10 +9655,9 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 		if (mDebugger != NULL)
 			ceFunction->mDbgInfo = new CeDbgFunctionInfo();
 		ceFunctionInfo->mMethodInstance = methodInstance;
-		ceFunctionInfo->mCeFunction = ceFunction;		
+		ceFunctionInfo->mCeFunction = ceFunction;
 		MapFunctionId(ceFunction);
 	}
-	
 
 	return ceFunction;
 }
@@ -9563,7 +9689,7 @@ CeTypeInfo* CeMachine::GetTypeInfo(BfType* type)
 			return ceTypeInfo;
 		ceTypeInfo->mMethodInstances.Clear();
 	}
-	
+
 	mCeModule->PopulateType(typeInstance, BfPopulateType_DataAndMethods);
 	ceTypeInfo->mRevision = typeInstance->mRevision;
 	for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
@@ -9571,7 +9697,7 @@ CeTypeInfo* CeMachine::GetTypeInfo(BfType* type)
 		if (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
 		{
 			auto methodDef = typeInstance->mTypeDef->mMethods[methodGroup.mMethodIdx];
-			auto flags = ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None;			
+			auto flags = ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None;
 			flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_MethodInstanceOnly);
 			mCeModule->GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags);
 		}
@@ -9589,7 +9715,7 @@ CeTypeInfo* CeMachine::GetTypeInfo(BfType* type)
 				ceTypeInfo->mMethodInstances.Add(kv.mValue);
 			}
 		}
-	}	
+	}
 	return ceTypeInfo;
 }
 
@@ -9627,9 +9753,26 @@ void CeMachine::QueueMethod(BfModuleMethodInstance moduleMethodInstance)
 }
 
 void CeMachine::QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName)
-{	
+{
 	if (mCurBuilder != NULL)
 		mCurBuilder->mStaticFieldInstanceMap[mangledFieldName] = fieldInstance;
+}
+
+void CeMachine::ClearTypeData(BfTypeInstance* typeInstance)
+{
+	if (mTypeInfoMap.Remove(typeInstance))
+	{
+		for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
+		{
+			if (methodGroup.mDefault != NULL)
+				mMethodInstanceSet.Remove(methodGroup.mDefault);
+			if (methodGroup.mMethodSpecializationMap != NULL)
+			{
+				for (auto& kv : *methodGroup.mMethodSpecializationMap)
+					mMethodInstanceSet.Remove(kv.mValue);
+			}
+		}
+	}
 }
 
 void CeMachine::SetAppendAllocInfo(BfModule* module, BfIRValue allocValue, BfIRValue appendSizeValue)
@@ -9663,9 +9806,9 @@ CeContext* CeMachine::AllocContext()
 		memset(ceContext->mMemory.mVals, 0, BF_CE_INITIAL_MEMORY);
 	}
 
-	ceContext->mCurEmitContext = mCurEmitContext;	
-	mCurEmitContext = NULL;	
-	mExecuteId++;	
+	ceContext->mCurEmitContext = mCurEmitContext;
+	mCurEmitContext = NULL;
+	mExecuteId++;
 	ceContext->mStackSize = BF_CE_DEFAULT_STACK_SIZE;
 	ceContext->mMemory.ResizeRaw(ceContext->mStackSize);
 	ceContext->mExecuteId = mExecuteId;
@@ -9680,26 +9823,24 @@ void CeMachine::ReleaseContext(CeContext* ceContext)
 	ceContext->mConstDataMap.Clear();
 	ceContext->mMemory.Clear();
 	if (ceContext->mMemory.mAllocSize > BF_CE_MAX_CARRYOVER_MEMORY)
-		ceContext->mMemory.Dispose();	
+		ceContext->mMemory.Dispose();
 	ceContext->mStaticCtorExecSet.Clear();
 	ceContext->mStaticFieldMap.Clear();
 	ceContext->mHeap->Clear(BF_CE_MAX_CARRYOVER_HEAP);
-	ceContext->mReflectTypeIdOffset = -1;	
-	mCurEmitContext = ceContext->mCurEmitContext;	
-	ceContext->mCurEmitContext = NULL;	
+	ceContext->mReflectTypeIdOffset = -1;
+	mCurEmitContext = ceContext->mCurEmitContext;
+	ceContext->mCurEmitContext = NULL;
 	mContextList.Add(ceContext);
 	for (auto kv : ceContext->mInternalDataMap)
-		kv.mValue->Release();	
+		kv.mValue->Release();
 	ceContext->mInternalDataMap.Clear();
 	ceContext->mWorkingDir.Clear();
 }
 
 BfTypedValue CeMachine::Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
-{	
+{
 	auto ceContext = AllocContext();
 	auto result = ceContext->Call(callSource, module, methodInstance, args, flags, expectingType);
-	ReleaseContext(ceContext);	
+	ReleaseContext(ceContext);
 	return result;
 }
-
-

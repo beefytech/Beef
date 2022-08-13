@@ -56,7 +56,7 @@ public:
 	uint32 mAtomUpdateIdx;
 	bool mIsSystemType;
 	Dictionary<BfAtom*, int> mPrevNamesMap;
-	
+
 public:
 	~BfAtom();
 	const StringView& ToString()
@@ -68,7 +68,7 @@ public:
 		str += mString;
 	}
 
-	void Ref();		
+	void Ref();
 };
 
 class BfAtomComposite
@@ -80,15 +80,15 @@ public:
 	bool mOwns;
 
 public:
-	BfAtomComposite();	
+	BfAtomComposite();
 	BfAtomComposite(BfAtomComposite&& rhs);
 	BfAtomComposite(const BfAtomComposite& rhs);
-	BfAtomComposite(BfAtom* atom);	
+	BfAtomComposite(BfAtom* atom);
 	BfAtomComposite(const BfAtomComposite& left, const BfAtomComposite& right);
 	BfAtomComposite(const BfAtomComposite& left, BfAtom* right);
 	~BfAtomComposite();
-	
-	void Set(const BfAtomComposite& left, const BfAtomComposite& right);	
+
+	void Set(const BfAtomComposite& left, const BfAtomComposite& right);
 	void Set(BfAtom** atomsA, int countA, BfAtom** atomsB, int countB);
 	BfAtomComposite& operator=(const BfAtomComposite& rhs);
 	bool operator==(const BfAtomComposite& other) const;
@@ -102,7 +102,7 @@ public:
 	bool EndsWith(const BfAtomComposite& other) const;
 	BfAtomComposite GetSub(int start, int len) const;
 	void Reference(const BfAtomComposite& other);
-	
+
 	uint32 GetAtomUpdateIdx();
 };
 
@@ -138,17 +138,17 @@ class BfSizedAtomComposite : public BfAtomComposite
 public:
 	BfAtom* mInitialAlloc[8];
 
-	BfSizedAtomComposite();	
-	~BfSizedAtomComposite();	
+	BfSizedAtomComposite();
+	~BfSizedAtomComposite();
 };
 
 struct BfAtomCompositeHash
 {
 	size_t operator()(const BfAtomComposite& composite) const
 	{
-		int curHash = 0;				
- 		for (int i = 0; i < (int)composite.mSize; i++)		
- 			curHash = ((curHash ^ (int)(intptr)composite.mParts[i]->mHash) << 5) - curHash;		
+		int curHash = 0;
+ 		for (int i = 0; i < (int)composite.mSize; i++)
+ 			curHash = ((curHash ^ (int)(intptr)composite.mParts[i]->mHash) << 5) - curHash;
 		return curHash;
 	}
 };
@@ -179,7 +179,7 @@ enum BfCompilerOptionFlags
 	BfCompilerOptionFlag_EmitLineInfo = 2,
 	BfCompilerOptionFlag_WriteIR = 4,
 	BfCompilerOptionFlag_GenerateOBJ = 8,
-	BfCompilerOptionFlag_GenerateBitcode = 0x10,	
+	BfCompilerOptionFlag_GenerateBitcode = 0x10,
 	BfCompilerOptionFlag_ClearLocalVars = 0x20,
 	BfCompilerOptionFlag_RuntimeChecks = 0x40,
 	BfCompilerOptionFlag_EmitDynamicCastCheck = 0x80,
@@ -190,7 +190,7 @@ enum BfCompilerOptionFlags
 	BfCompilerOptionFlag_EnableSideStack    = 0x1000,
 	BfCompilerOptionFlag_EnableHotSwapping  = 0x2000,
 	BfCompilerOptionFlag_IncrementalBuild   = 0x4000,
-	BfCompilerOptionFlag_DebugAlloc         = 0x8000, 
+	BfCompilerOptionFlag_DebugAlloc         = 0x8000,
 	BfCompilerOptionFlag_OmitDebugHelpers   = 0x10000,
 	BfCompilerOptionFlag_NoFramePointerElim = 0x20000,
 	BfCompilerOptionFlag_ArithmeticChecks = 0x40000,
@@ -234,7 +234,7 @@ enum BfMethodFlags
 	BfMethodFlags_FastCall = 0x2000,
 	BfMethodFlags_ThisCall = 0x3000,
 	BfMethodFlags_Mutating = 0x4000,
-	BfMethodFlags_Constructor = 0x8000	
+	BfMethodFlags_Constructor = 0x8000
 };
 
 enum BfObjectFlags : uint8
@@ -344,7 +344,7 @@ enum BfLTOType
 };
 
 enum BfCFLAAType
-{ 
+{
 	BfCFLAAType_None,
 	BfCFLAAType_Steensgaard,
 	BfCFLAAType_Andersen,
@@ -354,11 +354,11 @@ enum BfCFLAAType
 enum BfRelocType
 {
 	BfRelocType_NotSet,
-	BfRelocType_Static, 
-	BfRelocType_PIC, 
+	BfRelocType_Static,
+	BfRelocType_PIC,
 	BfRelocType_DynamicNoPIC,
 	BfRelocType_ROPI,
-	BfRelocType_RWPI, 
+	BfRelocType_RWPI,
 	BfRelocType_ROPI_RWPI
 };
 
@@ -366,32 +366,32 @@ enum BfPICLevel
 {
 	BfPICLevel_NotSet,
 	BfPICLevel_Not,
-	BfPICLevel_Small, 
+	BfPICLevel_Small,
 	BfPICLevel_Big
 };
 
 struct BfCodeGenOptions
-{	
+{
 	bool mIsHotCompile;
 
 	bool mWriteObj;
 	bool mWriteBitcode;
 	BfAsmKind mAsmKind;
 	bool mWriteToLib;
-	bool mWriteLLVMIR;	
+	bool mWriteLLVMIR;
 
 	int16 mVirtualMethodOfs;
 	int16 mDynSlotOfs;
 
 	BfRelocType mRelocType;
 	BfPICLevel mPICLevel;
-	BfSIMDSetting mSIMDSetting;	
+	BfSIMDSetting mSIMDSetting;
 	BfOptLevel mOptLevel;
 	BfLTOType mLTOType;
 	int mSizeLevel;
 	BfCFLAAType mUseCFLAA;
 	bool mUseNewSROA;
-	
+
 	bool mDisableTailCalls;
 	bool mDisableUnitAtATime;
 	bool mDisableUnrollLoops;
@@ -410,7 +410,7 @@ struct BfCodeGenOptions
 	bool mUseGVNAfterVectorization;
 	bool mEnableLoopInterchange;
 	bool mEnableLoopLoadElim;
-	bool mExtraVectorizerPasses;	
+	bool mExtraVectorizerPasses;
 	bool mEnableEarlyCSEMemSSA;
 	bool mEnableGVNHoist;
 	bool mEnableGVNSink;
@@ -427,8 +427,8 @@ struct BfCodeGenOptions
 	Val128 mHash;
 
 	BfCodeGenOptions()
-	{	
-		mIsHotCompile = false;		
+	{
+		mIsHotCompile = false;
 		mWriteObj = true;
 		mWriteBitcode = false;
 		mAsmKind = BfAsmKind_None;
@@ -436,7 +436,7 @@ struct BfCodeGenOptions
 		mWriteLLVMIR = false;
 		mVirtualMethodOfs = 0;
 		mDynSlotOfs = 0;
-		
+
 		mRelocType = BfRelocType_NotSet;
 		mPICLevel = BfPICLevel_NotSet;
 		mSIMDSetting = BfSIMDSetting_None;
@@ -445,7 +445,7 @@ struct BfCodeGenOptions
 		mSizeLevel = 0;
 		mUseCFLAA = BfCFLAAType_None;
 		mUseNewSROA = false;
-				
+
 		mDisableTailCalls = false;
 		mDisableUnitAtATime = false;
 		mDisableUnrollLoops = false;
@@ -480,7 +480,7 @@ struct BfCodeGenOptions
 	}
 
 	void GenerateHash()
-	{		
+	{
 		HashContext hashCtx;
 
 		hashCtx.Mixin(mWriteObj);
@@ -524,7 +524,6 @@ struct BfCodeGenOptions
 	}
 };
 
-
 enum BfParamKind : uint8
 {
 	BfParamKind_Normal,
@@ -536,11 +535,18 @@ enum BfParamKind : uint8
 	BfParamKind_VarArgs
 };
 
+enum BfShow : uint8
+{
+	BfShow_Show,
+	BfShow_HideIndirect,
+	BfShow_Hide
+};
+
 class BfParameterDef
 {
 public:
 	String mName;
-	BfTypeReference* mTypeRef;	
+	BfTypeReference* mTypeRef;
 	BfParameterDeclaration* mParamDeclaration;
 	int mMethodGenericParamIdx;
 	BfParamKind mParamKind;
@@ -552,7 +558,7 @@ public:
 		mTypeRef = NULL;
 		mMethodGenericParamIdx = -1;
 		mParamKind = BfParamKind_Normal;
-		mParamDeclaration = NULL;		
+		mParamDeclaration = NULL;
 		mNamePrefixCount = 0;
 	}
 	void SetName(BfAstNode* nameNode);
@@ -570,9 +576,9 @@ public:
 	BfProtection mProtection;
 	uint8 mNamePrefixCount; // Number of @'s
 	bool mIsStatic;
-	bool mIsNoShow;
+	BfShow mShow;
 	bool mIsReadOnly;
-	bool mHasMultiDefs;	
+	bool mHasMultiDefs;
 
 public:
 	BfMemberDef()
@@ -581,7 +587,7 @@ public:
 		mProtection = BfProtection_Public;
 		mNamePrefixCount = 0;
 		mIsStatic = false;
-		mIsNoShow = false;
+		mShow = BfShow_Show;
 		mIsReadOnly = false;
 		mHasMultiDefs = false;
 	}
@@ -596,28 +602,30 @@ public:
 class BfFieldDef : public BfMemberDef
 {
 public:
-	int mIdx;	
-	bool mIsConst; // Note: Consts are also all considered Static		
+	int mIdx;
+	bool mIsConst; // Note: Consts are also all considered Static
 	BfTypeReference* mTypeRef;
 	BfProtection mUsingProtection;
 	bool mIsInline;
 	bool mIsVolatile;
-	bool mIsExtern;	
-	bool mIsProperty;	
+	bool mIsExtern;
+	bool mIsAppend;
+	bool mIsProperty;
 	BfAstNode* mFieldDeclaration;
 	// It may seem that fields and properties don't need a 'mNextWithSameName', but with extensions it's possible
-	//  to have two libraries which each add a field to a type with the same name	
+	//  to have two libraries which each add a field to a type with the same name
 	BfFieldDef* mNextWithSameName;
 
 public:
 	BfFieldDef()
 	{
 		mIdx = 0;
-		mIsConst = false;		
+		mIsConst = false;
 		mTypeRef = NULL;
 		mUsingProtection = BfProtection_Hidden;
 		mIsInline = false;
 		mIsExtern = false;
+		mIsAppend = false;
 		mIsVolatile = false;
 		mIsProperty = false;
 		mFieldDeclaration = NULL;
@@ -677,7 +685,7 @@ public:
 			return paramDecl->mInitializer;
 		return NULL;
 	}
-	
+
 	BfAstNode* GetNameNode()
 	{
 		if (auto fieldDecl = GetFieldDeclaration())
@@ -690,18 +698,18 @@ public:
 
 class BfPropertyDef : public BfFieldDef
 {
-public:	
-	Array<BfMethodDef*> mMethods;	
+public:
+	Array<BfMethodDef*> mMethods;
 	BfPropertyDef* mNextWithSameName;
 
 public:
 	BfPropertyDef()
-	{		
+	{
 		mNextWithSameName = NULL;
-	}	
+	}
 
 	bool IsVirtual();
-	bool HasExplicitInterface();	
+	bool HasExplicitInterface();
 	bool IsExpressionBodied();
 	BfAstNode* GetRefNode();
 };
@@ -713,7 +721,7 @@ enum BfGenericParamFlags : uint16
 	BfGenericParamFlag_Struct		= 2,
 	BfGenericParamFlag_StructPtr	= 4,
 	BfGenericParamFlag_Enum			= 8,
-	BfGenericParamFlag_Interface	= 0x10,	
+	BfGenericParamFlag_Interface	= 0x10,
 	BfGenericParamFlag_Concrete		= 0x20,
 	BfGenericParamFlag_New			= 0x40,
 	BfGenericParamFlag_Delete		= 0x80,
@@ -759,10 +767,10 @@ public:
 
 class BfGenericParamDef : public BfConstraintDef
 {
-public:	
-	String mName;		
+public:
+	String mName;
 	Array<BfIdentifierNode*> mNameNodes; // 0 is always the def name
-	
+
 	bool operator==(const BfGenericParamDef& other) const
 	{
 		if (mName != other.mName)
@@ -779,7 +787,7 @@ public:
 class BfExternalConstraintDef : public BfConstraintDef
 {
 public:
-	BfTypeReference* mTypeRef;	
+	BfTypeReference* mTypeRef;
 };
 
 // CTOR is split into two for Objects - Ctor clears and sets up VData, Ctor_Body executes ctor body code
@@ -805,7 +813,7 @@ enum BfCallingConvention : uint8
 	BfCallingConvention_Unspecified,
 	BfCallingConvention_Cdecl,
 	BfCallingConvention_Stdcall,
-	BfCallingConvention_Fastcall,	
+	BfCallingConvention_Fastcall,
 };
 
 #define BF_METHODNAME_MARKMEMBERS "GCMarkMembers"
@@ -857,15 +865,16 @@ enum BfComptimeFlags : int8
 
 class BfMethodDef : public BfMemberDef
 {
-public:		
-	BfAstNode* mMethodDeclaration;					
-	BfAstNode* mBody;	
+public:
+	BfAstNode* mMethodDeclaration;
+	BfAstNode* mBody;
 
 	BfTypeReference* mExplicitInterface;
 	BfTypeReference* mReturnTypeRef;
 	Array<BfParameterDef*> mParams;
 	Array<BfGenericParamDef*> mGenericParams;
 	Array<BfExternalConstraintDef> mExternalConstraints;
+	Dictionary<StringView, int>* mParamNameMap;
 	BfMethodDef* mNextWithSameName;
 	Val128 mFullHash;
 
@@ -883,7 +892,7 @@ public:
 	bool mWantsBody;
 	bool mCLink;
 	bool mHasAppend;
-	bool mAlwaysInline;	
+	bool mAlwaysInline;
 	bool mIsNoReturn;
 	bool mIsMutating;
 	bool mIsNoSplat;
@@ -891,14 +900,14 @@ public:
 	bool mIsSkipCall;
 	bool mHasComptime;
 	bool mIsOperator;
-	bool mIsExtern;	
+	bool mIsExtern;
 	bool mIsNoDiscard;
 	bool mHasExplicitThis;
 	bool mAddedAfterEmit;
 	BfCommutableKind mCommutableKind;
 	BfCheckedKind mCheckedKind;
-	BfImportKind mImportKind;	
-	BfCallingConvention mCallingConvention;	
+	BfImportKind mImportKind;
+	BfCallingConvention mCallingConvention;
 
 public:
 	BfMethodDef()
@@ -913,7 +922,7 @@ public:
 		mIsStatic = false;
 		mIsNew = false;
 		mIsPartial = false;
-		mCLink = false;		
+		mCLink = false;
 		mIsNoReturn = false;
 		mIsMutating = false;
 		mIsNoSplat = false;
@@ -927,8 +936,8 @@ public:
 		mAddedAfterEmit = false;
 		mBody = NULL;
 		mExplicitInterface = NULL;
-		mReturnTypeRef = NULL;		
-		mMethodDeclaration = NULL;		
+		mReturnTypeRef = NULL;
+		mMethodDeclaration = NULL;
 		mCodeChanged = false;
 		mWantsBody = true;
 		mCommutableKind = BfCommutableKind_None;
@@ -937,7 +946,8 @@ public:
 		mMethodType = BfMethodType_Normal;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mHasAppend = false;
-		mAlwaysInline = false;		
+		mAlwaysInline = false;
+		mParamNameMap = NULL;
 		mNextWithSameName = NULL;
 	}
 
@@ -947,23 +957,24 @@ public:
 	bool HasNoThisSplat() { return mIsMutating || mIsNoSplat; }
 	void Reset();
 	void FreeMembers();
-	BfMethodDeclaration* GetMethodDeclaration();	
+	BfMethodDeclaration* GetMethodDeclaration();
 	BfPropertyMethodDeclaration* GetPropertyMethodDeclaration();
 	BfPropertyDeclaration* GetPropertyDeclaration();
 	BfAstNode* GetRefNode();
-	BfTokenNode* GetMutNode();	
+	BfTokenNode* GetMutNode();
 	bool HasBody();
-	bool IsEmptyPartial();	
+	bool IsEmptyPartial();
 	bool IsDefaultCtor();
 	bool IsCtorOrInit();
-	String ToString();		
+	String ToString();
 	int GetExplicitParamCount();
+	void BuildParamNameMap();
 };
 
 class BfOperatorDef : public BfMethodDef
 {
 public:
-	BfOperatorDeclaration* mOperatorDeclaration;	
+	BfOperatorDeclaration* mOperatorDeclaration;
 
 public:
 	BfOperatorDef()
@@ -984,7 +995,7 @@ public:
 struct BfTypeDefLookupContext
 {
 public:
-	int mBestPri;	
+	int mBestPri;
 	BfTypeDef* mBestTypeDef;
 	BfTypeDef* mAmbiguousTypeDef;
 
@@ -993,8 +1004,8 @@ public:
 	{
 		mBestPri = (int)0x80000000;
 		mBestTypeDef = NULL;
-		mAmbiguousTypeDef = NULL;		
-	}	
+		mAmbiguousTypeDef = NULL;
+	}
 
 	bool HasValidMatch()
 	{
@@ -1024,12 +1035,12 @@ struct BfMemberSetEntry
 
 class BfTypeDefMemberSet : public HashSet<BfMemberSetEntry>
 {
-public:	
+public:
 	int mSourceSize;
 
 public:
 	BfTypeDefMemberSet()
-	{		
+	{
 		mSourceSize = 0;
 	}
 
@@ -1040,39 +1051,7 @@ public:
 	}
 };
 
-class BfUsingFieldData
-{
-public:
-	struct FieldRef
-	{
-		BfTypeInstance* mTypeInstance;
-		BfFieldDef* mFieldDef;
-
-		FieldRef()
-		{
-			mTypeInstance = NULL;
-			mFieldDef = NULL;
-		}
-
-		FieldRef(BfTypeInstance* typeInst, BfFieldDef* fieldDef)
-		{
-			mTypeInstance = typeInst;
-			mFieldDef = fieldDef;
-		}
-	};
-
-	struct Entry
-	{
-		Array<FieldRef> mConflicts;
-		SizedArray<FieldRef, 1> mLookup;
-	};	
-
-public:
-	Array<BfFieldDef*> mUsingFields;
-	Dictionary<String, Entry> mEntries;
-};
-
-// For partial classes, the first entry in the map will contain the combined data 
+// For partial classes, the first entry in the map will contain the combined data
 class BfTypeDef
 {
 public:
@@ -1093,16 +1072,16 @@ public:
 
 public:
 	BfTypeDef* mNextRevision;
-	
+
 	BfSystem* mSystem;
 	BfProject* mProject;
 	BfTypeDeclaration* mTypeDeclaration;
-	BfSource* mSource;	
-	DefState mDefState;	
+	BfSource* mSource;
+	DefState mDefState;
 	Val128 mSignatureHash; // Data, methods, etc
-	Val128 mFullHash;	
+	Val128 mFullHash;
 	Val128 mInlineHash;
-	
+
 	BfTypeDef* mEmitParent;
 	BfTypeDef* mOuterType;
 	BfAtomComposite mNamespace;
@@ -1115,25 +1094,25 @@ public:
 	Array<BfTypeReference*> mStaticSearch;
 	Array<BfTypeReference*> mInternalAccessSet;
 	Array<BfFieldDef*> mFields;
-	BfUsingFieldData* mUsingFieldData; // Created during mFieldSet
 	Array<BfPropertyDef*> mProperties;
 	Array<BfMethodDef*> mMethods;
 	BfTypeDefMemberSet mMethodSet;
 	BfTypeDefMemberSet mFieldSet;
 	BfTypeDefMemberSet mPropertySet;
 	Array<BfOperatorDef*> mOperators;
-	Array<BfGenericParamDef*> mGenericParamDefs;	
+	Array<BfGenericParamDef*> mGenericParamDefs;
 	Array<BfExternalConstraintDef> mExternalConstraints;
-	Array<BfTypeReference*> mBaseTypes;	
-	Array<BfTypeDef*> mNestedTypes;		
+	Array<BfTypeReference*> mBaseTypes;
+	Array<BfTypeDef*> mNestedTypes;
 	Array<BfDirectStrTypeReference*> mDirectAllocNodes;
-	Array<BfTypeDef*> mPartials; // Only valid for mIsCombinedPartial		
-		
+	Array<BfTypeDef*> mPartials; // Only valid for mIsCombinedPartial
+
 	int mHash;
 	int mPartialIdx;
 	int mNestDepth;
 	int mDupDetectedRevision; // Error state
-	BfTypeCode mTypeCode;	
+	BfTypeCode mTypeCode;
+	BfShow mShow;
 	bool mIsAlwaysInclude;
 	bool mIsNoDiscard;
 	bool mIsPartial;
@@ -1143,45 +1122,46 @@ public:
 	bool mIsDelegate;
 	bool mIsFunction;
 	bool mIsClosure;
-	bool mIsAbstract;	
-	bool mIsStatic;	
+	bool mIsAbstract;
+	bool mIsStatic;
 	bool mHasCEOnCompile;
 	bool mHasAppendCtor;
 	bool mHasCtorNoBody;
 	bool mHasExtensionMethods;
-	bool mHasOverrideMethods;	
+	bool mHasOverrideMethods;
 	bool mHasUsingFields;
 	bool mIsOpaque;
 	bool mIsNextRevision;
-	bool mInDeleteQueue;	
+	bool mInDeleteQueue;
 	bool mForceUseNextRevision;
 
 public:
 	BfTypeDef()
-	{		
+	{
 		Init();
 	}
 
 	~BfTypeDef();
 
 	void Init()
-	{		
+	{
 		mName = NULL;
 		mNameEx = NULL;
 		mSystem = NULL;
 		mProject = NULL;
-		mTypeCode = BfTypeCode_None;		
+		mTypeCode = BfTypeCode_None;
+		mShow = BfShow_Show;
 		mIsAlwaysInclude = false;
 		mIsNoDiscard = false;
 		mIsExplicitPartial = false;
 		mIsPartial = false;
 		mIsCombinedPartial = false;
 		mTypeDeclaration = NULL;
-		mSource = NULL;		
+		mSource = NULL;
 		mDefState = DefState_New;
-		mHash = 0;		
+		mHash = 0;
 		mPartialIdx = -1;
-		mIsAbstract = false;		
+		mIsAbstract = false;
 		mIsDelegate = false;
 		mIsFunction = false;
 		mIsClosure = false;
@@ -1195,30 +1175,29 @@ public:
 		mIsOpaque = false;
 		mPartialUsed = false;
 		mIsNextRevision = false;
-		mInDeleteQueue = false;		
+		mInDeleteQueue = false;
 		mForceUseNextRevision = false;
 		mDupDetectedRevision = -1;
 		mNestDepth = 0;
 		mEmitParent = NULL;
 		mOuterType = NULL;
-		mTypeDeclaration = NULL;		
+		mTypeDeclaration = NULL;
 		mNextRevision = NULL;
 		mProtection = BfProtection_Public;
-		mUsingFieldData = NULL;
 	}
 
 	BfSource* GetLastSource();
-	bool IsGlobalsContainer();	
+	bool IsGlobalsContainer();
 	void Reset();
 	void FreeMembers();
 	void PopulateMemberSets();
 	void ClearMemberSets();
-	void RemoveGenericParamDef(BfGenericParamDef* genericParamDef);	
+	void RemoveGenericParamDef(BfGenericParamDef* genericParamDef);
 	int GetSelfGenericParamCount();
 	String ToString();
 	BfMethodDef* GetMethodByName(const StringImpl& name, int paramCount = -1);
 	BfFieldDef* GetFieldByName(const StringImpl& name);
-	bool HasAutoProperty(BfPropertyDeclaration* propertyDeclaration);	
+	bool HasAutoProperty(BfPropertyDeclaration* propertyDeclaration);
 	bool ContainsPartial(BfTypeDef* partialTypeDef);
 	bool HasParsingFailed();
 	String GetAutoPropertyName(BfPropertyDeclaration* propertyDeclaration);
@@ -1294,7 +1273,7 @@ public:
 		SkipEntry()
 		{
 			mIndex = -1;
-			mRevision = -1;			
+			mRevision = -1;
 		}
 
 		SkipEntry(int index, int revision)
@@ -1357,12 +1336,12 @@ public:
 enum BfTargetType
 {
 	BfTargetType_BeefConsoleApplication,
-	BfTargetType_BeefWindowsApplication,		
-	BfTargetType_BeefLib,	
+	BfTargetType_BeefWindowsApplication,
+	BfTargetType_BeefLib,
 	BfTargetType_CustomBuild,
 	BfTargetType_BeefTest,
 	BfTargetType_C_ConsoleApplication,
-	BfTargetType_C_WindowsApplication,	
+	BfTargetType_C_WindowsApplication,
 	BfTargetType_BeefApplication_StaticLib,
 	BfTargetType_BeefApplication_DynamicLib,
 	BfTargetType_BeefLib_StaticLib,
@@ -1392,14 +1371,14 @@ public:
 		DeleteStage_AwaitingRefs,
 	};
 
-public:	
+public:
 	BfSystem* mSystem;
 	String mName;
 	String mSafeName;
 	String mDirectory;
 	Array<BfProject*> mDependencies;
 	BfTargetType mTargetType;
-	BfCodeGenOptions mCodeGenOptions;	
+	BfCodeGenOptions mCodeGenOptions;
 	bool mDisabled;
 	bool mSingleModule;
 	bool mAlwaysIncludeAll;
@@ -1407,11 +1386,11 @@ public:
 	int mIdx;
 
 	String mStartupObject;
-	Array<String> mPreprocessorMacros;	
+	Array<String> mPreprocessorMacros;
 	Dictionary<BfAtomComposite, int> mNamespaces;
-	
+
 	HashSet<BfModule*> mUsedModules;
-	HashSet<BfType*> mReferencedTypeData;	
+	HashSet<BfType*> mReferencedTypeData;
 
 	Val128 mBuildConfigHash;
 	Val128 mVDataConfigHash;
@@ -1423,7 +1402,7 @@ public:
 	~BfProject();
 
 	bool ContainsReference(BfProject* refProject);
-	bool ReferencesOrReferencedBy(BfProject* refProject);	
+	bool ReferencesOrReferencedBy(BfProject* refProject);
 	bool IsTestProject();
 };
 
@@ -1435,7 +1414,7 @@ enum BfWarning
 	BfWarning_CS0162_UnreachableCode					= 162,
 	BfWarning_CS0168_VariableDeclaredButNeverUsed		= 168,
 	BfWarning_CS0472_ValueTypeNullCompare				= 472,
-	BfWarning_CS1030_PragmaWarning						= 1030,	
+	BfWarning_CS1030_PragmaWarning						= 1030,
 	BfWarning_BF4201_Only7Hex							= 4201,
 	BfWarning_BF4202_TooManyHexForInt					= 4202,
 	BfWarning_BF4203_UnnecessaryDynamicCast				= 4203,
@@ -1458,9 +1437,9 @@ class BfErrorBase
 public:
 	bool mIsWarning;
 	bool mIsDeferred;
-	BfSourceData* mSource;	
+	BfSourceData* mSource;
 	int mSrcStart;
-	int mSrcEnd;	
+	int mSrcEnd;
 	BfErrorLocation* mLocation;
 
 public:
@@ -1468,7 +1447,7 @@ public:
 	{
 		mIsWarning = false;
 		mIsDeferred = false;
-		mSource = NULL;		
+		mSource = NULL;
 		mSrcStart = -1;
 		mSrcEnd = -1;
 		mLocation = NULL;
@@ -1486,11 +1465,11 @@ public:
 
 class BfError : public BfErrorBase
 {
-public:	
-	bool mIsAfter;	
+public:
+	bool mIsAfter;
 	bool mIsPersistent;
 	BfWhileSpecializingFlags mIsWhileSpecializing;
-	bool mIgnore;	
+	bool mIgnore;
 	BfProject* mProject;
 	String mError;
 	int mWarningNumber;
@@ -1499,10 +1478,10 @@ public:
 public:
 	BfError()
 	{
-		mIsAfter = false;		
+		mIsAfter = false;
 		mIsPersistent = false;
 		mIsWhileSpecializing = BfWhileSpecializingFlag_None;
-		mIgnore = false;		
+		mIgnore = false;
 		mProject = NULL;
 		mWarningNumber = 0;
 	}
@@ -1560,16 +1539,16 @@ public:
 	BfSystem* mSystem;
 	BfCompiler* mCompiler;
 	bool mTrimMessagesToCursor;
-	int mFailedIdx;	
+	int mFailedIdx;
 	int mWarnIdx;
-	
+
 	Dictionary<BfSourceData*, String> mSourceFileNameMap;
 	HashSet<BfErrorEntry> mErrorSet;
 	Array<BfError*> mErrors;
 	int mIgnoreCount;
-	int mWarningCount;	
+	int mWarningCount;
 	int mDeferredErrorCount;
-	Deque<String> mOutStream;	
+	Deque<String> mOutStream;
 	bool mLastWasDisplayed;
 	bool mLastWasAdded;
 	uint8 mClassifierPassId;
@@ -1587,9 +1566,9 @@ public:
 		mLastWasDisplayed = false;
 		mLastWasAdded = false;
 		mClassifierPassId = 0;
-		mWarningCount = 0;		
+		mWarningCount = 0;
 		mDeferredErrorCount = 0;
-		mIgnoreCount = 0;		
+		mIgnoreCount = 0;
 		mHadSignatureChanges = false;
 	}
 
@@ -1614,7 +1593,7 @@ public:
 	BfError* Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode, bool isDeferred = false);
 	BfError* DeferWarn(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
 	BfError* WarnAfter(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
-	BfError* WarnAfterAt(int warningNumber, const StringImpl& error, BfSourceData* bfSource, int srcIdx);	
+	BfError* WarnAfterAt(int warningNumber, const StringImpl& error, BfSourceData* bfSource, int srcIdx);
 
 	BfMoreInfo* MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags = BfFailFlag_None);
 	BfMoreInfo* MoreInfo(const StringImpl& info, bool forceQueue = false);
@@ -1628,7 +1607,7 @@ public:
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);
 	BfError* DeferFail(const StringImpl& error, BfAstNode* refNode);
 	void SilentFail();
-	
+
 	void TryFlushDeferredError();
 	void WriteErrorSummary();
 };
@@ -1655,7 +1634,6 @@ enum BfOptionFlags
 
 	BfOptionFlags_Reflect_MethodMask		= BfOptionFlags_ReflectStaticMethods | BfOptionFlags_ReflectNonStaticMethods | BfOptionFlags_ReflectConstructors,
 	BfOptionFlags_Mask = 0x3FFF
-
 };
 
 enum BfFieldFlags
@@ -1668,7 +1646,8 @@ enum BfFieldFlags
 	BfFieldFlags_EnumPayload = 0x100,
 	BfFieldFlags_EnumDiscriminator = 0x200,
 	BfFieldFlags_EnumCase = 0x400,
-	BfFieldFlags_ReadOnly = 0x800
+	BfFieldFlags_ReadOnly = 0x800,
+	BfFieldFlags_Appended = 0x1000
 };
 
 enum BfReflectKind
@@ -1680,7 +1659,7 @@ enum BfReflectKind
 	BfReflectKind_DefaultConstructor = 8,
 	BfReflectKind_Constructors = 0x10,
 	BfReflectKind_StaticMethods = 0x20,
-	BfReflectKind_Methods = 0x40,	
+	BfReflectKind_Methods = 0x40,
 	BfReflectKind_DynamicBoxing = 0x80,
 	BfReflectKind_User = 0x100,
 	BfReflectKind_All = 0x1FF,
@@ -1701,15 +1680,15 @@ public:
 public:
 	Array<String> mTypeFilters;
 	Array<String> mAttributeFilters;
-	Array<int> mMatchedIndices;	
+	Array<int> mMatchedIndices;
 	int mSIMDSetting;
 	int mOptimizationLevel;
-	int mEmitDebugInfo;	
+	int mEmitDebugInfo;
 	BfOptionFlags mAndFlags;
 	BfOptionFlags mOrFlags;
 	Array<MethodFilter> mReflectMethodFilters;
 	Array<MethodFilter> mReflectMethodAttributeFilters;
-	int mAllocStackTraceDepth;	
+	int mAllocStackTraceDepth;
 
 public:
 	static int Apply(int val, int applyVal)
@@ -1717,7 +1696,7 @@ public:
 		if (applyVal != -1)
 			return applyVal;
 		return val;
-	}	
+	}
 
 	bool Apply(bool val, BfOptionFlags flags)
 	{
@@ -1741,10 +1720,10 @@ enum BfFindTypeDefFlags
 
 class BfSystem
 {
-public:			
-	int mPtrSize;				
+public:
+	int mPtrSize;
 	bool mIsResolveOnly;
-	
+
 	CritSect mDataLock; // short-lived, hold only while active modifying data
 	// The following are protected by mDataLock:
 	HashSet<String> mUsedSafeProjectNames;
@@ -1772,11 +1751,11 @@ public:
 	uint32 mYieldTickCount;
 	int mHighestYieldTime;
 	// The following are protected by mSystemLock - can only be accessed by the compiling thread
-	Dictionary<String, BfTypeDef*> mSystemTypeDefs;	
-	BfTypeDefMap mTypeDefs;		
+	Dictionary<String, BfTypeDef*> mSystemTypeDefs;
+	BfTypeDefMap mTypeDefs;
 	bool mNeedsTypesHandledByCompiler;
-	BumpAllocator mAlloc;	
-	int mAtomCreateIdx;	
+	BumpAllocator mAlloc;
+	int mAtomCreateIdx;
 	Dictionary<StringView, BfAtom*> mAtomMap;
 	Array<BfAtom*> mAtomGraveyard;
 	uint32 mAtomUpdateIdx;
@@ -1811,7 +1790,7 @@ public:
 	BfTypeDef* mTypeChar16;
 	BfTypeDef* mTypeChar32;
 	BfTypeDef* mTypeSingle;
-	BfTypeDef* mTypeDouble;	
+	BfTypeDef* mTypeDouble;
 
 	BfDirectStrTypeReference* mDirectVoidTypeRef;
 	BfDirectStrTypeReference* mDirectBoolTypeRef;
@@ -1827,58 +1806,57 @@ public:
 public:
 	BfSystem();
 	~BfSystem();
-	
+
 	BfAtom* GetAtom(const StringImpl& string);
 	BfAtom* FindAtom(const StringImpl& string); // Doesn't create a ref
 	BfAtom* FindAtom(const StringView& string); // Doesn't create a ref
-	void ReleaseAtom(BfAtom* atom);	
+	void ReleaseAtom(BfAtom* atom);
 	void ProcessAtomGraveyard();
 	void RefAtomComposite(const BfAtomComposite& atomComposite);
-	void ReleaseAtomComposite(const BfAtomComposite& atomComposite);	
+	void ReleaseAtomComposite(const BfAtomComposite& atomComposite);
 	void SanityCheckAtomComposite(const BfAtomComposite& atomComposite);
 	void TrackName(BfTypeDef* typeDef);
-	void UntrackName(BfTypeDef* typeDef);	
+	void UntrackName(BfTypeDef* typeDef);
 
 	bool ParseAtomComposite(const StringView& name, BfAtomComposite& composite, bool addRefs = false);
 
-	void CreateBasicTypes();	
+	void CreateBasicTypes();
 	bool DoesLiteralFit(BfTypeCode typeCode, int64 value);
 	bool DoesLiteralFit(BfTypeCode typeCode, uint64 value);
 	bool DoesLiteralFit(BfTypeCode typeCode, const BfVariant& variant);
-	BfParser* CreateParser(BfProject* bfProject);	
-	BfCompiler* CreateCompiler(bool isResolveOnly);			
+	BfParser* CreateParser(BfProject* bfProject);
+	BfCompiler* CreateCompiler(bool isResolveOnly);
 	BfProject* GetProject(const StringImpl& projName);
 
-	BfTypeReference* GetTypeRefElement(BfTypeReference* typeRef);	
+	BfTypeReference* GetTypeRefElement(BfTypeReference* typeRef);
 	BfTypeDef* FilterDeletedTypeDef(BfTypeDef* typeDef);
-	bool CheckTypeDefReference(BfTypeDef* typeDef, BfProject* project);	
+	bool CheckTypeDefReference(BfTypeDef* typeDef, BfProject* project);
 	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfProject* project = NULL, const Array<BfAtomComposite>& namespaceSearch = Array<BfAtomComposite>(), BfTypeDef** ambiguousTypeDef = NULL, BfFindTypeDefFlags flags = BfFindTypeDefFlag_None);
 	bool FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, BfProject* project, const BfAtomComposite& checkNamespace, bool allowPrivate, BfTypeDefLookupContext* ctx);
 	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfProject* project = NULL, const Array<BfAtomComposite>& namespaceSearch = Array<BfAtomComposite>(), BfTypeDef** ambiguousTypeDef = NULL, BfFindTypeDefFlags flags = BfFindTypeDefFlag_None);
 	BfTypeDef* FindTypeDef(const StringImpl& typeName, BfProject* project);
 	BfTypeDef* FindTypeDefEx(const StringImpl& typeName);
 	void ClearTypeDefCache();
-	void FindFixitNamespaces(const StringImpl& typeName, int numGenericArgs, BfProject* project, std::set<String>& fixitNamespaces);		
+	void FindFixitNamespaces(const StringImpl& typeName, int numGenericArgs, BfProject* project, std::set<String>& fixitNamespaces);
 
 	void RemoveTypeDef(BfTypeDef* typeDef);
 	//BfTypeDefMap::Iterator RemoveTypeDef(BfTypeDefMap::Iterator typeDefItr);
 	void AddNamespaceUsage(const BfAtomComposite& namespaceStr, BfProject* bfProject);
 	void RemoveNamespaceUsage(const BfAtomComposite& namespaceStr, BfProject* bfProject);
-	bool ContainsNamespace(const BfAtomComposite& namespaceStr, BfProject* bfProject);	
+	bool ContainsNamespace(const BfAtomComposite& namespaceStr, BfProject* bfProject);
 	void InjectNewRevision(BfTypeDef* typeDef);
 	void AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* compositeTypeDef, BfTypeDef* partialTypeDef);
-	void FinishCompositePartial(BfTypeDef* compositeTypeDef);	
+	void FinishCompositePartial(BfTypeDef* compositeTypeDef);
 	void CopyTypeDef(BfTypeDef* typeDef, BfTypeDef* nextTypeDef);
 	void UpdateEmittedTypeDef(BfTypeDef* typeDef);
 
 	BfTypeDef* GetCombinedPartial(BfTypeDef* typeDef);
 	BfTypeDef* GetOuterTypeNonPartial(BfTypeDef* typeDef);
-	
 
 	int GetGenericParamIdx(const Array<BfGenericParamDef*>& genericParams, const StringImpl& name);
 	int GetGenericParamIdx(const Array<BfGenericParamDef*>& genericParams, BfTypeReference* typeRef);
 
-	void StartYieldSection();	
+	void StartYieldSection();
 	void CheckLockYield(); // Yields to a higher priority request
 	void SummarizeYieldSection();
 
@@ -1907,7 +1885,7 @@ public:
 
 public:
 	AutoDisallowYield(BfSystem* system)
-	{ 		
+	{
 		mSystem = system;
 		mSystem->mYieldDisallowCount++;
 		mHeld = true;
@@ -1939,7 +1917,6 @@ public:
 		}
 	}
 };
-
 
 #ifdef _DEBUG
 
@@ -1977,7 +1954,6 @@ public:
 #else
 #define BfLogX(logIdx, fmt, ...) {} // Nothing
 #endif
-
 
 #ifdef BF_WANTS_LOG_SYS
 #define BfLogSys(sys, fmt, ...) DoBfLog((sys)->mIsResolveOnly ? 1 : 2, fmt, ##__VA_ARGS__)
@@ -2053,7 +2029,6 @@ namespace std
 		}
 	};
 }
-
 
 namespace std
 {

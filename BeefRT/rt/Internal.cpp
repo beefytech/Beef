@@ -55,6 +55,12 @@ static Beefy::StringT<0> gCmdLineString;
 bf::System::Runtime::BfRtCallbacks gBfRtCallbacks;
 BfRtFlags gBfRtFlags = (BfRtFlags)0;
 
+#ifdef BF_PLATFORM_WINDOWS
+DWORD gBfTLSKey = 0;
+#else
+pthread_key_t gBfTLSKey = 0;
+#endif
+
 static int gTestMethodIdx = -1;
 static uint32 gTestStartTick = 0;
 static bool gTestBreakOnFailure = false;
@@ -86,6 +92,7 @@ namespace bf
 			BFRT_EXPORT static void ObjectDynCheck(Object* object, int typeId, bool allowNull);
 			BFRT_EXPORT static void ObjectDynCheckFailed(Object* object, int typeId);			
 			BFRT_EXPORT static void ThrowIndexOutOfRange(intptr stackOffset);
+			BFRT_EXPORT static void ThrowObjectNotInitialized(intptr stackOffset);
 			BFRT_EXPORT static void FatalError(String* error, intptr stackOffset = 0);
 			BFRT_EXPORT static void MemCpy(void* dest, void* src, intptr length);
 			BFRT_EXPORT static void MemMove(void* dest, void* src, intptr length);
@@ -286,6 +293,11 @@ static void GetCrashInfo()
 	}
 }
 
+static void NTAPI TlsFreeFunc(void* ptr)
+{
+	gBfRtCallbacks.Thread_Exiting();
+}
+
 void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 {
 	BfpSystemInitFlags sysInitFlags = BfpSystemInitFlag_InstallCrashCatcher;
@@ -342,6 +354,12 @@ void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 			useCmdLineStr++;
 	}
 	gCmdLineString = useCmdLineStr;
+
+#ifdef BF_PLATFORM_WINDOWS
+	gBfTLSKey = FlsAlloc(TlsFreeFunc);	
+#else	
+	pthread_key_create(&gBfTLSKey, TlsFreeFunc);
+#endif
 }
 
 void bf::System::Runtime::SetErrorString(char* errorStr)
@@ -421,6 +439,30 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 	}
 	
 	Internal_FatalError("Index out of range");
+}
+
+void Internal::ThrowObjectNotInitialized(intptr stackOffset)
+{
+	if (gClientPipe != NULL)
+	{
+		if (gTestBreakOnFailure)
+		{
+			SETUP_ERROR("Object not initialized", (int)(2 + stackOffset));
+			BF_DEBUG_BREAK();
+		}
+
+		Beefy::String str = ":TestFail\tObject not initialized\n";
+		TestString(str);
+		exit(1);
+	}
+
+	if ((stackOffset != -1) && (::IsDebuggerPresent()))
+	{
+		SETUP_ERROR("Object not initialized", (int)(2 + stackOffset));
+		BF_DEBUG_BREAK();
+	}
+
+	Internal_FatalError("Object not initialized");
 }
 
 void Internal::FatalError(bf::System::String* error, intptr stackOffset)

@@ -149,6 +149,22 @@ namespace System
 		public static void ExcludeThreadId(int thereadId) {}
 #endif
 
+		[DisableObjectAccessChecks]
+		static void MarkAppendedObject(Object obj)
+		{
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			ClassVData* maskedVData = (ClassVData*)(void*)(obj.[Friend]mClassVData & ~(int)0xFF);
+			if (maskedVData == null)
+				return;
+#else
+			if (obj.[Friend]mClassVData == null)
+				return;
+#endif
+			obj.[Friend]GCMarkMembers();
+#endif
+		}
+
 		static void MarkDerefedObject(Object* obj)
 		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK

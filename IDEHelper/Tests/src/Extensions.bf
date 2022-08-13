@@ -204,7 +204,7 @@ namespace Tests
 				return mTVal;
 			}
 
-			public int GetB()
+			public new int GetB()
 			{
 				return 2;
 			}
@@ -265,6 +265,18 @@ namespace Tests
 		    {
 		        mVal = val;
 		    }
+		}
+
+		struct TestExtern<T>
+		{
+			public extern void MethodA();
+		}
+
+		extension TestExtern<T> where T : Char8
+		{
+			public override void MethodA()
+			{
+			}
 		}
 
 		[Test]

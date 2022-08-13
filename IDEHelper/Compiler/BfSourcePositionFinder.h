@@ -16,7 +16,7 @@ public:
 	BfSourcePositionFinder(BfParser* bfParser, int findPosition);
 
 	using BfStructuralVisitor::Visit;
-	virtual void Visit(BfAstNode* node) override;	
+	virtual void Visit(BfAstNode* node) override;
 };
 
 NS_BF_END

@@ -15,10 +15,10 @@
 
 inline size_t HashBytes(const uint8* ptr, size_t count) noexcept
 {
-#ifdef BF64	
+#ifdef BF64
 	const size_t _FNV_offset_basis = 14695981039346656037ULL;
 	const size_t _FNV_prime = 1099511628211ULL;
-#else	
+#else
 	const size_t _FNV_offset_basis = 2166136261U;
 	const size_t _FNV_prime = 16777619U;
 #endif
@@ -29,7 +29,7 @@ inline size_t HashBytes(const uint8* ptr, size_t count) noexcept
 		val ^= (size_t)ptr[_Next];
 		val *= _FNV_prime;
 	}
-	return (val);	
+	return (val);
 }
 
 template <typename T>
@@ -245,7 +245,7 @@ int16 EndianSwap(int16 val);
 
 template<typename T>
 struct RemoveTypePointer
-{	
+{
 };
 
 template<typename T>

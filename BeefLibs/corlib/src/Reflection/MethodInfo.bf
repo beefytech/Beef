@@ -50,6 +50,9 @@ namespace System.Reflection
 		public bool IsReadOnly => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.ReadOnly) :
 			mData.mMethodData.[Friend]mFlags.HasFlag(.ReadOnly);
+		public bool IsStatic => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.Static) :
+			mData.mMethodData.[Friend]mFlags.HasFlag(.Static);
 
 		public StringView Name => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetName(mData.mComptimeMethodInstance) :
@@ -109,6 +112,19 @@ namespace System.Reflection
 			{
 				Debug.Assert((uint)paramIdx < (uint)mData.mMethodData.mParamCount);
 				return mData.mMethodData.mParamData[paramIdx].mName;
+			}
+		}
+
+		public TypeInstance.ParamFlags GetParamFlags(int paramIdx)
+		{
+			if (Compiler.IsComptime)
+			{
+				return Type.[Friend]Comptime_Method_GetParamInfo(mData.mComptimeMethodInstance, (.)paramIdx).mParamFlags;
+			}
+			else
+			{
+				Debug.Assert((uint)paramIdx < (uint)mData.mMethodData.mParamCount);
+				return mData.mMethodData.mParamData[paramIdx].mParamFlags;
 			}
 		}
 
@@ -967,17 +983,58 @@ namespace System.Reflection
 			strBuffer.Append(' ');
 			strBuffer.Append(mData.mMethodData.mName);
 			strBuffer.Append('(');
+
+			int useParamIdx = 0;
 			for (int paramIdx < mData.mMethodData.mParamCount)
 			{
-				if (paramIdx > 0)
-					strBuffer.Append(", ");
 				let paramData = mData.mMethodData.mParamData[paramIdx];
 				let paramType = Type.[Friend]GetType(paramData.mType);
+				if (paramData.mParamFlags.HasFlag(.Implicit))
+					continue;
+				if (useParamIdx > 0)
+					strBuffer.Append(", ");
 				paramType.ToString(strBuffer);
 				strBuffer.Append(' ');
 				strBuffer.Append(paramData.mName);
+				useParamIdx++;
 			}
 			strBuffer.Append(')');
+		}
+
+		public void GetParamsDecl(String strBuffer)
+		{
+			int useParamIdx = 0;
+			for (int paramIdx < ParamCount)
+			{
+				var flag = GetParamFlags(paramIdx);
+				if (flag.HasFlag(.Implicit))
+					continue;
+				if (useParamIdx > 0)
+					strBuffer.Append(", ");
+				if (flag.HasFlag(.Params))
+					strBuffer.Append("params ");
+				strBuffer.Append(GetParamType(paramIdx));
+				strBuffer.Append(" ");
+				strBuffer.Append(GetParamName(paramIdx));
+				useParamIdx++;
+			}
+		}
+
+		public void GetArgsList(String strBuffer)
+		{
+			int useParamIdx = 0;
+			for (int paramIdx < ParamCount)
+			{
+				var flag = GetParamFlags(paramIdx);
+				if (flag.HasFlag(.Implicit))
+					continue;
+				if (useParamIdx > 0)
+					strBuffer.Append(", ");
+				if (flag.HasFlag(.Params))
+					strBuffer.Append("params ");
+				strBuffer.Append(GetParamName(paramIdx));
+				useParamIdx++;
+			}
 		}
 
 		public struct Enumerator : IEnumerator<MethodInfo>

@@ -979,6 +979,20 @@ namespace IDE
 					}
 				}
 			}
+
+			public bool IsLib
+			{
+				get
+				{
+					switch (this)
+					{
+					case BeefLib:
+						return true;
+					default:
+						return false;
+					}
+				}
+			}
         }
 
 		public class WindowsOptions

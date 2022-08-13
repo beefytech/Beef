@@ -636,6 +636,38 @@ namespace IDE
 					label.Append('\x02');
 			}
 		}
+
+		static String sHexUpperChars = "0123456789ABCDEF";
+		public static void URLEncode(StringView inStr, String outStr)
+		{
+			for (var c in inStr)
+			{
+				if ((c.IsLetterOrDigit) || (c == '-') || (c == '_') || (c == '.') || (c == '~') || (c == '/'))
+				{
+					outStr.Append(c);
+				}
+				else
+				{
+					outStr.Append('%');
+					outStr.Append(sHexUpperChars[(.)c>>4]);
+					outStr.Append(sHexUpperChars[(.)c&0xF]);
+				}
+			}
+		}
+
+		public static void URLDecode(StringView inStr, String outStr)
+		{
+			for (int i < inStr.Length)
+			{
+				char8 c = inStr[i];
+				if ((c == '%') && (i < inStr.Length-2))
+				{
+					c = (.)int32.Parse(inStr.Substring(i+1, 2), .HexNumber).GetValueOrDefault();
+					i += 2;
+				}
+				outStr.Append(c);
+			}
+		}
     }
 }
 

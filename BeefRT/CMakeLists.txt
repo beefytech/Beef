@@ -25,9 +25,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
-add_definitions(   
-   -DIDEHELPER_EXPORTS 
-   -DBFSYSLIB_DYNAMIC 
+add_definitions(
+   -DIDEHELPER_EXPORTS
+   -DBFSYSLIB_DYNAMIC
    -DUNICODE
    -D_UNICODE
    -DBF_NO_FBX
@@ -45,16 +45,16 @@ if (HAVE_BACKTRACE_HEADERS)
    add_definitions(-DBFP_HAS_BACKTRACE)
 endif ()
 
-if (${IOS})  
+if (${IOS})
   include_directories(
     .
-    ../BeefySysLib/  
+    ../BeefySysLib/
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
     ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/include
-    ../  
+    ../
     ../extern
-    ../extern/llvm/include  
+    ../extern/llvm/include
     ../extern/llvm_linux/include
     ../extern/llvm/lib/Target
 
@@ -63,13 +63,13 @@ if (${IOS})
 elseif (${APPLE})
   include_directories(
     .
-    ../BeefySysLib/  
+    ../BeefySysLib/
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
     ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/include
-    ../  
+    ../
     ../extern
-    ../extern/llvm/include  
+    ../extern/llvm/include
     ../extern/llvm_linux/include
     ../extern/llvm/lib/Target
 
@@ -79,13 +79,13 @@ elseif (${ANDROID})
   if (ANDROID_ABI STREQUAL "x86")
     include_directories(
       .
-      ../BeefySysLib/  
+      ../BeefySysLib/
       ../BeefySysLib/third_party
       ../BeefySysLib/third_party/freetype/include
       ../BeefySysLib/third_party/libffi/i686-pc-linux-gnu/include
-      ../  
+      ../
       ../extern
-      ../extern/llvm/include  
+      ../extern/llvm/include
       ../extern/llvm_linux/include
       ../extern/llvm/lib/Target
 
@@ -94,13 +94,13 @@ elseif (${ANDROID})
   elseif (ANDROID_ABI STREQUAL "x86_64")
     include_directories(
       .
-      ../BeefySysLib/  
+      ../BeefySysLib/
       ../BeefySysLib/third_party
       ../BeefySysLib/third_party/freetype/include
       ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/include
-      ../  
+      ../
       ../extern
-      ../extern/llvm/include  
+      ../extern/llvm/include
       ../extern/llvm_linux/include
       ../extern/llvm/lib/Target
 
@@ -109,28 +109,28 @@ elseif (${ANDROID})
   elseif (ANDROID_ABI STREQUAL "armeabi-v7a")
     include_directories(
       .
-      ../BeefySysLib/  
+      ../BeefySysLib/
       ../BeefySysLib/third_party
       ../BeefySysLib/third_party/freetype/include
       ../BeefySysLib/third_party/libffi/arm-unknown-linux-gnu/include
-      ../  
+      ../
       ../extern
-      ../extern/llvm/include  
+      ../extern/llvm/include
       ../extern/llvm_linux/include
       ../extern/llvm/lib/Target
 
       ../BeefySysLib/platform/android
     )
-  else()    
+  else()
     include_directories(
       .
-      ../BeefySysLib/  
+      ../BeefySysLib/
       ../BeefySysLib/third_party
       ../BeefySysLib/third_party/freetype/include
       ../BeefySysLib/third_party/libffi/aarch64-unknown-linux-gnu/include
-      ../  
+      ../
       ../extern
-      ../extern/llvm/include  
+      ../extern/llvm/include
       ../extern/llvm_linux/include
       ../extern/llvm/lib/Target
 
@@ -140,13 +140,13 @@ elseif (${ANDROID})
 else()
   include_directories(
     .
-    ../BeefySysLib/  
+    ../BeefySysLib/
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
     ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/include
-    ../  
+    ../
     ../extern
-    ../extern/llvm/include  
+    ../extern/llvm/include
     ../extern/llvm_linux/include
     ../extern/llvm/lib/Target
 
@@ -175,16 +175,16 @@ endif()
 # Add Dependencies to project.                    #
 ###################################################
 
-option(BUILD_DEPENDS 
-   "Build other CMake project." 
-   ON 
+option(BUILD_DEPENDS
+   "Build other CMake project."
+   ON
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   
+
 else()
-   
+
 endif()
 
 ################# Flags ################
@@ -196,14 +196,14 @@ if(MSVC)
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /GL /Od /Oi /Gy /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")    
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")
 endif(NOT MSVC)
 
 ################ Files ################
 #   --   Add files to project.   --   #
 #######################################
 
-file(GLOB SRC_FILES        
+file(GLOB SRC_FILES
     rt/Internal.cpp
     rt/Chars.cpp
     rt/Object.cpp
@@ -219,8 +219,9 @@ file(GLOB SRC_FILES
     ../BeefySysLib/util/BeefPerf.cpp
     ../BeefySysLib/util/String.cpp
     ../BeefySysLib/util/UTF8.cpp
-    ../BeefySysLib/util/Hash.cpp    
-    ../BeefySysLib/third_party/utf8proc/utf8proc.c    
+    ../BeefySysLib/util/Hash.cpp
+    ../BeefySysLib/third_party/utf8proc/utf8proc.c
+    ../BeefySysLib/third_party/putty/wildcard.c
 )
 
 if (${IOS})
@@ -282,10 +283,10 @@ endif()
 
 if (${APPLE})
   target_link_libraries(${PROJECT_NAME} pthread ffi)
-elseif (${ANDROID})  
+elseif (${ANDROID})
   #target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../BeefySysLib/third_party/libffi/aarch64-unknown-linux-gnu/.libs/libffi.a)
   #target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../BeefySysLib/third_party/libffi/i686-pc-linux-gnu/.libs/libffi.a)
-else()  
+else()
   target_link_libraries(${PROJECT_NAME} pthread ffi ${TARGET_LIBS_OS})
 endif()
 

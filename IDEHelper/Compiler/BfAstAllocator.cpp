@@ -24,36 +24,35 @@ void BfBitSet::Init(int numBits)
 	memset(mBits, 0, numInts * 4);
 }
 
-
 bool BfBitSet::IsSet(int idx)
 {
 	return (mBits[idx / 32] & (1 << (idx % 32))) != 0;
 }
 
 void BfBitSet::Set(int idx)
-{	
+{
 	mBits[idx / 32] |= (1 << (idx % 32));
 }
 
 void BfBitSet::Clear(int idx)
-{	
+{
 	mBits[idx / 32] &= ~(1 << (idx % 32));
 }
 
 //////////////////////////////////////////////////////////////////////////
 
 BfAstAllocator::BfAstAllocator()
-{	
+{
 	mSourceData = NULL;
-	mCurPtr = NULL;	
-	mCurPageEnd = mCurPtr;	
+	mCurPtr = NULL;
+	mCurPageEnd = mCurPtr;
 	mLargeAllocSizes = 0;
-	mNumPagesUsed = 0;	
+	mNumPagesUsed = 0;
 	mUsedSize = 0;
 }
 
 BfAstAllocator::~BfAstAllocator()
-{	
+{
 	for (auto addr : mLargeAllocs)
 		delete [] (uint8*)addr;
 	if (mPages.size() != 0)
@@ -61,16 +60,16 @@ BfAstAllocator::~BfAstAllocator()
 }
 
 void BfAstAllocator::InitChunkHead(int wantSize)
-{		
+{
 	mCurPtr = mSourceData->mAstAllocManager->AllocPage();
 	mPages.push_back(mCurPtr);
 	mCurPageEnd = mCurPtr + BfAstAllocManager::PAGE_SIZE;
 	mNumPagesUsed++;
-#ifdef BF_AST_ALLOCATOR_USE_PAGES	
+#ifdef BF_AST_ALLOCATOR_USE_PAGES
 	BfAstPageHeader* pageHeader = (BfAstPageHeader*)mCurPtr;
 	pageHeader->mSourceData = mSourceData;
 	BF_ASSERT(sizeof(BfAstPageHeader) <= 16);
-	mCurPtr += 16;		
+	mCurPtr += 16;
 #endif
 }
 
@@ -95,28 +94,28 @@ BfAstAllocManager::~BfAstAllocManager()
 #endif
 }
 
-//TODO: Remove this 
+//TODO: Remove this
 //static int gAstChunkAllocCount = 0;
 uint8* BfAstAllocManager::AllocPage()
 {
 #ifdef BF_AST_ALLOCATOR_USE_PAGES
 	AutoCrit autoCrit(mCritSect);
 
-	if (mFreePageCount != 0)	
+	if (mFreePageCount != 0)
 	{
 		mFreePageCount--;
 		return (uint8*)mFreePages.PopFront();
 	}
-	
+
 	BF_ASSERT(mFreePages.mHead == NULL);
-	
+
 	//auto newChunk = (uint8*)::VirtualAlloc((void*)(0x4200000000 + gAstChunkAllocCount*CHUNK_SIZE), CHUNK_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	//gAstChunkAllocCount++;
 
 	auto newChunk = (uint8*)::VirtualAlloc(NULL, CHUNK_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	BF_ASSERT(newChunk != NULL);
-	BF_ASSERT(((intptr)newChunk & (PAGE_SIZE - 1)) == 0);	
-	mAllocChunks.push_back(newChunk);	
+	BF_ASSERT(((intptr)newChunk & (PAGE_SIZE - 1)) == 0);
+	mAllocChunks.push_back(newChunk);
 
 	//BfLog("BfAstAllocManager alloc %p\n", newChunk);
 
@@ -128,7 +127,7 @@ uint8* BfAstAllocManager::AllocPage()
 	}
 
 	mFreePageCount--;
-	return (uint8*)mFreePages.PopFront();	
+	return (uint8*)mFreePages.PopFront();
 #else
 	return new uint8[PAGE_SIZE];
 #endif

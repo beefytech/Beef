@@ -26,7 +26,7 @@ public:
 	bool mIsStatic;
 	bool mIsTLS;
 	BeMCSymbolKind mSymKind;
-	int mValue;	
+	int mValue;
 	int mIdx;
 	int mSectionNum;
 
@@ -169,7 +169,7 @@ public:
 			return false;
 		for (int i = 0; i < (int)lhs->mType->mParams.size(); i++)
 			if (lhs->mType->mParams[i] != rhs->mType->mParams[i])
-				return false;		
+				return false;
 		return true;
 	}
 };
@@ -215,16 +215,16 @@ public:
 	PerfManager* mPerfManager;
 	DataStream* mStream;
 	BumpAllocator mAlloc;
-	BeModule* mBeModule;	
-	OwnedVector<BeMCSymbol> mSymbols;	
+	BeModule* mBeModule;
+	OwnedVector<BeMCSymbol> mSymbols;
 	OwnedVector<BeCOFFSection> mDynSects;
 	uint32 mTimestamp;
 
 	BeCOFFSection mTextSect;
 	BeCOFFSection mDataSect;
-	BeCOFFSection mRDataSect;	
-	BeCOFFSection mBSSSect;	
-	BeCOFFSection mTLSSect;	
+	BeCOFFSection mRDataSect;
+	BeCOFFSection mBSSSect;
+	BeCOFFSection mTLSSect;
 	BeCOFFSection mPDataSect;
 	BeCOFFSection mXDataSect;
 	BeCOFFSection mDebugSSect;
@@ -234,8 +234,8 @@ public:
 	int mBSSPos;
 	Array<BeCOFFSection*> mUsedSections;
 	Dictionary<BeValue*, BeMCSymbol*> mSymbolMap;
-	Dictionary<String, BeMCSymbol*> mNamedSymbolMap;	
-	HashSet<COFFArgListRef> mArgListSet;	
+	Dictionary<String, BeMCSymbol*> mNamedSymbolMap;
+	HashSet<COFFArgListRef> mArgListSet;
 	HashSet<COFFFuncTypeRef> mFuncTypeSet;
 	Deque<BeFunction*> mFuncWorkList;
 	int mTTagStartPos;
@@ -244,10 +244,10 @@ public:
 	int mSectionStartPos;
 	int mCurStringId;
 	int mCurJumpTableIdx;
-	bool mTypesLocked;		
+	bool mTypesLocked;
 	String mDirectives;
 
-public:	
+public:
 	void ToString(BeMDNode* mdNode, String& str);
 	int GetCVRegNum(X64CPURegister reg, int bits);
 
@@ -255,10 +255,10 @@ public:
 	void DbgTStartTag();
 	void DbgTEndTag();
 	void DbgEncodeConstant(DynMemStream& memStream, int64 val);
-	void DbgEncodeString(DynMemStream& memStream, const StringImpl& str);	
+	void DbgEncodeString(DynMemStream& memStream, const StringImpl& str);
 	void DbgMakeFuncType(BeDbgFunction* dbgFunc);
 	void DbgMakeFunc(BeDbgFunction* dbgFunc);
-	int DbgGetTypeId(BeDbgType* dbgType, bool doDefine = false);	
+	int DbgGetTypeId(BeDbgType* dbgType, bool doDefine = false);
 	void DbgGenerateTypeInfo();
 
 	void DbgSAlign();
@@ -270,18 +270,18 @@ public:
 	void DbgEndSection();
 	void DbgStartVarDefRange(BeDbgFunction* dbgFunc, BeDbgVariable* dbgVar, const BeDbgVariableLoc& varLoc, int offset, int range);
 	void DbgEndLineBlock(BeDbgFunction* dbgFunc, const Array<BeDbgCodeEmission>& emissions, int blockStartPos, int emissionStartIdx, int lineCount);
-	void DbgGenerateModuleInfo();	
+	void DbgGenerateModuleInfo();
 	void InitSect(BeCOFFSection& sect, const StringImpl& name, int characteristics, bool addNow, bool makeSectSymbol);
 	void AlignConst(BeCOFFSection& sect, BeConstant* constVal);
 	void WriteConst(BeCOFFSection& sect, BeConstant* constVal);
-	
+
 	void Generate(BeModule* module);
 
 public:
-	BeCOFFObject();		
+	BeCOFFObject();
 	void Finish();
 
-	bool Generate(BeModule* module, const StringImpl& fileName);	
+	bool Generate(BeModule* module, const StringImpl& fileName);
 	BeMCSymbol* GetSymbol(BeValue* value, bool allowCreate = true);
 	BeMCSymbol* GetSymbolRef(const StringImpl& name);
 	void MarkSectionUsed(BeCOFFSection& sect, bool getSectSymbol = false);

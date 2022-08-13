@@ -33,7 +33,7 @@ namespace Beefy.theme.dark
 
 			}
 
-			public virtual void MouseDown(float x, float y, int btn, int btnCount)
+			public virtual void MouseDown(Rect rect, float x, float y, int btn, int btnCount)
 			{
 
 			}
@@ -63,6 +63,7 @@ namespace Beefy.theme.dark
 		public bool mScrollToStartOnLostFocus;
 		public bool mHiliteCurrentLine;
 		public Dictionary<int32, Embed> mEmbeds = new .() ~ DeleteDictionaryAndValues!(_);
+		public Embed mEmbedSelected;
 		public Range? mLineRange;
 
 		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;
@@ -455,6 +456,12 @@ namespace Beefy.theme.dark
 			mContentChanged = true; // Defer calling of RecalcSize
 			GetTextData();
 			LineStartsChanged();
+		}
+
+		public override void ClearText()
+		{
+			mLineRange = null;
+			base.ClearText();
 		}
 
         public virtual float DrawText(Graphics g, String str, float x, float y, uint16 typeIdAndFlags)

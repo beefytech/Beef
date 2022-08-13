@@ -8,7 +8,7 @@ BfSourceClassifier::BfSourceClassifier(BfParser* bfParser, CharData* charData)
 {
 	mParser = bfParser;
 	mCharData = charData;
-	mSkipMethodInternals = false;	
+	mSkipMethodInternals = false;
 	mSkipTypeDeclarations = false;
 	mSkipAttributes = false;
 	mIsSideChannel = false;
@@ -23,7 +23,7 @@ BfSourceClassifier::BfSourceClassifier(BfParser* bfParser, CharData* charData)
 void BfSourceClassifier::ModifyFlags(BfAstNode* node, uint8 andFlags, uint8 orFlags)
 {
 	if (node != NULL)
-	{		
+	{
 		ModifyFlags(node->GetSrcStart(), node->GetSrcEnd(), andFlags, orFlags);
 	}
 }
@@ -35,8 +35,8 @@ void BfSourceClassifier::ModifyFlags(int startPos, int endPos, uint8 andFlags, u
 
 	endPos = std::min(endPos, mParser->mOrigSrcLength);
 	for (int i = startPos; i < endPos; i++)
-	{			
-		mCharData[i].mDisplayPassId = mClassifierPassId;		
+	{
+		mCharData[i].mDisplayPassId = mClassifierPassId;
 		mCharData[i].mDisplayFlags = (mCharData[i].mDisplayFlags & andFlags) | orFlags;
 	}
 }
@@ -62,13 +62,13 @@ void BfSourceClassifier::SetElementType(BfAstNode * node, BfTypeCode typeCode)
 }
 
 void BfSourceClassifier::SetHighestElementType(int startPos, int endPos, BfSourceElementType elementType)
-{	
+{
 	if (!mEnabled)
 		return;
 
 	endPos = BF_MIN(endPos, mParser->mOrigSrcLength);
 	for (int i = startPos; i < endPos; i++)
-	{	
+	{
 		auto& charData = mCharData[i];
 		charData.mDisplayPassId = mClassifierPassId;
 		charData.mDisplayTypeId = BF_MAX(charData.mDisplayTypeId, (uint8)elementType);
@@ -100,15 +100,15 @@ void BfSourceClassifier::VisitMembers(BfBlock* node)
 {
 	mPrevNode = NULL;
 	for (auto& childNodeRef : *node)
-	{		
+	{
 		BfAstNode* child = childNodeRef;
 		child->Accept(this);
-		mPrevNode = child; 
+		mPrevNode = child;
 	}
 }
 
 bool BfSourceClassifier::IsInterestedInMember(BfAstNode* node, bool forceSkip)
-{	
+{
 	if ((mSkipMethodInternals || forceSkip) && (mParser->mCursorIdx != -1) &&
 		(!node->Contains(mParser->mCursorIdx, 1, 0)))
 		return false;
@@ -121,16 +121,16 @@ void BfSourceClassifier::HandleLeafNode(BfAstNode* node)
 		return;
 
 	int nodeStart = node->GetSrcStart();
-	int srcStart = nodeStart;	
+	int srcStart = nodeStart;
 	int triviaStart = node->GetTriviaStart();
 	if (triviaStart != -1)
 	{
 		srcStart = triviaStart;
-		
+
 		if ((mIsSideChannel) && (mPrevNode != NULL))
 			srcStart = std::max(mPrevNode->GetSrcEnd(), srcStart);
 	}
-	
+
 	if (nodeStart != srcStart)
 		SetElementType(srcStart, nodeStart, BfSourceElementType_Normal);
 	//SetElementType(srcStart, node->GetSrcEnd(), BfSourceElementType_Normal);
@@ -140,7 +140,6 @@ void BfSourceClassifier::HandleLeafNode(BfAstNode* node)
 
 void BfSourceClassifier::Visit(BfAstNode* node)
 {
-	
 }
 
 void BfSourceClassifier::Visit(BfErrorNode* errorNode)
@@ -153,7 +152,7 @@ void BfSourceClassifier::Visit(BfFieldDeclaration* fieldDecl)
 {
 	if (!IsInterestedInMember(fieldDecl))
 		return;
-	
+
 	BfElementVisitor::Visit(fieldDecl);
 
 	VisitChild(fieldDecl->mConstSpecifier);
@@ -188,12 +187,12 @@ void BfSourceClassifier::Visit(BfPreprocessorNode* preprocessorNode)
 	if (!mPreserveFlags)
 		ModifyFlags(preprocessorNode, ~BfSourceElementFlag_CompilerFlags_Mask, 0);
 	SetElementType(preprocessorNode, BfSourceElementType_Normal);
-	
-	Visit(preprocessorNode->ToBase());	
+
+	Visit(preprocessorNode->ToBase());
 }
 
 void BfSourceClassifier::Visit(BfCommentNode* commentNode)
-{	
+{
 	HandleLeafNode(commentNode);
 
 	Visit(commentNode->ToBase());
@@ -236,7 +235,7 @@ void BfSourceClassifier::Visit(BfAttributeDirective* attributeDirective)
 		}
 	}
 
-	BfElementVisitor::Visit(attributeDirective);	
+	BfElementVisitor::Visit(attributeDirective);
 
 	VisitChild(attributeDirective->mAttrCloseToken);
 
@@ -262,7 +261,7 @@ void BfSourceClassifier::Visit(BfAttributeDirective* attributeDirective)
 	for (auto& arg : attributeDirective->mArguments)
 		VisitChild(arg);
 	for (auto& comma : attributeDirective->mCommas)
-		VisitChild(comma);	
+		VisitChild(comma);
 
 	VisitChild(attributeDirective->mNextAttribute);
 }
@@ -280,7 +279,7 @@ void BfSourceClassifier::Visit(BfIdentifierNode* identifier)
 }
 
 void BfSourceClassifier::Visit(BfQualifiedNameNode* qualifiedName)
-{	
+{
 	Visit((BfAstNode*)qualifiedName);
 
 	VisitChild(qualifiedName->mLeft);
@@ -406,11 +405,11 @@ void BfSourceClassifier::Visit(BfLiteralExpression* literalExpr)
 void BfSourceClassifier::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
 {
 	HandleLeafNode(stringInterpolationExpression);
-	
+
 	Visit(stringInterpolationExpression->ToBase());
 	SetElementType(stringInterpolationExpression, BfSourceElementType_Literal);
 
-	VisitChild(stringInterpolationExpression->mAllocNode);	
+	VisitChild(stringInterpolationExpression->mAllocNode);
 	for (auto& expr : stringInterpolationExpression->mExpressions)
 	{
 		SetElementType(expr, BfSourceElementType_Normal);
@@ -423,7 +422,7 @@ void BfSourceClassifier::Visit(BfTokenNode* tokenNode)
 	HandleLeafNode(tokenNode);
 
 	Visit(tokenNode->ToBase());
-	
+
 	if (BfTokenIsKeyword(tokenNode->GetToken()))
 		SetElementType(tokenNode, BfSourceElementType_Keyword);
 	else
@@ -436,15 +435,15 @@ void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 	Visit(invocationExpr->ToBase());
 
 	//BP_ZONE("BfSourceClassifier BfInvocationExpression");
-	
+
 	BfAstNode* target = invocationExpr->mTarget;
 	if (target == NULL)
 		return;
-	
+
 	VisitChild(invocationExpr->mOpenParen);
 	VisitChild(invocationExpr->mCloseParen);
 	VisitChild(invocationExpr->mGenericArgs);
-	
+
 	if (auto scopedTarget = BfNodeDynCast<BfScopedInvocationTarget>(target))
 	{
 		VisitChild(target);
@@ -458,27 +457,27 @@ void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 		VisitChild(qualifiedName->mLeft);
 		VisitChild(qualifiedName->mDot);
 		VisitChild(qualifiedName->mRight);
-		identifier = qualifiedName->mRight;		
+		identifier = qualifiedName->mRight;
 	}
 	else if ((identifier = BfNodeDynCast<BfIdentifierNode>(target)))
 	{
 		VisitChild(target);
 		// Leave as BfAttributedIdentifierNode if that's the case
-		identifier = target;		
+		identifier = target;
 	}
 	else if (auto qualifiedName = BfNodeDynCast<BfQualifiedNameNode>(target))
 	{
 		VisitChild(qualifiedName->mLeft);
 		VisitChild(qualifiedName->mDot);
 		VisitChild(qualifiedName->mRight);
-		identifier = qualifiedName->mRight;		
+		identifier = qualifiedName->mRight;
 	}
 	else if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(target))
 	{
 		VisitChild(memberRefExpr->mTarget);
 		VisitChild(memberRefExpr->mDotToken);
 		VisitChild(memberRefExpr->mMemberName);
-		identifier = memberRefExpr->mMemberName;		
+		identifier = memberRefExpr->mMemberName;
 	}
 	else
 	{
@@ -490,9 +489,9 @@ void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 		if (auto attrIdentifier = BfNodeDynCast<BfAttributedIdentifierNode>(identifier))
 		{
 			VisitChild(attrIdentifier->mAttributes);
-			identifier = attrIdentifier->mIdentifier;			
+			identifier = attrIdentifier->mIdentifier;
 		}
-		
+
 		if (identifier != NULL)
 			SetElementType(identifier, BfSourceElementType_Method);
 	}
@@ -551,7 +550,7 @@ void BfSourceClassifier::Visit(BfDestructorDeclaration* dtorDeclaration)
 }
 
 void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
-{	
+{
 	if (!IsInterestedInMember(methodDeclaration))
 		return;
 
@@ -559,8 +558,8 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 
 	SetAndRestoreValue<BfAstNode*> prevMember(mCurMember, methodDeclaration);
 
-	BfElementVisitor::Visit(methodDeclaration);	
-	
+	BfElementVisitor::Visit(methodDeclaration);
+
 	SetElementType(methodDeclaration->mNameNode, BfSourceElementType_Method);
 
 	if (methodDeclaration->mGenericParams != NULL)
@@ -582,7 +581,7 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 				if (typeRef != NULL)
 				{
 					if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
-						SetElementType(typeRef, BfSourceElementType_GenericParam);						
+						SetElementType(typeRef, BfSourceElementType_GenericParam);
 					else
 						VisitChild(typeRef);
 				}
@@ -651,7 +650,7 @@ void BfSourceClassifier::Handle(BfTypeDeclaration* typeDeclaration)
 
 	llvm::SmallVector<BfTypeReference*, 2> mBaseClasses;
 	llvm::SmallVector<BfAstNode*, 2> mBaseClassCommas;
-	
+
 	if (typeDeclaration->mGenericParams != NULL)
 	{
 		for (auto& genericParam : typeDeclaration->mGenericParams->mGenericParams)
@@ -694,12 +693,25 @@ void BfSourceClassifier::MarkSkipped(BfAstNode* node)
 	MarkSkipped(node->GetSrcStart(), node->GetSrcEnd());
 }
 
+void BfSourceClassifier::DeferNodes(BfBlock* block)
+{
+	for (auto child : *block)
+		mDeferredNodes.Add(child);
+}
+
+void BfSourceClassifier::FlushDeferredNodes()
+{
+	for (auto node : mDeferredNodes)
+		VisitChild(node);
+	mDeferredNodes.Clear();
+}
+
 void BfSourceClassifier::Visit(BfTypeAliasDeclaration* typeDeclaration)
 {
 	if (typeDeclaration->mIgnoreDeclaration)
 		return;
 
-	BfElementVisitor::Visit(typeDeclaration);	
+	BfElementVisitor::Visit(typeDeclaration);
 }
 
 void BfSourceClassifier::Visit(BfUsingDirective* usingDirective)
@@ -722,7 +734,7 @@ void BfSourceClassifier::Visit(BfUsingDirective* usingDirective)
 
 void BfSourceClassifier::Visit(BfUsingModDirective* usingDirective)
 {
-	BfElementVisitor::Visit(usingDirective);	
+	BfElementVisitor::Visit(usingDirective);
 }
 
 void BfSourceClassifier::Visit(BfNamespaceDeclaration* namespaceDeclaration)
@@ -747,7 +759,7 @@ bool BfSourceClassifier::WantsSkipParentMethod(BfAstNode* node)
 {
 	if (!mSkipMethodInternals)
 		return false;
-	
+
 #ifdef BF_AST_HAS_PARENT_MEMBER
 	if (node->mParent->IsA<BfMethodDeclaration>())
 	{
@@ -785,7 +797,7 @@ void BfSourceClassifier::Visit(BfGenericConstraintsDeclaration* genericConstrain
 }
 
 void BfSourceClassifier::Visit(BfBlock* block)
-{		
+{
 	if (WantsSkipParentMethod(block))
 		return;
 	if (block->mOpenBrace != NULL)
@@ -800,7 +812,7 @@ void BfSourceClassifier::Visit(BfRootNode* rootNode)
 	// Clear off the flags at the end
 	ModifyFlags(mParser->mRootNode->GetSrcEnd(), mParser->mOrigSrcLength, 0, 0);
 
-	VisitMembers(rootNode);	
+	VisitMembers(rootNode);
 }
 
 void BfSourceClassifier::Visit(BfInlineAsmStatement* asmStmt)
@@ -809,7 +821,7 @@ void BfSourceClassifier::Visit(BfInlineAsmStatement* asmStmt)
 		Visit(asmStmt->mOpenBrace);
 	if (asmStmt->mCloseBrace != NULL)
 		Visit(asmStmt->mCloseBrace);
-	
+
 	//VisitMembers(asmStmt);
 }
 

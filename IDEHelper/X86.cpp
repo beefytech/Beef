@@ -159,10 +159,10 @@ bool X86Instr::StackAdjust(uint32& adjust)
 
 	if (mMCInst.getOpcode() != X86::SUB32ri8)
 		return true;
-	
+
 	auto operand0 = mMCInst.getOperand(0);
 	if (operand0.getReg() != llvm::X86::ESP)
-		return true;	
+		return true;
 	auto operand2 = mMCInst.getOperand(2);
 	if (!operand2.isImm())
 		return false;
@@ -191,7 +191,7 @@ bool X86Instr::IsReturn()
 }
 
 bool X86Instr::IsRep(bool& isPrefixOnly)
-{		
+{
 	auto instFlags = mMCInst.getFlags();
 	if ((instFlags & (X86::IP_HAS_REPEAT_NE | X86::IP_HAS_REPEAT)) != 0)
 	{
@@ -208,7 +208,7 @@ bool X86Instr::IsRep(bool& isPrefixOnly)
 }
 
 bool X86Instr::IsLoadAddress()
-{	
+{
 	const MCInstrDesc &instDesc = mX86->mInstrInfo->get(mMCInst.getOpcode());
 	if (instDesc.NumOperands >= 6)
 	{
@@ -234,25 +234,25 @@ static int ConvertRegNum(const MCOperand& operand)
 	case llvm::X86::CL:
 	case llvm::X86::CH:
 	case llvm::X86::ECX:
-		return X86Reg_ECX;		
+		return X86Reg_ECX;
 	case llvm::X86::DL:
 	case llvm::X86::DH:
 	case llvm::X86::EDX:
-		return X86Reg_EDX;		
+		return X86Reg_EDX;
 	case llvm::X86::BL:
 	case llvm::X86::BH:
 	case llvm::X86::EBX:
-		return X86Reg_EBX;		
+		return X86Reg_EBX;
 	case llvm::X86::ESP:
-		return X86Reg_ESP;		
+		return X86Reg_ESP;
 	case llvm::X86::EBP:
-		return X86Reg_EBP;		
+		return X86Reg_EBP;
 	case llvm::X86::ESI:
-		return X86Reg_ESI;		
+		return X86Reg_ESI;
 	case llvm::X86::EDI:
-		return X86Reg_EDI;		
+		return X86Reg_EDI;
 	case llvm::X86::EIP:
-		return X86Reg_EIP;		
+		return X86Reg_EIP;
 	case llvm::X86::EFLAGS:
 		return X86Reg_EFL;
 
@@ -272,7 +272,7 @@ static int ConvertRegNum(const MCOperand& operand)
 		return X86Reg_FPST6;
 	case llvm::X86::ST7:
 		return X86Reg_FPST7;
-			
+
 	case llvm::X86::XMM0:
 		return X86Reg_M128_XMM0;
 	case llvm::X86::XMM1:
@@ -299,9 +299,9 @@ bool X86Instr::GetIndexRegisterAndOffset(int* outRegister, int* outOffset)
 	const MCInstrDesc &instDesc = mX86->mInstrInfo->get(mMCInst.getOpcode());
 
 	auto form = (instDesc.TSFlags & llvm::X86II::FormMask);
-	if ((form == llvm::X86II::MRMDestMem) || (form == llvm::X86II::MRMSrcMem) || 
+	if ((form == llvm::X86II::MRMDestMem) || (form == llvm::X86II::MRMSrcMem) ||
 		((form >= llvm::X86II::MRM0m) && (form <= llvm::X86II::MRM7m)))
-	{		
+	{
 		auto baseReg = mMCInst.getOperand(llvm::X86::AddrBaseReg);
 		auto scaleAmt = mMCInst.getOperand(llvm::X86::AddrScaleAmt);
 		auto indexReg = mMCInst.getOperand(llvm::X86::AddrIndexReg);
@@ -320,12 +320,12 @@ bool X86Instr::GetIndexRegisterAndOffset(int* outRegister, int* outOffset)
 		if ((baseReg.isReg()) &&
 			(scaleAmt.isImm()) && (scaleAmt.getImm() == 1) &&
 			(indexReg.isReg()) && (indexReg.getReg() == llvm::X86::NoRegister) &&
-			(addrDisp.isImm()))		
+			(addrDisp.isImm()))
 		{
 			int regNum = ConvertRegNum(baseReg);
 			if (regNum == -1)
 				return false;
-			*outRegister = regNum;			
+			*outRegister = regNum;
 			*outOffset = (int)addrDisp.getImm();
 			return true;
 		}
@@ -336,11 +336,11 @@ bool X86Instr::GetIndexRegisterAndOffset(int* outRegister, int* outOffset)
 bool X86Instr::GetImmediate(uint32* outImm)
 {
 	const MCInstrDesc &instDesc = mX86->mInstrInfo->get(mMCInst.getOpcode());
-	
+
 	auto immediateType = (instDesc.TSFlags & llvm::X86II::ImmMask);
 	if ((immediateType == 0) && (mMCInst.getNumOperands() < 6))
 		return false;
-	
+
 	auto immOp = mMCInst.getOperand(5);
 	if (!immOp.isImm())
 		return false;
@@ -376,9 +376,9 @@ void X86Instr::MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm)
 }
 
 uint32 X86Instr::GetTarget(Debugger* debugger, X86CPURegisters* registers)
-{	
+{
 	const MCInstrDesc &instDesc = mX86->mInstrInfo->get(mMCInst.getOpcode());
-	
+
 	if (mMCInst.getNumOperands() < 1)
 		return 0;
 
@@ -389,7 +389,7 @@ uint32 X86Instr::GetTarget(Debugger* debugger, X86CPURegisters* registers)
 		opIdx = 4;
 		operand = mMCInst.getOperand(opIdx);
 	}
-	
+
 	if (operand.isImm())
 	{
 		auto targetAddr = (uint32)operand.getImm();
@@ -418,7 +418,7 @@ X86CPU::X86CPU() :
 	mInstrInfo = NULL;
 	mInstPrinter = NULL;
 
-	//InitializeAllTargets();		
+	//InitializeAllTargets();
 
 	auto& TheX86_32Target = getTheX86_32Target();
 
@@ -438,7 +438,7 @@ X86CPU::X86CPU() :
 	//TargetOptions targetOptions;
 	//TargetMachine* targetMachine = TheX86_32Target.createTargetMachine(triple, "x86", "", targetOptions);
 
-	//const MCInstrInfo* MII = targetMachine->getSubtargetImpl()->getInstrInfo();	
+	//const MCInstrInfo* MII = targetMachine->getSubtargetImpl()->getInstrInfo();
 	//STI->getIntr
 
 	mInstrInfo = TheX86_32Target.createMCInstrInfo();
@@ -452,11 +452,11 @@ X86CPU::X86CPU() :
 	mMCContext->setObjectFileInfo(mMCObjectFileInfo);
 
 	MCDisassembler *disAsm = TheX86_32Target.createMCDisassembler(*mSubtargetInfo, *mMCContext);
-	mDisAsm = disAsm;	
+	mDisAsm = disAsm;
 
 	//TODO: LLVM3.8 - changed params
 	/*mInstPrinter = TheX86_32Target.createMCInstPrinter(1, *mAsmInfo,
-		*mInstrInfo, *mRegisterInfo, *mSubtargetInfo);*/	
+		*mInstrInfo, *mRegisterInfo, *mSubtargetInfo);*/
 	mInstPrinter = TheX86_32Target.createMCInstPrinter(Triple(triple), 1, *mAsmInfo,
 		*mInstrInfo, *mRegisterInfo);
 
@@ -471,7 +471,7 @@ X86CPU::X86CPU() :
 extern "C" void LLVMShutdown();
 
 X86CPU::~X86CPU()
-{	
+{
 	delete mInstPrinter;
 	delete mDisAsm;
 	delete mMCContext;
@@ -485,11 +485,11 @@ X86CPU::~X86CPU()
 }
 
 bool X86CPU::Decode(uint32 address, DbgModuleMemoryCache* memoryCache, X86Instr* inst)
-{	
+{
 	inst->mAddress = address;
 	inst->mX86 = this;
 
-	uint64 size = 0;		
+	uint64 size = 0;
 	uint8 data[15];
 	memoryCache->Read(address, data, 15);
 
@@ -504,15 +504,15 @@ bool X86CPU::Decode(uint32 address, DbgModuleMemoryCache* memoryCache, X86Instr*
 bool X86CPU::Decode(uint32 baseAddress, const uint8* dataBase, int dataLength, const uint8* dataPtr, X86Instr* inst)
 {
 	//X86GenericDisassembler assembler;
-		
+
 	//DisasmMemoryObject region((uint8*)dataBase, dataLength, baseAddress);
 	//std::memorystream
-	
+
 	uint32 address = baseAddress + (uint32)(dataPtr - dataBase);
 	inst->mAddress = address;
 	inst->mX86 = this;
 
-	uint64 size = 0;	
+	uint64 size = 0;
 	//TODO: LLVM3.8
 	//MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(inst->mMCInst, size, region, address, nulls(), inst->mAnnotationStream);
 
@@ -526,7 +526,7 @@ bool X86CPU::Decode(uint32 baseAddress, const uint8* dataBase, int dataLength, c
 
 void X86CPU::GetNextPC(uint32 baseAddress, const uint8* dataBase, int dataLength, const uint8* dataPtr, uint32* regs, uint32 nextPCs[2])
 {
-	//DisasmMemoryObject region((uint8*) dataBase, dataLength, baseAddress);	
+	//DisasmMemoryObject region((uint8*) dataBase, dataLength, baseAddress);
 	uint32 address = baseAddress + (uint32)(dataPtr - dataBase);
 
 	uint64 size = 0;
@@ -535,17 +535,16 @@ void X86CPU::GetNextPC(uint32 baseAddress, const uint8* dataBase, int dataLength
 	mDisAsm->CommentStream = &nulls();
 	ArrayRef<uint8_t> dataArrayRef(dataPtr, dataLength - (dataPtr - dataBase));
 	MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(mcInst, size, dataArrayRef, address, nulls());
-	
 }
 
 bool X86CPU::IsReturnInstruction(X86Instr* inst)
 {
 	const MCInstrDesc &instDesc = mInstrInfo->get(inst->mMCInst.getOpcode());
-	return (instDesc.getFlags() & (1<<MCID::Return)) != 0;	
+	return (instDesc.getFlags() & (1<<MCID::Return)) != 0;
 }
 
 String X86CPU::InstructionToString(X86Instr* inst, uint32 addr)
-{		
+{
 	StringRef annotationsStr;
 
 	SmallVector<char, 256> insnStr;
@@ -553,8 +552,8 @@ String X86CPU::InstructionToString(X86Instr* inst, uint32 addr)
 	//mInstPrinter->CurPCRelImmOffset = addr + inst->GetLength();
 	mInstPrinter->printInst(&inst->mMCInst, addr, annotationsStr, *mSubtargetInfo, OS);
 	//OS.flush();
-	//llvm::StringRef str = OS.str();	
-	
+	//llvm::StringRef str = OS.str();
+
 	String result;
 	for (int idx = 0; idx < (int)insnStr.size(); idx++)
 	{
@@ -570,8 +569,8 @@ String X86CPU::InstructionToString(X86Instr* inst, uint32 addr)
 		else
 			result.Append(c);
 	}
-	
-	/*String result = String(insnStr.data(), insnStr.size());	
+
+	/*String result = String(insnStr.data(), insnStr.size());
 	for (int i = 0; i < (int)result.length(); i++)
 	{
 		if (result[i] == '\t')
@@ -671,12 +670,12 @@ int X86CPU::GetOpcodesForMnemonic(const StringImpl& mnemonic, Array<int>& outOpc
 	String s(mnemonic);
 	std::transform(s.begin(), s.end(), s.begin(), ::tolower);
 	std::pair<StringToOpcodeMap::iterator, StringToOpcodeMap::iterator> range = mStringToOpcodeMap.equal_range(s);
-		
+
 	outOpcodes.Clear();
 	for (StringToOpcodeMap::iterator it = range.first; it != range.second; ++it)
 		outOpcodes.push_back(it->second);
 
-	return (int)outOpcodes.size();	
+	return (int)outOpcodes.size();
 }
 
 void X86CPU::GetClobbersForMnemonic(const StringImpl& mnemonic, int argCount, Array<int>& outImplicitClobberRegNums, int& outClobberArgCount, bool& outMayClobberMem)

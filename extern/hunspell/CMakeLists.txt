@@ -24,9 +24,9 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
 add_definitions(
-   -D_DEBUG   
-   -DIDEHELPER_EXPORTS 
-   -DBFSYSLIB_DYNAMIC 
+   -D_DEBUG
+   -DIDEHELPER_EXPORTS
+   -DBFSYSLIB_DYNAMIC
    -DUNICODE
    -D_UNICODE
    -DBF_NO_FBX
@@ -57,16 +57,16 @@ endif()
 # Add Dependencies to project.                    #
 ###################################################
 
-option(BUILD_DEPENDS 
-   "Build other CMake project." 
-   ON 
+option(BUILD_DEPENDS
+   "Build other CMake project."
+   ON
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   
+
 else()
-   
+
 endif()
 
 ################# Flags ################
@@ -78,10 +78,7 @@ if(MSVC)
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /GL /Od /Oi /Gy /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-multichar")  
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-  endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-multichar")
 endif(NOT MSVC)
 
 ################ Files ################

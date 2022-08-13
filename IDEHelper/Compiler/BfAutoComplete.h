@@ -62,7 +62,7 @@ public:
 	}
 
 	bool operator==(const AutoCompleteEntry& other) const
-	{	
+	{
 		return strcmp(mDisplay, other.mDisplay) == 0;
 	}
 };
@@ -73,7 +73,7 @@ template <>
 struct BeefHash<Beefy::AutoCompleteEntry>
 {
 	size_t operator()(const Beefy::AutoCompleteEntry& val)
-	{		
+	{
 		intptr hash = 0;
 		const char* curPtr = val.mDisplay;
 		while (true)
@@ -92,7 +92,7 @@ NS_BF_BEGIN
 
 class AutoCompleteBase
 {
-public:	
+public:
 	class EntryLess
 	{
 	public:
@@ -103,7 +103,7 @@ public:
 				result = strcmp(left.mDisplay, right.mDisplay);
 			return result < 0;
 		}
-	};	
+	};
 
 public:
 	BumpAllocator mAlloc;
@@ -128,13 +128,13 @@ public:
 
 class BfAutoComplete : public AutoCompleteBase
 {
-public:	
+public:
 	class MethodMatchEntry
 	{
-	public:		
+	public:
 		BfMethodDef* mMethodDef;
 		BfFieldInstance* mPayloadEnumField;
-		BfTypeInstance* mTypeInstance;		
+		BfTypeInstance* mTypeInstance;
 		BfTypeVector mGenericArguments;
 		BfMethodInstance* mCurMethodInstance;
 
@@ -142,34 +142,34 @@ public:
 		{
 			mMethodDef = NULL;
 			mPayloadEnumField = NULL;
-			mTypeInstance = NULL;			
+			mTypeInstance = NULL;
 			mCurMethodInstance = NULL;
 		}
 	};
 
 	class MethodMatchInfo
 	{
-	public:		
+	public:
 		BfTypeInstance* mCurTypeInstance;
 		BfMethodInstance* mCurMethodInstance;
 		Array<MethodMatchEntry> mInstanceList;
 		int mInvocationSrcIdx;
-		int mBestIdx;		
-		int mPrevBestIdx;		
+		int mBestIdx;
+		int mPrevBestIdx;
 		bool mHadExactMatch;
-		int mMostParamsMatched;		
+		int mMostParamsMatched;
 		Array<int> mSrcPositions; // start, commas, end
-		
+
 	public:
 		MethodMatchInfo()
 		{
 			mInvocationSrcIdx = -1;
 			mCurTypeInstance = NULL;
 			mCurMethodInstance = NULL;
-			mBestIdx = 0;			
-			mPrevBestIdx = -1;			
+			mBestIdx = 0;
+			mPrevBestIdx = -1;
 			mHadExactMatch = false;
-			mMostParamsMatched = 0;			
+			mMostParamsMatched = 0;
 		}
 
 		~MethodMatchInfo()
@@ -177,10 +177,10 @@ public:
 		}
 	};
 
-public:	
+public:
 	BfModule* mModule;
 	BfCompiler* mCompiler;
-	BfSystem* mSystem;	
+	BfSystem* mSystem;
 	MethodMatchInfo* mMethodMatchInfo;
 	bool mIsCapturingMethodMatchInfo;
 	String mDefaultSelection;
@@ -196,8 +196,8 @@ public:
 	bool mForceAllowNonStatic;
 	int mCursorLineStart;
 	int mCursorLineEnd;
-	
-	int mReplaceLocalId;	
+
+	int mReplaceLocalId;
 	BfMethodDef* mDefMethod;
 	BfTypeDef* mDefType;
 	BfFieldDef* mDefField;
@@ -206,7 +206,7 @@ public:
 	int mDefMethodGenericParamIdx;
 	int mDefTypeGenericParamIdx;
 
-public:	
+public:
 	BfProject* GetActiveProject();
 	bool WantsEntries();
 	bool CheckProtection(BfProtection protection, BfTypeDef* typeDef, bool allowProtected, bool allowPrivate);
@@ -216,38 +216,38 @@ public:
 	bool IsAutocompleteNode(BfAstNode* node, int lengthAdd = 0, int startAdd = 0);
 	bool IsAutocompleteNode(BfAstNode* startNode, BfAstNode* endNode, int lengthAdd = 0, int startAdd = 0);
 	bool IsAutocompleteLineNode(BfAstNode* node);
-	BfTypedValue LookupTypeRefOrIdentifier(BfAstNode* node, bool* isStatic, BfEvalExprFlags evalExprFlags = BfEvalExprFlags_None, BfType* expectingType = NULL);	
+	BfTypedValue LookupTypeRefOrIdentifier(BfAstNode* node, bool* isStatic, BfEvalExprFlags evalExprFlags = BfEvalExprFlags_None, BfType* expectingType = NULL);
 	void SetDefinitionLocation(BfAstNode* astNode, bool force = false);
-	bool IsAttribute(BfTypeInstance* typeInst);	
+	bool IsAttribute(BfTypeInstance* typeInst);
 	void AddMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef, BfMethodInstance* methodInstance, BfMethodDeclaration* methodDecl, const StringImpl& methodName, const StringImpl& filter);
 	void AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, BfFieldInstance* fieldInstance, const StringImpl& filter);
 	void AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, const StringImpl& filter);
 	void AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bool onlyAttribute = false);
-	void AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate);
+	void AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, BfTypeInstance* startType, bool allowProtected, bool allowPrivate);
 	void AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate, bool onlyAttribute);
 	void AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bool addNonStatic, const StringImpl& filter, BfTypeInstance* startType, bool allowInterfaces, bool allowImplicitThis, bool checkOuterType);
 	void AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeInstance* selfType, const StringImpl& filter, bool allowPrivate);
 	bool InitAutocomplete(BfAstNode* dotNode, BfAstNode* nameNode, String& filter);
-	void AddEnumTypeMembers(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate);	
+	void AddEnumTypeMembers(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate);
 	void AddExtensionMethods(BfTypeInstance* targetType, BfTypeInstance* extensionContainer, const StringImpl& filter, bool allowProtected, bool allowPrivate);
 	void AddTopLevelNamespaces(BfAstNode* identifierNode);
 	void AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttribute = false);
 	void AddOverrides(const StringImpl& filter);
-	void UpdateReplaceData();	
+	void UpdateReplaceData();
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);
 	bool CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation);
 	bool GetMethodInfo(BfMethodInstance* methodInst, StringImpl* methodName, StringImpl* insertString, bool isImplementing, bool isExplicitInterface);
 	void FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr);
 	int FixitGetMemberInsertPos(BfTypeDef* typeDef);
 	String FixitGetLocation(BfParserData* parserData, int insertPos);
-	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);	
+	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);
 
 public:
 	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete, bool doFuzzyAutoComplete = false);
 	~BfAutoComplete();
 
 	void SetModule(BfModule* module);
-	void Clear();		
+	void Clear();
 	void RemoveMethodMatchInfo();
 	void ClearMethodMatchEntries();
 
@@ -256,27 +256,28 @@ public:
 	bool CheckExplicitInterface(BfTypeInstance* interfaceType, BfAstNode* dotToken, BfAstNode* memberName);
 	void CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier, bool isInExpression = false, bool onlyAttribute = false);
 	void CheckAttributeTypeRef(BfTypeReference* typeRef);
-	void CheckInvocation(BfAstNode* invocationNode, BfTokenNode* openParen, BfTokenNode* closeParen, const BfSizedArray<BfTokenNode*>& commas);	
+	void CheckInvocation(BfAstNode* invocationNode, BfTokenNode* openParen, BfTokenNode* closeParen, const BfSizedArray<BfTokenNode*>& commas);
 	void CheckNode(BfAstNode* node, bool mayBeIdentifier, bool isInExpression = false);
 	void CheckMethod(BfMethodDeclaration* methodDeclaration, bool isLocalMethod);
-	void CheckProperty(BfPropertyDeclaration* propertyDeclaration);	
+	void CheckProperty(BfPropertyDeclaration* propertyDeclaration);
 	void CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedTypeRef);
 	void CheckResult(BfAstNode* node, const BfTypedValue& typedValue);
 	void CheckLocalDef(BfAstNode* identifierNode, BfLocalVariable* varDecl);
 	void CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* varDecl);
-	void CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* fieldInst);	
+	void CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* fieldInst);
 	void CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* precedingNode, BfScopeData* scopeData);
 	void CheckNamespace(BfAstNode* node, const BfAtomComposite& namespaceName);
-	void CheckEmptyStart(BfAstNode* prevNode, BfType* type);	
-	bool CheckFixit(BfAstNode* node);	
+	void CheckEmptyStart(BfAstNode* prevNode, BfType* type);
+	bool CheckFixit(BfAstNode* node);
 	void CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);
-	
+
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom);
 	void FixitAddCase(BfTypeInstance * typeInst, const StringImpl & caseName, const BfTypeVector & fieldTypes);
 	void FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic);
 	void FixitAddNamespace(BfAstNode* refNode, const StringImpl& namespacStr);
 	void FixitCheckNamespace(BfTypeDef* activeTypeDef, BfAstNode* typeRef, BfTokenNode* nextDotToken);
 	void FixitAddConstructor(BfTypeInstance* typeInstance);
+	void FixitAddFullyQualify(BfAstNode* refNode, const StringImpl& findName, const SizedArrayImpl<BfUsingFieldData::MemberRef>& foundList);
 
 	void SetResultStringType(BfType* type);
 };

@@ -53,7 +53,7 @@ class BfPassInstance;
 enum BfProtection : uint8
 {
 	BfProtection_Hidden,
-	BfProtection_Private,	
+	BfProtection_Private,
 	BfProtection_Internal,
 	BfProtection_Protected,
 	BfProtection_ProtectedInternal,
@@ -70,7 +70,7 @@ enum BfCheckedKind : int8
 };
 
 static bool CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate)
-{		
+{
 	return (protection == BfProtection_Public) ||
 		((protection == BfProtection_Protected) && (allowProtected)) ||
 		((protection == BfProtection_Private) && (allowPrivate));
@@ -92,10 +92,10 @@ struct BfVariant
 		int64 mInt64;
 		uint64 mUInt64;
 		float mSingle;
-		double mDouble;		
+		double mDouble;
 		String* mString;
 		void* mPtr;
-	};	
+	};
 	double ToDouble()
 	{
 		if (mTypeCode == BfTypeCode_Double)
@@ -145,15 +145,15 @@ enum BfToken : uint8
 	BfToken_Explicit,
 	BfToken_Extern,
 	BfToken_Extension,
-	BfToken_Fallthrough,	
+	BfToken_Fallthrough,
 	BfToken_Finally,
 	BfToken_Fixed,
 	BfToken_For,
 	BfToken_Function,
 	BfToken_Goto,
-	BfToken_If,	
+	BfToken_If,
 	BfToken_Implicit,
-	BfToken_In,	
+	BfToken_In,
 	BfToken_Inline,
 	BfToken_Interface,
 	BfToken_Internal,
@@ -164,14 +164,14 @@ enum BfToken : uint8
 	BfToken_Mut,
 	BfToken_NameOf,
 	BfToken_Namespace,
-	BfToken_New,	
+	BfToken_New,
 	BfToken_Null,
 	BfToken_Nullable,
 	BfToken_OffsetOf,
 	BfToken_Operator,
 	BfToken_Out,
 	BfToken_Override,
-	BfToken_Params,	
+	BfToken_Params,
 	BfToken_Private,
 	BfToken_Protected,
 	BfToken_Public,
@@ -179,10 +179,10 @@ enum BfToken : uint8
 	BfToken_Repeat,
 	BfToken_Ref,
 	BfToken_RetType,
-	BfToken_Return,	
+	BfToken_Return,
 	BfToken_Scope,
 	BfToken_Sealed,
-	BfToken_SizeOf,	
+	BfToken_SizeOf,
 	BfToken_Stack,
 	BfToken_Static,
 	BfToken_StrideOf,
@@ -200,10 +200,10 @@ enum BfToken : uint8
 	BfToken_Virtual,
 	BfToken_Volatile,
 	BfToken_When,
-	BfToken_Where,	
-	BfToken_While,	
+	BfToken_Where,
+	BfToken_While,
 	BfToken_Yield,
-	BfToken_AssignEquals,	
+	BfToken_AssignEquals,
 	BfToken_CompareEquals,
 	BfToken_CompareStrictEquals,
 	BfToken_CompareNotEquals,
@@ -238,7 +238,7 @@ enum BfToken : uint8
 	BfToken_RChevron,
 	BfToken_LDblChevron,
 	BfToken_RDblChevron,
-	BfToken_Semicolon,	
+	BfToken_Semicolon,
 	BfToken_Colon,
 	BfToken_Comma,
 	BfToken_Dot,
@@ -251,9 +251,9 @@ enum BfToken : uint8
 	BfToken_Plus,
 	BfToken_Minus,
 	BfToken_DblPlus,
-	BfToken_DblMinus,	
+	BfToken_DblMinus,
 	BfToken_Star,
-	BfToken_ForwardSlash,	
+	BfToken_ForwardSlash,
 	BfToken_Modulus,
 	BfToken_Ampersand,
 	BfToken_At,
@@ -278,6 +278,7 @@ class BfStatement;
 class BfLabelableStatement;
 class BfExpression;
 class BfExpressionStatement;
+class BfNamedExpression;
 class BfAttributedExpression;
 class BfAttributedStatement;
 class BfLiteralExpression;
@@ -380,6 +381,7 @@ class BfTypeAttrExpression;
 class BfSizeOfExpression;
 class BfAlignOfExpression;
 class BfOffsetOfExpression;
+class BfNameOfExpression;
 class BfStrideOfExpression;
 class BfIsConstExpression;
 class BfDefaultExpression;
@@ -407,7 +409,7 @@ public:
 	bool mCapturingChildRef;
 	BfAstNode** mCurChildRef;
 
-public:	
+public:
 	void VisitMembers(BfBlock* node);
 	void VisitChildNoRef(BfAstNode* nodeRef);
 	void DoVisitChild(BfAstNode*& nodeRef);
@@ -428,7 +430,7 @@ public:
 		}
 		nodeRef->Accept(this);
 		mCurChildRef = NULL;
-	}	
+	}
 	template <typename T>
 	void VisitChildNoRef(const T& nodeRef)
 	{
@@ -440,14 +442,15 @@ public:
 public:
 	BfStructuralVisitor();
 
-	virtual void Visit(BfAstNode* bfAstNode) {}	
+	virtual void Visit(BfAstNode* bfAstNode) {}
 	virtual void Visit(BfErrorNode* bfErrorNode);
 	virtual void Visit(BfScopeNode* scopeNode);
 	virtual void Visit(BfNewNode* newNode);
 	virtual void Visit(BfLabeledBlock* labeledBlock);
 	virtual void Visit(BfExpression* expr);
 	virtual void Visit(BfExpressionStatement* exprStmt);
-	virtual void Visit(BfAttributedExpression* attribExpr);	
+	virtual void Visit(BfNamedExpression* namedExpr);
+	virtual void Visit(BfAttributedExpression* attribExpr);
 	virtual void Visit(BfStatement* stmt);
 	virtual void Visit(BfAttributedStatement* attribStmt);
 	virtual void Visit(BfLabelableStatement* labelableStmt);
@@ -464,21 +467,21 @@ public:
 	virtual void Visit(BfGenericConstraintsDeclaration* genericConstraints);
 	virtual void Visit(BfGenericArgumentsNode* genericArgumentsNode);
 
-	virtual void Visit(BfEmptyStatement* emptyStmt);	
-	virtual void Visit(BfTokenNode* tokenNode);	
-	virtual void Visit(BfTokenPairNode* tokenPairNode);		
+	virtual void Visit(BfEmptyStatement* emptyStmt);
+	virtual void Visit(BfTokenNode* tokenNode);
+	virtual void Visit(BfTokenPairNode* tokenPairNode);
 	virtual void Visit(BfUsingSpecifierNode* usingSpecifier);
 	virtual void Visit(BfLiteralExpression* literalExpr);
 	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression);
 	virtual void Visit(BfIdentifierNode* identifierNode);
 	virtual void Visit(BfAttributedIdentifierNode* attrIdentifierNode);
-	virtual void Visit(BfQualifiedNameNode* nameNode);	
+	virtual void Visit(BfQualifiedNameNode* nameNode);
 	virtual void Visit(BfThisExpression* thisExpr);
 	virtual void Visit(BfBaseExpression* baseExpr);
 	virtual void Visit(BfMixinExpression* thisExpr);
 	virtual void Visit(BfSizedArrayCreateExpression* createExpr);
 	virtual void Visit(BfInitializerExpression* collectionInitExpr);
-	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);	
+	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);
 	virtual void Visit(BfTypeReference* typeRef);
 	virtual void Visit(BfNamedTypeReference* typeRef);
 	virtual void Visit(BfQualifiedTypeReference* qualifiedType);
@@ -493,19 +496,20 @@ public:
 	virtual void Visit(BfArrayTypeRef* typeRef);
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef);
 	virtual void Visit(BfTupleTypeRef* typeRef);
-	virtual void Visit(BfDelegateTypeRef* typeRef);	
+	virtual void Visit(BfDelegateTypeRef* typeRef);
 	virtual void Visit(BfExprModTypeRef* declTypeRef);
 	virtual void Visit(BfPointerTypeRef* typeRef);
 	virtual void Visit(BfNullableTypeRef* typeRef);
-	virtual void Visit(BfVariableDeclaration* varDecl);	
+	virtual void Visit(BfVariableDeclaration* varDecl);
 	virtual void Visit(BfLocalMethodDeclaration* methodDecl);
-	virtual void Visit(BfParameterDeclaration* paramDecl);		
+	virtual void Visit(BfParameterDeclaration* paramDecl);
 	virtual void Visit(BfTypeAttrExpression* typeAttrExpr);
 	virtual void Visit(BfTypeOfExpression* typeOfExpr);
-	virtual void Visit(BfSizeOfExpression* sizeOfExpr);	
+	virtual void Visit(BfSizeOfExpression* sizeOfExpr);
 	virtual void Visit(BfAlignOfExpression* alignOfExpr);
-	virtual void Visit(BfStrideOfExpression* strideOfExpr);	
+	virtual void Visit(BfStrideOfExpression* strideOfExpr);
 	virtual void Visit(BfOffsetOfExpression* offsetOfExpr);
+	virtual void Visit(BfNameOfExpression* nameOfExpr);
 	virtual void Visit(BfIsConstExpression* isConstExpr);
 	virtual void Visit(BfDefaultExpression* defaultExpr);
 	virtual void Visit(BfUninitializedExpression* uninitializedExpr);
@@ -515,9 +519,9 @@ public:
 	virtual void Visit(BfDelegateBindExpression* delegateBindExpr);
 	virtual void Visit(BfLambdaBindExpression* lambdaBindExpr);
 	virtual void Visit(BfObjectCreateExpression* objCreateExpr);
-	virtual void Visit(BfBoxExpression* boxExpr);	
+	virtual void Visit(BfBoxExpression* boxExpr);
 	virtual void Visit(BfScopedInvocationTarget* scopedTarget);
-	virtual void Visit(BfInvocationExpression* invocationExpr);		
+	virtual void Visit(BfInvocationExpression* invocationExpr);
 	virtual void Visit(BfEnumCaseBindExpression* caseBindExpr);
 	virtual void Visit(BfCaseExpression* caseExpr);
 	virtual void Visit(BfSwitchCase* switchCase);
@@ -530,7 +534,7 @@ public:
 	virtual void Visit(BfUncheckedStatement* uncheckedStmt);
 	virtual void Visit(BfIfStatement* ifStmt);
 	virtual void Visit(BfThrowStatement* throwStmt);
-	virtual void Visit(BfDeleteStatement* deleteStmt);	
+	virtual void Visit(BfDeleteStatement* deleteStmt);
 	virtual void Visit(BfReturnStatement* returnStmt);
 	virtual void Visit(BfYieldStatement* returnStmt);
 	virtual void Visit(BfBreakStatement* breakStmt);
@@ -539,7 +543,7 @@ public:
 	virtual void Visit(BfUsingStatement* whileStmt);
 	virtual void Visit(BfDoStatement* whileStmt);
 	virtual void Visit(BfRepeatStatement* repeatStmt);
-	virtual void Visit(BfWhileStatement* whileStmt);		
+	virtual void Visit(BfWhileStatement* whileStmt);
 	virtual void Visit(BfForStatement* forStmt);
 	virtual void Visit(BfForEachStatement* forEachStmt);
 	virtual void Visit(BfDeferStatement* deferStmt);
@@ -552,6 +556,7 @@ public:
 	virtual void Visit(BfUnaryOperatorExpression* binOpExpr);
 	virtual void Visit(BfBinaryOperatorExpression* binOpExpr);
 	virtual void Visit(BfConstructorDeclaration* ctorDeclaration);
+	virtual void Visit(BfAutoConstructorDeclaration* ctorDeclaration);
 	virtual void Visit(BfDestructorDeclaration* dtorDeclaration);
 	virtual void Visit(BfMethodDeclaration* methodDeclaration);
 	virtual void Visit(BfOperatorDeclaration* operatorDeclaration);
@@ -578,6 +583,7 @@ public:
 enum BfTypedValueKind
 {
 	BfTypedValueKind_Addr,
+	BfTypedValueKind_VolatileAddr,
 	BfTypedValueKind_CopyOnMutateAddr,
 	BfTypedValueKind_CopyOnMutateAddr_Derived,
 	BfTypedValueKind_ReadOnlyAddr,
@@ -586,18 +592,18 @@ enum BfTypedValueKind
 	BfTypedValueKind_ReadOnlyTempAddr,
 	BfTypedValueKind_ThisAddr,
 	BfTypedValueKind_BaseAddr,
-	BfTypedValueKind_ReadOnlyThisAddr,	
+	BfTypedValueKind_ReadOnlyThisAddr,
 	BfTypedValueKind_ReadOnlyBaseAddr,
 
 	BfTypedValueKind_Value,
-	BfTypedValueKind_ThisValue,	
-	BfTypedValueKind_BaseValue,	
-	BfTypedValueKind_ReadOnlyThisValue,	
+	BfTypedValueKind_ThisValue,
+	BfTypedValueKind_BaseValue,
+	BfTypedValueKind_ReadOnlyThisValue,
 	BfTypedValueKind_ReadOnlyBaseValue,
 	BfTypedValueKind_MutableValue, // Only applicable for generic params
 	BfTypedValueKind_SplatHead,
 	BfTypedValueKind_ThisSplatHead,
-	BfTypedValueKind_BaseSplatHead,	
+	BfTypedValueKind_BaseSplatHead,
 	BfTypedValueKind_SplatHead_NeedsCasting,
 	BfTypedValueKind_ParamsSplat,
 	BfTypedValueKind_Params,
@@ -613,11 +619,11 @@ public:
 	//llvm::Value* mValue;
 	BfIRValue mValue;
 	BfType* mType;
-	BfTypedValueKind mKind; // Is address of variable	
+	BfTypedValueKind mKind; // Is address of variable
 
 public:
 	BfTypedValue()
-	{		
+	{
 		mType = NULL;
 		mKind = BfTypedValueKind_NoValue;
 	}
@@ -638,7 +644,7 @@ public:
 	{
 		BF_ASSERT((!val) || (resolvedType != NULL));
 		mValue = val;
-		mType = resolvedType;		
+		mType = resolvedType;
 		mKind = isAddr ? BfTypedValueKind_Addr : BfTypedValueKind_Value;
 #ifdef _DEBUG
 		//DbgCheckType();
@@ -656,7 +662,7 @@ public:
 	}
 
 	BfTypedValue(BfIRValue val, BfType* resolvedType, BfTypedValueKind kind = BfTypedValueKind_Value)
-	{	
+	{
 		BF_ASSERT((!val) || (resolvedType != NULL));
 		mValue = val;
 		mType = resolvedType;
@@ -728,13 +734,13 @@ public:
 
 	bool IsThis() const
 	{
-		return (mKind == BfTypedValueKind_ThisValue) || (mKind == BfTypedValueKind_ThisAddr) || (mKind == BfTypedValueKind_ReadOnlyThisValue) || 
+		return (mKind == BfTypedValueKind_ThisValue) || (mKind == BfTypedValueKind_ThisAddr) || (mKind == BfTypedValueKind_ReadOnlyThisValue) ||
 			(mKind == BfTypedValueKind_ReadOnlyThisAddr) || (mKind == BfTypedValueKind_ThisSplatHead);
 	}
 
 	bool IsBase() const
 	{
-		return (mKind == BfTypedValueKind_BaseValue) || (mKind == BfTypedValueKind_BaseAddr) || (mKind == BfTypedValueKind_ReadOnlyBaseValue) || 
+		return (mKind == BfTypedValueKind_BaseValue) || (mKind == BfTypedValueKind_BaseAddr) || (mKind == BfTypedValueKind_ReadOnlyBaseValue) ||
 			(mKind == BfTypedValueKind_ReadOnlyBaseAddr) || (mKind == BfTypedValueKind_BaseSplatHead);
 	}
 
@@ -750,11 +756,16 @@ public:
 		mKind = (BfTypedValueKind)((int)mKind - 1);
 	}
 
+	bool IsVolatile() const
+	{
+		return mKind == BfTypedValueKind_VolatileAddr;
+	}
+
 	bool IsSplat() const
 	{
 		return (mKind >= BfTypedValueKind_SplatHead) && (mKind <= BfTypedValueKind_ParamsSplat);
 	}
-	
+
 	bool IsUntypedValue() const
 	{
 		return (mKind == BfTypedValueKind_UntypedValue);
@@ -785,6 +796,21 @@ public:
 			break;
 		case BfTypedValueKind_TempAddr:
 		case BfTypedValueKind_RestrictedTempAddr:
+			mKind = BfTypedValueKind_ReadOnlyTempAddr;
+			break;
+		default:
+			break;
+		}
+	}
+
+	void MakeTemporary(bool restricted = false)
+	{
+		switch (mKind)
+		{
+		case BfTypedValueKind_Addr:
+			mKind = restricted ? BfTypedValueKind_RestrictedTempAddr : BfTypedValueKind_TempAddr;
+			break;
+		case BfTypedValueKind_ReadOnlyAddr:
 			mKind = BfTypedValueKind_ReadOnlyTempAddr;
 			break;
 		default:
@@ -980,7 +1006,7 @@ public:
 	}
 
 	~BfDeferredSizedArray()
-	{		
+	{
 		mSizedArray->mSize = (int)this->size();
 		if (mSizedArray->mSize > 0)
 		{
@@ -998,7 +1024,7 @@ public:
 
 template <typename T, typename T2>
 static void BfSizedArrayInitIndirect(BfSizedArray<T>& sizedArray, const SizedArrayImpl<T2>& vec, BfAstAllocator* alloc)
-{	
+{
 	sizedArray.mSize = (int)vec.size();
 	BF_ASSERT(sizedArray.mSize >= 0);
 	if (sizedArray.mSize > 0)
@@ -1006,26 +1032,26 @@ static void BfSizedArrayInitIndirect(BfSizedArray<T>& sizedArray, const SizedArr
 		sizedArray.mVals = (T*)alloc->AllocBytes(sizedArray.mSize * sizeof(T), sizeof(T));
 		for (int i = 0; i < sizedArray.mSize; i++)
 			sizedArray.mVals[i] = vec[i];
-	}	
+	}
 }
 
 template <typename T>
 class BfDeferredAstSizedArray : public SizedArray<T, 8>
 {
-public:	
+public:
 	BfSizedArray<ASTREF(T)>* mSizedArray;
 	BfAstAllocator* mAlloc;
 
 public:
 	BfDeferredAstSizedArray(BfSizedArray<ASTREF(T)>& arr, BfAstAllocator* alloc)
-	{		
+	{
 		mSizedArray = &arr;
-		mAlloc = alloc;		
+		mAlloc = alloc;
 	}
 
 	~BfDeferredAstSizedArray()
-	{		
-		BfSizedArrayInitIndirect(*mSizedArray, *this, mAlloc);		
+	{
+		BfSizedArrayInitIndirect(*mSizedArray, *this, mAlloc);
 	}
 };
 
@@ -1061,38 +1087,38 @@ struct BfAstInfo
 class BfAstNode
 {
 public:
-	static BfAstTypeInfo sTypeInfo;	
-	
+	static BfAstTypeInfo sTypeInfo;
+
 #ifndef BF_AST_ALLOCATOR_USE_PAGES
 	BfSourceData* mSourceData;
 #endif
 #ifdef BF_AST_HAS_PARENT_MEMBER
-	BfAstNode* mParent;	
+	BfAstNode* mParent;
 #endif
 
 #ifdef BF_AST_COMPACT
 	union
 	{
 		struct
-		{			
+		{
 			uint8 mCompact_TriviaLen;
 			uint8 mCompact_SrcLen;
 			uint8 mCompact_TypeId;
 			BfToken mCompact_Token;
 			int mCompact_SrcStart : 31;
-			int mIsCompact : 1; 
+			int mIsCompact : 1;
 		};
 		BfAstInfo* mAstInfo;
 	};
 #else
 	int mTriviaStart;
 	int mSrcStart;
-	int mSrcEnd;	
+	int mSrcEnd;
 	uint8 mTypeId;
 	BfToken mToken;
 #endif
 
-public:	
+public:
 	BfAstNode()
 	{
 #ifdef BF_AST_COMPACT
@@ -1112,7 +1138,7 @@ public:
 	{
 	}
 #endif
-	
+
 	void RemoveSelf();
 	void DeleteSelf();
 	void RemoveNextSibling();
@@ -1140,16 +1166,16 @@ public:
 	bool IsMissingSemicolon();
 	bool IsExpression();
 	bool WantsWarning(int warningNumber);
-	
+
 	template <typename T>
 	bool IsA()
-	{		
-		return (uint)GetTypeId() - (uint)T::sTypeInfo.mTypeId <= (uint)T::sTypeInfo.mFullDerivedCount;		
+	{
+		return (uint)GetTypeId() - (uint)T::sTypeInfo.mTypeId <= (uint)T::sTypeInfo.mFullDerivedCount;
 	}
 
 	template <typename T>
 	bool IsExact()
-	{		
+	{
 		return (uint)GetTypeId() == (uint)T::sTypeInfo.mTypeId;
 	}
 
@@ -1157,7 +1183,7 @@ public:
 	BfAstInfo* AllocAstInfo();
 
 	void InitEmpty()
-	{		
+	{
 		mIsCompact = true;
 		mCompact_SrcStart = 0;
 		mCompact_SrcLen = 0;
@@ -1193,7 +1219,7 @@ public:
 	{
 		int triviaLen = srcStart - triviaStart;
 		int srcLen = srcEnd - srcStart;
-		if ((triviaLen <= 255) && (srcLen <= 255))		
+		if ((triviaLen <= 255) && (srcLen <= 255))
 		{
 			mCompact_SrcStart = srcStart;
 			mIsCompact = 1;
@@ -1209,8 +1235,8 @@ public:
 			astInfo->mSrcStart = srcStart;
 			astInfo->mSrcEnd = srcEnd;
 			mAstInfo = astInfo;
-		}		
-	}	
+		}
+	}
 
 	int GetTypeId()
 	{
@@ -1252,7 +1278,7 @@ public:
 				mCompact_TriviaLen = (uint8)triviaLen;
 				return;
 			}
-			
+
 			auto astInfo = AllocAstInfo();
 			astInfo->mTypeId = mCompact_TypeId;
 			astInfo->mToken = mCompact_Token;
@@ -1260,7 +1286,7 @@ public:
 			astInfo->mSrcEnd = mCompact_SrcStart + mCompact_SrcLen;
 			mAstInfo = astInfo;
 		}
-		
+
 		mAstInfo->mTriviaStart = triviaStart;
 	}
 
@@ -1293,7 +1319,7 @@ public:
 				astInfo->mTriviaStart = srcStart - triviaLen;
 				astInfo->mSrcEnd = srcStart + srcLen;
 				mAstInfo = astInfo;
-			}			
+			}
 		}
 		else
 			mAstInfo->mSrcStart = srcStart;
@@ -1352,7 +1378,7 @@ public:
 	{
 		mTriviaStart = 0;
 		mSrcStart = 0;
-		mSrcEnd = 0;		
+		mSrcEnd = 0;
 	}
 
 	void InitWithTypeId(int typeId)
@@ -1452,7 +1478,6 @@ public:
 	}
 #endif
 
-
 #ifdef BF_AST_HAS_PARENT_MEMBER
 	template <typename T>
 	T* FindParentOfType()
@@ -1492,13 +1517,13 @@ public:
 
 	template <typename T>
 	static void Zero(T* val)
-	{		
+	{
 #ifdef BF_AST_COMPACT
 		memset((uint8*)val + offsetof(T, mAstInfo), 0, sizeof(T) - offsetof(T, mAstInfo));
 #else
 		memset((uint8*)val + offsetof(T, mTriviaStart), 0, sizeof(T) - offsetof(T, mTriviaStart));
 #endif
-		val->InitWithTypeId(T::sTypeInfo.mTypeId);		
+		val->InitWithTypeId(T::sTypeInfo.mTypeId);
 	}
 #endif
 };
@@ -1507,11 +1532,11 @@ BfAstTypeInfo BfAstNode::sTypeInfo("BfAstNode", NULL, &BfAstNode::ClassAccept);
 #endif
 
 template <typename T>
-bool BfNodeIsA(BfAstNode* node) 
-{ 
+bool BfNodeIsA(BfAstNode* node)
+{
 	if (node == NULL)
 		return false;
-	
+
 	bool canCast = (uint)node->GetTypeId() - (uint)T::sTypeInfo.mTypeId <= (uint)T::sTypeInfo.mFullDerivedCount;
 	return canCast;
 }
@@ -1530,8 +1555,8 @@ template <typename T>
 T* BfNodeDynCast(BfAstNode* node)
 {
 	if (node == NULL)
-		return NULL;	
-	
+		return NULL;
+
 	bool canCast = (uint)node->GetTypeId() - (uint)T::sTypeInfo.mTypeId <= (uint)T::sTypeInfo.mFullDerivedCount;
 	//BF_ASSERT(canCast == (node->DynCast(T::TypeId) != NULL));
 	return canCast ? (T*)node : NULL;
@@ -1542,7 +1567,7 @@ T* BfNodeDynCastExact(BfAstNode* node)
 {
 	if (node == NULL)
 		return NULL;
-	
+
 	bool canCast = node->GetTypeId() == T::sTypeInfo.mTypeId;
 	//BF_ASSERT(canCast == (node->GetTypeId() == T::TypeId));
 	return canCast ? (T*)node : NULL;
@@ -1681,12 +1706,12 @@ public:
 		}
 
 		bool operator!=(const Iterator& itr) const
-		{			
+		{
 			return itr.mPtr != mPtr;
 		}
 
 		bool operator==(const Iterator& itr) const
-		{		
+		{
 			return itr.mPtr == mPtr;
 		}
 
@@ -1716,7 +1741,7 @@ public:
 	//BfDebugArray<BfAstNode*> mChildArr;
 	BfSizedArray<ASTREF(BfAstNode*)> mChildArr;
 
-public:	
+public:
 	using BfAstNode::Init;
 	void Init(const SizedArrayImpl<BfAstNode*>& vec, BfAstAllocator* alloc);
 	BfAstNode* GetFirst();
@@ -1748,7 +1773,7 @@ public:
 			BfBlockExtension* blockExt = (BfBlockExtension*)(BfAstNode*)childArr->mVals[childArr->mSize - 1];
 			BF_ASSERT(blockExt->GetTypeId() == BfBlockExtension::TypeId);
 			childArr = &blockExt->mChildArr;
-		}		
+		}
 #else
 		return mChildArr.mVals[idx];
 #endif
@@ -1785,7 +1810,7 @@ public:
 		mTypedValue = typedValue;
 		mRefNode = NULL;
 #ifdef BF_AST_HAS_PARENT_MEMBER
-		mParent = NULL;		
+		mParent = NULL;
 #endif
 	}
 };	BF_AST_DECL(BfTypedValueExpression, BfExpression);
@@ -1880,6 +1905,7 @@ enum BfUnaryOp
 {
 	BfUnaryOp_None,
 	BfUnaryOp_AddressOf,
+	BfUnaryOp_Arrow,
 	BfUnaryOp_Dereference,
 	BfUnaryOp_Negate,
 	BfUnaryOp_Not,
@@ -1904,7 +1930,7 @@ enum BfUnaryOp
 class BfTokenNode : public BfAstNode
 {
 public:
-	BF_AST_TYPE(BfTokenNode, BfAstNode);	
+	BF_AST_TYPE(BfTokenNode, BfAstNode);
 };	BF_AST_DECL(BfTokenNode, BfAstNode);
 
 class BfScopeNode : public BfAstNode
@@ -1924,7 +1950,7 @@ public:
 	BF_AST_TYPE(BfNewNode, BfAstNode);
 
 	BfTokenNode* mNewToken;
-	BfTokenNode* mColonToken;	
+	BfTokenNode* mColonToken;
 	BfAstNode* mAllocNode; // Expression or BfScopedInvocationTarget
 	BfAttributeDirective* mAttributes;
 };	BF_AST_DECL(BfNewNode, BfAstNode);
@@ -1936,7 +1962,7 @@ enum BfCommentKind
 	BfCommentKind_Documentation_Block_Pre,
 	BfCommentKind_Documentation_Line_Pre,
 	BfCommentKind_Documentation_Block_Post,
-	BfCommentKind_Documentation_Line_Post,			
+	BfCommentKind_Documentation_Line_Post,
 };
 
 class BfCommentNode : public BfAstNode
@@ -1969,15 +1995,15 @@ public:
 	BF_AST_TYPE(BfPreprocessorNode, BfAstNode);
 
 	BfIdentifierNode* mCommand;
-	BfBlock* mArgument;	
+	BfBlock* mArgument;
 };	BF_AST_DECL(BfPreprocessorNode, BfAstNode);
 
 class BfPreprocessorDefinedExpression : public BfExpression
-{ 
+{
 public:
 	BF_AST_TYPE(BfPreprocessorDefinedExpression, BfExpression);
 
-	BfIdentifierNode*     mIdentifier;	
+	BfIdentifierNode*     mIdentifier;
 };	BF_AST_DECL(BfPreprocessorDefinedExpression, BfExpression);
 
 class BfReplaceNode : public BfAstNode
@@ -1999,7 +2025,7 @@ public:
 	BF_AST_TYPE(BfAttributedIdentifierNode, BfExpression);
 
 	BfIdentifierNode* mIdentifier;
-	BfAttributeDirective* mAttributes;	
+	BfAttributeDirective* mAttributes;
 };	BF_AST_DECL(BfAttributedIdentifierNode, BfExpression);
 
 class BfQualifiedNameNode : public BfIdentifierNode
@@ -2017,8 +2043,8 @@ class BfUsingDirective : public BfStatement
 public:
 	BF_AST_TYPE(BfUsingDirective, BfStatement);
 
-	BfTokenNode* mUsingToken;	
-	BfIdentifierNode* mNamespace;	
+	BfTokenNode* mUsingToken;
+	BfIdentifierNode* mNamespace;
 };	BF_AST_DECL(BfUsingDirective, BfStatement);
 
 class BfUsingModDirective : public BfStatement
@@ -2042,7 +2068,7 @@ public:
 
 class BfAttributeDirective : public BfAstNode
 {
-public:	
+public:
 	BF_AST_TYPE(BfAttributeDirective, BfAstNode);
 
 	ASTREF(BfTokenNode*) mAttrOpenToken; // [ @ ,
@@ -2199,7 +2225,7 @@ public:
 	BfTokenNode* mOpenBrace;
 	BfSizedArray<ASTREF(BfExpression*)> mValues;
 	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
-	BfTokenNode* mCloseBrace;	
+	BfTokenNode* mCloseBrace;
 };	BF_AST_DECL(BfCollectionInitializerExpression, BfExpression);
 
 class BfSizedArrayCreateExpression : public BfExpression
@@ -2236,7 +2262,7 @@ public:
 	BF_AST_TYPE(BfTupleExpression, BfExpression);
 
 	BfTokenNode* mOpenParen;
-	BfSizedArray<ASTREF(BfTupleNameNode*)> mNames;	
+	BfSizedArray<ASTREF(BfTupleNameNode*)> mNames;
 	BfSizedArray<ASTREF(BfExpression*)> mValues;
 	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
 	ASTREF(BfTokenNode*) mCloseParen;
@@ -2280,7 +2306,7 @@ public:
 	BfTokenNode* mCaseToken;
 	BfSizedArray<ASTREF(BfExpression*)> mCaseExpressions;
 	BfSizedArray<ASTREF(BfTokenNode*)> mCaseCommas;
-	BfTokenNode* mColonToken;	
+	BfTokenNode* mColonToken;
 	BfBlock* mCodeBlock; // May or may not have braces set
 	BfTokenNode* mEndingToken; // Null, Fallthrough, or Break
 	BfTokenNode* mEndingSemicolonToken;
@@ -2337,14 +2363,14 @@ public:
 
 	BfCommentNode* mDocumentation;
 	BfAttributeDirective* mAttributes;
-	BfTokenNode* mAbstractSpecifier;	
-	BfTokenNode* mSealedSpecifier;	
+	BfTokenNode* mAbstractSpecifier;
+	BfTokenNode* mSealedSpecifier;
 	BfAstNode* mProtectionSpecifier;
 	BfTokenNode* mStaticSpecifier;
 	BfTokenNode* mPartialSpecifier;
 	BfTokenNode* mTypeNode;
-	BfIdentifierNode* mNameNode;	
-	BfAstNode* mDefineNode;		
+	BfIdentifierNode* mNameNode;
+	BfAstNode* mDefineNode;
 	BfAutoConstructorDeclaration* mAutoCtor;
 	BfGenericParamsDeclaration* mGenericParams;
 	BfGenericConstraintsDeclaration* mGenericConstraintsDeclaration;
@@ -2353,7 +2379,6 @@ public:
 	BfTokenNode* mColonToken;
 	BfSizedArray<ASTREF(BfTypeReference*)> mBaseClasses;
 	BfSizedArray<ASTREF(BfAstNode*)> mBaseClassCommas;
-	
 };	BF_AST_DECL(BfTypeDeclaration, BfAstNode);
 
 class BfTypeAliasDeclaration : public BfTypeDeclaration
@@ -2364,32 +2389,29 @@ public:
 	BfTokenNode* mEqualsToken;
 	BfTypeReference* mAliasToType;
 	BfTokenNode* mEndSemicolon;
-
 };	BF_AST_DECL(BfTypeAliasDeclaration, BfTypeDeclaration);
 
 class BfTypeReference : public BfAstNode
 {
 public:
-	BF_AST_TYPE(BfTypeReference, BfAstNode);	
+	BF_AST_TYPE(BfTypeReference, BfAstNode);
 
 	bool IsNamedTypeReference();
 	bool IsTypeDefTypeReference();
 	String ToCleanAttributeString();
-
 };	BF_AST_DECL(BfTypeReference, BfAstNode);
 
 class BfDirectTypeReference : public BfTypeReference
 {
 public:
-	BF_AST_TYPE(BfDirectTypeReference, BfAstNode);	
+	BF_AST_TYPE(BfDirectTypeReference, BfAstNode);
 
 	BfType* mType;
 	void Init(BfType* type)
 	{
 		mType = type;
 		InitEmpty();
-	}	
-
+	}
 };	BF_AST_DECL(BfDirectTypeReference, BfAstNode);
 
 class BfDirectTypeDefReference : public BfTypeReference
@@ -2403,14 +2425,13 @@ public:
 		mTypeDef = type;
 		InitEmpty();
 	}
-
 };	BF_AST_DECL(BfDirectTypeDefReference, BfTypeReference);
 
 // class BfTypeDefTypeReference : public BfTypeReference
 // {
 // public:
 // 	BF_AST_TYPE(BfTypeDefTypeReference, BfTypeReference);
-// 
+//
 // 	BfTypeDef* mTypeDef;
 // };	BF_AST_DECL(BfTypeDefTypeReference, BfTypeReference);
 
@@ -2430,8 +2451,8 @@ public:
 		mParent = NULL;
 #endif
 		InitEmpty();
-		//mTypeDef = NULL;		
-	}	
+		//mTypeDef = NULL;
+	}
 };	BF_AST_DECL(BfDirectStrTypeReference, BfTypeReference);
 
 class BfDotTypeReference : public BfTypeReference
@@ -2552,7 +2573,7 @@ public:
 	BF_AST_TYPE(BfGenericInstanceTypeRef, BfElementedTypeRef);
 
 	BfTokenNode* mOpenChevron;
-	BfSizedArray<BfAstNode*> mGenericArguments;	
+	BfSizedArray<BfAstNode*> mGenericArguments;
 	BfSizedArray<ASTREF(BfAstNode*)> mCommas;
 	BfTokenNode* mCloseChevron;
 	int GetGenericArgCount()
@@ -2608,7 +2629,7 @@ public:
 };	BF_AST_DECL(BfExprModTypeRef, BfTypeReference);
 
 enum BfGenericParamKind
-{	
+{
 	BfGenericParamKind_Type,
 	BfGenericParamKind_Method
 };
@@ -2626,7 +2647,7 @@ class BfPointerTypeRef : public BfElementedTypeRef
 {
 public:
 	BF_AST_TYPE(BfPointerTypeRef, BfElementedTypeRef);
-	
+
 	BfTokenNode* mStarNode;
 };	BF_AST_DECL(BfPointerTypeRef, BfElementedTypeRef);
 
@@ -2685,7 +2706,7 @@ public:
 class BfAlignOfExpression : public BfTypeAttrExpression
 {
 public:
-	BF_AST_TYPE(BfAlignOfExpression, BfTypeAttrExpression);	
+	BF_AST_TYPE(BfAlignOfExpression, BfTypeAttrExpression);
 };	BF_AST_DECL(BfAlignOfExpression, BfTypeAttrExpression);
 
 class BfStrideOfExpression : public BfTypeAttrExpression
@@ -2693,7 +2714,6 @@ class BfStrideOfExpression : public BfTypeAttrExpression
 public:
 	BF_AST_TYPE(BfStrideOfExpression, BfTypeAttrExpression);
 };	BF_AST_DECL(BfStrideOfExpression, BfTypeAttrExpression);
-
 
 class BfOffsetOfExpression : public BfTypeAttrExpression
 {
@@ -2703,6 +2723,16 @@ public:
 	BfTokenNode* mCommaToken;
 	BfIdentifierNode* mMemberName;
 };	BF_AST_DECL(BfOffsetOfExpression, BfTypeAttrExpression);
+
+class BfNameOfExpression : public BfExpression
+{
+public:
+	BF_AST_TYPE(BfNameOfExpression, BfExpression);
+	BfTokenNode* mToken;
+	BfTokenNode* mOpenParen;
+	BfAstNode* mTarget;
+	BfTokenNode* mCloseParen;
+};	BF_AST_DECL(BfNameOfExpression, BfExpression);
 
 class BfIsConstExpression : public BfExpression
 {
@@ -2751,17 +2781,17 @@ public:
 
 	BfExpression* mTarget;
 	BfTokenNode* mAsToken;
-	BfTypeReference* mTypeRef;	
+	BfTypeReference* mTypeRef;
 };	BF_AST_DECL(BfDynamicCastExpression, BfExpression);
 
 class BfCastExpression : public BfUnaryOperatorExpression
 {
 public:
 	BF_AST_TYPE(BfCastExpression, BfUnaryOperatorExpression);
-	
+
 	BfTokenNode* mOpenParen;
 	BfTypeReference* mTypeRef;
-	BfTokenNode* mCloseParen;	
+	BfTokenNode* mCloseParen;
 };	BF_AST_DECL(BfCastExpression, BfUnaryOperatorExpression);
 
 class BfDelegateBindExpression : public BfMethodBoundExpression
@@ -2780,15 +2810,25 @@ class BfLambdaBindExpression : public BfExpression
 public:
 	BF_AST_TYPE(BfLambdaBindExpression, BfExpression);
 
-	BfAstNode* mNewToken;	
+	BfAstNode* mNewToken;
 	BfTokenNode* mOpenParen;
-	BfTokenNode* mCloseParen;		
+	BfTokenNode* mCloseParen;
 	BfSizedArray<ASTREF(BfIdentifierNode*)> mParams;
 	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
-	BfTokenNode* mFatArrowToken;	
+	BfTokenNode* mFatArrowToken;
 	BfAstNode* mBody; // Either expression or block
 	BfFieldDtorDeclaration* mDtor;
 };	BF_AST_DECL(BfLambdaBindExpression, BfExpression);
+
+class BfNamedExpression : public BfExpression
+{
+public:
+	BF_AST_TYPE(BfNamedExpression, BfExpression);
+
+	BfIdentifierNode* mNameNode;
+	BfTokenNode* mColonToken;
+	BfExpression* mExpression;
+};	BF_AST_DECL(BfNamedExpression, BfExpression);
 
 class BfAttributedExpression : public BfExpression
 {
@@ -2815,11 +2855,11 @@ public:
 
 	BfAstNode* mNewNode;
 	BfTokenNode* mStarToken;
-	BfTypeReference* mTypeRef;	
+	BfTypeReference* mTypeRef;
 	BfTokenNode* mOpenToken;
-	BfTokenNode* mCloseToken;	
+	BfTokenNode* mCloseToken;
 	BfSizedArray<BfExpression*> mArguments;
-	BfSizedArray<BfTokenNode*> mCommas;	
+	BfSizedArray<BfTokenNode*> mCommas;
 };	BF_AST_DECL(BfObjectCreateExpression, BfMethodBoundExpression);
 
 class BfBoxExpression : public BfExpression
@@ -2837,7 +2877,7 @@ class BfDeleteStatement : public BfStatement
 public:
 	BF_AST_TYPE(BfDeleteStatement, BfStatement);
 
-	BfTokenNode* mDeleteToken;	
+	BfTokenNode* mDeleteToken;
 	BfTokenNode* mTargetTypeToken; // colon token
 	BfAstNode* mAllocExpr;
 	BfAttributeDirective* mAttributes;
@@ -2848,11 +2888,11 @@ class BfDeferBindNode : public BfAstNode
 {
 public:
 	BF_AST_TYPE(BfDeferBindNode, BfAstNode);
-	
+
 	BfTokenNode* mOpenBracket;
 	BfTokenNode* mCloseBracket;
 	BfSizedArray<ASTREF(BfIdentifierNode*)> mParams;
-	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;	
+	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
 };	BF_AST_DECL(BfDeferBindNode, BfAstNode);
 
 class BfDeferStatement : public BfStatement
@@ -2908,7 +2948,7 @@ public:
 	ASTREF(BfTokenNode*) mCloseParen;
 	ASTREF(BfGenericArgumentsNode*) mGenericArgs;
 	BfSizedArray<ASTREF(BfExpression*)> mArguments;
-	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;		
+	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
 };	BF_AST_DECL(BfInvocationExpression, BfMethodBoundExpression);
 
 class BfEnumCaseDeclaration : public BfAstNode
@@ -2918,7 +2958,7 @@ public:
 
 	ASTREF(BfTokenNode*) mCaseToken;
 	BfSizedArray<ASTREF(BfFieldDeclaration*)> mEntries;
-	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;	
+	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
 };	BF_AST_DECL(BfEnumCaseDeclaration, BfAstNode);
 
 class BfMemberDeclaration : public BfAstNode
@@ -2926,9 +2966,9 @@ class BfMemberDeclaration : public BfAstNode
 public:
 	BF_AST_TYPE(BfMemberDeclaration, BfAstNode);
 
-	BfAttributeDirective* mAttributes;	
+	BfAttributeDirective* mAttributes;
 	BfAstNode* mProtectionSpecifier;
-	BfTokenNode* mStaticSpecifier;	
+	BfTokenNode* mStaticSpecifier;
 	BfTokenNode* mReadOnlySpecifier; // Also stores 'inline'
 };	BF_AST_DECL(BfMemberDeclaration, BfAstNode);
 
@@ -2943,7 +2983,7 @@ public:
 	ASTREF(BfTokenNode*) mPrecedingComma;
 	BfAstNode* mNameNode; // Either BfIdentifierNode or BfTupleExpression
 	ASTREF(BfTokenNode*) mEqualsNode;
-	ASTREF(BfExpression*) mInitializer;	
+	ASTREF(BfExpression*) mInitializer;
 };	BF_AST_DECL(BfVariableDeclaration, BfExpression);
 
 class BfLocalMethodDeclaration : public BfCompoundStatement
@@ -2996,7 +3036,7 @@ class BfGenericOperatorConstraint : public BfAstNode
 {
 public:
 	BF_AST_TYPE(BfGenericOperatorConstraint, BfAstNode);
-		
+
 	BfTokenNode* mOperatorToken;
 	BfTypeReference* mLeftType;
 	BfTokenNode* mOpToken;
@@ -3012,7 +3052,7 @@ public:
 	BfTypeReference* mTypeRef;
 	BfTokenNode* mColonToken;
 	BfSizedArray<BfAstNode*> mConstraintTypes;
-	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;	
+	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
 };	BF_AST_DECL(BfGenericConstraint, BfAstNode);
 
 class BfGenericConstraintExpression : public BfAstNode
@@ -3036,8 +3076,8 @@ class BfMethodDeclaration : public BfMemberDeclaration
 {
 public:
 	BF_AST_TYPE(BfMethodDeclaration, BfMemberDeclaration);
-	
-	BfCommentNode* mDocumentation;	
+
+	BfCommentNode* mDocumentation;
 	BfTokenNode* mExternSpecifier;
 	BfTokenNode* mVirtualSpecifier; // either 'virtual', 'override', or 'abstract'
 	BfTokenNode* mNewSpecifier;
@@ -3047,7 +3087,7 @@ public:
 	BfTypeReference* mReturnType;
 	BfTypeReference* mExplicitInterface;
 	BfTokenNode* mExplicitInterfaceDotToken;
-	BfIdentifierNode* mNameNode;	
+	BfIdentifierNode* mNameNode;
 	BfTokenNode* mOpenParen;
 	BfTokenNode* mThisToken;
 	BfSizedArray<BfParameterDeclaration*> mParams;
@@ -3057,7 +3097,7 @@ public:
 	BfGenericConstraintsDeclaration* mGenericConstraintsDeclaration;
 	BfAstNode* mEndSemicolon;
 	BfTokenNode* mFatArrowToken;
-	BfAstNode* mBody; // Either expression or block	
+	BfAstNode* mBody; // Either expression or block
 
 	//BfMethodDef* mMethodDef;
 
@@ -3068,13 +3108,13 @@ class BfOperatorDeclaration : public BfMethodDeclaration
 {
 public:
 	BF_AST_TYPE(BfOperatorDeclaration, BfMethodDeclaration);
-	
+
 	BfTokenNode* mExplicitToken; // Explicit or Implicit
 	BfTokenNode* mOperatorToken;
 	BfTokenNode* mOpTypeToken;
 	bool mIsConvOperator;
 	BfUnaryOp mUnaryOp;
-	BfBinaryOp mBinOp;	
+	BfBinaryOp mBinOp;
 	BfAssignmentOp mAssignOp;
 };	BF_AST_DECL(BfOperatorDeclaration, BfMethodDeclaration);
 
@@ -3084,21 +3124,22 @@ public:
 	BF_AST_TYPE(BfConstructorDeclaration, BfMethodDeclaration);
 
 	BfTokenNode* mThisToken;
-	
+
 	BfTokenNode* mInitializerColonToken;
 	BfExpression* mInitializer;
-	
 };	BF_AST_DECL(BfConstructorDeclaration, BfMethodDeclaration);
 
 class BfAutoConstructorDeclaration : public BfConstructorDeclaration
 {
 public:
 	BF_AST_TYPE(BfAutoConstructorDeclaration, BfConstructorDeclaration);
+
+	BfAstNode* mPrefix;
 };	BF_AST_DECL(BfAutoConstructorDeclaration, BfConstructorDeclaration);
 
 class BfDestructorDeclaration : public BfMethodDeclaration
 {
-public:	
+public:
 	BF_AST_TYPE(BfDestructorDeclaration, BfMethodDeclaration);
 
 	BfTokenNode* mTildeToken;
@@ -3129,19 +3170,19 @@ class BfFieldDeclaration : public BfMemberDeclaration
 {
 public:
 	BF_AST_TYPE(BfFieldDeclaration, BfMemberDeclaration);
-	
+
 	BfCommentNode* mDocumentation;
 	BfTokenNode* mPrecedingComma;
-	BfAstNode* mConstSpecifier; // Could be 'const' or 'using'	
+	BfAstNode* mConstSpecifier; // Could be 'const' or 'using'
 	BfTokenNode* mVolatileSpecifier;
 	BfTokenNode* mNewSpecifier;
-	BfTokenNode* mExternSpecifier;
+	BfTokenNode* mExternSpecifier; // Could be 'extern' or 'append'
 	BfTypeReference* mTypeRef;
 	BfIdentifierNode* mNameNode;
 	BfTokenNode* mEqualsNode;
 	BfExpression* mInitializer;
 	BfFieldDtorDeclaration* mFieldDtor;
-	
+
 	BfFieldDef* mFieldDef;
 };	BF_AST_DECL(BfFieldDeclaration, BfMemberDeclaration);
 
@@ -3149,7 +3190,6 @@ class BfEnumEntryDeclaration : public BfFieldDeclaration
 {
 public:
 	BF_AST_TYPE(BfEnumEntryDeclaration, BfFieldDeclaration);
-
 };	BF_AST_DECL(BfEnumEntryDeclaration, BfFieldDeclaration);
 
 class BfPropertyMethodDeclaration : public BfAstNode
@@ -3160,10 +3200,10 @@ public:
 	BfAttributeDirective* mAttributes;
 	BfAstNode* mProtectionSpecifier;
 	BfTokenNode* mSetRefSpecifier;
-	BfTokenNode* mMutSpecifier;	
+	BfTokenNode* mMutSpecifier;
 	BfIdentifierNode* mNameNode;
 	BfTokenNode* mFatArrowToken;
-	BfAstNode* mBody;		
+	BfAstNode* mBody;
 	BfAstNode* mEndSemicolon;
 };	BF_AST_DECL(BfPropertyMethodDeclaration, BfAstNode);
 
@@ -3172,7 +3212,7 @@ class BfPropertyBodyExpression : public BfAstNode
 public:
 	BF_AST_TYPE(BfPropertyBodyExpression, BfAstNode);
 	BfTokenNode* mMutSpecifier;
-	BfTokenNode* mFatTokenArrow;		
+	BfTokenNode* mFatTokenArrow;
 };  BF_AST_DECL(BfPropertyBodyExpression, BfAstNode);
 
 class BfPropertyDeclaration : public BfFieldDeclaration
@@ -3182,10 +3222,10 @@ public:
 
 	BfTokenNode* mVirtualSpecifier; // either 'virtual', 'override', or 'abstract'
 	BfTypeReference* mExplicitInterface;
-	BfTokenNode* mExplicitInterfaceDotToken;	
+	BfTokenNode* mExplicitInterfaceDotToken;
 	BfAstNode* mDefinitionBlock;
 
-	BfSizedArray<BfPropertyMethodDeclaration*> mMethods;		
+	BfSizedArray<BfPropertyMethodDeclaration*> mMethods;
 
 	BfPropertyMethodDeclaration* GetMethod(const StringImpl& name);
 };	BF_AST_DECL(BfPropertyDeclaration, BfFieldDeclaration);
@@ -3314,7 +3354,7 @@ public:
 
 	BfTokenNode* mUsingToken;
 	BfTokenNode* mOpenParen;
-	BfVariableDeclaration* mVariableDeclaration;	
+	BfVariableDeclaration* mVariableDeclaration;
 	BfTokenNode* mCloseParen;
 	BfAstNode* mEmbeddedStatement;
 };	BF_AST_DECL(BfUsingStatement, BfCompoundStatement);
@@ -3338,7 +3378,7 @@ public:
 	BfTokenNode* mWhileToken;
 	BfTokenNode* mOpenParen;
 	BfExpression* mCondition;
-	BfTokenNode* mCloseParen;	
+	BfTokenNode* mCloseParen;
 };	BF_AST_DECL(BfRepeatStatement, BfLabelableStatement);
 
 class BfWhileStatement : public BfLabelableStatement
@@ -3417,7 +3457,7 @@ public:
 
 		String ToString();
 	};
-	
+
 	class AsmInst
 	{
 	public:

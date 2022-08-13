@@ -4,6 +4,18 @@ using System;
 
 namespace System
 {
+	extension RefCounted<T>
+	{
+		public static RefCounted<T> Attach(RefCounted<T> val)
+		{
+			val.AddRef();
+			return val;
+		}
+	}
+}
+
+namespace System
+{
 	public extension Event<T>
 	{
 		public implicit void operator+=(T action) mut
@@ -471,6 +483,16 @@ namespace Tests
 			}
 		}
 
+		class ClassA
+		{
+			public String value = new .() ~ delete _;
+
+			public void operator+=(StringView value)
+			{
+				this.value.Append(value);
+			}
+		}
+
 		public struct Vector2 : this(float x, float y);
 
 		public static Event<Action> sEvent ~ _.Dispose(); // Workaround for the lack of auto-destructor in properties
@@ -709,6 +731,18 @@ namespace Tests
 			Test.Assert(sA == 222);
 			Val += 1000;
 			Test.Assert(sA == 1222);
+
+			RefCounted<String> rcStr = .Create("Abc");
+			Test.Assert(rcStr->Length == 3);
+			rcStr->Clear();
+			rcStr.Release();
+
+			//RefCounted<StructB> rcB = .Create();
+
+			ClassA ca = scope .();
+			ca += "ab";
+			ca += "cd";
+			Test.Assert(ca.value == "abcd");
 		}
 
 		struct IntStruct
@@ -739,8 +773,6 @@ namespace Tests
 				mA++;
 			}
 		}
-
-		
 
 		[Test]
 		public static void TestCompareWithCastOperator()

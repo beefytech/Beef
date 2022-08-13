@@ -27,9 +27,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
-add_definitions(   
-   -DIDEHELPER_EXPORTS 
-   -DBFSYSLIB_DYNAMIC 
+add_definitions(
+   -DIDEHELPER_EXPORTS
+   -DBFSYSLIB_DYNAMIC
    -DUNICODE
    -D_UNICODE
    -DBF_NO_FBX
@@ -41,10 +41,10 @@ if (${APPLE})
   include_directories(
     .
     ../
-    ../BeefySysLib/    
+    ../BeefySysLib/
     ../BeefySysLib/third_party
-    ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_13_0_1/llvm/include  
+    ../BeefySysLib/third_party/freetype/include
+    ../extern/llvm-project_13_0_1/llvm/include
     ../extern/llvm-project_13_0_1/llvm/lib/Target
     ../IDEHelper
 
@@ -54,14 +54,14 @@ else()
   include_directories(
     .
     ../
-    ../BeefySysLib/    
+    ../BeefySysLib/
     ../BeefySysLib/third_party
-    ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_13_0_1/llvm/include  
+    ../BeefySysLib/third_party/freetype/include
+    ../extern/llvm-project_13_0_1/llvm/include
     ../extern/llvm-project_13_0_1/llvm/lib/Target
     ../IDEHelper
 
-    ../BeefySysLib/platform/linux    
+    ../BeefySysLib/platform/linux
   )
 endif()
 
@@ -69,7 +69,7 @@ endif()
 # Defines outputs , depending Debug or Release. #
 #################################################
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")  
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_definitions(
     -D_DEBUG
   )
@@ -85,23 +85,23 @@ else()
     ../extern/llvm_linux_rel_13_0_1/lib/Target/X86
   )
   set(EXECUTABLE_OUTPUT_PATH  "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_13_0_1/lib")    
+  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_13_0_1/lib")
 endif()
 
 ################### Dependencies ##################
 # Add Dependencies to project.                    #
 ###################################################
 
-option(BUILD_DEPENDS 
-   "Build other CMake project." 
-   ON 
+option(BUILD_DEPENDS
+   "Build other CMake project."
+   ON
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   
+
 else()
-   
+
 endif()
 
 ################# Flags ################
@@ -113,7 +113,7 @@ if(MSVC)
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /GL /Od /Oi /Gy /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wno-multichar -Wno-invalid-offsetof")  
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wno-multichar -Wno-invalid-offsetof")
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
   endif()
@@ -137,7 +137,16 @@ execute_process(
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/bin/llvm-config --system-libs --link-static
   OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
   OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE EXEC_RESULT
 )
+
+if (EXEC_RESULT AND NOT EXEC_RESULT EQUAL 0)
+  if (EXEC_RESULT MATCHES "^[0-9]+$")
+    message(FATAL_ERROR "llvm-config exited with code ${EXEC_RESULT}.")
+  else()
+    message(FATAL_ERROR "llvm-config couldn't be executed: ${EXEC_RESULT}")
+  endif()
+endif()
 
 if (${APPLE})
     set(TARGET_LIBS_OS "")
@@ -152,10 +161,10 @@ endif()
 if(MSVC)
    target_link_libraries(${PROJECT_NAME} BeefySysLib IDEHelper kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib)
 else()
-    target_link_libraries(${PROJECT_NAME} BeefySysLib 
-        IDEHelper 
+    target_link_libraries(${PROJECT_NAME} BeefySysLib
+        IDEHelper
         ${TARGET_LIBS_OS}
-        
-        #${LLVM_LIB}/libLLVMSupport.a 
-        )    
+
+        #${LLVM_LIB}/libLLVMSupport.a
+        )
 endif()

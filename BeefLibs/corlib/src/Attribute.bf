@@ -425,10 +425,18 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.Field | .StaticField | .Method | .Property /*2*/)]
+	[AttributeUsage(.Field | .StaticField | .Method | .Property | .Types)]
 	public struct NoShowAttribute : Attribute
 	{
+		public this()
+		{
 
+		}
+
+		public this(bool allowDirect)
+		{
+
+		}
 	}
 
 	[AttributeUsage(.Parameter)]

@@ -64,16 +64,16 @@ BeValue* BeInliner::Remap(BeValue* srcValue)
 		return itr->second;*/
 	if (mValueMap.TryGetValue(srcValue, &valuePtr))
 		return *valuePtr;
-	
-	BeMDNode* wrapMDNode = NULL;	
+
+	BeMDNode* wrapMDNode = NULL;
 
 	if (auto dbgFunction = BeValueDynCast<BeDbgFunction>(srcValue))
-	{		
-		wrapMDNode = dbgFunction;		
+	{
+		wrapMDNode = dbgFunction;
 	}
 	if (auto dbgLexBlock = BeValueDynCast<BeDbgLexicalBlock>(srcValue))
 	{
-		wrapMDNode = dbgLexBlock;		
+		wrapMDNode = dbgLexBlock;
 	}
 
 	if (auto callInst = BeValueDynCast<BeCallInst>(srcValue))
@@ -83,9 +83,9 @@ BeValue* BeInliner::Remap(BeValue* srcValue)
 	}
 
 	if (wrapMDNode != NULL)
-	{		
+	{
 		auto destMDNode = mOwnedValueVec->Alloc<BeDbgInlinedScope>();
-		destMDNode->mScope = wrapMDNode;		
+		destMDNode->mScope = wrapMDNode;
 		mValueMap[srcValue] = destMDNode;
 		return destMDNode;
 	}
@@ -107,13 +107,13 @@ BeDbgLoc* BeInliner::ExtendInlineDbgLoc(BeDbgLoc* srcInlineAt)
 	BeDbgLoc** dbgLocPtr = NULL;
 	if (mInlinedAtMap.TryGetValue(srcInlineAt, &dbgLocPtr))
 		return *dbgLocPtr;
-	
+
 	auto dbgLoc = mModule->mAlloc.Alloc<BeDbgLoc>();
 	dbgLoc->mLine = srcInlineAt->mLine;
 	dbgLoc->mColumn = srcInlineAt->mColumn;
 	dbgLoc->mDbgScope = (BeMDNode*)Remap(srcInlineAt->mDbgScope);
 	dbgLoc->mIdx = mModule->mCurDbgLocIdx++;
-	dbgLoc->mDbgInlinedAt = ExtendInlineDbgLoc(srcInlineAt->mDbgInlinedAt);	
+	dbgLoc->mDbgInlinedAt = ExtendInlineDbgLoc(srcInlineAt->mDbgInlinedAt);
 	mInlinedAtMap[srcInlineAt] = dbgLoc;
 
 	return dbgLoc;
@@ -130,7 +130,7 @@ void BeInliner::AddInst(BeInst* destInst, BeInst* srcInst)
 		}
 		else
 		{
-			BeDbgLoc* inlinedAt = ExtendInlineDbgLoc(mSrcDbgLoc->mDbgInlinedAt);						
+			BeDbgLoc* inlinedAt = ExtendInlineDbgLoc(mSrcDbgLoc->mDbgInlinedAt);
 			mModule->SetCurrentDebugLocation(mSrcDbgLoc->mLine, mSrcDbgLoc->mColumn, (BeMDNode*)Remap(mSrcDbgLoc->mDbgScope), inlinedAt);
 			mDestDbgLoc = mModule->mCurDbgLoc;
 		}
@@ -138,7 +138,7 @@ void BeInliner::AddInst(BeInst* destInst, BeInst* srcInst)
 
 	if (srcInst != NULL)
 		destInst->mName = srcInst->mName;
-	
+
 	destInst->mDbgLoc = mDestDbgLoc;
 	destInst->mParentBlock = mDestBlock;
 	mDestBlock->mInstructions.push_back(destInst);
@@ -156,7 +156,6 @@ void BeInliner::Visit(BeBlock* beBlock)
 
 void BeInliner::Visit(BeArgument* beArgument)
 {
-	
 }
 
 void BeInliner::Visit(BeInst* beInst)
@@ -166,7 +165,7 @@ void BeInliner::Visit(BeInst* beInst)
 
 void BeInliner::Visit(BeNopInst* nopInst)
 {
-	auto destNopInst = AllocInst(nopInst);	
+	auto destNopInst = AllocInst(nopInst);
 }
 
 void BeInliner::Visit(BeUnreachableInst* unreachableInst)
@@ -188,7 +187,7 @@ void BeInliner::Visit(BeUndefValueInst* undefValue)
 void BeInliner::Visit(BeExtractValueInst* extractValue)
 {
 	auto destExtractValue = AllocInst(extractValue);
-	destExtractValue->mAggVal = Remap(extractValue->mAggVal);	
+	destExtractValue->mAggVal = Remap(extractValue->mAggVal);
 	destExtractValue->mIdx = extractValue->mIdx;
 }
 
@@ -233,7 +232,7 @@ void BeInliner::Visit(BeBinaryOpInst* binaryOpInst)
 	auto destBinaryOp = AllocInst(binaryOpInst);
 	destBinaryOp->mOpKind = binaryOpInst->mOpKind;
 	destBinaryOp->mLHS = Remap(binaryOpInst->mLHS);
-	destBinaryOp->mRHS = Remap(binaryOpInst->mRHS);	
+	destBinaryOp->mRHS = Remap(binaryOpInst->mRHS);
 }
 
 void BeInliner::Visit(BeCmpInst* cmpInst)
@@ -285,26 +284,32 @@ void BeInliner::Visit(BeAliasValueInst* aliasValueInst)
 void BeInliner::Visit(BeLifetimeExtendInst* lifetimeExtendInst)
 {
 	auto destlifetimeExtendInst = AllocInst(lifetimeExtendInst);
-	destlifetimeExtendInst->mPtr = Remap(lifetimeExtendInst->mPtr);	
+	destlifetimeExtendInst->mPtr = Remap(lifetimeExtendInst->mPtr);
 }
 
 void BeInliner::Visit(BeLifetimeStartInst* lifetimeStartInst)
 {
 	auto destlifetimeStartInst = AllocInst(lifetimeStartInst);
-	destlifetimeStartInst->mPtr = Remap(lifetimeStartInst->mPtr);	
+	destlifetimeStartInst->mPtr = Remap(lifetimeStartInst->mPtr);
 }
 
 void BeInliner::Visit(BeLifetimeEndInst* lifetimeEndInst)
 {
 	auto destlifetimeEndInst = AllocInst(lifetimeEndInst);
-	destlifetimeEndInst->mPtr = Remap(lifetimeEndInst->mPtr);	
+	destlifetimeEndInst->mPtr = Remap(lifetimeEndInst->mPtr);
+}
+
+void BeInliner::Visit(BeLifetimeSoftEndInst* lifetimeEndInst)
+{
+	auto destlifetimeEndInst = AllocInst(lifetimeEndInst);
+	destlifetimeEndInst->mPtr = Remap(lifetimeEndInst->mPtr);
 }
 
 void BeInliner::Visit(BeLifetimeFenceInst* lifetimeFenceInst)
 {
 	auto destlifetimeFenceInst = AllocInst(lifetimeFenceInst);
 	destlifetimeFenceInst->mFenceBlock = (BeBlock*)Remap(lifetimeFenceInst->mFenceBlock);
-	destlifetimeFenceInst->mPtr = Remap(lifetimeFenceInst->mPtr);	
+	destlifetimeFenceInst->mPtr = Remap(lifetimeFenceInst->mPtr);
 }
 
 void BeInliner::Visit(BeValueScopeStartInst* valueScopeStartInst)
@@ -328,14 +333,14 @@ void BeInliner::Visit(BeValueScopeEndInst* valueScopeEndInst)
 void BeInliner::Visit(BeLoadInst* loadInst)
 {
 	auto destLoadInst = AllocInst(loadInst);
-	destLoadInst->mTarget = Remap(loadInst->mTarget);	
+	destLoadInst->mTarget = Remap(loadInst->mTarget);
 }
 
 void BeInliner::Visit(BeStoreInst* storeInst)
 {
 	auto destStoreInst = AllocInst(storeInst);
 	destStoreInst->mPtr = Remap(storeInst->mPtr);
-	destStoreInst->mVal = Remap(storeInst->mVal);	
+	destStoreInst->mVal = Remap(storeInst->mVal);
 }
 
 void BeInliner::Visit(BeSetCanMergeInst* setCanMergeInst)
@@ -374,26 +379,24 @@ void BeInliner::Visit(BeCondBrInst* condBrInst)
 	auto destCondBrInst = AllocInst(condBrInst);
 	destCondBrInst->mCond = Remap(condBrInst->mCond);
 	destCondBrInst->mTrueBlock = (BeBlock*)Remap(condBrInst->mTrueBlock);
-	destCondBrInst->mFalseBlock = (BeBlock*)Remap(condBrInst->mFalseBlock);	
+	destCondBrInst->mFalseBlock = (BeBlock*)Remap(condBrInst->mFalseBlock);
 }
 
 void BeInliner::Visit(BePhiIncoming* phiIncomingInst)
 {
-	
 }
 
 void BeInliner::Visit(BePhiInst* phiInst)
-{	
+{
 	auto destPhiInst = AllocInst(phiInst);
 	for (auto incoming : phiInst->mIncoming)
 	{
 		auto destPhiIncoming = mAlloc->Alloc<BePhiIncoming>();
-		destPhiIncoming->mValue = Remap(incoming->mValue);		
+		destPhiIncoming->mValue = Remap(incoming->mValue);
 		destPhiIncoming->mBlock = (BeBlock*)Remap(incoming->mBlock);
 		destPhiInst->mIncoming.push_back(destPhiIncoming);
 	}
 
-	
 	destPhiInst->mType = phiInst->mType;
 }
 
@@ -428,7 +431,7 @@ void BeInliner::Visit(BeCallInst* callInst)
 		destCallInst->mArgs.push_back(copiedArg);
 	}
 	destCallInst->mNoReturn = callInst->mNoReturn;
-	destCallInst->mTailCall = callInst->mTailCall;	
+	destCallInst->mTailCall = callInst->mTailCall;
 }
 
 void BeInliner::Visit(BeDbgDeclareInst* dbgDeclareInst)
@@ -462,7 +465,7 @@ void BeConstant::GetData(BeConstData& data)
 		data.mData.Insert(data.mData.mSize, (uint8*)&f, sizeof(float));
 	}
 	else
-	{		
+	{
 		data.mData.Insert(data.mData.mSize, &mUInt8, type->mSize);
 	}
 }
@@ -472,7 +475,7 @@ void BeConstant::HashContent(BeHashContext& hashCtx)
 	hashCtx.Mixin(TypeId);
 	mType->HashReference(hashCtx);
 	if (mType->mTypeCode < BeTypeCode_Struct)
-	{		
+	{
 		hashCtx.Mixin(mUInt64);
 	}
 	else if (mType->IsPointer())
@@ -504,7 +507,7 @@ BeType* BeGEP1Constant::GetType()
 }
 
 BeType* BeGEP2Constant::GetType()
-{	
+{
 	BePointerType* ptrType = (BePointerType*)mTarget->GetType();
 	BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
 	if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
@@ -533,7 +536,7 @@ BeType* BeGEP2Constant::GetType()
 
 BeType* BeExtractValueConstant::GetType()
 {
-	BeType* type = mTarget->GetType();	
+	BeType* type = mTarget->GetType();
 	if (type->mTypeCode == BeTypeCode_SizedArray)
 	{
 		BeSizedArrayType* arrayType = (BeSizedArrayType*)type;
@@ -652,10 +655,10 @@ BeModule* BeInst::GetModule()
 }
 
 void BeInst::SetName(const StringImpl& name)
-{	
+{
 	char* nameStr = (char*)GetModule()->mAlloc.AllocBytes((int)name.length() + 1);
 	strcpy(nameStr, name.c_str());
-	mName = nameStr;	
+	mName = nameStr;
 }
 
 BeType* BeLoadInst::GetType()
@@ -686,7 +689,7 @@ BeType* BeExtractValueInst::GetType()
 	}
 	BF_ASSERT(aggType->mTypeCode == BeTypeCode_Struct);
 	BeStructType* structType = (BeStructType*)aggType;
-	return structType->mMembers[mIdx].mType;	
+	return structType->mMembers[mIdx].mType;
 }
 
 BeType* BeInsertValueInst::GetType()
@@ -711,10 +714,9 @@ BeType * BeValueScopeStartInst::GetType()
 	return context->GetPrimitiveType(BeTypeCode_Int32);
 }
 
-
 BeType* BeGEPInst::GetType()
 {
-	if (mIdx1 == NULL)		
+	if (mIdx1 == NULL)
 		return mPtr->GetType();
 
 	BePointerType* ptrType = (BePointerType*)mPtr->GetType();
@@ -757,8 +759,8 @@ BeType* BeCallInst::GetType()
 	auto type = mFunc->GetType();
 	if (type == NULL)
 	{
-		if (auto intrin = BeValueDynCast<BeIntrinsic>(mFunc))		
-			return intrin->mReturnType;		
+		if (auto intrin = BeValueDynCast<BeIntrinsic>(mFunc))
+			return intrin->mReturnType;
 		return type;
 	}
 	while (type->mTypeCode == BeTypeCode_Pointer)
@@ -865,7 +867,7 @@ BeDbgFile* BeDbgLoc::GetDbgFile()
 		}
 		else if (auto dbgFunc = BeValueDynCast<BeDbgFunction>(checkScope))
 		{
-			return dbgFunc->mFile;			
+			return dbgFunc->mFile;
 		}
 		else if (auto dbgLexBlock = BeValueDynCast<BeDbgLexicalBlock>(checkScope))
 		{
@@ -888,9 +890,9 @@ BeDbgLoc* BeDbgLoc::GetInlinedAt(int idx)
 }
 
 BeDbgLoc* BeDbgLoc::GetRoot()
-{	
+{
 	auto checkDbgLoc = this;
-	while (checkDbgLoc->mDbgInlinedAt != NULL)	
+	while (checkDbgLoc->mDbgInlinedAt != NULL)
 		checkDbgLoc = checkDbgLoc->mDbgInlinedAt;
 	return checkDbgLoc;
 }
@@ -1021,7 +1023,7 @@ void BeDbgEnumType::SetMembers(SizedArrayImpl<BeMDNode*>& members)
 		if (auto enumMember = BeValueDynCast<BeDbgEnumMember>(member))
 		{
 			mMembers.push_back(enumMember);
-		}		
+		}
 		else
 			BF_FATAL("bad");
 	}
@@ -1047,7 +1049,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		}
 
 		if (auto dbgType = BeValueDynCast<BeDbgTypeId>(mdNode))
-		{			
+		{
 			str += StrFormat("DbgTypeId: %d", dbgType->mTypeId);
 			return;
 		}
@@ -1075,7 +1077,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		}
 
 		if (auto dbgFunc = BeValueDynCast<BeDbgFunction>(mdNode))
-		{			
+		{
 			if (auto parentType = BeValueDynCast<BeDbgType>(dbgFunc->mScope))
 			{
 				ToString(str, dbgFunc->mScope);
@@ -1089,7 +1091,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			str += dbgFunc->mName;
 
 			if (mdDrillDown)
-			{				
+			{
 				str += ":";
 				ToString(str, dbgFunc->mFile, true, true);
 			}
@@ -1106,9 +1108,9 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			ToString(str, lexBlock->mScope);
 			return;
 		}
-		
+
 		if (auto dbgType = BeValueDynCast<BeDbgBasicType>(mdNode))
-		{			
+		{
 			if (dbgType->mEncoding == llvm::dwarf::DW_ATE_address)
 			{
 				if (dbgType->mSize == 0)
@@ -1181,7 +1183,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		}
 
 		if (auto dbgType = BeValueDynCast<BeDbgNamespace>(mdNode))
-		{			
+		{
 			if ((BeValueDynCast<BeDbgStructType>(dbgType->mScope) != NULL) ||
 				(BeValueDynCast<BeDbgNamespace>(dbgType->mScope) != NULL))
 			{
@@ -1196,7 +1198,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		}
 
 		if (auto dbgType = BeValueDynCast<BeDbgStructType>(mdNode))
-		{			
+		{
 			if ((BeValueDynCast<BeDbgStructType>(dbgType->mScope) != NULL) ||
 				(BeValueDynCast<BeDbgNamespace>(dbgType->mScope) != NULL))
 			{
@@ -1211,7 +1213,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		}
 
 		if (auto dbgType = BeValueDynCast<BeDbgEnumType>(mdNode))
-		{			
+		{
 			if ((BeValueDynCast<BeDbgStructType>(dbgType->mScope) != NULL) ||
 				(BeValueDynCast<BeDbgNamespace>(dbgType->mScope) != NULL))
 			{
@@ -1226,7 +1228,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		}
 
 		if (auto dbgType = BeValueDynCast<BeDbgArrayType>(mdNode))
-		{			
+		{
 			ToString(str, dbgType->mElement);
 			str += "[";
 			str += StrFormat("%d", dbgType->mNumElements);
@@ -1256,7 +1258,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		}
 
 		if (auto dbgMember = BeValueDynCast<BeDbgStructMember>(mdNode))
-		{			
+		{
 			if (dbgMember->mIsStatic)
 				str += "static ";
 			ToString(str, dbgMember->mType);
@@ -1267,14 +1269,14 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 				str += " offset:";
 				str += StrFormat("%d", dbgMember->mOffset);
 			}
-			
+
 			if (dbgMember->mStaticValue != NULL)
 				str += " " + ToString(dbgMember->mStaticValue);
 			return;
 		}
 
 		if (auto dbgMember = BeValueDynCast<BeDbgEnumMember>(mdNode))
-		{			
+		{
 			str += dbgMember->mName;
 			str += " ";
 			str += StrFormat("%lld", dbgMember->mValue);
@@ -1302,13 +1304,13 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	}
 
 	if (auto constantGEP = BeValueDynCast<BeGEP2Constant>(value))
-	{	
+	{
 		str += "ConstGEP2 ";
 		ToString(str, constantGEP->mTarget);
 		str += StrFormat(" %d %d", constantGEP->mIdx0, constantGEP->mIdx1);
 		return;
 	}
-	
+
 	if (auto constantExtract = BeValueDynCast<BeExtractValueConstant>(value))
 	{
 		str += "ConstExtract ";
@@ -1333,10 +1335,10 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			str += "%";
 			str += param.mName;
 		}
-		
+
 		return;
 	}
-	
+
 	if (auto func = BeValueDynCast<BeFunction>(value))
 	{
 		str += func->mName;
@@ -1344,7 +1346,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	}
 
 	if (auto constant = BeValueDynCast<BeStructConstant>(value))
-	{		
+	{
 		if (showType)
 		{
 			BeModule::ToString(str, constant->mType);
@@ -1355,7 +1357,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 
 		switch (constant->mType->mTypeCode)
 		{
-		case BeTypeCode_Struct:			
+		case BeTypeCode_Struct:
 		case BeTypeCode_SizedArray:
 		case BeTypeCode_Vector:
 			for (int valIdx = 0; valIdx < (int)constant->mMemberValues.size(); valIdx++)
@@ -1363,7 +1365,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 				if (valIdx > 0)
 					str += ", ";
 				ToString(str, constant->mMemberValues[valIdx], false);
-			}			
+			}
 			break;
 		default:
 			BF_FATAL("NotImpl");
@@ -1386,7 +1388,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	}
 
 	if (auto constant = BeValueDynCast<BeCastConstant>(value))
-	{ 		
+	{
 		ToString(str, constant->mType);
 		str += " cast ";
 		ToString(str, constant->mTarget);
@@ -1403,7 +1405,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	}
 
 	if (auto constant = BeValueDynCast<BeGEP2Constant>(value))
-	{		
+	{
 		ToString(str, constant->GetType());
 		str += " gep (";
 		ToString(str, constant->mTarget);
@@ -1421,7 +1423,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	}
 
 	if (auto constant = BeValueDynCast<BeStructConstant>(value))
-	{		
+	{
 		ToString(str, constant->GetType());
 		str += " (";
 		for (int i = 0; i < constant->mMemberValues.size(); i++)
@@ -1435,7 +1437,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	}
 
 	if (auto constant = BeValueDynCast<BeStringConstant>(value))
-	{		
+	{
 		ToString(str, constant->GetType());
 		str += " \"";
 		str += SlashString(constant->mString, true, true);
@@ -1483,7 +1485,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		case BeTypeCode_Struct:
 		case BeTypeCode_SizedArray:
 		case BeTypeCode_Vector:
-			str += "zeroinitializer";		
+			str += "zeroinitializer";
 			return;
 		case BeTypeCode_Function:
 			BF_FATAL("Notimpl");
@@ -1509,10 +1511,9 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			ToString(str, callInst->mInlineResult);
 			return;
 		}
-	}	
+	}
 
-
-	BeType* resultType = NULL;	
+	BeType* resultType = NULL;
 	const char* wantNamePtr = NULL;
 	if (auto instVal = BeValueDynCast<BeInst>(value))
 	{
@@ -1520,7 +1521,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	 	if ((instVal->mName != NULL) && (instVal->mName[0] != 0))
 	 		wantNamePtr = instVal->mName;
 	}
-	 
+
 	String* valueNamePtr = NULL;
 	if (mValueNameMap.TryGetValue(value, &valueNamePtr))
 	{
@@ -1534,16 +1535,16 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		str += *valueNamePtr;
 		return;
 	}
-	 
+
 	if (auto beBlock = BeValueDynCast<BeBlock>(value))
 	{
 		if (!beBlock->mName.IsEmpty())
 			wantNamePtr = beBlock->mName.c_str();
 	}
-	 
+
 	StringT<64> useName;
 	if (wantNamePtr != NULL)
-		useName += wantNamePtr;		
+		useName += wantNamePtr;
 	while (true)
 	{
 		int* idxPtr = NULL;
@@ -1551,13 +1552,13 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			break;
 
 		int checkIdx = (*idxPtr)++;
-	 			
+
 	 	char str[32];
-	 	sprintf(str, "%d", checkIdx);		
+	 	sprintf(str, "%d", checkIdx);
 	 	useName += str;
 	}
 
-	mValueNameMap[value] = useName;	
+	mValueNameMap[value] = useName;
 	if ((showType) && (resultType != NULL))
 	{
 		BeModule::ToString(str, resultType);
@@ -1593,7 +1594,7 @@ void BeDumpContext::ToString(StringImpl& str, BeType* type)
 }
 
 void BeDumpContext::ToString(StringImpl& str, BeDbgFunction* dbgFunction, bool showScope)
-{	
+{
 	if (dbgFunction->mIsStaticMethod)
 		str += "static ";
 	if (dbgFunction->mIsLocalToUnit)
@@ -1604,7 +1605,7 @@ void BeDumpContext::ToString(StringImpl& str, BeDbgFunction* dbgFunction, bool s
 		str += StrFormat("virtual(%d) ", dbgFunction->mVIndex);
 
 	str += ToString(dbgFunction->mType->mReturnType);
-	str += " ";	
+	str += " ";
 
 	if ((showScope) && (dbgFunction->mScope != NULL))
 	{
@@ -1626,7 +1627,7 @@ void BeDumpContext::ToString(StringImpl& str, BeDbgFunction* dbgFunction, bool s
 	str += dbgFunction->mName;
 	if (needsQuote)
 		str += "\"";
-	
+
 	if (!dbgFunction->mGenericArgs.IsEmpty())
 	{
 		str += "<";
@@ -1676,7 +1677,7 @@ void BeDumpContext::ToString(StringImpl& str, BeDbgFunction* dbgFunction, bool s
 	{
 		str += " Link:";
 		str += dbgFunction->mLinkageName;
-	}	
+	}
 }
 
 String BeDumpContext::ToString(BeDbgFunction* dbgFunction)
@@ -1716,7 +1717,7 @@ void BeDumpContext::ToString(StringImpl& str, BeCmpKind cmpKind)
 	case BeCmpKind_NO: str += "no"; return;
 	default:
 		str += "???";
-	}		
+	}
 }
 
 String BeDumpContext::ToString(BeCmpKind cmpKind)
@@ -1729,7 +1730,7 @@ String BeDumpContext::ToString(BeCmpKind cmpKind)
 void BeDumpContext::ToString(StringImpl& str, BeBinaryOpKind opKind)
 {
 	switch (opKind)
-	{	
+	{
 	case BeBinaryOpKind_Add: str += "+"; return;
 	case BeBinaryOpKind_Subtract: str += "-"; return;
 	case BeBinaryOpKind_Multiply: str += "*"; return;
@@ -1745,7 +1746,7 @@ void BeDumpContext::ToString(StringImpl& str, BeBinaryOpKind opKind)
 	case BeBinaryOpKind_ARightShift: str += "A>>"; return;
 	default:
 		str += "???";
-	}	
+	}
 }
 
 String BeDumpContext::ToString(BeBinaryOpKind opKind)
@@ -1794,11 +1795,11 @@ BeModule::BeModule(const StringImpl& moduleName, BeContext* context)
 	mCeMachine = NULL;
 	mPrevDbgLocInline = NULL;
 	mCurDbgLocIdx = 0;
-	mCurLexBlockId = 0;	
+	mCurLexBlockId = 0;
 }
 
 void BeModule::Hash(BeHashContext& hashCtx)
-{	
+{
 	hashCtx.MixinStr(mTargetTriple);
 	hashCtx.MixinStr(mTargetCPU);
 
@@ -1807,7 +1808,7 @@ void BeModule::Hash(BeHashContext& hashCtx)
 		configConst->HashContent(hashCtx);
 
 	if (mDbgModule != NULL)
-		mDbgModule->HashReference(hashCtx);	
+		mDbgModule->HashReference(hashCtx);
 
 	if (!mFunctions.IsEmpty())
 	{
@@ -1822,26 +1823,26 @@ void BeModule::Hash(BeHashContext& hashCtx)
 				beFunction->HashReference(hashCtx);
 		}
 	}
-	
+
 	if (!mGlobalVariables.IsEmpty())
 	{
 		std::sort(mGlobalVariables.begin(), mGlobalVariables.end(), [](BeGlobalVariable* lhs, BeGlobalVariable* rhs)
 		{
 			return (lhs->mName < rhs->mName);
 		});
-	
+
 		for (auto& beGlobalVar : mGlobalVariables)
 		{
 			if (beGlobalVar->mInitializer != NULL)
 				beGlobalVar->HashReference(hashCtx);
 		}
-	}	
+	}
 }
 
 #define DELETE_ENTRY(i) delete mOwnedValues[i]; mOwnedValues[i] = NULL
 
 BeModule::~BeModule()
-{	
+{
 	delete mDbgModule;
 }
 
@@ -1887,23 +1888,23 @@ String BeModule::ToString(BeFunction* wantFunc)
 	Dictionary<int, BeDbgLoc*> dbgLocs;
 
 	StringT<128*1024> str;
-	
+
 	SetAndRestoreValue<BeFunction*> prevActiveFunc(mActiveFunction, NULL);
 
 	BeDumpContext dc;
-	
+
 	if (wantFunc == NULL)
 	{
 		str += "Module: "; str += mModuleName; str += "\n";
 		str += "Target: "; str += mTargetTriple; str += "\n";
 
 		if (mDbgModule != NULL)
-		{			
+		{
 			str += "FileName: "; str += mDbgModule->mFileName; str += "\n";
 			str += "Directory: "; str += mDbgModule->mDirectory; str += "\n";
-			str += "Producer: "; str += mDbgModule->mProducer; str += "\n";			
+			str += "Producer: "; str += mDbgModule->mProducer; str += "\n";
 		}
-		
+
 		for (int i = 0; i < (int)mConfigConsts64.size(); i++)
 		{
 			if (i == 0)
@@ -1926,7 +1927,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 		}
 		str += "\n";
 
-		str += "; Global variables\n";		
+		str += "; Global variables\n";
 		for (int gvIdx = 0; gvIdx < (int)mGlobalVariables.size(); gvIdx++)
 		{
 			auto gv = mGlobalVariables[gvIdx];
@@ -1971,7 +1972,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 					if (dbgGlobalVar->mIsLocalToUnit)
 						str += "internal ";
 					dc.ToString(str, dbgGlobalVar->mType);
-					
+
 					if (dbgGlobalVar->mValue != NULL)
 					{
 						str += " ";
@@ -1991,8 +1992,8 @@ String BeModule::ToString(BeFunction* wantFunc)
 						str += dbgGlobalVar->mLinkageName;
 					}
 					str += "\n";
-				}				
-				
+				}
+
 				str += "\n";
 			}
 
@@ -2001,7 +2002,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 			{
 				if (auto dbgStructType = BeValueDynCast<BeDbgStructType>(dbgType))
 				{
-					dc.ToString(str, dbgStructType);					
+					dc.ToString(str, dbgStructType);
 					str += " = {";
 					if (dbgStructType->mSize != -1)
 					{
@@ -2035,7 +2036,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 								str += ",";
 
 							str += "\n    ";
-							dc.ToString(str, dbgStructType->mMethods[methodIdx], false);																																
+							dc.ToString(str, dbgStructType->mMethods[methodIdx], false);
 						}
 						str += "}";
 					}
@@ -2050,11 +2051,11 @@ String BeModule::ToString(BeFunction* wantFunc)
 						str += "\n  Size: ";
 						str += StrFormat("%d", dbgEnumType->mSize);
 						str += "\n  Align : ";
-						str += StrFormat("%d", dbgEnumType->mAlign);						
+						str += StrFormat("%d", dbgEnumType->mAlign);
 					}
 					if (dbgEnumType->mElementType != NULL)
 					{
-						str += "\n  Underlying: "; 
+						str += "\n  Underlying: ";
 						dc.ToString(str, dbgEnumType->mElementType);
 					}
 					if (!dbgEnumType->mMembers.IsEmpty())
@@ -2096,7 +2097,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 			continue;
 
 		mActiveFunction = func;
- 		
+
 		Dictionary<BeValue*, String> valueNameMap;
 		HashSet<String> seenNames;
 
@@ -2110,13 +2111,13 @@ String BeModule::ToString(BeFunction* wantFunc)
 		str += func->mName;
 		str += "(";
 		for (int paramIdx = 0; paramIdx < (int)funcType->mParams.size(); paramIdx++)
-		{	
+		{
 			auto& typeParam = funcType->mParams[paramIdx];
 			auto& param = func->mParams[paramIdx];
 			if (paramIdx > 0)
 				str += ", ";
 			ToString(str, typeParam.mType);
-			
+
 			if (param.mStructRet)
 				str += " sret";
 			if (param.mNoAlias)
@@ -2252,7 +2253,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 			str += ":\n";
 
 			for (auto inst : beBlock->mInstructions)
-			{	
+			{
 				if (inst->mDbgLoc != NULL)
 				{
 					if ((inst->mDbgLoc != lastDbgLoc) && (lastDbgLoc != NULL))
@@ -2263,7 +2264,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 // 						}
 
 						if ((inst->mDbgLoc->mDbgInlinedAt != lastDbgLoc->mDbgInlinedAt) && (inst->mDbgLoc->mDbgInlinedAt != NULL))
-						{														
+						{
 							prevDbgLocs.Clear();
 							auto prevInlinedAt = lastDbgLoc->mDbgInlinedAt;
 							while (prevInlinedAt != NULL)
@@ -2287,7 +2288,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 
 				str += "  ";
 				if (inst->CanBeReferenced())
-				{					
+				{
 					str += dc.ToString(inst, false);
 					str += " = ";
 				}
@@ -2325,7 +2326,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 						str += dc.ToString(castedInst->mRHS, false);
 					}
 					break;*/
-				DISPLAY_INST3(BeCmpInst, "cmp", mCmpKind, mLHS, mRHS);				
+				DISPLAY_INST3(BeCmpInst, "cmp", mCmpKind, mLHS, mRHS);
 				DISPLAY_INST1(BeObjectAccessCheckInst, "objectAccessCheck", mValue);
 				case BeAllocaInst::TypeId:
 					{
@@ -2342,8 +2343,9 @@ String BeModule::ToString(BeFunction* wantFunc)
 					}
 					break;
 				DISPLAY_INST1(BeAliasValueInst, "aliasvalue", mPtr);
-				DISPLAY_INST1(BeLifetimeStartInst, "lifetime.start", mPtr);				
+				DISPLAY_INST1(BeLifetimeStartInst, "lifetime.start", mPtr);
 				DISPLAY_INST1(BeLifetimeEndInst, "lifetime.end", mPtr);
+				DISPLAY_INST1(BeLifetimeSoftEndInst, "lifetime.softEnd", mPtr);
 				DISPLAY_INST2(BeLifetimeFenceInst, "lifetime.fence", mFenceBlock, mPtr);
 				DISPLAY_INST0(BeValueScopeStartInst, "valueScope.start");
 				DISPLAY_INST1(BeValueScopeRetainInst, "valueScope.retain", mValue);
@@ -2376,7 +2378,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 				DISPLAY_INST0(BeFenceInst, "fence");
 				DISPLAY_INST0(BeStackSaveInst, "stackSave");
 				DISPLAY_INST1(BeStackRestoreInst, "stackRestore", mStackVal);
-				DISPLAY_INST3(BeGEPInst, "gep", mPtr, mIdx0, mIdx1);				
+				DISPLAY_INST3(BeGEPInst, "gep", mPtr, mIdx0, mIdx1);
 				//DISPLAY_INST1(BeBrInst, "br", mTargetBlock);
 				case BeBrInst::TypeId:
 					{
@@ -2392,7 +2394,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 					break;
 
 				DISPLAY_INST3(BeCondBrInst, "condbr", mCond, mTrueBlock, mFalseBlock);
-				
+
 				case BeRetInst::TypeId:
 					{
 						auto castedInst = (BeRetInst*)inst;
@@ -2438,7 +2440,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 							if (arg.mNoAlias)
 								str += " noalias";
 							if (arg.mNoCapture)
-								str += " nocapture";							
+								str += " nocapture";
 							if (arg.mDereferenceableSize != -1)
 								str += StrFormat(" dereferenceable(%d)", arg.mDereferenceableSize);
 						}
@@ -2452,17 +2454,17 @@ String BeModule::ToString(BeFunction* wantFunc)
 						auto castedInst = (BePhiInst*)inst;
 						str += "phi ";
 						dc.ToString(str, castedInst->mType);
-						str += " ";						
+						str += " ";
 						for (int argIdx = 0; argIdx < (int)castedInst->mIncoming.size(); argIdx++)
 						{
 							if (argIdx > 0)
 								str += ", ";
-							str += "[";							
+							str += "[";
 							dc.ToString(str, castedInst->mIncoming[argIdx]->mValue);
 							str += ", ";
 							dc.ToString(str, castedInst->mIncoming[argIdx]->mBlock);
 							str += "]";
-						}						
+						}
 					}
 					break;
 				case BeSwitchInst::TypeId:
@@ -2492,7 +2494,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 							str += " <addr>";
 
 						if (auto dbgVariable = castedInst->mDbgVar)
-						{							
+						{
 							switch (dbgVariable->mInitType)
 							{
 							case BfIRInitType_NotNeeded: str += " noinit"; break;
@@ -2536,13 +2538,13 @@ String BeModule::ToString(BeFunction* wantFunc)
 
 							BeDbgLoc* inlinedAt = inst->mDbgLoc->mDbgInlinedAt;
 							while (inlinedAt != NULL)
-							{	
+							{
 								str += StrFormat("#%d", inlinedAt->mIdx);
 								inlinedAt = inlinedAt->mDbgInlinedAt;
 							}
 						}
 						str += "]";
-					}					
+					}
 				}
 
 				str += "\n";
@@ -2550,7 +2552,6 @@ String BeModule::ToString(BeFunction* wantFunc)
 		}
 
 		str += "}\n";
-
 
 		if (func->mDbgFunction != NULL)
 		{
@@ -2572,14 +2573,14 @@ String BeModule::ToString(BeFunction* wantFunc)
 
 		str += "\n";
 	}
-		
+
 	for (auto& dbgLocPair : dbgLocs)
 	{
-		auto dbgLoc = dbgLocPair.mValue;		
+		auto dbgLoc = dbgLocPair.mValue;
 		dc.ToString(str, dbgLocPair.mValue);
 		str += "\n";
 	}
-	str += "\n";	
+	str += "\n";
 
 	return str;
 }
@@ -2596,7 +2597,7 @@ void BeModule::Print(BeFunction* func)
 
 void BeModule::PrintValue(BeValue* val)
 {
-	BeDumpContext dumpCtx;	
+	BeDumpContext dumpCtx;
 	String str;
 	dumpCtx.ToString(str, val);
 	str += "\n";
@@ -2620,7 +2621,7 @@ void BeModule::DoInlining(BeFunction* func)
 
 	if (func->mDidInlinePass)
 		return;
-	// Set this true here so we don't recurse on the same function	
+	// Set this true here so we don't recurse on the same function
 	func->mDidInlinePass = true;
 
 	int numHeadAllocas = 0;
@@ -2630,11 +2631,11 @@ void BeModule::DoInlining(BeFunction* func)
 
 	// From head to resume
 	std::unordered_multimap<BeBlock*, BeBlock*> inlineResumesMap;
-	
-	// From resume to head
-	std::unordered_multimap<BeBlock*, BeBlock*> inlineHeadMap; 
 
-	bool hadInlining = false;		
+	// From resume to head
+	std::unordered_multimap<BeBlock*, BeBlock*> inlineHeadMap;
+
+	bool hadInlining = false;
 
 	std::function<void(int& blockIdx, BeBlock* endBlock, std::unordered_set<BeFunction*>& funcInlined)> _DoInlining;
 	_DoInlining = [&](int& blockIdx, BeBlock* endBlock, std::unordered_set<BeFunction*>& funcInlined)
@@ -2674,14 +2675,14 @@ void BeModule::DoInlining(BeFunction* func)
 						auto _CheckBlock = [&](BeBlock* checkBlock)
 						{
 							for (auto inst : checkBlock->mInstructions)
-							{								
+							{
 								switch (inst->GetTypeId())
 								{
 								case BeBrInst::TypeId:
 									{
 										auto castedInst = (BeBrInst*)inst;
 										if (castedInst->mTargetBlock == beBlock)
-										{											
+										{
 											found = true;
 										}
 									}
@@ -2691,7 +2692,7 @@ void BeModule::DoInlining(BeFunction* func)
 										auto castedInst = (BeCondBrInst*)inst;
 										if ((castedInst->mTrueBlock == beBlock) ||
 											(castedInst->mFalseBlock == beBlock))
-										{											
+										{
 											found = true;
 										}
 									}
@@ -2768,7 +2769,7 @@ void BeModule::DoInlining(BeFunction* func)
 				inliner.mModule = this;
 				inliner.mSrcFunc = inlineFunc;
 				inliner.mDestFunc = func;
-				inliner.mCallInst = callInst;				
+				inliner.mCallInst = callInst;
 
 				if ((func->mDbgFunction != NULL) && (inlineFunc->mDbgFunction != NULL))
 				{
@@ -2785,7 +2786,7 @@ void BeModule::DoInlining(BeFunction* func)
 						destDbgGlobalVar->mInitType = dbgGlobalVar->mInitType;
 						if (dbgGlobalVar->mValue != NULL)
 						{
-							BF_ASSERT(BeValueDynCast<BeConstant>(dbgGlobalVar->mValue) != NULL);							
+							BF_ASSERT(BeValueDynCast<BeConstant>(dbgGlobalVar->mValue) != NULL);
 							destDbgGlobalVar->mValue = dbgGlobalVar->mValue;
 						}
 						else
@@ -2827,7 +2828,7 @@ void BeModule::DoInlining(BeFunction* func)
 				inlineResumesMap.insert(std::make_pair(headBlock, returnBlock));
 				inlineHeadMap.insert(std::make_pair(returnBlock, headBlock));
 
-				std::vector<BeBlock*> destBlocks;				
+				std::vector<BeBlock*> destBlocks;
 
 				for (int argIdx = 0; argIdx < (int)callInst->mArgs.size(); argIdx++)
 				{
@@ -2877,7 +2878,7 @@ void BeModule::DoInlining(BeFunction* func)
 								destAlloca->mArraySize = allocaInst->mArraySize;
 								destAlloca->mAlign = allocaInst->mAlign;
 								destAlloca->mNoChkStk = allocaInst->mNoChkStk;
-								destAlloca->mForceMem = allocaInst->mForceMem;								
+								destAlloca->mForceMem = allocaInst->mForceMem;
 								destAlloca->mName = allocaInst->mName;
 
 								auto destBlock = func->mBlocks[0];
@@ -2919,7 +2920,7 @@ void BeModule::DoInlining(BeFunction* func)
 								auto brInst = mAlloc.Alloc<BeEnsureInstructionAtInst>();
 								inliner.AddInst(brInst, retInst);
 
-								auto fenceInst = mAlloc.Alloc<BeLifetimeFenceInst>();					
+								auto fenceInst = mAlloc.Alloc<BeLifetimeFenceInst>();
 								fenceInst->mFenceBlock = beBlock;
 								fenceInst->mPtr = callInst->mInlineResult;
 								inliner.AddInst(fenceInst, retInst);
@@ -2936,7 +2937,7 @@ void BeModule::DoInlining(BeFunction* func)
 
 				/*if (callInst->mInlineResult != NULL)
 				{
-					auto fenceInst = mAlloc.Alloc<BeLifetimeFenceInst>();					
+					auto fenceInst = mAlloc.Alloc<BeLifetimeFenceInst>();
 					fenceInst->mPtr = callInst->mInlineResult;
 					beBlock->mInstructions.push_back(fenceInst);
 				}*/
@@ -2976,7 +2977,6 @@ void BeModule::DoInlining(BeFunction* func)
 			return lhsInlinePos->mIdx < rhsInlinePos->mIdx;
 		});
 	}*/
-	
 }
 
 void BeModule::DoInlining()
@@ -3107,7 +3107,7 @@ void BeModule::ToString(StringImpl& str, BeType* type)
 		return;
 	case BeTypeCode_Function:
 		{
-			auto funcType = (BeFunctionType*)type;			
+			auto funcType = (BeFunctionType*)type;
 			ToString(str, funcType->mReturnType);
 			str += "(";
 			for (int paramIdx = 0; paramIdx < (int)funcType->mParams.size(); paramIdx++)
@@ -3151,19 +3151,19 @@ void BeModule::ToString(StringImpl& str, BeType* type)
 
 void BeModule::SetActiveFunction(BeFunction* function)
 {
-	mActiveFunction = function;	
+	mActiveFunction = function;
 }
 
 BeArgument* BeModule::GetArgument(int argIdx)
 {
-	while ((int)argIdx >= mArgs.size())		
+	while ((int)argIdx >= mArgs.size())
 	{
 		auto arg = mAlloc.Alloc<BeArgument>();
 		arg->mModule = this;
 		arg->mArgIdx = (int)mArgs.size();
 		mArgs.push_back(arg);
 	}
-	
+
 	return mArgs[argIdx];
 }
 
@@ -3177,12 +3177,12 @@ BeBlock* BeModule::CreateBlock(const StringImpl& name)
 void BeModule::AddBlock(BeFunction* function, BeBlock* block)
 {
 	block->mFunction = function;
-	function->mBlocks.push_back(block);	
+	function->mBlocks.push_back(block);
 }
 
 void BeModule::RemoveBlock(BeFunction* function, BeBlock* block)
 {
-	bool didRemove = function->mBlocks.Remove(block);	
+	bool didRemove = function->mBlocks.Remove(block);
 	BF_ASSERT(didRemove);
 #ifdef _DEBUG
 	for (auto inst : block->mInstructions)
@@ -3216,7 +3216,7 @@ BeFunction* BeModule::CreateFunction(BeFunctionType* funcType, BfIRLinkageType l
 	func->mLinkageType = linkageType;
 	func->mParams.Resize(funcType->mParams.size());
 	mFunctions.push_back(func);
-	
+
 #ifdef _DEBUG
 	// It IS possible hit this, especially if we have multiple intrinsics mapping to 'malloc' for example
 	//BF_ASSERT(mFunctionMap.TryAdd(name, func));
@@ -3250,12 +3250,12 @@ void BeModule::SetCurrentDebugLocation(int line, int column, BeMDNode* dbgScope,
 	mCurDbgLoc->mLine = line;
 	mCurDbgLoc->mColumn = column;
 	mCurDbgLoc->mDbgScope = dbgScope;
-	mCurDbgLoc->mDbgInlinedAt = dbgInlinedAt;	
+	mCurDbgLoc->mDbgInlinedAt = dbgInlinedAt;
 	mCurDbgLoc->mIdx = mCurDbgLocIdx++;
 
 	if ((dbgInlinedAt != NULL) && (!dbgInlinedAt->mHadInline))
 	{
-		dbgInlinedAt->mHadInline = true;		
+		dbgInlinedAt->mHadInline = true;
 	}
 
 	mLastDbgLoc = mCurDbgLoc;
@@ -3265,7 +3265,7 @@ BeDbgLoc* BeModule::DupDebugLocation(BeDbgLoc* dbgLoc)
 {
 	if (dbgLoc == NULL)
 		return dbgLoc;
-	
+
 	auto newDbgLoc = mAlloc.Alloc<BeDbgLoc>();
 	newDbgLoc->mLine = dbgLoc->mLine;
 	newDbgLoc->mColumn = dbgLoc->mColumn;
@@ -3317,7 +3317,7 @@ BeBitCastInst * BeModule::CreateBitCast(BeValue* value, BeType* toType)
 {
 	auto inst = mAlloc.Alloc<BeBitCastInst>();
 	inst->mValue = value;
-	inst->mToType = toType;	
+	inst->mToType = toType;
 	AddInst(inst);
 	return inst;
 }
@@ -3357,7 +3357,7 @@ BeAllocaInst* BeModule::CreateAlloca(BeType* type)
 }
 
 BeLoadInst* BeModule::CreateLoad(BeValue* value, bool isVolatile)
-{	
+{
 	auto inst = mAlloc.Alloc<BeLoadInst>();
 	inst->mTarget = value;
 	inst->mIsVolatile = isVolatile;
@@ -3401,15 +3401,18 @@ BeStoreInst* BeModule::CreateAlignedStore(BeValue* val, BeValue* ptr, int alignm
 }
 
 BeGEPInst* BeModule::CreateGEP(BeValue* ptr, BeValue* idx0, BeValue* idx1)
-{	
+{
+#ifdef _DEBUG
+	BF_ASSERT(ptr->GetType()->IsPointer());
+#endif
+
 	auto inst = mAlloc.Alloc<BeGEPInst>();
 	inst->mPtr = ptr;
 	inst->mIdx0 = idx0;
-	inst->mIdx1 = idx1;		
-	AddInst(inst);	
-	
+	inst->mIdx1 = idx1;
+	AddInst(inst);
+
 #ifdef _DEBUG
-	BF_ASSERT(ptr->GetType()->IsPointer());
 	inst->GetType();
 #endif
 
@@ -3459,11 +3462,11 @@ BeSetRetInst* BeModule::CreateSetRet(BeValue* value, int returnTypeId)
 }
 
 BeCallInst* BeModule::CreateCall(BeValue* func, const SizedArrayImpl<BeValue*>& args)
-{	
+{
 	auto inst = mOwnedValues.Alloc<BeCallInst>();
 	inst->mFunc = func;
 	if (!args.IsEmpty())
-	{	
+	{
 		inst->mArgs.resize(args.size());
 		for (int i = 0; i < (int)args.size(); i++)
 			inst->mArgs[i].mValue = args[i];
@@ -3499,8 +3502,8 @@ BeConstant* BeModule::GetConstant(BeType* type, int64 intVal)
 		break;
 	default:
 		constant->mInt64 = intVal;
-	}		
-	
+	}
+
 	return constant;
 }
 
@@ -3514,16 +3517,16 @@ BeConstant* BeModule::GetConstant(BeType* type, bool boolVal)
 
 BeConstant* BeModule::GetConstantNull(BePointerType* type)
 {
-	auto constant = mAlloc.Alloc<BeConstant>();	
+	auto constant = mAlloc.Alloc<BeConstant>();
 	if (type == NULL)
 		constant->mType = mContext->GetPrimitiveType(BeTypeCode_NullPtr);
 	else
-		constant->mType = type;	
+		constant->mType = type;
 	return constant;
 }
 
 BeDbgReferenceType * BeDbgModule::CreateReferenceType(BeDbgType* elementType)
-{	
+{
 	BeDbgType* useType = elementType->FindDerivedType(BeDbgReferenceType::TypeId);
 	if (useType == NULL)
 	{
@@ -3542,7 +3545,7 @@ void BeDbgModule::HashContent(BeHashContext & hashCtx)
 	hashCtx.MixinStr(mDirectory);
 	hashCtx.MixinStr(mProducer);
 
-	BeDumpContext dc;	
+	BeDumpContext dc;
 	String lhsName;
 	String rhsName;
 
@@ -3550,12 +3553,12 @@ void BeDbgModule::HashContent(BeHashContext & hashCtx)
 	{
 		auto _GetName = [&](BeDbgFunction* func, String& str)
 		{
-			if (!func->mLinkageName.IsEmpty())			
-				str.Append(func->mLinkageName);			
-			else			
-				dc.ToString(str, func);			
+			if (!func->mLinkageName.IsEmpty())
+				str.Append(func->mLinkageName);
+			else
+				dc.ToString(str, func);
 		};
-		
+
 		Array<BeDbgFunction*> unrefFuncs;
 		for (auto dbgFunc : mFuncs)
 		{
@@ -3564,12 +3567,12 @@ void BeDbgModule::HashContent(BeHashContext & hashCtx)
 		}
 
 		std::sort(unrefFuncs.begin(), unrefFuncs.end(), [&](BeDbgFunction* lhs, BeDbgFunction* rhs)
-		{			
+		{
 			lhsName.Clear();
 			_GetName(lhs, lhsName);
 
 			rhsName.Clear();
-			_GetName(rhs, rhsName);			
+			_GetName(rhs, rhsName);
 
 			int cmp = String::Compare(lhsName, rhsName, false);
 			if (cmp != 0)
@@ -3590,7 +3593,7 @@ void BeDbgModule::HashContent(BeHashContext & hashCtx)
 
 			if (lhs->mLine != rhs->mLine)
 				return lhs->mLine < rhs->mLine;
-			
+
 			return lhs->mIdx < rhs->mIdx;
 		});
 

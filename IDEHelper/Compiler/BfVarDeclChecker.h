@@ -17,5 +17,4 @@ public:
 	virtual void Visit(BfVariableDeclaration* binOpExpr) override;
 };
 
-
 NS_BF_END

@@ -69,6 +69,9 @@
     <Filter Include="src\third_party\miniz">
       <UniqueIdentifier>{d32cb9b0-e79b-49fe-82e2-33302be0baf6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\third_party\putty">
+      <UniqueIdentifier>{bec18ceb-a7ca-4150-99ee-60a16944b93c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="platform\win\DXRenderDevice.cpp">
@@ -584,6 +587,9 @@
     <ClCompile Include="third_party\miniz\miniz.c">
       <Filter>src\third_party\miniz</Filter>
     </ClCompile>
+    <ClCompile Include="third_party\putty\wildcard.c">
+      <Filter>src\third_party\putty</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -897,6 +903,9 @@
     </ClInclude>
     <ClInclude Include="third_party\miniz\miniz.h">
       <Filter>src\third_party\miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\putty\wildcard.h">
+      <Filter>src\third_party\putty</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

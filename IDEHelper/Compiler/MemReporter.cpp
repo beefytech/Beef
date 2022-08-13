@@ -16,7 +16,7 @@ MemReporter::~MemReporter()
 int MemReporter::GetChildSizes(Entry* entry)
 {
 	int childSizes = 0;
-	for (auto& childPair : entry->mChildren)		
+	for (auto& childPair : entry->mChildren)
 	{
 		auto child = childPair.mValue;
 		childSizes += child->mSize + GetChildSizes(child);
@@ -29,10 +29,10 @@ void MemReporter::Report(int depth, Entry* entry)
 	String str;
 	for (int i = 0; i < depth; i++)
 		str += "  ";
-	
+
 	str += entry->mName;
 	while (str.length() < 64)
-		str +=  ' ';	
+		str +=  ' ';
 
 	if (entry->mChildSize == -1)
 		entry->mChildSize = GetChildSizes(entry);
@@ -45,7 +45,7 @@ void MemReporter::Report(int depth, Entry* entry)
 
 	Array<Entry*> entries;
 	for (auto& kv : entry->mChildren)
-	{ 
+	{
 		auto* entry = kv.mValue;
 		entry->mChildSize = GetChildSizes(entry);
 		entries.Add(kv.mValue);
@@ -63,7 +63,7 @@ void MemReporter::BeginSection(const StringView& name)
 {
 	Entry** entryPtr;
 	if (!mCurEntry->mChildren.TryAdd(StringImpl::MakeRef(name), NULL, &entryPtr))
-	{		
+	{
 		mCurEntry = *entryPtr;
 		mCurEntry->mCount++;
 		return;
@@ -95,6 +95,6 @@ void MemReporter::EndSection()
 }
 
 void MemReporter::Report()
-{		
+{
 	Report(0, &mRoot);
 }

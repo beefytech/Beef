@@ -627,15 +627,7 @@ namespace IDE
 					    return false;
 					}
 
-
 					String compilerExePath = scope String();
-#if BF_PLATFORM_WINDOWS
-					String llvmDir = scope String(IDEApp.sApp.mInstallDir);
-					IDEUtils.FixFilePath(llvmDir);
-					llvmDir.Append("llvm/");
-#else
-					String llvmDir = "";					
-#endif
 					if (gApp.mSettings.mEmscriptenPath.IsEmpty)
 					{
 						gApp.OutputErrorLine("Emscripten path not configured. Check Wasm configuration in File\\Preferences\\Settings.");

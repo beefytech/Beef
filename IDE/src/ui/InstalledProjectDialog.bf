@@ -16,9 +16,11 @@ namespace IDE.ui
 			public String mName ~ delete _;
 			public String mPath ~ delete _;
 			public VerSpecRecord mVersion;
+			public Project.TargetType mTargetType;
 		}
 
 		protected IDEListView mProjectList;
+		DarkComboBox mKindCombo;
 		EditWidget mEditWidget;
 		bool mFilterChanged;
 		List<InstalledProject> mInstalledProjectList = new .() ~ DeleteContainerAndItems!(_);
@@ -58,6 +60,21 @@ namespace IDE.ui
 		    mEditWidget.mOnKeyDown.Add(new => EditKeyDownHandler);
 		    mEditWidget.mOnContentChanged.Add(new (evt) => { mFilterChanged = true; });
 
+			mKindCombo = new DarkComboBox();
+			mKindCombo.Label = "Libraries";
+			mKindCombo.mPopulateMenuAction.Add(new (menu) =>
+				{
+					for (var kind in String[?]("All", "Libraries"))
+					{
+						menu.AddItem(kind).mOnMenuItemSelected.Add(new (menu) =>
+							{
+								mFilterChanged = true;
+								mKindCombo.Label = kind;
+							});
+					}
+				});
+			AddWidget(mKindCombo);
+
 			FindProjects();
 		}
 
@@ -78,6 +95,7 @@ namespace IDE.ui
 					installedProject.mPath.Append("BeefProj.toml");
 				default:
 				}
+				installedProject.mTargetType = registryEntry.mTargetType;
 				mInstalledProjectList.Add(installedProject);
 			}
 		}
@@ -128,9 +146,14 @@ namespace IDE.ui
 		    mEditWidget.GetText(filterString);
 		    filterString.Trim();
 
+			bool onlyLibs = mKindCombo.Label == "Libraries";
+
 			mFilteredList.Clear();
 		    for (var installedProject in mInstalledProjectList)
 		    {
+				if ((onlyLibs) && (!installedProject.mTargetType.IsLib))
+					continue;
+
 				if ((!filterString.IsEmpty) && (installedProject.mName.IndexOf(filterString, true) == -1))
 					continue;
 
@@ -138,7 +161,7 @@ namespace IDE.ui
 		        listViewItem.Label = installedProject.mName;
 
 		        var subListViewItem = listViewItem.CreateSubItem(1);
-		        subListViewItem.Label = installedProject.mPath;
+		        subListViewItem.Label = Path.GetDirectoryPath(installedProject.mPath, .. scope .());
 
 				mFilteredList.Add(installedProject);
 		    }
@@ -180,7 +203,7 @@ namespace IDE.ui
 				VerSpec verSpec = .SemVer(new .("*"));
 				defer verSpec.Dispose();
 
-				let project = gApp.mProjectPanel.ImportProject(entry.mPath, verSpec);
+				let project = gApp.mProjectPanel.ImportProject(entry.mPath, null, verSpec);
 				if (project == null)
 				{
 					return;
@@ -223,6 +246,7 @@ namespace IDE.ui
 			float insetSize = GS!(6);
 		    mProjectList.Resize(insetSize, insetSize, mWidth - insetSize - insetSize, mHeight - GS!(66));
 		    mEditWidget.Resize(insetSize, mProjectList.mY + mProjectList.mHeight + insetSize, mWidth - insetSize - insetSize, GS!(22));
+			mKindCombo.Resize(insetSize, mHeight - GS!(26), Math.Min(GS!(160), mDefaultButton.mX - GS!(6)), GS!(26));
 		}
 
 		public override void CalcSize()

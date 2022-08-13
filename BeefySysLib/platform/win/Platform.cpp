@@ -25,6 +25,7 @@
 #include "../util/CritSect.h"
 #include "../util/Dictionary.h"
 #include "../util/HashSet.h"
+#include "../../third_party/putty/wildcard.h"
 
 #include "util/AllocDebug.h"
 
@@ -2530,24 +2531,24 @@ BFP_EXPORT void BFP_CALLTYPE BfpCritSect_Leave(BfpCritSect* critSect)
 #define BFPTLS_TO_DWORD(val) ((DWORD)(intptr)(val))
 
 struct BfpTLS;
-BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create()
+BFP_EXPORT BfpTLS* BFP_CALLTYPE BfpTLS_Create(BfpTLSProc exitProc)
 {
-	return DWORD_TO_BFPTLS(::TlsAlloc());
+	return DWORD_TO_BFPTLS(::FlsAlloc(exitProc));
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpTLS_Release(BfpTLS* tls)
 {
-	::TlsFree(BFPTLS_TO_DWORD(tls));
+	::FlsFree(BFPTLS_TO_DWORD(tls));
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpTLS_SetValue(BfpTLS* tls, void* value)
 {
-	::TlsSetValue(BFPTLS_TO_DWORD(tls), value);
+	::FlsSetValue(BFPTLS_TO_DWORD(tls), value);
 }
 
 BFP_EXPORT void* BFP_CALLTYPE BfpTLS_GetValue(BfpTLS* tls)
 {
-	return ::TlsGetValue(BFPTLS_TO_DWORD(tls));
+	return ::FlsGetValue(BFPTLS_TO_DWORD(tls));
 }
 
 BFP_EXPORT BfpEvent* BFP_CALLTYPE BfpEvent_Create(BfpEventFlags flags)
@@ -3485,6 +3486,7 @@ struct BfpFindFileData
 {
 	BfpFindFileFlags mFlags;
 	WIN32_FIND_DATA mFindData;
+    Beefy::String mWildcard;
 	HANDLE mHandle;
 };
 
@@ -3496,29 +3498,45 @@ static bool BfpFindFileData_CheckFilter(BfpFindFileData* findData)
 	bool isDir = (findData->mFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 	if (isDir)
 	{
-		if ((findData->mFlags & BfpFindFileFlag_Directories) != 0)
-		{
-			if ((wcscmp(findData->mFindData.cFileName, L".") == 0) || (wcscmp(findData->mFindData.cFileName, L"..") == 0))
-			{
-				return false;
-			}
-			return true;
-		}
+		if ((findData->mFlags & BfpFindFileFlag_Directories) == 0)
+			return false;
+
+		if ((wcscmp(findData->mFindData.cFileName, L".") == 0) || (wcscmp(findData->mFindData.cFileName, L"..") == 0))
+			return false;
 	}
 	else
 	{
-		if ((findData->mFlags & BfpFindFileFlag_Files) != 0)
-			return true;
+		if ((findData->mFlags & BfpFindFileFlag_Files) == 0)
+			return false;
 	}
-	return false;
+
+	Beefy::String fileName = UTF8Encode(findData->mFindData.cFileName);
+	Beefy::MakeUpper(fileName);
+    if (!wc_match(findData->mWildcard.c_str(), fileName.c_str()))
+        return false;
+
+	return true;
 }
 
 BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const char* path, BfpFindFileFlags flags, BfpFileResult* outResult)
 {
-	UTF16String wPath = UTF8Decode(path);
+	Beefy::String findStr = path;
+	Beefy::String wildcard;
+    
+    int lastSlashPos = std::max((int)findStr.LastIndexOf('/'), (int)findStr.LastIndexOf('\\'));
+    if (lastSlashPos != -1)
+    {
+        wildcard = findStr.Substring(lastSlashPos + 1);
+        findStr = findStr.Substring(0, lastSlashPos + 1);
+		findStr.Append("*");
+    }
+    if (wildcard == "*.*")
+        wildcard = "*";
 
 	BfpFindFileData* findData = new BfpFindFileData();
 	findData->mFlags = flags;
+	findData->mWildcard = wildcard;
+	Beefy::MakeUpper(findData->mWildcard);
 
 	FINDEX_SEARCH_OPS searchOps;
 	if ((flags & BfpFindFileFlag_Files) == 0)
@@ -3526,6 +3544,7 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
 	else
 		searchOps = FindExSearchNameMatch;
 
+	UTF16String wPath = UTF8Decode(findStr);
 	findData->mHandle = ::FindFirstFileExW(wPath.c_str(), FindExInfoBasic, &findData->mFindData, searchOps, NULL, 0);
 	if (findData->mHandle == INVALID_HANDLE_VALUE)
 	{

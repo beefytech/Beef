@@ -14,7 +14,7 @@ HotHeap::HotHeap(addr_target hotStart, int size)
 }
 
 HotHeap::HotHeap()
-{	
+{
 	mHotAreaStart = 0xFFFFFFFF;
 	mHotAreaSize = 0;
 	mCurBlockIdx = 0;
@@ -59,17 +59,17 @@ addr_target HotHeap::Alloc(int size)
 			}
 
 			if (!isOccupied)
-			{				
+			{
 				mBlockAllocIdx += blockCount;
 				addr_target addr = mHotAreaStart + mCurBlockIdx * BLOCK_SIZE;
 
 				OutputDebugStrF("HotHeap Alloc %d length %d %@\n", mCurBlockIdx, blockCount, addr);
 
 				for (int checkIdx = 0; checkIdx < blockCount; checkIdx++)
-				{					
+				{
 					mHotAreaUsed[mCurBlockIdx] = (HotUseFlags)(mHotAreaUsed[mCurBlockIdx] | HotUseFlags_Allocated);
 					mCurBlockIdx++;
-				}												
+				}
 				return addr;
 			}
 		}
@@ -100,7 +100,7 @@ void HotHeap::Release(addr_target addr, int size)
 }
 
 bool HotHeap::IsReferenced(addr_target addr, int size)
-{	
+{
 	int blockStart = (int)(addr - mHotAreaStart) / BLOCK_SIZE;
 	int blockCount = (size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 	for (int blockNum = blockStart; blockNum < blockStart + blockCount; blockNum++)
@@ -111,7 +111,7 @@ bool HotHeap::IsReferenced(addr_target addr, int size)
 
 void HotHeap::MarkBlockReferenced(addr_target addr)
 {
-	int blockNum = (int)(addr - mHotAreaStart) / BLOCK_SIZE;	
+	int blockNum = (int)(addr - mHotAreaStart) / BLOCK_SIZE;
 	mHotAreaUsed[blockNum] = (HotUseFlags)(mHotAreaUsed[blockNum] | HotUseFlags_Referenced);
 }
 
@@ -124,7 +124,7 @@ void HotHeap::ClearReferencedFlags()
 }
 
 intptr_target HotHeap::GetUsedSize()
-{	
+{
 	if (mTrackedMap.size() != 0)
 	{
 		int usedBytes = 0;
@@ -133,7 +133,7 @@ intptr_target HotHeap::GetUsedSize()
 		return usedBytes;
 	}
 
-	int usedCount = 0;	
+	int usedCount = 0;
 	for (auto flag : mHotAreaUsed)
 		if ((flag & HotUseFlags_Allocated) != 0)
 			usedCount++;

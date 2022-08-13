@@ -95,7 +95,7 @@ DbgSubprogram* DbgSubprogram::GetLineInlinee(const DbgLineData& lineData)
 
 DbgSrcFile* DbgSubprogram::GetLineSrcFile(const DbgLineData& lineData)
 {
-	auto inlineRoot = GetRootInlineParent();	
+	auto inlineRoot = GetRootInlineParent();
 	return inlineRoot->mLineInfo->mContexts[lineData.mCtxIdx].mSrcFile;
 }
 
@@ -132,19 +132,19 @@ DbgLineData* DbgLineDataBuilder::Add(DbgCompileUnit* compileUnit, DbgLineData& l
 	addr_target address = (addr_target)(lineData.mRelAddress + mDbgModule->mImageBase);
 	if ((compileUnit->mLowPC != (addr_target)-1) && ((address < (addr_target)compileUnit->mLowPC) || (address >= (addr_target)compileUnit->mHighPC)))
 		return NULL;
-	
+
 	if ((mCurSubprogram == NULL) || (address < mCurSubprogram->mBlock.mLowPC) || (address >= mCurSubprogram->mBlock.mHighPC))
 	{
 		DbgSubprogramMapEntry* mapEntry = mDbgModule->mDebugTarget->mSubprogramMap.Get(address, DBG_MAX_LOOKBACK);
 		if (mapEntry != NULL)
 		{
 			mCurSubprogram = mapEntry->mEntry;
-			
+
 			if (address > mCurSubprogram->mBlock.mHighPC)
 				mCurSubprogram = NULL;
 
 			if (mCurSubprogram != NULL)
-			{				
+			{
 				SubprogramRecord** recordPtr = NULL;
 				if (mRecords.TryAdd(mCurSubprogram, NULL, &recordPtr))
 				{
@@ -154,7 +154,7 @@ DbgLineData* DbgLineDataBuilder::Add(DbgCompileUnit* compileUnit, DbgLineData& l
 					*recordPtr = mCurRecord;
 					mCurRecord->mContexts.mAlloc = &mAlloc;
 					mCurRecord->mContexts.Reserve(16);
-					mCurRecord->mLines.mAlloc = &mAlloc;					
+					mCurRecord->mLines.mAlloc = &mAlloc;
 					mCurRecord->mLines.Reserve(128);
 					mCurRecord->mCurContext = -1;
 					mCurRecord->mHasInlinees = false;
@@ -169,7 +169,7 @@ DbgLineData* DbgLineDataBuilder::Add(DbgCompileUnit* compileUnit, DbgLineData& l
 
 	if (mCurSubprogram == NULL)
 		return NULL;
-	
+
 	bool needsNewCtx = false;
 	if (mCurRecord->mCurContext == -1)
 	{
@@ -181,7 +181,7 @@ DbgLineData* DbgLineDataBuilder::Add(DbgCompileUnit* compileUnit, DbgLineData& l
 		if ((curContext.mInlinee != inlinee) || (curContext.mSrcFile != srcFile))
 		{
 			needsNewCtx = true;
-			for (int ctxIdx = 0; ctxIdx < (int)mCurRecord->mContexts.size(); ctxIdx++)				
+			for (int ctxIdx = 0; ctxIdx < (int)mCurRecord->mContexts.size(); ctxIdx++)
 			{
 				auto& ctx = mCurRecord->mContexts[ctxIdx];
 				if ((ctx.mInlinee == inlinee) && (ctx.mSrcFile == srcFile))
@@ -193,15 +193,15 @@ DbgLineData* DbgLineDataBuilder::Add(DbgCompileUnit* compileUnit, DbgLineData& l
 			}
 		}
 	}
-		
+
 	if (needsNewCtx)
-	{				
+	{
 		DbgLineInfoCtx ctx;
 		ctx.mInlinee = inlinee;
 		ctx.mSrcFile = srcFile;
 		if (inlinee != NULL)
 			mCurRecord->mHasInlinees = true;
-		mCurRecord->mContexts.Add(ctx);			
+		mCurRecord->mContexts.Add(ctx);
 		mCurRecord->mCurContext = (int)mCurRecord->mContexts.size() - 1;
 	}
 
@@ -209,7 +209,7 @@ DbgLineData* DbgLineDataBuilder::Add(DbgCompileUnit* compileUnit, DbgLineData& l
 
 	if ((mCurSubprogram->mPrologueSize > 0) && (mCurRecord->mLines.size() == 1) && (inlinee == NULL))
 	{
-		auto& firstLine = mCurRecord->mLines[0];			
+		auto& firstLine = mCurRecord->mLines[0];
 		auto dbgStartAddr = firstLine.mRelAddress + mCurSubprogram->mPrologueSize;
 		if (lineData.mRelAddress != dbgStartAddr)
 		{
@@ -225,7 +225,7 @@ DbgLineData* DbgLineDataBuilder::Add(DbgCompileUnit* compileUnit, DbgLineData& l
 	{
 		if (inlinee->mInlineeInfo->mFirstLineData.mRelAddress == 0)
 			inlinee->mInlineeInfo->mFirstLineData = lineData;
-		inlinee->mInlineeInfo->mLastLineData = lineData;				
+		inlinee->mInlineeInfo->mLastLineData = lineData;
 	}
 
 	mCurRecord->mLines.Add(lineData);
@@ -235,9 +235,9 @@ DbgLineData* DbgLineDataBuilder::Add(DbgCompileUnit* compileUnit, DbgLineData& l
 void DbgLineDataBuilder::Commit()
 {
 	HashSet<DbgSrcFile*> usedSrcFiles;
-	
+
 	for (auto& recordKV : mRecords)
-	{		
+	{
 		auto dbgSubprogram = recordKV.mKey;
 		auto record = recordKV.mValue;
 
@@ -249,8 +249,8 @@ void DbgLineDataBuilder::Commit()
 				ctx.mSrcFile->mLineDataRefs.Add(dbgSubprogram);
 			}
 		}
-				
-		for (int lineIdx = 0; lineIdx < (int)record->mLines.size() - 1; lineIdx++)		
+
+		for (int lineIdx = 0; lineIdx < (int)record->mLines.size() - 1; lineIdx++)
 		{
 			auto& lineData = record->mLines[lineIdx];
 			auto& nextLineData = record->mLines[lineIdx + 1];
@@ -267,7 +267,7 @@ void DbgLineDataBuilder::Commit()
 				auto nextCtx = record->mContexts[lineData.mCtxIdx];
 				sameInliner = ctx.mInlinee == nextCtx.mInlinee;
 			}
-			if ((sameInliner) && (lineData.mRelAddress + lineData.mContribSize < nextLineData.mRelAddress))				
+			if ((sameInliner) && (lineData.mRelAddress + lineData.mContribSize < nextLineData.mRelAddress))
 			{
 				auto ctx = record->mContexts[lineData.mCtxIdx];
 				if (ctx.mInlinee != NULL)
@@ -276,7 +276,7 @@ void DbgLineDataBuilder::Commit()
 		}
 
 		DbgLineData* lastLine = NULL;
-		for (int lineIdx = 0; lineIdx < (int)record->mLines.size(); lineIdx++)		
+		for (int lineIdx = 0; lineIdx < (int)record->mLines.size(); lineIdx++)
 		{
 			auto& lineData = record->mLines[lineIdx];
 			if (lineData.mContribSize == 0)
@@ -297,7 +297,7 @@ void DbgLineDataBuilder::Commit()
 		contexts.CopyFrom(&record->mContexts[0], (int)record->mContexts.size(), mDbgModule->mAlloc);
 		dbgSubprogram->mLineInfo->mContexts = contexts.mVals;
 
-		dbgSubprogram->mLineInfo->mHasInlinees = record->mHasInlinees;		
+		dbgSubprogram->mLineInfo->mHasInlinees = record->mHasInlinees;
 	}
 }
 
@@ -317,18 +317,18 @@ struct AbstractOriginEntry
 public:
 	int mClassType;
 	DbgDebugData* mDestination;
-	DbgDebugData* mAbstractOrigin;	
+	DbgDebugData* mAbstractOrigin;
 
 private:
 	AbstractOriginEntry()
-	{		
+	{
 	}
 
 public:
 	static AbstractOriginEntry Create(int classType, DbgDebugData* destination, DbgDebugData* abstractOrigin)
 	{
 		AbstractOriginEntry abstractOriginEntry;
-		abstractOriginEntry.mClassType = classType;		
+		abstractOriginEntry.mClassType = classType;
 		abstractOriginEntry.mDestination = destination;
 		abstractOriginEntry.mAbstractOrigin = abstractOrigin;
 		return abstractOriginEntry;
@@ -351,7 +351,7 @@ public:
 			{
 				destSubprogram->mFrameBaseData = originSubprogram->mFrameBaseData;
 				destSubprogram->mFrameBaseLen = originSubprogram->mFrameBaseLen;
-			}			
+			}
 			destSubprogram->mReturnType = originSubprogram->mReturnType;
 
 			auto originItr = originSubprogram->mParams.begin();
@@ -363,8 +363,8 @@ public:
 					if (destParam->mName == NULL)
 						destParam->mName = originParam->mName;
 					if (destParam->mType == NULL)
-						destParam->mType = originParam->mType;					
-				}				
+						destParam->mType = originParam->mType;
+				}
 				++originItr;
 			}
 			//BF_ASSERT(originItr == originSubprogram->mParams.end());
@@ -376,7 +376,7 @@ public:
 			if (destVariable->mName == NULL)
 				destVariable->mName = originVariable->mName;
 			if (destVariable->mType == NULL)
-				destVariable->mType = originVariable->mType;			
+				destVariable->mType = originVariable->mType;
 		}
 		else
 		{
@@ -395,7 +395,7 @@ void DbgSubprogram::ToString(StringImpl& str, bool internalName)
 		mCompileUnit->mDbgModule->FixupInlinee(this);
 
 	PopulateSubprogram();
-		
+
 	if (mCheckedKind == BfCheckedKind_Checked)
 		str += "[Checked] ";
 	else if (mCheckedKind == BfCheckedKind_Unchecked)
@@ -403,14 +403,14 @@ void DbgSubprogram::ToString(StringImpl& str, bool internalName)
 
 	auto language = GetLanguage();
 	if (mName == NULL)
-	{		
+	{
 		if (mLinkName[0] == '<')
 		{
 			str += mLinkName;
 			return;
 		}
 		str = BfDemangler::Demangle(StringImpl::MakeRef(mLinkName), language);
-		// Strip off the params since we need to generate those ourselves		
+		// Strip off the params since we need to generate those ourselves
 		int parenPos = (int)str.IndexOf('(');
 		if (parenPos != -1)
 			str = str.Substring(0, parenPos);
@@ -469,7 +469,7 @@ void DbgSubprogram::ToString(StringImpl& str, bool internalName)
 					str += ".";
 				else
 					str += "::";
-			}			
+			}
 		}
 
 		const char* name = mName;
@@ -480,11 +480,11 @@ void DbgSubprogram::ToString(StringImpl& str, bool internalName)
 			{
 				char c = *cPtr;
 				if (c == 0)
-					break;				
+					break;
 				if ((c == ':') && (cPtr[1] == ':'))
 				{
 					name = cPtr + 2;
-				}				
+				}
 			}
 		}
 
@@ -564,7 +564,7 @@ void DbgSubprogram::ToString(StringImpl& str, bool internalName)
 		showedParam = true;
 		i++;
 	}
-	str += ")";	
+	str += ")";
 }
 
 String DbgSubprogram::ToString()
@@ -575,22 +575,22 @@ String DbgSubprogram::ToString()
 }
 
 // For inlined subprograms, the "root" inliner means the bottom-most non-inlined function.  This subprogram contains
-//  all the line data for it's own non-inlined instructions, PLUS line data for all inlined functions that it calls. 
+//  all the line data for it's own non-inlined instructions, PLUS line data for all inlined functions that it calls.
 //  The inlined functions has empty mLineInfo structures.
-// 
+//
 // When we pass a non-NULL value into inlinedSubprogram, we are requesting to ONLY return lines that were emitted from
-//  that subprogram (inlined or not). 
+//  that subprogram (inlined or not).
 //
 // If we call FindClosestLine on an inlined subprogram, we only want results of functions that are inside or inlined by
 //  the 'this' subprogram.  Thus, we do a "get any line" call on the root inliner and then filter the results based
 //  on whether they are relevant.
 DbgLineData* DbgSubprogram::FindClosestLine(addr_target addr, DbgSubprogram** inlinedSubprogram, DbgSrcFile** srcFile, int* outLineIdx)
-{	
+{
 	if (mLineInfo == NULL)
 	{
 		if (mInlineeInfo == NULL)
 			return NULL;
-		
+
 		if ((inlinedSubprogram != NULL) && (*inlinedSubprogram != NULL))
 		{
 			// Keep explicit inlinee requirement
@@ -619,7 +619,7 @@ DbgLineData* DbgSubprogram::FindClosestLine(addr_target addr, DbgSubprogram** in
 			}
 
 			return NULL;
-		}								
+		}
 	}
 
 	// Binary search - lineData is sorted
@@ -637,7 +637,7 @@ DbgLineData* DbgSubprogram::FindClosestLine(addr_target addr, DbgSubprogram** in
 		else if (midAddr == addr)
 		{
 			useIdx = middle;
-			break;			
+			break;
 		}
 		else
 			last = middle - 1;
@@ -650,7 +650,7 @@ DbgLineData* DbgSubprogram::FindClosestLine(addr_target addr, DbgSubprogram** in
 
 	if (last == -1)
 		return NULL;
-		
+
 	// If we have lines with the same addr, take the more inner one
 	while (true)
 	{
@@ -679,7 +679,7 @@ DbgLineData* DbgSubprogram::FindClosestLine(addr_target addr, DbgSubprogram** in
 				*srcFile = ctx.mSrcFile;
 
 			if (inlinedSubprogram != NULL)
-			{				
+			{
 				auto subprogram = (ctx.mInlinee != NULL) ? ctx.mInlinee : this;
 				if (*inlinedSubprogram != NULL)
 				{
@@ -716,7 +716,7 @@ DbgLineData* DbgSubprogram::FindClosestLine(addr_target addr, DbgSubprogram** in
 }
 
 DbgType* DbgSubprogram::GetParent()
-{	
+{
 	if ((mParentType == NULL) && (mCompileUnit != NULL))
 		mCompileUnit->mDbgModule->MapCompileUnitMethods(mCompileUnit);
 	return mParentType;
@@ -725,7 +725,7 @@ DbgType* DbgSubprogram::GetParent()
 DbgType* DbgSubprogram::GetTargetType()
 {
 	if (!mHasThis)
-		return mParentType;	
+		return mParentType;
 	auto thisType = mParams.mHead->mType;
 	if (thisType == NULL)
 		return mParentType;
@@ -735,7 +735,7 @@ DbgType* DbgSubprogram::GetTargetType()
 }
 
 DbgLanguage DbgSubprogram::GetLanguage()
-{	
+{
 	if (mParentType != NULL)
 		return mParentType->GetLanguage();
 	if (mCompileUnit->mLanguage != DbgLanguage_Unknown)
@@ -749,7 +749,7 @@ bool DbgSubprogram::Equals(DbgSubprogram* checkMethod, bool allowThisMismatch)
 	{
 		return strcmp(mLinkName, checkMethod->mLinkName) == 0;
 	}
-	
+
 	if (strcmp(mName, checkMethod->mName) != 0)
 		return false;
 
@@ -822,7 +822,7 @@ bool DbgSubprogram::IsGenericMethod()
 bool DbgSubprogram::ThisIsSplat()
 {
 	if (mBlock.mVariables.mHead == NULL)
-		return false;		
+		return false;
 	return strncmp(mBlock.mVariables.mHead->mName, "$this$", 6) == 0;
 }
 
@@ -854,8 +854,8 @@ bool DbgSrcFile::IsBeef()
 
 DbgSrcFile::~DbgSrcFile()
 {
-	for (auto replacedLineInfo : mHotReplacedDbgLineInfo)	
-		delete replacedLineInfo;	
+	for (auto replacedLineInfo : mHotReplacedDbgLineInfo)
+		delete replacedLineInfo;
 }
 
 void DbgSrcFile::RemoveDeferredRefs(DbgModule* debugModule)
@@ -863,16 +863,15 @@ void DbgSrcFile::RemoveDeferredRefs(DbgModule* debugModule)
 	for (int deferredIdx = 0; deferredIdx < (int)mDeferredRefs.size(); )
 	{
 		if (mDeferredRefs[deferredIdx].mDbgModule == debugModule)
-		{			
+		{
 			// Fast remove
 			mDeferredRefs[deferredIdx] = mDeferredRefs.back();
-			mDeferredRefs.pop_back();			
+			mDeferredRefs.pop_back();
 		}
 		else
 			deferredIdx++;
 	}
 }
-
 
 void DbgSrcFile::RemoveLines(DbgModule* debugModule)
 {
@@ -896,7 +895,7 @@ void DbgSrcFile::RemoveLines(DbgModule* debugModule)
 }
 
 void DbgSrcFile::RemoveLines(DbgModule* debugModule, DbgSubprogram* dbgSubprogram, bool isHotReplaced)
-{	
+{
 	debugModule->mDebugTarget->mPendingSrcFileRehup.Add(this);
 
 	if (isHotReplaced)
@@ -955,16 +954,16 @@ void DbgSrcFile::GetHash(String& outStr)
 
 DbgType::DbgType()
 {
-	mTypeIdx = -1;	
-	mIsDeclaration = false;		
-	mParent = NULL;	
+	mTypeIdx = -1;
+	mIsDeclaration = false;
+	mParent = NULL;
 	mTypeName = NULL;
 	mTypeCode = DbgType_Null;
-	mSize = 0;		
+	mSize = 0;
 	mPtrType = NULL;
 	mTypeParam = NULL;
 	mBlockParam = NULL;
-	mNext = NULL;	
+	mNext = NULL;
 	mPriority = DbgTypePriority_Normal;
 }
 
@@ -1009,7 +1008,7 @@ bool DbgType::Equals(DbgType* dbgType)
 	}
 	if ((mTypeParam != NULL) && (!mTypeParam->Equals(dbgType->mTypeParam)))
 		return false;
-	
+
 	// Did mName already include the parent name?
 	if (mCompileUnit->mDbgModule->mDbgFlavor == DbgFlavor_MS)
 		return true;
@@ -1027,7 +1026,7 @@ bool DbgType::IsStruct()
 }
 
 bool DbgType::IsPrimitiveType()
-{	
+{
 	return (mTypeCode >= DbgType_i8) && (mTypeCode <= DbgType_Bool);
 }
 
@@ -1056,7 +1055,7 @@ bool DbgType::IsTypedPrimitive()
 	PopulateType();
 
 	if (mTypeCode != DbgType_Struct)
-		return false;	
+		return false;
 
 	if (mTypeParam != NULL)
 		return true;
@@ -1067,7 +1066,7 @@ bool DbgType::IsTypedPrimitive()
 
 	if (!baseType->IsTypedPrimitive())
 		return false;
-	
+
 	mTypeParam = baseType->mTypeParam;
 	return true;
 }
@@ -1130,7 +1129,7 @@ DbgExtType DbgType::CalcExtType()
 	auto language = GetLanguage();
 	if ((!mFixedName) && (language == DbgLanguage_Beef))
 	{
-		FixName();			
+		FixName();
 	}
 
 	auto primaryType = GetPrimaryType();
@@ -1173,7 +1172,7 @@ DbgExtType DbgType::CalcExtType()
 		{
 			for (auto member : mMemberList)
 			{
-				if (strcmp(member->mName, "__bftag") == 0)
+				if ((member->mName != NULL) && (strcmp(member->mName, "__bftag") == 0))
 					return DbgExtType_BfPayloadEnum;
 			}
 			return DbgExtType_Normal;
@@ -1182,7 +1181,7 @@ DbgExtType DbgType::CalcExtType()
 		{
 			for (auto member : mMemberList)
 			{
-				if (strcmp(member->mName, "$bfunion") == 0)
+				if ((member->mName != NULL) && (strcmp(member->mName, "$bfunion") == 0))
 					return DbgExtType_BfUnion;
 			}
 		}
@@ -1195,7 +1194,7 @@ DbgExtType DbgType::CalcExtType()
 }
 
 DbgLanguage DbgType::GetLanguage()
-{		
+{
 	return mLanguage;
 }
 
@@ -1203,7 +1202,7 @@ void DbgType::FixName()
 {
 	if (mFixedName)
 		return;
-	
+
 	int depthCount = 0;
 
 	auto dbgModule = mCompileUnit->mDbgModule;
@@ -1260,14 +1259,14 @@ void DbgType::FixName()
 }
 
 bool DbgType::IsBfObject()
-{	
+{
 	if (mExtType == DbgExtType_Unknown)
 		mExtType = CalcExtType();
 	return (mExtType == DbgExtType_BfObject) || (mExtType == DbgExtType_Interface);
 }
 
 bool DbgType::IsBfPayloadEnum()
-{	
+{
 	if (mExtType == DbgExtType_Unknown)
 		mExtType = CalcExtType();
 	return mExtType == DbgExtType_BfPayloadEnum;
@@ -1326,7 +1325,7 @@ bool DbgType::HasCPPVTable()
 	}*/
 	if (mHasVTable)
 		return true;
-	
+
 	if (GetLanguage() == DbgLanguage_Beef)
 		return false;
 
@@ -1368,7 +1367,7 @@ bool DbgType::IsRoot()
 
 bool DbgType::IsRef()
 {
-	return 
+	return
 		(mTypeCode == DbgType_Ref) ||
 		(mTypeCode == DbgType_RValueReference);
 }
@@ -1449,46 +1448,46 @@ void DbgType::PopulateType()
 DbgModule* DbgType::GetDbgModule()
 {
 	if (mCompileUnit == NULL)
-		return NULL;	
+		return NULL;
 	return mCompileUnit->mDbgModule;
 }
 
 DbgType* DbgType::GetPrimaryType()
-{	
+{
 	if (mPrimaryType != NULL)
 		return mPrimaryType;
 
 	mPrimaryType = this;
 	if (mPriority <= DbgTypePriority_Normal)
-	{		
-		if ((mCompileUnit != NULL) && 
-			((mCompileUnit->mLanguage == DbgLanguage_Beef)|| (mLanguage == DbgLanguage_Beef) || 
+	{
+		if ((mCompileUnit != NULL) &&
+			((mCompileUnit->mLanguage == DbgLanguage_Beef)|| (mLanguage == DbgLanguage_Beef) ||
 			(mTypeCode == DbgType_Namespace) || (mIsDeclaration)))
-		{			
-			mPrimaryType = mCompileUnit->mDbgModule->GetPrimaryType(this);			
+		{
+			mPrimaryType = mCompileUnit->mDbgModule->GetPrimaryType(this);
 			mPrimaryType->PopulateType();
 			mTypeCode = mPrimaryType->mTypeCode;
 			mTypeParam = mPrimaryType->mTypeParam;
 		}
 	}
-	
+
 	return mPrimaryType;
 }
 
 DbgType* DbgType::GetBaseType()
 {
 	auto primaryType = GetPrimaryType();
-	if (primaryType != this)	
+	if (primaryType != this)
 		return primaryType->GetBaseType();
 
 	PopulateType();
 	if (mBaseTypes.mHead == NULL)
-		return NULL;	
+		return NULL;
 	if (GetLanguage() != DbgLanguage_Beef)
 		return NULL;
 	auto baseType = mBaseTypes.mHead->mBaseType;
 	BF_ASSERT(!baseType->IsInterface());
-	
+
 	if ((baseType == NULL) || (baseType->mPriority > DbgTypePriority_Normal))
 		return baseType;
 	baseType = mCompileUnit->mDbgModule->GetPrimaryType(baseType);
@@ -1504,7 +1503,7 @@ DbgType* DbgType::GetBaseType()
 				if (baseType->ToString() == "System.Function")
 				{
 					DbgBaseTypeEntry* baseTypeEntry = mCompileUnit->mDbgModule->mAlloc.Alloc<DbgBaseTypeEntry>();
-					baseTypeEntry->mBaseType = mCompileUnit->mDbgModule->GetPrimitiveType(DbgType_IntPtr_Alias, DbgLanguage_Beef);				
+					baseTypeEntry->mBaseType = mCompileUnit->mDbgModule->GetPrimitiveType(DbgType_IntPtr_Alias, DbgLanguage_Beef);
 					baseType->mBaseTypes.PushBack(baseTypeEntry);
 				}
 			}
@@ -1526,7 +1525,7 @@ DbgType* DbgType::RemoveModifiers(bool* hadRef)
 {
 	DbgType* dbgType = this;
 	while (dbgType != NULL)
-	{	
+	{
 		bool curHadRef = (dbgType->mTypeCode == DbgType_Ref) || (dbgType->mTypeCode == DbgType_RValueReference);
 		if ((curHadRef) && (hadRef != NULL))
 			*hadRef = true;
@@ -1547,12 +1546,12 @@ DbgType* DbgType::RemoveModifiers(bool* hadRef)
 String DbgType::ToStringRaw(DbgLanguage language)
 {
 	if (mTypeIdx != -1)
-		return StrFormat("_T_%d_%d", mCompileUnit->mDbgModule->GetLinkedModule()->mId, mTypeIdx);	
+		return StrFormat("_T_%d_%d", mCompileUnit->mDbgModule->GetLinkedModule()->mId, mTypeIdx);
 	return ToString(language);
 }
 
 void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBfObject, bool internalName)
-{	
+{
 	if (language == DbgLanguage_Unknown)
 		language = GetLanguage();
 
@@ -1673,7 +1672,7 @@ void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBf
 			}
 			return;
 		}
-		
+
 		//String combName;
 		/*if (mTemplateParams != NULL)
 		{
@@ -1685,7 +1684,7 @@ void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBf
 		if ((!mFixedName) /*&& (language == DbgLanguage_Beef)*/)
 		{
 			FixName();
-		}		
+		}
 		char* nameP = (char*)mTypeName;
 
 		if (parent == NULL)
@@ -1708,20 +1707,20 @@ void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBf
 			if ((internalName) && (parent->mTypeCode != DbgType_Namespace))
 				str += "+";
 			else
-				str += ".";			
+				str += ".";
 			str += nameP;
 		}
 		else
-		{			
+		{
 			parent->ToString(str, language, allowDirectBfObject, internalName);
 			if ((internalName) && (parent->mTypeCode != DbgType_Namespace))
 				str += "+";
 			else
-				str += "::";			
+				str += "::";
 			str += nameP;
 		}
 		return;
-	}	
+	}
 
 	switch (mTypeCode)
 	{
@@ -1900,7 +1899,7 @@ void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBf
 		str += "void";
 		return;
 	case DbgType_Subroutine:
-	{		
+	{
 		mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
 		str += " (";
 		int paramIdx = 0;
@@ -1951,9 +1950,8 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 	return str;
 }
 
-
 intptr DbgType::GetByteCount()
-{	
+{
 	if (!mSizeCalculated)
 	{
 		PopulateType();
@@ -1970,7 +1968,7 @@ intptr DbgType::GetByteCount()
 				{
 					mSize = primaryType->GetByteCount();
 					mAlign = primaryType->mAlign;
-				}				
+				}
 			}
 		}
 		else if ((mTypeCode == DbgType_Ref) || (mTypeCode == DbgType_Ptr) || (mTypeCode == DbgType_PtrToMember))
@@ -2019,7 +2017,7 @@ intptr DbgType::GetStride()
 }
 
 int DbgType::GetAlign()
-{	
+{
 	if (mAlign == 0)
 	{
 		auto primaryType = GetPrimaryType();
@@ -2033,8 +2031,8 @@ int DbgType::GetAlign()
 	}
 
 	if (mAlign != 0)
-		return mAlign;	
-	return 1;	
+		return mAlign;
+	return 1;
 }
 
 void DbgType::EnsureMethodsMapped()
@@ -2086,7 +2084,7 @@ void DbgType::EnsureMethodsMapped()
 
 DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 {
-	mMemReporter = NULL;	
+	mMemReporter = NULL;
 
 	mLoadState = DbgModuleLoadState_NotLoaded;
 	mMappedImageFile = NULL;
@@ -2130,12 +2128,12 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 		CREATE_PRIMITIVE(DbgType_SChar16, "wchar_t", "wchar", "System.Char16", wchar_t);
 		CREATE_PRIMITIVE(DbgType_i8, "int8_t", "int8", "System.SByte", int8);
 		CREATE_PRIMITIVE(DbgType_i16, "short", "int16", "System.Int16", int16);
-		CREATE_PRIMITIVE(DbgType_i32, "int", "int32", "System.Int32", int32);		
-		CREATE_PRIMITIVE(DbgType_i64, "int64_t", "int64", "System.Int64", int64);		
+		CREATE_PRIMITIVE(DbgType_i32, "int", "int32", "System.Int32", int32);
+		CREATE_PRIMITIVE(DbgType_i64, "int64_t", "int64", "System.Int64", int64);
 
 		CREATE_PRIMITIVE(DbgType_u8, "uint8_t", "uint8", "System.UInt8", uint8);
 		CREATE_PRIMITIVE(DbgType_u16, "uint16_t", "uint16", "System.UInt16", uint16);
-		CREATE_PRIMITIVE(DbgType_u32, "uint32_t", "uint32", "System.UInt32", uint32);		
+		CREATE_PRIMITIVE(DbgType_u32, "uint32_t", "uint32", "System.UInt32", uint32);
 		CREATE_PRIMITIVE(DbgType_u64, "uint64_t", "uint64", "System.UInt64", uint64);
 
 		CREATE_PRIMITIVE(DbgType_Single, "float", "float", "System.Single", float);
@@ -2150,7 +2148,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 		CREATE_PRIMITIVE(DbgType_RawText, "@RawText", "@RawText", "@RawText", bool);
 
 		CREATE_PRIMITIVE(DbgType_RegGroup, "@RegGroup", "@RegGroup", "@RegGroup", void*);
-				
+
 		CREATE_PRIMITIVE_C(DbgType_i16, "int16_t", int16_t);
 		CREATE_PRIMITIVE_C(DbgType_i32, "int32_t", int32_t);
 		CREATE_PRIMITIVE_C(DbgType_i64, "__int64", int64);
@@ -2161,7 +2159,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 		CREATE_PRIMITIVE_C(DbgType_u32, "unsigned int", uint32);
 		CREATE_PRIMITIVE_C(DbgType_u32, "unsigned int32_t", uint32_t);
 		CREATE_PRIMITIVE_C(DbgType_u32, "unsigned long", uint32);
-		CREATE_PRIMITIVE_C(DbgType_u64, "unsigned int64_t", uint64);		
+		CREATE_PRIMITIVE_C(DbgType_u64, "unsigned int64_t", uint64);
 	}
 
 	mIsDwarf64 = false;
@@ -2173,15 +2171,15 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mDebugLineData = NULL;
 	mDebugInfoData = NULL;
 	mDebugPubNames = NULL;
-	mDebugFrameAddress = 0;	
+	mDebugFrameAddress = 0;
 	mDebugFrameData = NULL;
 	mDebugLocationData = NULL;
 	mDebugRangesData = NULL;
 	mDebugAbbrevData = NULL;
-	mDebugStrData = NULL;		
-	mDebugAbbrevPtrData = NULL;	
+	mDebugStrData = NULL;
+	mDebugAbbrevPtrData = NULL;
 	mEHFrameData = NULL;
-	mEHFrameAddress = 0;	
+	mEHFrameAddress = 0;
 	mStringTable = NULL;
 	mSymbolData = NULL;
 	mCheckedBfObject = false;
@@ -2192,17 +2190,17 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mHotIdx = 0;
 	mId = 0;
 	mStartSubprogramIdx = 0;
-	mEndSubprogramIdx = 0;	
+	mEndSubprogramIdx = 0;
 	mCodeAddress = NULL;
-	mMayBeOld = false;	
+	mMayBeOld = false;
 	mTimeStamp = 0;
 	mExpectedFileSize = 0;
 	mBfTypeType = NULL;
 	mBfTypesInfoAddr = 0;
-	
+
 	mImageBase = 0;
 	mPreferredImageBase = 0;
-	mImageSize = 0;	
+	mImageSize = 0;
 	mOrigImageData = NULL;
 	mDeleting = false;
 
@@ -2224,14 +2222,14 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 }
 
 DbgModule::~DbgModule()
-{	
+{
 	delete mMemReporter;
 
 	for (auto dwSrcFile : mEmptySrcFiles)
 		delete dwSrcFile;
 	for (auto dwCompileUnit : mCompileUnits)
-		delete dwCompileUnit;		
-	
+		delete dwCompileUnit;
+
 	delete mSymbolData;
 	delete mStringTable;
 	delete mDebugLineData;
@@ -2242,11 +2240,11 @@ DbgModule::~DbgModule()
 	delete mDebugRangesData;
 	delete mDebugAbbrevData;
 	delete mDebugAbbrevPtrData;
-	delete mDebugStrData;	
+	delete mDebugStrData;
 	for (auto entry : mExceptionDirectory)
 		delete entry.mData;
 	delete mEHFrameData;
-	
+
 	delete mOrigImageData;
 
 	if ((IsObjectFile()) && (mImageBase != 0))
@@ -2263,7 +2261,7 @@ DbgSubprogram* DbgModule::FindSubprogram(DbgType* dbgType, const char * methodNa
 	dbgType = dbgType->GetPrimaryType();
 	dbgType->PopulateType();
 
-	if (dbgType->mNeedsGlobalsPopulated)					
+	if (dbgType->mNeedsGlobalsPopulated)
 		PopulateTypeGlobals(dbgType);
 
 	for (auto methodNameEntry : dbgType->mMethodNameList)
@@ -2306,7 +2304,7 @@ void DbgModule::Fail(const StringImpl& error)
 		errorStr += mFilePath;
 		errorStr += ": ";
 	}
-	errorStr += error;	
+	errorStr += error;
 	errorStr += "\n";
 
 	mDebugger->OutputRawMessage(errorStr);
@@ -2360,7 +2358,7 @@ char* DbgModule::DbgDupString(const char* str, const char* allocName)
 {
 	int strLen = (int)strlen(str);
 	if (strLen == 0)
-		return NULL;	
+		return NULL;
 	char* dupStr = (char*)mAlloc.AllocBytes(strLen + 1, (allocName != NULL) ? allocName : "DbgDupString");
 	memcpy(dupStr, str, strLen);
 	return dupStr;
@@ -2406,17 +2404,14 @@ void DbgModule::MapCompileUnitMethods(DbgCompileUnit * compileUnit)
 
 void DbgModule::MapCompileUnitMethods(int compileUnitId)
 {
-
 }
 
 void DbgModule::PopulateType(DbgType* dbgType)
 {
-
 }
 
 void DbgModule::PopulateTypeGlobals(DbgType* dbgType)
 {
-
 }
 
 void DbgModule::PopulateStaticVariableMap()
@@ -2425,8 +2420,8 @@ void DbgModule::PopulateStaticVariableMap()
 		return;
 
 	for (auto staticVariable : mStaticVariables)
-	{		
-		mStaticVariableMap[staticVariable->GetMappedName()] = staticVariable;		
+	{
+		mStaticVariableMap[staticVariable->GetMappedName()] = staticVariable;
 	}
 
 	mPopulatedStaticVariables = true;
@@ -2444,7 +2439,7 @@ addr_target DbgModule::RemapAddr(addr_target addr)
 }
 
 void DbgModule::ParseAbbrevData(const uint8* data)
-{	
+{
 	while (true)
 	{
 		int abbrevIdx = (int)DecodeULEB128(data);
@@ -2599,7 +2594,7 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 			else
 				offset = GET(int32);
 			if (extraData != NULL)
-			{				
+			{
 				*extraData = mDebugLocationData + offset;
 				return 0;
 			}
@@ -2615,10 +2610,10 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 		{
 			int64_t exprLen = DecodeULEB128(data);
 			const uint8* endData = data + exprLen;
-			
+
 			if (extraData != NULL)
 				*extraData = data;
-			
+
 			data = endData;
 			return (T)exprLen;
 		}
@@ -2636,7 +2631,7 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 		}
 		break;
 	case DW_FORM_sdata:
-		return (T)DecodeSLEB128(data);		
+		return (T)DecodeSLEB128(data);
 	case DW_FORM_udata:
 		return (T)DecodeULEB128(data);
 	case DW_FORM_string:
@@ -2648,17 +2643,17 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 				data++;
 				if (val == 0)
 					return (T)(intptr)str;
-			}			
+			}
 		}
 	case DW_FORM_block:
-		{			
+		{
 			int blockLen = (int)DecodeULEB128(data);
 			const uint8* retVal = data;
 			data += blockLen;
 			return (T)(intptr)retVal;
 		}
 	case DW_FORM_block1:
-		{			
+		{
 			int blockLen = (int)*((uint8*)data);
 			data += sizeof(uint8);
 			const uint8* retVal = data;
@@ -2677,16 +2672,16 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 static int gAbbrevNum = 0;
 
 DbgType* DbgModule::GetOrCreateType(int typeIdx, DbgDataMap& dataMap)
-{	
+{
 	if (typeIdx == 0)
 		return NULL;
 	DbgModule* linkedModule = GetLinkedModule();
 	DbgType* dbgType = dataMap.Get<DbgType*>(typeIdx);
 	if (dbgType != NULL)
 		return dbgType;
-	dbgType = mAlloc.Alloc<DbgType>();	
-	dbgType->mTypeIdx = (int)linkedModule->mTypes.size();	
-	linkedModule->mTypes.push_back(dbgType);	
+	dbgType = mAlloc.Alloc<DbgType>();
+	dbgType->mTypeIdx = (int)linkedModule->mTypes.size();
+	linkedModule->mTypes.push_back(dbgType);
 	dataMap.Set(typeIdx, dbgType);
 	return dbgType;
 }
@@ -2696,7 +2691,7 @@ typedef llvm::SmallVector<DataPair, 16> DataStack;
 
 template <typename T>
 T DbgModule::GetOrCreate(int idx, DbgDataMap& dataMap)
-{	
+{
 	if (idx == 0)
 		return NULL;
 	T val = dataMap.Get<T>(idx);
@@ -2706,7 +2701,6 @@ T DbgModule::GetOrCreate(int idx, DbgDataMap& dataMap)
 	dataMap.Set(idx, val);
 	return val;
 }
-
 
 template <typename T>
 static T GetStackTop(DataStack* dataStack)
@@ -2724,9 +2718,9 @@ DbgBlock* GetStackTop<DbgBlock*>(DataStack* dataStack)
 	if (dataPair.first == DbgBlock::ClassType)
 		return (DbgBlock*)dataPair.second;
 	if (dataPair.first == DbgSubprogram::ClassType)
-		return &((DbgSubprogram*)dataPair.second)->mBlock;	
+		return &((DbgSubprogram*)dataPair.second)->mBlock;
 	if (dataPair.first == DbgType::ClassType)
-		return ((DbgType*)dataPair.second)->mBlockParam;	
+		return ((DbgType*)dataPair.second)->mBlockParam;
 	return NULL;
 }
 
@@ -2743,7 +2737,7 @@ template <typename T>
 static T GetStackLast(DataStack* dataStack)
 {
 	for (int i = (int)dataStack->size() - 1; i >= 0; i--)
-	{		
+	{
 		if ((*dataStack)[i].first == RemoveTypePointer<T>::type::ClassType)
 			return (T)(*dataStack)[i].second;
 	}
@@ -2764,7 +2758,7 @@ void DbgModule::FixupInnerTypes(int startingTypeIdx)
 	{
 		DbgType* dbgType = mTypes[typeIdx];
 
-		if ((dbgType->mPriority == DbgTypePriority_Primary_Implicit) && (dbgType->mParent != NULL) && (dbgType->mParent->mTypeCode != DbgType_Namespace) && 
+		if ((dbgType->mPriority == DbgTypePriority_Primary_Implicit) && (dbgType->mParent != NULL) && (dbgType->mParent->mTypeCode != DbgType_Namespace) &&
 			(dbgType->mParent->mPriority <= DbgTypePriority_Primary_Implicit))
 		{
 			auto primaryParent = dbgType->mParent->GetPrimaryType();
@@ -2779,16 +2773,16 @@ void DbgModule::FixupInnerTypes(int startingTypeIdx)
 void DbgModule::MapTypes(int startingTypeIdx)
 {
 	BP_ZONE("DbgModule_MapTypes");
-	
-	bool needsInnerFixups = false;	
+
+	bool needsInnerFixups = false;
 	for (int typeIdx = startingTypeIdx; typeIdx < (int)mTypes.size(); typeIdx++)
 	{
 		DbgType* dbgType = mTypes[typeIdx];
 		BF_ASSERT(dbgType->mTypeCode != DbgType_Null);
-		
+
 		if ((dbgType->mTypeCode == DbgType_Namespace) && (dbgType->mPriority < DbgTypePriority_Primary_Implicit))
-			continue; 
-		
+			continue;
+
 		//TODO: Always valid?
 		if (dbgType->mIsDeclaration)
 			continue;
@@ -2798,7 +2792,7 @@ void DbgModule::MapTypes(int startingTypeIdx)
 		if ((dbgType->mTypeName == NULL) || (dbgType->mName == NULL) /*|| (dbgType->mTypeName[0] == '<')*/)
 			continue;
 
-		if (dbgType->mTypeCode > DbgType_DefinitionEnd)			
+		if (dbgType->mTypeCode > DbgType_DefinitionEnd)
 		{
 			// Only add "definition types"
 			continue;
@@ -2820,7 +2814,7 @@ void DbgModule::MapTypes(int startingTypeIdx)
 				if ((member->mIsStatic) && (member->mLocationData != NULL))
 					dbgType->mDefinedMembersSize++;
 		}
-		
+
 		if ((dbgType->mTypeName != NULL) && (strcmp(dbgType->mTypeName, "@") == 0))
 		{
 			// Globals type.
@@ -2860,7 +2854,7 @@ void DbgModule::MapTypes(int startingTypeIdx)
 					prevTypeEntry->mValue = dbgType;
 				}
 				continue;
-			}			
+			}
 
 			// Don't replace a ptr to an BfObject with a BfObject
 			if ((prevType->mTypeCode == DbgType_Ptr) && (dbgType->mTypeCode == DbgType_Struct))
@@ -2871,19 +2865,19 @@ void DbgModule::MapTypes(int startingTypeIdx)
 				// Allow this to override
 				prevTypeEntry->mValue = dbgType;
 				continue;
-			}			
+			}
 
 			if (prevType->mTypeCode == DbgType_Namespace)
-			{	
+			{
 				if (dbgType->mTypeCode != DbgType_Namespace)
 				{
-					// Old type was namespace but new isn't? Replace old type.					
+					// Old type was namespace but new isn't? Replace old type.
 					while (!prevType->mSubTypeList.IsEmpty())
 					{
 						DbgType* subType = prevType->mSubTypeList.PopFront();
 						subType->mParent = dbgType;
 						dbgType->mSubTypeList.PushBack(subType);
-					}						
+					}
 					prevType->mPriority = DbgTypePriority_Normal;
 					if (dbgType->mPriority < DbgTypePriority_Primary_Implicit)
 						dbgType->mPriority = DbgTypePriority_Primary_Implicit;
@@ -2905,13 +2899,13 @@ void DbgModule::MapTypes(int startingTypeIdx)
 					continue;
 
 				if (!prevType->mIsDeclaration)
-				{					
+				{
 					if ((prevType->mCompileUnit == NULL) || (dbgType->mLanguage < prevType->mLanguage))
 					{
 						// We always want 'Beef' types to supersede 'C' types, but don't override the built-in primitive types
 						continue;
 					}
-					
+
 					if (prevType->mDefinedMembersSize > 0)
 					{
 						if (dbgType->mDefinedMembersSize > 0)
@@ -2973,8 +2967,8 @@ void DbgModule::CreateNamespaces()
 
 	for (int typeIdx = 0; typeIdx < startLength; typeIdx++)
 	{
-		DbgType* dbgType = mTypes[typeIdx];		
-		
+		DbgType* dbgType = mTypes[typeIdx];
+
 		if (dbgType->mName == NULL)
 			continue;
 
@@ -3005,14 +2999,14 @@ void DbgModule::CreateNamespaces()
 
 				mTypes.push_back(namespaceType);
 				mTypeMap.Insert(namespaceType);
-			}	
+			}
 			else
 				namespaceType = namespaceTypeEntry->mValue;
-			
+
 			while (!dbgType->mMemberList.IsEmpty())
-			{				
+			{
 				DbgVariable* curVar = dbgType->mMemberList.PopFront();
-				namespaceType->mMemberList.PushBack(curVar);				
+				namespaceType->mMemberList.PushBack(curVar);
 			}
 
 			DbgType* prevType = NULL;
@@ -3033,7 +3027,7 @@ void DbgModule::CreateNamespaces()
 
 			continue;
 		}
-	}	
+	}
 
 	// If we didn't have a parent type for a namespace (ie: if System.Collections wasn't linked to System) then we wait
 	//  until the end and move those from the global list to the parent list
@@ -3042,7 +3036,7 @@ void DbgModule::CreateNamespaces()
 		DbgType* dbgType = mTypes[typeIdx];
 		if (dbgType->mParent != NULL)
 			continue;
-		
+
 		char* typeName = (char*)dbgType->mTypeName;
 		int lastDotIdx = -1;
 		for (int i = 0; true; i++)
@@ -3063,7 +3057,7 @@ void DbgModule::CreateNamespaces()
 
 		if (parentEntry == NULL)
 			continue;
-		auto parentType = parentEntry->mValue;		
+		auto parentType = parentEntry->mValue;
 		dbgType->mCompileUnit->mGlobalType->mSubTypeList.Remove(dbgType);
 		dbgType->mParent = parentType;
 		parentType->mSubTypeList.PushBack(dbgType);
@@ -3083,7 +3077,7 @@ void DbgModule::FindTemplateStr(const char*& name, int& templateNameIdx)
 			}
 		}
 		templateNameIdx = -1;
-	}	
+	}
 }
 
 void DbgModule::TempRemoveTemplateStr(const char*& name, int& templateNameIdx)
@@ -3091,7 +3085,7 @@ void DbgModule::TempRemoveTemplateStr(const char*& name, int& templateNameIdx)
 	if (templateNameIdx == 0)
 		FindTemplateStr(name, templateNameIdx);
 	if (templateNameIdx == -1)
-		return;	
+		return;
 
 	if (!DbgIsStrMutable(name))
 		name = DbgDupString(name);
@@ -3106,7 +3100,7 @@ void DbgModule::ReplaceTemplateStr(const char*& name, int& templateNameIdx)
 }
 
 void DbgModule::MapSubprogram(DbgSubprogram* dbgSubprogram)
-{	
+{
 	if (dbgSubprogram->mBlock.IsEmpty())
 		return;
 
@@ -3116,11 +3110,11 @@ void DbgModule::MapSubprogram(DbgSubprogram* dbgSubprogram)
 		int curSize = progSize - progOffset;
 		if (curSize <= 0)
 			break;
-		
+
 		BP_ALLOC_T(DbgSubprogramMapEntry);
 		DbgSubprogramMapEntry* subprogramMapEntry = mAlloc.Alloc<DbgSubprogramMapEntry>();
 		subprogramMapEntry->mAddress = dbgSubprogram->mBlock.mLowPC + progOffset;
-		subprogramMapEntry->mEntry = dbgSubprogram;		
+		subprogramMapEntry->mEntry = dbgSubprogram;
 		mDebugTarget->mSubprogramMap.Insert(subprogramMapEntry);
 	}
 }
@@ -3134,7 +3128,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 	int dataOfs = (int)(data - mDebugInfoData);
 
 	intptr_target length = GET(int);
-	
+
 	DbgModule* linkedModule = GetLinkedModule();
 
 	if (length == -1)
@@ -3158,20 +3152,20 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 	mDbgFlavor = DbgFlavor_GNU;
 	compileUnit->mDbgModule = this;
 	mCompileUnits.push_back(compileUnit);
-	
-	DbgSubprogram* subProgram = NULL;	
-			
+
+	DbgSubprogram* subProgram = NULL;
+
 	//std::map<int, DbgType*> typeMap;
 	//std::map<int, DbgSubprogram*> subprogramMap;
 	int tagStart = (int)(data - startData);
 	int tagEnd = (int)(dataEnd - startData);
 	DbgDataMap dataMap(tagStart, tagEnd);
-	DataStack dataStack;	
+	DataStack dataStack;
 	Array<AbstractOriginEntry> abstractOriginReplaceList;
-	
-	Array<int> deferredArrayDims;	
 
-	int startingTypeIdx = (int)linkedModule->mTypes.size();	
+	Array<int> deferredArrayDims;
+
+	int startingTypeIdx = (int)linkedModule->mTypes.size();
 
 	while (data < dataEnd)
 	{
@@ -3179,29 +3173,29 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 		const uint8* tagDataStart = data;
 		int tagIdx = (int)(tagDataStart - startData);
-		
+
 		int abbrevIdx = (int)DecodeULEB128(data);
 		const uint8* abbrevData = mDebugAbbrevPtrData[abbrevIdx];
-		
-		if (abbrevIdx == 0)		
+
+		if (abbrevIdx == 0)
 		{
 			if (deferredArrayDims.size() > 0)
-			{				
+			{
 				DbgType* arrType = GetStackTop<DbgType*>(&dataStack);
 				BF_ASSERT(arrType->mTypeCode == DbgType_SizedArray);
 				arrType->mSize = deferredArrayDims[0]; // Byte count still needs to be multiplied by the underlying type size
-				
-				DbgType* rootArrType = arrType;				
+
+				DbgType* rootArrType = arrType;
 				for (int dimIdx = 0; dimIdx < (int)deferredArrayDims.size() - 1; dimIdx++)
 				{
 					int dimSize = deferredArrayDims[dimIdx];
-				
+
 					DbgType* subArrType = mAlloc.Alloc<DbgType>();
 					subArrType->mCompileUnit = compileUnit;
 					subArrType->mLanguage = compileUnit->mLanguage;
 					subArrType->mTypeIdx = (int)linkedModule->mTypes.size();
 					linkedModule->mTypes.push_back(subArrType);
-					
+
 					subArrType->mTypeCode = DbgType_SizedArray;
 					subArrType->mTypeParam = arrType->mTypeParam;
 					subArrType->mSize = deferredArrayDims[dimIdx + 1];
@@ -3213,12 +3207,12 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				deferredArrayDims.Clear();
 			}
 
-			dataStack.pop_back();					
+			dataStack.pop_back();
 			continue;
 		}
-		
+
 		int entryTag = (int) DecodeULEB128(abbrevData);
-		bool hasChildren = GET_FROM(abbrevData, char) == DW_CHILDREN_yes;		
+		bool hasChildren = GET_FROM(abbrevData, char) == DW_CHILDREN_yes;
 
 		int64 atLowPC = 0;
 		int64 atHighPC = 0;
@@ -3232,13 +3226,13 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		const char* atName = NULL;
 		const char* atCompDir = NULL;
 		const char* atLinkageName = NULL;
-		int64 atConstValue = 0;		
+		int64 atConstValue = 0;
 		int atDataMemberLocation = 0;
 		const uint8* atDataMemberData = NULL;
 		int atDeclFile = 0;
 		int atDeclLine = 0;
 		int atCallFile = 0;
-		int atCallLine = 0;		
+		int atCallLine = 0;
 		int atCount = 0;
 		int atType = 0;
 		int atImport = 0;
@@ -3252,9 +3246,9 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		int atBitOffset = 0;
 		int atBitSize = 0;
 		int atAbstractOrigin = 0;
-		const uint8* atVirtualLocData = NULL;		
+		const uint8* atVirtualLocData = NULL;
 		bool atDeclaration = false;
-		bool atVirtual = false;		
+		bool atVirtual = false;
 		bool hadConstValue = false;
 		bool hadMemberLocation = false;
 		bool isOptimized = false;
@@ -3277,7 +3271,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				atLocationLen = (int)ReadValue<uint>(data, form, dataOfs, &atLocationData, startData);
 				break;
 			case DW_AT_name:
-				atName = ReadValue<const char*>(data, form);				
+				atName = ReadValue<const char*>(data, form);
 				break;
 			case DW_AT_ordering:
 				/*TODO:*/ ReadValue<int>(data, form);
@@ -3344,7 +3338,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				/*TODO:*/ ReadValue<int>(data, form);
 				break;
 			case DW_AT_producer:
-				atProducer = ReadValue<const char*>(data, form);				
+				atProducer = ReadValue<const char*>(data, form);
 				break;
 			case DW_AT_prototyped:
 				/*TODO:*/ ReadValue<int>(data, form);
@@ -3386,7 +3380,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 			case DW_AT_data_member_location:
 				if (form == DW_FORM_exprloc)
 				{
-					atDataMemberLocation = (int)ReadValue<uint>(data, form, dataOfs, &atDataMemberData);					
+					atDataMemberLocation = (int)ReadValue<uint>(data, form, dataOfs, &atDataMemberData);
 					hadMemberLocation = true;
 				}
 				else
@@ -3561,7 +3555,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 			//
 			case DW_AT_MIPS_linkage_name:
-				atLinkageName = ReadValue<const char*>(data, form);				
+				atLinkageName = ReadValue<const char*>(data, form);
 				break;
 
 			case DW_AT_APPLE_optimized:
@@ -3586,7 +3580,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 				if (compileUnit->mLowPC != (addr_target)-1)
 				{
-					// These are sometimes relative to the compile unit and sometimes absolute					
+					// These are sometimes relative to the compile unit and sometimes absolute
 					if (highPC + compileUnit->mLowPC <= compileUnit->mHighPC)
 					{
 						lowPC += compileUnit->mLowPC;
@@ -3609,11 +3603,10 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				if (highPC > (addr_target)atHighPC)
 					atHighPC = highPC;*/
 			}
-			
 		}
 
 		switch (entryTag)
-		{		
+		{
 		case DW_TAG_compile_unit:
 			{
 				newDataPair = MakeDataPair(compileUnit);
@@ -3632,7 +3625,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				}
 				else
 				{
-					compileUnit->mLanguage = DbgLanguage_C;					
+					compileUnit->mLanguage = DbgLanguage_C;
 				}
 				compileUnit->mGlobalType->mLanguage = compileUnit->mLanguage;
 			}
@@ -3640,23 +3633,23 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		case DW_TAG_imported_module:
 			{
 				DbgType* parentType = GetStackTop<DbgType*>(&dataStack);
-				DbgType* importType = GetOrCreateType(atImport, dataMap);				
+				DbgType* importType = GetOrCreateType(atImport, dataMap);
 				if (parentType != NULL) // Parent type is NULL for Clang DbgModule info
 					parentType->mUsingNamespaces.PushFront(importType, &mAlloc);
 			}
 			break;
-		case DW_TAG_inlined_subroutine:			
-		case DW_TAG_subprogram:			
-			{	
+		case DW_TAG_inlined_subroutine:
+		case DW_TAG_subprogram:
+			{
 				/*//TODO: This is a test.  See if it breaks anything.
 				if ((atExternal != 0) && (atLowPC == 0))
 					break;*/
 
 				if (atSpecification == 0)
-				{		
+				{
 					subProgram = GetOrCreate<DbgSubprogram*>(tagIdx, dataMap);
 
-					subProgram->mCompileUnit = compileUnit;										
+					subProgram->mCompileUnit = compileUnit;
 					subProgram->mVirtual = atVirtual;
 					subProgram->mIsOptimized = isOptimized;
 
@@ -3670,19 +3663,19 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					}
 
 					//subProgram->mVTableLoc = atVirtualLoc * sizeof(addr_target);
-					//SplitName(atName, subProgram->mName, subProgram->mTemplateName);					
+					//SplitName(atName, subProgram->mName, subProgram->mTemplateName);
 					subProgram->mName = atName;
 
-					subProgram->mLinkName = atLinkageName;					
+					subProgram->mLinkName = atLinkageName;
 					if (atAbstractOrigin != NULL)
 					{
-						DbgSubprogram* originSubProgram = GetOrCreate<DbgSubprogram*>(atAbstractOrigin, dataMap);						
-						auto abstractOriginEntry = AbstractOriginEntry::Create(DbgSubprogram::ClassType, subProgram, originSubProgram);						
+						DbgSubprogram* originSubProgram = GetOrCreate<DbgSubprogram*>(atAbstractOrigin, dataMap);
+						auto abstractOriginEntry = AbstractOriginEntry::Create(DbgSubprogram::ClassType, subProgram, originSubProgram);
 						abstractOriginReplaceList.push_back(abstractOriginEntry);
 					}
-					subProgram->mParentType = GetStackTop<DbgType*>(&dataStack);					
-					newDataPair = MakeDataPair(subProgram);									
-					
+					subProgram->mParentType = GetStackTop<DbgType*>(&dataStack);
+					newDataPair = MakeDataPair(subProgram);
+
 					//if ((atLinkageName != NULL) && (subProgram->mParentType != NULL))
 						//subProgram->mParentType->mDefinedMembersCount++;
 
@@ -3695,21 +3688,21 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					else
 					{
 						compileUnit->mGlobalType->mMethodList.PushBack(subProgram);
-					}					
+					}
 				}
 				else
 				{
-					subProgram = dataMap.Get<DbgSubprogram*>(atSpecification);	
+					subProgram = dataMap.Get<DbgSubprogram*>(atSpecification);
 					BF_ASSERT(subProgram != NULL);
 					// We remove params form the declaration and re-add the real ones here
 					subProgram->mParams.Clear();
-				}				
-				
+				}
+
 				newDataPair = MakeDataPair(subProgram);
 				DbgBlock* dwBlock = &subProgram->mBlock;
-				
+
 				if (atType != 0)
-					subProgram->mReturnType = GetOrCreateType(atType, dataMap);				
+					subProgram->mReturnType = GetOrCreateType(atType, dataMap);
 
 				if (!atDeclaration)
 				{
@@ -3726,10 +3719,10 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 						subProgram->mHasThis = true;
 					subProgram->mFrameBaseLen = (int)atFrameBaseLength;
 					subProgram->mFrameBaseData = atFrameBase;
-					
+
 					if (atHighPC > 0)
 					{
-						MapSubprogram(subProgram);						
+						MapSubprogram(subProgram);
 					}
 				}
 
@@ -3738,11 +3731,11 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					DbgSubprogram* parentSubProgram = GetStackLast<DbgSubprogram*>(&dataStack);
 					subProgram->mInlineeInfo = mAlloc.Alloc<DbgInlineeInfo>();
 					subProgram->mInlineeInfo->mInlineParent = parentSubProgram;
-					subProgram->mInlineeInfo->mRootInliner = parentSubProgram->GetRootInlineParent();										
+					subProgram->mInlineeInfo->mRootInliner = parentSubProgram->GetRootInlineParent();
 					subProgram->mFrameBaseData = parentSubProgram->mFrameBaseData;
 					subProgram->mFrameBaseLen = parentSubProgram->mFrameBaseLen;
 				}
-				
+
 				//if (subProgram->mParentType != NULL)
 					//subProgram->mParentType->mDefinedMembersCount++;
 			}
@@ -3761,12 +3754,12 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					dwBlock->mLowPC = (addr_target)atLowPC;
 					dwBlock->mHighPC = (addr_target)(atLowPC + atHighPC);
 				}
-				newDataPair = MakeDataPair(dwBlock);				
+				newDataPair = MakeDataPair(dwBlock);
 				prevBlock->mSubBlocks.PushBack(dwBlock);
 			}
 			break;
-		case DW_TAG_variable:			
-			{				
+		case DW_TAG_variable:
+			{
 				DbgBlock* dwBlock = GetStackTop<DbgBlock*>(&dataStack);
 
 				if (atName && !strncmp(atName, "__asmLines", 10))
@@ -3801,7 +3794,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 						{
 							s += *ptr;
 						}
-						
+
 						//int asmLine = atoi(s.c_str());
 						//asmLines.push_back(asmLine);
 						const char* sPtr = s.c_str();
@@ -3849,18 +3842,18 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				bool isNewVariable = true;
 				DbgVariable* dbgVariable = NULL;
 				if (atSpecification != 0)
-				{					
-					//dbgVariable = dataMap.Get<DbgVariable*>(atSpecification);					
+				{
+					//dbgVariable = dataMap.Get<DbgVariable*>(atSpecification);
 					//BF_ASSERT(dbgVariable != NULL);
 
 					dbgVariable = GetOrCreate<DbgVariable*>(atSpecification, dataMap);
 					//dbgVariable = dataMap.Get<DbgVariable*>(atSpecification);
-					//BF_ASSERT(dbgVariable != NULL);					
+					//BF_ASSERT(dbgVariable != NULL);
 				}
 				else if (dwBlock != NULL)
-				{					
+				{
 					dbgVariable = GetOrCreate<DbgVariable*>(tagIdx, dataMap);
-					dwBlock->mVariables.PushBack(dbgVariable);					
+					dwBlock->mVariables.PushBack(dbgVariable);
 				}
 				else
 				{
@@ -3900,9 +3893,9 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					if (dbgType != NULL)
 					{
 						BF_ASSERT(dbgType->IsNamespace() || (dbgType->mTypeCode == DbgType_Root));
-						
+
 						if (isNewVariable)
-							dbgType->mMemberList.PushBack(dbgVariable);					
+							dbgType->mMemberList.PushBack(dbgVariable);
 					}
 				}
 
@@ -3911,7 +3904,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					if (atSpecification == 0)
 					{
 						dbgVariable->mIsParam = false;
-						dbgVariable->mName = atName;												
+						dbgVariable->mName = atName;
 						dbgVariable->mConstValue = atConstValue;
 						dbgVariable->mType = GetOrCreateType(atType, dataMap);
 						dbgVariable->mIsConst = hadConstValue;
@@ -3922,16 +3915,16 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 						dbgVariable->mLinkName = atLinkageName;
 					dbgVariable->mLocationLen = (int8)atLocationLen;
 					dbgVariable->mLocationData = atLocationData;
-					dbgVariable->mCompileUnit = compileUnit;					
+					dbgVariable->mCompileUnit = compileUnit;
 
 					/*if (dbgVariable->mIsStatic && !dbgVariable->mIsConst && (dbgVariable->mLocationLen > 0) && (dbgVariable->mIsExtern))
 					{
 						DbgAddrType addrType = DbgAddrType_Value;
-						// 
+						//
 						addr_target valAddr = mDebugTarget->EvaluateLocation(dbgVariable->mCompileUnit->mDbgModule, NULL, dbgVariable->mLocationData, dbgVariable->mLocationLen, NULL, &addrType);
 						if ((addrType == DbgAddrType_Target) && (valAddr != 0))
 						{
-							dbgVariable->mStaticCachedAddr = valAddr;							
+							dbgVariable->mStaticCachedAddr = valAddr;
 							if (dbgVariable->mLinkName != NULL)
 								mStaticVariables.push_back(dbgVariable);
 						}
@@ -3951,7 +3944,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 							abstractOriginReplaceList.push_back(abstractOriginEntry);
 					}
 					else if (dbgVariable->mName == NULL)
-						dbgVariable->mName = "_unnamed";					
+						dbgVariable->mName = "_unnamed";
 
 					if (addToGlobalVarMap)
 						mGlobalVarMap.Insert(dbgVariable);
@@ -3978,13 +3971,13 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 					break;
 				}
-				
+
 				if ((dwSubprogram->mParams.IsEmpty()) && (dwSubprogram->mParentType != 0))
-					dwSubprogram->mParentType->mMethodsWithParamsCount++;				
+					dwSubprogram->mParentType->mMethodsWithParamsCount++;
 
 				//DbgVariable* dbgVariable = mAlloc.Alloc<DbgVariable>();
 				DbgVariable* dwVariable = GetOrCreate<DbgVariable*>(tagIdx, dataMap);
-				dwSubprogram->mParams.PushBack(dwVariable);				
+				dwSubprogram->mParams.PushBack(dwVariable);
 
 				if (atArtificial != 0)
 				{
@@ -3995,15 +3988,14 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 				dwVariable->mCompileUnit = compileUnit;
 				dwVariable->mIsParam = true;
-				dwVariable->mName = atName;				
+				dwVariable->mName = atName;
 				dwVariable->mLocationLen = (int)atLocationLen;
 				dwVariable->mLocationData = atLocationData;
 				dwVariable->mType = GetOrCreateType(atType, dataMap);
 
 				if (atAbstractOrigin != 0)
 				{
-					
-				}				
+				}
 			}
 			break;
 		case DW_TAG_enumerator:
@@ -4011,16 +4003,16 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				DbgVariable* member = mAlloc.Alloc<DbgVariable>();
 				member->mCompileUnit = compileUnit;
 				member->mConstValue = atConstValue;
-				member->mName = atName;				
+				member->mName = atName;
 				member->mIsStatic = true;
 				member->mIsConst = true;
 
-				DbgType* parentType = GetStackTop<DbgType*>(&dataStack);				
+				DbgType* parentType = GetStackTop<DbgType*>(&dataStack);
 				parentType->mMemberList.PushBack(member);
 				member->mMemberOffset = atDataMemberLocation;
 				//member->mType = parentType->mTypeParam;
 				member->mType = parentType;
-				
+
 				// Insert into parent's namespace
 				auto prevTop = dataStack.back();
 				dataStack.pop_back();
@@ -4030,12 +4022,12 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				if (dwBlock != NULL)
 				{
 					DbgVariable* dwVariable = mAlloc.Alloc<DbgVariable>();
-					dwBlock->mVariables.PushBack(dwVariable);					
+					dwBlock->mVariables.PushBack(dwVariable);
 
 					if (atSpecification == 0)
 					{
 						dwVariable->mIsParam = false;
-						dwVariable->mName = atName;						
+						dwVariable->mName = atName;
 						dwVariable->mConstValue = atConstValue;
 						dwVariable->mType = parentType->mTypeParam;
 						dwVariable->mIsConst = hadConstValue;
@@ -4061,7 +4053,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 			{
 				DbgType* derivedType = GetStackTop<DbgType*>(&dataStack);
 				DbgBaseTypeEntry* baseTypeEntry = mAlloc.Alloc<DbgBaseTypeEntry>();
-				baseTypeEntry->mBaseType = GetOrCreateType(atType, dataMap);				
+				baseTypeEntry->mBaseType = GetOrCreateType(atType, dataMap);
 				if (atDataMemberData != NULL)
 				{
 					bool foundVirtOffset = false;
@@ -4069,7 +4061,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					if (*(opPtr++) == DW_OP_dup)
 					{
 						if (*(opPtr++) == DW_OP_deref)
-						{							
+						{
 							if (*(opPtr++) == DW_OP_constu)
 							{
 								baseTypeEntry->mVTableOffset = (int)DecodeSLEB128(opPtr) / sizeof(int32);
@@ -4078,19 +4070,19 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 								if (*(opPtr++) == DW_OP_minus)
 									baseTypeEntry->mVTableOffset = -baseTypeEntry->mVTableOffset;
 							}
-						}												
+						}
 					}
-					
+
 					BF_ASSERT(foundVirtOffset);
 				}
 				else
 					baseTypeEntry->mThisOffset = atDataMemberLocation;
-				derivedType->mBaseTypes.PushBack(baseTypeEntry);				
+				derivedType->mBaseTypes.PushBack(baseTypeEntry);
 			}
 			break;
 		case DW_TAG_member:
 			{
-				DbgType* parentType = GetStackTop<DbgType*>(&dataStack);				
+				DbgType* parentType = GetStackTop<DbgType*>(&dataStack);
 
 				if ((atName != NULL) && (strncmp(atName, "_vptr$", 6) == 0))
 				{
@@ -4101,7 +4093,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				DbgVariable* member = GetOrCreate<DbgVariable*>(tagIdx, dataMap);
 				member->mIsMember = true;
 				member->mCompileUnit = compileUnit;
-				member->mName = atName;				
+				member->mName = atName;
 				member->mType = GetOrCreateType(atType, dataMap);
 				member->mConstValue = atConstValue;
 				member->mIsConst = hadConstValue;
@@ -4109,10 +4101,10 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				member->mBitSize = atBitSize;
 				member->mBitOffset = atBitOffset;
 				member->mIsExtern = atExternal != 0;
-				
+
 				parentType->mMemberList.PushBack(member);
 				member->mMemberOffset = atDataMemberLocation;
-				
+
 				if ((member->mIsStatic) && (!member->mIsConst))
 					parentType->mHasStaticMembers = true;
 
@@ -4129,7 +4121,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				DbgType* parentType = GetStackTop<DbgType*>(&dataStack);
 
 				int arrSize = atCount;
-				deferredArrayDims.push_back(arrSize);								
+				deferredArrayDims.push_back(arrSize);
 			}
 			break;
 
@@ -4142,7 +4134,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		case DW_TAG_reference_type:
 		case DW_TAG_rvalue_reference_type:
 		case DW_TAG_unspecified_type:
-		case DW_TAG_class_type:		
+		case DW_TAG_class_type:
 		case DW_TAG_enumeration_type:
 		case DW_TAG_structure_type:
 		case DW_TAG_union_type:
@@ -4152,7 +4144,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		//case DW_TAG_subrange_type:
 		case DW_TAG_restrict_type:
 			{
-				int typeIdx = (int)(tagDataStart - startData);								
+				int typeIdx = (int)(tagDataStart - startData);
 
 				DbgType* dbgType = GetOrCreateType(typeIdx, dataMap);
 				const char* nameSep = (compileUnit->mLanguage == DbgLanguage_Beef) ? "." : "::";
@@ -4164,7 +4156,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				{
 					BF_ASSERT(dbgType->mTypeCode == DbgType_Null);
 					DbgType* parentType = GetStackTop<DbgType*>(&dataStack);
-					
+
 					if (parentType != NULL)
 					{
 						dbgType->mParent = parentType;
@@ -4178,7 +4170,6 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 							}
 							else
 							{
-
 								int nameSepLen = strlen(nameSep);
 								int parentNameLen = strlen(dbgType->mParent->mName);
 								int nameLen = strlen(atName);
@@ -4196,7 +4187,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 						compileUnit->mGlobalType->mSubTypeList.PushBack(dbgType);
 					}
 				}
-				
+
 				const char* useName = atName;
 				/*if ((useName != NULL) && (strcmp(useName, "@") == 0))
 					useName = NULL;*/
@@ -4214,9 +4205,9 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				int typeNameLen = (dbgType->mTypeName != NULL) ? (int)strlen(dbgType->mTypeName) : 0;
 				//int templateParamsLen = (dbgType->mTemplateParams != NULL) ? strlen(dbgType->mTemplateParams) : 0;
 				if ((parentNameLen != 0) /*&& (templateParamsLen == 0)*/)
-				{				
+				{
 					int nameSepLen = (int)strlen(nameSep);
-					
+
 					int nameLen = parentNameLen +  typeNameLen /*+ templateParamsLen*/;
 					if ((parentNameLen > 0) && (nameLen > 0))
 						nameLen += nameSepLen;
@@ -4244,7 +4235,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 						namePtr += templateParamsLen;
 					}*/
 				}
-								
+
 				dbgType->mTypeCode = DbgType_Null;
 				dbgType->mIsDeclaration = atDeclaration;
 
@@ -4253,7 +4244,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					dbgType->mSize = atByteSize;
 					dbgType->mSizeCalculated = true;
 				}
-								
+
 				switch (entryTag)
 				{
 				case DW_TAG_base_type:
@@ -4275,8 +4266,8 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 							dbgType->mTypeCode = DbgType_SChar16;
 						else if (atByteSize == 4)
 							dbgType->mTypeCode = DbgType_SChar32;
-						else						
-							atEncoding = DW_ATE_signed;						
+						else
+							atEncoding = DW_ATE_signed;
 						break;
 					case DW_ATE_unsigned_char:
 						if (atByteSize == 1)
@@ -4292,7 +4283,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 							dbgType->mTypeCode = DbgType_Bool;
 						else
 							atEncoding = DW_ATE_unsigned;
-						break;						
+						break;
 					}
 
 					if (dbgType->mTypeCode == DbgType_Null)
@@ -4352,7 +4343,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 								dbgType->mTypeCode = DbgType_u128;
 								break;
 							}
-							break;					
+							break;
 						case DW_ATE_float:
 							if (atByteSize == 4)
 								dbgType->mTypeCode = DbgType_Single;
@@ -4369,7 +4360,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 							else if (atByteSize == 16)
 								dbgType->mTypeCode = DbgType_ComplexDouble;
 							else if (atByteSize == 24)
-								dbgType->mTypeCode = DbgType_ComplexDouble96;						
+								dbgType->mTypeCode = DbgType_ComplexDouble96;
 							else if (atByteSize == 32)
 								dbgType->mTypeCode = DbgType_ComplexDouble128;
 							break;
@@ -4379,7 +4370,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 						}
 					}
 					break;
-				case DW_TAG_enumeration_type: //TODO: Handle these differently 					
+				case DW_TAG_enumeration_type: //TODO: Handle these differently
 					dbgType->mTypeCode = DbgType_Enum;
 					dbgType->mTypeParam = mAlloc.Alloc<DbgType>();
 					if (atByteSize == 8)
@@ -4396,7 +4387,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					}
 					break;
 				case DW_TAG_namespace:
-					dbgType->mTypeCode = DbgType_Namespace;					
+					dbgType->mTypeCode = DbgType_Namespace;
 					break;
 				case DW_TAG_const_type:
 					dbgType->mTypeCode = DbgType_Const;
@@ -4432,15 +4423,15 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				case DW_TAG_array_type:
 					dbgType->mTypeCode = DbgType_SizedArray;
 					dbgType->mTypeParam = GetOrCreateType(atType, dataMap);
-					break;				
+					break;
 				case DW_TAG_structure_type:
-					dbgType->mTypeCode = DbgType_Struct;					
+					dbgType->mTypeCode = DbgType_Struct;
 					break;
 				case DW_TAG_class_type:
-					dbgType->mTypeCode = DbgType_Class;					
-					break;				
+					dbgType->mTypeCode = DbgType_Class;
+					break;
 				case DW_TAG_union_type:
-					dbgType->mTypeCode = DbgType_Union;					
+					dbgType->mTypeCode = DbgType_Union;
 					break;
 				case DW_TAG_typedef:
 					dbgType->mTypeCode = DbgType_TypeDef;
@@ -4460,28 +4451,28 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					dbgType->mTypeCode = DbgType_Restrict;
 					dbgType->mTypeParam = GetOrCreateType(atType, dataMap);
 					break;
-				}				
-				
+				}
+
 				newDataPair = MakeDataPair(dbgType);
 			}
 			break;
 		}
-		
+
 		if (hasChildren)
-			dataStack.push_back(newDataPair);		
+			dataStack.push_back(newDataPair);
 	}
 
 	for (auto& abstractOriginEntry : abstractOriginReplaceList)
 		abstractOriginEntry.Replace();
 
 	GetLinkedModule()->MapTypes(startingTypeIdx);
-	
+
 	dataPtr = dataEnd;
 	return true;
 }
 
 void DbgModule::ParseDebugFrameData()
-{	
+{
 	BP_ZONE("ParseDebugFrameData");
 
 	const uint8* data = mDebugFrameData;
@@ -4498,11 +4489,11 @@ void DbgModule::ParseDebugFrameData()
 		int length = GET(int);
 		if (length == 0)
 			break;
-		
+
 		const uint8* dataEnd = data + length;
 
 		int cieID = GET(int);
-		
+
 		if (cieID < 0)
 		{
 			BP_ALLOC_T(DwCommonFrameDescriptor);
@@ -4511,7 +4502,7 @@ void DbgModule::ParseDebugFrameData()
 			char version = GET(char);
 			commonFrameDescriptor->mDbgModule = this;
 			commonFrameDescriptor->mAugmentation = DataGetString(data);
-			
+
 			if (version >= 4)
 			{
 				commonFrameDescriptor->mPointerSize = GET(int8);
@@ -4531,7 +4522,7 @@ void DbgModule::ParseDebugFrameData()
 				commonFrameDescriptorMap[mDebugFrameAddress + relSectionAddr] = commonFrameDescriptor;
 		}
 		else
-		{					
+		{
 			addr_target lowPC = GET(addr_target);
 			addr_target highPC = lowPC + GET(addr_target);
 
@@ -4546,11 +4537,11 @@ void DbgModule::ParseDebugFrameData()
 			frameDescriptor->mLowPC = lowPC;
 			frameDescriptor->mHighPC = highPC;
 			frameDescriptor->mInstData = data;
-			frameDescriptor->mInstLen = (int)(dataEnd - data);	
+			frameDescriptor->mInstLen = (int)(dataEnd - data);
 			frameDescriptor->mCommonFrameDescriptor = commonFrameDescriptor;
 		}
 		data = dataEnd;
-	}	
+	}
 }
 
 void DbgModule::ParseEHFrameData()
@@ -4584,40 +4575,40 @@ void DbgModule::ParseEHFrameData()
 			commonFrameDescriptor->mCodeAlignmentFactor = (int)DecodeULEB128(data);
 			commonFrameDescriptor->mDataAlignmentFactor = (int)DecodeSLEB128(data);
 			commonFrameDescriptor->mReturnAddressColumn = (int)DecodeULEB128(data);
-			commonFrameDescriptor->mAugmentation = augmentation;			
-			
+			commonFrameDescriptor->mAugmentation = augmentation;
+
 			if (*augmentation == 'z')
 			{
 				++augmentation;
-				int augLen = (int)DecodeULEB128(data);				
+				int augLen = (int)DecodeULEB128(data);
 				commonFrameDescriptor->mAugmentationLength = augLen;
-				const uint8* augEnd = data + augLen;				
+				const uint8* augEnd = data + augLen;
 				while (*augmentation != '\0')
-				{					
+				{
 					if (*augmentation == 'R')
 						commonFrameDescriptor->mAddressPointerEncoding = (int) GET(uint8);
 					else if (*augmentation == 'P')
 					{
 						int encodingType = GET(uint8);
 						BF_ASSERT(encodingType == 0);
-						commonFrameDescriptor->mLSDARoutine = GET(addr_target);						
+						commonFrameDescriptor->mLSDARoutine = GET(addr_target);
 					}
-					else if (*augmentation == 'L')					
-						commonFrameDescriptor->mLSDAPointerEncodingFDE = GET(uint8);					
+					else if (*augmentation == 'L')
+						commonFrameDescriptor->mLSDAPointerEncodingFDE = GET(uint8);
 					else if (*augmentation == 'S')
 					{
-						// mIsSignalHandler - on return from stack frame, CFA is before next instruction rather than after it						
+						// mIsSignalHandler - on return from stack frame, CFA is before next instruction rather than after it
 					}
 					else
 						BF_FATAL("Unknown CIE augmentation");
 					++augmentation;
-				}				
+				}
 				data = augEnd;
 			}
 
 			commonFrameDescriptor->mInstData = data;
 			commonFrameDescriptor->mInstLen = (int)(dataEnd - data);
-			
+
 			mDebugTarget->mCommonFrameDescriptors.push_back(commonFrameDescriptor);
 			commonFrameDescriptorMap[sectionAddress] = commonFrameDescriptor;
 		}
@@ -4628,7 +4619,7 @@ void DbgModule::ParseEHFrameData()
 
 			addr_target lowPC;
 			addr_target highPC;
-						
+
 			if (commonFrameDescriptor->mAddressPointerEncoding == (DW_EH_PE_pcrel | DW_EH_PE_sdata4))
 			{
 				lowPC = GET(int);
@@ -4637,7 +4628,7 @@ void DbgModule::ParseEHFrameData()
 			}
 			else
 			{
-				lowPC = GET(int);			
+				lowPC = GET(int);
 				highPC = lowPC + GET(int);
 			}
 
@@ -4673,8 +4664,8 @@ void DbgModule::ParseEHFrameData()
 					augmentation++;
 				}
 				data = augEnd;
-			}			
-			
+			}
+
 			frameDescriptor->mLowPC = lowPC;
 			frameDescriptor->mHighPC = highPC;
 			frameDescriptor->mInstData = data;
@@ -4686,13 +4677,12 @@ void DbgModule::ParseEHFrameData()
 }
 
 void DbgModule::FlushLineData(DbgSubprogram* curSubprogram, std::list<DbgLineData>& queuedLineData)
-{	
-	
+{
 }
 
 DbgSrcFile* DbgModule::AddSrcFile(DbgCompileUnit* compileUnit, const String& srcFilePath)
 {
-	DbgSrcFile* dwSrcFile = mDebugTarget->AddSrcFile(srcFilePath);	
+	DbgSrcFile* dwSrcFile = mDebugTarget->AddSrcFile(srcFilePath);
 	if (compileUnit != NULL)
 	{
 		DbgSrcFileReference srcFileRef;
@@ -4705,15 +4695,15 @@ DbgSrcFile* DbgModule::AddSrcFile(DbgCompileUnit* compileUnit, const String& src
 }
 
 bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
-{	
+{
 	BP_ZONE("ParseDebugLineInfo");
-	
+
 	const uint8* data = dataPtr;
-	const int startOffset = (int)(data - mDebugLineData);	
+	const int startOffset = (int)(data - mDebugLineData);
 	int length = GET(int);
 	if (length == 0)
 		return false;
-	DbgCompileUnit* dwCompileUnit = mCompileUnits[compileUnitIdx];	
+	DbgCompileUnit* dwCompileUnit = mCompileUnits[compileUnitIdx];
 	const uint8* dataEnd = data + length;
 	short version = GET(short);
 	int headerLength = GET(int);
@@ -4744,7 +4734,7 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 	int curFileIdx = 0;
 
 	DbgSubprogram* curSubprogram = NULL;
-	
+
 	#define ADD_LINEDATA(lineData) \
 		lineBuilder.Add(dwCompileUnit, lineData, dwSrcFileRef->mSrcFile, NULL);
 
@@ -4762,29 +4752,29 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 			filePath = String(directoryNames[directoryIdx - 1]) + "/";
 		filePath += path;
 		filePath = GetAbsPath(filePath, dwCompileUnit->mCompileDir);
-		AddSrcFile(dwCompileUnit, filePath.c_str());		
+		AddSrcFile(dwCompileUnit, filePath.c_str());
 	}
 
 	if (dwCompileUnit->mSrcFileRefs.size() > 0)
 		dwSrcFileRef = &dwCompileUnit->mSrcFileRefs.front();
-		
+
 	DbgLineDataBuilder lineBuilder(this);
 
 	bool queuedPostPrologue = false;
 
-	DbgLineDataState dwLineData;	
+	DbgLineDataState dwLineData;
 	dwLineData.mLine = 0;
 	dwLineData.mRelAddress = 0;
 	dwLineData.mOpIndex = 0;
 	dwLineData.mBasicBlock = false;
 	dwLineData.mDiscriminator = 0;
 	dwLineData.mIsStmt = defaultIsStmt != 0;
-	dwLineData.mIsa = 0;	
+	dwLineData.mIsa = 0;
 	dwLineData.mColumn = -2;
 
 	while (data < dataEnd)
 	{
-		uint8_t opcode = GET(uint8_t);		
+		uint8_t opcode = GET(uint8_t);
 		switch (opcode)
 		{
 		case DW_LNS_extended_op:
@@ -4794,26 +4784,26 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 				switch (exOpcode)
 				{
 				case DW_LNE_end_sequence:
-					{															
+					{
 						ADD_LINEDATA(dwLineData);
-						
+
 						dwSrcFileRef = &dwCompileUnit->mSrcFileRefs[0];
 						dwLineData.mLine = 0;
 						dwLineData.mRelAddress = 0;
 						dwLineData.mOpIndex = 0;
-						dwLineData.mBasicBlock = false;						
-						dwLineData.mDiscriminator = 0;						
+						dwLineData.mBasicBlock = false;
+						dwLineData.mDiscriminator = 0;
 						dwLineData.mIsStmt = defaultIsStmt != 0;
 						dwLineData.mIsa = 0;
-						dwLineData.mColumn = -2;						
+						dwLineData.mColumn = -2;
 					}
 					break;
-				case DW_LNE_set_address:					
+				case DW_LNE_set_address:
 					dwLineData.mRelAddress = (uint32)(RemapAddr(GET(addr_target)) - mImageBase);
 					break;
 				case DW_LNE_define_file:
 					{
-						const char* path = DataGetString(data);					
+						const char* path = DataGetString(data);
 						int directoryIdx = (int)DecodeULEB128(data);
 						int lastModificationTime = (int)DecodeULEB128(data);
 						int fileLength = (int)DecodeULEB128(data);
@@ -4825,11 +4815,11 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 				}
 			}
 			break;
-		case DW_LNS_copy:			
+		case DW_LNS_copy:
 			ADD_LINEDATA(dwLineData);
-			
+
 			dwLineData.mDiscriminator = 0;
-			dwLineData.mBasicBlock = false;			
+			dwLineData.mBasicBlock = false;
 			break;
 		case DW_LNS_advance_pc:
 			{
@@ -4872,7 +4862,7 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 				int opAdvance = adjustedOpcode / lineRange;
 				uint32 newAddress = dwLineData.mRelAddress + minimumInstructionLength * ((dwLineData.mOpIndex + opAdvance) / maximumOperationsPerInstruction);
 				int newOpIndex = (dwLineData.mOpIndex + opAdvance) % maximumOperationsPerInstruction;
-			
+
 				dwLineData.mRelAddress = newAddress;
 				dwLineData.mOpIndex = newOpIndex;
 			}
@@ -4884,13 +4874,13 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 				dwLineData.mOpIndex = 0;
 			}
 			break;
-		case DW_LNS_set_prologue_end:			
-			{				
+		case DW_LNS_set_prologue_end:
+			{
 				queuedPostPrologue = true;
 			}
 			break;
 		case DW_LNS_set_epilogue_begin:
-			{				
+			{
 				dwLineData.mColumn = -2;
 			}
 			break;
@@ -4899,7 +4889,7 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 				dwLineData.mIsa = (int)DecodeULEB128(data);
 			}
 			break;
-		default:			
+		default:
 			{
 				// Special opcode
 				int adjustedOpcode = opcode - opcodeBase;
@@ -4914,16 +4904,14 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 				dwLineData.mOpIndex = newOpIndex;
 
 				DbgLineData* lastLineData = NULL;
-				
+
 				if ((newAddress == oldAddress) && (queuedPostPrologue) && (curSubprogram != NULL) && (curSubprogram->mBlock.mLowPC == newAddress))
-				{										
+				{
 					// Adjust this line later
 					ADD_LINEDATA(dwLineData);
-				}				
+				}
 
 				queuedPostPrologue = false;
-
-				
 			}
 			break;
 		}
@@ -4943,7 +4931,7 @@ addr_target DbgModule::GetHotTargetAddress(DbgHotTargetSection* hotTargetSection
 		if (hotTargetSection->mNoTargetAlloc)
 			return 0;
 
-		hotTargetSection->mTargetSectionAddr = mDebugger->AllocHotTargetMemory(hotTargetSection->mDataSize, hotTargetSection->mCanExecute, hotTargetSection->mCanWrite, &hotTargetSection->mTargetSectionSize);		
+		hotTargetSection->mTargetSectionAddr = mDebugger->AllocHotTargetMemory(hotTargetSection->mDataSize, hotTargetSection->mCanExecute, hotTargetSection->mCanWrite, &hotTargetSection->mTargetSectionSize);
 		hotTargetSection->mImageOffset = (int)mImageSize;
 
 		if (mImageBase == NULL)
@@ -4977,7 +4965,6 @@ uint8* DbgModule::GetHotTargetData(addr_target address)
 
 void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& coffReloc, addr_target resolvedSymbolAddr, PE_SymInfo* symInfo)
 {
-
 #ifdef BF_DBG_32
 	if (coffReloc.mType == IMAGE_REL_I386_DIR32)
 	{
@@ -4998,7 +4985,7 @@ void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& c
 	else if (coffReloc.mType == IMAGE_REL_I386_SECTION)
 	{
 // 		auto linkedModule = GetLinkedModule();
-// 		addr_target mappedAddr = resolvedSymbolAddr & ~0x7FFFFFF;		
+// 		addr_target mappedAddr = resolvedSymbolAddr & ~0x7FFFFFF;
 // 		int* encodingPtr = NULL;
 // 		if (linkedModule->mSecRelEncodingMap.TryAdd(mappedAddr, NULL, &encodingPtr))
 // 		{
@@ -5012,7 +4999,7 @@ void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& c
 	{
 		//*(uint32*)(hotTargetSection->mData + coffReloc.mVirtualAddress) += symInfo->mValue;
 		*(uint32*)(hotTargetSection->mData + coffReloc.mVirtualAddress) += resolvedSymbolAddr;
-	}	
+	}
 	else
 	{
 		BF_ASSERT(0=="Invalid COFF reloc type");
@@ -5020,13 +5007,13 @@ void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& c
 #else
 
 	// CodeView uses SECTION:SECREL locations, and we just want to find a mapping such that
-	//  COFF::GetSectionAddr can map it to the 64-bit address.  We do this by encoding the 
+	//  COFF::GetSectionAddr can map it to the 64-bit address.  We do this by encoding the
 	//  lower 31 bits in the SECREL (allowing a 31-bit offset at the destination as well)
 	//  and then we use a 15-bit key to map the upper bits
 
 	if (coffReloc.mType == IMAGE_REL_AMD64_REL32)
 	{
-		addr_target myAddr = GetHotTargetAddress(hotTargetSection) + coffReloc.mVirtualAddress;		
+		addr_target myAddr = GetHotTargetAddress(hotTargetSection) + coffReloc.mVirtualAddress;
 		intptr_target addrOffset = resolvedSymbolAddr - myAddr - sizeof(int32);
 
 		BF_ASSERT((int64)(int32)addrOffset == addrOffset);
@@ -5042,7 +5029,7 @@ void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& c
 		else*/
 		{
 			auto linkedModule = GetLinkedModule();
-			addr_target mappedAddr = resolvedSymbolAddr & ~0x7FFFFFF;			
+			addr_target mappedAddr = resolvedSymbolAddr & ~0x7FFFFFF;
 			/*auto pair = linkedModule->mSecRelEncodingMap.insert(std::make_pair(mappedAddr, (int)linkedModule->mSecRelEncodingMap.size()));
 			if (pair.second)
 				linkedModule->mSecRelEncodingVec.push_back(mappedAddr);*/
@@ -5058,16 +5045,15 @@ void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& c
 		}
 	}
 	else if (coffReloc.mType == IMAGE_REL_AMD64_SECREL)
-	{		
+	{
 		auto linkedModule = GetLinkedModule();
 		if ((resolvedSymbolAddr >= linkedModule->mTLSAddr) && (resolvedSymbolAddr < linkedModule->mTLSAddr + linkedModule->mTLSSize))
 		{
 			// Make relative to actual TLS data
 			resolvedSymbolAddr -= linkedModule->mTLSAddr;
 		}
-		
+
 		*(uint32*)(hotTargetSection->mData + coffReloc.mVirtualAddress) += (uint32)(resolvedSymbolAddr & 0x7FFFFFF);
-		
 	}
 	else if (coffReloc.mType == IMAGE_REL_AMD64_ADDR64)
 	{
@@ -5080,7 +5066,7 @@ void DbgModule::DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& c
 		//  It was causing hot-loaded jump tables to have invalid addresses since the need to be relative to __ImageBase
 		*(uint32*)(hotTargetSection->mData + coffReloc.mVirtualAddress) += (uint32)(resolvedSymbolAddr - GetTargetImageBase());
 		//*(int32*)(hotTargetSection->mData + coffReloc.mVirtualAddress) += secRelAddr;
-	}	
+	}
 	else
 	{
 		BF_ASSERT(0=="Invalid COFF reloc type");
@@ -5110,7 +5096,7 @@ bool DbgModule::IsHotSwapPreserve(const String& name)
 }
 
 void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolvedSymbolAddrs)
-{	
+{
 	auto mainModule = mDebugTarget->mTargetBinary;
 	mainModule->ParseSymbolData();
 
@@ -5145,7 +5131,7 @@ void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolved
 					name = mStringTable + symInfo->mNameOfs[1];
 
 				bool didNameMatch = false;
-				
+
 				addr_target resolvedSymbolAddr = resolvedSymbolAddrs[coffReloc.mSymbolTableIndex];
 
 #ifdef BF_DBG_32
@@ -5154,7 +5140,7 @@ void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolved
 					name.Remove(0, 1);
 #else
 				bool needsSymbolAddr = (coffReloc.mType == IMAGE_REL_AMD64_ADDR64) || (coffReloc.mType == IMAGE_REL_AMD64_ADDR32) || (coffReloc.mType == IMAGE_REL_AMD64_ADDR32NB) ||
-					((coffReloc.mType >= IMAGE_REL_AMD64_REL32) || (coffReloc.mType <= IMAGE_REL_AMD64_REL32_5));					
+					((coffReloc.mType >= IMAGE_REL_AMD64_REL32) || (coffReloc.mType <= IMAGE_REL_AMD64_REL32_5));
 #endif
 
 				bool isHsPrev = false;
@@ -5167,13 +5153,13 @@ void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolved
 				bool deferResolve = false;
 
 				if ((resolvedSymbolAddr == 0) && (needsSymbolAddr))
-				{	
+				{
 					bool isHotSwapPreserve = IsHotSwapPreserve(name);
 					if ((symInfo->mSectionNum == 0) || (isHotSwapPreserve) || (isHsPrev))
-					{						
+					{
 						auto origSymbolEntry = mainModule->mSymbolNameMap.Find(name.c_str());
 						if (origSymbolEntry != NULL)
-						{							
+						{
 							resolvedSymbolAddr = origSymbolEntry->mValue->mAddress;
 						}
 						else
@@ -5182,16 +5168,16 @@ void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolved
 							deferResolve = true;
 						}
 					}
-				
+
 					if ((symInfo->mSectionNum != 0) && (resolvedSymbolAddr == NULL))
-					{						
+					{
 						DbgHotTargetSection* refHotTargetSection = mHotTargetSections[symInfo->mSectionNum - 1];
 						resolvedSymbolAddr = GetHotTargetAddress(refHotTargetSection) + symInfo->mValue;
 						//  Using the !hotTargetSection->mNoTargetAlloc check down here caused us to not properly remap reloaded
 						//   static members in the debug info.  Even though we parse the debug info before we apply the deferred
 						//   resolves, the mLocData points into the original data so we still get it remapped when we use that
 						//   mLocData
-						if (/*(!hotTargetSection->mNoTargetAlloc) &&*/ ((refHotTargetSection->mData == NULL) || (refHotTargetSection->mNoTargetAlloc)) && 
+						if (/*(!hotTargetSection->mNoTargetAlloc) &&*/ ((refHotTargetSection->mData == NULL) || (refHotTargetSection->mNoTargetAlloc)) &&
 							(!isStaticSymbol))
 							deferResolve = true;
 						else
@@ -5200,13 +5186,13 @@ void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolved
 				}
 
 				if (deferResolve)
-				{					
+				{
 					// It's a static field, defer resolution, but don't bother replacing for debug info sections
 					DbgDeferredHotResolve* deferredResolve = mDeferredHotResolveList.Alloc();
 					deferredResolve->mHotTargetSection = hotTargetSection;
 					deferredResolve->mName = name;
 					deferredResolve->mNewAddr = resolvedSymbolAddr;
-					deferredResolve->mReloc = coffReloc;										
+					deferredResolve->mReloc = coffReloc;
 					continue;
 				}
 				else
@@ -5214,7 +5200,7 @@ void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolved
 					resolvedSymbolAddrs[coffReloc.mSymbolTableIndex] = resolvedSymbolAddr;
 					DoReloc(hotTargetSection, coffReloc, resolvedSymbolAddr, symInfo);
 				}
-			}						
+			}
 		}
 	}
 }
@@ -5266,7 +5252,7 @@ void DbgModule::CommitHotTargetSections()
 }
 
 void DbgModule::HotReplaceType(DbgType* newType)
-{	
+{
 	auto linkedModule = GetLinkedModule();
 
 	newType->PopulateType();
@@ -5301,9 +5287,9 @@ void DbgModule::HotReplaceType(DbgType* newType)
 		{
 			linkedModule->MapCompileUnitMethods(methodNameEntry->mCompileUnitId);
 			methodNameEntry->mCompileUnitId = -1;
-		}		
+		}
 	}
-		
+
 	// Now actually remove the linedata from the defining module
 	HashSet<DbgSrcFile*> checkedFiles;
 	for (auto method : primaryType->mMethodList)
@@ -5319,7 +5305,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 		checkedFiles.Clear();
 
 		int prevCtx = -1;
-		auto inlineRoot = method->GetRootInlineParent();		
+		auto inlineRoot = method->GetRootInlineParent();
  		for (int lineIdx = 0; lineIdx < method->mLineInfo->mLines.mSize; lineIdx++)
  		{
  			auto& lineData = method->mLineInfo->mLines[lineIdx];
@@ -5327,7 +5313,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 			{
 				auto ctxInfo = inlineRoot->mLineInfo->mContexts[lineData.mCtxIdx];
 				auto srcFile = ctxInfo.mSrcFile;
-				prevCtx = lineData.mCtxIdx;				
+				prevCtx = lineData.mCtxIdx;
 				if (srcFile != lastSrcFile)
 				{
 					if (checkedFiles.Add(srcFile))
@@ -5336,7 +5322,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 						//  These go into a hot-replaced list so we can still bind to them -- that is necessary because
 						//   we may still have old versions of this method running (and may forever, if its in a loop on some thread)
 						//   since we only patch entry points
-						//srcFile->RemoveLines(primaryType->mCompileUnit->mDbgModule, primaryType->mCompileUnit, true); 					
+						//srcFile->RemoveLines(primaryType->mCompileUnit->mDbgModule, primaryType->mCompileUnit, true);
 
 						//srcFile->RemoveLines(primaryType->mCompileUnit->mDbgModule, method, true);
 						srcFile->RemoveLines(method->mCompileUnit->mDbgModule, method, true);
@@ -5348,12 +5334,11 @@ void DbgModule::HotReplaceType(DbgType* newType)
  		}
 	}
 
-
-	//DbgType* primaryType = newType->GetPrimaryType();	
+	//DbgType* primaryType = newType->GetPrimaryType();
 
 	// We need to keep a persistent list of hot replaced methods so we can set hot jumps
 	//  in old methods that may still be on the callstack.  These entries get removed when
-	//  we unload unused hot files in 
+	//  we unload unused hot files in
 	while (!primaryType->mMethodList.IsEmpty())
 	{
 		auto method = primaryType->mMethodList.PopFront();
@@ -5363,7 +5348,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 		primaryType->mHotReplacedMethodList.PushFront(method);
 		mHotPrimaryTypes.Add(primaryType);
 	}
-	
+
 	Dictionary<StringView, DbgSubprogram*> oldProgramMap;
 	for (auto oldMethod : primaryType->mHotReplacedMethodList)
 	{
@@ -5379,13 +5364,13 @@ void DbgModule::HotReplaceType(DbgType* newType)
 
 	bool setHotJumpFailed = false;
 	while (!newType->mMethodList.IsEmpty())
-	{		
+	{
 		DbgSubprogram* newMethod = newType->mMethodList.PopFront();
 		if (!newMethod->mBlock.IsEmpty())
 		{
 			BfLogDbg("Hot added new method %p %s Address:%p\n", newMethod, newMethod->mName, newMethod->mBlock.mLowPC);
 
-			newMethod->PopulateSubprogram();			
+			newMethod->PopulateSubprogram();
 
 			auto symInfo = mDebugTarget->mSymbolMap.Get(newMethod->mBlock.mLowPC);
 			if (symInfo != NULL)
@@ -5401,7 +5386,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 					}
 					else
 					{
-						// When mangles match but the actual signatures don't match, that can mean that the call signature was changed 
+						// When mangles match but the actual signatures don't match, that can mean that the call signature was changed
 						// and thus it's actually a different method and shouldn't hot jump OR it could be lambda whose captures changed.
 						// When the lambda captures change, the user didn't actually enter a different signature so we want to do a hard
 						// fail if the old code gets called to avoid confusion of "why aren't my changes working?"
@@ -5421,7 +5406,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 								auto newType = newParam->mType->mTypeParam->GetPrimaryType();
 								newType->PopulateType();
 								if ((oldType->IsStruct()) && (newType->IsStruct()))
-								{	
+								{
 									bool wasMatch = true;
 
 									auto oldMember = oldType->mMemberList.front();
@@ -5451,7 +5436,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 											wasMatch = false;
 											break;
 										}
-										
+
 										oldMember = oldMember->mNext;
 										newMember = newMember->mNext;
 									}
@@ -5465,9 +5450,9 @@ void DbgModule::HotReplaceType(DbgType* newType)
 							{
 								mDebugTarget->mDebugger->PhysSetBreakpoint(oldMethod->mBlock.mLowPC);
 								oldMethod->mHotReplaceKind = DbgSubprogram::HotReplaceKind_Invalid;
-							}							
+							}
 						}
-					}										
+					}
 
 					if (doHotJump)
 					{
@@ -5479,7 +5464,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 						oldMethod->mHotReplaceKind = DbgSubprogram::HotReplaceKind_Replaced;
 					}
 				}
-			}			
+			}
 		}
 		newMethod->mParentType = primaryType;
 		primaryType->mMethodList.PushBack(newMethod);
@@ -5494,7 +5479,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 // 		if (!newMethod->mBlock.IsEmpty())
 // 		{
 // 			newMethod->PopulateSubprogram();
-// 
+//
 // 			bool found = false;
 // 			for (auto oldMethod : primaryType->mHotReplacedMethodList)
 // 			{
@@ -5507,7 +5492,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 // 						if (!mDebugger->SetHotJump(oldMethod, newMethod))
 // 							setHotJumpFailed = true;
 // 						oldMethod->mWasHotReplaced = true;
-// 					}					
+// 					}
 // 				}
 // 			}
 // 		}
@@ -5515,12 +5500,12 @@ void DbgModule::HotReplaceType(DbgType* newType)
 // 		primaryType->mMethodList.PushBack(newMethod);
 // 	}
 
-	primaryType->mCompileUnit->mWasHotReplaced = true;	
+	primaryType->mCompileUnit->mWasHotReplaced = true;
 
 	primaryType->mNeedsGlobalsPopulated = newType->mNeedsGlobalsPopulated;
 	primaryType->mUsingNamespaces = newType->mUsingNamespaces;
 	primaryType->mMemberList = newType->mMemberList;
-	primaryType->mCompileUnit = newType->mCompileUnit;	
+	primaryType->mCompileUnit = newType->mCompileUnit;
 }
 
 bool DbgModule::CanRead(DataStream* stream, DebuggerResult* outResult)
@@ -5590,7 +5575,7 @@ const char* DbgModule::GetStringTable(DataStream* stream, int stringTablePos)
 
 bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 {
-	BP_ZONE("DbgModule::ReadCOFF");	
+	BP_ZONE("DbgModule::ReadCOFF");
 
  	//if (this == mDebugTarget->mTargetBinary)
  		//mMemReporter = new MemReporter();
@@ -5607,9 +5592,9 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		if (mMemReporter != NULL)
 			mMemReporter->EndSection();
 	);
-	
-	DbgModule* mainModule = mDebugTarget->mTargetBinary;	
-	
+
+	DbgModule* mainModule = mDebugTarget->mTargetBinary;
+
 	MiniDumpDebugger* miniDumpDebugger = NULL;
 	if (mDebugger->IsMiniDumpDebugger())
 	{
@@ -5619,16 +5604,16 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	mModuleKind = moduleKind;
 	bool isHotSwap = mModuleKind == DbgModuleKind_HotObject;
 	bool isObjectFile = mModuleKind != DbgModuleKind_Module;
-	
+
 	auto linkedModule = GetLinkedModule();
 
 	if (isObjectFile)
 		linkedModule->PopulateStaticVariableMap();
-	
+
 	mStartTypeIdx = (int)linkedModule->mTypes.size();
 	int startSrcFile = (int)mDebugTarget->mSrcFiles.size();
 	mStartSubprogramIdx = (int)mSubprograms.size();
-		
+
 	PEHeader hdr;
 	memset(&hdr, 0, sizeof(hdr));
 
@@ -5639,7 +5624,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	{
 		stream->Read(&hdr, sizeof(PEHeader));
 		stream->SetPos(hdr.e_lfanew);
-		
+
 		stream->Read(&ntHdr, sizeof(PE_NTHeaders));
 
 		mPreferredImageBase = ntHdr.mOptionalHeader.mImageBase;
@@ -5650,7 +5635,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		}
 
 		if ((hdr.e_magic != PE_DOS_SIGNATURE) || (ntHdr.mSignature != PE_NT_SIGNATURE))
-		{			
+		{
 			mLoadState = DbgModuleLoadState_Failed;
 			return false;
 		}
@@ -5686,8 +5671,8 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			return false;
 		}
 #endif
-	}	
-	
+	}
+
 	int sectionStartPos = stream->GetPos();
 	int sectionDataEndPos = 0;
 
@@ -5704,19 +5689,19 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	{
 		PESectionHeader sectHdr;
 
-		char* name = sectHdr.mName;		
+		char* name = sectHdr.mName;
 		stream->Read(&sectHdr, sizeof(PESectionHeader));
 		if (sectHdr.mSizeOfRawData > 0)
 			sectionDataEndPos = BF_MAX(sectionDataEndPos, (int)(sectHdr.mPointerToRawData + sectHdr.mSizeOfRawData));
 		if (sectHdr.mNumberOfRelocations > 0)
 			sectionDataEndPos = BF_MAX(sectionDataEndPos, (int)(sectHdr.mPointerToRelocations + sectHdr.mNumberOfRelocations * sizeof(COFFRelocation)));
-					
+
 		if (miniDumpDebugger != NULL)
 		{
 			miniDumpDebugger->MapMemory((addr_target)(mImageBase + sectHdr.mVirtualAddress), (uint8*)mMappedImageFile->mData + sectHdr.mPointerToRawData, sectHdr.mSizeOfRawData);
 		}
 	}
-		
+
 	//fseek(fp, sectionDataEndPos + ntHdr.mFileHeader.mNumberOfSymbols * 18, SEEK_SET);
 	stream->SetPos(sectionDataEndPos);
 
@@ -5726,21 +5711,21 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	mSymbolData = symbolData;
 	stream->Read(symbolData, ntHdr.mFileHeader.mNumberOfSymbols * 18);
 
-	int curPos = stream->GetPos();	
+	int curPos = stream->GetPos();
 	int stringTablePos = curPos;
 	if (isObjectFile)
 		GetStringTable(stream, stringTablePos);
-	
-	int mDebugFrameDataLen = 0;		
-	
+
+	int mDebugFrameDataLen = 0;
+
 	stream->SetPos(sectionStartPos);
-	
-	PEDataDirectory* exportDataDir = &ntHdr.mOptionalHeader.mDataDirectory[0]; 
-	
+
+	PEDataDirectory* exportDataDir = &ntHdr.mOptionalHeader.mDataDirectory[0];
+
 	mHotTargetSections.Resize(ntHdr.mFileHeader.mNumberOfSections);
-	
+
 	Array<PESectionHeader> sectionHeaders;
-	sectionHeaders.Resize(ntHdr.mFileHeader.mNumberOfSections);	
+	sectionHeaders.Resize(ntHdr.mFileHeader.mNumberOfSections);
 	mSectionRVAs.Resize(sectionHeaders.size() + 1);
 
 	Array<String> sectionNames;
@@ -5752,14 +5737,14 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	{
 		mSectionRVAs[sectNum] = sectionHeaders[sectNum].mVirtualAddress;
 	}
-	
+
 	int tlsSection = -1;
 	for (int sectNum = 0; sectNum < ntHdr.mFileHeader.mNumberOfSections; sectNum++)
 	{
 		//PEDataDirectory* dataDir = &ntHdr.mOptionalHeader.mDataDirectory[dirNum];
 
 		PESectionHeader& sectHdr = sectionHeaders[sectNum];
-		//stream->Read(&sectHdr, sizeof(PESectionHeader));		
+		//stream->Read(&sectHdr, sizeof(PESectionHeader));
 
 		const char* name = sectHdr.mName;
 		if (name[0] == '/')
@@ -5783,7 +5768,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			targetSection->mNoTargetAlloc = (sectHdr.mCharacteristics & IMAGE_SCN_MEM_DISCARDABLE) != 0;
 			mHotTargetSections[sectNum] = targetSection;
 		}
-		
+
 		DbgSection dwSection;
 		dwSection.mIsExecutable = (sectHdr.mCharacteristics & IMAGE_SCN_MEM_EXECUTE) != 0;
 		dwSection.mAddrStart = sectHdr.mVirtualAddress;
@@ -5872,8 +5857,8 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 					mTLSIndexAddr = funcAddr;
 				}
 
-				//TODO: 
-				//mDeferredSymbols.PushFront(dwSymbol);		
+				//TODO:
+				//mDeferredSymbols.PushFront(dwSymbol);
 
 				dwSymbol->mAddress = (addr_target)(dwSymbol->mAddress + mImageBase);
 				mDebugTarget->mSymbolMap.Insert(dwSymbol);
@@ -5883,7 +5868,6 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 		if ((IsObjectFile()) && (sectHdr.mNumberOfRelocations > 0))
 		{
-
 			//mDebugger->AllocTargetMemory(sectHdr.mSizeOfRawData, true, true);
 		}
 
@@ -5931,13 +5915,13 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 					}
 				}
 
-				//stream->SetPos(debugDirEntry.mVirtualAddress);				
+				//stream->SetPos(debugDirEntry.mVirtualAddress);
 			}
 		}
 
 		//
 		{
-			PEDataDirectory& tlsDirEntry = ntHdr.mOptionalHeader.mDataDirectory[IMAGE_DIRECTORY_ENTRY_TLS]; 
+			PEDataDirectory& tlsDirEntry = ntHdr.mOptionalHeader.mDataDirectory[IMAGE_DIRECTORY_ENTRY_TLS];
 			if (tlsDirEntry.mSize > 0)
 			{
 				if ((tlsDirEntry.mVirtualAddress >= sectHdr.mVirtualAddress) && (tlsDirEntry.mVirtualAddress < sectHdr.mVirtualAddress + sectHdr.mSizeOfRawData))
@@ -5950,7 +5934,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 					mTLSAddr = (addr_target)(tlsDataStart + mImageBase);
 					mTLSSize = (int)(tlsDataEnd - tlsDataStart);
-				}				
+				}
 			}
 		}
 
@@ -5958,15 +5942,15 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		{
 			PEDataDirectory& debugDirEntry = ntHdr.mOptionalHeader.mDataDirectory[IMAGE_DIRECTORY_ENTRY_RESOURCE];
 			if (debugDirEntry.mSize > 0)
-			{				
+			{
 				if ((debugDirEntry.mVirtualAddress >= sectHdr.mVirtualAddress) && (debugDirEntry.mVirtualAddress < sectHdr.mVirtualAddress + sectHdr.mSizeOfRawData))
-				{	
+				{
 					uint8* relPtr = data + debugDirEntry.mVirtualAddress - sectHdr.mVirtualAddress;
 					uint8* endPtr = relPtr + debugDirEntry.mSize;
 
 					IMAGE_RESOURCE_DIRECTORY* typeDir = (IMAGE_RESOURCE_DIRECTORY*)(relPtr);
-					
-					// Skip named entries					
+
+					// Skip named entries
 					for (int typeIdx = 0; typeIdx < typeDir->NumberOfIdEntries; typeIdx++)
 					{
 						IMAGE_RESOURCE_DIRECTORY_ENTRY* typeEntry = (IMAGE_RESOURCE_DIRECTORY_ENTRY*)((uint8*)typeDir + sizeof(IMAGE_RESOURCE_DIRECTORY) +
@@ -5988,25 +5972,25 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 							IMAGE_RESOURCE_DATA_ENTRY* dataEntry = (IMAGE_RESOURCE_DATA_ENTRY*)(relPtr + (langEntry->OffsetToData & 0x7FFFFFFF));
 							uint8* versionData = data + dataEntry->OffsetToData - sectHdr.mVirtualAddress;
 							uint8* vPtr = versionData;
-							
+
 							auto vSize = GET_FROM(vPtr, uint16);
 							auto verEnd = vPtr + vSize;
 							auto vLength = GET_FROM(vPtr, uint16);
 							vPtr += 36; // "VS_VERSION_INFO"
 
-							auto fixedFileInfo = GET_FROM(vPtr, VS_FIXEDFILEINFO);														
+							auto fixedFileInfo = GET_FROM(vPtr, VS_FIXEDFILEINFO);
 
 							auto _GetString = [&]()
 							{
 								wchar_t* cPtr = (wchar_t*)vPtr;
 								int len = (int)wcslen(cPtr);
 								vPtr += (len + 1) * 2;
-								
+
 								if (((intptr)vPtr & 3) != 0)
 									vPtr += 2;
 
 								UTF16String str16(cPtr, len);
-								return UTF8Encode(str16);								
+								return UTF8Encode(str16);
 							};
 
 							while (vPtr < verEnd)
@@ -6042,31 +6026,31 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 								}
 
 								vPtr = childEnd;
-							}							
+							}
 						}
-					}					
+					}
 				}
 
-				//stream->SetPos(debugDirEntry.mVirtualAddress);				
+				//stream->SetPos(debugDirEntry.mVirtualAddress);
 			}
 		}
-		
+
 		bool usedData = true;
 
 		/*if (isUnwindSection)
 		{
 			mExceptionData = data;
-			mExceptionDataRVA = sectHdr.mVirtualAddress;			
+			mExceptionDataRVA = sectHdr.mVirtualAddress;
 		}*/
 
 		if (strcmp(name, ".pdata") == 0)
 		{
 			DbgSectionData entry;
-			entry.mData = data;			
+			entry.mData = data;
 			entry.mSize = sectHdr.mSizeOfRawData;
 			mExceptionDirectory.Add(entry);
 		}
-		
+
 		// Old, unsupported DWARF debug info
 		/*
 		else if (strcmp(name, ".debug_info") == 0)
@@ -6075,13 +6059,13 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		}
 		else if (strcmp(name, ".debug_line") == 0)
 		{
-			mDebugLineData = data;					
+			mDebugLineData = data;
 		}
 		else if (strcmp(name, ".debug_str") == 0)
 		{
 			mDebugStrData = data;
 		}
-		else if (strcmp(name, ".debug_frame") == 0)			
+		else if (strcmp(name, ".debug_frame") == 0)
 		{
 			mDebugFrameAddress = ntHdr.mOptionalHeader.mImageBase + sectHdr.mVirtualAddress;
 			mDebugFrameData = data;
@@ -6095,11 +6079,11 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		else if (strcmp(name, ".debug_abbrev") == 0)
 		{
 			mDebugAbbrevData = data;
-			mDebugAbbrevPtrData = new const uint8*[sectHdr.mSizeOfRawData];			
+			mDebugAbbrevPtrData = new const uint8*[sectHdr.mSizeOfRawData];
 		}
 		else if (strcmp(name, ".debug_loc") == 0)
 		{
-			mDebugLocationData = data;			
+			mDebugLocationData = data;
 		}
 		else if (strcmp(name, ".debug_ranges") == 0)
 		{
@@ -6120,7 +6104,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			/*if (isUnwindSection)
 				mOwnsExceptionData = true;
 			else*/
-				usedData = false;						
+				usedData = false;
 		}
 
 		if (!usedData)
@@ -6141,17 +6125,17 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 	int needHotTargetMemory = 0;
 	if (isObjectFile)
-	{				
+	{
 		for (int sectNum = 0; sectNum < ntHdr.mFileHeader.mNumberOfSections; sectNum++)
 		{
 			auto targetSection = mHotTargetSections[sectNum];
 			if (!targetSection->mNoTargetAlloc)
 				needHotTargetMemory += (targetSection->mDataSize + (mDebugger->mPageSize - 1)) & ~(mDebugger->mPageSize - 1);
-		}		
+		}
 		mDebugger->ReserveHotTargetMemory(needHotTargetMemory);
-		
+
 		// '0' address is temporary
-		//mOrigImageData = new DbgModuleMemoryCache(0, NULL, needHotTargetMemory, true);		
+		//mOrigImageData = new DbgModuleMemoryCache(0, NULL, needHotTargetMemory, true);
 		mOrigImageData = new DbgModuleMemoryCache(0, needHotTargetMemory);
 	}
 
@@ -6194,7 +6178,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			if (!ParseDebugLineInfo(data, compileUnitIdx))
 			break;
 	}
-			
+
 	{
 		BP_ZONE("ReadPE_ReadSymbols");
 
@@ -6224,7 +6208,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			if ((symInfo->mStorageClass == COFF_SYM_CLASS_EXTERNAL) ||
 				(symInfo->mStorageClass == COFF_SYM_CLASS_STATIC))
 			{
-				// 'static' in the C sense.  
+				// 'static' in the C sense.
                 //  It means local to the compile unit, so may have multiple copies of the same symbol name.
 				bool isStaticSymbol = symInfo->mStorageClass == COFF_SYM_CLASS_STATIC;
 
@@ -6232,14 +6216,14 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 					continue;
 
 				if (symInfo->mSectionNum > 0)
-				{					
+				{
 					bool isTLS = false;
 					addr_target targetAddr = 0;
 					if (isObjectFile)
 					{
 						if (symInfo->mSectionNum - 1 == tlsSection)
 						{
-							isTLS = true;							
+							isTLS = true;
 						}
 						else
 						{
@@ -6249,9 +6233,9 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 						}
 					}
 					else
-						targetAddr = mSectionRVAs[symInfo->mSectionNum - 1] + symInfo->mValue;					
-					
-					if (((targetAddr != 0) || (isTLS)) && 
+						targetAddr = mSectionRVAs[symInfo->mSectionNum - 1] + symInfo->mValue;
+
+					if (((targetAddr != 0) || (isTLS)) &&
 						(name[0] != '.'))
 					{
 						const char* symbolName = name;
@@ -6264,13 +6248,13 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 						if (strcmp(symbolName, "_tls_index") == 0)
 						{
 							mTLSIndexAddr = (addr_target)(targetAddr + mImageBase);
-						}	
-						
+						}
+
 						if ((isStaticSymbol) && (IsHotSwapPreserve(symbolName)))
 							isStaticSymbol = false;
 
 						if ((isObjectFile) && (!isStaticSymbol))
-						{	
+						{
 							DbgSymbol* dwSymbol = NULL;
 
 							linkedModule->ParseSymbolData() ;
@@ -6279,15 +6263,15 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 							dwSymbol = mAlloc.Alloc<DbgSymbol>();
 							dwSymbol->mDbgModule = this;
 							dwSymbol->mName = symbolName;
-							dwSymbol->mAddress = targetAddr;							
+							dwSymbol->mAddress = targetAddr;
 
 							if (dwSymbol != NULL)
-							{									
+							{
 								bool isHotSwapPreserve = IsHotSwapPreserve(dwSymbol->mName);
 								bool insertIntoNameMap = true;
-								
+
 								bool oldFound = false;
-								
+
 								auto nameMapEntry = linkedModule->mSymbolNameMap.Find(dwSymbol->mName);
 								if (nameMapEntry != NULL)
 								{
@@ -6298,7 +6282,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 									}
 									else if (mDbgFlavor == DbgFlavor_MS)
 									{
-										// Store in our own map - this is needed for storing address of the new vdata 
+										// Store in our own map - this is needed for storing address of the new vdata
 										//  so the new values can be copied in
 										mSymbolNameMap.Insert(dwSymbol);
 									}
@@ -6352,11 +6336,11 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 										}
 									}
 								}
-	
+
 								if (dwSymbol->mAddress != 0)
 								{
 									if (!oldFound)
-										linkedModule->mSymbolNameMap.Insert(dwSymbol);									
+										linkedModule->mSymbolNameMap.Insert(dwSymbol);
 									mDebugTarget->mSymbolMap.Insert(dwSymbol);
 								}
 							}
@@ -6394,14 +6378,14 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		}
 	}
 
-	int subProgramSizes = 0;	
+	int subProgramSizes = 0;
 	for (int subProgramIdx = mStartSubprogramIdx; subProgramIdx < mEndSubprogramIdx; subProgramIdx++)
 	{
 		auto dwSubprogram = mSubprograms[subProgramIdx];
 		subProgramSizes += (int)(dwSubprogram->mBlock.mHighPC - dwSubprogram->mBlock.mLowPC);
-		
+
 		/*for (int i = 0; i < dwSubprogram->mLineDataArray.mSize; i++)
-		{			
+		{
 			auto lineData = dwSubprogram->mLineDataArray.mData[i];
 			auto srcFile = lineData->mSrcFileRef->mSrcFile;
 			srcFile->mLineData.push_back(lineData);
@@ -6409,7 +6393,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			if ((srcFile->mFirstLineDataDbgModule == NULL) || (srcFile->mFirstLineDataDbgModule == this))
 				srcFile->mFirstLineDataDbgModule = this;
 			else
-				srcFile->mHasLineDataFromMultipleModules = true;			
+				srcFile->mHasLineDataFromMultipleModules = true;
 		}*/
 	}
 
@@ -6418,7 +6402,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	/*for (int srcFileIdx = startSrcFile; srcFileIdx < (int)mDebugTarget->mSrcFiles.size(); srcFileIdx++)
 	{
 		if (!mDebugTarget->mSrcFiles[srcFileIdx]->mHadLineData)
-		{			
+		{
 			mEmptySrcFiles.push_back(mDebugTarget->mSrcFiles[srcFileIdx]);
 			mDebugTarget->mSrcFiles.erase(mDebugTarget->mSrcFiles.begin() + srcFileIdx);
 		}
@@ -6445,10 +6429,10 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		mImageSize = ntHdr.mOptionalHeader.mSizeOfImage;
 		mEntryPoint = ntHdr.mOptionalHeader.mAddressOfEntryPoint;
 	}
-		
-	/*OutputDebugStrF("%s:\n CompileUnits:%d DebugLines: %d Types: %d (%d in map) SubPrograms: %d (%dk) AllocSize:%dk\n", mFilePath.c_str(), mCompileUnits.size(), 
+
+	/*OutputDebugStrF("%s:\n CompileUnits:%d DebugLines: %d Types: %d (%d in map) SubPrograms: %d (%dk) AllocSize:%dk\n", mFilePath.c_str(), mCompileUnits.size(),
 		lineDataCount, mEndTypeIdx - mStartTypeIdx, (int)linkedModule->mTypes.size() - mStartTypeIdx, mEndSubprogramIdx - mStartSubprogramIdx, subProgramSizes / 1024, mAlloc.GetAllocSize() / 1024);*/
-	
+
 	if (isHotSwap)
 	{
 		// In COFF, we don't necessarily add an actual primary type during MapCompileUnitMethods, so this fixes that
@@ -6469,7 +6453,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			}
 			if (!didReplaceType)
 				break;
-		}		
+		}
 
 		BF_ASSERT(mTypes.size() == 0);
 		for (int typeIdx = mStartTypeIdx; typeIdx < (int)linkedModule->mTypes.size(); typeIdx++)
@@ -6480,21 +6464,21 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 				HotReplaceType(newType);
 		}
 	}
-	
+
 	if (needHotTargetMemory != 0)
 	{
 		BF_ASSERT(needHotTargetMemory >= (int)mImageSize);
 	}
 
 	//BF_ASSERT(mEndTypeIdx == (int)linkedModule->mTypes.size());
-	//BF_ASSERT(mEndSubprogramIdx == (int)mSubprograms.size());	
+	//BF_ASSERT(mEndSubprogramIdx == (int)mSubprograms.size());
 
 	ParseExceptionData();
 
 	mLoadState = DbgModuleLoadState_Loaded;
 
 	if (mMemReporter != NULL)
-	{		
+	{
 		mMemReporter->BeginSection("Sections");
 
 		ParseSymbolData();
@@ -6506,11 +6490,11 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			orderedSyms.Add(dbgSym);
 		}
 		orderedSyms.Sort([](DbgSymbol* lhs, DbgSymbol* rhs) { return lhs->mAddress < rhs->mAddress; });
-		
+
 		for (int sectNum = 0; sectNum < ntHdr.mFileHeader.mNumberOfSections; sectNum++)
-		{			
+		{
 			PESectionHeader& sectHdr = sectionHeaders[sectNum];
-			
+
 			mMemReporter->BeginSection(sectionNames[sectNum]);
 
 			DbgSymbol* lastSym = NULL;
@@ -6522,7 +6506,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 				if (dbgSym->mAddress >= mImageBase + sectHdr.mVirtualAddress + sectHdr.mSizeOfRawData)
 					break;
-				
+
 				if (lastSym != NULL)
 				{
 					mMemReporter->Add(lastSym->mName, (int)(dbgSym->mAddress - lastSym->mAddress));
@@ -6533,7 +6517,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 					if (startingOffset > 0)
 						mMemReporter->Add("<StartData>", startingOffset);
 				}
-				lastSym = dbgSym;				
+				lastSym = dbgSym;
 			}
 
 			if (lastSym != NULL)
@@ -6548,7 +6532,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		mMemReporter->EndSection();
 
 		mMemReporter->mShowInKB = false;
-		mMemReporter->Report();				
+		mMemReporter->Report();
 	}
 	return true;
 }
@@ -6558,7 +6542,7 @@ void DbgModule::FinishHotSwap()
 	BF_ASSERT(IsObjectFile());
 
 	auto linkedModule = GetLinkedModule();
-	auto mainModule = mDebugTarget->mTargetBinary;	
+	auto mainModule = mDebugTarget->mTargetBinary;
 
 	HashSet<String> failSet;
 
@@ -6581,10 +6565,10 @@ void DbgModule::FinishHotSwap()
 		}
 		else
 		{
-			auto symbolEntry = mainModule->mSymbolNameMap.Find(findName.c_str());		
+			auto symbolEntry = mainModule->mSymbolNameMap.Find(findName.c_str());
 
 			if (symbolEntry != NULL)
-			{					
+			{
 				resolveTargetAddr = symbolEntry->mValue->mAddress;
 			}
 			else
@@ -6604,9 +6588,9 @@ void DbgModule::FinishHotSwap()
 				}
 			}
 		}
-		DoReloc(deferredHotResolve->mHotTargetSection, deferredHotResolve->mReloc, resolveTargetAddr, NULL);		
+		DoReloc(deferredHotResolve->mHotTargetSection, deferredHotResolve->mReloc, resolveTargetAddr, NULL);
 	}
-	mDeferredHotResolveList.Clear();	
+	mDeferredHotResolveList.Clear();
 
 	if (!failSet.IsEmpty())
 	{
@@ -6617,9 +6601,9 @@ void DbgModule::FinishHotSwap()
 			if (str.Contains("failed to resolve"))
 			{
 				for (auto& sym : failSet)
-				{					
+				{
 					str += ", ";
-					str += sym;					
+					str += sym;
 				}
 				handled = true;
 			}
@@ -6648,13 +6632,13 @@ void DbgModule::FinishHotSwap()
 
 	// We need this here because vdata gets loaded first, so we need to wait until we have the addrs for the new methods (from other modules)
 	//  before we can finalize the class vdata.
-	ProcessHotSwapVariables();	
+	ProcessHotSwapVariables();
 
 	for (auto hotTargetSection : mHotTargetSections)
 		delete hotTargetSection;
 
 	mHotTargetSections.Clear();
-	mSymbolNameMap.Clear(); 
+	mSymbolNameMap.Clear();
 }
 
 addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, CPURegisters* registers, DbgAddrType* outAddrType, DbgEvalLocFlags flags, addr_target* pushValue)
@@ -6667,8 +6651,8 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 	addr_target stackFrameData[256];
 	int stackIdx = 0;
 
-	if (pushValue != NULL)	
-		stackFrameData[stackIdx++] = *pushValue;	
+	if (pushValue != NULL)
+		stackFrameData[stackIdx++] = *pushValue;
 
 	while (locData < locDataEnd)
 	{
@@ -6698,7 +6682,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 			break;
 		case DW_OP_stack_value:
 			{
-				*outAddrType = DbgAddrType_Value;				
+				*outAddrType = DbgAddrType_Value;
 			}
 			break;
 		case DW_OP_addr_noRemap:
@@ -6733,7 +6717,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 					return 0;
 				BF_ASSERT(dwSubprogram != NULL);
 				DbgSubprogram* nonInlinedSubProgram = dwSubprogram->GetRootInlineParent();
-				
+
 				if (nonInlinedSubProgram->mFrameBaseData == NULL)
 				{
 					*outAddrType = DbgAddrType_Target; //TODO: why?
@@ -6770,7 +6754,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 				return 0;
 			BF_ASSERT((opCode - DW_OP_reg0) < CPURegisters::kNumIntRegs);
 			regNum = opCode - DW_OP_reg0;
-			stackFrameData[stackIdx++] = registers->mIntRegsArray[regNum];			
+			stackFrameData[stackIdx++] = registers->mIntRegsArray[regNum];
 			*outAddrType = DbgAddrType_Register;
 			break;
 
@@ -6833,7 +6817,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 			}
 			break;
 		case DW_OP_GNU_push_tls_address:
-			{				
+			{
 				if ((mTLSAddr == 0) || (mTLSIndexAddr == 0))
 					return 0;
 
@@ -6868,7 +6852,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 intptr DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)
 {
 	BP_ZONE("DebugTarget::EvaluateLocation");
-	
+
 	auto dbgModule = this;
 
 	if (locDataLen == DbgLocationLenKind_SegPlusOffset)
@@ -6971,14 +6955,14 @@ void DbgModule::ProcessHotSwapVariables()
 	for (auto staticVariable : mStaticVariables)
 	{
 		bool replaceVariable = false;
-				
+
 		const char* findName = staticVariable->GetMappedName();
 		auto itr = linkedModule->mStaticVariableMap.find(findName);
 		if (itr != linkedModule->mStaticVariableMap.end())
 		{
 			DbgVariable* oldVariable = itr->second;
 			// If the old static field has the same type as the new static field then we keep the same
-			//  address, otherwise we use the new (zeroed-out) allocated space				
+			//  address, otherwise we use the new (zeroed-out) allocated space
 
 			auto _GetNewAddress = [&]()
 			{
@@ -7001,7 +6985,7 @@ void DbgModule::ProcessHotSwapVariables()
 			if (oldVariable->mType->IsSizedArray())
 			{
 				mDebugTarget->GetCompilerSettings();
-								
+
 				bool doMerge = strstr(oldVariable->mName, "sBfClassVData") != NULL;
 				bool keepInPlace = (doMerge) && (strstr(oldVariable->mName, ".vext") == NULL);
 				if (doMerge)
@@ -7010,7 +6994,7 @@ void DbgModule::ProcessHotSwapVariables()
 					addr_target newAddress = _GetNewAddress();
 					if (newAddress == 0)
 						continue;
-					
+
 					uint8* newData = GetHotTargetData(newAddress);
 					int newArraySize = (int)staticVariable->mType->GetByteCount();
 					int oldArraySize = (int)oldVariable->mType->GetByteCount();
@@ -7069,7 +7053,7 @@ void DbgModule::ProcessHotSwapVariables()
 					// Link the new table to the old extended table
 					addr_target prevLinkage = 0;
 					success = mDebugger->ReadMemory((intptr)oldAddress, sizeof(addr_target), &prevLinkage);
-					BF_ASSERT(success);										
+					BF_ASSERT(success);
 					success = mDebugger->WriteMemory((intptr)newAddress, &prevLinkage, sizeof(addr_target));
 					BF_ASSERT(success);
 
@@ -7079,7 +7063,7 @@ void DbgModule::ProcessHotSwapVariables()
 
 					keepInPlace = true;
 				}
-				
+
 				if (keepInPlace)
 				{
 					// We have to maintain the OLD size because we can't overwrite the original bounds
@@ -7088,7 +7072,7 @@ void DbgModule::ProcessHotSwapVariables()
 					staticVariable->mLocationData = oldVariable->mLocationData;
 					staticVariable->mCompileUnit = oldVariable->mCompileUnit;
 				}
-			}			
+			}
 			else if (oldVariable->mType->Equals(staticVariable->mType))
 			{
 				if (oldVariable->mType->IsStruct())
@@ -7120,7 +7104,7 @@ void DbgModule::ProcessHotSwapVariables()
 				//staticVariable->mLocationLen = oldVariable->mLocationLen;
 				//staticVariable->mLocationData = oldVariable->mLocationData;
 				replaceVariable = false;
-			} 			
+			}
 			else
 			{
 				BF_ASSERT(!oldVariable->mType->IsSizedArray());
@@ -7136,7 +7120,7 @@ void DbgModule::ProcessHotSwapVariables()
 					if (oldSymbol != NULL)
 						symbolVal->mValue = oldSymbol;
 				}
-			}			
+			}
 		}
 		else // Not found - new variable
 			replaceVariable = true;
@@ -7180,7 +7164,7 @@ DbgFileExistKind DbgModule::CheckSourceFileExist(const StringImpl& path)
 			else
 				existsKind = DbgFileExistKind_HasOldSourceCommand;
 		}
-	}	
+	}
 
 	return existsKind;
 }
@@ -7212,12 +7196,11 @@ void DbgModule::RevertWritingEnable()
 			section->mWritingEnabled = false;
 		}
 	}
-
 }
 
 template <typename TRadixMap>
 static void RemoveInvalidRange(TRadixMap& radixMap, addr_target startAddr, int addrLength)
-{	
+{
 	radixMap.RemoveRange(startAddr, addrLength);
 }
 
@@ -7257,7 +7240,7 @@ void DbgModule::RemoveTargetData()
 	RemoveInvalidRange(mDebugTarget->mSubprogramMap, (addr_target)mImageBase, (int32)mImageSize);
 	RemoveInvalidRange(mDebugTarget->mExceptionDirectoryMap, (addr_target)mImageBase, (int32)mImageSize);
 	RemoveInvalidRange(mDebugTarget->mContribMap, (addr_target)mImageBase, (int32)mImageSize);
-	RemoveInvalidMapRange(mDebugTarget->mDwFrameDescriptorMap, (addr_target)mImageBase, (int32)mImageSize);	
+	RemoveInvalidMapRange(mDebugTarget->mDwFrameDescriptorMap, (addr_target)mImageBase, (int32)mImageSize);
 	RemoveInvalidMapRange(mDebugTarget->mCOFFFrameDescriptorMap, (addr_target)mImageBase, (int32)mImageSize);
 
 	//mDebugTarget->mDwFrameDescriptorMap.erase()
@@ -7294,7 +7277,7 @@ void DbgModule::ReportMemory(MemReporter* memReporter)
 		memReporter->BeginSection("OrigImageData");
 		mOrigImageData->ReportMemory(memReporter);
 		memReporter->EndSection();
-	}	
+	}
 }
 
 DbgType* DbgModule::GetPointerType(DbgType* innerType)
@@ -7327,7 +7310,7 @@ DbgType* DbgModule::GetConstType(DbgType* innerType)
 	auto linkedModule = GetLinkedModule();
 
 	BF_ASSERT(innerType->GetDbgModule()->GetLinkedModule() == linkedModule);
-	
+
 	/*auto itr = linkedModule->mConstTypes.find(innerType);
 	if (itr != linkedModule->mConstTypes.end())
 		return itr->second;*/
@@ -7351,15 +7334,15 @@ DbgType* DbgModule::GetConstType(DbgType* innerType)
 }
 
 DbgType* DbgModule::GetPrimaryType(DbgType* dbgType)
-{	
+{
 	if (dbgType->mPriority <= DbgTypePriority_Normal)
 	{
 		if ((dbgType->mLanguage == DbgLanguage_Beef) && (dbgType->mName != NULL))
-		{			
+		{
 			auto newTypeEntry = FindType(dbgType->mName, dbgType->mLanguage);
-			if (newTypeEntry != NULL) 
-			{	
-				DbgType* newType = newTypeEntry->mValue;				
+			if (newTypeEntry != NULL)
+			{
+				DbgType* newType = newTypeEntry->mValue;
 				if ((newType->mTypeCode == DbgType_Ptr) && (newType->IsBfObjectPtr()))
 					newType = newType->mTypeParam;
 				newType->mPriority = DbgTypePriority_Primary_Implicit;
@@ -7370,7 +7353,7 @@ DbgType* DbgModule::GetPrimaryType(DbgType* dbgType)
 		{
 			auto newTypeEntry = FindType(dbgType->mName, dbgType->mLanguage);
 			if (newTypeEntry != NULL)
-			{	
+			{
 				DbgType* newType = newTypeEntry->mValue;
 				newType = newType->RemoveModifiers();
 				if (newType != dbgType)
@@ -7403,7 +7386,7 @@ DbgType* DbgModule::FindTypeHelper(const String& typeName, DbgType* checkType)
 		auto retType = FindTypeHelper(typeName, baseType->mBaseType);
 		if (retType != NULL)
 			return retType;
-	}	
+	}
 	return NULL;
 }
 
@@ -7432,12 +7415,12 @@ DbgType* DbgModule::FindType(const String& typeName, DbgType* contextType, DbgLa
 	}
 
 	if (contextType != NULL)
-	{		
+	{
 		DbgType* checkType = contextType;
 		if (checkType->IsPointer())
 			checkType = checkType->mTypeParam;
 
-		return FindTypeHelper(typeName, checkType);		
+		return FindTypeHelper(typeName, checkType);
 	}
 	return NULL;
 }
@@ -7449,7 +7432,7 @@ DbgTypeMap::Entry* DbgModule::FindType(const char* typeName, DbgLanguage languag
 	/*auto& typeMap = GetLinkedModule()->mTypeMap;
 	auto dbgTypeEntry = typeMap.Find(typeName);
 	if (dbgTypeEntry == NULL)
-		return NULL;	
+		return NULL;
 	if (dbgTypeEntry->mValue->mLanguage == language)
 		return dbgTypeEntry;
 	while (dbgTypeEntry != NULL)
@@ -7478,7 +7461,6 @@ DbgType* DbgModule::GetPrimitiveStructType(DbgTypeCode typeCode)
 	return FindType(name, NULL, DbgLanguage_Beef);
 }
 
-
 DbgType* DbgModule::GetSizedArrayType(DbgType * elementType, int count)
 {
 	auto linkedModule = GetLinkedModule();
@@ -7492,7 +7474,7 @@ DbgType* DbgModule::GetSizedArrayType(DbgType * elementType, int count)
 	entry.mElementType = elementType;
 	entry.mCount = count;
 	if (mSizedArrayTypes.TryAdd(entry, NULL, &sizedArrayTypePtr))
-	{		
+	{
 		BP_ALLOC_T(DbgType);
 		auto sizedArrayType = mAlloc.Alloc<DbgType>();
 		sizedArrayType->mCompileUnit = elementType->mCompileUnit;

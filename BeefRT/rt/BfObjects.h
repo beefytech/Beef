@@ -3,7 +3,7 @@
 #include "BeefySysLib/Common.h"
 #include "BeefySysLib/util/String.h"
 
-#define BFRT_VERSION 9
+#define BFRT_VERSION 10
 
 #ifdef BFRT_DYNAMIC
 #define BFRT_EXPORT __declspec(dllexport)
@@ -99,6 +99,7 @@ namespace bf
 				bool(*Thread_IsAutoDelete)(bf::System::Threading::Thread* thread);
 				void(*Thread_AutoDelete)(bf::System::Threading::Thread* thread);
 				int32(*Thread_GetMaxStackSize)(bf::System::Threading::Thread* thread);				
+				void(*Thread_Exiting)();
 				void(*GC_MarkAllStaticMembers)();
 				bool(*GC_CallRootCallbacks)();
 				void(*GC_Shutdown)();
@@ -107,7 +108,7 @@ namespace bf
 				void(*DebugMessageData_SetupProfilerCmd)(const char* str);				
 				void(*DebugMessageData_Fatal)();
 				void(*DebugMessageData_Clear)();
-				int(*CheckErrorHandler)(const char* kind, const char* arg1, const char* arg2, intptr arg3);
+				int(*CheckErrorHandler)(const char* kind, const char* arg1, const char* arg2, intptr arg3);				
 			};
 
 		public:

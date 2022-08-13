@@ -42,7 +42,7 @@ void BfTypedValue::DbgCheckType() const
 			BF_ASSERT(strncmp(stringRef.data(), "DEAD", 4) != 0);
 		}
 	}*/
-	
+
 #ifdef _DEBUG
 	/*if (mValue != NULL)
 	{
@@ -58,8 +58,127 @@ bool BfTypedValue::IsValuelessType() const
 }
 
 bool BfTypedValue::CanModify() const
-{	
-	return (((IsAddr()) || (mType->IsValuelessType())) && (!IsReadOnly()));	
+{
+	return (((IsAddr()) || (mType->IsValuelessType())) && (!IsReadOnly()));
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+BfProtection BfUsingFieldData::MemberRef::GetProtection() const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mProtection;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mProtection;
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->mProtection;
+	}
+	return BfProtection_Public;
+}
+
+BfProtection BfUsingFieldData::MemberRef::GetUsingProtection() const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mUsingProtection;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mUsingProtection;
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->mProtection;
+	}
+	return BfProtection_Public;
+}
+
+BfTypeDef* BfUsingFieldData::MemberRef::GetDeclaringType(BfModule* curModule) const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mDeclaringType;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mDeclaringType;
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->mDeclaringType;
+	case Kind_Local:
+		return curModule->GetActiveTypeDef();
+	}
+	return NULL;
+}
+
+String BfUsingFieldData::MemberRef::GetFullName(BfModule* curModule) const
+{
+	if (mKind == Kind_Local)
+		return curModule->mCurMethodState->mLocals[mIdx]->mName;
+
+	String result = curModule->TypeToString(mTypeInstance);
+	if (!result.IsEmpty())
+		result += ".";
+
+	switch (mKind)
+	{
+	case Kind_Field:
+		result += mTypeInstance->mTypeDef->mFields[mIdx]->mName;
+		break;
+	case Kind_Property:
+		result += mTypeInstance->mTypeDef->mProperties[mIdx]->mName;
+		break;
+	case Kind_Method:
+		result += mTypeInstance->mTypeDef->mMethods[mIdx]->mName;
+		break;
+	}
+	return result;
+}
+
+String BfUsingFieldData::MemberRef::GetName(BfModule* curModule) const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mName;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mName;
+	case Kind_Method:
+		{
+			auto methodInstance = curModule->GetRawMethodInstance(mTypeInstance, mTypeInstance->mTypeDef->mMethods[mIdx]);
+			return curModule->MethodToString(methodInstance, BfMethodNameFlag_OmitTypeName);
+		}
+	case Kind_Local:
+		return curModule->mCurMethodState->mLocals[mIdx]->mName;
+	}
+	return "";
+}
+
+BfAstNode* BfUsingFieldData::MemberRef::GetRefNode(BfModule* curModule) const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->GetRefNode();
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->GetRefNode();
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->GetRefNode();
+	case Kind_Local:
+		return curModule->mCurMethodState->mLocals[mIdx]->mNameNode;
+	}
+	return NULL;
+}
+
+bool BfUsingFieldData::MemberRef::IsStatic() const
+{
+	switch (mKind)
+	{
+	case Kind_Field:
+		return mTypeInstance->mTypeDef->mFields[mIdx]->mIsStatic;
+	case Kind_Property:
+		return mTypeInstance->mTypeDef->mProperties[mIdx]->mIsStatic;
+	case Kind_Method:
+		return mTypeInstance->mTypeDef->mMethods[mIdx]->mIsStatic;
+	}
+	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -81,10 +200,10 @@ bool BfGenericParamInstance::IsEnum()
 //////////////////////////////////////////////////////////////////////////
 
 bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::DependencyFlags flags)
-{	
+{
 	BF_ASSERT(dependentType != NULL);
 	BF_ASSERT(dependentType->mRevision != -1);
-	
+
 	//auto itr = mTypeSet.insert(BfDependencyMap::TypeMap::value_type(dependentType, DependencyEntry(dependentType->mRevision, flags)));
 	//if (!itr.second)
 
@@ -100,7 +219,7 @@ bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::Dependen
 					mMinDependDepth = tryDepth;
 			}
 		}
-		
+
 		dependencyEntry->mRevision = dependentType->mRevision;
 		dependencyEntry->mFlags = flags;
 		return true;
@@ -108,13 +227,13 @@ bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::Dependen
 	else
 	{
 		if (dependencyEntry->mRevision != dependentType->mRevision)
-		{			
+		{
 			dependencyEntry->mRevision = dependentType->mRevision;
 			dependencyEntry->mFlags = flags;
 			return true;
 		}
 		else
-		{						
+		{
 			if ((dependencyEntry->mFlags & flags) == flags)
 				return false;
 			dependencyEntry->mFlags = (DependencyFlags)(dependencyEntry->mFlags | flags);
@@ -155,27 +274,26 @@ BfFieldDef* BfFieldInstance::GetFieldDef()
 //////////////////////////////////////////////////////////////////////////
 
 BfType::BfType()
-{	
-	mTypeId = -1;	
+{
+	mTypeId = -1;
 	mContext = NULL;
 	mRevision = -1;
-	
+
 	//mLastUsedRevision = -1;
-	
 
 	mDefineState = BfTypeDefineState_Undefined;
-	//mDICallbackVH = NULL;	
-	//mInnerDICallbackVH = NULL;
-	mRebuildFlags = BfTypeRebuildFlag_None;			
-	mAlign = -1;
-	mSize = -1;	
 	//mDICallbackVH = NULL;
 	//mInnerDICallbackVH = NULL;
-	mDirty = true;	
+	mRebuildFlags = BfTypeRebuildFlag_None;
+	mAlign = -1;
+	mSize = -1;
+	//mDICallbackVH = NULL;
+	//mInnerDICallbackVH = NULL;
+	mDirty = true;
 }
 
 BfModule* BfType::GetModule()
-{ 
+{
 	if (mContext->mCompiler->mOptions.mCompileOnDemandKind == BfCompileOnDemandKind_AlwaysInclude)
 		return mContext->mScratchModule;
 	else
@@ -229,7 +347,7 @@ BfMethodInstance* BfNonGenericMethodRef::operator->() const
 }
 
 BfNonGenericMethodRef& BfNonGenericMethodRef::operator=(BfMethodInstance* methodInstance)
-{	
+{
 	if (methodInstance == NULL)
 	{
 		mTypeInstance = NULL;
@@ -239,7 +357,7 @@ BfNonGenericMethodRef& BfNonGenericMethodRef::operator=(BfMethodInstance* method
 	{
 		mTypeInstance = methodInstance->mMethodInstanceGroup->mOwner;
 		mMethodNum = methodInstance->mMethodInstanceGroup->mMethodIdx;
-		BF_ASSERT((methodInstance->GetNumGenericArguments() == 0) || 
+		BF_ASSERT((methodInstance->GetNumGenericArguments() == 0) ||
 			((methodInstance->mIsUnspecialized) && (!methodInstance->mIsUnspecializedVariation)));
 		mSignatureHash = (int)mTypeInstance->mTypeDef->mSignatureHash;
 	}
@@ -296,7 +414,7 @@ BfMethodRef::operator BfMethodInstance* () const
 				isSpecialied = true;
 				break;
 			}
-			
+
 			auto genericParam = (BfGenericParamType*)genericArg;
 			if ((genericParam->mGenericParamKind != BfGenericParamKind_Method) || (genericParam->mGenericParamIdx != paramIdx))
 			{
@@ -308,7 +426,7 @@ BfMethodRef::operator BfMethodInstance* () const
 		}
 
 		if (isSpecialied)
-		{			
+		{
 			BfMethodInstance** methodInstancePtr = NULL;
 			if (methodSpecializationGroup.mMethodSpecializationMap->TryGetValue(mMethodGenericArguments, &methodInstancePtr))
 				return *methodInstancePtr;
@@ -333,7 +451,7 @@ BfMethodRef& BfMethodRef::operator=(BfMethodInstance* methodInstance)
 		mMethodRefFlags = BfMethodRefFlag_None;
 	}
 	else
-	{		
+	{
 		mTypeInstance = methodInstance->mMethodInstanceGroup->mOwner;
 		mMethodNum = methodInstance->mMethodInstanceGroup->mMethodIdx;
 		if (methodInstance->mMethodInfoEx != NULL)
@@ -412,10 +530,9 @@ BfPropertyRef::BfPropertyRef(BfTypeInstance* typeInst, BfPropertyDef* propDef)
 }
 
 BfPropertyRef::operator BfPropertyDef*() const
-{	
+{
 	return mTypeInstance->mTypeDef->mProperties[mPropIdx];
 }
-
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -428,7 +545,7 @@ BfPropertyRef::operator BfPropertyDef*() const
 static int gDelIdx = 0;
 
 BfType::~BfType()
-{	
+{
 	if (mContext != NULL)
 		BfLogSys(mContext->mSystem, "~BfType %p\n", this);
 
@@ -447,16 +564,16 @@ BfFieldInstance::~BfFieldInstance()
 
 BfType* BfFieldInstance::GetResolvedType()
 {
-	return mResolvedType;	
+	return mResolvedType;
 }
 
 void BfFieldInstance::SetResolvedType(BfType* type)
-{	
+{
 	mResolvedType = type;
 }
 
 void BfFieldInstance::GetDataRange(int& dataIdx, int& dataCount)
-{	
+{
 	int minMergedDataIdx = mMergedDataIdx;
 	int maxMergedDataIdx = minMergedDataIdx + 1;
 	if (mResolvedType->IsStruct())
@@ -498,13 +615,15 @@ void BfFieldInstance::GetDataRange(int& dataIdx, int& dataCount)
 int BfFieldInstance::GetAlign(int packing)
 {
 	int align = mResolvedType->mAlign;
+	if (IsAppendedObject())
+		align = mResolvedType->ToTypeInstance()->mInstAlign;
 	if (packing > 0)
 		align = BF_MIN(align, packing);
 	if (mCustomAttributes != NULL)
 	{
 		auto module = mOwner->mModule;
 		for (auto& attrib : mCustomAttributes->mAttributes)
-		{			
+		{
 			if (attrib.mType->IsInstanceOf(module->mCompiler->mAlignAttributeTypeDef))
 			{
 				align = 16; // System conservative default
@@ -522,10 +641,16 @@ int BfFieldInstance::GetAlign(int packing)
 							module->Fail("Alignment must be a power of 2", attrib.GetRefNode());
 					}
 				}
-			}			
+			}
 		}
 	}
 	return align;
+}
+
+bool BfFieldInstance::IsAppendedObject()
+{
+	auto fieldDef = GetFieldDef();
+	return (fieldDef != NULL) && (fieldDef->mIsAppend) && (mResolvedType->IsObject()) && (mOwner->IsObject());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -568,6 +693,12 @@ BfMethodCustomAttributes::~BfMethodCustomAttributes()
 
 BfMethodInstance* BfMethodParam::GetDelegateParamInvoke()
 {
+	if (mResolvedType->IsMethodRef())
+	{
+		auto methodRefType = (BfMethodRefType*)mResolvedType;
+		return methodRefType->mMethodRef;
+	}
+
 	BF_ASSERT(mResolvedType->IsDelegate() || mResolvedType->IsFunction());
 	auto bfModule = BfModule::GetModuleFor(mResolvedType);
 	BfMethodInstance* invokeMethodInstance = bfModule->GetRawMethodInstanceAtIdx(mResolvedType->ToTypeInstance(), 0, "Invoke");
@@ -577,13 +708,13 @@ BfMethodInstance* BfMethodParam::GetDelegateParamInvoke()
 BfMethodInfoEx::~BfMethodInfoEx()
 {
 	for (auto genericParam : mGenericParams)
-		genericParam->Release();	
+		genericParam->Release();
 	delete mMethodCustomAttributes;
 	delete mClosureInstanceInfo;
 }
 
 BfMethodInstance::~BfMethodInstance()
-{		
+{
 	Dispose(true);
 
 	if (mHasMethodRefType)
@@ -596,7 +727,7 @@ BfMethodInstance::~BfMethodInstance()
 		}
 	}
 
-	delete mMethodInfoEx;	
+	delete mMethodInfoEx;
 }
 
 void BfMethodInstance::Dispose(bool isDeleting)
@@ -604,7 +735,7 @@ void BfMethodInstance::Dispose(bool isDeleting)
 	if (mIsDisposed)
 		return;
 	mIsDisposed = true;
-	
+
 	if (mMethodInstanceGroup != NULL)
 	{
 		BfLogSys(GetOwner()->mModule->mSystem, "BfMethodInstance::~BfMethodInstance %p Local:%d InCEMachine:%d Deleting:%d\n", this, mMethodDef->mIsLocalMethod, mInCEMachine, isDeleting);
@@ -619,7 +750,7 @@ void BfMethodInstance::Dispose(bool isDeleting)
 		auto module = GetOwner()->mModule;
 		if (module->mCompiler->mCeMachine != NULL)
 			module->mCompiler->mCeMachine->RemoveMethod(this);
-	}	
+	}
 
 	if (mMethodProcessRequest != NULL)
 	{
@@ -644,7 +775,7 @@ void BfMethodInstance::CopyFrom(BfMethodInstance* methodInstance)
 		for (auto genericParam : mMethodInfoEx->mGenericParams)
 			genericParam->AddRef();
 		mMethodInfoEx->mMethodCustomAttributes = NULL;
-		
+
 		if (mMethodInfoEx->mClosureInstanceInfo != NULL)
 		{
 			mMethodInfoEx->mClosureInstanceInfo = new BfClosureInstanceInfo();
@@ -667,7 +798,7 @@ BfImportKind BfMethodInstance::GetImportKind()
 	auto customAttributes = GetCustomAttributes();
 	if (customAttributes == NULL)
 		return BfImportKind_None;
-	
+
 	BfCustomAttribute* customAttribute = customAttributes->Get(module->mCompiler->mImportAttributeTypeDef);
 	if (customAttribute == NULL)
 		return BfImportKind_Import_Static;
@@ -716,10 +847,10 @@ void BfMethodInstance::UndoDeclaration(bool keepIRFunction)
 	if (mMethodInfoEx != NULL)
 	{
 		for (auto genericParam : mMethodInfoEx->mGenericParams)
-		 	genericParam->Release();	
+		 	genericParam->Release();
 		mMethodInfoEx->mGenericParams.Clear();
 		delete mMethodInfoEx->mMethodCustomAttributes;
-		mMethodInfoEx->mMethodCustomAttributes = NULL;		
+		mMethodInfoEx->mMethodCustomAttributes = NULL;
 		mMethodInfoEx->mGenericTypeBindings.Clear();
 	}
 
@@ -727,7 +858,7 @@ void BfMethodInstance::UndoDeclaration(bool keepIRFunction)
 	if (!keepIRFunction)
 		mIRFunction = BfIRValue();
 	mParams.Clear();
-	
+
 	mDefaultValues.Clear();
 	if (mMethodProcessRequest != NULL)
 	{
@@ -740,7 +871,7 @@ void BfMethodInstance::UndoDeclaration(bool keepIRFunction)
 	mIsUnspecialized = false;
 	mIsUnspecializedVariation = false;
 	mDisallowCalling = false;
-	mIsIntrinsic = false;	
+	mIsIntrinsic = false;
 	mHasFailed = false;
 	mFailedConstraints = false;
 }
@@ -810,7 +941,7 @@ bool BfMethodInstance::HasParamsArray()
 }
 
 int BfMethodInstance::GetStructRetIdx(bool forceStatic)
-{		
+{
 	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType(NULL, NULL, forceStatic)) && (!mIsIntrinsic))
 	{
 		auto returnTypeInst = mReturnType->ToTypeInstance();
@@ -829,7 +960,7 @@ int BfMethodInstance::GetStructRetIdx(bool forceStatic)
 			return 1;
 		if ((mMethodDef->mIsMutating) || (!thisType->IsSplattable()) || ((!AllowsSplatting(-1)) && (!thisType->GetLoweredType(BfTypeUsage_Parameter))))
 			return 1;
-		return 0;		
+		return 0;
 	}
 
 	return -1;
@@ -848,7 +979,7 @@ bool BfMethodInstance::HasSelf()
 bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeCode* loweredTypeCode2, bool forceStatic)
 {
 	// Win32 handler
-	if (((mMethodDef->mIsStatic) || (forceStatic)) && 
+	if (((mMethodDef->mIsStatic) || (forceStatic)) &&
 		(mReturnType->IsComposite()) &&
 		((mReturnType->mSize == 4) || (mReturnType->mSize == 8)))
 	{
@@ -870,7 +1001,7 @@ bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeC
 		}
 	}
 
-	return mReturnType->GetLoweredType((mMethodDef->mIsStatic || forceStatic) ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
+	return mReturnType->GetLoweredType((mMethodDef->mIsStatic || forceStatic) ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);
 }
 
 bool BfMethodInstance::WantsStructsAttribByVal(BfType* paramType)
@@ -886,8 +1017,8 @@ bool BfMethodInstance::WantsStructsAttribByVal(BfType* paramType)
 }
 
 bool BfMethodInstance::IsSkipCall(bool bypassVirtual)
-{	
-	if ((mMethodDef->mIsSkipCall) && 
+{
+	if ((mMethodDef->mIsSkipCall) &&
 		((!mMethodDef->mIsVirtual) || (bypassVirtual)))
 		return true;
 	return false;
@@ -908,7 +1039,7 @@ bool BfMethodInstance::AlwaysInline()
 BfImportCallKind BfMethodInstance::GetImportCallKind()
 {
 	if (GetImportKind() != BfImportKind_Import_Dynamic)
-		return BfImportCallKind_None;	
+		return BfImportCallKind_None;
 	if ((mHotMethod != NULL) && ((mHotMethod->mFlags & BfHotDepDataFlag_IsOriginalBuild) == 0))
 		return BfImportCallKind_GlobalVar_Hot;
 	return BfImportCallKind_GlobalVar;
@@ -947,7 +1078,7 @@ bool BfMethodInstance::AllowsSplatting(int paramIdx)
 bool BfMethodInstance::HasThis()
 {
 	if (mMethodDef->mIsStatic)
-		return false;	
+		return false;
 	if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodInfoEx->mClosureInstanceInfo->mThisOverride != NULL))
 		return !mMethodInfoEx->mClosureInstanceInfo->mThisOverride->IsValuelessType();
 	return (!mMethodInstanceGroup->mOwner->IsValuelessType());
@@ -985,7 +1116,7 @@ bool BfMethodInstance::HasExplicitThis()
 {
 	if (mMethodDef->mIsStatic)
 		return false;
-	return mMethodInstanceGroup->mOwner->IsFunction();	
+	return mMethodInstanceGroup->mOwner->IsFunction();
 }
 
 int BfMethodInstance::GetParamCount()
@@ -1034,7 +1165,7 @@ void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name, int& namePre
 }
 
 String BfMethodInstance::GetParamName(int paramIdx)
-{	
+{
 	StringT<256> paramName;
 	int namePrefixCount = 0;
 	GetParamName(paramIdx, paramName, namePrefixCount);
@@ -1049,7 +1180,7 @@ String BfMethodInstance::GetParamName(int paramIdx, int& namePrefixCount)
 }
 
 BfType* BfMethodInstance::GetParamType(int paramIdx, bool returnUnderlyingParamsType)
-{	
+{
 	if (paramIdx == -1)
 	{
 		if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodInfoEx->mClosureInstanceInfo->mThisOverride != NULL))
@@ -1066,9 +1197,9 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool returnUnderlyingParams
 		return thisType;
 	}
 
-	BfMethodParam* methodParam = &mParams[paramIdx];	
+	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mDelegateParamIdx != -1)
-	{		
+	{
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
 		return invokeMethodInstance->GetParamType(methodParam->mDelegateParamIdx, true);
 	}
@@ -1097,7 +1228,7 @@ bool BfMethodInstance::GetParamIsSplat(int paramIdx)
 		if ((owner->IsValueType()) && (mMethodDef->mIsMutating || !AllowsSplatting(paramIdx)))
 			return false;
 		return owner->mIsSplattable;
-	}	
+	}
 
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mDelegateParamIdx != -1)
@@ -1138,7 +1269,7 @@ bool BfMethodInstance::IsParamSkipped(int paramIdx)
 		GetModule()->PopulateType(paramType, BfPopulateType_Data);
 	if ((paramType->IsValuelessType()) && (!paramType->IsMethodRef()))
 		return true;
-	return false;	
+	return false;
 }
 
 bool BfMethodInstance::IsImplicitCapture(int paramIdx)
@@ -1147,7 +1278,7 @@ bool BfMethodInstance::IsImplicitCapture(int paramIdx)
 		return false;
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mParamDefIdx == -1)
-		return true;	
+		return true;
 	return false;
 }
 
@@ -1239,7 +1370,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 	module->PopulateType(mReturnType);
 
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
-	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
+	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;
 	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2, forceStatic)) && (loweredReturnTypeCode != BfTypeCode_None))
 	{
 		auto irReturnType = module->GetIRLoweredType(loweredReturnTypeCode, loweredReturnTypeCode2);
@@ -1268,7 +1399,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 	else
 	{
 		returnType = module->mBfIRBuilder->MapType(mReturnType);
-	}	
+	}
 
 	for (int paramIdx = -1; paramIdx < GetParamCount(); paramIdx++)
 	{
@@ -1286,7 +1417,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 				if (HasExplicitThis())
 					checkType = GetParamType(0);
 				else
-					checkType = GetOwner();				
+					checkType = GetOwner();
 			}
 		}
 		else
@@ -1302,7 +1433,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			NOP;
 		}*/
 
-		bool checkLowered = false;		
+		bool checkLowered = false;
 		bool doSplat = false;
 		if (paramIdx == -1)
 		{
@@ -1318,7 +1449,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 				checkLowered = true;
 		}
 		else
-		{	
+		{
 			if ((checkType->IsComposite()) && (checkType->IsIncomplete()))
 				module->PopulateType(checkType, BfPopulateType_Data);
 
@@ -1349,17 +1480,17 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 				if (loweredTypeCode2 != BfTypeCode_None)
 					paramTypes.push_back(module->mBfIRBuilder->GetPrimitiveType(loweredTypeCode2));
 				continue;
-			}							
+			}
 		}
 
 		if (checkType->CanBeValuelessType())
 			module->PopulateType(checkType, BfPopulateType_Data);
 		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
 			continue;
-		
+
 		if ((doSplat) && (!checkType->IsMethodRef()))
-		{			
-			int splatCount = checkType->GetSplatCount();			
+		{
+			int splatCount = checkType->GetSplatCount();
 			if ((int)paramTypes.size() + splatCount > module->mCompiler->mOptions.mMaxSplatRegs)
 			{
 				auto checkTypeInst = checkType->ToTypeInstance();
@@ -1373,7 +1504,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		}
 
 		auto _AddType = [&](BfType* type)
-		{			
+		{
 			if ((type->IsComposite()) || ((!doSplat) && (paramIdx == -1) && (type->IsTypedPrimitive())))
 			{
 				auto typeInst = type->ToTypeInstance();
@@ -1396,14 +1527,14 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			}, checkType);
 		}
 		else
-			_AddType(checkType);		
+			_AddType(checkType);
 
 		if (checkType2 != NULL)
 			_AddType(checkType2);
 	}
 
 	if ((!module->mIsComptimeModule) && (GetStructRetIdx(forceStatic) == 1))
-	{		
+	{
 		BF_SWAP(paramTypes[0], paramTypes[1]);
 	}
 }
@@ -1421,13 +1552,12 @@ bool BfMethodInstance::IsExactMatch(BfMethodInstance* other, bool ignoreImplicit
 {
 	if (mReturnType != other->mReturnType)
 		return false;
-	
+
 	int implicitParamCountA = ignoreImplicitParams ? GetImplicitParamCount() : 0;
 	int implicitParamCountB = ignoreImplicitParams ? other->GetImplicitParamCount() : 0;
 
 	if (HasExplicitThis())
 	{
-		
 	}
 
 // 	if (other->HasExplicitThis())
@@ -1441,21 +1571,21 @@ bool BfMethodInstance::IsExactMatch(BfMethodInstance* other, bool ignoreImplicit
 	if (checkThis)
 	{
 		if (other->mMethodDef->mIsStatic != mMethodDef->mIsStatic)
-			return false;		
+			return false;
 
 // 		{
 // 			// If we are static and we have to match a non-static method, allow us to do so if we have an explicitly defined 'this' param that matches
-// 
+//
 // 			if (other->mMethodDef->mIsStatic)
 // 				return false;
-// 			
+//
 // 			if ((GetParamCount() > 0) && (GetParamName(0) == "this"))
 // 			{
 // 				auto thisType = GetParamType(0);
 // 				auto otherThisType = other->GetParamType(-1);
 // 				if (thisType != otherThisType)
 // 					return false;
-// 
+//
 // 				implicitParamCountA++;
 // 			}
 // 			else
@@ -1530,11 +1660,11 @@ void BfMethodInstance::ReportMemory(MemReporter* memReporter)
 
 		memReporter->EndSection();
 	}
-	
-	memReporter->AddVec("Params", mParams, false);	
+
+	memReporter->AddVec("Params", mParams, false);
 	if (!mDefaultValues.IsEmpty())
 		memReporter->AddVec("DefaultValues", mDefaultValues, false);
-	
+
 	memReporter->EndSection();
 }
 
@@ -1557,11 +1687,11 @@ BfModuleMethodInstance::BfModuleMethodInstance(BfMethodInstance* methodInstance)
 		mFunc = BfIRValue();
 // 	if (methodInstance->GetImportCallKind() == BfImportCallKind_Thunk)
 // 	{
-// 		auto declModule = methodInstance->mDeclModule;		
+// 		auto declModule = methodInstance->mDeclModule;
 // 		BfIRValue* irFuncPtr = NULL;
 // 		if (declModule->mFuncReferences.TryGetValue(methodInstance, &irFuncPtr))
 // 			mFunc = *irFuncPtr;
-// 	}	
+// 	}
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1591,7 +1721,7 @@ BfMethodInstanceGroup::BfMethodInstanceGroup(BfMethodInstanceGroup&& prev) noexc
 		for (auto& pair : *mMethodSpecializationMap)
 			pair.mValue->mMethodInstanceGroup = this;
 	}
-	
+
 	prev.mDefaultCustomAttributes = NULL;
 	prev.mRefCount = 0;
 	prev.mDefault = NULL;
@@ -1670,12 +1800,12 @@ int BfTypeInstance::GetSplatCount()
 }
 
 bool BfTypeInstance::IsString()
-{ 
+{
 	return IsInstanceOf(mContext->mCompiler->mStringTypeDef);
 }
 
 int BfTypeInstance::GetOrigVTableSize()
-{ 
+{
 	if (!mModule->mCompiler->mOptions.mHasVDataExtender)
 	{
 		BF_ASSERT(mHotTypeData == NULL);
@@ -1690,7 +1820,7 @@ int BfTypeInstance::GetOrigVTableSize()
 	}
 	if (mBaseType != NULL)
 		return mBaseType->GetOrigVTableSize() + (mVirtualMethodTableSize - mBaseType->mVirtualMethodTableSize);
-    return mVirtualMethodTableSize; 
+    return mVirtualMethodTableSize;
 }
 
 int BfTypeInstance::GetSelfVTableSize()
@@ -1704,7 +1834,7 @@ int BfTypeInstance::GetSelfVTableSize()
 }
 
 int BfTypeInstance::GetOrigSelfVTableSize()
-{	
+{
 	if (mBaseType != NULL)
 		return GetOrigVTableSize() - GetOrigImplBaseVTableSize();
 	return GetOrigVTableSize();
@@ -1747,14 +1877,14 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 		*wantSplat = false;
 
 	if (!mIsUnion)
-		return NULL;	
+		return NULL;
 
 	BfTypeState typeState(this, mContext->mCurTypeState);
 	typeState.mPopulateType = BfPopulateType_Data;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 	int unionSize = 0;
-	BfType* unionInnerType = NULL;	
+	BfType* unionInnerType = NULL;
 	bool makeRaw = false;
 	for (int fieldIdx = 0; fieldIdx < (int)mFieldInstances.size(); fieldIdx++)
 	{
@@ -1773,8 +1903,8 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 		}
 
 		if (fieldInstance->mDataIdx >= 0)
-		{	
-			checkInnerType = fieldInstance->mResolvedType;			
+		{
+			checkInnerType = fieldInstance->mResolvedType;
 		}
 
 		if (checkInnerType != NULL)
@@ -1783,10 +1913,10 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 
 			mModule->PopulateType(checkInnerType, checkInnerType->IsValueType() ? BfPopulateType_Data : BfPopulateType_Declaration);
 			if (checkInnerType->mSize > unionSize)
-				unionSize = checkInnerType->mSize;	
+				unionSize = checkInnerType->mSize;
 
 			if ((!checkInnerType->IsValuelessType()) && (checkInnerType != unionInnerType))
-			{					
+			{
 				if (unionInnerType == NULL)
 				{
 					unionInnerType = checkInnerType;
@@ -1814,10 +1944,10 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 							unionInnerType = NULL;
 							makeRaw = true;
 						}
-					}					
+					}
 				}
 			}
-		}		
+		}
 	}
 
 	BF_ASSERT(unionInnerType != this);
@@ -1829,7 +1959,7 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 			*wantSplat = true;
 	}
 	else
-	{		
+	{
 		switch (unionSize)
 		{
 		case 0: return mModule->CreateSizedArrayType(mModule->GetPrimitiveType(BfTypeCode_Int8), 0);
@@ -1881,7 +2011,7 @@ void BfTypeInstance::GetUnderlyingArray(BfType*& type, int& size, bool& isVector
 	if (attributes->mCtorArgs.size() != 3)
 		return;
 
-	auto typeConstant = mConstHolder->GetConstant(attributes->mCtorArgs[0]);	
+	auto typeConstant = mConstHolder->GetConstant(attributes->mCtorArgs[0]);
 	auto sizeConstant = mConstHolder->GetConstant(attributes->mCtorArgs[1]);
 	auto isVectorConstant = mConstHolder->GetConstant(attributes->mCtorArgs[2]);
 	if ((typeConstant == NULL) || (sizeConstant == NULL) || (isVectorConstant == NULL))
@@ -1908,7 +2038,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 		// Odd Windows rule: composite returns for non-static methods are always sret
 		if (typeUsage == BfTypeUsage_Return_NonStatic)
 			return false;
-	}	
+	}
 	else
 	{
 		// Non-Win64 systems allow lowered splitting of composites over multiple params
@@ -1933,7 +2063,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 	{
 		if ((mInstSize >= 4) && (mInstSize <= maxInstSize))
 		{
-			BfTypeCode types[8] = { BfTypeCode_None };			
+			BfTypeCode types[8] = { BfTypeCode_None };
 
 			std::function<void(BfType*, int)> _CheckType = [&](BfType* type, int offset)
 			{
@@ -1952,13 +2082,13 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 					}
 					else
 					{
-						types[offset / 4] = BfTypeCode_Object;						
+						types[offset / 4] = BfTypeCode_Object;
 					}
 				}
 				else if (type->IsPrimitiveType())
 				{
 					auto primType = (BfPrimitiveType*)type;
-					types[offset / 4] = primType->mTypeDef->mTypeCode;					
+					types[offset / 4] = primType->mTypeDef->mTypeCode;
 				}
 				else if (type->IsSizedArray())
 				{
@@ -2158,19 +2288,19 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 
 	BfTypeCode typeCode = BfTypeCode_None;
 	BfTypeCode pow2TypeCode = BfTypeCode_None;
-	
+
 	switch (mInstSize)
 	{
-	case 1: 
+	case 1:
 		pow2TypeCode = BfTypeCode_Int8;
 		break;
-	case 2: 
+	case 2:
 		pow2TypeCode = BfTypeCode_Int16;
 		break;
 	case 3:
 		typeCode = BfTypeCode_Int24;
 		break;
-	case 4: 
+	case 4:
 		pow2TypeCode = BfTypeCode_Int32;
 		break;
 	case 5:
@@ -2182,7 +2312,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 	case 7:
 		typeCode = BfTypeCode_Int56;
 		break;
-	case 8: 					
+	case 8:
 		if (mModule->mSystem->mPtrSize == 8)
 		{
 			pow2TypeCode = BfTypeCode_Int64;
@@ -2193,7 +2323,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 			pow2TypeCode = BfTypeCode_Int64;
 			break;
 		}
-		break;	
+		break;
 	}
 
 	if (pow2TypeCode != BfTypeCode_None)
@@ -2202,7 +2332,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 			*outTypeCode = pow2TypeCode;
 		return true;
 	}
-	
+
 	if ((mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows) && (mModule->mSystem->mPtrSize == 8))
 	{
 		if (typeCode != BfTypeCode_None)
@@ -2272,7 +2402,7 @@ bool BfTypeInstance::GetResultInfo(BfType*& valueType, int& okTagId)
 			{
 				valueType = tupleType->mFieldInstances[0].mResolvedType;
 				okTagId = -fieldInstance.mDataIdx - 1;
-				return true;				
+				return true;
 			}
 		}
 		break;
@@ -2287,7 +2417,7 @@ void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 
 	memReporter->Add(sizeof(BfTypeInstance));
 
-	int depSize = 0;	
+	int depSize = 0;
 	depSize += sizeof((int)mDependencyMap.mTypeSet.mAllocSize * sizeof(BfDependencyMap::TypeMap::EntryPair));
 	memReporter->Add("DepMap", depSize);
 	memReporter->AddVec(mInterfaces, false);
@@ -2295,12 +2425,12 @@ void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 
 	if (mCustomAttributes != NULL)
 		mCustomAttributes->ReportMemory(memReporter);
-		
+
 	int methodCount = 0;
 	memReporter->BeginSection("MethodData");
 	for (auto& methodInstGroup : mMethodInstanceGroups)
 	{
-		memReporter->Add(sizeof(BfMethodInstanceGroup));		
+		memReporter->Add(sizeof(BfMethodInstanceGroup));
 		if (methodInstGroup.mDefault != NULL)
 		{
 			methodInstGroup.mDefault->ReportMemory(memReporter);
@@ -2313,7 +2443,7 @@ void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 			{
 				methodCount++;
 				kv.mValue->ReportMemory(memReporter);
-			}			
+			}
 		}
 	}
 	memReporter->EndSection();
@@ -2324,17 +2454,17 @@ void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 	memReporter->AddMap("SpecializedMethodReferences", mSpecializedMethodReferences, false);
 	memReporter->AddMap("LookupResults", mLookupResults, false);
 	if (mConstHolder != NULL)
-		memReporter->Add("ConstHolder", mConstHolder->mTempAlloc.GetTotalAllocSize());		
+		memReporter->Add("ConstHolder", mConstHolder->mTempAlloc.GetTotalAllocSize());
 
 	if (mHotTypeData != NULL)
 	{
 		AutoMemReporter autoMemReporter(memReporter, "HotTypeData");
-		memReporter->Add(sizeof(BfHotTypeData));		
+		memReporter->Add(sizeof(BfHotTypeData));
 		memReporter->AddVec(mHotTypeData->mTypeVersions, false);
 		for (auto typeVersion : mHotTypeData->mTypeVersions)
 		{
 			memReporter->AddVec(typeVersion->mMembers, false);
-			memReporter->AddVec(typeVersion->mInterfaceMapping, false);			
+			memReporter->AddVec(typeVersion->mInterfaceMapping, false);
 		}
 		memReporter->AddVec(mHotTypeData->mVTableEntries, false);
 		for (auto& entry : mHotTypeData->mVTableEntries)
@@ -2345,12 +2475,12 @@ void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 }
 
 bool BfTypeInstance::IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef)
-{	
+{
 	if (activeTypeDef == NULL)
 		return false;
 	if (declaringTypeDef == activeTypeDef)
 		return true;
-	return activeTypeDef->mProject->ContainsReference(declaringTypeDef->mProject);	
+	return activeTypeDef->mProject->ContainsReference(declaringTypeDef->mProject);
 }
 
 bool BfTypeInstance::IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject)
@@ -2370,10 +2500,10 @@ bool BfTypeInstance::IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProje
 bool BfTypeInstance::WantsGCMarking()
 {
 	BF_ASSERT(mTypeDef->mTypeCode != BfTypeCode_Extension);
-	if (IsObjectOrInterface()) 
-		return true; 
+	if (IsObjectOrInterface())
+		return true;
 	if ((IsEnum()) && (!IsPayloadEnum()))
-		return false;	
+		return false;
 	BF_ASSERT((mDefineState >= BfTypeDefineState_Defined) || (mTypeFailed));
 	return mWantsGCMarking;
 }
@@ -2409,7 +2539,7 @@ BfGenericTypeInfo::GenericParamsVector* BfTypeInstance::GetGenericParamsVector(B
 	BfGenericExtensionEntry* genericExEntry = NULL;
 	if (mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.TryGetValue(declaringTypeDef, &genericExEntry))
 		return &genericExEntry->mGenericParams;
-	
+
 	return &mGenericTypeInfo->mGenericParams;
 }
 
@@ -2428,7 +2558,7 @@ bool BfTypeInstance::IsAlwaysInclude()
 	bool alwaysInclude = mTypeDef->mIsAlwaysInclude || mTypeDef->mProject->mAlwaysIncludeAll;
 	if (mTypeOptionsIdx > 0)
 	{
-		auto typeOptions = mModule->mSystem->GetTypeOptions(mTypeOptionsIdx);		
+		auto typeOptions = mModule->mSystem->GetTypeOptions(mTypeOptionsIdx);
 		typeOptions->Apply(alwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType);
 	}
 	if ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_Type) != 0)
@@ -2455,7 +2585,7 @@ bool BfTypeInstance::IsSpecializedByAutoCompleteMethod()
 }
 
 bool BfTypeInstance::IsNullable()
-{ 
+{
 	return IsInstanceOf(mContext->mCompiler->mNullableTypeDef);
 }
 
@@ -2472,7 +2602,7 @@ bool BfTypeInstance::HasVarConstraints()
 }
 
 bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeTypeDef, BfModule* module)
-{	
+{
 	if (mGenericTypeInfo == NULL)
 		return true;
 	if (mGenericTypeInfo->mGenericExtensionInfo == NULL)
@@ -2483,7 +2613,7 @@ bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeT
 	// The combined type declaration is the root type declaration, it's implicitly included
 	if (typeDef->mTypeDeclaration == mTypeDef->mTypeDeclaration)
 		return true;
-	
+
 	BfGenericExtensionEntry* genericExEntry = NULL;
 	if (!mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.TryGetValue(typeDef, &genericExEntry))
 		return true;
@@ -2515,12 +2645,12 @@ bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeT
 
 		return true;
 	}
-	
+
 	return genericExEntry->mConstraintsPassed;
 }
 
 void BfGenericTypeInfo::ReportMemory(MemReporter* memReporter)
-{	
+{
 	memReporter->Add(sizeof(BfGenericTypeInfo));
 	memReporter->AddVec(mTypeGenericArguments, false);
 	memReporter->AddVec(mGenericParams, false);
@@ -2565,12 +2695,12 @@ bool BfTypeInstance::IsValuelessType()
 		return false;
 	}
 	if (mTypeDef->mIsOpaque)
-		return false;	
-	
+		return false;
+
 	BF_ASSERT(mDefineState >= BfTypeDefineState_Defined);
 	BF_ASSERT(mInstSize >= 0);
 	if (mInstSize == 0)
-	{				
+	{
 		return true;
 	}
 
@@ -2615,7 +2745,7 @@ void BfTypeInstance::CalcHotVirtualData(Array<int>* ifaceMapping)
 				if (slotNum >= (int)ifaceMapping->size())
 					ifaceMapping->Resize(slotNum + 1);
 				(*ifaceMapping)[slotNum] = iface.mInterfaceType->mTypeId;
-			}			
+			}
 		}
 		if (mBaseType != NULL)
 			mBaseType->CalcHotVirtualData(ifaceMapping);
@@ -2626,7 +2756,7 @@ void BfTypeInstance::CalcHotVirtualData(Array<int>* ifaceMapping)
 
 BfClosureType::BfClosureType(BfTypeInstance* srcDelegate, Val128 closureHash) :
 	mSource(srcDelegate->mTypeDef->mSystem)
-{		
+{
 	BF_ASSERT(srcDelegate->IsDelegate());
 	mSrcDelegate = srcDelegate;
 	mTypeDef = mSrcDelegate->mTypeDef;
@@ -2656,21 +2786,21 @@ void BfClosureType::Init(BfProject* bfProject)
 
 	mTypeDef = new BfTypeDef();
 	mTypeDef->mSystem = system;
-	mTypeDef->mSource = &mSource;	
+	mTypeDef->mSource = &mSource;
 	mTypeDef->mSource->mRefCount++;
 	mTypeDef->mProject = bfProject;
-	mTypeDef->mTypeCode = srcTypeDef->mTypeCode;	
-	mTypeDef->mName = system->GetAtom(srcTypeDef->mName->mString + mNameAdd);	
+	mTypeDef->mTypeCode = srcTypeDef->mTypeCode;
+	mTypeDef->mName = system->GetAtom(srcTypeDef->mName->mString + mNameAdd);
 	// Purposely leave out 'mOuterType' - this fails if the outer type is generic
 	//mTypeDef->mOuterType = srcTypeDef->mOuterType;
 	mTypeDef->mNamespace = srcTypeDef->mNamespace;
 	system->AddNamespaceUsage(mTypeDef->mNamespace, mTypeDef->mProject);
 	mTypeDef->mHash = srcTypeDef->mHash;
-	mTypeDef->mSignatureHash = srcTypeDef->mSignatureHash;	
+	mTypeDef->mSignatureHash = srcTypeDef->mSignatureHash;
 // 	mTypeDef->mFullName = srcTypeDef->mFullName;
 // 	if (!mTypeDef->mFullName.mParts.IsEmpty())
 // 		mTypeDef->mFullName.mParts.pop_back();
-// 	mTypeDef->mFullName.mParts.push_back(mTypeDef->mName);	
+// 	mTypeDef->mFullName.mParts.push_back(mTypeDef->mName);
 	if (srcTypeDef->mFullName.mSize > 0)
 		mTypeDef->mFullName.Set(srcTypeDef->mFullName.mParts, srcTypeDef->mFullName.mSize - 1, &mTypeDef->mName, 1);
 	else
@@ -2679,7 +2809,7 @@ void BfClosureType::Init(BfProject* bfProject)
 
 	mTypeDef->mTypeCode = BfTypeCode_Object;
 	mTypeDef->mIsDelegate = true;
-	mTypeDef->mIsClosure = true;	
+	mTypeDef->mIsClosure = true;
 	mTypeDef->mDefState = BfTypeDef::DefState_Defined;
 
 	auto baseDirectTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
@@ -2720,7 +2850,7 @@ void BfClosureType::Finish()
 //////////////////////////////////////////////////////////////////////////
 
 BfDelegateType::~BfDelegateType()
-{	
+{
 	mMethodInstanceGroups.Clear();
 	delete mTypeDef;
 	mTypeDef = NULL;
@@ -2739,7 +2869,7 @@ BfTupleType::BfTupleType()
 {
 	mCreatedTypeDef = false;
 	mSource = NULL;
-	mTypeDef = NULL;	
+	mTypeDef = NULL;
 	mIsUnspecializedType = false;
 	mIsUnspecializedTypeVariation = false;
 	mGenericDepth = 0;
@@ -2757,7 +2887,7 @@ BfTupleType::~BfTupleType()
 }
 
 void BfTupleType::Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance)
-{	
+{
 	auto srcTypeDef = valueTypeInstance->mTypeDef;
 	auto system = valueTypeInstance->mModule->mSystem;
 
@@ -2766,17 +2896,17 @@ void BfTupleType::Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance)
 	for (auto field : mTypeDef->mFields)
 		delete field;
 	mTypeDef->mFields.Clear();
-	mTypeDef->mSystem = system;	
+	mTypeDef->mSystem = system;
 	mTypeDef->mProject = bfProject;
 	mTypeDef->mTypeCode = srcTypeDef->mTypeCode;
 	mTypeDef->mName = system->mEmptyAtom;
 	mTypeDef->mSystem = system;
-	
+
 	mTypeDef->mHash = srcTypeDef->mHash;
-	mTypeDef->mSignatureHash = srcTypeDef->mSignatureHash;	
+	mTypeDef->mSignatureHash = srcTypeDef->mSignatureHash;
 	mTypeDef->mTypeCode = BfTypeCode_Struct;
-	
-	mCreatedTypeDef = true;	
+
+	mCreatedTypeDef = true;
 }
 
 void BfTupleType::Dispose()
@@ -2798,7 +2928,7 @@ BfFieldDef* BfTupleType::AddField(const StringImpl& name)
 void BfTupleType::Finish()
 {
 	BF_ASSERT(!mTypeFailed);
-	
+
 	auto bfSystem = mTypeDef->mSystem;
 	mSource = new BfSource(bfSystem);
 	mTypeDef->mSource = mSource;
@@ -2819,13 +2949,13 @@ BfBoxedType::~BfBoxedType()
 }
 
 BfType* BfBoxedType::GetModifiedElementType()
-{	
+{
 	if ((mBoxedFlags & BoxedFlags_StructPtr) != 0)
 	{
 		auto module = mModule;
 		if (module == NULL)
-			module = mContext->mUnreifiedModule;		
-		return module->CreatePointerType(mElementType);		
+			module = mContext->mUnreifiedModule;
+		return module->CreatePointerType(mElementType);
 	}
 	return mElementType;
 }
@@ -2875,7 +3005,7 @@ int BfMethodRefType::GetParamIdxFromDataIdx(int dataIdx)
 }
 
 bool BfMethodRefType::WantsDataPassedAsSplat(int dataIdx)
-{	
+{
 	if (dataIdx != -1)
 		return false;
 	return mMethodRef->GetParamIsSplat(mDataToParamIdx[dataIdx]);
@@ -2884,7 +3014,7 @@ bool BfMethodRefType::WantsDataPassedAsSplat(int dataIdx)
 //////////////////////////////////////////////////////////////////////////
 
 size_t BfTypeVectorHash::operator()(const BfTypeVector& typeVec) const
-{	
+{
 	size_t hash = typeVec.size();
 	BfResolvedTypeSet::LookupContext ctx;
 	for (auto type : typeVec)
@@ -2939,7 +3069,6 @@ BfCustomAttribute* BfCustomAttributes::Get(int idx)
 
 BfResolvedTypeSet::~BfResolvedTypeSet()
 {
-
 }
 
 #define HASH_MIX(origHashVal, newHashVal) ((((origHashVal) << 5) - (origHashVal)) ^ (newHashVal))
@@ -2961,14 +3090,14 @@ BfResolvedTypeSet::~BfResolvedTypeSet()
 
 BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& outType)
 {
-	outType = NULL; 
+	outType = NULL;
 
 	BfConstResolver constResolver(ctx->mModule);
-	BfVariant variant;	
+	BfVariant variant;
 	constResolver.mBfEvalExprFlags = BfEvalExprFlags_NoCast;
 	constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
 	constResolver.mExpectingType = ctx->mModule->GetPrimitiveType(BfTypeCode_Int64);
-	auto result = constResolver.Resolve(expr);	
+	auto result = constResolver.Resolve(expr);
 	if (result)
 	{
 		// Limit the types of constants to prevent duplicate values with different types - we don't want to hash a typeref with an int32
@@ -2982,9 +3111,9 @@ BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression*
 		outType = result.mType;
 
 		if (result.mKind == BfTypedValueKind_GenericConstValue)
-		{							
+		{
 			return variant;
-		}		
+		}
 		else
 		{
 			variant = ctx->mModule->TypedValueToVariant(expr, result, true);
@@ -3008,8 +3137,8 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 // 		}
 // 		return Hash(underlyingType, ctx, allowRef);
 // 	}
-// 	else 
-		
+// 	else
+
 	if (type->IsBoxed())
 	{
 		BfBoxedType* boxedType = (BfBoxedType*)type;
@@ -3021,14 +3150,14 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 		BfArrayType* arrayType = (BfArrayType*)type;
 		int elemHash = Hash(arrayType->mGenericTypeInfo->mTypeGenericArguments[0], ctx, BfHashFlag_None, hashSeed) ^ (arrayType->mDimensions << 8);
 		return (elemHash << 5) - elemHash;
-	}	
+	}
 	else if (type->IsDelegateFromTypeRef() || type->IsFunctionFromTypeRef())
-	{		
+	{
 		auto typeInst = (BfTypeInstance*)type;
 		int hashVal = HASH_DELEGATE;
-		
+
 		auto delegateInfo = type->GetDelegateInfo();
-		
+
 		hashVal = HASH_MIX(hashVal, Hash(delegateInfo->mReturnType, ctx, BfHashFlag_None, hashSeed + 1));
 
 		auto methodDef = typeInst->mTypeDef->mMethods[0];
@@ -3041,19 +3170,19 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 		BF_ASSERT(infoParamCount == methodDef->mParams.size());
 
 		for (int paramIdx = 0; paramIdx < delegateInfo->mParams.size(); paramIdx++)
-		{			
+		{
 			// Parse attributes?
 			hashVal = HASH_MIX(hashVal, Hash(delegateInfo->mParams[paramIdx], ctx, BfHashFlag_None, hashSeed + 1));
 			String paramName = methodDef->mParams[paramIdx]->mName;
 			int nameHash = (int)Hash64(paramName.c_str(), (int)paramName.length());
 			hashVal = HASH_MIX(hashVal, nameHash);
 		}
-		
+
 		if (delegateInfo->mHasVarArgs)
 			hashVal = HASH_MIX(hashVal, HASH_DOTDOTDOT);
 
 		return hashVal;
-	}	
+	}
 	else if (type->IsTypeInstance())
 	{
 		BfTypeInstance* typeInst = (BfTypeInstance*)type;
@@ -3067,7 +3196,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 			if (closureType->mIsUnique)
 				return false;
 			hashVal = ((hashVal ^ (int)closureType->mClosureHash.mLow) << 5) - hashVal;
-		}				
+		}
 		else if (type->IsTuple())
 		{
 			hashVal = HASH_VAL_TUPLE;
@@ -3076,8 +3205,8 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 			for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 			{
 				BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
-				
-				auto fieldType = fieldInstance->mResolvedType;				
+
+				auto fieldType = fieldInstance->mResolvedType;
 				hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, BfHashFlag_None, hashSeed + 1));
 
 				BfFieldDef* fieldDef = NULL;
@@ -3091,7 +3220,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 					nameHash = (int)Hash64(nameStr, strlen(nameStr));
 				}
 				else
-				{					
+				{
 					nameHash = (int)Hash64(fieldDef->mName.c_str(), (int)fieldDef->mName.length());
 				}
 				hashVal = HASH_MIX(hashVal, nameHash);
@@ -3100,7 +3229,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 		else if (type->IsGenericTypeInstance())
 		{
 			BfTypeInstance* genericType = (BfTypeInstance*)type;
-			for (auto genericArg : genericType->mGenericTypeInfo->mTypeGenericArguments)				
+			for (auto genericArg : genericType->mGenericTypeInfo->mTypeGenericArguments)
 				hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, BfHashFlag_None, hashSeed + 1));
 		}
 		return hashVal;
@@ -3109,7 +3238,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 	{
 		BfPrimitiveType* primType = (BfPrimitiveType*)type;
 		return primType->mTypeDef->mHash;
-	}	
+	}
 	else if (type->IsPointer())
 	{
 		BfPointerType* pointerType = (BfPointerType*) type;
@@ -3126,7 +3255,7 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 		auto refType = (BfRefType*)type;
 		int elemHash = Hash(refType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ (HASH_VAL_REF + (int)refType->mRefKind);
 		return (elemHash << 5) - elemHash;
-	}	
+	}
 	else if (type->IsModifiedTypeType())
 	{
 		auto modifiedTypeType = (BfModifiedTypeType*)type;
@@ -3154,15 +3283,15 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 			hashVal = ((hashVal ^ (int)sizedArray->mElementCount) << 5) - hashVal;
 
 		return hashVal;
-	}	
+	}
 	else if (type->IsMethodRef())
-	{	
+	{
 		auto methodRefType = (BfMethodRefType*)type;
 		if (methodRefType->IsNull())
 			return 0;
 
 		return (int)((int)(intptr)(methodRefType->mMethodRef) << 5) ^ (int)(intptr)(methodRefType->mOwner) ^ methodRefType->mOwnerRevision;
-	}	
+	}
 	else if (type->IsConstExprValue())
 	{
 		BfConstExprValueType* constExprValueType = (BfConstExprValueType*)type;
@@ -3194,8 +3323,8 @@ void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupCon
 			bool allowUnboundGeneric = ((ctx->mResolveFlags & BfResolveTypeRefFlag_AllowUnboundGeneric) != 0) && (hashSeed == 0);
 
 			BfAstNode* genericArgTypeRef = NULL;
-			if (genericIdx < genericTypeRef->mGenericArguments.mSize)			
-				genericArgTypeRef = genericTypeRef->mGenericArguments[genericIdx];			
+			if (genericIdx < genericTypeRef->mGenericArguments.mSize)
+				genericArgTypeRef = genericTypeRef->mGenericArguments[genericIdx];
 
 			if (allowUnboundGeneric)
 			{
@@ -3217,7 +3346,7 @@ void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupCon
 				{
 					ctx->mIsUnboundGeneric = true;
 					argHashVal = (((int)BfGenericParamKind_Type + 0xB00) << 8) ^ (genericIdx + 1);
-					argHashVal = HASH_MIX(argHashVal, hashSeed + 1);					
+					argHashVal = HASH_MIX(argHashVal, hashSeed + 1);
 				}
 				else
 				{
@@ -3226,7 +3355,7 @@ void BfResolvedTypeSet::HashGenericArguments(BfTypeReference* typeRef, LookupCon
 					return;
 				}
 			}
-			
+
 			hashVal = HASH_MIX(hashVal, argHashVal);
 		}
 	}
@@ -3252,7 +3381,7 @@ BfResolveTypeRefFlags BfResolvedTypeSet::GetResolveFlags(BfAstNode* typeRef, Loo
 }
 
 int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags, int hashSeed)
-{		
+{
 	auto resolvedType = ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, GetResolveFlags(typeRef, ctx, flags));
 	if (resolvedType == NULL)
 	{
@@ -3293,11 +3422,11 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 {
 	if ((typeRef == ctx->mRootTypeRef) && (ctx->mRootTypeDef != NULL) &&
 		((typeRef->IsNamedTypeReference()) || (BfNodeIsA<BfDirectTypeDefReference>(typeRef))))
-	{		
+	{
 		BfTypeDef* typeDef = ctx->mRootTypeDef;
-	
+
 		int hashVal = typeDef->mHash;
-		
+
 		if (typeDef->mGenericParamDefs.size() != 0)
 		{
 			auto checkTypeInstance = ctx->mModule->mCurTypeInstance;
@@ -3305,7 +3434,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
 
 			auto outerType = ctx->mModule->mSystem->GetOuterTypeNonPartial(typeDef);
-			
+
 			BfTypeDef* commonOuterType;
 			if (typeRef == ctx->mRootTypeRef)
 				commonOuterType = FindRootCommonOuterType(outerType, ctx, checkTypeInstance);
@@ -3336,12 +3465,12 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				ctx->mFailed = true;
 				return 0;
 			}
-			
+
 			BF_ASSERT(checkTypeInstance->IsGenericTypeInstance());
 			auto curGenericTypeInst = (BfTypeInstance*)checkTypeInstance;
 			int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
 			for (int i = 0; i < numParentGenericParams; i++)
-			{				
+			{
 				hashVal = HASH_MIX(hashVal, Hash(curGenericTypeInst->mGenericTypeInfo->mTypeGenericArguments[i], ctx, BfHashFlag_None, hashSeed + 1));
 			}
 		}
@@ -3366,6 +3495,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			return 0;
 		}
 
+		int typeAliasHash = 0;
+
+		bool isInnerTypeAlias = false;
+
 		// Don't translate aliases for the root type, just element types
 		if (ctx->mRootTypeRef == typeRef)
 		{
@@ -3373,38 +3506,15 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			ctx->mRootTypeDef = elementTypeDef;
 		}
 		else if (elementTypeDef->mTypeCode == BfTypeCode_TypeAlias)
-		{			
-			BfTypeVector genericArgs;
-			for (auto genericArgTypeRef : genericInstTypeRef->mGenericArguments)
-			{
-				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, NULL, BfPopulateType_Identity, GetResolveFlags(genericArgTypeRef, ctx, flags));
-				if (argType != NULL)
-					genericArgs.Add(argType);
-				else
-					ctx->mFailed = true;				
-			}
-
-			if (!ctx->mFailed)
-			{
-				auto resolvedType = ctx->mModule->ResolveTypeDef(elementTypeDef, genericArgs);
-				if ((resolvedType != NULL) && (resolvedType->IsTypeAlias()))
-				{
-					auto underlyingType = resolvedType->GetUnderlyingType();
-					if (underlyingType == NULL)
-					{
-						ctx->mFailed = true;
-						return 0;
-					}
-					int hashVal = Hash(underlyingType, ctx, flags, hashSeed);
-					hashSeed = 0;
-					return hashVal;
-				}
-			}
+		{
+			isInnerTypeAlias = true;
 		}
-		
+
+		BfTypeVector typeAliasGenericArgs;
+
 		bool fullyQualified = false;
 		int hashVal = elementTypeDef->mHash;
-		
+
 		BfTypeInstance* outerType = NULL;
 
 		int checkIdx = 0;
@@ -3417,7 +3527,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				fullyQualified = true;
 				if ((elementTypeDef->mOuterType != NULL) && (!elementTypeDef->mOuterType->mGenericParamDefs.IsEmpty()))
 				{
-					auto resolvedType = ctx->mModule->ResolveTypeRef(checkTypeRef, BfPopulateType_Identity, 
+					auto resolvedType = ctx->mModule->ResolveTypeRef(checkTypeRef, BfPopulateType_Identity,
 						(BfResolveTypeRefFlags)(GetResolveFlags(checkTypeRef, ctx, flags) | BfResolveTypeRefFlag_IgnoreLookupError));
 					if (resolvedType == NULL)
 					{
@@ -3440,16 +3550,21 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			{
 				checkTypeRef = qualifiedTypeRef->mLeft;
 				continue;
-			}			
+			}
 			break;
 		}
-		
+
 		if (fullyQualified)
-		{			
+		{
 			if (outerType != NULL)
 			{
 				for (auto genericArg : outerType->mGenericTypeInfo->mTypeGenericArguments)
-					hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+				{
+					if (isInnerTypeAlias)
+						typeAliasGenericArgs.Add(genericArg);
+					else
+						hashVal = HASH_MIX(hashVal, Hash(genericArg, ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+				}
 			}
 		}
 		else
@@ -3469,12 +3584,46 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					auto parentTypeInstance = checkTypeInstance;
 					int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
 					for (int i = 0; i < numParentGenericParams; i++)
-						hashVal = HASH_MIX(hashVal, Hash(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i], ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+					{
+						if (isInnerTypeAlias)
+							typeAliasGenericArgs.Add(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
+						else
+							hashVal = HASH_MIX(hashVal, Hash(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i], ctx, Beefy::BfResolvedTypeSet::BfHashFlag_None, hashSeed + 1));
+					}
 				}
 			}
 		}
 
-		HashGenericArguments(genericInstTypeRef, ctx, hashVal, hashSeed);
+		if (isInnerTypeAlias)
+		{
+			for (auto genericArgTypeRef : genericInstTypeRef->mGenericArguments)
+			{
+				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, NULL, BfPopulateType_Identity, GetResolveFlags(genericArgTypeRef, ctx, flags));
+				if (argType != NULL)
+					typeAliasGenericArgs.Add(argType);
+				else
+					ctx->mFailed = true;
+			}
+
+			if (!ctx->mFailed)
+			{
+				auto resolvedType = ctx->mModule->ResolveTypeDef(elementTypeDef, typeAliasGenericArgs);
+				if ((resolvedType != NULL) && (resolvedType->IsTypeAlias()))
+				{
+					auto underlyingType = resolvedType->GetUnderlyingType();
+					if (underlyingType == NULL)
+					{
+						ctx->mFailed = true;
+						return 0;
+					}
+					int hashVal = Hash(underlyingType, ctx, flags, hashSeed);
+					hashSeed = 0;
+					return hashVal;
+				}
+			}
+		}
+		else
+			HashGenericArguments(genericInstTypeRef, ctx, hashVal, hashSeed);
 
 		return hashVal;
 	}
@@ -3484,10 +3633,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 
 		for (int fieldIdx = 0; fieldIdx < (int)tupleTypeRef->mFieldTypes.size(); fieldIdx++)
 		{
-			BfTypeReference* fieldType = tupleTypeRef->mFieldTypes[fieldIdx];			
+			BfTypeReference* fieldType = tupleTypeRef->mFieldTypes[fieldIdx];
 			hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, BfHashFlag_None, hashSeed + 1));
 
-			int nameHash = 0;		
+			int nameHash = 0;
 			BfIdentifierNode* fieldName = NULL;
 			if (fieldIdx < (int)tupleTypeRef->mFieldNames.size())
 				fieldName = tupleTypeRef->mFieldNames[fieldIdx];
@@ -3539,8 +3688,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
 				constResolver.mExpectingType = intType;
 				BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
+
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 				{
+					ctx->mResolvedValueMap[sizeExpr] = typedVal;
 					int elemHash = Hash(typedVal.mType, ctx, BfHashFlag_None, hashSeed);
 					hashVal = ((hashVal ^ elemHash) << 5) - hashVal;
 					return hashVal;
@@ -3552,7 +3703,8 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 					SetAndRestoreValue<bool> prevIgnoreWrites(ctx->mModule->mBfIRBuilder->mIgnoreWrites, true);
 					typedVal = ctx->mModule->Cast(sizeExpr, typedVal, intType);
 				}
-			
+				ctx->mResolvedValueMap[sizeExpr] = typedVal;
+
 				if (typedVal)
 				{
 					auto constant = ctx->mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
@@ -3585,8 +3737,8 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						}
 					}
 				}
-			}	
-						
+			}
+
 			hashVal = ((hashVal ^ (int)elementCount) << 5) - hashVal;
 			return hashVal;
 		}
@@ -3613,7 +3765,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		}
 	}
 	else if (auto pointerType = BfNodeDynCastExact<BfPointerTypeRef>(typeRef))
-	{		
+	{
 		int elemHash = Hash(pointerType->mElementType, ctx, BfHashFlag_None, hashSeed) ^ HASH_VAL_PTR;
 		return (elemHash << 5) - elemHash;
 	}
@@ -3622,10 +3774,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		if (ctx->mRootTypeRef == typeRef)
 			ctx->mRootTypeDef = ctx->mModule->mCompiler->mNullableTypeDef;
 
-		int hashVal = ctx->mModule->mCompiler->mNullableTypeDef->mHash;		
+		int hashVal = ctx->mModule->mCompiler->mNullableTypeDef->mHash;
 		hashVal = HASH_MIX(hashVal, Hash(nullableType->mElementType, ctx, BfHashFlag_None, hashSeed + 1));
 		return hashVal;
-	}	
+	}
 	else if (auto refType = BfNodeDynCastExact<BfRefTypeRef>(typeRef))
 	{
 		if ((flags & BfHashFlag_AllowRef) != 0)
@@ -3644,10 +3796,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			return (elemHash << 5) - elemHash;
 		}
 		else
-		{			
+		{
 			ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, GetResolveFlags(typeRef, ctx, flags)); // To throw an error...
 			ctx->mFailed = true;
-			return 0;			
+			return 0;
 			//return Hash(refType->mElementType, ctx);
 		}
 	}
@@ -3693,23 +3845,28 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		// Don't allow 'var'
 		ctx->mModule->Fail("Invalid use of 'var'", typeRef);
 		ctx->mFailed = true;
-		return 0;		
+		return 0;
 	}
 	else if (auto letType = BfNodeDynCastExact<BfLetTypeReference>(typeRef))
 	{
 		// Don't allow 'let'
 		ctx->mModule->Fail("Invalid use of 'let'", typeRef);
 		ctx->mFailed = true;
-		return 0;		
+		return 0;
 	}
 	else if (auto retTypeTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(typeRef))
-	{	
+	{
 		// Don't cause infinite loop, but if we have an inner 'rettype' then try to directly resolve that --
 		//  Only use the HAS_RETTYPE for root-level rettype insertions
 		if (ctx->mRootTypeRef != retTypeTypeRef)
 		{
 			auto type = ctx->mModule->ResolveTypeRef(retTypeTypeRef, BfPopulateType_Identity, GetResolveFlags(retTypeTypeRef, ctx, flags));
-			if ((type != NULL) && (type->IsRef()))
+			if (type == NULL)
+			{
+				ctx->mFailed = true;
+				return 0;
+			}
+			if (type->IsRef())
 				type = type->GetUnderlyingType();
 			return Hash(type, ctx, flags, hashSeed);
 		}
@@ -3725,7 +3882,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 	{
 		// We purposely don't mix in a HASH_CONSTTYPE because there's no such thing as a const type in Beef, so we just strip it
 		return Hash(constTypeRef->mElementType, ctx, flags, hashSeed);
-	}	
+	}
 	else if (auto delegateTypeRef = BfNodeDynCastExact<BfDelegateTypeRef>(typeRef))
 	{
 		int hashVal = HASH_DELEGATE;
@@ -3733,10 +3890,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			hashVal = HASH_MIX(hashVal, Hash(delegateTypeRef->mReturnType, ctx, BfHashFlag_AllowRef, hashSeed + 1));
 		else
 			ctx->mFailed = true;
-		
+
 		bool isFirstParam = true;
 
-		for (int paramIdx = 0; paramIdx < delegateTypeRef->mParams.size(); paramIdx++)		
+		for (int paramIdx = 0; paramIdx < delegateTypeRef->mParams.size(); paramIdx++)
 		{
 			auto param = delegateTypeRef->mParams[paramIdx];
 			// Parse attributes?
@@ -3756,13 +3913,13 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(fieldType))
 				{
 					if (dotTypeRef->mDotToken->mToken == BfToken_DotDotDot)
-					{						
+					{
 						hashVal = HASH_MIX(hashVal, HASH_DOTDOTDOT);
 						continue;
 					}
 				}
 			}
-			
+
 			if (fieldType != NULL)
 				hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed + 1));
 			hashVal = HASH_MIX(hashVal, HashNode(param->mNameNode));
@@ -3770,7 +3927,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		}
 
 		return hashVal;
-	}	
+	}
 	else if (auto exprModTypeRef = BfNodeDynCastExact<BfExprModTypeRef>(typeRef))
 	{
 		auto cachedResolvedType = ctx->GetCachedResolvedType(typeRef);
@@ -3783,9 +3940,9 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				{
 					BfMethodState methodState;
 					SetAndRestoreValue<BfMethodState*> prevMethodState(ctx->mModule->mCurMethodState, &methodState, false);
-					if (ctx->mModule->mCurMethodState == NULL)					
+					if (ctx->mModule->mCurMethodState == NULL)
 						prevMethodState.Set();
-					methodState.mTempKind = BfMethodState::TempKind_NonStatic;					
+					methodState.mTempKind = BfMethodState::TempKind_NonStatic;
 
 					SetAndRestoreValue<bool> ignoreWrites(ctx->mModule->mBfIRBuilder->mIgnoreWrites, true);
 					SetAndRestoreValue<bool> allowUninitReads(ctx->mModule->mCurMethodState->mAllowUinitReads, true);
@@ -3801,7 +3958,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						auto typeType = ctx->mModule->ResolveTypeDef(ctx->mModule->mCompiler->mTypeTypeDef);
 						exprFlags = (BfEvalExprFlags)(exprFlags | BfEvalExprFlags_Comptime | BfEvalExprFlags_NoCast);
 						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, typeType, exprFlags);
-						if ((result.mType != NULL) && (!result.mType->IsInteger()) && (result.mType != typeType) && 
+						if ((result.mType != NULL) && (!result.mType->IsInteger()) && (result.mType != typeType) &&
 							(!result.mType->IsInstanceOf(ctx->mModule->mCompiler->mReflectTypeIdTypeDef)))
 							result = ctx->mModule->Cast(exprModTypeRef->mTarget, result, typeType);
 					}
@@ -3810,9 +3967,9 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, NULL, BfEvalExprFlags_DeclType);
 					}
 				}
-								
+
 				if ((result) && (exprModTypeRef->mToken->mToken == BfToken_Comptype))
-				{					
+				{
 					auto constant = ctx->mModule->mBfIRBuilder->GetConstant(result.mValue);
 					if (constant != NULL)
 					{
@@ -3822,9 +3979,20 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 							cachedResolvedType = typeOf->mType;
 						}
 						else if (constant->mConstType == BfConstType_Undef)
-						{							
+						{
 							ctx->mHadVar = true;
 							cachedResolvedType = ctx->mModule->GetPrimitiveType(BfTypeCode_Var);
+
+							auto typeState = ctx->mModule->mContext->mCurTypeState;
+							if ((typeState != NULL) && (typeState->mType != NULL) && (typeState->mType->IsTypeInstance()))
+							{
+								auto typeInst = typeState->mType->ToTypeInstance();
+								if (typeInst->mDefineState == BfTypeDefineState_ResolvingBaseType)
+								{
+									// Make sure we regenerate this type
+									ctx->mModule->mContext->mFailTypes.TryAdd(typeState->mType->ToTypeInstance(), BfFailKind_Deep);
+								}
+							}
 						}
 						else if (BfIRConstHolder::IsInt(constant->mTypeCode))
 						{
@@ -3845,7 +4013,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 							}
 						}
 					}
-					
+
 					if (cachedResolvedType == NULL)
 						ctx->mModule->Fail("Constant System.Type value required", exprModTypeRef->mTarget);
 				}
@@ -3864,7 +4032,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		{
 			ctx->mFailed = true;
 			return 0;
-		}		
+		}
 
 		int hashVal = Hash(cachedResolvedType, ctx, flags, hashSeed);
 		hashSeed = 0;
@@ -3879,11 +4047,11 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			return 0;
 		}
 
-		BfVariant result;					
+		BfVariant result;
 		BfType* resultType = NULL;
 		if (constExprTypeRef->mConstExpr != NULL)
 		{
-			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);			
+			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);
 			if ((resultType != NULL) && (resultType->IsGenericParam()))
 			{
 				int hashVal = Hash(resultType, ctx, BfHashFlag_None, hashSeed);
@@ -3898,12 +4066,12 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			return 0;
 		}
 
-		auto hashVal = ((int)result.mTypeCode << 17) ^ (result.mInt32 << 3) ^ HASH_CONSTTYPE;		
-		hashVal = ((hashVal ^ (Hash(resultType, ctx, BfHashFlag_AllowRef, hashSeed))) << 5) - hashVal;		
+		auto hashVal = ((int)result.mTypeCode << 17) ^ (result.mInt32 << 3) ^ HASH_CONSTTYPE;
+		hashVal = ((hashVal ^ (Hash(resultType, ctx, BfHashFlag_AllowRef, hashSeed))) << 5) - hashVal;
 		return hashVal;
 	}
-	else if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(typeRef))	
-	{		
+	else if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(typeRef))
+	{
 		ctx->mModule->ResolveTypeRef(dotTypeRef, BfPopulateType_Identity, GetResolveFlags(dotTypeRef, ctx, flags));
 		ctx->mFailed = true;
 		return 0;
@@ -3941,7 +4109,7 @@ int BfResolvedTypeSet::Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFl
 	}
 
 	ctx->mResolvedTypeMap[typeRefNode] = result;
-	return Hash(result, ctx, false, hashSeed);	
+	return Hash(result, ctx, false, hashSeed);
 }
 
 bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
@@ -3965,13 +4133,13 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		if (lhsArrayType->mDimensions != rhsArrayType->mDimensions)
 			return false;
 		return lhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0] == rhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0];
-	}	
+	}
 	else if (lhs->IsTypeInstance())
 	{
 		if ((!rhs->IsTypeInstance()) || (rhs->IsBoxed()))
 			return false;
 		BfTypeInstance* lhsInst = (BfTypeInstance*)lhs;
-		BfTypeInstance* rhsInst = (BfTypeInstance*)rhs;		
+		BfTypeInstance* rhsInst = (BfTypeInstance*)rhs;
 
 		if (lhs->IsClosure())
 		{
@@ -3985,13 +4153,13 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 				return false;
 			return lhsClosure->mClosureHash == rhsClosure->mClosureHash;
 		}
-		
+
 		if (lhs->IsDelegateFromTypeRef() || lhs->IsFunctionFromTypeRef())
 		{
 			if (!rhs->IsDelegateFromTypeRef() && !rhs->IsFunctionFromTypeRef())
 				return false;
 			if (lhs->IsDelegate() != rhs->IsDelegate())
-				return false;			
+				return false;
 			BfDelegateInfo* lhsDelegateInfo = lhs->GetDelegateInfo();
 			BfDelegateInfo* rhsDelegateInfo = rhs->GetDelegateInfo();
 			if (lhsInst->mTypeDef->mIsDelegate != rhsInst->mTypeDef->mIsDelegate)
@@ -4019,7 +4187,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			}
 			return true;
 		}
-		
+
 		if (lhs->IsTuple())
 		{
 			if (!rhs->IsTuple())
@@ -4042,14 +4210,14 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 				{
 					char c = lhsFieldDef->mName[0];
 					if ((c < '0') || (c > '9'))
-						return false;					
+						return false;
 				}
 				else
 				{
 					auto rhsFieldDef = rhsFieldInstance->GetFieldDef();
 					if (lhsFieldDef->mName != rhsFieldDef->mName)
 						return false;
-				}				
+				}
 			}
 			return true;
 		}
@@ -4088,7 +4256,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfPointerType* lhsPtrType = (BfPointerType*)lhs;
 		BfPointerType* rhsPtrType = (BfPointerType*)rhs;
 		return lhsPtrType->mElementType == rhsPtrType->mElementType;
-	}	
+	}
 	else if (lhs->IsGenericParam())
 	{
 		if (!rhs->IsGenericParam())
@@ -4097,7 +4265,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfGenericParamType* rhsGenericParamType = (BfGenericParamType*)rhs;
 		return (lhsGenericParamType->mGenericParamKind == rhsGenericParamType->mGenericParamKind) &&
 			(lhsGenericParamType->mGenericParamIdx == rhsGenericParamType->mGenericParamIdx);
-	}	
+	}
 	else if (lhs->IsRef())
 	{
 		if (!rhs->IsRef())
@@ -4112,7 +4280,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			return false;
 		BfModifiedTypeType* lhsRetTypeType = (BfModifiedTypeType*)lhs;
 		BfModifiedTypeType* rhsRetTypeType = (BfModifiedTypeType*)rhs;
-		return (lhsRetTypeType->mModifiedKind == rhsRetTypeType->mModifiedKind) && 
+		return (lhsRetTypeType->mModifiedKind == rhsRetTypeType->mModifiedKind) &&
 			(lhsRetTypeType->mElementType == rhsRetTypeType->mElementType);
 	}
 	else if (lhs->IsConcreteInterfaceType())
@@ -4141,7 +4309,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		return (lhsMethodRefType->mMethodRef == rhsMethodRefType->mMethodRef) &&
 			(lhsMethodRefType->mOwner == rhsMethodRefType->mOwner) &&
 			(lhsMethodRefType->mOwnerRevision == rhsMethodRefType->mOwnerRevision);
-	}	
+	}
 	else if ((lhs->IsConstExprValue()) || (rhs->IsConstExprValue()))
 	{
 		if (!lhs->IsConstExprValue() || !rhs->IsConstExprValue())
@@ -4150,10 +4318,10 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfConstExprValueType* lhsConstExprValueType = (BfConstExprValueType*)lhs;
 		BfConstExprValueType* rhsConstExprValueType = (BfConstExprValueType*)rhs;
 
-		return (lhsConstExprValueType->mType == rhsConstExprValueType->mType) &&			
+		return (lhsConstExprValueType->mType == rhsConstExprValueType->mType) &&
 			(lhsConstExprValueType->mValue.mInt64 == rhsConstExprValueType->mValue.mInt64);
 	}
-	else 
+	else
 	{
 		BF_FATAL("Not handled");
 	}
@@ -4220,7 +4388,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 			{
 				if (!Equals(lhsArgType, genericArgTypeRef, ctx))
 					return false;
-			}			
+			}
 		}
 	}
 
@@ -4231,7 +4399,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 {
 	int genericParamOffset = 0;
 	bool isFullyQualified = false;
-	BfTypeInstance* outerType = NULL;	
+	BfTypeInstance* outerType = NULL;
 
 	if (auto genericInstTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(rhs))
 	{
@@ -4256,7 +4424,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 						lhsCheckType = ctx->mModule->GetOuterType(lhsCheckType);
 					}
 					if (lhsCheckType != outerType)
-						return false;					
+						return false;
 
 					if (outerType->mGenericTypeInfo != NULL)
 						genericParamOffset = (int)outerType->mGenericTypeInfo->mTypeGenericArguments.mSize;
@@ -4288,7 +4456,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 		rootOuterTypeInstance = ctx->mModule->mCurTypeInstance;
 		if ((rhsTypeDef == ctx->mRootTypeDef) && (ctx->mRootOuterTypeInstance != NULL))
 			rootOuterTypeInstance = ctx->mRootOuterTypeInstance;
-		
+
 		if (rhsGenericTypeInstRef == NULL)
 		{
 			if (auto rhsNullableTypeRef = BfNodeDynCastExact<BfNullableTypeRef>(rhs))
@@ -4405,7 +4573,7 @@ BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* t
 		return typeDefTypeRef->mTypeDef;
 	}
 
-	auto type = mModule->ResolveTypeRef(typeReference, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);	
+	auto type = mModule->ResolveTypeRef(typeReference, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
 	if (type == NULL)
 		return NULL;
 	if (outType != NULL)
@@ -4419,7 +4587,7 @@ BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* t
 }
 
 bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx)
-{	
+{
 	auto rhsType = ctx->mModule->ResolveTypeDef(rhsTypeDef, BfPopulateType_Identity);
 	if (rhsType == NULL)
 	{
@@ -4433,7 +4601,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhs
 bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx)
 {
 	//BP_ZONE("BfResolvedTypeSet::Equals");
-	
+
 	if (ctx->mRootTypeRef != rhs)
 	{
 		if (auto retTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(rhs))
@@ -4455,17 +4623,17 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				ctx->mFailed = true;
 				return false;
 			}
-			return lhs == rhsResolvedType;			
+			return lhs == rhsResolvedType;
 		}
 	}
-	
+
 	if (auto declTypeRef = BfNodeDynCastExact<BfExprModTypeRef>(rhs))
 	{
 		auto cachedResolveType = ctx->GetCachedResolvedType(rhs);
 		BF_ASSERT(cachedResolveType != NULL);
 		return lhs == cachedResolveType;
 	}
-		
+
 	// Strip off 'const' - it's just an error when applied to a typeRef in Beef
 	auto constTypeRef = BfNodeDynCastExact<BfConstTypeRef>(rhs);
 	if (constTypeRef != NULL)
@@ -4500,15 +4668,15 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		auto rhsDelegateType = BfNodeDynCastExact<BfDelegateTypeRef>(rhs);
 		if (rhsDelegateType == NULL)
 			return false;
-		
+
 		bool wantGeneric = false;
-		
-		BfDelegateInfo* lhsDelegateInfo = lhs->GetDelegateInfo();		
-				
+
+		BfDelegateInfo* lhsDelegateInfo = lhs->GetDelegateInfo();
+
 		auto lhsTypeInstance = lhs->ToTypeInstance();
 		BfMethodDef* invokeMethodDef = lhsTypeInstance->mTypeDef->mMethods[0];
 		BF_ASSERT(invokeMethodDef->mName == "Invoke");
-		
+
 		bool rhsIsDelegate = rhsDelegateType->mTypeToken->GetToken() == BfToken_Delegate;
 
 		if ((lhs->IsDelegate()) != rhsIsDelegate)
@@ -4519,14 +4687,14 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			if (type->IsTypeGenericParam())
 				wantGeneric = true;
 		};
-		
+
 		BfCallingConvention rhsCallingConvention = BfCallingConvention_Unspecified;
 		if (ctx->mRootTypeRef == rhsDelegateType)
 			rhsCallingConvention = ctx->mCallingConvention;
 		else
 			ctx->mModule->GetDelegateTypeRefAttributes(rhsDelegateType, rhsCallingConvention);
 		if (lhsDelegateInfo->mCallingConvention != rhsCallingConvention)
-			return false;		
+			return false;
 		if (!Equals(lhsDelegateInfo->mReturnType, rhsDelegateType->mReturnType, ctx))
 			return false;
 		_CheckType(lhsDelegateInfo->mReturnType);
@@ -4543,21 +4711,21 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 					return false;
 
 				bool handled = false;
-				auto lhsThisType = lhsDelegateInfo->mParams[0];				
+				auto lhsThisType = lhsDelegateInfo->mParams[0];
 
 				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));
 				bool wantsMutating = false;
 
 				if (rhsThisType->IsRef())
-				{					
+				{
 					if (lhsThisType != rhsThisType->GetUnderlyingType())
 						return false;
-					wantsMutating = (lhsThisType->IsValueType()) || (lhsThisType->IsGenericParam());					
+					wantsMutating = (lhsThisType->IsValueType()) || (lhsThisType->IsGenericParam());
 				}
 				else
 				{
 					if (lhsThisType != rhsThisType)
-						return false;					
+						return false;
 				}
 				if (invokeMethodDef->mIsMutating != wantsMutating)
 					return false;
@@ -4574,7 +4742,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			return false;
 		for (int paramIdx = paramRefOfs; paramIdx < lhsDelegateInfo->mParams.size(); paramIdx++)
 		{
-			auto paramTypeRef = rhsDelegateType->mParams[paramIdx]->mTypeRef;			
+			auto paramTypeRef = rhsDelegateType->mParams[paramIdx]->mTypeRef;
 			if (!Equals(lhsDelegateInfo->mParams[paramIdx], paramTypeRef, ctx))
 				return false;
 			_CheckType(lhsDelegateInfo->mParams[paramIdx]);
@@ -4597,9 +4765,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		return true;
 	}
 	else if (lhs->IsTypeInstance())
-	{		
-		BfTypeInstance* lhsInst = (BfTypeInstance*) lhs;		
-		
+	{
+		BfTypeInstance* lhsInst = (BfTypeInstance*) lhs;
+
 		if (lhs->IsTuple())
 		{
 			if (!rhs->IsA<BfTupleTypeRef>())
@@ -4652,12 +4820,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 			BfTypeInstance* lhsGenericType = (BfTypeInstance*) lhs;
 			return GenericTypeEquals(lhsGenericType, &lhsGenericType->mGenericTypeInfo->mTypeGenericArguments, rhs, rhsTypeDef, ctx);
-		}		
+		}
 		else
 		{
 			if (rhs->IsA<BfElementedTypeRef>())
 				return false;
-			
+
 			if (!rhs->IsTypeDefTypeReference())
 			{
 				if (rhs->IsA<BfDelegateTypeRef>())
@@ -4673,7 +4841,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 						return true;
 					}
 				}
-				
+
 				return false;
 			}
 			auto rhsTypeDef = ctx->ResolveToTypeDef(rhs);
@@ -4681,7 +4849,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				return false;
 
 			return lhsInst->IsInstanceOf(rhsTypeDef);
-		}		
+		}
 	}
 	else if (lhs->IsPrimitiveType())
 	{
@@ -4706,20 +4874,20 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				return true;
 		}
 
-		BfPrimitiveType* lhsPrimType = (BfPrimitiveType*)lhs;				
-		auto rhsTypeDef = ctx->ResolveToTypeDef(rhs);		
-// 		if (rhsTypeDef->mTypeCode == BfTypeCode_TypeAlias)		
-// 			return Equals(lhs, rhs, rhsTypeDef, ctx);		
+		BfPrimitiveType* lhsPrimType = (BfPrimitiveType*)lhs;
+		auto rhsTypeDef = ctx->ResolveToTypeDef(rhs);
+// 		if (rhsTypeDef->mTypeCode == BfTypeCode_TypeAlias)
+// 			return Equals(lhs, rhs, rhsTypeDef, ctx);
 		return lhsPrimType->mTypeDef == rhsTypeDef;
 	}
 	else if (lhs->IsPointer())
 	{
 		auto rhsPointerTypeRef = BfNodeDynCastExact<BfPointerTypeRef>(rhs);
 		if (rhsPointerTypeRef == NULL)
-			return false;		
-		BfPointerType* lhsPtrType = (BfPointerType*)lhs;		
+			return false;
+		BfPointerType* lhsPtrType = (BfPointerType*)lhs;
 		return Equals(lhsPtrType->mElementType, rhsPointerTypeRef->mElementType, ctx);
-	}	
+	}
 	else if (lhs->IsGenericParam())
 	{
 		auto lhsGenericParamType = (BfGenericParamType*)lhs;
@@ -4733,7 +4901,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 					return false;
 
 				BfType* resultType = NULL;
-				result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);				
+				result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);
 				return resultType == lhs;
 			}
 
@@ -4793,12 +4961,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		BF_ASSERT(sizeExpr != NULL);
 		if (sizeExpr != NULL)
 		{
-			SetAndRestoreValue<bool> prevIgnoreError(ctx->mModule->mIgnoreErrors, true);
-			BfConstResolver constResolver(ctx->mModule);
 			BfType* intType = ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-			constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
-			constResolver.mExpectingType = intType;			
-			BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
+			BfTypedValue typedVal;
+			ctx->mResolvedValueMap.TryGetValue(sizeExpr, &typedVal);
 			if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 			{
 				if (!lhs->IsUnknownSizedArrayType())
@@ -4809,11 +4974,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			}
 			if (typedVal)
 				typedVal = ctx->mModule->Cast(sizeExpr, typedVal, intType);
+
 			if (typedVal)
-			{				
+			{
 				if (lhs->IsUnknownSizedArrayType())
-					return false;				
-				
+					return false;
+
 				auto constant = ctx->mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
 				if ((constant->mConstType == BfConstType_Undef) || (!BfIRBuilder::IsInt(constant->mTypeCode)))
 				{
@@ -4822,15 +4988,15 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				else
 				{
 					elementCount = (intptr)constant->mInt64;
-					BF_ASSERT(elementCount >= 0); // Should have been caught in hash					
+					BF_ASSERT(elementCount >= 0); // Should have been caught in hash
 				}
 			}
 		}
-		
+
 		return lhsArrayType->mElementCount == elementCount;
 	}
 	else if (lhs->IsMethodRef())
-	{ 
+	{
 		// Always make these unique.  The MethodInstance value will change on rebuild anyway
 		return false;
 	}
@@ -4860,7 +5026,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 	else
 	{
 		BF_FATAL("Not handled");
-	}	
+	}
 
 	return false;
 }
@@ -4893,9 +5059,9 @@ void BfResolvedTypeSet::RemoveEntry(BfResolvedTypeSet::EntryRef entry)
 // 	{
 // 		entry->mPrev->mNext = entry->mNext;
 // 		if (entry->mNext != NULL)
-// 			entry->mNext->mPrev = entry->mPrev;	
-// 	}			
-// 
+// 			entry->mNext->mPrev = entry->mPrev;
+// 	}
+//
 // 	mSize--;
 
 	bool found = false;
@@ -4908,12 +5074,12 @@ void BfResolvedTypeSet::RemoveEntry(BfResolvedTypeSet::EntryRef entry)
 		if (checkEntryIdx == entry.mIndex)
 		{
 			*srcCheckEntryPtr = checkEntry->mNext;
-			found = true;						
+			found = true;
 		}
 		srcCheckEntryPtr = &checkEntry->mNext;
 		checkEntryIdx = checkEntry->mNext;
 	}
-	
+
 	BF_ASSERT(found);
 	BF_ASSERT(entry->mValue == NULL);
 	FreeIdx(entry.mIndex);
@@ -4923,33 +5089,33 @@ void BfResolvedTypeSet::RemoveEntry(BfResolvedTypeSet::EntryRef entry)
 // {
 // 	return ++Iterator(this);
 // }
-// 
+//
 // BfResolvedTypeSet::Iterator BfResolvedTypeSet::end()
 // {
 // 	Iterator itr(this);
 // 	itr.mCurBucket = HashSize;
 // 	return itr;
 // }
-// 
+//
 // BfResolvedTypeSet::Iterator BfResolvedTypeSet::erase(BfResolvedTypeSet::Iterator& itr)
 // {
 // 	auto next = itr;
 // 	++next;
-// 
+//
 // 	auto cur = itr.mCurEntry;
-// 
+//
 // 	auto& hashHead = itr.mTypeSet->mHashHeads[itr.mCurBucket];
-// 
+//
 // 	if (hashHead == cur)
 // 		hashHead = cur->mNext;
-// 	if (cur->mPrev != NULL)	
-// 		cur->mPrev->mNext = cur->mNext;		
+// 	if (cur->mPrev != NULL)
+// 		cur->mPrev->mNext = cur->mNext;
 // 	if (cur->mNext != NULL)
-// 		cur->mNext->mPrev = cur->mPrev;	
+// 		cur->mNext->mPrev = cur->mPrev;
 // 	delete cur;
-// 
+//
 // 	//BfLogSys("Deleting node %@ from bucket %d\n", cur, itr.mCurBucket);
-// 
+//
 // 	mSize--;
 // 	return next;
 // }
@@ -4965,8 +5131,8 @@ BfHotTypeVersion::~BfHotTypeVersion()
 BfHotTypeData::~BfHotTypeData()
 {
 	for (auto version : mTypeVersions)
-	{		
-		version->Deref();		
+	{
+		version->Deref();
 	}
 }
 
@@ -4977,7 +5143,7 @@ BfHotTypeVersion* BfHotTypeData::GetTypeVersion(int hotCommitedIdx)
 		BfHotTypeVersion* hotTypeVersion = mTypeVersions[checkIdx];
 		if (hotTypeVersion->mDeclHotCompileIdx <= hotCommitedIdx)
 			return hotTypeVersion;
-	}	
+	}
 	return NULL;
 }
 
@@ -4988,7 +5154,7 @@ BfHotTypeVersion* BfHotTypeData::GetLatestVersion()
 
 BfHotTypeVersion* BfHotTypeData::GetLatestVersionHead()
 {
-	auto lastestVersion = mTypeVersions.back();	
+	auto lastestVersion = mTypeVersions.back();
 	for (int versionIdx = (int)mTypeVersions.size() - 1; versionIdx >= 0; versionIdx--)
 	{
 		auto checkVersion = mTypeVersions[versionIdx];
@@ -5016,9 +5182,9 @@ void BfHotTypeData::ClearVersionsAfter(int hotIdx)
 }
 
 void BfHotDepData::Deref()
-{	
+{
 	mRefCount--;
-	BF_ASSERT(mRefCount >= 0);	
+	BF_ASSERT(mRefCount >= 0);
 
 	if (mRefCount == 0)
 	{
@@ -5050,7 +5216,7 @@ void BfHotDepData::Deref()
 			break;
 		case BfHotDepDataKind_VirtualDecl:
 			delete (BfHotVirtualDeclaration*)this;
-			break;		
+			break;
 		default:
 			BF_FATAL("Not handled");
 		}
@@ -5058,7 +5224,7 @@ void BfHotDepData::Deref()
 }
 
 void BfHotMethod::Clear(bool keepDupMethods)
-{	
+{
 	if (mPrevVersion != NULL)
 	{
 		mPrevVersion->Deref();
@@ -5067,10 +5233,10 @@ void BfHotMethod::Clear(bool keepDupMethods)
 
 	if (mSrcTypeVersion != NULL)
 	{
-		mSrcTypeVersion->Deref();		
+		mSrcTypeVersion->Deref();
 		mSrcTypeVersion = NULL;
-	}	
-	
+	}
+
 	if ((keepDupMethods) && ((mFlags & BfHotDepDataFlag_HasDup) != 0))
 	{
 		int writeIdx = 0;
@@ -5096,7 +5262,6 @@ void BfHotMethod::Clear(bool keepDupMethods)
 		}
 		mReferences.Clear();
 	}
-	
 }
 
 BfHotMethod::~BfHotMethod()
@@ -5121,7 +5286,7 @@ String BfTypeUtils::HashEncode64(uint64 val)
 		uint64 flippedNum = (uint64)-(int64)val;
 		// Only flip if the encoded result would actually be shorter
 		if (flippedNum <= 0x00FFFFFFFFFFFFFFLL)
-		{			
+		{
 			val = flippedNum;
 			outStr.Append('_');
 		}
@@ -5131,7 +5296,7 @@ String BfTypeUtils::HashEncode64(uint64 val)
 	{
 		int charIdx = val % 0x3F;
 		val /= 0x3F;
-		outStr.Append(cHash64bToChar[charIdx]);		
+		outStr.Append(cHash64bToChar[charIdx]);
 	}
 
 	return outStr;
@@ -5157,7 +5322,7 @@ String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 		return "";
 
 	if (auto typeDefTypeRef = BfNodeDynCast<BfDirectTypeDefReference>(typeRef))
-	{		
+	{
 		if (!typeDefTypeRef->mTypeDef->mNamespace.IsEmpty())
 			return typeDefTypeRef->mTypeDef->mNamespace.ToString() + "." + typeDefTypeRef->mTypeDef->mName->mString;
 		else
@@ -5165,12 +5330,12 @@ String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 	}
 
 	if (typeRef->IsNamedTypeReference())
-	{		
+	{
 		return typeRef->ToString();
 	}
 
 	if (auto ptrType = BfNodeDynCast<BfPointerTypeRef>(typeRef))
-		return TypeToString(ptrType->mElementType) + "*";	
+		return TypeToString(ptrType->mElementType) + "*";
 	if (auto ptrType = BfNodeDynCast<BfArrayTypeRef>(typeRef))
 	{
 		String name = TypeToString(ptrType->mElementType) + "[";
@@ -5220,7 +5385,7 @@ String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 		{
 			if (i > 0)
 				name += ", ";
-			name += TypeToString(tupleTypeRef->mFieldTypes[i]);			
+			name += TypeToString(tupleTypeRef->mFieldTypes[i]);
 			if ((i < tupleTypeRef->mFieldNames.size()) && (tupleTypeRef->mFieldNames[i] != NULL))
 			{
 				name += " ";
@@ -5246,9 +5411,9 @@ String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 bool BfTypeUtils::TypeEquals(BfType* typeA, BfType* typeB, BfTypeInstance* selfType)
 {
 	if (typeA->IsUnspecializedTypeVariation())
-		typeA = selfType->mModule->ResolveSelfType(typeA, selfType);	
+		typeA = selfType->mModule->ResolveSelfType(typeA, selfType);
 	if (typeB->IsUnspecializedTypeVariation())
-		typeB = selfType->mModule->ResolveSelfType(typeB, selfType);	
+		typeB = selfType->mModule->ResolveSelfType(typeB, selfType);
 	return typeA == typeB;
 }
 
@@ -5260,7 +5425,7 @@ String BfTypeUtils::TypeToString(BfTypeDef* typeDef, BfTypeNameFlags typeNameFla
 }
 
 bool BfTypeUtils::TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags)
-{	
+{
 	auto checkTypeDef = typeDef;
 	char needsSep = 0;
 
@@ -5268,7 +5433,7 @@ bool BfTypeUtils::TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFl
 	{
 		if (TypeToString(str, checkTypeDef->mOuterType, typeNameFlags))
 		{
-			if ((typeNameFlags & BfTypeNameFlag_InternalName) != 0) 
+			if ((typeNameFlags & BfTypeNameFlag_InternalName) != 0)
 				needsSep = '+';
 			else
 				needsSep = '.';
@@ -5280,15 +5445,15 @@ bool BfTypeUtils::TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFl
 		{
 			typeDef->mNamespace.ToString(str);
 			needsSep = '.';
-		}		
+		}
 	}
 
 	if (needsSep != 0)
 		str += needsSep;
-	
+
 	if (((typeNameFlags & BfTypeNameFlag_HideGlobalName) != 0) && (typeDef->IsGlobalsContainer()))
 		return false;
-		
+
 	typeDef->mName->ToString(str);
 
 	if (typeDef->mGenericParamDefs.size() != 0)
@@ -5296,7 +5461,7 @@ bool BfTypeUtils::TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFl
 		int prevGenericParamCount = 0;
 		if (checkTypeDef->mOuterType != NULL)
 			prevGenericParamCount = (int)typeDef->mOuterType->mGenericParamDefs.size();
-		
+
 		if (prevGenericParamCount != (int)checkTypeDef->mGenericParamDefs.size())
 		{
 			str += "<";

@@ -57,7 +57,6 @@
 USING_NS_BF;
 using namespace llvm;
 
-
 String BfCodeGenDirectoryData::GetDataFileName()
 {
 	return mDirectoryName + "/build.dat";
@@ -89,7 +88,7 @@ void BfCodeGenDirectoryData::Read()
 	for (int fileIdx = 0; fileIdx < numFiles; fileIdx++)
 	{
 		String fileName = fileStream.ReadAscii32SizedString();
-		BfCodeGenFileData fileData;		
+		BfCodeGenFileData fileData;
 		fileStream.Read(&fileData.mIRHash, sizeof(Val128));
 		fileStream.Read(&fileData.mIROrderedHash, sizeof(Val128));
 		fileStream.Read(&fileData.mLastWasObjectWrite, sizeof(bool));
@@ -159,7 +158,7 @@ void BfCodeGenDirectoryData::Write()
 }
 
 void BfCodeGenDirectoryData::Verify()
-{	
+{
 	if (!mError.empty())
 		return;
 
@@ -171,12 +170,12 @@ void BfCodeGenDirectoryData::Verify()
 	}
 	else
 	{
-		mError = "Build directory corrupted, perform clean";		
-	}	
+		mError = "Build directory corrupted, perform clean";
+	}
 }
 
 void BfCodeGenDirectoryData::Clear()
-{	
+{
 	mFileMap.Clear();
 	mBuildSettings.Clear();
 }
@@ -187,16 +186,16 @@ bool BfCodeGenDirectoryData::CheckCache(const StringImpl& fileName, Val128 hash,
 		Verify();
 
 	BfCodeGenFileData* fileData = NULL;
-	
+
 	if (!mFileMap.TryAdd(fileName, NULL, &fileData))
-	{	
+	{
 		if ((fileData->mLastWasObjectWrite) && (disallowObjectWrite))
 			return false;
 		if (outOrderedHash != NULL)
 			*outOrderedHash = fileData->mIROrderedHash;
-		if (fileData->mIRHash == hash)								
-			return true;		
-		fileData->mIRHash = hash;		
+		if (fileData->mIRHash == hash)
+			return true;
+		fileData->mIRHash = hash;
 		return false;
 	}
 
@@ -212,9 +211,9 @@ void BfCodeGenDirectoryData::SetHash(const StringImpl& fileName, Val128 hash, Va
 
 	BfCodeGenFileData* fileData = NULL;
 
-	mFileMap.TryAdd(fileName, NULL, &fileData);	
+	mFileMap.TryAdd(fileName, NULL, &fileData);
 	fileData->mIRHash = hash;
-	fileData->mIROrderedHash = orderedHash;	
+	fileData->mIROrderedHash = orderedHash;
 	fileData->mLastWasObjectWrite = isObjectWrite;
 }
 
@@ -222,7 +221,6 @@ void BfCodeGenDirectoryData::ClearHash(const StringImpl& fileName)
 {
 	mFileMap.Remove(fileName);
 }
-
 
 void BfCodeGenDirectoryData::FileFailed()
 {
@@ -240,7 +238,7 @@ String BfCodeGenDirectoryData::GetValue(const StringImpl& key)
 }
 
 void BfCodeGenDirectoryData::SetValue(const StringImpl& key, const StringImpl& value)
-{	
+{
 	mBuildSettings[key] = value;
 }
 
@@ -265,16 +263,16 @@ void DbgSaveData(BfCodeGenRequest* genRequest)
 //////////////////////////////////////////////////////////////////////////
 
 BfCodeGenThread::BfCodeGenThread()
-{	
+{
 	mShuttingDown = false;
-	mRunning = false;		
+	mRunning = false;
 	mThreadIdx = 0;
 	mCodeGen = NULL;
 }
 
 BfCodeGenThread::~BfCodeGenThread()
 {
-	Shutdown();		
+	Shutdown();
 }
 
 void BfCodeGenThread::RunLoop()
@@ -282,21 +280,21 @@ void BfCodeGenThread::RunLoop()
 	String threadName = StrFormat("CodeGen/Worker %d", mThreadIdx);
 	BpSetThreadName(threadName.c_str());
 	BfpThread_SetName(NULL, threadName.c_str(), NULL);
-		
+
 	while (!mShuttingDown)
-	{				
+	{
 		BfCodeGenRequest* request = NULL;
 		{
 			AutoCrit autoCrit(mCodeGen->mPendingRequestCritSect);
 			if (!mCodeGen->mPendingRequests.IsEmpty())
 			{
 				request = mCodeGen->mPendingRequests[0];
-				mCodeGen->mPendingRequests.RemoveAt(0);				
+				mCodeGen->mPendingRequests.RemoveAt(0);
 			}
 		}
 
 		if (request == NULL)
-		{			
+		{
 			mCodeGen->mRequestEvent.WaitFor(20);
 			continue;
 		}
@@ -318,7 +316,7 @@ void BfCodeGenThread::RunLoop()
 
 #ifndef CODEGEN_DISABLE_CACHE
 		{
-			AutoCrit autoCrit(mCodeGen->mCacheCritSect);						
+			AutoCrit autoCrit(mCodeGen->mCacheCritSect);
 			dirCache = mCodeGen->GetDirCache(cacheDir);
 
 			//For testing only!
@@ -328,11 +326,11 @@ void BfCodeGenThread::RunLoop()
 				fileStr.Write(request->mData.mVals, request->mData.mSize);
 			}*/
 
-			HashContext hashCtx;						
+			HashContext hashCtx;
 			hashCtx.Mixin(request->mOptions.mHash);
-			hashCtx.Mixin(request->mData.mVals, request->mData.mSize);			
+			hashCtx.Mixin(request->mData.mVals, request->mData.mSize);
 			hash = hashCtx.Finish128();
-						
+
 			hasCacheMatch = dirCache->CheckCache(cacheFileName, hash, &orderedHash, isLibWrite);
 
 #ifdef BF_PLATFORM_WINDOWS
@@ -346,10 +344,9 @@ void BfCodeGenThread::RunLoop()
 					hash = Val128();
 					hasCacheMatch = false;
 				}
-			}			
+			}
 
 #endif
-
 		}
 #endif
 
@@ -360,7 +357,7 @@ void BfCodeGenThread::RunLoop()
 			hasCacheMatch = false;
 #endif
 
-		String errorMsg;		
+		String errorMsg;
 
 		bool doBEProcessing = true; // TODO: Normally 'true' so we do ordered cache check for LLVM too
 		if (request->mOptions.mOptLevel == BfOptLevel_OgPlus)
@@ -375,7 +372,7 @@ void BfCodeGenThread::RunLoop()
 		}
 		else
 		{
-#ifdef BF_PLATFORM_WINDOWS			
+#ifdef BF_PLATFORM_WINDOWS
 			BeIRCodeGen* beIRCodeGen = new BeIRCodeGen();
 			defer ( delete beIRCodeGen; );
 
@@ -383,17 +380,17 @@ void BfCodeGenThread::RunLoop()
 			beIRCodeGen->SetConfigConst(BfIRConfigConst_DynSlotOfs, request->mOptions.mDynSlotOfs);
 
 			if (doBEProcessing)
-			{				
-				BP_ZONE("ProcessBfIRData");			
+			{
+				BP_ZONE("ProcessBfIRData");
 				beIRCodeGen->Init(request->mData);
 
 				BeHashContext hashCtx;
 				hashCtx.Mixin(request->mOptions.mHash);
-				beIRCodeGen->Hash(hashCtx);				
+				beIRCodeGen->Hash(hashCtx);
 				auto newOrderedHash = hashCtx.Finish128();
 				BfLogX(2, "Ordered hash for %s New:%s Old:%s\n", cacheFileName.c_str(), newOrderedHash.ToString().c_str(), orderedHash.ToString().c_str());
 				hasCacheMatch = newOrderedHash == orderedHash;
-				
+
 				errorMsg = beIRCodeGen->mErrorMsg;
 				orderedHash = newOrderedHash;
 			}
@@ -402,10 +399,10 @@ void BfCodeGenThread::RunLoop()
 			{
 				result.mType = BfCodeGenResult_DoneCached;
 			}
-			
+
 #ifndef CODEGEN_DISABLE_CACHE
 			{
-				AutoCrit autoCrit(mCodeGen->mCacheCritSect);								
+				AutoCrit autoCrit(mCodeGen->mCacheCritSect);
 				dirCache->SetHash(cacheFileName, hash, orderedHash, !isLibWrite);
 			}
 #endif
@@ -416,7 +413,7 @@ void BfCodeGenThread::RunLoop()
 				//
 			}
 			else if (request->mOptions.mOptLevel == BfOptLevel_OgPlus)
-			{				
+			{
 #ifdef BF_PLATFORM_WINDOWS
 				BP_ZONE("BfCodeGen::RunLoop.Beef");
 
@@ -432,7 +429,7 @@ void BfCodeGenThread::RunLoop()
 					{
 						if (!errorMsg.empty())
 							errorMsg += "\n";
-						errorMsg += "Failed writing IR '" + fileName + "': " + ec.message();						
+						errorMsg += "Failed writing IR '" + fileName + "': " + ec.message();
 					}
 					else
 						fs.WriteSNZ(str);
@@ -445,9 +442,9 @@ void BfCodeGenThread::RunLoop()
 				BfLogX(2, "Generating obj %s\n", request->mOutFileName.c_str());
 
 				BeCOFFObject coffObject;
-				coffObject.mWriteToLib = request->mOptions.mWriteToLib;				
+				coffObject.mWriteToLib = request->mOptions.mWriteToLib;
 				if (!coffObject.Generate(beIRCodeGen->mBeModule, objFileName))
-					errorMsg = StrFormat("Failed to write object file: %s", objFileName.c_str());				
+					errorMsg = StrFormat("Failed to write object file: %s", objFileName.c_str());
 
 				if (!beIRCodeGen->mErrorMsg.IsEmpty())
 				{
@@ -467,14 +464,14 @@ void BfCodeGenThread::RunLoop()
 				BfIRCodeGen* llvmIRCodeGen = new BfIRCodeGen();
 				llvmIRCodeGen->SetCodeGenOptions(request->mOptions);
 				llvmIRCodeGen->SetConfigConst(BfIRConfigConst_VirtualMethodOfs, request->mOptions.mVirtualMethodOfs);
-				llvmIRCodeGen->SetConfigConst(BfIRConfigConst_DynSlotOfs, request->mOptions.mDynSlotOfs);				
+				llvmIRCodeGen->SetConfigConst(BfIRConfigConst_DynSlotOfs, request->mOptions.mDynSlotOfs);
 				llvmIRCodeGen->ProcessBfIRData(request->mData);
-								
+
 				errorMsg = llvmIRCodeGen->mErrorMsg;
 				llvmIRCodeGen->mErrorMsg.Clear();
 
 				if (errorMsg.IsEmpty())
-				{					
+				{
 					if (request->mOptions.mWriteLLVMIR)
 					{
 						BP_ZONE("BfCodeGen::RunLoop.LLVM.IR");
@@ -503,16 +500,16 @@ void BfCodeGenThread::RunLoop()
 							result.mType = BfCodeGenResult_Failed;
 							dirCache->FileFailed();
 						}
-					}					
+					}
 				}
-								
+
 				if (!llvmIRCodeGen->mErrorMsg.IsEmpty())
 				{
 					if (!errorMsg.IsEmpty())
 						errorMsg += "\n";
 					errorMsg += llvmIRCodeGen->mErrorMsg;
 				}
-				
+
 				delete llvmIRCodeGen;
 			}
 		}
@@ -538,9 +535,9 @@ void BfCodeGenThread::RunLoop()
 			// It's an extern request, so we own this
 			bool deleteRequest = false;
 			if (request->mExternResultPtr != NULL)
-			{					
+			{
 				*request->mExternResultPtr = result;
-				deleteRequest = true;					
+				deleteRequest = true;
 			}
 
 			// We need this fence for BF_USE_CODEGEN_RELEASE_THUNK usage- because we can't access the request anymore after setting
@@ -549,21 +546,21 @@ void BfCodeGenThread::RunLoop()
 
 			AutoCrit autoCrit(mCodeGen->mPendingRequestCritSect);
 			request->mResult = result;
-			mCodeGen->mDoneEvent.Set();				
+			mCodeGen->mDoneEvent.Set();
 			if (deleteRequest)
 				delete request;
-		}				
+		}
 	}
 
 	mRunning = false;
-	mCodeGen->mDoneEvent.Set();	
+	mCodeGen->mDoneEvent.Set();
 }
 
 void BfCodeGenThread::Shutdown()
 {
 	mShuttingDown = true;
 	if (mRunning)
-		mCodeGen->mRequestEvent.Set(true);	
+		mCodeGen->mRequestEvent.Set(true);
 
 	while (mRunning)
 	{
@@ -580,11 +577,11 @@ static void BFP_CALLTYPE RunLoopThunk(void* codeGenThreadP)
 
 void BfCodeGenThread::Start()
 {
-	mRunning = true;	
+	mRunning = true;
 	//TODO: How much mem do we need? WTF- we have 32MB set before!
 	auto mThread = BfpThread_Create(RunLoopThunk, (void*)this, 1024 * 1024, BfpThreadCreateFlag_StackSizeReserve);
 	BfpThread_SetPriority(mThread, BfpThreadPriority_Low, NULL);
-	BfpThread_Release(mThread);	
+	BfpThread_Release(mThread);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -592,7 +589,7 @@ void BfCodeGenThread::Start()
 BfCodeGen::BfCodeGen()
 {
 	mAttemptedReleaseThunkLoad = false;
-	mIsUsingReleaseThunk = false;	
+	mIsUsingReleaseThunk = false;
 	mReleaseModule = NULL;
 	mClearCacheFunc = NULL;
 	mGetVersionFunc = NULL;
@@ -600,10 +597,10 @@ BfCodeGen::BfCodeGen()
 	mCancelFunc = NULL;
 	mFinishFunc = NULL;
 	mGenerateObjFunc = NULL;
-	
+
 	mRequestIdx = 0;
 #ifdef MAX_THREADS
-	mMaxThreadCount = MAX_THREADS;	
+	mMaxThreadCount = MAX_THREADS;
 #else
 	mMaxThreadCount = 6;
 #endif
@@ -703,7 +700,7 @@ void BfCodeGen::UpdateStats()
 		auto request = mRequests[0];
 		if (request->mResult.mType == BfCodeGenResult_NotDone)
 			return;
-		
+
 		RequestComplete(request);
 		delete request;
 		mRequests.RemoveAt(0);
@@ -732,7 +729,7 @@ void BfCodeGen::ClearBuildCache()
 	for (auto& dirCachePair : mDirectoryCache)
 	{
 		auto dirData = dirCachePair.mValue;
-		dirData->Clear();		
+		dirData->Clear();
 	}
 	// This just disables reading the cache file, but it does not disable creating
 	//  the cache structes in memory and writing them out, thus it's valid to leave
@@ -747,9 +744,9 @@ void BfCodeGen::ClearBuildCache()
 }
 
 void BfCodeGen::DoWriteObjectFile(BfCodeGenRequest* codeGenRequest, const void* ptr, int size, const StringImpl& outFileName, BfCodeGenResult* externResultPtr)
-{	
+{
 	codeGenRequest->mData.mVals = (uint8*)ptr;
-	codeGenRequest->mData.mSize = size;	
+	codeGenRequest->mData.mSize = size;
 	codeGenRequest->mOutFileName = outFileName;
 	codeGenRequest->mResult.mType = BfCodeGenResult_NotDone;
 	codeGenRequest->mResult.mErrorMsgBufLen = 0;
@@ -769,11 +766,11 @@ void BfCodeGen::DoWriteObjectFile(BfCodeGenRequest* codeGenRequest, const void* 
 	auto thread = mThreads[threadIdx];
 
 	BP_ZONE("WriteObjectFile_CritSect");
-	AutoCrit autoCrit(mPendingRequestCritSect);	
+	AutoCrit autoCrit(mPendingRequestCritSect);
 	mPendingRequests.push_back(codeGenRequest);
 
 #ifdef BF_PLATFORM_WINDOWS
-	BF_ASSERT(!mRequestEvent.mEvent->mManualReset); // Make sure it's out of the SignalAll state	
+	BF_ASSERT(!mRequestEvent.mEvent->mManualReset); // Make sure it's out of the SignalAll state
 #endif
 	mRequestEvent.Set();
 
@@ -843,11 +840,11 @@ bool BfCodeGen::ExternWriteObjectFile(BfCodeGenRequest* codeGenRequest)
 #ifndef BF_USE_CODEGEN_RELEASE_THUNK
 	return false;
 #endif
-	
+
 	BindReleaseThunks();
 
 	if (!mIsUsingReleaseThunk)
-		return false;	
+		return false;
 
 	mGenerateObjFunc(codeGenRequest->mData.mVals, codeGenRequest->mData.mSize, codeGenRequest->mOutFileName.c_str(), &codeGenRequest->mResult, codeGenRequest->mOptions);
 
@@ -855,15 +852,15 @@ bool BfCodeGen::ExternWriteObjectFile(BfCodeGenRequest* codeGenRequest)
 }
 
 void BfCodeGen::WriteObjectFile(BfModule* bfModule, const StringImpl& outFileName, const BfCodeGenOptions& options)
-{		
+{
 	mQueuedCount++;
-	
+
 	BfLogSys(bfModule->mSystem, "WriteObjectFile %s\n", outFileName.c_str());
 
-	BfCodeGenRequest* codeGenRequest = new BfCodeGenRequest();	
+	BfCodeGenRequest* codeGenRequest = new BfCodeGenRequest();
 	mRequests.push_back(codeGenRequest);
-	
-	{			
+
+	{
 		BP_ZONE("WriteObjectFile_GetBufferData");
 		bfModule->mBfIRBuilder->GetBufferData(codeGenRequest->mOutBuffer);
 	}
@@ -873,13 +870,13 @@ void BfCodeGen::WriteObjectFile(BfModule* bfModule, const StringImpl& outFileNam
 		rootModule = rootModule->mParentModule;
 
 	codeGenRequest->mSrcModule = rootModule;
-	codeGenRequest->mOutFileName = outFileName;	
-	codeGenRequest->mData = codeGenRequest->mOutBuffer;	
+	codeGenRequest->mOutFileName = outFileName;
+	codeGenRequest->mData = codeGenRequest->mOutBuffer;
 	codeGenRequest->mOptions = options;
 	if (ExternWriteObjectFile(codeGenRequest))
-		return;	
+		return;
 
-	DoWriteObjectFile(codeGenRequest, (void*)&codeGenRequest->mOutBuffer[0], (int)codeGenRequest->mOutBuffer.size(), codeGenRequest->mOutFileName, NULL);		
+	DoWriteObjectFile(codeGenRequest, (void*)&codeGenRequest->mOutBuffer[0], (int)codeGenRequest->mOutBuffer.size(), codeGenRequest->mOutFileName, NULL);
 
 #ifdef DBG_FORCE_SYNCHRONIZED
 	while (mRequests.size() != 0)
@@ -918,7 +915,7 @@ void BfCodeGen::RequestComplete(BfCodeGenRequest* request)
 	if ((request->mResult.mType == BfCodeGenResult_Failed) || (request->mResult.mType == BfCodeGenResult_Aborted))
 	{
 		BfCodeGenErrorEntry errorEntry;
-		errorEntry.mSrcModule = request->mSrcModule;		
+		errorEntry.mSrcModule = request->mSrcModule;
 		errorEntry.mOutFileName = request->mOutFileName;
 
 		int errorPos = 0;
@@ -928,7 +925,7 @@ void BfCodeGen::RequestComplete(BfCodeGenRequest* request)
 			errorEntry.mErrorMessages.push_back(errorStr);
 			errorPos += (int)strlen(errorStr) + 1;
 		}
-		
+
 		mFailedRequests.push_back(errorEntry);
 	}
 	else
@@ -970,7 +967,7 @@ void BfCodeGen::ProcessErrors(BfPassInstance* passInstance, bool canceled)
 			{
 				passInstance->Fail(dirEntry->mError);
 				showedCacheError = true;
-			}			
+			}
 			dirEntry->mError.clear();
 		}
 	}
@@ -1000,7 +997,7 @@ void BfCodeGen::Cancel()
 {
 	for (auto thread : mThreads)
 	{
-		thread->mShuttingDown = true;		
+		thread->mShuttingDown = true;
 	}
 
 	mRequestEvent.Set(true);
@@ -1016,9 +1013,9 @@ void BfCodeGen::ClearResults()
 }
 
 bool BfCodeGen::Finish()
-{	
+{
 	BP_ZONE("BfCodeGen::Finish");
-		
+
 	while (mRequests.size() != 0)
 	{
 		auto request = mRequests[0];
@@ -1047,7 +1044,7 @@ bool BfCodeGen::Finish()
 		return false;
 	}
 
-	if (mIsUsingReleaseThunk)	
+	if (mIsUsingReleaseThunk)
 	{
 		// Make the thunk release its threads (and more important, its LLVM contexts)
 		mFinishFunc();
@@ -1056,14 +1053,14 @@ bool BfCodeGen::Finish()
 	// We need to shut down these threads to remove their memory
 	for (auto thread : mThreads)
 	{
-		thread->mShuttingDown = true;		
-		mOldThreads.push_back(thread);		
+		thread->mShuttingDown = true;
+		mOldThreads.push_back(thread);
 	}
 	mThreads.Clear();
 	mRequestEvent.Set(true);
 
 	ClearOldThreads(false);
-		
+
 // 	for (auto request : mPendingRequests)
 // 	{
 // 		if (request->mExternResultPtr != NULL)
@@ -1073,7 +1070,7 @@ bool BfCodeGen::Finish()
 // 		}
 // 		//request->mResult.mType = BfCodeGenResult_Aborted;
 // 		//delete request;
-// 	}	
+// 	}
 // 	mPendingRequests.Clear();
 
 	///
@@ -1113,8 +1110,8 @@ BF_EXPORT int BF_CALLTYPE BfCodeGen_GetVersion()
 
 BF_EXPORT void BF_CALLTYPE BfCodeGen_ClearCache()
 {
-	GetExternCodeGen();	
-	gExternCodeGen->ClearBuildCache();	
+	GetExternCodeGen();
+	gExternCodeGen->ClearBuildCache();
 }
 
 BF_EXPORT void BF_CALLTYPE BfCodeGen_Finish()
@@ -1129,7 +1126,7 @@ BF_EXPORT void BF_CALLTYPE BfCodeGen_Finish()
 BF_EXPORT void BF_CALLTYPE BfCodeGen_Kill()
 {
 	delete gExternCodeGen;
-	gExternCodeGen = NULL;	
+	gExternCodeGen = NULL;
 	Targets_Delete();
 }
 
@@ -1140,11 +1137,10 @@ BF_EXPORT void BF_CALLTYPE BfCodeGen_Cancel()
 }
 
 BF_EXPORT void BF_CALLTYPE BfCodeGen_GenerateObj(const void* ptr, int size, const char* outFileName, BfCodeGenResult* resultPtr, const BfCodeGenOptions& options)
-{	
+{
 	GetExternCodeGen();
 
-	BfCodeGenRequest* codeGenRequest = new BfCodeGenRequest();	
+	BfCodeGenRequest* codeGenRequest = new BfCodeGenRequest();
 	codeGenRequest->mOptions = options;
 	gExternCodeGen->DoWriteObjectFile(codeGenRequest, ptr, size, outFileName, resultPtr);
 }
-

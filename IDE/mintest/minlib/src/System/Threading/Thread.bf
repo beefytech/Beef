@@ -78,6 +78,11 @@ namespace System.Threading
                 }
             }
 
+			static void Thread_Exiting()
+			{
+				
+			}
+
             public static this()
             {
                 var cb = ref Runtime.BfRtCallbacks.[Friend]sCallbacks;
@@ -90,6 +95,7 @@ namespace System.Threading
                 cb.[Friend]mThread_IsAutoDelete = => Thread_IsAutoDelete;
                 cb.[Friend]mThread_AutoDelete = => Thread_AutoDelete;
                 cb.[Friend]mThread_GetMaxStackSize = => Thread_GetMaxStackSize;
+                cb.[Friend]mThread_Exiting = => Thread_Exiting;
             }
         }
 
@@ -280,9 +286,10 @@ namespace System.Threading
             }
         }
 
-        extern int32 GetThreadId();
+        [CallingConvention(.Cdecl)]
+        extern int GetThreadId();
 
-        public int32 Id
+        public int Id
         {
             get
             {

@@ -1,4 +1,3 @@
-
 #pragma warning(disable:4996)
 #include "BeLibManger.h"
 #include "BeefySysLib/util/BeefPerf.h"
@@ -37,7 +36,7 @@ bool BeLibFile::ReadLib()
 	mOldFileStream.Read(fileId, 8);
 	if (strncmp(fileId, "!<arch>\n", 8) != 0)
 		return false;
-	
+
 	const char* libStrTable = NULL;
 
 	Dictionary<int, BeLibEntry*> pendingLibEntryMap;
@@ -62,18 +61,18 @@ bool BeLibFile::ReadLib()
 				mOldFileStream.Read(data, len);
 
 				int numSymbols = FromBigEndian(*(int32*)data);
-				
+
 				uint8* strTab = data + 4 + numSymbols * 4;
 
 				for (int symIdx = 0; symIdx < numSymbols; symIdx++)
-				{					
+				{
 					const char* str = (char*)strTab;
 					strTab += strlen((char*)strTab) + 1;
 
 					int offset = FromBigEndian(((int32*)(data + 4))[symIdx]);
-					
-					BeLibEntry* pendingEntry;					
-					
+
+					BeLibEntry* pendingEntry;
+
 					BeLibEntry** pendingEntryPtr = NULL;
 					if (!pendingLibEntryMap.TryAdd(offset, NULL, &pendingEntryPtr))
 					{
@@ -93,7 +92,6 @@ bool BeLibFile::ReadLib()
 			}
 			else
 			{
-
 			}
 		}
 		else if (strncmp(header.mName, "// ", 3) == 0)
@@ -115,7 +113,7 @@ bool BeLibFile::ReadLib()
 						fileName.Append(&libStrTable[tabIdx], checkIdx - tabIdx);
 						break;
 					}
-				}				
+				}
 			}
 			else
 			{
@@ -125,9 +123,9 @@ bool BeLibFile::ReadLib()
 						fileName.Append(&header.mName[0], i);
 				}
 			}
-			
+
 			BeLibEntry* libEntry = NULL;
-			
+
 			if (!pendingLibEntryMap.TryGetValue(headerFilePos, &libEntry))
 			{
 				libEntry = new BeLibEntry();
@@ -171,11 +169,11 @@ bool BeLibFile::ReadLib()
 }
 
 bool BeLibFile::Init(const StringImpl& filePath, bool moveFile)
-{	
-	bool isInitialized = false;		
+{
+	bool isInitialized = false;
 
 	if (FileExists(filePath))
-	{		
+	{
 		String altName;
 		if (moveFile)
 		{
@@ -196,14 +194,14 @@ bool BeLibFile::Init(const StringImpl& filePath, bool moveFile)
 
 		if (!mOldFileStream.Open(altName, "rb"))
 			return false;
-		
+
 		if (!ReadLib())
 			return false;
-	}	
-	
-	String newLibName = filePath;	
+	}
+
+	String newLibName = filePath;
 	mFilePath = newLibName;
-	
+
 	return true;
 }
 
@@ -212,9 +210,9 @@ bool BeLibFile::Finish()
 	BP_ZONE("BeLibFile::Finish");
 
 	//mOldEntries.clear();
-	
-	Dictionary<String, BeLibEntry*>* libEntryMaps[2] = { &mEntries, &mOldEntries };	
-	
+
+	Dictionary<String, BeLibEntry*>* libEntryMaps[2] = { &mEntries, &mOldEntries };
+
 	Array<BeLibEntry*> libEntries;
 
 	bool isAllReferenced = true;
@@ -241,7 +239,7 @@ bool BeLibFile::Finish()
 	}
 
 	if (!mFileStream.Open(mFilePath, "wb"))
-	{		
+	{
 		mFailed = true;
 		return false;
 	}
@@ -255,7 +253,7 @@ bool BeLibFile::Finish()
 
 	mFileStream.Write("!<arch>\n", 8);
 
-	std::sort(libEntries.begin(), libEntries.end(), 
+	std::sort(libEntries.begin(), libEntries.end(),
 			[&](BeLibEntry* lhs, BeLibEntry* rhs)
 		{
 			return lhs->mName < rhs->mName;
@@ -263,12 +261,12 @@ bool BeLibFile::Finish()
 
 	int longNamesSize = 0;
 
-	int tabSize = 4; // num symbols	
+	int tabSize = 4; // num symbols
 	int numSymbols = 0;
 	for (auto libEntry : libEntries)
 	{
 		if (libEntry->mName.length() > 15)
-		{				
+		{
 			longNamesSize += (int)libEntry->mName.length() + 2;
 		}
 
@@ -277,28 +275,27 @@ bool BeLibFile::Finish()
 			numSymbols++;
 			tabSize += 4; // Offset
 			tabSize += (int)sym.length() + 1; // String table
-		}	
+		}
 	}
-	
+
 	// Determine where all these entries will be placed
 	int predictPos = mFileStream.GetPos() + sizeof(BeLibMemberHeader) + BF_ALIGN(tabSize, 2);
 
 	if (longNamesSize > 0)
-		predictPos += sizeof(BeLibMemberHeader) + BF_ALIGN(longNamesSize, 2);	
+		predictPos += sizeof(BeLibMemberHeader) + BF_ALIGN(longNamesSize, 2);
 
 	for (auto libEntry : libEntries)
 	{
 		libEntry->mNewDataPos = predictPos;
-			
+
 		predictPos += sizeof(BeLibMemberHeader);
-		predictPos += BF_ALIGN(libEntry->mLength, 2);	
+		predictPos += BF_ALIGN(libEntry->mLength, 2);
 	}
 
 	int tabStartPos = mFileStream.GetPos();
-	
-	
+
 	BeLibMemberHeader header;
-	header.Init("/", "0", tabSize);	
+	header.Init("/", "0", tabSize);
 	mFileStream.WriteT(header);
 
 	mFileStream.Write(ToBigEndian((int32)numSymbols));
@@ -308,7 +305,7 @@ bool BeLibFile::Finish()
 		for (auto& sym : libEntry->mSymbols)
 		{
 			mFileStream.Write((int32)ToBigEndian(libEntry->mNewDataPos));
-		}		
+		}
 	}
 
 	// String map table
@@ -317,11 +314,11 @@ bool BeLibFile::Finish()
 		for (auto& sym : libEntry->mSymbols)
 		{
 			mFileStream.Write((uint8*)sym.c_str(), (int)sym.length() + 1);
-		}	
+		}
 	}
 
 	int actualTabSize = mFileStream.GetPos() - tabStartPos - sizeof(BeLibMemberHeader);
-	
+
 	//return true;
 
 	if ((tabSize % 2) != 0)
@@ -332,16 +329,16 @@ bool BeLibFile::Finish()
 	// Create long names table
 	if (longNamesSize > 0)
 	{
-		header.Init("//", "0", longNamesSize);		
+		header.Init("//", "0", longNamesSize);
 		mFileStream.WriteT(header);
 
 		for (auto libEntry : libEntries)
 		{
-			if (libEntry->mName.length() > 15)				
+			if (libEntry->mName.length() > 15)
 			{
 				mFileStream.Write((uint8*)libEntry->mName.c_str(), (int)libEntry->mName.length());
 				mFileStream.Write("/\n", 2);
-			}			
+			}
 		}
 
 		if ((longNamesSize % 2) != 0)
@@ -357,9 +354,9 @@ bool BeLibFile::Finish()
 		String entryName;
 
 		if (libEntry->mName.length() > 15)
-		{			
-			char idxStr[32]; 
-			_itoa(longNamesPos, idxStr, 10);				
+		{
+			char idxStr[32];
+			_itoa(longNamesPos, idxStr, 10);
 			entryName = "/";
 			entryName += idxStr;
 			longNamesPos += (int)libEntry->mName.length() + 2;
@@ -370,7 +367,7 @@ bool BeLibFile::Finish()
 			entryName += "/";
 		}
 
-		header.Init(entryName.c_str(), "644", libEntry->mLength);	
+		header.Init(entryName.c_str(), "644", libEntry->mLength);
 		mFileStream.WriteT(header);
 
 		if (libEntry->mOldDataPos != -1)
@@ -383,11 +380,11 @@ bool BeLibFile::Finish()
 		}
 		else if (libEntry->mData.size() != 0)
 		{
-			mFileStream.Write((uint8*)&libEntry->mData[0], (int)libEntry->mData.size());				
+			mFileStream.Write((uint8*)&libEntry->mData[0], (int)libEntry->mData.size());
 		}
 
 		if ((libEntry->mLength % 2) != 0)
-			mFileStream.Write((uint8)0);	
+			mFileStream.Write((uint8)0);
 	}
 
 	mFileStream.Close();
@@ -448,7 +445,7 @@ BeLibEntry* BeLibManager::AddFile(const StringImpl& filePath, void* data, int si
 		libFile = *libFilePtr;
 	}
 	else
-	{		
+	{
 		libFile = new BeLibFile();
 		*libFilePtr = libFile;
 
@@ -485,7 +482,7 @@ BeLibEntry* BeLibManager::AddFile(const StringImpl& filePath, void* data, int si
 		// It's possible that we rebuild a type (generic, probably), decide we don't have any refs so we delete the type,
 		//  but then we specialize methods and then have to recreate it.  Thus two entries here.
 		delete *libEntryPtr;
-	}	
+	}
 	libEntry = new BeLibEntry();
 	libEntry->mLibFile = libFile;
 	*libEntryPtr = libEntry;
@@ -494,7 +491,7 @@ BeLibEntry* BeLibManager::AddFile(const StringImpl& filePath, void* data, int si
 	libEntry->mName = fileName;
 	libEntry->mData.Insert(0, (uint8*)data, size);
 	libEntry->mLength = size;
-	
+
 	return libEntry;
 }
 
@@ -534,4 +531,3 @@ BeLibManager* BeLibManager::Get()
 {
 	return &gBfLibManager;
 }
-

@@ -4,8 +4,29 @@ echo Starting build.sh
 PATH=/usr/local/bin:$PATH:$HOME/bin
 SCRIPTPATH=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 ROOTPATH="$(dirname "$SCRIPTPATH")"
-echo Building from from $SCRIPTPATH
+echo Building from $SCRIPTPATH
 cd $SCRIPTPATH
+
+if [[ $1 == "clean" ]]; then
+	rm -rf ../jbuild
+	rm -rf ../jbuild_d
+fi
+
+if command -v ninja >/dev/null 2>&1 ; then
+	CAN_USE_NINJA=1
+	if [ -d ../jbuild_d ] && [ ! -f ../jbuild_d/build.ninja ]; then
+		CAN_USE_NINJA=0
+	fi
+
+	if [ $CAN_USE_NINJA == 1 ]; then
+		echo "Ninja is enabled for this build."
+		USE_NINJA="-GNinja"
+	else
+		echo "Ninja couldn't be enabled for this build, consider doing a clean build to start using Ninja for faster build speeds."
+	fi
+else
+	echo "Ninja isn't installed, consider installing it for faster build speeds."
+fi
 
 # exit when any command fails
 set -e
@@ -16,7 +37,7 @@ if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
 	echo Building libffi...
 	cd ../BeefySysLib/third_party/libffi
 	./configure
-	make	
+	make
 	cd $SCRIPTPATH
 fi
 
@@ -35,19 +56,19 @@ if [ ! -d jbuild_d ]; then
 	mkdir jbuild
 fi
 cd jbuild_d
-cmake -DCMAKE_BUILD_TYPE=Debug ../
+cmake $USE_NINJA -DCMAKE_BUILD_TYPE=Debug ../
 cmake --build .
 cd ../jbuild
-cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
+cmake $USE_NINJA -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
 cmake --build .
 
 cd ../IDE/dist
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
 	LIBEXT=dylib
-	LINKOPTS="-Wl,-no_compact_unwind -Wl,-rpath -Wl,@executable_path"	
+	LINKOPTS="-Wl,-no_compact_unwind -Wl,-rpath -Wl,@executable_path"
 else
-	LIBEXT=so	
+	LIBEXT=so
 	LINKOPTS="-ldl -lpthread -Wl,-rpath -Wl,\$ORIGIN"
 fi
 

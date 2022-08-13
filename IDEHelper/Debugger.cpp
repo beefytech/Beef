@@ -5,7 +5,7 @@
 USING_NS_BF;
 
 DbgModuleMemoryCache::DbgModuleMemoryCache(uintptr addr, int size)
-{	
+{
 	mAddr = addr;
 	mSize = size;
 
@@ -27,7 +27,7 @@ DbgModuleMemoryCache::DbgModuleMemoryCache(uintptr addr, int size)
 // 	mBlocks = new uint8*[1];
 // 	mFlags = new DbgMemoryFlags[1];
 // 	mSize = size;
-// 
+//
 // 	if (makeCopy)
 // 	{
 // 		uint8* dataCopy = new uint8[size];
@@ -40,8 +40,8 @@ DbgModuleMemoryCache::DbgModuleMemoryCache(uintptr addr, int size)
 // 	else
 // 	{
 // 		mBlocks[0] = data;
-// 	}	
-// 
+// 	}
+//
 // 	mOwns = makeCopy;
 // 	mBlockCount = 1;
 // }
@@ -75,7 +75,7 @@ DbgMemoryFlags DbgModuleMemoryCache::Read(uintptr addr, uint8* data, int size)
 	int relAddr = (int)(addr - mAddr);
 	int blockIdx = relAddr / mBlockSize;
 	int curOffset = relAddr % mBlockSize;
-	
+
 	while (sizeLeft > 0)
 	{
 		uint8* block = mBlocks[blockIdx];
@@ -98,7 +98,7 @@ DbgMemoryFlags DbgModuleMemoryCache::Read(uintptr addr, uint8* data, int size)
 		}
 		sizeLeft -= readSize;
 		curOffset = 0;
-		blockIdx++;		
+		blockIdx++;
 	}
 
 	return flags;

@@ -406,14 +406,12 @@ namespace IDE.ui
 		
         void HandleMouseWheel(MouseEvent evt)        
         {
-            if (mChildWidgets.Count == 0)
-                return;
-
-            var lastListView = mChildWidgets[mChildWidgets.Count - 1] as HoverListView;
-            if ((lastListView != null) && (lastListView.mVertScrollbar != null))
-                return;
-
 			if (mListViews.Count > 1)
+			{
+	            return;
+			}
+
+			if (evt.mSender != mWidgetWindow)
 			{
 				var widgetWindow = evt.mSender as BFWindow;
 				while (widgetWindow != null)
@@ -423,6 +421,7 @@ namespace IDE.ui
 					widgetWindow = widgetWindow.mParent;
 				}
 			}
+
 			EditWidget editWidget = mEditWidget;
 			if (var sourceViewPanel = mTextPanel as SourceViewPanel)
 				editWidget = sourceViewPanel.mEditWidget;

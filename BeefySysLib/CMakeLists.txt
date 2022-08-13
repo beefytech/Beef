@@ -16,7 +16,7 @@ set(OUTPUT_RELEASE Release/bin)
 
 project(${PROJECT_NAME} CXX C)
 
-# Define Release by default.
+# Define Debug by default.
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
   message(STATUS "Build type not specified: Use Debug by default.")
@@ -24,8 +24,8 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
 add_definitions(
-   -DIDEHELPER_EXPORTS 
-   -DBFSYSLIB_DYNAMIC 
+   -DIDEHELPER_EXPORTS
+   -DBFSYSLIB_DYNAMIC
    -DUNICODE
    -D_UNICODE
    -DBF_NO_FBX
@@ -82,16 +82,16 @@ endif()
 # Add Dependencies to project.                    #
 ###################################################
 
-option(BUILD_DEPENDS 
-   "Build other CMake project." 
-   ON 
+option(BUILD_DEPENDS
+   "Build other CMake project."
+   ON
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   
+
 else()
-   
+
 endif()
 
 ################# Flags ################
@@ -103,7 +103,7 @@ if(MSVC)
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /GL /Od /Oi /Gy /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-multichar")  
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-multichar")
 endif(NOT MSVC)
 
 ################ Files ################
@@ -119,9 +119,9 @@ file(GLOB SRC_FILES
     DataStream.cpp
     FileStream.cpp
     HeadlessApp.cpp
-    MemStream.cpp      
-    ResLib.cpp    
-    Startup.cpp    
+    MemStream.cpp
+    ResLib.cpp
+    Startup.cpp
 
     fbx/FBXReader.cpp
     gfx/DrawLayer.cpp
@@ -132,7 +132,7 @@ file(GLOB SRC_FILES
     gfx/RenderDevice.cpp
     gfx/RenderTarget.cpp
     gfx/Shader.cpp
-    gfx/Texture.cpp    
+    gfx/Texture.cpp
     img/BFIData.cpp
     img/ImageAdjustments.cpp
     img/ImageData.cpp
@@ -142,8 +142,8 @@ file(GLOB SRC_FILES
     img/PNGData.cpp
     img/PSDReader.cpp
     img/PVRData.cpp
-    img/TGAData.cpp    
-    
+    img/TGAData.cpp
+
     third_party/freetype/src/autofit/autofit.c
     third_party/freetype/src/base/ftbase.c
     third_party/freetype/src/base/ftbbox.c
@@ -274,6 +274,7 @@ file(GLOB SRC_FILES
     third_party/zlib/uncompr.c
     third_party/zlib/zutil.c
     third_party/miniz/miniz.c
+    third_party/putty/wildcard.c
     util/AllocDebug.cpp
     util/BeefPerf.cpp
     util/BSpline.cpp
@@ -323,6 +324,6 @@ add_library(${PROJECT_NAME} SHARED
 
 # Link with other dependencies.
 if(MSVC)
-   target_link_libraries(${PROJECT_NAME} imm32.lib version.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib 
+   target_link_libraries(${PROJECT_NAME} imm32.lib version.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib
         )
 endif(MSVC)

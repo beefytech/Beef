@@ -44,7 +44,7 @@ public:
 	StepFilter()
 	{
 		// Set global / local
-		mFilterKind = BfStepFilterKind_Filtered;		
+		mFilterKind = BfStepFilterKind_Filtered;
 	}
 
 	bool IsFiltered(bool defaultValue)
@@ -65,11 +65,11 @@ class DebugManager
 {
 public:
 	Debugger* mDebugger32;
-	Debugger* mDebugger64;	
+	Debugger* mDebugger64;
 
 	CritSect mCritSect;
 	Dictionary<String, StepFilter> mStepFilters;
-	int mStepFilterVersion;	
+	int mStepFilterVersion;
 	std::deque<String> mOutMessages;
 
 	DebugVisualizers* mDebugVisualizers;

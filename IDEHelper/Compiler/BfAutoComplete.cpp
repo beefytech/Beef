@@ -35,7 +35,7 @@ AutoCompleteBase::~AutoCompleteBase()
 AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, const StringImpl& filter)
 {
 	uint8 matches[256];
-	
+
 	if (!DoesFilterMatch(entry.mDisplay, filter.c_str(), entry.mScore, matches, 256) || (entry.mNamePrefixCount < 0))
 		return NULL;
 
@@ -43,7 +43,7 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry, co
 	entry.mMatches = (entry.mMatchesLength > 0) ? matches : nullptr;
 
 	auto result = AddEntry(entry);
-	
+
 	// Reset matches because the array will be invalid after return
 	entry.mMatches = nullptr;
 	entry.mMatchesLength = 0;
@@ -82,13 +82,13 @@ AutoCompleteEntry* AutoCompleteBase::AddEntry(const AutoCompleteEntry& entry)
 	{
 		insertedEntry->mEntryType = entry.mEntryType;
 
-		const char* display = entry.mDisplay;		
+		const char* display = entry.mDisplay;
 		int size = (int)strlen(display) + 1;
 		insertedEntry->mDisplay = (char*)mAlloc.AllocBytes(size);
 		memcpy((char*)insertedEntry->mDisplay, display, size);
 
 		if (entry.mMatchesLength > 0)
-		{	
+		{
 			insertedEntry->mMatches = (uint8*)mAlloc.AllocBytes(insertedEntry->mMatchesLength);
 			memcpy((char*)insertedEntry->mMatches, entry.mMatches, insertedEntry->mMatchesLength);
 		}
@@ -105,8 +105,8 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, in
 		if (entry[entryLen - 1] == '=')
 			return (strncmp(filter, entry, entryLen - 1) == 0);
 		return (strcmp(filter, entry) == 0);
-	}		
-	
+	}
+
 	if (!mIsAutoComplete)
 		return false;
 
@@ -176,7 +176,7 @@ bool AutoCompleteBase::DoesFilterMatch(const char* entry, const char* filter, in
 }
 
 void AutoCompleteBase::Clear()
-{	
+{
 	//mEntries.clear();
 	mAlloc.Clear();
 	mEntriesSet.Clear();
@@ -195,8 +195,8 @@ BfAutoComplete::BfAutoComplete(BfResolveType resolveType, bool doFuzzyAutoComple
 	mHasFriendSet = false;
 	mUncertain = false;
 	mForceAllowNonStatic = false;
-	mMethodMatchInfo = NULL;	
-	mIsGetDefinition = 
+	mMethodMatchInfo = NULL;
+	mIsGetDefinition =
 		(resolveType == BfResolveType_GetSymbolInfo) ||
 		(resolveType == BfResolveType_GoToDefinition);
 	mIsAutoComplete = (resolveType == BfResolveType_Autocomplete);
@@ -253,18 +253,18 @@ void BfAutoComplete::Clear()
 		else
 		{
 			// Keep mBestIdx - for when we match but then backspace
-			mMethodMatchInfo->mPrevBestIdx = mMethodMatchInfo->mBestIdx;			
+			mMethodMatchInfo->mPrevBestIdx = mMethodMatchInfo->mBestIdx;
 			mMethodMatchInfo->mMostParamsMatched = 0;
 			mMethodMatchInfo->mHadExactMatch = false;
 			mMethodMatchInfo->mInstanceList.Clear();
 			mMethodMatchInfo->mSrcPositions.Clear();
 		}
 	}
-	
+
 	mInsertStartIdx = -1;
 	mInsertEndIdx = -1;
 	mIsCapturingMethodMatchInfo = false;
-	
+
 	AutoCompleteBase::Clear();
 }
 
@@ -306,7 +306,7 @@ bool BfAutoComplete::IsAutocompleteNode(BfAstNode* node, int lengthAdd, int star
 		return false;
 	if (node == NULL)
 		return false;
-	
+
 // 	if (!node->IsFromParser(mCompiler->mResolvePassData->mParser))
 // 		return false;
 
@@ -317,13 +317,13 @@ bool BfAutoComplete::IsAutocompleteNode(BfAstNode* node, int lengthAdd, int star
 		return false;
 	if ((bfParser->mParserFlags & ParserFlag_Autocomplete) == 0)
 		return false;
-			
+
  	//if (mCompiler->mResolvePassData->mResolveType != BfResolveType_Autocomplete)
  	lengthAdd++;
 
 	int cursorIdx = bfParser->mCursorCheckIdx;
-	int nodeSrcStart = node->GetSrcStart();	
-	if ((cursorIdx < nodeSrcStart + startAdd) || (cursorIdx >= node->GetSrcEnd() + lengthAdd))	
+	int nodeSrcStart = node->GetSrcStart();
+	if ((cursorIdx < nodeSrcStart + startAdd) || (cursorIdx >= node->GetSrcEnd() + lengthAdd))
 		return false;
 	return true;
 }
@@ -371,7 +371,7 @@ bool BfAutoComplete::IsAutocompleteLineNode(BfAstNode* node)
 		return false;
 
 	int startAdd = 0;
-	
+
 	if (mCursorLineStart == -1)
 	{
 		auto nodeSource = node->GetSourceData();
@@ -388,7 +388,7 @@ bool BfAutoComplete::IsAutocompleteLineNode(BfAstNode* node)
 		while (mCursorLineEnd < nodeSource->mSrcLength)
 		{
 			if (nodeSource->mSrc[mCursorLineEnd] == '\n')
-				break;	
+				break;
 			mCursorLineEnd++;
 		}
 	}
@@ -414,7 +414,7 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 	};
 
 	if (auto typeRef = BfNodeDynCast<BfTypeReference>(node))
-	{		
+	{
 		if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
 		{
 			BfExprEvaluator exprEvaluator(mModule);
@@ -466,16 +466,16 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 			*isStatic = true;
 			return _FixType(BfTypedValue(type));
 		}
-	}	
+	}
 	if (auto identifier = BfNodeDynCast<BfIdentifierNode>(node))
-	{				
+	{
 		BfExprEvaluator exprEvaluator(mModule);
 		auto identifierResult = exprEvaluator.LookupIdentifier(identifier, false, NULL);
 		if (!identifierResult)
 			identifierResult = exprEvaluator.GetResult();
 		if (identifierResult)
 			return _FixType(identifierResult);
-		
+
 		if (auto qualifiedIdentifier = BfNodeDynCast<BfQualifiedNameNode>(node))
 		{
 			bool leftIsStatic = false;
@@ -506,12 +506,12 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 		}
 	}
 	else if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(node))
-	{		
+	{
 		return _FixType(mModule->CreateValueFromExpression(memberRefExpr, expectingType, evalExprFlags));
 	}
 	else if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(node))
 	{
-		// Don't pass BfEvalExprFlags_IgnoreNullConditional, since parenExprs end nullable chains and we actually 
+		// Don't pass BfEvalExprFlags_IgnoreNullConditional, since parenExprs end nullable chains and we actually
 		//  DO want the nullable at this point
 		return _FixType(mModule->CreateValueFromExpression(parenExpr));
 	}
@@ -521,7 +521,6 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 	}
 
 	return BfTypedValue();
-	
 }
 
 void BfAutoComplete::SetDefinitionLocation(BfAstNode* astNode, bool force)
@@ -529,7 +528,7 @@ void BfAutoComplete::SetDefinitionLocation(BfAstNode* astNode, bool force)
 	if (mIsGetDefinition)
 	{
 		if ((mGetDefinitionNode == NULL) || (force))
-			mGetDefinitionNode = astNode;	
+			mGetDefinitionNode = astNode;
 	}
 }
 
@@ -554,7 +553,7 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 	{
 		filterStr++;
 		wantPrefixCount++;
-	}	
+	}
 	String replaceName;
 	AutoCompleteEntry entry("method", methodName, methodDef->mNamePrefixCount - wantPrefixCount);
 	if (methodDecl != NULL)
@@ -565,15 +564,15 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 			replaceName += "!";
 			entry.mDisplay = replaceName.c_str();
 			entry.mEntryType = "mixin";
-		}		
-	}	
+		}
+	}
 	if (methodDef->mMethodType == BfMethodType_Extension)
 		entry.mEntryType = "extmethod";
 
 	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
 		if (methodDecl != NULL)
-		{			
+		{
 			if ((methodInstance != NULL) && (methodInstance->mMethodDef->mIsLocalMethod) && (methodDecl->mReturnType != NULL) && (GetCursorIdx(methodDecl) == methodDecl->mReturnType->mSrcEnd))
 			{
 				// This isn't really a local method decl, it just looks like one
@@ -601,7 +600,7 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 				{
 					if (!str.IsEmpty())
 						str += "\x05";
-					methodDecl->mDocumentation->GetDocString(str);					
+					methodDecl->mDocumentation->GetDocString(str);
 				}
 				if (!str.IsEmpty())
 					entryAdded->mDocumentation = mAlloc.AllocString(str);
@@ -624,9 +623,9 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 	if (name == "@")
 		return;
 	int gravePos = (int)name.IndexOf('`');
-	if (gravePos != -1)	
+	if (gravePos != -1)
 		name = name.Substring(0, gravePos) + "<>";
-	
+
 	if (onlyAttribute)
 	{
 		if ((mIsGetDefinition) && (name == filter + "Attribute"))
@@ -638,7 +637,7 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 		int score;
 		uint8 matches[256];
 		if (!DoesFilterMatch(name.c_str(), filter.c_str(), score, matches, sizeof(matches)))
-			return;		
+			return;
 
 		auto type = mModule->ResolveTypeDef(typeDef, BfPopulateType_Declaration);
 		if (type != NULL)
@@ -669,7 +668,7 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 	{
 		if ((CheckDocumentation(entryAdded, NULL)) && (entryAdded->mDocumentation == NULL))
 		{
-			auto type = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
+			auto type = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);
 			StringT<1024> str;
 			if (type != NULL)
 			{
@@ -681,7 +680,7 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 			{
 				if (!str.IsEmpty())
 					str += "\x05";
-				typeDef->mTypeDeclaration->mDocumentation->GetDocString(str);				
+				typeDef->mTypeDeclaration->mDocumentation->GetDocString(str);
 			}
 			entryAdded->mDocumentation = mAlloc.AllocString(str);
 		}
@@ -690,9 +689,15 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 
 bool BfAutoComplete::CheckProtection(BfProtection protection, BfTypeDef* typeDef, bool allowProtected, bool allowPrivate)
 {
+	if (mResolveType == BfResolveType_GetSymbolInfo)
+	{
+		// This is needed for nameof on private inner types
+		return true;
+	}
+
 	if ((protection == BfProtection_Internal) && (typeDef != NULL))
 	{
-		return mModule->CheckProtection(protection, typeDef, allowProtected, allowPrivate);			
+		return mModule->CheckProtection(protection, typeDef, allowProtected, allowPrivate);
 	}
 
 	return (mHasFriendSet) || (protection == BfProtection_Public) ||
@@ -712,24 +717,41 @@ const char* BfAutoComplete::GetTypeName(BfType* type)
 	return "value";
 }
 
-void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate)
-{	
+void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, BfTypeInstance* startType, bool allowProtected, bool allowPrivate)
+{
 	if (typeInst->IsEnum())
 		AddEntry(AutoCompleteEntry("valuetype", "UnderlyingType"), filter);
 
+	BfShow checkShow = (typeInst == startType) ? BfShow_Hide : BfShow_HideIndirect;
+
 	for (auto innerType : typeInst->mTypeDef->mNestedTypes)
 	{
+		if (innerType->mShow >= checkShow)
+			continue;
+
+		if (innerType->mOuterType->mTypeCode == BfTypeCode_Extension)
+		{
+			if (typeInst->mDefineState < BfTypeDefineState_Defined)
+				mModule->PopulateType(typeInst);
+
+			if ((typeInst->mGenericTypeInfo != NULL) && (typeInst->mGenericTypeInfo->mGenericExtensionInfo != NULL))
+			{
+				if (!typeInst->mGenericTypeInfo->mGenericExtensionInfo->mConstraintsPassedSet.IsSet(innerType->mOuterType->mPartialIdx))
+					continue;
+			}
+		}
+
 		if (CheckProtection(innerType->mProtection, innerType, allowProtected, allowPrivate))
 			AddTypeDef(innerType, filter);
-	}	
+	}
 
 	allowPrivate = false;
 	if (typeInst->mBaseType != NULL)
-		AddInnerTypes(typeInst->mBaseType, filter, allowProtected, allowPrivate);
+		AddInnerTypes(typeInst->mBaseType, filter, startType, allowProtected, allowPrivate);
 }
 
 void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate, bool onlyAttribute)
-{	
+{
 	if (typeInst != mModule->mCurTypeInstance)
 		AddTypeDef(typeInst->mTypeDef->GetDefinition(), filter, onlyAttribute);
 
@@ -758,14 +780,14 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 }
 
 void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, BfFieldInstance* fieldInstance, const StringImpl& filter)
-{	
+{
 	int wantPrefixCount = 0;
 	const char* filterStr = filter.c_str();
 	while (filterStr[0] == '@')
 	{
 		filterStr++;
 		wantPrefixCount++;
-	}	
+	}
 	AutoCompleteEntry entry(GetTypeName(fieldInstance->mResolvedType), fieldDef->mName, fieldDef->mNamePrefixCount - wantPrefixCount);
 	if (auto entryAdded = AddEntry(entry, filterStr))
 	{
@@ -774,10 +796,10 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 		if (CheckDocumentation(entryAdded, documentation))
 		{
 			mModule->PopulateType(typeInst);
-			
-			String str;			
+
+			String str;
 			str += mModule->TypeToString(fieldInstance->mResolvedType);
-			str += " ";			
+			str += " ";
 			str += mModule->TypeToString(typeInst);
 			str += ".";
 			str += fieldDef->mName;
@@ -812,7 +834,7 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 	{
 		filterStr++;
 		wantPrefixCount++;
-	}	
+	}
 	BfCommentNode* documentation = NULL;
 	auto fieldDecl = propDef->GetFieldDeclaration();
 	if (fieldDecl != NULL)
@@ -834,13 +856,13 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 				if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 				{
 					hasGetter = true;
-					propType = methodInstance->mReturnType;					
+					propType = methodInstance->mReturnType;
 				}
 				if (methodDef->mMethodType == BfMethodType_PropertySetter)
 				{
 					hasSetter = true;
-					if (methodInstance->GetParamCount() > 0)					
-						propType = methodInstance->GetParamType(0);					
+					if (methodInstance->GetParamCount() > 0)
+						propType = methodInstance->GetParamType(0);
 				}
 			}
 
@@ -882,13 +904,13 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bool addNonStatic, const StringImpl& filter, BfTypeInstance* startType, bool allowInterfaces, bool allowImplicitThis, bool checkOuterType)
 {
 	bool isInterface = false;
-	
+
 	if (mForceAllowNonStatic)
 		addNonStatic = true;
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
-	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()))
+	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()) && (allowImplicitThis))
 	{
 		AddEntry(AutoCompleteEntry("value", "_"), filter);
 	}
@@ -897,32 +919,34 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 
 	mModule->PopulateType(typeInst, BfPopulateType_Data);
 
+	BfShow checkShow = (startType == typeInst) ? BfShow_Hide : BfShow_HideIndirect;
+
 	BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
 	for (auto& fieldInst : typeInst->mFieldInstances)
-	{		
+	{
 		auto fieldDef = fieldInst.GetFieldDef();
 		if (fieldDef == NULL)
 			continue;
 
-		if (fieldDef->mIsNoShow)
+		if (fieldDef->mShow >= checkShow)
 			continue;
 
-		if ((CHECK_STATIC(fieldDef->mIsStatic)) && 
+		if ((CHECK_STATIC(fieldDef->mIsStatic)) &&
 			((mIsGetDefinition) || (mModule->CheckProtection(protectionCheckFlags, typeInst, fieldDef->mDeclaringType->mProject, fieldDef->mProtection, startType))))
 		{
 			if ((!typeInst->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, mModule)) ||
 				(!typeInst->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
 				continue;
-			
+
 			AddField(typeInst, fieldDef, &fieldInst, filter);
 		}
-	}	
+	}
 
 	for (auto methodDef : typeInst->mTypeDef->mMethods)
 	{
 		if (methodDef->mIsOverride)
 			continue;
-		if (methodDef->mIsNoShow)
+		if (methodDef->mShow >= checkShow)
 			continue;
 		if (methodDef->mName.IsEmpty())
 			continue;
@@ -943,17 +967,17 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		else
 		{
 			canUseMethod &= (CHECK_STATIC(methodDef->mIsStatic) &&
-				(mModule->CheckProtection(protectionCheckFlags, typeInst, methodDef->mDeclaringType->mProject, methodDef->mProtection, startType)));				
+				(mModule->CheckProtection(protectionCheckFlags, typeInst, methodDef->mDeclaringType->mProject, methodDef->mProtection, startType)));
 		}
 		if (canUseMethod)
 		{
-			AddMethod(typeInst, methodDef, NULL, methodDef->GetMethodDeclaration(), methodDef->mName, filter);			
+			AddMethod(typeInst, methodDef, NULL, methodDef->GetMethodDeclaration(), methodDef->mName, filter);
 		}
 	}
 
 	for (auto propDef : typeInst->mTypeDef->mProperties)
 	{
-		if (propDef->mIsNoShow)
+		if (propDef->mShow >= checkShow)
 			continue;
 
 		if ((!typeInst->IsTypeMemberIncluded(propDef->mDeclaringType, activeTypeDef, mModule)) ||
@@ -970,7 +994,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 			AddProp(typeInst, propDef, filter);
 		}
 	}
-	
+
 	if (allowInterfaces)
 	{
 		for (auto iface : typeInst->mInterfaces)
@@ -985,12 +1009,75 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 			AddTypeMembers(mModule->mContext->mBfObjectType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis, false);
 	}
 
+	if (typeInst->IsInterface())
+	{
+		for (auto interface : typeInst->mInterfaces)
+			AddTypeMembers(interface.mInterfaceType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis, false);
+	}
+
 	if ((addStatic) && (allowImplicitThis) && (checkOuterType))
 	{
 		auto outerType = mModule->GetOuterType(typeInst);
 		if (outerType != NULL)
 		{
 			AddTypeMembers(outerType, true, false, filter, startType, false, allowImplicitThis, false);
+		}
+	}
+
+	if ((typeInst->mTypeDef->mHasUsingFields) &&
+		((typeInst->mTypeInfoEx == NULL) || (typeInst->mTypeInfoEx->mUsingFieldData == NULL)))
+		mModule->PopulateUsingFieldData(typeInst);
+
+	if ((typeInst->mTypeInfoEx != NULL) && (typeInst->mTypeInfoEx->mUsingFieldData != NULL))
+	{
+		for (int pass = 0; pass < 2; pass++)
+		{
+			auto& dict = (pass == 0) ? typeInst->mTypeInfoEx->mUsingFieldData->mEntries : typeInst->mTypeInfoEx->mUsingFieldData->mMethods;
+			for (auto& entryKV : dict)
+			{
+				for (auto& entryList : entryKV.mValue.mLookups)
+				{
+					auto& endEntry = entryList.back();
+
+					bool isStatic = endEntry.IsStatic();
+					if ((isStatic) && (!addStatic))
+						continue;
+					if ((!isStatic) && (!addNonStatic))
+						continue;
+
+					bool passesProtection = true;
+					for (int entryIdx = 0; entryIdx < entryList.mSize; entryIdx++)
+					{
+						auto& entry = entryList[entryIdx];
+						if (!mModule->CheckProtection(protectionCheckFlags, entry.mTypeInstance, entry.GetDeclaringType(mModule)->mProject,
+							(entryIdx < entryList.mSize - 1) ? entry.GetUsingProtection() : entry.GetProtection(), typeInst))
+						{
+							passesProtection = false;
+							break;
+						}
+					}
+					if (!passesProtection)
+						continue;
+
+					switch (endEntry.mKind)
+					{
+					case BfUsingFieldData::MemberRef::Kind_Field:
+						if (endEntry.mTypeInstance->mDefineState < BfTypeDefineState_Defined)
+							mModule->PopulateType(endEntry.mTypeInstance);
+						AddField(endEntry.mTypeInstance, endEntry.mTypeInstance->mTypeDef->mFields[endEntry.mIdx], &endEntry.mTypeInstance->mFieldInstances[endEntry.mIdx], filter);
+						break;
+					case BfUsingFieldData::MemberRef::Kind_Property:
+						AddProp(endEntry.mTypeInstance, endEntry.mTypeInstance->mTypeDef->mProperties[endEntry.mIdx], filter);
+						break;
+					case BfUsingFieldData::MemberRef::Kind_Method:
+					{
+						auto methodDef = endEntry.mTypeInstance->mTypeDef->mMethods[endEntry.mIdx];
+						AddMethod(endEntry.mTypeInstance, methodDef, NULL, methodDef->GetMethodDeclaration(), methodDef->mName, filter);
+					}
+					break;
+					}
+				}
+			}
 		}
 	}
 }
@@ -1004,15 +1091,17 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 
 	mModule->PopulateType(typeInst, BfPopulateType_Data);
 
+	BfShow checkShow = allowPrivate ? BfShow_Hide : BfShow_HideIndirect;
+
 	for (auto& fieldInst : typeInst->mFieldInstances)
 	{
 		auto fieldDef = fieldInst.GetFieldDef();
 		if (fieldDef == NULL)
 			continue;
 
-		if (fieldDef->mIsNoShow)
+		if (fieldDef->mShow > checkShow)
 			continue;
-		
+
 		if ((fieldDef->mIsStatic) && (CheckProtection(fieldDef->mProtection, fieldDef->mDeclaringType, allowProtected, allowPrivate)))
 		{
 			if (!mModule->CanCast(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), fieldInst.mResolvedType), selfType))
@@ -1022,7 +1111,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 				(!typeInst->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
 				continue;
 
-			AddField(typeInst, fieldDef, &fieldInst, filter);			
+			AddField(typeInst, fieldDef, &fieldInst, filter);
 		}
 	}
 
@@ -1030,7 +1119,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 	{
 		if (methodDef->mIsOverride)
 			continue;
-		if (methodDef->mIsNoShow)
+		if (methodDef->mShow > checkShow)
 			continue;
 		if (methodDef->mName.IsEmpty())
 			continue;
@@ -1045,9 +1134,9 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 			continue;
 
 		bool canUseMethod;
-		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Mixin);		
+		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Mixin);
 		canUseMethod &= CheckProtection(methodDef->mProtection, methodDef->mDeclaringType, allowProtected, allowPrivate);
-		
+
 		if (methodDef->mMethodType != BfMethodType_Normal)
 			continue;
 
@@ -1070,7 +1159,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 
 	for (auto propDef : typeInst->mTypeDef->mProperties)
 	{
-		if (propDef->mIsNoShow)
+		if (propDef->mShow > checkShow)
 			continue;
 
 		if ((!typeInst->IsTypeMemberIncluded(propDef->mDeclaringType, activeTypeDef, mModule)) ||
@@ -1109,16 +1198,16 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 			AddProp(typeInst, propDef, filter);
 		}
 	}
-	
+
 	auto outerType = mModule->GetOuterType(typeInst);
 	if (outerType != NULL)
 	{
 		AddSelfResultTypeMembers(outerType, selfType, filter, false);
-	}	
+	}
 }
 
 bool BfAutoComplete::InitAutocomplete(BfAstNode* dotNode, BfAstNode* nameNode, String& filter)
-{	
+{
 	bool isDot = (dotNode != NULL) && (dotNode->mToken == BfToken_Dot);
 	if (IsAutocompleteNode(nameNode))
 	{
@@ -1162,8 +1251,8 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 	for (auto& fieldInst : typeInst->mFieldInstances)
 	{
 		auto fieldDef = fieldInst.GetFieldDef();
-		if ((fieldDef != NULL) && (fieldDef->mIsConst) && 
-			((fieldInst.mResolvedType == typeInst) || (fieldInst.mIsEnumPayloadCase)) && 
+		if ((fieldDef != NULL) && (fieldDef->mIsConst) &&
+			((fieldInst.mResolvedType == typeInst) || (fieldInst.mIsEnumPayloadCase)) &&
 			(CheckProtection(fieldDef->mProtection, fieldDef->mDeclaringType, allowProtected, allowPrivate)))
 		{
 			if ((!typeInst->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, mModule)) ||
@@ -1194,7 +1283,7 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 				}
 			}
 		}
-	}	
+	}
 }
 
 void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInstance* extensionContainer, const StringImpl & filter, bool allowProtected, bool allowPrivate)
@@ -1204,18 +1293,20 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 
 	mModule->PopulateType(extensionContainer, BfPopulateType_Data);
 
+	BfShow checkShow = allowPrivate ? BfShow_Hide : BfShow_HideIndirect;
+
 	for (auto methodDef : extensionContainer->mTypeDef->mMethods)
 	{
 		if (methodDef->mMethodType != BfMethodType_Extension)
-			continue;		
-		if (methodDef->mIsNoShow)
+			continue;
+		if (methodDef->mShow >= checkShow)
 			continue;
 		if (methodDef->mName.IsEmpty())
 			continue;
-		
-		bool canUseMethod = true;		
+
+		bool canUseMethod = true;
 		canUseMethod &= CheckProtection(methodDef->mProtection, methodDef->mDeclaringType, allowProtected, allowPrivate);
-		
+
 		auto methodInstance = mModule->GetRawMethodInstanceAtIdx(extensionContainer, methodDef->mIdx);
 		if (methodInstance == NULL)
 			continue;
@@ -1226,7 +1317,7 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 		if (!DoesFilterMatch(methodDef->mName.c_str(), filter.c_str(), score, matches, sizeof(matches)))
 			continue;
 
-		auto thisType = methodInstance->GetParamType(0);		
+		auto thisType = methodInstance->GetParamType(0);
 		bool paramValidated = false;
 		if (methodInstance->GetNumGenericParams() > 0)
 		{
@@ -1311,7 +1402,7 @@ bool BfAutoComplete::WantsEntries()
 	if (mModule == NULL)
 		return false;
 
-	return (mResolveType == BfResolveType_Autocomplete) || 
+	return (mResolveType == BfResolveType_Autocomplete) ||
 		(mResolveType == BfResolveType_Autocomplete_HighPri) ||
 		(mResolveType == BfResolveType_GetSymbolInfo) ||
 		(mResolveType == BfResolveType_GoToDefinition) ||
@@ -1319,7 +1410,7 @@ bool BfAutoComplete::WantsEntries()
 }
 
 void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
-{	
+{
 	String filter;
 	if (identifierNode != NULL)
 	{
@@ -1328,8 +1419,8 @@ void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
 		mInsertEndIdx = identifierNode->GetSrcEnd();
 	}
 
-	BfProject* bfProject = GetActiveProject();	
-	
+	BfProject* bfProject = GetActiveProject();
+
 	auto _AddProjectNamespaces = [&](BfProject* project)
 	{
 		for (auto namespacePair : project->mNamespaces)
@@ -1360,7 +1451,7 @@ void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
 void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttribute)
 {
 	String filter;
-	
+
 	if (identifierNode != NULL)
 	{
 		filter = identifierNode->ToString();
@@ -1371,7 +1462,7 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 	AddEntry(AutoCompleteEntry("token", "function"), filter);
 	AddEntry(AutoCompleteEntry("token", "delegate"), filter);
 	AddEntry(AutoCompleteEntry("token", "decltype"), filter);
-	
+
 	if (mModule->mCurTypeInstance != NULL)
 	{
 		if (!onlyAttribute)
@@ -1380,7 +1471,7 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 			for (auto genericParam : activeTypeDef->mGenericParamDefs)
 				AddEntry(AutoCompleteEntry("generic", genericParam->mName), filter);
 		}
-		
+
 		AddCurrentTypes(mModule->mCurTypeInstance, filter, true, true, onlyAttribute);
 	}
 
@@ -1395,14 +1486,14 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 
 	if (!onlyAttribute)
 	{
-		BfTypeDef* showTypeDef = NULL;		
+		BfTypeDef* showTypeDef = NULL;
 		for (auto& systemTypeDefEntry : mModule->mSystem->mSystemTypeDefs)
 		{
 			auto systemTypeDef = systemTypeDefEntry.mValue;
 			if ((systemTypeDef->mTypeCode == BfTypeCode_IntUnknown) || (systemTypeDef->mTypeCode == BfTypeCode_UIntUnknown))
 				continue;
 			if ((AddEntry(AutoCompleteEntry("valuetype", systemTypeDef->mName->mString.mPtr), filter)) && (mIsGetDefinition))
-				showTypeDef = systemTypeDef;			
+				showTypeDef = systemTypeDef;
 		}
 		AddEntry(AutoCompleteEntry("valuetype", "SelfBase"), filter);
 		AddEntry(AutoCompleteEntry("valuetype", "SelfOuter"), filter);
@@ -1424,7 +1515,7 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 	if (activeTypeDef != NULL)
 	{
 		BfProject* curProject = activeTypeDef->mProject;
-		
+
 		if (mModule->mCurTypeInstance != NULL)
 		{
 			for (auto innerTypeDef : mModule->mCurTypeInstance->mTypeDef->mNestedTypes)
@@ -1435,14 +1526,14 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 			}
 		}
 
-		auto& namespaceSearch = activeTypeDef->mNamespaceSearch;		
+		auto& namespaceSearch = activeTypeDef->mNamespaceSearch;
 		String prevName;
 		for (auto typeDef : mModule->mSystem->mTypeDefs)
-		{			
+		{
 			if (typeDef->mIsPartial)
 				continue;
 			//TODO :Check protection
-			if ((curProject != NULL) && (curProject->ContainsReference(typeDef->mProject)))		
+			if ((curProject != NULL) && (curProject->ContainsReference(typeDef->mProject)))
 			{
 				bool matches = false;
 				if (typeDef->mOuterType == NULL)
@@ -1450,7 +1541,7 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 					if (((typeDef->mNamespace.IsEmpty()) ||
 						(namespaceSearch.Contains(typeDef->mNamespace))))
 						matches = true;
-				}				
+				}
 
 				if (matches)
 				{
@@ -1490,7 +1581,7 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 }
 
 void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpression, bool isUsingDirective)
-{	
+{
 	if ((identifierNode != NULL) && (!IsAutocompleteNode(identifierNode)))
 		return;
 
@@ -1503,7 +1594,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 			auto parentBlock = mModule->mCurMethodState->mCurScope->mAstBlock;
 			if ((identifierNode == binExpr->mRight) && (binExpr->mOp == BfBinaryOp_Multiply) && (parentBlock != NULL))
 			{
-				// If we are the last identifier in a block then we MAY be a partially-typed variable declaration 
+				// If we are the last identifier in a block then we MAY be a partially-typed variable declaration
 				if (parentBlock->mChildArr.back() == binExpr)
 				{
 					mUncertain = true;
@@ -1511,7 +1602,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 			}
 		}
 	}
-	
+
 	if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(identifierNode))
 	{
 		CheckMemberReference(qualifiedNameNode->mLeft, qualifiedNameNode->mDot, qualifiedNameNode->mRight, false, NULL, isUsingDirective);
@@ -1521,7 +1612,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	AddTopLevelNamespaces(identifierNode);
 	if (isUsingDirective)
 		return; // Only do namespaces
-	
+
 	AddTopLevelTypes(identifierNode);
 
 	String filter;
@@ -1540,10 +1631,9 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		for (auto prop : showAttrTypeDef->mProperties)
 		{
 			if (auto entryAdded = AddEntry(AutoCompleteEntry("property", prop->mName + "="), filter))
-			{	
+			{
 				if (CheckDocumentation(entryAdded, prop->GetFieldDeclaration()->mDocumentation))
 				{
-
 				}
 				if (mIsGetDefinition)
 					SetDefinitionLocation(prop->GetFieldDeclaration()->mNameNode);
@@ -1551,12 +1641,11 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		}
 
 		for (auto field : showAttrTypeDef->mFields)
-		{			
+		{
 			if (auto entryAdded = AddEntry(AutoCompleteEntry("field", field->mName + "="), filter))
-			{	
+			{
 				if (CheckDocumentation(entryAdded, field->GetFieldDeclaration()->mDocumentation))
 				{
-
 				}
 				if (mIsGetDefinition)
 					SetDefinitionLocation(field->GetFieldDeclaration()->mNameNode);
@@ -1577,17 +1666,17 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 				AddTypeMembers(globalContainer.mTypeInst, true, false, filter, globalContainer.mTypeInst, true, true, false);
 		}
 	}
-		
+
 	BfStaticSearch* staticSearch = mModule->GetStaticSearch();
 	if (staticSearch != NULL)
 	{
 		for (auto typeInst : staticSearch->mStaticTypes)
 		{
 			AddTypeMembers(typeInst, true, false, filter, typeInst, true, true, false);
-			AddInnerTypes(typeInst, filter, false, false);
+			AddInnerTypes(typeInst, filter, typeInst, false, false);
 		}
 	}
-	
+
 	if (auto ceDbgState = mModule->GetCeDbgState())
 	{
 		auto ceDebugger = mModule->mCompiler->mCeMachine->mDebugger;
@@ -1601,7 +1690,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 				if ((instIdx >= dbgVar.mStartCodePos) && (instIdx < dbgVar.mEndCodePos))
 					AddEntry(AutoCompleteEntry(GetTypeName(dbgVar.mType), dbgVar.mName), filter);
 			}
-		}		
+		}
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -1610,7 +1699,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	if (mModule->mCurMethodState != NULL)
 		curMethodInstance = mModule->mCurMethodState->GetRootMethodState()->mMethodInstance;
 	if (curMethodInstance != NULL)
-	{		
+	{
 		if (!curMethodInstance->mMethodDef->mIsStatic)
 		{
 			if (mModule->mCurTypeInstance->IsObject())
@@ -1689,7 +1778,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 						(varMethodState->mMixinState != NULL) ||
 						((varMethodState->mClosureState != NULL) && (!varMethodState->mClosureState->mCapturing)))
 						break;
-				}				
+				}
 			}
 		}
 	}
@@ -1705,9 +1794,9 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 
 	auto checkMethodState = mModule->mCurMethodState;
 	while (checkMethodState != NULL)
-	{ 
+	{
 		for (auto localMethod : checkMethodState->mLocalMethods)
-		{			
+		{
 			if (localMethod->mMethodInstanceGroup != NULL)
 				AddMethod(mModule->mCurTypeInstance, localMethod->mMethodDef, localMethod->mMethodInstanceGroup->mDefault, localMethod->mMethodDeclaration, localMethod->mMethodName, filter);
 		}
@@ -1715,17 +1804,17 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	}
 
 	if (isInExpression)
-	{		
+	{
 		const char* tokens [] =
 		{
-			"alignof", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "const", "default", "defer",
-			"delegate", "delete", "do", "else", "false", "finally", 
+			"alignof", "append", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "const", "default", "defer",
+			"delegate", "delete", "do", "else", "false", "finally",
 			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "isconst", "new", "mixin", "null",
 			"offsetof", "out", "params", "readonly", "ref", "rettype", "return",
 			"sealed", "sizeof", "scope", "static", "strideof", "struct", "switch", /*"this",*/ "try", "true", "typeof", "unchecked",
 			"using", "var", "virtual", "volatile", "where", "while",
 			"alloctype", "comptype", "decltype", "nullable",
-		};		
+		};
 
 		for (int i = 0; i < sizeof(tokens) / sizeof(char*); i++)
 			AddEntry(AutoCompleteEntry("token", tokens[i]), filter);
@@ -1739,7 +1828,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	{
 		const char* tokens[] =
 		{
-			"abstract", "base", "class", "const", 
+			"abstract", "append", "base", "class", "const",
 			"delegate", "extern", "enum", "explicit", "extension", "function",
 			"interface", "in", "implicit", "internal", "mixin", "namespace", "new",
 			"operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "rettype", "return",
@@ -1749,15 +1838,15 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		for (int i = 0; i < sizeof(tokens)/sizeof(char*); i++)
 			AddEntry(AutoCompleteEntry("token", tokens[i]), filter);
 	}
-	
+
 	//if ((identifierNode != NULL) && ((mModule->mCurMethodInstance == NULL) || (BfNodeDynCast<BfExpression>(identifierNode->mParent) != NULL)))
 	/*if ((identifierNode != NULL) && ((mModule->mCurMethodInstance == NULL) || (isInExpression)))
 	{
 		AddEntry(AutoCompleteEntry("token", "#if"), filter);
 		AddEntry(AutoCompleteEntry("token", "#elif"), filter);
 		AddEntry(AutoCompleteEntry("token", "#endif"), filter);
-	}*/	
-	
+	}*/
+
 	//OutputDebugStrF("Autocomplete: %s\n", str.c_str());
 }
 
@@ -1775,14 +1864,14 @@ String BfAutoComplete::GetFilter(BfAstNode* node)
 		auto bfParser = node->GetSourceData()->ToParser();
 		int cursorIdx = bfParser->mCursorIdx;
 		filter = filter.Substring(0, BF_CLAMP(cursorIdx - node->GetSrcStart(), 0, (int)filter.length()));
-		mInsertEndIdx = cursorIdx;	
+		mInsertEndIdx = cursorIdx;
 	}
 
 	const char* cPtr = filter.c_str();
 	while (cPtr[0] == '@')
 	{
 		mInsertStartIdx++;
-		cPtr++;		
+		cPtr++;
 	}
 
 	return filter;
@@ -1800,7 +1889,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 		memberName = attrIdentifier->mIdentifier;
 		if (IsAutocompleteNode(attrIdentifier->mAttributes))
 		{
-			auto bfParser = attrIdentifier->mAttributes->GetSourceData()->ToParser();			
+			auto bfParser = attrIdentifier->mAttributes->GetSourceData()->ToParser();
 			int cursorIdx = bfParser->mCursorIdx;
 			if (cursorIdx == attrIdentifier->mAttributes->GetSrcEnd())
 				isAutocompletingName = true;
@@ -1817,8 +1906,8 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 		BfLogSys(mModule->mSystem, "Triggered autocomplete\n");
 
 		bool isFriend = false;
-		
-		mInsertStartIdx = dotToken->GetSrcEnd();		
+
+		mInsertStartIdx = dotToken->GetSrcEnd();
 		if (attrIdentifier != NULL)
 		{
 			BfAttributeState attributeState;
@@ -1832,7 +1921,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 
 			mInsertStartIdx = attrIdentifier->mAttributes->GetSrcEnd();
 		}
-				
+
 		if (memberName != NULL)
 		{
 			//Member name MAY be incorrectly identified in cases like:
@@ -1851,12 +1940,20 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 			filter = GetFilter(memberName);
 		}
 		else if (mResolveType != BfResolveType_Autocomplete)
-			mInsertStartIdx = -1; // Require a full span for everything but autocomplete		
+			mInsertStartIdx = -1; // Require a full span for everything but autocomplete
 
 		SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
 
 		bool isStatic = false;
 		BfTypedValue targetValue = LookupTypeRefOrIdentifier(target, &isStatic, (BfEvalExprFlags)(BfEvalExprFlags_IgnoreNullConditional | BfEvalExprFlags_NoCast), expectingType);
+		if ((targetValue) && (dotToken->mToken == BfToken_Arrow))
+		{
+			SetAndRestoreValue<bool> prevIgnoreClassifying(mModule->mIsInsideAutoComplete, true);
+			BfExprEvaluator exprEvaluator(mModule);
+			auto arrowValue = exprEvaluator.PerformUnaryOperation_TryOperator(targetValue, NULL, BfUnaryOp_Arrow, BfNodeDynCast<BfTokenNode>(dotToken), BfUnaryOpFlag_None);
+			if (arrowValue)
+				targetValue = arrowValue;
+		}
 
 		bool hadResults = false;
 		bool doAsNamespace = true;
@@ -1884,13 +1981,13 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 						targetValue = mModule->MakeAddressable(targetValue);
 						BfIRValue valuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(targetValue.mValue, 0, 1); // mValue
 						targetValue = BfTypedValue(valuePtr, nullableType->mGenericTypeInfo->mTypeGenericArguments[0], true);
-					}										
+					}
 				}
 			}
 
 			// Statics, inner types
-			
-			auto checkType = targetValue.mType;			
+
+			auto checkType = targetValue.mType;
 			if (checkType->IsConcreteInterfaceType())
 				checkType = checkType->GetUnderlyingType();
 
@@ -1898,7 +1995,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 			{
 				auto genericParamType = (BfGenericParamType*)checkType;
 				auto genericParamInstance = mModule->GetGenericParamInstance(genericParamType);
-				
+
 				auto _HandleGenericParamInstance = [&](BfGenericParamInstance* genericParamInstance)
 				{
 					bool showStatics = !targetValue.mValue;
@@ -1944,7 +2041,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 					checkType = underlyingType;
 			}
 			auto typeInst = checkType->ToTypeInstance();
-			if ((typeInst == NULL) && 
+			if ((typeInst == NULL) &&
 				((checkType->IsPrimitiveType()) || (checkType->IsSizedArray())))
 				typeInst = mModule->GetWrappedStructType(checkType);
 
@@ -1957,14 +2054,14 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
  				bool allowProtected = allowPrivate;
 
 				if (isStatic)
-					AddInnerTypes(typeInst, filter, allowProtected, allowPrivate);
+					AddInnerTypes(typeInst, filter, typeInst, allowProtected, allowPrivate);
 
 				if (!onlyShowTypes)
 				{
 					AddTypeMembers(typeInst, isStatic, !isStatic, filter, typeInst, false, false, false);
 
 					if (!isStatic)
-					{						
+					{
 						auto checkTypeInst = mModule->mCurTypeInstance;
 						while (checkTypeInst != NULL)
 						{
@@ -2010,9 +2107,9 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 
 			BfProject* bfProject = GetActiveProject();
 			auto _CheckProject = [&](BfProject* project)
-			{				
+			{
 				if ((isValid) && (project->mNamespaces.ContainsKey(targetComposite)))
-				{					
+				{
 					for (auto namespacePair : project->mNamespaces)
 					{
 						const BfAtomComposite& namespaceComposite = namespacePair.mKey;
@@ -2025,7 +2122,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 					}
 
 					if (!isUsingDirective)
-					{											
+					{
 						BfProject* activeProject = GetActiveProject();
 						for (auto typeDef : mSystem->mTypeDefs)
 						{
@@ -2035,7 +2132,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 							{
 								AddTypeDef(typeDef, filter, onlyAttribute);
 							}
-						}						
+						}
 					}
 
 					hadResults = true;
@@ -2060,7 +2157,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 		return hadResults;
 	}
 	else
-	{		
+	{
 		auto identifierNode = BfNodeDynCast<BfIdentifierNode>(target);
 		if (identifierNode != NULL)
 			CheckIdentifier(identifierNode);
@@ -2087,7 +2184,7 @@ bool BfAutoComplete::CheckExplicitInterface(BfTypeInstance* interfaceType, BfAst
 	}
 	else
 		return false;
-	
+
 	mModule->PopulateType(interfaceType, BfPopulateType_DataAndMethods);
 
 	String filter;
@@ -2096,11 +2193,13 @@ bool BfAutoComplete::CheckExplicitInterface(BfTypeInstance* interfaceType, BfAst
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
+	BfShow checkShow = BfShow_Hide;
+
 	for (auto methodDef : interfaceType->mTypeDef->mMethods)
 	{
 		if (methodDef->mIsOverride)
 			continue;
-		if (methodDef->mIsNoShow)
+		if (methodDef->mShow >= checkShow)
 			continue;
 		if (methodDef->mName.IsEmpty())
 			continue;
@@ -2115,13 +2214,12 @@ bool BfAutoComplete::CheckExplicitInterface(BfTypeInstance* interfaceType, BfAst
 			continue;
 
 		bool canUseMethod;
-		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal);	
+		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal);
 		if (canUseMethod)
 		{
 			AddMethod(interfaceType, methodDef, NULL, methodDef->GetMethodDeclaration(), methodDef->mName, filter);
 		}
 	}
-
 
 	return false;
 }
@@ -2196,13 +2294,13 @@ void BfAutoComplete::CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier
 	}
 
 	if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
-	{		
+	{
 		// Only consider the left side as an identifier if there's space after the dot. Consider this:
 		//   mVal.
 		//   Type a = null;
 		// vs
 		//   mVal.Type a = null;
-		// The first one is clearly a member reference being typed out even though it looks the same 
+		// The first one is clearly a member reference being typed out even though it looks the same
 		//  to the parser except for the spacing
 		if ((qualifiedTypeRef->mRight == NULL) || (qualifiedTypeRef->mDot->GetSrcEnd() < qualifiedTypeRef->mRight->GetSrcStart()))
 		{
@@ -2250,11 +2348,11 @@ void BfAutoComplete::CheckInvocation(BfAstNode* invocationNode, BfTokenNode* ope
 	else
 	{
 		// Ignore close paren
-		lenAdd = -1; 
+		lenAdd = -1;
 	}
-	
+
 	if (!IsAutocompleteNode(invocationNode, lenAdd))
-		return;	
+		return;
 
 	if (openParen == NULL)
 	{
@@ -2295,14 +2393,14 @@ void BfAutoComplete::CheckInvocation(BfAstNode* invocationNode, BfTokenNode* ope
 
 	bool doCapture = (bfParser->mCursorIdx >= openParen->GetSrcStart());
 	if (mIsGetDefinition)
-	{					
+	{
 		doCapture |= (target != NULL) && (bfParser->mCursorIdx >= target->GetSrcStart());
 	}
 
 	if (doCapture)
-	{				
+	{
 		mIsCapturingMethodMatchInfo = true;
-		
+
 		delete mMethodMatchInfo;
 		mMethodMatchInfo = new MethodMatchInfo();
 
@@ -2347,7 +2445,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 	{
 		StringT<128> methodPrefix;
 		StringT<128> methodName;
-		StringT<256> impString;				
+		StringT<256> impString;
 
 		bool isAbstract = (methodDef->mIsAbstract) || (isInterface) || (!methodDef->mIsVirtual);
 
@@ -2357,22 +2455,22 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 				impString += "return default;";
 		}
 		else if (!isAbstract)
-		{						
+		{
 			if (!methodInst->mReturnType->IsVoid())
 				impString = "return ";
 
 			impString += "base.";
 			impString += methodDef->mName;
-			impString += "(";			
+			impString += "(";
 		}
 
 		auto methodDeclaration = methodDef->GetMethodDeclaration();
 
 		if (isInterface)
-		{ 
+		{
 			if (!isExplicitInterface)
 				methodPrefix += "public ";
-		}		
+		}
 		else if (methodDeclaration->mProtectionSpecifier != NULL)
 			methodPrefix += methodDeclaration->mProtectionSpecifier->ToString() + " ";
 		if (!isInterface)
@@ -2439,14 +2537,14 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 		methodName += ")";
 
 		if (methodInst->GetNumGenericArguments() > 0)
-		{			
+		{
 			for (int genericArgIdx = 0; genericArgIdx < (int)methodInst->mMethodInfoEx->mGenericParams.size(); genericArgIdx++)
-			{				
+			{
 				auto genericParam = methodInst->mMethodInfoEx->mGenericParams[genericArgIdx];
-		
-				if (genericParam->mTypeConstraint != NULL)				
+
+				if (genericParam->mTypeConstraint != NULL)
 					methodName += " where " + genericParam->GetName() + " : " + mModule->TypeToString(genericParam->mTypeConstraint, nameFlags);
-				
+
 				for (auto ifaceConstraint : genericParam->mInterfaceConstraints)
 					methodName += " where " + genericParam->GetName() + " : " + mModule->TypeToString(ifaceConstraint, nameFlags);
 
@@ -2461,15 +2559,15 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Delete) != 0)
 					methodName += " where " + genericParam->GetName() + " : delete";
 				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
-					methodName += " where " + genericParam->GetName() + " : var";				
-			}			
+					methodName += " where " + genericParam->GetName() + " : var";
+			}
 		}
 
 		if (!isAbstract)
 			impString += ");";
 
 		if (showString != NULL)
-			*showString += methodName;		
+			*showString += methodName;
 		if (insertString != NULL)
 		{
 			if (showString == insertString)
@@ -2493,7 +2591,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 			if (propDeclaration->mNameNode != NULL)
 				propDeclaration->mNameNode->ToString(propName);
-			else 
+			else
 			{
 				StringT<128> args;
 
@@ -2563,7 +2661,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 				impl += "set\t";
 				if (!isAbstract)
 				{
-					if (!isInterface)					
+					if (!isInterface)
 					{
 						impl += "base.";
 						impl += propName;
@@ -2581,7 +2679,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 				if (showString == insertString)
 					*insertString += "\t";
 				*insertString += impl;
-			}			
+			}
 
 			return true;
 		}
@@ -2597,12 +2695,14 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
+	BfShow checkShow = BfShow_Hide;
+
 	BfTypeInstance* curType = mModule->mCurTypeInstance;
 	while (curType != NULL)
 	{
 		for (auto methodDef : curType->mTypeDef->mMethods)
 		{
-			if (methodDef->mIsNoShow)
+			if (methodDef->mShow >= checkShow)
 				continue;
 
 			bool allowInternalOverride = false;
@@ -2621,7 +2721,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 				if (methodDef->mIsExtern)
 					allowInternalOverride = true;
 			}
-			
+
 			auto& methodGroup = curType->mMethodInstanceGroups[methodDef->mIdx];
 			if (methodGroup.mDefault == NULL)
 			{
@@ -2635,12 +2735,12 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			}
 			else if ((!methodDef->mIsVirtual) || (methodDef->mIsOverride))
 				continue;
-			
+
 			if ((methodDef->mMethodType != BfMethodType_Normal) &&
 				(methodDef->mMethodType != BfMethodType_PropertyGetter) &&
 				(methodDef->mMethodType != BfMethodType_PropertySetter))
 				continue;
-			
+
 			if ((methodInst->mVirtualTableIdx >= 0) && (methodInst->mVirtualTableIdx < mModule->mCurTypeInstance->mVirtualMethodTable.size()))
 			{
 				auto& vEntry = mModule->mCurTypeInstance->mVirtualMethodTable[methodInst->mVirtualTableIdx];
@@ -2664,14 +2764,13 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 
 void BfAutoComplete::UpdateReplaceData()
 {
-	
 }
 
 void BfAutoComplete::CheckMethod(BfMethodDeclaration* methodDeclaration, bool isLocalMethod)
 {
 	if (/*(propertyDeclaration->mDefinitionBlock == NULL) &&*/ (methodDeclaration->mVirtualSpecifier != NULL) &&
 		(methodDeclaration->mVirtualSpecifier->GetToken() == BfToken_Override))
-	{		
+	{
 		auto bfParser = methodDeclaration->mVirtualSpecifier->GetSourceData()->ToParser();
 		if (bfParser == NULL)
 			return;
@@ -2734,8 +2833,8 @@ void BfAutoComplete::CheckProperty(BfPropertyDeclaration* propertyDeclaration)
 		if (type != NULL)
 			typeInst = type->ToTypeInstance();
 
-		if (typeInst != NULL)		
-			CheckExplicitInterface(typeInst, propertyDeclaration->mExplicitInterfaceDotToken, propertyDeclaration->mNameNode);		
+		if (typeInst != NULL)
+			CheckExplicitInterface(typeInst, propertyDeclaration->mExplicitInterfaceDotToken, propertyDeclaration->mNameNode);
 	}
 
 	if ((propertyDeclaration->mVirtualSpecifier != NULL) &&
@@ -2754,7 +2853,7 @@ void BfAutoComplete::CheckProperty(BfPropertyDeclaration* propertyDeclaration)
 
 		if (((IsAutocompleteNode(propertyDeclaration, 1)) && (cursorIdx == propertyDeclaration->mVirtualSpecifier->GetSrcEnd())) ||
 			(isInTypeRef) || (isInNameNode))
-		{	
+		{
 			mInsertStartIdx = propertyDeclaration->mVirtualSpecifier->GetSrcStart();
 
 			String filter;
@@ -2765,17 +2864,17 @@ void BfAutoComplete::CheckProperty(BfPropertyDeclaration* propertyDeclaration)
 					defNode = propertyDeclaration->mNameNode;
 				else if (isInTypeRef)
 					defNode = propertyDeclaration->mTypeRef;
-				
-				filter = defNode->ToString();				
+
+				filter = defNode->ToString();
 				mInsertEndIdx = defNode->GetSrcEnd();
-			}			
+			}
 			else if (propertyDeclaration->mTypeRef != NULL)
 			{
-				// We're just inside 'override' - we may be inserting a new method				
+				// We're just inside 'override' - we may be inserting a new method
 				mInsertEndIdx = propertyDeclaration->mVirtualSpecifier->GetSrcEnd();
 			}
 			else
-			{				
+			{
 				mInsertEndIdx = propertyDeclaration->mVirtualSpecifier->GetSrcEnd();
 			}
 			AddOverrides(filter);
@@ -2790,14 +2889,14 @@ void BfAutoComplete::CheckProperty(BfPropertyDeclaration* propertyDeclaration)
 }
 
 void BfAutoComplete::CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedType)
-{		
+{
 	if (IsAutocompleteNode(varTypeRef))
-	{	
+	{
 		if ((resolvedType == NULL) || (resolvedType->IsVar()) || (resolvedType->IsLet()))
 			return;
 
 		if (mIsGetDefinition)
-		{			
+		{
 			auto typeInst = resolvedType->ToTypeInstance();
 			if (typeInst != NULL)
 			{
@@ -2838,7 +2937,7 @@ void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue
 	else if (BfIRConstHolder::IsFloat(constant->mTypeCode))
 	{
 		mResultString = StrFormat(":%f", constant->mDouble);
-	}	
+	}
 }
 
 void BfAutoComplete::CheckLocalDef(BfAstNode* identifierNode, BfLocalVariable* varDecl)
@@ -2854,7 +2953,7 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 	if (mResolveType == BfResolveType_GoToDefinition)
 	{
 		if (IsAutocompleteNode(identifierNode))
-		{			
+		{
 			if (varDecl->mNameNode != NULL)
 				SetDefinitionLocation(varDecl->mNameNode, true);
 			else if (varDecl->mIsThis)
@@ -2863,9 +2962,9 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 	}
 	else if (mResolveType == BfResolveType_GetSymbolInfo)
 	{
-		if ((IsAutocompleteNode(identifierNode)) && 
+		if ((IsAutocompleteNode(identifierNode)) &&
 			((!varDecl->mIsShadow) || (varDecl->mShadowedLocal != NULL)))
-		{	
+		{
 			if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) &&
 				(!mModule->mCurMethodState->mClosureState->mCapturing))
 			{
@@ -2876,13 +2975,13 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 			auto rootMethodInstance = mModule->mCurMethodState->GetRootMethodState()->mMethodInstance;
 			if (rootMethodInstance == NULL)
 				return;
-			
+
 			if (varDecl->mIsThis)
 				return;
 
-			auto resolvePassData = mModule->mCompiler->mResolvePassData;			
+			auto resolvePassData = mModule->mCompiler->mResolvePassData;
 			mDefType = mModule->mCurTypeInstance->mTypeDef;
-			
+
 			mReplaceLocalId = varDecl->mLocalVarId;
 			mDefMethod = rootMethodInstance->mMethodDef;
 			if (mInsertStartIdx == -1)
@@ -2891,28 +2990,28 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 				mInsertEndIdx = identifierNode->GetSrcEnd();
 			}
 		}
-	}	
+	}
 	else if (mResolveType == BfResolveType_GetResultString)
 	{
 		if (IsAutocompleteNode(identifierNode))
-		{						
+		{
 			String constStr;
 			if (varDecl->mConstValue.IsConst())
-				constStr = ConstantToString(mModule->mBfIRBuilder, varDecl->mConstValue);							
+				constStr = ConstantToString(mModule->mBfIRBuilder, varDecl->mConstValue);
 			if (!constStr.IsEmpty())
 			{
 				mResultString = constStr;
 			}
 			else
 			{
-				SetResultStringType(varDecl->mResolvedType);				
+				SetResultStringType(varDecl->mResolvedType);
 			}
 		}
-	}	
+	}
 }
 
 void BfAutoComplete::CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* fieldInst)
-{	
+{
 	if (mResolveType == BfResolveType_GetSymbolInfo)
 	{
 		if (mDefField != NULL)
@@ -2949,14 +3048,14 @@ void BfAutoComplete::CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* pre
 	if (identifierNode != NULL)
 	{
 		if ((mModule->mCompiler->mResolvePassData != NULL) && (scopeData != NULL))
-		{			
+		{
 			auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();
 			mModule->mCompiler->mResolvePassData->HandleLocalReference(identifierNode, rootMethodState->mMethodInstance->GetOwner()->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, scopeData->mScopeLocalId);
 		}
 
 		if (!IsAutocompleteNode(identifierNode))
 			return;
-		
+
 		if (scopeData != NULL)
 		{
 			if (mResolveType == BfResolveType_GoToDefinition)
@@ -3000,7 +3099,7 @@ void BfAutoComplete::CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* pre
 
 		if (!IsAutocompleteNode(precedingNode, expectSpacing))
 			return;
-		
+
 		auto bfParser = precedingNode->GetSourceData()->ToParser();
 		if (bfParser->mCursorIdx != precedingNode->GetSrcEnd() + expectSpacing - 1)
 			return;
@@ -3021,12 +3120,12 @@ void BfAutoComplete::CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* pre
 void BfAutoComplete::CheckNamespace(BfAstNode* node, const BfAtomComposite& namespaceName)
 {
 	if (mResolveType == BfResolveType_GetSymbolInfo)
-	{		
+	{
 		if (IsAutocompleteNode(node))
-		{			
+		{
 			int namespaceCount = namespaceName.mSize;
 			auto checkNode = node;
-			
+
 			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkNode))
 			{
 				if (!IsAutocompleteNode(qualifiedTypeRef->mLeft))
@@ -3041,22 +3140,24 @@ void BfAutoComplete::CheckNamespace(BfAstNode* node, const BfAtomComposite& name
 				namespaceCount--;
 				checkNode = qualifiedNameNode->mLeft;
 			}
-			
-			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkNode))			
-				checkNode = qualifiedTypeRef->mRight;			
+
+			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkNode))
+				checkNode = qualifiedTypeRef->mRight;
 			while (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNode))
 				checkNode = qualifiedNameNode->mRight;
 
-			mInsertStartIdx = checkNode->GetSrcStart();
-			mInsertEndIdx = checkNode->GetSrcEnd();
-			
-			mDefNamespace.Set(namespaceName.mParts, namespaceCount, NULL, 0);
+			if (checkNode != NULL)
+			{
+				mInsertStartIdx = checkNode->GetSrcStart();
+				mInsertEndIdx = checkNode->GetSrcEnd();
+				mDefNamespace.Set(namespaceName.mParts, namespaceCount, NULL, 0);
+			}
 		}
-	}	
+	}
 }
 
 void BfAutoComplete::AddTypeInstanceEntry(BfTypeInstance* typeInst)
-{	
+{
 	String bestTypeName = mModule->TypeToString(typeInst, BfTypeNameFlag_ReduceName);
 
 	if (typeInst->IsValueType())
@@ -3070,16 +3171,16 @@ bool BfAutoComplete::CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode*
 {
 	if (mDocumentationEntryName.IsEmpty())
 		return false;
-	
+
 	if (mDocumentationEntryName != entry->mDisplay)
 		return false;
 
 	if (documentation != NULL)
 	{
 		StringT<128> str;
-		documentation->GetDocString(str);		
+		documentation->GetDocString(str);
 		entry->mDocumentation = mAlloc.AllocString(str);
-	}	
+	}
 
 	return true;
 }
@@ -3100,9 +3201,9 @@ void BfAutoComplete::CheckEmptyStart(BfAstNode* prevNode, BfType* type)
 			wantCursorIdx++;
 		if (prevNode->GetSourceData()->ToParser()->mCursorIdx != wantCursorIdx)
 			return;
-		
+
 		AddTypeInstanceEntry(type->ToTypeInstance());
-		CheckIdentifier(NULL);		
+		CheckIdentifier(NULL);
 		mInsertStartIdx = wantCursorIdx + 1;
 		mInsertEndIdx = mInsertStartIdx;
 	}
@@ -3111,6 +3212,8 @@ void BfAutoComplete::CheckEmptyStart(BfAstNode* prevNode, BfType* type)
 bool BfAutoComplete::CheckFixit(BfAstNode* node)
 {
 	if (mIgnoreFixits)
+		return false;
+	if (mModule == NULL)
 		return false;
 	if (mCompiler->mResolvePassData->mResolveType != BfResolveType_GetFixits)
 		return false;
@@ -3159,7 +3262,7 @@ void BfAutoComplete::CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 	if (!CheckFixit(node))
 		return;
 	if (typeInstance == NULL)
-		return;	
+		return;
 
 	if (typeInstance->IsInterface())
 		return;
@@ -3189,7 +3292,7 @@ void BfAutoComplete::CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 				continue; // Don't consider overrides here
 
 			// If we have "ProjA depends on LibBase", "ProjB depends on LibBase", then a type ClassC in LibBase implementing IFaceD,
-			//  where IFaceD gets extended with MethodE in ProjA, an implementing MethodE is still required to exist on ClassC -- 
+			//  where IFaceD gets extended with MethodE in ProjA, an implementing MethodE is still required to exist on ClassC --
 			//  the visibility is bidirectional.  A type ClassF implementing IFaceD inside ProjB will not be required to implement
 			//  MethodE, however
 			if ((!ifaceInst->IsTypeMemberAccessible(ifaceMethodInst->mMethodDef->mDeclaringType, ifaceTypeInst.mDeclaringType)) &&
@@ -3208,7 +3311,7 @@ void BfAutoComplete::CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 		}
 
 		if (!missingMethods.IsEmpty())
-		{			
+		{
 			BfParserData* parser = declTypeDef->mTypeDeclaration->GetSourceData()->ToParserData();
 			if (parser != NULL)
 			{
@@ -3403,16 +3506,16 @@ void BfAutoComplete::FixitAddCase(BfTypeInstance* typeInst, const StringImpl& ca
 		}
 	}
 
-	bool isSimpleCase = false;	
+	bool isSimpleCase = false;
 	if (!typeInst->mTypeDef->mFields.IsEmpty())
-	{		
+	{
 		if (auto block = BfNodeDynCast<BfBlock>(typeInst->mTypeDef->mTypeDeclaration->mDefineNode))
 		{
 			bool endsInComma = false;
 
 			if (!block->mChildArr.IsEmpty())
-			{	
-				auto lastNode = block->mChildArr.back();				
+			{
+				auto lastNode = block->mChildArr.back();
 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(lastNode))
 				{
 					if (tokenNode->mToken == BfToken_Comma)
@@ -3445,7 +3548,7 @@ void BfAutoComplete::FixitAddCase(BfTypeInstance* typeInst, const StringImpl& ca
 		}
 	}
 
-	if (!isSimpleCase)	
+	if (!isSimpleCase)
 	{
 		fieldStr += "|case ";
 		fieldStr += caseName;
@@ -3453,13 +3556,13 @@ void BfAutoComplete::FixitAddCase(BfTypeInstance* typeInst, const StringImpl& ca
 		if (!fieldTypes.IsEmpty())
 		{
 			fieldStr += "(";
-			FixitGetParamString(fieldTypes, fieldStr);			
+			FixitGetParamString(fieldTypes, fieldStr);
 			fieldStr += ")";
 		}
 		fieldStr += ";";
-	}		
+	}
 
-	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create case '%s' in '%s'\taddField|%s|%s", caseName.c_str(), fullName.c_str(), 
+	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create case '%s' in '%s'\taddField|%s|%s", caseName.c_str(), fullName.c_str(),
 		FixitGetLocation(parser->mParserData, fileLoc).c_str(), fieldStr.c_str()).c_str()));
 }
 
@@ -3507,7 +3610,7 @@ void BfAutoComplete::FixitGetParamString(const BfTypeVector& paramTypes, StringI
 					{
 						checkName[0] = tolower(checkName[0]);
 						for (int i = 1; i < (int)checkName.length(); i++)
-						{							
+						{
 							if ((i + 1 < (int)checkName.length()) &&
 								(islower(checkName[i + 1])))
 								break;
@@ -3555,56 +3658,56 @@ String BfAutoComplete::FixitGetLocation(BfParserData* parser, int insertPos)
 String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfIRValue id)
 {
 	char str[32];
-	
+
 	int stringId = mModule->GetStringPoolIdx(id, constHolder);
 	if (stringId != -1)
 	{
 		BfStringPoolEntry* entry;
 		if (mModule->mContext->mStringObjectIdMap.TryGetValue(stringId, &entry))
 		{
-			String result = "\"";			
+			String result = "\"";
 			result += SlashString(entry->mString, true, true, true);
 			result += "\"";
 			return result;
-		}		
+		}
 	}
-		
+
 	auto constant = constHolder->GetConstant(id);
 	switch (constant->mTypeCode)
 	{
 	case BfTypeCode_Boolean:
 		return StrFormat(":(bool) %s", constant->mBool ? "true" : "false");
 	case BfTypeCode_UInt8:
-		return StrFormat(":(uint8) %llu", constant->mUInt64);		
+		return StrFormat(":(uint8) %llu", constant->mUInt64);
 	case BfTypeCode_UInt16:
-		return StrFormat(":(uint16) %llu", constant->mUInt64);		
+		return StrFormat(":(uint16) %llu", constant->mUInt64);
 	case BfTypeCode_UInt32:
-		return StrFormat(":(uint32) %llu", constant->mUInt64);		
+		return StrFormat(":(uint32) %llu", constant->mUInt64);
 	case BfTypeCode_UInt64:
-		return StrFormat(":(uint64) %llu", constant->mUInt64);		
+		return StrFormat(":(uint64) %llu", constant->mUInt64);
 
 	case BfTypeCode_Int8:
-		return StrFormat(":(int8) %lld", constant->mInt64);		
+		return StrFormat(":(int8) %lld", constant->mInt64);
 	case BfTypeCode_Int16:
 		return StrFormat(":(int16) %lld", constant->mInt64);
 	case BfTypeCode_Int32:
-		return StrFormat(":(int32) %lld", constant->mInt64);		
+		return StrFormat(":(int32) %lld", constant->mInt64);
 	case BfTypeCode_Int64:
-		return StrFormat(":(int64) %lld", constant->mInt64);		
+		return StrFormat(":(int64) %lld", constant->mInt64);
 
-	case BfTypeCode_Float:		
-		{			
+	case BfTypeCode_Float:
+		{
 			ExactMinimalFloatToStr((float)constant->mDouble, str);
 			String result;
-			result += str;			
+			result += str;
 			result += "f";
 			return result;
-		}		
+		}
 	case BfTypeCode_Double:
 		{
 			ExactMinimalDoubleToStr(constant->mDouble, str);
 			String result;
-			result += str;			
+			result += str;
 			return result;
 		}
 	default:
@@ -3687,7 +3790,7 @@ void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfAstNode* ty
 	BfSizedAtomComposite namespaceComposite;
 	String namespaceString = typeRef->ToString();
 	bool isValid = mSystem->ParseAtomComposite(namespaceString, namespaceComposite);
-		
+
 	bool hasNamespace = false;
 	if (activeTypeDef != NULL)
 		hasNamespace = activeTypeDef->mNamespaceSearch.Contains(namespaceComposite);
@@ -3698,7 +3801,7 @@ void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfAstNode* ty
 			FixitGetLocation(parserData, typeRef->GetSrcStart()).c_str(), nextDotToken->GetSrcEnd() - typeRef->GetSrcStart()).c_str()));
 	}
 	else
-	{	
+	{
 		FixitAddNamespace(typeRef, namespaceString);
 	}
 }
@@ -3721,7 +3824,7 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 			auto methodInstance = mModule->GetRawMethodInstanceAtIdx(baseType, methodDef->mIdx);
 
 			String ctorShowName;
-			
+
 			int insertPos = FixitGetMemberInsertPos(mModule->mCurTypeInstance->mTypeDef);
 			String methodStr = "\f\a";
 			if (methodInstance->mMethodDef->mHasAppend)
@@ -3742,7 +3845,7 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 				case BfParamKind_Params:
 					methodStr += "params ";
 					break;
-				default: 
+				default:
 					break;
 				}
 				methodStr += mModule->TypeToString(methodInstance->GetParamType(paramIdx), BfTypeNameFlag_ReduceName);
@@ -3750,7 +3853,7 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 				methodStr += methodInstance->GetParamName(paramIdx);
 				useParamIdx++;
 			}
-			methodStr += ") : base(";			
+			methodStr += ") : base(";
 
 			ctorShowName += "this(";
 			useParamIdx = 0;
@@ -3814,4 +3917,28 @@ void BfAutoComplete::SetResultStringType(BfType * type)
 		mResultString += "\n:type\tpointer";
 	else
 		mResultString += "\n:type\tvaluetype";
+}
+
+void BfAutoComplete::FixitAddFullyQualify(BfAstNode* refNode, const StringImpl& findName, const SizedArrayImpl<BfUsingFieldData::MemberRef>& foundList)
+{
+	BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
+	String fullName;
+	for (int entryIdx = 0; entryIdx < foundList.mSize - 1; entryIdx++)
+	{
+		auto& entry = foundList[entryIdx];
+		if (entryIdx > 0)
+			fullName += ".";
+		if (!mModule->CheckProtection(protectionCheckFlags, entry.mTypeInstance, entry.GetDeclaringType(mModule)->mProject, entry.GetProtection(), mModule->mCurTypeInstance))
+			fullName += "[Friend]";
+		fullName += entry.GetName(mModule);
+	}
+
+	BfParserData* parser = refNode->GetSourceData()->ToParserData();
+	if (parser != NULL)
+	{
+		AddEntry(AutoCompleteEntry("fixit", StrFormat("Fully qualify 'using' name as '%s.%s'\tqualify|%s|%d|%s.",
+			fullName.c_str(), findName.c_str(),
+			parser->mFileName.c_str(), refNode->mSrcStart,
+			fullName.c_str()).c_str()));
+	}
 }

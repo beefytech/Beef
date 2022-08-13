@@ -244,7 +244,12 @@ namespace IDE.ui
 					if (mKind == .GoToDefinition)
 					{
 					    mSourceViewPanel.RecordHistoryLocation();
-					    var sourceViewPanel = gApp.ShowSourceFileLocation(scope .(filePath), -1, -1, line, lineChar, LocatorType.Smart, true);
+
+						var usePath = scope String(filePath);
+						if (usePath.StartsWith("$Emit$"))
+							usePath.Insert("$Emit$".Length, "Resolve$");
+
+					    var sourceViewPanel = gApp.ShowSourceFileLocation(usePath, -1, -1, line, lineChar, LocatorType.Smart, true);
 					    sourceViewPanel.RecordHistoryLocation(true);
 						Close();
 						return;
