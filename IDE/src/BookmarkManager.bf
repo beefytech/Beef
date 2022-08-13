@@ -104,7 +104,15 @@ namespace IDE
     public class BookmarkManager
     {
 		public BookmarkFolder mRootFolder = new .();
-		public List<BookmarkFolder> mBookmarkFolders = new .() {mRootFolder} ~ DeleteContainerAndItems!(_);
+		public List<BookmarkFolder> mBookmarkFolders = new .() {mRootFolder} ~
+			{
+				while (!_.IsEmpty)
+				{
+					DeleteFolder(_.Back);
+				}
+
+				delete _;
+			};
 
 		/// Occurs when a bookmark/folder is added, removed or moved.
 		public Event<Action> BookmarksChanged ~ _.Dispose();
