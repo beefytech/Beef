@@ -7972,6 +7972,7 @@ namespace IDE
 
 			if (window.mFocusWidget is KeysEditWidget)
 			{
+				evt.mKeyCode = .Accept;
 				return;
 			}
 
