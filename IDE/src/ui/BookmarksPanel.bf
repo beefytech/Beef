@@ -137,7 +137,8 @@ namespace IDE.ui
 
 			AddWidget(mBookmarksListView);
 
-			gApp.mBookmarkManager.mBookmarksChangedDelegate.Add(new => BookmarksChanged);
+			gApp.mBookmarkManager.BookmarksChanged.Add(new => BookmarksChanged);
+			gApp.mBookmarkManager.MovedToBookmark.Add(new => MovedToBookmark);
 		}
 
 		private void BookmarksLV_OnKeyDown(KeyDownEvent event)
@@ -220,21 +221,11 @@ namespace IDE.ui
 							{
 								if (theEvent.mDragKind == .After)
 								{
-									int index = targetBookmark.mFolder.mBookmarkList.IndexOf(targetBookmark);
-									index++;
-
-									Bookmark prevBookmark = null;
-
-									if (index < targetBookmark.mFolder.mBookmarkList.Count)
-									{
-										prevBookmark = targetBookmark.mFolder.mBookmarkList[index];
-									}
-									
-									gApp.mBookmarkManager.MoveBookmarkToFolder(sourceBookmark, targetBookmark.mFolder, prevBookmark);
+									gApp.mBookmarkManager.MoveBookmarkToFolder(sourceBookmark, targetBookmark.mFolder, .After, targetBookmark);
 								}
 								else if (theEvent.mDragKind == .Before)
 								{
-									gApp.mBookmarkManager.MoveBookmarkToFolder(sourceBookmark, targetBookmark.mFolder, targetBookmark);
+									gApp.mBookmarkManager.MoveBookmarkToFolder(sourceBookmark, targetBookmark.mFolder, .Before, targetBookmark);
 								}
 							}
 							else if (var targetFolder = target.RefObject as BookmarkFolder)
@@ -313,27 +304,10 @@ namespace IDE.ui
 				Menu menu = new Menu();
 				Menu anItem;
 				anItem = menu.AddItem("Delete");
-				anItem.mOnMenuItemSelected.Add(new (item) =>
-					{
-						listView.GetRoot().WithSelectedItems(scope (item) =>
-							{
-								if (var bookmarkItem = item as BookmarksListViewItem)
-								{
-									if (var bookmark = bookmarkItem.RefObject as Bookmark)
-										gApp.mBookmarkManager.DeleteBookmark(bookmark);
-									else if (var folder = bookmarkItem.RefObject as BookmarkFolder)
-										gApp.mBookmarkManager.DeleteFolder(folder);
-								}
-							});
-					});
+				anItem.mOnMenuItemSelected.Add(new (item) => { DeleteSelectedItems(); });
 
 				anItem = menu.AddItem("Rename");
-				anItem.mOnMenuItemSelected.Add(new (item) =>
-					{
-						var selectedItem = mBookmarksListView.GetRoot().FindFirstSelectedItem();
-						if (selectedItem != null)
-							RenameItem(selectedItem);
-					});
+				anItem.mOnMenuItemSelected.Add(new (item) => { TryRenameItem(); });
 
 				menu.AddItem();
 
@@ -394,16 +368,37 @@ namespace IDE.ui
 			mBookmarksDirty = true;
 		}
 
+		private void MovedToBookmark(Bookmark bookmark)
+		{
+			var root = (BookmarksListViewItem)mBookmarksListView.GetRoot();
+			root.WithItems(scope (item) =>
+				{
+					var bmItem = (BookmarksListViewItem)item;
+
+					if (bmItem.RefObject == bookmark)
+					{
+						bmItem.mIsBold = true;
+
+						ListViewItem parent = item.mParentItem;
+						parent.Open(true);
+					}
+					else
+					{
+						bmItem.mIsBold = false;
+					}
+				});
+		}
+
 		public override void Update()
 		{
 			if (mBookmarksDirty)
 				UpdateBookmarks();
 
 			ShowTooltip(mBtnCreateBookmarkFolder, "Create a new folder.");
-			ShowTooltip(mBtnPrevBookmark, "Move the cursor to previous bookmark.");
-			ShowTooltip(mBtnNextBookmark, "Move the cursor to next bookmark.");
-			ShowTooltip(mBtnPrevBookmarkInFolder, "Move the cursor to previous bookmark in the current folder.");
-			ShowTooltip(mBtnNextBookmarkInFolder, "Move the cursor to next bookmark in the current folder.");
+			ShowTooltip(mBtnPrevBookmark, "Move the cursor to the previous bookmark.");
+			ShowTooltip(mBtnNextBookmark, "Move the cursor to the next bookmark.");
+			ShowTooltip(mBtnPrevBookmarkInFolder, "Move the cursor to the previous bookmark in the current folder.");
+			ShowTooltip(mBtnNextBookmarkInFolder, "Move the cursor to the next bookmark in the current folder.");
 
 			base.Update();
 		}
@@ -432,22 +427,17 @@ namespace IDE.ui
 
 			var openFolders = scope List<BookmarkFolder>();
 
-			if (root.mChildItems != null)
-			{
-				// Find all open Folders so that we can open them again after rebuilding the list view
-				for (var child in root.mChildItems)
+			root.WithItems(scope (item) =>
 				{
-					if (!child.IsOpen)
-						continue;
-	
-					if (var bookmarkFolder = ((BookmarksListViewItem)child).RefObject as BookmarkFolder)
+					if (item.IsOpen && (var bookmarkFolder = ((BookmarksListViewItem)item).RefObject as BookmarkFolder))
 					{
 						openFolders.Add(bookmarkFolder);
 					}
-				}
-			}
+				});
 
 			root.Clear();
+
+			Bookmark currentBookmark = gApp.mBookmarkManager.CurrentBookmark;
 
 			for (BookmarkFolder folder in gApp.mBookmarkManager.mBookmarkFolders)
 			{
@@ -466,7 +456,8 @@ namespace IDE.ui
 
 				for (Bookmark bookmark in folder.mBookmarkList)
 				{
-					AddBookmarkToListView(FolderItem, bookmark);
+					BookmarksListViewItem bmItem = AddBookmarkToListView(FolderItem, bookmark);
+					bmItem.mIsBold = (bookmark == currentBookmark);
 				}
 
 				if (!isRoot)

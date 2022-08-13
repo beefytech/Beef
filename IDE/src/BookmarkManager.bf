@@ -53,6 +53,8 @@ namespace IDE
         public String mNotes ~ delete _;
 		public bool mIsDisabled;
 		public BookmarkFolder mFolder;
+
+		internal int IndexInFolder => mFolder.mBookmarkList.IndexOf(this);
     }
 
 	public class BookmarkFolder
@@ -60,15 +62,7 @@ namespace IDE
 		/// The title of the bookmark-folder that will be visible in the bookmark-panel
 		public String mTitle ~ delete _;
 
-	    public List<Bookmark> mBookmarkList = new List<Bookmark>() ~
-	        {
-				for (var bookmark in mBookmarkList)
-					bookmark.Kill();
-				
-				gApp.mDebugger.mBreakpointsChangedDelegate();
-
-				delete _;
-	        };
+	    public List<Bookmark> mBookmarkList = new List<Bookmark>() ~ delete _;
 
 		/// Gets or Sets whether every bookmark in this folder is disabled or not.
 		public bool IsDisabled
@@ -86,7 +80,7 @@ namespace IDE
 				for (var bookmark in mBookmarkList)
 					bookmark.mIsDisabled = value;
 
-				gApp.mBookmarkManager.mBookmarksChangedDelegate();
+				gApp.mBookmarkManager.BookmarksChanged();
 			}
 		}
 
@@ -100,22 +94,28 @@ namespace IDE
 			mBookmarkList.Add(bookmark);
 			bookmark.mFolder = this;
 		}
+
+		internal int Index => gApp.mBookmarkManager.mBookmarkFolders.IndexOf(this);
 	}
+
+	using internal Bookmark;
+	using internal BookmarkFolder;
 
     public class BookmarkManager
     {
 		public BookmarkFolder mRootFolder = new .();
 		public List<BookmarkFolder> mBookmarkFolders = new .() {mRootFolder} ~ DeleteContainerAndItems!(_);
 
-		public Event<Action> mBookmarksChangedDelegate ~ _.Dispose();
+		/// Occurs when a bookmark/folder is added, removed or moved.
+		public Event<Action> BookmarksChanged ~ _.Dispose();
+
+		public delegate void MovedToBookmarkEventHandler(Bookmark bookmark);
+
+		// Occurs when the user jumped to a bookmark.
+		public Event<MovedToBookmarkEventHandler> MovedToBookmark ~ _.Dispose();
 
 		private int mBookmarkCount;
 
-		/// Index of the folder that was navigated to last
-		public int32 mFolderIdx;
-		/// Index of the bookmark (inside of its folder) that was navigated to last
-        public int32 mBookmarkIdx;
-		
 		/// Number of bookmarks created, used to generate the names.
 		private int32 _createdBookmarks;
 		/// Number of folders created, used to generate the names.
@@ -140,11 +140,20 @@ namespace IDE
 				{
 					folder.IsDisabled = value;
 				}
-				
-				mBookmarksChangedDelegate();
+
+				BookmarksChanged();
 			}
 		}
-		
+
+		/// Gets the currently selected bookmark or null, if no bookmark is selected.
+		public Bookmark CurrentBookmark
+		{
+			get;
+			private set;
+		}
+
+		public BookmarkFolder CurrentFolder => CurrentBookmark?.mFolder;
+
 		/**
 		 * Creates a new bookmark folder
 		 * @param title The title of the bookmark
@@ -152,8 +161,6 @@ namespace IDE
 		 */
 		public BookmarkFolder CreateFolder(String title = null)
 		{
-			mBookmarkIdx = -1;
-
 			BookmarkFolder folder = new .();
 
 			if (title == null)
@@ -161,9 +168,9 @@ namespace IDE
 			else
 				folder.mTitle = new String(title);
 
-			mBookmarkFolders.Add(folder);            
+			mBookmarkFolders.Add(folder);
 
-			mBookmarksChangedDelegate();
+			BookmarksChanged();
 
 			return folder;
 		}
@@ -171,23 +178,53 @@ namespace IDE
 		/// Deletes the given bookmark folder and all bookmarks inside it.
 		public void DeleteFolder(BookmarkFolder folder)
 		{
-			int folderIdx = mBookmarkFolders.IndexOf(folder);
-			
+			if (folder == CurrentFolder)
+			{
+				// the current bookmark will be deleted, so we have to find another one
+				int folderIdx = mBookmarkFolders.IndexOf(folder);
+				int newFolderIdx = folderIdx;
+
+				BookmarkFolder newFolder = null;
+
+				repeat
+				{
+					newFolderIdx--;
+
+					if (newFolderIdx < 0)
+					{
+						newFolderIdx = mBookmarkFolders.Count - 1;
+					}
+
+					if (mBookmarkFolders[newFolderIdx].mBookmarkList.Count != 0)
+					{
+						newFolder = mBookmarkFolders[newFolderIdx];
+						break;
+					}
+				}
+				// Break when we reach start
+				while ((folderIdx != newFolderIdx));
+
+				if (newFolder != null)
+				{
+					Debug.Assert(newFolder.mBookmarkList.Count != 0);
+
+					CurrentBookmark = newFolder.mBookmarkList[0];
+				}
+			}
+
+			while (!folder.mBookmarkList.IsEmpty)
+			{
+				gApp.mBookmarkManager.DeleteBookmark(folder.mBookmarkList.Back);
+			}
+
 			mBookmarkFolders.Remove(folder);
 
 			delete folder;
 
-			// Select the previous folder
-			if (mFolderIdx == folderIdx)
-				folderIdx--;
-			if (mFolderIdx >= mBookmarkFolders.Count)
-			    mFolderIdx = (int32)mBookmarkFolders.Count - 1;
+			if (gApp.mDebugger.mBreakpointsChangedDelegate.HasListeners)
+				gApp.mDebugger.mBreakpointsChangedDelegate();
 
-			// Select last bookmark inside the newly selected folder
-			if (mBookmarkIdx >= mBookmarkFolders[mFolderIdx].mBookmarkList.Count)
-			    mBookmarkIdx = (int32)mBookmarkFolders[mFolderIdx].mBookmarkList.Count - 1;
-			
-			mBookmarksChangedDelegate();
+			BookmarksChanged();
 		}
 
         public Bookmark CreateBookmark(String fileName, int wantLineNum, int wantColumn, bool isDisabled = false, String title = null, BookmarkFolder folder = null)
@@ -195,10 +232,6 @@ namespace IDE
 			var folder;
 
 			folder = folder ?? mRootFolder;
-
-			mFolderIdx = (int32)mBookmarkFolders.IndexOf(folder);
-
-			mBookmarkIdx = (int32)folder.mBookmarkList.Count;
 
             Bookmark bookmark = new Bookmark();
             bookmark.mFileName = new String(fileName);
@@ -213,45 +246,59 @@ namespace IDE
 			bookmark.mIsDisabled = isDisabled;
    			
 			folder.[Friend]AddBookmark(bookmark);
-
-            gApp.mDebugger.mBreakpointsChangedDelegate();
 			
-			mBookmarksChangedDelegate();
+			if (gApp.mDebugger.mBreakpointsChangedDelegate.HasListeners)
+				gApp.mDebugger.mBreakpointsChangedDelegate();
+
+			CurrentBookmark = bookmark;
+			BookmarksChanged();
 
 			mBookmarkCount++;
 
             return bookmark;
         }
 
-		/** Moves the bookmark to the specified folder.
-		 * @param bookmark The bookmark to move.
-		 * @param folder The folder to which the bookmark will be moved.
-		 * @param insertBefore If null the bookmark will be added at the end of the folder. Otherwise it will be inserted before the specified bookmark.
-		 */
-		public void MoveBookmarkToFolder(Bookmark bookmark, BookmarkFolder folder, Bookmark insertBefore = null)
-		{
-			if (bookmark.mFolder != null)
+        public void DeleteBookmark(Bookmark bookmark)
+        {
+			bool deletedCurrentBookmark = false;
+			Bookmark newCurrentBookmark = null;
+
+			if (bookmark == CurrentBookmark)
 			{
-				bookmark.mFolder.mBookmarkList.Remove(bookmark);
+				deletedCurrentBookmark = true;
+
+				// try to select a bookmark from the current folder
+				newCurrentBookmark = FindPrevBookmark(true);
+
+				if (newCurrentBookmark == null || newCurrentBookmark == CurrentBookmark)
+				{
+					// Current folder is empty, select from previous folder
+					newCurrentBookmark = FindPrevBookmark(false);
+
+					if (newCurrentBookmark == CurrentBookmark)
+					{
+						// We have to make sure, that we don't select the current bookmark
+						newCurrentBookmark = null;
+					}
+				}
 			}
 
-			if (insertBefore == null)
-				folder.mBookmarkList.Add(bookmark);
-			else
-			{
-				Debug.Assert(folder == insertBefore.mFolder, "Insert before must be in folder.");
+			BookmarkFolder folder = bookmark.mFolder;
 
-				int index = folder.mBookmarkList.IndexOf(insertBefore);
+			folder.mBookmarkList.Remove(bookmark);
 
-				folder.mBookmarkList.Insert(index, bookmark);
-			}
+			bookmark.Kill();
 
-			bookmark.mFolder = folder;
-			
-			FixupIndices();
+			if (deletedCurrentBookmark)
+				CurrentBookmark = newCurrentBookmark;
 
-			mBookmarksChangedDelegate();
-		}
+			if (gApp.mDebugger.mBreakpointsChangedDelegate.HasListeners)
+				gApp.mDebugger.mBreakpointsChangedDelegate();
+
+			BookmarksChanged();
+
+			mBookmarkCount--;
+        }
 
 		enum Placement
 		{
@@ -259,6 +306,42 @@ namespace IDE
 			After
 		}
 
+		/** Moves the bookmark to the specified folder.
+		 * @param bookmark The bookmark to move.
+		 * @param folder The folder to which the bookmark will be moved.
+		 * @param insertBefore If null the bookmark will be added at the end of the folder. Otherwise it will be inserted before the specified bookmark.
+		 */
+		public void MoveBookmarkToFolder(Bookmark bookmark, BookmarkFolder targetFolder, Placement place = .Before, Bookmark targetBookmark = null)
+		{
+			if (bookmark.mFolder != null)
+			{
+				bookmark.mFolder.mBookmarkList.Remove(bookmark);
+			}
+
+			if (targetBookmark == null)
+				targetFolder.mBookmarkList.Add(bookmark);
+			else
+			{
+				Debug.Assert(targetFolder == targetBookmark.mFolder, "Insert before must be in folder.");
+
+				int index = targetFolder.mBookmarkList.IndexOf(targetBookmark);
+				
+				if (place == .After)
+					index++;
+
+				targetFolder.mBookmarkList.Insert(index, bookmark);
+			}
+
+			bookmark.mFolder = targetFolder;
+
+			BookmarksChanged();
+		}
+
+		/** Moves the given folder in front of or behind the given target-folder.
+		 * @param folder The folder to move.
+		 * @param place Specifies whether folder will be placed in front of or behind target.
+		 * @param target The folder relative to which folder will be placed.
+		 */
 		public void MoveFolder(BookmarkFolder folder, Placement place = .After, BookmarkFolder target = null)
 		{
 			if (folder == target)
@@ -280,41 +363,11 @@ namespace IDE
 
 				mBookmarkFolders.Insert(index, folder);
 			}
-			
-			FixupIndices();
 
-			mBookmarksChangedDelegate();
+			BookmarksChanged();
 		}
 
-		/// Make sure that the bookmark and folder indices are valid.
-		private void FixupIndices()
-		{
-			if (mBookmarkIdx <= 0 || mBookmarkIdx >= mBookmarkFolders[mFolderIdx].mBookmarkList.Count)
-			{
-				mBookmarkIdx = 0;
-
-				// Don't have an empty folder selected
-				if (mBookmarkFolders[mFolderIdx].mBookmarkList.Count == 0)
-					mFolderIdx = 0;
-			}
-		}
-
-        public void DeleteBookmark(Bookmark bookmark)
-        {
-			BookmarkFolder folder = bookmark.mFolder;
-
-			folder.mBookmarkList.Remove(bookmark);
-
-			FixupIndices();
-
-			gApp.mDebugger.mBreakpointsChangedDelegate();
-			bookmark.Kill();
-
-			mBookmarksChangedDelegate();
-
-			mBookmarkCount--;
-        }
-
+		/// Deletes all bookmarks and bookmark-folders.
 		public void Clear()
 		{
 			for (var folder in mBookmarkFolders)
@@ -327,108 +380,134 @@ namespace IDE
 
 			mRootFolder = new BookmarkFolder();
 			mBookmarkFolders.Add(mRootFolder);
-
-			mFolderIdx = 0;
-			mBookmarkIdx = 0;
-			gApp.mDebugger.mBreakpointsChangedDelegate();
 			
-			mBookmarksChangedDelegate();
+			if (gApp.mDebugger.mBreakpointsChangedDelegate.HasListeners)
+				gApp.mDebugger.mBreakpointsChangedDelegate();
+
+			mBookmarkCount = 0;
+
+			BookmarksChanged();
 		}
 
-        public void PrevBookmark(bool currentFolderOnly = false)
-        {
+		/** Finds and returns the previous bookmark relative to CurrentBookmark.
+		 * @param currentFolderOnly If set to true, only the current folder will be searched. Otherwise all folders will be searched.
+		 * @returns The previous bookmark. If CurrentBookmark is the only bookmark, CurrentBookmark will be returned. Null, if there are no bookmarks.
+		 */
+		private Bookmark FindPrevBookmark(bool currentFolderOnly)
+		{
 			if (mBookmarkCount == 0)
-				return;
+				return null;
 
-			int32 currentFolderIdx = mFolderIdx;
-			int32 currentBookmarkIdx = mBookmarkIdx;
+			int currentFolderIdx = CurrentFolder.Index;
+			int currentBookmarkIdx = CurrentBookmark.IndexInFolder;
 
 			Bookmark prevBookmark = null;
-			
+
+			int newFolderIndex = currentFolderIdx;
+			int newBmIndex = currentBookmarkIdx;
+
 			repeat
 			{
-			    mBookmarkIdx--;
+			    newBmIndex--;
 
-			    if (mBookmarkIdx < 0)
+			    if (newBmIndex < 0)
 				{
 					if (!currentFolderOnly)
 					{
-						mFolderIdx--;
+						newFolderIndex--;
 
-						if (mFolderIdx < 0)
+						if (newFolderIndex < 0)
 						{
 							// wrap to last folder
-							mFolderIdx = (int32)mBookmarkFolders.Count - 1;
+							newFolderIndex = (int32)mBookmarkFolders.Count - 1;
 						}
 					}
 
 					// Select last bookmark in current folder
-					mBookmarkIdx = (int32)mBookmarkFolders[mFolderIdx].mBookmarkList.Count - 1;
+					newBmIndex = (int32)mBookmarkFolders[newFolderIndex].mBookmarkList.Count - 1;
 				}
 
-				if (mBookmarkIdx >= 0)
-			    	prevBookmark = mBookmarkFolders[mFolderIdx].mBookmarkList[mBookmarkIdx];
+				if (newBmIndex >= 0)
+					prevBookmark = mBookmarkFolders[newFolderIndex].mBookmarkList[newBmIndex];
 				else
 					prevBookmark = null;
 			}
 			// skip disabled bookmarks, stop when we reach starting point
-			while ((prevBookmark == null || prevBookmark.mIsDisabled) && ((currentFolderIdx != mFolderIdx) || (currentBookmarkIdx != mBookmarkIdx) && mBookmarkIdx != -1));
+			while ((prevBookmark == null || prevBookmark.mIsDisabled) && ((currentFolderIdx != newFolderIndex) || (currentBookmarkIdx != newBmIndex) && newBmIndex != -1));
+
+			return prevBookmark;
+		}
+
+		/** Jumps to the previous bookmark.
+		 * @param currentFolderOnly If true, only the current folder will be searched. Otherwise all folders will be searched.
+		 */
+        public void PrevBookmark(bool currentFolderOnly = false)
+        {
+			Bookmark prevBookmark = FindPrevBookmark(currentFolderOnly);
 
 			// If prevBookmark is disabled no bookmark is enabled.
 			if (prevBookmark != null && !prevBookmark.mIsDisabled)
 				GotoBookmark(prevBookmark);
         }
-
+		
+		/* Jumps to the next bookmark.
+		 * @param currentFolderOnly If true, only the current folder will be searched. Otherwise all folders will be searched.
+		 */
         public void NextBookmark(bool currentFolderOnly = false)
         {
 			if (mBookmarkCount == 0)
 				return;
 
-			int32 currentFolderIdx = mFolderIdx;
-			int32 currentBookmarkIdx = mBookmarkIdx;
+			int currentFolderIdx = CurrentFolder.Index;
+			int currentBookmarkIdx = CurrentBookmark.IndexInFolder;
 
 			Bookmark nextBookmark = null;
-			
+
+			int newFolderIndex = currentFolderIdx;
+			int newBmIndex = currentBookmarkIdx;
+
 			repeat
 			{
-			    mBookmarkIdx++;
+			    newBmIndex++;
 
-			    if (mBookmarkIdx >= mBookmarkFolders[mFolderIdx].mBookmarkList.Count)
+			    if (newBmIndex >= mBookmarkFolders[newFolderIndex].mBookmarkList.Count)
 				{
 					if (!currentFolderOnly)
 					{
-						mFolderIdx++;
-						
-						if (mFolderIdx >= mBookmarkFolders.Count)
+						newFolderIndex++;
+
+						if (newFolderIndex >= mBookmarkFolders.Count)
 						{
 							// wrap to first folder
-							mFolderIdx = 0;
+							newFolderIndex = 0;
 						}
 					}
 
 					// Select first bookmark in current folder (or -1 if there is no bookmark)
-					mBookmarkIdx = mBookmarkFolders[mFolderIdx].mBookmarkList.IsEmpty ? -1 : 0;
+					newBmIndex = mBookmarkFolders[newFolderIndex].mBookmarkList.IsEmpty ? -1 : 0;
 				}
 
-				if (mBookmarkIdx >= 0)
-			    	nextBookmark = mBookmarkFolders[mFolderIdx].mBookmarkList[mBookmarkIdx];
+				if (newBmIndex >= 0)
+				nextBookmark = mBookmarkFolders[newFolderIndex].mBookmarkList[newBmIndex];
 				else
 					nextBookmark = null;
 			}
 			// skip disabled bookmarks, stop when we reach starting point
-			while ((nextBookmark == null || nextBookmark.mIsDisabled) && ((currentFolderIdx != mFolderIdx) || (currentBookmarkIdx != mBookmarkIdx) && mBookmarkIdx != -1));
+			while ((nextBookmark == null || nextBookmark.mIsDisabled) && ((currentFolderIdx != newFolderIndex) || (currentBookmarkIdx != newBmIndex) && newBmIndex != -1));
 
 			// If nextBookmark is disabled no bookmark is enabled.
 			if (nextBookmark != null && !nextBookmark.mIsDisabled)
 				GotoBookmark(nextBookmark);
         }
 
+		/// Moves the cursor to the given bookmark.
 		public void GotoBookmark(Bookmark bookmark)
 		{
-			mFolderIdx = (int32)mBookmarkFolders.IndexOf(bookmark.mFolder);
-			mBookmarkIdx = (int32)bookmark.mFolder.mBookmarkList.IndexOf(bookmark);
+			CurrentBookmark = bookmark;
 
 			gApp.ShowSourceFileLocation(bookmark.mFileName, -1, -1, bookmark.mLineNum, bookmark.mColumn, LocatorType.Smart);
+
+			MovedToBookmark(bookmark);
 		}
     }
 }
