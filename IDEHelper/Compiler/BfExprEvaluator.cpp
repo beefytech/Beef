@@ -865,7 +865,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			}
 			if (paramType->IsConstExprValue())
 			{
-				prevParamWasConstExpr = true;
+				paramWasConstExpr = true;
 				paramType = ((BfConstExprValueType*)paramType)->mType;
 			}
 
