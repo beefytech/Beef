@@ -201,11 +201,10 @@ namespace System
 				outFileName.Append(name);
 				outText.AppendF(
 					$"""
-					namespace {Namespace}
+					namespace {Namespace};
+					
+					class {name}
 					{{
-						class {name}
-						{{
-						}}
 					}}
 					""");
 			}

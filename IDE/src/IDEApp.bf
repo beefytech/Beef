@@ -11213,14 +11213,13 @@ namespace IDE
 				"""
 				using System;
 
-				namespace {}
+				namespace {};
+				
+				class {}
 				{{
-					class {}
+					public static int Main(String[] args)
 					{{
-						public static int Main(String[] args)
-						{{
-							return 0;
-						}}
+						return 0;
 					}}
 				}}
 				""", namespaceName, className);
