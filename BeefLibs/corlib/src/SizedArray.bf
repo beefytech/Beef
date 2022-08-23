@@ -15,6 +15,8 @@ namespace System
 			}
 		}	
 
+		
+
 		public explicit static operator T[CSize] (Self val)
 		{
 			return val.mVal;
@@ -109,6 +111,28 @@ namespace System
 				return Current;
 			}
 		}
+
+		public static T[CSize] InitAll
+		{
+			[Error("Element type has no default constructor")]
+			get
+			{
+				return default;
+			}
+		}
 	}
 
+	extension SizedArray<T, CSize> where T : struct, new
+	{
+		public static T[CSize] InitAll
+		{
+			get
+			{
+				T[CSize] val;
+				for (int i < CSize)
+					val[i] = T();
+				return val;
+			}
+		}
+	}
 }

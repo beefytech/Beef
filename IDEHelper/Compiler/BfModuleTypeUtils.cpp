@@ -941,7 +941,8 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 			MemberRef* prevMemberRef = NULL;
 			if (memberMap.TryGetValue(memberRef.mName, &prevMemberRef))
 			{
-				//auto& prevMemberRef = itr->second;
+				if ((prevMemberRef->mDeclaringType->IsExtension()) && (!memberRef.mDeclaringType->IsExtension()))
+					continue;
 
 				MemberRef* firstMemberRef = &memberRef;
 				MemberRef* secondMemberRef = prevMemberRef;

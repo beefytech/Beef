@@ -5709,14 +5709,22 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 						if (matchedProp != NULL)
 						{
-							if (mModule->PreFail())
+							if ((matchedProp->mDeclaringType->IsExtension()) && (!prop->mDeclaringType->IsExtension()))
 							{
-								auto error = mModule->Fail(StrFormat("Ambiguous reference to property '%s.%s'", mModule->TypeToString(curCheckType).c_str(), fieldName.c_str()), targetSrc);
-								if (error != NULL)
+								// Prefer non-extension
+								continue;
+							}
+							else
+							{
+								if (mModule->PreFail())
 								{
-									mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See property declaration in project '%s'", matchedProp->mDeclaringType->mProject->mName.c_str()), matchedProp->mFieldDeclaration);
-									mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See property declaration in project '%s'", prop->mDeclaringType->mProject->mName.c_str()), prop->mFieldDeclaration);
-									break;
+									auto error = mModule->Fail(StrFormat("Ambiguous reference to property '%s.%s'", mModule->TypeToString(curCheckType).c_str(), fieldName.c_str()), targetSrc);
+									if (error != NULL)
+									{
+										mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See property declaration in project '%s'", matchedProp->mDeclaringType->mProject->mName.c_str()), matchedProp->mFieldDeclaration);
+										mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See property declaration in project '%s'", prop->mDeclaringType->mProject->mName.c_str()), prop->mFieldDeclaration);
+										break;
+									}
 								}
 							}
 						}
@@ -21404,6 +21412,11 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		{
 			mResult = mModule->GetDefaultTypedValue(mExpectingType);
 			return;
+		}
+
+		if (mExpectingType->IsSizedArray())
+		{
+			expectingTypeInst = mModule->GetWrappedStructType(mExpectingType);
 		}
 
 		if (expectingTypeInst == NULL)
