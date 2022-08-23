@@ -283,7 +283,7 @@ namespace IDE
 						parser.SetSource(content, fileName, -1);
 						var passInstance = bfSystem.CreatePassInstance();
 						defer delete passInstance;
-						parser.Parse(passInstance, IDEApp.IsBeefFile(fileName));
+						parser.Parse(passInstance, !IDEApp.IsBeefFile(fileName));
 						parser.Reduce(passInstance);
 
 						String name = parser.GetLocationName(wantLineNum, wantColumn, .. scope .());
