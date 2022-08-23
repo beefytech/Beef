@@ -229,7 +229,7 @@ namespace IDE
 
 			delete folder;
 
-			if (gApp.mDebugger.mBreakpointsChangedDelegate.HasListeners)
+			if (gApp.mDebugger?.mBreakpointsChangedDelegate.HasListeners == true)
 				gApp.mDebugger.mBreakpointsChangedDelegate();
 
 			BookmarksChanged();
