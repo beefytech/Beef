@@ -175,6 +175,9 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfParser_SetCompleteParse(void* bfParser);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfParser_GetLineCharAtIdx(void* bfParser, int32 idx, int32* line, int32* lineChar);
+
 		public BfSystem mSystem;
         public void* mNativeBfParser;
         public bool mIsUsed;
@@ -418,6 +421,15 @@ namespace IDE.Compiler
 		{
 			var md5Hash;
 			BfParser_SetHashMD5(mNativeBfParser, ref md5Hash);
+		}
+
+		public (int, int) GetLineCharAtIdx(int idx) {
+			int32 line = 0;
+			int32 char = 0;
+
+			BfParser_GetLineCharAtIdx(mNativeBfParser, (.) idx, &line, &char);
+
+			return (line, char);
 		}
     }
 }
