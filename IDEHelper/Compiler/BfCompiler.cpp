@@ -7489,7 +7489,12 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 			Array<BfTypeInstance*> typeWorkList;
 
+			Array<BfType*> typeList;
+			typeList.Reserve(mContext->mResolvedTypes.GetCount());
 			for (auto type : mContext->mResolvedTypes)
+				typeList.Add(type);
+
+			for (auto type : typeList)
 			{
 				auto module = type->GetModule();
 
