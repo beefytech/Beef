@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using IDE.ui;
 using System.Diagnostics;
+using System.IO;
 
 namespace IDE
 {
@@ -65,7 +66,7 @@ namespace IDE
 	    public List<Bookmark> mBookmarkList = new List<Bookmark>() ~ delete _;
 
 		/// Gets or Sets whether every bookmark in this folder is disabled or not.
-		public bool IsDisabled
+		public bool AreAllDisabled
 		{
 			get
 			{
@@ -79,6 +80,25 @@ namespace IDE
 			{
 				for (var bookmark in mBookmarkList)
 					bookmark.mIsDisabled = value;
+
+				gApp.mBookmarkManager.BookmarksChanged();
+			}
+		}
+
+		public bool AreAllEnabled
+		{
+			get
+			{
+				for (var bookmark in mBookmarkList)
+					if (bookmark.mIsDisabled)
+						return false;
+
+				return true;
+			}
+			set
+			{
+				for (var bookmark in mBookmarkList)
+					bookmark.mIsDisabled = !value;
 
 				gApp.mBookmarkManager.BookmarksChanged();
 			}
@@ -125,9 +145,9 @@ namespace IDE
 		private int mBookmarkCount;
 
 		/// Number of bookmarks created, used to generate the names.
-		private int32 _createdBookmarks;
+		private int32 sBookmarkId;
 		/// Number of folders created, used to generate the names.
-		private int32 _createdFolders;
+		private int32 sFolderId;
 		
 		/// Gets or sets whether all bookmarks are disabled or not.
 		public bool AllBookmarksDisabled
@@ -136,7 +156,7 @@ namespace IDE
 			{
 				for (var folder in mBookmarkFolders)
 				{
-					if (!folder.IsDisabled)
+					if (!folder.AreAllDisabled)
 						return false;
 				}
 
@@ -146,7 +166,7 @@ namespace IDE
 			{
 				for (var folder in mBookmarkFolders)
 				{
-					folder.IsDisabled = value;
+					folder.AreAllDisabled = value;
 				}
 
 				BookmarksChanged();
@@ -172,7 +192,7 @@ namespace IDE
 			BookmarkFolder folder = new .();
 
 			if (title == null)
-				folder.mTitle = new $"Folder {_createdFolders++}";
+				folder.mTitle = new $"Folder {++sFolderId}";
 			else
 				folder.mTitle = new String(title);
 
@@ -247,7 +267,36 @@ namespace IDE
             bookmark.mColumn = (int32)wantColumn;
 
 			if (title == null)
-				bookmark.mTitle = new $"Bookmark {_createdBookmarks++}";
+			{
+				String baseName = Path.GetFileNameWithoutExtension(fileName, .. scope .());
+
+				if (IDEApp.IsSourceCode(fileName))
+				{
+					var bfSystem = IDEApp.sApp.mBfResolveSystem;
+					if (bfSystem != null)
+					{
+						String content = scope .();
+						gApp.LoadTextFile(fileName, content).IgnoreError();
+
+						var parser = bfSystem.CreateEmptyParser(null);
+						defer delete parser;
+						parser.SetSource(content, fileName, -1);
+						var passInstance = bfSystem.CreatePassInstance();
+						defer delete passInstance;
+						parser.Parse(passInstance, IDEApp.IsBeefFile(fileName));
+						parser.Reduce(passInstance);
+
+						String name = parser.GetLocationName(wantLineNum, wantColumn, .. scope .());
+						if (!name.IsEmpty)
+							bookmark.mTitle = new $"#{++sBookmarkId} {name}";
+					}
+				}
+
+				if (bookmark.mTitle == null)
+				{
+					bookmark.mTitle = new $"#{++sBookmarkId} {baseName}";
+				}
+			}
 			else
 				bookmark.mTitle = new String(title);
 
@@ -516,6 +565,34 @@ namespace IDE
 			gApp.ShowSourceFileLocation(bookmark.mFileName, -1, -1, bookmark.mLineNum, bookmark.mColumn, LocatorType.Smart);
 
 			MovedToBookmark(bookmark);
+		}
+
+		public void RecalcCurId()
+		{
+			sBookmarkId = 0;
+			sFolderId = 0;
+
+			for (var folder in mBookmarkFolders)
+			{
+				if (folder.mTitle?.StartsWith("Folder ") == true)
+				{
+					if (int32 curId = int32.Parse(folder.mTitle.Substring("Folder ".Length)))
+						sFolderId = Math.Max(sFolderId, curId);
+				}
+
+				for (var bookmark in folder.mBookmarkList)
+				{
+					if (bookmark.mTitle.StartsWith("#"))
+					{
+						int spacePos = bookmark.mTitle.IndexOf(' ');
+						if (spacePos != -1)
+						{
+							if (int32 curId = int32.Parse(bookmark.mTitle.Substring(1, spacePos - 1)))
+								sBookmarkId = Math.Max(sBookmarkId, curId);
+						}
+					}
+				}
+			}
 		}
     }
 }

@@ -230,6 +230,7 @@ public:
 	virtual BfParser* ToParser() override { return this; }
 
 	void GetLineCharAtIdx(int idx, int& line, int& lineChar);
+	int GetIndexAtLine(int line);
 
 	void Fail(const StringImpl& error, int offset = -1);
 	void TokenFail(const StringImpl& error, int offset = -1);

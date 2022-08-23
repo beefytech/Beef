@@ -3382,6 +3382,7 @@ namespace IDE
 				    mBookmarkManager.CreateBookmark(absPath, lineNum, column, isDisabled, bookmarkTitle, folder);
 				}
 			}
+			mBookmarkManager.RecalcCurId();
 
 			for (var referenceId in data.Enumerate("DebuggerDisplayTypes"))
 			{

@@ -4090,6 +4090,72 @@ BF_EXPORT void BF_CALLTYPE BfSystem_DeleteParser(BfSystem* bfSystem, BfParser* b
 	//bfSystem->mParserDeleteQueue.push_back(bfParser);
 }
 
+class BfLocationNameVisitor : public BfElementVisitor
+{
+public:
+	int mIndex;
+	String mName;
+
+	bool TryNode(BfAstNode* node)
+	{
+		if ((mIndex >= node->mSrcStart) && (mIndex < node->mSrcEnd))
+		{
+			if (!mName.IsEmpty())
+				mName += ".";
+			return true;
+		}
+		return false;
+	}
+
+	virtual void Visit(BfTypeDeclaration* typeDeclaration)
+	{
+		if ((typeDeclaration->mNameNode != NULL) && (TryNode(typeDeclaration)))
+		{
+			typeDeclaration->mNameNode->ToString(mName);
+		}
+
+		BfElementVisitor::Visit(typeDeclaration);
+	}
+
+	virtual void Visit(BfMethodDeclaration* methodDeclaration)
+	{
+		if ((methodDeclaration->mNameNode != NULL) && (TryNode(methodDeclaration)))
+		{
+			if (methodDeclaration->mNameNode != NULL)
+				methodDeclaration->mNameNode->ToString(mName);
+		}
+
+		BfElementVisitor::Visit(methodDeclaration);
+	}
+
+	virtual void Visit(BfPropertyDeclaration* propertyDeclaration)
+	{
+		if ((propertyDeclaration->mNameNode != NULL) && (TryNode(propertyDeclaration)))
+		{
+			if (propertyDeclaration->mNameNode != NULL)
+				propertyDeclaration->mNameNode->ToString(mName);
+		}
+
+		BfElementVisitor::Visit(propertyDeclaration);
+	}
+};
+
+BF_EXPORT const char* BfSystem_GetParserLocationName(BfParser* parser, int line, int column)
+{
+	int idx = parser->GetIndexAtLine(line);
+	if (idx == -1)
+		return NULL;
+	idx += column;
+
+	BfLocationNameVisitor visitor;
+	visitor.mIndex = idx;
+	visitor.VisitMembers(parser->mRootNode);
+
+	String& outString = *gTLStrReturn.Get();
+	outString = visitor.mName;
+	return outString.c_str();
+}
+
 BF_EXPORT BfCompiler* BF_CALLTYPE BfSystem_CreateCompiler(BfSystem* bfSystem, bool isResolveOnly)
 {
 	return bfSystem->CreateCompiler(isResolveOnly);
