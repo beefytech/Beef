@@ -124,13 +124,12 @@ namespace IDE.ui
 
 			mBookmarksListView.mOnItemMouseDown.Add(new (item, x, y, btnNum, btnCount) =>
 				{
+					ListViewItemMouseDown(item, x, y, btnNum, btnCount);
 					if ((btnNum == 0) && (btnCount == 2))
 					{
 						let mainItem = (BookmarksListViewItem)item.GetSubItem(0);
 						mainItem.Goto();
 					}
-
-					ListViewItemMouseDown(item, x, y, btnNum, btnCount);
 				});
 			mBookmarksListView.mOnItemMouseClicked.Add(new => ListViewItemMouseClicked);
 			mBookmarksListView.mOnKeyDown.Add(new => BookmarksLV_OnKeyDown);
@@ -203,9 +202,11 @@ namespace IDE.ui
 			    var target = (BookmarksListViewItem)theEvent.mDragTarget;
 
 			    if (source.mListView == target.mListView)
-			    {                    
+			    {
 			        if (source == target)
 			            return;
+
+					target.Open(true, true);
 
 					List<BookmarksListViewItem> selectedItems = scope .();
 					mBookmarksListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
@@ -394,11 +395,11 @@ namespace IDE.ui
 			if (mBookmarksDirty)
 				UpdateBookmarks();
 
-			ShowTooltip(mBtnCreateBookmarkFolder, "Create a new folder.");
-			ShowTooltip(mBtnPrevBookmark, "Move the cursor to the previous bookmark.");
-			ShowTooltip(mBtnNextBookmark, "Move the cursor to the next bookmark.");
-			ShowTooltip(mBtnPrevBookmarkInFolder, "Move the cursor to the previous bookmark in the current folder.");
-			ShowTooltip(mBtnNextBookmarkInFolder, "Move the cursor to the next bookmark in the current folder.");
+			ShowTooltip(mBtnCreateBookmarkFolder, "Create new folder");
+			ShowTooltip(mBtnPrevBookmark, "Previous bookmark");
+			ShowTooltip(mBtnNextBookmark, "Next bookmark");
+			ShowTooltip(mBtnPrevBookmarkInFolder, "Previous bookmark in folder");
+			ShowTooltip(mBtnNextBookmarkInFolder, "Next bookmark in folder");
 
 			base.Update();
 		}
@@ -479,20 +480,23 @@ namespace IDE.ui
 		private BookmarksListViewItem AddFolderToListView(BookmarksListViewItem parent, BookmarkFolder folder)
 		{
 			var listViewItem = (BookmarksListViewItem)parent.CreateChildItem();
-			
+			listViewItem.MakeParent();
 			listViewItem.RefObject = folder;
 			listViewItem.AllowDragging = true;
 
 			var subViewItem = (DarkListViewItem)listViewItem.GetOrCreateSubItem(0);
 
-			DarkCheckBox cb = new DarkCheckBox();
-			cb.Checked = !folder.IsDisabled;
-			cb.Resize(GS!(-16), 0, GS!(22), GS!(22));
-			cb.mOnValueChanged.Add(new () =>
-				{
-					folder.IsDisabled = !cb.Checked;
-				});
-			subViewItem.AddWidget(cb);
+			if (!folder.mBookmarkList.IsEmpty)
+			{
+				DarkCheckBox cb = new DarkCheckBox();
+				cb.State = folder.AreAllDisabled ? .Unchecked : folder.AreAllEnabled ? .Checked : .Indeterminate;
+				cb.Resize(GS!(-16), 0, GS!(22), GS!(22));
+				cb.mOnValueChanged.Add(new () =>
+					{
+						folder.AreAllEnabled = cb.State != .Unchecked;
+					});
+				subViewItem.AddWidget(cb);
+			}
 
 			subViewItem.Label = folder.mTitle;
 			subViewItem.Resize(GS!(22), 0, 0, 0);
@@ -516,6 +520,7 @@ namespace IDE.ui
 			cb.mOnValueChanged.Add(new () =>
 				{
 					bookmark.mIsDisabled = !cb.Checked;
+					mBookmarksDirty = true;
 				});
 			subViewItem.AddWidget(cb);
 

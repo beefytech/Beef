@@ -452,6 +452,26 @@ void BfParser::GetLineCharAtIdx(int idx, int& line, int& lineChar)
 	mParserData->GetLineCharAtIdx(idx, line, lineChar);
 }
 
+int BfParser::GetIndexAtLine(int line)
+{
+	if (line == 0)
+		return 0;
+
+	int curLine = 0;
+	for (int i = 0; i < mSrcLength; i++)
+	{
+		char c = mSrc[i];
+		if (c == '\n')
+		{
+			curLine++;
+			if (line == curLine)
+				return i;
+		}
+	}
+
+	return -1;
+}
+
 void BfParser::Fail(const StringImpl& error, int offset)
 {
 	mPassInstance->FailAt(error, mSourceData, mSrcIdx + offset);

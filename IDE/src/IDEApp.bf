@@ -3383,6 +3383,24 @@ namespace IDE
 				}
 			}
 
+			// Legacy loading
+			for (var _bookmark in data.Enumerate("Bookmarks"))
+			{
+			    String relPath = scope String();
+			    data.GetString("File", relPath);
+				IDEUtils.FixFilePath(relPath);
+				String absPath = scope String();
+				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
+			    int32 lineNum = data.GetInt("Line");
+			    int32 column = data.GetInt("Column");
+
+			    bool isDisabled = data.GetBool("Disabled", false);
+
+			    mBookmarkManager.CreateBookmark(absPath, lineNum, column, isDisabled, null, null);
+			}
+
+			mBookmarkManager.RecalcCurId();
+
 			for (var referenceId in data.Enumerate("DebuggerDisplayTypes"))
 			{
 				var referenceIdStr = scope String(referenceId);
