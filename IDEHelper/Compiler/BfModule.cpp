@@ -12232,6 +12232,12 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		if (methodMatcher.mBestMethodDef == NULL)
 			methodMatcher.mBestMethodDef = methodMatcher.mBackupMethodDef;
 
+		if (methodMatcher.mBestMethodDef == NULL)
+		{
+			AssertErrorState();
+			continue;
+		}
+
 		BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
 		customAttribute.mCtor = methodMatcher.mBestMethodDef;
 
