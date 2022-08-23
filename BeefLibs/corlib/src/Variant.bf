@@ -293,7 +293,7 @@ namespace System
 				obj = (T)Internal.UnsafeCastToObject(*(void**)(void*)mData);
 			else
 				obj = (T)Internal.UnsafeCastToObject((void*)mData);
-			Debug.Assert(obj.GetType().IsSubtypeOf(type));
+			Debug.Assert(obj == null || obj.GetType().IsSubtypeOf(type));
 			return obj;
 		}
 
