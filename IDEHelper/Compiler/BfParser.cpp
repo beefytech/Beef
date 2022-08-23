@@ -4201,3 +4201,8 @@ BF_EXPORT void BF_CALLTYPE BfParser_GetLineCharAtIdx(BfParser* bfParser, int idx
 	*line = _line;
 	*lineChar = _lineChar;
 }
+
+BF_EXPORT int BF_CALLTYPE BfParser_GetIndexAtLine(BfParser* bfParser, int line)
+{
+	return bfParser->GetIndexAtLine(line);
+}

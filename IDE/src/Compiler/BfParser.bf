@@ -181,6 +181,9 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfParser_GetLineCharAtIdx(void* bfParser, int32 idx, int32* line, int32* lineChar);
 
+        [CallingConvention(.Stdcall), CLink]
+        static extern int32 BfParser_GetIndexAtLine(void* bfParser, int32 line);
+
 		public BfSystem mSystem;
         public void* mNativeBfParser;
         public bool mIsUsed;
@@ -442,5 +445,10 @@ namespace IDE.Compiler
 
 			return (line, char);
 		}
+
+        public int GetIndexAtLine(int line)
+        {
+            return BfParser_GetIndexAtLine(mNativeBfParser, (.) line);
+        }
     }
 }
