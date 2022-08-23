@@ -213,6 +213,7 @@ namespace IDE
 		public Widget mLastActivePanel;
 		public SourceViewPanel mLastActiveSourceViewPanel;
 		public AutoCompletePanel mAutoCompletePanel;
+		public BookmarksPanel mBookmarksPanel;
         
         public Rect mRequestedWindowRect = Rect(64, 64, 1200, 1024);
 		public BFWindow.ShowKind mRequestedShowKind;
@@ -703,6 +704,7 @@ namespace IDE
 			RemoveAndDelete!(mProfilePanel);
 			RemoveAndDelete!(mPropertiesPanel);
 			RemoveAndDelete!(mAutoCompletePanel);
+			RemoveAndDelete!(mBookmarksPanel);
 
 			if (mSymbolReferenceHelper != null)
 				mSymbolReferenceHelper.Close();
@@ -807,6 +809,7 @@ namespace IDE
 			dlg(mProfilePanel);
 			dlg(mPropertiesPanel);
 			dlg(mAutoCompletePanel);
+			dlg(mBookmarksPanel);
 		}
 
 		public override void ShutdownCompleted()
@@ -1916,23 +1919,37 @@ namespace IDE
 			        }
 			    }
 			}
-
-			using (sd.CreateArray("Bookmarks"))
+			
+			using (sd.CreateArray("BookmarkFolders"))
 			{
-			    for (var bookmark in mBookmarkManager.mBookmarkList)
-			    {
-			        if (bookmark.mFileName != null)
+				for (var folder in mBookmarkManager.mBookmarkFolders)
+				{
+			        using (sd.CreateObject())
 			        {
-			            using (sd.CreateObject())
-			            {
-							String relPath = scope .();
-							mWorkspace.GetWorkspaceRelativePath(bookmark.mFileName, relPath);
-			                sd.Add("File", relPath);
-			                sd.Add("Line", bookmark.mLineNum);
-			                sd.Add("Column", bookmark.mColumn);
-			            }
-			        }
-			    }
+			            sd.Add("Title", folder.mTitle);
+						
+						using (sd.CreateArray("Bookmarks"))
+						{
+							for (var bookmark in folder.mBookmarkList)
+							{
+							    if (bookmark.mFileName != null)
+							    {
+							        using (sd.CreateObject())
+							        {
+										String relPath = scope .();
+										mWorkspace.GetWorkspaceRelativePath(bookmark.mFileName, relPath);
+							            sd.Add("File", relPath);
+							            sd.Add("Line", bookmark.mLineNum);
+							            sd.Add("Column", bookmark.mColumn);
+							            sd.Add("Title", bookmark.mTitle);
+							            if (bookmark.mIsDisabled)
+											sd.Add("Disabled", true);
+							        }
+							    }
+							}
+						}
+					}
+				}
 			}
 
 			using (sd.CreateObject("DebuggerDisplayTypes"))
@@ -2425,6 +2442,10 @@ namespace IDE
 			mWorkspace = new Workspace();
 
 			mErrorsPanel.Clear();
+
+			mBookmarksPanel.Clear();
+
+			mBookmarkManager.Clear();
 
 			OutputLine("Workspace closed.");
 		}
@@ -3333,17 +3354,33 @@ namespace IDE
 						breakpoint.SetThreadId(0);
 				}
 		    }
-			
-			for (var _bookmark in data.Enumerate("Bookmarks"))
+
+			for (var _bookmarkFolder in data.Enumerate("BookmarkFolders"))
 			{
-	            String relPath = scope String();
-	            data.GetString("File", relPath);
-				IDEUtils.FixFilePath(relPath);
-				String absPath = scope String();
-				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
-	            int32 lineNum = data.GetInt("Line");
-	            int32 column = data.GetInt("Column");
-	            mBookmarkManager.CreateBookmark(absPath, lineNum, column);
+				String title = scope String();
+				data.GetString("Title", title);
+
+				BookmarkFolder folder = null;
+
+				if (!String.IsNullOrWhiteSpace(title))
+					folder = mBookmarkManager.CreateFolder(title);
+
+				for (var _bookmark in data.Enumerate("Bookmarks"))
+				{
+				    String relPath = scope String();
+				    data.GetString("File", relPath);
+					IDEUtils.FixFilePath(relPath);
+					String absPath = scope String();
+					mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
+				    int32 lineNum = data.GetInt("Line");
+				    int32 column = data.GetInt("Column");
+					String bookmarkTitle = scope String();
+					data.GetString("Title", bookmarkTitle);
+
+				    bool isDisabled = data.GetBool("Disabled", false);
+
+				    mBookmarkManager.CreateBookmark(absPath, lineNum, column, isDisabled, bookmarkTitle, folder);
+				}
 			}
 
 			for (var referenceId in data.Enumerate("DebuggerDisplayTypes"))
@@ -3911,6 +3948,10 @@ namespace IDE
 			{
 				watchPanel.TryRenameItem();
 			}
+			else if (var bookmarksPanel = activePanel as BookmarksPanel)
+			{
+				bookmarksPanel.TryRenameItem();
+			}
 		}
 
 		[IDECommand]
@@ -3968,13 +4009,25 @@ namespace IDE
 		[IDECommand]
 		public void Cmd_PrevBookmark()
 		{
-			mBookmarkManager.PrevBookmark();
+			mBookmarkManager.PrevBookmark(false);
+		}
+
+		[IDECommand]
+		public void Cmd_PrevBookmarkInFolder()
+		{
+			mBookmarkManager.PrevBookmark(true);
 		}
 
 		[IDECommand]
 		public void Cmd_NextBookmark()
 		{
-			mBookmarkManager.NextBookmark();
+			mBookmarkManager.NextBookmark(false);
+		}
+
+		[IDECommand]
+		public void Cmd_NextBookmarkInFolder()
+		{
+			mBookmarkManager.NextBookmark(true);
 		}
 
 		[IDECommand]
@@ -5007,6 +5060,12 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void ShowBookmarks()
+		{
+		    ShowPanel(mBookmarksPanel, "Bookmarks");						
+		}
+
+		[IDECommand]
 		public void ShowQuickWatch()
 		{
 			QuickWatchDialog dialog = new .();
@@ -5712,6 +5771,7 @@ namespace IDE
             subMenu = root.AddMenuItem("&View");
 			AddMenuItem(subMenu, "AutoComplet&e", "Show Autocomplete Panel");
 			AddMenuItem(subMenu, "&Auto Watches", "Show Auto Watches");
+			AddMenuItem(subMenu, "Boo&kmarks", "Show Bookmarks");
 			AddMenuItem(subMenu, "&Breakpoints", "Show Breakpoints");
 			AddMenuItem(subMenu, "&Call Stack", "Show Call Stack");
 			AddMenuItem(subMenu, "C&lass View", "Show Class View");
@@ -12019,6 +12079,8 @@ namespace IDE
 			mPropertiesPanel.mAutoDelete = false;
 			mAutoCompletePanel = new AutoCompletePanel();
 			mAutoCompletePanel.mAutoDelete = false;
+			mBookmarksPanel = new BookmarksPanel();
+			mBookmarksPanel.mAutoDelete = false;
 
 			GetVersionInfo(var exeDate);
 			let localExeDate = exeDate.ToLocalTime();

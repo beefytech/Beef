@@ -3199,16 +3199,19 @@ namespace IDE.ui
                 mTrackedTextElementViewList = new List<TrackedTextElementView>();
 				if (mFilePath == null)
 					return mTrackedTextElementViewList;
-
-                for (var bookmark in IDEApp.sApp.mBookmarkManager.mBookmarkList)
-                {
-                    if (Path.Equals(bookmark.mFileName, findFileName))
-                    {
-                        var bookmarkView = new TrackedTextElementView(bookmark);
-                        UpdateTrackedElementView(bookmarkView);
-                        mTrackedTextElementViewList.Add(bookmarkView);
-                    }
-                }
+				
+				for (var folder in IDEApp.sApp.mBookmarkManager.mBookmarkFolders)
+				{
+				    for (var bookmark in folder.mBookmarkList)
+				    {
+				        if (Path.Equals(bookmark.mFileName, findFileName))
+				        {
+				            var bookmarkView = new TrackedTextElementView(bookmark);
+				            UpdateTrackedElementView(bookmarkView);
+				            mTrackedTextElementViewList.Add(bookmarkView);
+				        }
+				    }
+				}
 
                 for (var breakpoint in debugManager.mBreakpointList)
                 {
@@ -4421,11 +4424,14 @@ namespace IDE.ui
 
             bool hadBookmark = false;
             
-            WithTrackedElementsAtCursor<Bookmark>(IDEApp.sApp.mBookmarkManager.mBookmarkList, scope [&] (bookmark) =>
-                {
-                    bookmarkManager.DeleteBookmark(bookmark);
-                    hadBookmark = true;
-                });
+			for (var folder in IDEApp.sApp.mBookmarkManager.mBookmarkFolders)
+			{
+				WithTrackedElementsAtCursor<Bookmark>(folder.mBookmarkList, scope [&] (bookmark) =>
+				    {
+				        bookmarkManager.DeleteBookmark(bookmark);
+				        hadBookmark = true;
+				    });
+			}
             
             if (!hadBookmark)
             {
@@ -4670,7 +4676,8 @@ namespace IDE.ui
 								if (ewc.IsLineCollapsed(drawLineNum))
 									continue;
 								//hadLineIcon[drawLineNum - lineStart] = true;
-                                g.Draw(DarkTheme.sDarkTheme.GetImage(.IconBookmark), Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - sDrawLeftAdjust),
+								Image image = DarkTheme.sDarkTheme.GetImage(bookmark.mIsDisabled ? .IconBookmarkDisabled : .IconBookmark);
+                                g.Draw(image, Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - sDrawLeftAdjust),
 									0 + bookmark.mLineNum * lineSpacing);
 
 								var curLineFlags = ref lineFlags[drawLineNum - lineStart];

@@ -197,6 +197,8 @@ namespace IDE
 			Add("Autocomplete", new => gApp.Cmd_ShowAutoComplete, .None);
 			Add("Bookmark Next", new => gApp.Cmd_NextBookmark, .Editor);
 			Add("Bookmark Prev", new => gApp.Cmd_PrevBookmark, .Editor);
+			Add("Bookmark Next in Folder", new => gApp.Cmd_NextBookmarkInFolder, .Editor);
+			Add("Bookmark Prev in Folder", new => gApp.Cmd_PrevBookmarkInFolder, .Editor);
 			Add("Bookmark Toggle", new => gApp.Cmd_ToggleBookmark, .Editor);
 			Add("Bookmark Clear", new => gApp.Cmd_ClearBookmarks, .Editor);
 			Add("Break All", new => gApp.[Friend]Cmd_Break);
@@ -295,6 +297,7 @@ namespace IDE
 			Add("Settings", new => gApp.ShowSettings);
 			Add("Show Auto Watches", new => gApp.ShowAutoWatches);
 			Add("Show Autocomplete Panel", new => gApp.ShowAutoCompletePanel);
+			Add("Show Bookmarks", new => gApp.ShowBookmarks);
 			Add("Show Breakpoints", new => gApp.ShowBreakpoints);
 			Add("Show Call Stack", new => gApp.ShowCallstack);
 			Add("Show Class View", new => gApp.ShowClassViewPanel);
