@@ -172,18 +172,18 @@ DXShaderParam::DXShaderParam()
 }
 
 DXShaderParam::~DXShaderParam()
-{	
+{
 }
 
 void DXShaderParam::SetTexture(Texture* texture)
-{	
+{
 	DXTexture* dxTexture = (DXTexture*) texture;
 	//? DXCHECK(mD3DVariable->AsShaderResource()->SetResource(dXTexture->mD3DTexture));
 }
 
 void DXShaderParam::SetFloat4(float x, float y, float z, float w)
 {
-	float v[4] = {x, y, z, w};	
+	float v[4] = {x, y, z, w};
 	DXCHECK(mD3DVariable->AsVector()->SetFloatVector(v));
 }
 
@@ -204,9 +204,9 @@ DXShader::~DXShader()
 {
 	delete mVertexDef;
 	ReleaseNative();
-		
+
 	//? if (mD3DEffect != NULL)
-	//? 	mD3DEffect->Release();	
+	//? 	mD3DEffect->Release();
 }
 
 void DXShader::ReleaseNative()
@@ -419,9 +419,9 @@ bool DXShader::Load()
 	result = mRenderDevice->mD3DDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &mD3DPixelShader);
 	DXCHECK(result);
 	if (FAILED(result))
-		return false;	
+		return false;
 
-	Init();	
+	Init();
 	return true;
 }
 
@@ -456,10 +456,10 @@ DXTexture::DXTexture()
 {
 	mD3DTexture = NULL;
 	mD3DResourceView = NULL;
-	mD3DRenderTargetView = NULL;	
+	mD3DRenderTargetView = NULL;
 	mRenderDevice = NULL;
 	mD3DDepthBuffer = NULL;
-	mD3DDepthStencilView = NULL;		
+	mD3DDepthStencilView = NULL;
 	mContentBits = NULL;
 }
 
@@ -536,22 +536,22 @@ void DXTexture::ReinitNative()
 	//OutputDebugStrF("Creating texture\n");
 
 	auto dxRenderDevice = (DXRenderDevice*)mRenderDevice;
-	
+
 	DXCHECK(dxRenderDevice->mD3DDevice->CreateTexture2D(&desc, (mContentBits != NULL) ? &resData : NULL, &mD3DTexture));
-	
+
 	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
 	srDesc.Format = desc.Format;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srDesc.Texture2D.MostDetailedMip = 0;
 	srDesc.Texture2D.MipLevels = 1;
-	
+
 	DXCHECK(dxRenderDevice->mD3DDevice->CreateShaderResourceView(mD3DTexture, &srDesc, &mD3DResourceView));
 
 	OutputDebugStrF("DXTexture::ReinitNative %p\n", this);
 }
 
 void DXTexture::PhysSetAsTarget()
-{	
+{
 	{
 		D3D11_VIEWPORT viewPort;
 		viewPort.Width = (float)mWidth;
@@ -561,9 +561,9 @@ void DXTexture::PhysSetAsTarget()
 		viewPort.TopLeftX = 0;
 		viewPort.TopLeftY = 0;
 
-		mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);		
-		//mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, ((rand() % 2) != 0) ? NULL : mD3DDepthStencilView);		
-		//mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, NULL);		
+		mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
+		//mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, ((rand() % 2) != 0) ? NULL : mD3DDepthStencilView);
+		//mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, NULL);
 		mRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
@@ -574,7 +574,7 @@ void DXTexture::PhysSetAsTarget()
 		if (mD3DDepthStencilView != NULL)
 			mRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH/*|D3D11_CLEAR_STENCIL*/, 1.0f, 0);
 
-		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(1, 0.5, 0.5, 1));				
+		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(1, 0.5, 0.5, 1));
 		mHasBeenDrawnTo = true;
 	}
 }
@@ -588,7 +588,7 @@ void DXTexture::Blt(ImageData* imageData, int x, int y)
 	box.bottom = y + imageData->mHeight;
 	box.front = 0;
 	box.back = 1;
-	mRenderDevice->mD3DDeviceContext->UpdateSubresource(mD3DTexture, 0, &box, imageData->mBits, imageData->mWidth * sizeof(uint32), 0);	
+	mRenderDevice->mD3DDeviceContext->UpdateSubresource(mD3DTexture, 0, &box, imageData->mBits, imageData->mWidth * sizeof(uint32), 0);
 
 	if (mContentBits != NULL)
 	{
@@ -610,7 +610,7 @@ void DXTexture::SetBits(int destX, int destY, int destWidth, int destHeight, int
 }
 
 void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
-{	
+{
 	D3D11_TEXTURE2D_DESC texDesc;
 	texDesc.ArraySize = 1;
 	texDesc.BindFlags = 0;
@@ -630,15 +630,15 @@ void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int des
 	srcBox.top = srcY;
 	srcBox.right = srcX + srcWidth;
 	srcBox.bottom = srcY + srcHeight;
-	srcBox.back = 1;	
+	srcBox.back = 1;
 
 	ID3D11Texture2D *texture;
 	DXCHECK(mRenderDevice->mD3DDevice->CreateTexture2D(&texDesc, 0, &texture));
 	mRenderDevice->mD3DDeviceContext->CopySubresourceRegion(texture, 0, 0, 0, 0, mD3DTexture, 0, &srcBox);
 
-	D3D11_MAPPED_SUBRESOURCE mapTex;	
+	D3D11_MAPPED_SUBRESOURCE mapTex;
 	DXCHECK(mRenderDevice->mD3DDeviceContext->Map(texture, 0, D3D11_MAP_READ, NULL, &mapTex));
-	
+
 	uint8* srcPtr = (uint8*) mapTex.pData;
 	uint8* destPtr = (uint8*) bits;
 	for (int y = 0; y < srcHeight; y++)
@@ -657,7 +657,7 @@ static int GetPowerOfTwo(int input)
 {
 	int value = 1;
 	while (value < input)
-		value <<= 1;	
+		value <<= 1;
 	return value;
 }
 
@@ -667,13 +667,13 @@ DXDrawBatch::DXDrawBatch()
 
 DXDrawBatch::~DXDrawBatch()
 {
-	
+
 }
 
 void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 {
 	if (mVtxIdx == 0)
-		return;	
+		return;
 
 	if ((mRenderState->mClipped) &&
 		((mRenderState->mClipRect.mWidth == 0) || (mRenderState->mClipRect.mHeight == 0)))
@@ -685,11 +685,11 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 	DXRenderDevice* aRenderDevice = (DXRenderDevice*)renderDevice;
 	/*if ((mDrawLayer->mRenderWindow != NULL) && (aRenderDevice->mPhysRenderWindow != mDrawLayer->mRenderWindow))
 		aRenderDevice->PhysSetRenderWindow(mDrawLayer->mRenderWindow);*/
-	
+
 	D3D11_MAP idxMapType = D3D11_MAP_WRITE_NO_OVERWRITE;
 	D3D11_MAP vtxMapType = D3D11_MAP_WRITE_NO_OVERWRITE;
 
-	int idxByteStart = aRenderDevice->mIdxByteIdx;	
+	int idxByteStart = aRenderDevice->mIdxByteIdx;
 	int idxDataSize = sizeof(uint16) * mIdxIdx;
 	aRenderDevice->mIdxByteIdx += idxDataSize;
 	if (aRenderDevice->mIdxByteIdx >= DX_IDXBUFFER_SIZE)
@@ -706,9 +706,9 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 	int vtxStartIdx = vtxByteStart / mVtxSize;
 	int vtxOffset = vtxByteStart % mVtxSize;
 	//vtxByteStart = vtxStartIdx * mVtxSize;
-	
-	//aRenderDevice->mVtxByteIdx += vtxDataSize;	
-	aRenderDevice->mVtxByteIdx = vtxByteStart + vtxDataSize;	
+
+	//aRenderDevice->mVtxByteIdx += vtxDataSize;
+	aRenderDevice->mVtxByteIdx = vtxByteStart + vtxDataSize;
 
 	if (aRenderDevice->mVtxByteIdx >= DX_VTXBUFFER_SIZE)
 	{
@@ -718,34 +718,34 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 		vtxStartIdx = 0;
 		aRenderDevice->mVtxByteIdx = vtxDataSize;
 	}
-	
+
 	//TODO: Round up for various vertex formats, manage stride properly, etc
 
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 	DXCHECK(aRenderDevice->mD3DDeviceContext->Map(aRenderDevice->mD3DIndexBuffer, 0, idxMapType, 0, &mappedSubResource));
 	void* dxIdxData = mappedSubResource.pData;
 	DXCHECK(aRenderDevice->mD3DDeviceContext->Map(aRenderDevice->mD3DVertexBuffer, 0, vtxMapType, 0, &mappedSubResource));
-	void* dxVtxData = mappedSubResource.pData;	
-		
+	void* dxVtxData = mappedSubResource.pData;
+
 	//mVtxByteIdx = ((mVtxByteIdx + vtxSize - 1) / vtxSize) * vtxSize;
-	
+
 	memcpy((uint8*)dxIdxData + idxByteStart, mIndices, idxDataSize);
-	memcpy((uint8*)dxVtxData + vtxByteStart, mVertices, vtxDataSize);		
+	memcpy((uint8*)dxVtxData + vtxByteStart, mVertices, vtxDataSize);
 
 	aRenderDevice->mD3DDeviceContext->Unmap(aRenderDevice->mD3DVertexBuffer, 0);
 	aRenderDevice->mD3DDeviceContext->Unmap(aRenderDevice->mD3DIndexBuffer, 0);
 
 	//DXTexture* dxTexture = (DXTexture*)mCurTexture;
-	//aRenderDevice->mD3DDeviceContext->PSSetShaderResources(0, 1, &dxTexture->mD3DTexture);	
-	
+	//aRenderDevice->mD3DDeviceContext->PSSetShaderResources(0, 1, &dxTexture->mD3DTexture);
+
 	if (mRenderState != aRenderDevice->mPhysRenderState)
 		aRenderDevice->PhysSetRenderState(mRenderState);
 
 	// Set vertex buffer
 	UINT stride = mVtxSize;
 	UINT offset = vtxOffset;
-	aRenderDevice->mD3DDeviceContext->IASetVertexBuffers(0, 1, &aRenderDevice->mD3DVertexBuffer, &stride, &offset);	
-	aRenderDevice->mD3DDeviceContext->IASetIndexBuffer(aRenderDevice->mD3DIndexBuffer, DXGI_FORMAT_R16_UINT, 0);	
+	aRenderDevice->mD3DDeviceContext->IASetVertexBuffers(0, 1, &aRenderDevice->mD3DVertexBuffer, &stride, &offset);
+	aRenderDevice->mD3DDeviceContext->IASetIndexBuffer(aRenderDevice->mD3DIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 	aRenderDevice->mD3DDeviceContext->DrawIndexed(mIdxIdx, idxByteStart / sizeof(uint16), vtxStartIdx/*vtxByteStart / mVtxSize*/);
 }
 
@@ -775,7 +775,7 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 {
 	DXRenderState* dxRenderState = (DXRenderState*)renderState;
 	DXShader* dxShader = (DXShader*)renderState->mShader;
-	
+
 	if (renderState->mTopology != mPhysRenderState->mTopology)
 	{
 		D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -785,12 +785,12 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 	}
 
 	if ((renderState->mShader != mPhysRenderState->mShader) && (renderState->mShader != NULL))
-	{		
+	{
 		mD3DDeviceContext->PSSetSamplers(0, 1, renderState->mTexWrap ? &mD3DWrapSamplerState  : &mD3DDefaultSamplerState);
 		mD3DDeviceContext->IASetInputLayout(dxShader->mD3DLayout);
 		mD3DDeviceContext->VSSetShader(dxShader->mD3DVertexShader, NULL, 0);
 		mD3DDeviceContext->PSSetShader(dxShader->mD3DPixelShader, NULL, 0);
-		
+
 		if (dxShader->mHas2DPosition)
 		{
 			HRESULT result = NULL;
@@ -804,7 +804,7 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 				matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 				matrixBufferDesc.MiscFlags = 0;
 				matrixBufferDesc.StructureByteStride = 0;
-						
+
 				// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
 				result = mD3DDevice->CreateBuffer(&matrixBufferDesc, NULL, &mMatrix2DBuffer);
 				if (FAILED(result))
@@ -851,11 +851,11 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			rects[0].bottom = (int) (renderState->mClipRect.mY + renderState->mClipRect.mHeight);
 			mD3DDeviceContext->RSSetScissorRects(1, rects);
 		}
-		setRasterizerState = true;		
+		setRasterizerState = true;
 	}
 
-	if (renderState->mWriteDepthBuffer != mPhysRenderState->mWriteDepthBuffer)	
-		setDepthFuncState = true;	
+	if (renderState->mWriteDepthBuffer != mPhysRenderState->mWriteDepthBuffer)
+		setDepthFuncState = true;
 
 	if (renderState->mDepthFunc != mPhysRenderState->mDepthFunc)
 	{
@@ -864,7 +864,7 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 	}
 
 	if (renderState->mWireframe != mPhysRenderState->mWireframe)
-		setRasterizerState = true;	
+		setRasterizerState = true;
 
 	if (setRasterizerState)
 	{
@@ -886,10 +886,10 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			rasterizerState.DepthBiasClamp = 0;
 			rasterizerState.SlopeScaledDepthBias = 0;
 			rasterizerState.DepthClipEnable = renderState->mDepthFunc != DepthFunc_Always;
-			rasterizerState.ScissorEnable = renderState->mClipped;			
+			rasterizerState.ScissorEnable = renderState->mClipped;
 			rasterizerState.MultisampleEnable = false;
 			rasterizerState.AntialiasedLineEnable = false;
-			
+
 			mD3DDevice->CreateRasterizerState(&rasterizerState, &dxRenderState->mD3DRasterizerState);
 		}
 
@@ -913,7 +913,7 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			};
 
 			D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-						
+
 			depthStencilDesc.DepthEnable = (dxRenderState->mDepthFunc != DepthFunc_Always) || (dxRenderState->mWriteDepthBuffer);
 			depthStencilDesc.DepthWriteMask = dxRenderState->mWriteDepthBuffer ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
 			depthStencilDesc.DepthFunc = comparisonArray[dxRenderState->mDepthFunc];
@@ -948,7 +948,7 @@ void DXRenderDevice::PhysSetRenderWindow(RenderWindow* renderWindow)
 void DXRenderDevice::PhysSetRenderTarget(Texture* renderTarget)
 {
 	mCurRenderTarget = renderTarget;
-	renderTarget->PhysSetAsTarget();	
+	renderTarget->PhysSetAsTarget();
 }
 
 RenderState* DXRenderDevice::CreateRenderState(RenderState* srcRenderState)
@@ -981,7 +981,7 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 	DXModelInstance* dxModelInstance = new DXModelInstance(modelDef);
 
 	////
-		
+
 	VertexDefData vertexDefData[] =
 	{
 		{VertexElementUsage_Position3D,			0, VertexElementFormat_Vector3},
@@ -990,7 +990,7 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 		{VertexElementUsage_Normal,				0, VertexElementFormat_Vector3},
 		{VertexElementUsage_TextureCoordinate,	1, VertexElementFormat_Vector2},
 		{VertexElementUsage_Tangent,			0, VertexElementFormat_Vector3}
-	};	
+	};
 
 	auto vertexDefinition = CreateVertexDefinition(vertexDefData, sizeof(vertexDefData) / sizeof(vertexDefData[0]));
 	RenderState* renderState = NULL;
@@ -1003,12 +1003,12 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 		renderState->mWriteDepthBuffer = true;
 	}
 	delete vertexDefinition;
-	
+
 	dxModelInstance->mRenderState = renderState;
 
 	////
 
-	dxModelInstance->mD3DRenderDevice = this;			
+	dxModelInstance->mD3DRenderDevice = this;
 	dxModelInstance->mDXModelMeshs.Resize(modelDef->mMeshes.size());
 	int dxMeshIdx = 0;
 
@@ -1016,13 +1016,13 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 	{
 		ModelMesh* mesh = &modelDef->mMeshes[meshIdx];
 		DXModelMesh* dxMesh = &dxModelInstance->mDXModelMeshs[dxMeshIdx];
-		
+
 		dxMesh->mPrimitives.Resize(mesh->mPrimitives.size());
 
 		for (int primitivesIdx = 0 ; primitivesIdx < (int)mesh->mPrimitives.size(); primitivesIdx++)
-		{	
+		{
 			auto primitives = &mesh->mPrimitives[primitivesIdx];
-			auto dxPrimitives = &dxMesh->mPrimitives[primitivesIdx];			
+			auto dxPrimitives = &dxMesh->mPrimitives[primitivesIdx];
 
 // 			String texPath = mesh->mTexFileName;
 // 			if (!texPath.IsEmpty())
@@ -1030,12 +1030,12 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 // 				if ((int)texPath.IndexOf(':') == -1)
 // 					texPath = modelDef->mLoadDir + "Textures/" + texPath;
 // 				//texPath = gBFApp->mInstallDir + L"models/Textures/" + texPath;
-// 
+//
 // 				dxPrimitives->mTexture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult);
 // 			}
 
 			Array<String> texPaths = primitives->mTexPaths;
-			
+
 
 			if (primitives->mMaterial != NULL)
 			{
@@ -1056,14 +1056,14 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 					}
 				}
 			}
-						
+
 			for (auto& texPath : texPaths)
 			{
 				if (!modelDef->mLoadDir.IsEmpty())
 					texPath = GetAbsPath(texPath, modelDef->mLoadDir);
 				dxPrimitives->mTextures.Add((DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult));
 			}
-			
+
 			dxPrimitives->mNumIndices = (int)primitives->mIndices.size();
 			dxPrimitives->mNumVertices = (int)primitives->mVertices.size();
 
@@ -1129,8 +1129,8 @@ void DXDrawLayer::SetShaderConstantData(int usageIdx, int slotIdx, void* constDa
 	dxSetConstantData->mSlotIdx = slotIdx;
 	dxSetConstantData->mSize = size;
 
-// 	if (size == 64) // Transpose for shader	
-// 		*((Matrix4*)dxSetConstantData->mData) = Matrix4::Transpose(*((Matrix4*)constData));	
+// 	if (size == 64) // Transpose for shader
+// 		*((Matrix4*)dxSetConstantData->mData) = Matrix4::Transpose(*((Matrix4*)constData));
 // 	else
 		memcpy(dxSetConstantData->mData, constData, size);
 	QueueRenderCmd(dxSetConstantData);
@@ -1185,23 +1185,23 @@ void DXDrawLayer::SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* co
 
 			switch (typeNum)
 			{
-			case ConstantDataType_Single:				
-				srcDataPtr += sizeof(float);				
+			case ConstantDataType_Single:
+				srcDataPtr += sizeof(float);
 				break;
-			case ConstantDataType_Vector2:				
-				srcDataPtr += sizeof(float) * 2;				
+			case ConstantDataType_Vector2:
+				srcDataPtr += sizeof(float) * 2;
 				break;
-			case ConstantDataType_Vector3:				
-				srcDataPtr += sizeof(float) * 3;				
+			case ConstantDataType_Vector3:
+				srcDataPtr += sizeof(float) * 3;
 				break;
-			case ConstantDataType_Vector4:				
-				srcDataPtr += sizeof(float) * 4;				
+			case ConstantDataType_Vector4:
+				srcDataPtr += sizeof(float) * 4;
 				break;
-			case ConstantDataType_Matrix:				
-				srcDataPtr += sizeof(Matrix4);				
+			case ConstantDataType_Matrix:
+				srcDataPtr += sizeof(Matrix4);
 				break;
 			}
-			
+
 		}
 
 		int destDataSize = (int)(destDataPtr - destData);
@@ -1223,7 +1223,7 @@ void DXDrawLayer::SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* co
 DXModelPrimitives::DXModelPrimitives()
 {
 	mD3DIndexBuffer = NULL;
-	mD3DVertexBuffer = NULL;	
+	mD3DVertexBuffer = NULL;
 }
 
 DXModelPrimitives::~DXModelPrimitives()
@@ -1233,7 +1233,7 @@ DXModelPrimitives::~DXModelPrimitives()
 	if (mD3DVertexBuffer != NULL)
 		mD3DVertexBuffer->Release();
 	for (auto tex : mTextures)
-		tex->Release();	
+		tex->Release();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1246,7 +1246,7 @@ DXRenderState::DXRenderState()
 
 DXRenderState::~DXRenderState()
 {
-	if (mD3DRasterizerState != NULL)	
+	if (mD3DRasterizerState != NULL)
 		mD3DRasterizerState->Release();
 	if (mD3DDepthStencilState != NULL)
 		mD3DDepthStencilState->Release();
@@ -1267,7 +1267,7 @@ void DXRenderState::ReinitNative()
 	ReleaseNative();
 }
 
-void DXRenderState::InvalidateRasterizerState() 
+void DXRenderState::InvalidateRasterizerState()
 {
 	if (mD3DRasterizerState != NULL)
 	{
@@ -1285,10 +1285,10 @@ void DXRenderState::IndalidateDepthStencilState()
 	}
 }
 
-void DXRenderState::SetClipped(bool clipped) 
-{ 
-	mClipped = clipped; 
-	InvalidateRasterizerState(); 
+void DXRenderState::SetClipped(bool clipped)
+{
+	mClipped = clipped;
+	InvalidateRasterizerState();
 }
 
 void DXRenderState::SetTexWrap(bool wrap)
@@ -1297,23 +1297,23 @@ void DXRenderState::SetTexWrap(bool wrap)
 	InvalidateRasterizerState();
 }
 
-void DXRenderState::SetClipRect(const Rect& rect) 
-{ 
+void DXRenderState::SetClipRect(const Rect& rect)
+{
 	BF_ASSERT((rect.mWidth >= 0) && (rect.mHeight >= 0));
-	mClipRect = rect; 
-	InvalidateRasterizerState(); 
+	mClipRect = rect;
+	InvalidateRasterizerState();
 }
 
 void DXRenderState::SetWriteDepthBuffer(bool writeDepthBuffer)
-{ 
+{
 	mWriteDepthBuffer = writeDepthBuffer;
-	IndalidateDepthStencilState(); 
+	IndalidateDepthStencilState();
 }
 
 void DXRenderState::SetDepthFunc(DepthFunc depthFunc)
-{ 
+{
 	mDepthFunc = depthFunc;
-	IndalidateDepthStencilState(); 
+	IndalidateDepthStencilState();
 }
 
 ///
@@ -1327,7 +1327,7 @@ DXModelInstance::~DXModelInstance()
 }
 
 void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
-{	
+{
 	if (mRenderState != NULL)
 		SetRenderState();
 
@@ -1341,7 +1341,7 @@ void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 		for (auto primIdx = 0; primIdx < (int)dxMesh->mPrimitives.size(); primIdx++)
 		{
 			auto dxPrimitives = &dxMesh->mPrimitives[primIdx];
-			
+
 			if (dxPrimitives->mTextures.IsEmpty())
 				continue;
 
@@ -1355,25 +1355,25 @@ void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 			mD3DRenderDevice->mD3DDeviceContext->IASetIndexBuffer(dxPrimitives->mD3DIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 			mD3DRenderDevice->mD3DDeviceContext->DrawIndexed(dxPrimitives->mNumIndices, 0, 0);
 		}
-	}	
+	}
 }
 
 void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
-{	
+{
 	mRenderState = drawLayer->mRenderDevice->mCurRenderState;
 	BF_ASSERT(mRenderState->mShader->mVertexSize == sizeof(DXModelVertex));
 	drawLayer->mCurTextures[0] = NULL;
 
-#ifndef BF_NO_FBX	
+#ifndef BF_NO_FBX
 	ModelAnimation* fbxAnim = &mModelDef->mAnims[0];
 
 	Matrix4 jointsMatrices[BF_MAX_NUM_BONES];
 	for (int jointIdx = 0; jointIdx < (int)mJointTranslations.size(); jointIdx++)
 	{
-		ModelJoint* joint = &mModelDef->mJoints[jointIdx];		
+		ModelJoint* joint = &mModelDef->mJoints[jointIdx];
 
 		BF_ASSERT(joint->mParentIdx < jointIdx);
-		
+
 		ModelJointTranslation* jointPosition = &mJointTranslations[jointIdx];
 
 		Matrix4* mtx = &jointsMatrices[jointIdx];
@@ -1382,9 +1382,9 @@ void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
 		if (joint->mParentIdx >= 0)
 		{
 			 Matrix4* parentMatrix = &jointsMatrices[joint->mParentIdx];
-			 *mtx = Matrix4::Multiply(*parentMatrix, *mtx);			 
+			 *mtx = Matrix4::Multiply(*parentMatrix, *mtx);
 		}
-	}	
+	}
 
 	for (int jointIdx = 0; jointIdx < (int)mModelDef->mJoints.size(); jointIdx++)
 	{
@@ -1414,27 +1414,27 @@ void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
 			float totalWeight = 0;
 
 			for (int weightIdx = 0; weightIdx < srcVtxData->mNumBoneWeights; weightIdx++)
-			{								
+			{
 				int jointIdx = srcVtxData->mBoneIndices[weightIdx];
 				float boneWeight = srcVtxData->mBoneWeights[weightIdx];
-				
+
 				Matrix4* mtx = &jointsMatrices[jointIdx];
-				Vector3 origVec = srcVtxData->mPosition;				
+				Vector3 origVec = srcVtxData->mPosition;
 
 				Vector3 transVec = Vector3::Transform(origVec, *mtx);
 				transVec = transVec * boneWeight;
 				vtx = vtx + transVec;
-				
+
 				totalWeight += boneWeight;
 			}
 
 			BF_ASSERT(fabs(totalWeight - 1.0) < 0.1f);
 
 			DXModelVertex* destVtx = dxVtxData + vtxIdx;
-			
+
 			//destVtx->mPosition = srcVtxData->mPosition;
-			destVtx->mPosition = vtx;			
-			destVtx->mTexCoords = srcVtxData->mTexCoords;			
+			destVtx->mPosition = vtx;
+			destVtx->mTexCoords = srcVtxData->mTexCoords;
 			destVtx->mBumpTexCoords = srcVtxData->mTexCoords;
 			destVtx->mColor = 0xFFFFFFFF; //TODO: Color
 			destVtx->mTangent = srcVtxData->mTangent;
@@ -1449,9 +1449,9 @@ void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
 
 
 void DXSetTextureCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
-{	
+{
 	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
-	dxRenderDevice->mD3DDeviceContext->PSSetShaderResources(mTextureIdx, 1, &((DXTexture*)mTexture)->mD3DResourceView);	
+	dxRenderDevice->mD3DDeviceContext->PSSetShaderResources(mTextureIdx, 1, &((DXTexture*)mTexture)->mD3DResourceView);
 }
 
 ///
@@ -1471,7 +1471,7 @@ void DXSetConstantData::Render(RenderDevice* renderDevice, RenderWindow* renderW
 	ID3D11Buffer* buffer = NULL;
 	ID3D11Buffer** bufferPtr = NULL;
 	if (dxRenderDevice->mBufferMap.TryAdd(id, NULL, &bufferPtr))
-	{		
+	{
 		D3D11_BUFFER_DESC matrixBufferDesc;
 		matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 		matrixBufferDesc.ByteWidth = bufferSize;
@@ -1490,13 +1490,13 @@ void DXSetConstantData::Render(RenderDevice* renderDevice, RenderWindow* renderW
 	}
 	else
 		buffer = *bufferPtr;
-	
+
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	result = dxRenderDevice->mD3DDeviceContext->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(result))
 		return;
 
-	float* dataPtr = (float*)mappedResource.pData;	
+	float* dataPtr = (float*)mappedResource.pData;
 	memset(dataPtr, 0, bufferSize);
 	memcpy(mappedResource.pData, mData, mSize);
 
@@ -1522,11 +1522,11 @@ DXRenderWindow::DXRenderWindow(DXRenderDevice* renderDevice, WinBFWindow* window
 	mWindowed = windowed;
 	mDXSwapChain = NULL;
 	mD3DBackBuffer = NULL;
-	mD3DRenderTargetView = NULL;	
+	mD3DRenderTargetView = NULL;
 	mD3DDepthBuffer = NULL;
 	mD3DDepthStencilView = NULL;
 	mRefreshRate = 0;
-	mFrameWaitObject = NULL;	
+	mFrameWaitObject = NULL;
 
 	mRenderDevice = renderDevice;
 	mDXRenderDevice = renderDevice;
@@ -1548,15 +1548,15 @@ void DXRenderWindow::ReleaseNative()
 	if (mFrameWaitObject != NULL)
 		::CloseHandle(mFrameWaitObject);
 	mFrameWaitObject = NULL;
-	if (mD3DRenderTargetView != NULL)	
+	if (mD3DRenderTargetView != NULL)
 		mD3DRenderTargetView->Release();
-	mD3DRenderTargetView = NULL;	
-	if (mD3DBackBuffer != NULL)	
+	mD3DRenderTargetView = NULL;
+	if (mD3DBackBuffer != NULL)
 		mD3DBackBuffer->Release();
-	mD3DBackBuffer = NULL;	
-	if (mDXSwapChain != NULL)	
+	mD3DBackBuffer = NULL;
+	if (mDXSwapChain != NULL)
 		mDXSwapChain->Release();
-	mDXSwapChain = NULL;	
+	mDXSwapChain = NULL;
 	if (mD3DRenderTargetView != NULL)
 		mD3DRenderTargetView->Release();
 	mD3DRenderTargetView = NULL;
@@ -1595,7 +1595,7 @@ void DXRenderWindow::ReinitNative()
 // 		mFrameWaitObject = swapChain2->GetFrameLatencyWaitableObject();
 // 		swapChain2->Release();
 // 	}
-	
+
 	DXCHECK(mDXSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mD3DBackBuffer));
 	DXCHECK(mDXRenderDevice->mD3DDevice->CreateRenderTargetView(mD3DBackBuffer, NULL, &mD3DRenderTargetView));
 
@@ -1614,7 +1614,7 @@ void DXRenderWindow::ReinitNative()
 	descDepth.CPUAccessFlags = 0;
 	descDepth.MiscFlags = 0;
 	mDXRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer);
-	
+
 	if ((mWindow->mFlags & BFWINDOW_ALLOW_FULLSCREEN) == 0)
 		mDXRenderDevice->mDXGIFactory->MakeWindowAssociation(mHWnd, DXGI_MWA_NO_ALT_ENTER);
 
@@ -1632,14 +1632,14 @@ void DXRenderWindow::PhysSetAsTarget()
 		viewPort.MaxDepth = 1.0f;
 		viewPort.TopLeftX = 0;
 		viewPort.TopLeftY = 0;
-		
-		mDXRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);		
+
+		mDXRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
 		mDXRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
 	if (!mHasBeenDrawnTo)
-	{		
-		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(rand() / (float) RAND_MAX, 0, 1, 0));				
+	{
+		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(rand() / (float) RAND_MAX, 0, 1, 0));
 		float bgColor[4] = {0, 0, 0, 0};
 		mDXRenderDevice->mD3DDeviceContext->ClearRenderTargetView(mD3DRenderTargetView, bgColor);
 		mDXRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH/*|D3D11_CLEAR_STENCIL*/, 1.0f, 0);
@@ -1655,7 +1655,15 @@ void DXRenderWindow::SetAsTarget()
 		//mRenderDevice->mCurDrawLayer->Flush();
 
 	mHasBeenTargeted = true;
-	mRenderDevice->mCurRenderTarget = this;	
+	mRenderDevice->mCurRenderTarget = this;
+}
+
+void DXRenderWindow::CheckDXResult(HRESULT hr)
+{
+	if ((hr == DXGI_ERROR_DEVICE_REMOVED) || (hr == DXGI_ERROR_DEVICE_RESET))
+		((DXRenderDevice*)mRenderDevice)->mNeedsReinitNative = true;
+	else
+		DXCHECK(hr);
 }
 
 void DXRenderWindow::Resized()
@@ -1671,22 +1679,17 @@ void DXRenderWindow::Resized()
 
 	mWidth = rect.right - rect.left;
 	mHeight = rect.bottom - rect.top;
-	
+
 	if (mDXSwapChain != NULL)
 	{
 		mD3DBackBuffer->Release();
 		mD3DDepthBuffer->Release();
-		mD3DRenderTargetView->Release();		
+		mD3DRenderTargetView->Release();
 		mD3DDepthStencilView->Release();
 
-		HRESULT hr = mDXSwapChain->ResizeBuffers(0, mWidth, mHeight, DXGI_FORMAT_UNKNOWN,
-			DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH /*| DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT*/);
+		CheckDXResult(mDXSwapChain->ResizeBuffers(0, mWidth, mHeight, DXGI_FORMAT_UNKNOWN,
+			DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH /*| DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT*/));
 
-		if ((hr == DXGI_ERROR_DEVICE_REMOVED) || (hr == DXGI_ERROR_DEVICE_RESET))
-			((DXRenderDevice*)mRenderDevice)->mNeedsReinitNative = true;
-		else
-			DXCHECK(hr);
-		
 		D3D11_TEXTURE2D_DESC descDepth;
 		ZeroMemory(&descDepth, sizeof(descDepth));
 		descDepth.Width = mWidth;
@@ -1700,11 +1703,11 @@ void DXRenderWindow::Resized()
 		descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 		descDepth.CPUAccessFlags = 0;
 		descDepth.MiscFlags = 0;
-		mDXRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer);		
+		mDXRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer);
 
-		DXCHECK(mDXSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mD3DBackBuffer));	
-		DXCHECK(mDXRenderDevice->mD3DDevice->CreateRenderTargetView(mD3DBackBuffer, NULL, &mD3DRenderTargetView));	
-		DXCHECK(mDXRenderDevice->mD3DDevice->CreateDepthStencilView(mD3DDepthBuffer, NULL, &mD3DDepthStencilView));
+		CheckDXResult(mDXSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mD3DBackBuffer));
+		CheckDXResult(mDXRenderDevice->mD3DDevice->CreateRenderTargetView(mD3DBackBuffer, NULL, &mD3DRenderTargetView));
+		CheckDXResult(mDXRenderDevice->mD3DDevice->CreateDepthStencilView(mD3DDepthBuffer, NULL, &mD3DDepthStencilView));
 
 		/*if (mRenderDevice->mCurRenderTarget == this)
 			mRenderDevice->mCurRenderTarget = NULL;
@@ -1713,7 +1716,7 @@ void DXRenderWindow::Resized()
 }
 
 void DXRenderWindow::Present()
-{	
+{
 	HRESULT hr = mDXSwapChain->Present((mWindow->mFlags & BFWINDOW_VSYNC) ? 1 : 0, 0);
 
 	if ((hr == DXGI_ERROR_DEVICE_REMOVED) || (hr == DXGI_ERROR_DEVICE_RESET))
@@ -1738,18 +1741,18 @@ void DXRenderWindow::CopyBitsTo(uint32* dest, int width, int height)
 	texDesc.Usage = D3D11_USAGE_STAGING;
 	texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
-	ID3D11Texture2D *texture;	
+	ID3D11Texture2D *texture;
 	DXCHECK(mDXRenderDevice->mD3DDevice->CreateTexture2D(&texDesc, 0, &texture));
 	mDXRenderDevice->mD3DDeviceContext->CopyResource(texture, mD3DBackBuffer);
 
 	/*? D3D11_MAPPED_TEXTURE2D mapTex;
 	DXCHECK(texture->Map(D3D11CalcSubresource(0, 0, 1), D3D11_MAP_READ, 0, &mapTex));
 
-	uint8* srcPtr = (uint8*) mapTex.pData;	
+	uint8* srcPtr = (uint8*) mapTex.pData;
 	uint8* destPtr = (uint8*) dest;
 	for (int y = 0; y < height; y++)
 	{
-		memcpy(destPtr, srcPtr, width*sizeof(uint32));		
+		memcpy(destPtr, srcPtr, width*sizeof(uint32));
 		srcPtr += mapTex.RowPitch;
 		destPtr += width * 4;
 	}
@@ -1793,7 +1796,7 @@ float DXRenderWindow::GetRefreshRate()
 							sourceName.header.id = p.sourceInfo.id;
 							if (DisplayConfigGetDeviceInfo(&sourceName.header) == ERROR_SUCCESS)
 							{
-								// find the matched device which is associated with current device 
+								// find the matched device which is associated with current device
 								// there may be the possibility that display may be duplicated and windows may be one of them in such scenario
 								// there may be two callback because source is same target will be different
 								// as window is on both the display so either selecting either one is ok
@@ -1823,7 +1826,7 @@ bool DXRenderWindow::WaitForVBlank()
 	IDXGIOutput* output = NULL;
 	mDXSwapChain->GetContainingOutput(&output);
 	if (output == NULL)
-		return false;		
+		return false;
 	bool success = output->WaitForVBlank() == 0;
 	return success;
 }
@@ -1831,8 +1834,8 @@ bool DXRenderWindow::WaitForVBlank()
 ///
 
 DXRenderDevice::DXRenderDevice()
-{	
-	mD3DDevice = NULL;	
+{
+	mD3DDevice = NULL;
 	mNeedsReinitNative = false;
 	mMatrix2DBuffer = NULL;
 }
@@ -1851,9 +1854,9 @@ DXRenderDevice::~DXRenderDevice()
 		texture->mRenderDevice = NULL;
 	}
 
-	ReleaseNative();	
-	
-	delete mDefaultRenderState;	
+	ReleaseNative();
+
+	delete mDefaultRenderState;
 }
 
 bool DXRenderDevice::Init(BFApp* app)
@@ -1862,9 +1865,9 @@ bool DXRenderDevice::Init(BFApp* app)
 
 	mApp = app;
 	WinBFApp* winApp = (WinBFApp*) app;
-	
+
 	D3D_FEATURE_LEVEL featureLevelArr[] =
-	{		
+	{
 		D3D_FEATURE_LEVEL_11_0,
 		D3D_FEATURE_LEVEL_10_1,
 		D3D_FEATURE_LEVEL_10_0,
@@ -1874,12 +1877,12 @@ bool DXRenderDevice::Init(BFApp* app)
 	};;
 
 	D3D_FEATURE_LEVEL d3dFeatureLevel = (D3D_FEATURE_LEVEL)0;
-	int flags = 0;	
+	int flags = 0;
 	//TODO:
 	//flags = D3D11_CREATE_DEVICE_DEBUG;
 	DXCHECK(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, featureLevelArr, 6, D3D11_SDK_VERSION, &mD3DDevice, &d3dFeatureLevel, &mD3DDeviceContext));
 	OutputDebugStrF("D3D Feature Level: %X\n", d3dFeatureLevel);
-	
+
 	IDXGIDevice* pDXGIDevice = NULL;
 	DXCHECK(mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&pDXGIDevice)));
 
@@ -1905,7 +1908,7 @@ bool DXRenderDevice::Init(BFApp* app)
 		dxRenderState = (DXRenderState*)mDefaultRenderState;
 		dxRenderState->ReinitNative();
 	}
-	
+
 	D3D11_RASTERIZER_DESC rasterizerState;
 	rasterizerState.CullMode = D3D11_CULL_NONE;
 	rasterizerState.FillMode = D3D11_FILL_SOLID;
@@ -1914,19 +1917,19 @@ bool DXRenderDevice::Init(BFApp* app)
     rasterizerState.DepthBiasClamp = 0;
     rasterizerState.SlopeScaledDepthBias = 0;
     rasterizerState.DepthClipEnable = false;
-    rasterizerState.ScissorEnable = false;    
+    rasterizerState.ScissorEnable = false;
 	rasterizerState.MultisampleEnable = false;
     rasterizerState.AntialiasedLineEnable = false;
-	
-	mD3DDevice->CreateRasterizerState(&rasterizerState, &dxRenderState->mD3DRasterizerState);	
-	mD3DDeviceContext->RSSetState(dxRenderState->mD3DRasterizerState);		
-	mD3DDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);	
+
+	mD3DDevice->CreateRasterizerState(&rasterizerState, &dxRenderState->mD3DRasterizerState);
+	mD3DDeviceContext->RSSetState(dxRenderState->mD3DRasterizerState);
+	mD3DDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	ID3D11BlendState* g_pBlendState = NULL;
 
 	D3D11_BLEND_DESC BlendState;
 	ZeroMemory(&BlendState, sizeof(D3D11_BLEND_DESC));
-	BlendState.RenderTarget[0].BlendEnable = TRUE;	
+	BlendState.RenderTarget[0].BlendEnable = TRUE;
 	BlendState.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
 
 	BlendState.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
@@ -1936,7 +1939,7 @@ bool DXRenderDevice::Init(BFApp* app)
 	BlendState.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 	BlendState.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 	mD3DDevice->CreateBlendState(&BlendState, &mD3DNormalBlendState);
-	
+
 	mD3DDeviceContext->OMSetBlendState(mD3DNormalBlendState, NULL, 0xffffffff);
 
 	D3D11_SAMPLER_DESC sampDesc;
@@ -1947,9 +1950,9 @@ bool DXRenderDevice::Init(BFApp* app)
 	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
 	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 	sampDesc.MinLOD = 0;
-	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;	
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DDefaultSamplerState));
-	
+
 	ZeroMemory(&sampDesc, sizeof(sampDesc));
 	sampDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -1959,7 +1962,7 @@ bool DXRenderDevice::Init(BFApp* app)
 	sampDesc.MinLOD = 0;
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DWrapSamplerState));
-		
+
 	D3D11_BUFFER_DESC bd;
 	bd.Usage = D3D11_USAGE_DYNAMIC;
 	bd.ByteWidth = DX_VTXBUFFER_SIZE;
@@ -1967,7 +1970,7 @@ bool DXRenderDevice::Init(BFApp* app)
 	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	bd.MiscFlags = 0;
 	bd.StructureByteStride = 0;
-	
+
 	mD3DDevice->CreateBuffer(&bd, NULL, &mD3DVertexBuffer);
 
 	bd.Usage = D3D11_USAGE_DYNAMIC;
@@ -1977,7 +1980,7 @@ bool DXRenderDevice::Init(BFApp* app)
 	bd.MiscFlags = 0;
 	bd.StructureByteStride = 0;
 
-	mD3DDevice->CreateBuffer(&bd, NULL, &mD3DIndexBuffer);	
+	mD3DDevice->CreateBuffer(&bd, NULL, &mD3DIndexBuffer);
 
 	mVtxByteIdx = 0;
 	mIdxByteIdx = 0;
@@ -2022,9 +2025,9 @@ void DXRenderDevice::ReinitNative()
 	if (mMatrix2DBuffer != NULL)
 		mMatrix2DBuffer->Release();
 	mMatrix2DBuffer = NULL;
-	
+
 	Init(mApp);
-	
+
 	for (auto window : mRenderWindowList)
 		((DXRenderWindow*)window)->ReinitNative();
 	for (auto shader : mShaders)
@@ -2036,9 +2039,9 @@ void DXRenderDevice::ReinitNative()
 }
 
 void DXRenderDevice::FrameStart()
-{	
+{
 	mCurRenderTarget = NULL;
-	mPhysRenderWindow = NULL;		
+	mPhysRenderWindow = NULL;
 	for (auto renderWindow : mRenderWindowList)
 	{
 		renderWindow->mHasBeenDrawnTo = false;
@@ -2047,23 +2050,23 @@ void DXRenderDevice::FrameStart()
 }
 
 void DXRenderDevice::FrameEnd()
-{		
+{
 	for (int renderWindowIdx = 0; renderWindowIdx < (int)mRenderWindowList.size(); renderWindowIdx++)
 	{
 		RenderWindow* aRenderWindow = mRenderWindowList[renderWindowIdx];
 		if (aRenderWindow->mHasBeenTargeted)
-		{			
+		{
 			PhysSetRenderState(mDefaultRenderState);
 			PhysSetRenderWindow(aRenderWindow);
-			
+
 			for (int drawLayerIdx = 0; drawLayerIdx < (int)aRenderWindow->mDrawLayerList.size(); drawLayerIdx++)
 			{
 				DrawLayer* drawLayer = aRenderWindow->mDrawLayerList[drawLayerIdx];
-				drawLayer->Draw();				
+				drawLayer->Draw();
 			}
 
 			aRenderWindow->Present();
-		}		
+		}
 	}
 
 	RenderDevice::FrameEnd();
@@ -2073,13 +2076,13 @@ void DXRenderDevice::FrameEnd()
 	{
 		RenderWindow* aRenderWindow = mRenderWindowList[renderWindowIdx];
 		if (aRenderWindow->mHasBeenTargeted)
-		{			
+		{
 			for (int drawLayerIdx = 0; drawLayerIdx < (int)aRenderWindow->mDrawLayerList.size(); drawLayerIdx++)
 			{
-				DrawLayer* drawLayer = aRenderWindow->mDrawLayerList[drawLayerIdx];			
-				drawLayer->Clear();				
+				DrawLayer* drawLayer = aRenderWindow->mDrawLayerList[drawLayerIdx];
+				drawLayer->Clear();
 			}
-		}		
+		}
 	}
 }
 
@@ -2088,7 +2091,7 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	if (fileName.StartsWith("!backbuffer:"))
 	{
 		int colon = (int)fileName.IndexOf(':');
-		String addrStr = fileName.Substring(colon + 1);		
+		String addrStr = fileName.Substring(colon + 1);
 		void* addr = (void*)(intptr)strtoll(addrStr.c_str(), NULL, 16);
 		BFWindow* window = (BFWindow*)addr;
 		DXRenderWindow* renderWindow = (DXRenderWindow*)window->mRenderWindow;
@@ -2147,7 +2150,7 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 				if (hdr.ddspf.dwRBitMask == 0x7c00)
 					format = DXGI_FORMAT_B5G5R5A1_UNORM;
 				else if (hdr.ddspf.dwRBitMask == 0xf800)
-					format = DXGI_FORMAT_B5G6R5_UNORM;				
+					format = DXGI_FORMAT_B5G6R5_UNORM;
 			}
 			else if (hdr.ddspf.dwRGBBitCount == 8)
 			{
@@ -2171,7 +2174,7 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		if (hdr.ddspf.dwFourCC == '2ITA')
 			format = DXGI_FORMAT_BC5_UNORM;
 		if (hdr.ddspf.dwFourCC == 'S5CB')
-			format = DXGI_FORMAT_BC5_SNORM;		
+			format = DXGI_FORMAT_BC5_SNORM;
 
 		if (hdr.ddspf.dwFourCC == '01XD')
 		{
@@ -2180,7 +2183,7 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		}
 
 		int blockSize = 0;
-		int bytesPerPixel = GetBytesPerPixel(format, blockSize);		
+		int bytesPerPixel = GetBytesPerPixel(format, blockSize);
 
 		int mipSize = ((hdr.dwWidth + blockSize - 1) / blockSize) * ((hdr.dwHeight + blockSize - 1) / blockSize) * bytesPerPixel;
 		Array<uint8> data;
@@ -2244,19 +2247,19 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		mTextures.Add(aTexture);
 		return aTexture;
 	}
-		
+
 	aTexture = (DXTexture*)RenderDevice::LoadTexture(fileName, flags);
 	if (aTexture != NULL)
 	{
 		aTexture->mPath = fileName;
 		mTextureMap[aTexture->mPath] = aTexture;
 	}
-	
+
 	return aTexture;
 }
 
 Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
-{	
+{
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
 	imageData->mIsAdditive = (flags & TextureFlag_Additive) != 0;
@@ -2265,7 +2268,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 
 	int aWidth = 0;
 	int aHeight = 0;
-	
+
 	D3D11_SUBRESOURCE_DATA resData;
 	resData.pSysMem = imageData->mBits;
 	resData.SysMemPitch = imageData->mWidth * 4;
@@ -2279,7 +2282,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.SampleDesc.Count = 1;	
+	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -2296,8 +2299,8 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	srDesc.Format = desc.Format;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srDesc.Texture2D.MostDetailedMip = 0;
-	srDesc.Texture2D.MipLevels = 1;	
-		
+	srDesc.Texture2D.MipLevels = 1;
+
 	DXCHECK(mD3DDevice->CreateShaderResourceView(d3DTexture, &srDesc, &d3DShaderResourceView));
 
 	DXTexture* aTexture = new DXTexture();
@@ -2307,11 +2310,11 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 
 	aTexture->mRenderDevice = this;
 	aTexture->mWidth = aWidth;
-	aTexture->mHeight = aHeight;	
+	aTexture->mHeight = aHeight;
 	aTexture->mD3DTexture = d3DTexture;
 	aTexture->mD3DResourceView = d3DShaderResourceView;
 	aTexture->AddRef();
-	
+
 	mTextures.Add(aTexture);
 
 	//OutputDebugStrF("gTextureIdx=%d %@\n", gTextureIdx, aTexture);
@@ -2322,7 +2325,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 Texture* DXRenderDevice::CreateDynTexture(int width, int height)
 {
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
-	
+
 	// Create the target texture
 	D3D11_TEXTURE2D_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
@@ -2331,15 +2334,15 @@ Texture* DXRenderDevice::CreateDynTexture(int width, int height)
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.SampleDesc.Count = 1;	
-	desc.SampleDesc.Quality = 0;	
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
 	ID3D11Texture2D* d3DTexture = NULL;
 	DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
-	
+
 	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
 	srDesc.Format = desc.Format;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -2388,10 +2391,10 @@ void DXRenderDevice::SetRenderState(RenderState* renderState)
 Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlpha)
 {
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
-	
+
 	int aWidth = 0;
 	int aHeight = 0;
-	
+
 	int sampleQuality = 0;
 
 	// Create the render target texture
@@ -2402,7 +2405,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.SampleDesc.Count = 1;	
+	desc.SampleDesc.Count = 1;
 	UINT qualityLevels = 0;
 
 	int samples = 1;
@@ -2417,7 +2420,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 
 	ID3D11Texture2D* d3DTexture = NULL;
 	DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
-	
+
 	aWidth = width;
 	aHeight = height;
 
@@ -2425,22 +2428,22 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 	srDesc.Format = desc.Format;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srDesc.Texture2D.MostDetailedMip = 0;
-	srDesc.Texture2D.MipLevels = 1;	
-	
+	srDesc.Texture2D.MipLevels = 1;
+
 	if (qualityLevels != 0)
 	{
 		srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
 	}
 
 	DXCHECK(mD3DDevice->CreateShaderResourceView(d3DTexture, &srDesc, &d3DShaderResourceView));
-	
-	ID3D11RenderTargetView*	d3DRenderTargetView;	
+
+	ID3D11RenderTargetView*	d3DRenderTargetView;
 	DXCHECK(mD3DDevice->CreateRenderTargetView(d3DTexture, NULL, &d3DRenderTargetView));
 
 	DXTexture* aRenderTarget = new DXTexture();
 	aRenderTarget->mWidth = width;
 	aRenderTarget->mHeight = height;
-	aRenderTarget->mRenderDevice = this;	
+	aRenderTarget->mRenderDevice = this;
 	aRenderTarget->mD3DTexture = d3DTexture;
 	aRenderTarget->mD3DResourceView = d3DShaderResourceView;
 	aRenderTarget->mD3DRenderTargetView = d3DRenderTargetView;
@@ -2464,7 +2467,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 
 	DXCHECK(mD3DDevice->CreateDepthStencilView(aRenderTarget->mD3DDepthBuffer, NULL, &aRenderTarget->mD3DDepthStencilView));
 
-	return aRenderTarget;	
+	return aRenderTarget;
 }
 
 

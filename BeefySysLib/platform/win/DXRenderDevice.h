@@ -68,20 +68,20 @@ public:
 public:
 	DXTexture();
 	~DXTexture();
-	
+
 	void					ReleaseNative();
 	void					ReinitNative();
 
 	virtual void			PhysSetAsTarget() override;
 	virtual void			Blt(ImageData* imageData, int x, int y) override;
 	virtual void			SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits) override;
-	virtual void			GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits) override;	
+	virtual void			GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits) override;
 };
 
 class DXShaderParam : public ShaderParam
 {
 public:
-	ID3D10EffectVariable*	mD3DVariable;	
+	ID3D10EffectVariable*	mD3DVariable;
 
 public:
 	DXShaderParam();
@@ -95,7 +95,7 @@ typedef std::map<String, DXShaderParam*> DXShaderParamMap;
 
 class DXShader : public Shader
 {
-public:	
+public:
 	DXRenderDevice*			mRenderDevice;
 	String					mSrcPath;
 	VertexDefinition*		mVertexDef;
@@ -103,42 +103,42 @@ public:
 	ID3D11InputLayout*		mD3DLayout;
 	ID3D11VertexShader*		mD3DVertexShader;
 	ID3D11PixelShader*		mD3DPixelShader;
-	DXShaderParamMap		mParamsMap;	
+	DXShaderParamMap		mParamsMap;
 	ID3D11Buffer*			mConstBuffer;
 	bool					mHas2DPosition;
-	
+
 public:
 	DXShader();
 	~DXShader();
-	
+
 	void					ReleaseNative();
 	void					ReinitNative();
 
 	bool					Load();
-	virtual ShaderParam*	GetShaderParam(const StringImpl& name) override;	
+	virtual ShaderParam*	GetShaderParam(const StringImpl& name) override;
 };
 
 class DXDrawBatch : public DrawBatch
 {
 public:
-		
+
 public:
 	DXDrawBatch();
 	~DXDrawBatch();
-	
+
 	virtual void			Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
 class DXDrawLayer : public DrawLayer
 {
-public:	
-	virtual DrawBatch*		CreateDrawBatch();	
+public:
+	virtual DrawBatch*		CreateDrawBatch();
 	virtual RenderCmd*		CreateSetTextureCmd(int textureIdx, Texture* texture) override;
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) override;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount) override;
 
-public:	
-	DXDrawLayer();	
+public:
+	DXDrawLayer();
 	~DXDrawLayer();
 };
 
@@ -149,18 +149,19 @@ public:
 	DXRenderDevice*			mDXRenderDevice;
 	IDXGISwapChain*			mDXSwapChain;
 	ID3D11Texture2D*		mD3DBackBuffer;
-	ID3D11RenderTargetView*	mD3DRenderTargetView;	
+	ID3D11RenderTargetView*	mD3DRenderTargetView;
 	ID3D11Texture2D*		mD3DDepthBuffer;
 	ID3D11DepthStencilView*	mD3DDepthStencilView;
-	HANDLE					mFrameWaitObject;	
+	HANDLE					mFrameWaitObject;
 	float					mRefreshRate;
 	bool					mResizePending;
-	bool					mWindowed;	
+	bool					mWindowed;
 	int						mPendingWidth;
 	int						mPendingHeight;
 
 public:
 	virtual void			PhysSetAsTarget();
+	void					CheckDXResult(HRESULT result);
 
 public:
 	DXRenderWindow(DXRenderDevice* renderDevice, WinBFWindow* window, bool windowed);
@@ -214,7 +215,7 @@ public:
 	void ReinitNative();
 
 	void InvalidateRasterizerState();
-	void IndalidateDepthStencilState();	
+	void IndalidateDepthStencilState();
 
 	virtual void SetClipped(bool clipped);
 	virtual void SetTexWrap(bool clipped);
@@ -229,7 +230,7 @@ public:
 	String					mMaterialName;
 	int						mNumIndices;
 	int						mNumVertices;
-	Array<DXTexture*>		mTextures;	
+	Array<DXTexture*>		mTextures;
 
 	ID3D11Buffer*			mD3DIndexBuffer;
 	//TODO: Split the vertex buffer up into static and dynamic buffers
@@ -248,14 +249,14 @@ public:
 
 class DXModelInstance : public ModelInstance
 {
-public:	
+public:
 	DXRenderDevice*			mD3DRenderDevice;
 	Array<DXModelMesh>		mDXModelMeshs;
 
 public:
 	DXModelInstance(ModelDef* modelDef);
-	~DXModelInstance();	
-		
+	~DXModelInstance();
+
 	virtual void CommandQueued(DrawLayer* drawLayer) override;
 	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
@@ -292,7 +293,7 @@ class DXRenderDevice : public RenderDevice
 {
 public:
 	IDXGIFactory*			mDXGIFactory;
-	ID3D11Device*			mD3DDevice;	
+	ID3D11Device*			mD3DDevice;
 	ID3D11DeviceContext*	mD3DDeviceContext;
 	ID3D11BlendState*		mD3DNormalBlendState;
 	ID3D11SamplerState*		mD3DDefaultSamplerState;
@@ -303,15 +304,15 @@ public:
 	ID3D11Buffer*			mD3DVertexBuffer;
 	ID3D11Buffer*			mD3DIndexBuffer;
 	int						mVtxByteIdx;
-	int						mIdxByteIdx;	
+	int						mIdxByteIdx;
 
 	HashSet<DXRenderState*>	mRenderStates;
 	HashSet<DXTexture*>		mTextures;
 	HashSet<DXShader*>		mShaders;
 	Dictionary<String, DXTexture*> mTextureMap;
 	Dictionary<int, ID3D11Buffer*> mBufferMap;
-			
-public:		
+
+public:
 	virtual void			PhysSetRenderState(RenderState* renderState) override;
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;
@@ -322,7 +323,7 @@ public:
 	DXRenderDevice();
 	virtual ~DXRenderDevice();
 	bool					Init(BFApp* app) override;
-	
+
 	void					ReleaseNative();
 	void					ReinitNative();
 
@@ -335,7 +336,7 @@ public:
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
 	Texture*				CreateRenderTarget(int width, int height, bool destAlpha) override;
 
-	void					SetRenderState(RenderState* renderState) override;		
+	void					SetRenderState(RenderState* renderState) override;
 };
 
 NS_BF_END;
