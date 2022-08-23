@@ -124,10 +124,10 @@ namespace IDE.Compiler
 		static extern char8* BfCompiler_GetGeneratorGenData(void* bfCompiler, char8* typeDefName, char8* args);
 
 		[CallingConvention(.Stdcall), CLink]
-		static extern char8* BfCompiler_GetTypeDefList(void* bfCompiler);
+		static extern char8* BfCompiler_GetTypeDefList(void* bfCompiler, bool includeLocation);
 
 		[CallingConvention(.Stdcall), CLink]
-		static extern char8* BfCompiler_GetTypeDefMatches(void* bfCompiler, char8* searchStr);
+		static extern char8* BfCompiler_GetTypeDefMatches(void* bfCompiler, char8* searchStr, bool includeLocation);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetTypeDefInfo(void* bfCompiler, char8* typeDefName);
@@ -846,14 +846,14 @@ namespace IDE.Compiler
 			outStr.Append(BfCompiler_GetGeneratorGenData(mNativeBfCompiler, typeDefName, args));
 		}
 
-		public void GetTypeDefList(String outStr)
+		public void GetTypeDefList(String outStr, bool includeLocation = false)
 		{
-			outStr.Append(BfCompiler_GetTypeDefList(mNativeBfCompiler));
+			outStr.Append(BfCompiler_GetTypeDefList(mNativeBfCompiler, includeLocation));
 		}
 
-		public void GetTypeDefMatches(String searchStr, String outStr)
+		public void GetTypeDefMatches(String searchStr, String outStr, bool includeLocation = false)
 		{
-			outStr.Append(BfCompiler_GetTypeDefMatches(mNativeBfCompiler, searchStr));
+			outStr.Append(BfCompiler_GetTypeDefMatches(mNativeBfCompiler, searchStr, includeLocation));
 		}
 
 		public void GetTypeDefInfo(String typeDefName, String outStr)

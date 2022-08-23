@@ -4077,6 +4077,27 @@ void BfCompiler::ProcessAutocompleteTempType()
 				}
 			}
 
+			for (auto fieldDef : tempTypeDef->mFields)
+			{
+				auto fieldDeclaration = BfNodeDynCast<BfFieldDeclaration>(fieldDef->mFieldDeclaration);
+				if ((fieldDeclaration == NULL) || (fieldDeclaration->mNameNode == NULL) || (BfNodeIsA<BfPropertyDeclaration>(fieldDef->mFieldDeclaration)))
+					continue;
+
+				String fieldText = fieldDef->mName;
+				if (typeName != "@")
+					fieldText = typeName + "." + fieldText;
+
+				if (!autoCompleteResultString.empty())
+					autoCompleteResultString += "\n";
+
+				BfAstNode* refNode = fieldDeclaration->mNameNode;
+				module->UpdateSrcPos(refNode, (BfSrcPosFlags)(BfSrcPosFlag_NoSetDebugLoc | BfSrcPosFlag_Force));
+
+				fieldText += StrFormat("\tfield\t%d\t%d", module->mCurFilePosition.mCurLine, module->mCurFilePosition.mCurColumn);
+
+				autoCompleteResultString += fieldText;
+			}
+
 			for (auto propDef : tempTypeDef->mProperties)
 			{
 				auto propDeclaration = BfNodeDynCast<BfPropertyDeclaration>(propDef->mFieldDeclaration);
@@ -8447,203 +8468,6 @@ void BfCompiler::GenerateAutocompleteInfo()
 	}
 }
 
-String BfCompiler::GetTypeDefList()
-{
-	String result;
-
-	BfProject* curProject = NULL;
-	Dictionary<BfProject*, int> projectIds;
-
-	for (auto typeDef : mSystem->mTypeDefs)
-	{
-		if (typeDef->mProject != curProject)
-		{
-			curProject = typeDef->mProject;
-			int* projectIdPtr;
-			if (projectIds.TryAdd(curProject, NULL, &projectIdPtr))
-			{
-				*projectIdPtr = (int)projectIds.size() - 1;
-				result += '+';
-				result += curProject->mName;
-				result += '\n';
-			}
-			else
-			{
-				char str[32];
-				sprintf(str, "=%d\n", *projectIdPtr);
-				result += str;
-			}
-		}
-
-		if (((!typeDef->mIsPartial) || (typeDef->mIsCombinedPartial)))
-		{
-			if (typeDef->IsGlobalsContainer())
-			{
-				result += 'g';
-				if (!typeDef->mNamespace.IsEmpty())
-				{
-					typeDef->mNamespace.ToString(result);
-					result += '.';
-				}
-				result += ":static\n";
-				continue;
-			}
-			else if (typeDef->mTypeCode == BfTypeCode_Interface)
-				result += 'i';
-			else if (typeDef->mTypeCode == BfTypeCode_Object)
-				result += 'c';
-			else
-				result += 'v';
-			result += BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName) + "\n";
-		}
-	}
-
-	return result;
-}
-
-String BfCompiler::GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args)
-{
-	if (typeInst == NULL)
-	{
-		auto type = mContext->mUnreifiedModule->ResolveTypeDef(typeDef, BfPopulateType_BaseType);
-		if (type != NULL)
-			typeInst = type->ToTypeInstance();
-		if (typeInst == NULL)
-			return "";
-	}
-
-	BfTypeVector typeVector;
-	typeVector.Add(typeInst);
-
-	auto generatorTypeInst = mContext->mUnreifiedModule->ResolveTypeDef(mCompilerGeneratorTypeDef)->ToTypeInstance();
-	auto methodDef = generatorTypeInst->mTypeDef->GetMethodByName(generatorMethodName);
-	auto moduleMethodInstance = mContext->mUnreifiedModule->GetMethodInstance(generatorTypeInst, methodDef, typeVector);
-
-	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mContext->mUnreifiedModule->mCurMethodInstance, moduleMethodInstance.mMethodInstance);
-	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mContext->mUnreifiedModule->mCurTypeInstance, typeInst);
-
-	BfExprEvaluator exprEvaluator(mContext->mUnreifiedModule);
-	exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(BfEvalExprFlags_Comptime | BfEvalExprFlags_NoCeRebuildFlags);
-
-	SizedArray<BfIRValue, 1> irArgs;
-	if (args != NULL)
-		irArgs.Add(mContext->mUnreifiedModule->GetStringObjectValue(*args));
-	auto callResult = exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs, NULL, BfCreateCallFlags_None);
-
-	if (callResult.mValue.IsConst())
-	{
-		auto stringPtr = mContext->mUnreifiedModule->GetStringPoolString(callResult.mValue, mContext->mUnreifiedModule->mBfIRBuilder);
-		if (stringPtr != NULL)
-			return *stringPtr;
-	}
-	return "";
-}
-
-void BfCompiler::HandleGeneratorErrors(StringImpl& result)
-{
-	if ((mPassInstance->mErrors.IsEmpty()) && (mPassInstance->mOutStream.IsEmpty()))
-		return;
-
-	result.Clear();
-
-	for (auto& msg : mPassInstance->mOutStream)
-	{
-		String error = msg;
-		error.Replace('\n', '\r');
-		result += "!error\t";
-		result += error;
-		result += "\n";
-	}
-}
-
-String BfCompiler::GetGeneratorTypeDefList()
-{
-	String result;
-
-	BfProject* curProject = NULL;
-	Dictionary<BfProject*, int> projectIds;
-
-	BfResolvePassData resolvePassData;
-	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
-	BfPassInstance passInstance(mSystem);
-	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
-
-	for (auto typeDef : mSystem->mTypeDefs)
-	{
-		if (typeDef->mProject->mDisabled)
-			continue;
-
-		if (typeDef->mIsPartial)
-			continue;
-
-		auto type = mContext->mUnreifiedModule->ResolveTypeDef(typeDef, BfPopulateType_BaseType);
-		if ((type != NULL) && (type->IsTypeInstance()))
-		{
-			auto typeInst = type->ToTypeInstance();
-			if ((typeInst->mBaseType != NULL) && (typeInst->mBaseType->IsInstanceOf(mCompilerGeneratorTypeDef)))
-			{
-				result += typeDef->mProject->mName;
-				result += ":";
-				result += BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName);
-				String nameString = GetGeneratorString(typeDef, typeInst, "GetName", NULL);
-				if (!nameString.IsEmpty())
-					result += "\t" + nameString;
-				result += "\n";
-			}
-		}
-	}
-
-	HandleGeneratorErrors(result);
-
-	return result;
-}
-
-String BfCompiler::GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args)
-{
-	BfResolvePassData resolvePassData;
-	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
-	BfPassInstance passInstance(mSystem);
-	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
-
-	Array<BfTypeDef*> typeDefs;
-	GetTypeDefs(typeName, typeDefs);
-
-	String result;
-	for (auto typeDef : typeDefs)
-	{
-		result += GetGeneratorString(typeDef, NULL, "InitUI", &args);
-		if (!result.IsEmpty())
-			break;
-	}
-
-	HandleGeneratorErrors(result);
-
-	return result;
-}
-
-String BfCompiler::GetGeneratorGenData(const StringImpl& typeName, const StringImpl& args)
-{
-	BfResolvePassData resolvePassData;
-	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
-	BfPassInstance passInstance(mSystem);
-	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
-
-	Array<BfTypeDef*> typeDefs;
-	GetTypeDefs(typeName, typeDefs);
-
-	String result;
-	for (auto typeDef : typeDefs)
-	{
-		result += GetGeneratorString(typeDef, NULL, "Generate", &args);
-		if (!result.IsEmpty())
-			break;
-	}
-
-	HandleGeneratorErrors(result);
-
-	return result;
-}
-
 struct TypeDefMatchHelper
 {
 public:
@@ -8916,7 +8740,218 @@ public:
 	}
 };
 
-String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
+String BfCompiler::GetTypeDefList(bool includeLocation)
+{
+	String result;
+	TypeDefMatchHelper matchHelper(result);
+
+	BfProject* curProject = NULL;
+	Dictionary<BfProject*, int> projectIds;
+
+	for (auto typeDef : mSystem->mTypeDefs)
+	{
+		if (typeDef->mProject != curProject)
+		{
+			curProject = typeDef->mProject;
+			int* projectIdPtr;
+			if (projectIds.TryAdd(curProject, NULL, &projectIdPtr))
+			{
+				*projectIdPtr = (int)projectIds.size() - 1;
+				result += '+';
+				result += curProject->mName;
+				result += '\n';
+			}
+			else
+			{
+				char str[32];
+				sprintf(str, "=%d\n", *projectIdPtr);
+				result += str;
+			}
+		}
+
+		if (((!typeDef->mIsPartial) || (typeDef->mIsCombinedPartial)))
+		{
+			if (typeDef->IsGlobalsContainer())
+			{
+				result += 'g';
+				if (!typeDef->mNamespace.IsEmpty())
+				{
+					typeDef->mNamespace.ToString(result);
+					result += '.';
+				}
+				result += ":static\n";
+				continue;
+			}
+			else if (typeDef->mTypeCode == BfTypeCode_Interface)
+				result += 'i';
+			else if (typeDef->mTypeCode == BfTypeCode_Object)
+				result += 'c';
+			else
+				result += 'v';
+
+			String typeName = BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName);
+
+			if (includeLocation)
+			{
+				result += typeName + "\t";
+
+				matchHelper.AddLocation(typeDef->GetRefNode());
+				result += "\n";
+			}
+			else
+			{
+				result += typeName + "\n";
+			}
+		}
+	}
+
+	return result;
+}
+
+String BfCompiler::GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args)
+{
+	if (typeInst == NULL)
+	{
+		auto type = mContext->mUnreifiedModule->ResolveTypeDef(typeDef, BfPopulateType_BaseType);
+		if (type != NULL)
+			typeInst = type->ToTypeInstance();
+		if (typeInst == NULL)
+			return "";
+	}
+
+	BfTypeVector typeVector;
+	typeVector.Add(typeInst);
+
+	auto generatorTypeInst = mContext->mUnreifiedModule->ResolveTypeDef(mCompilerGeneratorTypeDef)->ToTypeInstance();
+	auto methodDef = generatorTypeInst->mTypeDef->GetMethodByName(generatorMethodName);
+	auto moduleMethodInstance = mContext->mUnreifiedModule->GetMethodInstance(generatorTypeInst, methodDef, typeVector);
+
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mContext->mUnreifiedModule->mCurMethodInstance, moduleMethodInstance.mMethodInstance);
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mContext->mUnreifiedModule->mCurTypeInstance, typeInst);
+
+	BfExprEvaluator exprEvaluator(mContext->mUnreifiedModule);
+	exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(BfEvalExprFlags_Comptime | BfEvalExprFlags_NoCeRebuildFlags);
+
+	SizedArray<BfIRValue, 1> irArgs;
+	if (args != NULL)
+		irArgs.Add(mContext->mUnreifiedModule->GetStringObjectValue(*args));
+	auto callResult = exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs, NULL, BfCreateCallFlags_None);
+
+	if (callResult.mValue.IsConst())
+	{
+		auto stringPtr = mContext->mUnreifiedModule->GetStringPoolString(callResult.mValue, mContext->mUnreifiedModule->mBfIRBuilder);
+		if (stringPtr != NULL)
+			return *stringPtr;
+	}
+	return "";
+}
+
+void BfCompiler::HandleGeneratorErrors(StringImpl& result)
+{
+	if ((mPassInstance->mErrors.IsEmpty()) && (mPassInstance->mOutStream.IsEmpty()))
+		return;
+
+	result.Clear();
+
+	for (auto& msg : mPassInstance->mOutStream)
+	{
+		String error = msg;
+		error.Replace('\n', '\r');
+		result += "!error\t";
+		result += error;
+		result += "\n";
+	}
+}
+
+String BfCompiler::GetGeneratorTypeDefList()
+{
+	String result;
+
+	BfProject* curProject = NULL;
+	Dictionary<BfProject*, int> projectIds;
+
+	BfResolvePassData resolvePassData;
+	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
+	BfPassInstance passInstance(mSystem);
+	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
+
+	for (auto typeDef : mSystem->mTypeDefs)
+	{
+		if (typeDef->mProject->mDisabled)
+			continue;
+
+		if (typeDef->mIsPartial)
+			continue;
+
+		auto type = mContext->mUnreifiedModule->ResolveTypeDef(typeDef, BfPopulateType_BaseType);
+		if ((type != NULL) && (type->IsTypeInstance()))
+		{
+			auto typeInst = type->ToTypeInstance();
+			if ((typeInst->mBaseType != NULL) && (typeInst->mBaseType->IsInstanceOf(mCompilerGeneratorTypeDef)))
+			{
+				result += typeDef->mProject->mName;
+				result += ":";
+				result += BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName);
+				String nameString = GetGeneratorString(typeDef, typeInst, "GetName", NULL);
+				if (!nameString.IsEmpty())
+					result += "\t" + nameString;
+				result += "\n";
+			}
+		}
+	}
+
+	HandleGeneratorErrors(result);
+
+	return result;
+}
+
+String BfCompiler::GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args)
+{
+	BfResolvePassData resolvePassData;
+	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
+	BfPassInstance passInstance(mSystem);
+	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
+
+	Array<BfTypeDef*> typeDefs;
+	GetTypeDefs(typeName, typeDefs);
+
+	String result;
+	for (auto typeDef : typeDefs)
+	{
+		result += GetGeneratorString(typeDef, NULL, "InitUI", &args);
+		if (!result.IsEmpty())
+			break;
+	}
+
+	HandleGeneratorErrors(result);
+
+	return result;
+}
+
+String BfCompiler::GetGeneratorGenData(const StringImpl& typeName, const StringImpl& args)
+{
+	BfResolvePassData resolvePassData;
+	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
+	BfPassInstance passInstance(mSystem);
+	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
+
+	Array<BfTypeDef*> typeDefs;
+	GetTypeDefs(typeName, typeDefs);
+
+	String result;
+	for (auto typeDef : typeDefs)
+	{
+		result += GetGeneratorString(typeDef, NULL, "Generate", &args);
+		if (!result.IsEmpty())
+			break;
+	}
+
+	HandleGeneratorErrors(result);
+
+	return result;
+}
+
+String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr, bool includeLocation)
 {
 	String result;
 	TypeDefMatchHelper matchHelper(result);
@@ -9026,6 +9061,9 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 		{
 			for (auto fieldDef : typeDef->mFields)
 			{
+				if (BfNodeIsA<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
+					continue;
+				
 				matchHelper.ClearResults();
 
 				bool hasMatch = false;
@@ -9216,7 +9254,18 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 			result += "c";
 		else
 			result += "v";
-		result += typeName + "\n";
+		
+		if (includeLocation)
+		{
+			result += typeName + "\t";
+
+			matchHelper.AddLocation(typeDef->GetRefNode());
+			result += "\n";
+		}
+		else
+		{
+			result += typeName + "\n";
+		}
 	}
 
 	return result;
@@ -10356,19 +10405,19 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetGeneratorGenData(BfCompiler* bfC
 	return outString.c_str();
 }
 
-BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeDefList(BfCompiler* bfCompiler)
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeDefList(BfCompiler* bfCompiler, bool includeLocation)
 {
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
-	outString = bfCompiler->GetTypeDefList();
+	outString = bfCompiler->GetTypeDefList(includeLocation);
 	return outString.c_str();
 }
 
-BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeDefMatches(BfCompiler* bfCompiler, const char* searchStr)
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeDefMatches(BfCompiler* bfCompiler, const char* searchStr, bool includeLocation)
 {
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
-	outString = bfCompiler->GetTypeDefMatches(searchStr);
+	outString = bfCompiler->GetTypeDefMatches(searchStr, includeLocation);
 	return outString.c_str();
 }
 

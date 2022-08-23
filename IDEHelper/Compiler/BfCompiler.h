@@ -541,13 +541,13 @@ public:
 	void GetSymbolReferences();
 	void Cancel();
 	void RequestFastFinish();
-	String GetTypeDefList();
+	String GetTypeDefList(bool includeLocation);
 	String GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args);
 	void HandleGeneratorErrors(StringImpl& result);
 	String GetGeneratorTypeDefList();
 	String GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args);
 	String GetGeneratorGenData(const StringImpl& typeName, const StringImpl& args);
-	String GetTypeDefMatches(const StringImpl& searchSrc);
+	String GetTypeDefMatches(const StringImpl& searchSrc, bool includeLocation);
 	void GetTypeDefs(const StringImpl& typeName, Array<BfTypeDef*>& typeDefs);
 	String GetTypeDefInfo(const StringImpl& typeName);
 	int GetTypeId(const StringImpl& typeName);
