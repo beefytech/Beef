@@ -162,6 +162,8 @@ namespace IDE.ui
 			mBtnNextBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 4;
 
 			base.RehupScale(oldScale, newScale);
+
+			mBookmarksDirty = true;
 		}
 		
 		private void BookmarksLV_OnDragUpdate(DragEvent evt)
