@@ -849,6 +849,8 @@ void BfModule::EmitDeferredCall(BfScopeData* scopeData, BfDeferredCallEntry& def
 
 			mBfIRBuilder->AddBlock(deferredProcessor.mContinueBlock);
 			mBfIRBuilder->SetInsertPoint(deferredProcessor.mContinueBlock);
+			SetIllegalSrcPos();
+			EmitEnsureInstructionAt();
 		}
 
 		return;
@@ -5387,7 +5389,7 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 	bool inMixinDecl = (mCurMethodInstance != NULL) && (mCurMethodInstance->IsMixin());
 
 	UpdateSrcPos(breakStmt);
-	mBfIRBuilder->CreateEnsureInstructionAt();
+	EmitEnsureInstructionAt();
 
 	BfBreakData* breakData = mCurMethodState->mBreakData;
 	if (breakStmt->mLabel != NULL)
@@ -5503,7 +5505,7 @@ void BfModule::Visit(BfContinueStatement* continueStmt)
 	bool inMixinDecl = (mCurMethodInstance != NULL) && (mCurMethodInstance->IsMixin());
 
 	UpdateSrcPos(continueStmt);
-	mBfIRBuilder->CreateEnsureInstructionAt();
+	EmitEnsureInstructionAt();
 
 	// If we're in a switch, 'break' is valid but we need to continue looking outward for a 'continue' target
 	BfBreakData* breakData = mCurMethodState->mBreakData;
@@ -5904,7 +5906,7 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 
 	if (checkVal.mValue.IsConst())
 	{
-		mBfIRBuilder->CreateEnsureInstructionAt();
+		EmitEnsureInstructionAt();
 
 		auto constVal = mBfIRBuilder->GetConstantById(checkVal.mValue.mId);
 		if (constVal->mTypeCode == BfTypeCode_Boolean)
