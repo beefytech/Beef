@@ -29,6 +29,12 @@ namespace Tests
 			}
 		}
 
+		[Union]
+		struct UnionD : UnionC
+		{
+			public int16 mInt16;
+		}
+
 		[Test]
 		static void TestBasics()
 		{
@@ -41,6 +47,13 @@ namespace Tests
 			*((float*)&ub.mInt32) = 1.2f;
 			Test.Assert(ub.mFloat == 1.2f);
 			Test.Assert(sizeof(UnionB) == 4);
+
+			UnionD ud = .();
+			ud.mInt32 = 123;
+			ud.mInt16 = 234;
+			Test.Assert(sizeof(UnionD) == 6);
+			Test.Assert(alignof(UnionD) == 4);
+			Test.Assert(((int16*)&ud)[3] == 234);
 		}
 	}
 }

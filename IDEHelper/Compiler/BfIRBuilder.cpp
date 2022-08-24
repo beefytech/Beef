@@ -3179,7 +3179,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		auto resolvedFieldDIType = DbgGetType(fieldType);
 		String fieldName = "$bfunion";
 		auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, lineNum,
-			fieldType->mSize * 8, fieldType->mAlign * 8, 0,
+			fieldType->mSize * 8, fieldType->mAlign * 8, typeInstance->mBaseType->mInstSize * 8,
 			flags, resolvedFieldDIType);
 		diFieldTypes.push_back(memberType);
 	}

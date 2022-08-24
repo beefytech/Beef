@@ -5433,8 +5433,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						{
 							BF_ASSERT(resolvedFieldType->mSize >= 0);
 
-							if (alignSize > 1)
-								dataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
+// 							if (alignSize > 1)
+// 								dataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
 							fieldInstance->mDataOffset = dataPos;
 
 							typeInstance->mInstAlign = std::max(typeInstance->mInstAlign, alignSize);
@@ -5623,7 +5623,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		if (unionInnerType != NULL)
 		{
-			dataPos = unionInnerType->mSize;
+			dataPos = startDataPos + unionInnerType->mSize;
 			typeInstance->mInstAlign = BF_MAX(unionInnerType->mAlign, typeInstance->mInstAlign);
 		}
 
