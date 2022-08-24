@@ -270,7 +270,6 @@ namespace IDE.ui
             g.SetFont(DarkTheme.sDarkTheme.mSmallFont);            
 
 			bool showIndex = gApp.mSettings.mEnableDevMode;
-
 			EditWidget activeEditWidget = null;
             var activeDocument = gApp.GetActiveDocumentPanel();
             if (activeDocument is SourceViewPanel)
@@ -300,10 +299,37 @@ namespace IDE.ui
 
 				using (g.PushColor(DarkTheme.COLOR_TEXT))
 				{
-					if (showIndex)
+					float leftX = 0;
+					if (activeEditWidget?.mEditWidgetContent.HasSelection() == true)
+					{
+						int lineCount = 1;
+
+						var data = activeEditWidget.mEditWidgetContent.mData;
+						var sel = activeEditWidget.mEditWidgetContent.mSelection.GetValueOrDefault();
+						for (int i in sel.MinPos..<sel.MaxPos-1)
+						{
+							var c = data.mText[i].mChar;
+							if (c == '\n')
+								lineCount++;
+						}
+
+						String str = StackStringFormat!("Sel {0} | {1}", sel.MaxPos - sel.MinPos, lineCount);
+						float curX = mWidth - GS!(240);
+						g.DrawString(str, curX, 0);
+						leftX = curX + g.mFont.GetWidth(str);
+					}
+					else if (showIndex)
 						g.DrawString(StackStringFormat!("Idx {0}", activeEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
-				    g.DrawString(StackStringFormat!("Ln {0}", lineAndColumn.mLine + 1), mWidth - GS!(150), 0);
-				    g.DrawString(StackStringFormat!("Col {0}", lineAndColumn.mColumn + 1), mWidth - GS!(78), 0);
+
+					if (leftX >= mWidth - GS!(142))
+					{
+						g.DrawString(StackStringFormat!("Ln {0}:{1}", lineAndColumn.mLine + 1, lineAndColumn.mColumn + 1), mWidth - GS!(32), 0, .Right);
+					}
+					else
+					{
+					    g.DrawString(StackStringFormat!("Ln {0}", lineAndColumn.mLine + 1), Math.Max(leftX + GS!(8), mWidth - GS!(150)), 0);
+					    g.DrawString(StackStringFormat!("Col {0}", lineAndColumn.mColumn + 1), mWidth - GS!(78), 0);
+					}
 				}
 			}
 
