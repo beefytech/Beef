@@ -2006,8 +2006,11 @@ void BfModule::RestoreScopeState()
 		}
 	}
 
+	mCurMethodState->mCurScope->mDone = true;
 	if (!mCurMethodState->mLeftBlockUncond)
 		EmitDeferredScopeCalls(true, mCurMethodState->mCurScope);
+
+	EmitDeferredCallProcessorInstances(mCurMethodState->mCurScope);
 
 	RestoreScoreState_LocalVariables();
 
@@ -16017,7 +16020,7 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 					}
 
 					auto prevHead = checkScope->mDeferredCallEntries.mHead;
-					EmitDeferredCall(*deferredCallEntry, true);
+					EmitDeferredCall(checkScope, *deferredCallEntry, true);
 					if (prevHead != checkScope->mDeferredCallEntries.mHead)
 					{
 						// The list changed, start over and ignore anything we've already handled
@@ -16028,7 +16031,7 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 				}
 				else
 				{
-					EmitDeferredCall(*deferredCallEntry, true);
+					EmitDeferredCall(checkScope, *deferredCallEntry, true);
 					deferredCallEntry = deferredCallEntry->mNext;
 				}
 			}
@@ -21819,11 +21822,14 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			AssertErrorState();
 	}
 
+	mCurMethodState->mHeadScope.mDone = true;
 	if (!mCurMethodState->mHadReturn)
 	{
 		// Clear off the stackallocs that have occurred after a scopeData break
 		EmitDeferredScopeCalls(false, &mCurMethodState->mHeadScope, mCurMethodState->mIRExitBlock);
 	}
+
+	EmitDeferredCallProcessorInstances(&mCurMethodState->mHeadScope);
 
 	if (mCurMethodState->mIRExitBlock)
 	{

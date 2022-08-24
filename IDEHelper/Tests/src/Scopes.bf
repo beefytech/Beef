@@ -43,6 +43,33 @@ namespace Tests
 			str.Contains('T');
 		}*/
 
+		public static void Defer0(ref int val)
+		{
+			for (int i < 10)
+			{
+				defer::
+				{
+					val += 100;
+				}
+
+				if (i == 2)
+					return;
+
+				defer::
+				{
+					val++;
+				}
+			}
+		}
+
+		[Test]
+		public static void TestBasics()
+		{
+			int a = 0;
+			Defer0(ref a);
+			Test.Assert(a == 302);
+		}
+
 		public static mixin GetStr()
 		{
 			scope:mixin String("TestString")

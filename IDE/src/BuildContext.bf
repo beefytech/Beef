@@ -801,6 +801,8 @@ namespace IDE
 					IDEUtils.FixFilePath(libPath);
 					libPaths.Add(libPath);
 				}
+				else
+					delete libPath;
 			}
 
 
@@ -813,6 +815,8 @@ namespace IDE
 					IDEUtils.FixFilePath(depPath);
 					depPaths.Add(depPath);
 				}
+				else
+					delete depPath;
 			}
 
 			for (let libPath in options.mBuildOptions.mLibPaths)

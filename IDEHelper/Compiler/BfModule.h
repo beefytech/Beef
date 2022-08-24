@@ -425,6 +425,14 @@ enum BfScopeKind
 	BfScopeKind_StatementTarget_Conditional,
 };
 
+class BfDeferredCallProcessorInstance
+{
+public:
+	BfDeferredCallEntry* mDeferredCallEntry;
+	BfIRBlock mProcessorBlock;
+	BfIRBlock mContinueBlock;
+};
+
 // "Looped" means this scope will execute zero to many times, "Conditional" means zero or one.
 // Looped and Conditional are mutually exclusive.  "Dyn" means Looped OR Conditional.
 class BfScopeData
@@ -454,11 +462,13 @@ public:
 	bool mSupressNextUnreachable;
 	bool mInConstIgnore;
 	bool mIsSharedTempBlock;
+	bool mDone;
 	BfMixinState* mMixinState;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
 	BfExprEvaluator* mExprEvaluator;
 	SLIList<BfDeferredCallEntry*> mDeferredCallEntries;
+	Array<BfDeferredCallProcessorInstance> mDeferredCallProcessorInstances;
 	BfIRValue mBlock;
 	BfIRValue mValueScopeStart;
 	BfIRValue mSavedStack;
@@ -495,6 +505,7 @@ public:
 		mInInitBlock = false;
 		mInConstIgnore = false;
 		mIsSharedTempBlock = false;
+		mDone = false;
 		mMixinDepth = 0;
 		mScopeDepth = 0;
 		mScopeLocalId = -1;
@@ -1688,8 +1699,9 @@ public:
 	bool AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfScopeData* scope);
 	BfDeferredCallEntry* AddDeferredBlock(BfBlock* block, BfScopeData* scope, Array<BfDeferredCapture>* captures = NULL);
 	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false);
-	void EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool moveBlocks);
-	void EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);
+	void EmitDeferredCall(BfScopeData* scopeData, BfDeferredCallEntry& deferredCallEntry, bool moveBlocks);
+	void EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);
+	void EmitDeferredCallProcessorInstances(BfScopeData* scopeData);
 	bool CanCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	bool AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNeedsMemberCasting);
 	BfType* GetClosestNumericCastType(const BfTypedValue& typedVal, BfType* wantType);

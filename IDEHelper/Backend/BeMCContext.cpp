@@ -8453,6 +8453,9 @@ void BeMCContext::DoFrameObjPass()
 	// If we're doing UseBP, we have to allocate these at call time
 	int homeSize = BF_ALIGN(BF_MAX(mMaxCallParamCount, 4) * 8, 16);
 
+	if (mMaxCallParamCount == -1)
+		homeSize = 0;
+
 	mStackSize = 0;
 
 	if (mUseBP)
