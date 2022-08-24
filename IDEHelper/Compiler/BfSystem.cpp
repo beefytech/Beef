@@ -666,9 +666,13 @@ void BfMethodDef::BuildParamNameMap()
 	if (mParamNameMap != NULL)
 		return;
 
+	int startIdx = 0;
+	if (mMethodType == BfMethodType_Extension)
+		startIdx = 1;
+
 	mParamNameMap = new Dictionary<StringView, int>();
-	for (int i = 0; i < mParams.mSize; i++)
-		(*mParamNameMap)[mParams[i]->mName] = i;
+	for (int i = startIdx; i < mParams.mSize; i++)
+		(*mParamNameMap)[mParams[i]->mName] = i - startIdx;
 }
 
 ///
