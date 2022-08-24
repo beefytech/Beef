@@ -77,42 +77,29 @@ namespace IDE.ui
 		public this()
 		{
 			mBtnCreateBookmarkFolder = new DarkIconButton();
-			mBtnCreateBookmarkFolder.Icon = DarkTheme.sDarkTheme.GetImage(.NewBookmarkFolder);
 			mBtnCreateBookmarkFolder.mOnMouseClick.Add(new (args) => gApp.mBookmarkManager.CreateFolder());
 			AddWidget(mBtnCreateBookmarkFolder);
 
-			float iconButtonWidth = mBtnCreateBookmarkFolder.Width;
-
 			mBtnPrevBookmark = new DarkIconButton();
-			mBtnPrevBookmark.Icon = DarkTheme.sDarkTheme.GetImage(.PrevBookmark);
 			mBtnPrevBookmark.mOnMouseClick.Add(new (args) => gApp.Cmd_PrevBookmark());
-			mBtnPrevBookmark.X = GS!(1) + iconButtonWidth;
 			AddWidget(mBtnPrevBookmark);
 
 			mBtnNextBookmark = new DarkIconButton();
-			mBtnNextBookmark.Icon = DarkTheme.sDarkTheme.GetImage(.NextBookmark);
 			mBtnNextBookmark.mOnMouseClick.Add(new (args) => gApp.Cmd_NextBookmark());
-			mBtnNextBookmark.X = (GS!(1) + iconButtonWidth) * 2;
 			AddWidget(mBtnNextBookmark);
 
 			mBtnPrevBookmarkInFolder = new DarkIconButton();
-			mBtnPrevBookmarkInFolder.Icon = DarkTheme.sDarkTheme.GetImage(.PrevBookmarkInFolder);
 			mBtnPrevBookmarkInFolder.mOnMouseClick.Add(new (args) => gApp.Cmd_PrevBookmarkInFolder());
-			mBtnPrevBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 3;
 			AddWidget(mBtnPrevBookmarkInFolder);
 
 			mBtnNextBookmarkInFolder = new DarkIconButton();
-			mBtnNextBookmarkInFolder.Icon = DarkTheme.sDarkTheme.GetImage(.NextBookmarkInFolder);
 			mBtnNextBookmarkInFolder.mOnMouseClick.Add(new (args) => gApp.Cmd_NextBookmarkInFolder());
-			mBtnNextBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 4;
 			AddWidget(mBtnNextBookmarkInFolder);
-
 
 			mBookmarksListView = new .();
 			mBookmarksListView.mOnEditDone.Add(new => HandleEditDone);
 
 			mBookmarksListView.InitScrollbars(true, true);
-			mBookmarksListView.mLabelX = GS!(6);
 			mBookmarksListView.mOnItemMouseClicked.Add(new => ListViewItemMouseClicked);
 
 			mBookmarksListView.AddColumn(200, "Bookmark");
@@ -358,8 +345,29 @@ namespace IDE.ui
 		{
 			base.Resize(x, y, width, height);
 
-			float buttonHeight = mBtnCreateBookmarkFolder.mHeight;
+			mBtnCreateBookmarkFolder.Icon = DarkTheme.sDarkTheme.GetImage(.NewBookmarkFolder);
+			mBtnCreateBookmarkFolder.Padding = .(GS!(4), GS!(4), GS!(4), GS!(4));
+			float iconButtonWidth = DarkTheme.sUnitSize + GS!(6);
 
+			mBtnPrevBookmark.X = GS!(1) + iconButtonWidth;
+			mBtnPrevBookmark.Icon = DarkTheme.sDarkTheme.GetImage(.PrevBookmark);
+			mBtnPrevBookmark.Padding = mBtnCreateBookmarkFolder.Padding;
+
+			mBtnNextBookmark.X = (GS!(1) + iconButtonWidth) * 2;
+			mBtnNextBookmark.Icon = DarkTheme.sDarkTheme.GetImage(.NextBookmark);
+			mBtnNextBookmark.Padding = mBtnCreateBookmarkFolder.Padding;
+
+			mBtnPrevBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 3;
+			mBtnPrevBookmarkInFolder.Icon = DarkTheme.sDarkTheme.GetImage(.PrevBookmarkInFolder);
+			mBtnPrevBookmarkInFolder.Padding = mBtnCreateBookmarkFolder.Padding;
+
+			mBtnNextBookmarkInFolder.X = (GS!(1) + iconButtonWidth) * 4;
+			mBtnNextBookmarkInFolder.Icon = DarkTheme.sDarkTheme.GetImage(.NextBookmarkInFolder);
+			mBtnNextBookmarkInFolder.Padding = mBtnCreateBookmarkFolder.Padding;
+
+			mBookmarksListView.mLabelX = GS!(6);
+
+			float buttonHeight = mBtnCreateBookmarkFolder.mHeight;
 			mBookmarksListView.Resize(0, buttonHeight, width, Math.Max(mHeight - buttonHeight, 0));
 		}
 

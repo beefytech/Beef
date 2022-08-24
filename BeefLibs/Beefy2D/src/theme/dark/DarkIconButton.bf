@@ -50,9 +50,6 @@ namespace Beefy.theme.dark
 			get => mIcon;
 			set
 			{
-				if (mIcon == value)
-					return;
-
 				mIcon = value;
 
 				if (mIcon != null)
@@ -80,7 +77,7 @@ namespace Beefy.theme.dark
 			float width = mPadding.Left + mIcon.mWidth + mPadding.Right;
 			float height = mPadding.Top + mIcon.mHeight + mPadding.Bottom;
 
-			Resize(0, 0, width, height);
+			Resize(mX, mY, width, height);
 		}
 
         public override void Draw(Graphics g)
