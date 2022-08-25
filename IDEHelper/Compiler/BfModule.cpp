@@ -400,21 +400,30 @@ void BfAmbiguityContext::Finish()
 		{
 			auto declMethodInstance = mTypeInstance->mVirtualMethodTable[id].mDeclaringMethod;
 			auto error = mModule->Fail(StrFormat("Method '%s' has ambiguous overrides", mModule->MethodToString(declMethodInstance).c_str()), declMethodInstance->mMethodDef->GetRefNode());
-			for (auto candidate : entry->mCandidates)
+			if (error != NULL)
 			{
-				mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(candidate).c_str()), candidate->mMethodDef->GetRefNode());
+				for (auto candidate : entry->mCandidates)
+				{
+					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate",
+						mModule->MethodToString(candidate, (BfMethodNameFlags)(BfMethodNameFlag_ResolveGenericParamNames | BfMethodNameFlag_IncludeReturnType)).c_str()), candidate->mMethodDef->GetRefNode());
+				}
 			}
 		}
 		else
 		{
 			auto iMethodInst = entry->mInterfaceEntry->mInterfaceType->mMethodInstanceGroups[entry->mMethodIdx].mDefault;
 			auto error = mModule->Fail(StrFormat("Interface method '%s' has ambiguous implementations", mModule->MethodToString(iMethodInst).c_str()), entry->mInterfaceEntry->mDeclaringType->GetRefNode());
-			for (auto candidate : entry->mCandidates)
+			if (error != NULL)
 			{
-				mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(candidate).c_str()), candidate->mMethodDef->GetRefNode());
+				for (auto candidate : entry->mCandidates)
+				{
+					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate",
+						mModule->MethodToString(candidate, (BfMethodNameFlags)(BfMethodNameFlag_ResolveGenericParamNames | BfMethodNameFlag_IncludeReturnType)).c_str()), candidate->mMethodDef->GetRefNode());
+				}
 			}
 		}
 	}
+	mEntries.Clear();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -25449,6 +25458,12 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 					bool isWorse = false;
 					isBetter = (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mExplicitInterface != NULL);
 					isWorse = (prevMethod->mMethodInfoEx != NULL) && (prevMethod->mMethodInfoEx->mExplicitInterface != NULL);
+					if (isBetter == isWorse)
+					{
+						isBetter = methodInstance->mReturnType == iMethodInst->mReturnType;
+						isWorse = prevMethod->mReturnType == iMethodInst->mReturnType;
+					}
+
 					if (isBetter == isWorse)
 						CompareDeclTypes(typeInstance, methodInstance->mMethodDef->mDeclaringType, prevMethod->mMethodDef->mDeclaringType, isBetter, isWorse);
 					if (isBetter == isWorse)
