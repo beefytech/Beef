@@ -43,7 +43,7 @@ namespace IDETest
 			public void MethodA<M1>(T val, M1 val2, delegate T (M1 arg) val3);
 		}
 
-		class ClassA<T1, T2> : IFaceA<(T1, T2)> //FAIL 'IDETest.Generics.ClassA<T1, T2>' does not implement interface member 'IDETest.Generics.IFaceA<(T1, T2)>.MethodA<M1>((T1, T2) val, M1 val2, delegate (T1, T2)(M1 arg) val3)'
+		class ClassA<T1, T2> : IFaceA<(T1, T2)> //FAIL 'IDETest.Generics.ClassA<T1, T2>' does not implement interface member 'void IDETest.Generics.IFaceA<(T1, T2)>.MethodA<M1>((T1, T2) val, M1 val2, delegate (T1, T2)(M1 arg) val3)'
 		{
 			void MethodA<M>(int a)
 			{
@@ -76,7 +76,7 @@ namespace IDETest
 			void MethodA1();
 		}
 
-		class ClassB<T> : IFaceB<T> //FAIL 'IDETest.Generics.ClassB<T>' does not implement interface member 'IDETest.Generics.IFaceB<T>.MethodA0()'
+		class ClassB<T> : IFaceB<T> //FAIL 'IDETest.Generics.ClassB<T>' does not implement interface member 'void IDETest.Generics.IFaceB<T>.MethodA0()'
 		{
 
 		}
