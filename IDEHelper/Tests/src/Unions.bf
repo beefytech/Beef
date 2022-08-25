@@ -53,7 +53,7 @@ namespace Tests
 			ud.mInt16 = 234;
 			Test.Assert(sizeof(UnionD) == 6);
 			Test.Assert(alignof(UnionD) == 4);
-			Test.Assert(((int16*)&ud)[3] == 234);
+			Test.Assert(((int16*)&ud)[2] == 234);
 		}
 	}
 }
