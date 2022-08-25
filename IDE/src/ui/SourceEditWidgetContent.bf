@@ -2731,7 +2731,10 @@ namespace IDE.ui
                         InsertAtCursor(sb);
                     }
 
-                    CursorTextPos -= indentCount + 2;
+					if (gApp.mSettings.mEditorSettings.mTabsOrSpaces == .Spaces)
+                    	CursorTextPos -= indentCount*mTabLength + 2;
+					else
+						CursorTextPos -= indentCount + 2;
                     CursorToLineEnd();
                     return true;
                 }
