@@ -9915,7 +9915,7 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 	else if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mDeclaringType != NULL))
 	{
 		auto declTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
-		useTypeDef = declTypeDef->GetDefinition();
+		useTypeDef = declTypeDef->GetDefinition(true);
 		if ((declTypeDef->IsEmitted()) && (useTypeDef->mIsCombinedPartial))
 		{
 			// Always consider methods to belong to the primary type declaration
@@ -9925,10 +9925,11 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 	else if (mContext->mCurTypeState != NULL)
 	{
 		if ((mContext->mCurTypeState->mCurFieldDef != NULL) && (mContext->mCurTypeState->mCurFieldDef->mDeclaringType != NULL))
-			useTypeDef = mContext->mCurTypeState->mCurFieldDef->mDeclaringType->GetDefinition();
+			useTypeDef = mContext->mCurTypeState->mCurFieldDef->mDeclaringType->GetDefinition(true);
 		else if (mContext->mCurTypeState->mCurTypeDef != NULL)
-			useTypeDef = mContext->mCurTypeState->mCurTypeDef->GetDefinition();
+			useTypeDef = mContext->mCurTypeState->mCurTypeDef->GetDefinition(true);
 	}
+
 	return useTypeDef;
 }
 

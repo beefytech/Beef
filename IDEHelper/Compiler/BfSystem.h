@@ -1205,10 +1205,14 @@ public:
 
 	bool IsEmitted() { return mEmitParent != NULL; }
 
-	BfTypeDef* GetDefinition()
+	BfTypeDef* GetDefinition(bool getEmitRoot = false)
 	{
 		if (mEmitParent != NULL)
+		{
+			if ((getEmitRoot) && (mEmitParent->mIsCombinedPartial))
+				return mEmitParent->mPartials[0];
 			return mEmitParent;
+		}
 		return this;
 	}
 
