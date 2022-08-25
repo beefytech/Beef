@@ -8172,9 +8172,25 @@ void BfCompiler::GenerateAutocompleteInfo()
 		{
 			if (methodMatchInfo->mInstanceList.size() > 0)
 			{
+				if (autoComplete->mIdentifierUsed != NULL)
+				{
+					String filter;
+					if (autoComplete->mIdentifierUsed != NULL)
+						autoComplete->mIdentifierUsed->ToString(filter);
+
+					auto& bestInstance = methodMatchInfo->mInstanceList[methodMatchInfo->mBestIdx];
+					auto bestMethodDef = bestInstance.mMethodDef;
+					for (int paramIdx = 0; paramIdx < bestMethodDef->mParams.mSize; paramIdx++)
+					{
+						if ((paramIdx == 0) && (bestMethodDef->mMethodType == BfMethodType_Extension))
+							continue;
+						autoComplete->AddEntry(AutoCompleteEntry("param", bestMethodDef->mParams[paramIdx]->mName + ":"), filter);
+					}
+				}
+
 				String invokeInfoText;
 				invokeInfoText += StrFormat("%d", methodMatchInfo->mBestIdx);
-				for (int srcPosIdx = 0; srcPosIdx < (int) methodMatchInfo->mSrcPositions.size(); srcPosIdx++)
+				for (int srcPosIdx = 0; srcPosIdx < (int)methodMatchInfo->mSrcPositions.size(); srcPosIdx++)
 					invokeInfoText += StrFormat(" %d", methodMatchInfo->mSrcPositions[srcPosIdx]);
 				autoCompleteResultString += "invokeInfo\t";
 				autoCompleteResultString += invokeInfoText;
@@ -9063,7 +9079,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr, bool includeLo
 			{
 				if (BfNodeIsA<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
 					continue;
-				
+
 				matchHelper.ClearResults();
 
 				bool hasMatch = false;
@@ -9254,7 +9270,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr, bool includeLo
 			result += "c";
 		else
 			result += "v";
-		
+
 		if (includeLocation)
 		{
 			result += typeName + "\t";

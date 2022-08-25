@@ -3833,6 +3833,17 @@ namespace IDE.ui
 
             bool isEndingChar = (keyChar >= (char8)32) && !keyChar.IsLetterOrDigit && (keyChar != '_') && (keyChar != '~') && (keyChar != '=') && (keyChar != '!') && (keyChar != ':');
 
+			if ((mAutoComplete != null) && (mAutoComplete.mAutoCompleteListWidget != null) && (!mAutoComplete.mAutoCompleteListWidget.mEntryList.IsEmpty))
+			{
+				var entry = mAutoComplete.mAutoCompleteListWidget.mEntryList[mAutoComplete.mAutoCompleteListWidget.mSelectIdx];
+				char8 endC = entry.mEntryDisplay[entry.mEntryDisplay.Length - 1];
+				if ((endC == ':') &&
+					(keyChar == endC))
+				{
+					isEndingChar = true;
+				}
+			}
+
 			if (gApp.mSettings.mEditorSettings.mAutoCompleteRequireTab)
 			{
 				doAutocomplete = isCompletionChar;
@@ -3954,7 +3965,7 @@ namespace IDE.ui
                     else
                         mAutoComplete.CloseListWindow();
 
-                    if ((keyChar == '\t') || (keyChar == '\r')) // Let other chars besides explicit-insert chrars pass through       
+                    if ((keyChar == '\t') || (keyChar == '\r') || (keyChar == ':')) // Let other chars besides explicit-insert chrars pass through       
                     {                        
                         allowChar = false;
                     }
