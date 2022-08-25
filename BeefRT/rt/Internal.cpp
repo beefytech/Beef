@@ -28,7 +28,7 @@
 
 #ifdef _MSC_VER
 #include <intrin.h>
-#pragma intrinsic(_ReturnAddress) 
+#pragma intrinsic(_ReturnAddress)
 #define BF_RETURN_ADDRESS _ReturnAddress()
 #else
 #define BF_RETURN_ADDRESS __builtin_return_address(0)
@@ -49,7 +49,7 @@
 #include <io.h>
 #endif
 
-USING_NS_BF; 
+USING_NS_BF;
 
 static Beefy::StringT<0> gCmdLineString;
 bf::System::Runtime::BfRtCallbacks gBfRtCallbacks;
@@ -76,7 +76,7 @@ namespace bf
 		class Exception;
 
 		//System::Threading::Thread* gMainThread;
-		
+
 		class Internal
 		{
 		private:
@@ -90,7 +90,7 @@ namespace bf
 			BFRT_EXPORT static Object* UnsafeCastToObject(void* inPtr);
 			BFRT_EXPORT static void* UnsafeCastToPtr(Object* obj);
 			BFRT_EXPORT static void ObjectDynCheck(Object* object, int typeId, bool allowNull);
-			BFRT_EXPORT static void ObjectDynCheckFailed(Object* object, int typeId);			
+			BFRT_EXPORT static void ObjectDynCheckFailed(Object* object, int typeId);
 			BFRT_EXPORT static void ThrowIndexOutOfRange(intptr stackOffset);
 			BFRT_EXPORT static void ThrowObjectNotInitialized(intptr stackOffset);
 			BFRT_EXPORT static void FatalError(String* error, intptr stackOffset = 0);
@@ -110,7 +110,7 @@ namespace bf
 			BFRT_EXPORT static char* GetCommandLineArgs();
 			BFRT_EXPORT static void BfLog(char* str);
 			BFRT_EXPORT static void ProfilerCmd(char* str);
-			BFRT_EXPORT static void ReportMemory();			
+			BFRT_EXPORT static void ReportMemory();
 
 		private:
 			BFRT_EXPORT static void Test_Init(char* testData);
@@ -118,7 +118,7 @@ namespace bf
 			BFRT_EXPORT static void Test_Write(char* str);
 			BFRT_EXPORT static int32 Test_Query();
 			BFRT_EXPORT static void Test_Finish();
-		};		
+		};
 
 		namespace IO
 		{
@@ -145,7 +145,7 @@ namespace bf
 					enum ContractFailureKind : uint8
 					{
 						ContractFailureKind_Precondition,
-						//[SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Postcondition")]  
+						//[SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Postcondition")]
 						ContractFailureKind_Postcondition,
 						//[SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Postcondition")]
 						ContractFailureKind_PostconditionOnException,
@@ -162,7 +162,7 @@ namespace bf
 			class Debug
 			{
 			private:
-				BFRT_EXPORT static void Write(char* str, intptr strLen);			
+				BFRT_EXPORT static void Write(char* str, intptr strLen);
 			};
 		}
 
@@ -233,7 +233,7 @@ static void Internal_FatalError(const char* error)
 		TestString(str);
 
  		Beefy::String result;
- 		TestReadCmd(result);		
+ 		TestReadCmd(result);
 		exit(1);
 	}
 	else
@@ -313,15 +313,15 @@ void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 
 	if (version != BFRT_VERSION)
 	{
-        BfpSystem_FatalError(StrFormat("BeefRT build version '%d' does not match requested version '%d'", BFRT_VERSION, version).c_str(), "BEEF FATAL ERROR");        
+        BfpSystem_FatalError(StrFormat("BeefRT build version '%d' does not match requested version '%d'", BFRT_VERSION, version).c_str(), "BEEF FATAL ERROR");
 	}
 
-	gBfRtCallbacks = *callbacks;	
+	gBfRtCallbacks = *callbacks;
 	gBfRtFlags = (BfRtFlags)flags;
 
 	Beefy::String cmdLine;
 
-	BfpSystemResult result;	
+	BfpSystemResult result;
 	BFP_GETSTR_HELPER(cmdLine, result, BfpSystem_GetCommandLine(__STR, __STRLEN, &result));
 
 	char* cmdLineStr = (char*)cmdLine.c_str();
@@ -356,8 +356,8 @@ void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 	gCmdLineString = useCmdLineStr;
 
 #ifdef BF_PLATFORM_WINDOWS
-	gBfTLSKey = FlsAlloc(TlsFreeFunc);	
-#else	
+	gBfTLSKey = FlsAlloc(TlsFreeFunc);
+#else
 	pthread_key_create(&gBfTLSKey, TlsFreeFunc);
 #endif
 }
@@ -383,7 +383,7 @@ void Internal::Shutdown()
 {
 	BfInternalThread::WaitForAllDone();
 	if (gBfRtCallbacks.GC_Shutdown != NULL)
-		gBfRtCallbacks.GC_Shutdown();	
+		gBfRtCallbacks.GC_Shutdown();
 	BfpSystem_Shutdown();
 }
 
@@ -394,17 +394,17 @@ void Internal::BfStaticCtor()
 
 void Internal::__BfStaticCtor()
 {
-	
+
 }
 
 void Internal::BfStaticDtor()
 {
-	
+
 }
 
 void Internal::__BfStaticDtor()
 {
-	
+
 }
 
 Object* Internal::UnsafeCastToObject(void* inPtr)
@@ -427,7 +427,7 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 			BF_DEBUG_BREAK();
 		}
 
-		Beefy::String str = ":TestFail\tIndex out of range\n";		
+		Beefy::String str = ":TestFail\tIndex out of range\n";
 		TestString(str);
 		exit(1);
 	}
@@ -437,7 +437,7 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 		SETUP_ERROR("Index out of range", (int)(2 + stackOffset));
 		BF_DEBUG_BREAK();
 	}
-	
+
 	Internal_FatalError("Index out of range");
 }
 
@@ -466,7 +466,7 @@ void Internal::ThrowObjectNotInitialized(intptr stackOffset)
 }
 
 void Internal::FatalError(bf::System::String* error, intptr stackOffset)
-{		
+{
 	if (gClientPipe != NULL)
 	{
 		if (gTestBreakOnFailure)
@@ -482,11 +482,11 @@ void Internal::FatalError(bf::System::String* error, intptr stackOffset)
 		TestString(str);
 		exit(1);
 	}
-	
+
 	if ((stackOffset != -1) && (::IsDebuggerPresent()))
 	{
 		SETUP_ERROR(error->CStr(), (int)(2 + stackOffset));
-		BF_DEBUG_BREAK();		
+		BF_DEBUG_BREAK();
 	}
 
     Internal_FatalError(error->CStr());
@@ -624,22 +624,22 @@ void* Internal::GetSharedProcAddress(void* libHandle, char* procName)
 }
 
 void Internal::GetSharedProcAddressInto(void* libHandle, char* procName, void** procDest)
-{	
+{
 	*procDest = GetSharedProcAddress(libHandle, procName);
 }
 
 char* Internal::GetCommandLineArgs()
-{		
+{
 	return (char*)gCmdLineString.c_str();
 }
 
 void Internal::BfLog(char* str)
-{	
+{
 // 	static int lineNum = 0;
 // 	lineNum++;
-// 
+//
 // 	static FILE* fp = fopen("dbg_internal.txt", "wb");
-// 
+//
 // 	Beefy::String aResult = StrFormat("%d ", lineNum) + str;
 // 	fwrite(aResult.c_str(), 1, aResult.length(), fp);
 // 	fflush(fp);
@@ -651,7 +651,7 @@ void Internal::ProfilerCmd(char* str)
 		return;
 
 	gBfRtCallbacks.DebugMessageData_SetupProfilerCmd(str);
-	BF_DEBUG_BREAK();	
+	BF_DEBUG_BREAK();
 }
 
 void Internal::ReportMemory()
@@ -694,7 +694,7 @@ static void TestReadCmd(Beefy::String& str)
 		{
 			BF_FATAL("Failed to read pipe to test manager");
 		}
-	}	
+	}
 }
 
 void Internal::Test_Init(char* testData)
@@ -702,7 +702,7 @@ void Internal::Test_Init(char* testData)
 	BfpSystem_SetCrashReportKind(BfpCrashReportKind_None);
 
 	Beefy::String args = GetCommandLineArgs();
-	
+
 	BfpFileResult fileResult;
 	gClientPipe = BfpFile_Create(args.c_str(), BfpFileCreateKind_OpenExisting, (BfpFileCreateFlags)(BfpFileCreateFlag_Read | BfpFileCreateFlag_Write | BfpFileCreateFlag_Pipe), BfpFileAttribute_None, &fileResult);
 	if (fileResult != BfpFileResult_Ok)
@@ -749,18 +749,18 @@ void Internal::Test_Write(char* strPtr)
 }
 
 int32 Internal::Test_Query()
-{	
+{
 	if (gTestMethodIdx != -1)
 	{
 		uint32 tickEnd = BfpSystem_TickCount();
 		TestString(StrFormat(":TestResult\t%d\n", tickEnd - gTestStartTick));
 	}
-	
+
 	TestString(":TestQuery\n");
 
 	Beefy::String result;
 	TestReadCmd(result);
-	
+
 	Beefy::String param;
 	int tabPos = (int)result.IndexOf('\t');
 	if (tabPos != -1)
@@ -793,8 +793,8 @@ int32 Internal::Test_Query()
 		printf("Command Str: %s\n", result.c_str());
 		BF_FATAL("Invalid test command string from test manager");
 	}
-	
-	return false;	
+
+	return false;
 }
 
 void Internal::Test_Finish()
@@ -826,7 +826,7 @@ struct PendingAllocState
 	{
 		if ((mStackTraceCount > 255) || (mMetadataBytes > 255))
 			return false;
-		
+
 		const intptr maxSmallObjectSize = ((intptr)1 << ((sizeof(intptr) - 2) * 8)) - 1;
 		if (curAllocBytes <= maxSmallObjectSize)
 			return true;
@@ -844,7 +844,7 @@ void Internal::ObjectDynCheck(bf::System::Object* object, int typeId, bool allow
 		if (allowNull)
 			return;
 		SETUP_ERROR("Attempting unboxing on null object", 1);
-		BF_DEBUG_BREAK();		
+		BF_DEBUG_BREAK();
 		gBfRtCallbacks.DebugMessageData_Fatal();
 		return;
 	}
@@ -862,21 +862,21 @@ void Internal::ObjectDynCheck(bf::System::Object* object, int typeId, bool allow
 }
 
 void Internal::ObjectDynCheckFailed(bf::System::Object* object, int typeId)
-{	
+{
 	if (object == NULL)
-	{		
+	{
 		SETUP_ERROR("Attempting unboxing on null object", 1);
 		BF_DEBUG_BREAK();
 		gBfRtCallbacks.DebugMessageData_Fatal();
 		return;
 	}
-	
+
 	Beefy::String errorStr = "Attempting invalid cast on object";
-	
+
 	errorStr += StrFormat("\x1LEAK\t0x%@\n   (%s)0x%@\n", object, "System.Object", object);
 	SETUP_ERROR(errorStr.c_str(), 2);
 	BF_DEBUG_BREAK();
-	gBfRtCallbacks.DebugMessageData_Fatal();	
+	gBfRtCallbacks.DebugMessageData_Fatal();
 }
 
 extern "C" BFRT_EXPORT int PrintF(const char* fmt, ...)
@@ -914,7 +914,7 @@ void Contract::ReportFailure(Contract::ContractFailureKind failureKind, char* us
         errorMsg += Beefy::String(": ") + userMessageStr;
     if (conditionText != NULL)
         errorMsg += Beefy::String(": ") + conditionTextStr;
-    
+
 	if (::IsDebuggerPresent())
 	{
 		SETUP_ERROR(errorMsg.c_str(), 3);
@@ -929,7 +929,7 @@ void Contract::ReportFailure(Contract::ContractFailureKind failureKind, char* us
 
 void bf::System::Diagnostics::Debug::Write(char* str, intptr strLen)
 {
-	Beefy::String strVal(str, strLen);	
+	Beefy::String strVal(str, strLen);
 	OutputDebugStr(strVal);
 }
 
@@ -1048,32 +1048,74 @@ static int ToString(double d, char* outStr, bool roundTrip)
 	if (!roundTrip)
 	{
 		int digits;
-		if (d > 1000000000)
-			digits = 1;
-		else if (d > 100000000)
-			digits = 2;
-		else if (d > 10000000)
-			digits = 3;
-		else if (d > 1000000)
-			digits = 4;
-		else if (d > 100000)
-			digits = 5;
-		else if (d > 10000)
-			digits = 6;
-		else if (d > 1000)
-			digits = 7;
-		else if (d > 100)
-			digits = 8;
-		else if (d > 10)
-			digits = 9;
-		else 
-			digits = 10;
+		if (d < 0)
+		{
+			if (d < -10000000000)
+			{
+				sprintf(outStr, "%g", d);
+			}
+			else
+			{
+				if (d < -1000000000)
+					digits = 1;
+				else if (d < -100000000)
+					digits = 2;
+				else if (d < -10000000)
+					digits = 3;
+				else if (d < -1000000)
+					digits = 4;
+				else if (d < -100000)
+					digits = 5;
+				else if (d < -10000)
+					digits = 6;
+				else if (d < -1000)
+					digits = 7;
+				else if (d < -100)
+					digits = 8;
+				else if (d < -10)
+					digits = 9;
+				else
+					digits = 10;
 
-		sprintf(outStr, "%1.*f", digits, d);
+				sprintf(outStr, "%1.*f", digits, d);
+			}
+		}
+		else
+		{
+			if (d > 10000000000)
+			{
+				sprintf(outStr, "%g", d);
+			}
+			else
+			{
+				if (d > 1000000000)
+					digits = 1;
+				else if (d > 100000000)
+					digits = 2;
+				else if (d > 10000000)
+					digits = 3;
+				else if (d > 1000000)
+					digits = 4;
+				else if (d > 100000)
+					digits = 5;
+				else if (d > 10000)
+					digits = 6;
+				else if (d > 1000)
+					digits = 7;
+				else if (d > 100)
+					digits = 8;
+				else if (d > 10)
+					digits = 9;
+				else
+					digits = 10;
+
+				sprintf(outStr, "%1.*f", digits, d);
+			}
+		}
 	}
 	else
 		sprintf(outStr, "%1.17g", d);
-	
+
 	int len = (int)strlen(outStr);
 	for (int i = 0; outStr[i] != 0; i++)
 	{
