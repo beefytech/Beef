@@ -10088,6 +10088,7 @@ bool BeMCContext::DoLegalization()
 									mcRemaindier = BeMCOperand::FromReg(ResizeRegister(X64Reg_AL, arg0Type));
 									preserveRAXInst->mArg1 = inst->mArg0; // RAX preserve elision exception
 									DisableRegister(inst->mArg0, X64Reg_SIL); // Disable Hi8
+									DisableRegister(inst->mArg0, X64Reg_RAX);
 									AllocInst(BeMCInstKind_Shr, BeMCOperand::FromReg(X64Reg_AX), BeMCOperand::FromImmediate(8), instIdx++ + 1);
 									AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
 								}
