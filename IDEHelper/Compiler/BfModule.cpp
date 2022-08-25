@@ -19858,6 +19858,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		}
 	}
 
+	if (mBfIRBuilder == NULL)
+	{
+		BfLogSysM("ProcessMethod %p calling EnsureIRBuilder\n", methodInstance);
+		EnsureIRBuilder();
+	}
+
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, (mWantsIRIgnoreWrites || methodInstance->mIsUnspecialized) && (!forceIRWrites));
 
 	if ((HasCompiledOutput()) && (!mBfIRBuilder->mIgnoreWrites))
