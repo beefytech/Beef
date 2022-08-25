@@ -4829,7 +4829,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 			auto tokenNode = BfNodeDynCast<BfTokenNode>(firstNode);
 			if (tokenNode != NULL)
 			{
-				int token = tokenNode->GetToken();
+				BfToken token = tokenNode->GetToken();
 				if (token == BfToken_Dot)
 				{
 					auto dotTypeRef = mAlloc->Alloc<BfDotTypeReference>();
@@ -4997,6 +4997,12 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					}
 					MEMBER_SET_CHECKED(delegateTypeRef, mCloseParen, closeNode);
 					mVisitorPos.MoveNext();
+
+					for (auto paramDecl : params)
+					{
+						if ((paramDecl != NULL) && (paramDecl->mEqualsNode != NULL))
+							Fail(StrFormat("Initializers cannot be used in anonymous %s type references. Consider creating a named %s type.", BfTokenToString(token), BfTokenToString(token)), paramDecl->mEqualsNode);
+					}
 
 					isHandled = true;
 					firstNode = delegateTypeRef;
