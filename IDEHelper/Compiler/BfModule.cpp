@@ -3597,7 +3597,8 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 
 	if (usedType->IsSpecializedByAutoCompleteMethod())
 	{
-		if ((flags & (BfDependencyMap::DependencyFlag_TypeGenericArg | BfDependencyMap::DependencyFlag_OuterType | BfDependencyMap::DependencyFlag_DerivedFrom)) == 0)
+		if ((flags & (BfDependencyMap::DependencyFlag_TypeGenericArg | BfDependencyMap::DependencyFlag_MethodGenericArg |
+			BfDependencyMap::DependencyFlag_OuterType | BfDependencyMap::DependencyFlag_DerivedFrom)) == 0)
 			return;
 	}
 

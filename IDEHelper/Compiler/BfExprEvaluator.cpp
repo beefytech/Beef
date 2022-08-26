@@ -2991,32 +2991,35 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 			while (checkTypeInst != NULL)
 			{
 				mModule->PopulateType(checkTypeInst, BfPopulateType_DataAndMethods);
-				for (auto&& iface : checkTypeInst->mInterfaces)
+				if (checkTypeInst->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted)
 				{
-					//TODO: Why did we have this check?  This caused Dictionary to not be able to devirtualize
-					//  calls to TKey GetHashCode when TKey was from a user's project...
-					/*if (!checkTypeInst->IsTypeMemberAccessible(iface.mDeclaringType, activeTypeDef))
-						continue;*/
-
-					if (iface.mInterfaceType == mBestMethodTypeInstance)
+					for (auto&& iface : checkTypeInst->mInterfaces)
 					{
-						if (bestIFaceEntry == NULL)
-						{
-							bestIFaceEntry = &iface;
-							continue;
-						}
+						//TODO: Why did we have this check?  This caused Dictionary to not be able to devirtualize
+						//  calls to TKey GetHashCode when TKey was from a user's project...
+						/*if (!checkTypeInst->IsTypeMemberAccessible(iface.mDeclaringType, activeTypeDef))
+							continue;*/
 
-						bool isBetter;
-						bool isWorse;
-						mModule->CompareDeclTypes(NULL, iface.mDeclaringType, bestIFaceEntry->mDeclaringType, isBetter, isWorse);
-						if (isBetter == isWorse)
+						if (iface.mInterfaceType == mBestMethodTypeInstance)
 						{
-							// Failed
-						}
-						else
-						{
-							if (isBetter)
+							if (bestIFaceEntry == NULL)
+							{
 								bestIFaceEntry = &iface;
+								continue;
+							}
+
+							bool isBetter;
+							bool isWorse;
+							mModule->CompareDeclTypes(NULL, iface.mDeclaringType, bestIFaceEntry->mDeclaringType, isBetter, isWorse);
+							if (isBetter == isWorse)
+							{
+								// Failed
+							}
+							else
+							{
+								if (isBetter)
+									bestIFaceEntry = &iface;
+							}
 						}
 					}
 				}
