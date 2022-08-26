@@ -14,18 +14,6 @@ namespace System.Net
 		public struct HSocket : uint
 		{
 		}
-#else
-		public struct HSocket : uint32
-		{
-		}
-#endif
-
-		[CRepr]
-		public struct TimeVal
-		{
-			public int32 mSec;
-			public int32 mUSec;
-		}
 
 		[CRepr]
 		public struct FDSet
@@ -51,6 +39,54 @@ namespace System.Net
 				return false;
 			}
 		}
+
+#else
+		public struct HSocket : uint32
+		{
+		}
+
+		[CRepr]
+		public struct FDSet
+		{
+            const uint BITS_PER_MASK = sizeof(uint) * 8;
+            const uint MASK_COUNT = 4096 / sizeof(uint);
+            const uint MAX_ALLOWED_FD = MASK_COUNT * BITS_PER_MASK;
+
+            uint[MASK_COUNT] mSocketBitMasks;
+            uint32 afterLastBit;
+
+            public bool Add(HSocket s) mut
+		    {
+                let fd = (uint32)s;
+
+                if (fd > MAX_ALLOWED_FD)
+                   return false;
+
+                if (fd >= afterLastBit)
+                   afterLastBit = fd + 1;
+
+				mSocketBitMasks[fd / BITS_PER_MASK] |= 1U << (fd & (BITS_PER_MASK - 1));
+				return true;
+			}
+
+			public bool IsSet(HSocket s)
+			{
+                let fd = (uint32)s;
+                if (fd > MAX_ALLOWED_FD)
+                    return false;
+				return (mSocketBitMasks[fd / BITS_PER_MASK] & (1U << (fd & (BITS_PER_MASK - 1)))) != 0;
+			}
+		}
+#endif
+
+		[CRepr]
+		public struct TimeVal
+		{
+			public int32 mSec;
+			public int32 mUSec;
+		}
+
+
 
 #if BF_PLATFORM_WINDOWS
 		[CRepr]
@@ -223,7 +259,7 @@ namespace System.Net
 #endif
 
 		[CLink, CallingConvention(.Stdcall)]
-		static extern int32 select(int nfds, FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, TimeVal* timeVal);
+		static extern int32 select(int32 nfds, FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, TimeVal* timeVal);
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 recv(HSocket s, void* ptr, int32 len, int32 flags);
@@ -387,7 +423,8 @@ namespace System.Net
 			TimeVal timeVal;
 			timeVal.mSec = (.)(waitTimeMS / 1000);
 			timeVal.mUSec = (.)((waitTimeMS % 1000) * 1000);
-			return select(0, readFDS, writeFDS, exceptFDS, &timeVal);
+
+			return Select(readFDS, writeFDS, exceptFDS, &timeVal);
 		}
 
 		public static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, float waitTimeMS)
@@ -396,7 +433,24 @@ namespace System.Net
 			TimeVal timeVal;
 			timeVal.mSec = (.)(waitTimeUS / (1000*1000));
 			timeVal.mUSec = (.)(waitTimeUS % (1000*1000));
-			return select(0, readFDS, writeFDS, exceptFDS, &timeVal);
+
+			return Select(readFDS, writeFDS, exceptFDS, &timeVal);
+		}
+
+		private static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, TimeVal* timeVal)
+		{
+#if BF_PLATFORM_WINDOWS
+            const int32 nfds = 0; // Ignored
+#else
+            int32 nfds = 0;
+            if (readFDS != null)
+                nfds = (.)readFDS.[Friend]afterLastBit;
+            if (writeFDS != null)
+                nfds = Math.Max(nfds, (.)writeFDS.[Friend]afterLastBit);
+            if (exceptFDS != null)
+                nfds = Math.Max(nfds, (.)exceptFDS.[Friend]afterLastBit);
+#endif
+			return select(nfds, readFDS, writeFDS, exceptFDS, timeVal);
 		}
 
 		public int32 DbgRecv(void* ptr, int32 size)
@@ -467,4 +521,3 @@ namespace System.Net
 		}
 	}
 }
-
