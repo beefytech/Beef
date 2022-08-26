@@ -4022,7 +4022,7 @@ void BfExprEvaluator::GetLiteral(BfAstNode* refNode, const BfVariant& variant)
 	case BfTypeCode_Let:
 		if (mExpectingType != NULL)
 		{
-			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateUndefValue(mModule->mBfIRBuilder->MapType(mExpectingType)), mExpectingType);
+			mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(mExpectingType)), mExpectingType);
 			break;
 		}
 		mModule->Fail("Invalid undef literal", refNode);

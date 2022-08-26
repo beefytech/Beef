@@ -19129,6 +19129,8 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 					auto genericParamInst = unspecializedMethodInstance->mMethodInfoEx->mGenericParams[genericParamType->mGenericParamIdx];
 					if (genericParamInst->mTypeConstraint != NULL)
 					{
+						SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+
 						BfExprEvaluator exprEvaluator(this);
 						exprEvaluator.mExpectingType = genericParamInst->mTypeConstraint;
 						exprEvaluator.GetLiteral(NULL, constExprValueType->mValue);
