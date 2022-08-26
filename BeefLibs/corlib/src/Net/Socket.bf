@@ -339,7 +339,12 @@ namespace System.Net
 			SetBlocking(mIsBlocking);
 		}
 
-		public Result<void> Listen(int32 port, IPv4Address address = .(127, 0, 0, 1), int32 backlog = 5)
+        public Result<void> Listen(int32 port, int32 backlog = 5)
+        {
+            return Listen(.(127, 0, 0, 1), port, backlog);
+        }
+
+		public Result<void> Listen(IPv4Address address, int32 port, int32 backlog = 5)
 		{
 			Debug.Assert(mHandle == INVALID_SOCKET);
 
