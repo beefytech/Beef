@@ -551,6 +551,14 @@ namespace System.Collections
 			mSize = (.)size;
 		}
 
+		public void Resize(int newSize, T fillValue)
+		{
+		    let prevSize = mSize;
+		    Count = newSize;
+	        for (int i = prevSize; i < newSize; i++)
+	            mItems[i] = fillValue;
+		}
+
 		public Enumerator GetEnumerator()
 		{
 			return Enumerator(this);
@@ -634,6 +642,19 @@ namespace System.Collections
 				if (mItems[i] === item)
 					return i;
 			return -1;
+		}
+
+		public void Set(Span<T> span)
+		{
+			Count = span.Length;
+			for (int i < mSize)
+				mItems[i] = span[i];
+		}
+
+		public void SetAll(T value)
+		{
+			for (int i < mSize)
+				mItems[i] = value;
 		}
 
 		public void Insert(int index, T item)

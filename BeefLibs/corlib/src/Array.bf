@@ -363,6 +363,44 @@ namespace System
 			return .(this);
 		}
 
+		public void SetAll(T value)
+		{
+			for (int i < mLength)
+				(&mFirstElement)[i] = value;
+		}
+
+		public bool Contains(T value)
+		{
+			for (int i = 0; i < mLength; i++)
+				if ((&mFirstElement)[i] == value)
+					return true;
+			return false;
+		}
+
+		public bool ContainsStrict(T value)
+		{
+			for (int i = 0; i < mLength; i++)
+				if ((&mFirstElement)[i] === value)
+					return true;
+			return false;
+		}
+
+		public int IndexOf(T value)
+		{
+			for (int i = 0; i < mLength; i++)
+				if ((&mFirstElement)[i] == value)
+					return i;
+			return -1;
+		}
+
+		public int IndexOfStrict(T value)
+		{
+			for (int i = 0; i < mLength; i++)
+				if ((&mFirstElement)[i] === value)
+					return i;
+			return -1;
+		}
+
         protected override void GCMarkMembers()
         {
 			let type = typeof(T);

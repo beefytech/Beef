@@ -292,6 +292,13 @@ namespace System
 				Runtime.FatalError("Assert failed");
 		}
 
+		[Comptime(ConstEval = true)]
+		public static void Assert(bool cond, String message)
+		{
+		    if (!cond)
+		        Runtime.FatalError(message);
+		}
+
 		static extern void Comptime_SetReturnType(int32 typeId);
 		static extern void* Comptime_MethodBuilder_EmitStr(void* native, StringView str);
 		static extern void* Comptime_CreateMethod(int32 typeId, StringView methodName, Type returnType, MethodFlags methodFlags);

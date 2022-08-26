@@ -15,8 +15,6 @@ namespace System
 			}
 		}	
 
-		
-
 		public explicit static operator T[CSize] (Self val)
 		{
 			return val.mVal;
@@ -26,6 +24,44 @@ namespace System
 		{
 #unwarn
 			return .(&val.mVal, CSize);
+		}
+
+		public void SetAll(T value)
+		{
+			for (int i < CSize)
+				mVal[i] = value;
+		}
+
+		public bool Contains(T value)
+		{
+			for (int i = 0; i < CSize; i++)
+				if (mVal[i] == value)
+					return true;
+			return false;
+		}
+
+		public bool ContainsStrict(T value)
+		{
+			for (int i = 0; i < CSize; i++)
+				if (mVal[i] === value)
+					return true;
+			return false;
+		}
+
+		public int IndexOf(T value)
+		{
+			for (int i = 0; i < CSize; i++)
+				if (mVal[i] == value)
+					return i;
+			return -1;
+		}
+
+		public int IndexOfStrict(T value)
+		{
+			for (int i = 0; i < CSize; i++)
+				if (mVal[i] === value)
+					return i;
+			return -1;
 		}
 
 		public override void ToString(String strBuffer) mut

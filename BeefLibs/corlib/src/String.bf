@@ -2634,6 +2634,18 @@ namespace System
 			}
 		}
 
+		public static bool Equals(char8* str1, char8* str2, int length)
+		{
+			for (int i < length)
+			{
+				char8 c = str1[i];
+				char8 c2 = str2[i];
+				if (c != c2)
+					return false;
+			}
+			return true;
+		}
+
 		public RawEnumerator RawChars
 		{
 			[Inline]
