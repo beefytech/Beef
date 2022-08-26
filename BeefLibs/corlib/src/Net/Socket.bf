@@ -117,7 +117,7 @@ namespace System.Net
 #endif
 
 		[CRepr]
-		struct in_addr
+		public struct IPv4Address
 		{
 			public uint8 b1;
 			public uint8 b2;
@@ -144,7 +144,7 @@ namespace System.Net
         {
 	        public int16 sin_family;
 	        public uint16 sin_port;
-	        public in_addr sin_addr;
+	        public IPv4Address sin_addr;
 	        public char8[8] sin_zero;
 		}
 
@@ -339,7 +339,12 @@ namespace System.Net
 			SetBlocking(mIsBlocking);
 		}
 
-		public Result<void> Listen(int32 port, int32 backlog = 5)
+        public Result<void> Listen(int32 port, int32 backlog = 5)
+        {
+            return Listen(.(127, 0, 0, 1), port, backlog);
+        }
+
+		public Result<void> Listen(IPv4Address address, int32 port, int32 backlog = 5)
 		{
 			Debug.Assert(mHandle == INVALID_SOCKET);
 
@@ -356,7 +361,7 @@ namespace System.Net
 
 			SockAddr_in service;
 			service.sin_family = AF_INET;
-			service.sin_addr = in_addr(127, 0, 0, 1);
+			service.sin_addr = address;
 			service.sin_port = (uint16)htons((int16)port);
 
 			if (bind(mHandle, &service, sizeof(SockAddr_in)) == SOCKET_ERROR)
@@ -388,7 +393,7 @@ namespace System.Net
 
 			SockAddr_in sockAddr;
 			sockAddr.sin_family = AF_INET;
-			Internal.MemCpy(&sockAddr.sin_addr, hostEnt.h_addr_list[0], sizeof(in_addr));
+			Internal.MemCpy(&sockAddr.sin_addr, hostEnt.h_addr_list[0], sizeof(IPv4Address));
 			sockAddr.sin_port = (uint16)htons((int16)port);
 
 			if (connect(mHandle, &sockAddr, sizeof(SockAddr_in)) == SOCKET_ERROR)
