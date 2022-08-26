@@ -5115,7 +5115,7 @@ void DbgExprEvaluator::LookupSplatMember(const DbgTypedValue& target, const Stri
 		{
 			for (auto member : checkType->mMemberList)
 			{
-				if (member->mName == fieldName)
+				if ((member->mName != NULL) && (member->mName == fieldName))
 				{
 					found = true;
 					break;
@@ -5327,7 +5327,7 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 		{
 			for (auto member : checkType->mMemberList)
 			{
-				if (member->mName == fieldName)
+				if ((member->mName != NULL) && (member->mName == fieldName))
 				{
 					wasUnion = checkType->IsBfUnion();
 					memberType = member->mType;
