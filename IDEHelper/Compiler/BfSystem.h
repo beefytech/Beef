@@ -1970,6 +1970,7 @@ public:
 #ifdef BF_WANTS_LOG_HI
 #define BfLogSysHI(sys, fmt, ...) DoBfLog((sys)->mIsResolveOnly ? 1 : 2, fmt, ##__VA_ARGS__)
 #define BfLogSysMHI(fmt, ...) DoBfLog(mSystem->mIsResolveOnly ? 1 : 2, fmt, ##__VA_ARGS__)
+#define BfLogDbgHI(fmt, ...) DoBfLog(0, fmt, ##__VA_ARGS__)
 #else
 #define BfLogSysHI(...) {} // Nothing
 #define BfLogSysMHI(...) {} // Nothing

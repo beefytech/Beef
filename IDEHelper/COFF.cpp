@@ -3439,11 +3439,11 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 
 	if (moduleInfo != NULL)
 	{
-		BfLogCv("ParseCompileUnit %s\n", moduleInfo->mModuleName);
+		BfLogDbgHI("ParseCompileUnit %s %s\n", mPDBPath.c_str(), moduleInfo->mModuleName);
 	}
 	else
 	{
-		BfLogCv("ParseCompileUnit NULL\n");
+		BfLogDbgHI("ParseCompileUnit %s NULL\n", mPDBPath.c_str());
 	}
 
 	int allocSizeStart = mAlloc.GetAllocSize();
