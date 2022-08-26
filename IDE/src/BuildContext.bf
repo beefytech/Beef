@@ -845,7 +845,7 @@ namespace IDE
 						}    
 					}
 
-					bool depIsDynLib = (depProject.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (depOptions.mBuildOptions.mBuildKind == .DynamicLib);
+					bool depIsDynLib = (depProject.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (depOptions?.mBuildOptions.mBuildKind == .DynamicLib);
 					if (depIsDynLib)
 					{
 						if (mImpLibMap.TryGetValue(depProject, var libPath))
@@ -858,15 +858,18 @@ namespace IDE
 					if (depProject.mGeneralOptions.mTargetType == .BeefLib)
 					{
 						let depProjectOptions = gApp.GetCurProjectOptions(depProject);
-						var linkFlags = scope String();
-						gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
-						if (!linkFlags.IsWhiteSpace)
-							linkLine.Append(linkFlags, " ");
+						if (depProjectOptions != null)
+						{
+							var linkFlags = scope String();
+							gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+							if (!linkFlags.IsWhiteSpace)
+								linkLine.Append(linkFlags, " ");
 
-						for (let libPath in depProjectOptions.mBuildOptions.mLibPaths)
-							AddLibPath(libPath, depProject, depProjectOptions);
-						for (let depPath in depProjectOptions.mBuildOptions.mLinkDependencies)
-							AddDepPath(depPath, depProject, depProjectOptions);
+							for (let libPath in depProjectOptions.mBuildOptions.mLibPaths)
+								AddLibPath(libPath, depProject, depProjectOptions);
+							for (let depPath in depProjectOptions.mBuildOptions.mLinkDependencies)
+								AddDepPath(depPath, depProject, depProjectOptions);
+						}
 					}
 			    }
 			}
