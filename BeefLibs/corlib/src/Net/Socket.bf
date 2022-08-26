@@ -40,6 +40,13 @@ namespace System.Net
 			}
 		}
 
+        [CRepr]
+        public struct TimeVal
+        {
+        	public int32 mSec;
+        	public int32 mUSec;
+        }
+
 #else
 		public struct HSocket : uint32
 		{
@@ -77,15 +84,14 @@ namespace System.Net
 				return (mSocketBitMasks[fd / BITS_PER_MASK] & (1U << (fd & (BITS_PER_MASK - 1)))) != 0;
 			}
 		}
+
+        [CRepr]
+        public struct TimeVal
+        {
+        	public int64 mSec;
+        	public int32 mUSec;
+        }
 #endif
-
-		[CRepr]
-		public struct TimeVal
-		{
-			public int32 mSec;
-			public int32 mUSec;
-		}
-
 
 
 #if BF_PLATFORM_WINDOWS
