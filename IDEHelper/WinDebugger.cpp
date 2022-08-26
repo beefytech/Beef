@@ -9638,6 +9638,9 @@ static void PdbTestFile(WinDebugger* debugger, const StringImpl& path)
 
 	for (int i = 0; i < coffFile.mTypes.mSize; i++)
 		coffFile.mTypes[i]->PopulateType();
+
+	for (int i = 0; i < coffFile.mCvModuleInfo.mSize; i++)
+		coffFile.ParseCompileUnit(i);
 }
 
 static void PdbTest(WinDebugger* debugger, const StringImpl& path)

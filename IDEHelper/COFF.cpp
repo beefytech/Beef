@@ -512,7 +512,6 @@ DbgType* COFF::CvGetType(int typeId)
 	{
 		TYPE_ENUM_e typeEnum = (TYPE_ENUM_e)typeId;
 		DbgType* type = mCvSystemTypes[typeId];
-		BF_ASSERT(type != NULL);
 		return type;
 	}
 
@@ -3439,11 +3438,11 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 
 	if (moduleInfo != NULL)
 	{
-		BfLogDbgHI("ParseCompileUnit %s %s\n", mPDBPath.c_str(), moduleInfo->mModuleName);
+		BfLogDbg("ParseCompileUnit %s %s\n", mPDBPath.c_str(), moduleInfo->mModuleName);
 	}
 	else
 	{
-		BfLogDbgHI("ParseCompileUnit %s NULL\n", mPDBPath.c_str());
+		BfLogDbg("ParseCompileUnit %s NULL\n", mPDBPath.c_str());
 	}
 
 	int allocSizeStart = mAlloc.GetAllocSize();
@@ -4127,6 +4126,8 @@ CvCompileUnit* COFF::ParseCompileUnit(int compileUnitId)
 
 	int sectionSize = 0;
 	uint8* sectionData = CvReadStream(moduleInfo->mStream, &sectionSize);
+	if (sectionData == NULL)
+		return NULL;
 	ParseCompileUnit(moduleInfo, NULL, sectionData, sectionSize);
 	delete sectionData;
 	return moduleInfo->mCompileUnit;
@@ -4869,7 +4870,6 @@ uint8* COFF::CvReadStream(int streamIdx, int* outSize)
 
 	if ((streamIdx < 0) || (streamIdx >= mCvStreamSizes.mSize))
 	{
-		Fail(StrFormat("Invalid PDB stream index: %d", streamIdx));
 		return NULL;
 	}
 
@@ -6257,10 +6257,13 @@ void COFF::ProcessDebugInfo()
 		{
 			compileUnit = ParseCompileUnit(NULL, compileUnit, entry.mData, entry.mSize);
 		}
-		compileUnit->mLanguage = DbgLanguage_Beef;
-		mMasterCompileUnit->mLanguage = DbgLanguage_Beef;
-		MapCompileUnitMethods(compileUnit);
-		mEndTypeIdx = (int)linkedModule->mTypes.size();
+		if (compileUnit != NULL)
+		{
+			compileUnit->mLanguage = DbgLanguage_Beef;
+			mMasterCompileUnit->mLanguage = DbgLanguage_Beef;
+			MapCompileUnitMethods(compileUnit);
+			mEndTypeIdx = (int)linkedModule->mTypes.size();
+		}
 	}
 }
 
