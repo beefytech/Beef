@@ -2056,38 +2056,42 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 				{
 					mCurTypeDef->mHasAppendCtor = true;
 
-					auto methodDef = new BfMethodDef();
-					mCurTypeDef->mMethods.Insert(methodIdx + 1, methodDef);
-					BF_ASSERT(mCurDeclaringTypeDef != NULL);
-					methodDef->mDeclaringType = mCurDeclaringTypeDef;
-					methodDef->mName = BF_METHODNAME_CALCAPPEND;
-					methodDef->mProtection = BfProtection_Public;
-					methodDef->mMethodType = BfMethodType_CtorCalcAppend;
-					methodDef->mIsMutating = method->mIsMutating;
-					methodDef->mIsNoSplat = true;
-
-					methodDef->mMethodDeclaration = method->mMethodDeclaration;
-					methodDef->mReturnTypeRef = mSystem->mDirectIntTypeRef;
-					methodDef->mIsStatic = true;
-					methodDef->mBody = method->mBody;
-					methodDef->mAddedAfterEmit = mIsComptime;
-
-					for (auto param : method->mParams)
+					bool isHandled = !method->mParams.IsEmpty() && method->mParams[0]->mParamKind == BfParamKind_AppendIdx;
+					if (!isHandled)
 					{
-						BfParameterDef* newParam = new BfParameterDef();
-						newParam->mName = param->mName;
-						newParam->mNamePrefixCount = param->mNamePrefixCount;
-						newParam->mTypeRef = param->mTypeRef;
-						newParam->mMethodGenericParamIdx = param->mMethodGenericParamIdx;
-						methodDef->mParams.push_back(newParam);
-					}
+						auto methodDef = new BfMethodDef();
+						mCurTypeDef->mMethods.Insert(methodIdx + 1, methodDef);
+						BF_ASSERT(mCurDeclaringTypeDef != NULL);
+						methodDef->mDeclaringType = mCurDeclaringTypeDef;
+						methodDef->mName = BF_METHODNAME_CALCAPPEND;
+						methodDef->mProtection = BfProtection_Public;
+						methodDef->mMethodType = BfMethodType_CtorCalcAppend;
+						methodDef->mIsMutating = method->mIsMutating;
+						methodDef->mIsNoSplat = true;
 
-					// Insert a 'appendIdx'
-					BfParameterDef* newParam = new BfParameterDef();
-					newParam->mName = "appendIdx";
-					newParam->mTypeRef = mSystem->mDirectRefIntTypeRef;
-					newParam->mParamKind = BfParamKind_AppendIdx;
-					method->mParams.Insert(0, newParam);
+						methodDef->mMethodDeclaration = method->mMethodDeclaration;
+						methodDef->mReturnTypeRef = mSystem->mDirectIntTypeRef;
+						methodDef->mIsStatic = true;
+						methodDef->mBody = method->mBody;
+						methodDef->mAddedAfterEmit = mIsComptime;
+
+						for (auto param : method->mParams)
+						{
+							BfParameterDef* newParam = new BfParameterDef();
+							newParam->mName = param->mName;
+							newParam->mNamePrefixCount = param->mNamePrefixCount;
+							newParam->mTypeRef = param->mTypeRef;
+							newParam->mMethodGenericParamIdx = param->mMethodGenericParamIdx;
+							methodDef->mParams.push_back(newParam);
+						}
+
+						// Insert a 'appendIdx'
+						BfParameterDef* newParam = new BfParameterDef();
+						newParam->mName = "appendIdx";
+						newParam->mTypeRef = mSystem->mDirectRefIntTypeRef;
+						newParam->mParamKind = BfParamKind_AppendIdx;
+						method->mParams.Insert(0, newParam);
+					}
 				}
 			}
 		}
