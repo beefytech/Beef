@@ -22023,6 +22023,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 	if (!methodDef->mIsLocalMethod)
 		ProcessMethod_ProcessDeferredLocals();
 
+	prevIgnoreWrites.Restore();
 	mBfIRBuilder->SetActiveFunction(prevActiveFunction);
 
 	if (methodState.mHotDataReferenceBuilder != NULL)
