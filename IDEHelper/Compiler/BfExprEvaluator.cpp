@@ -4979,6 +4979,9 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	if (fieldDef->mIsVolatile)
 		mIsVolatileReference = true;
 
+	if (fieldInstance->mCustomAttributes != NULL)
+		mModule->CheckErrorAttributes(fieldInstance->mOwner, NULL, fieldInstance, fieldInstance->mCustomAttributes, targetSrc);
+
 	if (isFailurePass)
 	{
 		if (mModule->GetCeDbgState() == NULL)
@@ -6169,7 +6172,7 @@ void BfExprEvaluator::PerformCallChecks(BfMethodInstance* methodInstance, BfAstN
 {
 	BfCustomAttributes* customAttributes = methodInstance->GetCustomAttributes();
 	if (customAttributes != NULL)
-		mModule->CheckErrorAttributes(methodInstance->GetOwner(), methodInstance, customAttributes, targetSrc);
+		mModule->CheckErrorAttributes(methodInstance->GetOwner(), methodInstance, NULL, customAttributes, targetSrc);
 }
 
 BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret, BfCreateCallFlags callFlags, BfType* origTargetType)
@@ -6486,11 +6489,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		}
 		else if (mModule->mIsComptimeModule)
  		{
-			if (methodInstance->mIsUnspecialized)
-			{
-				doConstReturn = true;
-			}
-			else
+			//TODO: This meant that unspecialized types were not even allowed to have Init methods that called into themselves
+// 			if (methodInstance->mIsUnspecialized)
+// 			{
+// 				doConstReturn = true;
+// 			}
+// 			else
 			{
 				mModule->mCompiler->mCeMachine->QueueMethod(methodInstance, func);
 			}
@@ -15352,7 +15356,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 				if (unresolvedTypeRef == NULL)
 					unresolvedTypeRef = mModule->ResolveTypeRef(arrayTypeRef->mElementType);
 				if (unresolvedTypeRef == NULL)
-					unresolvedTypeRef = mModule->mContext->mBfObjectType;
+					unresolvedTypeRef = mModule->GetPrimitiveType(BfTypeCode_Var);
 
 				int dimensions = 1;
 
@@ -15436,7 +15440,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 				if (dimensions > 4)
 					dimensions = 4;
 
-				if (!isRawArrayAlloc)
+				if ((!isRawArrayAlloc) && (!unresolvedTypeRef->IsVar()))
 					arrayType = mModule->CreateArrayType(unresolvedTypeRef, dimensions);
 			}
 
@@ -22393,6 +22397,12 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			auto ptrType = mModule->CreatePointerType(mResult.mType);
 			if (mResult.mType->IsValuelessType())
 			{
+				if (!mModule->IsInSpecializedSection())
+				{
+					mModule->Warn(0, StrFormat("Operator '&' results in a sentinel address for zero-sized type '%s'",
+						mModule->TypeToString(mResult.mType).c_str()), opToken);
+				}
+
 				// Sentinel value
 				auto val = mModule->mBfIRBuilder->CreateIntToPtr(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1), mModule->mBfIRBuilder->MapType(ptrType));
 				mResult = BfTypedValue(val, ptrType);

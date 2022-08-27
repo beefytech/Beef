@@ -9803,7 +9803,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			if (resolvedTypeRef->mDefineState == BfTypeDefineState_Undefined)
 				PopulateType(resolvedTypeRef);
 			if ((typeInstance->mCustomAttributes != NULL) && (!typeRef->IsTemporary()))
-				CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);
+				CheckErrorAttributes(typeInstance, NULL, NULL, typeInstance->mCustomAttributes, typeRef);
 			resolvedTypeRef = resolvedTypeRef->GetUnderlyingType();
 			if (resolvedTypeRef != NULL)
 				typeInstance = resolvedTypeRef->ToTypeInstance();
@@ -9817,7 +9817,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		if ((!typeRef->IsTemporary()) && ((resolveFlags & BfResolveTypeRefFlag_FromIndirectSource) == 0))
 		{
 			if (typeInstance->mCustomAttributes != NULL)
-				CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);
+				CheckErrorAttributes(typeInstance, NULL, NULL, typeInstance->mCustomAttributes, typeRef);
 			else if ((typeInstance->mTypeDef->mTypeDeclaration != NULL) && (typeInstance->mTypeDef->mTypeDeclaration->mAttributes != NULL))
 			{
 				auto typeRefVerifyRequest = mContext->mTypeRefVerifyWorkList.Alloc();
@@ -15828,3 +15828,5 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	str += "???";
 	return;
 }
+
+

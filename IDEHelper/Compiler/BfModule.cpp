@@ -478,7 +478,8 @@ public:
 
 	void EmitAppendAlign(int align, int sizeMultiple = 0)
 	{
-		BF_ASSERT(align > 0);
+		if (align <= 1)
+			return;
 
 		if (mIsFirstConstPass)
 			mModule->mCurMethodInstance->mAppendAllocAlign = BF_MAX((int)mModule->mCurMethodInstance->mAppendAllocAlign, align);
@@ -3387,7 +3388,7 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 	return bfError;
 }
 
-void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc)
+void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfFieldInstance* fieldInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc)
 {
 	if (customAttributes == NULL)
 		return;
@@ -3414,7 +3415,9 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()) && (targetSrc != NULL))
 	{
 		String err;
-		if (methodInstance != NULL)
+		if (fieldInstance != NULL)
+			err = StrFormat("'%s' is obsolete", FieldToString(fieldInstance).c_str());
+		else if (methodInstance != NULL)
 			err = StrFormat("'%s' is obsolete", MethodToString(methodInstance).c_str());
 		else
 			err = StrFormat("'%s' is obsolete", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
@@ -3453,7 +3456,9 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
 	{
 		String err;
-		if (methodInstance != NULL)
+		if (fieldInstance != NULL)
+			err += StrFormat("Method error: '", FieldToString(fieldInstance).c_str());
+		else if (methodInstance != NULL)
 			err += StrFormat("Method error: '", MethodToString(methodInstance).c_str());
 		else
 			err += StrFormat("Type error: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
@@ -3469,7 +3474,9 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()) && (targetSrc != NULL))
 	{
 		String err;
-		if (methodInstance != NULL)
+		if (fieldInstance != NULL)
+			err += StrFormat("Field warning: '", FieldToString(fieldInstance).c_str());
+		else if (methodInstance != NULL)
 			err += StrFormat("Method warning: '", MethodToString(methodInstance).c_str());
 		else
 			err += StrFormat("Type warning: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
@@ -10022,6 +10029,9 @@ void BfModule::ValidateAllocation(BfType* type, BfAstNode* refNode)
 
 void BfModule::EmitAppendAlign(int align, int sizeMultiple)
 {
+	if (align <= 1)
+		return;
+
 	if (sizeMultiple == 0)
 		sizeMultiple = align;
 	if ((mCurMethodState->mCurAppendAlign != 0) && (mCurMethodState->mCurAppendAlign % align != 0))
@@ -11175,6 +11185,18 @@ bool BfModule::HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodNa
 		typeInstance = typeInstance->mBaseType;
 	}
 	return BfModuleMethodInstance();
+}
+
+String BfModule::FieldToString(BfFieldInstance* fieldInstance)
+{
+	auto result = TypeToString(fieldInstance->mOwner);
+	result += ".";
+	auto fieldDef = fieldInstance->GetFieldDef();
+	if (fieldDef != NULL)
+		result += fieldDef->mName;
+	else
+		result += "???";
+	return result;
 }
 
 StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* typeGenericArgs, BfTypeVector* methodGenericArgs)
