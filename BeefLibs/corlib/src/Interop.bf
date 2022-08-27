@@ -32,7 +32,7 @@ namespace System
 		
 #endif
 
-		class FlexibleArary<T> where T : struct, new
+		class FlexibleArray<T> where T : struct, new
 		{
 			typealias ElementType = comptype(GetElementType());
 
