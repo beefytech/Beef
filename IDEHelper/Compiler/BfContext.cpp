@@ -490,7 +490,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 				workItemRef->mFromModule->PopulateType(refTypeInst, BfPopulateType_AllowStaticMethods);
 
 			if (refTypeInst != NULL)
-				workItemRef->mFromModule->CheckErrorAttributes(refTypeInst, NULL, refTypeInst->mCustomAttributes, workItemRef->mRefNode);
+				workItemRef->mFromModule->CheckErrorAttributes(refTypeInst, NULL, NULL, refTypeInst->mCustomAttributes, workItemRef->mRefNode);
 
 			workIdx = mTypeRefVerifyWorkList.RemoveAt(workIdx);
 			didWork = true;
