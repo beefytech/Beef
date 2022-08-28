@@ -70,6 +70,7 @@ namespace System
 			public ref T Value => ref *mVal;
 			public T* Ptr => mVal;
 
+			/// Initialize for creating
 			[AllowAppend]
 			public this(int count)
 			{
@@ -78,6 +79,36 @@ namespace System
 				mVal = val;
 				(void)data;
 				mCount = (.)count;
+			}
+
+			/// Initialize for reading
+			public this(T* ptr, int count)
+			{
+				mVal = ptr;
+				mCount = (.)count;
+			}
+		}
+
+		[AttributeUsage(.Struct)]
+		struct FlexibleArrayAttribute : Attribute, IOnTypeInit
+		{
+			String mName;
+
+			public this(String name)
+			{
+				mName = name;
+			}
+
+			[Comptime]
+			public void OnTypeInit(Type type, Self* prev)
+			{
+				if (type.IsGenericParam)
+					return;
+				var field = type.GetField(type.FieldCount - 1).GetValueOrDefault();
+				if ((field.FieldType == null) || (!field.FieldType.IsSizedArray) || (field.FieldType.Size != 0))
+					Runtime.FatalError("Type must end in a zero-sized array");
+				var elementType = (field.FieldType as SizedArrayType).UnderlyingType;
+				Compiler.EmitTypeBody(type, scope $"public {elementType}* {mName} mut => (({elementType}*)((uint8*)&this + Math.Align(typeof(Self).Size, typeof({elementType}).Align)));");
 			}
 		}
 	}
