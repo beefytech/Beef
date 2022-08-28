@@ -11768,16 +11768,35 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		if (wantType->IsArray())
 			wantType = CreateSizedArrayType(wantType->GetUnderlyingType(), (int)constArray->mValues.mSize);
 
+		bool handleAsArray = false;
+
 		SizedArray<BfIRValue, 8> newVals;
 		if (wantType->IsSizedArray())
 		{
-			auto elementType = wantType->GetUnderlyingType();
-			for (auto val : constArray->mValues)
-			{
-				newVals.Add(ConstantToCurrent(constHolder->GetConstant(val), constHolder, elementType));
-			}
+			handleAsArray = true;
 		}
 		else if (wantType->IsInstanceOf(mCompiler->mSpanTypeDef))
+		{
+			auto valueType = ResolveTypeDef(mCompiler->mValueTypeTypeDef);
+			handleAsArray = true;
+			if (!constArray->mValues.IsEmpty())
+			{
+				auto firstConstant = constHolder->GetConstant(constArray->mValues[0]);
+				if ((firstConstant->mConstType == BfConstType_AggZero) && (firstConstant->mIRType.mKind == BfIRType::TypeKind_TypeId) &&
+					(firstConstant->mIRType.mId == valueType->mTypeId))
+					handleAsArray = false;
+
+				if (firstConstant->mConstType == BfConstType_Agg)
+				{
+					auto firstConstArray = (BfConstantAgg*)firstConstant;
+					if ((firstConstArray->mType.mKind == BfIRType::TypeKind_TypeId) &&
+						(firstConstArray->mType.mId == valueType->mTypeId))
+						handleAsArray = false;
+				}
+			}
+		}
+
+		if (handleAsArray)
 		{
 			auto elementType = wantType->GetUnderlyingType();
 			for (auto val : constArray->mValues)
