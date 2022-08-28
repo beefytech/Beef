@@ -108,7 +108,10 @@ namespace System
 				if ((field.FieldType == null) || (!field.FieldType.IsSizedArray) || (field.FieldType.Size != 0))
 					Runtime.FatalError("Type must end in a zero-sized array");
 				var elementType = (field.FieldType as SizedArrayType).UnderlyingType;
-				Compiler.EmitTypeBody(type, scope $"public {elementType}* {mName} mut => (({elementType}*)((uint8*)&this + Math.Align(typeof(Self).Size, typeof({elementType}).Align)));");
+				Compiler.EmitTypeBody(type, scope $"""
+					public {elementType}* {mName} mut => (({elementType}*)((uint8*)&this + Math.Align(typeof(Self).Size, typeof({elementType}).Align)));
+					public static int GetAllocSize(int arrayCount) => Math.Align(typeof(Self).Size, typeof({elementType}).Align) + typeof({elementType}).Size*arrayCount;
+					""");
 			}
 		}
 	}
