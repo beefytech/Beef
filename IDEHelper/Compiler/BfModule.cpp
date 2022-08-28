@@ -11777,6 +11777,14 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 				newVals.Add(ConstantToCurrent(constHolder->GetConstant(val), constHolder, elementType));
 			}
 		}
+		else if (wantType->IsInstanceOf(mCompiler->mSpanTypeDef))
+		{
+			auto elementType = wantType->GetUnderlyingType();
+			for (auto val : constArray->mValues)
+			{
+				newVals.Add(ConstantToCurrent(constHolder->GetConstant(val), constHolder, elementType));
+			}
+		}
 		else
 		{
 			auto wantTypeInst = wantType->ToTypeInstance();
