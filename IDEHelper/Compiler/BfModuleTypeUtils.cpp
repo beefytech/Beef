@@ -2544,19 +2544,24 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 					}
 				}
 			}
-			else if (ceEmitContext->HasEmissions())
+			else
 			{
-				if (typeInstance->mCeTypeInfo == NULL)
-					typeInstance->mCeTypeInfo = new BfCeTypeInfo();
-				if (typeInstance->mCeTypeInfo->mNext == NULL)
-					typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
+				if (ceEmitContext->HasEmissions())
+				{
+					if (typeInstance->mCeTypeInfo == NULL)
+						typeInstance->mCeTypeInfo = new BfCeTypeInfo();
+					if (typeInstance->mCeTypeInfo->mNext == NULL)
+						typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
 
-				BfCeTypeEmitEntry entry;
-				entry.mEmitData = ceEmitContext->mEmitData;
-				typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
+					BfCeTypeEmitEntry entry;
+					entry.mEmitData = ceEmitContext->mEmitData;
+					typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
+					typeInstance->mCeTypeInfo->mNext->mAlign = BF_MAX(typeInstance->mCeTypeInfo->mNext->mAlign, ceEmitContext->mAlign);
+				}
+
+				if ((ceEmitContext->mFailed) && (typeInstance->mCeTypeInfo != NULL))
+					typeInstance->mCeTypeInfo->mFailed = true;
 			}
-			else if ((ceEmitContext->mFailed) && (typeInstance->mCeTypeInfo != NULL))
-				typeInstance->mCeTypeInfo->mFailed = true;
 
 			if ((ceEmitContext->HasEmissions()) && (!mCompiler->mFastFinish))
 			{
@@ -5088,6 +5093,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
 						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
 						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;
+						typeInstance->mCeTypeInfo->mAlign = typeInstance->mCeTypeInfo->mNext->mAlign;
 					}
 
 					delete typeInstance->mCeTypeInfo->mNext;
@@ -5113,8 +5119,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				typeInstance->mCeTypeInfo->mFailed = false;
 			}
 
-			if ((typeInstance->mCeTypeInfo != NULL) && (!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty()))
-				hadNewMembers = true;
+			if (typeInstance->mCeTypeInfo != NULL)
+			{
+				if (!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty())
+					hadNewMembers = true;
+			}
 
 			if ((typeInstance->mTypeDef->IsEmitted()) && (typeInstance->mCeTypeInfo == NULL))
 			{
@@ -5595,6 +5604,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 
 		bool needsExplicitAlignment = true;
+
+		if (typeInstance->mCeTypeInfo != NULL)
+		{
+			typeInstance->mInstAlign = BF_MAX(typeInstance->mInstAlign, typeInstance->mCeTypeInfo->mAlign);
+		}
 
 		for (int fieldIdx = 0; fieldIdx < (int)dataFieldVec.size(); fieldIdx++)
 		{

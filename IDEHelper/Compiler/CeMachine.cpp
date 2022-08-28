@@ -6086,6 +6086,17 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				else
 					_Fail("Comptime return types can only be set on methods declared with a 'var' return type");
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Align)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr);
+				int32 align = *(int32*)((uint8*)stackPtr + sizeof(int32));
+				if ((mCurEmitContext == NULL) || (mCurEmitContext->mType == NULL) || (mCurEmitContext->mType->mTypeId != typeId))
+				{
+					_Fail("This type cannot be modified in this context");
+					return false;
+				}
+				mCurEmitContext->mAlign = BF_MAX(mCurEmitContext->mAlign, align);
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitTypeBody)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr);
@@ -9296,6 +9307,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				if (methodDef->mName == "Comptime_SetReturnType")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_SetReturnType;
+				}
+				else if (methodDef->mName == "Comptime_Align")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Align;
 				}
 				else if (methodDef->mName == "Comptime_EmitTypeBody")
 				{

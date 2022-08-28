@@ -449,6 +449,7 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetGenericArg,
 
 	CeFunctionKind_SetReturnType,
+	CeFunctionKind_Align,
 	CeFunctionKind_EmitTypeBody,
 	CeFunctionKind_EmitAddInterface,
 	CeFunctionKind_EmitMethodEntry,
@@ -975,6 +976,7 @@ public:
 	Array<int32> mInterfaces;
 	String mEmitData;
 	String mExitEmitData;
+	int32 mAlign;
 	bool mFailed;
 
 	CeEmitContext()
@@ -982,11 +984,12 @@ public:
 		mType = NULL;
 		mMethodInstance = NULL;
 		mFailed = false;
+		mAlign = -1;
 	}
 
 	bool HasEmissions()
 	{
-		return !mEmitData.IsEmpty() || !mInterfaces.IsEmpty();
+		return !mEmitData.IsEmpty() || !mInterfaces.IsEmpty() || (mAlign != -1);
 	}
 };
 
@@ -1031,6 +1034,7 @@ public:
 	bool mFastFinished;
 	bool mFailed;
 	bool mMayHaveUniqueEmitLocations;
+	int32 mAlign;
 	BfCeTypeInfo* mNext;
 
 public:
@@ -1039,6 +1043,7 @@ public:
 		mFastFinished = false;
 		mFailed = false;
 		mMayHaveUniqueEmitLocations = false;
+		mAlign = -1;
 		mNext = NULL;
 	}
 };
