@@ -5320,11 +5320,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	}
 
 	if ((target.mType->IsUnion()) && (!target.mType->IsValuelessType()))
-	{
-		auto ptrTarget = mModule->MakeAddressable(target);
-		BfIRType llvmPtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(resolvedFieldType));
-		return BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(ptrTarget.mValue, llvmPtrType), resolvedFieldType, true);
-	}
+		target = mModule->MakeAddressable(target);
 
 	BfTypedValue retVal;
 	if (target.IsSplat())
