@@ -5319,11 +5319,8 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 		return mModule->GetDefaultTypedValue(resolvedFieldType);
 	}
 
-	if ((target.mType->IsUnion()) && (!target.mType->IsValuelessType()))
-		target = mModule->MakeAddressable(target);
-
 	BfTypedValue retVal;
-	if (target.IsSplat())
+	if (targetValue.IsSplat())
 	{
 		retVal = mModule->ExtractValue(targetValue, fieldInstance, fieldInstance->mDataIdx);
 	}
@@ -5351,15 +5348,18 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 				resolvedFieldType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
 		}
 	}
-
-	if (!retVal.IsSplat())
+	
+	if (typeInstance->mIsUnion)
 	{
-		if (typeInstance->mIsUnion)
+		auto unionInnerType = typeInstance->GetUnionInnerType();
+		if (unionInnerType != resolvedFieldType)
 		{
+			if (!retVal.IsAddr())
+				retVal = mModule->MakeAddressable(retVal);
 			BfIRType llvmPtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(resolvedFieldType));
 			retVal.mValue = mModule->mBfIRBuilder->CreateBitCast(retVal.mValue, llvmPtrType);
 		}
-	}
+	}	
 
 	if ((fieldDef->mIsVolatile) && (retVal.IsAddr()))
 		retVal.mKind = BfTypedValueKind_VolatileAddr;
