@@ -5319,6 +5319,13 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 		return mModule->GetDefaultTypedValue(resolvedFieldType);
 	}
 
+	if ((target.mType->IsUnion()) && (!target.mType->IsValuelessType()))
+	{
+		auto ptrTarget = mModule->MakeAddressable(target);
+		BfIRType llvmPtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(resolvedFieldType));
+		return BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(ptrTarget.mValue, llvmPtrType), resolvedFieldType, true);
+	}
+
 	BfTypedValue retVal;
 	if (target.IsSplat())
 	{
@@ -5533,8 +5540,13 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 		bool isBaseLookup = false;
 		while (curCheckType != NULL)
-		{
-			///
+		{			
+			if (((flags & BfLookupFieldFlag_CheckingOuter) != 0) && ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0))
+			{
+				// Don't fully populateType for CheckingOuter - it carries a risk of an inadvertent data cycle
+				// Avoiding this could cause issues finding emitted statics/constants
+			}
+			else
 			{
 				bool isPopulatingType = false;
 

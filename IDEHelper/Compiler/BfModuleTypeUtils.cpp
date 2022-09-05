@@ -5336,7 +5336,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 						if (resolvedFieldType->IsValueType())
 						{
-							BF_ASSERT(!resolvedFieldType->IsDataIncomplete());
+							BF_ASSERT((!resolvedFieldType->IsDataIncomplete()) || (resolvedFieldType->HasTypeFailed()));
 						}
 
 						if (!mCompiler->mIsResolveOnly)
