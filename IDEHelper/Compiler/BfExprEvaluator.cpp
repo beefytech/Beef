@@ -6185,7 +6185,7 @@ void BfExprEvaluator::CheckSkipCall(BfAstNode* targetSrc, SizedArrayImpl<BfResol
 {
 	for (auto& argValue : argValues)
 	{
-		if (!argValue.IsDeferredValue())
+		if ((!argValue.IsDeferredValue()) && (argValue.mExpression != NULL))
 		{
 			mModule->Fail("Illegal SkipCall invocation", targetSrc);
 			return;
