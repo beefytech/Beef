@@ -8180,11 +8180,14 @@ void BfCompiler::GenerateAutocompleteInfo()
 
 					auto& bestInstance = methodMatchInfo->mInstanceList[methodMatchInfo->mBestIdx];
 					auto bestMethodDef = bestInstance.mMethodDef;
-					for (int paramIdx = 0; paramIdx < bestMethodDef->mParams.mSize; paramIdx++)
+					if (bestMethodDef != NULL)
 					{
-						if ((paramIdx == 0) && (bestMethodDef->mMethodType == BfMethodType_Extension))
-							continue;
-						autoComplete->AddEntry(AutoCompleteEntry("param", bestMethodDef->mParams[paramIdx]->mName + ":"), filter);
+						for (int paramIdx = 0; paramIdx < bestMethodDef->mParams.mSize; paramIdx++)
+						{
+							if ((paramIdx == 0) && (bestMethodDef->mMethodType == BfMethodType_Extension))
+								continue;
+							autoComplete->AddEntry(AutoCompleteEntry("param", bestMethodDef->mParams[paramIdx]->mName + ":"), filter);
+						}
 					}
 				}
 
