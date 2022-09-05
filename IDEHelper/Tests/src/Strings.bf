@@ -5,6 +5,8 @@ namespace Tests
 {
 	class Strings
 	{
+		const String cString = "Abc";
+
 		static void FormatString(String outString, String format, params Object[] args)
 		{
 			outString.AppendF(format, params args);
@@ -32,6 +34,11 @@ namespace Tests
 			StringView sv = "Abcd";
 			sv.Length--;
 			Test.Assert(sv == "Abc");
+
+			char8[?] arr0 = "Abcd";
+			char8[?] arr1 = cString;
+			Test.Assert(arr0.Count == 4);
+			Test.Assert(arr1.Count == 3);
 		}
 	}
 }

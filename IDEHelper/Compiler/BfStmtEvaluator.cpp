@@ -1750,6 +1750,17 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 				BfExprEvaluator valExprEvaluator(this);
 				valExprEvaluator.mAllowReadOnlyReference = isReadOnly;
 				initValue = CreateValueFromExpression(valExprEvaluator, varDecl->mInitializer, expectedType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_VariableDeclaration));
+				
+				if ((initValue) && (resolvedType->IsUndefSizedArray()))
+				{
+					int stringId = GetStringPoolIdx(initValue.mValue, mBfIRBuilder);
+					if (stringId >= 0)
+					{
+						BfStringPoolEntry* entry = NULL;
+						if (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry))
+							resolvedType = CreateSizedArrayType(((BfSizedArrayType*)resolvedType)->mElementType, entry->mString.mLength);
+					}
+				}
 
 				auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
 

@@ -3942,9 +3942,11 @@ void BfExprEvaluator::GetLiteral(BfAstNode* refNode, const BfVariant& variant)
 		if ((mExpectingType != NULL) && (mExpectingType->IsSizedArray()))
 		{
 			auto sizedArray = (BfSizedArrayType*)mExpectingType;
-
 			if (sizedArray->mElementType == mModule->GetPrimitiveType(BfTypeCode_Char8))
 			{
+				if (sizedArray->IsUndefSizedArray())
+					sizedArray = mModule->CreateSizedArrayType(sizedArray->mElementType, variant.mString->GetLength());
+
 				if (variant.mString->GetLength() > sizedArray->mElementCount)
 				{
 					mModule->Fail(StrFormat("String literal is too long to fit into '%s'", mModule->TypeToString(sizedArray).c_str()), refNode);
