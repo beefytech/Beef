@@ -1678,7 +1678,7 @@ public:
 	BfIRValue CreateAlloca(BfType* type, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime = true, const char* name = NULL);
 	BfDeferredCallEntry* AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false, BfIRBlock valBlock = BfIRBlock());
-	void RestoreScoreState_LocalVariables();
+	void RestoreScoreState_LocalVariables(int localVarStart);
 	void RestoreScopeState();
 	void MarkDynStack(BfScopeData* scope);
 	void SaveStackState(BfScopeData* scope);

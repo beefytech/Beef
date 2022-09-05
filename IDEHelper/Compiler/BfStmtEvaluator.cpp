@@ -3893,7 +3893,7 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 	// We restore the scopeData before the False block because we don't want variables created in the if condition to
 	//   be visible in the false section
 	//RestoreScopeState();
-	RestoreScoreState_LocalVariables();
+	RestoreScoreState_LocalVariables(mCurMethodState->mCurScope->mLocalVarStart);
 
 	if ((!mCurMethodState->mLeftBlockUncond) && (!ignoredLastBlock))
 		mBfIRBuilder->CreateBr_NoCollapse(contBB);

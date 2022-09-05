@@ -83,6 +83,11 @@ public:
 	{
 		return (mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt | BfArgFlag_UntypedDefault | BfArgFlag_DeferredEval)) != 0;
 	}
+
+	bool IsDeferredValue()
+	{
+		return (mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt | BfArgFlag_UntypedDefault | BfArgFlag_DeferredEval | BfArgFlag_DeferredValue)) != 0;
+	}
 };
 
 struct BfResolvedArgs
@@ -481,6 +486,7 @@ public:
 	BfTypedValue LookupIdentifier(BfIdentifierNode* identifierNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void AddCallDependencies(BfMethodInstance* methodInstance);
 	void PerformCallChecks(BfMethodInstance* methodInstance, BfAstNode* targetSrc);
+	void CheckSkipCall(BfAstNode* targetSrc, SizedArrayImpl<BfResolvedArg>& argValues);
 	BfTypedValue CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, BfCreateCallFlags callFlags = BfCreateCallFlags_None, BfType* origTargetType = NULL);
 	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, BfCreateCallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade = NULL);
 	BfTypedValue CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target);

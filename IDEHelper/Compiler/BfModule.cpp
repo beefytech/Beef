@@ -1963,9 +1963,9 @@ void BfModule::NewScopeState(bool createLexicalBlock, bool flushValueScope)
 	mCurMethodState->mCurScope->mMixinState = mCurMethodState->mMixinState;
 }
 
-void BfModule::RestoreScoreState_LocalVariables()
+void BfModule::RestoreScoreState_LocalVariables(int localVarStart)
 {
-	while (mCurMethodState->mCurScope->mLocalVarStart < (int)mCurMethodState->mLocals.size())
+	while (localVarStart < (int)mCurMethodState->mLocals.size())
 	{
 		auto localVar = mCurMethodState->mLocals.back();
 		LocalVariableDone(localVar, false);
@@ -2022,7 +2022,7 @@ void BfModule::RestoreScopeState()
 
 	EmitDeferredCallProcessorInstances(mCurMethodState->mCurScope);
 
-	RestoreScoreState_LocalVariables();
+	RestoreScoreState_LocalVariables(mCurMethodState->mCurScope->mLocalVarStart);
 
 	if (mCurMethodState->mCurScope->mValueScopeStart)
 		mBfIRBuilder->CreateValueScopeHardEnd(mCurMethodState->mCurScope->mValueScopeStart);
@@ -15498,6 +15498,11 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 
 BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
 {
+	if (localVarDef->mName == "newSuccIndex")
+	{
+		NOP;
+	}
+
 	if ((localVarDef->mValue) && (!localVarDef->mAddr) && (IsTargetingBeefBackend()) && (!localVarDef->mResolvedType->IsValuelessType()))
 	{
 		if ((!localVarDef->mValue.IsConst()) &&

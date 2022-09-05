@@ -6109,7 +6109,13 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 				if ((resolvedArg.mArgFlags & BfArgFlag_StringInterpolateFormat) != 0)
 					exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_StringInterpolateFormat);
 
+				int lastLocalVarIdx = mModule->mCurMethodState->mLocals.mSize;
 				exprEvaluator.Evaluate(argExpr, false, false, true);
+				if ((deferParamValues) && (mModule->mCurMethodState->mLocals.mSize > lastLocalVarIdx))
+				{
+					// Remove any ignored locals
+					mModule->RestoreScoreState_LocalVariables(lastLocalVarIdx);
+				}
 			}
 
 			if ((mModule->mCurMethodState != NULL) && (exprEvaluator.mResultLocalVar != NULL) && (exprEvaluator.mResultLocalVarRefNode != NULL))
@@ -6173,6 +6179,18 @@ void BfExprEvaluator::PerformCallChecks(BfMethodInstance* methodInstance, BfAstN
 	BfCustomAttributes* customAttributes = methodInstance->GetCustomAttributes();
 	if (customAttributes != NULL)
 		mModule->CheckErrorAttributes(methodInstance->GetOwner(), methodInstance, NULL, customAttributes, targetSrc);
+}
+
+void BfExprEvaluator::CheckSkipCall(BfAstNode* targetSrc, SizedArrayImpl<BfResolvedArg>& argValues)
+{
+	for (auto& argValue : argValues)
+	{
+		if (!argValue.IsDeferredValue())
+		{
+			mModule->Fail("Illegal SkipCall invocation", targetSrc);
+			return;
+		}
+	}
 }
 
 BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret, BfCreateCallFlags callFlags, BfType* origTargetType)
@@ -7372,7 +7390,6 @@ void BfExprEvaluator::AddCallDependencies(BfMethodInstance* methodInstance)
 	}
 }
 
-//TODO: delete argumentsZ
 BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValue& inTarget, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance moduleMethodInstance, BfCreateCallFlags callFlags, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade)
 {
 	SetAndRestoreValue<BfEvalExprFlags> prevEvalExprFlag(mBfEvalExprFlags);
@@ -7433,7 +7450,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	{
 		returnType = methodInstance->GetOwner();
 		BF_ASSERT(returnType->IsInterface());
-	}*/
+	}*/	
 
 	Array<BfTypedValue> argCascades;
 	BfTypedValue target = inTarget;
@@ -7543,6 +7560,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	if (isSkipCall)
 	{
+		CheckSkipCall(targetSrc, argValues);
 		FinishDeferredEvals(argValues);
 		mModule->EmitEnsureInstructionAt();
 		return mModule->GetDefaultTypedValue(returnType);
@@ -8749,7 +8767,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 			}
 			methodMatcher.mArguments.Insert(0, resolvedArg);
 		}
-	}
+	}	
 
 	if (isFailurePass)
 		mModule->Fail(StrFormat("'%s' is inaccessible due to its protection level", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str()), targetSrc);
@@ -18643,30 +18661,38 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	int methodCount = 0;
 	bool mayBeSkipCall = false;
 	bool mayBeComptimeCall = false;
+
+	BfTypeInstance* checkTypeInst = NULL;
+
 	if (thisValue.mType != NULL)
 	{
 		if (thisValue.mType->IsAllocType())
 			thisValue.mType = thisValue.mType->GetUnderlyingType();
 
-		auto checkTypeInst = thisValue.mType->ToTypeInstance();
-		while (checkTypeInst != NULL)
+		checkTypeInst = thisValue.mType->ToTypeInstance();		
+	}
+	else if (allowImplicitThis)
+	{
+		checkTypeInst = mModule->mCurTypeInstance;
+	}
+
+	while (checkTypeInst != NULL)
+	{
+		checkTypeInst->mTypeDef->PopulateMemberSets();
+		BfMemberSetEntry* memberSetEntry;
+		if (checkTypeInst->mTypeDef->mMethodSet.TryGetWith(targetFunctionName, &memberSetEntry))
 		{
-			checkTypeInst->mTypeDef->PopulateMemberSets();
-			BfMemberSetEntry* memberSetEntry;
-			if (checkTypeInst->mTypeDef->mMethodSet.TryGetWith(targetFunctionName, &memberSetEntry))
+			BfMethodDef* methodDef = (BfMethodDef*)memberSetEntry->mMemberDef;
+			while (methodDef != NULL)
 			{
-				BfMethodDef* methodDef = (BfMethodDef*)memberSetEntry->mMemberDef;
-				while (methodDef != NULL)
-				{
-					if (methodDef->mIsSkipCall)
-						mayBeSkipCall = true;
-					if (methodDef->mHasComptime)
-						mayBeComptimeCall = true;
-					methodDef = methodDef->mNextWithSameName;
-				}
+				if (methodDef->mIsSkipCall)
+					mayBeSkipCall = true;
+				if (methodDef->mHasComptime)
+					mayBeComptimeCall = true;
+				methodDef = methodDef->mNextWithSameName;
 			}
-			checkTypeInst = checkTypeInst->mBaseType;
 		}
+		checkTypeInst = checkTypeInst->mBaseType;
 	}
 
 	SizedArray<BfExpression*, 8> copiedArgs;
