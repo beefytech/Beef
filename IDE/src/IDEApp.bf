@@ -119,7 +119,7 @@ namespace IDE
     public class IDEApp : BFApp
     {
 		public static String sRTVersionStr = "042";
-		public const String cVersion = "0.43.4";
+		public const String cVersion = "0.43.5";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";

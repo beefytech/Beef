@@ -13,7 +13,7 @@ Description = "Beef IDE"
 Company = "BeefyTech LLC"
 Product = "Beef IDE"
 Copyright = "Copyright 2019 BeefyTech"
-FileVersion = "0.43.4"
+FileVersion = "0.43.5"
 ProductVersion = "0000000000000000"
 
 [Configs.Debug.Win32]
