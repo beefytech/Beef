@@ -82,7 +82,7 @@ namespace System
 			mType = type;
 			do
 			{
-				if (size > size)
+				if (size > mSize)
 					break;
 				void* usePtr = (void*)(int)Math.Align((int)mPtr, align);
 				if ((uint8*)usePtr + size > (uint8*)mPtr + mSize)
