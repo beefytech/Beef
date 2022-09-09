@@ -23224,8 +23224,12 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		{
 			// Add as a `^1`
 			auto indexType = mModule->ResolveTypeDef(mModule->mCompiler->mIndexTypeDef)->ToTypeInstance();
-			rightTypedValueExpr.mRefNode = opToken;
+			mModule->PopulateType(indexType->mBaseType);
 
+			BF_ASSERT_REL(indexType->mBaseType->mBaseType != NULL);
+
+			rightTypedValueExpr.mRefNode = opToken;
+			
 			auto valueTypeEmpty = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mBaseType->mBaseType), {});
 			SizedArray<BfIRValue, 8> enumMembers;
 			enumMembers.Add(valueTypeEmpty);
