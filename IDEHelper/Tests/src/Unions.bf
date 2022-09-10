@@ -35,6 +35,18 @@ namespace Tests
 			public int16 mInt16;
 		}
 
+		[Union]
+		public struct UnionE
+		{
+		    public uint32 values;
+
+		    public int r
+		    {
+		        get { return uint8((this.values & 0xFF000000) >> 24); }
+		        set mut { this.values = (this.values & 0x00FFFFFF) | ((uint32(value) & 0x000000FF) << 24); }
+		    }
+		}
+
 		[Test]
 		static void TestBasics()
 		{
@@ -54,6 +66,10 @@ namespace Tests
 			Test.Assert(sizeof(UnionD) == 6);
 			Test.Assert(alignof(UnionD) == 4);
 			Test.Assert(((int16*)&ud)[2] == 234);
+
+			UnionE ue = .();
+			ue.r = 123;
+			Test.Assert(ue.r == 123);
 		}
 	}
 }

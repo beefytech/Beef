@@ -420,6 +420,7 @@ namespace Tests
 				{
 					if (!MoveNext())
 						return .Err;
+#unwarn
 					return &CurrentRef;
 				}
 			}

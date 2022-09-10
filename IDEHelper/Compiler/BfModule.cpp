@@ -13213,9 +13213,9 @@ BfTypedValue BfModule::ExtractValue(BfTypedValue typedValue, BfFieldInstance* fi
 			{
 				if (typedValue.IsSplat())
 				{
-					BfTypedValue innerVal = typedValue;
-					innerVal.mType = fieldType;
-					return innerVal;
+					bool isAddr = false;
+					BfIRValue irVal = ExtractSplatValue(typedValue, 0, fieldType, &isAddr);
+					return BfTypedValue(irVal, fieldType, isAddr ? BfTypedValueKind_Addr : BfTypedValueKind_SplatHead);
 				}
 			}
 		}
@@ -13240,9 +13240,9 @@ BfTypedValue BfModule::ExtractValue(BfTypedValue typedValue, BfFieldInstance* fi
 
 				if (typedValue.IsSplat())
 				{
-					BfTypedValue innerVal = typedValue;
-					innerVal.mType = fieldType;
-					return innerVal;
+					bool isAddr = false;
+					BfIRValue irVal = ExtractSplatValue(typedValue, 0, fieldType, &isAddr);
+					return BfTypedValue(irVal, fieldType, isAddr ? BfTypedValueKind_Addr : BfTypedValueKind_SplatHead);
 				}
 			}
 		}
@@ -15499,11 +15499,6 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 
 BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
 {
-	if (localVarDef->mName == "newSuccIndex")
-	{
-		NOP;
-	}
-
 	if ((localVarDef->mValue) && (!localVarDef->mAddr) && (IsTargetingBeefBackend()) && (!localVarDef->mResolvedType->IsValuelessType()))
 	{
 		if ((!localVarDef->mValue.IsConst()) &&
