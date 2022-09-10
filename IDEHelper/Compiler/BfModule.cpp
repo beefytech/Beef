@@ -2677,6 +2677,7 @@ void BfModule::UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags, int debugLo
 		{
 			mCurFilePosition.mFileInstance = bfFileInstance;
 			mCurFilePosition.mCurLine = 0;
+			mCurFilePosition.mCurColumn = 0;
 			mCurFilePosition.mCurSrcPos = 0;
 		}
 	}
@@ -2700,7 +2701,7 @@ void BfModule::UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags, int debugLo
 			mCurFilePosition.mCurColumn = 0;
 		}
 		else
-		{
+		{			
 			mCurFilePosition.mCurColumn++;
 		}
 

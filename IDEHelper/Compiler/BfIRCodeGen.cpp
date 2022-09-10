@@ -4063,6 +4063,8 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, column);
 			CMD_PARAM(llvm::MDNode*, diScope);
 			CMD_PARAM(llvm::MDNode*, diInlinedAt);
+			if (line == 0)
+				column = 0;
 			mDebugLoc = llvm::DILocation::get(*mLLVMContext, line, column, diScope, diInlinedAt);
 		}
 		break;
@@ -4766,6 +4768,8 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::MDNode*, file);
 			CMD_PARAM(int, lineNum);
 			CMD_PARAM(int, col);
+			if (lineNum == 0)
+				col = 0;
 			BF_ASSERT(file != NULL);
 			SetResult(curId, mDIBuilder->createLexicalBlock((llvm::DIScope*)scope, (llvm::DIFile*)file, (unsigned)lineNum, (unsigned)col));
 		}
