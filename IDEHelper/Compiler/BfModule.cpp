@@ -13215,7 +13215,7 @@ BfTypedValue BfModule::ExtractValue(BfTypedValue typedValue, BfFieldInstance* fi
 				{
 					bool isAddr = false;
 					BfIRValue irVal = ExtractSplatValue(typedValue, 0, fieldType, &isAddr);
-					return BfTypedValue(irVal, fieldType, isAddr ? BfTypedValueKind_Addr : BfTypedValueKind_SplatHead);
+					return BfTypedValue(irVal, fieldType, typedValue.mValue.IsArg() ? BfTypedValueKind_SplatHead : BfTypedValueKind_Addr);
 				}
 			}
 		}
@@ -13242,7 +13242,7 @@ BfTypedValue BfModule::ExtractValue(BfTypedValue typedValue, BfFieldInstance* fi
 				{
 					bool isAddr = false;
 					BfIRValue irVal = ExtractSplatValue(typedValue, 0, fieldType, &isAddr);
-					return BfTypedValue(irVal, fieldType, isAddr ? BfTypedValueKind_Addr : BfTypedValueKind_SplatHead);
+					return BfTypedValue(irVal, fieldType, typedValue.mValue.IsArg() ? BfTypedValueKind_SplatHead : BfTypedValueKind_Addr);
 				}
 			}
 		}
