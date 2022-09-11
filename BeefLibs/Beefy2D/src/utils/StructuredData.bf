@@ -1190,17 +1190,17 @@ namespace Beefy.utils
             else if (type == typeof(System.UInt32))
 			{
                 ((uint32)theObject).ToString(str);
-                str.Append("U");
+                //str.Append("U");
 			}
             else if (type == typeof(System.Int64))
 			{
-                ((uint64)theObject).ToString(str);
-                str.Append("L");
+                ((int64)theObject).ToString(str);
+                //str.Append("L");
 			}
             else if (type == typeof(System.UInt64))
 			{
                 ((uint64)theObject).ToString(str);
-                str.Append("UL");
+                //str.Append("UL");
 			}
 			else if (type == typeof(System.Int))
 			{
