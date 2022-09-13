@@ -4398,6 +4398,9 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 			if (checkConstant->mConstType == BfConstType_AggCE)
 				return WriteConstant(module, addr, checkConstant, type, isParams);
+
+			// Unhandled
+			break;
 		}
 	}
 
