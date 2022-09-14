@@ -26,7 +26,7 @@ namespace System
 			return .(&val.mVal, CSize);
 		}
 
-		public void SetAll(T value)
+		public void SetAll(T value) mut
 		{
 			for (int i < CSize)
 				mVal[i] = value;
