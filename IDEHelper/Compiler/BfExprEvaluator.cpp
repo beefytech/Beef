@@ -20073,6 +20073,8 @@ BfTypedValue BfExprEvaluator::PerformAssignment_CheckOp(BfAssignmentExpression* 
 				continue;
 
 			auto methodInst = mModule->GetRawMethodInstanceAtIdx(checkTypeInst, operatorDef->mIdx);
+			if (methodInst == NULL)
+				continue;
 			if (methodInst->GetParamCount() != 1)
 				continue;
 
