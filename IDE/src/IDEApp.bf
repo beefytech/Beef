@@ -7798,7 +7798,7 @@ namespace IDE
             }
         }
 
-        public void Output(String outStr)
+        public virtual void Output(String outStr)
         {
 #if CLI
 			Console.Write(outStr);
@@ -7809,7 +7809,7 @@ namespace IDE
             mOutputPanel.Write(outStr);
         }
 
-		public void OutputSmart(String outStr)
+		public virtual void OutputSmart(String outStr)
 		{
 #if CLI
 			Console.Write(outStr);
@@ -7826,7 +7826,7 @@ namespace IDE
 		    	mOutputPanel.WriteSmart(outStr);
 		}
 
-        public void Output(String format, params Object[] args)
+        public virtual void Output(String format, params Object[] args)
         {
             String outStr = format;
             if (args.Count > 0)
@@ -7837,7 +7837,12 @@ namespace IDE
 			else
 				outStr = scope:: String(format);
             outStr.Replace("\r", "");
+
+#if CLI
+			Console.Write(outStr);
+#else
             mOutputPanel.Write(outStr);
+#endif
         }
 
 		public void CompilerLog(String format, params Object[] args)
@@ -7850,7 +7855,7 @@ namespace IDE
 				mBfResolveSystem.Log(str);
 		}
 
-        public void OutputLine(String format, params Object[] args)
+        public virtual void OutputLine(String format, params Object[] args)
         {
             String outStr;
             if (args.Count > 0)
@@ -7873,7 +7878,7 @@ namespace IDE
 #endif
         }
 
-		public void OutputErrorLine(String format, params Object[] args)
+		public virtual void OutputErrorLine(String format, params Object[] args)
 		{
 			mWantShowOutput = true;
 			var errStr = scope String();
@@ -7881,7 +7886,7 @@ namespace IDE
 			OutputLineSmart(errStr, params args);
 		}
 
-		public void OutputWarnLine(String format, params Object[] args)
+		public virtual void OutputWarnLine(String format, params Object[] args)
 		{
 			var warnStr = scope String();
 			warnStr.AppendF(format, params args);
@@ -7896,7 +7901,7 @@ namespace IDE
 			OutputLine(outStr);
 		}
 
-		public void OutputLineSmart(String format, params Object[] args)
+		public virtual void OutputLineSmart(String format, params Object[] args)
 		{
 		    String outStr;
 		    if (args.Count > 0)
@@ -7918,7 +7923,7 @@ namespace IDE
 #endif
 		}
 
-        public void OutputFormatted(String str, bool isDbgEvalOutput = false)
+        public virtual void OutputFormatted(String str, bool isDbgEvalOutput = false)
         {
 #if CLI
 			Console.Write(str);
