@@ -562,7 +562,7 @@ namespace System
 						if ((hexC >= '0') && (hexC <= '9'))
 							num = num*0x10 + (uint8)(hexC - '0');
 						else if ((hexC >= 'A') && (hexC <= 'F'))
-							num = num*0x10 + (uint8)(c - 'A') + 10;
+							num = num*0x10 + (uint8)(hexC - 'A') + 10;
 						else if ((hexC >= 'a') && (hexC <= 'f'))
 							num = num*0x10 + (uint8)(hexC - 'a') + 10;
 						else return .Err;
