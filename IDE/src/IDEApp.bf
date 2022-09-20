@@ -14471,7 +14471,7 @@ namespace IDE
         	
         public static void Beep(MessageBeepType type)
         {
-#if BF_PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS && !CLI
         	MessageBeep(type);
 #endif        	
         }
