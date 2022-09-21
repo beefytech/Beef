@@ -5000,7 +5000,12 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	{
 		if ((fieldInstance->mResolvedType == NULL) ||
 			(!fieldDef->mIsStatic))
+		{
 			mModule->PopulateType(typeInstance, BfPopulateType_Data);
+
+			// Update fieldInstance pointer as it may have moved
+			fieldInstance = &typeInstance->mFieldInstances[fieldDef->mIdx];
+		}
 	}
 
 	if (fieldInstance->mResolvedType == NULL)
