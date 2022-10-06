@@ -106,7 +106,7 @@ namespace System.Reflection
 					default:
 					}
 
-					if (IntCanFit(intVal, type))
+					if (IntCanFit(intVal, type.IsTypedPrimitive ? type.UnderlyingType : type))
 					{
 						return Variant.Create(type, &intVal);
 					}
@@ -158,7 +158,7 @@ namespace System.Reflection
 					default:
 					}
 
-					if (IntCanFit(intVal, type))
+					if (IntCanFit(intVal, type.IsTypedPrimitive ? type.UnderlyingType : type))
 					{
 						return Variant.Create(type, &intVal);
 					}
