@@ -90,6 +90,38 @@ struct BfpFile
 	}
 };
 
+class FileWatchManager;
+static FileWatchManager* gFileWatchManager = NULL;
+class FileWatchManager
+{
+public:
+    virtual bool Init() = 0;
+    virtual void Shutdown() = 0;
+    virtual BfpFileWatcher* WatchDirectory(const char* path, BfpDirectoryChangeFunc callback, BfpFileWatcherFlags flags, void* userData, BfpFileResult* outResult) = 0;
+    virtual void Remove(BfpFileWatcher* watcher) = 0;
+    static FileWatchManager* Get();
+};
+
+class NullFilewatchManager : public FileWatchManager
+{
+    virtual bool Init() { return false; }
+    virtual void Shutdown() {}
+    virtual BfpFileWatcher* WatchDirectory(const char* path, BfpDirectoryChangeFunc callback, BfpFileWatcherFlags flags, void* userData, BfpFileResult* outResult) { NOT_IMPL; return NULL; }
+    virtual void Remove(BfpFileWatcher* watcher) { NOT_IMPL; }
+};
+
+#ifndef BFP_HAS_FILEWATCHER
+FileWatchManager* FileWatchManager::Get()
+{
+    if (gFileWatchManager == NULL)
+    {
+        gFileWatchManager = new NullFilewatchManager();
+        gFileWatchManager->Init();
+    }
+    return gFileWatchManager;
+}
+#endif
+
 BfpTimeStamp BfpToTimeStamp(const timespec& ts)
 {
     return (int64)(ts.tv_sec * 10000000) + (int64)(ts.tv_nsec / 100) + 116444736000000000;
@@ -601,7 +633,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashRelaunchCmd(const char* str)
 
 void BfpSystem_Shutdown()
 {
-
+    if (gFileWatchManager != NULL)
+    {
+        gFileWatchManager->Shutdown();
+        gFileWatchManager = NULL;
+    }
 }
 
 BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_TickCount()
@@ -1192,13 +1228,12 @@ bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnRes
 
 BFP_EXPORT BfpFileWatcher* BFP_CALLTYPE BfpFileWatcher_WatchDirectory(const char* path, BfpDirectoryChangeFunc callback, BfpFileWatcherFlags flags, void* userData, BfpFileResult* outResult)
 {
-    NOT_IMPL;
-    return NULL;
+    return FileWatchManager::Get()->WatchDirectory(path, callback, flags, userData, outResult);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFileWatcher_Release(BfpFileWatcher* fileWatcher)
 {
-    NOT_IMPL;
+    FileWatchManager::Get()->Remove(fileWatcher);
 }
 
 // BfpThread
