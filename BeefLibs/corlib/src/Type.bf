@@ -630,7 +630,7 @@ namespace System
 
         public virtual bool IsSubtypeOf(Type type)
         {
-            return type == this;
+            return type == this || (type.IsTypedPrimitive && type.UnderlyingType == this);
         }
 
 		public virtual Result<FieldInfo> GetField(String fieldName)
