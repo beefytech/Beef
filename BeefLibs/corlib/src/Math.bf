@@ -221,6 +221,8 @@ namespace System
             
         public static extern float Sqrt(float f);
         public static extern double Sqrt(double d);
+		public static extern float Cbrt(float f);
+        public static extern double Cbrt(double d);
 		public static extern float Log(float f);
         public static extern double Log(double d);
 		public static extern float Log10(float f);
