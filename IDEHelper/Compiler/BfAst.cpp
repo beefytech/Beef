@@ -1404,7 +1404,7 @@ const char* Beefy::BfTokenToString(BfToken token)
 	case BfToken_Function:
 		return "function";
 	case BfToken_Goto:
-		return "got";
+		return "goto";
 	case BfToken_If:
 		return "if";
 	case BfToken_Implicit:
