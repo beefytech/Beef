@@ -37,6 +37,8 @@ namespace bf
 			BFRT_EXPORT static double Round(double a);
 			BFRT_EXPORT static float Sqrt(float f);
 			BFRT_EXPORT static double Sqrt(double d);
+			BFRT_EXPORT static float Cbrt(float f);
+			BFRT_EXPORT static double Cbrt(double d);
 			BFRT_EXPORT static float Log(float d);
 			BFRT_EXPORT static double Log(double d);
 			BFRT_EXPORT static float Log10(float d);
@@ -191,6 +193,16 @@ float Math::Sqrt(float f)
 double Math::Sqrt(double d)
 {
 	return sqrt(d);
+}
+
+float Math::Cbrt(float f)
+{
+	return cbrtf(f);
+}
+
+double Math::Cbrt(double d)
+{
+	return cbrt(d);
 }
 
 float Math::Log(float d)
