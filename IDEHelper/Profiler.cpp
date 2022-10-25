@@ -103,11 +103,15 @@ DbgProfiler::DbgProfiler(WinDebugger* debugger) : mShutdownEvent(true)
 	mDebugger->AddProfiler(this);
 
 	mIdleSymbolNames.Add("NtUserGetMessage");
+	mIdleSymbolNames.Add("NtUserMsgWaitForMultipleObjectsEx");
 	mIdleSymbolNames.Add("NtWaitForAlertByThreadId");
 	mIdleSymbolNames.Add("NtWaitForMultipleObjects");
 	mIdleSymbolNames.Add("NtWaitForSingleObject");
 	mIdleSymbolNames.Add("ZwDelayExecution");
 	mIdleSymbolNames.Add("ZwRemoveIoCompletion");
+	mIdleSymbolNames.Add("ZwWaitForAlertByThreadId");
+	mIdleSymbolNames.Add("ZwWaitForMultipleObjects");
+	mIdleSymbolNames.Add("ZwWaitForSingleObject");
 	mIdleSymbolNames.Add("ZwWaitForWorkViaWorkerFactory");
 }
 
@@ -271,8 +275,8 @@ void DbgProfiler::ThreadProc()
 		int wantVirtualSamples = (int)((int64)accumMS * mSamplesPerSecond / 1000);
 
 		int curSampleCount = wantVirtualSamples - mTotalVirtualSamples;
-		BF_ASSERT(curSampleCount >= 0);
-		if (curSampleCount == 0)
+		//BF_ASSERT(curSampleCount >= 0);
+		if (curSampleCount <= 0)
 			continue;
 
 		{
