@@ -1759,12 +1759,13 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 
 int BfModule::GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHolder)
 {
-	BF_ASSERT(constantStr.IsConst());
-
 	if (constHolder == NULL)
 		constHolder = mBfIRBuilder;
 
 	auto constant = constHolder->GetConstant(constantStr);
+	if (constant == NULL)
+		return -1;
+
 	if (constant->mTypeCode == BfTypeCode_StringId)
 	{
 		return constant->mInt32;
@@ -2701,7 +2702,7 @@ void BfModule::UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags, int debugLo
 			mCurFilePosition.mCurColumn = 0;
 		}
 		else
-		{			
+		{
 			mCurFilePosition.mCurColumn++;
 		}
 
