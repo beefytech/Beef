@@ -25,25 +25,25 @@ call extern\llvm_build.bat
 @GOTO HADERROR
 :LLD_HAS
 
-CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=:%UserProfile%\Beef\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
-CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=:%UserProfile%\Beef\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
-CALL bin/msbuild.bat IDEHelper\IDEHelper.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+CALL bin/msbuild.bat IDEHelper\IDEHelper.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=:%UserProfile%\Beef\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
-CALL bin/msbuild.bat IDEHelper\IDEHelper.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+CALL bin/msbuild.bat IDEHelper\IDEHelper.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=:%UserProfile%\Beef\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 CALL bin/build_rt.bat %1
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
-CALL bin/msbuild.bat BeefBoot\BeefBoot.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+CALL bin/msbuild.bat BeefBoot\BeefBoot.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=:%UserProfile%\Beef\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
-CALL bin/msbuild.bat BeefBoot\BeefBoot.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+CALL bin/msbuild.bat BeefBoot\BeefBoot.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=:%UserProfile%\Beef\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 @ECHO Building BeefBuild_bootd
