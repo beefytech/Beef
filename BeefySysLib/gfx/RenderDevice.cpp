@@ -20,7 +20,7 @@ RenderState::RenderState()
 	mCullMode = CullMode_None;
 	mDepthFunc = DepthFunc_Always;
 	mTopology = Topology3D_TriangleList;
-	mShader = NULL;	
+	mShader = NULL;
 	mClipped = false;
 	mTexWrap = false;
 	mWireframe = false;
@@ -32,18 +32,18 @@ RenderTarget::RenderTarget()
 	mHeight = 0;
 	mHasBeenDrawnTo = false;
 	mHasBeenTargeted = false;
-	mResizeNum = 0;		
+	mResizeNum = 0;
 }
 
 RenderWindow::RenderWindow()
 {
-	mCurDrawLayer = NULL;	
+	mCurDrawLayer = NULL;
 	mRenderDevice = NULL;
 	mWindow = NULL;
 }
 
 RenderWindow::~RenderWindow()
-{	
+{
 	for (auto drawLayer : mDrawLayerList)
 		delete drawLayer;
 }
@@ -54,14 +54,14 @@ RenderDevice::RenderDevice() :
 	mPooledIndexBuffers(DRAWBUFFER_IDXBUFFER_SIZE),
 	mPooledVertexBuffers(DRAWBUFFER_VTXBUFFER_SIZE),
 	mPooledRenderCmdBuffers(DRAWBUFFER_CMDBUFFER_SIZE)
-{	
-	mCurRenderState = NULL;	
+{
+	mCurRenderState = NULL;
 	mDefaultRenderState = NULL;
 	mPhysRenderState = mDefaultRenderState;
 	mResizeCount = 0;
-	mCurRenderTarget = NULL;		
+	mCurRenderTarget = NULL;
 	mCurDrawLayer = NULL;
-	mPhysRenderWindow = NULL;	
+	mPhysRenderWindow = NULL;
 	mApp = NULL;
 }
 
@@ -107,7 +107,7 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	int dotPos = (int)fileName.LastIndexOf('.');
 	String ext;
 	if (dotPos != -1)
-		ext = fileName.Substring(dotPos);		
+		ext = fileName.Substring(dotPos);
 
 	ImageData* imageData = NULL;
 	bool handled = false;
@@ -121,7 +121,7 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		handled = true;
 	}
 	else if (ext == ".tga")
-		imageData = new TGAData();	
+		imageData = new TGAData();
 	else if (ext == ".png")
 		imageData = new PNGData();
 	else if (ext == ".jpg")
@@ -133,10 +133,10 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		BF_FATAL("Unknown texture format");
 		return NULL; // Unknown format
 	}
-		
+
 	if (!handled)
 	{
-		imageData->mWantsAlphaPremultiplied = (flags & TextureFlag_NoPremult) == 0;		
+		imageData->mWantsAlphaPremultiplied = (flags & TextureFlag_NoPremult) == 0;
 		if (fileName.StartsWith("@"))
 		{
 			int colon = (int)fileName.IndexOf(':');
@@ -163,8 +163,8 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	Texture* aTexture = NULL;
 	if (!failed)
 		aTexture = LoadTexture(imageData, flags);
-	
-	delete imageData;
+
+	imageData->Deref();
 	return aTexture;
 }
 

@@ -19,13 +19,26 @@ ImageData::ImageData()
 	mWantsAlphaPremultiplied = true;
 	mAlphaPremultiplied = false;
 	mIsAdditive = false;
-	mSrcDataLen = 0;		
+	mSrcDataLen = 0;
+	mRefCount = 1;
 }
 
 ImageData::~ImageData()
-{	
+{
+	BF_ASSERT(mRefCount <= 1); // Allow direct delete if we only have one reference
 	delete [] mBits;
 	delete [] mSrcData;
+}
+
+void ImageData::AddRef()
+{
+	mRefCount++;
+}
+
+void ImageData::Deref()
+{
+	if (--mRefCount == 0)
+		delete this;
 }
 
 void ImageData::SwapRAndB()
@@ -101,15 +114,15 @@ ImageData* ImageData::Duplicate()
 }
 
 bool ImageData::LoadFromMemory(void* ptr, int size)
-{		
+{
 	SetSrcData((uint8*)ptr, size);
-	bool result = ReadData();	
-	mSrcData = NULL;	
+	bool result = ReadData();
+	mSrcData = NULL;
 	return result;
 }
 
 bool ImageData::LoadFromFile(const StringImpl& path)
-{	
+{
 	int size = 0;
 	uint8* aData = LoadBinaryData(path, &size);
 	if (aData == NULL)

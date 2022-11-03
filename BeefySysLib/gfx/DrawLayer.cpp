@@ -11,15 +11,15 @@ USING_NS_BF;
 static int sCurBatchId = 0;
 
 DrawBatch::DrawBatch()
-{		
+{
 	mId = ++sCurBatchId;
 	mVtxIdx = 0;
-	mIdxIdx = 0;	
+	mIdxIdx = 0;
 	mAllocatedVertices = 0;
-	mAllocatedIndices = 0;	
+	mAllocatedIndices = 0;
 	mIsIndexBufferHead = false;
 	mIsVertexBufferHead = false;
-	mVertices = NULL;		
+	mVertices = NULL;
 	mIndices = NULL;
 	mRenderState = NULL;
 	mDrawLayer = NULL;
@@ -41,7 +41,7 @@ void DrawBatch::Clear()
 }
 
 void DrawBatch::Free()
-{	
+{
 	RenderDevice* renderDevice = mDrawLayer->mRenderDevice;
 
 	if (mIsVertexBufferHead)
@@ -60,8 +60,8 @@ void DrawBatch::Free()
 
 DrawBatch* DrawBatch::AllocateChainedBatch(int minVtxCount, int minIdxCount)
 {
-	mDrawLayer->CloseDrawBatch();	
-	return mDrawLayer->AllocateBatch(minVtxCount, minIdxCount);		
+	mDrawLayer->CloseDrawBatch();
+	return mDrawLayer->AllocateBatch(minVtxCount, minIdxCount);
 }
 
 void* DrawBatch::AllocTris(int vtxCount)
@@ -75,14 +75,14 @@ void* DrawBatch::AllocTris(int vtxCount)
 			DrawBatch* nextBatch = AllocateChainedBatch(0, 0);
 			return nextBatch->AllocTris(vtxCount);
 		}
-		
-		mRenderState = gBFApp->mRenderDevice->mCurRenderState;		
+
+		mRenderState = gBFApp->mRenderDevice->mCurRenderState;
 	}
 
 	uint16* idxPtr = mIndices + mIdxIdx;
 	void* vtxPtr = (uint8*)mVertices + (mVtxIdx * mVtxSize);
-	
-	for (int idxNum = 0; idxNum < idxCount; idxNum++)	
+
+	for (int idxNum = 0; idxNum < idxCount; idxNum++)
 	{
 		*idxPtr++ = mVtxIdx++;
 		mIdxIdx++;
@@ -96,17 +96,17 @@ void* DrawBatch::AllocStrip(int vtxCount)
 	int idxCount = (vtxCount - 2) * 3;
 
 	if ((mRenderState != gBFApp->mRenderDevice->mCurRenderState) || (idxCount + mIdxIdx >= mAllocatedIndices))
-	{			
+	{
 		if (mVtxIdx > 0)
-		{			
-			DrawBatch* nextBatch = AllocateChainedBatch(0, 0);			
+		{
+			DrawBatch* nextBatch = AllocateChainedBatch(0, 0);
 			return nextBatch->AllocStrip(vtxCount);
 		}
-					
-		mRenderState = gBFApp->mRenderDevice->mCurRenderState;		
+
+		mRenderState = gBFApp->mRenderDevice->mCurRenderState;
 	}
 
-	uint16* idxPtr = mIndices + mIdxIdx;	
+	uint16* idxPtr = mIndices + mIdxIdx;
 
 	void* vtxPtr = (uint8*)mVertices + (mVtxIdx * mVtxSize);
 
@@ -120,21 +120,21 @@ void* DrawBatch::AllocStrip(int vtxCount)
 		mVtxIdx++;
 		mIdxIdx += 3;
 	}
-	
+
 	return vtxPtr;
 }
 
 void DrawBatch::AllocIndexed(int vtxCount, int idxCount, void** verticesOut, uint16** indicesOut, uint16* idxOfsOut)
-{	
+{
 	if ((mRenderState != gBFApp->mRenderDevice->mCurRenderState) || (idxCount + mIdxIdx > mAllocatedIndices))
-	{			
+	{
 		if (mVtxIdx > 0)
-		{			
-			DrawBatch* nextBatch = AllocateChainedBatch(vtxCount, idxCount);			
+		{
+			DrawBatch* nextBatch = AllocateChainedBatch(vtxCount, idxCount);
 			return nextBatch->AllocIndexed(vtxCount, idxCount, verticesOut, indicesOut, idxOfsOut);
 		}
-				
-		mRenderState = gBFApp->mRenderDevice->mCurRenderState;		
+
+		mRenderState = gBFApp->mRenderDevice->mCurRenderState;
 	}
 
 	*verticesOut = (uint8*)mVertices + (mVtxIdx * mVtxSize);
@@ -148,8 +148,8 @@ void DrawBatch::AllocIndexed(int vtxCount, int idxCount, void** verticesOut, uin
 //
 
 DrawLayer::DrawLayer()
-{	
-	mRenderWindow = NULL;	
+{
+	mRenderWindow = NULL;
 	mRenderDevice = NULL;
 	mIdxBuffer = NULL;
 	mVtxBuffer = NULL;
@@ -164,7 +164,6 @@ DrawLayer::DrawLayer()
 
 DrawLayer::~DrawLayer()
 {
-	NOP;
 }
 
 void DrawLayer::CloseDrawBatch()
@@ -178,9 +177,9 @@ void DrawLayer::CloseDrawBatch()
 }
 
 void DrawLayer::QueueRenderCmd(RenderCmd* renderCmd)
-{	
+{
 	CloseDrawBatch();
-	mRenderCmdList.PushBack(renderCmd);	
+	mRenderCmdList.PushBack(renderCmd);
 	renderCmd->CommandQueued(this);
 }
 
@@ -196,7 +195,7 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 		minIdxCount = 512;
 		minVtxCount = minIdxCount;
 	}
-	
+
 	BF_ASSERT(minIdxCount * sizeof(uint16) <= DRAWBUFFER_IDXBUFFER_SIZE);
 	BF_ASSERT(minVtxCount * vtxSize <= DRAWBUFFER_VTXBUFFER_SIZE);
 
@@ -212,7 +211,7 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 		drawBatch = pool.back();
 		pool.pop_back();
 	}
-	drawBatch->mDrawLayer = this;	
+	drawBatch->mDrawLayer = this;
 
 	int needIdxBytes = minIdxCount * sizeof(uint16);
 	int needVtxBytes = minVtxCount * vtxSize;
@@ -225,7 +224,7 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 		drawBatch->mIsVertexBufferHead = false;
 	}
 	else
-	{		
+	{
 		mVtxBuffer = mRenderDevice->mPooledVertexBuffers.AllocMemoryBlock();
 		mVtxByteIdx = 0;
 		drawBatch->mVertices = (Vertex3D*)mVtxBuffer;
@@ -235,12 +234,12 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 
 	if (needIdxBytes < DRAWBUFFER_IDXBUFFER_SIZE - mIdxByteIdx)
 	{
-		drawBatch->mIndices = (uint16*)((uint8*)mIdxBuffer + mIdxByteIdx);		
+		drawBatch->mIndices = (uint16*)((uint8*)mIdxBuffer + mIdxByteIdx);
 		drawBatch->mAllocatedIndices = (DRAWBUFFER_IDXBUFFER_SIZE - mIdxByteIdx) / sizeof(uint16);
 		drawBatch->mIsIndexBufferHead = false;
 	}
 	else
-	{		
+	{
 		mIdxBuffer = mRenderDevice->mPooledIndexBuffers.AllocMemoryBlock();
 		mIdxByteIdx = 0;
 		drawBatch->mIndices = (uint16*)mIdxBuffer;
@@ -250,7 +249,7 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 
 	drawBatch->mAllocatedIndices = std::min(drawBatch->mAllocatedVertices, drawBatch->mAllocatedIndices);
 	drawBatch->mVtxSize = vtxSize;
-	
+
 	mRenderCmdList.PushBack(drawBatch);
 	mCurDrawBatch = drawBatch;
 
@@ -266,7 +265,7 @@ void DrawLayer::Draw()
 	{
 		curRenderCmd->Render(mRenderDevice, mRenderWindow);
 		curRenderCmd = curRenderCmd->mNext;
-	}	
+	}
 }
 
 void DrawLayer::Flush()
@@ -283,13 +282,13 @@ void DrawLayer::Clear()
 	RenderCmd* curBatch = mRenderCmdList.mHead;
 	while (curBatch != NULL)
 	{
-		RenderCmd* nextBatch = curBatch->mNext;		
+		RenderCmd* nextBatch = curBatch->mNext;
 		curBatch->Free();
 		curBatch = nextBatch;
 	}
-			
+
 	/*if ((mIdxBuffer == NULL) || (mCurDrawBatch != NULL))
-		mIdxBuffer = mRenderDevice->mPooledIndexBuffers.AllocMemoryBlock();	
+		mIdxBuffer = mRenderDevice->mPooledIndexBuffers.AllocMemoryBlock();
 	if ((mVtxBuffer == NULL) || (mCurDrawBatch != NULL))
 		mVtxBuffer = mRenderDevice->mPooledVertexBuffers.AllocMemoryBlock();
 	if ((mRenderCmdBuffer == NULL) || (mRenderCmdByteIdx != 0))
@@ -357,7 +356,7 @@ BF_EXPORT void BF_CALLTYPE DrawLayer_Delete(DrawLayer* drawLayer)
 {
 	if (drawLayer->mRenderWindow != NULL)
 	{
-		drawLayer->mRenderWindow->mDrawLayerList.Remove(drawLayer);		
+		drawLayer->mRenderWindow->mDrawLayerList.Remove(drawLayer);
 	}
 
 	delete drawLayer;
@@ -382,13 +381,13 @@ BF_EXPORT void BF_CALLTYPE DrawLayer_Activate(DrawLayer* drawLayer)
 }
 
 BF_EXPORT void BF_CALLTYPE DrawLayer_DrawToRenderTarget(DrawLayer* drawLayer, TextureSegment* textureSegment)
-{	
+{
 	RenderDevice* renderDevice = gBFApp->mRenderDevice;
 
 	BP_ZONE("DrawLayer_DrawToRenderTarget DrawPart");
 	RenderTarget* prevTarget = renderDevice->mCurRenderTarget;
 	renderDevice->PhysSetRenderState(renderDevice->mDefaultRenderState);
-	renderDevice->PhysSetRenderTarget(textureSegment->mTexture);	
+	renderDevice->PhysSetRenderTarget(textureSegment->mTexture);
 	drawLayer->Draw();
 	drawLayer->Clear();
 	renderDevice->mCurRenderTarget = prevTarget;

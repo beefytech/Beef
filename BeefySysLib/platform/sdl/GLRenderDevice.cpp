@@ -3,11 +3,13 @@
 #include "BFWindow.h"
 #include "img/ImageData.h"
 #include "util/PerfTimer.h"
-#include "SDL_video.h"
+#include <SDL2/SDL_video.h>
 
 USING_NS_BF;
 
 #define NOT_IMPL throw "Not implemented"
+
+#pragma comment(lib, "SDL2.lib")
 
 #ifdef _WIN32
 #ifdef BF_PLATFORM_OPENGL_ES2
@@ -34,6 +36,12 @@ USING_NS_BF;
 #define APIENTRYP BF_CALLTYPE *
 #endif
 
+typedef void (APIENTRYP GL_DEBUGPROC)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
+
+static void (APIENTRYP bf_glDebugMessageCallback)(GL_DEBUGPROC callback, const void* userParam);
+static void (APIENTRYP bf_glActiveTexture)(GLenum texture);
+static void (APIENTRYP bf_glGenVertexArrays)(GLsizei n, GLuint* buffers);
+static void (APIENTRYP bf_glBindVertexArray)(GLenum target);
 static void (APIENTRYP bf_glGenBuffers)(GLsizei n, GLuint *buffers);
 static void (APIENTRYP bf_glBindBuffer)(GLenum target, GLuint buffer);
 static void (APIENTRYP bf_glBufferData)(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage);
@@ -103,7 +111,7 @@ static int GetPowerOfTwo(int input)
 {
 	int value = 1;
 	while (value < input)
-		value <<= 1;	
+		value <<= 1;
 	return value;
 }
 
@@ -111,13 +119,13 @@ static int GetPowerOfTwo(int input)
 #define GLCHECK(check) if ((check) != 0) BF_FATAL("GL call failed")
 
 static void CreateOrthographicOffCenter(float left, float right, float bottom, float top, float zNear, float zFar, float matrix[4][4])
-{	
-	memset(matrix, 0, sizeof(float) * 4 * 4);	
-	
+{
+	memset(matrix, 0, sizeof(float) * 4 * 4);
+
 	float invRL = 1.0f / (right - left);
 	float invTB = 1.0f / (top - bottom);
 	float invFN = 1.0f / (zFar - zNear);
-	
+
 	matrix[0][0] = 2.0f * invRL;
 	matrix[1][1] = 2.0f * invTB;
 	matrix[2][2] = -2.0f * invFN;
@@ -134,7 +142,7 @@ GLShaderParam::GLShaderParam()
 }
 
 GLShaderParam::~GLShaderParam()
-{	
+{
 }
 
 void GLShaderParam::SetTexture(Texture* texture)
@@ -147,44 +155,26 @@ void GLShaderParam::SetTexture(Texture* texture)
 void GLShaderParam::SetFloat4(float x, float y, float z, float w)
 {
 	NOT_IMPL;
-	//float v[4] = {x, y, z, w};	
+	//float v[4] = {x, y, z, w};
 	//GLCHECK(mGLVariable->AsVector()->SetFloatVector(v));
 }
 
 ///
 
 GLShader::GLShader()
-{		
+{
 }
 
 GLShader::~GLShader()
 {
-	GLShaderParamMap::iterator itr = mParamsMap.begin();
-	while (itr != mParamsMap.end())
+	for (auto paramKV : mParamsMap)
 	{
-		delete itr->second;
-		++itr;
+		delete paramKV.mValue;
 	}
-
-	//if (mGLEffect != NULL)
-		//mGLEffect->Release();	
 }
 
-ShaderParam* GLShader::GetShaderParam(const std::wstring& name)
+ShaderParam* GLShader::GetShaderParam(const StringImpl& name)
 {
-	/*GLShaderParamMap::iterator itr = mParamsMap.find(name);
-	if (itr != mParamsMap.end())
-		return itr->second;
-
-	IGL10EffectVariable* d3DVariable = mGLEffect->GetVariableByName(ToString(name).c_str());
-	if (d3DVariable == NULL)
-		return NULL;
-
-	GLShaderParam* shaderParam = new GLShaderParam();
-	shaderParam->mGLVariable = d3DVariable;
-	mParamsMap[name] = shaderParam;
-
-	return shaderParam;*/
 	NOT_IMPL;
 	return NULL;
 }
@@ -193,56 +183,48 @@ ShaderParam* GLShader::GetShaderParam(const std::wstring& name)
 
 GLTexture::GLTexture()
 {
-	mGLTexture = NULL;
-	//mGLRenderTargetView = NULL;	
+	mGLTexture = 0;
+	mGLTexture2 = 0;
+	//mGLRenderTargetView = NULL;
 	mRenderDevice = NULL;
+	mImageData = NULL;
 }
 
 GLTexture::~GLTexture()
 {
+	if (mImageData != NULL)
+		mImageData->Deref();
 	//if (mGLTexture != NULL)
 		//mGLTexture->Release();
 }
 
 void GLTexture::PhysSetAsTarget()
-{	
+{
 	NOT_IMPL;
-	//{
-	//	GL10_VIEWPORT viewPort;
-	//	viewPort.Width = mWidth;
-	//	viewPort.Height = mHeight;
-	//	viewPort.MinDepth = 0.0f;
-	//	viewPort.MaxDepth = 1.0f;
-	//	viewPort.TopLeftX = 0;
-	//	viewPort.TopLeftY = 0;
+}
 
-	//	mRenderDevice->mGLDevice->RSSetViewports(1, &viewPort);
-	//	mRenderDevice->mGLDevice->OMSetRenderTargets(1, &mGLRenderTargetView, NULL);		
-	//}
-
-	//if (!mHasBeenDrawnTo)
-	//{
-	//	//mRenderDevice->mGLDevice->ClearRenderTargetView(mGLRenderTargetView, D3GLVECTOR4(1, 0.5, 0.5, 1));				
-	//	mHasBeenDrawnTo = true;
-	//}
+void GLTexture::Blt(ImageData* imageData, int x, int y)
+{
+	if (mImageData != NULL)
+	{
+		for (int row = 0; row < imageData->mHeight; row++)
+		{
+			memcpy(mImageData->mBits + (y + row) * mImageData->mWidth + x,
+				imageData->mBits + row * imageData->mWidth, imageData->mWidth * 4);
+		}
+	}
+	else
+	{
+		glBindTexture(GL_TEXTURE_2D, mGLTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, imageData->mWidth, imageData->mHeight, GL_RGBA, GL_UNSIGNED_BYTE, imageData->mBits);
+	}
 }
 
 ///
 
-GLDrawBatch::GLDrawBatch(int minVtxSize, int minIdxSize) : DrawBatch()
-{	
-	mAllocatedVertices = 16*1024;
-	// Alloc more indices than vertices. Worst case is really long tri strip.
-	mAllocatedIndices = mAllocatedVertices * 3;
+GLDrawBatch::GLDrawBatch() : DrawBatch()
+{
 
-	if (minVtxSize > mAllocatedVertices)
-		mAllocatedVertices = GetPowerOfTwo(minVtxSize);
-	if (minIdxSize > mAllocatedIndices)
-		mAllocatedIndices = GetPowerOfTwo(minIdxSize);
-
-	mVertices = new Vertex3D[mAllocatedVertices];	
-	mIndices = new uint16[mAllocatedIndices];
-    mNext = NULL;
 }
 
 GLDrawBatch::~GLDrawBatch()
@@ -252,86 +234,53 @@ GLDrawBatch::~GLDrawBatch()
 	//mGLBuffer->Release();
 }
 
-void GLDrawBatch::Lock()
-{		
-	//mGLBuffer->Map(GL10_MAP_WRITE_DISCARD, 0, (void**) &mVertices);
-}
-
 extern int gBFDrawBatchCount;
 
-void GLDrawBatch::Draw()
+struct GLVertex3D
+{
+	float x, y, z;
+	float u, v;
+	uint32 color;
+};
+
+void GLDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 {
 	if (mIdxIdx == 0)
 		return;
 
     gBFDrawBatchCount++;
-    
+
 	GLRenderDevice* glRenderDevice = (GLRenderDevice*) gBFApp->mRenderDevice;
-	if (glRenderDevice->mPhysRenderWindow != mDrawLayer->mRenderWindow)
-		glRenderDevice->PhysSetRenderWindow(mDrawLayer->mRenderWindow);
-	
-	//// Flip BGRA to RGBA
-	//for (int i = 0; i < mIdx; i++)
-	//{
-	//	uint32 aColor = mVertices[i].color;
-	//	aColor = 
-	//		(aColor & 0xFF00FF00) |
-	//		((aColor & 0x00FF0000) >> 16) |
-	//		((aColor & 0x000000FF) << 16);
-	//	mVertices[i].color = aColor;
-	//}
+	GLShader* curShader = (GLShader*)mRenderState->mShader;
 
-	//mGLBuffer->Unmap();
-	
-	
-	//GLShader* curShader = (GLShader*) aRenderDevice->mCurShader;
-	GLShader* curShader = (GLShader*) mCurShader;
-		
-	//if (curShader->mTextureParam != NULL)
-		//curShader->mTextureParam->SetTexture(mCurTexture);
-
-#ifdef BF_PLATFORM_OPENGL_ES2
-	//bf_glClientActiveTexture(GL_TEXTURE0);
-    glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, ((GLTexture*)mCurTexture)->mGLTexture);
-	glUniform1i(curShader->mAttribTex0, 0);
-    
-	//bf_glClientActiveTexture(GL_TEXTURE1);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, ((GLTexture*)mCurTexture)->mGLTexture2);
-	glUniform1i(curShader->mAttribTex1, 1);
-	//glEnable(GL_TEXTURE_2D);
-#else
-	glBindTexture(GL_TEXTURE_2D, ((GLTexture*)mCurTexture)->mGLTexture);
-#endif
-
-    
-	//if (mIsAdditive != glRenderDevice->mCurAdditive)
-		//glRenderDevice->PhysSetAdditive(mIsAdditive);
-
-	//TODO: Just do 'apply', we don't have to do full PhysSetShaderPass
-	if (curShader != glRenderDevice->mPhysShader)
-		glRenderDevice->PhysSetShader(mCurShader);		
-
-	// Set vertex buffer
-	
-	if (glRenderDevice->mGLVertexBuffer == 0)
+	if (glRenderDevice->mGLVAO == 0)
 	{
-		bf_glGenBuffers(1, &glRenderDevice->mGLVertexBuffer);		
+		bf_glGenVertexArrays(1, &glRenderDevice->mGLVAO);
+		bf_glBindVertexArray(glRenderDevice->mGLVAO);
+
+		bf_glGenBuffers(1, &glRenderDevice->mGLVertexBuffer);
 		bf_glGenBuffers(1, &glRenderDevice->mGLIndexBuffer);
-	}	
+	}
+
+	auto glVertices = (GLVertex3D*)mVertices;
 
 	bf_glBindBuffer(GL_ARRAY_BUFFER, glRenderDevice->mGLVertexBuffer);
-	bf_glBufferData(GL_ARRAY_BUFFER, mVtxIdx * sizeof(Vertex3D), mVertices, GL_STREAM_DRAW);
-	
-	bf_glVertexAttribPointer(curShader->mAttribPosition, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), (void*)offsetof(Vertex3D, x));	
-	bf_glVertexAttribPointer(curShader->mAttribTexCoord0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), (void*)offsetof(Vertex3D, u));	
-	bf_glVertexAttribPointer(curShader->mAttribColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex3D), (void*)offsetof(Vertex3D, color));
+	bf_glBufferData(GL_ARRAY_BUFFER, mVtxIdx * sizeof(GLVertex3D), mVertices, GL_STREAM_DRAW);
+
+	bf_glEnableVertexAttribArray(curShader->mAttribPosition);
+	bf_glVertexAttribPointer(curShader->mAttribPosition, 3, GL_FLOAT, GL_FALSE, sizeof(GLVertex3D), (void*)offsetof(GLVertex3D, x));
+	bf_glEnableVertexAttribArray(curShader->mAttribTexCoord0);
+	bf_glVertexAttribPointer(curShader->mAttribTexCoord0, 2, GL_FLOAT, GL_FALSE, sizeof(GLVertex3D), (void*)offsetof(GLVertex3D, u));
+	bf_glEnableVertexAttribArray(curShader->mAttribColor);
+	bf_glVertexAttribPointer(curShader->mAttribColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GLVertex3D), (void*)offsetof(GLVertex3D, color));
+
+	if (mRenderState != renderDevice->mPhysRenderState)
+		renderDevice->PhysSetRenderState(mRenderState);
 
 	bf_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, glRenderDevice->mGLIndexBuffer);
 	bf_glBufferData(GL_ELEMENT_ARRAY_BUFFER, mIdxIdx * sizeof(int16), mIndices, GL_STREAM_DRAW);
 	bf_glDrawElements(GL_TRIANGLES, mIdxIdx, GL_UNSIGNED_SHORT, NULL);
-    
+
     bf_glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, NULL, GL_STREAM_DRAW);
     bf_glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STREAM_DRAW);
 }
@@ -349,56 +298,21 @@ DrawBatch* GLDrawLayer::CreateDrawBatch()
 	return new GLDrawBatch();
 }
 
-DrawBatch* GLDrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
+
+RenderCmd* GLDrawLayer::CreateSetTextureCmd(int textureIdx, Texture* texture)
 {
-	AutoPerf autoPerf("GLDrawLayer::AllocateBatch");
-
-	//GLDrawBatchVector* pool = &((GLRenderDevice*) gBFApp->mRenderDevice)->mDrawBatchPool;
-
-    GLRenderDevice* glRenderDevice = (GLRenderDevice*)gBFApp->mRenderDevice;
-    
-	GLDrawBatch* newBatch = NULL;
-	
-    //TODO: Search
-    GLDrawBatch** prevRefPtr = &glRenderDevice->mFreeBatchHead;
-    GLDrawBatch* checkBatch = glRenderDevice->mFreeBatchHead;
-    
-    while (checkBatch != NULL)
-    {
-        if ((checkBatch->mAllocatedVertices >= minVtxCount) &&
-			(checkBatch->mAllocatedIndices >= minIdxCount))
-		{
-			newBatch = checkBatch;
-			*prevRefPtr = (GLDrawBatch*)checkBatch->mNext;
-            checkBatch->mNext = NULL;
-			break;
-		}
-        
-        checkBatch = (GLDrawBatch*)checkBatch->mNext;
-        prevRefPtr = (GLDrawBatch**)&checkBatch->mNext;
-    }
-    
-	/*for (int i = pool->size() -1; i >= 0; i--)
-	{
-		GLDrawBatch* checkBatch = (*pool)[i];
-		
-		if ((checkBatch->mAllocatedVertices >= minVtxCount) &&
-			(checkBatch->mAllocatedIndices >= minIdxCount))
-		{
-			newBatch = checkBatch;
-			pool->erase(pool->begin() + i);
-			break;
-		}
-	}*/
-
-	if (newBatch == NULL)
-		newBatch = new GLDrawBatch(minVtxCount, minIdxCount);	
-	
-	newBatch->mDrawLayer = this;
-	return newBatch;
+	GLSetTextureCmd* setTextureCmd = AllocRenderCmd<GLSetTextureCmd>();
+	setTextureCmd->mTextureIdx = textureIdx;
+	setTextureCmd->mTexture = texture;
+	return setTextureCmd;
 }
 
-void GLDrawLayer::FreeBatch(DrawBatch* drawBatch)
+void GLDrawLayer::SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size)
+{
+}
+
+
+/*void GLDrawLayer::FreeBatch(DrawBatch* drawBatch)
 {
 	//delete drawBatch;
 
@@ -410,46 +324,46 @@ void GLDrawLayer::FreeBatch(DrawBatch* drawBatch)
     GLRenderDevice* glRenderDevice = (GLRenderDevice*)gBFApp->mRenderDevice;
     drawBatch->mNext = glRenderDevice->mFreeBatchHead;
     glRenderDevice->mFreeBatchHead = batch;
-}
+}*/
 
-void GLRenderDevice::PhysSetShader(Shader* shader)
-{	
-	GLRenderDevice* aRenderDevice = (GLRenderDevice*) gBFApp->mRenderDevice;
-	
-	//TODO: Cache more
-
-	GLShader* glShader = (GLShader*)shader;
-
-	GLfloat matrix[4][4];
-	CreateOrthographicOffCenter(0.0f, (float)mPhysRenderWindow->mWidth, (float)mPhysRenderWindow->mHeight, 0.0f, -100.0f, 100.0f, matrix);
-	GLint matrixLoc = bf_glGetUniformLocation(glShader->mGLProgram, "screenMatrix");	
-	//BF_ASSERT(matrixLoc >= 0);	
-	if (matrixLoc >= 0)
-        bf_glUniformMatrix4fv(matrixLoc, 1, false, (float*)matrix);
-
-	/*mPhysShaderPass = shaderPass;
-	GLShaderPass* dXShaderPass = (GLShaderPass*) mPhysShaderPass;
-	mGLDevice->IASetInputLayout(dXShaderPass->mGLLayout);
-	
-	if (mCurShader->mLastResizeCount != mCurRenderTarget->mResizeNum)
-	{
-		ShaderParam* shaderParam = mCurShader->GetShaderParam(L"WindowSize");
-		if (shaderParam != NULL)
-		{
-			shaderParam->SetFloat2((float) mCurRenderTarget->mWidth, (float) mCurRenderTarget->mHeight);
-		}
-
-		mCurShader->mLastResizeCount = mCurRenderTarget->mResizeNum;
-	}
-
-	GLCHECK(dXShaderPass->mGLEffectPass->Apply(0));*/
-
-	/*GLfloat matrix[4][4];
-	CreateOrthographicOffCenter(0.0f, (float)mPhysRenderWindow->mWidth, (float)mPhysRenderWindow->mHeight, 0.0f, -100.0f, 100.0f, matrix);
-	GLint uniformLocation = bf_glGetUniformLocation(((GLShader*)shaderPass->mTechnique->mShader)->mGLProgram, "screenMatrix");
-	if (uniformLocation != -1)
-		bf_glUniformMatrix4fv(uniformLocation, 1, false, (GLfloat*)matrix);*/
-}
+//void GLRenderDevice::PhysSetShader(Shader* shader)
+//{
+//	GLRenderDevice* aRenderDevice = (GLRenderDevice*) gBFApp->mRenderDevice;
+//
+//	//TODO: Cache more
+//
+//	GLShader* glShader = (GLShader*)shader;
+//
+//	GLfloat matrix[4][4];
+//	CreateOrthographicOffCenter(0.0f, (float)mPhysRenderWindow->mWidth, (float)mPhysRenderWindow->mHeight, 0.0f, -100.0f, 100.0f, matrix);
+//	GLint matrixLoc = bf_glGetUniformLocation(glShader->mGLProgram, "screenMatrix");
+//	//BF_ASSERT(matrixLoc >= 0);
+//	if (matrixLoc >= 0)
+//        bf_glUniformMatrix4fv(matrixLoc, 1, false, (float*)matrix);
+//
+//	/*mPhysShaderPass = shaderPass;
+//	GLShaderPass* dXShaderPass = (GLShaderPass*) mPhysShaderPass;
+//	mGLDevice->IASetInputLayout(dXShaderPass->mGLLayout);
+//
+//	if (mCurShader->mLastResizeCount != mCurRenderTarget->mResizeNum)
+//	{
+//		ShaderParam* shaderParam = mCurShader->GetShaderParam(L"WindowSize");
+//		if (shaderParam != NULL)
+//		{
+//			shaderParam->SetFloat2((float) mCurRenderTarget->mWidth, (float) mCurRenderTarget->mHeight);
+//		}
+//
+//		mCurShader->mLastResizeCount = mCurRenderTarget->mResizeNum;
+//	}
+//
+//	GLCHECK(dXShaderPass->mGLEffectPass->Apply(0));*/
+//
+//	/*GLfloat matrix[4][4];
+//	CreateOrthographicOffCenter(0.0f, (float)mPhysRenderWindow->mWidth, (float)mPhysRenderWindow->mHeight, 0.0f, -100.0f, 100.0f, matrix);
+//	GLint uniformLocation = bf_glGetUniformLocation(((GLShader*)shaderPass->mTechnique->mShader)->mGLProgram, "screenMatrix");
+//	if (uniformLocation != -1)
+//		bf_glUniformMatrix4fv(uniformLocation, 1, false, (GLfloat*)matrix);*/
+//}
 
 void GLRenderDevice::PhysSetRenderWindow(RenderWindow* renderWindow)
 {
@@ -461,9 +375,9 @@ void GLRenderDevice::PhysSetRenderWindow(RenderWindow* renderWindow)
 void GLRenderDevice::PhysSetRenderTarget(Texture* renderTarget)
 {
 	mCurRenderTarget = renderTarget;
-	renderTarget->PhysSetAsTarget();	
+	renderTarget->PhysSetAsTarget();
 }
-  
+
 ///
 
 template <typename T>
@@ -472,12 +386,21 @@ static void BFGetGLProc(T& proc, const char* name)
 	proc = (T)SDL_GL_GetProcAddress(name);
 }
 
-#define BF_GET_GLPROC(name) BFGetGLProc(bf_##name, #name) 
+#define BF_GET_GLPROC(name) BFGetGLProc(bf_##name, #name)
+
+void GL_DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+	NOP;
+}
 
 GLRenderWindow::GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWindow)
-{	
+{
 	if (bf_glGenBuffers == NULL)
 	{
+		BF_GET_GLPROC(glDebugMessageCallback);
+		BF_GET_GLPROC(glActiveTexture);
+		BF_GET_GLPROC(glGenVertexArrays);
+		BF_GET_GLPROC(glBindVertexArray);
 		BF_GET_GLPROC(glGenBuffers);
 		BF_GET_GLPROC(glBindBuffer);
 		BF_GET_GLPROC(glBufferData);
@@ -530,105 +453,36 @@ GLRenderWindow::GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWind
 		BF_GET_GLPROC(glUniform1f);
 		BF_GET_GLPROC(glUniform2f);
 		BF_GET_GLPROC(glUniform3f);
-		BF_GET_GLPROC(glUniform4f);	
+		BF_GET_GLPROC(glUniform4f);
 		BF_GET_GLPROC(glUniformMatrix4fv);
 		BF_GET_GLPROC(glGetObjectParameterivARB);
 		BF_GET_GLPROC(glCompressedTexImage2D);
 		BF_GET_GLPROC(glClientActiveTexture);
-	
+
 #if !defined BF_PLATFORM_OPENGL_ES2
         BF_GET_GLPROC(glGetVertexAttribdv);
 #endif
     }
 
 	mSDLWindow = sdlWindow;
-	mRenderDevice = renderDevice;	
+	mRenderDevice = renderDevice;
 	Resized();
-	
-	//mGLSwapChain = NULL;
-	//mGLBackBuffer = NULL;
-	//mGLRenderTargetView = NULL;	
 
-	//mRenderDevice = renderDevice;
-	//mHWnd = hWnd;
-
-	//HRESULT hr = S_OK;	
-
-	//Resized();
-
-	//GLGI_SWAP_CHAIN_DESC swapChainDesc;
-	//ZeroMemory( &swapChainDesc, sizeof(swapChainDesc) );
-	//swapChainDesc.BufferCount = 1;
-	//swapChainDesc.BufferDesc.Width = mWidth;
-	//swapChainDesc.BufferDesc.Height = mHeight;
-	//swapChainDesc.BufferDesc.Format = GLGI_FORMAT_R8G8B8A8_UNORM;
-	//swapChainDesc.BufferUsage = GLGI_USAGE_RENDER_TARGET_OUTPUT;
-	//swapChainDesc.OutputWindow = mHWnd;
-	//swapChainDesc.SampleDesc.Count = 1;
-	//swapChainDesc.SampleDesc.Quality = 0;
-	//swapChainDesc.Windowed = TRUE;
-
-	////swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
-	////swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-	////swapChainDesc.Flags = GLGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-
- //   IGLGIDevice* pGLGIDevice = NULL;
- //   mRenderDevice->mGLDevice->QueryInterface(__uuidof(IGLGIDevice), (void**) &pGLGIDevice );
-
- //   GLCHECK(mRenderDevice->mGLGIFactory->CreateSwapChain(pGLGIDevice, &swapChainDesc, &mGLSwapChain));
- //   pGLGIDevice->Release();
- //   pGLGIDevice = NULL;
-	//
-	//GLCHECK(mGLSwapChain->GetBuffer(0, __uuidof(IGL10Texture2D), (LPVOID*)&mGLBackBuffer));	
-	//GLCHECK(mRenderDevice->mGLDevice->CreateRenderTargetView(mGLBackBuffer, NULL, &mGLRenderTargetView));		
+	//bf_glDebugMessageCallback(GL_DebugCallback, NULL);
 }
 
 GLRenderWindow::~GLRenderWindow()
-{	
-	/*if (mGLRenderTargetView != NULL)
-		mGLRenderTargetView->Release();
-		if (mGLBackBuffer != NULL)
-		mGLBackBuffer->Release();
-		if (mGLSwapChain != NULL)
-		mGLSwapChain->Release();	*/
+{
+
 }
 
 void GLRenderWindow::PhysSetAsTarget()
 {
 	GLfloat matrix[4][4];
 	CreateOrthographicOffCenter(0.0f, (float)mWidth, (float)mHeight, 0.0f, -100.0f, 100.0f, matrix);
-    
     glViewport(0, 0, (GLsizei)mWidth, (GLsizei)mHeight);
-    
-    //TODO: Set matrix variable
-	//glMatrixMode(GL_MODELVIEW);
-	//glLoadMatrixf((const GLfloat*)matrix);
 
-	
-
-    
-	//NOT_IMPL;
-	////if (mRenderDevice->mCurRenderTarget != this)
-	//{
-	//	GL10_VIEWPORT viewPort;
-	//	viewPort.Width = mWidth;
-	//	viewPort.Height = mHeight;
-	//	viewPort.MinDepth = 0.0f;
-	//	viewPort.MaxDepth = 1.0f;
-	//	viewPort.TopLeftX = 0;
-	//	viewPort.TopLeftY = 0;
-	//	
-	//	mRenderDevice->mGLDevice->OMSetRenderTargets(1, &mGLRenderTargetView, NULL);		
-	//	mRenderDevice->mGLDevice->RSSetViewports(1, &viewPort);
-	//}
-
-	//if (!mHasBeenDrawnTo)
-	//{		
-	//	//mRenderDevice->mGLDevice->ClearRenderTargetView(mGLRenderTargetView, D3GLVECTOR4(rand() / (float) RAND_MAX, 0, 1, 0));				
-	//	mRenderDevice->mGLDevice->ClearRenderTargetView(mGLRenderTargetView, D3GLVECTOR4(0, 0, 0, 0));				
-	//}
-
-	//mHasBeenDrawnTo = true;
+	mHasBeenDrawnTo = true;
 }
 
 void GLRenderWindow::SetAsTarget()
@@ -638,7 +492,7 @@ void GLRenderWindow::SetAsTarget()
 		//mRenderDevice->mCurDrawLayer->Flush();
 
 	mHasBeenTargeted = true;
-	mRenderDevice->mCurRenderTarget = this;	
+	mRenderDevice->mCurRenderTarget = this;
 }
 
 void GLRenderWindow::Resized()
@@ -654,20 +508,20 @@ void GLRenderWindow::Resized()
 		mGLRenderTargetView->Release();
 		mGLBackBuffer->Release();
 		GLCHECK(mGLSwapChain->ResizeBuffers(1, mWidth, mHeight, GLGI_FORMAT_R8G8B8A8_UNORM, 0));
-		
-		GLCHECK(mGLSwapChain->GetBuffer(0, __uuidof(IGL10Texture2D), (LPVOID*)&mGLBackBuffer));	
-		GLCHECK(mRenderDevice->mGLDevice->CreateRenderTargetView(mGLBackBuffer, NULL, &mGLRenderTargetView));		
+
+		GLCHECK(mGLSwapChain->GetBuffer(0, __uuidof(IGL10Texture2D), (LPVOID*)&mGLBackBuffer));
+		GLCHECK(mRenderDevice->mGLDevice->CreateRenderTargetView(mGLBackBuffer, NULL, &mGLRenderTargetView));
 	}*/
 }
 
 void GLRenderWindow::Present()
-{		
-	SDL_GL_SwapWindow(mSDLWindow);	
-	//GLCHECK(mGLSwapChain->Present((mWindow->mFlags & BFWINDOW_VSYNC) ? 1 : 0, 0));	
+{
+	SDL_GL_SwapWindow(mSDLWindow);
+	//GLCHECK(mGLSwapChain->Present((mWindow->mFlags & BFWINDOW_VSYNC) ? 1 : 0, 0));
 }
 
 void GLRenderWindow::CopyBitsTo(uint32* dest, int width, int height)
-{	
+{
 	mCurDrawLayer->Flush();
 
 	NOT_IMPL;
@@ -706,10 +560,12 @@ void GLRenderWindow::CopyBitsTo(uint32* dest, int width, int height)
 ///
 
 GLRenderDevice::GLRenderDevice()
-{	
+{
 	//mGLDevice = NULL;
+	mCurShader = NULL;
+	mGLVAO = 0;
 	mGLVertexBuffer = 0;
-	mGLIndexBuffer = 0;	
+	mGLIndexBuffer = 0;
 	mBlankTexture = 0;
     mFreeBatchHead = NULL;
 }
@@ -720,10 +576,27 @@ GLRenderDevice::~GLRenderDevice()
 
 bool GLRenderDevice::Init(BFApp* app)
 {
-	SdlBFApp* winApp = (SdlBFApp*) app;				
+	SdlBFApp* winApp = (SdlBFApp*) app;
 
-	///	
-	
+	//RenderState* glRenderState;
+	if (mDefaultRenderState == NULL)
+	{
+		auto dxRenderState = (RenderState*)CreateRenderState(NULL);
+
+		mDefaultRenderState = dxRenderState;
+		mDefaultRenderState->mDepthFunc = DepthFunc_Less;
+		mDefaultRenderState->mWriteDepthBuffer = true;
+
+		mPhysRenderState = mDefaultRenderState;
+	}
+	else
+	{
+		//glRenderState = (DXRenderState*)mDefaultRenderState;
+		//glRenderState->ReinitNative();
+	}
+
+	///
+
 	////Use GL10_CREATE_DEVICE_DEBUG for PIX
 	//GLCHECK(GL10CreateDevice(NULL, GL10_DRIVER_TYPE_HARDWARE, NULL, GL10_CREATE_DEVICE_DEBUG, GL10_SDK_VERSION, &mGLDevice));
 	////GLCHECK(GL10CreateDevice(NULL, GL10_DRIVER_TYPE_HARDWARE, NULL, 0, GL10_SDK_VERSION, &mGLDevice));
@@ -737,7 +610,7 @@ bool GLRenderDevice::Init(BFApp* app)
 	//IGLGIFactory* pGLGIFactory = NULL;
 	//GLCHECK(pGLGIAdapter->GetParent(__uuidof(IGLGIFactory), reinterpret_cast<void**>(&mGLGIFactory)));
 
-	////set rasterizer	
+	////set rasterizer
 	//GL10_RASTERIZER_DESC rasterizerState;
 	//rasterizerState.CullMode = GL10_CULL_NONE;
 	//rasterizerState.FillMode = GL10_FILL_SOLID;
@@ -751,10 +624,10 @@ bool GLRenderDevice::Init(BFApp* app)
 	//rasterizerState.MultisampleEnable = true;
  //   rasterizerState.AntialiasedLineEnable = true;
 	//
-	//mGLDevice->CreateRasterizerState( &rasterizerState, &mGLRasterizerStateClipped);	
+	//mGLDevice->CreateRasterizerState( &rasterizerState, &mGLRasterizerStateClipped);
 	//
 	//rasterizerState.ScissorEnable = false;
-	//mGLDevice->CreateRasterizerState( &rasterizerState, &mGLRasterizerStateUnclipped);	
+	//mGLDevice->CreateRasterizerState( &rasterizerState, &mGLRasterizerStateUnclipped);
 	//mGLDevice->RSSetState(mGLRasterizerStateUnclipped);
 	//
 	//IGL10BlendState* g_pBlendState = NULL;
@@ -782,192 +655,70 @@ bool GLRenderDevice::Init(BFApp* app)
 }
 
 void GLRenderDevice::FrameStart()
-{	
+{
 	mCurRenderTarget = NULL;
 	mPhysRenderWindow = NULL;
-	mPhysShader = NULL;
-	RenderWindowList::iterator itr = mRenderWindowList.begin();
-	while (itr != mRenderWindowList.end())
+
+	for (auto aRenderWindow : mRenderWindowList)
 	{
-		(*itr)->mHasBeenDrawnTo = false;
-		(*itr)->mHasBeenTargeted = false;
-		++itr;
-	}	
+		aRenderWindow->mHasBeenDrawnTo = false;
+		aRenderWindow->mHasBeenTargeted = false;
+	}
 }
 
 void GLRenderDevice::FrameEnd()
-{	
-	RenderWindowList::iterator itr = mRenderWindowList.begin();
-	while (itr != mRenderWindowList.end())
+{
+	for (auto aRenderWindow : mRenderWindowList)
 	{
-		RenderWindow* aRenderWindow = *itr;		
 		if (aRenderWindow->mHasBeenTargeted)
 		{
-			//aRenderWindow->mCurDrawLayer->Flush();
+			PhysSetRenderWindow(aRenderWindow);
+			PhysSetRenderState(mDefaultRenderState);
 
-			DrawLayerList::iterator drawLayerItr = aRenderWindow->mDrawLayerList.begin();
-			while (drawLayerItr != aRenderWindow->mDrawLayerList.end())
+			for (auto drawLayer : aRenderWindow->mDrawLayerList)
 			{
-				DrawLayer* drawLayer = *drawLayerItr;
 				drawLayer->Flush();
-				++drawLayerItr;
 			}
 
 			aRenderWindow->Present();
 		}
-		++itr;
 	}
 }
 
-Texture* GLRenderDevice::LoadTexture(ImageData* imageData, bool additive)
+Texture* GLRenderDevice::LoadTexture(ImageData* imageData, int flags)
 {
-	imageData->mIsAdditive = additive;	
+	imageData->mIsAdditive = (flags & TextureFlag_Additive) != 0;
 	imageData->PremultiplyAlpha();
 
 	//int w = power_of_two(imageData->mWidth);
 	//int h = power_of_two(imageData->mHeight);
-
-	if (mBlankTexture == 0)
-	{
-		glGenTextures(1, &mBlankTexture);
-		glBindTexture(GL_TEXTURE_2D, mBlankTexture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        /*if (bf_glCompressedTexImage2D != NULL)
-        {
-            uint64 hwData = 0;
-            bf_glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG, 4, 4, 0,
-                                      sizeof(hwData), (uint8*)&hwData);
-        }
-        else*/
-        {
-            uint16 color = 0;
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0,
-                         GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, &color);
-        }
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	}
-
 	GLTexture* glTexture = new GLTexture();
-	glTexture->mGLTexture2 = mBlankTexture;
-
-	int texCount = 0;
-	texCount = (imageData->mHWBitsType == HWBITS_PVRTC_2X4BPPV1) ? 2 : 1;
-    
-	for (int texNum = 0; texNum < 2/*texCount*/; texNum++)
-	{
-		GLuint glTextureID;
-		glGenTextures(1, &glTextureID);
-		glBindTexture(GL_TEXTURE_2D, glTextureID);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    
-		if (imageData->mHWBits != NULL)
-		{
-			int internalFormat = (imageData->mHWBitsType == HWBITS_PVRTC_2BPPV1) ?
-				GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG :
-				GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG;
-
-			int texSize = imageData->mHWBitsLength / texCount;
-
-			bf_glCompressedTexImage2D(GL_TEXTURE_2D, 0, internalFormat, imageData->mWidth, imageData->mHeight, 0,
-				texSize, (uint8*)imageData->mHWBits /*+ (texNum * texSize)*/);
-		}
-		else
-		{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageData->mWidth, imageData->mHeight, 0,
-				GL_RGBA, GL_UNSIGNED_BYTE, imageData->mBits);
-		}
-
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-		if (texNum == 0)
-			glTexture->mGLTexture = glTextureID;
-		else
-			glTexture->mGLTexture2 = glTextureID;
-	}
-
+	glTexture->mRenderDevice = this;
 	glTexture->mWidth = imageData->mWidth;
 	glTexture->mHeight = imageData->mHeight;
-	glTexture->AddRef();
+	glTexture->mImageData = imageData;
+	imageData->AddRef();
 
 	return glTexture;
-
-	//IGL10ShaderResourceView* d3DShaderResourceView = NULL;
-
-	//imageData->PremultiplyAlpha();
-
-	//int aWidth = 0;
-	//int aHeight = 0;
-	//
-	//// Create the render target texture
-	//GL10_TEXTURE2D_DESC desc;
-	//ZeroMemory(&desc, sizeof(desc));
-	//desc.Width = imageData->mWidth;
-	//desc.Height = imageData->mHeight;
-	//desc.MipLevels = 1;
-	//desc.ArraySize = 1;
-	//desc.Format = GLGI_FORMAT_R8G8B8A8_UNORM;
-	//desc.SampleDesc.Count = 1;
-	//desc.Usage = GL10_USAGE_DYNAMIC;
-	//desc.CPUAccessFlags = GL10_CPU_ACCESS_WRITE;
-	//desc.BindFlags = GL10_BIND_SHADER_RESOURCE;
-
-	//IGL10Texture2D* d3DTexture = NULL;
-	//GLCHECK(mGLDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
-
-	//aWidth = imageData->mWidth;
-	//aHeight = imageData->mHeight;
-
-	//GL10_MAPPED_TEXTURE2D mapTex;
-	//GLCHECK(d3DTexture->Map(GL10CalcSubresource(0, 0, 1), GL10_MAP_WRITE_DISCARD, 0, &mapTex));
-	//uint8* destPtr = (uint8*) mapTex.pData;
-	//uint8* srcPtr = (uint8*) imageData->mBits;
-	//for (int y = 0; y < imageData->mHeight; y++)
-	//{
-	//	memcpy(destPtr, srcPtr, aWidth*sizeof(uint32));
-	//	srcPtr += aWidth*sizeof(uint32);
-	//	destPtr += mapTex.RowPitch;
-	//}
-	//d3DTexture->Unmap(0);			
-
-	//GL10_SHADER_RESOURCE_VIEW_DESC srDesc;
-	//srDesc.Format = desc.Format;
-	//srDesc.ViewDimension = GL10_SRV_DIMENSION_TEXTURE2D;
-	//srDesc.Texture2D.MostDetailedMip = 0;
-	//srDesc.Texture2D.MipLevels = 1;	
-	//	
-	//GLCHECK(mGLDevice->CreateShaderResourceView(d3DTexture, &srDesc, &d3DShaderResourceView));
-
-	//GLTexture* aTexture = new GLTexture();
-	//aTexture->mWidth = aWidth;
-	//aTexture->mHeight = aHeight;
-	//aTexture->mGLTexture = d3DShaderResourceView;
-	//aTexture->AddRef();
-	//return aTexture;
 }
 
-Shader* GLRenderDevice::LoadShader(const StringImpl& fileName)
+Shader* GLRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition)
 {
 	GLShader* glShader = new GLShader();
 
+	glShader->mVertexSize = sizeof(GLVertex3D);
 	glShader->mGLVertexShader = bf_glCreateShader(GL_VERTEX_SHADER);
 	glShader->mGLFragmentShader = bf_glCreateShader(GL_FRAGMENT_SHADER);
-    
+
 	GLint vertProgramLen = 0;
 	GLint fragProgramLen = 0;
-    
+
 #ifdef BF_PLATFORM_OPENGL_ES2
-	GLchar* vertProgram = (GLchar*)LoadBinaryData(fileName + L"_es.vert", &vertProgramLen);
-	GLchar* fragProgram = (GLchar*)LoadBinaryData(fileName + L"_es.frag", &fragProgramLen);
+	GLchar* vertProgram = (GLchar*)LoadBinaryData(fileName + "_es.vert", &vertProgramLen);
+	GLchar* fragProgram = (GLchar*)LoadBinaryData(fileName + "_es.frag", &fragProgramLen);
 #else
-	GLchar* vertProgram = (GLchar*)LoadBinaryData(fileName + L".vert", &vertProgramLen);
-	GLchar* fragProgram = (GLchar*)LoadBinaryData(fileName + L".frag", &fragProgramLen);
+	GLchar* vertProgram = (GLchar*)LoadBinaryData(fileName + ".vert", &vertProgramLen);
+	GLchar* fragProgram = (GLchar*)LoadBinaryData(fileName + ".frag", &fragProgramLen);
 #endif
 
 	if ((vertProgram == NULL) || (fragProgram == NULL))
@@ -979,17 +730,17 @@ Shader* GLRenderDevice::LoadShader(const StringImpl& fileName)
 
 	int infoLogLen = 0;
 	char infoLog[2048];
-		
+
 	bf_glShaderSource(glShader->mGLVertexShader, 1, (const GLchar**)&vertProgram, &vertProgramLen);
 	bf_glCompileShader(glShader->mGLVertexShader);
 	bf_glGetShaderInfoLog(glShader->mGLVertexShader, 2048, &infoLogLen, infoLog);
 	GLint compiled = 0;
-    
+
 	//bf_glGetObjectParameterivARB(glShader->mGLVertexShader, GL_COMPILE_STATUS, &compiled);
     bf_glGetShaderiv(glShader->mGLVertexShader, GL_COMPILE_STATUS, &compiled);
 	if (!compiled)
 		BF_FATAL(StrFormat("Shader error: %s", infoLog).c_str());
-	
+
 	bf_glShaderSource(glShader->mGLFragmentShader, 1, (const GLchar**)&fragProgram, &fragProgramLen);
 	bf_glCompileShader(glShader->mGLFragmentShader);
 	bf_glGetShaderInfoLog(glShader->mGLFragmentShader, 2048, &infoLogLen, infoLog);
@@ -1004,121 +755,155 @@ Shader* GLRenderDevice::LoadShader(const StringImpl& fileName)
 	bf_glAttachShader(glShader->mGLProgram, glShader->mGLFragmentShader);
 
 	bf_glLinkProgram(glShader->mGLProgram);
-	bf_glUseProgram(glShader->mGLProgram);
-	
-	glShader->mAttribPosition = bf_glGetAttribLocation(glShader->mGLProgram, "position");	
-	glShader->mAttribTexCoord0 = bf_glGetAttribLocation(glShader->mGLProgram, "texCoord0");	
-	glShader->mAttribColor = bf_glGetAttribLocation(glShader->mGLProgram, "color");	
-	glShader->mAttribTex0 = bf_glGetUniformLocation(glShader->mGLProgram, "tex");	
-	glShader->mAttribTex1 = bf_glGetUniformLocation(glShader->mGLProgram, "tex2");	
 
-	if (glShader->mAttribPosition >= 0)
-		bf_glEnableVertexAttribArray(glShader->mAttribPosition);
-	if (glShader->mAttribTexCoord0 >= 0)
-		bf_glEnableVertexAttribArray(glShader->mAttribTexCoord0);
-	if (glShader->mAttribColor >= 0)
-		bf_glEnableVertexAttribArray(glShader->mAttribColor);
+	glShader->mAttribPosition = bf_glGetAttribLocation(glShader->mGLProgram, "position");
+	glShader->mAttribTexCoord0 = bf_glGetAttribLocation(glShader->mGLProgram, "texCoord0");
+	glShader->mAttribColor = bf_glGetAttribLocation(glShader->mGLProgram, "color");
+	glShader->mAttribTex0 = bf_glGetUniformLocation(glShader->mGLProgram, "tex");
+	glShader->mAttribTex1 = bf_glGetUniformLocation(glShader->mGLProgram, "tex2");
 
 	return glShader;
 }
 
-void GLRenderDevice::SetShader(Shader* shader)
+void GLRenderDevice::PhysSetRenderState(RenderState* renderState)
 {
-	mShaderChanged = true;
-	mCurShader = shader;
-}
+	mCurShader = (GLShader*)renderState->mShader;
+	if (mCurShader != NULL)
+	{
+		bf_glUseProgram(mCurShader->mGLProgram);
 
-void GLRenderDevice::PhysSetAdditive(bool additive)
-{
-	if (additive)		
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE);	
+		GLRenderDevice* aRenderDevice = (GLRenderDevice*)gBFApp->mRenderDevice;
+
+		//TODO: Cache more
+
+		GLfloat matrix[4][4];
+		CreateOrthographicOffCenter(0.0f, (float)mPhysRenderWindow->mWidth, (float)mPhysRenderWindow->mHeight, 0.0f, -100.0f, 100.0f, matrix);
+		GLint matrixLoc = bf_glGetUniformLocation(mCurShader->mGLProgram, "screenMatrix");
+		//BF_ASSERT(matrixLoc >= 0);
+		if (matrixLoc >= 0)
+			bf_glUniformMatrix4fv(matrixLoc, 1, false, (float*)matrix);
+	}
+
+	if (renderState->mClipped)
+	{
+		glEnable(GL_SCISSOR_TEST);
+ 		glScissor((GLsizei)renderState->mClipRect.mX,
+			mPhysRenderWindow->mHeight - (GLsizei)renderState->mClipRect.mY - (GLsizei)renderState->mClipRect.mHeight,
+ 			(GLsizei)renderState->mClipRect.mWidth, (GLsizei)renderState->mClipRect.mHeight);
+	}
 	else
-		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);	
-	mCurAdditive = additive;
-}
+	{
+		glDisable(GL_SCISSOR_TEST);
+	}
 
-void GLRenderDevice::SetClip(float x, float y, float width, float height)
-{
-	//TODO: Store state in draw batcher
-	mCurDrawLayer->Flush();
-	
-	NOT_IMPL;
-
-	/*GL10_RECT rects[1];
-	rects[0].left = (int) x;
-	rects[0].right = (int) (x + width);
-	rects[0].top = (int) y;
-	rects[0].bottom = (int) (y + height);
-
-	mGLDevice->RSSetScissorRects(1, rects);
-	mGLDevice->RSSetState(mGLRasterizerStateClipped);*/
-}
-
-void GLRenderDevice::DisableClip()
-{
-	mCurDrawLayer->Flush();
-	NOT_IMPL;
-	//mGLDevice->RSSetState(mGLRasterizerStateUnclipped);
+	mPhysRenderState = renderState;
 }
 
 Texture* GLRenderDevice::CreateRenderTarget(int width, int height, bool destAlpha)
 {
 	NOT_IMPL;
+}
 
-	//IGL10ShaderResourceView* d3DShaderResourceView = NULL;
-	//
-	//int aWidth = 0;
-	//int aHeight = 0;
-	//
-	//// Create the render target texture
-	//GL10_TEXTURE2D_DESC desc;
-	//ZeroMemory(&desc, sizeof(desc));
-	//desc.Width = width;
-	//desc.Height = height;
-	//desc.MipLevels = 1;
-	//desc.ArraySize = 1;
-	//desc.Format = GLGI_FORMAT_R8G8B8A8_UNORM;
-	//desc.SampleDesc.Count = 1;	
-	//UINT qualityLevels = 0;
+void GLRenderDevice::SetRenderState(RenderState* renderState)
+{
+	mCurRenderState = renderState;
+}
 
-	//int samples = 1;
-	//GLCHECK(mGLDevice->CheckMultisampleQualityLevels(GLGI_FORMAT_R8G8B8A8_UNORM, samples, &qualityLevels));
 
-	//desc.SampleDesc.Count = samples;
-	//desc.SampleDesc.Quality = qualityLevels-1;
+void GLSetTextureCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+/*#ifdef BF_PLATFORM_OPENGL_ES2
+	//bf_glClientActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, ((GLTexture*)mTexture)->mGLTexture);
+	glUniform1i(curShader->mAttribTex0, 0);
 
-	//desc.Usage = GL10_USAGE_DEFAULT;
-	//desc.CPUAccessFlags = 0; //GL10_CPU_ACCESS_WRITE;
-	//desc.BindFlags = GL10_BIND_SHADER_RESOURCE | GL10_BIND_RENDER_TARGET;
+	//bf_glClientActiveTexture(GL_TEXTURE1);
 
-	//IGL10Texture2D* d3DTexture = NULL;
-	//GLCHECK(mGLDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, ((GLTexture*)mTexture)->mGLTexture2);
+	glUniform1i(curShader->mAttribTex1, 1);
 
-	//aWidth = width;
-	//aHeight = height;
+	//glEnable(GL_TEXTURE_2D);
+#else
+	glActiveTexture(GL_TEXTURE0 + mTextureIdx);
+	glBindTexture(GL_TEXTURE_2D, ((GLTexture*)mTexture)->mGLTexture);
+#endif*/
 
-	//GL10_SHADER_RESOURCE_VIEW_DESC srDesc;
-	//srDesc.Format = desc.Format;
-	//srDesc.ViewDimension = GL10_SRV_DIMENSION_TEXTURE2D;
-	//srDesc.Texture2D.MostDetailedMip = 0;
-	//srDesc.Texture2D.MipLevels = 1;	
-	//
-	//if (qualityLevels != 0)
-	//{
-	//	srDesc.ViewDimension = GL10_SRV_DIMENSION_TEXTURE2DMS;
-	//}
+	auto glTexture = (GLTexture*)mTexture;
+	auto glRenderDevice = (GLRenderDevice*)renderDevice;
 
-	//GLCHECK(mGLDevice->CreateShaderResourceView(d3DTexture, &srDesc, &d3DShaderResourceView));
-	//
-	//IGL10RenderTargetView*	d3DRenderTargetView;	
-	//GLCHECK(mGLDevice->CreateRenderTargetView(d3DTexture, NULL, &d3DRenderTargetView));
+	if (glRenderDevice->mBlankTexture == 0)
+	{
+		glGenTextures(1, &glRenderDevice->mBlankTexture);
+		glBindTexture(GL_TEXTURE_2D, glRenderDevice->mBlankTexture);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	//GLTexture* aRenderTarget = new GLTexture();
-	//aRenderTarget->mWidth = width;
-	//aRenderTarget->mHeight = height;
-	//aRenderTarget->mRenderDevice = this;
-	//aRenderTarget->mGLTexture = d3DShaderResourceView;
-	//aRenderTarget->mGLRenderTargetView = d3DRenderTargetView;
-	//aRenderTarget->AddRef();
-	//return aRenderTarget;	
+		/*if (bf_glCompressedTexImage2D != NULL)
+		{
+			uint64 hwData = 0;
+			bf_glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG, 4, 4, 0,
+									  sizeof(hwData), (uint8*)&hwData);
+		}
+		else*/
+		{
+			uint16 color = 0;
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0,
+				GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, &color);
+		}
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	}
+
+	if (glTexture->mImageData != NULL)
+	{
+		glTexture->mGLTexture2 = glRenderDevice->mBlankTexture;
+
+		int texCount = 1;
+		//texCount = (imageData->mHWBitsType == HWBITS_PVRTC_2X4BPPV1) ? 2 : 1;
+
+		for (int texNum = 0; texNum < 2/*texCount*/; texNum++)
+		{
+			GLuint glTextureID;
+			glGenTextures(1, &glTextureID);
+			glBindTexture(GL_TEXTURE_2D, glTextureID);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+			//if (imageData->mHWBits != NULL)
+			//{
+			//	int internalFormat = (imageData->mHWBitsType == HWBITS_PVRTC_2BPPV1) ?
+			//		GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG :
+			//		GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG;
+
+			//	int texSize = imageData->mHWBitsLength / texCount;
+
+			//	bf_glCompressedTexImage2D(GL_TEXTURE_2D, 0, internalFormat, imageData->mWidth, imageData->mHeight, 0,
+			//		texSize, (uint8*)imageData->mHWBits /*+ (texNum * texSize)*/);
+			//}
+			//else
+			{
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, glTexture->mImageData->mWidth, glTexture->mImageData->mHeight, 0,
+					GL_RGBA, GL_UNSIGNED_BYTE, glTexture->mImageData->mBits);
+			}
+
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+			if (texNum == 0)
+				glTexture->mGLTexture = glTextureID;
+			else
+				glTexture->mGLTexture2 = glTextureID;
+		}
+
+		glTexture->mImageData->Deref();
+		glTexture->mImageData = NULL;
+	}
+
+	bf_glActiveTexture(GL_TEXTURE0 + mTextureIdx);
+	//glUniform1i(curShader->mAttribTex0, 0);
+	glBindTexture(GL_TEXTURE_2D, glTexture->mGLTexture);
 }

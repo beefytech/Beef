@@ -22,7 +22,7 @@ class RenderState;
 class DrawBatch : public RenderCmd
 {
 public:
-	DrawLayer*				mDrawLayer;	
+	DrawLayer*				mDrawLayer;
 	int						mId;
 
 	bool					mIsVertexBufferHead;
@@ -32,11 +32,11 @@ public:
 	int						mVtxSize;
 	int						mVtxIdx;
 	int						mAllocatedVertices;
-	
+
 	uint16*					mIndices;
 	int						mIdxIdx;
 	int						mAllocatedIndices;
-		
+
 	Texture*				mCurTextures[MAX_TEXTURES];
 
 public:
@@ -46,10 +46,10 @@ public:
 	virtual void			Free() override;
 
 	void					Clear();
-	DrawBatch*				AllocateChainedBatch(int minVtxCount, int minIdxCount);		
+	DrawBatch*				AllocateChainedBatch(int minVtxCount, int minIdxCount);
 	virtual void*			AllocTris(int vtxCount);
 	virtual void*			AllocStrip(int vtxCount);
-	virtual void			AllocIndexed(int vtxCount, int idxCount, void** verticesOut, uint16** indicesOut, uint16* idxOfsOut);	
+	virtual void			AllocIndexed(int vtxCount, int idxCount, void** verticesOut, uint16** indicesOut, uint16* idxOfsOut);
 };
 
 #define DRAWBUFFER_CMDBUFFER_SIZE 64*1024
@@ -58,26 +58,26 @@ public:
 
 class DrawLayer
 {
-public:			
+public:
 	SLIList<RenderCmd*>		mRenderCmdList;
 	DrawBatch*				mCurDrawBatch;
 
-	RenderWindow*			mRenderWindow;	
+	RenderWindow*			mRenderWindow;
 	RenderDevice*			mRenderDevice;
 
 	void*					mIdxBuffer;
 	void*					mVtxBuffer;
 	void*					mRenderCmdBuffer;
 	int						mIdxByteIdx;
-	int						mVtxByteIdx;	
+	int						mVtxByteIdx;
 	int						mRenderCmdByteIdx;
 
 	Texture*				mCurTextures[MAX_TEXTURES];
-	
+
 public:
 	template <typename T>
 	T*						AllocRenderCmd(int extraBytes = 0)
-	{ 
+	{
 		if (mRenderCmdByteIdx + sizeof(T) + extraBytes >= DRAWBUFFER_CMDBUFFER_SIZE)
 		{
 			mRenderCmdBuffer = mRenderDevice->mPooledRenderCmdBuffers.AllocMemoryBlock();
@@ -93,9 +93,9 @@ public:
 		return cmd;
 	}
 
-public:		
+public:
 	void					CloseDrawBatch();
-	virtual DrawBatch*		CreateDrawBatch() = 0;	
+	virtual DrawBatch*		CreateDrawBatch() = 0;
 	virtual DrawBatch*		AllocateBatch(int minVtxCount, int minIdxCount);
 	void					QueueRenderCmd(RenderCmd* renderCmd);
 	virtual RenderCmd*		CreateSetTextureCmd(int textureIdx, Texture* texture) = 0;

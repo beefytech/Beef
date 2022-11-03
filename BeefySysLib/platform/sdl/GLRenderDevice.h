@@ -1,11 +1,12 @@
 #pragma once
 
 #include "Common.h"
+#include "util/Dictionary.h"
 
 #ifdef BF_PLATFORM_OPENGL_ES2
-#include "SDL_opengles2.h"
+#include <SDL2/SDL_opengles2.h>
 #else
-#include "SDL_opengl.h"
+#include <SDL2/SDL_opengl.h>
 #endif
 
 #include "gfx/Shader.h"
@@ -26,6 +27,7 @@ public:
 	GLRenderDevice*			mRenderDevice;
 	GLuint					mGLTexture;
 	GLuint					mGLTexture2;
+	ImageData*				mImageData;
 	//IGL10RenderTargetView*	mGLRenderTargetView;
 
 public:
@@ -33,6 +35,7 @@ public:
 	~GLTexture();
 
 	virtual void			PhysSetAsTarget();
+	virtual void			Blt(ImageData* imageData, int x, int y) override;
 };
 
 class GLShaderParam : public ShaderParam
@@ -48,7 +51,7 @@ public:
 	virtual void			SetFloat4(float x, float y, float z, float w) override;
 };
 
-typedef std::map<String, GLShaderParam*> GLShaderParamMap;
+typedef Dictionary<String, GLShaderParam*> GLShaderParamMap;
 
 class GLShader : public Shader
 {
@@ -63,15 +66,26 @@ public:
 	GLint mAttribColor;
 	GLint mAttribTex0;
 	GLint mAttribTex1;
-	
-	GLShaderParamMap		mParamsMap;	
+
+	GLShaderParamMap		mParamsMap;
 
 public:
 	GLShader();
 	~GLShader();
-	
+
 	virtual ShaderParam*	GetShaderParam(const StringImpl& name) override;
 };
+
+class GLSetTextureCmd : public RenderCmd
+{
+public:
+	int						mTextureIdx;
+	Texture*				mTexture;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
 
 class GLDrawBatch : public DrawBatch
 {
@@ -79,19 +93,19 @@ public:
 	//IGL10Buffer*			mGLBuffer;
 
 public:
-	GLDrawBatch(int minVtxSize = 0, int minIdxSize = 0);
+	GLDrawBatch();
 	~GLDrawBatch();
 
-	virtual void			Lock();
-	virtual void			Draw();
+	//virtual void			Lock();
+	virtual void			Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
 class GLDrawLayer : public DrawLayer
 {
 public:
 	virtual DrawBatch*		CreateDrawBatch();
-	virtual DrawBatch*		AllocateBatch(int minVtxCount, int minIdxCount) override;
-	virtual void			FreeBatch(DrawBatch* drawBatch) override;
+	virtual RenderCmd*		CreateSetTextureCmd(int textureIdx, Texture* texture) override;
+	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) override;
 
 public:
 	GLDrawLayer();
@@ -108,7 +122,7 @@ public:
 	//IGL10RenderTargetView*	mGLRenderTargetView;
 	bool					mResizePending;
 	int						mPendingWidth;
-	int						mPendingHeight;		
+	int						mPendingHeight;
 
 public:
 	virtual void			PhysSetAsTarget();
@@ -136,9 +150,11 @@ public:
 	//IGL10RasterizerState*	mGLRasterizerStateClipped;
 	//IGL10RasterizerState*	mGLRasterizerStateUnclipped;
 
+	GLuint					mGLVAO;
 	GLuint					mGLVertexBuffer;
 	GLuint					mGLIndexBuffer;
 	GLuint					mBlankTexture;
+	GLShader*				mCurShader;
 
 	bool					mHasVSync;
 
@@ -146,10 +162,11 @@ public:
     GLDrawBatch*            mFreeBatchHead;
 
 public:
-	virtual void			PhysSetAdditive(bool additive);
-	virtual void			PhysSetShader(Shader* shaderPass);
+	//virtual void			PhysSetAdditive(bool additive);
+	//virtual void			PhysSetShader(Shader* shaderPass);
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
-	virtual void			PhysSetRenderTarget(Texture* renderTarget);
+	virtual void			PhysSetRenderState(RenderState* renderState) override;
+	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;
 
 public:
 	GLRenderDevice();
@@ -159,13 +176,16 @@ public:
 	void					FrameStart() override;
 	void					FrameEnd() override;
 
-	Texture*				LoadTexture(ImageData* imageData, bool additive) override;
-	Shader*					LoadShader(const StringImpl& fileName) override;
+	Texture*				LoadTexture(ImageData* imageData, int flags) override;
+	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
 	Texture*				CreateRenderTarget(int width, int height, bool destAlpha) override;
 
-	void					SetShader(Shader* shader) override;
+	virtual Texture*		CreateDynTexture(int width, int height) override { return NULL; }
+	virtual void			SetRenderState(RenderState* renderState) override;
+
+	/*void					SetShader(Shader* shader) override;
 	virtual void			SetClip(float x, float y, float width, float height) override;
-	virtual void			DisableClip() override;
+	virtual void			DisableClip() override;*/
 };
 
 NS_BF_END;
