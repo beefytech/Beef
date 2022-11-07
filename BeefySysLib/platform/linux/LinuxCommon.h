@@ -28,6 +28,10 @@
 
 //#define offsetof(type, member)  __builtin_offsetof (type, member)
 
+#ifdef __arm__
+#define BF_PLATFORM_OPENGL_ES2
+#endif
+
 extern "C"
 {
 //#define FFI_BUILDING
@@ -136,7 +140,7 @@ typedef void* HMODULE;
 #if defined _DEBUG || defined BF_DEBUG_ASSERTS
 #define BF_DBG_FATAL(msg) (void) ((Beefy::BFFatalError(msg, __FILE__, __LINE__), 0) )
 #else
-#define BF_DBG_FATAL(msg) 
+#define BF_DBG_FATAL(msg)
 #endif
 
 #define BF_NOINLINE __attribute__ ((noinline))
@@ -159,7 +163,7 @@ static char* itoa(int value, char* str, int base)
 
 inline uint32 InterlockedCompareExchange(volatile uint32* dest, uint32 exch, uint32 comp)
 {
-	return __sync_val_compare_and_swap(dest, comp, exch);    
+	return __sync_val_compare_and_swap(dest, comp, exch);
 }
 
 inline uint64 InterlockedCompareExchange64(volatile int64* dest, int64 exch, int64 comp)

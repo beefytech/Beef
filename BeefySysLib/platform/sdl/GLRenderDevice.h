@@ -117,9 +117,6 @@ class GLRenderWindow : public RenderWindow
 public:
 	SDL_Window*				mSDLWindow;
 	GLRenderDevice*			mRenderDevice;
-	//IGLGISwapChain*			mGLSwapChain;
-	//IGL10Texture2D*		mGLBackBuffer;
-	//IGL10RenderTargetView*	mGLRenderTargetView;
 	bool					mResizePending;
 	int						mPendingWidth;
 	int						mPendingHeight;
@@ -138,18 +135,9 @@ public:
 	void					CopyBitsTo(uint32* dest, int width, int height);
 };
 
-typedef std::vector<GLDrawBatch*> GLDrawBatchVector;
-
 class GLRenderDevice : public RenderDevice
 {
 public:
-	//IGLGIFactory*			mGLGIFactory;
-	//IGL10Device*			mGLDevice;
-	//IGL10BlendState*		mGLNormalBlendState;
-	//IGL10BlendState*		mGLAdditiveBlendState;
-	//IGL10RasterizerState*	mGLRasterizerStateClipped;
-	//IGL10RasterizerState*	mGLRasterizerStateUnclipped;
-
 	GLuint					mGLVAO;
 	GLuint					mGLVertexBuffer;
 	GLuint					mGLIndexBuffer;
@@ -158,7 +146,6 @@ public:
 
 	bool					mHasVSync;
 
-	GLDrawBatchVector		mDrawBatchPool;
     GLDrawBatch*            mFreeBatchHead;
 
 public:

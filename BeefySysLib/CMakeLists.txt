@@ -106,6 +106,10 @@ if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-multichar")
 endif(NOT MSVC)
 
+if (DEFINED BF_ENABLE_SDL)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBF_ENABLE_SDL")
+endif()
+
 ################ Files ################
 #   --   Add files to project.   --   #
 #######################################
@@ -117,8 +121,7 @@ file(GLOB SRC_FILES
     CachedDataStream.cpp
     Common.cpp
     DataStream.cpp
-    FileStream.cpp
-    HeadlessApp.cpp
+    FileStream.cpp    
     MemStream.cpp
     ResLib.cpp
     Startup.cpp
@@ -308,11 +311,20 @@ if (${APPLE})
     file(GLOB SRC_FILES_OS
         platform/darwin/BFPlatform.cpp
         platform/darwin/DarwinCommon.cpp
+        HeadlessApp.cpp
     )
 else()
     file(GLOB SRC_FILES_OS
         platform/linux/BFPlatform.cpp
         platform/linux/LinuxCommon.cpp
+        HeadlessApp.cpp
+    )
+endif()
+
+if (DEFINED BF_ENABLE_SDL)
+    file(GLOB SRC_FILES_OS
+        platform/sdl/SdlBFApp.cpp
+        platform/sdl/GLRenderDevice.cpp
     )
 endif()
 

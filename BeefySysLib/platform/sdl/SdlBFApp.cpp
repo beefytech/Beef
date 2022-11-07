@@ -24,13 +24,21 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	mSDLWindow = SDL_CreateWindow(title.c_str(), x, y, width, height, sdlWindowFlags);
 
+#ifndef BF_PLATFORM_OPENGL_ES2
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#endif
 
 	if (!SDL_GL_CreateContext(mSDLWindow))
 	{
-		BF_FATAL(StrFormat("Unable to create OpenGL context: %s", SDL_GetError()).c_str());
+		BF_FATAL(StrFormat(
+#ifdef BF_PLATFORM_OPENGL_ES2
+			"Unable to create OpenGLES context: %s"
+#else
+			"Unable to create OpenGL context: %s"
+#endif
+			, SDL_GetError()).c_str());
 		SDL_Quit();
 		exit(2);
 	}
@@ -324,7 +332,7 @@ void SdlBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 
 uint32 SdlBFApp::GetClipboardFormat(const StringImpl& format)
 {
-	return CF_TEXT;
+	return /*CF_TEXT*/1;
 }
 
 void* SdlBFApp::GetClipboardData(const StringImpl& format, int* size)

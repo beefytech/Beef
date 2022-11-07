@@ -195,50 +195,91 @@ namespace IDE
 			gApp.GetProjectBuildDir(project, projectBuildDir);
 			File.WriteAll(scope $"{projectBuildDir}/ObjectArgs.txt", .((.)objectsArg.Ptr, objectsArg.Length)).IgnoreError();
 
-		    String arCmds = scope String(""); //-O2 -Rpass=inline 
+		    String arCmds = null; //-O2 -Rpass=inline 
 															 //(doClangCPP ? "-lc++abi " : "") +
 
-		    arCmds.AppendF("CREATE {}\n", targetPath);
+			String arArgs = scope .();
 
-			void AddObject(StringView obj)
+			bool useArCmds = false;
+
+			if (useArCmds)
 			{
-				if (obj.IsEmpty)
-					return;
+				arCmds = scope:: String("");
+			    arCmds.AppendF("CREATE {}\n", targetPath);
 
-				if (obj.EndsWith(".lib", .OrdinalIgnoreCase))
-					arCmds.AppendF("ADDLIB {}\n", obj);
-				else
-					arCmds.AppendF("ADDMOD {}\n", obj);
-			}
-
-			bool inQuote = false;
-			int lastEnd = -1;
-			for (int i < objectsArg.Length)
-			{
-				var c = objectsArg[i];
-				if (c == '"')
+				void AddObject(StringView obj)
 				{
-					if (inQuote)
+					if (obj.IsEmpty)
+						return;
+
+					if (obj.EndsWith(".lib", .OrdinalIgnoreCase))
+						arCmds.AppendF("ADDLIB {}\n", obj);
+					else
+						arCmds.AppendF("ADDMOD {}\n", obj);
+				}
+
+				bool inQuote = false;
+				int lastEnd = -1;
+				for (int i < objectsArg.Length)
+				{
+					var c = objectsArg[i];
+					if (c == '"')
+					{
+						if (inQuote)
+							AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
+						inQuote = !inQuote;
+						lastEnd = i;
+					}
+					else if ((c == ' ') && (!inQuote))
+					{
 						AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
-					inQuote = !inQuote;
-					lastEnd = i;
+						lastEnd = i;
+					}
 				}
-				else if ((c == ' ') && (!inQuote))
-				{
-					AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
-					lastEnd = i;
-				}
-			}
-			AddObject(objectsArg.Substring(lastEnd + 1));
+				AddObject(objectsArg.Substring(lastEnd + 1));
 
-			for (let obj in objectsArg.Split(' '))
-			{
-				if (!obj.IsEmpty)
+				for (let obj in objectsArg.Split(' '))
 				{
-					
+					if (!obj.IsEmpty)
+					{
+						
+					}
 				}
+				arCmds.AppendF("SAVE\n");
 			}
-			arCmds.AppendF("SAVE\n");
+			else
+			{
+				arArgs.AppendF($"-qc {targetPath}");
+
+				void AddObject(StringView obj)
+				{
+					if (obj.IsEmpty)
+						return;
+
+					arArgs.Append(" ");
+					arArgs.Append(obj);
+				}
+
+				bool inQuote = false;
+				int lastEnd = -1;
+				for (int i < objectsArg.Length)
+				{
+					var c = objectsArg[i];
+					if (c == '"')
+					{
+						if (inQuote)
+							AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
+						inQuote = !inQuote;
+						lastEnd = i;
+					}
+					else if ((c == ' ') && (!inQuote))
+					{
+						AddObject(objectsArg.Substring(lastEnd + 1, i - lastEnd - 1));
+						lastEnd = i;
+					}
+				}
+				AddObject(objectsArg.Substring(lastEnd + 1));
+			}
 
 			UpdateCacheStr(project, "", workspaceOptions, options, null, null);
 
@@ -275,13 +316,15 @@ namespace IDE
 					return false;
 				}
 
-				String cmdLine = scope .();
-				cmdLine.AppendF("-M");
 
-		        var runCmd = gApp.QueueRun(arPath, cmdLine, workingDir, .UTF8);
+				if (arCmds != null)
+					arArgs.Append("-M");
+
+		        var runCmd = gApp.QueueRun(arPath, arArgs, workingDir, .UTF8);
 				runCmd.mReference = new String(project.mProjectName);
 		        runCmd.mOnlyIfNotFailed = true;
-				runCmd.mStdInData = new .(arCmds);
+				if (arCmds != null)
+					runCmd.mStdInData = new .(arCmds);
 		        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
 		        tagetCompletedCmd.mOnlyIfNotFailed = true;
 		        gApp.mExecutionQueue.Add(tagetCompletedCmd);

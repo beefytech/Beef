@@ -7,7 +7,9 @@
 
 USING_NS_BF;
 
+#ifndef NOT_IMPL
 #define NOT_IMPL throw "Not implemented"
+#endif
 
 #pragma comment(lib, "SDL2.lib")
 
@@ -138,7 +140,7 @@ static void CreateOrthographicOffCenter(float left, float right, float bottom, f
 
 GLShaderParam::GLShaderParam()
 {
-	mGLVariable = NULL;
+	mGLVariable = 0;
 }
 
 GLShaderParam::~GLShaderParam()
@@ -229,9 +231,6 @@ GLDrawBatch::GLDrawBatch() : DrawBatch()
 
 GLDrawBatch::~GLDrawBatch()
 {
-	delete mVertices;
-	delete mIndices;
-	//mGLBuffer->Release();
 }
 
 extern int gBFDrawBatchCount;
@@ -310,60 +309,6 @@ RenderCmd* GLDrawLayer::CreateSetTextureCmd(int textureIdx, Texture* texture)
 void GLDrawLayer::SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size)
 {
 }
-
-
-/*void GLDrawLayer::FreeBatch(DrawBatch* drawBatch)
-{
-	//delete drawBatch;
-
-	GLDrawBatch* batch = (GLDrawBatch*) drawBatch;
-	batch->Clear();
-
-	//GLDrawBatchVector* pool = &((GLRenderDevice*) gBFApp->mRenderDevice)->mDrawBatchPool;
-	//pool->push_back(batch);
-    GLRenderDevice* glRenderDevice = (GLRenderDevice*)gBFApp->mRenderDevice;
-    drawBatch->mNext = glRenderDevice->mFreeBatchHead;
-    glRenderDevice->mFreeBatchHead = batch;
-}*/
-
-//void GLRenderDevice::PhysSetShader(Shader* shader)
-//{
-//	GLRenderDevice* aRenderDevice = (GLRenderDevice*) gBFApp->mRenderDevice;
-//
-//	//TODO: Cache more
-//
-//	GLShader* glShader = (GLShader*)shader;
-//
-//	GLfloat matrix[4][4];
-//	CreateOrthographicOffCenter(0.0f, (float)mPhysRenderWindow->mWidth, (float)mPhysRenderWindow->mHeight, 0.0f, -100.0f, 100.0f, matrix);
-//	GLint matrixLoc = bf_glGetUniformLocation(glShader->mGLProgram, "screenMatrix");
-//	//BF_ASSERT(matrixLoc >= 0);
-//	if (matrixLoc >= 0)
-//        bf_glUniformMatrix4fv(matrixLoc, 1, false, (float*)matrix);
-//
-//	/*mPhysShaderPass = shaderPass;
-//	GLShaderPass* dXShaderPass = (GLShaderPass*) mPhysShaderPass;
-//	mGLDevice->IASetInputLayout(dXShaderPass->mGLLayout);
-//
-//	if (mCurShader->mLastResizeCount != mCurRenderTarget->mResizeNum)
-//	{
-//		ShaderParam* shaderParam = mCurShader->GetShaderParam(L"WindowSize");
-//		if (shaderParam != NULL)
-//		{
-//			shaderParam->SetFloat2((float) mCurRenderTarget->mWidth, (float) mCurRenderTarget->mHeight);
-//		}
-//
-//		mCurShader->mLastResizeCount = mCurRenderTarget->mResizeNum;
-//	}
-//
-//	GLCHECK(dXShaderPass->mGLEffectPass->Apply(0));*/
-//
-//	/*GLfloat matrix[4][4];
-//	CreateOrthographicOffCenter(0.0f, (float)mPhysRenderWindow->mWidth, (float)mPhysRenderWindow->mHeight, 0.0f, -100.0f, 100.0f, matrix);
-//	GLint uniformLocation = bf_glGetUniformLocation(((GLShader*)shaderPass->mTechnique->mShader)->mGLProgram, "screenMatrix");
-//	if (uniformLocation != -1)
-//		bf_glUniformMatrix4fv(uniformLocation, 1, false, (GLfloat*)matrix);*/
-//}
 
 void GLRenderDevice::PhysSetRenderWindow(RenderWindow* renderWindow)
 {

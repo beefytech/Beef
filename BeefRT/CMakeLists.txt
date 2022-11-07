@@ -45,6 +45,10 @@ if (HAVE_BACKTRACE_HEADERS)
    add_definitions(-DBFP_HAS_BACKTRACE)
 endif ()
 
+if (DEFINED BF_DISABLE_FFI)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBF_DISABLE_FFI")
+endif()
+
 if (${IOS})
   include_directories(
     .
@@ -255,7 +259,7 @@ elseif (${ANDROID})
         ../BeefySysLib/platform/android/BFPlatform.cpp
         ../BeefySysLib/platform/android/AndroidCommon.cpp
     )
-else()
+elseif ((${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (NOT DEFINED BF_DISABLE_FFI))
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/linux/BFPlatform.cpp
         ../BeefySysLib/platform/linux/LinuxCommon.cpp
@@ -266,8 +270,13 @@ else()
         ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/closures.o
         ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/ffi64.o
         ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/unix64.o
-        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/ffiw64.o
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/ffiw64.o        
     )
+else()
+  file(GLOB SRC_FILES_OS
+    ../BeefySysLib/platform/linux/BFPlatform.cpp
+    ../BeefySysLib/platform/linux/LinuxCommon.cpp    
+  )
 endif()
 
 # Add library to build.

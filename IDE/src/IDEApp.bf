@@ -827,7 +827,7 @@ namespace IDE
 				mExecutionPaused = false;
 			}
 
-            base.Shutdown();                       
+            base.Shutdown();
         }
 
         public override void Run()
@@ -8547,14 +8547,14 @@ namespace IDE
 			if (executionInstance.mProcess.AttachStandardInput(fileStream) case .Err)
 				return;
 			
-			while (!executionInstance.mStdInData.IsEmpty)
+			WriteLoop: while (!executionInstance.mStdInData.IsEmpty)
 			{
 				switch (fileStream.TryWrite(.((.)executionInstance.mStdInData.Ptr, executionInstance.mStdInData.Length)))
 				{
 				case .Ok(int len):
 					executionInstance.mStdInData.Remove(0, len);
 				case .Err:
-					break;
+					break WriteLoop;
 				}
 			}
 		}
@@ -8712,6 +8712,8 @@ namespace IDE
 
                 	if ((mVerbosity >= .Diagnostic) && (useArgsFile != .None))
                 		OutputLine("Arg file contents: {0}", args);
+					if ((mVerbosity >= .Diagnostic) && (stdInData != null))
+						OutputLine("StdIn data: {0}", stdInData);
                 }
 				else
 					OutputLine("Executing: {0}", showArgs);

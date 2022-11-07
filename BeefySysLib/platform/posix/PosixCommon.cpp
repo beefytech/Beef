@@ -59,28 +59,28 @@ struct BfpPipeInfo
 };
 
 struct BfpFile
-{	
+{
 	BfpPipeInfo* mPipeInfo;
-	int mHandle;	
+	int mHandle;
 	bool mNonBlocking;
-	bool mAllowTimeout;	
+	bool mAllowTimeout;
 	bool mIsStd;
 
 	BfpFile()
 	{
 		mPipeInfo = NULL;
-		mHandle = -1;		
+		mHandle = -1;
 		mNonBlocking = false;
-		mAllowTimeout = false;		
+		mAllowTimeout = false;
 		mIsStd = false;
 	}
 
 	BfpFile(int handle)
-	{	
+	{
 		mPipeInfo = NULL;
-		mHandle = handle;		
+		mHandle = handle;
 		mNonBlocking = false;
-		mAllowTimeout = false;		
+		mAllowTimeout = false;
 		mIsStd = false;
 	}
 
@@ -130,7 +130,7 @@ BfpTimeStamp BfpToTimeStamp(const timespec& ts)
 int gBFPlatformLastError = 0;
 
 uint32 Beefy::BFTickCount()
-{    
+{
     struct timespec now;
     if (clock_gettime(CLOCK_MONOTONIC, &now))
         return 0;
@@ -166,7 +166,7 @@ int64 Beefy::EndianSwap(int64 val)
         logType = LOG_WARNING;
     else if (hFile == (int*)STDERR_FILENO)
         logType = LOG_ERR;
-    
+
     if (logType != -1)
     {
         static std::string strOut;
@@ -176,7 +176,7 @@ int64 Beefy::EndianSwap(int64 val)
             syslog(LOG_WARNING, "%s", strOut.c_str());
     }
 #endif
-    
+
     int writeCount = (int)::write((int)(intptr)hFile, lpBuffer, nNumberOfBytesToWrite);
     if (writeCount == -1)
     {
@@ -184,7 +184,7 @@ int64 Beefy::EndianSwap(int64 val)
         lpNumberOfBytesWritten = 0;
         return false;
     }
-    
+
     *lpNumberOfBytesWritten = (uint32)writeCount;
     return true;
 }*/
@@ -195,7 +195,7 @@ int64 Beefy::GetFileTimeWrite(const StringImpl& path)
     int result = stat(path.c_str(), &statbuf);
     if (result == -1)
         return 0;
-        
+
     return statbuf.st_mtime;
 }
 
@@ -203,40 +203,40 @@ int64 Beefy::GetFileTimeWrite(const StringImpl& path)
 {
     std::wstring tzName0 = Beefy::UTF8Decode(tzname[0]);
     std::wstring tzName1 = Beefy::UTF8Decode(tzname[1]);
-    
+
     bool isDST = false;
-    
+
     time_t timeNow;
     time(&timeNow);
     tm tmNow = *gmtime(&timeNow);
     isDST = tmNow.tm_isdst;
-    
+
     struct tm checkTM;
     memset(&checkTM, 0, sizeof(tm));
     checkTM.tm_mday = 1;
     checkTM.tm_year = tmNow.tm_year;
     time_t checkTime = mktime(&checkTM);
-    
+
     time_t lastOffset = 0;
     time_t minOffset = 0;
     time_t maxOffset = 0;
-    
+
     for (int pass = 0; pass < 2; pass++)
     {
         int searchDir = 60*60*24;
         int thresholdCount = 0;
-        
+
         while (true)
         {
             checkTime += searchDir;
-            
+
             tm checkTM = *gmtime(&checkTime);
-            
+
             if (checkTM.tm_year != tmNow.tm_year)
                 break; // No DST
-            
+
             mktime(&checkTM);
-            
+
             time_t offset = checkTM.tm_gmtoff;
             if (lastOffset != offset)
             {
@@ -250,12 +250,12 @@ int64 Beefy::GetFileTimeWrite(const StringImpl& path)
                     SYSTEMTIME* sysTimeP = (offset == minOffset) ?
                     &lpTimeZoneInformation->StandardDate :
                     &lpTimeZoneInformation->DaylightDate;
-                    
+
                     if (offset == minOffset)
                         tzName0 = Beefy::UTF8Decode(checkTM.tm_zone);
                     else
                         tzName1 = Beefy::UTF8Decode(checkTM.tm_zone);
-                    
+
                     sysTimeP->wDay = 0;
                     sysTimeP->wDayOfWeek = 0;
                     sysTimeP->wYear = checkTM.tm_year + 1900;
@@ -265,7 +265,7 @@ int64 Beefy::GetFileTimeWrite(const StringImpl& path)
                     sysTimeP->wMinute = checkTM.tm_min;
                     sysTimeP->wSecond = checkTM.tm_sec;
                     sysTimeP->wMilliseconds = 0;
-                    
+
                     break;
                 }
                 else
@@ -282,13 +282,13 @@ int64 Beefy::GetFileTimeWrite(const StringImpl& path)
             }
         }
     }
-	
+
     wcsncpy(lpTimeZoneInformation->StandardName, tzName0.c_str(), 32);
     wcsncpy(lpTimeZoneInformation->DaylightName, tzName1.c_str(), 32);
-    
+
     lpTimeZoneInformation->DaylightBias = (int32)maxOffset;
     lpTimeZoneInformation->StandardBias = (int32)minOffset;
-    
+
     if (minOffset == maxOffset)
         return 0;
     return isDST ? 2 : 1;
@@ -444,14 +444,14 @@ static String gUnwindExecStr;
 static int gUnwindIdx = 0;
 
 static _Unwind_Reason_Code UnwindHandler(struct _Unwind_Context* context, void* ref)
-{       
+{
     gUnwindIdx++;
     if (gUnwindIdx < 2)
         return _URC_NO_REASON;
-    
+
     void* addr = (void*)_Unwind_GetIP(context);
 
-#if BFP_HAS_ATOS    
+#if BFP_HAS_ATOS
     gUnwindExecStr += StrFormat(" %p", addr);
 #else
     Dl_info info;
@@ -470,11 +470,11 @@ static _Unwind_Reason_Code UnwindHandler(struct _Unwind_Context* context, void* 
 
 static bool FancyBacktrace()
 {
-    gUnwindExecStr += StrFormat("atos -p %d", getpid());    
+    gUnwindExecStr += StrFormat("atos -p %d", getpid());
     _Unwind_Backtrace(&UnwindHandler, NULL);
 #if BFP_HAS_ATOS
     return system(gUnwindExecStr.c_str()) == 0;
-#else    
+#else
     return true;
 #endif
 }
@@ -503,7 +503,7 @@ static void Crashed()
 
     if (!FancyBacktrace())
     {
-#ifdef BFP_HAS_EXECINFO        
+#ifdef BFP_HAS_EXECINFO
         void* array[64];
         size_t size;
         char** strings;
@@ -511,7 +511,7 @@ static void Crashed()
 
         size = backtrace(array, 64);
         strings = backtrace_symbols(array, size);
-      
+
         for (i = 0; i < size; i++)
             BFP_ERRPRINTF("%s\n", strings[i]);
 
@@ -524,7 +524,7 @@ static void Crashed()
 
 static void SigHandler(int sig)
 {
-	//printf("SigHandler paused...\n");	
+	//printf("SigHandler paused...\n");
 
     const char* sigName = NULL;
     switch (sig)
@@ -559,6 +559,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
         BfpSystem_FatalError(StrFormat("Bfp build version '%d' does not match requested version '%d'", BFP_VERSION, version).c_str(), "BFP FATAL ERROR");
     }
 
+    struct sigaction ignoreAction = { SIG_IGN };
+    sigaction(SIGPIPE, &ignoreAction, NULL);
+
     //if (ptrace(PTRACE_TRACEME, 0, 1, 0) != -1)
     {
         //ptrace(PTRACE_DETACH, 0, 1, 0);
@@ -576,7 +579,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
-{	
+{
     char exePath[PATH_MAX] = { 0 };
     int nchar = readlink("/proc/self/exe", exePath, PATH_MAX);
     if (nchar > 0)
@@ -589,8 +592,8 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
         char* cwd = getcwd(NULL, 0);
         gExePath = GetAbsPath(relPath, cwd);
         free(cwd);
-    }    
-	
+    }
+
 	for (int i = 0; i < argc; i++)
 	{
 		if (i != 0)
@@ -628,7 +631,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfo(const char* str) // Can do a
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashRelaunchCmd(const char* str)
-{    
+{
 }
 
 void BfpSystem_Shutdown()
@@ -676,7 +679,7 @@ BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_InterlockedExchange32(uint32* ptr, uint
 	// __sync_lock_test_and_set only has Acquire semantics, so we need a __sync_synchronize to enforce a full barrier
 	uint32 prevVal = __sync_lock_test_and_set(ptr, val);
 	__sync_synchronize();
-	return prevVal;	
+	return prevVal;
 }
 
 BFP_EXPORT uint64 BFP_CALLTYPE BfpSystem_InterlockedExchange64(uint64* ptr, uint64 val)
@@ -684,7 +687,7 @@ BFP_EXPORT uint64 BFP_CALLTYPE BfpSystem_InterlockedExchange64(uint64* ptr, uint
 	// __sync_lock_test_and_set only has Acquire semantics, so we need a __sync_synchronize to enforce a full barrier
 	uint64 prevVal = __sync_lock_test_and_set(ptr, val);
 	__sync_synchronize();
-	return prevVal;	
+	return prevVal;
 }
 
 BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_InterlockedExchangeAdd32(uint32* ptr, uint32 val)
@@ -730,7 +733,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetExecutablePath(char* outStr, int* inOu
             gExePath = path;
 
         // When when running with a './file', we end up with an annoying '/./' in our path
-        gExePath.Replace("/./", "/");        
+        gExePath.Replace("/./", "/");
     }
 #endif
 
@@ -758,7 +761,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* 
 }
 
 BFP_EXPORT int BFP_CALLTYPE BfpSystem_GetNumLogicalCPUs(BfpSystemResult* outResult)
-{	
+{
 #ifdef BF_PLATFORM_ANDROID
     //TODO: Handle this
     OUTRESULT(BfpSystemResult_Ok);
@@ -789,8 +792,8 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpSystem_GetCPUTickFreq()
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_CreateGUID(BfpGUID* outGuid)
 {
-// 	uuid_t guid;	
-// 	uuid_generate(guid);	
+// 	uuid_t guid;
+// 	uuid_generate(guid);
 // 	BfpGUID bfpGuid;
 // 	memcpy(&bfpGuid, guid, 16);
 // 	return bfpGuid;
@@ -879,7 +882,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 {
     Beefy::Array<Beefy::StringView> stringViews;
 
-    //printf("BfpSpawn_Create: %s %s %x\n", inTargetPath, args, flags);    
+    //printf("BfpSpawn_Create: %s %s %x\n", inTargetPath, args, flags);
 
     char* prevWorkingDir = NULL;
 
@@ -966,7 +969,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 		{
 			verb = targetPath.Substring(barPos + 1);
 			targetPath.RemoveToEnd(barPos);
-		}				
+		}
 	}
 
     int32 i = 0;
@@ -1097,9 +1100,9 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     {
         if ((flags & BfpSpawnFlag_RedirectStdInput) != 0)
         {
-            close(stdInFD[1]);            
+            close(stdInFD[1]);
             while ((dup2(stdInFD[0], STDIN_FILENO) == -1) && (errno == EINTR)) {}
-            close(stdInFD[0]);            
+            close(stdInFD[0]);
         }
 
         if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
@@ -1114,7 +1117,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
             while ((dup2(stdErrFD[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
             close(stdErrFD[0]);
         }
-        
+
         // If successful then this shouldn't return at all:
         int result;
 
@@ -1245,18 +1248,18 @@ struct BfpThread
     void* mThreadParam;
 #ifndef BFP_HAS_PTHREAD_TIMEDJOIN_NP
     BfpEvent* mDoneEvent;
-#endif    
+#endif
 
     pthread_t mPThread;
     int mRefCount;
-    int mPriority;   
+    int mPriority;
 
     BfpThread()
     {
     }
 
     ~BfpThread()
-    {     
+    {
     }
 
     void Release()
@@ -1280,13 +1283,13 @@ static __thread BfpThreadInfo gCurrentThreadInfo;
 void* ThreadFunc(void* threadParam)
 {
     BfpThread* thread = (BfpThread*)threadParam;
-    
+
     gCurrentThread = thread;
     thread->mStartProc(thread->mThreadParam);
 #ifndef BFP_HAS_PTHREAD_TIMEDJOIN_NP
     BfpEvent_Set(thread->mDoneEvent, true);
-#endif    
-    
+#endif
+
     thread->Release();
     return NULL;
 }
@@ -1301,9 +1304,9 @@ BFP_EXPORT BfpThread* BFP_CALLTYPE BfpThread_Create(BfpThreadStartProc startProc
     thread->mPriority = 0;
 #ifndef BFP_HAS_PTHREAD_TIMEDJOIN_NP
     thread->mDoneEvent = BfpEvent_Create(BfpEventFlag_None);
-#endif    
+#endif
 
-    BF_ASSERT(sizeof(pthread_t) <= sizeof(void*));    
+    BF_ASSERT(sizeof(pthread_t) <= sizeof(void*));
     pthread_attr_t params;
     pthread_attr_init(&params);
     pthread_attr_setstacksize(&params, stackSize);
@@ -1312,7 +1315,7 @@ BFP_EXPORT BfpThread* BFP_CALLTYPE BfpThread_Create(BfpThreadStartProc startProc
     pthread_create(&thread->mPThread, &params, ThreadFunc, (void*)thread);
 
     pthread_attr_destroy(&params);
-    
+
     if (outThreadId != NULL)
         *outThreadId = (BfpThreadId)thread->mPThread;
 
@@ -1342,7 +1345,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Release(BfpThread* thread)
         pthread_detach(thread->mPThread);
         thread->mPThreadReleased = true;
     }
-    
+
     thread->Release();
 }
 
@@ -1402,7 +1405,7 @@ BFP_EXPORT bool BFP_CALLTYPE BfpThread_WaitFor(BfpThread* thread, int waitMS)
 #else
     if (thread == NULL)
         BF_FATAL("Invalid thread with non-infinite wait");
-    return BfpEvent_WaitFor(thread->mDoneEvent, waitMS);    
+    return BfpEvent_WaitFor(thread->mDoneEvent, waitMS);
 #endif
 }
 
@@ -1463,7 +1466,7 @@ BFP_EXPORT BfpThreadInfo* BFP_CALLTYPE BfpThreadInfo_Create()
 {
 	BfpThreadInfo* threadInfo = new BfpThreadInfo();
 	threadInfo->mStackBase = 0;
-	threadInfo->mStackLimit = 0;	
+	threadInfo->mStackLimit = 0;
 	threadInfo->mPThread = pthread_self();
     return threadInfo;
 }
@@ -1516,7 +1519,7 @@ BFP_EXPORT BfpCritSect* BFP_CALLTYPE BfpCritSect_Create()
 {
     BfpCritSect* critSect = new BfpCritSect();
 
-    pthread_mutexattr_t     attributes;        
+    pthread_mutexattr_t     attributes;
     pthread_mutexattr_init(&attributes);
     pthread_mutexattr_settype(&attributes, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&critSect->mPMutex, &attributes);
@@ -1547,12 +1550,12 @@ BFP_EXPORT bool BFP_CALLTYPE BfpCritSect_TryEnter(BfpCritSect* critSect, int wai
     {
         return pthread_mutex_trylock(&critSect->mPMutex) == 0;
     }
-    
+
     uint32 start = Beefy::BFTickCount();
     while ((int)(Beefy::BFTickCount() - start) < waitMS)
     {
         if (pthread_mutex_trylock(&critSect->mPMutex) == 0)
-        {                
+        {
             return true;
         }
     }
@@ -1646,22 +1649,22 @@ BFP_EXPORT bool BFP_CALLTYPE BfpEvent_WaitFor(BfpEvent* event, int waitMS)
             clock_gettime(CLOCK_REALTIME, &ts);
             ts.tv_sec += waitMS / 1000;
             ts.tv_nsec += (waitMS % 1000) * 1000000;
-            
+
             result = pthread_cond_timedwait(&event->mCondVariable, &event->mMutex, &ts);
-            
+
             if (waitMS == (uint32)-1)
                 BF_ASSERT(result == 0);
-            
+
             if (result != 0)
             {
-                // Timeout                
+                // Timeout
                 pthread_mutex_unlock(&event->mMutex);
                 return false;
             }
         }
     }
     if (!event->mManualReset)
-        event->mSet = false;        
+        event->mSet = false;
     pthread_mutex_unlock(&event->mMutex);
     return true;
 }
@@ -1669,17 +1672,17 @@ BFP_EXPORT bool BFP_CALLTYPE BfpEvent_WaitFor(BfpEvent* event, int waitMS)
 BFP_EXPORT BfpDynLib* BFP_CALLTYPE BfpDynLib_Load(const char* fileName)
 {
     BfpDynLib* mod = NULL;
-    
+
     static const char* prefixes[] = {NULL, "lib"};
     static const char* suffixes[] = {NULL, ".so", ".dylib"};
-    
+
     for (int prefixIdx = 0; prefixIdx < sizeof(prefixes)/sizeof(prefixes[0]); prefixIdx++)
     {
         for (int suffixIdx = 0; suffixIdx < sizeof(suffixes)/sizeof(suffixes[0]); suffixIdx++)
         {
             const char* prefix = prefixes[prefixIdx];
             const char* suffix = suffixes[suffixIdx];
-            
+
             Beefy::String checkName = fileName;
             if (prefix != NULL)
                 checkName = Beefy::String(prefix) + checkName;
@@ -1690,13 +1693,13 @@ BFP_EXPORT BfpDynLib* BFP_CALLTYPE BfpDynLib_Load(const char* fileName)
                     checkName.RemoveToEnd(dotPos);
                 checkName += suffix;
             }
-            
+
             mod = (BfpDynLib*)dlopen(checkName.c_str(), RTLD_LAZY);
             if (mod != NULL)
                 return mod;
         }
     }
-    
+
      /*mod = (BfpDynLib*)dlopen("/var/Beef/qt-build/Debug/bin/libIDEHelper.so", RTLD_LAZY);;
      if (mod == NULL)
      {
@@ -1725,16 +1728,16 @@ BFP_EXPORT void BFP_CALLTYPE BfpDynLib_GetFilePath(BfpDynLib* lib, char* outPath
         return;
     }
 
-    path = linkMap->l_name;    
+    path = linkMap->l_name;
 #else
-    Dl_info info;    
+    Dl_info info;
     if (dladdr((void*)lib, &info) == 0)
     {
         OUTRESULT(BfpLibResult_UnknownError);
         return;
     }
 
-    path = info.dli_fname;    
+    path = info.dli_fname;
 #endif
 
     TryStringOut(path, outPath, inOutPathSize, (BfpResult*)outResult);
@@ -1762,7 +1765,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Create(const char* path, BfpFileResult
             break;
         }
     }
-    else    
+    else
         OUTRESULT(BfpFileResult_Ok);
 }
 
@@ -1785,7 +1788,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Delete(const char* path, BfpFileResult
             break;
         }
     }
-    else    
+    else
         OUTRESULT(BfpFileResult_Ok);
 }
 
@@ -1798,10 +1801,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetCurrent(char* outPath, int* inOutPa
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpDirectory_SetCurrent(const char* path, BfpFileResult* outResult)
-{    
+{
     if (chdir(path) != 0)
-        OUTRESULT(BfpFileResult_NotFound);  
-    else    
+        OUTRESULT(BfpFileResult_NotFound);
+    else
         OUTRESULT(BfpFileResult_Ok);
 }
 
@@ -1811,7 +1814,7 @@ BFP_EXPORT bool BFP_CALLTYPE BfpDirectory_Exists(const char* path)
     int result = stat(path, &statbuf);
     if (result != 0)
         return false;
-    return S_ISDIR(statbuf.st_mode);   
+    return S_ISDIR(statbuf.st_mode);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sysDirKind, char* outPath, int* inOutPathLen, BfpFileResult* outResult)
@@ -1821,7 +1824,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sy
 }
 
 BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreateKind createKind, BfpFileCreateFlags createFlags, BfpFileAttributes createdFileAttrs, BfpFileResult* outResult)
-{    
+{
 	auto _DoCreate = [&](String& name)
 	{
 		int flags = 0;
@@ -1903,14 +1906,14 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 		}
         return result;
 	};
-    
+
     // POSIX doesn't need the OpenAlways kind.
     if (createKind == BfpFileCreateKind_OpenAlways)
         createKind = BfpFileCreateKind_CreateAlways;
 
 	BfpFile* bfpFile = NULL;
 
-	int result;	
+	int result;
 	if ((createFlags & BfpFileCreateFlag_Pipe) != 0)
 	{
 		int readHandle;
@@ -1938,11 +1941,11 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 			OUTRESULT(BfpFileResult_Ok);
 
 			BfpPipeInfo* pipeInfo = new BfpPipeInfo();
-			pipeInfo->mWriteHandle = writeHandle;		
+			pipeInfo->mWriteHandle = writeHandle;
 			if (isCreating)
 				pipeInfo->mPipePath = name;
 			bfpFile = new BfpFile();
-			bfpFile->mHandle = readHandle;			
+			bfpFile->mHandle = readHandle;
 			bfpFile->mPipeInfo = pipeInfo;
 		}
 		else
@@ -1967,11 +1970,11 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 		bfpFile->mHandle = handle;
 	}
 
-	OUTRESULT(BfpFileResult_Ok);	
+	OUTRESULT(BfpFileResult_Ok);
 	if ((createFlags & (BfpFileCreateFlag_NonBlocking | BfpFileCreateFlag_AllowTimeouts)) != 0)
         bfpFile->mNonBlocking = true;
-	if ((createFlags & BfpFileCreateFlag_AllowTimeouts) != 0)       
-        bfpFile->mAllowTimeout = true;	
+	if ((createFlags & BfpFileCreateFlag_AllowTimeouts) != 0)
+        bfpFile->mAllowTimeout = true;
     return bfpFile;
 }
 
@@ -2009,21 +2012,21 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetSystemHandle(BfpFile* file)
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Release(BfpFile* file)
-{	
+{
 	if ((file->mHandle != -1) && (!file->mIsStd))
 		close(file->mHandle);
 	if (file->mPipeInfo != NULL)
 	{
 		if (file->mPipeInfo->mWriteHandle != -1)
 			close(file->mPipeInfo->mWriteHandle);
-		
+
 		if (!file->mPipeInfo->mPipePath.IsEmpty())
 		{
 			int worked = remove(file->mPipeInfo->mPipePath.c_str());
 			remove((file->mPipeInfo->mPipePath + "__").c_str());
 			//printf("Removing %s %d\n", file->mPipeInfo->mPipePath.c_str(), worked);
 		}
-	}	
+	}
 
 	delete file;
 }
@@ -2047,7 +2050,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Close(BfpFile* file, BfpFileResult* outResu
 }
 
 BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Write(BfpFile* file, const void* buffer, intptr size, int timeoutMS, BfpFileResult* outResult)
-{   
+{
 	int writeHandle = file->mHandle;
 	if (file->mPipeInfo != NULL)
 		writeHandle = file->mPipeInfo->mWriteHandle;
@@ -2071,9 +2074,9 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 {
 	if (file->mNonBlocking)
 	{
-		if (!file->mAllowTimeout)		
-			timeoutMS = -1;		
-		
+		if (!file->mAllowTimeout)
+			timeoutMS = -1;
+
 		timeval timeout;
 		timeout.tv_sec = 0;
 		timeout.tv_usec = timeoutMS * 1000;
@@ -2119,7 +2122,7 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpFile_GetFileSize(BfpFile* file)
 BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileSeekKind seekKind)
 {
     int whence;
-    if (seekKind == BfpFileSeekKind_Absolute)        
+    if (seekKind == BfpFileSeekKind_Absolute)
         whence = SEEK_SET;
     else if (seekKind == BfpFileSeekKind_Relative)
         whence = SEEK_CUR;
@@ -2144,7 +2147,7 @@ BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path)
     struct stat statbuf = {0};
     int result = stat(path, &statbuf);
     if (result != 0)
-        return 0;    
+        return 0;
     return statbuf.st_mtime;
 }
 
@@ -2163,7 +2166,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldPath, const char* newPa
 {
     int fd_to, fd_from;
     char buf[4096];
-    ssize_t nread;  
+    ssize_t nread;
 
     fd_from = open(oldPath, O_RDONLY);
     if (fd_from < 0)
@@ -2228,7 +2231,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldPath, const char* newPa
 out_error:
     close(fd_from);
     if (fd_to >= 0)
-        close(fd_to);   
+        close(fd_to);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Rename(const char* oldPath, const char* newPath, BfpFileResult* outResult)
@@ -2250,7 +2253,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Delete(const char* path, BfpFileResult* out
             break;
         }
     }
-    else    
+    else
         OUTRESULT(BfpFileResult_Ok);
 }
 
@@ -2327,7 +2330,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPath, char* out
 
 struct BfpFindFileData
 {
-    BfpFindFileFlags mFlags;    
+    BfpFindFileFlags mFlags;
     DIR* mDirStruct;
     Beefy::String mWildcard;
     Beefy::String mDirPath;
@@ -2341,7 +2344,7 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
 {
     Beefy::String findStr = path;
     Beefy::String wildcard;
-    
+
     int lastSlashPos = std::max((int)findStr.LastIndexOf('/'), (int)findStr.LastIndexOf('\\'));
     if (lastSlashPos != -1)
     {
@@ -2350,7 +2353,7 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
     }
     if (wildcard == "*.*")
         wildcard = "*";
-    
+
     DIR* dir = opendir(findStr.c_str());
     if (dir == NULL)
     {
@@ -2361,18 +2364,18 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
     BfpFindFileData* findData = new BfpFindFileData();
     findData->mFlags = flags;
     findData->mDirPath = findStr;
-    findData->mDirStruct = dir;    
+    findData->mDirStruct = dir;
     findData->mWildcard = wildcard;
     findData->mHasStat = false;
     findData->mDirEnt = NULL;
-        
+
     if (!BfpFindFileData_FindNextFile(findData))
-    {            
+    {
         OUTRESULT(BfpFileResult_NoResults);
         closedir(findData->mDirStruct);
         delete findData;
         return NULL;
-    }    
+    }
 
     OUTRESULT(BfpFileResult_Ok);
     return findData;
@@ -2384,7 +2387,7 @@ static void GetStat(BfpFindFileData* findData)
         return;
 
     Beefy::String filePath = findData->mDirPath + "/" + findData->mDirEnt->d_name;
-    
+
     findData->mStat = { 0 };
     int result = stat(filePath.c_str(), &findData->mStat);
 
@@ -2404,11 +2407,11 @@ static bool BfpFindFileData_CheckFilter(BfpFindFileData* findData)
 
     if (isDir)
     {
-        if ((findData->mFlags & BfpFindFileFlag_Directories) == 0)          
+        if ((findData->mFlags & BfpFindFileFlag_Directories) == 0)
             return false;
-        
-        if ((strcmp(findData->mDirEnt->d_name, ".") == 0) || (strcmp(findData->mDirEnt->d_name, "..") == 0))        
-            return false;        
+
+        if ((strcmp(findData->mDirEnt->d_name, ".") == 0) || (strcmp(findData->mDirEnt->d_name, "..") == 0))
+            return false;
     }
     else
     {
@@ -2423,10 +2426,10 @@ static bool BfpFindFileData_CheckFilter(BfpFindFileData* findData)
 }
 
 BFP_EXPORT bool BFP_CALLTYPE BfpFindFileData_FindNextFile(BfpFindFileData* findData)
-{    
+{
     while (true)
     {
-        findData->mHasStat = false;        
+        findData->mHasStat = false;
         findData->mDirEnt = readdir(findData->mDirStruct);
         if (findData->mDirEnt == NULL)
             return false;
@@ -2446,8 +2449,8 @@ BFP_EXPORT void BFP_CALLTYPE BfpFindFileData_GetFileName(BfpFindFileData* findDa
 
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_LastWrite(BfpFindFileData* findData)
 {
-    GetStat(findData);    
-#ifdef BF_PLATFORM_DARWIN    
+    GetStat(findData);
+#ifdef BF_PLATFORM_DARWIN
     return BfpToTimeStamp(findData->mStat.st_mtimespec);
 #else
     return BfpToTimeStamp(findData->mStat.st_mtim);
@@ -2457,7 +2460,7 @@ BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_LastWrite(BfpFindFi
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_Created(BfpFindFileData* findData)
 {
     GetStat(findData);
-#ifdef BF_PLATFORM_DARWIN        
+#ifdef BF_PLATFORM_DARWIN
     return BfpToTimeStamp(findData->mStat.st_ctimespec);
 #else
     return BfpToTimeStamp(findData->mStat.st_ctim);

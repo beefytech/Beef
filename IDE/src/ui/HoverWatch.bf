@@ -13,7 +13,7 @@ using Beefy.theme;
 using IDE.Debugger;
 
 namespace IDE.ui
-{    
+{
     public class HoverWatch : Widget, IWatchOwner
     {
         public class PendingWatch
@@ -25,7 +25,7 @@ namespace IDE.ui
 
 			public ~this()
 			{
-				
+
 			}
         }
 
@@ -38,7 +38,7 @@ namespace IDE.ui
             public HoverListView mChildrenListView;
 
 			static int32 sHLVItemId = -1;
-			int32 mHLVItemId = ++sHLVItemId;			
+			int32 mHLVItemId = ++sHLVItemId;
 
             public this(IWatchOwner watchOwner, HoverListView listView) : base(watchOwner, listView)
             {
@@ -77,7 +77,7 @@ namespace IDE.ui
                     if (mWatchEntry.mResultTypeStr != null)
                         DarkTooltipManager.ShowTooltip(mWatchEntry.mResultTypeStr, this, LabelX + GS!(8), mSelfHeight + mBottomPadding);
                     return;
-                }                
+                }
 
                 base.ShowTooltip(mouseX, mouseY);
             }
@@ -128,7 +128,7 @@ namespace IDE.ui
 			}
         }
 
-        public class HoverListView : WatchListView        
+        public class HoverListView : WatchListView
         {
             public HoverWatch mHoverWatch;
             public bool mSizeDirty;
@@ -168,7 +168,7 @@ namespace IDE.ui
 
             public override void Draw(Graphics g)
             {
-                
+
                 base.Draw(g);
             }
 
@@ -185,7 +185,7 @@ namespace IDE.ui
 			}
 
             public override void Update()
-            {                
+            {
                 base.Update();
 
                 if (mSizeDirty)
@@ -220,7 +220,7 @@ namespace IDE.ui
                 Resize(mX, mY, listView.mColumns[1].mWidth - adjust, mHeight);
                 HorzScrollTo(0);
             }
-        }        
+        }
 
 		class ContentWidget : Widget
 		{
@@ -317,7 +317,7 @@ namespace IDE.ui
         }
 
         void IWatchOwner.UpdateWatch(WatchListViewItem watchEntry)
-        {            
+        {
         }
 
         public void Clear()
@@ -364,7 +364,7 @@ namespace IDE.ui
                 mWidgetWindow = null;
             }
 
-            
+
 			Widget.RemoveAndDelete(mEditWidget);
             mEditWidget = null;
 
@@ -398,13 +398,13 @@ namespace IDE.ui
             if (mCloseHandler != null)
                 mCloseHandler();
 
-            Clear();    
+            Clear();
 
 			if (!mCreatedWindow)
 				delete this;
         }
-		
-        void HandleMouseWheel(MouseEvent evt)        
+
+        void HandleMouseWheel(MouseEvent evt)
         {
 			if (mListViews.Count > 1)
 			{
@@ -470,7 +470,7 @@ namespace IDE.ui
 					}
 				}
 			}
-   
+
             if (mCloseDelay > 1)
                mCloseDelay--;
 			if (mCloseCountdown > 0)
@@ -514,8 +514,8 @@ namespace IDE.ui
                     var beforeLastListView = mChildWidgets[mChildWidgets.Count - 2] as HoverListView;
                     if (beforeLastListView != null)
                     {
-                        if (mEditWidget != null)                        
-                            mEditWidget.LostFocus();                        
+                        if (mEditWidget != null)
+                            mEditWidget.LostFocus();
                         CloseChildren(beforeLastListView);
                     }
                 }
@@ -526,11 +526,11 @@ namespace IDE.ui
         {
             base.MouseMove(x, y);
 
-           
+
         }
 
         void CloseChildren(HoverListView hoverListView)
-        {            
+        {
             for (HoverListViewItem childItem in hoverListView.GetRoot().mChildItems)
             {
 				var childrenListView = childItem.mChildrenListView;
@@ -539,14 +539,14 @@ namespace IDE.ui
                     CloseChildren(childrenListView);
                     mListViews.Remove(childrenListView);
                     childrenListView.RemoveSelf();
-                    childItem.mChildrenListView = null;                    
+                    childItem.mChildrenListView = null;
 
 					if (childItem.mOpenButton != null)
                     	childItem.mOpenButton.mIsOpen = false;
 					//delete childrenListView;
 					gApp.DeferDelete(childrenListView);
                 }
-            }            
+            }
         }
 
         void OpenButtonClicked(HoverListViewItem listViewItem)
@@ -572,7 +572,7 @@ namespace IDE.ui
 				childrenListView.mParentHoverListViewItem = listViewItem;
                 mContentWidget.AddWidget(childrenListView);
                 mListViews.Add(childrenListView);
-                listViewItem.mChildrenListView = childrenListView;                
+                listViewItem.mChildrenListView = childrenListView;
                 for (var pendingEntry in listViewItem.mPendingWatches)
                 {
                     var watchListViewItem = DoListViewItem(listViewItem.mChildrenListView, null, pendingEntry.mName, pendingEntry.mEvalStr, false, listViewItem.mWatchEntry);
@@ -709,10 +709,10 @@ namespace IDE.ui
 
             HoverListViewItem valueSubItem = null;
 			var useListViewItem = listViewItem;
-            if (useListViewItem == null)            
+            if (useListViewItem == null)
                 useListViewItem = (HoverListViewItem)listView.GetRoot().CreateChildItem();
 
-            if (useListViewItem.mWatchEntry == null)            
+            if (useListViewItem.mWatchEntry == null)
             {
                 useListViewItem.mWatchEntry = new WatchEntry();
                 valueSubItem = (HoverListViewItem)useListViewItem.CreateSubItem(1);
@@ -724,7 +724,7 @@ namespace IDE.ui
             }
 
 			bool isLiteral = displayString.StartsWith("'") || displayString.StartsWith("\"");
-			
+
             var watch = useListViewItem.mWatchEntry;
             String.NewOrSet!(watch.mName, displayString);
             String.NewOrSet!(watch.mEvalStr, evalString);
@@ -819,12 +819,12 @@ namespace IDE.ui
 				valueSubItem.Label = "";
 			}
             else if (valueSubItem.mLabel.StartsWith("!", StringComparison.Ordinal))
-            {                
+            {
                 var errorVals = scope List<StringView>(scope String(valueSubItem.mLabel, 1).Split('\t'));
                 if (errorVals.Count > 1)
-                {                    
+                {
                     String.NewOrSet!(valueSubItem.mLabel, errorVals[2]);
-                }                
+                }
                 else
                     String.NewOrSet!(valueSubItem.mLabel, errorVals[0]);
                 valueSubItem.mFailed = true;
@@ -834,7 +834,7 @@ namespace IDE.ui
 
             if ((vals.Count > 1) && (!vals[1].IsEmpty))
                 String.NewOrSet!(watch.mResultTypeStr, vals[1]);
-            else            
+            else
                 DeleteAndNullify!(watch.mResultTypeStr);
 
             int cmdStringCount = Math.Max(0, vals.Count - 2);
@@ -876,7 +876,7 @@ namespace IDE.ui
 							String.NewOrSet!(watch.mEditInitialize, scope String(memberVals[1]));
                     }
                     else if (memberVals0 == ":editVal")
-                    {                        
+                    {
                         String.NewOrSet!(watch.mEditInitialize, scope String(memberVals[1]));
                     }
 					else if (memberVals0 == ":break")
@@ -949,7 +949,7 @@ namespace IDE.ui
 						if (int32.Parse(memberVals[1]) case .Ok(out language))
 						{
 							watch.mLanguage = (.)language;
-						}	
+						}
 					}
 					else if (memberVals0 == ":warn")
 					{
@@ -963,7 +963,7 @@ namespace IDE.ui
                 }
 
                 if (memberVals.Count >= 2)
-                {                    
+                {
                     if (useListViewItem.mOpenButton == null)
                     {
                         useListViewItem.MakeParent();
@@ -998,11 +998,11 @@ namespace IDE.ui
             }
 
             if ((memberCount == 0) && (useListViewItem.mOpenButton != null))
-            {                
+            {
 				Widget.RemoveAndDelete(useListViewItem.mOpenButton);
                 useListViewItem.mOpenButton = null;
 				delete useListViewItem.mChildItems;
-                useListViewItem.mChildItems = null;                
+                useListViewItem.mChildItems = null;
             }
             //if (valueSubItem.mFailed)
                 //return null;
@@ -1010,7 +1010,7 @@ namespace IDE.ui
         }
 
         HoverListView CreateListView()
-        {            
+        {
             //var font = DarkTheme.sDarkTheme.mSmallFont;
             var listView = new HoverListView(this);
 
@@ -1018,18 +1018,18 @@ namespace IDE.ui
 
             listView.mHoverWatch = this;
             listView.SetShowHeader(false);
-            listView.mShowColumnGrid = true;            
+            listView.mShowColumnGrid = true;
 
 #unwarn
             var nameColumn = listView.AddColumn(100, "Name");
 #unwarn
             var valueColumn = listView.AddColumn(100, "Value");
-            
+
             return listView;
         }
 
 		int32 mResizeCount = 0;
-		
+
 		Widget GetParentWidget()
 		{
 			Widget parentWidget = null;
@@ -1118,7 +1118,7 @@ namespace IDE.ui
 
             var font = DarkTheme.sDarkTheme.mSmallFont;
             float nameWidth = 0;
-            float valueWidth = 0;            
+            float valueWidth = 0;
 
             bool hadMembers = false;
 
@@ -1151,7 +1151,7 @@ namespace IDE.ui
 				if (listViewItem.mWatchRefreshButton != null)
 					thisNameWidth += GS!(18);
                 nameWidth = Math.Max(nameWidth, thisNameWidth);
-                
+
                 float addHeight = nameHeight - listView.mFont.GetLineSpacing();
                 childHeights += addHeight;
                 listViewItem.mSelfHeight += addHeight;
@@ -1172,7 +1172,7 @@ namespace IDE.ui
                 if (listViewItem.mWatchEntry.mResultType != WatchResultType.None)
                     hasLeftIcon = true;
             }
-            
+
             if (!hadMembers)
                 listView.mLabelX -= GS!(14);
             if (!hasRightValues)
@@ -1191,7 +1191,7 @@ namespace IDE.ui
             float height = childHeights + GS!(6);
 
             float maxHeight = font.GetLineSpacing() * 12 + 6.001f;
-            if (height > maxHeight)            
+            if (height > maxHeight)
             {
                 if (listView.mVertScrollbar == null)
 				{
@@ -1387,17 +1387,17 @@ namespace IDE.ui
             else
                 width = listView.mWidth - x - GS!(4);
 
-            
+
             //editWidget.Resize(x - GS!(1), y - GS!(2), width, GS!(24));
 			editWidget.ResizeAround(x, y, width);
-            
+
             listView.AddWidget(editWidget);
 
             editWidget.mOnLostFocus.Add(new => HandleEditLostFocus);
             editWidget.mOnSubmit.Add(new => HandleRenameSubmit);
             editWidget.mOnCancel.Add(new => HandleRenameCancel);
             WidgetWindow.sOnMouseWheel.Add(new => HandleMouseWheel);
-            
+
             editWidget.SetFocus();
 			mActionIdx++;
         }
@@ -1446,7 +1446,7 @@ namespace IDE.ui
 					flags |= DebugManager.EvalExpressionFlags.DeselectCallStackIdx;
 				flags |= .AllowCalls | .AllowSideEffects;
                 gApp.DebugEvaluate(null, evalStr, val, -1, headListViewItem.mWatchEntry.mLanguage, flags);
-                //IDEApp.sApp.OutputLine(val);                
+                //IDEApp.sApp.OutputLine(val);
 
                 if (val.StartsWith("!", StringComparison.Ordinal))
                 {
@@ -1469,7 +1469,7 @@ namespace IDE.ui
                 IDEApp.sApp.MemoryEdited();
             }
 
-			editWidget.RemoveSelf();            
+			editWidget.RemoveSelf();
 			BFApp.sApp.DeferDelete(editWidget);
             mEditWidget = null;
             mEditingItem = null;
@@ -1480,7 +1480,7 @@ namespace IDE.ui
                 var childListView = childWidget as HoverListView;
                 RefreshListView(childListView);
             }
-            
+
             mEditLostFocusTick = mUpdateCnt;
             FinishListView(listView, listView.mX, listView.mY);
 
@@ -1513,7 +1513,7 @@ namespace IDE.ui
             if (theEvent.mBtn == 0)
             {
                 //PropertyEntry aPropertyEntry = mPropertyEntryMap[item];
-                //EditValue(aPropertyEntry);            
+                //EditValue(aPropertyEntry);
                 EditListViewItem(item);
             }
             else if (theEvent.mBtn == 1)
@@ -1522,7 +1522,7 @@ namespace IDE.ui
 				clickedItem.SelfToOtherTranslate(clickedItem.mListView.GetRoot(), theEvent.mX, theEvent.mY, out aX, out aY);
                 ShowRightClickMenu(item, aX, aY);
             }
-                        
+
             theEvent.mHandled = true;
         }
 
@@ -1570,7 +1570,7 @@ namespace IDE.ui
 					mDisplayString.Append('\n');
 					mDisplayString.Append(useStr);
 				}
-				
+
 				Rehup();
 				return true;
 			}
@@ -1599,8 +1599,8 @@ namespace IDE.ui
 
             mTextPanel = textPanel;
 			mTextPanel.mOnRemovedFromParent.Add(new => PanelRemovedFromParent);
-            if (mTextPanel.mHoverWatch != null)            
-                Debug.Assert(mTextPanel.mHoverWatch == this);            
+            if (mTextPanel.mHoverWatch != null)
+                Debug.Assert(mTextPanel.mHoverWatch == this);
             mTextPanel.mHoverWatch = this;
 			if (displayString == null)
 				mDisplayString.Clear();
@@ -1615,7 +1615,7 @@ namespace IDE.ui
             mOrigY = y;
 
 			Widget parentWidget = GetParentWidget();
-			
+
             //var parentWidget = textPanel.EditWidget.Content;
 
             if (evalString != null)
@@ -1664,7 +1664,7 @@ namespace IDE.ui
                 (int)screenWidth, (int)screenHeight,
                 windowFlags,
                 this);
-            
+
             WidgetWindow.sMouseDownHandler.Add(new => HandleMouseDown);
             WidgetWindow.sMouseWheelDelegate.Add(new => HandleMouseWheel);
             WidgetWindow.sMenuItemSelectedDelegate.Add(new => HandleSysMenuItemSelected);
@@ -1695,9 +1695,9 @@ namespace IDE.ui
                 openYList.Add(openY);
             }
 
-            var sourceViewPanel = mTextPanel;			
+            var sourceViewPanel = mTextPanel;
 			var widgetWindow = mWidgetWindow;
-            Close();            
+            Close();
 			if (widgetWindow != null)
 				widgetWindow.mRootWidget = null; // Detach root
 			//Debug.WriteLine("Hoverwatch showing");
@@ -1726,7 +1726,7 @@ namespace IDE.ui
                         OpenButtonClicked(hoverListViewItem);
                         break;
                     }
-                }                
+                }
             }
 
 			mRehupEvent();

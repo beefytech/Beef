@@ -523,7 +523,7 @@ namespace Tests
 			iSer.Serialize(serCtx);
 			Test.Assert(serCtx.mStr == "x 10\ny 2\n");
 
-			Test.Assert(cTest0 == "Test\n0");
+			Test.Assert(cTest0 == "Test\n0" || cTest0 == "Test\r\n0");
 			Test.Assert(cTest1 == "AAAAAAAAAAAA");
 			Test.Assert((Object)cTest1 == (Object)"AAAAAAAAAAAA");
 			Test.Assert((cTest0Binary[0] == (.)'T') && ((cTest0Binary.Count == 6) || (cTest0Binary.Count == 7)));

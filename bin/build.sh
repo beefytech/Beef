@@ -7,10 +7,25 @@ ROOTPATH="$(dirname "$SCRIPTPATH")"
 echo Building from $SCRIPTPATH
 cd $SCRIPTPATH
 
-if [[ $1 == "clean" ]]; then
-	rm -rf ../jbuild
-	rm -rf ../jbuild_d
-fi
+for i in "$@"
+do
+	if [[ $i == "clean" ]]; then
+		echo "Cleaning..."
+		rm -rf ../jbuild
+		rm -rf ../jbuild_d
+		exit
+	fi
+
+	if [[ $i == "sdl" ]]; then
+		echo "Using SDL"
+		USE_SDL="-DBF_ENABLE_SDL=1"
+	fi
+
+	if [[ $i == "no_ffi" ]]; then
+		echo "Disabling FFI"
+		USE_FFI="-DBF_DISABLE_FFI=1"
+	fi
+done
 
 if command -v ninja >/dev/null 2>&1 ; then
 	CAN_USE_NINJA=1
@@ -55,11 +70,15 @@ if [ ! -d jbuild_d ]; then
 	mkdir jbuild_d
 	mkdir jbuild
 fi
+
 cd jbuild_d
-cmake $USE_NINJA -DCMAKE_BUILD_TYPE=Debug ../
+
+echo cmake $USE_NINJA $USE_SDL -DCMAKE_BUILD_TYPE=Debug ../
+
+cmake $USE_NINJA $USE_SDL $USE_FFI -DCMAKE_BUILD_TYPE=Debug ../
 cmake --build .
 cd ../jbuild
-cmake $USE_NINJA -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
+cmake $USE_NINJA $USE_SDL $USE_FFI -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
 cmake --build .
 
 cd ../IDE/dist

@@ -164,7 +164,7 @@ static HWND gNoButtonWindow = NULL;
 static bool gExiting = false;
 
 static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{	
+{
 	switch (uMsg)
 	{
 	case WM_COMMAND:
@@ -189,21 +189,21 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			if (::GetSaveFileNameW(&openFileName))
 			{
 				CreateMiniDump(CrashCatcher::Get()->mExceptionPointers, UTF8Encode(fileName));
-			}			
+			}
 		}
 		else if (hwndCtl == gNoButtonWindow)
 		{
 			if (!CrashCatcher::Get()->mRelaunchCmd.IsEmpty())
 			{
 				SHELLEXECUTEINFOW shellExecuteInfo = { 0 };
-				shellExecuteInfo.cbSize = sizeof(SHELLEXECUTEINFOW);				
-				shellExecuteInfo.nShow = SW_SHOWNORMAL;	
+				shellExecuteInfo.cbSize = sizeof(SHELLEXECUTEINFOW);
+				shellExecuteInfo.nShow = SW_SHOWNORMAL;
 
 				String cmd = CrashCatcher::Get()->mRelaunchCmd;
-				String file;				
+				String file;
 
 				bool nameQuoted = cmd[0] == '\"';
-				
+
 				int i;
 				for (i = (nameQuoted ? 1 : 0); cmd[i] != 0; i++)
 				{
@@ -224,11 +224,11 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 					useParamsPtr++;
 
 				auto fileW = UTF8Decode(file);
-				shellExecuteInfo.lpFile = fileW.c_str();				
+				shellExecuteInfo.lpFile = fileW.c_str();
 				auto paramsW = UTF8Decode(useParamsPtr);
 				shellExecuteInfo.lpParameters = paramsW.c_str();
-				
-				BOOL success = ::ShellExecuteExW(&shellExecuteInfo);					
+
+				BOOL success = ::ShellExecuteExW(&shellExecuteInfo);
 			}
 
 			CrashCatcher::Get()->mCloseRequested = true;
@@ -261,7 +261,7 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 	GetVersionEx(&aVersionInfo);
 
 	// Setting fonts on 98 causes weirdo crash things in GDI upon the second crash.
-	//  That's no good.	
+	//  That's no good.
 	gUseDefaultFonts = aVersionInfo.dwPlatformId != VER_PLATFORM_WIN32_NT;
 
 	int aHeight = -MulDiv(8, 96, 72);
@@ -302,7 +302,7 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 
 	RECT windowRect = aRect;
 	BOOL worked = AdjustWindowRect(&windowRect, aWindowStyle, FALSE);
-	
+
 	HWND aHWnd = ::CreateWindowExW(0, L"SEHWindow", L"Fatal Error!",
 		aWindowStyle,
 		64, 64,
@@ -332,7 +332,7 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 		DEFAULT_PITCH | FF_DONTCARE, "Arial");
 
 	if (!gUseDefaultFonts)
-		SendMessage(aLabelWindow, WM_SETFONT, (WPARAM)aBoldArialFont, 0);	
+		SendMessage(aLabelWindow, WM_SETFONT, (WPARAM)aBoldArialFont, 0);
 
 	HWND anEditWindow = CreateWindowA("EDIT", errorText.c_str(),
 		WS_VISIBLE | WS_CHILD | ES_MULTILINE | WS_BORDER | WS_HSCROLL | WS_VSCROLL | ES_READONLY,
@@ -403,7 +403,7 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 
 		aCurX += aButtonWidth + 8;
 	}
-	
+
 	gNoButtonWindow = CreateWindowA("BUTTON", relaunchCmd.IsEmpty() ? "Close Now" : "Relaunch",
 		WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | BS_PUSHBUTTON,
 		aCurX, aRect.bottom - 24 - 8,
@@ -437,7 +437,7 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 static bool GetLogicalAddress(void* addr, char* szModule, DWORD len, uintptr& section, uintptr& offset)
 {
 	MEMORY_BASIC_INFORMATION mbi;
-	
+
 	if (!VirtualQuery(addr, &mbi, sizeof(mbi)))
 		return false;
 
@@ -495,7 +495,7 @@ static BOOL CALLBACK MyMiniDumpCallback(
 	BOOL bRet = FALSE;
 
 
-	// Check parameters 
+	// Check parameters
 
 	if (pInput == 0)
 		return FALSE;
@@ -504,29 +504,29 @@ static BOOL CALLBACK MyMiniDumpCallback(
 		return FALSE;
 
 
-	// Process the callbacks 
+	// Process the callbacks
 
 	switch (pInput->CallbackType)
 	{
 		case IncludeModuleCallback:
 		{
-			// Include the module into the dump 
+			// Include the module into the dump
 			bRet = TRUE;
 		}
 		break;
 	case IncludeThreadCallback:
 		{
-			// Include the thread into the dump 
+			// Include the thread into the dump
 			bRet = TRUE;
 		}
 		break;
 	case ModuleCallback:
 		{
-			// Does the module have ModuleReferencedByMemory flag set ? 
+			// Does the module have ModuleReferencedByMemory flag set ?
 
 			if (!(pOutput->ModuleWriteFlags & ModuleReferencedByMemory))
 			{
-				// No, it does not - exclude it 
+				// No, it does not - exclude it
 
 				//wprintf(L"Excluding module: %s \n", pInput->Module.FullPath);
 
@@ -538,19 +538,19 @@ static BOOL CALLBACK MyMiniDumpCallback(
 		break;
 	case ThreadCallback:
 		{
-			// Include all thread information into the minidump 
+			// Include all thread information into the minidump
 			bRet = TRUE;
 		}
 		break;
 	case ThreadExCallback:
 		{
-			// Include this information 
+			// Include this information
 			bRet = TRUE;
 		}
 		break;
 	case MemoryCallback:
 		{
-			// We do not include any information here -> return FALSE 
+			// We do not include any information here -> return FALSE
 			bRet = FALSE;
 		}
 		break;
@@ -564,7 +564,7 @@ static BOOL CALLBACK MyMiniDumpCallback(
 
 static bool CreateMiniDump(EXCEPTION_POINTERS* pep, const StringImpl& filePath)
 {
-	// Open the file 
+	// Open the file
 	typedef BOOL(*PDUMPFN)(
 		HANDLE hProcess,
 		DWORD ProcessId,
@@ -587,7 +587,7 @@ static bool CreateMiniDump(EXCEPTION_POINTERS* pep, const StringImpl& filePath)
 	if ((hFile == NULL) || (hFile == INVALID_HANDLE_VALUE))
 		return false;
 
-	// Create the minidump 
+	// Create the minidump
 
 	MINIDUMP_EXCEPTION_INFORMATION mdei;
 
@@ -615,9 +615,9 @@ static bool CreateMiniDump(EXCEPTION_POINTERS* pep, const StringImpl& filePath)
 
 	BOOL rv = (*pFn)(GetCurrentProcess(), GetCurrentProcessId(),
 		hFile, mdt, (pep != 0) ? &mdei : 0, &user_stream_info, &mci);
-				
-	// Close the file 
-	CloseHandle(hFile);	
+
+	// Close the file
+	CloseHandle(hFile);
 	return true;
 }
 
@@ -638,7 +638,7 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 	sf.AddrStack.Mode = AddrModeFlat;
 	sf.AddrFrame.Offset = theContext->Rbp;
 	sf.AddrFrame.Mode = AddrModeFlat;
-#else	
+#else
 	sf.AddrPC.Offset = theContext->Eip;
 	sf.AddrPC.Mode = AddrModeFlat;
 	sf.AddrStack.Offset = theContext->Esp;
@@ -676,7 +676,7 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 			//aDebugDump += aBuffer;
 			break;
 		}
-		
+
 		if ((aLevelCount > 0) && ((sf.AddrFrame.Offset == 0) || (sf.AddrPC.Offset == 0)))
 			break;
 
@@ -693,7 +693,7 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 
 		// Displacement of the input address, relative to the start of the symbol
 #ifdef BF64
-		DWORD64 symDisplacement = 0;  
+		DWORD64 symDisplacement = 0;
 #else
 		DWORD symDisplacement = 0;
 #endif
@@ -706,7 +706,7 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 
 		GetLogicalAddress((PVOID)sf.AddrPC.Offset, szModule, sizeof(szModule), section, offset);
 
-		bool forceFail = false;		
+		bool forceFail = false;
 		if ((gSymGetSymFromAddr(hProcess, sf.AddrPC.Offset, &symDisplacement, pSymbol)) && (!forceFail))
 		{
 			char aUDName[256];
@@ -735,26 +735,26 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 #else
 			IMAGEHLP_LINE lineInfo = { 0 };
 			lineInfo.SizeOfStruct = sizeof(IMAGEHLP_LINE);
-#endif			
+#endif
 			if (gSymGetLineFromAddr(hProcess, sf.AddrPC.Offset, &displacement, &lineInfo))
-			{				
+			{
 				aDebugDump += StrFormat("    at %s:%d\r\n", lineInfo.FileName, lineInfo.LineNumber);
 			}
 		}
 		else // No symbol found.  Print out the logical address instead.
 		{
-			
+
 
 // 			ModuleInfo* moduleInfo = NULL;
 // 			if (moduleInfoMap.TryAdd(szModule, NULL, &moduleInfo))
 // 			{
-// 
+//
 // 			}
 
 			aDebugDump += StrFormat("%@ %@ %04X:%@ %s\r\n", sf.AddrFrame.Offset, sf.AddrPC.Offset, section, offset, GetFileName(szModule).c_str());
-		}		
+		}
 
-		aDebugDump += StrFormat("    Params: %@ %@ %@ %@\r\n", sf.Params[0], sf.Params[1], sf.Params[2], sf.Params[3]);		
+		aDebugDump += StrFormat("    Params: %@ %@ %@ %@\r\n", sf.Params[0], sf.Params[1], sf.Params[2], sf.Params[3]);
 		aDebugDump += "\r\n";
 
 		aLevelCount++;
@@ -792,7 +792,7 @@ static String GetVersion(const StringImpl& fileName)
 			nFixedLength = 0;
 			LPSTR       lpVersion = NULL;
 			void*       lpFixedPointer;
-			TRANSARRAY* lpTransArray;			
+			TRANSARRAY* lpTransArray;
 
 			GetFileVersionInfoA(fileName.c_str(),
 				dwReserved,
@@ -850,7 +850,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	crashCatcher->mCrashed = true;
 
 	HMODULE hMod = GetModuleHandleA(NULL);
-		
+
 	PIMAGE_DOS_HEADER pDosHdr = (PIMAGE_DOS_HEADER)hMod;
 	PIMAGE_NT_HEADERS pNtHdr = (PIMAGE_NT_HEADERS)((uint8*)hMod + pDosHdr->e_lfanew);
 	bool isCLI = pNtHdr->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI;
@@ -858,7 +858,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 		isCLI = false;
 	else if ((CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_Console) || (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_PrintOnly))
 		isCLI = true;
-	
+
 	bool hasImageHelp = LoadImageHelp();
 
 	String anErrorTitle;
@@ -869,7 +869,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 
 	if (isCLI)
 		aDebugDump += "**** FATAL APPLICATION ERROR ****\n";
-		
+
 	for (auto func : CrashCatcher::Get()->mCrashInfoFuncs)
 		func();
 
@@ -878,10 +878,10 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	crashInfo += "\nExecutable: ";
 	crashInfo += path;
 	crashInfo += "\r\n";
-	crashInfo += GetVersion(path);	
+	crashInfo += GetVersion(path);
 
 	aDebugDump.Append(crashInfo);
-	
+
 	for (int i = 0; i < (int)aDebugDump.length(); i++)
 	{
 		char c = aDebugDump[i];
@@ -898,7 +898,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	}
 
 // 	aDebugDump.Replace("\n", "\r\n");
-// 	aDebugDump.Replace("\t", "  ");		
+// 	aDebugDump.Replace("\t", "  ");
 
 	if (!aDebugDump.IsEmpty())
 	{
@@ -907,7 +907,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 
 		aDebugDump += "\r\n";
 	}
-		
+
 	WCHAR exeFilePathW[MAX_PATH];
 	exeFilePathW[0] = 0;
 	::GetModuleFileNameW(hMod, exeFilePathW, MAX_PATH);
@@ -934,7 +934,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	}
 
 	///////////////////////////
-	// first name the exception	
+	// first name the exception
 	char  *szName = NULL;
 	for (int i = 0; gMsgTable[i].dwExceptionCode != 0xFFFFFFFF; i++)
 	{
@@ -962,16 +962,16 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	// Get logical address of the module where exception occurs
 	uintptr section, offset;
 	GetLogicalAddress(lpEP->ExceptionRecord->ExceptionAddress, aBuffer, sizeof(aBuffer), section, offset);
-	
 
-	aDebugDump += StrFormat("Logical Address: %04X:%@\r\n", section, offset);	
+
+	aDebugDump += StrFormat("Logical Address: %04X:%@\r\n", section, offset);
 
 	aDebugDump += "\r\n";
 
 	anErrorTitle = StrFormat("Exception at %04X:%08X", section, offset);
 
 	String aWalkString;
-	
+
 	if (hasImageHelp)
 		aWalkString = ImageHelpWalk(lpEP->ContextRecord, 0);
 
@@ -992,10 +992,10 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	aDebugDump += StrFormat("Flags:%@\r\n", lpEP->ContextRecord->EFlags);
 #else
 	aDebugDump += StrFormat("EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X\r\n",
-		lpEP->ContextRecord->Eax, lpEP->ContextRecord->Ebx, lpEP->ContextRecord->Ecx, lpEP->ContextRecord->Edx, lpEP->ContextRecord->Esi, lpEP->ContextRecord->Edi);	
-	aDebugDump += StrFormat("EIP:%08X ESP:%08X  EBP:%08X\r\n", lpEP->ContextRecord->Eip, lpEP->ContextRecord->Esp, lpEP->ContextRecord->Ebp);	
-	aDebugDump += StrFormat("CS:%04X SS:%04X DS:%04X ES:%04X FS:%04X GS:%04X\r\n", lpEP->ContextRecord->SegCs, lpEP->ContextRecord->SegSs, lpEP->ContextRecord->SegDs, lpEP->ContextRecord->SegEs, lpEP->ContextRecord->SegFs, lpEP->ContextRecord->SegGs);	
-	aDebugDump += StrFormat("Flags:%08X\r\n", lpEP->ContextRecord->EFlags);	
+		lpEP->ContextRecord->Eax, lpEP->ContextRecord->Ebx, lpEP->ContextRecord->Ecx, lpEP->ContextRecord->Edx, lpEP->ContextRecord->Esi, lpEP->ContextRecord->Edi);
+	aDebugDump += StrFormat("EIP:%08X ESP:%08X  EBP:%08X\r\n", lpEP->ContextRecord->Eip, lpEP->ContextRecord->Esp, lpEP->ContextRecord->Ebp);
+	aDebugDump += StrFormat("CS:%04X SS:%04X DS:%04X ES:%04X FS:%04X GS:%04X\r\n", lpEP->ContextRecord->SegCs, lpEP->ContextRecord->SegSs, lpEP->ContextRecord->SegDs, lpEP->ContextRecord->SegEs, lpEP->ContextRecord->SegFs, lpEP->ContextRecord->SegGs);
+	aDebugDump += StrFormat("Flags:%08X\r\n", lpEP->ContextRecord->EFlags);
 #endif
 
 	aDebugDump += "\r\n";
@@ -1015,12 +1015,12 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 
 	if (hasImageHelp)
 		GetSymbolsFromMapFile(aDebugDump);*/
-	
+
 	if (isCLI)
-	{		
+	{
 		aDebugDump += "\n";
-		//fwrite(aDebugDump.c_str(), 1, aDebugDump.length(), stderr);		
-		//fflush(stderr);		
+		//fwrite(aDebugDump.c_str(), 1, aDebugDump.length(), stderr);
+		//fflush(stderr);
 		DWORD bytesWritten;
 		::WriteFile(::GetStdHandle(STD_ERROR_HANDLE), aDebugDump.c_str(), (DWORD)aDebugDump.length(), &bytesWritten, NULL);
 	}
@@ -1031,7 +1031,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 CrashCatcher::CrashCatcher()
 {
 	mCrashed = false;
-	mInitialized = false;	
+	mInitialized = false;
 	mExceptionPointers = NULL;
 	mPreviousFilter = NULL;
 	mDebugError = false;
@@ -1040,11 +1040,11 @@ CrashCatcher::CrashCatcher()
 }
 
 static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
-{	
+{
  	OutputDebugStrF("SEH Filter! CraskReportKind:%d\n", CrashCatcher::Get()->mCrashReportKind);
 
 	if (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_None)
-	{	
+	{
 		OutputDebugStrF("Silent Exiting\n");
 		::TerminateProcess(GetCurrentProcess(), lpExceptPtr->ExceptionRecord->ExceptionCode);
 	}
@@ -1059,17 +1059,17 @@ static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 		//CreateMiniDump(lpExceptPtr);
 		DoHandleDebugEvent(lpExceptPtr);
 	}
- 
+
  	//if (!gDebugError)
- 		//SetErrorMode(SEM_NOGPFAULTERRORBOX);		
-	
+ 		//SetErrorMode(SEM_NOGPFAULTERRORBOX);
+
 	if (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_PrintOnly)
 	{
 		::TerminateProcess(GetCurrentProcess(), lpExceptPtr->ExceptionRecord->ExceptionCode);
 	}
 
 	//return EXCEPTION_CONTINUE_SEARCH;
-	return (CrashCatcher::Get()->mCloseRequested) ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH;	
+	return (CrashCatcher::Get()->mCloseRequested) ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH;
 }
 
 //PVECTORED_EXCEPTION_HANDLER(
@@ -1082,7 +1082,7 @@ static long __stdcall VectorExceptionHandler(LPEXCEPTION_POINTERS lpExceptPtr)
 
 
 void CrashCatcher::Init()
-{	
+{
 	if (mInitialized)
 		return;
 
@@ -1105,7 +1105,7 @@ void CrashCatcher::Test()
 	}
 	__except (SEHFilter(GetExceptionInformation()))
 	{
-		
+
 	}
 }
 
@@ -1125,7 +1125,7 @@ void CrashCatcher::AddInfo(const StringImpl& str)
 }
 
 void CrashCatcher::Crash(const StringImpl& str)
-{	
+{
 	OutputDebugStrF("CrashCatcher::Crash\n");
 
 	mBfpCritSect.Lock();
@@ -1148,17 +1148,17 @@ void CrashCatcher::Crash(const StringImpl& str)
 	// When we catch the exception information like this, it displays the dump correctly but
 	//  the minidump doesn't contain a valid callstack, so we need to rely on SetUnhandledExceptionFilter
 	/*__try
-	{		
+	{
 		::MessageBoxA(NULL, "A", "B", MB_ICONERROR);
-		__debugbreak();		
+		__debugbreak();
 	}
 	__except (SEHFilter(GetExceptionInformation()))
 	{
 
 	}*/
-		
+
 	for (auto func : CrashCatcher::Get()->mCrashInfoFuncs)
-		func();	
+		func();
 
 	exit(1);
 }
@@ -1205,7 +1205,7 @@ CrashCatcher* CrashCatcher::Get()
 			{
 				if (sharedMem->mABIVersion == 0 && sharedMem->mBpManager == NULL && sharedMem->mCounter == 0)
 				{
-					sCrashCatcher = new CrashCatcher();					
+					sCrashCatcher = new CrashCatcher();
 					sharedMem->mBpManager = sCrashCatcher;
 					sharedMem->mABIVersion = CRASHCATCH_ABI_VERSION;
 					sharedMem->mCounter = 1;
@@ -1216,7 +1216,7 @@ CrashCatcher* CrashCatcher::Get()
 					sCrashCatcher = sharedMem->mBpManager;
 				}
 				::UnmapViewOfFile(sharedMem);
-			}			
+			}
 			::CloseHandle(fileMapping);
 		}
 		else
@@ -1227,7 +1227,7 @@ CrashCatcher* CrashCatcher::Get()
 				CrashCatchMemory* sharedMem = (CrashCatchMemory*)MapViewOfFile(fileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(CrashCatchMemory));
 				if (sharedMem != NULL)
 				{
-					sCrashCatcher = new CrashCatcher();					
+					sCrashCatcher = new CrashCatcher();
 					sharedMem->mBpManager = sCrashCatcher;
 					sharedMem->mABIVersion = CRASHCATCH_ABI_VERSION;
 					sharedMem->mCounter = 1;
@@ -1235,11 +1235,11 @@ CrashCatcher* CrashCatcher::Get()
 					::ReleaseMutex(mutex);
 				}
 				else
-				{					
+				{
 					::CloseHandle(fileMapping);
 					::CloseHandle(mutex);
 				}
-			}			
+			}
 		}
 	}
 
