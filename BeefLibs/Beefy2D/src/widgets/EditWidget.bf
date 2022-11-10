@@ -330,6 +330,8 @@ namespace Beefy.widgets
                         return false;
 
                     mSelection.ValueRef.mEndPos = insertTextAction.mSelection.Value.mEndPos;
+					if (!mSelection.Value.HasSelection)
+						mSelection = null;
                     mSelectionText.Append(insertTextAction.mSelectionText);
                 }
 
@@ -348,6 +350,9 @@ namespace Beefy.widgets
 
             public override bool Undo()
             {
+				if (mSelection != null)
+					Debug.Assert(mSelection.Value.HasSelection);
+
 				var editWidgetContent = EditWidgetContent;
                 int startIdx = (mSelection != null) ? mSelection.Value.MinPos : mCursorTextPos;
                 editWidgetContent.RemoveText(startIdx, (int32)mText.Length);
@@ -2677,6 +2682,15 @@ namespace Beefy.widgets
              mCursorBlinkTicks++;
 			if (mEditWidget.mHasFocus)
 				MarkDirty();
+
+			if (!mData.mUndoManager.[Friend]mUndoList.IsEmpty)
+			{
+				if (var textInsertAction = mData.mUndoManager.[Friend]mUndoList.Back as InsertTextAction)
+				{
+					if (textInsertAction.mSelection != null)
+						Debug.Assert(textInsertAction.mSelection.Value.HasSelection);
+				}
+			}
         }        
 
         public virtual void RecalcSize()
