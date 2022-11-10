@@ -1,4 +1,5 @@
 .DS_Store
+SDL2.dll
 *.lst
 *.o
 *.vcxproj.user

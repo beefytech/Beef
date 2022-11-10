@@ -25,6 +25,9 @@ call extern\llvm_build.bat
 @GOTO HADERROR
 :LLD_HAS
 
+copy BeefLibs\SDL2\dist\SDL2.dll
+@IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
+
 CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
