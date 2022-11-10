@@ -209,16 +209,16 @@ namespace Beefy.theme.dark
 		public static int32 sUnitSize = 20;
 
         public static DarkTheme sDarkTheme ~ delete _;
-        Image mThemeImage ~ delete _;
+        Image mThemeImage;
         public Image[] mImages = new Image[(int32) ImageIdx.COUNT] ~ delete _;
 
-        public Font mHeaderFont ~ delete _;
-        public Font mSmallFont ~ delete _;
-        public Font mSmallBoldFont ~ delete _;
-        public Image mTreeArrow ~ delete _;
-		public Image mWindowTopImage ~ delete _;
-        public Image mIconWarning ~ delete _;
-        public Image mIconError ~ delete _;
+        public Font mHeaderFont;
+        public Font mSmallFont;
+        public Font mSmallBoldFont;
+        public Image mTreeArrow;
+		public Image mWindowTopImage;
+        public Image mIconWarning;
+        public Image mIconError;
 
 		public String[3] mUIFileNames = .(new String(), new String(), new String()) ~
 		{
@@ -229,6 +229,20 @@ namespace Beefy.theme.dark
 		public this()
 		{
 			sDarkTheme = this;
+		}
+
+		public ~this()
+		{
+			delete mHeaderFont;
+			delete mSmallFont;
+			delete mSmallBoldFont;
+			delete mTreeArrow;
+			delete mWindowTopImage;
+			delete mIconWarning;
+			delete mIconError;
+			for (var image in mImages)
+				delete image;
+			delete mThemeImage;
 		}
 
         public static DesignToolboxEntry[] GetDesignToolboxEntries()
@@ -413,12 +427,6 @@ namespace Beefy.theme.dark
 			DarkTooltipManager.UpdateTooltip();
 			DarkTooltipManager.UpdateMouseover();
 		}
-
-        public ~this()
-        {
-            for (var image in mImages)
-                delete image;
-        }
 
         public Image GetImage(ImageIdx idx)
         {

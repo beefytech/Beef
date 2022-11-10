@@ -1854,7 +1854,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		}
 
 		if ((mOptions.mPlatformType != BfPlatformType_Windows) && (mainHasArgs) &&
-			((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefTest)))
+			((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefApplication_StaticLib) ||
+			 (targetType == BfTargetType_BeefApplication_DynamicLib) || (targetType == BfTargetType_BeefTest)))
         {
             SmallVector<BfIRType, 2> paramTypes;
             paramTypes.push_back(int32Type);

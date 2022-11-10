@@ -642,6 +642,7 @@ Texture* GLRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	glTexture->mWidth = imageData->mWidth;
 	glTexture->mHeight = imageData->mHeight;
 	glTexture->mImageData = imageData;
+	glTexture->AddRef();
 	imageData->AddRef();
 
 	return glTexture;

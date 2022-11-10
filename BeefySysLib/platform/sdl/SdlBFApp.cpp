@@ -17,7 +17,8 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	if (windowFlags & BFWINDOW_RESIZABLE)
 		sdlWindowFlags |= SDL_WINDOW_RESIZABLE;
 	sdlWindowFlags |= SDL_WINDOW_OPENGL;
-
+	if (windowFlags & BFWINDOW_FULLSCREEN)
+		sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
 #ifdef BF_PLATFORM_FULLSCREEN
     sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
 #endif
@@ -32,19 +33,23 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	if (!SDL_GL_CreateContext(mSDLWindow))
 	{
-		BF_FATAL(StrFormat(
+		String str = StrFormat(
 #ifdef BF_PLATFORM_OPENGL_ES2
-			"Unable to create OpenGLES context: %s"
+			"Unable to create SDL OpenGLES context: %s"
 #else
-			"Unable to create OpenGL context: %s"
+			"Unable to create SDL OpenGL context: %s"
 #endif
-			, SDL_GetError()).c_str());
+			, SDL_GetError());
+
+		BF_FATAL(str.c_str());
 		SDL_Quit();
 		exit(2);
 	}
 
+#ifndef BF_PLATFORM_OPENGL_ES2
 	glEnable(GL_DEBUG_OUTPUT);
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+#endif
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -236,32 +241,47 @@ void SdlBFApp::Run()
 			case SDL_MOUSEBUTTONUP:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
-					sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button);
+					if (sdlBFWindow != NULL)
+						sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button);
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
-					sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button, 1);
+					if (sdlBFWindow != NULL)
+						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button, 1);
 				}
 				break;
 			case SDL_MOUSEMOTION:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
-					sdlBFWindow->mMouseMoveFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y);
+					if (sdlBFWindow != NULL)
+						sdlBFWindow->mMouseMoveFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y);
 				}
 				break;
 			case SDL_KEYDOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
-					sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode), sdlEvent.key.repeat);
-					sdlBFWindow->mKeyCharFunc(sdlBFWindow, sdlEvent.key.keysym.sym);
+					if (sdlBFWindow != NULL)
+					{
+						sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode), sdlEvent.key.repeat);
+					}
+				}
+				break;
+			case SDL_TEXTINPUT:
+				{
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
+					if (sdlBFWindow != NULL)
+					{
+						sdlBFWindow->mKeyCharFunc(sdlBFWindow, *(wchar_t*)sdlEvent.text.text);
+					}
 				}
 				break;
 			case SDL_KEYUP:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
-					sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode));
+					if (sdlBFWindow != NULL)
+						sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode));
 				}
 				break;
 			}

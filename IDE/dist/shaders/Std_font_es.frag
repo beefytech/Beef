@@ -1,3 +1,5 @@
+#version 100
+
 precision lowp float;
 
 uniform lowp sampler2D tex;

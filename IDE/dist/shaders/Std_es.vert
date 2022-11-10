@@ -1,3 +1,5 @@
+#version 100
+
 precision mediump float;
 uniform mat4 screenMatrix;
 

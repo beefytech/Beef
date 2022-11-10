@@ -10,6 +10,11 @@
 
 #define BF_IMPORT extern "C"
 
+#if (defined(__arm__) || defined(__aarch64__))
+#define BF_PLATFORM_OPENGL_ES2
+#define BF_PLATFORM_ARM
+#endif
+
 #ifdef BFSYSLIB_DYNAMIC
 #define BF_EXPORT extern "C"
 #define BF_CALLTYPE

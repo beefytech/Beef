@@ -28,10 +28,6 @@
 
 //#define offsetof(type, member)  __builtin_offsetof (type, member)
 
-#ifdef __arm__
-#define BF_PLATFORM_OPENGL_ES2
-#endif
-
 extern "C"
 {
 //#define FFI_BUILDING

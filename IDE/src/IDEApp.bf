@@ -2760,6 +2760,8 @@ namespace IDE
 				mWorkspace.mLoading = false;
 			}
 
+			var startupProjectName = scope String();
+
             if (StructuredLoad(data, workspaceFileName) case .Err(let err))
             {
 				mBeefConfig.Refresh();
@@ -2870,7 +2872,6 @@ namespace IDE
 					LoadFailed();
 				}
 
-				var startupProjectName = scope String();
 				using (data.Open("Workspace"))
 				{
 					data.GetString("StartupProject", startupProjectName);
@@ -2906,10 +2907,6 @@ namespace IDE
 						switch (AddProject(projectName, projSpec.mVerSpec))
 						{
 						case .Ok(let project):
-							if ((!startupProjectName.IsEmpty) && (StringView.Compare(startupProjectName, projectName, true) == 0))
-							{
-								mWorkspace.mStartupProject = project;
-							}
 							project.mLocked = data.GetBool("Locked", project.mLockedDefault);
 						case .Err:
 							OutputLineSmart("ERROR: Unable to load project '{0}' specified in workspace", projectName);
@@ -2924,6 +2921,14 @@ namespace IDE
 			}
 
 			FlushDeferredLoadProjects();
+
+			for (var project in mWorkspace.mProjects)
+			{
+				if ((!startupProjectName.IsEmpty) && (StringView.Compare(startupProjectName, project.mProjectName, true) == 0))
+				{
+					mWorkspace.mStartupProject = project;
+				}
+			}
 
 			mWorkspace.FinishDeserialize(data);
             mWorkspace.FixOptions(mConfigName, mPlatformName);

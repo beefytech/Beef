@@ -1,5 +1,5 @@
 #!/bin/bash
-echo Starting build.sh
+echo Starting build_rt.sh
 
 PATH=/usr/local/bin:$PATH:$HOME/bin
 SCRIPTPATH=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
@@ -8,19 +8,14 @@ echo Building from $SCRIPTPATH
 cd $SCRIPTPATH
 
 if [[ $1 == "clean" ]]; then
-	rm -rf ../jbuild_sdl
-	rm -rf ../jbuild_sdl_d
+	rm -rf ../build_rt
+	rm -rf ../build_rt_d
 	exit
-fi
-
-if [[ $1 == "sdl" ]]; then
-	echo "Using SDL"
-	USE_SDL="-DBF_ENABLE_SDL=1"
 fi
 
 if command -v ninja >/dev/null 2>&1 ; then
 	CAN_USE_NINJA=1
-	if [ -d ../jbuild_sdl_d ] && [ ! -f ../jbuild_sdl_d/build.ninja ]; then
+	if [ -d ../build_rt_d ] && [ ! -f ../build_rt_d/build.ninja ]; then
 		CAN_USE_NINJA=0
 	fi
 
@@ -50,17 +45,15 @@ fi
 ### LIBS ###
 
 cd ..
-if [ ! -d jbuild_sdl_d ]; then
-	mkdir jbuild_sdl_d
-	mkdir jbuild_sdl
+if [ ! -d build_rt_d ]; then
+	mkdir build_rt_d
+	mkdir build_rt
 fi
 
-cd jbuild_sdl_d
+cd build_rt_d
 
-echo cmake $USE_NINJA $USE_SDL -DCMAKE_BUILD_TYPE=Debug ../
-
-cmake $USE_NINJA -DBF_ENABLE_SDL=1 -DCMAKE_BUILD_TYPE=Debug ../
+cmake $USE_NINJA -DBF_ENABLE_SDL=1 -DBF_ONLY_RUNTIME=1 -DCMAKE_BUILD_TYPE=Debug ../
 cmake --build .
-cd ../jbuild_sdl
-cmake $USE_NINJA -DBF_ENABLE_SDL=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
+cd ../build_rt
+cmake $USE_NINJA -DBF_ENABLE_SDL=1 -DBF_ONLY_RUNTIME=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
 cmake --build .

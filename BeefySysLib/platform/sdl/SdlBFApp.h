@@ -11,8 +11,6 @@ NS_BF_BEGIN;
 
 class RenderDevice;
 
-typedef std::map<String, uint32> StringToUIntMap;
-
 class SdlBFWindow : public BFWindow
 {
 public:
@@ -54,7 +52,6 @@ class SdlBFApp : public BFApp
 {
 public:
 	bool					mInMsgProc;
-	StringToUIntMap			mClipboardFormatMap;
 	SdlWindowMap			mSdlWindowMap;
 
 protected:

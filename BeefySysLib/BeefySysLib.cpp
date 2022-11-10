@@ -13,6 +13,10 @@
 
 #include "util/AllocDebug.h"
 
+#ifdef BF_PLATFORM_WINDOWS
+#include "platform/sdl/SdlBFApp.h"
+#endif
+
 //#include "third_party/freetype/include/ft2build.h"
 //#include FT_FREETYPE_H
 //#include "img/PNGData.h"
@@ -84,8 +88,26 @@ BF_EXPORT void BF_CALLTYPE BFApp_GetWorkspaceRectFrom(int fromX, int fromY, int 
 	gBFApp->GetWorkspaceRectFrom(fromX, fromY, fromWidth, fromHeight, outX, outY, outWidth, outHeight);
 }
 
+static bool gForceSDL = false;
+
+BF_EXPORT void BF_CALLTYPE BFApp_SetOptionString(const char* name, const char* value)
+{
+	if (strcmp(name, "SDL") == 0)
+	{
+		gForceSDL = strcmp(value, "1") == 0;
+	}
+}
+
 BF_EXPORT void BF_CALLTYPE BFApp_Create()
 {
+#ifdef BF_PLATFORM_WINDOWS
+	if (gForceSDL)
+	{
+		new SdlBFApp();
+		return;
+	}
+#endif
+
 	new PlatformBFApp();
 }
 

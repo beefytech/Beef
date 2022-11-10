@@ -85,6 +85,9 @@ namespace Beefy
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BFApp_GetWorkspaceRectFrom(int32 x, int32 y, int32 width, int32 height, out int32 outX, out int32 outY, out int32 outWidth, out int32 outHeight);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BFApp_SetOptionString(char8* name, char8* value);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_Create();
 
@@ -169,6 +172,10 @@ namespace Beefy
 			sApp.Update();
 		}
 #endif
+		public static void SetOption(StringView name, StringView value)
+		{
+			BFApp_SetOptionString(name.ToScopeCStr!(), value.ToScopeCStr!());
+		}
         
         static void Static_Draw(bool forceDraw)
         {
