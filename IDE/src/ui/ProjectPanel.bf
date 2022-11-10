@@ -3330,9 +3330,9 @@ namespace IDE.ui
 					item = menu.AddItem("Copy|Ctrl+C");
 					item.mOnMenuItemSelected.Add(new (item) => CopyToClipboard());
 					item = menu.AddItem("Cut|Ctrl+X");
-					item.mOnMenuItemSelected.Add(new (item) => CopyToClipboard());
+					item.mOnMenuItemSelected.Add(new (item) => CutToClipboard());
 					item = menu.AddItem("Paste|Ctrl+V");
-					item.mOnMenuItemSelected.Add(new (item) => CopyToClipboard());
+					item.mOnMenuItemSelected.Add(new (item) => PasteFromClipboard());
 					menu.AddItem();
 
 					item = menu.AddItem("New Folder");
