@@ -514,6 +514,9 @@ namespace IDE.ui
 
 			public void UpdateWidth()
 			{
+				if (mWidgetWindow == null)
+					return;
+
 				int firstEntry = (int)(-(int)mScrollContent.mY / mItemSpacing);
 				int lastEntry = (int)((-(int)mScrollContent.mY + mScrollContentContainer.mHeight) / mItemSpacing);
 

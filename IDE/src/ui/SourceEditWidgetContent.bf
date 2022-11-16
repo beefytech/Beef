@@ -5211,7 +5211,7 @@ namespace IDE.ui
 
         public override void InsertText(int index, String text)
         {
-            if (IDEApp.sApp.mSymbolReferenceHelper != null)
+            if ((IDEApp.sApp.mSymbolReferenceHelper != null) && (mSourceViewPanel != null))
                 IDEApp.sApp.mSymbolReferenceHelper.SourcePreInsertText(this, index, text);
 
             for (var persistentTextPosition in PersistentTextPositions)

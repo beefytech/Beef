@@ -115,16 +115,16 @@ namespace IDE.ui
 			}
 		}
 
-		/*public this()
+		public this()
 		{
 
-			Debug.WriteLine("SymbolReferenceHelper this {0}", this);
+			//Debug.WriteLine("SymbolReferenceHelper this {0}", this);
 		}
 
 		public ~this()
 		{
-			Debug.WriteLine("SymbolReferenceHelper ~this {0}", this);
-		}*/
+			//Debug.WriteLine("SymbolReferenceHelper ~this {0}", this);
+		}
 
         public void Init(SourceViewPanel sourceViewPanel, Kind kind)
         {

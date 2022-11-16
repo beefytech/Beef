@@ -14030,7 +14030,16 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	{
 		wasCapturingMethodInfo = autoComplete->mIsCapturingMethodMatchInfo;
 
-		if (autoComplete->IsAutocompleteNode(lambdaBindExpr, lambdaBindExpr->mFatArrowToken))
+		bool isAutocompleteNode = false;
+		if (lambdaBindExpr->mFatArrowToken != NULL)
+		{
+			if (autoComplete->IsAutocompleteNode(lambdaBindExpr, lambdaBindExpr->mFatArrowToken))
+				isAutocompleteNode = true;
+		}
+		else if (autoComplete->IsAutocompleteNode(lambdaBindExpr, lambdaBindExpr->mCloseParen))
+			isAutocompleteNode = true;
+
+		if (isAutocompleteNode)
 			autoComplete->CheckInvocation(lambdaBindExpr, lambdaBindExpr->mOpenParen, lambdaBindExpr->mCloseParen, lambdaBindExpr->mCommas);
 
 		if (autoComplete->mIsCapturingMethodMatchInfo)
