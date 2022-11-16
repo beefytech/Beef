@@ -9,6 +9,7 @@ namespace System.Net
 		const int32 WSAENETRESET    = 10052;
 		const int32 WSAECONNABORTED = 10053;
 		const int32 WSAECONNRESET   = 10054;
+		const int32 WSAEWOULDBLOCK  = 10035;
 
 #if BF_PLATFORM_WINDOWS
 		public struct HSocket : uint
@@ -134,13 +135,13 @@ namespace System.Net
 		}
 
 		[CRepr]
-		struct SockAddr
+		public struct SockAddr
 		{
 
 		}
 
 		[CRepr]
-		struct SockAddr_in : SockAddr
+		public struct SockAddr_in : SockAddr
         {
 	        public int16 sin_family;
 	        public uint16 sin_port;
@@ -158,11 +159,17 @@ namespace System.Net
 			public char8** h_addr_list; /* list of addresses */
 		}
 
-		const HSocket INVALID_SOCKET = (HSocket)-1;
-		const int32 SOCKET_ERROR = -1;
-		const int AF_INET = 2;
-		const int SOCK_STREAM = 1;
-		const int IPPROTO_TCP = 6;
+		public const HSocket INVALID_SOCKET = (HSocket)-1;
+		public const int32 SOCKET_ERROR = -1;
+		public const int AF_INET = 2;
+		public const int SOCK_STREAM = 1;
+		public const int SOCK_DGRAM = 2;
+		public const int IPPROTO_TCP = 6;
+		public const int IPPROTO_UDP = 17;
+		public const int SOL_SOCKET = 0xffff;
+		public const int SO_REUSEADDR = 0x0004;
+		public const int SO_BROADCAST = 0x0020;
+		public const IPv4Address INADDR_ANY = default;
 
 #if BF_PLATFORM_WINDOWS
 		const int FIONBIO = (int)0x8004667e;
@@ -265,13 +272,22 @@ namespace System.Net
 #endif
 
 		[CLink, CallingConvention(.Stdcall)]
+		static extern int32 setsockopt(HSocket s, int32 level, int32 optname, void* optval, int32 optlen);
+
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 select(int32 nfds, FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, TimeVal* timeVal);
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 recv(HSocket s, void* ptr, int32 len, int32 flags);
 
 		[CLink, CallingConvention(.Stdcall)]
+		static extern int32 recvfrom(HSocket s, void* ptr, int32 len, int32 flags, SockAddr* from, int32* fromLen);
+
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 send(HSocket s, void* ptr, int32 len, int32 flags);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern int32 sendto(HSocket s, void* ptr, int32 len, int32 flags, SockAddr* to, int32 toLen);
 
 		public ~this()
 		{
@@ -311,13 +327,13 @@ namespace System.Net
 #endif
 		}
 
-		int32 htons(int32 val)
+		public static int32 htons(int32 val)
 		{
 			return ((val & 0x000000FF) << 24) | ((val & 0x0000FF00) <<  8) |
 				((val & 0x00FF0000) >>  8) | ((val & (int32)0xFF000000) >> 24);
 		}
 
-		int16 htons(int16 val)
+		public static int16 htons(int16 val)
 		{
 			return (int16)(((val & 0x00FF) << 8) |
 				((val & 0xFF00) >> 8));
@@ -488,6 +504,9 @@ namespace System.Net
 				 WSAECONNABORTED,
 				 WSAECONNRESET:
 				mIsConnected = false;
+			case WSAEWOULDBLOCK:
+			default:
+				NOP!();
 			}
 		}
 
@@ -508,6 +527,31 @@ namespace System.Net
 			return result;
 		}
 
+		public Result<int> RecvFrom(void* ptr, int size, SockAddr* from, ref int32 fromLen)
+		{
+			int32 result = recvfrom(mHandle, ptr, (int32)size, 0, from, &fromLen);
+			if (result == 0)
+			{
+				mIsConnected = false;
+				return .Err;
+			}
+			if (result == -1)
+			{
+				CheckDisconnected();
+				if (!mIsConnected)
+					return .Err;
+			}
+			return result;
+		}
+
+		public Result<int> RecvFrom(void* ptr, int size, out SockAddr_in from)
+		{
+			from = default;
+			//from.sin_family = AF_INET;
+			int32 fromLen = sizeof(SockAddr_in);
+			return RecvFrom(ptr, size, &from, ref fromLen);
+		}
+
 		public Result<int> Send(void* ptr, int size)
 		{
 			int32 result = send(mHandle, ptr, (int32)size, 0);
@@ -519,6 +563,21 @@ namespace System.Net
 			}
 			return result;
 		}
+
+		public Result<int> SendTo(void* ptr, int size, SockAddr* to, int toLen)
+		{
+			int32 result = sendto(mHandle, ptr, (int32)size, 0, to, (.)toLen);
+			if (result < 0)
+			{
+				CheckDisconnected();
+				if (!mIsConnected)
+					return .Err;
+			}
+			return result;
+		}
+
+#unwarn
+		public Result<int> SendTo(void* ptr, int size, SockAddr_in to) => SendTo(ptr, size, &to, sizeof(SockAddr_in));
 		
 		public void Close()
 		{
@@ -529,6 +588,30 @@ namespace System.Net
 			close(mHandle);
 #endif
 			mHandle = INVALID_SOCKET;
+		}
+
+		public Result<void> OpenUDP(int32 port = -1)
+		{
+			SockAddr_in bindAddr = default;
+
+			mHandle = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+			if (mHandle == INVALID_SOCKET)
+			{
+				return .Err;
+			}
+
+			RehupSettings();
+
+			int32 yes = 1;
+			//setsockopt(mHandle, SOL_SOCKET, SO_REUSEADDR, &yes, 4);
+			int32 status = setsockopt(mHandle, SOL_SOCKET, SO_BROADCAST, &yes, 4);
+
+			bindAddr.sin_addr = INADDR_ANY;
+			bindAddr.sin_port = (.)htons((int16)port);
+			bindAddr.sin_family = AF_INET;
+
+			status = bind(mHandle, &bindAddr, sizeof(SockAddr_in));
+			return .Ok;
 		}
 	}
 }
