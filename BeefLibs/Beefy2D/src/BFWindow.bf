@@ -48,7 +48,8 @@ namespace Beefy
 			ShowMinimized = 0x0200'0000,
 			ShowMaximized = 0x0400'0000,
 			AllowFullscreen = 0x0800'0000,
-			AcceptFiles = 0x1000'0000
+			AcceptFiles = 0x1000'0000,
+			NoShow = 0x2000'0000,
         };
 
 		[AllowDuplicates]
@@ -84,6 +85,18 @@ namespace Beefy
             Zoom = 9            
         }
 
+		public enum ShowKind
+		{
+			Hide,
+			Normal,
+			Minimized,
+			Maximized,
+			Show,
+			ShowNormal,
+			ShowMinimized,
+			ShowMaximized
+		}
+
         public SysMenu mSysMenu ~ delete _;
         public Dictionary<int, SysMenu> mSysMenuMap = new Dictionary<int, SysMenu>() ~ delete _;
         public DrawLayer mDefaultDrawLayer ~ delete _;
@@ -108,9 +121,14 @@ namespace Beefy
     {
 		public enum ShowKind
 		{
+			Hide,
 			Normal,
 			Minimized,
-			Maximized
+			Maximized,
+			Show,
+			ShowNormal,
+			ShowMinimized,
+			ShowMaximized
 		}
 
         delegate void NativeMovedDelegate(void* window);
@@ -147,6 +165,7 @@ namespace Beefy
 		public int32 mNormY;
 		public int32 mNormWidth;
 		public int32 mNormHeight;
+		public bool mVisible = true;
 		public ShowKind mShowKind;
         public int32 mClientX;
         public int32 mClientY;
@@ -154,7 +173,6 @@ namespace Beefy
         public int32 mClientHeight;
         public float mAlpha = 1.0f;
         public Flags mWindowFlags;
-        public bool mVisible = true;
         private bool mMouseVisible;
         public bool mHasFocus = false;        
         public bool mHasClosed;
@@ -212,6 +230,9 @@ namespace Beefy
 
         [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_Close(void* window, int32 force);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BFWindow_Show(void* window, ShowKind showKind);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_SetForeground(void* window);
@@ -333,6 +354,9 @@ namespace Beefy
 				useFlags |= .NoActivate;
 				useFlags |= .NoMouseActivate;
 			}*/
+
+			if (windowFlags.HasFlag(.NoShow))
+				mVisible = false;
 
             mNativeWindow = BFApp_CreateWindow((parent != null) ? (parent.mNativeWindow) : null, title, (int32)x, (int32)y, (int32)width, (int32)height, (int32)useFlags);
             sWindowDictionary[(int)mNativeWindow] = this;
@@ -460,6 +484,12 @@ namespace Beefy
             BFWindow_SetForeground(mNativeWindow);
             GotFocus();
         }
+
+		public void Show(ShowKind showKind)
+		{
+			mShowKind = showKind;
+			BFWindow_Show(mNativeWindow, showKind);
+		}
 
         public void SetNonExclusiveMouseCapture()
         {

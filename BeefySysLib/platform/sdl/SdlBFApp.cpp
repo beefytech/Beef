@@ -87,11 +87,12 @@ static int SDLConvertScanCode(int scanCode)
 {
 	if ((scanCode >= SDL_SCANCODE_A) && (scanCode <= SDL_SCANCODE_Z))
 		return (scanCode - SDL_SCANCODE_A) + 'A';
-	if ((scanCode >= SDL_SCANCODE_0) && (scanCode <= SDL_SCANCODE_9))
-		return (scanCode - SDL_SCANCODE_0) + '0';
+	if ((scanCode >= SDL_SCANCODE_1) && (scanCode <= SDL_SCANCODE_9))
+		return (scanCode - SDL_SCANCODE_1) + '1';
 
 	switch (scanCode)
 	{
+	case SDL_SCANCODE_9: return '0';
     case SDL_SCANCODE_CANCEL: return 0x03;
     case SDL_SCANCODE_AC_BACK: return 0x08;
     case SDL_SCANCODE_TAB: return 0x09;

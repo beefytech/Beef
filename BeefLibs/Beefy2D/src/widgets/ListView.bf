@@ -1005,6 +1005,7 @@ namespace Beefy.widgets
 					mouseEvent.mSender = selectedItem;
 					mouseEvent.mBtnCount = 2;
 					selectedItem.mOnMouseDown(mouseEvent);
+					mOnItemMouseDown(selectedItem, 0, 0, 0, 2);
 				default:
                 }
 

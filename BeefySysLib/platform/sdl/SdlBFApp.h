@@ -28,7 +28,7 @@ public:
 	virtual void			SetTitle(const char* title) override {}
 	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) override {}
 	virtual void			GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind) override { }
-	virtual void			Resize(int x, int y, int width, int height, int showKind) override {}
+	virtual void			Resize(int x, int y, int width, int height, ShowKind showKind) override {}
 	virtual void			SetMouseVisible(bool isMouseVisible) override {}
 
 	virtual bool			TryClose() override;
@@ -43,6 +43,7 @@ public:
 
 	virtual void			ModalsRemoved() override;
 
+	virtual void			Show(ShowKind showKind) {}
 	virtual void			SetForeground() override {};
 };
 

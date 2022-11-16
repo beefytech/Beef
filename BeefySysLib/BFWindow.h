@@ -55,10 +55,11 @@ enum
 	BFWINDOW_SHOWMINIMIZED  = 0x2000000,
 	BFWINDOW_SHOWMAXIMIZED  = 0x4000000,
 	BFWINDOW_ALLOW_FULLSCREEN = 0x8000000,
-	BFWINDOW_ACCEPTFILES = 0x10000000
-	
+	BFWINDOW_ACCEPTFILES	= 0x10000000,
+	BFWINDOW_NOSHOW			= 0x20000000
+
 };
- 
+
 class RenderWindow;
 
 class BFMenu
@@ -66,7 +67,7 @@ class BFMenu
 public:
 	BFMenu*					mParent;
 	Array<BFMenu*>			mBFMenuList;
-	
+
 	uint32					mKeyCode;
 	bool					mKeyCtrl;
 	bool					mKeyAlt;
@@ -95,8 +96,21 @@ struct BFCoord
 class BFWindow
 {
 public:
+	enum ShowKind : int8
+	{
+		ShowKind_Hide,
+		ShowKind_Normal,
+		ShowKind_Minimized,
+		ShowKind_Maximized,
+		ShowKind_Show,
+		ShowKind_ShowNormal,
+		ShowKind_ShowMinimized,
+		ShowKind_ShowMaximized
+	};
+
+public:
 	BFWindow*				mParent;
-	Array<BFWindow*>		mChildren;	
+	Array<BFWindow*>		mChildren;
 	int						mFlags;
 	bool					mIsKeyDown[KEYCODE_MAX];
 	bool					mIsMouseDown[MOUSEBUTTON_MAX];
@@ -124,7 +138,7 @@ public:
 	BFWindow_MouseLeave		mMouseLeaveFunc;
 	BFWindow_MenuItemSelectedFunc mMenuItemSelectedFunc;
 	BFWindow_DragDropFileFunc mDragDropFileFunc;
-	
+
 public:
 	BFWindow();
 	virtual ~BFWindow();
@@ -134,17 +148,18 @@ public:
 	virtual bool			TryClose() = 0;
 	virtual void			SetTitle(const char* title) = 0;
 	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) = 0;
-	virtual void			GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight) = 0;		
+	virtual void			GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight) = 0;
 	virtual void			GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind) = 0;
-	virtual void			Resize(int x, int y, int width, int height, int showKind) = 0;
+	virtual void			Resize(int x, int y, int width, int height, ShowKind showKind) = 0;
 	virtual void			SetClientPosition(int x, int y) = 0;
 	virtual void			SetMouseVisible(bool isMouseVisible) = 0;
 	virtual void			SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible) = 0;
-	virtual void			SetForeground() = 0;	
+	virtual void			Show(ShowKind showKind) = 0;
+	virtual void			SetForeground() = 0;
 	virtual void			SetNonExclusiveMouseCapture() { mNonExclusiveMouseCapture = true; }
-	virtual void			CaptureMouse() {}	
+	virtual void			CaptureMouse() {}
 	virtual bool			IsMouseCaptured() { return false; }
-	virtual void			LostFocus(BFWindow* newFocus) = 0;	
+	virtual void			LostFocus(BFWindow* newFocus) = 0;
 	virtual int				GetDPI() { return 0; }
 
 	virtual BFMenu*			AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) = 0;

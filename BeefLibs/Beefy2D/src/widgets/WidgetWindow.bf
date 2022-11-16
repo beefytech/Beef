@@ -10,6 +10,7 @@ using Beefy.geom;
 namespace Beefy.widgets
 {
     public delegate void MouseLeftWindowHandler(BFWindow window);
+	public delegate void WindowGotFocusHandler(BFWindow window);
     public delegate void WindowLostFocusHandler(BFWindow window, BFWindow newFocus);
     public delegate bool WindowCloseQueryHandler(BFWindow window);
     public delegate void WindowClosedHandler(BFWindow window);
@@ -22,7 +23,8 @@ namespace Beefy.widgets
     public class WidgetWindow : BFWindow
     {
         public Event<MouseLeftWindowHandler> mOnMouseLeftWindow ~ _.Dispose();
-        public Event<WindowLostFocusHandler> mOnWindowLostFocus ~ _.Dispose();
+        public Event<WindowGotFocusHandler> mOnWindowGotFocus ~ _.Dispose();
+		public Event<WindowLostFocusHandler> mOnWindowLostFocus ~ _.Dispose();
         public Event<MouseEventHandler> mOnMouseDown ~ _.Dispose();
 		public Event<MouseEventHandler> mOnMouseUp ~ _.Dispose();
         public Event<WindowCloseQueryHandler> mOnWindowCloseQuery ~ _.Dispose();
@@ -319,6 +321,8 @@ namespace Beefy.widgets
 				if (!mFocusWidget.mHasFocus)
 	                mFocusWidget.GotFocus();
 			}
+
+			mOnWindowGotFocus(this);
         }
 
         public override void LostFocus(BFWindow newFocus)
@@ -363,6 +367,8 @@ namespace Beefy.widgets
 
         public override void KeyChar(char32 c)
         {
+			//Debug.WriteLine($"KeyChar {c}");
+
 			var fakeFocusWindow = GetFakeFocusWindow();
 			if (fakeFocusWindow != null)
 			{
@@ -815,6 +821,7 @@ namespace Beefy.widgets
                 mOverWidget = null;
             }
 
+			mIsDirty = true;
             mOnMouseLeftWindow(this);
             sOnMouseLeftWindow(this);
         }

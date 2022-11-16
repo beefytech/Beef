@@ -243,6 +243,9 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		mSoftHasFocus = false;
 	}
 
+	if ((windowFlags & BFWINDOW_NOSHOW))
+		showFlags = SWP_HIDEWINDOW;
+
 	if (windowFlags & (BFWINDOW_SHOWMINIMIZED | BFWINDOW_SHOWMAXIMIZED))
 	{
 		WINDOWPLACEMENT wndPlacement = { sizeof(WINDOWPLACEMENT), 0 };
@@ -351,6 +354,27 @@ bool WinBFWindow::TryClose()
 void WinBFWindow::SetTitle(const char* title)
 {
 	SetWindowTextA(mHWnd, title);
+}
+
+static int ToWShow(BFWindow::ShowKind showKind)
+{
+	switch (showKind)
+	{
+	case BFWindow::ShowKind_Hide: return SW_HIDE;
+	case BFWindow::ShowKind_Normal: return SW_NORMAL;
+	case BFWindow::ShowKind_Minimized: return SW_MINIMIZE;
+	case BFWindow::ShowKind_Maximized: return SW_MAXIMIZE;
+	case BFWindow::ShowKind_Show: return SW_SHOW;
+	case BFWindow::ShowKind_ShowNormal: return SW_SHOWNORMAL;
+	case BFWindow::ShowKind_ShowMinimized: return SW_SHOWMINIMIZED;
+	case BFWindow::ShowKind_ShowMaximized: return SW_SHOWMAXIMIZED;
+	}
+	return SW_SHOW;
+}
+
+void WinBFWindow::Show(ShowKind showKind)
+{
+	::ShowWindow(mHWnd, ToWShow(showKind));
 }
 
 void WinBFWindow::LostFocus(BFWindow* newFocus)
@@ -1607,35 +1631,23 @@ void WinBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* norm
 	switch (wndPlacement.showCmd)
 	{
 	case SW_SHOWMINIMIZED:
-		*showKind = 1;
+		*showKind = ShowKind_ShowMinimized;
 		break;
 	case SW_SHOWMAXIMIZED:
-		*showKind = 2;
+		*showKind = ShowKind_ShowMaximized;
 		break;
 	default:
-		*showKind = 0;
+		*showKind = ShowKind_Hide;
 		break;
 	}
 }
 
-void WinBFWindow::Resize(int x, int y, int width, int height, int showKind)
+void WinBFWindow::Resize(int x, int y, int width, int height, ShowKind showKind)
 {
 	WINDOWPLACEMENT wndPlacement = { sizeof(WINDOWPLACEMENT), 0 };
 	::GetWindowPlacement(mHWnd, &wndPlacement);
 
-	switch (showKind)
-	{
-	case 1:
-		wndPlacement.showCmd = SW_SHOWMINIMIZED;
-		break;
-	case 2:
-		wndPlacement.showCmd = SW_SHOWMAXIMIZED;
-		break;
-	case 3:
-		wndPlacement.showCmd = SW_SHOWNORMAL;
-		break;
-	}
-
+	wndPlacement.showCmd = ToWShow(showKind);
 	wndPlacement.rcNormalPosition.left = x;
 	wndPlacement.rcNormalPosition.top = y;
 	wndPlacement.rcNormalPosition.right = x + width;

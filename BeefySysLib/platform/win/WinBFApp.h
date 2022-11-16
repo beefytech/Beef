@@ -17,10 +17,10 @@ typedef Dictionary<String, uint32> StringToUIntMap;
 
 class WinBFMenu : public BFMenu
 {
-public:	
+public:
 	HMENU					mMenu;
 	uint32					mMenuId;
-	static int				mMenuCount;	
+	static int				mMenuCount;
 	bool					mIsPlaceholder;
 
 public:
@@ -32,9 +32,9 @@ typedef Dictionary<HMENU, WinBFMenu*> WinHMenuMap;
 
 class WinBFWindow : public BFWindow
 {
-public:	
-	HWND					mHWnd;	
-	bool					mIsMouseInside;		
+public:
+	HWND					mHWnd;
+	bool					mIsMouseInside;
 	WinMenuIDMap			mMenuIDMap;
 	WinHMenuMap				mHMenuMap;
 
@@ -49,7 +49,7 @@ public:
 	int						mMinHeight;
 	bool					mMouseVisible;
 	bool					mHasFocus;
-	bool					mSoftHasFocus; // Mostly tracks mHasFocus except for when we get an explicit 'LostFocus' callback	
+	bool					mSoftHasFocus; // Mostly tracks mHasFocus except for when we get an explicit 'LostFocus' callback
 	bool					mAwaitKeyReleases;
 	int						mAwaitKeyReleasesCheckIdx;
 	DWORD					mAwaitKeyReleasesEventTick;
@@ -72,12 +72,13 @@ public:
 	virtual void			Destroy() override;
 	virtual bool			TryClose() override;
 	virtual void			SetTitle(const char* title) override;
-	virtual void			SetForeground() override;	
+	virtual void			Show(ShowKind showKind) override;
+	virtual void			SetForeground() override;
 	virtual void			LostFocus(BFWindow* newFocus) override;
 	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) override;
-	virtual void			GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight) override;	
+	virtual void			GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight) override;
 	virtual void			GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind) override;
-	virtual void			Resize(int x, int y, int width, int height, int showKind) override;
+	virtual void			Resize(int x, int y, int width, int height, ShowKind showKind) override;
 	virtual void			SetClientPosition(int x, int y) override;
 	virtual void			SetMouseVisible(bool isMouseVisible) override;
 	virtual void			SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible) override;
@@ -93,36 +94,36 @@ public:
 
 class WinBFApp : public BFApp
 {
-public:	
+public:
 	bool					mInMsgProc;
 	StringToUIntMap			mClipboardFormatMap;
 	DSoundManager*			mDSoundManager;
 	DInputManager*			mDInputManager;
 	BfpThreadId				mVSyncThreadId;
-	BfpThread*				mVSyncThread;	
+	BfpThread*				mVSyncThread;
 	volatile bool			mClosing;
 
 protected:
 	void					VSyncThreadProc();
 	static void BFP_CALLTYPE VSyncThreadProcThunk(void* ptr);
 
-	virtual void			Draw() override;	
+	virtual void			Draw() override;
 	virtual void			PhysSetCursor() override;
-	
+
 	uint32					GetClipboardFormat(const StringImpl& format);
 
 public:
 	WinBFApp();
-	virtual ~WinBFApp();	
+	virtual ~WinBFApp();
 
 	virtual void			Init() override;
-	virtual void			Run() override;	
+	virtual void			Run() override;
 	virtual void			Process() override;
 
 	virtual void			GetDesktopResolution(int& width, int& height) override;
 	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) override;
 	virtual void			GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight) override;
-	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) override;	
+	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) override;
 	virtual DrawLayer*		CreateDrawLayer(BFWindow* window);
 
 	virtual void*			GetClipboardData(const StringImpl& format, int* size) override;

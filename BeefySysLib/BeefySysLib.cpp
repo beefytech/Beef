@@ -364,7 +364,12 @@ BF_EXPORT void BF_CALLTYPE BFWindow_GetPlacement(BFWindow* window, int* normX, i
 
 BF_EXPORT void BF_CALLTYPE BFWindow_Resize(BFWindow* window, int x, int y, int width, int height, int showKind)
 {
-	window->Resize(x, y, width, height, showKind);
+	window->Resize(x, y, width, height, (BFWindow::ShowKind)showKind);
+}
+
+BF_EXPORT void BF_CALLTYPE BFWindow_Show(BFWindow* window, BFWindow::ShowKind showKind)
+{
+	window->Show(showKind);
 }
 
 BF_EXPORT void BF_CALLTYPE BFWindow_SetForeground(BFWindow* window)
