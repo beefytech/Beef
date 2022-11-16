@@ -14036,7 +14036,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			if (autoComplete->IsAutocompleteNode(lambdaBindExpr, lambdaBindExpr->mFatArrowToken))
 				isAutocompleteNode = true;
 		}
-		else if (autoComplete->IsAutocompleteNode(lambdaBindExpr, lambdaBindExpr->mCloseParen))
+		else if (autoComplete->IsAutocompleteNode(lambdaBindExpr))
 			isAutocompleteNode = true;
 
 		if (isAutocompleteNode)
