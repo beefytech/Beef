@@ -1630,6 +1630,9 @@ void WinBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* norm
 	*normHeight = wndPlacement.rcNormalPosition.bottom - wndPlacement.rcNormalPosition.top;
 	switch (wndPlacement.showCmd)
 	{
+	case SW_SHOWNORMAL:
+		*showKind = ShowKind_ShowNormal;
+		break;
 	case SW_SHOWMINIMIZED:
 		*showKind = ShowKind_ShowMinimized;
 		break;

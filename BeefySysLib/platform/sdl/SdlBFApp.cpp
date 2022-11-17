@@ -10,6 +10,51 @@ USING_NS_BF;
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "version.lib")
 
+SDL_Window* (SDLCALL* bf_SDL_CreateWindow)(const char* title, int x, int y, int w, int h, Uint32 flags);
+int (SDLCALL* bf_SDL_GL_SetAttribute)(SDL_GLattr attr, int value);
+Uint32 (SDLCALL* bf_SDL_GetWindowID)(SDL_Window* window);
+void (SDLCALL* bf_SDL_DestroyWindow)(SDL_Window* window);
+int (SDLCALL* bf_SDL_Init)(Uint32 flags);
+void (SDLCALL* bf_SDL_GetWindowPosition)(SDL_Window* window,int* x, int* y);
+char* (SDLCALL* bf_SDL_GetClipboardText)(void);
+int (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
+void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
+void (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
+void (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
+void (SDLCALL* bf_SDL_free)(void* mem);
+void (SDLCALL* bf_SDL_SetWindowPosition)(SDL_Window* window, int x, int y);
+int (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
+const char* (SDLCALL* bf_SDL_GetError)(void);
+SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
+void (SDLCALL* bf_SDL_Quit)(void);
+
+static HMODULE gSDLModule;
+
+static HMODULE GetSDLModule(const StringImpl& installDir)
+{
+	if (gSDLModule == NULL)
+	{
+		String loadPath = installDir + "SDL2.dll";
+		gSDLModule = ::LoadLibraryA(loadPath.c_str());
+		if (gSDLModule == NULL)
+		{
+#ifdef BF_PLATFORM_WINDOWS
+			::MessageBoxA(NULL, "Failed to load SDL2.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
+			::ExitProcess(1);
+#endif
+			BF_FATAL("Failed to load SDL2.dll");
+		}
+	}
+	return gSDLModule;
+}
+
+template <typename T>
+static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir)
+{
+	proc = (T)::GetProcAddress(GetSDLModule(installDir), name);
+}
+
+#define BF_GET_SDLPROC(name) BFGetSDLProc(bf_##name, #name, mInstallDir)
 
 SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
@@ -23,15 +68,15 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
     sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
 #endif
 
-	mSDLWindow = SDL_CreateWindow(title.c_str(), x, y, width, height, sdlWindowFlags);
+	mSDLWindow = bf_SDL_CreateWindow(title.c_str(), x, y, width, height, sdlWindowFlags);
 
 #ifndef BF_PLATFORM_OPENGL_ES2
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
 
-	if (!SDL_GL_CreateContext(mSDLWindow))
+	if (!bf_SDL_GL_CreateContext(mSDLWindow))
 	{
 		String str = StrFormat(
 #ifdef BF_PLATFORM_OPENGL_ES2
@@ -39,10 +84,11 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 #else
 			"Unable to create SDL OpenGL context: %s"
 #endif
-			, SDL_GetError());
+			, bf_SDL_GetError());
+
 
 		BF_FATAL(str.c_str());
-		SDL_Quit();
+		bf_SDL_Quit();
 		exit(2);
 	}
 
@@ -76,9 +122,9 @@ SdlBFWindow::~SdlBFWindow()
 bool SdlBFWindow::TryClose()
 {
 	SdlBFApp* app = (SdlBFApp*)gBFApp;
-	app->mSdlWindowMap.Remove(SDL_GetWindowID(mSDLWindow));
+	app->mSdlWindowMap.Remove(bf_SDL_GetWindowID(mSDLWindow));
 
-	SDL_DestroyWindow(mSDLWindow);
+	bf_SDL_DestroyWindow(mSDLWindow);
 	mSDLWindow = NULL;
 	return true;
 }
@@ -192,10 +238,31 @@ SdlBFApp::SdlBFApp()
 
     mInstallDir += "/";
 
+	if (bf_SDL_CreateWindow == NULL)
+	{
+		BF_GET_SDLPROC(SDL_CreateWindow);
+		BF_GET_SDLPROC(SDL_GL_SetAttribute);
+		BF_GET_SDLPROC(SDL_GetWindowID);
+		BF_GET_SDLPROC(SDL_DestroyWindow);
+		BF_GET_SDLPROC(SDL_Init);
+		BF_GET_SDLPROC(SDL_GetWindowPosition);
+		BF_GET_SDLPROC(SDL_GetClipboardText);
+		BF_GET_SDLPROC(SDL_SetClipboardText);
+		BF_GET_SDLPROC(SDL_GL_GetProcAddress);
+		BF_GET_SDLPROC(SDL_GetWindowSize);
+		BF_GET_SDLPROC(SDL_GL_SwapWindow);
+		BF_GET_SDLPROC(SDL_free);
+		BF_GET_SDLPROC(SDL_SetWindowPosition);
+		BF_GET_SDLPROC(SDL_PollEvent);
+		BF_GET_SDLPROC(SDL_GetError);
+		BF_GET_SDLPROC(SDL_GL_CreateContext);
+		BF_GET_SDLPROC(SDL_Quit);
+	}
+
 	mDataDir = mInstallDir;
 
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
-		BF_FATAL(StrFormat("Unable to initialize SDL: %s", SDL_GetError()).c_str());
+	if (bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
+		BF_FATAL(StrFormat("Unable to initialize SDL: %s", bf_SDL_GetError()).c_str());
 }
 
 SdlBFApp::~SdlBFApp()
@@ -227,7 +294,7 @@ void SdlBFApp::Run()
 		{
             {
                 //Beefy::DebugTimeGuard suspendTimeGuard(30, "BFApp::Run1");
-                if (!SDL_PollEvent(&sdlEvent))
+                if (!bf_SDL_PollEvent(&sdlEvent))
                     break;
             }
 
@@ -320,15 +387,15 @@ void SdlBFApp::Draw()
 BFWindow* SdlBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
 	SdlBFWindow* aWindow = new SdlBFWindow(parent, title, x, y, width, height, windowFlags);
-	mSdlWindowMap[SDL_GetWindowID(aWindow->mSDLWindow)] = aWindow;
+	mSdlWindowMap[bf_SDL_GetWindowID(aWindow->mSDLWindow)] = aWindow;
 	mWindowList.push_back(aWindow);
 	return aWindow;
 }
 
 void SdlBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight)
 {
-	SDL_GetWindowPosition(mSDLWindow, x, y);
-	SDL_GetWindowSize(mSDLWindow, width, height);
+	bf_SDL_GetWindowPosition(mSDLWindow, x, y);
+	bf_SDL_GetWindowSize(mSDLWindow, width, height);
 	*clientWidth = *width;
 	*clientHeight = *height;
 }
@@ -340,7 +407,7 @@ void SdlBFApp::PhysSetCursor()
 
 void SdlBFWindow::SetClientPosition(int x, int y)
 {
-	SDL_SetWindowPosition(mSDLWindow, x, y);
+	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
 
 	if (mMovedFunc != NULL)
 		mMovedFunc(this);
@@ -358,17 +425,17 @@ uint32 SdlBFApp::GetClipboardFormat(const StringImpl& format)
 
 void* SdlBFApp::GetClipboardData(const StringImpl& format, int* size)
 {
-	return SDL_GetClipboardText();
+	return bf_SDL_GetClipboardText();
 }
 
 void SdlBFApp::ReleaseClipboardData(void* ptr)
 {
-	SDL_free(ptr);
+	bf_SDL_free(ptr);
 }
 
 void SdlBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
 {
-	SDL_SetClipboardText((const char*)ptr);
+	bf_SDL_SetClipboardText((const char*)ptr);
 }
 
 BFMenu* SdlBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck)

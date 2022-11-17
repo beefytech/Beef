@@ -632,7 +632,7 @@ namespace Beefy
 		{
 			mStopping = true;
 			while (mWindows.Count > 0)
-				mWindows[0].Close();
+				mWindows[0].Close(true);
 
 			BFApp_Shutdown();
 		}

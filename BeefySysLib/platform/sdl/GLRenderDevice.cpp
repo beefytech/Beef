@@ -11,7 +11,7 @@ USING_NS_BF;
 #define NOT_IMPL throw "Not implemented"
 #endif
 
-#pragma comment(lib, "SDL2.lib")
+//#pragma comment(lib, "SDL2.lib")
 
 #ifdef _WIN32
 #ifdef BF_PLATFORM_OPENGL_ES2
@@ -37,6 +37,10 @@ USING_NS_BF;
 #if defined BF_PLATFORM_OPENGL_ES2
 #define APIENTRYP BF_CALLTYPE *
 #endif
+
+extern void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
+extern void (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
+extern void (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
 
 typedef void (APIENTRYP GL_DEBUGPROC)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
@@ -328,7 +332,7 @@ void GLRenderDevice::PhysSetRenderTarget(Texture* renderTarget)
 template <typename T>
 static void BFGetGLProc(T& proc, const char* name)
 {
-	proc = (T)SDL_GL_GetProcAddress(name);
+	proc = (T)bf_SDL_GL_GetProcAddress(name);
 }
 
 #define BF_GET_GLPROC(name) BFGetGLProc(bf_##name, #name)
@@ -445,7 +449,7 @@ void GLRenderWindow::Resized()
 	mRenderDevice->mResizeCount++;
 	mResizeNum = mRenderDevice->mResizeCount;
 
-	SDL_GetWindowSize(mSDLWindow, &mWidth, &mHeight);
+	bf_SDL_GetWindowSize(mSDLWindow, &mWidth, &mHeight);
 
 	//NOT_IMPL;
 	/*if (mGLSwapChain != NULL)
@@ -461,7 +465,7 @@ void GLRenderWindow::Resized()
 
 void GLRenderWindow::Present()
 {
-	SDL_GL_SwapWindow(mSDLWindow);
+	bf_SDL_GL_SwapWindow(mSDLWindow);
 	//GLCHECK(mGLSwapChain->Present((mWindow->mFlags & BFWINDOW_VSYNC) ? 1 : 0, 0));
 }
 
