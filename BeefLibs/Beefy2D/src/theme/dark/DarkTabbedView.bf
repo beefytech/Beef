@@ -27,7 +27,13 @@ namespace Beefy.theme.dark
                         g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.CloseOver), GS!(-4), GS!(-4));
                 }
                 else
-                    g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Close), GS!(-4), GS!(-4));
+				{
+                    var tabButton = mParent as TabButton;
+					if (tabButton.mIsPinned == true)
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.PinnedTab), GS!(-5), GS!(-5));
+					else
+						g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Close), GS!(-4), GS!(-4));
+				}
             }
 
             public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
@@ -260,19 +266,25 @@ namespace Beefy.theme.dark
 				menuItem = menu.AddItem("Close");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
-						mTabbedView.CloseTabs(true, true);
+						mTabbedView.CloseTabs(true, true, true);
 					});
 
 				menuItem = menu.AddItem("Close Tabs");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
-						mTabbedView.CloseTabs(false, true);
+						mTabbedView.CloseTabs(false, true, true);
 					});
 
 				menuItem = menu.AddItem("Close Tabs Except Current");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
-						mTabbedView.CloseTabs(false, false);
+						mTabbedView.CloseTabs(false, false, true);
+					});
+				
+				menuItem = menu.AddItem("Close All Except Pinned");
+				menuItem.mOnMenuItemSelected.Add(new (menu) =>
+					{
+						mTabbedView.CloseTabs(false, true, false);
 					});
 
 				menu.AddItem();
@@ -280,6 +292,9 @@ namespace Beefy.theme.dark
                 for (var tab in mTabbedView.mTabs)
                 {
                     menuItem = menu.AddItem(tab.mLabel);
+					if (tab.mIsPinned)
+						menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.PinnedTab);
+
                     menuItem.mOnMenuItemSelected.Add(new (selMenuItem) =>
 	                    {
 	                        TabbedView.TabButton activateTab = tab;

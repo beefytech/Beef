@@ -191,6 +191,8 @@ namespace Beefy.theme.dark
 			PrevBookmarkInFolder,
 			NextBookmarkInFolder,
 
+			PinnedTab,
+
             COUNT
         };
 

@@ -1295,7 +1295,7 @@ namespace IDE
 			void CloseTabs()
 			{
 				WithDocumentTabbedViewsOf(window, scope (tabbedView) => {
-					tabbedView.CloseTabs(false, true);
+					tabbedView.CloseTabs(false, true, true);
 				});
 			}
 
@@ -1750,6 +1750,7 @@ namespace IDE
 
                         data.Add("TabLabel", tabWidget.mLabel);
                         data.Add("TabWidth", tabWidget.mWantWidth / DarkTheme.sScale);
+						data.Add("TabIsPinned", tabWidget.mIsPinned);
 
 						if (var watchPanel = tabWidget.mContent as WatchPanel)
 						{
@@ -3186,6 +3187,7 @@ namespace IDE
                 var newTabButton = new SourceViewTabButton();
                 newTabButton.Label = "";
                 data.GetString("TabLabel", newTabButton.mLabel);
+				newTabButton.mIsPinned = data.GetBool("TabIsPinned");
 				newTabButton.mOwnsContent = panel.mAutoDelete;
 				newTabButton.mTabWidthOffset = panel.TabWidthOffset;
                 //newTabButton.mWantWidth = (float)Math.Round(data.GetFloat("TabWidth") * DarkTheme.sScale);
@@ -6251,9 +6253,22 @@ namespace IDE
 		int GetTabInsertIndex(TabbedView tabs)
 		{
 			if (mSettings.mUISettings.mInsertNewTabs == .RightOfExistingTabs)
+			{
 				return tabs.mTabs.Count;
-			else
-				return 0;
+			}
+
+			// Find right-most non-pinned tab
+			// after which we will put our new tab
+			int index = 0;
+			for (index = 0; index < tabs.mTabs.Count; index++)
+			{
+				if (tabs.mTabs[index].mIsPinned == false)
+				{
+					break;
+				}
+			}
+
+			return index;
 		}
 
         public class SourceViewTabButton : DarkTabbedView.DarkTabButton
@@ -6347,7 +6362,16 @@ namespace IDE
 					Menu menu = new Menu();
 					if (var sourceViewPanel = mContent as SourceViewPanel)
 					{
-						var item = menu.AddItem("Copy Full Path");
+						var item = menu.AddItem(this.mIsPinned ? "Unpin this tab" : "Pin this tab");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								if (mIsRightTab)
+									IDEApp.sApp.MakeTabPermanent(this);
+
+								mTabbedView.TogglePinned(this);
+							});
+
+						item = menu.AddItem("Copy Full Path");
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
 								gApp.SetClipboardText(sourceViewPanel.mFilePath);
@@ -6378,7 +6402,12 @@ namespace IDE
 						item = menu.AddItem("Close All Except This");
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
-								mTabbedView.CloseTabs(false, false);
+								mTabbedView.CloseTabs(false, false, true);
+							});
+						item = menu.AddItem("Close All Except Pinned");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								mTabbedView.CloseTabs(false, true, false);
 							});
 					}
 
