@@ -12,6 +12,7 @@ namespace Beefy.widgets
         public class TabButton : Widget, IDockable, IDragInterface
         {
             public bool mIsActive;
+			public bool mIsPinned;
             public String mLabel ~ delete _;
             public TabbedView mTabbedView;
             public WidgetWindow mNewDraggingWindow;
@@ -159,6 +160,7 @@ namespace Beefy.widgets
             public void DragEnd()
             {
                 //mWidgetWindow.mMouseLeftWindowDelegate.Remove(scope => MouseLeftWindow, true);
+				AdjustPinnedState();
 
                 if ((mSrcDraggingWindow != null) && (mSrcDraggingWindow.mCaptureWidget != null))
 					mSrcDraggingWindow.ReleaseMouseCaptures();
@@ -174,6 +176,25 @@ namespace Beefy.widgets
                 }
                 mSrcDraggingWindow = null;                
             }            
+
+			public void AdjustPinnedState()
+			{
+				// Adjusts Tab.mIsPinned state based on neighbouring tabs
+				bool prevIsPinned = true;
+				bool nextIsPinned = false;
+
+				int position = mTabbedView.mTabs.IndexOf(this);
+
+				if (position - 1 >= 0)
+					prevIsPinned = mTabbedView.mTabs[position - 1].mIsPinned;
+
+				if (position + 1 < mTabbedView.mTabs.Count)
+					nextIsPinned = mTabbedView.mTabs[position + 1].mIsPinned;
+
+				mIsPinned = (prevIsPinned == nextIsPinned)
+					? prevIsPinned
+					: mIsPinned;
+			}
 
             public void MouseDrag(float x, float y, float dX, float dY)
             {
@@ -309,6 +330,7 @@ namespace Beefy.widgets
                         mTabbedView.RemoveTab(this, false);
                         tabbedView.AddTab(this, tabbedView.GetInsertPositionFromCursor());
                         Activate();
+						AdjustPinnedState();
                     }
                 }
                 else
@@ -391,7 +413,7 @@ namespace Beefy.widgets
 			return ThemeFactory.mDefault.CreateTabbedView(sharedData);
 		}
 
-		public void CloseTabs(bool autoClose, bool closeCurrent)
+		public void CloseTabs(bool autoClose, bool closeCurrent, bool closePinned)
 		{
 			let prevAutoClose = mAutoClose;
 			mAutoClose = autoClose;
@@ -414,8 +436,14 @@ namespace Beefy.widgets
 			{
 				for (var tab in tabs)
 				{
+					// Close all except active tab
 					if ((!closeCurrent) && (tab.mIsActive))
 						continue;
+
+					// Close all except pinned tabs
+					if (closePinned == false && tab.mIsPinned == true)
+						continue;
+
 					tab.mCloseClickedEvent();
 				}
 			}
@@ -570,6 +598,7 @@ namespace Beefy.widgets
                     RemoveTab(tab, false);
                     tabbedView.AddTab(tab, tabbedView.GetInsertPositionFromCursor());
                     tab.Activate();
+					tab.AdjustPinnedState();
                 }                
                 mParentDockingFrame.RemoveDockedWidget(this);
 
@@ -603,5 +632,32 @@ namespace Beefy.widgets
             if (tab != null)
                 tab.ResizeContent();
         }
+
+		public void TogglePinned(TabButton tabButton)
+		{
+			// Toggles 'mIsPinned' of the tab button
+			// and adjusts its position in TabbedView.
+
+			tabButton.mIsPinned = !tabButton.mIsPinned;
+
+			// Remove target tabButton from the tabs
+			mTabs.Remove(tabButton);
+
+			// Find index of right-most non-pinned tab
+			int index = 0;
+			for (index = 0; index < mTabs.Count; index++)
+			{
+				if (mTabs[index].mIsPinned == false)
+					break;
+			}
+
+			// Re-insert target tab button
+			if (index == 0)
+				mTabs.AddFront(tabButton);
+			else
+				mTabs.Insert(index, tabButton);
+
+			RehupSize();
+		}
     }
 }
