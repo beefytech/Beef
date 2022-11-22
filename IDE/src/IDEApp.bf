@@ -6362,16 +6362,7 @@ namespace IDE
 					Menu menu = new Menu();
 					if (var sourceViewPanel = mContent as SourceViewPanel)
 					{
-						var item = menu.AddItem(this.mIsPinned ? "Unpin this tab" : "Pin this tab");
-						item.mOnMenuItemSelected.Add(new (menu) =>
-							{
-								if (mIsRightTab)
-									IDEApp.sApp.MakeTabPermanent(this);
-
-								mTabbedView.TogglePinned(this);
-							});
-
-						item = menu.AddItem("Copy Full Path");
+						var item = menu.AddItem("Copy Full Path");
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
 								gApp.SetClipboardText(sourceViewPanel.mFilePath);
@@ -6408,6 +6399,15 @@ namespace IDE
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
 								mTabbedView.CloseTabs(false, true, false);
+							});
+
+						item = menu.AddItem(this.mIsPinned ? "Unpin Tab" : "Pin Tab");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								if (mIsRightTab)
+									IDEApp.sApp.MakeTabPermanent(this);
+
+								mTabbedView.TogglePinned(this);
 							});
 					}
 
