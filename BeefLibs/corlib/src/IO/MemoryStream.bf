@@ -50,6 +50,12 @@ namespace System.IO
 			mOwns = true;
 			mMemory = new List<uint8>();
 		}
+		
+		public this(int capacity)
+                {
+                        mOwns = true;
+                        mMemory = new List<uint8>(capacity);
+                }
 
 		public this(List<uint8> memory, bool owns = true)
 		{
@@ -90,5 +96,17 @@ namespace System.IO
 		{
 			return .Ok;
 		}
+		
+		public override Result<void> SetLength(int64 length)
+                {
+                        Debug.Assert(mOwns);
+
+                        mMemory.Resize((.)length);
+
+                        if (Position >= length)
+                                Position = Length;
+
+                        return .Ok;
+                }
 	}
 }
