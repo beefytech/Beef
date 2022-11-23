@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics;
 
 namespace System.IO
 {
@@ -52,10 +53,10 @@ namespace System.IO
 		}
 		
 		public this(int capacity)
-                {
-                        mOwns = true;
-                        mMemory = new List<uint8>(capacity);
-                }
+        {
+			mOwns = true;
+			mMemory = new List<uint8>(capacity);
+        }
 
 		public this(List<uint8> memory, bool owns = true)
 		{
@@ -98,15 +99,15 @@ namespace System.IO
 		}
 		
 		public override Result<void> SetLength(int64 length)
-                {
-                        Debug.Assert(mOwns);
+        {
+			Debug.Assert(mOwns);
 
-                        mMemory.Resize((.)length);
+			mMemory.Resize((.)length);
 
-                        if (Position >= length)
-                                Position = Length;
+			if (Position >= length)
+				Position = Length;
 
-                        return .Ok;
-                }
+			return .Ok;
+        }
 	}
 }
