@@ -228,6 +228,51 @@ namespace System.Collections
 			CopyTo(array, arrayIndex, mCount);
 		}
 
+		private bool RemoveEntry(int32 hashCode, int_cosize index)
+		{
+			if (mBuckets != null)
+			{
+				int32 bucket = hashCode % (int32)mBuckets.Count;
+				int32 last = -1;
+				for (int32 i = mBuckets[bucket] - 1; i >= 0; last = i,i = mSlots[i].mNext)
+				{
+					if (i == index)
+					{
+						if (last < 0)
+						{
+							// first iteration; update buckets
+							mBuckets[bucket] = mSlots[i].mNext + 1;
+						}
+						else
+						{
+							// subsequent iterations; update 'next' pointers
+							mSlots[last].mNext = mSlots[i].mNext;
+						}
+						mSlots[i].mHashCode = -1;
+						mSlots[i].mValue = default(T);
+						mSlots[i].mNext = mFreeList;
+
+						mCount--;
+#if VERSION_HASHSET
+						mVersion++;
+#endif
+						if (mCount == 0)
+						{
+							mLastIndex = 0;
+							mFreeList = -1;
+						}
+						else
+						{
+							mFreeList = i;
+						}
+						return true;
+					}
+				}
+			}
+			// either m_buckets is null or wasn't found
+			return false;
+		}
+
 		bool Remove(T item, T* outValue)
 		{
 			if (mBuckets != null)
@@ -1229,6 +1274,16 @@ namespace System.Collections
 				{
 					return mCurrent;
 				}
+			}
+
+			public void Remove() mut
+			{
+				int_cosize curIdx = mIndex - 1;
+				mSet.RemoveEntry(mSet.mSlots[curIdx].mHashCode, curIdx);
+#if VERSION_HASHSET
+				mVersion = mSet.mVersion;
+#endif
+				mIndex = curIdx;
 			}
 
 			public void Reset() mut
