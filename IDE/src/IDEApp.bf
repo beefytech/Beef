@@ -6355,6 +6355,12 @@ namespace IDE
 
             public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
             {
+				if ((mIsRightTab) && (btn == 0) && (btnCount > 1))
+				{
+					IDEApp.sApp.MakeTabPermanent(this);
+					return;
+				}
+
                 base.MouseDown(x, y, btn, btnCount);
 
 				if (btn == 1)
@@ -6420,11 +6426,6 @@ namespace IDE
 					else
 						delete menu;
 				}
-                
-                if ((mIsRightTab) && (btn == 0) && (btnCount > 1))
-                {
-                    IDEApp.sApp.MakeTabPermanent(this);
-                }
             }
 
             public override void Update()
