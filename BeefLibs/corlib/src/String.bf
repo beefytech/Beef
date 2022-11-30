@@ -3053,7 +3053,7 @@ namespace System
 		{
 			get
 			{
-				return mMatchPos < mStrLen;
+				return mMatchPos < mStrLen && (!mSplitOptions.HasFlag(StringSplitOptions.RemoveEmptyEntries) || mStrLen != 0);
 			}
 		}
 
@@ -3216,7 +3216,7 @@ namespace System
 		{
 			get
 			{
-				return mMatchPos < mStrLen;
+				return mMatchPos < mStrLen && (!mSplitOptions.HasFlag(StringSplitOptions.RemoveEmptyEntries) || mStrLen != 0);
 			}
 		}
 
