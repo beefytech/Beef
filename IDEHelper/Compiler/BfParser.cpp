@@ -465,7 +465,7 @@ int BfParser::GetIndexAtLine(int line)
 		{
 			curLine++;
 			if (line == curLine)
-				return i;
+				return i + 1;
 		}
 	}
 
