@@ -143,7 +143,7 @@ namespace Beefy.widgets
                 }            
             }
 
-            public void DragStart()            
+            public virtual void DragStart()            
             {                
                 mSrcDraggingWindow = mWidgetWindow;
 
@@ -157,7 +157,7 @@ namespace Beefy.widgets
                 }                
             }
 
-            public void DragEnd()
+            public virtual void DragEnd()
             {
                 //mWidgetWindow.mMouseLeftWindowDelegate.Remove(scope => MouseLeftWindow, true);
 				AdjustPinnedState();

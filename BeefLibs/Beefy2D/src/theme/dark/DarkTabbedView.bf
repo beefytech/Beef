@@ -159,6 +159,22 @@ namespace Beefy.theme.dark
                         ((DarkTabbedView)mTabbedView).DrawDockPreview(g, this);
                 }
             }            
+
+			public override void DragEnd()
+			{
+				if (mIsRightTab == true)
+				{
+					mTextColor = Color.White;
+
+					DarkTabbedView darkTabbedView = mTabbedView as DarkTabbedView;
+					darkTabbedView.SetRightTab(null, false);
+					darkTabbedView.AddTab(this, darkTabbedView.GetInsertPositionFromCursor());
+
+					Activate();
+				}
+
+				base.DragEnd();
+			}
         }
 
         public class DarkTabDock : ICustomDock
