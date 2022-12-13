@@ -113,7 +113,7 @@ namespace IDE.ui
 
         void ResizeComponents()
         {
-			int btnLeft = gApp.mSettings.mEnableDevMode ? GS!(380) : GS!(300);
+			int btnLeft = GS!(380);
             mConfigComboBox.Resize(mWidth - btnLeft, GS!(0), GS!(120), GS!(24));
             mPlatformComboBox.Resize(mWidth - btnLeft - GS!(120), GS!(0), GS!(120), GS!(24));
 
