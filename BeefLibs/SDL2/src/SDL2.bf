@@ -625,7 +625,7 @@ namespace SDL2
 			ResizeLeft
 		}
 
-		struct WindowPos : int32
+		public struct WindowPos : int32
 		{
 			public const WindowPos Undefined = 0x1FFF0000;
 			public const WindowPos Centered = 0x2FFF0000;
