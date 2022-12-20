@@ -2146,7 +2146,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 									newBlock->SetSrcEnd(mSrcIdx);
 									mSrcIdx--;
 								}
-								else if ((mSyntaxToken == BfSyntaxToken_EOF) || (mSyntaxToken == BfSyntaxToken_StringQuote))
+								else if (mSyntaxToken == BfSyntaxToken_StringQuote)
 								{
 									mSrcIdx--;
 									mPassInstance->FailAfterAt("Expected '}'", mSourceData, newBlock->GetSrcEnd() - 1);
