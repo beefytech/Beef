@@ -6,7 +6,7 @@ using System;
 
 namespace System.IO
 {
-	public enum FileMode
+	public enum FileMode : int32
 	{
         /// Creates a new file. Fails if the file already exists.
 		CreateNew = 1,

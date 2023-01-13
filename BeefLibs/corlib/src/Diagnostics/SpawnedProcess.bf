@@ -82,7 +82,7 @@ namespace System.Diagnostics
 			return .Ok;
 		}
 
-		public Result<void> AttachStandardInput(FileStream stream)		
+		public Result<void> AttachStandardInput(IFileStream stream)		
 		{
 			if (mSpawn == null)
 				return .Err;
@@ -94,7 +94,7 @@ namespace System.Diagnostics
 			return .Ok;
 		}
 
-		public Result<void> AttachStandardOutput(FileStream stream)
+		public Result<void> AttachStandardOutput(IFileStream stream)
 		{
 			if (mSpawn == null)
 				return .Err;
@@ -106,7 +106,7 @@ namespace System.Diagnostics
 			return .Ok;
 		}
 
-		public Result<void> AttachStandardError(FileStream stream)
+		public Result<void> AttachStandardError(IFileStream stream)
 		{
 			if (mSpawn == null)
 				return .Err;

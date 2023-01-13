@@ -13,7 +13,7 @@ namespace System.IO
     // Note these values currently match the values for FILE_SHARE_READ,
     // FILE_SHARE_WRITE, and FILE_SHARE_DELETE in winnt.h
     //
-	public enum FileShare
+	public enum FileShare : int32
 	{
         /// No sharing. Any request to open the file (by this process or another
         /// process) will fail until the file is closed.

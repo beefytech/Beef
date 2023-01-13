@@ -334,7 +334,7 @@ uint64 Beefy::BFGetTickCountMicroFast()
 		uint32 outEndMS = timeGetTime();
 		uint64 endMicroA = __rdtsc();
 
-		// It's possible we can run this test in multiple threads at once, we could wrap a CritSect around it but 
+		// It's possible we can run this test in multiple threads at once, we could wrap a CritSect around it but
 		//  at least this fence will avoid the case where we have a zero gTimerDivisor
 		BF_FULL_MEMORY_FENCE();
 		gTimerInitialized = true;
@@ -802,7 +802,7 @@ public:
 			return;
 		}		*/
 
-		//QueueRemove(fileWatcher);		
+		//QueueRemove(fileWatcher);
 
 		//OutputDebugStrF("IOCP.Remove %@\n", fileWatcher);
 
@@ -1195,7 +1195,7 @@ BFP_EXPORT BfpFileWatcher* BFP_CALLTYPE BfpFileWatcher_WatchDirectory(const char
 		UTF8Decode(path).c_str(), // Directory name
 		FILE_LIST_DIRECTORY, // access (read-write) mode
 		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-		NULL, // security descriptor		
+		NULL, // security descriptor
 		OPEN_EXISTING,
 		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,  // file attributes
 		NULL // file with attributes to copy
@@ -1224,7 +1224,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFileWatcher_Release(BfpFileWatcher* fileWatcher)
 {
 	IOCPManager::Get()->Remove(fileWatcher);
 	//::CloseHandle(fileWatcher->mFileHandle);
-	//fileWatcher->mFileHandle = NULL;	
+	//fileWatcher->mFileHandle = NULL;
 
 	//delete fileWatcher;
 }
@@ -1524,10 +1524,10 @@ public:
 		return true;
 	}
 
-	// Using synchronous Anonymous pipes for process input/output redirection means we would end up 
-	// wasting a worker threadpool thread per pipe instance. Overlapped pipe IO is desirable, since 
-	// it will take advantage of the NT IO completion port infrastructure. But we can't really use 
-	// Overlapped I/O for process input/output as it would break Console apps (managed Console class 
+	// Using synchronous Anonymous pipes for process input/output redirection means we would end up
+	// wasting a worker threadpool thread per pipe instance. Overlapped pipe IO is desirable, since
+	// it will take advantage of the NT IO completion port infrastructure. But we can't really use
+	// Overlapped I/O for process input/output as it would break Console apps (managed Console class
 	// methods such as WriteLine as well as native CRT functions like printf) which are making an
 	// assumption that the console standard handles (obtained via GetStdHandle()) are opened
 	// for synchronous I/O and hence they can work fine with ReadFile/WriteFile synchrnously!
@@ -1544,11 +1544,11 @@ public:
 
 		HANDLE dupHandle = 0;
 
-		// Duplicate the parent handle to be non-inheritable so that the child process 
+		// Duplicate the parent handle to be non-inheritable so that the child process
 		// doesn't have access. This is done for correctness sake, exact reason is unclear.
-		// One potential theory is that child process can do something brain dead like 
+		// One potential theory is that child process can do something brain dead like
 		// closing the parent end of the pipe and there by getting into a blocking situation
-		// as parent will not be draining the pipe at the other end anymore. 
+		// as parent will not be draining the pipe at the other end anymore.
 		if (!::DuplicateHandle(GetCurrentProcess(), hTmp,
 			GetCurrentProcess(), &dupHandle,
 			0, false, DUPLICATE_SAME_ACCESS))
@@ -1642,7 +1642,7 @@ public:
 
 			if ((flags & BfpSpawnFlag_NoWindow) != 0)
 				creationFlags |= CREATE_NO_WINDOW;
-			// set up the environment block parameter			
+			// set up the environment block parameter
 
 			WCHAR* targetStrPtr = NULL;
 			UTF16String targetStrW;
@@ -1904,12 +1904,12 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Release(BfpSpawn* spawn)
 // {
 // 	DWORD dwID;
 // 	GetWindowThreadProcessId(hwnd, &dwID);
-// 
+//
 // 	if (dwID == (DWORD)lParam)
 // 	{
 // 		PostMessage(hwnd, WM_CLOSE, 0, 0);
 // 	}
-// 
+//
 // 	return TRUE;
 // }
 
@@ -2006,7 +2006,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Kill(BfpSpawn* spawn, int exitCode, BfpKil
 	//  	::SetConsoleCtrlHandler(NULL, true);
 	//  	::GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
 	//  	//::Sleep(2000);
-	//  	::FreeConsole();	
+	//  	::FreeConsole();
 	// 	::SetConsoleCtrlHandler(NULL, false);
 
 	// 	if (!::TerminateProcess(spawn->mHProcess, (UINT)exitCode))
@@ -2210,8 +2210,8 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Resume(BfpThread* thread, BfpThreadResult
 
 // The value for CONTEXT_XSTATE has changed between Windows 7 and
 // Windows 7 SP1 and greater.
-// While the value will be correct for future SDK headers, we need to set 
-// this value manually when building with a Windows 7 SDK for running on 
+// While the value will be correct for future SDK headers, we need to set
+// this value manually when building with a Windows 7 SDK for running on
 // Windows 7 SPI OS bits.
 
 #undef CONTEXT_XSTATE
@@ -2222,9 +2222,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Resume(BfpThread* thread, BfpThreadResult
 #define CONTEXT_XSTATE                      (0x00010040)
 #endif
 
-// Since the AVX API is not declared in the Windows 7 SDK headers and 
-// since we don't have the proper libs to work with, we will declare 
-// the API as function pointers and get them with GetProcAddress calls 
+// Since the AVX API is not declared in the Windows 7 SDK headers and
+// since we don't have the proper libs to work with, we will declare
+// the API as function pointers and get them with GetProcAddress calls
 // from kernel32.dll.  We also need to set some #defines.
 
 #define XSTATE_AVX                          (XSTATE_GSSE)
@@ -2251,20 +2251,20 @@ static CONTEXT* CaptureRegistersEx(HANDLE hThread, intptr*& curPtr)
 	PCONTEXT Context;
 	DWORD ContextSize;
 	DWORD64 FeatureMask;
-	DWORD FeatureLength;	
+	DWORD FeatureLength;
 	BOOL Success;
 	PM128A Xmm;
 	PM128A Ymm;
-	
-	if (pfnGetEnabledXStateFeatures == (PGETENABLEDXSTATEFEATURES)-1)	
+
+	if (pfnGetEnabledXStateFeatures == (PGETENABLEDXSTATEFEATURES)-1)
 		return NULL;
-	
+
 	if (pfnGetEnabledXStateFeatures == NULL)
 	{
 		HMODULE hm = GetModuleHandleA("kernel32.dll");
 		if (hm == NULL)
 		{
-			pfnGetEnabledXStateFeatures = (PGETENABLEDXSTATEFEATURES)-1;			
+			pfnGetEnabledXStateFeatures = (PGETENABLEDXSTATEFEATURES)-1;
 			return NULL;
 		}
 
@@ -2280,14 +2280,14 @@ static CONTEXT* CaptureRegistersEx(HANDLE hThread, intptr*& curPtr)
 			|| pfnLocateXStateFeature == NULL
 			|| pfnSetXStateFeaturesMask == NULL)
 		{
-			pfnGetEnabledXStateFeatures = (PGETENABLEDXSTATEFEATURES)-1;			
+			pfnGetEnabledXStateFeatures = (PGETENABLEDXSTATEFEATURES)-1;
 			return NULL;
 		}
 	}
 
 	FeatureMask = pfnGetEnabledXStateFeatures();
-	if ((FeatureMask & XSTATE_MASK_AVX) == 0)	
-		return NULL;	
+	if ((FeatureMask & XSTATE_MASK_AVX) == 0)
+		return NULL;
 
 	ContextSize = 0;
 	Success = pfnInitializeContext(NULL,
@@ -2303,23 +2303,23 @@ static CONTEXT* CaptureRegistersEx(HANDLE hThread, intptr*& curPtr)
 		&Context,
 		&ContextSize);
 
-	if (Success == FALSE)	
-		return NULL;	
+	if (Success == FALSE)
+		return NULL;
 
 	Success = pfnSetXStateFeaturesMask(Context, XSTATE_MASK_AVX);
-	if (Success == FALSE)	
-		return Context;	
+	if (Success == FALSE)
+		return Context;
 
-	Success = GetThreadContext(hThread, Context);	
-	if (Success == FALSE)	
-		return Context;	
+	Success = GetThreadContext(hThread, Context);
+	if (Success == FALSE)
+		return Context;
 
 	Success = pfnGetXStateFeaturesMask(Context, &FeatureMask);
 	if (Success == FALSE)
-		return Context;	
+		return Context;
 
-	if ((FeatureMask & XSTATE_MASK_AVX) == 0)	
-		return Context;	
+	if ((FeatureMask & XSTATE_MASK_AVX) == 0)
+		return Context;
 
 	Xmm = (PM128A)pfnLocateXStateFeature(Context, XSTATE_LEGACY_SSE, &FeatureLength);
 	Ymm = (PM128A)pfnLocateXStateFeature(Context, XSTATE_AVX, NULL);
@@ -2375,7 +2375,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr
 	if (outIntRegs == NULL)
 		return;
 
-#ifdef BF32	
+#ifdef BF32
 	* (curPtr++) = (intptr)ctxPtr->Eax;
 	*(curPtr++) = (intptr)ctxPtr->Ebx;
 	*(curPtr++) = (intptr)ctxPtr->Ecx;
@@ -2383,7 +2383,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr
 	*(curPtr++) = (intptr)ctxPtr->Esi;
 	*(curPtr++) = (intptr)ctxPtr->Edi;
 	*(curPtr++) = (intptr)ctxPtr->Ebp;
-#else			
+#else
 	* (curPtr++) = (intptr)ctxPtr->SegFs; // Testing
 	*(curPtr++) = (intptr)ctxPtr->Rax;
 	*(curPtr++) = (intptr)ctxPtr->Rbx;
@@ -2401,7 +2401,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr
 	*(curPtr++) = (intptr)ctxPtr->R14;
 	*(curPtr++) = (intptr)ctxPtr->R15;
 	memcpy(curPtr, &ctxPtr->Xmm0, 16 * 16);
-	curPtr += (16 * 16) / sizeof(intptr);	
+	curPtr += (16 * 16) / sizeof(intptr);
 #endif
 
 	* inOutIntRegCount = (int)(curPtr - outIntRegs);
@@ -2595,7 +2595,7 @@ BFP_EXPORT bool BFP_CALLTYPE BfpEvent_WaitFor(BfpEvent* event, int waitMS)
 		{
 			if (GetLastError() == ERROR_TIMEOUT)
 			{
-				// Timeout				
+				// Timeout
 				LeaveCriticalSection(&event->mCritSect);
 				return false;
 			}
@@ -3522,7 +3522,7 @@ BFP_EXPORT BfpFindFileData* BFP_CALLTYPE BfpFindFileData_FindFirstFile(const cha
 {
 	Beefy::String findStr = path;
 	Beefy::String wildcard;
-    
+
     int lastSlashPos = std::max((int)findStr.LastIndexOf('/'), (int)findStr.LastIndexOf('\\'));
     if (lastSlashPos != -1)
     {

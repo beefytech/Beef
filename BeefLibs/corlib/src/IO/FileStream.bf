@@ -109,7 +109,12 @@ namespace System.IO
 		}
 	}
 
-	class UnbufferedFileStream : FileStreamBase
+	interface IFileStream
+	{
+		Result<void> Attach(Platform.BfpFile* bfpFile, FileAccess access = .ReadWrite);
+	}
+
+	class UnbufferedFileStream : FileStreamBase, IFileStream
 	{
 		FileAccess mFileAccess;
 
@@ -230,11 +235,12 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public void Attach(Platform.BfpFile* bfpFile, FileAccess access = .ReadWrite)
+		public Result<void> Attach(Platform.BfpFile* bfpFile, FileAccess access = .ReadWrite)
 		{
 			Close();
 			mBfpFile = bfpFile;
 			mFileAccess = access;
+			return .Ok;
 		}
 
 		public override Result<void> Close()
@@ -272,7 +278,7 @@ namespace System.IO
 		}
 	}
 
-	class BufferedFileStream : BufferedStream
+	class BufferedFileStream : BufferedStream, IFileStream
 	{
 		protected Platform.BfpFile* mBfpFile;
 		protected int64 mBfpFilePos;
@@ -426,11 +432,12 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public void Attach(Platform.BfpFile* bfpFile, FileAccess access = .ReadWrite)
+		public Result<void> Attach(Platform.BfpFile* bfpFile, FileAccess access = .ReadWrite)
 		{
 			Close();
 			mBfpFile = bfpFile;
 			mFileAccess = access;
+			return .Ok;
 		}
 
 		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
@@ -558,6 +565,14 @@ namespace System.IO
 			}
 
 			return .Ok;
+		}
+
+		public override Result<void> Flush()
+		{
+			var result = base.Flush();
+			if (mBfpFile != null)
+				Platform.BfpFile_Flush(mBfpFile);
+			return result;
 		}
 	}
 
