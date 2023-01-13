@@ -9921,7 +9921,7 @@ void BfModule::ShowGenericArgCountError(BfAstNode* typeRef, int wantedGenericPar
 		Fail(StrFormat("Too few generic parameters, expected %d more", -genericArgDiffCount), lastNode);
 }
 
-BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool useMixinDecl)
+BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool useMixinDecl, bool useForeignImpl)
 {
 	BfTypeDef* useTypeDef = NULL;
 	BfTypeInstance* typeInstance = (typeInstanceOverride != NULL) ? typeInstanceOverride : mCurTypeInstance;
@@ -9933,12 +9933,20 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 		useTypeDef = mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->GetDefinition();
 	else if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mDeclaringType != NULL))
 	{
-		auto declTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
-		useTypeDef = declTypeDef->GetDefinition(true);
-		if ((declTypeDef->IsEmitted()) && (useTypeDef->mIsCombinedPartial))
+		if ((mCurMethodInstance->mIsForeignMethodDef) && (useForeignImpl))
 		{
-			// Always consider methods to belong to the primary type declaration
-			useTypeDef = useTypeDef->mPartials[0];
+			// Use the concrete impl typeDef, not the foreign method typedecl (the interface)
+		}
+		else
+		{
+			auto declTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
+			useTypeDef = declTypeDef->GetDefinition(true);
+			if ((declTypeDef->IsEmitted()) && (useTypeDef->mIsCombinedPartial))
+			{
+				// Always consider methods to belong to the primary type declaration
+				useTypeDef = useTypeDef->mPartials[0];
+
+			}
 		}
 	}
 	else if (mContext->mCurTypeState != NULL)
@@ -14007,7 +14015,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			}
 		}
 		else if (toType->IsSizedArray())
-		{			
+		{
 			auto sizedArray = (BfSizedArrayType*)toType;
 			if (sizedArray->mElementType == GetPrimitiveType(BfTypeCode_Char8))
 			{
@@ -14018,7 +14026,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					if (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry))
 					{
 						String& string = entry->mString;
-						
+
 						if (string.GetLength() > sizedArray->mElementCount)
 						{
 							if (!ignoreErrors)
@@ -14981,7 +14989,7 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 					if (checkAccessibility)
 					{
 						if (checkActiveTypeDef == NULL)
-							checkActiveTypeDef = GetActiveTypeDef(NULL, false);
+							checkActiveTypeDef = GetActiveTypeDef(NULL, false, true);
 
 						// We need to be lenient when validating generic constraints
 						//  Otherwise "T<A> where T : IB" declared in a lib won't be able to match a type B in a using project 'C',

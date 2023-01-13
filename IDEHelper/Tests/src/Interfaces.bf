@@ -405,6 +405,14 @@ namespace Tests
 		    public static String Serialize(Self value);
 		}
 
+		public class EngineTag : LibA.ITaggable
+		{
+			public String Tag
+			{
+				get => "ET";
+			}
+		}
+
 		[Test]
 		public static void TestDefaults()
 		{

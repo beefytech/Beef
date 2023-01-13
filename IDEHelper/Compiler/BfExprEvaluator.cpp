@@ -19050,7 +19050,7 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 			checkType = mModule->GetWrappedStructType(checkType);
 		if ((checkType != NULL) && (checkType->IsTypeInstance()))
 		{
-			auto activeTypeDef = mModule->GetActiveTypeDef();
+			auto activeTypeDef = mModule->GetActiveTypeDef(NULL, false, true);
 			BfTypeInterfaceEntry* bestIFaceEntry = NULL;
 
 			bool checkedUnderlying = false;
@@ -19211,6 +19211,11 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 					}
 				}
 			}
+		}
+
+		if (mModule->mCurMethodInstance->mIsForeignMethodDef)
+		{
+			NOP;
 		}
 
 		if (!handled)

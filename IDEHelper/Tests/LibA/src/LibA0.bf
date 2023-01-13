@@ -4,6 +4,19 @@ using System.Diagnostics;
 
 namespace LibA
 {
+	public interface ITaggable
+	{
+	    public String Tag
+	    {
+	        get;
+	    }
+
+	    public bool MatchesTag(String tag)
+	    {
+	        return Tag.Equals(tag);
+	    }
+	}
+
 	struct LibAStruct
 	{
 		int mA;

@@ -1949,7 +1949,7 @@ public:
 	BfType* ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTypeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags);
 	void ShowAmbiguousTypeError(BfAstNode* refNode, BfTypeDef* typeDef, BfTypeDef* otherTypeDef);
 	void ShowGenericArgCountError(BfAstNode* typeRef, int wantedGenericParams);
-	BfTypeDef* GetActiveTypeDef(BfTypeInstance* typeInstanceOverride = NULL, bool useMixinDecl = false); // useMixinDecl is useful for type lookup, but we don't want the decl project to limit what methods the user can call
+	BfTypeDef* GetActiveTypeDef(BfTypeInstance* typeInstanceOverride = NULL, bool useMixinDecl = false, bool useForeignImpl = false); // useMixinDecl is useful for type lookup, but we don't want the decl project to limit what methods the user can call
 	BfTypeDef* FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error, BfTypeLookupResultCtx* lookupResultCtx = NULL, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
