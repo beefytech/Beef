@@ -3414,7 +3414,7 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 
 	BfIRConstHolder* constHolder = typeInstance->mConstHolder;
 	auto customAttribute = customAttributes->Get(mCompiler->mObsoleteAttributeTypeDef);
-	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()) && (targetSrc != NULL))
+	if ((customAttribute != NULL) && (targetSrc != NULL))
 	{
 		String err;
 		if (fieldInstance != NULL)
@@ -3426,23 +3426,29 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 
 		bool isError = false;
 
-		auto constant = constHolder->GetConstant(customAttribute->mCtorArgs[0]);
-		if (constant->mTypeCode == BfTypeCode_Boolean)
+		if (customAttribute->mCtorArgs.size() >= 1)
 		{
-			isError = constant->mBool;
-		}
-		else if (customAttribute->mCtorArgs.size() >= 2)
-		{
-			String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
-			if (str != NULL)
+			auto constant = constHolder->GetConstant(customAttribute->mCtorArgs[0]);
+			if (constant->mTypeCode == BfTypeCode_Boolean)
 			{
-				err += ":\n    '";
-				err += *str;
-				err += "'";
+				isError = constant->mBool;
 			}
+			else if (constant->mTypeCode == BfTypeCode_StringId)
+			{
+				String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+				if (str != NULL)
+				{
+					err += ":\n    '";
+					err += *str;
+					err += "'";
+				}
 
-			constant = constHolder->GetConstant(customAttribute->mCtorArgs[1]);
-			isError = constant->mBool;
+				if (customAttribute->mCtorArgs.size() >= 2)
+				{
+					constant = constHolder->GetConstant(customAttribute->mCtorArgs[1]);
+					isError = constant->mBool;
+				}
+			}
 		}
 
 		BfError* error = NULL;
