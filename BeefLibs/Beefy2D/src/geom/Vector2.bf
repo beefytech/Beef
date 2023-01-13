@@ -6,6 +6,11 @@ namespace Beefy.geom
 {
     public struct Vector2
     {
+		private static Vector2 sZero = Vector2(0f, 0f);
+		private static Vector2 sOne = Vector2(1f, 1f);
+		private static Vector2 sUnitX = Vector2(1f, 0f);
+		private static Vector2 sUnitY = Vector2(0f, 1f);
+
         public float mX;
         public float mY;
 
@@ -38,6 +43,33 @@ namespace Beefy.geom
             mX = x;
             mY = y;
         }
+
+		public Vector2 Normalized => Vector2(mX, mY)..Normalize();
+
+		public static Vector2 Normalize(Vector2 vector)
+		{
+			Vector2 newVec;
+		    Normalize(vector, out newVec);
+		    return newVec;
+		}
+
+		public static void Normalize(Vector2 value, out Vector2 result)
+		{
+		    float factor= Distance(value, sZero);
+		    factor = 1f / factor;
+		    result.mX = value.mX * factor;
+		    result.mY = value.mY * factor;
+		}
+
+		public void Normalize() mut
+		{
+		    Normalize(this, out this);
+		}
+
+		public static float Cross(Vector2 vector1, Vector2 vector2)
+		{
+		    return vector1.mX * vector2.mY - vector1.mY * vector2.mX;
+		}
 
         public static void DistanceSquared(Vector2 value1, Vector2 value2, out float result)
         {
