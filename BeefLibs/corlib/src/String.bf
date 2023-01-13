@@ -2125,7 +2125,7 @@ namespace System
 			return UTF8.Decode(ptr + idx, mLength - idx).c == c;
 		}
 
-		public void ReplaceLargerHelper(String find, String replace)
+		private void ReplaceLargerHelper(String find, String replace)
 		{
 			List<int> replaceEntries = scope List<int>(8192);
 			
