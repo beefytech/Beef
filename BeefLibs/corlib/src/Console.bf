@@ -83,6 +83,15 @@ namespace System
 
 		//SetConsoleOutputCP set to CP_UTF8
 
+		const uint32 ENABLE_LINE_INPUT = 0x0002;
+		const uint32 ENABLE_ECHO_INPUT = 0x0004;
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern Windows.IntBool GetConsoleMode(Windows.Handle hConsoleHandle, out uint32 mode);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern Windows.IntBool SetConsoleMode(Windows.Handle hConsoleHandle, uint32 mode);
+
 		[CLink, CallingConvention(.Stdcall)]
 		static extern Windows.IntBool SetConsoleTextAttribute(Windows.Handle hConsoleOutput, uint16 wAttributes);
 
@@ -157,7 +166,16 @@ namespace System
 			{
 				FileStream fileStream = new .();
 				Stream stream = fileStream;
-				if (fileStream.OpenStd(stdKind) case .Err)
+				if (fileStream.OpenStd(stdKind) case .Ok)
+				{
+#if BF_PLATFORM_WINDOWS
+					
+					GetConsoleMode((.)fileStream.Handle, var consoleMode);
+					consoleMode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+					SetConsoleMode((.)fileStream.Handle, consoleMode);
+#endif
+				}
+				else
 				{
 					DeleteAndNullify!(fileStream);
 					stream = new NullStream();
