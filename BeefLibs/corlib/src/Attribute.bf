@@ -505,7 +505,17 @@ namespace System
 	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Interface | .Property)]
 	public struct ObsoleteAttribute : Attribute
 	{
+		public this()
+		{
+
+		}
+
 		public this(bool isError)
+		{
+
+		}
+
+		public this(String error)
 		{
 
 		}
