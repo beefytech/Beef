@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 namespace Tests
 {
@@ -43,6 +44,23 @@ namespace Tests
 			str.Contains('T');
 		}*/
 
+		static int sVal = 123;
+
+		struct DisposableInstance : int32
+		{
+			public void Dispose() mut
+			{
+				sVal++;
+			}
+		}
+
+		DisposableInstance sDisposableInstance = (.)123;
+
+		static Result<DisposableInstance> GetDisposable(StringView profileDesc = default, int sampleRate = -1)
+		{
+			return DisposableInstance();
+		}
+
 		public static void Defer0(ref int val)
 		{
 			for (int i < 10)
@@ -53,7 +71,14 @@ namespace Tests
 				}
 
 				if (i == 2)
+				{
+					if (GetDisposable() case .Ok(var sampInst))
+					{
+						defer:: sampInst.Dispose();
+					}
+
 					return;
+				}
 
 				defer::
 				{
@@ -68,6 +93,7 @@ namespace Tests
 			int a = 0;
 			Defer0(ref a);
 			Test.Assert(a == 302);
+			Test.Assert(sVal == 124);
 		}
 
 		public static mixin GetStr()
