@@ -20,40 +20,40 @@ USING_NS_BF;
 // JPEG error handling
 // Will "longjmp" on error_exit.
 // -----------------------------------------------------------------------
-	
+
 struct ErrorHandler
 {
 	/** "subclass" of jpeg_error_mgr */
 	struct jpeg_error_mgr errorMgr;
 	jmp_buf setjmpBuffer;
-		
+
 	ErrorHandler( j_decompress_ptr cinfo )
 	{
 		Init( (j_common_ptr)cinfo );
 	}
-		
+
 	ErrorHandler( j_compress_ptr cinfo )
 	{
 		Init( (j_common_ptr)cinfo );
 	}
-		
+
 	void Init( j_common_ptr cinfo )
 	{
 		// setup the standard error handling.
 		cinfo->err = jpeg_std_error( &errorMgr );
-			
+
 		// then hook up our error_exit function.
 		errorMgr.error_exit = &ErrorHandler::OnErrorExit;
 	}
-		
+
 	static void OnErrorExit( j_common_ptr cinfo )
 	{
 		// recover the pointer to "derived class" instance
 		ErrorHandler* errorHandler = (ErrorHandler*)cinfo->err;
-			
+
 		// use the default error message output.
 		(*cinfo->err->output_message)( cinfo );
-			
+
 		// return control to the setjmp point.
 		longjmp( errorHandler->setjmpBuffer, 1 );
 	}
@@ -64,14 +64,14 @@ struct JpegMemSource
 	JpegMemSource(JPEGData* buffer, j_decompress_ptr cinfo )
 	{
 		struct jpeg_source_mgr * src;
-			
+
 		if ( cinfo->src == NULL )
 		{
 			// Have the jpeg library allocate the source manager object so
 			// that it is automatically deallocated by the decompressor.
 			cinfo->src = (struct jpeg_source_mgr *)(*cinfo->mem->alloc_small)( (j_common_ptr)cinfo, JPOOL_PERMANENT, sizeof(struct jpeg_source_mgr) );
 		}
-			
+
 		src = cinfo->src;
 		src->init_source = &JpegMemSource::InitSource;
 		src->fill_input_buffer = &JpegMemSource::FillInputBuffer;
@@ -88,16 +88,16 @@ struct JpegMemSource
 		// completely skip the destruction of this C++ data source wrapper,
 		// but that is OK so long as there is no actual cleanup to do.
 	}
-		
+
 	static void InitSource( j_decompress_ptr cinfo )
 	{
 		/* no work necessary here */
 	}
-		
+
 	static boolean FillInputBuffer( j_decompress_ptr cinfo )
 	{
 		static JOCTET mybuffer[4];
-			
+
 		/* The whole JPEG data is expected to reside in the supplied memory
 			* buffer, so any request for more data beyond the given buffer size
 			* is treated as an error.
@@ -106,17 +106,17 @@ struct JpegMemSource
 		/* Insert a fake EOI marker */
 		mybuffer[0] = (JOCTET) 0xFF;
 		mybuffer[1] = (JOCTET) JPEG_EOI;
-			
+
 		cinfo->src->next_input_byte = mybuffer;
 		cinfo->src->bytes_in_buffer = 2;
-			
+
 		return TRUE;
 	}
 
 	static void SkipInputData( j_decompress_ptr cinfo, long num_bytes )
 	{
 		struct jpeg_source_mgr * src = cinfo->src;
-			
+
 		/* Just a dumb implementation for now.  Could use fseek() except
 			* it doesn't work on pipes.  Not clear that being smart is worth
 			* any trouble anyway --- large skips are infrequent.
@@ -133,12 +133,12 @@ struct JpegMemSource
 			src->bytes_in_buffer -= (size_t) num_bytes;
 		}
 	}
-		
+
 	static void TermSource( j_decompress_ptr cinfo )
 	{
 		/* no work necessary here */
 	}
-		
+
 };
 
 #define JPEGMEMDEST_BLOCK_SIZE 16384
@@ -148,9 +148,9 @@ struct JpegMemDest : jpeg_destination_mgr
 	Array<uint8> mData;
 
 	JpegMemDest(JPEGData* buffer, j_compress_ptr cinfo)
-	{		
+	{
 		if (cinfo->dest == NULL)
-		{			
+		{
 			cinfo->dest = this;
 		}
 
@@ -160,7 +160,7 @@ struct JpegMemDest : jpeg_destination_mgr
 	}
 
 	~JpegMemDest()
-	{		
+	{
 	}
 
 	static void InitDestination(j_compress_ptr cinfo)
@@ -189,14 +189,14 @@ struct JpegMemDest : jpeg_destination_mgr
 };
 
 bool JPEGData::ReadData()
-{	
+{
 	jpeg_decompress_struct cinfo;
 	ErrorHandler err( &cinfo );
 	if ( setjmp( err.setjmpBuffer ) )
 	{
 		// ErrorHandler::OnErrorExit will longjmp back to here from
 		// within the ReadImage call below.
-		jpeg_destroy_decompress( &cinfo );		
+		jpeg_destroy_decompress( &cinfo );
 		return false;
 	}
 
@@ -257,7 +257,7 @@ bool JPEGData::ReadData()
 void JPEGData::Compress(int quality)
 {
 	jpeg_compress_struct cinfo;
-	
+
 	/* Now we can initialize the JPEG compression object. */
 	jpeg_create_compress(&cinfo);
 
@@ -310,23 +310,23 @@ void JPEGData::Compress(int quality)
 	 * more if you wish, though.
 	 */
 	int row_stride = mWidth * 3;	/* JSAMPLEs per row in image_buffer */
-		
+
 	uint8* line = new uint8[mWidth * 3];
 	row_pointer[0] = (JSAMPROW)line;
 
-	while (cinfo.next_scanline < cinfo.image_height) 
-	{	
-		uint8* src = (uint8*)&mBits[(mHeight - cinfo.next_scanline - 1) * mWidth];
+	while (cinfo.next_scanline < cinfo.image_height)
+	{
+		uint8* src = (uint8*)&mBits[cinfo.next_scanline * mWidth];
 
 		uint8* dest = line;
 		for (int x = 0; x < mWidth; x++)
 		{
 			*(dest++) = src[2];
 			*(dest++) = src[1];
-			*(dest++) = src[0];			
+			*(dest++) = src[0];
 			src += 4;
 		}
-		
+
 		(void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
 
