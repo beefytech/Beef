@@ -11035,7 +11035,11 @@ void WinDebugger::UpdateCallStack(bool slowEarlyOut)
 	if (!mIsPartialCallStack)
 		return;
 
-	BF_ASSERT(!IsInRunState());
+	if (mActiveThread == NULL)
+		return;
+
+	if (IsInRunState())
+		return;
 
 	uint32 tickStart = BFTickCount();
 

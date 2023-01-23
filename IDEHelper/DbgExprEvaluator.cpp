@@ -4022,7 +4022,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 			if (mStackSearch->mSearchStr != "*")
 			{
 				mDebugger->UpdateCallStackMethod(mCallStackIdx);
-				if (stackFrame->mSubProgram != NULL)
+				if ((stackFrame != NULL) && (stackFrame->mSubProgram != NULL))
 				{
 					int strLen = strlen(stackFrame->mSubProgram->mName);
 					if (strLen >= findStr.mLength)
