@@ -130,6 +130,7 @@ namespace Beefy.gfx
 		List<AltFont> mAlternates;
 		MarkRefData mMarkRefData ~ delete _;
 		float[] mLoKerningTable;
+		public StringView mEllipsis = "...";
 
         public this()
         {
@@ -868,14 +869,14 @@ namespace Beefy.gfx
 
                     if (stringEndMode == FontOverflowMode.Ellipsis)
                     {
-                        float ellipsisLen = GetWidth("...");
+                        float ellipsisLen = GetWidth(mEllipsis);
                         if (width < ellipsisLen)
                             return 0; // Don't draw at all if we don't even have enough space for the ellipsis
                         
 						int strLen = GetCharCountToLength(workingStr, width - ellipsisLen);
 						tempStr = scope:: String(Math.Min(strLen, 128));
 						tempStr.Append(theString, 0, strLen);
-						tempStr.Append("...");
+						tempStr.Append(mEllipsis);
 						workingStr = tempStr;
                         aWidth = GetWidth(workingStr);
                         break;
