@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {corlib = {Path = "."}}
+
+[Workspace]
+StartupProject = "corlib"
