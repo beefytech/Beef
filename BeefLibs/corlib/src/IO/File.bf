@@ -30,15 +30,18 @@ namespace System.IO
 	{
 		public static Result<void, FileError> ReadAll(StringView path, List<uint8> outData)
 		{
-			FileStream fs = scope FileStream();
+			UnbufferedFileStream fs = scope UnbufferedFileStream();
 			var result = fs.Open(path, .Open, .Read, .ReadWrite);
 			if (result case .Err(let err))
 				return .Err(.OpenError(err));
 
+			int64 fileSize = fs.Length;
+			outData.Reserve(fileSize);
+
 			while (true)
 			{
-				uint8[4096] buffer;
-				switch (fs.TryRead(.(&buffer, 4096)))
+				uint8[8192] buffer;
+				switch (fs.TryRead(.(&buffer, 8192)))
 				{
 				case .Ok(let bytes):
 					if (bytes == 0)
