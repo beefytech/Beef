@@ -19213,11 +19213,6 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			}
 		}
 
-		if (mModule->mCurMethodInstance->mIsForeignMethodDef)
-		{
-			NOP;
-		}
-
 		if (!handled)
 		{
 			SetAndRestoreValue<BfFunctionBindResult*> prevFunctionBindResult(mFunctionBindResult, NULL);
