@@ -36,7 +36,7 @@ namespace System.IO
 				return .Err(.OpenError(err));
 
 			int64 fileSize = fs.Length;
-			outData.Reserve(fileSize);
+			outData.Reserve((.)fileSize);
 
 			while (true)
 			{
