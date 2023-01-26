@@ -127,6 +127,45 @@ namespace System
 			}
 			SetConsoleOutputCP(/*CP_UTF8*/65001);
 		}
+
+		public static int32 CursorTop
+		{
+			public get
+			{
+				let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+				CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
+				GetConsoleScreenBufferInfo(handle,out consoleInfo);
+				return consoleInfo.mCursorPosition[1]; //1 = y position
+			}
+			public set
+			{
+				//This has to be done afaik to ensure x stays the same
+				let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+				CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
+				GetConsoleScreenBufferInfo(handle,out consoleInfo);
+
+				SetConsoleCursorPosition(handle, COORD((.)consoleInfo.mCursorPosition[0], (.)value));
+			}
+		}
+		public static int32 CursorLeft
+		{
+			public get
+			{
+				let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+				CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
+				GetConsoleScreenBufferInfo(handle,out consoleInfo);
+				return consoleInfo.mCursorPosition[0]; //1 = y position
+			}
+			public set
+			{
+				//This has to be done afaik to ensure x stays the same
+				let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+				CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
+				GetConsoleScreenBufferInfo(handle,out consoleInfo);
+
+				SetConsoleCursorPosition(handle, COORD((.)value,(.)consoleInfo.mCursorPosition[0]));
+			}
+		}
 #endif
 
 		static StreamWriter OpenStreamWriter(Platform.BfpFileStdKind stdKind, ref StreamWriter outStreamWriter)
