@@ -21,7 +21,21 @@ namespace Beefy.widgets
         public this(Menu menuItem)
         {
             mMenuItem = menuItem;
+			if (mMenuItem.mWidget != null)
+				AddWidget(mMenuItem.mWidget);
         }
+
+		public ~this()
+		{
+			
+		}
+
+		protected override void RemovedFromWindow()
+		{
+			base.RemovedFromWindow();
+			if (mMenuItem.mWidget != null)
+				RemoveWidget(mMenuItem.mWidget);
+		}
 
         public override void MouseEnter()
         {
@@ -570,11 +584,13 @@ namespace Beefy.widgets
         public Event<delegate void(Menu menu)> mOnMenuItemSelected ~ _.Dispose();
         public Event<delegate void(Menu menu)> mOnMenuItemUpdate ~ _.Dispose();
         public Event<delegate void(Menu menu, Menu itemSelected)> mOnMenuClosed ~ _.Dispose();
+		public Event<delegate void(Menu menu)> mOnChildOpen ~ _.Dispose();
         public Object mThemeData;
         public bool mDisabled;
 		public bool mBold;
         public IDrawable mIconImage;
 		public bool mForceParent;
+		public Widget mWidget ~ delete _;
 
 		public ~this()
 		{
@@ -612,6 +628,15 @@ namespace Beefy.widgets
             mItems.Add(item);
             return item;
         }
+
+		public virtual Menu AddWidgetItem(Widget widget)
+		{
+			Menu item = new Menu();
+			item.mParent = this;
+			item.mWidget = widget;
+			mItems.Add(item);
+			return item;
+		}
 
 		public void SetDisabled(bool disabled)
 		{

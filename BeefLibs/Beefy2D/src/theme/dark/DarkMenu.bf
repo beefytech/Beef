@@ -22,6 +22,9 @@ namespace Beefy.theme.dark
         {
             base.Draw(g);
 
+			if (mMenuItem.mWidget != null)
+				return;
+
             if (mMenuItem.mLabel == null)
                 g.DrawButton(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.MenuSepHorz), GS!(28), 0, mWidth - GS!(32));
             else
@@ -107,6 +110,16 @@ namespace Beefy.theme.dark
         public override void Update()
         {
             base.Update();
+
+			for (var item in mMenuItem.mItems)
+			{
+				if (item.mWidget != null)
+				{
+					if (item.mWidget.mMouseOver)
+						mDeselectedTicks = 0;
+				}
+			}
+
             if (mMenuItem.mItems.Count > 0)
             {
                 if (mIndex == mMenuWidget.mSelectIdx)
@@ -319,6 +332,10 @@ namespace Beefy.theme.dark
             /*using (g.PushColor(0xFFFF0000))
                 g.FillRect(0, 0, mWidth, mHeight);*/
 
+			for (var item in mItemWidgets)
+				if (item.mMenuItem.mWidget != null)
+					return;
+
             float mDrawHeight = mHeight;
             g.DrawButtonVert(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.MenuSepVert), GS!(18), GS!(2), mDrawHeight - GS!(4));
 
@@ -359,12 +376,20 @@ namespace Beefy.theme.dark
             float curY = GS!(2);
             for (MenuItemWidget item in mItemWidgets)
             {
-                if (item.mMenuItem.mLabel != null)
-                    maxWidth = Math.Max(maxWidth, mFont.GetWidth(item.mMenuItem.mLabel));
-                
-                item.Resize(0, curY, mWidth - GS!(8), mItemSpacing);
-                item.mMouseInsets = new Insets(0, GS!(6), 0, 0);
-                curY += mItemSpacing;
+				if (item.mMenuItem.mWidget != null)
+				{
+					item.mMenuItem.mWidget.mX = GS!(4);
+					item.mMenuItem.mWidget.mY = curY;
+				}
+				else
+				{
+	                if (item.mMenuItem.mLabel != null)
+	                    maxWidth = Math.Max(maxWidth, mFont.GetWidth(item.mMenuItem.mLabel));
+	                
+	                item.Resize(0, curY, mWidth - GS!(8), mItemSpacing);
+	                item.mMouseInsets = new Insets(0, GS!(6), 0, 0);
+	                curY += mItemSpacing;
+				}
             }
         }
 
@@ -373,6 +398,13 @@ namespace Beefy.theme.dark
             float maxWidth = 0;
             for (MenuItemWidget item in mItemWidgets)
             {
+				if (item.mMenuItem.mWidget != null)
+				{
+					mWidth = item.mMenuItem.mWidget.mWidth + GS!(6);
+					mHeight = item.mMenuItem.mWidget.mHeight + GS!(4);
+					return;
+				}
+
                 if (item.mMenuItem.mLabel != null)
                     maxWidth = Math.Max(maxWidth, mFont.GetWidth(item.mMenuItem.mLabel));
             }
