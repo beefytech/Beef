@@ -385,8 +385,8 @@ namespace System.Collections
 				Free(oldPtr);
 				return;
 			}
-			for (var val in ref addSpan)
-				mItems[mSize++] = val;
+			Internal.MemCpy(mItems + mSize, addSpan.Ptr, addSpan.Length * alignof(T), alignof(T));
+			mSize += (.)addSpan.Length;
 #if VERSION_LIST
 			mVersion++;
 #endif
