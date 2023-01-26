@@ -3912,11 +3912,14 @@ namespace IDE
 				if (!nextTabbedView.mWidgetWindow.mHasFocus)
 					nextTabbedView.mWidgetWindow.SetForeground();
 				var activeTab = nextTabbedView.GetActiveTab();
-				activeTab.Activate();
-
-				if (let sourceViewPanel = activeTab.mContent as SourceViewPanel)
+				if (activeTab != null)
 				{
-					sourceViewPanel.HilitePosition(.Always);
+					activeTab.Activate();
+
+					if (let sourceViewPanel = activeTab.mContent as SourceViewPanel)
+					{
+						sourceViewPanel.HilitePosition(.Always);
+					}
 				}
 			}
 		}
