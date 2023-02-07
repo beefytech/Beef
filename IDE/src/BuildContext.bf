@@ -249,7 +249,13 @@ namespace IDE
 			}
 			else
 			{
-				arArgs.AppendF($"-qc {targetPath}");
+				arArgs.AppendF($"-qc ");
+				String fixedTargetPath = scope .(targetPath);
+				IDEUtils.FixFilePath(fixedTargetPath);
+#if BF_PLATFORM_WINDOWS
+				fixedTargetPath.Replace("\\", "\\\\");
+#endif
+				IDEUtils.AppendWithOptionalQuotes(arArgs, fixedTargetPath);
 
 				void AddObject(StringView obj)
 				{
@@ -257,7 +263,13 @@ namespace IDE
 						return;
 
 					arArgs.Append(" ");
-					arArgs.Append(obj);
+					
+					String fixedObjPath = scope .(obj);
+					IDEUtils.FixFilePath(fixedObjPath);
+#if BF_PLATFORM_WINDOWS
+					fixedObjPath.Replace("\\", "\\\\");
+#endif
+					IDEUtils.AppendWithOptionalQuotes(arArgs, fixedObjPath);
 				}
 
 				bool inQuote = false;
