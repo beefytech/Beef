@@ -1984,6 +1984,20 @@ namespace IDE.ui
                 return;
             if (dragSource.mLabel == "")
                 return;
+
+			if (dragKind == .Inside)
+			{
+				dragSource.SelfToRootTranslate(evt.mX, evt.mY, var rootX, var rootY);
+				dragTarget.RootToSelfTranslate(rootX, rootY, var targetX, var targetY);
+
+				//dragSource.SelfToOtherTranslate(dragTarget, evt.mX, evt.mY, var targetX, var targetY);
+
+				if (targetY < dragTarget.mSelfHeight / 2)
+					dragKind = .Before;
+				else
+					dragKind = .After;
+			}
+
             while (dragTarget.mParentItem != mListView.GetRoot())
             {
                 // Check for if we're dragging after the last open child item.  If so, treat it as if we're dragging to after the topmost parent

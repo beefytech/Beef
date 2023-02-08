@@ -655,6 +655,11 @@ namespace Beefy.theme.dark
 							}
 							else
 							{
+								var darkListView = (DarkListView)mListView;
+
+								if (mDragTarget.mParentItem != mListView.GetRoot())
+									targetX += darkListView.mLabelX - darkListView.mChildIndent;
+
 						        if ((mDragKind == .Inside) || (mDragKind == .After)) // Inside or after
 						            targetY += mDragTarget.mSelfHeight;
 						        
@@ -805,16 +810,27 @@ namespace Beefy.theme.dark
                 float childX;
                 float childY;
                 foundWidget.SelfToRootTranslate(0, 0, out childX, out childY);
-                
-                float yOfs = aY - childY;
-                if (yOfs < mHeight / 2)
-                    mDragKind = .Before;
-                else
-                {
-                    mDragKind = .After;
-                    if ((listViewItem.mOpenButton != null) && (listViewItem.mOpenButton.mIsOpen))
-                        mDragKind = .None;
-                }
+
+				if ((listViewItem.mOpenButton != null) && (aX - childX < GS!(30)))
+				{
+					mDragKind = .Inside;
+				}
+				else
+				{
+	                float yOfs = aY - childY;
+	                if (yOfs < mHeight / 2)
+	                    mDragKind = .Before;
+	                else
+	                {
+	                    mDragKind = .After;
+	                    if ((listViewItem.mOpenButton != null) && (!listViewItem.mChildItems.IsEmpty)  && (listViewItem.mOpenButton.mIsOpen))
+						{
+							var firstChild = listViewItem.mChildItems[0];
+							foundWidget = firstChild;
+	                        mDragKind = .Before;
+						}
+	                }
+				}
 
 				if (Math.Abs(dY) < mSelfHeight * 0.21f)
 				{
