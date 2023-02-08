@@ -705,6 +705,33 @@ namespace Beefy.gfx
 			return '\x02';
 		}
 
+		public static void StrRemoveColors(StringView theString, String str)
+		{
+			int len = theString.Length;
+			if (len == 0)
+			{
+				return;
+			}
+
+			for (var c in theString.DecodedChars)
+			{
+				int idx = @c.NextIndex;
+				if (c == (char32)'\x01')
+				{
+					@c.NextIndex = idx + 4;
+					continue;
+				}
+				else if (c == (char32)'\x02')
+				{
+					continue;
+				}
+		        str.Append(c);
+
+				if (idx >= len)
+					break;
+		    }
+		}
+
         public void Draw(Graphics g, StringView theString, FontMetrics* fontMetrics = null)
         {
 			if (mFTFont == null)
