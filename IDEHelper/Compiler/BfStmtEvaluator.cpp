@@ -2607,7 +2607,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 		auto tupleElement = Cast(deferredAssign.mExpr, deferredAssign.mTupleElement, argValue.mType);
 		if (!tupleElement)
 			continue;
-		tupleElement = LoadValue(tupleElement);
+		tupleElement = LoadOrAggregateValue(tupleElement);
 		if (!tupleElement.mType->IsValuelessType())
 			mBfIRBuilder->CreateStore(tupleElement.mValue, argValue.mValue);
 	}
