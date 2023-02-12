@@ -1368,6 +1368,9 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 
 		BfSizedArrayType* arrayType = (BfSizedArrayType*)resolvedTypeRef;
 		auto elementType = arrayType->mElementType;
+		int elementSize = 0;
+		int elementAlign = 0;
+		int elementStride = 0;
 		if (elementType->IsValueType())
 		{
 			resolvedTypeRef->mDefineState = BfTypeDefineState_ResolvingBaseType;
@@ -1387,26 +1390,32 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			}
 			resolvedTypeRef->mDefineState = arrayType->mElementType->mDefineState;
 			AddDependency(elementType, resolvedTypeRef, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
+			elementSize = arrayType->mElementType->mSize;
+			elementAlign = arrayType->mElementType->mAlign;
+			elementStride = arrayType->mElementType->GetStride();
 		}
 		else
 		{
 			PopulateType(arrayType->mElementType, BfPopulateType_Identity);
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
 			AddDependency(elementType, resolvedTypeRef, BfDependencyMap::DependencyFlag_PtrMemberData);
+			elementSize = mSystem->mPtrSize;
+			elementAlign = mSystem->mPtrSize;
+			elementStride = mSystem->mPtrSize;
 		}
 		if (arrayType->mElementCount > 0)
 		{
-			arrayType->mSize = (int)(arrayType->mElementType->GetStride() * arrayType->mElementCount);
-			if (arrayType->mElementType->mSize > 0)
+			arrayType->mSize = (int)(elementStride * arrayType->mElementCount);
+			if (elementSize > 0)
 			{
-				int64 maxElements = 0x7FFFFFFF / arrayType->mElementType->GetStride();
+				int64 maxElements = 0x7FFFFFFF / elementStride;
 				if (arrayType->mElementCount > maxElements)
 				{
 					Fail(StrFormat("Array size overflow: %s", TypeToString(arrayType).c_str()));
 					arrayType->mSize = 0x7FFFFFFF;
 				}
 			}
-			arrayType->mAlign = std::max((int32)arrayType->mElementType->mAlign, 1);
+			arrayType->mAlign = std::max(elementAlign, 1);
 		}
 		else if (arrayType->mElementCount < 0)
 		{
@@ -10689,6 +10698,11 @@ void BfModule::GetDelegateTypeRefAttributes(BfDelegateTypeRef* delegateTypeRef, 
 BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags, int numGenericArgs)
 {
 	//BP_ZONE("BfModule::ResolveTypeRef");
+
+	if ((!mCompiler->mIsResolveOnly) && (typeRef->ToString() == "BufferType[Enum.GetCount<GpuBufferType>()]"))
+	{
+		NOP;
+	}
 
 	if (typeRef == NULL)
 	{
