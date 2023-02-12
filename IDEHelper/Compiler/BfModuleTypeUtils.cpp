@@ -10699,11 +10699,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 {
 	//BP_ZONE("BfModule::ResolveTypeRef");
 
-	if ((!mCompiler->mIsResolveOnly) && (typeRef->ToString() == "BufferType[Enum.GetCount<GpuBufferType>()]"))
-	{
-		NOP;
-	}
-
 	if (typeRef == NULL)
 	{
 		AssertErrorState();
