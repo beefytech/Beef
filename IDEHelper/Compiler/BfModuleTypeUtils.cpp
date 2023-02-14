@@ -3654,6 +3654,19 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		return;
 
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
+
+	BfTypeInstance* boxedUnderlyingTypeInstance = NULL;
+	if (typeInstance->IsBoxed())
+	{
+		auto underlyingType = typeInstance->GetUnderlyingType();
+		if (underlyingType->IsPrimitiveType())
+			boxedUnderlyingTypeInstance = GetPrimitiveStructType(((BfPrimitiveType*)underlyingType)->mTypeDef->mTypeCode);
+		else
+			boxedUnderlyingTypeInstance = underlyingType->ToTypeInstance();
+
+		typeInstance->mTypeDef = boxedUnderlyingTypeInstance->mTypeDef;
+	}
+
 	auto typeDef = typeInstance->mTypeDef;
 
 	BF_ASSERT((typeInstance->mTypeDef->mNextRevision == NULL) || (mCompiler->IsAutocomplete()));
@@ -4246,23 +4259,30 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		wantPopulateInterfaces = true;
 	}
 
-	if ((typeInstance->mCeTypeInfo != NULL) && (!typeInstance->mCeTypeInfo->mPendingInterfaces.IsEmpty()))
+	// Handle CE interfaces
 	{
-		for (auto ifaceTypeId : typeInstance->mCeTypeInfo->mPendingInterfaces)
-		{
-			auto ifaceType = mContext->mTypes[ifaceTypeId];
-			if ((ifaceType == NULL) || (!ifaceType->IsInterface()))
-				continue;
-			auto ifaceInst = ifaceType->ToTypeInstance();
+		auto checkTypeInst = typeInstance;
+		if (boxedUnderlyingTypeInstance != NULL)
+			checkTypeInst = boxedUnderlyingTypeInstance;
 
-			if (ifaceSet.Add(ifaceInst))
+		if ((checkTypeInst->mCeTypeInfo != NULL) && (!checkTypeInst->mCeTypeInfo->mPendingInterfaces.IsEmpty()))
+		{
+			for (auto ifaceTypeId : checkTypeInst->mCeTypeInfo->mPendingInterfaces)
 			{
-				// Not base type
-				BfInterfaceDecl ifaceDecl;
-				ifaceDecl.mIFaceTypeInst = ifaceInst;
-				ifaceDecl.mTypeRef = NULL;
-				ifaceDecl.mDeclaringType = typeDef->GetDefinition();
-				interfaces.Add(ifaceDecl);
+				auto ifaceType = mContext->mTypes[ifaceTypeId];
+				if ((ifaceType == NULL) || (!ifaceType->IsInterface()))
+					continue;
+				auto ifaceInst = ifaceType->ToTypeInstance();
+
+				if (ifaceSet.Add(ifaceInst))
+				{
+					// Not base type
+					BfInterfaceDecl ifaceDecl;
+					ifaceDecl.mIFaceTypeInst = ifaceInst;
+					ifaceDecl.mTypeRef = NULL;
+					ifaceDecl.mDeclaringType = typeDef->GetDefinition();
+					interfaces.Add(ifaceDecl);
+				}
 			}
 		}
 	}
