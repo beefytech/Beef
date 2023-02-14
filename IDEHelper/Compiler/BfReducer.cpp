@@ -4810,6 +4810,8 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 			{
 				MoveNode(memberReferenceExpression->mTarget, qualifiedTypeRef);
 				auto leftTypeRef = DoCreateTypeRef(memberReferenceExpression->mTarget);
+				if (leftTypeRef == NULL)
+					return NULL;
 				MEMBER_SET(qualifiedTypeRef, mLeft, leftTypeRef);
 			}
 			MEMBER_SET(qualifiedTypeRef, mDot, memberReferenceExpression->mDotToken);
@@ -4819,6 +4821,8 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 			{
 				MoveNode(memberReferenceExpression->mMemberName, memberReferenceExpression);
 				auto rightTypeRef = DoCreateTypeRef(memberReferenceExpression->mMemberName);
+				if (rightTypeRef == NULL)
+					return NULL;
 				MEMBER_SET(qualifiedTypeRef, mRight, rightTypeRef);
 			}
 			firstNode = qualifiedTypeRef;
