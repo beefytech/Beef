@@ -5997,6 +5997,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	if ((type->mDefineState != BfTypeDefineState_CETypeInit) && (type->WantsGCMarking()))
 		typeFlags |= BfTypeFlags_WantsMarking;
 
+	if ((typeInstance != NULL) && (typeInstance->mTypeDef->mIsStatic))
+		typeFlags |= BfTypeFlags_Static;
+	if ((typeInstance != NULL) && (typeInstance->mTypeDef->mIsAbstract))
+		typeFlags |= BfTypeFlags_Abstract;
+
 	int virtSlotIdx = -1;
 	if ((typeInstance != NULL) && (typeInstance->mSlotNum >= 0))
 		virtSlotIdx = typeInstance->mSlotNum + 1 + mCompiler->GetDynCastVDataCount();

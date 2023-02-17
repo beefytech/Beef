@@ -220,7 +220,10 @@ enum BfTypeFlags
 	BfTypeFlags_Delegate        = 0x20000,
 	BfTypeFlags_Function		= 0x40000,
 	BfTypeFlags_HasDestructor   = 0x80000,
-	BfTypeFlags_GenericParam	= 0x100000
+	BfTypeFlags_GenericParam	= 0x100000,
+
+	BfTypeFlags_Static			= 0x200000,
+	BfTypeFlags_Abstract		= 0x400000,
 };
 
 enum BfMethodFlags
