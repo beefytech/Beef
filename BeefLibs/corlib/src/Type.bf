@@ -394,6 +394,22 @@ namespace System
 		    }
 		}
 
+		public bool IsStatic
+		{
+			get
+			{
+				return (mTypeFlags & .Static) != 0;
+			}
+		}
+
+		public bool IsAbstract
+		{
+			get
+			{
+				return (mTypeFlags & .Abstract) != 0;
+			}
+		}
+
 		public virtual int32 GenericParamCount
 		{
 			get
@@ -1461,6 +1477,9 @@ namespace System.Reflection
 		Function				= 0x40000,
 		HasDestructor			= 0x80000,
 		GenericParam			= 0x100000,
+
+		Static					= 0x200000,
+		Abstract				= 0x400000,
     }
 
     public enum FieldFlags : uint16
