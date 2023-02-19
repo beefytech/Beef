@@ -2248,6 +2248,53 @@ namespace System
 			mLength = outIdx;
 		}
 
+		public void Replace(int start, int length, StringView replaceWith)
+		{
+			Debug.Assert(start >= 0 && start <= Length);
+			Debug.Assert(length >= 0 && length <= Length - start);
+
+			if (replaceWith.IsEmpty)
+				return;
+
+			if (replaceWith.Length == length)
+			{
+				Internal.MemCpy(&Ptr[start], replaceWith.Ptr, length);
+			}
+			else if (replaceWith.Length > length)
+			{
+				int additional = replaceWith.Length - length;
+				CalculatedReserve(Length + additional);
+				
+				if (start + length < Length)
+					Internal.MemMove(&Ptr[start + replaceWith.Length], &Ptr[start + length], Length - (start + length));
+
+				mLength += (.) additional;
+
+				Internal.MemCpy(&Ptr[start], replaceWith.Ptr, replaceWith.Length);
+			}
+			else
+			{
+				int difference = length - replaceWith.Length;
+
+				Internal.MemCpy(&Ptr[start], replaceWith.Ptr, replaceWith.Length);
+
+				if (start + length < Length)
+					Internal.MemMove(&Ptr[start + replaceWith.Length], &Ptr[start + length], Length - (start + length));
+
+				mLength -= (.) difference;
+			}
+		}
+		
+		public void Replace(IndexRange range, StringView replaceWith)
+		{
+			StringView view = this;
+
+			int start = view.[Friend]GetRangeStart(range);
+			int end = view.[Friend]GetRangeEnd(range);
+
+			Replace(start, end - start, replaceWith);
+		}
+
 		public void TrimEnd()
 		{
 			let ptr = Ptr;
@@ -3461,43 +3508,51 @@ namespace System
 #endif
 			get
 			{
-				char8* start;
-				switch (range.[Friend]mStart)
+				int start = GetRangeStart(range);
+				int end = GetRangeEnd(range);
+
+				return .(mPtr + start, end - start);
+			}
+		}
+
+		private int GetRangeStart(IndexRange range)
+		{
+			switch (range.Start)
+			{
+			case .FromFront(let offset):
+				Debug.Assert((uint)offset <= (uint)mLength);
+				return offset;
+			case .FromEnd(let offset):
+				Debug.Assert((uint)offset <= (uint)mLength);
+				return mLength - offset;
+			}
+		}
+
+		private int GetRangeEnd(IndexRange range)
+		{
+			if (range.IsClosed)
+			{
+				switch (range.End)
+				{
+				case .FromFront(let offset):
+					Debug.Assert((uint)offset < (uint)mLength);
+					return offset + 1;
+				case .FromEnd(let offset):
+					Debug.Assert((uint)(offset - 1) <= (uint)mLength);
+					return mLength - offset + 1;
+				}
+			}
+			else
+			{
+				switch (range.End)
 				{
 				case .FromFront(let offset):
 					Debug.Assert((uint)offset <= (uint)mLength);
-					start = mPtr + offset;
+					return offset;
 				case .FromEnd(let offset):
 					Debug.Assert((uint)offset <= (uint)mLength);
-					start = mPtr + mLength - offset;
+					return mLength - offset;
 				}
-				char8* end;
-				if (range.[Friend]mIsClosed)
-				{
-					switch (range.[Friend]mEnd)
-					{
-					case .FromFront(let offset):
-						Debug.Assert((uint)offset < (uint)mLength);
-						end = mPtr + offset + 1;
-					case .FromEnd(let offset):
-						Debug.Assert((uint)(offset - 1) <= (uint)mLength);
-						end = mPtr + mLength - offset + 1;
-					}
-				}
-				else
-				{
-					switch (range.[Friend]mEnd)
-					{
-					case .FromFront(let offset):
-						Debug.Assert((uint)offset <= (uint)mLength);
-						end = mPtr + offset;
-					case .FromEnd(let offset):
-						Debug.Assert((uint)offset <= (uint)mLength);
-						end = mPtr + mLength - offset;
-					}
-				}
-
-				return .(start, end - start);
 			}
 		}
 
