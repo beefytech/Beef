@@ -2125,18 +2125,18 @@ namespace System
 			return UTF8.Decode(ptr + idx, mLength - idx).c == c;
 		}
 
-		private void ReplaceLargerHelper(String find, String replace)
+		private void ReplaceLargerHelper(StringView find, StringView replace)
 		{
 			List<int> replaceEntries = scope List<int>(8192);
 			
-			int_strsize moveOffset = replace.mLength - find.mLength;
+			int_strsize moveOffset = (.) (replace.Length - find.Length);
 
-			for (int startIdx = 0; startIdx <= mLength - find.mLength; startIdx++)
+			for (int startIdx = 0; startIdx <= mLength - find.Length; startIdx++)
 			{
-				if (EqualsHelper(Ptr + startIdx, find.Ptr, find.mLength))
+				if (EqualsHelper(Ptr + startIdx, find.Ptr, find.Length))
 				{
 					replaceEntries.Add(startIdx);
-					startIdx += find.mLength - 1;
+					startIdx += find.Length - 1;
 				}
 			}
 
@@ -2154,14 +2154,14 @@ namespace System
 			for (int moveIdx = replaceEntries.Count - 1; moveIdx >= 0; moveIdx--)
 			{
 				int srcStartIdx = replaceEntries[moveIdx];
-				int srcEndIdx = srcStartIdx + find.mLength;
+				int srcEndIdx = srcStartIdx + find.Length;
 				int destStartIdx = srcStartIdx + moveIdx * moveOffset;
-				int destEndIdx = destStartIdx + replace.mLength;
+				int destEndIdx = destStartIdx + replace.Length;
 
 				for (int i = lastDestStartIdx - destEndIdx - 1; i >= 0; i--)
 					ptr[destEndIdx + i] = ptr[srcEndIdx + i];
 
-				for (int i < replace.mLength)
+				for (int i < replace.Length)
 					ptr[destStartIdx + i] = replacePtr[i];
 
 				lastDestStartIdx = destStartIdx;
@@ -2170,9 +2170,9 @@ namespace System
 			mLength = (int_strsize)destLength;
 		}
 
-		public void Replace(String find, String replace)
+		public void Replace(StringView find, StringView replace)
 		{
-			if (replace.mLength > find.mLength)
+			if (replace.Length > find.Length)
 			{
 				ReplaceLargerHelper(find, replace);
 				return;
@@ -2193,10 +2193,10 @@ namespace System
 				{
 					if (ptr[inIdx] == findC)
 					{
-						for (int i = 0; i < replace.mLength; i++)
+						for (int i = 0; i < replace.Length; i++)
 							ptr[outIdx++] = replacePtr[i];
 
-						inIdx += find.mLength;
+						inIdx += (.) find.Length;
 					}
 					else if (inIdx == outIdx)
 					{
@@ -2211,14 +2211,14 @@ namespace System
 			}
 			else
 			{
-				while (inIdx <= mLength - find.mLength)
+				while (inIdx <= mLength - find.Length)
 				{
-					if (EqualsHelper(ptr + inIdx, findPtr, find.mLength))
+					if (EqualsHelper(ptr + inIdx, findPtr, find.Length))
 					{
-						for (int i = 0; i < replace.mLength; i++)
+						for (int i = 0; i < replace.Length; i++)
 							ptr[outIdx++] = replacePtr[i];
 
-						inIdx += find.mLength;
+						inIdx += (.) find.Length;
 					}
 					else if (inIdx == outIdx)
 					{
