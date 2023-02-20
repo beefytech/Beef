@@ -2,7 +2,7 @@
 #include "util/BumpAllocator.h"
 #include "util/UTF8.h"
 #include "util/String.h"
-//#include "farts.z"   
+//#include "farts.z"
 #include <string.h>
 #include "platform/PlatformHelper.h"
 
@@ -48,11 +48,11 @@ UTF16String Beefy::ToWString(const StringImpl& theString)
 
 // String Beefy::ToString(const UTF16String& theString)
 // {
-// 	String newString;	
+// 	String newString;
 // 	newString.Reserve((intptr)theString.length());
 // 	for (int i = 0; i < (int)theString.length(); ++i)
 // 	{
-// 		const unsigned int c = (unsigned int)theString[i];		
+// 		const unsigned int c = (unsigned int)theString[i];
 // 		newString.Append(char(c & 0xFF));
 // 	}
 // 	return newString;
@@ -67,9 +67,9 @@ String Beefy::ToUpper(const StringImpl& theString)
 }
 
 void Beefy::MakeUpper(StringImpl& theString)
-{	
+{
 	for (int i = 0; i < (int)theString.length(); ++i)
-		theString[i] = toupper(theString[i]);	
+		theString[i] = toupper(theString[i]);
 }
 
 UTF16String Beefy::ToUpper(const UTF16String& theString)
@@ -101,14 +101,14 @@ String Beefy::ToLower(const StringImpl& theString)
 // 	int left = 0;
 // 	while ((left < (int) theString.length() - 1) && (iswspace(theString[left])))
 // 		left++;
-// 
+//
 // 	int right = (int)theString.length() - 1;
 // 	while ((right >= left) && (iswspace(theString[right])))
 // 		right--;
-// 
+//
 // 	if ((left == 0) && (right == theString.length() - 1))
 // 		return theString;
-// 	
+//
 // 	return theString.substr(left, right - left + 1);
 // }
 
@@ -124,7 +124,7 @@ String Beefy::Trim(const StringImpl& theString)
 
 	if ((left == 0) && (right == theString.length() - 1))
 		return theString;
-	
+
 	return theString.Substring(left, right - left + 1);
 }
 
@@ -155,7 +155,7 @@ String Beefy::SlashString(const StringImpl& str, bool utf8decode, bool utf8encod
 {
 	bool prevEndedInSlashedNum = false;
 	String outStr;
-	
+
 	bool noNextHex = false;
 
 	bool lastWasVisibleChar = false;
@@ -217,7 +217,7 @@ String Beefy::SlashString(const StringImpl& str, bool utf8decode, bool utf8encod
 				// Need to break string to allow proper evaluation of slashed string
 				if (prevEndedInSlashedNum)
 					outStr += "\" \"";
-			}			
+			}
 
 			// May be UTF8 byte.  Make sure it's valid before we add it, otherwise write the bytes in direct "\x" style
 			if (((uint8)c >= 0x80) && (utf8decode))
@@ -295,7 +295,7 @@ String Beefy::SlashString(const StringImpl& str, bool utf8decode, bool utf8encod
 			}
 
 			if (((uint8)c >= 0x80) && (utf8encode))
-			{				
+			{
 				outStr += (char)(0xC0 | (((uint8)c & 0xFF) >> 6));
 				outStr += (char)(0x80 | ((uint8)c & 0x3F));
 				isVisibleChar = true;
@@ -330,7 +330,7 @@ String Beefy::SlashString(const StringImpl& str, bool utf8decode, bool utf8encod
 UTF16String Beefy::UTF8Decode(const StringImpl& theString)
 {
 	UTF16String strOut;
-	
+
 	int strLen = 0;
 	char* cPtr = (char*)theString.c_str();
 	int lenLeft = (int)theString.length();
@@ -345,7 +345,7 @@ UTF16String Beefy::UTF8Decode(const StringImpl& theString)
 		cPtr += seqLen;
 		lenLeft -= seqLen;
 	}
-	
+
 	strOut.ResizeRaw(strLen + 1);
 	strOut[strLen] = 0;
 
@@ -360,12 +360,12 @@ UTF16String Beefy::UTF8Decode(const StringImpl& theString)
 		if ((c32 >= 0x10000) && (sizeof(wchar_t) == 2))
 		{
 			*(wcPtr++) = (wchar_t)(((c32 - 0x10000) >> 10) + 0xD800);
-			*(wcPtr++) = (wchar_t)(((c32 - 0x10000) & 0x3FF) + 0xDC00);			
+			*(wcPtr++) = (wchar_t)(((c32 - 0x10000) & 0x3FF) + 0xDC00);
 			wcLenLeft -= 2;
 		}
 		else
 		{
-			*(wcPtr++) = (wchar_t)c32;			
+			*(wcPtr++) = (wchar_t)c32;
 			wcLenLeft -= 1;
 		}
 		cPtr += seqLen;
@@ -382,7 +382,7 @@ String Beefy::UTF8Encode(const uint16* theString, int length)
 
 	String strOut;
 	int utf8Len = 0;
-	uint16 utf16hi = 0;	
+	uint16 utf16hi = 0;
 	for (int i = 0; i < length; i++)
 	{
 		uint16 c = theString[i];
@@ -406,7 +406,7 @@ String Beefy::UTF8Encode(const uint16* theString, int length)
 	for (int i = 0; i < length; i++)
 	{
 		uint16 c = theString[i];
-		uint32 c32 = c;			
+		uint32 c32 = c;
 		if ((c >= 0xD800) && (c < 0xDC00))
 		{
 			utf16hi = (uint16)c;
@@ -452,7 +452,7 @@ UTF16String Beefy::UTF16Decode(const uint16* theString)
 		for (int pos = 0; pos < len; pos++)
 			str[pos] = (wchar_t)theString[pos];
 		return str;
-	}	
+	}
 }
 
 static const char gHexChar[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
@@ -466,13 +466,13 @@ String Beefy::FileNameToURI(const StringImpl& fileName)
 	for (int i = 0; i < (int)fileName.length(); i++)
 	{
 		char c = out[i];
-		
-		bool isValid = 
+
+		bool isValid =
 			((c >= '@' && c <= 'Z') ||
 			 (c >= 'a' && c <= 'z') ||
 			 (c >= '&' && c < 0x3b) ||
 			 (c == '!') || (c == '$') || (c == '_') || (c == '=') || (c == '~'));
-		
+
 		if ((((unsigned char)c) >= 0x80) || (!isValid))
 		{
 			out += '%';
@@ -515,14 +515,14 @@ static const char c64bToChar[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 
 	'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '_'};
 void Beefy::EncodeULEB32(uint64 value, StringImpl& buffer)
 {
-	do 
+	do
 	{
 		uint8 byteVal = value & 0x1f;
 		value >>= 5;
 		if (value != 0)
 			byteVal |= 0x20; // Mark this byte to show that more bytes will follow
 		buffer.Append(c64bToChar[byteVal]);
-	} 
+	}
 	while (value != 0);
 }
 
@@ -601,7 +601,7 @@ void Beefy::ExactMinimalDoubleToStr(double d, char* str)
 	{
 		char c = cPtrLast[1];
 		if ((c == 0) || (c == 'e'))
-			break;	
+			break;
 		cPtrLast++;
 	}
 	char* cStrEnd = cPtrLast + 1;
@@ -622,10 +622,10 @@ void Beefy::ExactMinimalDoubleToStr(double d, char* str)
 	else
 	{
 		return; // Not a 'transitional' representation
-	}	
+	}
 
 	do
-	{	
+	{
 		*cPtrLast = 0;
 		cPtrLast--;
 	}
@@ -637,7 +637,7 @@ void Beefy::ExactMinimalDoubleToStr(double d, char* str)
 
 	// Verify that our pretty representation is equivalent
 	double checkD = 0;
-	sscanf(str, "%lf", &checkD);	
+	sscanf(str, "%lf", &checkD);
 	if (d == checkD)
 		return;
 
@@ -823,7 +823,7 @@ String Beefy::vformat(const char* fmt, va_list argPtr)
 }
 #endif
 
-String Beefy::StrFormat(const char* fmt ...) 
+String Beefy::StrFormat(const char* fmt ...)
 {
     va_list argList;
     va_start(argList, fmt);
@@ -899,7 +899,7 @@ char* Beefy::LoadTextData(const StringImpl& path, int* size)
 	{
 		//UTF16 LE
 
-		int dataLen = fileSize - 2;		
+		int dataLen = fileSize - 2;
 		char* data = new char[dataLen + 2];
 		data[0] = (char)charHeader[2];
 		data[dataLen] = 0;
@@ -910,7 +910,7 @@ char* Beefy::LoadTextData(const StringImpl& path, int* size)
 
 		// UTF16
 		UTF16String str;
-		str.Set((wchar_t*)data);		
+		str.Set((wchar_t*)data);
 		delete [] data;
 
 		String utf8Str = UTF8Encode(str);
@@ -923,18 +923,18 @@ char* Beefy::LoadTextData(const StringImpl& path, int* size)
 		return utf8Data;
 	}
 	else if ((charHeader[0] == 0xEF) && (charHeader[1] == 0xBB) && (charHeader[2] == 0xBF))
-	{		
+	{
 		strLen = fileSize - 3;
-		char* data = new char[strLen + 1];		
+		char* data = new char[strLen + 1];
 		data[strLen] = 0;
 		if (size != NULL)
 			*size = strLen;
 		int readSize = (int)fread(data, 1, strLen, fP);
 		(void)readSize;
-		fclose(fP);		
+		fclose(fP);
 		return data;
 	}
-	
+
 	if (size != NULL)
 		*size = strLen;
 	char* data = new char[strLen + 1];
@@ -957,7 +957,7 @@ bool Beefy::LoadTextData(const StringImpl& path, StringImpl& str)
 	if (data == NULL)
 		return false;
 	if ((str.mAllocSizeAndFlags & StringImpl::DynAllocFlag) != 0)
-		str.Release();	
+		str.Release();
 	str.mPtr = data;
 	str.mAllocSizeAndFlags = size | StringImpl::DynAllocFlag | StringImpl::StrPtrFlag;
 	str.mLength = size;
@@ -1044,6 +1044,98 @@ String Beefy::GetFileExtension(const StringImpl& path)
 	return path.Substring(dotPos);
 }
 
+static String GetDriveStringTo(String path)
+{
+	if ((path.length() >= 2) && (path[1] == ':'))
+		return String(path, 0, 2);
+	return "";
+}
+
+String Beefy::GetRelativePath(const StringImpl& fullPath, const StringImpl& curDir)
+{
+	String curPath1 = String(curDir);
+	String curPath2 = String(fullPath);
+
+	for (int i = 0; i < (int)curPath1.length(); i++)
+		if (curPath1[i] == DIR_SEP_CHAR_ALT)
+			curPath1[i] = DIR_SEP_CHAR;
+
+	for (int i = 0; i < (int)curPath2.length(); i++)
+		if (curPath2[i] == DIR_SEP_CHAR_ALT)
+			curPath2[i] = DIR_SEP_CHAR;
+
+	String driveString1 = GetDriveStringTo(curPath1);
+	String driveString2 = GetDriveStringTo(curPath2);
+
+#ifdef _WIN32
+	StringImpl::CompareKind compareType = StringImpl::CompareKind_OrdinalIgnoreCase;
+#else
+	StringImpl::CompareKind compareType = StringImpl::CompareKind_Ordinal;
+#endif
+
+	// On separate drives?
+	if (!driveString1.Equals(driveString2, compareType))
+	{
+		return fullPath;
+	}
+
+	if (driveString1.mLength > 0)
+		curPath1.Remove(0, BF_MIN(driveString1.mLength + 1, curPath1.mLength));
+	if (driveString2.mLength > 0)
+		curPath2.Remove(0, BF_MIN(driveString2.mLength + 1, curPath2.mLength));
+
+	while ((curPath1.mLength > 0) && (curPath2.mLength > 0))
+	{
+		int slashPos1 = (int)curPath1.IndexOf(DIR_SEP_CHAR);
+		if (slashPos1 == -1)
+			slashPos1 = curPath1.mLength;
+		int slashPos2 = (int)curPath2.IndexOf(DIR_SEP_CHAR);
+		if (slashPos2 == -1)
+			slashPos2 = curPath2.mLength;
+
+		String section1;
+		section1.Append(StringView(curPath1, 0, slashPos1));
+		String section2;
+		section2.Append(StringView(curPath2, 0, slashPos2));
+
+		if (!section1.Equals(section2, compareType))
+		{
+			// a/b/c
+			// d/e/f
+
+			while (curPath1.mLength > 0)
+			{
+				slashPos1 = (int)curPath1.IndexOf(DIR_SEP_CHAR);
+				if (slashPos1 == -1)
+					slashPos1 = curPath1.mLength;
+
+				if (slashPos1 + 1 >= curPath1.mLength)
+					curPath1.Clear();
+				else
+					curPath1.Remove(0, slashPos1 + 1);
+				if (DIR_SEP_CHAR == '\\')
+					curPath2.Insert(0, "..\\");
+				else
+					curPath2.Insert(0, "../");
+			}
+		}
+		else
+		{
+			if (slashPos1 + 1 >= curPath1.mLength)
+				curPath1.Clear();
+			else
+				curPath1.Remove(0, slashPos1 + 1);
+
+			if (slashPos2 + 2 >= curPath2.mLength)
+				curPath1 = "";
+			else
+				curPath2.Remove(0, slashPos2 + 1);
+		}
+	}
+
+	return curPath2;
+}
+
 String Beefy::GetAbsPath(const StringImpl& relPathIn, const StringImpl& dir)
 {
 	String relPath = relPathIn;
@@ -1119,7 +1211,7 @@ String Beefy::GetAbsPath(const StringImpl& relPathIn, const StringImpl& dir)
 		}
 		else if (chDir != ".")
 		{
-			newPath += chDir + slashChar;			
+			newPath += chDir + slashChar;
 			break;
 		}
 	}
@@ -1129,7 +1221,7 @@ String Beefy::GetAbsPath(const StringImpl& relPathIn, const StringImpl& dir)
 	newPath += relPath.Substring(relIdx);
 
 	return newPath;
-} 
+}
 
 String Beefy::FixPath(const StringImpl& pathIn)
 {
@@ -1144,7 +1236,7 @@ String Beefy::FixPath(const StringImpl& pathIn)
 			for (int checkIdx = i - 3; checkIdx >= 0; checkIdx--)
 			{
 				if ((path[checkIdx] == '\\') || (path[checkIdx] == '/'))
-				{					
+				{
 					path = path.Substring(0, checkIdx) + path.Substring(i + 1);
 					i = checkIdx;
 					break;
@@ -1189,10 +1281,10 @@ String Beefy::RemoveTrailingSlash(const StringImpl& str)
 
 bool Beefy::FileNameEquals(const StringImpl& filePathA, const StringImpl& filePathB)
 {
-#ifdef _WIN32	
+#ifdef _WIN32
 	if (filePathA.length() != filePathB.length())
 		return false;
-	
+
 	const char* aPtr = filePathA.c_str();
 	const char* bPtr = filePathB.c_str();
 	while (true)
@@ -1250,7 +1342,7 @@ bool Beefy::RecursiveDeleteDirectory(const StringImpl& dirPath)
 	BfpFileResult result;
 	BfpFindFileData* findFileData = BfpFindFileData_FindFirstFile(findSpec.c_str(), (BfpFindFileFlags)(BfpFindFileFlag_Directories | BfpFindFileFlag_Files), &result);
 	if (result == BfpFileResult_Ok)
-	{		
+	{
 		while (true)
 		{
 			Beefy::String fileName;

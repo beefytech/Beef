@@ -226,6 +226,7 @@ int64 GetFileTimeWrite(const StringImpl& path);
 String GetFileDir(const StringImpl& path);
 String GetFileName(const StringImpl& path);
 String GetFileExtension(const StringImpl& path);
+String GetRelativePath(const StringImpl& fullPath, const StringImpl& curDir);
 String GetAbsPath(const StringImpl& relPath, const StringImpl& dir);
 String FixPath(const StringImpl& path);
 String FixPathAndCase(const StringImpl& path);
