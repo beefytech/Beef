@@ -4501,6 +4501,10 @@ namespace IDE
 			        Compile(compileKind, null);
 			    }
 			}
+			else if ((mDebugger.mIsRunning) && (!mDebugger.HasLoadedTargetBinary()))
+			{
+				Compile(.WhileRunning, null);
+			}
 			else
 			{
 			    mOutputPanel.Clear();
@@ -11588,7 +11592,7 @@ namespace IDE
             if (mExecutionQueue.Count > 0)
                 return false;
 
-            if ((mDebugger != null) && (mDebugger.mIsRunning) && (hotProject == null))
+            if ((mDebugger != null) && (mDebugger.mIsRunning) && (hotProject == null) && (compileKind != .WhileRunning))
 			{
 				Debug.Assert(!mDebugger.mIsRunningCompiled);
 				Debug.Assert((compileKind == .Normal) || (compileKind == .DebugComptime));
@@ -13416,8 +13420,9 @@ namespace IDE
 							mBreakpointPanel.MarkStatsDirty();
                             mTargetHadFirstBreak = true;
 
-                            if (mDebugger.GetRunState() == DebugManager.RunState.Exception)
+                            switch (mDebugger.GetRunState())
                             {
+							case .Exception:
                                 String exceptionLine = scope String();
                                 mDebugger.GetCurrentException(exceptionLine);
                                 var exceptionData = String.StackSplit!(exceptionLine, '\n');
@@ -13431,11 +13436,26 @@ namespace IDE
                                 OutputLine(exString);
 								if (!IsCrashDump)
                                 	Fail(exString);
+							default:
                             }
                         }
                     }
                     break;
                 }
+				else if ((mDebugger != null) && (mDebugger.GetRunState() == .TargetUnloaded))
+				{
+					if (mWorkspace.mHadHotCompileSinceLastFullCompile)
+					{
+						// Had hot compiles - we need to recompile!
+						Compile(.WhileRunning);
+					}
+					else
+					{
+						mDebugger.Continue();
+					}
+					mWorkspace.StoppedRunning();
+					break;
+				}
                 else if (mDebuggerPerformingTask)
 				{
 					break;

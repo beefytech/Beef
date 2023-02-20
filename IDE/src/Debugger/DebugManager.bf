@@ -25,7 +25,8 @@ namespace IDE.Debugger
 			Terminating,
 			Terminated,
 			SearchingSymSrv,
-			HotResolve
+			HotResolve,
+			TargetUnloaded
 		}
 
 		public enum IntDisplayType
@@ -171,6 +172,9 @@ namespace IDE.Debugger
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern RunState Debugger_GetRunState();
+
+		[CallingConvention(.Stdcall),CLink]
+		static extern bool Debugger_HasLoadedTargetBinary();
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetCurrentException();
@@ -534,6 +538,11 @@ namespace IDE.Debugger
 			return Debugger_GetRunState();
 		}
 
+		public bool HasLoadedTargetBinary()
+		{
+			return Debugger_HasLoadedTargetBinary();
+		}
+
 		public bool HasPendingDebugLoads()
 		{
 			return Debugger_HasPendingDebugLoads();
@@ -561,8 +570,8 @@ namespace IDE.Debugger
 		public bool IsPaused(bool allowDebugEvalDone = false)
 		{
 			RunState runState = GetRunState();
-			return (runState == RunState.Paused) || (runState == RunState.Breakpoint) || (runState == RunState.Exception) ||
-				((runState == RunState.DebugEval_Done) && (allowDebugEvalDone));
+			return (runState == .Paused) || (runState == .Breakpoint) || (runState == .Exception) || 
+				((runState == .DebugEval_Done) && (allowDebugEvalDone));
 		}
 
 		public void GetCurrentException(String exStr)

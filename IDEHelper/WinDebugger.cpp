@@ -1067,6 +1067,13 @@ void WinDebugger::Run()
 	CloseHandle(hThread);
 }
 
+bool WinDebugger::HasLoadedTargetBinary()
+{
+	if (mDebugTarget == NULL)
+		return false;
+	return mDebugTarget->mTargetBinary != NULL;
+}
+
 void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
@@ -1891,9 +1898,15 @@ bool WinDebugger::DoUpdate()
 					}
 				}
 
+				bool hadTarget = mDebugTarget->mTargetBinary != NULL;
 				mDebugTarget->UnloadDyn(dbgModule->mImageBase);
 				if (needsBreakpointRehup)
 					RehupBreakpoints(true);
+
+				if ((mDebugTarget->mTargetBinary == NULL) && (hadTarget))
+				{
+					mRunState = RunState_TargetUnloaded;
+				}
 
 				mPendingDebugInfoLoad.Remove(dbgModule);
 				mPendingDebugInfoRequests.Remove(dbgModule);
@@ -2880,7 +2893,7 @@ void WinDebugger::ContinueDebugEvent()
 		}
 	}
 
-	if ((mRunState == RunState_Breakpoint) || (mRunState == RunState_Paused))
+	if ((mRunState == RunState_Breakpoint) || (mRunState == RunState_Paused) || (mRunState == RunState_TargetUnloaded))
 	{
 		ClearCallStack();
 		mRunState = RunState_Running;

@@ -1108,6 +1108,14 @@ BF_EXPORT int BF_CALLTYPE Debugger_GetRunState()
 	return gDebugger->mRunState;
 }
 
+BF_EXPORT bool Debugger_HasLoadedTargetBinary()
+{
+	AutoCrit autoCrit(gDebugManager->mCritSect);
+	if (gDebugger == NULL)
+		return false;
+	return gDebugger->HasLoadedTargetBinary();
+}
+
 BF_EXPORT bool BF_CALLTYPE Debugger_HasPendingDebugLoads()
 {
 	if (gDebugger == NULL)

@@ -159,7 +159,8 @@ enum RunState
 	RunState_Terminating,
 	RunState_Terminated,
 	RunState_SearchingSymSrv,
-	RunState_HotResolve
+	RunState_HotResolve,
+	RunState_TargetUnloaded
 };
 
 enum DebuggerResult
@@ -268,6 +269,7 @@ public:
 	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled) = 0;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) = 0;
 	virtual void Run() = 0;
+	virtual bool HasLoadedTargetBinary() { return true; }
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) = 0;
 	virtual void InitiateHotResolve(DbgHotResolveFlags flags) = 0;
 	virtual intptr GetDbgAllocHeapSize() = 0;

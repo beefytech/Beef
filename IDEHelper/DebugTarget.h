@@ -34,6 +34,8 @@ public:
 	Array<DbgType*>* mCapturedTypesPtr;
 
 	HotHeap* mHotHeap;
+	addr_target mHotHeapAddr;
+	int64 mHotHeapReserveSize;
 	int mLastHotHeapCleanIdx;
 	String mTargetPath;
 	DbgModule* mLaunchBinary;

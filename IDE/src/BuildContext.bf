@@ -16,6 +16,7 @@ namespace IDE
 		case DebugAfter;
 		case DebugComptime;
 		case Test;
+		case WhileRunning;
 
 		public bool WantsRunAfter
 		{

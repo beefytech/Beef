@@ -30,6 +30,8 @@ DebugTarget::DebugTarget(WinDebugger* debugger)
 	mCapturedNamesPtr = NULL;
 	mCapturedTypesPtr = NULL;
 	mHotHeap = NULL;
+	mHotHeapAddr = 0;
+	mHotHeapReserveSize = 0;
 	mLastHotHeapCleanIdx = 0;
 	mIsEmpty = false;
 	mWasLocallyBuilt = false;
@@ -107,12 +109,18 @@ void DebugTarget::SetupTargetBinary()
 		{
 			reservedPtr = (addr_target)VirtualAllocEx(mDebugger->mProcessInfo.hProcess, (void*)(intptr)checkHotReserveAddr, reserveSize, MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 			if (reservedPtr != NULL)
+			{
+				mHotHeapAddr = reservedPtr;
+				mHotHeapReserveSize = reserveSize;
+				BfLogDbg("VirtualAllocEx %p %d. ImageBase: %p\n", mHotHeapAddr, mHotHeapReserveSize, mTargetBinary->mImageBase);
 				break;
+			}
 			checkHotReserveAddr += 4 * mb;
 		}
 
 		if (reservedPtr == 0)
 		{
+			BfLogDbg("VirtualAllocEx failed. ImageBase: %p\n", mTargetBinary->mImageBase);
 			mDebugger->Fail("Failed to reserve memory for hot swapping");
 		}
 		else
@@ -207,7 +215,7 @@ DbgModule* DebugTarget::SetupDyn(const StringImpl& filePath, DataStream* stream,
 {
 	BP_ZONE("DebugTarget::SetupDyn");
 
-	AutoDbgTime dbgTime("DebugTarget::SetupDyn " + filePath);
+	//AutoDbgTime dbgTime("DebugTarget::SetupDyn " + filePath);
 
 	DbgModule* dwarf = new COFF(this);
 	dwarf->mFilePath = filePath;
@@ -239,7 +247,7 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 {
 	String filePath;
 
-	AutoDbgTime dbgTime("DebugTarget::UnloadDyn");
+	//AutoDbgTime dbgTime("DebugTarget::UnloadDyn");
 
 	for (int i = 0; i < (int)mDbgModules.size(); i++)
 	{
@@ -252,7 +260,18 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 			filePath = dwarf->mFilePath;
 
 			if (mTargetBinary == dwarf)
+			{
 				mTargetBinary = NULL;
+				delete mHotHeap;
+				mHotHeap = NULL;
+
+				if (mHotHeapAddr != 0)
+				{
+					BfLogDbg("VirtualFreeEx %p %d\n", mHotHeapAddr, mHotHeapReserveSize);
+					::VirtualFreeEx(mDebugger->mProcessInfo.hProcess, (void*)(intptr)mHotHeapAddr, 0, MEM_RELEASE);
+					mHotHeapAddr = 0;
+				}
+			}
 
 			mDbgModules.RemoveAt(i);
 			bool success = mDbgModuleMap.Remove(dwarf->mId);
