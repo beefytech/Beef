@@ -301,6 +301,12 @@ public:
 	addr_target mPtr;
 	int mOffset;
 	int mSize;
+
+public:
+	int GetSizeLeft()
+	{
+		return mSize - mOffset;
+	}
 };
 
 #define WD_MEMCACHE_SIZE 8*1024

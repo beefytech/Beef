@@ -13065,7 +13065,7 @@ void WinDebugger::ReserveHotTargetMemory(int size)
 #endif
 	}
 
-	BfLogDbg("ReserveHotTargetMemory %p %d", hotTargetMemory.mPtr, hotTargetMemory.mSize);
+	BfLogDbg("ReserveHotTargetMemory %p %d\n", hotTargetMemory.mPtr, hotTargetMemory.mSize);
 	int err = GetLastError();
 	mHotTargetMemory.push_back(hotTargetMemory);
 }
@@ -13078,16 +13078,34 @@ addr_target WinDebugger::AllocHotTargetMemory(int size, bool canExecute, bool ca
 	else if (canExecute)
 		prot = PAGE_EXECUTE_READ;
 
-	auto hotTargetMemory = (HotTargetMemory*)&mHotTargetMemory.back();
-
-	if (hotTargetMemory->mPtr == 0)
-	{
-		Fail("Failed to allocate memory for hot loading");
-		return 0;
-	}
-
 	size = (size + (mPageSize - 1)) & ~(mPageSize - 1);
 	*outAllocSize = size;
+
+	HotTargetMemory* hotTargetMemory = NULL;
+	bool foundHotTargetMemory = false;
+	for (int i = mHotTargetMemory.mSize - 1; i >= BF_MAX(mHotTargetMemory.mSize - 32, 0); i--)
+	{
+		hotTargetMemory = &mHotTargetMemory[i];
+		if (hotTargetMemory->mPtr == 0)
+		{
+			Fail("Failed to allocate memory for hot loading");
+			return 0;
+		}
+
+		if (hotTargetMemory->GetSizeLeft() >= size)
+		{
+			foundHotTargetMemory = true;
+			break;
+		}
+	}
+
+	if (!foundHotTargetMemory)
+	{
+		ReserveHotTargetMemory(size);
+		foundHotTargetMemory = true;
+		hotTargetMemory = &mHotTargetMemory.back();
+	}
+
 	BF_ASSERT(hotTargetMemory->mOffset + size <= hotTargetMemory->mSize);
 	addr_target result = hotTargetMemory->mPtr + hotTargetMemory->mOffset;
 
