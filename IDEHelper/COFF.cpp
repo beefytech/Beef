@@ -48,6 +48,22 @@ static const char* DataGetString(uint8*& data)
 	return prevVal;
 }
 
+static const char* SafeDataGetString(uint8*& data, uint8* dataEnd)
+{
+	if (data >= dataEnd)
+		return NULL;
+
+	const char* prevVal = (const char*)data;
+	while (*data != 0)
+	{
+		data++;
+		if (data >= dataEnd)
+			return NULL;
+	}
+	data++;
+	return prevVal;
+}
+
 #define CREATE_PRIMITIVE(pdbTypeCode, dwTypeCode, typeName, type) \
 	BP_ALLOC_T(DbgType); \
 	dbgType = mAlloc.Alloc<DbgType>(); \
@@ -5230,7 +5246,9 @@ bool COFF::CvParseDBI(int wantAge)
 	while (data < dataEnd)
 	{
 		int offset = (int)(data - dataStart);
-		const char* fileName = DataGetString(data);
+		const char* fileName = SafeDataGetString(data, dataEnd);
+		if (fileName == NULL)
+			break;
 		//DbgSrcFile* srcFile = AddSrcFile(mMasterCompileUnit, fileName);
 		//fileTable.insert(std::make_pair(offset, srcFile));
 	}*/
@@ -5248,6 +5266,15 @@ bool COFF::CvParseDBI(int wantAge)
 
 	uint8* strTabData = data;
 	data += strTabSize;
+
+	int pdbNameIdx = -1;
+	for (auto moduleInfo : mCvModuleInfo)
+	{
+		if (moduleInfo->mCompilerNameCount > 0)
+			pdbNameIdx = moduleInfo->mCompilerNameCount;
+	}
+	if ((pdbNameIdx > 0) && (pdbNameIdx < strTabSize))
+		mOrigPDBPath = (const char*)strTabData + pdbNameIdx;
 
 	GET_INTO(int32, strTabEntryCount);
 	for (int entryIdx = 0; entryIdx < strTabEntryCount; entryIdx++)

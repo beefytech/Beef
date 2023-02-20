@@ -826,6 +826,38 @@ BF_EXPORT void BF_CALLTYPE Debugger_SetSymSrvOptions(const char* symCacheDir, co
 	gDebugManager->SetSourceServerCacheDir();
 }
 
+BF_EXPORT void BF_CALLTYPE Debugger_SetSourcePathRemap(const char* remapStr)
+{
+	AutoCrit autoCrit(gDebugManager->mCritSect);
+
+	gDebugManager->mSourcePathRemap.Clear();
+
+	const char* startStr = remapStr;
+	for (const char* cPtr = remapStr; true; cPtr++)
+	{
+		if ((*cPtr == '\n') || (*cPtr == 0))
+		{
+			String remapStr = String(startStr, cPtr - startStr);
+			remapStr.Trim();
+
+			int eqPos = (int)remapStr.IndexOf('=');
+			if (eqPos != -1)
+			{
+				auto keyStr = remapStr.Substring(0, eqPos);
+				keyStr.Trim();
+				auto valueStr = remapStr.Substring(eqPos + 1);
+				valueStr.Trim();
+				gDebugManager->mSourcePathRemap[keyStr] = valueStr;
+			}
+
+			startStr = cPtr;
+		}
+
+		if (*cPtr == 0)
+			break;
+	}
+}
+
 BF_EXPORT bool BF_CALLTYPE Debugger_OpenMiniDump(const char* fileName)
 {
 #ifdef BF_PLATFORM_WINDOWS

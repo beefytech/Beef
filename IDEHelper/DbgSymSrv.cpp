@@ -132,11 +132,11 @@ void DbgSymRequest::SearchLocal()
 		return;
 	}
 
+	uint8 outGuid[16];
+	int32 outAge;
 	if (mPDBRequested.IndexOf('\\') != -1) // Do we have an absolute path at all? System dlls won't.
 	{
 		// Check actual path
-		uint8 outGuid[16];
-		int32 outAge;
 		if (CheckPDBData(mPDBRequested, outGuid, outAge))
 		{
 			mFinalPDBPath = mPDBRequested;
@@ -154,6 +154,18 @@ void DbgSymRequest::SearchLocal()
 				mFinalPDBPath = checkPath;
 				return;
 			}
+		}
+	}
+	else
+	{
+		String checkPath = ::GetFileDir(mModulePath);
+		checkPath += "\\";
+		checkPath += mPDBRequested;
+
+		if (CheckPDBData(checkPath, outGuid, outAge))
+		{
+			mFinalPDBPath = checkPath;
+			return;
 		}
 	}
 

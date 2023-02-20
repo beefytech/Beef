@@ -250,6 +250,19 @@ namespace IDE
 				}
 				gApp.mDebugger.SetSymSrvOptions(mSymCachePath, symbolServerPath, .None);
 
+				String remapStr = scope .();
+				for (var entry in mAutoFindPaths)
+				{
+					if (entry.Contains('@'))
+					{
+						if (!remapStr.IsEmpty)
+							remapStr.Append("\n");
+						remapStr.Append(entry);
+					}
+				}
+				remapStr.Replace('@', '=');
+				gApp.mDebugger.SetSourcePathRemap(remapStr);
+
 				mProfileSampleRate = Math.Clamp(mProfileSampleRate, 10, 10000);
 			}
 

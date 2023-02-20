@@ -320,7 +320,8 @@ namespace IDE.ui
 			{
 				for (let searchPath in gApp.mSettings.mDebuggerSettings.mAutoFindPaths)
 				{
-					SearchPath(searchPath);
+					if (!searchPath.Contains('@'))
+						SearchPath(searchPath);
 				}
 			}
 

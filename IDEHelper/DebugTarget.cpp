@@ -345,6 +345,7 @@ DbgSrcFile* DebugTarget::GetSrcFile(const String& srcFilePath)
 			mSrcFiles.TryGetValue(*origSrcPath, &srcFile);
 		}
 	}
+
 	return srcFile;
 }
 

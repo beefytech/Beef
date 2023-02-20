@@ -729,11 +729,11 @@ public:
 	String mLocalPath;
 	bool mHadLineData;
 	bool mHasLineDataFromMultipleModules;
+	bool mVerifiedPath;
 	DbgFileExistKind mFileExistKind;
 	int mStepFilterVersion;
 	DbgHashKind mHashKind;
 	uint8 mHash[32];
-	DbgModule* mFirstLineDataDbgModule; // Just used to detect mHasLineDataFromMultipleModules
 	Array<DbgDeferredSrcFileReference> mDeferredRefs;
 	Array<DbgSubprogram*> mLineDataRefs;
 	Array<HotReplacedLineInfo*> mHotReplacedDbgLineInfo; // Indexing starts at -1
@@ -742,8 +742,8 @@ public:
 	DbgSrcFile()
 	{
 		mHasLineDataFromMultipleModules = false;
-		mFirstLineDataDbgModule = NULL;
 		mHadLineData = false;
+		mVerifiedPath = false;
 		mHashKind = DbgHashKind_None;
 		mFileExistKind = DbgFileExistKind_NotChecked;
 		mStepFilterVersion = 0;
@@ -759,6 +759,7 @@ public:
 	void RemoveLines(DbgModule* debugModule);
 	void RemoveLines(DbgModule* debugModule, DbgSubprogram* dbgSubprogram, bool isHotReplaced);
 	void RehupLineData();
+	void VerifyPath();
 	const String& GetLocalPath();
 	void GetHash(String& hashStr);
 };

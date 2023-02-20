@@ -75,6 +75,7 @@ public:
 	DebugVisualizers* mDebugVisualizers;
 	DwDisplayInfo mDefaultDisplayInfo;
 	Dictionary<String, DwDisplayInfo> mDisplayInfos;
+	Dictionary<String, String> mSourcePathRemap;
 	bool mStepOverExternalFiles;
 
 	NetManager* mNetManager;

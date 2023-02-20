@@ -249,6 +249,7 @@ public:
 	CvStreamReader mCvSymbolRecordReader;
 
 	StringT<128> mPDBPath;
+	StringT<128> mOrigPDBPath;
 
 	SafeMemStream* mCvDataStream;
 	CvStringTable mStringTable;

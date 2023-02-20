@@ -879,7 +879,6 @@ void DbgSrcFile::RemoveLines(DbgModule* debugModule)
  	{
  		// Fast-out case
  		mLineDataRefs.Clear();
- 		mFirstLineDataDbgModule = NULL;
  		return;
  	}
 
@@ -927,8 +926,63 @@ void DbgSrcFile::RehupLineData()
 	}
 }
 
+void DbgSrcFile::VerifyPath()
+{
+	if (mVerifiedPath)
+		return;
+
+	if (mLineDataRefs.IsEmpty())
+		return;
+
+	if (!::FileExists(mFilePath))
+	{
+		bool didReplace = false;
+		for (auto& kv : gDebugManager->mSourcePathRemap)
+		{
+			if (mFilePath.StartsWith(kv.mKey, StringImpl::CompareKind_OrdinalIgnoreCase))
+			{
+				mFilePath.Remove(0, kv.mKey.mLength);
+				mFilePath.Insert(0, kv.mValue);
+				didReplace = true;
+			}
+		}
+
+		if (!didReplace)
+		{
+			HashSet<DbgModule*> checkedModules;
+			for (auto& lineDataRef : mLineDataRefs)
+			{
+				auto dbgModule = lineDataRef->mCompileUnit->mDbgModule;
+				if (checkedModules.Add(dbgModule))
+				{
+					if (dbgModule->mDbgFlavor == DbgFlavor_MS)
+					{
+						COFF* coff = (COFF*)dbgModule;
+
+						if ((!coff->mOrigPDBPath.IsEmpty()) && (!coff->mOrigPDBPath.Equals(coff->mPDBPath, StringImpl::CompareKind_OrdinalIgnoreCase)))
+						{
+							String relFilePath = GetRelativePath(mFilePath, coff->mOrigPDBPath);
+							String checkActualFilePath = GetAbsPath(relFilePath, coff->mPDBPath);
+
+							if (FileExists(checkActualFilePath))
+							{
+								mFilePath = checkActualFilePath;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	mVerifiedPath = true;
+}
+
 const String& DbgSrcFile::GetLocalPath()
 {
+	if (!mVerifiedPath)
+		VerifyPath();
 	return (!mLocalPath.IsEmpty()) ? mLocalPath : mFilePath;
 }
 
@@ -4931,6 +4985,7 @@ addr_target DbgModule::GetHotTargetAddress(DbgHotTargetSection* hotTargetSection
 		if (hotTargetSection->mNoTargetAlloc)
 			return 0;
 
+		BfLogDbg("DbgModule::GetHotTargetAddress %p %p\n", this, hotTargetSection);
 		hotTargetSection->mTargetSectionAddr = mDebugger->AllocHotTargetMemory(hotTargetSection->mDataSize, hotTargetSection->mCanExecute, hotTargetSection->mCanWrite, &hotTargetSection->mTargetSectionSize);
 		hotTargetSection->mImageOffset = (int)mImageSize;
 
@@ -5207,6 +5262,8 @@ void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolved
 
 void DbgModule::CommitHotTargetSections()
 {
+	BfLogDbg("DbgModule::CommitHotTargetSections %p\n", this);
+
 	for (int sectNum = 0; sectNum < (int)mHotTargetSections.size(); sectNum++)
 	{
 		if (mHotTargetSections[sectNum] != NULL)
@@ -5580,7 +5637,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
  	//if (this == mDebugTarget->mTargetBinary)
  		//mMemReporter = new MemReporter();
 
-	BfLogDbg("DbgModule::ReadCOFF %s\n", mFilePath.c_str());
+	BfLogDbg("DbgModule::ReadCOFF %p %s\n", this, mFilePath.c_str());
 
 	if (mMemReporter != NULL)
 	{

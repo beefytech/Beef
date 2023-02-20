@@ -341,6 +341,9 @@ namespace IDE.Debugger
 		static extern void Debugger_SetSymSrvOptions(char8* symCacheDir, char8* symSrvStr, int32 flags);
 
 		[CallingConvention(.Stdcall),CLink]
+		static extern void Debugger_SetSourcePathRemap(char8* remapStr);
+
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_CancelSymSrv();
 
 		[CallingConvention(.Stdcall),CLink]
@@ -467,6 +470,11 @@ namespace IDE.Debugger
 		public void SetSymSrvOptions(String symCacheDir, String symSrvStr, SymSrvFlags symSrvFlags)
 		{
 			Debugger_SetSymSrvOptions(symCacheDir, symSrvStr, (int32)symSrvFlags);
+		}
+
+		public void SetSourcePathRemap(String remapStr)
+		{
+			Debugger_SetSourcePathRemap(remapStr);
 		}
 
 		public bool OpenMiniDump(String file)
