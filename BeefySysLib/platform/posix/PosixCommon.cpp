@@ -972,80 +972,113 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 		}
 	}
 
-    int32 i = 0;
-    for ( ; true; i++)
+    // When executing in a shell the arguments are not split
+    if ((flags & BfpSpawnFlag_UseShellExecute) == 0)
     {
-        char c = args[i];
-        if (c == '\0')
-            break;
-        if ((c == ' ') && (!inQuote))
+        int32 i = 0;
+        for ( ; true; i++)
         {
-            if (firstCharIdx != -1)
+            char c = args[i];
+            if (c == '\0')
+                break;
+            if ((c == ' ') && (!inQuote))
             {
-                stringViews.Add(Beefy::StringView(args + firstCharIdx, i - firstCharIdx));
-                firstCharIdx = -1;
+                if (firstCharIdx != -1)
+                {
+                    stringViews.Add(Beefy::StringView(args + firstCharIdx, i - firstCharIdx));
+                    firstCharIdx = -1;
+                }
             }
-        }
-        else
-        {
-            if (firstCharIdx == -1)
-                firstCharIdx = i;
-            if (c == '"')
-                inQuote = !inQuote;
-            else if ((inQuote) && (c == '\\'))
+            else
             {
-                c = args[i + 1];
+                if (firstCharIdx == -1)
+                    firstCharIdx = i;
                 if (c == '"')
-                    i++;
+                    inQuote = !inQuote;
+                else if ((inQuote) && (c == '\\'))
+                {
+                    c = args[i + 1];
+                    if (c == '"')
+                        i++;
+                }
             }
         }
+        if (firstCharIdx != -1)
+            stringViews.Add(Beefy::StringView(args + firstCharIdx, i - firstCharIdx));
     }
-    if (firstCharIdx != -1)
-        stringViews.Add(Beefy::StringView(args + firstCharIdx, i - firstCharIdx));
 
     Beefy::Array<char*> argvArr;
 
-    if ((flags & BfpSpawnFlag_ArgsIncludesTarget) == 0)
+    if ((flags & BfpSpawnFlag_UseShellExecute) == 0 && (flags & BfpSpawnFlag_ArgsIncludesTarget) == 0)
         argvArr.Add(strdup(targetPath.c_str()));
 
-    for (int32 i = 0; i < (int32)stringViews.size(); i++)
+    // When executing in a shell the arguments are not split nor are the quotes removed
+    if ((flags & BfpSpawnFlag_UseShellExecute) == 0)
     {
-        Beefy::StringView stringView = stringViews[i];
-        char* str = NULL;
-        for (int32 pass = 0; pass < 2; pass++)
+        for (int32 i = 0; i < (int32)stringViews.size(); i++)
         {
-            char* strPtr = str;
-
-            int32 strPos = 0;
-            for (int32 char8Idx = 0; char8Idx < stringView.mLength; char8Idx++)
+            Beefy::StringView stringView = stringViews[i];
+            char* str = NULL;
+            for (int32 pass = 0; pass < 2; pass++)
             {
-                char c = stringView.mPtr[char8Idx];
-                if (c == '"')
-                    inQuote = !inQuote;
-                else
-                {
-                    if ((inQuote) && (c == '\\') && (char8Idx < stringView.mLength - 1))
-                    {
-                        char nextC = stringView.mPtr[char8Idx + 1];
-                        if (nextC == '"')
-                        {
-                            c = nextC;
-                            char8Idx++;
-                        }
-                    }
-                    if (strPtr != NULL)
-                        *(strPtr++) = c;
-                    strPos++;
-                }
-            }
-            if (pass == 0)
-                str = (char*)malloc(strPos + 1);
-            else
-                *(strPtr++) = 0;
-        }
+                char* strPtr = str;
 
-        argvArr.Add(str);
+                int32 strPos = 0;
+                for (int32 char8Idx = 0; char8Idx < stringView.mLength; char8Idx++)
+                {
+                    char c = stringView.mPtr[char8Idx];
+                    if (c == '"')
+                        inQuote = !inQuote;
+                    else
+                    {
+                        if ((inQuote) && (c == '\\') && (char8Idx < stringView.mLength - 1))
+                        {
+                            char nextC = stringView.mPtr[char8Idx + 1];
+                            if (nextC == '"')
+                            {
+                                c = nextC;
+                                char8Idx++;
+                            }
+                        }
+                        if (strPtr != NULL)
+                            *(strPtr++) = c;
+                        strPos++;
+                    }
+                }
+                if (pass == 0)
+                    str = (char*)malloc(strPos + 1);
+                else
+                    *(strPtr++) = 0;
+            }
+
+            argvArr.Add(str);
+        }
     }
+
+    // Handle shell execution
+    if ((flags & BfpSpawnFlag_UseShellExecute) != 0)
+    {
+        // Create command string
+        int argsLength = strlen(args);
+        int length = targetPath.mLength + 1 + argsLength;
+
+        char* commandStr = (char*)malloc(length + 1);
+
+        memcpy(commandStr, targetPath.c_str(), targetPath.mLength);
+        commandStr[targetPath.mLength] = ' ';
+        memcpy(&commandStr[targetPath.mLength + 1], args, argsLength);
+        commandStr[length] = '\0';
+
+        // Replace target path
+        targetPath.Clear();
+        targetPath.Append("/bin/sh");
+
+        // Add arguments
+        argvArr.Add(strdup("sh"));
+        argvArr.Add(strdup("-c"));
+        argvArr.Add(commandStr);
+    }
+
     argvArr.Add(NULL);
 
     char** argv = NULL;
