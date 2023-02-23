@@ -1419,7 +1419,7 @@ namespace IDE
 			{
 				if (compileInstance.mProjectItemCompileInstances.GetAndRemove(projectSource) case .Ok((?, let compileInstance)))
 				{
-					compileInstance.Deref();
+					compileInstance?.Deref();
 				}
 			}
 		}
