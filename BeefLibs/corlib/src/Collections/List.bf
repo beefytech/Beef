@@ -518,6 +518,8 @@ namespace System.Collections
 
 		public void CopyTo(int index, T[] array, int arrayIndex, int count)
 		{
+			Debug.Assert((uint)index < (uint)mSize);
+			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
 			// Delegate rest of error checking to Array.Copy.
 			for (int i = 0; i < count; i++)
 				array[i + arrayIndex] = mItems[i + index];
@@ -582,6 +584,7 @@ namespace System.Collections
 
 		public int IndexOf(T item, int index)
 		{
+			Debug.Assert((uint)index < (uint)mSize);
 			for (int i = index; i < mSize; i++)
 				if (mItems[i] == item)
 					return i;
@@ -590,6 +593,8 @@ namespace System.Collections
 
 		public int IndexOf(T item, int index, int count)
 		{
+			Debug.Assert((uint)index < (uint)mSize);
+			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
 			for (int i = index; i < index + count; i++)
 				if (mItems[i] == item)
 					return i;
@@ -606,6 +611,7 @@ namespace System.Collections
 
 		public int IndexOfStrict(T item, int index)
 		{
+			Debug.Assert((uint)index < (uint)mSize);
 			for (int i = index; i < mSize; i++)
 				if (mItems[i] === item)
 					return i;
@@ -614,6 +620,8 @@ namespace System.Collections
 
 		public int IndexOfStrict(T item, int index, int count)
 		{
+			Debug.Assert((uint)index < (uint)mSize);
+			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
 			for (int i = index; i < index + count; i++)
 				if (mItems[i] === item)
 					return i;
@@ -659,6 +667,7 @@ namespace System.Collections
 
 		public void Insert(int index, T item)
 		{
+			Debug.Assert((uint)index <= (uint)mSize);
 			var item; // This creates a copy - required if item is a ref to an element
 			if (mSize == AllocSize) EnsureCapacity(mSize + 1, true);
 			if (index < mSize)
@@ -675,7 +684,7 @@ namespace System.Collections
 		public void Insert(int index, Span<T> items)
 		{
 			//TODO: Handle case where Span is a reference to ourselves
-
+			Debug.Assert((uint)index <= (uint)mSize);
 			if (items.Length == 0)
 				return;
 			int addCount = items.Length;
@@ -706,6 +715,7 @@ namespace System.Collections
 
 		public void RemoveRange(int index, int count)
 		{
+			Debug.Assert((uint)index < (uint)mSize);
 			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
 			if (index + count <= mSize - 1)
 			{
@@ -1135,6 +1145,7 @@ namespace System.Collections
 
 		public int IndexOf(T item, int index, StringComparison comparison)
 		{
+			Debug.Assert((uint)index < (uint)mSize);
 			for (int i = index; i < mSize; i++)
 				if (mItems[i].Equals(item, comparison))
 					return i;
@@ -1143,6 +1154,8 @@ namespace System.Collections
 
 		public int IndexOf(T item, int index, int count, StringComparison comparison)
 		{
+			Debug.Assert((uint)index < (uint)mSize);
+			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
 			for (int i = index; i < index + count; i++)
 				if (mItems[i].Equals(item, comparison))
 					return i;
