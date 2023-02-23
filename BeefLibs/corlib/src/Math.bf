@@ -140,6 +140,11 @@ namespace System
 		public static extern float Round(float f);
         public static extern double Round(double a);
 
+		public static float RadiansToDegrees(float rad) => rad * (180.f / PI_f);
+		public static double RadiansToDegrees(double rad) => rad * (180.0 / PI_d);
+		public static float DegreesToRadians(float deg) => deg * (PI_f / 180.f);
+		public static double DegreesToRadians(double deg) => deg * (PI_d / 180.0);
+
 		public static float Round(float value, int32 digits)
 		{
 		    if ((digits < 0) || (digits > cMaxDoubleRoundingDigits))
