@@ -25064,7 +25064,10 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 					{
 						checkMethodIdx = lookupMethodInstance->mVirtualTableIdx;
 						if (checkMethodIdx >= baseVirtualMethodTable.mSize)
-							FatalError("SlotVirtualMethod OOB in baseVirtualMethodTable[checkMethodIdx]");
+						{
+							Fail("SlotVirtualMethod out of bounds", checkMethodDef->GetRefNode());
+							continue;
+						}
 						auto& baseMethodRef = baseVirtualMethodTable[checkMethodIdx];
 						if (baseMethodRef.mDeclaringMethod.mMethodNum == -1)
 						{
