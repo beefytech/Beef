@@ -5461,9 +5461,21 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						}
 						else if (fieldDef->mIsAppend)
 						{
-							if (typeInstance->IsObject())
+							if (!typeInstance->IsObject())
 								Fail("Append fields can only be declared in classes", nameRefNode, true);
-							else if ((!resolvedFieldType->IsObject()) && (!resolvedFieldType->IsGenericParam()))
+							else if (resolvedFieldType->IsGenericParam())
+							{
+								auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)resolvedFieldType);
+								if (genericParamInstance != NULL)
+								{
+									if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Class) == 0) &&
+										((genericParamInstance->mTypeConstraint == NULL) || (!genericParamInstance->mTypeConstraint->IsObject())))
+									{
+										Fail(StrFormat("Append fields must be classes. Consider adding a 'where %s : class' constraint.", genericParamInstance->GetName().c_str()), nameRefNode, true);
+									}
+								}
+							}
+							else if (!resolvedFieldType->IsObject())
 								Fail("Append fields must be classes", nameRefNode, true);
 						}
 
