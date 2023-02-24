@@ -1632,11 +1632,15 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		{
 			if (auto entryAdded = AddEntry(AutoCompleteEntry("property", prop->mName + "="), filter))
 			{
-				if (CheckDocumentation(entryAdded, prop->GetFieldDeclaration()->mDocumentation))
+				auto propertyDeclaration = prop->GetFieldDeclaration();
+				if (propertyDeclaration != NULL)
 				{
+					if (CheckDocumentation(entryAdded, propertyDeclaration->mDocumentation))
+					{
+					}
+					if (mIsGetDefinition)
+						SetDefinitionLocation(propertyDeclaration->mNameNode);
 				}
-				if (mIsGetDefinition)
-					SetDefinitionLocation(prop->GetFieldDeclaration()->mNameNode);
 			}
 		}
 
@@ -1644,11 +1648,15 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		{
 			if (auto entryAdded = AddEntry(AutoCompleteEntry("field", field->mName + "="), filter))
 			{
-				if (CheckDocumentation(entryAdded, field->GetFieldDeclaration()->mDocumentation))
+				auto fieldDeclaration = field->GetFieldDeclaration();
+				if (fieldDeclaration != NULL)
 				{
+					if (CheckDocumentation(entryAdded, fieldDeclaration->mDocumentation))
+					{
+					}
+					if (mIsGetDefinition)
+						SetDefinitionLocation(fieldDeclaration->mNameNode);
 				}
-				if (mIsGetDefinition)
-					SetDefinitionLocation(field->GetFieldDeclaration()->mNameNode);
 			}
 		}
 	}
