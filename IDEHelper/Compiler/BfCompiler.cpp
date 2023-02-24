@@ -3646,6 +3646,50 @@ void BfCompiler::UpdateRevisedTypes()
 						}
 					}
 				}
+				else
+				{
+					for (auto partialTypeDef : compositeTypeDef->GetLatest()->mPartials)
+					{
+						if (partialTypeDef->IsExtension())
+						{
+							for (int genericParamIdx = 0; genericParamIdx < BF_MIN(partialTypeDef->mGenericParamDefs.mSize, rootTypeDef->mGenericParamDefs.mSize); genericParamIdx++)
+							{
+								auto rootParamDef = rootTypeDef->mGenericParamDefs[genericParamIdx];
+								auto extParamDef = partialTypeDef->mGenericParamDefs[genericParamIdx];
+
+								if ((rootParamDef->mName != extParamDef->mName) &&
+									(!rootParamDef->mNameNodes.IsEmpty()) &&
+									(!extParamDef->mNameNodes.IsEmpty()))
+								{
+									String specializedName = extParamDef->mName;
+									auto paramDefTypeDef = mSystem->FindTypeDef(extParamDef->mName, 0);
+									if (paramDefTypeDef != NULL)
+									{
+										switch (paramDefTypeDef->mTypeCode)
+										{
+										case BfTypeCode_Boolean: specializedName = "Boolean"; break;
+										default:
+											if ((paramDefTypeDef->mTypeCode >= BfTypeCode_Boolean) && (paramDefTypeDef->mTypeCode <= BfTypeCode_Double))
+											{
+												specializedName[0] = ::toupper(specializedName[0]);
+												if (specializedName.StartsWith("Uint"))
+													specializedName[1] = 'I';
+											}
+										}
+									}
+									auto error = mPassInstance->Warn(0, StrFormat("Extension generic param name '%s' does not match root definition generic param name '%s'. If generic specialization was intended then consider using 'where %s : %s'.",
+										extParamDef->mName.c_str(), rootParamDef->mName.c_str(), rootParamDef->mName.c_str(), specializedName.c_str()),
+										extParamDef->mNameNodes[0]);
+									if (error != NULL)
+									{
+										error->mIsPersistent = true;
+										mPassInstance->MoreInfo("See root definition", rootParamDef->mNameNodes[0]);
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 
 			outerTypeDefEntryIdx = outerTypeDefEntry->mNext;
