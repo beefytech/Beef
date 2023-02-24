@@ -2406,6 +2406,12 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 {
 	for (auto& customAttribute : customAttributes->mAttributes)
 	{
+		if ((customAttribute.mDeclaringType->IsExtension()) && (typeInstance->IsGenericTypeInstance()))
+		{
+			if (!typeInstance->IsTypeMemberIncluded(customAttribute.mDeclaringType, typeInstance->mTypeDef, this))
+				continue;
+		}
+
 		auto attrType = customAttribute.mType;
 
 		BfMethodInstance* methodInstance = NULL;
