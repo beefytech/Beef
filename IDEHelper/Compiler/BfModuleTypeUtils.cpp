@@ -5465,6 +5465,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 								Fail("Append fields can only be declared in classes", nameRefNode, true);
 							else if (resolvedFieldType->IsGenericParam())
 							{
+								SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
 								auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)resolvedFieldType);
 								if (genericParamInstance != NULL)
 								{
