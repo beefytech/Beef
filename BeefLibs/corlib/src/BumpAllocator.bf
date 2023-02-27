@@ -67,7 +67,7 @@ namespace System
 			{
 				for (var obj in mLargeDtorAllocs)
 				{
-					delete obj;
+					delete:null obj;
 					FreeLarge(Internal.UnsafeCastToPtr(obj));
 				}
 				delete mLargeDtorAllocs;
