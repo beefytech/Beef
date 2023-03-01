@@ -24256,7 +24256,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				convLeftValue = mModule->CastToValue(leftExpression, leftValue, intPtrType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromCompiler));
 				convRightValue = mModule->CastToValue(rightExpression, rightValue, intPtrType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromCompiler));
 				BfIRValue diffValue = mModule->mBfIRBuilder->CreateSub(convLeftValue, convRightValue);
-				diffValue = mModule->mBfIRBuilder->CreateDiv(diffValue, mModule->GetConstValue(resultPointerType->mElementType->mSize, intPtrType), true);
+				diffValue = mModule->mBfIRBuilder->CreateDiv(diffValue, mModule->GetConstValue(resultPointerType->mElementType->GetStride(), intPtrType), true);
 				mResult = BfTypedValue(diffValue, intPtrType);
 			}
 			return;

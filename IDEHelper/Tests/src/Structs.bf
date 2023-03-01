@@ -189,6 +189,20 @@ namespace Tests
 
 			StructN sn = GetStructN();
 			Test.Assert(sn.mA == 123);
+
+			List<StructD> list = scope .();
+			for (int i < 10)
+				list.Add(default);
+			var ptr0 = &list[0];
+			var ptr9 = &list[9];
+
+			int count = ptr9 - ptr0;
+			Test.Assert(count == 9);
+
+			var ptr9B = ptr0 + 9;
+			count = ptr9B - ptr0;
+			Test.Assert(ptr9 == ptr9B);
+			Test.Assert(count == 9);
 		}
 
 		[Align(16)]

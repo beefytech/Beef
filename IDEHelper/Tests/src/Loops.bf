@@ -134,9 +134,24 @@ namespace Tests
 			Test.Assert(!(1..<3).Contains(1..<4));
 
 			List<int> iList = scope .() { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+			int itrCount = 0;
 			total = 0;
 			for (int i in iList[...])
+			{
+				itrCount++;
 				total += i;
+			}
+			Test.Assert(itrCount == 10);
+			Test.Assert(total == 10+20+30+40+50+60+70+80+90+100);
+
+			total = 0;
+			itrCount = 0;
+			for (int i in iList[...].Reversed)
+			{
+				itrCount++;
+				total += i;
+			}
+			Test.Assert(itrCount == 10);
 			Test.Assert(total == 10+20+30+40+50+60+70+80+90+100);
 
 			total = 0;
