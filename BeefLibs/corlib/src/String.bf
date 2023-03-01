@@ -3027,7 +3027,8 @@ namespace System
 	{
 		StringSplitOptions mSplitOptions;
 		char8 mFirstSeparator;
-		char8[] mSeparators;
+		char8* mSeparatorPtr;
+		int32 mSeparatorCount;
 		char8* mPtr;
 		int_strsize mStrLen;
 		int32 mCurCount;
@@ -3040,10 +3041,17 @@ namespace System
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
 			if (separators?.Count > 0)
+			{
 				mFirstSeparator = separators[0];
+				mSeparatorPtr = &separators[0];
+				mSeparatorCount = (.)separators.Count;
+			}
 			else
-				mFirstSeparator = '\0';
-			mSeparators = separators;
+			{
+				mFirstSeparator = 0;
+				mSeparatorPtr = null;
+				mSeparatorCount = 0;
+			}
 			mCurCount = 0;
 			mMaxCount = (int32)count;
 			mPos = 0;
@@ -3056,7 +3064,8 @@ namespace System
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
 			mFirstSeparator = separator;
-			mSeparators = null;
+			mSeparatorPtr = null;
+			mSeparatorCount = 1;
 			mCurCount = 0;
 			mMaxCount = (int32)count;
 			mPos = 0;
@@ -3103,7 +3112,7 @@ namespace System
 				return mMatchPos < mStrLen && (!mSplitOptions.HasFlag(StringSplitOptions.RemoveEmptyEntries) || mStrLen != 0);
 			}
 		}
-
+		
 		public bool MoveNext() mut
 		{
 			if (mCurCount >= mMaxCount)
@@ -3137,18 +3146,39 @@ namespace System
 				else
 				{
 					char8 c = mPtr[mMatchPos];
-					if (c.IsWhiteSpace && mFirstSeparator == '\0' && (mSeparators == null || mSeparators.IsEmpty))
+					if (mSeparatorCount == 0)
 					{
-						foundMatch = true;
+						if (c.IsWhiteSpace)
+							foundMatch = true;
 					}
 					else if (c == mFirstSeparator)
 					{
 						foundMatch = true;
 					}
-					else if (mSeparators != null)
+					else if (mSeparatorCount < 2)
 					{
-						for (int i = 1; i < mSeparators.Count; i++)
-							if (c == mSeparators[i])
+						continue;
+					}
+					else if (c == mSeparatorPtr[1])
+					{
+						foundMatch = true;
+					}
+					else if (mSeparatorCount < 3)
+					{
+						continue;
+					}
+					else if (c == mSeparatorPtr[2])
+					{
+						foundMatch = true;
+					}
+					else if (mSeparatorCount < 3)
+					{
+						continue;
+					}
+					else
+					{
+						for (int i = 3; i < mSeparatorCount; i++)
+							if (c == mSeparatorPtr[i])
 								foundMatch = true;
 					}
 				}
