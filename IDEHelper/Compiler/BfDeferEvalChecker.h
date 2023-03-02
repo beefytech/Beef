@@ -12,6 +12,7 @@ public:
 	bool mNeedsDeferEval;
 	bool mDeferDelegateBind;
 	bool mDeferLiterals;
+	bool mDeferStrings;
 
 public:
 	BfDeferEvalChecker();

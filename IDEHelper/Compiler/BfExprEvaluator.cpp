@@ -6031,6 +6031,8 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			if (argExpr != NULL)
 			{
 				BfDeferEvalChecker deferEvalChecker;
+				if ((flags & BfResolveArgsFlag_DeferStrings) != 0)
+					deferEvalChecker.mDeferStrings = true;
 				deferEvalChecker.mDeferDelegateBind = false;
 				deferEvalChecker.Check(argExpr);
 				deferParamEval = deferEvalChecker.mNeedsDeferEval;
@@ -7424,6 +7426,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
 	}
 
+	SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, mModule->mBfIRBuilder->mIgnoreWrites || IsConstEval());
+
 	if (((moduleMethodInstance.mMethodInstance->mComptimeFlags & BfComptimeFlag_OnlyFromComptime) != 0) &&
 		((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) &&
 		((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mComptimeFlags == BfComptimeFlag_None)) &&
@@ -8557,6 +8561,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	{
 		//BF_ASSERT(!methodInstance->GetOwner()->IsInterface());
 	}
+
+	prevIgnoreWrites.Restore();
 
 	if (target.mType != NULL)
 	{
@@ -18770,6 +18776,13 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	SetAndRestoreValue<BfEvalExprFlags> prevEvalExprFlags(mBfEvalExprFlags);
 	if (isCascade)
 		mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_InCascade);
+
+	if (((mayBeComptimeCall) && (!mModule->mIsComptimeModule) && (!mModule->mBfIRBuilder->mIgnoreWrites)) ||
+		((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mConstEvalAttributeTypeDef))))
+	{
+		resolveArgsFlags = (BfResolveArgsFlags)(resolveArgsFlags | BfResolveArgsFlag_DeferParamEval | BfResolveArgsFlag_DeferStrings);
+	}
+
 	ResolveArgValues(argValues, resolveArgsFlags);
 
 	//

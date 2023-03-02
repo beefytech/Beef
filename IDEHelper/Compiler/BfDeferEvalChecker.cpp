@@ -8,6 +8,7 @@ BfDeferEvalChecker::BfDeferEvalChecker()
 	mRootNode = NULL;
 	mNeedsDeferEval = false;
 	mDeferLiterals = true;
+	mDeferStrings = false;
 	mDeferDelegateBind = true;
 }
 
@@ -58,6 +59,10 @@ void BfDeferEvalChecker::Visit(BfLiteralExpression* literalExpr)
 	case BfTypeCode_IntUnknown:
 	case BfTypeCode_UIntUnknown:
 		if (mDeferLiterals)
+			mNeedsDeferEval = true;
+		break;
+	case BfTypeCode_CharPtr:
+		if (mDeferStrings)
 			mNeedsDeferEval = true;
 		break;
 	default:
