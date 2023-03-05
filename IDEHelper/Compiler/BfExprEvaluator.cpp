@@ -10281,10 +10281,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		{
 			if (mModule->PreFail())
 			{
-			 	if ((origTarget.mType->IsPointer()) && (origTarget.mType->GetUnderlyingType()->IsObjectOrInterface()))
+			 	if ((target.mType->IsPointer()) && (target.mType->GetUnderlyingType()->IsObjectOrInterface()))
 			 	{
 			 		mModule->Fail(StrFormat("Methods cannot be called on type '%s' because the type is a pointer to a reference type (ie: a double-reference).",
-			 			mModule->TypeToString(origTarget.mType).c_str()), targetSrc);
+			 			mModule->TypeToString(target.mType).c_str()), targetSrc);
 			 	}
 				else
 					mModule->Fail(StrFormat("Method '%s' does not exist in type '%s'", methodName.c_str(), mModule->TypeToString(target.mType).c_str()), targetSrc);
