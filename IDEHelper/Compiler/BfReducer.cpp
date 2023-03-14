@@ -7568,14 +7568,20 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfAstNode* ta
 			bool foundComma = false;
 
 			node = mVisitorPos.GetCurrent();
-			if (auto tokenNode = BfNodeDynCast<BfTokenNode>(node))
+			if (node != NULL)
 			{
-				if (tokenNode->mToken == BfToken_Comma)
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(node))
 				{
-					foundComma = true;
-					commas.Add(tokenNode);
-					isDone = !mVisitorPos.MoveNext();
+					if (tokenNode->mToken == BfToken_Comma)
+					{
+						foundComma = true;
+						commas.Add(tokenNode);
+						isDone = !mVisitorPos.MoveNext();
+					}
 				}
+
+				if (!foundComma)
+					Fail("Expected ','", node);
 			}
 		}
 	}
