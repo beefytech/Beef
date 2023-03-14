@@ -1108,6 +1108,21 @@ String CeDebugger::Evaluate(const StringImpl& expr, CeFormatInfo formatInfo, int
 	auto terminatedExpr = expr;
 	terminatedExpr.Trim();
 
+	if (terminatedExpr.StartsWith("!"))
+	{
+		if (terminatedExpr == "!info")
+		{
+			auto ceFrame = GetFrame(callStackIdx);
+			if (ceFrame != NULL)
+			{
+				if (ceFrame->mFunction->mCeFunctionInfo->mMethodInstance != NULL)
+					OutputMessage(StrFormat("Module: %s\n", ceFrame->mFunction->mCeFunctionInfo->mMethodInstance->GetOwner()->mModule->mModuleName.c_str()));
+				OutputMessage(StrFormat("Link Name: %s\n", ceFrame->mFunction->mCeFunctionInfo->mName.c_str()));
+			}
+			return "";
+		}
+	}
+
 	if (terminatedExpr.EndsWith(">"))
 		parseAsType = true;
 	else if ((terminatedExpr.StartsWith("comptype(")) && (!terminatedExpr.Contains('.')))

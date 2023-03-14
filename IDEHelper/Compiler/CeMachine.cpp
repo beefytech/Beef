@@ -250,39 +250,29 @@ static_assert(BF_ARRAY_COUNT(gOpInfo) == (int)CeOp_COUNT, "gOpName incorrect siz
 
 //////////////////////////////////////////////////////////////////////////
 
-static int FloatToString(float d, char* outStr)
+static int ToString(float d, char* outStr, bool roundTrip)
 {
-	sprintf(outStr, "%1.9g", d);
-	int len = (int)strlen(outStr);
-	for (int i = 0; outStr[i] != 0; i++)
+	if (!roundTrip)
 	{
-		if (outStr[i] == '.')
-		{
-			int checkC = len - 1;
-			while (true)
-			{
-				char c = outStr[checkC];
-				if (c == '.')
-				{
-					return checkC;
-				}
-				else if (c != '0')
-				{
-					for (int j = i + 1; j <= checkC; j++)
-						if (outStr[j] == 'e')
-							return len;
-					return checkC + 1;
-				}
-				checkC--;
-			}
-		}
-	}
-	return len;
-}
+		int digits;
+		if (d > 100000)
+			digits = 1;
+		else if (d > 10000)
+			digits = 2;
+		else if (d > 1000)
+			digits = 3;
+		else if (d > 100)
+			digits = 4;
+		else if (d > 10)
+			digits = 5;
+		else
+			digits = 6;
 
-static int DoubleToString(double d, char* outStr)
-{
-	sprintf(outStr, "%1.17g", d);
+		sprintf(outStr, "%1.*f", digits, d);
+	}
+	else
+		sprintf(outStr, "%1.9g", d);
+
 	int len = (int)strlen(outStr);
 	for (int i = 0; outStr[i] != 0; i++)
 	{
@@ -311,7 +301,151 @@ static int DoubleToString(double d, char* outStr)
 			}
 		}
 	}
+	if ((len == 3) && (outStr[0] == 'i'))
+	{
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	if ((len == 4) && (outStr[0] == '-') && (outStr[1] == 'i'))
+	{
+		strcpy(outStr, "-Infinity");
+		return 9;
+	}
+	if ((len == 9) && (outStr[0] == '-') && (outStr[1] == 'n')) //-nan(xxx)
+	{
+		strcpy(outStr, "NaN");
+		return 3;
+	}
 	return len;
+}
+
+static int ToString(double d, char* outStr, bool roundTrip)
+{
+	if (!roundTrip)
+	{
+		int digits;
+		if (d < 0)
+		{
+			if (d < -10000000000)
+			{
+				sprintf(outStr, "%g", d);
+			}
+			else
+			{
+				if (d < -1000000000)
+					digits = 1;
+				else if (d < -100000000)
+					digits = 2;
+				else if (d < -10000000)
+					digits = 3;
+				else if (d < -1000000)
+					digits = 4;
+				else if (d < -100000)
+					digits = 5;
+				else if (d < -10000)
+					digits = 6;
+				else if (d < -1000)
+					digits = 7;
+				else if (d < -100)
+					digits = 8;
+				else if (d < -10)
+					digits = 9;
+				else
+					digits = 10;
+
+				sprintf(outStr, "%1.*f", digits, d);
+			}
+		}
+		else
+		{
+			if (d > 10000000000)
+			{
+				sprintf(outStr, "%g", d);
+			}
+			else
+			{
+				if (d > 1000000000)
+					digits = 1;
+				else if (d > 100000000)
+					digits = 2;
+				else if (d > 10000000)
+					digits = 3;
+				else if (d > 1000000)
+					digits = 4;
+				else if (d > 100000)
+					digits = 5;
+				else if (d > 10000)
+					digits = 6;
+				else if (d > 1000)
+					digits = 7;
+				else if (d > 100)
+					digits = 8;
+				else if (d > 10)
+					digits = 9;
+				else
+					digits = 10;
+
+				sprintf(outStr, "%1.*f", digits, d);
+			}
+		}
+	}
+	else
+		sprintf(outStr, "%1.17g", d);
+
+	int len = (int)strlen(outStr);
+	for (int i = 0; outStr[i] != 0; i++)
+	{
+		if (outStr[i] == '.')
+		{
+			int checkC = len - 1;
+			while (true)
+			{
+				char c = outStr[checkC];
+				if (c == '.')
+				{
+					return checkC;
+				}
+				else if (c == 'e')
+				{
+					return len;
+				}
+				else if (c != '0')
+				{
+					for (int j = i + 1; j <= checkC; j++)
+						if (outStr[j] == 'e')
+							return len;
+					return checkC + 1;
+				}
+				checkC--;
+			}
+		}
+	}
+	if ((len == 3) && (outStr[0] == 'i'))
+	{
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	if ((len == 4) && (outStr[0] == '-') && (outStr[1] == 'i'))
+	{
+		strcpy(outStr, "-Infinity");
+		return 9;
+	}
+	if ((len == 9) && (outStr[0] == '-') && (outStr[1] == 'n')) //-nan(xxx)
+	{
+		strcpy(outStr, "NaN");
+		return 3;
+	}
+	return len;
+}
+
+static int FloatToString(float d, char* outStr)
+{
+	return ::ToString(d, outStr, false);
+}
+
+static int DoubleToString(double d, char* outStr)
+{
+	return ::ToString(d, outStr, false);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -869,6 +1003,261 @@ void CeBuilder::EmitBinaryOp(CeOp iOp, CeOp fOp, const CeOperand& lhs, const CeO
 	EmitFrameOffset(result);
 	EmitFrameOffset(lhs);
 	EmitFrameOffset(rhs);
+}
+
+CeOperand CeBuilder::EmitNumericCast(const CeOperand& ceValue, BeType* toType, bool valSigned, bool toSigned)
+{
+	CeOperand result;
+	auto fromType = ceValue.mType;
+
+	if (fromType == toType)
+	{
+		// If it's just a sign change then leave it alone
+		result = ceValue;
+	}
+	else
+	{
+		if ((toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize <= fromType->mSize))
+		{
+			// For truncating values, no actual instructions are needed
+			// Note that a copy is not needed because of SSA rules
+			result = ceValue;
+			result.mType = toType;
+		}
+		else
+		{
+			result = FrameAlloc(toType);
+
+			CeOp op = CeOp_InvalidOp;
+
+			BeTypeCode fromTypeCode = fromType->mTypeCode;
+			BeTypeCode toTypeCode = toType->mTypeCode;
+
+			if ((valSigned) && (toSigned))
+			{
+				switch (fromTypeCode)
+				{
+				case BeTypeCode_Int8:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int16:
+						op = CeOp_Conv_I8_I16;
+						break;
+					case BeTypeCode_Int32:
+						op = CeOp_Conv_I8_I32;
+						break;
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_I8_I64;
+						break;
+					case BeTypeCode_Float:
+						op = CeOp_Conv_I8_F32;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_I8_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Int16:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int32:
+						op = CeOp_Conv_I16_I32;
+						break;
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_I16_I64;
+						break;
+					case BeTypeCode_Float:
+						op = CeOp_Conv_I16_F32;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_I16_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Int32:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_I32_I64;
+						break;
+					case BeTypeCode_Float:
+						op = CeOp_Conv_I32_F32;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_I32_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Int64:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Float:
+						op = CeOp_Conv_I64_F32;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_I64_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Float:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int8:
+						op = CeOp_Conv_F32_I8;
+						break;
+					case BeTypeCode_Int16:
+						op = CeOp_Conv_F32_I16;
+						break;
+					case BeTypeCode_Int32:
+						op = CeOp_Conv_F32_I32;
+						break;
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_F32_I64;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_F32_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Double:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int8:
+						op = CeOp_Conv_F64_I8;
+						break;
+					case BeTypeCode_Int16:
+						op = CeOp_Conv_F64_I16;
+						break;
+					case BeTypeCode_Int32:
+						op = CeOp_Conv_F64_I32;
+						break;
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_F64_I64;
+						break;
+					case BeTypeCode_Float:
+						op = CeOp_Conv_F64_F32;
+						break;
+					}
+					break;
+				}
+			}
+			else
+			{
+				switch (fromTypeCode)
+				{
+				case BeTypeCode_Int8:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int16:
+						op = CeOp_Conv_U8_U16;
+						break;
+					case BeTypeCode_Int32:
+						op = CeOp_Conv_U8_U32;
+						break;
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_U8_U64;
+						break;
+					case BeTypeCode_Float:
+						op = CeOp_Conv_I8_F32;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_I8_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Int16:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int32:
+						op = CeOp_Conv_U16_U32;
+						break;
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_U16_U64;
+						break;
+					case BeTypeCode_Float:
+						op = CeOp_Conv_U16_F32;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_U16_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Int32:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_U32_U64;
+						break;
+					case BeTypeCode_Float:
+						op = CeOp_Conv_U32_F32;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_U32_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Int64:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Float:
+						op = CeOp_Conv_I64_F32;
+						break;
+					case BeTypeCode_Double:
+						op = CeOp_Conv_I64_F64;
+						break;
+					}
+					break;
+				case BeTypeCode_Float:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int8:
+						op = CeOp_Conv_F32_U8;
+						break;
+					case BeTypeCode_Int16:
+						op = CeOp_Conv_F32_U16;
+						break;
+					case BeTypeCode_Int32:
+						op = CeOp_Conv_F32_U32;
+						break;
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_F32_U64;
+						break;
+					}
+					break;
+				case BeTypeCode_Double:
+					switch (toTypeCode)
+					{
+					case BeTypeCode_Int8:
+						op = CeOp_Conv_F64_U8;
+						break;
+					case BeTypeCode_Int16:
+						op = CeOp_Conv_F64_U16;
+						break;
+					case BeTypeCode_Int32:
+						op = CeOp_Conv_F64_U32;
+						break;
+					case BeTypeCode_Int64:
+						op = CeOp_Conv_F64_U64;
+						break;
+					}
+					break;
+				}
+			}
+
+			if (op == CeOp_InvalidOp)
+			{
+				Fail("Invalid conversion op");
+			}
+			else
+			{
+				Emit(op);
+				EmitFrameOffset(result);
+				EmitFrameOffset(ceValue);
+			}
+		}
+	}
+
+	return result;
 }
 
 void CeBuilder::EmitUnaryOp(CeOp iOp, CeOp fOp, const CeOperand& val, CeOperand& result)
@@ -2089,254 +2478,7 @@ void CeBuilder::Build()
 				{
 					auto castedInst = (BeNumericCastInst*)inst;
 					auto ceValue = GetOperand(castedInst->mValue);
-					auto fromType = ceValue.mType;
-					if (fromType == castedInst->mToType)
-					{
-						// If it's just a sign change then leave it alone
-						result = ceValue;
-					}
-					else
-					{
-						auto toType = castedInst->mToType;
-						if ((toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize <= fromType->mSize))
-						{
-							// For truncating values, no actual instructions are needed
-							// Note that a copy is not needed because of SSA rules
-							result = ceValue;
-							result.mType = toType;
-						}
-						else
-						{
-							result = FrameAlloc(toType);
-
-							CeOp op = CeOp_InvalidOp;
-
-							BeTypeCode fromTypeCode = fromType->mTypeCode;
-							BeTypeCode toTypeCode = toType->mTypeCode;
-
-							if ((castedInst->mValSigned) && (castedInst->mToSigned))
-							{
-								switch (fromTypeCode)
-								{
-								case BeTypeCode_Int8:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int16:
-										op = CeOp_Conv_I8_I16;
-										break;
-									case BeTypeCode_Int32:
-										op = CeOp_Conv_I8_I32;
-										break;
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_I8_I64;
-										break;
-									case BeTypeCode_Float:
-										op = CeOp_Conv_I8_F32;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_I8_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Int16:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int32:
-										op = CeOp_Conv_I16_I32;
-										break;
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_I16_I64;
-										break;
-									case BeTypeCode_Float:
-										op = CeOp_Conv_I16_F32;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_I16_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Int32:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_I32_I64;
-										break;
-									case BeTypeCode_Float:
-										op = CeOp_Conv_I32_F32;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_I32_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Int64:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Float:
-										op = CeOp_Conv_I64_F32;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_I64_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Float:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int8:
-										op = CeOp_Conv_F32_I8;
-										break;
-									case BeTypeCode_Int16:
-										op = CeOp_Conv_F32_I16;
-										break;
-									case BeTypeCode_Int32:
-										op = CeOp_Conv_F32_I32;
-										break;
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_F32_I64;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_F32_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Double:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int8:
-										op = CeOp_Conv_F64_I8;
-										break;
-									case BeTypeCode_Int16:
-										op = CeOp_Conv_F64_I16;
-										break;
-									case BeTypeCode_Int32:
-										op = CeOp_Conv_F64_I32;
-										break;
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_F64_I64;
-										break;
-									case BeTypeCode_Float:
-										op = CeOp_Conv_F64_F32;
-										break;
-									}
-									break;
-								}
-							}
-							else
-							{
-								switch (fromTypeCode)
-								{
-								case BeTypeCode_Int8:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int16:
-										op = CeOp_Conv_U8_U16;
-										break;
-									case BeTypeCode_Int32:
-										op = CeOp_Conv_U8_U32;
-										break;
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_U8_U64;
-										break;
-									case BeTypeCode_Float:
-										op = CeOp_Conv_I8_F32;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_I8_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Int16:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int32:
-										op = CeOp_Conv_U16_U32;
-										break;
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_U16_U64;
-										break;
-									case BeTypeCode_Float:
-										op = CeOp_Conv_U16_F32;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_U16_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Int32:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_U32_U64;
-										break;
-									case BeTypeCode_Float:
-										op = CeOp_Conv_U32_F32;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_U32_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Int64:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Float:
-										op = CeOp_Conv_I64_F32;
-										break;
-									case BeTypeCode_Double:
-										op = CeOp_Conv_I64_F64;
-										break;
-									}
-									break;
-								case BeTypeCode_Float:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int8:
-										op = CeOp_Conv_F32_U8;
-										break;
-									case BeTypeCode_Int16:
-										op = CeOp_Conv_F32_U16;
-										break;
-									case BeTypeCode_Int32:
-										op = CeOp_Conv_F32_U32;
-										break;
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_F32_U64;
-										break;
-									}
-									break;
-								case BeTypeCode_Double:
-									switch (toTypeCode)
-									{
-									case BeTypeCode_Int8:
-										op = CeOp_Conv_F64_U8;
-										break;
-									case BeTypeCode_Int16:
-										op = CeOp_Conv_F64_U16;
-										break;
-									case BeTypeCode_Int32:
-										op = CeOp_Conv_F64_U32;
-										break;
-									case BeTypeCode_Int64:
-										op = CeOp_Conv_F64_U64;
-										break;
-									}
-									break;
-								}
-							}
-
-							if (op == CeOp_InvalidOp)
-							{
-								Fail("Invalid conversion op");
-							}
-							else
-							{
-								Emit(op);
-								EmitFrameOffset(result);
-								EmitFrameOffset(ceValue);
-							}
-						}
-					}
+					result = EmitNumericCast(ceValue, castedInst->mToType, castedInst->mValSigned, castedInst->mToSigned);
 				}
 				break;
 			case BeStoreInst::TypeId:
@@ -2463,6 +2605,9 @@ void CeBuilder::Build()
 					auto ceVal = GetOperand(castedInst->mPtr);
 					auto ceIdx0 = GetOperand(castedInst->mIdx0, false, true);
 
+					if ((ceIdx0.mType != NULL) && (ceIdx0.mType->mSize < mPtrSize))
+						ceIdx0 = EmitNumericCast(ceIdx0, mIntPtrType, true, true);
+
 					BePointerType* ptrType = (BePointerType*)ceVal.mType;
 					BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
 
@@ -2473,6 +2618,10 @@ void CeBuilder::Build()
 						BF_ASSERT(castedInst->mIdx0);
 
 						auto ceIdx1 = GetOperand(castedInst->mIdx1, false, true);
+
+						if ((ceIdx1.mType != NULL) && (ceIdx1.mType->mSize < mPtrSize))
+							ceIdx1 = EmitNumericCast(ceIdx1, mIntPtrType, true, true);
+
 						if (!ceIdx1.IsImmediate())
 						{
 							// This path is used when we have a const array that gets indexed by a non-const index value

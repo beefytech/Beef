@@ -21183,6 +21183,8 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 		if (isExactConst)
 		{
 			mModule->PopulateType(tupleType);
+			if (tupleType->IsDataIncomplete())
+				return;
 
 			Array<BfIRValue> irValues;
 			irValues.Resize(typedValues.mSize + 1);

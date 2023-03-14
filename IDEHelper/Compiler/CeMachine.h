@@ -883,6 +883,7 @@ public:
 	void EmitZeroes(int size);
 	void EmitJump(CeOp op, const CeOperand& block);
 	void EmitBinarySwitchSection(BeSwitchInst* switchInst, int startIdx, int endIdx);
+	CeOperand EmitNumericCast(const CeOperand& ceValue, BeType* toType, bool valSigned, bool toSigned);
 
 	void EmitFrameOffset(const CeOperand& val);
 	void FlushPhi(CeBlock* ceBlock, int targetBlockIdx);
