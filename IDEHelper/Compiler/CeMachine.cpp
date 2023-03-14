@@ -1007,6 +1007,13 @@ void CeBuilder::EmitBinaryOp(CeOp iOp, CeOp fOp, const CeOperand& lhs, const CeO
 
 CeOperand CeBuilder::EmitNumericCast(const CeOperand& ceValue, BeType* toType, bool valSigned, bool toSigned)
 {
+	if (ceValue.mKind == CeOperandKind_Immediate)
+	{
+		CeOperand newVal = ceValue;
+		newVal.mType = toType;
+		return newVal;
+	}
+
 	CeOperand result;
 	auto fromType = ceValue.mType;
 
