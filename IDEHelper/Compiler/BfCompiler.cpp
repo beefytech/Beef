@@ -32,6 +32,7 @@
 #include "BfNamespaceVisitor.h"
 #include "CeMachine.h"
 #include "CeDebugger.h"
+#include "BfDefBuilder.h"
 
 #pragma warning(pop)
 
@@ -4797,6 +4798,12 @@ void BfCompiler::ProcessAutocompleteTempType()
 	}
 
 	Array<BfMethodInstance*> methodInstances;
+
+	if (tempTypeDef->IsExtension())
+	{
+		BfDefBuilder::AddMethod(tempTypeDef, BfMethodType_CtorNoBody, BfProtection_Public, true, "", false);
+		BfDefBuilder::AddMethod(tempTypeDef, BfMethodType_CtorNoBody, BfProtection_Public, false, "", false);
+	}
 
 	for (auto methodDef : tempTypeDef->mMethods)
 	{
