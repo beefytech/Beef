@@ -42,6 +42,7 @@ public:
 	DbgModule* mTargetBinary;
 	Array<DbgModule*> mDbgModules;
 	Dictionary<int, DbgModule*> mDbgModuleMap;
+	Dictionary<addr_target, DbgModule*> mFindDbgModuleCache; // Addresses are all 64k multiples
 	HashSet<DbgSrcFile*> mPendingSrcFileRehup; // Waiting to remove old/invalid line info
 
 	BumpAllocator mAlloc;

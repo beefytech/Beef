@@ -343,10 +343,6 @@ void DbgProfiler::ThreadProc()
 
 			bool isThreadIdle = idleThreadSet.Contains(thread->mThreadId);
 
-			profileThreadInfo->mTotalSamples += curSampleCount;
-			if (isThreadIdle)
-				profileThreadInfo->mTotalIdleSamples += curSampleCount;
-
 			mDebugger->mActiveThread = thread;
 
 			::SuspendThread(thread->mHThread);
@@ -354,14 +350,38 @@ void DbgProfiler::ThreadProc()
 			CPURegisters registers;
 			mDebugger->PopulateRegisters(&registers);
 
+			addr_target prevPC = 0;
+			bool traceIsValid = true;
 			int stackSize = 0;
 			for (int stackIdx = 0; stackIdx < maxStackTrace; stackIdx++)
 			{
 				auto pc = registers.GetPC();
-				if (pc <= 0xFFFF)
+				if (pc == 0)
 				{
+					bool* valuePtr = NULL;
+					if (mStackHeadCheckMap.TryAdd(prevPC, NULL, &valuePtr))
+					{
+						addr_target symbolOffset = 0;
+						String symbolName;
+						mDebugger->mDebugTarget->FindSymbolAt(prevPC, &symbolName, &symbolOffset, NULL, false);
+						*valuePtr = (symbolName == "RtlUserThreadStart");
+					}
+
+					if (!*valuePtr)
+						traceIsValid = false;
+
+					// Done - success (?). Check lastDbgModule.
 					break;
 				}
+
+				prevPC = pc;
+				auto lastDbgModule = mDebugger->mDebugTarget->FindDbgModuleForAddress(pc);
+				if (lastDbgModule == NULL)
+				{
+					traceIsValid = false;
+					break;
+				}
+
 				stackTrace[stackSize++] = pc;
 				auto prevSP = registers.GetSP();
 				if (!mDebugger->RollBackStackFrame(&registers, stackIdx == 0))
@@ -369,29 +389,37 @@ void DbgProfiler::ThreadProc()
 				if (registers.GetSP() <= prevSP)
 				{
 					// SP went the wrong direction, stop rolling back
+					traceIsValid = false;
 					break;
 				}
 			}
 
-			ProfileAddrEntry* insertedProfileEntry = AddToSet(mProfileAddrEntrySet, stackTrace, stackSize);
-			if (insertedProfileEntry->mEntryIdx == -1)
+			if (traceIsValid)
 			{
-				insertedProfileEntry->mEntryIdx = (int)mProfileAddrEntrySet.size(); // Starts at '1'
-				mPendingProfileEntries.Add(*insertedProfileEntry);
-			}
-
-			for (int i = 0; i < curSampleCount; i++)
-			{
-				int entryIdx = insertedProfileEntry->mEntryIdx;
+				profileThreadInfo->mTotalSamples += curSampleCount;
 				if (isThreadIdle)
-					entryIdx = -entryIdx;
-				profileThreadInfo->mProfileAddrEntries.push_back(entryIdx);
+					profileThreadInfo->mTotalIdleSamples += curSampleCount;
+
+				ProfileAddrEntry* insertedProfileEntry = AddToSet(mProfileAddrEntrySet, stackTrace, stackSize);
+				if (insertedProfileEntry->mEntryIdx == -1)
+				{
+					insertedProfileEntry->mEntryIdx = (int)mProfileAddrEntrySet.size(); // Starts at '1'
+					mPendingProfileEntries.Add(*insertedProfileEntry);
+				}
+
+				for (int i = 0; i < curSampleCount; i++)
+				{
+					int entryIdx = insertedProfileEntry->mEntryIdx;
+					if (isThreadIdle)
+						entryIdx = -entryIdx;
+					profileThreadInfo->mProfileAddrEntries.push_back(entryIdx);
+				}
+
+				int elapsedTime = timeGetTime() - startTick;
+				mTotalActiveSamplingMS += elapsedTime;
 			}
 
 			::ResumeThread(thread->mHThread);
-
-			int elapsedTime = timeGetTime() - startTick;
-			mTotalActiveSamplingMS += elapsedTime;
 
 			mDebugger->mActiveThread = NULL;
 
@@ -479,6 +507,7 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 		int mStackIdx;
 	};
 	Array<_QueuedEntry> workQueue;
+	int skipStackCount = 0;
 
 	auto _AddEntries = [&](int rangeStart, int rangeEnd, int stackIdx, ProfileProcId* findProc)
 	{
@@ -486,7 +515,7 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 		int childSampleCount = 0;
 
 		// First arrange list so we only contain items that match 'findProc'
-		if (stackIdx != -1)
+		if (stackIdx >= skipStackCount)
 		{
 			for (int idx = rangeStart; idx < rangeEnd; idx++)
 			{
@@ -551,6 +580,64 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 	};
 	_AddEntries(rangeStart, rangeEnd, stackIdx, findProc);
 
+	while (skipStackCount < 6)
+	{
+		bool isSkipValid = true;
+
+		for (int idx = rangeStart; idx < rangeEnd; idx++)
+		{
+			auto procEntry = procEntries[idx];
+			if (procEntry->mUsed)
+				continue;
+
+			int stackIdx = procEntry->mSize - 1 - skipStackCount;
+			if (stackIdx < 0)
+			{
+				isSkipValid = false;
+				break;
+			}
+
+			auto checkProc = procEntry->mData[procEntry->mSize - 1 - skipStackCount];
+
+			switch (skipStackCount)
+			{
+			case 0:
+				if (checkProc->mProcName != "RtlUserThreadStart")
+					isSkipValid = false;
+				break;
+			case 1:
+				if (checkProc->mProcName != "BaseThreadInitThunk")
+					isSkipValid = false;
+				break;
+			case 2:
+				if ((checkProc->mProcName != "__scrt_common_main_seh()") && (checkProc->mProcName != "mainCRTStartup()"))
+					isSkipValid = false;
+				break;
+			case 3:
+				if ((checkProc->mProcName != "invoke_main()") && (checkProc->mProcName != "main"))
+					isSkipValid = false;
+				break;
+			case 4:
+				if (checkProc->mProcName != "main")
+					isSkipValid = false;
+				break;
+			case 5:
+				if (checkProc->mProcName != "BeefStartProgram")
+					isSkipValid = false;
+				break;
+			default:
+				isSkipValid = false;
+			}
+
+			if (!isSkipValid)
+				break;
+		}
+
+		if (!isSkipValid)
+			break;
+		skipStackCount++;
+	}
+
 	while (!workQueue.IsEmpty())
 	{
 		auto& entry = workQueue.back();
@@ -574,7 +661,7 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 
 		if (!addedChild)
 		{
-			if (entry.mStackIdx != -1)
+			if ((entry.mStackIdx != -1) && (entry.mStackIdx >= skipStackCount))
 				str += "-\n";
 			workQueue.pop_back();
 		}

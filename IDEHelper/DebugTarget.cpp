@@ -273,6 +273,7 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 				}
 			}
 
+			mFindDbgModuleCache.Clear();
 			mDbgModules.RemoveAt(i);
 			bool success = mDbgModuleMap.Remove(dwarf->mId);
 			BF_ASSERT_REL(success);
@@ -316,6 +317,7 @@ void DebugTarget::CleanupHotHeap()
 			DbgModule* dbgModule = mDbgModules[dwarfIdx];
 			if (dbgModule->mDeleting)
 			{
+				mFindDbgModuleCache.Clear();
 				mDbgModules.RemoveAt(dwarfIdx);
 				bool success = mDbgModuleMap.Remove(dbgModule->mId);
 				BF_ASSERT_REL(success);
@@ -932,6 +934,7 @@ void DebugTarget::GetCompilerSettings()
 void DebugTarget::AddDbgModule(DbgModule* dbgModule)
 {
 	dbgModule->mId = ++mCurModuleId;
+	mFindDbgModuleCache.Clear();
 	mDbgModules.Add(dbgModule);
 	bool success = mDbgModuleMap.TryAdd(dbgModule->mId, dbgModule);
 	BF_ASSERT_REL(success);
@@ -2446,54 +2449,49 @@ bool DebugTarget::GetValueByNameInBlock(DbgSubprogram* dwSubprogram, DbgBlock* d
 
 const DbgMemoryFlags DebugTarget::ReadOrigImageData(addr_target address, uint8* data, int size)
 {
-	for (auto dwarf : mDbgModules)
+	auto dwarf = FindDbgModuleForAddress(address);
+	if ((dwarf != NULL) && (dwarf->mOrigImageData != NULL))
 	{
-		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize) && (dwarf->mOrigImageData != NULL))
-		{
-			return dwarf->mOrigImageData->Read(address, data, size);
-		}
-		//return dbgModule->mOrigImageData + (address - dbgModule->mImageBase);
+		return dwarf->mOrigImageData->Read(address, data, size);
 	}
-
 	return DbgMemoryFlags_None;
 }
 
 bool DebugTarget::DecodeInstruction(addr_target address, CPUInst* inst)
 {
-	for (auto dwarf : mDbgModules)
+	auto dwarf = FindDbgModuleForAddress(address);
+	if ((dwarf != NULL) && (dwarf->mOrigImageData != NULL))
 	{
-		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize) && (dwarf->mOrigImageData != NULL))
-		{
-			return mDebugger->mCPU->Decode(address, dwarf->mOrigImageData, inst);
-		}
+		return mDebugger->mCPU->Decode(address, dwarf->mOrigImageData, inst);
 	}
-
 	return false;
 }
 
 DbgBreakKind DebugTarget::GetDbgBreakKind(addr_target address, CPURegisters* registers, intptr_target* objAddr)
 {
-	for (auto dwarf : mDbgModules)
+	auto dwarf = FindDbgModuleForAddress(address);
+	if ((dwarf != NULL) && (dwarf->mOrigImageData != NULL))
 	{
-		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize) && (dwarf->mOrigImageData != NULL))
-		{
-			auto result = mDebugger->mCPU->GetDbgBreakKind(address, dwarf->mOrigImageData, registers->mIntRegsArray, objAddr);
-			return result;
-		}
+		auto result = mDebugger->mCPU->GetDbgBreakKind(address, dwarf->mOrigImageData, registers->mIntRegsArray, objAddr);
+		return result;
 	}
-
 	return DbgBreakKind_None;
 }
 
 DbgModule* DebugTarget::FindDbgModuleForAddress(addr_target address)
 {
-	for (auto dwarf : mDbgModules)
+	addr_target checkAddr = address & ~0xFFFF;
+	DbgModule** valuePtr = NULL;
+	if (mFindDbgModuleCache.TryAdd(checkAddr, NULL, &valuePtr))
 	{
-		if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize))
-			return dwarf;
+		for (auto dwarf : mDbgModules)
+		{
+			if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize))
+				*valuePtr = dwarf;
+		}
 	}
 
-	return NULL;
+	return *valuePtr;
 }
 
 DbgModule* DebugTarget::GetMainDbgModule()

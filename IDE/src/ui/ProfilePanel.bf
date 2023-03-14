@@ -351,6 +351,19 @@ namespace IDE.ui
 			}
 		}
 
+		void OpenHot(ListViewItem lvi, int32 minSamples)
+		{
+			lvi.WithItems(scope (childItem) =>
+				{
+					var profileListViewItem = childItem as ProfileListViewItem;
+					if ((profileListViewItem.mSelfSamples + profileListViewItem.mChildSamples >= minSamples) && (profileListViewItem.IsParent))
+					{
+						profileListViewItem.Open(true, true);
+						OpenHot(childItem, minSamples);
+					}
+				});
+		}
+
 		public void Show(int32 threadId, StringView threadName)
 		{
 			mTickCreated = Utils.GetTickCount();
@@ -449,6 +462,8 @@ namespace IDE.ui
 				itemStack.Add(curItem);
 				curItem = newItem;
 			}
+
+			OpenHot(mListView.GetRoot(), (.)(totalSamples * 0.05f));
 		}
 
 		public void Add(DbgProfiler profiler)

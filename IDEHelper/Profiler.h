@@ -134,6 +134,7 @@ public:
 	BumpAllocator mAlloc;
 	Dictionary<uint, ProfileThreadInfo*> mThreadInfo;
 	Array<uint> mThreadIdList;
+	Dictionary<addr_target, bool> mStackHeadCheckMap;
 
 	ProfileAddrEntrySet mProfileAddrEntrySet;
 	Array<ProfileAddrEntry*> mProfileAddrEntries;
