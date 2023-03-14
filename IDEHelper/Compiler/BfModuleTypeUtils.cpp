@@ -10025,6 +10025,8 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 			skipCheckBaseType = mContext->mCurTypeState->mType->ToTypeInstance();
 	}
 
+	BfProject* useProject = useTypeDef->mProject;
+
 	BfTypeDefLookupContext lookupCtx;
 	bool allowPrivate = true;
 
@@ -10035,6 +10037,13 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 	BfTypeInstance* protErrorOuterType = NULL;
 
 	BfTypeDef* foundInnerType = NULL;
+
+	if ((resolveFlags & BfResolveTypeRefFlag_SpecializedProject) != 0)
+	{
+		if (typeInstance->mGenericTypeInfo->mProjectsReferenced.empty())
+			typeInstance->GenerateProjectsReferenced();
+		lookupCtx.mCheckProjects = &typeInstance->mGenericTypeInfo->mProjectsReferenced;
+	}
 
 	if ((lookupResultCtx != NULL) && (lookupResultCtx->mIsVerify))
 	{
@@ -10053,7 +10062,7 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 				{
 					if (!checkTypeInst->mTypeDef->mNestedTypes.IsEmpty())
 					{
-						if (mSystem->FindTypeDef(findName, numGenericArgs, useTypeDef->mProject, checkTypeInst->mTypeDef->mFullNameEx, allowPrivate, &lookupCtx))
+						if (mSystem->FindTypeDef(findName, numGenericArgs, useProject, checkTypeInst->mTypeDef->mFullNameEx, allowPrivate, &lookupCtx))
 						{
 							foundInnerType = lookupCtx.mBestTypeDef;
 
@@ -10101,14 +10110,14 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 	if (!lookupCtx.HasValidMatch())
 	{
 		if (mSystem->mTypeDefs.TryGet(findName, NULL))
-			mSystem->FindTypeDef(findName, numGenericArgs, useTypeDef->mProject, BfAtomComposite(), allowPrivate, &lookupCtx);
+			mSystem->FindTypeDef(findName, numGenericArgs, useProject, BfAtomComposite(), allowPrivate, &lookupCtx);
 
 		for (auto& checkNamespace : useTypeDef->mNamespaceSearch)
 		{
 			BfAtom* atom = findName.mParts[0];
 			BfAtom* prevAtom = checkNamespace.mParts[checkNamespace.mSize - 1];
 			if (atom->mPrevNamesMap.ContainsKey(prevAtom))
-				mSystem->FindTypeDef(findName, numGenericArgs, useTypeDef->mProject, checkNamespace, allowPrivate, &lookupCtx);
+				mSystem->FindTypeDef(findName, numGenericArgs, useProject, checkNamespace, allowPrivate, &lookupCtx);
 		}
 	}
 
@@ -10119,7 +10128,7 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 		{
 			for (auto staticTypeInstance : staticSearch->mStaticTypes)
 			{
-				if (mSystem->FindTypeDef(findName, numGenericArgs, useTypeDef->mProject, staticTypeInstance->mTypeDef->mFullNameEx, false, &lookupCtx))
+				if (mSystem->FindTypeDef(findName, numGenericArgs, useProject, staticTypeInstance->mTypeDef->mFullNameEx, false, &lookupCtx))
 				{
 					if (lookupCtx.HasValidMatch())
 						break;
@@ -10232,6 +10241,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	BfTypeLookupEntry typeLookupEntry;
 	typeLookupEntry.mName.Reference(findName);
 	typeLookupEntry.mNumGenericParams = numGenericArgs;
+	typeLookupEntry.mFlags = ((resolveFlags & BfResolveTypeRefFlag_SpecializedProject) != 0) ? BfTypeLookupEntry::Flags_SpecializedProject : BfTypeLookupEntry::Flags_None;
 	typeLookupEntry.mUseTypeDef = useTypeDef;
 
 	BfTypeLookupEntry* typeLookupEntryPtr = NULL;
@@ -10799,9 +10809,26 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 
 	BfTypeDef* curTypeDef = NULL;
+	Array<BfProject*>* checkProjects = NULL;
+
 	if (contextTypeInstance != NULL)
 	{
 		curTypeDef = contextTypeInstance->mTypeDef;
+
+		if ((curTypeDef->IsEmitted()) && (!typeRef->IsTemporary()))
+		{
+			auto parser = typeRef->GetParser();
+			if ((parser != NULL) && (parser->mIsEmitted))
+			{
+				if (contextTypeInstance->IsGenericTypeInstance())
+				{
+					resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_SpecializedProject);
+					if (contextTypeInstance->mGenericTypeInfo->mProjectsReferenced.empty())
+						contextTypeInstance->GenerateProjectsReferenced();
+					checkProjects = &contextTypeInstance->mGenericTypeInfo->mProjectsReferenced;
+				}
+			}
+		}
 
 		// Check generics first
 		auto namedTypeRef = BfNodeDynCastExact<BfNamedTypeReference>(typeRef);
@@ -11166,7 +11193,24 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			if (activeTypeDef != NULL)
 				bfProject = activeTypeDef->mProject;
 
+			bool leftIsNamespace = false;
 			if (mSystem->ContainsNamespace(leftComposite, bfProject))
+			{
+				leftIsNamespace = true;
+			}
+			else if (checkProjects != NULL)
+			{
+				for (auto checkProject : *checkProjects)
+				{
+					if (mSystem->ContainsNamespace(leftComposite, checkProject))
+					{
+						leftIsNamespace = true;
+						break;
+					}
+				}
+			}
+
+			if (leftIsNamespace)
 			{
 				qualifiedTypeRef->mLeft->ToString(findName);
 				findName.Append('.');
@@ -11496,7 +11540,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		(BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime |
 			BfResolveTypeRefFlag_AllowInferredSizedArray | BfResolveTypeRefFlag_Attribute | BfResolveTypeRefFlag_AllowUnboundGeneric |
 			BfResolveTypeRefFlag_ForceUnboundGeneric | BfResolveTypeRefFlag_AllowGenericParamConstValue |
-			BfResolveTypeRefFlag_AllowImplicitConstExpr));
+			BfResolveTypeRefFlag_AllowImplicitConstExpr | BfResolveTypeRefFlag_SpecializedProject));
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;

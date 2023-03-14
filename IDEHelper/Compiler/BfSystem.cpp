@@ -2663,34 +2663,54 @@ bool BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, 
 			continue;
 		}
 
-		if ((typeDef->mFullName == *qualifiedFindNamePtr) && (CheckTypeDefReference(typeDef, project)))
+		if (typeDef->mFullName == *qualifiedFindNamePtr)
 		{
-			int curPri = 0;
-			if (typeDef->mProtection < minProtection)
-				curPri -= 1;
-			if (typeDef->IsGlobalsContainer())
-				curPri -= 2;
-			if (typeDef->mGenericParamDefs.size() != numGenericArgs)
+			bool isProjectValid = false;
+			if (CheckTypeDefReference(typeDef, project))
 			{
-				// Still allow SOME match even if we put in the wrong number of generic args
-				curPri -= 4;
+				isProjectValid = true;
 			}
-			if ((typeDef->mPartials.mSize > 0) && (typeDef->mPartials[0]->IsExtension()))
+			else if ((ctx != NULL) && (ctx->mCheckProjects != NULL))
 			{
-				// Is a failed extension
-				curPri -= 8;
+				for (auto checkProject : *ctx->mCheckProjects)
+				{
+					if (CheckTypeDefReference(typeDef, checkProject))
+					{
+						isProjectValid = true;
+						break;
+					}
+				}
 			}
 
-			if ((curPri > ctx->mBestPri) || (ctx->mBestTypeDef == NULL))
+			if (isProjectValid)
 			{
-				ctx->mBestTypeDef = typeDef;
-				ctx->mAmbiguousTypeDef = NULL;
-				ctx->mBestPri = curPri;
-				hadMatch = true;
-			}
-			else if (curPri == ctx->mBestPri)
-			{
-				ctx->mAmbiguousTypeDef = typeDef;
+				int curPri = 0;
+				if (typeDef->mProtection < minProtection)
+					curPri -= 1;
+				if (typeDef->IsGlobalsContainer())
+					curPri -= 2;
+				if (typeDef->mGenericParamDefs.size() != numGenericArgs)
+				{
+					// Still allow SOME match even if we put in the wrong number of generic args
+					curPri -= 4;
+				}
+				if ((typeDef->mPartials.mSize > 0) && (typeDef->mPartials[0]->IsExtension()))
+				{
+					// Is a failed extension
+					curPri -= 8;
+				}
+
+				if ((curPri > ctx->mBestPri) || (ctx->mBestTypeDef == NULL))
+				{
+					ctx->mBestTypeDef = typeDef;
+					ctx->mAmbiguousTypeDef = NULL;
+					ctx->mBestPri = curPri;
+					hadMatch = true;
+				}
+				else if (curPri == ctx->mBestPri)
+				{
+					ctx->mAmbiguousTypeDef = typeDef;
+				}
 			}
 		}
 		itr.MoveToNextHashMatch();

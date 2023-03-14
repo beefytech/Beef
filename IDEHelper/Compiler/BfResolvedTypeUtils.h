@@ -41,7 +41,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_AllowImplicitConstExpr = 0x20000,
 	BfResolveTypeRefFlag_AllowUnboundGeneric = 0x40000,
 	BfResolveTypeRefFlag_ForceUnboundGeneric = 0x80000,
-	BfResolveTypeRefFlag_IgnoreProtection = 0x100000
+	BfResolveTypeRefFlag_IgnoreProtection = 0x100000,
+	BfResolveTypeRefFlag_SpecializedProject = 0x200000
 };
 
 enum BfTypeNameFlags : uint16
@@ -1721,8 +1722,15 @@ public:
 
 struct BfTypeLookupEntry
 {
+	enum Flags : uint8
+	{
+		Flags_None,
+		Flags_SpecializedProject
+	};
+
 	BfAtomComposite mName;
-	int mNumGenericParams;
+	int16 mNumGenericParams;
+	Flags mFlags;
 	uint32 mAtomUpdateIdx;
 	BfTypeDef* mUseTypeDef;
 
@@ -1730,6 +1738,7 @@ struct BfTypeLookupEntry
 	{
 		return (mName == rhs.mName) &&
 			(mNumGenericParams == rhs.mNumGenericParams) &&
+			(mFlags == rhs.mFlags) &&
 			(mUseTypeDef == rhs.mUseTypeDef);
 	}
 };

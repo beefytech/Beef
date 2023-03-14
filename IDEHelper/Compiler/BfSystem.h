@@ -1001,6 +1001,7 @@ public:
 	int mBestPri;
 	BfTypeDef* mBestTypeDef;
 	BfTypeDef* mAmbiguousTypeDef;
+	Array<BfProject*>* mCheckProjects;
 
 public:
 	BfTypeDefLookupContext()
@@ -1008,6 +1009,7 @@ public:
 		mBestPri = (int)0x80000000;
 		mBestTypeDef = NULL;
 		mAmbiguousTypeDef = NULL;
+		mCheckProjects = NULL;
 	}
 
 	bool HasValidMatch()
