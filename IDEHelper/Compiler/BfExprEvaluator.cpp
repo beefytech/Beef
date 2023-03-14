@@ -10277,7 +10277,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		{
 			// Would have caused a parsing error
 		}
-		else if (target.mType != NULL)
+		else if ((target.mType != NULL) && (origTarget.mType != NULL))
 		{
 			if (mModule->PreFail())
 			{
