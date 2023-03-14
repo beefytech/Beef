@@ -1024,7 +1024,7 @@ int CeBuilder::GetCallTableIdx(BeFunction* beFunction, CeOperand* outOperand)
 		*callIdxPtr = (int)mCeFunction->mCallTable.size();
 		mCeFunction->mCallTable.Add(callEntry);
 
-		if (ceFunctionInfo != NULL)
+		if ((ceFunctionInfo != NULL) && (mCeFunction->mCeFunctionInfo != NULL))
 		{
 			auto callerType = mCeFunction->mCeFunctionInfo->GetOwner();
 			auto calleeType = ceFunctionInfo->GetOwner();
