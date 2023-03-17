@@ -2093,7 +2093,12 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			}
 			else if (token == BfToken_LBracket)
 			{
-				exprLeft = CreateAttributedExpression(tokenNode, false);
+				if ((createExprFlags & CreateExprFlags_AllowAnonymousIndexer) != 0)
+				{
+					exprLeft = CreateIndexerExpression(NULL, tokenNode);
+				}
+				else
+					exprLeft = CreateAttributedExpression(tokenNode, false);
 			}
 			else if (token == BfToken_FatArrow)
 			{
@@ -7570,7 +7575,7 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfAstNode* ta
 		BfAstNode* node = mVisitorPos.GetCurrent();
 		initializerExpr->mSrcEnd = node->mSrcEnd;
 
-		auto expr = CreateExpression(node);
+		auto expr = CreateExpression(node, BfReducer::CreateExprFlags_AllowAnonymousIndexer);
 		isDone = !mVisitorPos.MoveNext();
 		if (expr != NULL)
 			values.Add(expr);
@@ -8167,15 +8172,24 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 	return objectCreateExpr;
 }
 
-BfExpression* BfReducer::CreateIndexerExpression(BfExpression* target)
+BfExpression* BfReducer::CreateIndexerExpression(BfExpression* target, BfTokenNode* openBracketNode)
 {
-	auto tokenNode = ExpectTokenAfter(target, BfToken_LBracket, BfToken_QuestionLBracket);
+	auto tokenNode = openBracketNode;
+	if (openBracketNode == NULL)
+		tokenNode = ExpectTokenAfter(target, BfToken_LBracket, BfToken_QuestionLBracket);
 
 	auto indexerExpr = mAlloc->Alloc<BfIndexerExpression>();
 	BfDeferredAstSizedArray<BfExpression*> arguments(indexerExpr->mArguments, mAlloc);
 	BfDeferredAstSizedArray<BfTokenNode*> commas(indexerExpr->mCommas, mAlloc);
-	indexerExpr->mTarget = target;
-	ReplaceNode(target, indexerExpr);
+	if (target != NULL)
+	{
+		indexerExpr->mTarget = target;
+		ReplaceNode(target, indexerExpr);
+	}
+	else
+	{
+		ReplaceNode(openBracketNode, indexerExpr);
+	}
 
 	indexerExpr->mOpenBracket = tokenNode;
 	MoveNode(indexerExpr->mOpenBracket, indexerExpr);

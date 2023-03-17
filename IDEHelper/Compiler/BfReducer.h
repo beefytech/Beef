@@ -27,7 +27,8 @@ public:
 		CreateExprFlags_NoCheckBinOpPrecedence = 0x100,
 		CreateExprFlags_BreakOnCascade = 0x200,
 		CreateExprFlags_EarlyExit = 0x400, // Don't attempt binary or ternary operations
-		CreateExprFlags_AllowEmpty = 0x800
+		CreateExprFlags_AllowEmpty = 0x800,
+		CreateExprFlags_AllowAnonymousIndexer = 0x1000
 	};
 
 	enum CreateStmtFlags
@@ -206,7 +207,7 @@ public:
 	BfScopedInvocationTarget* CreateScopedInvocationTarget(BfAstNode*& targetRef, BfTokenNode* colonToken);
 	BfInvocationExpression* CreateInvocationExpression(BfAstNode* target, CreateExprFlags createExprFlags = CreateExprFlags_None);
 	BfInitializerExpression* TryCreateInitializerExpression(BfAstNode* target);
-	BfExpression* CreateIndexerExpression(BfExpression* target);
+	BfExpression* CreateIndexerExpression(BfExpression* target, BfTokenNode* openBracketNode = NULL);
 	BfMemberReferenceExpression* CreateMemberReferenceExpression(BfAstNode* target);
 	BfTupleExpression* CreateTupleExpression(BfTokenNode* newNode, BfExpression* innerExpr = NULL);
 	BfExpression* CreateExpression(BfAstNode* node, CreateExprFlags createExprFlags = CreateExprFlags_None);

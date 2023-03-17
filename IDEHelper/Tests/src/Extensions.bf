@@ -18,7 +18,7 @@ namespace System.Collections
 		}
 	}
 
-	extension Dictionary<K, V>
+	extension Dictionary<TKey, TValue>
 	{
 		public static bool operator==(Self lhs, Self rhs)
 		{

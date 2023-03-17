@@ -11544,8 +11544,6 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 
 	BfTypedValue initValue = GetResult(true);
 	bool isFirstAdd = true;
-	BfFunctionBindResult addFunctionBindResult;
-	addFunctionBindResult.mWantsArgs = true;
 
 	for (auto elementExpr : initExpr->mValues)
 	{
@@ -11604,6 +11602,26 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 						findName.c_str()), identifierNode);
 				}
 			}
+			else if (auto indexerExpression = BfNodeDynCast<BfIndexerExpression>(assignExpr->mLeft))
+			{
+				if (indexerExpression->mTarget == NULL)
+				{
+					if ((initValue.mType->IsValueType()) && (!initValue.IsAddr()))
+					{
+						initValue = mModule->MakeAddressable(initValue, true, true);
+					}
+
+					mResult = BfTypedValue();
+					HandleIndexerExpression(indexerExpression, initValue);
+					wasValidInitKind = true;
+
+					if ((mPropDef) || (mResult))
+					{
+						PerformAssignment(assignExpr, true, BfTypedValue());
+						mResult = BfTypedValue();
+					}
+				}
+			}
 		}
 		else
 		{
@@ -11622,40 +11640,13 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 				}
 			}
 
-			bool wasFirstAdd = isFirstAdd;
-			if (isFirstAdd)
-			{
-				BfExprEvaluator exprEvaluator(mModule);
-				exprEvaluator.mFunctionBindResult = &addFunctionBindResult;
-				SizedArray<BfExpression*, 2> argExprs;
-				argExprs.push_back(elementExpr);
-				BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
-				BfResolvedArgs argValues(&sizedArgExprs);
-				exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
-				exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, BfMethodGenericArguments());
-
-				if (addFunctionBindResult.mMethodInstance != NULL)
-					CreateCall(initExpr, addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, addFunctionBindResult.mIRArgs);
-
-				isFirstAdd = false;
-			}
-			else if ((addFunctionBindResult.mMethodInstance == NULL) || (addFunctionBindResult.mMethodInstance->GetParamCount() == 0))
-			{
-				mModule->CreateValueFromExpression(elementExpr, NULL, (BfEvalExprFlags)(mBfEvalExprFlags& BfEvalExprFlags_InheritFlags));
-			}
-			else
-			{
-				auto argValue = mModule->CreateValueFromExpression(elementExpr, addFunctionBindResult.mMethodInstance->GetParamType(0), (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
-				if ((argValue) && (!mModule->mBfIRBuilder->mIgnoreWrites))
-				{
-					SizedArray<BfIRValue, 2> irArgs;
-					PushThis(elementExpr, initValue, addFunctionBindResult.mMethodInstance, irArgs);
-					PushArg(argValue, irArgs);
-					for (int argIdx = (int)irArgs.size(); argIdx < (int)addFunctionBindResult.mIRArgs.size(); argIdx++)
-						irArgs.Add(addFunctionBindResult.mIRArgs[argIdx]);
-					CreateCall(initExpr, addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, irArgs);
-				}
-			}
+			BfExprEvaluator exprEvaluator(mModule);
+			SizedArray<BfExpression*, 2> argExprs;
+			argExprs.push_back(elementExpr);
+			BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
+			BfResolvedArgs argValues(&sizedArgExprs);
+			exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
+			exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, BfMethodGenericArguments());
 
 			wasValidInitKind = true;
 		}
@@ -21664,30 +21655,38 @@ void BfExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 
 void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 {
-	BfTypedValue target;
+	HandleIndexerExpression(indexerExpr, BfTypedValue());
+}
+
+void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, BfTypedValue target)
+{
 	bool wantStatic = false;
 	// Try first as a non-static indexer, then as a static indexer
-	for (int pass = 0; pass < 2; pass++)
-	{
-		///
-		{
-			SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoLookupError | BfEvalExprFlags_AllowBase), pass == 0);
-			VisitChild(indexerExpr->mTarget);
-		}
-		ResolveGenericType();
-		target = GetResult(true);
-		if (target)
-			break;
 
-		if (pass == 0)
+	if (!target)
+	{
+		for (int pass = 0; pass < 2; pass++)
 		{
-			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, (mModule->mIgnoreErrors) || (pass == 0));
-			auto staticType = mModule->ResolveTypeRef(indexerExpr->mTarget, {});
-			if (staticType != NULL)
+			///
 			{
-				wantStatic = true;
-				target.mType = staticType;
+				SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoLookupError | BfEvalExprFlags_AllowBase), pass == 0);
+				VisitChild(indexerExpr->mTarget);
+			}
+			ResolveGenericType();
+			target = GetResult(true);
+			if (target)
 				break;
+
+			if (pass == 0)
+			{
+				SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, (mModule->mIgnoreErrors) || (pass == 0));
+				auto staticType = mModule->ResolveTypeRef(indexerExpr->mTarget, {});
+				if (staticType != NULL)
+				{
+					wantStatic = true;
+					target.mType = staticType;
+					break;
+				}
 			}
 		}
 	}

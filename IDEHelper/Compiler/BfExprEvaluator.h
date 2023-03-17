@@ -538,6 +538,7 @@ public:
 	void CheckDotToken(BfTokenNode* tokenNode);
 	void DoMemberReference(BfMemberReferenceExpression* memberRefExpr, BfTypedValue* outCascadeValue);
 	void CreateObject(BfObjectCreateExpression* objCreateExpr, BfAstNode* allocNode, BfType* allocType);
+	void HandleIndexerExpression(BfIndexerExpression* indexerExpr, BfTypedValue target);
 
 	//////////////////////////////////////////////////////////////////////////
 

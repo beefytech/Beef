@@ -25,9 +25,9 @@ namespace Tests
 				mD += (int)val2 * 10;
 			}
 
-			public void Add(int val)
+			public void Add(int val) mut
 			{
-				Test.FatalError("Shouldn't be called");
+				mD += (int)val * 1000;
 			}
 		}
 
@@ -38,7 +38,7 @@ namespace Tests
 			Test.Assert(sa.mA == 123);
 			Test.Assert(sa.mB == 345);
 			Test.Assert(sa.mC == 456);
-			Test.Assert(sa.mD == 6036);
+			Test.Assert(sa.mD == 791907);
 		}
 	}
 }

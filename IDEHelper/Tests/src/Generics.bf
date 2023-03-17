@@ -420,6 +420,10 @@ namespace Tests
 			list.Sort();
 			List<float> floatList = scope .() {1, 2, 3};
 
+			Dictionary<int, String> dict = scope .() { (1, "Foo"), [2]="Bar" };
+			Test.Assert(dict[1] == "Foo");
+			Test.Assert(dict[2] == "Bar");
+
 			ClassA ca = scope .();
 			ClassB cb = scope .();
 			Test.Assert(LibA.LibA0.GetVal(ca) == 123);
