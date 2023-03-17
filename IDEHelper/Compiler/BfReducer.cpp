@@ -5624,16 +5624,30 @@ BfAttributeDirective* BfReducer::CreateAttributeDirective(BfTokenNode* startToke
 				MEMBER_SET(attributeTargetSpecifier, mColonToken, tokenNode);
 			attributeDirective->SetSrcEnd(attributeDirective->mAttributeTargetSpecifier->GetSrcEnd());
 		}
-		else if ((tokenNode->mToken == BfToken_Ampersand) || (tokenNode->mToken == BfToken_AssignEquals))
+		else if ((tokenNode->mToken == BfToken_Ampersand) || (tokenNode->mToken == BfToken_AssignEquals) || (tokenNode->mToken == BfToken_Question))
 		{
 			MEMBER_SET(attributeDirective, mAttributeTargetSpecifier, tokenNode);
 			mVisitorPos.MoveNext();
 			isHandled = true;
 			nextNode = mVisitorPos.GetNext();
+			BfExpression* nameNode = NULL;
+
 			if (auto identiferNode = BfNodeDynCast<BfIdentifierNode>(nextNode))
+				nameNode = identiferNode;
+			else if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
 			{
-				attributeDirective->SetSrcEnd(identiferNode->GetSrcEnd());
-				arguments.push_back(identiferNode);
+				if (nextToken->mToken == BfToken_This)
+				{
+					auto thisExpr = mAlloc->Alloc<BfThisExpression>();
+					ReplaceNode(nextToken, thisExpr);
+					nameNode = thisExpr;
+				}
+			}
+
+			if (nameNode != NULL)
+			{
+				attributeDirective->SetSrcEnd(nameNode->GetSrcEnd());
+				arguments.push_back(nameNode);
 				mVisitorPos.MoveNext();
 				nextNode = mVisitorPos.GetNext();
 			}

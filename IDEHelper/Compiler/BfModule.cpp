@@ -11925,10 +11925,21 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			}
 
 			BfCaptureInfo::Entry captureEntry;
-			captureEntry.mCaptureType = (tokenNode->mToken == BfToken_Ampersand) ? BfCaptureType_Reference : BfCaptureType_Copy;
+			captureEntry.mRefNode = tokenNode;
+			captureEntry.mCaptureType = BfCaptureType_Copy;
+			if (tokenNode->mToken == BfToken_Ampersand)
+				captureEntry.mCaptureType = BfCaptureType_Reference;
+			if (tokenNode->mToken == BfToken_Question)
+				captureEntry.mCaptureType = BfCaptureType_Auto;
 			if (!attributesDirective->mArguments.IsEmpty())
 			{
-				captureEntry.mNameNode = BfNodeDynCast<BfIdentifierNode>(attributesDirective->mArguments[0]);
+				if (auto identifierNode = BfNodeDynCast<BfIdentifierNode>(attributesDirective->mArguments[0]))
+					captureEntry.mNameNode = identifierNode;
+				else if (auto thisExpr = BfNodeDynCast<BfThisExpression>(attributesDirective->mArguments[0]))
+				{
+					captureEntry.mNameNode = thisExpr;
+				}
+
 				if ((captureEntry.mNameNode != NULL) && (autoComplete != NULL))
 					autoComplete->CheckIdentifier(captureEntry.mNameNode);
 			}

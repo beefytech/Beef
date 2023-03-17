@@ -14383,7 +14383,10 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 								autoComplete->CheckLocalRef(captureEntry.mNameNode, localVar);
 							if (((mModule->mCurMethodState->mClosureState == NULL) || (mModule->mCurMethodState->mClosureState->mCapturing)) &&
 								(mModule->mCompiler->mResolvePassData != NULL) && (mModule->mCurMethodInstance != NULL))
-								mModule->mCompiler->mResolvePassData->HandleLocalReference(captureEntry.mNameNode, localVar->mNameNode, mModule->mCurTypeInstance->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, localVar->mLocalVarId);
+							{
+								if (auto captureIdentifierNode = BfNodeDynCast<BfIdentifierNode>(captureEntry.mNameNode))
+									mModule->mCompiler->mResolvePassData->HandleLocalReference(captureIdentifierNode, localVar->mNameNode, mModule->mCurTypeInstance->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, localVar->mLocalVarId);
+							}
 
 							localVar->mNotCaptured = false;
 							localVar = localVar->mShadowedLocal;
@@ -14470,7 +14473,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	prevIgnoreWrites.Restore();
 	mModule->mBfIRBuilder->RestoreDebugLocation();
 
-	auto _GetCaptureType = [&](const StringImpl& str)
+	auto _GetCaptureType = [&](const StringImpl& str, BfCaptureInfo::Entry** captureInfo = NULL)
 	{
 		if (allocTarget.mCaptureInfo->mCaptures.IsEmpty())
 			return BfCaptureType_Copy;
@@ -14479,6 +14482,9 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		{
 			if ((captureEntry.mNameNode == NULL) || (captureEntry.mNameNode->Equals(str)))
 			{
+				if (captureInfo != NULL)
+					*captureInfo = &captureEntry;
+
 				captureEntry.mUsed = true;
 				return captureEntry.mCaptureType;
 			}
@@ -14519,7 +14525,9 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 					auto capturedType = outerLocal->mResolvedType;
 					bool captureByRef = false;
 
-					auto captureType = _GetCaptureType(localVar->mName);
+					BfCaptureInfo::Entry* captureInfoEntry = NULL;
+
+					auto captureType = _GetCaptureType(localVar->mName, &captureInfoEntry);
 					if (captureType == BfCaptureType_None)
 					{
 						continue;
@@ -14529,18 +14537,33 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 					{
 						if (captureType == BfCaptureType_Reference)
 						{
-							if (outerLocal->mIsThis)
+							if ((localVar->mIsThis) && (!localVar->mResolvedType->IsValueType()))
 							{
-								if ((outerLocal->mResolvedType->IsValueType()) && (mModule->mCurMethodInstance->mMethodDef->HasNoThisSplat()))
-									captureByRef = true;
+								// Just ignore attempting to capture referencetype 'this' by reference
 							}
-							else if ((!localVar->mIsReadOnly) && (localVar->mWrittenToId >= closureState.mCaptureStartAccessId))
+							else
 								captureByRef = true;
+						}
+						else if (captureType == BfCaptureType_Auto)
+						{
+							if (localVar->mWrittenToId >= closureState.mCaptureStartAccessId)
+								captureByRef = true;
+							else if ((outerLocal->mResolvedType->mSize > 8) ||
+								((localVar->mIsThis) && (outerLocal->mResolvedType->IsValueType())))
+							{
+								// Capture "large" values by reference
+								captureByRef = true;
+							}
 						}
 					}
 					else
 					{
-						if ((captureType != BfCaptureType_Reference) || (localVar->mWrittenToId < closureState.mCaptureStartAccessId))
+						bool allowRef = false;
+						if (captureType == BfCaptureType_Reference)
+							allowRef = true;
+						else if (captureType == BfCaptureType_Auto)
+							allowRef = localVar->mWrittenToId < closureState.mCaptureStartAccessId;
+						if (!allowRef)
 						{
 							capturedType = ((BfRefType*)capturedType)->mElementType;
 						}
@@ -14551,7 +14574,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 						capturedType = mModule->CreateRefType(capturedType);
 					}
 
-					if (captureType == BfCaptureType_Reference)
+					if (captureType != BfCaptureType_Copy)
 						capturedEntry.mExplicitlyByReference = true;
 					capturedEntry.mType = capturedType;
 					capturedEntry.mNameNode = outerLocal->mNameNode;
@@ -14626,16 +14649,16 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		BfClosureCapturedEntry capturedEntry;
 		capturedEntry.mName = fieldDef->mName;
 		capturedEntry.mType = copyField->mResolvedType;
-		if ((captureType == BfCaptureType_Reference) && (capturedEntry.mType->IsRef()))
+		if ((captureType != BfCaptureType_Copy) && (capturedEntry.mType->IsRef()))
 		{
 			capturedEntry.mExplicitlyByReference = true;
 		}
-		else if ((captureType != BfCaptureType_Reference) && (capturedEntry.mType->IsRef()))
+		else if ((captureType == BfCaptureType_Copy) && (capturedEntry.mType->IsRef()))
 		{
 			auto refType = (BfRefType*)capturedEntry.mType;
 			capturedEntry.mType = refType->mElementType;
 		}
-		else if ((captureType == BfCaptureType_Reference) && (!capturedEntry.mType->IsRef()) && (!fieldDef->mIsReadOnly))
+		else if ((captureType != BfCaptureType_Copy) && (!capturedEntry.mType->IsRef()) && (!fieldDef->mIsReadOnly))
 		{
 			capturedEntry.mType = mModule->CreateRefType(capturedEntry.mType);
 		}
@@ -15109,10 +15132,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 			if (!fieldInstance->mResolvedType->IsRef())
 				capturedTypedVal = mModule->LoadOrAggregateValue(capturedTypedVal);
 			else if (!capturedTypedVal.IsAddr())
-			{
-				mModule->Fail(StrFormat("Unable to capture '%s' by reference", capturedEntry.mName.c_str()), lambdaBindExpr);
-				break;
-			}
+				capturedTypedVal = mModule->MakeAddressable(capturedTypedVal, false, true);
 			capturedValue = capturedTypedVal.mValue;
 
 			if (capturedValue)

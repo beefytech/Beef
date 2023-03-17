@@ -627,12 +627,14 @@ public:
 	{
 		BfCaptureType mCaptureType;
 		bool mUsed;
-		BfIdentifierNode* mNameNode;
+		BfAstNode* mRefNode;
+		BfAstNode* mNameNode;
 
 		Entry()
 		{
 			mCaptureType = BfCaptureType_Copy;
 			mUsed = false;
+			mRefNode = NULL;
 			mNameNode = NULL;
 		}
 	};

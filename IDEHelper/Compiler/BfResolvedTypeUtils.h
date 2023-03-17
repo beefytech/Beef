@@ -2312,6 +2312,7 @@ public:
 enum BfCaptureType
 {
 	BfCaptureType_None,
+	BfCaptureType_Auto,
 	BfCaptureType_Copy,
 	BfCaptureType_Reference,
 };
