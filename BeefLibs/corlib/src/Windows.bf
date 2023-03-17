@@ -345,7 +345,7 @@ namespace System
 			public Result<void> GetValue(StringView name, List<uint8> outData)
 			{
 				bool gotData = false;
-				GetValue(name, scope [&] (regType, regData) =>
+				GetValue(name, scope [?] (regType, regData) =>
 					{
 						if (regType == Windows.REG_BINARY)
 						{
@@ -361,7 +361,7 @@ namespace System
 			public Result<void> GetValue(StringView name, String outData)
 			{
 				bool gotData = false;
-				GetValue(name, scope [&] (regType, regData) =>
+				GetValue(name, scope [?] (regType, regData) =>
 					{
 						if ((regType == Windows.REG_SZ) || (regType == Windows.REG_EXPAND_SZ))
 						{

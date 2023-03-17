@@ -4415,7 +4415,7 @@ namespace IDE
             Debug.Assert(true);
 
             DisassemblyPanel disassemblyPanel = null;
-            WithTabs(scope [&] (tabButton) =>
+            WithTabs(scope [?] (tabButton) =>
                 {
                     if ((disassemblyPanel == null) && (tabButton.mContent is DisassemblyPanel))
                     {
@@ -6188,7 +6188,7 @@ namespace IDE
         public TabbedView.TabButton GetTab(Widget content)
         {
             TabbedView.TabButton tab = null;
-            WithTabs(scope [&] (checkTab) =>
+            WithTabs(scope [?] (checkTab) =>
                 {
                     if (checkTab.mContent == content)
                         tab = checkTab;
@@ -7092,7 +7092,7 @@ namespace IDE
 
             DarkTabbedView tabbedView = null;
             DarkTabbedView.DarkTabButton tabButton = null;
-            WithTabs(scope [&] (tab) =>
+            WithTabs(scope [?] (tab) =>
                 {
                     if (tab.mContent == documentPanel)
                     {
@@ -9278,7 +9278,7 @@ namespace IDE
             {
                 String text = scope String();
 				bool isValid = false;
-                if (LoadTextFile(fullPath, text, true, scope [&] () => { if (sourceHash != null) *sourceHash = SourceHash.Create(.MD5, text); } ) case .Ok)
+                if (LoadTextFile(fullPath, text, true, scope [?] () => { if (sourceHash != null) *sourceHash = SourceHash.Create(.MD5, text); } ) case .Ok)
 				{
                     mFileWatcher.FileIsValid(fullPath);
 					isValid = true;

@@ -315,7 +315,7 @@ namespace Beefy.widgets
 						focusedItem.Focused = false;
 						bool foundOldEnd = false;
 						bool foundNewHead = false;
-						WithItems(scope [&] (checkItem) =>
+						WithItems(scope [?] (checkItem) =>
 							{
 								checkItem.Selected = foundNewHead ^ foundOldEnd;
 								if (checkItem == item)

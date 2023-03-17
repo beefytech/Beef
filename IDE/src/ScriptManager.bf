@@ -1577,7 +1577,7 @@ namespace IDE
 			UpdateWatches();
 
 			int foundIdx = 0;
-			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [&] (item) =>
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [?] (item) =>
 				{
 					if (item.mLabel == str)
 					{
@@ -1615,7 +1615,7 @@ namespace IDE
 			UpdateWatches();
 
 			int foundIdx = 0;
-			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [&] (item) =>
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [?] (item) =>
 				{
 					let watchItem = (WatchListViewItem)item;
 					if (watchItem.Selected)
