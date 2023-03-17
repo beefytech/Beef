@@ -7628,10 +7628,19 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 		bool didWork = false;
 		UpdateDependencyMap(true, didWork);
+		bool hadReifiedRebuild = false;
+
+		for (auto entry : mContext->mPopulateTypeWorkList)
+		{
+			if ((entry != NULL) && (entry->mType->IsReified()))
+				hadReifiedRebuild = true;
+		}
 
 		// Deleting types can cause reified types to rebuild, so allow that
 		mCompileState = BfCompiler::CompileState_Normal;
 		DoWorkLoop();
+		if ((hadReifiedRebuild) && (!mIsResolveOnly))
+			CompileReified();
 	}
 	else
 	{
