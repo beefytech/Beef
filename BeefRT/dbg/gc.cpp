@@ -1,4 +1,4 @@
-//#define BF_GC_DISABLED 
+//#define BF_GC_DISABLED
 
 //#define BF_GC_LOG_ENABLED
 
@@ -112,7 +112,7 @@ bool gGCGetAllocStats = false;
 #ifdef BF_GC_VERIFY_SWEEP_IDS
 	static std::set<int> allocIdSet;
 	static int maxAllocNum = 0;
-#endif			
+#endif
 
 int gGCAllocCount = 0;
 int gGCAllocBytes = 0;
@@ -171,7 +171,7 @@ void* sDbgPtr1 = NULL;
 void* sDbgPtr2 = NULL;*/
 
 void BFGC::MarkMembers(bf::System::Object* obj)
-{	
+{
 	//BP_ZONE("MarkMembers");
 
 	/*if ((obj == sDbgPtr0) || (obj == sDbgPtr1) || (obj == sDbgPtr2))
@@ -241,12 +241,12 @@ void BFGC::ThreadInfo::CalcStackStart()
 #ifdef BF_GC_LOG_ENABLED
 class GCLog
 {
-public:	
+public:
 	enum
 	{
 		EVENT_ALLOC,
-		EVENT_GC_START, // cycle#		
-		EVENT_GC_UNFREEZE, // cycle#				
+		EVENT_GC_START, // cycle#
+		EVENT_GC_UNFREEZE, // cycle#
 		EVENT_MARK,
 		EVENT_WB_MARK,
 		EVENT_THREAD_STARTED,
@@ -259,7 +259,7 @@ public:
 		EVENT_DELETE,
 		EVENT_FOUND,
 		EVENT_FREE,
-		EVENT_WB_MOVE,        
+		EVENT_WB_MOVE,
         EVENT_WEAK_REF,
         EVENT_STRONG_REF,
         EVENT_WEAKREF_MARKED,
@@ -296,16 +296,16 @@ public:
 	{
 		if (mWriting)
 		{
-			// Not a strict guarantee, but should keep us from only messing up 
+			// Not a strict guarantee, but should keep us from only messing up
 			//  more than a single element of the log while we're writing it
-			Beefy::AutoCrit autoCrit(mCritSect);		
+			Beefy::AutoCrit autoCrit(mCritSect);
 			return;
 		}
 
 		BF_FULL_MEMORY_FENCE();
 
 		Entry entry = {event, param1, param2, param3};
-		
+
 		int prevHead;
 		int nextHead;
 
@@ -325,12 +325,12 @@ public:
 			if (::InterlockedCompareExchange((uint32*)&mHead, nextHead, prevHead) == prevHead)
 				break;
 		}
-		
-		mBuffer[prevHead] = entry;		
+
+		mBuffer[prevHead] = entry;
 	}
 
 	const char* GetNameStr(bf::System::Type* type)
-	{	
+	{
 		static Beefy::String str;
 
 		if (type == NULL)
@@ -338,8 +338,8 @@ public:
 
 		try
 		{
-			bf::System::Type* bfTypeRoot = (bf::System::Type*)type;			
-			str = type->GetFullName();			
+			bf::System::Type* bfTypeRoot = (bf::System::Type*)type;
+			str = type->GetFullName();
 			return str.c_str();
 		}
 		catch (...)
@@ -357,8 +357,8 @@ public:
 		wchar_t str[MAX_PATH];
 		GetCurrentDirectoryW(MAX_PATH, str);
 
-		FILE* fp = fopen("c:\\temp\\gclog.txt", "w");		
-		
+		FILE* fp = fopen("c:\\temp\\gclog.txt", "w");
+
 		mWriting = true;
 		int sampleHead = mHead;
 		BF_FULL_MEMORY_FENCE();
@@ -368,8 +368,8 @@ public:
 		int pos = sampleTail;
 		while (pos != sampleHead)
 		{
-			Entry ent = mBuffer[pos];			
-			
+			Entry ent = mBuffer[pos];
+
 			switch (ent.mEvent)
 			{
 			case EVENT_ALLOC:
@@ -381,15 +381,15 @@ public:
 			case EVENT_GC_UNFREEZE:
 				fprintf(fp, "GCUnfreeze MarkId:%d Tick:%d\n", ent.mParam1, ent.mParam2);
 				break;
-			case EVENT_MARK:				
+			case EVENT_MARK:
 				fprintf(fp, "GCMark Obj:%p Flags:0x%X Parent:%p\n", ent.mParam1, ent.mParam2, ent.mParam3);
 				break;
-			case EVENT_WB_MARK:				
+			case EVENT_WB_MARK:
 				fprintf(fp, "WriteBarrierMark Obj:%p Type:%s Thread:%p\n", ent.mParam1, GetNameStr((bf::System::Type*)ent.mParam2), ent.mParam3);
 				break;
 			case EVENT_WB_MOVE:
 				fprintf(fp, "WriteBarrier Entry Move Obj:%p Type:%s Thread:%p\n", ent.mParam1, GetNameStr((bf::System::Type*) ent.mParam2), ent.mParam3);
-				break;            
+				break;
             case EVENT_FOUND_TARGET:
                 fprintf(fp, "Heap Scan Found Target:%p Type:%s Flags:%d\n", ent.mParam1, GetNameStr((bf::System::Type*)ent.mParam2), ent.mParam3);
                 break;
@@ -427,10 +427,10 @@ public:
                 BF_FATAL("Unknown event");
 				break;
 			}
-			
+
 			pos = (pos + 1) & BUFFSIZE_MASK;
 		}
-		
+
 		fclose(fp);
         mWriting = false;
 	}
@@ -493,7 +493,7 @@ static void CheckTcIntegrity()
 				continue;
 			for (int pageIdx3 = 0; pageIdx3 < PageHeap::PageMap::LEAF_LENGTH; pageIdx3++)
 			{
-				tcmalloc_obj::Span* span = (tcmalloc_obj::Span*)node2->ptrs[pageIdx3];	
+				tcmalloc_obj::Span* span = (tcmalloc_obj::Span*)node2->ptrs[pageIdx3];
 				if (span != NULL)
 				{
 					int expectedStartPage = ((pageIdx1 * PageHeap::PageMap::INTERIOR_LENGTH) + pageIdx2) * PageHeap::PageMap::LEAF_LENGTH + pageIdx3;
@@ -508,7 +508,7 @@ static void CheckTcIntegrity()
 		}
 	}
 
-	int spansFound = spanSet.size();	
+	int spansFound = spanSet.size();
 
 #endif
 }
@@ -599,10 +599,10 @@ void* BfObjectAllocate(intptr size, bf::System::Type* objType)
 		result = BF_do_malloc_pages(ThreadCache::GetCache(), totalSize);
 	}
 
-	BF_ASSERT(totalSize - size <= kPageSize);
+	BF_ASSERT(totalSize - (size + 4) <= kPageSize);
 	*(uint16*)((uint8*)result + size) = 0xBFBF;
 	*(uint16*)((uint8*)result + totalSize - 2) = totalSize - size;
-	
+
 	bf::System::Object* obj = (bf::System::Object*)result;
 
 	BFLOG2(GCLog::EVENT_ALLOC, (intptr)obj, (intptr)objType);
@@ -613,33 +613,33 @@ void* BfObjectAllocate(intptr size, bf::System::Type* objType)
 // #ifdef BF_GC_PRINTSTATS
 // 	::InterlockedIncrement((volatile uint32*)&gBFGC.mTotalAllocs);
 // #endif
-	
-#ifdef BG_GC_TRACKPTRS	
+
+#ifdef BG_GC_TRACKPTRS
 	{
 		Beefy::AutoCrit autoCrit(gBFGC.mCritSect);
 		BF_LOGASSERT(gTrackPtr.find(obj) == gTrackPtr.end());
 		gTrackPtr.insert(obj);
 	}
 #endif
-	
+
 #ifdef _DEBUG
-	BF_LOGASSERT((obj->mAllocCheckPtr == 0) || (size > kMaxSize));    
+	BF_LOGASSERT((obj->mAllocCheckPtr == 0) || (size > kMaxSize));
 #endif
 
     //memset((void*)obj, 0, size);
 
-#ifdef BF_OBJECT_TRACK_ALLOCNUM 
-	obj->mAllocNum = (int)::InterlockedIncrement((volatile uint32*) &BfObject::sCurAllocNum);	
+#ifdef BF_OBJECT_TRACK_ALLOCNUM
+	obj->mAllocNum = (int)::InterlockedIncrement((volatile uint32*) &BfObject::sCurAllocNum);
 #endif
-	
+
 #ifdef BF_SECTION_NURSERY
     BfInternalThread* internalThread = (BfInternalThread*)bf::System::Threading::Thread::CurrentInternalThread_internal();
     if ((internalThread != NULL) && (internalThread->mSectionDepth == 1))
         internalThread->mSectionNursery.PushUnsafe(obj);
 #endif
-    
+
     gBFGC.mAllocSinceLastGC += size;
-    
+
 	return obj;
 }
 
@@ -654,7 +654,7 @@ void* BfObjectAllocate(intptr size, bf::System::Type* objType)
 class BFFinalizeData
 {
 public:
-	int mFinalizeCount;	
+	int mFinalizeCount;
     bool mInFinalizeList;
 
 public:
@@ -683,13 +683,13 @@ BFGC::BFGC()
 	mForceDecommit = false;
 	mCollectFailed = false;
 	mLastCollectFrame = 0;
-	mSkipMark = false;	
+	mSkipMark = false;
 	mGracelessShutdown = false;
-	mMainThreadTLSPtr = NULL;	
-	mHadPendingGCDataOverflow = false;	
+	mMainThreadTLSPtr = NULL;
+	mHadPendingGCDataOverflow = false;
 	mCurPendingGCSize = 0;
-	mMaxPendingGCSize = 0;	
-	
+	mMaxPendingGCSize = 0;
+
 	mCollectIdx = 0;
     mStackScanIdx = 0;
 	mMarkDepthCount = 0;
@@ -708,10 +708,10 @@ BFGC::BFGC()
 	mCurScanIdx = 1;
 	mTotalAllocs = 0;
 	mTotalFrees = 0;
-	mLastFreeCount = 0;	
+	mLastFreeCount = 0;
 	mBytesFreed = 0;
-	mBytesRequested = 0;	
-	mRequestedSizesInvalid = false;    
+	mBytesRequested = 0;
+	mRequestedSizesInvalid = false;
 	mDisplayFreedObjects = false;
 	mHadRootError = false;
 	mCurLiveObjectCount = 0;
@@ -728,16 +728,16 @@ BFGC::BFGC()
 
 	mMaxPausePercentage = 20;
 	mMaxRawDeferredObjectFreePercentage = 30;
-    
+
 	// Zero means to run continuously. -1 means don't trigger on a time base
 	// Defaults to collecting every 2 seconds
 	mFullGCPeriod = 2000;
 
-	mGCThread = NULL;	
+	mGCThread = NULL;
 
 	gGCDbgData.mDbgFlags = gBfRtDbgFlags;
 	ThreadCache::InitTSD();
-	if (UNLIKELY(Static::pageheap() == NULL)) ThreadCache::InitModule();	
+	if (UNLIKELY(Static::pageheap() == NULL)) ThreadCache::InitModule();
 	gGCDbgData.mObjRootPtr = Static::pageheap()->pagemap_.root_;
 
 	for (int i = 0; i < kNumClasses; i++)
@@ -791,8 +791,8 @@ static tcmalloc_obj::Span* TCGetSpanAt(void* addr)
 
 	PageHeap::PageMap::Leaf* rootLeaf = Static::pageheap()->pagemap_.root_[checkRootIdx];
 	if (rootLeaf == NULL)
-		return NULL;	
-	auto span = (tcmalloc_obj::Span*)rootLeaf->values[checkLeafIdx];	
+		return NULL;
+	auto span = (tcmalloc_obj::Span*)rootLeaf->values[checkLeafIdx];
 // 	intptr pageSize = (intptr)1 << kPageShift;
 // 	int spanSize = pageSize * span->length;
 // 	void* spanStart = (void*)((intptr)span->start << kPageShift);
@@ -815,7 +815,7 @@ static tcmalloc_obj::Span* TCGetSpanAt(void* addr)
 	PageHeap::PageMap::Node* node2 = node1->ptrs[pageIdx2];
 	if (node2 == NULL)
 		return NULL;
-	auto span = (tcmalloc_obj::Span*)node2->ptrs[pageIdx3];	
+	auto span = (tcmalloc_obj::Span*)node2->ptrs[pageIdx3];
 	return span;
 // 	if (span == NULL)
 // 		return NULL;
@@ -834,14 +834,14 @@ int gMarkTargetCount = 0;
 int gMarkTargetMutatorCount = 0;
 
 int BFGetObjectSize(bf::System::Object* obj)
-{    	
+{
 // 	auto span = TCGetSpanAt(obj);
 // 	int elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
 // 	if (elementSize != 0)
-// 		return elementSize;	
+// 		return elementSize;
 // 	intptr pageSize = (intptr)1 << kPageShift;
 // 	int spanSize = pageSize * span->length;
-// 	return spanSize;	
+// 	return spanSize;
 
 	const PageID p = reinterpret_cast<uintptr_t>(obj) >> kPageShift;
 	size_t cl = Static::pageheap()->GetSizeClassIfCached(p);
@@ -879,7 +879,7 @@ void BFGC::ConservativeScan(void* startAddr, int length)
 		return;
 
     BFLOG2(GCLog::EVENT_CONSERVATIVE_SCAN, (intptr)startAddr, (intptr)startAddr + length);
-    
+
 	void* ptr = (void*)((intptr)startAddr & ~((sizeof(intptr)-1)));
 	void* endAddr = (uint8*)startAddr + length;
 
@@ -901,7 +901,7 @@ void BFGC::ConservativeScan(void* startAddr, int length)
 static tcmalloc_obj::Span* gLastSpan = NULL;
 
 bool BFGC::IsHeapObject(bf::System::Object* obj)
-{	
+{
 	//BP_ZONE("IsHeapObject");
 
 	if ((obj >= tcmalloc_obj::PageHeap::sAddressStart) && (obj < tcmalloc_obj::PageHeap::sAddressEnd))
@@ -914,7 +914,7 @@ bool BFGC::IsHeapObject(bf::System::Object* obj)
 }
 
 /*void BFGC::MarkTypeStatics(BFTypeRoot* checkType)
-{	
+{
 	BFTypeRoot* innerCheckType = (BFTypeRoot*)checkType->mFirstNestedType;
 	while (innerCheckType != NULL)
 	{
@@ -975,7 +975,7 @@ void BFGC::ObjectDeleteRequested(bf::System::Object* obj)
 
 	int sizeOffset = *(uint16*)((uint8*)obj + allocSize - 2);
 	int requestedSize = allocSize - sizeOffset;
-	if ((sizeOffset < 4) || (sizeOffset >= allocSize) || (sizeOffset > kPageSize) ||
+	if ((sizeOffset < 4) || (sizeOffset >= allocSize) || (sizeOffset >= kPageSize + 4) ||
 		(*(uint16*)((uint8*)obj + requestedSize) != 0xBFBF))
 	{
 		Beefy::String err = Beefy::StrFormat("Memory deallocation detected write-past-end error in %d-byte object allocation at 0x%@", requestedSize, obj);
@@ -989,7 +989,7 @@ void BFGC::ObjectDeleteRequested(bf::System::Object* obj)
 		if (BfpSystem_InterlockedExchangeAdd32((uint32*)&mFreeSinceLastGC, (uint32)objSize) + objSize >= mFreeTrigger)
 		{
 			mFreeSinceLastGC = 0;
-			Collect(true);			
+			Collect(true);
 		}
 
 		BFLOG1(GCLog::EVENT_DELETE, (intptr)obj);
@@ -999,21 +999,21 @@ void BFGC::ObjectDeleteRequested(bf::System::Object* obj)
 bool BFGC::HandlePendingGCData()
 {
 	int count = 0;
-	
+
 	while (true)
 	{
 		if (mOrderedPendingGCData.IsEmpty())
 			break;
-		
+
 		mCurPendingGCSize = 0;
 
-		bf::System::Object* obj = mOrderedPendingGCData.Pop();		
+		bf::System::Object* obj = mOrderedPendingGCData.Pop();
 		MarkMembers(obj);
 		count++;
 
 		if (mCurPendingGCSize > mMaxPendingGCSize)
 			mMaxPendingGCSize = mCurPendingGCSize;
-	}	
+	}
 
 	return count > 0;
 }
@@ -1024,16 +1024,16 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 		return;
 
 	if (span->location != tcmalloc_obj::Span::IN_USE)
-		return;	
+		return;
 
 	if (span->start != expectedStartPage)
 	{
 		// This check covers when a new multi-page span is being put into place
 		//  and we catch after the first block, and it also catches the case
 		//  when the allocator splits a span and the pagemap can hold a reference
-		//  to a span that no longer covers that location.  					
-		//  For both of these cases we  ignore the span.  Remember, the worst case 
-		//  here is that we'll miss a sweep of an object, which would just delay it's 
+		//  to a span that no longer covers that location.
+		//  For both of these cases we  ignore the span.  Remember, the worst case
+		//  here is that we'll miss a sweep of an object, which would just delay it's
 		//  cleanup until next GC cycle.  Because the GC is the sole freer of spans,
 		//  there can never be a case where we find a valid span and then the span
 		//  changes sizeclass or location before we can scan the memory it points to.
@@ -1050,12 +1050,12 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 	void* spanPtr = spanStart;
 
     BF_LOGASSERT((spanStart >= tcmalloc_obj::PageHeap::sAddressStart) && (spanEnd <= tcmalloc_obj::PageHeap::sAddressEnd));
-    
+
 	intptr elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
 	if (elementSize == 0)
 		elementSize = spanSize;
 	BF_LOGASSERT(elementSize >= sizeof(bf::System::Object));
-	
+
 	while (spanPtr <= (uint8*)spanEnd - elementSize)
 	{
 		//objCheckCount++;
@@ -1073,7 +1073,7 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 		int deleteMarkId = mCurMarkId - 1;
 		if (deleteMarkId == 0)
 			deleteMarkId = 3;
-		
+
 		int invalidMarkId = deleteMarkId - 1;
 		if (invalidMarkId == 0)
 			invalidMarkId = 3;
@@ -1085,14 +1085,14 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 #ifdef BF_GC_VERIFY_SWEEP_IDS
 			BF_LOGASSERT(obj->mAllocNum != 0);
 			BF_LOGASSERT(allocIdSet.find(obj->mAllocNum) == allocIdSet.end());
-			allocIdSet.insert(obj->mAllocNum);			
+			allocIdSet.insert(obj->mAllocNum);
 #endif
-			
+
 			mCurSweepFoundCount++;
 			int objectFlags = obj->mObjectFlags;
 			if (objectFlags == 0)
 				mCurSweepFoundPermanentCount++;
-            
+
 			BFLOG2(GCLog::EVENT_FOUND, (intptr)obj, obj->mObjectFlags);
 
 			int markId = objectFlags & BF_OBJECTFLAG_MARK_ID_MASK;
@@ -1107,8 +1107,8 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 			if (markId == 0)
 			{
 				// Newly-allocated! Set mark flag now...
-				//obj->mObjectFlags = (BfObjectFlags)(obj->mObjectFlags  | mCurMarkId);				
-				// Newly-allocated! Ignore, it will have its mark set soon (rare race condition)				
+				//obj->mObjectFlags = (BfObjectFlags)(obj->mObjectFlags  | mCurMarkId);
+				// Newly-allocated! Ignore, it will have its mark set soon (rare race condition)
 			}
 			else if ((markId == deleteMarkId) || (mSweepInfo.mShowAllAsLeaks))
 			{
@@ -1167,9 +1167,9 @@ void BFGC::Sweep()
 	allocIdSet.clear();
 #endif
 
-	int leafCheckCount = 0;	
+	int leafCheckCount = 0;
 
-	int bits = kAddressBits;	
+	int bits = kAddressBits;
 	int leafLen = PageHeap::PageMap::LEAF_LENGTH;
 
 #ifdef BF32
@@ -1211,9 +1211,9 @@ void BFGC::Sweep()
 			{
 				leafCheckCount++;
 
-				tcmalloc_obj::Span* span = (tcmalloc_obj::Span*)node2->ptrs[pageIdx3];	
+				tcmalloc_obj::Span* span = (tcmalloc_obj::Span*)node2->ptrs[pageIdx3];
 				if (span != NULL)
-				{					
+				{
 					int expectedStartPage = ((pageIdx1 * PageHeap::PageMap::INTERIOR_LENGTH) + pageIdx2) * PageHeap::PageMap::LEAF_LENGTH + pageIdx3;
 					SweepSpan(span, expectedStartPage);
                     // We may be tempted to advance by span->length here, BUT
@@ -1231,7 +1231,7 @@ void BFGC::Sweep()
 	{
 		BF_LOGASSERT(allocIdSet.find(allocNum) != allocIdSet.end());
 	}
-#endif	 
+#endif
 }
 
 extern Beefy::StringT<0> gDbgErrorString;
@@ -1241,7 +1241,7 @@ void BFGC::ProcessSweepInfo()
 	if (mSweepInfo.mLeakCount > 0)
 	{
 		if (mSweepInfo.mShowAllAsLeaks)
-		{			
+		{
 			// We aren't certain of the mark flags, so force the issue
 			mCurMarkId = 0;
 			for (auto obj : mSweepInfo.mLeakObjects)
@@ -1259,17 +1259,17 @@ void BFGC::ProcessSweepInfo()
 		//::MessageBoxA(NULL, "Leak", "Leak", MB_OK);
 
 //#if 0
-		Beefy::StringT<1024> errorStr = StrFormat("%d object memory leak%s detected.\nMouse over an 'i' icon in the Output panel to view a leaked object and its allocation stack trace.", 
+		Beefy::StringT<1024> errorStr = StrFormat("%d object memory leak%s detected.\nMouse over an 'i' icon in the Output panel to view a leaked object and its allocation stack trace.",
 			mSweepInfo.mLeakCount, (mSweepInfo.mLeakCount != 1) ? "s" : "");
 		gDbgErrorString = errorStr;
 		gDbgErrorString += "\n";
 
-#ifdef BF_GC_DEBUGSWEEP		
+#ifdef BF_GC_DEBUGSWEEP
 		Sleep(100);
 #endif
 
 		for (int pass = 0; pass < 2; pass++)
-		{			
+		{
 			int passLeakCount = 0;
 
 			for (auto obj : mSweepInfo.mLeakObjects)
@@ -1278,17 +1278,17 @@ void BFGC::ProcessSweepInfo()
 				bool hasNoRefs = (obj->mObjectFlags & BF_OBJECTFLAG_MARK_ID_MASK) != mCurMarkId;
 				if (hasNoRefs != wantsNoRefs)
 					continue;
-				
+
 				Beefy::String typeName = obj->GetTypeName();
-				
+
 				if (passLeakCount == 0)
 				{
 					Beefy::String header = (pass == 0) ? " Unreferenced:\n" : " Referenced by other leaked objects:\n";
 					errorStr += "\x1";
 					errorStr += "TEXT\t";
-					errorStr += header;					
+					errorStr += header;
 
-					gDbgErrorString += header;										
+					gDbgErrorString += header;
 				}
 
 				if (passLeakCount == 20000) // Only display so many...
@@ -1301,18 +1301,18 @@ void BFGC::ProcessSweepInfo()
 				if (gDbgErrorString.length() < 256)
 					gDbgErrorString += StrFormat("   (%s)0x%@\n", typeName.c_str(), obj);
 
-				passLeakCount++;				
+				passLeakCount++;
 			}
 		}
 
 		//TODO: Testing!
-		//OutputDebugStrF(gDbgErrorString.c_str());	
+		//OutputDebugStrF(gDbgErrorString.c_str());
 
 		gBfRtDbgCallbacks.SetErrorString(gDbgErrorString.c_str());
 		gBfRtDbgCallbacks.DebugMessageData_SetupError(errorStr.c_str(), 1);
-		
+
 		mCritSect.Unlock();
-		BF_DEBUG_BREAK();	
+		BF_DEBUG_BREAK();
 		mCritSect.Lock();
 
 		for (auto obj : mSweepInfo.mLeakObjects)
@@ -1338,7 +1338,7 @@ void BFGC::ReleasePendingSpanObjects(Span* span)
 void BFGC::ReleasePendingObjects()
 {
 	BP_ZONE("ReleasePendingObjects");
-    
+
 	auto pageHeap = Static::pageheap();
 	if (pageHeap == NULL)
 		return;
@@ -1347,16 +1347,16 @@ void BFGC::ReleasePendingObjects()
 	maxAllocNum = bf::System::Object::sCurAllocNum;
 	allocIdSet.clear();
 #endif
-    
+
 	int leafCheckCount = 0;
-    
+
 #ifdef BF32
 	for (int rootIdx = 0; rootIdx < PageHeap::PageMap::ROOT_LENGTH; rootIdx++)
 	{
 		PageHeap::PageMap::Leaf* rootLeaf = Static::pageheap()->pagemap_.root_[rootIdx];
 		if (rootLeaf == NULL)
 			continue;
-        
+
 		for (int leafIdx = 0; leafIdx < PageHeap::PageMap::LEAF_LENGTH; leafIdx++)
 		{
 			tcmalloc_obj::Span* span = (tcmalloc_obj::Span*)rootLeaf->values[leafIdx];
@@ -1384,7 +1384,7 @@ void BFGC::ReleasePendingObjects()
 		}
 	}
 #endif
-    
+
 #ifdef BF_GC_VERIFY_SWEEP_IDS
 	for (int allocNum = 1; allocNum < maxAllocNum; allocNum++)
 	{
@@ -1468,11 +1468,11 @@ static _TEB* GetTEB(HANDLE hThread)
 }
 
 static void** GetThreadLocalAddressMap(HANDLE hThread)
-{	
+{
 	_TEB* teb = GetTEB(hThread);
 	if (teb == NULL)
 		return NULL;
-	return (void**)teb->ThreadLocalStorage;	
+	return (void**)teb->ThreadLocalStorage;
 }
 
 void BFGC::AdjustStackPtr(intptr& addr, int& size)
@@ -1487,34 +1487,34 @@ void BFGC::AdjustStackPtr(intptr& addr, int& size)
 		MEMORY_BASIC_INFORMATION memoryInfo;
 		int returnSize = ::VirtualQuery((void*)addr, &memoryInfo, sizeof(memoryInfo));
 		if ((returnSize > 0) && ((memoryInfo.Protect & (PAGE_GUARD | PAGE_NOACCESS)) == 0))
-			return;	
-		
+			return;
+
 		addr += pageSize;
-		size -= pageSize;	
+		size -= pageSize;
 	}
 }
 
 bool BFGC::ScanThreads()
 {
 	BP_ZONE("BFGC::ScanThreads");
-	
+
 	mUsingThreadUnlocked = true;
 
 	BF_FULL_MEMORY_FENCE();
 
 	//BP_ZONE("ScanThreads");
-	
+
 	bool didWork = false;
-		
+
 	mStackScanIdx++;
 	mDoStackDeepMark = true;
-	
+
 	int threadIdx = 0;
 
 	while (true)
 	{
 		ThreadInfo* thread = NULL;
-		
+
 		///
 		{
 			AutoCrit autoCrit(mCritSect);
@@ -1548,17 +1548,17 @@ bool BFGC::ScanThreads()
 		//Beefy::DebugTimeGuard suspendTimeGuard(10, "ThreadSuspend");
 
 		DWORD result = 0;
-		
+
 		//BFMark(thread);
 		//MarkObject(thread->mThread);
 
-		// If (thread->mLastGCScanIdx == mCurScanIdx), that means this is the second cycle of running through here, 
+		// If (thread->mLastGCScanIdx == mCurScanIdx), that means this is the second cycle of running through here,
 		//  which could happen if we added another thread while scanning so we need another pass tSuspendThreadhrough to
 		//  catch the new one
 		if (((mGCThread != NULL) && (thread->mThreadHandle == mGCThread)) ||
 			(!thread->mRunning) /*|| (thread->mLastGCScanIdx == mCurScanIdx)*/)
 		{
-			continue;			
+			continue;
 		}
 
 #ifdef BF_GC_LOG_ENABLED
@@ -1568,12 +1568,12 @@ bool BFGC::ScanThreads()
 			Sleep(20);
 		}
 #endif
-			
+
 		//printf("Processing Thread:%p Handle:%p\n", thread, thread->mThreadHandle);
 		//suspendTimeGuard.Start();
 		//DWORD lastError = GetLastError();
 		BF_LOGASSERT(result == 0);
-				
+
 		didWork = true;
 
 		BFLOG2(GCLog::EVENT_SCAN_THREAD, (intptr)thread, (intptr)thread->mThreadId);
@@ -1588,7 +1588,7 @@ bool BFGC::ScanThreads()
 		}
 
 		intptr regVals[128];
-		intptr stackPtr = 0;		
+		intptr stackPtr = 0;
 		BfpThreadResult threadResult;
 		int regValCount = 128;
 		///
@@ -1603,7 +1603,7 @@ bool BFGC::ScanThreads()
 		}
 
 		BF_ASSERT(threadResult == BfpThreadResult_Ok);
-		
+
 		if (thread->mTEB != NULL)
 		{
 			void** threadLoadAddressMap = (void**)((_TEB*)thread->mTEB)->ThreadLocalStorage;
@@ -1616,15 +1616,15 @@ bool BFGC::ScanThreads()
 				markFunc((uint8*)threadLoadAddress + tlsMember.mTLSOffset);
 			}
 		}
-		
+
 		mQueueMarkObjects = true;
 		ConservativeScan(regVals, regValCount * sizeof(intptr));
 		intptr prevStackStart = thread->mStackStart;
-		thread->CalcStackStart();		
+		thread->CalcStackStart();
 
 		thread->mLastStackPtr = stackPtr;
-		int length = thread->mStackStart - stackPtr;		
-		
+		int length = thread->mStackStart - stackPtr;
+
 		AdjustStackPtr(stackPtr, length);
 		{
 			BP_ZONE("ConservativeScan stack");
@@ -1642,8 +1642,8 @@ bool BFGC::ScanThreads()
 		if ((!mOrderedPendingGCData.IsEmpty()) || (!mOrderedPendingGCData.IsEmpty()))
 		{
 			BP_ZONE("HandlePendingGCData(Thread)");
-			HandlePendingGCData();			
-		}		
+			HandlePendingGCData();
+		}
 	}
 
 	// This can be write barrier objects be from dead threads
@@ -1696,7 +1696,7 @@ static void GCObjFree(void* ptr)
         (*((intptr*)span->freeingObjectsTail))++;
         *(reinterpret_cast<void**>(ptr)) = span->freeingObjects;
     }
-    
+
     span->freeingObjects = ptr;
 }
 
@@ -1716,8 +1716,8 @@ void BFGC::DoCollect(bool doingFullGC)
 	mCurMutatorMarkCount = 0;
 	mCurGCObjectQueuedCount = 0;
 	mCurMutatorObjectQueuedCount = 0;
-	mCurObjectDeleteCount = 0;	
-	mCurFinalizersCalled = 0;	
+	mCurObjectDeleteCount = 0;
+	mCurFinalizersCalled = 0;
 	mCurSweepFoundCount = 0;
 	mCurSweepFoundPermanentCount = 0;
 	mCurFreedBytes = 0;
@@ -1738,7 +1738,7 @@ void BFGC::DoCollect(bool doingFullGC)
 
 	gGCTypeCounts = 0;
 	if (!mSkipMark)
-	{		
+	{
 		BP_ZONE("MarkStatics");
 		MarkStatics();
 		RawMarkAll();
@@ -1749,12 +1749,12 @@ void BFGC::DoCollect(bool doingFullGC)
 			mHadRootError = true;
 		}
 	}
-			
+
 	if (!mSkipMark)
-	{		
+	{
 		Beefy::AutoCrit autoCrit(mCritSect);
 		BP_ZONE("ExplicitRootsMark");
-		mQueueMarkObjects = true;		
+		mQueueMarkObjects = true;
 		for (int i = 0; i < (int)mExplicitRoots.size(); i++)
 			MarkObject(mExplicitRoots[i]);
 		mQueueMarkObjects = false;
@@ -1768,31 +1768,31 @@ void BFGC::DoCollect(bool doingFullGC)
     }
 
 	int threadIdx = 0;
-		
+
 	// We need to turn roots black, otherwise the mutator could move a member
 	//  of a gray root to the stack after the stack scan and we'd miss it
 	{
 		BP_ZONE("Collect - HandlePendingGCData(Roots)");
 		HandlePendingGCData();
-	}	
+	}
 
 	mStage = 2;
 
 	mCurScanIdx++;
 
 	int passes = 0;
-	
+
     if (doingFullGC)
     {
 		if (!mSkipMark)
 		{
 			ScanThreads();
 			HandlePendingGCData();
-		}        
-    }	
+		}
+    }
 
 	BF_ASSERT(mOrderedPendingGCData.IsEmpty());
-}        
+}
 
 void BFGC::FinishCollect()
 {
@@ -1803,29 +1803,29 @@ void BFGC::FinishCollect()
 
 	mLastFreeCount = 0;
 	mStage = 3;
-		
+
     typedef std::unordered_set<bf::System::Object*> BfObjectSet;
-    
-	{				
-        
+
+	{
+
         // Handle any pending data from strong GCHandle references
         HandlePendingGCData();
 	}
 
     int finalizeDataCountFound = 0;
-        
+
 	if (mDebugDumpState == DEBUGDUMPSTATE_WAITING_FOR_GC)
 	{
 		WriteDebugDumpState();
 		mDebugDumpState = DEBUGDUMPSTATE_NONE;
 	}
-	
+
 	{
 		BP_ZONE("FreeingObjects");
 
 		void* lastPtr = NULL;
 		for (int i = 0; i < mFinalizeList.size(); i++)
-		{			
+		{
 			bf::System::Object* obj = mFinalizeList[i];
 			if (obj == NULL)
 				continue;
@@ -1857,7 +1857,7 @@ void BFGC::FinishCollect()
 				continue;
 			// Removed from list already?
 			if ((obj->mObjectFlags & BF_OBJECTFLAG_MARK_ID_MASK) == mCurMarkId)
-				continue;			
+				continue;
 
 #ifdef BF_DEBUG
 			if ((obj->mObjectFlags & (/*BF_OBJECTFLAG_FREED |*/ BF_OBJECTFLAG_ALLOCATED)) != BF_OBJECTFLAG_ALLOCATED)
@@ -1868,25 +1868,25 @@ void BFGC::FinishCollect()
 
 #ifdef TARGET_TYPE
 			if (obj->mBFVData->mType == TARGET_TYPE)
-			{				
+			{
 				printf("Finalizing target %p\n", obj);
 			}
 #endif
-#endif			
+#endif
 
 			BFLOG1(GCLog::EVENT_FREE, (intptr)obj);
 
 			// BYE!
 #ifdef BF_NO_FREE_MEMORY
 			//obj->mObjectFlags |= BF_OBJECTFLAG_FREED;
-#else										
-			
+#else
+
 #ifdef BG_GC_TRACKPTRS
 			{
 				Beefy::AutoCrit autoCrit(gBFGC.mCritSect);
 				gTrackPtr.erase(gTrackPtr.find(obj));
-			}			
-#endif			
+			}
+#endif
 
 			int objSize = BFGetObjectSize(obj);
             objFreeSize += objSize;
@@ -1912,16 +1912,16 @@ void BFGC::FinishCollect()
 			tc_free(obj);
 #else
             GCObjFree(obj);
-#endif			
-			
+#endif
+
 #ifdef BF_GC_PRINTSTATS
 			::InterlockedIncrement((volatile uint32*) &gBFGC.mTotalFrees);
 #endif
-			
+
 #endif
 			mCurObjectDeleteCount++;
 		}
-        
+
 		if (!sizeMap.IsEmpty())
 		{
 			std::multimap<int, bf::System::Type*> orderedSizeMap;
@@ -1936,7 +1936,7 @@ void BFGC::FinishCollect()
 			msg += Beefy::StrFormat("GC Live Count                           : %d\n", mCurLiveObjectCount);
 			msg += Beefy::StrFormat("GC Freed Count                          : %d\n", mLastFreeCount);
 			msg += Beefy::StrFormat("GC Freed Size                           : %dk\n", (int)(objFreeSize / 1024));
-			msg += "GC Objects\n";			
+			msg += "GC Objects\n";
 			for (auto& pair : orderedSizeMap)
 			{
 				bf::System::Type* typeName = pair.second;
@@ -1963,7 +1963,7 @@ void BFGC::FinishCollect()
     }
 #endif
 
-	mFinalizeList.Clear();    	
+	mFinalizeList.Clear();
 
 	mStage = 4;
 }
@@ -1985,13 +1985,13 @@ void BFGC::Run()
 	{
 		UpdateStats();
 
-		float fullGCPeriod = mFullGCPeriod;		
+		float fullGCPeriod = mFullGCPeriod;
 		if ((fullGCPeriod != -1) && (mMaxPausePercentage > 0) && (!mCollectReports.IsEmpty()))
 		{
 			// When we are debugging, we can have a very long update when stepping through code,
-			//  but otherwise try to pick an update period that keeps our pause time down			
+			//  but otherwise try to pick an update period that keeps our pause time down
 			float maxExpandPeriod = BF_MAX(mFullGCPeriod, 2000);
-			auto& collectReport = mCollectReports.back();			
+			auto& collectReport = mCollectReports.back();
 			fullGCPeriod = BF_MAX(fullGCPeriod, collectReport.mPausedMS * 100 / mMaxPausePercentage);
 			fullGCPeriod = BF_MIN(fullGCPeriod, maxExpandPeriod);
 		}
@@ -2000,10 +2000,10 @@ void BFGC::Run()
 		if (waitPeriod == 0)
 			waitPeriod = -1;
 		mCollectEvent.WaitFor(waitPeriod);
-				
+
 		uint32 tickNow = BFTickCount();
 		if ((fullGCPeriod >= 0) && (tickNow - lastGCTick >= fullGCPeriod))
-			mCollectRequested = true;		
+			mCollectRequested = true;
 		if ((mFreeTrigger >= 0) && (mFreeSinceLastGC >= mFreeTrigger))
 			mCollectRequested = true;
 
@@ -2012,7 +2012,7 @@ void BFGC::Run()
 
 		lastGCTick = tickNow;
 		mCollectRequested = false;
-		mPerformingCollection = true;		
+		mPerformingCollection = true;
 		BF_FULL_MEMORY_FENCE();
 		while (true)
 		{
@@ -2020,16 +2020,16 @@ void BFGC::Run()
 			mMaxPendingGCSize = 0;
 			PerformCollection();
 			if (!mHadPendingGCDataOverflow)
-				break;			
+				break;
 			mOrderedPendingGCData.Reserve(BF_MAX(mOrderedPendingGCData.mAllocSize + mOrderedPendingGCData.mAllocSize / 2, mMaxPendingGCSize + 256));
 		}
-		
+
 		BF_FULL_MEMORY_FENCE();
 		mPerformingCollection = false;
 		BF_FULL_MEMORY_FENCE();
 		mCollectDoneEvent.Set(true);
-	}	
-	
+	}
+
 	mRunning = false;
 }
 
@@ -2041,7 +2041,7 @@ void BFGC::RunStub(void* gc)
 void BFGC::ThreadStarted(BfDbgInternalThread* thread)
 {
 	Beefy::AutoCrit autoCrit(mCritSect);
-	
+
 	//thread->mTCMallocObjThreadCache = tcmalloc_obj::ThreadCache::GetCache();
 	//mThreadList.push_back(thread);
 
@@ -2053,18 +2053,18 @@ void BFGC::ThreadStarted(BfDbgInternalThread* thread)
 void BFGC::ThreadStopped(BfDbgInternalThread* thread)
 {
 	Beefy::AutoCrit autoCrit(mCritSect);
-	// Keep sync to avoid having the thread exit while the GC is trying to pause it, 
-	//   but do the actual cleanup from the GC's thread	
+	// Keep sync to avoid having the thread exit while the GC is trying to pause it,
+	//   but do the actual cleanup from the GC's thread
 
 	//thread->mDone = true;
 
-	//printf("ThreadStopped: %p intern:%p TID:%d\n", thread->mThread, thread, ::GetCurrentThreadId());	
+	//printf("ThreadStopped: %p intern:%p TID:%d\n", thread->mThread, thread, ::GetCurrentThreadId());
 }
 
 void BFGC::ThreadStarted()
 {
 	Beefy::AutoCrit autoCrit(mCritSect);
-	
+
 	ThreadInfo* thread = new ThreadInfo();
 	thread->mRunning = true;
 	thread->mThreadHandle = BfpThread_GetCurrent();
@@ -2081,7 +2081,7 @@ void BFGC::ThreadStarted()
 }
 
 void BFGC::ThreadStopped()
-{	
+{
 	auto thread = ThreadInfo::sCurThreadInfo;
 	if (thread != NULL)
 	{
@@ -2095,36 +2095,36 @@ void BFGC::ThreadStopped()
 			delete thread;
 		}
 		else
-		{			
+		{
 			thread->mRunning = false;
 		}
-	}	
+	}
 }
 
 void BFGC::Init()
-{		
-	//ThreadStarted(); 
+{
+	//ThreadStarted();
 	Start();
 }
 
 void BFGC::Start()
-{		
-#ifndef BF_GC_DISABLED	
-	mRunning = true;	
+{
+#ifndef BF_GC_DISABLED
+	mRunning = true;
 
 #ifdef BF_DEBUG
-	// More stack space is needed in debug version	
+	// More stack space is needed in debug version
 	mGCThread = BfpThread_Create(RunStub, (void*)this, 256 * 1024, (BfpThreadCreateFlags)(BfpThreadCreateFlag_Suspended | BfpThreadCreateFlag_StackSizeReserve), &mThreadId);
-#else	
+#else
 	mGCThread = BfpThread_Create(RunStub, (void*)this, 64 * 1024, (BfpThreadCreateFlags)(BfpThreadCreateFlag_Suspended | BfpThreadCreateFlag_StackSizeReserve), &mThreadId);
 #endif
-	
+
 	BfpThread_Resume(mGCThread, NULL);
 #endif
 }
 
 void BFGC::StopCollecting()
-{	
+{
 	if (!mRunning)
 		return;
 
@@ -2149,9 +2149,9 @@ void BFGC::StopCollecting()
 }
 
 void BFGC::AddStackMarkableObject(bf::System::Object* obj)
-{	
+{
 	auto threadInfo = ThreadInfo::sCurThreadInfo;
-	Beefy::AutoCrit autoCrit(threadInfo->mCritSect);	
+	Beefy::AutoCrit autoCrit(threadInfo->mCritSect);
 	threadInfo->mStackMarkableObjects.Add(obj);
 }
 
@@ -2194,11 +2194,11 @@ void BFGC::Shutdown()
 
 	RawShutdown();
 	TCMalloc_FreeAllocs();
-	
-	mFinalizeList.Dispose();	
-	mOrderedPendingGCData.Dispose();	
+
+	mFinalizeList.Dispose();
+	mOrderedPendingGCData.Dispose();
 	for (auto thread : mThreadList)
-		thread->mStackMarkableObjects.Dispose();	
+		thread->mStackMarkableObjects.Dispose();
 }
 
 void BFGC::InitDebugDump()
@@ -2220,7 +2220,7 @@ void BFGC::EndDebugDump()
 intptr gFindAddrVal = 0;
 
 void BFGC::DebugDumpLeaks()
-{	
+{
 	CheckTcIntegrity();
 
 	BP_ZONE("DebugDump");
@@ -2229,13 +2229,13 @@ void BFGC::DebugDumpLeaks()
 		return;
 
 	mSkipMark = true;
-	Collect(false);	
+	Collect(false);
 }
 
 void BFGC::ObjReportHandleSpan(tcmalloc_obj::Span* span, int expectedStartPage, int& objectCount, intptr& freeSize, Beefy::Dictionary<bf::System::Type*, AllocInfo>& sizeMap)
-{	
+{
 	if (span->location != tcmalloc_obj::Span::IN_USE)
-		return;	
+		return;
 
 	if (span->start != expectedStartPage)
 	{
@@ -2265,7 +2265,7 @@ void BFGC::ObjReportHandleSpan(tcmalloc_obj::Span* span, int expectedStartPage, 
 			{
 				bf::System::Type* type = obj->_GetType();
 				//auto pairVal = sizeMap.insert(std::make_pair(type, 0));
-				//int newSize = pairVal.first->second + elementSize;				
+				//int newSize = pairVal.first->second + elementSize;
 				//pairVal.first->second = newSize;
 				AllocInfo* sizePtr = NULL;
 				sizeMap.TryAdd(type, NULL, &sizePtr);
@@ -2299,10 +2299,10 @@ void BFGC::ObjReportScan(int& objectCount, intptr& freeSize, Beefy::Dictionary<b
 			continue;
 
 		for (int leafIdx = 0; leafIdx < PageHeap::PageMap::LEAF_LENGTH; leafIdx++)
-		{			
+		{
 			tcmalloc_obj::Span* span = (tcmalloc_obj::Span*)rootLeaf->values[leafIdx];
 			if (span != NULL)
-			{				
+			{
 				int expectedStartPage = (rootIdx * PageHeap::PageMap::LEAF_LENGTH) + leafIdx;
 				ObjReportHandleSpan(span, expectedStartPage, objectCount, freeSize, sizeMap);
 				// We may be tempted to advance by span->length here, BUT
@@ -2312,7 +2312,7 @@ void BFGC::ObjReportScan(int& objectCount, intptr& freeSize, Beefy::Dictionary<b
 			}
 		}
 	}
-#else	
+#else
 	for (int pageIdx1 = 0; pageIdx1 < PageHeap::PageMap::INTERIOR_LENGTH; pageIdx1++)
 	{
 		PageHeap::PageMap::Node* node1 = Static::pageheap()->pagemap_.root_->ptrs[pageIdx1];
@@ -2324,10 +2324,10 @@ void BFGC::ObjReportScan(int& objectCount, intptr& freeSize, Beefy::Dictionary<b
 			if (node2 == NULL)
 				continue;
 			for (int pageIdx3 = 0; pageIdx3 < PageHeap::PageMap::LEAF_LENGTH; pageIdx3++)
-			{				
+			{
 				tcmalloc_obj::Span* span = (tcmalloc_obj::Span*)node2->ptrs[pageIdx3];
 				if (span != NULL)
-				{					
+				{
 					int expectedStartPage = ((pageIdx1 * PageHeap::PageMap::INTERIOR_LENGTH) + pageIdx2) * PageHeap::PageMap::LEAF_LENGTH + pageIdx3;
 					ObjReportHandleSpan(span, expectedStartPage, objectCount, freeSize, sizeMap);
 					// We may be tempted to advance by span->length here, BUT
@@ -2348,7 +2348,7 @@ void BFGC::Report()
 	CheckTcIntegrity();
 
 	BP_ZONE("Report");
-	
+
 	Beefy::String msg;
 
 	int objectCount = 0;
@@ -2366,9 +2366,9 @@ void BFGC::Report()
 
 	ObjReportScan(objectCount, objFreeSize, sizeMap);
 
-	std::multimap<AllocInfo, bf::System::Type*> orderedSizeMap;	
+	std::multimap<AllocInfo, bf::System::Type*> orderedSizeMap;
 	for (auto& pair : sizeMap)
-	{		
+	{
 		orderedSizeMap.insert(std::make_pair(pair.mValue, pair.mKey));
 	}
 
@@ -2378,13 +2378,13 @@ void BFGC::Report()
 	msg += Beefy::StrFormat("  System Memory Taken                                            %dk\n", (int)(TCMalloc_SystemTaken / 1024));
 	//msg += Beefy::StrFormat("  BytesRequested                                               %dk\n", (int)(mBytesRequested / 1024));
 	msg += Beefy::StrFormat("  Live Objects                                                   %d\n", objectCount);
-	msg += Beefy::StrFormat("  Last Object Freed Count                                        %d\n", mLastFreeCount);	
-	    
+	msg += Beefy::StrFormat("  Last Object Freed Count                                        %d\n", mLastFreeCount);
+
 	intptr objReportedCount = 0;
 	intptr rawReportedCount = 0;
-	intptr rawFreeSize = 0;		
+	intptr rawFreeSize = 0;
 	intptr objTotalSize = 0;
-	intptr rawTotalSize = 0;	
+	intptr rawTotalSize = 0;
 	gBFGC.RawReport(msg, rawFreeSize, orderedSizeMap);
 	for (auto& pair : orderedSizeMap)
 	{
@@ -2396,12 +2396,12 @@ void BFGC::Report()
 
 	msg += Beefy::StrFormat("  Obj Scanned Alloc Count                                        %d\n", (int)(objReportedCount));
 	msg += Beefy::StrFormat("  Raw Scanned Alloc Count                                        %d\n", (int)(rawReportedCount));
-	msg += Beefy::StrFormat("  Obj Used Memory                                                %dk\n", (int)(objTotalSize / 1024));	
+	msg += Beefy::StrFormat("  Obj Used Memory                                                %dk\n", (int)(objTotalSize / 1024));
 	msg += Beefy::StrFormat("  Raw Used Memory                                                %dk\n", (int)(rawTotalSize / 1024));
-	msg += Beefy::StrFormat("  Obj Unusued Memory                                             %dk\n", (int)(objFreeSize / 1024));	
+	msg += Beefy::StrFormat("  Obj Unusued Memory                                             %dk\n", (int)(objFreeSize / 1024));
 	msg += Beefy::StrFormat("  Raw Unusued Memory                                             %dk\n", (int)(rawFreeSize / 1024));
 
-	
+
 	if (!mCollectReports.IsEmpty())
 	{
 		for (int reportIdx = 0; reportIdx < (int)mCollectReports.size(); reportIdx++)
@@ -2417,11 +2417,11 @@ void BFGC::Report()
 
 			msg += "\n";
 		}
-		
+
 		msg += Beefy::StrFormat("  Average Time Between Collections                               %dms\n", BFTickCount() / mCollectIdx);
 	}
-	        
-	msg += "Types                                                                  Size   Count\n";	
+
+	msg += "Types                                                                  Size   Count\n";
 	for (auto& pair : orderedSizeMap)
 	{
 		bf::System::Type* type = pair.second;
@@ -2430,12 +2430,12 @@ void BFGC::Report()
 			typeName = "NULL";
 		else
 			typeName = type->GetFullName();
-		
+
 		if (pair.first.mObjCount > 0)
 			msg += StrFormat("OBJ %-62s %7dk %7d\n", typeName.c_str(), (pair.first.mObjSize + 1023) / 1024, pair.first.mObjCount);
 		if (pair.first.mRawCount > 0)
-			msg += StrFormat("RAW %-62s %7dk %7d\n", typeName.c_str(), (pair.first.mRawSize + 1023) / 1024, pair.first.mRawCount);		
-	}	
+			msg += StrFormat("RAW %-62s %7dk %7d\n", typeName.c_str(), (pair.first.mRawSize + 1023) / 1024, pair.first.mRawCount);
+	}
 
 	Beefy::OutputDebugStr(msg.c_str());
 
@@ -2497,7 +2497,7 @@ void BFGC::ResumeThreads()
 void BFGC::PerformCollection()
 {
 	BP_ZONE("TriggerCollection");
-	
+
 	if (mCollectIdx == 0)
 	{
 		// 'Prime' register capture
@@ -2513,13 +2513,13 @@ void BFGC::PerformCollection()
 	DWORD startTick = BFTickCount();
 	CollectReport collectReport;
 	collectReport.mCollectIdx = mCollectIdx;
-	collectReport.mStartTick = startTick;	
+	collectReport.mStartTick = startTick;
 
 #ifndef BF_MINGW
 	//_CrtCheckMemory();
 #endif
 
-#ifdef BF_GC_INCREMENTAL	
+#ifdef BF_GC_INCREMENTAL
 	mFullGCTriggered = true;
 	mForceDecommit |= forceDecommit;
 	gBFGC.mCollectEvent.Set();
@@ -2535,8 +2535,8 @@ void BFGC::PerformCollection()
 	BOOL worked = ::VirtualProtect(mallocAddr, 1, PAGE_EXECUTE_READWRITE, &oldProtect);
 	uint8 oldCode = *mallocAddr;
 	*mallocAddr = 0xCC;*/
-	
-	mOrderedPendingGCData.Reserve(BF_GC_MAX_PENDING_OBJECT_COUNT);	
+
+	mOrderedPendingGCData.Reserve(BF_GC_MAX_PENDING_OBJECT_COUNT);
 
 	uint32 suspendStartTick = BFTickCount();
 	SuspendThreads();
@@ -2550,7 +2550,7 @@ void BFGC::PerformCollection()
 #endif
 
 	//*mallocAddr = oldCode;
-	
+
 #ifdef BF_GC_EMPTYSCAN
 	{
 		mSweepInfo.mEmptyScan = true;
@@ -2564,11 +2564,11 @@ void BFGC::PerformCollection()
 	BFLOG2(GCLog::EVENT_GC_UNFREEZE, sCurMarkId, BfpSystem_TickCount());
 
 #ifndef BF_GC_DEBUGSWEEP
-	ResumeThreads();		
+	ResumeThreads();
 #endif
 
 	collectReport.mPausedMS = BFTickCount() - suspendStartTick;
-	
+
 	//BFGCLogWrite();
 
 	mFinalizeList.Clear();
@@ -2584,7 +2584,7 @@ void BFGC::PerformCollection()
 	ProcessSweepInfo();
 
 	BFLOG2(GCLog::EVENT_GC_DONE, mCurGCMarkCount, mHadPendingGCDataOverflow ? 1 : 0);
-	
+
 	collectReport.mTotalMS = BFTickCount() - startTick;
 
 // 	while (mCollectReports.size() > 4)
@@ -2595,7 +2595,7 @@ void BFGC::PerformCollection()
 
 	mCollectReports.Add(collectReport);
 	mCollectIdx++;
-#endif	
+#endif
 }
 
 void BFGC::Collect(bool async)
@@ -2607,7 +2607,7 @@ void BFGC::Collect(bool async)
 		mCollectEvent.Set();
 	}
 	else
-	{	
+	{
 		if (mPerformingCollection)
 			mCollectDoneEvent.WaitFor(0); // Wait for previous to finish
 		mCollectDoneEvent.Reset();
@@ -2642,7 +2642,7 @@ void BFGC::WriteDebugDumpState()
 		if ((bf::System::Type*)obj->GetTypeSafe() != NULL)
 		{
 			if ((uintptr)obj->GetTypeSafe() <= 1024U*1024U)
-			{				
+			{
 				while ((int) debugInfoVector.size() <= 0)
 					debugInfoVector.push_back(DebugInfo());
 
@@ -2668,8 +2668,8 @@ void BFGC::WriteDebugDumpState()
 				debugInfo->mSize += objSize;
 				debugInfo->mAllocSize += objSize;
 				//debugInfo->mAllocSize += MallocExtension::instance()->GetEstimatedAllocatedSize(objSize);
-			}			
-		}		
+			}
+		}
 	}
 
 	typedef std::multimap<int, DebugInfo*> DebugInfoMap;
@@ -2697,13 +2697,13 @@ void BFGC::WriteDebugDumpState()
 			typeName = debugInfo->mType->GetFullName();
 		else
 			typeName = "???";
-		
+
 		lineStr += typeName;
 		dbgStr += lineStr += "\n";
 		countTotal += debugInfo->mCount;
 		sizeTotal += debugInfo->mSize;
 		allocSizeTotal += debugInfo->mAllocSize;
-		++itr;		
+		++itr;
 	}
 	dbgStr += StrFormat("%8d %8dk %8dk  TOTAL", countTotal, (sizeTotal + 1023)/1024, (allocSizeTotal + 1023)/1024);
 
@@ -2719,30 +2719,30 @@ static bf::System::Object* gMarkingObject[8192];
 #endif
 
 void BFGC::MarkFromGCThread(bf::System::Object* obj)
-{	
+{
 	if (obj == NULL)
 		return;
 
 	//BP_ZONE("MarkFromGCThread");
-	
+
 	void* addr = obj;
 	if ((addr < tcmalloc_obj::PageHeap::sAddressStart) || (addr >= tcmalloc_obj::PageHeap::sAddressEnd))
 		return;
 
 	tcmalloc_obj::Span* span = TCGetSpanAt(obj);
 	if (span == NULL)
-		return;	
+		return;
 	if (span->location != tcmalloc_obj::Span::IN_USE)
 		return;
-		
+
 	intptr pageSize = (intptr) 1 << kPageShift;
 	intptr spanSize = pageSize * span->length;
 	void* spanStart = (void*)((intptr)span->start << kPageShift);
 	void* spanEnd = (void*)((intptr)spanStart + spanSize);
-		
+
 	if ((addr < spanStart) || (addr > (uint8*)spanEnd - sizeof(bf::System::Object)))
 		return;
-	
+
 	// Is it already marked? Ignore.
 	if ((obj->mObjectFlags & BF_OBJECTFLAG_MARK_ID_MASK) == mCurMarkId)
 		return;
@@ -2772,43 +2772,43 @@ void BFGC::MarkFromGCThread(bf::System::Object* obj)
 	}
 	else
 	{
-		void* maskedAddr = addr;		
-		maskedAddr = (uint8*)spanStart + (((uint8*)maskedAddr - (uint8*)spanStart) / elementSize * elementSize);		
+		void* maskedAddr = addr;
+		maskedAddr = (uint8*)spanStart + (((uint8*)maskedAddr - (uint8*)spanStart) / elementSize * elementSize);
 		if (obj != (bf::System::Object*)maskedAddr)
 			return;
-	}		
-		
+	}
+
 #ifndef BF_GC_DISABLED
 	BF_LOGASSERT(mThreadId == BfpThread_GetCurrentId());
-	BF_LOGASSERT(obj->mClassVData != 0);	
+	BF_LOGASSERT(obj->mClassVData != 0);
 #ifdef TARGET_TYPE
 	if (obj->mBFVData->mType == TARGET_TYPE)
 	{
 		gMarkTargetCount++;
 		printf("Marking target %p\n", obj);
-	}	
+	}
 #endif
 
-	
+
 #ifdef BF_GC_LOG_ENABLED
 	bf::System::Object* parentObj = NULL;
 	if (mMarkDepthCount > 0)
 		parentObj = gMarkingObject[mMarkDepthCount-1];
 	BFLOG3(GCLog::EVENT_MARK, (intptr)obj, obj->mObjectFlags, (intptr)parentObj);
 #endif
-		
+
 	obj->mObjectFlags = (BfObjectFlags)((obj->mObjectFlags & ~BF_OBJECTFLAG_MARK_ID_MASK) | mCurMarkId);
 	mCurGCMarkCount++;
-	
+
 	mCurGCObjectQueuedCount++;
 	mCurPendingGCSize++;
 
-	bool allowQueue = true;	
-	
+	bool allowQueue = true;
+
 	if (mOrderedPendingGCData.GetFreeCount() > 0)
 	{
 		mOrderedPendingGCData.Add(obj);
-	}	
+	}
 	else
 	{
 		// No more room left -- we can't queue...
@@ -2902,7 +2902,7 @@ void GC::Collect(bool async)
 
 void GC::Report()
 {
-	gBFGC.Report();	
+	gBFGC.Report();
 }
 
 void GC::Mark(Object* obj)
