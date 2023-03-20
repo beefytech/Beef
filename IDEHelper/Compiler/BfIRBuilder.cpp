@@ -1648,7 +1648,7 @@ int8 BfIRBuilder::CheckedMul(int8 a, int8 b)
 
 int16 BfIRBuilder::CheckedMul(int16 a, int16 b)
 {
-	int result = a + b;
+	int result = a * b;
 	if ((result > 0x7FFF) || (result < -0x8000))
 		OpFailed();
 	return (int16)result;
