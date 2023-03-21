@@ -17810,7 +17810,7 @@ void BeMCContext::Generate(BeFunction* function)
 								result = AllocVirtualReg(intrin->mReturnType);
 								CreateDefineVReg(result);
 								auto vregInfo = GetVRegInfo(result);
-								vregInfo->mRelTo = GetOperand(castedInst->mArgs[0].mValue);
+								vregInfo->mRelTo = TryToVector(castedInst->mArgs[0].mValue);
 								vregInfo->mIsExpr = true;
 							}
 							break;
