@@ -2456,6 +2456,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 
 		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCeMachine->mCurEmitContext, ceEmitContext);
 		auto ceContext = mCompiler->mCeMachine->AllocContext();
+		defer({ mCompiler->mCeMachine->ReleaseContext(ceContext); });
 
 		BfIRValue attrVal =ceContext->CreateAttribute(customAttribute.mRef, this, typeInstance->mConstHolder, &customAttribute);
 		for (int baseIdx = 0; baseIdx < checkDepth; baseIdx++)
@@ -2592,8 +2593,6 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				UpdateCEEmit(ceEmitContext, typeInstance, customAttribute.mDeclaringType, ctxStr, customAttribute.mRef, BfCeTypeEmitSourceKind_Type);
 			}
 		}
-
-		mCompiler->mCeMachine->ReleaseContext(ceContext);
 	}
 }
 
