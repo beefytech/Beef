@@ -2582,6 +2582,9 @@ BeMCOperand BeMCContext::TryToVector(BeValue* value)
 	auto type = GetType(operand);
 	if (!type->IsPointer())
 		return operand;
+	auto pointerType = (BePointerType*)type;
+	if (!pointerType->mElementType->IsVector())
+		return operand;
 	return CreateLoad(operand);
 }
 
