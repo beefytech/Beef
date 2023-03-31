@@ -3103,7 +3103,7 @@ void BfIRCodeGen::HandleNextCmd()
 						{
 							auto vecType = llvm::dyn_cast<llvm::VectorType>(val0->getType());
 							auto elemType = vecType->getElementType();
-							bool isFP = elemType->isFloatTy();
+							bool isFP = elemType->isFloatingPointTy();
 
 							llvm::Value* val1;
 							if (args.size() < 2)
