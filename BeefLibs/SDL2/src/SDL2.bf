@@ -57,17 +57,113 @@ namespace SDL2
 		[LinkName("SDL_free")]
 		public static extern void free(void* memblock);
 
+		[LinkName("SDL_getenv")]
+		public static extern char* getenv(char8* name);
+
+		[LinkName("SDL_setenv")]
+		public static extern int32 setenv(char8* name, char8* value, int32 overwrite);
+
+        [LinkName("SDL_crc16")]
+        public static extern uint16 crc16(uint16 crc, void* data, uint len);
+
+        [LinkName("SDL_crc32")]
+        public static extern uint32 crc32(uint32 crc, void* data, uint len);
+
 		public struct RWOps;
 
 		[LinkName("SDL_RWFromFile")]
 		public static extern RWOps* RWFromFile(char8* file, char8* mode);
-		
+
 		/* mem refers to a void*, IntPtr to an SDL_RWops* */
 		[LinkName("SDL_RWFromMem")]
 		public static extern RWOps* RWFromMem(void* mem, int32 size);
 
+        [LinkName("SDL_RWFromConstMem")]
+        public static extern RWOps* RWFromConstMem(void* mem, int32 size);
+
+        [LinkName("SDL_RWsize")]
+        public static extern sint64 RWsize(SDL_RWops* ctx);
+
+        [LinkName("SDL_RWseek")]
+        public static extern sint64 RWseek(SDL_RWops* ctx, sint64 offset, Whence whence);
+
+        [LinkName("SDL_RWtell")]
+        public static extern sint64 RWtell(SDL_RWops* ctx);
+
+        [LinkName("SDL_RWread")]
+        public static extern uint RWread(SDL_RWops* ctx, void* ptr, uint size, uint maxnum);
+
+        [LinkName("SDL_RWwrite")]
+        public static extern uint RWwrite(SDL_RWops* ctx, void* ptr, uint size, uint maxnum);
+
+        [LinkName("SDL_RWclose")]
+        public static extern int32 RWclose(SDL_RWops* ctx);
+
+        [LinkName("SDL_LoadFile_RW")]
+        public static extern int32 LoadFile_RW(SDL_RWops* src, uint datasize, int32 freesrc);
+
+        [LinkName("SDL_LoadFile")]
+        public static extern void* LoadFile(char* file, uint datasize);
+
+        [LinkName("SDL_ReadU8")]
+        public static extern uint8 ReadU8(SDL_RWops* src);
+
+        [LinkName("SDL_ReadLE16")]
+        public static extern uint16 ReadLE16(SDL_RWops* src);
+
+        [LinkName("SDL_ReadBE16")]
+        public static extern uint16 ReadBE16(SDL_RWops* src);
+
+        [LinkName("SDL_ReadLE32")]
+        public static extern uint32 ReadLE32(SDL_RWops* src);
+
+        [LinkName("SDL_ReadBE32")]
+        public static extern uint32 ReadBE32(SDL_RWops* src);
+
+        [LinkName("SDL_ReadLE64")]
+        public static extern uint64 ReadLE64(SDL_RWops* src);
+
+        [LinkName("SDL_ReadBE64")]
+        public static extern uint64 ReadBE64(SDL_RWops* src);
+
+        [LinkName("SDL_WriteU8")]
+        public static extern uint WriteU8(SDL_RWops* src, uint8 value);
+
+        [LinkName("SDL_WriteLE16")]
+        public static extern uint WriteLE16(SDL_RWops* src, uint16 value);
+
+        [LinkName("SDL_WriteBE16")]
+        public static extern uint WriteBE16(SDL_RWops* src, uint16 value);
+
+        [LinkName("SDL_WriteLE32")]
+        public static extern uint WriteLE32(SDL_RWops* src, uint32 value);
+
+        [LinkName("SDL_WriteBE32")]
+        public static extern uint WriteBE32(SDL_RWops* src, uint32 value);
+
+        [LinkName("SDL_WriteLE64")]
+        public static extern uint WriteLE64(SDL_RWops* src, uint64 value);
+
+        [LinkName("SDL_WriteBE64")]
+        public static extern uint WriteBE64(SDL_RWops* src, uint64 value);
+
+
+
 		[LinkName("SDL_SetMainReady")]
 		public static extern void SetMainReady();
+
+        [LinkName("SDL_RegisterApp")]
+        public static extern int RegisterApp(char8* name, uint32 style, void* hInst);
+
+        [LinkName("SDL_UnregisterApp")]
+        public static extern void UnregisterApp(void);
+
+        public enum Whence : int32
+		{
+            SeekSet,
+            SeekCur,
+            SeekEnd
+		}
 
 		public enum InitFlag : uint32
 		{
@@ -137,6 +233,239 @@ namespace SDL2
 			"SDL_TIMER_RESOLUTION";
 		public const String SDL_HINT_RENDER_SCALE_QUALITY =
 			"SDL_RENDER_SCALE_QUALITY";
+        public const String SDL_HINT_ALLOW_ALT_TAB_WHILE_GRABBED =
+            "SDL_ALLOW_ALT_TAB_WHILE_GRABBED";
+        public const String SDL_HINT_ANDROID_APK_EXPANSION_MAIN_FILE_VERSION =
+	        "SDL_ANDROID_APK_EXPANSION_MAIN_FILE_VERSION";
+        public const String SDL_HINT_ANDROID_APK_EXPANSION_PATCH_FILE_VERSION =
+	        "SDL_ANDROID_APK_EXPANSION_PATCH_FILE_VERSION";
+        public const String SDL_HINT_ANDROID_BLOCK_ON_PAUSE =
+	        "SDL_ANDROID_BLOCK_ON_PAUSE";
+        public const String SDL_HINT_ANDROID_BLOCK_ON_PAUSE_PAUSEAUDIO =
+	        "SDL_ANDROID_BLOCK_ON_PAUSE_PAUSEAUDIO";
+        public const String SDL_HINT_APP_NAME =
+	        "SDL_APP_NAME";
+        public const String SDL_HINT_APPLE_TV_CONTROLLER_UI_EVENTS =
+	        "SDL_TV_CONTROLLER_UI_EVENTS";
+        public const String SDL_HINT_APPLE_TV_REMOTE_ALLOW_ROTATION =
+	        "SDL_APPLE_TV_REMOTE_ALLOW_ROTATION";
+        public const String SDL_HINT_AUDIO_CATEGORY =
+	        "SDL_AUDIO_CATEGORY";
+        public const String SDL_HINT_AUDIO_DEVICE_APP_NAME =
+	        "SDL_AUDIO_DEVICE_APP_NAME";
+        public const String SDL_HINT_AUDIO_DEVICE_STREAM_NAME =
+	        "SDL_AUDIO_DEVICE_STREAM_NAME";
+        public const String SDL_HINT_AUDIO_DEVICE_STREAM_ROLE =
+	        "SDL_AUDIO_DEVICE_STREAM_ROLE";
+        public const String SDL_HINT_AUTO_UPDATE_JOYSTICKS =
+	        "SDL_AUTO_UPDATE_JOYSTICKS";
+        public const String SDL_HINT_AUTO_UPDATE_SENSORS =
+	        "SDL_AUTO_UPDATE_SENSORS";
+        public const String SDL_HINT_DISPLAY_USABLE_BOUNDS =
+	        "SDL_DISPLAY_USABLE_BOUNDS";
+        public const String SDL_HINT_EMSCRIPTEN_ASYNCIFY =
+	        "SDL_EMSCRIPTEN_ASYNCIFY";
+        public const String SDL_HINT_EVENT_LOGGING =
+	        "SDL_EVENT_LOGGING";
+        public const String SDL_HINT_FORCE_RAISEWINDOW =
+	        "SDL_FORCE_RAISEWINDOW";
+        public const String SDL_HINT_GAMECONTROLLERCONFIG_FILE =
+	        "SDL_GAMECONTROLLERCONFIG_FILE";
+        public const String SDL_HINT_GAMECONTROLLERTYPE =
+	        "SDL_GAMECONTROLLERTYPE";
+        public const String SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES =
+	        "SDL_GAMECONTROLLER_IGNORE_DEVICES";
+        public const String SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT =
+	        "SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT";
+        public const String SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS =
+	        "SDL_GAMECONTROLLER_USE_BUTTON_LABELS";
+        public const String SDL_HINT_HIDAPI_IGNORE_DEVICES =
+	        "SDL_HIDAPI_IGNORE_DEVICES";
+        public const String SDL_HINT_HIDAPI_IGNORE_DEVICES =
+	        "SDL_HIDAPI_IGNORE_DEVICES";
+        public const String SDL_HINT_IME_SHOW_UI =
+	        "SDL_IME_SHOW_UI";
+        public const String SDL_HINT_IME_SUPPORT_EXTENDED_TEXT =
+	        "SDL_IME_SUPPORT_EXTENDED_TEXT";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_GAMECUBE =
+	        "SDL_JOYSTICK_HIDAPI_GAMECUBE";
+        public const String SDL_HINT_JOYSTICK_GAMECUBE_RUMBLE_BRAKE =
+	        "SDL_JOYSTICK_GAMECUBE_RUMBLE_BRAKE";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS =
+	        "SDL_JOYSTICK_HIDAPI_JOY_CONS";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_COMBINE_JOY_CONS =
+	        "SDL_JOYSTICK_HIDAPI_COMBINE_JOY_CONS";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS =
+	        "SDL_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_LUNA =
+	        "SDL_JOYSTICK_HIDAPI_LUNA";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_NINTENDO_CLASSIC =
+	        "SDL_JOYSTICK_HIDAPI_NINTENDO_CLASSIC";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_SHIELD =
+	        "SDL_JOYSTICK_HIDAPI_SHIELD";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_PS3 =
+	        "SDL_JOYSTICK_HIDAPI_PS3";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_PS5 =
+	        "SDL_JOYSTICK_HIDAPI_PS5";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_PS5_PLAYER_LED =
+	        "SDL_JOYSTICK_HIDAPI_PS5_PLAYER_LED";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE =
+	        "SDL_JOYSTICK_HIDAPI_PS5_RUMBLE";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_STADIA =
+	        "SDL_JOYSTICK_HIDAPI_STADIA";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_SWITCH_HOME_LED =
+	        "SDL_JOYSTICK_HIDAPI_SWITCH_HOME_LED";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_JOYCON_HOME_LED =
+	        "SDL_JOYSTICK_HIDAPI_JOYCON_HOME_LED";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_SWITCH_PLAYER_LED =
+	        "SDL_JOYSTICK_HIDAPI_SWITCH_PLAYER_LED";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_WII =
+	        "SDL_JOYSTICK_HIDAPI_WII";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_WII_PLAYER_LED =
+	        "SDL_JOYSTICK_HIDAPI_WII_PLAYER_LED";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_XBOX_360 =
+	        "SDL_JOYSTICK_HIDAPI_XBOX_360";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_XBOX_360_PLAYER_LED =
+	        "SDL_JOYSTICK_HIDAPI_XBOX_360_PLAYER_LED";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_XBOX_360_WIRELESS =
+	        "SDL_JOYSTICK_HIDAPI_XBOX_360_WIRELESS";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_XBOX_ONE =
+	        "SDL_JOYSTICK_HIDAPI_XBOX_ONE";
+        public const String SDL_HINT_JOYSTICK_HIDAPI_XBOX_ONE_HOME_LED =
+	        "SDL_JOYSTICK_HIDAPI_XBOX_ONE_HOME_LED";
+        public const String SDL_HINT_JOYSTICK_RAWINPUT =
+	        "SDL_JOYSTICK_RAWINPUT";
+        public const String SDL_HINT_JOYSTICK_RAWINPUT_CORRELATE_XINPUT =
+	        "SDL_JOYSTICK_RAWINPUT_CORRELATE_XINPUT";
+        public const String SDL_HINT_JOYSTICK_ROG_CHAKRAM =
+	        "SDL_JOYSTICK_ROG_CHAKRAM";
+        public const String SDL_HINT_JOYSTICK_THREAD =
+	        "SDL_JOYSTICK_THREAD";
+        public const String SDL_HINT_KMSDRM_REQUIRE_DRM_MASTER =
+	        "SDL_KMSDRM_REQUIRE_DRM_MASTER";
+        public const String SDL_HINT_JOYSTICK_DEVICE =
+	        "SDL_JOYSTICK_DEVICE";
+        public const String SDL_HINT_LINUX_DIGITAL_HATS =
+	        "SDL_LINUX_DIGITAL_HATS";
+        public const String SDL_HINT_LINUX_HAT_DEADZONES =
+	        "SDL_LINUX_HAT_DEADZONES";
+        public const String SDL_HINT_LINUX_JOYSTICK_CLASSIC =
+	        "SDL_LINUX_JOYSTICK_CLASSIC";
+        public const String SDL_HINT_LINUX_JOYSTICK_DEADZONES =
+	        "SDL_LINUX_JOYSTICK_DEADZONES";
+        public const String SDL_HINT_MAC_CTRL_CLICK_EMULATE_RIGHT_CLICK =
+	        "SDL_MAC_CTRL_CLICK_EMULATE_RIGHT_CLICK";
+        public const String SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH =
+	        "SDL_MAC_OPENGL_ASYNC_DISPATCH";
+        public const String SDL_HINT_MOUSE_RELATIVE_MODE_CENTER =
+	        "SDL_MOUSE_RELATIVE_MODE_CENTER";
+        public const String SDL_HINT_MOUSE_RELATIVE_SCALING =
+	        "SDL_MOUSE_RELATIVE_SCALING";
+        public const String SDL_HINT_MOUSE_RELATIVE_SYSTEM_SCALE =
+	        "SDL_MOUSE_RELATIVE_SYSTEM_SCALE";
+        public const String SDL_HINT_MOUSE_RELATIVE_WARP_MOTION =
+	        "SDL_MOUSE_RELATIVE_WARP_MOTION";
+        public const String SDL_HINT_MOUSE_TOUCH_EVENTS =
+	        "SDL_MOUSE_TOUCH_EVENTS";
+        public const String SDL_HINT_MOUSE_AUTO_CAPTURE =
+	        "SDL_MOUSE_AUTO_CAPTURE";
+        public const String SDL_HINT_OPENGL_ES_DRIVER =
+	        "SDL_OPENGL_ES_DRIVER";
+        public const String SDL_HINT_ORIENTATIONS =
+	        "SDL_ORIENTATIONS";
+        public const String SDL_HINT_POLL_SENTINEL =
+	        "SDL_POLL_SENTINEL";
+        public const String SDL_HINT_PREFERRED_LOCALES =
+	        "SDL_PREFERRED_LOCALES";
+        public const String SDL_HINT_QTWAYLAND_WINDOW_FLAGS =
+	        "SDL_QTWAYLAND_WINDOW_FLAGS";
+        public const String SDL_HINT_RENDER_BATCHING =
+	        "SDL_HINT_RENDER_BATCHING";
+        public const String SDL_HINT_RENDER_LINE_METHOD =
+	        "SDL_RENDER_LINE_METHOD";
+        public const String SDL_HINT_RENDER_DIRECT3D11_DEBUG =
+	        "SDL_RENDER_DIRECT3D11_DEBUG";
+        public const String SDL_HINT_PS2_DYNAMIC_VSYNC =
+	        "SDL_PS2_DYNAMIC_VSYNC";
+        public const String SDL_HINT_RETURN_KEY_HIDES_IME =
+	        "SDL_RETURN_KEY_HIDES_IME";
+        public const String SDL_HINT_RPI_VIDEO_LAYER =
+	        "SDL_RPI_VIDEO_LAYER";
+        public const String SDL_HINT_SCREENSAVER_INHIBIT_ACTIVITY_NAME =
+	        "SDL_SCREENSAVER_INHIBIT_ACTIVITY_NAME";
+        public const String SDL_HINT_THREAD_FORCE_REALTIME_TIME_CRITICAL =
+	        "SDL_THREAD_FORCE_REALTIME_TIME_CRITICAL";
+        public const String SDL_HINT_THREAD_PRIORITY_POLICY =
+	        "SDL_THREAD_PRIORITY_POLICY";
+        public const String SDL_HINT_VITA_TOUCH_MOUSE_DEVICE =
+	        "SDL_VITA_TOUCH_MOUSE_DEVICE";
+        public const String SDL_HINT_TV_REMOTE_AS_JOYSTICK =
+	        "SDL_TV_REMOTE_AS_JOYSTICK";
+        public const String SDL_HINT_VIDEO_DOUBLE_BUFFER =
+	        "SDL_VIDEO_DOUBLE_BUFFER";
+        public const String SDL_HINT_VIDEO_EGL_ALLOW_TRANSPARENCY =
+	        "SDL_VIDEO_EGL_ALLOW_TRANSPARENCY";
+        public const String SDL_HINT_VIDEO_EXTERNAL_CONTEXT =
+	        "SDL_VIDEO_EXTERNAL_CONTEXT";
+        public const String SDL_HINT_VIDEO_WAYLAND_ALLOW_LIBDECOR =
+	        "SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR";
+        public const String SDL_HINT_VIDEO_WAYLAND_PREFER_LIBDECOR =
+	        "SDL_VIDEO_WAYLAND_PREFER_LIBDECOR";
+        public const String SDL_HINT_VIDEO_WAYLAND_PREFER_LIBDECOR =
+	        "SDL_VIDEO_WAYLAND_PREFER_LIBDECOR";
+        public const String SDL_HINT_VIDEO_WAYLAND_MODE_EMULATION =
+	        "SDL_VIDEO_WAYLAND_MODE_EMULATION";
+        public const String SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP =
+	        "SDL_VIDEO_WAYLAND_EMULATE_MOUSE_WARP";
+        public const String SDL_HINT_VIDEO_FOREIGN_WINDOW_OPENGL =
+	        "SDL_VIDEO_FOREIGN_WINDOW_OPENGL";
+        public const String SDL_HINT_VIDEO_FOREIGN_WINDOW_VULKAN =
+	        "SDL_VIDEO_FOREIGN_WINDOW_VULKAN";
+        public const String SDL_HINT_VIDEO_X11_FORCE_EGL =
+	        "SDL_VIDEO_X11_FORCE_EGL";
+        public const String SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR =
+	        "SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR";
+        public const String SDL_HINT_VIDEO_X11_NET_WM_PING =
+	        "SDL_VIDEO_X11_NET_WM_PING";
+        public const String SDL_HINT_VIDEO_X11_WINDOW_VISUALID =
+	        "SDL_VIDEO_X11_WINDOW_VISUALID";
+        public const String SDL_HINT_WAVE_FACT_CHUNK =
+	        "SDL_WAVE_FACT_CHUNK";
+        public const String SDL_HINT_WAVE_RIFF_CHUNK_SIZE =
+	        "SDL_WAVE_RIFF_CHUNK_SIZE";
+        public const String SDL_HINT_WAVE_TRUNCATION =
+	        "SDL_HINT_WAVE_TRUNCATION";
+        public const String SDL_HINT_WINDOWS_FORCE_MUTEX_CRITICAL_SECTIONS =
+	        "SDL_WINDOWS_FORCE_MUTEX_CRITICAL_SECTIONS";
+        public const String SDL_HINT_WINDOWS_FORCE_SEMAPHORE_KERNEL =
+	        "SDL_WINDOWS_FORCE_SEMAPHORE_KERNEL";
+        public const String SDL_HINT_WINDOWS_USE_D3D9EX =
+	        "SDL_WINDOWS_USE_D3D9EX";
+        public const String SDL_HINT_WINDOWS_DPI_AWARENESS =
+	        "SDL_WINDOWS_DPI_AWARENESS";
+        public const String SDL_HINT_WINDOWS_DPI_SCALING =
+	        "SDL_WINDOWS_DPI_SCALING";
+        public const String SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN =
+	        "SDL_WINDOW_NO_ACTIVATION_WHEN_SHOWN";
+        public const String SDL_HINT_X11_FORCE_OVERRIDE_REDIRECT =
+	        "SDL_X11_FORCE_OVERRIDE_REDIRECT";
+        public const String SDL_HINT_DIRECTINPUT_ENABLED =
+	        "SDL_DIRECTINPUT_ENABLED";
+        public const String SDL_HINT_AUDIO_INCLUDE_MONITORS =
+	        "SDL_AUDIO_INCLUDE_MONITORS";
+        public const String SDL_HINT_X11_WINDOW_TYPE =
+	        "SDL_X11_WINDOW_TYPE";
+        public const String SDL_HINT_QUIT_ON_LAST_WINDOW_CLOSE =
+	        "SDL_QUIT_ON_LAST_WINDOW_CLOSE";
+        public const String SDL_HINT_VIDEODRIVER =
+	        "SDL_VIDEODRIVER";
+        public const String SDL_HINT_AUDIODRIVER =
+	        "SDL_AUDIODRIVER";
+        public const String SDL_HINT_KMSDRM_DEVICE_INDEX =
+	        "SDL_KMSDRM_DEVICE_INDEX";
+        public const String SDL_HINT_TRACKPAD_IS_TOUCH_ONLY =
+	        "SDL_TRACKPAD_IS_TOUCH_ONLY";
+
 
 		/* Only available in SDL 2.0.1 or higher */
 		public const String SDL_HINT_VIDEO_HIGHDPI_DISABLED =
@@ -271,6 +600,9 @@ namespace SDL2
 		[LinkName("SDL_GetError")]
 		public static extern char8* GetError();
 
+		[LinkName("SDL_GetErrorMsg")]
+		public static extern char8* GetErrorMsg(char8* errstr, int maxlen);
+
 		/* Use string.Format for arglists */
 		[LinkName("SDL_SetError")]
 		public static extern void SetError(char8* fmtAndArglist);
@@ -387,7 +719,9 @@ namespace SDL2
 		{
 			Error =		0x00000010,
 			Warning =	0x00000020,
-			Information =	0x00000040
+			Information =	0x00000040,
+            ButtonsLeftToRight =	0x00000080,
+            ButtonsRightToLeft =	0x00000100,
 		}
 
 		public enum MessageBoxButtonFlags : uint32
@@ -457,8 +791,8 @@ namespace SDL2
 		 * program!
 		 */
 		public const int MAJOR_VERSION =	2;
-		public const int MINOR_VERSION =	0;
-		public const int PATCHLEVEL =	9;
+		public const int MINOR_VERSION =	26;
+		public const int PATCHLEVEL =	4;
 
 		public static readonly int COMPILEDVERSION = VERSIONNUM(
 			MAJOR_VERSION,
@@ -529,6 +863,7 @@ namespace SDL2
 			GL_CONTEXT_RELEASE_BEHAVIOR,
 			GL_CONTEXT_RESET_NOTIFICATION,	/* Only available in 2.0.6 */
 			GL_CONTEXT_NO_ERROR,		/* Only available in 2.0.6 */
+            GL_FLOATBUFFERS
 		}
 
 		public enum SDL_GLProfile : uint32
@@ -565,13 +900,17 @@ namespace SDL2
 			Close,
 			/* Available in 2.0.5 or higher */
 			TAKE_FOCUS,
-			HIT_TEST
+			HIT_TEST,
+            ICCPROF_CHANGED,
+            DISPLAY_CHANGED,
 		}
 
 		public enum DisplayEventID : uint8
 		{
 			NONE,
-			ORIENTATION
+			ORIENTATION,
+            CONNECTED,
+            DISCONNECTED
 		}
 
 		public enum DisplayOrientation : uint32
@@ -582,6 +921,13 @@ namespace SDL2
 			Portrait,
 			PortraitFlipped
 		}
+
+        public enum FlashOperation : uint32
+        {
+            Cancel,
+            Briefly,
+            UntilFocused
+        }
 
 		public enum WindowFlags : uint32
 		{
@@ -594,7 +940,7 @@ namespace SDL2
 			Resizable =		0x00000020,
 			Minimized =		0x00000040,
 			Maximized =		0x00000080,
-			InputGrabbed =	0x00000100,
+			MouseGrabbed =	0x00000100,
 			InputFocus =	0x00000200,
 			MouseFocus =	0x00000400,
 			FullscreenDesktop =
@@ -607,7 +953,11 @@ namespace SDL2
 			Utility =		0x00020000,	/* Only available in 2.0.5 */
 			Tooltip =		0x00040000,	/* Only available in 2.0.5 */
 			PopupMenu =		0x00080000,	/* Only available in 2.0.5 */
-			Vulkan =		0x10000000,	/* Only available in 2.0.6 */
+			KeyboardGrabbed = 0x00100000,
+            Vulkan =		0x10000000,	/* Only available in 2.0.6 */
+            Metal =         0x20000000,
+
+            InputGrabbed = MouseGrabbed
 		}
 
 		/* Only available in 2.0.4 */
@@ -785,7 +1135,12 @@ namespace SDL2
 		[LinkName("SDL_GetWindowData")]
 		public static extern void* SDL_GetWindowData(Window* window, char8* name);
 
-		
+        [LinkName("SDL_GetPointDisplayIndex")]
+        public static extern int32 GetPointDisplayIndex(Point* point);
+
+        [LinkName("SDL_GetRectDisplayIndex")]
+        public static extern int32 GetRectDisplayIndex(Rect* rect);
+
 		[LinkName("SDL_GetWindowDisplayIndex")]
 		public static extern int SDL_GetWindowDisplayIndex(Window* window);
 		
@@ -803,7 +1158,13 @@ namespace SDL2
 		
 		[LinkName("SDL_GetWindowGrab")]
 		public static extern Bool GetWindowGrab(Window* window);
-		
+
+		[LinkName("SDL_GetWindowKeyboardGrab")]
+		public static extern Bool GetWindowKeyboardGrab(Window* window);
+
+		[LinkName("SDL_GetWindowMouseGrab")]
+		public static extern Bool GetWindowMouseGrab(Window* window);
+
 		[LinkName("SDL_GetWindowID")]
 		public static extern uint32 GetWindowID(Window* window);
 
@@ -937,6 +1298,12 @@ namespace SDL2
 		[LinkName("SDL_SetWindowGrab")]
 		public static extern void SetWindowGrab(Window* window, Bool grabbed);
 
+        [LinkName("SDL_SetWindowKeyboardGrab")]
+        public static extern void SetWindowKeyboardGrab(Window* window, Bool grabbed);
+
+        [LinkName("SDL_SetWindowMouseGrab")]
+        public static extern void SetWindowMouseGrab(Window* window, Bool grabbed);
+
 		[LinkName("SDL_SetWindowIcon")]
 		public static extern void SetWindowIcon(Window* window, Surface* icon);
 		
@@ -988,6 +1355,12 @@ namespace SDL2
 		/* Only available in 2.0.4 */
 		[LinkName("SDL_GetGrabbedWindow")]
 		public static extern Window* GetGrabbedWindow();
+
+		[LinkName("SDL_SetWindowMouseRect")]
+		public static extern int32 SetWindowMouseRect(Window* window, Rect* rect);
+
+		[LinkName("SDL_GetWindowMouseRect")]
+		public static extern Rect* GetWindowMouseRect(Window* window);
 
 		public enum BlendMode : uint32
 		{
@@ -1100,6 +1473,13 @@ namespace SDL2
 			Vertical =		0x00000002
 		}
 
+        public enum ScaleMode
+        {
+            Nearest = 0,
+            Linear,
+            Best
+        }
+
 		[CRepr]
 		public struct RendererInfo
 		{
@@ -1110,6 +1490,14 @@ namespace SDL2
 			public int max_texture_width;
 			public int max_texture_height;
 		}
+
+        [CRepr]
+        public struct Vertex
+        {
+        	public FPoint position;
+            public Color color;
+            public FPoint tex_coord;
+        }
 
 		/* IntPtr refers to an SDL_Renderer*, window to an SDL_Window* */
 		[LinkName("SDL_CreateRenderer")]
@@ -1167,6 +1555,18 @@ namespace SDL2
 		[LinkName("SDL_GetTextureBlendMode")]
 		public static extern int32 GetTextureBlendMode(Texture* texture, out BlendMode blendMode);
 
+        [LinkName("SDL_SetTextureScaleMode")]
+        public static extern int32 SetTextureScaleMode(Texture* texture, ScaleMode scaleMode);
+
+        [LinkName("SDL_GetTextureScaleMode")]
+        public static extern int32 GetTextureScaleMode(Texture* texture, out ScaleMode scaleMode);
+
+        [LinkName("SDL_SetTextureUserData")]
+        public static extern int32 SetTextureUserData(Texture* texture, void* userdata);
+
+        [LinkName("SDL_GetTextureUserData")]
+        public static extern void* GetTextureUserData(Texture* texture);
+
 		[LinkName("SDL_GetTextureColorMod")]
 		public static extern int32 GetTextureColorMod(Texture* texture, out uint8 r, out uint8 g, out uint8 b);
 
@@ -1179,6 +1579,12 @@ namespace SDL2
 			out int32 pitch
 		);
 
+        [LinkName("SDL_LockTextureToSurface")]
+        public static extern int32 LockTextureToSurface(
+        	Texture* texture,
+        	Rect* rect,
+        	Surface** surface
+        );
 		
 		[LinkName("SDL_QueryTexture")]
 		public static extern int QueryTexture(
@@ -1234,14 +1640,28 @@ namespace SDL2
 			int32 x,
 			int32 y
 		);
-		
+
+		[LinkName("SDL_RenderDrawPointF")]
+        public static extern int RenderDrawPointF(
+        	Renderer* renderer,
+        	float x,
+        	float y
+        );
+
 		[LinkName("SDL_RenderDrawPoints")]
 		public static extern int RenderDrawPoints(
 			Renderer* renderer,
-			Point** points,
+			Point* points,
 			int32 count
 		);
-	
+
+	    [LinkName("SDL_RenderDrawPointsF")]
+        public static extern int RenderDrawPointsF(
+        	Renderer* renderer,
+        	FPoint* points,
+        	int32 count
+        );
+
 		[LinkName("SDL_RenderDrawRect")]
 		public static extern int RenderDrawRect(
 			Renderer* renderer,
@@ -1267,7 +1687,86 @@ namespace SDL2
 			Rect** rects,
 			int32 count
 		);
-		
+
+        [LinkName("SDL_RenderCopyF")]
+        public static extern int RenderCopyF(
+        	Renderer* renderer,
+        	Texture* texture,
+        	Rect* srcrect,
+        	FRect* dstrect
+        );
+
+        [LinkName("SDL_RenderCopyExF")]
+        public static extern int RenderCopyExF(
+        	Renderer* renderer,
+        	Texture* texture,
+        	Rect* srcrect,
+        	FRect* dstrect,
+        	double angle,
+        	FPoint* center,
+        	RendererFlip flip
+        );
+
+        [LinkName("SDL_RenderDrawLineF")]
+        public static extern int RenderDrawLineF(
+        	Renderer* renderer,
+        	float x1,
+        	float y1,
+        	float x2,
+        	float y2
+        );
+
+        [LinkName("SDL_RenderDrawLinesF")]
+        public static extern int RenderDrawLinesF(
+        	Renderer* renderer,
+        	FPoint* points,
+        	int32 count
+        );
+
+        [LinkName("SDL_RenderDrawRect")]
+        public static extern int RenderDrawRectF(
+        	Renderer* renderer,
+        	FRect* rect
+        );
+
+        [LinkName("SDL_RenderDrawRects")]
+        public static extern int RenderDrawRectsF(
+        	Renderer* renderer,
+        	FRect** rects,
+        	int32 count
+        );
+
+        [LinkName("SDL_RenderFillRect")]
+        public static extern int RenderFillRectF(
+        	Renderer* renderer,
+        	FRect* rect
+        );
+
+        [LinkName("SDL_RenderFillRects")]
+        public static extern int RenderFillRectsF(
+        	Renderer* renderer,
+        	FRect** rects,
+        	int32 count
+        );
+
+        [LinkName("SDL_RenderGeometry")]
+        public static extern int RenderFillRectsF(
+        	Renderer* renderer,
+        	Texture* texture,
+        	Vertex* vertices, int num_vertices,
+            int32* indices, int num_indices
+        );
+
+        [LinkName("SDL_RenderGeometryRaw")]
+        public static extern int RenderFillRectsF(
+        	Renderer* renderer,
+        	Texture* texture,
+            float* xy, int32 xy_stride,
+            Color* color, int32 color_stride,
+            float* uv, int32 uv_stride,
+            int32 num_vertices,
+            void* indices, int32 num_indices, int32 size_indices);
+
 		[LinkName("SDL_RenderGetClipRect")]
 		public static extern void RenderGetClipRect(
 			Renderer* renderer,
@@ -1288,7 +1787,25 @@ namespace SDL2
 			out float scaleX,
 			out float scaleY
 		);
-		
+
+        [LinkName("SDL_RenderWindowToLogical")]
+        public static extern void RenderWindowToLogical(
+        	Renderer* renderer,
+            int windowX,
+			int windowY,
+        	out float logicalX,
+        	out float logicalY
+        );
+
+        [LinkName("SDL_RenderLogicalToWindow")]
+        public static extern void RenderLogicalToWindow(
+        	Renderer* renderer,
+        	float logicalX,
+        	float logicalY,
+            out int windowX,
+        	out int windowY
+        );
+
 		[LinkName("SDL_RenderGetViewport")]
 		public static extern int RenderGetViewport(
 			Renderer* renderer,
@@ -1415,7 +1932,17 @@ namespace SDL2
 			uint8* vPlane,
 			int32 vPitch
 		);
-		
+
+		[LinkName("SDL_UpdateNVTexture")]
+		public static extern int UpdateNVTexture(
+			Texture* texture,
+			Rect* rect,
+			uint8* yPlane,
+			int32 yPitch,
+			uint8* uPlane,
+			int32 uPitch,
+		);
+
 		[LinkName("SDL_RenderTargetSupported")]
 		public static extern Bool RenderTargetSupported(
 			Renderer* renderer
@@ -1826,6 +2353,56 @@ namespace SDL2
 				(uint8) 'Y', (uint8) 'V', (uint8) 'Y', (uint8) 'U'
 			);
 
+        public static readonly uint32 PIXELFORMAT_XRGB4444 =
+	        DEFINE_PIXELFORMAT(
+	        	.Packed16,
+	        	.PackedOrderXRGB,
+	        	.Layout4444,
+	        	12, 2
+	        );
+
+        public static readonly uint32 PIXELFORMAT_XBGR4444 =
+	        DEFINE_PIXELFORMAT(
+	        	.Packed16,
+	        	.PackedOrderXBGR,
+	        	.Layout4444,
+	        	12, 2
+	        );
+
+        public static readonly uint32 PIXELFORMAT_BGR444 = PIXELFORMAT_XBGR4444;
+
+        public static readonly uint32 PIXELFORMAT_XRGB1555 =
+	        DEFINE_PIXELFORMAT(
+	        	.Packed16,
+	        	.PackedOrderXRGB,
+	        	.Layout1555,
+	        	15, 2
+	        );
+
+        public static readonly uint32 PIXELFORMAT_XBGR1555 =
+	        DEFINE_PIXELFORMAT(
+	        	.Packed16,
+	        	.PackedOrderXBGR,
+	        	.Layout1555,
+	        	15, 2
+	        );
+
+        public static readonly uint32 PIXELFORMAT_XRGB8888 =
+	        DEFINE_PIXELFORMAT(
+	        	.Packed32,
+	        	.PackedOrderXRGB,
+	        	.Layout8888,
+	        	24, 4
+	        );
+
+        public static readonly uint32 PIXELFORMAT_XBGR8888 =
+	        DEFINE_PIXELFORMAT(
+	        	.Packed32,
+	        	.PackedOrderXBGR,
+	        	.Layout8888,
+	        	24, 4
+	        );
+
 		[CRepr]
 		public struct Color
 		{
@@ -1980,6 +2557,8 @@ namespace SDL2
 			Palette* palette
 		);
 
+        public const float FLT_EPSILON = 1.1920928955078125e-07F; /* 0x0.000002p0 */
+
 		[CRepr]
 		public struct Point
 		{
@@ -1997,6 +2576,24 @@ namespace SDL2
 				this.y = y;
 			}
 		}
+
+        [CRepr]
+        public struct FPoint
+        {
+        	public float x;
+        	public float y;
+
+        	public this()
+        	{
+        		this = default;
+        	}
+
+        	public this(float x, float y)
+        	{
+        		this.x = x;
+        		this.y = y;
+        	}
+        }
 
 		[CRepr]
 		public struct Rect
@@ -2026,6 +2623,34 @@ namespace SDL2
 			}
 		}
 
+        [CRepr]
+        public struct FRect
+        {
+        	public float x;
+        	public float y;
+        	public float w;
+        	public float h;
+
+        	public this()
+        	{
+        		this = default;
+        	}
+
+        	public this(float x, float y, float w, float h)
+        	{
+        		this.x = x;
+        		this.y = y;
+        		this.w = w;
+        		this.h = h;
+        	}
+
+        	public bool Contains(float x, float y)
+        	{
+        		return (x >= this.x) && (x < this.x + this.w) &&
+        			(y >= this.y) && (y < this.y + this.h);
+        	}
+        }
+
 		/* Only available in 2.0.4 */
 		public static Bool PointInRect(Point* p, Rect* r)
 		{
@@ -2036,6 +2661,16 @@ namespace SDL2
 				Bool.True :
 				Bool.False;
 		}
+
+        public static Bool PointInFRect(FPoint* p, FRect* r)
+        {
+        	return (	(p.x >= r.x) &&
+        			(p.x < (r.x + r.w)) &&
+        			(p.y >= r.y) &&
+        			(p.y < (r.y + r.h))	) ?
+        		Bool.True :
+        		Bool.False;
+        }
 
 		[LinkName("SDL_EnclosePoints")]
 		public static extern Bool EnclosePoints(
@@ -2069,10 +2704,17 @@ namespace SDL2
 
 		public static Bool RectEmpty(Rect* r)
 		{
-			return ((r.w <= 0) || (r.h <= 0)) ?
+			return (r == null || (r.w <= 0) || (r.h <= 0)) ?
 				Bool.True :
 				Bool.False;
 		}
+
+        public static Bool FRectEmpty(FRect* r)
+        {
+        	return (r == null || (r.w <= 0) || (r.h <= 0)) ?
+        		Bool.True :
+        		Bool.False;
+        }
 
 		public static Bool RectEquals(
 			Rect* a,
@@ -2086,6 +2728,40 @@ namespace SDL2
 				Bool.False;
 		}
 
+        public static Bool FRectEqualsEpsilon(
+        	FRect* a,
+        	FRect* b,
+            float epsilon,
+        ) {
+        	return ((a != null && b != null) &&
+				    (((a.x == b.x) && (a.y == b.y) && (a.w == b.y) && (a.h == b.h)) ||
+        		    ((Math.Abs(a.y - b.y) <= epsilon) &&
+        		    (Math.Abs(a.y - b.y) <= epsilon) &&
+        		    (Math.Abs(a.w - b.w) <= epsilon) &&
+        		    (Math.Abs(a.h - b.h) <= epsilon))) ?
+        		Bool.True : Bool.False;
+        }
+
+        public static Bool FRectEquals(
+        	FRect* a,
+        	FRect* b
+        ) {
+        	return FRectEqualsEpsilon(a, b, FLT_EPSILON);
+        }
+
+        [LinkName("SDL_HasIntersectionF")]
+        public static extern Bool HasIntersectionF(
+        	FRect* a,
+        	FRect* b
+        );
+
+        [LinkName("SDL_IntersectFRect")]
+        public static extern Bool IntersectFRect(
+        	FRect* a,
+        	FRect* b,
+            FRect* result
+        );
+
 		[LinkName("SDL_UnionRect")]
 		public static extern void UnionRect(
 			Rect* A,
@@ -2093,10 +2769,35 @@ namespace SDL2
 			out Rect result
 		);
 
+        [LinkName("SDL_UnionFRect")]
+        public static extern void UnionFRect(
+        	FRect* A,
+        	FRect* B,
+        	out FRect result
+        );
+
+        [LinkName("SDL_EncloseFPoints")]
+        public static extern Bool EncloseFPoints(
+            FPoint* points,
+            int count,
+            FRect* clip,
+            out FRect result
+        );
+
+        [LinkName("SDL_IntersectFRectAndLine")]
+        public static extern Bool IntersectFRectAndLine(
+            FRect* rect,
+            float* X1,
+            float* Y1,
+            float* X2,
+            float* Y2
+        );
+
 		public const uint32 SDL_SWSURFACE =	0x00000000;
 		public const uint32 SDL_PREALLOC =	0x00000001;
 		public const uint32 SDL_RLEACCEL =	0x00000002;
 		public const uint32 SDL_DONTFREE =	0x00000004;
+        public const uint32 SDL_SIMD_ALIGNED = 0x00000008;
 
 		public struct SDL_BlitMap;
 
@@ -2226,6 +2927,18 @@ namespace SDL2
 			int32 depth,
 			int32 pitch,
 			uint32 format
+		);
+
+        [LinkName("SDL_PremultiplyAlpha")]
+        public static extern Surface* PremultiplyAlpha(
+        	int32 width,
+        	int32 height,
+        	uint32 src_format,
+            void* src,
+            int32 src_pitch,
+            uint32 dst_format,
+            void* dst,
+            int32 dst_pitch
 		);
 
 		/* dst refers to an SDL_Surface* */
@@ -2394,6 +3107,11 @@ namespace SDL2
 			int32 flag
 		);
 
+		[LinkName("SDL_HasSurfaceRLE")]
+		public static extern Bool HasSurfaceRLE(
+			Surface* surface
+		);
+
 		/* src and dst refer to an SDL_Surface* */
 		[LinkName("SDL_SoftStretch")]
 		public static extern int SoftStretch(
@@ -2432,6 +3150,15 @@ namespace SDL2
 		[LinkName("SDL_HasClipboardText")]
 		public static extern Bool HasClipboardText();
 
+		[LinkName("SDL_SetPrimarySelectionText")]
+		public static extern int SetPrimarySelectionText(char8* text);
+
+		[LinkName("SDL_GetPrimarySelectionText")]
+		public static extern char8* GetPrimarySelectionText();
+
+		[LinkName("SDL_HasPrimarySelectionText")]
+		public static extern Bool HasPrimarySelectionText();
+
 		[LinkName("SDL_GetClipboardText")]
 		public static extern char8* GetClipboardText();
 
@@ -2462,6 +3189,7 @@ namespace SDL2
 			AppDidEnterBackground,
 			AppWillEnterForeground,
 			AppDidEnterForeground,
+			LocaleChanged,
 
 			/* display events */
 			/* only available in sdl 2.0.9 or higher */
@@ -2477,6 +3205,7 @@ namespace SDL2
 			TextEditing,
 			TextInput,
 			KeyMapChanged,
+			TextEditingExt,
 
 			/* mouse events */
 			MouseMotion = 		0x400,
@@ -2492,6 +3221,7 @@ namespace SDL2
 			JoyButtonUp,
 			JoyDeviceAdded,
 			JoyDeviceRemoved,
+			JoyDeviceBatteryUpdated,
 
 			/* game controller events */
 			ControllerAxismotion = 	0x650,
@@ -2500,6 +3230,10 @@ namespace SDL2
 			ControllerDeviceadded,
 			ControllerDeviceremoved,
 			ControllerDeviceremapped,
+			ControllerTouchPadDown,
+			ControllerTouchPadMotion,
+			ControllerTouchPadUp,
+			ControllerSensorUpdate,
 
 			/* touch events */
 			FingerDown = 		0x700,
@@ -2535,6 +3269,9 @@ namespace SDL2
 			RenderTargetsReset =	0x2000,
 			/* only available in sdl 2.0.4 or higher */
 			RenderDeviceReset,
+
+			/* internal events */
+			PollSentinel =		0x7F00;
 
 			/* Events USEREVENT through LASTEVENT are for
 			 * your use, and should be allocated with
@@ -2608,7 +3345,18 @@ namespace SDL2
 			public EventType type;
 			public uint32 timestamp;
 			public uint32 windowID;
-			public uint8[TEXTEDITINGEVENT_TEXT_SIZE] text;
+			public char*[TEXTEDITINGEVENT_TEXT_SIZE] text;
+			public int32 start;
+			public int32 length;
+		}
+
+		[CRepr]
+		public struct TextEditingExtEvent
+		{
+			public EventType type;
+			public uint32 timestamp;
+			public uint32 windowID;
+			public char* text;
 			public int32 start;
 			public int32 length;
 		}
@@ -2664,6 +3412,10 @@ namespace SDL2
 			public int32 x; /* amount scrolled horizontally */
 			public int32 y; /* amount scrolled vertically */
 			public uint32 direction; /* Set to one of the SDL_MOUSEWHEEL_* defines */
+			public float preciseX;
+			public float preciseY;
+			public int32 mouseX;
+			public int32 mouseY;
 		}
 
 
@@ -2728,6 +3480,15 @@ namespace SDL2
 		}
 
 		[CRepr]
+		public struct JoyBatteryEvent
+		{
+			public EventType type;
+			public uint32 timestamp;
+			public int32 which; /* SDL_JoystickID */
+			public SDL_JoystickPowerLevel level; /* SDL_JoystickPowerLevel */
+		}
+
+		[CRepr]
 		public struct ControllerAxisEvent
 		{
 			public EventType type;
@@ -2763,6 +3524,30 @@ namespace SDL2
 						 */
 		}
 
+        [CRepr]
+        public struct ControllerTouchpadEvent
+        {
+        	public EventType type;
+        	public uint32 timestamp;
+        	public int32 which;
+            public int32 touchpad;
+            public int32 finger;
+            public float x;
+            public float y;
+            public float pressure;
+        }
+
+        [CRepr]
+        public struct ControllerSensorEvent
+        {
+        	public EventType type;
+        	public uint32 timestamp;
+        	public int32 which;
+            public SDL_SensorType sensor;
+            public float data[3];
+            public uint64 timestamp_us;
+        }
+
 		[CRepr]
 		public struct AudioDeviceEvent
 		{
@@ -2787,6 +3572,7 @@ namespace SDL2
 			public float dx;
 			public float dy;
 			public float pressure;
+            public uint32 windowId;
 		}
 
 		[CRepr]
@@ -2837,6 +3623,7 @@ namespace SDL2
 			public uint32 timestamp;
 			public int32 which;
 			public float[6] data;
+            public uint64 timestamp_us;
 		}
 
 		[CRepr]
@@ -2868,7 +3655,6 @@ namespace SDL2
 		}
 
 		/* General event structure */
-		// C# doesn't do unions, so we do this ugly thing. 
 		[CRepr, Union]
 		public struct Event
 		{
@@ -2877,6 +3663,7 @@ namespace SDL2
 			public WindowEvent window;
 			public KeyboardEvent key;
 			public TextEditingEvent edit;
+			public TextEditingExtEvent editExt;
 			public TextInputEvent text;
 			public MouseMotionEvent motion;
 			public MouseButtonEvent button;
@@ -2886,9 +3673,12 @@ namespace SDL2
 			public JoyHatEvent jhat;
 			public JoyButtonEvent jbutton;
 			public JoyDeviceEvent jdevice;
+			public JoyBatteryEvent jbattery;
 			public ControllerAxisEvent caxis;
 			public ControllerButtonEvent cbutton;
 			public ControllerDeviceEvent cdevice;
+			public ControllerTouchpadEvent ctouchpad;
+			public ControllerSensorEvent csensor;
 			public AudioDeviceEvent adevice;
 			public SensorEvent sensor;
 			public QuitEvent quit;
@@ -3282,6 +4072,12 @@ namespace SDL2
 			App1 = 283,
 			App2 = 284,
 
+            /* mobile keys */
+            SoftLeft = 287,
+            SoftRight = 288,
+            Call = 289,
+            EndCall = 290,
+
 			/* this is not a key, simply marks the number of scancodes
 			 * so that you know how big to make your arrays. */
 			NUMSCANCODES = 512
@@ -3552,7 +4348,17 @@ namespace SDL2
 				KBDILLUMDOWN = (int)Scancode.KbdIllumdown | SCANCODE_MASK,
 				KBDILLUMUP = (int)Scancode.KbdIllumup | SCANCODE_MASK,
 				EJECT = (int)Scancode.Eject | SCANCODE_MASK,
-				SLEEP = (int)Scancode.Sleep | SCANCODE_MASK
+				SLEEP = (int)Scancode.Sleep | SCANCODE_MASK,
+
+            APP1 = (int)Scancode.App1 | SCANCODE_MASK,
+            APP2 = (int)Scancode.App2 | SCANCODE_MASK,
+            AUDIOREWIND = (int)Scancode.AudioRewind | SCANCODE_MASK,
+            AUDIOFASTFORWARD = (int)Scancode.AudioFastForward | SCANCODE_MASK,
+
+            SOFTLEFT = (int)Scancode.SoftLeft | SCANCODE_MASK,
+            SOFTRIGHT = (int)Scancode.SoftRight | SCANCODE_MASK,
+            CALL = (int)Scancode.Call | SCANCODE_MASK,
+            ENDCALL = (int)Scancode.EndCall | SCANCODE_MASK
 		}
 
 		/* Key modifiers (bitfield) */
@@ -3570,13 +4376,15 @@ namespace SDL2
 			Num = 0x1000,
 			Caps = 0x2000,
 			Mode = 0x4000,
-			RESERVED = 0x8000,
+			Scroll = 0x8000,
 
 			/* These are defines in the SDL headers */
 			CTRL = (LCtrl | RCtrl),
 			SHIFT = (LShift | RShift),
 			ALT = (LAlt | RAlt),
-			GUI = (LGui | RGui)
+			GUI = (LGui | RGui),
+
+            Reserved = Scroll /* For backwards compat */
 		}
 
 		[CRepr]
@@ -3643,6 +4451,12 @@ namespace SDL2
 		/* Stop receiving any text input events, hide onscreen kbd */
 		[LinkName("SDL_StopTextInput")]
 		public static extern void StopTextInput();
+
+        [LinkName("SDL_ClearComposition")]
+        public static extern void ClearComposition();
+
+        [LinkName("SDL_IsTextInputShown")]
+        public static extern Bool SDL_IsTextInputShown();
 
 		/* Set the rectangle used for text input, hint for IME */
 		[LinkName("SDL_SetTextInputRect")]
@@ -3788,6 +4602,15 @@ namespace SDL2
 		public static readonly uint32 BUTTON_X2MASK =	BUTTON(SDL_BUTTON_X2);
 
 		public const uint32 TOUCH_MOUSEID = uint32.MaxValue;
+        public const sint64 MOUSE_TOUCHID = -1;
+
+        public enum SDL_TouchDeviceType : int32
+        {
+        	Invalid = -1,
+            Direct,
+            Indirect_Absolute,
+            Indirect_Relative
+        }
 
 		public struct SDL_Finger
 		{
@@ -3808,6 +4631,12 @@ namespace SDL2
 		 */
 		[LinkName("SDL_GetTouchDevice")]
 		public static extern int64 GetTouchDevice(int32 index);
+
+        [LinkName("SDL_GetTouchName")]
+        public static extern char8* GetTouchName(int32 index);
+
+        [LinkName("SDL_GetTouchDeviceType")]
+        public static extern SDL_TouchDeviceType GetTouchDeviceType(int64 touchId);
 
 		/**
 		 *  \brief Get the number of active fingers for a given touch device.
@@ -3859,6 +4688,30 @@ namespace SDL2
 
 		public struct SDL_Joystick;
 
+        public struct SDL_VirtualJoystickDesc {
+            public uint16 version;
+            public uint16 type;
+            public uint16 naxes;
+            public uint16 nbuttons;
+            public uint16 nhats;
+            public uint16 vendor_id;
+            public uint16 product_id;
+            public uint16 padding;
+            public uint32 button_mask;
+            public uint32 axis_mask;
+            public char8* name;
+            public void* userdata;
+
+            public function void Update(void* userdata);
+            public function void SetPlayerIndex(void* userdata, int player_index);
+            public function int Rumble(void* userdata, uint16 low_frequency_rumble, uint16 high_frequency_rumble);
+            public function int RumbleTriggers(void* userdata, uint16 left_rumble, uint16 right_rumble);
+            public function int SetLED(void* userdata, uint8 red, uint8 green, uint8 blue);
+            public function int SendEffect(void* userdata, void* data, int size);
+		}
+
+        public const int SDL_VIRTUAL_JOYSTICK_DESC_VERSION = 1;
+
 		/* joystick refers to an SDL_Joystick*.
 		 * This function is only available in 2.0.9 or higher.
 		 */
@@ -3870,7 +4723,29 @@ namespace SDL2
 			uint32 duration_ms
 		);
 
-		
+		[LinkName("SDL_JoystickRumble")]
+        public static extern int JoystickRumbleTriggers(
+        	SDL_Joystick* joystick,
+        	uint16 left_rumble,
+        	uint16 right_rumble,
+        	uint32 duration_ms
+        );
+
+        [LinkName("SDL_JoystickHasLED")]
+        public static extern Bool JoystickHasLED(SDL_Joystick* joystick);
+
+        [LinkName("SDL_JoystickHasRumble")]
+        public static extern Bool JoystickHasRumble(SDL_Joystick* joystick);
+
+        [LinkName("SDL_JoystickHasRumbleTriggers")]
+        public static extern Bool JoystickHasRumbleTriggers(SDL_Joystick* joystick);
+
+        [LinkName("SDL_JoystickSetLED")]
+        public static extern int JoystickSetLED(SDL_Joystick* joystick, uint8 red, uint8 green, uint8 blue);
+
+        [LinkName("SDL_JoystickSendEffect")]
+        public static extern int JoystickSendEffect(SDL_Joystick* joystick, void* data, int32_t size);
+
 		[LinkName("SDL_JoystickClose")]
 		public static extern void JoystickClose(SDL_Joystick* joystick);
 
@@ -3920,7 +4795,10 @@ namespace SDL2
 
 		[LinkName("SDL_JoystickNameForIndex")]
 		public static extern char8* JoystickNameForIndex(int32 device_index);
-		
+
+        [LinkName("SDL_JoystickPathForIndex")]
+        public static extern char8* JoystickPathForIndex(int32 device_index);
+
 		[LinkName("SDL_JoystickNumAxes")]
 		public static extern int32 JoystickNumAxes(SDL_Joystick* joystick);
 		
@@ -3935,7 +4813,54 @@ namespace SDL2
 		
 		[LinkName("SDL_JoystickOpen")]
 		public static extern SDL_Joystick* JoystickOpen(int32 device_index);
-		
+
+        [LinkName("SDL_JoystickFromInstanceID")]
+        public static extern SDL_Joystick* JoystickFromInstanceID(SDL_JoystickID instance_id);
+
+        [LinkName("SDL_JoystickFromPlayerIndex")]
+        public static extern SDL_Joystick* JoystickFromPlayerIndex(int32 player_index);
+
+        [LinkName("SDL_JoystickAttachVirtual")]
+        public static extern int JoystickAttachVirtual(
+			SDL_JoystickType type
+			int naxes,
+			int nbuttons,
+			int nhats);
+
+        [LinkName("SDL_JoystickAttachVirtualEx")]
+        public static extern int JoystickAttachVirtualEx(SDL_VirtualJoystickDesc* desc);
+
+        [LinkName("SDL_JoystickDetachVirtual")]
+        public static extern int JoystickDetachVirtual(int device_index);
+
+        [LinkName("SDL_JoystickIsVirtual")]
+        public static extern Bool JoystickIsVirtual(int device_index);
+
+        [LinkName("SDL_JoystickSetVirtualAxis")]
+        public static extern Bool JoystickSetVirtualAxis(SDL_Joystick* joystick, int32_t axis, sint16 value);
+
+        [LinkName("SDL_JoystickSetVirtualButton")]
+        public static extern Bool JoystickSetVirtualButton(SDL_Joystick* joystick, int32_t button, uint8 value);
+
+        [LinkName("SDL_JoystickSetVirtualHat")]
+        public static extern Bool JoystickSetVirtualHat(SDL_Joystick* joystick, int32_t hat, uint8 value);
+
+        [LinkName("SDL_JoystickPath")]
+        public static extern char8* JoystickPath(SDL_Joystick* joystick);
+
+        [LinkName("SDL_JoystickGetPlayerIndex")]
+        public static extern int JoystickGetPlayerIndex(SDL_Joystick* joystick);
+
+        [LinkName("SDL_JoystickSetPlayerIndex")]
+        public static extern void JoystickSetPlayerIndex(SDL_Joystick* joystick, int32_t player_index);
+
+
+        [LinkName("SDL_JoystickOpen")]
+        public static extern SDL_Joystick* JoystickOpen(int32 device_index);
+
+        [LinkName("SDL_JoystickOpen")]
+        public static extern SDL_Joystick* JoystickOpen(int32 device_index);
+
 		[LinkName("SDL_JoystickUpdate")]
 		public static extern void JoystickUpdate();
 		
@@ -3961,6 +4886,14 @@ namespace SDL2
 
 		[LinkName("SDL_JoystickGetGUIDFromString")]
 		public static extern Guid JoystickGetGUIDFromString(char8* pchGuid);
+
+        [LinkName("SDL_GetJoystickGUIDInfo")]
+        public static extern void GetJoystickGUIDInfo(
+			Guid guid,
+			uint16* vendor,
+			uint16* product,
+			uint16* version,
+			uint16* crc16);
 
 		/* This function is only available in 2.0.6 or higher. */
 		[LinkName("SDL_JoystickGetDeviceVendor")]
@@ -4002,6 +4935,12 @@ namespace SDL2
 		[LinkName("SDL_JoystickGetProductVersion")]
 		public static extern uint16 JoystickGetProductVersion(SDL_Joystick* joystick);
 
+        [LinkName("SDL_JoystickGetFirmwareVersion")]
+        public static extern uint16 JoystickGetFirmwareVersion(SDL_Joystick* joystick);
+
+        [LinkName("SDL_JoystickGetSerial")]
+        public static extern char8* JoystickGetSerial(SDL_Joystick* joystick);
+
 		/* joystick refers to an SDL_Joystick*.
 		 * This function is only available in 2.0.6 or higher.
 		 */
@@ -4020,7 +4959,7 @@ namespace SDL2
 		 * This function is only available in 2.0.4 or higher.
 		 */
 		[LinkName("SDL_JoystickCurrentPowerLevel")]
-		public static extern SDL_JoystickPowerLevel JoystickCurrentPowerLevel(
+		public static extern JoystickPowerLevel JoystickCurrentPowerLevel(
 			SDL_Joystick* joystick
 		);
 
@@ -4157,6 +5096,16 @@ namespace SDL2
 			int32 joystick_index
 		);
 
+        [LinkName("SDL_GameControllerPathForIndex")]
+        public static extern char8* GameControllerPathForIndex(
+        	int32 joystick_index
+        );
+
+        [LinkName("SDL_GameControllerTypeForIndex")]
+        public static extern SDL_GameControllerType GameControllerTypeForIndex(
+        	int32 joystick_index
+        );
+
 		/* Only available in 2.0.9 or higher */
 		[LinkName("SDL_GameControllerMappingForDeviceIndex")]
 		public static extern char8* GameControllerMappingForDeviceIndex(
@@ -4233,6 +5182,12 @@ namespace SDL2
 			SDL_GameControllerAxis axis
 		);
 
+		[LinkName("SDL_GameControllerHasAxis")]
+		public static extern Bool GameControllerHasAxis(
+			SDL_GameController* gamecontroller,
+			SDL_GameControllerAxis axis
+		);
+
 		/* gamecontroller refers to an SDL_GameController* */
 		[LinkName("SDL_GameControllerGetAxis")]
 		public static extern int16 GameControllerGetAxis(
@@ -4242,7 +5197,7 @@ namespace SDL2
 
 		[LinkName("SDL_GameControllerGetButtonFromString")]
 		public static extern SDL_GameControllerButton GameControllerGetButtonFromString(
-			char8* pchString
+			char8* str
 		);
 
 		[LinkName("SDL_GameControllerGetStringForButton")]
@@ -4257,12 +5212,84 @@ namespace SDL2
 			SDL_GameControllerButton button
 		);
 
+        [LinkName("SDL_GameControllerHasButton")]
+        public static extern Bool GameControllerHasButton(
+        	SDL_GameController* gamecontroller,
+        	SDL_GameControllerButton button
+        );
+
 		/* gamecontroller refers to an SDL_GameController* */
 		[LinkName("SDL_GameControllerGetButton")]
 		public static extern uint8 GameControllerGetButton(
 			SDL_GameController* gamecontroller,
 			SDL_GameControllerButton button
 		);
+
+
+
+        [LinkName("SDL_GameControllerGetNumTouchpads")]
+        public static extern int GameControllerGetNumTouchpads(
+        	SDL_GameController* gamecontroller
+        );
+
+        [LinkName("SDL_GameControllerGetNumTouchpadFingers")]
+        public static extern int GameControllerGetNumTouchpadFingers(
+        	SDL_GameController* gamecontroller,
+            int32 touchpad
+        );
+
+        [LinkName("SDL_GameControllerGetTouchpadFinger")]
+        public static extern int GameControllerGetTouchpadFinger(
+        	SDL_GameController* gamecontroller,
+            int32 touchpad,
+            int32 finger,
+            uint8* state,
+            float* x,
+            float* y,
+            float* pressure
+        );
+
+        [LinkName("SDL_GameControllerHasSensor")]
+        public static extern int GameControllerHasSensor(
+        	SDL_GameController* gamecontroller,
+            SDL_SensorType type
+        );
+
+        [LinkName("SDL_GameControllerSetSensorEnabled")]
+        public static extern int GameControllerSetSensorEnabled(
+        	SDL_GameController* gamecontroller,
+            SDL_SensorType type,
+            Bool enabled
+        );
+
+        [LinkName("SDL_GameControllerIsSensorEnabled")]
+        public static extern Bool GameControllerIsSensorEnabled(
+        	SDL_GameController* gamecontroller,
+            SDL_SensorType type
+        );
+
+        [LinkName("SDL_GameControllerGetSensorDataRate")]
+        public static extern float GameControllerGetSensorDataRate(
+        	SDL_GameController* gamecontroller,
+            SDL_SensorType type
+        );
+
+        [LinkName("SDL_GameControllerGetSensorData")]
+        public static extern int GameControllerGetSensorData(
+        	SDL_GameController* gamecontroller,
+            SDL_SensorType type,
+            float *data,
+			int num_values
+        );
+
+        [LinkName("SDL_GameControllerGetSensorDataWithTimestamp")]
+        public static extern int GameControllerGetSensorDataWithTimestamp(
+        	SDL_GameController* gamecontroller,
+            SDL_SensorType type,
+            uint64 *timestamp,
+            float *data,
+			int num_values
+        );
 
 		/* gamecontroller refers to an SDL_GameController*.
 		 * This function is only available in 2.0.9 or higher.
@@ -4275,17 +5302,88 @@ namespace SDL2
 			uint32 duration_ms
 		);
 
+        [LinkName("SDL_GameControllerRumbleTriggers")]
+        public static extern int GameControllerRumbleTriggers(
+        	SDL_GameController* gamecontroller,
+        	uint16 left_rumble,
+        	uint16 right_rumble,
+        	uint32 duration_ms
+        );
+
+        [LinkName("SDL_GameControllerHasLED")]
+        public static extern Bool GameControllerHasLED(
+        	SDL_GameController* gamecontroller
+        );
+
+        [LinkName("SDL_GameControllerHasRumble")]
+        public static extern Bool GameControllerHasRumble(
+        	SDL_GameController* gamecontroller
+        );
+
+        [LinkName("SDL_GameControllerHasRumbleTriggers")]
+        public static extern Bool GameControllerHasRumbleTriggers(
+        	SDL_GameController* gamecontroller
+        );
+
+        [LinkName("SDL_GameControllerSetLED")]
+        public static extern int GameControllerSetLED(
+        	SDL_GameController* gamecontroller,
+            uint8 red,
+            uint8 green,
+            uint8 blue
+        );
+
+        [LinkName("SDL_GameControllerSendEffect")]
+        public static extern int GameControllerSendEffect(
+        	SDL_GameController* gamecontroller,
+            void* data,
+            int32_t size
+        );
+
 		/* gamecontroller refers to an SDL_GameController* */
 		[LinkName("SDL_GameControllerClose")]
 		public static extern void GameControllerClose(
 			SDL_GameController* gamecontroller
 		);
 
+        [LinkName("SDL_GameControllerGetAppleSFSymbolsNameForButton")]
+        public static extern char8* GameControllerGetAppleSFSymbolsNameForButton(
+        	SDL_GameController* gamecontroller,
+            SDL_GameControllerButton button
+        );
+
+        [LinkName("SDL_GameControllerGetAppleSFSymbolsNameForAxis")]
+        public static extern char8* GameControllerGetAppleSFSymbolsNameForAxis(
+        	SDL_GameController* gamecontroller,
+            SDL_GameControllerAxis axis
+        );
+
 		/* int refers to an SDL_JoystickID, IntPtr to an SDL_GameController*.
 		 * This function is only available in 2.0.4 or higher.
 		 */
 		[LinkName("SDL_GameControllerFromInstanceID")]
 		public static extern SDL_GameController* GameControllerFromInstanceID(int joyid);
+
+        [LinkName("SDL_GameControllerFromPlayerIndex")]
+        public static extern SDL_GameController* GameControllerFromPlayerIndex(int player_index);
+
+        [LinkName("SDL_GameControllerPath")]
+        public static extern char8* GameControllerPath(SDL_GameController* gamecontroller);
+
+        [LinkName("SDL_GameControllerGetType")]
+        public static extern SDL_GameControllerType GameControllerGetType(SDL_GameController* gamecontroller);
+
+        [LinkName("SDL_GameControllerGetPlayerIndex")]
+        public static extern int GameControllerGetPlayerIndex(SDL_GameController* gamecontroller);
+
+        [LinkName("SDL_GameControllerSetPlayerIndex")]
+        public static extern void GameControllerSetPlayerIndex(SDL_GameController* gamecontroller, int player_index);
+
+        [LinkName("SDL_GameControllerGetFirmwareVersion")]
+        public static extern uint16 SDL_GameControllerGetFirmwareVersion(SDL_GameController* gamecontroller);
+
+        [LinkName("SDL_GameControllerGetSerial")]
+        public static extern char* GameControllerGetSerial(SDL_GameController* gamecontroller);
 
 		/* SDL_HapticEffect type */
 		public const uint16 SDL_HAPTIC_CONSTANT =	(1 << 0);
@@ -4611,6 +5709,28 @@ namespace SDL2
 
 		#endregion
 
+		#region SDL_gamecontroller.h
+
+        public enum SDL_GameControllerType : int32
+        {
+        	SDL_CONTROLLER_TYPE_UNKNOWN = 0,
+        	SDL_CONTROLLER_TYPE_XBOX360,
+        	SDL_CONTROLLER_TYPE_XBOXONE,
+        	SDL_CONTROLLER_TYPE_PS3,
+        	SDL_CONTROLLER_TYPE_PS4,
+        	SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO,
+        	SDL_CONTROLLER_TYPE_VIRTUAL,
+        	SDL_CONTROLLER_TYPE_PS5,
+        	SDL_CONTROLLER_TYPE_AMAZON_LUNA,
+        	SDL_CONTROLLER_TYPE_GOOGLE_STADIA,
+        	SDL_CONTROLLER_TYPE_NVIDIA_SHIELD,
+        	SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_LEFT,
+        	SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT,
+        	SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_PAIR,
+        }
+
+		#endregion
+        
 		#region SDL_sensor.h
 
 		/* This region is only available in 2.0.9 or higher. */
@@ -4620,10 +5740,20 @@ namespace SDL2
 			SDL_SENSOR_INVALID = -1,
 			SDL_SENSOR_UNKNOWN,
 			SDL_SENSOR_ACCEL,
-			SDL_SENSOR_GYRO
+			SDL_SENSOR_GYRO,
+			SDL_SENSOR_ACCEL_L,
+			SDL_SENSOR_GYRO_L,
+			SDL_SENSOR_ACCEL_R,
+			SDL_SENSOR_GYRO_R
 		}
 
 		public const float SDL_STANDARD_GRAVITY = 9.80665f;
+
+        [LinkName("SDL_LockSensors")]
+        public static extern int32 LockSensors();
+
+        [LinkName("SDL_UnlockSensors")]
+        public static extern int32 UnlockSensors();
 
 		[LinkName("SDL_NumSensors")]
 		public static extern int32 NumSensors();
@@ -4672,6 +5802,14 @@ namespace SDL2
 		[LinkName("SDL_SensorGetData")]
 		public static extern int SensorGetData(
 			SDL_Sensor* sensor,
+			float* data,
+			int32 num_values
+		);
+
+		[LinkName("SDL_SensorGetDataWithTimestamp")]
+		public static extern int SensorGetDataWithTimestamp(
+			SDL_Sensor* sensor,
+            Uint64 *timestamp,
 			float* data,
 			int32 num_values
 		);
@@ -4809,6 +5947,21 @@ namespace SDL2
 			int32 index,
 			int32 iscapture
 		);
+
+		[LinkName("SDL_GetAudioDeviceSpec")]
+		public static extern int GetAudioDeviceSpec(
+			int32 index,
+			int32 iscapture,
+			SDL_AudioSpec* spec
+		);
+
+		[LinkName("SDL_GetDefaultAudioInfo")]
+		public static extern int GetDefaultAudioInfo(
+			char8** name,
+			SDL_AudioSpec* spec,
+			int iscapture
+		);
+		
 
 		/* dev refers to an SDL_AudioDeviceID */
 		[LinkName("SDL_GetAudioDeviceStatus")]
@@ -5024,6 +6177,9 @@ namespace SDL2
 		[LinkName("SDL_GetTicks")]
 		public static extern uint32 GetTicks();
 
+        [LinkName("SDL_GetTicks64")]
+        public static extern uint64 GetTicks64();
+
 		/* Get the current value of the high resolution counter */
 		[LinkName("SDL_GetPerformanceCounter")]
 		public static extern uint64 GetPerformanceCounter();
@@ -5093,6 +6249,9 @@ namespace SDL2
 		[LinkName("SDL_AndroidGetActivity")]
 		public static extern JNIEnv* AndroidGetActivity();
 
+		[LinkName("SDL_GetAndroidSDKVersion")]
+		public static extern int32 GetAndroidSDKVersion();
+
 		[LinkName("SDL_IsAndroidTV")]
 		public static extern Bool IsAndroidTV();
 
@@ -5114,6 +6273,20 @@ namespace SDL2
 		[LinkName("SDL_AndroidGetExternalStoragePath")]
 		private static extern char8* AndroidGetExternalStoragePath();
 
+		[LinkName("SDL_AndroidRequestPermission")]
+		private static extern Bool AndroidRequestPermission(char8* permission);
+
+		[LinkName("SDL_AndroidShowToast")]
+		private static extern int32 AndroidShowToast(
+			char8* permission,
+			int32 duration,
+			int32 gravity,
+			int32 xoffset,
+			int32 yoffset);
+
+		[LinkName("SDL_AndroidSendMessage")]
+		private static extern int32 AndroidSendMessage(uint32 command, int32 param);
+
 		/* WinRT */
 
 		public enum SDL_WinRT_DeviceFamily
@@ -5130,6 +6303,22 @@ namespace SDL2
 		[LinkName("SDL_IsTablet")]
 		public static extern Bool IsTablet();
 
+		[LinkName("SDL_OnApplicationWillTerminate")]
+		public static extern void OnApplicationWillTerminate();
+
+        [LinkName("SDL_OnApplicationDidReceiveMemoryWarning")]
+        public static extern void OnApplicationDidReceiveMemoryWarning();
+        [LinkName("SDL_OnApplicationWillResignActive")]
+        public static extern void OnApplicationWillResignActive();
+        [LinkName("SDL_OnApplicationDidEnterBackground")]
+        public static extern void OnApplicationDidEnterBackground();
+        [LinkName("SDL_OnApplicationWillEnterForeground")]
+        public static extern void OnApplicationWillEnterForeground();
+        [LinkName("SDL_OnApplicationDidBecomeActive")]
+        public static extern void OnApplicationDidBecomeActive();
+        [LinkName("SDL_OnApplicationDidChangeStatusBarOrientation")]
+        public static extern void OnApplicationDidChangeStatusBarOrientation();
+
 		public enum SDL_SYSWM_TYPE : int32
 		{
 			SDL_SYSWM_UNKNOWN,
@@ -5141,7 +6330,12 @@ namespace SDL2
 			SDL_SYSWM_WAYLAND,
 			SDL_SYSWM_MIR,
 			SDL_SYSWM_WINRT,
-			SDL_SYSWM_ANDROID
+			SDL_SYSWM_ANDROID,
+            SDL_SYSWM_VIVANTE,
+            SDL_SYSWM_OS2,
+            SDL_SYSWM_HAIKU,
+            SDL_SYSWM_KMSDRM,
+            SDL_SYSWM_RISCOS
 		}
 
 		// FIXME: I wish these weren't public...
@@ -5196,7 +6390,12 @@ namespace SDL2
 		{
 			public void* display; // Refers to a wl_display*
 			public void* surface; // Refers to a wl_surface*
-			public void* shell_surface; // Refers to a wl_shell_surface*
+			public void* shell_surface; // DEPRECATED: Refers to a wl_shell_surface*
+            public void* egl_window; // wl_egl_window
+            public void* xdg_surface; // xdg_surface
+            public void* xdg_toplevel; // xdg_toplevel
+            public void* xdg_popup; // xdg_popup
+            public void* xdg_positioner; // xdg_positioner
 		}
 
 		[CRepr]
@@ -5213,6 +6412,28 @@ namespace SDL2
 			public void* surface; // Refers to an EGLSurface
 		}
 
+        [CRepr]
+        public struct INTERNAL_vivante_wminfo
+        {
+        	public int32 display; // EGLNativeDisplayType
+            public int32 window; // EGLNativeWindowType
+        }
+
+        [CRepr]
+        public struct INTERNAL_kmsdrm_wminfo
+        {
+        	public int32 dev_index;
+            public int32 drm_fd;
+            public void* gbm_dev; // struct gbm_device*
+        }
+
+        [CRepr]
+        public struct INTERNAL_os2_wminfo
+        {
+        	public void** hwnd;
+            public void** hwndFrame;
+        }
+
 		[CRepr, Union]
 		public struct INTERNAL_SysWMDriverUnion
 		{
@@ -5227,6 +6448,10 @@ namespace SDL2
 			public INTERNAL_wayland_wminfo wl;
 			public INTERNAL_mir_wminfo mir;
 			public INTERNAL_android_wminfo android;
+            public INTERNAL_os2_wminfo os2;
+            public INTERNAL_vivante_wminfo vivante;
+            public INTERNAL_kmsdrm_wminfo kmsdrm;
+
 			// private int dummy;
 		}
 
@@ -5270,8 +6495,189 @@ namespace SDL2
 		[LinkName("SDL_GetCPUCount")]
 		public static extern int32 GetCPUCount();
 
-		/* Only available in 2.0.1 */
+		[LinkName("SDL_GetCPUCacheLineSize")]
+		public static extern int32 GetCPUCacheLineSize();
+
+		[LinkName("SDL_HasRDTSC")]
+		public static extern Bool HasRDTSC();
+
+		[LinkName("SDL_HasAltiVec")]
+		public static extern Bool HasAltiVec();
+
+		[LinkName("SDL_HasMMX")]
+		public static extern Bool HasMMX();
+
+		[LinkName("SDL_Has3DNow")]
+		public static extern Bool Has3DNow();
+
+		[LinkName("SDL_HasSSE")]
+		public static extern Bool HasSSE();
+
+		[LinkName("SDL_HasSSE2")]
+		public static extern Bool HasSSE2();
+
+		[LinkName("SDL_HasSSE3")]
+		public static extern Bool HasSSE3();
+
+		[LinkName("SDL_HasSSE41")]
+		public static extern Bool HasSSE41();
+
+		[LinkName("SDL_HasSSE42")]
+		public static extern Bool HasSSE42();
+
+		[LinkName("SDL_HasAVX")]
+		public static extern Bool HasAVX();
+
+		[LinkName("SDL_HasAVX2")]
+		public static extern Bool HasAVX2();
+
+		[LinkName("SDL_HasAVX512F")]
+		public static extern Bool HasAVX512F();
+
+		[LinkName("SDL_HasARMSIMD")]
+		public static extern Bool HasAVX512F();
+
+		[LinkName("SDL_HasNEON")]
+		public static extern Bool HasNEON();
+
+		[LinkName("SDL_HasLSX")]
+		public static extern Bool HasLSX();
+
+		[LinkName("SDL_HasLASX")]
+		public static extern Bool HasLASX();
+
+		/* Only available in 2.0.1+ */
 		[LinkName("SDL_GetSystemRAM")]
 		public static extern int32 GetSystemRAM();
-	}
+
+
+		[LinkName("SDL_SIMDGetAlignment")]
+		public static extern int SIMDGetAlignment();
+
+		[LinkName("SDL_SIMDAlloc")]
+		public static extern void* SIMDAlloc(int len);
+
+		[LinkName("SDL_SIMDRealloc")]
+		public static extern void* SIMDRealloc(void* mem, int len);
+
+		[LinkName("SDL_SIMDFree")]
+		public static extern void SIMDFree(void* ptr);
+
+        // SDL_guid.h
+
+        [LinkName("SDL_GUIDToString")]
+        public static extern void GUIDToString(Guid guid, char8* pszGUID, int32 cbGUID);
+
+        [LinkName("SDL_GUIDFromString")]
+        public static extern Guid GUIDFromString(char8* pchGUID);
+
+        // SDL_hidapi.h
+
+        public struct SDL_hid_device;
+
+        [CRepr]
+        public struct SDL_hid_device_info
+        {
+            char8* path;
+            uint16 vendor_id;
+            uint16 product_id;
+            char16* serial_number;
+            uint16 release_number;
+            char16* manufacturer_string;
+            char16* product_string;
+            uint16 usage_page;
+            uint16 usage;
+            int32 interface_number;
+            int32 interface_class;
+            int32 interface_subclass;
+            int32 interface_protocol;
+        }
+
+        [LinkName("SDL_hid_init")]
+        public static extern int32 hid_init();
+
+        [LinkName("SDL_hid_exit")]
+        public static extern int32 hid_exit();
+
+        [LinkName("SDL_hid_device_change_count")]
+        public static extern uint32 hid_device_change_count();
+
+        [LinkName("SDL_hid_device_change_count")]
+        public static extern SDL_hid_device_info* SDL_hid_enumerate(uint16 vendor_id, uint16 product_id);
+
+        [LinkName("SDL_hid_free_enumeration")]
+        public static extern void hid_free_enumeration(SDL_hid_device_info* devs);
+
+        [LinkName("SDL_hid_open")]
+        public static extern SDL_hid_device* hid_open(uint16 vendor_id, uint16 product_id, char16* serial_number);
+
+        [LinkName("SDL_hid_open_path")]
+        public static extern SDL_hid_device* hid_open_path(char8* path, int32 bExclusive);
+
+        [LinkName("SDL_hid_write")]
+        public static extern int32 hid_write(SDL_hid_device* dev, uint8* data, uint length);
+
+        [LinkName("SDL_hid_read_timeout")]
+        public static extern int32 hid_read_timeout(SDL_hid_device* dev, uint8* data, uint length, int32 milliseconds);
+
+        [LinkName("SDL_hid_read")]
+        public static extern int32 hid_read(SDL_hid_device* dev, uint8* data, uint length);
+
+        [LinkName("SDL_hid_set_nonblocking")]
+        public static extern int32 hid_set_nonblocking(SDL_hid_device* dev, int32 nonblock);
+
+        [LinkName("SDL_hid_send_feature_report")]
+        public static extern int32 hid_send_feature_report(SDL_hid_device* dev, uint8* data, uint length);
+
+        [LinkName("SDL_hid_get_feature_report")]
+        public static extern int32 hid_get_feature_report(SDL_hid_device* dev, uint8* data, uint length);
+
+        [LinkName("SDL_hid_close")]
+        public static extern int32 hid_close(SDL_hid_device* dev);
+
+        [LinkName("SDL_hid_get_manufacturer_string")]
+        public static extern int32 hid_get_manufacturer_string(SDL_hid_device* dev, char16* string, uint maxlen);
+
+        [LinkName("SDL_hid_get_product_string")]
+        public static extern int32 hid_get_product_string(SDL_hid_device* dev, char16* string, uint maxlen);
+
+        [LinkName("SDL_hid_get_serial_number_string")]
+        public static extern int32 hid_get_serial_number_string(SDL_hid_device* dev, char16* string, uint maxlen);
+
+        [LinkName("SDL_hid_get_indexed_string")]
+        public static extern int32 hid_get_indexed_string(SDL_hid_device* dev, int32 string_index, char16* string, uint maxlen);
+
+        [LinkName("SDL_hid_ble_scan")]
+        public static extern void hid_ble_scan(Bool active);
+
+        // SDL_locale.h
+
+        [CRepr]
+        public struct SDL_Locale
+        {
+            char8* language;
+            char8* country;
+        }
+
+        [LinkName("SDL_GetPreferredLocales")]
+        public static extern SDL_Locale* GetPreferredLocales();
+
+        // SDL_metal.h
+
+        [LinkName("SDL_Metal_CreateView")]
+        public static extern void* Metal_CreateView(Window* window);
+
+        [LinkName("SDL_Metal_DestroyView")]
+        public static extern MetalView* Metal_DestroyView(void* view);
+
+        [LinkName("SDL_Metal_GetLayer")]
+        public static extern void* Metal_GetLayer(void* view);
+
+        [LinkName("SDL_Metal_GetDrawableSize")]
+        public static extern void Metal_GetDrawableSize(Window* window, int32* w, int32* h);
+
+        // SDL_misc.h
+        [LinkName("SDL_OpenURL")]
+        public static extern int32 OpenURL(char* url);
+    }
 }
