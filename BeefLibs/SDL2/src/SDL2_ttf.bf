@@ -113,7 +113,7 @@ namespace SDL2
 
         [LinkName("TTF_OpenFontDPI")]
         public static extern Font* OpenFontDPI(
-        	char* file,
+        	char8* file,
             int32 ptsize,
             uint32 hdpi,
             uint32 vdpi
@@ -121,7 +121,7 @@ namespace SDL2
 
         [LinkName("TTF_OpenFontIndexDPI")]
         public static extern Font* OpenFontIndexDPI(
-        	char* file,
+        	char8* file,
             int32 ptsize,
             int32 index,
             uint32 hdpi,
@@ -482,7 +482,7 @@ namespace SDL2
 			Font* font,
             char8* text,
 			SDL.Color fg,
-            SDL.Color.bg
+            SDL.Color bg
 		);
 
 		[LinkName("TTF_RenderUTF8_LCD")]
@@ -490,7 +490,7 @@ namespace SDL2
 			Font* font,
             char8* text,
 			SDL.Color fg,
-            SDL.Color.bg
+            SDL.Color bg
 		);
 
 		[LinkName("TTF_RenderUNICODE_LCD")]
@@ -498,7 +498,7 @@ namespace SDL2
 			Font* font,
             char16* text,
 			SDL.Color fg,
-            SDL.Color.bg
+            SDL.Color bg
 		);
 
         [LinkName("TTF_RenderText_LCD_Wrapped")]
@@ -506,7 +506,7 @@ namespace SDL2
         	Font* font,
             char8* text,
         	SDL.Color fg,
-            SDL.Color.bg,
+            SDL.Color bg,
             uint32 wrapLength
         );
 
@@ -515,7 +515,7 @@ namespace SDL2
         	Font* font,
             char8* text,
         	SDL.Color fg,
-            SDL.Color.bg,
+            SDL.Color bg,
             uint32 wrapLength
         );
 
@@ -524,7 +524,7 @@ namespace SDL2
         	Font* font,
             char16* text,
         	SDL.Color fg,
-            SDL.Color.bg,
+            SDL.Color bg,
             uint32 wrapLength
         );
 
@@ -533,7 +533,7 @@ namespace SDL2
         	Font* font,
             char16 ch,
         	SDL.Color fg,
-            SDL.Color.bg
+            SDL.Color bg
         );
 
         [LinkName("TTF_RenderGlyph32_LCD")]
@@ -541,7 +541,7 @@ namespace SDL2
         	Font* font,
             char32 ch,
         	SDL.Color fg,
-            SDL.Color.bg
+            SDL.Color bg
         );
 
 		[LinkName("TTF_CloseFont")]

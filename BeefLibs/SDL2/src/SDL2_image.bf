@@ -252,7 +252,7 @@ namespace SDL2
         }
 
         [LinkName("IMG_LoadAnimation")]
-        public static extern Animation* LoadAnimation(char* file);
+        public static extern Animation* LoadAnimation(char8* file);
 
         [LinkName("IMG_LoadAnimation_RW")]
         public static extern Animation* LoadAnimation(SDL.RWOps* src, int32 freesrc);
@@ -264,6 +264,6 @@ namespace SDL2
         public static extern void IMG_FreeAnimation(Animation* anim);
 
         [LinkName("IMG_LoadGIFAnimation_RW")]
-        public static extern Animation* LoadGIFAnimation_RW(SDL_RWops *src);
+        public static extern Animation* LoadGIFAnimation_RW(SDL.RWOps *src);
 	}
 }

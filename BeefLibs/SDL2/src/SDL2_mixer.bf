@@ -279,11 +279,6 @@ namespace SDL2
 		public struct Music;
 		public struct Chunk;
 
-		public static int32 PlayChannel(int channel, Chunk* chunk, int loops)
-		{
-			return PlayChannelTimed(channel, chunk, loops, -1);
-		}
-
 		/* chunk refers to a Mix_Chunk* */
 		[LinkName("Mix_PlayChannelTimed")]
 		public static extern int32 PlayChannelTimed(
@@ -465,6 +460,6 @@ namespace SDL2
 		public static extern int32 SetTimidityCfg(char8* path);
 
 		[LinkName("Mix_GetTimidityCfg")]
-		public static extern char8* Mix_GetTimidityCfg(void);
+		public static extern char8* Mix_GetTimidityCfg();
 	}
 }
