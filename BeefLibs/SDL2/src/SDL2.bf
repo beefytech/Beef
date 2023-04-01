@@ -3637,7 +3637,7 @@ namespace SDL2
 			public SDL_SysWMmsg* msg; /* SDL_SysWMmsg*, system-dependent*/
 		}
 
-        [CRepr]]
+        [CRepr]
         public struct CommonEvent
         {
             public uint32 type;
@@ -4401,7 +4401,7 @@ namespace SDL2
 		public static extern bool* GetKeyboardState(int32* numkeys);
 
 		[LinkName("SDL_ResetKeyboard")]
-		public static extern void ResetKeyboard(void);
+		public static extern void ResetKeyboard();
 
 		/* Get the current key modifier state for the keyboard. */
 		[LinkName("SDL_GetModState")]
