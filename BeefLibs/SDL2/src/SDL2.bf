@@ -52,7 +52,7 @@ namespace SDL2
 		}
 
 		[LinkName("SDL_malloc")]
-		public static extern void* malloc(int size);
+		public static extern void* malloc(uint size);
 
 		[LinkName("SDL_free")]
 		public static extern void free(void* memblock);
@@ -100,10 +100,10 @@ namespace SDL2
         public static extern int32 RWclose(RWOps* ctx);
 
         [LinkName("SDL_LoadFile_RW")]
-        public static extern int32 LoadFile_RW(RWOps* src, uint datasize, int32 freesrc);
+        public static extern void* LoadFile_RW(RWOps* src, out uint datasize, int32 freesrc);
 
         [LinkName("SDL_LoadFile")]
-        public static extern void* LoadFile(char8* file, uint datasize);
+        public static extern void* LoadFile(char8* file, out uint datasize);
 
         [LinkName("SDL_ReadU8")]
         public static extern uint8 ReadU8(RWOps* src);
@@ -153,7 +153,7 @@ namespace SDL2
 		public static extern void SetMainReady();
 
         [LinkName("SDL_RegisterApp")]
-        public static extern int RegisterApp(char8* name, uint32 style, void* hInst);
+        public static extern int32 RegisterApp(char8* name, uint32 style, void* hInst);
 
         [LinkName("SDL_UnregisterApp")]
         public static extern void UnregisterApp();
@@ -184,9 +184,9 @@ namespace SDL2
 		}
 
 		[LinkName("SDL_Init")]
-		public static extern int Init(InitFlag flags);
+		public static extern int32 Init(InitFlag flags);
 		[LinkName("SDL_InitSubSystem")]
-		public static extern int InitSubSystem(InitFlag flags);
+		public static extern int32 InitSubSystem(InitFlag flags);
 		[LinkName("SDL_Quit")]
 		public static extern void Quit();
 		[LinkName("SDL_QuitSubSystem")]
@@ -242,7 +242,7 @@ namespace SDL2
         public const String SDL_HINT_APP_NAME =
 	        "SDL_APP_NAME";
         public const String SDL_HINT_APPLE_TV_CONTROLLER_UI_EVENTS =
-	        "SDL_TV_CONTROLLER_UI_EVENTS";
+	        "SDL_APPLE_TV_CONTROLLER_UI_EVENTS";
         public const String SDL_HINT_AUDIO_CATEGORY =
 	        "SDL_AUDIO_CATEGORY";
         public const String SDL_HINT_AUDIO_DEVICE_APP_NAME =
@@ -587,11 +587,11 @@ namespace SDL2
 		public static extern char8* GetError();
 
 		[LinkName("SDL_GetErrorMsg")]
-		public static extern char8* GetErrorMsg(char8* errstr, int maxlen);
+		public static extern char8* GetErrorMsg(char8* errstr, int32 maxlen);
 
 		/* Use string.Format for arglists */
 		[LinkName("SDL_SetError")]
-		public static extern void SetError(char8* fmtAndArglist);
+		public static extern int32 SetError(char8* fmtAndArglist);
 
 		/* Begin nameless enum SDL_LOG_CATEGORY */
 		public const int32 LOG_CATEGORY_APPLICATION = 0;
@@ -652,7 +652,7 @@ namespace SDL2
 
 		/* Use string.Format for arglists */
 		[LinkName("SDL_LogVerbose")]
-		public static extern void LogVerbose(int category, char8* fmtAndArglist);
+		public static extern void LogVerbose(int32 category, char8* fmtAndArglist);
 
 		/* Use string.Format for arglists */
 		[LinkName("SDL_LogDebug")]
@@ -660,7 +660,6 @@ namespace SDL2
 
 		/* Use string.Format for arglists */
 		[LinkName("SDL_LogInfo")]
-		
 		public static extern void LogInfo(int32 category, char8* fmtAndArglist);
 
 		/* Use string.Format for arglists */
@@ -692,7 +691,7 @@ namespace SDL2
 		[LinkName("SDL_LogSetAllPriority")]
 		public static extern void LogSetAllPriority(LogPriority priority);
 
-		[LinkName("SDL_LogSetAllPriority")]
+		[LinkName("SDL_LogResetPriorities")]
 		public static extern void LogResetPriorities();
 
 		[LinkName("SDL_LogGetOutputFunction")]
@@ -755,7 +754,7 @@ namespace SDL2
 			public Window* window;				/* Parent window, can be NULL */
 			public char8* title;				/* UTF-8 title */
 			public char8* message;				/* UTF-8 message text */
-			public int numbuttons;
+			public int32 numbuttons;
 			public MessageBoxButtonData* buttons;
 			public MessageBoxColorScheme* colorScheme;	/* Can be NULL to use system settings */
 		}
@@ -765,7 +764,7 @@ namespace SDL2
 		public static extern int32 ShowMessageBox(ref MessageBoxData messageboxdata, out int32 buttonid);
 
 		[LinkName("SDL_ShowSimpleMessageBox")]
-		public static extern int SimpleMessageBox(
+		public static extern int32 SimpleMessageBox(
 			MessageBoxFlags flags,
 			char8* title,
 			char8* message,
@@ -818,7 +817,7 @@ namespace SDL2
 		public static extern char8* GetRevision();
 
 		[LinkName("SDL_GetRevisionNumber")]
-		public static extern int GetRevisionNumber();
+		public static extern int32 GetRevisionNumber();
 
 		public enum SDL_GLAttr : uint32
 		{
@@ -978,7 +977,7 @@ namespace SDL2
 			return (x & 0xFFFF0000) == (.) WindowPos.Undefined;
 		}
 
-		public static int WindowPosCenteredDisplay(int32 x)
+		public static int32 WindowPosCenteredDisplay(int32 x)
 		{
 			return ((.) WindowPos.Centered | x);
 		}
@@ -1013,7 +1012,7 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_CreateWindowAndRenderer"), NoShow, Obsolete("WindowPos has been deprecated in favor of int32.", false)]
-		public static extern int CreateWindowAndRenderer(
+		public static extern int32 CreateWindowAndRenderer(
 			WindowPos width,
 			WindowPos height,
 			WindowFlags window_flags,
@@ -1022,7 +1021,7 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_CreateWindowAndRenderer")]
-		public static extern int CreateWindowAndRenderer(
+		public static extern int32 CreateWindowAndRenderer(
 			int32 width,
 			int32 height,
 			WindowFlags window_flags,
@@ -1032,7 +1031,7 @@ namespace SDL2
 
 		/* data refers to some native window type, IntPtr to an SDL_Window* */
 		[LinkName("SDL_CreateWindowFrom")]
-		public static extern Window* SDL_CreateWindowFrom(void* data);
+		public static extern Window* CreateWindowFrom(void* data);
 
 		
 		[LinkName("SDL_DestroyWindow")]
@@ -1046,16 +1045,16 @@ namespace SDL2
 
 		/* IntPtr refers to an SDL_DisplayMode. Just use closest. */
 		[LinkName("SDL_GetClosestDisplayMode")]
-		public static extern SDL_DisplayMode* SDL_GetClosestDisplayMode(
-			int displayIndex,
+		public static extern SDL_DisplayMode* GetClosestDisplayMode(
+			int32 displayIndex,
 			ref SDL_DisplayMode mode,
 			out SDL_DisplayMode closest
 		);
 
 
 		[LinkName("SDL_GetCurrentDisplayMode")]
-		public static extern int SDL_GetCurrentDisplayMode(
-			int displayIndex,
+		public static extern int32 GetCurrentDisplayMode(
+			int32 displayIndex,
 			out SDL_DisplayMode mode
 		);
 
@@ -1066,7 +1065,7 @@ namespace SDL2
 		public static extern int32 GetDesktopDisplayMode(int32 displayIndex, out SDL_DisplayMode mode);
 
 		[LinkName("SDL_GetDisplayName")]
-		public static extern char8* GetDisplayName(int index);
+		public static extern char8* GetDisplayName(int32 index);
 
 		[LinkName("SDL_GetDisplayBounds")]
 		public static extern int32 GetDisplayBounds(int32 displayIndex, out Rect rect);
@@ -1077,29 +1076,29 @@ namespace SDL2
 
 		/* This function is only available in 2.0.9 or higher */
 		[LinkName("SDL_GetDisplayOrientation")]
-		public static extern DisplayOrientation SDL_GetDisplayOrientation(int32 displayIndex);
+		public static extern DisplayOrientation GetDisplayOrientation(int32 displayIndex);
 
 		[LinkName("SDL_GetDisplayMode")]
 		public static extern int32 GetDisplayMode(int32 displayIndex, int32 modeIndex, out SDL_DisplayMode mode);
 
 		/* Available in 2.0.5 or higher */
 		[LinkName("SDL_GetDisplayUsableBounds")]
-		public static extern int SDL_GetDisplayUsableBounds(int displayIndex, out Rect rect);
+		public static extern int32 GetDisplayUsableBounds(int32 displayIndex, out Rect rect);
 
 		[LinkName("SDL_GetNumDisplayModes")]
 		public static extern int32 GetNumDisplayModes(int32 displayIndex);
 
 		[LinkName("SDL_GetNumVideoDisplays")]
-		public static extern int SDL_GetNumVideoDisplays();
+		public static extern int32 GetNumVideoDisplays();
 
 		[LinkName("SDL_GetNumVideoDrivers")]
-		public static extern int SDL_GetNumVideoDrivers();
+		public static extern int32 GetNumVideoDrivers();
 
 		[LinkName("SDL_GetVideoDriver")]
 		public static extern char8* GetVideoDriver(int32 index);
 
 		[LinkName("SDL_GetWindowBrightness")]
-		public static extern float SDL_GetWindowBrightness(Window* window);
+		public static extern float GetWindowBrightness(Window* window);
 
 		/* Available in 2.0.5 or higher */
 		[LinkName("SDL_SetWindowOpacity")]
@@ -1111,16 +1110,15 @@ namespace SDL2
 
 		/* Available in 2.0.5 or higher */
 		[LinkName("SDL_SetWindowModalFor")]
-		public static extern int SDL_SetWindowModalFor(Window* modal_window, Window* parent_window);
+		public static extern int32 SetWindowModalFor(Window* modal_window, Window* parent_window);
 
-		
 		/* Available in 2.0.5 or higher */
 		[LinkName("SDL_SetWindowInputFocus")]
-		public static extern int SDL_SetWindowInputFocus(Window* window);
+		public static extern int32 SetWindowInputFocus(Window* window);
 
 		/* window refers to an SDL_Window*, IntPtr to a void* */
 		[LinkName("SDL_GetWindowData")]
-		public static extern void* SDL_GetWindowData(Window* window, char8* name);
+		public static extern void* GetWindowData(Window* window, char8* name);
 
         [LinkName("SDL_GetPointDisplayIndex")]
         public static extern int32 GetPointDisplayIndex(Point* point);
@@ -1129,10 +1127,10 @@ namespace SDL2
         public static extern int32 GetRectDisplayIndex(Rect* rect);
 
 		[LinkName("SDL_GetWindowDisplayIndex")]
-		public static extern int SDL_GetWindowDisplayIndex(Window* window);
+		public static extern int32 GetWindowDisplayIndex(Window* window);
 		
 		[LinkName("SDL_GetWindowDisplayMode")]
-		public static extern int GetWindowDisplayMode(Window* window, out SDL_DisplayMode mode);
+		public static extern int32 GetWindowDisplayMode(Window* window, out SDL_DisplayMode mode);
 
 		[LinkName("SDL_GetWindowFlags")]
 		public static extern uint32 GetWindowFlags(Window* window);
@@ -1211,14 +1209,14 @@ namespace SDL2
 		public static extern void GL_ResetAttributes();
 
 		[LinkName("SDL_GL_GetAttribute")]
-		public static extern int GL_GetAttribute(SDL_GLAttr attr, out int32 value);
+		public static extern int32 GL_GetAttribute(SDL_GLAttr attr, out int32 value);
 
 		[LinkName("SDL_GL_GetSwapInterval")]
-		public static extern int GL_GetSwapInterval();
+		public static extern int32 GL_GetSwapInterval();
 
 		/* window and context refer to an SDL_Window* and SDL_GLContext */
 		[LinkName("SDL_GL_MakeCurrent")]
-		public static extern int SDL_GL_MakeCurrent(Window* window, SDL_GLContext context);
+		public static extern int32 SDL_GL_MakeCurrent(Window* window, SDL_GLContext context);
 
 		/* IntPtr refers to an SDL_Window* */
 		[LinkName("SDL_GL_GetCurrentWindow")]
@@ -1323,10 +1321,10 @@ namespace SDL2
 		public static extern void ShowWindow(Window* window);
 		
 		[LinkName("SDL_UpdateWindowSurface")]
-		public static extern int UpdateWindowSurface(Window* window);
+		public static extern int32 UpdateWindowSurface(Window* window);
 		
 		[LinkName("SDL_UpdateWindowSurfaceRects")]
-		public static extern int UpdateWindowSurfaceRects(Window* window, Rect* rects, int numrects);
+		public static extern int32 UpdateWindowSurfaceRects(Window* window, Rect* rects, int32 numrects);
 
 		[LinkName("SDL_VideoInit")]
 		public static extern int32 VideoInit(char8* driver_name);
@@ -1337,7 +1335,7 @@ namespace SDL2
 		/* window refers to an SDL_Window*, callback_data to a void* */
 		/* Only available in 2.0.4 */
 		[LinkName("SDL_SetWindowHitTest")]
-		public static extern int SetWindowHitTest(Window* window, SDL_HitTest callback, void* callback_data);
+		public static extern int32 SetWindowHitTest(Window* window, SDL_HitTest callback, void* callback_data);
 
 		/* Only available in 2.0.4 */
 		[LinkName("SDL_GetGrabbedWindow")]
@@ -1355,6 +1353,7 @@ namespace SDL2
 			Blend =	0x00000001,
 			Add =	0x00000002,
 			Mod =	0x00000004,
+            Mul =   0x00000008,
 			Invalid = 0x7FFFFFFF
 		}
 
@@ -1456,8 +1455,8 @@ namespace SDL2
 		public enum TextureModulate
 		{
 			None     =		0x00000000,
-			Horizontal =	0x00000001,
-			Vertical =		0x00000002
+			Color    =	    0x00000001,
+			Alpha    =		0x00000002
 		}
 
         public enum ScaleMode
@@ -1474,8 +1473,8 @@ namespace SDL2
 			public uint32 flags;
 			public uint32 num_texture_formats;
 			public uint32[16] texture_formats;
-			public int max_texture_width;
-			public int max_texture_height;
+			public int32 max_texture_width;
+			public int32 max_texture_height;
 		}
 
         [CRepr]
@@ -1505,27 +1504,23 @@ namespace SDL2
 		[LinkName("SDL_CreateTextureFromSurface")]
 		public static extern Texture* CreateTextureFromSurface(Renderer* renderer, Surface* surface);
 
-		
 		[LinkName("SDL_DestroyRenderer")]
 		public static extern void DestroyRenderer(Renderer* renderer);
 
-		
 		[LinkName("SDL_DestroyTexture")]
 		public static extern void DestroyTexture(Texture* texture);
 
 		[LinkName("SDL_GetNumRenderDrivers")]
 		public static extern int32 GetNumRenderDrivers();
 
-		
 		[LinkName("SDL_GetRenderDrawBlendMode")]
 		public static extern int32 GetRenderDrawBlendMode(Renderer* renderer, out BlendMode blendMode);
 
-		
 		[LinkName("SDL_GetRenderDrawColor")]
-		public static extern int GetRenderDrawColor(Renderer* renderer, out uint8 r, out uint8 g, out uint8 b, out uint8 a);
+		public static extern int32 GetRenderDrawColor(Renderer* renderer, out uint8 r, out uint8 g, out uint8 b, out uint8 a);
 
 		[LinkName("SDL_GetRenderDriverInfo")]
-		public static extern int GetRenderDriverInfo(int index, out RendererInfo info);
+		public static extern int32 GetRenderDriverInfo(int32 index, out RendererInfo info);
 
 		[LinkName("SDL_GetRenderer")]
 		public static extern Renderer* GetRenderer(Window* window);
@@ -1534,7 +1529,7 @@ namespace SDL2
 		public static extern int32 GetRendererInfo(Renderer* renderer, out RendererInfo info);
 
 		[LinkName("SDL_GetRendererOutputSize")]
-		public static extern int32 GetRendererOutputSize(Renderer* renderer, out int w, out int h);
+		public static extern int32 GetRendererOutputSize(Renderer* renderer, out int32 w, out int32 h);
 
 		[LinkName("SDL_GetTextureAlphaMod")]
 		public static extern int32 GetTextureAlphaMod(Texture* texture, out uint8 alpha);
@@ -1570,11 +1565,11 @@ namespace SDL2
         public static extern int32 LockTextureToSurface(
         	Texture* texture,
         	Rect* rect,
-        	Surface** surface
+        	out Surface* surface
         );
 		
 		[LinkName("SDL_QueryTexture")]
-		public static extern int QueryTexture(
+		public static extern int32 QueryTexture(
 			Texture* texture,
 			out uint32 format,
 			out int32 access,
@@ -1584,10 +1579,10 @@ namespace SDL2
 
 		
 		[LinkName("SDL_RenderClear")]
-		public static extern int RenderClear(Renderer* renderer);
+		public static extern int32 RenderClear(Renderer* renderer);
 
 		[LinkName("SDL_RenderCopy")]
-		public static extern int RenderCopy(
+		public static extern int32 RenderCopy(
 			Renderer* renderer,
 			Texture* texture,
 			Rect* srcrect,
@@ -1595,7 +1590,7 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_RenderCopyEx")]
-		public static extern int RenderCopyEx(
+		public static extern int32 RenderCopyEx(
 			Renderer* renderer,
 			Texture* texture,
 			Rect* srcrect,
@@ -1606,7 +1601,7 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_RenderDrawLine")]
-		public static extern int RenderDrawLine(
+		public static extern int32 RenderDrawLine(
 			Renderer* renderer,
 			int32 x1,
 			int32 y1,
@@ -1615,68 +1610,68 @@ namespace SDL2
 		);
 		
 		[LinkName("SDL_RenderDrawLines")]
-		public static extern int RenderDrawLines(
+		public static extern int32 RenderDrawLines(
 			Renderer* renderer,
 			Point* points,
 			int32 count
 		);
 	
 		[LinkName("SDL_RenderDrawPoint")]
-		public static extern int RenderDrawPoint(
+		public static extern int32 RenderDrawPoint(
 			Renderer* renderer,
 			int32 x,
 			int32 y
 		);
 
 		[LinkName("SDL_RenderDrawPointF")]
-        public static extern int RenderDrawPointF(
+        public static extern int32 RenderDrawPointF(
         	Renderer* renderer,
         	float x,
         	float y
         );
 
 		[LinkName("SDL_RenderDrawPoints")]
-		public static extern int RenderDrawPoints(
+		public static extern int32 RenderDrawPoints(
 			Renderer* renderer,
 			Point* points,
 			int32 count
 		);
 
 	    [LinkName("SDL_RenderDrawPointsF")]
-        public static extern int RenderDrawPointsF(
+        public static extern int32 RenderDrawPointsF(
         	Renderer* renderer,
         	FPoint* points,
         	int32 count
         );
 
 		[LinkName("SDL_RenderDrawRect")]
-		public static extern int RenderDrawRect(
+		public static extern int32 RenderDrawRect(
 			Renderer* renderer,
 			Rect* rect
 		);
 		
 		[LinkName("SDL_RenderDrawRects")]
-		public static extern int RenderDrawRects(
+		public static extern int32 RenderDrawRects(
 			Renderer* renderer,
-			Rect** rects,
+			Rect* rects,
 			int32 count
 		);
 
 		[LinkName("SDL_RenderFillRect")]
-		public static extern int RenderFillRect(
+		public static extern int32 RenderFillRect(
 			Renderer* renderer,
 			Rect* rect
 		);
 		
 		[LinkName("SDL_RenderFillRects")]
-		public static extern int RenderFillRects(
+		public static extern int32 RenderFillRects(
 			Renderer* renderer,
-			Rect** rects,
+			Rect* rects,
 			int32 count
 		);
 
         [LinkName("SDL_RenderCopyF")]
-        public static extern int RenderCopyF(
+        public static extern int32 RenderCopyF(
         	Renderer* renderer,
         	Texture* texture,
         	Rect* srcrect,
@@ -1684,7 +1679,7 @@ namespace SDL2
         );
 
         [LinkName("SDL_RenderCopyExF")]
-        public static extern int RenderCopyExF(
+        public static extern int32 RenderCopyExF(
         	Renderer* renderer,
         	Texture* texture,
         	Rect* srcrect,
@@ -1695,7 +1690,7 @@ namespace SDL2
         );
 
         [LinkName("SDL_RenderDrawLineF")]
-        public static extern int RenderDrawLineF(
+        public static extern int32 RenderDrawLineF(
         	Renderer* renderer,
         	float x1,
         	float y1,
@@ -1704,48 +1699,48 @@ namespace SDL2
         );
 
         [LinkName("SDL_RenderDrawLinesF")]
-        public static extern int RenderDrawLinesF(
+        public static extern int32 RenderDrawLinesF(
         	Renderer* renderer,
         	FPoint* points,
         	int32 count
         );
 
         [LinkName("SDL_RenderDrawRect")]
-        public static extern int RenderDrawRectF(
+        public static extern int32 RenderDrawRectF(
         	Renderer* renderer,
         	FRect* rect
         );
 
-        [LinkName("SDL_RenderDrawRects")]
-        public static extern int RenderDrawRectsF(
+        [LinkName("SDL_RenderDrawRectsF")]
+        public static extern int32 RenderDrawRectsF(
         	Renderer* renderer,
-        	FRect** rects,
+        	FRect* rects,
         	int32 count
         );
 
-        [LinkName("SDL_RenderFillRect")]
-        public static extern int RenderFillRectF(
+        [LinkName("SDL_RenderFillRectF")]
+        public static extern int32 RenderFillRectF(
         	Renderer* renderer,
         	FRect* rect
         );
 
-        [LinkName("SDL_RenderFillRects")]
-        public static extern int RenderFillRectsF(
+        [LinkName("SDL_RenderFillRectsF")]
+        public static extern int32 RenderFillRectsF(
         	Renderer* renderer,
-        	FRect** rects,
+        	FRect* rects,
         	int32 count
         );
 
         [LinkName("SDL_RenderGeometry")]
-        public static extern int RenderFillRectsF(
+        public static extern int32 RenderGeometry(
         	Renderer* renderer,
         	Texture* texture,
-        	Vertex* vertices, int num_vertices,
-            int32* indices, int num_indices
+        	Vertex* vertices, int32 num_vertices,
+            int32* indices, int32 num_indices
         );
 
         [LinkName("SDL_RenderGeometryRaw")]
-        public static extern int RenderFillRectsF(
+        public static extern int32 RenderGeometryRaw(
         	Renderer* renderer,
         	Texture* texture,
             float* xy, int32 xy_stride,
@@ -1778,8 +1773,8 @@ namespace SDL2
         [LinkName("SDL_RenderWindowToLogical")]
         public static extern void RenderWindowToLogical(
         	Renderer* renderer,
-            int windowX,
-			int windowY,
+            int32 windowX,
+			int32 windowY,
         	out float logicalX,
         	out float logicalY
         );
@@ -1789,12 +1784,12 @@ namespace SDL2
         	Renderer* renderer,
         	float logicalX,
         	float logicalY,
-            out int windowX,
-        	out int windowY
+            out int32 windowX,
+        	out int32 windowY
         );
 
 		[LinkName("SDL_RenderGetViewport")]
-		public static extern int RenderGetViewport(
+		public static extern void RenderGetViewport(
 			Renderer* renderer,
 			out Rect rect
 		);
@@ -1803,7 +1798,7 @@ namespace SDL2
 		public static extern void RenderPresent(Renderer* renderer);
 		
 		[LinkName("SDL_RenderReadPixels")]
-		public static extern int RenderReadPixels(
+		public static extern int32 RenderReadPixels(
 			Renderer* renderer,
 			Rect* rect,
 			uint32 format,
@@ -1812,20 +1807,20 @@ namespace SDL2
 		);
 		
 		[LinkName("SDL_RenderSetClipRect")]
-		public static extern int RenderSetClipRect(
+		public static extern int32 RenderSetClipRect(
 			Renderer* renderer,
 			Rect* rect
 		);
 		
 		[LinkName("SDL_RenderSetLogicalSize")]
-		public static extern int RenderSetLogicalSize(
+		public static extern int32 RenderSetLogicalSize(
 			Renderer* renderer,
 			int32 w,
 			int32 h
 		);
 		
 		[LinkName("SDL_RenderSetScale")]
-		public static extern int RenderSetScale(
+		public static extern int32 RenderSetScale(
 			Renderer* renderer,
 			float scaleX,
 			float scaleY
@@ -1833,28 +1828,28 @@ namespace SDL2
 
 		/* Available in 2.0.5 or higher */
 		[LinkName("SDL_RenderSetIntegerScale")]
-		public static extern int RenderSetIntegerScale(
+		public static extern int32 RenderSetIntegerScale(
 			Renderer* renderer,
 			Bool enable
 		);
 
 		
 		[LinkName("SDL_RenderSetViewport")]
-		public static extern int RenderSetViewport(
+		public static extern int32 RenderSetViewport(
 			Renderer* renderer,
 			Rect* rect
 		);
 
 		
 		[LinkName("SDL_SetRenderDrawBlendMode")]
-		public static extern int SetRenderDrawBlendMode(
+		public static extern int32 SetRenderDrawBlendMode(
 			Renderer* renderer,
 			BlendMode blendMode
 		);
 
 		
 		[LinkName("SDL_SetRenderDrawColor")]
-		public static extern int SetRenderDrawColor(
+		public static extern int32 SetRenderDrawColor(
 			Renderer* renderer,
 			uint8 r,
 			uint8 g,
@@ -1863,25 +1858,25 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_SetRenderTarget")]
-		public static extern int SetRenderTarget(
+		public static extern int32 SetRenderTarget(
 			Renderer* renderer,
 			Texture* texture
 		);
 		
 		[LinkName("SDL_SetTextureAlphaMod")]
-		public static extern int SetTextureAlphaMod(
+		public static extern int32 SetTextureAlphaMod(
 			Texture* texture,
 			uint8 alpha
 		);
 		
 		[LinkName("SDL_SetTextureBlendMode")]
-		public static extern int SetTextureBlendMode(
+		public static extern int32 SetTextureBlendMode(
 			Texture* texture,
 			BlendMode blendMode
 		);
 		
 		[LinkName("SDL_SetTextureColorMod")]
-		public static extern int SetTextureColorMod(
+		public static extern int32 SetTextureColorMod(
 			Texture* texture,
 			uint8 r,
 			uint8 g,
@@ -1892,15 +1887,7 @@ namespace SDL2
 		public static extern void UnlockTexture(Texture* texture);
 		
 		[LinkName("SDL_UpdateTexture")]
-		public static extern int UpdateTexture(
-			Texture* texture,
-			Rect* rect,
-			void* pixels,
-			int pitch
-		);
-		
-		[LinkName("SDL_UpdateTexture")]
-		public static extern int UpdateTexture(
+		public static extern int32 UpdateTexture(
 			Texture* texture,
 			Rect* rect,
 			void* pixels,
@@ -1909,7 +1896,7 @@ namespace SDL2
 
 		/* Available in 2.0.1 or higher */
 		[LinkName("SDL_UpdateYUVTexture")]
-		public static extern int UpdateYUVTexture(
+		public static extern int32 UpdateYUVTexture(
 			Texture* texture,
 			Rect* rect,
 			uint8* yPlane,
@@ -1921,7 +1908,7 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_UpdateNVTexture")]
-		public static extern int UpdateNVTexture(
+		public static extern int32 UpdateNVTexture(
 			Texture* texture,
 			Rect* rect,
 			uint8* yPlane,
@@ -2450,7 +2437,7 @@ namespace SDL2
 
 		/* IntPtr refers to an SDL_Palette* */
 		[LinkName("SDL_AllocPalette")]
-		public static extern Palette* AllocPalette(int ncolors);
+		public static extern Palette* AllocPalette(int32 ncolors);
 
 		[LinkName("SDL_CalculateGammaRamp")]
 		public static extern void CalculateGammaRamp(
@@ -2530,7 +2517,7 @@ namespace SDL2
 
 		/* palette refers to an SDL_Palette* */
 		[LinkName("SDL_SetPaletteColors")]
-		public static extern int SetPaletteColors(
+		public static extern int32 SetPaletteColors(
 			Palette* palette,
 			Color* colors,
 			int32 firstcolor,
@@ -2539,7 +2526,7 @@ namespace SDL2
 
 		/* format and palette refer to an SDL_PixelFormat* and SDL_Palette* */
 		[LinkName("SDL_SetPixelFormatPalette")]
-		public static extern int SetPixelFormatPalette(
+		public static extern int32 SetPixelFormatPalette(
 			PixelFormat* format,
 			Palette* palette
 		);
@@ -2746,7 +2733,7 @@ namespace SDL2
         public static extern Bool IntersectFRect(
         	FRect* a,
         	FRect* b,
-            FRect* result
+            out FRect result
         );
 
 		[LinkName("SDL_UnionRect")]
@@ -2766,7 +2753,7 @@ namespace SDL2
         [LinkName("SDL_EncloseFPoints")]
         public static extern Bool EncloseFPoints(
             FPoint* points,
-            int count,
+            int32 count,
             FRect* clip,
             out FRect result
         );
@@ -2802,7 +2789,7 @@ namespace SDL2
 			public void* lock_data; // void*
 			public Rect clip_rect;
 			public SDL_BlitMap* map; // SDL_BlitMap*
-			public int refcount;
+			public int32 refcount;
 		}
 
 		/* surface refers to an SDL_Surface* */
@@ -2816,18 +2803,22 @@ namespace SDL2
 			return (sur.flags & SDL_RLEACCEL) != 0;
 		}*/
 
-		/* src and dst refer to an SDL_Surface* */
+		/* src and dst refer to an SDL_Surface*
+         * symbol name intentionally different
+		 */
 		[LinkName("SDL_UpperBlit")]
-		public static extern int SDL_BlitSurface(
+		public static extern int32 SDL_BlitSurface(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
 			Rect* dstrect
 		);
 
-		/* src and dst refer to an SDL_Surface* */
+		/* src and dst refer to an SDL_Surface*
+         * symbol name intentionally different
+         */
 		[LinkName("SDL_UpperBlitScaled")]
-		public static extern int SDL_BlitScaled(
+		public static extern int32 SDL_BlitScaled(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
@@ -2836,7 +2827,7 @@ namespace SDL2
 
 		/* src and dst are void* pointers */
 		[LinkName("SDL_ConvertPixels")]
-		public static extern int ConvertPixels(
+		public static extern int32 ConvertPixels(
 			int32 width,
 			int32 height,
 			uint32 src_format,
@@ -2930,7 +2921,7 @@ namespace SDL2
 
 		/* dst refers to an SDL_Surface* */
 		[LinkName("SDL_FillRect")]
-		public static extern int FillRect(
+		public static extern int32 FillRect(
 			Surface* dst,
 			Rect* rect,
 			uint32 color
@@ -2938,7 +2929,7 @@ namespace SDL2
 
 		/* dst refers to an SDL_Surface* */
 		[LinkName("SDL_FillRects")]
-		public static extern int FillRects(
+		public static extern int32 FillRects(
 			Surface* dst,
 			Rect* rects,
 			int32 count,
@@ -2964,28 +2955,28 @@ namespace SDL2
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_GetColorKey")]
-		public static extern int GetColorKey(
+		public static extern int32 GetColorKey(
 			Surface* surface,
 			out uint32 key
 		);
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_GetSurfaceAlphaMod")]
-		public static extern int GetSurfaceAlphaMod(
+		public static extern int32 GetSurfaceAlphaMod(
 			Surface* surface,
 			out uint8 alpha
 		);
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_GetSurfaceBlendMode")]
-		public static extern int GetSurfaceBlendMode(
+		public static extern int32 GetSurfaceBlendMode(
 			Surface* surface,
 			out BlendMode blendMode
 		);
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_GetSurfaceColorMod")]
-		public static extern int GetSurfaceColorMod(
+		public static extern int32 GetSurfaceColorMod(
 			Surface* surface,
 			out uint8 r,
 			out uint8 g,
@@ -2995,7 +2986,7 @@ namespace SDL2
 		[LinkName("SDL_LoadBMP_RW")]
 		private static extern Surface* LoadBMP_RW(
 			RWOps* src,
-			int freesrc
+			int32 freesrc
 		);
 
 		public static Surface* SDL_LoadBMP(char8* file)
@@ -3006,11 +2997,11 @@ namespace SDL2
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_LockSurface")]
-		public static extern int LockSurface(Surface* surface);
+		public static extern int32 LockSurface(Surface* surface);
 
 		/* src and dst refer to an SDL_Surface* */
 		[LinkName("SDL_LowerBlit")]
-		public static extern int LowerBlit(
+		public static extern int32 LowerBlit(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
@@ -3019,7 +3010,7 @@ namespace SDL2
 
 		/* src and dst refer to an SDL_Surface* */
 		[LinkName("SDL_LowerBlitScaled")]
-		public static extern int LowerBlitScaled(
+		public static extern int32 LowerBlitScaled(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
@@ -3030,13 +3021,13 @@ namespace SDL2
 		/* IntPtr refers to an SDL_Surface* */
 		/* THIS IS AN RWops FUNCTION! */
 		[LinkName("SDL_SaveBMP_RW")]
-		private static extern int SaveBMP_RW(
+		private static extern int32 SaveBMP_RW(
 			Surface* surface,
 			RWOps* dst,
-			int freedst
+			int32 freedst
 		);
 
-		public static int SDL_SaveBMP(Surface* surface, char8* file)
+		public static int32 SDL_SaveBMP(Surface* surface, char8* file)
 		{
 			RWOps* rwops = RWFromFile(file, "wb");
 			return SaveBMP_RW(surface, rwops, 1);
@@ -3051,7 +3042,7 @@ namespace SDL2
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_SetColorKey")]
-		public static extern int SetColorKey(
+		public static extern int32 SetColorKey(
 			Surface* surface,
 			int32 flag,
 			uint32 key
@@ -3059,21 +3050,21 @@ namespace SDL2
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_SetSurfaceAlphaMod")]
-		public static extern int SetSurfaceAlphaMod(
+		public static extern int32 SetSurfaceAlphaMod(
 			Surface* surface,
 			uint8 alpha
 		);
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_SetSurfaceBlendMode")]
-		public static extern int SetSurfaceBlendMode(
+		public static extern int32 SetSurfaceBlendMode(
 			Surface* surface,
 			BlendMode blendMode
 		);
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_SetSurfaceColorMod")]
-		public static extern int SetSurfaceColorMod(
+		public static extern int32 SetSurfaceColorMod(
 			Surface* surface,
 			uint8 r,
 			uint8 g,
@@ -3082,14 +3073,14 @@ namespace SDL2
 
 		/* surface refers to an SDL_Surface*, palette to an SDL_Palette* */
 		[LinkName("SDL_SetSurfacePalette")]
-		public static extern int SetSurfacePalette(
+		public static extern int32 SetSurfacePalette(
 			Surface* surface,
 			Palette* palette
 		);
 
 		/* surface refers to an SDL_Surface* */
 		[LinkName("SDL_SetSurfaceRLE")]
-		public static extern int SetSurfaceRLE(
+		public static extern int32 SetSurfaceRLE(
 			Surface* surface,
 			int32 flag
 		);
@@ -3101,7 +3092,15 @@ namespace SDL2
 
 		/* src and dst refer to an SDL_Surface* */
 		[LinkName("SDL_SoftStretch")]
-		public static extern int SoftStretch(
+		public static extern int32 SoftStretch(
+			Surface* src,
+			Rect* srcrect,
+			Surface* dst,
+			Rect* dstrect
+		);
+
+		[LinkName("SDL_SoftStretchLinear")]
+		public static extern int32 SoftStretchLinear(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
@@ -3114,7 +3113,7 @@ namespace SDL2
 
 		/* src and dst refer to an SDL_Surface* */
 		[LinkName("SDL_UpperBlit")]
-		public static extern int UpperBlit(
+		public static extern int32 UpperBlit(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
@@ -3123,7 +3122,7 @@ namespace SDL2
 
 		/* src and dst refer to an SDL_Surface* */
 		[LinkName("SDL_UpperBlitScaled")]
-		public static extern int UpperBlitScaled(
+		public static extern int32 UpperBlitScaled(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
@@ -3138,7 +3137,7 @@ namespace SDL2
 		public static extern Bool HasClipboardText();
 
 		[LinkName("SDL_SetPrimarySelectionText")]
-		public static extern int SetPrimarySelectionText(char8* text);
+		public static extern int32 SetPrimarySelectionText(char8* text);
 
 		[LinkName("SDL_GetPrimarySelectionText")]
 		public static extern char8* GetPrimarySelectionText();
@@ -3364,10 +3363,7 @@ namespace SDL2
 			public uint32 timestamp;
 			public uint32 windowID;
 			public uint32 which;
-			public uint8 state; /* bitmask of buttons */
-			private uint8 padding1;
-			private uint8 padding2;
-			private uint8 padding3;
+			public uint32 state; /* bitmask of buttons */
 			public int32 x;
 			public int32 y;
 			public int32 xrel;
@@ -3416,8 +3412,8 @@ namespace SDL2
 			private uint8 padding1;
 			private uint8 padding2;
 			private uint8 padding3;
-			public Int16 axisValue; /* value, lolC# */
-			public uint16 padding4;
+			public int16 axisValue; /* value, lolC# */
+			private uint16 padding4;
 		}
 
 		[CRepr]
@@ -3430,8 +3426,8 @@ namespace SDL2
 			private uint8 padding1;
 			private uint8 padding2;
 			private uint8 padding3;
-			public Int16 xrel;
-			public Int16 yrel;
+			public int16 xrel;
+			public int16 yrel;
 		}
 
 		[CRepr]
@@ -3552,8 +3548,8 @@ namespace SDL2
 		{
 			public uint32 type;
 			public uint32 timestamp;
-			public Int64 touchId; // SDL_TouchID
-			public Int64 fingerId; // SDL_GestureID
+			public int64 touchId; // SDL_TouchID
+			public int64 fingerId; // SDL_GestureID
 			public float x;
 			public float y;
 			public float dx;
@@ -3567,7 +3563,7 @@ namespace SDL2
 		{
 			public uint32 type;
 			public uint32 timestamp;
-			public Int64 touchId; // SDL_TouchID
+			public int64 touchId; // SDL_TouchID
 			public float dTheta;
 			public float dDist;
 			public float x;
@@ -3641,11 +3637,19 @@ namespace SDL2
 			public SDL_SysWMmsg* msg; /* SDL_SysWMmsg*, system-dependent*/
 		}
 
+        [CRepr]]
+        public struct CommonEvent
+        {
+            public uint32 type;
+            public uint32 timestamp;
+        };
+
 		/* General event structure */
 		[CRepr, Union]
 		public struct Event
 		{
 			public EventType type;
+            public CommonEvent common;
 			public DisplayEvent display;
 			public WindowEvent window;
 			public KeyboardEvent key;
@@ -3677,7 +3681,7 @@ namespace SDL2
 			public DropEvent drop;
 		}
 
-		public function int EventFilter(
+		public function int32 EventFilter(
 			void* userdata, // void*
 			Event* sdlevent // SDL_Event* event, lolC#
 		);
@@ -3694,7 +3698,7 @@ namespace SDL2
 		}
 
 		[LinkName("SDL_PeepEvents")]
-		public static extern int PeepEvents(
+		public static extern int32 PeepEvents(
 			Event* events,
 			int32 numevents,
 			EventAction action,
@@ -4329,16 +4333,14 @@ namespace SDL2
 			ACREFRESH = (int)Scancode.Acrefresh | SCANCODE_MASK,
 			ACBOOKMARKS = (int)Scancode.Acbookmarks | SCANCODE_MASK,
 
-			BRIGHTNESSDOWN =
-				(int)Scancode.Brightnessdown | SCANCODE_MASK,
-				BRIGHTNESSUP = (int)Scancode.Brightnessup | SCANCODE_MASK,
-				DISPLAYSWITCH = (int)Scancode.Displayswitch | SCANCODE_MASK,
-				KBDILLUMTOGGLE =
-			(int)Scancode.KbdIllumtoggle | SCANCODE_MASK,
-				KBDILLUMDOWN = (int)Scancode.KbdIllumdown | SCANCODE_MASK,
-				KBDILLUMUP = (int)Scancode.KbdIllumup | SCANCODE_MASK,
-				EJECT = (int)Scancode.Eject | SCANCODE_MASK,
-				SLEEP = (int)Scancode.Sleep | SCANCODE_MASK,
+			BRIGHTNESSDOWN =(int)Scancode.Brightnessdown | SCANCODE_MASK,
+			BRIGHTNESSUP = (int)Scancode.Brightnessup | SCANCODE_MASK,
+			DISPLAYSWITCH = (int)Scancode.Displayswitch | SCANCODE_MASK,
+			KBDILLUMTOGGLE = (int)Scancode.KbdIllumtoggle | SCANCODE_MASK,
+			KBDILLUMDOWN = (int)Scancode.KbdIllumdown | SCANCODE_MASK,
+			KBDILLUMUP = (int)Scancode.KbdIllumup | SCANCODE_MASK,
+			EJECT = (int)Scancode.Eject | SCANCODE_MASK,
+			SLEEP = (int)Scancode.Sleep | SCANCODE_MASK,
 
             APP1 = (int)Scancode.App1 | SCANCODE_MASK,
             APP2 = (int)Scancode.App2 | SCANCODE_MASK,
@@ -4384,7 +4386,7 @@ namespace SDL2
 			public Scancode scancode;
 			public Keycode sym;
 			public KeyMod mod; /* uint16 */
-			public uint32 unicode; /* Deprecated */
+			public uint32 unused; /* Deprecated */
 		}
 
 		/* Get the window which has kbd focus */
@@ -4397,6 +4399,9 @@ namespace SDL2
 		/* Numkeys returns the size of the array if non-null */
 		[LinkName("SDL_GetKeyboardState")]
 		public static extern bool* GetKeyboardState(int32* numkeys);
+
+		[LinkName("SDL_ResetKeyboard")]
+		public static extern void ResetKeyboard(void);
 
 		/* Get the current key modifier state for the keyboard. */
 		[LinkName("SDL_GetModState")]
@@ -4447,7 +4452,7 @@ namespace SDL2
         public static extern void ClearComposition();
 
         [LinkName("SDL_IsTextInputShown")]
-        public static extern Bool SDL_IsTextInputShown();
+        public static extern Bool IsTextInputShown();
 
 		/* Set the rectangle used for text input, hint for IME */
 		[LinkName("SDL_SetTextInputRect")]
@@ -4495,14 +4500,14 @@ namespace SDL2
 
 		/* Get the current state of the mouse */
 		[LinkName("SDL_GetMouseState")]
-		public static extern uint32 GetMouseState(int32* x, int32* y);
+		public static extern uint32 GetMouseState(out int32 x, out int32 y);
 
 		[LinkName("SDL_GetGlobalMouseState")]
-		public static extern uint32 GetGlobalMouseState(int32* x, int32* y);
+		public static extern uint32 GetGlobalMouseState(out int32 x, out int32 y);
 
 		/* Get the mouse state with relative coords*/
 		[LinkName("SDL_GetRelativeMouseState")]
-		public static extern uint32 GetRelativeMouseState(int32* x, int32* y);
+		public static extern uint32 GetRelativeMouseState(out int32 x, out int32 y);
 
 		/* Set the mouse cursor's position (within a window) */
 		/* window is an SDL_Window pointer */
@@ -4512,16 +4517,16 @@ namespace SDL2
 		/* Set the mouse cursor's position in global screen space */
 		/* Only available in 2.0.4 */
 		[LinkName("SDL_WarpMouseGlobal")]
-		public static extern int WarpMouseGlobal(int32 x, int32 y);
+		public static extern int32 WarpMouseGlobal(int32 x, int32 y);
 
 		/* Enable/Disable relative mouse mode (grabs mouse, rel coords) */
 		[LinkName("SDL_SetRelativeMouseMode")]
-		public static extern int SetRelativeMouseMode(Bool enabled);
+		public static extern int32 SetRelativeMouseMode(Bool enabled);
 
 		/* Capture the mouse, to track input outside an SDL window */
 		/* Only available in 2.0.4 */
 		[LinkName("SDL_CaptureMouse")]
-		public static extern int CaptureMouse(Bool enabled);
+		public static extern int32 CaptureMouse(Bool enabled);
 
 		/* Query if the relative mouse mode is enabled */
 		[LinkName("SDL_GetRelativeMouseMode")]
@@ -4566,6 +4571,9 @@ namespace SDL2
 		[LinkName("SDL_GetCursor")]
 		public static extern SDL_Cursor* GetCursor();
 
+		[LinkName("SDL_GetDefaultCursor")]
+		public static extern SDL_Cursor* SDL_GetDefaultCursor();
+
 		/* Frees a cursor created with one of the CreateCursor functions */
 		/* cursor in an SDL_Cursor pointer */
 		[LinkName("SDL_FreeCursor")]
@@ -4603,6 +4611,7 @@ namespace SDL2
             Indirect_Relative
         }
 
+        [CRepr]
 		public struct SDL_Finger
 		{
 			public int64 id; // SDL_FingerID
@@ -4633,7 +4642,7 @@ namespace SDL2
 		 *  \brief Get the number of active fingers for a given touch device.
 		 */
 		[LinkName("SDL_GetNumTouchFingers")]
-		public static extern int GetNumTouchFingers(int64 touchID);
+		public static extern int32 GetNumTouchFingers(int64 touchID);
 
 		/**
 		 *  \brief Get the finger object of the given touch, with the given index.
@@ -4674,11 +4683,13 @@ namespace SDL2
 			DancePad,
 			Guitar,
 			DrumKit,
-			ArcadePad
+			ArcadePad,
+            Throttle
 		}
 
 		public struct SDL_Joystick;
 
+        [CRepr]
         public struct SDL_VirtualJoystickDesc {
             public uint16 version;
             public uint16 type;
@@ -4687,18 +4698,18 @@ namespace SDL2
             public uint16 nhats;
             public uint16 vendor_id;
             public uint16 product_id;
-            public uint16 padding;
+            private uint16 padding;
             public uint32 button_mask;
             public uint32 axis_mask;
             public char8* name;
             public void* userdata;
 
             public function void Update(void* userdata);
-            public function void SetPlayerIndex(void* userdata, int player_index);
-            public function int Rumble(void* userdata, uint16 low_frequency_rumble, uint16 high_frequency_rumble);
-            public function int RumbleTriggers(void* userdata, uint16 left_rumble, uint16 right_rumble);
-            public function int SetLED(void* userdata, uint8 red, uint8 green, uint8 blue);
-            public function int SendEffect(void* userdata, void* data, int size);
+            public function void SetPlayerIndex(void* userdata, int32 player_index);
+            public function int32 Rumble(void* userdata, uint16 low_frequency_rumble, uint16 high_frequency_rumble);
+            public function int32 RumbleTriggers(void* userdata, uint16 left_rumble, uint16 right_rumble);
+            public function int32 SetLED(void* userdata, uint8 red, uint8 green, uint8 blue);
+            public function int32 SendEffect(void* userdata, void* data, int32 size);
 		}
 
         public const int SDL_VIRTUAL_JOYSTICK_DESC_VERSION = 1;
@@ -4707,15 +4718,15 @@ namespace SDL2
 		 * This function is only available in 2.0.9 or higher.
 		 */
 		[LinkName("SDL_JoystickRumble")]
-		public static extern int JoystickRumble(
+		public static extern int32 JoystickRumble(
 			SDL_Joystick* joystick,
 			uint16 low_frequency_rumble,
 			uint16 high_frequency_rumble,
 			uint32 duration_ms
 		);
 
-		[LinkName("SDL_JoystickRumble")]
-        public static extern int JoystickRumbleTriggers(
+		[LinkName("JoystickRumbleTriggers")]
+        public static extern int32 JoystickRumbleTriggers(
         	SDL_Joystick* joystick,
         	uint16 left_rumble,
         	uint16 right_rumble,
@@ -4732,16 +4743,16 @@ namespace SDL2
         public static extern Bool JoystickHasRumbleTriggers(SDL_Joystick* joystick);
 
         [LinkName("SDL_JoystickSetLED")]
-        public static extern int JoystickSetLED(SDL_Joystick* joystick, uint8 red, uint8 green, uint8 blue);
+        public static extern int32 JoystickSetLED(SDL_Joystick* joystick, uint8 red, uint8 green, uint8 blue);
 
         [LinkName("SDL_JoystickSendEffect")]
-        public static extern int JoystickSendEffect(SDL_Joystick* joystick, void* data, int32 size);
+        public static extern int32 JoystickSendEffect(SDL_Joystick* joystick, void* data, int32 size);
 
 		[LinkName("SDL_JoystickClose")]
 		public static extern void JoystickClose(SDL_Joystick* joystick);
 
 		[LinkName("SDL_JoystickEventState")]
-		public static extern int32 JoystickEventState(int state);
+		public static extern int32 JoystickEventState(int32 state);
 
 		
 		[LinkName("SDL_JoystickGetAxis")]
@@ -4762,7 +4773,7 @@ namespace SDL2
 
 		
 		[LinkName("SDL_JoystickGetBall")]
-		public static extern int JoystickGetBall(
+		public static extern int32 JoystickGetBall(
 			SDL_Joystick* joystick,
 			int32 ball,
 			out int32 dx,
@@ -4809,20 +4820,20 @@ namespace SDL2
         public static extern SDL_Joystick* JoystickFromPlayerIndex(int32 player_index);
 
         [LinkName("SDL_JoystickAttachVirtual")]
-        public static extern int JoystickAttachVirtual(
+        public static extern int32 JoystickAttachVirtual(
 			SDL_JoystickType type,
-			int naxes,
-			int nbuttons,
-			int nhats);
+			int32 naxes,
+			int32 nbuttons,
+			int32 nhats);
 
         [LinkName("SDL_JoystickAttachVirtualEx")]
-        public static extern int JoystickAttachVirtualEx(SDL_VirtualJoystickDesc* desc);
+        public static extern int32 JoystickAttachVirtualEx(SDL_VirtualJoystickDesc* desc);
 
         [LinkName("SDL_JoystickDetachVirtual")]
-        public static extern int JoystickDetachVirtual(int device_index);
+        public static extern int32 JoystickDetachVirtual(int32 device_index);
 
         [LinkName("SDL_JoystickIsVirtual")]
-        public static extern Bool JoystickIsVirtual(int device_index);
+        public static extern Bool JoystickIsVirtual(int32 device_index);
 
         [LinkName("SDL_JoystickSetVirtualAxis")]
         public static extern Bool JoystickSetVirtualAxis(SDL_Joystick* joystick, int32 axis, int16 value);
@@ -4837,7 +4848,7 @@ namespace SDL2
         public static extern char8* JoystickPath(SDL_Joystick* joystick);
 
         [LinkName("SDL_JoystickGetPlayerIndex")]
-        public static extern int JoystickGetPlayerIndex(SDL_Joystick* joystick);
+        public static extern int32 JoystickGetPlayerIndex(SDL_Joystick* joystick);
 
         [LinkName("SDL_JoystickSetPlayerIndex")]
         public static extern void JoystickSetPlayerIndex(SDL_Joystick* joystick, int32 player_index);
@@ -4996,6 +5007,12 @@ namespace SDL2
 			DpadDown,
 			DpadLeft,
 			DpadRight,
+            Misc1,
+            Paddle1,
+            Paddle2,
+            Paddle3,
+            Paddle4,
+            Touchpad,
 			Max,
 		}
 
@@ -5040,7 +5057,7 @@ namespace SDL2
 
 		/* This function is only available in 2.0.6 or higher. */
 		[LinkName("SDL_GameControllerNumMappings")]
-		public static extern int GameControllerNumMappings();
+		public static extern int32 GameControllerNumMappings();
 
 		/* This function is only available in 2.0.6 or higher. */
 		[LinkName("SDL_GameControllerMappingForIndex")]
@@ -5141,7 +5158,7 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_GameControllerEventState")]
-		public static extern int GameControllerEventState(int state);
+		public static extern int32 GameControllerEventState(int32 state);
 
 		[LinkName("SDL_GameControllerUpdate")]
 		public static extern void GameControllerUpdate();
@@ -5209,18 +5226,18 @@ namespace SDL2
 
 
         [LinkName("SDL_GameControllerGetNumTouchpads")]
-        public static extern int GameControllerGetNumTouchpads(
+        public static extern int32 GameControllerGetNumTouchpads(
         	SDL_GameController* gamecontroller
         );
 
         [LinkName("SDL_GameControllerGetNumTouchpadFingers")]
-        public static extern int GameControllerGetNumTouchpadFingers(
+        public static extern int32 GameControllerGetNumTouchpadFingers(
         	SDL_GameController* gamecontroller,
             int32 touchpad
         );
 
         [LinkName("SDL_GameControllerGetTouchpadFinger")]
-        public static extern int GameControllerGetTouchpadFinger(
+        public static extern int32 GameControllerGetTouchpadFinger(
         	SDL_GameController* gamecontroller,
             int32 touchpad,
             int32 finger,
@@ -5231,13 +5248,13 @@ namespace SDL2
         );
 
         [LinkName("SDL_GameControllerHasSensor")]
-        public static extern int GameControllerHasSensor(
+        public static extern int32 GameControllerHasSensor(
         	SDL_GameController* gamecontroller,
             SDL_SensorType type
         );
 
         [LinkName("SDL_GameControllerSetSensorEnabled")]
-        public static extern int GameControllerSetSensorEnabled(
+        public static extern int32 GameControllerSetSensorEnabled(
         	SDL_GameController* gamecontroller,
             SDL_SensorType type,
             Bool enabled
@@ -5256,27 +5273,27 @@ namespace SDL2
         );
 
         [LinkName("SDL_GameControllerGetSensorData")]
-        public static extern int GameControllerGetSensorData(
+        public static extern int32 GameControllerGetSensorData(
         	SDL_GameController* gamecontroller,
             SDL_SensorType type,
             float *data,
-			int num_values
+			int32 num_values
         );
 
         [LinkName("SDL_GameControllerGetSensorDataWithTimestamp")]
-        public static extern int GameControllerGetSensorDataWithTimestamp(
+        public static extern int32 GameControllerGetSensorDataWithTimestamp(
         	SDL_GameController* gamecontroller,
             SDL_SensorType type,
             uint64 *timestamp,
             float *data,
-			int num_values
+			int32 num_values
         );
 
 		/* gamecontroller refers to an SDL_GameController*.
 		 * This function is only available in 2.0.9 or higher.
 		 */
 		[LinkName("SDL_GameControllerRumble")]
-		public static extern int GameControllerRumble(
+		public static extern int32 GameControllerRumble(
 			SDL_GameController* gamecontroller,
 			uint16 low_frequency_rumble,
 			uint16 high_frequency_rumble,
@@ -5284,7 +5301,7 @@ namespace SDL2
 		);
 
         [LinkName("SDL_GameControllerRumbleTriggers")]
-        public static extern int GameControllerRumbleTriggers(
+        public static extern int32 GameControllerRumbleTriggers(
         	SDL_GameController* gamecontroller,
         	uint16 left_rumble,
         	uint16 right_rumble,
@@ -5307,7 +5324,7 @@ namespace SDL2
         );
 
         [LinkName("SDL_GameControllerSetLED")]
-        public static extern int GameControllerSetLED(
+        public static extern int32 GameControllerSetLED(
         	SDL_GameController* gamecontroller,
             uint8 red,
             uint8 green,
@@ -5315,7 +5332,7 @@ namespace SDL2
         );
 
         [LinkName("SDL_GameControllerSendEffect")]
-        public static extern int GameControllerSendEffect(
+        public static extern int32 GameControllerSendEffect(
         	SDL_GameController* gamecontroller,
             void* data,
             int32 size
@@ -5343,10 +5360,10 @@ namespace SDL2
 		 * This function is only available in 2.0.4 or higher.
 		 */
 		[LinkName("SDL_GameControllerFromInstanceID")]
-		public static extern SDL_GameController* GameControllerFromInstanceID(int joyid);
+		public static extern SDL_GameController* GameControllerFromInstanceID(int32 joyid);
 
         [LinkName("SDL_GameControllerFromPlayerIndex")]
-        public static extern SDL_GameController* GameControllerFromPlayerIndex(int player_index);
+        public static extern SDL_GameController* GameControllerFromPlayerIndex(int32 player_index);
 
         [LinkName("SDL_GameControllerPath")]
         public static extern char8* GameControllerPath(SDL_GameController* gamecontroller);
@@ -5355,10 +5372,10 @@ namespace SDL2
         public static extern SDL_GameControllerType GameControllerGetType(SDL_GameController* gamecontroller);
 
         [LinkName("SDL_GameControllerGetPlayerIndex")]
-        public static extern int GameControllerGetPlayerIndex(SDL_GameController* gamecontroller);
+        public static extern int32 GameControllerGetPlayerIndex(SDL_GameController* gamecontroller);
 
         [LinkName("SDL_GameControllerSetPlayerIndex")]
-        public static extern void GameControllerSetPlayerIndex(SDL_GameController* gamecontroller, int player_index);
+        public static extern void GameControllerSetPlayerIndex(SDL_GameController* gamecontroller, int32 player_index);
 
         [LinkName("SDL_GameControllerGetFirmwareVersion")]
         public static extern uint16 SDL_GameControllerGetFirmwareVersion(SDL_GameController* gamecontroller);
@@ -5373,6 +5390,7 @@ namespace SDL2
 		public const uint16 SDL_HAPTIC_TRIANGLE =	(1 << 3);
 		public const uint16 SDL_HAPTIC_SAWTOOTHUP =	(1 << 4);
 		public const uint16 SDL_HAPTIC_SAWTOOTHDOWN =	(1 << 5);
+		public const uint16 SDL_HAPTIC_RAMP =		(1 << 6);
 		public const uint16 SDL_HAPTIC_SPRING =		(1 << 7);
 		public const uint16 SDL_HAPTIC_DAMPER =		(1 << 8);
 		public const uint16 SDL_HAPTIC_INERTIA =	(1 << 9);
@@ -5387,6 +5405,7 @@ namespace SDL2
 		public const uint8 SDL_HAPTIC_POLAR =		0;
 		public const uint8 SDL_HAPTIC_CARTESIAN =	1;
 		public const uint8 SDL_HAPTIC_SPHERICAL =	2;
+        public const uint8 SDL_HAPTIC_STEERING_AXIS =	3;
 
 		/* SDL_HapticRunEffect */
 		public const uint32 SDL_HAPTIC_INFINITY = 4294967295U;
@@ -5549,21 +5568,21 @@ namespace SDL2
 
 		/* haptic refers to an SDL_Haptic* */
 		[LinkName("SDL_HapticEffectSupported")]
-		public static extern int HapticEffectSupported(
+		public static extern int32 HapticEffectSupported(
 			SDL_Haptic* haptic,
 			ref SDL_HapticEffect effect
 		);
 
 		/* haptic refers to an SDL_Haptic* */
 		[LinkName("SDL_HapticGetEffectStatus")]
-		public static extern int HapticGetEffectStatus(
+		public static extern int32 HapticGetEffectStatus(
 			SDL_Haptic* haptic,
 			int32 effect
 		);
 
 		/* haptic refers to an SDL_Haptic* */
 		[LinkName("SDL_HapticIndex")]
-		public static extern int HapticIndex(SDL_Haptic* haptic);
+		public static extern int32 HapticIndex(SDL_Haptic* haptic);
 
 		/* haptic refers to an SDL_Haptic* */
 		[LinkName("SDL_HapticName")]
@@ -5746,14 +5765,14 @@ namespace SDL2
 		public static extern SDL_SensorType SensorGetDeviceType(int32 device_index);
 
 		[LinkName("SDL_SensorGetDeviceNonPortableType")]
-		public static extern int SensorGetDeviceNonPortableType(int32 device_index);
+		public static extern int32 SensorGetDeviceNonPortableType(int32 device_index);
 
 		[LinkName("SDL_SensorGetDeviceInstanceID")]
 		public static extern int32 SensorGetDeviceInstanceID(int32 device_index);
 
 		/* IntPtr refers to an SDL_Sensor* */
 		[LinkName("SDL_SensorOpen")]
-		public static extern SDL_Sensor* SensorOpen(int device_index);
+		public static extern SDL_Sensor* SensorOpen(int32 device_index);
 
 		/* IntPtr refers to an SDL_Sensor* */
 		[LinkName("SDL_SensorFromInstanceID")]
@@ -5773,7 +5792,7 @@ namespace SDL2
 
 		/* sensor refers to an SDL_Sensor* */
 		[LinkName("SDL_SensorGetNonPortableType")]
-		public static extern int SensorGetNonPortableType(SDL_Sensor* sensor);
+		public static extern int32 SensorGetNonPortableType(SDL_Sensor* sensor);
 
 		/* sensor refers to an SDL_Sensor* */
 		[LinkName("SDL_SensorGetInstanceID")]
@@ -5781,14 +5800,14 @@ namespace SDL2
 
 		/* sensor refers to an SDL_Sensor* */
 		[LinkName("SDL_SensorGetData")]
-		public static extern int SensorGetData(
+		public static extern int32 SensorGetData(
 			SDL_Sensor* sensor,
 			float* data,
 			int32 num_values
 		);
 
 		[LinkName("SDL_SensorGetDataWithTimestamp")]
-		public static extern int SensorGetDataWithTimestamp(
+		public static extern int32 SensorGetDataWithTimestamp(
 			SDL_Sensor* sensor,
             uint64 *timestamp,
 			float* data,
@@ -5894,6 +5913,7 @@ namespace SDL2
 			public uint8 channels;
 			public uint8 silence;
 			public uint16 samples;
+            private uint16 padding;
 			public uint32 size;
 			public AudioCallback callback;
 			public void* userdata; // void*
@@ -5903,7 +5923,7 @@ namespace SDL2
 		public function void AudioCallback(
 			void* userdata,
 			uint8* stream,
-			int len
+			int32 len
 		);
 
 		[LinkName("SDL_AudioInit")]
@@ -5930,17 +5950,17 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_GetAudioDeviceSpec")]
-		public static extern int GetAudioDeviceSpec(
+		public static extern int32 GetAudioDeviceSpec(
 			int32 index,
 			int32 iscapture,
 			SDL_AudioSpec* spec
 		);
 
 		[LinkName("SDL_GetDefaultAudioInfo")]
-		public static extern int GetDefaultAudioInfo(
-			char8** name,
+		public static extern int32 GetDefaultAudioInfo(
+			out char8* name,
 			SDL_AudioSpec* spec,
-			int iscapture
+			int32 iscapture
 		);
 		
 
@@ -5960,10 +5980,10 @@ namespace SDL2
 		public static extern char8* GetCurrentAudioDriver();
 
 		[LinkName("SDL_GetNumAudioDevices")]
-		public static extern int GetNumAudioDevices(int iscapture);
+		public static extern int32 GetNumAudioDevices(int32 iscapture);
 
 		[LinkName("SDL_GetNumAudioDrivers")]
-		public static extern int GetNumAudioDrivers();
+		public static extern int32 GetNumAudioDrivers();
 
 		/* audio_buf will refer to a malloc()'d uint8 buffer */
 		/* THIS IS AN RWops FUNCTION! */
@@ -6018,7 +6038,7 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_OpenAudio")]
-		public static extern int OpenAudio(
+		public static extern int32 OpenAudio(
 			ref SDL_AudioSpec desired,
 			SDL_AudioSpec* obtained
 		);
@@ -6058,7 +6078,7 @@ namespace SDL2
 		/* dev refers to an SDL_AudioDeviceID, data to a void* */
 		/* Only available in 2.0.4 */
 		[LinkName("SDL_QueueAudio")]
-		public static extern int QueueAudio(
+		public static extern int32 QueueAudio(
 			AudioDeviceID dev,
 			void* data,
 			uint32 len
@@ -6104,27 +6124,27 @@ namespace SDL2
 		 * Only available in 2.0.7
 		 */
 		[LinkName("SDL_AudioStreamPut")]
-		public static extern int AudioStreamPut(
+		public static extern int32 AudioStreamPut(
 			AudioStream* stream,
 			void* buf,
-			int len
+			int32 len
 		);
 
 		/* stream refers to an SDL_AudioStream*, buf to a void*.
 		 * Only available in 2.0.7
 		 */
 		[LinkName("SDL_AudioStreamGet")]
-		public static extern int AudioStreamGet(
+		public static extern int32 AudioStreamGet(
 			AudioStream* stream,
 			void* buf,
-			int len
+			int32 len
 		);
 
 		/* stream refers to an SDL_AudioStream*.
 		 * Only available in 2.0.7
 		 */
 		[LinkName("SDL_AudioStreamAvailable")]
-		public static extern int AudioStreamAvailable(AudioStream* stream);
+		public static extern int32 AudioStreamAvailable(AudioStream* stream);
 
 		/* stream refers to an SDL_AudioStream*.
 		 * Only available in 2.0.7
@@ -6174,7 +6194,7 @@ namespace SDL2
 
 		/* int refers to an SDL_TimerID, param to a void* */
 		[LinkName("SDL_AddTimer")]
-		public static extern int AddTimer(
+		public static extern int32 AddTimer(
 			uint32 interval,
 			TimerCallback callback,
 			void* param
@@ -6205,7 +6225,7 @@ namespace SDL2
 		public function void iPhoneAnimationCallback(void* p);
 
 		[LinkName("SDL_iPhoneSetAnimationCallback")]
-		public static extern int iPhoneSetAnimationCallback(
+		public static extern int32 iPhoneSetAnimationCallback(
 			Window* window, /* SDL_Window* */
 			int32 interval,
 			iPhoneAnimationCallback callback,
@@ -6217,8 +6237,8 @@ namespace SDL2
 
 		/* Android */
 
-		public const int SDL_ANDROID_EXTERNAL_STORAGE_READ = 0x01;
-		public const int SDL_ANDROID_EXTERNAL_STORAGE_WRITE = 0x02;
+		public const int32 SDL_ANDROID_EXTERNAL_STORAGE_READ = 0x01;
+		public const int32 SDL_ANDROID_EXTERNAL_STORAGE_WRITE = 0x02;
 
 		public struct JNIEnv;
 
@@ -6249,7 +6269,7 @@ namespace SDL2
 		private static extern char8* AndroidGetInternalStoragePath();
 
 		[LinkName("SDL_AndroidGetExternalStorageState")]
-		public static extern int AndroidGetExternalStorageState();
+		public static extern int32 AndroidGetExternalStorageState();
 
 		[LinkName("SDL_AndroidGetExternalStoragePath")]
 		private static extern char8* AndroidGetExternalStoragePath();
@@ -6531,15 +6551,14 @@ namespace SDL2
 		[LinkName("SDL_GetSystemRAM")]
 		public static extern int32 GetSystemRAM();
 
-
 		[LinkName("SDL_SIMDGetAlignment")]
-		public static extern int SIMDGetAlignment();
+		public static extern uint SIMDGetAlignment();
 
 		[LinkName("SDL_SIMDAlloc")]
-		public static extern void* SIMDAlloc(int len);
+		public static extern void* SIMDAlloc(uint len);
 
 		[LinkName("SDL_SIMDRealloc")]
-		public static extern void* SIMDRealloc(void* mem, int len);
+		public static extern void* SIMDRealloc(void* mem, uint len);
 
 		[LinkName("SDL_SIMDFree")]
 		public static extern void SIMDFree(void* ptr);
@@ -6559,19 +6578,21 @@ namespace SDL2
         [CRepr]
         public struct SDL_hid_device_info
         {
-            char8* path;
-            uint16 vendor_id;
-            uint16 product_id;
-            char16* serial_number;
-            uint16 release_number;
-            char16* manufacturer_string;
-            char16* product_string;
-            uint16 usage_page;
-            uint16 usage;
-            int32 interface_number;
-            int32 interface_class;
-            int32 interface_subclass;
-            int32 interface_protocol;
+            public char8* path;
+            public uint16 vendor_id;
+            public uint16 product_id;
+            public char16* serial_number;
+            public uint16 release_number;
+            public char16* manufacturer_string;
+            public char16* product_string;
+            public uint16 usage_page;
+            public uint16 usage;
+            public int32 interface_number;
+            public int32 interface_class;
+            public int32 interface_subclass;
+            public int32 interface_protocol;
+
+            public SDL_hid_device_info* next;
         }
 
         [LinkName("SDL_hid_init")]
@@ -6583,8 +6604,8 @@ namespace SDL2
         [LinkName("SDL_hid_device_change_count")]
         public static extern uint32 hid_device_change_count();
 
-        [LinkName("SDL_hid_device_change_count")]
-        public static extern SDL_hid_device_info* SDL_hid_enumerate(uint16 vendor_id, uint16 product_id);
+        [LinkName("SDL_hid_enumerate")]
+        public static extern SDL_hid_device_info* hid_enumerate(uint16 vendor_id, uint16 product_id);
 
         [LinkName("SDL_hid_free_enumeration")]
         public static extern void hid_free_enumeration(SDL_hid_device_info* devs);
@@ -6655,7 +6676,7 @@ namespace SDL2
         public static extern void* Metal_GetLayer(void* view);
 
         [LinkName("SDL_Metal_GetDrawableSize")]
-        public static extern void Metal_GetDrawableSize(Window* window, int32* w, int32* h);
+        public static extern void Metal_GetDrawableSize(Window* window, out int32 w, out int32 h);
 
         // SDL_misc.h
         [LinkName("SDL_OpenURL")]

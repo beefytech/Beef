@@ -75,7 +75,7 @@ namespace SDL2
 		public static extern void GetHarfBuzzVersion(int32* major, int32* minor, int32* patch);
 
 		[LinkName("TTF_ByteSwappedUNICODE")]
-		public static extern void ByteSwappedUNICODE(bool swapped);
+		public static extern void ByteSwappedUNICODE(SDL.Bool swapped);
 
 		[LinkName("TTF_Init")]
 		public static extern int32 Init();
@@ -570,11 +570,11 @@ namespace SDL2
 		[LinkName("TTF_SetFontSDF")]
 		public static extern int32 SetFontSDF(
 			Font* font,
-            bool on_off
+            SDL.Bool on_off
 		);
 
 		[LinkName("TTF_GetFontSDF")]
-		public static extern bool GetFontSDF(
+		public static extern SDL.Bool GetFontSDF(
 			Font* font
 		);
 
