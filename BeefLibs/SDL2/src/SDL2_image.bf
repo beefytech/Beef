@@ -59,7 +59,7 @@ namespace SDL2
 		public static extern SDL.Version Linked_Version();
 
 		[LinkName("IMG_Init")]
-		public static extern int Init(InitFlags flags);
+		public static extern int32 Init(InitFlags flags);
 
 		[LinkName("IMG_Quit")]
 		public static extern void Quit();
@@ -225,7 +225,7 @@ namespace SDL2
 		public static extern int32 SavePNG(SDL.Surface* surface, char8* file);
 
 		[LinkName("IMG_SavePNG_RW")]
-		public static extern int SavePNG_RW(
+		public static extern int32 SavePNG_RW(
 			SDL.Surface* surface,
 			SDL.RWOps* dst,
 			int32 freedst
@@ -235,7 +235,7 @@ namespace SDL2
 		public static extern int32 SaveJPG(SDL.Surface* surface, char8* file, int32 quality);
 
 		[LinkName("IMG_SaveJPG_RW")]
-		public static extern int SaveJPG_RW(
+		public static extern int32 SaveJPG_RW(
 			SDL.Surface* surface,
 			SDL.RWOps* dst,
 			int32 freedst,

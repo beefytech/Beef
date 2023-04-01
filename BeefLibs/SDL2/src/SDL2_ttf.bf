@@ -89,8 +89,8 @@ namespace SDL2
 		[LinkName("TTF_OpenFontRW")]
 		public static extern Font* OpenFontRW(
 			SDL.RWOps* src,
-			int freesrc,
-			int ptsize
+			int32 freesrc,
+			int32 ptsize
 		);
 
 		/* IntPtr refers to a TTF_Font* */
@@ -158,19 +158,19 @@ namespace SDL2
 		public struct Font;
 		
 		[LinkName("TTF_GetFontStyle")]
-		public static extern int GetFontStyle(Font* font);
+		public static extern int32 GetFontStyle(Font* font);
 
 		[LinkName("TTF_SetFontStyle")]
 		public static extern void SetFontStyle(Font* font, int32 style);
 
 		[LinkName("TTF_GetFontOutline")]
-		public static extern int GetFontOutline(Font* font);
+		public static extern int32 GetFontOutline(Font* font);
 
 		[LinkName("TTF_SetFontOutline")]
 		public static extern void SetFontOutline(Font* font, int32 outline);
 		
 		[LinkName("TTF_GetFontHinting")]
-		public static extern int GetFontHinting(Font* font);
+		public static extern int32 GetFontHinting(Font* font);
 
 		[LinkName("TTF_SetFontHinting")]
 		public static extern void SetFontHinting(Font* font, int32 hinting);
@@ -180,8 +180,6 @@ namespace SDL2
 
 		[LinkName("TTF_SetFontWrappedAlign")]
 		public static extern void SetFontWrappedAlign(Font* font, int32 align);
-
-
 
 		[LinkName("TTF_FontHeight")]
 		public static extern int32 FontHeight(Font* font);
@@ -199,13 +197,13 @@ namespace SDL2
 		public static extern int32 GetFontKerning(Font* font);
 
 		[LinkName("TTF_SetFontKerning")]
-		public static extern void SetFontKerning(Font* font, int allowed);
+		public static extern void SetFontKerning(Font* font, int32 allowed);
 		
 		[LinkName("TTF_FontFaces")]
 		public static extern int64 FontFaces(Font* font);
 		
 		[LinkName("TTF_FontFaceIsFixedWidth")]
-		public static extern int FontFaceIsFixedWidth(Font* font);
+		public static extern int32 FontFaceIsFixedWidth(Font* font);
 
 		[LinkName("TTF_FontFaceFamilyName")]
 		public static extern char8* FontFaceFamilyName(Font* font);
@@ -245,16 +243,16 @@ namespace SDL2
 		public static extern int32 SizeText(
 			Font* font,
 			char8* text,
-			out int w,
-			out int h
+			out int32 w,
+			out int32 h
 		);
 
 		[LinkName("TTF_SizeUTF8")]
 		public static extern int32 SizeUTF8(
 			Font* font,
 			char8* text,
-			out int w,
-			out int h
+			out int32 w,
+			out int32 h
 		);
 
 		[LinkName("TTF_SizeUNICODE")]
@@ -340,7 +338,7 @@ namespace SDL2
 		[LinkName("TTF_RenderGlyph_Solid")]
 		public static extern SDL.Surface* RenderGlyph_Solid(
 			Font* font,
-			uint ch,
+			uint16 ch,
 			SDL.Color fg
 		);
 
@@ -444,7 +442,7 @@ namespace SDL2
 			Font* font,
 			char8* text,
 			SDL.Color fg,
-			uint wrapped
+			uint32 wrapLength
 		);
 
 		[LinkName("TTF_RenderUTF8_Blended_Wrapped")]
@@ -452,7 +450,7 @@ namespace SDL2
 			Font* font,
 			char8* text,
 			SDL.Color fg,
-			uint wrapped
+			uint32 wrapLength
 		);
 
 		[LinkName("TTF_RenderUNICODE_Blended_Wrapped")]
@@ -460,7 +458,7 @@ namespace SDL2
 			Font* font,
 			char8* text,
 			SDL.Color fg,
-			uint wrapped
+			uint32 wrapLength
 		);
 
 		[LinkName("TTF_RenderGlyph_Blended")]
@@ -551,13 +549,13 @@ namespace SDL2
 		public static extern void Quit();
 
 		[LinkName("TTF_WasInit")]
-		public static extern int WasInit();
+		public static extern int32 WasInit();
 
 		[LinkName("SDL_GetFontKerningSize")]
-		public static extern int GetFontKerningSize(
+		public static extern int32 GetFontKerningSize(
 			Font* font,
-			int prev_index,
-			int index
+			int32 prev_index,
+			int32 index
 		);
 
 		[LinkName("TTF_GetFontKerningSizeGlyphs")]
@@ -580,18 +578,18 @@ namespace SDL2
 
 		[LinkName("TTF_SetDirection")]
 		public static extern int32 SetDirection(
-			int direction
+			int32 direction
 		);
 
 		[LinkName("TTF_SetScript")]
 		public static extern int32 SetScript(
-			int script
+			int32 script
 		);
 
 		[LinkName("TTF_SetFontDirection")]
 		public static extern int32 SetFontDirection(
             Font* font,
-			int direction
+			int32 direction
 		);
 
 		[LinkName("TTF_SetFontScriptName")]
