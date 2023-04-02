@@ -245,10 +245,10 @@ namespace SDL2
         [CRepr]
         public struct Animation
         {
-            int32 w;
-            int32 h;
-            SDL.Surface** frames;
-            int32* delays;
+            public int32 w;
+            public int32 h;
+            public SDL.Surface** frames;
+            public int32* delays;
         }
 
         [LinkName("IMG_LoadAnimation")]

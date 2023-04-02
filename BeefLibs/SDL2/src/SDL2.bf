@@ -6657,8 +6657,8 @@ namespace SDL2
         [CRepr]
         public struct SDL_Locale
         {
-            char8* language;
-            char8* country;
+            public char8* language;
+            public char8* country;
         }
 
         [LinkName("SDL_GetPreferredLocales")]
