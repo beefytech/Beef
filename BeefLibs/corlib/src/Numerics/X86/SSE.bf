@@ -5,6 +5,15 @@ namespace System.Numerics.X86
 		public static bool IsSupported => Runtime.Features.SSE;
 
 		[Inline]
+		public static v128 add_ps(v128 a, v128 b) => (.) ((float4) a + (float4) b);
+		[Inline]
+		public static v128 sub_ps(v128 a, v128 b) => (.) ((float4) a - (float4) b);
+		[Inline]
+		public static v128 mul_ps(v128 a, v128 b) => (.) ((float4) a * (float4) b);
+		[Inline]
+		public static v128 div_ps(v128 a, v128 b) => (.) ((float4) a / (float4) b);
+
+		[Inline]
 		public static v128 min_ps(v128 a, v128 b) => (.) float4.min((.) a, (.) b);
 		[Inline]
 		public static v128 max_ps(v128 a, v128 b) => (.) float4.max((.) a, (.) b);
