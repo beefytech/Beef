@@ -2,8 +2,7 @@ namespace System.Numerics.X86
 {
 	static class SSE
 	{
-		[Intrinsic(":add_ps")]
-		public static extern v128 add_ps(v128 a, v128 b);
+		public static bool IsSupported => Runtime.Features.SSE;
 
 		[Inline]
 		public static v128 add_ss(v128 a, v128 b)

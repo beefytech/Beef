@@ -6,6 +6,12 @@ using System.Collections;
 
 namespace System
 {
+	struct RuntimeFeatures
+	{
+		public bool SSE, SSE2;
+		public bool AVX, AVX2, AVX512;
+	}
+
 	[StaticInitPriority(101)]
 	static class Runtime
 	{
@@ -359,6 +365,9 @@ namespace System
 		static List<ErrorHandler> sErrorHandlers ~ DeleteContainerAndItems!(_);
 		static bool sInsideErrorHandler;
 
+		static bool sQueriedFeatures = false;
+		static RuntimeFeatures sFeatures;
+
 		public static this()
 		{
 			BfRtCallbacks.sCallbacks.Init();
@@ -466,5 +475,91 @@ namespace System
 			}
 			return .ContinueFailure;
 		}
+
+		public static RuntimeFeatures Features
+		{
+			get
+			{
+				if (!sQueriedFeatures)
+				{
+#if BF_MACHINE_X86 || BF_MACHINE_X64
+					QueryFeaturesX86();
+#else
+					sFeatures = .();
+					sQueriedFeatures = true;
+#endif
+				}
+
+				return sFeatures;
+			}
+		}
+
+#if BF_MACHINE_X86 || BF_MACHINE_X64
+		private static void QueryFeaturesX86()
+		{
+			sFeatures = .();
+			sQueriedFeatures = true;
+
+			uint32 _ = 0;
+
+			// 0: Basic information
+			uint32 maxBasicLeaf = 0;
+			cpuid(0, 0, &maxBasicLeaf, &_, &_, &_);
+
+			if (maxBasicLeaf < 1)
+			{
+			    // Earlier Intel 486, CPUID not implemented
+			    return;
+			}
+
+			// 1: Processor Info and Feature Bits
+			uint32 procInfoEcx = 0;
+			uint32 procInfoEdx = 0;
+			cpuid(1, 0, &_, &_, &procInfoEcx, &procInfoEdx);
+
+			sFeatures.SSE = (procInfoEdx & (1 << 25)) != 0;
+			sFeatures.SSE2 = (procInfoEdx & (1 << 26)) != 0;
+
+			// 7: Extended Features
+			uint32 extendedFeaturesEbx = 0;
+			cpuid(7, 0, &_, &extendedFeaturesEbx, &_, &_);
+
+			// `XSAVE` and `AVX` support:
+			if ((procInfoEcx & (1 << 26)) != 0)
+			{
+			    // Here the CPU supports `XSAVE`
+
+			    // Detect `OSXSAVE`, that is, whether the OS is AVX enabled and
+			    // supports saving the state of the AVX/AVX2 vector registers on
+			    // context-switches
+			    if ((procInfoEcx & (1 << 27)) != 0)
+				{
+			        // The OS must have signaled the CPU that it supports saving and restoring the
+			        uint64 xcr0 = xgetbv(0);
+
+			        bool avxSupport = (xcr0 & 6) == 6;
+			        bool avx512Support = (xcr0 & 224) == 224;
+
+			        // Only if the OS and the CPU support saving/restoring the AVX registers we enable `xsave` support
+			        if (avxSupport)
+					{
+			            sFeatures.AVX = (procInfoEcx & (1 << 28)) != 0;
+			            sFeatures.AVX2 = (extendedFeaturesEbx & (1 << 5)) != 0;
+
+			            // For AVX-512 the OS also needs to support saving/restoring
+			            // the extended state, only then we enable AVX-512 support:
+			            if (avx512Support)
+			                sFeatures.AVX512 = (extendedFeaturesEbx & (1 << 16)) != 0;
+			        }
+			    }
+			}
+		}
+
+		[Intrinsic("cpuid")]
+		private static extern void cpuid(uint32 leaf, uint32 subleaf, uint32* eax, uint32* ebx, uint32* ecx, uint32* edx);
+
+		[Intrinsic("xgetbv")]
+		private static extern uint64 xgetbv(uint32 xcr);
+#endif
 	}
 }

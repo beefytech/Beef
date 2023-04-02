@@ -157,6 +157,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"bswap"},
 	{"cast"},
 	{"cos"},
+	{"cpuid"},
 	{"debugtrap"},
 	{"div"},
 	{"eq"},
@@ -193,6 +194,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"va_arg"},
 	{"va_end"},
 	{"va_start"},
+	{"xgetbv"},
 	{"xor"},
 };
 
@@ -2844,6 +2846,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ llvm::Intrinsic::bswap, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // cast,
 				{ llvm::Intrinsic::cos, 0, -1},
+				{ (llvm::Intrinsic::ID)-2, -1}, // cpuid
 				{ llvm::Intrinsic::debugtrap, -1}, // debugtrap,
 				{ (llvm::Intrinsic::ID)-2, -1}, // div
 				{ (llvm::Intrinsic::ID)-2, -1}, // eq
@@ -2880,6 +2883,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ (llvm::Intrinsic::ID)-2, -1}, // va_arg,
 				{ llvm::Intrinsic::vaend, -1}, // va_end,
 				{ llvm::Intrinsic::vastart, -1}, // va_start,
+				{ (llvm::Intrinsic::ID)-2, -1}, // xgetbv
 				{ (llvm::Intrinsic::ID)-2, -1}, // xor
 			};
 			BF_STATIC_ASSERT(BF_ARRAY_COUNT(intrinsics) == BfIRIntrinsic_COUNT);
@@ -3068,18 +3072,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{
 				case BfIRIntrinsic__PLATFORM:
 					{
-						if (intrinsicData->mName == "add_ps")
-						{
-							auto val0 = TryToVector(args[0], llvm::Type::getFloatTy(*mLLVMContext));
-							auto val1 = TryToVector(args[0], llvm::Type::getFloatTy(*mLLVMContext));
-							//SetResult(curId, TryToVector(mIRBuilder->CreateFAdd(val0, val1), GetElemType(args[0])));
-
-							SetResult(curId, mIRBuilder->CreateFAdd(val0, val1));
-						}
-						else
-						{
-							FatalError(StrFormat("Unable to find intrinsic '%s'", intrinsicData->mName.c_str()));
-						}
+						FatalError(StrFormat("Unable to find intrinsic '%s'", intrinsicData->mName.c_str()));
 					}
 					break;
 
@@ -3297,6 +3290,62 @@ void BfIRCodeGen::HandleNextCmd()
 						{
 							FatalError("Intrinsic argument error");
 						}
+					}
+					break;
+				case BfIRIntrinsic_Cpuid:
+					{
+						llvm::Type* elemType = llvm::Type::getInt32Ty(*mLLVMContext);
+
+						// Check argument errors
+						if (args.size() != 6 || !args[0]->getType()->isIntegerTy(32) || !args[1]->getType()->isIntegerTy(32))
+							FatalError("Intrinsic argument error");
+
+						for (int i = 2; i < 6; i++)
+						{
+							llvm::Type* type = args[i]->getType();
+
+							if (!type->isPointerTy() || !type->getPointerElementType()->isIntegerTy(32))
+								FatalError("Intrinsic argument error");
+						}
+
+						// Get asm return type
+						llvm::SmallVector<llvm::Type*, 4> asmReturnTypes;
+						asmReturnTypes.push_back(elemType);
+						asmReturnTypes.push_back(elemType);
+						asmReturnTypes.push_back(elemType);
+						asmReturnTypes.push_back(elemType);
+
+						llvm::Type* returnType = llvm::StructType::get(*mLLVMContext, asmReturnTypes);
+
+						// Get asm function
+						llvm::SmallVector<llvm::Type*, 2> funcParams;
+						funcParams.push_back(elemType);
+						funcParams.push_back(elemType);
+
+						llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, funcParams, false);
+						llvm::InlineAsm* func = llvm::InlineAsm::get(funcType, "xchgq %rbx,${1:q}\ncpuid\nxchgq %rbx,${1:q}", "={ax},=r,={cx},={dx},0,2,~{dirflag},~{fpsr},~{flags}", false);
+
+						// Call asm function
+						llvm::SmallVector<llvm::Value*, 2> funcArgs;
+						funcArgs.push_back(args[0]);
+						funcArgs.push_back(args[1]);
+
+						llvm::Value* asmResult = mIRBuilder->CreateCall(func, funcArgs);
+
+						// Store results
+						mIRBuilder->CreateStore(mIRBuilder->CreateExtractValue(asmResult, 0), args[2]);
+						mIRBuilder->CreateStore(mIRBuilder->CreateExtractValue(asmResult, 1), args[3]);
+						mIRBuilder->CreateStore(mIRBuilder->CreateExtractValue(asmResult, 2), args[4]);
+						mIRBuilder->CreateStore(mIRBuilder->CreateExtractValue(asmResult, 3), args[5]);
+					}
+					break;
+				case BfIRIntrinsic_Xgetbv:
+					{
+						if (args.size() != 1 || !args[0]->getType()->isIntegerTy(32))
+							FatalError("Intrinsic argument error");
+
+						auto func = mLLVMModule->getOrInsertFunction("llvm.x86.xgetbv", llvm::Type::getInt64Ty(*mLLVMContext), llvm::Type::getInt32Ty(*mLLVMContext));
+						SetResult(curId, mIRBuilder->CreateCall(func, args[0]));
 					}
 					break;
 				case BfIRIntrinsic_Not:

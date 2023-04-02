@@ -441,6 +441,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_BSwap,
 	BfIRIntrinsic_Cast,
 	BfIRIntrinsic_Cos,
+	BfIRIntrinsic_Cpuid,
 	BfIRIntrinsic_DebugTrap,
 	BfIRIntrinsic_Div,
 	BfIRIntrinsic_Eq,
@@ -477,6 +478,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_VAArg,
 	BfIRIntrinsic_VAEnd,
 	BfIRIntrinsic_VAStart,
+	BfIRIntrinsic_Xgetbv,
 	BfIRIntrinsic_Xor,
 
 	BfIRIntrinsic_COUNT,
