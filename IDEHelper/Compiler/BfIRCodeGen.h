@@ -90,6 +90,16 @@ enum BfIRSizeAlignKind
 	BfIRSizeAlignKind_Aligned,
 };
 
+enum BfIRSimdType
+{
+	BfIRSimdType_None,
+	BfIRSimdType_SSE,
+	BfIRSimdType_SSE2,
+	BfIRSimdType_AVX,
+	BfIRSimdType_AVX2,
+	BfIRSimdType_AVX512
+};
+
 class BfIRCodeGen : public BfIRCodeGenBase
 {
 public:
@@ -130,6 +140,7 @@ public:
 	Dictionary<llvm::Type*, int> mTypeToTypeIdMap;
 	HashSet<llvm::BasicBlock*> mLockedBlocks;
 	OwnedArray<BfIRIntrinsicData> mIntrinsicData;
+	Dictionary<llvm::Function*, BfIRSimdType> mFunctionsUsingSimd;
 
 public:
 	void InitTarget();
@@ -222,6 +233,10 @@ public:
 	void SetCodeGenOptions(BfCodeGenOptions codeGenOptions);
 	void SetConfigConst(int idx, int value) override;
 
+	void SetActiveFunctionSimdType(BfIRSimdType type);
+	const StringImpl& GetSimdTypeString(BfIRSimdType type);
+	BfIRSimdType GetSimdTypeFromFunction(llvm::Function* function);
+
 	llvm::Value* GetLLVMValue(int streamId);
 	llvm::Type* GetLLVMType(int streamId);
 	llvm::BasicBlock* GetLLVMBlock(int streamId);
@@ -233,6 +248,8 @@ public:
 
 	bool WriteObjectFile(const StringImpl& outFileName);
 	bool WriteIR(const StringImpl& outFileName, StringImpl& error);
+
+	void ApplySimdFeatures();
 
 	static int GetIntrinsicId(const StringImpl& name);
 	static const char* GetIntrinsicName(int intrinId);
