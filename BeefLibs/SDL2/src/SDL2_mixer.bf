@@ -61,7 +61,7 @@ namespace SDL2
 			Mp3 =		0x00000008,
 			Ogg =		0x00000010,
 			Mid =		0x00000020,
-            Opus =		0x00000040,
+			Opus =		0x00000040,
 		}
 
 		public enum Fading
@@ -83,13 +83,13 @@ namespace SDL2
 			Mp3Mad,
 			Flac,
 			Modplug,
-            Opus
+			Opus
 		}
 
 		public function void MixFuncDelegate(void* udata, uint8* stream, int32 len);
-		
+
 		public function void Mix_EffectFunc_t(int32 chan, void* stream, int32 len, void* udata);
-		
+
 		public function void Mix_EffectDone_t(int32 chan, void* udata);
 
 		public function void MusicFinishedDelegate();
@@ -107,7 +107,7 @@ namespace SDL2
 
 		[LinkName("Version ")]
 		public static extern SDL.Version MIX_Linked_Version();
-		
+
 
 		[LinkName("Mix_Init")]
 		public static extern int32 Init(MIX_InitFlags flags);
@@ -288,13 +288,13 @@ namespace SDL2
 			int32 ticks
 		);
 
-        /* chunk refers to a Mix_Chunk* */
-        [LinkName("Mix_PlayChannel")]
-        public static extern int32 PlayChannel(
-        	int32 channel,
-        	Chunk* chunk,
-        	int32 loops
-        );
+		/* chunk refers to a Mix_Chunk* */
+		[LinkName("Mix_PlayChannel")]
+		public static extern int32 PlayChannel(
+			int32 channel,
+			Chunk* chunk,
+			int32 loops
+		);
 
 		[LinkName("Mix_PlayMusic")]
 		public static extern int32 PlayMusic(Music* music, int32 loops);
@@ -414,17 +414,17 @@ namespace SDL2
 		[LinkName("Mix_GetMusicPosition")]
 		public static extern double GetMusicPosition(Music* music);
 
-        [LinkName("Mix_MusicDuration")]
-        public static extern double MusicDuration(Music* music);
+		[LinkName("Mix_MusicDuration")]
+		public static extern double MusicDuration(Music* music);
 
-        [LinkName("Mix_GetMusicLoopStartTime")]
-        public static extern double GetMusicLoopStartTime(Music* music);
+		[LinkName("Mix_GetMusicLoopStartTime")]
+		public static extern double GetMusicLoopStartTime(Music* music);
 
-        [LinkName("Mix_GetMusicLoopEndTime")]
-        public static extern double GetMusicLoopEndTime(Music* music);
+		[LinkName("Mix_GetMusicLoopEndTime")]
+		public static extern double GetMusicLoopEndTime(Music* music);
 
-        [LinkName("Mix_GetMusicLoopLengthTime")]
-        public static extern double GetMusicLoopLengthTime(Music* music);
+		[LinkName("Mix_GetMusicLoopLengthTime")]
+		public static extern double GetMusicLoopLengthTime(Music* music);
 
 		[LinkName("Mix_Playing")]
 		public static extern int32 Playing(int32 channel);
@@ -443,7 +443,7 @@ namespace SDL2
 
 		[LinkName("Mix_SetSoundFonts")]
 		public static extern int32 SetSoundFonts(char8* paths);
-		
+
 		[LinkName("Mix_GetSoundFonts")]
 		public static extern char8* GetSoundFonts();
 

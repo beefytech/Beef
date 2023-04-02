@@ -23,7 +23,7 @@
  * Ethan "flibitijibibo" Lee <flibitijibibo@flibitijibibo.com>
  *
  */
- 
+
 using System;
 
 namespace SDL2
@@ -51,12 +51,12 @@ namespace SDL2
 		public const int32 TTF_HINTING_LIGHT =	1;
 		public const int32 TTF_HINTING_MONO =	2;
 		public const int32 TTF_HINTING_NONE =	3;
-        public const int32 TTF_HINTING_LIGHT_SUBPIXEL =	4;
+		public const int32 TTF_HINTING_LIGHT_SUBPIXEL =	4;
 
-        public const int32 TTF_DIRECTION_LTR = 0;
-        public const int32 TTF_DIRECTION_RTL = 1;
-        public const int32 TTF_DIRECTION_TTB = 2;
-        public const int32 TTF_DIRECTION_BTT = 3;
+		public const int32 TTF_DIRECTION_LTR = 0;
+		public const int32 TTF_DIRECTION_RTL = 1;
+		public const int32 TTF_DIRECTION_TTB = 2;
+		public const int32 TTF_DIRECTION_BTT = 3;
 
 		public static void SDL_TTF_VERSION(out SDL.Version X)
 		{
@@ -111,52 +111,52 @@ namespace SDL2
 			int64 index
 		);
 
-        [LinkName("TTF_OpenFontDPI")]
-        public static extern Font* OpenFontDPI(
-        	char8* file,
-            int32 ptsize,
-            uint32 hdpi,
-            uint32 vdpi
-        );
+		[LinkName("TTF_OpenFontDPI")]
+		public static extern Font* OpenFontDPI(
+			char8* file,
+			int32 ptsize,
+			uint32 hdpi,
+			uint32 vdpi
+		);
 
-        [LinkName("TTF_OpenFontIndexDPI")]
-        public static extern Font* OpenFontIndexDPI(
-        	char8* file,
-            int32 ptsize,
-            int32 index,
-            uint32 hdpi,
-            uint32 vdpi
-        );
+		[LinkName("TTF_OpenFontIndexDPI")]
+		public static extern Font* OpenFontIndexDPI(
+			char8* file,
+			int32 ptsize,
+			int32 index,
+			uint32 hdpi,
+			uint32 vdpi
+		);
 
-        [LinkName("TTF_OpenFontDPIRW")]
-        public static extern Font* OpenFontDPIRW(
-        	SDL.RWOps* src,
-            int32 freesrc,
-            int32 ptsize,
-            uint32 hdpi,
-            uint32 vdpi
-        );
+		[LinkName("TTF_OpenFontDPIRW")]
+		public static extern Font* OpenFontDPIRW(
+			SDL.RWOps* src,
+			int32 freesrc,
+			int32 ptsize,
+			uint32 hdpi,
+			uint32 vdpi
+		);
 
-        [LinkName("TTF_OpenFontIndexDPIRW")]
-        public static extern Font* OpenFontIndexDPIRW(
-        	SDL.RWOps* src,
-            int32 freesrc,
-            int32 ptsize,
-            int32 index,
-            uint32 hdpi,
-            uint32 vdpi
-        );
+		[LinkName("TTF_OpenFontIndexDPIRW")]
+		public static extern Font* OpenFontIndexDPIRW(
+			SDL.RWOps* src,
+			int32 freesrc,
+			int32 ptsize,
+			int32 index,
+			uint32 hdpi,
+			uint32 vdpi
+		);
 
-        [LinkName("TTF_SetFontSizeDPI")]
-        public static extern int32 SetFontSizeDPI(
-        	Font* font,
-            int32 ptsize,
-            uint32 hdpi,
-            uint32 vdpi
-        );
+		[LinkName("TTF_SetFontSizeDPI")]
+		public static extern int32 SetFontSizeDPI(
+			Font* font,
+			int32 ptsize,
+			uint32 hdpi,
+			uint32 vdpi
+		);
 
 		public struct Font;
-		
+
 		[LinkName("TTF_GetFontStyle")]
 		public static extern int32 GetFontStyle(Font* font);
 
@@ -168,7 +168,7 @@ namespace SDL2
 
 		[LinkName("TTF_SetFontOutline")]
 		public static extern void SetFontOutline(Font* font, int32 outline);
-		
+
 		[LinkName("TTF_GetFontHinting")]
 		public static extern int32 GetFontHinting(Font* font);
 
@@ -183,7 +183,7 @@ namespace SDL2
 
 		[LinkName("TTF_FontHeight")]
 		public static extern int32 FontHeight(Font* font);
-		
+
 		[LinkName("TTF_FontAscent")]
 		public static extern int32 FontAscent(Font* font);
 
@@ -198,10 +198,10 @@ namespace SDL2
 
 		[LinkName("TTF_SetFontKerning")]
 		public static extern void SetFontKerning(Font* font, int32 allowed);
-		
+
 		[LinkName("TTF_FontFaces")]
 		public static extern int64 FontFaces(Font* font);
-		
+
 		[LinkName("TTF_FontFaceIsFixedWidth")]
 		public static extern int32 FontFaceIsFixedWidth(Font* font);
 
@@ -210,10 +210,10 @@ namespace SDL2
 
 		[LinkName("TTF_FontFaceStyleName")]
 		public static extern char8* FontFaceStyleName(Font* font);
-		
+
 		[LinkName("TTF_GlyphIsProvided")]
 		public static extern int32 GlyphIsProvided(Font* font, uint16 ch);
-		
+
 		[LinkName("TTF_GlyphIsProvided32")]
 		public static extern int32 GlyphIsProvided32(Font* font, uint32 ch);
 
@@ -228,16 +228,16 @@ namespace SDL2
 			out int32 advance
 		);
 
-        [LinkName("TTF_GlyphMetrics32")]
-        public static extern int32 GlyphMetrics32(
-        	Font* font,
-        	uint32 ch,
-        	out int32 minx,
-        	out int32 maxx,
-        	out int32 miny,
-        	out int32 maxy,
-        	out int32 advance
-        );
+		[LinkName("TTF_GlyphMetrics32")]
+		public static extern int32 GlyphMetrics32(
+			Font* font,
+			uint32 ch,
+			out int32 minx,
+			out int32 maxx,
+			out int32 miny,
+			out int32 maxy,
+			out int32 advance
+		);
 
 		[LinkName("TTF_SizeText")]
 		public static extern int32 SizeText(
@@ -263,32 +263,32 @@ namespace SDL2
 			out int32 h
 		);
 
-        [LinkName("TTF_MeasureText")]
-        public static extern int32 MeasureText(
-        	Font* font,
-        	char8* text,
-        	int32 measure_width,
-        	out int32 extent,
-            out int32 count
-        );
+		[LinkName("TTF_MeasureText")]
+		public static extern int32 MeasureText(
+			Font* font,
+			char8* text,
+			int32 measure_width,
+			out int32 extent,
+			out int32 count
+		);
 
-        [LinkName("TTF_MeasureUTF8")]
-        public static extern int32 MeasureUTF8(
-        	Font* font,
-        	char8* text,
-        	int32 measure_width,
-        	out int32 extent,
-            out int32 count
-        );
+		[LinkName("TTF_MeasureUTF8")]
+		public static extern int32 MeasureUTF8(
+			Font* font,
+			char8* text,
+			int32 measure_width,
+			out int32 extent,
+			out int32 count
+		);
 
-        [LinkName("TTF_MeasureUNICODE")]
-        public static extern int32 MeasureUNICODE(
-        	Font* font,
-        	char16* text,
-        	int32 measure_width,
-        	out int32 extent,
-            out int32 count
-        );
+		[LinkName("TTF_MeasureUNICODE")]
+		public static extern int32 MeasureUNICODE(
+			Font* font,
+			char16* text,
+			int32 measure_width,
+			out int32 extent,
+			out int32 count
+		);
 
 		[LinkName("TTF_RenderText_Solid")]
 		public static extern SDL.Surface* RenderText_Solid(
@@ -316,24 +316,24 @@ namespace SDL2
 			Font* font,
 			char8* text,
 			SDL.Color fg,
-            uint32 wrapLength
+			uint32 wrapLength
 		);
 
-        [LinkName("TTF_RenderUTF8_Solid_Wrapped")]
-        public static extern SDL.Surface* RenderUTF8_Solid_Wrapped(
-        	Font* font,
-        	char8* text,
-        	SDL.Color fg,
-            uint32 wrapLength
-        );
+		[LinkName("TTF_RenderUTF8_Solid_Wrapped")]
+		public static extern SDL.Surface* RenderUTF8_Solid_Wrapped(
+			Font* font,
+			char8* text,
+			SDL.Color fg,
+			uint32 wrapLength
+		);
 
-        [LinkName("TTF_RenderUNICODE_Solid_Wrapped")]
-        public static extern SDL.Surface* RenderUNICODE_Solid_Wrapped(
-        	Font* font,
-        	char16* text,
-        	SDL.Color fg,
-            uint32 wrapLength
-        );
+		[LinkName("TTF_RenderUNICODE_Solid_Wrapped")]
+		public static extern SDL.Surface* RenderUNICODE_Solid_Wrapped(
+			Font* font,
+			char16* text,
+			SDL.Color fg,
+			uint32 wrapLength
+		);
 
 		[LinkName("TTF_RenderGlyph_Solid")]
 		public static extern SDL.Surface* RenderGlyph_Solid(
@@ -379,7 +379,7 @@ namespace SDL2
 			char8* text,
 			SDL.Color fg,
 			SDL.Color bg,
-            uint32 wrappedLength
+			uint32 wrappedLength
 		);
 
 		[LinkName("TTF_RenderUTF8_Shaded_Wrapped")]
@@ -388,7 +388,7 @@ namespace SDL2
 			char8* text,
 			SDL.Color fg,
 			SDL.Color bg,
-            uint32 wrappedLength
+			uint32 wrappedLength
 		);
 
 		[LinkName("TTF_RenderUNICODE_Shaded_Wrapped")]
@@ -397,7 +397,7 @@ namespace SDL2
 			char16* text,
 			SDL.Color fg,
 			SDL.Color bg,
-            uint32 wrappedLength
+			uint32 wrappedLength
 		);
 
 		[LinkName("TTF_RenderGlyph_Shaded")]
@@ -478,69 +478,69 @@ namespace SDL2
 		[LinkName("TTF_RenderText_LCD")]
 		public static extern SDL.Surface* RenderText_LCD(
 			Font* font,
-            char8* text,
+			char8* text,
 			SDL.Color fg,
-            SDL.Color bg
+			SDL.Color bg
 		);
 
 		[LinkName("TTF_RenderUTF8_LCD")]
 		public static extern SDL.Surface* RenderUTF8_LCD(
 			Font* font,
-            char8* text,
+			char8* text,
 			SDL.Color fg,
-            SDL.Color bg
+			SDL.Color bg
 		);
 
 		[LinkName("TTF_RenderUNICODE_LCD")]
 		public static extern SDL.Surface* RenderUNICODE_LCD(
 			Font* font,
-            char16* text,
+			char16* text,
 			SDL.Color fg,
-            SDL.Color bg
+			SDL.Color bg
 		);
 
-        [LinkName("TTF_RenderText_LCD_Wrapped")]
-        public static extern SDL.Surface* RenderText_LCD_Wrapped(
-        	Font* font,
-            char8* text,
-        	SDL.Color fg,
-            SDL.Color bg,
-            uint32 wrapLength
-        );
+		[LinkName("TTF_RenderText_LCD_Wrapped")]
+		public static extern SDL.Surface* RenderText_LCD_Wrapped(
+			Font* font,
+			char8* text,
+			SDL.Color fg,
+			SDL.Color bg,
+			uint32 wrapLength
+		);
 
-        [LinkName("TTF_RenderUTF8_LCD_Wrapped")]
-        public static extern SDL.Surface* RenderUTF8_LCD_Wrapped(
-        	Font* font,
-            char8* text,
-        	SDL.Color fg,
-            SDL.Color bg,
-            uint32 wrapLength
-        );
+		[LinkName("TTF_RenderUTF8_LCD_Wrapped")]
+		public static extern SDL.Surface* RenderUTF8_LCD_Wrapped(
+			Font* font,
+			char8* text,
+			SDL.Color fg,
+			SDL.Color bg,
+			uint32 wrapLength
+		);
 
-        [LinkName("TTF_RenderUNICODE_LCD_Wrapped")]
-        public static extern SDL.Surface* RenderUNICODE_LCD_Wrapped(
-        	Font* font,
-            char16* text,
-        	SDL.Color fg,
-            SDL.Color bg,
-            uint32 wrapLength
-        );
+		[LinkName("TTF_RenderUNICODE_LCD_Wrapped")]
+		public static extern SDL.Surface* RenderUNICODE_LCD_Wrapped(
+			Font* font,
+			char16* text,
+			SDL.Color fg,
+			SDL.Color bg,
+			uint32 wrapLength
+		);
 
-        [LinkName("TTF_RenderGlyph_LCD")]
-        public static extern SDL.Surface* RenderGlyph_LCD(
-        	Font* font,
-            char16 ch,
-        	SDL.Color fg,
-            SDL.Color bg
-        );
+		[LinkName("TTF_RenderGlyph_LCD")]
+		public static extern SDL.Surface* RenderGlyph_LCD(
+			Font* font,
+			char16 ch,
+			SDL.Color fg,
+			SDL.Color bg
+		);
 
-        [LinkName("TTF_RenderGlyph32_LCD")]
-        public static extern SDL.Surface* RenderGlyph32_LCD(
-        	Font* font,
-            char32 ch,
-        	SDL.Color fg,
-            SDL.Color bg
-        );
+		[LinkName("TTF_RenderGlyph32_LCD")]
+		public static extern SDL.Surface* RenderGlyph32_LCD(
+			Font* font,
+			char32 ch,
+			SDL.Color fg,
+			SDL.Color bg
+		);
 
 		[LinkName("TTF_CloseFont")]
 		public static extern void CloseFont(Font* font);
@@ -561,14 +561,14 @@ namespace SDL2
 		[LinkName("TTF_GetFontKerningSizeGlyphs")]
 		public static extern int32 GetFontKerningSizeGlyphs(
 			Font* font,
-            char16 previous_ch,
+			char16 previous_ch,
 			char16 ch
 		);
 
 		[LinkName("TTF_SetFontSDF")]
 		public static extern int32 SetFontSDF(
 			Font* font,
-            SDL.Bool on_off
+			SDL.Bool on_off
 		);
 
 		[LinkName("TTF_GetFontSDF")]
@@ -588,13 +588,13 @@ namespace SDL2
 
 		[LinkName("TTF_SetFontDirection")]
 		public static extern int32 SetFontDirection(
-            Font* font,
+			Font* font,
 			int32 direction
 		);
 
 		[LinkName("TTF_SetFontScriptName")]
 		public static extern int32 SetFontScriptName(
-            Font* font,
+			Font* font,
 			char8* script
 		);
 	}
