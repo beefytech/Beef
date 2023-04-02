@@ -681,7 +681,7 @@ namespace SDL2
 		public static extern void LogMessageV(int32 category, LogPriority priority, char8* fmtAndArglist);
 
 		[LinkName("SDL_LogGetPriority")]
-		public static extern LogPriority SDL_LogGetPriority(int32 category);
+		public static extern LogPriority LogGetPriority(int32 category);
 
 		[LinkName("SDL_LogSetPriority")]
 		public static extern void LogSetPriority(int32 category, LogPriority priority);
@@ -1176,7 +1176,7 @@ namespace SDL2
 
 
 		[LinkName("SDL_GL_BindTexture")]
-		public static extern int32 SDL_GL_BindTexture(Texture* texture, out float texw, out float texh);
+		public static extern int32 GL_BindTexture(Texture* texture, out float texw, out float texh);
 
 		public struct SDL_GLContext : int
 		{
@@ -1191,7 +1191,7 @@ namespace SDL2
 		public static extern void GL_DeleteContext(SDL_GLContext context);
 
 		[LinkName("SDL_GL_GetProcAddress")]
-		public static extern void* SDL_GL_GetProcAddress(char8* proc);
+		public static extern void* GL_GetProcAddress(char8* proc);
 
 		[LinkName("SDL_GL_LoadLibrary")]
 		public static extern int32 GL_LoadLibrary(char8* path);
@@ -1214,7 +1214,7 @@ namespace SDL2
 
 		/* window and context refer to an SDL_Window* and SDL_GLContext */
 		[LinkName("SDL_GL_MakeCurrent")]
-		public static extern int32 SDL_GL_MakeCurrent(Window* window, SDL_GLContext context);
+		public static extern int32 GL_MakeCurrent(Window* window, SDL_GLContext context);
 
 		/* IntPtr refers to an SDL_Window* */
 		[LinkName("SDL_GL_GetCurrentWindow")]
@@ -1266,7 +1266,7 @@ namespace SDL2
 		public static extern int32 SetWindowBrightness(Window* window, float brightness);
 
 		[LinkName("SDL_SetWindowData")]
-		public static extern void* SDL_SetWindowData(Window* window, char8* name, void* userdata);
+		public static extern void* SetWindowData(Window* window, char8* name, void* userdata);
 
 		[LinkName("SDL_SetWindowDisplayMode")]
 		public static extern int32 SetWindowDisplayMode(Window* window, ref SDL_DisplayMode mode);
@@ -2804,7 +2804,7 @@ namespace SDL2
 		 * symbol name intentionally different
 		 */
 		[LinkName("SDL_UpperBlit")]
-		public static extern int32 SDL_BlitSurface(
+		public static extern int32 BlitSurface(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
@@ -2815,7 +2815,7 @@ namespace SDL2
 		 * symbol name intentionally different
 		 */
 		[LinkName("SDL_UpperBlitScaled")]
-		public static extern int32 SDL_BlitScaled(
+		public static extern int32 BlitScaled(
 			Surface* src,
 			Rect* srcrect,
 			Surface* dst,
@@ -2986,7 +2986,7 @@ namespace SDL2
 			int32 freesrc
 		);
 
-		public static Surface* SDL_LoadBMP(char8* file)
+		public static Surface* LoadBMP(char8* file)
 		{
 			RWOps* rwops = RWFromFile(file, "rb");
 			return LoadBMP_RW(rwops, 1);
@@ -4569,7 +4569,7 @@ namespace SDL2
 		public static extern SDL_Cursor* GetCursor();
 
 		[LinkName("SDL_GetDefaultCursor")]
-		public static extern SDL_Cursor* SDL_GetDefaultCursor();
+		public static extern SDL_Cursor* GetDefaultCursor();
 
 		/* Frees a cursor created with one of the CreateCursor functions */
 		/* cursor in an SDL_Cursor pointer */
@@ -5375,7 +5375,7 @@ namespace SDL2
 		public static extern void GameControllerSetPlayerIndex(SDL_GameController* gamecontroller, int32 player_index);
 
 		[LinkName("SDL_GameControllerGetFirmwareVersion")]
-		public static extern uint16 SDL_GameControllerGetFirmwareVersion(SDL_GameController* gamecontroller);
+		public static extern uint16 GameControllerGetFirmwareVersion(SDL_GameController* gamecontroller);
 
 		[LinkName("SDL_GameControllerGetSerial")]
 		public static extern char8* GameControllerGetSerial(SDL_GameController* gamecontroller);
