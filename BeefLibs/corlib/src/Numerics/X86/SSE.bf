@@ -112,8 +112,6 @@ namespace System.Numerics.X86
 		
 		public static extern int32 cvt_ss2si(v128 a);
 		
-		public static extern v128 div_ps(v128 a, v128 b);
-		
 		public static extern v128 div_ss(v128 a, v128 b);
 		
 		public static extern v128 loadu_ps(void* ptr);
@@ -124,11 +122,7 @@ namespace System.Numerics.X86
 		
 		public static extern v128 load_ps(void* ptr);
 		
-		public static extern v128 max_ps(v128 a, v128 b);
-		
 		public static extern v128 max_ss(v128 a, v128 b);
-		
-		public static extern v128 min_ps(v128 a, v128 b);
 		
 		public static extern v128 min_ss(v128 a, v128 b);
 		
@@ -139,8 +133,6 @@ namespace System.Numerics.X86
 		public static extern int32 movemask_ps(v128 a);
 		
 		public static extern v128 move_ss(v128 a, v128 b);
-		
-		public static extern v128 mul_ps(v128 a, v128 b);
 		
 		public static extern v128 mul_ss(v128 a, v128 b);
 		
@@ -181,8 +173,6 @@ namespace System.Numerics.X86
 		public static extern void store_ps(void* ptr, v128 val);
 		
 		public static extern void stream_ps(void* mem_addr, v128 a);
-		
-		public static extern v128 sub_ps(v128 a, v128 b);
 		
 		public static extern v128 sub_ss(v128 a, v128 b);
 		
