@@ -60,6 +60,20 @@ namespace System.IO
 		}
 
 		public abstract Result<int> TryRead(Span<uint8> data);
+		public virtual Result<int, FileError> TryRead(Span<uint8> data, int timeout)
+		{
+			if (timeout == -1)
+			{
+				switch (TryRead(data))
+				{
+				case .Ok(var i):
+					return i;
+				case .Err:
+					return .Err(.ReadError(.Unknown));
+				}
+			}
+			return .Err(.ReadError(.Unknown));
+		}
 		public abstract Result<int> TryWrite(Span<uint8> data);
 		public abstract Result<void> Close();
 

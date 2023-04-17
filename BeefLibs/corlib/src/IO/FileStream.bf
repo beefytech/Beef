@@ -62,7 +62,7 @@ namespace System.IO
 			return numBytesRead;
 		}
 
-		public virtual Result<int, FileError> TryRead(Span<uint8> data, int timeoutMS)
+		public override Result<int, FileError> TryRead(Span<uint8> data, int timeoutMS)
 		{
 			Platform.BfpFileResult result = .Ok;
 			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
@@ -513,7 +513,7 @@ namespace System.IO
 			return numBytesRead;
 		}
 
-		public Result<int, FileError> TryRead(Span<uint8> data, int timeoutMS)
+		public override Result<int, FileError> TryRead(Span<uint8> data, int timeoutMS)
 		{
 			if (mBfpFilePos != mPos)
 				Try!(SeekUnderlying(mPos));

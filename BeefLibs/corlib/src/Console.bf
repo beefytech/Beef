@@ -260,6 +260,8 @@ namespace System
 				return OpenStreamReader(.In, ref mIn);
 			}
 		}
+
+		public static bool KeyAvailable => In.CanReadNow;
 		
 		public static Result<char8> Read() => In.Read();
 
