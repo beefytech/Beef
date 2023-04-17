@@ -27,6 +27,12 @@ namespace System.Numerics
 
 		public extern float4 wzyx { [Intrinsic("shuffle3210")] get; [Intrinsic("shuffle3210")] set; }
 
+		[Intrinsic("min")]
+		public static extern float4 min(float4 lhs, float4 rhs);
+
+		[Intrinsic("max")]
+		public static extern float4 max(float4 lhs, float4 rhs);
+
 		[Intrinsic("add")]
 		public static extern float4 operator+(float4 lhs, float4 rhs);
 		[Intrinsic("add"), Commutable]

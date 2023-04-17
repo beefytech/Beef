@@ -157,6 +157,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"bswap"},
 	{"cast"},
 	{"cos"},
+	{"cpuid"},
 	{"debugtrap"},
 	{"div"},
 	{"eq"},
@@ -171,9 +172,11 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"lt"},
 	{"lte"},
 	{"malloc"},
+	{"max"},
 	{"memcpy"},
 	{"memmove"},
 	{"memset"},
+	{"min"},
 	{"mod"},
 	{"mul"},
 	{"neq"},
@@ -193,6 +196,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"va_arg"},
 	{"va_end"},
 	{"va_start"},
+	{"xgetbv"},
 	{"xor"},
 };
 
@@ -2844,6 +2848,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ llvm::Intrinsic::bswap, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // cast,
 				{ llvm::Intrinsic::cos, 0, -1},
+				{ (llvm::Intrinsic::ID)-2, -1}, // cpuid
 				{ llvm::Intrinsic::debugtrap, -1}, // debugtrap,
 				{ (llvm::Intrinsic::ID)-2, -1}, // div
 				{ (llvm::Intrinsic::ID)-2, -1}, // eq
@@ -2857,10 +2862,12 @@ void BfIRCodeGen::HandleNextCmd()
 				{ llvm::Intrinsic::log2, 0, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // lt
 				{ (llvm::Intrinsic::ID)-2, -1}, // lte
-				{ (llvm::Intrinsic::ID)-2}, // memset
+				{ (llvm::Intrinsic::ID)-2}, // malloc
+				{ (llvm::Intrinsic::ID)-2, -1}, // max
 				{ llvm::Intrinsic::memcpy, 0, 1, 2},
 				{ llvm::Intrinsic::memmove, 0, 2},
 				{ llvm::Intrinsic::memset, 0, 2},
+				{ (llvm::Intrinsic::ID)-2, -1}, // min
 				{ (llvm::Intrinsic::ID)-2, -1}, // mod
 				{ (llvm::Intrinsic::ID)-2, -1}, // mul
 				{ (llvm::Intrinsic::ID)-2, -1}, // neq
@@ -2880,6 +2887,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ (llvm::Intrinsic::ID)-2, -1}, // va_arg,
 				{ llvm::Intrinsic::vaend, -1}, // va_end,
 				{ llvm::Intrinsic::vastart, -1}, // va_start,
+				{ (llvm::Intrinsic::ID)-2, -1}, // xgetbv
 				{ (llvm::Intrinsic::ID)-2, -1}, // xor
 			};
 			BF_STATIC_ASSERT(BF_ARRAY_COUNT(intrinsics) == BfIRIntrinsic_COUNT);
@@ -3068,18 +3076,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{
 				case BfIRIntrinsic__PLATFORM:
 					{
-						if (intrinsicData->mName == "add_ps")
-						{
-							auto val0 = TryToVector(args[0], llvm::Type::getFloatTy(*mLLVMContext));
-							auto val1 = TryToVector(args[0], llvm::Type::getFloatTy(*mLLVMContext));
-							//SetResult(curId, TryToVector(mIRBuilder->CreateFAdd(val0, val1), GetElemType(args[0])));
-
-							SetResult(curId, mIRBuilder->CreateFAdd(val0, val1));
-						}
-						else
-						{
-							FatalError(StrFormat("Unable to find intrinsic '%s'", intrinsicData->mName.c_str()));
-						}
+						FatalError(StrFormat("Unable to find intrinsic '%s'", intrinsicData->mName.c_str()));
 					}
 					break;
 
@@ -3297,6 +3294,147 @@ void BfIRCodeGen::HandleNextCmd()
 						{
 							FatalError("Intrinsic argument error");
 						}
+					}
+					break;
+				case BfIRIntrinsic_Min:
+				case BfIRIntrinsic_Max:
+					{
+						// Get arguments as vectors
+						auto val0 = TryToVector(args[0]);
+						if (val0 == NULL)
+							FatalError("Intrinsic argument error");
+
+						auto val1 = TryToVector(args[1]);
+						if (val1 == NULL)
+							FatalError("Intrinsic argument error");
+
+						// Make sure both argument types are the same
+						auto vecType = llvm::dyn_cast<llvm::VectorType>(val0->getType());
+						if (vecType != llvm::dyn_cast<llvm::VectorType>(val1->getType()))
+							FatalError("Intrinsic argument error");
+
+						// Make sure the type is not scalable
+						if (vecType->getElementCount().isScalable())
+							FatalError("Intrinsic argument error");
+
+						// Make sure the element type is either float or double
+						auto elemType = vecType->getElementType();
+						if (!elemType->isFloatTy() && !elemType->isDoubleTy())
+							FatalError("Intrinsic argument error");
+
+						// Get some properties for easier access
+						bool isFloat = elemType->isFloatTy();
+						bool isMin = intrinsicData->mIntrinsic == BfIRIntrinsic_Min;
+						auto elemCount = vecType->getElementCount().getFixedValue();
+
+						// Get the intrinsic function
+						const char* funcName;
+
+						if (isFloat)
+						{
+							if (elemCount == 4)
+							{
+								funcName = isMin ? "llvm.x86.sse.min.ps" : "llvm.x86.sse.max.ps";
+								SetActiveFunctionSimdType(BfIRSimdType_SSE);
+							}
+							else if (elemCount == 8)
+							{
+								funcName = isMin ? "llvm.x86.avx.min.ps.256" : "llvm.x86.avx.max.ps.256";
+								SetActiveFunctionSimdType(BfIRSimdType_AVX2);
+							}
+							else if (elemCount == 16)
+							{
+								funcName = isMin ? "llvm.x86.avx512.min.ps.512" : "llvm.x86.avx512.max.ps.512";
+								SetActiveFunctionSimdType(BfIRSimdType_AVX512);
+							}
+							else
+								FatalError("Intrinsic argument error");
+						}
+						else
+						{
+							if (elemCount == 2)
+							{
+								funcName = isMin ? "llvm.x86.sse.min.pd" : "llvm.x86.sse.max.pd";
+								SetActiveFunctionSimdType(BfIRSimdType_SSE);
+							}
+							else if (elemCount == 4)
+							{
+								funcName = isMin ? "llvm.x86.avx.min.pd.256" : "llvm.x86.avx.max.pd.256";
+								SetActiveFunctionSimdType(BfIRSimdType_AVX2);
+							}
+							else if (elemCount == 8)
+							{
+								funcName = isMin ? "llvm.x86.avx512.min.pd.512" : "llvm.x86.avx512.max.pd.512";
+								SetActiveFunctionSimdType(BfIRSimdType_AVX512);
+							}
+							else
+								FatalError("Intrinsic argument error");
+						}
+
+						auto func = mLLVMModule->getOrInsertFunction(funcName, vecType, vecType, vecType);
+						
+						// Call intrinsic
+						llvm::SmallVector<llvm::Value*, 2> args;
+						args.push_back(val0);
+						args.push_back(val1);
+
+						SetResult(curId, mIRBuilder->CreateCall(func, args));
+					}
+					break;
+				case BfIRIntrinsic_Cpuid:
+					{
+						llvm::Type* elemType = llvm::Type::getInt32Ty(*mLLVMContext);
+
+						// Check argument errors
+						if (args.size() != 6 || !args[0]->getType()->isIntegerTy(32) || !args[1]->getType()->isIntegerTy(32))
+							FatalError("Intrinsic argument error");
+
+						for (int i = 2; i < 6; i++)
+						{
+							llvm::Type* type = args[i]->getType();
+
+							if (!type->isPointerTy() || !type->getPointerElementType()->isIntegerTy(32))
+								FatalError("Intrinsic argument error");
+						}
+
+						// Get asm return type
+						llvm::SmallVector<llvm::Type*, 4> asmReturnTypes;
+						asmReturnTypes.push_back(elemType);
+						asmReturnTypes.push_back(elemType);
+						asmReturnTypes.push_back(elemType);
+						asmReturnTypes.push_back(elemType);
+
+						llvm::Type* returnType = llvm::StructType::get(*mLLVMContext, asmReturnTypes);
+
+						// Get asm function
+						llvm::SmallVector<llvm::Type*, 2> funcParams;
+						funcParams.push_back(elemType);
+						funcParams.push_back(elemType);
+
+						llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, funcParams, false);
+						llvm::InlineAsm* func = llvm::InlineAsm::get(funcType, "xchgq %rbx,${1:q}\ncpuid\nxchgq %rbx,${1:q}", "={ax},=r,={cx},={dx},0,2,~{dirflag},~{fpsr},~{flags}", false);
+
+						// Call asm function
+						llvm::SmallVector<llvm::Value*, 2> funcArgs;
+						funcArgs.push_back(args[0]);
+						funcArgs.push_back(args[1]);
+
+						llvm::Value* asmResult = mIRBuilder->CreateCall(func, funcArgs);
+
+						// Store results
+						mIRBuilder->CreateStore(mIRBuilder->CreateExtractValue(asmResult, 0), args[2]);
+						mIRBuilder->CreateStore(mIRBuilder->CreateExtractValue(asmResult, 1), args[3]);
+						mIRBuilder->CreateStore(mIRBuilder->CreateExtractValue(asmResult, 2), args[4]);
+						mIRBuilder->CreateStore(mIRBuilder->CreateExtractValue(asmResult, 3), args[5]);
+					}
+					break;
+				case BfIRIntrinsic_Xgetbv:
+					{
+						if (args.size() != 1 || !args[0]->getType()->isIntegerTy(32))
+							FatalError("Intrinsic argument error");
+
+						auto func = mLLVMModule->getOrInsertFunction("llvm.x86.xgetbv", llvm::Type::getInt64Ty(*mLLVMContext), llvm::Type::getInt32Ty(*mLLVMContext));
+						SetResult(curId, mIRBuilder->CreateCall(func, args[0]));
 					}
 					break;
 				case BfIRIntrinsic_Not:
@@ -4834,6 +4972,55 @@ void BfIRCodeGen::SetConfigConst(int idx, int value)
 	mConfigConsts64.Add(constVal);
 }
 
+void BfIRCodeGen::SetActiveFunctionSimdType(BfIRSimdType type)
+{
+	BfIRSimdType currentType;
+	bool contains = mFunctionsUsingSimd.TryGetValue(mActiveFunction, &currentType);
+
+	if (!contains || type > currentType)
+		mFunctionsUsingSimd[mActiveFunction] = type;
+}
+
+const StringImpl& BfIRCodeGen::GetSimdTypeString(BfIRSimdType type)
+{
+	switch (type)
+	{
+	case BfIRSimdType_SSE:
+		return "+sse,+mmx";
+	case BfIRSimdType_SSE2:
+		return "+sse2,+sse,+mmx";
+	case BfIRSimdType_AVX:
+		return "+avx,+sse4.2,+sse4.1,+sse3,+sse2,+sse,+mmx";
+	case BfIRSimdType_AVX2:
+		return "+avx2,+avx,+sse4.2,+sse4.1,+sse3,+sse2,+sse,+mmx";
+	case BfIRSimdType_AVX512:
+		return "+avx512f,+avx2,+avx,+sse4.2,+sse4.1,+sse3,+sse2,+sse,+mmx";
+	default:
+		return "";
+	}
+}
+
+BfIRSimdType BfIRCodeGen::GetSimdTypeFromFunction(llvm::Function* function)
+{
+	if (function->hasFnAttribute("target-features"))
+	{
+		auto str = function->getFnAttribute("target-features").getValueAsString();
+
+		if (str.contains("+avx512f"))
+			return BfIRSimdType_AVX512;
+		if (str.contains("+avx2"))
+			return BfIRSimdType_AVX2;
+		if (str.contains("+avx"))
+			return BfIRSimdType_AVX;
+		if (str.contains("+sse2"))
+			return BfIRSimdType_SSE2;
+		if (str.contains("+sse"))
+			return BfIRSimdType_SSE;
+	}
+
+	return BfIRSimdType_None;
+}
+
 llvm::Value* BfIRCodeGen::GetLLVMValue(int id)
 {
 	auto& result = mResults[id];
@@ -5424,6 +5611,8 @@ llvm::Expected<llvm::BitcodeModule> FindThinLTOModule(llvm::MemoryBufferRef MBRe
 
 bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 {
+	ApplySimdFeatures();
+
 	// 	{
 	// 		PassManagerBuilderWrapper pmBuilder;
 	//
@@ -5550,6 +5739,40 @@ bool BfIRCodeGen::WriteIR(const StringImpl& outFileName, StringImpl& error)
 	}
 	mLLVMModule->print(outStream, NULL);
 	return true;
+}
+
+void BfIRCodeGen::ApplySimdFeatures()
+{
+	Array<std::tuple<llvm::Function*, BfIRSimdType>> functionsToProcess;
+
+	for (auto pair : mFunctionsUsingSimd)
+		functionsToProcess.Add({ pair.mKey, pair.mValue });
+
+	while (functionsToProcess.Count() > 0)
+	{
+		auto tuple = functionsToProcess.front();
+		functionsToProcess.RemoveAt(0);
+
+		auto function = std::get<0>(tuple);
+		auto simdType = std::get<1>(tuple);
+
+		auto currentSimdType = GetSimdTypeFromFunction(function);
+		simdType = simdType > currentSimdType ? simdType : currentSimdType;
+
+		function->addFnAttr("target-features", GetSimdTypeString(simdType).c_str());
+
+		if (function->hasFnAttribute(llvm::Attribute::AlwaysInline))
+		{
+			for (auto user : function->users())
+			{
+				if (auto call = llvm::dyn_cast<llvm::CallInst>(user))
+				{
+					auto func = call->getFunction();
+					functionsToProcess.Add({ func, simdType });
+				}
+			}
+		}
+	}
 }
 
 int BfIRCodeGen::GetIntrinsicId(const StringImpl& name)
