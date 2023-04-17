@@ -1,2 +1,6 @@
-#define SDL_REVISION "hg-12952:bc90ce38f1e2"
-#define SDL_REVISION_NUMBER 12952
+#ifdef SDL_VENDOR_INFO
+#define SDL_REVISION SDL_VENDOR_INFO
+#else
+#define SDL_REVISION ""
+#endif
+#define SDL_REVISION_NUMBER 0

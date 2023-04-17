@@ -39,8 +39,8 @@ namespace SDL2
 		 * program!
 		 */
 		public const int32 MIXER_MAJOR_VERSION =	2;
-		public const int32 MIXER_MINOR_VERSION =	0;
-		public const int32 MIXER_PATCHLEVEL =		2;
+		public const int32 MIXER_MINOR_VERSION =	6;
+		public const int32 MIXER_PATCHLEVEL =		3;
 
 		/* In C, you can redefine this value before including SDL_mixer.h.
 		 * We're not going to allow this in SDL2#, since the value of this
@@ -48,7 +48,7 @@ namespace SDL2
 		 */
 		public const int32 MIX_CHANNELS = 8;
 
-		public static readonly int32 MIX_DEFAULT_FREQUENCY = 22050;
+		public static readonly int32 MIX_DEFAULT_FREQUENCY = 44100;
 		public static readonly uint16 MIX_DEFAULT_FORMAT =
 			BitConverter.IsLittleEndian ? SDL.AUDIO_S16LSB : SDL.AUDIO_S16MSB;
 		public static readonly int32 MIX_DEFAULT_CHANNELS = 2;
@@ -61,6 +61,7 @@ namespace SDL2
 			Mp3 =		0x00000008,
 			Ogg =		0x00000010,
 			Mid =		0x00000020,
+			Opus =		0x00000040,
 		}
 
 		public enum Fading
@@ -81,13 +82,14 @@ namespace SDL2
 			Mp3,
 			Mp3Mad,
 			Flac,
-			Modplug
+			Modplug,
+			Opus
 		}
-		
+
 		public function void MixFuncDelegate(void* udata, uint8* stream, int32 len);
-		
+
 		public function void Mix_EffectFunc_t(int32 chan, void* stream, int32 len, void* udata);
-		
+
 		public function void Mix_EffectDone_t(int32 chan, void* udata);
 
 		public function void MusicFinishedDelegate();
@@ -105,7 +107,7 @@ namespace SDL2
 
 		[LinkName("Version ")]
 		public static extern SDL.Version MIX_Linked_Version();
-		
+
 
 		[LinkName("Mix_Init")]
 		public static extern int32 Init(MIX_InitFlags flags);
@@ -115,10 +117,10 @@ namespace SDL2
 
 		[LinkName("Mix_OpenAudio")]
 		public static extern int32 OpenAudio(
-			int frequency,
+			int32 frequency,
 			uint16 format,
-			int channels,
-			int chunksize
+			int32 channels,
+			int32 chunksize
 		);
 
 		[LinkName("Mix_AllocateChannels")]
@@ -136,9 +138,9 @@ namespace SDL2
 		[LinkName("Mix_LoadWAV_RW")]
 		public static extern Chunk* LoadWAV_RW(
 			SDL.RWOps* src,
-			int freesrc
+			int32 freesrc
 		);
-		
+
 		public static Chunk* LoadWAV(StringView file)
 		{
 			SDL.RWOps* rwops = SDL.RWFromFile(file.ToScopeCStr!(), "rb");
@@ -152,7 +154,7 @@ namespace SDL2
 		public static extern Chunk* QuickLoad_WAV(uint8* mem);
 
 		[LinkName("Mix_QuickLoad_RAW")]
-		public static extern Chunk* QuickLoad_RAW(uint8* mem, uint len);
+		public static extern Chunk* QuickLoad_RAW(uint8* mem, uint32 len);
 
 		[LinkName("Mix_FreeChunk")]
 		public static extern void FreeChunk(Chunk* chunk);
@@ -174,6 +176,21 @@ namespace SDL2
 
 		[LinkName("Mix_GetMusicType")]
 		public static extern MusicType GetMusicType(Music* music);
+
+		[LinkName("Mix_GetMusicTitle")]
+		public static extern char8* GetMusicTitle(Music* music);
+
+		[LinkName("Mix_GetMusicTitleTag")]
+		public static extern char8* GetMusicTitleTag(Music* music);
+
+		[LinkName("Mix_GetMusicArtistTag")]
+		public static extern char8* GetMusicArtistTag(Music* music);
+
+		[LinkName("Mix_GetMusicAlbumTag")]
+		public static extern char8* GetMusicAlbumTag(Music* music);
+
+		[LinkName("Mix_GetMusicCopyrightTag")]
+		public static extern char8* GetMusicCopyrightTag(Music* music);
 
 		[LinkName("Mix_SetPostMix")]
 		public static extern void SetPostMix(
@@ -203,7 +220,7 @@ namespace SDL2
 
 		[LinkName("Mix_RegisterEffect")]
 		public static extern int32 RegisterEffect(
-			int chan,
+			int32 chan,
 			Mix_EffectFunc_t f,
 			Mix_EffectDone_t d,
 			void* arg // void*
@@ -211,7 +228,7 @@ namespace SDL2
 
 		[LinkName("Mix_UnregisterEffect")]
 		public static extern int32 UnregisterEffect(
-			int channel,
+			int32 channel,
 			Mix_EffectFunc_t f
 		);
 
@@ -220,14 +237,14 @@ namespace SDL2
 
 		[LinkName("Mix_SetPanning")]
 		public static extern int32 SetPanning(
-			int channel,
+			int32 channel,
 			uint8 left,
 			uint8 right
 		);
 
 		[LinkName("Mix_SetPosition")]
 		public static extern int32 SetPosition(
-			int channel,
+			int32 channel,
 			int16 angle,
 			uint8 distance
 		);
@@ -262,18 +279,21 @@ namespace SDL2
 		public struct Music;
 		public struct Chunk;
 
-		public static int32 PlayChannel(int channel, Chunk* chunk, int loops)
-		{
-			return PlayChannelTimed(channel, chunk, loops, -1);
-		}
-
 		/* chunk refers to a Mix_Chunk* */
 		[LinkName("Mix_PlayChannelTimed")]
 		public static extern int32 PlayChannelTimed(
-			int channel,
+			int32 channel,
 			Chunk* chunk,
-			int loops,
-			int ticks
+			int32 loops,
+			int32 ticks
+		);
+
+		/* chunk refers to a Mix_Chunk* */
+		[LinkName("Mix_PlayChannel")]
+		public static extern int32 PlayChannel(
+			int32 channel,
+			Chunk* chunk,
+			int32 loops
 		);
 
 		[LinkName("Mix_PlayMusic")]
@@ -282,23 +302,23 @@ namespace SDL2
 		[LinkName("Mix_FadeInMusic")]
 		public static extern int32 FadeInMusic(
 			Music* music,
-			int loops,
-			int ms
+			int32 loops,
+			int32 ms
 		);
 
 		[LinkName("Mix_FadeInMusicPos")]
 		public static extern int32 FadeInMusicPos(
 			Music* music,
-			int loops,
-			int ms,
+			int32 loops,
+			int32 ms,
 			double position
 		);
 
 		public static int32 Mix_FadeInChannel(
-			int channel,
+			int32 channel,
 			Chunk* chunk,
-			int loops,
-			int ms
+			int32 loops,
+			int32 ms
 		)
 		{
 			return FadeInChannelTimed(channel, chunk, loops, ms, -1);
@@ -306,11 +326,19 @@ namespace SDL2
 
 		[LinkName("Mix_FadeInChannelTimed")]
 		public static extern int32 FadeInChannelTimed(
-			int channel,
+			int32 channel,
 			Chunk* chunk,
-			int loops,
-			int ms,
-			int ticks
+			int32 loops,
+			int32 ms,
+			int32 ticks
+		);
+
+		[LinkName("Mix_FadeInChannel")]
+		public static extern int32 FadeInChannel(
+			int32 channel,
+			Chunk* chunk,
+			int32 loops,
+			int32 ms
 		);
 
 		[LinkName("Mix_Volume")]
@@ -320,11 +348,14 @@ namespace SDL2
 		[LinkName("Mix_VolumeChunk")]
 		public static extern int32 VolumeChunk(
 			Chunk* chunk,
-			int volume
+			int32 volume
 		);
 
 		[LinkName("Mix_VolumeMusic")]
 		public static extern int32 VolumeMusic(int32 volume);
+
+		[LinkName("Mix_MasterVolume")]
+		public static extern int32 MasterVolume(int32 volume);
 
 		[LinkName("Mix_HaltChannel")]
 		public static extern int32 HaltChannel(int32 channel);
@@ -374,8 +405,26 @@ namespace SDL2
 		[LinkName("Mix_PausedMusic")]
 		public static extern int32 PausedMusic();
 
+		[LinkName("Mix_ModMusicJumpToOrder")]
+		public static extern int32 ModMusicJumpToOrder(int32 order);
+
 		[LinkName("Mix_SetMusicPosition")]
 		public static extern int32 SetMusicPosition(double position);
+
+		[LinkName("Mix_GetMusicPosition")]
+		public static extern double GetMusicPosition(Music* music);
+
+		[LinkName("Mix_MusicDuration")]
+		public static extern double MusicDuration(Music* music);
+
+		[LinkName("Mix_GetMusicLoopStartTime")]
+		public static extern double GetMusicLoopStartTime(Music* music);
+
+		[LinkName("Mix_GetMusicLoopEndTime")]
+		public static extern double GetMusicLoopEndTime(Music* music);
+
+		[LinkName("Mix_GetMusicLoopLengthTime")]
+		public static extern double GetMusicLoopLengthTime(Music* music);
 
 		[LinkName("Mix_Playing")]
 		public static extern int32 Playing(int32 channel);
@@ -394,7 +443,7 @@ namespace SDL2
 
 		[LinkName("Mix_SetSoundFonts")]
 		public static extern int32 SetSoundFonts(char8* paths);
-		
+
 		[LinkName("Mix_GetSoundFonts")]
 		public static extern char8* GetSoundFonts();
 
@@ -406,5 +455,11 @@ namespace SDL2
 
 		[LinkName("Mix_CloseAudio")]
 		public static extern void CloseAudio();
+
+		[LinkName("Mix_SetTimidityCfg")]
+		public static extern int32 SetTimidityCfg(char8* path);
+
+		[LinkName("Mix_GetTimidityCfg")]
+		public static extern char8* Mix_GetTimidityCfg();
 	}
 }
