@@ -3052,6 +3052,7 @@ void CeBuilder::Build()
 							}
 							break;
 						case BfIRIntrinsic_MemCpy:
+						case BfIRIntrinsic_MemMove:
 							{
 								CeOperand ceDestPtr = GetOperand(castedInst->mArgs[0].mValue);
 								CeOperand ceSrcPtr = GetOperand(castedInst->mArgs[1].mValue);
@@ -7578,7 +7579,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			CE_CHECKSIZE(size);
 			CE_CHECKADDR(srcAddr, size);
 			CE_CHECKADDR(destAddr, size);
-			memcpy(memStart + destAddr, memStart + srcAddr, size);
+			memmove(memStart + destAddr, memStart + srcAddr, size);
 		}
 		break;
 		case CeOp_FrameAddr_32:
