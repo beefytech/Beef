@@ -17878,7 +17878,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	}
 
 	// Zero out memory for default ctor
-	if ((methodDeclaration == NULL) && (mCurTypeInstance->IsStruct()) && (methodInstance->mChainType != BfMethodChainType_ChainMember))
+	if ((methodDeclaration == NULL) && (mCurTypeInstance->IsStruct()) && (methodInstance->mChainType != BfMethodChainType_ChainMember) &&
+		(!mCurMethodState->mLocals.IsEmpty()))
 	{
 		if (mCurTypeInstance->IsTypedPrimitive())
 		{
