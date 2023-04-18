@@ -1712,8 +1712,17 @@ void BfPrinter::Visit(BfVariableDeclaration* varDecl)
 		mNextStateModify.mWantNewLineIdx--;
 		VisitChild(varDecl->mPrecedingComma);
 	}
-	else
-		VisitChild(varDecl->mTypeRef);
+	else if (varDecl->mTypeRef != NULL)
+	{
+		if (varDecl->mTypeRef->mSrcStart >= varDecl->mSrcStart)
+		{
+			VisitChild(varDecl->mTypeRef);
+		}
+		else
+		{
+			// May be from a `for (int k = 1, m = 0; k <= 20; k++)`
+		}
+	}
 
 	VisitChildWithPrecedingSpace(varDecl->mNameNode);
 	VisitChildWithPrecedingSpace(varDecl->mEqualsNode);
