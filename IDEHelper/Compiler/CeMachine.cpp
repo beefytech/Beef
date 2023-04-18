@@ -508,6 +508,15 @@ CeFunction::~CeFunction()
 	BfLogSys(mCeMachine->mCompiler->mSystem, "CeFunction::~CeFunction %p\n", this);
 }
 
+BfTypeInstance* CeFunction::GetOwner()
+{
+	if (mCeFunctionInfo != NULL)
+		return mCeFunctionInfo->GetOwner();
+	if (mCeInnerFunctionInfo != NULL)
+		return mCeInnerFunctionInfo->mOwner->GetOwner();
+	return NULL;
+}
+
 void CeFunction::Print()
 {
 	CeDumpContext dumpCtx;
@@ -1422,7 +1431,7 @@ int CeBuilder::GetCallTableIdx(BeFunction* beFunction, CeOperand* outOperand)
 
 		if ((ceFunctionInfo != NULL) && (mCeFunction->mCeFunctionInfo != NULL))
 		{
-			auto callerType = mCeFunction->mCeFunctionInfo->GetOwner();
+			auto callerType = mCeFunction->GetOwner();
 			auto calleeType = ceFunctionInfo->GetOwner();
 
 			if ((callerType != NULL) && (calleeType != NULL))

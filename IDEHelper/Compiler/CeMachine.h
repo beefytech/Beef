@@ -685,6 +685,7 @@ public:
 	}
 
 	~CeFunction();
+	BfTypeInstance* GetOwner();
 	void Print();
 	void UnbindBreakpoints();
 	CeEmitEntry* FindEmitEntry(int loc, int* entryIdx = NULL);
