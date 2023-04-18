@@ -20902,7 +20902,7 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 						}
 					}
 
-					elementValue = mModule->LoadValue(elementValue);
+					elementValue = mModule->LoadOrAggregateValue(elementValue);
 					mModule->mBfIRBuilder->CreateAlignedStore(elementValue.mValue, elemPtrValue, checkArrayType->mElementType->mAlign);
 				}
 			}
