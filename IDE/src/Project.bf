@@ -1534,6 +1534,11 @@ namespace IDE
 				Save();
 			}*/
 
+			if (mProjectName != null)
+			{
+				gApp.mWorkspace.mProjectFileEnties.Add(new .(path, mProjectName));
+			}
+
             return true;
         }
 

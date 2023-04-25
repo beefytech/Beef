@@ -320,6 +320,7 @@ namespace IDE
 		public Point mLastRelMousePos;
         public int32 mMouseStillTicks;
         public Widget mLastMouseWidget;*/
+		public bool mAppHasFocus;
         public int32 mCloseDelay;
         public FileChangedDialog mFileChangedDialog;
         public FindAndReplaceDialog mFindAndReplaceDialog;
@@ -2867,6 +2868,8 @@ namespace IDE
             }
 			else
 			{
+				mWorkspace.mProjectFileEnties.Add(new .(workspaceFileName));
+
 				if (mVerb == .New)
 				{
 					OutputErrorLine("Workspace '{0}' already exists, but '-new' argument was specified.", workspaceFileName);
@@ -2944,6 +2947,20 @@ namespace IDE
 
 			MarkDirty();
         }
+
+		protected void ReloadWorkspace()
+		{
+			SaveWorkspaceUserData(false);
+
+			String workspaceDir = scope .(mWorkspace.mDir);
+			String workspaceName = scope .(mWorkspace.mName);
+
+			CloseWorkspace();
+			mWorkspace.mDir = new String(workspaceDir);
+			mWorkspace.mName = new String(workspaceName);
+			LoadWorkspace(.Open);
+			FinishShowingNewWorkspace();
+		}
 
 		public void GetRelaunchCmd(bool safeMode, String outRelaunchCmd)
 		{
@@ -5173,6 +5190,12 @@ namespace IDE
 
 		    mSettings.Load();
 			mSettings.Apply();
+		}
+
+		public void CheckReloadSettings()
+		{
+			if (mSettings.WantsReload())
+				ReloadSettings();
 		}
 
 		[IDECommand]
@@ -13842,6 +13865,44 @@ namespace IDE
 			bool appHasFocus = false;
 			for (var window in mWindows)
 			    appHasFocus |= window.mHasFocus;
+
+			if ((appHasFocus) && (!mAppHasFocus))
+			{
+				CheckReloadSettings();
+
+				bool hadChange = false;
+				for (var entry in mWorkspace.mProjectFileEnties)
+				{
+					if (entry.HasFileChanged())
+					{
+						if (!hadChange)
+						{
+							String text = scope .();
+
+							if (entry.mProjectName != null)
+								text.AppendF($"The '{entry.mProjectName}' project file has been modified externally.");
+							else
+								text.Append("The workspace file has been modified externally.");
+
+							text.Append("\n\nDo you want to reload the workspace?");
+
+							var dialog = ThemeFactory.mDefault.CreateDialog("Reload Workspace?",
+								text);
+							dialog.AddYesNoButtons(new (dlg) =>
+								{
+									ReloadWorkspace();
+								},
+								new (dlg) =>
+								{
+
+								});
+							dialog.PopupWindow(GetActiveWindow());
+							hadChange = true;
+						}
+					}
+				}
+			}
+			mAppHasFocus = appHasFocus;
 
 			if (mRunningTestScript)
 				appHasFocus = true;

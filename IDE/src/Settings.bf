@@ -1091,6 +1091,8 @@ namespace IDE
 		}
 
 		public bool mLoadedSettings;
+		public String mSettingFileText ~ delete _;
+		public DateTime mSettingFileDateTime;
 
 		public UISettings mUISettings = new .() ~ delete _;
 		public EditorSettings mEditorSettings = new .() ~ delete _;
@@ -1177,7 +1179,29 @@ namespace IDE
 
 			String dataStr = scope String();
 			sd.ToTOML(dataStr);
-			gApp.SafeWriteTextFile(path, dataStr);
+
+			if ((mSettingFileText == null) || (mSettingFileText != dataStr))
+			{
+				String.NewOrSet!(mSettingFileText, dataStr);
+				gApp.SafeWriteTextFile(path, dataStr);
+
+				if (File.GetLastWriteTime(path) case .Ok(let dt))
+					mSettingFileDateTime = dt;
+			}
+		}
+
+		public bool WantsReload()
+		{
+			String path = scope .();
+			GetSettingsPath(path);
+
+			if (File.GetLastWriteTime(path) case .Ok(let dt))
+			{
+				if (dt != mSettingFileDateTime)
+					return true;
+			}
+
+			return false;
 		}
 
 		public void Load()
@@ -1188,6 +1212,13 @@ namespace IDE
 			let sd = scope StructuredData();
 			if (sd.Load(path) case .Err)
 				return;
+
+			if (File.GetLastWriteTime(path) case .Ok(let dt))
+				mSettingFileDateTime = dt;
+
+			String.NewOrSet!(mSettingFileText, sd.[Friend]mSource);
+			mSettingFileText.Replace("\r\n", "\n");
+			mSettingFileText.Replace('\r', '\n');
 
 			mLoadedSettings = true;
 			using (sd.Open("UI"))
