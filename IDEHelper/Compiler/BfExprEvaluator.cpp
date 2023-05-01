@@ -18840,10 +18840,7 @@ void BfExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
 			checkTarget = indexerExpr->mTarget;
 		}
 
-		SetAndRestoreValue<bool> prevIgnoreError(mModule->mIgnoreErrors, true);
-		auto resolvedType = mModule->ResolveTypeRef(checkTarget, NULL, BfPopulateType_Identity);
-		prevIgnoreError.Restore();
-
+		auto resolvedType = mModule->ResolveTypeRef(checkTarget, NULL, BfPopulateType_Identity, BfResolveTypeRefFlag_IgnoreLookupError);
 		if (resolvedType != NULL)
 		{
 			BfType* curType = resolvedType;
