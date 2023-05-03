@@ -21,6 +21,14 @@ namespace System.Collections
 			get;
 			set;
 		}
+
+		void Add(Variant item);
+		void Clear();
+ 		bool Contains(Variant item);
+		int IndexOf(Variant item);
+		void Insert(int index, Variant item);
+		bool Remove(Variant item);
+		void RemoveAt(int index);
 	}
 
 	public class List<T> : IEnumerable<T>, IList, ICollection<T>
@@ -217,6 +225,19 @@ namespace System.Collections
 			}
 		}
 
+		Variant IList.this[int index]
+		{
+			get
+			{
+				return [Unbound]Variant.Create(this[index]);
+			}
+
+			set
+			{
+				this[index] = value.Get<T>();
+			}
+		}
+
 		public ref T this[Index index]
 		{
 			[Checked]
@@ -297,19 +318,6 @@ namespace System.Collections
 			}
 		}
 
-		Variant IList.this[int index]
-		{
-			get
-			{
-				return [Unbound]Variant.Create(this[index]);
-			}
-
-			set
-			{
-				ThrowUnimplemented();
-			}
-		}
-
 		protected virtual T* Alloc(int size)
 		{
 			return Internal.AllocRawArrayUnmarked<T>(size);
@@ -366,6 +374,11 @@ namespace System.Collections
 #if VERSION_LIST
 			mVersion++;
 #endif
+		}
+
+		void IList.Add(Variant item)
+		{
+			Add(item.Get<T>());
 		}
 
 		/// Adds an item to the front of the list.
@@ -464,6 +477,11 @@ namespace System.Collections
 						return true;
 			    return false;
 			}
+		}
+
+		bool IList.Contains(Variant item)
+		{
+			return Contains(item.Get<T>());
 		}
 
 		public bool ContainsStrict(T item)
@@ -582,6 +600,11 @@ namespace System.Collections
 			return -1;
 		}
 
+		int IList.IndexOf(Variant item)
+		{
+			return IndexOf(item.Get<T>());
+		}
+
 		public int IndexOf(T item, int index)
 		{
 			Debug.Assert((uint)index < (uint)mSize);
@@ -679,6 +702,11 @@ namespace System.Collections
 #if VERSION_LIST
 			mVersion++;
 #endif
+		}
+
+		void IList.Insert(int index, Variant item)
+		{
+			Insert(index, item.Get<T>());
 		}
 
 		public void Insert(int index, Span<T> items)
@@ -838,6 +866,11 @@ namespace System.Collections
 			}
 
 			return false;
+		}
+
+		bool IList.Remove(Variant item)
+		{
+			return Remove(item.Get<T>());
 		}
 
 		public bool RemoveStrict(T item)

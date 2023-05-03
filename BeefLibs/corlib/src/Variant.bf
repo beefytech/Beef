@@ -282,6 +282,8 @@ namespace System
 			}
 		}
 
+		public T Get<T>() => Runtime.NotImplemented();
+
 		public T Get<T>() where T : class
 		{
 			Debug.Assert(IsObject);
