@@ -6,15 +6,31 @@
 #define VERSION_DICTIONARY
 #endif
 
+using System;
+using System.Collections;
+using System.Diagnostics;
+using System.Diagnostics.Contracts;
+using System.Threading;
+
 namespace System.Collections
 {
-	using System;
-	using System.Collections;
-	using System.Diagnostics;
-	using System.Diagnostics.Contracts;
-	using System.Threading;
+	interface IDictionary
+	{
+		Variant this[Variant key]
+		{
+			get;
+			set;
+		}
+
+		bool ContainsKey(Variant key);
+		bool ContainsValue(Variant value);
+		void Add(Variant key, Variant value);
+		void Clear();
+		void Remove(Variant key);
+	}
 
 	public class Dictionary<TKey, TValue> :
+		IDictionary,
 		ICollection<(TKey key, TValue value)>,
 		IEnumerable<(TKey key, TValue value)>,
 		IRefEnumerable<(TKey key, TValue* valueRef)> where TKey : IHashable
@@ -130,9 +146,27 @@ namespace System.Collections
 			}
 		}
 
+		
+		Variant IDictionary.this[Variant key]
+		{
+			get
+			{
+				return [Unbound]Variant.Create(this[key.Get<TKey>()]);
+			}
+			set
+			{
+				this[key.Get<TKey>()] = value.Get<TValue>();
+			}
+		}
+
 		public void Add(TKey key, TValue value)
 		{
 			Insert(key, value, true);
+		}
+
+		void IDictionary.Add(Variant key, Variant value)
+		{
+			Add(key.Get<TKey>(), value.Get<TValue>());
 		}
 
 		public void Add(KeyValuePair kvPair)
@@ -257,6 +291,11 @@ namespace System.Collections
 			return FindEntry(key) >= 0;
 		}
 
+		bool IDictionary.ContainsKey(Variant key)
+		{
+			return ContainsKey(key.Get<TKey>());
+		}
+
 		public bool ContainsKeyAlt<TAltKey>(TAltKey key) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			return FindEntryAlt(key) >= 0;
@@ -269,6 +308,11 @@ namespace System.Collections
 				if (mEntries[i].mHashCode >= 0 && mEntries[i].mValue == value) return true;
 			}
 			return false;
+		}
+
+		bool IDictionary.ContainsValue(Variant value)
+		{
+			return ContainsValue(value.Get<TValue>());
 		}
 		
 		public bool Contains(KeyValuePair kvPair)
@@ -657,6 +701,11 @@ namespace System.Collections
 				}
 			}
 			return false;
+		}
+
+		void IDictionary.Remove(Variant key)
+		{
+			Remove(key.Get<TKey>());
 		}
 
 		public bool RemoveAlt<TAltKey>(TAltKey key) where TAltKey : IHashable where bool : operator TKey == TAltKey

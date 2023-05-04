@@ -184,6 +184,19 @@ namespace System.Collections
 			}
 		}
 
+		Variant IList.this[int index]
+		{
+			get
+			{
+				return [Unbound]Variant.Create(this[index]);
+			}
+
+			set
+			{
+				ThrowUnimplemented();
+			}
+		}
+
 		public int Count => mSize;
 
 		[Inline] public Data Data => .(this);
@@ -312,6 +325,16 @@ namespace System.Collections
 #endif
 		}
 
+		public void IList.Add(Variant item)
+		{
+			Add(item.Get<T>());
+		}
+
+		public void IList.Insert(int index, Variant item)
+		{
+			Runtime.NotImplemented();
+		}
+
 		protected override void GCMarkMembers()
 		{
 			[Comptime]
@@ -358,6 +381,11 @@ namespace System.Collections
 			return false;
 		}
 
+		public bool IList.Contains(Variant item)
+		{
+			return Contains(item.Get<T>());
+		}
+
 		public void CopyTo(Span<T> span)
 		{
 			for (int i < span.Length)
@@ -374,6 +402,11 @@ namespace System.Collections
 			}
 
 			return false;
+		}
+
+		public bool IList.Remove(Variant item)
+		{
+			return Remove(item.Get<T>());
 		}
 
 		public void RemoveAt(int index)
@@ -417,19 +450,6 @@ namespace System.Collections
 #endif
 		}
 
-		Variant IList.this[int index]
-		{
-			get
-			{
-				return [Unbound]Variant.Create(this[index]);
-			}
-
-			set
-			{
-				ThrowUnimplemented();
-			}
-		}
-
 		public Enumerator GetEnumerator()
 		{
 			return .(this);
@@ -449,6 +469,11 @@ namespace System.Collections
 				if (this[i].Value == item)
 					return i;
 			return -1;
+		}
+
+		public int IList.IndexOf(Variant item)
+		{
+			return IndexOf(item.Get<T>());
 		}
 
 		public int IndexOf(T item, int index)
