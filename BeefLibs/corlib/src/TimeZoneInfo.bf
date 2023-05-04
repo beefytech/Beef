@@ -127,7 +127,11 @@ namespace System {
                     TimeZoneInfo timeZone = m_localTimeZone;
                     if (timeZone == null) {
                         let localTimeZone = TimeZoneInfo.GetLocalTimeZone(this);
-						defer delete localTimeZone;
+						defer
+						{
+							if (localTimeZone != Utc)
+								delete localTimeZone;
+						}
 
                         // this step is to break the reference equality
                         // between TimeZoneInfo.Local and a second time zone
