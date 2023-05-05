@@ -441,7 +441,7 @@ namespace System.IO
                             bytePos = byteLen = 0;*/
 						}
 
-						return mCharLen;
+						return mCharLen - mCharPos;
 					}
 
 					mByteLen += len;
@@ -461,7 +461,7 @@ namespace System.IO
                     //Contract.Assert(byteLen >= 0, "Stream.Read returned a negative number!  This is a bug in your stream class.");
 
 					if (mByteLen == 0)  // We're at EOF
-						return mCharLen;
+						return mCharLen - mCharPos;
 				}
 
                 // _isBlocked == whether we read fewer bytes than we asked for.
@@ -510,7 +510,7 @@ namespace System.IO
 			while (mCharLen == mCharPos);
 
             //Console.WriteLine("ReadBuffer called.  chars: "+char8Len);
-			return mCharLen;
+			return mCharLen - mCharPos;
 		}
 
 		int GetChars(uint8[] byteBuffer, int byteOffset, int byteLength, char8[] char8Buffer, int char8Offset)
