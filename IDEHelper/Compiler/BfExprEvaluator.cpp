@@ -17705,22 +17705,24 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 				BfType* allocType = localVal.mType;
 
-				auto allocaVal = mModule->CreateAlloca(allocType);
-
-				mModule->mBfIRBuilder->CreateStore(localVal.mValue, allocaVal);
-
-				if (!mModule->mBfIRBuilder->mIgnoreWrites)
+				if (!allocType->IsValuelessType())
 				{
-					if (newLocalVar->mIsSplat)
+					auto allocaVal = mModule->CreateAlloca(allocType);
+					mModule->mBfIRBuilder->CreateStore(localVal.mValue, allocaVal);
+
+					if (!mModule->mBfIRBuilder->mIgnoreWrites)
 					{
-						//TODO: Implement
-					}
-					else
-					{
-						auto diType = mModule->mBfIRBuilder->DbgGetType(allocType);
-						auto diVariable = mModule->mBfIRBuilder->DbgCreateAutoVariable(mModule->mCurMethodState->mCurScope->mDIScope,
-							newLocalVar->mName, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
-						mModule->mBfIRBuilder->DbgInsertDeclare(allocaVal, diVariable);
+						if (newLocalVar->mIsSplat)
+						{
+							//TODO: Implement
+						}
+						else
+						{
+							auto diType = mModule->mBfIRBuilder->DbgGetType(allocType);
+							auto diVariable = mModule->mBfIRBuilder->DbgCreateAutoVariable(mModule->mCurMethodState->mCurScope->mDIScope,
+								newLocalVar->mName, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
+							mModule->mBfIRBuilder->DbgInsertDeclare(allocaVal, diVariable);
+						}
 					}
 				}
 			}
