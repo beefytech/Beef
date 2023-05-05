@@ -501,9 +501,9 @@ namespace System.IO
 					}
 				}
 
-				if ((mPendingNewlineCheck) && (mCharPos < mCharLen))
+				if (mPendingNewlineCheck)
 				{
-					if (mCharBuffer[mCharPos] == '\n') mCharPos++;
+					if (mCharPos == 0 && mCharBuffer[mCharPos] == '\n') mCharPos++;
 					mPendingNewlineCheck = false;
 				}
 			}
