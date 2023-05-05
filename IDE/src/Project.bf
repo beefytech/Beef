@@ -1536,7 +1536,7 @@ namespace IDE
 
 			if (mProjectName != null)
 			{
-				gApp.mWorkspace.mProjectFileEnties.Add(new .(path, mProjectName));
+				gApp.mWorkspace.mProjectFileEntries.Add(new .(path, mProjectName));
 			}
 
             return true;
