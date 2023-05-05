@@ -60,8 +60,7 @@ namespace IDE
 				mPath.Set(path);
 				if (projectName != default)
 					mProjectName = new .(projectName);
-				if (File.GetLastWriteTime(mPath) case .Ok(var dt))
-					mLastWriteTime = dt;
+				UpdateLastWriteTime();
 			}
 
 			public bool HasFileChanged()
@@ -77,6 +76,12 @@ namespace IDE
 					}
 				}
 				return false;
+			}
+
+			public void UpdateLastWriteTime()
+			{
+				if (File.GetLastWriteTime(mPath) case .Ok(var dt))
+					mLastWriteTime = dt;
 			}
 		}
 
@@ -490,7 +495,7 @@ namespace IDE
 		public List<WorkspaceFolder> mWorkspaceFolders = new List<WorkspaceFolder>() ~ DeleteContainerAndItems!(_);
         public List<Project> mProjects = new List<Project>() ~ DeleteContainerAndItems!(_);
 		public List<ProjectSpec> mProjectSpecs = new .() ~ DeleteContainerAndItems!(_);
-		public List<ProjectFileEntry> mProjectFileEnties = new .() ~ DeleteContainerAndItems!(_);
+		public List<ProjectFileEntry> mProjectFileEntries = new .() ~ DeleteContainerAndItems!(_);
 		public Dictionary<String, Project> mProjectNameMap = new .() ~ DeleteDictionaryAndKeys!(_);
 		public Dictionary<String, Lock> mProjectLockMap = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
         public Project mStartupProject;

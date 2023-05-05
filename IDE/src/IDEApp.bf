@@ -1473,6 +1473,12 @@ namespace IDE
 			if (strOutDlg != null)
 				strOutDlg(useText);
 
+			for (var entry in mWorkspace.mProjectFileEntries)
+			{
+				if (entry.mPath == path)
+					entry.UpdateLastWriteTime();
+			}
+
 			return true;
 		}
 
@@ -2868,7 +2874,7 @@ namespace IDE
             }
 			else
 			{
-				mWorkspace.mProjectFileEnties.Add(new .(workspaceFileName));
+				mWorkspace.mProjectFileEntries.Add(new .(workspaceFileName));
 
 				if (mVerb == .New)
 				{
@@ -13871,7 +13877,7 @@ namespace IDE
 				CheckReloadSettings();
 
 				bool hadChange = false;
-				for (var entry in mWorkspace.mProjectFileEnties)
+				for (var entry in mWorkspace.mProjectFileEntries)
 				{
 					if (entry.HasFileChanged())
 					{
