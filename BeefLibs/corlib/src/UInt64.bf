@@ -5,15 +5,16 @@ namespace System
 #unwarn
 	struct UInt64 : uint64, IInteger, IUnsigned, IHashable, IIsNaN, IFormattable
 	{
-		public const uint64 MaxValue = 0xFFFFFFFFFFFFFFFFUL;
-		public const uint64 MinValue = 0;
-
 		public enum ParseError
 		{
 			case Ok;
 			case NoValue;
+			case Overflow;
 			case InvalidChar(uint64 partialResult);
 		}
+
+		public const uint64 MaxValue = 0xFFFFFFFFFFFFFFFFUL;
+		public const uint64 MinValue = 0;
 
 		public static int operator<=>(UInt64 a, UInt64 b)
 		{
@@ -86,57 +87,64 @@ namespace System
 		    strBuffer.Append(char8Ptr);
 		}
 
-		public static Result<uint64, ParseError> Parse(StringView val, NumberStyles numberStyles = .Number, CultureInfo cultureInfo = null)
+		public static Result<uint64, ParseError> Parse(StringView val, NumberStyles style = .Number, CultureInfo cultureInfo = null)
 		{
-			if (val.Length == 0)
+			//TODO: Use Number.ParseNumber
+
+			if (val.IsEmpty)
 				return .Err(.NoValue);
 
 			uint64 result = 0;
-			if (numberStyles.HasFlag(.AllowHexSpecifier))
-			{
-				int numDigits = 0;
+			uint64 prevResult = 0;
 
-				for (int32 i = 0; i < val.Length; i++)
-				{
-					char8 c = val.Ptr[i];
+			uint64 radix = style.HasFlag(.AllowHexSpecifier) ? 0x10 : 10;
 
-					if (c == '\'')
-						continue;
-
-					if ((c == 'X') || (c == 'x'))
-					{
-						if ((numDigits == 1) && (result == 0))
-							continue;
-					}
-
-					numDigits++;
-					if ((c >= '0') && (c <= '9'))
-						result = result*0x10 + (uint64)(c - '0');
-					else if ((c >= 'A') && (c <= 'F'))
-						result = result*0x10 + (uint64)(c - 'A') + 10;
-					else if ((c >= 'a') && (c <= 'f'))
-						result = result*0x10 + (uint64)(c - 'a') + 10;
-					else
-						return .Err(.InvalidChar(result));
-				}
-
-				return .Ok(result);
-			}
-
-			//TODO: Use Number.ParseNumber
 			for (int32 i = 0; i < val.Length; i++)
 			{
-				char8 c = val.Ptr[i];
+				char8 c = val[i];
 
 				if ((c >= '0') && (c <= '9'))
 				{
-					result *= 10;
-					result += (uint64)(c - '0');
+					result &*= radix;
+					result &+= (uint64)(c - '0');
+				}
+				else if ((c >= 'a') && (c <= 'f'))
+				{
+					if (radix != 0x10)
+						return .Err(.InvalidChar(result));
+					result &*= radix;
+					result &+= (uint64)(c - 'a' + 10);
+				}
+				else if ((c >= 'A') && (c <= 'F'))
+				{
+					if (radix != 0x10)
+						return .Err(.InvalidChar(result));
+					result &*= radix;
+					result &+= (uint64)(c - 'A' + 10);
+				}
+				else if ((c == 'X') || (c == 'x'))
+				{
+					if ((!style.HasFlag(.AllowHexSpecifier)) || (i == 0) || (result != 0))
+						return .Err(.InvalidChar(result));
+					radix = 0x10;
+				}
+				else if (c == '\'')
+				{
+					// Ignore
+				}
+				else if ((c == '+') && (i == 0))
+				{
+					// Ignore
 				}
 				else
 					return .Err(.InvalidChar(result));
+
+				if (result < prevResult)
+					return .Err(.Overflow);
+				prevResult = result;
 			}
-			return .Ok(result);
+
+			return result;
 		}
 	}
 }
