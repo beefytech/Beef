@@ -427,7 +427,7 @@ namespace System
 				curPtr += intSize;
 			}
 
-			while (charsLeft > 1)
+			while (charsLeft >= 1)
 			{
 				hash = ((hash ^ (int)*curPtr) << 5) &- hash;
 				charsLeft--;
