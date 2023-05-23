@@ -7,11 +7,12 @@ namespace System
 		{
 			case Ok;
 			case NoValue;
+			case Overflow;
 			case InvalidChar(uint partialResult);
 		}
 
-		public const uint64 MaxValue = (sizeof(uint) == 8) ? 0xFFFFFFFFFFFFFFFFUL : 0xFFFFFFFFL;
-		public const uint64 MinValue = 0;
+		public const uint MaxValue = (sizeof(uint) == 8) ? 0xFFFFFFFFFFFFFFFFUL : 0xFFFFFFFFL;
+		public const uint MinValue = 0;
 
 	    public bool IsNull()
 	    {

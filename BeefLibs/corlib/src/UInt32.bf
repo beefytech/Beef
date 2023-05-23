@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace System
 {
 #unwarn
@@ -7,11 +9,12 @@ namespace System
 		{
 			case Ok;
 			case NoValue;
+			case Overflow;
 			case InvalidChar(uint32 partialResult);
 		}
 
-		public const uint MaxValue = 0xFFFFFFFFL;
-		public const uint MinValue = 0;
+		public const uint32 MaxValue = 0xFFFFFFFFL;
+		public const uint32 MinValue = 0;
 
 		public static int operator<=>(Self a, Self b)
 		{
@@ -102,31 +105,62 @@ namespace System
 			}
 		}
 
-		public static Result<uint32, ParseError> Parse(StringView val)
+		public static Result<uint32, ParseError> Parse(StringView val, NumberStyles style = .Number, CultureInfo cultureInfo = null)
 		{
-			if (val.Length == 0)
+			if (val.IsEmpty)
 				return .Err(.NoValue);
 
-		    uint32 result = 0;
-			//TODO: Use Number.ParseNumber
+			uint32 result = 0;
+			uint32 prevResult = 0;
+
+			uint32 radix = style.HasFlag(.AllowHexSpecifier) ? 0x10 : 10;
+
 			for (int32 i = 0; i < val.Length; i++)
 			{
-				char8 c = val.Ptr[i];
-
-				if ((i == 0) && (c == '-'))
-				{
-					return .Err(.InvalidChar(0));
-				}
+				char8 c = val[i];
 
 				if ((c >= '0') && (c <= '9'))
 				{
-					result *= 10;
-					result += (uint32)(c - '0');
+					result &*= radix;
+					result &+= (uint32)(c - '0');
+				}
+				else if ((c >= 'a') && (c <= 'f'))
+				{
+					if (radix != 0x10)
+						return .Err(.InvalidChar(result));
+					result &*= radix;
+					result &+= (uint32)(c - 'a' + 10);
+				}
+				else if ((c >= 'A') && (c <= 'F'))
+				{
+					if (radix != 0x10)
+						return .Err(.InvalidChar(result));
+					result &*= radix;
+					result &+= (uint32)(c - 'A' + 10);
+				}
+				else if ((c == 'X') || (c == 'x'))
+				{
+					if ((!style.HasFlag(.AllowHexSpecifier)) || (i == 0) || (result != 0))
+						return .Err(.InvalidChar(result));
+					radix = 0x10;
+				}
+				else if (c == '\'')
+				{
+					// Ignore
+				}
+				else if ((c == '+') && (i == 0))
+				{
+					// Ignore
 				}
 				else
 					return .Err(.InvalidChar(result));
+
+				if (result < prevResult)
+					return .Err(.Overflow);
+				prevResult = result;
 			}
-			return .Ok(result);
+
+			return result;
 		}
 	}
 }

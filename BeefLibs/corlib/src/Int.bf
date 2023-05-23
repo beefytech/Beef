@@ -9,11 +9,12 @@ namespace System
 		{
 			case Ok;
 			case NoValue;
+			case Overflow;
 			case InvalidChar(int partialResult);
 		}
 
-		public const int MaxValue = (sizeof(uint) == 8) ? 0x7FFFFFFFFFFFFFFFL : 0x7FFFFFFF;
-		public const int MinValue = (sizeof(uint) == 8) ? -0x8000000000000000L : -0x80000000;
+		public const int MaxValue = (sizeof(int) == 8) ? 0x7FFFFFFFFFFFFFFFL : 0x7FFFFFFF;
+		public const int MinValue = (sizeof(int) == 8) ? -0x8000000000000000L : -0x80000000;
 
 		public static int operator<=>(Self a, Self b)
 		{

@@ -9,6 +9,7 @@ namespace System
 		{
 			case Ok;
 			case NoValue;
+			case Overflow;
 			case InvalidChar(int32 partialResult);
 		}
 
@@ -125,7 +126,7 @@ namespace System
 			}
 		}
 
-		public static Result<int32, ParseError> Parse(StringView val, NumberStyles style)
+		public static Result<int32, ParseError> Parse(StringView val, NumberStyles style = .Number, CultureInfo cultureInfo = null)
 		{
 			if (val.IsEmpty)
 				return .Err(.NoValue);
@@ -147,26 +148,26 @@ namespace System
 
 				if ((c >= '0') && (c <= '9'))
 				{
-					result *= radix;
-					result += (int32)(c - '0');
+					result &*= radix;
+					result &+= (int32)(c - '0');
 				}
 				else if ((c >= 'a') && (c <= 'f'))
 				{
 					if (radix != 0x10)
 						return .Err(.InvalidChar(result));
-					result *= radix;
-					result += c - 'a' + 10;
+					result &*= radix;
+					result &+= c - 'a' + 10;
 				}
 				else if ((c >= 'A') && (c <= 'F'))
 				{
 					if (radix != 0x10)
 						return .Err(.InvalidChar(result));
-					result *= radix;
-					result += c - 'A' + 10;
+					result &*= radix;
+					result &+= c - 'A' + 10;
 				}
 				else if ((c == 'X') || (c == 'x'))
 				{
-					if (result != 0)
+					if ((!style.HasFlag(.AllowHexSpecifier)) || (i == 0) || (result != 0))
 						return .Err(.InvalidChar(result));
 					radix = 0x10;
 				}
@@ -180,14 +181,12 @@ namespace System
 				}
 				else
 					return .Err(.InvalidChar(result));
+
+				if (isNeg ? (uint32)result > (uint32)MinValue : (uint32)result > (uint32)MaxValue)
+					return .Err(.Overflow);
 			}
 
 			return isNeg ? -result : result;
-		}
-
-		public static Result<int32, ParseError> Parse(StringView val)
-		{
-			return Parse(val, .Any);
 		}
 	}
 }
