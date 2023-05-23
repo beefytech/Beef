@@ -367,7 +367,7 @@ namespace Beefy.widgets
         public virtual void SetFocus()
         {
 			MarkDirty();
-            mWidgetWindow.SetFocus(this);
+            mWidgetWindow?.SetFocus(this);
         }
 
         public virtual void SetVisible(bool visible)
