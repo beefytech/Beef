@@ -12248,7 +12248,7 @@ namespace IDE
 				if (mRunningTestScript)
 					flags |= .NoActivate;
 
-				if (mRequestedShowKind == .Maximized)
+				if (mRequestedShowKind == .Maximized || mRequestedShowKind == .ShowMaximized)
 					flags |= .ShowMaximized;
 
 				scope AutoBeefPerf("IDEApp.Init:CreateMainWindow");
