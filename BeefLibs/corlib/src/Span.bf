@@ -295,6 +295,12 @@ namespace System
 			return Span<uint8>((uint8*)mPtr, mLength * sizeof(T));
 		}
 
+		public void Sort(Comparison<T> comp)
+		{
+			var sorter = Sorter<T, void>(Ptr, null, Length, comp);
+			sorter.[Friend]Sort(0, Length);
+		}
+
 		public Enumerator GetEnumerator()
 		{
 			return Enumerator(this);

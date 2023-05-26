@@ -161,6 +161,22 @@ namespace CURL
 			mCurl.SetOpt(.Postfields, param);
 		}
 
+		public void Escape(StringView str, String outStr)
+		{
+			mCurl.Escape(str, outStr);
+		}
+
+		public void Unescape(StringView str, String outStr)
+		{
+			int startPos = outStr.Length;
+
+			mCurl.Unescape(str, outStr);
+
+			for (int i = startPos; i < outStr.Length; i++)
+				if (outStr[i] == '+')
+					outStr[i] = ' ';
+		}
+
 		public Result<Span<uint8>> Perform()
 		{
 			if (mHeaderList != null)

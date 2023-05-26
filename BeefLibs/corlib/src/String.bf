@@ -3487,6 +3487,12 @@ namespace System
 			mLength = length;
 		}
 
+		public this(Span<uint8> data)
+		{
+			mPtr = (.)data.Ptr;
+			mLength = data.Length;
+		}
+
 		public ref char8 this[int index]
 		{
 			[Checked]
