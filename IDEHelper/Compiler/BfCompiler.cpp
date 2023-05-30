@@ -5908,7 +5908,7 @@ void BfCompiler::PopulateReified()
 											if ((methodDef->mIsOverride) && (methodDef->mParams.mSize == declaringMethod->mMethodDef->mParams.mSize))
 											{
 												auto implMethod = typeInst->mModule->GetRawMethodInstance(typeInst, methodDef);
-												if (typeInst->mModule->CompareMethodSignatures(declaringMethod, implMethod))
+												if ((implMethod != NULL) && (typeInst->mModule->CompareMethodSignatures(declaringMethod, implMethod)))
 												{
 													if ((implMethod != NULL) && ((!implMethod->mMethodInstanceGroup->IsImplemented()) || (!implMethod->mIsReified)))
 													{

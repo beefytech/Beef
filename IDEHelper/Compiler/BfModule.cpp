@@ -5960,7 +5960,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		if (typeInstance->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted)
 		{
 			BfMethodInstance* methodInstance = typeInstance->mVirtualMethodTable[mCompiler->GetVTableMethodOffset() + 0].mImplementingMethod;
-			if (methodInstance->GetOwner() != mContext->mBfObjectType)
+			if ((methodInstance != NULL) && (methodInstance->GetOwner() != mContext->mBfObjectType))
 				typeFlags |= BfTypeFlags_HasDestructor;
 		}
 	}
