@@ -866,6 +866,15 @@ namespace CURL
 		static extern void* curl_easy_init();
 
 		[CLink, CallingConvention(.Stdcall)]
+		static extern void curl_free(void* ptr);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern char8* curl_easy_escape(void* curl, char8* str, int32 length);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern char8* curl_easy_unescape(void* curl, char8* input, int32 inlength, int32* outlength);
+
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int curl_easy_setopt(void* curl, int option, int optVal);
 
 		[CLink, CallingConvention(.Stdcall)]
@@ -983,6 +992,27 @@ namespace CURL
 		public void Free(SList* list)
 		{
 			curl_slist_free_all(list);
+		}
+
+		public void Escape(StringView str, String outStr)
+		{
+			char8* ptr = curl_easy_escape(mCURL, str.Ptr, (.)str.Length);
+			if (ptr != null)
+			{
+				outStr.Append(ptr);
+				curl_free(ptr);
+			}
+		}
+
+		public void Unescape(StringView str, String outStr)
+		{
+			int32 outLen = 0;
+			char8* ptr = curl_easy_unescape(mCURL, str.Ptr, (.)str.Length, &outLen);
+			if (ptr != null)
+			{
+				outStr.Append(ptr, outLen);
+				curl_free(ptr);
+			}
 		}
 	}
 }
