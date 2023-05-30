@@ -6759,7 +6759,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		else
 		{
 			// Normal case
-			if ((nextResult) && (varType->IsComposite()) && (!isRefExpression))
+			if ((nextResult) && (varType->IsComposite()) && (!varType->IsValuelessType()) && (!isRefExpression))
 			{
 				needsValCopy = false;
 				varType = CreateRefType(varType);
@@ -6770,7 +6770,10 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			localDef->mNameNode = nameNode;
 			localDef->mName = variableName;
 			localDef->mResolvedType = varType;
-			varInst = CreateAlloca(varType);
+			if (!varType->IsValuelessType())
+				varInst = CreateAlloca(varType);
+			else
+				varInst = mBfIRBuilder->GetFakeVal();
 			localDef->mAddr = varInst;
 			localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 			localDef->mReadFromId = 0;
