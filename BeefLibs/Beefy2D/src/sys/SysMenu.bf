@@ -3,6 +3,7 @@ using System.Collections;
 using System.Text;
 using Beefy.widgets;
 using Beefy;
+using System.Diagnostics;
 
 namespace Beefy.sys
 {    
@@ -21,10 +22,6 @@ namespace Beefy.sys
         public Event<MenuItemSelectedHandler> mOnMenuItemSelected ~ _.Dispose();
         public Event<MenuItemUpdateHandler> mOnMenuItemUpdate ~ _.Dispose();
         public List<SysMenu> mChildren ~ DeleteContainerAndItems!(_);
-
-        public this()
-        {
-        }
 
 		public int ChildCount
 		{
@@ -135,6 +132,8 @@ namespace Beefy.sys
         {
             mWindow.mSysMenuMap.Remove((int)mNativeBFMenu);
             mWindow.DeleteMenuItem(mNativeBFMenu);
+			if (mParent != null)
+				mParent.mChildren.Remove(this);
         }
 
 		public void UpdateChildItems()

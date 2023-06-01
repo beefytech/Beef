@@ -2131,8 +2131,9 @@ void WinBFWindow::RemoveMenuItem(BFMenu* item)
 	WinBFMenu* aMenu = (WinBFMenu*) item;
 	WinBFMenu* parentMenu = (WinBFMenu*) item->mParent;
 
-	//auto itr = mMenuIDMap.find(aMenu->mMenuId);
-	//mMenuIDMap.erase(itr);
+	if (parentMenu != NULL)
+		parentMenu->mBFMenuList.Remove(item);
+	
 	mMenuIDMap.Remove(aMenu->mMenuId);
 
 	::RemoveMenu(parentMenu->mMenu, aMenu->mMenuId, MF_BYCOMMAND);

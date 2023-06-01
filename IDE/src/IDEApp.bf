@@ -5189,13 +5189,16 @@ namespace IDE
 		[IDECommand]
 		public void ReloadSettings()
 		{
-			delete mSettings;
-			mSettings = new .();
+			var prevSettings = mSettings;
+			defer delete prevSettings;
+			mSettings = new .(prevSettings);
 
 			DeleteAndNullify!(mKeyChordState);
 
 		    mSettings.Load();
 			mSettings.Apply();
+			UpdateRecentFileMenuItems();
+			UpdateRecentDisplayedFilesMenuItems();
 		}
 
 		public void CheckReloadSettings()

@@ -1106,10 +1106,22 @@ namespace IDE
 		public bool mEnableDevMode;
 		public TutorialsFinished mTutorialsFinished = .();
 
-
 		public this()
 		{
 			SetDefaults();
+		}
+
+		public this(Settings prevSettings)
+		{
+			Swap!(mRecentFiles, prevSettings.mRecentFiles);
+
+			for (var recent in mRecentFiles.mRecents)
+			{
+				recent.mList.ClearAndDeleteItems();
+				for (var item in recent.mMenuItems)
+					item.Dispose();
+				recent.mMenuItems.ClearAndDeleteItems();
+			}
 		}
 
 		public void SetDefaults()
@@ -1192,6 +1204,9 @@ namespace IDE
 
 		public bool WantsReload()
 		{
+			if (mSettingFileDateTime == default)
+				return false;
+
 			String path = scope .();
 			GetSettingsPath(path);
 
