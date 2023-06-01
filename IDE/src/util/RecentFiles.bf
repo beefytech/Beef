@@ -77,13 +77,17 @@ namespace IDE.util
 
 			while (i < menuItems.Count - offset)
 			{
-			    menuItems[i + offset].Dispose();
-			    menuItems.RemoveAt(i + 1);
+				var menuItem = menuItems[i + offset];
+				menuItem.Dispose();
+				delete menuItem;
+			    menuItems.RemoveAt(i + offset);
 			}
 
 			if ((!menuItems.IsEmpty) && (items.IsEmpty))
 			{
-				menuItems[0].Dispose();
+				var menuItem = menuItems[0];
+				menuItem.Dispose();
+				delete menuItem;
 				menuItems.Clear();
 			}
 
