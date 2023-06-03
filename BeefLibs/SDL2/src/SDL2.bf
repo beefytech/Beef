@@ -6042,15 +6042,15 @@ namespace SDL2
 
 		/* uint32 refers to an SDL_AudioDeviceID */
 		[LinkName("SDL_OpenAudioDevice")]
-		private static extern AudioDeviceID OpenAudioDevice(
-			char8* device,
-			int32 iscapture,
-			ref SDL_AudioSpec desired,
-			out SDL_AudioSpec obtained,
-			int32 allowed_changes
+		public static extern AudioDeviceID OpenAudioDevice(
+		    char8* device,
+		    int32 iscapture,
+		    ref SDL_AudioSpec desired,
+		    out SDL_AudioSpec obtained,
+		    int32 allowed_changes
 		);
 
-		struct AudioDeviceID : uint32
+		public struct AudioDeviceID : uint32
 		{
 
 		}
