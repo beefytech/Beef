@@ -290,11 +290,11 @@ namespace SDL2
 
 		/* chunk refers to a Mix_Chunk* */
 		[LinkName("Mix_PlayChannel")]
-		public static extern int32 PlayChannel(
+		public static int32 PlayChannel(
 			int32 channel,
 			Chunk* chunk,
 			int32 loops
-		);
+		) => PlayChannelTimed(channel, chunk, loops, -1);
 
 		[LinkName("Mix_PlayMusic")]
 		public static extern int32 PlayMusic(Music* music, int32 loops);
