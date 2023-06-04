@@ -1744,6 +1744,8 @@ namespace IDE
 							continue;
 						if (tabWidget.mContent is WelcomePanel)
 							continue;
+						if (tabWidget.mContent is StartupPanel)
+							continue;
 					}
 
                     using (data.CreateObject())
@@ -12382,6 +12384,9 @@ namespace IDE
 
 			if ((mIsFirstRun) && (!mWorkspace.IsInitialized))
 				ShowWelcome();
+
+			if ((mSettings.mUISettings.mShowStartupPanel) && (!mIsFirstRun) && (!mWorkspace.IsInitialized))
+				ShowStartup();
         }
 #endif
 		void ShowWelcome()
@@ -12389,6 +12394,14 @@ namespace IDE
 			WelcomePanel welcomePanel = new .();
 			TabbedView tabbedView = GetDefaultDocumentTabbedView();
 			let tabButton = SetupTab(tabbedView, "Welcome", 0, welcomePanel, true);
+			tabButton.Activate();
+		}
+
+		void ShowStartup()
+		{
+			StartupPanel startupPanel = new .();
+			TabbedView tabbedView = GetDefaultDocumentTabbedView();
+			let tabButton = SetupTab(tabbedView, "Startup", 0, startupPanel, true);
 			tabButton.Activate();
 		}
 

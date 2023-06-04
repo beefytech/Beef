@@ -81,6 +81,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Scale", "mScale");
 			AddPropertiesItem(category, "Theme", "mTheme");
 			AddPropertiesItem(category, "Insert New Tabs", "mInsertNewTabs");
+			AddPropertiesItem(category, "Show Startup Panel", "mShowStartupPanel");
 
 			category.Open(true, true);
 		}
