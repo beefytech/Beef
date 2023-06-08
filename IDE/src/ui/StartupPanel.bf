@@ -29,12 +29,12 @@ namespace IDE.ui
 				mScrollContent.AddWidget(widget);
 			}
 
-			public override void Resize(float x, float y, float width, float height)
+			public void ResizeSelf(float x, float y, float width, float height)
 			{
 				const float MARGIN = 3;
 				float currentY = 0;
 
-				float fillWidth = width - mVertScrollbar.Width;
+				float fillWidth = width - (mVertScrollbar?.Width).GetValueOrDefault();
 
 				if (mScrollContent.mChildWidgets != null && fillWidth >= 0)
 				{
@@ -45,7 +45,10 @@ namespace IDE.ui
 					}
 				}
 
-				base.Resize(x, y, width, Math.Min(currentY, height));
+				if (currentY > height)
+					InitScrollbars(false, true);
+
+				Resize(x, y, width, Math.Min(currentY, height));
 				mScrollContent.Resize(0, 0, fillWidth, currentY);
 
 				UpdateScrollbars();
@@ -53,13 +56,12 @@ namespace IDE.ui
 
 			public override void Draw(Graphics g)
 			{
-				using (g.PushColor(0x40000000))
-					g.FillRect(0, -30, mWidth, mHeight + 30);
+				g.DrawBox(DarkTheme.sDarkTheme.GetImage(.EditBox), 0, GS!(-30), mWidth, mHeight + GS!(30));
 
 				g.SetFont(mTitleFont);
 
-				using (g.PushColor(0xFFFFFFFF))
-					g.DrawString("Recent Workspaces", 0, -30, .Centered, mWidth);
+				using (g.PushColor(gApp.mSettings.mUISettings.mColors.mText))
+					g.DrawString("Recent Workspaces", 0, GS!(-30), .Centered, mWidth, .Ellipsis);
 
 				base.Draw(g);
 			}
@@ -83,8 +85,11 @@ namespace IDE.ui
 			{
 				if (mMouseOver)
 				{
-					using (g.PushColor(0x80000000))
-						g.FillRect(0, 0, mWidth, mHeight);
+					using (g.PushColor(gApp.mSettings.mUISettings.mColors.mSelectedOutline))
+						g.DrawBox(DarkTheme.sDarkTheme.GetImage(.MenuSelect), GS!(2), GS!(2), mWidth - GS!(2), mHeight - GS!(4));
+					/*using (g.PushColor(0x80000000))
+						g.FillRect(0, 0, mWidth, mHeight);*/
+					
 				}
 
 				g.SetFont(s_Font);
@@ -107,7 +112,7 @@ namespace IDE.ui
 			{
 				base.Update();
 
-				if (DarkTooltipManager.CheckMouseover(this, 20, let mousePoint))
+				if ((DarkTooltipManager.CheckMouseover(this, 20, let mousePoint)) && (s_Font.GetWidth(mPath) > mWidth - GS!(12)))
 				{
 				    DarkTooltipManager.ShowTooltip(mPath, this, mousePoint.x, mousePoint.y);
 				}
@@ -144,7 +149,7 @@ namespace IDE.ui
 				let aDialog = ThemeFactory.mDefault.CreateDialog(
 					"Beef IDE",
 					"Workspace couldn't be found. Do you want to remove the reference from recent list?",
-					DarkTheme.sDarkTheme.mImages[(int)DarkTheme.ImageIdx.IconError]);
+					DarkTheme.sDarkTheme.mIconError);
 
 				aDialog.AddYesNoButtons(new (theEvent) => {
 					RemoveFromRecent();
@@ -217,7 +222,7 @@ namespace IDE.ui
 		{
 			mCreateBtn = new .()
 			{
-				Label = "New Project or Workspace"
+				Label = "Create Workspace"
 			};
 			mCreateBtn.mOnMouseClick.Add(new (event) => {
 				gApp.[Friend]mDeferredOpen = .NewWorkspaceOrProject;
@@ -244,7 +249,7 @@ namespace IDE.ui
 
 			mWelcomeBtn = new .()
 			{
-				Label = "Show Welcome Panel"
+				Label = "Open Sample"
 			};
 			mWelcomeBtn.mOnMouseClick.Add(new (event) => { gApp.[Friend]ShowWelcome(); });
 			AddWidget(mWelcomeBtn);
@@ -257,7 +262,6 @@ namespace IDE.ui
 			AddWidget(mOpenDocBtn);
 
 			mRecentsScrollWidget = new .();
-			mRecentsScrollWidget.InitScrollbars(false, true);
 			let recentList = gApp.mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedWorkspace].mList;
 			for (let recent in recentList)
 			{
@@ -280,6 +284,8 @@ namespace IDE.ui
 
 			DeleteAndNullify!(mMedFont);
 			DeleteAndNullify!(mSmallFont);
+
+			RehupSize();
 		}
 
 		public override void DrawAll(Graphics g)
@@ -304,21 +310,21 @@ namespace IDE.ui
 
 			let autoPos = DarkButton[](mCreateBtn, mOpenWorkspaceBtn, mOpenProjectBtn, mWelcomeBtn, mOpenDocBtn);
 
-			int32 startX = 20;
-			int32 currentY = 20;
+			int32 startX = GS!(20);
+			int32 currentY = GS!(20);
 			int32 buttonWidth = GS!(250);
 			int32 buttonheight = GS!(35);
 
 			for (let button in autoPos)
 			{
 				button.Resize(startX, currentY, buttonWidth, buttonheight);
-				currentY += buttonheight + 10;
+				currentY += buttonheight + GS!(10);
 			}
 
 			float offsetX = buttonWidth + GS!(35);
-			float offsetY = 50;
-			
-			mRecentsScrollWidget.Resize(offsetX, offsetY, Math.Clamp(mWidth - offsetX, 0, 700), Math.Clamp(mHeight - offsetY, 0, 700));
+			float offsetY = GS!(50);
+
+			mRecentsScrollWidget.ResizeSelf(offsetX, offsetY, Math.Clamp(mWidth - offsetX - GS!(4), 0, GS!(700)), Math.Clamp(mHeight - offsetY - GS!(4), 0, GS!(700)));
 		}
 
 		void OpenDocumentation()

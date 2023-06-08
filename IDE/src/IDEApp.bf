@@ -2479,7 +2479,10 @@ namespace IDE
 			ShowPanel(mOutputPanel, false);
 			mMainFrame.RehupSize();
 
-			ShowStartupFile();
+			if ((mSettings.mUISettings.mShowStartupPanel) && (!mWorkspace.IsInitialized))
+				ShowStartup();
+			else
+				ShowStartupFile();
 
 #if !CLI
 			if (mMainWindow != null)
