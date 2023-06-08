@@ -442,6 +442,7 @@ namespace IDE
 				gApp.mDebugger.mBreakpointsChangedDelegate();
 
 			mBookmarkCount = 0;
+			CurrentBookmark = null;
 
 			BookmarksChanged();
 		}
