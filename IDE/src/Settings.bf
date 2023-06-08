@@ -449,6 +449,7 @@ namespace IDE
 			public float mScale = 100;
 			public InsertNewTabsKind mInsertNewTabs = .LeftOfExistingTabs;
 			public List<String> mTheme = new .() ~ DeleteContainerAndItems!(_);
+			public bool mShowStartupPanel = true;
 
 			public void SetDefaults()
 			{
@@ -457,6 +458,7 @@ namespace IDE
 				mScale = 100;
 				mInsertNewTabs = .LeftOfExistingTabs;
 				ClearAndDeleteItems(mTheme);
+				mShowStartupPanel = true;
 			}
 
 			public void Apply()
@@ -596,6 +598,7 @@ namespace IDE
 						sd.Add(str);
 				}
 				sd.Add("InsertNewTabs", mInsertNewTabs);
+				sd.Add("ShowStartupPanel", mShowStartupPanel);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -609,6 +612,7 @@ namespace IDE
 					mTheme.Add(str);
 				}
 				sd.Get("InsertNewTabs", ref mInsertNewTabs);
+				sd.Get("ShowStartupPanel", ref mShowStartupPanel);
 			}
 		}
 
