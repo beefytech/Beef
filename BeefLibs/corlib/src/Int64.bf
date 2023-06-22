@@ -115,7 +115,7 @@ namespace System
 			bool isNeg = false;
 			int64 result = 0;
 
-			int64 radix = style.HasFlag(.AllowHexSpecifier) ? 0x10 : 10;
+			int64 radix = style.HasFlag(.Hex) ? 0x10 : 10;
 
 			for (int32 i = 0; i < val.Length; i++)
 			{

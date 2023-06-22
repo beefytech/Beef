@@ -85,7 +85,7 @@ namespace System
 			uint16 result = 0;
 			uint16 prevResult = 0;
 
-			uint16 radix = style.HasFlag(.AllowHexSpecifier) ? 0x10 : 10;
+			uint16 radix = style.HasFlag(.Hex) ? 0x10 : 10;
 
 			for (int32 i = 0; i < val.Length; i++)
 			{

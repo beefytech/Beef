@@ -97,7 +97,7 @@ namespace System
 			uint64 result = 0;
 			uint64 prevResult = 0;
 
-			uint64 radix = style.HasFlag(.AllowHexSpecifier) ? 0x10 : 10;
+			uint64 radix = style.HasFlag(.Hex) ? 0x10 : 10;
 
 			for (int32 i = 0; i < val.Length; i++)
 			{

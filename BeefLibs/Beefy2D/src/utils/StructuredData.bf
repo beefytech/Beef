@@ -506,11 +506,11 @@ namespace Beefy.utils
 			case typeof(Int64): return (.)(int64)val;
 			case typeof(Int): return (.)(int)val;
 			case typeof(String):
-				if (int32.Parse((String)val) case .Ok(var fVal))
+				if (int32.Parse((String)val, .AllowHexSpecifier) case .Ok(var fVal))
 					return (.)fVal;
 				return defaultVal;
 			case typeof(StringView):
-				if (int32.Parse((StringView)val) case .Ok(var fVal))
+				if (int32.Parse((StringView)val, .AllowHexSpecifier) case .Ok(var fVal))
 					return (.)fVal;
 				return defaultVal;
 			default: return defaultVal;
@@ -529,11 +529,11 @@ namespace Beefy.utils
 			case typeof(Int64): return (.)(int64)val;
 			case typeof(Int): return (.)(int)val;
 			case typeof(String):
-				if (int64.Parse((String)val) case .Ok(var parsedVal))
+				if (int64.Parse((String)val, .AllowHexSpecifier) case .Ok(var parsedVal))
 					return (.)parsedVal;
 				return defaultVal;
 			case typeof(StringView):
-				if (int64.Parse((StringView)val) case .Ok(var parsedVal))
+				if (int64.Parse((StringView)val, .AllowHexSpecifier) case .Ok(var parsedVal))
 					return (.)parsedVal;
 				return defaultVal;
 			default: return defaultVal;
@@ -552,11 +552,11 @@ namespace Beefy.utils
 			case typeof(Int64): return (.)(int64)val;
 			case typeof(Int): return (.)(int)val;
 			case typeof(String):
-				if (int64.Parse((String)val) case .Ok(var parsedVal))
+				if (int64.Parse((String)val, .AllowHexSpecifier) case .Ok(var parsedVal))
 					return (.)parsedVal;
 				return defaultVal;
 			case typeof(StringView):
-				if (int64.Parse((StringView)val) case .Ok(var parsedVal))
+				if (int64.Parse((StringView)val, .AllowHexSpecifier) case .Ok(var parsedVal))
 					return (.)parsedVal;
 				return defaultVal;
 			default: return defaultVal;
@@ -1841,7 +1841,7 @@ namespace Beefy.utils
 								}
 								else
 								{
-									var parseVal = int64.Parse(strView);
+									var parseVal = int64.Parse(strView, .AllowHexSpecifier);
 									if (parseVal case .Ok(var intVal))
 										aValue = new:mBumpAllocator box intVal;
 									else
@@ -2242,7 +2242,7 @@ namespace Beefy.utils
 						}
 					}
 
-					switch (Int64.Parse(value))
+					switch (Int64.Parse(value, .AllowHexSpecifier))
 					{
 					case .Err: return null;
 					case .Ok(let num): return new:mBumpAllocator box num;

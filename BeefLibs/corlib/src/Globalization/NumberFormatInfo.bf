@@ -692,11 +692,11 @@ namespace System.Globalization {
         }
 
         // private const NumberStyles InvalidNumberStyles = unchecked((NumberStyles) 0xFFFFFC00);
-        private const NumberStyles InvalidNumberStyles = ~(NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite
-                                                           | NumberStyles.AllowLeadingSign | NumberStyles.AllowTrailingSign
-                                                           | NumberStyles.AllowParentheses | NumberStyles.AllowDecimalPoint
-                                                           | NumberStyles.AllowThousands | NumberStyles.AllowExponent
-                                                           | NumberStyles.AllowCurrencySymbol | NumberStyles.AllowHexSpecifier);
+        private const NumberStyles InvalidNumberStyles = ~(.AllowLeadingWhite | .AllowTrailingWhite
+                                                           | .AllowLeadingSign | .AllowTrailingSign
+                                                           | .AllowParentheses | .AllowDecimalPoint
+                                                           | .AllowThousands | .AllowExponent
+                                                           | .AllowCurrencySymbol | .AllowHexSpecifier | .Hex);
 
         /*internal static void ValidateParseStyleInteger(NumberStyles style) {
             // Check for undefined flags

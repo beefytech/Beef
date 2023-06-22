@@ -85,7 +85,7 @@ namespace System
 			bool isNeg = false;
 			int8 result = 0;
 
-			int8 radix = style.HasFlag(.AllowHexSpecifier) ? 0x10 : 10;
+			int8 radix = style.HasFlag(.Hex) ? 0x10 : 10;
 
 			for (int32 i = 0; i < val.Length; i++)
 			{

@@ -45,10 +45,11 @@ namespace System.Globalization
 		AllowHexSpecifier = 0x00000200, //Allow specifiying hexadecimal.
         //Common uses.  These represent some of the most common combinations of these flags.
 
+		Hex = 0x00000400,
 
 		Integer = AllowLeadingWhite | AllowTrailingWhite | AllowLeadingSign,
 
-		HexNumber = AllowLeadingWhite | AllowTrailingWhite | AllowHexSpecifier,
+		HexNumber = AllowLeadingWhite | AllowTrailingWhite | AllowHexSpecifier | Hex,
 
 		Number = AllowLeadingWhite | AllowTrailingWhite | AllowLeadingSign | AllowTrailingSign |
 		AllowDecimalPoint | AllowThousands,
