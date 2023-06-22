@@ -3536,6 +3536,26 @@ void BfModule::FatalError(const StringImpl& error, const char* file, int line)
 	BfpSystem_FatalError(fullError.c_str(), "FATAL MODULE ERROR");
 }
 
+void BfModule::InternalError(const StringImpl& error, BfAstNode* refNode, const char* file, int line)
+{
+	String fullError = error;
+
+	if (file != NULL)
+		fullError += StrFormat(" at %s:%d", file, line);
+
+	fullError += StrFormat("\nModule: %s", mModuleName.c_str());
+
+	if (mCurTypeInstance != NULL)
+		fullError += StrFormat("\nType: %s", TypeToString(mCurTypeInstance).c_str());
+	if (mCurMethodInstance != NULL)
+		fullError += StrFormat("\nMethod: %s", MethodToString(mCurMethodInstance).c_str());
+
+	if ((mCurFilePosition.mFileInstance != NULL) && (mCurFilePosition.mFileInstance->mParser != NULL))
+		fullError += StrFormat("\nSource Location: %s:%d", mCurFilePosition.mFileInstance->mParser->mFileName.c_str(), mCurFilePosition.mCurLine + 1);
+
+	Fail(String("INTERNAL ERROR: ") + fullError, refNode);
+}
+
 void BfModule::NotImpl(BfAstNode* astNode)
 {
 	Fail("INTERNAL ERROR: Not implemented", astNode);
@@ -23579,11 +23599,16 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	auto typeDef = typeInstance->mTypeDef;
 	auto methodDef = mCurMethodInstance->mMethodDef;
 
-	BF_ASSERT(methodDef->mName != "__ASSERTNAME");
-	if (methodDef->mName == "__FATALERRORNAME")
-		BFMODULE_FATAL(this, "__FATALERRORNAME");
-	if (methodDef->mName == "__STACKOVERFLOW")
-		StackOverflow();
+	if (methodDef->mName.StartsWith('_'))
+	{
+		BF_ASSERT(methodDef->mName != "__ASSERTNAME");
+		if (methodDef->mName == "__FATALERRORNAME")
+			BFMODULE_FATAL(this, "__FATALERRORNAME");
+		if (methodDef->mName == "__STACKOVERFLOW")
+			StackOverflow();
+		if (methodDef->mName == "__INTERNALERROR")
+			InternalError("Bad method name", methodDef->GetRefNode());
+	}
 
 	if (typeInstance->IsClosure())
 	{

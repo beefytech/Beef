@@ -1605,6 +1605,7 @@ public:
 
 public:
 	void FatalError(const StringImpl& error, const char* file = NULL, int line = -1);
+	void InternalError(const StringImpl& error, BfAstNode* refNode = NULL, const char* file = NULL, int line = -1);
 	void NotImpl(BfAstNode* astNode);
 	void AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
 	bool CheckProtection(BfProtection protection, BfTypeDef* checkType, bool allowProtected, bool allowPrivate);
