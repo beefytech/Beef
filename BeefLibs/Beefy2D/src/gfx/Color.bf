@@ -27,6 +27,44 @@ namespace Beefy.gfx
 			this = (uint32)((a << 24) | (r << 16) | (g << 8) | (b));
 		}
 
+		public uint8 R
+		{
+			get => (.)((uint32)this >> 16);
+			set mut
+			{
+				this = ((uint32)this & 0xFF00FFFF) | ((uint32)value << 16);
+			}
+		}
+
+		public uint8 G
+		{
+			get => (.)((uint32)this >> 8);
+			set mut
+			{
+				this = ((uint32)this & 0xFFFF00FF) | ((uint32)value << 8);
+			}
+		}
+
+		public uint8 B
+		{
+			get => (.)((uint32)this >> 0);
+			set mut
+			{
+				this = ((uint32)this & 0xFFFFFF00) | ((uint32)value << 0);
+			}
+		}
+
+		public uint8 A
+		{
+			get => (.)((uint32)this >> 24);
+			set mut
+			{
+				this = ((uint32)this & 0x00FFFFFF) | ((uint32)value << 24);
+			}
+		}
+
+		public Color SwappedRB => ((uint32)this & 0xFF00FF00) | (((uint32)this >> 16) & 0x000000FF) | (((uint32)this << 16) & 0x00FF0000);
+
         public static Color Get(float a)
         {
             return 0x00FFFFFF | (((uint32)(255.0f * a)) << 24);
