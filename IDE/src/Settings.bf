@@ -478,8 +478,11 @@ namespace IDE
 						return;
 
 					StructuredData sd = scope .();
-					if (sd.Load(themeFilePath) case .Err)
+					if (sd.Load(themeFilePath) case .Err(var err))
+					{
+						gApp.OutputErrorLine($"Failed to load theme file '{themeFilePath}': {err}");
 						return;
+					}
 
 					using (sd.Open("Colors"))
 						mColors.Deserialize(sd);

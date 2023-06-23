@@ -21,11 +21,12 @@ namespace Beefy.utils
 			case UnexpectedObjectEnd;
 			case ExpectedArrayNameEnd;
 
-			/*public override void ToString(String str)
+			public override void ToString(String str)
 			{
 				switch (this)
 				{
-				case FormatError: str.Append("Format error");
+				case FileError: str.Append("File error");
+				case FormatError(let line): str.AppendF($"Format error on line {line}");
 				case ParseError: str.Append("Parse error");
 				case ColonNotExpected: str.Append("Colon not expected");
 				case KeyInArray: str.Append("Cannot add key/val to array");
@@ -33,8 +34,9 @@ namespace Beefy.utils
 				case ValueExpected: str.Append("Value expected");
 				case PrecedingCommaExpected: str.Append("Preceding comma expected");
 				case UnexpectedObjectEnd: str.Append("Unexpected object end");
+				case ExpectedArrayNameEnd: str.Append("Expected array name end");
 				}
-			}*/
+			}
 		}
 
         public struct Enumerator : IEnumerator<StringView>
