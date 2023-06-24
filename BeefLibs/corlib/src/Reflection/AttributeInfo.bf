@@ -69,6 +69,9 @@ namespace System.Reflection
 			        var attrDataType = Decode!<TypeCode>(data);
 					switch (attrDataType)
 					{
+					case .NullPtr:
+						args[argIdx] = null;
+						break;
 					case .Int8,
 						 .UInt8,
 						 .Char8,

@@ -5614,19 +5614,22 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 
 	if (argType->IsObject())
 	{
-		if (argType->IsInstanceOf(mCompiler->mStringTypeDef))
+		if ((argType->IsInstanceOf(mCompiler->mStringTypeDef)) || (argType == mContext->mBfObjectType))
 		{
-			int stringId = constant->mInt32;
-			int* orderedIdPtr;
-			if (usedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
+			if (constant->mTypeCode == BfTypeCode_StringId)
 			{
-				*orderedIdPtr = (int)usedStringIdMap.size() - 1;
-			}
+				int stringId = constant->mInt32;
+				int* orderedIdPtr;
+				if (usedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
+				{
+					*orderedIdPtr = (int)usedStringIdMap.size() - 1;
+				}
 
-			GetStringObjectValue(stringId, true, true);
-			PUSH_INT8(0xFF); // String
-			PUSH_INT32(*orderedIdPtr);
-			return;
+				GetStringObjectValue(stringId, true, true);
+				PUSH_INT8(0xFF); // String
+				PUSH_INT32(*orderedIdPtr);
+				return;
+			}
 		}
 	}
 
@@ -5651,6 +5654,19 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 		}
 	}
 
+	if (constant->mConstType == BfConstType_BitCastNull)
+	{
+		PUSH_INT8(BfTypeCode_NullPtr);
+		return;
+	}
+
+	if (constant->mConstType == BfConstType_BitCast)
+	{
+		auto bitcast = (BfConstantBitCast*)constant;
+		EncodeAttributeData(typeInstance, argType, BfIRValue(BfIRValueFlags_Const, bitcast->mTarget), data, usedStringIdMap);
+		return;
+	}
+	
 	PUSH_INT8(constant->mTypeCode);
 	if ((constant->mTypeCode == BfTypeCode_Int64) ||
 		(constant->mTypeCode == BfTypeCode_UInt64) ||
@@ -5692,6 +5708,7 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 		for (int i = 0; i < argType->mSize; i++)
 			data.Add(0);
 	}
+	
 // 	else if (constant->mConstType == BfConstType_Agg)
 // 	{
 // 		BF_ASSERT(argType->IsComposite());
