@@ -92,6 +92,16 @@ namespace Tests
 			}
 		}
 
+		struct StructD
+		{
+			public int Val => 123;
+		}
+
+		struct StructE : StructD
+		{
+			
+		}
+
 		class ClassB
 		{
 			public StructA B { get; set; }
@@ -129,6 +139,16 @@ namespace Tests
 		static int MethodD<T>(T val) where T : ClassD
 		{
 			return val.Val;
+		}
+
+		static void TestVal(int val)
+		{
+
+		}
+
+		static void TestVal(float val)
+		{
+
 		}
 
 		[Test]
@@ -177,6 +197,10 @@ namespace Tests
 			int ap2 = StructA.sAutoProp++;
 			Test.Assert(ap2 == 3);
 			Test.Assert(StructA.sAutoProp == 4);
+
+			StructE* se = scope .();
+			StructE*[2] seArr = .(se, se);
+			Test.Assert((seArr[0].Val + seArr[1].Val) == 123*2);
 		}
 	}
 }

@@ -4798,6 +4798,13 @@ BfTypedValue BfExprEvaluator::TryArrowLookup(BfTypedValue typedValue, BfTokenNod
 
 BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInlined)
 {
+	BfTypedValue origTarget = target;
+	if (target.mType->IsStructPtr())
+	{
+		target = mModule->LoadValue(target);
+		target = BfTypedValue(target.mValue, target.mType->GetUnderlyingType(), target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+	}
+
 	if ((flags & BfLookupFieldFlag_IsAnonymous) == 0)
 		mModule->SetElementType(targetSrc, BfSourceElementType_Method);
 
@@ -4832,7 +4839,7 @@ BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue ta
 			mModule->Fail(StrFormat("Property '%s.%s' cannot be accessed with an instance reference; qualify it with a type name instead",
 				mModule->TypeToString(typeInstance).c_str(), mPropDef->mName.c_str()), targetSrc);
 		}
-	}
+	}	
 
 	bool isBaseLookup = (target.mType) && (typeInstance != target.mType);
 	if ((isBaseLookup) && (target.mType->IsWrappableType()))
@@ -4853,17 +4860,22 @@ BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue ta
 		}
 	}
 	else
-		mPropTarget = target;
-
-	if (mPropTarget.mType->IsStructPtr())
-	{
-		mPropTarget = mModule->LoadValue(mPropTarget);
-		mPropTarget = BfTypedValue(mPropTarget.mValue, mPropTarget.mType->GetUnderlyingType(), mPropTarget.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
-	}
+		mPropTarget = target;	
 
 	mOrigPropTarget = mPropTarget;
 	if (prop->mIsStatic)
 		mOrigPropTarget = target;
+
+#ifdef _DEBUG
+	if (mPropTarget)
+	{
+		auto propTargetTypeInst = mPropTarget.mType->ToTypeInstance();
+		if (propTargetTypeInst != NULL)
+		{
+			BF_ASSERT(prop->mDeclaringType->mFullNameEx == propTargetTypeInst->mTypeDef->mFullNameEx);
+		}
+	}
+#endif
 
 	if ((flags & BfLookupFieldFlag_IsAnonymous) == 0)
 	{
@@ -19166,6 +19178,8 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 		mModule->Fail("INTERNAL ERROR: Invalid property target", mPropSrc);
 		return BfModuleMethodInstance();
 	}
+
+	BF_ASSERT(propTypeInst->mTypeDef->mFullNameEx == methodDef->mDeclaringType->mFullNameEx);
 
 	return mModule->GetMethodInstance(propTypeInst, methodDef, BfTypeVector(), mPropGetMethodFlags);
 }
