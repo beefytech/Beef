@@ -725,7 +725,7 @@
     <ClCompile Include="util\Sphere.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
-    <ClCompile Include="util\Compress.cpp">
+    <ClCompile Include="util\Compression.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
     <ClCompile Include="third_party\miniz\miniz.c">
@@ -1117,7 +1117,7 @@
     <ClInclude Include="util\Sphere.h">
       <Filter>src\util</Filter>
     </ClInclude>
-    <ClInclude Include="util\Compress.h">
+    <ClInclude Include="util\Compression.h">
       <Filter>src\util</Filter>
     </ClInclude>
     <ClInclude Include="util\BitSet.h">

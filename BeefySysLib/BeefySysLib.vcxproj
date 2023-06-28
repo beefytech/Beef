@@ -1938,7 +1938,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClCompile Include="util\BSpline.cpp" />
     <ClCompile Include="util\CatmullRom.cpp" />
     <ClCompile Include="util\ChunkedDataBuffer.cpp" />
-    <ClCompile Include="util\Compress.cpp" />
+    <ClCompile Include="util\Compression.cpp" />
     <ClCompile Include="util\CubicFuncSpline.cpp" />
     <ClCompile Include="util\CubicSpline.cpp" />
     <ClCompile Include="util\Hash.cpp" />
@@ -2170,7 +2170,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="util\CatmullRom.h" />
     <ClInclude Include="Util\ChunkedDataBuffer.h" />
     <ClInclude Include="util\ChunkedVector.h" />
-    <ClInclude Include="util\Compress.h" />
+    <ClInclude Include="util\Compression.h" />
     <ClInclude Include="util\CritSect.h" />
     <ClInclude Include="util\CubicFuncSpline.h" />
     <ClInclude Include="util\CubicSpline.h" />

@@ -578,7 +578,7 @@
     <ClCompile Include="util\Heap.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
-    <ClCompile Include="util\Compress.cpp">
+    <ClCompile Include="util\Compression.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
     <ClCompile Include="util\ZipFile.cpp">
@@ -895,7 +895,7 @@
     <ClInclude Include="util\Heap.h">
       <Filter>src\util</Filter>
     </ClInclude>
-    <ClInclude Include="util\Compress.h">
+    <ClInclude Include="util\Compression.h">
       <Filter>src\util</Filter>
     </ClInclude>
     <ClInclude Include="util\ZipFile.h">

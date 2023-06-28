@@ -870,7 +870,7 @@
     <ClCompile Include="util\CabUtil.cpp" />
     <ClCompile Include="util\CatmullRom.cpp" />
     <ClCompile Include="util\ChunkedDataBuffer.cpp" />
-    <ClCompile Include="util\Compress.cpp" />
+    <ClCompile Include="util\Compression.cpp" />
     <ClCompile Include="util\CubicFuncSpline.cpp" />
     <ClCompile Include="util\CubicSpline.cpp" />
     <ClCompile Include="util\FileEnumerator.cpp" />
@@ -1035,7 +1035,7 @@
     <ClInclude Include="util\BSpline.h" />
     <ClInclude Include="util\CabUtil.h" />
     <ClInclude Include="util\CatmullRom.h" />
-    <ClInclude Include="util\Compress.h" />
+    <ClInclude Include="util\Compression.h" />
     <ClInclude Include="util\CritSect.h" />
     <ClInclude Include="util\CubicFuncSpline.h" />
     <ClInclude Include="util\CubicSpline.h" />
