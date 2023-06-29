@@ -11575,7 +11575,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 	if ((resolveFlags & BfResolveTypeRefFlag_NoCreate) != 0)
 	{
-		return ResolveTypeResult(typeRef, resolvedEntry, populateType, resolveFlags);
+		return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 	}
 
 	BfModule* populateModule = this;
