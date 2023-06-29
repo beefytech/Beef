@@ -14839,10 +14839,7 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 			if (typedVal.IsSplat())
 			{
 				if ((!toStructTypeInstance->IsSplattable()) && (toStructTypeInstance->mInstSize != 0))
-				{
-					InternalError("typedVal.IsSplat(), but !toStructTypeInstance->IsSplattable() && toStructTypeInstance->mInstSize != 0", srcNode);
-					return GetDefaultTypedValue(toType, true, BfDefaultValueKind_Addr);
-				}
+					return Cast(srcNode, MakeAddressable(typedVal), toType, castFlags);
 
 				BF_ASSERT(toStructTypeInstance->IsSplattable() || (toStructTypeInstance->mInstSize == 0));
 				return BfTypedValue(typedVal.mValue, toStructTypeInstance, typedVal.IsThis() ? BfTypedValueKind_ThisSplatHead : BfTypedValueKind_SplatHead);
