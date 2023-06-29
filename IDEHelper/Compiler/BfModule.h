@@ -1604,7 +1604,8 @@ public:
 	bool mHadHotObjectWrites;
 
 public:
-	void FatalError(const StringImpl& error, const char* file = NULL, int line = -1);
+	void FatalError(const StringImpl& error, const char* file = NULL, int line = -1, int column = -1);
+	void FatalError(const StringImpl& error, BfAstNode* refNode);
 	void InternalError(const StringImpl& error, BfAstNode* refNode = NULL, const char* file = NULL, int line = -1);
 	void NotImpl(BfAstNode* astNode);
 	void AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);

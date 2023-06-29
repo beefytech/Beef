@@ -11563,16 +11563,19 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		return ResolveTypeResult(typeRef, resolvedEntry->mValue, populateType, resolveFlags);
 	}
 
+	defer({
+		if (resolvedEntry->mValue == NULL)
+			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+		});
+
 	if ((lookupCtx.mIsUnboundGeneric) && (lookupCtx.mRootTypeDef != NULL))
 	{
-		mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 		return ResolveTypeResult(typeRef, ResolveTypeDef(lookupCtx.mRootTypeDef), populateType, resolveFlags);
 	}
 
 	if ((resolveFlags & BfResolveTypeRefFlag_NoCreate) != 0)
 	{
-		mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-		return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+		return ResolveTypeResult(typeRef, resolvedEntry, populateType, resolveFlags);
 	}
 
 	BfModule* populateModule = this;
@@ -11619,7 +11622,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 						Fail("Expected generic argument", typeRef);
 					else
 						Fail(StrFormat("Expected %d generic arguments", wantedGenericParams), typeRef);
-					mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 					return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 				}
 
@@ -11681,7 +11683,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			Fail("Generic type arguments expected", typeRef);
 			delete typeInst;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 		resolvedEntry->mValue = typeInst;
@@ -11708,7 +11709,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if (arrayTypeRef->mDimensions > 4)
 		{
 			Fail("Too many array dimensions, consider using a jagged array.", arrayTypeRef);
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
@@ -11716,7 +11716,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		auto arrayTypeDef = mCompiler->GetArrayTypeDef(arrayTypeRef->mDimensions);
 		if ((elementType == NULL) || (arrayTypeDef == NULL))
 		{
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
@@ -11839,7 +11838,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if (typeDef == NULL)
 		{
 			Fail("Unable to resolve type", typeRef);
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
@@ -11881,7 +11879,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				genericArg = ResolveTypeRef(genericArgRef, NULL, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGenericTypeParamConstValue | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
 			if ((genericArg == NULL) || (genericArg->IsVar()))
 			{
-				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 				return ResolveTypeResult(typeRef, ((genericArg != NULL) && (genericArg->IsVar())) ? genericArg : NULL, populateType, resolveFlags);
 			}
 			genericArgs.Add(genericArg);
@@ -11891,12 +11888,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if ((type != NULL) &&
 			((type->IsDelegateFromTypeRef()) || (type->IsFunctionFromTypeRef())))
 		{
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveGenericType(type, &genericArgs, NULL, mCurTypeInstance);
 		}
 		else if ((type != NULL) && (type->IsTuple()))
 		{
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveGenericType(type, &genericArgs, NULL, mCurTypeInstance);
 		}
 		else if ((typeDef != NULL) && (typeDef->mTypeCode == BfTypeCode_TypeAlias))
@@ -11922,7 +11917,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			Fail("Not a generic type", typeRef);
 			delete genericTypeInst;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
@@ -11957,7 +11951,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				innerWantedGenericParams -= (int)typeDef->mOuterType->mGenericParamDefs.size();
 			ShowGenericArgCountError(genericTypeInstRef, innerWantedGenericParams);
 			delete genericTypeInst;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
@@ -11976,7 +11969,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			Fail("Maximum generic depth exceeded", typeRef);
 			delete genericTypeInst;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
@@ -12017,10 +12009,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			BfTypeReference* typeRef = tupleTypeRef->mFieldTypes[fieldIdx];
 			auto type = ResolveTypeRef(typeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
 			if (type == NULL)
-			{
-				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
-			}
 
 			String fieldName;
 			BfIdentifierNode* identifierNode = NULL;
@@ -12038,7 +12027,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				isUnspecialized = true;
 			if (type->IsVar())
 			{
-				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 			}
 			types.push_back(type);
@@ -12127,10 +12115,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		auto elementType = ResolveTypeRef(elementTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
 		if ((elementType == NULL) || (elementType->IsVar()))
-		{
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, elementType, populateType, resolveFlags);
-		}
 
 		BfTypeInstance* genericTypeInst = new BfTypeInstance();
 		genericTypeInst->mGenericTypeInfo = new BfGenericTypeInfo();
@@ -12163,7 +12148,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if ((elementType == NULL) || (elementType->IsVar()))
 		{
 			delete pointerType;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, elementType, populateType, resolveFlags);
 		}
 
@@ -12194,7 +12178,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if ((elementType == NULL) || (elementType->IsVar()))
 		{
 			delete refType;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, elementType, populateType, resolveFlags);
 		}
 
@@ -12477,7 +12460,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if (failed)
 		{
 			delete delegateType;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
@@ -12551,7 +12533,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if ((mCurTypeInstance != NULL) && (mCurTypeInstance->mDependencyMap.mMinDependDepth > 32))
 		{
 			Fail("Generic type dependency depth exceeded", typeRef);
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 

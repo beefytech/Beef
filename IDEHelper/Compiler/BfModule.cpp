@@ -3195,7 +3195,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	if (mCurTypeInstance != NULL)
 		AddFailType(mCurTypeInstance);
 
-	BfLogSysM("BfModule::Fail module %p type %p %s\n", this, mCurTypeInstance, error.c_str());
+	BfLogSysM("BfModule::Fail module %p type %p %s @ %s\n", this, mCurTypeInstance, error.c_str(), (refNode != NULL) ? refNode->LocationToString().c_str() : "???");
 
  	String errorString = error;
 	BfWhileSpecializingFlags isWhileSpecializing = BfWhileSpecializingFlag_None;
@@ -3503,7 +3503,7 @@ void BfModule::CheckRangeError(BfType* type, BfAstNode* refNode)
 		Fail(StrFormat("Result out of range for type '%s'", TypeToString(type).c_str()), refNode);
 }
 
-void BfModule::FatalError(const StringImpl& error, const char* file, int line)
+void BfModule::FatalError(const StringImpl& error, const char* file, int line, int column)
 {
 	static bool sHadFatalError = false;
 	static bool sHadReentrancy = false;
@@ -3518,7 +3518,11 @@ void BfModule::FatalError(const StringImpl& error, const char* file, int line)
 	String fullError = error;
 
 	if (file != NULL)
+	{
 		fullError += StrFormat(" at %s:%d", file, line);
+		if (column != -1)
+			fullError += StrFormat(":%d", column);
+	}
 
 	fullError += StrFormat("\nModule: %s", mModuleName.c_str());
 
@@ -3534,6 +3538,23 @@ void BfModule::FatalError(const StringImpl& error, const char* file, int line)
 		fullError += "\nError had reentrancy";
 
 	BfpSystem_FatalError(fullError.c_str(), "FATAL MODULE ERROR");
+}
+
+void BfModule::FatalError(const StringImpl& error, BfAstNode* refNode)
+{
+	if (refNode != NULL)
+	{
+		auto parser = refNode->GetParserData();
+		if (parser != NULL)
+		{
+			int line = -1;
+			int lineChar = -1;
+			parser->GetLineCharAtIdx(refNode->mSrcStart, line, lineChar);
+			if (line != -1)
+				FatalError(error, parser->mFileName.c_str(), line, lineChar);
+		}
+	}
+	FatalError(error);
 }
 
 void BfModule::InternalError(const StringImpl& error, BfAstNode* refNode, const char* file, int line)
@@ -5666,7 +5687,7 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 		EncodeAttributeData(typeInstance, argType, BfIRValue(BfIRValueFlags_Const, bitcast->mTarget), data, usedStringIdMap);
 		return;
 	}
-	
+
 	PUSH_INT8(constant->mTypeCode);
 	if ((constant->mTypeCode == BfTypeCode_Int64) ||
 		(constant->mTypeCode == BfTypeCode_UInt64) ||
@@ -5708,7 +5729,7 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 		for (int i = 0; i < argType->mSize; i++)
 			data.Add(0);
 	}
-	
+
 // 	else if (constant->mConstType == BfConstType_Agg)
 // 	{
 // 		BF_ASSERT(argType->IsComposite());
