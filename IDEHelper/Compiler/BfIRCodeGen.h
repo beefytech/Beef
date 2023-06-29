@@ -234,7 +234,7 @@ public:
 	void SetConfigConst(int idx, int value) override;
 
 	void SetActiveFunctionSimdType(BfIRSimdType type);
-	const StringImpl& GetSimdTypeString(BfIRSimdType type);
+	String GetSimdTypeString(BfIRSimdType type);
 	BfIRSimdType GetSimdTypeFromFunction(llvm::Function* function);
 
 	llvm::Value* GetLLVMValue(int streamId);

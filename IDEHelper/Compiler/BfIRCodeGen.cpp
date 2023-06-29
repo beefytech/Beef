@@ -4981,7 +4981,7 @@ void BfIRCodeGen::SetActiveFunctionSimdType(BfIRSimdType type)
 		mFunctionsUsingSimd[mActiveFunction] = type;
 }
 
-const StringImpl& BfIRCodeGen::GetSimdTypeString(BfIRSimdType type)
+String BfIRCodeGen::GetSimdTypeString(BfIRSimdType type)
 {
 	switch (type)
 	{
