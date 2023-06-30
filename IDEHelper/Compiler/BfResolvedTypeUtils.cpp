@@ -3429,31 +3429,35 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 
 		if (typeDef->mGenericParamDefs.size() != 0)
 		{
+			BfTypeDef* commonOuterType = NULL;
+
 			auto checkTypeInstance = ctx->mModule->mCurTypeInstance;
-			if (checkTypeInstance->IsBoxed())
-				checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
-
-			auto outerType = ctx->mModule->mSystem->GetOuterTypeNonPartial(typeDef);
-
-			BfTypeDef* commonOuterType;
-			if (typeRef == ctx->mRootTypeRef)
-				commonOuterType = FindRootCommonOuterType(outerType, ctx, checkTypeInstance);
-			else
-				commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
-
-			if ((commonOuterType == NULL) && (outerType != NULL))
+			if (checkTypeInstance != NULL)
 			{
-				auto staticSearch = ctx->mModule->GetStaticSearch();
-				if (staticSearch != NULL)
+				if (checkTypeInstance->IsBoxed())
+					checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
+
+				auto outerType = ctx->mModule->mSystem->GetOuterTypeNonPartial(typeDef);
+
+				if (typeRef == ctx->mRootTypeRef)
+					commonOuterType = FindRootCommonOuterType(outerType, ctx, checkTypeInstance);
+				else
+					commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
+
+				if ((commonOuterType == NULL) && (outerType != NULL))
 				{
-					for (auto staticTypeInst : staticSearch->mStaticTypes)
+					auto staticSearch = ctx->mModule->GetStaticSearch();
+					if (staticSearch != NULL)
 					{
-						auto foundOuterType = ctx->mModule->FindCommonOuterType(staticTypeInst->mTypeDef, outerType);
-						if ((foundOuterType != NULL) &&
-							((commonOuterType == NULL) || (foundOuterType->mNestDepth > commonOuterType->mNestDepth)))
+						for (auto staticTypeInst : staticSearch->mStaticTypes)
 						{
-							commonOuterType = foundOuterType;
-							checkTypeInstance = staticTypeInst;
+							auto foundOuterType = ctx->mModule->FindCommonOuterType(staticTypeInst->mTypeDef, outerType);
+							if ((foundOuterType != NULL) &&
+								((commonOuterType == NULL) || (foundOuterType->mNestDepth > commonOuterType->mNestDepth)))
+							{
+								commonOuterType = foundOuterType;
+								checkTypeInstance = staticTypeInst;
+							}
 						}
 					}
 				}
