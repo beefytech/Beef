@@ -1615,6 +1615,8 @@ namespace IDE.ui
             mOrigY = y;
 
 			Widget parentWidget = GetParentWidget();
+			if (parentWidget?.mWidgetWindow == null)
+				return false;
 
             //var parentWidget = textPanel.EditWidget.Content;
 
