@@ -163,7 +163,7 @@ namespace System
 				CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
 				GetConsoleScreenBufferInfo(handle,out consoleInfo);
 
-				SetConsoleCursorPosition(handle, COORD((.)value,(.)consoleInfo.mCursorPosition[0]));
+				SetConsoleCursorPosition(handle, COORD((.)value,(.)consoleInfo.mCursorPosition[1]));
 			}
 		}
 #endif
