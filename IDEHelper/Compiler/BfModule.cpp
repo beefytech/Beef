@@ -8582,6 +8582,8 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				}
 				else if (convCheckConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef))
 					constraintMatched = true;
+				else if ((checkArgType->IsFunction()) && (convCheckConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))
+					constraintMatched = true;
 			}
 			else if (CanCast(GetFakeTypedValue(checkArgType), convCheckConstraint))
 			{
