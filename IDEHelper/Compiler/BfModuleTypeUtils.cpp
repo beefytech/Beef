@@ -5129,6 +5129,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;
 						typeInstance->mCeTypeInfo->mAlign = typeInstance->mCeTypeInfo->mNext->mAlign;
 					}
+					else
+					{
+						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
+							mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "canceled comptime hash changed");
+					}
 
 					delete typeInstance->mCeTypeInfo->mNext;
 					typeInstance->mCeTypeInfo->mNext = NULL;
@@ -5137,7 +5142,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					// Removed emissions
 					if (!typeInstance->mCeTypeInfo->mHash.IsZero())
-						mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "comptime hash changed");
+						mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "removed comptime hash changed");
 					typeInstance->mCeTypeInfo->mEmitSourceMap.Clear();
 					typeInstance->mCeTypeInfo->mOnCompileMap.Clear();
 					typeInstance->mCeTypeInfo->mTypeIFaceMap.Clear();

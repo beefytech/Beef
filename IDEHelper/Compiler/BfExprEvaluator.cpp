@@ -4839,7 +4839,7 @@ BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue ta
 			mModule->Fail(StrFormat("Property '%s.%s' cannot be accessed with an instance reference; qualify it with a type name instead",
 				mModule->TypeToString(typeInstance).c_str(), mPropDef->mName.c_str()), targetSrc);
 		}
-	}	
+	}
 
 	bool isBaseLookup = (target.mType) && (typeInstance != target.mType);
 	if ((isBaseLookup) && (target.mType->IsWrappableType()))
@@ -4860,7 +4860,7 @@ BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue ta
 		}
 	}
 	else
-		mPropTarget = target;	
+		mPropTarget = target;
 
 	mOrigPropTarget = mPropTarget;
 	if (prop->mIsStatic)
@@ -5332,7 +5332,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 
 	if (fieldInstance->mDataIdx < 0)
 	{
-		BF_ASSERT(typeInstance->mTypeFailed);
+		mModule->InternalError("LoadField field DataIdx<0 where InstSize>0");
 		return mModule->GetDefaultTypedValue(resolvedFieldType);
 	}
 
