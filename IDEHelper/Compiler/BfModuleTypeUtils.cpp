@@ -5131,8 +5131,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					}
 					else
 					{
-						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
-							mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "canceled comptime hash changed");
+						// This greatly increases dependent type rebuilds, which triggers other issues
+						/*if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
+							mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "canceled comptime hash changed");*/
 					}
 
 					delete typeInstance->mCeTypeInfo->mNext;
