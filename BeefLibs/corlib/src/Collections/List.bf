@@ -398,7 +398,7 @@ namespace System.Collections
 				Free(oldPtr);
 				return;
 			}
-			Internal.MemCpy(mItems + mSize, addSpan.Ptr, addSpan.Length * alignof(T), alignof(T));
+			Internal.MemCpy(mItems + mSize, addSpan.Ptr, addSpan.Length * strideof(T), alignof(T));
 			mSize += (.)addSpan.Length;
 #if VERSION_LIST
 			mVersion++;
@@ -567,7 +567,7 @@ namespace System.Collections
 			EnsureCapacity(size, true);
 			int addSize = size - mSize;
 			if (addSize > 0)
-				Internal.MemSet(Ptr + mSize, 0, addSize * alignof(T));
+				Internal.MemSet(Ptr + mSize, 0, addSize * strideof(T));
 			mSize = (.)size;
 		}
 
