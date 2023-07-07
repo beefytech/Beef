@@ -606,7 +606,7 @@ namespace System
 		public OptSpan<uint8> ToRawData()
 		{
 #if BF_OPTSPAN_LENGTH
-			return OptSpan<uint8>((uint8*)mPtr, mLength * alignof(T));
+			return OptSpan<uint8>((uint8*)mPtr, mLength * strideof(T));
 #else
 			return OptSpan<uint8>((uint8*)mPtr, 0);
 #endif			
