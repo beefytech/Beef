@@ -4707,6 +4707,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			BfTypedValue caseValue;
 			BfIRBlock doBlock = caseBlock;
 			bool hadConditional = false;
+			bool isEnumDescValue = isPayloadEnum;
 			if (isPayloadEnum)
 			{
 				auto dscrType = switchValue.mType->ToTypeInstance()->GetDiscriminatorType();
@@ -4766,6 +4767,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				caseValue = CreateValueFromExpression(caseExpr, switchValue.mType, (BfEvalExprFlags)(BfEvalExprFlags_AllowEnumId | BfEvalExprFlags_NoCast));
 				if (!caseValue)
 					continue;
+				isEnumDescValue = false;
 			}
 
 			BfTypedValue caseIntVal = caseValue;
@@ -4835,7 +4837,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 					BfExprEvaluator exprEvaluator(this);
 					BfAstNode* refNode = switchCase->mColonToken;
 
-					if ((caseValue.mType->IsPayloadEnum()) && (caseValue.mValue.IsConst()) && (switchValue.mType == caseValue.mType))
+					if ((caseValue.mType->IsPayloadEnum()) && (caseValue.mValue.IsConst()) && (switchValue.mType == caseValue.mType) && (isEnumDescValue))
 					{
 						if (!enumTagVal)
 						{

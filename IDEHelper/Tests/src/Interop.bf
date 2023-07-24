@@ -239,6 +239,14 @@ namespace Tests
 			public float mX;
 		}
 
+		[CRepr]
+		public struct StructX
+		{
+			public int32 mA;
+			public int32 mB;
+			public char8* mC;
+		}
+
 		[LinkName(.C)]
 		public static extern int32 Func0(int32 a, int32 b);
 		[LinkName(.C)]
@@ -307,6 +315,8 @@ namespace Tests
 		public static extern StructH Func2H(StructH arg0, int32 arg2);
 		[LinkName(.C)]
 		public static extern StructI Func2I(StructI arg0, int32 arg2);
+		[LinkName(.C)]
+		public static extern StructX Func2X(StructX arg0, int32 arg2);
 
 		[LinkName(.C)]
 		public static extern StructJ Func4J(StructJ arg0, StructJ arg1, StructJ arg2, StructJ arg3);
@@ -393,6 +403,7 @@ namespace Tests
 			StructU su = .() { mK = .(){mX = 3, mY = 4}};
 			StructV sv = .() { mX = 3, mY = 4};
 			StructW sw = .() { mX = 3 };
+			StructX sx = .() { mA = 3, mB = 4, mC = "ABCD" };
 
 			void StartTest(String str)
 			{
@@ -509,6 +520,11 @@ namespace Tests
 			Test.Assert(si0.MethodI0(12) == 9012);
 			Test.Assert(si0.MethodI1(si1, 12).mA == (int8)193);
 			Test.Assert(Func2I(si0, 12).mA == 102);
+
+			/*var sx1 = Func2X(sx, 100);
+			Test.Assert(sx1.mA == 103);
+			Test.Assert(sx1.mB == 4);
+			Test.Assert(sx1.mC == (char8*)"BCD"+1);*/
 
 			StructJ sj0;
 			sj0.mPtr = "ABC";

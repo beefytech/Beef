@@ -1386,6 +1386,8 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, lhs);
 			CMD_PARAM(BeValue*, rhs);
+			if (lhs->GetType() != rhs->GetType())
+				Fail("Type mismatch for CmpEQ");
 			SetResult(curId, mBeModule->CreateCmp(BeCmpKind_EQ, lhs, rhs));
 		}
 		break;

@@ -297,6 +297,13 @@ namespace Tests
 		{
 			float mX;
 		};
+
+		struct StructX
+		{
+			int mA;
+			int mB;
+			char* mC;
+		};
 	};
 
 	int Interop::StructA::sVal = 1234;
@@ -489,6 +496,15 @@ extern "C" Interop::StructI Func2I(Interop::StructI arg0, int arg1)
 {
 	Interop::StructI ret;
 	ret.mA = arg0.mA + arg1;
+	return ret;
+}
+
+extern "C" Interop::StructX Func2X(Interop::StructX arg0, int arg1)
+{
+	Interop::StructX ret;
+	ret.mA = arg0.mA + arg1;
+	ret.mB = arg0.mB;
+	ret.mC = arg0.mC + 1;
 	return ret;
 }
 
