@@ -160,6 +160,9 @@ namespace System
 			String bTypeStr = TypeStr(.. scope .(), mBFieldType);
 			int mask = ((1 << mBitPos) << bitCount) - (1 << mBitPos);
 
+			String maskStr = scope .();
+			mask.ToString(maskStr, scope String()..AppendF("X{}", bitSize/4), null);
+
 			if ((!hasRange) && (mBFieldType.IsSigned))
 			{
 				minVal = -(1<<(bitCount-1));
@@ -178,9 +181,9 @@ namespace System
 				if (mBFieldType == typeof(bool))
 					str.AppendF($"(({fieldInfo.Name} & {mask}) >> {mBitPos}) != 0;\n");
 				else if (buType.IsSigned)
-					str.AppendF($"(.)((int)((({fieldInfo.Name} & 0x{mask:X16}) >> {mBitPos}) ^ 0x{1 << (bitCount - 1):X}) - 0x{1 << (bitCount - 1):X});\n");
+					str.AppendF($"(.)((int)((({fieldInfo.Name} & 0x{maskStr}) >> {mBitPos}) ^ 0x{1 << (bitCount - 1):X}) - 0x{1 << (bitCount - 1):X});\n");
 				else
-					str.AppendF($"(.)(({fieldInfo.Name} & 0x{mask:X16}) >> {mBitPos});\n");
+					str.AppendF($"(.)(({fieldInfo.Name} & 0x{maskStr}) >> {mBitPos});\n");
 			}
 
 			if (mBFieldType.IsInteger)
@@ -222,9 +225,9 @@ namespace System
 					}
 
 					if (mBFieldType == typeof(bool))
-						str.AppendF($"\t\t{fieldInfo.Name} = ({fieldInfo.Name} & ({uTypeStr})~0x{mask:X16}) | (value ? 0x{mask:X16} : 0);\n");
+						str.AppendF($"\t\t{fieldInfo.Name} = ({fieldInfo.Name} & ({uTypeStr})~0x{maskStr}) | (value ? 0x{maskStr} : 0);\n");
 					else
-						str.AppendF($"\t\t{fieldInfo.Name} = ({fieldInfo.Name} & ({uTypeStr})~0x{mask:X16}) | ((({uTypeStr})value << {mBitPos}) & ({uTypeStr})0x{mask:X16});\n");
+						str.AppendF($"\t\t{fieldInfo.Name} = ({fieldInfo.Name} & ({uTypeStr})~0x{maskStr}) | ((({uTypeStr})value << {mBitPos}) & ({uTypeStr})0x{maskStr});\n");
 
 					str.Append("\t}\n");
 				}
