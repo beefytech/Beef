@@ -4640,6 +4640,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	bool prevHadFallthrough = false;
 
 	Dictionary<int64, _CaseState> handledCases;
+	HashSet<int64> condCases;
 	for (BfSwitchCase* switchCase : switchStmt->mSwitchCases)
 	{
 		deferredLocalAssignDataVec[blockIdx].mScopeData = mCurMethodState->mCurScope;
@@ -4810,22 +4811,42 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			}
 			else if ((constantInt != NULL) && (!hadWhen) && (!isConstSwitch))
 			{
-				if (!hadConditional)
+				if (hadConditional)
+				{
+					condCases.Add(constantInt->mInt64);
+				}
+				else
 				{
 					_CaseState* caseState = NULL;
 					handledCases.TryAdd(constantInt->mInt64, NULL, &caseState);
 
-					if (caseState->mUncondBlock)
+					if (condCases.Contains(constantInt->mInt64))
 					{
-						_ShowCaseError(constantInt->mInt64, caseExpr);
+						// This is a 'case .A:' after a 'case .A(let value):'
+						eqResult = mBfIRBuilder->CreateCmpEQ(enumTagVal.mValue, caseValue.mValue);
+						notEqBB = mBfIRBuilder->CreateBlock(StrFormat("switch.notEq.%d", blockIdx));
+
+						mayHaveMatch = true;
+						mBfIRBuilder->CreateCondBr(eqResult, caseBlock, notEqBB);
+
+						mBfIRBuilder->AddBlock(notEqBB);
+						mBfIRBuilder->SetInsertPoint(notEqBB);
 					}
 					else
 					{
-						caseState->mUncondBlock = doBlock;
-						mBfIRBuilder->AddSwitchCase(switchStatement, caseIntVal.mValue, doBlock);
-						hadConstIntVals = true;
+						if (caseState->mUncondBlock)
+						{
+							_ShowCaseError(constantInt->mInt64, caseExpr);
+						}
+						else
+						{
+							caseState->mUncondBlock = doBlock;
+							mBfIRBuilder->AddSwitchCase(switchStatement, caseIntVal.mValue, doBlock);
+							hadConstIntVals = true;
+						}
 					}
 				}
+
 				mayHaveMatch = true;
 			}
 			else if (!handled)
