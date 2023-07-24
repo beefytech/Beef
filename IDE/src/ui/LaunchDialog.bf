@@ -361,7 +361,7 @@ namespace IDE.ui
 			else
 			{
 				String targetDir = scope .();
-				Path.GetDirectoryPath(targetPath, targetDir);
+				Path.GetDirectoryPath(targetPath, targetDir).IgnoreError();
 				if (!targetDir.IsWhiteSpace)
 				{
 					defer workingDir.Remove(0, workingDir.Length);
