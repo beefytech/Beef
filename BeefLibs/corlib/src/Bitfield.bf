@@ -178,9 +178,9 @@ namespace System
 				if (mBFieldType == typeof(bool))
 					str.AppendF($"(({fieldInfo.Name} & {mask}) >> {mBitPos}) != 0;\n");
 				else if (buType.IsSigned)
-					str.AppendF($"(.)((int)((({fieldInfo.Name} & 0x{mask:X}) >> {mBitPos}) ^ 0x{1 << (bitCount - 1):X}) - 0x{1 << (bitCount - 1):X});\n");
+					str.AppendF($"(.)((int)((({fieldInfo.Name} & 0x{mask:X16}) >> {mBitPos}) ^ 0x{1 << (bitCount - 1):X}) - 0x{1 << (bitCount - 1):X});\n");
 				else
-					str.AppendF($"(.)(({fieldInfo.Name} & 0x{mask:X}) >> {mBitPos});\n");
+					str.AppendF($"(.)(({fieldInfo.Name} & 0x{mask:X16}) >> {mBitPos});\n");
 			}
 
 			if (mBFieldType.IsInteger)
@@ -222,9 +222,9 @@ namespace System
 					}
 
 					if (mBFieldType == typeof(bool))
-						str.AppendF($"\t\t{fieldInfo.Name} = ({fieldInfo.Name} & ({uTypeStr})~0x{mask:X}) | (value ? 0x{mask:X} : 0);\n");
+						str.AppendF($"\t\t{fieldInfo.Name} = ({fieldInfo.Name} & ({uTypeStr})~0x{mask:X16}) | (value ? 0x{mask:X16} : 0);\n");
 					else
-						str.AppendF($"\t\t{fieldInfo.Name} = ({fieldInfo.Name} & ({uTypeStr})~0x{mask:X}) | ((({uTypeStr})value << {mBitPos}) & ({uTypeStr})0x{mask:X});\n");
+						str.AppendF($"\t\t{fieldInfo.Name} = ({fieldInfo.Name} & ({uTypeStr})~0x{mask:X16}) | ((({uTypeStr})value << {mBitPos}) & ({uTypeStr})0x{mask:X16});\n");
 
 					str.Append("\t}\n");
 				}
