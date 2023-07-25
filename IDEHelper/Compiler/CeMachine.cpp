@@ -69,11 +69,23 @@ struct CeOpInfo
 	{OPNAME "_I64", OPINFOA##64, OPINFOB##64}, \
 	{OPNAME "_F32", OPINFOA##F32, OPINFOB##F64}, \
 	{OPNAME "_F64", OPINFOA##F64, OPINFOB##F64}
+#define CEOPINFO_SIZED_NUMERIC_PLUSF_2_RESULT8(OPNAME, OPINFOA, OPINFOB) \
+	{OPNAME "_I8", OPINFOA##8, OPINFOB##8}, \
+	{OPNAME "_I16", OPINFOA##8, OPINFOB##16}, \
+	{OPNAME "_I32", OPINFOA##8, OPINFOB##32}, \
+	{OPNAME "_I64", OPINFOA##8, OPINFOB##64}, \
+	{OPNAME "_F32", OPINFOA##8, OPINFOB##F64}, \
+	{OPNAME "_F64", OPINFOA##8, OPINFOB##F64}
 #define CEOPINFO_SIZED_NUMERIC_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
 	{OPNAME "_I8", OPINFOA##8, OPINFOB##8, OPINFOC##8}, \
 	{OPNAME "_I16", OPINFOA##16, OPINFOB##16, OPINFOC##16}, \
 	{OPNAME "_I32", OPINFOA##32, OPINFOB##32, OPINFOC##32}, \
 	{OPNAME "_I64", OPINFOA##64, OPINFOB##64, OPINFOC##64}
+#define CEOPINFO_SIZED_NUMERIC_3_RESULT8(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
+	{OPNAME "_I8", OPINFOA##8, OPINFOB##8, OPINFOC##8}, \
+	{OPNAME "_I16", OPINFOA##8, OPINFOB##16, OPINFOC##16}, \
+	{OPNAME "_I32", OPINFOA##8, OPINFOB##32, OPINFOC##32}, \
+	{OPNAME "_I64", OPINFOA##8, OPINFOB##64, OPINFOC##64}
 #define CEOPINFO_SIZED_UNUMERIC_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
 	{OPNAME "_U8", OPINFOA##8, OPINFOB##8, OPINFOC##8}, \
 	{OPNAME "_U16", OPINFOA##16, OPINFOB##16, OPINFOC##16}, \
@@ -86,6 +98,13 @@ struct CeOpInfo
 	{OPNAME "_I64", OPINFOA##64, OPINFOB##64, OPINFOC##64}, \
 	{OPNAME "_F32", OPINFOA##F32, OPINFOB##F32, OPINFOC##F32}, \
 	{OPNAME "_F64", OPINFOA##F64, OPINFOB##F64, OPINFOC##F64}
+#define CEOPINFO_SIZED_NUMERIC_PLUSF_3_RESULT8(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
+	{OPNAME "_I8", OPINFOA##8, OPINFOB##8, OPINFOC##8}, \
+	{OPNAME "_I16", OPINFOA##8, OPINFOB##16, OPINFOC##16}, \
+	{OPNAME "_I32", OPINFOA##8, OPINFOB##32, OPINFOC##32}, \
+	{OPNAME "_I64", OPINFOA##8, OPINFOB##64, OPINFOC##64}, \
+	{OPNAME "_F32", OPINFOA##8, OPINFOB##F32, OPINFOC##F32}, \
+	{OPNAME "_F64", OPINFOA##8, OPINFOB##F64, OPINFOC##F64}
 #define CEOPINFO_SIZED_FLOAT_2(OPNAME, OPINFOA, OPINFOB) \
 	{OPNAME "_F32", OPINFOA##F32, OPINFOB##F32}, \
 	{OPNAME "_F64", OPINFOA##F64, OPINFOB##F64}
@@ -231,17 +250,17 @@ static CeOpInfo gOpInfo[] =
 	CEOPINFO_SIZED_FLOAT_2("Tan", CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_FLOAT_2("Tanh", CEOI_FrameRef, CEOI_FrameRef),
 
-	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_EQ", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_NE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_SLT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_3("Cmp_ULT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_SLE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_3("Cmp_ULE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_SGT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_3("Cmp_UGT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_SGE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_3("Cmp_UGE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
-	CEOPINFO_SIZED_NUMERIC_PLUSF_2("Neg", CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3_RESULT8("Cmp_EQ", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3_RESULT8("Cmp_NE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3_RESULT8("Cmp_SLT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_3_RESULT8("Cmp_ULT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3_RESULT8("Cmp_SLE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_3_RESULT8("Cmp_ULE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3_RESULT8("Cmp_SGT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_3_RESULT8("Cmp_UGT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3_RESULT8("Cmp_SGE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_3_RESULT8("Cmp_UGE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_2_RESULT8("Neg", CEOI_FrameRef, CEOI_FrameRef),
 	{"Not_I1", CEOI_FrameRef8, CEOI_FrameRef8},
 	CEOPINFO_SIZED_NUMERIC_2("Not", CEOI_FrameRef, CEOI_FrameRef),
 };
@@ -868,6 +887,11 @@ void CeBuilder::EmitSizedOp(CeOp val, int size)
 	Emit((CeOp)(val + sizeClass));
 	if (sizeClass == CeSizeClass_X)
 		Emit((int32)size);
+
+	if ((CeOp)(val + sizeClass) == CeOp_AddConst_I64)
+	{
+		NOP;
+	}
 }
 
 void CeBuilder::Emit(int32 val)
@@ -2663,9 +2687,12 @@ void CeBuilder::Build()
 										EmitSizedOp(CeOp_AddConst_I8, mPtrSize);
 										EmitFrameOffset(result);
 										EmitFrameOffset(ceVal);
-										Emit((int32)(ceIdx1.mImmediate * arrayType->mElementType->GetStride()));
+
+										int32 byteOffset = (int32)(ceIdx1.mImmediate * arrayType->mElementType->GetStride());
 										if (mPtrSize == 8)
-											Emit((int32)0);
+											Emit((int64)byteOffset);
+										else
+											Emit((int32)byteOffset);
 									}
 								}
 								else
@@ -2776,9 +2803,10 @@ void CeBuilder::Build()
 								EmitSizedOp(CeOp_AddConst_I8, mPtrSize);
 								EmitFrameOffset(result);
 								EmitFrameOffset(ceVal);
-								Emit((int32)byteOffset);
 								if (mPtrSize == 8)
-									Emit((int32)0);
+									Emit((int64)byteOffset);
+								else
+									Emit((int32)byteOffset);
 							}
 							else
 							{
@@ -2799,9 +2827,10 @@ void CeBuilder::Build()
 								EmitSizedOp(CeOp_AddConst_I8, mPtrSize);
 								EmitFrameOffset(result);
 								EmitFrameOffset(ceVal);
-								Emit((int32)byteOffset);
 								if (mPtrSize == 8)
-									Emit((int32)0);
+									Emit((int64)byteOffset);
+								else
+									Emit((int32)byteOffset);
 							}
 						}
 						else

@@ -8502,6 +8502,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			argIdx++;
 		}
 
+		prevIgnoreWrites.Restore();
 		return mModule->GetDefaultTypedValue(returnType, false, BfDefaultValueKind_Addr);
 	}
 
@@ -8565,6 +8566,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						mFunctionBindResult->mIRArgs.push_back(arg);
 				}
 
+				prevIgnoreWrites.Restore();
 				return mModule->GetDefaultTypedValue(returnType);
 			}
 		}
@@ -8599,6 +8601,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	auto func = moduleMethodInstance.mFunc;
 	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs, NULL, physCallFlags, origTarget.mType);
 
+	prevIgnoreWrites.Restore();
 	if ((methodInstance->mMethodDef->mIsNoReturn) && ((mBfEvalExprFlags & BfEvalExprFlags_IsExpressionBody) != 0) &&
 		(mExpectingType != NULL) && (callResult.mType != mExpectingType))
 	{
