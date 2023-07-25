@@ -2514,7 +2514,7 @@ DbgModule* DebugTarget::FindDbgModuleForAddress(addr_target address)
 	}
 
 	auto dwarf = valuePtr->mFirst;
-	if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize))
+	if ((dwarf != NULL) && (address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize))
 		return dwarf;
 
 	if (valuePtr->mCollisions != NULL)
