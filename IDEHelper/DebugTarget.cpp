@@ -46,6 +46,8 @@ DebugTarget::DebugTarget(WinDebugger* debugger)
 
 DebugTarget::~DebugTarget()
 {
+	ClearFindDbgModuleCache();
+
 	for (auto dwarf : mDbgModules)
 		delete dwarf;
 
@@ -273,7 +275,7 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 				}
 			}
 
-			mFindDbgModuleCache.Clear();
+			ClearFindDbgModuleCache();
 			mDbgModules.RemoveAt(i);
 			bool success = mDbgModuleMap.Remove(dwarf->mId);
 			BF_ASSERT_REL(success);
@@ -317,7 +319,7 @@ void DebugTarget::CleanupHotHeap()
 			DbgModule* dbgModule = mDbgModules[dwarfIdx];
 			if (dbgModule->mDeleting)
 			{
-				mFindDbgModuleCache.Clear();
+				ClearFindDbgModuleCache();
 				mDbgModules.RemoveAt(dwarfIdx);
 				bool success = mDbgModuleMap.Remove(dbgModule->mId);
 				BF_ASSERT_REL(success);
@@ -931,10 +933,19 @@ void DebugTarget::GetCompilerSettings()
 	}
 }
 
+void DebugTarget::ClearFindDbgModuleCache()
+{
+	for (auto& entry : mFindDbgModuleCache)
+	{
+		delete entry.mValue.mCollisions;
+	}
+	mFindDbgModuleCache.Clear();
+}
+
 void DebugTarget::AddDbgModule(DbgModule* dbgModule)
 {
 	dbgModule->mId = ++mCurModuleId;
-	mFindDbgModuleCache.Clear();
+	ClearFindDbgModuleCache();
 	mDbgModules.Add(dbgModule);
 	bool success = mDbgModuleMap.TryAdd(dbgModule->mId, dbgModule);
 	BF_ASSERT_REL(success);
@@ -2481,17 +2492,39 @@ DbgBreakKind DebugTarget::GetDbgBreakKind(addr_target address, CPURegisters* reg
 DbgModule* DebugTarget::FindDbgModuleForAddress(addr_target address)
 {
 	addr_target checkAddr = address & ~0xFFFF;
-	DbgModule** valuePtr = NULL;
+	FindDbgModuleCacheEntry* valuePtr = NULL;
 	if (mFindDbgModuleCache.TryAdd(checkAddr, NULL, &valuePtr))
 	{
 		for (auto dwarf : mDbgModules)
 		{
 			if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize))
-				*valuePtr = dwarf;
+			{
+				if (valuePtr->mFirst == NULL)
+				{
+					valuePtr->mFirst = dwarf;
+				}
+				else
+				{
+					if (valuePtr->mCollisions == NULL)
+						valuePtr->mCollisions = new Array<DbgModule*>();
+					valuePtr->mCollisions->Add(dwarf);
+				}
+			}
 		}
 	}
 
-	return *valuePtr;
+	auto dwarf = valuePtr->mFirst;
+	if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize))
+		return dwarf;
+
+	if (valuePtr->mCollisions != NULL)
+	{
+		for (auto dwarf : *valuePtr->mCollisions)
+			if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize))
+				return dwarf;
+	}
+
+	return NULL;
 }
 
 DbgModule* DebugTarget::GetMainDbgModule()

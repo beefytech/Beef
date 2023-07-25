@@ -18,6 +18,18 @@ enum DbgOnDemandKind
 	DbgOnDemandKind_AllowRemote
 };
 
+struct FindDbgModuleCacheEntry
+{
+	DbgModule* mFirst;
+	Array<DbgModule*>* mCollisions;
+
+	FindDbgModuleCacheEntry()
+	{
+		mFirst = NULL;
+		mCollisions = NULL;
+	}
+};
+
 class DebugTarget
 {
 public:
@@ -42,7 +54,7 @@ public:
 	DbgModule* mTargetBinary;
 	Array<DbgModule*> mDbgModules;
 	Dictionary<int, DbgModule*> mDbgModuleMap;
-	Dictionary<addr_target, DbgModule*> mFindDbgModuleCache; // Addresses are all 64k multiples
+	Dictionary<addr_target, FindDbgModuleCacheEntry> mFindDbgModuleCache; // Addresses are all 64k multiples
 	HashSet<DbgSrcFile*> mPendingSrcFileRehup; // Waiting to remove old/invalid line info
 
 	BumpAllocator mAlloc;
@@ -78,6 +90,7 @@ public:
 	DebugTarget(WinDebugger* debugger);
 	~DebugTarget();
 
+	void ClearFindDbgModuleCache();
 	void AddDbgModule(DbgModule* dbgModule);
 	DbgModule* Init(const StringImpl& launchPath, const StringImpl& targetPath, intptr imageBase = 0);
 	void SetupTargetBinary();

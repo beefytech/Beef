@@ -66,7 +66,8 @@ DbgMemoryFlags DbgModuleMemoryCache::Read(uintptr addr, uint8* data, int size)
 
 	if ((addr < mAddr) || (addr > mAddr + mSize))
 	{
-		gDebugger->ReadMemory(addr, size, data);
+		if (data != NULL)
+			gDebugger->ReadMemory(addr, size, data);
 		flags =  gDebugger->GetMemoryFlags(addr);
 		BfLogDbg("Got memory flags %p = %d\n", addr, flags);
 		return flags;
