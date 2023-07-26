@@ -47,6 +47,7 @@ namespace Beefy.gfx
         public RenderState mDefaultRenderState ~ delete _;
         public Font mFont;
         public Image mWhiteDot ~ delete _;
+		public List<Image> mWhiteBorderedSquares = new .() ~ DeleteContainerAndItems!(_);
         public float ZDepth { get; set; }
         
         protected DisposeProxy mMatrixDisposeProxy ~ delete _;
@@ -512,6 +513,15 @@ namespace Beefy.gfx
             Gfx_SetRenderState(mRenderStateStack[--mRenderStateStackIdx].mNativeRenderState);            
         }
 
+		public Image GetBorderedWhiteSquare(int borderSize)
+		{
+			if (borderSize >= mWhiteBorderedSquares.Count)
+				mWhiteBorderedSquares.Count = borderSize + 1;
+			if (mWhiteBorderedSquares[borderSize] == null)
+				mWhiteBorderedSquares[borderSize] = Image.LoadFromFile(scope $"!square{borderSize}");
+			return mWhiteBorderedSquares[borderSize];
+		}
+
         public void Draw(RenderCmd renderCmd)
         {
             Gfx_QueueRenderCmd(renderCmd.mNativeRenderCmd);
@@ -919,7 +929,32 @@ namespace Beefy.gfx
             Gfx_CopyDrawVertex(4, 1);
             Gfx_SetDrawVertex(5, m.tx + (m.a + m.c), m.ty + (m.b + m.d), 0, 0, 0, Color.Mult(mColor, colorBotRight));
         }
-        
+
+		public void DrawLine(float x0, float y0, float x1, float y1, float width = 1.0f)
+		{
+			Image img = GetBorderedWhiteSquare(Math.Max((int)width, 1));
+
+			float ang = Math.Atan2(y1 - y0, x1 - x0);
+
+			// Add 1 pixel to account for transparent border
+			float radius = (width / 2) + 1;
+
+			float xOfs = Math.Cos(ang + Math.PI_f / 2) * radius;
+			float yOfs = Math.Sin(ang + Math.PI_f / 2) * radius;
+
+			//TODO: Multiply color
+
+			Gfx_AllocTris(img.mNativeTextureSegment, 6);
+
+			Gfx_SetDrawVertex(0, x0 - xOfs, y0 - yOfs, 0, 0, 0.5f, mColor);
+			Gfx_SetDrawVertex(1, x0 + xOfs, y0 + yOfs, 0, 1.0f, 0.5f, mColor);
+			Gfx_SetDrawVertex(2, x1 - xOfs, y1 - yOfs, 0, 0, 0.5f, mColor);
+
+			Gfx_CopyDrawVertex(3, 2);
+			Gfx_CopyDrawVertex(4, 1);
+			Gfx_SetDrawVertex(5, x1 + xOfs, y1 + yOfs, 0, 1.0f, 0.5f, mColor);
+		}
+
         public void PolyStart(Image image, int32 vertices)
         {
             Gfx_AllocTris(image.mNativeTextureSegment, vertices);            

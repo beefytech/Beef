@@ -68,11 +68,12 @@ void* DrawBatch::AllocTris(int vtxCount)
 {
 	int idxCount = vtxCount;
 
-	if ((mRenderState != gBFApp->mRenderDevice->mCurRenderState) || (idxCount + mIdxIdx >= mAllocatedIndices))
+	bool fits = (idxCount + mIdxIdx <= mAllocatedIndices) && (vtxCount + mVtxIdx <= mAllocatedVertices);
+	if ((mRenderState != gBFApp->mRenderDevice->mCurRenderState) || (!fits))
 	{
-		if (mVtxIdx > 0)
+		if ((mVtxIdx > 0) || (!fits))
 		{
-			DrawBatch* nextBatch = AllocateChainedBatch(0, 0);
+			DrawBatch* nextBatch = AllocateChainedBatch(vtxCount, idxCount);
 			return nextBatch->AllocTris(vtxCount);
 		}
 
@@ -95,11 +96,12 @@ void* DrawBatch::AllocStrip(int vtxCount)
 {
 	int idxCount = (vtxCount - 2) * 3;
 
-	if ((mRenderState != gBFApp->mRenderDevice->mCurRenderState) || (idxCount + mIdxIdx >= mAllocatedIndices))
+	bool fits = (idxCount + mIdxIdx <= mAllocatedIndices) && (vtxCount + mVtxIdx <= mAllocatedVertices);
+	if ((mRenderState != gBFApp->mRenderDevice->mCurRenderState) || (!fits))
 	{
-		if (mVtxIdx > 0)
+		if ((mVtxIdx > 0) || (!fits))
 		{
-			DrawBatch* nextBatch = AllocateChainedBatch(0, 0);
+			DrawBatch* nextBatch = AllocateChainedBatch(vtxCount, idxCount);
 			return nextBatch->AllocStrip(vtxCount);
 		}
 
@@ -126,9 +128,10 @@ void* DrawBatch::AllocStrip(int vtxCount)
 
 void DrawBatch::AllocIndexed(int vtxCount, int idxCount, void** verticesOut, uint16** indicesOut, uint16* idxOfsOut)
 {
-	if ((mRenderState != gBFApp->mRenderDevice->mCurRenderState) || (idxCount + mIdxIdx > mAllocatedIndices))
+	bool fits = (idxCount + mIdxIdx <= mAllocatedIndices) && (vtxCount + mVtxIdx <= mAllocatedVertices);
+	if ((mRenderState != gBFApp->mRenderDevice->mCurRenderState) || (!fits))
 	{
-		if (mVtxIdx > 0)
+		if ((mVtxIdx > 0) || (!fits))
 		{
 			DrawBatch* nextBatch = AllocateChainedBatch(vtxCount, idxCount);
 			return nextBatch->AllocIndexed(vtxCount, idxCount, verticesOut, indicesOut, idxOfsOut);
@@ -190,11 +193,8 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 	BF_ASSERT(mRenderDevice->mCurRenderState->mShader != NULL);
 	int vtxSize = mRenderDevice->mCurRenderState->mShader->mVertexSize;
 
-	if (minIdxCount == 0)
-	{
-		minIdxCount = 512;
-		minVtxCount = minIdxCount;
-	}
+	minIdxCount = BF_MAX(minIdxCount, 512);
+	minVtxCount = BF_MAX(minIdxCount, 512);
 
 	BF_ASSERT(minIdxCount * sizeof(uint16) <= DRAWBUFFER_IDXBUFFER_SIZE);
 	BF_ASSERT(minVtxCount * vtxSize <= DRAWBUFFER_VTXBUFFER_SIZE);

@@ -120,6 +120,20 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		imageData->mBits[0] = 0xFFFFFFFF;
 		handled = true;
 	}
+	else if (fileName.StartsWith("!square"))
+	{
+		int squareSize = atoi(fileName.c_str() + 7);
+		imageData = new ImageData();
+		imageData->CreateNew(squareSize + 2, squareSize + 2, true);
+		for (int y = 0; y < squareSize; y++)
+		{
+			for (int x = 0; x < squareSize; x++)
+			{
+				imageData->mBits[(y + 1) * (squareSize + 2) + x + 1] = 0xFFFFFFFF;
+			}
+		}
+		handled = true;
+	}
 	else if (ext == ".tga")
 		imageData = new TGAData();
 	else if (ext == ".png")

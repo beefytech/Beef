@@ -14,5 +14,8 @@ namespace Beefy.geom
             this.x = x;
             this.y = y;
         }
+
+		public static Point operator-(Self lhs, Self rhs) => .(lhs.x - rhs.x, lhs.y - rhs.y);
+		public static Point operator+(Self lhs, Self rhs) => .(lhs.x + rhs.x, lhs.y + rhs.y);
     }
 }
