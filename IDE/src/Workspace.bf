@@ -185,10 +185,13 @@ namespace IDE
 
 			public static ToolsetType GetDefaultFor(PlatformType platformType, bool isRelease)
 			{
-				if (isRelease)
-					return .LLVM;
 				if (platformType == .Windows)
+				{
+					if (isRelease)
+						return .LLVM;
 					return .Microsoft;
+				}
+				
 				return .GNU;
 			}
 		}
