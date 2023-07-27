@@ -103,7 +103,7 @@ namespace IDE
 			case iOS;
 			case Android;
 			case Wasm;
-
+			
 			public static PlatformType GetFromName(StringView name, StringView targetTriple = default)
 			{
 				if (!targetTriple.IsWhiteSpace)
@@ -801,7 +801,7 @@ namespace IDE
                                 	data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
 								else
 									data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : .O0);
-								data.ConditionalAdd("LTOType", options.mLTOType, isRelease ? .Thin : .None);
+								data.ConditionalAdd("LTOType", options.mLTOType, BuildOptions.LTOType.GetDefaultFor(platformType, isRelease));
 								data.ConditionalAdd("AllocType", options.mAllocType, isRelease ? .CRT : .Debug);
 								data.ConditionalAdd("AllocMalloc", options.mAllocMalloc, "");
 								data.ConditionalAdd("AllocFree", options.mAllocFree, "");
@@ -991,16 +991,10 @@ namespace IDE
 			options.mBfOptimizationLevel = isRelease ? .O2 : .O0;
 			options.mBfSIMDSetting = .SSE2;
 			if (platformType == .Windows)
-			{
-				options.mLTOType = isRelease ? .Thin : .None;
 				options.mBfOptimizationLevel = isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0;
-				options.mToolsetType = isRelease ? .LLVM : .Microsoft;
-			}
-			else if ((platformType == .macOS) == (platformType == .Linux))
-			{
-				options.mLTOType = isRelease ? .Thin : .None;
-				options.mToolsetType = isRelease ? .LLVM : .GNU;
-			}
+			
+			options.mLTOType = BuildOptions.LTOType.GetDefaultFor(platformType, isRelease);
+			options.mToolsetType = ToolsetType.GetDefaultFor(platformType, isRelease);
 
 			options.mAllocType = isRelease ? .CRT : .Debug;
 			options.mEmitDebugInfo = .Yes;
@@ -1107,7 +1101,7 @@ namespace IDE
 					else
 						options.mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel", isRelease ? .O2 : .O0);
 
-					options.mLTOType = data.GetEnum<BuildOptions.LTOType>("LTOType", isRelease ? .Thin : .None);
+					options.mLTOType = data.GetEnum<BuildOptions.LTOType>("LTOType", BuildOptions.LTOType.GetDefaultFor(platformType, isRelease));
 					options.mAllocType = data.GetEnum<AllocType>("AllocType", isRelease ? .CRT : .Debug);
 					data.GetString("AllocMalloc", options.mAllocMalloc);
 					data.GetString("AllocFree", options.mAllocFree);

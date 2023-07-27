@@ -7,8 +7,15 @@ namespace IDE
 	{
 		public enum LTOType
 		{
-			None,
-			Thin,
+			case None;
+			case Thin;
+
+			public static LTOType GetDefaultFor(Workspace.PlatformType platformType, bool isRelease)
+			{
+				if ((platformType == .Windows) && (isRelease))
+					return .Thin;
+				return .None;
+			}
 		}
 
 		public enum EmitDebugInfo
