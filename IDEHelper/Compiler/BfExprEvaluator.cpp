@@ -8934,6 +8934,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 		}
 
 		localVar->mResolvedType = variableType;
+		mModule->PopulateType(variableType);
 		if (!variableType->IsValuelessType())
 			localVar->mAddr = mModule->CreateAlloca(variableType);
 		localVar->mIsReadOnly = isLet;

@@ -9062,7 +9062,11 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 	{
 		if ((!mBfIRBuilder->mIgnoreWrites) && (!typedVal.mType->IsDataIncomplete()) && (!typedVal.mType->IsValuelessType()) && (!typedVal.mType->IsVar()))
 		{
-			BF_ASSERT(!typedVal.mValue.IsFake());
+			if (typedVal.mValue.IsFake())
+			{
+				InternalError("Unexpected fakeval in CreateValueFromExpression");
+				typedVal = GetDefaultTypedValue(typedVal.mType);
+			}
 		}
 
 		typedVal = LoadValue(typedVal, 0, exprEvaluator.mIsVolatileReference);
@@ -16461,7 +16465,10 @@ void BfModule::AssertErrorState()
 	if (mCompiler->IsAutocomplete())
 		return;
 
-	BF_ASSERT(mCompiler->mPassInstance->HasFailed());
+	if (mCompiler->mPassInstance->HasFailed())
+		return;
+
+	InternalError("Compiler in invalid state but AssertErrorState failed to prior error");
 }
 
 void BfModule::AssertParseErrorState()
