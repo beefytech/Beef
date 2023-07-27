@@ -5,14 +5,16 @@ using Beefy.gfx;
 
 namespace Beefy.geom
 {
-    public struct Rect
+    public struct Rect<T>
+		where T : operator T + T, operator T - T, operator T * T, operator -T, operator T / int, IIsNaN, operator implicit int
+		where int : operator T <=> T
     {
-        public float mX;
-        public float mY;
-        public float mWidth;
-        public float mHeight;
+        public T mX;
+        public T mY;
+        public T mWidth;
+        public T mHeight;
 
-		public float Left
+		public T Left
 		{
 			get
 			{
@@ -26,7 +28,7 @@ namespace Beefy.geom
 			}
 		}
 
-		public float Top
+		public T Top
 		{
 			get
 			{
@@ -40,7 +42,7 @@ namespace Beefy.geom
 			}
 		}
 
-		public float Right
+		public T Right
 		{
 			get
 			{
@@ -53,7 +55,7 @@ namespace Beefy.geom
 			}
 		}
 
-		public float Bottom
+		public T Bottom
 		{
 			get
 			{
@@ -66,7 +68,7 @@ namespace Beefy.geom
 			}
 		}
 
-		public float Width
+		public T Width
 		{
 			get
 			{
@@ -79,7 +81,7 @@ namespace Beefy.geom
 			}
 		}
 
-		public float Height
+		public T Height
 		{
 			get
 			{
@@ -92,7 +94,10 @@ namespace Beefy.geom
 			}
 		}
 
-        public this(float x = 0, float y = 0, float width = 0, float height = 0)
+		public T CenterX => mX + mWidth / 2;
+		public T CenterY => mY + mHeight / 2;
+
+        public this(T x = default, T y = default, T width = default, T height = default)
         {
             mX = x;
             mY = y;
@@ -100,7 +105,7 @@ namespace Beefy.geom
             mHeight = height;
         }
 
-        public void Set(float x = 0, float y = 0, float width = 0, float height = 0) mut
+        public void Set(T x = 0, T y = 0, T width = 0, T height = 0) mut
         {
             mX = x;
             mY = y;
@@ -108,7 +113,7 @@ namespace Beefy.geom
             mHeight = height;
         }
 
-        public bool Intersects(Rect rect)
+        public bool Intersects(Self rect)
         {
             return !((rect.mX + rect.mWidth <= mX) ||
                     (rect.mY + rect.mHeight <= mY) ||
@@ -116,12 +121,12 @@ namespace Beefy.geom
                     (rect.mY >= mY + mHeight));
         }
 
-        public void SetIntersectionOf(Rect rect1, Rect rect2) mut
+        public void SetIntersectionOf(Self rect1, Self rect2) mut
         {            
-            float x1 = Math.Max(rect1.mX, rect2.mX);
-            float x2 = Math.Min(rect1.mX + rect1.mWidth, rect2.mX + rect2.mWidth);
-            float y1 = Math.Max(rect1.mY, rect2.mY);
-            float y2 = Math.Min(rect1.mY + rect1.mHeight, rect2.mY + rect2.mHeight);
+            T x1 = Math.Max(rect1.mX, rect2.mX);
+            T x2 = Math.Min(rect1.mX + rect1.mWidth, rect2.mX + rect2.mWidth);
+            T y1 = Math.Max(rect1.mY, rect2.mY);
+            T y2 = Math.Min(rect1.mY + rect1.mHeight, rect2.mY + rect2.mHeight);
             if (((x2 - x1) < 0) || ((y2 - y1) < 0))
             {
                 mX = 0;
@@ -138,13 +143,13 @@ namespace Beefy.geom
             }
         }
 
-        public void SetIntersectionOf(Rect rect1, float x, float y, float width, float height) mut
+        public void SetIntersectionOf(Self rect1, T x, T y, T width, T height) mut
         {
-            float x1 = Math.Max(rect1.mX, x);
-            float x2 = Math.Min(rect1.mX + rect1.mWidth, x + width);
-            float y1 = Math.Max(rect1.mY, y);
-            float y2 = Math.Min(rect1.mY + rect1.mHeight, y + height);
-            if (((x2 - x1) < 0) || ((y2 - y1) < 0))
+            T x1 = Math.Max(rect1.mX, x);
+            T x2 = Math.Min(rect1.mX + rect1.mWidth, x + width);
+            T y1 = Math.Max(rect1.mY, y);
+            T y2 = Math.Min(rect1.mY + rect1.mHeight, y + height);
+            if (((x2 - x1) < default) || ((y2 - y1) < default))
             {
                 mX = 0;
                 mY = 0;
@@ -160,58 +165,70 @@ namespace Beefy.geom
             }
         }
 
-        public Rect Intersection(Rect rect)
+        public Self Intersection(Self rect)
         {
-            float x1 = Math.Max(mX, rect.mX);
-            float x2 = Math.Min(mX + mWidth, rect.mX + rect.mWidth);
-            float y1 = Math.Max(mY, rect.mY);
-            float y2 = Math.Min(mY + mHeight, rect.mY + rect.mHeight);
-            if (((x2 - x1) < 0) || ((y2 - y1) < 0))
-                return Rect(0, 0, 0, 0);
+            T x1 = Math.Max(mX, rect.mX);
+            T x2 = Math.Min(mX + mWidth, rect.mX + rect.mWidth);
+            T y1 = Math.Max(mY, rect.mY);
+            T y2 = Math.Min(mY + mHeight, rect.mY + rect.mHeight);
+            if (((x2 - x1) < default) || ((y2 - y1) < default))
+                return default;
             else
-                return Rect(x1, y1, x2 - x1, y2 - y1);
+                return Self(x1, y1, x2 - x1, y2 - y1);
         }
 
-        public Rect Union(Rect rect)
+        public Self Union(Self rect)
         {
-            float x1 = Math.Min(mX, rect.mX);
-            float x2 = Math.Max(mX + mWidth, rect.mX + rect.mWidth);
-            float y1 = Math.Min(mY, rect.mY);
-            float y2 = Math.Max(mY + mHeight, rect.mY + rect.mHeight);
-            return Rect(x1, y1, x2 - x1, y2 - y1);
+            T x1 = Math.Min(mX, rect.mX);
+            T x2 = Math.Max(mX + mWidth, rect.mX + rect.mWidth);
+            T y1 = Math.Min(mY, rect.mY);
+            T y2 = Math.Max(mY + mHeight, rect.mY + rect.mHeight);
+            return Self(x1, y1, x2 - x1, y2 - y1);
         }
 
-        public bool Contains(float x, float y)
+		public void Include(Point<T> pt) mut
+		{
+		    T left = mX;
+			T top = mY;
+			T right = mX + mWidth;
+			T bottom = mY + mHeight;
+			mX = Math.Min(pt.x, left);
+			mY = Math.Min(pt.y, top);
+			mWidth = Math.Max(pt.x, right) - mX;
+			mHeight = Math.Max(pt.y, bottom) - mY;
+		}
+
+        public bool Contains(T x, T y)
         {
             return ((x >= mX) && (x < mX + mWidth) &&
                     (y >= mY) && (y < mY + mHeight));
         }
 
-        public bool Contains(Point pt)
+        public bool Contains(Point<T> pt)
         {
             return Contains(pt.x, pt.y);
         }
 
-        public bool Contains(Rect rect)
+        public bool Contains(Self rect)
         {
             return Contains(rect.mX, rect.mY) && Contains(rect.mX + rect.mWidth, rect.mY + rect.mHeight);
         }
 
-        public void Offset(float x, float y) mut
+        public void Offset(T x, T y) mut
         {
             mX += x;
             mY += y;
         }
 
-        public void Inflate(float x, float y) mut
+        public void Inflate(T x, T y) mut
         {
             mX -= x;
-            mWidth += x * 2;
+            mWidth += x + x;
             mY -= y;
-            mHeight += y * 2;
+            mHeight += y + y;
         }
 
-        public void Scale(float scaleX, float scaleY) mut
+        public void Scale(T scaleX, T scaleY) mut
         {
             mX *= scaleX;
             mY *= scaleY;
@@ -219,11 +236,14 @@ namespace Beefy.geom
             mHeight *= scaleY;
         }
 
-        public void ScaleFrom(float scaleX, float scaleY, float centerX, float centerY) mut
+        public void ScaleFrom(T scaleX, T scaleY, T centerX, T centerY) mut
         {
             Offset(-centerX, -centerY);
             Scale(scaleX, scaleY);
             Offset(centerX, centerY);
         }
     }
+
+	typealias Rect = Rect<float>;
+	typealias RectD = Rect<double>;
 }
