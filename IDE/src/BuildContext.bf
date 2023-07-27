@@ -643,6 +643,12 @@ namespace IDE
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			bool isDynLib = (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
 
+			if (workspaceOptions.mToolsetType != .GNU)
+			{
+				gApp.OutputErrorLine("Workspace Build Toolset options must be set to GNU for WASM builds");
+				return false;
+			}
+
 			if (isExe || isDynLib)
 			{
 				var actualTargetPath = Path.GetActualPathName(targetPath, .. scope .());
@@ -710,7 +716,7 @@ namespace IDE
 						linkLine.Append(" -pthread");
 
 					if (workspaceOptions.mEmitDebugInfo != .No)
-						linkLine.Append(" -g");
+						linkLine.Append(" -gseparate-dwarf");
 
 					if (!workspaceOptions.mRuntimeChecks)
 						linkLine.Append(" -s ASSERTIONS=0");
