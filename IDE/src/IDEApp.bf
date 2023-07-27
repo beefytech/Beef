@@ -5870,6 +5870,16 @@ namespace IDE
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });
             AddMenuItem(subMenu, "Cancel Build", "Cancel Build", new (menu) => { menu.SetDisabled(!IsCompiling); });
 
+			subMenu.AddMenuItem("Verbose", null, new (menu) =>
+				{
+					if (mVerbosity != .Diagnostic)
+						mVerbosity = .Diagnostic;
+					else
+						mVerbosity = .Normal;
+					var sysMenu = (SysMenu)menu;
+					sysMenu.Modify(null, null, null, true, (mVerbosity == .Diagnostic) ? 1 : 0);
+				}, null, null, true, (mVerbosity == .Diagnostic) ? 1 : 0);
+
 			if (mSettings.mEnableDevMode)
 			{
 				var internalBuildMenu = subMenu.AddMenuItem("Internal");
