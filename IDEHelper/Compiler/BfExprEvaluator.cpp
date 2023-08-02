@@ -4799,7 +4799,7 @@ BfTypedValue BfExprEvaluator::TryArrowLookup(BfTypedValue typedValue, BfTokenNod
 BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInlined)
 {
 	BfTypedValue origTarget = target;
-	if (target.mType->IsStructPtr())
+	if ((target.mType != NULL) && (target.mType->IsStructPtr()))
 	{
 		target = mModule->LoadValue(target);
 		target = BfTypedValue(target.mValue, target.mType->GetUnderlyingType(), target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
