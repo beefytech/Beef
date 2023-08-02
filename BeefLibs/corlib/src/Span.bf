@@ -492,6 +492,16 @@ namespace System
 				return &CurrentRef;
 			}
 		}
+
+		public void Reverse()
+		{
+			for (int i < mLength / 2)
+			{
+				var temp = mPtr[i];
+				mPtr[i] = mPtr[mLength - 1 - i];
+				mPtr[mLength - 1 - i] = temp;
+			}
+		}
 	}
 
 #if BF_RUNTIME_CHECKS
