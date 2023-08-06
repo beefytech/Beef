@@ -42,8 +42,8 @@ class WebAssembly
 		case typeof(double):
 			s.Append('d');
 		case typeof(c_ulong): fallthrough;
-		case typeof(c_ulonglong):
-		case typeof(c_longlong):
+		case typeof(c_ulonglong): fallthrough;
+		case typeof(c_longlong): fallthrough;
 		case typeof(c_long):
 			s.Append('j');
 		default:
@@ -63,7 +63,7 @@ class WebAssembly
 			int count = t.FieldCount;
 			for(int i = 0; i < count; i++)
 			{
-				var type =	t.GetField(i).Get().FieldType;
+				var type = t.GetField(i).Get().FieldType;
 				GetArgSigInternal(type, s);
 			}
 		}else
