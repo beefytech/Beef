@@ -3076,40 +3076,42 @@ void BfIRCodeGen::HandleNextCmd()
 				{
 				case BfIRIntrinsic__PLATFORM:
 				{
-					if (intrinsicData->mName == "em_asm_internal")
+					if (intrinsicData->mName == "add_string_to_section")
 					{
-						llvm::StringRef strContent;
+						llvm::StringRef strContent[2];
 						llvm::ConstantDataArray* dataArray;
-						if (const llvm::ConstantExpr* ce = llvm::dyn_cast<llvm::ConstantExpr>(args[0]))
+
+						for (int i = 0; i < 2; i++)
 						{
-							llvm::Value* firstOperand = ce->getOperand(0);
-							if (llvm::GlobalVariable* gv = llvm::dyn_cast<llvm::GlobalVariable>(firstOperand))
+							if (const llvm::ConstantExpr* ce = llvm::dyn_cast<llvm::ConstantExpr>(args[i]))
 							{
-								if (gv->getType()->isPointerTy())
+								llvm::Value* firstOperand = ce->getOperand(0);
+								if (llvm::GlobalVariable* gv = llvm::dyn_cast<llvm::GlobalVariable>(firstOperand))
 								{
-									if (dataArray = llvm::dyn_cast<llvm::ConstantDataArray>(gv->getInitializer()))
+									if (gv->getType()->isPointerTy())
 									{
-										strContent = dataArray->getAsString();
+										if (dataArray = llvm::dyn_cast<llvm::ConstantDataArray>(gv->getInitializer()))
+											strContent[i] = dataArray->getAsString();
 									}
 								}
 							}
+							else
+								FatalError("Value is not ConstantExpr");
 						}
-						else
-							FatalError("Value is not ConstantExpr");
 						
 
 						auto charType = llvm::IntegerType::get(*mLLVMContext, 8);
-						std::vector<llvm::Constant*> chars(strContent.size());
-						for (unsigned int i = 0; i < strContent.size(); i++)
+						std::vector<llvm::Constant*> chars(strContent[0].size());
+						for (unsigned int i = 0; i < strContent[0].size(); i++)
 						{
-							chars[i] = llvm::ConstantInt::get(charType, strContent[i]);;
+							chars[i] = llvm::ConstantInt::get(charType, strContent[0][i]);;
 						}
 						
 						chars.push_back(llvm::ConstantInt::get(charType, 0));
 						auto stringType = llvm::ArrayType::get(charType, chars.size());
 						
 						auto globalVar = (llvm::GlobalVariable*)mLLVMModule->getOrInsertGlobal("", stringType);
-						globalVar->setSection("em_asm");
+						globalVar->setSection(strContent[1]);
 						globalVar->setInitializer(llvm::ConstantArray::get(stringType, chars));
 						globalVar->setConstant(true);
 						globalVar->setLinkage(llvm::GlobalValue::LinkageTypes::ExternalLinkage);
