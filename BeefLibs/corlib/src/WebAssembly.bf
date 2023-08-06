@@ -109,13 +109,26 @@ class WebAssembly
 	    return new $"result = emscripten_asm_const_{JSGetResultName(typeof(TResult))}(AddStringToSection({TCall.Quote(.. scope .())}, \"em_asm\"), \"{argSigs}\", {argString});";
 	}
 
+	private static String JSGetCallString<TResult, TCall>() where TCall : const String
+	{
+	    if (TCall == null)
+	        return "";
+	    return new $"result = emscripten_asm_const_{JSGetResultName(typeof(TResult))}(AddStringToSection({TCall.Quote(.. scope .())}, \"em_asm\"), \"i\");";
+	}
+
 	public static TResult JSCall<TResult, TCall, T0>(TCall callString, T0 p0) where TCall : const String
 	{
 	    TResult result = default;
 	    Compiler.Mixin(JSGetCallString<TResult, const TCall, T0>());
 	    return result;
 	}
-}
 
+	public static TResult JSCall<TResult, TCall>(TCall callString) where TCall : const String
+	{
+	    TResult result = default;
+	    Compiler.Mixin(JSGetCallString<TResult, const TCall>());
+	    return result;
+	}
+}
 
 #endif
