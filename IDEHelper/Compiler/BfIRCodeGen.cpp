@@ -3099,6 +3099,8 @@ void BfIRCodeGen::HandleNextCmd()
 								FatalError("Value is not ConstantExpr");
 						}
 						
+						static int symbolCount = 0;
+						symbolCount++;
 
 						auto charType = llvm::IntegerType::get(*mLLVMContext, 8);
 						std::vector<llvm::Constant*> chars(strContent[0].size());
@@ -3109,8 +3111,11 @@ void BfIRCodeGen::HandleNextCmd()
 						
 						chars.push_back(llvm::ConstantInt::get(charType, 0));
 						auto stringType = llvm::ArrayType::get(charType, chars.size());
-						
-						auto globalVar = (llvm::GlobalVariable*)mLLVMModule->getOrInsertGlobal("", stringType);
+
+						std::string symbolName = strContent[1].str() + "_" + std::to_string(symbolCount);
+						llvm::StringRef resultStringRef(symbolName);
+
+						auto globalVar = (llvm::GlobalVariable*)mLLVMModule->getOrInsertGlobal(symbolName, stringType);
 						globalVar->setSection(strContent[1]);
 						globalVar->setInitializer(llvm::ConstantArray::get(stringType, chars));
 						globalVar->setConstant(true);
