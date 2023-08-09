@@ -3075,11 +3075,60 @@ void BfIRCodeGen::HandleNextCmd()
 				switch (intrinsicData->mIntrinsic)
 				{
 				case BfIRIntrinsic__PLATFORM:
+				{
+					if (intrinsicData->mName == "add_string_to_section")
 					{
-						FatalError(StrFormat("Unable to find intrinsic '%s'", intrinsicData->mName.c_str()));
-					}
-					break;
+						llvm::StringRef strContent[2];
+						llvm::ConstantDataArray* dataArray;
 
+						for (int i = 0; i < 2; i++)
+						{
+							if (const llvm::ConstantExpr* ce = llvm::dyn_cast<llvm::ConstantExpr>(args[i]))
+							{
+								llvm::Value* firstOperand = ce->getOperand(0);
+								if (llvm::GlobalVariable* gv = llvm::dyn_cast<llvm::GlobalVariable>(firstOperand))
+								{
+									if (gv->getType()->isPointerTy())
+									{
+										if (dataArray = llvm::dyn_cast<llvm::ConstantDataArray>(gv->getInitializer()))
+											strContent[i] = dataArray->getAsString();
+									}
+								}
+							}
+							else
+								FatalError("Value is not ConstantExpr");
+						}
+						
+						static int symbolCount = 0;
+						symbolCount++;
+
+						auto charType = llvm::IntegerType::get(*mLLVMContext, 8);
+						std::vector<llvm::Constant*> chars(strContent[0].size());
+						for (unsigned int i = 0; i < strContent[0].size(); i++)
+						{
+							chars[i] = llvm::ConstantInt::get(charType, strContent[0][i]);;
+						}
+						
+						chars.push_back(llvm::ConstantInt::get(charType, 0));
+						auto stringType = llvm::ArrayType::get(charType, chars.size());
+
+						std::string symbolName = strContent[1].str() + "_" + std::to_string(symbolCount);
+						llvm::StringRef resultStringRef(symbolName);
+
+						auto globalVar = (llvm::GlobalVariable*)mLLVMModule->getOrInsertGlobal(symbolName, stringType);
+						globalVar->setSection(strContent[1]);
+						globalVar->setInitializer(llvm::ConstantArray::get(stringType, chars));
+						globalVar->setConstant(true);
+						globalVar->setLinkage(llvm::GlobalValue::LinkageTypes::ExternalLinkage);
+						globalVar->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+						
+						SetResult(curId, llvm::ConstantExpr::getBitCast(globalVar, charType->getPointerTo()));
+						break;
+					}
+
+					FatalError(StrFormat("Unable to find intrinsic '%s'", intrinsicData->mName.c_str()));
+					break;
+				}
 				case BfIRIntrinsic_Add:
 				case BfIRIntrinsic_And:
 				case BfIRIntrinsic_Div:
