@@ -280,6 +280,11 @@ namespace System.IO
 
 	class BufferedFileStream : BufferedStream, IFileStream
 	{
+		public struct PositionRestorer : this(BufferedFileStream stream, int prevPosition), IDisposable
+		{
+			public void Dispose() => stream.Position = prevPosition;
+		}
+
 		protected Platform.BfpFile* mBfpFile;
 		protected int64 mBfpFilePos;
 		FileAccess mFileAccess;
@@ -327,11 +332,6 @@ namespace System.IO
 		public ~this()
 		{
 			Delete();
-		}
-
-		protected virtual void Delete()
-		{
-			Close();
 		}
 
 		public this(Platform.BfpFile* handle, FileAccess access, int32 bufferSize, bool isAsync)
@@ -438,6 +438,18 @@ namespace System.IO
 			mBfpFile = bfpFile;
 			mFileAccess = access;
 			return .Ok;
+		}
+
+		public PositionRestorer PushPosition(int position)
+		{
+			PositionRestorer restorer = .(this, Position);
+			Position = position;
+			return restorer;
+		}
+
+		protected virtual void Delete()
+		{
+			Close();
 		}
 
 		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)

@@ -252,7 +252,7 @@ namespace System.Collections
 			get
 			{
 				return ref mItems[index.Get(mSize)];
-			}
+			} 
 
 			[Checked]
 			set
@@ -330,6 +330,7 @@ namespace System.Collections
 
 		T* Realloc(int newSize, bool autoFree)
 		{
+			Runtime.Assert(newSize <= int_cosize.MaxValue);
 			T* oldAlloc = null;
 			if (newSize > 0)
 			{

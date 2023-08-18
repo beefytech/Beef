@@ -1220,7 +1220,7 @@ namespace System.Collections
 		public struct Enumerator : IEnumerator<T>
 		{
 			private HashSet<T> mSet;
-			private int32 mIndex;
+			private int_cosize mIndex;
 #if VERSION_HASHSET
 			private int32 mVersion;
 #endif

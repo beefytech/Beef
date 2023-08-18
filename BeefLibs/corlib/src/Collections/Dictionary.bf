@@ -364,6 +364,7 @@ namespace System.Collections
 #unwarn
 			if (sizeof(int_cosize) == 8)
 				return (int_cosize)(hashCode & 0x7FFFFFFF'FFFFFFFFL);
+#unwarn
 			return ((int32)hashCode ^ (int32)((int64)hashCode >> 33)) & 0x7FFFFFFF;
 		}
 
@@ -629,7 +630,7 @@ namespace System.Collections
 			return oldPtr;
 		}
 
-		private bool RemoveEntry(int32 hashCode, int_cosize index)
+		private bool RemoveEntry(int_cosize hashCode, int_cosize index)
 		{
 			if (mBuckets != null)
 			{
