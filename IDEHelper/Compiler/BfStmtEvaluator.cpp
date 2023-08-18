@@ -3623,7 +3623,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 								exprEvaluator->FinishExpressionResult();
 
 								if ((exprEvaluator->mResult) && (!exprEvaluator->mResult.mType->IsValuelessType()) && (!exprEvaluator->mResult.mValue.IsConst()) &&
-									(!exprEvaluator->mResult.IsAddr()) && (!exprEvaluator->mResult.mValue.IsFake()))
+									(!exprEvaluator->mResult.IsAddr()) && (exprEvaluator->mResult.mValue) && (!exprEvaluator->mResult.mValue.IsFake()))
 								{
 									if ((mCurMethodState->mCurScope != NULL) && (mCurMethodState->mCurScope->mPrevScope != NULL))
 									{
@@ -3642,7 +3642,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 										mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 										if (exprEvaluator->mResult.IsSplat())
 											AggregateSplatIntoAddr(exprEvaluator->mResult, tempVar);
-										else
+										else if (!exprEvaluator->mResult.mType->IsValuelessType())
 											mBfIRBuilder->CreateAlignedStore(exprEvaluator->mResult.mValue, tempVar, exprEvaluator->mResult.mType->mAlign);
 										exprEvaluator->mResult = BfTypedValue(tempVar, exprEvaluator->mResult.mType,
 											exprEvaluator->mResult.IsThis() ?

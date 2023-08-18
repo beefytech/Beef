@@ -2051,20 +2051,27 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 			for (int genericArgIdx = uniqueGenericStartIdx; genericArgIdx < (int)checkMethod->mGenericParams.size(); genericArgIdx++)
 			{
-				auto& genericArg = mCheckMethodGenericArguments[genericArgIdx];
-				if (genericArg == NULL)
+				if (genericArgIdx >= mCheckMethodGenericArguments.mSize)
 				{
-					auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericArgIdx];
-					InferFromGenericConstraints(methodInstance, genericParam, &mCheckMethodGenericArguments);
-					if (genericArg != NULL)
+					failed = true;
+				}
+				else
+				{
+					auto& genericArg = mCheckMethodGenericArguments[genericArgIdx];
+					if (genericArg == NULL)
 					{
-						if (inferredAllGenericArguments)
-							genericInferContext.InferGenericArguments(methodInstance, genericArgIdx);
-						madeProgress = true;
+						auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericArgIdx];
+						InferFromGenericConstraints(methodInstance, genericParam, &mCheckMethodGenericArguments);
+						if (genericArg != NULL)
+						{
+							if (inferredAllGenericArguments)
+								genericInferContext.InferGenericArguments(methodInstance, genericArgIdx);
+							madeProgress = true;
+						}
+						hasUninferred = true;
+						if (!allowEmptyGenericSet.Contains(genericArgIdx))
+							failed = true;
 					}
-					hasUninferred = true;
-					if (!allowEmptyGenericSet.Contains(genericArgIdx))
-						failed = true;
 				}
 			}
 
