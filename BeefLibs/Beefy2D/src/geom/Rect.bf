@@ -6,7 +6,7 @@ using Beefy.gfx;
 namespace Beefy.geom
 {
     public struct Rect<T>
-		where T : operator T + T, operator T - T, operator T * T, operator -T, operator T / int, IIsNaN, operator implicit int
+		where T : operator T + T, operator T - T, operator T * T, operator T / T, operator -T, operator T / int8, IIsNaN, operator implicit int8
 		where int : operator T <=> T
     {
         public T mX;
