@@ -29,6 +29,9 @@ namespace System
 		uint8* mCurPtr;
 		uint8* mCurEnd;
 
+		public int PoolSizeMin = 4*1024;
+		public int PoolSizeMax = 64*1024;
+
 #if BF_ENABLE_REALTIME_LEAK_CHECK
 		// We will either contain only data that needs to be marked or not, based on the first
 		//  data allocated. The paired allocator will contain the other type of data
@@ -94,7 +97,7 @@ namespace System
 		protected virtual Span<uint8> AllocPool()
 		{
 			int poolSize = (mPools != null) ? mPools.Count : 0;
-			int allocSize = Math.Clamp((int)Math.Pow(poolSize, 1.5) * 4*1024, 4*1024, 64*1024);
+			int allocSize = Math.Clamp((int)Math.Pow(poolSize, 1.5) * PoolSizeMin, PoolSizeMin, PoolSizeMax);
 			return Span<uint8>(new uint8[allocSize]* (?), allocSize);
 		}
 
