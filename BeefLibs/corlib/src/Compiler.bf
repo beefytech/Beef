@@ -353,7 +353,7 @@ namespace System
 			Comptime_EmitMethodExit(methodHandle.[Friend]mData.mComptimeMethodInstance, text);
 		}
 
-		[Comptime(ConstEval=true)]
+		[Comptime(OnlyFromComptime=true)]
 		public static void Mixin(StringView text)
 		{
 			if (Compiler.IsComptime)
