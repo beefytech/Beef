@@ -104,6 +104,19 @@ namespace IDE.Debugger
 			AllowStringView		= 0x800
 		}
 
+		//[Flags]
+		public enum OutputFilterFlags
+		{
+			None = 0x0,
+			ModuleLoadMessages = 0x1,
+			ModuleUnloadMessages = 0x2,
+			ProcessExitMessages = 0x4,
+			ThreadCreateMessages = 0x8,
+			ThreadExitMessages = 0x10,
+			SymbolLoadMessages = 0x20,
+			ProgramOutput = 0x30
+		}
+
 		[Reflect]
 		public enum SymSrvFlags
 		{
@@ -385,6 +398,12 @@ namespace IDE.Debugger
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern char8* Debugger_GetEmitSource(char8* fileName);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Debugger_SetOutputFilterFlags(int32 flags);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern int32 Debugger_GetOutputFilterFlags();
 
 		public String mRunningPath ~ delete _;
 		public bool mIsRunning;
@@ -1284,6 +1303,16 @@ namespace IDE.Debugger
 				return false;
 			outString.Append(stackId);
 			return true;
+		}
+
+		public void SetOutputFilterFlags(OutputFilterFlags outputFilterFlags)
+		{
+			Debugger_SetOutputFilterFlags((int32)outputFilterFlags);
+		}
+
+		public OutputFilterFlags GetOutputFilterFlags()
+		{
+			return (OutputFilterFlags)Debugger_GetOutputFilterFlags();
 		}
 	}
 }

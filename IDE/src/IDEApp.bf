@@ -2011,6 +2011,23 @@ namespace IDE
 			    }
 				sd.RemoveIfEmpty();
 			}
+
+			using (sd.CreateObject("OutputFilters"))
+			{
+				IDE.Debugger.DebugManager.OutputFilterFlags outputFilterFlags = 0;
+				if (gApp.mDebugger != null)
+				{
+					outputFilterFlags = gApp.mDebugger.GetOutputFilterFlags();
+				}
+
+				sd.Add("ModuleLoadMessages", outputFilterFlags.HasFlag(.ModuleLoadMessages));
+				sd.Add("ModuleUnloadMessages", outputFilterFlags.HasFlag(.ModuleUnloadMessages));
+				sd.Add("ProcessExitMessages", outputFilterFlags.HasFlag(.ProcessExitMessages));
+				sd.Add("ThreadCreateMessages", outputFilterFlags.HasFlag(.ThreadCreateMessages));
+				sd.Add("ThreadExitMessages", outputFilterFlags.HasFlag(.ThreadExitMessages));
+				sd.Add("SymbolLoadMessages", outputFilterFlags.HasFlag(.SymbolLoadMessages));
+				sd.Add("ProgramOutput", outputFilterFlags.HasFlag(.ProgramOutput));
+			}
 		}
 
         bool SaveWorkspaceUserData(bool showErrors = true)
@@ -3464,6 +3481,24 @@ namespace IDE
 				data.GetCurString(filter);
 				if (!filter.IsEmpty)
 					mDebugger.CreateStepFilter(filter, false, .NotFiltered);
+			}
+
+			using (data.Open("OutputFilters"))
+			{
+				IDE.Debugger.DebugManager.OutputFilterFlags outputFilterFlags = 0;
+
+				outputFilterFlags |= data.GetBool("ModuleLoadMessages", false) ? .ModuleLoadMessages : 0;
+				outputFilterFlags |= data.GetBool("ModuleUnloadMessages", false) ? .ModuleUnloadMessages : 0;
+				outputFilterFlags |= data.GetBool("ProcessExitMessages", false) ? .ProcessExitMessages : 0;
+				outputFilterFlags |= data.GetBool("ThreadCreateMessages", false) ? .ThreadCreateMessages : 0;
+				outputFilterFlags |= data.GetBool("ThreadExitMessages", false) ? .ThreadExitMessages : 0;
+				outputFilterFlags |= data.GetBool("SymbolLoadMessages", false) ? .SymbolLoadMessages : 0;
+				outputFilterFlags |= data.GetBool("ProgramOutput", false) ? .ProgramOutput : 0;
+
+				if (gApp.mDebugger != null)
+				{
+					gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags);
+				}
 			}
 
 			return true;

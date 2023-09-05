@@ -35,6 +35,18 @@ enum BfStepFilterKind
 	BfStepFilterKind_NotFiltered = 2
 };
 
+enum BfOutputFilterFlags : uint16
+	{
+	BfOutputFilterFlags_None = 0x0,
+	BfOutputFilterFlags_ModuleLoadMessages = 0x1,
+	BfOutputFilterFlags_ModuleUnloadMessages = 0x2,
+	BfOutputFilterFlags_ProcessExitMessages = 0x4,
+	BfOutputFilterFlags_ThreadCreateMessages = 0x8,
+	BfOutputFilterFlags_ThreadExitMessages = 0x10,
+	BfOutputFilterFlags_SymbolLoadMessages = 0x20,
+	BfOutputFilterFlags_ProgramOutput = 0x40 // Can't trap these easily, they're in BeefSysLib
+};
+
 class StepFilter
 {
 public:
@@ -81,6 +93,8 @@ public:
 	NetManager* mNetManager;
 	DbgSymSrvOptions mSymSrvOptions;
 
+	BfOutputFilterFlags mOutputFilterFlags;
+
 public:
 	DebugManager();
 	~DebugManager();
@@ -88,6 +102,9 @@ public:
 	void OutputMessage(const StringImpl& msg);
 	void OutputRawMessage(const StringImpl& msg);
 	void SetSourceServerCacheDir();
+
+	void SetOutputFilterFlags(BfOutputFilterFlags outputFilterFlags);
+	BfOutputFilterFlags GetOutputFilterFlags();
 };
 
 extern DebugManager* gDebugManager;

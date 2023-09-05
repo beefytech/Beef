@@ -94,6 +94,8 @@ DebugManager::DebugManager()
 	mSymSrvOptions.mSymbolServers.Add("http://127.0.0.1/symbols");
 
 	SetSourceServerCacheDir();
+
+	mOutputFilterFlags = BfOutputFilterFlags_None;
 }
 
 DebugManager::~DebugManager()
@@ -141,6 +143,16 @@ void DebugManager::SetSourceServerCacheDir()
 		RecursiveDeleteDirectory(mSymSrvOptions.mSourceServerCacheDir);
 	}
 #endif
+}
+
+void DebugManager::SetOutputFilterFlags(BfOutputFilterFlags outputFilterFlags)
+{
+	mOutputFilterFlags = outputFilterFlags;
+}
+
+BfOutputFilterFlags DebugManager::GetOutputFilterFlags()
+{
+	return mOutputFilterFlags;
 }
 
 //#define CAPTURE_ALLOC_BACKTRACE
@@ -1659,6 +1671,24 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetEmitSource(char* inFilePath)
 		return NULL;
 
 	return outString.c_str();
+}
+
+BF_EXPORT void BF_CALLTYPE Debugger_SetOutputFilterFlags(int flags)
+{
+	if (gDebugManager != NULL)
+	{
+		gDebugManager->SetOutputFilterFlags((BfOutputFilterFlags)flags);
+	}
+}
+
+BF_EXPORT int BF_CALLTYPE Debugger_GetOutputFilterFlags()
+{
+	if (gDebugManager != NULL)
+	{
+		return (int)gDebugManager->GetOutputFilterFlags();
+	}
+
+	return 0;
 }
 
 BF_EXPORT NetResult* HTTP_GetFile(char* url, char* destPath)
