@@ -1187,6 +1187,7 @@ namespace System.Reflection
 		public enum RefKind
 		{
 			Ref,
+			In,
 			Out,
 			Mut
 		}
@@ -1209,6 +1210,7 @@ namespace System.Reflection
 			switch (mRefKind)
 			{
 			case .Ref: strBuffer.Append("ref ");
+			case .In: strBuffer.Append("in ");
 			case .Out: strBuffer.Append("out ");
 			case .Mut: strBuffer.Append("mut ");
 			}
