@@ -847,6 +847,7 @@ namespace Beefy.widgets
 				{
 					mSelection = null;
 					MoveCursorToCoord(x, y);
+					ClampCursor();
 				}
 				mDragSelectionKind = .None;
 		    }
