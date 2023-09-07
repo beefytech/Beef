@@ -442,7 +442,7 @@ namespace System.IO
 
 		public PositionRestorer PushPosition(int position)
 		{
-			PositionRestorer restorer = .(this, Position);
+			PositionRestorer restorer = .(this, (.)Position);
 			Position = position;
 			return restorer;
 		}

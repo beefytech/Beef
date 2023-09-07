@@ -1708,7 +1708,9 @@ bool WinDebugger::DoUpdate()
 				mDebuggerWaitingThread = newThreadInfo;
 				mThreadList.push_back(mDebuggerWaitingThread);
 				UpdateThreadDebugRegisters();
-				OutputMessage(StrFormat("Creating thread from CREATE_PROCESS_DEBUG_EVENT %d\n", mDebugEvent.dwThreadId));
+
+				if (!(gDebugManager->GetOutputFilterFlags() & BfOutputFilterFlags_ThreadCreateMessages))
+					OutputMessage(StrFormat("Creating thread from CREATE_PROCESS_DEBUG_EVENT %d\n", mDebugEvent.dwThreadId));
 
 				threadInfo = mDebuggerWaitingThread;
 				mProcessInfo.dwThreadId = threadInfo->mThreadId;
@@ -1776,10 +1778,14 @@ bool WinDebugger::DoUpdate()
 			else
 				exitCodeStr = StrFormat("%d", exitCode);
 
-			if (!exitMessage.IsEmpty())
-				OutputMessage(StrFormat("Process terminated. ExitCode: %s (%s).\n", exitCodeStr.c_str(), exitMessage.c_str()));
-			else
-				OutputMessage(StrFormat("Process terminated. ExitCode: %s.\n", exitCodeStr.c_str()));
+			if (!(gDebugManager->GetOutputFilterFlags() & BfOutputFilterFlags_ProcessExitMessages))
+			{
+				if (!exitMessage.IsEmpty())
+					OutputMessage(StrFormat("Process terminated. ExitCode: %s (%s).\n", exitCodeStr.c_str(), exitMessage.c_str()));
+				else
+					OutputMessage(StrFormat("Process terminated. ExitCode: %s.\n", exitCodeStr.c_str()));
+			}
+
 			mRunState = RunState_Terminated;
 			mDebugManager->mOutMessages.push_back("modulesChanged");
 		}
@@ -1858,7 +1864,8 @@ bool WinDebugger::DoUpdate()
 				stream.mFileHandle = 0;
 			}
 
-			OutputMessage(loadMsg + "\n");
+			if (!(gDebugManager->GetOutputFilterFlags() & BfOutputFilterFlags_ModuleLoadMessages))
+				OutputMessage(loadMsg + "\n");
 
 			if (altFileHandle != INVALID_HANDLE_VALUE)
 				::CloseHandle(altFileHandle);
@@ -1913,7 +1920,7 @@ bool WinDebugger::DoUpdate()
 				mDebugManager->mOutMessages.push_back("modulesChanged");
 			}
 
-			if (!name.empty())
+			if (!(gDebugManager->GetOutputFilterFlags() & BfOutputFilterFlags_ModuleUnloadMessages) && !name.empty())
 				OutputMessage(StrFormat("Unloading DLL: %s @ %0s\n", name.c_str(), EncodeDataPtr((addr_target)(intptr)mDebugEvent.u.UnloadDll.lpBaseOfDll, true).c_str()));
 
 			BfLogDbg("UNLOAD_DLL_DEBUG_EVENT %s\n", name.c_str());
@@ -1959,12 +1966,15 @@ bool WinDebugger::DoUpdate()
 			mDebuggerWaitingThread = threadInfo;
 			mThreadList.push_back(mDebuggerWaitingThread);
 			UpdateThreadDebugRegisters();
-			OutputMessage(StrFormat("Creating thread %d\n", mDebugEvent.dwThreadId));
+			if (!(gDebugManager->GetOutputFilterFlags() & BfOutputFilterFlags_ThreadCreateMessages))
+				OutputMessage(StrFormat("Creating thread %d\n", mDebugEvent.dwThreadId));
 		}
 		break;
 	case EXIT_THREAD_DEBUG_EVENT:
 		{
-			OutputMessage(StrFormat("Exiting thread %d\n", mDebugEvent.dwThreadId));
+			if (!(gDebugManager->GetOutputFilterFlags() & BfOutputFilterFlags_ThreadExitMessages))
+				OutputMessage(StrFormat("Exiting thread %d\n", mDebugEvent.dwThreadId));
+
 			if (mSteppingThread == threadInfo)
 			{
 				// We were attempting stepping on this thread, but not anymore!

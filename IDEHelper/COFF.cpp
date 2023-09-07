@@ -6020,7 +6020,7 @@ bool COFF::TryLoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 
 	BP_ZONE("COFF::TryLoadPDB");
 
-	if (!isVerifyOnly)
+	if (!isVerifyOnly && !(gDebugManager->GetOutputFilterFlags() & BfOutputFilterFlags_SymbolLoadMessages))
 		mDebugger->OutputMessage(StrFormat("Loading PDB %s\n", pdbPath.c_str()));
 
 	DWORD highFileSize = 0;
