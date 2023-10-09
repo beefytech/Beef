@@ -10,6 +10,12 @@ namespace System
 			public uint16 mPoolOfs;
 		}
 
+		struct DtorEntryEx
+		{
+			public uint32 mPoolIdx;
+			public uint32 mPoolOfs;
+		}
+
 		public enum DestructorHandlingKind
 		{
 			Allow,
@@ -19,6 +25,7 @@ namespace System
 
 		List<Span<uint8>> mPools;
 		List<DtorEntry> mDtorEntries;
+		List<DtorEntryEx> mDtorEntriesEx;
 		List<void*> mLargeRawAllocs;
 		List<Object> mLargeDtorAllocs;
 		int mPoolsSize;
@@ -57,6 +64,17 @@ namespace System
 					delete:null obj;
 				}
 				delete mDtorEntries;
+			}
+
+			if (mDtorEntriesEx != null)
+			{
+				for (var dtorEntry in ref mDtorEntriesEx)
+				{
+					uint8* ptr = mPools[dtorEntry.mPoolIdx].Ptr + dtorEntry.mPoolOfs;
+					Object obj = Internal.UnsafeCastToObject(ptr);
+					delete:null obj;
+				}
+				delete mDtorEntriesEx;
 			}
 
 			if (mPools != null)
@@ -161,12 +179,26 @@ namespace System
 		        GrowPool();
 			}
 
-			DtorEntry dtorEntry;
-			dtorEntry.mPoolIdx = (uint16)mPools.Count - 1;
-			dtorEntry.mPoolOfs = (uint16)(mCurPtr - mCurAlloc);
-			if (mDtorEntries == null)
-				mDtorEntries = new List<DtorEntry>();
-			mDtorEntries.Add(dtorEntry);
+			uint32 poolOfs = (.)(mCurPtr - mCurAlloc);
+
+			if (poolOfs <= 0xFFFF)
+			{
+				DtorEntry dtorEntry;
+				dtorEntry.mPoolIdx = (uint16)mPools.Count - 1;
+				dtorEntry.mPoolOfs = (uint16)(mCurPtr - mCurAlloc);
+				if (mDtorEntries == null)
+					mDtorEntries = new List<DtorEntry>();
+				mDtorEntries.Add(dtorEntry);
+			}
+			else
+			{
+				DtorEntryEx dtorEntry;
+				dtorEntry.mPoolIdx = (uint32)mPools.Count - 1;
+				dtorEntry.mPoolOfs = (uint32)(mCurPtr - mCurAlloc);
+				if (mDtorEntriesEx == null)
+					mDtorEntriesEx = new List<DtorEntryEx>();
+				mDtorEntriesEx.Add(dtorEntry);
+			}
 
 			uint8* ptr = mCurPtr;
 			mCurPtr += size;
@@ -212,6 +244,7 @@ namespace System
 			GC.Mark(mLargeDtorAllocs);
 			GC.Mark(mPairedAllocator);
 			GC.Mark(mDtorEntries);
+			GC.Mark(mDtorEntriesEx);
 			if ((mMarkData) && (mPools != null))
 			{
 				let arr = mPools.[Friend]mItems;
