@@ -70,7 +70,7 @@ namespace System
 			{
 				for (var dtorEntry in ref mDtorEntriesEx)
 				{
-					uint8* ptr = mPools[dtorEntry.mPoolIdx].Ptr + dtorEntry.mPoolOfs;
+					uint8* ptr = mPools[dtorEntry.mPoolIdx].Ptr + (int)dtorEntry.mPoolOfs;
 					Object obj = Internal.UnsafeCastToObject(ptr);
 					delete:null obj;
 				}
