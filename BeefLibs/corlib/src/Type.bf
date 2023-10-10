@@ -1003,7 +1003,7 @@ namespace System.Reflection
         public override bool IsSubtypeOf(Type checkBaseType)
 		{
 		    TypeInstance curType = this;
-			if (curType.IsBoxed)
+			if ((curType.IsBoxed) && (checkBaseType.IsValueType))
 			{
 				curType = curType.UnderlyingType as TypeInstance;
 				if (curType == null)

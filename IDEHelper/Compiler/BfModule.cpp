@@ -5729,6 +5729,49 @@ void BfModule::EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType
 		for (int i = 0; i < argType->mSize; i++)
 			data.Add(0);
 	}
+	else if (constant->mConstType == BfConstType_Box)
+	{
+		auto box = (BfConstantBox*)constant;
+		PUSH_INT32(box->mToType.mId);
+
+		BfType* resultType = NULL;
+		if (box->mToType.mKind == BfIRTypeData::TypeKind_TypeId)
+			resultType = mContext->FindTypeById(box->mToType.mId);
+
+		if ((resultType != NULL) && (resultType->IsBoxed()))
+		{
+			auto boxedType = (BfBoxedType*)resultType;
+
+			int dataOffset = 0;
+			if (!boxedType->mFieldInstances.IsEmpty())
+				dataOffset = BF_MAX(boxedType->mFieldInstances.back().mDataOffset, 0);
+
+			int dataSize = boxedType->mInstSize - dataOffset;
+			for (int i = 0; i < dataSize; i++)
+				data.Add(0);
+
+			typeInstance->mConstHolder->WriteConstant(BfIRValue(BfIRValueFlags_Const, box->mTarget), &data[data.mSize - dataSize], boxedType->GetUnderlyingType());
+			return;
+		}
+
+
+		//int dataOffset =
+
+		//mBfIRBuilder->WriteConstant()
+
+// 		BfType* resultType = NULL;
+// 		if (box->mToType.mKind == BfIRTypeData::TypeKind_TypeId)
+// 			resultType = mContext->FindTypeById(box->mToType.mId);
+//
+// 		if ((resultType != NULL) && (resultType->IsBoxed()))
+// 		{
+// 			auto boxedType = (BfBoxedType*)resultType;
+// 			EncodeAttributeData(typeInstance, boxedType->GetUnderlyingType(), BfIRValue(BfIRValueFlags_Const, box->mTarget), data, usedStringIdMap);
+// 			return;
+// 		}
+
+		Fail(StrFormat("Unhandled constant box in '%s'", TypeToString(typeInstance).c_str()));
+	}
 
 // 	else if (constant->mConstType == BfConstType_Agg)
 // 	{
@@ -5995,6 +6038,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	{
 		BF_ASSERT((type->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted) || mIsComptimeModule);
 		typeCode = typeInstance->mTypeDef->mTypeCode;
+		if (typeInstance->IsBoxed())
+			typeCode = BfTypeCode_Object;
 	}
 	else if (type->IsPrimitiveType())
 	{
@@ -11639,7 +11684,7 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 	{
 		auto bitcast = (BfConstantBitCast*)constant;
 		BfIRValue newVal;
-		if (bitcast->mTarget)
+		if (constant->mConstType == BfConstType_BitCast)
 		{
 			newVal = BfIRValue(BfIRValueFlags_Const, bitcast->mTarget);
 			CurrentAddToConstHolder(newVal);
@@ -11782,12 +11827,13 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 	{
 		if (!allowUnactualized)
 		{
-			if ((wantType->IsInstanceOf(mCompiler->mStringTypeDef)) ||
+			if ((wantType == NULL) ||
+				(wantType->IsInstanceOf(mCompiler->mStringTypeDef)) ||
 				((wantType->IsPointer()) && (wantType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))))
 			{
 				const StringImpl& str = mContext->mStringObjectIdMap[constant->mInt32].mString;
 				BfIRValue stringObjConst = GetStringObjectValue(str, false, true);
-				if (wantType->IsPointer())
+				if ((wantType != NULL) && (wantType->IsPointer()))
 					return GetStringCharPtr(stringObjConst, true);
 				return stringObjConst;
 			}

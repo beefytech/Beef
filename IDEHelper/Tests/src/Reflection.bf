@@ -213,6 +213,43 @@ namespace Tests
 			}
 		}
 
+		[AttributeUsage(.Field, .ReflectAttribute)]
+		struct OptionAttribute : Attribute, IOnFieldInit
+		{
+		    public Object mDefaultValue;
+		    public String mShortName;
+		    public String mLongName;
+
+		    public this(Object defaultValue, String shortName, String longName)
+		    {
+		        mDefaultValue = defaultValue;
+		        mShortName = shortName;
+		        mLongName = longName;
+		    }
+
+		    public void OnFieldInit(FieldInfo fieldInfo, Self* prev)
+		    {
+		        if (mDefaultValue != null)
+				{
+					Type defaultType = mDefaultValue.GetType();
+					if (defaultType.IsBoxed)
+						defaultType = defaultType.UnderlyingType;
+					if ((defaultType == fieldInfo.FieldType) || (defaultType.UnderlyingType == fieldInfo.FieldType))
+						return;
+		        	Runtime.FatalError(scope $"Default value type mismatch. Expected {fieldInfo.FieldType.GetFullName(.. scope .())} but got {defaultType.GetFullName(.. scope .())}");
+				}
+		    }
+		}
+
+		class ClassF
+		{
+			[Option("123", "Short", "Long")]
+			String mStr;
+
+			[Option((int32)123, "Short", "Long")]
+			int32 mInt;
+		}
+
 		[Test]
 		static void TestTypes()
 		{
@@ -371,6 +408,30 @@ namespace Tests
 				}
 
 				methodIdx++;
+			}
+
+			for (var fieldInfo in typeof(ClassF).GetFields())
+			{
+				int idx = @fieldInfo.Index;
+				var oa = fieldInfo.GetCustomAttribute<OptionAttribute>().Value;
+
+				void TestOA()
+				{
+					switch (idx)
+					{
+					case 0:
+						Test.Assert(oa.mDefaultValue == "123");
+					case 1:
+						Test.Assert(oa.mDefaultValue == (int32)123);
+					}
+				}
+
+				TestOA();
+				for (var option in fieldInfo.GetCustomAttributes())
+				{
+					oa = option.Get<OptionAttribute>();
+					TestOA();
+				}
 			}
 		}
 

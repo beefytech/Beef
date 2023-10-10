@@ -963,7 +963,17 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		ptrToInt->mToType = fromPtrToInt->mToType;
 		copiedConst = (BfConstant*)ptrToInt;
 	}
-
+	else if (fromConst->mConstType == BfConstType_Box)
+	{
+		auto fromBox = (BfConstantBox*)fromConst;
+		auto fromTarget = fromHolder->GetConstantById(fromBox->mTarget);
+		auto copiedTarget = CreateConst(fromTarget, fromHolder);
+		auto box = mTempAlloc.Alloc<BfConstantBox>();
+		box->mConstType = BfConstType_Box;
+		box->mTarget = copiedTarget.mId;
+		box->mToType = fromBox->mToType;
+		copiedConst = (BfConstant*)box;
+	}
 	else
 	{
 		BF_FATAL("not handled");

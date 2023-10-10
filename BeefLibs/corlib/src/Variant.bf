@@ -71,6 +71,22 @@ namespace System
 			}
 		}
 
+		public Type RawVariantType
+		{
+			get
+			{
+				if (mStructType == 2)
+				{
+					return (Type)Internal.UnsafeCastToObject((void*)mData);
+				}
+				if (mStructType <= 1)
+				{
+					return Internal.UnsafeCastToObject((void*)mData).[Friend]RawGetType();
+				}
+				return (Type)Internal.UnsafeCastToObject((void*)(mStructType & ~3));
+			}
+		}
+
 		public bool HasValue
 		{
 			get

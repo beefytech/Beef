@@ -1,8 +1,13 @@
 using System.Collections;
+using System.Threading;
+
 namespace System.Reflection
 {
 	class AttributeInfo
 	{
+		static Monitor sBoxedMonitor = new .() ~ delete _;
+		static Dictionary<void*, Object> sBoxedValues = new .() ~ DeleteDictionaryAndValues!(_);
+
 		static mixin Decode<T2>(void* data)
 		{
 		    *((*(T2**)&data)++)
@@ -99,7 +104,23 @@ namespace System.Reflection
 					case (TypeCode)typeof(TypeCode).MaxValue + 9: //BfConstType_TypeOf
 						let argTypeId = Decode!<int32>(data);
 						args[argIdx] = Type.[Friend]GetType((.)argTypeId);
-					case (TypeCode)255:
+					case (TypeCode)typeof(TypeCode).MaxValue + 18: // BfConstType_Box
+						let boxedTypeId = Decode!<int32>(data);
+						var boxedType = Type.[Friend]GetType_(boxedTypeId);
+						int dataSize = boxedType.InstanceSize - boxedType.[Friend]mMemberDataOffset;
+						using (sBoxedMonitor.Enter())
+						{
+							if (sBoxedValues.TryAdd(data, var keyPtr, var valuePtr))
+							{
+								Object boxedValue = boxedType.CreateObject().Value;
+								void* boxedDataPtr = (uint8*)Internal.UnsafeCastToPtr(boxedValue) + boxedType.[Friend]mMemberDataOffset;
+								Internal.MemCpy(boxedDataPtr, data, dataSize);
+								*valuePtr = boxedValue;
+							}
+							args[argIdx] = *valuePtr;
+						}
+						data = (uint8*)data + dataSize;
+					case (TypeCode)255: // String
 						let stringId = Decode!<int32>(data);
 						String str = String.[Friend]sIdStringLiterals[stringId];
 						args[argIdx] = str;
@@ -195,6 +216,22 @@ namespace System.Reflection
 					case (TypeCode)typeof(TypeCode).MaxValue + 9: //BfConstType_TypeOf
 						let argTypeId = AttributeInfo.Decode!<int32>(mData);
 						args[argIdx] = Variant.Create(Type.[Friend]GetType((.)argTypeId));
+					case (TypeCode)typeof(TypeCode).MaxValue + 18: // BfConstType_Box
+						let boxedTypeId = AttributeInfo.Decode!<int32>(mData);
+						var boxedType = Type.[Friend]GetType_(boxedTypeId);
+						int dataSize = boxedType.InstanceSize - boxedType.[Friend]mMemberDataOffset;
+						using (sBoxedMonitor.Enter())
+						{
+							if (sBoxedValues.TryAdd(mData, var keyPtr, var valuePtr))
+							{
+								Object boxedValue = boxedType.CreateObject().Value;
+								void* boxedDataPtr = (uint8*)Internal.UnsafeCastToPtr(boxedValue) + boxedType.[Friend]mMemberDataOffset;
+								Internal.MemCpy(boxedDataPtr, mData, dataSize);
+								*valuePtr = boxedValue;
+							}
+							args[argIdx] = Variant.Create(*valuePtr);
+						}
+						mData = (uint8*)mData + dataSize;
 					case (TypeCode)255:
 						let stringId = AttributeInfo.Decode!<int32>(mData);
 						String str = String.[Friend]sIdStringLiterals[stringId];

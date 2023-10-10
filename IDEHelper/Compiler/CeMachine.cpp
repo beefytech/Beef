@@ -4817,6 +4817,47 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			return module->CreateTypeDataRef(module->mContext->mTypes[typeId]);
 		}
 
+		if (typeInst == module->mContext->mBfObjectType)
+		{
+			// Allow boxing
+			CE_CREATECONST_CHECKPTR(instData, ceModule->mSystem->mPtrSize);
+			addr_ce typeId = *(int*)(instData);
+
+			BfType* type = GetBfType(typeId);
+
+			if (type->IsInstanceOf(mCeMachine->mCompiler->mStringTypeDef))
+			{
+				return CreateConstant(module, ptr, type, outType);
+			}
+			else if (type->IsBoxed())
+			{
+				auto underlyingType = type->GetUnderlyingType();
+				module->PopulateType(type);
+
+				auto boxedType = (BfBoxedType*)type;
+				int dataOffset = boxedType->mFieldInstances.back().mDataOffset;
+
+				auto origValue = CreateConstant(module, ptr + dataOffset, underlyingType, outType);
+				if (origValue)
+				{
+					if (outType != NULL)
+						*outType = typeInst;
+					return irBuilder->CreateConstBox(origValue, irBuilder->MapType(boxedType));
+				}
+			}
+
+// 			else if (type->IsValueType())
+// 			{
+// 				auto origValue = CreateConstant(module, ptr, type, outType);
+// 				if (origValue)
+// 				{
+// 					auto boxedType = module->CreateBoxedType(type);
+// 					irBuilder->PopulateType(boxedType);
+// 					return irBuilder->CreateConstBox(origValue, irBuilder->MapType(boxedType));
+// 				}
+// 			}
+		}
+
 		if (typeInst->IsObjectOrInterface())
 		{
 			Fail(StrFormat("Reference type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));

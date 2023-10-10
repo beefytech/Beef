@@ -167,7 +167,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		}
 		else
 		{
-			mResult = mModule->Cast(expr, mResult, wantType, (BfCastFlags)(BfCastFlags_NoConversionOperator | (explicitCast ? BfCastFlags_Explicit : BfCastFlags_None)));
+			mResult = mModule->Cast(expr, mResult, wantType, (BfCastFlags)(BfCastFlags_WantsConst | BfCastFlags_NoConversionOperator | (explicitCast ? BfCastFlags_Explicit : BfCastFlags_None)));
 		}
 	}
 
@@ -393,7 +393,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 
 		if (argExpr != NULL)
 		{
-			argValue = mModule->Cast(argExpr, argValue, wantType);
+			argValue = mModule->Cast(argExpr, argValue, wantType, (BfCastFlags)(BfCastFlags_WantsConst | BfCastFlags_NoConversionOperator));
 			if (!argValue)
 				return false;
 		}

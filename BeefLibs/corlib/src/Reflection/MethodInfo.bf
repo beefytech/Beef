@@ -312,7 +312,7 @@ namespace System.Reflection
 
 			mixin AddArg(int argIdx, var arg, void* argPtr, Type paramType, bool splat)
 			{
-				var argType = arg.VariantType;
+				var argType = arg.RawVariantType;
 				void* dataPtr = arg.DataPtr;
 				bool isPtrToPtr = false;
 				bool isValid = true;
