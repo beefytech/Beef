@@ -7292,6 +7292,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			continue;
 		if (defaultMethod->mMethodDef->mMethodType == BfMethodType_CtorNoBody)
 			continue;
+		if (!defaultMethod->mMethodDef->CanReflect())
+			continue;
 
 		auto methodReflectKind = (BfReflectKind)(reflectKind & ~BfReflectKind_User);
 
@@ -7394,7 +7396,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				funcVal = mBfIRBuilder->CreateBitCast(moduleMethodInstance.mFunc, voidPtrIRType);
 		}
 
-		BfIRValue methodNameConst = GetStringObjectValue(methodDef->mName, !mIsComptimeModule);
+		BfIRValue methodNameConst = GetStringObjectValue(methodDef->GetReflectName(), !mIsComptimeModule);
 
 		BfMethodFlags methodFlags = defaultMethod->GetMethodFlags();
 

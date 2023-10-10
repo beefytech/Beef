@@ -648,6 +648,15 @@ String BfMethodDef::ToString()
 	return methodText;
 }
 
+String BfMethodDef::GetReflectName()
+{
+	if (mMethodType == BfMethodType_Ctor)
+		return "this";
+	if (mMethodType == BfMethodType_Dtor)
+		return "~this";
+	return mName;
+}
+
 int BfMethodDef::GetExplicitParamCount()
 {
 	for (int i = 0; i < (int)mParams.size(); i++)
@@ -673,6 +682,15 @@ void BfMethodDef::BuildParamNameMap()
 	mParamNameMap = new Dictionary<StringView, int>();
 	for (int i = startIdx; i < mParams.mSize; i++)
 		(*mParamNameMap)[mParams[i]->mName] = i - startIdx;
+}
+
+bool BfMethodDef::CanReflect()
+{
+	if (mMethodDeclaration != NULL)
+		return true;
+	if (mMethodType == BfMethodType_Ctor)
+		return true;
+	return false;
 }
 
 ///

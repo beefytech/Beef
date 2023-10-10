@@ -278,10 +278,10 @@ namespace Tests
 				switch (methodIdx)
 				{
 				case 0:
-					Test.Assert(methodInfo.Name == "__BfCtor");
+					Test.Assert(methodInfo.Name == "this");
 					Test.Assert(methodInfo.IsConstructor);
 				case 1:
-					Test.Assert(methodInfo.Name == "__BfStaticCtor");
+					Test.Assert(methodInfo.Name == "this");
 					Test.Assert(methodInfo.IsConstructor);
 				case 2:
 					Test.Assert(methodInfo.Name == "GetA");
@@ -509,7 +509,7 @@ namespace Tests
 				switch (methodIdx)
 				{
 				case 0:
-					Test.Assert(methodInfo.Name == "__BfCtor");
+					Test.Assert(methodInfo.Name == "this");
 				case 1:
 					Test.Assert(methodInfo.Name == "GetA");
 

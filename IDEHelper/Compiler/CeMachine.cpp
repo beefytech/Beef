@@ -6220,7 +6220,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 
-				CeSetAddrVal(stackPtr + 0, GetString(methodInstance->mMethodDef->mName), ptrSize);
+				CeSetAddrVal(stackPtr + 0, GetString(methodInstance->mMethodDef->GetReflectName()), ptrSize);
 				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetInfo)
@@ -6231,7 +6231,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				// int16 mFlags
 				// int32 mMethodIdx
 
-				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+4+4+2+4);
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+4+4+2+1+4);
 
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
@@ -6248,7 +6248,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				*(int32*)(stackPtr + 4) = methodInstance->GetParamCount();
 				*(int32*)(stackPtr + 4+4) = genericArgCount;
 				*(int16*)(stackPtr + 4+4+4) = methodInstance->GetMethodFlags();
-				*(int32*)(stackPtr + 4+4+4+2) = methodInstance->mMethodDef->mIdx;
+				*(int32*)(stackPtr + 4+4+4+2) = methodInstance->GetComptimeMethodFlags();
+				*(int32*)(stackPtr + 4+4+4+2+1) = methodInstance->mMethodDef->mIdx;
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetParamInfo)
 			{

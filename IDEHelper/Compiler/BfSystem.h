@@ -240,6 +240,12 @@ enum BfMethodFlags
 	BfMethodFlags_Constructor = 0x8000
 };
 
+enum BfComptimeMethodFlags
+{
+	BfComptimeMethodFlags_None = 0,
+	BfComptimeMethodFlags_NoReflect = 1
+};
+
 enum BfObjectFlags : uint8
 {
 	BfObjectFlag_None = 0,
@@ -970,8 +976,10 @@ public:
 	bool IsDefaultCtor();
 	bool IsCtorOrInit();
 	String ToString();
+	String GetReflectName();
 	int GetExplicitParamCount();
 	void BuildParamNameMap();
+	bool CanReflect();
 };
 
 class BfOperatorDef : public BfMethodDef

@@ -105,7 +105,7 @@ namespace System
 		{
 			String emitStr = scope .();
 
-			for (var methodInfo in typeof(T).GetMethods(.Public))
+			for (var methodInfo in typeof(T).GetMethods(.Public | .DeclaredOnly))
 			{
 				if (methodInfo.IsStatic)
 					continue;
@@ -200,7 +200,7 @@ namespace System
 		{
 			String emitStr = scope .();
 
-			for (var methodInfo in typeof(T).GetMethods(.Public))
+			for (var methodInfo in typeof(T).GetMethods(.Public | .DeclaredOnly))
 			{
 				if (methodInfo.IsStatic)
 					continue;

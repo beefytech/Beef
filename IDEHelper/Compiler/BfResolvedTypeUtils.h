@@ -973,6 +973,7 @@ public:
 
 	BfImportKind GetImportKind();
 	BfMethodFlags GetMethodFlags();
+	BfComptimeMethodFlags GetComptimeMethodFlags();
 	void UndoDeclaration(bool keepIRFunction = false);
 	BfTypeInstance* GetOwner();
 	BfModule* GetModule();

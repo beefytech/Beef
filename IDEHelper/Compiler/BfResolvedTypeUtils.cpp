@@ -842,6 +842,14 @@ BfMethodFlags BfMethodInstance::GetMethodFlags()
 	return methodFlags;
 }
 
+BfComptimeMethodFlags BfMethodInstance::GetComptimeMethodFlags()
+{
+	BfComptimeMethodFlags methodFlags = (BfComptimeMethodFlags)0;
+	if (!mMethodDef->CanReflect())
+		methodFlags = (BfComptimeMethodFlags)(methodFlags | BfComptimeMethodFlags_NoReflect);
+	return methodFlags;
+}
+
 void BfMethodInstance::UndoDeclaration(bool keepIRFunction)
 {
 	if (mMethodInfoEx != NULL)

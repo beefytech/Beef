@@ -514,6 +514,12 @@ namespace System
             return (int32)mTypeId;
         }
 
+		public enum ComptimeMethodFlags : int8
+		{
+			None,
+			NoReflect
+		}
+
 		[CRepr, Packed]
 		public struct ComptimeMethodData
 		{
@@ -521,6 +527,7 @@ namespace System
 			public int32 mParamCount;
 			public int32 mGenericArgCount;
 			public MethodFlags mMethodFlags;
+			public ComptimeMethodFlags mComptimeMethodFlags;
 			public int32 mMethodIdx;
 		}
 

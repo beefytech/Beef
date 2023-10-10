@@ -53,6 +53,9 @@ namespace System.Reflection
 		public bool IsStatic => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.Static) :
 			mData.mMethodData.[Friend]mFlags.HasFlag(.Static);
+		public bool CanReflect => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mComptimeMethodFlags.HasFlag(.NoReflect) :
+			mData.mMethodData.[Friend]mFlags.HasFlag(.SpecialName);
 
 		public StringView Name => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetName(mData.mComptimeMethodInstance) :
@@ -66,12 +69,12 @@ namespace System.Reflection
 			0;
 
 		public bool IsConstructor => Compiler.IsComptime ?
-			(Name == "__BfCtor" || Name == "__BfStaticCtor") :
-			(mData.mMethodData.mName === "__BfCtor" || mData.mMethodData.mName === "__BfStaticCtor");
+			Name == "this" :
+			mData.mMethodData.mName === "this";
 
 		public bool IsDestructor => Compiler.IsComptime ?
-			(Name == "__BfDtor" || Name == "__BfStaticDtor") :
-			(mData.mMethodData.mName === "__BfDtor" || mData.mMethodData.mName === "__BfStaticDtor");
+			Name == "~this"  :
+			mData.mMethodData.mName === "~this";
 
 		public Type ReturnType => Compiler.IsComptime ?
 			Type.[Friend]GetType((.)Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mReturnTypeId) :
@@ -1071,9 +1074,19 @@ namespace System.Reflection
 						mIdx++;
 						int64 nativeMethodHandle = Type.[Friend]Comptime_GetMethod((int32)mTypeInstance.TypeId, mIdx);
 						if (nativeMethodHandle == 0)
-							return false;
-						let info = Type.[Friend]Comptime_Method_GetInfo(nativeMethodHandle);
+						{
+							if (mBindingFlags.HasFlag(.DeclaredOnly))
+								return false;
+							if (mTypeInstance.[Friend]mBaseType == 0)
+								return false;
+							mTypeInstance = Type.[Friend]GetType(mTypeInstance.[Friend]mBaseType) as TypeInstance;
+							mIdx = -1;
+							continue;
+						}
 
+						let info = Type.[Friend]Comptime_Method_GetInfo(nativeMethodHandle);
+						if (info.mComptimeMethodFlags.HasFlag(.NoReflect))
+							continue;
 						bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (info.mMethodFlags.HasFlag(.Static)));
 						matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!info.mMethodFlags.HasFlag(.Static)));
 						matches |= (mBindingFlags.HasFlag(BindingFlags.Public) && (info.mMethodFlags.HasFlag(.Public)));
