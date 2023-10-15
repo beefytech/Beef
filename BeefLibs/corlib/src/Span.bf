@@ -23,6 +23,7 @@ namespace System
 			}
 			mPtr = &array.[Friend]GetRef(0);
 			mLength = array.[Friend]mLength;
+			Debug.Assert(mLength >= 0);
 		}
 
 		public this(T[] array, int index)
@@ -35,10 +36,12 @@ namespace System
 			}
 			mPtr = &array[index];
 			mLength = array.[Friend]mLength - index;
+			Debug.Assert(mLength >= 0);
 		}
 
 		public this(T[] array, int index, int length)
 		{
+			Debug.Assert(length >= 0);
 			if (array == null)
 			{
 				Debug.Assert(index == 0 && length == 0);
@@ -54,6 +57,7 @@ namespace System
 
 		public this(T* memory, int length)
 		{
+			Debug.Assert(length >= 0);
 			mPtr = memory;
 			mLength = length;
 		}

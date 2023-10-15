@@ -444,6 +444,7 @@ namespace System
 		[Inline]
 		public this(int start, int end, bool isClosed=true)
 		{
+			Debug.Assert(end >= start);
 			mStart = .FromFront(start);
 			mEnd = .FromFront(end);
 			mIsClosed = isClosed;

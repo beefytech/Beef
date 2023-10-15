@@ -318,6 +318,8 @@ namespace System.Collections
 			}
 		}
 
+		public Span<T>.ReverseEnumerator Reversed => Span<T>(mItems, mSize).Reversed;
+
 		protected virtual T* Alloc(int size)
 		{
 			return Internal.AllocRawArrayUnmarked<T>(size);
@@ -418,7 +420,7 @@ namespace System.Collections
 				Add(item);
 		}
 
-		public Span<T> GetRange(int offset)
+		public Span<T> GetRange(int offset = 0)
 		{
 			Debug.Assert((uint)offset <= (uint)mSize);
 			return .(mItems + offset, mSize - offset);
