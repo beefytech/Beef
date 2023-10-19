@@ -2717,7 +2717,7 @@ bool WinDebugger::DoUpdate()
 					bool handled = false;
 
 					//TODO: Use a user-defined filter here to determine whether to stop or continue
-					if ((!isSystemException) && (isFirstChance))
+					if (isFirstChance)
 					{
 						if (exceptionRecord->ExceptionCode == 0x406D1388) // Visual C
 						{
