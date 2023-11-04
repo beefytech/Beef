@@ -2720,7 +2720,7 @@ public:
 #endif
 
 void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
-{
+{	
 	auto populateModule = mModule->mContext->mUnreifiedModule;
 	auto typeInstance = type->ToTypeInstance();
 	if ((typeInstance != NULL) && (typeInstance->mModule != NULL))
@@ -3107,6 +3107,12 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 			}
 		}
 		return;
+	}
+	else
+	{
+		irType = GetPrimitiveType(BfTypeCode_None);
+		if (wantDIData)
+			diType = DbgCreateBasicType("void", 0, 0, llvm::dwarf::DW_ATE_address);		
 	}
 
 	if (irType)

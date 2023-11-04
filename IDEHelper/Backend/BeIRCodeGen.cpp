@@ -3448,6 +3448,8 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(bool, alwaysPreserve);
 			CMD_PARAM(int, flags);
 
+			BF_ASSERT(type != NULL);
+
 			auto dbgFunc = (BeDbgFunction*)scope;
 
 			auto dbgVar = mBeModule->mOwnedValues.Alloc<BeDbgVariable>();
@@ -3497,6 +3499,8 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, lineNo);
 			CMD_PARAM(BeMDNode*, type);
 			CMD_PARAM(int, initType);
+
+			BF_ASSERT(type != NULL);
 
 			auto dbgVar = mBeModule->mOwnedValues.Alloc<BeDbgVariable>();
 			dbgVar->mName = name;
