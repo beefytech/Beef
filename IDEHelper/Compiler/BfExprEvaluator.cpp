@@ -7879,8 +7879,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							expandedParamsArray = BfTypedValue(mModule->mBfIRBuilder->CreateConstAgg(irSizedArrayType, values), wantType);
 
 							PushArg(expandedParamsArray, irArgs);
+							continue;
 						}
-						continue;
 					}
 					else if (wantType->IsArray())
 					{
