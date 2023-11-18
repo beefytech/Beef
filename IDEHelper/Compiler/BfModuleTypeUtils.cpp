@@ -2783,8 +2783,19 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		}
 
 		DoPopulateType_CeCheckEnum(typeInstance, underlyingTypeDeferred);
-		auto methodInstance = GetRawMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
-		auto result = mCompiler->mCeMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
+
+		BfTypedValue result;
+		BfMethodInstance* methodInstance = NULL;
+		///
+		{
+			auto useTypeInstance = typeInstance;
+			if (useTypeInstance->IsUnspecializedTypeVariation())
+				useTypeInstance = GetUnspecializedTypeInstance(useTypeInstance);
+
+			SetAndRestoreValue<BfType*> prevTypeInstance(ceEmitContext->mType, useTypeInstance);
+			methodInstance = GetRawMethodInstanceAtIdx(useTypeInstance, methodDef->mIdx);
+			result = mCompiler->mCeMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
+		}
 
 		if ((onCompileKind == BfCEOnCompileKind_TypeDone) && (typeInstance->mDefineState > BfTypeDefineState_CETypeInit))
 		{
@@ -2876,6 +2887,9 @@ void BfModule::DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers, bool 
 
 void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
 {
+	if (mCurTypeInstance->IsUnspecializedTypeVariation())
+		return;
+
 	auto customAttributes = methodInstance->GetCustomAttributes();
 	if (customAttributes == NULL)
 		return;
