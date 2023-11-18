@@ -2138,7 +2138,18 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 								(!typeDef->mIsPartial) &&
 								((activeProject == NULL) || (activeProject->ContainsReference(typeDef->mProject))))
 							{
-								AddTypeDef(typeDef, filter, onlyAttribute);
+								if (typeDef->IsGlobalsContainer())
+								{
+									auto type = mModule->ResolveTypeDef(typeDef, BfPopulateType_Declaration);
+									if (type != NULL)
+									{
+										auto typeInst = type->ToTypeInstance();
+										if (typeInst != NULL)
+											AddTypeMembers(typeInst, true, false, filter, typeInst, false, false, false);
+									}
+								}
+								else
+									AddTypeDef(typeDef, filter, onlyAttribute);
 							}
 						}
 					}
