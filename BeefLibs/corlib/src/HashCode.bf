@@ -53,9 +53,14 @@ static class HashCode
 						code.Append(":\n");
 
 						if (enumCaseCount > 0)
-							code.AppendF($"\t\thash = Mix(hash, {enumCaseCount});\n");
+							code.AppendF($"\t\thash = {enumCaseCount};\n");
 						for (int tupleMemberIdx < tupleMemberCount)
-							code.AppendF($"\t\thash = Mix(hash, val{tupleMemberIdx});\n");
+						{
+							if ((enumCaseCount == 0) && (tupleMemberIdx == 0))
+								code.AppendF($"\t\thash = SelfOuter.Get(val{tupleMemberIdx});\n");
+							else
+								code.AppendF($"\t\thash = Mix(hash, val{tupleMemberIdx});\n");
+						}
 
 						enumCaseCount++;
 					}
