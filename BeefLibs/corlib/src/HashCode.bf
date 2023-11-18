@@ -17,7 +17,7 @@ static class HashCode
 
 			if (t.IsTypedPrimitive == true)
 			{
-				code.AppendF("\treturn ti.UnderlyingType;");
+				code.AppendF($"\treturn SelfOuter.Get(({t.UnderlyingType})value);");
 			}
 			else if (t.IsEnum)
 			{
