@@ -2888,9 +2888,12 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			continue;
 		if ((fieldInstance->mIsEnumPayloadCase) && (fieldDef->mName == enumCaseName))
 		{
-			if ((!enumType->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, this)) ||
-				(!enumType->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
-				continue;
+			if (!IsInSpecializedSection())
+			{
+				if ((!enumType->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, this)) ||
+					(!enumType->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
+					continue;
+			}
 
 			auto resolvePassData = mCompiler->mResolvePassData;
 			if (resolvePassData != NULL)
