@@ -7797,7 +7797,10 @@ BfCollectionInitializerExpression * BfReducer::CreateCollectionInitializerExpres
 			expression = CreateExpression(head);
 		}
 		if (expression == NULL)
+		{
+			arrayInitializerExpression->mSrcEnd = head->mSrcEnd;
 			break;
+		}
 		auto nextNode = mVisitorPos.GetNext();
 		bool atEnd = nextNode == NULL;
 		auto tokenNode = atEnd ? NULL : ExpectTokenAfter(expression, BfToken_Comma, BfToken_RParen);
