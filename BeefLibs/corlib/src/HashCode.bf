@@ -91,9 +91,12 @@ static class HashCode
 						if (field.IsStatic)
 							continue;
 						if (fieldCount == 0)
-							code.AppendF($"\thash = SelfOuter.Get(value.[Friend]{field.Name});\n");
+							code.AppendF($"\thash = SelfOuter.Get(value.");
 						else
-							code.AppendF($"\thash = Mix(hash, value.[Friend]{field.Name});\n");
+							code.AppendF($"\thash = Mix(hash, value.");
+						if (!field.IsPublic)
+							code.Append("[Friend]");
+						code.AppendF($"{field.Name});\n");
 						++fieldCount;
 					}
 				}
