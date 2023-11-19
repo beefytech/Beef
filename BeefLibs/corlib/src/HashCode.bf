@@ -1,3 +1,5 @@
+#pragma warning disable 4203
+
 using System.Reflection;
 namespace System;
 
@@ -15,7 +17,7 @@ static class HashCode
 			code.AppendF($"public static int Get(T value)\n");
 			code.Append("{\n");
 
-			if (t.IsTypedPrimitive == true)
+			if (t.IsTypedPrimitive)
 			{
 				code.AppendF($"\treturn SelfOuter.Get(({t.UnderlyingType})value);");
 			}
@@ -54,12 +56,20 @@ static class HashCode
 
 						if (enumCaseCount > 0)
 							code.AppendF($"\t\thash = {enumCaseCount};\n");
-						for (int tupleMemberIdx < tupleMemberCount)
+
+						int tupleMemberIdx = 0;
+						int hashedTupleMemberCount = 0;
+						for (var tupleField in fieldType.GetFields())
 						{
-							if ((enumCaseCount == 0) && (tupleMemberIdx == 0))
-								code.AppendF($"\t\thash = SelfOuter.Get(val{tupleMemberIdx});\n");
-							else
-								code.AppendF($"\t\thash = Mix(hash, val{tupleMemberIdx});\n");
+							if (IsHashable(tupleField.FieldType))
+							{
+								if ((enumCaseCount == 0) && (hashedTupleMemberCount == 0))
+									code.AppendF($"\t\thash = SelfOuter.Get(val{tupleMemberIdx});\n");
+								else
+									code.AppendF($"\t\thash = Mix(hash, val{tupleMemberIdx});\n");
+								hashedTupleMemberCount++;
+							}
+							tupleMemberIdx++;
 						}
 
 						enumCaseCount++;
@@ -85,8 +95,11 @@ static class HashCode
 
 				if (var sizedArray = t as SizedArrayType)
 				{
-					code.AppendF($"\tfor (int i < {sizedArray.ElementCount})\n");
-					code.AppendF($"\t\thash = Mix(hash, value[i]);\n");
+					if (IsHashable(sizedArray.UnderlyingType))
+					{
+						code.AppendF($"\tfor (int i < {sizedArray.ElementCount})\n");
+						code.AppendF($"\t\thash = Mix(hash, value[i]);\n");
+					}
 				}
 				else
 				{
@@ -94,6 +107,8 @@ static class HashCode
 					for (var field in t.GetFields())
 					{
 						if (field.IsStatic)
+							continue;
+						if (!IsHashable(field.FieldType))
 							continue;
 						if (fieldCount == 0)
 							code.AppendF($"\thash = SelfOuter.Get(value.");
@@ -114,9 +129,11 @@ static class HashCode
 		}
 	}
 
-	public static int Get<T>(T value)
+	static int Get<T>(T value) where T : IHashable
 	{
-		return HashHelper<T>.Get(value);
+		if (value == null)
+			return 0;
+		return value.GetHashCode();
 	}
 
 	public static int Generate<T>(T value)
@@ -124,14 +141,7 @@ static class HashCode
 		return HashHelper<T>.Get(value);
 	}
 
-	public static int Get<T>(T value) where T : IHashable
-	{
-		if (value == null)
-			return 0;
-		return value.GetHashCode();
-	}
-
-	public static int Get(void* ptr, int size)
+	static int Get(void* ptr, int size)
 	{
 		int bytesLeft = size;
 		int hash = 0;
@@ -159,8 +169,20 @@ static class HashCode
 		return ((hash ^ hash2) << 5) &- hash;
 	}
 
-	public static int Mix<T>(int hash, T value)
+	static int Mix<T>(int hash, T value) where T : IHashable
 	{
 		return ((hash ^ Get(value)) << 5) &- hash;
+	}
+
+	static bool IsHashable(Type t)
+	{
+		if (t == null)
+			return false;
+		if (t.IsPrimitive)
+			return true;
+		for (var iface in t.Interfaces)
+			if (iface == typeof(IHashable))
+				return true;
+		return IsHashable(t.BaseType);
 	}
 }
