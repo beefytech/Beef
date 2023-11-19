@@ -119,6 +119,11 @@ static class HashCode
 		return HashHelper<T>.Get(value);
 	}
 
+	public static int Generate<T>(T value)
+	{
+		return HashHelper<T>.Get(value);
+	}
+
 	public static int Get<T>(T value) where T : IHashable
 	{
 		if (value == null)
