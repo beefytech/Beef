@@ -3113,6 +3113,14 @@ namespace System
 				return mMatchPos < mStrLen && (!mSplitOptions.HasFlag(StringSplitOptions.RemoveEmptyEntries) || mStrLen != 0);
 			}
 		}
+
+		public StringView Remnant
+		{
+			get
+			{
+				return .(mPtr + mMatchPos + 1, mStrLen - mMatchPos);
+			}
+		}
 		
 		public bool MoveNext() mut
 		{
