@@ -3666,12 +3666,16 @@ namespace IDE.ui
 		public void MoveLine(VertDir dir)
 		{
 			int lineNum = CursorLineAndColumn.mLine;
+
+			if ((dir == .Up && lineNum < 1) || (dir == .Down && lineNum >= GetLineCount() - 1))
+				return;
+
 			int endLineNum = lineNum;
 
 			GetLinePosition(lineNum, var lineStart, ?);
-			
+
 			// Copy collapsed lines below as well
-			while (endLineNum < mLineCoords.Count - 1)
+			while (endLineNum < mLineCoords.Count - 2)
 			{
 				if (GetLineHeight(endLineNum + 1) > 0.1f)
 					break;
