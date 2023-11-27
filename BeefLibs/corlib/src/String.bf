@@ -3118,7 +3118,10 @@ namespace System
 		{
 			get
 			{
-				return .(mPtr + mMatchPos + 1, mStrLen - mMatchPos);
+				int offset = 0;
+				if(mMatchPos < mStrLen)
+					offset = 1;
+				return .(mPtr + mMatchPos + offset, mStrLen - (mMatchPos+offset));
 			}
 		}
 		
@@ -3303,6 +3306,17 @@ namespace System
 			get
 			{
 				return mMatchPos < mStrLen && (!mSplitOptions.HasFlag(StringSplitOptions.RemoveEmptyEntries) || mStrLen != 0);
+			}
+		}
+
+		public StringView Remnant
+		{
+			get
+			{
+				int offset = 0;
+				if(mMatchPos < mStrLen)
+					offset = mMatchLen;
+				return .(mPtr + mMatchPos + offset, mStrLen - (mMatchPos+offset));
 			}
 		}
 
