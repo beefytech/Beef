@@ -2792,9 +2792,18 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			if (useTypeInstance->IsUnspecializedTypeVariation())
 				useTypeInstance = GetUnspecializedTypeInstance(useTypeInstance);
 
-			SetAndRestoreValue<BfType*> prevTypeInstance(ceEmitContext->mType, useTypeInstance);
+			BfType* prevContextTypeInstance = NULL;
+			if (ceEmitContext != NULL)
+			{
+				prevContextTypeInstance = ceEmitContext->mType;
+				ceEmitContext->mType = useTypeInstance;
+			}
+
 			methodInstance = GetRawMethodInstanceAtIdx(useTypeInstance, methodDef->mIdx);
 			result = mCompiler->mCeMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
+
+			if (ceEmitContext != NULL)
+				ceEmitContext->mType = prevContextTypeInstance;
 		}
 
 		if ((onCompileKind == BfCEOnCompileKind_TypeDone) && (typeInstance->mDefineState > BfTypeDefineState_CETypeInit))
