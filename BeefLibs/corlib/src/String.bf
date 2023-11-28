@@ -3124,6 +3124,16 @@ namespace System
 				return .(mPtr + mMatchPos + offset, mStrLen - (mMatchPos+offset));
 			}
 		}
+
+		public char8 Separator
+		{
+			get
+			{
+				if (mMatchPos < 0)
+					return 0;
+				return mPtr[mMatchPos];
+			}
+		}
 		
 		public bool MoveNext() mut
 		{
@@ -3317,6 +3327,16 @@ namespace System
 				if(mMatchPos < mStrLen)
 					offset = mMatchLen;
 				return .(mPtr + mMatchPos + offset, mStrLen - (mMatchPos+offset));
+			}
+		}
+
+		public char8 Separator
+		{
+			get
+			{
+				if (mMatchPos < 0)
+					return 0;
+				return mPtr[mMatchPos];
 			}
 		}
 
