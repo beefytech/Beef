@@ -318,6 +318,7 @@ namespace IDE
 								break;
 							}
 						case ":TestResult":
+							FlushOutText(true);
 							testTimer.Stop();
 							int timeMS = int32.Parse(cmdParts[1]).Get();
 							var testEntry = testInstance.mTestEntries[testInstance.mCurTestIdx];
