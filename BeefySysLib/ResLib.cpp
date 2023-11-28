@@ -150,6 +150,11 @@ BF_EXPORT uint32* BF_CALLTYPE Res_LoadImage(char* inFileName, int& width, int& h
 	return bits;
 }
 
+BF_EXPORT void BF_CALLTYPE Res_FreeImageBits(uint32* bits)
+{
+	delete bits;
+}
+
 BF_EXPORT StringView BF_CALLTYPE Res_JPEGCompress(uint32* bits, int width, int height, int quality)
 {
 	String& outString = *gResLib_TLStrReturn.Get();
