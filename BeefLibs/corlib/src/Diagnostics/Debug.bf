@@ -5,7 +5,7 @@ namespace System.Diagnostics
 #if !DEBUG
 		[SkipCall]
 #endif
-		public static void Assert(bool condition, String error = Compiler.CallerExpression[0], String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum) 
+		public static void Assert(bool condition, String error = Compiler.CallerExpression[0], String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum)
 		{
 			if (!condition)
 			{
@@ -106,6 +106,20 @@ namespace System.Diagnostics
 		public static void SafeBreak()
 		{
 			if (gIsDebuggerPresent)
+				Break();
+		}
+
+		[NoDebug]
+		public static void BreakIf(bool condition)
+		{
+			if (condition)
+				Break();
+		}
+
+		[NoDebug]
+		public static void SafeBreakIf(bool condition)
+		{
+			if (gIsDebuggerPresent && condition)
 				Break();
 		}
 
