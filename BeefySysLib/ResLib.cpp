@@ -129,14 +129,12 @@ BF_EXPORT uint32* BF_CALLTYPE Res_LoadImage(char* inFileName, int& width, int& h
 		imageData = new PVRData();
 	else
 	{
-		BF_FATAL("Unknown texture format");
 		return NULL; // Unknown format
 	}
 
 	if (!imageData->LoadFromFile(fileName))
 	{
 		imageData->Deref();
-		BF_FATAL("Failed to load image");
 		return NULL;
 	}
 

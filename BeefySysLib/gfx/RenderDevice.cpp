@@ -144,7 +144,6 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		imageData = new PVRData();
 	else
 	{
-		BF_FATAL("Unknown texture format");
 		return NULL; // Unknown format
 	}
 
@@ -161,7 +160,8 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 			if (!imageData->LoadFromMemory(addr, len))
 			{
 				failed = true;
-				BF_FATAL("Failed to load image");
+				delete imageData;
+				return NULL;
 			}
 		}
 		else
@@ -169,7 +169,8 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 			if (!imageData->LoadFromFile(fileName))
 			{
 				failed = true;
-				BF_FATAL("Failed to load image");
+				delete imageData;
+				return NULL;
 			}
 		}
 	}
