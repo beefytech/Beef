@@ -1260,18 +1260,20 @@ namespace IDE
 			}
 		}
 
-		public Project GetProject()
+		public Project GetProject(bool allowFail = false)
 		{
 			if (!mScriptManager.mCurCmd.mSrcFile.StartsWith("project "))
 			{
-				mScriptManager.Fail("Only usable in the context of a project");
+				if (!allowFail)
+					mScriptManager.Fail("Only usable in the context of a project");
 				return null;
 			}
 			let projectName = scope String()..Append(mScriptManager.mCurCmd.mSrcFile, "Project ".Length);
 			let project = gApp.mWorkspace.FindProject(projectName);
 			if (project == null)
 			{
-				mScriptManager.Fail("Unable to find project '{}'", projectName);
+				if (!allowFail)
+					mScriptManager.Fail("Unable to find project '{}'", projectName);
 				return null;
 			}
 			return project;
@@ -1384,31 +1386,37 @@ namespace IDE
 				spacePos = cmd.IndexOf(' ');
 				if (spacePos != -1)
 					exePath.Append(cmd, 0, spacePos);
+				else
+					exePath.Set(cmd);
 			}
 
-			if ((spacePos == -1) && (!cmd.IsEmpty))
+			exePath.Trim();
+			if (exePath.IsEmpty)
 			{
 				mScriptManager.Fail("Invalid command '{0}' in '{1}'", cmd, mScriptManager.mCurCmd.mSrcFile);
 				return;
 			}
 
+			var exeArgs = scope String();
 			if (spacePos > 0)
-			{
-				var exeArgs = scope String();
 				exeArgs.Append(cmd, spacePos + 1);
-				IDEApp.RunFlags runFlags = .None;
-				if (!exePath.EndsWith(".exe", .OrdinalIgnoreCase))
-					runFlags = .ShellCommand;
+			IDEApp.RunFlags runFlags = .None;
+			if (!exePath.EndsWith(".exe", .OrdinalIgnoreCase))
+				runFlags = .ShellCommand;
 
-				// Hande re-encoded embedded newlines
-				if (exeArgs.Contains('\v'))
-				{
-					exeArgs.Replace('\v', '\n');
-					runFlags = .BatchCommand;
-				}
-
-				gApp.DoRun(exePath, exeArgs, gApp.mInstallDir, .None, null, null, runFlags);
+			// Hande re-encoded embedded newlines
+			if (exeArgs.Contains('\v'))
+			{
+				exeArgs.Replace('\v', '\n');
+				runFlags = .BatchCommand;
 			}
+
+			String dir = scope .();
+			dir.Set(gApp.mInstallDir);
+			var project = GetProject(true);
+			if (project?.mProjectDir.IsEmpty == false)
+				dir.Set(project.mProjectDir);
+			gApp.DoRun(exePath, exeArgs, dir, .None, null, null, runFlags);
 		}
 
 		[IDECommand]

@@ -8784,8 +8784,11 @@ namespace IDE
 				shellArgs.Append("/c ");
 				shellArgs.Append("\"");
 				IDEUtils.AppendWithOptionalQuotes(shellArgs, fileName);
-				shellArgs.Append(" ");
-				shellArgs.Append(args);
+				if (!args.IsEmpty)
+				{
+					shellArgs.Append(" ");
+					shellArgs.Append(args);
+				}
 				shellArgs.Append("\"");
 				startInfo.SetFileName("cmd.exe");
 				startInfo.SetArguments(shellArgs);
