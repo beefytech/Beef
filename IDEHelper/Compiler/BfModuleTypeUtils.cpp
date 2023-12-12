@@ -3918,7 +3918,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 							deferredErrorNode = baseTypeRef;
 						}
 					}
-					else
+					else if (!baseType->IsInterface())
 					{
 						deferredError = "Invalid underlying enum type";
 						deferredErrorNode = baseTypeRef;
