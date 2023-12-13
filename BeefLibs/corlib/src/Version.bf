@@ -1,6 +1,6 @@
 namespace System
 {
-	struct Version
+	struct Version : IParseable<Version>
 	{
 		public uint32 Major;
 		public uint32 Minor;

@@ -3,7 +3,7 @@ using System.Globalization;
 namespace System
 {
 #unwarn
-	struct Float : float, IFloating, ISigned, IFormattable, IHashable, IEquatable<float>, ICanBeNaN
+	struct Float : float, IFloating, ISigned, IFormattable, IHashable, IEquatable<float>, ICanBeNaN, IParseable<float>
     {
 		public const float MinValue = (float)-3.40282346638528859e+38;
 		public const float Epsilon = (float)1.4e-45;

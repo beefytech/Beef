@@ -1,6 +1,6 @@
 namespace System
 {
-	struct Guid : IHashable
+	struct Guid : IHashable, IParseable<Guid>
 	{
 		public static readonly Guid Empty = Guid();
         
@@ -58,7 +58,7 @@ namespace System
 				(val1.mK == val2.mK);
 		}
 
-		public static Result<Guid> Parse(String str)
+		public static Result<Guid> Parse(StringView val)
 		{
 			return .Err;
 		}

@@ -1,7 +1,7 @@
 namespace System
 {
 #unwarn
-	struct UInt : uint, IInteger, IUnsigned, IHashable, IFormattable, IIsNaN
+	struct UInt : uint, IInteger, IUnsigned, IHashable, IFormattable, IIsNaN, IParseable<uint, ParseError>, IParseable<uint>
 	{
 		public enum ParseError
 		{
@@ -86,6 +86,20 @@ namespace System
 				var result = UInt32.Parse(val);
 				return *(Result<uint, ParseError>*)&result;
 			}
+		}
+
+		public static Result<uint, ParseError> IParseable<uint, ParseError>.Parse(StringView val)
+		{
+			return Parse(val);
+		}
+
+		public static Result<uint> IParseable<uint>.Parse(StringView val)
+		{
+			var res = Parse(val);
+			if(res case .Err)
+				return .Err;
+			else
+				return .Ok(res.Value);
 		}
 	}
 }

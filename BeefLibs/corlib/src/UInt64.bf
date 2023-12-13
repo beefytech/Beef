@@ -3,7 +3,7 @@ using System.Globalization;
 namespace System
 {
 #unwarn
-	struct UInt64 : uint64, IInteger, IUnsigned, IHashable, IIsNaN, IFormattable
+	struct UInt64 : uint64, IInteger, IUnsigned, IHashable, IIsNaN, IFormattable, IParseable<uint64, ParseError>, IParseable<uint64>
 	{
 		public enum ParseError
 		{
@@ -145,6 +145,20 @@ namespace System
 			}
 
 			return result;
+		}
+
+		public static Result<uint64, ParseError> IParseable<uint64, ParseError>.Parse(StringView val)
+		{
+			return Parse(val);
+		}
+
+		public static Result<uint64> IParseable<uint64>.Parse(StringView val)
+		{
+			var res = Parse(val);
+			if(res case .Err)
+				return .Err;
+			else
+				return .Ok(res.Value);
 		}
 	}
 }

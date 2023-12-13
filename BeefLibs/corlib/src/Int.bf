@@ -3,7 +3,7 @@ using System;
 namespace System
 {
 #unwarn
-	struct Int : int, IInteger, IHashable, IFormattable, IIsNaN
+	struct Int : int, IInteger, IHashable, IFormattable, IIsNaN, IParseable<int, ParseError>, IParseable<int>
     {
 		public enum ParseError
 		{
@@ -96,6 +96,20 @@ namespace System
 				var result = Int32.Parse(val);
 				return *(Result<int, ParseError>*)&result;
 			}
+		}
+
+		public static Result<int, ParseError> IParseable<int, ParseError>.Parse(StringView val)
+		{
+			return Parse(val);
+		}
+
+		public static Result<int> IParseable<int>.Parse(StringView val)
+		{
+			var res = Parse(val);
+			if(res case .Err)
+				return .Err;
+			else
+				return .Ok(res.Value);
 		}
 	}
 }

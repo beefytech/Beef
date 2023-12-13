@@ -1,6 +1,6 @@
 namespace System
 {
-	struct Boolean : bool, IHashable
+	struct Boolean : bool, IHashable, IParseable<bool>
 	{
 		//
 		// Public Constants

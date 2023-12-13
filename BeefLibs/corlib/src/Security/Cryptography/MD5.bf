@@ -32,7 +32,7 @@ namespace System.Security.Cryptography
 		}
 	}
 
-	struct MD5Hash
+	struct MD5Hash : IParseable<MD5Hash>
 	{
 		public uint8[16] mHash;
 
