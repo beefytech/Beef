@@ -700,7 +700,8 @@ enum CeEvalFlags
 	CeEvalFlags_DeferIfNotOnlyError = 4,
 	CeEvalFlags_NoRebuild = 8,
 	CeEvalFlags_ForceReturnThis = 0x10,
-	CeEvalFlags_DbgCall = 0x20
+	CeEvalFlags_IgnoreConstEncodeFailure = 0x20,
+	CeEvalFlags_DbgCall = 0x40
 };
 
 #define BF_CE_DEFAULT_STACK_SIZE 4*1024*1024

@@ -2523,7 +2523,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 				callSource.mKind = CeCallSource::Kind_TypeDone;
 			}
 
-			result = ceContext->Call(callSource, this, methodInstance, args, CeEvalFlags_ForceReturnThis, NULL);
+			result = ceContext->Call(callSource, this, methodInstance, args, (CeEvalFlags)(CeEvalFlags_ForceReturnThis | CeEvalFlags_IgnoreConstEncodeFailure), NULL);
 		}
 		if (fieldInstance != NULL)
 			mCompiler->mCeMachine->mFieldInstanceSet.Remove(fieldInstance);

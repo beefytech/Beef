@@ -4801,8 +4801,9 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 				return instResult;
 			}
 
-			Fail(StrFormat("Span return type '%s' must be received by a sized array", module->TypeToString(typeInst).c_str()));
-			return BfIRValue();
+			if ((mCurEvalFlags & CeEvalFlags_IgnoreConstEncodeFailure) == 0)
+				Fail(StrFormat("Span return type '%s' must be received by a sized array", module->TypeToString(typeInst).c_str()));
+			return irBuilder->CreateConstAggZero(irBuilder->MapType(typeInst));
 		}
 
 		if (typeInst->IsInstanceOf(ceModule->mCompiler->mTypeTypeDef))
@@ -4824,6 +4825,11 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			addr_ce typeId = *(int*)(instData);
 
 			BfType* type = GetBfType(typeId);
+			if (type == NULL)
+			{
+				Fail("Unable to locate type");
+				return BfIRValue();
+			}
 
 			if (type->IsInstanceOf(mCeMachine->mCompiler->mStringTypeDef))
 			{
@@ -4860,8 +4866,9 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 		if (typeInst->IsObjectOrInterface())
 		{
-			Fail(StrFormat("Reference type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));
-			return BfIRValue();
+			if ((mCurEvalFlags & CeEvalFlags_IgnoreConstEncodeFailure) == 0)
+				Fail(StrFormat("Reference type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));
+			return irBuilder->CreateConstNull(irBuilder->MapType(typeInst));
 		}
 
 		if (typeInst->mBaseType != NULL)
@@ -4931,8 +4938,9 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 	if (bfType->IsPointer())
 	{
-		Fail(StrFormat("Pointer type '%s' return value not allowed", module->TypeToString(bfType).c_str()));
-		return BfIRValue();
+		if ((mCurEvalFlags & CeEvalFlags_IgnoreConstEncodeFailure) == 0)
+			Fail(StrFormat("Pointer type '%s' return value not allowed", module->TypeToString(bfType).c_str()));
+		return irBuilder->CreateConstNull(irBuilder->MapType(bfType));
 	}
 
 	if ((bfType->IsSizedArray()) && (!bfType->IsUnknownSizedArrayType()))
@@ -7575,7 +7583,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto valueType = GetBfType(objTypeId);
 				if ((ifaceType == NULL) || (valueType == NULL))
 				{
-					_Fail("Invalid type");
+					_Fail("Invalid type in CeOp_DynamicCastCheck");
 					return false;
 				}
 
