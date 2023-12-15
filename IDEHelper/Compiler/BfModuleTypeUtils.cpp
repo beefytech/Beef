@@ -5494,7 +5494,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 							else if (resolvedFieldType->IsGenericParam())
 							{
 								SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
-								auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)resolvedFieldType);
+								auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)resolvedFieldType, false, BfFailHandleKind_Soft);
 								if (genericParamInstance != NULL)
 								{
 									if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Class) == 0) &&
@@ -9461,7 +9461,7 @@ BfGenericParamInstance* BfModule::GetMergedGenericParamData(BfGenericParamType* 
 	return genericParam;
 }
 
-BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* type, bool checkMixinBind)
+BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* type, bool checkMixinBind, BfFailHandleKind failHandleKind)
 {
 	if (type->mGenericParamKind == BfGenericParamKind_Method)
 	{
@@ -9474,7 +9474,10 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 
 		if ((curGenericMethodInstance == NULL) || (curGenericMethodInstance->mMethodInfoEx == NULL) || (type->mGenericParamIdx >= curGenericMethodInstance->mMethodInfoEx->mGenericParams.mSize))
 		{
-			FatalError("Invalid GetGenericParamInstance method generic param");
+			if (failHandleKind == Beefy::BfFailHandleKind_Normal)
+				FatalError("Invalid GetGenericParamInstance method generic param");
+			else if (failHandleKind == Beefy::BfFailHandleKind_Soft)
+				InternalError("Invalid GetGenericParamInstance method generic param");
 			return NULL;
 		}
 		return curGenericMethodInstance->mMethodInfoEx->mGenericParams[type->mGenericParamIdx];
@@ -15874,7 +15877,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			}
 		}
 
-		auto genericParamInstance = GetGenericParamInstance(genericParam);
+		auto genericParamInstance = GetGenericParamInstance(genericParam, false, BfFailHandleKind_Soft);
 		if (genericParamInstance == NULL)
 		{
 			str += StrFormat("@M%d", genericParam->mGenericParamIdx);

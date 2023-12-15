@@ -166,6 +166,13 @@ struct BfAtomCompositeEquals
 	}
 };
 
+enum BfFailHandleKind
+{
+	BfFailHandleKind_Normal,
+	BfFailHandleKind_Soft,
+	BfFailHandleKind_Ignore
+};
+
 enum BfWhileSpecializingFlags : int8
 {
 	BfWhileSpecializingFlag_None = 0,
