@@ -2275,7 +2275,11 @@ void BfPrinter::Visit(BfFallthroughStatement* fallthroughStmt)
 	Visit(fallthroughStmt->ToBase());
 
 	VisitChild(fallthroughStmt->mFallthroughToken);
-
+	if (fallthroughStmt->mLabel != NULL)
+	{
+		ExpectSpace();
+		VisitChild(fallthroughStmt->mLabel);
+	}
 	VisitChild(fallthroughStmt->mTrailingSemicolon);
 }
 

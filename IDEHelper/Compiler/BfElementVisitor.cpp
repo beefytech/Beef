@@ -902,6 +902,7 @@ void BfElementVisitor::Visit(BfFallthroughStatement* fallthroughStmt)
 	Visit(fallthroughStmt->ToBase());
 
 	VisitChild(fallthroughStmt->mFallthroughToken);
+	VisitChild(fallthroughStmt->mLabel);
 }
 
 void BfElementVisitor::Visit(BfForStatement* forStmt)

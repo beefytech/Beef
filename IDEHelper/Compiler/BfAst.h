@@ -3311,6 +3311,7 @@ public:
 	BF_AST_TYPE(BfFallthroughStatement, BfStatement);
 
 	BfTokenNode* mFallthroughToken;
+	BfAstNode* mLabel;
 };	BF_AST_DECL(BfFallthroughStatement, BfStatement);
 
 class BfForEachStatement : public BfLabelableStatement

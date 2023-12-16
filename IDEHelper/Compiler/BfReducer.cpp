@@ -3838,6 +3838,19 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 			auto fallthroughStmt = mAlloc->Alloc<BfFallthroughStatement>();
 			ReplaceNode(tokenNode, fallthroughStmt);
 			fallthroughStmt->mFallthroughToken = tokenNode;
+			if (auto label = BfNodeDynCast<BfIdentifierNode>(mVisitorPos.GetNext()))
+			{
+				MEMBER_SET(fallthroughStmt, mLabel, label);
+				mVisitorPos.MoveNext();
+			}
+			else if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+			{
+				if (tokenNode->GetToken() == BfToken_Mixin)
+				{
+					MEMBER_SET(fallthroughStmt, mLabel, tokenNode);
+					mVisitorPos.MoveNext();
+				}
+			}
 			return fallthroughStmt;
 		}
 		else if (token == BfToken_For)

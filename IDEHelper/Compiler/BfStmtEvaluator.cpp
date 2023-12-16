@@ -5637,11 +5637,27 @@ void BfModule::Visit(BfFallthroughStatement* fallthroughStmt)
 {
 	UpdateSrcPos(fallthroughStmt);
 	BfBreakData* breakData = mCurMethodState->mBreakData;
-	while (breakData != NULL)
+	if (fallthroughStmt->mLabel != NULL)
 	{
-		if (breakData->mIRFallthroughBlock)
-			break;
-		breakData = breakData->mPrevBreakData;
+		breakData = FindBreakData(fallthroughStmt->mLabel);
+	}
+	else
+	{
+		while (breakData != NULL)
+		{
+			if (breakData->mIRFallthroughBlock)
+				break;
+			breakData = breakData->mPrevBreakData;
+		}
+	}
+
+	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+	{
+		BfScopeData* scope = NULL;
+		if (breakData != NULL)
+			scope = breakData->mScope;
+		if (auto identifer = BfNodeDynCast<BfIdentifierNode>(fallthroughStmt->mLabel))
+			mCompiler->mResolvePassData->mAutoComplete->CheckLabel(identifer, fallthroughStmt->mFallthroughToken, scope);
 	}
 
 	if (mCurMethodState->mInDeferredBlock)
@@ -5669,6 +5685,15 @@ void BfModule::Visit(BfFallthroughStatement* fallthroughStmt)
 	mCurMethodState->mLeftBlockUncond = true; // Not really a return, but handled the same way
 	if (mCurMethodState->mDeferredLocalAssignData != NULL)
 		mCurMethodState->mDeferredLocalAssignData->mHadFallthrough = true;
+
+	auto checkBreakData = mCurMethodState->mBreakData;
+	while (true)
+	{
+		if (checkBreakData == breakData)
+			break;
+		checkBreakData->mHadBreak = true;
+		checkBreakData = checkBreakData->mPrevBreakData;
+	}
 }
 
 void BfModule::Visit(BfUsingStatement* usingStmt)
