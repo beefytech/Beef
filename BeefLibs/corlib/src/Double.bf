@@ -10,7 +10,7 @@ namespace System
 	using System.Diagnostics;
 
 #unwarn
-    public struct Double : double, IFloating, ISigned, IFormattable, IHashable, ICanBeNaN
+    public struct Double : double, IFloating, ISigned, IFormattable, IHashable, ICanBeNaN, IParseable<double>
     {
         public const double MinValue = -1.7976931348623157E+308;
         public const double MaxValue = 1.7976931348623157E+308;

@@ -2,7 +2,7 @@ using System.IO;
 
 namespace System.Security.Cryptography
 {
-	struct SHA256Hash
+	struct SHA256Hash : IParseable<SHA256Hash>
 	{
 		public uint8[32] mHash;
 
