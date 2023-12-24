@@ -9887,6 +9887,10 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 	MoveNode(methodDeclaration->mCloseParen, methodDeclaration);
 	mVisitorPos.MoveNext();
 
+	auto ctorDecl = BfNodeDynCast<BfConstructorDeclaration>(methodDeclaration);
+	if (auto autoCtorDecl = BfNodeDynCast<BfAutoConstructorDeclaration>(ctorDecl))
+		return true;
+
 	auto typeDecl = mCurTypeDecl;
 	nextNode = mVisitorPos.GetNext();
 	if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
@@ -9913,8 +9917,6 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 			MEMBER_SET_CHECKED_BOOL(methodDeclaration, mGenericConstraintsDeclaration, genericConstraints);
 		}
 	}
-
-	auto ctorDecl = BfNodeDynCast<BfConstructorDeclaration>(methodDeclaration);
 
 	nextNode = mVisitorPos.GetNext();
 	auto endToken = BfNodeDynCast<BfTokenNode>(nextNode);
@@ -9973,9 +9975,6 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 
 		endToken = NULL;
 	}
-
-	if (auto autoCtorDecl = BfNodeDynCast<BfAutoConstructorDeclaration>(ctorDecl))
-		return true;
 
 	if ((endToken != NULL) && (endToken->GetToken() == BfToken_Semicolon))
 	{
