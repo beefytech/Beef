@@ -6620,7 +6620,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			{
 				if (!mIsScratchModule)
 					mOnDemandMethodCount--;
-				if (methodInstanceGroup->mDefault != NULL)
+				if ((methodInstanceGroup->mDefault != NULL) && (!methodInstanceGroup->mDefault->mMethodDef->mIsAbstract))
 					AddMethodToWorkList(methodInstanceGroup->mDefault);
 			}
 		}
