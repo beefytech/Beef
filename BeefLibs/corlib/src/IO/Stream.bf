@@ -225,11 +225,25 @@ namespace System.IO
 
 		public void Align(int alignSize)
 		{
-			int64 pos = Length;
-			int64 alignAdd = alignSize - (pos % alignSize);
-			if (alignAdd == alignSize)
+			int64 pos = Position;
+			int64 length = Length;
+
+			int64 wantPos = Math.Align(pos, alignSize);
+			if (pos == wantPos)
 				return;
 
+			if (wantPos < length)
+			{
+				Position = wantPos;
+				return;
+			}
+
+			if (length > pos)
+			{
+				Position = length;
+				pos = length;
+			}
+			int64 alignAdd = wantPos - pos;
 			int64 emptyData = 0;
 			while (alignAdd > 0)
 			{
