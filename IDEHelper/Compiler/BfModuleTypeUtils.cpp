@@ -4675,9 +4675,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	typeInstance->mInstSize = std::max(0, typeInstance->mInstSize);
 	typeInstance->mInstAlign = std::max(0, typeInstance->mInstAlign);
 
-	if (typeInstance->IsFunction())
-		typeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(typeInstance->mAlwaysIncludeFlags | BfAlwaysIncludeFlag_IncludeAllMethods);
-
 	ProcessCustomAttributeData();
 	int packing = 0;
 	bool isUnion = false;

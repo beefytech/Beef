@@ -1105,7 +1105,7 @@ BfType* BfMethodInstance::GetThisType()
 		auto thisType = mParams[0].mResolvedType;
 		auto owner = GetOwner();
 		if ((thisType->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting(-1))) && (!thisType->GetLoweredType(BfTypeUsage_Parameter)))
-			return owner->mModule->CreatePointerType(thisType);
+			return owner->mModule->mContext->mUnreifiedModule->CreatePointerType(thisType);
 		return thisType;
 	}
 	return GetParamType(-1);
