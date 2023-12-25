@@ -7299,6 +7299,9 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 		bool includeMethod = reflectIncludeAllMethods;
 
+		if (typeInstance->IsDelegateOrFunction())
+			includeMethod = true;
+
 		BfMethodCustomAttributes* methodCustomAttributes = NULL;
 		if ((defaultMethod->mMethodInfoEx != NULL) && (defaultMethod->mMethodInfoEx->mMethodCustomAttributes != NULL) && (defaultMethod->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes != NULL))
 		{

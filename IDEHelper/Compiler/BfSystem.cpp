@@ -690,6 +690,8 @@ bool BfMethodDef::CanReflect()
 		return true;
 	if (mMethodType == BfMethodType_Ctor)
 		return true;
+	if ((mDeclaringType->mIsDelegate) || (mDeclaringType->mIsFunction))
+		return mName == "Invoke";
 	return false;
 }
 
