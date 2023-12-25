@@ -4675,9 +4675,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	typeInstance->mInstSize = std::max(0, typeInstance->mInstSize);
 	typeInstance->mInstAlign = std::max(0, typeInstance->mInstAlign);
 
-	if (typeInstance->IsDelegateOrFunction())
-		typeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(typeInstance->mAlwaysIncludeFlags | BfAlwaysIncludeFlag_IncludeAllMethods);
-
 	ProcessCustomAttributeData();
 	int packing = 0;
 	bool isUnion = false;
@@ -6538,6 +6535,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				declRequired = true;
 			}
 			if (typeInstance->IncludeAllMethods())
+				implRequired = true;
+
+			if ((typeInstance->IsDelegateOrFunction()) && (methodDef->mName == "Invoke"))
 				implRequired = true;
 
 			// "AssumeInstantiated" also forces default ctor
