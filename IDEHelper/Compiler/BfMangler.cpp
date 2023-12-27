@@ -914,13 +914,16 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 		prefixLen = true;
 	}
 
-	if (methodDef->mCheckedKind == BfCheckedKind_Checked)
-		name += "`CHK";
-	else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
-		name += "`UCHK";
+	if (!mangleContext.mCPPMangle)
+	{
+		if (methodDef->mCheckedKind == BfCheckedKind_Checked)
+			name += "`CHK";
+		else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
+			name += "`UCHK";
 
-	if (methodDef->mHasComptime)
-		name += "`COMPTIME";
+		if (methodDef->mHasComptime)
+			name += "`COMPTIME";
+	}
 
 	if (((methodInst->GetOwner()->mTypeDef->IsGlobalsContainer()) &&
 		 ((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_Dtor) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))) ||
@@ -1021,12 +1024,22 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 			HandleParamCustomAttributes(paramDecl->mAttributes, false, isConst);
 		}
 
-		auto paramKind = methodInst->GetParamKind(paramIdx);
-		if (paramKind == BfParamKind_Params)
-			name += "U6params";
-		else if (paramKind == BfParamKind_DelegateParam)
-			name += "U5param";
-		Mangle(mangleContext, name, paramType, NULL, isConst);
+		if (!mangleContext.mCPPMangle)
+		{
+			auto paramKind = methodInst->GetParamKind(paramIdx);
+			if (paramKind == BfParamKind_Params)
+				name += "U6params";
+			else if (paramKind == BfParamKind_DelegateParam)
+				name += "U5param";
+		}
+
+		if ((paramType->IsVoid()) && (methodInst->GetParamCount() == 1))
+		{
+			// Avoid collision between 'Method()' and 'Method(void)'
+			name += "U4void";
+		}
+		else
+			Mangle(mangleContext, name, paramType, NULL, isConst);
 	}
 	if ((methodInst->GetParamCount() == 0) && (!doExplicitThis))
 		name += 'v';
@@ -2232,8 +2245,10 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 		{
 			Mangle(mangleContext, name, typeInst->GetUnderlyingType(), true);
 		}
-		for (auto& param : methodInst->mParams)
+
+		for (int paramIdx = 0; paramIdx < methodInst->mParams.mSize; paramIdx++)
 		{
+			auto& param = methodInst->mParams[paramIdx];
 			bool isConst = false;
 			if ((param.mParamDefIdx >= 0) && (methodDeclaration != NULL) && (param.mParamDefIdx < methodDeclaration->mParams.mSize))
 			{
@@ -2241,6 +2256,14 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 				HandleParamCustomAttributes(paramDecl->mAttributes, false, isConst);
 			}
 
+			if (!mangleContext.mCPPMangle)
+			{
+				auto paramKind = methodInst->GetParamKind(paramIdx);
+				if (paramKind == BfParamKind_Params)
+					name += "Tparams@@";
+				else if (paramKind == BfParamKind_DelegateParam)
+					name += "Tparam@@";
+			}
 			Mangle(mangleContext, name, param.mResolvedType, true, isConst);
 		}
 		name += '@';

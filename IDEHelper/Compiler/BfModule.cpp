@@ -23374,9 +23374,8 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 					mCurMethodInstance->mMangleWithIdx = true;
 				mangledName.Clear();
 				BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), mCurMethodInstance);
-				prevFunc = mBfIRBuilder->GetFunction(mangledName);
 
-				BfLogSysM("Function collision forced mangleWithIdx for %p: %d\n", methodInstance, prevFunc.mId);
+				BfLogSysM("Function collision forced mangleWithIdx for %p: %d GenericArgs: %d Unspecialized: %d\n", methodInstance, prevFunc.mId, methodInstance->GetNumGenericArguments(), methodInstance->mIsUnspecialized);
 			}
 			else
 			{
