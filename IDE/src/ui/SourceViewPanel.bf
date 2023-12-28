@@ -7632,6 +7632,8 @@ namespace IDE.ui
 				let c = ewc.mData.mText[checkPos].mChar;
 				if ((c.IsLetterOrDigit) || (c == '_') || (c == '@'))
 					return true;
+				if ((offset == 0) && (c == '.'))
+					return true;
 				let elementType = (SourceElementType)ewc.mData.mText[checkPos].mDisplayTypeId;
 				if (elementType == .Method)
 					return true;

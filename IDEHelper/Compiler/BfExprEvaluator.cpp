@@ -21492,6 +21492,16 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 					autoComplete->AddSelfResultTypeMembers(expectingTypeInst, expectingTypeInst, filter, allowPrivate);
 				}
 			}
+			else if ((expectingTypeInst != NULL) && (autoComplete->IsAutocompleteNode(memberRefExpr->mDotToken)) && (autoComplete->mIsGetDefinition))
+			{
+				if ((autoComplete->mDefType == NULL) &&
+					(autoComplete->mDefMethod == NULL) && (autoComplete->mDefField == NULL) &&
+					(autoComplete->mDefProp == NULL) && (expectingTypeInst->mTypeDef->mTypeDeclaration != NULL))
+				{
+					autoComplete->mDefType = expectingTypeInst->mTypeDef;
+					autoComplete->SetDefinitionLocation(expectingTypeInst->mTypeDef->mTypeDeclaration->mNameNode);
+				}
+			}
 		}
 		else
 		{
