@@ -254,76 +254,81 @@ namespace IDE.ui
 						ClearText();
 				});
 
-				// Separator
-				menu.AddItem();
 
-				IDE.Debugger.DebugManager.OutputFilterFlags outputFilterFlags = gApp.mDebugger.GetOutputFilterFlags();
-
-				var menuItemModuleLoadMessages = menu.AddItem("Module Load Messages");
-				if (!outputFilterFlags.HasFlag(.ModuleLoadMessages))
+				bool isOutputWindow = mIsReadOnly;
+				if (isOutputWindow)
 				{
-					menuItemModuleLoadMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
+					// Separator
+					menu.AddItem();
+
+					IDE.Debugger.DebugManager.OutputFilterFlags outputFilterFlags = gApp.mDebugger.GetOutputFilterFlags();
+
+					var menuItemModuleLoadMessages = menu.AddItem("Module Load Messages");
+					if (!outputFilterFlags.HasFlag(.ModuleLoadMessages))
+					{
+						menuItemModuleLoadMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
+					}
+
+					menuItemModuleLoadMessages.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ModuleLoadMessages);
+					});
+
+					var menuItemModuleUnloadMessages = menu.AddItem("Module Unload Messages");
+					if (!outputFilterFlags.HasFlag(.ModuleUnloadMessages))
+					{
+						menuItemModuleUnloadMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
+					}
+
+					menuItemModuleUnloadMessages.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ModuleUnloadMessages);
+					});
+
+					var menuItemProcessExitMessages = menu.AddItem("Process Exit Messages");
+					if (!outputFilterFlags.HasFlag(.ProcessExitMessages))
+					{
+						menuItemProcessExitMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
+					}
+
+					menuItemProcessExitMessages.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ProcessExitMessages);
+					});
+
+					var menuItemThreadCreateMessages = menu.AddItem("Thread Creation Messages");
+					if (!outputFilterFlags.HasFlag(.ThreadCreateMessages))
+					{
+						menuItemThreadCreateMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
+					}
+
+					menuItemThreadCreateMessages.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ThreadCreateMessages);
+					});
+
+					var menuItemThreadExitMessages = menu.AddItem("Thread Exit Messages");
+					if (!outputFilterFlags.HasFlag(.ThreadExitMessages))
+					{
+						menuItemThreadExitMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
+					}
+
+					menuItemThreadExitMessages.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ThreadExitMessages);
+					});
+
+					var menuItemSymbolLoadMessages = menu.AddItem("Symbol Load Messages");
+					if (!outputFilterFlags.HasFlag(.SymbolLoadMessages))
+					{
+						menuItemSymbolLoadMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
+					}
+
+					menuItemSymbolLoadMessages.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .SymbolLoadMessages);
+					});
 				}
-
-				menuItemModuleLoadMessages.mOnMenuItemSelected.Add(new (evt) =>
-				{
-					gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ModuleLoadMessages);
-				});
-
-				var menuItemModuleUnloadMessages = menu.AddItem("Module Unload Messages");
-				if (!outputFilterFlags.HasFlag(.ModuleUnloadMessages))
-				{
-					menuItemModuleUnloadMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
-				}
-
-				menuItemModuleUnloadMessages.mOnMenuItemSelected.Add(new (evt) =>
-				{
-					gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ModuleUnloadMessages);
-				});
-
-				var menuItemProcessExitMessages = menu.AddItem("Process Exit Messages");
-				if (!outputFilterFlags.HasFlag(.ProcessExitMessages))
-				{
-					menuItemProcessExitMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
-				}
-
-				menuItemProcessExitMessages.mOnMenuItemSelected.Add(new (evt) =>
-				{
-					gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ProcessExitMessages);
-				});
-
-				var menuItemThreadCreateMessages = menu.AddItem("Thread Creation Messages");
-				if (!outputFilterFlags.HasFlag(.ThreadCreateMessages))
-				{
-					menuItemThreadCreateMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
-				}
-
-				menuItemThreadCreateMessages.mOnMenuItemSelected.Add(new (evt) =>
-				{
-					gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ThreadCreateMessages);
-				});
-
-				var menuItemThreadExitMessages = menu.AddItem("Thread Exit Messages");
-				if (!outputFilterFlags.HasFlag(.ThreadExitMessages))
-				{
-					menuItemThreadExitMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
-				}
-
-				menuItemThreadExitMessages.mOnMenuItemSelected.Add(new (evt) =>
-				{
-					gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .ThreadExitMessages);
-				});
-
-				var menuItemSymbolLoadMessages = menu.AddItem("Symbol Load Messages");
-				if (!outputFilterFlags.HasFlag(.SymbolLoadMessages))
-				{
-					menuItemSymbolLoadMessages.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
-				}
-
-				menuItemSymbolLoadMessages.mOnMenuItemSelected.Add(new (evt) =>
-				{
-					gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .SymbolLoadMessages);
-				});
 
 				/* Not sure how to filter Program Output, it's handled in BeefSysLib not the IDE/Debugger. Perhaps we would
 				also need SetOutputFilterFlags() in BeefSysLib

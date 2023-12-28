@@ -83,7 +83,7 @@ namespace IDE.ui
 			}*/
         }
 
-        bool IsInsideEntry(int idx)
+        public bool IsInsideEntry(int idx)
         {
             var immediateWidget = (ImmediateWidget)mEditWidget;
             return idx > immediateWidget.mEntryStartPos.mIndex;
@@ -441,6 +441,13 @@ namespace IDE.ui
 			{
 				mDeferredChars.Add(c);
 				return;
+			}
+
+			if (c == '\x7F') // Ctrl+Backspace
+			{
+				var editWidgetContent = (ImmediateWidgetContent)mEditWidgetContent;
+				if (!editWidgetContent.IsInsideEntry(editWidgetContent.mCursorTextPos - 1))
+					return;
 			}
 
             String cmdText = scope String();
