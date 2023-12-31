@@ -1419,6 +1419,12 @@ namespace IDE
 		{
 			for (let c in projectName.RawChars)
 			{
+				if (@c.Index == 0)
+				{
+					if (c.IsNumber)
+						outName.Append("_");
+				}
+
 				if ((c.IsLetterOrDigit) || (c == '_'))
 					outName.Append(c);
 				else if (c == '-')
