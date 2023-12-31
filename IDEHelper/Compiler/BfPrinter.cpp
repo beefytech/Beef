@@ -2459,7 +2459,8 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 {
 	//Visit((BfAstNode*)ctorDeclaration);
 
-	ExpectNewLine();
+	if (!ctorDeclaration->IsA<BfAutoConstructorDeclaration>())
+		ExpectNewLine();
 	if (ctorDeclaration->mAttributes != NULL)
 	{
 		QueueVisitChild(ctorDeclaration->mAttributes);
@@ -3010,18 +3011,32 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mNameNode);
 	QueueVisitChild(typeDeclaration->mGenericParams);
-	QueueVisitChild(typeDeclaration->mAutoCtor);
+
 	if (typeDeclaration->mColonToken != NULL)
 	{
 		ExpectSpace();
 		QueueVisitChild(typeDeclaration->mColonToken);
+	}
+
+	if (typeDeclaration->mAutoCtor != NULL)
+	{
+		ExpectSpace();
+		QueueVisitChild(typeDeclaration->mAutoCtor);
+	}
+
+	if (typeDeclaration->mColonToken != NULL)
+	{
+		int nextCommaIdx = -1;
+		if (typeDeclaration->mAutoCtor != NULL)
+			nextCommaIdx++;
+
 		for (int i = 0; i < (int)typeDeclaration->mBaseClasses.size(); i++)
 		{
 			ExpectSpace();
 			QueueVisitChild(typeDeclaration->mBaseClasses[i]);
-			if (i > 0)
+			if (nextCommaIdx >= 0)
 			{
-				QueueVisitChild(typeDeclaration->mBaseClassCommas.GetSafe(i - 1));
+				QueueVisitChild(typeDeclaration->mBaseClassCommas.GetSafe(nextCommaIdx));
 			}
 		}
 		ExpectSpace();
