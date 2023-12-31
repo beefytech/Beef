@@ -3425,9 +3425,7 @@ namespace IDE.ui
 		{
 			if (theEvent.mBtn == 1)
 			{
-			    float aX, aY;
-			    theEvent.GetRootCoords(out aX, out aY);
-			    ShowRightClickMenu(mListView, aX, aY);
+				ShowRightClickMenu(mListView, theEvent.mX, theEvent.mY);
 			}
 		}
 
