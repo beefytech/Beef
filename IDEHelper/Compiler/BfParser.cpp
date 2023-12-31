@@ -3488,6 +3488,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 
 	bool isAsmBlock = false;
 	bool isTernary = false;
+	bool forceAllowNext = false;
 
 	SizedArray<BfAstNode*, 32> childArr;
 
@@ -3503,7 +3504,8 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 				isAsmBlock = true;
 		}
 
-		NextToken(-1, isInterpolate && (parenDepth == 0));
+		NextToken(-1, isInterpolate && (parenDepth == 0) && (!forceAllowNext));
+		forceAllowNext = false;
 
 		if (mPreprocessorIgnoredSectionNode != NULL)
 		{
@@ -3587,7 +3589,10 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 			if ((isInterpolate) && (parenDepth == 0))
 			{
 				if (mToken == BfToken_Question)
+				{
 					isTernary = true;
+					forceAllowNext = true;
+				}
 
 				bool endNow = false;
 				if (mToken == BfToken_Colon)
@@ -3605,6 +3610,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 
 					if ((endNow) && (isTernary))
 					{
+						forceAllowNext = true;
 						isTernary = false;
 						endNow = false;
 					}
