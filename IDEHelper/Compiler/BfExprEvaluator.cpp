@@ -22301,6 +22301,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 	else
 	{
 		SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete));
+		SetAndRestoreValue<BfAstNode*> prevDeferCallRef(mDeferCallRef, NULL);
 		result = CreateCall(&methodMatcher, callTarget);
 	}
 
