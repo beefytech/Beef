@@ -4147,17 +4147,38 @@ void BfCompiler::ProcessAutocompleteTempType()
 			for (auto propDef : tempTypeDef->mProperties)
 			{
 				auto propDeclaration = BfNodeDynCast<BfPropertyDeclaration>(propDef->mFieldDeclaration);
-				if ((propDeclaration == NULL) || (propDeclaration->mNameNode == NULL))
+				if (propDeclaration == NULL)
 					continue;
 
-				String propText = propDef->mName;
+				String propText;
+				BfAstNode* refNode = propDeclaration->mNameNode;
+
+				auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propDef->mFieldDeclaration);
+				if (indexerDeclaration != NULL)
+				{
+					refNode = indexerDeclaration->mThisToken;
+					propText = "this[";
+					for (int i = 0; i < indexerDeclaration->mParams.mSize; i++)
+					{
+						if (i > 0)
+							propText += ", ";
+						propText += indexerDeclaration->mParams[i]->ToString();
+					}
+					propText += "]";
+				}
+				else
+				{
+					if (propDeclaration->mNameNode == NULL)
+						continue;
+					propText = propDef->mName;
+				}
+
 				if (typeName != "@")
 					propText = typeName + "." + propText;
 
 				if (!autoCompleteResultString.empty())
 					autoCompleteResultString += "\n";
 
-				BfAstNode* refNode = propDeclaration->mNameNode;
 				module->UpdateSrcPos(refNode, (BfSrcPosFlags)(BfSrcPosFlag_NoSetDebugLoc | BfSrcPosFlag_Force));
 
 				propText += StrFormat("\tproperty\t%d\t%d", module->mCurFilePosition.mCurLine, module->mCurFilePosition.mCurColumn);
