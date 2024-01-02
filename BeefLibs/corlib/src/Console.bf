@@ -265,7 +265,21 @@ namespace System
 		
 		public static Result<char8> Read() => In.Read();
 
-		public static Result<void> ReadLine(String strBuffer) => In.ReadLine(strBuffer);
+		public static Result<void> ReadLine(String strBuffer)
+		{
+#if BF_PLATFORM_WINDOWS
+			var fs = In.BaseStream as FileStream;
+			GetConsoleMode((.)fs.Handle, var consoleMode);
+			consoleMode |= ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT;
+			SetConsoleMode((.)fs.Handle, consoleMode);
+#endif
+			var result = In.ReadLine(strBuffer);
+#if BF_PLATFORM_WINDOWS
+			SetConsoleMode((.)fs.Handle, consoleMode);
+#endif
+
+			return result;
+		}
 
 		public static Task<String> ReadLineAsync() => In.ReadLineAsync();
 

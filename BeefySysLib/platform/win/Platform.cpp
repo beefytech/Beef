@@ -3047,41 +3047,49 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 
 	if ((file->mIsStd) && (file->mHandle == GetStdHandle(STD_INPUT_HANDLE)))
 	{
-		INPUT_RECORD record;
-		DWORD numRead;
-	 	while (true)
+		DWORD consoleMode = 0;
+		GetConsoleMode(file->mHandle, &consoleMode);
+		if ((consoleMode & ENABLE_LINE_INPUT) != 0)
 		{
-			if (timeoutMS != -1)
+			forceNormalRead = true;
+		}
+		else
+		{
+			INPUT_RECORD record;
+			DWORD numRead;
+			while (true)
 			{
-				if (!GetNumberOfConsoleInputEvents(file->mHandle, &numRead))
+				if (timeoutMS != -1)
+				{
+					if (!GetNumberOfConsoleInputEvents(file->mHandle, &numRead))
+					{
+						forceNormalRead = true;
+						break;
+					}
+
+					if (numRead == 0)
+					{
+						OUTRESULT(BfpFileResult_Timeout);
+						return 0;
+					}
+				}
+
+				if (!ReadConsoleInput(file->mHandle, &record, 1, &numRead))
 				{
 					forceNormalRead = true;
 					break;
 				}
-
-				if (numRead == 0)
+				if (numRead > 0)
 				{
-					OUTRESULT(BfpFileResult_Timeout);
-					return 0;
-				}
-			}
-
-			if (!ReadConsoleInput(file->mHandle, &record, 1, &numRead))
-			{
-				forceNormalRead = true;
-				break;
-			}
-			if (numRead > 0)
-			{
-				if ((record.Event.KeyEvent.bKeyDown) && (record.Event.KeyEvent.uChar.AsciiChar != 0))
-				{
-					memset(buffer, record.Event.KeyEvent.uChar.AsciiChar, 1);
-					OUTRESULT(BfpFileResult_Ok);
-					return 1;
+					if ((record.Event.KeyEvent.bKeyDown) && (record.Event.KeyEvent.uChar.AsciiChar != 0))
+					{
+						memset(buffer, record.Event.KeyEvent.uChar.AsciiChar, 1);
+						OUTRESULT(BfpFileResult_Ok);
+						return 1;
+					}
 				}
 			}
 		}
-
 	}
 
 	if ((timeoutMS != -1) && (!forceNormalRead))
