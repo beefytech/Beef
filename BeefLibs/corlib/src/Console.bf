@@ -270,8 +270,7 @@ namespace System
 #if BF_PLATFORM_WINDOWS
 			var fs = In.BaseStream as FileStream;
 			GetConsoleMode((.)fs.Handle, var consoleMode);
-			consoleMode |= ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT;
-			SetConsoleMode((.)fs.Handle, consoleMode);
+			SetConsoleMode((.)fs.Handle, consoleMode | ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
 #endif
 			var result = In.ReadLine(strBuffer);
 #if BF_PLATFORM_WINDOWS
