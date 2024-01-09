@@ -51,7 +51,7 @@ namespace IDE
 		public int mProjectInfoIdx = -1;
 		public TestInstance mTestInstance ~ delete _;
 		public List<ProjectInfo> mProjectInfos = new .() ~ DeleteContainerAndItems!(_);
-		public List<String> mQueuedOutput = new .() ~ DeleteContainerAndItems!(_);
+		public Queue<String> mQueuedOutput = new .() ~ DeleteContainerAndItems!(_);
 		public Monitor mMonitor = new Monitor() ~ delete _;
 		public String mPrevConfigName ~ delete _;
 		public bool mDebug;
