@@ -182,6 +182,7 @@ namespace System
 
 			bool isNeg = val[0] == '-';
 			bool isPos = val[0] == '+';
+			bool digitsFound = false;
 			double result = 0;
 			double decimalMultiplier = 0;
 
@@ -205,7 +206,7 @@ namespace System
 				if ((c == 'e') || (c == 'E'))
 				{
 					//Error if there are no numbers after the prefix
-					if(i == val.Length - 1)
+					if(i == val.Length - 1 || !digitsFound)
 						return .Err;
 					var exponent = Try!(int32.Parse(val.Substring(i + 1)));
 					result *= Math.Pow(10, (double)exponent);
@@ -237,10 +238,15 @@ namespace System
 				{
 					result *= 10;
 					result += (int32)(c - '0');
+					digitsFound = true;
 				}
 				else
 					return .Err;
 			}
+
+			if (!digitsFound)
+				return .Err;
+
 			return isNeg ? (float)(-result) : (float)result;
 		}
     }
