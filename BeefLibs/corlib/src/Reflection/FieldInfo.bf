@@ -41,7 +41,7 @@ namespace System.Reflection
 	    public Result<void, Error> SetValue(Object obj, Object value)
 	    {    
 	        void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj));
-	        if (mTypeInstance.IsStruct)
+	        if ((obj != null) && (mTypeInstance.IsStruct))
 	        {
 	            Type boxedType = obj.[Friend]RawGetType();
 	            bool typeMatched = false;
@@ -108,7 +108,7 @@ namespace System.Reflection
 		public Result<void, Error> SetValue(Object obj, Variant value)
 		{    
 			void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj));
-		    if (mTypeInstance.IsStruct)
+		    if ((obj != null) && (mTypeInstance.IsStruct))
 		    {
 		        Type boxedType = obj.[Friend]RawGetType();
 		        bool typeMatched = false;
