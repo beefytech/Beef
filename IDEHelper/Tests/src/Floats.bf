@@ -22,5 +22,33 @@ namespace Tests
 			FloatParseTest("3.3e-11", 3.3e-11f);
 			FloatParseTest("0.002e5", 0.002e5f);
 		}
+
+		public static void FloatParseErrTest(StringView string)
+		{
+			Test.Assert(float.Parse(string) case .Err);
+		}
+
+		[Test]
+		public static void TestErrors()
+		{
+			FloatParseErrTest("");
+			FloatParseErrTest("-");
+			FloatParseErrTest("+");
+			FloatParseErrTest(".");
+			FloatParseErrTest("+.");
+			FloatParseErrTest("-.");
+			FloatParseErrTest("E");
+			FloatParseErrTest("e");
+			FloatParseErrTest(".E");
+			FloatParseErrTest(".e");
+			FloatParseErrTest("-.E");
+			FloatParseErrTest("-.e");
+			FloatParseErrTest("+.E");
+			FloatParseErrTest("+.e");
+			FloatParseErrTest("5E-");
+			FloatParseErrTest("5e-");
+			FloatParseErrTest("6E+");
+			FloatParseErrTest("6e+");
+		}
 	}
 }

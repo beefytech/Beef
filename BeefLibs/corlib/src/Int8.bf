@@ -83,6 +83,7 @@ namespace System
 				return .Err(.NoValue);
 
 			bool isNeg = false;
+			bool digitsFound = false;
 			int8 result = 0;
 
 			int8 radix = style.HasFlag(.Hex) ? 0x10 : 10;
@@ -101,6 +102,7 @@ namespace System
 				{
 					result &*= radix;
 					result &+= (int8)(c - '0');
+					digitsFound = true;
 				}
 				else if ((c >= 'a') && (c <= 'f'))
 				{
@@ -108,6 +110,7 @@ namespace System
 						return .Err(.InvalidChar(result));
 					result &*= radix;
 					result &+= (int8)(c - 'a' + 10);
+					digitsFound = true;
 				}
 				else if ((c >= 'A') && (c <= 'F'))
 				{
@@ -115,12 +118,14 @@ namespace System
 						return .Err(.InvalidChar(result));
 					result &*= radix;
 					result &+= (int8)(c - 'A' + 10);
+					digitsFound = true;
 				}
 				else if ((c == 'X') || (c == 'x'))
 				{
 					if ((!style.HasFlag(.AllowHexSpecifier)) || (i == 0) || (result != 0))
 						return .Err(.InvalidChar(result));
 					radix = 0x10;
+					digitsFound = false;
 				}
 				else if (c == '\'')
 				{
@@ -136,6 +141,9 @@ namespace System
 				if (isNeg ? (uint8)result > (uint8)MaxValue + 1 : (uint8)result > (uint8)MaxValue)
 					return .Err(.Overflow);
 			}
+
+			if (!digitsFound)
+				return .Err(.NoValue);
 
 			return isNeg ? -result : result;
 		}

@@ -94,6 +94,7 @@ namespace System
 			if (val.IsEmpty)
 				return .Err(.NoValue);
 
+			bool digitsFound = false;
 			uint64 result = 0;
 			uint64 prevResult = 0;
 
@@ -107,6 +108,7 @@ namespace System
 				{
 					result &*= radix;
 					result &+= (uint64)(c - '0');
+					digitsFound = true;
 				}
 				else if ((c >= 'a') && (c <= 'f'))
 				{
@@ -114,6 +116,7 @@ namespace System
 						return .Err(.InvalidChar(result));
 					result &*= radix;
 					result &+= (uint64)(c - 'a' + 10);
+					digitsFound = true;
 				}
 				else if ((c >= 'A') && (c <= 'F'))
 				{
@@ -121,12 +124,14 @@ namespace System
 						return .Err(.InvalidChar(result));
 					result &*= radix;
 					result &+= (uint64)(c - 'A' + 10);
+					digitsFound = true;
 				}
 				else if ((c == 'X') || (c == 'x'))
 				{
 					if ((!style.HasFlag(.AllowHexSpecifier)) || (i == 0) || (result != 0))
 						return .Err(.InvalidChar(result));
 					radix = 0x10;
+					digitsFound = false;
 				}
 				else if (c == '\'')
 				{
@@ -143,6 +148,9 @@ namespace System
 					return .Err(.Overflow);
 				prevResult = result;
 			}
+
+			if (!digitsFound)
+				return .Err(.NoValue);
 
 			return result;
 		}
