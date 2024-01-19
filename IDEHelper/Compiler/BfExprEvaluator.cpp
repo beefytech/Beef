@@ -23912,6 +23912,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					argValues.Init(&sizedArgExprs);
 					ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 					rightArg = argValues.mResolvedArgs[0];
+					if (!rightArg.mTypedValue)
+						continue;
 				}
 
 				SizedArray<BfResolvedArg, 2> args;
