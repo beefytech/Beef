@@ -600,7 +600,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
 			gCmdLine.Append(' ');
 
 		String arg = argv[i];
-		if ((arg.Contains(' ')) || (arg.Contains('\"')))
+		if (arg.Contains(' ') || arg.Contains('\t') || arg.Contains('\r') || arg.Contains('\n') || arg.Contains('\"'))
 		{
 			arg.Replace("\"", "\\\"");
 			gCmdLine.Append("\"");
