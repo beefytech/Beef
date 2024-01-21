@@ -477,6 +477,25 @@ void BfParser::Fail(const StringImpl& error, int offset)
 	mPassInstance->FailAt(error, mSourceData, mSrcIdx + offset);
 }
 
+void BfParser::UnexpectedCharacter()
+{
+	if (mPreprocessorIgnoredSectionNode != NULL)
+		return;
+
+	int startIdx = mTokenStart;
+	int endIdx = startIdx;
+	char32_t c = u8_nextchar((char*)mSrc, &endIdx);
+	int charLen = endIdx - startIdx;
+
+	String str = "Unexpected character '";
+	for (int i = 0; i < charLen; i++)
+		str += mSrc[startIdx + i];
+	str += StrFormat("' (0x%0X)", (int)c);
+
+	mPassInstance->FailAt(str, mSourceData, startIdx);
+	mSrcIdx = endIdx;
+}
+
 void BfParser::TokenFail(const StringImpl& error, int offset)
 {
 	if (mPreprocessorIgnoredSectionNode == NULL)
@@ -2446,7 +2465,8 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 		case '#':
 			if (disablePreprocessor)
 			{
-				TokenFail("Unexpected character");
+				mTokenStart = mSrcIdx - 1;
+				UnexpectedCharacter();
 				continue;
 			}
 			else
@@ -3457,7 +3477,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 				{
 					AddErrorNode(mTokenStart, mSrcIdx);
 					mTriviaStart = mSrcIdx;
-					TokenFail("Unexpected character");
+					UnexpectedCharacter();
 					continue;
 				}
 			}

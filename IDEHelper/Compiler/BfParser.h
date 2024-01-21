@@ -234,6 +234,7 @@ public:
 
 	void Fail(const StringImpl& error, int offset = -1);
 	void TokenFail(const StringImpl& error, int offset = -1);
+	void UnexpectedCharacter();
 
 	void SetSource(const char* data, int length);
 	void MoveSource(const char* data, int length); // Takes ownership of data ptr
