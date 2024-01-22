@@ -359,6 +359,23 @@ namespace System
 			}
 		}
 
+		public int NumCodePoints
+		{
+			get
+			{
+				char8* ptr = Ptr;
+
+				int count = 0;
+				for (int i < mLength)
+				{
+					char8 c = ptr[i];
+					if (((uint8)c & 0xC0) != 0x80)
+						count++;
+				}
+				return count;
+			}
+		}
+
 		public int AllocSize
 		{
 			[Inline]
@@ -3591,6 +3608,23 @@ namespace System
 				int end = GetRangeEnd(range);
 
 				return .(mPtr + start, end - start);
+			}
+		}
+
+		public int NumCodePoints
+		{
+			get
+			{
+				char8* ptr = Ptr;
+
+				int count = 0;
+				for (int i < mLength)
+				{
+					char8 c = ptr[i];
+					if (((uint8)c & 0xC0) != 0x80)
+						count++;
+				}
+				return count;
 			}
 		}
 

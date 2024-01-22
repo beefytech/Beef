@@ -2226,15 +2226,18 @@ namespace Beefy.widgets
 			    else if (lineIdx < GetLineCount() - 1)
 			        MoveCursorTo(lineIdx + 1, 0, false, 0, .SelectRight);
 
-			    if (!mWidgetWindow.IsKeyDown(KeyCode.Control))
-			        break;
-
 			    GetLineCharAtIdx(CursorTextPos, out lineIdx, out lineChar);
 			    anIndex = GetTextIdx(lineIdx, lineChar);
 			    if (anIndex == mData.mTextLength)
 			        break;
 
 			    char8 c = (char8)mData.mText[anIndex].mChar;
+				if ((uint8)c & 0xC0 == 0x80)
+					continue;
+
+				if (!mWidgetWindow.IsKeyDown(KeyCode.Control))
+					break;
+
 			    CharType char8Type = GetCharType(c);
 			    if (char8Type == .Opening)
 			        break;
