@@ -7,6 +7,7 @@
 #include "BfReducer.h"
 #include "BfExprEvaluator.h"
 #include "BfResolvePass.h"
+#include "BfMangler.h"
 #include "../Backend/BeIRCodeGen.h"
 #include "BeefySysLib/platform/PlatformHelper.h"
 #include "../DebugManager.h"
@@ -5883,7 +5884,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		return false;
 	};
 
-	auto _CheckFunction = [&](CeFunction* checkFunction, bool& handled)
+	std::function<bool(CeFunction* checkFunction, bool& handled)> _CheckFunction = [&](CeFunction* checkFunction, bool& handled)
 	{
 		if (checkFunction == NULL)
 		{
@@ -6325,6 +6326,106 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectType(methodInstance->mMethodInfoEx->mMethodGenericArguments[genericArgIdx]->mTypeId);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetStatic)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+				int32 fieldIdx = *(int32*)((uint8*)stackPtr + ptrSize + 4);
+
+				CeFunction* ctorCallFunction = NULL;
+
+				BfType* bfType = GetBfType(typeId);
+				bool success = false;
+				if (bfType != NULL)
+				{
+					auto typeInst = bfType->ToTypeInstance();
+					if (typeInst != NULL)
+					{
+						if (typeInst->mDefineState < BfTypeDefineState_CETypeInit)
+							mCurModule->PopulateType(typeInst);
+						if ((fieldIdx >= 0) && (fieldIdx < typeInst->mFieldInstances.mSize))
+						{
+							auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
+
+							auto fieldType = fieldInstance.mResolvedType;
+							ceModule->PopulateType(fieldType, BfPopulateType_Full_Force);
+
+							int64 fieldId = ((int64)typeId << 32) | fieldIdx;
+
+							CeStaticFieldInfo* staticFieldInfo = NULL;
+							if (mStaticFieldIdMap.TryAdd(fieldId, NULL, &staticFieldInfo))
+							{
+								if (mStaticCtorExecSet.TryAdd(typeId, NULL))
+								{
+									BfTypeInstance* bfTypeInstance = NULL;
+									if (bfType != NULL)
+										bfTypeInstance = bfType->ToTypeInstance();
+									if (bfTypeInstance == NULL)
+									{
+										_Fail("Invalid type");
+										return false;
+									}
+
+									auto methodDef = bfTypeInstance->mTypeDef->GetMethodByName("__BfStaticCtor");
+									if (methodDef == NULL)
+									{
+										_Fail("No static ctor found");
+										return false;
+									}
+
+									auto moduleMethodInstance = ceModule->GetMethodInstance(bfTypeInstance, methodDef, BfTypeVector());
+									if (!moduleMethodInstance)
+									{
+										_Fail("No static ctor instance found");
+										return false;
+									}
+
+									bool added = false;
+									ctorCallFunction = mCeMachine->GetFunction(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, added);
+									if (ctorCallFunction->mInitializeState < CeFunction::InitializeState_Initialized)
+										mCeMachine->PrepareFunction(ctorCallFunction, NULL);
+								}
+
+								_FixVariables();
+
+								StringT<4096> staticVarName;
+								BfMangler::Mangle(staticVarName, ceModule->mCompiler->GetMangleKind(), &fieldInstance);
+
+								CeStaticFieldInfo* nameStaticFieldInfo = NULL;
+								mStaticFieldMap.TryAdd(staticVarName, NULL, &nameStaticFieldInfo);
+
+								if (nameStaticFieldInfo->mAddr == 0)
+								{
+									int fieldSize = fieldInstance.mResolvedType->mSize;
+									CE_CHECKALLOC(fieldSize);
+									uint8* ptr = CeMalloc(fieldSize);
+									_FixVariables();
+									if (fieldSize > 0)
+										memset(ptr, 0, fieldSize);
+									nameStaticFieldInfo->mAddr = (addr_ce)(ptr - memStart);
+								}
+
+								staticFieldInfo->mAddr = nameStaticFieldInfo->mAddr;
+							}
+
+							CeSetAddrVal(stackPtr + 0, staticFieldInfo->mAddr, ptrSize);
+						}
+						else if (fieldIdx != -1)
+						{
+							_Fail("Invalid field");
+							return false;
+						}
+					}
+				}
+
+				if (ctorCallFunction != NULL)
+				{
+					bool handled = false;
+					if (!_CheckFunction(ctorCallFunction, handled))
+						return false;
+					if (!handled)
+						CE_CALL(ctorCallFunction);
+				}
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_SetReturnType)
 			{
@@ -7920,24 +8021,30 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						return false;
 					}
 
-					auto methodDef = bfTypeInstance->mTypeDef->GetMethodByName("__BfStaticCtor");
-					if (methodDef == NULL)
+					if (bfType->mDefineState == BfTypeDefineState_CETypeInit)
 					{
-						_Fail("No static ctor found");
-						return false;
+						// Don't create circular references
 					}
-
-					auto moduleMethodInstance = ceModule->GetMethodInstance(bfTypeInstance, methodDef, BfTypeVector());
-					if (!moduleMethodInstance)
+					else
 					{
-						_Fail("No static ctor instance found");
-						return false;
-					}
+						auto methodDef = bfTypeInstance->mTypeDef->GetMethodByName("__BfStaticCtor");
+						if (methodDef != NULL)
+						{
+							auto moduleMethodInstance = ceModule->GetMethodInstance(bfTypeInstance, methodDef, BfTypeVector());
+							if (!moduleMethodInstance)
+							{
+								_Fail("No static ctor instance found");
+								return false;
+							}
 
-					bool added = false;
-					ctorCallFunction = mCeMachine->GetFunction(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, added);
-					if (ctorCallFunction->mInitializeState < CeFunction::InitializeState_Initialized)
-						mCeMachine->PrepareFunction(ctorCallFunction, NULL);
+							ceModule->PopulateType(bfTypeInstance, BfPopulateType_DataAndMethods);
+
+							bool added = false;
+							ctorCallFunction = mCeMachine->GetFunction(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, added);
+							if (ctorCallFunction->mInitializeState < CeFunction::InitializeState_Initialized)
+								mCeMachine->PrepareFunction(ctorCallFunction, NULL);
+						}
+					}
 				}
 
 				CeStaticFieldInfo* staticFieldInfo = NULL;
@@ -9549,6 +9656,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetGenericArg;
 				}
+				else if (methodDef->mName == "Comptime_Field_GetStatic")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Field_GetStatic;
+				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mCompilerTypeDef))
 			{
@@ -10089,6 +10200,7 @@ void CeMachine::ReleaseContext(CeContext* ceContext)
 		ceContext->mMemory.Dispose();
 	ceContext->mStaticCtorExecSet.Clear();
 	ceContext->mStaticFieldMap.Clear();
+	ceContext->mStaticFieldIdMap.Clear();
 	ceContext->mHeap->Clear(BF_CE_MAX_CARRYOVER_HEAP);
 	ceContext->mReflectTypeIdOffset = -1;
 	mCurEmitContext = ceContext->mCurEmitContext;

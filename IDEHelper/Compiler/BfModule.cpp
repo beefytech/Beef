@@ -5859,8 +5859,15 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 	else if (fieldInstance->GetFieldDef()->mIsStatic)
 	{
 		BfTypedValue refVal;
-		if (!mIsComptimeModule) // This can create circular reference issues for a `Self` static
+		if (mIsComptimeModule)
+		{
+			constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, fieldInstance->mFieldIdx);
+		}
+		else
+		{
 			refVal = ReferenceStaticField(fieldInstance);
+		}
+
 		if (refVal.mValue.IsConst())
 		{
 			auto constant = mBfIRBuilder->GetConstant(refVal.mValue);

@@ -2140,6 +2140,15 @@ BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* 
 	ceParseContext.mFailIdx = mCompiler->mPassInstance->mFailedIdx;
 	ceParseContext.mWarnIdx = mCompiler->mPassInstance->mWarnIdx;
 
+	if (typeInstance->mTypeDef->mEmitParent == NULL)
+	{
+		if (typeInstance->mTypeDef->mNextRevision != NULL)
+		{
+			InternalError("CEEmitParse preconditions failed");
+			return ceParseContext;
+		}
+	}
+
 	bool createdParser = false;
 	int startSrcIdx = 0;
 
@@ -5203,6 +5212,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			if (hadNewMembers)
 			{
+				// Avoid getting stale cached comptime reflection info
+				mCompiler->mCeMachine->mCeModule->mTypeDataRefs.Remove(resolvedTypeRef);
+
 				// We need to avoid passing in BfPopulateType_Interfaces_All because it could cause us to miss out on new member processing,
 				//  including resizing the method group table
 				DoPopulateType(resolvedTypeRef, BF_MAX(populateType, BfPopulateType_Data));

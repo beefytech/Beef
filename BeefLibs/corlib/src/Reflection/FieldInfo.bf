@@ -327,6 +327,14 @@ namespace System.Reflection
 				if (!mFieldData.mFlags.HasFlag(FieldFlags.Static))
 					return .Err(.InvalidTargetType);
 
+				if (Compiler.IsComptime)
+				{
+					void* dataPtr = Type.[Friend]Comptime_Field_GetStatic((int32)mTypeInstance.TypeId, (int32)mFieldData.mData);
+					if (dataPtr != null)
+						value = *(TMember*)dataPtr;
+					return .Ok;
+				}
+
 				targetDataAddr = null;
 			}
 			else

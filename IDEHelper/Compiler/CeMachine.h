@@ -447,6 +447,7 @@ enum CeFunctionKind
 	CeFunctionKind_Method_GetInfo,
 	CeFunctionKind_Method_GetParamInfo,
 	CeFunctionKind_Method_GetGenericArg,
+	CeFunctionKind_Field_GetStatic,
 
 	CeFunctionKind_SetReturnType,
 	CeFunctionKind_Align,
@@ -1106,6 +1107,7 @@ public:
 	Dictionary<Val128, addr_ce> mConstDataMap;
 	HashSet<int> mStaticCtorExecSet;
 	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
+	Dictionary<int64, CeStaticFieldInfo> mStaticFieldIdMap;
 	Dictionary<int, CeInternalData*> mInternalDataMap;
 	int mCurHandleId;
 

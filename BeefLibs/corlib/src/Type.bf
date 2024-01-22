@@ -567,6 +567,7 @@ namespace System
 		static extern Type Comptime_Method_GetGenericArg(int64 methodHandle, int32 genericArgIdx);
 		static extern String Comptime_Field_GetName(int64 fieldHandle);
 		static extern ComptimeFieldInfo Comptime_Field_GetInfo(int64 fieldHandle);
+		static extern void* Comptime_Field_GetStatic(int32 typeId, int32 fieldIdx);
 
         protected static Type GetType(TypeId typeId)
         {
