@@ -1974,8 +1974,18 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 
 		for (auto dependentType : rebuildTypeQueue)
 		{
+			auto dependentTypeInst = dependentType->ToTypeInstance();
+
+			// This guards against recompile loops
 			if (CanRebuild(dependentType))
+			{
 				RebuildType(dependentType);
+			}
+			else if (dependentTypeInst != NULL)
+			{
+				// This keeps us from crashing from accessing deleted types on subsequent compiles
+				mFailTypes.TryAdd(dependentTypeInst, BfFailKind_Normal);
+			}
 		}
 	}
 }
