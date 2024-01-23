@@ -1,5 +1,5 @@
 # Disabled - This version of WS32_2.dll is no longer hosted by MS
-Stop();
+Stop()
 
 SetSymSrvOptions("C:/SymCache", "http://symbols.beeflang.org/\nhttps://msdl.microsoft.com/download/symbols", "TempCache")
 #SetSymSrvOptions("C:/SymCache", "http://127.0.0.1:8042", "TempCache")
