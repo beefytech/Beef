@@ -3880,7 +3880,7 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			}
 			if (type->IsRef())
 				type = type->GetUnderlyingType();
-			return Hash(type, ctx, flags, hashSeed);
+			return DoHash(type, ctx, flags, hashSeed);
 		}
 
 		int elemHash = Hash(retTypeTypeRef->mElementType, ctx, BfHashFlag_None, hashSeed) ^ HASH_MODTYPE + retTypeTypeRef->mRetTypeToken->mToken;

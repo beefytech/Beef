@@ -16537,7 +16537,7 @@ void BfModule::AssertParseErrorState()
 
 BfType* BfModule::GetDelegateReturnType(BfType* delegateType)
 {
-	BF_ASSERT(delegateType->IsDelegate());
+	BF_ASSERT(delegateType->IsDelegateOrFunction());
 	auto typeInst = delegateType->ToTypeInstance();
 	PopulateType(typeInst, BfPopulateType_DataAndMethods);
 	BfMethodInstance* invokeMethodInstance = GetRawMethodInstanceAtIdx(typeInst->ToTypeInstance(), 0, "Invoke");
