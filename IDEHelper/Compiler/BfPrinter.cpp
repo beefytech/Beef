@@ -3035,10 +3035,11 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 			ExpectSpace();
 			QueueVisitChild(typeDeclaration->mBaseClasses[i]);
 			if (nextCommaIdx >= 0)
-			{
 				QueueVisitChild(typeDeclaration->mBaseClassCommas.GetSafe(nextCommaIdx));
-			}
+			nextCommaIdx++;
 		}
+		if (nextCommaIdx >= 0)
+			QueueVisitChild(typeDeclaration->mBaseClassCommas.GetSafe(nextCommaIdx));
 		ExpectSpace();
 	}
 	QueueVisitChild(typeDeclaration->mGenericConstraintsDeclaration);
