@@ -7335,6 +7335,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 			if (auto methodDeclaration = methodDef->GetMethodDeclaration())
 			{
+				BfTypeState typeState;
+				typeState.mPrevState = mContext->mCurTypeState;
+				typeState.mForceActiveTypeDef = methodDef->mDeclaringType;
+				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
 				for (BfParameterDeclaration* paramDecl : methodDeclaration->mParams)
 				{
 					if (paramDecl->mAttributes != NULL)
