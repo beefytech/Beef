@@ -2501,8 +2501,14 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 	ExpectSpace();
 	QueueVisitChild(ctorDeclaration->mInitializer);
 
-	QueueVisitChild(ctorDeclaration->mFatArrowToken);
+	if (ctorDeclaration->mFatArrowToken != NULL)
+	{
+		ExpectSpace();
+		QueueVisitChild(ctorDeclaration->mFatArrowToken);
+		ExpectSpace();
+	}
 	QueueVisitChild(ctorDeclaration->mBody);
+	QueueVisitChild(ctorDeclaration->mEndSemicolon);
 
 	FlushVisitChild();
 }
