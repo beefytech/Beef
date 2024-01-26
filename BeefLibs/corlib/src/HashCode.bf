@@ -138,7 +138,19 @@ static class HashCode
 
 	public static int Generate<T>(T value)
 	{
-		return HashHelper<T>.Get(value);
+		if (Compiler.IsBuilding)
+		{
+			return HashHelper<T>.Get(value);
+		}
+		else
+		{
+			[IgnoreErrors(true)]
+			{
+				return HashHelper<T>.Get(value);
+			}
+	#unwarn
+			return 0;
+		}
 	}
 
 	static int Get(void* ptr, int size)
