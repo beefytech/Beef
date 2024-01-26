@@ -18,7 +18,8 @@ namespace Beefy.gfx
 			None = 0,
 			Additive = 1,
 			NoPremult = 2,
-			AllowRead = 4
+			AllowRead = 4,
+			FatalError = 8
 		}
 
         public Image mSrcTexture;
@@ -99,7 +100,11 @@ namespace Beefy.gfx
 
             void* aNativeTextureSegment = Gfx_LoadTexture(fileName, (int32)flags);
             if (aNativeTextureSegment == null)
-                return null;
+            {
+				if (flags.HasFlag(.FatalError))
+					Internal.FatalError(scope $"Failed to load image '{fileName}'");
+				return null;
+			}
 
             return CreateFromNativeTextureSegment(aNativeTextureSegment);
         }

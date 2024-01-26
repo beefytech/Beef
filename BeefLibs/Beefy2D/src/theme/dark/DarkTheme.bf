@@ -308,7 +308,7 @@ namespace Beefy.theme.dark
 			if (sSrcImgScale > 1)
 				fileName.AppendF("_{0}", sSrcImgScale);
 			fileName.Append(".png");
-			var image = Image.LoadFromFile(fileName);
+			var image = Image.LoadFromFile(fileName, .FatalError);
 			image.Scale(GS!(48) / image.mWidth);
 			return image;
 		}
@@ -372,7 +372,7 @@ namespace Beefy.theme.dark
 
 			mIconError = LoadSizedImage("IconError");
 			mIconWarning = LoadSizedImage("IconWarning");
-			mThemeImage = Image.LoadFromFile(fileName);
+			mThemeImage = Image.LoadFromFile(fileName, .FatalError);
 			if (mThemeImage == null)
 			{
 				// Fail (just crashes now)
