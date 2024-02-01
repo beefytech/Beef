@@ -2889,7 +2889,7 @@ namespace IDE.ui
 					InsertAtCursor("*/");
 
 					if (doComment != null)
-						mSelection = EditSelection(firstCharPos, lastCharPos + gApp.mSettings.mEditorSettings.mTabSize);
+						mSelection = EditSelection(firstCharPos, lastCharPos + 4);
 				}
 
 				if (undoBatchStart != null)
@@ -3139,19 +3139,23 @@ namespace IDE.ui
 				{
 					for (int i = firstCharPos; i <= lastCharPos; i++)
 					{
-						if ((minPos == 0 && i == 0) || (minPos>=0 && SafeGetChar(i - 1) == '\n' || SafeGetChar(i - 1) == '\t'))
-						if (SafeGetChar(i - 0) == '/' && SafeGetChar(i + 1) == '/')
+						if (((minPos == 0) && (i == 0)) ||
+							((minPos >= 0) && (SafeGetChar(i - 1) == '\n') || (SafeGetChar(i - 1) == '\t') || (SafeGetChar(i - 1) == ' ')))
 						{
-							mSelection = EditSelection(i - 0, i + 2);
-							DeleteSelection();
-							lastCharPos -= 2;
-							while (i < maxPos && SafeGetChar(i) != '\n')
+							if (SafeGetChar(i - 0) == '/' && SafeGetChar(i + 1) == '/')
 							{
-								i++;
+								mSelection = EditSelection(i - 0, i + 2);
+								DeleteSelection();
+								lastCharPos -= 2;
+								while (i < maxPos && SafeGetChar(i) != '\n')
+								{
+									i++;
+								}
 							}
 						}
 					}
 
+					startLineAndCol = null;
 					CursorToLineEnd();
 					int cursorEndPos = CursorTextPos;
 					mSelection = .(minPos, cursorEndPos);
@@ -3170,7 +3174,8 @@ namespace IDE.ui
 					}
 				}
 				else if (doComment != false)
-				{ //if selection is from beginning of the line then we want to use // comment, that's why the check for line count and ' ' and tab
+				{
+					//if selection is from beginning of the line then we want to use // comment, that's why the check for line count and ' ' and tab
 					if (doLineComment)
 					{
 						CursorTextPos = minPos;
@@ -3205,6 +3210,7 @@ namespace IDE.ui
 				if (prevSelection == null)
 					mSelection = null;
 
+				ClampCursor();
 				FixSelection();
 
 				return true;
