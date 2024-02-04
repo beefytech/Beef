@@ -8862,7 +8862,7 @@ namespace IDE
             SpawnedProcess process = new SpawnedProcess();
 			if (process.Start(startInfo) case .Err)
 			{
-				OutputLine("Failed to execute \"{0}\"", inFileName);
+				OutputErrorLine("Failed to execute \"{0}\"", inFileName);
 				delete process;
 				delete executionInstance;
 				return null;
