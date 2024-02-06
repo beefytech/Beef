@@ -8866,7 +8866,16 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			}
 		}
 
-		if (!ParseMethod(methodDecl, &params, &commas))
+		bool failed = ParseMethod(methodDecl, &params, &commas);
+
+		if (methodDecl->mGenericConstraintsDeclaration != NULL)
+		{
+			typeDeclaration->mGenericConstraintsDeclaration = methodDecl->mGenericConstraintsDeclaration;
+			typeDeclaration->SetSrcEnd(methodDecl->GetSrcEnd());
+			methodDecl->mGenericConstraintsDeclaration = NULL;
+		}
+
+		if (failed)
 			return typeDeclaration;
 
 		if (methodDecl->mEndSemicolon == NULL)

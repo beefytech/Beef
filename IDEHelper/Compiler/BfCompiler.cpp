@@ -8445,12 +8445,18 @@ void BfCompiler::GenerateAutocompleteInfo()
 								if (checkMethodInstance->GetNumGenericParams() == 0)
 									checkMethodInstance = methodEntry.mCurMethodInstance;
 
+								bool handled = false;
 								if (genericParamType->mGenericParamIdx < checkMethodInstance->GetNumGenericParams())
 								{
 									auto genericParamInstance = checkMethodInstance->mMethodInfoEx->mGenericParams[genericParamType->mGenericParamIdx];
-									methodText += genericParamInstance->GetGenericParamDef()->mName;
+									auto genericParamDef = genericParamInstance->GetGenericParamDef();
+									if (genericParamDef != NULL)
+									{
+										methodText += genericParamDef->mName;
+										handled = true;
+									}
 								}
-								else
+								if (!handled)
 								{
 									methodText += StrFormat("@M%d", genericParamType->mGenericParamIdx);
 								}
