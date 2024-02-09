@@ -113,5 +113,29 @@ namespace Tests
 			Uint64ParseErrorTest("+0x", .HexNumber);
 			Uint64ParseErrorTest("+0X", .HexNumber);
 		}
+
+		public static void MinMaxTest<T>(T expectedMinValue, T expectedMaxValue)
+		where T : IMinMaxValue<T>
+		where int : operator T <=> T
+		{
+			Test.Assert(T.MinValue == expectedMinValue);
+			Test.Assert(T.MaxValue == expectedMaxValue);
+		}
+
+		[Test]
+		public static void TestMinMax()
+		{
+			MinMaxTest<int>(Int.MinValue, Int.MaxValue);
+			MinMaxTest<int8>(Int8.MinValue, Int8.MaxValue);
+			MinMaxTest<int16>(Int16.MinValue, Int16.MaxValue);
+			MinMaxTest<int32>(Int32.MinValue, Int32.MaxValue);
+			MinMaxTest<int64>(Int64.MinValue, Int64.MaxValue);
+
+			MinMaxTest<uint>(UInt.MinValue, UInt.MaxValue);
+			MinMaxTest<uint8>(UInt8.MinValue, UInt8.MaxValue);
+			MinMaxTest<uint16>(UInt16.MinValue, UInt16.MaxValue);
+			MinMaxTest<uint32>(UInt32.MinValue, UInt32.MaxValue);
+			MinMaxTest<uint64>(UInt64.MinValue, UInt64.MaxValue);
+		}
 	}
 }

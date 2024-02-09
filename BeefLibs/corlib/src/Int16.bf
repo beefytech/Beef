@@ -3,7 +3,7 @@ using System.Globalization;
 namespace System
 {
 #unwarn
-	struct Int16 : int16, IInteger, ISigned, IHashable, IFormattable, IIsNaN, IParseable<int16, ParseError>, IParseable<int16>
+	struct Int16 : int16, IInteger, ISigned, IHashable, IFormattable, IIsNaN, IParseable<int16, ParseError>, IParseable<int16>, IMinMaxValue<int16>
 	{
 		public enum ParseError
 		{
@@ -15,6 +15,9 @@ namespace System
 
 		public const int16 MaxValue = 0x7FFF;
 		public const int16 MinValue = -0x8000;
+
+		public static int16 IMinMaxValue<int16>.MinValue => MinValue;
+		public static int16 IMinMaxValue<int16>.MaxValue => MaxValue;
 
  		public static int operator<=>(Self a, Self b)
 		{

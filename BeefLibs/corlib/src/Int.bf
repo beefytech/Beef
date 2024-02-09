@@ -3,7 +3,7 @@ using System;
 namespace System
 {
 #unwarn
-	struct Int : int, IInteger, IHashable, IFormattable, IIsNaN, IParseable<int, ParseError>, IParseable<int>
+	struct Int : int, IInteger, IHashable, IFormattable, IIsNaN, IParseable<int, ParseError>, IParseable<int>, IMinMaxValue<int>
     {
 		public enum ParseError
 		{
@@ -15,6 +15,9 @@ namespace System
 
 		public const int MaxValue = (sizeof(int) == 8) ? 0x7FFFFFFFFFFFFFFFL : 0x7FFFFFFF;
 		public const int MinValue = (sizeof(int) == 8) ? -0x8000000000000000L : -0x80000000;
+
+		public static int IMinMaxValue<int>.MinValue => MinValue;
+		public static int IMinMaxValue<int>.MaxValue => MaxValue;
 
 		public static int operator<=>(Self a, Self b)
 		{

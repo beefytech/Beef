@@ -1,7 +1,7 @@
 namespace System
 {
 #unwarn
-	struct UInt : uint, IInteger, IUnsigned, IHashable, IFormattable, IIsNaN, IParseable<uint, ParseError>, IParseable<uint>
+	struct UInt : uint, IInteger, IUnsigned, IHashable, IFormattable, IIsNaN, IParseable<uint, ParseError>, IParseable<uint>, IMinMaxValue<uint>
 	{
 		public enum ParseError
 		{
@@ -13,6 +13,9 @@ namespace System
 
 		public const uint MaxValue = (sizeof(uint) == 8) ? 0xFFFFFFFFFFFFFFFFUL : 0xFFFFFFFFL;
 		public const uint MinValue = 0;
+
+		public static uint IMinMaxValue<uint>.MinValue => MinValue;
+		public static uint IMinMaxValue<uint>.MaxValue => MaxValue;
 
 	    public bool IsNull()
 	    {
