@@ -3,7 +3,7 @@ using System.Globalization;
 namespace System
 {
 #unwarn
-	struct Float : float, IFloating, ISigned, IFormattable, IHashable, IEquatable<float>, ICanBeNaN, IParseable<float>
+	struct Float : float, IFloating, ISigned, IFormattable, IHashable, IEquatable<float>, ICanBeNaN, IParseable<float>, IMinMaxValue<float>
     {
 		public const float MinValue = (float)-3.40282346638528859e+38;
 		public const float Epsilon = (float)1.4e-45;
@@ -11,6 +11,9 @@ namespace System
 		public const float PositiveInfinity = 1.0f / 0.0f;
 		public const float NegativeInfinity = -1.0f / 0.0f;
 		public const float NaN = 0.0f / 0.0f;
+
+		public static float IMinMaxValue<float>.MinValue => MinValue;
+		public static float IMinMaxValue<float>.MaxValue => MaxValue;
 
 		// We use this explicit definition to avoid the confusion between 0.0 and -0.0.
 		public const float NegativeZero = (float)-0.0;

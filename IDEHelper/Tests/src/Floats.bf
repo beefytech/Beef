@@ -50,5 +50,20 @@ namespace Tests
 			FloatParseErrTest("6E+");
 			FloatParseErrTest("6e+");
 		}
+
+		public static void MinMaxTest<T>(T expectedMinValue, T expectedMaxValue)
+		where T : IMinMaxValue<T>
+		where int : operator T <=> T
+		{
+			Test.Assert(T.MinValue == expectedMinValue);
+			Test.Assert(T.MaxValue == expectedMaxValue);
+		}
+
+		[Test]
+		public static void TestMinMax()
+		{
+			MinMaxTest<float>(Float.MinValue, Float.MaxValue);
+			MinMaxTest<double>(Double.MinValue, Double.MaxValue);
+		}
 	}
 }
