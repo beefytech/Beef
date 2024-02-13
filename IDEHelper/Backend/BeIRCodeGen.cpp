@@ -429,6 +429,33 @@ void BeIRCodeGen::FixValues(BeStructType* structType, CmdParamVec<BeValue*>& val
 	}
 }
 
+void BeIRCodeGen::FixValues(BeStructType* structType, SizedArrayImpl<BeConstant*>& values)
+{
+	if (values.size() >= structType->mMembers.size())
+		return;
+
+	int readIdx = values.size() - 1;
+	values.resize(structType->mMembers.size());
+	for (int i = (int)values.size() - 1; i >= 0; i--)
+	{
+		if (mBeContext->AreTypesEqual(values[readIdx]->GetType(), structType->mMembers[i].mType))
+		{
+			values[i] = values[readIdx];
+			readIdx--;
+		}
+		else if (structType->mMembers[i].mType->IsSizedArray())
+		{
+			auto beConst = mBeModule->mAlloc.Alloc<BeConstant>();
+			beConst->mType = structType->mMembers[i].mType;
+			values[i] = beConst;
+		}
+		else
+		{
+			FatalError("Malformed structure values");
+		}
+	}
+}
+
 void BeIRCodeGen::Init(const BfSizedArray<uint8>& buffer)
 {
 	BP_ZONE("BeIRCodeGen::Init");
@@ -905,6 +932,10 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 
 				constStruct->mMemberValues.Add(constant);
 			}
+
+			if (type->IsStruct())
+				FixValues((BeStructType*)type, constStruct->mMemberValues);
+
 			beValue = constStruct;
 
 			BE_MEM_END("ParamType_Const_Array");
