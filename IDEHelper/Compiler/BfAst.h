@@ -3557,21 +3557,21 @@ BfUnaryOp BfTokenToUnaryOp(BfToken token);
 BfAssignmentOp BfTokenToAssignmentOp(BfToken token);
 bool BfIsCommentBlock(BfCommentKind commentKind);
 
+NS_BF_END
+
 template<>
 struct BeefHash<Beefy::BfVariant>
 {
 	size_t operator()(const Beefy::BfVariant& val) const
 	{
-		if (val.mTypeCode == BfTypeCode_Struct)
+		if (val.mTypeCode == Beefy::BfTypeCode_Struct)
 		{
-			BfVariant::StructData* structData = (Beefy::BfVariant::StructData*)val.mPtr;
+			Beefy::BfVariant::StructData* structData = (Beefy::BfVariant::StructData*)val.mPtr;
 			return HashBytes(structData->mData, structData->mSize);
 		}
 		return (size_t)val.mUInt64;
 	}
 };
-
-NS_BF_END
 
 namespace std
 {
