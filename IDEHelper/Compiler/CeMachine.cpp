@@ -3578,6 +3578,7 @@ BfError* CeContext::Fail(const StringImpl& error)
 		return NULL;
 	if (mCurEmitContext != NULL)
 		mCurEmitContext->mFailed = true;
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mCurModule->mCurTypeInstance, mCallerTypeInstance);
 	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurCallSource->mRefNode, (mCurEvalFlags & CeEvalFlags_PersistantError) != 0);
 	if (bfError == NULL)
 		return NULL;
@@ -3593,6 +3594,7 @@ BfError* CeContext::Fail(const CeFrame& curFrame, const StringImpl& str)
 {
 	if (mCurEmitContext != NULL)
 		mCurEmitContext->mFailed = true;
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mCurModule->mCurTypeInstance, mCallerTypeInstance);
 	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurCallSource->mRefNode,
 		(mCurEvalFlags & CeEvalFlags_PersistantError) != 0,
 		((mCurEvalFlags & CeEvalFlags_DeferIfNotOnlyError) != 0) && !mCurModule->mHadBuildError);
