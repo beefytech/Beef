@@ -987,7 +987,8 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	if (type->IsConstExprValue())
 	{
 		auto constExprType = (BfConstExprValueType*)type;
-		if ((constExprType->mValue.mTypeCode != BfTypeCode_StringId) && (constExprType->mType->mSize != mScratchModule->GetPrimitiveType(constExprType->mValue.mTypeCode)->mSize))
+		if ((constExprType->mValue.mTypeCode != BfTypeCode_StringId) && (constExprType->mValue.mTypeCode != BfTypeCode_Struct) &&
+			(constExprType->mType->mSize != mScratchModule->GetPrimitiveType(constExprType->mValue.mTypeCode)->mSize))
 			wantDeleteType = true;
 	}
 	if (wantDeleteType)

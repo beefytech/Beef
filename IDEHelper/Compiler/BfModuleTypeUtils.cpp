@@ -1495,9 +1495,13 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 
 		if (resolvedTypeRef->IsConstExprValue())
 		{
+			BfConstExprValueType* constExprType = (BfConstExprValueType*)resolvedTypeRef;
+			resolvedTypeRef->mRevision = mRevision;
 			resolvedTypeRef->mSize = 0;
 			resolvedTypeRef->mAlign = 0;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
+			if (constExprType->mType->IsTypeInstance())
+				AddDependency(constExprType->mType, resolvedTypeRef, BfDependencyMap::DependencyFlag_TypeGenericArg);
 			return;
 		}
 
@@ -7576,7 +7580,7 @@ BfConstExprValueType* BfModule::CreateConstExprValueType(const BfTypedValue& typ
  		mContext->mConstExprValueTypePool.GiveBack(constExprValueType);
 
 	if (resolvedConstExprValueType != NULL)
-		BF_ASSERT(resolvedConstExprValueType->mValue.mInt64 == constExprValueType->mValue.mInt64);
+		BF_ASSERT(resolvedConstExprValueType->mValue == constExprValueType->mValue);
 
 	return resolvedConstExprValueType;
 }
@@ -7599,7 +7603,7 @@ BfConstExprValueType* BfModule::CreateConstExprValueType(const BfVariant& varian
 		mContext->mConstExprValueTypePool.GiveBack(constExprValueType);
 
 	if (resolvedConstExprValueType != NULL)
-		BF_ASSERT(resolvedConstExprValueType->mValue.mInt64 == constExprValueType->mValue.mInt64);
+		BF_ASSERT(resolvedConstExprValueType->mValue == constExprValueType->mValue);
 
 	return resolvedConstExprValueType;
 }
@@ -10729,18 +10733,27 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 				if (constType == NULL)
 					constType = GetPrimitiveType(BfTypeCode_IntPtr);
 
-				BfExprEvaluator exprEvaluator(this);
-				exprEvaluator.mExpectingType = constType;
-				exprEvaluator.GetLiteral(identifierNode, constExprValueType->mValue);
-
-				if (exprEvaluator.mResult)
+				if (constType->IsVar())
 				{
-					auto castedVal = CastToValue(identifierNode, exprEvaluator.mResult, constType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail));
-					if (castedVal)
-						return BfTypedValue(castedVal, constType);
+					BfExprEvaluator exprEvaluator(this);
+					exprEvaluator.GetLiteral(identifierNode, constExprValueType->mValue, constExprValueType->mType);
+					return exprEvaluator.mResult;
 				}
+				else
+				{
+					BfExprEvaluator exprEvaluator(this);
+					exprEvaluator.mExpectingType = constType;
+					exprEvaluator.GetLiteral(identifierNode, constExprValueType->mValue, constExprValueType->mType);
 
-				return exprEvaluator.mResult;
+					if (exprEvaluator.mResult)
+					{
+						auto castedVal = CastToValue(identifierNode, exprEvaluator.mResult, constType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail));
+						if (castedVal)
+							return BfTypedValue(castedVal, constType);
+					}
+
+					return exprEvaluator.mResult;
+				}
 			}
 			else if (genericParamResult->IsGenericParam())
 			{
@@ -12031,7 +12044,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		}
 		if (!BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx))
 		{
-			BF_ASSERT(BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx));
+			BF_ASSERT(BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx) || (mCompiler->mCanceling));
 		}
 
 		BfLogSysM("Generic type %p typeHash: %8X\n", genericTypeInst, resolvedEntry->mHashCode);
@@ -13259,9 +13272,15 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 						BfTypedValue fromTypedValue;
 						if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
-							fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
+						{
+							if (genericParamInst->mTypeConstraint->IsVar())
+								fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint);
+							else
+								fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
+						}
 						else
 							fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
+						prevIgnoreWrites.Restore();
 
 						auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
 						if (result)
@@ -13768,7 +13787,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			auto variantVal = TypedValueToVariant(srcNode, typedVal, true);
 			if ((mBfIRBuilder->IsIntable(variantVal.mTypeCode)) && (mBfIRBuilder->IsIntable(toConstExprValueType->mValue.mTypeCode)))
 			{
-				if (variantVal.mInt64 == toConstExprValueType->mValue.mInt64)
+				if (variantVal == toConstExprValueType->mValue)
 					return typedVal.mValue;
 			}
 			else if ((mBfIRBuilder->IsFloat(variantVal.mTypeCode)) && (mBfIRBuilder->IsFloat(toConstExprValueType->mValue.mTypeCode)))
@@ -15337,7 +15356,181 @@ StringT<128> BfModule::TypeToString(BfType* resolvedType, BfTypeNameFlags typeNa
 	return str;
 }
 
-void BfModule::VariantToString(StringImpl& str, const BfVariant& variant)
+void BfModule::DataToString(StringImpl& str, void* ptr, BfType* type)
+{
+	if (type->IsPrimitiveType())
+	{
+		BfPrimitiveType* primType = (BfPrimitiveType*)type;
+		BfTypeCode typeCode = primType->GetTypeCode();
+
+		if (typeCode == BfTypeCode_IntPtr)
+		{
+			if (mSystem->mPtrSize == 8)
+				typeCode = BfTypeCode_Int64;
+			else
+				typeCode = BfTypeCode_Int32;
+		}
+		else if (typeCode == BfTypeCode_UIntPtr)
+		{
+			if (mSystem->mPtrSize == 8)
+				typeCode = BfTypeCode_UInt64;
+			else
+				typeCode = BfTypeCode_UInt32;
+		}
+
+		switch (typeCode)
+		{
+		case BfTypeCode_Boolean:
+			if (*(uint8*)ptr == 0)
+				str += "false";
+			else if (*(uint8*)ptr == 1)
+				str += "true";
+			else
+				str += StrFormat("%d", *(uint8*)ptr);
+			break;
+		case BfTypeCode_Int8:
+			str += StrFormat("%d", *(int8*)ptr);
+			break;
+		case BfTypeCode_UInt8:
+			str += StrFormat("%d", *(uint8*)ptr);
+			break;
+		case BfTypeCode_Int16:
+			str += StrFormat("%d", *(int16*)ptr);
+			break;
+		case BfTypeCode_UInt16:
+			str += StrFormat("%d", *(uint16*)ptr);
+			break;
+		case BfTypeCode_Int32:
+			str += StrFormat("%d", *(int32*)ptr);
+			break;
+		case BfTypeCode_Char8:
+		case BfTypeCode_Char16:
+		case BfTypeCode_Char32:
+			{
+				uint32 c = 0;
+				if (typeCode == BfTypeCode_Char8)
+					c = *(uint8*)ptr;
+				else if (typeCode == BfTypeCode_Char16)
+					c = *(uint16*)ptr;
+				else if (typeCode == BfTypeCode_Char32)
+					c = *(uint32*)ptr;
+
+				if ((c >= 32) && (c <= 0x7E))
+					str += StrFormat("'%c'", (char)c);
+				else if (c <= 0xFF)
+					str += StrFormat("'\\x%2X'", c);
+				else
+					str += StrFormat("'\\u{%X}'", c);
+			}
+			break;
+		case BfTypeCode_UInt32:
+			str += StrFormat("%lu", *(uint32*)ptr);
+			break;
+		case BfTypeCode_Int64:
+			str += StrFormat("%lld", *(int64*)ptr);
+			break;
+		case BfTypeCode_UInt64:
+			str += StrFormat("%llu", *(uint64*)ptr);
+			break;
+		case BfTypeCode_Float:
+			{
+				char cstr[64];
+				ExactMinimalFloatToStr(*(float*)ptr, cstr);
+				str += cstr;
+				if (strchr(cstr, '.') == NULL)
+					str += ".0f";
+				else
+					str += "f";
+			}
+			break;
+		case BfTypeCode_Double:
+			{
+				char cstr[64];
+				ExactMinimalDoubleToStr(*(double*)ptr, cstr);
+				str += cstr;
+				if (strchr(cstr, '.') == NULL)
+					str += ".0";
+			}
+			break;
+		case BfTypeCode_StringId:
+			{
+				int stringId = *(int32*)ptr;
+				auto stringPoolEntry = mContext->mStringObjectIdMap[stringId];
+				str += '"';
+				str += SlashString(stringPoolEntry.mString, false, false, true);
+				str += '"';
+			}
+			break;
+		case BfTypeCode_Let:
+			str += "?";
+			break;
+		default: break;
+		}
+	}
+	else
+	{
+		if (type->IsInstanceOf(mCompiler->mClosedRangeTypeDef))
+		{
+			if (type->mSize == 16)
+				str += StrFormat("%d...%d", ((int64*)ptr)[0], ((int64*)ptr)[1]);
+			else
+				str += StrFormat("%d...%d", ((int32*)ptr)[0], ((int32*)ptr)[1]);
+			return;
+		}
+
+		if (type->IsInstanceOf(mCompiler->mRangeTypeDef))
+		{
+			if (type->mSize == 16)
+				str += StrFormat("%d..<%d", ((int64*)ptr)[0], ((int64*)ptr)[1]);
+			else
+				str += StrFormat("%d..<%d", ((int32*)ptr)[0], ((int32*)ptr)[1]);
+			return;
+		}
+
+		BfTypeInstance* typeInstance = type->ToTypeInstance();
+		if (typeInstance != NULL)
+		{
+			str += "(";
+			DoPopulateType(typeInstance);
+
+			int showIdx = 0;
+
+			if ((typeInstance->mBaseType != NULL) && (!typeInstance->mBaseType->IsInstanceOf(mCompiler->mValueTypeTypeDef)))
+			{
+				DataToString(str, ptr, typeInstance->mBaseType);
+				showIdx++;
+			}
+
+			for (auto& fieldInstance : typeInstance->mFieldInstances)
+			{
+				if (fieldInstance.mDataOffset >= 0)
+				{
+					if (showIdx > 0)
+						str += ", ";
+					DataToString(str, (uint8*)ptr + fieldInstance.mDataOffset, fieldInstance.mResolvedType);
+					showIdx++;
+				}
+			}
+
+			str += ")";
+		}
+		else if (type->IsPointer())
+			str += "null";
+		else
+		{
+			str += "uint8[](";
+			for (int i = 0; i < type->mSize; i++)
+			{
+				if (i > 0)
+					str += ", ";
+				str += StrFormat("%d", ((uint8_t*)ptr)[i]);
+			}
+			str += ")";
+		}
+	}
+}
+
+void BfModule::VariantToString(StringImpl& str, const BfVariant& variant, BfType* type)
 {
 	switch (variant.mTypeCode)
 	{
@@ -15406,6 +15599,24 @@ void BfModule::VariantToString(StringImpl& str, const BfVariant& variant)
 		break;
 	case BfTypeCode_Let:
 		str += "?";
+		break;
+	case BfTypeCode_Struct:
+		{
+			BfVariant::StructData* structData = (BfVariant::StructData*)variant.mPtr;
+			if (type == NULL)
+			{
+				str += "uint8[](";
+				for (int i = 0; i < structData->mSize; i++)
+				{
+					if (i > 0)
+						str += ", ";
+					str += StrFormat("%d", structData->mData[i]);
+				}
+				str += ")";
+				break;
+			}
+			DataToString(str, structData->mData, type);
+		}
 		break;
 	default: break;
 	}
@@ -15991,11 +16202,16 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		{
 			str += "const ";
 
-			DoTypeToString(str, constExprValueType->mType, typeNameFlags, genericMethodNameOverrides);
-			str += " ";
+			if ((!constExprValueType->mType->IsInstanceOf(mCompiler->mRangeTypeDef)) &&
+				(!constExprValueType->mType->IsInstanceOf(mCompiler->mClosedRangeTypeDef)))
+			{
+				DoTypeToString(str, constExprValueType->mType, typeNameFlags, genericMethodNameOverrides);
+				if (constExprValueType->mValue.mTypeCode != BfTypeCode_Boolean)
+					str += " ";
+			}
 		}
 
-		VariantToString(str, constExprValueType->mValue);
+		VariantToString(str, constExprValueType->mValue, constExprValueType->mType);
 
 		return;
 	}

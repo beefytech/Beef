@@ -1085,6 +1085,9 @@ bool BfAstNode::Equals(const StringView& str)
 
 bool BfAstNode::Equals(const char* str)
 {
+	if (mSrcEnd == 0)
+		return false;
+
 	auto source = GetSourceData();
 	const char* ptrLhs = source->mSrc + mSrcStart;
 	const char* ptrLhsEnd = source->mSrc + mSrcEnd;

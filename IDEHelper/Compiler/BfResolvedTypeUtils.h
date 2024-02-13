@@ -2827,7 +2827,7 @@ public:
 
 			// checkEntry->mType can be NULL if we're in the process of filling it in (and this Insert is from an element type)
 			//  OR if the type resolution failed after node insertion
-			if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode) && (Equals(checkEntry->mValue, findType, ctx)))
+			if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode) && (Equals(checkEntry->mValue, findType, ctx))) 
 			{
 				*entryPtr = EntryRef(this, checkEntryIdx);
 				return false;

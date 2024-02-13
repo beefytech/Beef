@@ -3100,6 +3100,12 @@ BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression*
 {
 	outType = NULL;
 
+	BfMethodState methodState;
+	methodState.mTempKind = BfMethodState::TempKind_Static;
+	SetAndRestoreValue<BfMethodState*> prevMethodState;
+	if (ctx->mModule->mCurMethodState == NULL)
+		prevMethodState.Init(ctx->mModule->mCurMethodState, &methodState);
+
 	BfConstResolver constResolver(ctx->mModule);
 	BfVariant variant;
 	constResolver.mBfEvalExprFlags = BfEvalExprFlags_NoCast;
@@ -3303,7 +3309,8 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 	else if (type->IsConstExprValue())
 	{
 		BfConstExprValueType* constExprValueType = (BfConstExprValueType*)type;
-		int hashVal = ((int)constExprValueType->mValue.mTypeCode << 17) ^ (constExprValueType->mValue.mInt32 << 3) ^ HASH_CONSTTYPE;
+		int32 dataHash = BeefHash<BfVariant>()(constExprValueType->mValue);
+		int hashVal = ((int)constExprValueType->mValue.mTypeCode << 17) ^ (dataHash << 3) ^ HASH_CONSTTYPE;
 		hashVal = ((hashVal ^ (Hash(constExprValueType->mType, ctx, BfHashFlag_AllowRef, hashSeed))) << 5) - hashVal;
 		return hashVal;
 	}
@@ -4078,7 +4085,8 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			return 0;
 		}
 
-		auto hashVal = ((int)result.mTypeCode << 17) ^ (result.mInt32 << 3) ^ HASH_CONSTTYPE;
+		int32 dataHash = BeefHash<BfVariant>()(result);
+		auto hashVal = ((int)result.mTypeCode << 17) ^ (dataHash << 3) ^ HASH_CONSTTYPE;
 		hashVal = ((hashVal ^ (Hash(resultType, ctx, BfHashFlag_AllowRef, hashSeed))) << 5) - hashVal;
 		return hashVal;
 	}
@@ -4331,7 +4339,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfConstExprValueType* rhsConstExprValueType = (BfConstExprValueType*)rhs;
 
 		return (lhsConstExprValueType->mType == rhsConstExprValueType->mType) &&
-			(lhsConstExprValueType->mValue.mInt64 == rhsConstExprValueType->mValue.mInt64);
+			(lhsConstExprValueType->mValue == rhsConstExprValueType->mValue);
 	}
 	else
 	{
@@ -5032,8 +5040,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				return false;
 		}
 
-		return (result.mTypeCode == lhsConstExprType->mValue.mTypeCode) &&
-			(result.mInt64 == lhsConstExprType->mValue.mInt64);
+		return result == lhsConstExprType->mValue;
 	}
 	else
 	{

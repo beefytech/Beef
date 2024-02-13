@@ -105,6 +105,7 @@ public:
 	BeIRTypeEntry& GetTypeEntry(int typeId);
 
 	void FixValues(BeStructType* structType, CmdParamVec<BeValue*>& values);
+	void FixValues(BeStructType* structType, SizedArrayImpl<BeConstant*>& values);
 
 public:
 	BeIRCodeGen();

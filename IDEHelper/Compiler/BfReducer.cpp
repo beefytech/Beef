@@ -899,12 +899,23 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 				{
 					isDone = true;
 
+					auto prevNode = mVisitorPos.Get(checkIdx + 1);
+					if (prevNode = BfNodeDynCast<BfLiteralExpression>(prevNode))
+					{
+						// Allow expressions like '3...'
+						isDone = false;
+					}
+
 					auto nextNode = mVisitorPos.Get(checkIdx + 1);
 					if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
 					{
 						if ((nextToken->mToken == BfToken_RChevron) || (nextToken->mToken == BfToken_RDblChevron))
 							isDone = false;
 					}
+				}
+				else if ((checkToken == BfToken_Minus) && (chevronDepth > 0))
+				{
+					// Allow - literal
 				}
 				else if (checkToken != BfToken_LBracket)
 					isDone = true;
@@ -5341,14 +5352,20 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					bool doAddType = genericIdentifier != NULL;
 					bool addAsExpr = false;
 
-					//if (mCompatMode)
+					if (BfNodeDynCast<BfLiteralExpression>(nextNode) != NULL)
 					{
-						if (BfNodeDynCast<BfLiteralExpression>(nextNode) != NULL)
+						doAddType = true;
+						addAsExpr = true;
+					}
+					else if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+					{
+						if (tokenNode->mToken == BfToken_Minus)
 						{
 							doAddType = true;
 							addAsExpr = true;
 						}
 					}
+
 					if (genericIdentifier == NULL)
 					{
 						auto nextNode = mVisitorPos.GetNext();

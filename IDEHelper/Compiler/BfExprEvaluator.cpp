@@ -3933,7 +3933,7 @@ bool BfExprEvaluator::IsVar(BfType* type, bool forceIgnoreWrites)
 	return false;
 }
 
-void BfExprEvaluator::GetLiteral(BfAstNode* refNode, const BfVariant& variant)
+void BfExprEvaluator::GetLiteral(BfAstNode* refNode, const BfVariant& variant, BfType* type)
 {
 	switch (variant.mTypeCode)
 	{
@@ -4035,6 +4035,13 @@ void BfExprEvaluator::GetLiteral(BfAstNode* refNode, const BfVariant& variant)
 			break;
 		}
 		mModule->Fail("Invalid undef literal", refNode);
+		break;
+	case BfTypeCode_Struct:
+		if (type != NULL)
+		{
+			BfVariant::StructData* structData = (BfVariant::StructData*)variant.mPtr;
+			mResult = BfTypedValue(mModule->mBfIRBuilder->ReadConstant(structData->mData, type), type);
+		}
 		break;
 	default:
 		mModule->Fail("Invalid literal", refNode);
@@ -12382,6 +12389,23 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 	if (autoComplete != NULL)
 		autoComplete->CheckTypeRef(checkTypeExpr->mTypeRef, false, true);
 
+	auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
+
+	if (checkTypeExpr->mTypeRef->IsA<BfVarTypeReference>())
+	{
+		bool isVar = false;
+		if ((targetValue.mType != NULL) && (targetValue.mType->IsVar()))
+		{
+			auto irb = mModule->mBfIRBuilder;
+			BfIRValue boolResult = mModule->CreateAlloca(boolType);
+			irb->CreateAlignedStore(irb->CreateConst(BfTypeCode_Boolean, 1), boolResult, 1);
+			mResult = BfTypedValue(irb->CreateAlignedLoad(boolResult, 1), boolType);
+		}
+		else
+			mResult = BfTypedValue(mModule->GetConstValue(0, boolType), boolType);
+		return;
+	}
+
 	auto targetType = mModule->ResolveTypeRef(checkTypeExpr->mTypeRef, BfPopulateType_Declaration);
 	if (!targetType)
 	{
@@ -12391,7 +12415,6 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 
 	mModule->AddDependency(targetType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
 
-	auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
 	if (targetValue.mType->IsVar())
 	{
 		mResult = mModule->GetDefaultTypedValue(boolType, false, BfDefaultValueKind_Undef);
@@ -12638,11 +12661,13 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 			auto elementType = targetType->GetUnderlyingType();
 			if (elementType == targetValue.mType)
 			{
+				mModule->mBfIRBuilder->PopulateType(targetType);
+
 				// We match nullable element
 				auto allocaInst = mModule->CreateAlloca(targetType);
-				auto hasValueAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(allocaInst, 0, 1); // has_value
+				auto hasValueAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(allocaInst, 0, 2); // has_value
 				mModule->mBfIRBuilder->CreateStore(mModule->GetConstValue(1, boolType), hasValueAddr);
-				hasValueAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(allocaInst, 0, 0); // value
+				hasValueAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(allocaInst, 0, 1); // value
 				mModule->mBfIRBuilder->CreateStore(targetValue.mValue, hasValueAddr);
 				mResult = BfTypedValue(allocaInst, targetType, true);
 				_CheckResult();

@@ -8149,7 +8149,11 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_DisallowComptime);
 		// We we have a deferredResolveTypes then we defer the generic validation, because we may have a case like
 		//  `where T : Dictionay<TElem, int> and TElem : IHashable` and we don't want to throw the error on `T` before we build `TElem`
-		auto constraintType = ResolveTypeRef(constraintTypeRef, (deferredResolveTypes != NULL) ? BfPopulateType_Identity : BfPopulateType_Declaration, resolveFlags);
+		BfType* constraintType;
+		if (constraintTypeRef->IsA<BfVarTypeReference>())
+			constraintType = GetPrimitiveType(BfTypeCode_Var);
+		else
+			constraintType = ResolveTypeRef(constraintTypeRef, (deferredResolveTypes != NULL) ? BfPopulateType_Identity : BfPopulateType_Declaration, resolveFlags);
 		if (constraintType != NULL)
 		{
 			if (deferredResolveTypes != NULL)
@@ -8174,6 +8178,12 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 					typeCode = ((BfPrimitiveType*)constraintType)->mTypeDef->mTypeCode;
 
 				if (constraintType->IsInstanceOf(mCompiler->mStringTypeDef))
+					isValidTypeCode = true;
+
+				if (constraintType->IsValueType())
+					isValidTypeCode = true;
+
+				if (constraintType->IsVar())
 					isValidTypeCode = true;
 
 				switch (typeCode)
@@ -8208,7 +8218,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				}
 				else
 				{
-					Fail("Const constraint must be a primitive type", constraintTypeRef);
+					Fail("Const constraint must be a valuetype or string", constraintTypeRef);
 				}
 			}
 			else
@@ -8572,7 +8582,8 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					//  actual expression comparisons, but we are overly permissive now and then we may fail on specialization
 					if ((constExprValueType->mValue.mTypeCode != primType->mTypeDef->mTypeCode) &&
 						(constExprValueType->mValue.mTypeCode != BfTypeCode_Let) &&
-						(primType->mTypeDef->mTypeCode != BfTypeCode_Let))
+						(primType->mTypeDef->mTypeCode != BfTypeCode_Let) &&
+						(primType->mTypeDef->mTypeCode != BfTypeCode_Var))
 					{
 						bool doError = true;
 
@@ -12843,6 +12854,14 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 				break;
 			}
 		}
+	}
+	else
+	{
+		BfVariant::StructData* structData = (BfVariant::StructData*)(new uint8[value.mType->mSize + 4]);
+		structData->mSize = value.mType->mSize;
+		mBfIRBuilder->WriteConstant(value.mValue, structData->mData, value.mType);
+		variant.mTypeCode = BfTypeCode_Struct;
+		variant.mPtr = structData;
 	}
 
 	return variant;

@@ -1653,7 +1653,8 @@ public:
 	BfIRValue GetStringObjectValue(int idx, bool define, bool force);
 	BfIRValue GetStringObjectValue(const StringImpl& str, bool define = false, bool force = false);
 	BfIRValue CreateGlobalConstValue(const StringImpl& name, BfIRValue constant, BfIRType type, bool external);
-	void VariantToString(StringImpl& str, const BfVariant& variant);
+	void DataToString(StringImpl& str, void* ptr, BfType* type);
+	void VariantToString(StringImpl& str, const BfVariant& variant, BfType* type = NULL);
 	StringT<128> TypeToString(BfType* resolvedType, Array<String>* genericMethodParamNameOverrides = NULL);
 	StringT<128> TypeToString(BfType* resolvedType, BfTypeNameFlags typeNameFlags, Array<String>* genericMethodParamNameOverrides = NULL);
 	void DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None, Array<String>* genericMethodParamNameOverrides = NULL);

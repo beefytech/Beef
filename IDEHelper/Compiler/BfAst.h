@@ -78,6 +78,12 @@ static bool CheckProtection(BfProtection protection, bool allowProtected, bool a
 
 struct BfVariant
 {
+	struct StructData
+	{
+		int mSize;
+		uint8 mData[1];
+	};
+
 	BfTypeCode mTypeCode;
 	int mWarnType;
 	union
@@ -110,6 +116,63 @@ struct BfVariant
 		mTypeCode = BfTypeCode_None;
 		mWarnType = 0;
 		mUInt64 = 0;
+	}
+
+	BfVariant(const BfVariant& variant)
+	{
+		mTypeCode = BfTypeCode_None;
+		mWarnType = 0;
+		mUInt64 = 0;
+		*this = variant;
+	}
+
+	BfVariant(BfVariant&& variant)
+	{
+		mTypeCode = variant.mTypeCode;
+		mWarnType = variant.mWarnType;
+		mUInt64 = variant.mUInt64;
+		variant.mTypeCode = BfTypeCode_None;
+	}
+
+	~BfVariant()
+	{
+		if (mTypeCode == BfTypeCode_Struct)
+			delete mPtr;
+	}
+
+	BfVariant& operator=(const BfVariant& variant)
+	{
+		if (mTypeCode == BfTypeCode_Struct)
+			delete mPtr;
+		mTypeCode = variant.mTypeCode;
+		mWarnType = variant.mWarnType;
+		mUInt64 = variant.mUInt64;
+
+		if (variant.mTypeCode == BfTypeCode_Struct)
+		{
+			StructData* srcStructData = (StructData*)mPtr;
+			StructData* destStructData = (StructData*)(new uint8[srcStructData->mSize + 4]);
+			destStructData->mSize = srcStructData->mSize;
+			memcpy(destStructData->mData, srcStructData->mData, destStructData->mSize);
+			mPtr = destStructData;
+		}
+
+		return *this;
+	}
+
+	bool operator==(const BfVariant& variant) const
+	{
+		if (mTypeCode != variant.mTypeCode)
+			return false;
+		if (mTypeCode == BfTypeCode_Struct)
+		{
+			StructData* structDataA = (StructData*)mPtr;
+			StructData* structDataB = (StructData*)variant.mPtr;
+			if (structDataA->mSize != structDataB->mSize)
+				return false;
+			return memcmp(structDataA->mData, structDataB->mData, structDataA->mSize) == 0;
+		}
+		return mUInt64 == variant.mUInt64;
 	}
 };
 
@@ -3493,6 +3556,20 @@ BfBinaryOp BfTokenToBinaryOp(BfToken token);
 BfUnaryOp BfTokenToUnaryOp(BfToken token);
 BfAssignmentOp BfTokenToAssignmentOp(BfToken token);
 bool BfIsCommentBlock(BfCommentKind commentKind);
+
+template<>
+struct BeefHash<Beefy::BfVariant>
+{
+	size_t operator()(const Beefy::BfVariant& val) const
+	{
+		if (val.mTypeCode == BfTypeCode_Struct)
+		{
+			BfVariant::StructData* structData = (Beefy::BfVariant::StructData*)val.mPtr;
+			return HashBytes(structData->mData, structData->mSize);
+		}
+		return (size_t)val.mUInt64;
+	}
+};
 
 NS_BF_END
 

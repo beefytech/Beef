@@ -438,7 +438,7 @@ public:
 
 	bool CheckForMethodName(BfAstNode* refNode, BfTypeInstance* typeInst, const StringImpl& findName);
 	bool IsVar(BfType* type, bool forceIgnoreWrites = false);
-	void GetLiteral(BfAstNode* refNode, const BfVariant& variant);
+	void GetLiteral(BfAstNode* refNode, const BfVariant& variant, BfType* type = NULL);
 	void FinishExpressionResult();
 	virtual bool CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode);
 	BfAutoComplete* GetAutoComplete();

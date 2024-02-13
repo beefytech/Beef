@@ -48,6 +48,43 @@ namespace Tests
 			}
 		}
 
+		struct TestRangedArray<T, TRange> where TRange : const var
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void TypeInit()
+			{
+				if (TRange is var)
+					return;
+
+				int rangeStart = 0;
+				int rangeEnd = 0;
+
+				if (ClosedRange range = TRange as ClosedRange?)
+				{
+					rangeStart = range.Start;
+					rangeEnd = range.End+1;
+				}
+				else if (Range range = TRange as Range?)
+				{
+					rangeStart = range.Start;
+					rangeEnd = range.End;
+				}
+				else
+				{
+					Compiler.EmitTypeBody(typeof(Self), scope $"""
+						public const String cError = "Invalid type: {TRange}";
+						""");
+					return;
+				}
+
+				Compiler.EmitTypeBody(typeof(Self), scope $"""
+					public const int cRangeStart = {rangeStart};
+					public const int cRangeEnd = {rangeEnd};
+					public T[{rangeEnd-rangeStart}] mData;
+					""");
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -61,6 +98,9 @@ namespace Tests
 
 			ClassC<const EnumA.A> cc = scope .();
 			Test.Assert(cc.Test() == 1);
+
+			Test.Assert(TestRangedArray<int32, -3...3>.cRangeEnd - TestRangedArray<int32, -3...3>.cRangeStart == 7);
+			Test.Assert(TestRangedArray<int32, -3...>.cError == "Invalid type: -3...^1");
 		}
 	}
 }
