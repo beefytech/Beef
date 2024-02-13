@@ -12842,6 +12842,13 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 			case BfTypeCode_Char32:
 			case BfTypeCode_StringId:
 				variant.mTypeCode = constant->mTypeCode;
+				if (((variant.mTypeCode == BfTypeCode_Int64) || (variant.mTypeCode == BfTypeCode_UInt64)) &&
+					(primType->mSize > 0) && (primType->mSize < 8) &&
+					(mBfIRBuilder->IsIntable(primType->GetTypeCode())))
+				{
+					// We may have an 'int unknown' that we need to downsize
+					variant.mTypeCode = primType->GetTypeCode();
+				}
 				variant.mInt64 = constant->mInt64;
 				break;
 			case BfTypeCode_Float:

@@ -466,6 +466,11 @@ void BfIRConstHolder::pv(const BfIRValue& irValue)
 
 void BfIRConstHolder::FixTypeCode(BfTypeCode& typeCode)
 {
+	if (typeCode == BfTypeCode_IntUnknown)
+		typeCode = BfTypeCode_Int64;
+	if (typeCode == BfTypeCode_UIntUnknown)
+		typeCode = BfTypeCode_UInt64;
+
 	if (typeCode == BfTypeCode_IntPtr)
 	{
 		if (mModule->mSystem->mPtrSize == 4)
@@ -740,11 +745,6 @@ BfIRType BfIRConstHolder::GetSizedArrayType(BfIRType elementType, int length)
 
 BfIRValue BfIRConstHolder::CreateConst(BfTypeCode typeCode, uint64 val)
 {
-	if (typeCode == BfTypeCode_IntUnknown)
-		typeCode = BfTypeCode_Int64;
-	else if (typeCode == BfTypeCode_UIntUnknown)
-		typeCode = BfTypeCode_UInt64;
-
 	FixTypeCode(typeCode);
 	BfConstant* constant = mTempAlloc.Alloc<BfConstant>();
 	constant->mTypeCode = typeCode;
@@ -2720,7 +2720,7 @@ public:
 #endif
 
 void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
-{	
+{
 	auto populateModule = mModule->mContext->mUnreifiedModule;
 	auto typeInstance = type->ToTypeInstance();
 	if ((typeInstance != NULL) && (typeInstance->mModule != NULL))
@@ -3112,7 +3112,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	{
 		irType = GetPrimitiveType(BfTypeCode_None);
 		if (wantDIData)
-			diType = DbgCreateBasicType("void", 0, 0, llvm::dwarf::DW_ATE_address);		
+			diType = DbgCreateBasicType("void", 0, 0, llvm::dwarf::DW_ATE_address);
 	}
 
 	if (irType)

@@ -13786,7 +13786,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			auto variantVal = TypedValueToVariant(srcNode, typedVal, true);
 			if ((mBfIRBuilder->IsIntable(variantVal.mTypeCode)) && (mBfIRBuilder->IsIntable(toConstExprValueType->mValue.mTypeCode)))
 			{
-				if (variantVal == toConstExprValueType->mValue)
+				if (variantVal.mUInt64 == toConstExprValueType->mValue.mUInt64)
 					return typedVal.mValue;
 			}
 			else if ((mBfIRBuilder->IsFloat(variantVal.mTypeCode)) && (mBfIRBuilder->IsFloat(toConstExprValueType->mValue.mTypeCode)))
@@ -16210,7 +16210,10 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			}
 		}
 
-		VariantToString(str, constExprValueType->mValue, constExprValueType->mType);
+		if (constExprValueType->mValueString.IsEmpty())
+			VariantToString(constExprValueType->mValueString, constExprValueType->mValue, constExprValueType->mType);
+
+		str += constExprValueType->mValueString;
 
 		return;
 	}

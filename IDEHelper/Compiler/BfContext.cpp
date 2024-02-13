@@ -2193,9 +2193,14 @@ void BfContext::UpdateRevisedTypes()
 		}
 
 		// Rebuild all types
+		Array<BfType*> allTypes;
 		for (auto type : mResolvedTypes)
+			allTypes.Add(type);
+
+		for (auto type : allTypes)
 		{
-			RebuildType(type);
+			if (!type->IsDeleting())
+				RebuildType(type);
 		}
 	}
 
