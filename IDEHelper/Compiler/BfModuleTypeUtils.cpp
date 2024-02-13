@@ -13280,7 +13280,6 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						}
 						else
 							fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
-						prevIgnoreWrites.Restore();
 
 						auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
 						if (result)

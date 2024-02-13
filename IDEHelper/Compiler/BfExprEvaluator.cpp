@@ -8438,7 +8438,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		{
 			if (argValue)
 			{
-				if (IsConstEval())
+				if (argValue.mValue.IsFake())
+				{
+					if ((!mModule->IsInUnspecializedGeneric()) && (!mModule->mBfIRBuilder->mIgnoreWrites))
+						mModule->InternalError("Invalid expandedParamsArray value");
+				}
+				else if (IsConstEval())
 				{
 					auto constant = mModule->mBfIRBuilder->GetConstant(expandedParamsArray.mValue);
 					BF_ASSERT(constant->mConstType == BfConstType_Agg);
