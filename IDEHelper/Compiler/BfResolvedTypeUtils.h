@@ -2616,6 +2616,7 @@ public:
 public:
 	~BfConstExprValueType();
 
+	virtual bool IsOnDemand() override { return mValue.mTypeCode == BfTypeCode_Struct; }
 	virtual bool IsConstExprValue() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mType; }
 
