@@ -10,10 +10,13 @@ namespace System
 	using System.Diagnostics;
 
 #unwarn
-    public struct Double : double, IFloating, ISigned, IFormattable, IHashable, ICanBeNaN, IParseable<double>
+    public struct Double : double, IFloating, ISigned, IFormattable, IHashable, ICanBeNaN, IParseable<double>, IMinMaxValue<double>
     {
         public const double MinValue = -1.7976931348623157E+308;
         public const double MaxValue = 1.7976931348623157E+308;
+
+        public static double IMinMaxValue<double>.MinValue => MinValue;
+        public static double IMinMaxValue<double>.MaxValue => MaxValue;
 
         // Note Epsilon should be a double whose hex representation is 0x1
         // on little endian machines.
