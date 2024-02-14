@@ -64,7 +64,7 @@ namespace System
 			return -1;
 		}
 
-		public override void ToString(String strBuffer) mut
+		public override void ToString(String strBuffer)
 		{
 			if (typeof(T) == typeof(char8))
 			{
@@ -74,6 +74,7 @@ namespace System
 					if (mVal[len] == default)
 						break;
 				}
+#unwarn
 				strBuffer.Append((char8*)&mVal, len);
 				return;
 			}

@@ -3081,6 +3081,12 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 	{
 		auto structType = target.mType->ToTypeInstance();
 
+		if (structType == NULL)
+		{
+			mModule->InternalError("Invalid type in TryDevirtualizeCall");
+			return;
+		}
+
 		auto virtualMethodInstance = mModule->GetMethodInstance(mBestMethodTypeInstance, mBestMethodDef, BfTypeVector());
 		BF_ASSERT(virtualMethodInstance.mMethodInstance->mVirtualTableIdx != -1);
 

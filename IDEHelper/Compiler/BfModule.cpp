@@ -18854,9 +18854,19 @@ void BfModule::EmitTupleToStringBody()
 
 		BfTypedValue fieldValue = ExtractValue(thisValue, &fieldInstance, fieldInstance.mDataIdx);
 
-		if (fieldValue.mType->IsPrimitiveType())
+		if (fieldValue.mType->IsWrappableType())
 		{
-			fieldValue.mType = GetPrimitiveStructType(((BfPrimitiveType*)fieldValue.mType)->mTypeDef->mTypeCode);
+			auto wrappedType = GetWrappedStructType(fieldValue.mType);
+			if ((wrappedType->IsTypedPrimitive()) || (wrappedType->IsValuelessType()))
+			{
+				fieldValue.mType = wrappedType;
+			}
+			else
+			{
+				fieldValue = MakeAddressable(fieldValue);
+				fieldValue.mType = wrappedType;
+				fieldValue.mValue = mBfIRBuilder->CreateBitCast(fieldValue.mValue, mBfIRBuilder->MapTypeInstPtr(fieldValue.mType->ToTypeInstance()));
+			}
 		}
 
 		auto typeInstance = fieldValue.mType->ToTypeInstance();
