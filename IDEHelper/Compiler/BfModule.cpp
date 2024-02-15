@@ -577,7 +577,7 @@ public:
 
 					if (!handled)
 					{
-						origResolvedTypeRef = mModule->ResolveTypeRef(arrayTypeRef->mElementType);
+						origResolvedTypeRef = mModule->ResolveTypeRef(arrayTypeRef->mElementType, BfPopulateType_Declaration);
 					}
 
 					if (origResolvedTypeRef == NULL)
@@ -713,7 +713,7 @@ public:
 						}
 					}
 
-					mModule->PopulateType(resultType);
+					mModule->PopulateType(resultType, resultType->IsValueType() ? BfPopulateType_Data : BfPopulateType_Declaration);
 
 					if (isRawArrayAlloc)
 					{
