@@ -240,9 +240,9 @@ bool JPEGData::ReadData()
 			uint8* p = *scanline;
 			for ( JDIMENSION i = 0; i < cinfo.output_width; ++i )
 			{
-				int r = *p++;
-				int g = *p++;
 				int b = *p++;
+				int g = *p++;
+				int r = *p++;
 				*destPtr++ = 0xFF000000 | (r << 16) | (g << 8) | (b);
 			}
 		}
