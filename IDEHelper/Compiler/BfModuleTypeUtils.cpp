@@ -5639,7 +5639,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 			dataFieldVec.clear();
 
-			int curSize = typeInstance->mInstSize;
+			int curSize = dataPos;
 			while (dataFieldVec.size() != dataFieldCount)
 			{
 				// Clear out completed buckets
