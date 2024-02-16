@@ -301,7 +301,14 @@ namespace System
 
 		public void Sort(Comparison<T> comp)
 		{
-			var sorter = Sorter<T, void>(Ptr, null, Length, comp);
+			var sorter = Sorter<T, void, Comparison<T>>(Ptr, null, Length, comp);
+			sorter.[Friend]Sort(0, Length);
+		}
+
+		public void Sort<TComparer>(TComparer comp)
+			where TComparer : Comparison<T>
+		{
+			var sorter = Sorter<T, void, TComparer>(Ptr, null, Length, comp);
 			sorter.[Friend]Sort(0, Length);
 		}
 

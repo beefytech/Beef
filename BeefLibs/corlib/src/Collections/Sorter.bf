@@ -4,7 +4,8 @@
 
 namespace System.Collections
 {
-	struct Sorter<T, T2>
+	struct Sorter<T, T2, TComparer>
+		where TComparer : Comparison<T>
 	{
 		// This is the threshold where Introspective sort switches to Insertion sort.
 		// Empirically, 16 seems to speed up most cases without slowing down others, at least for integers.
@@ -14,9 +15,9 @@ namespace System.Collections
 	    private T* keys;
 	    private T2* items;
 		private int mCount;
-	    private Comparison<T> comparer;    
+	    private TComparer comparer;    
 
-	    public this(T* keys, T2* items, int count, Comparison<T> comparer) 
+	    public this(T* keys, T2* items, int count, TComparer comparer) 
 	    {
 	        this.keys = keys;
 	        this.items = items;

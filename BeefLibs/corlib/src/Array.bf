@@ -159,19 +159,40 @@ namespace System
 
 		public static void Sort<T>(T[] array, Comparison<T> comp)
 		{
-			var sorter = Sorter<T, void>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
+			var sorter = Sorter<T, void, Comparison<T>>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
+			sorter.[Friend]Sort(0, array.[Friend]mLength);
+		}
+
+		public static void Sort<T, TComparer>(T[] array, TComparer comp)
+			where TComparer : Comparison<T>
+		{
+			var sorter = Sorter<T, void, TComparer>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
 			sorter.[Friend]Sort(0, array.[Friend]mLength);
 		}
 
 		public static void Sort<T, T2>(T[] keys, T2[] items, Comparison<T> comp)
 		{
-			var sorter = Sorter<T, T2>(&keys.[Friend]mFirstElement, &items.[Friend]mFirstElement, keys.[Friend]mLength, comp);
+			var sorter = Sorter<T, T2, Comparison<T>>(&keys.[Friend]mFirstElement, &items.[Friend]mFirstElement, keys.[Friend]mLength, comp);
+			sorter.[Friend]Sort(0, keys.[Friend]mLength);
+		}
+
+		public static void Sort<T, T2, TComparer>(T[] keys, T2[] items, Comparison<T> comp)
+			where TComparer : Comparison<T>
+		{
+			var sorter = Sorter<T, T2, TComparer>(&keys.[Friend]mFirstElement, &items.[Friend]mFirstElement, keys.[Friend]mLength, comp);
 			sorter.[Friend]Sort(0, keys.[Friend]mLength);
 		}
 
 		public static void Sort<T>(T[] array, int index, int count, Comparison<T> comp)
 		{
-			var sorter = Sorter<T, void>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
+			var sorter = Sorter<T, void, Comparison<T>>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
+			sorter.[Friend]Sort(index, count);
+		}
+
+		public static void Sort<T, TComparer>(T[] array, int index, int count, Comparison<T> comp)
+			where TComparer : Comparison<T>
+		{
+			var sorter = Sorter<T, void, TComparer>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
 			sorter.[Friend]Sort(index, count);
 		}
 
