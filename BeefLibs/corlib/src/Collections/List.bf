@@ -789,14 +789,29 @@ namespace System.Collections
 
 		public void Sort(Comparison<T> comp)
 		{
-			var sorter = Sorter<T, void>(mItems, null, mSize, comp);
+			var sorter = Sorter<T, void, Comparison<T>>(mItems, null, mSize, comp);
+			sorter.[Friend]Sort(0, mSize);
+		}
+
+		public void Sort<TComparer>(TComparer comp)
+			where TComparer : Comparison<T>
+		{
+			var sorter = Sorter<T, void, TComparer>(mItems, null, mSize, comp);
 			sorter.[Friend]Sort(0, mSize);
 		}
 
 		public void Sort(Comparison<T> comp, int index, int count)
 		{
 			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
-			var sorter = Sorter<T, void>(mItems, null, mSize, comp);
+			var sorter = Sorter<T, void, Comparison<T>>(mItems, null, mSize, comp);
+			sorter.[Friend]Sort(index, count);
+		}
+
+		public void Sort<TComparer>(TComparer comp, int index, int count)
+			where TComparer : Comparison<T>
+		{
+			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
+			var sorter = Sorter<T, void, TComparer>(mItems, null, mSize, comp);
 			sorter.[Friend]Sort(index, count);
 		}
 
@@ -1137,7 +1152,7 @@ namespace System.Collections
 
 		public void Sort()
 		{
-			Sort(scope (lhs, rhs) => lhs <=> rhs);
+			Sort((lhs, rhs) => lhs <=> rhs);
 		}
 	}
 
