@@ -43,21 +43,8 @@ else
 	echo "Ninja isn't installed, consider installing it for faster build speeds."
 fi
 
-# exit when any command fails
-set -e
-
-### Dependencies ###
-
-if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
-	echo Building libffi...
-	cd ../BeefySysLib/third_party/libffi
-	./configure
-	make
-	cd $SCRIPTPATH
-fi
-
+LLVM_CONFIG=$(command -v llvm-config-13 2>/dev/null || command -v llvm-config 2>/dev/null)
 LLVM_FOUND=0
-LLVM_CONFIG=$(which llvm-config-13 2>/dev/null || which llvm-config 2>/dev/null)
 
 if [ -n "$LLVM_CONFIG" ]; then
   LLVM_VERSION=$($LLVM_CONFIG --version)
@@ -67,10 +54,23 @@ if [ -n "$LLVM_CONFIG" ]; then
   fi
 fi
 
+# exit when any command fails
+set -e
+
+### Dependencies ###
+
 if [ ! -f ../extern/llvm_linux_13_0_1/_Done.txt ] && [ $LLVM_FOUND == 0 ]; then
 	echo "ERROR: LLVM 13 was not detected on your system. Please install the package 'llvm-13-dev' and try again." >&2
 	echo "ERROR: As an alternative, you can compile LLVM from source using the script 'extern/llvm_build.sh'." >&2
 	exit
+fi
+
+if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
+	echo Building libffi...
+	cd ../BeefySysLib/third_party/libffi
+	./configure
+	make
+	cd $SCRIPTPATH
 fi
 
 ### LIBS ###
