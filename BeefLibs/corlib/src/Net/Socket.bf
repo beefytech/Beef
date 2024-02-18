@@ -166,9 +166,15 @@ namespace System.Net
 		public const int SOCK_DGRAM = 2;
 		public const int IPPROTO_TCP = 6;
 		public const int IPPROTO_UDP = 17;
+#if BF_PLATFORM_WINDOWS
 		public const int SOL_SOCKET = 0xffff;
 		public const int SO_REUSEADDR = 0x0004;
-		public const int SO_BROADCAST = 0x0020;
+ 		public const int SO_BROADCAST = 0x0020;
+#else
+		public const int SOL_SOCKET = 1;
+		public const int SO_REUSEADDR = 2;
+		public const int SO_BROADCAST = 6;
+#endif
 		public const IPv4Address INADDR_ANY = default;
 
 #if BF_PLATFORM_WINDOWS
