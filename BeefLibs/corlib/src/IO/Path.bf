@@ -382,6 +382,11 @@ namespace System.IO
 			}
 		}
 
+		public static void Combine(String target, params StringView[] components)
+		{
+			InternalCombine(target, params components);
+		}
+
 		public static void GetActualPathName(StringView inPath, String outPath)
 		{
 			Platform.GetStrHelper(outPath, scope (outPtr, outSize, outResult) =>
