@@ -23235,8 +23235,10 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 		else
 		{
 			auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(leftValue.mType), 2);
-			mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, endLhsBB);
-			mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
+			if (!leftValue.mType->IsValuelessType())
+				mModule->mBfIRBuilder->AddPhiIncoming(phi, leftValue.mValue, endLhsBB);
+			if (!rightValue.mType->IsValuelessType())
+				mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
 			mResult = BfTypedValue(phi, leftValue.mType);
 		}
 
