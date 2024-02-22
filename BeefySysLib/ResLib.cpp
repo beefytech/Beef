@@ -166,3 +166,17 @@ BF_EXPORT StringView BF_CALLTYPE Res_JPEGCompress(uint32* bits, int width, int h
 	outString.Insert(0, (char*)jpegData.mSrcData, jpegData.mSrcDataLen);
 	return outString;
 }
+
+BF_EXPORT bool BF_CALLTYPE Res_WritePNG(uint32* bits, int width, int height, const char* filePath)
+{
+	String& outString = *gResLib_TLStrReturn.Get();
+	PNGData pngData;
+	pngData.mBits = bits;
+	pngData.mWidth = width;
+	pngData.mHeight = height;
+	bool result = pngData.WriteToFile(filePath);
+	pngData.mBits = NULL;
+	outString.Clear();
+	outString.Insert(0, (char*)pngData.mSrcData, pngData.mSrcDataLen);
+	return result;
+}
