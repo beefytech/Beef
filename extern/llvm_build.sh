@@ -6,6 +6,14 @@ if command -v ninja >/dev/null 2>&1 ; then
     USE_NINJA="-GNinja"
 fi
 
+FORCE_BUILD=0
+for i in "$@"
+do
+	if [[ $i == "force" ]]; then
+		FORCE_BUILD=1
+	fi
+done
+
 if [ ! -d llvm-project_13_0_1 ]; then
 	if [ -f llvm-13.0.1.src.tar.xz ]; then # if user downloaded llvm-13.0.1.src.tar.xz then use it instead
 		tar -xf llvm-13.0.1.src.tar.xz
@@ -20,7 +28,7 @@ if [ ! -d llvm_linux_13_0_1 ]; then
 	mkdir llvm_linux_13_0_1
 fi
 
-if [ ! -d llvm_linux_13_0_1/bin ]; then
+if [ ! -d llvm_linux_13_0_1/bin ] || [ $FORCE_BUILD == 1 ]; then
 	cd llvm_linux_13_0_1
 	cmake $USE_NINJA ../llvm-project_13_0_1/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Debug"
 	cmake --build . -t $(cat ../llvm_targets.txt)
@@ -31,7 +39,7 @@ if [ ! -d llvm_linux_rel_13_0_1 ]; then
 	mkdir llvm_linux_rel_13_0_1
 fi
 
-if [ ! -d llvm_linux_rel_13_0_1/bin ]; then
+if [ ! -d llvm_linux_rel_13_0_1/bin ] || [ $FORCE_BUILD == 1 ]; then
 	cd llvm_linux_rel_13_0_1
 	cmake $USE_NINJA ../llvm-project_13_0_1/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Release"
 	cmake --build . -t $(cat ../llvm_targets.txt)

@@ -44,8 +44,6 @@ if (${APPLE})
     ../BeefySysLib/
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
-    ../extern/llvm-project_13_0_1/llvm/include
-    ../extern/llvm-project_13_0_1/llvm/lib/Target
     ../IDEHelper
 
     ../BeefySysLib/platform/osx
@@ -57,8 +55,6 @@ else()
     ../BeefySysLib/
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
-    ../extern/llvm-project_13_0_1/llvm/include
-    ../extern/llvm-project_13_0_1/llvm/lib/Target
     ../IDEHelper
 
     ../BeefySysLib/platform/linux
@@ -73,19 +69,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_definitions(
     -D_DEBUG
   )
-  include_directories(
-    ../extern/llvm_linux_13_0_1/include
-    ../extern/llvm_linux_13_0_1/lib/Target/X86
-  )
   set(EXECUTABLE_OUTPUT_PATH  "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/lib")
 else()
-  include_directories(
-    ../extern/llvm_linux_rel_13_0_1/include
-    ../extern/llvm_linux_rel_13_0_1/lib/Target/X86
-  )
   set(EXECUTABLE_OUTPUT_PATH  "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_13_0_1/lib")
 endif()
 
 ################### Dependencies ##################
@@ -133,19 +119,52 @@ add_executable(${PROJECT_NAME}
    ${SRC_FILES}
 )
 
-execute_process(
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/bin/llvm-config --system-libs --link-static
-  OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  RESULT_VARIABLE EXEC_RESULT
-)
+find_package(LLVM 13 CONFIG COMPONENTS)
 
-if (EXEC_RESULT AND NOT EXEC_RESULT EQUAL 0)
-  if (EXEC_RESULT MATCHES "^[0-9]+$")
-    message(FATAL_ERROR "llvm-config exited with code ${EXEC_RESULT}.")
+if (LLVM_FOUND)
+  message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+  message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+  include_directories(${LLVM_INCLUDE_DIRS})
+  add_definitions(${LLVM_DEFINITIONS})
+
+  set(TARGET_LIBS_OS "-lLLVM-13")
+else()
+  include_directories(
+    ../extern/llvm-project_13_0_1/llvm/include
+    ../extern/llvm-project_13_0_1/llvm/lib/Target
+  )
+
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    include_directories(
+      ../extern/llvm_linux_13_0_1/include
+      ../extern/llvm_linux_13_0_1/lib/Target/X86
+    )
+    set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/lib")
   else()
-    message(FATAL_ERROR "llvm-config couldn't be executed: ${EXEC_RESULT}")
+    include_directories(
+      ../extern/llvm_linux_rel_13_0_1/include
+      ../extern/llvm_linux_rel_13_0_1/lib/Target/X86
+    )
+    set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_13_0_1/lib")
   endif()
+
+  execute_process(
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/bin/llvm-config --system-libs --link-static
+    OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE EXEC_RESULT
+  )
+
+  if (EXEC_RESULT AND NOT EXEC_RESULT EQUAL 0)
+    if (EXEC_RESULT MATCHES "^[0-9]+$")
+      message(FATAL_ERROR "llvm-config exited with code ${EXEC_RESULT}.")
+    else()
+      message(FATAL_ERROR "llvm-config couldn't be executed: ${EXEC_RESULT}")
+    endif()
+  endif()
+  
+  message(STATUS "Found LLVM 13.0.1 (local build)")
 endif()
 
 if (${APPLE})
@@ -159,12 +178,10 @@ endif()
 
 # Link with other dependencies.
 if(MSVC)
-   target_link_libraries(${PROJECT_NAME} BeefySysLib IDEHelper kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib)
+    target_link_libraries(${PROJECT_NAME} BeefySysLib IDEHelper kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib)
 else()
     target_link_libraries(${PROJECT_NAME} BeefySysLib
-        IDEHelper
-        ${TARGET_LIBS_OS}
-
-        #${LLVM_LIB}/libLLVMSupport.a
-        )
+      IDEHelper
+      ${TARGET_LIBS_OS}
+    )
 endif()

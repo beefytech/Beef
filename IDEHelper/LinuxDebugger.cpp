@@ -19,8 +19,8 @@ Beefy::Debugger* CreateDebugger32(DebugManager* debugManager, DbgMiniDump* miniD
 
 Beefy::Debugger* CreateDebugger64(DebugManager* debugManager, DbgMiniDump* miniDump)
 {
-	if (gX86Target == NULL)
-		gX86Target = new X86Target();
+	//if (gX86Target == NULL)
+	//	gX86Target = new X86Target();
 	return NULL;
 }
 
