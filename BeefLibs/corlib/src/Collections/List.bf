@@ -530,6 +530,22 @@ namespace System.Collections
 				span[i] = mItems[i];
 		}
 
+		public void CopyTo(Span<T> array, int arrayIndex)
+		{
+			// Delegate rest of error checking to Array.Copy.
+			for (int i = 0; i < mSize; i++)
+				array[i + arrayIndex] = mItems[i];
+		}
+
+		public void CopyTo(int index, Span<T> array, int arrayIndex, int count)
+		{
+			Debug.Assert((uint)index < (uint)mSize);
+			Debug.Assert((uint)index + (uint)count <= (uint)mSize);
+			// Delegate rest of error checking to Array.Copy.
+			for (int i = 0; i < count; i++)
+				array[i + arrayIndex] = mItems[i + index];
+		}
+
 		public void CopyTo(T[] array, int arrayIndex)
 		{
 			// Delegate rest of error checking to Array.Copy.

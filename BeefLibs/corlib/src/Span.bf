@@ -294,6 +294,14 @@ namespace System
 			Internal.MemMove(destination.mPtr, mPtr, Internal.GetArraySize<T>(mLength), (int32)alignof(T));
 		}
 
+		public void CopyTo(int index, Span<T> array, int arrayIndex, int count)
+		{
+			Debug.Assert((uint)index < (uint)Length);
+			Debug.Assert((uint)index + (uint)count <= (uint)Length);
+			for (int i = 0; i < count; i++)
+				array[i + arrayIndex] = Ptr[i + index];
+		}
+
 		public Span<uint8> ToRawData()
 		{
 			return Span<uint8>((uint8*)mPtr, mLength * sizeof(T));
