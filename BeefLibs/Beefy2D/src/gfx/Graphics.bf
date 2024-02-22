@@ -187,6 +187,8 @@ namespace Beefy.gfx
             return mMatrixDisposeProxy;
         }
 
+		public DisposeProxy PushTranslate(Vector2 vec) => PushTranslate(vec.mX, vec.mY);
+
         public DisposeProxy PushScale(float scaleX, float scaleY)
         {
             Matrix m = Matrix.IdentityMatrix;
@@ -357,6 +359,8 @@ namespace Beefy.gfx
 
             return mClipDisposeProxy;
         }
+
+		public DisposeProxy PushClip(Rect rect) => PushClip(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 
 		RenderState AllocRenderState(Shader shader, Rect? clipRect, bool texWrap)
 		{
@@ -540,6 +544,8 @@ namespace Beefy.gfx
             /*SexyExport.MatrixDrawImageInst(cSGraphics.mGraphics, mImageInstInfos[cel], newMatrix.a, newMatrix.b, newMatrix.c, newMatrix.d, newMatrix.tx, newMatrix.ty,
                 (int)mPixelSnapping, mSmoothing ? 1 : 0, mAdditive ? 1 : 0, (int)g.mColor);*/
         }
+
+		public void Draw(IDrawable drawable, Vector2 vec) => Draw(drawable, vec.mX, vec.mY);
 
         public void DrawButton(Image image, float x, float y, float width)
         {
@@ -903,6 +909,11 @@ namespace Beefy.gfx
             mWhiteDot.Draw(newMatrix, ZDepth, mColor);
         }
 
+		public void FillRect(Rect rect)
+		{
+			FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+		}
+
         public void OutlineRect(float x, float y, float width, float height, float thickness = 1)
         {
             FillRect(x, y, width, thickness); // Top
@@ -930,7 +941,7 @@ namespace Beefy.gfx
             Gfx_SetDrawVertex(5, m.tx + (m.a + m.c), m.ty + (m.b + m.d), 0, 0, 0, Color.Mult(mColor, colorBotRight));
         }
 
-		public void DrawLine(float x0, float y0, float x1, float y1, float width = 1.0f)
+		void DoDrawLine(float x0, float y0, float x1, float y1, float width)
 		{
 			Image img = GetBorderedWhiteSquare(Math.Max((int)width, 1));
 
@@ -955,22 +966,29 @@ namespace Beefy.gfx
 			Gfx_SetDrawVertex(5, x1 + xOfs, y1 + yOfs, 0, 1.0f, 0.5f, mColor);
 		}
 
-        public void PolyStart(Image image, int32 vertices)
+		public void DrawLine(float x0, float y0, float x1, float y1, float width = 1.0f)
+		{
+			var pt0 = mMatrix.Multiply(Point(x0, y0));
+			var pt1 = mMatrix.Multiply(Point(x1, y1));
+			DoDrawLine(pt0.x, pt0.y, pt1.x, pt1.y, width);
+		}
+
+        public void PolyStart(Image image, int vertices)
         {
-            Gfx_AllocTris(image.mNativeTextureSegment, vertices);            
+            Gfx_AllocTris(image.mNativeTextureSegment, (.)vertices);            
         }
 
-        public void PolyVertex(int32 idx, float x, float y, float u, float v, Color color = Color.White)
+        public void PolyVertex(int idx, float x, float y, float u, float v, Color color = Color.White)
         {
             Matrix m = mMatrix;
             float aX = m.tx + m.a * x + m.c * y;
             float aY = m.ty + m.b * x + m.d * y;
-            Gfx_SetDrawVertex(idx, aX, aY, 0, u, v, color);
+            Gfx_SetDrawVertex((.)idx, aX, aY, 0, u, v, color);
         }
 
-        public void PolyVertexCopy(int32 idx, int32 srcIdx)
+        public void PolyVertexCopy(int idx, int srcIdx)
         {
-            Gfx_CopyDrawVertex(idx, srcIdx);
+            Gfx_CopyDrawVertex((.)idx, (.)srcIdx);
         }
     }
 #else
