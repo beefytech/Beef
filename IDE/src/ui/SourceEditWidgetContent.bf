@@ -3781,8 +3781,8 @@ namespace IDE.ui
 
 		void InsertCharPair(String charPair)
 		{
-			mCurParenPairIdSet.Add(mData.mNextCharId);
 			base.InsertCharPair(charPair);
+			mCurParenPairIdSet.Add(mData.mNextCharId - 2);
 		}
 
         public override void KeyChar(char32 keyChar)
@@ -4156,20 +4156,20 @@ namespace IDE.ui
             if (prevElementType != SourceElementType.Comment)
             {
                 doChar = false;
-                char8 char8UnderCursor = (char8)0;
+                char8 charUnderCursor = (char8)0;
 				bool cursorInOpenSpace = false;
 
                 //int cursorTextPos = CursorTextPos;
                 if (cursorTextPos < mData.mTextLength)
                 {
-                    char8UnderCursor = (char8)mData.mText[cursorTextPos].mChar;
-					cursorInOpenSpace = ((char8UnderCursor == ')') || (char8UnderCursor == ']') || (char8UnderCursor == ';') || (char8UnderCursor == (char8)0) || (char8UnderCursor.IsWhiteSpace));
+                    charUnderCursor = (char8)mData.mText[cursorTextPos].mChar;
+					cursorInOpenSpace = ((charUnderCursor == ')') || (charUnderCursor == ']') || (charUnderCursor == ';') || (charUnderCursor == (char8)0) || (charUnderCursor.IsWhiteSpace));
 
-					if (((keyChar == '(') && (char8UnderCursor == ')')) ||
-						((keyChar == '[') && (char8UnderCursor == ']')))
+					if (((keyChar == '(') && (charUnderCursor == ')')) ||
+						((keyChar == '[') && (charUnderCursor == ']')))
 						cursorInOpenSpace = IsCurrentPairClosing(cursorTextPos);
 
-                    if ((char8UnderCursor == keyChar) && (!HasSelection()))
+                    if ((charUnderCursor == keyChar) && (!HasSelection()))
                     {
 						var wantElementType = SourceElementType.Normal;
 
