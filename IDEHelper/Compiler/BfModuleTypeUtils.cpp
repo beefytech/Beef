@@ -13879,8 +13879,6 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					if (mIsComptimeModule)
 						return mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(toType));
 
-					BF_ASSERT(mBfIRBuilder->mIgnoreWrites);
-
 					auto undefConst = (BfConstantUndef*)constant;
 
 					BfType* bfType = NULL;
