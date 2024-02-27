@@ -290,7 +290,8 @@ namespace System
 			GUI,
 			Console,
 			PrintOnly,
-			None
+			None,
+			System
 		}
 
 		enum RtFlags : int32

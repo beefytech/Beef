@@ -1043,6 +1043,9 @@ static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 {
  	OutputDebugStrF("SEH Filter! CraskReportKind:%d\n", CrashCatcher::Get()->mCrashReportKind);
 
+	if (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_System)
+		return EXCEPTION_CONTINUE_SEARCH;
+
 	if (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_None)
 	{
 		OutputDebugStrF("Silent Exiting\n");

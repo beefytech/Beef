@@ -44,15 +44,15 @@ enum BfpResult
 	BfpResult_UnknownError,
 	BfpResult_InsufficientBuffer,
 	BfpResult_NotSupported,
-	BfpResult_NoResults,	
+	BfpResult_NoResults,
 	BfpResult_InvalidParameter,
 	BfpResult_Locked,
 	BfpResult_AlreadyExists,
 	BfpResult_NotFound,
 	BfpResult_ShareError,
-	BfpResult_AccessError,	
-	BfpResult_PartialData,	
-	BfpResult_TempFileError,	
+	BfpResult_AccessError,
+	BfpResult_PartialData,
+	BfpResult_TempFileError,
 	BfpResult_Timeout,
 	BfpResult_NotEmpty
 };
@@ -70,12 +70,12 @@ enum BfpFileResult
 	BfpFileResult_UnknownError = BfpResult_UnknownError,
 	BfpFileResult_InvalidParameter = BfpResult_InvalidParameter,
 	BfpFileResult_Locked = BfpResult_Locked,
-	BfpFileResult_AlreadyExists = BfpResult_AlreadyExists,	
+	BfpFileResult_AlreadyExists = BfpResult_AlreadyExists,
 	BfpFileResult_NotFound = BfpResult_NotFound,
 	BfpFileResult_ShareError = BfpResult_ShareError,
-	BfpFileResult_AccessError = BfpResult_AccessError,	
+	BfpFileResult_AccessError = BfpResult_AccessError,
 	BfpFileResult_PartialData = BfpResult_PartialData,
-	BfpFileResult_InsufficientBuffer = BfpResult_InsufficientBuffer,	
+	BfpFileResult_InsufficientBuffer = BfpResult_InsufficientBuffer,
 	BfpFileResult_Timeout = BfpResult_Timeout,
 	BfpFileResult_NotEmpty = BfpResult_NotEmpty
 };
@@ -95,7 +95,8 @@ enum BfpCrashReportKind
 	BfpCrashReportKind_GUI,
 	BfpCrashReportKind_Console,
 	BfpCrashReportKind_PrintOnly,
-	BfpCrashReportKind_None
+	BfpCrashReportKind_None,
+	BfpCrashReportKind_System
 };
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags);
@@ -112,7 +113,7 @@ BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_EndianSwap32(uint32 val);
 BFP_EXPORT uint64 BFP_CALLTYPE BfpSystem_EndianSwap64(uint64 val);
 BFP_EXPORT uint8  BFP_CALLTYPE BfpSystem_InterlockedExchange8(uint8* ptr, uint8 val);
 BFP_EXPORT uint16 BFP_CALLTYPE BfpSystem_InterlockedExchange16(uint16* ptr, uint16 val);
-BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_InterlockedExchange32(uint32* ptr, uint32 val); 
+BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_InterlockedExchange32(uint32* ptr, uint32 val);
 BFP_EXPORT uint64 BFP_CALLTYPE BfpSystem_InterlockedExchange64(uint64* ptr, uint64 val);
 BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_InterlockedExchangeAdd8(uint8* ptr, uint8 val);
 BFP_EXPORT uint16 BFP_CALLTYPE BfpSystem_InterlockedExchangeAdd16(uint16* ptr, uint16 val);
@@ -166,7 +167,7 @@ enum BfpProcessResult
 {
 	BfpProcessResult_Ok = BfpResult_Ok,
 	BfpProcessResult_UnknownError = BfpResult_UnknownError,
-	BfpProcessResult_InsufficientBuffer = BfpResult_InsufficientBuffer,	
+	BfpProcessResult_InsufficientBuffer = BfpResult_InsufficientBuffer,
 };
 
 BFP_EXPORT intptr BFP_CALLTYPE BfpProcess_GetCurrentId();
@@ -181,7 +182,7 @@ BFP_EXPORT int BFP_CALLTYPE BfpProcess_GetProcessId(BfpProcess* process);
 enum BfpSpawnFlags
 {
 	BfpSpawnFlag_None = 0,
-	BfpSpawnFlag_ArgsIncludesTarget = 1, // Otherwise most platforms prepend targetPath to the args	
+	BfpSpawnFlag_ArgsIncludesTarget = 1, // Otherwise most platforms prepend targetPath to the args
 	BfpSpawnFlag_UseArgsFile = 2,
 	BfpSpawnFlag_UseArgsFile_Native = 4,
 	BfpSpawnFlag_UseArgsFile_UTF8 = 8,
@@ -352,12 +353,12 @@ enum BfpFileCreateKind
 enum BfpFileCreateFlags
 {
 	BfpFileCreateFlag_Read = 1,
-	BfpFileCreateFlag_Write = 2,		
+	BfpFileCreateFlag_Write = 2,
 
 	BfpFileCreateFlag_ShareRead = 4,
 	BfpFileCreateFlag_ShareWrite = 8,
 	BfpFileCreateFlag_ShareDelete = 0x10,
-	
+
 	BfpFileCreateFlag_Append = 0x20,
 	BfpFileCreateFlag_Truncate = 0x40,
 
