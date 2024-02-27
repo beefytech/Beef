@@ -284,6 +284,22 @@ namespace System
 				buffer[i] = (uint8)(InternalSample() % ((int32)UInt8.MaxValue + 1));
 			}
 		}
+
+		public void Serialize(String str)
+		{
+			inext.ToString(str, "X8", null);
+			inextp.ToString(str, "X8", null);
+			for (int i < 56)
+				SeedArray[i].ToString(str, "X8", null);
+		}
+
+		public void Deserialize(String str)
+		{
+			inext = int32.Parse(str.Substring(0*8, 8), .Hex);
+			inextp = int32.Parse(str.Substring(1*8, 8), .Hex);
+			for (int i < 56)
+				SeedArray[i] = int32.Parse(str.Substring((i+2)*8, 8), .Hex);
+		}
 	}
 
 	static
