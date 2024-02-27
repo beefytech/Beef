@@ -5838,7 +5838,12 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 
 	BfIRValue constValue;
 	BfIRValue constValue2;
-	if (fieldInstance->GetFieldDef()->mIsConst)
+	if (fieldInstance->mIsEnumPayloadCase)
+	{
+		int tagId = -fieldInstance->mDataIdx - 1;
+		constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, tagId);
+	}
+	else if (fieldInstance->GetFieldDef()->mIsConst)
 	{
 		if (fieldInstance->mConstIdx != -1)
 		{
