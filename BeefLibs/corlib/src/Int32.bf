@@ -190,7 +190,7 @@ namespace System
 				else
 					return .Err(.InvalidChar(result));
 
-				if (isNeg ? (uint32)result > (uint32)MinValue : (uint32)result > (uint32)MaxValue)
+				if ((radix == 10) && (isNeg ? (uint32)result > (uint32)MinValue : (uint32)result > (uint32)MaxValue))
 					return .Err(.Overflow);
 			}
 
