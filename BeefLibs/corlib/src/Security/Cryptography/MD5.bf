@@ -32,7 +32,7 @@ namespace System.Security.Cryptography
 		}
 	}
 
-	struct MD5Hash : IParseable<MD5Hash>
+	struct MD5Hash : IParseable<MD5Hash>, IHashable
 	{
 		public uint8[16] mHash;
 
@@ -89,6 +89,12 @@ namespace System.Security.Cryptography
 			HashEncode.HashEncode64(((uint64*)&mHash)[0], outStr);
 #unwarn
 			HashEncode.HashEncode64(((uint64*)&mHash)[1], outStr);
+		}
+
+		public int GetHashCode()
+		{
+#unwarn
+			return *(int*)&mHash;
 		}
 	}
 
