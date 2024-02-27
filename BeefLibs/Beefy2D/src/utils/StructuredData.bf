@@ -930,7 +930,7 @@ namespace Beefy.utils
             return mStructuredDisposeProxy;
         }
 
-		public Enumerator Enumerate(String name)
+		public Enumerator Enumerate(StringView name)
 		{
 			Enumerator enumerator;
 

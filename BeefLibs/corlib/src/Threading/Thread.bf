@@ -313,9 +313,9 @@ namespace System.Threading
             JoinInternal(Timeout.Infinite);
         }
         
-        public bool Join(int32 millisecondsTimeout)
+        public bool Join(int millisecondsTimeout)
         {
-            return JoinInternal(millisecondsTimeout);
+            return JoinInternal((.)millisecondsTimeout);
         }
         
         public bool Join(TimeSpan timeout)
