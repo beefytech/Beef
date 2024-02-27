@@ -225,7 +225,7 @@ namespace System
 		}
 	}
 
-	struct Range<T> where T : operator T + int where int : operator T - T where bool : operator T >= T
+	struct Range<T> where T : operator T + T where T : operator T - T where bool : operator T >= T
 	{
 		protected T mStart;
 		protected T mEnd;
@@ -244,7 +244,7 @@ namespace System
 			mEnd = end;
 		}
 
-		public int Length
+		public T Length
 	    {
 	    	[Inline]
 	        get
@@ -297,15 +297,6 @@ namespace System
 			}
 		}
 
-		public ReverseEnumerator Reversed
-		{
-			[Inline]
-			get
-			{
-				return ReverseEnumerator(mEnd + -1, mStart);
-			}
-		}
-		
 		public bool Contains(T idx)
 		{
 			return (idx >= mStart) && !(idx >= mEnd);
@@ -322,87 +313,99 @@ namespace System
 			mEnd = default;
 		}
 
-		[Inline]
-		public Enumerator GetEnumerator()
-		{
-			return Enumerator(this);
-		}
-
 		public override void ToString(String strBuffer)
 		{
 			strBuffer.AppendF($"{mStart}..<{mEnd}");
 		}
+	}
 
-		public struct Enumerator : IEnumerator<T>
+	extension Range<T> where T : operator T + T where T : operator T - T where T : operator implicit int8 where bool : operator T >= T
+	{
+		[Inline]
+		public RangeEnumerator<T> GetEnumerator()
 		{
-		    private T mEnd;
-		    private T mIndex;
-
-			[Inline]
-		    public this(Range<T> range)
-		    {
-		        mIndex = range.mStart + -1;
-		        mEnd = range.mEnd;
-		    }
-
-		    public void Dispose()
-		    {
-		    }
-
-		    public ref T Index
-		    {
-		        get mut
-		        {
-		            return ref mIndex;
-		        }
-		    }
-
-			public T End => mEnd;
-
-			[Inline]
-			public Result<T> GetNext() mut
-			{
-				if (mIndex + 1 >= mEnd)
-					return .Err;
-				mIndex += 1;
-				return mIndex;
-			}
+			return RangeEnumerator<T>(this);
 		}
 
-		public struct ReverseEnumerator : IEnumerator<T>
+		public ReverseRangeEnumerator<T> Reversed
 		{
-		    private T mEnd;
-		    private T mIndex;
-
 			[Inline]
-		    public this(T start, T end)
-		    {
-		        mIndex = start + 1;
-		        mEnd = end;
-		    }
-
-		    public void Dispose()
-		    {
-		    }
-
-		    public ref T Index
-		    {
-		        get mut
-		        {
-		            return ref mIndex;
-		        }
-		    }
-
-			public T End => mEnd;
-
-			[Inline]
-			public Result<T> GetNext() mut
+			get
 			{
-				if (mIndex <= mEnd)
-					return .Err;
-				mIndex += -1;
-				return mIndex;
+				return ReverseRangeEnumerator<T>(mEnd + -1, mStart);
 			}
+		}
+	}
+
+	public struct RangeEnumerator<T> : IEnumerator<T> where T : operator T + T where T : operator T - T where T : operator implicit int8 where bool : operator T >= T
+	{
+	    private T mEnd;
+	    private T mIndex;
+
+		[Inline]
+	    public this(Range<T> range)
+	    {
+	        mIndex = range.[Friend]mStart + -1;
+	        mEnd = range.[Friend]mEnd;
+	    }
+
+	    public void Dispose()
+	    {
+	    }
+
+	    public ref T Index
+	    {
+	        get mut
+	        {
+	            return ref mIndex;
+	        }
+	    }
+
+		public T End => mEnd;
+
+		[Inline]
+		public Result<T> GetNext() mut
+		{
+			if (mIndex + (int8)1 >= mEnd)
+				return .Err;
+			mIndex = mIndex + (int8)1;
+			return mIndex;
+		}
+	}
+
+	public struct ReverseRangeEnumerator<T> : IEnumerator<T>  where T : operator T + T where T : operator T - T where T : operator implicit int8 where bool : operator T >= T
+	{
+	    private T mEnd;
+	    private T mIndex;
+
+		[Inline]
+	    public this(T start, T end)
+	    {
+	        mIndex = start + (int8)1;
+	        mEnd = end;
+	    }
+
+	    public void Dispose()
+	    {
+	    }
+
+	    public ref T Index
+	    {
+	        get mut
+	        {
+	            return ref mIndex;
+	        }
+	    }
+
+		public T End => mEnd;
+
+		[Inline]
+		public Result<T> GetNext() mut
+		{
+			if (mIndex <= mEnd)
+				return .Err;
+			mIndex = mIndex + (int8)(-1);
+			return mIndex;
 		}
 	}
 
