@@ -99,15 +99,7 @@ namespace System
 		[NoShow(true)]
 		public static Result<T> Parse<T>(StringView str, bool ignoreCase = false) where T : enum
 		{
-			for (var (name, data) in GetEnumerator<T>())
-			{
-				if (str.Equals(name, ignoreCase))
-					return .Ok(data);
-				if (int64.Parse(str) case .Ok(let val) && val == (.)data)
-					return .Ok(data);
-			}
-
-			return .Err;
+			return EnumParser<T>.Parse(str, ignoreCase);
 		}
 
 		[NoShow(true)]
@@ -378,6 +370,112 @@ namespace System
 					return .Err;
 				return Current;
 			}
+		}
+	}
+
+	class EnumParser<T>
+	{
+		[OnCompile(.TypeInit), Comptime]
+		public static void OnTypeInit()
+		{
+			String code = scope .();
+
+			code.Append("public static Result<T> Parse(StringView str, bool ignoreCase = false)\n");
+			code.Append("{\n");
+
+			Type dscrType = typeof(int);
+			int dscrOffset = 0;
+			for (var fieldInfo in typeof(T).GetFields())
+			{
+				if (fieldInfo.Name == "$discriminator")
+				{
+					dscrOffset = fieldInfo.MemberOffset;
+					dscrType = fieldInfo.FieldType;
+				}
+			}
+
+			bool hadPayload = false;
+
+			for (var fieldInfo in typeof(T).GetFields())
+			{
+				if (var fieldTypeInst = fieldInfo.FieldType as TypeInstance)
+				{
+					if ((fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0))
+					{
+						code.Append("\tT result = default;\n");
+						hadPayload = true;
+						break;
+					}
+				}
+			}
+
+			int caseIdx = 0;
+			for (var fieldInfo in typeof(T).GetFields())
+			{
+				if (!fieldInfo.IsEnumCase)
+					continue;
+
+				if (var fieldTypeInst = fieldInfo.FieldType as TypeInstance)
+				{
+					bool hasPayload = (fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0);
+					if (caseIdx == 0)
+						code.Append("\t");
+					else
+						code.Append("\telse ");
+					if (!hasPayload)
+					{
+						code.AppendF($"if (str.Equals(\"{fieldInfo.Name}\", ignoreCase))\n\t\treturn .Ok(.{fieldInfo.Name});\n");
+					}
+					else
+					{
+						code.AppendF($"if (str.StartsWith(\"{fieldInfo.Name}(\", ignoreCase ? .OrdinalIgnoreCase : .Ordinal))\n\t{{\n");
+						code.AppendF($"\t\t*({dscrType}*)((uint8*)&result + {dscrOffset}) = {fieldInfo.MemberOffset};\n");
+						code.AppendF($"\t\tvar itr = Try!(EnumFields(str.Substring({fieldInfo.Name.Length+1})));\n");
+						for (var tupField in fieldTypeInst.GetFields())
+							code.AppendF($"\t\tTry!(ParseValue(ref itr, ref *({tupField.FieldType}*)((uint8*)&result + {tupField.MemberOffset})));\n");
+						code.Append("\t}\n");
+					}
+				}
+
+				caseIdx++;
+			}
+
+			if (caseIdx == 0)
+			{
+				code.Append("\treturn .Err;\n");
+			}
+			else
+			{
+				code.Append("\telse\n\t\treturn .Err;\n");
+				if (hadPayload)
+					code.Append("\treturn result;\n");
+			}
+			code.Append("}\n");
+
+			Compiler.EmitTypeBody(typeof(Self), code);
+		}
+
+		static Result<StringSplitEnumerator> EnumFields(StringView str)
+		{
+			var str;
+			str.Trim();
+			if (!str.EndsWith(')'))
+				return .Err;
+			str.RemoveFromEnd(1);
+			return str.Split(',');
+		}
+
+		static Result<void> ParseValue<TValue>(ref StringSplitEnumerator itr, ref TValue value)
+		{
+			return .Err;
+		}
+
+		static Result<void> ParseValue<TValue>(ref StringSplitEnumerator itr, ref TValue value) where TValue : IParseable<TValue>
+		{
+			var str = Try!(itr.GetNext());
+			str.Trim();
+			value = Try!(TValue.Parse(str));
+			return .Ok;
 		}
 	}
 }
