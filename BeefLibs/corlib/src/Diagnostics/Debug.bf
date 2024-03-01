@@ -51,7 +51,7 @@ namespace System.Diagnostics
 			Write(sv.[Friend]mPtr, sv.[Friend]mLength);
 		}
 
-		public static void Write(String fmt, params Object[] args)
+		public static void Write(String fmt, params Span<Object> args)
 		{
 			String str = scope String(4096);
 			str.AppendF(fmt, params args);
