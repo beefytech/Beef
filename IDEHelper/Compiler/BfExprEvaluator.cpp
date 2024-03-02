@@ -7111,6 +7111,10 @@ void BfExprEvaluator::SplatArgs(BfTypedValue value, SizedArrayImpl<BfIRValue>& i
 		if (checkType->IsStruct())
 		{
 			auto checkTypeInstance = checkType->ToTypeInstance();
+
+			if (checkTypeInstance->mBaseType != NULL)
+				mModule->PopulateType(checkTypeInstance->mBaseType);
+
 			if ((checkTypeInstance->mBaseType != NULL) && (!checkTypeInstance->mBaseType->IsValuelessType()))
 			{
 				BfTypedValue baseValue;
