@@ -164,7 +164,7 @@ namespace Beefy
 			// Retry for a while if the other side is still writing out the file
 			for (int i = 0; i < 100; i++)
 			{
-				if (sr.Open(filePath, .Read, .Read) case .Err(let fileOpenErr))
+				if (sr.Open(filePath, .Read, .ReadWrite) case .Err(let fileOpenErr))
 				{
 					bool retry = false;
 					if (autoRetry)
