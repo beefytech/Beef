@@ -189,6 +189,8 @@ namespace Beefy.gfx
 
 		public DisposeProxy PushTranslate(Vector2 vec) => PushTranslate(vec.mX, vec.mY);
 
+		public DisposeProxy PushScale(float scale) => PushScale(scale, scale);
+
         public DisposeProxy PushScale(float scaleX, float scaleY)
         {
             Matrix m = Matrix.IdentityMatrix;
