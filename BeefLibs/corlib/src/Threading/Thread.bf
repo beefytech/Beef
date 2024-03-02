@@ -20,6 +20,7 @@ namespace System.Threading
         private Object mThreadStartArg;
 
         bool mAutoDelete;
+		bool mJoinOnDelete;
 
 		static Monitor sMonitor = new .() ~ delete _;
 		static Event<delegate void()> sOnExit ~ _.Dispose();
@@ -393,6 +394,9 @@ namespace System.Threading
 				sOnExit();
 			}
 
+			if (mJoinOnDelete)
+				Join();
+
             // Make sure we're not deleting manually if mAutoDelete is set
             Debug.Assert((!mAutoDelete) || (CurrentThread == this));
             // Delegate to the unmanaged portion.
@@ -413,8 +417,11 @@ namespace System.Threading
         private extern bool IsBackgroundNative();
 		[CallingConvention(.Cdecl)]
         private extern void SetBackgroundNative(bool isBackground);
-		[CallingConvention(.Cdecl)]
-		public extern void SetJoinOnDelete(bool joinOnDelete);
+		
+		public void SetJoinOnDelete(bool joinOnDelete)
+		{
+			mJoinOnDelete = joinOnDelete;
+		}
 
         public ThreadState ThreadState
         {
