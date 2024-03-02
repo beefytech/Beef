@@ -3967,9 +3967,9 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 			{
 				if (isDefiningModule)
 				{
-					fieldInstance->mIsThreadLocal = mModule->IsThreadLocal(fieldInstance);
+					bool isThreadLocal = mModule->IsThreadLocal(fieldInstance);
 					if (!resolvedFieldType->IsVoid())
-						mModule->CreateStaticField(fieldInstance, fieldInstance->mIsThreadLocal);
+						mModule->CreateStaticField(fieldInstance, isThreadLocal);
 				}
 			}
 		}

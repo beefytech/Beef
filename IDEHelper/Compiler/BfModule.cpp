@@ -19959,7 +19959,7 @@ void BfModule::EmitGCMarkMembers()
 					auto fieldDef = fieldInst.GetFieldDef();
 					if (fieldDef == NULL)
 						continue;
-					if (fieldInst.mIsThreadLocal)
+					if (IsThreadLocal(&fieldInst))
 						continue;
 
 					if (fieldDef->mIsStatic == methodDef->mIsStatic)
@@ -20038,7 +20038,7 @@ void BfModule::EmitGCFindTLSMembers()
 		auto fieldDef = fieldInst.GetFieldDef();
 		if (fieldDef == NULL)
 			continue;
-		if (!fieldInst.mIsThreadLocal)
+		if (!IsThreadLocal(&fieldInst))
 			continue;
 
 		// For extensions, only handle these fields in the appropriate extension

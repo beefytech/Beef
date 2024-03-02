@@ -1393,7 +1393,6 @@ public:
 	int mDataSize;
 	bool mFieldIncluded;
 	bool mIsEnumPayloadCase;
-	bool mIsThreadLocal;
 	bool mIsInferredType;
 	bool mHadConstEval;
 	int mLastRevisionReferenced;
@@ -1418,7 +1417,6 @@ public:
 		mDataSize = copyFrom.mDataSize;
 		mFieldIncluded = copyFrom.mFieldIncluded;
 		mIsEnumPayloadCase = copyFrom.mIsEnumPayloadCase;
-		mIsThreadLocal = copyFrom.mIsThreadLocal;
 		mIsInferredType = copyFrom.mIsInferredType;
 		mHadConstEval = copyFrom.mHadConstEval;
 		mLastRevisionReferenced = copyFrom.mLastRevisionReferenced;
@@ -1440,7 +1438,6 @@ public:
 		mDataSize = copyFrom.mDataSize;
 		mFieldIncluded = copyFrom.mFieldIncluded;
 		mIsEnumPayloadCase = copyFrom.mIsEnumPayloadCase;
-		mIsThreadLocal = copyFrom.mIsThreadLocal;
 		mIsInferredType = copyFrom.mIsInferredType;
 		mHadConstEval = copyFrom.mHadConstEval;
 		mLastRevisionReferenced = copyFrom.mLastRevisionReferenced;
@@ -1459,7 +1456,6 @@ public:
 		mDataOffset = -1;
 		mDataSize = 0;
 		mFieldIncluded = true;
-		mIsThreadLocal = false;
 		mIsInferredType = false;
 		mHadConstEval = false;
 		mLastRevisionReferenced = -1;
