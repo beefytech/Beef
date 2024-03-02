@@ -88,12 +88,12 @@ namespace System.IO
 			return Write("\n");
 		}
 
-		public Result<void> Write(StringView fmt, params Object[] args)
+		public Result<void> Write(StringView fmt, params Span<Object> args)
 		{
 			return Write(scope String()..AppendF(fmt, params args));
 		}
 
-		public Result<void> WriteLine(StringView fmt, params Object[] args)
+		public Result<void> WriteLine(StringView fmt, params Span<Object> args)
 		{
 			Try!(Write(scope String()..AppendF(fmt, params args)));
 			return Write("\n");
